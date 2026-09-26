@@ -1702,6 +1702,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* ── 每场入侵战斗的进度反馈（2026-09-25 船长批「甲」：原来主动出击胜利一句日志都没有，玩家报障「重复清缴不加进度条」）── */
   "core.weekend.035": { zh: "✦ {p1}：夺回进度 {p2}% → {p3}%", en: "✦ {p1}: reclaim progress {p2}% → {p3}%" },
   "core.weekend.036": { zh: "✦ {p1}：外围未清完，本次不计夺回进度", en: "✦ {p1}: the periphery is not fully reclaimed — no reclaim progress from this battle" },
+  /* 2026-09-26 船长令：「关于入侵的结算界面和结束通讯处，需要提及玩家获得了多少声望」——
+     结算信追加的那一段（{p4} = 本期按贡献获得的协会声望点数；只在 >0 时追加）。 */
+  "core.weekend.037": { zh: "本次入侵按你在清缴行动中的贡献，协会为你记入「深空工业协会」声望 +{p4}。", en: "For your contribution to this sweep the Association has credited you +{p4} Deepspace Industry Association standing." },
   /* ── 2026-09-23 围剿批（第 7 层起逐回合刷怪）：core 侧新增的日志与拒因 ── */
   "core.wormholeSpawn.001": { zh: "🕳 围剿者扑到你所在的位置：先确认，再迎战。", en: "🕳 A sweep ship has pounced on your position: confirm, then engage." },
   "core.wormholeBattle.032": { zh: "围剿战只在网格层成立。", en: "Sweep battles only happen on the grid." },
@@ -3271,6 +3274,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.IndustryPage.131": { zh: "去书架", en: "Open shelf" },
   "ui.IndustryPage.132": { zh: "切到蓝图书架并定位这一本", en: "Switch to the blueprint shelf and locate this book" },
   "ui.IndustryPage.126": { zh: "前往声望商店兑换", en: "Exchange at the standing shop" },
+  /* 2026-09-26 船长令（兑换窗口两处）：① 已兑换（= 已学会）的图纸**隐藏**，全换完给空态；
+     ② 兑换前弹**确认**，写明会扣多少声望与扣完还剩多少。 */
+  "ui.IndustryPage.133": { zh: "插件图纸都已兑换完毕。", en: "Every plug blueprint has been exchanged." },
+  "ui.IndustryPage.134": { zh: "兑换「{p1}」", en: "Exchange “{p1}”" },
+  "ui.IndustryPage.135": { zh: "将扣除「深空工业协会」声望 {p1} 点，扣除后剩余 {p2}。", en: "This spends {p1} Deepspace Industry Association standing, leaving {p2}." },
+  "ui.IndustryPage.136": { zh: "兑换后图纸直接进蓝图书架；声望一旦扣除不会退还。", en: "The blueprint goes straight to your shelf; spent standing is not refunded." },
   "ui.Expedition.441": { zh: "章鱼人兑换", en: "Octopus Exchange" },
   "ui.Expedition.442": { zh: "前往声望商店兑换", en: "Exchange at the standing shop" },
   "ui.Expedition.443": { zh: "插件装上就拆不下来，也不能上市交易。", en: "A plug cannot be removed once fitted, and cannot be traded on the market." },
@@ -3760,6 +3769,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.020": { zh: "母舰血条剩余 {p1}%", en: "Mothership bar: {p1}% left" },
   // 2026-09-26 船长令：「建议将旗舰的大概信息直接显示在卡上，包括BOSS血条剩余血量」
   "ui.weekend.112": { zh: "入侵旗舰编成 · 共 {p1} 艘", en: "Invasion flagship roster · {p1} ships total" },
+  /* 2026-09-26 船长令：入侵结算界面（与结算信同口径）要写明本期按贡献拿到多少协会声望 */
+  "ui.weekend.113": { zh: "本期入侵按贡献获得「深空工业协会」声望 +{p1}（可支配 {p2} · 累计 {p3}）", en: "This invasion earned you +{p1} Deepspace Industry Association standing (spendable {p2} · total {p3})" },
   // 2026-09-25 结束结算（贡献奖四档入账）：一条有 ISK 的、一条只有残骸的（参与档）、一条零贡献的
   "ui.weekend.022": { zh: "贡献奖已发放：贡献占比 {p1}%，奖励 稀有残骸 ×{p2} ＋ {p3} 信用点。", en: "Contribution reward paid: share {p1}%, reward rare wrecks ×{p2} + {p3} credits." },
   "ui.weekend.023": { zh: "贡献奖已发放：贡献占比 {p1}%，奖励 稀有残骸 ×{p2}。", en: "Contribution reward paid: share {p1}%, reward rare wrecks ×{p2}." },

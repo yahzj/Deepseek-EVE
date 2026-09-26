@@ -9,7 +9,7 @@
  * 物品名走**游戏既有物品表**（`engine.ctx.items`）⇒ 中英各自成句。
  */
 import type { ReactNode } from 'react'
-import { weekendFamilyNameId } from '@whale/core'
+import { DSI_FACTION_ID, spendableStandingOf, standingOf, weekendFamilyNameId } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { tr } from '../i18n/locale'
 
@@ -64,6 +64,26 @@ export function WeekendSummaryView({ engine, onClose }: { engine: GameEngine; on
         ]
       : []),
     { label: tr('ui.weekend.039'), value: n(snap.isk), sub: '' },
+    /**
+     * **本期按贡献拿到的协会声望**（**2026-09-26 船长令**：「关于入侵的结算界面和结束通讯处，
+     * 需要提及玩家获得了多少声望」）——读数取快照（与实发同源），另带两本账的现值
+     * （可支配 / 累计获得），玩家一眼知道"这 15 点加在哪"。
+     * 老快照没有这一栏（缺省 0）⇒ 不显示该格；独占一行（与黑匣同款 `wide`），免得挤成半格。
+     */
+    ...((snap.standing ?? 0) > 0
+      ? [
+          {
+            label: tr('ui.weekend.113', {
+              p1: String(snap.standing ?? 0),
+              p2: String(spendableStandingOf(engine.state, DSI_FACTION_ID)),
+              p3: String(standingOf(engine.state, DSI_FACTION_ID)),
+            }),
+            value: `+${n(snap.standing ?? 0)}`,
+            sub: '',
+            wide: true,
+          },
+        ]
+      : []),
     ...(snap.blackBox > 0
       ? [{ label: tr('ui.weekend.040'), value: `×${snap.blackBox}`, sub: '', wide: true }]
       : []),

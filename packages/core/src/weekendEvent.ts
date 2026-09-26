@@ -440,6 +440,14 @@ export interface WeekendResultSnapshot {
    */
   progressPct?: number
   progressIsk?: number
+  /**
+   * **本期入侵按贡献获得的「深空工业协会」声望**（**2026-09-26 船长令**：「**关于入侵的结算界面和
+   * 结束通讯处，需要提及玩家获得了多少声望**」）。
+   *
+   * 口径 = 结算那一拍现算的 `round(占比 × WEEKEND_STANDING_MAX(15))`（见 `weekendBattle` 的
+   * `weekendSettleAndGrant`）；**缺省 = 这一栏之前结束的活动**（老快照）⇒ 界面与通讯按缺省不显示该行。
+   */
+  standing?: number
   /** 到手合计（含旗舰掉落）与奖励物品 id（面板/通讯点物品名用） */
   isk: number
   wreck: number

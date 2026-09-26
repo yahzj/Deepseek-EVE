@@ -51,14 +51,25 @@ export function PlugExchangeModal({
 }): React.JSX.Element {
   /** 本地重算计数：兑换只改 state 两本账与图书架，窗口自身要跟着重画 */
   const [, setTick] = useState(0)
-  const rows = plugExchangeRowsOf(engine.state, engine.ctx)
+  /**
+   * **已兑换（= 已学会）的图纸不再列出**（**2026-09-26 船长令**：「**章鱼人的声望界面，兑换过的图纸
+   * 就进行隐藏**」）。判据仍走行模型自带的 `learned`（`plugExchangeRowsOf` 单点：`learnedRecipes`
+   * 含该图纸 id）⇒ 界面只做过滤，不新造判定。
+   */
+  const rows = plugExchangeRowsOf(engine.state, engine.ctx).filter((r) => !r.learned)
   const spendable = spendableStandingOf(engine.state, DSI_FACTION_ID)
   const earned = standingOf(engine.state, DSI_FACTION_ID)
+  /**
+   * **兑换前确认**（**2026-09-26 船长令**：「**玩家兑换时弹出一个确认，告诉玩家会扣除声望**」）：
+   * 待确认的那一行（null = 没在确认）。确认层沿用全仓既有的 `.app-mkt-confirm*` 一族（不新造样式）。
+   */
+  const [ask, setAsk] = useState<{ moduleId: string; name: string } | null>(null)
 
   const exchange = (moduleId: string): void => {
     /** 走引擎命令（成功才落盘 ＋ 广播刷新；与 `learnBlueprintAt` 同款） */
     const r = engine.exchangePlugBlueprintAt(moduleId)
     onToast(r.ok ? tr('ui.IndustryPage.123') : (r.error ?? tr('ui.IndustryPage.121', { p1: PLUG_BLUEPRINT_COST })))
+    setAsk(null)
     setTick((n) => n + 1)
   }
 
@@ -98,7 +109,7 @@ export function PlugExchangeModal({
         </div>
         <div className="app-modal-body">
           {rows.length === 0 ? (
-            <div className="app-dim app-exp-idle">{tr('ui.IndustryPage.117')}</div>
+            <div className="app-dim app-exp-idle">{tr('ui.IndustryPage.133')}</div>
           ) : (
             <div className="app-belt-grid">
               {rows.map((row) => {
@@ -181,16 +192,20 @@ export function PlugExchangeModal({
                     ) : null}
 
                     <div className="app-belt-actions">
+                      {/**
+                       * **点「兑换图纸」先弹确认**（**2026-09-26 船长令**：
+                       * 「玩家兑换时弹出一个确认，告诉玩家会扣除声望」）——
+                       * 行内不再有"已学会"分支（学过的行已经被过滤掉了）⇒ 这里只剩两种状态：
+                       * 声望够（主行动）／不够（写明还差多少，且不可点）。
+                       */}
                       <button
-                        className={`app-btn is-small${row.learned || !row.affordable ? '' : ' is-primary'}`}
-                        disabled={row.learned || !row.affordable}
-                        onClick={() => exchange(row.moduleId)}
+                        className={`app-btn is-small${row.affordable ? ' is-primary' : ''}`}
+                        disabled={!row.affordable}
+                        onClick={() => setAsk({ moduleId: row.moduleId, name: row.name })}
                       >
-                        {row.learned
-                          ? tr('ui.IndustryPage.122')
-                          : row.affordable
-                            ? tr('ui.IndustryPage.120')
-                            : tr('ui.IndustryPage.121', { p1: row.cost - spendable })}
+                        {row.affordable
+                          ? tr('ui.IndustryPage.120')
+                          : tr('ui.IndustryPage.121', { p1: row.cost - spendable })}
                       </button>
                     </div>
                   </div>
@@ -200,6 +215,34 @@ export function PlugExchangeModal({
           )}
         </div>
       </div>
+      {/**
+       * **确认层**（船长令）：标题 = 兑换哪一件；正文两行 = 扣多少 / 扣完还剩多少 ＋ 一句说明
+       * （图纸直接进书架、声望不退）。样式整族复用 `.app-mkt-confirm*`（市场卖单那套）。
+       */}
+      {ask !== null ? (
+        <div className="app-mkt-confirm-mask" onClick={() => setAsk(null)}>
+          <div className="app-mkt-confirm" onClick={(e) => e.stopPropagation()}>
+            <div className="app-mkt-confirm-title">{tr('ui.IndustryPage.134', { p1: ask.name })}</div>
+            <div className="app-mkt-confirm-row">
+              <span>{tr('ui.Expedition.441')}</span>
+              <b>{tr('ui.IndustryPage.119', { p1: spendable, p2: earned })}</b>
+            </div>
+            <div className="app-mkt-confirm-note">
+              {tr('ui.IndustryPage.135', { p1: PLUG_BLUEPRINT_COST, p2: spendable - PLUG_BLUEPRINT_COST })}
+              <br />
+              {tr('ui.IndustryPage.136')}
+            </div>
+            <div className="app-mkt-confirm-btns">
+              <button className="app-btn is-small" onClick={() => setAsk(null)}>
+                {tr('ui.ActivityBar.004')}
+              </button>
+              <button className="app-btn is-small is-primary" onClick={() => exchange(ask.moduleId)}>
+                {tr('ui.IndustryPage.120')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

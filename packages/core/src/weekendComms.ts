@@ -136,12 +136,20 @@ export function weekendSettleCommsOf(
   const rewards = weekendRewardLinesOf(snapshot)
   const listText = rewardListZh(ctx, rewards)
   const hasReward = rewards.length > 0
+  /**
+   * **本期按贡献拿到的协会声望**（**2026-09-26 船长令**：「关于入侵的结算界面和结束通讯处，
+   * 需要提及玩家获得了多少声望」）——读数与实发同源（都在 `weekendSettleAndGrant` 那一拍算出、
+   * 写进 `WeekendResultSnapshot.standing`）；**0 点不加这一段**（没有贡献的场次说了也没用）。
+   */
+  const standing = snapshot.standing ?? 0
+  const standingLine = `本次入侵按你在清缴行动中的贡献，协会为你记入「深空工业协会」声望 +${standing}。`
   const subject = `航线通报：${family}入侵已被终结！星域恢复了和平！`
-  const paragraphs = hasReward
-    ? [
-        `${family}的入侵已经结束，「${coreName}」附近的星系已经恢复正常。根据你在清缴行动中的表现，你将获得 ${listText} 等奖励以示鼓励。`,
-      ]
-    : [`${family}的入侵已经结束，「${coreName}」附近的星系已经恢复正常。本次清缴你没有贡献记录，因此没有奖励。`]
+  const paragraphs = [
+    hasReward
+      ? `${family}的入侵已经结束，「${coreName}」附近的星系已经恢复正常。根据你在清缴行动中的表现，你将获得 ${listText} 等奖励以示鼓励。`
+      : `${family}的入侵已经结束，「${coreName}」附近的星系已经恢复正常。本次清缴你没有贡献记录，因此没有奖励。`,
+    ...(standing > 0 ? [standingLine] : []),
+  ]
   return {
     id: WEEKEND_COMMS_SETTLE_ID,
     factionId: WEEKEND_COMMS_FACTION_ID,
@@ -151,13 +159,17 @@ export function weekendSettleCommsOf(
     subject,
     subjectId: 'core.weekend.013',
     paragraphs,
-    bodyIds: [hasReward ? 'core.weekend.014' : 'core.weekend.015'],
+    bodyIds: [
+      hasReward ? 'core.weekend.014' : 'core.weekend.015',
+      ...(standing > 0 ? ['core.weekend.037'] : []),
+    ],
     params: {
       seq: snapshot.seq,
       p1: family,
       ...(familyId !== undefined ? { p1Id: familyId } : {}),
       p2: coreName,
       p3: listText,
+      ...(standing > 0 ? { p4: String(standing) } : {}),
     },
     hint: { text: '查看详细奖励', action: 'weekendSummary' },
     rewards,

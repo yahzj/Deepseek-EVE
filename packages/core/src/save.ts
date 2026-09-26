@@ -3190,6 +3190,11 @@ function normalizeState(raw: unknown): GameState {
      */
     const progressPct = num(w.progressPct)
     const progressIsk = count(w.progressIsk)
+    /**
+     * **本期入侵获得的协会声望**（**2026-09-26 船长令**：结算界面与结束通讯都要写明）。
+     * 取 ≥0 的有限整数；缺省（老快照）= 不写该字段 ⇒ 界面与通讯按"没有这一栏"处理。
+     */
+    const standingGain = count(w.standing)
     return {
       seq,
       family,
@@ -3202,6 +3207,7 @@ function normalizeState(raw: unknown): GameState {
       ...(flagship !== undefined ? { flagship } : {}),
       ...(Number.isFinite(progressPct) ? { progressPct: Math.max(0, progressPct) } : {}),
       ...(progressIsk > 0 ? { progressIsk } : {}),
+      ...(standingGain > 0 ? { standing: standingGain } : {}),
       isk: count(w.isk),
       wreck: count(w.wreck),
       blackBox: count(w.blackBox),

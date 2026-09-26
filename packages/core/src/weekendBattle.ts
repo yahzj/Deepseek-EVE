@@ -473,6 +473,12 @@ export function weekendResultSnapshotOf(
    */
   const flagship = hpMax !== undefined ? { hpMax, hpDone, defeated: flagshipOutcome === 'player' } : undefined
   void ctx // 目前不需要 ctx（星系名由界面现查）；保留参数位以免将来解析物品时改签名
+  /**
+   * **本期入侵按贡献获得的协会声望**（**2026-09-26 船长令**：「关于入侵的结算界面和结束通讯处，
+   * 需要提及玩家获得了多少声望」）——**与实发同源**：同一条公式 `round(占比 × 15)`，
+   * 结算那一拍（`weekendSettleAndGrant`）用它发、快照用它写 ⇒ 面板与信件上的数 = 真正加进账的数。
+   */
+  const standingGain = Math.round(plan.share * WEEKEND_STANDING_MAX)
   return {
     seq: ev.seq,
     family: ev.family,
@@ -486,6 +492,7 @@ export function weekendResultSnapshotOf(
     // **进度收入**（2026-09-25）：读数与实发同源（同一对纯函数）⇒ 面板上的数与到账的数一致
     progressPct: weekendPlayerContribution(ev),
     progressIsk: plan.progressIsk,
+    ...(standingGain > 0 ? { standing: standingGain } : {}),
     isk: led.isk,
     wreck: led.wreck,
     blackBox: led.blackBox,
@@ -554,8 +561,7 @@ export function weekendSettleAndGrant(
    * ⚠ 与"贡献四档奖"同在一处（`prizePaidAtWallMs` 保证只走一遍）⇒ 声望也跟着**只发一次**。
    */
   const standing = Math.round(plan.share * WEEKEND_STANDING_MAX)
-  if (standing > 0) noteStandingEarned(state, DSI_FACTION_ID, standing)
-  /** 贡献奖与进度收入入账 ⇒ 记进到手台账，并**写本场战果快照**（面板与结算通讯读它） */
+  if (standing > 0) noteStandingEarned(state, DSI_FACTION_ID, standing)  /** 贡献奖与进度收入入账 ⇒ 记进到手台账，并**写本场战果快照**（面板与结算通讯读它） */
   noteReward(ev, undefined, { isk: plan.isk + plan.progressIsk, wreck: plan.wreck, ...(boxAtSettle ? { blackBox: 1 } : {}) })
   state.weekendLastResult = weekendResultSnapshotOf(state, ctx, ev, ev.endedAtWallMs, plan, wreckItemId)
   return { share: plan.share, tier: plan.tier, isk: granted.isk, wreck: granted.wreck, progressIsk: plan.progressIsk }

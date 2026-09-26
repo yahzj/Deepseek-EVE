@@ -53,6 +53,8 @@ import {
   weekendRareWreckUnits,
 } from '../src/weekendBattle'
 import { weekendBountyCardsOf } from '../src/weekendBounty'
+// 2026-09-26 船长令（结算界面/结束通讯要写明声望）：结算信构造器
+import { weekendSettleCommsOf } from '../src/weekendComms'
 import {
   WEEKEND_FLAGSHIP_POOL_HP,
   WEEKEND_GAIN_CORE_WIN,
@@ -235,6 +237,18 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '稀有残骸真到手（按 m³）').toBe(weekendRareWreckUnits(12))
     expect(s.weekendLastResult?.progressIsk, '战果快照里也留一栏（面板/通讯读它）').toBe(income)
     expect(s.weekendLastResult?.progressPct, '快照记玩家投入合计').toBeCloseTo(0.5, 6)
+    /**
+     * **快照与结算信都要写明本期拿到的协会声望**（**2026-09-26 船长令**：「**关于入侵的结算界面和
+     * 结束通讯处，需要提及玩家获得了多少声望**」）。
+     *
+     * 口径：`round(占比 × WEEKEND_STANDING_MAX(15))`，与实发同一条公式 ⇒ 面板/信上的数 = 真加进账的数。
+     * 本处占比 100% ⇒ **15 点**，且信里多出 `core.weekend.037` 那一段（参数 `p4` = 点数）。
+     */
+    expect(s.weekendLastResult?.standing, '快照带出本期声望（面板读它）').toBe(15)
+    const settleMail = weekendSettleCommsOf(s, ctx, s.weekendLastResult!)
+    expect(settleMail.bodyIds ?? [], '结算信正文追加声望那一段').toContain('core.weekend.037')
+    expect(settleMail.params?.['p4'], '参数 = 本期点数').toBe('15')
+    expect((settleMail.paragraphs ?? []).some((t) => t.includes('声望 +15')), '纯文本兜底段落也写了').toBe(true)
     expect(s.weekendEvent!.prizePaidAtWallMs, '随档幂等标记').toBe(now)
     /** 幂等：同一刻再调、以及**过一周再调**（离线补结的口径）都不再发 */
     expect(weekendSettleAndGrant(s, ctx, now)).toBeNull()
@@ -452,7 +466,12 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(weekendSyncComms(s, ctx, now).settled, '入账后发结算信').toBe(true)
     const settle = commsInbox(s, ctx).find((e) => e.id === WEEKEND_COMMS_SETTLE_ID)
     expect(settle?.subjectId).toBe('core.weekend.013')
-    expect(settle?.bodyIds, '有奖那一版正文').toEqual(['core.weekend.014'])
+    /**
+     * 有奖那一版正文 ＋ **声望那一段**（2026-09-26 船长令：结束通讯要写明拿到多少声望）——
+     * 本场占比 100% ⇒ 15 点 > 0 ⇒ 追加 `core.weekend.037`。
+     */
+    expect(settle?.bodyIds, '有奖那一版正文（＋声望段）').toEqual(['core.weekend.014', 'core.weekend.037'])
+    expect(settle?.textParams?.['p4'], '声望段的参数 = 本期点数').toBe('15')
     expect(settle?.action, '结算信的跳转是"弹面板"').toBe('weekendSummary')
     expect(settle?.rewards?.length, '奖励清单结构化随信（残骸 ＋ 信用点）').toBe(2)
 
