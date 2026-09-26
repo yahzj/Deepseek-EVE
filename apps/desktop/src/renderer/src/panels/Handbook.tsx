@@ -1124,7 +1124,7 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
      * 行内容由 `FoeBody` 单独渲染（三层血占比 / 伤害构成 / 特殊装置，且头部画舰影），
      * 不走下面这套通用行表。这里提前 return，避免"空行表"。
      */
-    return <FoeBody cell={cell} />
+    return <FoeBody cell={cell} engine={engine} />
   } else if (cell.tab === 'skills') {
     rows.push([tr("ui.Handbook.132"), String(r.group ?? '')])
     rows.push([tr("ui.Handbook.316"), tr("ui.Handbook.113", { p1: Number(r.rank ?? 0) })])
@@ -1156,7 +1156,7 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
  * ⚠ 标签复用既有 `ui.*` 词条（舰级 / 护盾 / 装甲 / 结构 / 命中加成 / 回避率 / 锁定范围 /
  * 装填 / 单发伤害 / 机动速度 / 特殊装置），**不新造文案、不新取 id**。
  */
-function FoeBody({ cell }: { cell: GridCell }): ReactNode {
+function FoeBody({ cell, engine }: { cell: GridCell; engine: GameEngine }): ReactNode {
   const def = cell.raw as unknown as FoeShipDef
   const line = foeBriefLinesOfShip(def)
   const row = (k: string, v: ReactNode): ReactNode => (
@@ -1200,10 +1200,28 @@ function FoeBody({ cell }: { cell: GridCell }): ReactNode {
       )}
       {row(tr('ui.FitPage.006'), pctOf(def.hitRate))}
       {row(tr('ui.FitPage.007'), pctOf(def.evasion))}
-      {row(tr('ui.shipInfo.012'), `${def.rangeMinM ?? 0} – ${def.rangeMaxM ?? 0} m`)}
+      {/**
+       * **攻击范围**（**2026-09-26 船长令**：「**在手册内的敌人，还会显示其基础速度和攻击范围**」）——
+       * 标签复用既有的「射程带」（`ui.shipInfo.040`，与舰船属性表同词），数值 = `rangeMinM – rangeMaxM`。
+       * （原先这一行用的是「锁定范围」的标签，语义不对 —— 那是"能锁多远"，这里要报**火力够到哪**。）
+       */}
+      {row(tr('ui.shipInfo.040'), `${def.rangeMinM ?? 0} – ${def.rangeMaxM ?? 0} m`)}
       {row(tr('ui.shipInfo.044'), def.shotDmg !== undefined ? String(def.shotDmg) : '—')}
       {row(tr('ui.shipInfo.032'), `${((def.reloadMs ?? 0) / 1000).toFixed(1)} s`)}
-      {row(tr('ui.Handbook.012'), `${def.speedRatio ?? 1}×`)}
+      {/**
+       * **基础速度**（同上一条船长令）：`舰种基准 × speedRatio`，与战斗建档**同源同式**
+       * （`combat.createFoeSpecsFromShips`：`HULL_CLASS_BASE_SPEED[舰种档] × speedRatio × speedMul`，
+       * `speedMul` 只有编成条目会带、舰级不带 ⇒ 这里是"这条舰级的基础速度"）。
+       * 基准表读 core 的 `hullClassBaseSpeedMps`（`{1:340, 2:295, 3:258, 4:205, 5:155}`，
+       * data 包的 `HULL_CLASS_BASE_SPEED` 就是它的同源引用 ⇒ 不另存第二份数字）。
+       * ⚠ 括号里的倍率是**规格**（命名规则第 9 条允许），不是解释。
+       * ⚠ **标签不能用 `ui.shipInfo.009`**（那个键在"删最大速度"批里已删，`tr()` 会原样印出 id ——
+       * 实测踩过：格子里印出 `ui.shipInfo.009 = 391 m/s`）⇒ 这里复用既有词条「机动速度」。
+       */}
+      {row(
+        tr('ui.FitPage.049'),
+        `${Math.round((engine.ctx.balance.battle.hullClassBaseSpeedMps[def.hullClassTier] ?? 0) * (def.speedRatio ?? 1))} m/s（${def.speedRatio ?? 1}×）`,
+      )}
       {row(tr('ui.Expedition.152', { p1: line?.bits[0] ?? '—' }), line !== null && line.bits.length > 1 ? line.bits.slice(1).join(' · ') : '—')}
       {mounts.map((m, i) =>
         row(`${mountLabelText()}${mounts.length > 1 ? ` ${i + 1}` : ''}`, `${m.name !== '' ? `${m.name}：` : ''}${m.effect}`),
