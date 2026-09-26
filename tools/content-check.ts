@@ -2403,9 +2403,16 @@ for (const m of MODULES) {
     const hasEcm = m.foeRangeDebuffPct !== undefined
     const hasWeb = m.captureWebCycleMs !== undefined
     const hasRepair = (m.repairArmorHp ?? 0) > 0 || (m.repairHullHp ?? 0) > 0
+    /**
+     * **2026-09-26 新增第十类：损管（`hullSaveKit`）**——损伤管制装置 MK1~MK3（低槽支援件：
+     * 结构层三系减伤 ＋ 每场一次"结构锁定 1 秒"）。船长同日令「**损管装置和修理装置是同一类型装备分类**」
+     * ⇒ 归支援件家族；本类与「修复」分开记（修复 = 交火中回血，损管 = 免死 + 结构抗性）。
+     * ⚠ 只认 `hullSaveKit`（不是 `hullResistAdd`）⇒ 既有件一件都不会被算进本类（零行为变化）。
+     */
+    const hasDc = m.hullSaveKit !== undefined
     const kinds =
-      (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0) + (hasStealth ? 1 : 0) + (hasEcm ? 1 : 0) + (hasWeb ? 1 : 0)
-    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复/跃迁/隐身/射程压制/捕获网）`)
+      (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0) + (hasStealth ? 1 : 0) + (hasEcm ? 1 : 0) + (hasWeb ? 1 : 0) + (hasDc ? 1 : 0)
+    check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复/跃迁/隐身/射程压制/捕获网/损管）`)
     if (hasRepair) {
       // 修复系：装甲/结构修复值 ∈ [1, 100]、周期缺省 5 秒（2000~60_000 毫秒）、必须指明消耗的修理组件
       check((m.repairArmorHp ?? 0) >= 0 && (m.repairArmorHp ?? 0) <= 100 && (m.repairHullHp ?? 0) >= 0 && (m.repairHullHp ?? 0) <= 100,
@@ -5952,6 +5959,11 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     'mod-lair-cargo-a:armorHpBonus', // 赃物强化舱（货舱槽 + 装甲容量）→ 界面「装甲容量 +15%」；**2026-09-17 起引擎也真的算它**（原先甲容量只在装甲槽件里求和 ⇒ 玩家报障「护甲增加效果无效」）
     'mod-lair-armor-c:repairArmorHp', // 生体甲壳板（装甲槽 + 自愈）→ 信息卡「生体自愈」
     'mod-lair-dc-c:hullResistAdd', // 生体损管腔（支援槽 + 结构抗性）→ 结构抗性行
+    // 损伤管制装置三档（2026-09-26 船长令「损管装置和修理装置是同一类型装备分类，不是装甲」⇒ 支援槽 +
+    // 结构抗性）：界面走同一支 `crossFamilyLines` 的结构抗性行（与生体损管腔同款）⇒ 登记放行。
+    'mod-dc-1:hullResistAdd',
+    'mod-dc-2:hullResistAdd',
+    'mod-dc-3:hullResistAdd',
     // 2026-09-13 虫洞专属（船长逐条给定）：
     'mod-wh-c-pulse:speedBonusPct', // 生体脉搏加速器（支援槽 + 舰船速度 +10%）→ 界面「航速」
     'mod-wh-a-coat:evasionGapPct', // 掠袭折射涂层（装甲槽 + 闪避缺口）→ 界面「闪避」；**2026-09-17 起引擎也真的算它**（原先闪避缺口只在支援槽件里收）

@@ -214,6 +214,9 @@ export const SUPPORT_MODULE_KEYS: Record<string, readonly string[]> = {
   'support-repair': [
     'mod-hullrep-civ', 'mod-hullrep-1', 'mod-hullrep-2', // 船体维修装置三档（吃修理组件）
     'mod-lair-dc-c', // 生体损管腔（结构自修 + 三系壳抗，不吃组件）
+    // 损伤管制装置三档（2026-09-26 船长令：「**损管装置和修理装置是同一类型装备分类，不是装甲**」
+    // ⇒ 与船体维修装置同一档；低槽件，靠 `rack: 'low'` 落在低槽）
+    'mod-dc-1', 'mod-dc-2', 'mod-dc-3',
   ],
 }
 

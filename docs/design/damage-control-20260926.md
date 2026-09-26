@@ -29,17 +29,21 @@
 
 ## 三、待办 1：**分类改判（等三号）**（船长第 7 条）
 
-- 现状：三件都是 **`slot: 'armor'`（装甲类）＋ `rack: 'low'`**；船长裁定应归**与「修理装置」同一类型**。
-- 「修理装置」现在 = `mod-hullrep-*`：**`slot: 'support'`（支援件）＋ `rack: 'mid'`**；`support` 家族按约定
-  **必须显式标注 `rack`** ⇒ 若直接对齐，本线将是 **`slot: 'support'` ＋ `rack: 'low'`**（低槽不变，
-  与船长第一条令「低槽」不冲突）。
-- **等三号把分类方案落地**（他们可能新增一个 slot 值或重排支援件分组）⇒ 我按他们的方案改这三件的 `slot`
-  （若他们动的是 `labels.ts` 的 slot→rack 映射或新增 `ModuleSlot` 值，我这边只改数据；core 侧由他们出）。
+- **✅ 已办（2026-09-26）**：三号先落 `1d7970e8`「支援件筛选拆成三个同级（战斗支援件 · 辅助支援件 ·
+  **修理装置**）」——他们动的是 **UI 类型分组**（`ui/itemSubs.ts` 的 `SUPPORT_MODULE_KEYS` 逐件清单 ＋
+  `content:check` 的「支援件三分契约」），**没有新增 `ModuleSlot` 值**（修理装置仍是 `slot: 'support'`）。
+  据此我把三件改成 **`slot: 'support'` ＋ `rack: 'low'`**（低槽不变）并登记进
+  `SUPPORT_MODULE_KEYS['support-repair']`（与船体维修装置、生体损管腔同档）；契约读数：
+  「37 件 slot='support' 逐件归入 27 / 3 / **7**」（修理装置档 4 → 7）。
+- 连带两处契约（都是三号这批新加的判据，我按船长裁定**追加式**放行，既有件零影响）：
+  ① 「支援件效果族」新增**第十类「损管」**（只认 `hullSaveKit`；既有件一件都不会被算进本类）；
+  ② 跨族字段白名单登记 `mod-dc-1/2/3:hullResistAdd`（与生体损管腔同款：支援槽 + 结构抗性 → 走
+  `shipInfo.crossFamilyLines` 的「结构抗性」行）。
 - **改前已核不受影响的两处**：① `equipment.stackingOf` 对 `hullResistAdd` 的判定走
   `{ group: 'gap', kind: 'hull-…' }`（**与 slot 无关**）⇒ 改分类不会把本件标错收敛组；
-  ② `unique` 判据只看标记、不看 slot ⇒ 唯一性照旧。
-- 改完要跑：`typecheck` · `content:check`（slot/rack 契约）· `l10n:check`（若新增 slot 名要补表中英）·
-  验收档重生成一份（`npx tsx tools/make-test-save.ts dc`）。
+  ② `unique` 判据只看标记、不看 slot ⇒ 唯一性照旧；③ 验收档**不用重生成**（存档存的是件 id ＋ 位序，
+  `rack` 未变 ⇒ 已装的那件照旧合法）。
+- 已跑：`typecheck` ✅ · `content:check` ✅（支援件三分契约 ✓）· DC 用例 8 例 ✓ · core 全量 ✓。
 
 ## 四、待办 2：公告
 
