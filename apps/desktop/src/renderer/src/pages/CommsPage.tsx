@@ -29,6 +29,7 @@ import type { PageProps } from './common'
 import { cmdText, tr } from '../i18n/locale'
 import { commsBriefText, commsClockText, commsSenderText, commsSubjectText } from '../ui/commsText'
 import { WeekendSummaryView } from '../panels/WeekendSummary'
+import { PlugExchangeModal } from '../panels/PlugExchange'
 import { sessionPick, setSessionPick, useSessionScroll } from '../ui/sessionView'
 
 /**
@@ -67,6 +68,8 @@ export function CommsPage({
   useSessionScroll('comms.list.scroll', listScrollRef)
   /** 入侵结算面板开合（2026-09-25；由实例通讯的跳转按钮触发） */
   const [showSummary, setShowSummary] = useState(false)
+  /** 章鱼人兑换窗口（2026-09-26 船长令：首匣那封信的「前往」直达这里） */
+  const [showPlugExchange, setShowPlugExchange] = useState(false)
   // 外部定位请求（教程「看详情」）：seq 变化时覆盖当前选中项
   const focusSeq = focus?.seq ?? -1
   const lastFocusSeq = useRef(-1)
@@ -161,9 +164,11 @@ export function CommsPage({
                     <CommsEave
                       entry={current}
                       onGoto={onGoto}
-                      /** 实例通讯的"弹面板"出口（2026-09-25）：入侵结算信 → 本场战果面板 */
+                      /** 实例通讯的"弹面板"出口（2026-09-25）：入侵结算信 → 本场战果面板；
+                       *  **2026-09-26 船长令**「**通讯内跳转**」⇒ 首匣那封信直达章鱼人兑换窗口 */
                       onAction={(a) => {
                         if (a === 'weekendSummary') setShowSummary(true)
+                        if (a === 'plug-exchange') setShowPlugExchange(true)
                       }}
                     />
                   ) : null}
@@ -191,6 +196,13 @@ export function CommsPage({
             </div>
           </div>
         </div>
+      ) : null}
+      {/**
+       * **「章鱼人兑换」窗口**（2026-09-26 船长令）：首匣那封信的「前往」直达这里。
+       * 与上面的结算面板同款：`.app-modal-*` 族弹层，内容整块交给 `PlugExchangeModal`。
+       */}
+      {showPlugExchange ? (
+        <PlugExchangeModal engine={engine} onToast={onToast} onClose={() => setShowPlugExchange(false)} />
       ) : null}
     </div>
   )

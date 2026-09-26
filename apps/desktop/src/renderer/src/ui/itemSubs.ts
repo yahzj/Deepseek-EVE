@@ -642,7 +642,7 @@ export function shipTierPasses(def: { tier?: number } | undefined, tier: string)
 
 /** 组装机 / 蓝图书架「**门类**」维度（一级选择器 ⇒ 「全部」键用 `'all'`，基线②）：
  *  全部 / 装备蓝图 / 舰船蓝图 / 消耗品蓝图（2026-09-11 船长：「弹药蓝图改为消耗品蓝图」）。 */
-export type ManuTabKey = 'all' | 'equip' | 'ship' | 'supply' | 'part'
+export type ManuTabKey = 'all' | 'equip' | 'ship' | 'supply' | 'part' | 'plug'
 /** 蓝图书架 / 手册 / 市场蓝图档的门类表（**旧口径不动**，2026-09-20 船长：「只改组装机」） */
 export const MANU_TABS: Array<{ key: ManuTabKey; label: string; id: string }> = [
   { key: 'all', label: '全部', id: 'ui.IndustryPage.001' },
@@ -650,10 +650,13 @@ export const MANU_TABS: Array<{ key: ManuTabKey; label: string; id: string }> = 
   { key: 'ship', label: '舰船蓝图', id: 'ui.ShipPage.116' },
   { key: 'supply', label: '消耗品蓝图', id: 'ui.ShipPage.114' },
 ]
-/** 组装机专用门类表（2026-09-20 船长：舰船蓝图拆去造船厂；改名去「蓝图」二字；新增「零件」分页） */
+/** 组装机专用门类表（2026-09-20 船长：舰船蓝图拆去造船厂；改名去「蓝图」二字；新增「零件」分页）
+ *  ⚠ **2026-09-26 船长令**：「**在工业-组装机的门类筛选中，添加舰船插件的新分类**」⇒ 补第 5 档「舰船插件」。
+ *  该档在**取得第一个黑匣前是锁着的**（判据 = `blackbox.plugCraftUnlockedOf`，界面侧见 Industry 面板）。 */
 export const MANU_TABS_CRAFT: Array<{ key: ManuTabKey; label: string; id: string }> = [
   { key: 'all', label: '全部', id: 'ui.IndustryPage.001' },
   { key: 'equip', label: '装备', id: 'ui.MarketPage.178' },
+  { key: 'plug', label: '舰船插件', id: 'ui.itemSubs.041' },
   { key: 'part', label: '零件', id: 'ui.itemSubs.036' },
   { key: 'supply', label: '消耗品', id: 'ui.itemSubs.037' },
 ]

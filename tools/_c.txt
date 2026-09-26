@@ -1,0 +1,18 @@
+feat(plug): 组装机「舰船插件」档 ＋ 章鱼人兑换窗口 ＋ 验收存档
+
+船长令：「在工业-组装机的门类筛选中，添加舰船插件的新分类」「玩家获取第一个黑匣后，
+才解锁组装机的插件选项，并且弹出相关通讯，通讯内跳转」「完成后给我准备一个存档」。
+
+- MANU_TABS_CRAFT 补第 5 档「舰船插件」；未取得黑匣时该档**置灰不可点**（悬停写解锁条件）
+- bpFilterKeysOf 把 slot === 'plug' 单独归到 plug 档（不再落进「装备」的功能分组）
+- 新面板 panels/PlugExchange.tsx：12 行图纸卡（价 8 · 已学会 / 声望不足各一态），
+  顶栏「可支配 40 · 累计获得 40」；入口 = 首匣通讯的「前往」（hint.action = plug-exchange）
+- engine.exchangePlugBlueprintAt：与 learnBlueprintAt 同款（成功才落盘 ＋ 广播刷新）
+- core/index.ts 补齐插件与黑匣两组导出；新 id：ui.itemSubs.041 / ui.IndustryPage.116~124 /
+  ui.Expedition.441~445 / core.plug.007~011
+- 验收存档 docs/test-saves/test-save-plug-20260926.json（3 黑匣 ＋ 40/40 声望 ＋ 预装 2 件插件）
+  ＋ docs/test-saves/README.md 补一节六步验收清单
+
+验证：typecheck 四包 0 错 · core 233 文件 / 2548 用例全绿 · content:check ✅ ·
+l10n:check ✅ · ui:rot-check ✅ · docs:index 328 份 · save:roundtrip-audit 丢键 0 ·
+桌面 build ✅（assets/index-gLbmpEN8.js）

@@ -709,6 +709,11 @@ export {
   HOME_GALAXY_ID,
   DSI_FACTION_ID,
   standingOf,
+  // 2026-09-26 声望拆两条账：门槛读 `standingOf`（累计），兑换扣 `spendableStandingOf`（可支配）
+  spendableStandingOf,
+  noteStandingEarned,
+  spendStanding,
+  INITIAL_STANDING,
   bountyRewardFactor,
   calcPower,
   winChance,
@@ -832,6 +837,29 @@ export {
   trySalvagePlayerWreckOf,
 } from './shipWrecks'
 export type { WreckLootRow, PlayerWreckSalvage } from './shipWrecks'
+/**
+ * **舰船插件**（2026-09-26 船长令）：装配页只读区（`plugInfoOf`）· 闸门拒因（`plugBlockReasonOf`）·
+ * 章鱼人兑换（`exchangePlugBlueprint` / `plugExchangeRowsOf` / `PLUG_BLUEPRINT_COST`）。
+ */
+export {
+  isPlugOf,
+  plugSlotsOf,
+  plugsOf,
+  plugModulesOf,
+  plugInfoOf,
+  installPlug,
+  plugBlockReasonOf,
+  plugsToBlackBoxesOf,
+  PLUG_BLACKBOX_ITEM_ID,
+  PLUG_BLUEPRINT_COST,
+  plugBlueprintIdOf,
+  exchangePlugBlueprint,
+  plugExchangeRowsOf,
+} from './plugs'
+export type { ShipPlugBlock, PlugExchangeRow } from './plugs'
+/** **黑匣与插件解锁**（2026-09-26 船长令）：组装机插件档的解锁判据与拒因单点 */
+export { isBlackboxItem, noteBlackboxObtained, blackboxSeenOf, plugCraftUnlockedOf, plugCraftLockReasonOf } from './blackbox'
+export type { PlugCraftLock } from './blackbox'
 /** 玩家舰船残骸的一具记录（2026-09-26）——界面读数卡与工具都要这个形状 */
 export type { ShipWreckRecord } from './state'
 export type { RecycleTier, RecycleProfile } from './salvage'
