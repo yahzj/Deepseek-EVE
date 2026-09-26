@@ -343,8 +343,9 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
   ],
   'msg-pirate-capture-web': [
     'Route Safety reports something new: raider groups are fielding a “Raider Electronic Ship” that carries no heavy guns and exists to spread a snare net.',
-    'The ship caught in it takes four hits at once: mobility down to a tenth, every thruster dead, evasion gone entirely, and weapon range cut by 500 metres. Once the net is on, it does not come off by itself that engagement.',
-    'The good news: it spreads the net once per engagement and only over whatever it had locked at that moment — the net is tied to the ship that cast it. Sink that ship and the net releases at once, and the caught ship is back to normal on the spot.',
+    'The ship caught in it takes four hits at once: mobility down to a tenth, every thruster dead, evasion gone entirely, and weapon range cut by 500 metres.',
+    'The net is tied to the ship that cast it: sink that ship and it releases at once, and the caught ship is back to normal on the spot; open the range past 4,500 metres and the net snaps on its own.',
+    'The good news: it spreads the net once per engagement and only over whatever it had locked at that moment — once it is broken, no second net comes.',
     'So do not rush to switch targets when you meet one: kill it first. Running a squad into a wormhole, have the escorts soak fire for whoever is caught, or simply take it down before it casts.',
   ],
   'msg-cinder-warning': [
