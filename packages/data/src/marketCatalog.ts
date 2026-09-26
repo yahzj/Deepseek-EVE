@@ -258,10 +258,14 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-ammo-explosive', kind: 'blueprint', refId: 'bp-ammo-explosive', rarity: 'common', basePrice: 1650, demandMultiplier: 0.6 },
   { key: 'bp-ammo-plasma', kind: 'blueprint', refId: 'bp-ammo-plasma', rarity: 'common', basePrice: 1950, demandMultiplier: 0.6 },
   // 弹药 MK2 生产线蓝图（2026-09-09：奇货书——船长追加拍板 rare→exotic；收购档随奇货惯例 1.0L 全价回收，
-  // 与全部 exotic 蓝图书行一致。**书价同样维持原值** 9,000/12,750/18,000，不走奇货 ×4 系数）
-  { key: 'bp-ammo-kinetic-2', kind: 'blueprint', refId: 'bp-ammo-kinetic-2', rarity: 'exotic', basePrice: 9_000, demandMultiplier: 1.0 },
-  { key: 'bp-ammo-explosive-2', kind: 'blueprint', refId: 'bp-ammo-explosive-2', rarity: 'exotic', basePrice: 12_750, demandMultiplier: 1.0 },
-  { key: 'bp-ammo-plasma-2', kind: 'blueprint', refId: 'bp-ammo-plasma-2', rarity: 'exotic', basePrice: 18_000, demandMultiplier: 1.0 },
+  // 与全部 exotic 蓝图书行一致）。
+  // ⚠ **2026-09-26 船长令改价**：「MK2图纸价格按照一百批弹药的倍率乘上去」＋「是100批，12000发」＋
+  // 「不套无人机，就是单纯MK2弹药」＋「按你推荐」⇒ 书价 = **100 批（12,000 发）的货值**
+  // （9,000/12,750/18,000 = 单批 ×1.5 的 2026-09-09 冻结值**作废**；基础弹三条不动）。
+  // 定义侧 `blueprints.ts priceIsk` 必须与本行同值（`content:check` 的蓝图价格硬契约）。
+  { key: 'bp-ammo-kinetic-2', kind: 'blueprint', refId: 'bp-ammo-kinetic-2', rarity: 'exotic', basePrice: 540_000, demandMultiplier: 1.0 },
+  { key: 'bp-ammo-explosive-2', kind: 'blueprint', refId: 'bp-ammo-explosive-2', rarity: 'exotic', basePrice: 720_000, demandMultiplier: 1.0 },
+  { key: 'bp-ammo-plasma-2', kind: 'blueprint', refId: 'bp-ammo-plasma-2', rarity: 'exotic', basePrice: 960_000, demandMultiplier: 1.0 },
   // 修理组件蓝图（2026-09-05：书籍价随组件市场价同构）
   { key: 'bp-repairkit-civ', kind: 'blueprint', refId: 'bp-repairkit-civ', rarity: 'common', basePrice: 33000, demandMultiplier: 0.6 },
   { key: 'bp-repairkit-mil', kind: 'blueprint', refId: 'bp-repairkit-mil', rarity: 'common', basePrice: 138500, demandMultiplier: 0.6 },
