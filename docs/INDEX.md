@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **329** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6005** KB · **43086** 行
-- 状态分布：**未标注** 175 · **已确认/已实现** 111 · **进行中** 38 · **待裁定** 4 · **历史留档** 1
-- 孤儿文档（0 引用）**54** 份 · 状态未标注 **175** 份
+- 文档总数 **330** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6008** KB · **43123** 行
+- 状态分布：**未标注** 175 · **已确认/已实现** 111 · **进行中** 38 · **待裁定** 5 · **历史留档** 1
+- 孤儿文档（0 引用）**55** 份 · 状态未标注 **175** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
-- 三、现行设计稿（design）：**212** 份
+- 三、现行设计稿（design）：**213** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**27** 份
 - 二、其它（docs 根目录）：**1** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -35,7 +35,7 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 210 KB / 251 行 | 14 / 2 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 63 KB / 681 行 | 74 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 472 KB / 985 行 | 220 / 16 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 473 KB / 985 行 | 220 / 16 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 114 KB / 313 行 | 313 / 17 |
 
 ## 七、评审与体检（review） —— 10 份
@@ -53,10 +53,11 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 212 份
+## 三、现行设计稿（design） —— 213 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/announcement-draft-20260926-damage-control.md` | 公告待审稿 · 损伤管制装置（2026-09-26） | 待裁定（待船长审核） | 2026-09-26 | 2 KB / 37 行 | 0 / 0 |
 | `docs/design/ink-faction-gear-20260926.md` | 墨潮帮（H 族）势力装备三件套（2026-09-26 · 二号 · d2） | 进行中（进行中 —— 四步闸门已走完） | 2026-09-26 | 6 KB / 66 行 | 1 / 0 |
 | `docs/design/armored-line-speed-20260925.md` | 甲壳装甲线三艘降速（2026-09-25） | 进行中（进行中 —— 改动已落码） | 2026-09-25 | 4 KB / 59 行 | 0 / 0 |
 | `docs/design/battle-dmg-popup-20260925.md` | 战斗页伤害飘字：停留时间延长 + 字重 900（2026-09-25） | 进行中（进行中 —— 改动已落码、七道闸门全） | 2026-09-25 | 3 KB / 41 行 | 0 / 0 |
@@ -399,10 +400,11 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 55 / 12 |
 
-## 附：孤儿文档（0 引用，54 份）
+## 附：孤儿文档（0 引用，55 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/announcement-draft-20260926-damage-control.md`（2026-09-26 · 2 KB）—— 公告待审稿 · 损伤管制装置（2026-09-26）
 - `docs/design/armored-line-speed-20260925.md`（2026-09-25 · 4 KB）—— 甲壳装甲线三艘降速（2026-09-25）
 - `docs/design/battle-dmg-popup-20260925.md`（2026-09-25 · 3 KB）—— 战斗页伤害飘字：停留时间延长 + 字重 900（2026-09-25）
 - `docs/design/capture-web-retain-20260925.md`（2026-09-25 · 3 KB）—— 劫掠捕获网：没钉到人的网不算用掉（2026-09-25）
