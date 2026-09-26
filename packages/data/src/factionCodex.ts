@@ -51,7 +51,7 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
      窝点三件见 core `FOE_LAIR_GEAR.A`；舰船 = `sh-wh-a-*` 三艘（掠袭电子舰 / 掠袭炮舰 / 掠袭重型突击巡洋舰） */
   A: {
     family: 'A',
-    nameId: 'ui.Handbook.326',
+    nameId: 'ui.Handbook.326', // 海盗舰系（每族 9 格的起始格）
     glyph: 'fam-a',
     modules: ['mod-wh-a-coat', 'mod-wh-a-frag', 'mod-wh-a-hangar', 'mod-wh-a-prop', 'mod-wh-a-scan', 'mod-wh-a-shield'],
     ships: ['sh-wh-a-frigate', 'sh-wh-a-destroyer', 'sh-wh-a-cruiser'],
@@ -63,7 +63,7 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
      另有一次性的**巢卫攻坚无人机图纸** `bp-wh-c-drone`（产物 `drone-wh-c-heavy`，属 C 族专属无人机） */
   C: {
     family: 'C',
-    nameId: 'ui.Handbook.337',
+    nameId: 'ui.Handbook.335', // 异形生物
     glyph: 'fam-c',
     // `drone-wh-c-heavy` = 巢卫攻坚无人机（C 族专属消耗品；一次性图纸 `bp-wh-c-drone` 见 blueprints）
     modules: ['mod-wh-c-frame', 'mod-wh-c-laser', 'mod-wh-c-missile', 'mod-wh-c-prism', 'mod-wh-c-pulse', 'drone-wh-c-heavy'],
@@ -76,7 +76,7 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
      守墓者速装填机 / 陵墓弹道铭文）；窝点三件见 `FOE_LAIR_GEAR.D`（**最强敌族**） */
   D: {
     family: 'D',
-    nameId: 'ui.Handbook.348',
+    nameId: 'ui.Handbook.344', // 守墓古舰
     glyph: 'fam-d',
     modules: ['mod-wh-d-laser', 'mod-wh-d-loader', 'mod-wh-d-lock', 'mod-wh-d-shield', 'mod-wh-d-steady', 'mod-wh-d-turret'],
     ships: ['sh-wh-d-frigate', 'sh-wh-d-destroyer', 'sh-wh-d-cruiser'],
@@ -89,7 +89,7 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
      另有一次性的**构件哨戒无人机图纸** `bp-wh-e-drone`（产物 `drone-wh-e-sentry`） */
   E: {
     family: 'E',
-    nameId: 'ui.Handbook.359',
+    nameId: 'ui.Handbook.353', // 泰坦巨构
     glyph: 'fam-e',
     // `drone-wh-e-sentry` = 构件哨戒无人机（E 族专属消耗品；一次性图纸 `bp-wh-e-drone` 见 blueprints）
     modules: ['mod-wh-e-cpu', 'mod-wh-e-dc', 'mod-wh-e-pd', 'mod-wh-e-shield', 'mod-wh-e-tac', 'drone-wh-e-sentry'],
@@ -103,7 +103,7 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
      与其一次性图纸 `bp-lair-g-drone`——已登记在该表里，故此处不重列 `bp-lair-g-drone`） */
   G: {
     family: 'G',
-    nameId: 'ui.Handbook.370',
+    nameId: 'ui.Handbook.362', // 鱿烬亡军
     glyph: 'fam-g',
     // `drone-exile-bee` = 鱿蜂无人机（G 族窝点链产物；一次性图纸 `bp-lair-g-drone` 在 core `FOE_LAIR_GEAR.G` 名下单列）
     modules: ['mod-wh-g-ballistic', 'mod-wh-g-fcs', 'mod-wh-g-hangar', 'mod-wh-g-hull', 'mod-wh-g-prop', 'mod-wh-g-turret', 'drone-exile-bee'],
@@ -118,7 +118,7 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
      ⚠ 两件模块与无人机都是窝点/残骸链产物、**无蓝图**（`exclusive`：无图纸、不上市场）⇒ 图纸一栏为空。 */
   H: {
     family: 'H',
-    nameId: 'ui.Handbook.381',
+    nameId: 'ui.Handbook.371', // 墨潮帮
     glyph: 'fam-h',
     // `drone-ink-heavy` = 墨潮重袭无人机（H 族专属消耗品，残骸链一次 ×10 架）
     modules: ['mod-lair-ecm-h', 'mod-lair-web-h', 'drone-ink-heavy'],

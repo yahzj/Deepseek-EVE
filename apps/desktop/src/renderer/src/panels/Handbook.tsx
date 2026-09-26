@@ -93,6 +93,152 @@ function detailBlock(
  *
  * 为什么两处合起来：卡片只覆盖"本档出现过的"舰级，而图鉴要**列出该族全部**舰级（未遇的占位）。
  */
+/**
+ * **势力图鉴：每族的基准格号**（编号即顺序：族名一条 ＋ 四对「小标题 ＋ 正文」＝ 9 格）
+ * —— 第 k 段标题 = 基准 + 1 + 2k、正文 = 基准 + 2 + 2k（k = 0..3）。
+ */
+const FACTION_NAME_BASE: Record<string, number> = { A: 326, C: 335, D: 344, E: 353, G: 362, H: 371 }
+
+/**
+ * **势力图鉴的详情容器**（2026-09-26 船长令：「在势力图鉴内新建一个窗口容器，玩家点击某个势力后，
+ * 下方窗口内就显示该势力的介绍和敌人种类，专属装备，舰船等」）。
+ *
+ * 三块，全部只读：
+ *   ① **势力档案** —— 四要素（档案摘要 / 舰体特征 / 交手记录 / 活动星域），文案 id = 基准格 + 1 + 2k；
+ *   ② **敌人种类** —— 逐舰级一行（舰种 · 战术 · 武器系 · 主副伤 · 舰载机 · 特殊装置 · 精英档），
+ *      与悬赏卡悬停**同一份内容**（`foeBriefLinesOfShip`）；未遭遇的舰级显示「？？？」占位；
+ *   ③ **专属装备 / 专属舰船 / 图纸** —— 逐件给名与短效果；未解锁时只给一句"遭遇该势力的敌舰后解锁"。
+ */
+function FactionDetailPanel({ engine, family }: { engine: GameEngine; family: string }) {
+  const ships = collectFoeShips(engine)
+  const card = buildFactionCards(FOE_SHIPS, engine.state.foeShipSeen).find((c) => c.family === family)
+  if (!card) return null
+  const base = FACTION_NAME_BASE[family] ?? 326
+  const num = (v: number): string => v.toLocaleString('zh-CN')
+  const itemName = (id: string): string =>
+    engine.ctx.modules.get(id)?.name ?? engine.ctx.ships.get(id)?.name ?? engine.ctx.items.get(id)?.name ?? id
+  const bpNameOf = (id: string): string => {
+    for (const bp of engine.blueprints) if (bp.id === id) return bp.moduleId ? itemName(bp.moduleId) : String(bp.itemId ?? bp.id)
+    for (const bp of engine.shipBlueprints) if (bp.id === id) return engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId
+    return id
+  }
+  return (
+    <Panel
+      title={`${tr(card.nameId)} · ${tr('ui.codex.003', { p1: card.seenCount, p2: card.totalCount })}`}
+      right={<span className="app-dim">{card.unlocked ? tr('ui.codex.004') : tr('ui.codex.006')}</span>}
+    >
+      {/* ① 势力档案：四要素（文档 id = 基准 + 1 + 2k 标题 / + 2 + 2k 正文）——
+          排版用**内联样式**（不新增 CSS 类 ⇒ 不必走 `ui:layout-css` 生成件链路；与详情窗既有的
+          两列行在观感上同族：「小标题（灰）＋ 正文」横排，窄屏由 flexWrap 自动折行） */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '2px 0 10px' }}>
+        {[0, 1, 2, 3].map((k) => (
+          <div key={k} style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+            <span className="app-dim" style={{ flex: '0 0 auto', minWidth: 64 }}>
+              {tr(`ui.Handbook.${base + 1 + 2 * k}`)}
+            </span>
+            <span style={{ flex: '1 1 auto' }}>{tr(`ui.Handbook.${base + 2 + 2 * k}`)}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* ② 敌人种类（未遭遇 = ？？？占位） */}
+      <GroupSection label={tr('ui.codex.008')} unit={COUNT_UNIT.factions} count={card.totalCount}>
+        {card.unlocked ? (
+          <ul className="app-inv-list">
+            {card.enemies.map((e) => {
+              const ship = e.seen ? ships.get(e.id) : undefined
+              const line = e.seen ? foeBriefLinesOfShip(ship) : null
+              const body =
+                line !== null
+                  ? [line.hull, ...line.bits, ...(line.mounts !== undefined ? [line.mounts] : [])]
+                      .filter((x) => x !== '')
+                      .join(' · ')
+                  : ''
+              return (
+                <li key={e.id} className="app-inv-row is-static">
+                  <span className="app-inv-main">
+                    <span className="app-inv-name">{e.seen ? (ship?.name ?? e.id) : tr('ui.codex.005')}</span>
+                    <span className="app-inv-sub">{e.seen ? body : tr('ui.codex.010')}</span>
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        ) : (
+          <div className="app-dim app-inv-empty">{tr('ui.codex.006')}</div>
+        )}
+      </GroupSection>
+
+      {/* ③ 专属装备 / 专属舰船 / 图纸（未解锁：不给明细） */}
+      {card.unlocked ? (
+        <>
+          <GroupSection
+            label={tr('ui.codex.011')}
+            unit={tr('ui.codex.014')}
+            count={card.modules.length}
+          >
+            <ul className="app-inv-list">
+              {card.modules.map((id) => {
+                const mod = engine.ctx.modules.get(id)
+                return (
+                  <li key={id} className="app-inv-row is-static">
+                    <span className="app-inv-main">
+                      <span className="app-inv-name">{itemName(id)}</span>
+                      <span className="app-inv-sub">
+                        {mod ? moduleShortEffect(mod) : engine.ctx.items.get(id)?.description ?? ''}
+                      </span>
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          </GroupSection>
+          <GroupSection label={tr('ui.codex.012')} unit={tr('ui.codex.015')} count={card.ships.length}>
+            {card.ships.length > 0 ? (
+              <ul className="app-inv-list">
+                {card.ships.map((id) => {
+                  const ship = engine.ctx.ships.get(id)
+                  return (
+                    <li key={id} className="app-inv-row is-static">
+                      <span className="app-inv-main">
+                        <span className="app-inv-name">{ship?.name ?? id}</span>
+                        <span className="app-inv-sub">{ship ? shipTierText(ship.tier) : ''}</span>
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : (
+              <div className="app-dim app-inv-empty">{tr('ui.codex.016')}</div>
+            )}
+          </GroupSection>
+          {card.blueprints.length > 0 ? (
+            <GroupSection label={tr('ui.codex.013')} unit={tr('ui.codex.014')} count={card.blueprints.length}>
+              <ul className="app-inv-list">
+                {card.blueprints.map((id) => {
+                  const mod = engine.ctx.modules.get(id)
+                  const bp = engine.blueprints.find((b) => b.id === id)
+                  const prodMod = mod ?? (bp?.moduleId !== undefined ? engine.ctx.modules.get(bp.moduleId) : undefined)
+                  return (
+                    <li key={id} className="app-inv-row is-static">
+                      <span className="app-inv-main">
+                        <span className="app-inv-name">{`${prodMod?.name ?? bpNameOf(id)}（${tr('ui.codex.013')}）`}</span>
+                        <span className="app-inv-sub">{prodMod ? moduleShortEffect(prodMod) : ''}</span>
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </GroupSection>
+          ) : null}
+        </>
+      ) : (
+        <div className="app-dim app-inv-empty">{tr('ui.codex.006')}</div>
+      )}
+    </Panel>
+  )
+}
+
 function collectFoeShips(engine: GameEngine): Map<string, FoeShipDef> {
   const out = new Map<string, FoeShipDef>()
   const put = (s: FoeShipDef | null | undefined): void => {
@@ -690,75 +836,6 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
   const r = cell.raw
   const rows: Array<[string, ReactNode]> = []
 
-  /* ── 势力图鉴（2026-09-26）：① 势力简介 ② 敌人（未遇占位）③ 专属装备与舰船 ── */
-  if (cell.tab === 'factions') {
-    const card = cell.raw as unknown as FactionCard
-    const ships = collectFoeShips(engine)
-    const isLocked = !card.unlocked
-    const base = 326 + 11 * (FACTION_INDEX[card.family] ?? 0) // 该族五段的基准 id
-    const itemName = (id: string): string =>
-      engine.ctx.modules.get(id)?.name ?? engine.ctx.ships.get(id)?.name ?? engine.ctx.items.get(id)?.name ?? id
-    const bpNameOf = (id: string): string => {
-      for (const bp of engine.blueprints) if (bp.id === id) return bp.moduleId ? itemName(bp.moduleId) : String(bp.itemId ?? bp.id)
-      for (const bp of engine.shipBlueprints) if (bp.id === id) return engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId
-      return id
-    }
-    // ① 势力简介：小标题 = 五段各自的标签（基调/外观/战斗风格/招牌手段/出没之处）
-    const intro: Array<[string, React.ReactNode]> = []
-    for (let k = 0; k < 5; k += 1) {
-      intro.push([tr('ui.Handbook.' + (base + 1 + 2 * k)), tr('ui.Handbook.' + (base + 2 + 2 * k))])
-    }
-    detailBlock(rows, tr('ui.codex.007'), intro)
-    // ② 敌人（逐舰级；未遭遇 ⇒ 「？？？」占位）
-    if (isLocked) {
-      rows.push([tr('ui.codex.008'), tr('ui.codex.006')])
-    } else {
-      const enemy: Array<[string, React.ReactNode]> = []
-      for (const e of card.enemies) {
-        if (!e.seen) {
-          enemy.push([tr('ui.codex.005'), tr('ui.codex.010')])
-          continue
-        }
-        const ship = ships.get(e.id)
-        const line = foeBriefLinesOfShip(ship)
-        if (!ship || !line) continue
-        const body = [line.hull, ...line.bits, ...(line.mounts !== undefined ? [line.mounts] : [])]
-          .filter((x) => x !== '')
-          .join(' · ')
-        enemy.push([ship.name, body])
-      }
-      detailBlock(rows, tr('ui.codex.008'), enemy)
-    }
-    // ③ 专属装备与舰船（未解锁 ⇒ 不给明细，只给一句"遇过就开"）
-    if (isLocked) {
-      rows.push([tr('ui.codex.009'), tr('ui.codex.006')])
-    } else {
-      const gear: Array<[string, React.ReactNode]> = card.modules.map((id) => {
-        const mod = engine.ctx.modules.get(id)
-        const item = engine.ctx.items.get(id)
-        return [itemName(id), mod ? moduleShortEffect(mod) : item ? '' : ''] as [string, React.ReactNode]
-      })
-      detailBlock(rows, `${tr('ui.codex.011')} · ${card.modules.length} ${tr('ui.codex.014')}`, gear)
-      const hull: Array<[string, React.ReactNode]> = card.ships.map((id) => {
-        const ship = engine.ctx.ships.get(id)
-        return [ship?.name ?? id, ship ? shipTierText(ship.tier) : ''] as [string, React.ReactNode]
-      })
-      detailBlock(rows, `${tr('ui.codex.012')} · ${card.ships.length} ${tr('ui.codex.015')}`,
-        hull.length > 0 ? hull : [[tr('ui.codex.016'), '']])
-      if (card.blueprints.length > 0) {
-        // 图纸行给「产物名（图纸）」＋该产物的短效果 —— 只写图纸名玩家看不出它是什么（2026-09-26 自检补）
-        detailBlock(rows, `${tr('ui.codex.013')} · ${card.blueprints.length} ${tr('ui.codex.014')}`,
-          card.blueprints.map((id) => {
-            const mod = engine.ctx.modules.get(id)
-            const modBp = engine.blueprints.find((b) => b.id === id)
-            const prodMod = mod ?? (modBp?.moduleId !== undefined ? engine.ctx.modules.get(modBp.moduleId) : undefined)
-            const name = prodMod?.name ?? bpNameOf(id)
-            return [`${name}（${tr('ui.codex.013')}）`, prodMod ? moduleShortEffect(prodMod) : ''] as [string, React.ReactNode]
-          }))
-      }
-    }
-  }
-
   if (cell.tab === 'items') {
     const kind = String(r.kind ?? '')
     // 2026-09-10 船长：无人机把归类子属性并入「种类」（无人机 · 侦察机）——走 core 单点
@@ -971,6 +1048,12 @@ export function Handbook({
   const [subKey, setSubKey] = useState<string>(SUB_ALL)
   /** 说明类（玩法速览 / 航行须知）当前停留的**子页**（= 词条标题；空串 = 默认第一条，`TIPS_KEY` = 小贴士页） */
   const [pageKey, setPageKey] = useState<string>('')
+  /**
+   * **势力图鉴：当前选中的势力**（2026-09-26 船长令：「在势力图鉴内新建一个窗口容器，玩家点击某个势力后，
+   * 下方窗口内就显示该势力的介绍和敌人种类，专属装备，舰船等」）——
+   * 缺省选第一个族；点上方卡片即切换；**详情不再弹二级窗口**，只活在下方容器里。
+   */
+  const [factionSel, setFactionSel] = useState<string>(FACTION_CODEX_ORDER[0] ?? 'A')
 
   function changeView(v: ViewMode): void {
     setView(v)
@@ -1174,7 +1257,8 @@ export function Handbook({
   const factionCells: GridCell[] = (() => {
         const ships = collectFoeShips(engine)
         return buildFactionCards(FOE_SHIPS, engine.state.foeShipSeen).map((card) => {
-          const head = card.unlocked ? tr(card.nameId) : tr('ui.codex.005')
+          // 卡面**始终给族名**（未解锁的族也看得见是哪一支）；「？？？」只用于**内容行**（敌人 / 专属明细）
+          const head = tr(card.nameId)
           const enemyText = card.enemies
             .map((e) => (e.seen ? ships.get(e.id)?.name ?? '' : ''))
             .filter((s) => s !== '')
@@ -1735,27 +1819,33 @@ export function Handbook({
                 ) : (
                   isFactionPage ? (
                     factionEntries.map((g) => (
-                      <GroupSection key={g.key} label={subText(g)} unit={COUNT_UNIT[tab]} count={g.cells.length}>
-                        {view === 'grid' ? (
-                          <IconGrid cells={g.cells} onPick={setDetail} />
-                        ) : (
-                          <ul className="app-inv-list">
-                            {g.cells.map((c) => (
-                              <li key={c.key}>
-                                <button className="app-inv-row" onClick={() => setDetail(c)}>
-                                  <span className="app-hand-cell-icon">
-                                    <Glyph name={c.glyph} size={26} color={toneOf(c.glyph)} />
-                                  </span>
-                                  <span className="app-inv-main">
-                                    <span className="app-inv-name">{c.name}</span>
-                                    <span className="app-inv-sub">{c.sub}</span>
-                                  </span>
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </GroupSection>
+                      <div key={g.key}>
+                        <GroupSection key={g.key} label={subText(g)} unit={COUNT_UNIT[tab]} count={g.cells.length}>
+                          {view === 'grid' ? (
+                            <IconGrid cells={g.cells} onPick={(c) => setFactionSel(c.key)} />
+                          ) : (
+                            <ul className="app-inv-list">
+                              {g.cells.map((c) => (
+                                <li key={c.key}>
+                                  <button className="app-inv-row" onClick={() => setFactionSel(c.key)}>
+                                    <span className="app-hand-cell-icon">
+                                      <Glyph name={c.glyph} size={26} color={toneOf(c.glyph)} />
+                                    </span>
+                                    <span className="app-inv-main">
+                                      <span className="app-inv-name">{c.name}</span>
+                                      <span className="app-inv-sub">{c.sub}</span>
+                                    </span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </GroupSection>
+                        {/* 下方**窗口容器**：选中势力的档案 ＋ 敌人种类 ＋ 专属装备 / 舰船 / 图纸 */}
+                        {g.cells.some((c) => c.key === factionSel) ? (
+                          <FactionDetailPanel engine={engine} family={factionSel} />
+                        ) : null}
+                      </div>
                     ))
                   ) : groups.map((g) => (
                     <GroupSection key={g.key} label={subText(g)} unit={COUNT_UNIT[tab]} count={g.cells.length}>
