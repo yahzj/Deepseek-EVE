@@ -44,6 +44,7 @@ import {
   weekendCoreProgressAt,
   weekendEncounterChanceAt,
   weekendFlagshipView,
+  weekendDeadlineMs,
   weekendFlagshipWindowMs,
   weekendBossPoolView,
   weekendTickBoss,
@@ -359,14 +360,14 @@ describe('周末入侵 · 旗舰与倒计时（含离线保护 / Q3 / Q7）', ()
     return ev
   }
 
-  it('核心没满 ⇒ 不现身；在线满分 ⇒ 此刻起算 2 小时', () => {
+  it('核心没满 ⇒ 不现身；在线满分 ⇒ 此刻起算 24 小时（船长 2026-09-26 令）', () => {
     const s = fresh()
     const notFull = evOf('core', ['p1'])
     expect(weekendFlagshipView(s, notFull, 10 * H, 10 * H).shown).toBe(false)
     const ev = fullCore()
     const v = weekendFlagshipView(s, ev, 10 * H, 10 * H)
     expect(v.shown).toBe(true)
-    expect(v.deadlineWallMs).toBe(10 * H + 2 * H)
+    expect(v.deadlineWallMs, '满血 ⇒ 整整一个 24h 窗口').toBe(10 * H + 24 * H)
     expect(v.down).toBeUndefined()
   })
 
@@ -381,17 +382,17 @@ describe('周末入侵 · 旗舰与倒计时（含离线保护 / Q3 / Q7）', ()
     ev.family = 'H' // 章鱼削血只服务 BOSS 池族（`WEEKEND_BOSS_FAMILIES`）
     ev.flagshipHpMax = 150_000
     ev.flagshipAtWallMs = 10 * H
-    // 一点没削（此刻 11h）⇒ 还差 2 小时在线非战斗时间（从此刻起算）
-    expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).deadlineWallMs).toBe(11 * H + 2 * H)
+    // 一点没削（此刻 11h）⇒ 还差 24 小时在线非战斗时间（从此刻起算）
+    expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).deadlineWallMs).toBe(11 * H + 24 * H)
     expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).down, '没削完 ⇒ 不得手').toBeUndefined()
-    // 章鱼人已削掉一半血 ⇒ 只剩一半 ⇒ 再有一小时就削空
+    // 章鱼人已削掉一半血 ⇒ 只剩一半 ⇒ 再有 12 小时就削空
     ev.octopusHpDone = 75_000
-    expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).deadlineWallMs).toBe(11 * H + 1 * H)
+    expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).deadlineWallMs).toBe(11 * H + 12 * H)
     expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).down).toBeUndefined()
     // ⚠ 共享血条：玩家打掉的那份**也真实减少同一条血** ⇒ 章鱼人只需再花 1/4 窗口就能削空
     ev.flagshipHpDone = 37_500
     expect(weekendFlagshipView(s, ev, 11 * H, 11 * H).deadlineWallMs, '剩 1/4 血 ⇒ 1/4 窗口').toBe(
-      11 * H + 30 * 60_000,
+      11 * H + 6 * H, // 1/4 窗口 = 6 小时
     )
     // 削空 ⇒ 血条见底 ⇒ 章鱼人得手（与 `weekendOctopusTick` 同一判据）
     ev.octopusHpDone = 150_000
@@ -405,15 +406,17 @@ describe('周末入侵 · 旗舰与倒计时（含离线保护 / Q3 / Q7）', ()
     const s = fresh()
     const ev = fullCore()
     const last = 10 * H
-    // 离线 3 小时回来：起算 = 现在
+    // 离线 3 小时回来：起算 = 现在（窗口 = 24h，2026-09-26 船长令）
     const back3 = last + 3 * H
-    expect(weekendFlagshipView(s, ev, back3, last).deadlineWallMs).toBe(back3 + 2 * H)
-    // 离线 30 小时回来：起算 = last + 24h ⇒ 若 now ≥ 该点 +2h ⇒ 已被摧毁
+    expect(weekendFlagshipView(s, ev, back3, last).deadlineWallMs).toBe(back3 + 24 * H)
+    // 离线 30 小时回来：起算 = last + 24h（保护失效那一刻）⇒ 窗口 24h ⇒ **last+48h** 才到点
     const back30 = last + 30 * H
     const v = weekendFlagshipView(s, ev, back30, last)
     expect(v.atWallMs).toBe(last + WEEKEND_OFFLINE_SHIELD_MS)
-    expect(v.deadlineWallMs).toBe(last + WEEKEND_OFFLINE_SHIELD_MS + 2 * H)
-    expect(v.down, '30h > 24h + 2h ⇒ 章鱼人已得手').toBe('octopus')
+    expect(v.deadlineWallMs).toBe(last + WEEKEND_OFFLINE_SHIELD_MS + 24 * H)
+    expect(v.down, '30h 还没到 last+48h ⇒ 尚未被削空').toBeUndefined()
+    // 离线 50 小时回来 ⇒ 已过 last+48h ⇒ 章鱼人得手
+    expect(weekendFlagshipView(s, ev, last + 50 * H, last).down, '过点 ⇒ 章鱼人得手').toBe('octopus')
   })
 
   it('调试模式关掉离线保护（Q7）：离线多久都从此刻起算', () => {
@@ -463,6 +466,36 @@ describe('周末入侵 · 旗舰与倒计时（含离线保护 / Q3 / Q7）', ()
     expect(weekendFlagshipView(s, ev, 200_000 + 201 * 5_000, 200_000 + 201 * 5_000).down, '削空 ⇒ 章鱼人得手').toBe(
       'octopus',
     )
+  })
+
+  /**
+   * 🔴 **2026-09-26 船长令**：「**当入侵的旗舰出现后，章鱼人的削血速度降低，延长到默认最多24小时才能削完**」
+   * ⇒ 正常档窗口 **2h → 24h**：速率 = `池子 ÷ 24h`（满血在线 1 小时削 **6,250** 点、24 小时削空）；
+   * **调试档不动**（仍 10 分钟）；倒计时读数（`weekendFlagshipView.deadlineWallMs`）按"还剩多少血"折算，
+   * 满血时 = 从现在起整整 24 小时。
+   */
+  it('船长令：正常档削血窗口 = **24 小时**（满血在线 1 小时削 6,250 点）；调试档仍 10 分钟', () => {
+    const s = fresh() // 正常档
+    const ev = fullCore(true)
+    ev.family = 'H'
+    ev.flagshipHpMax = 150_000
+    ev.flagshipHpDone = 0
+    s.weekendEvent = ev
+    const windowMs = weekendFlagshipWindowMs(s)
+    expect(windowMs, '正常档窗口 = 24 小时（船长令）').toBe(24 * 3_600_000)
+    expect(weekendDeadlineMs(s), '倒计时读数与窗口同源').toBe(24 * 3_600_000)
+    /** 在线非战斗推 1 小时（每拍 ≤5 秒上限 ⇒ 推 720 拍 = 3600 秒）⇒ 削掉 `150000 ÷ 24` */
+    weekendTickBoss(s, 1_000, false)
+    const t0 = 1_000
+    for (let i = 1; i <= 720; i++) weekendTickBoss(s, t0 + i * 5_000, false)
+    expect(ev.octopusHpDone, '1 小时 ÷ 24h × 150000 = 6250 点').toBeCloseTo(6_250, 6)
+    expect(weekendBossPoolView(s, ev)!.octopusFrac).toBeCloseTo(6_250 / 150_000, 6)
+    /** 倒计时 = 剩余血量 × 窗口 ÷ 池子 = 24h × (1 − 1/24) = 23 小时 */
+    const view = weekendFlagshipView(s, ev, t0 + 721 * 5_000, t0 + 721 * 5_000)
+    expect(view.deadlineWallMs! - (t0 + 721 * 5_000)).toBe(Math.round(((150_000 - 6_250) * windowMs) / 150_000))
+    /** 调试档不受影响 */
+    const sd = fresh(true)
+    expect(weekendFlagshipWindowMs(sd), '调试档窗口不动（10 分钟）').toBe(10 * 60_000)
   })
 })
 
@@ -544,7 +577,7 @@ describe('周末入侵 · 存档往返（零迁移）', () => {
    * **旧字段就地迁移**（2026-09-25 共享血条改口径）：旧档存的是**时长** `octopusDrainedMs`，
    * 新档存**血量** `octopusHpDone`。不迁移的话，读档后已削掉的那部分会**凭空回血**
    * （实测船长在玩的档：已削 24% ⇒ 血条会跳回去一截）。
-   * 换算 = `池子总量 × 时长 ÷ 窗口`，窗口走同一个单源（正常 2h / 调试 10min）。
+   * 换算 = `池子总量 × 时长 ÷ 窗口`，窗口走同一个单源（正常 **24h**（2026-09-26 船长令起）/ 调试 10min）。
    */
   it('旧档 `octopusDrainedMs`（时长）⇒ 读档即换算成 `octopusHpDone`（血量）', () => {
     const s = fresh()
@@ -558,13 +591,13 @@ describe('周末入侵 · 存档往返（零迁移）', () => {
     const raw = JSON.parse(serializeSaveFile(s, 0)) as {
       state: { weekendEvent: Record<string, unknown> }
     }
-    // 伪造一份"旧档"：删掉新键、塞进旧键（正常档 = 2 小时窗口 ⇒ 半小时 = 25% 的血）
+    // 伪造一份"旧档"：删掉新键、塞进旧键（正常档 = 24 小时窗口 ⇒ 半小时 ≈ 2.08% 的血）
     delete raw.state.weekendEvent.octopusHpDone
     raw.state.weekendEvent.octopusDrainedMs = 30 * 60_000
     const back = loadSaveFile(JSON.stringify(raw)).state.weekendEvent
-    expect(back?.octopusHpDone, '25% × 150000').toBe(37_500)
+    expect(back?.octopusHpDone, '半小时 ÷ 24h × 150000').toBe(3_125)
     expect((back as Record<string, unknown> | undefined)?.octopusDrainedMs, '旧键不再写回').toBeUndefined()
-    // 调试档（10 分钟窗口）⇒ 同一个时长换算出来的血量是 12 倍（窗口短 12 倍）
+    // 调试档（10 分钟窗口）⇒ 同一个时长换算出来的血量是 144 倍（窗口 24h ÷ 10min）
     const s2 = fresh(true)
     s2.weekendEvent = {
       ...evOf('galaxy-home', ['galaxy-kor'], 123),

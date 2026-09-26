@@ -161,8 +161,19 @@ export function weekendWinGainOf(
 /** NPC 反攻保底推进（第 9 条）：外围 T0+48h 必满 · 核心 T0+72h 必满 */
 export const WEEKEND_NPC_PERIPHERY_MS = 48 * 3_600_000
 export const WEEKEND_NPC_CORE_MS = 24 * 3_600_000
-/** 旗舰倒计时（第 8 条）：核心条满后 2 小时内未击毁 ⇒ 章鱼人摧毁 */
-export const WEEKEND_FLAGSHIP_DEADLINE_MS = 2 * 3_600_000
+/**
+ * **旗舰削血窗口**（第 8 条；= 母舰血池从满到被章鱼人削空的"在线且非战斗"时长）。
+ *
+ * 🔴 **2026-09-26 船长令**：「**当入侵的旗舰出现后，章鱼人的削血速度降低，延长到默认最多24小时才能削完**」
+ * ⇒ 正常模式 **2 小时 → 24 小时**（削血速率随之变成 `池子总量 ÷ 24h` ⇒ 满血 1 小时削 6,250 点）。
+ *
+ * ⚠ 本常量只服务**正常档**：调试档另走 `WEEKEND_DEBUG_FLAGSHIP_WINDOW_MS`（10 分钟，调试便利，
+ *   船长 2026-09-25「保留'到点即判'这套机制、把调试窗口调长」）；两档都从
+ *   {@link weekendFlagshipWindowMs} 这一个单点取（倒计时 · 削血速率 · 池子读数 · 收口四处同源）。
+ * ⚠ **离线保护不动**（`WEEKEND_OFFLINE_SHIELD_MS` 仍是 24h）：窗口与保护期现在同为 24h ⇒
+ *   "离线 >24h"那一档的收口仍是 `自离线满 24h 起算 ＋ 一个窗口`（即离线满 48h）。
+ */
+export const WEEKEND_FLAGSHIP_DEADLINE_MS = 24 * 3_600_000
 
 /* ═══════════ 旗舰 BOSS 化：跨场累计伤害（船长 2026-09-24 第二轮令）═══════════
  * 船长原话：「**墨潮入侵母舰我想改成类似BOSS的机制：血量极厚，但是玩家对其造成的伤害会累计。
@@ -176,13 +187,15 @@ export const WEEKEND_FLAGSHIP_DEADLINE_MS = 2 * 3_600_000
  * - **池子总量** = **固定常量 `WEEKEND_FLAGSHIP_POOL_HP`（150,000）**（2026-09-25 船长：「BOSS 血条 15 万来算」）；
  * - **进度**只算**打进母舰的伤害**（未截断的原始值）；母舰一点没挨打 ⇒ 该场 0 进度；
  * - **单场不死**：母舰血条 = 池子剩余，单场打到 0 才判"旗舰已击沉"；
- * - **章鱼人** = 一条**独立进度**：`章鱼已削 = (2h 窗口内"在线且非战斗"的累计时长 / 2h) × 池子总量`
+ * - **章鱼人** = 一条**独立进度**：`章鱼已削 = ("在线且非战斗"的累计时长 / 削血窗口) × 池子总量`
  *   ——战斗中暂停（防抢击杀）、离线暂停（与倒计时同一条离线保护）；
+ *   ⚠ 窗口 **2026-09-26 起正常档 = 24h**（船长令「延长到默认最多24小时才能削完」，原 2h），
+ *     调试档仍 10 分钟（见 `weekendFlagshipWindowMs`）；
  * - **归属**：谁先把自己的进度打满 ⇒ 谁击沉（玩家 ⇒ 奖励；章鱼 ⇒ 摧毁）。
  *   两条进度**各自累加、不互扣**（章鱼削血不影响玩家已造成的伤害）。
  *
  * ⚠ **上线开关**：本机制**按族启用**——只有登记在 `WEEKEND_BOSS_FAMILIES` 里的族才走池子口径，
- * 其余族逐字走老口径（"核心满 + 打赢 ⇒ 直接击毁"＋ 2 小时到点直接被章鱼击败）。
+ * 其余族逐字走老口径（"核心满 + 打赢 ⇒ 直接击毁"＋ 到点直接被章鱼击败）。
  * 2026-09-24 第二轮：**H 族先上**（船长令就是针对墨潮入侵母舰下的）。
  */
 export const WEEKEND_BOSS_FAMILIES: readonly string[] = ['H']
@@ -613,7 +626,7 @@ export function weekendNpcTimelineMs(state: Pick<GameState, 'debugQuick'>, baseM
 
 /**
  * **倒计时的实际时长**（= `weekendFlagshipWindowMs`，保留旧名以免改散调用点；
- * 2026-09-25 起调试档 = 10 分钟、正常 = 2 小时）。
+ * 2026-09-26 起正常 = **24 小时**（船长令「延长到默认最多24小时才能削完」）、调试 = 10 分钟）。
  * ⚠ 新代码请直接用 `weekendFlagshipWindowMs`（它才是"四处同源"的那个单点）。
  */
 export function weekendDeadlineMs(state: Pick<GameState, 'debugQuick'>): number {
@@ -622,7 +635,7 @@ export function weekendDeadlineMs(state: Pick<GameState, 'debugQuick'>): number 
 
 /**
  * **章鱼人削血窗口**（= 母舰血池从满到被削空的"在线且非战斗"时长）——
- * 正常模式 = `WEEKEND_FLAGSHIP_DEADLINE_MS`（2 小时）；**调试模式 = 10 分钟**。
+ * 正常模式 = `WEEKEND_FLAGSHIP_DEADLINE_MS`（**24 小时**）；**调试模式 = 10 分钟**。
  *
  * ⚠ **2026-09-25 船长两次口径合一**：
  * 1. 船长原话（2026-09-24）：「**2小时内按时间削掉100%母舰血量。当玩家正在战斗时，会暂停削血。
@@ -632,12 +645,16 @@ export function weekendDeadlineMs(state: Pick<GameState, 'debugQuick'>): number 
  * 2. 船长 2026-09-25 对"窗口太短"的裁定：**保留"到点即判"这套机制、把调试窗口调长**（②）
  *    ⇒ 本函数把调试档从"÷60 = 2 分钟"改成固定的 **10 分钟**（原 2 分钟连点进准备界面都来不及）。
  *
+ * 🔴 **2026-09-26 船长令（本常量第三次改动）**：「**当入侵的旗舰出现后，章鱼人的削血速度降低，
+ * 延长到默认最多24小时才能削完**」⇒ **正常档 2 小时 → 24 小时**（速率 = `池子 ÷ 窗口` ⇒ 满血
+ * 在线 1 小时削 6,250 点）；**调试档不动**（仍 10 分钟）。
+ *
  * ⚠ 四处必须同源（改窗口即同时改这四处的口径）：`weekendFlagshipView` 的倒计时、
  * `weekendOctopusDrainPerMs` 的削血速率、`weekendBossPoolView` 的章鱼进度、`weekendOctopusTick` 的收口。
  */
 export const WEEKEND_DEBUG_FLAGSHIP_WINDOW_MS = 10 * 60_000
 
-/** 本档的削血窗口（调试 = 10 分钟；正常 = 2 小时）——四处同源的单点 */
+/** 本档的削血窗口（调试 = 10 分钟；正常 = **24 小时**）——四处同源的单点 */
 export function weekendFlagshipWindowMs(state: Pick<GameState, 'debugQuick'>): number {
   return weekendDebugOn(state) ? WEEKEND_DEBUG_FLAGSHIP_WINDOW_MS : WEEKEND_FLAGSHIP_DEADLINE_MS
 }
@@ -1228,9 +1245,10 @@ export function weekendIsBossFamily(ev: WeekendEventState | undefined): boolean 
 }
 
 /**
- * **章鱼人每毫秒削掉池子的比例** = 100% ÷ 削血窗口（船长：「2小时内按时间削掉100%母舰血量」）。
+ * **章鱼人每毫秒削掉池子的比例** = 100% ÷ 削血窗口（船长：「按时间削掉100%母舰血量」；
+ *   ⚠ 窗口 2026-09-26 起正常档 = **24 小时**（船长令「延长到默认最多24小时才能削完」，原 2h））。
  * 线性同比：`章鱼已削 = 削血时长 / 窗口 × 池子总量`（削血时长只计"在线且非战斗"）。
- * ⚠ 窗口走 `weekendFlagshipWindowMs`（正常 2h / 调试 10min）——与倒计时、池子读数、收口四处同源。
+ * ⚠ 窗口走 `weekendFlagshipWindowMs`（正常 **24h** / 调试 10min）——与倒计时、池子读数、收口四处同源。
  */
 export function weekendOctopusDrainPerMs(state: Pick<GameState, 'debugQuick'>, hpTotal: number): number {
   return hpTotal / weekendFlagshipWindowMs(state)
@@ -1379,7 +1397,7 @@ export function weekendOctopusTick(
  *
  * 三件事：
  * 1. 首次满分且在线那一拍把 `flagshipAtWallMs` 锚点落盘（与 M1 的 `weekendTick` 同一条判据，
- *    只是这里**顺带**落 —— 让 Boss 池的 2 小时窗口有一个不漂移的起点）；
+ *    只是这里**顺带**落 —— 让 Boss 池的削血窗口有一个不漂移的起点（窗口 2026-09-26 起正常档 = 24h））；
  * 2. 章鱼削血（`inBattle` 或离线 ⇒ 暂停）；
  * 3. 削到 100% ⇒ 写 `flagshipDown = 'octopus'` 并结束本场。
  *

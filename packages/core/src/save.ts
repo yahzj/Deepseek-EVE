@@ -37,7 +37,8 @@ import { FIT_PRESET_MAX, FIT_PRESET_NAME_MAX } from './fitPresets'
 // v27→v28 残骸合并（2026-09-19）：旧"每卡一种"残骸 id → 新「族 × 地区」组 id
 import { migratedWreckItemId } from './wreckGroups'
 // 章鱼人削血的**旧字段迁移**（2026-09-25：`octopusDrainedMs` 时长 → `octopusHpDone` 血量）
-// ⚠ 窗口必须走**同一个单源** `weekendFlagshipWindowMs`（正常 2h / 调试 10min），不许在存档层再写一遍开关
+// ⚠ 窗口必须走**同一个单源** `weekendFlagshipWindowMs`（正常 **24h**（2026-09-26 船长令起）/ 调试 10min），
+//   不许在存档层再写一遍开关
 import { weekendFlagshipWindowMs } from './weekendEvent'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
