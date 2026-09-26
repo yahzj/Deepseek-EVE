@@ -132,6 +132,34 @@ function foeArtKeys(): Set<string> {
   return keys
 }
 
+/**
+ * **无人机机体表的键**（2026-09-26 加；判据同敌舰：键在表里 = 有资产）。
+ *
+ * 为什么必须进闸门：无人机机体表**全部**在 `ui/droneArt.tsx` 的 `DRONE_MODELS` 里按**物品 id**登记，
+ * 而"某型无人机能不能进战斗"由**数据侧**决定 —— 两边各写各的、漏登记**不报错**：
+ * 演出层查不到机型 ⇒ 机体落灰兜底、**弹道/击落/坠落三处直接 return**（表现为"这型机在战斗里
+ * 不开火、不爆炸"）。2026-09-12 蜂群机、2026-09-26 三款族专属机（E 构件哨戒 / C 巢卫攻坚 / G 鱿蜂）
+ * 都栽在这上面，后者正是船长报障「**玩家的构件哨戒无人机不会出现在战斗场景中**」。
+ */
+function droneArtKeys(): Set<string> {
+  const src = existsSync(join(UI, 'droneArt.tsx')) ? readFileSync(join(UI, 'droneArt.tsx'), 'utf8') : ''
+  const m = src.match(/export const DRONE_MODELS: Record<string, DroneModel> = \{([\s\S]*?)\n\}/)
+  const keys = new Set<string>()
+  if (!m) return keys
+  for (const k of m[1]!.matchAll(/'([a-z0-9-]+)'\s*:/g)) keys.add(k[1]!)
+  return keys
+}
+
+/** 无人机物品（`kind: 'drone'`；**含敌方机型 id**——数据侧只有物品表这一处登记，敌机机型也在这张表里） */
+function readDroneItems(): Array<{ id: string }> {
+  const src = readFileSync(join(ROOT, 'packages', 'data', 'src', 'items.ts'), 'utf8')
+  const out: Array<{ id: string }> = []
+  for (const m of src.matchAll(/id:\s*'(drone[a-z0-9-]*)'[\s\S]{0,400}?kind:\s*'drone'/g)) {
+    out.push({ id: m[1]! })
+  }
+  return out
+}
+
 const FAM_LABEL: Record<string, string> = {
   A: '海盗',
   B: '拾荒',
@@ -145,6 +173,10 @@ const FAM_LABEL: Record<string, string> = {
 const ships = readShips()
 const foes = readFoes()
 const foeKeys = foeArtKeys()
+/** 无人机：物品表里有几型 · 机体表里登记了几型（2026-09-26 加，见 `droneArtKeys` 的说明） */
+const droneItems = readDroneItems()
+const droneKeys = droneArtKeys()
+const droneMissing = droneItems.filter((d) => !droneKeys.has(d.id))
 let missing = 0
 const byRole = new Map<string, Row[]>()
 for (const s of ships) {
@@ -214,25 +246,41 @@ ${foes
       `<td class="${foeKeys.has(f.id) ? 'ok' : 'no'}">${foeKeys.has(f.id) ? '有' : '缺'}</td></tr>`,
   )
   .join('')}
+</table>
+<h1 style="margin-top:26px">无人机机型 · ${droneItems.length} 型（2026-09-26）</h1>
+<p>机体形见 <code>ui/droneArt.tsx</code> 的 <code>DRONE_MODELS</code>（按物品 id 登记）；本表只管<b>键的齐全性</b>
+——漏登记 ⇒ 机体落灰兜底、<b>弹道与击落演出直接跳过</b>（"这型机不开火、不爆炸"）。</p>
+<table class="foe"><tr><th>机型 id</th><th>机体资产</th></tr>
+${droneItems
+  .map(
+    (d) =>
+      `<tr><td>${d.id}</td><td class="${droneKeys.has(d.id) ? 'ok' : 'no'}">${droneKeys.has(d.id) ? '有' : '缺'}</td></tr>`,
+  )
+  .join('')}
 </table>`
 
 const out = join(ROOT, 'tools', '_ui-artifacts', 'shipart-preview.html')
 const foeMissing = foes.filter((f) => !foeKeys.has(f.id))
 if (CHECK_ONLY) {
-  const bad = missing + foeMissing.length
+  const bad = missing + foeMissing.length + droneMissing.length
   console.log(
-    `敌舰逐舰形：${foes.length - foeMissing.length}/${foes.length} 有条目；玩家舰缺形 ${missing} 艘` +
-      (foeMissing.length ? `；缺：${foeMissing.map((f) => `${f.name}(${f.id})`).join('、')}` : ''),
+    `敌舰逐舰形：${foes.length - foeMissing.length}/${foes.length} 有条目；玩家舰缺形 ${missing} 艘；` +
+      `无人机机体：${droneItems.length - droneMissing.length}/${droneItems.length} 型已登记` +
+      (foeMissing.length ? `；敌舰缺：${foeMissing.map((f) => `${f.name}(${f.id})`).join('、')}` : '') +
+      (droneMissing.length ? `；无人机缺：${droneMissing.map((d) => d.id).join('、')}` : ''),
   )
   if (bad > 0) {
-    console.error(`❌ 图形契约不过：玩家舰缺形 ${missing} 艘 · 敌舰缺逐舰形 ${foeMissing.length} 条`)
+    console.error(
+      `❌ 图形契约不过：玩家舰缺形 ${missing} 艘 · 敌舰缺逐舰形 ${foeMissing.length} 条 · 无人机缺机体 ${droneMissing.length} 型`,
+    )
     process.exit(1)
   }
-  console.log('✅ 图形契约通过：玩家舰与敌舰逐舰形均无缺漏。')
+  console.log('✅ 图形契约通过：玩家舰与敌舰逐舰形、无人机机体表均无缺漏。')
   process.exit(0)
 }
 mkdirSync(dirname(out), { recursive: true })
 writeFileSync(out, html, 'utf8')
 console.log(
-  `已写出舰船图形总览：${out}（${ships.length} 艘，缺形 ${missing} 艘；敌舰 ${foes.length} 条，缺逐舰形 ${foeMissing.length} 条）`,
+  `已写出舰船图形总览：${out}（${ships.length} 艘，缺形 ${missing} 艘；敌舰 ${foes.length} 条，缺逐舰形 ${foeMissing.length} 条；` +
+    `无人机 ${droneItems.length} 型，缺机体 ${droneMissing.length} 型）`,
 )

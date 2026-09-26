@@ -92,6 +92,7 @@ import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
 import { briefsOfPool, mountLabelText } from '../ui/foeBrief'
 import { hoverTipProps } from '../ui/Tooltip'
+import { sessionPick, setSessionPick, useSessionScroll } from '../ui/sessionView'
 import { foeCardShipIdOf as coreFoeCardShipIdOf } from '@whale/core'
 import { ShipSprite } from '../ui/ShipSprite'
 
@@ -305,7 +306,17 @@ const TASK_TABS: Array<{ key: TaskTabKey; label: string }> = [
   { key: 'courier', label: tr("ui.Expedition.128") },
   { key: 'bounty', label: tr("ui.Expedition.250") },
 ]
-const TASK_TAB_KEY = 'whale-idle:task-tab'
+/**
+ * 任务中心内层标签的记忆键 —— **2026-09-26 船长令改会话制**。
+ *
+ * 沿革：原先是 `whale-idle:task-tab`（**localStorage ⇒ 跨启动也记得**）；船长 2026-09-26 令
+ * 「舰船、技能、工业、任务中心、通讯」五页统一「**本次游戏启动期间记忆，不入存档**」
+ * 并在集中提问中裁定「**改成会话制，与新规矩统一**」⇒ 换成 `ui/sessionView.ts` 的会话存储。
+ * ⚠ 老键（localStorage）从此**不再读写**：新规矩下"这次开 App 里选过的签"才有意义，
+ * 重置档案/换档也不该被上一局的页面状态影响。
+ */
+const TASK_TAB_SESSION_KEY = 'task.tab'
+const TASK_TAB_VALUES: readonly string[] = ['important', 'milestone', 'resource', 'courier', 'bounty']
 
 /* ── 时效任务板（资源 / 快递）的排序（船长 2026-09-19 追加）─────────────────────────
  * 两档：**默认排序（从低到高）** = 按任务级别 L1→L5；**价值排序（从高到低）** = 按奖励。
@@ -332,13 +343,10 @@ export function TaskPanel({
   onJump?: (t: { page: string; mapTab?: string; shipTab?: string; industrySec?: 'refine' | 'shelf' | 'craft' | 'shipyard' }) => void
 }) {
   const [tab, setTab] = useState<TaskTabKey>(() => {
-    try {
-      const v = localStorage.getItem(TASK_TAB_KEY)
-      // 旧存 'hauling'（运输任务已独立为星图「长途运输」标签）一律回退「重要任务」
-      return v === 'important' || v === 'milestone' || v === 'resource' || v === 'courier' || v === 'bounty' ? v : 'important'
-    } catch {
-      return 'important'
-    }
+    // 会话级记忆（2026-09-26 船长令）；旧 localStorage 存过 'hauling'（运输任务已独立为星图
+    // 「长途运输」标签）——那条历史判别随老键一并退役，认不出的值一律回退「重要任务」
+    const v = sessionPick(TASK_TAB_SESSION_KEY)
+    return v !== null && TASK_TAB_VALUES.includes(v) ? (v as TaskTabKey) : 'important'
   })
   // 外部定位：本页内层标签会被记住，光切到星图「任务中心」不够——按请求切到指定内层标签
   const lastFocusSeq = useRef(-1)
@@ -346,15 +354,19 @@ export function TaskPanel({
     const req = focusTab
     if (!req || req.seq === lastFocusSeq.current) return
     lastFocusSeq.current = req.seq
-    if (req.tab === 'important' || req.tab === 'milestone' || req.tab === 'resource' || req.tab === 'courier' || req.tab === 'bounty') {
-      setTab(req.tab)
-      try {
-        localStorage.setItem(TASK_TAB_KEY, req.tab)
-      } catch {
-        // 忽略
-      }
+    if (TASK_TAB_VALUES.includes(req.tab)) {
+      setTab(req.tab as TaskTabKey)
+      setSessionPick(TASK_TAB_SESSION_KEY, req.tab)
     }
   }, [focusTab?.seq])
+
+  /**
+   * **任务列表滚动位置 · 会话级记忆**（2026-09-26 船长令，只做"主列表那一条"）。
+   * 滚动体 = 本面板的内滚体 `.app-win-body`（`overflow-y:auto`）⇒ 直接接，不必反查。
+   * ⚠ `listRef`（下面那支）是**量列宽**用的（`useFoeArtFit`），与本记忆无关、各自独立。
+   */
+  const taskScrollRef = useRef<HTMLDivElement | null>(null)
+  useSessionScroll('task.list.scroll', taskScrollRef)
 
   // 建站任务初期不出现：只有“抵达/探索过”该星系后才解锁（船长 2026-09-05 拍板）
   const state = engine.state
@@ -374,11 +386,8 @@ export function TaskPanel({
 
   function changeTab(next: TaskTabKey): void {
     setTab(next)
-    try {
-      localStorage.setItem(TASK_TAB_KEY, next)
-    } catch {
-      // 忽略
-    }
+    // 会话级记忆（2026-09-26 船长令）：切走再回来仍是这一签
+    setSessionPick(TASK_TAB_SESSION_KEY, next)
   }
 
   return (
@@ -401,7 +410,7 @@ export function TaskPanel({
           </button>
         ))}
       </div>
-      <div className="app-win-body">
+      <div className="app-win-body" ref={taskScrollRef}>
       {tab === 'important' ? (
         <div>
           {/* 2026-09-17 教程重做：重要任务＝「第一次」系列；**2026-09-20 起顺序解锁、一次只出一条**

@@ -29,6 +29,7 @@ import type { PageProps } from './common'
 import { cmdText, tr } from '../i18n/locale'
 import { commsBriefText, commsClockText, commsSenderText, commsSubjectText } from '../ui/commsText'
 import { WeekendSummaryView } from '../panels/WeekendSummary'
+import { sessionPick, setSessionPick, useSessionScroll } from '../ui/sessionView'
 
 /**
  * ⚠ **右栏（机身 + 内嵌屏幕 + 下檐口）已抽成公共件 `panels/CommsReader.tsx`**
@@ -51,8 +52,19 @@ export function CommsPage({
   const inbox = useMemo(() => engine.commsInboxView(), [state, state.gameMs, engine])
   const unread = inbox.filter((e) => !e.read).length
 
-  // 选中项：默认最新一封；列表变化（新消息到达）后若原先选中的还在就保持不变
-  const [sel, setSel] = useState<string | null>(null)
+  /**
+   * 选中项：默认最新一封；列表变化（新消息到达）后若原先选中的还在就保持不变。
+   * **2026-09-26 船长令**：选中哪封 ＋ 列表滚动位置都做**会话级记忆** ⇒ 切走再回来还是那一封、那一处
+   * （记忆只在本进程内有效，见 `ui/sessionView.ts`；不在列表里的旧 id 自然落回"最新一封"）。
+   */
+  const [sel, setSel] = useState<string | null>(() => sessionPick('comms.sel'))
+  /** 会话级写回：玩家每次换信都记一笔（外部定位进来的选中也走这里） */
+  useEffect(() => {
+    setSessionPick('comms.sel', sel)
+  }, [sel])
+  /** 信件列表的滚动位置（"只记主要列表那一条"） */
+  const listScrollRef = useRef<HTMLDivElement | null>(null)
+  useSessionScroll('comms.list.scroll', listScrollRef)
   /** 入侵结算面板开合（2026-09-25；由实例通讯的跳转按钮触发） */
   const [showSummary, setShowSummary] = useState(false)
   // 外部定位请求（教程「看详情」）：seq 变化时覆盖当前选中项
@@ -110,7 +122,7 @@ export function CommsPage({
           ) : (
             <div className="app-comms-grid">
               {/* 左列：消息列表（内部滚动；右侧屏幕也各自滚） */}
-              <div className="app-comms-list" role="list">
+              <div className="app-comms-list" role="list" ref={listScrollRef}>
                 {inbox.map((e) => (
                   <button
                     key={e.id}

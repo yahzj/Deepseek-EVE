@@ -214,6 +214,11 @@ export const EN_SHIPS: EnTable = {
  * 多装递减 = `stacks with diminishing returns` · 窝点/族专属 = `Lair-exclusive` / family-exclusive。
  */
 export const EN_MODULES: EnTable = {
+  /* 损伤管制装置线（2026-09-25 船长令：低槽 · 结构三系减伤 +30/40/50 ＋ 每场一次"结构锁定 1 秒"）
+     ⚠ 模块英文必须写在本表（`EN_MODULES`）——写进 `EN_ITEMS` 的话覆盖层查不到（`l10n-overlay` 用例会红）。 */
+  'mod-dc-1': { name: 'Damage Control Unit MK1', description: '+30% hull resistance to every damage type; when structure is first emptied, structure locks at 1 for 1 second (once per battle, spends 1 Damage Control Repair Kit).' },
+  'mod-dc-2': { name: 'Damage Control Unit MK2', description: '+40% hull resistance to every damage type; when structure is first emptied, structure locks at 1 for 1 second (once per battle, spends 1 Damage Control Repair Kit).' },
+  'mod-dc-3': { name: 'Damage Control Unit MK3', description: '+50% hull resistance to every damage type; when structure is first emptied, structure locks at 1 for 1 second (once per battle, spends 1 Damage Control Repair Kit).' },
   // 采集 / 货舱
   'mod-miner-civ': { name: 'Civilian Mining Laser', description: '+10% yield. A station staple and the first upgrade a new pilot can afford.' },
   'mod-miner-1': { name: 'Reinforced Mining Laser MK1', description: '+20% cycle yield. The first self-built piece of industrial gear.' },
@@ -444,6 +449,8 @@ export const EN_ITEMS: EnTable = {
   'part-fire-control': { name: 'Military Fire-Control Computer', description: 'Advanced part: a finished ballistic solver, the eyes and fingers of exclusive weapons.' },
   'part-grav-comp': { name: 'Graviton Compensator', description: 'Advanced part: a gravity-distortion compensator, the ultimate member of flagship-grade structures.' },
   'repairkit-mil': { name: 'Military Repair Kit', description: 'Military-grade nano repair kit: a base 10 HP × capacity bonus × Quick Hull Repair. Standard supply for long deep-space expeditions.' },
+  /* 损管修理组件（2026-09-25 船长令：损伤管制装置启动时消耗的那一种，与民用/军用修理组件同族） */
+  'repairkit-dc': { name: 'Damage Control Repair Kit', description: 'Supply for the Damage Control Unit: it spends 1 kit to lock structure at 1 for 1 second. Buyable on the market, buildable in Industry.' },
   // 谜质装置（Enigma Device）—— 尾句统一复用 T_WORM
   'mat-surveyor': { name: 'Deepspace Surveyor', description: 'A survey array condensed from Enigma: while it sits in your hold, scanning covers one extra ring.' + T_WORM },
   'mat-chrono': { name: 'Chrono Core', description: 'A sliver of time peeled out of Enigma: carried in the hold, it adds a stretch of turns to this run.' + T_WORM },
@@ -960,6 +967,10 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-ammo-plasma-2': 'Energy ammo MK2 line plans: 120 rounds per batch; ×1.25 vs shields, ×1 vs armor and hull.',
   'bp-repairkit-civ': 'Civilian repair kit plans: pressed nano repair compound, 5 kits per batch, base 5 HP.',
   'bp-repairkit-mil': 'Military repair kit plans: sealed high-density nano repair agent, 3 kits per batch, base 10 HP.',
+  'bp-repairkit-dc': 'Damage control repair kit plans: sealed emergency damage-control compound, 3 kits per batch.',
+  'bp-dc-1': 'Damage control plans: a resistance lining and an emergency lock valve that holds a ship together the first time its structure runs out.',
+  'bp-dc-2': 'Damage control plans: a thicker resistance lining and twin emergency lock valves.',
+  'bp-dc-3': 'Damage control plans: fortress-grade resistance lining and a full-ship emergency lock manifold.',
   'bp-laser-1': 'An energy beam focusing chamber; lens coating and heat sink decide the beam purity.',
   'bp-laser-2': 'A reinforced energy beam focusing chamber: longer reach, heavier shots.',
   'bp-laser-3': 'The top-grade energy beam focusing chamber: range and penetration cap out the laser line.',

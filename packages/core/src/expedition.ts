@@ -51,6 +51,7 @@ import {
   refundAmmo,
   refundRepairKitsAll,
   repairUsageText,
+  dcUsageText,
   setDesirePrefOf,
   settleDroneLosses,
   startBattleFor,
@@ -527,7 +528,16 @@ export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: stri
   exp.battle = battle
   // 连续作战保险（2026-09-08 船长定）：巡回场次挂撤退阈值——本场结构剩余 <50%（损失过半）
   // 时战斗步进自动中止（advanceBattleFor 置 autoEscaped），随后走轻损撤退结算，绝不拖到弃船
-  if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === anomalyId) {
+  /**
+   * ⚠ **2026-09-25 扩到"入侵重复出击"**（船长批：「**入侵「重复出击」也挂 0.5 撤退保险**」）：
+   * 原来只有"常驻悬赏那条循环 ＋ 本场打的就是那张卡"才挂，而入侵循环**两头都不成立**
+   * （开循环时会把 `autoLoopAnomalyId` 清空；入侵每场打的是**抽出来的卡**，id ≠ 循环目标）
+   * ⇒ 入侵循环的场次会一路打到结构归零 → 判负 → 掷弃船骰（3%~50%）⇒ **可能丢船**。
+   * 现按同口径补上：**循环开着 ＋ 本场打的是被占星系**（`foeGalaxyId` = 出征时落的那个）即挂。
+   */
+  const loopOnThisCard = state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === anomalyId
+  const invasionLoopOn = autoLoopInvasionGalaxy(state) !== null && exp.foeGalaxyId !== undefined
+  if (loopOnThisCard || invasionLoopOn) {
     exp.battle.hullEscapeFrac = 0.5
   }
   const anomaly = ctx.anomalies.get(anomalyId)
@@ -709,6 +719,11 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       const t = repairUsageText(battle, ctx)
       return t.length > 0 ? `，船体维修装置${t}` : ''
     })()
+    /** 损伤管制装置：本场启动过就进战报（2026-09-25 船长令：战报单列一条） */
+    const dcPart = (() => {
+      const t = dcUsageText(battle, ctx)
+      return t.length > 0 ? `，${t}` : ''
+    })()
     // **结构化战报**（2026-09-14 船长定）：先把那句日志文案落到变量、再同时写日志与本记录
     // ⇒ 卡片正文与事件日志**逐字同源**（不再靠"找含『战报』二字的日志"那条脆弱做法）。
     /**
@@ -717,10 +732,10 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
      * 残骸那一栏也改成**独立池**的读数（`入侵残骸沉积 X（本场 +Y）`），与星图上那条独立残骸条同源。
      */
     const winText = isInvasion
-      ? `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：大捷！击退入侵舰队。${stats}${lootPart}${dronePart}${repairPart}，` +
+      ? `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：大捷！击退入侵舰队。${stats}${lootPart}${dronePart}${repairPart}${dcPart}，` +
         `本场无赏金：进度收入与夺回奖励在活动结束时统一发放。` +
         `入侵残骸沉积 ${wreckNow.toFixed(1)}（本场 +${wreckInjected.toFixed(1)}）`
-      : `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} 信用点${lootPart}${dronePart}${repairPart}，${standPart}` +
+      : `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：大捷！${stats}，奖金 ${reward.toLocaleString('zh-CN')} 信用点${lootPart}${dronePart}${repairPart}${dcPart}，${standPart}` +
         `。战场残骸密度 ${wreckNow.toFixed(1)}（本场 +${(battleCard.threat * 0.4).toFixed(1)}）`
     addLog(state, 'trade', winText)
     captureBattleReport(state, battle, { source: 'expedition', outcome: 'win', summary: winText })
@@ -809,7 +824,8 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     if (abandoned) {
       // 弃船：无维修费，船+货仓+装备全损
       const abandonRepair = repairUsageText(battle, ctx)
-      const abandonText = `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：遭重创（交火 ${durTxt}${abandonRepair.length > 0 ? `，船体维修装置${abandonRepair}` : ''}）……`
+      const abandonDc = dcUsageText(battle, ctx)
+      const abandonText = `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：遭重创（交火 ${durTxt}${abandonRepair.length > 0 ? `，船体维修装置${abandonRepair}` : ''}${abandonDc.length > 0 ? `，${abandonDc}` : ''}）……`
       addLog(state, 'warn', abandonText)
       // 战报（2026-09-14）：弃船 = 我方全灭那一档 ⇒ `lose`；沉船名单走推导（三层血已归零）
       captureBattleReport(state, battle, { source: 'expedition', outcome: 'lose', summary: abandonText })
@@ -830,7 +846,8 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     const shipName = shipDisplayName(state, ctx, state.shipId)
     const dronePartLose = droneLostText ? ` 机群战损 ${droneLostText}（永久损失）。` : ''
     const loseRepair = repairUsageText(battle, ctx)
-    const loseText = `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} 信用点。${loseRepair.length > 0 ? `船体维修装置${loseRepair}。` : ''}${dronePartLose}练练炮术学，记得给船做保养。`
+    const loseDc = dcUsageText(battle, ctx)
+    const loseText = `⚔ 战报（${galaxy?.name ?? ''}·${displayName}）：失利（交火 ${durTxt}，开火 ${battle.stats.meShots} 命中 ${battle.stats.meHits}）……${shipName} 耐久 -${Math.round(loss * 100)}%，维修花去 ${repair.toLocaleString('zh-CN')} 信用点。${loseRepair.length > 0 ? `船体维修装置${loseRepair}。` : ''}${loseDc.length > 0 ? `${loseDc}。` : ''}${dronePartLose}练练炮术学，记得给船做保养。`
     addLog(state, 'warn', loseText)
     // 战报（2026-09-14）：走到这里就是"打输了、船没沉"⇒ `lose`（沉船那一支在上面 return 了）
     captureBattleReport(state, battle, { source: 'expedition', outcome: 'lose', summary: loseText })

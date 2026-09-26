@@ -40,9 +40,10 @@ import {
 import { bestAiCoreOf } from '@whale/core'
 import type { AiCoreType, GameState, ItemDef } from '@whale/core'
 import { Panel } from '@whale/ui'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { BlueprintShelfPanel, ManufacturingPanel } from '../panels/Industry'
 import { ShipyardPanel } from '../panels/Shipyard'
+import { setSessionPick, sessionPick, useSessionScrollFrom } from '../ui/sessionView'
 import type { GameEngine } from '../game/engine'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
@@ -493,7 +494,18 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
   const state = engine.state
   const rate = refineRate(state, engine.ctx)
 
-  const [sec, setSec] = useState<'refine' | 'shelf' | 'craft' | 'shipyard'>(focusSec ?? 'refine')
+  const [sec, setSecState] = useState<'refine' | 'shelf' | 'craft' | 'shipyard'>(
+    /**
+     * 初值优先级：**程序化定位**（「第一次」卡片的跳转）> **会话级记忆**（2026-09-26 船长令）> 默认「精炼炉」。
+     * 记忆只在本进程内有效（见 `ui/sessionView.ts`）；程序化跳转落定后同样写进记忆（见下面的 `setSec`）。
+     */
+    () => focusSec ?? ((sessionPick('industry.sec') as 'refine' | 'shelf' | 'craft' | 'shipyard' | null) ?? 'refine'),
+  )
+  /** 切子页（四个签）＝ 写会话记忆；程序化跳转也走它 ⇒ 记的永远是"玩家最后看到的那个子页" */
+  const setSec = (v: 'refine' | 'shelf' | 'craft' | 'shipyard'): void => {
+    setSecState(v)
+    setSessionPick('industry.sec', v)
+  }
   /**
    * **已经进过的子页**（2026-09-22 第 2 步）：进过一次就常驻，切换只切显示（详见下面渲染处的说明）。
    * 初值 = 当前那一栏（含 `focusSec` 程序化跳转进来的落点），保证首屏只挂一个面板、不做无谓冷启动。
@@ -510,8 +522,23 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
    * `furnaceTab` = 一级（活计大类）· `sub` = 二级（资源大类 / 残骸档位；`''` = 全部子类）。
    * 切一级标签即回「全部子类」——与组装机、市场页 `changeKind` 同款口径。
    */
-  const [furnaceTab, setFurnaceTab] = useState<FurnaceTab>('all')
-  const [sub, setSub] = useState<string>(SUB_ALL) // 二级子筛选：SUB_ALL = 全部子类（2026-09-19 基线②：去掉空串键）
+  const [furnaceTab, setFurnaceTabState] = useState<FurnaceTab>(() => {
+    const v = sessionPick('industry.furnace.tab')
+    return v === 'all' || v === 'ore' || v === 'wreck' || v === 'box' ? v : 'all'
+  })
+  const [sub, setSubState] = useState<string>(() => sessionPick('industry.furnace.sub') ?? SUB_ALL)
+  /**
+   * 炉子两级筛选的写入口 —— **两个都做会话级记忆**（2026-09-26 船长令，裁定「两级都记，但是不记搜索」）：
+   * 切走再回来仍是"上次看的那一档 ＋ 那一子类"；`fKw`（搜索词）**刻意不记**。
+   */
+  const setFurnaceTab = (v: FurnaceTab): void => {
+    setFurnaceTabState(v)
+    setSessionPick('industry.furnace.tab', v)
+  }
+  const setSub = (v: string): void => {
+    setSubState(v)
+    setSessionPick('industry.furnace.sub', v)
+  }
   /**
    * **精炼炉搜索栏**（船长 2026-09-19：「也给精炼炉和组装机添加搜索栏」；追问后定范围 =
    * **名称 ＋ 产物/材料 ＋ 说明**）：搜资源/残骸/货柜名、它们的说明，以及**产出侧的名字**
@@ -732,7 +759,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
           ⚠ 与第 3 步配套：面板常驻后每次心跳仍会重渲染 ⇒ 靠卡片的实时指纹 `memo` 兜住，否则代价 ×4。
           ⚠ 行为变化（已报船长）：面板内部的筛选/搜索/滚动位置**不再因切换而复位**。 */}
       {seenSec.has('craft') ? (
-        <div className={`ind-pane${sec === 'craft' ? '' : ' is-off'}`}>
+        <IndPane scrollKey="industry.craft.scroll" off={sec !== 'craft'}>
           <ManufacturingPanel
             engine={engine}
             onToast={onToast}
@@ -741,10 +768,10 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
             onGotoWormhole={onGotoWormhole}
             focusBlueprintId={craftFocus}
           />
-        </div>
+        </IndPane>
       ) : null}
       {seenSec.has('shipyard') ? (
-        <div className={`ind-pane${sec === 'shipyard' ? '' : ' is-off'}`}>
+        <IndPane scrollKey="industry.shipyard.scroll" off={sec !== 'shipyard'}>
           <ShipyardPanel
             engine={engine}
             onToast={onToast}
@@ -753,10 +780,10 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
             onGotoWormhole={onGotoWormhole}
             focusBlueprintId={craftFocus}
           />
-        </div>
+        </IndPane>
       ) : null}
       {seenSec.has('shelf') ? (
-        <div className={`ind-pane${sec === 'shelf' ? '' : ' is-off'}`}>
+        <IndPane scrollKey="industry.shelf.scroll" off={sec !== 'shelf'}>
           <BlueprintShelfPanel
             engine={engine}
             onToast={onToast}
@@ -766,10 +793,10 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
               setCraftFocus(bpId)
             }}
           />
-        </div>
+        </IndPane>
       ) : null}
       {seenSec.has('refine') ? (
-      <div className={`ind-pane${sec === 'refine' ? '' : ' is-off'}`}>
+      <IndPane scrollKey="industry.refine.scroll" off={sec !== 'refine'}>
         <Panel
           className="is-fill win-fixed-body"
           title={tr("ui.ShipPage.097")}
@@ -891,8 +918,28 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
           ) : null}
           </div>
         </Panel>
-      </div>
+      </IndPane>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * **工业页的一个子页容器**（2026-09-26）——保活用的 `.ind-pane` ＋ **主列表滚动位置的会话级记忆**。
+ *
+ * 为什么单开这个小件：滚动体在四个面板里形态不一（精炼炉/造船厂是面板内的 `.app-win-body`，
+ * 组装机/蓝图货架是 `Panel` 自己的 `.wui-panel-body`）⇒ 统一由 `useSessionScrollFrom` 从这一层
+ * **自→祖先→后代**反查，页面侧不必逐面板知道细节。
+ *
+ * ⚠ 钩子必须**无条件调用**（Hook 规则）⇒ 这个小件一律渲染 `.ind-pane` 本体（`display: contents`，
+ * 布局与改造前逐像素一致），显示与否只由 `off` 决定类名。
+ */
+function IndPane({ scrollKey, off, children }: { scrollKey: string; off: boolean; children: ReactNode }): JSX.Element {
+  const ref = useRef<HTMLDivElement | null>(null)
+  useSessionScrollFrom(scrollKey, ref)
+  return (
+    <div className={`ind-pane${off ? ' is-off' : ''}`} ref={ref}>
+      {children}
     </div>
   )
 }

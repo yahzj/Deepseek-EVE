@@ -923,6 +923,21 @@ export interface BattleState {
    * 字段**可选、零迁移、有意不入档**（运行态：跨拍即重置，见 `save.ts` 登记表）。
    */
   meVolleyDmg?: Record<string, number>;
+  /**
+   * **损伤管制装置 · 免死状态**（**2026-09-25 船长令**：「当舰船第一次结构低于 1 时，将结构恢复到 1
+   * （避免一次死亡）」＋「触发损管效果时需要消耗一份」＋改判「**1 秒内结构锁定 1**」）。
+   *
+   * 键 = 我方舰 tag（`player` / 僚舰 tag）：
+   * - `lockUntilMs`：**结构锁定 1 点**的到点时刻（**游戏钟**；`≤ b.lastTickGameMs` = 已出窗）；
+   *   窗口内每发入伤都被夹到"结算后结构 ≥ 1"（`combat.applyDcGuard`，逐段 ⇒ 同拍多段破不了）；
+   * - `used`：本场是否已启动过（**每场一次**）。
+   *
+   * ⚠ **必须随档**（`save.ts` 登记表 persist）：本仓有 `hullEscapeFrac` 当年漏登记、
+   * 导致"战中重载 ⇒ 保险凭空失效"的先例。
+   */
+  dc?: Record<string, { lockUntilMs?: number; used?: boolean }>;
+  /** 本场损伤管制装置的启动次数（＝消耗的损管修理组件枚数；战报那一行读它） */
+  dcKitsUsed?: number;
   /** ⚠ **已停用**（2026-09-11 改判：结束条件改'到达目标距离'，不再需要'进射程时刻 + 维持时长'）。
    *  旧档里可能留有该值，新码不再读写——保留字段声明只为不动存档形状。 */
   foeChargeEnteredAtMs?: number;

@@ -880,7 +880,8 @@ const meSpeedRef = useRef(200)
               <div className="app-bts-report-stats is-loss">
                 {tr("ui.BattleScreen.027")}
                 {Object.entries(snap.droneLost)
-                  .map(([artId, n]) => `${droneModelOf(artId)?.name ?? artId} ×${n}`)
+                  // 战报里的机型名同样走兜底（2026-09-26）：漏登记时显示机型 id，便于一眼发现
+                  .map(([artId, n]) => `${droneModelOrFallback(artId).name} ×${n}`)
                   .join(tr("ui.MatterTechTab.017"))}
                 {tr("ui.BattleScreen.026")}
               </div>
@@ -1040,7 +1041,12 @@ const meSpeedRef = useRef(200)
        *    渲染层机体数随之减 1，消失的正是上一帧的末位机体（dronePrevShowRef）。
        */
       if (fx.droneDown) {
-        const model = droneModelOf(fx.artId)
+        /**
+         * ⚠ **兜底取机型**（2026-09-26 修）：原先这里是 `droneModelOf` ＋ `if (model)` ⇒ **漏登记的机型
+         * 「被打下来也不炸」**（连长针哨戒那次报障的三处之一）。现在与机体层同一把尺：查不到就用
+         * 兜底灰机体 ⇒ 坠落/爆炸演出永不静默消失。
+         */
+        const model = droneModelOrFallback(fx.artId)
         if (model) {
           const artId = fx.artId!
           // ⚠ 布局调用统一为**主树新签名**（2026-09-11 舰种体积 + 2026-09-12 斜向菱形：逐舰体积 `foeSizes` /
@@ -1257,7 +1263,7 @@ const meSpeedRef = useRef(200)
       // 2026-09-10 船长批：开火点挂真实炮口——按发射者挂点取 muzzle（多炮口轮换），
       // 无挂点/无原生炮（货矿舰等）→ 传 null 回退舰艏前缘；artW = 发射舰实际显示宽
       // 无人机（src='drone'）例外：弹道自**机群当前悬浮位**起飞（不占母舰炮口轮换）
-      const dm = fx.src === 'drone' ? droneModelOf(fx.artId) : undefined
+      const dm = fx.src === 'drone' ? droneModelOrFallback(fx.artId) : undefined
       const artW = isMeShot ? (myShooterSize ?? meSize) : shooterSize
       let mounts: ReturnType<typeof mountsOf>
       let muzzlePt: Anchor | null = null
@@ -1830,7 +1836,7 @@ const meSpeedRef = useRef(200)
         }}
       />
     ) : null
-    const dm = bv.drone ? droneModelOf(bv.drone) : undefined
+    const dm = bv.drone ? droneModelOrFallback(bv.drone) : undefined
     // 无人机弹道（2026-09-10）：飞行时长按机型系数（哨戒更长、其余提速 DRONE_FLY_MUL）；
     // 蜂鸟/赤鸢/猎鹰 = 可见小曳光点（--fly = 行程 px）；哨戒 = 仿主舰的**细曳光条**（更细，不发小弹点）
     const flyMs = dm ? Math.max(60, Math.round(look.fly * (dm.bolt.flyMul ?? DRONE_FLY_MUL))) : look.fly
@@ -2527,8 +2533,8 @@ const meSpeedRef = useRef(200)
                   **机体镜像朝向**（出海朝我、返航掉头）。本轮起点由弹道层在首次开火时盖章（`foeSortieRef`）。
                   坐标以本层原点（＝我方舰位）为基准——与击落演出 `d.x - lay.me.x` 同源。 */}
               {foeWings.map((w) => {
-                const model = droneModelOf(w.artId)
-                if (!model) return null
+                // 兜底取机型（2026-09-26）：敌侧同理，漏登记不再整队机体消失
+                const model = droneModelOrFallback(w.artId)
                 const show = Math.min(w.alive, DRONE_SHOW_MAX);
                 // 收舱待命段与我方同款：加 `is-deck` ⇒ CSS `display:none`（不再"停在敌舰甲板上朝右不动"）
                 const fst = foeSortieRef.current.get(`${w.tag}:${w.artId}`)
@@ -2577,8 +2583,8 @@ const meSpeedRef = useRef(200)
               })}
               {/* 被点防击落的机体：原位小爆炸 + 碎片下坠（截图位与机体同一坐标系，见 .app-bts-drone-wreck） */}
               {droneDownRef.current.map((d) => {
-                const model = droneModelOf(d.artId)
-                if (!model) return null
+                // 兜底取机型（2026-09-26）：与坠落登记处同一把尺，漏登记也照样画爆炸
+                const model = droneModelOrFallback(d.artId)
                 const age = now - d.born;
                 // ① **原地定住**（船长 2026-09-11：「所有无人机被判定击落时，在返航到一半的途中
                 //    原地停止然后爆炸」）——先让机体**停在被打中的那一刻的位置**约 0.32 秒

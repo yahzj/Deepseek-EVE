@@ -410,6 +410,10 @@ const BATTLE_FIELDS = {
   waveClearAt: { kind: 'persist' },
   autoEscaped: { kind: 'persist' },
   escapeReason: { kind: 'persist' },
+  // **损伤管制装置 · 免死状态**（2026-09-25 船长令）：**必须随档** —— 丢了会让"战中重载"后
+  // 同一个窗口里结构不再受保护、或本场第二次启动（每场一次的口径被绕过），与 `hullEscapeFrac` 同类。
+  dc: { kind: 'persist' },
+  dcKitsUsed: { kind: 'persist' },
   // **我方编队**（虫洞 D 批 · 2026-09-13）：**必须随档** —— 丢了会让战中重载的多舰战斗
   // 退化成单船（僚舰凭空消失、结算按 1 艘算），与 `hullEscapeFrac` 当年漏登记同类后果。
   myFleet: { kind: 'persist' },
@@ -713,6 +717,28 @@ function cleanBattle(raw: unknown): BattleState | null {
       atMs: Math.max(0, numf(r.atMs, 0)),
     }
   })
+  /**
+   * **损伤管制装置免死状态**（2026-09-25 船长令；登记为 persist）——逐舰认：
+   * `lockUntilMs` 取有限正数（游戏钟）、`used` 只认 true；两格都坏的条目丢键，整块空 = undefined。
+   * 老档 / 无此件的场次 ⇒ 整块不写（零迁移）。
+   */
+  const dc = ((): BattleState['dc'] => {
+    const raw = asRaw(b.dc)
+    if (raw === null || typeof raw !== 'object') return undefined
+    const out: NonNullable<BattleState['dc']> = {}
+    for (const [tag, v] of Object.entries(raw)) {
+      if (tag.length === 0) continue
+      const o = asRaw(v)
+      if (o === null || typeof o !== 'object') continue
+      const entry: { lockUntilMs?: number; used?: boolean } = {}
+      const lk = cleanPosNum(o.lockUntilMs)
+      if (lk !== undefined && lk > 0) entry.lockUntilMs = Math.round(lk)
+      if (o.used === true) entry.used = true
+      if (entry.lockUntilMs !== undefined || entry.used === true) out[tag] = entry
+    }
+    return Object.keys(out).length > 0 ? out : undefined
+  })()
+  const dcKitsUsed = cleanPosNum(b.dcKitsUsed)
   const cleaned: Partial<Record<keyof BattleState, unknown>> = {
     startedAtGameMs: Math.max(0, Math.floor(numf(b.startedAtGameMs, 0))),
     ...(foeOverride !== undefined ? { foeOverride } : {}),
@@ -764,6 +790,9 @@ function cleanBattle(raw: unknown): BattleState | null {
     ...(b.escapeReason === 'hull' || b.escapeReason === 'timeout' || b.escapeReason === 'cannot-engage'
       ? { escapeReason: b.escapeReason }
       : {}),
+    // 损伤管制装置免死状态（2026-09-25）：**必须随档**（窗口跨拍；每场一次的口径也不许重载绕过）
+    ...(dc !== undefined ? { dc } : {}),
+    ...(dcKitsUsed !== undefined && dcKitsUsed > 0 ? { dcKitsUsed: Math.floor(dcKitsUsed) } : {}),
     waveIdx:
       typeof b.waveIdx === 'number' && Number.isFinite(b.waveIdx) && b.waveIdx > 0
         ? Math.floor(b.waveIdx)

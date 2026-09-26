@@ -320,6 +320,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.encounters.011": { zh: "⚔ 主动脱离（{p1}·{p2}）：{p3} 收手退出交火（现 装甲 {p4}% / 结构 {p5}%）{p6}。", en: "⚔ Broke away voluntarily ({p1} · {p2}): {p3} disengaged from the fight (armour {p4}% / hull {p5}%){p6}." },
   // 2026-09-25 船长令：入侵母舰的「支援舰船召唤装置」——每 60 秒把当前波已阵亡的一艘敌舰满血复活入场
   "core.combat.001": { zh: "⚔ 敌方支援舰船入场：{p1}（第 {p2} 次支援）", en: "⚔ An enemy support ship has arrived: {p1} (support #{p2})" },
+  /* ── 损伤管制装置（2026-09-25 船长令：结构首次被打空时启动，锁定 1 秒，消耗损管修理组件 ×1）── */
+  "core.combat.002": { zh: "✦ 损伤管制装置启动：结构锁定在 1 点、持续 1 秒（消耗损管修理组件 ×1）。", en: "✦ Damage Control Unit engaged: structure locked at 1 for 1 second (spent 1 Damage Control Repair Kit)." },
+  "core.combat.003": { zh: "⚠ 损伤管制装置未能启动：损管修理组件不足。", en: "⚠ Damage Control Unit could not engage: no Damage Control Repair Kit available." },
+  // ⚠ 战报尾巴那一段（`combat.dcUsageText`）与「船体维修装置」那条同式：报告正文是**拼接串**，
+  //   不走 id 渲染 ⇒ 这里**不再留**废弃 id（原来加过 `core.combat.004`，未接线，已删）。
   // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
   "core.weekend.001": { zh: "✦ 夺回「{p1}」：夺回奖励 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ Reclaimed “{p1}”: the reclaim reward of rare wrecks ×{p2} + {p3} credits is paid out when the invasion ends." },
   "core.weekend.002": { zh: "✦ 全部占领区夺回：「{p1}」是最后一处 —— 夺回奖励与全清额外奖励共 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ All occupied systems reclaimed: “{p1}” was the last one — the reclaim reward and the all-clear bonus (rare wrecks ×{p2} + {p3} credits) are paid out when the invasion ends." },
@@ -1345,6 +1350,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // 伤害飘字里"没打中"的标记（2026-09-24 船长令：伤害数值动画「包括 MISS」——船长指定就显示 MISS，
   // 中英同形，属**语言中立**的战斗术语；要改中文口径只需改这一条 zh）
   "ui.BattleScreen.107": { zh: "MISS", en: "MISS" },
+  /* 损伤管制装置同舰唯一（2026-09-25 船长令「损管只能装备一件」）：装配被拒时的原因 id */
+  "core.equipment.028": { zh: "损伤管制装置每舰只能装一件（已装 {p1}）。", en: "Only one Damage Control Unit may be fitted per ship (already fitted: {p1})." },
   "ui.battleViewCore.001": { zh: "高爆", en: "High explosive" },
   "ui.battleViewCore.002": { zh: "能量", en: "Energy" },
   "ui.CargoPage.001": { zh: "↖ 查看市场", en: "↖ View market" },
@@ -1644,10 +1651,16 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.droneArt.002": { zh: "赤鸢", en: "Redkite" },
   "ui.droneArt.003": { zh: "猎鹰", en: "Falcon" },
   "ui.droneArt.004": { zh: "雷鸥", en: "Thundergull" },
-  "ui.droneArt.005": { zh: "警戒机", en: "Sentry" },
+  "ui.droneArt.005": { zh: "警戒机", en: "Construct Alert" },
   "ui.droneArt.006": { zh: "蜂群机", en: "Swarm" },
   "ui.droneArt.007": { zh: "孢群机", en: "Hiveguard" },
   "ui.droneArt.008": { zh: "未知机型", en: "(unknown model)" },
+  // 三款**族专属无人机**的机型短名（2026-09-26 补登记：此前从未登记 ⇒ 战斗里查不到机型，
+  // 表现为「不开火、不爆炸、只剩灰方块」——船长报障「构件哨戒无人机不会出现在战斗场景中」）。
+  // ⚠ `.005` 英文原为 "Sentry"，与 `.009`（哨戒机档）撞名 ⇒ 一并改 "Construct Alert"（E 族警戒机）。
+  "ui.droneArt.009": { zh: "构件哨戒", en: "Construct Sentry" },
+  "ui.droneArt.010": { zh: "巢卫攻坚", en: "Hiveguard Siege" },
+  "ui.droneArt.011": { zh: "鱿蜂", en: "Squidwasp" },
   "ui.engine.001": { zh: "采矿 ×{p1} 趟", en: "Mining ×{p1} trips" },
   "ui.engine.002": { zh: "打捞 ×{p1} 次", en: "Salvage ×{p1} runs" },
   "ui.engine.003": { zh: "精炼 ×{p1} 批", en: "Refined ×{p1} batches" },

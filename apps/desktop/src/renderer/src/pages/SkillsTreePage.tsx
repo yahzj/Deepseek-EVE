@@ -22,7 +22,7 @@
  * ⚠ 视觉红线：**六边形与连线一律 SVG 线稿**（`viewBox` ＋ 细描边 ＋ `currentColor`），**不用 CSS 拼形状**；
  * 筛选控件走既有家族（一级大类 `.app-tasktab` / 二级技能书 `.app-subtab`）。
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   MAX_SKILL_LEVEL,
   PREREQ_MIN_LEVEL,
@@ -34,6 +34,7 @@ import {
 } from '@whale/core'
 import type { SkillDef, SkillPrereqGap } from '@whale/core'
 import { Panel } from '@whale/ui'
+import { setSessionPick, sessionPick, useSessionScroll } from '../ui/sessionView'
 import { QueueBlock, SkillDescText } from './skillShared'
 /** 图标/列表切换：与手册·物品页·货仓页**同一实现**（`ui/itemView.tsx` 是全仓唯一那套） */
 import { ItemViewBar, useItemView } from '../ui/itemView'
@@ -83,9 +84,34 @@ export function SkillsTreePage({
   const [skillView, setSkillView] = useItemView()
   /** 「一并加入前置」的回话（补了几项）——就地显示，不另起 toast 机制 */
   const [prereqNote, setPrereqNote] = useState('')
-  /** 导航：先选大类，再选技能书（`''` = 该大类全部技能书） */
-  const [groupTab, setGroupTab] = useState<string>(groups[0] ?? '')
-  const [branchTab, setBranchTab] = useState<string>('')
+  /**
+   * **导航：先选大类，再选技能书（`''` = 该大类全部技能书）** —— 两级都做**会话级记忆**
+   * （2026-09-26 船长令「记住玩家上次选择的子页面」＋裁定「**两级都记，但是不记搜索**」）：
+   * 记忆只在本进程内有效（见 `ui/sessionView.ts`），刷新/重开即回到默认。
+   */
+  const [groupTab, setGroupTabState] = useState<string>(() => {
+    const v = sessionPick('skills.group')
+    return v !== null && groups.includes(v) ? v : groups[0] ?? ''
+  })
+  const [branchTab, setBranchTabState] = useState<string>(() => sessionPick('skills.branch') ?? '')
+  const setGroupTab = (v: string): void => {
+    setGroupTabState(v)
+    setSessionPick('skills.group', v)
+  }
+  const setBranchTab = (v: string): void => {
+    setBranchTabState(v)
+    setSessionPick('skills.branch', v)
+  }
+  /**
+   * **滚动位置 · 会话级记忆**（只做"主列表那一条"）：
+   * · 目录 Panel 的 `.wui-panel-body` 就是本页主列表的滚动体（`overflow:auto` 在共用件里）
+   *   ⇒ 走 `Panel` 新开的 `bodyRef` 口拿到它（不传 bodyRef 的面板逐像素不变）；
+   * · 图标视图（树画布）自己那支 `.app-skilltree-canvas` 在页面里，直接接。
+   */
+  const catalogScrollRef = useRef<HTMLDivElement | null>(null)
+  useSessionScroll('skills.catalog.scroll', catalogScrollRef)
+  const canvasScrollRef = useRef<HTMLDivElement | null>(null)
+  useSessionScroll('skills.canvas.scroll', canvasScrollRef, skillView === 'grid')
   /**
    * **外部定位落位**（见 `focusGroup` 的说明）：只认 `seq` 变化 ⇒ 同一次请求不重复覆盖玩家自己的选择；
    * 组名不在本档技能表里（改名/老数据）时**什么都不做**，不把页面切成空白。
@@ -93,6 +119,10 @@ export function SkillsTreePage({
   useEffect(() => {
     if (!focusGroup) return
     if (!groups.includes(focusGroup.group)) return
+    /**
+     * ⚠ 这里**有意**清掉技能书与搜索（否则上回留下的筛选会把目标技能藏起来）——按 2026-09-26 的
+     * 会话记忆口径，这次清空**一并写进记忆**：跳转后离开再回来，看到的是玩家最后真正看到的那个视图。
+     */
     setGroupTab(focusGroup.group)
     setBranchTab('')
     setQuery('')
@@ -190,6 +220,7 @@ export function SkillsTreePage({
       <Panel
         className="is-fill"
         title={tr('ui.SkillTree.001')}
+        bodyRef={catalogScrollRef}
         right={
           <span className="app-head-search-wrap">
             <input
@@ -274,7 +305,7 @@ export function SkillsTreePage({
         </div>
 
         {/* 树画布：每本技能书一张小图（六边形蜂窝 ＋ 真前置连线）；窄窗横滑、画布自身滚 */}
-        <div className="app-skilltree-canvas">
+        <div className="app-skilltree-canvas" ref={canvasScrollRef}>
           <div className="app-skilltree-bookrow">
             {layouts.map((lay) => {
               const meta = shown.find((b) => b.branch === lay.branch)

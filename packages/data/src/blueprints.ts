@@ -62,6 +62,9 @@ export const BLUEPRINT_PRICE_OVERRIDES: Readonly<Record<string, { price: number;
   'bp-part-keel': { price: 10_000_000, reason: '2026-09-20 船长定：高级零件蓝图书价 1,000 万（不套产物 ×2.5 档位系数）' },
   'bp-part-fire-control': { price: 10_000_000, reason: '2026-09-20 船长定：高级零件蓝图书价 1,000 万（不套产物 ×2.5 档位系数）' },
   'bp-part-grav-comp': { price: 10_000_000, reason: '2026-09-20 船长定：高级零件蓝图书价 1,000 万（不套产物 ×2.5 档位系数）' },
+  // 损管修理组件蓝图（**2026-09-26 船长定**：「损管修理组件……价值提高到 50 万每件，**蓝图基础 100 万**」）
+  // ⇒ 不套"整批产物价 ×2.2"那条组件旧式，按船长给的 100 万落账。
+  'bp-repairkit-dc': { price: 1_000_000, reason: '2026-09-26 船长定：损管修理组件蓝图基础 100 万（不套组件旧式 ×2.2）' },
 }
 
 /**
@@ -385,6 +388,75 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildCostIsk: 1_200,
     priceIsk: 138500,
     description: '军用修理组件图纸，高密度纳米修复剂封装，3 个/批，基础 10 HP。',
+  },
+  /* ═══ 损管修理组件蓝图（2026-09-25：损伤管制装置启动时消耗的那一种组件）═══
+   * 船长 2026-09-26 定：「**损管修理组件应该消耗更高级的资源，价值提高到 50 万每件，蓝图基础 100 万**」
+   * ⇒ 材料改**清一色中高阶矿物**（重钨合金 / 星髓晶 / 同位聚晶 / 冥铁合金，不再用银纹超金属那类底层料），
+   * 料价 = **825,000 =（50 万 ×3 件）×0.55**（与民用/军用修理组件同一把料价锚）；
+   * 书价 = 船长给的 **100 万**（不走"整批 ×2.2"那条旧式 ⇒ 已登记 `BLUEPRINT_PRICE_OVERRIDES`）。 */
+  {
+    id: 'bp-repairkit-dc',
+    name: '损管修理组件蓝图',
+    itemId: 'repairkit-dc',
+    outputUnits: 3,
+    materials: [
+      { itemId: 'min-darkiron', count: 500 }, // 780/单位 ⇒ 390,000
+      { itemId: 'min-starcore', count: 1_000 }, // 245/单位 ⇒ 245,000
+      { itemId: 'min-nocxium', count: 1_500 }, // 90/单位 ⇒ 135,000
+      { itemId: 'min-isotope', count: 1_000 }, // 55/单位 ⇒ 55,000
+    ], // 合计 825,000 = 1,650,000（市场价 55 万 ×3 件）×0.50（料/价带内）
+    buildSeconds: 40,
+    buildCostIsk: 1_200,
+    priceIsk: 1_000_000,
+    description: '损管修理组件图纸，应急损管修复剂封装，3 个/批。',
+  },
+  /* ═══ 损伤管制装置 MK1~MK3 蓝图（2026-09-25 船长令）═══
+   * 材料 = 以 `bp-armor-kin-3`（低槽稀有 · 产物 194 万 · 材料≈产物价×0.40）为参照**按价格比例缩放**
+   * ⇒ 料/价比例与参照同档（守 `content:check` 的「蓝图价格口径」与料价带）；图纸价 = 产物价 ×(MK1 2 / MK2 2.5 / MK3 3)。 */
+  {
+    id: 'bp-dc-1',
+    name: '损伤管制装置 MK1 蓝图',
+    moduleId: 'mod-dc-1',
+    materials: [
+      { itemId: 'min-tritanium', count: 14_670 },
+      { itemId: 'min-pyerite', count: 4_666 },
+      { itemId: 'min-mexallon', count: 2_796 },
+      { itemId: 'min-nocxium', count: 553 },
+    ],
+    buildSeconds: 600,
+    buildCostIsk: 0,
+    priceIsk: 1_240_000,
+    description: '损管系统图纸，结构抗性衬层与应急锁定阀组，船只首次结构见底时保住一口气。',
+  },
+  {
+    id: 'bp-dc-2',
+    name: '损伤管制装置 MK2 蓝图',
+    moduleId: 'mod-dc-2',
+    materials: [
+      { itemId: 'min-tritanium', count: 66_247 },
+      { itemId: 'min-pyerite', count: 21_072 },
+      { itemId: 'min-mexallon', count: 12_629 },
+      { itemId: 'min-nocxium', count: 2_497 },
+    ],
+    buildSeconds: 1_400,
+    buildCostIsk: 0,
+    priceIsk: 7_000_000,
+    description: '损管系统图纸，加厚抗性衬层与双路应急阀组。',
+  },
+  {
+    id: 'bp-dc-3',
+    name: '损伤管制装置 MK3 蓝图',
+    moduleId: 'mod-dc-3',
+    materials: [
+      { itemId: 'min-tritanium', count: 224_768 },
+      { itemId: 'min-pyerite', count: 71_495 },
+      { itemId: 'min-mexallon', count: 42_848 },
+      { itemId: 'min-nocxium', count: 8_471 },
+    ],
+    buildSeconds: 3_600,
+    buildCostIsk: 0,
+    priceIsk: 28_500_000,
+    description: '损管系统图纸，要塞级抗性衬层与全舰应急锁定阀组。',
   },
   {
     id: 'bp-laser-1',

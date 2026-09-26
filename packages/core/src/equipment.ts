@@ -468,6 +468,22 @@ export function fitModule(
   const shipId = opts?.shipId ?? state.shipId
   const fitted = state.fleet[shipId]?.fitted
   if (!fitted) return { ok: false, error: '舰队里找不到该舰船，无法装配。', errorId: 'core.equipment.003' }
+  /**
+   * **同舰唯一**（**2026-09-25 船长令**：「**损管只能装备一件**」）——V18.1「取消同类唯一」之后
+   * 第一次重新引入的单件约束：同舰**至多一件**带 `unique` 标记的件（本线 = 损伤管制装置 MK1~MK3 互斥）。
+   * ⚠ 判据按**标记**（不看型号）：将来再有别的件标 `unique`，它们同属这一组。
+   */
+  if (def.unique === true) {
+    const already = allFittedModules(fitted, ctx).find((m) => m.unique === true)
+    if (already) {
+      return {
+        ok: false,
+        error: `损伤管制装置每舰只能装一件（已装 ${already.name}）。`,
+        errorId: 'core.equipment.028',
+        errorParams: { p1: already.name },
+      }
+    }
+  }
   const rack = opts?.rack ?? rackOf(def)
   // V18 韧性：位数组长度按船布局期望补齐（repair 链负责持久对齐；此处兜底运行态）
   const bays = ensureRackBays(fitted, rack, wantedBaysOf(state, ctx, shipId, rack))

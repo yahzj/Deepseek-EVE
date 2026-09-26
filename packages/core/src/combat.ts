@@ -197,6 +197,18 @@ export interface UnitSpec {
    *  `armed`（武装）/ `armored`（装甲）算战斗。 */
   shipRole?: ShipRole
   /**
+   * **我方舰 id**（`createPlayerSpec` 恒写）——损伤管制装置启动时要"从本舰货仓取组件"
+   * （「从母港仓库取用」开着时改走仓库），故需要它。
+   */
+  shipId?: string
+  /**
+   * **损伤管制装置**（**2026-09-25 船长令**：「当舰船第一次结构低于 1 时，将结构恢复到 1（避免一次死亡）」
+   * ＋「触发损管效果时需要消耗一份」＋改判「**1 秒内结构锁定 1**」）。
+   *
+   * 值 = 启动时消耗的**组件物品 id**（`'repairkit-dc'`）；不写 = 本舰没装该件 ⇒ 免死逻辑整条不生效。
+   */
+  hullSaveKit?: string
+  /**
    * **我方「后勤舰」标记**（船长 2026-09-16：「**后勤舰添加特性，维修装置可以修理血量最少的队友**」）：
    * `createPlayerSpec` 按 `ShipDef.subClass === '后勤舰'` 写入（现在只有「亡军后勤舰」一艘）。
    * 语义 = 本舰的**船体维修装置脉冲改为修队友**（三层剩余比例最低者，含自己）；不写 ⇒ 只修自己（旧口径）。
@@ -726,6 +738,95 @@ export function cappedFoeDamage(
   // ⚠ **必须无条件记账**（哪怕这一发全额放行）：额度是"本拍累计"口径，漏记就等于给下一发多开口子
   b.meVolleyDmg = { ...(b.meVolleyDmg ?? {}), [tag]: used + out }
   return out
+}
+
+/* ═══════════ 损伤管制装置 · 免死（2026-09-25 船长令） ═══════════ */
+
+/** **结构锁定窗口**（1 秒；船长改判「1 秒内结构锁定 1」）——`BattleState.dc[tag].lockUntilMs` 的时长 */
+export const DC_LOCK_MS = 1_000
+
+/**
+ * **损伤管制装置 · 免死判定**（船长口径：**1 秒内结构锁定 1** · **每场一次** · **启动消耗 1 枚损管修理组件**）。
+ *
+ * 位置 = **敌方 → 我方的唯一入伤口**（三处结算点：敌机群 / 敌光束 / 敌炮台，都先过 `cappedFoeDamage`
+ * 那道 80% 齐射保险，再过本函数）——这是"逐段夹伤"能成立的关键：
+ * - **窗口内**（`lockUntilMs > 本拍时刻`）：把本发原始伤害夹到"结算后结构 ≥ 1"⇒ **同拍/同秒多段都破不了**；
+ * - **窗口外且未用过**：若本发会导致结构 ≤ 0 ⇒ ①扣 1 枚组件（没组件 ⇒ 不启动，仅记一条日志）
+ *   ②开窗 1 秒 ③本场标记已用 ④把本发夹到结构 = 1 ⑤日志 ＋ 战斗提示；
+ * - **已用过且出窗** ⇒ 原样放行（照常被打死 —— 丁案的既定后果）。
+ *
+ * `applyRaw` = 调用方自己的施加函数（单系 `applyDamage` / 混伤 `applyFoeShot`）；
+ * 缺省按单系 `applyDamage(hp, spec.resists, raw, type)` 估。二分反解（`applyDamage` 对伤害单调）。
+ */
+export function applyDcGuard(
+  state: GameState,
+  b: import('./state').BattleState,
+  tag: string,
+  spec: UnitSpec,
+  hpNow: Hp3,
+  raw: number,
+  type: DamageType | undefined,
+  /** 调用方真正的施加函数（混伤路径传它自己的；缺省 = 单系 applyDamage） */
+  applyRaw?: (r: number) => Hp3,
+): number {
+  if (raw <= 0 || spec.hullSaveKit === undefined) return raw
+  const apply = (r: number): Hp3 => (applyRaw ? applyRaw(r) : applyDamage(hpNow, spec.resists, r, type ?? 'kinetic').hp)
+  const st = b.dc?.[tag]
+  const inWindow = st?.lockUntilMs !== undefined && st.lockUntilMs > b.lastTickGameMs
+  const lethal = apply(raw).h <= 0
+  if (inWindow) {
+    // 窗口内：结构不许掉到 1 以下（本发可能直接致死 ⇒ 夹住）
+    return lethal || apply(raw).h < 1 ? clampRawLeavingHull(apply, raw) : raw
+  }
+  if (!lethal) return raw
+  if (st?.used === true) return raw
+  /** 启动：扣 1 枚损管修理组件（仓库优先/关掉开关则走本舰货仓，与修理组件同一口径） */
+  const kitId = spec.hullSaveKit
+  const shipId = spec.shipId ?? state.shipId
+  const took = state.resupplyFromWarehouse !== false
+    ? countWare(state, kitId) > 0 && (removeWare(state, kitId, 1), true)
+    : removeCargoOfShip(state, shipId, kitId, 1) > 0
+  if (!took) {
+    addLog(state, 'warn', '损伤管制装置未能启动：损管修理组件不足。', 'core.combat.003')
+    return raw
+  }
+  b.dcKitsUsed = Math.max(0, Math.floor(b.dcKitsUsed ?? 0)) + 1
+  b.dc = { ...(b.dc ?? {}), [tag]: { lockUntilMs: b.lastTickGameMs + DC_LOCK_MS, used: true } }
+  addLog(state, 'info', '✦ 损伤管制装置启动：结构锁定在 1 点、持续 1 秒（消耗损管修理组件 ×1）。', 'core.combat.002')
+  pushBattleNotice(b, '损伤管制装置启动：结构锁定 1')
+  return clampRawLeavingHull(apply, raw)
+}
+
+/**
+ * **把原始伤害夹到"结算后结构 ≥ 1"的最大值**（二分；`apply` 对伤害单调不减）。
+ * 结构本来就 < 1（异常/已锁死）⇒ 返回 0（不再放行任何伤害）。
+ */
+function clampRawLeavingHull(apply: (r: number) => Hp3, raw: number): number {
+  if (apply(0).h < 1) return 0
+  if (apply(raw).h >= 1) return raw
+  let lo = 0
+  let hi = raw
+  for (let i = 0; i < 40; i += 1) {
+    const mid = (lo + hi) / 2
+    if (apply(mid).h >= 1) lo = mid
+    else hi = mid
+  }
+  return lo
+}
+
+/**
+ * **战后总结里的"损伤管制装置"一行**（2026-09-25 船长令：战报单列一条）。
+ * 本场一次没启动 = `''`（战报不添尾巴），否则形如 `损伤管制装置启动 ×1（消耗损管修理组件 ×1）`。
+ * 与 `repairUsageText` 同哲学：四处战报（远征胜/败、遭遇、AI 副船）共用。
+ */
+export function dcUsageText(
+  battle: { dcKitsUsed?: number } | null | undefined,
+  ctx: SimContext,
+): string {
+  const n = Math.max(0, Math.floor(battle?.dcKitsUsed ?? 0))
+  if (n <= 0) return ''
+  const kitName = ctx.items.get('repairkit-dc')?.name ?? '损管修理组件'
+  return `损伤管制装置启动 ×${n.toLocaleString('zh-CN')}（消耗${kitName} ×${n.toLocaleString('zh-CN')}）`
 }
 
 /**
@@ -1393,6 +1494,11 @@ export function createPlayerSpec(
     }
   }
   const resists = { shield: shieldRes, armor: armorRes, hull: hullRes }
+  /**
+   * **损伤管制装置**（2026-09-25 船长令）：本舰是否装了带 `hullSaveKit` 的件；装了就取它的组件 id。
+   * 同舰唯一（`unique`）由装配层保证 ⇒ 这里取第一件即可。
+   */
+  const dcKit = allFittedModules(fitted, ctx).find((m) => m.hullSaveKit !== undefined)?.hullSaveKit
 
   // V18.1 支援件合成：
   // - 伤害稳定器（按系加算）+ 射速计算机（装填缩短加算）只进炮台条目；
@@ -1736,6 +1842,9 @@ export function createPlayerSpec(
     // 2026-09-16 船长：后勤舰的维修装置改修队友（**数据字段驱动**，见 `ShipDef.repairPulseTargetsFleet`；
     // 同日追批「并添加到船体特性属性中」⇒ 判据从 `subClass === '后勤舰'` 改为读字段，界面「船体特性」栏同源）
     ...(ship.repairPulseTargetsFleet === true ? { logistics: true } : {}),
+    /** 损伤管制装置（2026-09-25 船长令）：本舰装没装、启动时吃哪种组件；`shipId` 供"从本舰货仓取组件"用 */
+    shipId: ship.id,
+    ...(dcKit !== undefined ? { hullSaveKit: dcKit } : {}),
     hp,
     resists,
     // 本舰无人机结构层加成（模块求和；2026-09-13 船长：鱿蜂结构层「提高无人机 80% 的结构」）
@@ -7290,8 +7399,17 @@ export function droneLostCount(b: import('./state').BattleState): number {
 const PD_PRIORITY_BY_ART: Record<string, number> = {
   'drone-sentry': 0,
   'drone-heavy': 1,
+  /**
+   * **族专属机同档位**（2026-09-26 补）：近防炮"优先打哨戒与攻坚"的口径按**档位**生效，
+   * 不该因为某型是专属机就掉进"其余等权"（`pdPriorityOf` 的 `role` 兜底只覆盖敌方机型）。
+   * 三型出处 = `drone-wh-e-sentry`（E 构件哨戒）· `drone-wh-c-heavy`（C 巢卫攻坚）·
+   * `drone-exile-bee`（G 鱿蜂 · 侦察档 ⇒ 与其他侦察机等权，**不列**）。
+   */
+  'drone-wh-e-sentry': 0,
+  'drone-wh-c-heavy': 1,
 }
-function pdPriorityOf(artId: string | undefined | null, role?: string): number {
+/** 机型 → 近防炮选靶优先级（见上表；导出供 `pd-rules` 契约逐型断言，与 `pdShotOf` 同款"为可测导出"） */
+export function pdPriorityOf(artId: string | undefined | null, role?: string): number {
   const byArt = artId ? PD_PRIORITY_BY_ART[artId] : undefined
   if (byArt !== undefined) return byArt
   if (role === 'sentry') return 0
@@ -8093,13 +8211,18 @@ function stepBattle(
         if (dHit) {
           b.stats.foeHits += 1
           const dBefore = dtgt.rt.hp.s + dtgt.rt.hp.a + dtgt.rt.hp.h
-          dtgt.rt.hp = applyFoeShot(
+          /** 损伤管制装置：先过 80% 齐射保险，再过免死夹伤（窗口内逐段夹 ⇒ 同拍多段破不了） */
+          const dRaw = applyDcGuard(
+            state,
+            b,
+            dtgt.spec.tag,
+            dtgt.spec,
             dtgt.rt.hp,
-            dtgt.spec.resists,
-            dw,
             cappedFoeDamage(b, dtgt.spec.tag, dtgt.spec, dw.shotDmg ?? 0),
             dType,
+            (r) => applyFoeShot(dtgt.rt.hp, dtgt.spec.resists, dw, r, dType),
           )
+          dtgt.rt.hp = applyFoeShot(dtgt.rt.hp, dtgt.spec.resists, dw, dRaw, dType)
           dDealt = Math.max(0, dBefore - (dtgt.rt.hp.s + dtgt.rt.hp.a + dtgt.rt.hp.h))
         }
         pushBattleFx(b, {
@@ -8150,7 +8273,23 @@ function stepBattle(
       b.stats.foeHits += 1
       // 混伤（2026-09-10 船长）：按逐系单发各自结算（各系吃自己的层位克制与层抗）
       const beamBefore = gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h
-      gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, dmg), fType)
+      gtgt.rt.hp = applyFoeShot(
+        gtgt.rt.hp,
+        gtgt.spec.resists,
+        w,
+        /* 损伤管制装置：光束这一路同样过免死夹伤（窗口内逐段夹 ⇒ 同拍多段破不了） */
+        applyDcGuard(
+          state,
+          b,
+          gtgt.spec.tag,
+          gtgt.spec,
+          gtgt.rt.hp,
+          cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, dmg),
+          fType,
+          (r) => applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, r, fType),
+        ),
+        fType,
+      )
       // 本发实收（2026-09-24 船长令：飘字读数；光束必中 ⇒ 恒有值）
       const beamDealt = Math.max(0, beamBefore - (gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h))
       pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: true, ...(beamDealt > 0 ? { dmg: beamDealt } : {}) })
@@ -8169,7 +8308,23 @@ function stepBattle(
     if (fHit) {
       b.stats.foeHits += 1
       const gunBefore = gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h
-      gtgt.rt.hp = applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, shotDmg), fType)
+      gtgt.rt.hp = applyFoeShot(
+        gtgt.rt.hp,
+        gtgt.spec.resists,
+        w,
+        /* 损伤管制装置：炮台这一路同样过免死夹伤（窗口内逐段夹 ⇒ 同拍多段破不了） */
+        applyDcGuard(
+          state,
+          b,
+          gtgt.spec.tag,
+          gtgt.spec,
+          gtgt.rt.hp,
+          cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, shotDmg),
+          fType,
+          (r) => applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, r, fType),
+        ),
+        fType,
+      )
       gunDealt = Math.max(0, gunBefore - (gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h))
       // 冲锋解除（船长 2026-09-14）：**自身炮台命中我方** ⇒ 立刻解除冲锋并进入冷却（掷命中，只有真命中才算）
       releaseFoeChargeOnHit(b, f.tag, bal, f.foeChargeCooldownMs)
