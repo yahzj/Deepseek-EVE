@@ -1033,6 +1033,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.labelsText.062": { zh: "T{p1} 巡洋舰蓝图", en: "T{p1} Cruiser Blueprint" },
   "ui.labelsText.063": { zh: "T{p1} 战列舰蓝图", en: "T{p1} Battleship Blueprint" },
   "ui.labelsText.064": { zh: "T{p1} 旗舰蓝图", en: "T{p1} Flagship Blueprint" },
+  /* ── 2026-09-26 补（船长报障「部分遗漏未本地化的文本（舰船类型，高中低槽位数量的文本）」）──
+     同一族病根：护盾力场**槽位名**与窝点**档名**原先在渲染层直读 core 的纯中文表
+     （`SLOT_LABELS['shield-field']` / `LAIR_TIER_LABELS`）⇒ 英文界面下漏中文。
+     现登记 id，由 `ui/labelsText.ts` 的 `slotText` / `lairTierText` 取词。 */
+  "ui.labelsText.065": { zh: "护盾力场", en: "Shield Field" },
+  "ui.labelsText.066": { zh: "外围", en: "Periphery" },
+  "ui.labelsText.067": { zh: "核心", en: "Core" },
+  "ui.labelsText.068": { zh: "深层", en: "Deep" },
   /**
    * **推进器周期后缀的本地化版**（2026-09-22 · 手册本地化批）：
    * core `thrusterCycleFullText()` 是中文整句，被 `ui/shipInfo.tsx` 直接拼进模块说明里 ⇒

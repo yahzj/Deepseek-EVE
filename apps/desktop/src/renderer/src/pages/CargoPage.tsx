@@ -9,7 +9,6 @@
 import { useEffect, useState } from 'react'
 import {
   ITEM_KIND_ORDER,
-  SLOT_LABELS,
   cargoCapacityM3Of,
   cargoOfShip,
   cargoUsedM3Of,
@@ -17,7 +16,6 @@ import {
   haulingOccupiedM3,
   courierOccupiedM3,
   isAtHomeLike,
-  itemKindLabel,
   marketGoodOf,
   shipBusyLabel,
   shipDisplayName,
@@ -33,7 +31,7 @@ import { RedeemFragmentButton } from '../ui/fragmentRedeem'
 import type { ItemNavProps } from './ItemsPage'
 import type { PageProps } from './common'
 import { useL10n, cmdText } from '../i18n/locale'
-import { kindText } from '../ui/labelsText'
+import { kindText, slotText } from '../ui/labelsText'
 import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 import { tr } from '../i18n/locale'
@@ -356,7 +354,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                       <RowGlyph glyph={def.slot} /> {def.name}
                     </span>
                     <span className="app-inv-count">
-                      ×{units.toLocaleString('zh-CN')}{tr("ui.CargoPage.047")} {m3(units)}）· {SLOT_LABELS[def.slot] ?? def.slot} · CPU{' '}
+                      ×{units.toLocaleString('zh-CN')}{tr("ui.CargoPage.047")} {m3(units)}）· {slotText(def.slot)} · CPU{' '}
                       {def.cpuUse}
                     </span>
                   </div>
@@ -505,7 +503,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                   <div className="app-itempick-name">{pickModDef.name}</div>
                   <div className="app-dim">
                     ×{pickModUnits.toLocaleString('zh-CN')}{tr("ui.CargoPage.047")} {m3(pickModUnits)}）·{' '}
-                    {SLOT_LABELS[pickModDef.slot] ?? pickModDef.slot} · CPU {pickModDef.cpuUse}
+                    {slotText(pickModDef.slot)} · CPU {pickModDef.cpuUse}
                   </div>
                 </div>
               </div>

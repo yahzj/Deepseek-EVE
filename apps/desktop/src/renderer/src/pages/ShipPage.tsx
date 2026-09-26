@@ -18,7 +18,6 @@ import {
   isExplored,
   marketQuote,
   shipCategoryKeyOf,
-  shipCategoryLabelOf,
   missingMaterials,
   oreAvailable,
   ownsBlueprint,

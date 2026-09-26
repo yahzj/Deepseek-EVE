@@ -32,8 +32,6 @@ import {
   effectiveCpu, // 保留：船体预算（不含协处理器扩容）在别处仍可能用到；预算总额见 cpuBudgetOf
   fittedCpuUsed,
   fleetDefOf,
-  RACK_LABELS,
-  rackLabel,
   rackOf,
   sameKindCount,
 
@@ -44,7 +42,6 @@ import {
   FIT_PRESET_NAME_MAX,
   shipDisplayName,
   shipSlotsOf,
-  SLOT_LABELS,
   stackingOf,
   stackWeight,
   thrusterCycleFullText,
@@ -62,6 +59,9 @@ import { hoverTipProps } from '../ui/Tooltip'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { ShipSprite } from '../ui/ShipSprite'
+// ⚠ 槽类名（高/中/低槽）走本地化单点 `rackText`（2026-09-26 船长报障：英文界面下槽位名漏中文）——
+// core 的 `RACK_LABELS` / `rackLabel` 是纯中文表，**渲染层不得直读**（见 `ui/labelsText.ts` 头注）
+import { rackText, slotText } from '../ui/labelsText'
 import type { PageProps } from './common'
 import { tr, cmdText } from '../i18n/locale'
 
@@ -533,7 +533,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
       return (
         m.name.toLowerCase().includes(pickQuery) ||
         m.id.toLowerCase().includes(pickQuery) ||
-        (SLOT_LABELS[m.slot] ?? '').toLowerCase().includes(pickQuery) ||
+        slotText(m.slot).toLowerCase().includes(pickQuery) ||
         (m.description ?? '').toLowerCase().includes(pickQuery)
       )
     }
@@ -555,7 +555,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
       cnt.set(m.slot, (cnt.get(m.slot) ?? 0) + 1)
     }
     return [...cnt.entries()]
-      .map(([slot, count]) => ({ slot, label: (SLOT_LABELS as Record<string, string>)[slot] ?? slot, count }))
+      .map(([slot, count]) => ({ slot, label: slotText(slot), count }))
       .sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'))
   }
   /** 试算"该位卸旧件→装候选"后的同源合成快照（只读模拟：浅拷贝 fitted 链，不触碰真实状态） */
@@ -627,7 +627,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     const had = (fitted?.[rack]?.[index] ?? null) !== null
     const r = engine.swapModuleTo(m.id, rack, index, effectiveTarget)
     if (!r.ok) onToast(cmdText(r) || tr('ui.FitPage.171'), true)
-    else onToast(tr("ui.FitPage.136", { p1: m.name, p2: had ? tr("ui.FitPage.022") : tr("ui.FitPage.023"), p3: rackLabel(rack), p4: index + 1 }))
+    else onToast(tr("ui.FitPage.136", { p1: m.name, p2: had ? tr("ui.FitPage.022") : tr("ui.FitPage.023"), p3: rackText(rack), p4: index + 1 }))
     setPickBay(null)
   }
 
@@ -899,7 +899,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
             return (
               <div key={rack} className="app-fit-rack">
                 <div className="app-fit-rack-title">
-                  {RACK_LABELS[rack]} <span className="app-dim">（{RACK_FAMILIES[rack]}）</span>
+                  {rackText(rack)} <span className="app-dim">（{RACK_FAMILIES[rack]}）</span>
                   <span className="app-dim">　{filledCount}/{total} {tr("ui.FitPage.051")}</span>
                 </div>
                 <div className="app-fit-icongrid">
@@ -1060,7 +1060,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                     <div className="app-fit-preset-detail">
                       {(['high', 'mid', 'low'] as const).map((rack) => (
                         <div className="app-fit-preset-detail-line" key={rack}>
-                          <span className="app-fit-preset-detail-rack">{RACK_LABELS[rack]}</span>
+                          <span className="app-fit-preset-detail-rack">{rackText(rack)}</span>
                           {detail.slots
                             .filter((s) => s.rack === rack)
                             .map((s) => (
@@ -1128,7 +1128,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
           <div className="app-fit-modal" onClick={(e) => e.stopPropagation()}>
             <div className="app-fit-modal-head">
               <span>
-                {tr('ui.FitPage.164', { rack: RACK_LABELS[pickBay.rack], n: pickBay.index + 1 })}
+                {tr('ui.FitPage.164', { rack: rackText(pickBay.rack), n: pickBay.index + 1 })}
                 {fitted?.[pickBay.rack]?.[pickBay.index] ? tr("ui.FitPage.078") : tr("ui.FitPage.079")}
                 <HintIcon tip={tr("ui.FitPage.080")} />
               </span>
