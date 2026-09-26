@@ -575,10 +575,13 @@ export function unfitAt(
   return true
 }
 
-/** 某船无人机舱总容量（船体 droneBayM3 + 已装甲板扩展 bonus） */
-function droneBayCapOf(state: GameState, ctx: SimContext, shipId: string): number {
-  const ship = fleetDefOf(state, ctx, shipId)
-  const fitted = state.fleet[shipId]?.fitted
+/**
+ * **无人机舱总容量** = 船体 `droneBayM3` ＋ 已装甲板扩展（`droneBayBonusM3`）之和。
+ *
+ * 2026-09-26 从两处私有实现（本文件的 `droneBayCapOf` 与装配页的内联求和）合并为**唯一单点**——
+ * 舰船悬停卡（舰队页「当前属性」）与装配页主表都用它，避免两处口径漂移。
+ */
+export function droneBayTotalM3(ship: { droneBayM3?: number } | undefined, fitted: FittedModules | undefined, ctx: SimContext): number {
   let cap = ship?.droneBayM3 ?? 0
   if (fitted) {
     for (const id of allFittedIds(fitted)) {
@@ -587,6 +590,11 @@ function droneBayCapOf(state: GameState, ctx: SimContext, shipId: string): numbe
     }
   }
   return cap
+}
+
+/** 某船无人机舱总容量（船体 droneBayM3 + 已装甲板扩展 bonus） */
+function droneBayCapOf(state: GameState, ctx: SimContext, shipId: string): number {
+  return droneBayTotalM3(fleetDefOf(state, ctx, shipId), state.fleet[shipId]?.fitted, ctx)
 }
 
 /**

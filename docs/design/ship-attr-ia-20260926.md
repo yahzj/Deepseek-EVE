@@ -16,6 +16,19 @@
 | 「（含装备）」这类括号清理改哪些地方？ | **全站同 id 一起清** |
 | 间接列里「跃迁充能（随动力）」的括号要不要也去掉？ | **去掉 →「跃迁充能」** |
 
+### 追加两条令（同日第二、三条）
+
+> （第二条）图鉴内按照基础属性算。
+> （第三条）我的舰队页面中，玩家鼠标悬停舰船时，应该显示舰船的当前属性，而不是基础属性。
+
+口径分派（按此两条）：
+
+| 界面 | 悬停/档案口径 |
+|---|---|
+| 图鉴（手册·舰船图鉴档案窗、舰船蓝图产物卡片） | **基础属性**（`ShipHover` 不传 `current`） |
+| 市场 / 船坞（图纸产出对照） | **基础属性**（同上） |
+| 舰队页（在役舰卡 + 舰船仓库卡） | **当前属性**（`FleetShipHover` → `createPlayerSpec` 装后合成） |
+
 ## 二、改前实测（真机读数 · 1280×860 · 注入测试档）
 
 装配页左栏（`.app-fit-col-left`）两张表：
@@ -45,26 +58,36 @@
 
 ## 四、涉及文件
 
-- `apps/desktop/src/renderer/src/ui/shipInfo.tsx`：`shipInfoLines` 动力行 → 机动速度行；`shipIndirectLines` 加动力、删最大速度；新增导出 `FIT_MAIN_HIDDEN_KEYS` 与 `COMBAT_BASE_KEYS`（后者自 `FitPage` 挪入，供体检工具同源引用）
-- `apps/desktop/src/renderer/src/pages/FitPage.tsx`：主表过滤 ＋ 机动速度行上移
-- `apps/desktop/src/renderer/src/panels/Handbook.tsx`：图鉴档案 / 蓝图产物去重输出
-- `apps/desktop/src/renderer/src/pages/ShipPage.tsx`：舰船卡规格行改走 `ui.Handbook.012`
+- `apps/desktop/src/renderer/src/ui/shipInfo.tsx`：
+  - `shipInfoLines` 动力行 → 机动速度行（无装配上下文取船表基础值）；`shipIndirectLines` 加动力、删最大速度
+  - 新增导出 `FIT_MAIN_HIDDEN_KEYS` / `COMBAT_BASE_KEYS`（后者自 `FitPage` 挪入，供体检工具同源引用）
+  - 新增 `fittedSpeedLine` / `fittedDroneBayLine`（装后行单点，装配页与悬停卡共用）
+  - 新增 `shipCurrentLines` / `shipCurrentLayout`（**当前属性卡**拼装：基础行逐条被装后行顶替 ＋ 追加间接属性）
+  - `ShipHover` 新增可选 `current`（传 = 报当前属性、徽章同步；不传 = 基础属性）
+- `apps/desktop/src/renderer/src/pages/FitPage.tsx`：主表过滤 ＋ 机动速度行上移 ＋ 机舱合计走 core 单点
+- `apps/desktop/src/renderer/src/pages/ShipPage.tsx`：新增 `FleetShipHover`（在役卡 ＋ 舰船仓库卡都走它）；
+  舰船卡规格行改走 `ui.Handbook.012`
+- `apps/desktop/src/renderer/src/panels/Handbook.tsx`：图鉴档案 / 蓝图产物去重输出（不传 current = 基础属性）
+- `packages/core/src/equipment.ts` ＋ `index.ts`：新增 `droneBayTotalM3`（机舱总量唯一单点，替换两处私有求和）
 - `packages/data/src/l10n/table.ts`：改 zh/en 11 条、删死键 5 条（`ui.shipInfo.009` · `ui.ShipPage.022` · `ui.Handbook.321/322`）
-- `tools/ui-attr-check.ts`（新）：属性表「同名两行」体检，挂进 `npm run ui:rot-check`
+- `tools/ui-attr-check.ts`（新）：属性表**四处**拼装口径体检（装配页主表 / 图鉴档案 / 蓝图产物 / 舰队页悬停卡），
+  挂进 `npm run ui:rot-check`；悬停卡那一档除"不重名"外还钉住**行数守恒**与"顶替键必须真生效"
 - `docs/development-conventions.md` §验证闭环 ＋ 本文件对应的 changelog 条目
 
 ## 五、验证
 
-- typecheck 四包 0 错 · core **2513/2513（230 文件）** · `content:check` ✅ · `l10n:check` ✅ · `ui:rot-check`（含新体检）✅ · `ui:theme-check` ✅ · web 构建 ✅
-- 真机复读（无头 Chrome CDP 9223 · 预览 4173，改后重建产物）：主表 11 行 / 间接列 7 行如第三节；主表 `scrollHeight == clientHeight`、整页 `scrollHeight == innerHeight`（无溢出、一级页不滚）；英文界面为 `Maneuver speed / Power / Warp charge / Drone bay (incl. deck expansion)`
-- 护栏反向验证：把装配页的隐藏过滤改成不过滤 ⇒ 43 艘全部报「机动速度」重复并 exit 1；装回即绿
+- typecheck 四包 0 错 · core **2518/2518（231 文件）** · `content:check` ✅ · `l10n:check` ✅ · `ui:rot-check`（含新体检）✅ · `ui:theme-check` ✅ · web ＋ desktop 构建 ✅
+- **装配页真机复读**（无头 Chrome CDP 9223 · 预览 4173，改后重建产物）：主表 11 行 / 间接列 7 行如第三节；主表 `scrollHeight == clientHeight`、整页 `scrollHeight == innerHeight`（无溢出、一级页不滚）；英文界面为 `Maneuver speed / Power / Warp charge / Drone bay (incl. deck expansion)`
+- **舰队页真机复读（逐卡 15 张）**：每张卡的悬停值对应**本舰**装后数据 —— 长尾鲨级（驾驶船）护盾 624 / 装甲 159.84 / 结构 189 / 命中加成 +17% / 回避率 34% / 机动速度 340 m/s / 机舱 50 m³，与装配页同一行同一数；幽影侦察舰 机动速度 479 m/s（加力推进点火期 1,407 m/s；60 秒点火 / 60 秒冷却，开场即点火）；玄武级 94 → 188 m/s；五艘矿王装甲 127.44（＝ 基础 118 × 1.08）；无机舱的船不再显示「无人机舱 = 无」
+- **护栏反向验证**：① 把「机动速度」从隐藏名单去掉 ⇒ 43 艘全部报「装配页主表重复：机动速度」并 exit 1；② 装回即绿
 
 ## 六、待裁决 / 已知取舍
 
-1. **「机动速度」在两个口径下数字不同**：装配页 = 装后口径（340，含航行技能与重甲机动代价）；图鉴档案 / 悬停卡 = 船体基础值（272，无装配上下文）。两者同名不同数属有意（同一读数在不同场景的口径差），若船长要求图鉴也标装后口径，需要把 `spec` 传进图鉴侧。
+1. **「机动速度」两个口径并存是有意的**（已按船长第二/三条令分派）：装配页与舰队页悬停卡 = 装后口径（340，含航行技能 / 重甲机动代价 / 推进器点火期）；图鉴档案 = 船体基础值（272）。同一行名在两类界面上数字不同，属"基础属性 vs 当前属性"的口径差。
 2. **船体基础速度不再出现在装配页**：按裁定「间接列删掉最大速度」，装配页只剩一个速度数字；若想同时看到基础值，可另开一行「基础速度」。
 3. 装备「（含装备）」写法本次只按裁定清理了被点名的属性标签；`ui.Handbook.142`、`ui.FitPage.148` 等说明段里的括号属规格说明，未动。
 4. 手册图鉴档案表不再单列 `无人机舱 = 无`（此前对无机舱的船会占一行显示"无"）。
+5. 舰队悬停卡里 `装甲 = 156.6`（带小数）——`resistsText`/`fmt` 对徽章走四舍五入、对表格走原值；若要整数，可把表格侧也走 `Math.round`（与徽章一致）。
 
 ## 七、归档去向（待船长验收后）
 
