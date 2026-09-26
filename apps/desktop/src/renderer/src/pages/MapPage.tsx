@@ -746,13 +746,6 @@ function SalvageTab({
    */
   const salvageTargets = me.active && me.galaxyId ? engine.salvageTargetsAt(me.galaxyId) : []
 
-  const phaseText = (): string => {
-    if (!me.active) return tr("ui.MapPage.097", { p1: shipDisplayName(state, engine.ctx, state.shipId) })
-    const gName = me.galaxyId ? engine.ctx.galaxies.get(me.galaxyId)?.name : ''
-    if (me.phase === 'outbound') return tr("ui.MapPage.098", { p1: shipDisplayName(state, engine.ctx, state.shipId) ?? "", gName: gName ?? "" })
-    if (me.phase === 'returning') return tr("ui.MapPage.099", { p1: shipDisplayName(state, engine.ctx, state.shipId), p2: Math.round(me.tripM3 * 100) / 100 })
-    return tr("ui.MapPage.100", { p1: shipDisplayName(state, engine.ctx, state.shipId) ?? "", gName: gName ?? "", p3: Math.round(me.tripM3 * 100) / 100 })
-  }
 
   function startAt(galaxyId: string): void {
     const r = engine.startSalvageOpAt(galaxyId)
@@ -786,18 +779,12 @@ function SalvageTab({
       hint={
         <HintIcon tip={tr("ui.MapPage.051")} />
       }
-      right={<span className="app-dim">{tr("ui.MapPage.052")}</span>}
     >
-      <div className="app-dim app-inv-empty">{phaseText()}</div>
-
-      {/*
-       * **打捞对象 = 自动判定**（**2026-09-26 船长令**：「**分组后不要再让玩家手动选择打捞对象了，
-       * 这有些太过繁琐。改为自动判断：优先打捞入侵残骸，没有入侵残骸则是根据两种残骸的数量比同步打捞。**」）
-       * ⇒ 这里只留一行**口径说明**（下拉入口已撤）；每组各自的存量读数在下面每张卡上。
-       */}
-      <div className="app-dim app-inv-empty">{tr('ui.MapPage.122')}</div>
-
       {/**
+       * ⚠ **2026-09-26 船长令**：「**残骸打捞页面的说明文本太多了。只留第三行打捞需要打捞器：
+       * 先在「装配」页给驾驶船的高槽装一台（MK1/2/3）和装配按钮。其余删除**」
+       * ⇒ 本页**只剩这一行说明**（原"当前未在打捞 / 打捞对象自动判定"两行已删）；
+       * 打捞对象由 core 自动判定（优先入侵残骸 ⇒ 否则按各组存量比同步捞），读数在各张卡上。
        * **打捞需要打捞器 ⇒ 一行提示 ＋ 去「装配」的入口**（**2026-09-20 船长令**：
        * 「打捞需要打捞器的提示，添加让玩家去装配的提示」）。
        * 判据 = 驾驶船当前**一台打捞器都没装**（`salvagerCyclesOf` 空表，与 core 出发门槛同一把尺）；
