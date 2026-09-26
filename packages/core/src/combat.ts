@@ -206,6 +206,14 @@ export interface UnitSpec {
    */
   shipId?: string
   /**
+   * **被选中权重**（**2026-09-26 船长令**）：靶标插件 ×2 / 隐匿插件 ×0.4，由 `createPlayerSpec`
+   * 按插件累乘写入（多件相乘，与"不吃递减"一致）。**缺省 / 1 = 与改动前逐位等价**。
+   *
+   * 语义 = **敌方挑目标时这一条被抽中的相对权重**（船长明确「**增加被选中的权重**」⇒
+   * 不改命中率、不改回避，只改选靶）。
+   */
+  targetWeightMul?: number
+  /**
    * **损伤管制装置**（**2026-09-25 船长令**：「当舰船第一次结构低于 1 时，将结构恢复到 1（避免一次死亡）」
    * ＋「触发损管效果时需要消耗一份」＋改判「**1 秒内结构锁定 1**」）。
    *
@@ -1542,8 +1550,8 @@ export function createPlayerSpec(
    * 本段**单独累加**。累加口径 = 船长裁决「**③不吃**」：**多件全额、不进 `stackingOf` 的收敛池**
    * （加算/乘算直接叠加，与"命中/速度走 EVE 曲线"那几支无关）。
    *
-   * 已接的效果：三层血固定值 · 速度固定值加减 · 单发伤害 · 命中 · 射程 · CPU 预算。
-   * ⚠ **选靶权重**（靶标 ×2 / 隐匿 ×0.4）在 `pickMyUnitTarget` 那一侧消费，不在本段。
+   * 已接的效果：三层血固定值 · 速度固定值加减 · 单发伤害 · 命中 · 射程 · CPU 预算 ·
+   * **选靶权重**（靶标 ×2 / 隐匿 ×0.4，消费在 `pickMyUnitTarget`）。
    */
   const plugDefs = plugModulesOf(state, ctx, shipId)
   let plugShieldAdd = 0
@@ -1554,6 +1562,8 @@ export function createPlayerSpec(
   let plugDmg = 0
   let plugHitMul = 1
   let plugRangeCut = 0
+  /** **被选中权重**（船长：靶标插件 ×2 / 隐匿插件 ×0.4）——多件相乘、缺省 1 */
+  let plugTargetWeight = 1
   for (const p of plugDefs) {
     plugShieldAdd += p.shieldHpAdd ?? 0
     plugArmorAdd += p.armorHpAdd ?? 0
@@ -1562,6 +1572,7 @@ export function createPlayerSpec(
     plugSpeedPen += p.speedPenaltyMps ?? 0
     plugDmg += p.damageBonusPct ?? 0
     if (p.hitBonusPct !== undefined) plugHitMul *= 1 + p.hitBonusPct
+    if (p.targetWeightMul !== undefined) plugTargetWeight *= p.targetWeightMul
     // 射程插件用 `rangeCutPct` 的**负值**表达加成 ⇒ 这里取最小（最负）的那一件，与"多件只取最重"同形
     plugRangeCut = Math.min(plugRangeCut, p.rangeCutPct ?? 0)
   }
@@ -1899,6 +1910,12 @@ export function createPlayerSpec(
     // 单船路径不读这两项 ⇒ 只多两个字段，零行为变化。
     shipTier: ship.tier,
     shipRole: ship.role,
+    /**
+     * **被选中权重**（**2026-09-26 船长令**：靶标插件「**增加被选中的权重**」×2 · 隐匿插件
+     * 「**减少被攻击的权重**」×0.4）。消费点 = `pickMyUnitTarget` 的加权抽取；
+     * 缺省 1 ⇒ 没装插件时与改动前**逐位等价**（见该函数的加权说明）。
+     */
+    ...(plugTargetWeight !== 1 ? { targetWeightMul: plugTargetWeight } : {}),
     // 2026-09-16 船长：后勤舰的维修装置改修队友（**数据字段驱动**，见 `ShipDef.repairPulseTargetsFleet`；
     // 同日追批「并添加到船体特性属性中」⇒ 判据从 `subClass === '后勤舰'` 改为读字段，界面「船体特性」栏同源）
     ...(ship.repairPulseTargetsFleet === true ? { logistics: true } : {}),
@@ -8582,7 +8599,8 @@ export function isNonCombatShipRole(role: ShipRole | undefined): boolean {
 
 /**
  * **敌方选靶**（虫洞 D 批 · 船长 2026-09-13 定的五种模式；见 `FoeTargetingMode`）：
- * 从**存活我方单位**里挑一个目标。并列（同输出 / 同档 / 多艘非战斗船）一律**等权随机**。
+ * 从**存活我方单位**里挑一个目标。并列（同输出 / 同档 / 多艘非战斗船）一律**按被选中权重抽取**
+ * （缺省权重都是 1 ⇒ 等权随机，也就是改动前的口径）。
  *
  * ⚠⚠ **只剩一艘我方单位时直接返回、一次随机数都不消费** —— 这条是单船路径零漂移的命门：
  * 既有 27 张悬赏卡 / 低安遭遇 / AI 副船的战斗里，敌方开火从不掷"选靶骰"，本函数在那些
@@ -8619,8 +8637,30 @@ export function pickMyUnitTarget(
   const alive = aliveMyUnits(b, myUnits).filter((u) => isMyUnitTargetable(b, u.tag))
   if (alive.length === 0) return null
   if (alive.length === 1) return alive[0]!
-  /** 并列集合里等权随机（**恰好消费一次** `nextInt`） */
-  const randomOf = (cands: UnitSpec[]): UnitSpec => cands[nextInt(state.rng, cands.length)]!
+  /**
+   * **按"被选中权重"加权抽取 · 恰好消费一次 `nextRandom`**。
+   *
+   * ⚠⚠ **零漂移命门（2026-09-26 插件批的等价性证明）**：全部权重都等于 1 时，
+   * `roll = u × n`（`u = nextRandom`）与原先的 `nextInt(rng, n) = ⌊u × n⌋` **恒等**——
+   * 整数 `n` 下 `⌊u×n⌋` 就是"落在第 ⌊u×n⌋ 段"，而 `u×n` 落在第 k 段 ⇔ `⌊u×n⌋ = k`
+   * （仅边界 `u×n = k` 精确相等时两者都取 k）。**随机数消费次数也一致**（都是恰好一次）。
+   * ⇒ 没装靶标/隐匿插件的全部既有场次（含 27 张悬赏卡与标定读数）**逐位不变**。
+   */
+  const weightOf = (u: UnitSpec): number => {
+    const w = u.targetWeightMul
+    return w !== undefined && Number.isFinite(w) && w > 0 ? w : 1
+  }
+  const randomOf = (cands: UnitSpec[]): UnitSpec => {
+    let total = 0
+    for (const u of cands) total += weightOf(u)
+    let roll = nextRandom(state.rng) * total
+    for (const u of cands) {
+      roll -= weightOf(u)
+      if (roll < 0) return u
+    }
+    // 浮点兜底（理论上到不了这里）：取最后一条，与 `nextInt` 的越界行为同款
+    return cands[cands.length - 1]!
+  }
   /**
    * **倾向概率的掷骰点**（2026-09-14 船长）：**每发开火前各掷一次**，没掷中 ⇒ 这一发乱了。
    * 位置刻意放在两个早退**之后** —— 单船 / 只剩一艘时恒返回、不掷骰（洞外零漂移的命门）。

@@ -40,6 +40,8 @@ import {
 } from '../src/plugs'
 import { HULL_RECOVERY_MAX, hullRecoveryChanceOf, noteShipWreck, reinforceChanceOfFitted, shipWreckFor, trySalvagePlayerWreckOf } from '../src/shipWrecks'
 import { makeTestCtx } from './helpers'
+import { createBattleState, createPlayerSpec, pickMyUnitTarget } from '../src/combat'
+import type { UnitSpec } from '../src/combat'
 import type { GameState } from '../src/state'
 
 const ctx = buildSimContext()
@@ -64,6 +66,24 @@ function clean(state: GameState, uid: string): void {
   ship.durability = 1
   ship.armorPct = 1
   delete ship.customName
+}
+
+/** 选靶用例：连抽 `rounds` 次，数各被抽中几次（两条单位的 tag 必须不同） */
+function tallyTargets(
+  state: GameState,
+  a: UnitSpec,
+  b: UnitSpec,
+  rounds = 600,
+): { aHits: number; bHits: number } {
+  const battle = createBattleState(a, [], 0, 1_000, [b])
+  let aHits = 0
+  let bHits = 0
+  for (let i = 0; i < rounds; i++) {
+    const picked = pickMyUnitTarget(state, battle, [a, b], 'random')
+    if (picked?.tag === a.tag) aHits += 1
+    if (picked?.tag === b.tag) bHits += 1
+  }
+  return { aHits, bHits }
 }
 
 describe('装入：扣库 · 进 plugs · 不占高/中/低槽', () => {
@@ -243,6 +263,73 @@ describe('残骸：插件快照 → 整批换黑匣', () => {
       createdAtWallMs: 0,
     })
     expect(hullRecoveryChanceOf(rec)).toBe(0.3)
+  })
+})
+
+describe('选靶权重：靶标 ×2 / 隐匿 ×0.4（只改选靶，不改命中与回避）', () => {
+  it('两艘同型船：装靶标的那艘被抽中的比例明显更高，装隐匿的明显更低', () => {
+    /**
+     * 口径（船长）：「**增加被选中的权重**」×2 · 「**减少被攻击的权重**」×0.4 —— **不是"更容易被打中"**
+     * ⇒ 只动 `pickMyUnitTarget` 的抽取，不动命中率 / 回避率（`evasion` 断言钉住这一点）。
+     * 两艘**同型 T1 `sandcat`**（同档、同定位、同输出、同基础属性）⇒ 唯一变量就是插件权重；
+     * 权重 2 : 0.4 = 5 : 1 ⇒ 靶标那艘理论上约 83%。
+     */
+    const state = world()
+    // 第二艘同型船（uid 与船型分开：`uidDefId` 按 `#` 前缀推船型，故 uid 直接用船型名即可）
+    state.fleet['sandcat#2'] = {
+      defId: T1,
+      durability: 1,
+      armorPct: 1,
+      cargo: {},
+      fitted: { high: [], mid: [], low: [] },
+    }
+    addModule(state, 'plug-target-beacon', 1)
+    addModule(state, 'plug-concealment', 1)
+    expect(installPlug(state, ctx, 'plug-target-beacon', T1).ok).toBe(true)
+    expect(installPlug(state, ctx, 'plug-concealment', 'sandcat#2').ok).toBe(true)
+
+    const beacon = createPlayerSpec(state, ctx, T1)!
+    const conceal = createPlayerSpec(state, ctx, 'sandcat#2')!
+    beacon.tag = 'beacon'
+    conceal.tag = 'conceal'
+    expect(beacon.targetWeightMul, '靶标插件 ×2').toBe(2)
+    expect(conceal.targetWeightMul, '隐匿插件 ×0.4').toBeCloseTo(0.4, 10)
+    expect(beacon.evasion, '两艘同型船的基础回避一致').toBe(conceal.evasion)
+
+    // **插件不改回避**：给同一艘船装上隐匿插件前后对比（否则"同型船基础回避一致"证明不了这条）
+    const state2 = world()
+    const before = createPlayerSpec(state2, ctx, T1)!
+    addModule(state2, 'plug-concealment', 1)
+    expect(installPlug(state2, ctx, 'plug-concealment', T1).ok).toBe(true)
+    const after = createPlayerSpec(state2, ctx, T1)!
+    expect(after.targetWeightMul).toBeCloseTo(0.4, 10)
+    expect(after.evasion, '隐匿插件改的是选靶权重，不是回避率').toBe(before.evasion)
+
+    const { aHits, bHits } = tallyTargets(state, beacon, conceal)
+    expect(aHits + bHits).toBe(600)
+    expect(aHits / (aHits + bHits), '靶标那一艘应占明显多数').toBeGreaterThan(0.7)
+    console.log(`  [读数] 靶标 ${aHits} : 隐匿 ${bHits}（权重 2 : 0.4 = 5 : 1 ⇒ 理论 83.3%）`)
+  })
+
+  it('对照组：两艘都没插件 ⇒ 各约一半（等权随机没被本批改写）', () => {
+    const state = world(3)
+    state.fleet['sandcat#2'] = {
+      defId: T1,
+      durability: 1,
+      armorPct: 1,
+      cargo: {},
+      fitted: { high: [], mid: [], low: [] },
+    }
+    const a = createPlayerSpec(state, ctx, T1)!
+    const b = createPlayerSpec(state, ctx, 'sandcat#2')!
+    a.tag = 'a'
+    b.tag = 'b'
+    expect(a.targetWeightMul, '没插件 = 不写字段').toBeUndefined()
+    expect(b.targetWeightMul).toBeUndefined()
+    const { aHits, bHits } = tallyTargets(state, a, b)
+    expect(aHits + bHits).toBe(600)
+    expect(Math.abs(aHits - 300), '等权 ⇒ 各约一半').toBeLessThan(90)
+    console.log(`  [读数] 无插件对照：${aHits} : ${bHits}`)
   })
 })
 
