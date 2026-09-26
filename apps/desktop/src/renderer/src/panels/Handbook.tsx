@@ -150,9 +150,12 @@ function FactionDetailPanel({ engine, family }: { engine: GameEngine; family: st
             {card.enemies.map((e) => {
               const ship = e.seen ? ships.get(e.id) : undefined
               const line = e.seen ? foeBriefLinesOfShip(ship) : null
+              // 2026-09-26：`mounts` 改成**逐件结构**（悬停要一件一行、装置名同色染）
+              // ⇒ 势力图鉴这条单行读数自己拼回字符串（装置名：效果，件间用顿号）
+              const mountText = line?.mounts?.map((m) => (m.name !== '' ? `${m.name}：${m.effect}` : m.effect)).join('、')
               const body =
                 line !== null
-                  ? [line.hull, ...line.bits, ...(line.mounts !== undefined ? [line.mounts] : [])]
+                  ? [line.hull, ...line.bits, ...(mountText !== undefined && mountText !== '' ? [mountText] : [])]
                       .filter((x) => x !== '')
                       .join(' · ')
                   : ''

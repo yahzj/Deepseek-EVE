@@ -195,13 +195,24 @@ function FoeBriefTip({ lines }: { lines: FoeBriefLine[] }): ReactNode {
                 {i < l.bits.length - 1 || l.mounts !== undefined ? '，' : '。'}
               </span>
             ))}
-            {l.mounts !== undefined ? (
-              <span style={{ display: 'block' }}>
-                <b style={{ color: UI_TONES.matBattle }}>{mountLabelText()}</b>
-                {'：'}
-                {l.mounts}。
+            {/**
+             * **特殊装置：一件一行 · 「特殊装置：」＋装置名同色**（**2026-09-26 船长令**：
+             * 「**每个特殊装置都要如上文中那样单独起一行，并且连带挂载件名称一样染色**」）。
+             * 所以这里**逐件 map 出一个块级行**（不是把多件拼成一句）；染的是
+             * `UI_TONES.matBattle`（与舰名那条敌族红是不同 token），效果说明保持正文色。
+             * `m.name === ''`（舰级字段那两条自愈/压制没有具名挂载件）⇒ 只写「特殊装置：效果」。
+             */}
+            {l.mounts?.map((m, mi) => (
+              <span key={mi} style={{ display: 'block' }}>
+                <b style={{ color: UI_TONES.matBattle }}>
+                  {mountLabelText()}
+                  {'：'}
+                  {m.name}
+                </b>
+                {m.name !== '' ? '：' : ''}
+                {m.effect}。
               </span>
-            ) : null}
+            ))}
           </span>
         </span>
       ))}

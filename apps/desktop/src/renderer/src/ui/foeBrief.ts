@@ -102,6 +102,21 @@ export function mountEffectTextByName(name: string): string | null {
   return id === undefined ? null : mountEffectText(id)
 }
 
+/**
+ * **一件特殊装置**（装置名 ＋ 效果明文）。
+ *
+ * ⚠ **一件一行**（**2026-09-26 船长令**：「**每个特殊装置都要如上文中那样单独起一行，并且连带
+ * 挂载件名称一样染色**」）——所以这里**不给拼好的字符串**：界面要**逐件成行**，而且
+ * 「特殊装置：」＋**装置名**要**同色**（`UI_TONES.matBattle`），只有效果说明保持正文色。
+ * `name` 可能为空串（舰级字段那两条自愈/压制没有具名挂载件）⇒ 界面按"只有效果"渲染。
+ */
+export interface FoeMountLine {
+  /** 装置名（`FOE_MOUNTS[id].name`；空串 = 该条没有具名装置） */
+  name: string
+  /** 该件的效果明文（触发条件 ＋ 效果，见 `mountEffectText`） */
+  effect: string
+}
+
 /** 一句话的**分段**（界面要染色就得拿结构，不能拿拼好的字符串） */
 export interface FoeBriefLine {
   /** 舰级 id（去重/取色的键） */
@@ -114,18 +129,19 @@ export interface FoeBriefLine {
   count: number
   /** 其余部分：战术 / 武器 / 主副伤 / 舰载机 / 精英档 */
   bits: string[]
-  /** 特殊装置那一节（**单独一段**：界面只染「特殊装置」这四个字）；无则缺省 */
-  mounts?: string
+  /** 特殊装置那一节（**逐件一行**；界面把「特殊装置：」＋装置名同色染）；无则缺省 */
+  mounts?: FoeMountLine[]
 }
 
 /**
  * 其余部分：战术 / 武器 / 主副伤 / 舰载机 / 精英档。
- * ⚠ **"特殊装置"那一节不在这里**，写进 `out.mounts` 单独一段 —— 界面要**只染「特殊装置」四个字**
- * （2026-09-26 船长令：「特殊装置颜色不要和舰船名称颜色一样。建议就特殊装置这四个字染色」），
- * 所以必须让它拿得到这一段，而不是混在一串 bits 里。
+ * ⚠ **"特殊装置"那一节不在这里**，写进 `out.mounts` —— 界面要**逐件一行**，且
+ * 「特殊装置：」＋**装置名**要**同色**（2026-09-26 船长令两连：
+ * 「特殊装置颜色不要和舰船名称颜色一样。建议就特殊装置这四个字染色」→
+ * 「每个特殊装置都要如上文中那样单独起一行，并且连带挂载件名称一样染色」），
+ * 所以必须让它拿得到**结构**，而不是混在一串 bits 里、也不是拼好的字符串。
  */
-function bitsOf(ship: FoeShipDef, out: { mounts?: string }): string[] {
-  const en = isEn()
+function bitsOf(ship: FoeShipDef, out: { mounts?: FoeMountLine[] }): string[] {
   const bits: string[] = []
   if (ship.tactic === 'brawl') bits.push(tr('ui.foeIntro.010'))
   else if (ship.tactic === 'orbit') bits.push(tr('ui.foeIntro.011'))
@@ -143,27 +159,17 @@ function bitsOf(ship: FoeShipDef, out: { mounts?: string }): string[] {
   if (drones.length > 0) {
     bits.push(tr('ui.foeIntro.040', { p1: String(drones.reduce((n, d) => n + (d.count ?? 1), 0)) }))
   }
-  const mech: string[] = []
+  const mech: FoeMountLine[] = []
   for (const id of ship.mounts ?? []) {
     const eff = mountEffectText(id)
     if (!eff) continue
-    /**
-     * **一件一段：先装置名、再效果**（**2026-09-26 船长报障**：「**墨潮干扰舰的特殊装置描述断句有问题，
-     * 射程压制并不是捕获网的效果**」）。
-     *
-     * 真因 = 原先把各件效果**光秃秃地顿号串起来**（`mech.join('、')`）⇒ 挂两件的舰
-     * （墨潮干扰舰 = 劫掠捕获网 ＋ 墨潮干扰阵列）读出来像一句话两半，玩家会把后半句
-     * 「射程 −50%」当成捕获网的效果。装置名（`FOE_MOUNTS[id].name`）**本来就随数据在**，
-     * 这里补上即成"装置名：效果"的成对读法，归属不再有歧义。
-     * ⚠ 悬停里那一节仍由界面**只染「特殊装置」四个字**（`ui.foeIntro.060` ＋ `mountLabelText()`），
-     * 装置名保持正文色。
-     */
-    const name = FOE_MOUNTS[id as keyof typeof FOE_MOUNTS]?.name
-    mech.push(name ? `${name}：${eff}` : eff)
+    const name = FOE_MOUNTS[id as keyof typeof FOE_MOUNTS]?.name ?? ''
+    mech.push({ name, effect: eff })
   }
-  if ((ship.repairPct ?? 0) > 0) mech.push(tr('ui.foeIntro.050'))
-  if ((ship.foeRangeDebuffPct ?? 0) > 0) mech.push(tr('ui.foeIntro.051'))
-  if (mech.length > 0) out.mounts = mech.join(en ? '; ' : '；')
+  // 舰级字段兜底（没有具名挂载件的那两条：自愈 / 压制）——名字留空，界面按"只有效果"渲染
+  if ((ship.repairPct ?? 0) > 0) mech.push({ name: '', effect: tr('ui.foeIntro.050') })
+  if ((ship.foeRangeDebuffPct ?? 0) > 0) mech.push({ name: '', effect: tr('ui.foeIntro.051') })
+  if (mech.length > 0) out.mounts = mech
   if (ship.elite === true) bits.push(tr('ui.foeIntro.070'))
   return bits
 }
@@ -191,7 +197,7 @@ export function briefShipsOf(anomaly: AnomalyDef | null | undefined): FoeBriefLi
 }
 
 function toLine(ship: FoeShipDef, count: number): FoeBriefLine {
-  const out: { mounts?: string } = {}
+  const out: { mounts?: FoeMountLine[] } = {}
   const bits = bitsOf(ship, out)
   return {
     id: ship.id,
@@ -259,7 +265,12 @@ export function foeBriefsOfCard(anomaly: AnomalyDef | null | undefined): string[
 export function lineText(l: FoeBriefLine): string {
   const en = isEn()
   const head = en ? `${l.name} (${l.hull})` : `${l.name}（${l.hull}）`
-  return l.bits.length > 0 ? `${head}${en ? ': ' : '：'}${l.bits.join(en ? ', ' : '，')}${en ? '.' : '。'}` : `${head}${en ? '.' : '。'}`
+  const body = [...l.bits]
+  // 特殊装置并进同一行（字符串版没有"逐件成行"这回事）：装置名：效果，件间顿号
+  if (l.mounts !== undefined && l.mounts.length > 0) {
+    body.push(l.mounts.map((m) => (m.name !== '' ? `${m.name}${en ? ': ' : '：'}${m.effect}` : m.effect)).join(en ? ', ' : '、'))
+  }
+  return body.length > 0 ? `${head}${en ? ': ' : '：'}${body.join(en ? ', ' : '，')}${en ? '.' : '。'}` : `${head}${en ? '.' : '。'}`
 }
 
 /** 取该卡里"最该介绍的那条舰"——单条用途（如卡面内嵌一行） */
