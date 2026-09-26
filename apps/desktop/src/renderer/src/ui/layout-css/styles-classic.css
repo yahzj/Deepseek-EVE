@@ -12349,6 +12349,56 @@ html[data-locale='en'] body {
 
 }
 
+/* 舰船插件槽（2026-09-26 船长令：只读区，无卸下、无替换；样式参照上方 .app-fit-ammotier 与 .app-fit-slot-icon） */
+
+.app-fit-plugslots {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: var(--wui-sp-6);
+
+  margin-top: var(--wui-sp-8);
+
+  padding-top: var(--wui-sp-8);
+
+  padding-bottom: var(--wui-sp-8);
+
+  border-top: 1px dashed rgb(var(--wui-map-minor) / 0.35);
+
+}
+
+/* 只读槽位：与可点槽位同一套几何，只去掉指针与悬停反馈（这里点不动，也不该看着像能点） */
+
+.app-fit-slot-icon.is-readonly {
+
+  cursor: default;
+
+}
+
+/* 卡内短效果行（插件卡的第三行；与名称区同宽，超长截断，不撑高卡片） */
+
+.app-fit-slot-icon-sub {
+
+  max-width: 100%;
+
+  font-size: var(--wui-fs-2xsc);
+
+  line-height: 1.25;
+
+  color: var(--wui-text-dim, rgb(var(--wui-text-bright) / 0.7));
+
+  text-align: center;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+}
+
 
 /* ══════════ 二、旧版外壳覆盖（取合并前 main 原文 + 旧版限定）══════════ */
 

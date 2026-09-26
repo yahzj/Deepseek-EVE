@@ -30,6 +30,7 @@ import { fleetDefOf, shipDisplayName } from './instances'
 import { addModule, allFittedModules } from './equipment'
 import { restoreShipFromWreck } from './shipyard'
 import { hasSalvageableShipWreck, trySalvagePlayerWreckOf } from './shipWrecks'
+import { PLUG_BLACKBOX_ITEM_ID } from './plugs'
 import { nextRandom, pickWeighted } from './rng'
 import {
   pullRareWreck,
@@ -535,14 +536,39 @@ export function pullOneWreck(
       })
       return { itemId: salvage.itemId, mul: 1, volumeM3: 0 }
     }
+    if (salvage.kind === 'plugs') {
+      /**
+       * **插件换黑匣**（**2026-09-26 船长令**：「**玩家回收按插件数量直接回收成黑匣**」）。
+       *
+       * 一件事拆成两句日志（与下面的"打捞 + 整船回收"同款）：黑匣入账一条、打捞读数一条；
+       * 两句都归 `warn`（与同族两条回收日志同档，见 `core.salvaging.030/031`）。
+       */
+      addWare(state, PLUG_BLACKBOX_ITEM_ID, salvage.blackBoxes)
+      const name = ctx.items.get(PLUG_BLACKBOX_ITEM_ID)?.name ?? PLUG_BLACKBOX_ITEM_ID
+      addLog(state, 'warn', `舰船残骸里的插件换回了 ${name} ×${salvage.blackBoxes}。`, 'core.salvaging.032', {
+        p1: name,
+        p2: salvage.blackBoxes,
+      })
+      addLog(state, 'warn', `打捞舰船残骸：捞回 ${name} ×${salvage.blackBoxes}。`, 'core.salvaging.030', {
+        p1: name,
+        p2: salvage.blackBoxes,
+      })
+      return { itemId: PLUG_BLACKBOX_ITEM_ID, mul: 1, volumeM3: 0 }
+    }
     if (salvage.kind === 'ship') {
       /**
        * **整船回收**（加固结构插件命中，接口见 `shipWrecks.hullRecoveryChanceOf`）：
        * 船**回母港**、按残骸时刻打折入队（结构 ×0.3 / 装甲 ×0.5）、**不自动成为驾驶船**；
        * 货舱货物不回（船长 2026-09-26：「除此以外没有其他资源」）。
+       * ⚠ **插件跟着船回去**（不可拆的固定件）——只有没捞回整船时才换黑匣。
        */
       if (salvage.defId !== undefined) {
-        restoreShipFromWreck(state, { defId: salvage.defId, durability: salvage.durability, armorPct: salvage.armorPct })
+        restoreShipFromWreck(state, {
+          defId: salvage.defId,
+          durability: salvage.durability,
+          armorPct: salvage.armorPct,
+          ...(salvage.plugs !== undefined ? { plugs: salvage.plugs } : {}),
+        })
       }
       /** 同批把"整船回收"也提到 `warn`（2026-09-26 船长令：回收自己残骸的日志要醒目） */
       addLog(state, 'warn', `舰船残骸里捞回了一艘还能修的船：${salvage.wreckName}——已拖回母港入队。`, 'core.salvaging.031', {

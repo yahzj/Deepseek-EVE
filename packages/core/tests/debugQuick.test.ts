@@ -13,6 +13,7 @@ import { startExpedition, resolveBattleOutcome } from '../src/expedition'
 import { startScan, isExplored, scanAwaitingView } from '../src/explore'
 import { makeTestCtx, skill, belt, anomaly } from './helpers'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { setStanding } from './helpers'
 
 function freshState(quick = true): GameState {
   const s = createInitialState({ nowWallMs: 0, seed: 42 })
@@ -64,7 +65,7 @@ describe('V15 debugQuick：作业 1 秒化', () => {
 
   it('远征：去程取消（下达即开战）；返航 1 秒/单程×2；交火保留真实战斗（调试不跳过战斗，供验证）', () => {
     const s = freshState(true)
-    s.standings['dsi'] = 5
+    setStanding(s, 'dsi', 5)
     s.exploredGalaxies.push('galaxy-far')
     expect(startExpedition(s, 'ano-hard', ctx).ok).toBe(true)
     // 去程取消：下达即进入交火

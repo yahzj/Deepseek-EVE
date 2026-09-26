@@ -17,6 +17,7 @@ import {
 } from '../src/expedition'
 import { battleWinPreview, battleArcsFor, bountyDamageForecast, bountyWinPercentGuarded, createFoeSpecs } from '../src/combat'
 import { anomaly, DEFAULT_TEST_ITEMS, makeTestCtx, moduleDef, ship } from './helpers'
+import { clearInitialStanding, setStanding } from './helpers'
 
 describe('远征 V12：两阶段', () => {
   let state: GameState
@@ -25,6 +26,11 @@ describe('远征 V12：两阶段', () => {
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 42 })
     state.wallet.isk = 500_000
+    /**
+     * ⚠ **2026-09-26**：新档初始声望 = 40（船长令"一开始其实可以买5张"）⇒ 本文件按**声望 0** 标定的
+     * 读数（首胜 +2、门槛 5 的拒接）必须先清零；要特定值的用例自己用 `setStanding`。
+     */
+    clearInitialStanding(state)
     ctx = makeTestCtx()
   })
 
@@ -33,7 +39,7 @@ describe('远征 V12：两阶段', () => {
     // ano-hard 需声望 5，且目标星系需已探索（V13 封锁）
     const r = startExpedition(state, 'ano-hard', ctx)
     expect(r.ok).toBe(false)
-    state.standings['dsi'] = 5
+    setStanding(state, 'dsi', 5)
     expect(startExpedition(state, 'ano-hard', ctx).ok).toBe(false) // 未探索 → 拒绝
     state.exploredGalaxies.push('galaxy-far')
     expect(startExpedition(state, 'ano-hard', ctx).ok).toBe(true)

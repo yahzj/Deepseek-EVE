@@ -21,6 +21,7 @@ import { changeShip, repairWithKits, repairShip } from '../src/shipyard'
 import { goStandbyAt, startTransitHome } from '../src/location'
 import { shortestTravelMinutes, travelLegMs } from '../src/travel'
 import { makeTestCtx, anomaly, mineral, moduleDef, ship } from './helpers'
+import { setStanding } from './helpers'
 
 /** 远星系低威胁悬赏（快速可胜）：2026-09-06 起胜利自动返航母港（不再停留目标星系） */
 function worldWithFarBounty() {
@@ -149,7 +150,7 @@ describe('T8 重复清剿（2026-09-06 重复清剿：自动返航到港后自�
     // —— 暂停条件 1：货仓放不下预期缴获（船在母港空闲时触发 auto）——
     const state2 = createInitialState({ nowWallMs: 0, seed: 6 })
     state2.exploredGalaxies.push('galaxy-far')
-    state2.standings['dsi'] = 0
+    setStanding(state2, 'dsi', 0)
     // 塞满货仓（默认 800 m³ 用 0.01 体积矿物 × 80000）
     state2.fleet.sandcat.cargo['min-a'] = 80_000
     state2.autoLoopAnomalyId = 'ano-far-easy'

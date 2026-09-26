@@ -43,6 +43,8 @@ import {
   // 2026-09-11 市价买入失败原因分诊（暗市闸口径与界面同源，对玩家按声望锁措辞）
   bmGateReason,
   learnBlueprint,
+  // 2026-09-26 船长令：章鱼人兑换（插件图纸用声望换）
+  exchangePlugBlueprint,
   // 2026-09-19 玩家报障修：碎片 → 蓝图（逆向解锁）的兑命令与读数单点
   redeemFragments,
   fragmentRedeemRowsOf,
@@ -815,7 +817,9 @@ export class GameEngine {
     this.locale = locale
     this.ctx = buildSimContext(locale)
     this.ships = overlayList(SHIPS, EN_SHIPS, locale).filter((d) => itemReleased(d))
-    this.allShips = overlayList(SHIPS, EN_SHIPS, locale)
+    // 2026-09-26 舰船插件批：`SHIPS` 改为可变（`data/ships.ts` 文末要按档补 `plugSlots`）
+    // ⇒ `overlayList` 的只读返回类型对不上，这里摊平成一份可变副本（43 艘，成本可忽略）
+    this.allShips = [...overlayList(SHIPS, EN_SHIPS, locale)]
     this.modules = overlayList(MODULES, EN_MODULES, locale).filter((d) => itemReleased(d))
     this.allModules = overlayList(MODULES, EN_MODULES, locale)
     this.items = overlayList(ITEMS, EN_ITEMS_ALL, locale)
@@ -1948,6 +1952,19 @@ export class GameEngine {
       this.notify()
     }
     return result
+  }
+
+  /**
+   * **用声望换一张舰船插件图纸**（**2026-09-26 船长令**：「找章鱼人用声望兑换」）。
+   * 与 `learnBlueprintAt` 同款：成功才落盘 ＋ 广播刷新。
+   */
+  exchangePlugBlueprintAt(moduleId: string): CommandResult {
+    const r = exchangePlugBlueprint(this.state, this.ctx, moduleId)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r.ok ? { ok: true } : { ok: false, error: r.error }
   }
 
   /** 市价买入商品（默认 1 件；矿石/矿物传数量）。

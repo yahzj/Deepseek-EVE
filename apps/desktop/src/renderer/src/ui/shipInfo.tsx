@@ -459,6 +459,31 @@ export function moduleShortEffect(mod: ModuleDef): string {
       // 2026-09-11 协处理器：装配 CPU 预算扩容（本件自身不占 CPU——说清，否则玩家会以为要占 0 是 bug）
       body = tr("ui.shipInfo.120", { p1: fmt(mod.cpuBonus) })
       break
+    case 'plug': {
+      /**
+       * **舰船插件**（**2026-09-26 船长令**，见 `docs/design/ship-plug-20260926.md`）：
+       * 12 件各自一类效果 ⇒ 逐类拼短行（与支援件那支同款"按字段判别"）。
+       * ⚠ 装配页卡片**必须非空**：`content:check` 的「短效说明为空」契约会红。
+       */
+      const bits: string[] = []
+      if (mod.shieldHpAdd !== undefined) bits.push(tr('ui.shipInfo.187', { p1: fmt(mod.shieldHpAdd) }))
+      if (mod.armorHpAdd !== undefined) bits.push(tr('ui.shipInfo.188', { p1: fmt(mod.armorHpAdd) }))
+      if (mod.hullHpAdd !== undefined) bits.push(tr('ui.shipInfo.189', { p1: fmt(mod.hullHpAdd) }))
+      if (mod.midSlotsAdd !== undefined) bits.push(tr('ui.shipInfo.190', { p1: fmt(mod.midSlotsAdd) }))
+      if (mod.lowSlotsAdd !== undefined) bits.push(tr('ui.shipInfo.191', { p1: fmt(mod.lowSlotsAdd) }))
+      if (mod.cpuBonus !== undefined) bits.push(tr('ui.shipInfo.192', { p1: fmt(mod.cpuBonus) }))
+      if (mod.damageBonusPct !== undefined) bits.push(tr('ui.shipInfo.193', { p1: pct(mod.damageBonusPct) }))
+      if (mod.hitBonusPct !== undefined) bits.push(tr('ui.shipInfo.194', { p1: pct(mod.hitBonusPct) }))
+      if (mod.speedAddMps !== undefined) bits.push(tr('ui.shipInfo.195', { p1: fmt(mod.speedAddMps) }))
+      if (mod.speedPenaltyMps !== undefined) bits.push(tr('ui.shipInfo.196', { p1: fmt(mod.speedPenaltyMps) }))
+      if (mod.rangeCutPct !== undefined && mod.rangeCutPct < 0) bits.push(tr('ui.shipInfo.197', { p1: pct(-mod.rangeCutPct) }))
+      if (mod.targetWeightMul !== undefined) {
+        bits.push(mod.targetWeightMul > 1 ? tr('ui.shipInfo.198') : tr('ui.shipInfo.199'))
+      }
+      // 插件**不可拆**：短行末尾统一带一句（这是它与普通装备最要紧的差别）
+      body = `${bits.join(' · ')}${bits.length > 0 ? ' · ' : ''}${tr('ui.shipInfo.200')}`
+      break
+    }
   }
   // 任何槽位统一尾缀：维修系（每跳修多少/吃不吃组件）、结构层抗性与**跨族加成**——短行不丢关键效果
   // （跨族尾缀 = 2026-09-11 修复：赃物强化舱的"甲容 +15%"这类搭车加成因槽位分支而漏显示）

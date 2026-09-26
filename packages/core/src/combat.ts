@@ -42,12 +42,16 @@ import { wormholeCardThreatOf, wormholeSkippedBranch } from './wormholeFoes'
 import { wormholeMatterBuffs, wormholeMatterThreatMul } from './wormholeMatter'
 import { matterTechBattleSpeedTiers, matterTechWhBuffs } from './matterTech'
 import type { WormholeMatterBuffs } from './wormholeMatter'
-import { nextInt, nextRandom, pickOne } from './rng'
+import { nextInt, nextRandom, pickOne, pickWeighted } from './rng'
 import { cargoItemsOf, cargoOfShip, countWare, removeItem, removeWare, addWare } from './inventory'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { shipCategoryKeyOf, uidDefId } from './labels'
 import { resolveFoeMounts } from './foeMounts'
 import { quickRepairFactor } from './repair'
+import {
+  // 2026-09-26 舰船插件（船长令）：建档时单独累加插件效果（插件不在 `fitted` 里，扫描不到）
+  plugModulesOf,
+} from './plugs'
 import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, pulseStreamOf, refillDroneLoadTo, stackingOf, stackWeight, weightedSum } from './equipment'
 import { applyFirstBountyBuff, isFirstBountyBattle } from './firstTasks'
 
@@ -201,6 +205,14 @@ export interface UnitSpec {
    * （「从母港仓库取用」开着时改走仓库），故需要它。
    */
   shipId?: string
+  /**
+   * **被选中权重**（**2026-09-26 船长令**）：靶标插件 ×2 / 隐匿插件 ×0.4，由 `createPlayerSpec`
+   * 按插件累乘写入（多件相乘，与"不吃递减"一致）。**缺省 / 1 = 与改动前逐位等价**。
+   *
+   * 语义 = **敌方挑目标时这一条被抽中的相对权重**（船长明确「**增加被选中的权重**」⇒
+   * 不改命中率、不改回避，只改选靶）。
+   */
+  targetWeightMul?: number
   /**
    * **损伤管制装置**（**2026-09-25 船长令**：「当舰船第一次结构低于 1 时，将结构恢复到 1（避免一次死亡）」
    * ＋「触发损管效果时需要消耗一份」＋改判「**1 秒内结构锁定 1**」）。
@@ -1593,11 +1605,47 @@ export function createPlayerSpec(
   /* ═══ 2026-09-13 虫洞专属装备引出的新旋钮（船长逐条给定；设计稿 §3.6/§3.8）═══
    * 全部走"全件扫描"口径；四项缺省 0 ⇒ 既有装备零行为变化。 */
   const allDefs = allFittedModules(fitted, ctx)
+  /**
+   * ═══ **舰船插件**（**2026-09-26 船长令**，设计稿 `docs/design/ship-plug-20260926.md`）═══
+   *
+   * 插件**不在 `fitted` 里**（走 `FleetShipState.plugs` 的独立插件槽）⇒ `allDefs` 扫不到它们，
+   * 本段**单独累加**。累加口径 = 船长裁决「**③不吃**」：**多件全额、不进 `stackingOf` 的收敛池**
+   * （加算/乘算直接叠加，与"命中/速度走 EVE 曲线"那几支无关）。
+   *
+   * 已接的效果：三层血固定值 · 速度固定值加减 · 单发伤害 · 命中 · 射程 · CPU 预算 ·
+   * **选靶权重**（靶标 ×2 / 隐匿 ×0.4，消费在 `pickMyUnitTarget`）。
+   */
+  const plugDefs = plugModulesOf(state, ctx, shipId)
+  let plugShieldAdd = 0
+  let plugArmorAdd = 0
+  let plugHullAdd = 0
+  let plugSpeedAdd = 0
+  let plugSpeedPen = 0
+  let plugDmg = 0
+  let plugHitMul = 1
+  let plugRangeCut = 0
+  /** **被选中权重**（船长：靶标插件 ×2 / 隐匿插件 ×0.4）——多件相乘、缺省 1 */
+  let plugTargetWeight = 1
+  for (const p of plugDefs) {
+    plugShieldAdd += p.shieldHpAdd ?? 0
+    plugArmorAdd += p.armorHpAdd ?? 0
+    plugHullAdd += p.hullHpAdd ?? 0
+    plugSpeedAdd += p.speedAddMps ?? 0
+    plugSpeedPen += p.speedPenaltyMps ?? 0
+    plugDmg += p.damageBonusPct ?? 0
+    if (p.hitBonusPct !== undefined) plugHitMul *= 1 + p.hitBonusPct
+    if (p.targetWeightMul !== undefined) plugTargetWeight *= p.targetWeightMul
+    // 射程插件用 `rangeCutPct` 的**负值**表达加成 ⇒ 这里取最小（最负）的那一件，与"多件只取最重"同形
+    plugRangeCut = Math.min(plugRangeCut, p.rangeCutPct ?? 0)
+  }
   /** 装填惩罚（巨构协处理器 +12%）：多件只取最重一件 */
   const reloadPen = Math.max(0, ...allDefs.map((m) => m.reloadPenaltyPct ?? 0))
   /** 全层抗性削减（掠袭折射涂层 −15）：多件只取最重一件，下限 0 */
   const resistPen = Math.max(0, ...allDefs.map((m) => m.allResistPenaltyPct ?? 0))
-  /** 全武器射程削减（掠袭者护盾笼 −25% / 赃物扫描阵 −15%）：多件只取最重一件 */
+  /** 全武器射程削减（掠袭者护盾笼 −25% / 赃物扫描阵 −15%）：多件只取最重一件。
+   *  ⚠ **2026-09-26 插件批**：**本行逐字未动**（只认既有装备件的正值"取最重"）——
+   *  射程插件的 +25% **不并进这里**（并进来会改变既有"多件只取最重"的语义），
+   *  改在下面的 `rangeOf` 里作为**独立倍率**相乘。两条互不干扰。 */
   const rangeCut = Math.max(0, ...allDefs.map((m) => m.rangeCutPct ?? 0))
   /** 按系射程加成（幽灵弹道校正器「动能武器射程 +22%」）：按系加算 */
   const rangeBonus: Record<DamageType, number> = { kinetic: 0, explosive: 0, plasma: 0 }
@@ -1610,11 +1658,28 @@ export function createPlayerSpec(
    *  ⚠ 与"实际射程"分家只为**干扰压制**：船长的加法口径要按"基准 + 加成"拆开算
    *  （见 `meRangeMulOf`；`refs.weaponRanges` 记的就是这两份数）。 */
   const rangeBase = (base: number): number => Math.max(500, Math.round(base * (1 - Math.min(0.9, rangeCut))))
-  /** 武器实际射程 = 基准 × (1+该系加成)（按系加成 = 模块 + 船体固有，加算后一次乘） */
+  /**
+   * 🔴 **射程插件的 +25% 并进"战前射程加成池"**（**2026-09-26 船长令**：「**射程插件和增加射程的装备，
+   * 应该提高的是战斗前的数据，电子舰和战斗中触发的射程增加减少是独立的加减算法的乘区**」）。
+   *
+   * 落法 = 与装备的按系射程加成**同池加算**（三系各 +25%，多件全额），**不是**在外面再乘一层。
+   * 为什么必须这样：干扰压制那条链（`meRangeMulOf` / `applyMeJammerDebuff`）要吃"**该件的射程加成**"
+   * 来按加法口径反解（`(1 + bonus − 净削减) ÷ (1 + bonus)`）——若插件只在外层乘，`refs.weaponRanges`
+   * 记下的 `bonusMul` 就漏掉它 ⇒ 带插件的武器会被**多压**。并进池后：
+   * 只有装备 +22% ⇒ bonus 0.22；同一门炮再装射程插件 ⇒ bonus **0.47**（船长口径的加法）。
+   */
+  const plugRangeBonus = -plugRangeCut // 插件用 `rangeCutPct` 的负值表达加成 ⇒ 取正
+  if (plugRangeBonus > 0) {
+    rangeBonus.kinetic += plugRangeBonus
+    rangeBonus.explosive += plugRangeBonus
+    rangeBonus.plasma += plugRangeBonus
+  }
+  /** 武器实际射程 = 基准 × (1+该系加成)（按系加成 = 模块 + 船体固有 + **射程插件**，加算后一次乘） */
   const rangeOf = (base: number, type: DamageType): number =>
     Math.max(500, Math.round(rangeBase(base) * (1 + rangeBonus[type])))
-  /** 通用单发伤害加成（亡军火控「伤害 +6%」）：与按系稳定器同链、加算、只进炮台/光束 */
-  const dmgFlat = allDefs.reduce((s, m) => s + (m.damageBonusPct ?? 0), 0)
+  /** 通用单发伤害加成（亡军火控「伤害 +6%」）：与按系稳定器同链、加算、只进炮台/光束。
+   *  ⚠ **插件并进同一个加算池**（火力强化插件 +12%；多件全额、不吃递减 —— 它本就不在 `allDefs` 里）。 */
+  const dmgFlat = allDefs.reduce((s, m) => s + (m.damageBonusPct ?? 0), 0) + plugDmg
   // 全层抗性削减：三层同时扣、下限 0——放在抗性合成与调谐之后 ⇒ 作用于最终值
   if (resistPen > 0) {
     for (const layer of ['shield', 'armor', 'hull'] as const) {
@@ -1771,7 +1836,7 @@ export function createPlayerSpec(
       src: turret.slot === 'missile' ? 'missile' : 'turret',
       shotsByType,
       count,
-      eqHitMul: hitEq > 1 ? hitEq : undefined,
+      eqHitMul: (hitEq * plugHitMul) > 1 ? hitEq * plugHitMul : undefined,
       maxRangeM: rangeOf(turret.maxRangeM, type),
       minRangeM: turret.minRangeM ?? 0,
       hitRate: (turret.hitRate ?? 0.5) * fireMult * targetMult,
@@ -1815,7 +1880,13 @@ export function createPlayerSpec(
     droneDmgBonus += g.droneDmgBonus ?? 0
     if ((g.droneRangeBonusPct ?? 0) > 0) droneRangePcts.push(g.droneRangeBonusPct!)
   }
-  const droneRangeMult = 1 + weightedSum(droneRangePcts)
+  /**
+   * 无人机射程倍率 = 1 + Σ(中继天线，折权加算)。
+   * ⚠ **2026-09-26 船长口径**：射程插件属于"**战斗前的射程加成**"，与中继天线**同一池加算**
+   * （插件的 +25% 直接加到本倍率里）。这样 `refs.weaponRanges` 记的 `bonusMul` 也含它 ⇒
+   * 干扰压制那条加法反解不会把带插件的机群**多压**。
+   */
+  const droneRangeMult = 1 + weightedSum(droneRangePcts) + Math.max(0, plugRangeBonus)
 
 
   let bayUsed = 0
@@ -1901,6 +1972,12 @@ export function createPlayerSpec(
     // 单船路径不读这两项 ⇒ 只多两个字段，零行为变化。
     shipTier: ship.tier,
     shipRole: ship.role,
+    /**
+     * **被选中权重**（**2026-09-26 船长令**：靶标插件「**增加被选中的权重**」×2 · 隐匿插件
+     * 「**减少被攻击的权重**」×0.4）。消费点 = `pickMyUnitTarget` 的加权抽取；
+     * 缺省 1 ⇒ 没装插件时与改动前**逐位等价**（见该函数的加权说明）。
+     */
+    ...(plugTargetWeight !== 1 ? { targetWeightMul: plugTargetWeight } : {}),
     // 2026-09-16 船长：后勤舰的维修装置改修队友（**数据字段驱动**，见 `ShipDef.repairPulseTargetsFleet`；
     // 同日追批「并添加到船体特性属性中」⇒ 判据从 `subClass === '后勤舰'` 改为读字段，界面「船体特性」栏同源）
     ...(ship.repairPulseTargetsFleet === true ? { logistics: true } : {}),
@@ -8614,7 +8691,8 @@ export function isNonCombatShipRole(role: ShipRole | undefined): boolean {
 
 /**
  * **敌方选靶**（虫洞 D 批 · 船长 2026-09-13 定的五种模式；见 `FoeTargetingMode`）：
- * 从**存活我方单位**里挑一个目标。并列（同输出 / 同档 / 多艘非战斗船）一律**等权随机**。
+ * 从**存活我方单位**里挑一个目标。并列（同输出 / 同档 / 多艘非战斗船）一律**按被选中权重抽取**
+ * （缺省权重都是 1 ⇒ 等权随机，也就是改动前的口径）。
  *
  * ⚠⚠ **只剩一艘我方单位时直接返回、一次随机数都不消费** —— 这条是单船路径零漂移的命门：
  * 既有 27 张悬赏卡 / 低安遭遇 / AI 副船的战斗里，敌方开火从不掷"选靶骰"，本函数在那些
@@ -8651,8 +8729,21 @@ export function pickMyUnitTarget(
   const alive = aliveMyUnits(b, myUnits).filter((u) => isMyUnitTargetable(b, u.tag))
   if (alive.length === 0) return null
   if (alive.length === 1) return alive[0]!
-  /** 并列集合里等权随机（**恰好消费一次** `nextInt`） */
-  const randomOf = (cands: UnitSpec[]): UnitSpec => cands[nextInt(state.rng, cands.length)]!
+  /**
+   * **按"被选中权重"加权抽取**——走仓内单点 `pickWeighted`（`bound: 'lt'`，与原先的
+   * `nextInt(rng, n) = ⌊u × n⌋` 同边界），**恰好消费一次 `nextRandom`**。
+   *
+   * ⚠⚠ **零漂移命门（2026-09-26 插件批的等价性证明）**：全部权重都等于 1 时，
+   * `roll = u × n` 落在第 k 段 ⇔ `⌊u × n⌋ = k`（仅在 `u × n` 精确等于整数 k 的边界上两者都取 k）
+   * ⇒ 与改动前的 `nextInt(state.rng, cands.length)` **恒等**，随机数消费次数也一致。
+   * 没装靶标/隐匿插件的全部既有场次（含 27 张悬赏卡与标定读数）**逐位不变**。
+   */
+  const weightOf = (u: UnitSpec): number => {
+    const w = u.targetWeightMul
+    return w !== undefined && Number.isFinite(w) && w > 0 ? w : 1
+  }
+  const randomOf = (cands: UnitSpec[]): UnitSpec =>
+    pickWeighted(state.rng, cands, weightOf) ?? cands[cands.length - 1]!
   /**
    * **倾向概率的掷骰点**（2026-09-14 船长）：**每发开火前各掷一次**，没掷中 ⇒ 这一发乱了。
    * 位置刻意放在两个早退**之后** —— 单船 / 只剩一艘时恒返回、不掷骰（洞外零漂移的命门）。

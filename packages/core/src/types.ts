@@ -505,6 +505,15 @@ export interface ShipDef {
    * 正式内容全部显式标注；19 船草案表见 docs/design/v18-slots.md §四）。
    */
   slots?: ShipSlots
+  /**
+   * **舰船插件槽数**（**2026-09-26 船长令**：「**改为越低级的船插槽越多。T1~T5分别为5/4/3/2/1个插槽**」）。
+   *
+   * 插件的专用槽位：与高/中/低槽**互不相干**（不进 `FittedModules`，走 `FleetShipState.plugs`），
+   * 上限 = 本值。**越低级的船越多** ⇒ T1 小船 5 格、T5 旗舰 1 格。
+   * ⚠ **只有 T1~T5 有**：无档船（采矿艇 / 货舰等 `tier` 不在 1~5 的）**一律无插件槽**。
+   * 缺省不写 = 0（不装插件）。
+   */
+  plugSlots?: number
   /** 无人机舱容量（m³，携带上限之一；0 = 无无人机舱） */
   droneBayM3?: number
   /** 无人机放飞所需的 CPU 占位资源已在 ItemDef.cpuUse；此处不重复定义 */
@@ -1306,6 +1315,13 @@ export type ModuleSlot =
   | 'support'
   /** 2026-09-11 船长：协处理器（低槽，装配 CPU 预算扩容；见 ModuleDef.cpuBonus） */
   | 'cpu'
+  /**
+   * **舰船插件**（**2026-09-26 船长令**，见 `docs/design/ship-plug-20260926.md`）：
+   * 装得上去、**拆不下来**的固定件，走**独立插件槽**（`ShipDef.plugSlots`，按船型档 5/4/3/2/1）。
+   * ⚠ **与 `RackSlot` 无关**：插件不进高/中/低那三类槽位数组，改走 `FleetShipState.plugs`；
+   * 本值只用于"这是一件插件"的判别与装配页分支，`rackOf()` 对它的回落值**从不被消费**。
+   */
+  | 'plug'
   | 'target-lock'
   /**
    * 2026-09-20 船长：「**新增高槽装备，护盾充能力场装置**」——**护盾族**，但**装在高槽**
@@ -1399,6 +1415,34 @@ export interface ModuleDef {
    * 重甲不会叠成静止）；生效处 = combat.createPlayerSpec 的 speedMps。
    */
   speedPenaltyPct?: number
+  /* ═══════════ 舰船插件（2026-09-26 船长令 · 见 docs/design/ship-plug-20260926.md）═══════════
+   * 插件 = 装得上去、**拆不下来**的固定件，走**独立插件槽**（`ShipDef.plugSlots`，按船型档 5/4/3/2/1）。
+   * 下面这七条是本批为它新开的字段；另有几件**复用既有字段**：
+   * `cpuBonus`（协处理插件 +80，与协处理器 MK1/2/3 的 25/35/45 同一入口）、
+   * `damageBonusPct`（火力强化）、命中乘区（瞄具）、`weaponRangeBonusPct`（射程）、
+   * `speedPenaltyPct` 的**绝对值版** = `speedPenaltyMps`（装甲强化插板的代价）。
+   * ⚠ **多件不递减**（船长裁决：不可拆的固定件，装 5 件就是 5 件全额）⇒ 加算/乘算，不走 EVE 曲线。
+   */
+  /** **固定值加护盾**（护盾强化插板）：绝对值，多件加算。与百分比版 `shieldHpBonus` 并列、互不替代 */
+  shieldHpAdd?: number
+  /** **固定值加装甲**（装甲强化插板）：绝对值，多件加算 */
+  armorHpAdd?: number
+  /** **固定值加结构**（结构强化插板）：绝对值，多件加算 */
+  hullHpAdd?: number
+  /** **固定值加速度**（推进插件 +40 m/s）：多件加算；与百分比版 `speedBonusPct` 相乘关系由建档侧定序 */
+  speedAddMps?: number
+  /** **固定值减速度**（装甲强化插板 −20 m/s）：绝对值；与百分比版 `speedPenaltyPct` 并列、互不替代 */
+  speedPenaltyMps?: number
+  /** **插件加中槽**（中层舱段插件 +1）：多件加算；插件槽专属，普通装备不写本字段 */
+  midSlotsAdd?: number
+  /** **插件加低槽**（下层舱段插件 +1）：多件加算；插件槽专属 */
+  lowSlotsAdd?: number
+  /**
+   * **被选中权重乘数**（船长 2026-09-26：「**增加被选中的权重**」/「**减少被攻击的权重的插件**」）：
+   * 靶标插件 ×2（更常被敌方选靶）· 隐匿插件 ×0.4（更少被选靶）。**多件相乘**。
+   * ⚠ 与**闪避**是两回事：闪避管"打中不命中"，本条管"敌方先挑谁打"——落点在选靶单点。
+   */
+  targetWeightMul?: number
   /** 抗性件（装甲镀层·X型）：按系缺口削减抗性（语义同上 shieldResistAdd） */
   armorResistAdd?: DamageResists
   /**
@@ -2746,6 +2790,15 @@ export type CommsTrigger =
    */
   | { kind: 'foeShipSeen'; shipId: string }
   /**
+   * **拿到第一个黑匣**（**2026-09-26 船长令**：「**玩家获取第一个黑匣后，才解锁组装机的插件选项，
+   * 并且弹出相关通讯，通讯内跳转。**」）。
+   *
+   * 判定 = `blackbox.blackboxSeenOf(state)`（置位点 = 黑匣入库的唯一入口；老档按"仓库/货仓里有没有黑匣"回填）。
+   * ⚠ **送达即幂等**（`commsDelivered` 记账）：即便玩家后来把黑匣卖光、`blackboxSeen` 又被回填成 false，
+   * 这封信也不会再发第二遍。落地与跳转见 `data/messages.ts` 那条 `msg-blackbox-plug-unlock`。
+   */
+  | { kind: 'blackboxSeen' }
+  /**
    * **虫洞围剿（第 7 层起）**（2026-09-23 船长：「当玩家第一次进入七层是，给玩家发一则通讯讲清楚
    * 敌人开始围剿玩家了，并介绍机制」）。
    *
@@ -2842,7 +2895,7 @@ export interface CommsMessageDef {
    * `taskTab` 用于星图「任务中心」的**内层**标签（2026-09-11 船长：步骤 2 跳转必须切到「重要任务」——
    * 内层标签会记住玩家上次的选择，只切到任务中心不够）。
    */
-  hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
+  hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string; action?: string }
   /** 预留回复选项（本期不启用） */
   replies?: readonly CommsReplyDef[]
   /**

@@ -96,6 +96,14 @@ export function weekendRollBlackBox(
  *   照周排期开局，本常量从此生效（开局那一刻判协会声望）。
  */
 export const WEEKEND_MIN_STANDING = 40
+
+/**
+ * **单场入侵的声望上限**（**2026-09-26 船长令**：「**玩家完成入侵后根据贡献获得一定量声望**」）。
+ *
+ * 实发 = `round(贡献占比 × 本值)` ⇒ **0~15 点/场**（100% ⇒ 15 · 83% ⇒ 12 · 50% ⇒ 8 · 10% ⇒ 2）。
+ * ⚠ 走 `noteStandingEarned`（两条账同时加）；与贡献四档奖同一处发放、**只发一次**。
+ */
+export const WEEKEND_STANDING_MAX = 15
 /**
  * 协会（DSI）声望取数。
  *

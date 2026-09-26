@@ -85,6 +85,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 玩家舰船残骸（2026-09-26 船长令）：一具残骸最高优先 · 逐件掷概率回收 · 没捞到不落普通残骸 */
   "core.salvaging.030": { zh: "打捞舰船残骸：捞回 {p1} ×{p2}。", en: "Salvaging the ship wreck: recovered {p1} ×{p2}." },
   "core.salvaging.031": { zh: "舰船残骸里捞回了一艘还能修的船：{p1}——已拖回母港入队。", en: "A repairable hull was raised from the wreck: {p1} — towed back to the home port and rejoined the fleet." },
+  /* 插件换黑匣（2026-09-26 船长令）：「玩家回收按插件数量直接回收成黑匣」 */
+  "core.salvaging.032": { zh: "舰船残骸里的插件换回了 {p1} ×{p2}。", en: "The plugs in the wreck were traded back for {p1} ×{p2}." },
   /* 「互斥」类共用条目：整句两条（开采 / 打捞各一条）——占位符对齐是要塞，
      所以「动词」不做参数（参数里塞 id 要两层渲染，得不偿失） */
   "core.state.001": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再开采。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first, before mining." },
@@ -1401,6 +1403,19 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.equipment.028": { zh: "损伤管制装置每舰只能装一件（已装 {p1}）。", en: "Only one Damage Control Unit may be fitted per ship (already fitted: {p1})." },
   // 2026-09-26 报障修复（“可以装多个损管”）：载入归正日志——每舰只留一件，多余的退回装备库
   "core.equipment.029": { zh: "同舰唯一归正：每舰只留一件损伤管制装置，退回装备库 {p1} 件（{p2}）。", en: "Per-ship uniqueness fix-up: one Damage Control Unit kept per ship; {p1} extra unit(s) returned to the module bay ({p2})." },
+  /* 舰船插件（2026-09-26 船长令）：「是一种类似装备的东西，同样装备在舰船上，但是不可拆卸，不可替换」 */
+  "core.plug.001": { zh: "已为 {p1} 装上插件：{p2}。插件装上后无法拆下。", en: "{p1} has been fitted with a plug: {p2}. A plug cannot be removed once fitted." },
+  "core.plug.002": { zh: "{p1} 不是舰船插件。", en: "{p1} is not a ship plug." },
+  "core.plug.003": { zh: "舰队里找不到这艘舰船。", en: "That ship is not in the fleet." },
+  "core.plug.004": { zh: "{p1} 没有舰船插件槽。", en: "{p1} has no ship plug slots." },
+  "core.plug.005": { zh: "插件槽已满：本舰 {p1} 格，且插件装上去就拆不下来。", en: "Plug slots are full: this ship has {p1}, and a plug cannot be removed once fitted." },
+  "core.plug.006": { zh: "本舰已经装了一件 {p1}。同型插件不能重复装。", en: "This ship already carries {p1}. The same plug cannot be installed twice." },
+  /* 舰船插件：入库/挂卖拒因（2026-09-26 船长令「装有插件的舰船无法放入舰船仓库」） */
+  "core.plug.007": { zh: "这艘船装有 {p1} 件舰船插件，插件装上去就拆不下来——不能放入舰船仓库，也不能挂卖。", en: "This ship carries {p1} ship plug(s), and a plug cannot be removed once fitted — it cannot be stored in the ship warehouse or listed for sale." },
+  "core.plug.008": { zh: "图纸目录里没有这张舰船插件图纸。", en: "That plug blueprint is not in the blueprint catalog." },
+  "core.plug.009": { zh: "已经学过 {p1} 了，不用再兑换一次。", en: "You have already learned {p1}; no need to exchange again." },
+  "core.plug.010": { zh: "声望不够：{p1} 要 {p2}，你手上有 {p3} 可以花。", en: "Not enough standing: {p1} costs {p2}, and you have {p3} spendable." },
+  "core.plug.011": { zh: "章鱼人兑换：花掉 {p1} 点协会声望，换到 {p2}，已放上图纸架。", en: "Octopus exchange: spent {p1} association standing for {p2} (now on your blueprint shelf)." },
   "ui.battleViewCore.001": { zh: "高爆", en: "High explosive" },
   "ui.battleViewCore.002": { zh: "能量", en: "Energy" },
   "ui.CargoPage.001": { zh: "↖ 查看市场", en: "↖ View market" },
@@ -3231,6 +3246,21 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.itemSubs.038": { zh: "战斗支援件", en: "Combat support" },
   "ui.itemSubs.039": { zh: "辅助支援件", en: "Auxiliary support" },
   "ui.itemSubs.040": { zh: "修理装置", en: "Repair units" },
+  /* 舰船插件与章鱼人兑换（2026-09-26 船长令）：「玩家获取第一个黑匣后，才解锁组装机的插件选项，并且弹出相关通讯」 */
+  "ui.IndustryPage.116": { zh: "取得第一个墨潮旗舰黑匣后解锁", en: "Unlocks after you obtain your first Ink Tide flagship black box" },
+  "ui.IndustryPage.117": { zh: "插件图纸找章鱼人用声望兑换", en: "Trade standing with the octopus folk for plug blueprints" },
+  "ui.IndustryPage.118": { zh: "前往章鱼人兑换", en: "Go to the octopus exchange" },
+  "ui.IndustryPage.119": { zh: "可支配 {p1} · 累计获得 {p2}", en: "Spendable {p1} · Total earned {p2}" },
+  "ui.IndustryPage.120": { zh: "兑换图纸", en: "Exchange blueprint" },
+  "ui.IndustryPage.121": { zh: "声望不足：还差 {p1}", en: "Not enough standing: {p1} short" },
+  "ui.IndustryPage.122": { zh: "已学会", en: "Learned" },
+  "ui.IndustryPage.123": { zh: "图纸已进蓝图书架：学会后就能在组装机造这种插件。", en: "The blueprint is now on your blueprint shelf: learn it to build this plug at the assembly unit." },
+  "ui.IndustryPage.124": { zh: "舰船插件已解锁：图纸找章鱼人用声望兑换。", en: "Ship plugs unlocked: trade standing with the octopus folk for blueprints." },
+  "ui.Expedition.441": { zh: "章鱼人兑换", en: "Octopus Exchange" },
+  "ui.Expedition.442": { zh: "前往章鱼人兑换", en: "Go to the octopus exchange" },
+  "ui.Expedition.443": { zh: "插件装上就拆不下来，也不能上市交易。", en: "A plug cannot be removed once fitted, and cannot be traded on the market." },
+  "ui.Expedition.444": { zh: "已装 {p1} / {p2}", en: "Fitted {p1} / {p2}" },
+  "ui.Expedition.445": { zh: "本舰没有舰船插件槽。", en: "This ship has no plug slots." },
   "ui.itemSubs.041": { zh: "图纸", en: "Blueprint" },
   "ui.itemSubs.005": { zh: "军用备货柜", en: "Military supply container" },
   "ui.itemSubs.006": { zh: "原材料", en: "Materials" },
@@ -3785,6 +3815,21 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // 2026-09-26 墨潮电子舱 / 墨潮捕获网（H 族势力装备 · 高槽支援件）的装配页短行
   "ui.shipInfo.185": { zh: "敌方武器射程 −{p1}", en: "Enemy weapon range −{p1}" },
   "ui.shipInfo.186": { zh: "{p2} 米内每 {p1} 秒钉住一艘未被钉住的敌舰", en: "Pins one un-webbed enemy ship every {p1} s within {p2} m" },
+  /* 舰船插件（2026-09-26 船长令）：装配页短行的逐类效果句 ＋ 一句"装上去拆不下来" */
+  "ui.shipInfo.187": { zh: "护盾上限 +{p1}", en: "Shield capacity +{p1}" },
+  "ui.shipInfo.188": { zh: "装甲上限 +{p1}", en: "Armor capacity +{p1}" },
+  "ui.shipInfo.189": { zh: "结构上限 +{p1}", en: "Structure capacity +{p1}" },
+  "ui.shipInfo.190": { zh: "中槽 +{p1}", en: "Mid slot +{p1}" },
+  "ui.shipInfo.191": { zh: "低槽 +{p1}", en: "Low slot +{p1}" },
+  "ui.shipInfo.192": { zh: "CPU 上限 +{p1}", en: "Fitting CPU cap +{p1}" },
+  "ui.shipInfo.193": { zh: "武器伤害 +{p1}%", en: "Weapon damage +{p1}%" },
+  "ui.shipInfo.194": { zh: "武器命中 +{p1}%", en: "Weapon accuracy +{p1}%" },
+  "ui.shipInfo.195": { zh: "最大速度 +{p1} m/s", en: "Top speed +{p1} m/s" },
+  "ui.shipInfo.196": { zh: "最大速度 −{p1} m/s", en: "Top speed −{p1} m/s" },
+  "ui.shipInfo.197": { zh: "武器射程 +{p1}%", en: "Weapon range +{p1}%" },
+  "ui.shipInfo.198": { zh: "更常被敌方选为目标", en: "Enemies pick this ship more often" },
+  "ui.shipInfo.199": { zh: "更少被敌方选为目标", en: "Enemies pick this ship less often" },
+  "ui.shipInfo.200": { zh: "装上后无法拆下", en: "Cannot be removed once fitted" },
   "ui.shipInfo.184": { zh: "同类型武器单发 +{p1}（装其它伤害类型的武器无加成）", en: "Weapons of the same damage type deal +{p1} per shot (no bonus with other damage types)" },
   "ui.shipInfo.010": { zh: "跃迁速度", en: "Warp speed" },
   "ui.shipInfo.011": { zh: "质量", en: "Mass" },

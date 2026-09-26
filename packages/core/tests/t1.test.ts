@@ -14,6 +14,7 @@ import { startMining } from '../src/mining'
 import { startScan } from '../src/explore'
 import { advanceSalvageOp, legMsFor, outboundLegMsFor, startSalvageOp } from '../src/salvaging'
 import { makeTestCtx, moduleDef, skill } from './helpers'
+import { setStanding } from './helpers'
 
 describe('T1 统一停止指令', () => {
   let state: GameState
@@ -42,7 +43,7 @@ describe('T1 统一停止指令', () => {
   })
 
   it('召回远征：去程已取消 → 出发即交火不可召回；返航（back）可召回（无战果回港）', () => {
-    state.standings['dsi'] = 5
+    setStanding(state, 'dsi', 5)
     state.exploredGalaxies.push('galaxy-far')
     // 去程取消：下达即开战，交火中拒绝召回
     expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true) // hub 目标即时开战
@@ -53,7 +54,7 @@ describe('T1 统一停止指令', () => {
     expect(state.logs.some((l) => l.text.includes('已召回'))).toBe(false)
     // 返航中（去程并入返航的 back 相位）仍可召回
     const s2 = createInitialState({ nowWallMs: 0, seed: 42 })
-    s2.standings['dsi'] = 5
+    setStanding(s2, 'dsi', 5)
     s2.exploredGalaxies.push('galaxy-far')
     expect(startExpedition(s2, 'ano-hard', ctx).ok).toBe(true) // far 目标即时开战
     s2.expedition.phase = 'back' // 手工转返航（供召回语义验证）
@@ -117,7 +118,7 @@ describe('T1 activityOverview 视图', () => {
   })
 
   it('远征出卡：交火中可撤退；返航（back）可召回；AI 采矿任务出卡且带 stopParam', () => {
-    state.standings['dsi'] = 5
+    setStanding(state, 'dsi', 5)
     state.exploredGalaxies.push('galaxy-far')
     expect(startExpedition(state, 'ano-hard', ctx).ok).toBe(true)
     // 去程取消：下达即交火 → 活动卡停止动作 = 撤退

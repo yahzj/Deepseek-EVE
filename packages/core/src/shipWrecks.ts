@@ -40,6 +40,14 @@ import { nextInt, nextRandom } from './rng'
 
 /** 玩家舰船残骸的衰减时长（48 游戏小时线性到 0；与入侵残骸同一把尺） */
 export const SHIP_WRECK_DECAY_MS = 48 * 3_600_000
+/**
+ * **插件换回的黑匣物品 id**（船长：「**玩家回收按插件数量直接回收成黑匣**」）。
+ *
+ * ⚠ 本文件**刻意不 import `plugs.ts`**（见文件头注的依赖方向：本文件只依赖 `state` / `types` / `rng`）⇒
+ * 这条**纯常数**就地复制一份；设计口径的权威副本在 `plugs.ts`（`PLUG_BLACKBOX_ITEM_ID` /
+ * `plugsToBlackBoxesOf`），两处由用例钉住同值。
+ */
+export const WRECK_PLUG_BLACKBOX_ITEM_ID = 'blackbox-h'
 /** 衰减尾数收口（有效值小于此值直接清记录 ⇒ 残骸条消失） */
 const SHIP_WRECK_SNAP = 0.05
 /** 每具残骸的"残骸量"当量（**只决定"这具残骸在不在"**：衰减到 0 即消失；**不折算矿物、不并入任何密度读数**） */
@@ -154,22 +162,33 @@ export function shipWreckFor(state: GameState, galaxyId: string): ShipWreckRecor
 
 /** 该星系是否有一具「还有东西可捞」的玩家残骸（四级序第 ①★ 档的判据，界面与打捞序共用） */
 export function hasSalvageableShipWreck(state: GameState, galaxyId: string): boolean {
-  return shipWrecksOf(state, galaxyId).some((rec) => (rec.fitted !== undefined || rec.droneLoad !== undefined))
+  return shipWrecksOf(state, galaxyId).some(
+    (rec) => rec.fitted !== undefined || rec.droneLoad !== undefined || (rec.plugs?.length ?? 0) > 0,
+  )
 }
 
 /**
  * 损毁那一刻的**加固件回收率之和**（夹到 `HULL_RECOVERY_MAX`）。给 `shipyard.loseShip` 用：
  * 它手上有 `ctx` 与 `fitted`，本模块刻意不引 `equipment`（避免成环）。
  */
-export function reinforceChanceOfFitted(fitted: FittedModules | undefined, ctx: SimContext): number {
-  if (!fitted) return 0
+export function reinforceChanceOfFitted(
+  fitted: FittedModules | undefined,
+  ctx: SimContext,
+  /** 该船装着的插件 id（**加固结构插件走"插件槽"**，故必须单独传进来；缺省 = 没有） */
+  plugIds?: readonly string[],
+): number {
   let sum = 0
   for (const slot of ['high', 'mid', 'low'] as const) {
-    for (const id of fitted[slot] ?? []) {
+    for (const id of fitted?.[slot] ?? []) {
       if (typeof id !== 'string') continue
       const v = ctx.modules.get(id)?.hullRecoveryChance
       if (v !== undefined && Number.isFinite(v) && v > 0) sum += v
     }
+  }
+  // 加固结构插件按定义就是"插件槽"里的一件 ⇒ 它不在 `fitted` 里（`allFittedModules` 看不见插件）
+  for (const id of plugIds ?? []) {
+    const v = ctx.modules.get(id)?.hullRecoveryChance
+    if (v !== undefined && Number.isFinite(v) && v > 0) sum += v
   }
   return Math.min(HULL_RECOVERY_MAX, sum)
 }
@@ -192,6 +211,8 @@ export function noteShipWreck(
     armorPct?: number
     fitted?: FittedModules
     droneLoad?: Record<string, number>
+    /** 损毁那一刻装着的插件 id（打捞时**按件数整批换回黑匣**，不逐件掷骰） */
+    plugs?: readonly string[]
     /** 加固结构插件的回收率之和（`reinforceChanceOfFitted`）；0 / 无 ⇒ 不写字段 */
     reinforceChance?: number
     /** 生成时刻（现实墙钟，仅读数用；衰减按游戏时间走） */
@@ -202,6 +223,7 @@ export function noteShipWreck(
   const seq = (state.shipWreckSeq ?? 0) + 1
   state.shipWreckSeq = seq
   const hasDrones = args.droneLoad !== undefined && Object.keys(args.droneLoad).length > 0
+  const plugs = (args.plugs ?? []).filter((id) => typeof id === 'string' && id.length > 0)
   const rec: ShipWreckRecord = {
     seq,
     galaxyId: args.galaxyId,
@@ -210,6 +232,7 @@ export function noteShipWreck(
     ...(args.defId !== undefined ? { defId: args.defId } : {}),
     ...(args.fitted !== undefined ? { fitted: args.fitted } : {}),
     ...(hasDrones ? { droneLoad: args.droneLoad } : {}),
+    ...(plugs.length > 0 ? { plugs: [...plugs] } : {}),
     ...(args.durability !== undefined ? { durability: args.durability } : {}),
     ...(args.armorPct !== undefined ? { armorPct: args.armorPct } : {}),
     ...(args.reinforceChance !== undefined && args.reinforceChance > 0
@@ -269,17 +292,24 @@ export type PlayerWreckSalvage =
   | { kind: 'none' }
   /** 捞回一件（模块 id 或无人机 id；`units` = 架数） */
   | { kind: 'item'; itemId: string; units: number; isModule: boolean }
+  /**
+   * **插件换回的黑匣**（**2026-09-26 船长令**「**玩家回收按插件数量直接回收成黑匣**」）——
+   * 与"逐件掷骰捞回一件"**是两本账**：这一支**不掷骰、不问概率**，残骸里还留着插件就先整批给回，
+   * 同一轮接着走正常的逐件掷骰。
+   */
+  | { kind: 'plugs'; blackBoxes: number }
   /** **整船回收**（加固结构插件命中）：船回港，残骸消失 */
-  | { kind: 'ship'; wreckName: string; defId?: string; durability?: number; armorPct?: number }
+  | { kind: 'ship'; wreckName: string; defId?: string; durability?: number; armorPct?: number; plugs?: string[] }
 
 /**
  * **从玩家舰船残骸里捞一轮**（四级序第 ①★ 档，唯一入口）。四条判定，按序：
  *
  * 1. **整船回收**（**只在第一次捞这具残骸时掷**；未命中即记 `hullRolled` ⇒ **一具只掷一次**，防反复捞刷概率）
  *    —— 加固结构插件接口；**回收率 0 ⇒ 不掷、不消耗随机数**（"没有这个接口"的路径与今天逐位一致）；
- * 2. **逐行掷骰**（行序 = 高/中/低槽装配件 → 无人机）：命中即取该行、扣掉、产出这一件；
- * 3. **保底**：整具残骸一次都没给过东西（`pityUsed` 未置）且本轮没中 ⇒ 从剩余行里等概率给回一件；
- * 4. 行全部清空 ⇒ **残骸消失**；否则留着等下一轮（48h 内）。
+ * 2. **插件整批换黑匣**（`rec.plugs` 非空即换、清字段；**不掷骰、不占本轮产出**，换完接着走第 3 步）；
+ * 3. **逐行掷骰**（行序 = 高/中/低槽装配件 → 无人机）：命中即取该行、扣掉、产出这一件；
+ * 4. **保底**：整具残骸一次都没给过东西（`pityUsed` 未置）且本轮没中 ⇒ 从剩余行里等概率给回一件；
+ * 5. 行全部清空 ⇒ **残骸消失**；否则留着等下一轮（48h 内）。
  */
 export function trySalvagePlayerWreckOf(
   state: GameState,
@@ -304,6 +334,8 @@ export function trySalvagePlayerWreckOf(
         ...(rec.defId !== undefined ? { defId: rec.defId } : {}),
         ...(rec.durability !== undefined ? { durability: rec.durability } : {}),
         ...(rec.armorPct !== undefined ? { armorPct: rec.armorPct } : {}),
+        // 整船捞回来了 ⇒ **插件跟着船回去**（不换黑匣；船已经不在残骸里了）
+        ...((rec.plugs?.length ?? 0) > 0 ? { plugs: [...(rec.plugs ?? [])] } : {}),
       }
     } else {
       map[rec.shipId] = { ...rec, hullRolled: true }
@@ -312,6 +344,25 @@ export function trySalvagePlayerWreckOf(
 
   // ② 逐行掷骰
   const rows = wreckLootRowsOf(rec, ctx)
+  /**
+   * **②★ 插件整批换黑匣**（船长：「**玩家回收按插件数量直接回收成黑匣**」）。
+   *
+   * ⚠ **顺序**：排在"整船回收"**之后**——船都捞回来了，插件是跟着船走的，不该再换黑匣；
+   * 排在"逐件掷骰"**之前**且**不占本轮产出**——它不掷骰、不消耗随机数，**捞到就是捞到**
+   * （契合船长「**总能回收舰船插件**」）。换完即清字段 ⇒ 第二轮回落到普通的逐件掷骰。
+   */
+  const plugIds = rec.plugs ?? []
+  if (plugIds.length > 0) {
+    const blackBoxes = plugIds.filter((id) => typeof id === 'string' && id.length > 0).length
+    /**
+     * ⚠ **顺手把 `hullRolled` 置位**：插件都被拆成黑匣了，"这艘船还能整船捞回来"这件事就**翻篇了**
+     * ——不置位的话，后面每一轮都会再掷一次整船回收（自己刷自己的概率）。
+     */
+    if (rows.length === 0) delete map[rec.shipId]
+    else map[rec.shipId] = { ...rec, plugs: [], hullRolled: true }
+    return { kind: 'plugs', blackBoxes }
+  }
+
   if (rows.length === 0) {
     delete map[rec.shipId] // 空壳：不该留（正常路径应在取走最后一件时删掉）
     return { kind: 'none' }

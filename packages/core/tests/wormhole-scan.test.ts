@@ -42,6 +42,7 @@ import {
   wormholeStockFull,
   wormholeStockOf,
 } from '../src/wormholeScan'
+import { setStanding } from './helpers'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -53,7 +54,7 @@ function fresh(seed = 4242): GameState {
    * 扫本文件的用例只管"扫描机制"（窗口/互斥/续扫/离线连出/库存满/往返），
    * **解锁门槛另有专测**（`wormhole-unlock.test.ts`：协会声望 < 35 一律拦）⇒ 这里直接把声望垫到达标。
    */
-  state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
+  setStanding(state, 'dsi', WORMHOLE_SCAN_UNLOCK_STANDING)
   /**
    * ⚠ **"解锁当次送一格"（`reconcileWormholeScanWelcome`）另有专测**（`wormhole-unlock.test.ts`）：
    * 这里直接标记"已发放"，免得"进度条被预置满格"把窗口 / 停机 / 往返这些机制用例的读数全推高一格。

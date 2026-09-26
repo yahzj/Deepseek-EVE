@@ -13,7 +13,7 @@ import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
 import { ensureMarket, listSellHolding, placeBuyOrder } from '../src/market'
 import { countWare } from '../src/inventory'
-import { makeTestCtx } from './helpers'
+import { clearInitialStanding, makeTestCtx } from './helpers'
 
 /** 单一商品目录（key 与物品 id 一致，价格 100，池商品） */
 const GOOD: MarketGoodDef = {
@@ -35,6 +35,7 @@ interface World {
 
 function world(): World {
   const state = createInitialState({ nowWallMs: 0, seed: 21 })
+  clearInitialStanding(state) // 2026-09-26：新档初始声望 40（门槛已改读累计那本）⇒ 本文件按声望 0 标定
   state.wallet.isk = 10_000_000
   const ctx = makeTestCtx({ marketGoods: [GOOD] })
   ensureMarket(state, ctx, { openAtGameMs: 0 })

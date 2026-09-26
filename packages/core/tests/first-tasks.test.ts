@@ -43,6 +43,7 @@ import { startScan, HOME_SCAN_WINDOW_MS, scanWindowMsFor } from '../src/explore'
 import { countAiCore } from '../src/ai'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { ONB_DONE, beginAfterAwaken } from '../src/onboarding'
+import { clearInitialStanding, setStanding } from './helpers'
 
 const ctx = buildSimContext()
 const HOME = HOME_GALAXY_ID
@@ -53,7 +54,15 @@ const BELT_ORE = 'ore-veldspar'
 
 /** 非序章档（母港已探明，可直接开采）：只用来测计数与任务判定本身 */
 function testState(): GameState {
-  return createInitialState({ nowWallMs: 0, seed: 11 })
+  const s = createInitialState({ nowWallMs: 0, seed: 11 })
+  /**
+   * ⚠ **2026-09-26**：新档初始声望 = 40（船长令"一开始其实可以买5张"），而本文件的「第一次虫洞」
+   * 判据正是**声望 ≥ 40**（`dsiStanding` ⇒ `WORMHOLE_SCAN_UNLOCK_STANDING`）⇒ 不清零的话，
+   * 那条任务会在它刚"显示出来"的那一拍就被判过（用例测不到"只满足一条"）。
+   * 本文件按**声望 0** 的世界标定 ⇒ 统一在这里清零；要声望的用例自己用 `setStanding`。
+   */
+  clearInitialStanding(s)
+  return s
 }
 
 /**
@@ -418,7 +427,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     state.wallet.isk = 500_000
     state.fleet['sh-falconet']!.armorPct = 0.4
     expect(repairShip(state, 'sh-falconet', ctx).ok).toBe(true)
-    state.standings['dsi'] = 40
+    setStanding(state, 'dsi', 40)
     state.firstStats = { ...(state.firstStats ?? {}), mineUnits: 1 }
     /**
      * ⚠ **2026-09-21 起口径再收一道**：引擎**连 `done` 都不写了**（任务改成玩家点「完成」才推进）⇒
@@ -474,7 +483,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
   it('「第一次虫洞」发 2 处未探索虫洞（声望判据 + 允许超库存上限，船长 2026-09-18）', () => {
     const state = testState()
     reachQueue(state, 'first-wormhole') // 顺序解锁：先推到它前面
-    state.standings['dsi'] = 40
+    setStanding(state, 'dsi', 40)
     expect(state.wormholeStock?.length ?? 0).toBe(0)
     advanceGame(state, 1000, ctx)
     expect(state.importantTasks['first-wormhole']?.done).toBe(true)
@@ -603,7 +612,7 @@ describe('末段并列批（2026-09-20 船长第三道令：完成第 11 条后�
   it('并列期间两条互不阻塞：同拍可以都判过，奖励各发各的（飞鱼级 ＋ 2 处虫洞）', () => {
     const s = prefixDone()
     s.firstStats = { ...(s.firstStats ?? {}), haulTrips: 1 }
-    s.standings['dsi'] = 40
+    setStanding(s, 'dsi', 40)
     const fleetBefore = Object.keys(s.fleet).length
     advanceGame(s, 1000, ctx)
     expect(s.importantTasks['first-haul']?.done).toBe(true)
@@ -646,6 +655,8 @@ describe('「寻找人类」发布闸门（2026-09-20 船长第三道令：「�
   /** 序章演出结束的档（**旧口径"序章结束即发布"已作废** ⇒ 这一手不再发布它） */
   function prologueDone(): GameState {
     const s = createInitialState({ nowWallMs: 0, seed: 11, prologue: true })
+    // ⚠ 同 `testState()`：本文件按**声望 0** 标定（新档初始 40 会让「第一次虫洞」那拍就判过）
+    clearInitialStanding(s)
     expect(beginAfterAwaken(s).ok).toBe(true)
     expect(s.onboarding.step).toBe(ONB_DONE)
     return s

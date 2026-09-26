@@ -15,6 +15,7 @@ import {
   DEFAULT_START_ISK,
   DEFAULT_START_SHIP_ID,
   HOME_GALAXY_ID,
+  INITIAL_STANDING,
   MAX_SKILL_LEVEL,
 } from './state'
 import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
@@ -1159,6 +1160,33 @@ function cleanLedgerMap<T>(
   return out
 }
 
+/**
+ * **舰船插件槽位上限**（**2026-09-26**）：船型档位给 T1=5…T5=1，加上「中层/下层舱段插件」各 +1
+ * ⇒ 单类槽位最多 **7 + 1 = 8** 格。清洗器原先一律 `slice(0, 7)`（见 `fitPresets` 与残骸快照两处），
+ * 插件上线后必须同步抬到 8，否则第 8 格在读档时被静默裁掉。
+ */
+const RACK_MAX = 8
+
+/**
+ * 插件 id 列表清洗（舰船插件，2026-09-26，兼容字段无版本号）：只留非空字符串 · 去重 · 截到 `RACK_MAX`。
+ *
+ * ⚠ **这是"随档字段两处落笔"的第二处**（约定 §二验证闭环）：引擎侧写 `FleetShipState.plugs`，
+ * 清洗器这里必须重建它，否则读档/刷新即丢（`importantTasks.salvagerGift` 的同款前车之鉴）。
+ * 空表 ⇒ `undefined`（与 `droneLoad` 同款：没有就不写键，往返幂等）。
+ */
+function cleanPlugIds(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const out: string[] = []
+  for (const x of raw) {
+    if (typeof x !== 'string') continue
+    const id = x.trim()
+    if (id.length === 0 || out.includes(id)) continue
+    out.push(id)
+    if (out.length >= RACK_MAX) break
+  }
+  return out.length > 0 ? out : undefined
+}
+
 /** 弹药 id 映射清洗（弹药 MK2：kinetic/explosive/plasma 键下的非空字符串 id；坏值丢键） */
 function cleanAmmoIdMap(raw: unknown): Partial<Record<'kinetic' | 'explosive' | 'plasma', string>> | undefined {
   const r = asRaw(raw)
@@ -1294,6 +1322,8 @@ function normalizeState(raw: unknown): GameState {
     cargo: Record<string, number>
     fitted: FittedModules
     droneLoad?: Record<string, number>
+    /** 舰船插件（2026-09-26）：新船**没有**插件 ⇒ 不下发该键（与 `droneLoad` 同款） */
+    plugs?: string[]
     ammoPref?: Partial<Record<'kinetic' | 'explosive' | 'plasma', string>>
   } => ({
     defId,
@@ -1364,6 +1394,9 @@ function normalizeState(raw: unknown): GameState {
       cargo: cargoMap,
       fitted,
       droneLoad,
+      // 舰船插件（2026-09-26，兼容字段无版本号）：非空字符串、去重、上限 = 槽位上限 8；
+      // ⚠ 漏了这里 ⇒ 读档/刷新即丢插件（`salvagerGift` 同款静默缺口），设计稿 §五 已点名。
+      plugs: cleanPlugIds(shipRaw.plugs),
       // 弹药 MK2（2026-09-09）：档位偏好透传（键 = 伤害类型；坏值丢键，引擎侧再防御未知 id）
       ammoPref: cleanAmmoIdMap(shipRaw.ammoPref),
     }
@@ -1638,7 +1671,7 @@ function normalizeState(raw: unknown): GameState {
    * **只做结构清洗**：本层拿不到内容表（`normalizeState(raw)` 无 ctx）⇒ **不校验 id 是否存在**；
    * 下架/未知件在**套用时**逐条报进"未装"清单（见 `fitPresets.applyFitPreset`）。
    * 清洗规则：每型 ≤ `FIT_PRESET_MAX` 条 · 名称去空白并限长（空名丢弃）· 位数组只留非空字符串、
-   * 裁掉尾部空位、长度 ≤7（槽位上限）· 无人机只收正整数 · **全空方案丢弃**。
+   * 裁掉尾部空位、长度 ≤ `RACK_MAX`（槽位上限；插件上线后由 7 抬到 8）· 无人机只收正整数 · **全空方案丢弃**。
    */
   const fitPresets: Record<string, ShipFitPreset[]> = {}
   for (const [defId, listRaw] of Object.entries(asRaw(src.fitPresets))) {
@@ -1652,7 +1685,7 @@ function normalizeState(raw: unknown): GameState {
       const cleanRack = (v: unknown): Array<string | null> => {
         if (!Array.isArray(v)) return []
         const out: Array<string | null> = []
-        for (const x of v.slice(0, 7)) out.push(typeof x === 'string' && x.length > 0 ? x : null)
+        for (const x of v.slice(0, RACK_MAX)) out.push(typeof x === 'string' && x.length > 0 ? x : null)
         while (out.length > 0 && out[out.length - 1] === null) out.pop()
         return out
       }
@@ -1951,6 +1984,38 @@ function normalizeState(raw: unknown): GameState {
       standings[key] = Math.round(value)
     }
   }
+  /**
+   * --- **累计获得声望**（2026-09-26 船长令，兼容字段无版本号）---
+   *
+   * 两条账：`standings` = **可支配**（只有「章鱼人兑换」扣它）· `standingsEarned` = **累计获得**
+   * （**全仓所有门槛读它**，只增不减）。
+   *
+   * 老档没有累计那一本 ⇒ **回填成 `max(40, 旧声望)`**，理由两条、都可证：
+   * - **今天没有消费点** ⇒ 老档的"可支配"就是它的"累计获得"，原样搬过来就是真值；
+   * - 补一个 **40 的下界** = 新档初始值（`INITIAL_STANDING`）⇒ 老玩家不会因为开档早而比新玩家少
+   *   一档门槛（尤其 `WEEKEND_MIN_STANDING = 40`：不补的话，一个声望 12 的老档反而打不了入侵）。
+   *
+   * ⚠ **不从日志回填**：`logs` 会被 `logCap` 裁剪、且读档不保证带（`serializeSaveFile` 的剥离注释），
+   * 拿它当账本只会得到"有时多、有时少"的假数。只在 `src.standingsEarned` **缺失**时回填（幂等）。
+   */
+  const standingsEarned: Record<string, number> = {}
+  const earnedRaw = asRaw(src.standingsEarned)
+  for (const [key, value] of Object.entries(earnedRaw)) {
+    if (typeof value === 'number' && Number.isFinite(value)) standingsEarned[key] = Math.round(value)
+  }
+  if (Object.keys(earnedRaw).length === 0) {
+    // ⚠ 势力 id 就地写 `'dsi'`：`expedition.ts` 已 import 本文件（`save ↔ expedition` 引不得），
+    //    而 `DSI_FACTION_ID` 的权威定义在那里 ⇒ 这里只用它做一次老档回填，与权威值同字面量。
+    const dsi = 'dsi'
+    standingsEarned[dsi] = Math.max(INITIAL_STANDING, standings[dsi] ?? 0)
+  }
+  /**
+   * --- **见过黑匣没有**（2026-09-26 船长令，兼容字段无版本号）---
+   *
+   * 三态原样透传：`true` / `false` 照抄；**缺省（老档）不写键** ⇒ 由 `blackbox.blackboxSeenOf`
+   * 在首次读取时按"仓库/任一舰队船的货仓里到底有没有黑匣"回填（那一处是唯一判据点）。
+   */
+  const blackboxSeen = src.blackboxSeen === true ? true : src.blackboxSeen === false ? false : undefined
 
   // --- 远征作业（V12 两阶段：out → battle → back；battle 状态只存动态量） ---
   const expRaw = asRaw(src.expedition)
@@ -2430,7 +2495,7 @@ function normalizeState(raw: unknown): GameState {
     const wreckRack = (v: unknown): Array<string | null> => {
       if (!Array.isArray(v)) return []
       const out: Array<string | null> = []
-      for (const x of v.slice(0, 7)) out.push(typeof x === 'string' && x.length > 0 ? x : null)
+      for (const x of v.slice(0, RACK_MAX)) out.push(typeof x === 'string' && x.length > 0 ? x : null)
       while (out.length > 0 && out[out.length - 1] === null) out.pop()
       return out
     }
@@ -2453,6 +2518,8 @@ function normalizeState(raw: unknown): GameState {
       typeof r.reinforceChance === 'number' && Number.isFinite(r.reinforceChance) && r.reinforceChance > 0
         ? r.reinforceChance
         : undefined
+    // 插件（2026-09-26）：清完**空表不写键** ⇒ 老残骸往返后形状逐字一致（与 `plugs` 舰队侧同款）
+    const wreckPlugs = cleanPlugIds(r.plugs)
     shipWrecks[shipId] = {
       seq: num(r.seq),
       galaxyId,
@@ -2461,6 +2528,7 @@ function normalizeState(raw: unknown): GameState {
       ...(defId !== undefined ? { defId } : {}),
       fitted,
       ...(Object.keys(droneLoad).length > 0 ? { droneLoad } : {}),
+      ...(wreckPlugs !== undefined ? { plugs: wreckPlugs } : {}),
       ...(durability !== undefined ? { durability } : {}),
       ...(armorPct !== undefined ? { armorPct } : {}),
       ...(reinforceChance !== undefined ? { reinforceChance } : {}),
@@ -3735,6 +3803,10 @@ function normalizeState(raw: unknown): GameState {
     manufacturingSeq,
     manufacturingLoops,
     standings,
+    // 累计获得声望（2026-09-26 船长令：门槛读它、兑换只扣可支配那本）——回填后恒非空 ⇒ 恒落键
+    standingsEarned,
+    // 见过黑匣没有（三态；缺省 = 老档 ⇒ 不落键，由 `blackbox.blackboxSeenOf` 回填）
+    ...(blackboxSeen !== undefined ? { blackboxSeen } : {}),
     expedition,
     events,
     exploredGalaxies,

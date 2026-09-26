@@ -599,8 +599,16 @@ for (const bp of BLUEPRINTS) {
   }
   for (const need of bp.materials) {
     const mat = items.get(need.itemId)
-    // 2026-09-20 零件体系：配方材料允许矿物或零件（零件本身由蓝图/隐式蓝图产出）
-    check(!!mat && (mat.kind === 'mineral' || mat.kind === 'part'), `蓝图 ${bp.id} 材料 ${need.itemId} 不存在或不是矿物/零件`)
+    /**
+     * 2026-09-20 零件体系：配方材料允许矿物或零件（零件本身由蓝图/隐式蓝图产出）。
+     *
+     * ⚠ **2026-09-26 放宽（船长令）**：舰船插件蓝图「**材料除了黑匣，还需要大量虚空晶和其他零件**」
+     * ⇒ 材料域再收 **`kit`** 一档（墨潮旗舰黑匣 `blackbox-h` 就是 `kind: 'kit'` 的战利品：可存、可回收、
+     * 可售，既不是矿物也不是零件，但**被明确指定为生产原料**）。
+     * 放宽面刻意收在"**物品大类**"这一档，而不是"任意物品都能当材料"——那样这条契约就等于没有了。
+     */
+    const okKind = mat !== undefined && (mat.kind === 'mineral' || mat.kind === 'part' || mat.kind === 'kit')
+    check(okKind, `蓝图 ${bp.id} 材料 ${need.itemId} 不存在或不是矿物/零件/组件`)
     check(need.count > 0 && Number.isInteger(need.count), `蓝图 ${bp.id} 材料数量非法`)
   }
   // **一次性图纸豁免**（2026-09-12 船长：「玩家无法学会，只能制造一次的图纸」）：
@@ -6019,6 +6027,13 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
   let counted = 0
   const found: string[] = []
   for (const m of MODULES) {
+    /**
+     * **舰船插件整族豁免**（**2026-09-26 船长令**，见 `docs/design/ship-plug-20260926.md`）：
+     * 插件槽是**独立槽位**（`slot: 'plug'`），它那 12 件的 `cpuBonus` / `damageBonusPct` / `hitBonusPct` /
+     * `rangeCutPct` / 三层血固定值……**每一件都是"本职效果"**，不存在"跨族搭车"这回事
+     * ⇒ 这一族不参与本契约（不是逐件放行，而是定义如此）。
+     */
+    if (m.slot === 'plug') continue
     for (const [field, owner] of Object.entries(OWNER)) {
       if (owner.split('|').includes(m.slot)) continue
       const v = (m as unknown as Record<string, unknown>)[field]
@@ -6376,6 +6391,8 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
   const itemName = new Map(ITEMS.map((i) => [i.id, i.name]))
   const itemSell = new Map(ITEMS.map((i) => [i.id, i.baseSellPriceIsk ?? 0]))
   let mismatchPrice = 0
+  /** 施工期未上线的蓝图行（如插件图纸：入手途径 = 兑换、书价 = 0）⇒ 不做价格核算，单独留痕 */
+  let unpriceableReleases = 0
   let driftCoef = 0
   let driftMatRatio = 0
   let okCoef = 0
@@ -7155,6 +7172,16 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
         : (marketOfItem.get(bp.itemId ?? '')?.basePrice ?? 0) * (bp.outputUnits ?? 1)
     const { coef, label: tierLabel } = blueprintTierCoefOf(bp.id, good.rarity)
     tiers[tierLabel] = (tiers[tierLabel] ?? 0) + 1
+    /**
+     * ⚠ **2026-09-26（船长令）**：舰船插件蓝图**不入市场**（图纸只在「章鱼人兑换」窗口用声望换）
+     * ⇒ 产物插件本身也是 `unreleased` 占位卡（`basePrice: 0`）⇒ "按档位系数核算书价"这条**无从核算**。
+     * 这不是缺陷而是**本批的设计**：书价 = 0、入手途径 = 兑换。故对 `unreleased` 的蓝图行**跳过**价格核算，
+     * 不再刷警告（`unreleased` 的语义本就是"施工期闸门，上线 = 删这一个字段"）。
+     */
+    if ((good as { unreleased?: boolean }).unreleased === true) {
+      unpriceableReleases += 1
+      continue
+    }
     if (product <= 0) {
       warn.push(`蓝图价格口径：${bp.id}（${label}）找不到产物现货价——无法按档位系数核算书价`)
       continue
@@ -7193,7 +7220,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
   console.log(
     `· 蓝图价格口径：${BLUEPRINTS.length} 张装备/物品蓝图中，书价与规则值一致 ${okCoef} 张（${Object.entries(tiers)
       .map(([k, v]) => `${k} ${v}`)
-      .join(' / ')}；单独覆盖 ${overridden} 张；**无市场行的一次性图纸豁免 ${exemptSingleUse} 张**；**专属一次性图纸（只收不卖）${exclusiveOnceBp} 张**（书价 = 产物价，不套档位系数、不比料/价带——2026-09-14 船长「允许玩家挂卖」批））；书价与市场行不符 ${mismatchPrice} 处（硬契约）、与档位系数不符 ${driftCoef} 处（预警）、料/价出带 ${driftMatRatio} 处（预警）`,
+      .join(' / ')}；单独覆盖 ${overridden} 张；**无市场行的一次性图纸豁免 ${exemptSingleUse} 张**；**专属一次性图纸（只收不卖）${exclusiveOnceBp} 张**（书价 = 产物价，不套档位系数、不比料/价带——2026-09-14 船长「允许玩家挂卖」批）；**施工期未上线、不做价格核算 ${unpriceableReleases} 张**（图纸走兑换、书价 = 0——2026-09-26 插件批））；书价与市场行不符 ${mismatchPrice} 处（硬契约）、与档位系数不符 ${driftCoef} 处（预警）、料/价出带 ${driftMatRatio} 处（预警）`,
   )
 }
 
@@ -7221,6 +7248,8 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
     'lowSec', 'foeFamily',
   // 2026-09-16 首次遭遇某敌舰级（船长：首次遭遇劫掠电子舰后发一封介绍捕获网的通讯）
   'foeShipSeen', 'firstTask',
+  // 2026-09-26 拿到第一个黑匣（船长令：「玩家获取第一个黑匣后，才解锁组装机的插件选项，并且弹出相关通讯」）
+  'blackboxSeen',
     // 2026-09-13 星云机制（船长：「除了一次性事件，通讯内也发一条相关的讯息给玩家」）
     'wormholeNebula',
     // 2026-09-23 围剿机制（船长：首次下到第 7 层发一封通讯讲清"敌人开始围剿"）

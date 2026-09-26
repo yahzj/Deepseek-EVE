@@ -15,6 +15,17 @@ import { emptyFitted } from './labels'
 import { EMPTY_WORMHOLE_STATE } from './wormhole'
 import type { WormholeState } from './wormhole'
 
+/**
+ * **新档初始声望 = 40**（**2026-09-26 船长令**：「**声望真扣（就是意味着玩家一开始其实可以买5张）**」）。
+ *
+ * 值 = 插件图纸单价（`plugs.PLUG_BLUEPRINT_COST = 8`）× 5 ⇒ **开局就能换 5 张**。
+ * ⚠ **定义在这里、由 `expedition.ts` 转发**：`expedition` 已经 import 本文件，
+ * 反向引会成环（仓内既有的 `HOME_GALAXY_ID` 就是这个处置）。
+ * ⚠ 连带后果（已如实登记）：入侵门槛 `WEEKEND_MIN_STANDING = 40` 因此**新档开局即达标**——
+ * 门槛数值一字未动，只是这条初始值把它顶到了；老档不受影响。
+ */
+export const INITIAL_STANDING = 40
+
 export type { FittedModules } from './types'
 
 /** 当前存档结构版本号：结构一变就 +1，并写对应的迁移函数（见 save.ts） */
@@ -170,6 +181,16 @@ export interface FleetShipState {
   cargo: Record<string, number>
   /** 装在这艘船上的装备（随船，弃船即遗失） */
   fitted: FittedModules
+  /**
+   * **舰船插件**（**2026-09-26 船长令**，见 `docs/design/ship-plug-20260926.md`）：
+   * 装上去就**拆不下来**的固定件，**独立于高/中/低槽**（不是 `fitted` 的第四类，避免动槽位契约）——
+   * 长度上限 = 该船型的插件槽数（`ShipDef.plugSlots`：T1=5 / T2=4 / T3=3 / T4=2 / T5=1）。
+   *
+   * 三条不可逆口径：① **无卸下入口**（装配页不给按钮，core 侧卸下函数也拒绝插件）；
+   * ② 装了插件 ⇒ **不许进舰船仓库、不许挂市场卖**；③ **唯一失去途径 = 船被打沉**（随 `fleet` 条目一起消失）。
+   * 兼容字段（可选，**零迁移**）：老档缺席 = 没装过插件。
+   */
+  plugs?: string[]
   /** 无人机舱装载清单（2026-09-08 无人机舱大改）：droneId -> 架数（0 = 不存）；
    *  战斗只放飞此清单（不再自动从仓库贪心）；CPU 预占计入船体预算；旧档缺省 = 空 = 无无人机 */
   droneLoad?: Record<string, number>
@@ -1642,8 +1663,24 @@ export interface GameStateV7 {
   mining: MiningState
   /** 制造作业 */
   manufacturing: ManufacturingRunState
-  /** 势力声望 */
+  /** 势力声望（**2026-09-26 起 = 可支配那一本**：只有「章鱼人兑换」扣它） */
   standings: Record<string, number>
+  /**
+   * **累计获得的势力声望**（**2026-09-26 船长令**：「**其他所有的声望门槛都改为看获得了多少声望总数**」）。
+   *
+   * - **只增不减**（获得时 +v，兑换扣的是 `standings` 那一本）⇒ 兑换不会把已解锁的门槛重新锁上；
+   * - **全仓所有门槛读它**（唯一入口 `expedition.standingOf`）；
+   * - 兼容字段无版本号：老档缺省由 `save.normalizeState` 回填成 `max(旧声望, 已清卡面 standingGain 之和)`。
+   */
+  standingsEarned?: Record<string, number>
+  /**
+   * **见过黑匣没有**（**2026-09-26 船长令**：「**玩家获取第一个黑匣后，才解锁组装机的插件选项，
+   * 并且弹出相关通讯**」）。
+   *
+   * 三态：`true` = 已经拿到过（组装机插件档解锁、通讯已发）；`false` = 本功能之后开的新档、还没拿到；
+   * `undefined` = 老档 ⇒ 读档时按"仓库里有没有黑匣"回填（见 `plugs.blackboxSeenOf`）。
+   */
+  blackboxSeen?: boolean
   /** 远征作业 */
   expedition: ExpeditionState
   /**
@@ -2092,6 +2129,12 @@ export interface ShipWreckRecord {
   fitted?: FittedModules
   /** **损毁那一刻的无人机舱清单**（droneId → 架数；打捞时按"这一型还剩几架"整型给回） */
   droneLoad?: Record<string, number>
+  /**
+   * **损毁那一刻装着、还没换回黑匣的舰船插件 id 列表**（**2026-09-26 船长令**「**玩家回收按插件数量直接
+   * 回收成黑匣**」）。与 `fitted` **是两本账**：插件不进高/中/低槽，打捞时**不逐件掷骰**——
+   * 残骸第一次被捞时按件数整批换回黑匣，然后把这个字段清空。
+   */
+  plugs?: string[]
   /** 损毁那一刻的结构层（= `FleetShipState.durability`）：整船回收后按它 ×0.3 回港 */
   durability?: number
   /** 损毁那一刻的装甲残余比例：整船回收后按它 ×0.5 回港 */
@@ -2558,8 +2601,9 @@ export interface SideTask {
   /** 快递：是否**限时快递**（船长：「快递任务有 2 种区分，普通快递和限时快递」）。限时快递对跃迁速度有门槛、
    *  且有截止时刻，**超时无报酬**（船长选甲案：无报酬 ＋ 任务作废） */
   timed?: boolean
-  /** 快递：**跃迁速度门槛（AU/s）**——4 档 = 剑鱼 6.20 / 剑鱼+MK2 7.44 / 剑鱼+MK3 8.37 / 剑鱼+MK3×2 10.92
-   *  （`timed === true` 时非空；出发时校验当前舰船，不达标不许出发） */
+  /** 快递：**跃迁速度门槛（AU/s）**——4 档 = 剑鱼 6.20 / 剑鱼+MK2 7.44 / 剑鱼+MK3 8.37 / 剑鱼+MK3×2 10.91
+   *  （`timed === true` 时非空；出发时校验当前舰船，不达标不许出发）
+   *  ⚠ 最高档 2026-09-26 由 10.92 落到 **10.91**（船长裁决乙案：双 MK3 的真实读数 10.9161 被 10.92 卡住） */
   warpReqAus?: number
   /** 快递：**时限（毫秒）**= 该档基准配置跑完本段航程的时长（出发时刻 + 它 = 截止；超时无报酬、任务作废） */
   timeLimitMs?: number
@@ -3155,7 +3199,15 @@ export function createInitialState(opts?: {
     manufacturingRuns: [],
     manufacturingSeq: 1,
     manufacturingLoops: {},
-    standings: {},
+    /**
+     * **新档初始声望 = 40**（**2026-09-26 船长令**：「**声望真扣（就是意味着玩家一开始其实可以买5张）**」）
+     * —— 两条账同值（可支配 40 / 累计 40）⇒ 开局就能换 5 张插件图纸，
+     * 且入侵门槛（累计 40）开局即达标（船长接受）。
+     */
+    standings: { dsi: INITIAL_STANDING },
+    standingsEarned: { dsi: INITIAL_STANDING },
+    /** 新档还没见过黑匣（组装机插件档锁着，等第一个黑匣解锁 ＋ 发通讯） */
+    blackboxSeen: false,
     expedition: {
       active: false,
       anomalyId: null,

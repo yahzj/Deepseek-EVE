@@ -47,6 +47,7 @@ import {
   wormholeAutoStart,
 } from '../src/wormholeAuto'
 import { wormholeStockPush } from '../src/wormholeScan'
+import { setStanding } from './helpers'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -171,7 +172,7 @@ describe('虫洞 · 遗迹掉落 AI 核心（2026-09-14 船长定）', () => {
     }
     const state = createInitialState({ nowWallMs: 0, seed: 5 })
     state.wallet.isk = 1_000_000_000
-    state.standings['dsi'] = 100
+    setStanding(state, 'dsi', 100)
     // 只收不卖：买入被明确拒绝（不是"余额不足"这种误导文案）
     expect(buyOrderBlockedReason(state, ctx, 'core-alpha', 10_000_000, 1)).toContain('只收不卖')
     expect(buyAtMarket(state, ctx, 'core-alpha', 1).blocked).toBe('not-buyable')

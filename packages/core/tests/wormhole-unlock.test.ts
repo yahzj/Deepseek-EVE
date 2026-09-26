@@ -17,11 +17,18 @@ import { advanceComms, commsInbox, commsPopupQueue, dismissCommsPopup } from '..
 import { WORMHOLE_SCAN_UNLOCK_STANDING, advanceWormholeScan, reconcileWormholeScanWelcome, wormholeScanBlockReason, wormholeScanStanding, wormholeScanStart, wormholeScanUnlocked, wormholeScanWindowMs } from '../src/wormholeScan'
 import type { CommsMessageDef } from '../src/types'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { clearInitialStanding, setStanding } from './helpers'
 
 const ctx = buildSimContext()
 
 function fresh(seed = 7): GameState {
-  return createInitialState({ nowWallMs: 0, seed })
+  const s = createInitialState({ nowWallMs: 0, seed })
+  /**
+   * ⚠ **2026-09-26**：新档初始声望 = 40（船长令"一开始其实可以买5张"），而本文件测的正是
+   * **声望门槛 40** 的两侧 ⇒ 必须先把初始值清零，否则"默认档声望 0 ⇒ 未解锁"那半条当场失效。
+   */
+  clearInitialStanding(s)
+  return s
 }
 
 /** 造一封"解锁信"（正式文案在 data/messages.ts；这里只测机制） */
@@ -55,18 +62,18 @@ describe('虫洞解锁门槛（船长 2026-09-14：先定 35，当日改判提�
     expect(blocked).toContain('尚未解锁')
     expect(blocked).toContain(`${WORMHOLE_SCAN_UNLOCK_STANDING}`)
     // 差 1 点仍拦（边界跟着常量走，改门槛不用改用例）
-    state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING - 1
+    setStanding(state, 'dsi', WORMHOLE_SCAN_UNLOCK_STANDING - 1)
     expect(wormholeScanUnlocked(state)).toBe(false)
     expect(wormholeScanBlockReason(state)).toContain('尚未解锁')
     // 达标放行（其余前置都满足 ⇒ 理由是 null）
-    state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
+    setStanding(state, 'dsi', WORMHOLE_SCAN_UNLOCK_STANDING)
     expect(wormholeScanUnlocked(state)).toBe(true)
     expect(wormholeScanBlockReason(state)).toBeNull()
   })
 
   it('**调试 1 秒化**：`debugQuick` 打开后窗口 = 1 秒（与星图扫描同一把开关）', () => {
     const state = fresh()
-    state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
+    setStanding(state, 'dsi', WORMHOLE_SCAN_UNLOCK_STANDING)
     const normal = wormholeScanWindowMs(state)
     expect(normal).toBe(12 * 60 * 60_000) // 未练技能 = 12 小时（船长 2026-09-14：「虫洞扫描时长提高到12小时」）
     state.debugQuick = true
@@ -85,7 +92,7 @@ describe('需弹窗的通讯（解锁信）', () => {
     advanceComms(state, c)
     expect(commsPopupQueue(state)).toHaveLength(0)
     // 达标：送 + 进队列
-    state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
+    setStanding(state, 'dsi', WORMHOLE_SCAN_UNLOCK_STANDING)
     advanceComms(state, c)
     expect(commsPopupQueue(state)).toEqual([msg.id])
     expect(commsInbox(state, c).some((e) => e.id === msg.id)).toBe(true)
@@ -102,7 +109,7 @@ describe('需弹窗的通讯（解锁信）', () => {
 
   it('**`unreleased` 施工期闸门**：标了就不送达、也不弹（上线时删字段即可开送）', () => {
     const state = fresh()
-    state.standings['dsi'] = 99
+    setStanding(state, 'dsi', 99)
     const msg = unlockMsg({ unreleased: true })
     const c = ctxWith(msg)
     advanceComms(state, c)
@@ -112,7 +119,7 @@ describe('需弹窗的通讯（解锁信）', () => {
 
   it('**门槛值口径**：`standing` 触发器按"声望势力 id"判定（不是通讯发件势力 id）', () => {
     const state = fresh()
-    state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
+    setStanding(state, 'dsi', WORMHOLE_SCAN_UNLOCK_STANDING)
     state.standings['dshi'] = 0 // 通讯发件势力那套 id 不该被当声望用
     const c = ctxWith(unlockMsg())
     advanceComms(state, c)
@@ -133,7 +140,7 @@ describe('解锁当次的「满窗口」（2026-09-14 船长 · 甲 + 只送一�
     expect(state.wormholeScan!.progressMs).toBe(0)
     expect(state.wormholeScan!.welcomed).not.toBe(true)
 
-    state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
+    setStanding(state, 'dsi', WORMHOLE_SCAN_UNLOCK_STANDING)
     expect(reconcileWormholeScanWelcome(state)).toBe(true)
     expect(state.wormholeScan!.progressMs).toBe(wormholeScanWindowMs(state)) // = 满窗口
     expect(state.wormholeScan!.welcomed).toBe(true)
@@ -146,7 +153,7 @@ describe('解锁当次的「满窗口」（2026-09-14 船长 · 甲 + 只送一�
 
   it('接线：置满之后点「开始扫描」⇒ **第一拍就产出一处**（库存 +1、进度回落到那一拍）', () => {
     const state = fresh()
-    state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
+    setStanding(state, 'dsi', WORMHOLE_SCAN_UNLOCK_STANDING)
     expect(reconcileWormholeScanWelcome(state)).toBe(true)
     expect(wormholeScanStart(state, ctx).ok).toBe(true)
     expect(state.wormholeStock ?? []).toHaveLength(0)
@@ -157,7 +164,7 @@ describe('解锁当次的「满窗口」（2026-09-14 船长 · 甲 + 只送一�
 
   it('存档往返：标记随档保留；老档缺省 = 未发放（**零迁移**，达标后下一次 tick 自动补）', () => {
     const state = fresh()
-    state.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
+    setStanding(state, 'dsi', WORMHOLE_SCAN_UNLOCK_STANDING)
     reconcileWormholeScanWelcome(state)
     const back = loadSaveFile(serializeSaveFile(state))
     expect(back.state.wormholeScan!.welcomed).toBe(true)
@@ -166,7 +173,7 @@ describe('解锁当次的「满窗口」（2026-09-14 船长 · 甲 + 只送一�
     // 老档语义：字段缺省 = 尚未发放；达标的老档照样会被补上（逐 tick 收口）
     const legacy = fresh()
     expect(legacy.wormholeScan!.welcomed).toBeUndefined()
-    legacy.standings['dsi'] = WORMHOLE_SCAN_UNLOCK_STANDING
+    setStanding(legacy, 'dsi', WORMHOLE_SCAN_UNLOCK_STANDING)
     expect(reconcileWormholeScanWelcome(legacy)).toBe(true)
   })
 })

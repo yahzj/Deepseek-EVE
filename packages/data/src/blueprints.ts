@@ -2785,6 +2785,270 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     priceIsk: 20_000_000, // 船长定平均价 2000 万；**书价 = 产物价**
     description: '护盾充能力场装置 MK3：每 8 秒为队内所有舰船恢复护盾，恢复量为本舰护盾量的 10%。',
   },
+  /* ══════════════ 舰船插件蓝图（**2026-09-26 船长令**）══════════════
+   * 船长原话（照抄）：「**在工业-组装机的门类筛选中，添加舰船插件的新分类，打算依靠黑匣来生产舰船插件。**」
+   * ＋「**插件蓝图是永久蓝图，材料除了黑匣，还需要大量虚空晶和其他零件。**」
+   * ＋「**找章鱼人用声望兑换**」＋「**玩家获取第一个黑匣后，才解锁组装机的插件选项**」。
+   *
+   * 口径：
+   * - **永久蓝图**（不写 `singleUse`）：在「章鱼人兑换」窗口花声望换一本 → 学会 → 组装机随时造；
+   * - **每件材料固定**（同料、只产物不同）：墨潮旗舰黑匣 ×1 ＋ 虚空晶 ×60 ＋ 5 种基础零件 ＋ 2 种高级零件；
+   * - **不上市场**：`priceIsk = 0` ＋ `unreleased: true`（手册蓝图图鉴与组装机蓝图下拉都不列它）——
+   *   它的入手途径是**兑换**而不是买，市场卡照做带备注（日后要开只删 `unreleased`）；
+   * - 工时 **3,600 秒 / 件**（与 MK3 装备同档；插件不上市场 ⇒ 没有售价可标定，工时只决定"造一件等多久"）。
+   */
+  {
+    id: 'bp-plug-shield-plate',
+    name: '护盾强化插板图纸',
+    moduleId: 'plug-shield-plate',
+    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    materials: [
+      { itemId: 'blackbox-h', count: 1 },
+      { itemId: 'min-voidcrystal', count: 60 },
+      { itemId: 'part-frame', count: 1_500 },
+      { itemId: 'part-cable', count: 600 },
+      { itemId: 'part-circuit', count: 900 },
+      { itemId: 'part-armor-plate', count: 500 },
+      { itemId: 'part-coolant', count: 500 },
+      { itemId: 'part-qchip', count: 150 },
+      { itemId: 'part-fire-control', count: 100 },
+    ],
+    buildSeconds: 3_600,
+    buildCostIsk: 0,
+    priceIsk: 0, // 不上市场 ⇒ 无书价
+    description: '护盾强化插板的制造图纸：须先取得墨潮旗舰黑匣。',
+  },
+  {
+    id: 'bp-plug-armor-plate',
+    name: '装甲强化插板图纸',
+    moduleId: 'plug-armor-plate',
+    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    materials: [
+      { itemId: 'blackbox-h', count: 1 },
+      { itemId: 'min-voidcrystal', count: 60 },
+      { itemId: 'part-frame', count: 1_500 },
+      { itemId: 'part-cable', count: 600 },
+      { itemId: 'part-circuit', count: 900 },
+      { itemId: 'part-armor-plate', count: 500 },
+      { itemId: 'part-coolant', count: 500 },
+      { itemId: 'part-qchip', count: 150 },
+      { itemId: 'part-fire-control', count: 100 },
+    ],
+    buildSeconds: 3_600,
+    buildCostIsk: 0,
+    priceIsk: 0, // 不上市场 ⇒ 无书价
+    description: '装甲强化插板的制造图纸：须先取得墨潮旗舰黑匣。',
+  },
+  {
+    id: 'bp-plug-hull-plate',
+    name: '结构强化插板图纸',
+    moduleId: 'plug-hull-plate',
+    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    materials: [
+      { itemId: 'blackbox-h', count: 1 },
+      { itemId: 'min-voidcrystal', count: 60 },
+      { itemId: 'part-frame', count: 1_500 },
+      { itemId: 'part-cable', count: 600 },
+      { itemId: 'part-circuit', count: 900 },
+      { itemId: 'part-armor-plate', count: 500 },
+      { itemId: 'part-coolant', count: 500 },
+      { itemId: 'part-qchip', count: 150 },
+      { itemId: 'part-fire-control', count: 100 },
+    ],
+    buildSeconds: 3_600,
+    buildCostIsk: 0,
+    priceIsk: 0, // 不上市场 ⇒ 无书价
+    description: '结构强化插板的制造图纸：须先取得墨潮旗舰黑匣。',
+  },
+  {
+    id: 'bp-plug-mid-bay',
+    name: '中层舱段插件图纸',
+    moduleId: 'plug-mid-bay',
+    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    materials: [
+      { itemId: 'blackbox-h', count: 1 },
+      { itemId: 'min-voidcrystal', count: 60 },
+      { itemId: 'part-frame', count: 1_500 },
+      { itemId: 'part-cable', count: 600 },
+      { itemId: 'part-circuit', count: 900 },
+      { itemId: 'part-armor-plate', count: 500 },
+      { itemId: 'part-coolant', count: 500 },
+      { itemId: 'part-qchip', count: 150 },
+      { itemId: 'part-fire-control', count: 100 },
+    ],
+    buildSeconds: 3_600,
+    buildCostIsk: 0,
+    priceIsk: 0, // 不上市场 ⇒ 无书价
+    description: '中层舱段插件的制造图纸：须先取得墨潮旗舰黑匣。',
+  },
+  {
+    id: 'bp-plug-low-bay',
+    name: '下层舱段插件图纸',
+    moduleId: 'plug-low-bay',
+    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    materials: [
+      { itemId: 'blackbox-h', count: 1 },
+      { itemId: 'min-voidcrystal', count: 60 },
+      { itemId: 'part-frame', count: 1_500 },
+      { itemId: 'part-cable', count: 600 },
+      { itemId: 'part-circuit', count: 900 },
+      { itemId: 'part-armor-plate', count: 500 },
+      { itemId: 'part-coolant', count: 500 },
+      { itemId: 'part-qchip', count: 150 },
+      { itemId: 'part-fire-control', count: 100 },
+    ],
+    buildSeconds: 3_600,
+    buildCostIsk: 0,
+    priceIsk: 0, // 不上市场 ⇒ 无书价
+    description: '下层舱段插件的制造图纸：须先取得墨潮旗舰黑匣。',
+  },
+  {
+    id: 'bp-plug-cpu-core',
+    name: '协处理插件图纸',
+    moduleId: 'plug-cpu-core',
+    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    materials: [
+      { itemId: 'blackbox-h', count: 1 },
+      { itemId: 'min-voidcrystal', count: 60 },
+      { itemId: 'part-frame', count: 1_500 },
+      { itemId: 'part-cable', count: 600 },
+      { itemId: 'part-circuit', count: 900 },
+      { itemId: 'part-armor-plate', count: 500 },
+      { itemId: 'part-coolant', count: 500 },
+      { itemId: 'part-qchip', count: 150 },
+      { itemId: 'part-fire-control', count: 100 },
+    ],
+    buildSeconds: 3_600,
+    buildCostIsk: 0,
+    priceIsk: 0, // 不上市场 ⇒ 无书价
+    description: '协处理插件的制造图纸：须先取得墨潮旗舰黑匣。',
+  },
+  {
+    id: 'bp-plug-firepower',
+    name: '火力强化插件图纸',
+    moduleId: 'plug-firepower',
+    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    materials: [
+      { itemId: 'blackbox-h', count: 1 },
+      { itemId: 'min-voidcrystal', count: 60 },
+      { itemId: 'part-frame', count: 1_500 },
+      { itemId: 'part-cable', count: 600 },
+      { itemId: 'part-circuit', count: 900 },
+      { itemId: 'part-armor-plate', count: 500 },
+      { itemId: 'part-coolant', count: 500 },
+      { itemId: 'part-qchip', count: 150 },
+      { itemId: 'part-fire-control', count: 100 },
+    ],
+    buildSeconds: 3_600,
+    buildCostIsk: 0,
+    priceIsk: 0, // 不上市场 ⇒ 无书价
+    description: '火力强化插件的制造图纸：须先取得墨潮旗舰黑匣。',
+  },
+  {
+    id: 'bp-plug-sight',
+    name: '瞄具插件图纸',
+    moduleId: 'plug-sight',
+    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    materials: [
+      { itemId: 'blackbox-h', count: 1 },
+      { itemId: 'min-voidcrystal', count: 60 },
+      { itemId: 'part-frame', count: 1_500 },
+      { itemId: 'part-cable', count: 600 },
+      { itemId: 'part-circuit', count: 900 },
+      { itemId: 'part-armor-plate', count: 500 },
+      { itemId: 'part-coolant', count: 500 },
+      { itemId: 'part-qchip', count: 150 },
+      { itemId: 'part-fire-control', count: 100 },
+    ],
+    buildSeconds: 3_600,
+    buildCostIsk: 0,
+    priceIsk: 0, // 不上市场 ⇒ 无书价
+    description: '瞄具插件的制造图纸：须先取得墨潮旗舰黑匣。',
+  },
+  {
+    id: 'bp-plug-thruster',
+    name: '推进插件图纸',
+    moduleId: 'plug-thruster',
+    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    materials: [
+      { itemId: 'blackbox-h', count: 1 },
+      { itemId: 'min-voidcrystal', count: 60 },
+      { itemId: 'part-frame', count: 1_500 },
+      { itemId: 'part-cable', count: 600 },
+      { itemId: 'part-circuit', count: 900 },
+      { itemId: 'part-armor-plate', count: 500 },
+      { itemId: 'part-coolant', count: 500 },
+      { itemId: 'part-qchip', count: 150 },
+      { itemId: 'part-fire-control', count: 100 },
+    ],
+    buildSeconds: 3_600,
+    buildCostIsk: 0,
+    priceIsk: 0, // 不上市场 ⇒ 无书价
+    description: '推进插件的制造图纸：须先取得墨潮旗舰黑匣。',
+  },
+  {
+    id: 'bp-plug-rangefinder',
+    name: '射程插件图纸',
+    moduleId: 'plug-rangefinder',
+    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    materials: [
+      { itemId: 'blackbox-h', count: 1 },
+      { itemId: 'min-voidcrystal', count: 60 },
+      { itemId: 'part-frame', count: 1_500 },
+      { itemId: 'part-cable', count: 600 },
+      { itemId: 'part-circuit', count: 900 },
+      { itemId: 'part-armor-plate', count: 500 },
+      { itemId: 'part-coolant', count: 500 },
+      { itemId: 'part-qchip', count: 150 },
+      { itemId: 'part-fire-control', count: 100 },
+    ],
+    buildSeconds: 3_600,
+    buildCostIsk: 0,
+    priceIsk: 0, // 不上市场 ⇒ 无书价
+    description: '射程插件的制造图纸：须先取得墨潮旗舰黑匣。',
+  },
+  {
+    id: 'bp-plug-target-beacon',
+    name: '靶标插件图纸',
+    moduleId: 'plug-target-beacon',
+    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    materials: [
+      { itemId: 'blackbox-h', count: 1 },
+      { itemId: 'min-voidcrystal', count: 60 },
+      { itemId: 'part-frame', count: 1_500 },
+      { itemId: 'part-cable', count: 600 },
+      { itemId: 'part-circuit', count: 900 },
+      { itemId: 'part-armor-plate', count: 500 },
+      { itemId: 'part-coolant', count: 500 },
+      { itemId: 'part-qchip', count: 150 },
+      { itemId: 'part-fire-control', count: 100 },
+    ],
+    buildSeconds: 3_600,
+    buildCostIsk: 0,
+    priceIsk: 0, // 不上市场 ⇒ 无书价
+    description: '靶标插件的制造图纸：须先取得墨潮旗舰黑匣。',
+  },
+  {
+    id: 'bp-plug-concealment',
+    name: '隐匿插件图纸',
+    moduleId: 'plug-concealment',
+    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    materials: [
+      { itemId: 'blackbox-h', count: 1 },
+      { itemId: 'min-voidcrystal', count: 60 },
+      { itemId: 'part-frame', count: 1_500 },
+      { itemId: 'part-cable', count: 600 },
+      { itemId: 'part-circuit', count: 900 },
+      { itemId: 'part-armor-plate', count: 500 },
+      { itemId: 'part-coolant', count: 500 },
+      { itemId: 'part-qchip', count: 150 },
+      { itemId: 'part-fire-control', count: 100 },
+    ],
+    buildSeconds: 3_600,
+    buildCostIsk: 0,
+    priceIsk: 0, // 不上市场 ⇒ 无书价
+    description: '隐匿插件的制造图纸：须先取得墨潮旗舰黑匣。',
+  },
 ]
 
 

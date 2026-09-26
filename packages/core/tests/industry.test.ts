@@ -11,6 +11,7 @@ import { advanceGame } from '../src/engine'
 import { countAiCore } from '../src/ai'
 import { L10N } from '@whale/data'
 import { makeTestCtx, ship, skill, skipFirstSkillReward } from './helpers'
+import { clearInitialStanding, setStanding } from './helpers'
 
 describe('精炼与市场（M1 经济）', () => {
   let state: GameState
@@ -18,6 +19,12 @@ describe('精炼与市场（M1 经济）', () => {
 
   beforeEach(() => {
     state = createInitialState({ nowWallMs: 0, seed: 1 })
+    /**
+     * ⚠ **2026-09-26**：新档初始声望 = 40（船长令"一开始其实可以买5张"）⇒ 本文件的卖价/税后读数
+     * 都按**声望 0** 标定（40 已越过 `sellStandingMult` 的 +15% 上限）⇒ 套件级清零。
+     * 要测加成的用例自己用 `setStanding` 设值（本文件里已有两处）。
+     */
+    clearInitialStanding(state)
     ctx = makeTestCtx()
   })
 
@@ -357,13 +364,13 @@ describe('精炼与市场（M1 经济）', () => {
 
     it('协会声望加成售价：加成计入毛额后再扣贸易税（M4 + 贸易税）', () => {
       state.fleet[state.shipId].cargo['ore-a'] = 100
-      state.standings['dsi'] = 5 // 5% 加成
+      setStanding(state, 'dsi', 5) // 5% 加成
       const result = sellAll(state, 'ore-a', ctx)
       const gross = Math.round(1_200 * 1.05)
       expect(result.gainedIsk).toBe(gross - Math.round(gross * 0.05)) // 税后 1197
       // 上限：声望 30 → 15%（封顶）
       state.fleet[state.shipId].cargo['ore-a'] = 100
-      state.standings['dsi'] = 30
+      setStanding(state, 'dsi', 30)
       const capped = sellAll(state, 'ore-a', ctx)
       const grossCap = Math.round(1_200 * 1.15)
       expect(capped.gainedIsk).toBe(grossCap - Math.round(grossCap * 0.05)) // 税后 1311

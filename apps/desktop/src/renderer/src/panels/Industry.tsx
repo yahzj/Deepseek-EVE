@@ -32,6 +32,8 @@ import {
   visibleItemDefs,
   // 2026-09-14 船长：虫洞专属图纸改「去虫洞」跳转，门槛与扫描虫洞页同一本账
   WORMHOLE_SCAN_UNLOCK_STANDING,
+  // 2026-09-26 船长令：取得第一个黑匣后才解锁组装机的「舰船插件」档（判据单点）
+  plugCraftUnlockedOf,
 } from '@whale/core'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
@@ -447,6 +449,8 @@ function bpFilterKeysOf(engine: GameEngine, bpId: string): { tab: ManuTabKey; su
     return { tab: 'supply', subKey: item?.kind ?? '', singleUse: bp.singleUse === true }
   }
   const mod = bp?.moduleId ? engine.ctx.modules.get(bp.moduleId) : undefined
+  // 舰船插件（2026-09-26 船长令）：`slot === 'plug'` 单独成档，**不进**「装备」档的功能分组
+  if (mod?.slot === 'plug') return { tab: 'plug', subKey: '', singleUse: bp?.singleUse === true }
   return { tab: 'equip', subKey: mod ? moduleSubKeyOf(mod.slot, mod.id) : '', singleUse: bp?.singleUse === true }
 }
 
@@ -1522,21 +1526,32 @@ export function ManufacturingPanel({
         </div>
         <span className="app-dim">{tr('ui.Industry.134')}</span>
         <div className="app-task-tabs app-fleet-tabs" role="tablist">
-          {MANU_TABS_CRAFT.map((t) => (
-            <button
-              key={t.key}
-              role="tab"
-              aria-selected={tab === t.key}
-              className={`app-tasktab${tab === t.key ? ' is-active' : ''}`}
-              onClick={() => {
-                setTab(t.key)
-                setSub(SUB_ALL) // 换一级标签即回「全部子类」（与市场页 changeKind 同款）
-                setUseKind(SUB_ALL) // 三级筛选随之复位（它只在选了子类后才显示，留着会变成"看不见的筛选"）
-              }}
-            >
-              {tr(t.id)}
-            </button>
-          ))}
+          {MANU_TABS_CRAFT.map((t) => {
+            /**
+             * **「舰船插件」档在取得第一个黑匣前锁着**（**2026-09-26 船长令**：「玩家获取第一个黑匣后，
+             * 才解锁组装机的插件选项」）。判据走 core 单点 `plugCraftUnlockedOf`（= 见过黑匣）。
+             * 锁着时：标签仍在（让玩家知道有这一档），但**置灰不可点**并把原因写在悬停里 ——
+             * 与全仓"避免看不见的筛选"同款口径的另一面：这一档不是"筛选空档"，而是**功能未解锁**。
+             */
+            const locked = t.key === 'plug' && !plugCraftUnlockedOf(engine.state)
+            return (
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={tab === t.key}
+                disabled={locked}
+                title={locked ? tr('ui.IndustryPage.117') : undefined}
+                className={`app-tasktab${tab === t.key ? ' is-active' : ''}`}
+                onClick={() => {
+                  setTab(t.key)
+                  setSub(SUB_ALL) // 换一级标签即回「全部子类」（与市场页 changeKind 同款）
+                  setUseKind(SUB_ALL) // 三级筛选随之复位（它只在选了子类后才显示，留着会变成"看不见的筛选"）
+                }}
+              >
+                {tr(t.id)}
+              </button>
+            )
+          })}
         </div>
       </div>
       {/* 二级子筛选（2026-09-11 船长：按产物的类型二次分类 / 舰船按舰船级别）——

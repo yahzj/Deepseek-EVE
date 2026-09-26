@@ -58,6 +58,7 @@ import {
   weekendWindowOpen,
 } from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
+import { setStanding } from './helpers'
 
 const ctx = buildSimContext()
 const H = 3_600_000
@@ -97,14 +98,14 @@ describe('周末入侵 · 时间轴', () => {
     expect(WEEKEND_DEBUG_ONLY, '船长已解除"仅调试模式可见"').toBe(false)
     const s = fresh()
     s.exploredGalaxies = [...ctx.galaxies.keys()] // 声望与探索都达标 ⇒ 该开
-    s.standings['dsi'] = 60
+    setStanding(s, 'dsi', 60)
     expect(ensureWeekendEvent(s, ctx, fri + 1 * H), '正常模式 ⇒ 开（窗口内 ＋ 声望达标）').toBe(true)
     expect(s.weekendEvent?.startedAtWallMs, '正常模式 T0 = 本周五 20:00（不是调用时刻）').toBe(fri)
     expect(ensureWeekendEvent(s, ctx, fri + 2 * H), '同一窗口只开一场 ⇒ 幂等').toBe(false)
     /** 窗口外（周三）⇒ 不开 */
     const outside = fresh()
     outside.exploredGalaxies = [...ctx.galaxies.keys()]
-    outside.standings['dsi'] = 60
+    setStanding(outside, 'dsi', 60)
     expect(ensureWeekendEvent(outside, ctx, fri + 4 * 24 * H), '窗口外 ⇒ 不开').toBe(false)
     const sd = fresh(true)
     expect(ensureWeekendEvent(sd, ctx, fri + 1 * H), '调试模式 ⇒ 开').toBe(true)
@@ -121,7 +122,7 @@ describe('周末入侵 · 时间轴', () => {
     const fri = new Date(2026, 9, 2, 20, 0, 0, 0).getTime()  // 2026-10-02（首场时段之外，走纯周排期）
     const s = fresh()
     s.exploredGalaxies = [...ctx.galaxies.keys()]
-    s.standings['dsi'] = 60
+    setStanding(s, 'dsi', 60)
     expect(ensureWeekendEvent(s, ctx, fri + 1 * H)).toBe(true)
     const ev = s.weekendEvent!
     ev.endedAtWallMs = fri + 3 * H // 打完了，但窗口还开着（到下周一 22:00）
@@ -143,7 +144,7 @@ describe('周末入侵 · 时间轴', () => {
     expect(new Date(first!).getHours(), '本地 22 点').toBe(22)
     const s = fresh()
     s.exploredGalaxies = [...ctx.galaxies.keys()]
-    s.standings['dsi'] = 60
+    setStanding(s, 'dsi', 60)
     expect(ensureWeekendEvent(s, ctx, first! - 60_000), '到点前 ⇒ 不开').toBe(false)
     expect(ensureWeekendEvent(s, ctx, first!), '到点 ⇒ 开首场').toBe(true)
     expect(s.weekendEvent?.startedAtWallMs, 'T0 = 22:00（不是排期的 20:00）').toBe(first)
@@ -698,21 +699,23 @@ describe('周末入侵 · 引擎 tick 与记账（M1-b）', () => {
     expect(WEEKEND_DEBUG_ONLY, '船长 2026-09-25 已解除"仅调试模式可见"').toBe(false)
     // 正常模式：声望 0 / 39 ⇒ 不开；40 及以上 ⇒ 开
     s.debugQuick = false
-    s.standings['dsi'] = 0
+    setStanding(s, 'dsi', 0)
     expect(weekendInvasionAllowedFor(s), '声望 0 ⇒ 不开').toBe(false)
-    s.standings['dsi'] = WEEKEND_MIN_STANDING - 1
+    setStanding(s, 'dsi', WEEKEND_MIN_STANDING - 1)
     expect(weekendInvasionAllowedFor(s), '差 1 点也不开').toBe(false)
-    s.standings['dsi'] = WEEKEND_MIN_STANDING
+    setStanding(s, 'dsi', WEEKEND_MIN_STANDING)
     expect(weekendInvasionAllowedFor(s), '到线即开').toBe(true)
-    s.standings['dsi'] = WEEKEND_MIN_STANDING + 30
+    setStanding(s, 'dsi', WEEKEND_MIN_STANDING + 30)
     expect(weekendInvasionAllowedFor(s), '超过更开').toBe(true)
     // 声望远超也拦不住调试模式：调高声望不改变"调试恒真"这条
-    s.standings['dsi'] = 0
+    setStanding(s, 'dsi', 0)
     s.debugQuick = true
     expect(weekendInvasionAllowedFor(s), '调试模式不受限（新建档也能测入侵）').toBe(true)
     // 缺键（老档没有 standings.dsi）按 0 算 ⇒ 正常模式下不开
     s.debugQuick = false
+    // ⚠ 2026-09-26：门槛读**累计获得**那本 ⇒ 要验"缺键"必须两本都删（只删可支配那本仍是 40）
     delete s.standings['dsi']
+    if (s.standingsEarned) delete s.standingsEarned['dsi']
     expect(weekendInvasionAllowedFor(s), '缺键 = 0 ⇒ 正常模式不开').toBe(false)
   })
 })

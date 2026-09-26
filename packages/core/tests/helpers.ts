@@ -691,6 +691,30 @@ export function makeTestCtx(opts?: {
 }
 
 /**
+ * **直接把某势力声望设成某个值**（**2026-09-26** 起：**两条账一起写**）。
+ *
+ * ⚠ 为什么不能只写 `state.standings['dsi'] = n`：门槛一律读**累计获得**那一本
+ * （`expedition.standingOf` → `standingsEarned`），只写可支配那本 ⇒ 门槛判定**看不见你的赋值**
+ * （用例会"假绿"：默认 40 恰好越过 11/4 那几档门槛）。所以测试里凡是要"把声望设成 N"，
+ * 一律走本助手。
+ */
+export function setStanding(state: GameState, factionId: string, value: number): void {
+  state.standings[factionId] = value
+  state.standingsEarned = state.standingsEarned ?? {}
+  state.standingsEarned[factionId] = value
+}
+
+/**
+ * **把新档的初始声望清零**（**2026-09-26**：船长令「声望真扣（就是意味着玩家一开始其实可以买5张）」⇒
+ * `createInitialState` 现在给 `dsi` **40 点**，且 `standingOf` 读"累计获得"那一本。
+ *
+ * 用途 = 那些**故意要验"声望不足"档**的老用例（日板档位、接取拒因、卖价加成基线…）。
+ */
+export function clearInitialStanding(state: GameState, factionId = 'dsi'): void {
+  setStanding(state, factionId, 0)
+}
+
+/**
  * **纯数据深拷贝**（只给 `balance` 用）：
  * 递归复制**纯对象/数组**；遇到函数、类实例、Map/Set 等**非纯对象一律原样返回**（按引用），
  * 避免把行为/身份也复制掉。`BalanceConfig` 是纯数值/字符串/嵌套对象 ⇒ 走前者。

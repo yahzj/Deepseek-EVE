@@ -44,9 +44,11 @@ import {
   weekendRollBlackBox,
 } from './weekendEvent'
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
+import { WEEKEND_STANDING_MAX } from './weekendEvent'
 import { flagshipBattleLedger } from './combat'
 import { rareWreckItemIdOfCard, RARE_WRECK_VOLUME_M3 } from './salvage'
 import { WEEKEND_CARD_PREFIX, weekendOccupiedLiveAt } from './weekendBounty'
+import { DSI_FACTION_ID, noteStandingEarned } from './expedition'
 
 /* ─────────────── 战斗规格 ─────────────── */
 
@@ -544,6 +546,15 @@ export function weekendSettleAndGrant(
   })
   ev.prizePaidAtWallMs = nowWallMs
   ev.reclaimPending = { isk: 0, wreck: 0 }
+  /**
+   * **按贡献占比发协会声望**（**2026-09-26 船长令**：「**玩家完成入侵后根据贡献获得一定量声望**」）。
+   *
+   * 口径 = `round(占比 × 15)`（单场 **0~15 点**）：占比 100% ⇒ 15 · 83% ⇒ 12 · 50% ⇒ 8 · 10% ⇒ 2 · 0% ⇒ 0。
+   * 走 `noteStandingEarned` 唯一入口 ⇒ **两条账同时加**（可支配 ＋ 累计）。
+   * ⚠ 与"贡献四档奖"同在一处（`prizePaidAtWallMs` 保证只走一遍）⇒ 声望也跟着**只发一次**。
+   */
+  const standing = Math.round(plan.share * WEEKEND_STANDING_MAX)
+  if (standing > 0) noteStandingEarned(state, DSI_FACTION_ID, standing)
   /** 贡献奖与进度收入入账 ⇒ 记进到手台账，并**写本场战果快照**（面板与结算通讯读它） */
   noteReward(ev, undefined, { isk: plan.isk + plan.progressIsk, wreck: plan.wreck, ...(boxAtSettle ? { blackBox: 1 } : {}) })
   state.weekendLastResult = weekendResultSnapshotOf(state, ctx, ev, ev.endedAtWallMs, plan, wreckItemId)

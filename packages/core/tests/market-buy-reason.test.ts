@@ -14,6 +14,7 @@ import { describe, expect, it } from 'vitest'
 import type { GameState, SimContext } from '../src/index'
 import { advanceGame, buyAtMarket, createInitialState, marketQuote } from '../src/index'
 import { makeTestCtx } from './helpers'
+import { clearInitialStanding, setStanding } from './helpers'
 
 /** 一个小世界：池商品（自动铺供应阶梯）+ 稀有商品（无池，靠低频抽单）+ 只收不卖商品 */
 function world(): { state: GameState; ctx: SimContext } {
@@ -34,6 +35,7 @@ function world(): { state: GameState; ctx: SimContext } {
     modules: [moduleDefLocal()],
   })
   const state = createInitialState({ nowWallMs: 0, seed: 5 })
+  clearInitialStanding(state) // 2026-09-26：新档初始声望 40（门槛已改读累计那本）⇒ 本文件按声望 0 标定
   return { state, ctx }
 }
 
@@ -83,7 +85,7 @@ describe('市价买入：失败原因分诊（不再一律报「只剩 0 件」�
   it('暗市闸未开（声望未达 bmStanding）且簿上只有常驻单 → blocked = standing（对玩家按声望锁口径）', () => {
     const { state, ctx } = world()
     state.wallet.isk = 10_000_000
-    state.standings['dsi'] = 0 // 未达 bmStanding = 11
+    setStanding(state, 'dsi', 0) // 未达 bmStanding = 11
     marketQuote(state, ctx, 'mod-bm')
     // 手动铺一张**非常驻**供应单（bm = false）：闸内应被跳过
     state.market.npcSell['mod-bm'] = [{ price: 120_000, qty: 2, expiresAtGameMs: 10 ** 12 }]
@@ -91,7 +93,7 @@ describe('市价买入：失败原因分诊（不再一律报「只剩 0 件」�
     expect(r.bought).toBe(0)
     expect(r.blocked).toBe('standing') // 而不是 no-stock
     // 声望达标后同一张单可以吃
-    state.standings['dsi'] = 11
+    setStanding(state, 'dsi', 11)
     const ok = buyAtMarket(state, ctx, 'mod-bm', 1)
     expect(ok.bought).toBe(1)
     expect(ok.blocked).toBeUndefined()
