@@ -1399,6 +1399,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.BattleScreen.111": { zh: "{p1}：存活 {p2}/{p3} 架", en: "{p1}: {p2}/{p3} airframes alive" },
   /* 损伤管制装置同舰唯一（2026-09-25 船长令「损管只能装备一件」）：装配被拒时的原因 id */
   "core.equipment.028": { zh: "损伤管制装置每舰只能装一件（已装 {p1}）。", en: "Only one Damage Control Unit may be fitted per ship (already fitted: {p1})." },
+  // 2026-09-26 报障修复（“可以装多个损管”）：载入归正日志——每舰只留一件，多余的退回装备库
+  "core.equipment.029": { zh: "同舰唯一归正：每舰只留一件损伤管制装置，退回装备库 {p1} 件（{p2}）。", en: "Per-ship uniqueness fix-up: one Damage Control Unit kept per ship; {p1} extra unit(s) returned to the module bay ({p2})." },
   "ui.battleViewCore.001": { zh: "高爆", en: "High explosive" },
   "ui.battleViewCore.002": { zh: "能量", en: "Energy" },
   "ui.CargoPage.001": { zh: "↖ 查看市场", en: "↖ View market" },
