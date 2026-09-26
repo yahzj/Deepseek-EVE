@@ -44,7 +44,7 @@ import {
 } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 import { RowGlyph } from '../ui/itemView'
-import { combatBadges, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
+import { combatBadges, FIT_MAIN_HIDDEN_KEYS, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import { plainSkillDesc } from '../ui/skillText'
 // 势力图鉴：逐舰级简报复用**悬赏卡悬停那一份**（同源出口，不另写文案）——2026-09-26
 import { foeBriefLinesOfShip } from '../ui/foeBrief'
@@ -873,7 +873,13 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
     const shipDef = shipId ? engine.ctx.ships.get(shipId) : undefined
     if (shipDef) {
       // V10.5：统一行（定位/货舱/采集/动力 + 盾甲结构抗性与槽位）；V17 战斗数值已生效
-      for (const line of shipInfoLines(shipDef)) rows.push([line.k, line.v])
+      // 2026-09-26 船长：「无人机舱有2个重复的」＋「机动速度」换掉动力位 ⇒ 本分支上方已有
+      // 静态行（定位/货舱/采集/**机动速度**＝船体基础值）与战斗徽章，故不重复输出这两行
+      // （`舰船图鉴` 详情窗里「无人机舱 = 无」此前也占一行，一并去掉）。
+      for (const line of shipInfoLines(shipDef)) {
+        if (FIT_MAIN_HIDDEN_KEYS.includes(line.k)) continue
+        rows.push([line.k, line.v])
+      }
       // 2026-09-12 船长：「手册图鉴里的舰船信息可以查看舰船的间接属性」⇒ 追加间接属性行
       // （最大速度/跃迁速度/质量/锁定范围/信号半径/扫描分辨率/跃迁充能；与装配页同一数据源）。
       // ⚠ 行以 `k` 作 React key ⇒ `shipIndirectLines` 的键不得与 `shipInfoLines` 重名（当前无重名）。
@@ -1510,8 +1516,8 @@ export function Handbook({
                     {ship.priceIsk <= 0 ? <span className="app-chip">{tr("ui.Handbook.118")}</span> : null}
                   </div>
                   <div className="app-dim">
-                    {tr("ui.ShipPage.019")} {ship.cargoM3.toLocaleString('zh-CN')} {tr("ui.ShipPage.020")} {ship.cycleSeconds} {tr("ui.ShipPage.021")} {ship.oreUnitsPerCycle}{tr('ui.Handbook.321')}
-                    {tr('ui.Handbook.322', { p: Math.round(ship.agility * 100) })}
+                    {tr("ui.ShipPage.019")} {ship.cargoM3.toLocaleString('zh-CN')} {tr("ui.ShipPage.020")} {ship.cycleSeconds} {tr("ui.ShipPage.021")} {ship.oreUnitsPerCycle}{' '}
+                    {tr('ui.Handbook.012')} {Math.round(ship.agility * 100)}%
                   </div>
                   <div className="app-hand-sub">
                     <span className="app-combat-badges">{combatBadges(ship)}</span>

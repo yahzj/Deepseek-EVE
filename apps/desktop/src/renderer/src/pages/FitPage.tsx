@@ -54,7 +54,7 @@ import {
 import { Panel } from '@whale/ui'
 // 装备稀有度档位（换装浮层默认"稀有度高的排前面"；2026-09-11 船长定）
 import { rarityTierOf } from '@whale/data'
-import { combatBadges, DmgChip, DMG_LABEL, InfoTable, itemHoverContent, moduleHoverContent, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
+import { combatBadges, COMBAT_BASE_KEYS, DmgChip, DMG_LABEL, FIT_MAIN_HIDDEN_KEYS, InfoTable, itemHoverContent, moduleHoverContent, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import { hoverTipProps } from '../ui/Tooltip'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
@@ -65,19 +65,6 @@ import { rackText, slotText } from '../ui/labelsText'
 import type { PageProps } from './common'
 import { tr, cmdText } from '../i18n/locale'
 
-
-/** 装配台主表的战斗基础行（由"装后合成"行取代，避免基础/合成重复；火力加成例外——船长
- * 2026-09-05：不入血量徽章组，作为下方属性行展示，故从过滤名单中放行） */
-const COMBAT_BASE_KEYS = new Set([
-  tr("ui.FitPage.001"),
-  tr("ui.FitPage.002"),
-  tr("ui.FitPage.003"),
-  tr("ui.FitPage.004"),
-  tr("ui.ShipPage.023"),
-  tr("ui.FitPage.005"),
-  tr("ui.FitPage.006"),
-  tr("ui.FitPage.007"),
-])
 
 /** 槽类可装家族简述（空位引导文案；V18.1 支援件：伤害/射速 = 低槽，命中/闪避 = 中槽；
  *  2026-09-11 协处理器 = 低槽 CPU 预算扩容件）
@@ -777,8 +764,36 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                     l.k !== '采集性能' &&
                     l.k !== '货舱容量' &&
                     l.k !== 'CPU' && // 上限已由右栏「CPU 剩余」条显示（含技能加成），表格不重复
+                    // 2026-09-26 船长：「无人机舱有2个重复的」＋「用机动速度替换所有动力的位置」
+                    // ⇒ 这两条基础行让位给下面的合计行 / 装后口径行（登记表见 `shipInfo.tsx`
+                    // `FIT_MAIN_HIDDEN_KEYS`，`npm run ui:attr-check` 按「不重名」体检）
+                    !FIT_MAIN_HIDDEN_KEYS.includes(l.k) &&
                     !COMBAT_BASE_KEYS.has(l.k),
                 ),
+                // 机动速度（2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的
+                // 说明内讲清」）：推进器周期化（2026-09-10）后 `spec.speedMps` **已不含**推进器加成
+                // （加成走 `thrusterBoost`、只在点火窗口生效）——旧标签「含加力」与自己显示的数字
+                // 对不上，改为「基础值 +（装推进器时）点火期值 + 周期尾缀」，秒数与 balance 同源。
+                // **2026-09-14 起按船取值**：周期取自本船 `spec` 的两个覆盖字段（微型跃迁引擎 = 10 秒点火）。
+                // **2026-09-26 船长**：「用机动速度替换所有动力的位置（假如已经存在，则挪过来）」
+                // ⇒ 本行从右下角装后块**整体上移**到原「动力」行的位置（动力已挪去左栏「间接属性」）。
+                ...(spec
+                  ? [
+                      {
+                        k: tr("ui.FitPage.049"),
+                        v: (
+                          <>
+                            {`${fmt(Math.round(spec.speedMps))} m/s`}
+                            {spec.thrusterBoost !== undefined && spec.thrusterBoost > 0 ? (
+                              <span className="app-dim">
+                                {tr("ui.FitPage.145", { p1: fmt(Math.round(spec.speedMps * (1 + spec.thrusterBoost))), p2: thrusterCycleFullText(engine.ctx.balance.battle, { boostMs: spec.thrusterBoostMs, cooldownMs: spec.thrusterCooldownMs }) })}
+                              </span>
+                            ) : null}
+                          </>
+                        ),
+                      },
+                    ]
+                  : []),
                 // 无人机舱（上限 = 船体 + 甲板扩展；战斗只放飞下方「无人机舱」清单——2026-09-08 大改）
                 ...(droneBayTotal > 0
                   ? [{ k: tr("ui.FitPage.035"), v: tr("ui.FitPage.143", { droneBayTotal: droneBayTotal }) }]
@@ -843,24 +858,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                           ),
                       },
                       { k: tr("ui.FitPage.048"), v: `${Math.round(spec.evasion * 100)}%` },
-                      // 机动速度（2026-09-11 船长：「推进器现在有持续时间和冷却时间，这点希望在推进器的
-                      // 说明内讲清」）：推进器周期化（2026-09-10）后 `spec.speedMps` **已不含**推进器加成
-                      // （加成走 `thrusterBoost`、只在点火窗口生效）——旧标签「含加力」与自己显示的数字
-                      // 对不上，改为「基础值 +（装推进器时）点火期值 + 周期尾缀」，秒数与 balance 同源。
-                      // **2026-09-14 起按船取值**：周期取自本船 `spec` 的两个覆盖字段（微型跃迁引擎 = 10 秒点火）。
-                      {
-                        k: tr("ui.FitPage.049"),
-                        v: (
-                          <>
-                            {`${fmt(Math.round(spec.speedMps))} m/s`}
-                            {spec.thrusterBoost !== undefined && spec.thrusterBoost > 0 ? (
-                              <span className="app-dim">
-                                {tr("ui.FitPage.145", { p1: fmt(Math.round(spec.speedMps * (1 + spec.thrusterBoost))), p2: thrusterCycleFullText(engine.ctx.balance.battle, { boostMs: spec.thrusterBoostMs, cooldownMs: spec.thrusterCooldownMs }) })}
-                              </span>
-                            ) : null}
-                          </>
-                        ),
-                      },
+                      // 机动速度已上移到主表（原「动力」行位置，见文件上方）——此处不再重复
                       // 跃迁速度（2026-09-14 跃迁计算机）：只影响**跨星系航行耗时**，战斗机动一字不动
                       // ⇒ 与「机动速度」并列单列一行，避免玩家把两个"速度"混为一谈。
                       {

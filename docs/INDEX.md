@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **323** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6038** KB · **42334** 行
-- 状态分布：**未标注** 179 · **已确认/已实现** 111 · **进行中** 27 · **待裁定** 5 · **历史留档** 1
-- 孤儿文档（0 引用）**41** 份 · 状态未标注 **179** 份
+- 文档总数 **325** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6055** KB · **42502** 行
+- 状态分布：**未标注** 180 · **已确认/已实现** 111 · **进行中** 28 · **待裁定** 5 · **历史留档** 1
+- 孤儿文档（0 引用）**42** 份 · 状态未标注 **180** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
-- 三、现行设计稿（design）：**203** 份
+- 三、现行设计稿（design）：**205** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**30** 份
 - 二、其它（docs 根目录）：**1** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -33,10 +33,10 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 30 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 26 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 210 KB / 251 行 | 14 / 2 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 63 KB / 681 行 | 74 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 481 KB / 987 行 | 216 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 106 KB / 316 行 | 325 / 17 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 213 KB / 252 行 | 14 / 2 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 64 KB / 685 行 | 75 / 3 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 481 KB / 987 行 | 217 / 16 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 106 KB / 316 行 | 328 / 17 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -53,18 +53,20 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 203 份
+## 三、现行设计稿（design） —— 205 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/ammo-mk2-book-price-20260926.md` | 弹药 MK2 图纸改价（2026-09-26） | 进行中（进行中） | 2026-09-26 | 3 KB / 54 行 | 0 / 0 |
 | `docs/design/announcement-draft-20260926-damage-control.md` | 公告待审稿 · 损伤管制装置（2026-09-26） | 待裁定（待船长审核） | 2026-09-26 | 2 KB / 37 行 | 2 / 0 |
 | `docs/design/drone-blueprints-20260926.md` | 制式无人机永久图纸（2026-09-26） | 进行中（进行中） | 2026-09-26 | 4 KB / 71 行 | 1 / 0 |
-| `docs/design/faction-codex-20260926.md` | 工作文档 · 敌族图鉴（手册「航行须知」新开一节）（2026-09-26 · 三号） | 进行中（进行中 —— 已落码、闸门全绿） | 2026-09-26 | 4 KB / 71 行 | 0 / 0 |
+| `docs/design/faction-codex-20260926.md` | 工作文档 · 敌族图鉴（手册「航行须知」新开一节）（2026-09-26 · 三号） | 进行中（进行中 —— 已落码、闸门全绿） | 2026-09-26 | 4 KB / 71 行 | 1 / 0 |
+| `docs/design/faction-codex-tab-20260926.md` | 工作文档 · 势力图鉴（手册独立图鉴页签）（2026-09-26 · 三号） | 进行中（进行中 —— 四步闸门已走完） | 2026-09-26 | 6 KB / 72 行 | 0 / 0 |
 | `docs/design/h-price-salvage-order-20260926.md` | H 三件市场价改判（甲）＋ 打捞三级序口径同步（2026-09-26） | 进行中（进行中 —— 已落码、四道闸门全绿） | 2026-09-26 | 5 KB / 76 行 | 0 / 0 |
 | `docs/design/handoff-20260926-to-pilot2.md` | 交接卡：新二号（2026-09-26 · 旧二号交班） | 未标注（交接中） | 2026-09-26 | 11 KB / 106 行 | 0 / 0 |
+| `docs/design/ship-attr-ia-20260926.md` | 舰船属性表信息架构调整（动力 → 间接属性 · 机动速度进主表 · 括号瘦身） | 未标注 | 2026-09-26 | 6 KB / 73 行 | 0 / 0 |
 | `docs/design/wreck-invasion-region-20260926.md` | 残骸新增「入侵」地区类别 ＋ G/H 残骸提价（2026-09-26） | 进行中（进行中） | 2026-09-26 | 8 KB / 112 行 | 0 / 0 |
-| `docs/design/hostile-factions-handbook-20260925.md` | 敌族手册（手册 · 新增「敌对势力」一节）—— 挂起备忘（2026-09-25） | 未标注（挂起 · 未动工） | 2026-09-25 | 6 KB / 77 行 | 1 / 1 |
+| `docs/design/hostile-factions-handbook-20260925.md` | 敌族手册（手册 · 新增「敌对势力」一节）—— 挂起备忘（2026-09-25） | 未标注（挂起 · 未动工） | 2026-09-25 | 6 KB / 77 行 | 2 / 0 |
 | `docs/design/spore-allfoes-gate-20260925.md` | 孢子导弹巢「全体攻击」：主目标未命中不再阻断副目标（2026-09-25） | 进行中（进行中 —— 改动已落码、六道闸门待） | 2026-09-25 | 4 KB / 67 行 | 0 / 0 |
 | `docs/design/ui-shell-bottom-nav-20260925.md` | 工作文档 · 外壳重设计：底部导航 + 活动栏左列（ui-redesign-2 隔离分支）（2026-09-25 · 三号） | 待裁定（代码已落地 · 待船长真机验收） | 2026-09-25 | 5 KB / 61 行 | 1 / 0 |
 | `docs/design/copy-jargon-20260924.md` | 工作文档 · 玩家可见文案里的「开发字眼」清理（2026-09-24 · 三号） | 未标注（两批全部落码并过闸门） | 2026-09-24 | 8 KB / 67 行 | 3 / 0 |
@@ -268,7 +270,7 @@
 | `docs/archive/glossary-detail-03-econ-20260915.md` | 封存卷 · 词典「三、装备 / 制造 / 经济」词条详解（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 11 KB / 26 行 | 6 / 0 |
 | `docs/archive/glossary-retired-20260915.md` | 封存卷 · 词典的作废词条与沿革（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 3 KB / 16 行 | 3 / 0 |
 | `docs/archive/roadmap-todo-done-20260915.md` | 封存卷 · roadmap 待办活面的已办结项（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 92 KB / 75 行 | 3 / 0 |
-| `docs/archive/README.md` | 封存区（docs/archive/）—— 冻结的历史件 | 未标注 | — | 2 KB / 30 行 | 55 / 12 |
+| `docs/archive/README.md` | 封存区（docs/archive/）—— 冻结的历史件 | 未标注 | — | 2 KB / 30 行 | 56 / 13 |
 | `docs/archive/roadmap-2026-09-04.md` | 封存卷 · roadmap 批次条目 2026-09-04 | 未标注 | — | 13 KB / 68 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-05.md` | 封存卷 · roadmap 批次条目 2026-09-05 | 未标注 | — | 12 KB / 32 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-06.md` | 封存卷 · roadmap 批次条目 2026-09-06 | 未标注 | — | 2 KB / 10 行 | 1 / 0 |
@@ -312,7 +314,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 66 KB / 659 行 | 55 / 12 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 67 KB / 677 行 | 56 / 13 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -324,7 +326,7 @@
 | `docs/design/ship-battle-art/battle-sprite-tier-20260911.md` | 战斗画面「舰种体积」（舰身大小随舰种档，2026-09-11 船长定；状态：已实现，但按船长裁决暂时关闭 —— 显示还原、系统保留） | 已确认/已实现（已实现） | 2026-09-11 | 14 KB / 177 行 | 8 / 0 |
 | `docs/design/ship-battle-art/mounts-20260910.md` | 舰船战斗图形·挂点对齐（引擎喷口 + 真实炮口）2026-09-10 | 已确认/已实现（已确认） | 2026-09-10 | 6 KB / 94 行 | 2 / 1 |
 | `docs/design/ship-battle-art/acceptance-visual-20260909.md` | 舰船战斗图形 · 真机目测与细节验收清单（2026-09-09 三号，给船长） | 未标注 | 2026-09-09 | 4 KB / 54 行 | 2 / 0 |
-| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 55 / 12 |
+| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 56 / 13 |
 
 ## 四、已归档设计稿（design/archive） —— 62 份
 
@@ -391,16 +393,17 @@
 | `docs/design/archive/handoff-20260909-dsh-reinstall.md` | 二号会话续接卡(2026-09-09 DSH 重装;交给新继承人) | 未标注 | 2026-09-09 | 5 KB / 48 行 | 5 / 0 |
 | `docs/design/archive/handoff-b3-skills.md` | B3 技能挂接（2026-09-05 船长拍板：打捞相关技能一并完成 → 已实施） | 未标注（打捞对标技能组已实施 ✅） | — | 4 KB / 52 行 | 4 / 0 |
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
-| `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 55 / 12 |
+| `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 56 / 13 |
 
-## 附：孤儿文档（0 引用，41 份）
+## 附：孤儿文档（0 引用，42 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/ammo-mk2-book-price-20260926.md`（2026-09-26 · 3 KB）—— 弹药 MK2 图纸改价（2026-09-26）
-- `docs/design/faction-codex-20260926.md`（2026-09-26 · 4 KB）—— 工作文档 · 敌族图鉴（手册「航行须知」新开一节）（2026-09-26 · 三号）
+- `docs/design/faction-codex-tab-20260926.md`（2026-09-26 · 6 KB）—— 工作文档 · 势力图鉴（手册独立图鉴页签）（2026-09-26 · 三号）
 - `docs/design/h-price-salvage-order-20260926.md`（2026-09-26 · 5 KB）—— H 三件市场价改判（甲）＋ 打捞三级序口径同步（2026-09-26）
 - `docs/design/handoff-20260926-to-pilot2.md`（2026-09-26 · 11 KB）—— 交接卡：新二号（2026-09-26 · 旧二号交班）
+- `docs/design/ship-attr-ia-20260926.md`（2026-09-26 · 6 KB）—— 舰船属性表信息架构调整（动力 → 间接属性 · 机动速度进主表 · 括号瘦身）
 - `docs/design/wreck-invasion-region-20260926.md`（2026-09-26 · 8 KB）—— 残骸新增「入侵」地区类别 ＋ G/H 残骸提价（2026-09-26）
 - `docs/design/spore-allfoes-gate-20260925.md`（2026-09-25 · 4 KB）—— 孢子导弹巢「全体攻击」：主目标未命中不再阻断副目标（2026-09-25）
 - `docs/design/handoff-foe-mounts-l10n-20260924.md`（2026-09-24 · 8 KB）—— 交接卡 · 存量八件敌方挂载件的英文名（本地化 · 2026-09-24 · 二号 → 三号）
@@ -439,9 +442,10 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（179 份，待补一行 `状态：…`）
+## 附：状态未标注（180 份，待补一行 `状态：…`）
 
 - `docs/design/handoff-20260926-to-pilot2.md`（2026-09-26）—— 交接卡：新二号（2026-09-26 · 旧二号交班）
+- `docs/design/ship-attr-ia-20260926.md`（2026-09-26）—— 舰船属性表信息架构调整（动力 → 间接属性 · 机动速度进主表 · 括号瘦身）
 - `docs/design/hostile-factions-handbook-20260925.md`（2026-09-25）—— 敌族手册（手册 · 新增「敌对势力」一节）—— 挂起备忘（2026-09-25）
 - `docs/design/copy-jargon-20260924.md`（2026-09-24）—— 工作文档 · 玩家可见文案里的「开发字眼」清理（2026-09-24 · 三号）
 - `docs/design/handoff-foe-mounts-l10n-20260924.md`（2026-09-24）—— 交接卡 · 存量八件敌方挂载件的英文名（本地化 · 2026-09-24 · 二号 → 三号）
