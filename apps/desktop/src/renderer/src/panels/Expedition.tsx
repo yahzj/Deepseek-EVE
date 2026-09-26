@@ -2516,8 +2516,14 @@ function GalaxyActions({
           </span>
           <button
             className="app-btn is-small is-primary"
-            disabled={state.salvaging.active}
-            title={state.salvaging.active ? tr("ui.Expedition.149") : tr("ui.MapPage.070")}
+            /**
+             * ⚠ **2026-09-26 船长报障**：「**星系详细里，如果处于打捞状态是无法直接在其他星系详细内切换打捞对象**」
+             * ——真因 = 这里写死了 `disabled={state.salvaging.active}`。
+             * core 早已允许**直接换打捞点**（`startSalvageOp` 先 `salvageHalt` 停本趟、残骸留在船上，再按新星系开工；
+             * 船长 2026-09-21 答 2「允许切换」），MapPage 那侧也一直是可点的 ⇒ **界面这一格才是 bug**，
+             * 与「换矿带允许直接切」同一把尺。现在与 MapPage 一致：别处正在打捞时这里照点。
+             */
+            title={tr("ui.MapPage.070")}
             onClick={() => {
               const r = engine.startSalvageOpAt(galaxy.id)
               if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.390'), true)

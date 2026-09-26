@@ -828,6 +828,8 @@ export {
   trySalvagePlayerWreckOf,
 } from './shipWrecks'
 export type { WreckLootRow, PlayerWreckSalvage } from './shipWrecks'
+/** 玩家舰船残骸的一具记录（2026-09-26）——界面读数卡与工具都要这个形状 */
+export type { ShipWreckRecord } from './state'
 export type { RecycleTier, RecycleProfile } from './salvage'
 /* ── 2026-09-19 残骸合并：13 组定表（族 × 地区）＋ 出量梯度（船长 2026-09-19） ── */
 export {

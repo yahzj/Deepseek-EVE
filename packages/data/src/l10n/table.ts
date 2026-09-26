@@ -1897,7 +1897,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.146": { zh: "打捞作业中", en: "Salvaging" },
   "ui.Expedition.147": { zh: "持续打捞（本趟约 {p1} m³）", en: "Salvaging continuously (about {p1} m³ this trip)" },
   "ui.Expedition.148": { zh: "打捞（需高槽打捞器）", en: "Salvage (needs a salvager in a high slot)" },
-  "ui.Expedition.149": { zh: "打捞作业进行中（顶部活动栏可停止）", en: "Salvage in progress (stop it from the top activity bar)" },
+  /* ui.Expedition.149 已删（2026-09-26）：原文「打捞作业进行中（顶部活动栏可停止）」是"别处打捞中 ⇒
+     本按钮禁用"时代的提示；那条禁用正是船长报障的那个 bug（星系详细里打捞中切不了打捞点），
+     拆掉禁用后它成了无引用的死条目 ⇒ 一并清掉（`l10n:check` 会盯死引用）。 */
   "ui.Expedition.150": { zh: "建站交付 ·", en: "Station delivery ·" },
   "ui.Expedition.151": { zh: "已转战：采矿结束（货随船），舰队正从矿带星系出发。", en: "Switched to the hunt: mining has ended (the cargo stays aboard) and the fleet is setting out from the belt system." },
   "ui.Expedition.152": { zh: "战术 {p1}", en: "Tactics {p1}" },

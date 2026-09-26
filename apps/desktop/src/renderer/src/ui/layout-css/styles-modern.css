@@ -1134,6 +1134,24 @@ html[data-locale='en'] body {
 
 }
 
+/* **玩家舰船残骸条**（2026-09-26 船长令：打捞页**置顶**、且排在入侵残骸之前）。
+ * 结构复用既有的 `.app-belt-invwreck`（只换配色，避免自造相似新样式）；
+ * 配色取**薄荷绿**（`--wui-mint`，主题表里已有、`ui:theme-check` 认它），与入侵残骸的深红分开：
+ * 绿 = 自己丢的船（捞得回来是好事），红 = 入侵敌人留下的。
+ * 条长 = 剩余寿命比例（48h 线性衰减，读数在 `shipWrecks.decayAccMs`）。
+ * ⚠ 这里只是"把两种残骸一眼分开"的最小差异；观感归船长审。 */
+.app-belt-invwreck.is-shipwreck .app-belt-invwreck-label {
+
+  color: rgb(var(--wui-mint));
+
+}
+
+.app-card-progress.is-shipwreck i {
+
+  background: linear-gradient(90deg, rgb(var(--wui-accent)), rgb(var(--wui-mint)));
+
+}
+
 /* 效率行（试点 2026-09-05：每循环产量/时长/每小时产出 + 估价——估价按物品本身，不随市场） */
 
 .app-belt-econ {

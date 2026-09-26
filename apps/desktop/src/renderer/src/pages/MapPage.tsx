@@ -31,10 +31,16 @@ import {
   RECYCLE_POOL_AVG_ISK,
   RARE_WRECK_VOLUME_M3,
   wreckGroupOfAnomaly,
+  // 2026-09-26 玩家舰船残骸（船长令）：打捞页置顶卡 —— 船名 / 可回收件数 / 剩余小时
+  shipWrecksOf,
+  wreckLootRowsOf,
+  SHIP_WRECK_DECAY_MS,
 } from '@whale/core'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
 import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
+/** 玩家舰船残骸记录（2026-09-26）：打捞页置顶卡的数据形状 */
+import type { ShipWreckRecord } from '@whale/core'
 import { unlocked, WORMHOLE_SCAN_UNLOCK_STANDING } from '@whale/core'
 /** 活动卡「产出」读数（2026-09-23 船长令：收入预估换口径）——全仓唯一实现 */
 import { YieldLines, yieldLinesOf, type YieldRow } from '../ui/yieldView'
@@ -49,6 +55,8 @@ import { HaulingPanel } from '../panels/Hauling'
 import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
 import { isk, MONEY_GLYPH, rareWreckRefsOf } from './common'
+// 2026-09-26 船长报障：打捞页卡片序列（纯函数；单独成文件以便工具/用例直接断言这条顺序）
+import { wreckCardSequenceOf } from './wreckCards'
 import { tr, cmdText } from '../i18n/locale'
 
 /** 星图页的功能区（「星图·远征」放第一：这里本来就是玩家查看大地图的主入口）；icon = Glyphs 字形名 */
@@ -740,11 +748,10 @@ function SalvageTab({
    */
   const noSalvager = salvagerCyclesOf(state, engine.ctx, state.shipId).length === 0
   /**
-   * **打捞对象**（**2026-09-26 船长令**：「**玩家打捞时，让玩家选择打捞对象，包括多族悬赏混合的星系，
-   * 之后残骸也要分开算。**」）：作业星系的各组存量 ＋（若有）入侵残骸那一行；
-   * 缺省不选 = 全部（按威胁加权，与改前逐字一致）。
+   * ⚠ **旧的"作业星系打捞对象"变量已删**（2026-09-26 船长报障「残留的手动选择残骸的卡片」）：
+   * 打捞对象自 2026-09-26 起由 core 自动判定，页面上**每张星图卡自己的只读存量**（下面渲染处的
+   * `engine.salvageTargetsAt(g.id, true)`）就够了 ⇒ 这份"当前作业星系"的重复取数成了死变量。
    */
-  const salvageTargets = me.active && me.galaxyId ? engine.salvageTargetsAt(me.galaxyId) : []
 
 
   function startAt(galaxyId: string): void {
@@ -851,20 +858,33 @@ function SalvageTab({
           </div>
           <div className="app-belt-grid">
             {/**
-             * **每个残骸组单独一张卡**（**2026-09-26 船长令**：「**建议每个组单独一张卡**」）——
-             * 卡片只做**读数**（各组各自存量）；**打捞对象由 core 自动判定**（船长同日改口：
-             * 「分组后不要再让玩家手动选择打捞对象了……优先打捞入侵残骸，没有入侵残骸则是根据
-             * 两种残骸的数量比同步打捞」）⇒ 每张卡上的「开始打捞」**都是同一个动作**（不带对象）。
-             * 该星系还没有分组账（老档且没打过仗）⇒ 只有「全部」一张，与改前逐字一致。
+             * **一个星系最多三张卡，按优先序排**（**2026-09-26 船长报障与建议**：「**之前残留的手动选择残骸的卡片
+             * 还遗留在残骸打捞页面内**」＋「**建议在残骸打捞页面内，有玩家舰船残骸的卡片置顶，其次是有入侵残骸的**」）：
+             *
+             * 1. **玩家舰船残骸卡**（有才出）——四级序最高优先，卡上直接给「开始打捞」；
+             * 2. **入侵残骸卡**（有才出）——独立残骸场，48h 衰减、先捞它最划算；
+             * 3. **星系残骸（全部）卡**——常规密度，带 AI 指派条。
+             *
+             * ⚠ **每组的"手动选择"卡已撤**：打捞对象自 2026-09-26 起由 core 自动判定
+             * （「分组后不要再让玩家手动选择打捞对象了……优先打捞入侵残骸，没有入侵残骸则是根据两种残骸的
+             * 数量比同步打捞」）⇒ 那些卡上的「开始打捞」本来就是同一个动作、纯属残留；
+             * **各组存量改成"全部"卡上的一行读数**（信息没丢，只是不再假装可选）。
              */}
             {sortedGalaxies.flatMap(({ galaxy: g, density, workers }) => {
               const targets = engine.salvageTargetsAt(g.id, true) // 只读（渲染期不写档）
+              const wrecks = shipWrecksOf(state, g.id)
+              const invWreck = weekendWreckDensityOf(state, g.id)
+              const groupRows = targets.filter((t) => t.groupKey !== WEEKEND_WRECK_TARGET)
+              /** 卡片序列 = 纯函数（同一个星系最多三张；顺序即优先级，见 `wreckCardSequenceOf` 头注） */
+              const cardSeq = wreckCardSequenceOf({ shipWreckCount: wrecks.length, invasionWreckM3: invWreck })
               const mk = (opts: { key: string; label: string; cardDensity: number; showAi?: boolean }) => (
                 <WreckCard
                   key={`${g.id}|${opts.key}`}
                   galaxy={g}
                   density={opts.cardDensity}
                   densityLabel={opts.label}
+                  groupRows={groupRows}
+                  shipWrecks={wrecks}
                   aiWorkers={opts.showAi ? workers : []}
                   isActive={me.active && me.galaxyId === g.id}
                   focus={focusIds.includes(g.id)}
@@ -879,21 +899,19 @@ function SalvageTab({
                   showAi={opts.showAi === true}
                 />
               )
-              return [
-                mk({ key: '', label: tr('ui.MapPage.120'), cardDensity: density, showAi: true }),
-                ...targets
-                  .filter((t) => t.groupKey !== WEEKEND_WRECK_TARGET)
-                  .map((t) =>
-                    mk({
-                      key: t.groupKey,
-                      label: engine.ctx.items.get(`wreck-${t.groupKey}`)?.name ?? t.groupKey,
-                      cardDensity: t.stockM3,
-                    }),
-                  ),
-                ...targets
-                  .filter((t) => t.groupKey === WEEKEND_WRECK_TARGET)
-                  .map((t) => mk({ key: t.groupKey, label: tr('ui.MapPage.121'), cardDensity: t.stockM3 })),
-              ]
+              return cardSeq.map((kind) => {
+                if (kind === 'ship-wrecks') {
+                  return mk({
+                    key: 'ship-wrecks',
+                    label: tr('ui.weekend.110', { p1: String(wrecks.length) }),
+                    cardDensity: 0,
+                  })
+                }
+                if (kind === 'invasion') {
+                  return mk({ key: WEEKEND_WRECK_TARGET, label: tr('ui.MapPage.121'), cardDensity: invWreck })
+                }
+                return mk({ key: '', label: tr('ui.MapPage.120'), cardDensity: density, showAi: true })
+              })
             })}
           </div>
         </>
@@ -943,13 +961,19 @@ function WreckCard({
   onAiAssign,
   onAiCancel,
   onToast,
+  groupRows = [],
+  shipWrecks = [],
 }: {
   galaxy: GalaxyDef
   density: number
-  /** **打捞对象名**（2026-09-26：每个组一张卡 ⇒ 卡片上标出这一张是谁的读数） */
+  /** **这一张卡是谁的读数**（玩家舰船残骸卡 / 入侵残骸卡 / 星系残骸（全部）卡） */
   densityLabel?: string
   /** 是否显示 AI 指派条（只挂「全部」那张：AI 任务按"全部"口径、不带打捞对象） */
   showAi?: boolean
+  /** **各组存量读数**（只读；打捞对象由 core 自动判定 ⇒ 这里只展示，不再提供选择） */
+  groupRows?: Array<{ groupKey: string; stockM3: number }>
+  /** **该星系的玩家舰船残骸**（2026-09-26 船长令）：置顶读数 —— 船名 ＋ 可回收件数 ＋ 剩余小时 */
+  shipWrecks?: ShipWreckRecord[]
   aiWorkers: Array<{ sid: string; coreType: AiCoreType }>
   isActive: boolean
   focus?: boolean
@@ -1039,9 +1063,29 @@ function WreckCard({
         </div>
       ) : null}
       {/**
-       * **入侵残骸条（置顶）**（船长 2026-09-25：「需要独立的残骸条」＋「打捞界面置顶」）：
-       * 位置在「残骸密度」那一行**之前**；独立残骸场没有保底、48 小时衰减到消失 ⇒
-       * 先捞它最划算（打捞扣减也是先扣这一池，见 `salvage.salvageRoundPull`）。
+       * **玩家舰船残骸（置于最上）**（**2026-09-26 船长令**：「**玩家如果在该星系打捞，优先打捞该残骸
+       * （比稀有残骸优先级还高）**」＋报障「建议在残骸打捞页面内，有玩家舰船残骸的卡片置顶」）：
+       * 一具一行（船名 ＋ 还可回收件数 ＋ 剩余小时）；同星系多具按"最新那具优先"排。
+       */}
+      {shipWrecks.length > 0
+        ? shipWrecks.map((w) => (
+            <div key={w.shipId} className="app-belt-invwreck is-shipwreck">
+              <span className="app-belt-invwreck-label">
+                {tr('ui.weekend.111', {
+                  p1: w.name,
+                  p2: String(wreckLootRowsOf(w, engine.ctx).length),
+                  p3: String(Math.max(0, Math.round((1 - w.decayAccMs / SHIP_WRECK_DECAY_MS) * 48))),
+                })}
+              </span>
+              <div className="app-card-progress is-shipwreck">
+                <i style={{ width: `${Math.max(0, Math.min(100, (1 - w.decayAccMs / SHIP_WRECK_DECAY_MS) * 100))}%` }} />
+              </div>
+            </div>
+          ))
+        : null}
+      {/**
+       * **入侵残骸条**（船长 2026-09-25：「需要独立的残骸条」＋「打捞界面置顶」）：
+       * 排在玩家舰船残骸**之后**、常规密度**之前**。
        */}
       {invWreck > 0 ? (
         <div className="app-belt-invwreck" title={tr('ui.weekend.095', { p1: String(invWreckPct) })}>
@@ -1063,6 +1107,20 @@ function WreckCard({
           </>
         ) : null}
       </div>
+      {/**
+       * **各组存量读数**（2026-09-26 船长报障后改）：原先每组一张卡、各自挂「开始打捞」——
+       * 那是"手动选择"时代的残留（目标自 2026-09-26 起由 core 自动判定）。
+       * 现在只把存量并成**本卡的一行读数**：信息不丢、也不再假装可选。
+       */}
+      {groupRows.length > 0 && showAi ? (
+        <div className="app-belt-ore">
+          {groupRows.map((t) => (
+            <em key={t.groupKey} className="app-chip" title={engine.ctx.items.get(`wreck-${t.groupKey}`)?.name ?? t.groupKey}>
+              {engine.ctx.items.get(`wreck-${t.groupKey}`)?.name ?? t.groupKey} {t.stockM3.toFixed(1)}
+            </em>
+          ))}
+        </div>
+      ) : null}
       {est.eff ? (
         <div className="app-belt-econ" title={tr("ui.MapPage.067")}>
           {est.eff ? <div><span className="app-ico"><Glyph name="nav-salvage" size={12} color={NAV_TONES["nav-salvage"]} /></span>{est.eff}</div> : null}
