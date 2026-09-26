@@ -194,17 +194,16 @@ export function ShipyardPanel({
       return it.materials.some((m) => (engine.ctx.items.get(m.itemId)?.name ?? m.itemId).toLowerCase().includes(kq))
     })
     /**
-     * 「**蓝图**」维度（原「学会」＋ 原三级「图纸」合并，2026-09-26 船长令）：四档各自判，
-     * 学会那一轴 × 是不是一次性那一轴。⚠ 舰船蓝图没有"隐式蓝图"（那是零件体系的事）
-     * ⇒ 这里不带上组装机那句 `learnless` 判定。
+     * 「**蓝图**」维度（**2026-09-27 船长令收口**：删掉「已学会的一次性图纸」、把「未学会的一次性图纸」
+     * 改名为「一次性蓝图」）：三档各自判 —— 已学会 / 未学会 / 一次性（还没学会 ＋ 是一次性）。
+     * ⚠ 舰船蓝图没有"隐式蓝图"（那是零件体系的事）⇒ 这里不带上组装机那句 `learnless` 判定。
      */
     .filter((it) => {
       if (learn === SUB_ALL) return true
       const learned = ownsBlueprint(state, it.id)
       if (learn === 'learned') return learned
       if (learn === 'unlearned') return !learned
-      if (learn === 'learned-single') return learned && it.singleUse
-      return !learned && it.singleUse // 'unlearned-single'
+      return !learned && it.singleUse // 'single'（一次性蓝图）
     })
     .filter((it) => sub === SUB_ALL || it.subKey === sub)
     .filter((it) => shipRolePasses(engine.ctx.ships.get(it.shipId), cat))
