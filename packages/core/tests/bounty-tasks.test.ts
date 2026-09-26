@@ -689,7 +689,7 @@ describe('赏金任务 · 胜利结算（酬金 + 稀有残骸）', () => {
 })
 
 describe('稀有残骸 · 打捞必得 + 高级箱额外掉落', () => {
-  it('打捞一轮必捞一件稀有残骸（体积 30 m³、按敌群归族），捞完为止再回常规池', () => {
+  it('打捞一轮必捞一件稀有残骸（体积 30 m³、按敌群归族）；稀有池捞干 ⇒ 轮到普通池（同池内入侵残骸优先 ⇒ 再按各组数量比）', () => {
     const { state, ctx } = makeWorld(3)
     injectRareWreck(state, 'galaxy-hub', LAIR_HUB.id, 2)
     const first = pullOneWreck(state, ctx, 'galaxy-hub', 60_000)!

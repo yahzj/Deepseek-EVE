@@ -849,9 +849,21 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
     { key: 'mod-lair-frame-e', kind: 'module', refId: 'mod-lair-frame-e', rarity: 'exotic', basePrice: 7_760_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构骨架（同槽位最高档 1,940,000×4）
     { key: 'mod-lair-drone-tac-g', kind: 'module', refId: 'mod-lair-drone-tac-g', rarity: 'exotic', basePrice: 8_160_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂群导控（同槽位最高档 2,040,000×4）
     { key: 'mod-lair-drone-relay-g', kind: 'module', refId: 'mod-lair-drone-relay-g', rarity: 'exotic', basePrice: 8_120_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 流亡中继桅（同槽位最高档 2,030,000×4）
-    // 2026-09-26 H 族（墨潮帮）三件：两件 support/high 模块 ＋ 一架攻坚机（同槽位最高档 = 隐秘行动装置 MK3 10,000,000 ×4）
-    { key: 'mod-lair-ecm-h', kind: 'module', refId: 'mod-lair-ecm-h', rarity: 'exotic', basePrice: 40_000_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 墨潮电子舱（support/high 最高档 10,000,000×4）
-    { key: 'mod-lair-web-h', kind: 'module', refId: 'mod-lair-web-h', rarity: 'exotic', basePrice: 40_000_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 墨潮捕获网（同上）
+    /**
+     * 2026-09-26 H 族（墨潮帮）三件：两件 support/high 模块 ＋ 一架攻坚机。
+     *
+     * 🔴 **定价改判（2026-09-26 船长裁定「甲」）**：原值 **40,000,000** 是按窝点那套
+     * "**同槽位最高档 ×4**"（隐秘行动装置 MK3 10,000,000 ×4）机械推的，落进 14 件窝点件里
+     * **一枝独秀**（次高 = 酸液喷吐器 12,000,000 ⇒ 本件是它的 3.33 倍、中位数 8,120,000 的 4.9 倍）。
+     * 船长看过横向对照后改判**甲案**：**这两件与"同池最高件"同价** —— H 件与窝点件**出自同一个
+     * 「族稀有残骸高级箱」池**（5%／箱、集齐前不重复），同池吊着 3.3 倍差价会让"掉到哪件"变成运气问题。
+     * **档差看代价不只看槽位**：电子舱 CPU **150**（全仓装备最高档）⇒ 与酸液喷吐器同价 **12,000,000**；
+     * 捕获网 CPU **44** ⇒ 与赃物强化舱同价 **9,600,000**。
+     * ⚠ 两件**都无蓝图、无料单**（纯掉落），故不存在"书价两处同值"的连带；`content:check` 的
+     * 蓝图价格契约按 `bp-*` 核，本两行不参与。
+     */
+    { key: 'mod-lair-ecm-h', kind: 'module', refId: 'mod-lair-ecm-h', rarity: 'exotic', basePrice: 12_000_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 墨潮电子舱（⟪2026-09-26 船长令⟫ 40,000,000 → 12,000,000：与同池最高件「酸液喷吐器」同价）
+    { key: 'mod-lair-web-h', kind: 'module', refId: 'mod-lair-web-h', rarity: 'exotic', basePrice: 9_600_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 墨潮捕获网（⟪2026-09-26 船长令⟫ 40,000,000 → 9,600,000：CPU 44 低于电子舱 150 ⇒ 低一档）
   // ── 专属无人机 3 型（自带货值 ×4；无人机线**无制式图纸**，这三型各有一张一次性图纸，见 blueprints.ts）──
     { key: 'drone-exile-bee', kind: 'item', refId: 'drone-exile-bee', rarity: 'exotic', basePrice: 24_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂无人机（自带货值 6000×4）
     { key: 'drone-wh-c-heavy', kind: 'item', refId: 'drone-wh-c-heavy', rarity: 'exotic', basePrice: 48_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巢卫攻坚无人机（自带货值 12000×4）
