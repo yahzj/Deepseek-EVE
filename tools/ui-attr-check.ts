@@ -59,10 +59,23 @@ for (const ship of SHIPS) {
   const dupFit = dupOf(fitMain)
   if (dupFit.length > 0) problems.push(`${ship.id}（装配页主表）重复：${[...new Set(dupFit)].join(' / ')}`)
 
-  // ② 手册图鉴详情窗 / ③ 蓝图产物：不隐藏，两张表首尾相接
-  const codex = [...shipInfoLines(ship).map((l) => l.k), ...shipIndirectLines(ship).map((l) => l.k)]
+  // ② 手册图鉴详情窗 / ③ 蓝图产物（2026-09-26 船长报障「点击舰船图鉴内的舰船，当中的属性还是
+  //    有动力，而没有机动速度」）：与装配页**同一口径**——主属性位报「机动速度」、动力只出现在
+  //    下面的间接属性块里；「无人机舱」在详情窗不重复输出。三条都钉死（上一版把键写反过，漏了整整一轮）。
+  // 只滤 `shipInfoLines` 那份「动力」（重复项）；间接属性块里那份「动力」要留
+  const codexRows = [
+    ...shipInfoLines(ship).filter((l) => l.k !== tr('ui.Handbook.012') && l.k !== tr('ui.FitPage.010')),
+    ...shipIndirectLines(ship),
+  ]
+  const codex = codexRows.map((l) => l.k)
   const dupCodex = dupOf(codex)
   if (dupCodex.length > 0) problems.push(`${ship.id}（图鉴档案 / 蓝图产物）重复：${[...new Set(dupCodex)].join(' / ')}`)
+  if (!codex.includes(tr('ui.FitPage.049'))) {
+    problems.push(`${ship.id}（图鉴档案 / 蓝图产物）缺「机动速度」行 —— 图鉴与装配页同口径，机动速度必须顶在动力位`)
+  }
+  if (codex.filter((k) => k === tr('ui.Handbook.012')).length !== 1) {
+    problems.push(`${ship.id}（图鉴档案 / 蓝图产物）「动力」应恰好出现一次（在间接属性块里），实际 ${codex.filter((k) => k === tr('ui.Handbook.012')).length} 次`)
+  }
 
   // ④ 舰队页悬停卡（当前属性，2026-09-26 船长令）：基础行被装后行**逐条顶替**（位置不变、值换掉）
   //    ＋ 追加间接属性。这里除"不重名"外，还要钉住两条结构性不变量——单看"不重名"抓不到退化：
