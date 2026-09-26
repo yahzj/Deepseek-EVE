@@ -30,16 +30,19 @@ import { MODULE_SUBS, moduleSubKeyOf, subText } from './itemSubs'
 export const DMG_LABEL: Record<DamageType, string> = { kinetic: tr("ui.BattleScreen.002"), explosive: tr("ui.battleViewCore.001"), plasma: tr("ui.battleViewCore.002") }
 
 /**
- * 装配页主属性表里**不再重复**的基础行（`ui:attr-check` 按「不重名」体检）。
+ * **另有一处同值展示**、不要再重复输出的基础行（`ui:attr-check` 按「不重名」体检）。
  *
  * 由来（2026-09-26 船长报障「无人机舱有2个重复的」「用机动速度替换所有动力的位置」）：
- * `shipInfoLines` 给的是**船体静态行**，装配页在这之上还追加装后口径行与右栏区块
- * ⇒ 同一名字会出现两次（出现过：无人机舱 ×2、机动速度 ×2）。凡"右栏已有专门区块"
- * 或"下面有装后口径同名行"的基础行，都登记进本表，由装配页过滤后输出。
+ * `shipInfoLines` 给的是**船体静态行**，而装配页在它之上还有右栏区块与装后口径行、
+ * 图鉴档案窗在它之上还有三个静态行与血量徽章 ⇒ 同一名字会出现两次（出现过：无人机舱 ×2、
+ * 机动速度 ×2）。凡"本页别处已经报过同一个数"的基础行都登记进本表：
+ * - 装配页（`pages/FitPage.tsx`）：右栏有无人机舱舱容条 ＋ 主表另有合计行与装后机动速度行；
+ * - 图鉴档案窗 / 舰船蓝图产物（`panels/Handbook.tsx`）：上方静态行已报机动速度（船体基础值）、
+ *   顶部徽章已报三层血量，`无人机舱 = 无` 对无机舱的船只是白占一行。
  */
 export const FIT_MAIN_HIDDEN_KEYS: readonly string[] = [
-  tr("ui.FitPage.010"), // 无人机舱：右栏有舱容条 + 合计行（含甲板扩展）
-  tr("ui.FitPage.049"), // 机动速度：下面有装后口径行（含航行技能 / 重甲机动代价）
+  tr("ui.FitPage.010"), // 无人机舱：装配页右栏有舱容条 + 合计行；图鉴上方静态行已有
+  tr("ui.FitPage.049"), // 机动速度：装配页另有装后口径行；图鉴上方静态行已有（船体基础值）
 ]
 
 /**
