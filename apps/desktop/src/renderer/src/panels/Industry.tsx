@@ -1329,10 +1329,13 @@ export function ManufacturingPanel({
    */
   useEffect(() => {
     if (!plugExchangeFocus) return
+    // 2026-09-26 船长令「不可用的筛选项隐藏」：档都藏了，自然不能再切进去（正常路径下两个入口
+    // 都只在"已解锁"时可达——组装机那张卡的按钮与首匣通讯；这条是防御，防日后入口前移）
+    if (!plugCraftUnlockedOf(engine.state)) return
     setTab('plug')
     setSub(SUB_ALL)
     setUseKind(SUB_ALL)
-  }, [plugExchangeFocus])
+  }, [plugExchangeFocus, engine])
 
   /**
    * **目录模型只在"目录本身"变化时重建**（2026-09-22 工业页卡顿修复第 3 步 · 单点在 `cardLiveKeyOf`）。
@@ -1682,31 +1685,31 @@ export function ManufacturingPanel({
         </div>
         <span className="app-dim">{tr('ui.Industry.134')}</span>
         <div className="app-task-tabs app-fleet-tabs" role="tablist">
-          {MANU_TABS_CRAFT.map((t) => {            /**
-             * **「舰船插件」档在取得第一个黑匣前锁着**（**2026-09-26 船长令**：「玩家获取第一个黑匣后，
-             * 才解锁组装机的插件选项」）。判据走 core 单点 `plugCraftUnlockedOf`（= 见过黑匣）。
-             * 锁着时：标签仍在（让玩家知道有这一档），但**置灰不可点**并把原因写在悬停里 ——
-             * 与全仓"避免看不见的筛选"同款口径的另一面：这一档不是"筛选空档"，而是**功能未解锁**。
-             */
-            const locked = t.key === 'plug' && !plugCraftUnlockedOf(engine.state)
-            return (
-              <button
-                key={t.key}
-                role="tab"
-                aria-selected={tab === t.key}
-                disabled={locked}
-                title={locked ? tr('ui.IndustryPage.117') : undefined}
-                className={`app-tasktab${tab === t.key ? ' is-active' : ''}`}
-                onClick={() => {
-                  setTab(t.key)
-                  setSub(SUB_ALL) // 换一级标签即回「全部子类」（与市场页 changeKind 同款）
-                  setUseKind(SUB_ALL) // 三级筛选随之复位（它只在选了子类后才显示，留着会变成"看不见的筛选"）
-                }}
-              >
-                {tr(t.id)}
-              </button>
-            )
-          })}
+          {/**
+           * **「舰船插件」档在取得第一个黑匣前整档不出现**（**2026-09-26 船长令**：
+           * 「**组装机，门类：舰船插件筛选项不可用时，隐藏该选项**」）。
+           *
+           * 判据走 core 单点 `plugCraftUnlockedOf`（= 见过黑匣；与"解锁组装机插件选项"同一条令）。
+           * ⚠ **沿革（本轮改判）**：先前是"标签仍在但置灰不可点 ＋ 悬停写原因"（当时的理由是
+           * "让玩家知道有这一档"）⇒ 船长令改为**直接隐藏**：不可用的筛选项不该占位。
+           * 因此 `disabled` / 锁定悬停 / 那条 `ui.IndustryPage.117` 提示在本处一并撤掉
+           * （该 id 仍被章鱼人兑换窗口的未解锁态使用，不是死条目）。
+           */}
+          {MANU_TABS_CRAFT.filter((t) => t.key !== 'plug' || plugCraftUnlockedOf(engine.state)).map((t) => (
+            <button
+              key={t.key}
+              role="tab"
+              aria-selected={tab === t.key}
+              className={`app-tasktab${tab === t.key ? ' is-active' : ''}`}
+              onClick={() => {
+                setTab(t.key)
+                setSub(SUB_ALL) // 换一级标签即回「全部子类」（与市场页 changeKind 同款）
+                setUseKind(SUB_ALL) // 三级筛选随之复位（它只在选了子类后才显示，留着会变成"看不见的筛选"）
+              }}
+            >
+              {tr(t.id)}
+            </button>
+          ))}
         </div>
         {/**
          * **「仅看可造」开关**（**2026-09-26 船长令**：优化工业界面）——与「学会」同排、贴在门类之后。
