@@ -13,7 +13,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ITEM_KIND_ORDER, itemKindText, rackOf, shipCategoryKeyOf, visibleItemDefs } from '@whale/core'
-import type { BlueprintDef, DamageType, DroneClass, FoeShipDef, ItemKind, ModuleDef, ShipBlueprintDef, ShipDef, ShipRole } from '@whale/core'
+import type { BlueprintDef, DamageType, DroneClass, FoeShipDef, ItemDef, ItemKind, ModuleDef, ShipBlueprintDef, ShipDef, ShipRole } from '@whale/core'
 // 稀有度小标签（2026-09-20 船长）：档位走单点 `itemRarityTierOf`（含 AI 核心与舰船的键映射）
 import { buildFactionCards, factionOfExclusive, FACTION_CODEX, FACTION_CODEX_ORDER, FOE_SHIPS, itemRarityTierOf } from '@whale/data'
 import type { FactionCard } from '@whale/data'
@@ -155,11 +155,20 @@ function FactionDetailPanel({ engine, family }: { engine: GameEngine; family: st
       ...(ship !== undefined ? { shipId: ship.id } : {}),
     }
   })
-  /** ③ 专属装备 / 舰船 / 图纸：三段都用**图鉴卡片的同一构造**（族徽由 builder 按所属势力加） */
-  const exclusiveModuleCells: GridCell[] = card.modules
-    .map((id) => engine.ctx.modules.get(id))
-    .filter((m): m is NonNullable<typeof m> => m !== undefined)
-    .map((m) => moduleCellOf(m))
+  /**
+   * ③ 专属装备 / 舰船 / 图纸：三段都用**图鉴卡片的同一构造**（族徽由 builder 按所属势力加）。
+   *
+   * ⚠ **件型混排**（**2026-09-26 船长报障**：「**H族专属装备内不含无人机**」）：专属装备段收的是
+   * **模块与物品两种件型** —— H 族三件里有一架无人机（`drone-ink-heavy`，`kind: 'drone'` 的**物品**）。
+   * 原先只 `ctx.modules.get(id)` ⇒ 那架机被静默丢掉（小节计数 3 件、只画 2 张卡）。
+   * 现在逐 id 先查模块、再查物品，两件型都进同一网格（计数口径 = `card.modules.length`，与卡片数一致）。
+   */
+  const exclusiveModuleCells: GridCell[] = card.modules.flatMap((id) => {
+    const mod = engine.ctx.modules.get(id)
+    if (mod !== undefined) return [moduleCellOf(mod)]
+    const item = engine.ctx.items.get(id)
+    return item !== undefined ? [itemCellOf(item)] : []
+  })
   const exclusiveShipCells: GridCell[] = card.ships
     .map((id) => engine.ctx.ships.get(id))
     .filter((s): s is NonNullable<typeof s> => s !== undefined)
@@ -1017,6 +1026,29 @@ function shipCellOf(ship: ShipDef): GridCell {
   }
 }
 
+/**
+ * **物品卡**（产物 = `ItemDef`）：副行 = 大类 · 单位体积；族徽按**物品自身 id** 判。
+ *
+ * 为什么要这件构造点（**2026-09-26 船长报障**：「**H族专属装备内不含无人机**」）：
+ * H 族（墨潮帮）三件专属里有一架**无人机**（`drone-ink-heavy`）——它是**物品**（`kind: 'drone'`），
+ * 不是模块。势力图鉴的「专属装备」段原先只查 `ctx.modules` ⇒ 那架机被**静默丢掉**
+ * （实测：小节计数写「3 件」、卡只画 2 张）。**件型不是归属的判据**，所以这里把物品卡也做成
+ * 与装备/舰船/图纸同一份构造（`app-hand-cell`），让"专属三件"能三种件型混排。
+ */
+function itemCellOf(item: ItemDef): GridCell {
+  return {
+    key: item.id,
+    tab: 'items',
+    // 2026-09-20 零件两档：glyph 用档位键 ⇒ 图鉴里基础/高级零件分色（形状同一枚 part 线稿）
+    glyph: item.kind === 'part' ? partToneKeyOf(item.id) : item.kind,
+    name: item.name,
+    sub: `${kindName(item.kind)} · ${item.unitM3} m³`,
+    raw: item as unknown as RawData,
+    rarity: itemRarityTierOf(item.id),
+    ...(factionOfExclusive(item.id) !== undefined ? { crest: factionOfExclusive(item.id)! } : {}),
+  }
+}
+
 /** 装备蓝图卡（产物是模块/物品）：副行 = 产物门类 · 产物名；族徽按**产物**判 */
 function blueprintCellOf(engine: GameEngine, bp: BlueprintDef): GridCell {
   const prodMod = bp.moduleId !== undefined ? engine.ctx.modules.get(bp.moduleId) : undefined
@@ -1489,16 +1521,7 @@ export function Handbook({
   /* ── 网格单元（glyph 名即色调键；raw 带完整数据供详情窗） ──
    *  ⚠ 物品图鉴走**玩家可见目录**（`visibleItemDefs`）：未上线物品（标 `ItemDef.unreleased`）
    *  不进图鉴——首版直接遍历 `engine.items` 全目录，未上线矿会连名字带描述一起被搜出来（2026-09-13 实测）。 */
-  const itemCells: GridCell[] = visibleItemDefs(engine.ctx).map((item) => ({
-    key: item.id,
-    tab: 'items',
-    // 2026-09-20 零件两档：glyph 用档位键 ⇒ 图鉴里基础/高级零件分色（形状同一枚 part 线稿）
-    glyph: item.kind === 'part' ? partToneKeyOf(item.id) : item.kind,
-    name: item.name,
-    sub: `${kindName(item.kind)} · ${item.unitM3} m³`,
-    raw: item as unknown as RawData,
-    rarity: itemRarityTierOf(item.id),
-  }))
+  const itemCells: GridCell[] = visibleItemDefs(engine.ctx).map((item) => itemCellOf(item))
   const moduleCells: GridCell[] = engine.modules.map((mod) => moduleCellOf(mod))
   const shipCells: GridCell[] = engine.ships.map((ship) => shipCellOf(ship))
   const bpCells: GridCell[] = [
