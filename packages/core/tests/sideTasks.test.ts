@@ -48,7 +48,11 @@ import {
   HOME_GALAXY_ID,
   shortestTravelMinutes,
   travelLegMs,
+  /** 2026-09-26 最高档门槛边界用例：真读数与装配都要走 core 单点 */
+  warpSpeedAus,
+  addModule,
 } from '../src/index'
+import { buildSimContext } from '@whale/data'
 import { belt, makeTestCtx, ore, ship } from './helpers'
 import { CURRENT_STATE_VERSION } from '../src/state'
 
@@ -103,7 +107,7 @@ function makeWorld(opts?: { stations?: ReturnType<typeof stationSite>[]; built?:
     belts: [belt('belt-b', 'ore-b'), belt('belt-c', 'ore-c'), belt('belt-d', 'ore-d')],
     stations: opts?.stations ?? [],
     ships: [
-      // 快船（跃迁 11 AU/s ⇒ 过 L5 门槛 10.92）· 大货舱 6,000 m³
+      // 快船（跃迁 11 AU/s ⇒ 过 L5 门槛 10.91）· 大货舱 6,000 m³
       ship('sh-fast', { cargo: 6000, warpSpeedAus: 11 }),
       // 慢船（跃迁 3.5 ⇒ 任何限时快递都接不了）· 货舱 2,600 m³（能装 L5 体积）
       ship('sh-slow', { cargo: 2600, warpSpeedAus: 3.5 }),
@@ -536,7 +540,7 @@ describe('快递 · 虚拟货物（2026-09-18 船长改版）', () => {
     const slow = startCourierDelivery(state, ctx, timed.id)
     expect(slow.ok).toBe(false)
     expect(slow.ok ? '' : slow.error).toContain('跃迁速度')
-    // 快船（11 AU/s ≥ 最高档 10.92，货舱 6,000 ≥ L5 的 2,400）⇒ 放行
+    // 快船（11 AU/s ≥ 最高档 10.91，货舱 6,000 ≥ L5 的 2,400）⇒ 放行
     expect(changeShip(state, 'sh-fast', ctx).ok).toBe(true)
     expect(startCourierDelivery(state, ctx, timed.id).ok).toBe(true)
   })
@@ -646,5 +650,47 @@ describe('快递 · 虚拟货物（2026-09-18 船长改版）', () => {
     const task = loaded.sideTasks.resource[0]!
     loaded.warehouse.items[task.refId] = 999_999
     expect(completeSideTask(loaded, ctx, 'resource', task.id).ok).toBe(true)
+  })
+})
+
+/**
+ * **限时快递最高档的边界：双 MK3 的显示值必须真的能接**（**2026-09-26 船长报障 + 裁决乙案**）。
+ *
+ * 玩家报障原话（照抄）：「**限时快递任务要求大于等于10.92的跃迁速度，实际上玩家这边会因为技能等原因
+ * 四舍五入显示10.92，但是依旧无法接取任务**」⇒ 船长裁决**乙案**：把门槛表最高档 10.92 落到 **10.91**。
+ *
+ * ⚠ 本用例**必须用真内容表**（`buildSimContext`）：门槛档位的设计基准是**剑鱼级大型货舰 + 跃迁计算机
+ * MK3×2**，合成走 EVE 曲线（多件递减）⇒ 真实读数 **10.916086983754765**（显示 10.92）——
+ * 这正是"看着够、实际差 0.0039"的根因。合成船型测不出这个数。
+ */
+describe('限时快递 · 最高档门槛边界（2026-09-26 船长裁决乙案：10.92 → 10.91）', () => {
+  it('门槛表最高档 = 10.91；剑鱼 + 跃迁计算机 MK3×2 的真实读数能过（显示 10.92）', () => {
+    expect(COURIER_TIMED_WARP_REQ[COURIER_TIMED_WARP_REQ.length - 1]).toBe(10.91)
+    const ctxReal = buildSimContext()
+    const state = createInitialState({ nowWallMs: 0, seed: 3 })
+    const uid = addShipToFleet(state, 'sh-swordfish')
+    state.shipId = uid
+    addModule(state, 'mod-warpcomp-3', 2)
+    state.fleet[uid]!.fitted = { high: [], mid: [], low: ['mod-warpcomp-3', 'mod-warpcomp-3'] }
+
+    const warp = warpSpeedAus(state, ctxReal, uid)
+    expect(warp.toFixed(2), '界面显示 = 10.92（与门槛表旧值同字面量，正是报障的由来）').toBe('10.92')
+    expect(warp, '真实读数比 10.92 低 0.0039（EVE 曲线倍率 1.760659，不是注释里那个 1.76）').toBeLessThan(10.92)
+    // 乙案的落点：门槛落到 10.91 ⇒ 这个真实读数必须过（判定与容差一字未动）
+    expect(warp + 1e-9 >= COURIER_TIMED_WARP_REQ[3]!, '双 MK3 应能接最高档限时快递').toBe(true)
+    console.log(`  [读数] 剑鱼双 MK3：真实 ${warp} · 显示 ${warp.toFixed(2)} · 门槛 ${COURIER_TIMED_WARP_REQ[3]}`)
+  })
+
+  it('对照：少一件 MK3（8.37 那档）接不了最高档——门槛没被这次改动放宽', () => {
+    const ctxReal = buildSimContext()
+    const state = createInitialState({ nowWallMs: 0, seed: 3 })
+    const uid = addShipToFleet(state, 'sh-swordfish')
+    state.shipId = uid
+    addModule(state, 'mod-warpcomp-3', 1)
+    state.fleet[uid]!.fitted = { high: [], mid: [], low: ['mod-warpcomp-3'] }
+    const warp = warpSpeedAus(state, ctxReal, uid)
+    expect(warp.toFixed(2)).toBe('8.37')
+    expect(warp + 1e-9 >= COURIER_TIMED_WARP_REQ[3]!, '单件 MK3 仍不达最高档').toBe(false)
+    expect(warp + 1e-9 >= COURIER_TIMED_WARP_REQ[2]!, '但达 L4 那档（8.37）').toBe(true)
   })
 })
