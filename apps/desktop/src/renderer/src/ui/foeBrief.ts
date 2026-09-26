@@ -37,7 +37,10 @@ function dmgText(t: string): string {
  * ⚠ 口径：**不报装置名，报"什么情况下发生什么"**——触发条件 ＋ 效果，逐条对得上
  * `core/foeMounts.ts` 里的效果字段（`droneRangeOnHit` / `web` / `gunRangeOnHit` / `supportCall` /
  * `evasionBonus` / `repairPulse` / `reviveEscort` / `charge` / **`rangeDebuff`**）。
- * 装置的中文名仍保留在括号里（玩家在战报/悬停里见过那个名字，留个对应关系）。
+ *
+ * **2026-09-26 船长令**：「**不需要括号内的东西**」＋「**除非非常有必要，否则不要用括号进行额外说明**」
+ * ⇒ 这九条文案**去掉了尾部的装置名括号**：调用方本来就在前面写着装置名，括号里那一份是重复；
+ * 需要"这件叫什么"的地方，由调用方（悬停标签 / 图鉴小标题）自己带，不再塞进效果句里。
  *
  * **返回 `null` = 该件没有任何"可解释的机制"**（目录里只留了名字）——调用方据此决定"显示名"还是"显示效果"。
  * ⚠ 早先这一支返回的是**装置名本身**，于是战斗画面的悬停把同一串字又复读了一遍
@@ -46,37 +49,36 @@ function dmgText(t: string): string {
 export function mountEffectText(id: string): string | null {
   const def = FOE_MOUNTS[id as keyof typeof FOE_MOUNTS]
   if (!def) return null
-  const nm = isEn() ? (def.en ?? def.name) : def.name
   const pct = (v: number) => String(Math.round(v * 100))
 
   if (def.droneRangeOnHit) {
-    return tr('ui.foeIntro.100', { p1: String(def.droneRangeOnHit.mul), p2: nm })
+    return tr('ui.foeIntro.100', { p1: String(def.droneRangeOnHit.mul) })
   }
   if (def.gunRangeOnHit) {
-    return tr('ui.foeIntro.101', { p1: String(def.gunRangeOnHit.mul), p2: nm })
+    return tr('ui.foeIntro.101', { p1: String(def.gunRangeOnHit.mul) })
   }
   if (def.web) {
-    return tr('ui.foeIntro.102', { p1: pct(1 - def.web.slowMul), p2: String(def.web.rangeDownM), p3: nm })
+    return tr('ui.foeIntro.102', { p1: pct(1 - def.web.slowMul), p2: String(def.web.rangeDownM) })
   }
   if (def.supportCall) {
-    return tr('ui.foeIntro.103', { p1: String(def.supportCall.delaySec), p2: nm })
+    return tr('ui.foeIntro.103', { p1: String(def.supportCall.delaySec) })
   }
   if (def.reviveEscort) {
-    return tr('ui.foeIntro.104', { p1: String(Math.round(def.reviveEscort.everyMs / 1000)), p2: nm })
+    return tr('ui.foeIntro.104', { p1: String(Math.round(def.reviveEscort.everyMs / 1000)) })
   }
   if (def.repairPulse) {
     const sec = Math.round(def.repairPulse.everyMs / 1000)
     const amt = `${def.repairPulse.armor}/${def.repairPulse.hull}`
-    return tr('ui.foeIntro.105', { p1: String(sec), p2: amt, p3: nm })
+    return tr('ui.foeIntro.105', { p1: String(sec), p2: amt })
   }
   if (def.evasionBonus) {
-    return tr('ui.foeIntro.106', { p1: pct(def.evasionBonus.add), p2: nm })
+    return tr('ui.foeIntro.106', { p1: pct(def.evasionBonus.add) })
   }
   if (def.charge) {
-    return tr('ui.foeIntro.107', { p1: String(def.charge.mul), p2: String(Math.round(def.charge.cooldownMs / 1000)), p3: nm })
+    return tr('ui.foeIntro.107', { p1: String(def.charge.mul), p2: String(Math.round(def.charge.cooldownMs / 1000)) })
   }
   if (def.rangeDebuff) {
-    return tr('ui.foeIntro.108', { p1: pct(def.rangeDebuff.pct), p2: nm })
+    return tr('ui.foeIntro.108', { p1: pct(def.rangeDebuff.pct) })
   }
   /** 目录里只留了名字、没有任何效果字段 ⇒ 没有可解释的机制（**不返回名字**，避免复读） */
   return null

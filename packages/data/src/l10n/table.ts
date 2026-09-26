@@ -1641,17 +1641,19 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.foeIntro.060": { zh: "特殊装置：{p1}", en: "special mounts: {p1}" },
   "ui.foeIntro.070": { zh: "精锐规格", en: "elite grade" },
   /* 2026-09-26 船长令：「特殊装置的效果最好直接解释」（触发条件 ＋ 效果，逐条对上 foeMounts.ts 的字段） */
-  "ui.foeIntro.100": { zh: "受击后进入反击模式，机群射程 ×{p1}（{p2}）", en: "when hit, enters counter mode: strike-craft range ×{p1} ({p2})" },
-  "ui.foeIntro.101": { zh: "从它射程之外被命中后，自身炮台射程 ×{p1}（{p2}）", en: "when hit from beyond its range, its guns reach ×{p1} ({p2})" },
-  "ui.foeIntro.102": { zh: "首次开火时撒网：目标减速 {p1}%、闪避归零、射程 −{p2} 米（{p3}）", en: "on its first shot it casts a web: target slowed {p1}%, evasion zeroed, range −{p2} m ({p3})" },
-  "ui.foeIntro.103": { zh: "开战 {p1} 秒后呼叫增援（{p2}）", en: "calls reinforcements {p1} s into the fight ({p2})" },
-  "ui.foeIntro.104": { zh: "每 {p1} 秒召回一艘已被击毁的友舰（{p2}）", en: "every {p1} s recalls one destroyed ally ({p2})" },
-  "ui.foeIntro.105": { zh: "每 {p1} 秒恢复 {p2} 装甲/结构（{p3}）", en: "every {p1} s restores {p2} armour/hull ({p3})" },
-  "ui.foeIntro.106": { zh: "闪避 +{p1} 个百分点（{p2}）", en: "evasion +{p1} points ({p2})" },
-  "ui.foeIntro.107": { zh: "受击后冲锋：速度 ×{p1}，冷却 {p2} 秒（{p3}）", en: "when hit, charges: speed ×{p1}, {p2} s cooldown ({p3})" },
+  /* 2026-09-26 船长令：「**不需要括号内的东西**」＋「**除非非常有必要，否则不要用括号进行额外说明**」
+     ⇒ 下列九条**去掉尾部的装置名括号**（挂载件悬停的标签本来就写着装置名，括号里那一份纯属重复）。 */
+  "ui.foeIntro.100": { zh: "受击后进入反击模式，机群射程 ×{p1}", en: "when hit, enters counter mode: strike-craft range ×{p1}" },
+  "ui.foeIntro.101": { zh: "从它射程之外被命中后，自身炮台射程 ×{p1}", en: "when hit from beyond its range, its guns reach ×{p1}" },
+  "ui.foeIntro.102": { zh: "首次开火时撒网：目标减速 {p1}%、闪避归零、射程 −{p2} 米", en: "on its first shot it casts a web: target slowed {p1}%, evasion zeroed, range −{p2} m" },
+  "ui.foeIntro.103": { zh: "开战 {p1} 秒后呼叫增援", en: "calls reinforcements {p1} s into the fight" },
+  "ui.foeIntro.104": { zh: "每 {p1} 秒召回一艘已被击毁的友舰", en: "every {p1} s recalls one destroyed ally" },
+  "ui.foeIntro.105": { zh: "每 {p1} 秒恢复 {p2} 装甲/结构", en: "every {p1} s restores {p2} armour/hull" },
+  "ui.foeIntro.106": { zh: "闪避 +{p1} 个百分点", en: "evasion +{p1} points" },
+  "ui.foeIntro.107": { zh: "受击后冲锋：速度 ×{p1}，冷却 {p2} 秒", en: "when hit, charges: speed ×{p1}, {p2} s cooldown" },
   /* 2026-09-26 补：**射程压制阵列**（H 族墨潮干扰阵列）此前没有效果说明 ⇒ 战斗画面悬停只能显示装置名
-     （船长报障「不应该复读一遍相同的文字」）。与其余八条同款：触发/持续条件 ＋ 效果 ＋ 括号里留装置名。 */
-  "ui.foeIntro.108": { zh: "交战中持续压制我方武器射程 −{p1}%（{p2}）", en: "suppresses our weapon range by {p1}% while engaged ({p2})" },
+     （船长报障「不应该复读一遍相同的文字」）。与其余八条同款：触发/持续条件 ＋ 效果。 */
+  "ui.foeIntro.108": { zh: "交战中持续压制我方武器射程 −{p1}%", en: "suppresses our weapon range by {p1}% while engaged" },
   /* ── 入侵「重复出击」（2026-09-25 船长令：「入侵活动的悬赏，允许玩家开启自动重复，照常计算返回时间」）── */
   "ui.weekend.106": { zh: "重复出击", en: "Repeat assault" },
   "ui.weekend.107": { zh: "开启重复出击：每场从该星系的入侵舰队里重抽一支，胜利后自动返航（返航路程 = 单程）、随后自动再次出发；该星系被夺回或活动结束时自动停止", en: "Start repeat assault: each run draws a fresh invader fleet from that system; after a win the fleet flies home (return leg = one way) and sets out again automatically. It stops when the system is reclaimed or the event ends" },
