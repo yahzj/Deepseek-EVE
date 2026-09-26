@@ -1048,6 +1048,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.labelsText.066": { zh: "外围", en: "Periphery" },
   "ui.labelsText.067": { zh: "核心", en: "Core" },
   "ui.labelsText.068": { zh: "深层", en: "Deep" },
+  /* 2026-09-26 船长报障「入侵获得的黑匣在仓库内查看不到，需要新增分类」⇒ 黑匣独立成物品种类
+     （core `ItemKind` 的 `blackbox`）；仓库分类 / 货仓分组 / 手册物品图鉴 / 市场一级类型**四处共用这一条**。 */
+  "ui.labelsText.069": { zh: "黑匣", en: "Black boxes" },
   /* ── 2026-09-26 乙批（船长令「可以」继续本地化）：虫洞地点名 / 内容原型名 / 活动名 ──
      病根同一族：core 的纯中文表（`WORMHOLE_PLACE_TEXT` / `WORMHOLE_ARCHETYPE_LABELS` / `KIND_LABEL`）
      原被渲染层直读或被当**日志参数**塞进文案（参数不会再被翻译）⇒ 英文界面下漏中文。

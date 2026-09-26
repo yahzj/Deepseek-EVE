@@ -119,7 +119,7 @@ export function rackOf(def: {
 }
 
 /** 物品分类展示顺序 */
-export const ITEM_KIND_ORDER: readonly ItemKind[] = ['ore', 'mineral', 'part', 'gas', 'ice', 'ammo', 'drone', 'wreck', 'container', 'matter', 'essence', 'luxury', 'fragment', 'kit', 'aicore']
+export const ITEM_KIND_ORDER: readonly ItemKind[] = ['ore', 'mineral', 'part', 'gas', 'ice', 'ammo', 'drone', 'wreck', 'container', 'matter', 'essence', 'luxury', 'fragment', 'blackbox', 'kit', 'aicore']
 
 /** 物品分类中文名（仓库/货仓分组标题与空态文案用）
  *  ⚠ **术语（船长 2026-09-12 定）**：`ore` = 「**原矿**」（未精炼的石头，1 m³/单位）；
@@ -140,6 +140,8 @@ export const ITEM_KIND_LABELS: Record<ItemKind, string> = {
   essence: '虫洞谜质', // 船长 2026-09-15：谜质精华形态（撤离成功时换算入仓库、只收不卖）
   luxury: '奢侈品', // 船长 2026-09-15：贵重品货柜拆解产物（纯贸易品、可买可卖）
   fragment: '蓝图碎片',
+  /** **黑匣**（2026-09-26 独立成档）：墨潮旗舰黑匣等战利品——组件/图纸之外的第四类"带回来的东西" */
+  blackbox: '黑匣',
   kit: '修理组件',
   aicore: 'AI 核心',
 }

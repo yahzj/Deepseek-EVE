@@ -49,7 +49,7 @@ import {
   WORMHOLE_MILITARY_BOX_ID,
   WORMHOLE_VALUABLES_BOX_ID,
 } from '@whale/core'
-import type { GameState, MarketGoodDef, SimContext } from '@whale/core'
+import type { GameState, MarketGoodDef, ModuleSlot, RackSlot, SimContext } from '@whale/core'
 import { tr } from '../i18n/locale'
 
 /** 「全部子类」哨兵键（市场下拉与分组判定共用；不作为分组键） */
@@ -88,6 +88,16 @@ export const CONSUME_SUBS: SubOption[] = [
 
 /** 消耗品子类键集合（市场类型判定与子分类判定共用一处） */
 export const CONSUME_KIND_KEYS: readonly string[] = CONSUME_SUBS.map((s) => s.key)
+
+/**
+ * **黑匣键集合**（**2026-09-26 船长**：「**入侵获得的黑匣在仓库内查看不到，需要新增分类**」＋
+ * 「**市场内黑匣单独一个分类，不要挪到「货物」**」）。
+ *
+ * 单点用途：`itemBucketPasses` 的「货物」档**必须把黑匣剔出去**（与残骸/消耗品/货柜三次独立同一套做法），
+ * 并给市场一级类型供一个新的 `'blackbox'` 桶。⚠ 它**不是**消耗品——黑匣是战利品兼生产原料
+ * （组装机造舰船插件每件吃 1 个），故不并入 `CONSUME_KIND_KEYS`。
+ */
+export const BLACKBOX_KIND_KEYS: readonly string[] = ['blackbox']
 
 /**
  * **「货柜」独立成一级类型**（船长 2026-09-16：「**将货柜添加到市场的分类里，和货物同级**」）——
@@ -172,6 +182,8 @@ export const MODULE_SUBS: SubOption[] = [
   { key: 'cpu', label: tr("ui.itemSubs.012") },
   { key: 'salvager', label: tr("ui.Wormhole.001") },
   { key: 'lock', label: tr("ui.itemSubs.013") },
+  // 舰船插件（2026-09-26 船长令）：装备功能族里的一档 —— 文案与归属档、物品种类名共用一条 id
+  { key: 'plug', label: tr("ui.labelsText.069") },
 ]
 
 /**
@@ -234,6 +246,8 @@ export const MODULE_SUB_SLOTS: Record<string, readonly string[]> = {
   cpu: ['cpu'], // 2026-09-11 协处理器（低槽 CPU 预算扩容）
   salvager: ['salvager'],
   lock: ['target-lock'],
+  // 舰船插件（2026-09-26 船长令）：独立槽 `plug` 自成一家族（否则插件在装备图鉴里掉进「其它」）
+  plug: ['plug'],
 }
 
 export const SHIP_SUBS: SubOption[] = [
@@ -328,17 +342,22 @@ export const CORE_SUBS: SubOption[] = [
 export const RACK_KIND_KEYS = ['module-high', 'module-mid', 'module-low'] as const
 export type RackKind = (typeof RACK_KIND_KEYS)[number]
 
-/** 装备槽类中文名（键 = core `rackOf` 的返回值）——**全仓唯一一份**：
+/** 装备槽类中文名（键 = core `rackOf` 的返回值 ＋ 2026-09-26 新增的 `plug`）——**全仓唯一一份**：
  *  市场页「类型」下拉的三项（`module-high/mid/low`）、手册「装备图鉴」主筛选、
  *  手册「蓝图图鉴」装备蓝图的子筛选、物品页仓库的装备二级筛选，全部读这里。 */
 export const RACK_LABELS: Record<string, string> = {
   high: tr("ui.itemSubs.025"),
   mid: tr("ui.itemSubs.026"),
   low: tr("ui.itemSubs.027"),
+  // 舰船插件（2026-09-26 船长令）：与高/中/低槽**同级**的一档；文案与物品种类名共用一条 id
+  plug: tr("ui.labelsText.069"),
 }
 
-/** 装备槽类子项（顺序 = 高 / 中 / 低；手册与仓库的筛选行直接渲染这张表） */
-export const RACK_SUBS: SubOption[] = (['high', 'mid', 'low'] as const).map((k) => ({
+/**
+ * 装备**归属档**子项（顺序 = 高 / 中 / 低 / **舰船插件**；手册装备图鉴主筛选与仓库的装备二级筛选直接渲染这张表）。
+ * ⚠ 键空间 = `rackDimKeyOf` 的取值域（`plug` 是**归属档**不是 `RackSlot`——插件走独立插件槽，见 data/plugs.ts）。
+ */
+export const RACK_SUBS: SubOption[] = (['high', 'mid', 'low', 'plug'] as const).map((k) => ({
   key: k,
   label: RACK_LABELS[k],
 }))
@@ -467,20 +486,21 @@ export function partSubPasses(ctx: SimContext, refId: string, sub: string): bool
  * **一级「物品 / 装备维度」的唯一判定入口**。
  *
  * `bucket`（桶键）＝ 各页一级筛选实际用到的键：
- * - **真实物品大类**：`ITEM_KIND_ORDER` 的 14 个（`ore/mineral/gas/ice/ammo/drone/wreck/container/matter/essence/luxury/fragment/kit/aicore`）；
- * - **`'item'`** ＝「货物」：除**残骸 / 消耗品 / 货柜**以外的物品（市场一级类型用它，2026-09-08/09-11/09-16 三次拆分的结果）；
- * - **`'module'`** ＝ 装备（任意槽类）· **`'module-high' | 'module-mid' | 'module-low'`** ＝ 按槽类（市场一级类型）；
- * - **`'consume'`** ＝ 消耗品整体（弹药/修理组件/无人机）· **`'container'`** ＝ 货柜整体；
+ * - **真实物品大类**：`ITEM_KIND_ORDER` 的 15 个（`ore/mineral/part/gas/ice/ammo/drone/wreck/container/matter/essence/luxury/fragment/blackbox/kit/aicore`）；
+ * - **`'item'`** ＝「货物」：除**残骸 / 消耗品 / 货柜 / 黑匣**以外的物品（市场一级类型用它，2026-09-08/09-11/09-16/09-26 四次拆分的结果）；
+ * - **`'module'`** ＝ 装备（任意槽类）· **`'module-<归属档>'`** ＝ 按归属档（`rackDimKeyOf`：高/中/低槽 ＋ 舰船插件；市场一级类型与手册主筛选）；
+ * - **`'consume'`** ＝ 消耗品整体（弹药/修理组件/无人机）· **`'container'`** ＝ 货柜整体 · **`'blackbox'`** ＝ 黑匣整体（2026-09-26 独立）；
  * - **`SUB_ALL`** ＝ 不筛（恒真）。
  */
 export function itemBucketPasses(ctx: SimContext, refId: string, bucket: string): boolean {
   if (bucket === SUB_ALL || bucket === 'all') return true
   /* ── 装备域（`ctx.modules`）── */
-  if (bucket === 'module' || (RACK_KIND_KEYS as readonly string[]).includes(bucket)) {
+  if (bucket === 'module' || bucket.startsWith('module-')) {
     const mod = ctx.modules.get(refId)
     if (!mod) return false
     if (bucket === 'module') return true // 「装备」= 任意槽类
-    return rackOf(mod) === bucket.slice('module-'.length)
+    // 2026-09-26：归属档走单点 `rackDimKeyOf`（舰船插件自成一档 ⇒ **不再算低槽**，另见 `RACK_SUBS`）
+    return rackDimKeyOf(mod) === bucket.slice('module-'.length)
   }
   /* ── 物品域（`ctx.items`）── */
   const it = ctx.items.get(refId)
@@ -489,22 +509,38 @@ export function itemBucketPasses(ctx: SimContext, refId: string, bucket: string)
     if (it.kind === 'wreck') return false
     if (CONSUME_KIND_KEYS.includes(it.kind)) return false
     if (CONTAINER_KIND_KEYS.includes(it.kind)) return false
+    // 2026-09-26 船长令：「市场内黑匣单独一个分类，不要挪到「货物」」⇒ 黑匣也从「货物」里剔出
+    if (BLACKBOX_KIND_KEYS.includes(it.kind)) return false
     return true
   }
   if (bucket === 'consume') return CONSUME_KIND_KEYS.includes(it.kind)
   if (bucket === 'container') return CONTAINER_KIND_KEYS.includes(it.kind)
+  if (bucket === 'blackbox') return BLACKBOX_KIND_KEYS.includes(it.kind)
   return it.kind === bucket // 真实大类（含 wreck / aicore / fragment …）
 }
 
 /**
- * **二级「槽类」维度的唯一判定入口**（高 / 中 / 低槽装备）——`rackOf`（core 单点）的薄包装。
- * 市场那侧的一级就是三个槽类桶，二级走**功能分组**（`moduleSubKeyOf`）；物品页仓库反过来：
- * 一级是「装备」整体、二级才是槽类 ⇒ 两处都读本函数 / 那个函数，不再各写一份。
+ * **二级「归属档」维度的唯一判定入口**（高 / 中 / 低槽装备 ＋ **舰船插件**）。
+ *
+ * 2026-09-26 起本维度多一档：船长「**在装备图鉴中，和高中低槽同级的位置，新增一个舰船插件的分类**」
+ * ⇒ 归属档不再等于 core 的 `rackOf()`（插件数据里为满足体检契约声明了 `rack: 'low'`，
+ * 若直接读它，插件会**藏在低槽里**、分组还会掉进「其它」）。
+ *
+ * **单点 `rackDimKeyOf`**：`slot === 'plug'` ⇒ `'plug'`；其余照旧走 core `rackOf`。
+ * 三处消费同一把尺：本函数（筛选）· 手册装备图鉴的分组标题 · 手册蓝图图鉴的装备蓝图分组。
  */
-export function rackPasses(ctx: SimContext, refId: string, rack: string): boolean {
-  if (rack === SUB_ALL) return true
+export function rackDimKeyOf(def: { slot: ModuleSlot; rack?: RackSlot }): string {
+  return def.slot === 'plug' ? 'plug' : rackOf(def)
+}
+
+/**
+ * **筛选判定**：`key` = 归属档键（`high` / `mid` / `low` / `plug`）。
+ * ⚠ 高/中/低三档**不再收插件**（`rackDimKeyOf` 的必然结果）——插件只在「舰船插件」档里出现。
+ */
+export function rackPasses(ctx: SimContext, refId: string, key: string): boolean {
+  if (key === SUB_ALL) return true
   const mod = ctx.modules.get(refId)
-  return mod !== undefined && rackOf(mod) === rack
+  return mod !== undefined && rackDimKeyOf(mod) === key
 }
 
 /** 子分类中文名（查不到时回退原键） */
@@ -591,8 +627,10 @@ export function itemSubPasses(ctx: SimContext, refId: string, bucket: string, su
   return it.kind === sub // item（货物）/ consume / 真实大类
 }
 
-/** 一级桶中**只装物品 / 装备**的那些（`itemSubPasses` 的适用范围；其余桶由各页自己判） */
-export const ITEM_SPACE_BUCKETS: readonly string[] = ['item', 'container', 'consume', 'wreck', 'module', ...RACK_KIND_KEYS]
+/** 一级桶中**只装物品 / 装备**的那些（`itemSubPasses` 的适用范围；其余桶由各页自己判）
+ *  ⚠ 2026-09-26：黑匣独立成市场一级类型（船长令）⇒ 它同样"只装物品"，必须登记进本表，
+ *  否则市场选「黑匣」时非物品商品会落进 `subPasses` 的兜底分支。 */
+export const ITEM_SPACE_BUCKETS: readonly string[] = ['item', 'container', 'consume', 'wreck', 'blackbox', 'module', ...RACK_KIND_KEYS]
 
 /* ═══════════ 乙组 · 舰船维度（船长 2026-09-19 六条基线：⑤表收编 ＋ ⑥判定单点）═══════════
  * 「我的舰队 / 舰船仓库 / 虫洞出征编队 / 手册舰船图鉴 / 市场舰船档」五处读同一套表与同一套判定。

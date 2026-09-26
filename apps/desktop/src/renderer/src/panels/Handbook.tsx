@@ -38,6 +38,7 @@ import {
   itemSubPasses,
   moduleSubKeyOf,
   presentSubs,
+  rackDimKeyOf,
   shipRolePasses,
   shipTierPasses,
   subText,
@@ -1443,7 +1444,8 @@ export function Handbook({
         return engine.ctx.items.get(String(c.raw.itemId))?.kind === 'part' ? 'part-advanced' : 'supply'
       }
       const mod = engine.ctx.modules.get(String(c.raw.moduleId ?? ''))
-      return mod ? rackOf(mod) : ''
+      // 2026-09-26 归属档单点：舰船插件的蓝图归「舰船插件」组（读 `rackOf` 会落进低槽）
+      return mod ? rackDimKeyOf(mod) : ''
     }
     return String(c.raw.group ?? '') // skills
   }
@@ -1632,7 +1634,8 @@ export function Handbook({
         return it !== undefined && it.kind === sub
       }
       const mod = engine.ctx.modules.get(String(c.raw.moduleId ?? ''))
-      return mod !== undefined && rackOf(mod) === sub
+      // 2026-09-26 归属档单点（同上）：插件蓝图在子筛选里归「舰船插件」档，不再算低槽
+      return mod !== undefined && rackDimKeyOf(mod) === sub
     }
     return true
   }
