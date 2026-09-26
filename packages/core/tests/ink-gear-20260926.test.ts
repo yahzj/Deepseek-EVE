@@ -4,13 +4,14 @@
  * ＋「**1按你推荐来2，只电子舱。3，玩家的捕获网和武器一样有冷却周期，独立瞄准，不看命中，
  * 击沉携带者才解除，或者对面被击沉，不选取重复目标。对方被击沉后进入冷却，冷却结束选择新目标。
  * 重袭机单发16的动能伤害，40/80/100血量，4500射程，0.05闪避其他不变**」
- * ＋「**我方捕获网移除武器射程下降的效果，其他没问题了**」。
+ * ＋「**我方捕获网移除武器射程下降的效果，其他没问题了**」
+ * ＋「**玩家方的捕获网，有距离限制，距离超过4000米就会断开，且减速效果降低为50%。**」。
  *
- * 本文件钉四件事：① 池子与掉落链路 ② 墨潮电子舱（射程压制）③ 墨潮捕获网（周期/独立瞄准/解除）
- * ④ 敌方那件迁成具名挂载件 ＋ 重袭机数值 ＋ H 族残骸回收打开。
+ * 本文件钉五件事：① 池子与掉落链路 ② 墨潮电子舱（射程压制）③ 墨潮捕获网（周期/独立瞄准/解除）
+ * ④ 距离 4000 米断开 ＋ 减速 50% ⑤ 敌方那件迁成具名挂载件 ＋ 重袭机数值 ＋ H 族残骸回收打开。
  */
 import { describe, expect, it } from 'vitest'
-import { ANOMALIES, FOE_SHIPS, MODULES, buildSimContext } from '@whale/data'
+import { ANOMALIES, EN_MODULES, FOE_SHIPS, MODULES, buildSimContext } from '@whale/data'
 import { FOE_MOUNT_IDS, FOE_MOUNTS } from '../src/foeMounts'
 import { FOE_LAIR_GEAR, lairGearOf } from '../src/lairs'
 import {
@@ -22,6 +23,7 @@ import {
   startRecycleRun,
 } from '../src/index'
 import {
+  MY_WEB_BREAK_DIST_M,
   activeFoeSpecsOf,
   advanceMyCaptureWebs,
   applyFoeWebDebuff,
@@ -66,7 +68,9 @@ function battleOf(spec: UnitSpec, foes: readonly UnitSpec[] = []): BattleState {
     [spec.tag]: { name: spec.name, hp: { s: 100, a: 100, h: 100 } },
   }
   for (const f of foes) units[f.tag] = { name: f.name, hp: { s: 100, a: 100, h: 100 } }
-  return { lastTickGameMs: 0, units, fx: [], fxSeq: 0 } as unknown as BattleState
+  // ⚠ 真战斗态里 `distanceM` 由 `battleOpenM` 赋值（永远是数）；本处给一个**在 4000 米上限内**的典型交距，
+  // 需要测"超距断开"的用例自行改 `b.distanceM`。
+  return { lastTickGameMs: 0, units, fx: [], fxSeq: 0, distanceM: 2_000 } as unknown as BattleState
 }
 
 describe('H 族势力装备 · 池子与掉落链路', () => {
@@ -149,13 +153,16 @@ describe('墨潮捕获网（周期装置 · 独立瞄准 · 不看命中 · 不�
     const foes = foesOf('foe-h-ink-corvette', 2)
     const b = battleOf(spec, foes)
     const rangesBefore = foes[0]!.weapons.map((w: { maxRangeM: number }) => w.maxRangeM)
+    const speedBefore = foes[0]!.speedMps
     advanceMyCaptureWebs(state, b, [spec], foes)
     const pinned = Object.entries(b.foeWebDebuffs ?? {})
     expect(pinned).toHaveLength(1)
     expect(pinned[0]![0]).toBe(foes[0]!.tag) // 按敌阵顺序取第一个
     expect(pinned[0]![1].byTag).toBe(spec.tag)
+    expect(pinned[0]![1].slowMul, '船长 2026-09-26：减速效果降低为 50% ⇒ 机动 ×0.5').toBe(0.5)
     expect(b.myWebs![spec.tag]!.targetTag).toBe(foes[0]!.tag)
-    // 三层效果：机动 ×0.1 · 推进器全关 · 闪避归零（⚠ **不含"武器射程下降"**）
+    // 三层效果：机动 ×0.5（减速 50%）· 推进器全关 · 闪避归零（⚠ **不含"武器射程下降"**）
+    expect(foes[0]!.speedMps, '机动 ×0.5').toBe(Math.max(20, speedBefore * 0.5))
     expect(foes[0]!.evasion, '闪避归零').toBe(0)
     expect(foes[0]!.thrusterBoost, '推进器全关').toBe(0)
     expect(foes[0]!.weapons.map((w: { maxRangeM: number }) => w.maxRangeM), '射程一点不动（船长明令移除）').toEqual(rangesBefore)
@@ -218,11 +225,55 @@ describe('墨潮捕获网（周期装置 · 独立瞄准 · 不看命中 · 不�
     const f = foes[0]!
     const speed = f.speedMps
     const ranges = f.weapons.map((w: { maxRangeM: number }) => w.maxRangeM)
-    applyFoeWebDebuff(f, { byTag: 'me', slowMul: 0.1, noThruster: true, noEvasion: true, atMs: 0 })
-    expect(f.speedMps).toBe(Math.max(20, speed * 0.1))
+    applyFoeWebDebuff(f, { byTag: 'me', slowMul: 0.5, noThruster: true, noEvasion: true, atMs: 0 })
+    expect(f.speedMps).toBe(Math.max(20, speed * 0.5))
     expect(f.evasion).toBe(0)
     expect(f.thrusterBoost).toBe(0)
     expect(f.weapons.map((w: { maxRangeM: number }) => w.maxRangeM)).toEqual(ranges)
+  })
+
+  it('**距离上限 4000 米**（船长 2026-09-26 追加令）：超距即断开 · 超距不重新张网 · 回到范围内立刻复网', () => {
+    expect(MY_WEB_BREAK_DIST_M, '船长原话「距离超过4000米就会断开」').toBe(4_000)
+    const { state, spec } = carrierOf('mod-lair-web-h')
+    const foes = foesOf('foe-h-ink-corvette', 2)
+    const b = battleOf(spec, foes)
+    // ① 范围内：正常张网
+    b.distanceM = 3_500
+    advanceMyCaptureWebs(state, b, [spec], foes)
+    const first = b.myWebs![spec.tag]!.targetTag!
+    expect(first).toBe(foes[0]!.tag)
+    expect(Object.keys(b.foeWebDebuffs ?? {})).toHaveLength(1)
+    // ② 距离拉过 4000 米 ⇒ 立刻断开（清目标 + 清减益 + 写日志）
+    b.distanceM = 4_001
+    b.lastTickGameMs = 3_000
+    advanceMyCaptureWebs(state, b, [spec], foes)
+    expect(b.myWebs![spec.tag]!.targetTag, '超距 ⇒ 网断开').toBeUndefined()
+    expect(Object.keys(b.foeWebDebuffs ?? {}), '减益一并清掉').toHaveLength(0)
+    expect(state.logs[state.logs.length - 1]!.text).toContain('断开')
+    expect(state.logs[state.logs.length - 1]!.text).toContain('4000 米')
+    // **断开不算"用掉"** ⇒ 不空转冷却（与"目标被击沉"那条区分开）
+    expect(b.myWebs![spec.tag]!.cooldownUntilMs, '断开 ≠ 进冷却').toBe(3_000)
+    // ③ 距离仍在范围外 ⇒ 拒绝重新张网（否则会"张开→立刻断"刷日志）
+    const logsBefore = state.logs.length
+    advanceMyCaptureWebs(state, b, [spec], foes)
+    expect(b.myWebs![spec.tag]!.targetTag, '超距不张网').toBeUndefined()
+    expect(state.logs.length, '不刷日志').toBe(logsBefore)
+    // ④ 回到 4000 米内 ⇒ 立刻重新张网（同一拍内完成）
+    b.distanceM = MY_WEB_BREAK_DIST_M // 边界值：**含** 4000 米
+    advanceMyCaptureWebs(state, b, [spec], foes)
+    expect(b.myWebs![spec.tag]!.targetTag).toBe(foes[0]!.tag)
+    expect(Object.keys(b.foeWebDebuffs ?? {})).toHaveLength(1)
+  })
+
+  it('装备说明文案与引擎同口径：减速 50% ＋ 4000 米断开（中英双语）', () => {
+    const m = MODULES.find((x) => x.id === 'mod-lair-web-h')!
+    expect(m.description, '文案写清 ×0.5').toContain('×0.5')
+    expect(m.description, '文案写清 4000 米断开').toContain('4000 米')
+    expect(m.description, '不得再写旧的 ×0.1').not.toContain('×0.1')
+    const en = EN_MODULES['mod-lair-web-h']!.description!
+    expect(en, '英文同口径').toContain('4,000 m')
+    expect(en).toContain('0.5')
+    expect(en, '英文不得再写减速 90%').not.toContain('90%')
   })
 })
 
