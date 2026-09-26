@@ -638,7 +638,7 @@ export function stopRefineRun(state: GameState, ctx: SimContext, runId: number):
       ? { text: `。未用完的 ${refundName} ${refundedTxt} m³ 已退回物品仓库。`, id: 'core.industry.070', params: { p1: refundName, p2: refundedTxt } }
       : { text: '。原料未锁定无需退回，余料仍留在货仓/仓库。', id: 'core.industry.071' },
   ])
-  addLog(state, 'info', composed.text, isRecycle ? 'core.industry.068' : 'core.industry.069', {
+  addLog(state, 'industry', composed.text, isRecycle ? 'core.industry.068' : 'core.industry.069', {
     p1: refundName,
     p2: r.batchesDone,
     ...composed.textParams,
@@ -666,7 +666,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
       refundClaimedUnits(state, r)
       if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
       state.refineRuns.splice(i, 1)
-      addLog(state, 'warn', '精炼炉运转异常：资源记录缺失，该台已停（AI 核心已归还）。', 'core.industry.033')
+      addLog(state, 'industry', '精炼炉运转异常：资源记录缺失，该台已停（AI 核心已归还）。', 'core.industry.033')
       continue
     }
     let guard = 0
@@ -678,7 +678,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
       refundClaimedUnits(state, r)
       if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
       state.refineRuns.splice(i, 1)
-      addLog(state, 'warn', '残骸回收运转异常：残骸来源记录缺失，该台已停（AI 核心已归还）。', 'core.industry.034')
+      addLog(state, 'industry', '残骸回收运转异常：残骸来源记录缺失，该台已停（AI 核心已归还）。', 'core.industry.034')
       continue
     }
     /**
@@ -741,7 +741,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
               },
             ],
           )
-          addLog(state, 'info', composed.text, 'core.industry.072', { p1: def.name, p2: doneBatches, ...composed.textParams })
+          addLog(state, 'industry', composed.text, 'core.industry.072', { p1: def.name, p2: doneBatches, ...composed.textParams })
         } else {
           const stopTitle = isUnbox
             ? `货柜拆解停：${def.name}`
@@ -750,7 +750,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
               : `精炼炉停：${def.name}`
           const stopWhy = isUnbox ? `货柜已拆完（共 ${doneBatches} 件）` : `原料耗尽（共 ${doneBatches} 批）`
           const composed = composeLog(`${stopTitle} ${stopWhy}`, [yieldSeg, coreSeg, { text: '。', id: 'core.state.042' }])
-          addLog(state, 'info', composed.text, isUnbox ? 'core.industry.075' : isRecycle ? 'core.industry.076' : 'core.industry.077', {
+          addLog(state, 'industry', composed.text, isUnbox ? 'core.industry.075' : isRecycle ? 'core.industry.076' : 'core.industry.077', {
             p1: def.name,
             p2: doneBatches,
             ...composed.textParams,
@@ -787,7 +787,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
             wasCore ? { text: '；AI 核心已归还核心库。', id: 'core.state.040' } : null,
           ],
         )
-        addLog(state, 'info', composed.text, isRecycle ? 'core.industry.074' : 'core.industry.083', {
+        addLog(state, 'industry', composed.text, isRecycle ? 'core.industry.074' : 'core.industry.083', {
           p1: def.name,
           p2: r.batchUnits,
           p3: unitTxt,
@@ -868,11 +868,11 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
                   : drawn.source === 'military'
                     ? '（MK3 装备）'
                     : '（族专属）'
-          addLog(state, 'trade', `📦 拆解 ${def.name}：得到 ${drawnName}${srcTag}。`, 'core.industry.035', { p1: def.name, p2: drawnName, p3: srcTag })
+          addLog(state, 'industry', `📦 拆解 ${def.name}：得到 ${drawnName}${srcTag}。`, 'core.industry.035', { p1: def.name, p2: drawnName, p3: srcTag })
         } else {
           if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
           state.refineRuns.splice(i, 1)
-          addLog(state, 'warn', `📦 拆解 ${def.name}：这批料没有产出，已停这一台。`, 'core.industry.036', { p1: def.name })
+          addLog(state, 'industry', `📦 拆解 ${def.name}：这批料没有产出，已停这一台。`, 'core.industry.036', { p1: def.name })
           break
         }
       } else if (isRecycle && profile) {
@@ -948,7 +948,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
               acc.min[row.mineralId] = (acc.min[row.mineralId] ?? 0) + row.units
               batchIncome += row.units * (ctx.items.get(row.mineralId)?.baseSellPriceIsk ?? 0)
             }
-            addLog(state, 'trade', `✦ 额外战利品：稀有残骸解体必给——${extra.note}。`, 'core.industry.037', { p1: extra.note })
+            addLog(state, 'industry', `✦ 额外战利品：稀有残骸解体必给——${extra.note}。`, 'core.industry.037', { p1: extra.note })
           }
         }
         const loot = rollRecycleLoot(state, ctx, profile, qty)
@@ -1068,7 +1068,7 @@ export function discardWareQty(
   if (want <= 0) return { ok: false, dropped: 0, error: '丢弃数量需大于 0。', errorId: 'core.industry.027' }
   if (!removeWare(state, itemId, want)) return { ok: false, dropped: 0, error: '丢弃失败（物品不足）。', errorId: 'core.industry.028' }
   const name = ctx.items.get(itemId)?.name ?? itemId
-  addLog(state, 'info', `⚑ 丢弃 ${name} ×${want.toLocaleString('zh-CN')}（仓库）。`, 'core.industry.038', { p1: name, p2: want.toLocaleString('zh-CN') })
+  addLog(state, 'industry', `⚑ 丢弃 ${name} ×${want.toLocaleString('zh-CN')}（仓库）。`, 'core.industry.038', { p1: name, p2: want.toLocaleString('zh-CN') })
   return { ok: true, dropped: want }
 }
 
@@ -1272,7 +1272,7 @@ export function redeemFragments(state: GameState, ctx: SimContext, moduleId: str
   state.learnedRecipes.push(recipe.blueprintId)
   addLog(
     state,
-    'info',
+    'industry',
     `逆向研究完成：${fragDef?.name ?? fragId} ×${recipe.need} → 已解锁「${bpDef?.name ?? recipe.blueprintId}」蓝图（${def?.name ?? moduleId} 可自制备；无需市场购图）。`,
     'core.industry.042',
     {

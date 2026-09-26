@@ -35,8 +35,31 @@ export const DEFAULT_START_SHIP_ID = 'sandcat'
 /** AI 核心最高等级 */
 export const MAX_AI_CORE_LEVEL = 5
 
-/** 日志类型：显示端按类型配色/筛选 */
-export type LogKind = 'system' | 'info' | 'queue' | 'levelup' | 'warn' | 'trade' | 'event' // 'event' = 深空偶发奇遇与市场风云（2026-09-14 船长：日志里要显眼 ⇒ 独立类型，不再混在 info）
+/**
+ * 日志类型：显示端按类型配色/筛选。
+ *
+ * **2026-09-26 船长令重新分类**（原话：「现在发送给事件日志的信息十分混乱，大量信息都放进了'信息'里，
+ * 而且缺少'战斗'的分类」＋「对事件日志重新分类」＋「队列**合并**」＋「打捞**单独算**」）：
+ * - **新增四类**：`combat` 战斗 · `industry` 工业 · `fleet` 舰队 · `salvage` 打捞；
+ * - **`queue` 并入 `levelup`**（训练队列与技能升级同属成长线）；
+ * - 三条分流口径：① **域优先**（先看属于哪条玩法线）② **战报一律归战斗**（胜/败/撤退/弃船/交战经过，
+ *   无论原先记在 info 还是 warn）③ **警告 = 跨域严重度**（只留"异常 / 需要行动"：组件不足、结构濒危、
+ *   货仓放不下、作业停止、记录缺失），不再承担"战败"那类域内信息；
+ * - 逐类来源清单（全仓 362 处调用点）见 `docs/design/event-log-categories-20260926.md`；
+ * - `'queue'` **留在类型里**只为兼容老档/老日志的读取（新代码不得再写它）。
+ */
+export type LogKind =
+  | 'system'
+  | 'info'
+  | 'levelup'
+  | 'queue'
+  | 'warn'
+  | 'trade'
+  | 'event'
+  | 'combat'
+  | 'industry'
+  | 'fleet'
+  | 'salvage'
 
 /**
  * **一条"可翻译文案"的 id + 参数**（船长 2026-09-20 定「甲案」）：core 只产出 **文案 id + 参数**，
@@ -3167,7 +3190,7 @@ export function createInitialState(opts?: {
     addLog(state, 'warn', '自检异常：船体装甲/结构受损（80%），乘员生命信号——无。记忆档案损坏。', 'core.state.026')
     addLog(
       state,
-      'info',
+      'system',
       '初始资金 0 信用点：一切从采集第一舱原矿开始。鲣鱼级护卫舰（待修）与沙猫级采矿艇同在机库；装备库与弹药库为空——首门炮台与弹药将在完成协会试炼后解锁。',
       'core.state.027',
     )
@@ -3177,7 +3200,7 @@ export function createInitialState(opts?: {
     addLog(state, 'system', '欢迎加入「深空工业协会」。', 'core.state.028')
     addLog(
       state,
-      'info',
+      'system',
       `初始资金 ${DEFAULT_START_ISK} 信用点已到账；沙猫级采矿艇已停靠机库，另有鲣鱼级护卫舰待命（装备库含轻型炮台 MK1，仓库配三型通用弹各 60 发，可直接体验远征战斗）。`,
       'core.state.029',
       { p1: DEFAULT_START_ISK },
@@ -3185,7 +3208,7 @@ export function createInitialState(opts?: {
   }
   addLog(
     state,
-    'info',
+    'system',
     '星图迷雾已开启：母港已探明，周边星系等待扫描探索——去悬赏列表接任务，或对星图上的「未知信号」执行扫描。',
     'core.state.030',
   )

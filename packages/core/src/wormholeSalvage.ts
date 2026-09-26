@@ -1034,7 +1034,7 @@ export function wormholeTempAddShape(
   const name = ctx.items.get(itemId)?.name ?? itemId
   addLog(
     state,
-    'info',
+    'salvage',
     `🕳 放进临时空间：${name}（占 ${need} 格）——到「货仓」页整理进货仓或丢弃（离开货仓页前必须处理）。`,
   )
   return { ok: true, cells: need }
@@ -1072,7 +1072,7 @@ export function wormholeTempStowPiece(
   if (!r.ok) return { ok: false, error: r.error }
   wormholeSyncMatterTurns(state, ctx) // 谜质装置进货仓 ⇒ 实时派生（时序核心 +10）；从货仓拿出 ⇒ 夹紧
   const name = ctx.items.get(p.itemId)?.name ?? p.itemId
-  addLog(state, 'info', `🕳 整理：${name} 从临时空间进货仓。`, 'core.wormholeSalvage.023', { p1: name })
+  addLog(state, 'salvage', `🕳 整理：${name} 从临时空间进货仓。`, 'core.wormholeSalvage.023', { p1: name })
   return { ok: true }
 }
 
@@ -1224,7 +1224,7 @@ export function wormholeHoldStow(
   const name = ctx.items.get(itemId)?.name ?? itemId
   addLog(
     state,
-    'info',
+    'salvage',
     `🕳 装舱：${name}（占 ${r.placement!.w}×${r.placement!.h} 格）· 货仓 ${wormholeHoldUsage(state, ctx).used}/${capacity} 格。`,
   )
   return { ok: true, placementId: r.placement!.id }
@@ -1462,7 +1462,7 @@ export function wormholeTakePileAt(
   holder!.piles!.splice(pileIndex, 1)
   const u = wormholeHoldUsage(state, ctx)
   const name = ctx.items.get(pile.itemId)?.name ?? pile.itemId
-  addLog(state, 'info', `🕳 拾取：${name} ×${pile.units}（货仓 ${u.used}/${u.capacity} 格）。`, 'core.wormholeSalvage.026', { p1: name, p2: pile.units, p3: u.used, p4: u.capacity })
+  addLog(state, 'salvage', `🕳 拾取：${name} ×${pile.units}（货仓 ${u.used}/${u.capacity} 格）。`, 'core.wormholeSalvage.026', { p1: name, p2: pile.units, p3: u.used, p4: u.capacity })
   return { ok: true, taken: pile, used: u.used, capacity: u.capacity }
 }
 /* ═══════════ 三之四、采集器与"到达即铺堆"（F5 · 船长 2026-09-13） ═══════════
@@ -1626,7 +1626,7 @@ export function wormholeCollectOreAt(state: GameState, ctx: SimContext): Wormhol
     .join('、')
   addLog(
     state,
-    'info',
+    'salvage',
     `🕳 采集（${miners} 台采集器）：回收 ${taken.length} 堆${names.length > 0 ? `——${names}` : ''}` +
       ` · 剩 ${piles.length} 堆 · 剩 ${run.turnsLeft} 回合。`,
   )
@@ -1765,11 +1765,11 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
         const shp = wormholeShapeOf(boxId)
         const landed = wormholeStowOrTemp(state, ctx, boxId, 1)
         if (landed.where === 'hold') {
-          addLog(state, 'info', `🕳 残骸堆里翻出${name}：已装进货仓（占 ${shp.w}×${shp.h} = ${shp.w * shp.h} 格）。`, 'core.wormholeSalvage.028', { p1: name, p2: shp.w, p3: shp.h, p4: shp.w * shp.h })
+          addLog(state, 'salvage', `🕳 残骸堆里翻出${name}：已装进货仓（占 ${shp.w}×${shp.h} = ${shp.w * shp.h} 格）。`, 'core.wormholeSalvage.028', { p1: name, p2: shp.w, p3: shp.h, p4: shp.w * shp.h })
         } else if (landed.where === 'temp') {
           addLog(
             state,
-            'info',
+            'salvage',
             `🕳 残骸堆里翻出${name}：货仓腾不出 ${shp.w}×${shp.h} ⇒ 先放进临时空间（到「货仓」页整理进货仓）。`,
           )
         } else {
@@ -1784,7 +1784,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     .join('、')
   addLog(
     state,
-    'info',
+    'salvage',
     `🕳 打捞（${rigs} 台打捞器）：回收 ${taken.length} 堆${names.length > 0 ? `——${names}` : ''}` +
       ` · 剩 ${piles.length} 堆 · 剩 ${run.turnsLeft} 回合。`,
   )
@@ -1828,11 +1828,11 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
       const shp = wormholeShapeOf(ruinsBoxId)
       const landed = wormholeStowOrTemp(state, ctx, ruinsBoxId, 1)
       if (landed.where === 'hold') {
-        addLog(state, 'info', `🕳 遗迹深处发现${name}：已装进货仓（占 ${shp.w}×${shp.h} = ${shp.w * shp.h} 格）。`, 'core.wormholeSalvage.030', { p1: name, p2: shp.w, p3: shp.h, p4: shp.w * shp.h })
+        addLog(state, 'salvage', `🕳 遗迹深处发现${name}：已装进货仓（占 ${shp.w}×${shp.h} = ${shp.w * shp.h} 格）。`, 'core.wormholeSalvage.030', { p1: name, p2: shp.w, p3: shp.h, p4: shp.w * shp.h })
       } else if (landed.where === 'temp') {
         addLog(
           state,
-          'info',
+          'salvage',
           `🕳 遗迹深处发现${name}：货仓腾不出 ${shp.w}×${shp.h} ⇒ 先放进临时空间（到「货仓」页整理进货仓）。`,
         )
       } else {
@@ -1852,9 +1852,9 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
       const name = ctx.items.get(coreId)?.name ?? coreId
       const landed = wormholeStowOrTemp(state, ctx, coreId, 1)
       if (landed.where === 'hold') {
-        addLog(state, 'info', `🕳 遗迹深处发现${name}：已装进货仓（占 1 格）。`, 'core.wormholeSalvage.031', { p1: name })
+        addLog(state, 'salvage', `🕳 遗迹深处发现${name}：已装进货仓（占 1 格）。`, 'core.wormholeSalvage.031', { p1: name })
       } else if (landed.where === 'temp') {
-        addLog(state, 'info', `🕳 遗迹深处发现${name}：货仓腾不出 1 格 ⇒ 先放进临时空间（到「货仓」页整理进货仓）。`, 'core.wormholeSalvage.032', { p1: name })
+        addLog(state, 'salvage', `🕳 遗迹深处发现${name}：货仓腾不出 1 格 ⇒ 先放进临时空间（到「货仓」页整理进货仓）。`, 'core.wormholeSalvage.032', { p1: name })
       } else {
         cell.piles = [...(cell.piles ?? []), { itemId: coreId, units: 1 }]
         addLog(state, 'warn', `🕳 遗迹深处发现${name}：货仓与临时空间都放不下 ⇒ 先散落在该地点（腾出空间后回来拾取）。`, 'core.wormholeSalvage.033', { p1: name })
@@ -1866,7 +1866,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     if (battleRng() < WORMHOLE_RUINS_BATTLE_CHANCE) {
       ruinsBattle = true
       run.pendingRuinsBattle = true
-      addLog(state, 'warn', '🕳 遗迹深处的守备被惊动了：交火在即——这一场必须打完。', 'core.wormholeSalvage.034')
+      addLog(state, 'salvage', '🕳 遗迹深处的守备被惊动了：交火在即——这一场必须打完。', 'core.wormholeSalvage.034')
     }
   }
   const finished = piles.length === 0
@@ -2088,7 +2088,7 @@ export function wormholeDeliverRelics(
       done.push(`${ctx.items.get(id)?.name ?? id}×${units}`)
     }
   }
-  if (done.length > 0) addLog(state, 'info', `🕳 随行战利品入库：${done.join('、')}。`, 'core.wormholeSalvage.035', { p1: done.join('、') })
+  if (done.length > 0) addLog(state, 'salvage', `🕳 随行战利品入库：${done.join('、')}。`, 'core.wormholeSalvage.035', { p1: done.join('、') })
   return done
 }
 
@@ -2153,7 +2153,7 @@ export function wormholeGrantShipSpoils(
     cell.piles = [...(cell.piles ?? []), ...leftovers]
     addLog(state, 'warn', `🕳 战果里有 ${leftovers.length} 堆装不下：先散落在该地点，可以照打捞规则回收。`, 'core.wormholeSalvage.036', { p1: leftovers.length })
   }
-  if (bagged > 0) addLog(state, 'info', `🕳 战果入库：${bagged} 堆残骸（含稀有）。`, 'core.wormholeSalvage.037', { p1: bagged })
+  if (bagged > 0) addLog(state, 'salvage', `🕳 战果入库：${bagged} 堆残骸（含稀有）。`, 'core.wormholeSalvage.037', { p1: bagged })
   /**
    * **战果里的货柜**（船长 2026-09-23 先定「在甲的基础上，和残骸格一样，（0.75%）概率出货柜」；
    * **同日再令「将虫洞敌人掉落货柜的概率提高到 5%」⇒ 本路径改用 `WORMHOLE_LOOT_BOX_CHANCE` = 5%**）：
@@ -2171,9 +2171,9 @@ export function wormholeGrantShipSpoils(
     const landed = wormholeStowOrTemp(state, ctx, boxId, 1)
     box = boxId
     if (landed.where === 'hold') {
-      addLog(state, 'info', `🕳 战果里翻出${name}：已装进货仓。`, 'core.wormholeSalvage.041', { p1: name })
+      addLog(state, 'salvage', `🕳 战果里翻出${name}：已装进货仓。`, 'core.wormholeSalvage.041', { p1: name })
     } else if (landed.where === 'temp') {
-      addLog(state, 'info', `🕳 战果里翻出${name}：货仓腾不出地方 ⇒ 先放进临时空间（到「货仓」页整理进货仓）。`, 'core.wormholeSalvage.042', { p1: name })
+      addLog(state, 'salvage', `🕳 战果里翻出${name}：货仓腾不出地方 ⇒ 先放进临时空间（到「货仓」页整理进货仓）。`, 'core.wormholeSalvage.042', { p1: name })
     } else {
       cell.piles = [...(cell.piles ?? []), { itemId: boxId, units: 1 }]
       addLog(state, 'warn', `🕳 战果里翻出${name}：货仓与临时空间都放不下 ⇒ 先散落在该地点（腾出空间后回来拾取）。`, 'core.wormholeSalvage.043', { p1: name })

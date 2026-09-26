@@ -102,7 +102,7 @@ describe('T2 取消与进度保留', () => {
     expect(state.skills.queue[0]!.progressMs).toBe(0)
     expect(state.skills.savedProgress).toEqual({})
     // 甲案：队首（无进度）⇒ 用「取消队首」模板，note 段为空不挂链
-    const log = state.logs.filter((l) => l.kind === 'queue').at(-1)!
+    const log = state.logs.filter((l) => l.kind === 'levelup').at(-1)!
     expect(log.textId).toBe('core.engine.014')
     expect(log.textParams?.p2).toBe('a')
     expect(log.textParams?.p3).toBe(1)
@@ -120,7 +120,7 @@ describe('T2 取消与进度保留', () => {
     // 取消第 3 位（a→Lv2）：a→Lv3 顺延为 a→Lv2；b 不动
     expect(removeQueueAt(state, 2)).toBe(true)
     // 甲案（2026-09-20）：非队首 ⇒ 用「移除第 N 位」模板；有顺延 ⇒ 尾段挂顺延句
-    const log = state.logs.filter((l) => l.kind === 'queue').at(-1)!
+    const log = state.logs.filter((l) => l.kind === 'levelup').at(-1)!
     expect(log.textId).toBe('core.engine.015')
     expect(log.textParams?.p1).toBe(3) // = 下标 + 1（玩家看到的位次）
     expect(log.textParams?.p2).toBe('a')

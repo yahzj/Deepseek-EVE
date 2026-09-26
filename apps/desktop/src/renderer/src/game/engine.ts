@@ -1011,7 +1011,7 @@ export class GameEngine {
       // 2026-09-08 船长定：日志会话级（写盘剥离 logs）；启动不做强制清空——
       // 离线补时产生的日志照常显示，另补一条报告汇总单条（钱包/收获明细，关闭简报后仍可查证）
       if (this.offlineReport !== null) {
-        addLog(this.state, 'info', offlineReportLogText(this.offlineReport))
+        addLog(this.state, 'system', offlineReportLogText(this.offlineReport))
       }
     }
 
@@ -1098,7 +1098,7 @@ export class GameEngine {
     const weekend = weekendTick(this.state, this.ctx, wallNow, lastSeenWallMs)
     this.refreshAnomaliesView() // 被占星系在界面侧换成入侵舰队（每拍刷新，开销极小）
     if (weekend.started) {
-      addLog(this.state, 'warn', tr('ui.weekend.001'), 'ui.weekend.001')
+      addLog(this.state, 'system', tr('ui.weekend.001'), 'ui.weekend.001')
       /** **入侵警报演出**（船长 2026-09-25 令）：开局立一次性待办 ⇒ 界面放红灯闪烁，演完再弹通讯 */
       this.invasionAlarmPending = 'start'
       void this.persist()
@@ -1109,7 +1109,7 @@ export class GameEngine {
      * （**首次落盘 anchor 的那一拍**）来；同时立起"一次性弹窗"待办（`flagshipPopupPending`，界面读它弹一次）。
      */
     if (weekend.flagshipAnchored) {
-      addLog(this.state, 'warn', tr('ui.weekend.002'), 'ui.weekend.002')
+      addLog(this.state, 'system', tr('ui.weekend.002'), 'ui.weekend.002')
       this.flagshipPopupPending = true
       /** **旗舰现身也闪一次警报**（船长 2026-09-25 定「开局 ＋ 旗舰现身各闪一次」） */
       this.invasionAlarmPending = 'flagship'
@@ -1125,7 +1125,7 @@ export class GameEngine {
        */
       const box = this.state.weekendEvent?.flagshipBlackBox === true
       const id = octopus ? (box ? 'ui.weekend.102' : 'ui.weekend.003') : 'ui.weekend.004'
-      addLog(this.state, 'warn', tr(id), id)
+      addLog(this.state, 'system', tr(id), id)
       void this.persist()
     }
     /** **结束结算入账**：本拍刚结束的那一场立刻结；上一拍结束而没结的由开头那句兜（同一幂等口） */
@@ -1550,12 +1550,12 @@ export class GameEngine {
     const pct = (r.share * 100).toFixed(1)
     if (r.isk > 0) {
       const params = { p1: pct, p2: r.wreck, p3: r.isk.toLocaleString('zh-CN') }
-      addLog(this.state, 'trade', tr('ui.weekend.022', params), 'ui.weekend.022', params)
+      addLog(this.state, 'system', tr('ui.weekend.022', params), 'ui.weekend.022', params)
     } else if (r.wreck > 0) {
       const params = { p1: pct, p2: r.wreck }
-      addLog(this.state, 'trade', tr('ui.weekend.023', params), 'ui.weekend.023', params)
+      addLog(this.state, 'system', tr('ui.weekend.023', params), 'ui.weekend.023', params)
     } else {
-      addLog(this.state, 'trade', tr('ui.weekend.024'), 'ui.weekend.024')
+      addLog(this.state, 'system', tr('ui.weekend.024'), 'ui.weekend.024')
     }
     this.notify()
     void this.persist()
@@ -1587,7 +1587,7 @@ export class GameEngine {
         simulateOffline(parsed.state, wallFrom, now, this.ctx, undefined, { stats })
         this.offlineReport = buildOfflineReport(before, parsed.state, this.ctx, now - wallFrom, overflowMs, stats)
         if (this.offlineReport !== null) {
-          addLog(parsed.state, 'info', offlineReportLogText(this.offlineReport))
+          addLog(parsed.state, 'system', offlineReportLogText(this.offlineReport))
         }
       } else {
         this.offlineReport = null
@@ -1679,7 +1679,7 @@ export class GameEngine {
         simulateOffline(imported, wallFrom, now, this.ctx, undefined, { stats })
         this.offlineReport = buildOfflineReport(before, imported, this.ctx, now - wallFrom, overflowMs, stats)
         if (this.offlineReport !== null) {
-          addLog(imported, 'info', offlineReportLogText(this.offlineReport))
+          addLog(imported, 'system', offlineReportLogText(this.offlineReport))
         }
       }
       this.state = imported

@@ -28,7 +28,7 @@ describe('重复清剿停环提示（2026-09-10）', () => {
     expect(text).toContain('装甲 20%')
     expect(text).toContain('结构 30%')
     // 日志同文案（玩家回看事件日志也带数字）
-    expect(state.logs.some((l) => l.kind === 'warn' && l.text === text)).toBe(true)
+    expect(state.logs.some((l) => l.kind === 'combat' && l.text === text)).toBe(true)
   })
 
   it('未停环时（作业中/正常继续）不写入提示', () => {

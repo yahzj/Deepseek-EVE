@@ -250,7 +250,7 @@ const milestoneSeen = new Set<string>()
 let lastLogIdx = 0
 let lastAuditMs = -300_000
 let soldTotal = 0
-const LOG_KINDS = new Set(['info', 'warn', 'error', 'trade', 'queue', 'levelup', 'combat', 'explore', 'system', 'encounter'])
+const LOG_KINDS = new Set(['info', 'warn', 'error', 'trade', 'queue', 'levelup', 'combat', 'industry', 'fleet', 'salvage', 'event', 'explore', 'system', 'encounter']) // 2026-09-26 船长令新分类：+industry/fleet/salvage/event
 
 function day(): number {
   return state.gameMs / 86_400_000

@@ -463,7 +463,7 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
     const d = state.encounter.galaxyId ? wreckDensityOf(state, state.encounter.galaxyId, ctx) : null
     addLog(
       state,
-      'info',
+      'combat',
       `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 成功击退来敌${suffix}——缴获 ${loot.toLocaleString('zh-CN')} 信用点${d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''}。`,
     )
     /**
@@ -505,7 +505,7 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
     state.wallet.isk = Math.max(0, state.wallet.isk - takenIsk)
     addLog(
       state,
-      'warn',
+      'combat',
       takenUnits > 0
         ? `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 被劫${suffix}——货仓损失 ${takenUnits.toLocaleString('zh-CN')} 单位货物，破财消灾。`
         : `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 被洗劫${suffix}——${takenIsk > 0 ? `抢走 ${takenIsk.toLocaleString('zh-CN')} 信用点` : '一无所获的劫匪悻悻离去'}。`,
@@ -588,7 +588,7 @@ function settleEscape(state: GameState, ctx: SimContext, mode: 'hull' | 'manual'
   if (mode === 'manual') {
     addLog(
       state,
-      'warn',
+      'combat',
       `⚔ 主动脱离（${galaxyName}·${enc.name}）：${shipName} 收手退出交火（现 装甲 ${armourPct}% / 结构 ${hullPct}%）${tail}。`,
       'core.encounters.011',
       { p1: galaxyName, p2: enc.name, p3: shipName, p4: armourPct, p5: hullPct, p6: tail },
@@ -596,7 +596,7 @@ function settleEscape(state: GameState, ctx: SimContext, mode: 'hull' | 'manual'
   } else {
     addLog(
       state,
-      'warn',
+      'combat',
       `⚔ 遭遇战自动脱离（${galaxyName}·${enc.name}）：${shipName} 结构损失过半，及时退出交火（现 装甲 ${armourPct}% / 结构 ${hullPct}%）${tail}。`,
     )
   }
@@ -651,7 +651,7 @@ function settleFight(state: GameState, ctx: SimContext): void {
       : `★ 遭遇战大捷（${galaxyName}·${enc.name}）：${shipName} 全歼来敌——缴获 ${loot.toLocaleString('zh-CN')} 信用点${
           d !== null ? `，敌舰残骸沉积（密度 ${d.toFixed(1)}）` : ''
         }${repairTail(battle, ctx)}。`
-    addLog(state, 'info', encWinText)
+    addLog(state, 'combat', encWinText)
     // **结构化战报**（2026-09-14 船长定）：这条日志原先不含「战报」二字 ⇒ 弹层取不到正文（现已修）
     captureBattleReport(state, battle, { source: 'encounter', outcome: 'win', summary: encWinText })
   } else {
@@ -680,7 +680,7 @@ function settleFight(state: GameState, ctx: SimContext): void {
         ? `装甲 -${pct(hit.armorLost)}%${hit.hullLost > 0 ? `、结构 -${pct(hit.hullLost)}%` : ''}（现 装甲 ${pct(hit.armorTo)}% / 结构 ${pct(hit.hullTo)}%）`
         : '船体带着损伤'
     }${takenUnits > 0 ? `，货仓被劫走 ${takenUnits.toLocaleString('zh-CN')} 单位` : ''}，狼狈脱离${repairTail(battle, ctx)}。`
-    addLog(state, 'warn', encLoseText)
+    addLog(state, 'combat', encLoseText)
     /**
      * **结构化战报**（2026-09-14 船长定）：这一支是"打输、船没沉"（低安遭遇不弃船，只受损+被抢）
      * ⇒ `lose`。⚠ 注意与远征不同：遭遇战**没有**"未分胜负就中止"那一档（要么全歼、要么被打退），
@@ -922,7 +922,7 @@ export function fightEncounter(state: GameState, ctx: SimContext): CommandResult
   // 绝不拖到弃船（旧行为：应战一直打到分胜负，可能把副船打没）
   battle.hullEscapeFrac = ctx.balance.encounter.retreatHullFrac
   enc.battle = battle
-  addLog(state, 'info', '已应战：遭遇战打响（引擎自动推演，战报稍后）。', 'core.encounters.006')
+  addLog(state, 'combat', '已应战：遭遇战打响（引擎自动推演，战报稍后）。', 'core.encounters.006')
   return { ok: true }
 }
 

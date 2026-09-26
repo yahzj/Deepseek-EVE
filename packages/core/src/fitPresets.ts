@@ -215,7 +215,7 @@ export function saveFitPreset(state: GameState, ctx: SimContext, shipId: string,
   if (at >= 0) list[at] = preset
   else list.push(preset)
   state.fitPresets = { ...(state.fitPresets ?? {}), [shipDef.id]: list }
-  addLog(state, 'info', `已保存装配方案「${finalName}」（${shipDef.name} · ${fitPresetBrief(preset)}）。`, 'core.fitPresets.009', {
+  addLog(state, 'fleet', `已保存装配方案「${finalName}」（${shipDef.name} · ${fitPresetBrief(preset)}）。`, 'core.fitPresets.009', {
     p1: finalName,
     p2: shipDef.name,
     p3: fitPresetBrief(preset),
@@ -250,7 +250,7 @@ export function overwriteFitPreset(state: GameState, ctx: SimContext, shipId: st
   state.fitPresets = { ...(state.fitPresets ?? {}), [shipDef.id]: list }
   addLog(
     state,
-    'info',
+    'fleet',
     `已用当前装配覆盖方案「${target.name}」（${shipDef.name} · ${fitPresetBrief(preset)}）。`,
     'core.fitPresets.013',
     { p1: target.name, p2: shipDef.name, p3: fitPresetBrief(preset) },
@@ -276,7 +276,7 @@ export function renameFitPreset(state: GameState, defId: string, index: number, 
   const old = preset.name
   list[index] = { ...preset, name: finalName }
   state.fitPresets = { ...(state.fitPresets ?? {}), [defId]: list }
-  addLog(state, 'info', `装配方案「${old}」已改名为「${finalName}」。`, 'core.fitPresets.010', { p1: old, p2: finalName })
+  addLog(state, 'fleet', `装配方案「${old}」已改名为「${finalName}」。`, 'core.fitPresets.010', { p1: old, p2: finalName })
   return { ok: true }
 }
 
@@ -291,7 +291,7 @@ export function deleteFitPreset(state: GameState, defId: string, index: number):
   else delete next[defId]
   // 删空 ⇒ **连字段一起清掉**（回到"老档形状"：存盘里不出现空表，老档往返逐字一致）
   state.fitPresets = Object.keys(next).length > 0 ? next : undefined
-  addLog(state, 'info', `已删除装配方案「${preset.name}」。`, 'core.fitPresets.011', { p1: preset.name })
+  addLog(state, 'fleet', `已删除装配方案「${preset.name}」。`, 'core.fitPresets.011', { p1: preset.name })
   return { ok: true }
 }
 
@@ -336,7 +336,7 @@ export function unfitAllModules(state: GameState, ctx: SimContext, shipId: strin
     if (!quiet) {
       addLog(
         state,
-        'info',
+        'fleet',
         `已卸下全部装备 ${removed} 件（放回装备库），甲板扩容器一并卸下。`,
         'core.fitPresets.012',
         { p1: removed },

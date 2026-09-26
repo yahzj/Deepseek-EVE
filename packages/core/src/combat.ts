@@ -792,7 +792,7 @@ export function applyDcGuard(
   }
   b.dcKitsUsed = Math.max(0, Math.floor(b.dcKitsUsed ?? 0)) + 1
   b.dc = { ...(b.dc ?? {}), [tag]: { lockUntilMs: b.lastTickGameMs + DC_LOCK_MS, used: true } }
-  addLog(state, 'info', '✦ 损伤管制装置启动：结构锁定在 1 点、持续 1 秒（消耗损管修理组件 ×1）。', 'core.combat.002')
+  addLog(state, 'combat', '✦ 损伤管制装置启动：结构锁定在 1 点、持续 1 秒（消耗损管修理组件 ×1）。', 'core.combat.002')
   pushBattleNotice(b, '损伤管制装置启动：结构锁定 1')
   return clampRawLeavingHull(apply, raw)
 }
@@ -1068,7 +1068,7 @@ function expireFoeWebs(state: GameState, b: import('./state').BattleState, foes:
     if (aliveTags.has(d.byTag)) continue
     delete list[tag]
     const name = b.units[tag]?.name ?? tag
-    addLog(state, 'info', `劫掠捕获网已失效：${name} 摆脱了束缚（发动者已被击沉）。`)
+    addLog(state, 'combat', `劫掠捕获网已失效：${name} 摆脱了束缚（发动者已被击沉）。`)
   }
 }
 
@@ -1124,7 +1124,7 @@ export function advanceMyCaptureWebs(
         for (const [to, d] of Object.entries(debuffs)) {
           if (d.byTag !== tag) continue
           delete debuffs[to]
-          addLog(state, 'info', `墨潮捕获网已失效：${b.units[to]?.name ?? to} 挣脱了束缚（网手已被击沉）。`)
+          addLog(state, 'combat', `墨潮捕获网已失效：${b.units[to]?.name ?? to} 挣脱了束缚（网手已被击沉）。`)
         }
       }
     }
@@ -1144,7 +1144,7 @@ export function advanceMyCaptureWebs(
       if (b.foeWebDebuffs) delete b.foeWebDebuffs[st.targetTag]
       delete st.targetTag
       st.cooldownUntilMs = now + cycleMs
-      addLog(state, 'info', `墨潮捕获网松开：${gone} 已被击沉，${me.name} 的网开始冷却。`)
+      addLog(state, 'combat', `墨潮捕获网松开：${gone} 已被击沉，${me.name} 的网开始冷却。`)
     }
     // ③ 待发且冷却已过 ⇒ 张网（不看命中、独立瞄准、跳过已被钉住的）
     if (st.targetTag === undefined && now >= st.cooldownUntilMs) {
@@ -6246,7 +6246,7 @@ export function settleDroneLosses(
   )
   // 立刻补足（船长 2026-09-20）：补货结果单独一行；货源不足再补一行 warn 说明缺多少
   if (refillRows.length > 0) {
-    addLog(state, 'info', `机群补充${who ? `（${who.replace(/：$/, '')}）` : ''}：${refillTxt}——本场出发时的编制已复位。`)
+    addLog(state, 'combat', `机群补充${who ? `（${who.replace(/：$/, '')}）` : ''}：${refillTxt}——本场出发时的编制已复位。`)
   }
   if (shortTxt.length > 0) {
     addLog(

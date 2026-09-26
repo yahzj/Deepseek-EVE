@@ -1618,13 +1618,13 @@ export function sellAtMarket(
     pushSellOrder(state, goodKey, edge, remaining)
     addLog(
       state,
-      'info',
+      'trade',
       `市价单成交 ${sold.toLocaleString('zh-CN')} 后簿已吃穿，剩余 ${remaining.toLocaleString('zh-CN')} 自动挂限价卖单（免费）。`,
       'core.market.022',
       { p1: sold.toLocaleString('zh-CN'), p2: remaining.toLocaleString('zh-CN') },
     )
   } else if (remaining > 0) {
-    addLog(state, 'info', '市场收购簿为空，暂时无人收购——可挂限价卖单等收购单浮现。', 'core.market.019')
+    addLog(state, 'trade', '市场收购簿为空，暂时无人收购——可挂限价卖单等收购单浮现。', 'core.market.019')
   }
   return { sold, total: net, avg: sold > 0 ? Math.round(net / sold) : 0, remaining }
 }
@@ -1713,13 +1713,13 @@ export function buyAtMarket(
   }
   if (remaining > 0) {
     if (bmLock && bought === 0) {
-      addLog(state, 'info', `常驻供应待「深空工业协会」声望 ${def.bmStanding} 解锁。`, 'core.market.020', {
+      addLog(state, 'trade', `常驻供应待「深空工业协会」声望 ${def.bmStanding} 解锁。`, 'core.market.020', {
         p1: def.bmStanding ?? 0,
       })
     } else {
       addLog(
         state,
-        'info',
+        'trade',
         `市价买入成交 ${bought.toLocaleString('zh-CN')} 后供应簿吃穿，剩余 ${remaining.toLocaleString('zh-CN')}——可稍等补给或挂限价买单。`,
         'core.market.024',
         { p1: bought.toLocaleString('zh-CN'), p2: remaining.toLocaleString('zh-CN') },
@@ -1777,7 +1777,7 @@ export function sellShipAtMarket(state: GameState, ctx: SimContext, shipId: stri
   }
   addLog(
     state,
-    'info',
+    'trade',
     `「${display}」未能立即成交，已转为限价卖单（撤销卖单可把船退回机库）。`,
     'core.market.025',
     { p1: display },
@@ -1925,7 +1925,7 @@ export function sellStoredShipAtMarket(
   if (resting > 0) {
     addLog(
       state,
-      'info',
+      'trade',
       `「${display}」×${resting.toLocaleString('zh-CN')} 未能立即成交，已转为限价卖单（撤销卖单可把船退回舰船仓库）。`,
     )
   }
@@ -1951,7 +1951,7 @@ export function learnBlueprint(state: GameState, ctx: SimContext, blueprintId: s
   state.blueprintStock[blueprintId] = count - 1
   if (state.blueprintStock[blueprintId] === 0) delete state.blueprintStock[blueprintId]
   state.learnedRecipes.push(blueprintId)
-  addLog(state, 'info', `已学习「${known.name}」：可前往组装机无限次制造。`, 'core.market.026', { p1: known.name })
+  addLog(state, 'industry', `已学习「${known.name}」：可前往组装机无限次制造。`, 'core.market.026', { p1: known.name })
   return { ok: true }
 }
 

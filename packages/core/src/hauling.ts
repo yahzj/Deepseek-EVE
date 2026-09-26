@@ -331,7 +331,7 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
     if (isPos) Object.assign(params, { p2p1: unloaded, p2Id: 'core.state.039' })
     else Object.assign(params, { p1p1: unloaded, p1Id: 'core.state.039' })
   }
-  addLog(state, 'info', text, isPos ? 'core.hauling.023' : 'core.hauling.024', params)
+  addLog(state, 'fleet', text, isPos ? 'core.hauling.023' : 'core.hauling.024', params)
   return { ok: true }
 }
 
@@ -341,7 +341,7 @@ export function stopHauling(state: GameState, ctx: SimContext): CommandResult {
   const info = haulingHalt(state)
   if (info === null) return { ok: false, error: '没有进行中的长途运输。', errorId: 'core.hauling.018' }
   const originName = haulEndpointName(ctx, info.fromSiteId)
-  addLog(state, 'info', `长途运输已停止：舰船已即时返港停靠「${originName}」（无惩罚）。`, 'core.hauling.019', {
+  addLog(state, 'fleet', `长途运输已停止：舰船已即时返港停靠「${originName}」（无惩罚）。`, 'core.hauling.019', {
     p1: originName,
   })
   return { ok: true }
@@ -398,7 +398,7 @@ export function advanceHauling(state: GameState, deltaMs: number, ctx: SimContex
       const departTo = haulEndpointName(ctx, h.toSiteId)
       addLog(
         state,
-        'info',
+        'fleet',
         `长途运输继续：已装载前往「${departTo}」（虚拟货物，货仓占满）。`,
         'core.hauling.021',
         { p1: departTo },
@@ -416,7 +416,7 @@ export function cancelHaulingOnSwitch(state: GameState, ctx: SimContext): void {
   state.awayGalaxy = null
   addLog(
     state,
-    'info',
+    'fleet',
     `长途运输已随切换驾驶终止（原航线「… → ${wasTo}」；虚拟货物无残留、无惩罚）。`,
     'core.hauling.022',
     { p1: wasTo },

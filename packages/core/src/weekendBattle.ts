@@ -313,13 +313,13 @@ export function weekendResolveBattle(
     if (gain > 0) {
       const pctBefore = Math.round(beforePct)
       const pctAfter = Math.round(weekendProgressAt(state, ev, spec.galaxyId, nowWallMs) * 100)
-      addLog(state, 'info', `✦ ${gname0}：夺回进度 ${pctBefore}% → ${pctAfter}%`, 'core.weekend.035', {
+      addLog(state, 'combat', `✦ ${gname0}：夺回进度 ${pctBefore}% → ${pctAfter}%`, 'core.weekend.035', {
         p1: gname0,
         p2: pctBefore,
         p3: pctAfter,
       })
     } else if (gatedThisBattle) {
-      addLog(state, 'info', `✦ ${gname0}：外围未清完，本次不计夺回进度`, 'core.weekend.036', { p1: gname0 })
+      addLog(state, 'combat', `✦ ${gname0}：外围未清完，本次不计夺回进度`, 'core.weekend.036', { p1: gname0 })
     }
   }
   return res

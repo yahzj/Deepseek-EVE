@@ -224,7 +224,7 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
     sq.finishAtGameMs = state.gameMs + 1000
     sq.originGalaxy = null
     sq.returning = false
-    addLog(state, 'info', '已派出深空扫描艇：1 秒后录入情报。', 'core.explore.004')
+    addLog(state, 'fleet', '已派出深空扫描艇：1 秒后录入情报。', 'core.explore.004')
     return { ok: true }
   }
   // v14 续扫：终止过的星系只补扫剩余窗口（已完成部分保存在 state.scanProgress；窗口按信号分析学折算）
@@ -246,7 +246,7 @@ export function startScan(state: GameState, galaxyId: string, ctx: SimContext): 
     secOfTarget < 0.5 ? '该星系信号嘈杂、扫描偏慢。' : '扫描期间更容易碰到有趣的东西。'
   addLog(
     state,
-    'info',
+    'fleet',
     doneMs > 0
       ? `已派扫描艇续扫「${galaxy.name}」（就地扫描已完成 ${Math.round((doneMs / effWin) * 100)}%）：本次只需补扫剩余 ${Math.round(remainWindowMs / 60_000)} 分钟窗口。${riskNote}扫描不占主控——期间照常安排别的活动。`
       : `已派出深空扫描艇扫描「${galaxy.name}」：预计 ${Math.round(totalMs / 60_000)} 分钟后录入情报并点亮星图。${riskNote}扫描不占主控——期间照常安排别的活动。`,
@@ -274,7 +274,7 @@ function finishScan(state: GameState, ctx: SimContext): void {
   s.lastGalaxyId = targetId
   addLog(
     state,
-    'info',
+    'fleet',
     newly
       ? `✦ 扫描完成：「${name}」的情报已录入星图——航线、矿带与悬赏信息全部解锁（扫描艇已收回）。`
       : `✦ 扫描完成：「${name}」的补扫完成，没有发现新的信息（扫描艇已收回）。`,
@@ -319,13 +319,13 @@ export function stopScan(state: GameState, ctx: SimContext): CommandResult {
     state.scanProgress[gid] = keep
     addLog(
       state,
-      'info',
+      'fleet',
       `已召回扫描艇：对「${galaxyName}」的就地扫描完成 ${Math.round((keep / effWin) * 100)}%，进度已保存——下次对该星系扫描只需补扫剩余窗口。`,
     )
   } else {
     addLog(
       state,
-      'info',
+      'fleet',
       `已召回扫描艇：对「${galaxyName}」的扫描尚未产生进度，随时可以重发。`,
       'core.explore.007',
       { p1: galaxyName },

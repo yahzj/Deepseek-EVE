@@ -193,7 +193,7 @@ export function researchMatterTech(
   }
   addLog(
     state,
-    'info',
+    'levelup',
     `🔬 谜质科技「${node.name}」提升至 ${before + 1}/${node.maxLevel} 级` +
       `（耗虫洞谜质 ${can.cost.essence} 枚 · ${can.cost.isk.toLocaleString('zh-CN')} 信用点）。`,
   )

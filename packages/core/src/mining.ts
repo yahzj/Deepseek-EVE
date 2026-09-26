@@ -299,7 +299,7 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   const tripNoteId = m.autoCycle ? 'core.mining.014' : 'core.mining.015'
   addLog(
     state,
-    'info',
+    'industry',
     `开始开采：${belt.name}。${shipName} 已抵达矿带，立即开始采掘${cycleNote}（满载返航约 ${retSec + outSec} 秒，去程时间已并入返航${travelNote}）。${tripNote}`,
     'core.mining.016',
     {
@@ -335,7 +335,7 @@ export function startMiningFromExpedition(state: GameState, beltId: string, ctx:
   // 转场即手动收手：由讨伐发起的本次远征同步停止讨伐（同撤退口径）
   if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {
     state.autoLoopAnomalyId = null
-    addLog(state, 'info', '重复清剿已停止（转开采）。', 'core.mining.018')
+    addLog(state, 'combat', '重复清剿已停止（转开采）。', 'core.mining.018')
   }
   // 召回式取消远征（无战果；battle 已排除）→ 船回到母港/空间站，随后照常开矿
   const recalled = recallExpedition(state, ctx)
@@ -361,7 +361,7 @@ export function stopMining(state: GameState, ctx: SimContext): boolean {
    */
   addLog(
     state,
-    'info',
+    'industry',
     `已停止开采（${beltName}）。本趟共采得 ${tripUnits} 单位${oreName}${phaseNote}。`,
     'core.mining.021',
     { p1: beltName, p2: tripUnits, p3: oreName, p4: phaseNote },
@@ -420,7 +420,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
         const moved = unloadCargoToWarehouse(state)
         addLog(
           state,
-          'info',
+          'industry',
           `自动返港：已把货仓全部卸入物品仓库（共 ${moved.toLocaleString('zh-CN')} 单位，本趟采得 ${oreName}×${trip}）。`,
           'core.mining.024',
           { p1: moved.toLocaleString('zh-CN'), p2: oreName, p3: trip },
@@ -433,7 +433,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
           m.cycleAccMs = 0
           m.tripUnits = 0
           m.rvLeft = 0
-          addLog(state, 'info', '自动循环已结束（按设定返港后停止）。', 'core.mining.025')
+          addLog(state, 'industry', '自动循环已结束（按设定返港后停止）。', 'core.mining.025')
           break
         }
         // 自动循环：空船去程已并入刚才的返航腿 → 直接回到矿带恢复采掘（不再有出航相位）
@@ -504,7 +504,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
         )
         addLog(
           state,
-          'info',
+          'industry',
           `货舱装不下下一循环（余 ${Math.round(freeM3)} m³ ／ 每循环 ${Math.round(oreM3PerCycle)} m³）：自动返航空间站卸货（本趟 ${m.tripUnits} 单位${oreNow.name}，返航约 ${Math.max(1, Math.round(mergedMs / 1000))} 秒，去程已并入返航）。`,
           'core.mining.028',
           {
@@ -550,7 +550,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
       m.rvLeft = 1
       addLog(
         state,
-        'info',
+        'industry',
         `富矿脉！连续 2 个循环产量 ×3，本循环获得 ${units} 单位${oreNow.name}。`,
         'core.mining.030',
         { p1: units, p2: oreNow.name },
@@ -697,7 +697,7 @@ export function advanceShipReturns(state: GameState, deltaMs: number, ctx: SimCo
       if (r.reason === 'expedition') {
         addLog(
           state,
-          'info',
+          'industry',
           moved > 0
             ? `${name} 已随远征善后返航到港：货仓已卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。`
             : `${name} 已随远征善后返航到港（货仓为空）。`,
@@ -709,7 +709,7 @@ export function advanceShipReturns(state: GameState, deltaMs: number, ctx: SimCo
       if (r.reason === 'salvage') {
         addLog(
           state,
-          'info',
+          'industry',
           moved > 0
             ? `${name} 已随打捞善后返航到港：残骸已卸入物品仓库（${moved.toLocaleString('zh-CN')} m³ 当量）。`
             : `${name} 已随打捞善后返航到港（货仓为空）。`,
@@ -720,7 +720,7 @@ export function advanceShipReturns(state: GameState, deltaMs: number, ctx: SimCo
       }
       addLog(
         state,
-        'info',
+        'industry',
         moved > 0
           ? `${name} 已返港并卸货（换船善后）：${moved.toLocaleString('zh-CN')} 单位已入物品仓库。`
           : `${name} 已随换船善后返港（货仓为空）。`,

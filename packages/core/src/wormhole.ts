@@ -885,7 +885,7 @@ function maybeHintNebula(state: GameState, depth: number): void {
     '在同一个位置再扫描一次就能把星云驱散、读出信号。'
   addLog(
     state,
-    'info',
+    'fleet',
     '🕳 前方出现星云带：星云会遮蔽地点的信号——第一次扫描只看到云，' +
       '再扫描一次（同一圈内）即可驱散并读出信号。',
   )
@@ -1144,7 +1144,7 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
   ).length
   addLog(
     state,
-    'info',
+    'fleet',
     `🕳 扫描（半径 ${grid.scanRadius + buffs.scanRadius}）：揭开 ${revealed.length} 格` +
       (empty > 0 ? `（其中 ${empty} 格没有信号）` : '') +
       (exitScanned ? ` · 扫到下一层入口（Q${grid.exit.q} · R${grid.exit.r}，已标在地图上）` : '') +
@@ -1324,7 +1324,7 @@ export function wormholeGridTravel(
   } else {
     arrivalText = `🕳 抵达新地点（${dest.q},${dest.r}）：${WORMHOLE_PLACE_TEXT[dest.place]} · 剩 ${run.turnsLeft} 回合。`
   }
-  addLog(state, 'info', arrivalText, arrivalId, arrivalParams)
+  addLog(state, 'fleet', arrivalText, arrivalId, arrivalParams)
   return {
     ok: true,
     spent: WORMHOLE_TURN_PER_MOVE,
@@ -1389,7 +1389,7 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   // ⚠ 产出的铺放已全部改到**到达那一刻**（`wormholeSalvage.wormholeEnsureArrivalPiles`，船长 F5：资源点/墓场遗迹不用激活）
   addLog(
     state,
-    'info',
+    'fleet',
     `🕳 激活地点（${cell.q},${cell.r} · ${atExit ? '下一层入口' : WORMHOLE_PLACE_TEXT[cell.place]}）· 不消耗回合 · 剩 ${run.turnsLeft} 回合。`,
   )
   return { ok: true, spent: 0, effect, mustExtract: run.turnsLeft <= 0 }
@@ -1795,7 +1795,7 @@ export function wormholeEnter(
   bumpFirst(state, 'wormholeRuns') // 第一次任务/链：进洞趟数
   addLog(
     state,
-    'info',
+    'fleet',
     `🕳 虫洞跃入：编队 ${shipIds.length} 艘 · 折算总质量 ${r.run.totalMass.toLocaleString('zh-CN')} · 可探索 ${r.run.turnsTotal} 回合。`,
   )
   return r

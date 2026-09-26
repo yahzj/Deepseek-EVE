@@ -131,15 +131,29 @@ function gameClock(gameMs: number): string {
 
 /* ═══════════════ 日志面板偏好（折叠 + 类型过滤，存 localStorage） ═══════════════ */
 
-const LOG_KINDS: readonly LogKind[] = ['system', 'info', 'queue', 'levelup', 'warn', 'trade', 'event']
+/**
+ * 日志分类**展示顺序**（2026-09-26 船长令重新分类）：战斗 / 工业 / 舰队 / 打捞四条新线在前，其余沿用。
+ * ⚠ `queue` **不进本表**（它已并入 `levelup`；类型里留着只为读老日志，见 `kindOf`）。
+ */
+const LOG_KINDS: readonly LogKind[] = ['combat', 'industry', 'fleet', 'salvage', 'trade', 'levelup', 'event', 'system', 'warn', 'info']
+
+/** 老日志兼容：`queue` 一律按 `levelup`（升级）显示与筛选 */
+function kindOf(k: LogKind): LogKind {
+  return k === 'queue' ? 'levelup' : k
+}
 const KIND_LABEL: Record<LogKind, string> = {
   system: tr("ui.App.029"),
   info: tr("ui.App.030"),
-  queue: tr("ui.App.027"),
+  queue: tr("ui.App.027"), // 老日志兼容（新日志不再写 queue；见 state.LogKind 注释）
   levelup: tr("ui.App.031"),
   warn: tr("ui.App.032"),
   trade: tr("ui.App.033"),
   event: tr("ui.App.034"),
+  // 2026-09-26 船长令新增四类
+  combat: tr("ui.App.154"),
+  industry: tr("ui.App.155"),
+  fleet: tr("ui.App.156"),
+  salvage: tr("ui.App.157"),
 }
 
 /** 分类语义（T6：与 ui index.css 的 wui-log-* 色值保持同步） */
@@ -151,6 +165,11 @@ const KIND_DESC: Record<LogKind, string> = {
   warn: tr("ui.App.039"),
   trade: tr("ui.App.040"),
   event: tr("ui.App.041"),
+  // 2026-09-26 船长令新增四类
+  combat: tr("ui.App.159"),
+  industry: tr("ui.App.160"),
+  fleet: tr("ui.App.161"),
+  salvage: tr("ui.App.162"),
 }
 
 /** 开关色点（图例）：与 `ui/index.css` 的 `--wui-log-*` 同一批 token（2026-09-22 起不再各写一份色值） */
@@ -163,31 +182,47 @@ const KIND_DOT: Record<LogKind, string> = {
   // 色板里没有 --wui-log-trade（其余六种 log 色都有）⇒ 用既有的「贸易」色调，2026-09-24 由 token 契约抓出
   trade: 'rgb(var(--wui-tone-group-trade))',
   event: 'rgb(var(--wui-log-event))',
+  // 2026-09-26 新增四类的色 token（深/浅两套见 index.css）
+  combat: 'rgb(var(--wui-log-combat))',
+  industry: 'rgb(var(--wui-log-industry))',
+  fleet: 'rgb(var(--wui-log-fleet))',
+  salvage: 'rgb(var(--wui-log-salvage))',
 }
 
 const PREFS_KEY = 'whale-idle:log-prefs'
 
+/**
+ * **单选取值**（2026-09-26 船长令：「事件日志上方的筛选，玩家点击哪一个筛选就**只显示该筛选的内容**」）
+ * —— `'all'` = 全部（默认）。
+ */
+type LogFilter = LogKind | 'all'
+
 interface LogPrefs {
   collapsed: boolean
-  kinds: Record<LogKind, boolean>
+  /** 当前选中的筛选（旧版是"多开关 kinds" ⇒ 读档时迁移成单选，见 `readLogPrefs`） */
+  filter: LogFilter
 }
 
 function defaultLogPrefs(): LogPrefs {
-  return {
-    collapsed: false,
-    kinds: { system: true, info: true, queue: true, levelup: true, warn: true, trade: true, event: true },
-  }
+  return { collapsed: false, filter: 'all' }
 }
 
-/** 读取本地偏好（容错：坏了就回默认） */
+/** 读取本地偏好（容错：坏了就回默认；**兼容旧版多开关** `kinds` ⇒ 迁移成单选） */
 function readLogPrefs(): LogPrefs {
   const fallback = defaultLogPrefs()
   try {
     const raw = localStorage.getItem(PREFS_KEY)
     if (!raw) return fallback
-    const parsed = JSON.parse(raw) as Partial<LogPrefs>
-    const kinds = { ...fallback.kinds, ...(typeof parsed.kinds === 'object' && parsed.kinds !== null ? parsed.kinds : {}) }
-    return { collapsed: parsed.collapsed === true, kinds }
+    const parsed = JSON.parse(raw) as { collapsed?: unknown; filter?: unknown; kinds?: Record<string, boolean> }
+    // 迁移：旧版只有 `kinds`（多开关）⇒ 若恰好只剩一个开着，就沿用那个作为单选；否则回「全部」
+    let filter: LogFilter = 'all'
+    if (typeof parsed.filter === 'string' && (parsed.filter === 'all' || LOG_KINDS.includes(parsed.filter as LogKind))) {
+      filter = parsed.filter as LogFilter
+    } else if (parsed.kinds && typeof parsed.kinds === 'object') {
+      const on = LOG_KINDS.filter((k) => parsed.kinds?.[k] === true)
+      if (on.length === 1) filter = on[0]!
+    }
+    return { collapsed: parsed.collapsed === true, filter }
   } catch {
     return fallback
   }
@@ -1352,18 +1387,19 @@ async function applyLayoutAndQuit(): Promise<void> {
       ? { title: tr('ui.ActivityWin.008'), onRestore: () => setActivityOpen(true) }
       : null
 
-  // ── 日志偏好：折叠状态 + 六类开关（本地持久化） ──
+  // ── 日志偏好：折叠状态 + **单选筛选**（本地持久化；2026-09-26 船长令由"多开关"改单选） ──
   const [logCollapsed, setLogCollapsed] = useState<boolean>(() => readLogPrefs().collapsed)
-  const [logKinds, setLogKinds] = useState<Record<LogKind, boolean>>(() => readLogPrefs().kinds)
+  const [logFilter, setLogFilter] = useState<LogFilter>(() => readLogPrefs().filter)
   useEffect(() => {
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ collapsed: logCollapsed, kinds: logKinds }))
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ collapsed: logCollapsed, filter: logFilter }))
     } catch {
       // 本地存储不可用（隐私模式等）：忽略，不影响游戏
     }
-  }, [logCollapsed, logKinds])
+  }, [logCollapsed, logFilter])
 
-  const visibleLogs = state.logs.filter((l) => logKinds[l.kind] ?? true)
+  /** 选中哪一类就**只显示**那一类（`all` = 全部）；老日志的 `queue` 按升级显示 */
+  const visibleLogs = state.logs.filter((l) => logFilter === 'all' || kindOf(l.kind) === logFilter)
   const hiddenAll = visibleLogs.length === 0 && state.logs.length > 0
 
   // ── 离线简报卡（本次启动一次性，手动关闭） ──
@@ -1870,14 +1906,22 @@ async function applyLayoutAndQuit(): Promise<void> {
             }
             >
             <div className="app-log-filters" title={tr("ui.App.071")}>
+            {/* 2026-09-26 船长令：**单选**——点哪一类就只显示那一类；「全部」= 不过滤 */}
+            <button
+            className={`app-log-filter${logFilter === 'all' ? '' : ' is-off'}`}
+            title={tr("ui.App.163")}
+            onClick={() => setLogFilter('all')}
+            >
+            {tr("ui.App.158")}
+            </button>
             {LOG_KINDS.map((kind) => {
-            const on = logKinds[kind] ?? true
+            const on = logFilter === kind
             return (
             <button
             key={kind}
             className={`app-log-filter${on ? '' : ' is-off'}`}
             title={KIND_DESC[kind]}
-            onClick={() => setLogKinds((prev) => ({ ...prev, [kind]: !on }))}
+            onClick={() => setLogFilter(kind)}
             >
             <span className="app-log-dot" style={{ background: KIND_DOT[kind] }} />
             {KIND_LABEL[kind]}
@@ -1889,7 +1933,7 @@ async function applyLayoutAndQuit(): Promise<void> {
             <div className="app-dim app-log-empty">{tr("ui.App.072")}</div>
             ) : (
             <LogList
-            logs={visibleLogs.map((l) => ({ id: l.id, kind: l.kind, text: logText(l), timeLabel: gameClock(l.atGameMs) }))}
+            logs={visibleLogs.map((l) => ({ id: l.id, kind: kindOf(l.kind), text: logText(l), timeLabel: gameClock(l.atGameMs) }))}
             limit={220}
             />
             )}
