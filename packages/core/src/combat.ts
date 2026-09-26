@@ -1585,10 +1585,25 @@ export function createPlayerSpec(
    *  ⚠ 与"实际射程"分家只为**干扰压制**：船长的加法口径要按"基准 + 加成"拆开算
    *  （见 `meRangeMulOf`；`refs.weaponRanges` 记的就是这两份数）。 */
   const rangeBase = (base: number): number => Math.max(500, Math.round(base * (1 - Math.min(0.9, rangeCut))))
-  /** 武器实际射程 = 基准 × (1+该系加成)（按系加成 = 模块 + 船体固有，加算后一次乘）
-   *  × **插件射程倍率**（射程插件 +25%；多件全额、不吃递减 ⇒ 直接乘入）。 */
+  /**
+   * 🔴 **射程插件的 +25% 并进"战前射程加成池"**（**2026-09-26 船长令**：「**射程插件和增加射程的装备，
+   * 应该提高的是战斗前的数据，电子舰和战斗中触发的射程增加减少是独立的加减算法的乘区**」）。
+   *
+   * 落法 = 与装备的按系射程加成**同池加算**（三系各 +25%，多件全额），**不是**在外面再乘一层。
+   * 为什么必须这样：干扰压制那条链（`meRangeMulOf` / `applyMeJammerDebuff`）要吃"**该件的射程加成**"
+   * 来按加法口径反解（`(1 + bonus − 净削减) ÷ (1 + bonus)`）——若插件只在外层乘，`refs.weaponRanges`
+   * 记下的 `bonusMul` 就漏掉它 ⇒ 带插件的武器会被**多压**。并进池后：
+   * 只有装备 +22% ⇒ bonus 0.22；同一门炮再装射程插件 ⇒ bonus **0.47**（船长口径的加法）。
+   */
+  const plugRangeBonus = -plugRangeCut // 插件用 `rangeCutPct` 的负值表达加成 ⇒ 取正
+  if (plugRangeBonus > 0) {
+    rangeBonus.kinetic += plugRangeBonus
+    rangeBonus.explosive += plugRangeBonus
+    rangeBonus.plasma += plugRangeBonus
+  }
+  /** 武器实际射程 = 基准 × (1+该系加成)（按系加成 = 模块 + 船体固有 + **射程插件**，加算后一次乘） */
   const rangeOf = (base: number, type: DamageType): number =>
-    Math.max(500, Math.round(rangeBase(base) * (1 + rangeBonus[type]) * (1 - plugRangeCut)))
+    Math.max(500, Math.round(rangeBase(base) * (1 + rangeBonus[type])))
   /** 通用单发伤害加成（亡军火控「伤害 +6%」）：与按系稳定器同链、加算、只进炮台/光束。
    *  ⚠ **插件并进同一个加算池**（火力强化插件 +12%；多件全额、不吃递减 —— 它本就不在 `allDefs` 里）。 */
   const dmgFlat = allDefs.reduce((s, m) => s + (m.damageBonusPct ?? 0), 0) + plugDmg
@@ -1792,7 +1807,13 @@ export function createPlayerSpec(
     droneDmgBonus += g.droneDmgBonus ?? 0
     if ((g.droneRangeBonusPct ?? 0) > 0) droneRangePcts.push(g.droneRangeBonusPct!)
   }
-  const droneRangeMult = 1 + weightedSum(droneRangePcts)
+  /**
+   * 无人机射程倍率 = 1 + Σ(中继天线，折权加算)。
+   * ⚠ **2026-09-26 船长口径**：射程插件属于"**战斗前的射程加成**"，与中继天线**同一池加算**
+   * （插件的 +25% 直接加到本倍率里）。这样 `refs.weaponRanges` 记的 `bonusMul` 也含它 ⇒
+   * 干扰压制那条加法反解不会把带插件的机群**多压**。
+   */
+  const droneRangeMult = 1 + weightedSum(droneRangePcts) + Math.max(0, plugRangeBonus)
 
 
   let bayUsed = 0
