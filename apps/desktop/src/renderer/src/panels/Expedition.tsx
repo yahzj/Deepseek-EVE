@@ -201,17 +201,14 @@ function FoeBriefTip({ lines }: { lines: FoeBriefLine[] }): ReactNode {
              * 所以这里**逐件 map 出一个块级行**（不是把多件拼成一句）；染的是
              * `UI_TONES.matBattle`（与舰名那条敌族红是不同 token），效果说明保持正文色。
              * `m.name === ''`（舰级字段那两条自愈/压制没有具名挂载件）⇒ 只写「特殊装置：效果」。
+             *
+             * ⚠ **行内不留换行/缩进**（2026-09-26 船长：「你给的预览特殊装置有首行缩进，但是游戏中没有」）：
+             * 本块提示层是 `.app-tip { white-space: pre-line }`——**源码里的空白在"按源码显示"的场合
+             * 会变成首行缩进**；浏览器渲染时块级子元素间的空白会被丢掉（所以游戏里本来就没有）。
+             * 为免两处观感不一致，这里把每个块级行压成"一段连续 JSX"，不产生空白文本节点。
              */}
             {l.mounts?.map((m, mi) => (
-              <span key={mi} style={{ display: 'block' }}>
-                <b style={{ color: UI_TONES.matBattle }}>
-                  {mountLabelText()}
-                  {'：'}
-                  {m.name}
-                </b>
-                {m.name !== '' ? '：' : ''}
-                {m.effect}。
-              </span>
+              <span key={mi} style={{ display: 'block' }}><b style={{ color: UI_TONES.matBattle }}>{mountLabelText()}{'：'}{m.name}</b>{m.name !== '' ? '：' : ''}{m.effect}。</span>
             ))}
           </span>
         </span>
