@@ -2133,7 +2133,7 @@ function GalaxyActions({
               </span>
             ) : null}
           </span>
-          <button className="app-btn is-small is-primary" onClick={() => setPrepOpen(true)}>
+          <button className="app-btn is-small is-primary" style={{ padding: '4px 18px', fontSize: 15 }} onClick={() => setPrepOpen(true)}>
             {tr('ui.weekend.062')}
           </button>
         </div>

@@ -145,12 +145,25 @@ function bitsOf(ship: FoeShipDef, out: { mounts?: string }): string[] {
   }
   const mech: string[] = []
   for (const id of ship.mounts ?? []) {
-    const nm = mountEffectText(id)
-    if (nm) mech.push(nm)
+    const eff = mountEffectText(id)
+    if (!eff) continue
+    /**
+     * **一件一段：先装置名、再效果**（**2026-09-26 船长报障**：「**墨潮干扰舰的特殊装置描述断句有问题，
+     * 射程压制并不是捕获网的效果**」）。
+     *
+     * 真因 = 原先把各件效果**光秃秃地顿号串起来**（`mech.join('、')`）⇒ 挂两件的舰
+     * （墨潮干扰舰 = 劫掠捕获网 ＋ 墨潮干扰阵列）读出来像一句话两半，玩家会把后半句
+     * 「射程 −50%」当成捕获网的效果。装置名（`FOE_MOUNTS[id].name`）**本来就随数据在**，
+     * 这里补上即成"装置名：效果"的成对读法，归属不再有歧义。
+     * ⚠ 悬停里那一节仍由界面**只染「特殊装置」四个字**（`ui.foeIntro.060` ＋ `mountLabelText()`），
+     * 装置名保持正文色。
+     */
+    const name = FOE_MOUNTS[id as keyof typeof FOE_MOUNTS]?.name
+    mech.push(name ? `${name}：${eff}` : eff)
   }
   if ((ship.repairPct ?? 0) > 0) mech.push(tr('ui.foeIntro.050'))
   if ((ship.foeRangeDebuffPct ?? 0) > 0) mech.push(tr('ui.foeIntro.051'))
-  if (mech.length > 0) out.mounts = mech.join(en ? ', ' : '、')
+  if (mech.length > 0) out.mounts = mech.join(en ? '; ' : '；')
   if (ship.elite === true) bits.push(tr('ui.foeIntro.070'))
   return bits
 }

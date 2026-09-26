@@ -1656,7 +1656,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
      ⇒ 下列九条**去掉尾部的装置名括号**（挂载件悬停的标签本来就写着装置名，括号里那一份纯属重复）。 */
   "ui.foeIntro.100": { zh: "受击后进入反击模式，机群射程 ×{p1}", en: "when hit, enters counter mode: strike-craft range ×{p1}" },
   "ui.foeIntro.101": { zh: "从它射程之外被命中后，自身炮台射程 ×{p1}", en: "when hit from beyond its range, its guns reach ×{p1}" },
-  "ui.foeIntro.102": { zh: "首次开火时撒网：目标减速 {p1}%、闪避归零、射程 −{p2} 米", en: "on its first shot it casts a web: target slowed {p1}%, evasion zeroed, range −{p2} m" },
+  "ui.foeIntro.102": { zh: "首次开火时命中一个未被钉住的目标，减速 {p1}%、闪避归零、射程 −{p2} 米，击沉发动者才解除", en: "its first shot pins an un-webbed target: slowed {p1}%, evasion zeroed, range −{p2} m, released only when the caster dies" },
   "ui.foeIntro.103": { zh: "开战 {p1} 秒后呼叫增援", en: "calls reinforcements {p1} s into the fight" },
   "ui.foeIntro.104": { zh: "每 {p1} 秒召回一艘已被击毁的友舰", en: "every {p1} s recalls one destroyed ally" },
   "ui.foeIntro.105": { zh: "每 {p1} 秒恢复 {p2} 装甲/结构", en: "every {p1} s restores {p2} armour/hull" },

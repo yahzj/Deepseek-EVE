@@ -877,7 +877,7 @@ function SalvageTab({
               const groupRows = targets.filter((t) => t.groupKey !== WEEKEND_WRECK_TARGET)
               /** 卡片序列 = 纯函数（同一个星系最多三张；顺序即优先级，见 `wreckCardSequenceOf` 头注） */
               const cardSeq = wreckCardSequenceOf({ shipWreckCount: wrecks.length, invasionWreckM3: invWreck })
-              const mk = (opts: { key: string; label: string; cardDensity: number; showAi?: boolean }) => (
+              const mk = (opts: { key: string; label: string; cardDensity: number; showAi?: boolean; showInvasionBar?: boolean }) => (
                 <WreckCard
                   key={`${g.id}|${opts.key}`}
                   galaxy={g}
@@ -885,6 +885,7 @@ function SalvageTab({
                   densityLabel={opts.label}
                   groupRows={groupRows}
                   shipWrecks={wrecks}
+                  showInvasionBar={opts.showInvasionBar === true}
                   aiWorkers={opts.showAi ? workers : []}
                   isActive={me.active && me.galaxyId === g.id}
                   focus={focusIds.includes(g.id)}
@@ -908,7 +909,7 @@ function SalvageTab({
                   })
                 }
                 if (kind === 'invasion') {
-                  return mk({ key: WEEKEND_WRECK_TARGET, label: tr('ui.MapPage.121'), cardDensity: invWreck })
+                  return mk({ key: WEEKEND_WRECK_TARGET, label: tr('ui.MapPage.121'), cardDensity: invWreck, showInvasionBar: true })
                 }
                 return mk({ key: '', label: tr('ui.MapPage.120'), cardDensity: density, showAi: true })
               })
@@ -963,6 +964,7 @@ function WreckCard({
   onToast,
   groupRows = [],
   shipWrecks = [],
+  showInvasionBar = false,
 }: {
   galaxy: GalaxyDef
   density: number
@@ -972,6 +974,11 @@ function WreckCard({
   showAi?: boolean
   /** **各组存量读数**（只读；打捞对象由 core 自动判定 ⇒ 这里只展示，不再提供选择） */
   groupRows?: Array<{ groupKey: string; stockM3: number }>
+  /**
+   * **这一张卡要不要画入侵残骸条**——**只有"入侵残骸卡"为 true**（2026-09-26 船长报障：
+   * 「发现了2张烬火星区的卡片，其中一张是入侵残骸」⇒ 一根条被两张卡各画一次，看起来是两张重复卡）。
+   */
+  showInvasionBar?: boolean
   /** **该星系的玩家舰船残骸**（2026-09-26 船长令）：置顶读数 —— 船名 ＋ 可回收件数 ＋ 剩余小时 */
   shipWrecks?: ShipWreckRecord[]
   aiWorkers: Array<{ sid: string; coreType: AiCoreType }>
@@ -1086,8 +1093,14 @@ function WreckCard({
       {/**
        * **入侵残骸条**（船长 2026-09-25：「需要独立的残骸条」＋「打捞界面置顶」）：
        * 排在玩家舰船残骸**之后**、常规密度**之前**。
+       *
+       * ⚠ **2026-09-26 船长报障修**：「**我发现了2张烬火星区的卡片，其中一张是入侵残骸**」——
+       * 真因 = 同一个入侵残骸被**两张卡各画了一次**（该星系有入侵残骸时，序列是「入侵残骸卡 ＋
+       * 星系残骸（全部）卡」，而两卡原先都无条件渲染这根条 ⇒ 两张卡看起来一模一样）。
+       * 现在**只有"入侵残骸卡"画这根条**（`showInvasionBar`）；「全部」卡不再重复，
+       * 它的读数由下面的 `.app-belt-ore` 一行承担。
        */}
-      {invWreck > 0 ? (
+      {invWreck > 0 && showInvasionBar ? (
         <div className="app-belt-invwreck" title={tr('ui.weekend.095', { p1: String(invWreckPct) })}>
           <span className="app-belt-invwreck-label">{tr('ui.weekend.094', { p1: invWreck.toFixed(1) })}</span>
           <div className="app-card-progress is-invasion">
