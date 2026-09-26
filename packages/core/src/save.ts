@@ -2331,6 +2331,10 @@ function normalizeState(raw: unknown): GameState {
           deviceAccMs: {}, // 相位账读档重建（以最短周期为步的推进自然重建）
           autoCycle: slvRaw.autoCycle !== false,
           stopAfterTrip: slvRaw.stopAfterTrip === true,
+          // **打捞对象**（2026-09-26 船长令）：非空串才收（合法性由开工/换对象那一层把关）
+          ...(typeof slvRaw.targetGroup === 'string' && slvRaw.targetGroup.length > 0
+            ? { targetGroup: slvRaw.targetGroup }
+            : {}),
         }
       : {
           active: false,
@@ -2346,7 +2350,7 @@ function normalizeState(raw: unknown): GameState {
 
   // --- B3 星系残骸密度（2026-09-05 兼容字段无版本号）：合法记录保留（密度 ≥0、稀有计数取整）；
   // 非法/缺省 = 无记录（运行时按基础密度推导，不入档） ---
-  const galaxyWrecks: Record<string, { density: number; rare: number; rareBy?: Record<string, number> }> = {}
+  const galaxyWrecks: NonNullable<GameState['galaxyWrecks']> = {}
   const gwRaw = asRaw(src.galaxyWrecks)
   for (const [galaxyId, gw] of Object.entries(gwRaw)) {
     if (galaxyId.length === 0 || typeof gw !== 'object' || gw === null) continue
@@ -2362,10 +2366,22 @@ function normalizeState(raw: unknown): GameState {
       if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) continue
       rareBy[anomalyId] = Math.floor(n)
     }
+    /**
+     * **分组份额账**（2026-09-26 船长令「残骸也要分开算」）——只收"非空串键 ＋ 正有限数"：
+     * 脏值整条丢（与 `rareBy` 同款口径）；缺字段 = 老档 ⇒ 首次读到时按常驻悬赏卡均分惰性补齐。
+     */
+    const byGroupRaw = asRaw(g.byGroup)
+    const byGroup: Record<string, number> = {}
+    for (const [groupKey, v] of Object.entries(byGroupRaw)) {
+      if (groupKey.length === 0) continue
+      if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) continue
+      byGroup[groupKey] = v
+    }
     galaxyWrecks[galaxyId] = {
       density,
       rare: typeof rare === 'number' && Number.isFinite(rare) ? Math.max(0, Math.floor(rare)) : 0,
       ...(Object.keys(rareBy).length > 0 ? { rareBy } : {}),
+      ...(Object.keys(byGroup).length > 0 ? { byGroup } : {}),
     }
   }
 

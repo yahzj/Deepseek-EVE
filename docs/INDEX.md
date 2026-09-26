@@ -12,9 +12,9 @@
 
 ## 统计
 
-- 文档总数 **320** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6013** KB · **42287** 行
+- 文档总数 **320** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6015** KB · **42290** 行
 - 状态分布：**未标注** 178 · **已确认/已实现** 111 · **进行中** 25 · **待裁定** 5 · **历史留档** 1
-- 孤儿文档（0 引用）**39** 份 · 状态未标注 **178** 份
+- 孤儿文档（0 引用）**38** 份 · 状态未标注 **178** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
 - 三、现行设计稿（design）：**200** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 210 KB / 251 行 | 14 / 2 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 63 KB / 681 行 | 74 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 480 KB / 987 行 | 216 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 97 KB / 313 行 | 321 / 17 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 97 KB / 314 行 | 321 / 17 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -291,7 +291,7 @@
 | `docs/archive/roadmap-2026-09-24.md` | 封存卷 · roadmap 批次条目 2026-09-24 | 未标注 | — | 22 KB / 24 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-25-26.md` | 封存卷 · roadmap 批次条目 2026-09-25/26 | 未标注 | — | 9 KB / 10 行 | 0 / 0 |
 | `docs/archive/roadmap-2026-09-25.md` | 封存卷 · roadmap 批次条目 2026-09-25 | 未标注 | — | 22 KB / 22 行 | 1 / 0 |
-| `docs/archive/roadmap-2026-09-26.md` | 封存卷 · roadmap 批次条目 2026-09-26 | 未标注 | — | 26 KB / 22 行 | 0 / 0 |
+| `docs/archive/roadmap-2026-09-26.md` | 封存卷 · roadmap 批次条目 2026-09-26 | 未标注 | — | 28 KB / 24 行 | 1 / 0 |
 
 ## 二、其它（docs 根目录） —— 1 份
 
@@ -390,7 +390,7 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 55 / 12 |
 
-## 附：孤儿文档（0 引用，39 份）
+## 附：孤儿文档（0 引用，38 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
@@ -428,7 +428,6 @@
 - `docs/archive/roadmap-2026-09-21-22.md`（无日期 · 3 KB）—— 封存卷 · roadmap 批次条目 2026-09-21/22
 - `docs/archive/roadmap-2026-09-23-24.md`（无日期 · 5 KB）—— 封存卷 · roadmap 批次条目 2026-09-23/24
 - `docs/archive/roadmap-2026-09-25-26.md`（无日期 · 9 KB）—— 封存卷 · roadmap 批次条目 2026-09-25/26
-- `docs/archive/roadmap-2026-09-26.md`（无日期 · 26 KB）—— 封存卷 · roadmap 批次条目 2026-09-26
 - `docs/design/deliver-trip-and-station-gating.md`（无日期 · 5 KB）—— 建站交付航线 + 市场成交静默 + 市场蓝图标识 + 未建成副站彻底收口（2026-09-08 定稿）
 - `docs/design/perf-monitor.md`（无日期 · 5 KB）—— 游戏内置性能监测与本地自动采集（2026-09-08 已确认）
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）

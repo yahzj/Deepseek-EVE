@@ -800,6 +800,7 @@ export {
   recycleBatchValueFromYield,
   recycleBatchValueIsk,
   rollRecycleLoot,
+  WEEKEND_WRECK_TARGET,
 } from './salvage'
 export type { RecycleTier, RecycleProfile } from './salvage'
 /* ── 2026-09-19 残骸合并：13 组定表（族 × 地区）＋ 出量梯度（船长 2026-09-19） ── */
@@ -819,7 +820,7 @@ export {
   migratedWreckItemId,
 } from './wreckGroups'
 export type { WreckGroupDef, WreckRegion } from './wreckGroups'
-export { advanceSalvageOp, startSalvageOp, stopSalvageOp, retireSalvageShip, setSalvageAutoCycle, setSalvageStopAfterTrip, salvagerCyclesOf, pullOneWreck, legMsFor, outboundLegMsFor } from './salvaging'
+export { advanceSalvageOp, startSalvageOp, stopSalvageOp, retireSalvageShip, setSalvageAutoCycle, setSalvageStopAfterTrip, salvagerCyclesOf, pullOneWreck, legMsFor, outboundLegMsFor , setSalvageTarget, wreckTargetsOf } from './salvaging'
 export {
   setAutoLoopBounty,
   advanceAutoLoopBounty,

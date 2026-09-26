@@ -3620,6 +3620,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   //   口径 = 「族」在玩家侧有另一个专属含义（敌方势力），此处指的其实是**伤害类型**（动能/爆破/能量）⇒ 正字「类型」
   "ui.shipInfo.008": { zh: "武器类型加成", en: "Weapon type bonus" },
   // ⟪文案调整 2026-09-24⟫ 原「本族武器单发 +N%（装别族武器无加成）」⇒ 去掉"族"字，写明是"同伤害类型"
+  // 2026-09-26 打捞对象（船长令「让玩家选择打捞对象……残骸也要分开算」）
+  "ui.MapPage.119": { zh: "打捞对象", en: "Salvage target" },
+  "ui.MapPage.120": { zh: "全部（按威胁加权）", en: "All (threat-weighted)" },
+  "ui.MapPage.121": { zh: "入侵残骸", en: "Invasion wrecks" },
   // 2026-09-26 墨潮电子舱 / 墨潮捕获网（H 族势力装备 · 高槽支援件）的装配页短行
   "ui.shipInfo.185": { zh: "敌方武器射程 −{p1}", en: "Enemy weapon range −{p1}" },
   "ui.shipInfo.186": { zh: "每 {p1} 秒钉住一艘未被钉住的敌舰", en: "Pins one un-webbed enemy ship every {p1} s" },

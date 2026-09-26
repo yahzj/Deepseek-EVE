@@ -96,6 +96,8 @@ import {
   startSalvageOp,
   setSalvageAutoCycle,
   setSalvageStopAfterTrip,
+  setSalvageTarget,
+  wreckTargetsOf,
   startScan,
   startTransitHome,
   startSiteDeliverTrip,
@@ -1811,10 +1813,28 @@ export class GameEngine {
     return ok
   }
 
-  /** B3：开始打捞作业（采矿式自动循环，默认卸货后续捞；需高槽打捞器） */
-  startSalvageOpAt(galaxyId: string): CommandResult {
+  /** 该星系当前可选**打捞对象**与各自存量（界面下拉用；2026-09-26 船长令） */
+  salvageTargetsAt(galaxyId: string): Array<{ groupKey: string; stockM3: number }> {
+    return wreckTargetsOf(this.state, this.ctx, galaxyId)
+  }
+
+  /** **中途换打捞对象**（返回真正生效的对象；`undefined` = 全部）——2026-09-26 船长令 */
+  setSalvageTarget(target: string | undefined): string | undefined {
+    const applied = setSalvageTarget(this.state, this.ctx, target)
+    void this.persist()
+    this.notify()
+    return applied
+  }
+
+  /**
+   * B3：开始打捞作业（采矿式自动循环，默认卸货后续捞；需高槽打捞器）。
+   *
+   * ⚠ **2026-09-26 船长令**：「**玩家打捞时，让玩家选择打捞对象……之后残骸也要分开算。**」
+   * `targetGroup` = `undefined`（全部，现状）/ 组 key（如 `h-hi`）/ `WEEKEND_WRECK_TARGET`（只捞入侵残骸）。
+   */
+  startSalvageOpAt(galaxyId: string, targetGroup?: string): CommandResult {
     return this.withActivitySwitch('salvaging', () => {
-      const result = startSalvageOp(this.state, galaxyId, this.ctx)
+      const result = startSalvageOp(this.state, galaxyId, this.ctx, targetGroup)
       if (result.ok) {
         void this.persist()
         this.notify()

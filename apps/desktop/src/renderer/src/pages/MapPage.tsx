@@ -25,6 +25,7 @@ import {
   recycleTierOf,
   wreckBaseDensity,
   wreckDensityOf,
+  WEEKEND_WRECK_TARGET,
   weekendWreckDensityOf,
   RECYCLE_YIELD_PER_M3,
   RECYCLE_POOL_AVG_ISK,
@@ -738,6 +739,12 @@ function SalvageTab({
    * ⇒ 面板上给一行"去装配"的提示（**2026-09-20 船长令**）。
    */
   const noSalvager = salvagerCyclesOf(state, engine.ctx, state.shipId).length === 0
+  /**
+   * **打捞对象**（**2026-09-26 船长令**：「**玩家打捞时，让玩家选择打捞对象，包括多族悬赏混合的星系，
+   * 之后残骸也要分开算。**」）：作业星系的各组存量 ＋（若有）入侵残骸那一行；
+   * 缺省不选 = 全部（按威胁加权，与改前逐字一致）。
+   */
+  const salvageTargets = me.active && me.galaxyId ? engine.salvageTargetsAt(me.galaxyId) : []
 
   const phaseText = (): string => {
     if (!me.active) return tr("ui.MapPage.097", { p1: shipDisplayName(state, engine.ctx, state.shipId) })
@@ -782,6 +789,28 @@ function SalvageTab({
       right={<span className="app-dim">{tr("ui.MapPage.052")}</span>}
     >
       <div className="app-dim app-inv-empty">{phaseText()}</div>
+
+      {/* **打捞对象**（2026-09-26 船长令）：切换立即生效（`setSalvageTarget`）；作业没有备选对象时不显示 */}
+      {salvageTargets.length > 0 ? (
+        <div className="app-task-sortrow">
+          <span className="app-dim">{tr('ui.MapPage.119')}</span>
+          <select
+            className="app-select"
+            value={me.targetGroup ?? ''}
+            onChange={(e) => engine.setSalvageTarget(e.target.value === '' ? undefined : e.target.value)}
+          >
+            <option value="">{tr('ui.MapPage.120')}</option>
+            {salvageTargets.map((t2) => (
+              <option key={t2.groupKey} value={t2.groupKey}>
+                {(t2.groupKey === WEEKEND_WRECK_TARGET
+                  ? tr('ui.MapPage.121')
+                  : (engine.ctx.items.get(`wreck-${t2.groupKey}`)?.name ?? t2.groupKey)) +
+                  ` · ${Math.round(t2.stockM3)} m³`}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
 
       {/**
        * **打捞需要打捞器 ⇒ 一行提示 ＋ 去「装配」的入口**（**2026-09-20 船长令**：

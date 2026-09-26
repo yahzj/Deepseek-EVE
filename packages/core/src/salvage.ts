@@ -209,11 +209,24 @@ export function rareWreckCountOf(state: GameState, galaxyId: string): number {
  * ⚠ **2026-09-19 合并后**：账本 `rareBy` 仍**按卡记账**（星图「稀有残骸 ×N（来源窝点名）」照旧），
  * 但产出物 = 该卡所属**组**的稀有残骸（同族同地区的箱子是同一件）。
  */
-export function pullRareWreck(state: GameState, galaxyId: string, ctx?: SimContext): string | null {
+export function pullRareWreck(
+  state: GameState,
+  galaxyId: string,
+  ctx?: SimContext,
+  /** **打捞对象**（2026-09-26）：`undefined` = 全部 */
+  target?: string,
+): string | null {
   const rec = state.galaxyWrecks[galaxyId]
   if (!rec) return null
   const by = rec.rareBy ?? {}
-  const keys = Object.keys(by).filter((k) => (by[k] ?? 0) > 0)
+  /** **打捞对象过滤**（2026-09-26 船长令 Q6 甲）：选了组 ⇒ 只在**该组**的卡里抽稀有；
+   *  选入侵 ⇒ 稀有不参与（稀有按常驻卡记账）。 */
+  const inTarget = (cardId: string): boolean => {
+    if (target === undefined) return true
+    if (target === WEEKEND_WRECK_TARGET) return false
+    return wreckGroupOfCard(cardId, ctx)?.key === target
+  }
+  const keys = Object.keys(by).filter((k) => (by[k] ?? 0) > 0 && inTarget(k))
   const anomalyId = keys.find((k) => rareWreckItemIdOfCard(k, ctx) !== null) ?? ''
   if (anomalyId === '') {
     // 旧口径兜底（只有 rare 计数、无归族记账）+ 未知卡兜底：不产出（避免张冠李戴）
@@ -306,10 +319,108 @@ function recordOf(state: GameState, galaxyId: string, ctx: SimContext): WreckGal
  * 注入残骸密度（给出定量；悬赏胜利 = bountyWreckInjection(...)，低安遇袭 = 最强卡×0.5）。
  * 无上限；只对该星系。
  */
-export function injectWreckDensity(state: GameState, ctx: SimContext, galaxyId: string, amount: number): void {
+/**
+ * **「只捞入侵残骸」这个打捞对象的哨兵键**（**2026-09-26**）——与组 key（形如 `h-hi`）不冲突。
+ */
+export const WEEKEND_WRECK_TARGET = '__weekend__'
+
+/**
+ * **该星系各张常驻悬赏卡所属的残骸组**（去重 · 保序）——"无组信息的量"按它**均分**（船长 Q3 口径）。
+ * 只认**可见**（非 hidden）的常驻悬赏：隐藏遭遇模板与入侵独立卡都不算常驻悬赏。
+ */
+export function residentWreckGroupsOf(galaxyId: string, ctx: SimContext): string[] {
+  const out: string[] = []
+  for (const a of ctx.anomalies.values()) {
+    if (a.hidden === true || a.galaxyId !== galaxyId) continue
+    const g = wreckGroupOfCard(a.id, ctx)
+    if (g && !out.includes(g.key)) out.push(g.key)
+  }
+  return out
+}
+
+/**
+ * **惰性补齐分组份额**（缺 `byGroup` 就按常驻悬赏卡均分 `density`）——返回可写的那份（已挂回 rec）。
+ * 没有常驻悬赏卡（池底来自安全等级）⇒ 分不出组，返回空表（打捞只走"全部"口径）。
+ */
+export function ensureWreckGroupShares(
+  state: GameState,
+  ctx: SimContext,
+  galaxyId: string,
+  rec: WreckGalaxyRecord,
+): Record<string, number> {
+  if (rec.byGroup) return rec.byGroup
+  const groups = residentWreckGroupsOf(galaxyId, ctx)
+  const shares: Record<string, number> = {}
+  if (groups.length > 0) {
+    const each = Math.max(0, rec.density) / groups.length
+    for (const g of groups) shares[g] = each
+  }
+  rec.byGroup = shares
+  state.galaxyWrecks[galaxyId] = rec
+  return shares
+}
+
+/**
+ * **该星系当前可选的打捞对象与各自存量**（界面下拉与用例共用；含入侵残骸那一行）。
+ * 星系池各组 = `byGroup` 份额（缺省惰性均分）；`WEEKEND_WRECK_TARGET` 行只在有效密度 > 0 时给。
+ */
+export function wreckGroupStocksOf(
+  state: GameState,
+  ctx: SimContext,
+  galaxyId: string,
+): Array<{ groupKey: string; stockM3: number }> {
+  const rows: Array<{ groupKey: string; stockM3: number }> = []
+  const rec = state.galaxyWrecks[galaxyId]
+  if (rec) {
+    const shares = ensureWreckGroupShares(state, ctx, galaxyId, rec)
+    for (const [groupKey, v] of Object.entries(shares)) {
+      if (v > 0.05) rows.push({ groupKey, stockM3: v })
+    }
+  }
+  const inv = weekendWreckDensityOf(state, galaxyId)
+  if (inv > 0) rows.push({ groupKey: WEEKEND_WRECK_TARGET, stockM3: inv })
+  return rows
+}
+
+/** 某组的当前存量（不存在 = 0） */
+export function wreckGroupStockOf(
+  state: GameState,
+  ctx: SimContext,
+  galaxyId: string,
+  target: string,
+): number {
+  if (target === WEEKEND_WRECK_TARGET) return weekendWreckDensityOf(state, galaxyId)
+  const rec = state.galaxyWrecks[galaxyId]
+  if (!rec) return 0
+  return ensureWreckGroupShares(state, ctx, galaxyId, rec)[target] ?? 0
+}
+
+/**
+ * 注入残骸密度（给出定量；悬赏胜利 = bountyWreckInjection(...)，低安遇袭 = 最强卡×0.5）。无上限；只对该星系。
+ *
+ * ⚠ **2026-09-26 加 `sourceCardId`**（分组记账）：记到**击毁那张卡的组**上，玩家才"选什么捞什么"；
+ * 没给来源卡（低安遇袭等合成调用）⇒ 该笔按**常驻悬赏卡均分**落组（与老存量同一条规则）。
+ */
+export function injectWreckDensity(
+  state: GameState,
+  ctx: SimContext,
+  galaxyId: string,
+  amount: number,
+  sourceCardId?: string,
+): void {
   if (!(amount > 0)) return
   const rec = recordOf(state, galaxyId, ctx)
+  // 先把"存量里没有组信息的那部分"按常驻悬赏卡均分补齐（幂等），再记这一笔
+  const shares = ensureWreckGroupShares(state, ctx, galaxyId, rec)
   rec.density += amount
+  const g = sourceCardId !== undefined ? wreckGroupOfCard(sourceCardId, ctx) : undefined
+  if (g) {
+    shares[g.key] = (shares[g.key] ?? 0) + amount
+  } else {
+    const groups = Object.keys(shares)
+    if (groups.length > 0) for (const k of groups) shares[k] = (shares[k] ?? 0) + amount / groups.length
+  }
+  rec.byGroup = shares
   state.galaxyWrecks[galaxyId] = rec
 }
 
@@ -337,6 +448,11 @@ export function advanceWreckDrift(
       rec.density = Math.max(base, d - (d - base) * (dtMs / WRECK_DECAY_MS))
     } else if (d < base) {
       rec.density = Math.min(base, d + (base - d) * (dtMs / WRECK_RECOVER_MS))
+    }
+    // 分组份额按总池变化**等比回调**（2026-09-26 船长令：分开算；保持 `ΣbyGroup == density`）
+    if (rec.byGroup && d > 0 && rec.density !== d) {
+      const k = rec.density / d
+      for (const g of Object.keys(rec.byGroup)) rec.byGroup[g] = (rec.byGroup[g] ?? 0) * k
     }
     if (Math.abs(rec.density - base) < 1e-9) {
       if (rec.rare > 0) rec.density = base
@@ -504,22 +620,51 @@ export function salvageRoundMulOf(state: GameState, ctx: SimContext, galaxyId: s
  * - **扣减先扣入侵池**：先按同一 2% 放干扣入侵池（**无保底**，可以扣到 0），再照老口径扣星系池
  *   （保底线 10 不动）——"会消失的先捞"这个顺序对玩家最有利，也让两条读数各自降得清楚。
  */
-export function salvageRoundPull(state: GameState, ctx: SimContext, galaxyId: string): number {
+export function salvageRoundPull(
+  state: GameState,
+  ctx: SimContext,
+  galaxyId: string,
+  /** **打捞对象**（2026-09-26）：缺省 = 全部（两池一起放干，现状口径）·
+   *  组 key = 只扣该组 · `WEEKEND_WRECK_TARGET` = 只扣入侵池 */
+  target?: string,
+): number {
   const rec = recordOf(state, galaxyId, ctx)
   const weekend = weekendWreckDensityOf(state, galaxyId)
   const d = rec.density
-  const mul = roundMulOf(d, weekend)
-  if (weekend > 0) {
+  const wantsWeekend = target === WEEKEND_WRECK_TARGET
+  const wantsGroup = target !== undefined && !wantsWeekend
+  /** 体积当量系数按**本轮真正参与的那一池/那一组**取（船长 2026-09-26：选什么捞什么） */
+  const groupStock = wantsGroup ? (ensureWreckGroupShares(state, ctx, galaxyId, rec)[target!] ?? 0) : 0
+  const mul = wantsWeekend ? roundMulOf(0, weekend) : wantsGroup ? roundMulOf(groupStock, 0) : roundMulOf(d, weekend)
+  // ① 入侵池：**全部**时先扣它（现状口径）· 选**入侵**时只扣它 · 选组时一个都不碰它
+  if (weekend > 0 && (target === undefined || wantsWeekend)) {
     /**
      * 入侵池按同一 2% 放干（**无保底** ⇒ 可以扣到 0）：
      * 扣减后**以当前有效值为新锚点重新起算 48h**（玩家正在这一片捞 ⇒ 与"打捞中挂起衰减"同一意图）。
      */
     writeWeekendWreck(state, galaxyId, weekend - weekend * WRECK_DRAIN_SHARE, 0)
   }
-  if (d > WRECK_FLOOR) {
+  // ② 星系池：**全部**与**选组**都按老口径放干（保底线 10 不动）；选入侵时不碰星系池
+  if (!wantsWeekend && d > WRECK_FLOOR) {
     const excess = d - WRECK_FLOOR
-    rec.density = Math.max(WRECK_FLOOR, d - excess * WRECK_DRAIN_SHARE)
-    if (rec.density - WRECK_FLOOR < WRECK_DRAIN_SNAP) rec.density = WRECK_FLOOR
+    const next = Math.max(WRECK_FLOOR, d - excess * WRECK_DRAIN_SHARE)
+    rec.density = next - WRECK_FLOOR < WRECK_DRAIN_SNAP ? WRECK_FLOOR : next
+    const lost = d - rec.density
+    /**
+     * **分组份额同步**（船长 2026-09-26「残骸也要分开算」）：
+     * - 选组 ⇒ 从**该组**扣掉本轮真实放干的量（该组见底即停，不自动换组）；
+     * - 全部 ⇒ 各组按总池变化**等比回调**（保持 `ΣbyGroup == density`）。
+     */
+    const shares = ensureWreckGroupShares(state, ctx, galaxyId, rec)
+    if (wantsGroup) {
+      shares[target!] = Math.max(0, (shares[target!] ?? 0) - lost)
+    } else if (rec.density > 0) {
+      const k = rec.density / d
+      for (const g of Object.keys(shares)) shares[g] = (shares[g] ?? 0) * k
+    } else {
+      for (const g of Object.keys(shares)) shares[g] = 0
+    }
+    rec.byGroup = shares
     state.galaxyWrecks[galaxyId] = rec
   }
   return mul
