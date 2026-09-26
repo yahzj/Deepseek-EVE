@@ -721,22 +721,24 @@ export const BLUEPRINT_USE_TABS: Array<{ key: BlueprintUseKey; label: string; id
 ]
 
 /**
- * 组装机「**蓝图**」维度（**放最上一行**——船长 2026-09-19：「组装机我想添加一个过滤已有蓝图的筛选」
+ * 组装机/造船厂「**蓝图**」维度（**放最上一行**——船长 2026-09-19：「组装机我想添加一个过滤已有蓝图的筛选」
  * ⇒ 追问后定「放第一行」；**2026-09-26 船长令改名并扩容**：「**将造船的一次性蓝图筛选移动到学会的筛选内，
- * 并将学会的筛选改名为蓝图。删除原先的图纸筛选**」）。
+ * 并将学会的筛选改名为蓝图。删除原先的图纸筛选**」；**2026-09-27 船长再令收口**：
+ * 「**为什么会有'已学会一次性蓝图'，一次性蓝图是无法学会的，删除多余的，将'未学会一次性蓝图'改名为'一次性蓝图'**」）。
  *
- * 两轴合成一维（各档都是一条独立按钮，不再级联）：
+ * 现行四档（各档都是一条独立按钮，不再级联）：全部 / 已学会 / 未学会 / **一次性蓝图**。
  * - 学会那一轴：已学会 / 未学会 —— 判据 `ownsBlueprint(state, id)`（core 单点）；
- * - 一次性那一轴：`singleUse`（原第三行「图纸」筛选的"一次性蓝图"）。
+ * - 一次性那一轴：一次性蓝图 —— 判据 `singleUse`（"还没学会 ＋ 是一次性"；已学会的一次性图纸按定义用不上、
+ *   要卖要留看「已学会」那一档，**不再单独占一个筛选按钮**）。
  * ⚠ 蓝图书架**不加**这一维：书架列的是"还没学的书 ＋ 可逆向的碎片"，按定义都未学会 ⇒ 加了恒空。
  */
-export type BlueprintLearnKey = 'learned' | 'unlearned' | 'learned-single' | 'unlearned-single' | typeof SUB_ALL
+export type BlueprintLearnKey = 'learned' | 'unlearned' | 'single' | typeof SUB_ALL
 export const BLUEPRINT_LEARN_TABS: Array<{ key: BlueprintLearnKey; label: string; id: string }> = [
   { key: SUB_ALL, label: '全部', id: 'ui.IndustryPage.001' },
   { key: 'learned', label: '已学会', id: 'ui.itemSubs.031' },
   { key: 'unlearned', label: '未学会', id: 'ui.itemSubs.032' },
-  // 2026-09-26：原三级「图纸」行的「一次性蓝图」并入本行（船长令）
-  { key: 'unlearned-single', label: '未学会的一次性图纸', id: 'ui.IndustryPage.133' },
-  { key: 'learned-single', label: '已学会的一次性图纸', id: 'ui.IndustryPage.134' },
+  // 2026-09-27 船长令：原「未学会的一次性图纸」**改名为「一次性蓝图」**（复用 `ui.itemSubs.030` 那条既有文案）；
+  // 原「已学会的一次性图纸」**整个删掉**（一次性图纸无法学习 ⇒ 那个组合名本身就是错的）。
+  { key: 'single', label: '一次性蓝图', id: 'ui.itemSubs.030' },
 ]
 // l10n-keep-end
