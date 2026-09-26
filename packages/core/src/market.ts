@@ -38,7 +38,7 @@ import { addShipToFleet, fleetDefOf, isShipLocked, shipDisplayName, shipStoredCo
 import { emptyFitted, uidDefId, allFittedIds } from './labels'
 import { countAiCore, gainAiCore, spendAiCores } from './ai'
 import { shipInReturn } from './mining'
-import { DSI_FACTION_ID } from './expedition'
+import { DSI_FACTION_ID, standingOf } from './expedition'
 import { ironmanCommonFlowMul, ironmanExoticCapBonus, ironmanExoticWeightMul, ironmanRareWeightMul } from './ironman'
 import { plugBlockReasonOf } from './plugs'
 
@@ -124,10 +124,16 @@ export function blueprintWeight(def: MarketGoodDef, ctx: SimContext): number {
   return ctx.balance.market.blueprintWeight ?? 0.05
 }
 
-/** 协会声望卖出加成：物品类（矿石/矿物）成交价 ×(1 + 声望×1%)，上限 +15%（v4 规则延续） */
+/**
+ * 协会声望卖出加成：物品类（矿石/矿物）成交价 ×(1 + 声望×1%)，上限 +15%（v4 规则延续）。
+ *
+ * ⚠ **2026-09-26 船长令**：「**修改原先的所有声望门槛，改为根据玩家的累计声望**」⇒ 读**累计获得**
+ * 那一本（`expedition.standingOf`）。理由：这是"声望练到多少"的收益，属**成长读数**；
+ * 若读可支配那本，去章鱼人那里换几张图纸就会把卖出加成打回去（换图纸是消费，不是退步）。
+ */
 function sellStandingMult(state: GameState, def: MarketGoodDef | undefined): number {
   if (!def || def.kind !== 'item') return 1
-  return 1 + Math.min(0.15, (state.standings[DSI_FACTION_ID] ?? 0) * 0.01)
+  return 1 + Math.min(0.15, standingOf(state, DSI_FACTION_ID) * 0.01)
 }
 
 /**
@@ -348,11 +354,17 @@ export function marketGoodOf(
   return undefined
 }
 
-/** 商品购买门槛（V10）：不满足时返回原因文案（null = 可买）。卖出不受限，声望只会增长不回落 */
+/**
+ * 商品购买门槛（V10）：不满足时返回原因文案（null = 可买）。卖出不受限。
+ *
+ * ⚠ **2026-09-26 船长令**：「**修改原先的所有声望门槛，改为根据玩家的累计声望**」⇒ 门槛读
+ * **累计获得**那一本；与 `mining.ts`（矿带 `standingReq` 的**命令侧**闸）改前就在读的同一本账对齐
+ * ——改前界面按可支配判、命令按累计判，换过图纸后会出现"星图说锁着、点下去却能开工"的错位。
+ */
 export function goodLockedReason(state: GameState, def: MarketGoodDef): string | null {
   const need = def.standingReq
   if (!need || need <= 0) return null
-  const have = state.standings[DSI_FACTION_ID] ?? 0
+  const have = standingOf(state, DSI_FACTION_ID)
   return have >= need ? null : `需「深空工业协会」声望 ${need}（当前 ${have}）`
 }
 
@@ -362,16 +374,17 @@ export function marketLockedReason(state: GameState, ctx: SimContext, goodKey: s
   return def ? goodLockedReason(state, def) : null
 }
 
-/** P2 暗市闸（2026-09-06 船长定：常驻硬拦 + 暗市单 ×4 可绕过）：声望低于 bmStanding 即处于闸内 */
+/** P2 暗市闸（2026-09-06 船长定：常驻硬拦 + 暗市单 ×4 可绕过）：声望低于 bmStanding 即处于闸内。
+ *  ⚠ 2026-09-26 船长令「所有声望门槛改读累计声望」⇒ 读 `standingOf`（累计获得那本）。 */
 export function bmGateLocked(state: GameState, def: MarketGoodDef): boolean {
-  return !!def.bmStanding && def.bmStanding > 0 && (state.standings[DSI_FACTION_ID] ?? 0) < def.bmStanding
+  return !!def.bmStanding && def.bmStanding > 0 && standingOf(state, DSI_FACTION_ID) < def.bmStanding
 }
 
 /** 暗市闸展示文案（2026-09-06 船长定：暗市对玩家隐身——仅声望锁指引，与 standingReq 锁同观感；
  * 闸内偶发 ×4 到货在外观与文案上与普通稀有单无异） */
 export function bmGateReason(state: GameState, def: MarketGoodDef): string | null {
   if (!def.bmStanding || def.bmStanding <= 0) return null
-  const have = state.standings[DSI_FACTION_ID] ?? 0
+  const have = standingOf(state, DSI_FACTION_ID)
   return have >= def.bmStanding ? null : `需「深空工业协会」声望 ${def.bmStanding}（当前 ${have}）`
 }
 

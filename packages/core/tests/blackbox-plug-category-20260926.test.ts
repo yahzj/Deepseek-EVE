@@ -50,12 +50,14 @@ describe('黑匣独立成类（船长报障：入侵获得的黑匣在仓库内�
     expect(kits).toEqual(['repairkit-civ', 'repairkit-mil', 'repairkit-dc'])
   })
 
-  it('市场行照旧（可回收/可卖，只收不卖 · 奇货档；本次不动经济）', () => {
+  it('市场行照旧（可回收/可卖，只收不卖 · 奇货档）；价格 = 2026-09-26 船长令的 8,000 万', () => {
     const good = marketGoodOf(ctx, 'item', 'blackbox-h')!
     expect(good).toBeTruthy()
     expect(good.rarity).toBe('exotic')
     expect(good.playerBuyable).toBe(false)
-    expect(good.basePrice).toBe(800_000)
+    // 船长原话：「黑匣的价格需要提高到8000万」（原 80 万 · 与物品 baseSellPriceIsk 同值）
+    expect(good.basePrice).toBe(80_000_000)
+    expect(ctx.items.get('blackbox-h')!.baseSellPriceIsk).toBe(80_000_000)
   })
 
   it('文案：中英双语同一条 id（仓库/货仓/图鉴/市场四处共用）', () => {

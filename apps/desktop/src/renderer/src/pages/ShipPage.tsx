@@ -32,10 +32,13 @@ import {
   // ⇒ 悬停卡改报装后合成值（与装配页/战斗同源：createPlayerSpec ＋ 机舱合计）
   createPlayerSpec,
   droneBayTotalM3,
+  // 2026-09-26 船长令「所有声望门槛改读累计声望」：本页矿带下拉的锁定判据走唯一入口
+  standingOf,
+  DSI_FACTION_ID,
 } from '@whale/core'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
-import type { AiCoreType, FleetShipState, ShipRole } from '@whale/core'
+import type { AiCoreType, FleetShipState, GameState, ShipRole } from '@whale/core'
 import { durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ShipHover } from '../ui/shipInfo'
@@ -1533,7 +1536,15 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   )
 }
 
-function standingOfState(state: { standings: Record<string, number> }): number {
-  return state.standings['dsi'] ?? 0
+/**
+ * 协会声望（矿带下拉的锁定判据）。
+ *
+ * ⚠ **2026-09-26 船长令**：「**修改原先的所有声望门槛，改为根据玩家的累计声望**」⇒ 本处原先直读
+ * `state.standings`（可支配那本），现改走 core 唯一入口 `standingOf`（累计获得那本）——改前它与
+ * `mining.ts` 的命令侧闸（早已读累计）**不是同一本账**：换过插件图纸后，这里会显示成"锁着"而下拉外
+ * 却能开工。同一个矿带锁定在星图页、本页、命令侧三处从此同源。
+ */
+function standingOfState(state: GameState): number {
+  return standingOf(state, DSI_FACTION_ID)
 }
 // l10n-keep-end
