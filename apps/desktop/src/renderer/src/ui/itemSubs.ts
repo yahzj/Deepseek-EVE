@@ -165,11 +165,60 @@ export const MODULE_SUBS: SubOption[] = [
   { key: 'armor', label: tr("ui.FitPage.003") },
   { key: 'prop', label: tr("ui.BattleScreen.004") },
   { key: 'drone', label: tr("ui.itemSubs.010") },
-  { key: 'support', label: tr("ui.itemSubs.011") },
+  // 支援件三档（2026-09-26 船长令，见 SUPPORT_MODULE_KEYS 的说明）——原「支援件（辅助与维修）」一档拆成同级三档
+  { key: 'support-combat', label: tr("ui.itemSubs.038") },
+  { key: 'support-aux', label: tr("ui.itemSubs.039") },
+  { key: 'support-repair', label: tr("ui.itemSubs.040") },
   { key: 'cpu', label: tr("ui.itemSubs.012") },
   { key: 'salvager', label: tr("ui.Wormhole.001") },
   { key: 'lock', label: tr("ui.itemSubs.013") },
 ]
+
+/**
+ * **支援件的三个同级子类**（**2026-09-26 船长令**：「**将装备细分类的支援件筛选拆分成三个同级：
+ * 战斗支援件，辅助支援件，修理装置。**」）——集中提问后三条裁定：「**按效果族分**」·「**都跟着拆**」
+ * （市场二级筛选 / 手册装备图鉴分组 / 组装机装备蓝图子筛选 / 碎片子类**四处同一张表**）·
+ * 「**直接替掉**旧键」（`support` 这个键从此不再出现）。
+ *
+ * 为什么要单列一份**逐件清单**：这一族的 34 件**共用同一个 `slot: 'support'`**（横跨高/中/低三槽），
+ * 而槽位与"战斗/辅助/修理"是**两个不同维度**（例：跃迁计算机是低槽、姿态陀螺是中槽，却分属辅助与战斗）
+ * ⇒ `moduleSubKeyOf` 的"槽位 → 键"一对一映射装不下，必须按**件**登记。
+ *
+ * ⚠ **完备性由 `content:check` 的「支援件三分契约」守住**（2026-09-26 加）：`slot === 'support'` 的每一件
+ * 必须恰好落在下面三组之一，**漏登记即红**（漏了会掉进"其它"、玩家在这个筛选里永远看不到它）。
+ */
+export const SUPPORT_MODULE_KEYS: Record<string, readonly string[]> = {
+  /** 战斗支援件：直接提升开火侧或生存侧的战斗表现（伤害/射速/命中/回避/干扰） */
+  'support-combat': [
+    'mod-stab-kin-1', 'mod-stab-kin-2', 'mod-stab-kin-3',
+    'mod-stab-exp-1', 'mod-stab-exp-2', 'mod-stab-exp-3',
+    'mod-stab-pla-1', 'mod-stab-pla-2', 'mod-stab-pla-3',
+    'mod-rof-1', 'mod-rof-2', 'mod-rof-3',
+    'mod-track-1', 'mod-track-2', 'mod-track-3',
+    'mod-gyro-1', 'mod-gyro-2', 'mod-gyro-3',
+    'mod-wh-a-scan', // 赃物扫描阵（命中 ×1.24，代价射程 −15%）
+    'mod-wh-g-fcs', // 亡军火控（命中 + 单发）
+    'mod-wh-d-steady', // 陵墓弹道铭文（动能/能量单发 +18%）
+    'mod-wh-d-loader', // 守墓者速装填机（装填 −18%）
+    'mod-wh-g-ballistic', // 幽灵弹道校正器（动能单发 + 射程）
+    'mod-lair-web-h', // 墨潮捕获网（战斗中钉住敌舰）
+    'mod-lair-ecm-h', // 墨潮电子舱（压制敌方武器射程）
+    'mod-stealth-2', 'mod-stealth-3', // 隐秘行动装置：**开战保护**，属战斗侧（不是航行/后勤）
+  ],
+  /** 辅助支援件：航行、后勤与作业面（不直接改变交火读数） */
+  'support-aux': [
+    'mod-warpcomp-2', 'mod-warpcomp-3', // 跃迁计算机（星系际航行速度）
+    'mod-wh-c-pulse', // 生体脉搏加速器（装填 −6%）
+  ],
+  /** 修理装置：交火中回复装甲/结构（吃或不吃组件两种） */
+  'support-repair': [
+    'mod-hullrep-civ', 'mod-hullrep-1', 'mod-hullrep-2', // 船体维修装置三档（吃修理组件）
+    'mod-lair-dc-c', // 生体损管腔（结构自修 + 三系壳抗，不吃组件）
+    // 损伤管制装置三档（2026-09-26 船长令：「**损管装置和修理装置是同一类型装备分类，不是装甲**」
+    // ⇒ 与船体维修装置同一档；低槽件，靠 `rack: 'low'` 落在低槽）
+    'mod-dc-1', 'mod-dc-2', 'mod-dc-3',
+  ],
+}
 
 export const MODULE_SUB_SLOTS: Record<string, readonly string[]> = {
   prod: ['miner', 'cargo'],
@@ -178,7 +227,10 @@ export const MODULE_SUB_SLOTS: Record<string, readonly string[]> = {
   armor: ['armor'],
   prop: ['propulsion'],
   drone: ['drone-rack', 'drone-tac', 'drone-relay'], // 2026-09-10 + 无人机中继天线
-  support: ['support'],
+  // 三档支援件**都来自同一个槽**（`support`）——逐件归属见 `SUPPORT_MODULE_KEYS`
+  'support-combat': ['support'],
+  'support-aux': ['support'],
+  'support-repair': ['support'],
   cpu: ['cpu'], // 2026-09-11 协处理器（低槽 CPU 预算扩容）
   salvager: ['salvager'],
   lock: ['target-lock'],
@@ -360,8 +412,19 @@ export function subPasses(ctx: SimContext, good: MarketGoodDef, kind: string, su
   return true
 }
 
-/** 模块槽位 → 装备子分类键（手册图鉴分组用；未收录槽位返回 ''，调用方按「其它」兜底） */
-export function moduleSubKeyOf(slot: string): string {
+/**
+ * 模块 → 装备子分类键（手册图鉴分组、市场/碎片二级判定共用；未收录返回 `''`，调用方按「其它」兜底）。
+ *
+ * ⚠ **支援件必须传模块 id**（2026-09-26 三档拆分）：那 34 件共用同一个 `slot: 'support'`，
+ * 只看槽位分不出「战斗/辅助/修理」三档 ⇒ 只传 slot 时**支援件一律落回 `support-combat`**（最接近的档），
+ * 传了 id 才能精确归属。**新调用点请一律带上第二个参数。**
+ */
+export function moduleSubKeyOf(slot: string, moduleId?: string): string {
+  if (moduleId !== undefined) {
+    for (const [key, ids] of Object.entries(SUPPORT_MODULE_KEYS)) {
+      if (ids.includes(moduleId)) return key
+    }
+  }
   for (const [key, slots] of Object.entries(MODULE_SUB_SLOTS)) {
     if (slots.includes(slot)) return key
   }
@@ -495,8 +558,8 @@ export function presentSubs<T extends { key: string }>(options: readonly T[], ha
  * | `container` | `CONTAINER_SUBS` | `containerSubKeyOf(refId)` |
  * | `wreck` | `WRECK_SUBS` | `wreckTierOf(refId)` |
  * | `aicore` | `CORE_SUBS` | `refId === 'ai-core-<子键>'`（**物品空间**：洞内实物形态；市场那侧 refId 是类型键本身，故市场仍走自己的判定） |
- * | `fragment` | `MODULE_SUBS` | `frag-<模块 id>` 反解后取 `moduleSubKeyOf(slot)` |
- * | `module` / `module-high·mid·low` | `MODULE_SUBS` | `moduleSubKeyOf(mod.slot)` |
+ * | `fragment` | `MODULE_SUBS` | `frag-<模块 id>` 反解后取 `moduleSubKeyOf(slot, 模块 id)` |
+ * | `module` / `module-high·mid·low` | `MODULE_SUBS` | `moduleSubKeyOf(mod.slot, mod.id)` |
  * | `item`（货物）/ `consume` | 物品大类 | `item.kind === sub` |
  * | 其余 | — | 只认 `SUB_ALL` |
  */
@@ -515,11 +578,11 @@ export function itemSubPasses(ctx: SimContext, refId: string, bucket: string, su
   if (bucket === 'fragment') {
     const modId = refId.startsWith('frag-') ? refId.slice('frag-'.length) : ''
     const mod = modId ? ctx.modules.get(modId) : undefined
-    return mod !== undefined && moduleSubKeyOf(mod.slot) === sub
+    return mod !== undefined && moduleSubKeyOf(mod.slot, mod.id) === sub
   }
   if (bucket === 'module' || (RACK_KIND_KEYS as readonly string[]).includes(bucket)) {
     const mod = ctx.modules.get(refId)
-    return mod !== undefined && moduleSubKeyOf(mod.slot) === sub
+    return mod !== undefined && moduleSubKeyOf(mod.slot, mod.id) === sub
   }
   // 零件两档（2026-09-20 零件体系：市场「货物」子分类 part-basic / part-advanced）
   if (sub === 'part-basic' || sub === 'part-advanced') return partSubPasses(ctx, refId, sub)

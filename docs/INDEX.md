@@ -12,13 +12,13 @@
 
 ## 统计
 
-- 文档总数 **330** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6013** KB · **43125** 行
-- 状态分布：**未标注** 175 · **已确认/已实现** 111 · **进行中** 38 · **待裁定** 5 · **历史留档** 1
-- 孤儿文档（0 引用）**55** 份 · 状态未标注 **175** 份
+- 文档总数 **331** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6037** KB · **43153** 行
+- 状态分布：**未标注** 176 · **已确认/已实现** 111 · **进行中** 38 · **待裁定** 5 · **历史留档** 1
+- 孤儿文档（0 引用）**53** 份 · 状态未标注 **176** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
 - 三、现行设计稿（design）：**213** 份
-- 九、封存卷（archive · 冻结件，只读不改）：**27** 份
+- 九、封存卷（archive · 冻结件，只读不改）：**28** 份
 - 二、其它（docs 根目录）：**1** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**1** 份
@@ -35,8 +35,8 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 210 KB / 251 行 | 14 / 2 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 63 KB / 681 行 | 74 / 3 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 473 KB / 985 行 | 220 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 119 KB / 315 行 | 313 / 17 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 480 KB / 987 行 | 221 / 16 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 106 KB / 313 行 | 316 / 17 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -57,7 +57,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/announcement-draft-20260926-damage-control.md` | 公告待审稿 · 损伤管制装置（2026-09-26） | 待裁定（待船长审核） | 2026-09-26 | 2 KB / 37 行 | 0 / 0 |
+| `docs/design/announcement-draft-20260926-damage-control.md` | 公告待审稿 · 损伤管制装置（2026-09-26） | 待裁定（待船长审核） | 2026-09-26 | 2 KB / 37 行 | 1 / 0 |
 | `docs/design/ink-faction-gear-20260926.md` | 墨潮帮（H 族）势力装备三件套（2026-09-26 · 二号 · d2） | 进行中（进行中 —— 四步闸门已走完） | 2026-09-26 | 6 KB / 66 行 | 1 / 0 |
 | `docs/design/armored-line-speed-20260925.md` | 甲壳装甲线三艘降速（2026-09-25） | 进行中（进行中 —— 改动已落码） | 2026-09-25 | 4 KB / 59 行 | 0 / 0 |
 | `docs/design/battle-dmg-popup-20260925.md` | 战斗页伤害飘字：停留时间延长 + 字重 900（2026-09-25） | 进行中（进行中 —— 改动已落码、七道闸门全） | 2026-09-25 | 3 KB / 41 行 | 0 / 0 |
@@ -271,7 +271,7 @@
 | `docs/design/weekend-invasion.md` | 周末入侵活动（设计定稿 · 2026-09-25 22:00 已对玩家开放 · M2 余下三族 / M3 未开工） | 未标注（M1 机制骨架 ＋ M2 的 H 族） | — | 30 KB / 254 行 | 7 / 8 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 4 KB / 54 行 | 4 / 0 |
 
-## 九、封存卷（archive · 冻结件，只读不改） —— 27 份
+## 九、封存卷（archive · 冻结件，只读不改） —— 28 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -299,9 +299,10 @@
 | `docs/archive/roadmap-2026-09-21-22.md` | 封存卷 · roadmap 批次条目 2026-09-21/22 | 未标注 | — | 3 KB / 13 行 | 0 / 0 |
 | `docs/archive/roadmap-2026-09-21.md` | 封存卷 · roadmap 批次条目 2026-09-21 | 未标注 | — | 19 KB / 49 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-22.md` | 封存卷 · roadmap 批次条目 2026-09-22 | 未标注 | — | 48 KB / 102 行 | 1 / 0 |
-| `docs/archive/roadmap-2026-09-23-24.md` | 封存卷 · roadmap 批次条目 2026-09-23/24 | 未标注 | — | 1 KB / 10 行 | 0 / 0 |
-| `docs/archive/roadmap-2026-09-23.md` | 封存卷 · roadmap 批次条目 2026-09-23 | 未标注 | — | 1 KB / 10 行 | 0 / 0 |
-| `docs/archive/roadmap-2026-09-24.md` | 封存卷 · roadmap 批次条目 2026-09-24 | 未标注 | — | 2 KB / 10 行 | 0 / 0 |
+| `docs/archive/roadmap-2026-09-23-24.md` | 封存卷 · roadmap 批次条目 2026-09-23/24 | 未标注 | — | 5 KB / 14 行 | 0 / 0 |
+| `docs/archive/roadmap-2026-09-23.md` | 封存卷 · roadmap 批次条目 2026-09-23 | 未标注 | — | 1 KB / 10 行 | 1 / 0 |
+| `docs/archive/roadmap-2026-09-24.md` | 封存卷 · roadmap 批次条目 2026-09-24 | 未标注 | — | 22 KB / 24 行 | 1 / 0 |
+| `docs/archive/roadmap-2026-09-25.md` | 封存卷 · roadmap 批次条目 2026-09-25 | 未标注 | — | 6 KB / 10 行 | 0 / 0 |
 
 ## 二、其它（docs 根目录） —— 1 份
 
@@ -400,11 +401,10 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 55 / 12 |
 
-## 附：孤儿文档（0 引用，55 份）
+## 附：孤儿文档（0 引用，53 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/announcement-draft-20260926-damage-control.md`（2026-09-26 · 2 KB）—— 公告待审稿 · 损伤管制装置（2026-09-26）
 - `docs/design/armored-line-speed-20260925.md`（2026-09-25 · 4 KB）—— 甲壳装甲线三艘降速（2026-09-25）
 - `docs/design/battle-dmg-popup-20260925.md`（2026-09-25 · 3 KB）—— 战斗页伤害飘字：停留时间延长 + 字重 900（2026-09-25）
 - `docs/design/capture-web-retain-20260925.md`（2026-09-25 · 3 KB）—— 劫掠捕获网：没钉到人的网不算用掉（2026-09-25）
@@ -452,15 +452,14 @@
 - `docs/review/enemy-roster-20260910.md`（2026-09-10 · 11 KB）—— 敌情名册（2026-09-10 · 待船长审核与调整）
 - `docs/design/salvage-autoloop-20260909.md`（2026-09-09 · 3 KB）—— 打捞自动循环(主控 + AI)(状态:已确认,2026-09-09 船长拍板;二号实现)
 - `docs/archive/roadmap-2026-09-21-22.md`（无日期 · 3 KB）—— 封存卷 · roadmap 批次条目 2026-09-21/22
-- `docs/archive/roadmap-2026-09-23-24.md`（无日期 · 1 KB）—— 封存卷 · roadmap 批次条目 2026-09-23/24
-- `docs/archive/roadmap-2026-09-23.md`（无日期 · 1 KB）—— 封存卷 · roadmap 批次条目 2026-09-23
-- `docs/archive/roadmap-2026-09-24.md`（无日期 · 2 KB）—— 封存卷 · roadmap 批次条目 2026-09-24
+- `docs/archive/roadmap-2026-09-23-24.md`（无日期 · 5 KB）—— 封存卷 · roadmap 批次条目 2026-09-23/24
+- `docs/archive/roadmap-2026-09-25.md`（无日期 · 6 KB）—— 封存卷 · roadmap 批次条目 2026-09-25
 - `docs/design/deliver-trip-and-station-gating.md`（无日期 · 5 KB）—— 建站交付航线 + 市场成交静默 + 市场蓝图标识 + 未建成副站彻底收口（2026-09-08 定稿）
 - `docs/design/perf-monitor.md`（无日期 · 5 KB）—— 游戏内置性能监测与本地自动采集（2026-09-08 已确认）
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（175 份，待补一行 `状态：…`）
+## 附：状态未标注（176 份，待补一行 `状态：…`）
 
 - `docs/design/hostile-factions-handbook-20260925.md`（2026-09-25）—— 敌族手册（手册 · 新增「敌对势力」一节）—— 挂起备忘（2026-09-25）
 - `docs/design/copy-jargon-20260924.md`（2026-09-24）—— 工作文档 · 玩家可见文案里的「开发字眼」清理（2026-09-24 · 三号）
@@ -603,6 +602,7 @@
 - `docs/archive/roadmap-2026-09-23-24.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-23/24
 - `docs/archive/roadmap-2026-09-23.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-23
 - `docs/archive/roadmap-2026-09-24.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-24
+- `docs/archive/roadmap-2026-09-25.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-25
 - `docs/catalog.md`（无日期）—— 文档目录（指路 · 开工先读）
 - `docs/content-workbench.md`（无日期）—— 内容工作台（CSV 双向编辑内容数据）
 - `docs/design/ai-design.md`（无日期）—— V8 设计文档：AI 核心系统（玩家分身）

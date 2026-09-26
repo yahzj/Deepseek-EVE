@@ -994,7 +994,7 @@ export function Handbook({
   /** 分组键：物品按大类 / 装备按槽类 / 舰船按舰族 / 蓝图按产物门类（装备蓝图再按产物槽类） / 技能按技能组 */
   function groupKeyOf(c: GridCell): string {
     if (c.tab === 'items') return String(c.raw.kind ?? '')
-    if (c.tab === 'modules') return moduleSubKeyOf(String(c.raw.slot ?? ''))
+    if (c.tab === 'modules') return moduleSubKeyOf(String(c.raw.slot ?? ''), String(c.raw.id ?? ''))
     if (c.tab === 'ships') return String(c.glyph) // 舰船类别键（`shipCategoryKeyOf` 的产物；见 shipCells）
     if (c.tab === 'blueprints') {
       // 2026-09-10 船长：装备蓝图按**产物模块的槽类**分高/中/低档（与市场页子分类同源单点）
@@ -1144,7 +1144,10 @@ export function Handbook({
   function subPassesCell(c: GridCell, t: Tab, sub: string): boolean {
     if (sub === SUB_ALL) return true
     if (t === 'items') return itemSubPasses(engine.ctx, c.key, String(c.raw.kind ?? ''), sub)
-    if (t === 'modules') return moduleSubKeyOf(String(c.raw.slot ?? '')) === sub
+    // 装备图鉴：走**唯一入口** `itemSubPasses`（bucket = `module`）——2026-09-26 收敛：
+    // 原先这里自己写 `moduleSubKeyOf(slot) === sub`，与市场/碎片那条单点**各写一份**；
+    // 支援件拆三档后两份判定必须有同一把尺，故统一（两者对装备的行为逐字等价）。
+    if (t === 'modules') return itemSubPasses(engine.ctx, c.key, 'module', sub)
     // 舰船图鉴：级别走**唯一入口** `shipTierPasses`（2026-09-19 乙组）
     if (t === 'ships') return shipTierPasses(engine.ctx.ships.get(c.key), sub)
     if (t === 'blueprints') {

@@ -19,6 +19,9 @@ import { DEFAULT_BALANCE, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, 
 import { hoverTipProps } from './Tooltip'
 import { tr } from '../i18n/locale'
 import { kindTextOfItem } from '../ui/labelsText'
+// 支援件的功能子类名（2026-09-26 船长令：「装备的『槽位 / 类型』这个也要更新」）——
+// 「槽位 / 类型」那一行对支援件改报 战斗支援件 / 辅助支援件 / 修理装置（见 `moduleInfoLines`）
+import { MODULE_SUBS, moduleSubKeyOf, subText } from './itemSubs'
 
 /** 伤害类型中文名 */
 export const DMG_LABEL: Record<DamageType, string> = { kinetic: tr("ui.BattleScreen.002"), explosive: tr("ui.battleViewCore.001"), plasma: tr("ui.battleViewCore.002") }
@@ -649,7 +652,19 @@ function crossFamilyShort(mod: ModuleDef): string {
  * 上限 90%——基础抗越高的船装同系模块收益越低）；推进器 = 加力推进（战斗速度）。
  */
 export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
-  const lines: InfoLine[] = [{ k: tr("ui.shipInfo.036"), v: `${SLOT_LABELS[mod.slot]}（${RACK_LABELS[rackOf(mod)]}）` }]
+  /**
+   * 「槽位 / 类型」那一行的**类型**：默认 = 槽位名（`SLOT_LABELS`）。
+   *
+   * ⚠ **2026-09-26 船长令**：「**装备的'槽位 / 类型'这个也要更新**」——支援件在装备细分类里拆成
+   * 三个同级（战斗支援件 / 辅助支援件 / 修理装置），信息卡这一行也必须跟着细：
+   * 原先 34 件**共用一个 `support` 槽位名**（「支援系统」），玩家在卡上看不出它属于哪一档。
+   * ⇒ 支援件优先取**功能子类名**（`moduleSubKeyOf(slot, id)` → `MODULE_SUBS` 的 `subText`）；
+   * 其余族**行为一字不变**（它们的槽位名与功能子类名本就同名，不引入无谓改动）。
+   */
+  const subKey = moduleSubKeyOf(mod.slot, mod.id)
+  const subOpt = MODULE_SUBS.find((s) => s.key === subKey)
+  const typeText = mod.slot === 'support' && subOpt ? subText(subOpt) : SLOT_LABELS[mod.slot]
+  const lines: InfoLine[] = [{ k: tr("ui.shipInfo.036"), v: `${typeText}（${RACK_LABELS[rackOf(mod)]}）` }]
   if (mod.slot === 'miner') {
     lines.push({ k: tr("ui.shipInfo.037"), v: `+${pctOpt(mod.bonus)}` })
   } else if (mod.slot === 'cargo') {

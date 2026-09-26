@@ -789,13 +789,14 @@ export const MODULES: readonly ModuleDef[] = [
    * ＋「全名为**损伤管制装置**」＋「**触发损管效果时需要消耗一份**（损管修理组件）」
    * ＋改判「**1 秒内结构锁定 1**」（逐段夹伤 ⇒ 同拍多段破不了）。
    *
-   * 口径：低槽（slot armor · rack low）· 结构层三系减伤 +30/40/50 个百分点（缺口复合、上限 90%、
-   * 吃巡洋/战列操作 ×1.1 —— 与既有件同源）· `hullSaveKit` = 免死 ＋ 启动消耗的组件
+   * 口径：低槽（**slot support · rack low**——2026-09-26 船长令「**损管装置和修理装置是同一类型装备分类，
+   * 不是装甲**」⇒ 归支援件家族，与「修理装置」同组；低槽不变）· 结构层三系减伤 +30/40/50 个百分点
+   * （缺口复合、上限 90%、吃巡洋/战列操作 ×1.1 —— 与既有件同源）· `hullSaveKit` = 免死 ＋ 启动消耗的组件
    * · `unique` = 同舰只能装一件（MK1~MK3 互斥）。 */
   {
     id: 'mod-dc-1',
     name: '损伤管制装置 MK1',
-    slot: 'armor',
+    slot: 'support',
     rack: 'low',
     hullResistAdd: { kinetic: 0.3, explosive: 0.3, plasma: 0.3 },
     hullSaveKit: 'repairkit-dc',
@@ -806,7 +807,7 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-dc-2',
     name: '损伤管制装置 MK2',
-    slot: 'armor',
+    slot: 'support',
     rack: 'low',
     hullResistAdd: { kinetic: 0.4, explosive: 0.4, plasma: 0.4 },
     hullSaveKit: 'repairkit-dc',
@@ -817,7 +818,7 @@ export const MODULES: readonly ModuleDef[] = [
   {
     id: 'mod-dc-3',
     name: '损伤管制装置 MK3',
-    slot: 'armor',
+    slot: 'support',
     rack: 'low',
     hullResistAdd: { kinetic: 0.5, explosive: 0.5, plasma: 0.5 },
     hullSaveKit: 'repairkit-dc',

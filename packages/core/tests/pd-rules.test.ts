@@ -93,9 +93,10 @@ describe('敌方近防炮 · 2026-09-12 船长八条裁决', () => {
    * 同批还有一条更硬的漏洞：这三型在**战斗演出表**里从未登记 ⇒ 弹道与击落演出直接跳过
    * （船长报障「玩家的构件哨戒无人机不会出现在战斗场景中」；那道闸门在 `npm run art:ships:check`）。
    */
-  it('专属无人机同档位优先：构件哨戒 = 0 · 巢卫攻坚 = 1 · 鱿蜂（侦察档）= 2', () => {
+  it('专属无人机同档位优先：构件哨戒 = 0 · 巢卫攻坚 = 1 · 墨潮重袭 = 1 · 鱿蜂（侦察档）= 2', () => {
     expect(pdPriorityOf('drone-wh-e-sentry'), 'E 构件哨戒').toBe(0)
     expect(pdPriorityOf('drone-wh-c-heavy'), 'C 巢卫攻坚').toBe(1)
+    expect(pdPriorityOf('drone-ink-heavy'), 'H 墨潮重袭（攻坚档）').toBe(1)
     expect(pdPriorityOf('drone-exile-bee'), 'G 鱿蜂（侦察档，与其他侦察机等权）').toBe(2)
     // 制式两型不受影响；未知 id 仍走 role 兜底（敌机路径靠它）
     expect(pdPriorityOf('drone-sentry')).toBe(0)
