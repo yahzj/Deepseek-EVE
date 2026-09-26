@@ -169,7 +169,16 @@ function bitsOf(ship: FoeShipDef, out: { mounts?: FoeMountLine[] }): string[] {
   for (const id of ship.mounts ?? []) {
     const eff = mountEffectText(id)
     if (!eff) continue
-    const name = FOE_MOUNTS[id as keyof typeof FOE_MOUNTS]?.name ?? ''
+    /**
+     * **装置名按当前语言取**（**2026-09-26 三号补 · 真机复读抓出的缺口**）：
+     * `FOE_MOUNTS` 是 **core 的静态表**（建档路径拿不到 `ctx`，见 `core/foeMounts.ts` 头注），
+     * 而**中文名是唯一必填项** ⇒ 直接读 `.name` 在英文界面下恒中文（实测：补了 `en` 之后
+     * 英文界面这里仍印「劫掠捕获网」）。战斗屏那条路走数据层的 `foeMountNamePairs`
+     * （`mountNamesTextOf` 按语言挑列），**本模块不走那条**（它只拿得到中文名）
+     * ⇒ 这里按同一条口径就地挑一列：有 `en` 用 `en`，缺省回退中文。
+     */
+    const def = FOE_MOUNTS[id as keyof typeof FOE_MOUNTS]
+    const name = def === undefined ? '' : isEn() ? (def.en ?? def.name) : def.name
     mech.push({ name, effect: eff })
   }
   // 舰级字段兜底（没有具名挂载件的那两条：自愈 / 压制）——名字留空，界面按"只有效果"渲染
