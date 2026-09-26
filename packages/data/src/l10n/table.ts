@@ -2713,6 +2713,94 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.322": { zh: "动力 {p}%", en: "power {p}%" },
   "ui.Handbook.323": { zh: " · 下一条 ›", en: " · Next ›" },
   "ui.Handbook.324": { zh: " · 耗时 {p}", en: " · takes {p}" },
+
+  /* ── 2026-09-26 敌族图鉴（船长：「之前手册的势力图鉴可以继续完成」；接手 2026-09-25 挂起备忘）──
+     结构 = 新开一节「敌族图鉴」，六族各一条：基调 / 外观 / 战斗风格 / 招牌手段 / 出没之处。
+     收录 A 海盗 · C 异形 · D 守墓 · E 泰坦 · G 亡军 · H 墨潮帮；**B 武装拾荒者与 F 制式巡逻不收**（船长令）。
+     ⚠ H 的「出没之处」按挂起备忘的**甲案**（「行踪不定」）——不把入侵玩法写进手册，等你一句话可换乙案。
+     ⚠ 舰队名（325~372 之外那六条）是可复用词条：放 glossary 块，供手册/别处共用。 */
+
+  /* ── 2026-09-26 敌族图鉴（船长：「之前手册的势力图鉴可以继续完成」；接手 2026-09-25 挂起备忘）──
+     结构（编号即顺序）：325 节名 · 326~336 海盗 · 337~347 异形 · 348~358 守墓 · 359~369 泰坦 ·
+     370~380 亡军 · 381~391 墨潮帮；每族 11 格 = 族名(367~372 六条独立 id) + 五对「标题+正文」
+     （基调 / 外观 / 战斗风格 / 招牌手段 / 出没之处，五对的顺序固定）。
+     收录 A 海盗 · C 异形 · D 守墓 · E 泰坦 · G 亡军 · H 墨潮帮；**B 武装拾荒者与 F 制式巡逻不收**（船长令）。
+     ⚠ H 的「出没之处」按挂起备忘的**甲案**（「行踪不定」）——不把入侵玩法写进手册，等船长一句话可换乙案。 */
+
+  /* ── 2026-09-26 敌族图鉴（船长：「之前手册的势力图鉴可以继续完成」；接手 2026-09-25 挂起备忘）──
+     结构（编号即顺序）：325 节名 · 326~336 海盗 · 337~347 异形 · 348~358 守墓 ·
+     359~369 泰坦 · 370~380 亡军 · 381~391 墨潮帮。每族 11 格 = **族名一条** ＋
+     五对「标题 ＋ 正文」（基调 / 外观 / 战斗风格 / 招牌手段 / 出没之处，顺序固定）。
+     收录 A 海盗 · C 异形 · D 守墓 · E 泰坦 · G 亡军 · H 墨潮帮；**B 武装拾荒者与 F 制式巡逻不收**（船长令）。
+     玩家侧一律正字「**势力**」；D/E 的留白（谁造的 / 为何在此）与 G 的战争起因**照备忘不写**。
+     ⚠ H 的「出没之处」按备忘的**甲案**（「行踪不定」）——不把入侵玩法写进手册，等船长一句话可换乙案。 */
+  "ui.Handbook.325": { zh: "敌族图鉴", en: "Faction codex" },
+  "ui.Handbook.326": { zh: "海盗（敌对势力）", en: "Pirate (hostile faction)" },
+  "ui.Handbook.327": { zh: "基调", en: "Tone" },
+  "ui.Handbook.328": { zh: "鱼龙混杂的一群劫掠者：舰体旧、装备杂，靠人多与速度吃饭。", en: "A mixed band of raiders: old hulls, mismatched gear, and a living earned by numbers and speed." },
+  "ui.Handbook.329": { zh: "外观", en: "Appearance" },
+  "ui.Handbook.330": { zh: "粗短破旧的舰体、角旗天线、舷侧斜排的劫掠炮，涂装锈红。", en: "Short, battered hulls with pennant antennae and raiding guns staggered along the broadside, painted rust red." },
+  "ui.Handbook.331": { zh: "战斗风格", en: "Combat style" },
+  "ui.Handbook.332": { zh: "抢船要贴上，拦路可以在远处吊着打：同一势力里各种打法都有。", en: "Boarding work has to close in, while roadblocks can shadow you from afar: one faction, many ways of fighting." },
+  "ui.Handbook.333": { zh: "招牌手段", en: "Signature methods" },
+  "ui.Handbook.334": { zh: "一艘头目舰带三艘杂鱼舰；头目血厚，杂鱼先冲。", en: "One warlord ship leads three rabble ships; the warlord soaks damage while the rabble charges first." },
+  "ui.Handbook.335": { zh: "出没之处", en: "Where they operate" },
+  "ui.Handbook.336": { zh: "柯尔边境与红环航道的伏击点，灰霾带、碎晶带、蜃影星系的通缉目标。", en: "Ambush points along the Cole frontier and the Redring Corridor, plus bounty targets in the Haze Belt, the Shardfield and Mirage systems." },
+  "ui.Handbook.337": { zh: "异形生物（敌对势力）", en: "Aberrant (hostile faction)" },
+  "ui.Handbook.338": { zh: "基调", en: "Tone" },
+  "ui.Handbook.339": { zh: "一支活体舰队：舰体是有机曲线与发光裂隙，螯颚张开就往舰上扑。", en: "A living fleet: organic curves and glowing fissures, and mandibles that open as they hurl themselves at a hull." },
+  "ui.Handbook.340": { zh: "外观", en: "Appearance" },
+  "ui.Handbook.341": { zh: "非对称肢节、甲壳与螯颚，裂隙里透出磷光绿。", en: "Asymmetric limbs, carapace and mandibles, with phosphor green shining out of the fissures." },
+  "ui.Handbook.342": { zh: "战斗风格", en: "Combat style" },
+  "ui.Handbook.343": { zh: "全族贴近撕咬，从裂谷与星云里直扑上来，速度比海盗还快。", en: "The whole faction closes in to tear at you, bursting out of rifts and nebulae faster than any pirate." },
+  "ui.Handbook.344": { zh: "招牌手段", en: "Signature methods" },
+  "ui.Handbook.345": { zh: "酸液喷吐越远越不准，外壳厚且会自愈，常带着幼体群一起冲。", en: "Acid spray loses accuracy with distance, the shell is thick and mends itself, and broods of larvae charge in alongside." },
+  "ui.Handbook.346": { zh: "出没之处", en: "Where they operate" },
+  "ui.Handbook.347": { zh: "深渊之门的门侧守卫、裂谷深带的畸变体、星髓迷宫的虫群、星噬之口的巨兽。", en: "Gate guards at the Abyss Gate, aberrations in the deep rift belt, swarms in the Starcore Labyrinth, and behemoths at the Maw." },
+  "ui.Handbook.348": { zh: "守墓古舰（敌对势力）", en: "Gravekeeper (hostile faction)" },
+  "ui.Handbook.349": { zh: "基调", en: "Tone" },
+  "ui.Handbook.350": { zh: "一处远古陵区仍在按誓约运转：不谈判、不停手，也不追出去。", en: "An ancient burial ground still running to its oath: no parley, no pause, and no pursuit beyond the line." },
+  "ui.Handbook.351": { zh: "外观", en: "Appearance" },
+  "ui.Handbook.352": { zh: "残破的古典长舰与高耸艉楼，通体冷青磷光。", en: "Broken classical longships with towering sterncastles, lit cold cyan from end to end." },
+  "ui.Handbook.353": { zh: "战斗风格", en: "Combat style" },
+  "ui.Handbook.354": { zh: "全远程：它在很远的地方看着你，把你的船一层层拆开。", en: "Wholly long-range: it watches from far off and takes your ship apart one layer at a time." },
+  "ui.Handbook.355": { zh: "招牌手段", en: "Signature methods" },
+  "ui.Handbook.356": { zh: "陵墓护盾芯、远距必中的守墓者长炮、加厚装甲的陵寝装甲层；一仗打很久。", en: "Mausoleum shield cores, long cannons that never miss at range, and thickened mausoleum plating; fights run long." },
+  "ui.Handbook.357": { zh: "出没之处", en: "Where they operate" },
+  "ui.Handbook.358": { zh: "暗星坟场（古代舰队的墓园）与穹顶墓园。", en: "The Darkstar Graveyard, the cemetery of an ancient fleet, and the Dome Mausoleum." },
+  "ui.Handbook.359": { zh: "泰坦巨构（敌对势力）", en: "Titan (hostile faction)" },
+  "ui.Handbook.360": { zh: "基调", en: "Tone" },
+  "ui.Handbook.361": { zh: "无人的巨构残骸与还在跑的残存程序：不追你、不恨你，只把靠近的东西当靶子。", en: "Crewless megastructure wrecks with programs still running: they do not chase or hate, they simply treat anything close as a target." },
+  "ui.Handbook.362": { zh: "外观", en: "Appearance" },
+  "ui.Handbook.363": { zh: "巨构残段、厚重装甲层与断裂截面，残铁棕色。", en: "Megastructure fragments, heavy armor layers and sheared cross-sections, in scrap-iron brown." },
+  "ui.Handbook.364": { zh: "战斗风格", en: "Combat style" },
+  "ui.Handbook.365": { zh: "守住中距，用老化的重炮与机库里的第二套火力把仗拖长。", en: "It holds mid range and drags the fight out with aging heavy guns and a second set of firepower from its hangar." },
+  "ui.Handbook.366": { zh: "招牌手段", en: "Signature methods" },
+  "ui.Handbook.367": { zh: "一发十秒的巨构残骸炮、放出机群的深层机库、结构最厚的巨构骨架。", en: "Megastructure wreck cannons that fire once every ten seconds, deep hangars that release drone groups, and the thickest frames of any structure." },
+  "ui.Handbook.368": { zh: "出没之处", en: "Where they operate" },
+  "ui.Handbook.369": { zh: "奥罗荒环的环状废墟带；残骸也会散落在别的势力地盘上。", en: "The ring of ruins in the Auro Waste Ring; wrecks also lie scattered across other factions’ ground." },
+  "ui.Handbook.370": { zh: "鱿烬亡军（敌对势力）", en: "Deadarmy (hostile faction)" },
+  "ui.Handbook.371": { zh: "基调", en: "Tone" },
+  "ui.Handbook.372": { zh: "乌贼人残兵与依附的流亡聚落：已经战败，却从未停战。", en: "Squidfolk survivors and the exile settlements attached to them: beaten already, never at peace." },
+  "ui.Handbook.373": { zh: "外观", en: "Appearance" },
+  "ui.Handbook.374": { zh: "蜂窝舱段、补丁帆与随处可见的焊接痕，涂装聚落紫。", en: "Honeycomb hull sections, patched sails and weld scars everywhere, painted settlement purple." },
+  "ui.Handbook.375": { zh: "战斗风格", en: "Combat style" },
+  "ui.Handbook.376": { zh: "全远程的蜂群压制：隔着老远放出一群无人机。", en: "Wholly long-range swarm suppression: drone groups released from far outside your range." },
+  "ui.Handbook.377": { zh: "招牌手段", en: "Signature methods" },
+  "ui.Handbook.378": { zh: "蜂群式无人机：一架便宜，一群致命。", en: "Swarm drones: cheap one at a time, lethal as a group." },
+  "ui.Handbook.379": { zh: "出没之处", en: "Where they operate" },
+  "ui.Handbook.380": { zh: "烬火星区的围攻战线、回音荒区的残舰群、天底静区的最后据点。", en: "Siege lines in the Cinder Sector, the wreck fleet in the Echo Wastes, and the last holdout in the Nadir Quiet Zone." },
+  "ui.Handbook.381": { zh: "墨潮帮（敌对势力）", en: "Ink Tide (hostile faction)" },
+  "ui.Handbook.382": { zh: "基调", en: "Tone" },
+  "ui.Handbook.383": { zh: "海盗里分出去的一支独立帮口：比普通海盗更快，也更敢贴上来。", en: "A breakaway outfit that split from the pirates: faster than the rest, and far quicker to close in." },
+  "ui.Handbook.384": { zh: "外观", en: "Appearance" },
+  "ui.Handbook.385": { zh: "与海盗同源的重型舰体，墨色涂装，舰影更方更硬。", en: "Heavy hulls of pirate descent in ink-black paint, squarer and harder in silhouette." },
+  "ui.Handbook.386": { zh: "战斗风格", en: "Combat style" },
+  "ui.Handbook.387": { zh: "贴脸突袭：突击舰是海盗里最快的一档，闪避也高。", en: "Point-blank raids: their assault ships are the fastest pirate hulls afloat, and hard to hit as well." },
+  "ui.Handbook.388": { zh: "招牌手段", en: "Signature methods" },
+  "ui.Handbook.389": { zh: "冲锋撞击与劫掠网。", en: "Ramming charges and raiding webs." },
+  "ui.Handbook.390": { zh: "出没之处", en: "Where they operate" },
+  "ui.Handbook.391": { zh: "行踪不定。", en: "Their whereabouts are never certain." },
   "ui.Hauling.001": { zh: "{m} 分 {rs} 秒", en: "{m} min {rs} s" },
   "ui.Hauling.002": { zh: "{m} 分钟", en: "{m} min" },
   "ui.Hauling.003": { zh: "{s} 秒", en: "{s} s" },
