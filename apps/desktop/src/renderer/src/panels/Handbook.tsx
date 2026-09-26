@@ -548,6 +548,80 @@ const RULE_SECTS: HandGroup[] = [
       },
     ],
   },
+  /**
+   * 2026-09-26 船长：「**之前手册的势力图鉴可以继续完成**」——接手 2026-09-25 挂起备忘
+   * （`docs/design/hostile-factions-handbook-20260925.md`；四件事已定：素材＝族设文档＋游戏内零散文案 ·
+   * 落点＝本「航行须知」新开一节（与「势力与舰船」并列）· 写法＝一句话基调＋3~4 行要点）。
+   *
+   * 收录 **A 海盗 · C 异形 · D 守墓 · E 泰坦 · G 亡军 · H 墨潮帮**；**B 武装拾荒者与 F 制式巡逻不收**（船长令）。
+   * 玩家侧一律正字「**势力**」，不用「族」；D/E 的留白与 G 的战争起因照备忘不写。
+   * ⚠ H 的「出没之处」按备忘的**甲案**（「行踪不定」）——不把入侵玩法写进手册，等船长一句话可换乙案。
+   */
+  {
+    title: tr("ui.Handbook.325"),
+    entries: [
+      {
+        title: tr("ui.Handbook.326"),
+        paras: [
+          [tr("ui.Handbook.327"), tr("ui.Handbook.328")],
+          [tr("ui.Handbook.329"), tr("ui.Handbook.330")],
+          [tr("ui.Handbook.331"), tr("ui.Handbook.332")],
+          [tr("ui.Handbook.333"), tr("ui.Handbook.334")],
+          [tr("ui.Handbook.335"), tr("ui.Handbook.336")],
+        ],
+      },
+      {
+        title: tr("ui.Handbook.337"),
+        paras: [
+          [tr("ui.Handbook.338"), tr("ui.Handbook.339")],
+          [tr("ui.Handbook.340"), tr("ui.Handbook.341")],
+          [tr("ui.Handbook.342"), tr("ui.Handbook.343")],
+          [tr("ui.Handbook.344"), tr("ui.Handbook.345")],
+          [tr("ui.Handbook.346"), tr("ui.Handbook.347")],
+        ],
+      },
+      {
+        title: tr("ui.Handbook.348"),
+        paras: [
+          [tr("ui.Handbook.349"), tr("ui.Handbook.350")],
+          [tr("ui.Handbook.351"), tr("ui.Handbook.352")],
+          [tr("ui.Handbook.353"), tr("ui.Handbook.354")],
+          [tr("ui.Handbook.355"), tr("ui.Handbook.356")],
+          [tr("ui.Handbook.357"), tr("ui.Handbook.358")],
+        ],
+      },
+      {
+        title: tr("ui.Handbook.359"),
+        paras: [
+          [tr("ui.Handbook.360"), tr("ui.Handbook.361")],
+          [tr("ui.Handbook.362"), tr("ui.Handbook.363")],
+          [tr("ui.Handbook.364"), tr("ui.Handbook.365")],
+          [tr("ui.Handbook.366"), tr("ui.Handbook.367")],
+          [tr("ui.Handbook.368"), tr("ui.Handbook.369")],
+        ],
+      },
+      {
+        title: tr("ui.Handbook.370"),
+        paras: [
+          [tr("ui.Handbook.371"), tr("ui.Handbook.372")],
+          [tr("ui.Handbook.373"), tr("ui.Handbook.374")],
+          [tr("ui.Handbook.375"), tr("ui.Handbook.376")],
+          [tr("ui.Handbook.377"), tr("ui.Handbook.378")],
+          [tr("ui.Handbook.379"), tr("ui.Handbook.380")],
+        ],
+      },
+      {
+        title: tr("ui.Handbook.381"),
+        paras: [
+          [tr("ui.Handbook.382"), tr("ui.Handbook.383")],
+          [tr("ui.Handbook.384"), tr("ui.Handbook.385")],
+          [tr("ui.Handbook.386"), tr("ui.Handbook.387")],
+          [tr("ui.Handbook.388"), tr("ui.Handbook.389")],
+          [tr("ui.Handbook.390"), tr("ui.Handbook.391")],
+        ],
+      },
+    ],
+  },
 ]
 
 /* ═══════════ 网格渲染 ═══════════ */
