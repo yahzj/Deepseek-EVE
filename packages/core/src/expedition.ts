@@ -32,7 +32,7 @@ import { formatDurationMs } from './time'
 import { originGalaxyOf, nearestStationGalaxyId, builtSiteAtGalaxy } from './location'
 import { shortestTravelMinutes, travelLegMs } from './travel'
 import { RETURN_LEG_MUL } from './balance'
-import { bountyEnemyCount, bountyWreckInjection, injectWeekendWreck, injectWreckDensity, weekendWreckDensityOf, weekendWreckInjectionOf, wreckDensityOf, wreckInjectThreatOf } from './salvage'
+import { asFoeFamily, bountyEnemyCount, bountyWreckInjection, injectWeekendWreck, injectWreckDensity, weekendWreckDensityOf, weekendWreckInjectionOf, wreckDensityOf, wreckInjectThreatOf } from './salvage'
 import {
   activeFoeSpecsOf,
   advanceBattleFor,
@@ -699,7 +699,16 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     const wreckInjected = isInvasion
       ? weekendWreckInjectionOf(battleCard)
       : bountyWreckInjection(wreckInjectThreatOf(battleCard), bountyEnemyCount(battleCard))
-    if (isInvasion) injectWeekendWreck(state, wreckGalaxyId, wreckInjected)
+    // 来源族（2026-09-26 玩家报障）：击败的是哪一族就记哪一族 —— 打捞型号池据此在该星系
+    // **即使已夺回 / 活动已结束**也并入那一族的独立入侵卡（残骸场比占领活得久）
+    if (isInvasion) {
+      injectWeekendWreck(
+        state,
+        wreckGalaxyId,
+        wreckInjected,
+        asFoeFamily(battleCard.foeFamily) ?? asFoeFamily(state.weekendEvent?.family),
+      )
+    }
     else injectWreckDensity(state, ctx, wreckGalaxyId, wreckInjected)
     const wreckNow = isInvasion
       ? weekendWreckDensityOf(state, wreckGalaxyId)

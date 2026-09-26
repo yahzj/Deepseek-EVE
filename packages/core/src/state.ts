@@ -9,7 +9,7 @@
  *    （无限容量、永不遗失）；采矿支持 AI 核心驱动的自动返航-卸货循环。
  */
 
-import type { AiCoreType, CommsInstanceEntry, DamageResists, DamageType, FittedModules, ModuleSlot } from './types'
+import type { AiCoreType, CommsInstanceEntry, DamageResists, DamageType, FittedModules, FoeFamily, ModuleSlot } from './types'
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { emptyFitted } from './labels'
 import { EMPTY_WORMHOLE_STATE } from './wormhole'
@@ -2013,6 +2013,15 @@ export interface WreckGalaxyRecord {
 export interface WeekendWreckRecord {
   density: number
   decayAccMs: number
+  /**
+   * **这批残骸的来源势力**（**2026-09-26 加 · 玩家报障**：「**打捞残骸捞不到H族残骸，只能捞到该星系默认的**」）。
+   *
+   * 为什么必须有：残骸场**比"占领"活得久**（48 小时自然衰减、活动结束也不清），而打捞型号池原先只在
+   * 「此刻仍被占」时才并入入侵舰队 ⇒ 残留场所在星系（夺回后的外围 / **旗舰期的核心** / 上一场的遗留）
+   * 会「残骸条写着入侵残骸、捞出来全是默认残骸」。池子改成"**有场就并入入侵卡**"后，得知道并**哪一族**。
+   * 兼容字段（可选、零迁移）：老档没记 ⇒ 打捞侧回落**当前事件族**。
+   */
+  family?: FoeFamily
 }
 
 /** 第十八版存档结构（当前版本）：v18 = v17 + V18 槽位制（fitted 六槽 Record →

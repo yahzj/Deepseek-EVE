@@ -2375,7 +2375,7 @@ function normalizeState(raw: unknown): GameState {
    *     （锚点值 > 0、已漂移时长 ≥ 0 的有限数才收；两个字段缺一不可 ⇒ 脏档整条丢）。
    *     与 `galaxyWrecks` 各自独立、互不影响；缺字段 = 空表（老档天然如此）。 ---
    */
-  const weekendWrecks: Record<string, { density: number; decayAccMs: number }> = {}
+  const weekendWrecks: NonNullable<GameState['weekendWrecks']> = {}
   for (const [galaxyId, w] of Object.entries(asRaw(src.weekendWrecks))) {
     if (galaxyId.length === 0) continue
     const r = asRaw(w)
@@ -2384,7 +2384,12 @@ function normalizeState(raw: unknown): GameState {
     // 两栏缺一不可（`num(undefined)` 会给 0 ⇒ 这里显式判类型，脏档整条丢而不是被静默补 0）
     if (typeof accRaw !== 'number' || !Number.isFinite(accRaw) || accRaw < 0) continue
     if (!Number.isFinite(density) || density <= 0) continue
-    weekendWrecks[galaxyId] = { density, decayAccMs: accRaw }
+    /** 来源族（2026-09-26 加 · 兼容字段）：只认单字母族码 A~H，其余不写 */
+    const fam =
+      typeof r.family === 'string' && /^[A-H]$/.test(r.family)
+        ? (r.family as NonNullable<GameState['weekendWrecks']>[string]['family'])
+        : undefined
+    weekendWrecks[galaxyId] = { density, decayAccMs: accRaw, ...(fam !== undefined ? { family: fam } : {}) }
   }
 
   // --- 已开箱稀有残骸存量（2026-09-11 兼容字段无版本号）：键 = 残骸物品 id，值 = m³（只收正数） ---

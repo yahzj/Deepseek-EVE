@@ -42,6 +42,9 @@ import {
   wreckGroupOfCard,
   wreckItemIdOf,
   wreckYieldMultiplierOf,
+  // 2026-09-26（玩家报障）：残骸场带来源族 ⇒ 有场就并入那一族的独立入侵卡
+  weekendWreckDensityOf,
+  weekendWreckFamilyOf,
 } from './salvage'
 import { weekendBountyCardsOf } from './weekendBounty'
 import { scaledReturnMs } from './trips'
@@ -109,6 +112,30 @@ function wreckPoolOf(
       if (ctx.anomalies.get(c.id)?.hidden !== true) continue
       seen.add(c.id)
       pool.push({ anomalyId: c.id, threat: Math.max(1, c.threat) })
+    }
+  }
+  /**
+   * 🔴 **2026-09-26 补的第二刀（玩家报障：「打捞残骸捞不到 H 族残骸，只能捞到该星系默认的」）**。
+   *
+   * 病根：**残骸场比"占领"活得久** —— 入侵残骸 48 小时自然衰减、活动结束也不清空；而上面那一刀只在
+   * 「此刻仍在占领名单里」时才并入入侵舰队 ⇒ 下面三种星系会「残骸条写着入侵残骸、捞出来全是默认残骸」：
+   * ① **旗舰期的核心**（核心夺回后旗舰才现身，玩家正是在这里打旗舰、注入最大的一笔残骸）；
+   * ② **夺回后的外围**（打赢即夺回，残骸留在那儿慢慢衰减）；③ **上一场的遗留场**。
+   *
+   * 修法：**只要该星系还有入侵残骸场（有效密度 > 0），就把来源族的独立入侵卡并进池** ——
+   * 族取 `weekendWreckFamilyOf`（记录里的来源族；老档没记 ⇒ 回落当前事件族）。
+   * 池子只决定"能捞出什么型号"，**不额外造残骸**：能捞的总量仍是残骸场那一份（扣减口径一字未改）。
+   */
+  if (state && nowWallMs !== undefined) {
+    const family = weekendWreckFamilyOf(state, galaxyId)
+    if (family !== undefined && weekendWreckDensityOf(state, galaxyId) > 0) {
+      for (const a of ctx.anomalies.values()) {
+        if (a.hidden !== true) continue
+        if (a.foeFamily !== family) continue
+        if (seen.has(a.id)) continue
+        seen.add(a.id)
+        pool.push({ anomalyId: a.id, threat: Math.max(1, a.threat) })
+      }
     }
   }
   return pool

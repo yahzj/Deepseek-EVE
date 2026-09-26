@@ -68,6 +68,7 @@ import {
   WRECK_INJECT_PER_THREAT,
   wreckDensityOf,
   wreckInjectThreatOf,
+  asFoeFamily,
 } from './salvage'
 import { shipDisplayName } from './instances'
 import { stopMining } from './mining'
@@ -288,7 +289,13 @@ function dropWrecks(state: GameState, ctx: SimContext): void {
     const own = enc.anomalyId !== null ? ctx.anomalies.get(enc.anomalyId) : undefined
     const card = own ?? foe
     if (card) {
-      injectWeekendWreck(state, enc.galaxyId, weekendWreckInjectionOf(card, WRECK_ENCOUNTER_INJECT_FRAC))
+      injectWeekendWreck(
+    state,
+    enc.galaxyId,
+    weekendWreckInjectionOf(card, WRECK_ENCOUNTER_INJECT_FRAC),
+    // 来源族（2026-09-26）：遇到的是哪一族就记哪一族，回落当前事件族
+    asFoeFamily(card.foeFamily) ?? asFoeFamily(state.weekendEvent?.family),
+  )
     }
     return
   }

@@ -20,7 +20,7 @@
  */
 import { tuningMul } from './tuning'
 import type { GameState, WreckGalaxyRecord } from './state'
-import type { AnomalyDef, ItemDef, SimContext } from './types'
+import type { AnomalyDef, FoeFamily, ItemDef, SimContext } from './types'
 import { nextInt, nextRandom, pickOne, pickWeighted } from './rng'
 import { addModule, ownedItemCount, ownedModuleCount } from './equipment'
 import { addWare, countWare } from './inventory'
@@ -403,12 +403,35 @@ export function weekendWreckInjectionOf(
   return bountyWreckInjection(wreckInjectThreatOf(card), bountyEnemyCount(card)) * Math.max(0, frac)
 }
 
-/** 注入入侵残骸（只加不减；非法值/非正数一律忽略）。**注入即重新起算 48h**（残骸场重新变新鲜）。 */
-export function injectWeekendWreck(state: GameState, galaxyId: string, amount: number): void {
+/** 注入入侵残骸（只加不减；非法值/非正数一律忽略）。**注入即重新起算 48h**（残骸场重新变新鲜）。
+ *
+ * ⚠ **2026-09-26 加 `family`**（玩家报障「打捞残骸捞不到 H 族残骸，只能捞到该星系默认的」）：
+ * 记下**这批残骸的来源势力**，打捞型号池据此并入对应族的独立入侵卡——哪怕星系**已夺回 / 活动已结束**
+ * （残骸场比占领活得久）。同族再注入 ⇒ 家族保持；换族注入 ⇒ 以新注入为准。 */
+export function injectWeekendWreck(
+  state: GameState,
+  galaxyId: string,
+  amount: number,
+  family?: FoeFamily,
+): void {
   if (!(amount > 0) || galaxyId.length === 0) return
   const map = (state.weekendWrecks ??= {})
   const cur = weekendWreckDensityOf(state, galaxyId)
-  map[galaxyId] = { density: cur + amount, decayAccMs: 0 }
+  const kept = family ?? map[galaxyId]?.family
+  map[galaxyId] = { density: cur + amount, decayAccMs: 0, ...(kept !== undefined ? { family: kept } : {}) }
+}
+
+/**
+ * **这批入侵残骸的来源势力**（打捞型号池用）：记录里有就用它，老档没记 ⇒ 回落**当前事件族**；
+ * 事件也结束了又没记（极老档）⇒ `undefined`（池子按"没有入侵残骸"处理）。
+ */
+/** `string` → `FoeFamily` 的收窄小工具（数据侧族码是 `string`，core 侧是字面量联合） */
+export function asFoeFamily(v: string | undefined): FoeFamily | undefined {
+  return v !== undefined && /^[A-H]$/.test(v) ? (v as FoeFamily) : undefined
+}
+
+export function weekendWreckFamilyOf(state: GameState, galaxyId: string): FoeFamily | undefined {
+  return asFoeFamily(state.weekendWrecks?.[galaxyId]?.family) ?? asFoeFamily(state.weekendEvent?.family)
 }
 
 /** 直接写一条记录（打捞扣减用；`decayAccMs` 一并给定） */
@@ -419,7 +442,9 @@ function writeWeekendWreck(state: GameState, galaxyId: string, density: number, 
     delete map[galaxyId]
     return
   }
-  map[galaxyId] = { density, decayAccMs }
+  // ⚠ 写回要**保住来源族**（`family`）：丢了它，打捞池就再也认不出这批入侵残骸属于哪一族
+  const fam = map[galaxyId]?.family
+  map[galaxyId] = { density, decayAccMs, ...(fam !== undefined ? { family: fam } : {}) }
 }
 
 /**
