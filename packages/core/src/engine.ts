@@ -602,12 +602,30 @@ function unmetPrereq(it: TrainingItem, lv: Map<string, number>, catalog: SkillCa
 }
 
 /**
+ * **取消之前就已经不满足前置的那些项**（按对象身份收进 `Set`）。
+ *
+ * ⚠ **2026-09-26 修（玩家报障「只要取消任何技能，就会弹出"会连带取消 10 项"」）**：
+ * 队列里可能本来就挂着"前置没满足"的项（老档入队早于前置系统 / 前置项早先被取消过而玩家点了「取消」
+ * 没确认）。这些项**与本场取消毫无关系**，但原实现的判据是"剩余队列里所有前置不满足的项"
+ * ⇒ 取消任何一项都会把它们列成"连带取消"，而且点「确认取消」会**真把它们删掉**（毁掉玩家排好的训练）。
+ * 现在两处（`skillCancelImpact` 的确认条 / `removeQueueAt` 的级联执行）都先减掉这份基线：
+ * **只报/只删"因为本次取消才变成不满足"的项**——与船长 2026-09-23 那条令（取消前置 ⇒ 依赖项一并取消）
+ * 的本意一致（那条讲的是"被取消项的依赖者"，不是"队列里所有坏项"）。
+ */
+function preexistingUnmet(state: GameState, queue: readonly TrainingItem[], catalog: SkillCatalog): Set<TrainingItem> {
+  const lv = finalSkillLevels(state, queue)
+  return new Set(queue.filter((it) => unmetPrereq(it, lv, catalog)))
+}
+
+/**
  * **取消一项会连带取消哪些**（纯计划，给界面"先列清单再确认"用；2026-09-23 船长裁定**甲**：
  * 「清整个队列里所有不满足的依赖项（**含排在它前面的**）」）。
  *
  * 判据：把目标项拿掉后算 `finalSkillLevels` ⇒ 凡"前置的最终等级 < 其要求等级"的项都要取消；
  * 取消会让该技能的最终等级变小 ⇒ **迭代到不动点**（级联链）。
  * 返回 `also` 一律按**它们在队列里的先后**排列（含排在被取消项前面的）。
+ *
+ * ⚠ **只算"因本次取消才不满足"的项**（基线见 `preexistingUnmet`）：本来就不满足的项不列、也不会被删。
  */
 export function skillCancelImpact(
   state: GameState,
@@ -617,11 +635,13 @@ export function skillCancelImpact(
   const queue = state.skills.queue
   if (!Number.isInteger(index) || index < 0 || index >= queue.length) return null
   const target = queue[index]!
+  /** 取消之前就坏的项（与本次取消无关 ⇒ 不列、也不删） */
+  const pre = preexistingUnmet(state, queue, catalog)
   let rest = queue.filter((_, i) => i !== index)
   const also: TrainingItem[] = []
   for (;;) {
     const lv = finalSkillLevels(state, rest)
-    const hit = rest.filter((it) => unmetPrereq(it, lv, catalog))
+    const hit = rest.filter((it) => !pre.has(it) && unmetPrereq(it, lv, catalog))
     if (hit.length === 0) break
     also.push(...hit)
     rest = rest.filter((it) => !hit.includes(it))
@@ -735,6 +755,11 @@ export function enqueueSkill(
 export function removeQueueAt(state: GameState, index: number, catalog?: SkillCatalog): boolean {
   if (!Number.isInteger(index) || index < 0 || index >= state.skills.queue.length) return false
   const queue = state.skills.queue
+  /**
+   * ⚠ **基线要在删之前取**（`preexistingUnmet` 的注释）：本来就是"前置不满足"的项**不随本次取消被删**
+   * ——2026-09-26 玩家报障：取消任何一项都会连带删掉队列里那 10 项"前置没满足"的训练。
+   */
+  const pre = catalog ? preexistingUnmet(state, queue, catalog) : null
   const [removed] = queue.splice(index, 1)
   if (!removed) return false
   // 被删项之后的同技能条目：全部顺延一级，填补被取消的那级空位
@@ -769,13 +794,14 @@ export function removeQueueAt(state: GameState, index: number, catalog?: SkillCa
    *
    * 判据 = `skillCancelImpact` 那一把尺（**同一份实现**：界面先用它列确认条、这里照它执行），
    * 删一项会让相关技能的**最终等级**变小 ⇒ 迭代到不动点。
+   * ⚠ **只清"因本次取消才不满足"的项**：取消之前就坏的项**原样留着**（见 `preexistingUnmet` 的 ⚠）。
    * `catalog` 缺省时不级联（老调用点/单测的行为不变 ⇒ 显式传入才启用新语义）。
    */
   const cascaded: TrainingItem[] = []
   if (catalog) {
     for (;;) {
       const lv = finalSkillLevels(state, queue)
-      const hit = queue.filter((it) => unmetPrereq(it, lv, catalog))
+      const hit = queue.filter((it) => !(pre?.has(it) ?? false) && unmetPrereq(it, lv, catalog))
       if (hit.length === 0) break
       for (const it of hit) {
         const at = queue.indexOf(it)
