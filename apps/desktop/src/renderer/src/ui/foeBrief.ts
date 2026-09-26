@@ -36,10 +36,14 @@ function dmgText(t: string): string {
  *
  * ⚠ 口径：**不报装置名，报"什么情况下发生什么"**——触发条件 ＋ 效果，逐条对得上
  * `core/foeMounts.ts` 里的效果字段（`droneRangeOnHit` / `web` / `gunRangeOnHit` / `supportCall` /
- * `evasionBonus` / `repairPulse` / `reviveEscort` / `charge`）。
+ * `evasionBonus` / `repairPulse` / `reviveEscort` / `charge` / **`rangeDebuff`**）。
  * 装置的中文名仍保留在括号里（玩家在战报/悬停里见过那个名字，留个对应关系）。
+ *
+ * **返回 `null` = 该件没有任何"可解释的机制"**（目录里只留了名字）——调用方据此决定"显示名"还是"显示效果"。
+ * ⚠ 早先这一支返回的是**装置名本身**，于是战斗画面的悬停把同一串字又复读了一遍
+ * （**2026-09-26 船长报障**：「**玩家鼠标悬停敌方挂载件时，不应该复读一遍相同的文字**」）⇒ 已改。
  */
-function mountEffectText(id: string): string | null {
+export function mountEffectText(id: string): string | null {
   const def = FOE_MOUNTS[id as keyof typeof FOE_MOUNTS]
   if (!def) return null
   const nm = isEn() ? (def.en ?? def.name) : def.name
@@ -71,8 +75,29 @@ function mountEffectText(id: string): string | null {
   if (def.charge) {
     return tr('ui.foeIntro.107', { p1: String(def.charge.mul), p2: String(Math.round(def.charge.cooldownMs / 1000)), p3: nm })
   }
-  if (def.droneRangeOnHit === undefined && def.gunRangeOnHit === undefined) return nm
-  return nm
+  if (def.rangeDebuff) {
+    return tr('ui.foeIntro.108', { p1: pct(def.rangeDebuff.pct), p2: nm })
+  }
+  /** 目录里只留了名字、没有任何效果字段 ⇒ 没有可解释的机制（**不返回名字**，避免复读） */
+  return null
+}
+
+/**
+ * **按装置名反查 id**（战斗画面悬停用）。
+ *
+ * 为什么走名字反查而不是把 id 一路带进 `BattleState`：挂载件名在 **整条链上唯一**
+ * （`core/foeMounts.ts` 的 14 件逐个核过、无重名），而 `BattleState.foeMounts` 里存的就是中文名
+ * ⇒ 一行反查即可拿到 id，**不必新建 `foeMountIds` 三处随档/随快照字段**（少改 3 个文件、少一处漂移面）。
+ * ⚠ 若日后出现重名件，这条会在 `content:check` 的名字唯一性之前静默取到先登记的那件 ⇒ **加件时保持名字唯一**。
+ */
+const MOUNT_ID_BY_NAME: ReadonlyMap<string, string> = new Map(
+  Object.values(FOE_MOUNTS).map((d) => [d.name, String(d.id)]),
+)
+
+/** 按**装置中文名**取效果明文；查不到 id / 该件没有机制 ⇒ `null`（调用方回退显示名字） */
+export function mountEffectTextByName(name: string): string | null {
+  const id = MOUNT_ID_BY_NAME.get(name)
+  return id === undefined ? null : mountEffectText(id)
 }
 
 /** 一句话的**分段**（界面要染色就得拿结构，不能拿拼好的字符串） */
