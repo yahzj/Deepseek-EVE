@@ -58,6 +58,10 @@ import {
   autoLoopReopenBlockReason,
   wreckDensityOf,
   weekendWreckDensityOf,
+  // 2026-09-26 玩家舰船残骸（船长令）：该星系残留的舰船残骸读数卡（船名 + 可回收件数 + 倒计时）
+  shipWrecksOf,
+  wreckLootRowsOf,
+  SHIP_WRECK_DECAY_MS,
   weekendOccupiedLiveAt,
   shortestTravelMinutes,
   standingOf,
@@ -2453,6 +2457,32 @@ function GalaxyActions({
             <div className="app-card-progress is-invasion">
               <i style={{ width: `${pct}%` }} />
             </div>
+          </div>
+        )
+      })()}
+      {/**
+       * **玩家舰船残骸（置顶）**（**2026-09-26 船长令**：「玩家舰船被摧毁后，如果是在非虫洞的正常星系内，
+       * 在该星系生成一个'<被摧毁的舰船名称>的残骸'该残骸存在48小时，玩家如果在该星系打捞，
+       * 优先打捞该残骸（比稀有残骸优先级还高）」）。
+       *
+       * 读数卡（**只做读数，观感交船长审**）：船名 ＋ 还可回收件数 ＋ 剩余小时（48h 线性衰减）。
+       * 一具一张卡（同星系可多具、各算各的 48h）；没有残骸时整段不渲染。
+       */}
+      {(() => {
+        const wrecks = shipWrecksOf(state, galaxy.id)
+        if (wrecks.length === 0) return null
+        return (
+          <div className="app-belt-invwreck" title={tr('ui.weekend.110', { p1: String(wrecks.length) })}>
+            <span className="app-belt-invwreck-label">{tr('ui.weekend.110', { p1: String(wrecks.length) })}</span>
+            {wrecks.map((w) => {
+              const leftH = Math.max(0, Math.round((1 - w.decayAccMs / SHIP_WRECK_DECAY_MS) * 48))
+              const rows = wreckLootRowsOf(w, engine.ctx).length
+              return (
+                <span key={w.shipId} className="app-dim app-ga-desc">
+                  {tr('ui.weekend.111', { p1: w.name, p2: String(rows), p3: String(leftH) })}
+                </span>
+              )
+            })}
           </div>
         )
       })()}

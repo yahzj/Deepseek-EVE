@@ -2408,6 +2408,70 @@ function normalizeState(raw: unknown): GameState {
     weekendWrecks[galaxyId] = { density, decayAccMs: accRaw, ...(fam !== undefined ? { family: fam } : {}) }
   }
 
+  /**
+   * --- **玩家舰船残骸**（2026-09-26 兼容字段无版本号，设计稿 `docs/design/ship-wreck-20260926.md`）：
+   *     键 = 原舰船 id → 一具残骸（`name` / 装配与无人机快照 / 48h 衰减两栏）。
+   *     **⭐ 漏登记就是"读档即丢"**（本文件头注那条老坑：每加一个随档字段得在两处都写）——
+   *     残骸丢了不会报错，只在"刷新/重进"时表现为"我的残骸不见了"。
+   *     只收形态合法的条目：名称与两栏衰减数缺一不可、装配快照逐位净化、无人机只收正整数。 ---
+   */
+  const shipWrecks: NonNullable<GameState['shipWrecks']> = {}
+  for (const [shipId, wRaw] of Object.entries(asRaw(src.shipWrecks))) {
+    if (shipId.length === 0) continue
+    const r = asRaw(wRaw)
+    const galaxyId = typeof r.galaxyId === 'string' ? r.galaxyId : ''
+    const name = typeof r.name === 'string' ? r.name.trim().slice(0, 120) : ''
+    const density = num(r.density)
+    const accRaw = r.decayAccMs
+    if (galaxyId.length === 0 || name.length === 0) continue
+    if (typeof accRaw !== 'number' || !Number.isFinite(accRaw) || accRaw < 0) continue
+    if (!Number.isFinite(density) || density <= 0) continue
+    /** 装配快照：逐位净化（非空字符串留下、空位记 null、裁掉尾部空位；与 `fitPresets` 同一手法） */
+    const wreckRack = (v: unknown): Array<string | null> => {
+      if (!Array.isArray(v)) return []
+      const out: Array<string | null> = []
+      for (const x of v.slice(0, 7)) out.push(typeof x === 'string' && x.length > 0 ? x : null)
+      while (out.length > 0 && out[out.length - 1] === null) out.pop()
+      return out
+    }
+    const fitRaw = asRaw(r.fitted)
+    const fitted: FittedModules = {
+      high: wreckRack(fitRaw.high),
+      mid: wreckRack(fitRaw.mid),
+      low: wreckRack(fitRaw.low),
+    }
+    const droneLoad: Record<string, number> = {}
+    for (const [droneId, n] of Object.entries(asRaw(r.droneLoad))) {
+      if (droneId.length === 0) continue
+      if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) continue
+      droneLoad[droneId] = Math.floor(n)
+    }
+    const defId = typeof r.defId === 'string' && r.defId.length > 0 ? r.defId : undefined
+    const durability = typeof r.durability === 'number' && Number.isFinite(r.durability) ? r.durability : undefined
+    const armorPct = typeof r.armorPct === 'number' && Number.isFinite(r.armorPct) ? r.armorPct : undefined
+    const reinforceChance =
+      typeof r.reinforceChance === 'number' && Number.isFinite(r.reinforceChance) && r.reinforceChance > 0
+        ? r.reinforceChance
+        : undefined
+    shipWrecks[shipId] = {
+      seq: num(r.seq),
+      galaxyId,
+      shipId,
+      name,
+      ...(defId !== undefined ? { defId } : {}),
+      fitted,
+      ...(Object.keys(droneLoad).length > 0 ? { droneLoad } : {}),
+      ...(durability !== undefined ? { durability } : {}),
+      ...(armorPct !== undefined ? { armorPct } : {}),
+      ...(reinforceChance !== undefined ? { reinforceChance } : {}),
+      ...(r.hullRolled === true ? { hullRolled: true } : {}),
+      ...(r.pityUsed === true ? { pityUsed: true } : {}),
+      density,
+      decayAccMs: accRaw,
+      createdAtWallMs: num(r.createdAtWallMs),
+    }
+  }
+
   // --- 已开箱稀有残骸存量（2026-09-11 兼容字段无版本号）：键 = 残骸物品 id，值 = m³（只收正数） ---
   const rareOpenedUnits: Record<string, number> = {}
   for (const [itemId, n] of Object.entries(asRaw(src.rareOpenedUnits))) {
@@ -3729,6 +3793,8 @@ function normalizeState(raw: unknown): GameState {
     galaxyWrecks: galaxyWrecks as GameState['galaxyWrecks'],
     // 入侵残骸独立池（2026-09-25 兼容字段）：空表不落字段（老档与新档形态一致）
     ...(Object.keys(weekendWrecks).length > 0 ? { weekendWrecks } : {}),
+    // 玩家舰船残骸（2026-09-26 兼容字段）：空表不落字段；有残骸时连游标一起落（"最新那具优先"靠它）
+    ...(Object.keys(shipWrecks).length > 0 ? { shipWrecks, shipWreckSeq: num(src.shipWreckSeq) } : {}),
     rareOpenedUnits,
     rareBoxesOpened,
     rareBurnUnits,

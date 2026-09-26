@@ -82,6 +82,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.salvaging.025": { zh: "该星系的敌群情报缺失，打捞作业已停止。", en: "The system's hostile intel is missing; the salvage run has stopped." },
   "core.salvaging.026": { zh: "未找到可用的打捞器，打捞作业已停止。", en: "No usable salvager was found; the salvage run has stopped." },
   "core.salvaging.027": { zh: "货仓装不下下一轮打捞（余 {p1} m³ ／ 每轮 {p2} m³）：自动返航卸货（本趟约 {p3} m³，约 {p4} 秒，去程已并入返航）。", en: "The hold cannot take another salvage round ({p1} m³ free / {p2} m³ per round): returning to unload automatically (this trip about {p3} m³; roughly {p4} seconds, outbound leg folded in)." },
+  /* 玩家舰船残骸（2026-09-26 船长令）：一具残骸最高优先 · 逐件掷概率回收 · 没捞到不落普通残骸 */
+  "core.salvaging.030": { zh: "打捞舰船残骸：捞回 {p1} ×{p2}。", en: "Salvaging the ship wreck: recovered {p1} ×{p2}." },
+  "core.salvaging.031": { zh: "舰船残骸里捞回了一艘还能修的船：{p1}——已拖回母港入队。", en: "A repairable hull was raised from the wreck: {p1} — towed back to the home port and rejoined the fleet." },
   /* 「互斥」类共用条目：整句两条（开采 / 打捞各一条）——占位符对齐是要塞，
      所以「动词」不做参数（参数里塞 id 要两层渲染，得不偿失） */
   "core.state.001": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再开采。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first, before mining." },
@@ -113,6 +116,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.shipyard.018": { zh: "已切换到驾驶 {p1}。", en: "Now piloting {p1}." },
   "core.shipyard.019": { zh: "采矿已随换船结束：{p1} 从「{p2}」自动返航空间站{p3}——约 {p4} 秒后到港。", en: "Mining ended with the ship change: {p1} is returning from “{p2}” to the station automatically{p3} — docking in about {p4} seconds." },
   "core.shipyard.020": { zh: "{p1}：{p2} 已损毁，船上的货仓与装备一并遗失。", en: "{p1}: {p2} was destroyed, and its hold and modules were lost with it." },
+  /* 玩家舰船残骸（2026-09-26 船长令）：正常星系损毁 ⇒ 在该星系留一具可打捞的残骸（48 小时） */
+  "core.shipyard.033": { zh: "{p1} 的残骸留在「{p2}」——48 小时内可打捞回收部分装备。", en: "The wreck of {p1} remains in “{p2}” — salvageable for 48 hours to recover some of its modules." },
   "core.shipyard.021": { zh: "主控在虫洞里战沉——已由同队的 {p1} 在洞内接任主控。", en: "The command ship was lost inside the wormhole — {p1} from the same team takes over as command." },
   "core.shipyard.022": { zh: "驾驶中的舰船正被 AI 执勤占用——已自动改派驾驶 {p1}。", en: "The piloted ship is tied up by an AI task — {p1} was assigned to pilot instead." },
   "core.shipyard.023": { zh: "舰队里找不到正在驾驶的舰船——已自动改派驾驶 {p1}。", en: "The piloted ship could not be found in the fleet — {p1} was assigned to pilot instead." },
@@ -1596,7 +1601,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.093": { zh: "威胁 {p1}~{p2}", en: "threat {p1}–{p2}" },
   // 2026-09-25：入侵残骸独立池（打捞界面的独立残骸条）· 赏金去向 · 结算面板的进度收入那一格
   "ui.weekend.094": { zh: "入侵残骸 {p1}", en: "Invasion wrecks {p1}" },
-  "ui.weekend.095": { zh: "入侵残骸占本星系残骸 {p1}%（独立残骸场：无保底，48 小时衰减到消失）", en: "Invasion wrecks are {p1}% of this system's wrecks (a separate field: no floor, it fades away over 48 hours)" },
+  /* 玩家舰船残骸（2026-09-26 船长令）：打捞面板置顶的读数卡（船名 + 剩余件数 + 倒计时） */
+  "ui.weekend.110": { zh: "舰船残骸 {p1} 具（优先打捞）", en: "Ship wrecks {p1} (salvaged first)" },
+  "ui.weekend.111": { zh: "{p1} · 还可回收 {p2} 件 · 剩 {p3} 小时", en: "{p1} · {p2} item(s) recoverable · {p3} h left" },  "ui.weekend.095": { zh: "入侵残骸占本星系残骸 {p1}%（独立残骸场：无保底，48 小时衰减到消失）", en: "Invasion wrecks are {p1}% of this system's wrecks (a separate field: no floor, it fades away over 48 hours)" },
   "ui.weekend.096": { zh: "赏金：结算时按进度发放", en: "Bounty: paid at settlement based on progress" },
   "ui.weekend.097": { zh: "进度收入", en: "Progress income" },
   "ui.weekend.098": { zh: "推进 {p1}%", en: "{p1}% pushed" },

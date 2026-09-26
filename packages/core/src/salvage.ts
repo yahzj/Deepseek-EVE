@@ -22,6 +22,7 @@ import { tuningMul } from './tuning'
 import type { GameState, WreckGalaxyRecord } from './state'
 import type { AnomalyDef, FoeFamily, ItemDef, SimContext } from './types'
 import { nextInt, nextRandom, pickOne, pickWeighted } from './rng'
+import { advanceShipWreckDecay } from './shipWrecks'
 import { addModule, ownedItemCount, ownedModuleCount } from './equipment'
 import { addWare, countWare } from './inventory'
 import { FOE_LAIR_GEAR } from './lairs'
@@ -488,6 +489,11 @@ export function advanceWreckDrift(
     }
   }
   advanceWeekendWreckDecay(state, dtMs, salvagingGalaxyId)
+  /**
+   * **玩家舰船残骸同款在这里推进**（2026-09-26 船长令）：第三本账，同一根 48h 线性衰减、
+   * 到点即删条目（船长的「该残骸存在48小时」）。判定与逐件打捞在 `shipWrecks.ts`。
+   */
+  advanceShipWreckDecay(state, dtMs, salvagingGalaxyId)
 }
 
 /* ═══════════ 入侵残骸 · 独立池（2026-09-25 船长令） ═══════════
