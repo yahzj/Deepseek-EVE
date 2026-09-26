@@ -1292,6 +1292,11 @@ export const PARTS: readonly ItemDef[] = [
  * 它被塞进「**修理组件**」里 ⇒ 玩家按「黑匣」找永远找不到。现独立成 `'blackbox'` 一档
  * （见 `ItemKind` 注释）：仓库分类 / 货仓分组 / 手册物品图鉴按 `ITEM_KIND_ORDER` 渲染 ⇒ **自动**多出
  * 「黑匣」；市场一级类型另在 `MarketPage` 的类型下拉里显式登记一档。
+ *
+ * ⚠ **价格（2026-09-26 船长令）**：「**黑匣的价格需要提高到8000万**」⇒ `baseSellPriceIsk` 由 80 万
+ * 提到 **8,000 万**（市场行 `marketCatalog.ts` 的 `basePrice` 同步同值——两处历来同值，改一处必改另一处）。
+ * 连带读数（本批实测，列在汇报里）：协会收购价 80 万 → **8,000 万**（奇货档 · 只收不卖 · 每窗 1% 掷骰）；
+ * 插件蓝图每件吃 1 枚 ⇒ 单件插件的黑匣料值 = 8,000 万。
  */
 export const WEEKEND_TROPHIES: readonly ItemDef[] = [
   {
@@ -1299,7 +1304,7 @@ export const WEEKEND_TROPHIES: readonly ItemDef[] = [
     name: '墨潮旗舰黑匣',
     kind: 'blackbox',
     unitM3: 5,
-    baseSellPriceIsk: 800_000,
+    baseSellPriceIsk: 80_000_000,
     description: '墨潮入侵母舰的核心记录匣：外壳是耐压墨晶，内里封着未破译的军用编码与航迹记录。可存入库房或售予回收商。',
   },
 ]
