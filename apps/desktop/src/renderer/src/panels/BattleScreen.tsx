@@ -262,6 +262,12 @@ export function BattleScreen({
   const droneCountOf = new Map<string, number>()
   for (const u of arcs?.myUnits ?? [])
     for (const d of u.drones ?? []) droneCountOf.set(`${u.tag}:${d.artId}`, d.count);
+  /**
+   * **视图锚（主控）那条舰的存活机群**（`artId → 架数`）——装填冷却条上**无人机条目**据此判"打光了没"
+   * （**2026-09-26 玩家报障**：「无人机显示就绪不会开火，但是无人机实际上已经被打掉了」：
+   * 冷却条只反映装填周期，机群全灭它也照样归零 ⇒ 必须再看存活架数）。
+   */
+  const leaderDrones = arcs?.myUnits.find((u) => u.leader)?.drones ?? []
   /** 敌方机群：敌单位 tag + 机型 → **该舰现存架数**（弹道道次取模要用它；敌我各用各的表，见弹道层） */
   const foeDroneAliveOf = (tag: string, artId: string): number =>
     arcs?.foeDrones?.find((d) => d.tag === tag && d.artId === artId)?.alive ??
@@ -2823,18 +2829,39 @@ const meSpeedRef = useRef(200)
             {arcs.me.map((w, wi) => {
               const remain = arcs.meReload[wi] ?? 0
               const ready = remain <= 0
-              const pct = ready
-                ? 100
-                : Math.min(100, Math.max(0, ((w.reloadMs - remain) / Math.max(1, w.reloadMs)) * 100))
-              const dotColor = w.type ? DMG_COLOR[w.type] : 'rgb(var(--wui-dim))'
+              /**
+               * **无人机条目要看"还剩几架"**（**2026-09-26 玩家报障**：「无人机显示就绪不会开火，
+               * 但是无人机实际上已经被打掉了」）：冷却条只反映装填周期，**机群全灭时它照样会归零**
+               * ⇒ 那一格若继续写「就绪」，玩家会以为马上开火。存活架数取**视图锚（主控）那条舰**的
+               * `drones`（与画机体同一份读数、按 artId 归并）⇒ 打光 = 0。
+               */
+              const aliveHere =
+                w.src === 'drone' && w.artId !== undefined
+                  ? (leaderDrones.find((d) => d.artId === w.artId)?.count ?? 0)
+                  : null
+              const lost = aliveHere === 0
+              const pct = lost
+                ? 0
+                : ready
+                  ? 100
+                  : Math.min(100, Math.max(0, ((w.reloadMs - remain) / Math.max(1, w.reloadMs)) * 100))
+              const dotColor = lost ? 'rgb(var(--wui-dim))' : w.type ? DMG_COLOR[w.type] : 'rgb(var(--wui-dim))'
               return (
                 <span
                   key={`rl${wi}`}
-                  className={`app-bts-reload${ready ? " is-ready" : ""}`}
+                  className={`app-bts-reload${lost ? " is-lost" : ready ? " is-ready" : ""}`}
                   title={
-                    ready
-                      ? tr("ui.BattleScreen.092", { p1: w.label })
-                      : tr("ui.BattleScreen.093", { p1: w.label, p2: Math.max(0.1, Math.ceil(remain / 100) / 10) })
+                    lost
+                      ? tr("ui.BattleScreen.110", { p1: w.label })
+                      : aliveHere !== null && aliveHere < (w.count ?? aliveHere)
+                        ? tr("ui.BattleScreen.111", {
+                            p1: w.label,
+                            p2: String(aliveHere),
+                            p3: String(w.count ?? aliveHere),
+                          })
+                        : ready
+                          ? tr("ui.BattleScreen.092", { p1: w.label })
+                          : tr("ui.BattleScreen.093", { p1: w.label, p2: Math.max(0.1, Math.ceil(remain / 100) / 10) })
                   }
                 >
                   <i className="app-bts-reload-dot" style={{ background: dotColor }} />
@@ -2842,11 +2869,18 @@ const meSpeedRef = useRef(200)
                   <span className="app-bts-reload-track">
                     <i
                       className="app-bts-reload-fill"
-                      style={{ width: `${pct}%`, background: ready ? 'rgb(var(--wui-heal))' : dotColor }}
+                      style={{
+                        width: `${pct}%`,
+                        background: lost ? 'rgb(var(--wui-dim))' : ready ? 'rgb(var(--wui-heal))' : dotColor,
+                      }}
                     />
                   </span>
                   <span className="app-bts-reload-ms">
-                    {ready ? tr("ui.BattleScreen.067") : `${Math.max(0.1, Math.ceil(remain / 100) / 10)}s`}
+                    {lost
+                      ? tr("ui.BattleScreen.109")
+                      : ready
+                        ? tr("ui.BattleScreen.067")
+                        : `${Math.max(0.1, Math.ceil(remain / 100) / 10)}s`}
                   </span>
                 </span>
               )

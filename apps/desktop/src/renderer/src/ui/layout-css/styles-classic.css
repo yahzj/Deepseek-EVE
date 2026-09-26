@@ -10619,6 +10619,13 @@ html[data-locale='en'] body {
 
 .app-bts-reload.is-ready { color: rgb(var(--wui-x148)); }
 
+/**
+ * **机群已全部被击落**（2026-09-26 玩家报障：「无人机显示就绪不会开火，但是无人机实际上已经被打掉了」）——
+ * 冷却条归零 ≠ 能开火：这一格改灰、并且**不再走 `.is-ready` 的"就绪"色**（两者不同时出现）。
+ */
+.app-bts-reload.is-lost { color: rgb(var(--wui-dim)); opacity: .72; }
+.app-bts-reload.is-lost .app-bts-reload-name { text-decoration: line-through; }
+
 .app-bts-reload-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; box-shadow: 0 0 4px currentColor; }
 
 .app-bts-reload-name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

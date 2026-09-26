@@ -1350,6 +1350,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // 伤害飘字里"没打中"的标记（2026-09-24 船长令：伤害数值动画「包括 MISS」——船长指定就显示 MISS，
   // 中英同形，属**语言中立**的战斗术语；要改中文口径只需改这一条 zh）
   "ui.BattleScreen.107": { zh: "MISS", en: "MISS" },
+  /* 装填冷却条上的无人机条目（2026-09-26 玩家报障：机群被打光后那一格仍写「就绪」） */
+  "ui.BattleScreen.109": { zh: "机群已损失", en: "drones lost" },
+  "ui.BattleScreen.110": { zh: "{p1}：机群已全部被击落，不会再开火", en: "{p1}: every airframe has been shot down, it will not fire again" },
+  "ui.BattleScreen.111": { zh: "{p1}：存活 {p2}/{p3} 架", en: "{p1}: {p2}/{p3} airframes alive" },
   /* 损伤管制装置同舰唯一（2026-09-25 船长令「损管只能装备一件」）：装配被拒时的原因 id */
   "core.equipment.028": { zh: "损伤管制装置每舰只能装一件（已装 {p1}）。", en: "Only one Damage Control Unit may be fitted per ship (already fitted: {p1})." },
   "ui.battleViewCore.001": { zh: "高爆", en: "High explosive" },
