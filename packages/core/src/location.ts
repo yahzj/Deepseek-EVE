@@ -22,8 +22,8 @@ import { deliverStationResources, noteStationSiteAt, siteProgress, tierRemaining
 import { cargoCapacityM3Of, cargoOfShip, cargoUsedM3Of, unloadCargoOfShipToWarehouse } from './inventory'
 
 /** 进港卸货附注（2026-09-08 船长定：任何进港时刻自动整仓卸货；返回 >0 单位的附注文本） */
-function dockUnloadNote(state: GameState, shipId: string): { text: string; id?: string; unit?: string } {
-  const moved = unloadCargoOfShipToWarehouse(state, shipId)
+function dockUnloadNote(state: GameState, ctx: SimContext, shipId: string): { text: string; id?: string; unit?: string } {
+  const moved = unloadCargoOfShipToWarehouse(state, ctx, shipId)
   const unit = moved.toLocaleString('zh-CN')
   return moved > 0
     ? { text: `货仓已自动卸入物品仓库（${unit} 单位）。`, id: 'core.location.037', unit }
@@ -181,7 +181,7 @@ export function startTransitHome(state: GameState, ctx: SimContext): CommandResu
   state.awayGalaxy = null
   // 目标若是已建成副站 → 停靠该站；否则回母港（2026-09-08：到港即自动卸货）
   state.dockedSite = null
-  const unloadNote = dockUnloadNote(state, state.shipId)
+  const unloadNote = dockUnloadNote(state, ctx, state.shipId)
   for (const site of ctx.stations.values()) {
     const prog = state.stationSites[site.id]
     if (prog && prog.stage >= site.tiers.length && site.galaxyId === target) {
@@ -225,7 +225,7 @@ export function advanceTransit(state: GameState, ctx: SimContext): void {
   // 普通返航 / 交付航线返程腿：到站按目标设置停靠（副站或母港）
   state.awayGalaxy = null
   state.dockedSite = null
-  const unloadNote = dockUnloadNote(state, state.shipId)
+  const unloadNote = dockUnloadNote(state, ctx, state.shipId)
   let dockedName: string | null = null
   if (toGalaxy) {
     for (const site of ctx.stations.values()) {
@@ -419,7 +419,7 @@ export function cancelSiteDeliverTrip(state: GameState, ctx: SimContext): Comman
       break
     }
   }
-  const moved = unloadCargoOfShipToWarehouse(state, state.shipId)
+  const moved = unloadCargoOfShipToWarehouse(state, ctx, state.shipId)
   addLog(
     state,
     'warn',
@@ -509,7 +509,7 @@ function arriveDeliverSite(
     // 全部档位完成：就地停靠刚建成的新副站（货仓余量随进港自动卸回仓库）
     state.awayGalaxy = null
     state.dockedSite = site.id
-    const unloadNote = dockUnloadNote(state, state.shipId)
+    const unloadNote = dockUnloadNote(state, ctx, state.shipId)
     addLog(state, 'fleet', `本次交付达成「建成」档：舰船已停靠新落成的「${site.name}」（副空间站）。${unloadNote}`)
     return
   }
@@ -540,7 +540,7 @@ function arriveDeliverSite(
         break
       }
     }
-    const unloadNote = dockUnloadNote(state, state.shipId)
+    const unloadNote = dockUnloadNote(state, ctx, state.shipId)
     addLog(state, 'fleet', `交付任务收尾：舰船已返航停靠「${dockedName ?? baseName}」${dockedName ? '（副空间站）' : ''}。${unloadNote}`)
     if (site && progAfter.stage < site.tiers.length) continueDeliverLoop(state, ctx, site.id)
     return
@@ -706,7 +706,7 @@ export function cancelStandby(state: GameState, ctx: SimContext): CommandResult 
   s.legMs = 0
   state.awayGalaxy = null // 召回口径：回母港（与远征召回一致）
   // 2026-09-08：召回 = 回母港停靠——进港自动整仓卸货
-  const moved = unloadCargoOfShipToWarehouse(state, state.shipId)
+  const moved = unloadCargoOfShipToWarehouse(state, ctx, state.shipId)
   addLog(
     state,
     'warn',

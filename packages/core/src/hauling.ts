@@ -275,7 +275,7 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
     return { ok: false, error: '舰船在野外：先返航到空间站再安排长途运输。', errorId: 'core.hauling.002' }
   }
   // 自动清仓：真实货物卸入仓库（虚拟货物占满货仓，语义干净）
-  const unloaded = unloadCargoOfShipToWarehouse(state, state.shipId)
+  const unloaded = unloadCargoOfShipToWarehouse(state, ctx, state.shipId)
   const dockHere = dockedHaulEndpoint(state) // 接单时的停靠端点（可能是航线端点，也可能不是）
   // 第一段目标：停靠即端点 → 直接对开；否则飞往较近的端点（就位段）
   let firstTo: string | null

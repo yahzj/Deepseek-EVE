@@ -225,6 +225,8 @@ import {
   wormholeTempPending,
   wormholeTempBoard,
   wormholeNormalizeLegacyTemp,
+  // 2026-09-26 玩家报障：误落进物品仓库的装备（插件装货仓再卸货）搬回装备库
+  repairMisplacedWarehouseModules,
   // 2026-09-26 船长两令：读档后削减被抬高的累计声望 ＋ 给打完入侵没拿到黑匣的档补发
   repairStandingFromBountyProgress,
   compensateMissingWeekendBlackBox,
@@ -1033,6 +1035,12 @@ export class GameEngine {
     // `emptyShipState → emptyFitted()` = 1/1/1 位数组，不补齐就会出现
     // "界面按船型布局画出第 2/3/4 格、引擎只认第 1 位"（玩家实测「该低槽位不可用（第 2 位）」）。
     repairDeprecatedModules(this.state, this.ctx)
+    /**
+     * **把误落进物品仓库的装备搬回装备库**（**2026-09-26 玩家报障的存量修复**：插件装进货仓再卸货时，
+     * 原先按 id 前缀分流 ⇒ `plug-*` 被当物品扔进 `warehouse.items`，界面里就"不见了"）。
+     * 分流判据已改成查装备目录；这里把**已经落错的那部分**搬回来 —— 每次读档跑、幂等、只搬真装备。
+     */
+    repairMisplacedWarehouseModules(this.state, this.ctx)
     const now = Date.now()
     if (lastSavedWall !== null) {
       // B4：离线结算前后对比，生成启动简报（离线 ≥1 分钟才展示）；stats 收集 AI 核心作业
@@ -3587,7 +3595,7 @@ export class GameEngine {
 
   /** 把当前船货仓全部卸入物品仓库；返回卸入数量 */
   unloadAllToWarehouse(): number {
-    const moved = unloadCargoToWarehouse(this.state)
+    const moved = unloadCargoToWarehouse(this.state, this.ctx)
     if (moved > 0) {
       void this.persist()
       this.notify()
@@ -3600,7 +3608,7 @@ export class GameEngine {
     if (!this.state.fleet[shipId]) return -1 // 船不存在
     if (shipId in this.state.aiAssignments) return -2 // AI 作业中
     if (shipId in this.state.shipReturns) return -3 // 善后返航中
-    const moved = unloadCargoOfShipToWarehouse(this.state, shipId)
+    const moved = unloadCargoOfShipToWarehouse(this.state, this.ctx, shipId)
     if (moved > 0) {
       void this.persist()
       this.notify()
@@ -3610,7 +3618,7 @@ export class GameEngine {
 
   /** 2026-09-09（船长口径 A）：卸下货仓里指定条目（物品 → 物品仓库；模块 → 装备库分流）；返回卸入数量 */
   unloadCargoItem(itemId: string): number {
-    const moved = unloadCargoToWarehouse(this.state, itemId)
+    const moved = unloadCargoToWarehouse(this.state, this.ctx, itemId)
     if (moved > 0) {
       void this.persist()
       this.notify()

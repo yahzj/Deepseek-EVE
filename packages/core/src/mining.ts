@@ -417,7 +417,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
         const ore = belt ? ctx.items.get(belt.oreId) : undefined
         const oreName = ore ? ore.name : '货物'
         const trip = m.tripUnits
-        const moved = unloadCargoToWarehouse(state)
+        const moved = unloadCargoToWarehouse(state, ctx)
         addLog(
           state,
           'industry',
@@ -692,7 +692,7 @@ export function advanceShipReturns(state: GameState, deltaMs: number, ctx: SimCo
     r.phaseAccMs = Math.min(r.legMs, r.phaseAccMs + deltaMs)
     if (r.phaseAccMs >= r.legMs) {
       delete state.shipReturns[shipId]
-      const moved = unloadCargoOfShipToWarehouse(state, shipId)
+      const moved = unloadCargoOfShipToWarehouse(state, ctx, shipId)
       const name = shipDisplayName(state, ctx, shipId)
       if (r.reason === 'expedition') {
         addLog(

@@ -678,7 +678,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
       remaining -= need
       s.phaseAccMs = 0
       if (s.phase === 'returning') {
-        const moved = unloadCargoToWarehouse(state)
+        const moved = unloadCargoToWarehouse(state, ctx)
         const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
         addLog(
           state,

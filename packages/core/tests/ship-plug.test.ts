@@ -17,12 +17,19 @@
  * 6. **整船回收时插件跟着船回去**（不换黑匣）；
  * 7. **加固结构插件走插件槽也认**（`reinforceChanceOfFitted` 的第二入口）；
  * 8. **随档往返不丢**（舰队侧与残骸侧两处清洗器都登记了才活得过刷新）。
+ *
+ * ⚠ **2026-09-26 追加两条玩家报障**（同一天、同一个"插件"主题）：
+ * 9. **插件装进货仓再卸货，回装备库而不是物品仓库**（`inventory.isModuleCargoId` 原先按 id 前缀判、
+ *    而插件是 `plug-*` ⇒ 被当物品扔进 `warehouse.items` ⇒ 界面里"插件不见了"）；
+ * 10. **装配页插件槽按"本页目标船"读数**（原先读 `state.shipId` ⇒ 看别的船时显示的是主控船那一套）。
  */
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { addModule, countModule } from '../src/equipment'
-import { countWare } from '../src/inventory'
+import { countWare, loadWarehouseToCargoFit, repairMisplacedWarehouseModules, unloadCargoToWarehouse } from '../src/inventory'
 import { shipSellable } from '../src/market'
 import { loseShip, shipStorable } from '../src/shipyard'
 import { pullOneWreck } from '../src/salvaging'
@@ -413,5 +420,48 @@ describe('章鱼人兑换 · 兑换即学会（船长 2026-09-26 令）', () => 
     const { state: back } = loadSaveFile(serializeSaveFile(state, 0))
     expect(back.blueprintStock[bpId], '书照旧留着（船长令：保持原样）').toBe(1)
     expect(back.learnedRecipes, '没有被自动学会').not.toContain(bpId)
+  })
+})
+
+/* ═══════════ 2026-09-26 玩家报障两条（同一天、同一个"插件"主题）═══════════ */
+
+/** 仓根（与 `blackbox-plug-category-20260926.test.ts` 同一套取法：`__dirname` 往上三层） */
+const ROOT = join(__dirname, '..', '..', '..')
+const readSrc = (rel: string): string => readFileSync(join(ROOT, rel), 'utf8')
+
+describe('报障①：插件装进货仓再卸货，回装备库（不许落进物品仓库）', () => {
+  it('分流判据查装备目录：插件（`plug-*`）与普通模块一视同仁', () => {
+    const state = world(411)
+    const plug = PLUG_SHIELD
+    state.moduleBay[plug] = 2
+    // 装船 → 卸货（整仓那条路就是玩家走的那条）
+    expect(loadWarehouseToCargoFit(state, plug, ctx)).toBe(2)
+    expect(unloadCargoToWarehouse(state, ctx)).toBe(2)
+    expect(state.moduleBay[plug], '回装备库').toBe(2)
+    expect(state.warehouse.items[plug], '不许进物品仓库（那里没有入口 ⇒ 看着像丢了）').toBeUndefined()
+    expect(countModule(state, plug)).toBe(2)
+  })
+
+  it('存量修复：已经误落进物品仓库的插件搬回装备库（物品一件不动）', () => {
+    const state = world(412)
+    state.warehouse.items[PLUG_SHIELD] = 3
+    state.warehouse.items['min-a'] = 5
+    expect(repairMisplacedWarehouseModules(state, ctx)).toBe(3)
+    expect(state.moduleBay[PLUG_SHIELD]).toBe(3)
+    expect(state.warehouse.items[PLUG_SHIELD]).toBeUndefined()
+    expect(state.warehouse.items['min-a']).toBe(5)
+  })
+})
+
+describe('报障②：装配页插件槽按「本页目标船」读数（不是主控船）', () => {
+  it('调用点传 `target`、组件签名收 `target`、组件体内不再直读 `state.shipId`', () => {
+    const src = readSrc('apps/desktop/src/renderer/src/pages/FitPage.tsx')
+    // 不传 target ⇒ 组件只能退回读主控船 ⇒ 所有船显示同一套插件（正是报障现象）
+    expect(src, '调用点必须把本页目标船传进插件槽区块').toContain(
+      '<PluginSlotsSection engine={engine} target={effectiveTarget} />',
+    )
+    expect(src, '组件签名必须收 target').toMatch(/function PluginSlotsSection\(\{\s*engine,\s*target\s*\}/)
+    const body = src.slice(src.indexOf('function PluginSlotsSection'))
+    expect(body.slice(0, 1500), '插件槽区块体内不得再直读主控船').not.toContain('state.shipId')
   })
 })

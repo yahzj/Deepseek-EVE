@@ -950,7 +950,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
            * （core 的 `plugs.ts` 连 `removePlug` 都不存在），界面这一块只是**读数**。
            * 槽位上限与已装清单都走 core 单点 `plugInfoOf`；短效果复用装备行同一把尺 `moduleShortEffect`。
            */}
-          <PluginSlotsSection engine={engine} />
+          <PluginSlotsSection engine={engine} target={effectiveTarget} />
           {/* 无人机舱已移到左栏（2026-09-26 船长令：「无人机仓位移动到左半边」） */}
         </div>
           </div>
@@ -1366,12 +1366,15 @@ function AmmoTierSection({
  * - 无插件槽的船（无档船 / 插件槽为 0）**整块不显示**——不留一行"0/0"的空壳。
  *
  * 满槽时在标题行右侧给一句提示（玩家想知道"还能不能再装"）；未满也报「已装 N/M」。
+ *
+ * ⚠ **2026-09-26 玩家报障**：「**而且所有舰船的舰船插件都是同一个**」——真因就是这里原先读的是
+ * `state.shipId`（**主控船**）而不是本页的**目标船** ⇒ 从舰船页点别的船进装配台时，插件槽整块显示的
+ * 是主控船那一套（所有船看起来装的是同一批插件）。现随其它区块一起收 `target`（= `effectiveTarget`）。
  */
-function PluginSlotsSection({ engine }: { engine: PageProps['engine'] }) {
+function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; target: string }) {
   const state = engine.state
   const ctx = engine.ctx
-  const shipId = state.shipId
-  const { slots, installed } = plugInfoOf(state, ctx, shipId)
+  const { slots, installed } = plugInfoOf(state, ctx, target)
   if (slots <= 0) return null
   const full = installed.length >= slots
   return (

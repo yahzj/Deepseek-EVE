@@ -1374,7 +1374,7 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
   const gateSkip = applyActivityGate(state, 'deliver')
   if (gateSkip) return gateSkip
   // 虚拟货物：真实货物卸进仓库（不消耗任何物品；货舱被虚拟货物按体积占用）
-  const unloaded = unloadCargoOfShipToWarehouse(state, state.shipId)
+  const unloaded = unloadCargoOfShipToWarehouse(state, ctx, state.shipId)
   /**
    * **不在母港 ⇒ 先把舰船送回母港**（见上面的口径注）：与 `location.startTransitHome` 的
    * 「换港返航即时到站」同一把尺（不耗时间），只复位位置与残留行程字段。

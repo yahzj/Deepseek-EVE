@@ -21,10 +21,19 @@ import { isBlackboxItem, noteBlackboxObtained } from './blackbox'
 /** 模块装船的占位体积（m³/件，2026-09-09 船长定：装备无体积字段，携带占用 1 m³；不影响装配/战斗） */
 export const MODULE_CARGO_UNIT_M3 = 1
 
-/** 模块 id 前缀判定（数据规范：modules.ts 全部 id 以 'mod-' 开头，与物品 id 空间不冲突；
- *  用于货仓装卸分流——模块卸回 moduleBay，其余回 warehouse.items） */
-export function isModuleCargoId(id: string): boolean {
-  return id.startsWith('mod-')
+/**
+ * **这个货仓 id 是不是"装备"**（货仓装卸分流的**唯一判据**）。
+ *
+ * ⚠ **2026-09-26 玩家报障**：「**玩家将插件放到货仓再卸进仓库后插件不见了**」——真因就是本函数原先写的是
+ * **id 前缀判定**（`id.startsWith('mod-')`）：舰船插件的 id 是 `plug-shield-plate` 一类
+ * （见 `data/plugs.ts` 的 `PLUG_IDS`），**不以 `mod-` 开头** ⇒ 卸货时被分流进 `warehouse.items`
+ * （物品仓库），而物品页只列**物品目录**（`ctx.items`）里的东西 ⇒ 一个模块 id 躺在物品仓库里
+ * **哪个界面都看不见**（东西其实还在存档里，只是没有任何入口；`countWare` 那类材料口径也照数它）。
+ *
+ * 现改为**查装备目录**（`ctx.modules`）——**不看 id 命名**，日后任何新 id 空间的装备自动命中。
+ */
+export function isModuleCargoId(ctx: SimContext, id: string): boolean {
+  return ctx.modules.has(id)
 }
 
 /* ───────── 未上线闸门（施工期：给玩家看的目录 vs 引擎全目录） ───────── */
@@ -197,10 +206,12 @@ export function freeCargoM3(state: GameState, ctx: SimContext): number {
 /* ───────── 跨仓搬运（装卸） ───────── */
 
 /**
- * 指定船货仓 → 仓库（卸货分流：模块回装备库 moduleBay、其余回物品仓库 warehouse.items）。
+ * 指定船货仓 → 仓库（卸货分流：**装备回 `moduleBay`**、其余回物品仓库 `warehouse.items`）。
  * 返回搬入的单位数。（T4 换船善后：旧船自动返航到港后整仓卸入；写操作只经它，防"换船洗仓"。）
+ *
+ * ⚠ 分流判据 = {@link isModuleCargoId}（**查装备目录**，不是 id 前缀）——2026-09-26 插件丢失报障的落点。
  */
-export function unloadCargoOfShipToWarehouse(state: GameState, shipId: string): number {
+export function unloadCargoOfShipToWarehouse(state: GameState, ctx: SimContext, shipId: string): number {
   // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
   const lock = shipLockedReason(state, shipId, '从它货仓卸货')
   if (lock) return 0
@@ -208,7 +219,7 @@ export function unloadCargoOfShipToWarehouse(state: GameState, shipId: string): 
   let moved = 0
   for (const [id, units] of Object.entries(cargo)) {
     if (units === undefined || units <= 0) continue
-    if (isModuleCargoId(id)) state.moduleBay[id] = (state.moduleBay[id] ?? 0) + units
+    if (isModuleCargoId(ctx, id)) state.moduleBay[id] = (state.moduleBay[id] ?? 0) + units
     else state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + units
     delete cargo[id]
     moved += units
@@ -216,17 +227,38 @@ export function unloadCargoOfShipToWarehouse(state: GameState, shipId: string): 
   return moved
 }
 
-/** 货仓 → 仓库（卸货分流：模块回 moduleBay、其余回 warehouse.items）；返回搬入仓库的单位数 */
-export function unloadCargoToWarehouse(state: GameState, itemId?: string): number {
+/** 货仓 → 仓库（卸货分流：装备回 moduleBay、其余回 warehouse.items）；返回搬入仓库的单位数 */
+export function unloadCargoToWarehouse(state: GameState, ctx: SimContext, itemId?: string): number {
   const cargo = cargoItemsOf(state)
   const targetIds = itemId ? [itemId] : Object.keys(cargo)
   let moved = 0
   for (const id of targetIds) {
     const units = cargo[id]
     if (units === undefined || units <= 0) continue
-    if (isModuleCargoId(id)) state.moduleBay[id] = (state.moduleBay[id] ?? 0) + units
+    if (isModuleCargoId(ctx, id)) state.moduleBay[id] = (state.moduleBay[id] ?? 0) + units
     else state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + units
     delete cargo[id]
+    moved += units
+  }
+  return moved
+}
+
+/**
+ * **把"误落进物品仓库的装备"搬回装备库**（**2026-09-26 玩家报障的存量修复**；每次读档跑一次、幂等）。
+ *
+ * 为什么需要：插件丢失那条链（`unloadCargo*` 的前缀判定）已经把一部分玩家的插件写进了
+ * `warehouse.items` ——修好分流只防未来，**存量那份得搬回来**（东西一直在存档里，只是没有入口）。
+ * 判据同样是"查装备目录"，所以它只搬**确实在装备目录里**的 id，物品一件不动。
+ *
+ * @returns 搬回去的件数（>0 时调用方可记日志）
+ */
+export function repairMisplacedWarehouseModules(state: GameState, ctx: SimContext): number {
+  let moved = 0
+  for (const [id, units] of Object.entries(state.warehouse.items)) {
+    if (units === undefined || units <= 0) continue
+    if (!isModuleCargoId(ctx, id)) continue
+    state.moduleBay[id] = (state.moduleBay[id] ?? 0) + units
+    delete state.warehouse.items[id]
     moved += units
   }
   return moved

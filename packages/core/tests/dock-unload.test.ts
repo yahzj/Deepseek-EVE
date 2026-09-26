@@ -57,10 +57,10 @@ describe('进港自动卸货', () => {
   })
 
   it('指定船整仓卸货工具：只动该船货仓', () => {
-    const { state } = armedHome()
+    const { state, ctx } = armedHome()
     const other = Object.keys(state.fleet).find((id) => id !== state.shipId)!
     state.fleet[other]!.cargo['ore-b'] = 12
-    const moved = unloadCargoOfShipToWarehouse(state, other)
+    const moved = unloadCargoOfShipToWarehouse(state, ctx, other)
     expect(moved).toBe(12)
     expect(cargoOfShip(state, other)['ore-b'] ?? 0).toBe(0)
     expect(countWare(state, 'ore-b')).toBe(12)

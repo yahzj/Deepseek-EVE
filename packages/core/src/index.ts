@@ -439,6 +439,9 @@ export {
   freeCargoM3Of,
   unloadCargoToWarehouse,
   unloadCargoOfShipToWarehouse,
+  // 2026-09-26 玩家报障：误落进物品仓库的装备（插件装货仓再卸货）搬回装备库（读档时跑、幂等）
+  isModuleCargoId,
+  repairMisplacedWarehouseModules,
   loadWarehouseToCargo,
   loadWarehouseToCargoFit,
   // 2026-09-13：未上线闸门（给玩家看的物品目录 vs 引擎全目录）

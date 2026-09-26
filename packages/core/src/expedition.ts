@@ -1318,7 +1318,7 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
     const targetGal = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId)?.galaxyId ?? null : null
     const base = targetGal !== null ? returnBaseGalaxy(state, ctx, targetGal) : HOME_GALAXY_ID
     landAtReturnBase(state, ctx, base)
-    const moved = unloadCargoOfShipToWarehouse(state, state.shipId) // 进港自动卸货（战利品/残货）
+    const moved = unloadCargoOfShipToWarehouse(state, ctx, state.shipId) // 进港自动卸货（战利品/残货）
     exp.active = false
     exp.anomalyId = null
     exp.battle = null
@@ -1376,7 +1376,7 @@ export function recallExpedition(state: GameState, ctx: SimContext): CommandResu
   exp.eventFired = false
   state.awayGalaxy = null
   // 2026-09-08：召回 = 立即回到母港停靠——进港自动整仓卸货
-  const moved = unloadCargoOfShipToWarehouse(state, state.shipId)
+  const moved = unloadCargoOfShipToWarehouse(state, ctx, state.shipId)
   addLog(
     state,
     'fleet',
