@@ -72,6 +72,7 @@ import { ActivityScreen, activityKindOf } from './ui/ActivityScreen'
 import { MoneyFit } from './ui/MoneyFit'
 import { AppShell } from './ui/AppShell'
 import type { LayoutKind } from './ui/AppShell'
+import { setSessionPick, sessionPick } from './ui/sessionView'
 import { cmdText, logText, tr } from './i18n/locale'
 
 /** 左侧导航项（出港 = 星图主入口，为首并放大描边；船长 2026-09-05：文案「点击 出港」+强调配色避免被误认作栏目装饰） */
@@ -921,7 +922,7 @@ export function App({ engine }: { engine: GameEngine }) {
   }, [engine, page])
   // 星图页功能区（页内标签状态；常驻 App，跨页保留；默认「星图·远征」= 玩家查看大地图的主入口）
   const [mapTab, setMapTab] = useState<MapTab>('star')
-  const [shipTab, setShipTab] = useState<ShipTab>('fleet')
+  const [shipTab, setShipTab] = useState<ShipTab>(() => (sessionPick('ship.tab') as ShipTab | null) ?? 'fleet')
   // 舰船页"去市场"→ 市场页聚焦该船订单（seq 递增触发一次）
   const [mktFocus, setMktFocus] = useState<{ key: string; seq: number } | null>(null)
   // 舰船页卡片"装配"→ 装配页默认目标船（船长 2026-09-05：入口在舰队卡片；离开装配页即清，再次直进默认当前驾驶船）
@@ -1642,6 +1643,8 @@ async function applyLayoutAndQuit(): Promise<void> {
   }
   const changeShipTab = (t: ShipTab): void => {
     setShipTab(t)
+    // 会话级记忆（2026-09-26 船长令）：切走再回来仍是这一签；不入存档、不写 localStorage
+    setSessionPick('ship.tab', t)
   }
   /**
    * **序章演出结束 ⇒ 落到任务中心「重要任务」**（原收尾演出的落点，2026-09-17 教程重做后由"演出一结束"承接）：
@@ -1651,11 +1654,9 @@ async function applyLayoutAndQuit(): Promise<void> {
   useEffect(() => {
     const s = engine.state.onboarding.step
     if (prevObStep.current === ONB_AWAKEN && s !== ONB_AWAKEN) {
-      try {
-        localStorage.setItem('whale-idle:task-tab', 'important')
-      } catch {
-        // 忽略
-      }
+      // 序章收尾落「任务中心 · 重要任务」：写会话级记忆（原写 localStorage 的跨启动记忆，
+      // 2026-09-26 船长令改会话制 ⇒ 与任务面板自己的读写同一把尺，见 ui/sessionView.ts）
+      setSessionPick('task.tab', 'important')
       setPage('task')
     }
     prevObStep.current = s

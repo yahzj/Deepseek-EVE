@@ -35,6 +35,7 @@ import type { AiCoreType, FleetShipState, ShipRole } from '@whale/core'
 import { durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ShipHover } from '../ui/shipInfo'
+import { useSessionScroll } from '../ui/sessionView'
 import { ShipSprite } from '../ui/ShipSprite'
 import { AiTaskBar } from '../ui/aiProgress'
 import { AiWorkFx } from '../ui/aiWorkFx'
@@ -176,6 +177,14 @@ export function ShipPage({
   // 判定取舰队列表容器的**实测宽**（clientWidth 已扣竖向滚动条），不用窗口宽猜：
   // 卡片高由右侧信息列决定（舰影更矮），故舰影显示/隐藏不会反过来改变容器宽，无振荡。
   const fleetScrollRef = useRef<HTMLDivElement | null>(null)
+  /**
+   * **舰队列表滚动位置 · 会话级记忆**（2026-09-26 船长令：「记住…滚动条位置」，只做主要列表那一条）。
+   * 与上面那支量宽 ref **共用同一个 DOM 节点**（`useSessionScroll` 是"接手"ref、不新建）。
+   */
+  useSessionScroll('ship.fleet.scroll', fleetScrollRef)
+  /** 舰船仓库签的主列表滚动位置（同款记忆；仓库签自带一支容器） */
+  const storeScrollRef = useRef<HTMLDivElement | null>(null)
+  useSessionScroll('ship.store.scroll', storeScrollRef)
   const [fleetArt, setFleetArt] = useState(false)
   useLayoutEffect(() => {
     const el = fleetScrollRef.current
@@ -804,7 +813,7 @@ export function ShipPage({
               </div>
             </div>
           </div>
-          <div className="app-fleet-scroll">
+          <div className="app-fleet-scroll" ref={storeScrollRef}>
             {storeShown.length === 0 ? (
               <div className="app-dim app-note">
                 {storeAll.length === 0

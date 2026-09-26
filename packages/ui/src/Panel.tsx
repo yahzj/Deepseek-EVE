@@ -5,7 +5,7 @@
  * hint（2026-09-13 船长）：标题文字**后面**挂一个提示标记（如圆形感叹号）——常驻说明不再占版面，
  *   悬停/点一下才看。传入的是节点（本包不认识渲染层组件，故不写死具体图标）。
  */
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 
 interface PanelProps {
   /** 面板标题 */
@@ -23,9 +23,16 @@ interface PanelProps {
    * 渲染在 body **之后**、**不随 body 滚动** ⇒ 常驻面板底部；不传 ⇒ 与旧版逐像素一致。
    */
   footer?: ReactNode
+  /**
+   * **滚动体 ref 出口**（2026-09-26 船长令「记住…滚动条位置」）：把 `div.wui-panel-body` 交给调用方。
+   * 为什么要有它：`overflow: auto` 在本包写死在 body 上，调用方从外面拿不到这支滚动容器 ——
+   * 技能页/工业页的"主列表"正是它（页面里那几支 `.app-*` 列表**自己不滚**）。
+   * 不传 ⇒ 与旧版逐像素一致（不改任何结构、不加任何属性）。
+   */
+  bodyRef?: Ref<HTMLDivElement>
 }
 
-export function Panel({ title, hint, right, children, className, footer }: PanelProps) {
+export function Panel({ title, hint, right, children, className, footer, bodyRef }: PanelProps) {
   return (
     <section className={`wui-panel${className ? ` ${className}` : ''}`}>
       <header className="wui-panel-head">
@@ -35,7 +42,7 @@ export function Panel({ title, hint, right, children, className, footer }: Panel
         </h2>
         {right != null ? <div className="wui-panel-right">{right}</div> : null}
       </header>
-      <div className="wui-panel-body">{children}</div>
+      <div className="wui-panel-body" ref={bodyRef}>{children}</div>
       {footer != null ? <div className="wui-panel-foot">{footer}</div> : null}
     </section>
   )
