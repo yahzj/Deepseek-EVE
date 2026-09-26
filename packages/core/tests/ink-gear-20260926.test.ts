@@ -245,6 +245,25 @@ describe('敌方「墨潮干扰阵列」（舰级字段迁成具名挂载件）'
 })
 
 describe('墨潮重袭无人机（船长给定值）＋ H 族残骸回收打开', () => {
+  it('说明文案与属性一致（2026-09-26 报障「描述和属性对应不上」的回归守卫）', () => {
+    const d = ctx.items.get('drone-ink-heavy')!
+    const std = ctx.items.get('drone-heavy')! // 制式攻坚机（对照）
+    const total = (x: typeof d): number =>
+      (x.defense?.shieldHp ?? 0) + (x.defense?.armorHp ?? 0) + (x.defense?.hullHp ?? 0)
+    // 文案里的事实断言必须与数据一致：① 单发比制式重 ② 三层血更厚（**不是"最薄"**）③ 闪避最低
+    expect(d.dmg!).toBeGreaterThan(std.dmg!) // 16 > 12
+    expect(total(d)).toBeGreaterThan(total(std)) // 220 > 194 ⇒ 文案不得再写「机体最薄」
+    expect(d.defense!.evasion!).toBeLessThan(std.defense!.evasion!) // 0.05 < 0.1
+    const all = [...ctx.items.values()].filter((i) => i.kind === 'drone' && i.defense)
+    const minEvasion = Math.min(...all.map((i) => i.defense!.evasion ?? 1))
+    expect(d.defense!.evasion, '闪避确实是全机型最低').toBe(minEvasion)
+    const desc = d.description ?? ''
+    expect(desc, '文案不得写"最薄"（数据上它比制式更厚）').not.toContain('最薄')
+    expect(desc, '文案应说清真正的短板 = 闪避').toContain('闪避')
+    console.log(`  [读数] 描述：${desc}`)
+    console.log(`  [读数] 三层血 墨潮 ${total(d)} vs 制式攻坚 ${total(std)} · 闪避 ${d.defense!.evasion}（全机型最低 ${minEvasion}）`)
+  })
+
   it('数值逐项：单发 16 动能 · 血 40/80/100 · 射程 4500 · 闪避 0.05 · CPU 13 · 攻坚机', () => {
     const d = ctx.items.get('drone-ink-heavy')!
     expect(d.damageType).toBe('kinetic')

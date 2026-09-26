@@ -440,7 +440,7 @@ export const EN_ITEMS: EnTable = {
   'drone-wh-c-heavy': { name: 'Hiveguard Siege Drone', description: 'A living siege drone of the hive: spore-burst warheads crack armor; its three-layer HP is thicker than a standard siege drone and leans to carapace, and its armor and structure resistances are tougher — at the cost of being clumsier.' },
   'drone-wh-e-sentry': { name: 'Construct Sentry Drone', description: 'A long-needle sentry the megastructure assembles itself: kinetic needles break shields, with longer reach than a standard sentry, better accuracy, slower falloff and a slightly thicker frame — it shoots the farthest of the swarm.' },
   // H 族（墨潮帮）专属机型（2026-09-26 船长定：重袭机 = 攻坚机）
-  'drone-ink-heavy': { name: 'Ink Tide Striker Drone', description: 'The Ink Tide siege drone: heavy kinetic rounds for close-range suppression, high accuracy and the thinnest airframe of them all — one hit and it drops.' },
+  'drone-ink-heavy': { name: 'Ink Tide Striker Drone', description: 'The Ink Tide siege drone: heavy kinetic rounds for close-range suppression. A heavier single shot and thicker three-layer HP than the standard siege drone, at the cost of the lowest evasion of any drone — once it is caught, it cannot dodge.' },
   // 修理组件
   'repairkit-civ': { name: 'Civilian Repair Kit', description: 'Nano repair kit: a base 5 HP restored (structure and armor each scale with this value × capacity bonus × Quick Hull Repair — thicker plates and skills restore more). For emergencies in the field or before docking.' },
   // 零件（2026-09-20 零件体系：基础 7 直接可造 / 高级 7 需蓝图）
