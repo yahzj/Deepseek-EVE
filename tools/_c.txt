@@ -1,0 +1,12 @@
+revert(industry): 删掉组装机卡头的「缺料 N 项」徽标（船长令）
+
+船长原话（照抄）：「组装机的缺料可以不显示，删除」。
+
+- Industry.tsx：删掉卡头那枚缺料徽标（上一批"优2"加的那个），卡头回到只显示既有状态徽标
+- l10n/table.ts：`ui.IndustryPage.130`（缺料 {n} 项）随之删除（只有那枚徽标用它）
+- ⚠ **`short` 变量保留**：它还喂着别处——底部按钮的可用性（manualNote / AI 工位两处 disabled）
+  与 `feedTxt`（缺料的完整句子），删掉会连按钮判定一起弄坏
+- 材料行上的 `is-short` 红标**不动**（那是既有的逐行缺口标注，不是本次新增）
+
+验证：typecheck 四包 0 错 · core 235 文件 / 2577 用例全绿 · content:check ✅ ·
+l10n:check ✅（无死引用）· ui:rot-check ✅ · 桌面 build ✅（assets/index-BAMSxYKn.js）

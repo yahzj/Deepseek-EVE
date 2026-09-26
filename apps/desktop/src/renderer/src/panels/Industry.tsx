@@ -859,22 +859,6 @@ export const BlueprintCard = memo(function BlueprintCard({
           ) : (
             <span className="app-chip">{kindLabelText(kindLabel)}</span>
           )}
-          {/**
-           * **缺料徽标**（**2026-09-26 船长令**：「优化工业界面」→ 采纳"优2"）。
-           *
-           * 原先"这张造不了"只体现在**底部按钮置灰**上：171 张卡的列表里扫一眼看不出来，
-           * 得逐张把视线挪到卡底。现在卡头补一枚小徽标写清**缺几项料**（悬停给完整的缺料清单），
-           * ⇒ 卡头就能判"能不能开"。
-           *
-           * ⚠ 两条口径：① 只在**没在跑**的时候标（制造中的线本就靠"现有量只影响加开"，标红会误读成故障，
-           * 与 `app-bp-mat` 的 `is-short` 同款口径）；② 徽标**不占新行**（挂在既有 `.app-belt-head-right` 里，
-           * 与其它状态徽标同排），窄窗时随既有 `flex-wrap` 折行，不改版式几何。
-           */}
-          {!running && short.length > 0 ? (
-            <span className="app-chip is-exotic" title={short.join(tr('ui.MatterTechTab.017'))}>
-              {tr('ui.IndustryPage.130', { n: short.length })}
-            </span>
-          ) : null}
         </span>
       </div>
       <div className="app-belt-desc">{description}</div>

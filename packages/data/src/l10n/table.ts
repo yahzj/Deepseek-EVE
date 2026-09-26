@@ -3266,7 +3266,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.IndustryPage.127": { zh: "可造：", en: "Buildable:" },
   "ui.IndustryPage.128": { zh: "只列出材料齐备、现在就能开工的图纸", en: "Show only blueprints whose materials are ready to start now" },
   "ui.IndustryPage.129": { zh: "仅看可造", en: "Buildable only" },
-  "ui.IndustryPage.130": { zh: "缺料 {n} 项", en: "{n} materials short" },
   "ui.IndustryPage.131": { zh: "去书架", en: "Open shelf" },
   "ui.IndustryPage.132": { zh: "切到蓝图书架并定位这一本", en: "Switch to the blueprint shelf and locate this book" },
   "ui.IndustryPage.126": { zh: "前往声望商店兑换", en: "Exchange at the standing shop" },
