@@ -51,6 +51,8 @@ import { foeBriefLinesOfShip } from '../ui/foeBrief'
 import { tr } from '../i18n/locale'
 import { kindTextOfItem, shipTierText, skillGroupText, slotText } from '../ui/labelsText'
 import { kindText, shipRoleText } from '../ui/labelsText'
+// 2026-09-26 船长令：舰船图鉴的**图标模式改画舰船 SVG 形象**（与舰队页/装配页/星图同一张资产表）
+import { ShipSprite } from '../ui/ShipSprite'
 
 /**
  * 宽类型标签索引（**详情窗数据来自 raw，键是 string**）。
@@ -757,6 +759,14 @@ interface GridCell {
   rarity?: number
   /** **势力图鉴专用**：该卡的族字母（`faction` 页的卡片用它分组/排序，别的页恒缺省） */
   faction?: string
+  /**
+   * **图标模式改画舰船 SVGer 形象**（**2026-09-26 船长令**：「**手册的舰船图鉴中，图标模式舰船的
+   * 图标使用舰船的SVG形象**」）——只有舰船图鉴的格子带本字段；带它时 `IconGrid` 走
+   * `ShipSpriteShape`（与舰队页/装配页/星图同一个资产表 `SHIP_ART`），不再画类别徽记。
+   */
+  shipId?: string
+  /** 同上：画舰影时的回退族别（资产表未命中时按它取剪影） */
+  shipRole?: ShipRole
 }
 
 /** 一个分组（仓库同款小节）：分类名 + 数量 + 卡片 */
@@ -806,7 +816,20 @@ function IconGrid({ cells, onPick }: { cells: GridCell[]; onPick: (c: GridCell) 
         return (
           <button key={c.key} className="app-hand-cell" onClick={() => onPick(c)} style={{ '--tone': tone } as React.CSSProperties}>
             <span className="app-hand-cell-icon">
-              <Glyph name={c.glyph} size={30} color={tone} />
+              {/**
+               * **舰船图鉴：图标画舰船 SVG 形象**（**2026-09-26 船长令**：「**手册的舰船图鉴中，
+               * 图标模式舰船的图标使用舰船的SVG形象**」）。
+               * 走 **`ShipSprite`**（与舰队页 / 装配页 / 星图**同一张资产表** `SHIP_ART`；
+               * 未命中的舰按 `role` 取族剪影）——不再画类别徽记。
+               * ⚠ 用带 `<svg>` 外壳的 `ShipSprite`，**不是** `ShipSpriteShape`（后者只输出 `<g>`，
+               * 塞进这个 `<span>` 里没有画布 ⇒ 实测格宽 0、什么都不显示）。
+               * 其余图鉴（物品/装备/蓝图/技能/势力）**保持原样**走 `Glyph`。
+               */}
+              {c.shipId !== undefined ? (
+                <ShipSprite shipId={c.shipId} role={c.shipRole} size={64} engine={false} />
+              ) : (
+                <Glyph name={c.glyph} size={30} color={tone} />
+              )}
             </span>
             {/* 稀有度小标签（2026-09-20 船长）：与仓库/货仓图标模式同一语言 */}
             {c.rarity !== undefined ? (
@@ -1160,6 +1183,9 @@ export function Handbook({
       sub: `${roleName(cls)} · ${shipTierText(ship.tier)} · ${ship.cargoM3.toLocaleString('zh-CN')} m³`,
       raw: ship as unknown as RawData,
       rarity: itemRarityTierOf(ship.id),
+      // 图标模式画舰船 SVG 形象（船长 2026-09-26 令）——资产表命中走独立形，未命中按族别剪影
+      shipId: ship.id,
+      shipRole: ship.role,
     }
   })
   const bpCells: GridCell[] = [
