@@ -850,14 +850,17 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    * 造船厂筛选行与读数（**2026-09-22 补**：船长报障「筛选选项的文案和标签页的文案还有遗漏」）——
    * 这三行原先写死中文（英文界面下整行漏中文）；「全部」档与读数后缀复用既有条目
    * （`ui.IndustryPage.001` / `ui.IndustryPage.108` / `ui.Industry.127`），不另造同串条目。
+   *
+   * ⚠ `ui.Shipyard.003 / 004` 已于 2026-09-26 **删除**（船长令：「将造船的一次性蓝图筛选移动到学会的
+   * 筛选内，并将学会的筛选改名为蓝图。删除原先的图纸筛选」）——它们分别是「学会：」与「图纸：」两行的前缀，
+   * 那两行现为**一行**且改名「蓝图：」⇒ 前缀复用组装机那条 `ui.Industry.136`（同串不另造条目）；
+   * 新增的「类别：」行复用舰队页的 `ui.ShipPage.004`。全仓再无引用。
    */
   "ui.Shipyard.002": { zh: "仓库＋机库", en: "Warehouse + Hangar" },
-  "ui.Shipyard.003": { zh: "学会：", en: "Learned:" },
-  "ui.Shipyard.004": { zh: "图纸：", en: "Blueprint:" },
   "ui.Shipyard.005": { zh: "制造线 {p1} 条 · 舰船 {p2} · 已学会 {p3}", en: "{p1} production lines · {p2} ships · {p3} learned" },
   "ui.Shipyard.006": {
-    zh: "该筛选下暂无舰船蓝图——换个分类、或把「全部子类 / 全部图纸」点回来看看。",
-    en: "No ship blueprints match this filter — try another category, or switch the subtype / blueprint filters back to All.",
+    zh: "该筛选下暂无舰船蓝图——换个类别或子类，或把筛选点回「全部」看看。",
+    en: "No ship blueprints match this filter — try another category or subtype, or switch the filters back to All.",
   },
   "ui.ActivityBar.004": { zh: "取消", en: "Cancel" },
   "ui.ActivityBar.005": { zh: "停止", en: "Stop" },
@@ -2995,7 +2998,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Industry.090": { zh: "已学会的配方才能开工；你亲自开限 1 条、其余每条由一枚 AI 核心驱动（同一蓝图可多条、不同蓝图并行）。", en: "Only learned recipes can start jobs; you can run one line by hand, and every other line needs its own AI core (several lines of the same blueprint are fine, and different blueprints run in parallel)." },
   "ui.Industry.091": { zh: "制造线", en: "Production line" },
   "ui.Industry.092": { zh: "条 · 装备", en: "lines · modules" },
-  "ui.Industry.093": { zh: "该筛选下暂无蓝图——换个分类、或把「全部子类 / 全部图纸」点回来看看。", en: "No blueprints under this filter — pick another category, or switch back to All subcategories / All blueprints." },
+  "ui.Industry.093": { zh: "该筛选下暂无蓝图——换个门类或子类，或把筛选点回「全部」看看。", en: "No blueprints under this filter — try another category or subtype, or switch the filters back to All." },
   "ui.Industry.094": { zh: "这一类书架里没有书，也没有可逆向的碎片。", en: "No books or redeemable fragments in this category on the shelf." },
   "ui.Industry.095": { zh: "已学习该配方：可到组装机无限次制造。", en: "Recipe learned: the assembler can build it any number of times." },
   "ui.Industry.096": { zh: "该蓝图不在市场流通目录（无法出售）。", en: "That blueprint is not in the market catalog (it cannot be sold)." },
@@ -3038,7 +3041,13 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Industry.133": { zh: "开关操作失败", en: "Could not toggle it" },
   "ui.Industry.134": { zh: "门类：", en: "Category:" },
   "ui.Industry.135": { zh: "图纸：", en: "Blueprint:" },
-  "ui.Industry.136": { zh: "学会：", en: "Learn:" },
+  /**
+   * ⚠ **2026-09-26 改名**（船长令：「将造船的一次性蓝图筛选移动到学会的筛选内，**并将学会的筛选改名为蓝图**。
+   * 删除原先的图纸筛选」）——这条是组装机第一行「学会：」的前缀，该行现改名「蓝图：」并吃下原第三行
+   * 「图纸」（一次性）的那一轴 ⇒ **id 不变、只改文案**（与 2026-09-16 技能改名同一口径）。
+   * 隔壁「图纸：」那条（`ui.Industry.135`）仍由蓝图书架与章鱼人兑换窗口的「图纸」行使用。
+   */
+  "ui.Industry.136": { zh: "蓝图：", en: "Blueprint:" },
   "ui.Industry.137": { zh: "· 剩余约 {p1}", en: " · about {p1} left" },
   "ui.Industry.138": { zh: "到下方组装机点「市场求购蓝图书」→ 跳到市场的该蓝图行情详情，在那里自己下买单；书到架后回到这里点「学习」即可永久学会配方（重复书只能出售）。一次性图纸用掉即无。", en: "At the assembly unit below, click “Buy the blueprint on the market” → jump to that blueprint's market page and place a buy order yourself; once the book reaches the shelf, come back and click “Learn” to master the recipe for good (a duplicate book can only be sold). A single-use blueprint is gone once used." },
   "ui.Industry.139": { zh: "跳到造船厂并定位这张图纸的卡片（那里才能开工建造）", en: "Jump to the shipyard and locate this blueprint's card (only there can construction start)" },
@@ -3268,6 +3277,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.IndustryPage.129": { zh: "仅看可造", en: "Buildable only" },
   "ui.IndustryPage.131": { zh: "去书架", en: "Open shelf" },
   "ui.IndustryPage.132": { zh: "切到蓝图书架并定位这一本", en: "Switch to the blueprint shelf and locate this book" },
+  "ui.IndustryPage.133": { zh: "未学会的一次性图纸", en: "Unlearned one-use blueprints" },
+  "ui.IndustryPage.134": { zh: "已学会的一次性图纸", en: "Learned one-use blueprints" },
   "ui.IndustryPage.126": { zh: "前往声望商店兑换", en: "Exchange at the standing shop" },
   "ui.Expedition.441": { zh: "章鱼人兑换", en: "Octopus Exchange" },
   "ui.Expedition.442": { zh: "前往声望商店兑换", en: "Exchange at the standing shop" },

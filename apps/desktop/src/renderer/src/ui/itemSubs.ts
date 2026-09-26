@@ -721,15 +721,22 @@ export const BLUEPRINT_USE_TABS: Array<{ key: BlueprintUseKey; label: string; id
 ]
 
 /**
- * 组装机「**学会**」维度（并列属性行，**放最上一行**——船长 2026-09-19：
- * 「组装机我想添加一个过滤已有蓝图的筛选」→ 追问后定「放第一行」）：
- * 全部 / 已学会 / 未学会。判据 = `ownsBlueprint(state, id)`（core 单点）。
+ * 组装机「**蓝图**」维度（**放最上一行**——船长 2026-09-19：「组装机我想添加一个过滤已有蓝图的筛选」
+ * ⇒ 追问后定「放第一行」；**2026-09-26 船长令改名并扩容**：「**将造船的一次性蓝图筛选移动到学会的筛选内，
+ * 并将学会的筛选改名为蓝图。删除原先的图纸筛选**」）。
+ *
+ * 两轴合成一维（各档都是一条独立按钮，不再级联）：
+ * - 学会那一轴：已学会 / 未学会 —— 判据 `ownsBlueprint(state, id)`（core 单点）；
+ * - 一次性那一轴：`singleUse`（原第三行「图纸」筛选的"一次性蓝图"）。
  * ⚠ 蓝图书架**不加**这一维：书架列的是"还没学的书 ＋ 可逆向的碎片"，按定义都未学会 ⇒ 加了恒空。
  */
-export type BlueprintLearnKey = 'learned' | 'unlearned' | typeof SUB_ALL
+export type BlueprintLearnKey = 'learned' | 'unlearned' | 'learned-single' | 'unlearned-single' | typeof SUB_ALL
 export const BLUEPRINT_LEARN_TABS: Array<{ key: BlueprintLearnKey; label: string; id: string }> = [
   { key: SUB_ALL, label: '全部', id: 'ui.IndustryPage.001' },
   { key: 'learned', label: '已学会', id: 'ui.itemSubs.031' },
   { key: 'unlearned', label: '未学会', id: 'ui.itemSubs.032' },
+  // 2026-09-26：原三级「图纸」行的「一次性蓝图」并入本行（船长令）
+  { key: 'unlearned-single', label: '未学会的一次性图纸', id: 'ui.IndustryPage.133' },
+  { key: 'learned-single', label: '已学会的一次性图纸', id: 'ui.IndustryPage.134' },
 ]
 // l10n-keep-end

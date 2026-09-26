@@ -1274,8 +1274,16 @@ export function ManufacturingPanel({
   const [tab, setTab] = useState<ManuTabKey>('all')
   const { t } = useL10n()
   /**
-   * **「学会」维度**（并列属性行，**放最上一行**——船长 2026-09-19：「组装机我想添加一个过滤已有蓝图的筛选」
-   * ⇒ 追问后定「放第一行」）：全部 / 已学会 / 未学会。它与门类无关、与搜索取「与」，故不参与级联重置。
+   * **「蓝图」维度**（原「学会」行，**2026-09-26 船长令**：「**将造船的一次性蓝图筛选移动到学会的筛选内，
+   * 并将学会的筛选改名为蓝图。删除原先的图纸筛选**」）。
+   *
+   * 口径变化：原先拆成两行——第一行「学会：全部/已学会/未学会」、第三行「图纸：全部/永久/一次性」
+   * （第三行还**只在选了子类后才出现**）。现在合并成一个维度，键仍是 `BlueprintLearnKey` 的两轴组合：
+   * - `learned` / `unlearned`：学会那一轴（原样）；
+   * - `learned-single` / `unlearned-single`：**一次性图纸**那一轴并入（原来在第三行选的"一次性"）；
+   * - `SUB_ALL`：全部。
+   * ⚠ 合并后**不再依赖子类**（原第三行"选完子类才出现"的级联随之取消）⇒ 少一次点击、少一行。
+   * ⚠ 落款文案见 `BLUEPRINT_LEARN_TABS`（那一行已改名「蓝图」）。
    */
   const [learn, setLearn] = useState<BlueprintLearnKey>(SUB_ALL)
   /**
@@ -1287,8 +1295,11 @@ export function ManufacturingPanel({
   const kq = kw.trim().toLowerCase()
   // 二级子筛选（2026-09-11 船长）；切一级标签即回「全部子类」（与市场页 changeKind 同款口径）
   const [sub, setSub] = useState<string>(SUB_ALL)
-  /** 第三级筛选：一次性/永久（**只在选了子类后显示**；见 `BLUEPRINT_USE_TABS` 的注释） */
-  const [useKind, setUseKind] = useState<BlueprintUseKey>(SUB_ALL)
+  /**
+   * ⚠ **2026-09-26：第三级「图纸」筛选（一次性/永久）整维已删除**（船长令：「**删除原先的图纸筛选**」）——
+   * "一次性/永久"那一轴并进了上面的「蓝图」维度（`learn`），本维连同它的状态与现算表 `usesShown` 一起退场
+   * （原注释留档：那一维**只在选了子类后才出现**、且只剩「全部」一项时整行隐藏）。
+   */
   /**
    * **「仅看可造」开关**（**2026-09-26 船长令**：优化工业界面）。
    * 与门类/子类那些"选完就收窄"的维度不同：它是**并列的布尔开关**（与「学会」同为属性行），
@@ -1303,19 +1314,18 @@ export function ManufacturingPanel({
     if (!focusBlueprintId) return
     setTab('all')
     setSub(SUB_ALL)
-    setUseKind(SUB_ALL)
+    setLearn(SUB_ALL) // 「蓝图」维度也要复位：否则目标卡可能正被「已学会/未学会…」那四档筛掉
   }, [focusBlueprintId])
 
   /**
    * **「前往章鱼人兑换」之后落到「舰船插件」档**（**2026-09-26 船长令**：跳转要"跳转到舰船插件的
    * 筛选内"）。触发信号 = `plugExchangeFocus`（自增序号，来源两处：组装机那张卡的按钮、首匣通讯的
-   * 「前往」）——**只切档、不复位二级/三级**（那一档本来就没有子筛选）。
+   * 「前往」）——**只切档、不复位二级**（那一档本来就没有子筛选）。
    */
   useEffect(() => {
     if (!plugExchangeFocus) return
     setTab('plug')
     setSub(SUB_ALL)
-    setUseKind(SUB_ALL)
   }, [plugExchangeFocus])
 
   /**
@@ -1511,14 +1521,10 @@ export function ManufacturingPanel({
    */
   const subOptions = presentSubs(manuSubsOf(tab), (key) => items.some((it) => inTab(it.kindLabel) && it.subKey === key))
   /**
-   * **三级「图纸」维度（一次性 / 永久）：同样只列真有内容的档**——船长点名的例子：
-   * 「组装机-零件-高级零件-一次性蓝图」在零件门类下不存在 ⇒ 该档消失；过滤后只剩「全部」一项时整行隐藏。
+   * ⚠ **2026-09-26：三级「图纸」那一维连同它的现算表 `usesShown` 一起删除**
+   * （船长令：「**删除原先的图纸筛选**」）——"一次性/永久"两轴已并进「蓝图」维度（`learn`）。
+   * 原注释留档：那一维**只在选了子类后才出现**、且只剩「全部」一项时整行隐藏。
    */
-  const usesShown = presentSubs(BLUEPRINT_USE_TABS, (key) =>
-    items.some(
-      (it) => inTab(it.kindLabel) && (sub === SUB_ALL || it.subKey === sub) && (key === 'single' ? it.singleUse : !it.singleUse),
-    ),
-  )
 
   /** 可开工判定（与卡片按钮同口径）：已学会（或一次性图纸有货且名额未用尽；隐式蓝图无需学习）+ 材料足
    *  （制造费已取消；劳动者判定由卡片按钮各自表达） */
@@ -1543,19 +1549,20 @@ export function ManufacturingPanel({
       if (it.kindLabel.toLowerCase().includes(kq)) return true
       return it.materials.some((m) => (engine.ctx.items.get(m.itemId)?.name ?? m.itemId).toLowerCase().includes(kq))
     })
-    // 「学会」维度（并列属性行，与门类无关 ⇒ 独立取「与」；隐式蓝图视为已学会，2026-09-20 零件体系）
-    .filter(
-      (it) =>
-        learn === SUB_ALL ||
-        (learn === 'learned'
-          ? it.learnless || ownsBlueprint(state, it.id)
-          : !it.learnless && !ownsBlueprint(state, it.id)),
-    )
+    // 「蓝图」维度（原「学会」＋ 原三级「图纸」合并，2026-09-26 船长令）
+    // 四档各自判：学会那一轴 × 是否一次性那一轴；隐式蓝图视为已学会（2026-09-20 零件体系）
+    .filter((it) => {
+      if (learn === SUB_ALL) return true
+      const learned = it.learnless || ownsBlueprint(state, it.id)
+      if (learn === 'learned') return learned
+      if (learn === 'unlearned') return !learned
+      if (learn === 'learned-single') return learned && it.singleUse
+      // 'unlearned-single'
+      return !learned && it.singleUse
+    })
     .filter((it) => inTab(it.kindLabel))
     // 二级子筛选（2026-09-11 船长）：未选子类（SUB_ALL）不过滤
     .filter((it) => sub === SUB_ALL || it.subKey === sub)
-    // 三级筛选（2026-09-14 船长）：一次性 / 永久——**只在选了子类后才有开关**，故这里 sub=全部时它恒为 SUB_ALL
-    .filter((it) => useKind === SUB_ALL || (useKind === 'single' ? it.singleUse : !it.singleUse))
     /**
      * **「仅看可造」**（**2026-09-26 船长令**：「**对整个工业界面进行下优化。看下是否有优化空间**」）。
      *
@@ -1572,12 +1579,11 @@ export function ManufacturingPanel({
   const sorted = pinMarked(state, 'blueprints', sortManuRows(visible), (it) => it.id)
   /**
    * **有没有任何一维筛选/搜索在生效**（2026-09-26：卡头那两条读数合并的判据）——
-   * 四个维度：搜索词 · 学会 · 子类 · 图纸类型，外加新加的「仅看可造」。
+   * 三个维度：搜索词 · 蓝图（学会 × 一次性）· 子类，外加「仅看可造」。
    * ⚠ 门类（`tab`）**不算**：它是"看哪一类"的分区，不是"收窄"（默认就在「全部」，
    * 选了门类也只是换一屏内容，卡头照旧该报"这类里有什么"）。
    */
-  const filterActive =
-    kq.length > 0 || learn !== SUB_ALL || sub !== SUB_ALL || useKind !== SUB_ALL || craftableOnly
+  const filterActive = kq.length > 0 || learn !== SUB_ALL || sub !== SUB_ALL || craftableOnly
   /**
    * **每张卡的实时指纹**（2026-09-22 第 3 步）：心跳只让指纹变了的卡重渲染。
    * 制造线先按蓝图归并一遍（O(线)），再逐卡拼材料/需求/持有量（O(卡×材料)≈1000 次仓库查询，实测很便宜）。
@@ -1684,7 +1690,6 @@ export function ManufacturingPanel({
                 onClick={() => {
                   setTab(t.key)
                   setSub(SUB_ALL) // 换一级标签即回「全部子类」（与市场页 changeKind 同款）
-                  setUseKind(SUB_ALL) // 三级筛选随之复位（它只在选了子类后才显示，留着会变成"看不见的筛选"）
                 }}
               >
                 {tr(t.id)}
@@ -1723,10 +1728,7 @@ export function ManufacturingPanel({
               role="tab"
               aria-selected={sub === SUB_ALL}
               className={`app-tasktab${sub === SUB_ALL ? ' is-active' : ''}`}
-              onClick={() => {
-                setSub(SUB_ALL)
-                setUseKind(SUB_ALL) // 回「全部子类」⇒ 三级筛选行随之隐藏，故一并复位
-              }}
+              onClick={() => setSub(SUB_ALL)}
             >
               {tr('ui.IndustryPage.001')}
             </button>
@@ -1736,34 +1738,9 @@ export function ManufacturingPanel({
                 role="tab"
                 aria-selected={sub === s.key}
                 className={`app-tasktab${sub === s.key ? ' is-active' : ''}`}
-                onClick={() => {
-                  setSub(s.key)
-                  setUseKind(SUB_ALL) // 换子类即回「全部图纸」（与一级标签同款口径）
-                }}
+                onClick={() => setSub(s.key)}
               >
                 {s.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-      {/* **三级筛选：一次性 / 永久**（船长 2026-09-14：「组装机添加第三个筛选，一次性蓝图和永久蓝图。
-          需要选完上一级子类后才出现」）——样式逐字复刻上面那行子筛选（`app-task-tabs app-fleet-tabs`）； 
-          **选了子类才渲染**：没选子类时它不出现，避免与"全部子类"语义打架 */}
-      {/* 2026-09-20 筛选清理：只剩「全部」一项时整行隐藏（该门类下不存在一次性/永久的区分） */}
-      {sub !== SUB_ALL && usesShown.length > 1 ? (
-        <div className="app-fleet-row">
-          <span className="app-dim">{tr('ui.Industry.135')}</span>
-          <div className="app-task-tabs app-fleet-tabs" role="tablist">
-            {usesShown.map((u) => (
-              <button
-                key={u.key}
-                role="tab"
-                aria-selected={useKind === u.key}
-                className={`app-tasktab${useKind === u.key ? ' is-active' : ''}`}
-                onClick={() => setUseKind(u.key)}
-              >
-                {tr(u.id)}
               </button>
             ))}
           </div>
