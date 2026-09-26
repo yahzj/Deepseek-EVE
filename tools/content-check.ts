@@ -6010,6 +6010,13 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
   let counted = 0
   const found: string[] = []
   for (const m of MODULES) {
+    /**
+     * **舰船插件整族豁免**（**2026-09-26 船长令**，见 `docs/design/ship-plug-20260926.md`）：
+     * 插件槽是**独立槽位**（`slot: 'plug'`），它那 12 件的 `cpuBonus` / `damageBonusPct` / `hitBonusPct` /
+     * `rangeCutPct` / 三层血固定值……**每一件都是"本职效果"**，不存在"跨族搭车"这回事
+     * ⇒ 这一族不参与本契约（不是逐件放行，而是定义如此）。
+     */
+    if (m.slot === 'plug') continue
     for (const [field, owner] of Object.entries(OWNER)) {
       if (owner.split('|').includes(m.slot)) continue
       const v = (m as unknown as Record<string, unknown>)[field]

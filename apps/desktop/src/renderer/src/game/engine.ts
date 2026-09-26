@@ -815,7 +815,9 @@ export class GameEngine {
     this.locale = locale
     this.ctx = buildSimContext(locale)
     this.ships = overlayList(SHIPS, EN_SHIPS, locale).filter((d) => itemReleased(d))
-    this.allShips = overlayList(SHIPS, EN_SHIPS, locale)
+    // 2026-09-26 舰船插件批：`SHIPS` 改为可变（`data/ships.ts` 文末要按档补 `plugSlots`）
+    // ⇒ `overlayList` 的只读返回类型对不上，这里摊平成一份可变副本（43 艘，成本可忽略）
+    this.allShips = [...overlayList(SHIPS, EN_SHIPS, locale)]
     this.modules = overlayList(MODULES, EN_MODULES, locale).filter((d) => itemReleased(d))
     this.allModules = overlayList(MODULES, EN_MODULES, locale)
     this.items = overlayList(ITEMS, EN_ITEMS_ALL, locale)

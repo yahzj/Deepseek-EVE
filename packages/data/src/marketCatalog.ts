@@ -888,6 +888,31 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   // 价 = 同族之上的溢价（矢量推进器 MK3 1,970,000 ×1.32 ≈ 2,600,000）；书价按奇货档 ×4 = 10,400,000。
   { key: 'mod-mwd-3', kind: 'module', refId: 'mod-mwd-3', rarity: 'exotic', basePrice: 2_600_000, demandMultiplier: 0.75 },
   { key: 'bp-mwd-3', kind: 'blueprint', refId: 'bp-mwd-3', rarity: 'exotic', basePrice: 10_400_000, demandMultiplier: 0.75 },
+
+  /**
+   * ── **舰船插件 12 件**（**2026-09-26 船长令**，设计稿 `docs/design/ship-plug-20260926.md`）──
+   *
+   * 🔴 **船长口径**：「**目前的市场不可见。但是先做好市场卡并备注**」⇒ 本批**全部挂 `unreleased: true`**：
+   * 卡在目录表里（`content:check` 与用例照核），但 `buildMarketGoodsCatalog` 会把它们挡在市场之外，
+   * 玩家既买不到也卖不掉。**日后要开只删这一行里的 `unreleased`**。
+   *
+   * **定价备注**：插件是**造出来的**（组装机 · 每件消耗黑匣 ×1），不是掉落件 ⇒ 按"料价 × 档位系数"定价
+   * 更贴现有体系，故**本批先不给价**（`basePrice: 0`），等船长定"黑匣值多少 + 插件卖多少"再回填；
+   * `demandMultiplier: 0` 同理（0 = 不收）。**这张卡现在只是占位与契约锚点。**
+   */
+  ...([
+    'plug-shield-plate', 'plug-armor-plate', 'plug-hull-plate', 'plug-mid-bay', 'plug-low-bay', 'plug-cpu-core',
+    'plug-firepower', 'plug-sight', 'plug-thruster', 'plug-rangefinder', 'plug-target-beacon', 'plug-concealment',
+  ] as const).map((id) => ({
+    key: id,
+    kind: 'module' as const,
+    refId: id,
+    rarity: 'exotic' as const,
+    basePrice: 0,
+    demandMultiplier: 0,
+    playerBuyable: false,
+    unreleased: true,
+  })),
 ]
 
 /** 构建市场商品目录（数字稀有度按物品表 RARITY_TIER 填充——2026-09-09 船长拍板：

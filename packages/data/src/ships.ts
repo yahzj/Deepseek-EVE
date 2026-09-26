@@ -66,7 +66,11 @@
 
 import type { ShipDef } from '@whale/core'
 
-export const SHIPS: readonly ShipDef[] = [
+/**
+ * ⚠ **本表可变**（与 `modules.ts` 的 `MODULES` 同款）：文末会按档位给各舰补 `plugSlots`
+ * （2026-09-26 舰船插件批）。对外仍是"一份目录"，只是不能再声明成 `readonly`。
+ */
+export const SHIPS: ShipDef[] = [
   // ══════════ 鲸盟采矿线（薄盾薄甲结构凑合：只负责挖矿；段尾蝠鲼/皇带鱼 = 鲸盟出品的航运货舰，
   //  2026-09-09 船长定归 hauler 族——见各自 role 注） ══════════
   {
@@ -1463,4 +1467,21 @@ export const SHIPS: readonly ShipDef[] = [
 /** 构建"舰船 id → 定义"目录 */
 export function buildShipCatalog(): ReadonlyMap<string, ShipDef> {
   return new Map(SHIPS.map((ship) => [ship.id, ship]))
+}
+
+/**
+ * **舰船插件槽：按船型档给**（**2026-09-26 船长令**：「**改为越低级的船插槽越多。
+ * T1~T5分别为5/4/3/2/1个插槽**」）。
+ *
+ * 落实方式 = **按 `tier` 现推**，不逐艘手写：43 艘逐条抄容易漂、档位一改还得记着同步。
+ * 这里在模块加载时给每艘**有档位**的舰船补 `plugSlots`；**无档船**（民用/工业那批没写 `tier` 的）
+ * 一律没有插件槽 —— 船长话里的范围就是 T1~T5。
+ *
+ * ⚠ 判据用 `ShipDef.tier`（就是船长说的 T1~T5 那个档），**不是** `hullClassTier`（那是舰种操作技能的档）。
+ */
+export const PLUG_SLOTS_BY_TIER: Readonly<Record<number, number>> = { 1: 5, 2: 4, 3: 3, 4: 2, 5: 1 }
+
+for (const ship of SHIPS as ShipDef[]) {
+  const slots = PLUG_SLOTS_BY_TIER[ship.tier]
+  if (slots !== undefined) ship.plugSlots = slots
 }

@@ -92,6 +92,9 @@ export const TONES: Record<string, string> = {
   'drone-relay': toneVar('drone-relay'),
   support: toneVar('support'),
   cpu: toneVar('cpu'),
+  /* 2026-09-26 舰船插件（船长令）：复用 `target-lock` 那一档色调 —— 同属"外挂装置"语感，
+     且**不新造 CSS 变量**（主题表里没有 `--wui-tone-plug`，新造要六套主题各补一份，得不偿失）。 */
+  plug: toneVar('target-lock'),
   salvager: toneVar('salvager'),
   'target-lock': toneVar('target-lock'),
   industrial: toneVar('industrial'),

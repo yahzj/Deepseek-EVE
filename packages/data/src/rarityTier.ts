@@ -493,6 +493,20 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'drone-exile-bee': 4,
   // 2026-09-26 H 族三件（墨潮电子舱 / 墨潮捕获网 / 墨潮重袭无人机）：与其余专属件同档 = 4
   'drone-ink-heavy': 4,
+  /* 2026-09-26 舰船插件 12 件：**当前不上市场**（市场卡挂 `unreleased`），但 `ctx.modules` 里是全的
+     ⇒ 稀有度查档这条契约要求"目录里的每一件都有档"，故先按**专属件同档 = 4** 登记；日后开市时一并复核。 */
+  'plug-shield-plate': 4,
+  'plug-armor-plate': 4,
+  'plug-hull-plate': 4,
+  'plug-mid-bay': 4,
+  'plug-low-bay': 4,
+  'plug-cpu-core': 4,
+  'plug-firepower': 4,
+  'plug-sight': 4,
+  'plug-thruster': 4,
+  'plug-rangefinder': 4,
+  'plug-target-beacon': 4,
+  'plug-concealment': 4,
   'mod-lair-ecm-h': 4,
   'mod-lair-web-h': 4,
   'drone-wh-c-heavy': 4,

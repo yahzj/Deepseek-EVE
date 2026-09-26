@@ -48,6 +48,10 @@ import { fleetDefOf, shipDisplayName } from './instances'
 import { shipCategoryKeyOf, uidDefId } from './labels'
 import { resolveFoeMounts } from './foeMounts'
 import { quickRepairFactor } from './repair'
+import {
+  // 2026-09-26 舰船插件（船长令）：建档时单独累加插件效果（插件不在 `fitted` 里，扫描不到）
+  plugModulesOf,
+} from './plugs'
 import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, pulseStreamOf, refillDroneLoadTo, stackingOf, stackWeight, weightedSum } from './equipment'
 import { applyFirstBountyBuff, isFirstBountyBattle } from './firstTasks'
 
@@ -1531,11 +1535,44 @@ export function createPlayerSpec(
   /* ═══ 2026-09-13 虫洞专属装备引出的新旋钮（船长逐条给定；设计稿 §3.6/§3.8）═══
    * 全部走"全件扫描"口径；四项缺省 0 ⇒ 既有装备零行为变化。 */
   const allDefs = allFittedModules(fitted, ctx)
+  /**
+   * ═══ **舰船插件**（**2026-09-26 船长令**，设计稿 `docs/design/ship-plug-20260926.md`）═══
+   *
+   * 插件**不在 `fitted` 里**（走 `FleetShipState.plugs` 的独立插件槽）⇒ `allDefs` 扫不到它们，
+   * 本段**单独累加**。累加口径 = 船长裁决「**③不吃**」：**多件全额、不进 `stackingOf` 的收敛池**
+   * （加算/乘算直接叠加，与"命中/速度走 EVE 曲线"那几支无关）。
+   *
+   * 已接的效果：三层血固定值 · 速度固定值加减 · 单发伤害 · 命中 · 射程 · CPU 预算。
+   * ⚠ **选靶权重**（靶标 ×2 / 隐匿 ×0.4）在 `pickMyUnitTarget` 那一侧消费，不在本段。
+   */
+  const plugDefs = plugModulesOf(state, ctx, shipId)
+  let plugShieldAdd = 0
+  let plugArmorAdd = 0
+  let plugHullAdd = 0
+  let plugSpeedAdd = 0
+  let plugSpeedPen = 0
+  let plugDmg = 0
+  let plugHitMul = 1
+  let plugRangeCut = 0
+  for (const p of plugDefs) {
+    plugShieldAdd += p.shieldHpAdd ?? 0
+    plugArmorAdd += p.armorHpAdd ?? 0
+    plugHullAdd += p.hullHpAdd ?? 0
+    plugSpeedAdd += p.speedAddMps ?? 0
+    plugSpeedPen += p.speedPenaltyMps ?? 0
+    plugDmg += p.damageBonusPct ?? 0
+    if (p.hitBonusPct !== undefined) plugHitMul *= 1 + p.hitBonusPct
+    // 射程插件用 `rangeCutPct` 的**负值**表达加成 ⇒ 这里取最小（最负）的那一件，与"多件只取最重"同形
+    plugRangeCut = Math.min(plugRangeCut, p.rangeCutPct ?? 0)
+  }
   /** 装填惩罚（巨构协处理器 +12%）：多件只取最重一件 */
   const reloadPen = Math.max(0, ...allDefs.map((m) => m.reloadPenaltyPct ?? 0))
   /** 全层抗性削减（掠袭折射涂层 −15）：多件只取最重一件，下限 0 */
   const resistPen = Math.max(0, ...allDefs.map((m) => m.allResistPenaltyPct ?? 0))
-  /** 全武器射程削减（掠袭者护盾笼 −25% / 赃物扫描阵 −15%）：多件只取最重一件 */
+  /** 全武器射程削减（掠袭者护盾笼 −25% / 赃物扫描阵 −15%）：多件只取最重一件。
+   *  ⚠ **2026-09-26 插件批**：**本行逐字未动**（只认既有装备件的正值"取最重"）——
+   *  射程插件的 +25% **不并进这里**（并进来会改变既有"多件只取最重"的语义），
+   *  改在下面的 `rangeOf` 里作为**独立倍率**相乘。两条互不干扰。 */
   const rangeCut = Math.max(0, ...allDefs.map((m) => m.rangeCutPct ?? 0))
   /** 按系射程加成（幽灵弹道校正器「动能武器射程 +22%」）：按系加算 */
   const rangeBonus: Record<DamageType, number> = { kinetic: 0, explosive: 0, plasma: 0 }
@@ -1548,11 +1585,13 @@ export function createPlayerSpec(
    *  ⚠ 与"实际射程"分家只为**干扰压制**：船长的加法口径要按"基准 + 加成"拆开算
    *  （见 `meRangeMulOf`；`refs.weaponRanges` 记的就是这两份数）。 */
   const rangeBase = (base: number): number => Math.max(500, Math.round(base * (1 - Math.min(0.9, rangeCut))))
-  /** 武器实际射程 = 基准 × (1+该系加成)（按系加成 = 模块 + 船体固有，加算后一次乘） */
+  /** 武器实际射程 = 基准 × (1+该系加成)（按系加成 = 模块 + 船体固有，加算后一次乘）
+   *  × **插件射程倍率**（射程插件 +25%；多件全额、不吃递减 ⇒ 直接乘入）。 */
   const rangeOf = (base: number, type: DamageType): number =>
-    Math.max(500, Math.round(rangeBase(base) * (1 + rangeBonus[type])))
-  /** 通用单发伤害加成（亡军火控「伤害 +6%」）：与按系稳定器同链、加算、只进炮台/光束 */
-  const dmgFlat = allDefs.reduce((s, m) => s + (m.damageBonusPct ?? 0), 0)
+    Math.max(500, Math.round(rangeBase(base) * (1 + rangeBonus[type]) * (1 - plugRangeCut)))
+  /** 通用单发伤害加成（亡军火控「伤害 +6%」）：与按系稳定器同链、加算、只进炮台/光束。
+   *  ⚠ **插件并进同一个加算池**（火力强化插件 +12%；多件全额、不吃递减 —— 它本就不在 `allDefs` 里）。 */
+  const dmgFlat = allDefs.reduce((s, m) => s + (m.damageBonusPct ?? 0), 0) + plugDmg
   // 全层抗性削减：三层同时扣、下限 0——放在抗性合成与调谐之后 ⇒ 作用于最终值
   if (resistPen > 0) {
     for (const layer of ['shield', 'armor', 'hull'] as const) {
@@ -1709,7 +1748,7 @@ export function createPlayerSpec(
       src: turret.slot === 'missile' ? 'missile' : 'turret',
       shotsByType,
       count,
-      eqHitMul: hitEq > 1 ? hitEq : undefined,
+      eqHitMul: (hitEq * plugHitMul) > 1 ? hitEq * plugHitMul : undefined,
       maxRangeM: rangeOf(turret.maxRangeM, type),
       minRangeM: turret.minRangeM ?? 0,
       hitRate: (turret.hitRate ?? 0.5) * fireMult * targetMult,

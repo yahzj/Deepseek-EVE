@@ -47,7 +47,14 @@
  */
 
 import type { ModuleDef } from '@whale/core'
+// 2026-09-26 船长令：舰船插件单独一份表（见 ./plugs.ts），在本表末尾**展开并进同一个目录**
+import { SHIP_PLUGS } from './plugs'
 
+/**
+ * 全部装备（含**舰船插件**：2026-09-26 舰船插件批在文末展开 `SHIP_PLUGS`）。
+ * 之所以并入同一张表而不是另起一个 `export const`：全仓读的是 `MODULES` 这一个目录键
+ * （`ctx.modules` / `content:check` / `overlayList` 都吃它），拆表会让插件从目录里消失。
+ */
 export const MODULES: readonly ModuleDef[] = [
   // ══════════ 采集器（miner：工业槽，产量加成） ══════════
   {
@@ -1903,6 +1910,12 @@ export const MODULES: readonly ModuleDef[] = [
     description:
       '没有排气痕迹的推进段：战斗机动 +85%，且不拖累命中。幽灵的走法是悄无声息地靠近。',
   },
+  /* ══════════════ 舰船插件（**2026-09-26 船长令**）══════════════
+   * 表体在 `./plugs.ts`（单列一份便于对照设计稿）：插件与装备**共用 `ModuleDef`**，
+   * 但走**独立插件槽**（`ShipDef.plugSlots`，按档 T1=5 / T2=4 / T3=3 / T4=2 / T5=1）——
+   * **不进高/中/低槽位数组**，故 `allFittedModules` 看不见它们，效果由建档侧单独一段累加
+   * ⇒ 天然**不吃多件递减**（船长裁决「③不吃」）。 */
+  ...SHIP_PLUGS,
 ]
 
 /** 构建"装备 id → 定义"目录 */

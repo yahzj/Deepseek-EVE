@@ -27,6 +27,8 @@ export const MODULE_SLOTS: readonly ModuleSlot[] = [
   'cpu',
   'target-lock',
   'shield-field',
+  // 舰船插件（2026-09-26 船长令）：走独立插件槽，见 docs/design/ship-plug-20260926.md
+  'plug',
 ]
 
 /** 槽位中文名（装配页与日志共用；V18 无人机装置家族同样落在"家族徽标"语义） */
@@ -47,6 +49,8 @@ export const SLOT_LABELS: Record<ModuleSlot, string> = {
   cpu: '协处理器',
   'target-lock': '锁定装置',
   'shield-field': '护盾力场',
+  /** 舰船插件（2026-09-26 船长令）：装配页插件槽那一段的家族名 */
+  plug: '舰船插件',
 }
 
 /** 槽位中文名（单点实现） */
