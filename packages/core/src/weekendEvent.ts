@@ -1492,6 +1492,19 @@ export function weekendTickBoss(
    */
   if (inBattle || nowWallMs < (ev.octopusHoldUntilWallMs ?? 0)) return {}
   if (weekendOctopusTick(state, ev, dt, inBattle)) {
+    /**
+     * ⚠ **2026-09-26 玩家报障修（"入侵活动里没有判定击杀"）**：本分支与公开收口 `weekendTick` 的同类分支
+     * **必须同款先掷一次黑匣**。
+     *
+     * 章鱼人得手（血条由它削空）那一档，玩家按 `25% × 输出占比` 的爆率**照发**黑匣（船长 2026-09-25 令
+     * ＋ 四答之二"照发"）；而**引擎每拍走的就是本函数**（`engine.advanceGame` → `weekendTickBoss`），
+     * 它一旦在这里结束本场，公开收口 `weekendTick` 就因"本场已结束"直接返回 ⇒ **那一掷永远不发生**。
+     *
+     * 实测凭据（玩家导入档 `save-20260926-230119`）：`flagshipDown = 'octopus'`、`flagshipBlackBox` **缺省**、
+     * 战果快照 `blackBox: 0`；而按同一子流重算那一掷是 **命中**（0.0156 < 爆率 24.44%，p = 97.75%）
+     * ⇒ 玩家该拿的黑匣被这条漏掷吞掉了。
+     */
+    weekendRollBlackBox(state, ev, false)
     ev.flagshipDown = 'octopus'
     endWeekendEvent(state, nowWallMs)
     return { down: 'octopus' }

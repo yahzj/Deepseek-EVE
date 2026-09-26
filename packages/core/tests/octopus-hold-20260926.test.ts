@@ -30,6 +30,7 @@ import {
   weekendFlagshipView,
   weekendNoteContribution,
   weekendNoteFlagshipDamage,
+  weekendRollBlackBox,
   weekendTickBoss,
 } from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
@@ -178,5 +179,40 @@ describe('旗舰战后的章鱼人冷却（2026-09-26 船长令）', () => {
     advanceGame(s, 100, ctx, { nowWallMs: t0 + 100 })
     expect(ev.octopusHoldUntilWallMs, '每拍往后推').toBe(t0 + 100 + WEEKEND_OCTOPUS_HOLD_MS)
     expect(ev.octopusHpDone ?? 0, '战斗中不削血').toBe(0)
+  })
+
+  /**
+   * **⑧ 报障回归**（**2026-09-26 玩家报障**：「**玩家在入侵活动中依旧没有判定击杀**」＋ 导入档
+   * `save-20260926-230119` 的取证）：章鱼人得手那一档**必须掷黑匣**，而引擎每拍走的收口就是
+   * `weekendTickBoss` —— 漏掷 ⇒ 玩家按爆率表该拿的黑匣永远拿不到（该玩家的那一掷其实是**命中**）。
+   */
+  it('⑧ 章鱼人得手 ⇒ **照掷黑匣**（本收口原先漏掷 ⇒ 报障根因）', () => {
+    const { s, ev } = bossWorld(WEEKEND_FLAGSHIP_POOL_HP - 100)
+    s.debugQuick = true
+    // 削血速率 = 池子 ÷ 10 分钟窗口 ⇒ 一拍上限 5 秒 = 1250 点 ⇒ 5 秒内必削空这 100 点
+    weekendTickBoss(s, 0, false, false)
+    const r = weekendTickBoss(s, 5_000, false, false)
+    expect(r.down, '章鱼人得手').toBe('octopus')
+    expect(ev.flagshipDown).toBe('octopus')
+    expect(ev.endedAtWallMs, '本场结束').not.toBeUndefined()
+    expect(ev.flagshipBlackBox, '**必须留下掷骰结果**（缺省 = 那一掷没发生）').not.toBeUndefined()
+  })
+
+  it('⑧b 与公开收口同源：两条收口路径掷出同一个结果（同种子同场次）', () => {
+    /** 同一状态掷两次必须是同一个值（`weekendRollBlackBox` 幂等：已有结果直接返回） */
+    const a = bossWorld(WEEKEND_FLAGSHIP_POOL_HP - 100)
+    a.s.debugQuick = true
+    weekendTickBoss(a.s, 0, false, false)
+    weekendTickBoss(a.s, 5_000, false, false)
+    const first = a.ev.flagshipBlackBox
+    expect(weekendRollBlackBox(a.s, a.ev, false), '再掷一次 = 原值').toBe(first)
+    /** 同一份档重放（同种子）⇒ 同一个结果 */
+    const b = bossWorld(WEEKEND_FLAGSHIP_POOL_HP - 100)
+    b.s.debugQuick = true
+    b.s.rng.seed = a.s.rng.seed
+    b.ev.seq = a.ev.seq
+    weekendTickBoss(b.s, 0, false, false)
+    weekendTickBoss(b.s, 5_000, false, false)
+    expect(b.ev.flagshipBlackBox, '同种子同场次 ⇒ 同结果').toBe(first)
   })
 })
