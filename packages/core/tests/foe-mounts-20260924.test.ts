@@ -86,9 +86,17 @@ describe('姿态陀螺仪（A 族洞内 · 船长 2026-09-24）', () => {
       expect(names.length, '两件都挂了 ⇒ 两项').toBe(2)
       expect(pairs.length, '名对必须与名字逐项对齐').toBe(names.length)
       for (let i = 0; i < names.length; i++) expect(pairs[i]![0], `第 ${i} 项的中文名列`).toBe(names[i]!)
-      // 缺英文名的件会退化成中文（既有八件现状）；本次两件都填了 en
-      expect(pairs.find((p) => p[0] === '姿态陀螺仪')![1]).toBe('Attitude Gyro')
-      expect(pairs.find((p) => p[0] === '劫掠冲锋推进器')![1]).toBe('劫掠冲锋推进器')
+      /**
+       * 英文侧：2026-09-26 三号按船长令「**翻译交给三号**」补齐了全部 14 件的 `en`
+       * （交接项见 `docs/roadmap.md` §三号交接开放项）⇒ 原先那句"缺英文名的件退化成中文"
+       * **只剩"没填 en 才退化"这一半仍成立**，这两件现在都该命中真英文名。
+       * 并加一条：**英文名不得等于中文名**（日后新增件漏填 `en` 时当场红，而不是静默回退）。
+       */
+      const gyro = pairs.find((p) => p[0] === '姿态陀螺仪')!
+      const charge = pairs.find((p) => p[0] === '劫掠冲锋推进器')!
+      expect(gyro[1], '姿态陀螺仪的英文名').toBe('Attitude Gyro')
+      expect(charge[1], '劫掠冲锋推进器的英文名').toBe('Raider Charge Thruster')
+      for (const p of pairs) expect(p[1], `${p[0]} 的英文名不得等于中文名（漏填 en）`).not.toBe(p[0])
     }
   })
 
