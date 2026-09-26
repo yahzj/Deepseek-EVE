@@ -107,10 +107,10 @@ const BP_MAIN: SubOption[] = [
   { key: 'equip', label: tr("ui.ShipPage.115") },
   { key: 'ship', label: tr("ui.ShipPage.116") },
   { key: 'consume', label: tr("ui.ShipPage.114") },
-  { key: 'equip', label: tr("ui.ShipPage.115") },
-  { key: 'ship', label: tr("ui.ShipPage.116") },
-  { key: 'consume', label: tr("ui.ShipPage.114") },
-  { key: 'part', label: tr("ui.Handbook.265") },  // 并入 main：对方新增「零件蓝图」门类（id 新登记）
+  // ⚠ `equip` / `ship` / `consume` 各自**只许出现一次**——2026-09-26 修：原先这表里前三个键各重复一次
+  // （合并残留），React 渲染出两颗同名胶囊（`key={o.key}` 撞 key）⇒ 玩家点第二颗时高亮落在第一颗上、
+  // 观感是「蓝图图鉴的筛选不消失」（船长报障）。护栏 = `npm run ui:subs-check`（挂在 `ui:rot-check` 链上）。
+  { key: 'part', label: tr("ui.Handbook.265") },  // 2026-09-20 船长裁定：产物是零件的另立「零件蓝图」门类
 ]
 /** 各图鉴筛选行的灰字前缀（同「我的舰队」那套「类别：」「级别：」写法，避免多个「全部」混淆） */
 const FILTER_LABEL: Record<Tab, string> = {
