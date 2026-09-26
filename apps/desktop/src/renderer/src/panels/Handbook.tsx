@@ -930,6 +930,10 @@ function IconGrid({ cells, onPick, selectedKey }: { cells: GridCell[]; onPick: (
             {/**
              * **族徽角标（左上角）**（**2026-09-26 船长令**：「**给所有位置势力专属的舰船和装备的图标
              * 卡片的左上角标注势力族徽**」）。
+             * ⚠ 判据用 `!= null`（**同时挡掉 `null` 与 `undefined`**）：`crest` 曾经漏进过 `null`
+             * ⇒ 整页 `toLowerCase` 崩（2026-09-27 船长报障）。构造侧已由 `crestFamOf()` 收窄，
+             * 这里再兜一层 —— 画不出角标可以，**白屏不行**。
+             *
              * 与右上角那枚稀有度标签**同一套绝对定位语言**（`top/left: 3px` ＋ 小圆角 ＋ 同族色），
              * 徽记用已有的 `fam-a/c/d/e/g/h` 线稿（`Glyph`）。
              *
@@ -940,7 +944,7 @@ function IconGrid({ cells, onPick, selectedKey }: { cells: GridCell[]; onPick: (
              * `aria-label` 用**势力全称**（`FACTION_CODEX` 的 `nameId`，随语言）而不是族字母——
              * 读屏读「势力 A 专属」等于没读；同时守住"**不许只靠颜色传达信息**"（色盲/读屏照样拿到归属）。
              */}
-            {c.crest !== undefined ? (
+            {c.crest != null ? (
               <span
                 className={`app-map-famchip is-fam-${c.crest}`}
                 aria-label={crestLabelOf(c.crest)}
@@ -995,6 +999,7 @@ function marketKeyOf(engine: GameEngine, cell: GridCell): string | null {
  * （船长裁定「按照所属势力标」）⇒ 三处图鉴（装备 / 舰船 / 势力详情）同源、不各判一套。
  */
 function moduleCellOf(mod: ModuleDef): GridCell {
+  const crest = crestFamOf(mod.id)
   return {
     key: mod.id,
     tab: 'modules',
@@ -1003,7 +1008,7 @@ function moduleCellOf(mod: ModuleDef): GridCell {
     sub: `${slotName(mod.slot)} · ${moduleShortEffect(mod)}`,
     raw: mod as unknown as RawData,
     rarity: itemRarityTierOf(mod.id),
-    ...(factionOfExclusive(mod.id) !== undefined ? { crest: factionOfExclusive(mod.id)! } : {}),
+    ...(crest !== undefined ? { crest } : {}),
   }
 }
 
@@ -1011,6 +1016,7 @@ function shipCellOf(ship: ShipDef): GridCell {
   // 2026-09-16 船长：类别键走 `shipCategoryKeyOf` —— 装甲线 = `role: 'armored'` **或**武装舰里装甲占比 > 护盾占比
   // （牛鲨级突击巡洋舰 + E 族专属舰；丙案「只在武装舰里判」）。图标/文字/分组/筛选四处同源这一处。
   const cls = shipCategoryKeyOf(ship)
+  const crest = crestFamOf(ship.id)
   return {
     key: ship.id,
     tab: 'ships',
@@ -1022,7 +1028,7 @@ function shipCellOf(ship: ShipDef): GridCell {
     // 图标模式画舰船 SVG 形象（船长 2026-09-26 令）——资产表命中走独立形，未命中按族别剪影
     shipId: ship.id,
     shipRole: ship.role,
-    ...(factionOfExclusive(ship.id) !== undefined ? { crest: factionOfExclusive(ship.id)! } : {}),
+    ...(crest !== undefined ? { crest } : {}),
   }
 }
 
@@ -1036,6 +1042,7 @@ function shipCellOf(ship: ShipDef): GridCell {
  * 与装备/舰船/图纸同一份构造（`app-hand-cell`），让"专属三件"能三种件型混排。
  */
 function itemCellOf(item: ItemDef): GridCell {
+  const crest = crestFamOf(item.id)
   return {
     key: item.id,
     tab: 'items',
@@ -1045,13 +1052,14 @@ function itemCellOf(item: ItemDef): GridCell {
     sub: `${kindName(item.kind)} · ${item.unitM3} m³`,
     raw: item as unknown as RawData,
     rarity: itemRarityTierOf(item.id),
-    ...(factionOfExclusive(item.id) !== undefined ? { crest: factionOfExclusive(item.id)! } : {}),
+    ...(crest !== undefined ? { crest } : {}),
   }
 }
 
 /** 装备蓝图卡（产物是模块/物品）：副行 = 产物门类 · 产物名；族徽按**产物**判 */
 function blueprintCellOf(engine: GameEngine, bp: BlueprintDef): GridCell {
   const prodMod = bp.moduleId !== undefined ? engine.ctx.modules.get(bp.moduleId) : undefined
+  const crest = crestFamOf(bp.moduleId)
   return {
     key: bp.id,
     tab: 'blueprints',
@@ -1065,12 +1073,13 @@ function blueprintCellOf(engine: GameEngine, bp: BlueprintDef): GridCell {
         : tr("ui.Handbook.317", { p1: prodMod?.name ?? bp.moduleId ?? '' }),
     raw: bp as unknown as RawData,
     rarity: itemRarityTierOf(bp.id),
-    ...(crestOfProduct(bp.moduleId) !== undefined ? { crest: crestOfProduct(bp.moduleId)! } : {}),
+    ...(crest !== undefined ? { crest } : {}),
   }
 }
 
 /** 舰船蓝图卡：副行 = 产物舰名；族徽按**产物舰**判 */
 function shipBlueprintCellOf(engine: GameEngine, bp: ShipBlueprintDef): GridCell {
+  const crest = crestFamOf(bp.shipId)
   return {
     key: bp.id,
     tab: 'blueprints',
@@ -1079,15 +1088,24 @@ function shipBlueprintCellOf(engine: GameEngine, bp: ShipBlueprintDef): GridCell
     sub: tr("ui.Handbook.249", { p1: engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId }),
     raw: bp as unknown as RawData,
     rarity: itemRarityTierOf(bp.id),
-    ...(factionOfExclusive(bp.shipId) !== undefined ? { crest: factionOfExclusive(bp.shipId)! } : {}),
+    ...(crest !== undefined ? { crest } : {}),
   }
 }
 
-/** 图纸段族徽用的产物查询（模块 id；物品蓝图与舰船蓝图各自另有判据）——
- *  ⚠ `factionOfExclusive` 对"不是任何势力专属"的件返回 `null`（找不到才是 `undefined`）
- *  ⇒ 这里统一收窄成 `string | undefined`，让调用处只判一种"没有" */
-function crestOfProduct(moduleId: string | undefined): string | undefined {
-  const fam = moduleId !== undefined ? factionOfExclusive(moduleId) : undefined
+/**
+ * **族专属判据的收窄单点**（**2026-09-27 修 · 船长报障**：「手册进入舰船图鉴会报错：
+ * `Cannot read properties of null (reading 'toLowerCase')`」）。
+ *
+ * 真因：`factionOfExclusive(id)` 对"**不是任何势力专属**"的件返回 **`null`**（只有"id 查不到"才是 `undefined`），
+ * 而四个 builder 原先一律写 `factionOfExclusive(id) !== undefined ? { crest: … } : {}` ——
+ * `null !== undefined` 为**真** ⇒ 非专属的卡片也带上 `crest: null` ⇒ `IconGrid` 画角标时
+ * `c.crest.toLowerCase()` **整个图鉴页崩掉**（装备 / 舰船 / 物品 / 蓝图四页都中招，势力页因卡片全是族字母而看不出）。
+ *
+ * 规矩：**判"有没有族"只许走本函数**（`null` 与 `undefined` 在这里被统一成 `undefined`），
+ * 不许再在调用处写 `!== undefined`（护栏 = `tools/ui-attr-check.ts` 的「族徽判据契约」）。
+ */
+function crestFamOf(id: string | undefined): string | undefined {
+  const fam = id === undefined ? undefined : factionOfExclusive(id)
   return fam ?? undefined
 }
 

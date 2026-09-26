@@ -23,6 +23,8 @@
   createElement: (...args: unknown[]) => ({ args }),
 }
 
+import { readFileSync } from 'node:fs'
+
 import { COMBAT_BASE_KEYS, FIT_MAIN_HIDDEN_KEYS, shipCurrentLayout, shipIndirectLines, shipInfoLines } from '../apps/desktop/src/renderer/src/ui/shipInfo'
 import { tr } from '../apps/desktop/src/renderer/src/i18n/locale'
 import { SHIPS } from '@whale/data'
@@ -48,6 +50,40 @@ function dupOf(keys: readonly string[]): string[] {
 }
 
 const problems: string[] = []
+
+/**
+ * **族徽判据契约**（**2026-09-27 立 · 船长报障**：「手册进入舰船图鉴会报错：
+ * `Cannot read properties of null (reading 'toLowerCase')`」）。
+ *
+ * 背景：`factionOfExclusive(id)` 对"**不是任何势力专属**"的件返回 **`null`**（只有 id 查不到才是 `undefined`）。
+ * 四个卡片构造器原先一律写 `factionOfExclusive(id) !== undefined ? { crest: … } : {}` —— `null !== undefined`
+ * 为**真** ⇒ 非专属卡也带上 `crest: null` ⇒ `IconGrid` 画角标时 `c.crest.toLowerCase()` **把整页打崩**
+ * （装备 / 舰船 / 物品 / 蓝图四页全中招，势力图鉴因卡片全是族字母反而看不出来）。
+ *
+ * 本契约是**源码级**的（这类 bug 跑不出类型错、也不是数据错，只有真机点开那一页才炸）：
+ *   ① 不许再写 `factionOfExclusive(...) !== undefined`（判"有没有族"只许走 `crestFamOf()`）；
+ *   ② `crestFamOf()` 必须在，且用 `?? undefined` 把 `null` 收窄；
+ *   ③ `IconGrid` 画角标的判据必须是 `!= null`（同时挡 `null` 与 `undefined`）——最后一层防线。
+ */
+function crestContract(): string[] {
+  const out: string[] = []
+  // ⚠ 先剥注释再扫：这段契约自己的说明里就写着那个反面写法（不然工具会被自己的注释判红）
+  const src = readFileSync(new URL('../apps/desktop/src/renderer/src/panels/Handbook.tsx', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/[^\n]*/g, '')
+  const badNarrow = [...src.matchAll(/factionOfExclusive\([^)]*\)\s*!==\s*undefined/g)]
+  if (badNarrow.length > 0) {
+    out.push(`Handbook.tsx 有 ${badNarrow.length} 处 \`factionOfExclusive(...) !== undefined\` —— 该函数"不是专属"返回 null，这么判会把 null 放进卡片（判据请走 crestFamOf()）`)
+  }
+  if (!/function crestFamOf\([\s\S]{0,200}?\?\? undefined/.test(src)) {
+    out.push('Handbook.tsx 缺 `crestFamOf()`（把 null/undefined 收窄成一种"没有"的单点）')
+  }
+  if (!/\{c\.crest != null \? \(/.test(src)) {
+    out.push('Handbook.tsx 的 IconGrid 画角标判据不是 `c.crest != null` —— null 会漏进去、整页 toLowerCase 崩')
+  }
+  return out
+}
+problems.push(...crestContract())
 for (const ship of SHIPS) {
   // ① 装配页主表：基础行过滤两张隐藏表 ⇒ 再接追加行（顺序与 FitPage 一致）
   const fitMain = [
@@ -117,3 +153,4 @@ if (problems.length > 0) {
   process.exit(1)
 }
 console.log('✅ 属性表同名体检通过：四处拼装口径均无同名两行')
+console.log('✅ 族徽判据契约通过：判"有没有族"只走 crestFamOf()，IconGrid 用 `!= null` 兜底（null 不再能打崩图鉴页）')

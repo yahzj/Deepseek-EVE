@@ -168,4 +168,47 @@ H 族（墨潮帮）三件专属里有一架**无人机**：`drone-ink-heavy`（
 | **乙1** | 普通墨潮残骸的直出池**也放无人机**，一次 **1 架** | 引擎 `appendBase` 认物品 + 卡面行认物品（两处小改）。EV ≈ **守恒**（均价 23.3k → 26.0k、命中率 ×0.897 ⇒ EV/m³ +0.1%） |
 | **乙2** | 同上但一次 **10 架**（与高级箱同款） | 一次命中给 480k ISK 货值，而 EV 公式按"一个 id = 48k"计 ⇒ 普通残骸装备 EV 会**涨约 ×2.85**（普通残骸出大风口，稀有残骸的意义被稀释）⇒ 不建议 |
 
+## 十、船长报障：手册进舰船图鉴报错（2026-09-27 修）
+
+船长原话（报错栈照抄）：「**手册进入舰船图鉴会报错：Handbook.tsx:949 Uncaught TypeError: Cannot read properties of null (reading 'toLowerCase')**」。
+
+### 真因：`factionOfExclusive()` 用 `null` 表示"不是势力专属"，而四个构造器都写 `!== undefined`
+
+`factionOfExclusive(id)` 对"**不是任何势力专属**"的件返回 **`null`**（只有 id 查不到才是 `undefined`）。
+而四个卡片构造器（装备 / 舰船 / 物品 / 蓝图）一律写：
+
+```ts
+...(factionOfExclusive(id) !== undefined ? { crest: factionOfExclusive(id)! } : {})
+```
+
+`null !== undefined` 为**真** ⇒ 非专属卡也带上 `crest: null` ⇒ `IconGrid` 画角标时 `c.crest.toLowerCase()`
+**整页白屏**。这不是类型错、也不是数据错（`crest` 的类型是 `string | undefined`，`null` 从 `!` 断言那一侧溜进来），
+所以六道闸门全绿也照样上线——**只有真机点开那一页才会炸**。
+
+覆盖面：**装备 / 舰船 / 物品 / 蓝图四页全中招**（势力图鉴反而看不出来——那里每张卡都真有族字母）。
+上一批（2026-09-26 卡片化）起就在，物品图鉴那一处是 2026-09-27 的 `itemCellOf` 新带进来的。
+
+### 修法（三件）
+
+1. **`crestFamOf(id)` 收窄单点**：`factionOfExclusive` 的 `null` 与 `undefined` 统一成 `undefined` ⇒ 判"有没有族"只走它；四个构造器改用 `const crest = crestFamOf(...)` ＋ `...(crest !== undefined ? { crest } : {})`。
+2. **`IconGrid` 兜底改 `c.crest != null`**（同时挡 `null` 与 `undefined`）：构造侧万一再漏，最坏是**这张卡没角标**，不再整页崩。
+3. **新护栏 = `tools/ui-attr-check.ts` 的「族徽判据契约」**（源码级，随 `ui:rot-check` 跑）：
+   ① 不许出现 `factionOfExclusive(...) !== undefined`（扫前先剥注释，免得被契约自己的说明判红）；
+   ② `crestFamOf()` 必须在且用 `?? undefined`；③ `IconGrid` 角标判据必须是 `!= null`。
+
+### 读数（真机 · 八个手册页逐页开 · 收 `Runtime.exceptionThrown` 与 `console.error`）
+
+| 页 | 卡片数 | 页内异常 |
+|---|---|---|
+| 物品图鉴 | 137 | **0** |
+| 装备图鉴 | 161（**改前必崩**） | **0** |
+| 舰船图鉴 | 45（**船长报障的那页**） | **0** |
+| 蓝图图鉴 | 232 | **0** |
+| 技能速查 | 88 | **0** |
+| 势力图鉴 | 29（六族 + 默认展开段） | **0** |
+| 玩法速览 / 航行须知 | 文本页 | **0** |
+
+全页异常合集 = `[]`（空）。护栏的**反例已实测**：契约刚写出来时它自己抓到过那处遗留写法并报红（exit 1）。
+
+
 
