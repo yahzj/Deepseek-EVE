@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **321** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6039** KB · **42288** 行
+- 文档总数 **321** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6042** KB · **42289** 行
 - 状态分布：**未标注** 179 · **已确认/已实现** 111 · **进行中** 25 · **待裁定** 5 · **历史留档** 1
 - 孤儿文档（0 引用）**40** 份 · 状态未标注 **179** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -29,11 +29,11 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 14 KB / 97 行 | 169 / 5 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 14 KB / 97 行 | 170 / 5 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 30 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 26 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 210 KB / 251 行 | 14 / 2 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 213 KB / 252 行 | 14 / 2 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 63 KB / 681 行 | 74 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 481 KB / 987 行 | 217 / 16 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 106 KB / 316 行 | 323 / 17 |
