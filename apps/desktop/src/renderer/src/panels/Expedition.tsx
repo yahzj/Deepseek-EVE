@@ -2513,25 +2513,6 @@ function GalaxyActions({
         })
       })()}
       {/**
-       * **入侵残骸条（置顶）**（船长 2026-09-25：「需要独立的残骸条」＋「打捞界面置顶」）：
-       * 放在「残骸打捞」标题**之前**；与星系密度分开读（船长：「入侵残骸不算当地星系密度」），
-       * 只有 >0 时才出这一条。
-       */}
-      {(() => {
-        const invWreck = weekendWreckDensityOf(state, galaxy.id)
-        if (invWreck <= 0) return null
-        const densityHere = wreckDensityOf(state, galaxy.id, engine.ctx)
-        const pct = Math.round((invWreck / (invWreck + densityHere)) * 100)
-        return (
-          <div className="app-belt-invwreck" title={tr('ui.weekend.095', { p1: String(pct) })}>
-            <span className="app-belt-invwreck-label">{tr('ui.weekend.094', { p1: invWreck.toFixed(1) })}</span>
-            <div className="app-card-progress is-invasion">
-              <i style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-        )
-      })()}
-      {/**
        * **玩家舰船残骸（置顶）**（**2026-09-26 船长令**：「玩家舰船被摧毁后，如果是在非虫洞的正常星系内，
        * 在该星系生成一个'<被摧毁的舰船名称>的残骸'该残骸存在48小时，玩家如果在该星系打捞，
        * 优先打捞该残骸（比稀有残骸优先级还高）」）。
@@ -2561,6 +2542,29 @@ function GalaxyActions({
       <div className="app-bay-title app-ga-sub">
         <span className="app-ico"><Glyph name="nav-salvage" size={14} color={NAV_TONES["nav-salvage"]} /></span>{tr("ui.Expedition.211")} {wreckDensityOf(state, galaxy.id, engine.ctx).toFixed(1)}）
       </div>
+      {/**
+       * **入侵残骸条**（船长 2026-09-25：「需要独立的残骸条」；**2026-09-26 复令**：「**星系详细的
+       * 入侵残骸的条位置不对，应该放在下面的残骸打捞容器内**」）。
+       *
+       * ⚠ 位置口径**已改判**：原先是"打捞界面**置顶**"（摆在「残骸打捞」标题之前，与「玩家舰船残骸」
+       * 读数卡并列）⇒ 现移进**残骸打捞容器内**（标题之后、打捞操作行之前）——它本来就是在说
+       * "这个星系能捞多少"，放在容器的第一位最贴合语义；读数与判据一字未动
+       * （仍与星系密度分开读：船长「入侵残骸不算当地星系密度」，仍只在 >0 时出这一条）。
+       */}
+      {(() => {
+        const invWreck = weekendWreckDensityOf(state, galaxy.id)
+        if (invWreck <= 0) return null
+        const densityHere = wreckDensityOf(state, galaxy.id, engine.ctx)
+        const pct = Math.round((invWreck / (invWreck + densityHere)) * 100)
+        return (
+          <div className="app-belt-invwreck" title={tr('ui.weekend.095', { p1: String(pct) })}>
+            <span className="app-belt-invwreck-label">{tr('ui.weekend.094', { p1: invWreck.toFixed(1) })}</span>
+            <div className="app-card-progress is-invasion">
+              <i style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        )
+      })()}
       {state.salvaging.active && state.salvaging.galaxyId === galaxy.id ? (
         <div className="app-ga-row">
           <span className="app-ga-main">
