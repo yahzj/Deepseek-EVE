@@ -576,6 +576,7 @@ export const BlueprintCard = memo(function BlueprintCard({
   onNeedMineral,
   onGotoMarket,
   onGotoWormhole,
+  onGotoPlugExchange,
   highlighted,
   learnless,
   liveKey,
@@ -618,6 +619,9 @@ export const BlueprintCard = memo(function BlueprintCard({
   /** 「去虫洞（遗迹打捞）」跳星图 · 出港 · 「扫描虫洞」页（船长 2026-09-14：虫洞专属图纸市场买不到，
    *  改跳虫洞；未达虫洞解锁声望时按钮禁用、不跳） */
   onGotoWormhole?: () => void
+  /** 「前往章鱼人兑换」跳**章鱼人声望商店**（**2026-09-26 船长令**：插件图纸缺书时显示这个按钮，
+   *  替代原先那条「✕ 无市场渠道」死路——插件图纸本来就不在市场卖） */
+  onGotoPlugExchange?: () => void
   /** 被「蓝图书架 → 去组装机」定位到的那张卡（页面层同一套 `.app-belt-card.is-goto` 高亮） */
   highlighted?: boolean
   /** 2026-09-20 零件体系：隐式蓝图（基础零件）——无需学习即视为已学会，卡面显示「无需图纸」 */
@@ -680,6 +684,16 @@ export const BlueprintCard = memo(function BlueprintCard({
    */
   const bookBuyable = goodKey !== null && engine.ctx.marketGoods.get(goodKey)?.playerBuyable !== false
   const whBlueprint = isWormholeBlueprint(blueprintId)
+  /**
+   * **舰船插件图纸**（**2026-09-26 船长令**：「**没有蓝图的舰船插件组装机应该显示去商店兑换，
+   * 点击后跳转到章鱼人声望商店。而不是无市场渠道（本来就不在市场购买）**」）。
+   *
+   * 判据 = 产物模块的 `slot === 'plug'`（与 `bpFilterKeysOf` 归那一档同源）。
+   * 这类图**从来不在市场卖**（`playerBuyable: false`）⇒ 走不到下面的"求购"分支，
+   * 原先会掉进兜底的「✕ 无市场渠道」死路 —— 船长点名的就是它。
+   */
+  const plugBlueprint =
+    engine.ctx.modules.get(engine.ctx.blueprints.get(blueprintId)?.moduleId ?? '')?.slot === 'plug'
   /** 虫洞解锁声望闸（与扫描虫洞页同一本账：协会声望 ≥ `WORMHOLE_SCAN_UNLOCK_STANDING`） */
   const whStanding = state.standings.dsi ?? 0
   const whUnlocked = whStanding >= WORMHOLE_SCAN_UNLOCK_STANDING
@@ -1079,6 +1093,22 @@ export const BlueprintCard = memo(function BlueprintCard({
           >
             {tr("ui.Industry.074")}
           </button>
+        ) : plugBlueprint ? (
+          /**
+           * **舰船插件图纸 ⇒ 去商店兑换**（**2026-09-26 船长令**：「**没有蓝图的舰船插件组装机应该显示
+           * 去商店兑换，点击后跳转到章鱼人声望商店。而不是无市场渠道（本来就不在市场购买）**」）。
+           *
+           * 为什么必须排在这里：这类图的产物插件**从来不在市场卖**（`playerBuyable: false`）⇒
+           * `bookBuyable` 恒假 ⇒ 原先会掉进最后一支兜底的「**✕ 无市场渠道**」死路（船长点名的就是它）。
+           * 落款 = 「**前往章鱼人兑换**」＋ 点击直达兑换窗口（与首匣那封通讯同一个出口）。
+           */
+          <button
+            className="app-btn is-small is-primary"
+            title={tr('ui.IndustryPage.117')}
+            onClick={onGotoPlugExchange}
+          >
+            {tr('ui.IndustryPage.118')}
+          </button>
         ) : whBlueprint ? (
           /**
            * **虫洞专属图纸 ⇒ 去虫洞（遗迹打捞）**（船长 2026-09-14：「虫洞专属的蓝图市场上没有卖，建议改为
@@ -1189,6 +1219,8 @@ export function ManufacturingPanel({
   onNeedMineral,
   onGotoMarket,
   onGotoWormhole,
+  onGotoPlugExchange,
+  plugExchangeFocus,
   focusBlueprintId,
 }: {
   engine: GameEngine
@@ -1198,6 +1230,11 @@ export function ManufacturingPanel({
   onGotoMarket?: (goodKey: string) => void
   /** 「去虫洞（遗迹打捞）」跳星图 · 出港 · 扫描虫洞（船长 2026-09-14：虫洞专属图纸市场买不到） */
   onGotoWormhole?: () => void
+  /** 「前往章鱼人兑换」跳**章鱼人声望商店**（2026-09-26 船长令：插件图纸缺书时走这里） */
+  onGotoPlugExchange?: () => void
+  /** 兑换窗口开过的次数（自增序号）：一开就切到「舰船插件」档（2026-09-26 船长令：
+   *  跳转要"跳转到舰船插件的筛选内"） */
+  plugExchangeFocus?: number
   /** 蓝图书架「去组装机」的定位目标（蓝图 id）：本面板会**先清掉三级筛选**再高亮那张卡 */
   focusBlueprintId?: string | null
 }) {
@@ -1231,6 +1268,18 @@ export function ManufacturingPanel({
     setSub(SUB_ALL)
     setUseKind(SUB_ALL)
   }, [focusBlueprintId])
+
+  /**
+   * **「前往章鱼人兑换」之后落到「舰船插件」档**（**2026-09-26 船长令**：跳转要"跳转到舰船插件的
+   * 筛选内"）。触发信号 = `plugExchangeFocus`（自增序号，来源两处：组装机那张卡的按钮、首匣通讯的
+   * 「前往」）——**只切档、不复位二级/三级**（那一档本来就没有子筛选）。
+   */
+  useEffect(() => {
+    if (!plugExchangeFocus) return
+    setTab('plug')
+    setSub(SUB_ALL)
+    setUseKind(SUB_ALL)
+  }, [plugExchangeFocus])
 
   /**
    * **目录模型只在"目录本身"变化时重建**（2026-09-22 工业页卡顿修复第 3 步 · 单点在 `cardLiveKeyOf`）。
@@ -1669,6 +1718,7 @@ export function ManufacturingPanel({
               onNeedMineral={onNeedMineral}
               onGotoMarket={onGotoMarket}
               onGotoWormhole={onGotoWormhole}
+              onGotoPlugExchange={onGotoPlugExchange}
               highlighted={focusBlueprintId === it.id}
               learnless={it.learnless}
               /** 实时指纹：只有它变了的卡才会真正重渲染（详见 `cardLiveKeyOf` 的说明） */

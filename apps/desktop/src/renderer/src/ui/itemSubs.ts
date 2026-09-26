@@ -651,14 +651,15 @@ export const MANU_TABS: Array<{ key: ManuTabKey; label: string; id: string }> = 
   { key: 'supply', label: '消耗品蓝图', id: 'ui.ShipPage.114' },
 ]
 /** 组装机专用门类表（2026-09-20 船长：舰船蓝图拆去造船厂；改名去「蓝图」二字；新增「零件」分页）
- *  ⚠ **2026-09-26 船长令**：「**在工业-组装机的门类筛选中，添加舰船插件的新分类**」⇒ 补第 5 档「舰船插件」。
+ *  ⚠ **2026-09-26 船长令**：「**在工业-组装机的门类筛选中，添加舰船插件的新分类**」⇒ 补「舰船插件」一档。
+ *  ⚠ **同日再令：「舰船插件要放到最后」** ⇒ 它排在这张表的**末位**（顺序 = 渲染顺序，别往前挪）。
  *  该档在**取得第一个黑匣前是锁着的**（判据 = `blackbox.plugCraftUnlockedOf`，界面侧见 Industry 面板）。 */
 export const MANU_TABS_CRAFT: Array<{ key: ManuTabKey; label: string; id: string }> = [
   { key: 'all', label: '全部', id: 'ui.IndustryPage.001' },
   { key: 'equip', label: '装备', id: 'ui.MarketPage.178' },
-  { key: 'plug', label: '舰船插件', id: 'ui.itemSubs.042' },
   { key: 'part', label: '零件', id: 'ui.itemSubs.036' },
   { key: 'supply', label: '消耗品', id: 'ui.itemSubs.037' },
+  { key: 'plug', label: '舰船插件', id: 'ui.itemSubs.042' },
 ]
 
 /** 组装机/书架「**子类**」候选（按当前门类给；全部取自本文件单点表）：

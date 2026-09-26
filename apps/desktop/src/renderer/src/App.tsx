@@ -1502,6 +1502,17 @@ async function applyLayoutAndQuit(): Promise<void> {
    */
   const [plugExchangeOpen, setPlugExchangeOpen] = useState(false)
   /**
+   * **兑换窗口的开窗计数**（**2026-09-26 船长令**：「**而且也不会跳转到舰船插件的筛选内**」）——
+   * 开窗时自增；组装机读到变化就自动切到「舰船插件」档（与 `craftFocus` 同一套"定位信号"手法）。
+   * 三条入口（组装机卡片的「前往章鱼人兑换」・首匣通讯的弹窗「前往」・通讯页的「前往」）都喂它。
+   */
+  const [plugExchangeSeq, setPlugExchangeSeq] = useState(0)
+  /** 开兑换窗口的**唯一入口**（三条路都走它 ⇒ 开窗行为与"切到插件档"永远同进同退） */
+  const openPlugExchange = (): void => {
+    setPlugExchangeOpen(true)
+    setPlugExchangeSeq((n) => n + 1)
+  }
+  /**
    * **送达弹窗的"上膛"延时**（同上那条报障的配套）：刚挂上来的头 `POPUP_ARM_MS` 毫秒内**忽略遮罩点击**
    * ——遮罩是满屏的（`inset: 0`，点哪都算点外面），而这张卡挂上来的时机恰好是"玩家刚点完战场/刚点过别处"
    * ⇒ 不设防就会**一挂上就被下一次点击静默点掉**（玩家只看到一闪）。卡内按钮不受影响（点它是明确动作）。
@@ -1816,6 +1827,13 @@ async function applyLayoutAndQuit(): Promise<void> {
             <IndustryPage
             {...pageProps}
             focusSec={indFocus}
+            /**
+             * **组装机「前往章鱼人兑换」**（**2026-09-26 船长令**：「没有蓝图的舰船插件组装机应该显示
+             * 去商店兑换，点击后跳转到章鱼人声望商店」）⇒ 就地开统一的那张窗口（与首匣通讯同源）。
+             * ⚠ 这里**不切页**：组装机就在工业页上，窗口是覆盖层，收起后玩家还停在原处。
+             */
+            onGotoPlugExchange={openPlugExchange}
+            plugExchangeFocus={plugExchangeSeq}
             onGotoMarket={(goodKey) => {
             setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
             changePage('market')
@@ -1882,6 +1900,11 @@ async function applyLayoutAndQuit(): Promise<void> {
             focus={commsFocus}
             // 消息提示的跳转出口（③ 只给提示 + 跳转）：与弹窗共用同一套落点规则
             onGoto={gotoFromComms}
+            /**
+             * 「前往章鱼人兑换」（**2026-09-26 船长令**）：走**唯一开窗入口** ⇒ 与弹窗版、与组装机
+             * 那张卡三处行为完全一致（开窗 ＋ 组装机切到「舰船插件」档）。
+             */
+            onOpenPlugExchange={openPlugExchange}
             />
             ) : null}
             </div>
@@ -2131,7 +2154,7 @@ async function applyLayoutAndQuit(): Promise<void> {
                    */
                   if (a === 'plug-exchange') {
                     engine.dismissCommsPopup(popupMsg.id)
-                    setPlugExchangeOpen(true)
+                    openPlugExchange()
                   }
                 }}
                 extra={

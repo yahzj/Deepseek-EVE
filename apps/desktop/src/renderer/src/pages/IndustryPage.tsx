@@ -481,12 +481,17 @@ function WreckFlavorRow({ def, engine }: { def: ItemDef; engine: GameEngine }) {
   )
 }
 
-export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoWormhole, focusSec = null }: PageProps & {
+export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoWormhole, onGotoPlugExchange, plugExchangeFocus, focusSec = null }: PageProps & {
   onGotoMarket?: (goodKey: string) => void
   onGotoMap?: (tab: 'mine' | 'salvage', ids: string[]) => void
   /** 「去虫洞（遗迹打捞）」：跳星图 · 出港 · 扫描虫洞（船长 2026-09-14：虫洞专属图纸市场买不到；
    *  声望不达标时组装机那张卡自己会置灰，不会走到这里） */
   onGotoWormhole?: () => void
+  /** 「前往章鱼人兑换」：开**章鱼人声望商店**（**2026-09-26 船长令**：插件图纸缺书的卡走这里）。
+   *  由 App 持有的统一窗口状态开，与首匣那封通讯**同一个出口**。 */
+  onGotoPlugExchange?: () => void
+  /** 兑换窗口开过的次数（自增序号）：变化时组装机自动切到「舰船插件」档（船长要的"跳转到筛选内"） */
+  plugExchangeFocus?: number
   /** **内层段定位**（船长 2026-09-18：「第一次」卡片的跳转按钮要直达精炼炉 / 组装机）——
    *  页在切走时重挂载（`key={page}`）⇒ 取初值即可，不必 seq 机制。 */
   focusSec?: 'refine' | 'shelf' | 'craft' | 'shipyard' | null
@@ -766,6 +771,8 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
             onNeedMineral={handleNeedMineral}
             onGotoMarket={onGotoMarket}
             onGotoWormhole={onGotoWormhole}
+            onGotoPlugExchange={onGotoPlugExchange}
+            plugExchangeFocus={plugExchangeFocus}
             focusBlueprintId={craftFocus}
           />
         </IndPane>
