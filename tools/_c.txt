@@ -1,0 +1,23 @@
+feat(plug): 装配页插件槽只读区 ＋ 重出验收存档（从真档注入）
+
+一、装配页插件槽（2026-09-26 船长令：不可拆卸、不可替换 ⇒ 界面只读数）
+- FitPage 新增 PluginSlotsSection：低槽组之下、无人机舱之上
+- 只读：无卸下按钮、无浮层选装、空槽不可点（core 侧连 removePlug 都不存在）
+- 槽位上限与已装清单走 core 单点 plugInfoOf；短效果复用 moduleShortEffect
+- 无插件槽的船整块不显示；满槽时标题行给一句提示
+- CSS 参照同级 .app-fit-ammotier 与 .app-fit-slot-icon，只加 is-readonly /
+  app-fit-slot-icon-sub 两处最小差异；ui:layout-css 派生件同步重生成
+
+二、重出验收存档（上一版是我的错）
+- 上一版用 createInitialState 造 = 序章态（onboarding.step 0）⇒ 教程没过完、工业页锁着，
+  而验收第 4 步就在工业页
+- 现改为仓内惯例「从真档读档 → 注入 → 落盘」，基准档 = user-backup-20260926-120117.json
+  （step 99、前 15 条「第一次」已完成 ⇒ 工业页与市场页都已解锁）
+- 造档脚本里加前置自检（step === 99 且 unlocked(state, 'industry')），不合格当场报错
+- 新档内容：物品仓库 3 个黑匣 ＋ 声望 49/49（能换 6 张）＋ 主控巨齿鲨级战列舰
+  （T4 · 2 格插件槽）装满 2 件插件 ＋ 钱包 1 亿；首匣通讯的送达记录已清 ⇒ 进档第一拍就弹窗
+- docs/test-saves/README.md 的验收清单按新档重写（6 张图纸 / 49 声望）
+
+验证：typecheck 四包 0 错 · core 233 文件 / 2550 用例全绿 · content:check ✅ ·
+l10n:check ✅ · ui:rot-check ✅ · ui:layout-css:check ✅ · docs:index 328 份 ·
+save:roundtrip-audit 丢键 0 · 桌面 build ✅（assets/index-DkFiwW5J.js）

@@ -27,6 +27,8 @@ import {
   cpuBudgetOf,
   cpuUseOf,
   createPlayerSpec,
+  /** 2026-09-26 船长令：装配页插件槽只读区（core 单点给槽位上限 + 已装清单） */
+  plugInfoOf,
   droneCpuUsed,
   droneLoadM3,
   effectiveCpu, // 保留：船体预算（不含协处理器扩容）在别处仍可能用到；预算总额见 cpuBudgetOf
@@ -932,6 +934,15 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
           })}
           {/* 弹药档位（2026-09-09 弹药 MK2：有武器弹族才显示；无人机舱上方） */}
           <AmmoTierSection engine={engine} onToast={onToast} target={effectiveTarget} />
+          {/**
+           * **舰船插件槽（只读）**（**2026-09-26 船长令**：「舰船插件是一种类似装备的东西，同样装备在
+           * 舰船上，但是**不可拆卸，不可替换**」）。
+           *
+           * 与高/中/低槽**刻意不同**：这里**没有卸下按钮、没有浮层选装**——不可拆是**结构性**的
+           * （core 的 `plugs.ts` 连 `removePlug` 都不存在），界面这一块只是**读数**。
+           * 槽位上限与已装清单都走 core 单点 `plugInfoOf`；短效果复用装备行同一把尺 `moduleShortEffect`。
+           */}
+          <PluginSlotsSection engine={engine} />
           {/* 无人机舱（2026-09-08 大改：低槽组下方；容量条 + 型卡流 + 装入弹层） */}
           <DroneBaySection engine={engine} onToast={onToast} target={effectiveTarget} />
         </div>
@@ -1329,6 +1340,72 @@ function AmmoTierSection({
         <span className="app-dim">{tr("ui.FitPage.094")}</span>
       </div>
       {rows}
+    </div>
+  )
+}
+
+/* ═══════════════ 舰船插件槽（2026-09-26 船长令：只读 · 无卸下 · 无替换） ═══════════════ */
+
+/**
+ * **舰船插件槽区**（**只读**）。
+ *
+ * 船长原话（照抄）：「**舰船插件是一种类似装备的东西，同样装备在舰船上，但是不可拆卸，不可替换。
+ * 装有插件的舰船无法放入舰船仓库。**」
+ *
+ * 三条界面口径：
+ * - **没有卸下按钮、没有浮层选装**——"不可拆"是 core 侧的结构性保证（`plugs.ts` 里连 `removePlug`
+ *   都不存在）；界面这一块只负责**读数**，不给任何"点了能改"的错觉；
+ * - 槽位上限与已装清单走 core 单点 `plugInfoOf`（= `plugSlotsOf` ＋ `plugModulesOf`），界面不自己数；
+ * - 无插件槽的船（无档船 / 插件槽为 0）**整块不显示**——不留一行"0/0"的空壳。
+ *
+ * 满槽时在标题行右侧给一句提示（玩家想知道"还能不能再装"）；未满也报「已装 N/M」。
+ */
+function PluginSlotsSection({ engine }: { engine: PageProps['engine'] }) {
+  const state = engine.state
+  const ctx = engine.ctx
+  const shipId = state.shipId
+  const { slots, installed } = plugInfoOf(state, ctx, shipId)
+  if (slots <= 0) return null
+  const full = installed.length >= slots
+  return (
+    <div className="app-fit-plugslots">
+      <div className="app-fit-dronebay-head">
+        <span className="app-fit-dronebay-title">{tr('ui.itemSubs.041')}</span>
+        <span className="app-dim">
+          {tr('ui.Expedition.444', { p1: installed.length, p2: slots })}
+          {full ? ` · ${tr('ui.FitPage.176')}` : ''}
+        </span>
+      </div>
+      <div className="app-fit-icongrid">
+        {Array.from({ length: slots }, (_, i) => {
+          const def = installed[i]
+          if (!def) {
+            // 空槽：**不可点**（这里没有装入入口；插件只能从装备库走 `installPlug`）
+            return (
+              <span key={`plug-${i}`} className="app-fit-slot-icon is-empty is-readonly">
+                <span className="app-fit-slot-icon-glyph">—</span>
+                <span className="app-fit-slot-icon-name">{tr('ui.Expedition.445')}</span>
+              </span>
+            )
+          }
+          const tone = toneOf(def.slot)
+          return (
+            <span
+              key={`plug-${i}`}
+              className="app-fit-slot-icon is-filled is-readonly"
+              {...hoverTipProps(
+                moduleHoverContent(def, tr('ui.Expedition.443')),
+              )}
+            >
+              <span className="app-fit-slot-icon-glyph">
+                <Glyph name="plug" size={22} color={tone} />
+              </span>
+              <span className="app-fit-slot-icon-name">{def.name}</span>
+              <span className="app-fit-slot-icon-sub">{moduleShortEffect(def)}</span>
+            </span>
+          )
+        })}
+      </div>
     </div>
   )
 }
