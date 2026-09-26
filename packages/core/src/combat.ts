@@ -363,10 +363,15 @@ export interface UnitSpec {
   foeRepairPulse?: { everyMs: number; armor: number; hull: number; k: number }
   /**
    * **支援舰船召唤装置的节拍**（船长 2026-09-25；见 `FoeMountDef.reviveEscort`）——
-   * 挂件单位（入侵母舰）每 `everyMs`（60 秒）把**当前波已阵亡的一艘敌舰**满血复活入场
+   * 挂件单位（入侵母舰）每 `everyMs`（60 秒）把**当前波已阵亡**的敌舰满血复活入场
    * （新 tag `sup{n}-<原tag>`；上限 = 不超本波原编成）。缺省不写 ⇒ 该单位不会召唤（零行为变化）。
+   *
+   * ⚠ **2026-09-26 船长改判**：「入侵活动中，H族入侵母舰的挂载件复活效果，**改为每60秒复活2艘船**。
+   * 且**必定会复活干扰舰**」⇒ `count`（每次艘数）与 `priorityShipIds`（优先名单）随挂载件带到单位上；
+   * **同日追答**「**应该是优先复活干扰舰**」⇒ 名单是**优先**语义：名单内的舰在可补池里就先占一个名额
+   * （它活着 / 已补进场则名额回落到随机）。
    */
-  foeReviveEscort?: { everyMs: number }
+  foeReviveEscort?: { everyMs: number; count?: number; priorityShipIds?: readonly string[] }
   foeTactic: FoeTactic | null
   /**
    * **舰级 id**（2026-09-24 加；只给"舰级路径"建的敌单位写）：旗舰 BOSS 的伤害台账靠它认出母舰
@@ -2837,7 +2842,8 @@ function resolveSupportBranch(
 /**
  * **每拍结算「支援舰船召唤」**（**船长 2026-09-25**：「给入侵母舰添加类似D族挂载件的独立挂载件，
  * 只不过改为**复活被摧毁的友军**（但是**表现形式上为敌方支援舰船入场**），**增援时间是60秒**，
- * **每次随机复活一艘**」；见 `FoeMountDef.reviveEscort`）。
+ * **每次随机复活一艘**」；**2026-09-26 船长改判**：「…改为每60秒复活2艘船。且必定会复活干扰舰」
+ * ⇒ 每次 count 艘 + priorityShipIds 名单（**优先**语义：干扰舰在可补池里就先占名额）；见 `FoeMountDef.reviveEscort`）。
  *
  * 口径（全部由船长选定）：
  * - **召唤者** = 挂了该件的单位（= 入侵母舰），且**必须在场**（它沉了就不再召唤；计时停在原地）；
@@ -2881,7 +2887,7 @@ function resolveFoeRevive(
     const slot = baseFoeTag(tag)
     if (specTags.has(slot)) aliveSlots.add(slot)
   }
-  /** **编成已满 ⇒ 不召唤**（船长的"不超本波原编成"） */
+  /** **编成已满 ⇒ 不召唤**（船长的"不超本波原编成"）；剩余空槽数在下面按 `count` 分配时用 */
   if (aliveSlots.size >= curFoes.length) return
   /**
    * 池子 = **当前波编成里已阵亡、且槽位还空着**的条目（**召唤者自己除外**）——
@@ -2897,27 +2903,55 @@ function resolveFoeRevive(
       b.units[f.tag]!.hp.h <= 0,
   )
   if (dead.length === 0) return
-  const pick = dead[nextInt(state.rng, dead.length)]!
-  const n = (b.foeReviveCount ?? 0) + 1
-  b.foeReviveCount = n
-  const spec: UnitSpec = { ...pick, tag: `sup${n}-${pick.tag}` }
-  seedUnit(b, spec, {
-    enterReload: true,
-    // ⚠ 入场时刻取**全局时钟**（与转场/单波增援同一条理由：战斗时钟在演出窗口里是冻住的）
-    arrivedAtMs: state.gameMs,
-    ...(b.wormhole ? { foePhaseMs: WORMHOLE_FOE_VOLLEY_STAGGER_MS } : {}),
-  })
-  // 随新单位补建机群池与修理账本（与波次转场同款；没挂那两件的单位一个键都不建）
-  initFoeDronePools(b, [spec])
-  initFoeRepairPulses(b, [spec])
-  pushBattleNotice(b, `敌方支援舰船入场：${spec.name}`)
-  addLog(
-    state,
-    'warn',
-    `⚔ 敌方支援舰船入场：${spec.name}（第 ${n} 次支援）`,
-    'core.combat.001',
-    { p1: spec.name, p2: n },
-  )
+  /**
+   * **本拍补几艘**（**船长 2026-09-26**：「入侵活动中，H族入侵母舰的挂载件复活效果，
+   * **改为每60秒复活2艘船**。且**必定会复活干扰舰**」）：
+   * - `count`（缺省 1）＝每次上到几艘；实际再受「本波剩余空槽（= 不超本波原编成）」与「可补池」双重封顶；
+   * - **优先名单**（`priorityShipIds`，装的是 H 族「墨潮干扰舰」）：名单里的舰只要**在池子里**
+   *   （= 阵亡且槽位空着）就**优先占一个名额**（按名单顺序取）；取完再在**剩下的池子**里随机补足；
+   *   它活着 / 已补进场（不在池子里）⇒ 名额回落到随机（与"死一个补一个"的上限口径一致）。
+   */
+  const want = Math.max(1, Math.round(summoner.foeReviveEscort.count ?? 1))
+  const room = curFoes.length - aliveSlots.size
+  const quota = Math.min(want, room, dead.length)
+  if (quota <= 0) return
+  const priorityIds = summoner.foeReviveEscort.priorityShipIds ?? []
+  const picks: UnitSpec[] = []
+  let rest = [...dead]
+  for (const shipId of priorityIds) {
+    if (picks.length >= quota) break
+    const at = rest.findIndex((f) => f.shipId === shipId)
+    if (at < 0) continue
+    picks.push(rest[at]!)
+    rest = rest.filter((_, i) => i !== at)
+  }
+  while (picks.length < quota && rest.length > 0) {
+    const at = nextInt(state.rng, rest.length)
+    picks.push(rest[at]!)
+    rest = rest.filter((_, i) => i !== at)
+  }
+  for (const pick of picks) {
+    const n = (b.foeReviveCount ?? 0) + 1
+    b.foeReviveCount = n
+    const spec: UnitSpec = { ...pick, tag: `sup${n}-${pick.tag}` }
+    seedUnit(b, spec, {
+      enterReload: true,
+      // ⚠ 入场时刻取**全局时钟**（与转场/单波增援同一条理由：战斗时钟在演出窗口里是冻住的）
+      arrivedAtMs: state.gameMs,
+      ...(b.wormhole ? { foePhaseMs: WORMHOLE_FOE_VOLLEY_STAGGER_MS } : {}),
+    })
+    // 随新单位补建机群池与修理账本（与波次转场同款；没挂那两件的单位一个键都不建）
+    initFoeDronePools(b, [spec])
+    initFoeRepairPulses(b, [spec])
+    pushBattleNotice(b, `敌方支援舰船入场：${spec.name}`)
+    addLog(
+      state,
+      'warn',
+      `⚔ 敌方支援舰船入场：${spec.name}（第 ${n} 次支援）`,
+      'core.combat.001',
+      { p1: spec.name, p2: n },
+    )
+  }
 }
 
 /**
