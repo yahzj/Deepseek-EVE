@@ -2793,15 +2793,20 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
    * 口径：
    * - **永久蓝图**（不写 `singleUse`）：在「章鱼人兑换」窗口花声望换一本 → 学会 → 组装机随时造；
    * - **每件材料固定**（同料、只产物不同）：墨潮旗舰黑匣 ×1 ＋ 虚空晶 ×60 ＋ 5 种基础零件 ＋ 2 种高级零件；
-   * - **不上市场**：`priceIsk = 0` ＋ `unreleased: true`（手册蓝图图鉴与组装机蓝图下拉都不列它）——
-   *   它的入手途径是**兑换**而不是买，市场卡照做带备注（日后要开只删 `unreleased`）；
+   * - **不上市场**：`priceIsk = 0`（它的入手途径是**兑换**而不是买；市场占位卡照做、挂 `unreleased`）；
+   * - ⚠ **蓝图本身不标 `unreleased`**（2026-09-26 修）：那个字段是**施工期闸门**，
+   *   `engine.blueprints` 会用 `itemReleased()` 把整批滤掉 ⇒ 组装机卡片流里一张都看不到。
+   *   兑换来的书就该能在组装机造 —— 可见性由"手上有没有这本书"决定，不用施工闸门关。
    * - 工时 **3,600 秒 / 件**（与 MK3 装备同档；插件不上市场 ⇒ 没有售价可标定，工时只决定"造一件等多久"）。
    */
   {
     id: 'bp-plug-shield-plate',
     name: '护盾强化插板图纸',
     moduleId: 'plug-shield-plate',
-    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    // ⚠ **不标 `unreleased`**（2026-09-26 修，船长报障「组装机处也没有舰船插件的门类筛选」）：
+    //    那个字段是**施工期闸门**——`engine.blueprints` 会用 `itemReleased()` 把它整批滤掉
+    //    ⇒ 12 张图在组装机卡片流里一张都看不到（这一档就成了空档）。
+    //    这 12 张图的入手途径是**章鱼人兑换**（不是市场）：没换到就没有书，可见性由"手上有没有这本书"决定。
     materials: [
       { itemId: 'blackbox-h', count: 1 },
       { itemId: 'min-voidcrystal', count: 60 },
@@ -2822,7 +2827,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     id: 'bp-plug-armor-plate',
     name: '装甲强化插板图纸',
     moduleId: 'plug-armor-plate',
-    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    // ⚠ **不标 `unreleased`**（2026-09-26 修，船长报障「组装机处也没有舰船插件的门类筛选」）：
+    //    那个字段是**施工期闸门**——`engine.blueprints` 会用 `itemReleased()` 把它整批滤掉
+    //    ⇒ 12 张图在组装机卡片流里一张都看不到（这一档就成了空档）。
+    //    这 12 张图的入手途径是**章鱼人兑换**（不是市场）：没换到就没有书，可见性由"手上有没有这本书"决定。
     materials: [
       { itemId: 'blackbox-h', count: 1 },
       { itemId: 'min-voidcrystal', count: 60 },
@@ -2843,7 +2851,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     id: 'bp-plug-hull-plate',
     name: '结构强化插板图纸',
     moduleId: 'plug-hull-plate',
-    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    // ⚠ **不标 `unreleased`**（2026-09-26 修，船长报障「组装机处也没有舰船插件的门类筛选」）：
+    //    那个字段是**施工期闸门**——`engine.blueprints` 会用 `itemReleased()` 把它整批滤掉
+    //    ⇒ 12 张图在组装机卡片流里一张都看不到（这一档就成了空档）。
+    //    这 12 张图的入手途径是**章鱼人兑换**（不是市场）：没换到就没有书，可见性由"手上有没有这本书"决定。
     materials: [
       { itemId: 'blackbox-h', count: 1 },
       { itemId: 'min-voidcrystal', count: 60 },
@@ -2864,7 +2875,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     id: 'bp-plug-mid-bay',
     name: '中层舱段插件图纸',
     moduleId: 'plug-mid-bay',
-    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    // ⚠ **不标 `unreleased`**（2026-09-26 修，船长报障「组装机处也没有舰船插件的门类筛选」）：
+    //    那个字段是**施工期闸门**——`engine.blueprints` 会用 `itemReleased()` 把它整批滤掉
+    //    ⇒ 12 张图在组装机卡片流里一张都看不到（这一档就成了空档）。
+    //    这 12 张图的入手途径是**章鱼人兑换**（不是市场）：没换到就没有书，可见性由"手上有没有这本书"决定。
     materials: [
       { itemId: 'blackbox-h', count: 1 },
       { itemId: 'min-voidcrystal', count: 60 },
@@ -2885,7 +2899,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     id: 'bp-plug-low-bay',
     name: '下层舱段插件图纸',
     moduleId: 'plug-low-bay',
-    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    // ⚠ **不标 `unreleased`**（2026-09-26 修，船长报障「组装机处也没有舰船插件的门类筛选」）：
+    //    那个字段是**施工期闸门**——`engine.blueprints` 会用 `itemReleased()` 把它整批滤掉
+    //    ⇒ 12 张图在组装机卡片流里一张都看不到（这一档就成了空档）。
+    //    这 12 张图的入手途径是**章鱼人兑换**（不是市场）：没换到就没有书，可见性由"手上有没有这本书"决定。
     materials: [
       { itemId: 'blackbox-h', count: 1 },
       { itemId: 'min-voidcrystal', count: 60 },
@@ -2906,7 +2923,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     id: 'bp-plug-cpu-core',
     name: '协处理插件图纸',
     moduleId: 'plug-cpu-core',
-    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    // ⚠ **不标 `unreleased`**（2026-09-26 修，船长报障「组装机处也没有舰船插件的门类筛选」）：
+    //    那个字段是**施工期闸门**——`engine.blueprints` 会用 `itemReleased()` 把它整批滤掉
+    //    ⇒ 12 张图在组装机卡片流里一张都看不到（这一档就成了空档）。
+    //    这 12 张图的入手途径是**章鱼人兑换**（不是市场）：没换到就没有书，可见性由"手上有没有这本书"决定。
     materials: [
       { itemId: 'blackbox-h', count: 1 },
       { itemId: 'min-voidcrystal', count: 60 },
@@ -2927,7 +2947,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     id: 'bp-plug-firepower',
     name: '火力强化插件图纸',
     moduleId: 'plug-firepower',
-    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    // ⚠ **不标 `unreleased`**（2026-09-26 修，船长报障「组装机处也没有舰船插件的门类筛选」）：
+    //    那个字段是**施工期闸门**——`engine.blueprints` 会用 `itemReleased()` 把它整批滤掉
+    //    ⇒ 12 张图在组装机卡片流里一张都看不到（这一档就成了空档）。
+    //    这 12 张图的入手途径是**章鱼人兑换**（不是市场）：没换到就没有书，可见性由"手上有没有这本书"决定。
     materials: [
       { itemId: 'blackbox-h', count: 1 },
       { itemId: 'min-voidcrystal', count: 60 },
@@ -2948,7 +2971,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     id: 'bp-plug-sight',
     name: '瞄具插件图纸',
     moduleId: 'plug-sight',
-    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    // ⚠ **不标 `unreleased`**（2026-09-26 修，船长报障「组装机处也没有舰船插件的门类筛选」）：
+    //    那个字段是**施工期闸门**——`engine.blueprints` 会用 `itemReleased()` 把它整批滤掉
+    //    ⇒ 12 张图在组装机卡片流里一张都看不到（这一档就成了空档）。
+    //    这 12 张图的入手途径是**章鱼人兑换**（不是市场）：没换到就没有书，可见性由"手上有没有这本书"决定。
     materials: [
       { itemId: 'blackbox-h', count: 1 },
       { itemId: 'min-voidcrystal', count: 60 },
@@ -2969,7 +2995,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     id: 'bp-plug-thruster',
     name: '推进插件图纸',
     moduleId: 'plug-thruster',
-    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    // ⚠ **不标 `unreleased`**（2026-09-26 修，船长报障「组装机处也没有舰船插件的门类筛选」）：
+    //    那个字段是**施工期闸门**——`engine.blueprints` 会用 `itemReleased()` 把它整批滤掉
+    //    ⇒ 12 张图在组装机卡片流里一张都看不到（这一档就成了空档）。
+    //    这 12 张图的入手途径是**章鱼人兑换**（不是市场）：没换到就没有书，可见性由"手上有没有这本书"决定。
     materials: [
       { itemId: 'blackbox-h', count: 1 },
       { itemId: 'min-voidcrystal', count: 60 },
@@ -2990,7 +3019,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     id: 'bp-plug-rangefinder',
     name: '射程插件图纸',
     moduleId: 'plug-rangefinder',
-    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    // ⚠ **不标 `unreleased`**（2026-09-26 修，船长报障「组装机处也没有舰船插件的门类筛选」）：
+    //    那个字段是**施工期闸门**——`engine.blueprints` 会用 `itemReleased()` 把它整批滤掉
+    //    ⇒ 12 张图在组装机卡片流里一张都看不到（这一档就成了空档）。
+    //    这 12 张图的入手途径是**章鱼人兑换**（不是市场）：没换到就没有书，可见性由"手上有没有这本书"决定。
     materials: [
       { itemId: 'blackbox-h', count: 1 },
       { itemId: 'min-voidcrystal', count: 60 },
@@ -3011,7 +3043,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     id: 'bp-plug-target-beacon',
     name: '靶标插件图纸',
     moduleId: 'plug-target-beacon',
-    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    // ⚠ **不标 `unreleased`**（2026-09-26 修，船长报障「组装机处也没有舰船插件的门类筛选」）：
+    //    那个字段是**施工期闸门**——`engine.blueprints` 会用 `itemReleased()` 把它整批滤掉
+    //    ⇒ 12 张图在组装机卡片流里一张都看不到（这一档就成了空档）。
+    //    这 12 张图的入手途径是**章鱼人兑换**（不是市场）：没换到就没有书，可见性由"手上有没有这本书"决定。
     materials: [
       { itemId: 'blackbox-h', count: 1 },
       { itemId: 'min-voidcrystal', count: 60 },
@@ -3032,7 +3067,10 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     id: 'bp-plug-concealment',
     name: '隐匿插件图纸',
     moduleId: 'plug-concealment',
-    unreleased: true, // 施工期闸门：入手途径 = 章鱼人兑换（见 `plugs.ts`），不进图鉴与组装机下拉
+    // ⚠ **不标 `unreleased`**（2026-09-26 修，船长报障「组装机处也没有舰船插件的门类筛选」）：
+    //    那个字段是**施工期闸门**——`engine.blueprints` 会用 `itemReleased()` 把它整批滤掉
+    //    ⇒ 12 张图在组装机卡片流里一张都看不到（这一档就成了空档）。
+    //    这 12 张图的入手途径是**章鱼人兑换**（不是市场）：没换到就没有书，可见性由"手上有没有这本书"决定。
     materials: [
       { itemId: 'blackbox-h', count: 1 },
       { itemId: 'min-voidcrystal', count: 60 },
