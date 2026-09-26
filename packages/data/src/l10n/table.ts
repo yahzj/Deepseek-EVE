@@ -3853,7 +3853,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.MapPage.120": { zh: "全部（按威胁加权）", en: "All (threat-weighted)" },
   "ui.MapPage.121": { zh: "入侵残骸", en: "Invasion wrecks" },
   // 2026-09-26 墨潮电子舱 / 墨潮捕获网（H 族势力装备 · 高槽支援件）的装配页短行
-  "ui.shipInfo.185": { zh: "敌方武器射程 −{p1}", en: "Enemy weapon range −{p1}" },
+  "ui.shipInfo.185": { zh: "敌方武器射程 −{p1}，最短 {p2} m", en: "Enemy weapon range −{p1}, floor {p2} m" },
   "ui.shipInfo.186": { zh: "{p2} 米内每 {p1} 秒钉住一艘未被钉住的敌舰", en: "Pins one un-webbed enemy ship every {p1} s within {p2} m" },  /* 舰船插件（2026-09-26 船长令）：装配页短行的逐类效果句 ＋ 一句"装上去拆不下来" */
   "ui.shipInfo.187": { zh: "护盾上限 +{p1}", en: "Shield capacity +{p1}" },
   "ui.shipInfo.188": { zh: "装甲上限 +{p1}", en: "Armor capacity +{p1}" },
@@ -3869,6 +3869,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.198": { zh: "更常被敌方选为目标", en: "Enemies pick this ship more often" },
   "ui.shipInfo.199": { zh: "更少被敌方选为目标", en: "Enemies pick this ship less often" },
   "ui.shipInfo.200": { zh: "装上后无法拆下", en: "Cannot be removed once fitted" },
+  /* 2026-09-26 船长报障：墨潮电子舱原先掉在 `flat` 兜底里、卡面写「全额叠加」（读起来像"可以无限叠"）
+     ⇒ 该件单列 `sum` 组，本档写真实机制：同舰多件加和（上限 90%）· 多舰乘法叠加。 */
+  "ui.shipInfo.201": { zh: "同舰多件加和（上限 90%）· 多舰乘法叠加", en: "Same ship: additive (cap 90%) · Multiple ships: multiplicative" },
   "ui.shipInfo.184": { zh: "同类型武器单发 +{p1}（装其它伤害类型的武器无加成）", en: "Weapons of the same damage type deal +{p1} per shot (no bonus with other damage types)" },
   "ui.shipInfo.010": { zh: "跃迁速度", en: "Warp speed" },
   "ui.shipInfo.011": { zh: "质量", en: "Mass" },

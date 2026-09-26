@@ -643,7 +643,8 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     const base = `${m.name}（×${countModule(state, m.id)} · ${moduleShortEffect(m)}）${stealthTraitNote(m)}`
     if (!fitted) return base
     const st = stackingOf(m)
-    if (st.group === 'flat') return base
+    // `flat` = 加算不收敛、`sum` = 同舰加和（上限内不打折）⇒ 两者都不挂"第 N 件衰减"尾注
+    if (st.group === 'flat' || st.group === 'sum') return base
     const n = sameKindCount(fitted, engine.ctx, m)
     if (n === 0) return base
     // 2026-09-15 隐秘行动装置（`max` 组）：多件**取最长一件**——明说"不叠加"，免得玩家以为能叠到 50 秒

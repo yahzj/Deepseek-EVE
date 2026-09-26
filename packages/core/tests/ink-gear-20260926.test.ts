@@ -20,9 +20,11 @@ import {
   addWare,
   createInitialState,
   createPlayerSpec,
+  stackingOf,
   startRecycleRun,
 } from '../src/index'
 import {
+  FOE_RANGE_DEBUFF_FLOOR_M,
   MY_WEB_RANGE_M,
   WEB_BREAK_DIST_M,
   activeFoeSpecsOf,
@@ -115,6 +117,25 @@ describe('墨潮电子舱（射程压制 · 高槽 · CPU 150）', () => {
     expect(m.foeRangeDebuffPct).toBe(0.15)
     expect(m.cpuUse).toBe(150)
     expect(m.rack).toBe('high')
+  })
+
+  /**
+   * **2026-09-26 船长报障**：「**发现BUG，墨潮电子舱怎么写着全额叠加，并且没有写上最短射程3000m**」
+   * ⇒ 本件不得再走 `flat` 兜底（那会把卡面标成「全额叠加」）；说明里必须写明最短射程 3,000 m。
+   */
+  it('报障回归：叠加分组单列 `sum`（不再标「全额叠加」）· 说明写明最短射程 3,000 m', () => {
+    const m = MODULES.find((x) => x.id === 'mod-lair-ecm-h')!
+    expect(stackingOf(m)).toEqual({ group: 'sum', kind: 'ecm' })
+    // 对照：普通加算件仍是 flat（本档只服务这一件，不是新兜底）
+    expect(stackingOf(MODULES.find((x) => x.id === 'mod-stab-kin-3')!).group, '稳定器仍是 flat').toBe('flat')
+    expect(m.description).toContain('3,000 m')
+    expect(m.description).toContain('15%')
+    // 英文侧（写法由三号统一复核）也必须带上同一个地板
+    expect(EN_MODULES['mod-lair-ecm-h']!.description).toContain('3,000 m')
+  })
+
+  it('最短射程地板的单点与界面文案同源（`FOE_RANGE_DEBUFF_FLOOR_M` = 3000）', () => {
+    expect(FOE_RANGE_DEBUFF_FLOOR_M).toBe(3000)
   })
 
   it('编队削减率：单装一件 = 15% · 一件 ＋ 一艘电子舰 = **27.75%**（乘法叠加）', () => {

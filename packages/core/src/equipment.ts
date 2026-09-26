@@ -180,8 +180,8 @@ export function familyModules(state: GameState, ctx: SimContext, shipId: string,
 
 /* ═══════════ V18.1 多件收敛（取消同类唯一后的防超模机制） ═══════════ */
 
-/** 收敛分组：gap = 缺口复合（抗性/闪避）· curve = EVE 曲线（命中/跃迁速度/目标锁定）· **weighted = 折权加算**（**速度**（2026-09-20 起）与无人机射程中继天线）· **max = 取最强一件**（多件不叠加，2026-09-15 起用于隐秘行动装置的隐身窗口）· flat = 加算线性（不收敛） */
-export type StackGroup = 'gap' | 'curve' | 'weighted' | 'max' | 'flat'
+/** 收敛分组：gap = 缺口复合（抗性/闪避）· curve = EVE 曲线（命中/跃迁速度/目标锁定）· **weighted = 折权加算**（**速度**（2026-09-20 起）与无人机射程中继天线）· **max = 取最强一件**（多件不叠加，2026-09-15 起用于隐秘行动装置的隐身窗口）· **sum = 同舰多件加和（上限内不打折）而跨舰乘法合成**（2026-09-26 起用于墨潮电子舱的射程压制）· flat = 加算线性（不收敛） */
+export type StackGroup = 'gap' | 'curve' | 'weighted' | 'max' | 'sum' | 'flat'
 
 /**
  * 一件装备的收敛分组与收敛键（同键 = 同一收敛池，按单件效果从强到弱参与合成）。
@@ -271,10 +271,16 @@ export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } 
     return { group: 'weighted', kind: 'repair' }
   }
   /**
-   * **墨潮电子舱**（`foeRangeDebuffPct`，**2026-09-26 船长令**）：同舰多件**加和**（上限 0.9，见
-   * `combat.meFoeRangeDebuffOf`）⇒ 归 `flat`（与兜底同组，这里显式登记只为"这个键归谁"有据可查）。
+   * **墨潮电子舱**（`foeRangeDebuffPct`）：**同舰多件加和（上限 0.9）**，而**跨舰走乘法合成**
+   * （`combat.meFoeRangeDebuffOf`：`r = 1 − Π(1 − vᵢ)`），整条效果还压着**敌舰最短射程 3,000 m**
+   * 的地板 ⇒ **不能标"全额叠加"**（那三个字只讲同舰加算，读起来像"可以无限叠"）。
+   *
+   * ⚠ **2026-09-26 船长报障**：「**发现BUG，墨潮电子舱怎么写着全额叠加，并且没有写上最短射程3000m**」
+   * ⇒ ① 本键从 `flat` 兜底里**单列一档 `sum`**（界面据 `kind: 'ecm'` 写
+   * 「同舰多件加和（上限 90%）· 多舰乘法叠加」）；② 最短射程 3,000 m 写进件说明与装配页短行
+   * （常量单点在 `combat.FOE_RANGE_DEBUFF_FLOOR_M`）。**机制一字未动**（同舰加和 ＋ 上限 0.9 ＋ 跨舰乘法照旧）。
    */
-  if (def.foeRangeDebuffPct !== undefined) return { group: 'flat', kind: 'ecm' }
+  if (def.foeRangeDebuffPct !== undefined) return { group: 'sum', kind: 'ecm' }
   /**
    * **墨潮捕获网**（`captureWebCycleMs`，**2026-09-26 船长令**）：同舰多件**取最短周期**（更快的那台
    * 说了算，见 `combat.createPlayerSpec`）⇒ 归 `max` 组（该组的 UI 语义 = 不叠加、只取一件）。

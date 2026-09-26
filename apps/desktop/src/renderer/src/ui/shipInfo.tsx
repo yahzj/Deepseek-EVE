@@ -15,7 +15,7 @@
  */
 import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
-import { DEFAULT_BALANCE, droneBayTotalM3, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS } from '@whale/core'
+import { DEFAULT_BALANCE, droneBayTotalM3, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS } from '@whale/core'
 import { hoverTipProps } from './Tooltip'
 import { tr } from '../i18n/locale'
 // ⚠ 槽类名（高/中/低槽）与舰船类别/舰级名**一律走这三个本地化单点**（2026-09-26 船长报障
@@ -440,8 +440,12 @@ export function moduleShortEffect(mod: ModuleDef): string {
         // 2026-09-15 隐秘行动装置（高槽支援件）：开火前隐身——短行必须写明"开火即现形"与推进器禁令
         body = tr("ui.shipInfo.118", { p1: mod.stealthMs / 1000 })
       } else if (mod.foeRangeDebuffPct !== undefined) {
-        // 2026-09-26 墨潮电子舱（H 族势力装备 · 高槽支援件）：敌方武器射程压制
-        body = tr("ui.shipInfo.185", { p1: pct(mod.foeRangeDebuffPct) })
+        /**
+         * 2026-09-26 墨潮电子舱（H 族势力装备 · 高槽支援件）：敌方武器射程压制。
+         * ⚠ **同日船长报障**：「**发现BUG，墨潮电子舱怎么写着全额叠加，并且没有写上最短射程3000m**」
+         * ⇒ 短行补上**最短射程**（数值取引擎单点 `FOE_RANGE_DEBUFF_FLOOR_M`，界面不写死 3000）。
+         */
+        body = tr("ui.shipInfo.185", { p1: pct(mod.foeRangeDebuffPct), p2: String(FOE_RANGE_DEBUFF_FLOOR_M) })
       } else if (mod.captureWebCycleMs !== undefined) {
         // 2026-09-26 墨潮捕获网（H 族势力装备 · 高槽支援件）：周期张网（射程 = 引擎单点 `MY_WEB_RANGE_M`）
         body = tr("ui.shipInfo.186", {
@@ -490,9 +494,10 @@ export function moduleShortEffect(mod: ModuleDef): string {
   const extras = [repairShortText(mod), hullResistShortText(mod), crossFamilyShort(mod)].filter(Boolean).join(' · ')
   if (extras) body = body ? `${body} · ${extras}` : extras
   // V18.1：收敛件（抗性/闪避 = 缺口复合、命中/速度 = EVE 曲线）尾注"多装递减"；
-  // 2026-09-15 隐秘行动装置（`max` 组）= **取最长一件、不叠加** ⇒ 既不标"多装递减"也不标"全额叠加"。
+  // 2026-09-15 隐秘行动装置（`max` 组）= **取最长一件、不叠加** ⇒ 既不标"多装递减"也不标"全额叠加"；
+  // 2026-09-26 墨潮电子舱（`sum` 组）= 同舰加和（有上限）＋ 跨舰乘法 ⇒ 同样不挂"多装递减"（加和不衰减）。
   const stShort = stackingOf(mod).group
-  return body + (stShort === 'flat' || stShort === 'max' ? '' : tr('ui.shipInfo.179'))
+  return body + (stShort === 'flat' || stShort === 'max' || stShort === 'sum' ? '' : tr('ui.shipInfo.179'))
 }
 
 /** 三系抗性紧凑文本（整数主抗制简化后只列非零项；全零 = "无"） */
@@ -1166,6 +1171,13 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.077") })
   } else if (st.group === 'max') {
     lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.078") })
+  } else if (st.group === 'sum') {
+    /**
+     * **同舰多件加和（上限 90%）· 多舰乘法叠加**（**2026-09-26 船长报障**：墨潮电子舱原先掉在 `flat`
+     * 兜底里、卡面写「全额叠加」——那三个字读起来像"可以无限叠"，而实际是**同舰加和到 90% 封顶、
+     * 跨舰走乘法、还被敌舰最短射程 3,000 m 的地板压着**）。
+     */
+    lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.201") })
   } else {
     lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.079") })
   }

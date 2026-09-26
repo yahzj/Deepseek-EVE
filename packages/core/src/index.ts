@@ -1125,6 +1125,9 @@ export {
   // 界面侧（装配页短行、敌舰挂载件效果句）从这里取值，**不硬写数字**（避免引擎改了而文案漂移）
   MY_WEB_RANGE_M,
   WEB_BREAK_DIST_M,
+  // 敌舰射程削减的**最短射程地板**（2026-09-26 船长报障：墨潮电子舱要写明"最短射程 3000m"）
+  // ——界面侧（短行文案）从这里取值，同样不硬写数字
+  FOE_RANGE_DEBUFF_FLOOR_M,
 } from './combat'
 export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3, BattleVerdict } from './combat'
 
