@@ -187,11 +187,11 @@ const RAW_LABEL_SYMBOLS: Record<string, string> = {
   shipRoleLabel: 'core 纯中文角色函数 → 用 `shipRoleText()`',
   shipCategoryLabelOf: 'core 纯中文类别函数 → 用 `shipRoleText(shipCategoryKeyOf(ship))`',
   shipSizeLabel: 'core 纯中文舰级函数 → 用 `shipTierText()`',
-  KIND_LABEL: 'core 纯中文作业种类表（活动栏）→ 需登记 id（未做，见工作文档）',
-  LAIR_TIER_LABELS: 'core 纯中文窝点档（外围/核心/深层）→ 需登记 id（未做）',
-  WORMHOLE_PLACE_TEXT: 'core 纯中文虫洞地点文本 → 需登记 id（未做）',
-  WORMHOLE_ARCHETYPE_LABELS: 'core 纯中文虫洞原型名 → 需登记 id（未做）',
-  HULL_CLASS_NAME: 'data 纯中文舰级表 → 需登记 id（未做）',
+  KIND_LABEL: 'core 纯中文活动名表 → 界面用 `activityText()`；日志参数走 core 的 `ACTIVITY_LABEL_ID`（`p1Id`）',
+  LAIR_TIER_LABELS: 'core 纯中文窝点档 → 用 `lairTierText()`',
+  WORMHOLE_PLACE_TEXT: 'core 纯中文虫洞地点文本 → 用 `placeText()`',
+  WORMHOLE_ARCHETYPE_LABELS: 'core 纯中文虫洞原型名 → 用 `archetypeText()`',
+  HULL_CLASS_NAME: 'data 纯中文舰级表（仅在 foeBrief 注释里被提及）→ 要用就登记 id',
 }
 
 /** 豁免：这些文件里出现上面的符号是**对的**（逐条写理由；渲染层其它文件一律不许） */
@@ -200,10 +200,6 @@ const ALLOW_RAW_LABEL: Record<string, string> = {
   'App.tsx': '`KIND_LABEL` 是本文件**自定义**的日志分类名表（不是 core 导出的那张），与本地化无关',
   'ui/itemSubs.ts': '本文件自己定义 `RACK_LABELS`（键→l10n id，**已本地化**）；' +
     '`SHIP_TIER_SUBS.label` 里的 core `shipSizeLabel` 只是**中文兜底**（渲染一律走 `subText(id)` → `shipTierText`）',
-  // ── 以下两张表**尚无本地化版**：本批按"待登记"记账放行，**不放宽闸门**（要收口就得登记 id） ──
-  'panels/Wormhole.tsx': '⛔ `WORMHOLE_PLACE_TEXT`（7 条地点名）尚未登记 id —— 见 docs/design/l10n-leak-sweep-20260926.md §四',
-  'panels/WormholeScan.tsx': '⛔ `WORMHOLE_ARCHETYPE_LABELS`（5 条原型名）尚未登记 id —— 同上',
-  // ── 以下三张表**尚无本地化版**：本批按"待登记"记账放行，**不放宽闸门**（要收口就得登记 id） ──
 }
 
 /** 去掉注释（块注释 + 行注释），避免"注释里提到符号名"被误判 */

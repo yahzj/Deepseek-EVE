@@ -325,7 +325,7 @@ import { saveBridge } from './storage'
 import { noteSaveWriteFailed, probeSaveStorage, requestPersistentStorage, saveStorageProbe } from './saveGuard'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
-import { tr, cmdText } from '../i18n/locale'
+import { tr, cmdText, paramText } from '../i18n/locale'
 
 type Listener = () => void
 
@@ -2560,9 +2560,14 @@ export class GameEngine {
     return wormholeEntryBlockReason(this.state, this.ctx, shipIds)
   }
 
-  /** 进洞时会自动停掉的活动名（「扫描虫洞、开采、打捞」这类中文短名；没有则 null）——准备页预告条用它 */
+  /**
+   * 进洞时会自动停掉的活动名（「扫描虫洞、开采、打捞」这类短名；没有则 null）——准备页预告条用它。
+   *
+   * ⚠ 2026-09-26：取词改走 `a.nameId`（`paramText` 那套：`core.` 前缀的 id 先翻好再用），
+   * `a.name` 只作中文兜底 ⇒ 英文界面下不再是中文短名。
+   */
   wormholeEntryAutoStopText(): string | null {
-    return wormholeEntryAutoStops(this.state).map((a) => a.name).join(tr("ui.MatterTechTab.017")) || null
+    return wormholeEntryAutoStops(this.state).map((a) => paramText(a.nameId)).join(tr("ui.MatterTechTab.017")) || null
   }
 
   /**
@@ -2570,7 +2575,7 @@ export class GameEngine {
    * 单独摆成警告条（船长 2026-09-14：「长途运输发出警告」）。
    */
   wormholeEntryAutoStopList(): Array<{ kind: string; name: string; warn: boolean }> {
-    return wormholeEntryAutoStops(this.state).map((a) => ({ kind: a.kind, name: a.name, warn: a.warn }))
+    return wormholeEntryAutoStops(this.state).map((a) => ({ kind: a.kind, name: paramText(a.nameId), warn: a.warn }))
   }
 
   /**

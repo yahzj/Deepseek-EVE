@@ -860,6 +860,7 @@ export {
   haltCurrentActivity,
   HALT_COST,
   KIND_LABEL,
+  ACTIVITY_LABEL_ID,
   logAutoHalt,
   mainActivityOf,
   WARN_KINDS,
