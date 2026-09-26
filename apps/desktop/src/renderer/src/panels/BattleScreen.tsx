@@ -48,6 +48,8 @@ import type { Dims, Anchor, BoltV, FlashV, Stage, OutroSnap } from './battleView
 import { tr, cmdText, mountNamesTextOf } from '../i18n/locale'
 // 2026-09-26 船长报障：挂载件悬停不再复读名字，改报"什么情况下发生什么"（复用势力图鉴那套明文效果）
 import { mountEffectTextByName } from '../ui/foeBrief'
+// 2026-09-26 战斗界面信息层级批：图例 chip 的射程数字收进"点按/悬停"卡片 ⇒ 走全站统一的富内容提示层
+import { hoverTipProps } from '../ui/Tooltip'
 import { useBattleFit } from '../ui/battleFit'
 
 /**
@@ -309,6 +311,12 @@ export function BattleScreen({
   const [stage, setStage] = useState<Stage>('live')
   const [retreatAsk, setRetreatAsk] = useState(false)
   const [dragV, setDragV] = useState<number | null>(null)
+  /**
+   * **期望交距读数只在"动它的时候"出现**（**2026-09-26 船长令** · 战斗界面信息层级批 I1）：
+   * 那个数字与滑条位置说的是同一件事，常驻只是加噪音 ⇒ 拖动/键盘调整时显示，松手隐去
+   * （用 `visibility` 隐，**保留占位** —— 不产生横向跳动）。
+   */
+  const [desireShown, setDesireShown] = useState(false)
   const [dims, setDims] = useState<Dims>({ W: 1200, H: 460, meW: 330, foeW: 330 })
   /** 视觉插值距离（33ms 平滑引擎 ~100ms 拍；null = 尚未插值，直接用引擎值） */
   const [smoothM, setSmoothM] = useState<number | null>(null)
@@ -344,10 +352,15 @@ const meSpeedRef = useRef(200)
   )
 
   const laneRef = useRef<HTMLDivElement>(null)
-  /** 「装不下就整块等比缩放」用（2026-09-25 船长令 · 方案甲）：整屏覆盖层 与 新增的包裹层 */
+  /**
+   * 「装不下就等比缩放」用（2026-09-25 船长令 · 方案甲；**2026-09-26 改成只缩战场**）：
+   * 屏（标记用）· 战场外层（预算 = 屏高 − 顶栏 − 底栏）· 战场内层（量内容高并承接缩放）。
+   * ⚠ 顶栏与底栏**不进这个缩放**——手机上再叠旋转那层 0.703 会把字与按钮一起缩到不可读/点不准。
+   */
   const screenRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
   const fitRef = useRef<HTMLDivElement>(null)
-  useBattleFit({ screen: screenRef, fit: fitRef, lane: laneRef })
+  useBattleFit({ screen: screenRef, stage: stageRef, fit: fitRef, lane: laneRef })
   const meColRef = useRef<HTMLDivElement>(null)
   const foeColRef = useRef<HTMLDivElement>(null)
   /** 舰首朝向：meFlip = 我方头朝左；foeFlip = 敌方头朝左（默认相向而行：我方朝右、敌方朝左） */
@@ -1758,6 +1771,7 @@ const meSpeedRef = useRef(200)
    * （我方 4 舰 + SVG 射程弧 + 事件环）重渲染几百次 ⇒ 顿挫（船长 2026-09-13：「依旧还是有顿挫感」）。
    */
   const pushDragV = (v: number): void => {
+    setDesireShown(true)
     dragPendingRef.current = v
     if (dragRafRef.current !== null) return
     dragRafRef.current = window.requestAnimationFrame(() => {
@@ -1784,6 +1798,7 @@ const meSpeedRef = useRef(200)
     }
     if (v !== null) commitDesire(v)
     setDragV(null)
+    setDesireShown(false)
   }
   const applyTactic = (t: 'assault' | 'mid' | 'kite'): void => {
     const m = battleTacticDesire(state, engine.ctx, t)
@@ -2248,12 +2263,11 @@ const meSpeedRef = useRef(200)
      */
     <div className="app-battle-screen" ref={screenRef}>
       {/**
-       * **装不下就整块等比缩放**（2026-09-25 船长令 · 方案甲；量高与算 k 见 `ui/battleFit.ts`）：
-       * 顶栏／舞台／底栏三层包在这一层里；手机竖屏逻辑空间只有约 540~555px 高，
-       * 战斗界面内部按桌面版式要 ~700px ⇒ 只有整块缩才装得下（否则舞台 `overflow: hidden` 会裁掉血条）。
-       * 装得下时本层是 `height: 100%` 且无 `transform` ⇒ 与改造前逐像素一致。
+       * **装不下就等比缩放**（2026-09-25 船长令 · 方案甲；**2026-09-26 改成只缩战场**）：
+       * 顶栏／战场／底栏三段现在各自独立——**只有战场**（距离尺 ＋ 车道）按剩余高度缩放
+       * （见下面 `.app-bts-stage-fit`），顶栏与底栏保持 1:1 逻辑尺寸。
+       * 桌面窗口够高 ⇒ 战场 `k = 1`、高度 100%、无 `transform` ⇒ 与改造前逐像素一致。
        */}
-      <div className="app-battle-fit" ref={fitRef}>
       <div className="app-battle-screen-top">
         {stage === 'live' ? (
           <>
@@ -2315,9 +2329,10 @@ const meSpeedRef = useRef(200)
           （舰名 + 三层血条 + 主控徽标 + 沉没灰态）⇒ 同一读数不再出现两遍。
           若船长要留，恢复成"折叠一行"的紧凑读数即可（原实现见 git 历史：`.app-bts-fleet` 那一块）。 */}
 
-      <div className="app-bts-stage">
+      <div className="app-bts-stage" ref={stageRef}>
         {/* **洞内倍速**（船长 2026-09-19：位置 = 顶部中间、距离条上方；只显示已解锁档）——
-            倍速只压战斗进程，演出动画（入场/转场/击杀慢镜）照原速播，见 `battleShowWindowMs`。 */}
+            倍速只压战斗进程，演出动画（入场/转场/击杀慢镜）照原速播，见 `battleShowWindowMs`。
+            ⚠ 它留在**缩放层之外**：这是"操作"，不跟着战场一起缩。 */}
         {speedOptions.length > 1 ? (
           <div className="app-bts-speedx">
             <span className="app-dim">{tr("ui.BattleScreen.047")}</span>
@@ -2337,8 +2352,23 @@ const meSpeedRef = useRef(200)
             ))}
           </div>
         ) : null}
+        {/**
+         * **战场内层**（2026-09-26 新增）：距离尺 ＋ 车道装在这一层里，**只有它**承接等比缩放
+         * （`k = min(1, 战场外层高 ÷ 本层内容高)`；见 `ui/battleFit.ts`）——
+         * 顶栏与底栏保持 1:1 逻辑尺寸 ⇒ 手机上的字与触控不再被二次缩小。
+         */}
+        <div className="app-bts-stage-fit" ref={fitRef}>
         {/* 距离尺（游标式）：左 = 远（拉开）→ 右 = 近（贴脸）；与下方滑条同轴同比例 */}
-        <div className="app-bts-ruler">
+        <div
+          className="app-bts-ruler"
+          /* 无障碍（2026-09-26 I4）：尺是纯图形读数 ⇒ 给一个语义标签（视觉零变化，读屏可读） */
+          role="img"
+          aria-label={tr("ui.BattleScreen.112", {
+            p1: Math.round(visM).toLocaleString('zh-CN'),
+            p2: Math.round(farM).toLocaleString('zh-CN'),
+            p3: Math.round(nearM).toLocaleString('zh-CN'),
+          })}
+        >
           {/* **双方速度**（2026-09-16 船长：「在上方的距离条两端的上方分别显示敌我的战斗速度」；
               同日裁「只修改战斗显示数值，实际数值不变动」）：
               左端 = 我方（舰队在左）· 右端 = 敌方；口径 = **与装配页「机动速度」同一把尺**
@@ -2765,16 +2795,45 @@ const meSpeedRef = useRef(200)
           {/* 伤害飘字层（2026-09-24 船长令）：叠在弹道之上、不吃点击（CSS 里 pointer-events:none） */}
           {popupEls}
         </div>
+        </div>
       </div>
 
       {/* 距离控制（收窄居中；战斗已结束时禁用，等战报） */}
       <div className="app-battle-controls">
         <div className="app-bts-dock">
           <div className="app-bts-legends">
+            {/**
+             * **图例 chip：射程数字收进"点按/悬停"卡片**（**2026-09-26 船长令** · 战斗界面信息层级批 I2 ＋ Q3
+             * 「逐武器射程数字收进点按/悬停详情——可以」）。
+             * 卡面 = 武器名 ＋ 有效射程带回读（`ui.BattleScreen.087`）＋ 伤害类型（无弹时写明原因）。
+             * ⚠ 卡片走全站统一的 `hoverTipProps`（`ui/Tooltip.tsx`）：**桌面悬停、手机点按即看**
+             *（触屏由浏览器合成 enter 事件触发，见该文件头注）；同一元素**不再挂原生 `title`**（契约要求）。
+             */}
             {arcs.me.map((w, wi) => (
-              <span key={`lg${wi}`} className="app-bts-chip" title={w.kind === 'gun' && !w.type ? tr("ui.BattleScreen.057") : undefined}>
+              <span
+                key={`lg${wi}`}
+                className="app-bts-chip"
+                {...hoverTipProps(
+                  <>
+                    <span className="app-ship-hover-title">{w.label}</span>
+                    <div className="app-info-note">
+                      {w.kind === 'gun' && !w.type
+                        ? tr("ui.BattleScreen.057")
+                        : tr("ui.BattleScreen.087", {
+                            p1: w.minM.toLocaleString('zh-CN'),
+                            p2: w.maxM.toLocaleString('zh-CN'),
+                          })}
+                      {w.kind === 'gun'
+                        ? w.type
+                          ? ` · ${DMG_LABEL[w.type]}${tr("ui.BattleScreen.003")}`
+                          : ` · ${tr('ui.BattleScreen.102')}`
+                        : ''}
+                    </div>
+                  </>,
+                )}
+              >
                 <i style={{ background: w.type ? DMG_COLOR[w.type] : 'rgb(var(--wui-dim))' }} />
-                {w.label} {w.minM.toLocaleString('zh-CN')}~{w.maxM.toLocaleString('zh-CN')}m
+                {w.label}
                 {w.kind === 'gun' ? (
                   w.type ? (
                     <span className={`app-a-chip app-a-${w.type}`}>{DMG_LABEL[w.type]}{tr("ui.BattleScreen.003")}</span>
@@ -2794,14 +2853,21 @@ const meSpeedRef = useRef(200)
               <span
                 key={`foe${bi}`}
                 className="app-bts-chip is-foe"
-                title={
-                  b.names.length > 0
-                    ? tr("ui.BattleScreen.089", { p1: b.names.join(tr("ui.MatterTechTab.017")), p2: b.minM, p3: b.maxM }) +
-                      // 2026-09-16 船长「敌舰悬停展示挂载件」：本带的敌方挂载件挂在同一条悬停里
-                      // 2026-09-26 船长报障「不应该复读一遍相同的文字」⇒ 改走**明文效果**（`foeMountsTipOf`）
-                      (b.mounts && b.mounts.length > 0 ? tr("ui.BattleScreen.090", { p1: foeMountsTipOf(b.mounts) }) : '')
-                    : tr("ui.BattleScreen.058")
-                }
+                {...hoverTipProps(
+                  <>
+                    <span className="app-ship-hover-title">
+                      {tr("ui.BattleScreen.052")} {b.minM.toLocaleString('zh-CN')}~{b.maxM.toLocaleString('zh-CN')}m
+                    </span>
+                    <div className="app-info-note">
+                      {b.names.length > 0
+                        ? tr("ui.BattleScreen.089", { p1: b.names.join(tr("ui.MatterTechTab.017")), p2: b.minM, p3: b.maxM }) +
+                          // 2026-09-16 船长「敌舰悬停展示挂载件」：本带的敌方挂载件挂在同一条悬停里
+                          // 2026-09-26 船长报障「不应该复读一遍相同的文字」⇒ 改走**明文效果**（`foeMountsTipOf`）
+                          (b.mounts && b.mounts.length > 0 ? tr("ui.BattleScreen.090", { p1: foeMountsTipOf(b.mounts) }) : '')
+                        : tr("ui.BattleScreen.058")}
+                    </div>
+                  </>,
+                )}
               >
                 <i style={{ background: DMG_COLOR[b.type] }} />
                 {tr("ui.BattleScreen.052")} {b.minM.toLocaleString('zh-CN')}~{b.maxM.toLocaleString('zh-CN')}m
@@ -2822,7 +2888,14 @@ const meSpeedRef = useRef(200)
             {arcs.foeMounts && arcs.foeMounts.length > 0 ? (
               <span
                 className="app-bts-chip is-foe"
-                title={tr("ui.BattleScreen.091", { p1: foeMountsTipOf(arcs.foeMounts, arcs.foeMountNamePairs) })}
+                {...hoverTipProps(
+                  <>
+                    <span className="app-ship-hover-title">{tr("ui.BattleScreen.061")}</span>
+                    <div className="app-info-note">
+                      {tr("ui.BattleScreen.091", { p1: foeMountsTipOf(arcs.foeMounts, arcs.foeMountNamePairs) })}
+                    </div>
+                  </>,
+                )}
               >
                 <i /> {tr("ui.BattleScreen.061")}
                 {mountNamesTextOf(arcs.foeMounts, arcs.foeMountNamePairs).join(tr("ui.MatterTechTab.017"))}
@@ -2978,7 +3051,10 @@ const meSpeedRef = useRef(200)
               <i className="app-bts-here" style={{ left: `${pct(visM)}%` }} title={tr("ui.BattleScreen.070")} />
             </div>
             <span className="app-dim app-bts-sideLabel">{tr("ui.BattleScreen.071")}</span>
-            <span className="app-gold app-bts-desire">{tr("ui.BattleScreen.072")} {sliderToDesire(sliderV).toLocaleString('zh-CN')}m</span>
+            {/* 期望交距读数：只在拖动/键盘调整时出现（隐去用 visibility，**保留占位**⇒不产生跳动） */}
+            <span className={`app-gold app-bts-desire${desireShown ? '' : ' is-idle'}`}>
+              {tr("ui.BattleScreen.072")} {sliderToDesire(sliderV).toLocaleString('zh-CN')}m
+            </span>
           </div>
           <div className="app-bts-ops">
             <span className="app-battle-tacs">
@@ -2994,8 +3070,7 @@ const meSpeedRef = useRef(200)
           </div>
         </div>
       </div>
-      {/* /app-battle-fit —— 2026-09-25 新增的等比缩放包裹层收口（层内三层沿用原缩进，未整块重排） */}
-      </div>
+      {/* /app-battle-screen 收口（2026-09-26：整屏等比缩放已撤，改成只缩战场 `.app-bts-stage-fit`） */}
     </div>
   )
 }
