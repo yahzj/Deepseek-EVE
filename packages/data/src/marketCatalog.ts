@@ -202,6 +202,8 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // ── 修理组件（2026-09-05：承伤持久化配套消耗品；民用/军用两档 NPC 常驻补给池） ──
   { key: 'repairkit-civ', kind: 'item', refId: 'repairkit-civ', rarity: 'common', basePrice: 3_300, demandMultiplier: 0.6, poolTarget: 2_400, supplyFlow: 20 }, // 2026-09-11 消耗品池按产能标定（原 300/4）
   { key: 'repairkit-mil', kind: 'item', refId: 'repairkit-mil', rarity: 'common', basePrice: 23_100, demandMultiplier: 0.6, poolTarget: 1_080, supplyFlow: 9 }, // 2026-09-11（原 120/1.5；船长定：与其它消耗品同口径，激战单场可吃 23 枚 ⇒ 池约撑 45 场）
+  // 损管修理组件（2026-09-25 船长令：损伤管制装置启动时消耗的那一种）——单场最多吃 1 枚，池按同族口径给
+  { key: 'repairkit-dc', kind: 'item', refId: 'repairkit-dc', rarity: 'common', basePrice: 33_000, demandMultiplier: 0.6, poolTarget: 1_080, supplyFlow: 9 },
   // ── 无人机（V10 占位：NPC 补给池） ──
   { key: 'drone-scout', kind: 'item', refId: 'drone-scout', rarity: 'common', basePrice: 900, demandMultiplier: 0.6, poolTarget: 480, supplyFlow: 4 }, // 2026-09-11 池 = flow×120（原 200）
   { key: 'drone-assault', kind: 'item', refId: 'drone-assault', rarity: 'common', basePrice: 2_200, demandMultiplier: 0.6, poolTarget: 240, supplyFlow: 2 },
@@ -263,6 +265,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // 修理组件蓝图（2026-09-05：书籍价随组件市场价同构）
   { key: 'bp-repairkit-civ', kind: 'blueprint', refId: 'bp-repairkit-civ', rarity: 'common', basePrice: 33000, demandMultiplier: 0.6 },
   { key: 'bp-repairkit-mil', kind: 'blueprint', refId: 'bp-repairkit-mil', rarity: 'common', basePrice: 138500, demandMultiplier: 0.6 },
+  { key: 'bp-repairkit-dc', kind: 'blueprint', refId: 'bp-repairkit-dc', rarity: 'common', basePrice: 198000, demandMultiplier: 0.6 }, // 2026-09-25 损管修理组件图纸（整批产物价 ×2.2，与民用/军用同式）
   // 2026-09-09 全蓝图化：全部装备可学蓝图自造（双渠道，现货保留）；蓝图书出现概率 −50%。
   // **蓝图价口径 2026-09-11 归一（船长裁决甲）**：书价 = 产物现货价 × 档位系数（民用/基础/MK1 ×2 · MK2 ×2.5 · MK3 ×3，
   // 取整 500 信用点）——单点 = `blueprints.ts` 的 `blueprintTierCoefOf`，本表每行只做「与 blueprints.ts 同值」的落账。
@@ -338,6 +341,10 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'mod-shield-ext-3', kind: 'module', refId: 'mod-shield-ext-3', rarity: 'rare', basePrice: 1_920_000, demandMultiplier: 0.65 },
   { key: 'mod-shieldchg-3', kind: 'module', refId: 'mod-shieldchg-3', rarity: 'rare', basePrice: 2_290_000, demandMultiplier: 0.65 }, // 护盾充能装置 MK3（价/渠道照船体维修装置 MK2）
   { key: 'mod-armor-plate-3', kind: 'module', refId: 'mod-armor-plate-3', rarity: 'rare', basePrice: 1_940_000, demandMultiplier: 0.65 },
+  // 损伤管制装置 MK1~MK3（2026-09-25 船长令：低槽 · 结构三系减伤 +30/40/50 ＋ 每场一次免死 · 同舰只能装一件）
+  { key: 'mod-dc-1', kind: 'module', refId: 'mod-dc-1', rarity: 'rare', basePrice: 620_000, demandMultiplier: 0.65 },
+  { key: 'mod-dc-2', kind: 'module', refId: 'mod-dc-2', rarity: 'rare', basePrice: 2_800_000, demandMultiplier: 0.65 },
+  { key: 'mod-dc-3', kind: 'module', refId: 'mod-dc-3', rarity: 'rare', basePrice: 9_500_000, demandMultiplier: 0.65 },
   { key: 'mod-prop-3', kind: 'module', refId: 'mod-prop-3', rarity: 'rare', basePrice: 1_970_000, demandMultiplier: 0.65 },
   // 微型跃迁引擎（2026-09-14 船长定：中槽短爆发推进，点火 10 秒 / 冷却 60 秒）——
   // 价 = 「同族之上的溢价」：MK1 60,000（矢量 MK1 6,000 ×10）· MK2 780,000（矢量 MK2 ×2）；
@@ -431,6 +438,10 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-armor-kin-3', kind: 'blueprint', refId: 'bp-armor-kin-3', rarity: 'rare', basePrice: 5820000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲镀层 MK3·动能型（蓝图=产物×3）（入闸）
   { key: 'bp-armor-exp-3', kind: 'blueprint', refId: 'bp-armor-exp-3', rarity: 'rare', basePrice: 5820000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲镀层 MK3·高爆型（蓝图=产物×3）（入闸）
   { key: 'bp-armor-pla-3', kind: 'blueprint', refId: 'bp-armor-pla-3', rarity: 'rare', basePrice: 5820000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲镀层 MK3·能量型（蓝图=产物×3）（入闸）
+  // 损伤管制装置蓝图（2026-09-25 船长令：**无声望门槛**——不入 `BM_MK3_KEYS` 那道闸；书价 = 产物价 ×(MK1 2 / MK2 2.5 / MK3 3)）
+  { key: 'bp-dc-1', kind: 'blueprint', refId: 'bp-dc-1', rarity: 'rare', basePrice: 1_240_000, demandMultiplier: 0.65 },
+  { key: 'bp-dc-2', kind: 'blueprint', refId: 'bp-dc-2', rarity: 'rare', basePrice: 7_000_000, demandMultiplier: 0.65 },
+  { key: 'bp-dc-3', kind: 'blueprint', refId: 'bp-dc-3', rarity: 'rare', basePrice: 28_500_000, demandMultiplier: 0.65 },
   { key: 'bp-armor-plate-2', kind: 'blueprint', refId: 'bp-armor-plate-2', rarity: 'rare', basePrice: 970000, demandMultiplier: 0.65 }, // 装甲增厚板 MK2（蓝图=产物×2.5）
   { key: 'bp-armor-plate-3', kind: 'blueprint', refId: 'bp-armor-plate-3', rarity: 'rare', basePrice: 5820000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲增厚板 MK3（蓝图=产物×3）（入闸）
   { key: 'bp-prop-2', kind: 'blueprint', refId: 'bp-prop-2', rarity: 'rare', basePrice: 977500, demandMultiplier: 0.65 }, // 矢量推进器 MK2（蓝图=产物×2.5）

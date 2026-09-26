@@ -386,6 +386,69 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     priceIsk: 138500,
     description: '军用修理组件图纸，高密度纳米修复剂封装，3 个/批，基础 10 HP。',
   },
+  /* ═══ 损管修理组件蓝图（2026-09-25：损伤管制装置启动时消耗的那一种组件）═══ */
+  {
+    id: 'bp-repairkit-dc',
+    name: '损管修理组件蓝图',
+    itemId: 'repairkit-dc',
+    outputUnits: 3,
+    materials: [
+      { itemId: 'min-mexallon', count: 1_500 }, // 30,000 信用点
+      { itemId: 'min-pyerite', count: 1_600 }, // 19,200 信用点
+    ], // 49,200 ≈ 90,000(30,000×3)×0.55（与民用/军用修理组件同一把尺）
+    buildSeconds: 40,
+    buildCostIsk: 1_200,
+    priceIsk: 198_000, // 组件图纸口径 = 整批产物价 ×2.2（与民用 33,000/15,000、军用 138,500/63,000 同式）
+    description: '损管修理组件图纸，应急损管修复剂封装，3 个/批。',
+  },
+  /* ═══ 损伤管制装置 MK1~MK3 蓝图（2026-09-25 船长令）═══
+   * 材料 = 以 `bp-armor-kin-3`（低槽稀有 · 产物 194 万 · 材料≈产物价×0.40）为参照**按价格比例缩放**
+   * ⇒ 料/价比例与参照同档（守 `content:check` 的「蓝图价格口径」与料价带）；图纸价 = 产物价 ×(MK1 2 / MK2 2.5 / MK3 3)。 */
+  {
+    id: 'bp-dc-1',
+    name: '损伤管制装置 MK1 蓝图',
+    moduleId: 'mod-dc-1',
+    materials: [
+      { itemId: 'min-tritanium', count: 14_670 },
+      { itemId: 'min-pyerite', count: 4_666 },
+      { itemId: 'min-mexallon', count: 2_796 },
+      { itemId: 'min-nocxium', count: 553 },
+    ],
+    buildSeconds: 600,
+    buildCostIsk: 0,
+    priceIsk: 1_240_000,
+    description: '损管系统图纸，结构抗性衬层与应急锁定阀组，船只首次结构见底时保住一口气。',
+  },
+  {
+    id: 'bp-dc-2',
+    name: '损伤管制装置 MK2 蓝图',
+    moduleId: 'mod-dc-2',
+    materials: [
+      { itemId: 'min-tritanium', count: 66_247 },
+      { itemId: 'min-pyerite', count: 21_072 },
+      { itemId: 'min-mexallon', count: 12_629 },
+      { itemId: 'min-nocxium', count: 2_497 },
+    ],
+    buildSeconds: 1_400,
+    buildCostIsk: 0,
+    priceIsk: 7_000_000,
+    description: '损管系统图纸，加厚抗性衬层与双路应急阀组。',
+  },
+  {
+    id: 'bp-dc-3',
+    name: '损伤管制装置 MK3 蓝图',
+    moduleId: 'mod-dc-3',
+    materials: [
+      { itemId: 'min-tritanium', count: 224_768 },
+      { itemId: 'min-pyerite', count: 71_495 },
+      { itemId: 'min-mexallon', count: 42_848 },
+      { itemId: 'min-nocxium', count: 8_471 },
+    ],
+    buildSeconds: 3_600,
+    buildCostIsk: 0,
+    priceIsk: 28_500_000,
+    description: '损管系统图纸，要塞级抗性衬层与全舰应急锁定阀组。',
+  },
   {
     id: 'bp-laser-1',
     name: '轻型激光炮 MK1蓝图',

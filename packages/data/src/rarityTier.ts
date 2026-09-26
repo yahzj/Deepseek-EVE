@@ -144,6 +144,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'bp-prop-3': 3,
   'bp-repairkit-civ': 1,
   'bp-repairkit-mil': 1,
+  'bp-repairkit-dc': 1, // 损管修理组件图纸（2026-09-25）：与另两种修理组件图纸同档
   'bp-rof-1': 1,
   'bp-rof-2': 2,
   'bp-rof-3': 3,
@@ -210,6 +211,14 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mod-armor-kin-1': 1,
   'mod-armor-kin-2': 2,
   'mod-armor-kin-3': 3,
+  /* 损伤管制装置线（2026-09-25 船长令）：人审档位 = 按"同为低槽稀有件"的价格梯对齐
+     （装甲镀层 / 货舱扩展：MK1 1～2 → MK2 2～3 → MK3 3）；本线整体更贵 ⇒ 取 2 / 3 / 4，蓝图跟产物同梯。 */
+  'mod-dc-1': 2,
+  'mod-dc-2': 3,
+  'mod-dc-3': 4,
+  'bp-dc-1': 2,
+  'bp-dc-2': 3,
+  'bp-dc-3': 4,
   'mod-armor-pla-1': 1,
   'mod-armor-pla-2': 2,
   'mod-armor-pla-3': 3,
@@ -361,6 +370,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'pioneer': 3,
   'repairkit-civ': 1,
   'repairkit-mil': 1,
+  'repairkit-dc': 1, // 损管修理组件（2026-09-25）：常驻渠道 ⇒ 与另两种修理组件同档
   'sbp-bowhead': 4,
   'sbp-bullshark': 4,
   'sbp-burrower': 2,

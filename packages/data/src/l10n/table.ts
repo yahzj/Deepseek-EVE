@@ -320,6 +320,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.encounters.011": { zh: "⚔ 主动脱离（{p1}·{p2}）：{p3} 收手退出交火（现 装甲 {p4}% / 结构 {p5}%）{p6}。", en: "⚔ Broke away voluntarily ({p1} · {p2}): {p3} disengaged from the fight (armour {p4}% / hull {p5}%){p6}." },
   // 2026-09-25 船长令：入侵母舰的「支援舰船召唤装置」——每 60 秒把当前波已阵亡的一艘敌舰满血复活入场
   "core.combat.001": { zh: "⚔ 敌方支援舰船入场：{p1}（第 {p2} 次支援）", en: "⚔ An enemy support ship has arrived: {p1} (support #{p2})" },
+  /* ── 损伤管制装置（2026-09-25 船长令：结构首次被打空时启动，锁定 1 秒，消耗损管修理组件 ×1）── */
+  "core.combat.002": { zh: "✦ 损伤管制装置启动：结构锁定在 1 点、持续 1 秒（消耗损管修理组件 ×1）。", en: "✦ Damage Control Unit engaged: structure locked at 1 for 1 second (spent 1 Damage Control Repair Kit)." },
+  "core.combat.003": { zh: "⚠ 损伤管制装置未能启动：损管修理组件不足。", en: "⚠ Damage Control Unit could not engage: no Damage Control Repair Kit available." },
+  "core.combat.004": { zh: "损伤管制装置启动 ×{p1}（消耗损管修理组件 ×{p2}）", en: "Damage Control Unit engaged ×{p1} (spent Damage Control Repair Kits ×{p2})" },
   // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
   "core.weekend.001": { zh: "✦ 夺回「{p1}」：夺回奖励 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ Reclaimed “{p1}”: the reclaim reward of rare wrecks ×{p2} + {p3} credits is paid out when the invasion ends." },
   "core.weekend.002": { zh: "✦ 全部占领区夺回：「{p1}」是最后一处 —— 夺回奖励与全清额外奖励共 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ All occupied systems reclaimed: “{p1}” was the last one — the reclaim reward and the all-clear bonus (rare wrecks ×{p2} + {p3} credits) are paid out when the invasion ends." },
@@ -1348,6 +1352,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // 伤害飘字里"没打中"的标记（2026-09-24 船长令：伤害数值动画「包括 MISS」——船长指定就显示 MISS，
   // 中英同形，属**语言中立**的战斗术语；要改中文口径只需改这一条 zh）
   "ui.BattleScreen.107": { zh: "MISS", en: "MISS" },
+  /* 损伤管制装置同舰唯一（2026-09-25 船长令「损管只能装备一件」）：装配被拒时的原因 id */
+  "core.equipment.028": { zh: "损伤管制装置每舰只能装一件（已装 {p1}）。", en: "Only one Damage Control Unit may be fitted per ship (already fitted: {p1})." },
   "ui.battleViewCore.001": { zh: "高爆", en: "High explosive" },
   "ui.battleViewCore.002": { zh: "能量", en: "Energy" },
   "ui.CargoPage.001": { zh: "↖ 查看市场", en: "↖ View market" },
