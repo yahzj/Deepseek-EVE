@@ -21,13 +21,15 @@ import { pilotUnavailableReason } from './shipyard'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
 import type { AnomalyDef, SimContext } from './types'
-import { addItem, freeCargoM3, unloadCargoToWarehouse } from './inventory'
+import { addItem, addWare, freeCargoM3, unloadCargoToWarehouse } from './inventory'
 import { HOME_GALAXY_ID, shortestTravelMinutes } from './expedition'
 import { travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
 import { bumpFirst } from './firstTasks'
 import { fleetDefOf, shipDisplayName } from './instances'
-import { allFittedModules } from './equipment'
+import { addModule, allFittedModules } from './equipment'
+import { restoreShipFromWreck } from './shipyard'
+import { hasSalvageableShipWreck, trySalvagePlayerWreckOf } from './shipWrecks'
 import { nextRandom, pickWeighted } from './rng'
 import {
   pullRareWreck,
@@ -176,6 +178,12 @@ function autoTargetPickOf(
   galaxyId: string,
   pool: ReadonlyArray<{ anomalyId: string; threat: number }>,
 ): { anomalyId: string; threat: number } | null {
+  /**
+   * ⓪ **玩家舰船残骸（四级序第 ①★ 档）**：**2026-09-26 船长令**「**玩家如果在该星系打捞，优先打捞该残骸
+   * （比稀有残骸优先级还高）**」⇒ 它比下面三条**都**高：本函数直接返回 `null`，
+   * 由 `pullOneWreck` 那一支去掷逐件回收（**不消耗型号池、也不落普通残骸**）。
+   */
+  if (hasSalvageableShipWreck(state, galaxyId)) return null
   // ① 入侵残骸优先
   if (weekendWreckDensityOf(state, galaxyId) > 0) {
     const hidden = pool.filter((p) => ctx.anomalies.get(p.anomalyId)?.hidden === true)
@@ -497,6 +505,59 @@ export function pullOneWreck(
    * - 缺省 = 全部（现状：按威胁加权抽、先扣入侵池）。
    */
   const target = state.salvaging.targetGroup
+  /**
+   * ⓪★ **玩家舰船残骸独占最高优先**（**2026-09-26 船长令**：「**玩家如果在该星系打捞，优先打捞该残骸
+   * （比稀有残骸优先级还高）。打捞后玩家按照一定概率和比例回收被摧毁舰船的部分装备。除此以外没有其他资源。**」）。
+   *
+   * 三条要点：
+   * - **在稀有池之前**（本支在下面那一支之上）；有它就**独占本轮的产出**，不碰稀有池、不碰普通池；
+   * - ⚠ **也在"手选对象的存量闸"之前**：残骸里的件与任何型号池的存量**无关**（它自己就是一本账）
+   *   ⇒ 手选了一个已捞干的组、也不能因此把玩家残骸跳过去（船长那条"最高优先"是绝对的）；
+   * - **不吃体积/放干**：捞回的是一件**装备**（模块进装备库、无人机进仓库），没有 m³ 当量、
+   *   不扣星系密度、不写 `galaxyWrecks`；**没捞到也别落普通残骸**（残骸还立着，玩家下次接着捞）。
+   */
+  if (state.shipWrecks && hasSalvageableShipWreck(state, galaxyId)) {
+    const salvage = trySalvagePlayerWreckOf(state, ctx, galaxyId)
+    if (salvage.kind === 'item') {
+      if (salvage.isModule) {
+        addModule(state, salvage.itemId, salvage.units)
+      } else {
+        addWare(state, salvage.itemId, salvage.units)
+      }
+      const itemName = salvage.isModule
+        ? (ctx.modules.get(salvage.itemId)?.name ?? salvage.itemId)
+        : (ctx.items.get(salvage.itemId)?.name ?? salvage.itemId)
+      /** ⚠ **级别 = `warn`**（**2026-09-26 船长令**：「**回收玩家自己残骸的事件日志不醒目，应该划分到警告**」）
+       *  ——`info` 在事件日志里与日常噪声同级；捞回自己的东西是"该被看见"的一条，提到警告档。 */
+      addLog(state, 'warn', `打捞舰船残骸：捞回 ${itemName} ×${salvage.units}。`, 'core.salvaging.030', {
+        p1: itemName,
+        p2: salvage.units,
+      })
+      return { itemId: salvage.itemId, mul: 1, volumeM3: 0 }
+    }
+    if (salvage.kind === 'ship') {
+      /**
+       * **整船回收**（加固结构插件命中，接口见 `shipWrecks.hullRecoveryChanceOf`）：
+       * 船**回母港**、按残骸时刻打折入队（结构 ×0.3 / 装甲 ×0.5）、**不自动成为驾驶船**；
+       * 货舱货物不回（船长 2026-09-26：「除此以外没有其他资源」）。
+       */
+      if (salvage.defId !== undefined) {
+        restoreShipFromWreck(state, { defId: salvage.defId, durability: salvage.durability, armorPct: salvage.armorPct })
+      }
+      /** 同批把"整船回收"也提到 `warn`（2026-09-26 船长令：回收自己残骸的日志要醒目） */
+      addLog(state, 'warn', `舰船残骸里捞回了一艘还能修的船：${salvage.wreckName}——已拖回母港入队。`, 'core.salvaging.031', {
+        p1: salvage.wreckName,
+      })
+      return { itemId: '', mul: 1, volumeM3: 0 }
+    }
+    return { itemId: '', mul: 1, volumeM3: 0 }
+  }
+  /**
+   * **打捞对象**（**2026-09-26 船长令**）：作业上带着它（`SalvageOpState.targetGroup`）。
+   * - 选了某一组而**该组已捞干** ⇒ **本轮不出**（不自动换组——手动选的语义就是"只捞它"）；
+   * - 缺省 = 全部（现状：按威胁加权抽、先扣入侵池）。
+   * ⚠ 本闸**必须排在玩家残骸那一支之后**（见上）：残骸里的件与任何池的存量无关。
+   */
   if (target !== undefined && wreckGroupStockOf(state, ctx, galaxyId, target) <= 0.05) return null
   // ① **稀有池优先**（三级序第 1 档；2026-09-10 船长定"窝点战利品必捞"· 2026-09-26 复述
   //    「优先捞稀有池，稀有池捞完后开始普通池」）：稀有池有存量 ⇒ 本轮必出稀有，**捞干后**才轮到普通池。
@@ -652,12 +713,18 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
       while ((s.deviceAccMs[key] ?? 0) >= cycleMs) {
         s.deviceAccMs[key] = (s.deviceAccMs[key] ?? 0) - cycleMs
         const pulled = pullOneWreck(state, ctx, galaxyId, cycleMs)
-      if (pulled) bumpFirst(state, 'salvageRuns') // 第一次任务/链：打捞次数
+        if (pulled) bumpFirst(state, 'salvageRuns') // 第一次任务/链：打捞次数
         if (!pulled) {
           resetOp(state)
           addLog(state, 'warn', '该星系的敌群情报缺失，打捞作业已停止。', 'core.salvaging.025')
           return
         }
+        /**
+         * **玩家舰船残骸那一支没有 m³ 当量**（2026-09-26）：它捞回的是**装备**（模块进装备库、无人机进仓库），
+         * 不占货舱、也不触发"满仓返航"（`volumeM3 = 0` ⇒ 下面 `freeM3` 判定天然放行）。
+         * ⚠ 与 `kind: 'none'` 同款早退：那一轮**什么都不落**（残骸还立着，下次接着捞）。
+         */
+        if (pulled.volumeM3 <= 0) continue
         const freeM3 = freeCargoM3(state, ctx)
         if (pulled.volumeM3 > freeM3) {
           // 满仓（下一轮放不下）：自动返航（去程并入返航，总行程时间不变）

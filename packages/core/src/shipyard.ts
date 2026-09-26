@@ -21,11 +21,47 @@ import { cancelAiTask } from './ai'
 import { scaledReturnMs } from './trips'
 import { countWare, removeWare } from './inventory'
 import { quickRepairFactor } from './repair'
+import {
+  noteShipWreck,
+  RECOVERED_HULL_ARMOR_PCT,
+  RECOVERED_HULL_DURABILITY_PCT,
+  reinforceChanceOfFitted,
+} from './shipWrecks'
 
 /** v17：加入一艘"全新"的同型舰船（分配新实例 uid 并落库），返回实例 uid */
 export function addShipToFleet(state: GameState, defId: string): string {
   const uid = allocateShipUid(state, defId)
   state.fleet[uid] = emptyShipState(defId)
+  return uid
+}
+
+/**
+ * **整船回收**（**2026-09-26 船长令**：「**留一个接口，给之后舰船插件的。之后会添加一个加固结构的
+ * 舰船插件，有加固结构的插件，玩家有概率能够回收该舰船。**」）——把残骸里捞回的船拖回母港入队。
+ *
+ * 三条口径（船长 2026-09-26 同日裁定）：
+ * - **回母港舰队**、**不自动成为驾驶船**（玩家自己去舰船页切）；
+ * - **按残骸时刻的值打折**：结构（耐久）×`RECOVERED_HULL_DURABILITY_PCT`（0.3）、
+ *   装甲 ×`RECOVERED_HULL_ARMOR_PCT`（0.5）；两个比例都以"损毁那一刻的残余"为基数
+ *   （残骸快照存的正是那一刻的值），缺省按满值起算；
+ * - **同一艘船**：装配与无人机舱随快照回队；**货舱货物不回**（「除此以外没有其他资源」）。
+ *
+ * 实例 uid 走 `allocateShipUid`（**新分配、不复用原 uid**）：原 uid 在残骸账里还占着键（同一时刻
+ * 可能有多具残骸），复用会串账。
+ */
+export function restoreShipFromWreck(
+  state: GameState,
+  args: { defId: string; durability?: number; armorPct?: number; fitted?: FittedModules; droneLoad?: Record<string, number> },
+): string {
+  const uid = addShipToFleet(state, args.defId)
+  const ship = state.fleet[uid]
+  if (!ship) return uid
+  const baseDur = Number.isFinite(args.durability) ? Math.max(0, args.durability as number) : 1
+  const baseArmor = Number.isFinite(args.armorPct) ? Math.max(0, args.armorPct as number) : 1
+  ship.durability = Math.max(0, Math.min(1, baseDur * RECOVERED_HULL_DURABILITY_PCT))
+  ship.armorPct = Math.max(0, Math.min(1, baseArmor * RECOVERED_HULL_ARMOR_PCT))
+  if (args.fitted !== undefined) ship.fitted = args.fitted
+  if (args.droneLoad !== undefined && Object.keys(args.droneLoad).length > 0) ship.droneLoad = args.droneLoad
   return uid
 }
 
@@ -258,10 +294,56 @@ export function retireMiningShip(state: GameState, ctx: SimContext): boolean {
   return true
 }
 
-/** 弃船（损失舰船：连同货仓与装备）。自动补驾驶船：优先另一艘，否则补发初始沙猫 */
-export function loseShip(state: GameState, shipId: string, ctx: SimContext, reason: string): void {
+/**
+ * 弃船（损失舰船：连同货仓与装备）。自动补驾驶船：优先另一艘，否则补发初始沙猫。
+ *
+ * **2026-09-26 加 `wreckGalaxyId`（船长令：「玩家舰船被摧毁后，如果是在**非虫洞的正常星系**内，
+ * 在该星系生成一个'<被摧毁的舰船名称>的残骸'」）**：**只有传了它才生成残骸**——
+ * 全仓 5 个调用点里**只有那两处"正常星系远征失利遭追击"传**（`expedition` 主控 · `ai` 副船），
+ * 虫洞那三处（被击沉 / 失联）不传 ⇒ **结构上不可能误生成**，不靠"看损失原因字符串"这种脆判据。
+ *
+ * ⚠ **快照必须在 `delete state.fleet[shipId]` 之前抓**：删完再取装配与无人机就什么都没有了。
+ */
+export function loseShip(
+  state: GameState,
+  shipId: string,
+  ctx: SimContext,
+  reason: string,
+  wreckGalaxyId?: string,
+): void {
   const display = shipDisplayName(state, ctx, shipId)
   const wasCurrent = state.shipId === shipId
+  /**
+   * **残骸快照**（顺序敏感，见函数头注）：船型、那一刻的显示名（含玩家自定义名）、三层血里的
+   * 结构与装甲、装配与无人机舱、以及"加固结构插件"的整船回收率之和（接口见 `types.ModuleDef.hullRecoveryChance`）。
+   */
+  if (wreckGalaxyId !== undefined && wreckGalaxyId.length > 0) {
+    const doomed = state.fleet[shipId]
+    const defId = doomed?.defId ?? uidDefId(shipId)
+    if (ctx.ships.has(defId)) {
+      noteShipWreck(state, {
+        galaxyId: wreckGalaxyId,
+        shipId,
+        shipName: display,
+        defId,
+        ...(doomed?.durability !== undefined ? { durability: doomed.durability } : {}),
+        ...(doomed?.armorPct !== undefined ? { armorPct: doomed.armorPct } : {}),
+        ...(doomed?.fitted !== undefined ? { fitted: doomed.fitted } : {}),
+        ...(doomed?.droneLoad !== undefined ? { droneLoad: doomed.droneLoad } : {}),
+        reinforceChance: reinforceChanceOfFitted(doomed?.fitted, ctx),
+        createdAtWallMs: state.wallMs,
+      })
+      /**
+       * ⚠ **档位 = `fleet`**（**2026-09-26 合并时对齐一号的分类**）：本条与上面那条「已损毁，货仓与装备
+       * 一并遗失」（`core.shipyard.020`）是同一件事的两句，「事件日志重新分类」那批把**舰船事件统一归
+       * `fleet`** ⇒ 本条跟着归 `fleet`，不让同一件事的两句落进两个页签。
+       */
+      addLog(state, 'fleet', `${display} 的残骸留在 ${ctx.galaxies.get(wreckGalaxyId)?.name ?? wreckGalaxyId}（48 小时内可打捞）。`, 'core.shipyard.033', {
+        p1: display,
+        p2: ctx.galaxies.get(wreckGalaxyId)?.name ?? wreckGalaxyId,
+      })
+    }
+  }
   delete state.fleet[shipId]
   addLog(state, 'fleet', `${reason}：${display} 已损毁，船上的货仓与装备一并遗失。`, 'core.shipyard.020', {
     p1: reason,

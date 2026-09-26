@@ -46,7 +46,36 @@ import {
 } from './battleViewCore'
 import type { Dims, Anchor, BoltV, FlashV, Stage, OutroSnap } from './battleViewCore'
 import { tr, cmdText, mountNamesTextOf } from '../i18n/locale'
+// 2026-09-26 船长报障：挂载件悬停不再复读名字，改报"什么情况下发生什么"（复用势力图鉴那套明文效果）
+import { mountEffectTextByName } from '../ui/foeBrief'
 import { useBattleFit } from '../ui/battleFit'
+
+/**
+ * **敌方挂载件的悬停明文**（**2026-09-26 船长报障**：「**战斗画面，玩家鼠标悬停敌方挂载件时，
+ * 不应该复读一遍相同的文字，应该进行挂载件的大致效果说明**」）。
+ *
+ * 病根：芯片上**已经印着装置名**（`mountNamesTextOf(...)` 那一段就是可见正文），
+ * 而原来的 `title` 又把同一串名字拼一遍 ⇒ 悬停等于什么都没说。
+ *
+ * 现口径：**逐件「装置名 ＋ 该件的明文效果」**（效果文案复用势力图鉴那套 `ui.foeIntro.10x`，
+ * 由 `foeBrief.mountEffectText*` 从 `FOE_MOUNTS` 的**效果字段现算** ⇒ 与战斗里真正生效的是同一件事）；
+ * 某件确实只有名字、没有任何机制（`mountEffectText` 返回 null）⇒ **只显示名字**（不复读效果，也不留空）。
+ *
+ * ⚠ 语言：效果文案走 `tr(id)`（随语言切），装置名走既有的 `mountNamesTextOf`（core 的双语名对）。
+ */
+function foeMountsTipOf(
+  names: readonly string[],
+  pairs?: ReadonlyArray<readonly [string, string]>,
+): string {
+  const shown = mountNamesTextOf(names, pairs)
+  return names
+    .map((n, i) => {
+      const eff = mountEffectTextByName(n)
+      const label = shown[i] ?? n
+      return eff === null || eff.length === 0 ? label : `${label} — ${eff}`
+    })
+    .join(tr('ui.MatterTechTab.017'))
+}
 
 /**
  * 无人机阵位（绝对画面 px；2026-09-10 船长二次定）：
@@ -2769,7 +2798,8 @@ const meSpeedRef = useRef(200)
                   b.names.length > 0
                     ? tr("ui.BattleScreen.089", { p1: b.names.join(tr("ui.MatterTechTab.017")), p2: b.minM, p3: b.maxM }) +
                       // 2026-09-16 船长「敌舰悬停展示挂载件」：本带的敌方挂载件挂在同一条悬停里
-                      (b.mounts && b.mounts.length > 0 ? tr("ui.BattleScreen.090", { p1: b.mounts.join(tr("ui.MatterTechTab.017")) }) : '')
+                      // 2026-09-26 船长报障「不应该复读一遍相同的文字」⇒ 改走**明文效果**（`foeMountsTipOf`）
+                      (b.mounts && b.mounts.length > 0 ? tr("ui.BattleScreen.090", { p1: foeMountsTipOf(b.mounts) }) : '')
                     : tr("ui.BattleScreen.058")
                 }
               >
@@ -2792,9 +2822,7 @@ const meSpeedRef = useRef(200)
             {arcs.foeMounts && arcs.foeMounts.length > 0 ? (
               <span
                 className="app-bts-chip is-foe"
-                title={tr("ui.BattleScreen.091", {
-                  p1: mountNamesTextOf(arcs.foeMounts, arcs.foeMountNamePairs).join(tr("ui.MatterTechTab.017")),
-                })}
+                title={tr("ui.BattleScreen.091", { p1: foeMountsTipOf(arcs.foeMounts, arcs.foeMountNamePairs) })}
               >
                 <i /> {tr("ui.BattleScreen.061")}
                 {mountNamesTextOf(arcs.foeMounts, arcs.foeMountNamePairs).join(tr("ui.MatterTechTab.017"))}

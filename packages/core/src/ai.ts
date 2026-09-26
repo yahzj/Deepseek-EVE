@@ -1188,7 +1188,12 @@ function resolveAiBattleOutcome(state: GameState, shipId: string, assignment: Ai
     if (!fleetShip || durabilityAfter <= 0 || nextRandom(state.rng) < aiAbandonChance(state, ctx, shipId, anomaly.threat, Math.max(0, durabilityAfter))) {
       delete state.aiAssignments[shipId]
       gainAiCore(state, assignment.coreType)
-      loseShip(state, shipId, ctx, `[AI·${shipName}] 远征失利（${galaxy?.name ?? ''}·${anomaly.name}）后遭追击`)
+      /**
+       * ⚠ **合并解冲突（2026-09-26，两边各改一行 ⇒ 都保留）**：
+       * ① 我方：`loseShip` 末参传 `anomaly.galaxyId`（这艘船的残骸留在哪个星系，船长令）；
+       * ② main 侧（一号「事件日志重新分类」）：本条档位由 `warn` 改 `fleet`（舰队类）。
+       */
+      loseShip(state, shipId, ctx, `[AI·${shipName}] 远征失利（${galaxy?.name ?? ''}·${anomaly.name}）后遭追击`, anomaly.galaxyId)
       addLog(state, 'fleet', `[AI·${shipName}] 舰船损毁，AI 任务结束（${aiCoreName(assignment.coreType)} 已归还）。`, 'core.ai.031', {
         p1: shipName,
         p2: aiCoreName(assignment.coreType),

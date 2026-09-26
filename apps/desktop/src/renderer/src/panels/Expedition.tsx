@@ -58,6 +58,10 @@ import {
   autoLoopReopenBlockReason,
   wreckDensityOf,
   weekendWreckDensityOf,
+  // 2026-09-26 玩家舰船残骸（船长令）：该星系残留的舰船残骸读数卡（船名 + 可回收件数 + 倒计时）
+  shipWrecksOf,
+  wreckLootRowsOf,
+  SHIP_WRECK_DECAY_MS,
   weekendOccupiedLiveAt,
   shortestTravelMinutes,
   standingOf,
@@ -82,6 +86,8 @@ import { tr, useL10n, cmdText } from '../i18n/locale'
 import type { ToastFn } from '../pages/common'
 import { DmgChip, FoeDamageMix, ProfileChip } from '../ui/shipInfo'
 import { FirstTasks } from './FirstTasks'
+// 2026-09-26 船长令「入侵的悬赏卡片在常驻悬赏里置顶」：排序比较器抽成纯函数（可被工具/用例直接断言）
+import { bountyComparatorOf } from './bountySort'
 import { MilestoneTasks } from './MilestoneTasks'
 import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
@@ -513,46 +519,36 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
   })
 
   // —— 悬赏任务排序（2026-09-09：默认 = 危险 = 目标星系安全等级 sec 降序、安全在前；次级均按名称） ——
-  const byName = (x: { a: AnomalyDef }, y: { a: AnomalyDef }): number =>
-    x.a.name.localeCompare(y.a.name, 'zh-Hans-CN') || x.a.id.localeCompare(y.a.id)
+  //     ⚠ 比较器本体在 `./bountySort`（纯函数：2026-09-26 加"入侵卡置顶"后，置顶这条要能被工具断言）
   const galaxySecOf = (a: AnomalyDef): number => engine.ctx.galaxies.get(a.galaxyId)?.security ?? 1
   const items = listed.map((a) => {
     const galaxy = engine.ctx.galaxies.get(a.galaxyId)
     const mins = shortestTravelMinutes(engine.ctx, originGalaxyOf(state, engine.ctx), a.galaxyId)
     return {
       a,
+      /** 排序键需要的字段（与 `bountySort.BountySortRow` **同名列** ⇒ 比较器可直接吃这一行） */
+      id: a.id,
+      name: a.name,
+      security: galaxySecOf(a),
       galaxyName: galaxy?.name ?? a.galaxyId,
       dist: Number.isFinite(mins) ? mins : Number.POSITIVE_INFINITY,
-      reward: a.rewardIsk,
-      standing: a.standingGain,
+      rewardIsk: a.rewardIsk,
+      standingGain: a.standingGain,
     }
   })
-  const sorted = [...items].sort((x, y) => {
-    if (sort === 'danger') {
-      const gx = galaxySecOf(x.a)
-      const gy = galaxySecOf(y.a)
-      if (gx !== gy) return gy - gx // sec 降序 = 安全在前
-      return byName(x, y)
-    }
-    if (sort === 'distance') {
-      if (x.dist !== y.dist) return x.dist - y.dist
-      return byName(x, y)
-    }
-    if (sort === 'galaxy') {
-      const g = x.galaxyName.localeCompare(y.galaxyName, 'zh-Hans-CN')
-      if (g !== 0) return g
-      return byName(x, y)
-    }
-    if (sort === 'reward') {
-      if (x.reward !== y.reward) return y.reward - x.reward
-      return byName(x, y)
-    }
-    if (sort === 'standing') {
-      if (x.standing !== y.standing) return y.standing - x.standing
-      return byName(x, y)
-    }
-    return byName(x, y)
-  })
+  /**
+   * **入侵的悬赏卡置顶**（**2026-09-26 船长令**：「**入侵的悬赏卡片在常驻悬赏里置顶。**」）。
+   *
+   * 判据 = `weekendOccupiedLiveAt`（**仍被占**才算；与"赏金栏改显结算口径"、星系详细那行入侵框
+   * 同一把尺 ⇒ 三处不会各说各话）。已夺回的星系不算 —— 它的常驻悬赏本来就还在隐藏状态，
+   * 不占板面、也无需置顶。
+   *
+   * 比较器本体抽到 `./bountySort`（纯函数 ⇒ 工具/用例可直接断言"置顶恒成立"）。
+   */
+  const pinnedIds = new Set(listed.filter((a) => weekendOccupiedLiveAt(state, a.galaxyId, Date.now())).map((a) => a.id))
+  const sorted = [...items].sort(
+    bountyComparatorOf(sort, pinnedIds),
+  )
 
   return (
     <Panel
@@ -2456,6 +2452,32 @@ function GalaxyActions({
           </div>
         )
       })()}
+      {/**
+       * **玩家舰船残骸（置顶）**（**2026-09-26 船长令**：「玩家舰船被摧毁后，如果是在非虫洞的正常星系内，
+       * 在该星系生成一个'<被摧毁的舰船名称>的残骸'该残骸存在48小时，玩家如果在该星系打捞，
+       * 优先打捞该残骸（比稀有残骸优先级还高）」）。
+       *
+       * 读数卡（**只做读数，观感交船长审**）：船名 ＋ 还可回收件数 ＋ 剩余小时（48h 线性衰减）。
+       * 一具一张卡（同星系可多具、各算各的 48h）；没有残骸时整段不渲染。
+       */}
+      {(() => {
+        const wrecks = shipWrecksOf(state, galaxy.id)
+        if (wrecks.length === 0) return null
+        return (
+          <div className="app-belt-invwreck" title={tr('ui.weekend.110', { p1: String(wrecks.length) })}>
+            <span className="app-belt-invwreck-label">{tr('ui.weekend.110', { p1: String(wrecks.length) })}</span>
+            {wrecks.map((w) => {
+              const leftH = Math.max(0, Math.round((1 - w.decayAccMs / SHIP_WRECK_DECAY_MS) * 48))
+              const rows = wreckLootRowsOf(w, engine.ctx).length
+              return (
+                <span key={w.shipId} className="app-dim app-ga-desc">
+                  {tr('ui.weekend.111', { p1: w.name, p2: String(rows), p3: String(leftH) })}
+                </span>
+              )
+            })}
+          </div>
+        )
+      })()}
       {/* ⑤ 残骸打捞（B3：采矿式自动循环作业；需高槽打捞器，满仓自动返航卸货后自动续捞） */}
       <div className="app-bay-title app-ga-sub">
         <span className="app-ico"><Glyph name="nav-salvage" size={14} color={NAV_TONES["nav-salvage"]} /></span>{tr("ui.Expedition.211")} {wreckDensityOf(state, galaxy.id, engine.ctx).toFixed(1)}）
@@ -2486,8 +2508,14 @@ function GalaxyActions({
           </span>
           <button
             className="app-btn is-small is-primary"
-            disabled={state.salvaging.active}
-            title={state.salvaging.active ? tr("ui.Expedition.149") : tr("ui.MapPage.070")}
+            /**
+             * ⚠ **2026-09-26 船长报障**：「**星系详细里，如果处于打捞状态是无法直接在其他星系详细内切换打捞对象**」
+             * ——真因 = 这里写死了 `disabled={state.salvaging.active}`。
+             * core 早已允许**直接换打捞点**（`startSalvageOp` 先 `salvageHalt` 停本趟、残骸留在船上，再按新星系开工；
+             * 船长 2026-09-21 答 2「允许切换」），MapPage 那侧也一直是可点的 ⇒ **界面这一格才是 bug**，
+             * 与「换矿带允许直接切」同一把尺。现在与 MapPage 一致：别处正在打捞时这里照点。
+             */
+            title={tr("ui.MapPage.070")}
             onClick={() => {
               const r = engine.startSalvageOpAt(galaxy.id)
               if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.390'), true)
@@ -2790,23 +2818,43 @@ function AnomalyCard({
         </div>
       ) : null}
       <div className="app-ano-win">
-        {tr("ui.Expedition.217")} {power} {tr("ui.Expedition.038")}{' '}
-        <b
-          className={chance === null ? `app-dim` : `app-win-${chanceTone}`}
-          title={
-            mc
-              ? tr("ui.Expedition.426", {
-                  p1: Math.round(mc.armorLoss * 100),
-                  p2: Math.round(mc.hullLoss * 100),
-                  p3: Math.round(mc.worstWinRate * 100),
-                })
-              : pending
-                ? tr("ui.Expedition.425")
-                : tr("ui.Expedition.153", { p1: Math.round(armorLoss * 100), p2: Math.round(hullLoss * 100) })
-          }
-        >
-          {chance === null ? tr("ui.Expedition.425") : `${Math.round(chance)}%`}
-        </b>
+        {/**
+         * **入侵舰队的卡不出胜率预估**（**2026-09-26 船长令**：「**入侵舰队的悬赏卡因为是随机抽取的敌人，
+         * 胜率不固定的，所以在做预估胜率的时候忽略入侵舰队的卡，替换为提示'遭遇随机入侵舰队，敌人未知'。
+         * 并且将入侵卡标红，打上危险的标签。**」）。
+         *
+         * 判据 = `invadedHere`（被占星系的悬赏位已被 `weekendBountyCardsOf` 换成入侵舰队，与"赏金栏改显
+         * 结算口径"同一把尺）⇒ 这一支**既不显示我方战力指数、也不显示百分比**，只给一句"敌人未知"；
+         * 旁边按船长令挂一枚**危险**芯片（`.app-chip.is-danger`）。
+         */}
+        {invadedHere ? (
+          <>
+            <em className="app-chip is-danger" title={tr('ui.Expedition.440')}>
+              {tr('ui.Expedition.439')}
+            </em>{' '}
+            <span className="app-dim">{tr('ui.Expedition.438')}</span>
+          </>
+        ) : (
+          <>
+            {tr("ui.Expedition.217")} {power} {tr("ui.Expedition.038")}{' '}
+            <b
+              className={chance === null ? `app-dim` : `app-win-${chanceTone}`}
+              title={
+                mc
+                  ? tr("ui.Expedition.426", {
+                      p1: Math.round(mc.armorLoss * 100),
+                      p2: Math.round(mc.hullLoss * 100),
+                      p3: Math.round(mc.worstWinRate * 100),
+                    })
+                  : pending
+                    ? tr("ui.Expedition.425")
+                    : tr("ui.Expedition.153", { p1: Math.round(armorLoss * 100), p2: Math.round(hullLoss * 100) })
+              }
+            >
+              {chance === null ? tr("ui.Expedition.425") : `${Math.round(chance)}%`}
+            </b>
+          </>
+        )}
         {!reqMet ? <span className="app-dim">{tr("ui.Expedition.320")} {standing}/{anomaly.standingReq}）</span> : null}
         {/* V17：敌方主伤害类型色 chip——护盾/装甲增强器按系配抗的换装依据
             2026-09-10 船长（混伤）：改为「敌火力 主 80% · 副 20%」——构成与战斗结算同源 */}

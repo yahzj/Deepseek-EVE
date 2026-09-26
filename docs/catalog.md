@@ -29,7 +29,7 @@
 | 改战斗 / 表现层 / 动画 | §九 ＋ §十四 ＋ `docs/design/` 里对应设计稿（如 `drone-combat-animation-20260910.md`） |
 | 改数值 / 经济 / 平衡 | §一（闸门）§二（验证）§八 ＋ 对应设计稿 ＋ `tools/*`（校准脚本，如 `battle:calibrate`） |
 | 改存档结构 / 迁移 | §八 ＋ `docs/architecture.md` ＋ 只读真档或先备份 |
-| 写 / 改玩家可见文案 | §十三（文案纯净与设定）§十一（术语）＋ `docs/glossary.md`；**双语与 id 制见 §十一之三**（新文案**先取 id、再写表**：`packages/data/src/l10n/table.ts`）＋ `docs/glossary-en.md`（英文术语权威） |
+| 写 / 改玩家可见文案 | §十三（文案纯净与设定：**含括号限用**）§十一（术语）＋ `docs/glossary.md`；**双语与 id 制见 §十一之三**（新文案**先取 id、再写表**：`packages/data/src/l10n/table.ts`）＋ `docs/glossary-en.md`（英文术语权威，**命名规则第 9 条同为括号限用**） |
 | 准备更新公告 | §十二（公告与发布审核）＋ `docs/design/announcement-draft-*.md`（待审稿） |
 | 新建 / 收尾工具 | §十（工具纪律：正式入库 / `_` 临时探针收尾处置） |
 | 多 agent 并行 / 合入 / 推送 | §三（工作区与合入纪律、推送闸门） |

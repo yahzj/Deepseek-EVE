@@ -497,6 +497,8 @@ export {
   allocateShipUid,
   changeShip,
   loseShip,
+  // 2026-09-26 整船回收（加固结构插件命中）：把残骸里捞回的船按残骸时刻打折拖回母港入队
+  restoreShipFromWreck,
   durabilityOf,
   repairCostIsk,
   repairShip,
@@ -809,6 +811,29 @@ export {
   WEEKEND_WRECK_TARGET,
   wreckGroupStocksOf,
 } from './salvage'
+/* ── 2026-09-26 玩家舰船残骸（船长令）：第三本残骸账 · 打捞四级序第 ①★ 档 · 加固结构插件接口 ── */
+export {
+  SHIP_WRECK_DECAY_MS,
+  SHIP_WRECK_WEIGHT,
+  HULL_RECOVERY_MAX,
+  RECOVERED_HULL_DURABILITY_PCT,
+  RECOVERED_HULL_ARMOR_PCT,
+  WRECK_RECOVERY_RATE,
+  recoveryRateOfSlot,
+  wreckLootRowsOf,
+  shipWreckValueOf,
+  hullRecoveryChanceOf,
+  shipWrecksOf,
+  shipWreckFor,
+  hasSalvageableShipWreck,
+  reinforceChanceOfFitted,
+  noteShipWreck,
+  advanceShipWreckDecay,
+  trySalvagePlayerWreckOf,
+} from './shipWrecks'
+export type { WreckLootRow, PlayerWreckSalvage } from './shipWrecks'
+/** 玩家舰船残骸的一具记录（2026-09-26）——界面读数卡与工具都要这个形状 */
+export type { ShipWreckRecord } from './state'
 export type { RecycleTier, RecycleProfile } from './salvage'
 /* ── 2026-09-19 残骸合并：13 组定表（族 × 地区）＋ 出量梯度（船长 2026-09-19） ── */
 export {

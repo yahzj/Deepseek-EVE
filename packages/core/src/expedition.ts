@@ -838,7 +838,15 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       addLog(state, 'combat', abandonText)
       // 战报（2026-09-14）：弃船 = 我方全灭那一档 ⇒ `lose`；沉船名单走推导（三层血已归零）
       captureBattleReport(state, battle, { source: 'expedition', outcome: 'lose', summary: abandonText })
-      loseShip(state, state.shipId, ctx, `远征失利（${galaxy?.name ?? ''}·${displayName}）后遭追击`)
+      loseShip(
+        state,
+        state.shipId,
+        ctx,
+        `远征失利（${galaxy?.name ?? ''}·${displayName}）后遭追击`,
+        // 2026-09-26：正常星系损毁 ⇒ 在这一格留「<船名>的残骸」（`foeGalaxyId` 优先 =
+        // 打的是被占星系的驻留舰队时落在那个星系；缺省回落到本场目标卡所在星系）
+        exp.foeGalaxyId ?? anomaly.galaxyId,
+      )
       exp.active = false
       exp.battle = null
       exp.anomalyId = null

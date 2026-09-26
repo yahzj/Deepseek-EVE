@@ -82,6 +82,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.salvaging.025": { zh: "该星系的敌群情报缺失，打捞作业已停止。", en: "The system's hostile intel is missing; the salvage run has stopped." },
   "core.salvaging.026": { zh: "未找到可用的打捞器，打捞作业已停止。", en: "No usable salvager was found; the salvage run has stopped." },
   "core.salvaging.027": { zh: "货仓装不下下一轮打捞（余 {p1} m³ ／ 每轮 {p2} m³）：自动返航卸货（本趟约 {p3} m³，约 {p4} 秒，去程已并入返航）。", en: "The hold cannot take another salvage round ({p1} m³ free / {p2} m³ per round): returning to unload automatically (this trip about {p3} m³; roughly {p4} seconds, outbound leg folded in)." },
+  /* 玩家舰船残骸（2026-09-26 船长令）：一具残骸最高优先 · 逐件掷概率回收 · 没捞到不落普通残骸 */
+  "core.salvaging.030": { zh: "打捞舰船残骸：捞回 {p1} ×{p2}。", en: "Salvaging the ship wreck: recovered {p1} ×{p2}." },
+  "core.salvaging.031": { zh: "舰船残骸里捞回了一艘还能修的船：{p1}——已拖回母港入队。", en: "A repairable hull was raised from the wreck: {p1} — towed back to the home port and rejoined the fleet." },
   /* 「互斥」类共用条目：整句两条（开采 / 打捞各一条）——占位符对齐是要塞，
      所以「动词」不做参数（参数里塞 id 要两层渲染，得不偿失） */
   "core.state.001": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。先到活动栏点「停止运输」，再开采。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first, before mining." },
@@ -113,6 +116,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.shipyard.018": { zh: "已切换到驾驶 {p1}。", en: "Now piloting {p1}." },
   "core.shipyard.019": { zh: "采矿已随换船结束：{p1} 从「{p2}」自动返航空间站{p3}——约 {p4} 秒后到港。", en: "Mining ended with the ship change: {p1} is returning from “{p2}” to the station automatically{p3} — docking in about {p4} seconds." },
   "core.shipyard.020": { zh: "{p1}：{p2} 已损毁，船上的货仓与装备一并遗失。", en: "{p1}: {p2} was destroyed, and its hold and modules were lost with it." },
+  /* 玩家舰船残骸（2026-09-26 船长令）：正常星系损毁 ⇒ 在该星系留一具可打捞的残骸（48 小时） */
+  "core.shipyard.033": { zh: "{p1} 的残骸留在「{p2}」——48 小时内可打捞回收部分装备。", en: "The wreck of {p1} remains in “{p2}” — salvageable for 48 hours to recover some of its modules." },
   "core.shipyard.021": { zh: "主控在虫洞里战沉——已由同队的 {p1} 在洞内接任主控。", en: "The command ship was lost inside the wormhole — {p1} from the same team takes over as command." },
   "core.shipyard.022": { zh: "驾驶中的舰船正被 AI 执勤占用——已自动改派驾驶 {p1}。", en: "The piloted ship is tied up by an AI task — {p1} was assigned to pilot instead." },
   "core.shipyard.023": { zh: "舰队里找不到正在驾驶的舰船——已自动改派驾驶 {p1}。", en: "The piloted ship could not be found in the fleet — {p1} was assigned to pilot instead." },
@@ -1607,7 +1612,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.093": { zh: "威胁 {p1}~{p2}", en: "threat {p1}–{p2}" },
   // 2026-09-25：入侵残骸独立池（打捞界面的独立残骸条）· 赏金去向 · 结算面板的进度收入那一格
   "ui.weekend.094": { zh: "入侵残骸 {p1}", en: "Invasion wrecks {p1}" },
-  "ui.weekend.095": { zh: "入侵残骸占本星系残骸 {p1}%（独立残骸场：无保底，48 小时衰减到消失）", en: "Invasion wrecks are {p1}% of this system's wrecks (a separate field: no floor, it fades away over 48 hours)" },
+  /* 玩家舰船残骸（2026-09-26 船长令）：打捞面板置顶的读数卡（船名 + 剩余件数 + 倒计时） */
+  "ui.weekend.110": { zh: "舰船残骸 {p1} 具（优先打捞）", en: "Ship wrecks {p1} (salvaged first)" },
+  "ui.weekend.111": { zh: "{p1} · 还可回收 {p2} 件 · 剩 {p3} 小时", en: "{p1} · {p2} item(s) recoverable · {p3} h left" },  "ui.weekend.095": { zh: "入侵残骸占本星系残骸 {p1}%（独立残骸场：无保底，48 小时衰减到消失）", en: "Invasion wrecks are {p1}% of this system's wrecks (a separate field: no floor, it fades away over 48 hours)" },
   "ui.weekend.096": { zh: "赏金：结算时按进度发放", en: "Bounty: paid at settlement based on progress" },
   "ui.weekend.097": { zh: "进度收入", en: "Progress income" },
   "ui.weekend.098": { zh: "推进 {p1}%", en: "{p1}% pushed" },
@@ -1645,14 +1652,19 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.foeIntro.060": { zh: "特殊装置：{p1}", en: "special mounts: {p1}" },
   "ui.foeIntro.070": { zh: "精锐规格", en: "elite grade" },
   /* 2026-09-26 船长令：「特殊装置的效果最好直接解释」（触发条件 ＋ 效果，逐条对上 foeMounts.ts 的字段） */
-  "ui.foeIntro.100": { zh: "受击后进入反击模式，机群射程 ×{p1}（{p2}）", en: "when hit, enters counter mode: strike-craft range ×{p1} ({p2})" },
-  "ui.foeIntro.101": { zh: "从它射程之外被命中后，自身炮台射程 ×{p1}（{p2}）", en: "when hit from beyond its range, its guns reach ×{p1} ({p2})" },
-  "ui.foeIntro.102": { zh: "首次开火时撒网：目标减速 {p1}%、闪避归零、射程 −{p2} 米（{p3}）", en: "on its first shot it casts a web: target slowed {p1}%, evasion zeroed, range −{p2} m ({p3})" },
-  "ui.foeIntro.103": { zh: "开战 {p1} 秒后呼叫增援（{p2}）", en: "calls reinforcements {p1} s into the fight ({p2})" },
-  "ui.foeIntro.104": { zh: "每 {p1} 秒召回一艘已被击毁的友舰（{p2}）", en: "every {p1} s recalls one destroyed ally ({p2})" },
-  "ui.foeIntro.105": { zh: "每 {p1} 秒恢复 {p2} 装甲/结构（{p3}）", en: "every {p1} s restores {p2} armour/hull ({p3})" },
-  "ui.foeIntro.106": { zh: "闪避 +{p1} 个百分点（{p2}）", en: "evasion +{p1} points ({p2})" },
-  "ui.foeIntro.107": { zh: "受击后冲锋：速度 ×{p1}，冷却 {p2} 秒（{p3}）", en: "when hit, charges: speed ×{p1}, {p2} s cooldown ({p3})" },
+  /* 2026-09-26 船长令：「**不需要括号内的东西**」＋「**除非非常有必要，否则不要用括号进行额外说明**」
+     ⇒ 下列九条**去掉尾部的装置名括号**（挂载件悬停的标签本来就写着装置名，括号里那一份纯属重复）。 */
+  "ui.foeIntro.100": { zh: "受击后进入反击模式，机群射程 ×{p1}", en: "when hit, enters counter mode: strike-craft range ×{p1}" },
+  "ui.foeIntro.101": { zh: "从它射程之外被命中后，自身炮台射程 ×{p1}", en: "when hit from beyond its range, its guns reach ×{p1}" },
+  "ui.foeIntro.102": { zh: "首次开火时撒网：目标减速 {p1}%、闪避归零、射程 −{p2} 米", en: "on its first shot it casts a web: target slowed {p1}%, evasion zeroed, range −{p2} m" },
+  "ui.foeIntro.103": { zh: "开战 {p1} 秒后呼叫增援", en: "calls reinforcements {p1} s into the fight" },
+  "ui.foeIntro.104": { zh: "每 {p1} 秒召回一艘已被击毁的友舰", en: "every {p1} s recalls one destroyed ally" },
+  "ui.foeIntro.105": { zh: "每 {p1} 秒恢复 {p2} 装甲/结构", en: "every {p1} s restores {p2} armour/hull" },
+  "ui.foeIntro.106": { zh: "闪避 +{p1} 个百分点", en: "evasion +{p1} points" },
+  "ui.foeIntro.107": { zh: "受击后冲锋：速度 ×{p1}，冷却 {p2} 秒", en: "when hit, charges: speed ×{p1}, {p2} s cooldown" },
+  /* 2026-09-26 补：**射程压制阵列**（H 族墨潮干扰阵列）此前没有效果说明 ⇒ 战斗画面悬停只能显示装置名
+     （船长报障「不应该复读一遍相同的文字」）。与其余八条同款：触发/持续条件 ＋ 效果。 */
+  "ui.foeIntro.108": { zh: "交战中持续压制我方武器射程 −{p1}%", en: "suppresses our weapon range by {p1}% while engaged" },
   /* ── 入侵「重复出击」（2026-09-25 船长令：「入侵活动的悬赏，允许玩家开启自动重复，照常计算返回时间」）── */
   "ui.weekend.106": { zh: "重复出击", en: "Repeat assault" },
   "ui.weekend.107": { zh: "开启重复出击：每场从该星系的入侵舰队里重抽一支，胜利后自动返航（返航路程 = 单程）、随后自动再次出发；该星系被夺回或活动结束时自动停止", en: "Start repeat assault: each run draws a fresh invader fleet from that system; after a win the fleet flies home (return leg = one way) and sets out again automatically. It stops when the system is reclaimed or the event ends" },
@@ -1901,7 +1913,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.146": { zh: "打捞作业中", en: "Salvaging" },
   "ui.Expedition.147": { zh: "持续打捞（本趟约 {p1} m³）", en: "Salvaging continuously (about {p1} m³ this trip)" },
   "ui.Expedition.148": { zh: "打捞（需高槽打捞器）", en: "Salvage (needs a salvager in a high slot)" },
-  "ui.Expedition.149": { zh: "打捞作业进行中（顶部活动栏可停止）", en: "Salvage in progress (stop it from the top activity bar)" },
+  /* ui.Expedition.149 已删（2026-09-26）：原文「打捞作业进行中（顶部活动栏可停止）」是"别处打捞中 ⇒
+     本按钮禁用"时代的提示；那条禁用正是船长报障的那个 bug（星系详细里打捞中切不了打捞点），
+     拆掉禁用后它成了无引用的死条目 ⇒ 一并清掉（`l10n:check` 会盯死引用）。 */
   "ui.Expedition.150": { zh: "建站交付 ·", en: "Station delivery ·" },
   "ui.Expedition.151": { zh: "已转战：采矿结束（货随船），舰队正从矿带星系出发。", en: "Switched to the hunt: mining has ended (the cargo stays aboard) and the fleet is setting out from the belt system." },
   "ui.Expedition.152": { zh: "战术 {p1}", en: "Tactics {p1}" },
@@ -4188,6 +4202,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
      按 id 制「一经使用不复用、不改名」留档不删；以下两条为并入后**新增**的状态字。 */
   "ui.Expedition.436": { zh: "征战中", en: "In combat" },
   "ui.Expedition.437": { zh: "该星系没有悬赏卡。", en: "No bounty cards in this system." },
+  /* 入侵舰队的悬赏卡（2026-09-26 船长令）：敌人随机抽 ⇒ 不出胜率预估，改一句"敌人未知" ＋ 危险芯片 */
+  "ui.Expedition.438": { zh: "遭遇随机入侵舰队，敌人未知", en: "A random invasion fleet: the enemy is unknown" },
+  "ui.Expedition.439": { zh: "危险", en: "Danger" },
+  "ui.Expedition.440": { zh: "入侵舰队的编成按星系随机抽取，敌人未知，无法预估胜率。", en: "The invasion fleet's make-up is drawn at random per system, so the enemy is unknown and no win chance can be estimated." },
   "ui.Expedition.427": { zh: "重复清剿", en: "Repeat sweeps" },
   "ui.Expedition.428": { zh: "开始重复清剿", en: "Start repeat sweeps" },
   "ui.Expedition.429": { zh: "停止讨伐", en: "Stop the hunt" },
