@@ -5,7 +5,7 @@
  *    **依旧属于战列舰级别**，但是**速度更快，其他属性全面落后战列舰**」；该说法**不进可见文案**）：
  *    T4 档 · 槽位 **4/5/4**（船长：「槽位调整为454」）· 三层血 1,050（低于巨齿鲨 1,273）·
  *    CPU 420（< 490）· 质量 16M（< 22M）· 货 2,400（< 4,000）· **速度 245（> 巨齿鲨 175）**；
- *    子分类 `指挥舰` + **全队单发 +20%**（`fleetDamageBonusPct`）。
+ *    子分类 `指挥舰` + **全队单发 +20%**（`fleetDamageBonusPct`；与陵卫指挥舰同值）。
  * 2. **旋齿鲨级装甲战列舰 `sh-helicoprion`**（船长：「命名还是以鲨系为主可以往古代种或者奇幻种走」）：
  *    T4 装甲线 · 槽位 **5/3/6** · 三层血 1,273（= T4 战斗舰中位，**不牵动**非战斗舰目标表 1,018）·
  *    甲向（甲 700 > 盾 200）· 甲层动能抗 0.35（装甲线 T4 档位）· **不得带单发加成**（装甲线契约）·
@@ -53,10 +53,20 @@ describe('虎鲸级指挥舰（战巡口径 · 2026-09-26 船长令）', () => {
     expect(slotsOf('sh-orca')).toBeLessThan(slotsOf('sh-megalodon')) // 13 < 14
     expect(orca.cpu!).toBeLessThan(mega.cpu!) // 420 < 490
     expect(orca.massKg!).toBeLessThan(mega.massKg!) // 16M < 22M
-    expect(orca.cargoM3).toBeLessThan(mega.cargoM3) // 2,400 < 4,000
+    // ⚠ 货舱是**例外**：船长 2026-09-26 令「虎鲸级货仓提高到4700」⇒ 4,700 > 巨齿鲨 4,000
+    expect(orca.cargoM3).toBe(4700)
+    expect(orca.cargoM3).toBeGreaterThan(mega.cargoM3)
     // T4 武装舰单发加成是档位阶梯契约值（0.35），两艘一致
     expect(orca.powerBonus).toBe(0.35)
     expect(mega.powerBonus).toBe(0.35)
+  })
+
+  it('指挥舰光环：虎鲸级与陵卫指挥舰同为 +20%（船长 2026-09-26 令）', () => {
+    expect(ship('sh-orca').fleetDamageBonusPct).toBe(0.2)
+    expect(ship('sh-wh-d-destroyer').fleetDamageBonusPct).toBe(0.2) // 陵卫指挥舰：0.15 → 0.20
+    // 其余船一个都不带（光环只挂指挥舰）
+    const others = [...ctx.ships.values()].filter((s) => s.fleetDamageBonusPct !== undefined).map((s) => s.id).sort()
+    expect(others).toEqual(['sh-orca', 'sh-wh-d-destroyer'])
   })
 })
 

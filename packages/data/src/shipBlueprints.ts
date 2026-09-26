@@ -330,7 +330,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 36_000_000, // = 行价 9,000,000 × 4（>400 万档系数）
     // ✅ 2026-09-14 虫洞上线：闸门已删（与 `sh-nautilus` / 两张市场卡同批放开，见 design/scout-cruiser §2.3）
-    description: '测绘巡洋舰，货舱 6,600 m³，编入队伍即扩大扫描范围一圈。',
+    description: '测绘巡洋舰，货舱 5,600 m³，编入队伍即扩大扫描范围一圈。',
   },
   {
     id: 'sbp-tortoise',
@@ -465,7 +465,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 57_600, // 虎鲸级（战巡：T4 带 9~20 时内偏短 ⇒ 16 时）
     buildCostIsk: 0,
     priceIsk: 600_000_000, // = 行价 150,000,000 × 4
-    description: '指挥舰，货舱 2,400 m³，速度是它的立身之本。',
+    description: '指挥舰，货舱 4,700 m³，速度是它的立身之本。',
   },
   {
     id: 'sbp-helicoprion',
@@ -961,7 +961,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 16_920,
     buildCostIsk: 0,
     priceIsk: 4_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
-    description: '测绘巡洋舰，货舱 6,600 m³，编入队伍即扩大扫描范围一圈。',
+    description: '测绘巡洋舰，货舱 5,600 m³，编入队伍即扩大扫描范围一圈。',
   },
   {
     id: 'sbp-once-hammerhead',
@@ -1129,7 +1129,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 57_600,
     buildCostIsk: 0,
     priceIsk: 75_000_000, // = 行价 150,000,000 ×50%
-    description: '指挥舰，货舱 2,400 m³，速度是它的立身之本。',
+    description: '指挥舰，货舱 4,700 m³，速度是它的立身之本。',
   },
   {
     id: 'sbp-once-helicoprion',

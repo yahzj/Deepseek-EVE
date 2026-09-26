@@ -186,7 +186,7 @@ export const EN_SHIPS: EnTable = {
   },
   'sh-wh-d-destroyer': {
     name: 'Tombwarden Command Ship',
-    description: "A mausoleum command ship: shield-heavy, and it adds 15% to the whole formation's single-shot damage — multiple command ships take the highest only, no stacking. The price is thin armor and hull: once the shield drops, it is fragile.",
+    description: "A mausoleum command ship: shield-heavy, and it adds 20% to the whole formation's single-shot damage — multiple command ships take the highest only, no stacking. The price is thin armor and hull: once the shield drops, it is fragile.",
   },
   'sh-wh-d-cruiser': {
     name: 'Mausoleum Cruiser',
@@ -1167,7 +1167,7 @@ const SBP_DESC_EN: Readonly<Record<string, string>> = {
   'sbp-electricray': 'Laser cruiser; 2,500 m³ hold — burns through shields on contact.',
   'sbp-hammerhead': 'Gunnery cruiser; 2,800 m³ hold — the core of a heavy kinetic broadside.',
   'sbp-bullshark': 'Assault cruiser; 3,000 m³ hold — thick shields and heavy guns, built to bite.',
-  'sbp-nautilus': 'Survey cruiser; 6,600 m³ hold — joining a fleet widens scan range by one ring.',
+  'sbp-nautilus': 'Survey cruiser; 5,600 m³ hold — joining a fleet widens scan range by one ring.',
   'sbp-tortoise': 'Light corvette; armor and structure far above its tier, paid for with speed and hold space.',
   'sbp-hawksbill': 'Heavy cruiser; 9,600 m³ hold, 22 units per 13 s cycle — a warehouse in thick shell.',
   'sbp-xuanwu': 'Heavy flagship; 15,200 m³ hold and the thickest three-layer HP — the apex of the heavy line.',
@@ -1176,7 +1176,7 @@ const SBP_DESC_EN: Readonly<Record<string, string>> = {
   'sbp-swordfish': 'Heavy freighter; 14,000 m³ hold, 16 units per 12 s cycle.',
   'sbp-megalodon': 'Battleship; 4,000 m³ hold — a fire platform that dares to stand at the head of the formation.',
   // 2026-09-26 新增两艘（虎鲸级 = 战巡 / 旋齿鲨级 = 装甲战列舰）
-  'sbp-orca': 'Command ship; 2,400 m³ hold — speed is what it lives on.',
+  'sbp-orca': 'Command ship; 4,700 m³ hold — speed is what it lives on.',
   'sbp-helicoprion': 'Armored battleship; 3,600 m³ hold, with armor thick enough to eat the first salvo.',
   'sbp-wh-a-frigate': 'Raider EW frigate; locking and resolution top its tier — it sees first and locks first.',
   'sbp-wh-a-destroyer': 'Raider gunboat; kinetic batteries give it solid frontal firepower.',

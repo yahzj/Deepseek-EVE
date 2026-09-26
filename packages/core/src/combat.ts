@@ -4684,9 +4684,9 @@ function applyFleetLockAura(specs: UnitSpec[]): UnitSpec[] {
 }
 
 /**
- * **指挥舰「全舰单发伤害 +15%」光环的取用口径**：编队（或单舰）里**取最高一份**、**不叠加**
+ * **指挥舰「全舰单发伤害 ×(1+光环)」光环的取用口径**（原 +15%，2026-09-26 起陵卫/虎鲸两艘都是 +20%）：编队（或单舰）里**取最高一份**、**不叠加**
  * （2026-09-13 船长口径：「提高全舰的单发伤害 15%」＋"多艘同类只取最高"，与"同项取优"惯例一致）。
- * 数据来源 = `ShipDef.fleetDamageBonusPct`（现只有陵卫指挥舰 0.15）。
+ * 数据来源 = `ShipDef.fleetDamageBonusPct`（2026-09-26 起两艘：陵卫指挥舰 0.20 · 虎鲸级指挥舰 0.20）。
  */
 function fleetDamageAuraOf(state: GameState, ctx: SimContext, shipIds: readonly string[]): number {
   return Math.max(

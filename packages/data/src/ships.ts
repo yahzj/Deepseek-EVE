@@ -637,7 +637,7 @@ export const SHIPS: readonly ShipDef[] = [
     //   与同子分类「侦察舰」的幽影侦察舰（3/4/1）「中槽最多」同形——中槽 = 命中/闪避支援，正是它吃的那两项。
     //   ⇒ 高槽偏少会撞「官方武装舰 高槽 ≥ 低槽+1」那条弱断言，已按船长裁定在 `content:check` 加白名单豁免）
     tier: 3,
-    cargoM3: 6600, // 船长：「货仓可以乘*3」（原案 2,200 ×3 ⇒ 虫洞背包 ⌊6,600÷500⌋ = 13 格）
+    cargoM3: 5600, // 2026-09-26 船长令「鹦鹉螺货仓减少1000」⇒ 6,600 → 5,600（虫洞背包 ⌊5,600÷500⌋ = 11 格）；原沿革：船长「货仓可以乘*3」（原案 2,200 ×3 = 6,600）
     cycleSeconds: 14,
     oreUnitsPerCycle: 39, // 船长：「采矿提高到39单位」
     priceIsk: 9_000_000, // 船长定：贴长尾鲨级（同档同价）
@@ -832,7 +832,7 @@ export const SHIPS: readonly ShipDef[] = [
     subClass: '指挥舰',
     slots: { high: 4, mid: 5, low: 4 }, // **13 槽**（船长 2026-09-26：「槽位调整为454」）⇒ 比巨齿鲨少 1 格
     tier: 4,
-    cargoM3: 2400,
+    cargoM3: 4700, // 2026-09-26 船长令：「虎鲸级货仓提高到4700」⇒ 2,400 → 4,700
     cycleSeconds: 12,
     oreUnitsPerCycle: 20,
     priceIsk: 0, // 仅图纸制造（照巨齿鲨口径：只收不卖 ⇒ 本字段必须为 0）
@@ -1281,8 +1281,8 @@ export const SHIPS: readonly ShipDef[] = [
     shieldResist: {"kinetic":0.25,"explosive":0.25,"plasma":0.25},
     // 2026-09-17 船长：「D族船，装甲爆炸抗性和结构所有抗性移除」⇒ 本舰只留盾层抗性（0.25×3）
     droneDmgBonus: 0.08,
-    fleetDamageBonusPct: 0.15,
-    description: '陵墓的指挥舰：护盾占比高、并给全编队的单发伤害加一成半——多艘指挥舰只取最高、不叠加。代价是甲/壳薄：盾一破就很脆。',
+    fleetDamageBonusPct: 0.2, // 2026-09-26 船长令：「另外一艘指挥舰是陵卫指挥舰，将其效果提高到20%」⇒ 0.15 → 0.20
+    description: '陵墓的指挥舰：护盾占比高、并给全编队的单发伤害加两成——多艘指挥舰只取最高、不叠加。代价是甲/壳薄：盾一破就很脆。',
   },
   {
     id: 'sh-wh-d-cruiser',
