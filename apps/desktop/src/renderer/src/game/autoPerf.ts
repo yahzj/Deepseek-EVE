@@ -57,9 +57,11 @@ async function tryStartBattle(engine: GameEngine): Promise<boolean> {
   if (st.expedition.active) return st.expedition.phase === 'battle'
   for (const a of engine.allAnomalies) {
     if (a.galaxyId && !st.exploredGalaxies.includes(a.galaxyId)) st.exploredGalaxies.push(a.galaxyId)
-    // 声望门槛一律读**累计获得**那本（2026-09-26 船长令）⇒ 两条账一起拉满，别只抬可支配那本
+    // 声望门槛一律读**累计获得**那本（2026-09-26 船长令）⇒ 两条账一起拉满，别只抬可支配那本。
+    // ⚠ 新档初始声望已**清理为 0**（船长裁定）且账本初值是空表 ⇒ 这里必须显式带上 `dsi`，
+    //    不能只遍历现有键（否则采集跑起来会因为"声望 0"看不到该看到的界面）。
     st.standingsEarned = st.standingsEarned ?? {}
-    for (const k of Object.keys(st.standings)) {
+    for (const k of new Set([...Object.keys(st.standings), 'dsi'])) {
       st.standings[k] = Math.max(st.standings[k] ?? 0, 10)
       st.standingsEarned[k] = Math.max(st.standingsEarned[k] ?? 0, 10)
     }

@@ -152,6 +152,21 @@ function stamp(): string {
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
 }
 
+/**
+ * **把协会声望抬到"至少 N"**（两条账一起写）。
+ *
+ * **2026-09-26 船长裁定后必须走这里**：① 门槛一律读**累计获得**那本（只写可支配那本 ⇒ 门槛看不见）；
+ * ② 新档初始声望已**清理为 0**（船长：「我从来没有说过"开局能换 5 张"…要清理，并且还要削减累计声望」）
+ * ⇒ 原先这些档靠"初始赠送 40"顺带满足了虫洞扫描/入侵的 40 门槛，现在必须**显式写出来**。
+ * 因此本函数取 `max(40, N)`：这些测试档都是"门槛全过"的沙盒，40 以下的内容一并放开（与改动前的
+ * 实际状态**逐字一致**——那时 `max(初始 40, N)` 就等于 40）。
+ */
+function bumpStanding(state: GameState, n: number): void {
+  const v = Math.max(40, Math.round(n))
+  state.standings['dsi'] = v
+  state.standingsEarned = { ...(state.standingsEarned ?? {}), dsi: v }
+}
+
 /** 通用门槛注入（避免测试档带着半截现场） */
 /**
  * **蓝图碎片 · 逆向解锁验收档**（2026-09-19 船长：「帮我准备一个蓝图碎片的存档，玩家反应依旧找不到，
@@ -255,7 +270,7 @@ function injectRareBox(state: GameState): string[] {
   genericPrep(state)
   state.wallet.isk += 30_000_000
   notes.push('钱包 +30,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 12)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 12（深层窝点门槛与暗市闸全过；也够买高级蓝图书）')
   let lit = 0
   for (const g of GALAXIES) {
@@ -311,7 +326,7 @@ function injectB1(state: GameState): string[] {
   genericPrep(state)
   state.wallet.isk += 20_000_000
   notes.push('钱包 +20,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 10)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 10（可接全部低安悬赏）')
   for (const g of LOWSEC_GALAXIES) {
     if (!state.exploredGalaxies.includes(g)) state.exploredGalaxies.push(g)
@@ -448,7 +463,7 @@ function injectV18b(state: GameState): string[] {
   // 1) 资金 + 声望 + 星图进度（全点亮：远征/悬赏/低安任意挑）
   state.wallet.isk += 50_000_000
   notes.push('钱包 +50,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 10)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 10（可接全部悬赏）')
   let lit = 0
   for (const g of GALAXIES) {
@@ -499,7 +514,7 @@ function injectB3(state: GameState): string[] {
   // 1) 资金 + 声望 + 星图全点亮（低安打捞点可达）
   state.wallet.isk += 20_000_000
   notes.push('钱包 +20,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 10)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 10')
   let lit = 0
   for (const g of GALAXIES) {
@@ -575,7 +590,7 @@ function injectRedtide(state: GameState): string[] {
   genericPrep(state)
   state.wallet.isk += 30_000_000
   notes.push('钱包 +30,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 6)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 6（赤潮劫掠舰队需 3，可接）')
   if (!state.exploredGalaxies.includes('galaxy-redring')) state.exploredGalaxies.push('galaxy-redring')
   notes.push('点亮 红环航道（赤潮劫掠舰队所在星系）')
@@ -647,7 +662,7 @@ function injectDrone(state: GameState): string[] {
   genericPrep(state)
   state.wallet.isk += 50_000_000
   notes.push('钱包 +50,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 10)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 10（可接全部悬赏）')
   for (const g of GALAXIES) {
     if (!state.exploredGalaxies.includes(g.id)) state.exploredGalaxies.push(g.id)
@@ -735,7 +750,7 @@ function injectCruiser(state: GameState): string[] {
   genericPrep(state)
   state.wallet.isk += 60_000_000
   notes.push('钱包 +60,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 13（可接全部悬赏含穹顶守卫）')
   for (const g of GALAXIES) {
     if (!state.exploredGalaxies.includes(g.id)) state.exploredGalaxies.push(g.id)
@@ -825,7 +840,7 @@ function injectEtier(state: GameState): string[] {
   genericPrep(state)
   state.wallet.isk += 60_000_000
   notes.push('钱包 +60,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 13（可接全部悬赏，含穹顶守卫 96）')
   let lit = 0
   for (const g of GALAXIES) {
@@ -907,7 +922,7 @@ function injectDfamily(state: GameState): string[] {
   genericPrep(state)
   state.wallet.isk += 80_000_000
   notes.push('钱包 +80,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 13（可接全部悬赏：坟场/虚海要 12、穹顶要 13）')
   let lit = 0
   for (const g of GALAXIES) {
@@ -1023,7 +1038,7 @@ function injectPd(state: GameState): string[] {
   genericPrep(state)
   state.wallet.isk += 80_000_000
   notes.push('钱包 +80,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 13（可接全部悬赏）')
   let lit = 0
   for (const g of GALAXIES) {
@@ -1191,7 +1206,7 @@ function injectGSwarm(state: GameState): string[] {
   genericPrep(state)
   state.wallet.isk += 80_000_000
   notes.push('钱包 +80,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 13（天底静区封锁要 9；顺带覆盖全部悬赏）')
   let lit = 0
   for (const g of GALAXIES) {
@@ -1271,7 +1286,7 @@ function injectShipArt(state: GameState): string[] {
   genericPrep(state)
   state.wallet.isk += 60_000_000
   notes.push('钱包 +60,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 13（可接全部悬赏）')
   for (const g of GALAXIES) {
     if (!state.exploredGalaxies.includes(g.id)) state.exploredGalaxies.push(g.id)
@@ -1379,7 +1394,7 @@ function injectHullrep(state: GameState): string[] {
   notes.push('已清空进行中的主控作业——从干净停靠起点出击')
   state.wallet.isk += 5_000_000
   notes.push('钱包 +5,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 6)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 6（可接各档战斗悬赏）')
   if (!state.exploredGalaxies.includes('galaxy-redring')) state.exploredGalaxies.push('galaxy-redring')
   notes.push('点亮 红环航道')
@@ -1449,7 +1464,7 @@ function injectLockrep(state: GameState): string[] {
   notes.push('已清空进行中的主控作业——从干净停靠起点出击')
   state.wallet.isk += 8_000_000
   notes.push('钱包 +8,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 13（全悬赏可接，含穹顶守卫长盘）')
   for (const g of GALAXIES) {
     if (!state.exploredGalaxies.includes(g.id)) state.exploredGalaxies.push(g.id)
@@ -1517,7 +1532,7 @@ function injectAbyssgate(state: GameState): string[] {
   genericPrep(state)
   state.wallet.isk += 40_000_000
   notes.push('钱包 +40,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 13（全悬赏可接：深渊之门 45 / 星髓虫群 72 / 噬口猎杀令 80 / 坟场守墓者 88）')
   let lit = 0
   for (const g of GALAXIES) {
@@ -1587,7 +1602,7 @@ function injectWormhole(state: GameState): string[] {
   genericPrep(state)
   state.wallet.isk += 30_000_000
   notes.push('钱包 +30,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 13')
   let lit = 0
   for (const g of GALAXIES) {
@@ -1805,7 +1820,7 @@ function injectWormholeLayer4(state: GameState): string[] {
   genericPrep(state)
   state.wallet.isk += 30_000_000
   notes.push('钱包 +30,000,000 ISK（洞内修船/换装）')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 13')
   for (const k of ['gunnery', 'fire-control', 'reload-drills', 'shield-operation', 'armor-tuning', 'vector-maneuvering', 'evasion-maneuvering', 'targeting-integration']) {
     state.skills.trained[k] = Math.max(state.skills.trained[k] ?? 0, 3)
@@ -1926,7 +1941,7 @@ function injectWormholeAll(state: GameState): string[] {
   const notes: string[] = []
   genericPrep(state)
   state.wallet.isk += 30_000_000
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  bumpStanding(state, 40)
   for (const k of ['gunnery', 'fire-control', 'reload-drills', 'shield-operation', 'armor-tuning', 'vector-maneuvering', 'evasion-maneuvering', 'targeting-integration']) {
     state.skills.trained[k] = Math.max(state.skills.trained[k] ?? 0, 3)
   }
@@ -2114,7 +2129,7 @@ function injectWormholeIntercept(state: GameState): string[] {
   const notes: string[] = []
   genericPrep(state)
   state.wallet.isk += 5_000_000
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 45)
+  bumpStanding(state, 45)
   for (const key of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) {
     state.warehouse.items[key] = (state.warehouse.items[key] ?? 0) + 3_000
   }
@@ -2306,7 +2321,7 @@ function injectWormholeLogi(state: GameState): string[] {
   const notes: string[] = []
   genericPrep(state)
   state.wallet.isk += 30_000_000
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  bumpStanding(state, 40)
   for (const k of [
     'gunnery',
     'fire-control',
@@ -2594,7 +2609,7 @@ function injectMatterTechLab(state: GameState): string[] {
     '钱包 **+3,000,000,000 信用点** · 仓库 **虫洞谜质 ×2,000 枚**（点满全树需 1,196 枚 / 约 1.43B，余量做单点对照）',
   )
   // ② 解锁门槛：协会声望 60（「扫描虫洞」要 40）
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 60)
+  bumpStanding(state, 60)
   notes.push('「深空工业协会」声望 = **60**（过「扫描虫洞」门槛 40）⇒ 星图 → 扫描虫洞 →「**谜质科技**」子页直接可点树')
   // ③ 战斗系技能 Lv3（与洞内其余验收档同款基准，读数才可比）
   for (const k of [
@@ -2771,7 +2786,7 @@ function injectWormholeEwar(state: GameState): string[] {
   const notes: string[] = []
   genericPrep(state)
   state.wallet.isk += 30_000_000
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  bumpStanding(state, 40)
   for (const k of [
     'gunnery',
     'fire-control',
@@ -2913,7 +2928,7 @@ function injectWormholeSpore(state: GameState): string[] {
   state.awayGalaxy = null
   state.dockedSite = null
   state.wallet.isk += 30_000_000
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  bumpStanding(state, 40)
   for (const k of [
     'gunnery',
     'fire-control',
@@ -3097,7 +3112,7 @@ function injectBattleship(state: GameState): string[] {
   }
   state.wallet.isk += 80_000_000
   notes.push('钱包 +80,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 13（可接全部悬赏，含穹顶守卫 96）')
   for (const g of GALAXIES) {
     if (!state.exploredGalaxies.includes(g.id)) state.exploredGalaxies.push(g.id)
@@ -3245,7 +3260,7 @@ function injectWeekend(state: GameState, opts: { hurt?: boolean } = {}): string[
   }
   state.wallet.isk += 80_000_000
   notes.push('钱包 +80,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 13)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 13')
   for (const g of GALAXIES) {
     if (!state.exploredGalaxies.includes(g.id)) state.exploredGalaxies.push(g.id)
@@ -3395,7 +3410,7 @@ function injectShipWreck(state: GameState): string[] {
   const ctx = buildSimContext()
   state.wallet.isk += 20_000_000
   notes.push('钱包 +20,000,000 ISK')
-  state.standings['dsi'] = Math.max(state.standings['dsi'] ?? 0, 8)
+  bumpStanding(state, 40)
   notes.push('协会声望升至 8（打捞相关门槛全过）')
   let lit = 0
   for (const g of GALAXIES) {

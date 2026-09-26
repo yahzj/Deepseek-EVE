@@ -225,6 +225,9 @@ import {
   wormholeTempPending,
   wormholeTempBoard,
   wormholeNormalizeLegacyTemp,
+  // 2026-09-26 船长两令：读档后削减被抬高的累计声望 ＋ 给打完入侵没拿到黑匣的档补发
+  repairStandingFromBountyProgress,
+  compensateMissingWeekendBlackBox,
   wormholeScanStart,
   wormholeScanStop,
   wormholeScanWindowMs,
@@ -963,6 +966,22 @@ export class GameEngine {
     if (rec) perfHub.recordNotify(bucket, performance.now() - t0)
   }
 
+  /**
+   * **读档后的一次性账本修复**（**2026-09-26 船长两令**；两条都内置幂等，见各自函数头注）：
+   *
+   * ① `repairStandingFromBountyProgress` —— 按**悬赏进度**削减被抬高过的累计声望
+   *    （初始赠送的 40 与老档回填的 40 下界），并把可支配夹到 ≤ 累计；
+   * ② `compensateMissingWeekendBlackBox` —— 给"推送前打完入侵却没拿到黑匣"的档补发 1 枚
+   *    （判据 = 结算信 ＋ 快照实发数 0 ＋ 至今无黑匣/无插件实物）。
+   *
+   * **位置**：两条都必须在**离线结算之前**跑完 —— ① 决定声望门槛（离线远征/入侵按它判），
+   * ② 决定黑匣是否入仓（离线期间的入库日志顺序也会跟着对）。
+   */
+  private applyLoadLedgerRepairs(state: GameState): void {
+    repairStandingFromBountyProgress(state, this.ctx)
+    compensateMissingWeekendBlackBox(state, this.ctx)
+  }
+
   /** 启动引擎：读档 → 离线结算 → 每秒推进 + 自动保存 */
   async start(): Promise<void> {
     let lastSavedWall: number | null = null
@@ -978,6 +997,8 @@ export class GameEngine {
         migrateDeprecatedAmmo(this.state)
         // 临时空间换账本（2026-09-14）：老档 `run.temp`（一种物品一条的列表）→ `run.tempGrid`（4×8 格子）
         wormholeNormalizeLegacyTemp(this.state, this.ctx)
+        // 声望两条账的削减 ＋ 入侵黑匣补发（2026-09-26 船长两令；幂等）
+        this.applyLoadLedgerRepairs(this.state)
         lastSavedWall = parsed.savedAtWallMs
       }
     } catch (err) {
@@ -1008,7 +1029,6 @@ export class GameEngine {
     // `emptyShipState → emptyFitted()` = 1/1/1 位数组，不补齐就会出现
     // "界面按船型布局画出第 2/3/4 格、引擎只认第 1 位"（玩家实测「该低槽位不可用（第 2 位）」）。
     repairDeprecatedModules(this.state, this.ctx)
-
     const now = Date.now()
     if (lastSavedWall !== null) {
       // B4：离线结算前后对比，生成启动简报（离线 ≥1 分钟才展示）；stats 收集 AI 核心作业
@@ -1675,6 +1695,8 @@ export class GameEngine {
        * 与本地化也相关：那些旧日志只有中文正文、没有文案 id ⇒ 英文界面下会半中半英。
        */
       imported.logs = []
+      // 声望削减 ＋ 黑匣补发：**放在清日志之后**（补发要留一条系统日志给玩家看，别被上面清掉）
+      this.applyLoadLedgerRepairs(imported)
       // 铁人档：装载闸门（见 `ironmanLoadCheck`）
       const gate = await this.ironmanLoadCheck(text, parsed.savedAtWallMs)
       if (!gate.ok) return { ok: false, error: gate.error }
