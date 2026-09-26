@@ -14,7 +14,7 @@
  * 表中的**大多数**条目其实是**复用既有 id**（`ui.IndustryPage.005` 原矿 / `ui.Handbook.004` 无人机 …），
  * 只有 core 独有的少数几个（零件 / 蓝图碎片 / 无人机机型 / AI 核心四档 / 键值连接符）才新登记。
  */
-import type { AiCoreType, DroneClass, ItemKind, ShipRole } from '@whale/core'
+import type { AiCoreType, DroneClass, ItemKind, ModuleSlot, ShipRole, WormholeArchetype, WormholePlace } from '@whale/core'
 import { tr } from '../i18n/locale'
 // 槽类名复用市场/手册那份**已本地化**的槽位表（`RACK_SUBS` · `subText`）——**不另存第二份文案**
 // （`rackText` 就建在它上面；`itemSubs.ts` 不 import 本文件 ⇒ 无环）
@@ -97,8 +97,11 @@ export function shipRoleText(role: ShipRole): string {
  * 详情行都直接读它 ⇒ 英文界面下整片漏中文（飞船长令「先进行手册的本地化」实测：装备图鉴一页 140 处）。
  * 能复用既有条目的已复用（采集器 / 打捞器 / 推进器 / 目标锁定），其余登记在 `ui.labelsText.049~059`。
  * ⚠ 新增槽位（`labels.ts` 的 `MODULE_SLOTS` 扩容）时**同步在此加一行**，否则会回落成中文。
+ * **2026-09-27**：表类型由 `Record<string, string>` 收紧为 **`Record<ModuleSlot, string>`** ——
+ * 从此"core 加了新槽位、这里忘了登记"**在 typecheck 就红**，不会再靠人眼（`plug` 就是这么漏的：
+ * 二号加「舰船插件」槽后，中文界面里那一档显示成英文 `plug`）。
  */
-const SLOT_ID: Record<string, string> = {
+const SLOT_ID: Readonly<Record<ModuleSlot, string>> = {
   miner: 'ui.Wormhole.238', // 采集器 / Miners
   cargo: 'ui.labelsText.049', // 货舱扩展 / Cargo Expander
   turret: 'ui.labelsText.050', // 炮台 / Turret
@@ -117,11 +120,17 @@ const SLOT_ID: Record<string, string> = {
   // 2026-09-26 补（船长报障「高中低槽位数量的文本」时顺带查出的漏登记）：护盾充能力场装置那一支
   // 原先没有映射 ⇒ `slotText('shield-field')` 回落到槽位键本身（英文界面下显示 "shield-field"）
   'shield-field': 'ui.labelsText.065', // 护盾力场 / Shield Field
+  // 2026-09-27 补（**船长报障「虫洞出现本地化错误，部分中文变成了英文」顺带查出的同类漏登记**）：
+  // 二号 2026-09-26 加了 `plug`（舰船插件）槽，这里没跟 ⇒ 中文界面把槽位名显示成英文 `plug`。
+  plug: 'ui.itemSubs.042', // 舰船插件 / Ship plugs（与市场/手册的槽位名同一份 id）
 }
 
-/** 槽位名（core `SLOT_LABELS[slot]` 的本地化版；查不到原样返回，漏登记看得见） */
+/**
+ * 槽位名（core `SLOT_LABELS[slot]` 的本地化版；查不到原样返回，漏登记看得见）。
+ * ⚠ 入参是存档里的裸字符串 ⇒ 访问处要收窄（表本身已是 `Record<ModuleSlot, string>`，漏登记由 typecheck 挡）。
+ */
 export function slotText(slot: string): string {
-  const id = SLOT_ID[slot]
+  const id = SLOT_ID[slot as ModuleSlot]
   return id !== undefined ? tr(id) : slot
 }
 
@@ -158,37 +167,47 @@ export function lairTierText(tier: number): string {
 }
 
 /**
- * **虫洞地点名**（空信息地点 / 舰船墓场 / 遗迹 / 舰船信号 / 矿脉 / 虫洞谜质）（2026-09-26 补；
- * = core `WORMHOLE_PLACE_TEXT` 的本地化版）。中文侧逐字沿用 core 的词；英文侧：
- * 前四条复用既有 id（`ui.Wormhole.223/221` + 既有地点词），后两条新登记。
+ * **虫洞地点名**（空信息地点 / 舰船墓场 / 遗迹 / 舰船信号 / 矿脉 / 虫洞谜质 / 漂浮信标）
+ * （= core `WORMHOLE_PLACE_TEXT` 的本地化版）。
+ *
+ * 🔴 **2026-09-27 修 · 船长报障「虫洞出现本地化错误，部分中文变成了英文」**：
+ * 本表原先的**键是错的**——用了「信号名」那一套（`wreck` / `signal` / `essence`），
+ * 而 `WormholePlace` 的真实取值是 `empty | graveyard | ruins | ship | vein | matter | beacon`。
+ * `placeText()` 又写的是"查不到就原样返回键"⇒ 地图上**4/7 个地点直接显示英文键**：
+ * `graveyard` / `ship` / `matter` / `beacon`（只有 empty / ruins / vein 三个碰巧撞对）。
+ * 上一版还把 id 与键错配（`wreck` ↦ 舰船墓场那条 id），所以连"错得看得见"都没做到。
+ *
+ * 修法两道：① 键按 core 的**真实取值域**重写；② 表类型收紧为 **`Record<WormholePlace, string>`**
+ * ⇒ 以后 core 再加地点，**typecheck 就红**（不会再静默漏出一个英文键）。
+ * 新增 `core.wormholePlace.004`（漂浮信标 / Drifting beacon）——此前无对应 id。
  */
-const PLACE_ID: Record<string, string> = {
-  empty: 'ui.Wormhole.223', // 空信息地点 / Empty information
-  wreck: 'core.wormholePlace.001', // 舰船墓场 / Graveyard
+const PLACE_ID: Readonly<Record<WormholePlace, string>> = {
+  empty: 'ui.Wormhole.223', // 空信息 / Empty information
+  graveyard: 'core.wormholePlace.001', // 舰船墓场 / Graveyard
   ruins: 'core.wormholePlace.002', // 遗迹 / Ruins
-  signal: 'ui.Wormhole.221', // 舰船信号 / Ship signal
+  ship: 'ui.Wormhole.221', // 舰船信号 / Ship signal
   vein: 'core.wormholePlace.003', // 矿脉 / Ore Vein
-  essence: 'ui.MatterTechTab.005', // 虫洞谜质 / Wormhole Enigma
+  matter: 'ui.MatterTechTab.005', // 虫洞谜质 / Wormhole Enigma
+  beacon: 'core.wormholePlace.004', // 漂浮信标 / Drifting beacon
 }
-export function placeText(place: string): string {
-  const id = PLACE_ID[place]
-  return id !== undefined ? tr(id) : place
+export function placeText(place: WormholePlace): string {
+  return tr(PLACE_ID[place])
 }
 
 /**
- * **虫洞内容原型名**（均衡深区 / 残骸富集 / 遗迹密集 / 母矿脉 / 交火密集）（2026-09-26 补；
- * = core `WORMHOLE_ARCHETYPE_LABELS` 的本地化版）。五条**全部新登记**（`core.wormholeArch.*`）。
+ * **虫洞内容原型名**（均衡深区 / 残骸富集 / 遗迹密集 / 母矿脉 / 交火密集）（= core `WORMHOLE_ARCHETYPE_LABELS`
+ * 的本地化版）。五条**全部新登记**（`core.wormholeArch.*`）。
+ * ⚠ 表类型同样收紧为 `Record<WormholeArchetype, string>`（同一类漏登记在 typecheck 就红）。
  */
-const ARCHETYPE_ID: Record<string, string> = {
+const ARCHETYPE_ID: Readonly<Record<WormholeArchetype, string>> = {
   balanced: 'core.wormholeArch.001', // 均衡深区 / Balanced deep zone
   wreck: 'core.wormholeArch.002', // 残骸富集 / Wreck-rich
   ruins: 'core.wormholeArch.003', // 遗迹密集 / Ruin-dense
   vein: 'core.wormholeArch.004', // 母矿脉 / Mother lode
   combat: 'core.wormholeArch.005', // 交火密集 / Combat-heavy
 }
-export function archetypeText(archetype: string): string {
-  const id = ARCHETYPE_ID[archetype]
-  return id !== undefined ? tr(id) : archetype
+export function archetypeText(archetype: WormholeArchetype): string {
+  return tr(ARCHETYPE_ID[archetype])
 }
 
 

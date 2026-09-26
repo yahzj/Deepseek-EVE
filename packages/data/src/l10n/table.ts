@@ -1059,6 +1059,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormholePlace.001": { zh: "舰船墓场", en: "Graveyard" },
   "core.wormholePlace.002": { zh: "遗迹", en: "Ruins" },
   "core.wormholePlace.003": { zh: "矿脉", en: "Ore Vein" },
+  "core.wormholePlace.004": { zh: "漂浮信标", en: "Drifting beacon" },
   "core.wormholeArch.001": { zh: "均衡深区", en: "Balanced deep zone" },
   "core.wormholeArch.002": { zh: "残骸富集", en: "Wreck-rich" },
   "core.wormholeArch.003": { zh: "遗迹密集", en: "Ruin-dense" },
