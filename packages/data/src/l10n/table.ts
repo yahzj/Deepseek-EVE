@@ -3257,6 +3257,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.IndustryPage.122": { zh: "已学会", en: "Learned" },
   "ui.IndustryPage.123": { zh: "图纸已进蓝图书架：学会后就能在组装机造这种插件。", en: "The blueprint is now on your blueprint shelf: learn it to build this plug at the assembly unit." },
   "ui.IndustryPage.124": { zh: "舰船插件已解锁：图纸找章鱼人用声望兑换。", en: "Ship plugs unlocked: trade standing with the octopus folk for blueprints." },
+  "ui.IndustryPage.125": { zh: "已造", en: "Built" },
   "ui.Expedition.441": { zh: "章鱼人兑换", en: "Octopus Exchange" },
   "ui.Expedition.442": { zh: "前往章鱼人兑换", en: "Go to the octopus exchange" },
   "ui.Expedition.443": { zh: "插件装上就拆不下来，也不能上市交易。", en: "A plug cannot be removed once fitted, and cannot be traded on the market." },

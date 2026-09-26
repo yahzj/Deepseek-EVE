@@ -1,0 +1,29 @@
+style(plug): 章鱼人兑换窗口改版（沿用全仓既有卡面词汇 · 信息量补齐）
+
+船长令：「兑换商店过于简陋，你可以使用skill进行优化下」。
+
+一、真根因（"简陋"是**裸块**，不是配色问题）
+上一版我用的类名**在 styles.css 里根本不存在**：app-card / app-card-grid / app-card-name /
+app-card-foot（全仓只有 .app-card-progress）⇒ 12 张卡退化成无边框、无内边距、无间距的裸块。
+本版逐条换成**真实词汇表**（每一条都用 Select-String 核过存在性）：
+- 弹层 .app-modal-wide（640px）· .app-modal-head / -body（自带内滚）
+- 网格 .app-belt-grid（auto-fill minmax(240px,1fr)）
+- 卡面 .app-belt-card ＋ 卡头 .app-belt-head / -name / -head-right · 说明 .app-belt-desc
+  · 产物行 .app-belt-ore · 材料 .app-bp-mats / .app-bp-mat（.is-short）· 操作区 .app-belt-actions
+- 已学会走 .app-shelf-card.is-learned ＋ .app-chip.is-learned（.app-belt-card.is-learned 不存在）
+
+二、信息量补齐（按组装机那张卡的同一套层级）
+① 产物名（换的是插件，不是"图纸"）；② **这枚插件的实际效果**（复用装配页 moduleShortEffect）；
+③ **制造材料清单 ＋ 每项现有量**（换之前就知道造不造得起，缺口标红）；
+④ 已学会 / 未学会状态徽标（薄荷色）；⑤ 顶栏两本账（可支配 / 累计获得）；
+⑥ 主行动按钮（可换 = is-primary；不可换写明还差几点）。
+读数全走 core 单点：plugExchangeRowsOf / countModule / countWare / matNeedCount。
+
+三、skill 依据（ui-ux-pro-max）
+- 版式遵循 skill 的"复用既有设计语言"与紧凑标签规则：徽标取短值不折行、禁用态有明确语义；
+- 未采用其移动端条目（safe-area / 触控 44pt / Dynamic Type）——本项目是桌面 Electron。
+- 观感审查权在船长：本版未自行截图，交你上手看。
+
+验证：typecheck 四包 0 错 · core 234 文件 / 2566 用例全绿 · content:check ✅ ·
+l10n:check ✅ · ui:rot-check ✅ · ui:layout-css:check ✅ ·
+桌面 build ✅（assets/index-DcHNIMQ-.js）
