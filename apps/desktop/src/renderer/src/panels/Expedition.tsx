@@ -202,13 +202,15 @@ function FoeBriefTip({ lines }: { lines: FoeBriefLine[] }): ReactNode {
              * `UI_TONES.matBattle`（与舰名那条敌族红是不同 token），效果说明保持正文色。
              * `m.name === ''`（舰级字段那两条自愈/压制没有具名挂载件）⇒ 只写「特殊装置：效果」。
              *
-             * ⚠ **行内不留换行/缩进**（2026-09-26 船长：「你给的预览特殊装置有首行缩进，但是游戏中没有」）：
-             * 本块提示层是 `.app-tip { white-space: pre-line }`——**源码里的空白在"按源码显示"的场合
-             * 会变成首行缩进**；浏览器渲染时块级子元素间的空白会被丢掉（所以游戏里本来就没有）。
-             * 为免两处观感不一致，这里把每个块级行压成"一段连续 JSX"，不产生空白文本节点。
+             * **缩进走样式、不走文本空白**（2026-09-26 船长问「不能直接用文本输入中的 tab 缩进或者空格吗」）：
+             * 本块提示层是 `.app-tip { white-space: pre-line }` 且自身是 flex ⇒ 行首的普通空格 / `\t`
+             * **在行首处理时被丢掉**（`pre-line` 只保留行内空白），实测「换行＋空格」不残留
+             * （`是否含「换行+空格」= false`）⇒ 要缩进只能用**保留型字符**（如全角空格 `\u3000`，
+             * 属于"用空白字符凑版式"）**或样式**。这里选样式：`padding-left` 1.2em，顺便让折行也保持缩进。
+             * ⚠ JSX 里的换行与缩进（源码空白）同样**不产生任何缩进**——两种呈现方式因此一致。
              */}
             {l.mounts?.map((m, mi) => (
-              <span key={mi} style={{ display: 'block' }}><b style={{ color: UI_TONES.matBattle }}>{mountLabelText()}{'：'}{m.name}</b>{m.name !== '' ? '：' : ''}{m.effect}。</span>
+              <span key={mi} style={{ display: 'block', paddingLeft: '1.2em' }}><b style={{ color: UI_TONES.matBattle }}>{mountLabelText()}{'：'}{m.name}</b>{m.name !== '' ? '：' : ''}{m.effect}。</span>
             ))}
           </span>
         </span>
