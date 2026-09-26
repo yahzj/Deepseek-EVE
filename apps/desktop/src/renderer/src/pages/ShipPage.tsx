@@ -2,6 +2,7 @@
  * 舰船页：我的舰队（耐久/维修/切换驾驶）+ AI 指挥中心 + 空间站商店。
  */
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import {
   AI_CORE_ORDER,
   aiCoreCap,
@@ -27,6 +28,12 @@ import {
   // 舰船仓库（2026-09-14 船长）：仓库计数 / 入仓逐档判据（core 单点，与引擎同源）
   shipStoredCount,
   shipStorable,
+  // 2026-09-26 船长：「舰队页面…悬停舰船时，应该显示舰船的当前属性，而不是基础属性」
+  // ⇒ 悬停卡改报装后合成值（与装配页/战斗同源：createPlayerSpec ＋ 有效跃迁速度 ＋ 机舱合计）
+  createPlayerSpec,
+  droneBayTotalM3,
+  warpBonusMult,
+  warpSpeedAus,
 } from '@whale/core'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
@@ -35,6 +42,8 @@ import { durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ShipHover } from '../ui/shipInfo'
 import { useSessionScroll } from '../ui/sessionView'
+import type { GameEngine } from '../game/engine'
+import type { ShipDef } from '@whale/core'
 import { ShipSprite } from '../ui/ShipSprite'
 import { AiTaskBar } from '../ui/aiProgress'
 import { AiWorkFx } from '../ui/aiWorkFx'
@@ -121,6 +130,53 @@ const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: stri
 /** 舰船仓库「拥有」筛选（2026-09-14 船长裁定**乙**：只看**仓库库存**——
  *  仓里有货 = 已拥有；仓里为空 = 未拥有，即使在役舰队有同型）。
  *  ⚠ 2026-09-19 乙组：表已收编到 `ui/itemSubs.ts`（`STORE_OWN_TABS`）。 */
+
+/**
+ * **舰队页悬停卡 = 当前属性**（船长 2026-09-26：「我的舰队页面中，玩家鼠标悬停舰船时，
+ * 应该显示舰船的当前属性，而不是基础属性」）。
+ *
+ * 与装配页 / 战斗**同一把尺**：`createPlayerSpec` 合成装后血量·抗性·命中·回避·速度，
+ * 跃迁速度走 `warpSpeedAus` / `warpBonusMult`（跃迁计算机加成），机舱走 `droneBayTotalM3`
+ * （船体 ＋ 甲板扩展）。图鉴 / 市场 / 船坞的悬停卡**不传** current ⇒ 仍按船长同日裁定
+ * 「图鉴内按照基础属性算」报**基础属性**。
+ */
+function FleetShipHover({
+  uid,
+  ship,
+  engine,
+  children,
+  block = true,
+}: {
+  uid: string
+  ship: ShipDef
+  engine: GameEngine
+  children: ReactNode
+  block?: boolean
+}): ReactNode {
+  const spec = createPlayerSpec(engine.state, engine.ctx, uid)
+  // 船不在编队里（理论上到不了这里）⇒ 退回基础属性卡，不显示半截合成值
+  if (!spec) {
+    return (
+      <ShipHover ship={ship} block={block}>
+        {children}
+      </ShipHover>
+    )
+  }
+  return (
+    <ShipHover
+      ship={ship}
+      block={block}
+      current={{
+        spec,
+        battle: engine.ctx.balance.battle,
+        effWarp: { aus: warpSpeedAus(engine.state, engine.ctx, uid), bonusPct: warpBonusMult(engine.state, engine.ctx, uid) - 1 },
+        droneBayTotal: droneBayTotalM3(ship, engine.state.fleet[uid]?.fitted, engine.ctx),
+      }}
+    >
+      {children}
+    </ShipHover>
+  )
+}
 
 export function ShipPage({
   engine,
@@ -513,7 +569,7 @@ export function ShipPage({
             const isRenaming = renameId === uid
             const storable = shipStorable(state, uid) // 入仓逐档判据（core 单点，与引擎同源）
             return (
-              <ShipHover key={uid} ship={def} block>
+              <FleetShipHover key={uid} uid={uid} ship={def} engine={engine} block>
                 <div
                   className={`app-ship-card is-fleet${isCurrent ? ' is-current' : ''}${switchFxUid === uid ? ' is-switch-pulse' : ''}`}
                 >
@@ -711,7 +767,7 @@ export function ShipPage({
                 ) : null}
                 </div>
                 </div>
-              </ShipHover>
+              </FleetShipHover>
             )
           })}
         </div>

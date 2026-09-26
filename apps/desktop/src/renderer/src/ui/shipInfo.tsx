@@ -14,8 +14,8 @@
  * - 无人机生存包等未落地内容仍标注"契约"。
  */
 import type { ElementType, ReactNode } from 'react'
-import type { AnomalyDef, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType } from '@whale/core'
-import { DEFAULT_BALANCE, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS } from '@whale/core'
+import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
+import { DEFAULT_BALANCE, droneBayTotalM3, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS } from '@whale/core'
 import { hoverTipProps } from './Tooltip'
 import { tr } from '../i18n/locale'
 // ⚠ 槽类名（高/中/低槽）与舰船类别/舰级名**一律走这三个本地化单点**（2026-09-26 船长报障
@@ -60,6 +60,116 @@ export const COMBAT_BASE_KEYS: ReadonlySet<string> = new Set([
   tr("ui.FitPage.006"),
   tr("ui.FitPage.007"),
 ])
+
+/**
+ * **机动速度行（装后口径）** —— 一个构造点，装配页主表与舰队页悬停卡共用。
+ *
+ * 口径（2026-09-11 船长「推进器现在有持续时间和冷却时间，这点希望在推进器的说明内讲清」）：
+ * 推进器周期化（2026-09-10）后 `spec.speedMps` **不含**推进器加成（加成走 `thrusterBoost`、
+ * 只在点火窗口生效）⇒ 本行 = 基础值 ＋（装了推进器时）点火期值 ＋ 周期尾缀，秒数与 balance 同源。
+ * **2026-09-14 起按船取值**：周期取自本船 spec 的两个覆盖字段（微型跃迁引擎 = 10 秒点火）。
+ */
+export function fittedSpeedLine(spec: Pick<UnitSpec, 'speedMps'> & Partial<UnitSpec>, battle: BattleBalance): InfoLine {
+  return {
+    k: tr("ui.FitPage.049"),
+    v: (
+      <>
+        {`${fmt(Math.round(spec.speedMps))} m/s`}
+        {spec.thrusterBoost !== undefined && spec.thrusterBoost > 0 ? (
+          <span className="app-dim">
+            {tr("ui.FitPage.145", { p1: fmt(Math.round(spec.speedMps * (1 + spec.thrusterBoost))), p2: thrusterCycleFullText(battle, { boostMs: spec.thrusterBoostMs, cooldownMs: spec.thrusterCooldownMs }) })}
+          </span>
+        ) : null}
+      </>
+    ),
+  }
+}
+
+/** 装后无人机舱合计行（船体 + 已装「甲板扩展」）——装配页主表与舰队页悬停卡共用同一行 */
+export function fittedDroneBayLine(totalM3: number): InfoLine {
+  return { k: tr("ui.FitPage.035"), v: tr("ui.FitPage.143", { droneBayTotal: totalM3 }) }
+}
+
+/**
+ * **装后属性行**（船长 2026-09-26：「我的舰队页面中，玩家鼠标悬停舰船时，应该显示舰船的当前
+ * 属性，而不是基础属性」）——舰队悬停卡专用，把下列基础值换成 `createPlayerSpec` 的合成值：
+ *
+ * ① 三层血量与三系抗性（含容量件与抗性件的 EVE 式缺口合成；图鉴侧仍按船长同日裁定走**基础属性**）；
+ * ② 回避率、命中加成（姿态陀螺缺口 / 舰种操作技能）；③ 机动速度（航行技能 ＋ 重甲机动代价 ＋
+ * 推进器点火期）与有效跃迁速度；④ 无人机舱合计（船体 ＋ 甲板扩展）。
+ *
+ * `effWarp` 不传 = 该行报船表基础值（与 `shipIndirectLines` 同口径）；`droneBayTotal` 不传 =
+ * 不追加合计行。其余行（定位/货舱/采集/动力/间接属性）本来就是静态值，不动。
+ */
+export function shipCurrentLines(
+  ship: ShipDef,
+  spec: UnitSpec,
+  opts: { battle: BattleBalance; effWarp?: { aus: number; bonusPct: number }; droneBayTotal?: number },
+): InfoLine[] {
+  const replaced = new Map<string, InfoLine>()
+  // 装后合成值（键与 `shipInfoLines` 的基础行同 id，逐条顶替）
+  replaced.set(tr("ui.FitPage.001"), { k: tr("ui.FitPage.001"), v: fmt(spec.hp.s) })
+  replaced.set(tr("ui.FitPage.002"), { k: tr("ui.FitPage.002"), v: resistsText(spec.resists.shield) })
+  replaced.set(tr("ui.FitPage.003"), { k: tr("ui.FitPage.003"), v: fmt(spec.hp.a) })
+  replaced.set(tr("ui.FitPage.004"), { k: tr("ui.FitPage.004"), v: resistsText(spec.resists.armor) })
+  replaced.set(tr("ui.ShipPage.023"), { k: tr("ui.ShipPage.023"), v: fmt(spec.hp.h) })
+  replaced.set(tr("ui.FitPage.005"), { k: tr("ui.FitPage.005"), v: resistsText(spec.resists.hull) })
+  replaced.set(tr("ui.FitPage.006"), { k: tr("ui.FitPage.006"), v: `+${Math.round(spec.hitBonus * 100)}%` })
+  replaced.set(tr("ui.FitPage.007"), { k: tr("ui.FitPage.007"), v: `${Math.round(spec.evasion * 100)}%` })
+  replaced.set(tr("ui.FitPage.049"), fittedSpeedLine(spec, opts.battle))
+  if (opts.droneBayTotal !== undefined && opts.droneBayTotal > 0) {
+    replaced.set(tr("ui.FitPage.010"), fittedDroneBayLine(opts.droneBayTotal))
+  }
+  const out: InfoLine[] = []
+  for (const line of shipInfoLines(ship)) {
+    const hit = replaced.get(line.k)
+    // 有装后行 ⇒ 用装后行顶替；给了机舱合计 ⇒ 基础机舱行让位；其余原样保留
+    if (hit) out.push(hit)
+    else if (FIT_MAIN_HIDDEN_KEYS.includes(line.k)) continue
+    else out.push(line)
+  }
+  out.push(...shipIndirectLines(ship, opts.effWarp))
+  return out
+}
+
+/**
+ * **当前属性卡的拼装口径**（不取值）——供 `npm run ui:attr-check` 复算"舰队页悬停卡"这张表。
+ * 返回三段读数，与 `shipCurrentLines` 同一段逻辑（改口径只会改这一处）：
+ * - `replaced`：被装后行**顶替**的键（`baseRows` 里位置不变、值换掉）；
+ * - `hidden`  ：被**移走**的键（本卡另有同值行的那些，如有机舱合计时的基础机舱行）；
+ * - `keys`    ：整卡最终的行 key 序列（含追加的间接属性）。
+ */
+export function shipCurrentLayout(
+  ship: ShipDef,
+  hasDroneBayTotal: boolean,
+): { replaced: string[]; hidden: string[]; keys: string[] } {
+  const replaced = new Set<string>([
+    tr("ui.FitPage.001"),
+    tr("ui.FitPage.002"),
+    tr("ui.FitPage.003"),
+    tr("ui.FitPage.004"),
+    tr("ui.ShipPage.023"),
+    tr("ui.FitPage.005"),
+    tr("ui.FitPage.006"),
+    tr("ui.FitPage.007"),
+    tr("ui.FitPage.049"),
+    ...(hasDroneBayTotal ? [tr("ui.FitPage.010")] : []),
+  ])
+  const keys: string[] = []
+  const hidden: string[] = []
+  for (const line of shipInfoLines(ship)) {
+    if (replaced.has(line.k)) keys.push(line.k)
+    else if (FIT_MAIN_HIDDEN_KEYS.includes(line.k)) hidden.push(line.k)
+    else keys.push(line.k)
+  }
+  keys.push(...shipIndirectLines(ship).map((l) => l.k))
+  return { replaced: [...replaced], hidden, keys }
+}
+
+/** 当前属性卡的最终行 key 序列（`shipCurrentLayout().keys` 的便捷读法） */
+export function shipCurrentRowKeys(ship: ShipDef, hasDroneBayTotal: boolean): string[] {
+  return shipCurrentLayout(ship, hasDroneBayTotal).keys
+}
 
 /**
  * 伤害类型色 chip（V17.2 快速辨识）：颜色 = 我方三层血量色——
@@ -1091,6 +1201,7 @@ export function InfoTable({
  * 视觉与内容与图鉴/装配页同一数据源；展示机制与全站统一（跟随鼠标的全局提示层，
  * 见 Tooltip.tsx）。block = 以块级包裹整卡（悬停热区覆盖整张卡片）；默认行内包裹单个元素。
  * 间接属性（速度/锁定等）不在此显示——仅装配界面（低优先级）。
+ * 传 `current` 则整卡改报**当前属性**（舰队页；2026-09-26 船长令）。
  */
 export function ShipHover({
   ship,
@@ -1099,6 +1210,7 @@ export function ShipHover({
   as = 'span',
   className,
   note = tr('ui.Handbook.181'),
+  current,
 }: {
   ship: ShipDef
   children: ReactNode
@@ -1106,12 +1218,40 @@ export function ShipHover({
   as?: ElementType
   className?: string
   note?: string
+  /**
+   * **当前属性**（船长 2026-09-26：「我的舰队页面中，玩家鼠标悬停舰船时，应该显示舰船的当前
+   * 属性，而不是基础属性」）：传本舰的 `createPlayerSpec` 快照 ⇒ 血量/抗性/命中/回避/机动速度/
+   * 跃迁速度/无人机舱合计 一律换成装后合成值，顶部三层血量徽章同步。
+   * **不传 = 基础属性**（图鉴 / 市场 / 船坞那条路，与船长同日「图鉴内按照基础属性算」一致）。
+   */
+  current?: { spec: UnitSpec; battle?: BattleBalance; effWarp?: { aus: number; bonusPct: number }; droneBayTotal?: number }
 }) {
+  const spec = current?.spec
   const content = (
     <>
       <span className="app-ship-hover-title">{ship.name}</span>
-      <span className="app-combat-badges">{combatBadges(ship)}</span>
-      <InfoTable lines={shipInfoLines(ship)} />
+      <span className="app-combat-badges">
+        {combatBadges(
+          ship,
+          spec
+            ? {
+                hp: { s: Math.round(spec.hp.s), a: Math.round(spec.hp.a), h: Math.round(spec.hp.h) },
+                resists: spec.resists,
+              }
+            : undefined,
+        )}
+      </span>
+      {spec ? (
+        <InfoTable
+          lines={shipCurrentLines(ship, spec, {
+            battle: current?.battle ?? DEFAULT_BALANCE.battle,
+            effWarp: current?.effWarp,
+            droneBayTotal: current?.droneBayTotal,
+          })}
+        />
+      ) : (
+        <InfoTable lines={shipInfoLines(ship)} />
+      )}
       {note ? <div className="app-info-note">{note}</div> : null}
     </>
   )

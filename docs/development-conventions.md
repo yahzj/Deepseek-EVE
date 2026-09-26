@@ -81,9 +81,10 @@
   船长定：手机竖屏自动横屏是"逻辑空间 1200 × `--mob-h`"，凡用 `vw`/`vh` 定尺寸的覆盖层必须按逻辑空间同轴覆盖、
   窄窗媒体查询在旋转下不许误触发、侧栏让位只许收内边距；只读 `styles.css`、不用浏览器）。
   **2026-09-26 起该链末追加 `tools/ui-attr-check.ts`（属性表「同名两行」体检）**：装配页主属性表 /
-  图鉴档案 / 蓝图产物三处是**拼装**出来的（`shipInfoLines` 基础行 ＋ 页面追加的合计行与装后口径行），
-  同一 label 出现两次就会并列两个数字（船长报障实例：「无人机舱」×2）；工具直接 import
-  `FIT_MAIN_HIDDEN_KEYS` / `COMBAT_BASE_KEYS` 按真实顺序复算 43 艘，命中即红（只读代码、不用浏览器）；
+  图鉴档案 / 蓝图产物 / 舰队页悬停卡四处是**拼装**出来的（`shipInfoLines` 基础行 ＋ 页面追加的合计行
+  与装后口径行），同一 label 出现两次就会并列两个数字（船长报障实例：「无人机舱」×2）；工具直接 import
+  `FIT_MAIN_HIDDEN_KEYS` / `COMBAT_BASE_KEYS` / `shipCurrentLayout` 按真实顺序复算 43 艘，除"不重名"外
+  还钉住悬停卡的**行数守恒**（装后行必须逐条顶替、不许增删），命中即红（只读代码、不用浏览器）；
 - `npm run build`（electron-vite）；结构改动后跑 Electron 冒烟 + 真实存档迁移检查
   （`%APPDATA%\whale-idle\save.json`，动它之前先备份）；
 - 数值/经济改动跑 `npm run balance`（tools/balance-check.ts，三策略 24h 对比）；
