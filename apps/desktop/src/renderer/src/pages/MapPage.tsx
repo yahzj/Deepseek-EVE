@@ -791,26 +791,26 @@ function SalvageTab({
        * 打捞对象由 core 自动判定（优先入侵残骸 ⇒ 否则按各组存量比同步捞），读数在各张卡上。
        * **打捞需要打捞器 ⇒ 一行提示 ＋ 去「装配」的入口**（**2026-09-20 船长令**：
        * 「打捞需要打捞器的提示，添加让玩家去装配的提示」）。
-       * 判据 = 驾驶船当前**一台打捞器都没装**（`salvagerCyclesOf` 空表，与 core 出发门槛同一把尺）；
-       * 装的按钮与舰船页那枚「装配」同款（`nav-fit` 字形 ＋ `ui.App.003`），落点是**这艘驾驶船**的装配页。
+       * ⚠ **2026-09-26 船长复令：「常驻显示，现在位置不变」** ⇒ 原先 `noSalvager ? … : null` 的
+       * 条件**已去掉**：无论有没有装打捞器，这一行都常住在正文同一位置（装配入口也常在）。
+       * 按钮与舰船页那枚「装配」同款（`nav-fit` 字形 ＋ `ui.App.003`），落点是**这艘驾驶船**的装配页。
        */}
-      {noSalvager ? (
-        <div className="app-dim app-inv-empty app-salvage-need">
-          <span>{tr('ui.MapPage.118')}</span>
-          {onGotoFit ? (
-            <button
-              className="app-btn is-small"
-              title={tr('ui.FirstTasks.029', { p1: tr('ui.App.003') })}
-              onClick={() => onGotoFit(state.shipId)}
-            >
-              <span className="app-ico">
-                <Glyph name="nav-fit" size={13} color={NAV_TONES['nav-fit']} />
-              </span>
-              {tr('ui.App.003')}
-            </button>
-          ) : null}
-        </div>
+      {/* 打捞前置提示：**常驻**（2026-09-26 船长复令「常驻显示，现在位置不变」）——一行文字 ＋ 装配入口 */}
+    <div className="app-dim app-inv-empty app-salvage-need">
+        <span>{tr('ui.MapPage.118')}</span>
+        {onGotoFit ? (
+          <button
+            className="app-btn is-small"
+            title={tr('ui.FirstTasks.029', { p1: tr('ui.App.003') })}
+            onClick={() => onGotoFit(state.shipId)}
+          >
+            <span className="app-ico">
+              <Glyph name="nav-fit" size={13} color={NAV_TONES['nav-fit']} />
+            </span>
+            {tr('ui.App.003')}
+          </button>
       ) : null}
+      </div>
 
       {/* 打捞循环设置行（2026-09-09 船长定：与采矿同款；自动循环默认开） */}
       <div className="app-mining-settings">
