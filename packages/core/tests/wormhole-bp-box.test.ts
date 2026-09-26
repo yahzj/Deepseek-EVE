@@ -79,8 +79,8 @@ describe('虫洞 · 图纸货柜（2026-09-14 船长定）', () => {
     const once3 = wormholeDilutionPoolOf(ctx, 3)
     const once5 = wormholeDilutionPoolOf(ctx, 5)
     expect(once2).toHaveLength(10)
-    expect(once3).toHaveLength(14)
-    expect(once5).toHaveLength(15)
+    expect(once3).toHaveLength(16) // 2026-09-26：+虎鲸/旋齿鲨两张 T4 一次性图纸
+    expect(once5).toHaveLength(17)
     expect(once2.every((id) => tierOfBp(id) === 3), '浅层一次性池应全是 T3').toBe(true)
     expect(once5.some((id) => tierOfBp(id) === 5), '深层一次性池应含 T5').toBe(true)
 
@@ -88,8 +88,8 @@ describe('虫洞 · 图纸货柜（2026-09-14 船长定）', () => {
     const perm3 = wormholePermanentPoolOf(ctx, 3)
     const perm5 = wormholePermanentPoolOf(ctx, 5)
     expect(perm2).toHaveLength(10)
-    expect(perm3).toHaveLength(14)
-    expect(perm5).toHaveLength(14) // 船长只点 T3/T4 ⇒ T5 永久不进池
+    expect(perm3).toHaveLength(16) // 2026-09-26：+sbp-orca / sbp-helicoprion 两张 T4 永久图纸
+    expect(perm5).toHaveLength(16) // 船长只点 T3/T4 ⇒ T5 永久不进池
     expect(perm2.every((id) => tierOfBp(id) === 3)).toBe(true)
     expect(perm5.some((id) => tierOfBp(id) === 4)).toBe(true)
     expect(perm5.some((id) => tierOfBp(id) === 5), '永久池不得含 T5').toBe(false)

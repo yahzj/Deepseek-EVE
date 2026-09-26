@@ -244,6 +244,16 @@ export const SHIP_MOUNTS: Record<string, ShipMounts> = {
     engines: [{ x: 34, y: 49 }, { x: 34, y: 67 }],
     muzzles: [{ x: 208, y: 43 }],
   },
+  // 虎鲸级指挥舰（2026-09-26 新增）：双喷口 M30..（梭形尾）；主炮口端 M212 50（指挥塔前那门）
+  'sh-orca': {
+    engines: [{ x: 32, y: 50 }, { x: 32, y: 66 }],
+    muzzles: [{ x: 210, y: 48 }],
+  },
+  // 旋齿鲨级装甲战列舰（2026-09-26 新增）：双喷口 M34..；主炮口端 M208 44（旋齿锯盘之后）
+  'sh-helicoprion': {
+    engines: [{ x: 34, y: 48 }, { x: 34, y: 68 }],
+    muzzles: [{ x: 206, y: 40 }],
+  },
   // 邓氏鱼级旗舰：双喷口 M28..；双联主炮口端 M216 36 / 50
   'sh-dunkleosteus': {
     engines: [{ x: 28, y: 49 }, { x: 28, y: 65 }],

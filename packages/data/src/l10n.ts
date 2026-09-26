@@ -142,6 +142,15 @@ export const EN_SHIPS: EnTable = {
     name: 'Megalodon-class Battleship',
     description: 'A battleship named for a prehistoric giant: a front-line damage sponge and fire platform. Three thick HP layers and generous fitting space let it stand at the head of the formation — at the cost of slow turns and slow starts.',
   },
+  // 2026-09-26 新增两艘官方战列舰（船长令）——虎鲸级 = 设定里的"战列巡洋舰"（不可见说法）
+  'sh-orca': {
+    name: 'Orca-class Command Ship',
+    description: 'A command ship: the hull that pulls a formation into one fist. Speed is what it lives on; fitting space, HP and hold all sit one notch below a battleship.',
+  },
+  'sh-helicoprion': {
+    name: 'Helicoprion-class Armored Battleship',
+    description: 'An armored battleship named for a prehistoric saw-toothed shark: armor thick enough to eat the first salvo, with the speed to keep up with the formation — at the cost of a small hold and few mid slots.',
+  },
   'sh-dunkleosteus': {
     name: 'Dunkleosteus-class Flagship',
     description: "The fleet's apex: damage soaking, firepower and fitting space all above its generation — as are its price and build time. It sets the pace of the whole formation: when it is slow, everyone waits.",
@@ -1166,6 +1175,9 @@ const SBP_DESC_EN: Readonly<Record<string, string>> = {
   'sbp-sailfish': 'Fast freighter; 8,500 m³ hold, 18 units per 11 s cycle.',
   'sbp-swordfish': 'Heavy freighter; 14,000 m³ hold, 16 units per 12 s cycle.',
   'sbp-megalodon': 'Battleship; 4,000 m³ hold — a fire platform that dares to stand at the head of the formation.',
+  // 2026-09-26 新增两艘（虎鲸级 = 战巡 / 旋齿鲨级 = 装甲战列舰）
+  'sbp-orca': 'Command ship; 2,400 m³ hold — speed is what it lives on.',
+  'sbp-helicoprion': 'Armored battleship; 3,600 m³ hold, with armor thick enough to eat the first salvo.',
   'sbp-wh-a-frigate': 'Raider EW frigate; locking and resolution top its tier — it sees first and locks first.',
   'sbp-wh-a-destroyer': 'Raider gunboat; kinetic batteries give it solid frontal firepower.',
   'sbp-wh-a-cruiser': 'Raider heavy assault cruiser; kinetic firepower wide open behind a thicker carapace — built to crack hard targets.',
