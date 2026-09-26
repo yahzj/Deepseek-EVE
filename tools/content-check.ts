@@ -1905,6 +1905,8 @@ const SUBCLASS_NON_WH_SHIP_IDS = new Set([
   'sh-xuanwu', // 玄武级重装战列舰（T4；2026-09-21 船长纠正：是战列、不是旗舰）
   // 2026-09-17 船长：「给予大白鲨级炮舰舰船子分类炮舰」（官方掠食者线，T2 驱逐·奇货精装）
   'sh-whiteshark',
+  // 2026-09-26 船长令（新增两艘官方战列舰之一）：虎鲸级指挥舰 = 中槽型**指挥舰**（T4 战巡口径）
+  'sh-orca',
 ])
 /**
  * **每档默认槽位总数**（船长 2026-09-14 原话：「默认的舰船，按级别分别是 7/9/11/14/18 个槽位。
@@ -1925,7 +1927,12 @@ const OFFICIAL_SLOT_ALIGNED = new Set(['sh-nautilus', 'sh-bullshark'])
  * 鹦鹉螺级测绘巡洋舰按船长指定的 **3/4/4**（中槽型功能舰）⇒ 高 3 < 低 4+1，故豁免这一条；
  * 其余官方武装舰照旧受约束。**总数仍 11**（T3 基准线不破，见 `OFFICIAL_SLOT_ALIGNED`）。
  */
-const OFFICIAL_HIGH_SLOT_EXEMPT = new Set(['sh-nautilus'])
+const OFFICIAL_HIGH_SLOT_EXEMPT = new Set([
+  'sh-nautilus',
+  // 2026-09-26 船长令新增「虎鲸级指挥舰 sh-orca」槽位 **4/5/4**（中槽型指挥舰）⇒ 同款豁免。
+  // 口径与鹦鹉螺一致：**中槽型功能舰**（指挥/支援件的主场），高槽少于低槽是设计本身，不是笔误。
+  'sh-orca',
+])
 /**
  * **非战斗舰血量目标总血**（2026-09-15 船长定；与 `packages/data/src/ships.ts` 头注同源）：
  * 同档**官方战斗舰**（role `armed`/`armored`，**不含**虫洞专属 `sh-wh-*`）总血**中位 × 0.8**。
@@ -2130,7 +2137,9 @@ for (const [tier, b] of Object.entries(tierTotalAvg)) {
 // **鹦鹉螺级测绘巡洋舰 sh-nautilus**（协会测绘处 · T3 侦察舰 · 10 槽 · 机舱 80 · 虫洞扫码 +1；
 // 奇货 + 数字 4（✅ 2026-09-14 虫洞上线后闸门已删）；子分类契约同日放宽为"白名单 + 非虫洞登记表"；见
 // `docs/design/scout-cruiser-20260913.md`）。
-check(SHIPS.length === 43, `舰船应为 43 艘（既有 27 + 虫洞专属 15 + 鹦鹉螺级 1），实际 ${SHIPS.length}`)
+// 2026-09-26 船长令（两艘新官方战列舰）：43 → **45** ⇒ 新增 **虎鲸级指挥舰 sh-orca**（T4 战巡口径 ·
+// 4/5/4 中槽型指挥舰 · 全队单发 +20%）与 **旋齿鲨级装甲战列舰 sh-helicoprion**（T4 装甲线 · 5/3/6 · 甲 700）。
+check(SHIPS.length === 45, `舰船应为 45 艘（既有 29 + 虫洞专属 15 + 鹦鹉螺级 1），实际 ${SHIPS.length}`)
 console.log(
   `· 舰船：${SHIPS.length} 艘（role 分布：${["industrial", "armed", "armored", "hauler"].map((r) => `${r}=${SHIPS.filter((s) => s.role === r).length}`).join(" ")})`,
 )
@@ -6987,8 +6996,8 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     const dil5 = wormholeDilutionPoolOf(poolCtx, 5)
     // 件数是"防手滑"守卫：现内容 = T3 十艘 / T4 四艘 / T5 一艘（加船时这里与用例要一起改）
     check(dil2.length === 10, `稀释池契约：层 2 应为 T3 十张，实际 ${dil2.length} 张（${dil2.join('、')}）`)
-    check(dil3.length === 14, `稀释池契约：层 3 应加 T4 四张（共 14），实际 ${dil3.length} 张`)
-    check(dil5.length === 15, `稀释池契约：层 5 应加 T5 一张（共 15），实际 ${dil5.length} 张`)
+    check(dil3.length === 16, `稀释池契约：层 3 应加 T4 六张（共 16；2026-09-26 新两艘 T4 加入后 14 → 16），实际 ${dil3.length} 张`)
+    check(dil5.length === 17, `稀释池契约：层 5 应加 T5 一张（共 17；随 T4 同步 15 → 17），实际 ${dil5.length} 张`)
     for (const id of dil5) {
       const bp = poolCtx.shipBlueprints.get(id)
       check(bp?.singleUse === true, `稀释池契约：${id} 不是一次性舰船蓝图（稀释池只放 ` + '`sbp-once-*` + singleUse）')

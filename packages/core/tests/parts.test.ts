@@ -134,7 +134,7 @@ describe('零件体系：配方改造（2026-09-20）', () => {
     const total = basic + adv + raw
     return { basic: basic / total, adv: adv / total, raw: raw / total }
   }
-  const T4_IDS = ['sbp-swordfish', 'sbp-bowhead', 'sbp-xuanwu', 'sbp-megalodon']
+  const T4_IDS = ['sbp-swordfish', 'sbp-bowhead', 'sbp-xuanwu', 'sbp-megalodon', 'sbp-orca', 'sbp-helicoprion'] // 2026-09-26 +虎鲸/旋齿鲨（两张新 T4 也进零件体系）
 
   it('④ 专属装备：总价不变（+50% 口径保留）· 占比 = 基础 45% / 高级 30% / 矿物 25% · 书价不变', () => {
     const bp = BLUEPRINTS.find((b) => b.id === 'bp-wh-a-frag')!
@@ -178,11 +178,14 @@ describe('零件体系：配方改造（2026-09-20）', () => {
     expect(s.basic).toBeCloseTo(0.75, 1)
     expect(s.raw).toBeCloseTo(0.25, 1)
   })
-  it('⑥c T4 舰船（含一次性孪生共 8 张）：纳入改造 · 只用基础件 · 占比 75/25 · 总价与孪生一致', () => {
+  it('⑥c T4 舰船（含一次性孪生共 10 张）：纳入改造 · 只用基础件 · 占比 75/25 · 总价与孪生一致', () => {
     const T4_TOTALS: Record<string, number> = {
       'sbp-swordfish': 10_800_000,
       'sbp-bowhead': 30_340_000,
       'sbp-xuanwu': 40_450_000,
+      // 2026-09-26 新增两艘 T4（虎鲸级 = 巨齿鲨 ×2/3、旋齿鲨级 = 玄武同料 ⇒ 料价与玄武同值）
+      'sbp-orca': 67_499_863,
+      'sbp-helicoprion': 40_450_000,
       'sbp-megalodon': 101_250_000,
     }
     for (const id of T4_IDS) {

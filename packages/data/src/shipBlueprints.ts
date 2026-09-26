@@ -330,7 +330,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 36_000_000, // = 行价 9,000,000 × 4（>400 万档系数）
     // ✅ 2026-09-14 虫洞上线：闸门已删（与 `sh-nautilus` / 两张市场卡同批放开，见 design/scout-cruiser §2.3）
-    description: '测绘巡洋舰，货舱 6,600 m³，编入队伍即扩大扫描范围一圈。',
+    description: '测绘巡洋舰，货舱 5,600 m³，编入队伍即扩大扫描范围一圈。',
   },
   {
     id: 'sbp-tortoise',
@@ -443,6 +443,48 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 900_000_000, // = 行价 225,000,000 × 4（>400 万档系数；契约「舰船价格口径」守）
     description: '战列舰，货舱 4,000 m³，敢站在编队最前面的火力平台。',
+  },
+  /* ══════════ 2026-09-26 船长令：两艘新官方战列舰的图纸 ══════════
+   * 口径：照同级邻舰缩放（材料按船价比例折算 · 书价 = 行价 ×4 · 工期落 T4 带 9~20 时）。
+   * - 虎鲸级（战巡 · 比战列舰薄一档）⇒ 材料取巨齿鲨 ×2/3、工期 16 时、书价 = 行价 1.5 亿 ×4 = 6 亿；
+   * - 旋齿鲨级（装甲战列舰）⇒ 材料照玄武（同为装甲线 T4 现货档）、工期 17.4 时、书价 = 行价 9,000 万 ×4 = 3.6 亿。 */
+  {
+    id: 'sbp-orca',
+    name: '虎鲸级舰船蓝图',
+    shipId: 'sh-orca',
+    materials: [
+      { itemId: 'min-pyerite', count: 646_850 },
+      { itemId: 'min-tritanium', count: 801_646 },
+      { itemId: 'min-mexallon', count: 135_003 },
+      { itemId: 'part-frame', count: 139_653 },
+      { itemId: 'part-armor-plate', count: 40_500 },
+      { itemId: 'part-cable', count: 48_991 },
+      { itemId: 'part-circuit', count: 79_934 },
+      { itemId: 'part-coolant', count: 44_021 },
+    ],
+    buildSeconds: 57_600, // 虎鲸级（战巡：T4 带 9~20 时内偏短 ⇒ 16 时）
+    buildCostIsk: 0,
+    priceIsk: 600_000_000, // = 行价 150,000,000 × 4
+    description: '指挥舰，货舱 4,700 m³，速度是它的立身之本。',
+  },
+  {
+    id: 'sbp-helicoprion',
+    name: '旋齿鲨级舰船蓝图',
+    shipId: 'sh-helicoprion',
+    materials: [
+      { itemId: 'min-tritanium', count: 531_281 },
+      { itemId: 'min-pyerite', count: 321_896 },
+      { itemId: 'min-mexallon', count: 100_005 },
+      { itemId: 'part-frame', count: 83_687 },
+      { itemId: 'part-armor-plate', count: 24_270 },
+      { itemId: 'part-cable', count: 29_358 },
+      { itemId: 'part-circuit', count: 47_901 },
+      { itemId: 'part-coolant', count: 26_380 },
+    ],
+    buildSeconds: 62_580, // 旋齿鲨级（照玄武 17.4 时）
+    buildCostIsk: 0,
+    priceIsk: 360_000_000, // = 行价 90,000,000 × 4
+    description: '装甲战列舰，货舱 3,600 m³，装甲层厚到能顶住第一轮齐射。',
   },
 
   /* ══════════════ 虫洞专属舰船的**一次性图纸**（2026-09-13 船长「所有舰船不掉成品，只掉一次性图纸」）
@@ -919,7 +961,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildSeconds: 16_920,
     buildCostIsk: 0,
     priceIsk: 4_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
-    description: '测绘巡洋舰，货舱 6,600 m³，编入队伍即扩大扫描范围一圈。',
+    description: '测绘巡洋舰，货舱 5,600 m³，编入队伍即扩大扫描范围一圈。',
   },
   {
     id: 'sbp-once-hammerhead',
@@ -1067,6 +1109,47 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildCostIsk: 0,
     priceIsk: 112_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '战列舰，货舱 4,000 m³，敢站在编队最前面的火力平台。',
+  },
+  // 2026-09-26 新增两艘 T4 的一次性图纸（契约：每艘 T3/T4/T5 都要有一张 · 价 = 行价 ×50%）
+  {
+    id: 'sbp-once-orca',
+    name: '虎鲸级舰船蓝图（一次性）',
+    shipId: 'sh-orca',
+    singleUse: true,
+    materials: [
+      { itemId: 'min-pyerite', count: 646_850 },
+      { itemId: 'min-tritanium', count: 801_646 },
+      { itemId: 'min-mexallon', count: 135_003 },
+      { itemId: 'part-frame', count: 139_653 },
+      { itemId: 'part-armor-plate', count: 40_500 },
+      { itemId: 'part-cable', count: 48_991 },
+      { itemId: 'part-circuit', count: 79_934 },
+      { itemId: 'part-coolant', count: 44_021 },
+    ],
+    buildSeconds: 57_600,
+    buildCostIsk: 0,
+    priceIsk: 75_000_000, // = 行价 150,000,000 ×50%
+    description: '指挥舰，货舱 4,700 m³，速度是它的立身之本。',
+  },
+  {
+    id: 'sbp-once-helicoprion',
+    name: '旋齿鲨级舰船蓝图（一次性）',
+    shipId: 'sh-helicoprion',
+    singleUse: true,
+    materials: [
+      { itemId: 'min-tritanium', count: 531_281 },
+      { itemId: 'min-pyerite', count: 321_896 },
+      { itemId: 'min-mexallon', count: 100_005 },
+      { itemId: 'part-frame', count: 83_687 },
+      { itemId: 'part-armor-plate', count: 24_270 },
+      { itemId: 'part-cable', count: 29_358 },
+      { itemId: 'part-circuit', count: 47_901 },
+      { itemId: 'part-coolant', count: 26_380 },
+    ],
+    buildSeconds: 62_580,
+    buildCostIsk: 0,
+    priceIsk: 45_000_000, // = 行价 90,000,000 ×50%
+    description: '装甲战列舰，货舱 3,600 m³，装甲层厚到能顶住第一轮齐射。',
   },
   {
     id: 'sbp-once-colossal',

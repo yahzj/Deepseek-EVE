@@ -1,6 +1,7 @@
 /**
- * **全舰单发伤害光环（指挥舰「全舰单发伤害 +15%」）**——2026-09-13 船长口径：「提高全舰的单发伤害 15%」
- * （**取最高、不叠加**）；数据 = `ShipDef.fleetDamageBonusPct`（现只有陵卫指挥舰 `sh-wh-d-destroyer` 0.15）。
+ * **全舰单发伤害光环（指挥舰「全舰单发伤害 +20%」）**——2026-09-13 船长口径：「提高全舰的单发伤害 15%」
+ * （**取最高、不叠加**）；数据 = `ShipDef.fleetDamageBonusPct`——**2026-09-26 船长令**：「另一艘指挥舰是陵卫指挥舰，
+ * 将其效果提高到20%」⇒ 陵卫指挥舰 `sh-wh-d-destroyer` 与虎鲸级指挥舰 `sh-orca` **都是 0.20**（本文件的机制用例用合成船取值，不受数值变动影响）。
  *
  * ⚠ **本文件同时是 2026-09-17 那个真 BUG 的回归守卫**：光环原先只在 `startFleetBattleFor` 里乘进
  * «开战那一刻» 的规格，而战斗是**逐拍重建规格**的（`buildMyUnitSpecs` → `createPlayerSpec`，其不认识
@@ -118,7 +119,7 @@ describe('全舰单发伤害光环（指挥舰 +15%）', () => {
     expect(ratio, `单舰每发均值比 ${ratio.toFixed(3)}`).toBeLessThan(1.2)
   })
 
-  it('**数据侧**：只有陵卫指挥舰带这个字段（值为 0.15），其余船一个都不带', () => {
+  it('**数据侧**（合成船夹具）：带字段的取值生效、不带字段的取不到（机制守卫，与实船数值解耦）', () => {
     const ctx = makeTestCtx({ ships: [deck('aura', 0.15), deck('wing')] })
     expect(ctx.ships.get('aura')!.fleetDamageBonusPct).toBe(0.15)
     expect(ctx.ships.get('wing')!.fleetDamageBonusPct).toBeUndefined()

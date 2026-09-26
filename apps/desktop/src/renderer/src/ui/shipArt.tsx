@@ -124,6 +124,44 @@ export const SHIP_ART: Record<string, ReactNode> = {
     </g>
   ),
 
+  /* 虎鲸级指挥舰（T4 · 战巡口径 · 指挥）—— 流线梭形舰体（为速度让位）+ 高耸指挥塔与双环相控阵 + 四联舷炮列 */
+  'sh-orca': (
+    <g>
+      <path d="M216 58 L198 40 L140 32 C104 32 70 38 50 48 L30 58 L48 70 C70 80 104 86 140 86 L196 78 L214 62 Z" />
+      <path d="M216 58 L238 54 L238 62 L214 62 Z" />
+      {/* 指挥塔（背鳍意象）+ 双环相控阵 */}
+      <path d="M120 32 L128 14 L146 14 L154 34 Z" />
+      <path className="shipart-panel" d="M128 20 h18 M126 26 h22" />
+      <path className="shipart-acc" d="M137 14 a10 10 0 0 1 0 20" />
+      <circle className="shipart-accf" cx="137" cy="24" r="1.8" />
+      {/* 舰体区分线 + 舷炮列 */}
+      <path className="shipart-panel" d="M140 34 v52 M104 36 v48 M74 42 v36 M176 34 v48" />
+      <path d="M96 46 h12 v8 h-12 z M96 60 h12 v8 h-12 z M96 74 h12 v8 h-12 z" />
+      <path d="M60 50 h11 v8 h-11 z M60 64 h11 v8 h-11 z" opacity=".9" />
+      {/* 前向导流鳍 */}
+      <path d="M186 40 L206 34 L196 46 Z" opacity=".9" />
+      <path d="M186 80 L206 86 L196 74 Z" opacity=".9" />
+      <circle className="shipart-accf" cx="182" cy="50" r="1.4" />
+    </g>
+  ),
+
+  /* 旋齿鲨级装甲战列舰（T4 · 装甲线）—— 厚甲楔形舰体 + 舰首旋齿锯盘（史前旋齿鲨意象）+ 双联主炮 + 三层甲板线 */
+  'sh-helicoprion': (
+    <g>
+      <path d="M214 58 L192 32 L126 26 C92 26 62 34 46 46 L32 58 L46 70 C62 82 92 90 126 90 L190 84 L210 70 Z" />
+      {/* 舰首旋齿锯盘（圆形齿列） */}
+      <path d="M214 58 a17 17 0 1 0 -0.1 0 Z" />
+      <path className="shipart-panel" d="M214 46 v-6 M224 52 l5 -3 M226 58 h6 M224 64 l5 3 M214 70 v6 M204 64 l-5 3 M202 58 h-6 M204 52 l-5 -3" />
+      <circle className="shipart-accf" cx="210" cy="58" r="2" />
+      {/* 三层甲板线 + 双联主炮 */}
+      <path className="shipart-panel" d="M126 28 v62 M92 30 v58 M62 40 v40 M160 28 v60 M184 32 v54" />
+      <path d="M148 38 h32 v18 h-32 z M155 43 h20 M155 50 h20" />
+      <path d="M96 44 h13 v8 h-13 z M96 58 h13 v8 h-13 z M96 72 h13 v8 h-13 z" />
+      <path d="M60 48 h12 v10 h-12 z M60 64 h12 v10 h-12 z" opacity=".9" />
+      <path className="shipart-acc" d="M184 40 L206 38 M184 78 L206 80" />
+    </g>
+  ),
+
   /* 邓氏鱼级旗舰（T5 · 掠食者武装）—— 头部装甲盾板（邓氏鱼头盾意象）+ 极厚舰体 + 四联舷炮 + 双联主炮 */
   'sh-dunkleosteus': (
     <g>
