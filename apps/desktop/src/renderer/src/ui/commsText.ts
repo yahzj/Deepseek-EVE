@@ -13,7 +13,9 @@
  * ⚠ **查不到一律原样返回**（新剧本/新部门漏登记时看得见中文，不会静默变空）。
  * ⚠ 新增通讯/部门时**同步在下面两张表加一行**。
  *
- * 本批未覆盖：正文段落（`body`，约 90 行）与部门简介（`brief`，悬停说明）——正文另开一遍。
+ * ⚠ **新增通讯必须同时登记两张表**：主题行（`COMMS_SUBJECT_ID`）与**正文**（`COMMS_BODY_EN`）。
+ * 正文那张表**按行数对齐**——行数不符时 `commsBodyText()` 整段回落中文（宁可整段中文，也不许错行串位）。
+ * 2026-09-26 新增 `msg-blackbox-plug-unlock` 时就是按这条办的（船长亲笔三段，英文也落三段）。
  */
 import { COMMS_DAY_MS } from '@whale/core'
 import type { CommsEntryView, CommsRewardLine } from '@whale/core'
@@ -132,6 +134,7 @@ const COMMS_HINT_ID: Record<string, string> = {
   '工业页可以同时开多台炉子。': 'ui.comms.060',
   '技能页可以先把精炼学排进队列。': 'ui.comms.061',
   '副站建成后泊位、维修、补给与换船全部开放。': 'ui.comms.062',
+  '前往声望商店兑换': 'ui.Expedition.442',
   '出发前先去装配页检查一遍武器与防护。': 'ui.comms.063',
   '出发前在装配页把对空火力与装甲补齐。': 'ui.comms.064',
   '打之前先去装配页，把对空火力带上。': 'ui.comms.065',
@@ -347,6 +350,12 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
     'The net is tied to the ship that cast it: sink that ship and it releases at once, and the caught ship is back to normal on the spot; open the range past 4,500 metres and the net snaps on its own.',
     'The good news: it spreads the net once per engagement and only over whatever it had locked at that moment — once it is broken, no second net comes.',
     'So do not rush to switch targets when you meet one: kill it first. Running a squad into a wormhole, have the escorts soak fire for whoever is caught, or simply take it down before it casts.',
+  ],
+  /** 首匣 → 舰船插件（2026-09-26 船长亲笔三段的英文；**必须三段**，行数不符会整段回落中文） */
+  'msg-blackbox-plug-unlock': [
+    'Route Safety reports that you pulled a black box out of a wreck. That is a find: the data sealed inside can be used to build special ship plugs. In light of your contributions to the Association, we are opening a limited shop window for you — the blueprints for building ship plugs can be exchanged there for standing.',
+    'A ship plug is a device as remarkable as Enigma. Once fitted to a ship it grants a breakthrough gain in performance, but the catch is that it cannot be taken off again, nor swapped for another, so think over which one you want before you place the order. A ship carrying a plug cannot be put into the ship warehouse, nor listed for sale on the market.',
+    'The Engineering Department has been notified, and they will open the assembly unit for building ship plugs to you. Go and take a look.',
   ],
   'msg-cinder-warning': [
     'Visibility in the Cinder Sector is terrible, and more hulls sit in the ash haze than the radar shows.',

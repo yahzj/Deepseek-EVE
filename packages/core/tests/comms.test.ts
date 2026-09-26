@@ -184,8 +184,53 @@ describe('通讯 · 「第一次」任务情报信（2026-09-17 教程重做：�
   })
 })
 
-describe('通讯 · 序章演出与老档迁移（2026-09-17）', () => {
-  it('开场信（start）：序章演出期间不送，演出结束即送达', () => {
+describe('通讯 · 首匣那封信的「前往」必须带顶层 action（2026-09-26 船长报障）', () => {
+  /**
+   * 船长原话（照抄）：「**通讯也是，前往章鱼人兑换，而且点击后还不是跳转到声望商店**」。
+   *
+   * 真根因：界面侧 `CommsEave` 的「前往」**只认顶层 `entry.action`** ——
+   * 有它 ⇒ 走 `onAction`（开面板/开窗口）；没有 ⇒ 退回 `onGoto(hint.page)`（只切页）。
+   * 而 `commsInbox` 的**表消息**分支原先**只带了 `hint`、没把 `hint.action` 提到顶层**
+   * （实例通讯那条一直是对的）⇒ 首匣那封信点「前往」只会切到工业页，永远开不出兑换窗口。
+   * 本用例钉的就是这一条：**表消息的 `hint.action` 必须在顶层可见**。
+   */
+  const PLUG_MSG: CommsMessageDef = {
+    id: 'msg-test-plug-jump',
+    factionId: 'dshi',
+    kind: '提示',
+    subject: '测试：去声望商店换图纸',
+    body: ['测试正文'],
+    trigger: { kind: 'blackboxSeen' },
+    hint: { text: '前往声望商店兑换', page: 'industry', action: 'plug-exchange' },
+  }
+
+  it('表消息：`hint.action` 提到顶层 `action`（否则「前往」只会切页）', () => {
+    const { state, ctx } = world([PLUG_MSG])
+    // 触发器 = 「见过黑匣」：直接把随档标记置位即可（`addWare` 那条路已由 blackbox 的用例覆盖）
+    state.blackboxSeen = true
+    tick(state, ctx, 1000)
+    const letter = commsInbox(state, ctx).find((e) => e.id === PLUG_MSG.id)
+    expect(letter, '这封信应已送达').toBeDefined()
+    expect(letter!.hint?.text).toBe('前往声望商店兑换')
+    expect(letter!.hint?.page).toBe('industry')
+    expect(
+      (letter as unknown as { action?: string }).action,
+      '顶层 action 必须在 —— 界面靠它走 onAction 开兑换窗口（缺了就只会切页）',
+    ).toBe('plug-exchange')
+  })
+
+  it('对照：没有 action 的信仍走切页分支（不误伤别的通讯）', () => {
+    const plain: CommsMessageDef = { ...PLUG_MSG, id: 'msg-test-plain', trigger: { kind: 'start' }, hint: { text: '去星图', page: 'map' } }
+    const { state, ctx } = world([plain])
+    tick(state, ctx, 1000)
+    const letter = commsInbox(state, ctx).find((e) => e.id === plain.id)
+    expect(letter, '开场信应已送达').toBeDefined()
+    expect((letter as unknown as { action?: string }).action, '没写 action ⇒ 顶层不带这个键').toBeUndefined()
+    expect(letter!.hint?.page).toBe('map')
+  })
+})
+
+describe('通讯 · 序章演出与老档迁移（2026-09-17）', () => {  it('开场信（start）：序章演出期间不送，演出结束即送达', () => {
     const { state, ctx } = world()
     state.onboarding.step = ONB_AWAKEN // 序章演出中：屏幕被演出盖住，此刻弹信没意义
     tick(state, ctx, 5000)
