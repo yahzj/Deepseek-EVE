@@ -57,7 +57,12 @@ async function tryStartBattle(engine: GameEngine): Promise<boolean> {
   if (st.expedition.active) return st.expedition.phase === 'battle'
   for (const a of engine.allAnomalies) {
     if (a.galaxyId && !st.exploredGalaxies.includes(a.galaxyId)) st.exploredGalaxies.push(a.galaxyId)
-    for (const k of Object.keys(st.standings)) st.standings[k] = Math.max(st.standings[k] ?? 0, 10)
+    // 声望门槛一律读**累计获得**那本（2026-09-26 船长令）⇒ 两条账一起拉满，别只抬可支配那本
+    st.standingsEarned = st.standingsEarned ?? {}
+    for (const k of Object.keys(st.standings)) {
+      st.standings[k] = Math.max(st.standings[k] ?? 0, 10)
+      st.standingsEarned[k] = Math.max(st.standingsEarned[k] ?? 0, 10)
+    }
     // 归属星系按目录卡自带的那一个传（2026-09-25 修"串星系"后，出发归属不再按 card id 反查）
     const r = engine.startExpeditionAt(a.id, a.galaxyId)
     if (!r.ok) continue

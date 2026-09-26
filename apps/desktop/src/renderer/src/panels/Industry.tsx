@@ -34,6 +34,9 @@ import {
   WORMHOLE_SCAN_UNLOCK_STANDING,
   // 2026-09-26 船长令：取得第一个黑匣后才解锁组装机的「舰船插件」档（判据单点）
   plugCraftUnlockedOf,
+  // 2026-09-26 船长令「所有声望门槛改读累计声望」：虫洞闸的读数走唯一入口
+  standingOf,
+  DSI_FACTION_ID,
 } from '@whale/core'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
@@ -704,8 +707,9 @@ export const BlueprintCard = memo(function BlueprintCard({
    */
   const plugBlueprint =
     engine.ctx.modules.get(engine.ctx.blueprints.get(blueprintId)?.moduleId ?? '')?.slot === 'plug'
-  /** 虫洞解锁声望闸（与扫描虫洞页同一本账：协会声望 ≥ `WORMHOLE_SCAN_UNLOCK_STANDING`） */
-  const whStanding = state.standings.dsi ?? 0
+  /** 虫洞解锁声望闸（与扫描虫洞页同一本账：**累计**协会声望 ≥ `WORMHOLE_SCAN_UNLOCK_STANDING`；
+   *  2026-09-26 船长令「所有声望门槛改读累计声望」⇒ 走唯一入口 `standingOf`，不直读可支配那本） */
+  const whStanding = standingOf(state, DSI_FACTION_ID)
   const whUnlocked = whStanding >= WORMHOLE_SCAN_UNLOCK_STANDING
   // 每卡独立的 AI 核心选择（一枚核心驱动一条线；核心库存被占用后自动回落可用类型）
   const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')

@@ -176,8 +176,16 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
     case 'isk':
       return state.wallet.isk >= trigger.amount
     case 'standing':
-      // 声望达标（2026-09-14 船长：虫洞扫描解锁要 35 声望）——直接读 state，避免与 expedition 形成模块环
-      return (state.standings[trigger.factionId] ?? 0) >= trigger.min
+      /**
+       * **势力声望达标**（2026-09-14 船长：虫洞扫描解锁要 35 声望）。
+       *
+       * ⚠ **2026-09-26 船长令**：「**修改原先的所有声望门槛，改为根据玩家的累计声望**」⇒
+       * 本闸读**累计获得**那一本（`standingsEarned`），**不是**可支配那本（兑换会扣它 ⇒ 换过图纸
+       * 反而把已解锁的通讯锁回去）。老档/合成状态缺 `standingsEarned` 时回退旧值 —— 与唯一入口
+       * `expedition.standingOf` 逐字同一口径；这里直读 `state` 是为了**不与 expedition 形成模块环**
+       * （既有写法，见本文件其它 `case`）。
+       */
+      return (state.standingsEarned?.[trigger.factionId] ?? state.standings[trigger.factionId] ?? 0) >= trigger.min
     case 'siteBuilt': {
       const site = ctx.stations.get(trigger.siteId)
       return site !== undefined && isSiteBuilt(state, site)

@@ -26,7 +26,7 @@ import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import { scanSkillFactor } from './explore'
 import { WORMHOLE_MAX_SHIPS } from './wormhole'
-import { DSI_FACTION_ID } from './expedition'
+import { DSI_FACTION_ID, standingOf } from './expedition'
 import { WORMHOLE_ARCHETYPE_LABELS, wormholeArchetypeOf } from './wormholeGrid'
 import { wormholeFamilyOfSeed } from './wormholeFoes'
 
@@ -88,14 +88,18 @@ export const WORMHOLE_STOCK_DEPTHS: readonly number[] = [1]
  * ⇒ **现值 = 40**（旧值 35 作废）。
  *
  * 声望口径 = **协会（深空工业协会，`DSI_FACTION_ID` = `'dsi'`）声望 ≥ 40** —— 与其它"协会声望门槛"
- * （矿带 `standingReq`、奇货件）**同一本账**（`state.standings.dsi`，界面「声望」列就是它）。
- * ⚠ 解锁通讯 `msg-wormhole-unlock` 的触发器门槛必须与本常量**同值**（`content:check` 盯着）。
+ * （矿带 `standingReq`、奇货件、暗市闸、商品购买）**同一本账**：**累计获得**那一本
+ * （走唯一入口 `expedition.standingOf`）。
+ * ⚠ **2026-09-26 船长令**：「**修改原先的所有声望门槛，改为根据玩家的累计声望**」⇒ 本闸由原先直读
+ * `state.standings`（可支配）改为读累计 —— 否则换过插件图纸的玩家会把虫洞扫描锁回去。
+ * ⚠ 解锁通讯 `msg-wormhole-unlock` 的触发器门槛必须与本常量**同值**（`content:check` 盯着），
+ * 且那条通讯的 `standing` 触发器同样读累计（`comms.ts` 同一口径）。
  */
 export const WORMHOLE_SCAN_UNLOCK_STANDING = 40
 
-/** 协会声望（界面读数与解锁判定共用） */
+/** 协会声望（界面读数与解锁判定共用；**累计获得**那本） */
 export function wormholeScanStanding(state: GameState): number {
-  return state.standings[DSI_FACTION_ID] ?? 0
+  return standingOf(state, DSI_FACTION_ID)
 }
 
 /** 扫描虫洞是否已解锁（声望 ≥ 门槛） */

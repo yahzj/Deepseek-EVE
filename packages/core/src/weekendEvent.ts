@@ -107,20 +107,26 @@ export const WEEKEND_STANDING_MAX = 15
 /**
  * 协会（DSI）声望取数。
  *
+ * ⚠ **2026-09-26 船长令**：「**修改原先的所有声望门槛，改为根据玩家的累计声望**」⇒ 读**累计获得**
+ * 那一本（`standingsEarned`），**不是**可支配那本（章鱼人兑换会扣它）。与唯一入口
+ * `expedition.standingOf` 逐字同口径。
+ *
  * ⚠ **刻意不 import `expedition`**：`expedition` 反过来 import 本文件（`weekendFoeCardOf`）⇒
  * 引进来会成环（同本文件头注那条"依赖方向"纪律）。id 与 `expedition.DSI_FACTION_ID` 同值；
  * `firstTasks` 里也有一处同样的本地写法（既有做法）。
  */
-function dsiStandingOf(state: GameState): number {
-  return state.standings['dsi'] ?? 0
+function dsiStandingOf(state: Pick<GameState, 'standings' | 'standingsEarned'>): number {
+  return state.standingsEarned?.['dsi'] ?? state.standings['dsi'] ?? 0
 }
 /**
  * **这一刻允许开新场吗**（声望前提的唯一判据；`ensureWeekendEvent` 正常模式那一段读它）。
- * 调试模式恒真（船长四答之三）⇒ 调试不受门槛影响；其余情形 = 协会声望 ≥ `WEEKEND_MIN_STANDING`。
+ * 调试模式恒真（船长四答之三）⇒ 调试不受门槛影响；其余情形 = 协会**累计**声望 ≥ `WEEKEND_MIN_STANDING`。
  */
-export function weekendInvasionAllowedFor(state: Pick<GameState, 'debugQuick' | 'standings'>): boolean {
+export function weekendInvasionAllowedFor(
+  state: Pick<GameState, 'debugQuick' | 'standings' | 'standingsEarned'>,
+): boolean {
   if (weekendDebugOn(state)) return true
-  return (state.standings['dsi'] ?? 0) >= WEEKEND_MIN_STANDING
+  return dsiStandingOf(state) >= WEEKEND_MIN_STANDING
 }
 /**
  * **遇袭（巡游小队）的真·强度倍率**（船长 2026-09-25：「**遇袭的时候遭遇的敌人按强度\*0.75算**」）。

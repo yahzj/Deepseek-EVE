@@ -35,6 +35,9 @@ import {
   shipWrecksOf,
   wreckLootRowsOf,
   SHIP_WRECK_DECAY_MS,
+  // 2026-09-26 船长令「所有声望门槛改读累计声望」：矿带卡片的锁定判据走唯一入口
+  standingOf,
+  DSI_FACTION_ID,
 } from '@whale/core'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
@@ -407,7 +410,13 @@ function BeltCard({
   const state = engine.state
   const oreDef = engine.ctx.items.get(belt.oreId)
   const mv = miningStatus(state, engine.ctx)
-  const standing = state.standings['dsi'] ?? 0
+  /**
+   * 协会声望（矿带 `standingReq` 的锁定判据与文案共用）。
+   * ⚠ **2026-09-26 船长令**：「**修改原先的所有声望门槛，改为根据玩家的累计声望**」⇒ 原直读
+   * `state.standings`（可支配那本，章鱼人兑换会扣它）改走唯一入口 `standingOf`（累计获得那本）；
+   * 与 `mining.ts` 命令侧闸、舰船页矿带下拉三处从此同一本账。
+   */
+  const standing = standingOf(state, DSI_FACTION_ID)
   const galaxy = belt.galaxyId ? engine.ctx.galaxies.get(belt.galaxyId) : undefined
   const galaxyName = galaxy?.name ?? tr('ui.Expedition.007')
   // 效率行（试点 2026-09-05）：每循环产量 × 循环时长 → 每小时产出与每小时估价。
