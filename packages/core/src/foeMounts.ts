@@ -169,13 +169,24 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     id: FOE_MOUNT_IDS.reviveEscort,
     name: '支援舰船召唤装置',
     en: 'Support Recall Beacon',
-    reviveEscort: { everyMs: 60_000 },
+    /**
+     * **2026-09-26 船长令**：「入侵活动中，H族入侵母舰的挂载件复活效果，**改为每60秒复活2艘船**。
+     * 且必定会复活干扰舰」⇒ `count: 2`（原 1 艘/次）+ `priorityShipIds`（**优先**复活干扰舰）。
+     * ⚠ **同日追答**：「**应该是优先复活干扰舰**」⇒ 语义 = **优先**：干扰舰在可补池里就先占名额，
+     *   它活着 / 已补进场则名额回落到随机（不是"无条件必补"）。
+     * 池子/上限/满血/入场表现四条口径不变（见 `combat.resolveFoeRevive`）。
+     */
+    // ⚠ `'foe-h-ink-jammer'` = 墨潮干扰舰（`data/foe-ships.ts`）；core 侧不 import data ⇒ 写字面量
+    reviveEscort: { everyMs: 60_000, count: 2, priorityShipIds: ['foe-h-ink-jammer'] },
     note:
       '船长 2026-09-25：「给入侵母舰添加类似D族挂载件的独立挂载件，只不过改为复活被摧毁的友军' +
       '（但是表现形式上为敌方支援舰船入场），增援时间是60秒，每次随机复活一艘。」' +
       '追问四答：池子 = 只复活当前波已死的（丙）· 上限 = 不超本波原编成（甲）· 满血（甲）·' +
       '通用件、先只装入侵母舰（甲）。实现见 `combat.advanceBattleFor` 的"支援舰召唤"一段：' +
-      '新 tag `supN-<原tag>` 入场（美术/体积/名称按原 tag 解析）⇒ 界面表现为「敌方支援舰船入场」。',
+      '新 tag `supN-<原tag>` 入场（美术/体积/名称按原 tag 解析）⇒ 界面表现为「敌方支援舰船入场」。' +
+      '2026-09-26 船长改判：「…改为每60秒复活2艘船。且必定会复活干扰舰」⇒ 每次 2 艘、' +
+      '2026-09-26 船长追答：「应该是优先复活干扰舰」⇒ 语义 = 优先：干扰舰在可补池里就先占一个名额，' +
+      '它活着 / 已补进场则名额回落到随机（不是无条件必补）。',
   },
   [FOE_MOUNT_IDS.inkRangeDebuff]: {
     id: FOE_MOUNT_IDS.inkRangeDebuff,
@@ -216,7 +227,7 @@ export interface ResolvedFoeMounts {
   /** **船体修理装置的脉冲参数**（原样带给单位；`k` 由建档侧按本层威胁现算，见 `FoeMountDef.repairPulse`） */
   foeRepairPulse?: { everyMs: number; armor: number; hull: number }
   /** **支援舰船召唤装置的节拍**（原样带给单位；池子/上限/入场口径见 `FoeMountDef.reviveEscort`） */
-  foeReviveEscort?: { everyMs: number }
+  foeReviveEscort?: { everyMs: number; count?: number; priorityShipIds?: readonly string[] }
   /**
    * **射程压制阵列的削减率**（原样带给单位；消费方 = `meJammerNetOf` 那条链，逐字不变）。
    * 与舰级字段 `FoeShipDef.foeRangeDebuffPct` **同源不同入口**：解析后写进**同一个运行时字段**。

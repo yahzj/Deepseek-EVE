@@ -438,7 +438,7 @@ const BATTLE_FIELDS = {
   // 漏了会让战中重载后敌方修理计时重置（= 白赚一跳），与 `repair`/`shieldCharge`/`foeRepair` 同理
   // （2026-09-22「随档字段两处落笔」规则：写入点 = combat.initFoeRepairPulses，白名单 = cleanBattle）。
   foeRepairPulses: { kind: 'persist' },
-  // 2026-09-25 船长令：挂载件「支援舰船召唤装置」（每 60 秒复活一艘当前波已阵亡的敌舰入场）——
+  // 2026-09-25 船长令：挂载件「支援舰船召唤装置」（2026-09-26 起**每 60 秒复活 2 艘**、干扰舰优先）——
   // **必须随档**：漏了会让战中重载后召唤计时与"已召唤次数"一起重置（= 白赚一次支援 + 支援舰 tag
   // 序号回退可能撞名），与 `foeRepairPulses`/`foeRepair`/`repair` 同理。
   // （写入点 = combat.resolveFoeRevive，白名单 = cleanBattle。）

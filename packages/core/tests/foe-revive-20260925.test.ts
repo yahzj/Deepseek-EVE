@@ -102,15 +102,68 @@ describe('敌方挂载件「支援舰船召唤装置」（船长 2026-09-25）',
     const escorts = specs.filter((s) => s.foeReviveEscort === undefined)
     expect(escorts.length, '第 4 波 = 母舰 + 3 僚舰').toBe(3)
     for (const e of escorts) battle.units[e.tag]!.hp = { s: 0, a: 0, h: 0 }
-    // 3 次到点 ⇒ 3 艘支援舰（每次一艘）
-    for (let i = 1; i <= 3; i++) {
-      runFor(state, ctx, battle, 61_000)
-      expect(battle.foeReviveCount, `第 ${i} 次到点`).toBe(i)
-    }
+    /**
+     * ⚠ **2026-09-26 起每次 2 艘**（船长令「改为每60秒复活2艘船」）⇒ 第 1 次到点就补 2 艘，
+     * 第 2 次到点补满第 3 个空槽（**受本波剩余空槽封顶**，不会超编）。
+     */
+    runFor(state, ctx, battle, 61_000)
+    expect(battle.foeReviveCount, '第 1 次到点补 2 艘').toBe(2)
+    runFor(state, ctx, battle, 61_000)
+    expect(battle.foeReviveCount, '第 2 次到点补满剩下的 1 个空槽').toBe(3)
     expect(Object.keys(battle.units).filter((t) => t.startsWith('sup')).length).toBe(3)
     // 编成已满（母舰 ＋ 3）⇒ 再走 3 分钟也不再召唤
     runFor(state, ctx, battle, 180_000)
     expect(battle.foeReviveCount, '编成满 ⇒ 不超编').toBe(3)
+  })
+
+  it('**2026-09-26 令**：每次到点补 2 艘（阵亡 ≥2 时一次入场两艘，序号连续）', () => {
+    const { state, ctx, battle } = world()
+    const specs = activeFoeSpecsOf(CARD, ctx.balance.battle, WAVE)
+    const escorts = specs.filter((s) => s.foeReviveEscort === undefined)
+    for (const e of escorts) battle.units[e.tag]!.hp = { s: 0, a: 0, h: 0 }
+    runFor(state, ctx, battle, 61_000)
+    expect(battle.foeReviveCount, '一次补 2 艘').toBe(2)
+    const sups = Object.keys(battle.units).filter((t) => t.startsWith('sup')).sort()
+    expect(sups.length).toBe(2)
+    // 两艘都满血入场、都有入场窗口
+    for (const t of sups) {
+      const rt = battle.units[t]!
+      expect(rt.hp.s + rt.hp.a + rt.hp.h).toBeGreaterThan(0)
+      expect(rt.enteredAtMs).toBeDefined()
+    }
+    // 两条战报/日志（序号 1、2）
+    const logs = state.logs.filter((l) => l.textId === 'core.combat.001')
+    expect(logs.length, '每艘各记一条').toBeGreaterThanOrEqual(2)
+  })
+
+  it('**2026-09-26 令**：**优先**复活干扰舰（它阵亡时先占名额；活着/已补进场则名额回落到随机）', () => {
+    const { state, ctx, battle } = world()
+    const specs = activeFoeSpecsOf(CARD, ctx.balance.battle, WAVE)
+    const jammer = specs.find((s) => s.foeShipId === 'foe-h-ink-jammer')
+    expect(jammer, '第 4 波编成里有墨潮干扰舰').toBeTruthy()
+    const others = specs.filter((s) => s.foeReviveEscort === undefined && s.foeShipId !== 'foe-h-ink-jammer')
+    // 只打掉干扰舰（其余僚舰活着）⇒ 到点必须复活它
+    battle.units[jammer!.tag]!.hp = { s: 0, a: 0, h: 0 }
+    runFor(state, ctx, battle, 61_000)
+    expect(battle.foeReviveCount, '干扰舰占名额（只有它可补 ⇒ 1 艘）').toBe(1)
+    const revived = Object.keys(battle.units).filter((t) => t.startsWith('sup'))
+    expect(revived.length).toBe(1)
+    expect(baseFoeTag(revived[0]!)).toBe(jammer!.tag)
+    /**
+     * 干扰舰**活着**时：名额回到随机池 —— 再打掉 2 艘其它僚舰，下一次到点必须补的是那 2 艘
+     * （干扰舰此刻在场 ⇒ 它不在池子里）。
+     */
+    const before = new Set(Object.keys(battle.units).filter((t) => t.startsWith('sup')))
+    battle.units[others[0]!.tag]!.hp = { s: 0, a: 0, h: 0 }
+    battle.units[others[1]!.tag]!.hp = { s: 0, a: 0, h: 0 }
+    runFor(state, ctx, battle, 61_000)
+    expect(battle.foeReviveCount, '再补 2 艘').toBe(3)
+    const fresh = Object.keys(battle.units)
+      .filter((t) => t.startsWith('sup') && !before.has(t))
+      .map((t) => baseFoeTag(t))
+    expect(fresh, '本轮补的是那两艘僚舰').toContain(others[0]!.tag)
+    expect(fresh).toContain(others[1]!.tag)
+    expect(fresh, '干扰舰活着 ⇒ 不会被重复复活').not.toContain(jammer!.tag)
   })
 
   it('只补当前波：支援舰一律来自本波编成（跨波尸体不补）', () => {
