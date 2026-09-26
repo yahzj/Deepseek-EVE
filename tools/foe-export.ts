@@ -161,7 +161,7 @@ function rowOf(s: FoeShipDef): Row {
     charge ? '是' : '',
     charge && Number.isFinite(chargeMul) ? round2(chargeMul) : '',
     charge && Number.isFinite(chargeCoolMs) ? Math.round(chargeCoolMs / 1000) : '',
-    mount.foeCaptureWeb ? `是（机动 ×${mount.foeCaptureWeb.slowMul} · 无推进器 · 闪避归零 · 射程 −${mount.foeCaptureWeb.rangeDownM}m · 击沉发动者才解除）` : '',
+    mount.foeCaptureWeb ? `是（机动 ×${mount.foeCaptureWeb.slowMul} · 无推进器 · 闪避归零 · 射程 −${mount.foeCaptureWeb.rangeDownM}m · 击沉发动者或距离超过 4500m 才解除）` : '',
     droneRangeMul !== undefined ? round2(droneRangeMul) : '',
     gunRangeMul !== undefined ? round2(gunRangeMul) : '',
     s.repairPct !== undefined ? round2(s.repairPct) : '',
@@ -230,7 +230,7 @@ const COLS: Col[] = [
   { head: '冲锋', note: '挂载件或旧字段给的冲锋资格（不受全局开关与威胁门槛约束）', width: 8 },
   { head: '冲锋倍率', note: '触发后自身机动 ×本值；缺省 = 全局 foeChargeMul', width: 10, fmt: '0.00' },
   { head: '冲锋冷却(秒)', note: '命中我方后解除冲锋并进入本冷却', width: 12, fmt: '#,##0' },
-  { head: '捕获网', note: '挂载件「劫掠捕获网」：自身第一次开火时钉住本发目标（不看命中 · 目标已被别张网钉住则本网留着不用）· 效果 = 机动×/无推进器/闪避归零/射程− · 击沉发动者才解除', width: 30 },
+  { head: '捕获网', note: '挂载件「劫掠捕获网」：自身第一次开火时钉住本发目标（不看命中 · 目标已被别张网钉住则本网留着不用）· 效果 = 机动×/无推进器/闪避归零/射程− · 击沉发动者或交战距离超过 4500m 才解除', width: 30 },
   { head: '挨打后机群射程×', note: '母舰被命中一次 ⇒ 全部机群射程 ×本值（本场永久）；挂载件优先、旧字段兜底', width: 16, fmt: '0.00' },
   { head: '挨打后炮台射程×', note: '同上，作用面是炮台', width: 16, fmt: '0.00' },
   { head: '后勤修理', note: 'repairPct：开火伤害 ×(1−本值)，扣下的那半按秒转修理（详见 types.ts 注）', width: 10, fmt: '0%' },
@@ -485,7 +485,7 @@ const H_MOUNTS = ((): Array<{ id: string; name: string; note: string; nums: stri
     if (def?.charge !== undefined) nums.push(`冲锋：机动 ×${def.charge.mul} · 冷却 ${Math.round(def.charge.cooldownMs / 1000)} 秒`)
     if (def?.droneRangeOnHit !== undefined) nums.push(`挨打后机群射程 ×${def.droneRangeOnHit}`)
     if (def?.gunRangeOnHit !== undefined) nums.push(`挨打后炮台射程 ×${def.gunRangeOnHit}`)
-    if (def?.web !== undefined) nums.push(`捕获网：机动 ×${def.web.slowMul} · 无推进器 · 闪避归零 · 射程 −${def.web.rangeDownM}m · 击沉发动者才解除`)
+    if (def?.web !== undefined) nums.push(`捕获网：机动 ×${def.web.slowMul} · 无推进器 · 闪避归零 · 射程 −${def.web.rangeDownM}m · 击沉发动者或距离超过 4500m 才解除`)
     if (def?.repairPulse !== undefined) nums.push(`修理脉冲：每 ${Math.round(def.repairPulse.everyMs / 1000)} 秒 ＋${def.repairPulse.armor} 装甲 / ＋${def.repairPulse.hull} 结构`)
     if (def?.reviveEscort !== undefined) nums.push(`支援召唤：每 ${Math.round(def.reviveEscort.everyMs / 1000)} 秒复活一艘（满血 · 不超本波编成）`)
     if (def?.supportCall !== undefined) nums.push('支援呼叫：延迟入场（洞内专属）')

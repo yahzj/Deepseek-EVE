@@ -23,7 +23,8 @@ import {
   startRecycleRun,
 } from '../src/index'
 import {
-  MY_WEB_BREAK_DIST_M,
+  MY_WEB_RANGE_M,
+  WEB_BREAK_DIST_M,
   activeFoeSpecsOf,
   advanceMyCaptureWebs,
   applyFoeWebDebuff,
@@ -147,7 +148,7 @@ describe('墨潮捕获网（周期装置 · 独立瞄准 · 不看命中 · 不�
     expect(m.rack).toBe('high')
   })
 
-  it('开战即钉第一个可选目标：**独立瞄准（不看命中）** · 三层效果 · **不含射程**', () => {
+  it('钉第一个可选目标：**独立瞄准（不看命中）** · 三层效果 · **不含射程**', () => {
     const { state, spec } = carrierOf('mod-lair-web-h')
     expect(spec.myCaptureWeb!.cycleMs).toBe(20_000)
     const foes = foesOf('foe-h-ink-corvette', 2)
@@ -232,40 +233,46 @@ describe('墨潮捕获网（周期装置 · 独立瞄准 · 不看命中 · 不�
     expect(f.weapons.map((w: { maxRangeM: number }) => w.maxRangeM)).toEqual(ranges)
   })
 
-  it('**距离上限 4000 米 + 断开算一次使用**（船长 2026-09-26 令 ＋ 追答「断开也当使用一次」）', () => {
-    expect(MY_WEB_BREAK_DIST_M, '船长原话「距离超过4000米就会断开」').toBe(4_000)
+  it('**投网射程 3800 米 · 断开距离 4500 米 · 断开算一次使用**（船长 2026-09-26 三条令）', () => {
+    expect(MY_WEB_RANGE_M, '船长原话「我方网子的射程是3800米」').toBe(3_800)
+    expect(WEB_BREAK_DIST_M, '船长原话「将断开距离提高到4500米」').toBe(4_500)
     const { state, spec } = carrierOf('mod-lair-web-h')
     const foes = foesOf('foe-h-ink-corvette', 2)
     const b = battleOf(spec, foes)
-    // ① 范围内：正常张网
+    // ① 射程内：正常张网
     b.distanceM = 3_500
     advanceMyCaptureWebs(state, b, [spec], foes)
     const first = b.myWebs![spec.tag]!.targetTag!
     expect(first).toBe(foes[0]!.tag)
     expect(Object.keys(b.foeWebDebuffs ?? {})).toHaveLength(1)
-    // ② 距离拉过 4000 米 ⇒ 立刻断开（清目标 + 清减益 + 写日志）
-    b.distanceM = 4_001
+    // ①b **滞回带**：拉到 3800~4500 米之间（超出投网射程、未到断开距离）⇒ 已张开的网**保持**
+    b.distanceM = 4_400
+    advanceMyCaptureWebs(state, b, [spec], foes)
+    expect(b.myWebs![spec.tag]!.targetTag, '滞回带内不掉网').toBe(foes[0]!.tag)
+    expect(Object.keys(b.foeWebDebuffs ?? {}), '减益仍在').toHaveLength(1)
+    // ①c **超出投网射程不张新网**：先让网断开进冷却、冷却到点时距离 4000 米（< 4500 但 > 3800）⇒ 仍不张
+    b.distanceM = 4_501
     b.lastTickGameMs = 3_000
     advanceMyCaptureWebs(state, b, [spec], foes)
-    expect(b.myWebs![spec.tag]!.targetTag, '超距 ⇒ 网断开').toBeUndefined()
+    expect(b.myWebs![spec.tag]!.targetTag, '超过 4500 米 ⇒ 网断开').toBeUndefined()
     expect(Object.keys(b.foeWebDebuffs ?? {}), '减益一并清掉').toHaveLength(0)
     expect(state.logs[state.logs.length - 1]!.text).toContain('断开')
-    expect(state.logs[state.logs.length - 1]!.text).toContain('4000 米')
+    expect(state.logs[state.logs.length - 1]!.text).toContain('4500 米')
     // **断开也当使用一次**（船长追答）⇒ 进满一轮周期冷却（= 现在 + 20 秒），与"目标被击沉"同等对待
     expect(b.myWebs![spec.tag]!.cooldownUntilMs, '断开 ⇒ 进冷却').toBe(23_000)
-    // ③ 距离仍在范围外 ⇒ 拒绝重新张网（冷却已过也一样；否则会"张开→立刻断"刷日志）
+    b.distanceM = 4_000 // 已在断开距离内、但仍在投网射程外
     b.lastTickGameMs = 23_000
     const logsBefore = state.logs.length
     advanceMyCaptureWebs(state, b, [spec], foes)
-    expect(b.myWebs![spec.tag]!.targetTag, '超距不张网').toBeUndefined()
+    expect(b.myWebs![spec.tag]!.targetTag, '> 3800 米 ⇒ 不张网').toBeUndefined()
     expect(state.logs.length, '不刷日志').toBe(logsBefore)
-    expect(b.myWebs![spec.tag]!.cooldownUntilMs, '超距只是**待发**、不再累加冷却').toBe(23_000)
-    // ④ 回到 4000 米内 ⇒ 立刻张网（边界值：**含** 4000 米）
-    b.distanceM = MY_WEB_BREAK_DIST_M
+    expect(b.myWebs![spec.tag]!.cooldownUntilMs, '距离过远只是**待发**、不再累加冷却').toBe(23_000)
+    // ② 压进投网射程（边界值 3800 米：**含**）⇒ 立刻张网
+    b.distanceM = MY_WEB_RANGE_M
     advanceMyCaptureWebs(state, b, [spec], foes)
     expect(b.myWebs![spec.tag]!.targetTag).toBe(foes[0]!.tag)
     expect(Object.keys(b.foeWebDebuffs ?? {})).toHaveLength(1)
-    // ⑤ 断开进冷却这一条也把"冷却内不复网"钉住：再断开一次后，即便距离立刻回到范围内也要等满 20 秒
+    // ③ 断开进冷却这一条也把"冷却内不复网"钉住：再断开一次后，即便距离立刻回到射程内也要等满 20 秒
     b.distanceM = 5_000
     b.lastTickGameMs = 24_000
     advanceMyCaptureWebs(state, b, [spec], foes)
@@ -279,14 +286,17 @@ describe('墨潮捕获网（周期装置 · 独立瞄准 · 不看命中 · 不�
     expect(b.myWebs![spec.tag]!.targetTag).toBe(foes[0]!.tag)
   })
 
-  it('装备说明文案与引擎同口径：减速 50% ＋ 4000 米断开即冷却（中英双语）', () => {
+  it('装备说明文案与引擎同口径：3800 米射程 ＋ 4500 米断开即冷却（中英双语）', () => {
     const m = MODULES.find((x) => x.id === 'mod-lair-web-h')!
     expect(m.description, '文案写清 ×0.5').toContain('×0.5')
-    expect(m.description, '文案写清 4000 米断开').toContain('4000 米')
+    expect(m.description, '文案写清投网射程 3800 米').toContain('3800 米')
+    expect(m.description, '文案写清断开距离 4500 米').toContain('4500 米')
     expect(m.description, '文案写清断开即冷却').toContain('冷却 20 秒')
     expect(m.description, '不得再写旧的 ×0.1').not.toContain('×0.1')
+    expect(m.description, '不得再写旧的「开战即钉」').not.toContain('开战即钉')
     const en = EN_MODULES['mod-lair-web-h']!.description!
-    expect(en, '英文同口径').toContain('4,000 m')
+    expect(en, '英文同口径').toContain('3,800 m')
+    expect(en).toContain('4,500 m')
     expect(en).toContain('0.5')
     expect(en, '英文写清断开即冷却').toContain('cools down for 20 seconds')
     expect(en, '英文不得再写减速 90%').not.toContain('90%')

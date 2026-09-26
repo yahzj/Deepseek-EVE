@@ -1088,6 +1088,10 @@ export {
   battleClockNowMs,
   // 战场远端（距离上限）：2026-09-19 船长裁定「甲」——按当前双方有效射程现算（含增程），只增不减
   battleMaxDistanceM,
+  // 捕获网的两个距离单点（2026-09-26 船长令）：我方投网射程 3800 米 / 敌我通用断开距离 4500 米。
+  // 界面侧（装配页短行、敌舰挂载件效果句）从这里取值，**不硬写数字**（避免引擎改了而文案漂移）
+  MY_WEB_RANGE_M,
+  WEB_BREAK_DIST_M,
 } from './combat'
 export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3, BattleVerdict } from './combat'
 

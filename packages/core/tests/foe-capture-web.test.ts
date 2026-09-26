@@ -7,13 +7,14 @@
  * 2.「**血量修正为0.7**」＋「**补充一点，劫掠捕获网还会让目标闪避强制为0，射程降低500米**」
  * 3.「**在玩家第一次遭遇劫掠电子舰之后。结束虫洞或回到主界面时，给玩家发送一封通讯，介绍劫掠电子舰的捕获网。**」
  *
- * 四问四答：触发 = **开火即发动**（不看命中）· 作用面 = **只钉目标一艘 · 本场永久 · 击杀发动者即解除** ·
+ * 四问四答：触发 = **开火即发动**（不看命中）· 作用面 = **只钉目标一艘 · 击杀发动者即解除** ·
  * 编成 = 头目×1 + 电子舰×1 + 快艇×2 · 新舰 = **T1 护卫**（血 0.70 ⇒ 182）。
+ * ＋「**将断开距离提高到4500米，且这个断开对敌我都有效**」（2026-09-26）⇒ 超距 4500 米同样解除。
  */
 import { describe, expect, it } from 'vitest'
 import { FOE_SHIPS, buildSimContext } from '@whale/data'
 import { addShipToFleet, advanceComms, createInitialState, createPlayerSpec, startFleetBattleFor } from '../src/index'
-import { advanceBattleFor, battleArcsFor, createFoeSpecs, wormholeDerivedAnomaly } from '../src/combat'
+import { advanceBattleFor, battleArcsFor, createFoeSpecs, WEB_BREAK_DIST_M, wormholeDerivedAnomaly } from '../src/combat'
 
 const ctx = buildSimContext()
 const bal = ctx.balance.battle
@@ -157,6 +158,45 @@ describe('劫掠捕获网 · 触发与四层效果', () => {
     rt.hp = { s: 0, a: 0, h: 0 }
     tick(62_000)
     expect(Object.keys(battle.meWebDebuffs ?? {}), '发动者已沉 ⇒ 网应解除').toHaveLength(0)
+  })
+
+  /**
+   * **超距断开对敌我都有效**（**船长 2026-09-26**：「**将断开距离提高到4500米，且这个断开对敌我都有效**」）。
+   *
+   * 口径：每拍结算时交战距离 > `WEB_BREAK_DIST_M`（4500 米）⇒ 敌方那张网也**立刻解除**
+   * （`expireFoeWebs`）。⚠ 敌方网**整场只张一次**（`foeWebFired` 已记发放）⇒ 距离再压回来也**不会补发**。
+   */
+  it('超距断开：距离超过 4500 米 ⇒ 敌方网也解除，且本场不再补发', () => {
+    const { state, battle, ewTag, tick } = warbandBattle()
+    // 先把双方血量拉满：本用例要的是"距离"这一条，不想被"谁先把谁打死"打断
+    for (const u of Object.values(battle.units)) {
+      u.hp = { s: 1e9, a: 1e9, h: 1e9 }
+      u.hpMax = { s: 1e9, a: 1e9, h: 1e9 }
+    }
+    let webbed = false
+    for (let t = 1_000; t <= 60_000; t += 1_000) {
+      tick(t)
+      if (Object.keys(battle.meWebDebuffs ?? {}).length > 0) {
+        webbed = true
+        break
+      }
+      if (battle.ended) break
+    }
+    expect(webbed, '先把网张出来').toBe(true)
+    expect(battle.foeWebFired?.[ewTag!], '发放已记账').toBe(true)
+    const logsBefore = state.logs.length
+    // ⚠ 白盒：把交战距离拉到断开距离之上（真战斗里由战术推移，这里直接摆位 ⇒ 判据确定）
+    battle.distanceM = WEB_BREAK_DIST_M + 1
+    tick(state.gameMs + 1_000)
+    expect(Object.keys(battle.meWebDebuffs ?? {}), '超距 ⇒ 敌方网也断开').toHaveLength(0)
+    expect(
+      state.logs.slice(logsBefore).some((l) => l.text.includes('劫掠捕获网') && l.text.includes(String(WEB_BREAK_DIST_M))),
+      '应有一条"距离超过 4500 米"的解除日志',
+    ).toBe(true)
+    // 距离压回来 ⇒ **不补发**（整场只张一次；要恢复只能指望另一艘还没发过网的敌舰）
+    battle.distanceM = 2_000
+    for (let k = 1; k <= 20; k++) tick(state.gameMs + 1_000)
+    expect(Object.keys(battle.meWebDebuffs ?? {}), '断过的网本场不再补发').toHaveLength(0)
   })
 })
 
