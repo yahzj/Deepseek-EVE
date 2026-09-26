@@ -19,7 +19,7 @@ import { advanceGame } from './engine'
 import { countItem } from './inventory'
 import { formatDurationMs } from './time'
 import type { SettleStats } from './settleStats'
-import { advanceAutoLoopBounty } from './expedition'
+import { advanceAutoLoopBounty, advanceAutoLoopInvasion, autoLoopInvasionGalaxy } from './expedition'
 import { ironmanOfflineCapBonusMs } from './ironman'
 
 // 兼容历史引用：formatDurationMs 现定义在 time.ts（避免模块循环依赖）
@@ -124,9 +124,19 @@ export function simulateOffline(
      */
     offline: true,
   }
-  // 重复清剿（重复清剿）开着时：在线由心跳驱动自动再出发，离线大推进不会触发——
-  // 改分片推进，每片边界按在线同款条件尝试再出发（最后一片结束后不触发，避免开出不完整单）。
-  const driveLoop = !opts?.freezeBattle && state.autoLoopAnomalyId !== null
+  /**
+   * **重复出击/重复清剿开着时：离线改分片推进**，每片边界按在线同款条件尝试再出发
+   * （最后一片结束后不触发，避免开出不完整单）。
+   *
+   * ⚠ **2026-09-26 修玩家报障「自动清缴入侵悬赏，离线后进度不涨」**：原先这条判据只看
+   * `state.autoLoopAnomalyId`（常驻悬赏那条循环），每片也只调 `advanceAutoLoopBounty`
+   * ⇒ **入侵的「重复出击」在离线路径里没有任何调用点**（在线由心跳调 `advanceAutoLoopInvasion`）：
+   * 离线期间不再出发 ⇒ 一整段离线只结算"关游戏前那一场"甚至一场都没有 ⇒ 夺回进度不涨。
+   * 现两条循环一起驱动（两者互斥：开一条会清掉另一条，不活跃的那条立即返回 `null`）。
+   */
+  const driveLoop =
+    !opts?.freezeBattle &&
+    (state.autoLoopAnomalyId !== null || autoLoopInvasionGalaxy(state) !== null)
   if (driveLoop) {
     let remaining = deltaMs
     let guard = 0
@@ -154,7 +164,11 @@ export function simulateOffline(
       wallMs += step
       advanceGame(state, step, ctx, { ...advOpts, nowWallMs: wallMs })
       remaining -= step
-      if (remaining > 0) advanceAutoLoopBounty(state, ctx)
+      if (remaining > 0) {
+        // 两条循环各试一次（互斥 ⇒ 只有一个会真的再出发）；停环原因写进各自的通知字段
+        advanceAutoLoopBounty(state, ctx)
+        advanceAutoLoopInvasion(state, ctx)
+      }
     }
   } else {
     advanceGame(state, deltaMs, ctx, advOpts)
