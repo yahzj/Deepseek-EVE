@@ -28,16 +28,21 @@ import { loseShip, shipStorable } from '../src/shipyard'
 import { pullOneWreck } from '../src/salvaging'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {
+  exchangePlugBlueprint,
   installPlug,
   isPlugOf,
   PLUG_BLACKBOX_ITEM_ID,
+  PLUG_BLUEPRINT_COST,
   plugBlockReasonOf,
+  plugBlueprintIdOf,
   plugInfoOf,
   plugModulesOf,
   plugSlotsOf,
   plugsOf,
   plugsToBlackBoxesOf,
 } from '../src/plugs'
+// 2026-09-26 船长令（兑换即学会）：协会声望那一本账的 id（与 `plugs` 内部同值）
+import { DSI_FACTION_ID } from '../src/expedition'
 import { HULL_RECOVERY_MAX, hullRecoveryChanceOf, noteShipWreck, reinforceChanceOfFitted, shipWreckFor, trySalvagePlayerWreckOf } from '../src/shipWrecks'
 import { makeTestCtx } from './helpers'
 import { createBattleState, createPlayerSpec, pickMyUnitTarget } from '../src/combat'
@@ -364,5 +369,49 @@ describe('随档往返（两处清洗器都要登记）', () => {
     state.fleet[T1]!.plugs = ids
     const { state: back } = loadSaveFile(serializeSaveFile(state, 0))
     expect(plugsOf(back, T1).length, '8 格必须全活（T1 的 5 格 + 中层/下层舱段插件各 +1 = 实际上限 7，清洗器留到 8）').toBe(8)
+  })
+})
+
+/**
+ * **章鱼人兑换 = 兑换即学会**（**2026-09-26 船长令**：「**能否让兑换的图纸直接学会？**」
+ * → 追问"老档里已换未学的那几本要不要顺带归正" ⇒ 船长答「**保持原样**」）。
+ *
+ * 判据：声望一扣 ⇒ 直接进 `learnedRecipes`（**不再发一本书** ⇒ 蓝图书架上不会出现插件图纸）；
+ * 老档兼容 = 先前换到的书照旧躺在书架上，玩家自己点「学会」。
+ */
+describe('章鱼人兑换 · 兑换即学会（船长 2026-09-26 令）', () => {
+  it('兑换一张 ⇒ 声望扣 8 · 直接进已学 · **不发书**', () => {
+    const state = world(917)
+    const bpId = plugBlueprintIdOf(PLUG_SHIELD)
+    state.standings[DSI_FACTION_ID] = PLUG_BLUEPRINT_COST + 5
+    const r = exchangePlugBlueprint(state, ctx, PLUG_SHIELD)
+    expect(r.ok, '够声望就该换得到').toBe(true)
+    expect(state.learnedRecipes, '兑换即学会').toContain(bpId)
+    expect(state.blueprintStock[bpId] ?? 0, '不再发"蓝图书"（书架上不会出现插件图纸）').toBe(0)
+    expect(state.standings[DSI_FACTION_ID], '只扣可支配那本').toBe(5)
+    /** 再点一次 ⇒ 被"已经学会"挡住（失败文案走 id 制） */
+    const again = exchangePlugBlueprint(state, ctx, PLUG_SHIELD)
+    expect(again.ok).toBe(false)
+    expect(again.ok === false ? again.errorId : '').toBe('core.plug.009')
+  })
+
+  it('声望不够 ⇒ 两本账都不动（学习也不该发生）', () => {
+    const state = world(918)
+    const bpId = plugBlueprintIdOf(PLUG_ARMOR)
+    state.standings[DSI_FACTION_ID] = PLUG_BLUEPRINT_COST - 1
+    const r = exchangePlugBlueprint(state, ctx, PLUG_ARMOR)
+    expect(r.ok).toBe(false)
+    expect(state.learnedRecipes).not.toContain(bpId)
+    expect(state.standings[DSI_FACTION_ID], '没扣').toBe(PLUG_BLUEPRINT_COST - 1)
+  })
+
+  it('**老档保持原样**：先前换到、还没学会的书仍留在书架上（不自动归正）', () => {
+    const state = world(919)
+    const bpId = plugBlueprintIdOf(PLUG_ARMOR)
+    /** 白盒造一个"旧口径"的档：书在书架上、`learnedRecipes` 里没有它 */
+    state.blueprintStock[bpId] = 1
+    const { state: back } = loadSaveFile(serializeSaveFile(state, 0))
+    expect(back.blueprintStock[bpId], '书照旧留着（船长令：保持原样）').toBe(1)
+    expect(back.learnedRecipes, '没有被自动学会').not.toContain(bpId)
   })
 })

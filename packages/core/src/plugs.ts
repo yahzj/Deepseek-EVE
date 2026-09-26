@@ -179,8 +179,8 @@ export function plugBlueprintIdOf(moduleId: string): string {
  *
  * 四道校验：① 是插件吗 ⇒ ② 图纸在不在目录里 ⇒ ③ **已经学会了吗**（学会了就不该再花声望）
  * ⇒ ④ **可支配声望够不够**（不够则两本账都不动）。
- * 成功 = 扣 8 点可支配声望 ＋ 图纸进蓝图书架（`blueprintStock`，与市场买书同一本账）
- * ＋ 一条 `trade` 日志。
+ * 成功 = 扣 8 点可支配声望 ＋ **图纸直接学会**（`learnedRecipes`，2026-09-26 船长令「兑换即学会」）
+ * ＋ 一条 `trade` 日志。⚠ 不再发"蓝图书"⇒ 蓝图书架上不会出现插件图纸。
  */
 export function exchangePlugBlueprint(
   state: GameState,
@@ -207,13 +207,22 @@ export function exchangePlugBlueprint(
       error: `声望不足：换「${bp.name}」要 ${PLUG_BLUEPRINT_COST} 点，当前可支配 ${have} 点。`,
     }
   }
-  // 真扣（只扣可支配那本）；扣款与入书同一处 ⇒ 不会出现"扣了声望没拿到书"
+  // 真扣（只扣可支配那本）；扣款与"记进已学"同一处 ⇒ 不会出现"扣了声望没拿到图纸"
   spendStanding(state, PLUG_BLUEPRINT_COST)
-  state.blueprintStock[bpId] = (state.blueprintStock[bpId] ?? 0) + 1
+  /**
+   * **兑换即学会**（**2026-09-26 船长令**：「**能否让兑换的图纸直接学会？**」→ 问"老档里已换未学的书
+   * 要不要顺带归正"⇒ 船长答「**保持原样**」）。
+   *
+   * 口径：声望一扣 ⇒ 直接进 `learnedRecipes`（**不再发一本书**）。为什么这一步才合理：学习本来
+   * 只是"消耗 1 本书 ＋ 记进已学"（`market.learnBlueprint`，无 ISK、无等待）⇒ 中间那道"书上架→再点学会"
+   * 对玩家是纯多一步，插件图纸也从来没有"多余的书写来挂市场"这条路。
+   * ⚠ **老档保持原样**：先前换到、还没学会的那几本仍留在蓝图书架上，玩家自己点「学会」即可（不自动归正）。
+   */
+  state.learnedRecipes.push(bpId)
   addLog(
     state,
     'trade',
-    `章鱼人兑换：花 ${PLUG_BLUEPRINT_COST} 点协会声望换到「${bp.name}」（已进蓝图书架）。`,
+    `章鱼人兑换：花 ${PLUG_BLUEPRINT_COST} 点协会声望换到并学会「${bp.name}」（可在组装机无限次制造）。`,
     'core.plug.011',
     { p1: PLUG_BLUEPRINT_COST, p2: bp.name },
   )
