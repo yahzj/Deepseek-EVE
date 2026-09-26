@@ -694,6 +694,32 @@ function settleFight(state: GameState, ctx: SimContext): void {
 }
 
 /**
+ * **一场遭遇战"已分出胜负"的收口（唯一入口）**：先 `settleFight`（战报 / 战损 / 缴获 / 清槽），
+ * 再按同一份**归属提示**走一遍入侵结算（`weekendApplyBattleOutcome`）。
+ *
+ * ⚠ **2026-09-26 修（船长报障「用无人机成功近乎满血击杀了入侵母舰，但报告显示未击杀」）**：
+ * 本文件原先有**两条**"战斗已结束"的支路 —— 上面"进函数时就已经结束"那一支**只调 `settleFight` 就 return**，
+ * 漏了下面那支才有的入侵结算 ⇒ 只要战斗在引擎看到之前就已结束（`enc.battle.ended` 已置位），
+ * **击沉母舰的伤害 / 进度 / 黑匣全部丢失**，而结算面板永远显示「未击沉」。
+ * 探针实测（真实引擎路径，敌全灭后再推一拍）：
+ * - 走下面那支：台账 150,000 · `flagshipHpDone` 150,000 · `flagshipDown = player` · 黑匣 ×1 ✓
+ * - 走上面那支（改前）：台账 150,000 却 `flagshipHpDone = 0` · `flagshipDown` undefined · **黑匣 0** ✗
+ *
+ * 为什么"先 `settleFight` 再读 `enc.battle`"是安全的：`settleFight` 只把 `state.encounter`
+ * **整体换成新对象**（`clearEncounter`），调用方手里这个 `enc` 引用与它里面的 `battle.units` 都还在
+ * （探针里 `settleFight` 跑完后台账照旧量得到 150,000）；而 `weekendKindOfEncounter` 读的正是传入的 `enc`
+ * （不是 `state.encounter`）⇒ 归属判据不会被清槽影响。
+ */
+function settleEncounterBattle(state: GameState, ctx: SimContext, enc: GameState['encounter']): void {
+  settleFight(state, ctx)
+  weekendApplyBattleOutcome(state, ctx, enc.anomalyId ?? null, enc.battle?.ended === 'me', Date.now(), enc.battle, {
+    kind: weekendKindOfEncounter(state, enc),
+    galaxyId: enc.galaxyId ?? '',
+    source: 'battle',
+  })
+}
+
+/**
  * 引擎内部：每推进后调用——推进进行中的遭遇（待决超时 / 战斗），空闲时按暴露窗口掷骰。
  */
 /**
@@ -708,7 +734,8 @@ export function advanceEncounterWatch(state: GameState, ctx: SimContext, _deltaM
   if (enc.active) {
     if (enc.battle) {
       if (enc.battle.ended) {
-        settleFight(state, ctx)
+        /** ⚠ 与下面那支**同源**（见 `settleEncounterBattle` 的头注：漏结算 = 旗舰白打） */
+        settleEncounterBattle(state, ctx, enc)
         return
       }
       // 调试快进冻结（船长 2026-09-05：取消"瞬间结束交战"）——不在快进期间推进/结算进行中的遭遇战，
@@ -742,19 +769,13 @@ export function advanceEncounterWatch(state: GameState, ctx: SimContext, _deltaM
         return
       }
       if (enc.battle.ended) {
-        settleFight(state, ctx)
         /**
          * **周末入侵**：占领区的伏击战 / 旗舰挑战打完 ⇒ 走入侵结算
          * （遇袭击退 **+3%**、战败只受损不动进度、旗舰按对母舰的伤害记池子）。
-         *
-         * ⚠ 2026-09-25 修：`settleFight` 内部**已经把遭遇槽清空**了 ⇒ 靠 `state.encounter` 反推归属
-         * 一律落空（原先"迎战打赢的遇袭一分进度都不给"就是这么来的）。现在把**归属显式传进去**。
+         * 2026-09-25 修过"归属要靠显式提示传进去"（`settleFight` 会把遭遇槽清空）；2026-09-26 再把
+         * 收口合并到 `settleEncounterBattle`（与上面那支同源，见它的头注）。
          */
-        weekendApplyBattleOutcome(state, ctx, enc.anomalyId ?? null, enc.battle.ended === 'me', Date.now(), enc.battle, {
-          kind: weekendKindOfEncounter(state, enc),
-          galaxyId: enc.galaxyId ?? '',
-          source: 'battle',
-        })
+        settleEncounterBattle(state, ctx, enc)
       }
       return
     }

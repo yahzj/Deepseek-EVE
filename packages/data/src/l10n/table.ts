@@ -335,17 +335,19 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
   "core.weekend.001": { zh: "✦ 夺回「{p1}」：夺回奖励 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ Reclaimed “{p1}”: the reclaim reward of rare wrecks ×{p2} + {p3} credits is paid out when the invasion ends." },
   "core.weekend.002": { zh: "✦ 全部占领区夺回：「{p1}」是最后一处 —— 夺回奖励与全清额外奖励共 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ All occupied systems reclaimed: “{p1}” was the last one — the reclaim reward and the all-clear bonus (rare wrecks ×{p2} + {p3} credits) are paid out when the invasion ends." },
-  "core.weekend.003": { zh: "✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已入账（旗舰黑匣 ×1 ＋ 稀有残骸 ×{p1}）。", en: "✦ Invasion flagship sunk: the mothership is down to zero — the spoils have been credited (flagship black box ×1 + rare wrecks ×{p1})." },
+  "core.weekend.003": { zh: "✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已存入物品仓库（旗舰黑匣 ×1 ＋ 稀有残骸 ×{p1}）。", en: "✦ Invasion flagship sunk: the mothership is down to zero — the spoils are in your item warehouse (flagship black box ×1 + rare wrecks ×{p1})." },
   // 2026-09-25 船长令改黑匣爆率（>50% 输出抢到最后一下必爆，否则按占比衰减到 10%；没抢到最后一下 25%×占比）
   // ⇒ 原来的"击沉必掉黑匣"不再成立，日志/结束语按结果分两条。
-  "core.weekend.016": { zh: "✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已入账（稀有残骸 ×{p1}；旗舰黑匣未爆）。", en: "✦ Invasion flagship sunk: the mothership is down to zero — the spoils have been credited (rare wrecks ×{p1}; no flagship black box this time)." },
+  "core.weekend.016": { zh: "✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已存入物品仓库（稀有残骸 ×{p1}；旗舰黑匣未爆）。", en: "✦ Invasion flagship sunk: the mothership is down to zero — the spoils are in your item warehouse (rare wrecks ×{p1}; no flagship black box this time)." },
+  // 2026-09-26 船长批「甲」：入库失败（战利品未能落地）时留一条 warn —— 台账同时不记「已获得」，账实一致
+  "core.weekend.038": { zh: "⚠ 入侵战利品未能入库：本场奖励未发放。", en: "⚠ Invasion spoils could not be stored: this battle's rewards were not granted." },
   // 2026-09-25 入侵两封通讯（船长给稿 · 经办人按"不出现括号备注"润色；每场覆盖同一 id）
   // ⚠ 段内不留括号备注：奖励清单是**清单里的一项**（结构化存下、界面按语言拼串后填进 {p3}）
   "core.weekend.010": { zh: "航线警告：{p1}入侵", en: "Route warning: {p1} invasion" },
   "core.weekend.011": { zh: "就在刚刚，协会检测到大量非法舰队信号。经观测员核实，确定是{p1}的舰队正在入侵这片空域，落点 {p2} 处，核心是「{p3}」。标记已经打到星图上。被入侵的星系会有大量{p1}舰队活动，请非战斗人员避开危险星系。", en: "The Association has just detected a large number of unlawful fleet signals. Our observers have confirmed it: {p1} fleets are invading this volume of space — {p2} landing sites, the core being “{p3}”. The markers are already on the star map. The invaded systems will see heavy {p1} fleet activity, so non-combat personnel should keep clear of the danger zone." },
   "core.weekend.012": { zh: "但如果你想为协会出一份力，或者单纯想赚上一笔，我们也欢迎你加入清缴入侵舰队的行列。战役结束后，协会会统一按各位的贡献发放报酬。", en: "But if you want to do the Association a service, or simply to earn a good sum, you are welcome to join the sweep against the invader fleets. When the campaign is over the Association will pay out by contribution, all at once." },
   "core.weekend.013": { zh: "航线通报：{p1}入侵已被终结！星域恢复了和平！", en: "Route bulletin: the {p1} invasion has been ended! The volume is at peace again!" },
-  "core.weekend.014": { zh: "{p1}的入侵已经结束，「{p2}」附近的星系已经恢复正常。根据你在清缴行动中的表现，你将获得 {p3} 等奖励以示鼓励。", en: "{p1}'s invasion is over; the systems around “{p2}” are back to normal. For your performance in the sweep you will receive {p3} and other rewards as a token of encouragement." },
+  "core.weekend.014": { zh: "{p1}的入侵已经结束，「{p2}」附近的星系已经恢复正常。根据你在清缴行动中的表现，你将获得 {p3} 等奖励以示鼓励（实物奖励已存入物品仓库）。", en: "{p1}'s invasion is over; the systems around “{p2}” are back to normal. For your performance in the sweep you will receive {p3} and other rewards as a token of encouragement (item rewards are in your item warehouse)." },
   "core.weekend.015": { zh: "{p1}的入侵已经结束，「{p2}」附近的星系已经恢复正常。本次清缴你没有贡献记录，因此没有奖励。", en: "{p1}'s invasion is over; the systems around “{p2}” are back to normal. You have no contribution on record for this sweep, so there is no reward." },
   // 入侵族的**全称**（通讯正文用；族字母是简称；中文口径与残骸族名同源，英文同 WRECK_FAMILY_EN）
   "core.weekend.020": { zh: "海盗", en: "Pirate" },
@@ -3781,6 +3783,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.112": { zh: "入侵旗舰编成 · 共 {p1} 艘", en: "Invasion flagship roster · {p1} ships total" },
   /* 2026-09-26 船长令：入侵结算界面（与结算信同口径）要写明本期按贡献拿到多少协会声望 */
   "ui.weekend.113": { zh: "本期入侵按贡献获得「深空工业协会」声望 +{p1}（可支配 {p2} · 累计 {p3}）", en: "This invasion earned you +{p1} Deepspace Industry Association standing (spendable {p2} · total {p3})" },
+  /* 2026-09-26 船长批「甲」：结算面板的奖励格写明落点（原先只说"已入账"，玩家会去货舱里找） */
+  "ui.weekend.114": { zh: "已存入物品仓库", en: "stored in your item warehouse" },
   // 2026-09-25 结束结算（贡献奖四档入账）：一条有 ISK 的、一条只有残骸的（参与档）、一条零贡献的
   "ui.weekend.022": { zh: "贡献奖已发放：贡献占比 {p1}%，奖励 稀有残骸 ×{p2} ＋ {p3} 信用点。", en: "Contribution reward paid: share {p1}%, reward rare wrecks ×{p2} + {p3} credits." },
   "ui.weekend.023": { zh: "贡献奖已发放：贡献占比 {p1}%，奖励 稀有残骸 ×{p2}。", en: "Contribution reward paid: share {p1}%, reward rare wrecks ×{p2}." },

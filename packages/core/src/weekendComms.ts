@@ -146,7 +146,7 @@ export function weekendSettleCommsOf(
   const subject = `航线通报：${family}入侵已被终结！星域恢复了和平！`
   const paragraphs = [
     hasReward
-      ? `${family}的入侵已经结束，「${coreName}」附近的星系已经恢复正常。根据你在清缴行动中的表现，你将获得 ${listText} 等奖励以示鼓励。`
+      ? `${family}的入侵已经结束，「${coreName}」附近的星系已经恢复正常。根据你在清缴行动中的表现，你将获得 ${listText} 等奖励以示鼓励（实物奖励已存入物品仓库）。`
       : `${family}的入侵已经结束，「${coreName}」附近的星系已经恢复正常。本次清缴你没有贡献记录，因此没有奖励。`,
     ...(standing > 0 ? [standingLine] : []),
   ]

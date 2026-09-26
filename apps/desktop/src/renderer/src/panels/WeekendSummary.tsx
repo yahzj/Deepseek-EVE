@@ -48,7 +48,11 @@ export function WeekendSummaryView({ engine, onClose }: { engine: GameEngine; on
           },
         ]
       : []),
-    { label: tr('ui.weekend.038'), value: `×${n(snap.wreck)}`, sub: itemNameOf(snap.wreckItemId ?? '') },
+    {
+      label: tr('ui.weekend.038'),
+      value: `×${n(snap.wreck)}`,
+      sub: `${itemNameOf(snap.wreckItemId ?? '')} · ${tr('ui.weekend.114')}`,
+    },
     /**
      * **进度收入**（2026-09-25 船长令「在结算时候直接按进度获取收入」）：单列一格 ——
      * 与下面的「信用点」合计并列，玩家能看清"入侵不给赏金，钱是按进度算出来的"。
@@ -85,7 +89,7 @@ export function WeekendSummaryView({ engine, onClose }: { engine: GameEngine; on
         ]
       : []),
     ...(snap.blackBox > 0
-      ? [{ label: tr('ui.weekend.040'), value: `×${snap.blackBox}`, sub: '', wide: true }]
+      ? [{ label: tr('ui.weekend.040'), value: `×${snap.blackBox}`, sub: tr('ui.weekend.114'), wide: true }]
       : []),
   ]
 

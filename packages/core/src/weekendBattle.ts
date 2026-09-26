@@ -12,7 +12,7 @@
  */
 import type { SimContext } from './types'
 import type { GameState } from './state'
-import { addItem } from './inventory'
+import { addWare } from './inventory'
 import { addLog } from './state'
 import {
   WEEKEND_CORE_THREAT,
@@ -93,7 +93,7 @@ export const WEEKEND_FLAGSHIP_WRECK = 3
  *
  * ⚠ 病根（2026-09-25 船长问「H 族残骸现在有精炼炉回收吗」时查出来的）：本文件那几张表
  * （旗舰掉落 ×3 · 夺回 ×8 · 贡献四档 ×12/×8/×4/×1）按**件**写（设计稿原文「×8 **件**」），
- * 但落到 `addItem(…, n)` 时直接发了 **n 个单位 = n m³** ⇒ **少了 30 倍**，
+ * 但落到入库口（`addItem`/`addWare`）时直接发了 **n 个单位 = n m³** ⇒ **少了 30 倍**，
  * 玩家拿着「稀有残骸 ×8」连 30 m³ 的起炉线都够不到（拆不了）。
  * ⇒ 现在在**换算点**一次换算成单位；台账 / 结算面板 / 通讯 / 日志**一律按 m³ 读数**
  * （与仓库计数、回收炉批数同一个数）。
@@ -541,7 +541,8 @@ export function weekendSettleAndGrant(
    * **台账还没有黑匣**（`led.blackBox === 0`）且掷中时补发一次（`prizePaidAtWallMs` 保证只走一遍）。
    */
   const boxAtSettle = (ev.rewardLedger?.blackBox ?? 0) === 0 && ev.flagshipBlackBox === true
-  if (boxAtSettle) weekendGrantRewards(state, { blackBox: true })
+  /** 补发也取**实际入账**结果（掷中但没落地 ⇒ 台账照旧 0，见 `weekendGrantRewards` 的 ⚠） */
+  const boxGranted = boxAtSettle ? weekendGrantRewards(state, { blackBox: true }).blackBox : 0
   /**
    * **这一笔发三样**：贡献四档奖（`plan`）＋ 待到账的夺回奖励（`pending`）＋ **进度收入**（`plan.progressIsk`，
    * 船长 2026-09-25「按进度获取收入」）。
@@ -562,7 +563,7 @@ export function weekendSettleAndGrant(
    */
   const standing = Math.round(plan.share * WEEKEND_STANDING_MAX)
   if (standing > 0) noteStandingEarned(state, DSI_FACTION_ID, standing)  /** 贡献奖与进度收入入账 ⇒ 记进到手台账，并**写本场战果快照**（面板与结算通讯读它） */
-  noteReward(ev, undefined, { isk: plan.isk + plan.progressIsk, wreck: plan.wreck, ...(boxAtSettle ? { blackBox: 1 } : {}) })
+  noteReward(ev, undefined, { isk: plan.isk + plan.progressIsk, wreck: granted.wreck, ...(boxGranted > 0 ? { blackBox: boxGranted } : {}) })
   state.weekendLastResult = weekendResultSnapshotOf(state, ctx, ev, ev.endedAtWallMs, plan, wreckItemId)
   return { share: plan.share, tier: plan.tier, isk: granted.isk, wreck: granted.wreck, progressIsk: plan.progressIsk }
 }
@@ -592,9 +593,16 @@ export function weekendRareWreckIdFor(cardId: string, ctx: SimContext): string |
 /**
  * **把结算结果真正发下去**（引擎在拿到 `weekendResolveBattle` / `weekendSettlePlanOf` 的结果后调用）：
  * - ISK 直接进钱包；
- * - 稀有残骸走 `addItem` 进物品仓库（与战利品同一条入库路径），**物品 id 由调用方按卡解析**
+ * - **稀有残骸与旗舰黑匣一律进「物品仓库」**（`addWare`）——**物品 id 由调用方按卡解析**
  *   （`weekendRareWreckIdFor`；缺省 = 不发，绝不发不存在的 id）；
- * - **黑匣暂不发物品**（数据表里还没有这件，M4「黑匣入库与定价」一起做）⇒ 只在返回值里带回数量。
+ * - 返回值 = **实际入账的数量**（不是"想发的数量"）。
+ *
+ * ⚠ **2026-09-26 修（船长报障「报告显示拿到黑匣、玩家手里却没有」· 船长批「甲」）**：
+ * 原先这两件走 `addItem` ⇒ 落进**当时驾驶的那条船的货舱**，而「物品」页只列仓库
+ * （`ItemsPage` 只读 `state.warehouse.items`）⇒ 玩家在物品页**永远看不到**；货舱又只在"远征返航进港"
+ * 那一刻才自动卸货（`unloadCargoOfShipToWarehouse`）⇒ 返航途中换船/损船就再也回不来。同 id 的黑匣
+ * 从打捞回收那条路（`salvaging.ts` 的 `addWare`）本来就在仓库里 ⇒ 同一件东西两个落点，纯属实现走偏
+ * （设计稿 Q4 的口径一直是「**黑匣入库**」）。现在统一入库，且**按真实结果记账**。
  *
  * ⚠ 幂等由调用方保证（`weekendResolveBattle` 的"夺回只发一次"已在那一层判过）。
  */
@@ -603,12 +611,21 @@ export function weekendGrantRewards(
   reward: { isk?: number; wreck?: number; blackBox?: boolean; wreckItemId?: string },
 ): { isk: number; wreck: number; blackBox: number } {
   const isk = Math.max(0, Math.round(reward.isk ?? 0))
-  const wreck = Math.max(0, Math.round(reward.wreck ?? 0))
+  const wreckWant = Math.max(0, Math.round(reward.wreck ?? 0))
   if (isk > 0) state.wallet.isk += isk
-  if (wreck > 0 && reward.wreckItemId !== undefined) addItem(state, reward.wreckItemId, wreck)
-  // **黑匣**（2026-09-25「先做壳」）：真物品入库（船长 2026-09-24 口径 = 击毁旗舰必掉 ×1）
-  if (reward.blackBox) addItem(state, WEEKEND_BLACKBOX_ITEM_ID, 1)
-  return { isk, wreck, blackBox: reward.blackBox ? 1 : 0 }
+  /** 稀有残骸：解析不到物品 id（契约破损）⇒ **不发也不记账**，并留一条 warn（原先静默吞掉） */
+  let wreck = 0
+  if (wreckWant > 0) {
+    if (reward.wreckItemId !== undefined) {
+      if (addWare(state, reward.wreckItemId, wreckWant)) wreck = wreckWant
+    } else {
+      addLog(state, 'warn', '⚠ 入侵战利品未能入库：本场奖励未发放。', 'core.weekend.038')
+    }
+  }
+  /** **黑匣**（2026-09-25「先做壳」）：真物品入库（船长 2026-09-24 口径 = 击毁旗舰必掉 ×1） */
+  let blackBox = 0
+  if (reward.blackBox && addWare(state, WEEKEND_BLACKBOX_ITEM_ID, 1)) blackBox = 1
+  return { isk, wreck, blackBox }
 }
 
 /* ─────────────── 战斗结束 → 入侵结算（M1-b 第六片） ─────────────── */
@@ -834,7 +851,12 @@ export function weekendApplyBattleOutcome(
       }
     }
     if (r.flagshipKilled !== undefined) {
-      noteReward(evNow, undefined, { wreck: r.flagshipKilled.wreck, blackBox: r.flagshipKilled.blackBox ? 1 : 0 })
+      /**
+       * 台账记的是**实际入账**的那一份（`granted`），不是"掷出来的那一份"（`r.flagshipKilled`）——
+       * 2026-09-26 船长批「甲」的第②条：掷中却没发出去时**不许**记「已获得」，
+       * 否则结算面板/结算通讯又会显示玩家手里没有的东西（账实分离）。
+       */
+      noteReward(evNow, undefined, { wreck: granted.wreck, blackBox: granted.blackBox })
     }
   }
   if (r.reclaimed !== undefined) {
@@ -858,16 +880,20 @@ export function weekendApplyBattleOutcome(
     }
   }
   if (r.flagshipKilled !== undefined) {
-    /** 黑匣**爆或不爆**分两条文案（2026-09-25 船长令改爆率后，"必掉黑匣"不再成立） */
-    const box = r.flagshipKilled.blackBox
+    /**
+     * 黑匣**爆或不爆**分两条文案（2026-09-25 船长令改爆率后，"必掉黑匣"不再成立）；
+     * 件数一律取**实际入账**的 `granted`，落点写明「物品仓库」（船长 2026-09-26 批「甲」第④条：
+     * 原先只说"战利品已入账"，玩家会去货舱里找）。
+     */
+    const box = granted.blackBox
     addLog(
       state,
       'trade',
       box
-        ? `✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已入账（旗舰黑匣 ×1 ＋ 稀有残骸 ×${r.flagshipKilled.wreck}）。`
-        : `✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已入账（稀有残骸 ×${r.flagshipKilled.wreck}；旗舰黑匣未爆）。`,
+        ? `✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已存入物品仓库（旗舰黑匣 ×1 ＋ 稀有残骸 ×${granted.wreck}）。`
+        : `✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已存入物品仓库（稀有残骸 ×${granted.wreck}；旗舰黑匣未爆）。`,
       box ? 'core.weekend.003' : 'core.weekend.016',
-      { p1: r.flagshipKilled.wreck },
+      { p1: granted.wreck },
     )
   }
   return { galaxyId: involved.galaxyId, kind: involved.kind, gain: r.progressGain, isk: granted.isk, wreck: granted.wreck, note: r.note }

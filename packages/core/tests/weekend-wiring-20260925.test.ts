@@ -394,6 +394,10 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     weekendNoteContribution(s.weekendEvent!, core, 1) // 核心条满 ⇒ 旗舰现身
     const box0 = heldOf(s, 'blackbox-h')
     const wrecks0 = heldOf(s, 'wreck-rare-h-hi')
+    const wareBox0 = s.warehouse.items['blackbox-h'] ?? 0
+    const wareWreck0 = s.warehouse.items['wreck-rare-h-hi'] ?? 0
+    const cargoBox0 = s.fleet[s.shipId]?.cargo?.['blackbox-h'] ?? 0
+    const cargoWreck0 = s.fleet[s.shipId]?.cargo?.['wreck-rare-h-hi'] ?? 0
     /** 单场不死 ⇒ 只有"池子被打空"才算击沉（这里把已累计伤害推到池子满） */
     weekendNoteFlagshipDamage(s.weekendEvent!, WEEKEND_FLAGSHIP_POOL_HP, 1001)
     const r = weekendApplyBattleOutcome(s, ctx, 'ink-flagship', true, now, null, { kind: 'flagship', galaxyId: core })
@@ -401,6 +405,14 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(r?.wreck, '击沉旗舰的稀有残骸（×3 件 = 90 m³）').toBe(weekendRareWreckUnits(WEEKEND_FLAGSHIP_WRECK))
     expect(heldOf(s, 'blackbox-h') - box0, '黑匣真入库（真物品 id）').toBe(1)
     expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '旗舰残骸真到手（按 m³）').toBe(weekendRareWreckUnits(WEEKEND_FLAGSHIP_WRECK))
+    /**
+     * **落点 = 物品仓库**（2026-09-26 船长批「甲」：原先走 `addItem` 落进"当时驾驶的那条船的货舱"，
+     * 而「物品」页只列仓库 ⇒ 玩家在物品页永远看不到，报告却说已获得）。
+     */
+    expect((s.warehouse.items['blackbox-h'] ?? 0) - wareBox0, '黑匣落仓库').toBe(1)
+    expect((s.warehouse.items['wreck-rare-h-hi'] ?? 0) - wareWreck0, '残骸落仓库').toBe(weekendRareWreckUnits(WEEKEND_FLAGSHIP_WRECK))
+    expect(s.fleet[s.shipId]?.cargo?.['blackbox-h'] ?? cargoBox0, '货舱不动（黑匣）').toBe(cargoBox0)
+    expect(s.fleet[s.shipId]?.cargo?.['wreck-rare-h-hi'] ?? cargoWreck0, '货舱不动（残骸）').toBe(cargoWreck0)
     expect(s.weekendEvent!.flagshipDown, '记玩家击毁').toBe('player')
     expect(s.weekendEvent!.endedAtWallMs, '击沉即结束本场').toBeDefined()
     /** 入账日志：旗舰击沉也要留一条（黑匣 + 残骸） */
