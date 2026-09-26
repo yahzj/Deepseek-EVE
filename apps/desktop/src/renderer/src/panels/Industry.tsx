@@ -52,6 +52,7 @@ import { RowGlyph } from '../ui/itemView'
 /** 活动卡「产出」读数（2026-09-23 船长令：收入预估换口径；装备/舰船只显示市场当前价格）——全仓唯一实现 */
 import { GoodsLine, marginPctOf, marketPriceOf } from '../ui/yieldView'
 import { partToneKeyOf, toneOf } from '../ui/Glyphs'
+import { ASSEMBLER_CARD_MIN_H, LazyMount, useIdleChunk } from '../ui/LazyMount'
 import { useL10n, cmdText } from '../i18n/locale'
 import { MONEY_GLYPH } from '../pages/common'
 import {
@@ -1288,6 +1289,28 @@ export function ManufacturingPanel({
   const state = engine.state
   const runViews = manufacturingRunViews(state, engine.ctx)
   const [tab, setTab] = useState<ManuTabKey>('all')
+  /** 视口懒挂载的"首屏块 + 空闲补块"两张尺寸（见 `.app-belt-grid` 那处的说明；船长 2026-09-27 批准） */
+  const EAGER_FIRST = 12
+  const idleChunk = useIdleChunk(12)
+  /**
+   * **占位高自适应**（2026-09-27 实测补的）：占位高若与真卡高差太多，网格**行高会随挂载"塌一下"**
+   * （一行 4 张，行高 = 该行最高那张 ⇒ 占位偏高时整行先高后矮 = 滚动中跳动）。
+   * 用常量 523（CSS 那条 `contain-intrinsic-size` 的旧实测值）在 1600×900 下实测真卡只有 **394** ⇒ 偏高 33%。
+   * 故首屏块挂上后**量一次真卡高中位数**，之后的占位一律按它来（同一批卡同版式 ⇒ 比常量准得多）。
+   */
+  const gridRef = useRef<HTMLDivElement | null>(null)
+  const [cardH, setCardH] = useState(ASSEMBLER_CARD_MIN_H)
+  useEffect(() => {
+    const g = gridRef.current
+    if (g === null) return
+    const hs = [...g.querySelectorAll<HTMLElement>('.app-belt-card')]
+      .map((el) => Math.round(el.getBoundingClientRect().height))
+      .filter((h) => h > 80)
+    if (hs.length < 4) return
+    hs.sort((a, b) => a - b)
+    const med = hs[Math.floor(hs.length / 2)] ?? ASSEMBLER_CARD_MIN_H
+    setCardH((prev) => (Math.abs(prev - med) >= 8 ? med : prev))
+  }, [idleChunk])
   const { t } = useL10n()
   /**
    * **「学会」维度**（并列属性行，**放最上一行**——船长 2026-09-19：「组装机我想添加一个过滤已有蓝图的筛选」
@@ -1790,37 +1813,50 @@ export function ManufacturingPanel({
       ) : null}
       </div>
       <div className="app-win-body">
-        <div className="app-belt-grid">
-          {sorted.map((it) => (
-            <BlueprintCard
+        <div className="app-belt-grid" ref={gridRef}>
+          {sorted.map((it, i) => (
+            /**
+             * **视口懒挂载**（**2026-09-27 船长令**：「**组装机的卡片太多了，能否采用流式加载？当卡片靠近玩家
+             * 屏幕时才加载**」；方案获船长「**按你推荐来**」确认）。三档 eager：
+             * ① **首屏块 `EAGER_FIRST` 张**立刻挂（进页先有一屏半真卡，不会一进来就一片空白）；
+             * ② **空闲补块 `EAGER_IDLE` 张**（`useIdleChunk`）——滚得快时少看见空白；
+             * ③ **被跳转定位的那一张**必须立刻挂（页面那条 `.app-belt-card.is-goto` 居中滚动要能 querySelector 到节点）。
+             * 其余交给 `LazyMount` 的 IntersectionObserver（视口上下各 1 屏）。
+             */
+            <LazyMount
               key={it.id}
-              engine={engine}
-              onToast={onToast}
-              blueprintId={it.id}
-              name={it.name}
-              description={it.description}
-              materials={it.materials}
-              buildSeconds={it.buildSeconds}
-              productLabel={it.productLabel}
-              productNode={it.productNode}
-              kindLabel={it.kindLabel}
-              productRef={it.productRef}
-              productUnits={it.productUnits}
-              productGlyph={it.productGlyph}
-              productTone={it.productTone}
-              productBase={it.productBase}
-              countOwned={it.countOwned}
-              ownedWhere={it.ownedWhere}
-              onNeedMineral={onNeedMineral}
-              onGotoMarket={onGotoMarket}
-              onGotoWormhole={onGotoWormhole}
-              onGotoPlugExchange={onGotoPlugExchange}
-              onGotoShelf={onGotoShelf}
-              highlighted={focusBlueprintId === it.id}
-              learnless={it.learnless}
-              /** 实时指纹：只有它变了的卡才会真正重渲染（详见 `cardLiveKeyOf` 的说明） */
-              liveKey={liveKeyOf(it)}
-            />
+              eager={i < EAGER_FIRST + idleChunk || focusBlueprintId === it.id}
+              minHeight={cardH}
+            >
+              <BlueprintCard
+                engine={engine}
+                onToast={onToast}
+                blueprintId={it.id}
+                name={it.name}
+                description={it.description}
+                materials={it.materials}
+                buildSeconds={it.buildSeconds}
+                productLabel={it.productLabel}
+                productNode={it.productNode}
+                kindLabel={it.kindLabel}
+                productRef={it.productRef}
+                productUnits={it.productUnits}
+                productGlyph={it.productGlyph}
+                productTone={it.productTone}
+                productBase={it.productBase}
+                countOwned={it.countOwned}
+                ownedWhere={it.ownedWhere}
+                onNeedMineral={onNeedMineral}
+                onGotoMarket={onGotoMarket}
+                onGotoWormhole={onGotoWormhole}
+                onGotoPlugExchange={onGotoPlugExchange}
+                onGotoShelf={onGotoShelf}
+                highlighted={focusBlueprintId === it.id}
+                learnless={it.learnless}
+                /** 实时指纹：只有它变了的卡才会真正重渲染（详见 `cardLiveKeyOf` 的说明） */
+                liveKey={liveKeyOf(it)}
+              />
+            </LazyMount>
           ))}
         </div>
         {sorted.length === 0 ? (
