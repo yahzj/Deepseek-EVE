@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
-import { countItem } from '../src/inventory'
+import { countItem, countWare } from '../src/inventory'
 import {
   WEEKEND_ALL_CLEAR_ISK,
   WEEKEND_FLAGSHIP_REWARD_MUL,
@@ -267,14 +267,14 @@ describe('周末入侵 · 黑匣爆率（2026-09-25 船长令）', () => {
     ev.flagshipHpMax = POOL
     ev.flagshipHpDone = POOL // 100% 输出 ⇒ 没抢到最后一下也有 25%
     ev.flagshipDown = 'octopus'
-    const box0 = countItem(s, 'blackbox-h')
+    const box0 = countWare(s, 'blackbox-h')
     const hit = weekendRollBlackBox(s, ev, false)
     expect(ev.flagshipBlackBox).toBe(hit)
     expect(weekendSettlePlanOf(s, ev, 0).blackBoxToPlayer, '结算面板的归属 = 掷骰结果').toBe(hit)
     ev.endedAtWallMs = 1_000_000
     const r = weekendSettleAndGrant(s, ctx, 1_000_000)
     expect(r, '结束结算要发').not.toBeNull()
-    expect(countItem(s, 'blackbox-h') - box0, '掷中 ⇒ 补发 1 个黑匣').toBe(hit ? 1 : 0)
+    expect(countWare(s, 'blackbox-h') - box0, '掷中 ⇒ 补发 1 个黑匣（入物品仓库）').toBe(hit ? 1 : 0)
     expect(s.weekendLastResult?.blackBox, '快照里的黑匣数 = 实发').toBe(hit ? 1 : 0)
   })
 })
@@ -302,7 +302,7 @@ describe('周末入侵 · 结束结算（M1-b）', () => {
 })
 
 describe('周末入侵 · 奖励入账（M1-b 第五片）', () => {
-  it('ISK 进钱包 · 稀有残骸进物品仓库（走 addItem 同一条入库路径；**物品 id 必须真实存在**）', () => {
+  it('ISK 进钱包 · 稀有残骸与黑匣进物品仓库（**物品 id 必须真实存在**）', () => {
     const { s } = setup()
     const isk0 = s.wallet.isk
     // 2026-09-25 修：原写死 `'wreck-rare'` —— 目录里**没有**这个 id（真形态 `wreck-rare-<组key>`），
@@ -310,18 +310,22 @@ describe('周末入侵 · 奖励入账（M1-b 第五片）', () => {
     const itemId = weekendRareWreckIdFor('ink-harass', ctx)!
     expect(itemId).toBe('wreck-rare-h-hi')
     expect(ctx.items.has(itemId), '奖励物品必须在目录里').toBe(true)
-    const wreck0 = countItem(s, itemId)
+    const wreck0 = countWare(s, itemId)
+    const box0 = countWare(s, 'blackbox-h')
     const isk1 = s.wallet.isk + 2_000_000
     const got = weekendGrantRewards(s, { isk: 2_000_000, wreck: 8, blackBox: true, wreckItemId: itemId })
     expect(got.isk).toBe(2_000_000)
-    expect(got.blackBox, '黑匣数量带回（物品 M4 才入库）').toBe(1)
+    expect(got.blackBox, '黑匣真入库（2026-09-26 船长批「甲」：与残骸同一条入库路）').toBe(1)
     expect(s.wallet.isk).toBe(isk0 + 2_000_000)
     expect(s.wallet.isk).toBe(isk1)
-    expect(countItem(s, itemId)).toBe(wreck0 + 8)
-    // 解析不到物品 id ⇒ **不发**（绝不发不存在的 id 给玩家）
-    const before = countItem(s, 'wreck-rare')
-    weekendGrantRewards(s, { wreck: 3 })
-    expect(countItem(s, 'wreck-rare')).toBe(before)
+    // **落点 = 物品仓库**（不是货舱；船长 2026-09-26 报障：玩家在物品页找不到它）
+    expect(countWare(s, itemId)).toBe(wreck0 + 8)
+    expect(countWare(s, 'blackbox-h')).toBe(box0 + 1)
+    expect(countItem(s, itemId), '货舱不动').toBe(0)
+    // 解析不到物品 id ⇒ **不发也不记账**（返回值 = 实际入账数）
+    const before = countWare(s, 'wreck-rare')
+    expect(weekendGrantRewards(s, { wreck: 3 }).wreck, '没给物品 id ⇒ 实发 0').toBe(0)
+    expect(countWare(s, 'wreck-rare')).toBe(before)
   })
 
   it('负数/缺省一律按 0 处理（不吞钱也不倒扣）', () => {

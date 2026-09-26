@@ -372,6 +372,19 @@ export interface WeekendEventState {
   flagshipBestRunDmg?: number
   /** **上一拍章鱼削血的心跳墙钟**（只用于算拍间增量；缺省 = 本拍只立基线、不累计） */
   bossTickWallMs?: number
+  /**
+   * **章鱼人停工到这一刻**（**船长 2026-09-26 令**：「**给章鱼人进攻削血加个冷却，玩家战斗结束 1 分钟后，
+   * 章鱼人才开始削血和判定**」）。
+   *
+   * 口径（修订 2026-09-24「等玩家战斗结束才继续」那条：**结束后再等 60 秒**）：
+   * - **只有旗舰战**（遭遇槽里那一场）会推它：战斗进行中每拍把它推后到 `now + 60 秒`；
+   * - 停工期（战斗中 ＋ 旗舰战结束后 60 秒）**既不削血、也不判得手**；
+   * - 停工期**不吃事后补算**（拍基线照常同步 ⇒ 解禁那一拍不会把 60 秒当掉线时长补削）；
+   * - 与"任何战斗都暂停削血"那条旧口径**并存**（本条只在旗舰战后面多一条 60 秒尾巴）。
+   *
+   * ⚠ **随档落盘**（`save.ts` 读档侧必须认它）：否则读档即丢 ⇒ 冷却被读档绕过。
+   */
+  octopusHoldUntilWallMs?: number
   /* ─── 结束结算（2026-09-25 · M1-b 收尾）─── */
   /**
    * **贡献奖已发放的墙钟**（幂等标记；缺省 = 还没结过）。
@@ -467,6 +480,17 @@ export interface WeekendResultSnapshot {
  * 几十分钟。章鱼削血是"在线陪着打"的机制 ⇒ 一次长跳只按一拍算（多出来的时间视为"玩家没在看着"）。
  */
 export const WEEKEND_BOSS_TICK_MAX_MS = 5_000
+
+/**
+ * **旗舰战结束后的章鱼人冷却**（**船长 2026-09-26 令**：「**给章鱼人进攻削血加个冷却，玩家战斗结束 1 分钟后，
+ * 章鱼人才开始削血和判定。这样玩家就能正常收掉 BOSS**」）。
+ *
+ * 落点 = `weekendTickBoss`：旗舰战进行中每拍把 `ev.octopusHoldUntilWallMs` 推后到 `now + 本常量`；
+ * 停工期（战斗中 ＋ 结束后 60 秒）**既不削血、也不判得手**（一条守卫同时管住两件事）。
+ * ⚠ **只有旗舰战**触发它（其它战斗照旧只"暂停削血"，不加尾巴）；调试档同为 60 秒（船长 2026-09-26 明示）。
+ * ⚠ 本常量**只影响"什么时候开始削"**：速率、窗口、封顶、`need ≤ 0` 不由章鱼认领等口径一律不变。
+ */
+export const WEEKEND_OCTOPUS_HOLD_MS = 60_000
 
 /**
  * 入侵族池（口径定稿：**A 变种 / C / G / 新族×2**）。
@@ -971,7 +995,13 @@ export function weekendFlagshipView(
   }
   /** 离线 **超过** 24h 保护期：窗口按 anchor 起算（人不在的那段不削血，但也不能无限期挂着） */
   const offlineLapsed = offline > WEEKEND_OFFLINE_SHIELD_MS
-  const down = drainDone || (offlineLapsed && nowWallMs >= anchor + windowMs) ? ('octopus' as const) : undefined
+  /**
+   * **停工期**（战斗中 ＋ **旗舰战结束后 60 秒**，2026-09-26 船长令）⇒ 章鱼人**不判定得手**。
+   * ⚠ `drainDone`（血条见底）在停工期里不可能**新**变真（停工期不削血）⇒ 这里只需管"到点即判"那一路。
+   */
+  const octopusHeld = nowWallMs < (ev.octopusHoldUntilWallMs ?? 0)
+  const down =
+    drainDone || (!octopusHeld && offlineLapsed && nowWallMs >= anchor + windowMs) ? ('octopus' as const) : undefined
   /**
    * **倒计时（展示口径）**：
    * - 在线 ⇒ 从**此刻**起算、按"还差多少在线非战斗时间才能把**剩下的血**削空"算
@@ -1420,15 +1450,25 @@ export function weekendOctopusTick(
  * 三件事：
  * 1. 首次满分且在线那一拍把 `flagshipAtWallMs` 锚点落盘（与 M1 的 `weekendTick` 同一条判据，
  *    只是这里**顺带**落 —— 让 Boss 池的削血窗口有一个不漂移的起点（窗口 2026-09-26 起正常档 = 24h））；
- * 2. 章鱼削血（`inBattle` 或离线 ⇒ 暂停）；
+ * 2. 章鱼削血（`inBattle` 或**停工期** ⇒ 暂停）；
  * 3. 削到 100% ⇒ 写 `flagshipDown = 'octopus'` 并结束本场。
  *
+ * 🔴 **2026-09-26 船长令（本函数新增第 4 参 · 冷却闸）**：「**给章鱼人进攻削血加个冷却，玩家战斗结束
+ * 1 分钟后，章鱼人才开始削血和判定。这样玩家就能正常收掉 BOSS**」——
+ * `flagshipBattleActive` = 旗舰战正在进行 ⇒ 本拍把停工终点推后到 `now + 60 秒`（`WEEKEND_OCTOPUS_HOLD_MS`）。
+ * 于是旗舰战**打完那 60 秒里它既不削血、也不判得手**（一条守卫同时管住船长要的两件事）。
+ * ⚠ 只有**旗舰战**推它（其它战斗照旧只走 `inBattle` 的"暂停"，不加尾巴）；
+ * ⚠ 停工期**不吃事后补算**：拍基线（`bossTickWallMs`）照常同步到本拍。
+ *
+ * @param inBattle 玩家此刻是否在战斗中（含普通入侵战斗 ⇒ 都暂停）——2026-09-24 旧口径，逐字不变
+ * @param flagshipBattleActive 入侵旗舰战是否正在进行（**唯一会起算冷却的那一场**；缺省 = 否）
  * @returns 本拍是否由章鱼人结束（引擎据此走 M1 的收尾：黑匣归零 + 贡献奖结算）
  */
 export function weekendTickBoss(
   state: GameState,
   nowWallMs: number | undefined,
   inBattle: boolean,
+  flagshipBattleActive = false,
 ): { down?: 'octopus' } {
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) return {}
@@ -1439,11 +1479,18 @@ export function weekendTickBoss(
   const last = ev.bossTickWallMs
   const gap = Math.max(0, nowWallMs - (last ?? nowWallMs))
   ev.bossTickWallMs = nowWallMs
+  /** **旗舰战进行中 ⇒ 每拍把停工终点推后 60 秒**（战斗一结束，剩下那截就是"结束后 60 秒"） */
+  if (flagshipBattleActive) ev.octopusHoldUntilWallMs = nowWallMs + WEEKEND_OCTOPUS_HOLD_MS
   if (last === undefined) return {} // 本拍只是立基线：没有"上一拍"就没有可累计的时长
   // ⚠ 大步长（离线补算后的一次大跳 / 后台标签页）**只按一拍的合理上限累计**：
   // 章鱼削血是"在线陪着打"的机制，不能因为一次长跳就整段削掉（离线那部分本来就该停）。
   const dt = Math.min(gap, WEEKEND_BOSS_TICK_MAX_MS)
   if (ev.flagshipHpMax === undefined) return {} // 还没跟母舰交手过 ⇒ 池子未锁定（章鱼人也没有可削的目标）
+  /**
+   * **停工期**（战斗中 ＋ **旗舰战结束后 60 秒**）⇒ 不削血、**也不判得手**（船长 2026-09-26 令）。
+   * ⚠ 放在 `dt` 之后、基线同步之后 ⇒ 这 60 秒不会被"解禁那一拍"当成掉线时长补削进来。
+   */
+  if (inBattle || nowWallMs < (ev.octopusHoldUntilWallMs ?? 0)) return {}
   if (weekendOctopusTick(state, ev, dt, inBattle)) {
     ev.flagshipDown = 'octopus'
     endWeekendEvent(state, nowWallMs)

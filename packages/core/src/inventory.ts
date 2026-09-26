@@ -83,14 +83,25 @@ export function countItem(state: GameState, itemId: string): number {
   return cargoItemsOf(state)[itemId] ?? 0
 }
 
-/** 当前船货仓入库 */
-export function addItem(state: GameState, itemId: string, units: number): void {
-  if (!Number.isFinite(units) || units <= 0) return
-  const cargo = cargoItemsOf(state)
-  if (Object.isFrozen(cargo)) return
+/** 当前船货仓入库；**返回"是否真的写进去了"**（见下方 ⚠） */
+export function addItem(state: GameState, itemId: string, units: number): boolean {
+  if (!Number.isFinite(units) || units <= 0) return false
+  /**
+   * ⚠ **2026-09-26 修（船长报障「报告显示拿到黑匣、玩家手里却没有」）**：
+   * 原实现走 `cargoItemsOf` ⇒ 当前驾驶船**不在舰队里**时它返回一个**临时空对象**
+   * （`cargoOfShip` 的容错分支）⇒ 写进去就随临时对象一起丢掉，而调用方照旧把"已入账"记进台账
+   * ⇒ 账实分离（报告有、实物无）。现在三条口径：
+   * ① 船不在（或货仓被冻结）⇒ **兜底入物品仓库**，绝不让奖励凭空消失；
+   * ② **返回真实结果**，调用方按它记账（不再"无条件当成功"）；
+   * ③ 「见过黑匣」只在**确实入库**之后置位（原先丢弃也置位 ⇒ 兑换商店 / 组装机「舰船插件」
+   *    档被白解锁）。
+   */
+  const cargo = currentShipState(state)?.cargo
+  if (cargo === undefined || Object.isFrozen(cargo)) return addWare(state, itemId, units)
   cargo[itemId] = (cargo[itemId] ?? 0) + Math.floor(units)
   // 黑匣入库 ⇒ 置位「见过黑匣」（**唯一置位点**；见 `blackbox.ts` 的口径）
   if (isBlackboxItem(itemId)) noteBlackboxObtained(state)
+  return true
 }
 
 /** 当前船货仓出库；数量不足返回 false */
@@ -113,12 +124,15 @@ export function countWare(state: GameState, itemId: string): number {
   return state.warehouse.items[itemId] ?? 0
 }
 
-/** 仓库入库 */
-export function addWare(state: GameState, itemId: string, units: number): void {
-  if (!Number.isFinite(units) || units <= 0) return
+/**
+ * 仓库入库；**返回"是否真的写进去了"**（与 `addItem` 同口径，供调用方记账用 —— 见 `addItem` 的 ⚠）
+ */
+export function addWare(state: GameState, itemId: string, units: number): boolean {
+  if (!Number.isFinite(units) || units <= 0) return false
   state.warehouse.items[itemId] = (state.warehouse.items[itemId] ?? 0) + Math.floor(units)
   // 黑匣入库 ⇒ 置位「见过黑匣」（**唯一置位点**；见 `blackbox.ts` 的口径）
   if (isBlackboxItem(itemId)) noteBlackboxObtained(state)
+  return true
 }
 
 /** 仓库出库；数量不足返回 false */
