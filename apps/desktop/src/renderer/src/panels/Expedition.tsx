@@ -166,6 +166,12 @@ const FLAGSHIP_HULL_TEXT = isEn() ? 'flagship' : '旗舰'
  * **2026-09-26 船长报障**：「**入侵的星系详细里，发现敌方旗舰卡牌并没有介绍入侵旗舰的信息，
  * 建议先参考其他入侵卡牌**」⇒ 旗舰那行改为复用这份渲染，不再让两张卡各长一样。
  *
+ * 版式（**2026-09-26 船长令**：「**舰船的特殊装置单独起一行，不同舰船之间需要空一行**」）：
+ * 每型舰 = **一格**（`.app-ano-foebrief-row`，块级）内两行 ——
+ *   ① 舰名（舰种 ×数量）：战术/武器/伤害构成…；
+ *   ② **特殊装置另起一行**（`style={{ display: 'block' }}`，避免为一行字新造 CSS 类）；
+ * 舰与舰之间 = 一行**空行**（`.app-ano-foebrief-gap`，纯 `height` 占位，不取新类名样式）。
+ *
  * · 范围 = 该族该区域**整池**（`weekendFoePoolOf` 与抽取同源）∪ 本卡编成；
  * · 染色走**富内容悬停**（`hoverTipProps`）：舰名用战场同款 `UI_TONES.foeName`（主舰 `foeNameMain`）、
  *   「特殊装置」那四个字用 `UI_TONES.matBattle`——与战斗画面的敌舰名同一套色，不自造颜色。
@@ -174,26 +180,29 @@ function FoeBriefTip({ lines }: { lines: FoeBriefLine[] }): ReactNode {
   if (lines.length === 0) return null
   return (
     <span className="app-ano-foebrief">
-      {lines.map((l) => (
-        <span key={l.id} className="app-ano-foebrief-row">
-          <b style={{ color: l.count > 0 ? UI_TONES.foeNameMain : UI_TONES.foeName }}>
-            {l.name}（{l.hull}
-            {l.count > 0 ? `×${l.count}` : ''}）
-          </b>
-          <span className="app-dim">{'：'}</span>
-          {l.bits.map((b, i) => (
-            <span key={i}>
-              {b}
-              {i < l.bits.length - 1 || l.mounts !== undefined ? '，' : '。'}
-            </span>
-          ))}
-          {l.mounts !== undefined ? (
-            <span>
-              <b style={{ color: UI_TONES.matBattle }}>{mountLabelText()}</b>
-              {'：'}
-              {l.mounts}。
-            </span>
-          ) : null}
+      {lines.map((l, li) => (
+        <span key={l.id}>
+          {li > 0 ? <span className="app-ano-foebrief-gap" style={{ display: 'block', height: '0.7em' }} /> : null}
+          <span className="app-ano-foebrief-row">
+            <b style={{ color: l.count > 0 ? UI_TONES.foeNameMain : UI_TONES.foeName }}>
+              {l.name}（{l.hull}
+              {l.count > 0 ? `×${l.count}` : ''}）
+            </b>
+            <span className="app-dim">{'：'}</span>
+            {l.bits.map((b, i) => (
+              <span key={i}>
+                {b}
+                {i < l.bits.length - 1 || l.mounts !== undefined ? '，' : '。'}
+              </span>
+            ))}
+            {l.mounts !== undefined ? (
+              <span style={{ display: 'block' }}>
+                <b style={{ color: UI_TONES.matBattle }}>{mountLabelText()}</b>
+                {'：'}
+                {l.mounts}。
+              </span>
+            ) : null}
+          </span>
         </span>
       ))}
     </span>
