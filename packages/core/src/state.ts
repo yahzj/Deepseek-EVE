@@ -16,15 +16,17 @@ import { EMPTY_WORMHOLE_STATE } from './wormhole'
 import type { WormholeState } from './wormhole'
 
 /**
- * **新档初始声望 = 40**（**2026-09-26 船长令**：「**声望真扣（就是意味着玩家一开始其实可以买5张）**」）。
+ * **新档初始声望 = 0**（**2026-09-26 船长裁定**：「**1算，我从来没有说过"开局能换 5 张"，所以要清理，
+ * 并且还要削减累计声望**」）。
  *
- * 值 = 插件图纸单价（`plugs.PLUG_BLUEPRINT_COST = 8`）× 5 ⇒ **开局就能换 5 张**。
- * ⚠ **定义在这里、由 `expedition.ts` 转发**：`expedition` 已经 import 本文件，
- * 反向引会成环（仓内既有的 `HOME_GALAXY_ID` 就是这个处置）。
- * ⚠ 连带后果（已如实登记）：入侵门槛 `WEEKEND_MIN_STANDING = 40` 因此**新档开局即达标**——
- * 门槛数值一字未动，只是这条初始值把它顶到了；老档不受影响。
+ * ⚠ **沿革（同一批内的改判，务必别再把 40 加回来）**：本批前半段曾在 `createInitialState` 里给
+ * `dsi` 同时写入 `40`（两条账各 40，理由写的是"开局能换 5 张图纸"）——船长否掉了那条口径：
+ * 他从没说过"开局能换 5 张"，**初始赠送一律清理**。现两条账都由空表起步（全按 0 读），
+ * 声望只能靠悬赏首胜与入侵贡献挣。
+ * 存量档（含被那条赠送/回填抬过的档）由 `expedition.repairStandingFromBountyProgress` 在
+ * 读档后一次性削减回"悬赏进度算得的值"。
  */
-export const INITIAL_STANDING = 40
+export const INITIAL_STANDING = 0
 
 export type { FittedModules } from './types'
 
@@ -3200,12 +3202,11 @@ export function createInitialState(opts?: {
     manufacturingSeq: 1,
     manufacturingLoops: {},
     /**
-     * **新档初始声望 = 40**（**2026-09-26 船长令**：「**声望真扣（就是意味着玩家一开始其实可以买5张）**」）
-     * —— 两条账同值（可支配 40 / 累计 40）⇒ 开局就能换 5 张插件图纸，
-     * 且入侵门槛（累计 40）开局即达标（船长接受）。
+     * **新档初始声望 = 0**（**2026-09-26 船长裁定**：初始赠送一律清理 ⇒ 两条账都由空表起步，
+     * 声望只能靠悬赏首胜与入侵贡献挣；见 `INITIAL_STANDING` 那段沿革）。
      */
-    standings: { dsi: INITIAL_STANDING },
-    standingsEarned: { dsi: INITIAL_STANDING },
+    standings: {},
+    standingsEarned: {},
     /** 新档还没见过黑匣（组装机插件档锁着，等第一个黑匣解锁 ＋ 发通讯） */
     blackboxSeen: false,
     expedition: {

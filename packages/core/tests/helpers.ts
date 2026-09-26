@@ -695,8 +695,7 @@ export function makeTestCtx(opts?: {
  *
  * ⚠ 为什么不能只写 `state.standings['dsi'] = n`：门槛一律读**累计获得**那一本
  * （`expedition.standingOf` → `standingsEarned`），只写可支配那本 ⇒ 门槛判定**看不见你的赋值**
- * （用例会"假绿"：默认 40 恰好越过 11/4 那几档门槛）。所以测试里凡是要"把声望设成 N"，
- * 一律走本助手。
+ * （用例会"假绿"）。所以测试里凡是要"把声望设成 N"，一律走本助手。
  */
 export function setStanding(state: GameState, factionId: string, value: number): void {
   state.standings[factionId] = value
@@ -705,10 +704,11 @@ export function setStanding(state: GameState, factionId: string, value: number):
 }
 
 /**
- * **把新档的初始声望清零**（**2026-09-26**：船长令「声望真扣（就是意味着玩家一开始其实可以买5张）」⇒
- * `createInitialState` 现在给 `dsi` **40 点**，且 `standingOf` 读"累计获得"那一本。
+ * **把新档的初始声望清零**（**2026-09-26 船长裁定**：初始赠送已清理 ⇒ 现在与默认值一致，
+ * 这个助手成了**幂等的显式清零**）。
  *
- * 用途 = 那些**故意要验"声望不足"档**的老用例（日板档位、接取拒因、卖价加成基线…）。
+ * 为什么留着：本仓大量用例的读数（日板档位、接取拒因、卖价加成基线、门槛两侧…）都按"声望 0"标定，
+ * **写出来比依赖默认值更抗将来改动**——哪天初始值再变，这些套件不会被悄悄抬高基线。
  */
 export function clearInitialStanding(state: GameState, factionId = 'dsi'): void {
   setStanding(state, factionId, 0)

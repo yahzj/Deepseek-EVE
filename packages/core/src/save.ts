@@ -15,7 +15,6 @@ import {
   DEFAULT_START_ISK,
   DEFAULT_START_SHIP_ID,
   HOME_GALAXY_ID,
-  INITIAL_STANDING,
   MAX_SKILL_LEVEL,
 } from './state'
 import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
@@ -1990,10 +1989,14 @@ function normalizeState(raw: unknown): GameState {
    * 两条账：`standings` = **可支配**（只有「章鱼人兑换」扣它）· `standingsEarned` = **累计获得**
    * （**全仓所有门槛读它**，只增不减）。
    *
-   * 老档没有累计那一本 ⇒ **回填成 `max(40, 旧声望)`**，理由两条、都可证：
-   * - **今天没有消费点** ⇒ 老档的"可支配"就是它的"累计获得"，原样搬过来就是真值；
-   * - 补一个 **40 的下界** = 新档初始值（`INITIAL_STANDING`）⇒ 老玩家不会因为开档早而比新玩家少
-   *   一档门槛（尤其 `WEEKEND_MIN_STANDING = 40`：不补的话，一个声望 12 的老档反而打不了入侵）。
+   * 老档没有累计那一本 ⇒ **原样搬可支配那本（不补任何下界）**：今天之前没有消费点 ⇒
+   * 老档的"可支配"就是它的"累计获得"，搬过来就是真值，玩家看到的数不会因为更新而变。
+   *
+   * ⚠ **2026-09-26 船长裁定（本条改过一次，别再改回去）**：本处原先写的是
+   * `max(INITIAL_STANDING = 40, 旧声望)`，理由是"别让老玩家比新玩家少一档门槛"——船长否掉了：
+   * 「**1算（初始 40 也算额外声望）…所以要清理，并且还要削减累计声望**」。
+   * 那条下界正是玩家报障「更新后他原本 6 声望突然变成 41 声望」的根因（40 下界 ＋ 入侵贡献 1）。
+   * 存量档里已经被抬起来的那部分，由 `expedition.repairStandingFromBountyProgress` 在读档后削减。
    *
    * ⚠ **不从日志回填**：`logs` 会被 `logCap` 裁剪、且读档不保证带（`serializeSaveFile` 的剥离注释），
    * 拿它当账本只会得到"有时多、有时少"的假数。只在 `src.standingsEarned` **缺失**时回填（幂等）。
@@ -2004,10 +2007,10 @@ function normalizeState(raw: unknown): GameState {
     if (typeof value === 'number' && Number.isFinite(value)) standingsEarned[key] = Math.round(value)
   }
   if (Object.keys(earnedRaw).length === 0) {
-    // ⚠ 势力 id 就地写 `'dsi'`：`expedition.ts` 已 import 本文件（`save ↔ expedition` 引不得），
-    //    而 `DSI_FACTION_ID` 的权威定义在那里 ⇒ 这里只用它做一次老档回填，与权威值同字面量。
-    const dsi = 'dsi'
-    standingsEarned[dsi] = Math.max(INITIAL_STANDING, standings[dsi] ?? 0)
+    // 逐势力原样搬一份（**不写死 `'dsi'`、也不补任何下界**）：老档此前没有消费点 ⇒ 两条账同值。
+    // ⚠ 逐势力搬（而不是硬编码 dsi）还有一个作用：**空表进出对称** —— 新档 `standings = {}` 时
+    //    回填结果也是 `{}`，存档往返用例（`save.test.ts` 的 `toEqual`）才不会被凭空多出的键打红。
+    for (const [factionId, value] of Object.entries(standings)) standingsEarned[factionId] = value
   }
   /**
    * --- **见过黑匣没有**（2026-09-26 船长令，兼容字段无版本号）---

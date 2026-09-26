@@ -1708,6 +1708,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 2026-09-26 船长令：「关于入侵的结算界面和结束通讯处，需要提及玩家获得了多少声望」——
      结算信追加的那一段（{p4} = 本期按贡献获得的协会声望点数；只在 >0 时追加）。 */
   "core.weekend.037": { zh: "本次入侵按你在清缴行动中的贡献，协会为你记入「深空工业协会」声望 +{p4}。", en: "For your contribution to this sweep the Association has credited you +{p4} Deepspace Industry Association standing." },
+  /* 2026-09-26 船长令：「给所有打完入侵但是没有获取黑匣的玩家补发一个黑匣（必须是推送之前打完，
+     同时也要检查玩家是否已经将黑匣制作成舰船插件）」⇒ 补发入仓时的那条系统日志（不发信）。 */
+  "core.weekend.040": { zh: "入侵补偿：补发旗舰黑匣 ×1（已存入物品仓库）。", en: "Invasion compensation: 1 flagship black box issued (stored in item storage)." },
   /* ── 2026-09-23 围剿批（第 7 层起逐回合刷怪）：core 侧新增的日志与拒因 ── */
   "core.wormholeSpawn.001": { zh: "🕳 围剿者扑到你所在的位置：先确认，再迎战。", en: "🕳 A sweep ship has pounced on your position: confirm, then engage." },
   "core.wormholeBattle.032": { zh: "围剿战只在网格层成立。", en: "Sweep battles only happen on the grid." },
