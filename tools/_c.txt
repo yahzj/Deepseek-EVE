@@ -1,0 +1,24 @@
+fix(plug): 通讯「前往」跳转 ＋ 组装机插件档筛选（船长报障两条）
+
+船长原话（照抄）：「跳转界面不正确，而且组装机处也没有舰船插件的的门类筛选，
+反而是多出一个错误的图纸筛选。」
+
+一、跳转：送达弹窗那份 onAction 漏了 plug-exchange
+- 通讯页（CommsPage）我加了，但**弹窗版**（App.tsx 的 CommsEave）只认 weekendSummary
+  ⇒ 从弹窗点「前往」什么都不会发生，而弹窗正是这封信的正常到达方式
+- App.tsx：补 plug-exchange 分支（收弹窗 ＋ 就地在根组件弹 PlugExchangeModal）
+- 两处入口（弹窗 / 通讯页）共用同一张窗口组件，行为一致
+
+二、组装机「舰船插件」档一张卡都没有（看着像"多出一个错的图纸筛选"）
+- 根因：pushEquip() 无条件把所有"产物是装备"的蓝图标 kindLabel='装备'，
+  而一级门类判定 inTab 是一条按中文 key 的字符串三元链
+  （equip ? '装备' : part ? '零件' : '消耗品'）——**没有 plug 分支** ⇒
+  选「舰船插件」时落到 else 只认「消耗品」，插件档必然空
+- 修：插件蓝图走自己的键（kindLabel '舰船插件'，渲染复用 ui.itemSubs.041；subKey 留空）；
+  inTab 改成与 bpFilterKeysOf **同一把尺**（新增 cardTabOf 反查），字符串三元链删除
+  ⇒ 以后新增门类只需在 MANU_TABS_CRAFT 加一行，不会再漏分支
+- kindLabelText 补一行映射（否则英文界面会露中文 key）
+
+验证：typecheck 四包 0 错 · core 234 文件 / 2566 用例全绿 · content:check ✅ ·
+l10n:check ✅ · ui:rot-check ✅ · ui:layout-css:check ✅ ·
+桌面 build ✅（assets/index-OCrwk614.js；产物含「舰船插件」38 处 · plug-exchange 4 处）

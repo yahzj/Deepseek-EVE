@@ -42,6 +42,7 @@ import { ModeChoice } from './panels/ModeChoice'
 import { WeekendInvasionLogRow } from './panels/WeekendInvasionLog'
 import { WeekendFlagshipPrepModal } from './panels/WeekendFlagshipPrep'
 import { WeekendSummaryView } from './panels/WeekendSummary'
+import { PlugExchangeModal } from './panels/PlugExchange'
 import { InvasionAlarm, InvasionFireworks, ALARM_TOTAL_MS, FIREWORKS_MS } from './panels/InvasionFx'
 import { playSfx } from './game/sfx'
 import { AnnouncementHub } from './panels/Announcements'
@@ -1496,6 +1497,11 @@ async function applyLayoutAndQuit(): Promise<void> {
   /** 结算面板（弹窗里的「查看详细奖励」**直接弹它**；通讯页那一处入口照旧） */
   const [sumOpen, setSumOpen] = useState(false)
   /**
+   * **「章鱼人兑换」窗口**（**2026-09-26 船长令**：「通讯内跳转」＋ 船长报障「跳转界面不正确」）——
+   * 与 `sumOpen` 同款：**根组件持状态、就地弹 `.app-modal-*` 层**，弹窗版通讯与通讯页两处入口共用同一张窗口。
+   */
+  const [plugExchangeOpen, setPlugExchangeOpen] = useState(false)
+  /**
    * **送达弹窗的"上膛"延时**（同上那条报障的配套）：刚挂上来的头 `POPUP_ARM_MS` 毫秒内**忽略遮罩点击**
    * ——遮罩是满屏的（`inset: 0`，点哪都算点外面），而这张卡挂上来的时机恰好是"玩家刚点完战场/刚点过别处"
    * ⇒ 不设防就会**一挂上就被下一次点击静默点掉**（玩家只看到一闪）。卡内按钮不受影响（点它是明确动作）。
@@ -2110,9 +2116,23 @@ async function applyLayoutAndQuit(): Promise<void> {
                  * ＋ 全仓既有的 `.app-modal-*` 族；原先只是"跳到通讯页、还要再点一次"）。
                  */
                 onAction={(a) => {
-                  if (a !== 'weekendSummary') return
-                  engine.dismissCommsPopup(popupMsg.id)
-                  setSumOpen(true)
+                  if (a === 'weekendSummary') {
+                    engine.dismissCommsPopup(popupMsg.id)
+                    setSumOpen(true)
+                    return
+                  }
+                  /**
+                   * **首匣那封信的「前往」**（**2026-09-26 船长报障**：「跳转界面不正确」）。
+                   *
+                   * 漏点在这里：通讯页（`CommsPage`）那份 `onAction` 处理了 `plug-exchange`，
+                   * 但**送达弹窗这一份漏了** ⇒ 玩家从弹窗点「前往」**什么都不会发生**
+                   * （而弹窗正是这封信的正常到达方式）。现在两处行为一致：
+                   * 收掉弹窗 ＋ 就地弹出「章鱼人兑换」窗口。
+                   */
+                  if (a === 'plug-exchange') {
+                    engine.dismissCommsPopup(popupMsg.id)
+                    setPlugExchangeOpen(true)
+                  }
                 }}
                 extra={
                   <button className="app-btn is-small" onClick={() => engine.dismissCommsPopup(popupMsg.id)}>
@@ -2177,6 +2197,14 @@ async function applyLayoutAndQuit(): Promise<void> {
             <WeekendSummaryView engine={engine} onClose={() => setSumOpen(false)} />
           </div>
         </div>
+      ) : null}
+      {/**
+       * **章鱼人兑换窗口**（**2026-09-26 船长令**：「通讯内跳转」；船长报障「跳转界面不正确」）——
+       * 弹窗版通讯的「前往」直达这里。组件与通讯页那一处**完全同源**（`PlugExchangeModal`），
+       * 弹层几何交给组件内部的 `.app-modal-*` 族，这里不再套一层壳（套两层会多一圈边框）。
+       */}
+      {plugExchangeOpen ? (
+        <PlugExchangeModal engine={engine} onToast={showToast} onClose={() => setPlugExchangeOpen(false)} />
       ) : null}
       {/**
        * **入侵演出**（船长 2026-09-25 令）：警报红灯（开局 ＋ 旗舰现身各一次）与结束庆祝烟火。

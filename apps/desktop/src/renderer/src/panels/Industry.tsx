@@ -537,6 +537,8 @@ function kindLabelText(key: string): string {
   if (key === '装备') return tr('ui.MarketPage.178')
   if (key === '零件') return tr('ui.labelsText.001')
   if (key === '消耗品') return tr('ui.itemSubs.037')
+  // 2026-09-26：插件产物单独一个档（`itemSubs.041` 与组装机那一档是**同一条文案**，不另立 id）
+  if (key === '舰船插件') return tr('ui.itemSubs.041')
   return key
 }
 function ownedWhereText(where: string): string {
@@ -1252,11 +1254,22 @@ export function ManufacturingPanel({
       // 产物名金色（按类型分色作废，2026-09-13 船长）
       const prodText = <span className="app-gold">{prodLabel}</span>
       const moduleId = bp.moduleId!
+      /**
+       * 🔴 **舰船插件蓝图归「舰船插件」档，不进「装备」档**（**2026-09-26 船长报障**：
+       * 「组装机处也没有舰船插件的门类筛选，反而是多出一个错误的图纸筛选」）。
+       *
+       * 根因：本函数原先**无条件**把所有"产物是装备"的蓝图都标 `kindLabel = '装备'`，
+       * 而一级门类判定 `inTab` 那条三元链里没有 `plug` 分支 ⇒ 选「舰船插件」时落到 else
+       * 只认 `'消耗品'` ⇒ **该档一张卡都没有**（看着就是一个空档）。
+       * 现在：插件走自己的键（与 `bpFilterKeysOf` 返回的 `tab: 'plug'` 同源），subKey 留空
+       * （插件档不二级分类）。
+       */
+      const isPlugBp = moduleDef?.slot === 'plug'
       out.push({
         id: bp.id,
-        kindLabel: tr("ui.MarketPage.003"),
+        kindLabel: isPlugBp ? '舰船插件' : tr('ui.MarketPage.003'), // l10n-keep：前者是内容层联合 key
         // 装备蓝图按**产物功能**分组（2026-09-11 船长：「根据产物的类型进行二次分类」；键与 MODULE_SUBS 同源）
-        subKey: moduleDef ? moduleSubKeyOf(moduleDef.slot, moduleDef.id) : '',
+        subKey: isPlugBp ? '' : moduleDef ? moduleSubKeyOf(moduleDef.slot, moduleDef.id) : '',
         productGlyph: moduleDef?.slot ?? 'blueprint',
         name: bp.name,
         description: bp.description,
@@ -1386,8 +1399,26 @@ export function ManufacturingPanel({
 
   /** 本门类判定（一级门类 → 该卡是否在档内）——二级/三级现算与最终过滤共用一把尺 */
   const inTab = (kindLabel: string): boolean =>
-    // l10n-keep：比较用的 '装备'/'零件'/'消耗品' 是**内容层联合 key**（不是文案；渲染走 kindLabelText）
-    tab === 'all' || (tab === 'equip' ? kindLabel === '装备' : tab === 'part' ? kindLabel === '零件' : kindLabel === '消耗品')
+    /**
+     * ⚠ **2026-09-26 修**（船长报障：「组装机处也没有舰船插件的门类筛选，反而是多出一个错误的图纸筛选」）：
+     * 这里原先是**按卡片上的中文 key 字符串**做三元链
+     * `tab === 'all' || (tab === 'equip' ? '装备' : tab === 'part' ? '零件' : '消耗品')`——
+     * 加第 5 档「舰船插件」时它**没有分支**，任何非 equip/part 的档一律落到"只认消耗品"
+     * ⇒ 插件档一张卡都不剩。
+     * 现在改成走**同一把尺**：`cardTabOf` 从蓝图与产物现算门类（与 `bpFilterKeysOf` 同源，
+     * 那张表是"蓝图书架 / 组装机"共用的单点），判据只有一条 `cardTabOf === tab`。
+     * 字符串三元链随之删除——**新增门类时只需在 `MANU_TABS_CRAFT` 加一行**，不会再漏分支。
+     */
+    tab === 'all' || cardTabOf(kindLabel) === tab
+  /** 卡片门类（一级档键）：按卡片的中文 key 反查蓝图与产物（查不到 ⇒ 判给「装备」，与改动前的兜底一致） */
+  const cardTabOf = (kindLabel: string): ManuTabKey => {
+    // l10n-keep：比较用的都是**内容层联合 key**（不是文案）
+    if (kindLabel === '舰船插件') return 'plug'
+    if (kindLabel === '零件') return 'part'
+    if (kindLabel === '消耗品') return 'supply'
+    if (kindLabel === '舰船') return 'ship'
+    return 'equip'
+  }
   /**
    * **二级子类候选：只列本门类下真有卡片的档**（2026-09-20 船长「明显不存在的子类筛选隐藏」）——
    * 与蓝图书架同一套现算口径（`presentSubs`）；「全部」档常显（基线②）。
