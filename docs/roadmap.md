@@ -234,8 +234,7 @@
   `pages/FitPage.tsx` **9**（Shipyard 目前只有搜索框接了 id）。**当批读数：`l10n:check` 未译 58 → 0**。
   **2026-09-24 复核读数**：渲染层含中日韩字符串字面量 **0** 条 · 已声明不译 `l10n-keep` **113 条**（全部是数据联合 key／形状槽键／探针／i18n 实现自身，逐条见 `npm run l10n:list`）⇒ **L2 已清场**，
   本行只作过程留档（详见「最近批次」2026-09-22 那条「筛选与标签页文案补齐」）。
-- [x] **L3 通讯消息整类没有英文 · ✅ 2026-09-26 全部做完（三号）**（2026-09-24 复核时只剩 9 条长设定文）：
-  `ctx.messages`（**31 条**：13 封「第一次」情报信 ＋ 开场简报 ＋ 协会侧短札）的 **主题 / 正文 / 前往提示**
+- [x] **L3 通讯消息整类没有英文 · ✅ 2026-09-26 全部做完（三号）**（2026-09-24 复核时只剩 9 条长设定文）：  `ctx.messages`（**31 条**：13 封「第一次」情报信 ＋ 开场简报 ＋ 协会侧短札）的 **主题 / 正文 / 前往提示**
   只有中文 ⇒ 英文界面下通讯页整封显示中文。判据：`packages/data/src/l10n.ts` 的 `localizeCtx` 覆盖了
   ships / modules / items / skills / blueprints / shipBlueprints / galaxies / belts / stations / commsFactions /
   matterTech / travelEvents，**没有 `messages`**。两条做法：**甲（推荐）**新增 `EN_COMMS_MESSAGES`

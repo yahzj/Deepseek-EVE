@@ -729,7 +729,25 @@ function SalvageTab({
     }))
   const byWreckName = (x: (typeof wreckRows)[number], y: (typeof wreckRows)[number]): number =>
     x.galaxy.name.localeCompare(y.galaxy.name, 'zh-Hans-CN') || x.galaxy.id.localeCompare(y.galaxy.id)
+  /**
+   * **跨星系置顶**（**2026-09-26 船长复问**：「**残骸打捞的相关置顶是不是还没做**」——
+   * 前一轮只做了**卡内**优先级（`wreckCardSequenceOf`：一个星系里"舰船残骸卡 → 入侵残骸卡 → 常规卡"），
+   * 而**星系之间的排序**只看危险度 / 名称 / 密度 ⇒ 有这两种特殊残骸的星系不会整体浮上来）。
+   *
+   * 分级（**同档内仍按玩家选的排序**，所以"置顶"与排序下拉并存、互不改口径）：
+   * - **0 档**：该星系有**玩家舰船残骸**（四级序最高优先；48h 衰减、捞它最划算）；
+   * - **1 档**：该星系有**入侵残骸**（独立残骸场、48h 线性衰减）；
+   * - **2 档**：其余星系。
+   * ⚠ 判据与卡序、与打捞目标判定**同一批函数**（`shipWrecksOf` / `weekendWreckDensityOf`），不另算一套。
+   */
+  const pinTierOf = (x: (typeof wreckRows)[number]): number => {
+    if (shipWrecksOf(state, x.galaxy.id).length > 0) return 0
+    if (weekendWreckDensityOf(state, x.galaxy.id) > 0) return 1
+    return 2
+  }
   const sortedGalaxies = [...wreckRows].sort((x, y) => {
+    const pin = pinTierOf(x) - pinTierOf(y)
+    if (pin !== 0) return pin
     if (sort === 'danger') {
       if (x.sec !== y.sec) return y.sec - x.sec // sec 降序 = 安全在前
       return byWreckName(x, y)
@@ -869,6 +887,10 @@ function SalvageTab({
              * （「分组后不要再让玩家手动选择打捞对象了……优先打捞入侵残骸，没有入侵残骸则是根据两种残骸的
              * 数量比同步打捞」）⇒ 那些卡上的「开始打捞」本来就是同一个动作、纯属残留；
              * **各组存量改成"全部"卡上的一行读数**（信息没丢，只是不再假装可选）。
+             *
+             * ⚠ **跨星系置顶**（船长 2026-09-26 复问「残骸打捞的相关置顶是不是还没做」后补齐）：
+             * 星系之间的顺序由 `sortedGalaxies` 的分级给出——**第 0 档 = 有玩家舰船残骸**、
+             * **第 1 档 = 有入侵残骸**、第 2 档 = 其余；同档内才走玩家选的排序。见 `pinTierOf` 头注。
              */}
             {sortedGalaxies.flatMap(({ galaxy: g, density, workers }) => {
               const targets = engine.salvageTargetsAt(g.id, true) // 只读（渲染期不写档）
