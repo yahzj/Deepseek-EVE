@@ -858,10 +858,18 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               note={tr("ui.FitPage.148", { p1: slots.high, p2: slots.mid, p3: slots.low })}
             />
           </div>
+          {/* 无人机舱（**2026-09-26 船长令**：「**无人机仓位移动到左半边**」）——原先在右栏低槽组下方，
+              现挂在左栏「舰船属性表」之后：装什么机群与船体属性是同一件事的两面。
+              自带顶部虚线分隔（`.app-fit-dronebay`），与上面那张表分得开。 */}
+          <DroneBaySection engine={engine} onToast={onToast} target={effectiveTarget} />
           </>
         ) : null}
           </div>
           <div className="app-fit-col-right">
+        {/* 弹药档位（**2026-09-26 船长令**：「**右侧弹药档位移动到最上方 CPU 上面**」）——
+            "出战前选哪一档弹"是这一栏最靠前的动作，故放到 CPU 条之前；没有对应武器的弹族时
+            整块不渲染（`AmmoTierSection` 的 `rows.length === 0` 早退）⇒ 无机炮的船这里就是 CPU 条打头。 */}
+        <AmmoTierSection engine={engine} onToast={onToast} target={effectiveTarget} />
         {/* CPU 剩余条（船长 2026-09-05：由左栏移置槽位最上方、减法显示剩余；与放飞共用池）。
             2026-09-11 协处理器：预算 = 船体 CPU + 已装协处理器扩容 → 走 core `cpuBudgetOf` 单点 */}
         {shipDef ? (
@@ -932,8 +940,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               </div>
             )
           })}
-          {/* 弹药档位（2026-09-09 弹药 MK2：有武器弹族才显示；无人机舱上方） */}
-          <AmmoTierSection engine={engine} onToast={onToast} target={effectiveTarget} />
+          {/* 弹药档位已上移到本栏最上方（2026-09-26 船长令），此处不再渲染 */}
           {/**
            * **舰船插件槽（只读）**（**2026-09-26 船长令**：「舰船插件是一种类似装备的东西，同样装备在
            * 舰船上，但是**不可拆卸，不可替换**」）。
@@ -943,8 +950,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
            * 槽位上限与已装清单都走 core 单点 `plugInfoOf`；短效果复用装备行同一把尺 `moduleShortEffect`。
            */}
           <PluginSlotsSection engine={engine} />
-          {/* 无人机舱（2026-09-08 大改：低槽组下方；容量条 + 型卡流 + 装入弹层） */}
-          <DroneBaySection engine={engine} onToast={onToast} target={effectiveTarget} />
+          {/* 无人机舱已移到左栏（2026-09-26 船长令：「无人机仓位移动到左半边」） */}
         </div>
           </div>
         </div>

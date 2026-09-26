@@ -5473,7 +5473,9 @@ html[data-locale='en'] body {
 
 }
 
-/* 弹药档位（2026-09-09 弹药 MK2：装配页出战前选档——按弹族选基础弹/MK2；参照无人机舱区布局） */
+/* 弹药档位（2026-09-09 弹药 MK2：装配页出战前选档——按族选基础弹/MK2；参照无人机舱区布局）
+   ⚠ **2026-09-26 船长令**：「右侧弹药档位移动到最上方 CPU 上面」⇒ 它成了**右栏的第一块**，
+   原先那条"与上方槽位区分隔"的顶部虚线（border-top）＋ 顶部内距随之退场，只留与 CPU 条之间的底距。 */
 
 .app-fit-ammotier {
 
@@ -5483,13 +5485,7 @@ html[data-locale='en'] body {
 
   gap: var(--wui-sp-6);
 
-  margin-top: var(--wui-sp-8);
-
-  padding-top: var(--wui-sp-8);
-
   padding-bottom: var(--wui-sp-8);
-
-  border-top: 1px dashed rgb(var(--wui-map-minor) / 0.35);
 
 }
 
