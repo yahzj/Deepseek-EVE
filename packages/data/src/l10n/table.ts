@@ -3286,10 +3286,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.IndustryPage.126": { zh: "前往声望商店兑换", en: "Exchange at the standing shop" },
   /* 2026-09-26 船长令（兑换窗口两处）：① 已兑换（= 已学会）的图纸**隐藏**，全换完给空态；
      ② 兑换前弹**确认**，写明会扣多少声望与扣完还剩多少。 */
-  "ui.IndustryPage.133": { zh: "插件图纸都已兑换完毕。", en: "Every plug blueprint has been exchanged." },
-  "ui.IndustryPage.134": { zh: "兑换「{p1}」", en: "Exchange “{p1}”" },
-  "ui.IndustryPage.135": { zh: "将扣除「深空工业协会」声望 {p1} 点，扣除后剩余 {p2}。", en: "This spends {p1} Deepspace Industry Association standing, leaving {p2}." },
-  "ui.IndustryPage.136": { zh: "兑换即学会；声望一旦扣除不会退还。", en: "Exchanging learns the blueprint at once; spent standing is not refunded." },
+  "ui.IndustryPage.137": { zh: "插件图纸都已兑换完毕。", en: "Every plug blueprint has been exchanged." },
+  "ui.IndustryPage.138": { zh: "兑换「{p1}」", en: "Exchange “{p1}”" },
+  "ui.IndustryPage.139": { zh: "将扣除「深空工业协会」声望 {p1} 点，扣除后剩余 {p2}。", en: "This spends {p1} Deepspace Industry Association standing, leaving {p2}." },
+  "ui.IndustryPage.140": { zh: "兑换即学会；声望一旦扣除不会退还。", en: "Exchanging learns the blueprint at once; spent standing is not refunded." },
   "ui.Expedition.441": { zh: "章鱼人兑换", en: "Octopus Exchange" },
   "ui.Expedition.442": { zh: "前往声望商店兑换", en: "Exchange at the standing shop" },
   "ui.Expedition.443": { zh: "插件装上就拆不下来，也不能上市交易。", en: "A plug cannot be removed once fitted, and cannot be traded on the market." },

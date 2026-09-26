@@ -109,7 +109,7 @@ export function PlugExchangeModal({
         </div>
         <div className="app-modal-body">
           {rows.length === 0 ? (
-            <div className="app-dim app-exp-idle">{tr('ui.IndustryPage.133')}</div>
+            <div className="app-dim app-exp-idle">{tr('ui.IndustryPage.137')}</div>
           ) : (
             <div className="app-belt-grid">
               {rows.map((row) => {
@@ -222,15 +222,15 @@ export function PlugExchangeModal({
       {ask !== null ? (
         <div className="app-mkt-confirm-mask" onClick={() => setAsk(null)}>
           <div className="app-mkt-confirm" onClick={(e) => e.stopPropagation()}>
-            <div className="app-mkt-confirm-title">{tr('ui.IndustryPage.134', { p1: ask.name })}</div>
+            <div className="app-mkt-confirm-title">{tr('ui.IndustryPage.138', { p1: ask.name })}</div>
             <div className="app-mkt-confirm-row">
               <span>{tr('ui.Expedition.441')}</span>
               <b>{tr('ui.IndustryPage.119', { p1: spendable, p2: earned })}</b>
             </div>
             <div className="app-mkt-confirm-note">
-              {tr('ui.IndustryPage.135', { p1: PLUG_BLUEPRINT_COST, p2: spendable - PLUG_BLUEPRINT_COST })}
+              {tr('ui.IndustryPage.139', { p1: PLUG_BLUEPRINT_COST, p2: spendable - PLUG_BLUEPRINT_COST })}
               <br />
-              {tr('ui.IndustryPage.136')}
+              {tr('ui.IndustryPage.140')}
             </div>
             <div className="app-mkt-confirm-btns">
               <button className="app-btn is-small" onClick={() => setAsk(null)}>
