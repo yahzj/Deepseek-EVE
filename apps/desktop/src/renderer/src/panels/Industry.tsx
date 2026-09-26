@@ -121,12 +121,16 @@ export function BlueprintShelfPanel({
   engine,
   onToast,
   onGotoCraft,
+  focusBookId,
 }: {
   engine: GameEngine
   onToast: ToastFn
   /** 「去组装机」：切到组装机标签并定位那张蓝图卡（船长 2026-09-14：「蓝图书架内，玩家可以通过蓝图
    *  直接跳转对应组装机」）——由工业页透传（跳转时会**清掉组装机的三级筛选**，否则目标卡可能被筛掉） */
   onGotoCraft?: (blueprintId: string) => void
+  /** **反向定位**（**2026-09-26 船长令**：「优化工业界面」→ 采纳"优3"）：组装机那边点「去书架」
+   *  跳过来时，这一本要高亮（页面层同一套 `.app-belt-card.is-goto` ＋ 居中滚动）。 */
+  focusBookId?: string | null
 }) {
   const state = engine.state
   const { t } = useL10n()
@@ -368,7 +372,10 @@ export function BlueprintShelfPanel({
           // 2026-09-20 零件体系：舰船书「去造船厂」、其余「去组装机」
           const isShipBook = kindShip
           return (
-            <div key={id} className={`app-belt-card app-shelf-card${learned ? ' is-learned' : ''}`}>
+            <div
+              key={id}
+              className={`app-belt-card app-shelf-card${learned ? ' is-learned' : ''}${focusBookId === id ? ' is-goto' : ''}`}
+            >
               <div className="app-belt-head">
                 <span className="app-belt-name" title={bp?.name ?? id}>
                   {kindShip ? '◈ ' : '▦ '}
@@ -577,6 +584,7 @@ export const BlueprintCard = memo(function BlueprintCard({
   onGotoMarket,
   onGotoWormhole,
   onGotoPlugExchange,
+  onGotoShelf,
   highlighted,
   learnless,
   liveKey,
@@ -622,6 +630,8 @@ export const BlueprintCard = memo(function BlueprintCard({
   /** 「前往章鱼人兑换」跳**章鱼人声望商店**（**2026-09-26 船长令**：插件图纸缺书时显示这个按钮，
    *  替代原先那条「✕ 无市场渠道」死路——插件图纸本来就不在市场卖） */
   onGotoPlugExchange?: () => void
+  /** 「去书架」：切到蓝图书架并高亮这一本（2026-09-26 船长令：优化工业界面 → 优3 反向入口） */
+  onGotoShelf?: (blueprintId: string) => void
   /** 被「蓝图书架 → 去组装机」定位到的那张卡（页面层同一套 `.app-belt-card.is-goto` 高亮） */
   highlighted?: boolean
   /** 2026-09-20 零件体系：隐式蓝图（基础零件）——无需学习即视为已学会，卡面显示「无需图纸」 */
@@ -849,6 +859,22 @@ export const BlueprintCard = memo(function BlueprintCard({
           ) : (
             <span className="app-chip">{kindLabelText(kindLabel)}</span>
           )}
+          {/**
+           * **缺料徽标**（**2026-09-26 船长令**：「优化工业界面」→ 采纳"优2"）。
+           *
+           * 原先"这张造不了"只体现在**底部按钮置灰**上：171 张卡的列表里扫一眼看不出来，
+           * 得逐张把视线挪到卡底。现在卡头补一枚小徽标写清**缺几项料**（悬停给完整的缺料清单），
+           * ⇒ 卡头就能判"能不能开"。
+           *
+           * ⚠ 两条口径：① 只在**没在跑**的时候标（制造中的线本就靠"现有量只影响加开"，标红会误读成故障，
+           * 与 `app-bp-mat` 的 `is-short` 同款口径）；② 徽标**不占新行**（挂在既有 `.app-belt-head-right` 里，
+           * 与其它状态徽标同排），窄窗时随既有 `flex-wrap` 折行，不改版式几何。
+           */}
+          {!running && short.length > 0 ? (
+            <span className="app-chip is-exotic" title={short.join(tr('ui.MatterTechTab.017'))}>
+              {tr('ui.IndustryPage.130', { n: short.length })}
+            </span>
+          ) : null}
         </span>
       </div>
       <div className="app-belt-desc">{description}</div>
@@ -1086,13 +1112,29 @@ export const BlueprintCard = memo(function BlueprintCard({
           /* 书已在书架（尚未学习）：就地学习（2026-09-14 船长裁定「乙」）——与「蓝图书架」的「学习」
              同一个引擎出口与话术；书不消耗、也不占制造位。
              ⚠ 顺序上提到「去哪买/去哪捞」之前：手里有书就该先能学（这正是上一批"拿着书却只看到需要声望"的坑）。 */
-          <button
-            className="app-btn is-small"
-            title={tr("ui.Industry.117", { bookCount: bookCount })}
-            onClick={handleLearnFromShelf}
-          >
-            {tr("ui.Industry.074")}
-          </button>
+          <>
+            <button
+              className="app-btn is-small"
+              title={tr("ui.Industry.117", { bookCount: bookCount })}
+              onClick={handleLearnFromShelf}
+            >
+              {tr("ui.Industry.074")}
+            </button>
+            {/**
+             * **反向入口「去书架」**（**2026-09-26 船长令**：「优化工业界面」→ 采纳"优3"）。
+             * 书架那边一直有「去组装机」，反向没有 ⇒ 玩家在组装机看到"手上有 2 本书"却只能自己切子页。
+             * 落款是**次级按钮**（主行动仍是左边的「学习」），点了切到蓝图书架并把这一本高亮居中。
+             */}
+            {onGotoShelf ? (
+              <button
+                className="app-btn is-small"
+                title={tr('ui.IndustryPage.132')}
+                onClick={() => onGotoShelf(blueprintId)}
+              >
+                {tr('ui.IndustryPage.131')}
+              </button>
+            ) : null}
+          </>
         ) : plugBlueprint ? (
           /**
            * **舰船插件图纸 ⇒ 去声望商店兑换**（**2026-09-26 船长令**：「**没有蓝图的舰船插件组装机应该
@@ -1222,6 +1264,7 @@ export function ManufacturingPanel({
   onGotoMarket,
   onGotoWormhole,
   onGotoPlugExchange,
+  onGotoShelf,
   plugExchangeFocus,
   focusBlueprintId,
 }: {
@@ -1234,6 +1277,8 @@ export function ManufacturingPanel({
   onGotoWormhole?: () => void
   /** 「前往章鱼人兑换」跳**章鱼人声望商店**（2026-09-26 船长令：插件图纸缺书时走这里） */
   onGotoPlugExchange?: () => void
+  /** 「去书架」反向入口（2026-09-26：优3）——由工业页透传，点了切到蓝图书架并高亮那一本 */
+  onGotoShelf?: (blueprintId: string) => void
   /** 兑换窗口开过的次数（自增序号）：一开就切到「舰船插件」档（2026-09-26 船长令：
    *  跳转要"跳转到舰船插件的筛选内"） */
   plugExchangeFocus?: number
@@ -1455,8 +1500,7 @@ export function ManufacturingPanel({
     return out
   }, [engine.ctx, engine.blueprints])
 
-  /** 本门类判定（一级门类 → 该卡是否在档内）——二级/三级现算与最终过滤共用一把尺 */
-  const inTab = (kindLabel: string): boolean =>
+  /** 本门类判定（一级门类 → 该卡是否在档内）——二级/三级现算与最终过滤共用一把尺 */  const inTab = (kindLabel: string): boolean =>
     /**
      * ⚠ **2026-09-26 修**（船长报障：「组装机处也没有舰船插件的门类筛选，反而是多出一个错误的图纸筛选」）：
      * 这里原先是**按卡片上的中文 key 字符串**做三元链
@@ -1543,6 +1587,14 @@ export function ManufacturingPanel({
   // （标签本身是筛选、不是排序键，故各处标签都按同一口径置顶）；组内保持类型→价格顺序。
   const sorted = pinMarked(state, 'blueprints', sortManuRows(visible), (it) => it.id)
   /**
+   * **有没有任何一维筛选/搜索在生效**（2026-09-26：卡头那两条读数合并的判据）——
+   * 四个维度：搜索词 · 学会 · 子类 · 图纸类型，外加新加的「仅看可造」。
+   * ⚠ 门类（`tab`）**不算**：它是"看哪一类"的分区，不是"收窄"（默认就在「全部」，
+   * 选了门类也只是换一屏内容，卡头照旧该报"这类里有什么"）。
+   */
+  const filterActive =
+    kq.length > 0 || learn !== SUB_ALL || sub !== SUB_ALL || useKind !== SUB_ALL || craftableOnly
+  /**
    * **每张卡的实时指纹**（2026-09-22 第 3 步）：心跳只让指纹变了的卡重渲染。
    * 制造线先按蓝图归并一遍（O(线)），再逐卡拼材料/需求/持有量（O(卡×材料)≈1000 次仓库查询，实测很便宜）。
    */
@@ -1581,20 +1633,25 @@ export function ManufacturingPanel({
             />
           </span>
           <span className="app-dim">
-            {tr('ui.Industry.156', {
-              p1: runViews.length,
-              p2: equipN,
-              p3: partN,
-              p4: supplyN,
-              p5: learnedN,
-            })}
-            {/* 任一一维筛选/搜索生效时补读数，避免玩家对着收窄后的网格数不清
-                ⚠ 2026-09-26：「仅看可造」也要算进来（它同样是"收窄"的一维） */}
-            {kq.length > 0
-              ? tr('ui.IndustryPage.108', { n: sorted.length })
-              : learn !== SUB_ALL || sub !== SUB_ALL || useKind !== SUB_ALL || craftableOnly
-                ? tr('ui.Industry.127', { n: sorted.length })
-                : ''}
+            {/**
+             * **两条读数合并成一条**（**2026-09-26 船长令**：「优化工业界面」→ 采纳"删2／优1"）。
+             *
+             * 原先这里**同时**显示两组数：
+             * - `ui.Industry.156` 的分项汇总（制造线 / 装备 / 零件 / 消耗品 / 已学会）——**全目录**口径；
+             * - 紧接着 `ui.Industry.127` 的「当前 N 张」——**筛完**口径。
+             * 未筛选时两者里的"总数"是同一个数，连读两遍才知道哪个是筛后的 ⇒ 现在**二选一**：
+             * - **筛选/搜索生效** ⇒ 只报「当前 N 张」（玩家此刻要知道的就是"筛剩多少"）；
+             * - **没筛选** ⇒ 只报分项汇总（此刻要知道的是"池子里都有什么"）。
+             */}
+            {filterActive
+              ? tr('ui.Industry.127', { n: sorted.length })
+              : tr('ui.Industry.156', {
+                  p1: runViews.length,
+                  p2: equipN,
+                  p3: partN,
+                  p4: supplyN,
+                  p5: learnedN,
+                })}
           </span>
           <AiSlotText state={state} ctx={engine.ctx} />
         </>
@@ -1755,6 +1812,7 @@ export function ManufacturingPanel({
               onGotoMarket={onGotoMarket}
               onGotoWormhole={onGotoWormhole}
               onGotoPlugExchange={onGotoPlugExchange}
+              onGotoShelf={onGotoShelf}
               highlighted={focusBlueprintId === it.id}
               learnless={it.learnless}
               /** 实时指纹：只有它变了的卡才会真正重渲染（详见 `cardLiveKeyOf` 的说明） */

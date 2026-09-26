@@ -3250,7 +3250,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 舰船插件与章鱼人兑换（2026-09-26 船长令）：「玩家获取第一个黑匣后，才解锁组装机的插件选项，并且弹出相关通讯」 */
   "ui.IndustryPage.116": { zh: "取得第一个墨潮旗舰黑匣后解锁", en: "Unlocks after you obtain your first Ink Tide flagship black box" },
   "ui.IndustryPage.117": { zh: "插件图纸找章鱼人用声望兑换", en: "Trade standing with the octopus folk for plug blueprints" },
-  "ui.IndustryPage.118": { zh: "前往章鱼人兑换", en: "Go to the octopus exchange" },
   "ui.IndustryPage.119": { zh: "可支配 {p1} · 累计获得 {p2}", en: "Spendable {p1} · Total earned {p2}" },
   "ui.IndustryPage.120": { zh: "兑换图纸", en: "Exchange blueprint" },
   "ui.IndustryPage.121": { zh: "声望不足：还差 {p1}", en: "Not enough standing: {p1} short" },
@@ -3261,6 +3260,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.IndustryPage.127": { zh: "可造：", en: "Buildable:" },
   "ui.IndustryPage.128": { zh: "只列出材料齐备、现在就能开工的图纸", en: "Show only blueprints whose materials are ready to start now" },
   "ui.IndustryPage.129": { zh: "仅看可造", en: "Buildable only" },
+  "ui.IndustryPage.130": { zh: "缺料 {n} 项", en: "{n} materials short" },
+  "ui.IndustryPage.131": { zh: "去书架", en: "Open shelf" },
+  "ui.IndustryPage.132": { zh: "切到蓝图书架并定位这一本", en: "Switch to the blueprint shelf and locate this book" },
   "ui.IndustryPage.126": { zh: "前往声望商店兑换", en: "Exchange at the standing shop" },
   "ui.Expedition.441": { zh: "章鱼人兑换", en: "Octopus Exchange" },
   "ui.Expedition.442": { zh: "前往声望商店兑换", en: "Exchange at the standing shop" },

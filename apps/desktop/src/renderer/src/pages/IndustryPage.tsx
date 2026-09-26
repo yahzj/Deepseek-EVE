@@ -561,17 +561,25 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
    * 面板在自己的 effect 里复位 tab/sub/useKind —— 否则目标卡可能正被筛掉，跳过去是一片空白）。
    */
   const [craftFocus, setCraftFocus] = useState<string | null>(null)
+  /**
+   * **组装机 → 蓝图书架的反向定位目标**（**2026-09-26 船长令**：优化工业界面 → 优3）。
+   * 与 `craftFocus` 完全对称：那一头是"书架点蓝图书 → 跳组装机并高亮那张卡"，
+   * 这一头是"组装机点「去书架」→ 跳蓝图书架并高亮那一本"。两者共用下面同一个滚动/自清 effect
+   * （它按 `.app-belt-card.is-goto` 找当前显示栏里的高亮卡）。
+   */
+  const [bookFocus, setBookFocus] = useState<string | null>(null)
   useEffect(() => {
-    if (!focusOreId && !craftFocus) return
+    if (!focusOreId && !craftFocus && !bookFocus) return
     // ⚠ 只找**当前显示**那一栏里的高亮卡：第 2 步保活之后，`page-stack` 下同时挂着多个 `.ind-pane`，
     //   隐藏栏里若还留着上一次的高亮（3.5 秒自清之前），全页 querySelector 可能先命中它 ⇒ 滚了个看不见的卡。
     document.querySelector('.ind-pane:not(.is-off) .app-belt-card.is-goto')?.scrollIntoView({ block: 'center' })
     const t = window.setTimeout(() => {
       setFocusOreId(null)
       setCraftFocus(null)
+      setBookFocus(null) // 反向定位与正向同一套自清（3.5 秒后摘掉高亮）
     }, 3500)
     return () => window.clearTimeout(t)
-  }, [focusOreId, craftFocus])
+  }, [focusOreId, craftFocus, bookFocus])
 
   /** 组装机/造船厂需求材料点击（**2026-09-22 船长令**：「**希望提示玩家去组装机生产零件，不要提示去市场**」
    *  ＋「**高级零件依旧去相应的组装机**」）——三支，优先级从上到下：
@@ -772,6 +780,14 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
             onGotoMarket={onGotoMarket}
             onGotoWormhole={onGotoWormhole}
             onGotoPlugExchange={onGotoPlugExchange}
+            /**
+             * **组装机 → 蓝图书架的反向入口**（**2026-09-26 船长令**：优化工业界面 → 优3）：
+             * 与书架→组装机**同一套手法**（切子页 ＋ 定位高亮），只是方向反过来。
+             */
+            onGotoShelf={(bpId) => {
+              setSec('shelf')
+              setBookFocus(bpId)
+            }}
             plugExchangeFocus={plugExchangeFocus}
             focusBlueprintId={craftFocus}
           />
@@ -794,6 +810,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
           <BlueprintShelfPanel
             engine={engine}
             onToast={onToast}
+            focusBookId={bookFocus}
             onGotoCraft={(bpId) => {
               // 2026-09-20 零件体系：舰船书跳造船厂、其余书跳组装机；切栏 + 定位高亮那张卡
               setSec(engine.ctx.shipBlueprints.has(bpId) ? 'shipyard' : 'craft')
