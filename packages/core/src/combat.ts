@@ -332,8 +332,9 @@ export interface UnitSpec {
   foeCaptureWeb?: { slowMul: number; noThruster: true; noEvasion: true; rangeDownM: number }
   /**
    * **我方「墨潮捕获网」**（**船长 2026-09-26**，H 族势力装备之一；模块字段见 `ModuleDef.captureWebCycleMs`）：
-   * 带本字段的我方舰 = 一台**周期装置**——开战即钉一艘**未被钉住**的敌舰（**独立瞄准 · 不看命中**），
-   * 目标被击沉 ⇒ 进冷却、冷却结束选新目标；**携带者被击沉** ⇒ 该网解除。
+   * 带本字段的我方舰 = 一台**周期装置**——钉一艘**未被钉住**的敌舰（**独立瞄准 · 不看命中**）；
+   * **一次使用进入冷却**的两种情形：目标被击沉、**与目标距离超过 4000 米断开**（船长同日追答
+   * 「断开也当使用一次」）——冷却结束再选新目标；**携带者被击沉** ⇒ 该网解除。
    * 效果三层：机动 ×0.5（**减速 50%**，船长 2026-09-26 改判；原 ×0.1）· 推进器全关 · 闪避归零（⚠ **不含射程**，船长同日明令移除）。
    * ⚠ **距离上限 4000 米**（船长同日令）：超过即断开，见 `MY_WEB_BREAK_DIST_M`。
    * 周期账本 = `BattleState.myWebs`，被钉状态 = `BattleState.foeWebDebuffs`（见 `advanceMyCaptureWebs`）。
@@ -1082,7 +1083,8 @@ function expireFoeWebs(state: GameState, b: import('./state').BattleState, foes:
  * **我方「墨潮捕获网」的断开距离**（**船长 2026-09-26**：「**玩家方的捕获网，有距离限制，
  * 距离超过4000米就会断开，且减速效果降低为50%。**」）。
  * 口径：网是**实体缆索**——每拍结算时若交战距离 `b.distanceM` 超过本值 ⇒ 立刻断开（清目标 + 清减益），
- * 且**离得远时不再张网**（避免"刚张开就断"的日志刷屏）；距离回到 4000 米内即可重新张网。
+ * **断开算一次使用**（船长同日追答：「**断开也当使用一次**」）⇒ 立刻进满一轮周期冷却；
+ * 冷却到点、且距离回到 4000 米内才重新张网（离得远时保持待发，避免"刚张开就断"的日志刷屏）。
  */
 export const MY_WEB_BREAK_DIST_M = 4_000
 
@@ -1162,18 +1164,19 @@ export function advanceMyCaptureWebs(
     }
     /**
      * ②b **距离超过上限 ⇒ 网断开**（**船长 2026-09-26**：「玩家方的捕获网，有距离限制，
-     * 距离超过4000米就会断开」）。断开**不算"用掉"** ⇒ 不空转冷却（`cooldownUntilMs` 保持在过去），
-     * 但下面的 ③ 会在距离仍然过远时拒绝重新张网（否则会"张开→立刻断"刷日志）。
+     * 距离超过4000米就会断开」＋追答「**断开也当使用一次**」）。断开 = **用掉一次** ⇒ 进满一轮周期冷却
+     * （与"目标被击沉"同等对待）；冷却到点后若距离仍在 4000 米外，下面的 ③ 会拒绝张网（保持待发）。
      */
     if (st.targetTag !== undefined && b.distanceM > MY_WEB_BREAK_DIST_M) {
       const gone = b.units[st.targetTag]?.name ?? st.targetTag
       if (b.foeWebDebuffs) delete b.foeWebDebuffs[st.targetTag]
       delete st.targetTag
-      st.cooldownUntilMs = now
+      st.cooldownUntilMs = now + cycleMs
       addLog(
         state,
         'combat',
-        `墨潮捕获网断开：${gone} 与 ${me.name} 的距离超过 ${MY_WEB_BREAK_DIST_M} 米。`,
+        `墨潮捕获网断开：${gone} 与 ${me.name} 的距离超过 ${MY_WEB_BREAK_DIST_M} 米，` +
+          `${me.name} 的网开始冷却。`,
       )
     }
     // ③ 待发且冷却已过 ⇒ 张网（不看命中、独立瞄准、跳过已被钉住的；**距离过远不张**）
