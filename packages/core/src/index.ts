@@ -53,6 +53,8 @@ export type {
   FoeTargetingMode,
   FoeShipDef,
   FoeShipSlot,
+  // 敌族字母（`'A'|'B'|…|'H'`）——2026-09-26 势力图鉴批：data 侧登记表与界面都要用它
+  FoeFamily,
   // 敌方挂载件（2026-09-16 船长：把冲锋/受击增程做成"给敌人装配件"）——目录表在 core/foeMounts.ts
   FoeMountDef,
   FoeMountId,

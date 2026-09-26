@@ -13,9 +13,10 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { ITEM_KIND_ORDER, itemKindText, rackOf, shipCategoryKeyOf, visibleItemDefs } from '@whale/core'
-import type { DroneClass, ItemKind, ShipRole } from '@whale/core'
+import type { DroneClass, FoeShipDef, ItemKind, ShipRole } from '@whale/core'
 // 稀有度小标签（2026-09-20 船长）：档位走单点 `itemRarityTierOf`（含 AI 核心与舰船的键映射）
-import { itemRarityTierOf } from '@whale/data'
+import { buildFactionCards, FACTION_CODEX_ORDER, FOE_SHIPS, itemRarityTierOf } from '@whale/data'
+import type { FactionCard } from '@whale/data'
 // 图鉴 →「↖ 查看市场」的条目→商品映射（2026-09-14 船长）：单点在 `ui/marketJump.ts`
 // （独立小模块的原因：体检要跨层调它，而本文件 import 了 `@whale/ui`、node 侧加载不了 CSS）
 import { handMarketKeyOf } from '../ui/marketJump'
@@ -45,6 +46,8 @@ import type { SubOption } from '../ui/itemSubs'
 import { RowGlyph } from '../ui/itemView'
 import { combatBadges, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import { plainSkillDesc } from '../ui/skillText'
+// 势力图鉴：逐舰级简报复用**悬赏卡悬停那一份**（同源出口，不另写文案）——2026-09-26
+import { foeBriefLinesOfShip } from '../ui/foeBrief'
 import { tr } from '../i18n/locale'
 import { kindTextOfItem, shipTierText, skillGroupText, slotText } from '../ui/labelsText'
 import { kindText, shipRoleText } from '../ui/labelsText'
@@ -61,12 +64,46 @@ const kindName = (k: string): string => kindText(k as Parameters<typeof kindText
 const slotName = (k: string): string => slotText(k)
 const roleName = (k: string): string => shipRoleText(k as Parameters<typeof shipRoleText>[0])
 
-type Tab = 'guide' | 'rules' | 'items' | 'modules' | 'ships' | 'blueprints' | 'skills'
+type Tab = 'guide' | 'rules' | 'items' | 'modules' | 'ships' | 'blueprints' | 'skills' | 'factions'
 /** 有图鉴内容的页（＝ `codexCells` 的键；筛选两级的现算都在这几页上做） */
-type CodexTab = 'items' | 'modules' | 'ships' | 'blueprints' | 'skills'
+type CodexTab = 'items' | 'modules' | 'ships' | 'blueprints' | 'skills' | 'factions'
 type ViewMode = 'grid' | 'list'
 /** 详情行数据 */
 type RawData = Record<string, unknown>
+
+/** 势力图鉴：族 → 序号（0..5）——五段文案的基准 id = 326 + 11×序号（见 `l10n/table.ts` 的块头注释） */
+const FACTION_INDEX: Record<string, number> = Object.fromEntries(FACTION_CODEX_ORDER.map((f, i) => [f, i]))
+
+/** 详情窗里插一个**小节块**（小标题一行 ＋ 逐条两列行；空块不插 —— 与详情窗既有 `rows` 同一套渲染） */
+function detailBlock(
+  rows: Array<[string, React.ReactNode]>,
+  title: string,
+  body: Array<[string, React.ReactNode]>,
+): void {
+  if (body.length === 0) return
+  rows.push([title, ''])
+  for (const [k, v] of body) rows.push([`　${k}`, v])
+}
+
+/**
+ * **图鉴用的敌舰目录**（2026-09-26 势力图鉴批）：
+ * - **已遭遇的舰级**：从**存档卡片**（`engine.ctx.anomalies` 等，已过 l10n 覆盖层）取 ⇒ 舰名与挂载件名
+ *   都是**当前语言**，且与悬赏卡悬停**同一份数据**；
+ * - **未遭遇的舰级**：从 `FOE_SHIPS` 取 —— 只用来生成「？？？」占位行（不读它的中文名）。
+ *
+ * 为什么两处合起来：卡片只覆盖"本档出现过的"舰级，而图鉴要**列出该族全部**舰级（未遇的占位）。
+ */
+function collectFoeShips(engine: GameEngine): Map<string, FoeShipDef> {
+  const out = new Map<string, FoeShipDef>()
+  const put = (s: FoeShipDef | null | undefined): void => {
+    if (s && !out.has(s.id)) out.set(s.id, s)
+  }
+  // 存档卡片（已过 l10n 覆盖层 ⇒ 舰名与挂载件名都是当前语言；与悬赏卡悬停同一份数据）
+  for (const card of engine.ctx.anomalies.values()) for (const slot of card.ships ?? []) put(slot?.ship)
+  // 未遇的舰级：只借 FOE_SHIPS 补 id 与族（**不读它的中文名**，名字由界面显示为占位）
+  for (const s of FOE_SHIPS) put(s)
+  return out
+}
 
 /** 左侧导航（顺序即展示顺序） */
 const NAV: Array<{ key: Tab; label: string }> = [
@@ -76,6 +113,8 @@ const NAV: Array<{ key: Tab; label: string }> = [
   { key: 'modules', label: tr("ui.Handbook.254") },
   { key: 'ships', label: tr("ui.Handbook.189") },
   { key: 'blueprints', label: tr("ui.Handbook.255") },
+  // 2026-09-26 船长：「敌族图鉴单独列出吧，放在蓝图图鉴下方，叫『势力图鉴』」
+  { key: 'factions', label: tr("ui.codex.001") },
   { key: 'skills', label: tr("ui.Handbook.124") },
 ]
 /** 各页搜索框占位词（按当前页给出，玩家一眼知道搜的是哪一页） */
@@ -86,6 +125,7 @@ const SEARCH_PLACEHOLDER: Record<Tab, string> = {
   modules: tr("ui.Handbook.128"),
   ships: tr("ui.Handbook.129"),
   blueprints: tr("ui.Handbook.130"),
+  factions: tr("ui.codex.002"),
   skills: tr("ui.Handbook.131"),
 }
 /** 分组计数量词（与仓库「N 种」同款） */
@@ -96,6 +136,7 @@ const COUNT_UNIT: Record<Tab, string> = {
   modules: tr("ui.MarketPage.117"),
   ships: tr("ui.MarketPage.116"),
   blueprints: tr("ui.Handbook.017"),
+  factions: tr("ui.Handbook.190"), // 「条」（与说明类同单位：每张卡 = 一个势力）
   skills: tr("ui.Handbook.256"),
 }
 const VIEW_KEY = 'whale-idle:handbook-view'
@@ -120,6 +161,7 @@ const FILTER_LABEL: Record<Tab, string> = {
   modules: tr("ui.Handbook.192"),
   ships: tr("ui.Handbook.193"),
   blueprints: tr("ui.Handbook.257"),
+  factions: '',
   skills: tr("ui.Handbook.132"),
 }
 
@@ -548,80 +590,6 @@ const RULE_SECTS: HandGroup[] = [
       },
     ],
   },
-  /**
-   * 2026-09-26 船长：「**之前手册的势力图鉴可以继续完成**」——接手 2026-09-25 挂起备忘
-   * （`docs/design/hostile-factions-handbook-20260925.md`；四件事已定：素材＝族设文档＋游戏内零散文案 ·
-   * 落点＝本「航行须知」新开一节（与「势力与舰船」并列）· 写法＝一句话基调＋3~4 行要点）。
-   *
-   * 收录 **A 海盗 · C 异形 · D 守墓 · E 泰坦 · G 亡军 · H 墨潮帮**；**B 武装拾荒者与 F 制式巡逻不收**（船长令）。
-   * 玩家侧一律正字「**势力**」，不用「族」；D/E 的留白与 G 的战争起因照备忘不写。
-   * ⚠ H 的「出没之处」按备忘的**甲案**（「行踪不定」）——不把入侵玩法写进手册，等船长一句话可换乙案。
-   */
-  {
-    title: tr("ui.Handbook.325"),
-    entries: [
-      {
-        title: tr("ui.Handbook.326"),
-        paras: [
-          [tr("ui.Handbook.327"), tr("ui.Handbook.328")],
-          [tr("ui.Handbook.329"), tr("ui.Handbook.330")],
-          [tr("ui.Handbook.331"), tr("ui.Handbook.332")],
-          [tr("ui.Handbook.333"), tr("ui.Handbook.334")],
-          [tr("ui.Handbook.335"), tr("ui.Handbook.336")],
-        ],
-      },
-      {
-        title: tr("ui.Handbook.337"),
-        paras: [
-          [tr("ui.Handbook.338"), tr("ui.Handbook.339")],
-          [tr("ui.Handbook.340"), tr("ui.Handbook.341")],
-          [tr("ui.Handbook.342"), tr("ui.Handbook.343")],
-          [tr("ui.Handbook.344"), tr("ui.Handbook.345")],
-          [tr("ui.Handbook.346"), tr("ui.Handbook.347")],
-        ],
-      },
-      {
-        title: tr("ui.Handbook.348"),
-        paras: [
-          [tr("ui.Handbook.349"), tr("ui.Handbook.350")],
-          [tr("ui.Handbook.351"), tr("ui.Handbook.352")],
-          [tr("ui.Handbook.353"), tr("ui.Handbook.354")],
-          [tr("ui.Handbook.355"), tr("ui.Handbook.356")],
-          [tr("ui.Handbook.357"), tr("ui.Handbook.358")],
-        ],
-      },
-      {
-        title: tr("ui.Handbook.359"),
-        paras: [
-          [tr("ui.Handbook.360"), tr("ui.Handbook.361")],
-          [tr("ui.Handbook.362"), tr("ui.Handbook.363")],
-          [tr("ui.Handbook.364"), tr("ui.Handbook.365")],
-          [tr("ui.Handbook.366"), tr("ui.Handbook.367")],
-          [tr("ui.Handbook.368"), tr("ui.Handbook.369")],
-        ],
-      },
-      {
-        title: tr("ui.Handbook.370"),
-        paras: [
-          [tr("ui.Handbook.371"), tr("ui.Handbook.372")],
-          [tr("ui.Handbook.373"), tr("ui.Handbook.374")],
-          [tr("ui.Handbook.375"), tr("ui.Handbook.376")],
-          [tr("ui.Handbook.377"), tr("ui.Handbook.378")],
-          [tr("ui.Handbook.379"), tr("ui.Handbook.380")],
-        ],
-      },
-      {
-        title: tr("ui.Handbook.381"),
-        paras: [
-          [tr("ui.Handbook.382"), tr("ui.Handbook.383")],
-          [tr("ui.Handbook.384"), tr("ui.Handbook.385")],
-          [tr("ui.Handbook.386"), tr("ui.Handbook.387")],
-          [tr("ui.Handbook.388"), tr("ui.Handbook.389")],
-          [tr("ui.Handbook.390"), tr("ui.Handbook.391")],
-        ],
-      },
-    ],
-  },
 ]
 
 /* ═══════════ 网格渲染 ═══════════ */
@@ -641,6 +609,8 @@ interface GridCell {
    * `itemRarityTierOf()`（含 AI 核心与舰船的键映射）。
    */
   rarity?: number
+  /** **势力图鉴专用**：该卡的族字母（`faction` 页的卡片用它分组/排序，别的页恒缺省） */
+  faction?: string
 }
 
 /** 一个分组（仓库同款小节）：分类名 + 数量 + 卡片 */
@@ -719,6 +689,68 @@ function marketKeyOf(engine: GameEngine, cell: GridCell): string | null {
 function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
   const r = cell.raw
   const rows: Array<[string, ReactNode]> = []
+
+  /* ── 势力图鉴（2026-09-26）：① 势力简介 ② 敌人（未遇占位）③ 专属装备与舰船 ── */
+  if (cell.tab === 'factions') {
+    const card = cell.raw as unknown as FactionCard
+    const ships = collectFoeShips(engine)
+    const isLocked = !card.unlocked
+    const base = 326 + 11 * (FACTION_INDEX[card.family] ?? 0) // 该族五段的基准 id
+    const itemName = (id: string): string =>
+      engine.ctx.modules.get(id)?.name ?? engine.ctx.ships.get(id)?.name ?? engine.ctx.items.get(id)?.name ?? id
+    const bpNameOf = (id: string): string => {
+      for (const bp of engine.blueprints) if (bp.id === id) return bp.moduleId ? itemName(bp.moduleId) : String(bp.itemId ?? bp.id)
+      for (const bp of engine.shipBlueprints) if (bp.id === id) return engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId
+      return id
+    }
+    // ① 势力简介：小标题 = 五段各自的标签（基调/外观/战斗风格/招牌手段/出没之处）
+    const intro: Array<[string, React.ReactNode]> = []
+    for (let k = 0; k < 5; k += 1) {
+      intro.push([tr('ui.Handbook.' + (base + 1 + 2 * k)), tr('ui.Handbook.' + (base + 2 + 2 * k))])
+    }
+    detailBlock(rows, tr('ui.codex.007'), intro)
+    // ② 敌人（逐舰级；未遭遇 ⇒ 「？？？」占位）
+    if (isLocked) {
+      rows.push([tr('ui.codex.008'), tr('ui.codex.006')])
+    } else {
+      const enemy: Array<[string, React.ReactNode]> = []
+      for (const e of card.enemies) {
+        if (!e.seen) {
+          enemy.push([tr('ui.codex.005'), tr('ui.codex.010')])
+          continue
+        }
+        const ship = ships.get(e.id)
+        const line = foeBriefLinesOfShip(ship)
+        if (!ship || !line) continue
+        const body = [line.hull, ...line.bits, ...(line.mounts !== undefined ? [line.mounts] : [])]
+          .filter((x) => x !== '')
+          .join(' · ')
+        enemy.push([ship.name, body])
+      }
+      detailBlock(rows, tr('ui.codex.008'), enemy)
+    }
+    // ③ 专属装备与舰船（未解锁 ⇒ 不给明细，只给一句"遇过就开"）
+    if (isLocked) {
+      rows.push([tr('ui.codex.009'), tr('ui.codex.006')])
+    } else {
+      const gear: Array<[string, React.ReactNode]> = card.modules.map((id) => {
+        const mod = engine.ctx.modules.get(id)
+        const item = engine.ctx.items.get(id)
+        return [itemName(id), mod ? moduleShortEffect(mod) : item ? '' : ''] as [string, React.ReactNode]
+      })
+      detailBlock(rows, `${tr('ui.codex.011')} · ${card.modules.length} ${tr('ui.codex.014')}`, gear)
+      const hull: Array<[string, React.ReactNode]> = card.ships.map((id) => {
+        const ship = engine.ctx.ships.get(id)
+        return [ship?.name ?? id, ship ? shipTierText(ship.tier) : ''] as [string, React.ReactNode]
+      })
+      detailBlock(rows, `${tr('ui.codex.012')} · ${card.ships.length} ${tr('ui.codex.015')}`,
+        hull.length > 0 ? hull : [[tr('ui.codex.016'), '']])
+      if (card.blueprints.length > 0) {
+        detailBlock(rows, `${tr('ui.codex.013')} · ${card.blueprints.length} ${tr('ui.codex.014')}`,
+          card.blueprints.map((id) => [bpNameOf(id), ''] as [string, React.ReactNode]))
+      }
+    }
+  }
 
   if (cell.tab === 'items') {
     const kind = String(r.kind ?? '')
@@ -1120,14 +1152,47 @@ export function Handbook({
     return engine.groups.map((g) => ({ key: g, label: skillGroupText(g) })) // skills
   }
 
+  /**
+   * **势力图鉴的卡片**（2026-09-26 船长：「敌族图鉴单独列出吧，放在蓝图图鉴下方，叫『势力图鉴』」）：
+   * 值由 data 侧 `buildFactionCards` 装配（单一来源：收录范围 ＋ 各族专属件/舰/图纸 ＋ 遭遇记录），
+   * 这里只把 `FoeShipDef` 目录喂进去、并把搜索文本拼出来。
+   */
+  const isFactionPage = tab === 'factions'
+  const factionCells: GridCell[] = isFactionPage
+    ? (() => {
+        const ships = collectFoeShips(engine)
+        return buildFactionCards(FOE_SHIPS, engine.state.foeShipSeen).map((card) => {
+          const head = card.unlocked ? tr(card.nameId) : tr('ui.codex.005')
+          const enemyText = card.enemies
+            .map((e) => (e.seen ? ships.get(e.id)?.name ?? '' : ''))
+            .filter((s) => s !== '')
+            .join(' ')
+          const itemText = [...card.modules, ...card.ships]
+            .map((id) => engine.ctx.modules.get(id)?.name ?? engine.ctx.ships.get(id)?.name ?? engine.ctx.items.get(id)?.name ?? '')
+            .join(' ')
+          return {
+            key: card.family,
+            tab,
+            glyph: card.glyph,
+            name: head,
+            sub: tr('ui.codex.003', { p1: card.seenCount, p2: card.totalCount }),
+            raw: card as unknown as RawData,
+            faction: card.family,
+            hits: `${head} ${enemyText} ${itemText}`,
+          }
+        })
+      })()
+    : []
+
   const codexCells: Record<CodexTab, GridCell[]> = {
     items: itemCells,
     modules: moduleCells,
     ships: shipCells,
     blueprints: bpCells,
     skills: skillCells,
+    factions: factionCells,
   }
-  const isCodex = tab === 'items' || tab === 'modules' || tab === 'ships' || tab === 'blueprints' || tab === 'skills'
+  const isCodex = tab === 'items' || tab === 'modules' || tab === 'ships' || tab === 'blueprints' || tab === 'skills' || tab === 'factions'
 
   /* ── 图鉴筛选（2026-09-13 船长：「对手册中的各个图鉴添加筛选，如果有子分类的，主筛选选择之后出现子分类筛选」；
         集中提问后定：**只做一级的页签 = 物品 / 技能**（无天然第二层），二级只在装备 / 舰船 / 蓝图三页；
@@ -1244,13 +1309,29 @@ export function Handbook({
   const subOpts = isCodex ? subOptions(tab, mainKey) : []
   /** 搜索或筛选任一生效（命中计数与空态文案据此切换措辞） */
   const narrowed = q !== '' || mainKey !== SUB_ALL || subKey !== SUB_ALL
+  /** 势力页的命中判定：与别页同款，但额外搜**已遭遇的舰级名与专属件名**（玩家按"那艘船叫什么"找族） */
+  function factionHit(c: GridCell): boolean {
+    if (!hitCell(c)) return false
+    if (q === '') return true
+    const extra = String((c as { hits?: string }).hits ?? '').toLowerCase()
+    return extra.includes(q) || c.name.toLowerCase().includes(q)
+  }
+  /** 势力页分组：**不做两级筛选**（六族平铺，顺序 = `FACTION_CODEX_ORDER`） */
+  const factionEntries: CellGroup[] = isFactionPage
+    ? (factionCells.some((c) => factionHit(c))
+        ? [{ key: 'factions', label: tr('ui.codex.001'), id: 'ui.codex.001', cells: factionCells.filter(factionHit) }]
+        : [])
+    : []
+
   const groups: CellGroup[] = isCodex
     ? showCells(
         filtered(codexCells[tab]).filter((c) => mainPasses(c, tab, mainKey) && subPassesCell(c, tab, subKey)),
         tab,
       )
     : []
-  const codexHit = isCodex ? groups.reduce((n, g) => n + g.cells.length, 0) : 0
+  const codexHit = isFactionPage
+    ? factionEntries.reduce((n, g) => n + g.cells.length, 0)
+    : isCodex ? groups.reduce((n, g) => n + g.cells.length, 0) : 0
 
   /** 左侧导航计数：图鉴类 = 条目数（搜索时显示命中数；**不含筛选**——筛选是当前页的临时收窄），说明类 = 词条数 */
   function navCount(t: Tab): number {
@@ -1641,7 +1722,31 @@ export function Handbook({
                       : tr("ui.Handbook.185")}
                   </div>
                 ) : (
-                  groups.map((g) => (
+                  isFactionPage ? (
+                    factionEntries.map((g) => (
+                      <GroupSection key={g.key} label={subText(g)} unit={COUNT_UNIT[tab]} count={g.cells.length}>
+                        {view === 'grid' ? (
+                          <IconGrid cells={g.cells} onPick={setDetail} />
+                        ) : (
+                          <ul className="app-inv-list">
+                            {g.cells.map((c) => (
+                              <li key={c.key}>
+                                <button className="app-inv-row" onClick={() => setDetail(c)}>
+                                  <span className="app-hand-cell-icon">
+                                    <Glyph name={c.glyph} size={26} color={toneOf(c.glyph)} />
+                                  </span>
+                                  <span className="app-inv-main">
+                                    <span className="app-inv-name">{c.name}</span>
+                                    <span className="app-inv-sub">{c.sub}</span>
+                                  </span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </GroupSection>
+                    ))
+                  ) : groups.map((g) => (
                     <GroupSection key={g.key} label={subText(g)} unit={COUNT_UNIT[tab]} count={g.cells.length}>
                       {view === 'grid' ? (
                         <IconGrid cells={g.cells} onPick={setDetail} />
