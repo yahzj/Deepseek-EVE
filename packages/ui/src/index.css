@@ -1014,6 +1014,7 @@
   --wui-tone-wreck: 184 163 122;
   --wui-tone-kit: 143 217 107;
   --wui-tone-fragment: 180 140 255;
+  --wui-tone-blackbox: 226 130 196;
   --wui-tone-part: 159 208 232;
   --wui-tone-part-basic: 159 208 232;
   --wui-tone-part-advanced: 255 212 121;
@@ -1153,6 +1154,7 @@
   --wui-tone-wreck: 100 84 53;
   --wui-tone-kit: 50 99 25;
   --wui-tone-fragment: 40 0 115;
+  --wui-tone-blackbox: 168 62 140;
   --wui-tone-part: 23 72 96;
   --wui-tone-part-basic: 23 72 96;
   --wui-tone-part-advanced: 114 77 0;
@@ -1656,6 +1658,7 @@
   --wui-tone-wreck: 252 251 248;
   --wui-tone-kit: 248 254 246;
   --wui-tone-fragment: 248 245 255;
+  --wui-tone-blackbox: 255 205 245;
   --wui-tone-part: 246 251 254;
   --wui-tone-part-basic: 246 251 254;
   --wui-tone-part-advanced: 255 252 245;
@@ -2148,6 +2151,7 @@
   --wui-tone-wreck: 186 173 126;
   --wui-tone-kit: 136 215 116;
   --wui-tone-fragment: 200 172 231;
+  --wui-tone-blackbox: 236 146 198;
   --wui-tone-part: 169 203 230;
   --wui-tone-part-basic: 169 203 230;
   --wui-tone-part-advanced: 227 213 157;
@@ -2640,6 +2644,7 @@
   --wui-tone-wreck: 185 167 132;
   --wui-tone-kit: 140 210 107;
   --wui-tone-fragment: 156 107 247;
+  --wui-tone-blackbox: 214 126 190;
   --wui-tone-part: 123 186 217;
   --wui-tone-part-basic: 123 186 217;
   --wui-tone-part-advanced: 246 193 81;
@@ -3132,6 +3137,7 @@
   --wui-tone-wreck: 186 173 126;
   --wui-tone-kit: 136 215 116;
   --wui-tone-fragment: 200 172 231;
+  --wui-tone-blackbox: 236 146 198;
   --wui-tone-part: 169 203 230;
   --wui-tone-part-basic: 169 203 230;
   --wui-tone-part-advanced: 227 213 157;
@@ -3624,6 +3630,7 @@
   --wui-tone-wreck: 204 179 102;
   --wui-tone-kit: 217 189 107;
   --wui-tone-fragment: 143 188 252;
+  --wui-tone-blackbox: 222 150 214;
   --wui-tone-part: 159 189 232;
   --wui-tone-part-basic: 159 189 232;
   --wui-tone-part-advanced: 252 220 124;

@@ -32,7 +32,7 @@ import { MarkStar, pinMarked } from '../ui/marks'
 import { SUB_ALL, subPasses, SUBS_OF_KIND, RACK_KIND_KEYS, RACK_LABELS, itemBucketPasses, presentSubs, subText } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 import { tr, cmdText } from '../i18n/locale'
-import { kindTextOfItem } from '../ui/labelsText'
+import { kindText, kindTextOfItem } from '../ui/labelsText'
 
 const KIND_TEXT: Record<string, string> = {
   /**
@@ -60,8 +60,17 @@ const KIND_TEXT: Record<string, string> = {
   blueprint: tr("ui.MarketPage.004"),
   aicore: tr("ui.MarketPage.008"),
   wreck: tr("ui.MarketPage.009"),
+  /**
+   * **黑匣**（**2026-09-26 船长**：「**市场内黑匣单独一个分类，不要挪到「货物」**」）。
+   *
+   * 由来：黑匣原先借 `kit` 档 ⇒ 市场把它算作「消耗品」；本批黑匣独立成物品种类
+   * （`ItemKind` 的 `blackbox`），若不做这一档它会掉进「货物」。现与「残骸」「货柜」同一套做法独立成一级类型，
+   * 剔除判定在 `ui/itemSubs.ts` 的 `BLACKBOX_KIND_KEYS`（单点）——「货物」里不再收黑匣。
+   * ⚠ 无二级子分类（照「残骸」先例）；文案与物品种类名共用一条 id（`ui.labelsText.069`）。
+   */
+  blackbox: kindText('blackbox'),
 }
-const KIND_OPTIONS = ['all', 'item', 'container', 'consume', 'wreck', 'module-high', 'module-mid', 'module-low', 'ship', 'blueprint', 'aicore'] as const
+const KIND_OPTIONS = ['all', 'item', 'container', 'consume', 'wreck', 'blackbox', 'module-high', 'module-mid', 'module-low', 'ship', 'blueprint', 'aicore'] as const
 type KindFilter = (typeof KIND_OPTIONS)[number]
 const RARITY_TEXT: Record<MarketRarity, string> = { common: tr("ui.MarketPage.010"), rare: tr("ui.IndustryPage.035"), exotic: tr("ui.MarketPage.011") }
 
