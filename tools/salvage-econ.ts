@@ -23,6 +23,8 @@ import {
   RECYCLE_POOL_AVG_ISK,
   RECYCLE_POOLS,
   recycleTierOf,
+  // 2026-09-26：卡级回收档单点（卡级 wrechTier 覆写优先）
+  wreckCardTierOf,
   wreckBaseDensity,
   // 2026-09-19 残骸合并：逐组保值池对照（取代原"逐卡特色池"）
   WRECK_GROUPS,
@@ -115,7 +117,13 @@ function main(): void {
     let wSum = 0
     let acc = 0
     for (const a of producing) {
-      const t = recycleTierOf(wreckBaseDensity(a.galaxyId, ctx))
+      /**
+       * ⚠ **2026-09-26 修**：本行原先自己算 `recycleTierOf(wreckBaseDensity(...))`，
+       * 而船长同日的提价令给 G/H 的卡加了**卡级回收档覆写**（`AnomalyDef.wreckTier`）⇒ 两处口径分叉，
+       * 本工具把 g-lo 报成"偏差 −80.8% 超差"（权威契约 `content:check` 走单点、是绿的）。
+       * 现统一走单点 `wreckCardTierOf`（卡级覆写优先，缺省仍按星系基础密度现算）。
+       */
+      const t = wreckCardTierOf(a, ctx)
       // 卡池取**合并前的卡级池表**（`RECYCLE_FLAVOR` = 构建依据；缺省 = 该卡原档位基础池）
       const cardPool = RECYCLE_FLAVOR[a.id]?.recyclePool ?? RECYCLE_POOLS[t]!
       const v = RECYCLE_YIELD_PER_M3[t] * recyclePoolMeanIsk(cardPool, priceOf)
