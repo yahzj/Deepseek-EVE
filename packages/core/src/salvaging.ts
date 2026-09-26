@@ -527,7 +527,9 @@ export function pullOneWreck(
       const itemName = salvage.isModule
         ? (ctx.modules.get(salvage.itemId)?.name ?? salvage.itemId)
         : (ctx.items.get(salvage.itemId)?.name ?? salvage.itemId)
-      addLog(state, 'info', `打捞舰船残骸：捞回 ${itemName} ×${salvage.units}。`, 'core.salvaging.030', {
+      /** ⚠ **级别 = `warn`**（**2026-09-26 船长令**：「**回收玩家自己残骸的事件日志不醒目，应该划分到警告**」）
+       *  ——`info` 在事件日志里与日常噪声同级；捞回自己的东西是"该被看见"的一条，提到警告档。 */
+      addLog(state, 'warn', `打捞舰船残骸：捞回 ${itemName} ×${salvage.units}。`, 'core.salvaging.030', {
         p1: itemName,
         p2: salvage.units,
       })
@@ -542,7 +544,8 @@ export function pullOneWreck(
       if (salvage.defId !== undefined) {
         restoreShipFromWreck(state, { defId: salvage.defId, durability: salvage.durability, armorPct: salvage.armorPct })
       }
-      addLog(state, 'info', `舰船残骸里捞回了一艘还能修的船：${salvage.wreckName}——已拖回母港入队。`, 'core.salvaging.031', {
+      /** 同批把"整船回收"也提到 `warn`（2026-09-26 船长令：回收自己残骸的日志要醒目） */
+      addLog(state, 'warn', `舰船残骸里捞回了一艘还能修的船：${salvage.wreckName}——已拖回母港入队。`, 'core.salvaging.031', {
         p1: salvage.wreckName,
       })
       return { itemId: '', mul: 1, volumeM3: 0 }

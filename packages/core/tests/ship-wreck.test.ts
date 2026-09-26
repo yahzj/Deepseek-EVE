@@ -387,5 +387,14 @@ describe('回收物入账（打捞循环那一支）', () => {
     expect(dronePull.itemId, '第二具里只有无人机').toBe(DRONE)
     expect(countWare(state, DRONE), '捞回的无人机应进物品仓库').toBe(2)
     expect(state.shipWrecks ?? {}, '两具都已捞空 ⇒ 都消失').toEqual({})
+
+    /**
+     * 🔴 **2026-09-26 船长令**：「**回收玩家自己残骸的事件日志不醒目，应该划分到警告**」
+     * ⇒ 捞回模块与捞回无人机两条都必须是 `warn`（原先 `info`，混在日常噪声里看不出来）。
+     */
+    const lines = state.logs.filter((l) => l.textId === 'core.salvaging.030')
+    expect(lines.length, '两次捞回各写一条').toBe(2)
+    for (const l of lines) expect(l.kind, '捞回自己残骸的日志应是警告档（船长令）').toBe('warn')
+    console.log(`  [读数] 捞回日志级别 = ${lines.map((l) => l.kind).join(' / ')} · 例：${lines[0]!.text}`)
   })
 })

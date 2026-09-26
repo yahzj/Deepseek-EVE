@@ -307,19 +307,23 @@ export function weekendResolveBattle(
    * - **战败**（gain = 0 且非门禁）不写（进度本来就没动，避免噪声）；
    * - **核心门禁**未解 ⇒ 写"本次不计进度"那一行（`core.weekend.036`），把白打讲明白；
    * - 读数取**该星系自己的进度**（与星图/星系详细同源 `weekendProgressAt`，含 NPC 铺底）。
+   *
+   * 🔴 **级别 = `warn`**（**2026-09-26 船长令**：「**包括玩家夺回进度的更新**」——与"回收玩家自己残骸的
+   * 事件日志不醒目"同批提出）⇒ 这一档从 `info` 提到警告：它是入侵活动里玩家**唯一**能看到的进度反馈，
+   * 该在事件日志里一眼看见（`.035` / `.036` 两条一起提）。
    */
   if (res.reclaimed === undefined) {
     const gname0 = _ctx.galaxies.get(spec.galaxyId)?.name ?? spec.galaxyId
     if (gain > 0) {
       const pctBefore = Math.round(beforePct)
       const pctAfter = Math.round(weekendProgressAt(state, ev, spec.galaxyId, nowWallMs) * 100)
-      addLog(state, 'info', `✦ ${gname0}：夺回进度 ${pctBefore}% → ${pctAfter}%`, 'core.weekend.035', {
+      addLog(state, 'warn', `✦ ${gname0}：夺回进度 ${pctBefore}% → ${pctAfter}%`, 'core.weekend.035', {
         p1: gname0,
         p2: pctBefore,
         p3: pctAfter,
       })
     } else if (gatedThisBattle) {
-      addLog(state, 'info', `✦ ${gname0}：外围未清完，本次不计夺回进度`, 'core.weekend.036', { p1: gname0 })
+      addLog(state, 'warn', `✦ ${gname0}：外围未清完，本次不计夺回进度`, 'core.weekend.036', { p1: gname0 })
     }
   }
   return res

@@ -44,9 +44,11 @@ function setup(): { s: GameState; ev: WeekendEventState } {
   return { s, ev }
 }
 
-/** 本场新写的日志（textId + 正文） */
-function newLogs(s: GameState, before: number): { textId?: string; text: string }[] {
-  return s.logs.slice(before).map((l) => ({ ...(l.textId !== undefined ? { textId: l.textId } : {}), text: l.text }))
+/** 本场新写的日志（textId + 正文 + **级别**）——级别是 2026-09-26 船长令新纳入的判据 */
+function newLogs(s: GameState, before: number): { textId?: string; text: string; kind: string }[] {
+  return s.logs
+    .slice(before)
+    .map((l) => ({ ...(l.textId !== undefined ? { textId: l.textId } : {}), text: l.text, kind: String(l.kind) }))
 }
 
 /** 该星系的"主动出击"战 spec（引擎走的同一个构造口 ⇒ 字段齐全） */
@@ -67,7 +69,9 @@ describe('入侵战斗的进度反馈（船长批甲）', () => {
     const line = logs.find((l) => l.textId === 'core.weekend.035')
     expect(line, '应有进度反馈行').toBeDefined()
     expect(line!.text).toMatch(/夺回进度 \d+% → \d+%/)
-    console.log(`  [读数] 外围胜利日志 = ${line!.text}`)
+    /** 🔴 2026-09-26 船长令「包括玩家夺回进度的更新」⇒ 这一档从 `info` 提到 **`warn`**（醒目） */
+    expect(line!.kind, '夺回进度反馈应是警告档（船长令）').toBe('warn')
+    console.log(`  [读数] 外围胜利日志 = ${line!.text}（级别 ${line!.kind}）`)
   })
 
   it('核心门禁未解 ⇒ 写「外围未清完，本次不计夺回进度」，台账不动', () => {
@@ -78,7 +82,8 @@ describe('入侵战斗的进度反馈（船长批甲）', () => {
     expect(ev.contributed[CORE] ?? 0).toBe(0)
     const line = newLogs(s, n).find((l) => l.textId === 'core.weekend.036')
     expect(line, '应有"本次不计进度"行').toBeDefined()
-    console.log(`  [读数] 核心门禁日志 = ${line!.text}`)
+    expect(line!.kind, '门禁那一行同样是警告档（同批提级）').toBe('warn')
+    console.log(`  [读数] 核心门禁日志 = ${line!.text}（级别 ${line!.kind}）`)
   })
 
   it('战败不写进度行；夺回那一场只留既有的「夺回」行', () => {

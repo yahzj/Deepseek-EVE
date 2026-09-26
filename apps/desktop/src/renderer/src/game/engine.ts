@@ -504,8 +504,14 @@ function buildOfflineReport(
   }
 }
 
-/** 离线结算报告 → 事件日志单条汇总（2026-09-08 船长定：日志会话级不落盘，
- * 但离线报告本体要进入本局事件日志，供关闭简报后查证） */
+/**
+ * 离线结算报告 → 事件日志单条汇总（2026-09-08 船长定：日志会话级不落盘，
+ * 但离线报告本体要进入本局事件日志，供关闭简报后查证）。
+ *
+ * 🔴 **级别 = `system`**（**2026-09-26 船长令**：「**离线报告应该放进系统里**」）——
+ * 原先是 `info`（与日常噪声同级、混在"信息"页签里）⇒ 离线报告整条挪到「**系统**」类，
+ * 玩家能按类筛出来查（`LOG_KINDS` 的 `system` 这一档本来就存在，只改归类的 kind，文案与简报弹窗一字未动）。
+ */
 function offlineReportLogText(r: OfflineReport): string {
   const parts: string[] = [tr("ui.engine.008", { p1: formatDurationMs(r.wallAwayMs), p2: formatDurationMs(r.settledMs) })]
   if (r.overflowMs > 0) parts.push(tr("ui.engine.009", { p1: formatDurationMs(r.overflowMs) }))
@@ -1011,7 +1017,7 @@ export class GameEngine {
       // 2026-09-08 船长定：日志会话级（写盘剥离 logs）；启动不做强制清空——
       // 离线补时产生的日志照常显示，另补一条报告汇总单条（钱包/收获明细，关闭简报后仍可查证）
       if (this.offlineReport !== null) {
-        addLog(this.state, 'info', offlineReportLogText(this.offlineReport))
+        addLog(this.state, 'system', offlineReportLogText(this.offlineReport))
       }
     }
 
@@ -1587,7 +1593,7 @@ export class GameEngine {
         simulateOffline(parsed.state, wallFrom, now, this.ctx, undefined, { stats })
         this.offlineReport = buildOfflineReport(before, parsed.state, this.ctx, now - wallFrom, overflowMs, stats)
         if (this.offlineReport !== null) {
-          addLog(parsed.state, 'info', offlineReportLogText(this.offlineReport))
+          addLog(parsed.state, 'system', offlineReportLogText(this.offlineReport))
         }
       } else {
         this.offlineReport = null
@@ -1679,7 +1685,7 @@ export class GameEngine {
         simulateOffline(imported, wallFrom, now, this.ctx, undefined, { stats })
         this.offlineReport = buildOfflineReport(before, imported, this.ctx, now - wallFrom, overflowMs, stats)
         if (this.offlineReport !== null) {
-          addLog(imported, 'info', offlineReportLogText(this.offlineReport))
+          addLog(imported, 'system', offlineReportLogText(this.offlineReport))
         }
       }
       this.state = imported
