@@ -86,6 +86,8 @@ import { tr, useL10n, cmdText } from '../i18n/locale'
 import type { ToastFn } from '../pages/common'
 import { DmgChip, FoeDamageMix, ProfileChip } from '../ui/shipInfo'
 import { FirstTasks } from './FirstTasks'
+// 2026-09-26 船长令「入侵的悬赏卡片在常驻悬赏里置顶」：排序比较器抽成纯函数（可被工具/用例直接断言）
+import { bountyComparatorOf } from './bountySort'
 import { MilestoneTasks } from './MilestoneTasks'
 import { ImportantTasks } from './ImportantTasks'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
@@ -517,46 +519,36 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
   })
 
   // —— 悬赏任务排序（2026-09-09：默认 = 危险 = 目标星系安全等级 sec 降序、安全在前；次级均按名称） ——
-  const byName = (x: { a: AnomalyDef }, y: { a: AnomalyDef }): number =>
-    x.a.name.localeCompare(y.a.name, 'zh-Hans-CN') || x.a.id.localeCompare(y.a.id)
+  //     ⚠ 比较器本体在 `./bountySort`（纯函数：2026-09-26 加"入侵卡置顶"后，置顶这条要能被工具断言）
   const galaxySecOf = (a: AnomalyDef): number => engine.ctx.galaxies.get(a.galaxyId)?.security ?? 1
   const items = listed.map((a) => {
     const galaxy = engine.ctx.galaxies.get(a.galaxyId)
     const mins = shortestTravelMinutes(engine.ctx, originGalaxyOf(state, engine.ctx), a.galaxyId)
     return {
       a,
+      /** 排序键需要的字段（与 `bountySort.BountySortRow` **同名列** ⇒ 比较器可直接吃这一行） */
+      id: a.id,
+      name: a.name,
+      security: galaxySecOf(a),
       galaxyName: galaxy?.name ?? a.galaxyId,
       dist: Number.isFinite(mins) ? mins : Number.POSITIVE_INFINITY,
-      reward: a.rewardIsk,
-      standing: a.standingGain,
+      rewardIsk: a.rewardIsk,
+      standingGain: a.standingGain,
     }
   })
-  const sorted = [...items].sort((x, y) => {
-    if (sort === 'danger') {
-      const gx = galaxySecOf(x.a)
-      const gy = galaxySecOf(y.a)
-      if (gx !== gy) return gy - gx // sec 降序 = 安全在前
-      return byName(x, y)
-    }
-    if (sort === 'distance') {
-      if (x.dist !== y.dist) return x.dist - y.dist
-      return byName(x, y)
-    }
-    if (sort === 'galaxy') {
-      const g = x.galaxyName.localeCompare(y.galaxyName, 'zh-Hans-CN')
-      if (g !== 0) return g
-      return byName(x, y)
-    }
-    if (sort === 'reward') {
-      if (x.reward !== y.reward) return y.reward - x.reward
-      return byName(x, y)
-    }
-    if (sort === 'standing') {
-      if (x.standing !== y.standing) return y.standing - x.standing
-      return byName(x, y)
-    }
-    return byName(x, y)
-  })
+  /**
+   * **入侵的悬赏卡置顶**（**2026-09-26 船长令**：「**入侵的悬赏卡片在常驻悬赏里置顶。**」）。
+   *
+   * 判据 = `weekendOccupiedLiveAt`（**仍被占**才算；与"赏金栏改显结算口径"、星系详细那行入侵框
+   * 同一把尺 ⇒ 三处不会各说各话）。已夺回的星系不算 —— 它的常驻悬赏本来就还在隐藏状态，
+   * 不占板面、也无需置顶。
+   *
+   * 比较器本体抽到 `./bountySort`（纯函数 ⇒ 工具/用例可直接断言"置顶恒成立"）。
+   */
+  const pinnedIds = new Set(listed.filter((a) => weekendOccupiedLiveAt(state, a.galaxyId, Date.now())).map((a) => a.id))
+  const sorted = [...items].sort(
+    bountyComparatorOf(sort, pinnedIds),
+  )
 
   return (
     <Panel
