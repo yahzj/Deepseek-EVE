@@ -3154,6 +3154,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.MapPage.049": { zh: "未装配打捞器（去「装配」页装到高槽后显示效率）", en: "No salvager fitted (efficiency shows once one is in a high slot on the Fitting page)" },
   "ui.MapPage.050": { zh: "，超出回收炉速按炉速计", en: ", and anything beyond the recycler's rate is capped by it" },
   "ui.MapPage.051": { zh: "驾驶船高槽装打捞器即可开捞：自动循环作业——满舱返航卸货后自动续捞（可勾「本次返航卸货后停止」做单趟）；捞回的残骸带回站内拆解提炼。低安星系打捞作业中可能遇袭——详见手册「航行须知」。", en: "Fit a salvager in a high slot of the ship you fly and salvaging can start: it loops by itself, flying home to unload when full and then resuming (tick Stop after this trip unloads for a single run); salvaged wrecks are brought back to the station for breakdown and refining. Salvaging in low-security systems can be attacked — see Sailing Notes in the handbook." },
+  "ui.MapPage.052": { zh: "密度随击杀注入 / 打捞放干消耗；残骸=体积 m³ 入仓", en: "Density rises with every kill and drains as you salvage; a wreck takes up its volume in m³." },
   "ui.MapPage.053": { zh: "自动循环（满舱返航卸入仓库 → 去程并入返航 → 自动再打捞）", en: "Auto loop (a full hold flies home to unload, the outbound leg merges into the return, then salvaging resumes)" },
   "ui.MapPage.054": { zh: "还没有可打捞的星系——先扫描探索点亮星图（星系内要有悬赏目标才会产生残骸）。", en: "No systems to salvage yet — scan and explore to light up the star map (a system needs bounty targets before wrecks appear there)." },
   "ui.MapPage.055": { zh: "打捞排序：", en: "Salvage sort:" },
@@ -3622,6 +3623,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // 2026-09-26 打捞对象（船长令「让玩家选择打捞对象……残骸也要分开算」）
   "ui.MapPage.120": { zh: "全部（按威胁加权）", en: "All (threat-weighted)" },
   "ui.MapPage.121": { zh: "入侵残骸", en: "Invasion wrecks" },
+  // 2026-09-26 墨潮电子舱 / 墨潮捕获网（H 族势力装备 · 高槽支援件）的装配页短行
   "ui.shipInfo.185": { zh: "敌方武器射程 −{p1}", en: "Enemy weapon range −{p1}" },
   "ui.shipInfo.186": { zh: "每 {p1} 秒钉住一艘未被钉住的敌舰", en: "Pins one un-webbed enemy ship every {p1} s" },
   "ui.shipInfo.184": { zh: "同类型武器单发 +{p1}（装其它伤害类型的武器无加成）", en: "Weapons of the same damage type deal +{p1} per shot (no bonus with other damage types)" },
