@@ -1410,6 +1410,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.plug.006": { zh: "本舰已经装了一件 {p1}。同型插件不能重复装。", en: "This ship already carries {p1}. The same plug cannot be installed twice." },
   /* 舰船插件：入库/挂卖拒因（2026-09-26 船长令「装有插件的舰船无法放入舰船仓库」） */
   "core.plug.007": { zh: "这艘船装有 {p1} 件舰船插件，插件装上去就拆不下来——不能放入舰船仓库，也不能挂卖。", en: "This ship carries {p1} ship plug(s), and a plug cannot be removed once fitted — it cannot be stored in the ship warehouse or listed for sale." },
+  "core.plug.008": { zh: "??????????????", en: "That plug blueprint is not in the blueprint catalog." },
+  "core.plug.009": { zh: "???? {p1} ???????", en: "You have already learned {p1}; no need to exchange again." },
+  "core.plug.010": { zh: "?????? {p1} ? {p2} ??????? {p3} ??", en: "Not enough standing: {p1} costs {p2}, and you have {p3} spendable." },
+  "core.plug.011": { zh: "??????? {p1} ??????? {p2}?????????", en: "Octopus exchange: spent {p1} association standing for {p2} (now on your blueprint shelf)." },
   "ui.battleViewCore.001": { zh: "高爆", en: "High explosive" },
   "ui.battleViewCore.002": { zh: "能量", en: "Energy" },
   "ui.CargoPage.001": { zh: "↖ 查看市场", en: "↖ View market" },

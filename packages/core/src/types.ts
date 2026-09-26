@@ -2773,6 +2773,15 @@ export type CommsTrigger =
    */
   | { kind: 'foeShipSeen'; shipId: string }
   /**
+   * **拿到第一个黑匣**（**2026-09-26 船长令**：「**玩家获取第一个黑匣后，才解锁组装机的插件选项，
+   * 并且弹出相关通讯，通讯内跳转。**」）。
+   *
+   * 判定 = `blackbox.blackboxSeenOf(state)`（置位点 = 黑匣入库的唯一入口；老档按"仓库/货仓里有没有黑匣"回填）。
+   * ⚠ **送达即幂等**（`commsDelivered` 记账）：即便玩家后来把黑匣卖光、`blackboxSeen` 又被回填成 false，
+   * 这封信也不会再发第二遍。落地与跳转见 `data/messages.ts` 那条 `msg-blackbox-plug-unlock`。
+   */
+  | { kind: 'blackboxSeen' }
+  /**
    * **虫洞围剿（第 7 层起）**（2026-09-23 船长：「当玩家第一次进入七层是，给玩家发一则通讯讲清楚
    * 敌人开始围剿玩家了，并介绍机制」）。
    *
@@ -2869,7 +2878,7 @@ export interface CommsMessageDef {
    * `taskTab` 用于星图「任务中心」的**内层**标签（2026-09-11 船长：步骤 2 跳转必须切到「重要任务」——
    * 内层标签会记住玩家上次的选择，只切到任务中心不够）。
    */
-  hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string }
+  hint?: { text: string; page: CommsJumpPage; tab?: string; taskTab?: string; shipTab?: string; action?: string }
   /** 预留回复选项（本期不启用） */
   replies?: readonly CommsReplyDef[]
   /**

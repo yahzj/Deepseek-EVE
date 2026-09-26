@@ -11,6 +11,7 @@
  */
 import { ONB_DONE } from './onboarding'
 import { isSiteBuilt } from './station'
+import { blackboxSeenOf } from './blackbox'
 import { addLog } from './state'
 import type { GameState } from './state'
 import type {
@@ -147,6 +148,16 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
     /** **遭遇过某个敌方舰级**（船长 2026-09-16：首次遭遇劫掠电子舰后发一封介绍捕获网的通讯） */
     case 'foeShipSeen':
       return state.foeShipSeen?.[trigger.shipId] === true
+    /**
+     * **拿到第一个黑匣**（**2026-09-26 船长令**：「玩家获取第一个黑匣后，才解锁组装机的插件选项，
+     * 并且弹出相关通讯，通讯内跳转。」）⇒ 组装机插件档解锁 ＋ 这封带「前往兑换」的信。
+     *
+     * ⚠ 判据走 `blackbox.blackboxSeenOf`（**唯一判据点**）：它兼顾"随档标记"与"老档按库存回填"
+     * ⇒ 老玩家一读档就补发这封信（他的仓库/货仓里确实有黑匣）。
+     * ⚠ **只发一次**由送达记账（`commsDelivered`）保证，不靠这个条件永真。
+     */
+    case 'blackboxSeen':
+      return blackboxSeenOf(state)
     /** 「第一次」任务系列（2026-09-17）：任务完成即送达那封情报信；见 data/src/firstTaskMessages.ts。 */
     case 'firstTask':
       return state.importantTasks[trigger.taskId]?.done === true

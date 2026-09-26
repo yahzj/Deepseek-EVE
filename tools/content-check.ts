@@ -7239,6 +7239,8 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
     'lowSec', 'foeFamily',
   // 2026-09-16 首次遭遇某敌舰级（船长：首次遭遇劫掠电子舰后发一封介绍捕获网的通讯）
   'foeShipSeen', 'firstTask',
+  // 2026-09-26 拿到第一个黑匣（船长令：「玩家获取第一个黑匣后，才解锁组装机的插件选项，并且弹出相关通讯」）
+  'blackboxSeen',
     // 2026-09-13 星云机制（船长：「除了一次性事件，通讯内也发一条相关的讯息给玩家」）
     'wormholeNebula',
     // 2026-09-23 围剿机制（船长：首次下到第 7 层发一封通讯讲清"敌人开始围剿"）

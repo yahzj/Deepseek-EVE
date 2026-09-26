@@ -161,3 +161,110 @@ export const PLUG_BLACKBOX_ITEM_ID = 'blackbox-h'
 export function plugsToBlackBoxesOf(plugIds: readonly string[]): number {
   return Math.max(0, plugIds.filter((id) => id.length > 0).length)
 }
+
+/* ═══════════ 章鱼人兑换（**2026-09-26 船长令**）═══════════
+ * 船长原话：「**找章鱼人用声望兑换**」＋「**声望真扣（就是意味着玩家一开始其实可以买5张）**」
+ * ⇒ 单张图纸 **8 点声望**、**真扣**（只扣可支配那本；累计那本不动 ⇒ 门槛不会被扣回去）。 */
+
+/** 单张插件图纸的声望价（**8 点**；新档初始 40 ⇒ 开局正好 5 张，对上船长那句"一开始其实可以买5张"） */
+export const PLUG_BLUEPRINT_COST = 8
+
+/** 一件插件的图纸 id 约定（`data/blueprints.ts` 的 12 张按它派生） */
+export function plugBlueprintIdOf(moduleId: string): string {
+  return `bp-${moduleId}`
+}
+
+/**
+ * **用声望换一张插件图纸**（唯一入口；兑换窗口那张卡调它）。
+ *
+ * 四道校验：① 是插件吗 ⇒ ② 图纸在不在目录里 ⇒ ③ **已经学会了吗**（学会了就不该再花声望）
+ * ⇒ ④ **可支配声望够不够**（不够则两本账都不动）。
+ * 成功 = 扣 8 点可支配声望 ＋ 图纸进蓝图书架（`blueprintStock`，与市场买书同一本账）
+ * ＋ 一条 `trade` 日志。
+ */
+export function exchangePlugBlueprint(
+  state: GameState,
+  ctx: SimContext,
+  moduleId: string,
+): { ok: true; blueprintId: string } | { ok: false; errorId: string; error: string } {
+  const def = ctx.modules.get(moduleId)
+  if (!isPlugOf(def)) {
+    return { ok: false, errorId: 'core.plug.002', error: `「${moduleId}」不是舰船插件。` }
+  }
+  const bpId = plugBlueprintIdOf(moduleId)
+  const bp = ctx.blueprints.get(bpId)
+  if (!bp) {
+    return { ok: false, errorId: 'core.plug.008', error: `图纸目录里没有「${bpId}」。` }
+  }
+  if ((state.learnedRecipes ?? []).includes(bpId)) {
+    return { ok: false, errorId: 'core.plug.009', error: `已经学会「${bp.name}」了，不用再换。` }
+  }
+  const have = spendableStandingOf(state)
+  if (have < PLUG_BLUEPRINT_COST) {
+    return {
+      ok: false,
+      errorId: 'core.plug.010',
+      error: `声望不足：换「${bp.name}」要 ${PLUG_BLUEPRINT_COST} 点，当前可支配 ${have} 点。`,
+    }
+  }
+  // 真扣（只扣可支配那本）；扣款与入书同一处 ⇒ 不会出现"扣了声望没拿到书"
+  spendStanding(state, PLUG_BLUEPRINT_COST)
+  state.blueprintStock[bpId] = (state.blueprintStock[bpId] ?? 0) + 1
+  addLog(
+    state,
+    'trade',
+    `章鱼人兑换：花 ${PLUG_BLUEPRINT_COST} 点协会声望换到「${bp.name}」（已进蓝图书架）。`,
+    'core.plug.011',
+    { p1: PLUG_BLUEPRINT_COST, p2: bp.name },
+  )
+  return { ok: true, blueprintId: bpId }
+}
+
+/** 兑换窗口一行（界面直接渲染；`affordable` 与 `learned` 由这里算好，界面不再各判一次） */
+export interface PlugExchangeRow {
+  moduleId: string
+  blueprintId: string
+  name: string
+  /** 图纸名（"XX图纸"） */
+  blueprintName: string
+  cost: number
+  /** 已学会（这一行置灰，且不给换） */
+  learned: boolean
+  /** 可支配声望够不够 */
+  affordable: boolean
+}
+
+/** **兑换窗口的 12 行**（顺序 = `ctx.modules` 里插件的登记顺序；只列真的是插件的那些） */
+export function plugExchangeRowsOf(state: GameState, ctx: SimContext): PlugExchangeRow[] {
+  const have = spendableStandingOf(state)
+  const rows: PlugExchangeRow[] = []
+  for (const def of ctx.modules.values()) {
+    if (!isPlugOf(def)) continue
+    const blueprintId = plugBlueprintIdOf(def.id)
+    const bp = ctx.blueprints.get(blueprintId)
+    if (!bp) continue
+    rows.push({
+      moduleId: def.id,
+      blueprintId,
+      name: def.name,
+      blueprintName: bp.name,
+      cost: PLUG_BLUEPRINT_COST,
+      learned: (state.learnedRecipes ?? []).includes(blueprintId),
+      affordable: have >= PLUG_BLUEPRINT_COST,
+    })
+  }
+  return rows
+}
+
+/** 可支配声望（转发 `expedition.spendableStandingOf`；本模块只认 `dsi`） */
+function spendableStandingOf(state: GameState): number {
+  return state.standings['dsi'] ?? 0
+}
+
+/** 花掉声望（转发 `expedition.spendStanding` 的口径；只扣可支配那本） */
+function spendStanding(state: GameState, v: number): boolean {
+  const have = state.standings['dsi'] ?? 0
+  if (have < v) return false
+  state.standings['dsi'] = have - v
+  return true
+}
