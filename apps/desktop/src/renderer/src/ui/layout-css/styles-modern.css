@@ -7764,7 +7764,11 @@ html[data-locale='en'] body {
 
   overflow: hidden;
 
-  word-break: break-all;
+  /* **断词口径**（2026-09-26 优化批 · 船长批「5 可以」）：原名 `word-break: break-all` ——
+     对中文没差别，但英文界面下会把 "Megastructure" 这类长词从**词中间**劈开。
+     `overflow-wrap: anywhere` 仍是"放不下就在任意处断"（窄格子不会溢出），但**优先在空格处换行**
+     ⇒ 英文按词换行、中文照旧逐字换行，两语言都好看。 */
+  overflow-wrap: anywhere;
 
 }
 

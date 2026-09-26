@@ -149,6 +149,8 @@ function FactionDetailPanel({ engine, family }: { engine: GameEngine; family: st
       ...(ship !== undefined ? { tone: FOE_ACCENT[family] } : {}),
       name: e.seen ? (ship?.name ?? e.id) : tr('ui.codex.005'),
       sub,
+      /* 副行给两行（船长 2026-09-26 批「3 可以」）——只有敌舰卡带，其它图鉴卡片高度不变 */
+      subWrap: true,
       raw: (ship ?? { id: e.id, name: e.id, hullClassTier: 1, split: { s: 0, a: 0, h: 0 } }) as unknown as RawData,
       ...(ship !== undefined ? { shipId: ship.id } : {}),
     }
@@ -792,6 +794,12 @@ interface GridCell {
   shipId?: string
   /** 同上：画舰影时的回退族别（资产表未命中时按它取剪影） */
   shipRole?: ShipRole
+  /**
+   * **副行给两行**（**2026-09-26 船长批「3 可以」**）：`.app-hand-cell-sub` 默认单行省略号，
+   * 势力图鉴里敌舰那条副行（「护卫舰 · 近战缠斗 · 爆弹为主（80%） · 副 动能」）会被截尾。
+   * 只有敌舰卡带本字段 ⇒ 其余图鉴卡片的高度与观感**一字不动**（改类名会波及全册）。
+   */
+  subWrap?: boolean
 }
 
 /** 一个分组（仓库同款小节）：分类名 + 数量 + 卡片 */
@@ -939,7 +947,17 @@ function IconGrid({ cells, onPick, selectedKey }: { cells: GridCell[]; onPick: (
               </span>
             ) : null}
             <span className="app-hand-cell-name">{c.name}</span>
-            <span className="app-hand-cell-sub">{c.sub}</span>
+            {/* 副行：默认单行省略号（`.app-hand-cell-sub`）；带 `subWrap` 的卡给两行（敌舰卡的副行长） */}
+            <span
+              className="app-hand-cell-sub"
+              style={
+                c.subWrap === true
+                  ? { whiteSpace: 'normal', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }
+                  : undefined
+              }
+            >
+              {c.sub}
+            </span>
           </button>
         )
       })}
@@ -2151,10 +2169,24 @@ export function Handbook({
               {tab === 'guide' || tab === 'rules' ? renderPage() : null}
               {isCodex ? (
                 codexEmpty ? (
-                  <div className="app-dim app-inv-empty">
-                    {q !== ''
-                      ? tr("ui.Handbook.253", { p1: query.trim() })
-                      : tr("ui.Handbook.185")}
+                  /**
+                   * **空态**（2026-09-26 优化批 · 船长批「4 可以」）：此前只写一句"没有条目"就完了——
+                   * 玩家得自己回想是在哪一格筛选/搜索里卡住的（技能条目 No Results：「死胡同最劝退」）。
+                   * 现在补一枚**一次归零**的按钮：关键词 + 一级分类 + 二级分类（三处一起清；
+                   * 「切页归零、关键词跨页保留」那套口径不变，本按钮只在"清"的方向上动）。
+                   */
+                  <div className="app-dim app-inv-empty" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
+                    <span>{q !== '' ? tr("ui.Handbook.253", { p1: query.trim() }) : tr("ui.Handbook.185")}</span>
+                    <button
+                      className="app-btn is-small"
+                      onClick={() => {
+                        setQuery('')
+                        setMainKey(SUB_ALL)
+                        setSubKey(SUB_ALL)
+                      }}
+                    >
+                      {tr("ui.Handbook.380")}
+                    </button>
                   </div>
                 ) : (
                   isFactionPage ? (

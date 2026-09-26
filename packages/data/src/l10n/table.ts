@@ -2841,6 +2841,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.377": { zh: "贴脸突袭：突击舰是海盗里最快的一档，闪避也高；惯用冲锋撞击与劫掠网。", en: "Point-blank raids: their assault ships are the fastest pirate hulls afloat and hard to hit, and they favour ramming charges and raiding webs." },
   "ui.Handbook.378": { zh: "活动星域", en: "Territory" },
   "ui.Handbook.379": { zh: "行踪不定。", en: "Their whereabouts are never certain." },
+  "ui.Handbook.380": { zh: "清空搜索与筛选", en: "Clear search and filters" },
 
   /* ── 2026-09-26 势力图鉴页（船长：「敌族图鉴单独列出吧，放在蓝图图鉴下方，叫『势力图鉴』」）──
      图鉴页自己的标签/占位/三块标题；势力名与五段简介**复用** ui.Handbook.326~391（原先那节搬过来）。 */
