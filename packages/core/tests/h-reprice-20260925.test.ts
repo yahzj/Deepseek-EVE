@@ -268,7 +268,9 @@ describe('残骸侧：**冻结残骸经济**（船长令）＋ 组改洞外高�
     expect(g.threat).toBe(Math.round(wreckValues.reduce((a, b) => a + b, 0) / wreckValues.length))
     expect(g.threat).toBe(124)
     expect(card('ink-main').wreckThreat, '主力卡的冻结值').toBe(129)
-    expect(g.name).toBe('墨潮帮残骸（高安）')
+    expect(g.name).toBe('墨潮帮残骸（入侵）') // ⚠ 2026-09-26：'（高安）' → '（入侵）'（船长令「统一为入侵残骸（新增一个类别）」）
+    expect(g.region).toBe('inv')
+    expect(g.tier).toBe('dire') // 2026-09-26 提价令：常档 → 危档（卡级 `wreckTier: 'dire'` 覆写）
     expect(recycleProfileOf(ctx, 'wreck-h-hi')!.threat, '回收画像读的就是组代表威胁').toBe(124)
     // 旧洞内组退役：**已无 h-wh 组**（它此前没有任何产出路径 ⇒ 无存档可持有其物品）
     expect(WRECK_GROUP_BY_KEY.get('h-wh')).toBeUndefined()
@@ -279,11 +281,12 @@ describe('残骸侧：**冻结残骸经济**（船长令）＋ 组改洞外高�
     const g = WRECK_GROUP_BY_KEY.get('h-hi')!
     expect(g.threat >= 17).toBe(true)
     expect(g.threat >= 41).toBe(true)
-    // 档位 / 池 不看组威胁；低安判定看**组地区**（高安 ⇒ false，与洞内组同为 false ⇒ 行为一致）
+    // 档位 / 池 不看组威胁；低安判定看**组地区**（2026-09-26 起 H 组自成一类「入侵」⇒ lowSec 仍为 false，
+    // 与洞内组同为 false ⇒ 回收行为一致：低安门槛的 MK2 主题支不掷）
     const p = recycleProfileOf(ctx, 'wreck-h-hi')!
-    expect(p.tier).toBe('common')
+    expect(p.tier).toBe('dire') // 2026-09-26 提价令：常档 → 危档（组池均价 9.80 → 109.90）
     expect(p.lowSec).toBe(false)
-    expect(p.region).toBe('hi')
+    expect(p.region).toBe('inv')
   })
 
   it('**奖励残骸是真实物品**：夺回/旗舰发的稀有残骸 id 必须能在目录里解析（原 `wreck-rare` 不存在）', () => {
@@ -295,7 +298,7 @@ describe('残骸侧：**冻结残骸经济**（船长令）＋ 组改洞外高�
     expect(ctx.items.has('wreck-rare'), '旧写死的假 id 不该存在').toBe(false)
   })
 
-  it('**被占星系的打捞池并入驻留的那支入侵舰队** ⇒ 那里能打捞出「墨潮帮残骸（高安）」', () => {
+  it('**被占星系的打捞池并入驻留的那支入侵舰队** ⇒ 那里能打捞出「墨潮帮残骸（入侵）」', () => {
     /** 挑一个"本来就有可见悬赏"的星系当被占星系（池底 = 它的原卡） */
     const home = [...ctx.anomalies.values()].find((a) => !a.hidden && a.galaxyId !== 'galaxy-hub')!.galaxyId
     /**

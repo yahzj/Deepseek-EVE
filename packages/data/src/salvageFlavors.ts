@@ -44,8 +44,17 @@ export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = 
   'ano-maw-hunt': { mk2: ['mod-prop-2', 'mod-gyro-2'] }, // 噬口猎杀：矢量推进+陀螺
   'ano-voidedge-warden': { mk2: ['mod-shield-pla-2', 'mod-rof-2'] }, // 虚海守望：能量盾+射速
   'ano-gravekeeper': { mk2: ['mod-shield-pla-2', 'mod-armor-plate-2'] }, // 坟场守墓：能量盾+增厚
-  // 穹顶守卫（关底唯一武器直出点）：门槛池追加三把 MK3 武器（动能/激光/导弹架；不追加装甲——默认池已有）
+  // ── 穹顶守卫（关底唯一武器直出点）：门槛池追加三把 MK3 武器（动能/激光/导弹架；不追加装甲——默认池已有）──
   'ano-vault-sentinel': { mk2: ['mod-turret-kin-3', 'mod-laser-3', 'mod-missile-3'] },
+  /* ── H 族（墨潮帮）四张入侵卡：2026-09-26 船长令「**H族已经添加势力装备，可以放入残骸内**」+「甲2」
+   *    ⇒ 三件 H 势力装备挂成主题件（`h-hi` 组的 `theme.modules` 就是本表这四行的并集）。
+   *    ⚠ 契约特别处：它们锚在展示用的 `galaxy-hub`（sec 1.0，高安）⇒ 读 `content:check` 的
+   *    「主题彩头仅限 sec<0.5 星系」得走**入侵卡例外**（判据 = 卡级 `region` 覆写为 `inv`），
+   *    与洞内/中安/低安卡的 `modules`（中安档）/`mk2`（低安档）分区检查是两条独立的线。 ── */
+  'ink-harass': { modules: ['mod-lair-ecm-h', 'mod-lair-web-h', 'drone-ink-heavy'] },
+  'ink-raid': { modules: ['mod-lair-ecm-h', 'mod-lair-web-h', 'drone-ink-heavy'] },
+  'ink-main': { modules: ['mod-lair-ecm-h', 'mod-lair-web-h', 'drone-ink-heavy'] },
+  'ink-flagship': { modules: ['mod-lair-ecm-h', 'mod-lair-web-h', 'drone-ink-heavy'] },
 }
 
 /** 卡级特色池与产出倾向（**构建依据 · 体检输入**；运行时见 `@whale/core` 的 `WRECK_GROUPS`） */
@@ -88,8 +97,11 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
     recycleNote: '幽灵舰残骸：星髓晶含量飙升',
   },
   'ano-echo-haunt': {
-    recyclePool: [['min-tritanium', 40], ['min-isotope', 52], ['min-mexallon', 8]], // 2026-09-14 第二批：钛钢 20% → 40%，均价 33.35 → 33.40（+0.15%）
-    recycleNote: '回音残舰残骸：同位聚晶富集',
+    // 2026-09-26 船长令「将G族和H族残骸价格提高到和D族差不多的位置」⇒ 本卡（G 低安组）对标 **D 族低安组**
+    // 卡级池 `ano-gravekeeper`（钛钢 40 · 冥铁合金 19 · 同位聚晶 41，均价 173.95）；配合卡级 `wreckTier: 'dire'`
+    // ⇒ 卡级价值 0.62 × 173.95 = **107.85 ISK/m³**（改前 33.40 × 2.06 = 68.80）。
+    recyclePool: [['min-tritanium', 40], ['min-darkiron', 19], ['min-isotope', 41]], // 均价 33.40 → 173.95（船长令提价）
+    recycleNote: '回音残舰残骸：冥铁合金与同位聚晶为主',
   },
   'ano-mirage-hijackers': {
     // 2026-09-11 重校（同上：蜃影星系 0.0 → -0.7，本卡由中安升为**低安**，危险度档位 → 险：
@@ -129,8 +141,11 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
     // 2026-09-11 重校（船长「低安至少要有一个海盗族」→ 烬火星区与蜃影星系**互换安全等级**：
     // 本卡所在星系 -0.7 → 0.0，危险度档位随之 危 → **常**：均价须回到 m×常档基数 9.8 = 11.446）
     // 2026-09-14 第二批：钛钢 14% → 40%，补入**晶态胶体**（银纹 12 单独撑不到 11.44 的目标均价）
-    recyclePool: [['min-tritanium', 40], ['min-pyerite', 47], ['min-mexallon', 13]], // 均价 11.44 → 11.44（±0.00%）
-    recycleNote: '烬火围攻残骸：焦壳下的钛钢结构料与银纹超金属',
+    // 2026-09-26 船长令「将G族和H族残骸价格提高到和D族差不多的位置」⇒ 本卡（G 低安组）对标
+    // **D 族低安组**卡级池（钛钢 40 · 冥铁合金 19 · 同位聚晶 41，均价 173.95）+ 卡级 `wreckTier: 'dire'`
+    // ⇒ 卡级价值 107.85 ISK/m³（改前 11.44 × 5.8 = 66.35）。
+    recyclePool: [['min-tritanium', 40], ['min-darkiron', 19], ['min-isotope', 41]], // 均价 11.44 → 173.95（船长令提价）
+    recycleNote: '烬火围攻残骸：冥铁合金与同位聚晶为主',
   },
   'ano-chasm-aberrations': {
     // 2026-09-12 重校（船长「**重定价池子**」）：本卡档位口径 = **危档**——裂谷深带残骸基础密度
@@ -144,8 +159,11 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
     // 2026-09-10 重校（本卡档位 危→险：均价须回到 m×险档基数 27.6 = 42.74）
     // 2026-09-14 第二批：钛钢 20% → 40%；主题矿物（同位 55 / 晶态 20）撑不到 42.80 的目标均价
     // ⇒ 补入**重钨合金**（90）——晶态出池，卡面说明同步改为「同位聚晶与重钨合金」
-    recyclePool: [['min-tritanium', 40], ['min-isotope', 41], ['min-nocxium', 19]], // 均价 42.80 → 42.85（+0.12%）
-    recycleNote: '天底封锁残骸：同位聚晶与重钨合金',
+    // 2026-09-26 船长令「将G族和H族残骸价格提高到和D族差不多的位置」⇒ 本卡（G 低安组）对标
+    // **D 族低安组**卡级池（钛钢 40 · 冥铁合金 19 · 同位聚晶 41，均价 173.95）+ 卡级 `wreckTier: 'dire'`
+    // ⇒ 卡级价值 107.85 ISK/m³（改前 42.85 × 2.06 = 88.27）。
+    recyclePool: [['min-tritanium', 40], ['min-darkiron', 19], ['min-isotope', 41]], // 均价 42.85 → 173.95（船长令提价）
+    recycleNote: '天底封锁残骸：冥铁合金与同位聚晶为主',
   },
   'ano-starcore-boss': {
     recyclePool: [['min-tritanium', 40], ['min-starcore', 58], ['min-isotope', 2]], // 2026-09-14 第二批：钛钢 20% → 40%，均价 146.30 → 146.40（+0.07%）
@@ -170,6 +188,27 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
   'ano-vault-sentinel': {
     recyclePool: [['min-tritanium', 40], ['min-darkiron', 19], ['min-isotope', 41]], // 2026-09-14 第二批：钛钢 20% → 40%，均价 176.10 → 173.95（−1.22%；冥铁/同位二元池 + 整数权重下的最近解）
     recycleNote: '穹顶守卫残骸：冥铁合金残片',
+  },
+  /* ── H 族（墨潮帮）四张入侵卡：2026-09-26 船长令「**将G族和H族残骸价格提高到和D族差不多的位置**」
+   *    ⇒ 卡级池对标 **D 族高安组**（`ano-ghost-signal` 同款：钛钢 40 · 星髓晶 34 · 重钨合金 26 · 均价 109.90），
+   *    配合四张卡的 `wreckTier: 'dire'` ⇒ 卡级价值 0.62 × 109.90 = **68.14 ISK/m³**（改前 5.8 × 9.8 = 56.84）。
+   *    为什么必须写卡级池：这四张卡锚在展示用的 `galaxy-hub`（密度 58）⇒ 缺省池 = 常档基础池 9.8，
+   *    组池也就上不去（B3.1「保值」：组池均价 = 卡级加权目标 ±3%）。 ── */
+  'ink-harass': {
+    recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]], // 均价 9.80 → 109.90（船长令提价）
+    recycleNote: '墨潮帮骚扰舰队残骸：星髓晶与重钨合金为主',
+  },
+  'ink-raid': {
+    recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
+    recycleNote: '墨潮帮袭击舰队残骸：星髓晶与重钨合金为主',
+  },
+  'ink-main': {
+    recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
+    recycleNote: '墨潮帮主力舰队残骸：星髓晶与重钨合金为主',
+  },
+  'ink-flagship': {
+    recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
+    recycleNote: '墨潮旗舰部队残骸：星髓晶与重钨合金为主',
   },
 }
 

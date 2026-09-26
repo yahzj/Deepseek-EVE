@@ -699,6 +699,9 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-cinder',
+    // 2026-09-26 船长令「将G族和H族残骸价格提高到和D族差不多的位置」⇒ 卡级回收档覆写**危档**
+    // （单点 `salvage.wreckCardTierOf`）：本卡星系密度 403 会现算成常档 ⇒ G 低安组价上不去。
+    wreckTier: 'dire',
     threat: 64,
     wreckThreat: 42, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 2026-09-11 显式化：原靠 `anomaly.tactic ?? 'orbit'` 缺省值生效——那是个静默陷阱（谁动默认值，这几张卡会集体静默变战术）
@@ -738,6 +741,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-echo',
+    wreckTier: 'dire', // 2026-09-26 船长令：G 族残骸价提到 D 族水平（卡级回收档覆写危档）
     threat: 51,
     wreckThreat: 52, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
@@ -789,6 +793,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
       },
     ],
     galaxyId: 'galaxy-nadir',
+    wreckTier: 'dire', // 2026-09-26 船长令：G 族残骸价提到 D 族水平（卡级回收档覆写危档）
     threat: 89,
     wreckThreat: 66, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
