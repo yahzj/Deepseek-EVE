@@ -246,6 +246,24 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
       </g>
     ),
   },
+  // H 族「墨潮重袭无人机」：**墨潮红**（与 H 族舰体/族色同源，比 A 族深一档）＋ 攻坚菱体。
+  // ⚠ 本条是 **2026-09-26 新闸门（`npm run art:ships:check` 的无人机一栏）第一次抓到的真问题**：
+  //   H 族势力装备批（`5a6075c2`）加了这款 drones 却没登记机体 ⇒ 与"构件哨戒"同病：
+  //   机体落灰兜底、**弹道与击落演出直接跳过**（不开火、不爆炸）。补登记即修。
+  'drone-ink-heavy': {
+    name: tr('ui.droneArt.012'),
+    tint: FOE_ACCENT.H,
+    slots: SLOTS_HIGH(-64),
+    bolt: { style: 'dot', len: 14, width: 3, tail: true },
+    art: (
+      <g>
+        <path d="M12 0 L3 -3 L-1 -8 L-5 -3 L-11 0 L-5 3 L-1 8 L3 3 Z" />
+        {/* 重弹舱横缝（墨潮的"重袭"读法） */}
+        <path d="M1 -3 v6" className="app-bts-drone-line" />
+        <circle cx="6.4" cy="0" r="1" className="app-bts-drone-dot" />
+      </g>
+    ),
+  },
 }
 
 /** **未登记机型的兜底机体**（2026-09-12 加）。

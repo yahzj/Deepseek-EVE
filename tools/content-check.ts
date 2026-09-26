@@ -79,6 +79,10 @@ import {
 // ⚠ **跨层 import（有意为之）**：装配页卡片正文由渲染层 `moduleShortEffect` 生成，而 `apps/desktop`
 //   **没有测试运行器** ⇒ 这条口径只能由体检兜住（见下方「装备卡片说明契约」）。
 import { moduleShortEffect } from '../apps/desktop/src/renderer/src/ui/shipInfo'
+// ⚠ 同款跨层 import：**支援件三分契约**（2026-09-26）要拿渲染层的三档逐件清单当权威——
+//   那 34 件共用 `slot: 'support'`，按件归属只存在于 `itemSubs.ts`；漏登记会在筛选里"静默消失"，
+//   正是这类体检该盯的漏洞（同 `moduleShortEffect` 的理由：`apps/desktop` 没有测试运行器）。
+import { MODULE_SUBS, SUPPORT_MODULE_KEYS } from '../apps/desktop/src/renderer/src/ui/itemSubs'
 // ⚠ 同款跨层 import：图鉴 →「↖ 查看市场」的条目→商品映射（2026-09-14 船长）在渲染层单点，
 //   体检「图鉴市场跳转契约」逐个走它，防"按钮整类静默消失"。
 //   ⚠ 只 import 这个**只依赖 `@whale/core`** 的小模块：`panels/Handbook.tsx` 会带上 `@whale/ui` 的
@@ -7668,6 +7672,52 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
     }
   }
   console.log(`· 限时促销契约：${PROMOS.length} 条促销 · id/文案/日期/两项效果/认领开关/去向逐个核对`)
+}
+
+/* ── 支援件三分契约（2026-09-26 船长令：支援件筛选拆成三个同级）───────────────────────
+ * 船长原话：「**将装备细分类的支援件筛选拆分成三个同级：战斗支援件，辅助支援件，修理装置。**」
+ *
+ * 为什么必须有这条体检：那一族的 34 件**共用同一个 `slot: 'support'`**，而「战斗/辅助/修理」是
+ * **按件**登记的（`itemSubs.ts` 的 `SUPPORT_MODULE_KEYS`，横跨高/中/低三槽 ⇒ 槽位维度的
+ * `MODULE_SUB_SLOTS` 装不下）。漏登记一件**不报错**：它会落进「其它」分组、玩家在那个筛选里
+ * **永远看不到它**（2026-09-12 蜂群机、2026-09-26 三款专属无人机都栽在这类"静默消失"上）。
+ * ⇒ 三组并集必须**恰好等于**全部 `slot === 'support'` 的模块：漏了报红、多了报红、重复登记报红。
+ */
+{
+  const buckets = Object.entries(SUPPORT_MODULE_KEYS)
+  const seen = new Map<string, string>()
+  for (const [key, ids] of buckets) {
+    for (const id of ids) {
+      const prev = seen.get(id)
+      check(prev === undefined, `支援件三分契约：${id} 在「${prev}」与「${key}」里**重复登记**（一件只能属于一档）`)
+      seen.set(id, key)
+    }
+  }
+  const supportMods = MODULES.filter((m) => m.slot === 'support')
+  const missing = supportMods.filter((m) => !seen.has(m.id))
+  const extra = [...seen.keys()].filter((id) => !MODULES.some((m) => m.id === id))
+  check(
+    missing.length === 0,
+    `支援件三分契约：${missing.map((m) => `${m.name}(${m.id})`).join('、')} 是 slot='support' 却**没登记**进 ` +
+      `战斗/辅助/修理 三档 —— 它会在装备细分类里落进「其它」、玩家永远筛不到它`,
+  )
+  check(
+    extra.length === 0,
+    `支援件三分契约：${extra.join('、')} 登记在三档里，但**不是** slot='support' 的模块（id 写错或已被退役）`,
+  )
+  for (const [key, ids] of buckets) {
+    check(ids.length > 0, `支援件三分契约：${key} 是空档 —— 空档应删掉，别在筛选行里留一个必然筛不到东西的按钮`)
+    // 三档必须都是**子分类表里的键**（否则筛选行渲染不出这一档）
+    check(
+      MODULE_SUBS.some((s) => s.key === key),
+      `支援件三分契约：${key} 不在 MODULE_SUBS 里 —— 判定写了但筛选行没有这一档`,
+    )
+  }
+  console.log(
+    `· 支援件三分契约：${supportMods.length} 件 slot='support' 逐件归入 ` +
+      buckets.map(([k, ids]) => `${k} ${ids.length}`).join(' / ') +
+      `（漏登记/重复/空档/非 support 件 四类错均报红）`,
+  )
 }
 
 /* ── 输出 ── */

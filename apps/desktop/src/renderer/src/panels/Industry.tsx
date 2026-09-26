@@ -447,7 +447,7 @@ function bpFilterKeysOf(engine: GameEngine, bpId: string): { tab: ManuTabKey; su
     return { tab: 'supply', subKey: item?.kind ?? '', singleUse: bp.singleUse === true }
   }
   const mod = bp?.moduleId ? engine.ctx.modules.get(bp.moduleId) : undefined
-  return { tab: 'equip', subKey: mod ? moduleSubKeyOf(mod.slot) : '', singleUse: bp?.singleUse === true }
+  return { tab: 'equip', subKey: mod ? moduleSubKeyOf(mod.slot, mod.id) : '', singleUse: bp?.singleUse === true }
 }
 
 /**
@@ -1252,7 +1252,7 @@ export function ManufacturingPanel({
         id: bp.id,
         kindLabel: tr("ui.MarketPage.003"),
         // 装备蓝图按**产物功能**分组（2026-09-11 船长：「根据产物的类型进行二次分类」；键与 MODULE_SUBS 同源）
-        subKey: moduleDef ? moduleSubKeyOf(moduleDef.slot) : '',
+        subKey: moduleDef ? moduleSubKeyOf(moduleDef.slot, moduleDef.id) : '',
         productGlyph: moduleDef?.slot ?? 'blueprint',
         name: bp.name,
         description: bp.description,

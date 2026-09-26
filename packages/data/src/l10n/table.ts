@@ -1661,6 +1661,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.droneArt.009": { zh: "构件哨戒", en: "Construct Sentry" },
   "ui.droneArt.010": { zh: "巢卫攻坚", en: "Hiveguard Siege" },
   "ui.droneArt.011": { zh: "鱿蜂", en: "Squidwasp" },
+  "ui.droneArt.012": { zh: "墨潮重袭", en: "Ink Tide Striker" },
   "ui.engine.001": { zh: "采矿 ×{p1} 趟", en: "Mining ×{p1} trips" },
   "ui.engine.002": { zh: "打捞 ×{p1} 次", en: "Salvage ×{p1} runs" },
   "ui.engine.003": { zh: "精炼 ×{p1} 批", en: "Refined ×{p1} batches" },
@@ -3065,6 +3066,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.itemSubs.035": { zh: "零件蓝图", en: "Part blueprints" },
   "ui.itemSubs.036": { zh: "零件", en: "Parts" },
   "ui.itemSubs.037": { zh: "消耗品", en: "Consumables" },
+  // 支援件的三个同级子类（2026-09-26 船长令：「将装备细分类的支援件筛选拆分成三个同级：
+  // 战斗支援件，辅助支援件，修理装置」）——原「支援件（辅助与维修）」一档由这三条取代
+  "ui.itemSubs.038": { zh: "战斗支援件", en: "Combat support" },
+  "ui.itemSubs.039": { zh: "辅助支援件", en: "Auxiliary support" },
+  "ui.itemSubs.040": { zh: "修理装置", en: "Repair units" },
   "ui.itemSubs.005": { zh: "军用备货柜", en: "Military supply container" },
   "ui.itemSubs.006": { zh: "原材料", en: "Materials" },
   "ui.itemSubs.007": { zh: "奢侈品", en: "Luxuries" },

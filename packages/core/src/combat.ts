@@ -7407,6 +7407,8 @@ const PD_PRIORITY_BY_ART: Record<string, number> = {
    */
   'drone-wh-e-sentry': 0,
   'drone-wh-c-heavy': 1,
+  // H 族「墨潮重袭无人机」（攻坚档；H 族势力装备批 2026-09-26 新增）
+  'drone-ink-heavy': 1,
 }
 /** 机型 → 近防炮选靶优先级（见上表；导出供 `pd-rules` 契约逐型断言，与 `pdShotOf` 同款"为可测导出"） */
 export function pdPriorityOf(artId: string | undefined | null, role?: string): number {
