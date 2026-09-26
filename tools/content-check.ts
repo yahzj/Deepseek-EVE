@@ -75,6 +75,9 @@ import {
   RECYCLE_LOOT_PILOT,
   // 2026-09-19 谜质科技树：契约直接读数据表（id/效果白名单/逐级费用/前置三层）
   MATTER_TECH_NODES,
+  FACTION_CODEX,
+  FACTION_CODEX_ORDER,
+  FOE_SHIPS,
 } from '@whale/data'
 // ⚠ **跨层 import（有意为之）**：装配页卡片正文由渲染层 `moduleShortEffect` 生成，而 `apps/desktop`
 //   **没有测试运行器** ⇒ 这条口径只能由体检兜住（见下方「装备卡片说明契约」）。
@@ -7762,6 +7765,60 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
       `（漏登记/重复/空档/非 support 件 四类错均报红）`,
   )
 }
+
+/**
+ * **势力专属登记契约**（2026-09-26 船长：「势力图鉴……玩家能在敌族图鉴里查看该势力的专属装备和舰船」）。
+ *
+ * 判据：**每一个族专属 id 必须恰好落在一族里**——未登记（玩家在图鉴里永远看不到它）与
+ * 重复登记（两族都列 ⇒ 归属口径不一致）**一律报红**。覆盖面：
+ *   ① `mod-wh-*` 与 `sh-wh-*`（虫洞专属件与专属舰；数据侧**没有族字段**，登记表就是唯一依据）；
+ *   ② `exclusive: true` 的无人机（图鉴里的「专属装备」含它们）；
+ *   ③ 被登记表引用的**图纸 id** 必须在册（`bp-*` / `sbp-*`），防写错 id 静默变成一行空名。
+ */
+function checkFactionExclusive(): void {
+  const owner = new Map<string, string>()
+  const dup: string[] = []
+  for (const family of FACTION_CODEX_ORDER) {
+    const e = FACTION_CODEX[family]!
+    for (const id of [...e.modules, ...e.ships, ...e.blueprints]) {
+      const prev = owner.get(id)
+      if (prev !== undefined) dup.push(`${id}（${prev} 与 ${family} 都登记了）`)
+      else owner.set(id, family)
+    }
+  }
+  // ① mod-wh-* / sh-wh-* 全覆盖
+  const whMods = MODULES.filter((m) => m.id.startsWith('mod-wh-'))
+  const whShips = SHIPS.filter((s) => s.id.startsWith('sh-wh-'))
+  const missMod = whMods.filter((m) => !owner.has(m.id))
+  const missShip = whShips.filter((s) => !owner.has(s.id))
+  check(
+    missMod.length === 0,
+    `势力专属登记契约：${missMod.map((m) => `${m.name}(${m.id})`).join('、')} 是虫洞专属件却没登记进 FACTION_CODEX` +
+      `任一势力 —— 玩家在「势力图鉴」里永远看不到它`,
+  )
+  check(
+    missShip.length === 0,
+    `势力专属登记契约：${missShip.map((s) => `${s.name}(${s.id})`).join('、')} 是虫洞专属舰却没登记进 FACTION_CODEX` +
+      `任一势力 —— 玩家在「势力图鉴」里永远看不到它`,
+  )
+  // ② exclusive 无人机全覆盖
+  const exDrones = ITEMS.filter((it) => it.exclusive === true && it.kind === 'drone')
+  const missDrone = exDrones.filter((it) => !owner.has(it.id))
+  check(
+    missDrone.length === 0,
+    `势力专属登记契约：${missDrone.map((d) => `${d.name}(${d.id})`).join('、')} 是 exclusive 无人机却没登记进` +
+      `任一势力 —— 图鉴的「专属装备」里会缺它`,
+  )
+  // ③ 重复登记
+  check(dup.length === 0, `势力专属登记契约：${dup.join('；')}`)
+  console.log(
+    `· 势力专属登记契约：${FACTION_CODEX_ORDER.length} 族 · ` +
+      FACTION_CODEX_ORDER.map((f) => `${f} ${FACTION_CODEX[f]!.modules.length + FACTION_CODEX[f]!.ships.length + FACTION_CODEX[f]!.blueprints.length}`).join(' / ') +
+      ` 件（mod-wh ${whMods.length} 全覆盖 · sh-wh ${whShips.length} 全覆盖 · exclusive 无人机 ${exDrones.length} 全覆盖 · 无重复）`,
+  )
+}
+
+checkFactionExclusive()
 
 /* ── 输出 ── */
 console.log(`· 蓝图：装备 ${BLUEPRINTS.length} 张 + 舰船 ${SHIP_BLUEPRINTS.length} 张`)
