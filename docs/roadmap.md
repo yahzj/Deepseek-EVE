@@ -356,6 +356,6 @@
 | `docs/archive/roadmap-2026-09-23.md` | 2026-09-23 | 1 条 | 1 KB |
 | `docs/archive/roadmap-2026-09-24.md` | 2026-09-24 | 14 条 | 42 KB |
 | `docs/archive/roadmap-2026-09-25.md` | 2026-09-25 | 13 条 | 39 KB |
-| `docs/archive/roadmap-2026-09-26.md` | 2026-09-26 | 15 条 | 48 KB |
+| `docs/archive/roadmap-2026-09-26.md` | 2026-09-26 | 20 条 | 68 KB |
 
 > 上面每卷都是**原文冻结件**：不重写、不摘要、不追加。`docs/archive/README.md` 另有"已办结待办单"卷。

@@ -37,6 +37,7 @@ import {
 import type { GameEngine } from '../game/engine'
 import { tr } from '../i18n/locale'
 import { Glyph } from '../ui/Glyphs'
+import { toneOfAny } from '../ui/tones'
 import { moduleShortEffect } from '../ui/shipInfo'
 
 export function PlugExchangeModal({
@@ -65,7 +66,28 @@ export function PlugExchangeModal({
     <div className="app-modal-mask" onClick={onClose}>
       <div className="app-modal app-modal-wide" onClick={(e) => e.stopPropagation()}>
         <div className="app-modal-head">
-          <span className="app-report-title">{tr('ui.Expedition.441')}</span>
+          {/**
+           * **章鱼人头像（最左侧）**（**2026-09-27 船长令**：「**声望商店内，顶上的标题处，能否加个和通讯内
+           * 同款的章鱼人头像。放在最左侧**」）。
+           *
+           * 与通讯**同源同款**：图形 = `FACTION_OCTOPUS_GLYPH`（`faction-octopus` 线稿，全仓 NPC 头像的那一枚）、
+           * 盒子与描边 = 通讯既有的 `.app-comms-avatar`（**不新造样式**），只在**尺寸**上按弹层标题栏收小
+           * （标题栏高 40px 上下，56px 的原尺寸会把条子撑开 ⇒ 宽度/高度/圆角走内联，不新增 CSS 类）。
+           *
+           * ⚠ **不要照抄通讯那个 `tone` 字符串**：通讯侧给的是 `'var(--wui-tone-nav-mail)'`，而色板 token 是
+           * **空格三元组** ⇒ 裸 `var()` 当色值用是**无效声明**、颜色会回落（见词典「色板 token 的三层」硬纪律 A）。
+           * 这里取包好 `rgb()` 的单点 **`toneOfAny('nav-mail')`**（＝官方深空工业协会的通讯色），才是"同款"的**真色**。
+           */}
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <span
+              className="app-comms-avatar"
+              title={tr('ui.Expedition.441')}
+              style={{ width: 26, height: 26, borderRadius: 7, marginTop: 0, color: toneOfAny('nav-mail'), borderColor: toneOfAny('nav-mail') }}
+            >
+              <Glyph name="faction-octopus" size={20} />
+            </span>
+            <span className="app-report-title">{tr('ui.Expedition.441')}</span>
+          </span>
           {/* 两本账并排（船长口径：可支配 / 累计获得）——与卡面价格徽标同色系 */}
           <span className="app-chip" title={tr('ui.IndustryPage.119', { p1: spendable, p2: earned })}>
             {tr('ui.IndustryPage.119', { p1: spendable, p2: earned })}
