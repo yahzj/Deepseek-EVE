@@ -323,7 +323,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* ── 损伤管制装置（2026-09-25 船长令：结构首次被打空时启动，锁定 1 秒，消耗损管修理组件 ×1）── */
   "core.combat.002": { zh: "✦ 损伤管制装置启动：结构锁定在 1 点、持续 1 秒（消耗损管修理组件 ×1）。", en: "✦ Damage Control Unit engaged: structure locked at 1 for 1 second (spent 1 Damage Control Repair Kit)." },
   "core.combat.003": { zh: "⚠ 损伤管制装置未能启动：损管修理组件不足。", en: "⚠ Damage Control Unit could not engage: no Damage Control Repair Kit available." },
-  "core.combat.004": { zh: "损伤管制装置启动 ×{p1}（消耗损管修理组件 ×{p2}）", en: "Damage Control Unit engaged ×{p1} (spent Damage Control Repair Kits ×{p2})" },
+  // ⚠ 战报尾巴那一段（`combat.dcUsageText`）与「船体维修装置」那条同式：报告正文是**拼接串**，
+  //   不走 id 渲染 ⇒ 这里**不再留**废弃 id（原来加过 `core.combat.004`，未接线，已删）。
   // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
   "core.weekend.001": { zh: "✦ 夺回「{p1}」：夺回奖励 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ Reclaimed “{p1}”: the reclaim reward of rare wrecks ×{p2} + {p3} credits is paid out when the invasion ends." },
   "core.weekend.002": { zh: "✦ 全部占领区夺回：「{p1}」是最后一处 —— 夺回奖励与全清额外奖励共 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ All occupied systems reclaimed: “{p1}” was the last one — the reclaim reward and the all-clear bonus (rare wrecks ×{p2} + {p3} credits) are paid out when the invasion ends." },
@@ -1653,10 +1654,16 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.droneArt.002": { zh: "赤鸢", en: "Redkite" },
   "ui.droneArt.003": { zh: "猎鹰", en: "Falcon" },
   "ui.droneArt.004": { zh: "雷鸥", en: "Thundergull" },
-  "ui.droneArt.005": { zh: "警戒机", en: "Sentry" },
+  "ui.droneArt.005": { zh: "警戒机", en: "Construct Alert" },
   "ui.droneArt.006": { zh: "蜂群机", en: "Swarm" },
   "ui.droneArt.007": { zh: "孢群机", en: "Hiveguard" },
   "ui.droneArt.008": { zh: "未知机型", en: "(unknown model)" },
+  // 三款**族专属无人机**的机型短名（2026-09-26 补登记：此前从未登记 ⇒ 战斗里查不到机型，
+  // 表现为「不开火、不爆炸、只剩灰方块」——船长报障「构件哨戒无人机不会出现在战斗场景中」）。
+  // ⚠ `.005` 英文原为 "Sentry"，与 `.009`（哨戒机档）撞名 ⇒ 一并改 "Construct Alert"（E 族警戒机）。
+  "ui.droneArt.009": { zh: "构件哨戒", en: "Construct Sentry" },
+  "ui.droneArt.010": { zh: "巢卫攻坚", en: "Hiveguard Siege" },
+  "ui.droneArt.011": { zh: "鱿蜂", en: "Squidwasp" },
   "ui.engine.001": { zh: "采矿 ×{p1} 趟", en: "Mining ×{p1} trips" },
   "ui.engine.002": { zh: "打捞 ×{p1} 次", en: "Salvage ×{p1} runs" },
   "ui.engine.003": { zh: "精炼 ×{p1} 批", en: "Refined ×{p1} batches" },

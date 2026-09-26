@@ -7245,6 +7245,14 @@ export function droneLostCount(b: import('./state').BattleState): number {
 const PD_PRIORITY_BY_ART: Record<string, number> = {
   'drone-sentry': 0,
   'drone-heavy': 1,
+  /**
+   * **族专属机同档位**（2026-09-26 补）：近防炮"优先打哨戒与攻坚"的口径按**档位**生效，
+   * 不该因为某型是专属机就掉进"其余等权"（`pdPriorityOf` 的 `role` 兜底只覆盖敌方机型）。
+   * 三型出处 = `drone-wh-e-sentry`（E 构件哨戒）· `drone-wh-c-heavy`（C 巢卫攻坚）·
+   * `drone-exile-bee`（G 鱿蜂 · 侦察档 ⇒ 与其他侦察机等权，**不列**）。
+   */
+  'drone-wh-e-sentry': 0,
+  'drone-wh-c-heavy': 1,
 }
 function pdPriorityOf(artId: string | undefined | null, role?: string): number {
   const byArt = artId ? PD_PRIORITY_BY_ART[artId] : undefined

@@ -14,6 +14,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
+import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { applyDcGuard, DC_LOCK_MS, dcUsageText } from '../src/combat'
 import { beginBattleAt } from '../src/expedition'
 import { fitModule } from '../src/equipment'
@@ -139,5 +140,21 @@ describe('损伤管制装置 · 同舰唯一 ＋ 入侵循环撤退保险（船�
     expect(mk(true), '入侵循环开着 ⇒ 挂 0.5').toBe(0.5)
     expect(mk(false), '循环没开 ⇒ 不挂（手动出击照旧）').toBeUndefined()
     console.log('  [读数] 入侵循环：hullEscapeFrac = 0.5 · 未开循环 = undefined')
+  })
+
+  it('随档往返：窗口与"本场已启动"不许丢（`hullEscapeFrac` 当年的同类坑）', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 5 })
+    s.exploredGalaxies.push('galaxy-redring')
+    expect(beginBattleAt(s, ctx, 'ink-harass', s.shipId, 0), '开战成功').toBe(true)
+    const b = s.expedition.battle!
+    b.dc = { player: { lockUntilMs: 4_242, used: true } }
+    b.dcKitsUsed = 2
+    const back = loadSaveFile(serializeSaveFile(s, 0)).state.expedition.battle
+    expect(back?.dc?.player, '窗口随档（丢了 ⇒ 战中重载后同一秒内不再受保护）').toEqual({
+      lockUntilMs: 4_242,
+      used: true,
+    })
+    expect(back?.dcKitsUsed, '"本场已启动"随档（丢了 ⇒ 每场一次被重载绕过）').toBe(2)
+    console.log(`  [读数] 往返后 dc = ${JSON.stringify(back?.dc)} · dcKitsUsed = ${back?.dcKitsUsed}`)
   })
 })

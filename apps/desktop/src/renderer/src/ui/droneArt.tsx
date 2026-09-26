@@ -189,6 +189,63 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
     bolt: { style: 'dot', len: 9, width: 2, tail: false },
     art: SPORE_DRONE_ART,
   },
+  /* ══════════ **专属无人机**（2026-09-26 船长报障「**玩家的构件哨戒无人机不会出现在战斗场景中**」） ══════════
+   *
+   * 病根与修法：本表原先只登记**制式四型**，而玩家能造/能掉的**三款族专属机**（E 构件哨戒 · C 巢卫攻坚 ·
+   * G 鱿蜂）从来没登记过 ⇒ 演出层查不到机型：机体层靠 `droneModelOrFallback()` 画成灰方块，而
+   * **弹道 / 击落 / 坠落三处是 `if (!model) return`** ⇒ 表现为「不开火、不爆炸、只剩一个灰块」——
+   * 与玩家说的"不会出现"是同一件事（2026-09-12 蜂群机踩过同一个坑，当时只补了机体那一处兜底）。
+   *
+   * 口径（船长 2026-09-26 选定）：**族色用本族舰体色**（与敌机"同形不同色"的先例一致）＋
+   * **机体形按档位**（哨戒碟盘 / 攻坚菱体 / 侦察箭形）——一眼分得出是哪一族的专属机。
+   * 弹点仍守"颜色按弹型、机型只决定形制与密度"（见本文件顶部口径）。 */
+  // E 族「构件哨戒无人机」：残铁棕（与 E 族舰体/族色同源）＋ 哨戒碟盘形；制式 20 → 本型 24 单发、
+  // 射程 7,500（制式 5,000）⇒ 弹点比制式哨戒**更长更细**（"长针"读法），飞行时长同哨戒档（更长）。
+  'drone-wh-e-sentry': {
+    name: tr('ui.droneArt.009'),
+    tint: FOE_ACCENT.E,
+    resident: true,
+    slots: [{ x: 30, y: -22 }],
+    bolt: { style: 'beam', len: 12, width: 1.8, tail: false, flyMul: 1.6 },
+    art: (
+      <g>
+        <circle cx="0" cy="0" r="4.4" />
+        {/* 长针：比制式哨戒（H12）更长，呼应"巨构自组装的长针哨戒机" */}
+        <path d="M4.4 0 H13" />
+        <circle cx="0" cy="0" r="1" className="app-bts-drone-dot" />
+      </g>
+    ),
+  },
+  // C 族「巢卫攻坚无人机」：磷光绿（与 C 族舰体/族色同源）＋ 攻坚菱体；弹点最重最疏（攻坚机节奏）。
+  'drone-wh-c-heavy': {
+    name: tr('ui.droneArt.010'),
+    tint: FOE_ACCENT.C,
+    slots: SLOTS_HIGH(-64),
+    bolt: { style: 'dot', len: 14, width: 3, tail: true },
+    art: (
+      <g>
+        <path d="M12 0 L2 -3 L-2 -8 L-6 -3 L-12 0 L-6 3 L-2 8 L2 3 Z" />
+        <path d="M-2 -3 v6" className="app-bts-drone-line" />
+        {/* 孢光点（族色磷光，与孢群机同款读法） */}
+        <circle cx="5" cy="0" r="1" className="app-bts-drone-dot" />
+      </g>
+    ),
+  },
+  // G 族「鱿蜂无人机」：聚落紫（与 G 族舰体/族色同源）＋ 侦察箭形；单发翻倍但节奏同为侦察档。
+  'drone-exile-bee': {
+    name: tr('ui.droneArt.011'),
+    tint: FOE_ACCENT.G,
+    slots: SLOTS_HIGH(-26),
+    bolt: { style: 'dot', len: 7, width: 1.6, tail: false },
+    art: (
+      <g>
+        <path d="M12 0 L-2 -3 L-9 -6 L-4 -2 L-11 0 L-4 2 L-9 6 L-2 3 Z" />
+        {/* 拼装补丁缝（"流亡聚落拼出来的"族外形语言，与蜂群机同源） */}
+        <path d="M-1 -3 v6" className="app-bts-drone-line" />
+        <circle cx="3.4" cy="0" r="1" className="app-bts-drone-dot" />
+      </g>
+    ),
+  },
 }
 
 /** **未登记机型的兜底机体**（2026-09-12 加）。
