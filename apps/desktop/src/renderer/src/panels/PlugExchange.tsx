@@ -100,6 +100,14 @@ export function PlugExchangeModal({
                    *   状态徽标同理走 `.app-chip.is-learned`（薄荷色，全仓既有）。
                    */
                   <div key={row.moduleId} className={`app-belt-card app-shelf-card${row.learned ? ' is-learned' : ''}`}>
+                    {/**
+                     * ⚠ **卡头 = 插件名，不是图纸名**（**2026-09-26 船长令**：「**兑换商品内应该重点强调插件的
+                     * 效果，而不是消耗材料**」＋「**你将产物和图纸的位置弄反了**」）。
+                     *
+                     * 上一版照搬组装机那张卡的"卡头＝图纸名"口径 —— 那在组装机里是对的（一张图纸 = 一个配方，
+                     * 产物在下面 `产物：` 行），**在本窗口是错的**：玩家来这里挑的是"要哪枚插件"，
+                     * 图纸只是兑换的凭据 ⇒ 卡头给插件名，图纸降成下面一行。
+                     */}
                     <div className="app-belt-head">
                       <span className="app-belt-name">
                         <Glyph name="plug" size={15} /> {row.name}
@@ -115,19 +123,23 @@ export function PlugExchangeModal({
                       </span>
                     </div>
 
-                    {/* 这枚插件在游戏里的**实际效果**（装配页同一把尺）——换之前先知道换了什么 */}
-                    <div className="app-belt-desc">{mod ? moduleShortEffect(mod) : ''}</div>
+                    {/**
+                     * **这枚插件的实际效果——本窗口信息层级里的主角**（船长令：「**重点强调插件的效果，
+                     * 而不是消耗材料**」）。`.app-belt-feat` 是全仓卡面族里的"特性/效果"行（比说明行更亮），
+                     * `is-strong` 再压一档字重 ⇒ "换了它能强多少"第一眼就看到；材料清单排在它后面、字号更小。
+                     */}
+                    <div className="app-belt-feat is-strong">{mod ? moduleShortEffect(mod) : ''}</div>
 
-                    {/* 产物行：图纸名 ＋ 当前持有（与组装机那张卡的"产物（仓库 N）"同一版式） */}
+                    {/* 图纸行（**凭据**，不是主角）：图纸名 ＋ 已造件数 */}
                     <div className="app-belt-ore">
-                      {tr('ui.Handbook.013')}
+                      {tr('ui.Industry.135')}
                       {row.blueprintName}
                       <span className="app-dim">
                         （{tr('ui.IndustryPage.125')} {owned.toLocaleString('zh-CN')}）
                       </span>
                     </div>
 
-                    {/* 材料清单（整批所需 ＋ 各项现有）——玩家最想知道的"造得起吗" */}
+                    {/* 材料清单（整批所需 ＋ 各项现有）——**次要信息**：换之前能估"造不造得起"即可 */}
                     {bp ? (
                       <ul className="app-bp-mats">
                         {bp.materials.map((need) => {
