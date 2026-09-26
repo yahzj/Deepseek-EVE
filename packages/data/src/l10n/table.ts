@@ -1048,6 +1048,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.labelsText.066": { zh: "外围", en: "Periphery" },
   "ui.labelsText.067": { zh: "核心", en: "Core" },
   "ui.labelsText.068": { zh: "深层", en: "Deep" },
+  /* 2026-09-26 船长报障「入侵获得的黑匣在仓库内查看不到，需要新增分类」⇒ 黑匣独立成物品种类
+     （core `ItemKind` 的 `blackbox`）；仓库分类 / 货仓分组 / 手册物品图鉴 / 市场一级类型**四处共用这一条**。 */
+  "ui.labelsText.069": { zh: "黑匣", en: "Black boxes" },
   /* ── 2026-09-26 乙批（船长令「可以」继续本地化）：虫洞地点名 / 内容原型名 / 活动名 ──
      病根同一族：core 的纯中文表（`WORMHOLE_PLACE_TEXT` / `WORMHOLE_ARCHETYPE_LABELS` / `KIND_LABEL`）
      原被渲染层直读或被当**日志参数**塞进文案（参数不会再被翻译）⇒ 英文界面下漏中文。
@@ -1399,6 +1402,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.BattleScreen.109": { zh: "机群已损失", en: "drones lost" },
   "ui.BattleScreen.110": { zh: "{p1}：机群已全部被击落，不会再开火", en: "{p1}: every airframe has been shot down, it will not fire again" },
   "ui.BattleScreen.111": { zh: "{p1}：存活 {p2}/{p3} 架", en: "{p1}: {p2}/{p3} airframes alive" },
+  /* 距离尺的语义标签（2026-09-26 战斗界面优化批 I4）：尺是纯图形读数 ⇒ 给读屏一个可读口径（视觉零变化） */
+  "ui.BattleScreen.112": { zh: "距离尺：当前 {p1} 米 · 远端 {p2} 米 · 近端 {p3} 米", en: "Range ruler: {p1} m now, {p2} m at the far end, {p3} m at the near end" },
   /* 损伤管制装置同舰唯一（2026-09-25 船长令「损管只能装备一件」）：装配被拒时的原因 id */
   "core.equipment.028": { zh: "损伤管制装置每舰只能装一件（已装 {p1}）。", en: "Only one Damage Control Unit may be fitted per ship (already fitted: {p1})." },
   // 2026-09-26 报障修复（“可以装多个损管”）：载入归正日志——每舰只留一件，多余的退回装备库
@@ -3823,8 +3828,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.MapPage.121": { zh: "入侵残骸", en: "Invasion wrecks" },
   // 2026-09-26 墨潮电子舱 / 墨潮捕获网（H 族势力装备 · 高槽支援件）的装配页短行
   "ui.shipInfo.185": { zh: "敌方武器射程 −{p1}", en: "Enemy weapon range −{p1}" },
-  "ui.shipInfo.186": { zh: "{p2} 米内每 {p1} 秒钉住一艘未被钉住的敌舰", en: "Pins one un-webbed enemy ship every {p1} s within {p2} m" },
-  /* 舰船插件（2026-09-26 船长令）：装配页短行的逐类效果句 ＋ 一句"装上去拆不下来" */
+  "ui.shipInfo.186": { zh: "{p2} 米内每 {p1} 秒钉住一艘未被钉住的敌舰", en: "Pins one un-webbed enemy ship every {p1} s within {p2} m" },  /* 舰船插件（2026-09-26 船长令）：装配页短行的逐类效果句 ＋ 一句"装上去拆不下来" */
   "ui.shipInfo.187": { zh: "护盾上限 +{p1}", en: "Shield capacity +{p1}" },
   "ui.shipInfo.188": { zh: "装甲上限 +{p1}", en: "Armor capacity +{p1}" },
   "ui.shipInfo.189": { zh: "结构上限 +{p1}", en: "Structure capacity +{p1}" },

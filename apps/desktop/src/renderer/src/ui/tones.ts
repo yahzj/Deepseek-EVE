@@ -38,6 +38,8 @@ export const TONES: Record<string, string> = {
   essence: toneVar('essence'),
   luxury: toneVar('luxury'),
   aicore: toneVar('aicore'),
+  // 2026-09-26 黑匣独立成档（船长报障「仓库内查看不到」）：色调 = 品红族，与 fragment（紫）/gas（淡紫）可分
+  blackbox: toneVar('blackbox'),
   'box-relic': toneVar('box-relic'),
   'box-relic-a': toneVar('box-relic-a'),
   'box-relic-c': toneVar('box-relic-c'),

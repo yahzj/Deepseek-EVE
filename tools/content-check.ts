@@ -85,7 +85,15 @@ import { moduleShortEffect } from '../apps/desktop/src/renderer/src/ui/shipInfo'
 // ⚠ 同款跨层 import：**支援件三分契约**（2026-09-26）要拿渲染层的三档逐件清单当权威——
 //   那 34 件共用 `slot: 'support'`，按件归属只存在于 `itemSubs.ts`；漏登记会在筛选里"静默消失"，
 //   正是这类体检该盯的漏洞（同 `moduleShortEffect` 的理由：`apps/desktop` 没有测试运行器）。
-import { MODULE_SUBS, SUPPORT_MODULE_KEYS } from '../apps/desktop/src/renderer/src/ui/itemSubs'
+import {
+  MODULE_SUBS,
+  RACK_SUBS,
+  SUPPORT_MODULE_KEYS,
+  itemBucketPasses,
+  moduleSubKeyOf,
+  rackDimKeyOf,
+  rackPasses,
+} from '../apps/desktop/src/renderer/src/ui/itemSubs'
 // ⚠ 同款跨层 import：图鉴 →「↖ 查看市场」的条目→商品映射（2026-09-14 船长）在渲染层单点，
 //   体检「图鉴市场跳转契约」逐个走它，防"按钮整类静默消失"。
 //   ⚠ 只 import 这个**只依赖 `@whale/core`** 的小模块：`panels/Handbook.tsx` 会带上 `@whale/ui` 的
@@ -131,6 +139,8 @@ securityZoneOf,
   FACTION_RARE_DROP_COUNT,
   FRAGMENT_RECIPES,
   fragmentItemIdOf,
+  // 2026-09-26 黑匣独立成类：无配方豁免的钉子（判据 = 登记黑匣 id 前缀，单点在 core）
+  isBlackboxItem,
   hasLairCore,
   isLairCandidate,
   lairGearOf,
@@ -556,12 +566,17 @@ for (const item of itemDefs) {
          * ⇒ 上线后依然没有精炼配方；改判"**必须在谜质装置表里**"（core `WORMHOLE_MATTER_DEVICE_IDS`，
          * 表里每台都带自己的生效口径）。 */
         (item.kind === 'matter' && matterDeviceIds.has(item.id)) ||
+        /* **黑匣**（**2026-09-26 船长报障**：「**入侵获得的黑匣在仓库内查看不到，需要新增分类**」）：
+           墨潮旗舰黑匣 09-25 起一直**借 `kit` 档**（当时图省事）⇒ 玩家按「黑匣」找永远找不到；
+           本批独立成 `blackbox`。它同样没有精炼配方（不是可采集资源，而是战利品兼组装机原料）
+           ⇒ 豁免，判据改走"**必须是登记在册的黑匣 id**"（core 单点 `isBlackboxItem`，本文件不另存清单）。 */
+        (item.kind === 'blackbox' && isBlackboxItem(item.id)) ||
         /* **AI 核心（洞内实物形态）**（同批改判）：撤离成功即**直接入核心账本**（`state.aiCores`，
          * 不进仓库、不上拆解台、不进生产链）⇒ 上线后依然没有精炼配方；
          * 改判"**必须有一张指向它的核心市场卡**"（kind `aicore`，也就是核心账本的入口）。 */
         (item.kind === 'aicore' && aicoreItemIds.has(item.id)),
       `${item.id}（${item.kind}）没有精炼配方——可采集资源必须带配方（kit 为无配方消耗品豁免；` +
-        `container 须是登记货柜、matter 须在谜质装置表、aicore 须有核心市场卡）`,
+        `container 须是登记货柜、matter 须在谜质装置表、aicore 须有核心市场卡、blackbox 须是登记黑匣）`,
     )
   }
 }
@@ -603,12 +618,17 @@ for (const bp of BLUEPRINTS) {
      * 2026-09-20 零件体系：配方材料允许矿物或零件（零件本身由蓝图/隐式蓝图产出）。
      *
      * ⚠ **2026-09-26 放宽（船长令）**：舰船插件蓝图「**材料除了黑匣，还需要大量虚空晶和其他零件**」
-     * ⇒ 材料域再收 **`kit`** 一档（墨潮旗舰黑匣 `blackbox-h` 就是 `kind: 'kit'` 的战利品：可存、可回收、
-     * 可售，既不是矿物也不是零件，但**被明确指定为生产原料**）。
+     * ⇒ 材料域再收一档（墨潮旗舰黑匣 `blackbox-h`：可存、可回收、可售，既不是矿物也不是零件，
+     * 但**被明确指定为生产原料**）。
+     * ⚠ **同日再改（船长报障「黑匣在仓库内查看不到，需要新增分类」）**：黑匣当时借 `kit` 档，
+     * 现独立成 `blackbox` 档 ⇒ 本处的放宽档随之从 `kit` 换成 `blackbox`
+     * （**`kit` 不再算材料**：修理组件是消耗品，从来没有配方用它）。
      * 放宽面刻意收在"**物品大类**"这一档，而不是"任意物品都能当材料"——那样这条契约就等于没有了。
      */
-    const okKind = mat !== undefined && (mat.kind === 'mineral' || mat.kind === 'part' || mat.kind === 'kit')
-    check(okKind, `蓝图 ${bp.id} 材料 ${need.itemId} 不存在或不是矿物/零件/组件`)
+    const okKind =
+      mat !== undefined &&
+      (mat.kind === 'mineral' || mat.kind === 'part' || mat.kind === 'blackbox')
+    check(okKind, `蓝图 ${bp.id} 材料 ${need.itemId} 不存在或不是矿物/零件/黑匣`)
     check(need.count > 0 && Number.isInteger(need.count), `蓝图 ${bp.id} 材料数量非法`)
   }
   // **一次性图纸豁免**（2026-09-12 船长：「玩家无法学会，只能制造一次的图纸」）：
@@ -1806,6 +1826,7 @@ for (const m of MODULES) {
     )
   }
 
+
   /* ── 存档「恢复 / 导入**不**自动备份」契约（船长 2026-09-17：「**导入或者恢复存档时，不要备份现有存档**」）──
    * 挡回潮：三条覆盖路径里任何一条又"好心"加回防误操作备份，或界面文案又开始承诺自动备份。
    * 依据：手动「备份当前档」与备份列表**照旧**（要留退路由玩家自己先点一次）。 */
@@ -2622,7 +2643,73 @@ for (const m of MODULES) {
  *   ⑤ **主题件**：组主题件 = 该组成员卡主题件的**并集**（分 modules/mk2 两类，逐项相等）；
  *   ⑥ **出量梯度**：常档乘数恒 1.00、且 常 ≤ 险 ≤ 危（船长 2026-09-19「提高更危险地区的残骸出量」）。 */
 {
+  }
   const ctx = buildSimContext()
+  /* ── 黑匣独立成类契约（**2026-09-26 船长两条令**：「**入侵获得的黑匣在仓库内查看不到，需要新增分类**」
+   *   ＋ 「**市场内黑匣单独一个分类，不要挪到「货物」**」）──
+   * 挡三种回潮：① kind 又被改回 `kit`（黑匣会重新藏在「修理组件」里，玩家找不回来）；
+   * ② 市场一级类型里丢了「黑匣」那一档；③ 「货物」档又把黑匣收了回去。
+   * 判据**跑真函数**（`itemBucketPasses`，与市场/仓库/图鉴同一把尺），不是文本匹配。 */
+  {
+    const blackboxes = [...items.values()].filter((i) => i.kind === 'blackbox')
+    check(blackboxes.length > 0, '黑匣契约：内容表里一件 `kind: blackbox` 的物品都没有（船长令：黑匣要单独一类）')
+    for (const b of blackboxes) {
+      check(isBlackboxItem(b.id), `黑匣契约：${b.id} 是 blackbox 档但不在登记黑匣名单里（core \`isBlackboxItem\`）`)
+      check(itemBucketPasses(ctx, b.id, 'blackbox'), `黑匣契约：${b.id} 没被「黑匣」桶收下`)
+      check(!itemBucketPasses(ctx, b.id, 'item'), `黑匣契约：${b.id} 又落回市场「货物」了（船长令：黑匣单独一个分类）`)
+      check(!itemBucketPasses(ctx, b.id, 'consume'), `黑匣契约：${b.id} 又落回「消耗品」了（它不是修理组件）`)
+    }
+    check(ITEM_KIND_ORDER.includes('blackbox'), '黑匣契约：`ITEM_KIND_ORDER` 里没有 blackbox（仓库/货仓/图鉴的分类行会缺一档）')
+    // 市场页的类型下拉：本块自带读源码小工具（同名变量都在别的块作用域里，取不到）
+    const mpRead = (rel: string): string => readFileSync(join(process.cwd(), rel), 'utf8')
+    const mpSrc2 = mpRead('apps/desktop/src/renderer/src/pages/MarketPage.tsx')
+    check(
+      mpSrc2.includes("'blackbox'"),
+      '黑匣契约：市场页的类型下拉里没有 blackbox 一档（船长令：市场内黑匣单独一个分类）',
+    )
+    console.log(
+      `· 黑匣契约：${blackboxes.map((b) => b.id).join(' / ')} 独立成类（仓库/货仓/图鉴/市场四档一致）· ` +
+        '市场「货物」与「消耗品」都不再收它',
+    )
+  }
+
+  /* ── 装备**归属档**契约（**2026-09-26 船长令**：「**在装备图鉴中，和高中低槽同级的位置，
+   *   新增一个舰船插件的分类**」）──
+   * 挡两种回潮：① 「舰船插件」档从筛选表里掉了（插件又混进低槽）；② 插件被判进高/中/低槽
+   * （`rackDimKeyOf` 单点被绕过、有人又直接读 core 的 `rackOf`——插件数据里声明的是 `rack: 'low'`）。
+   * 判据同样跑真函数（`rackPasses` / `rackDimKeyOf` / `moduleSubKeyOf`）。 */
+  {
+    const rackKeys = RACK_SUBS.map((s) => s.key)
+    check(
+      rackKeys.join(',') === 'high,mid,low,plug',
+      `归属档契约：\`RACK_SUBS\` 的档位不是「高/中/低/舰船插件」（现：${rackKeys.join(',')}）`,
+    )
+    // ⚠ 这里不叫 `moduleIds`：本块嵌在残骸组契约块里，那个名字在后面还会被声明一次（TDZ）
+    const allModIds = MODULES.map((m) => m.id)
+    const plugIds = allModIds.filter((id) => ctx.modules.get(id)?.slot === 'plug')
+    check(plugIds.length > 0, '归属档契约：装备表里没有 `slot: plug` 的舰船插件')
+    const lowIds = allModIds.filter((id) => {
+      const m = ctx.modules.get(id)!
+      return m.slot !== 'plug' && rackOf(m) === 'low'
+    })
+    for (const id of plugIds) {
+      const m = ctx.modules.get(id)!
+      check(rackDimKeyOf(m) === 'plug', `归属档契约：插件 ${id} 的归属档不是 plug（读 core \`rackOf\` 会得到 low）`)
+      check(rackPasses(ctx, id, 'plug'), `归属档契约：插件 ${id} 没被「舰船插件」档收下`)
+      check(!rackPasses(ctx, id, 'low'), `归属档契约：插件 ${id} 又出现在低槽档里`)
+      check(itemBucketPasses(ctx, id, 'module-plug'), `归属档契约：插件 ${id} 在 module-plug 桶里查不到`)
+      check(!itemBucketPasses(ctx, id, 'module-low'), `归属档契约：插件 ${id} 又被算进 module-low 桶`)
+      check(
+        moduleSubKeyOf('plug', id) === 'plug',
+        `归属档契约：插件 ${id} 的功能分组不是 plug（装备图鉴里会掉进「其它」）`,
+      )
+    }
+    for (const id of lowIds.slice(0, 20)) {
+      check(!rackPasses(ctx, id, 'plug'), `归属档契约：低槽件 ${id} 被误判进插件档`)
+    }
+    console.log(
+      `· 归属档契约：高/中/低/舰船插件 四档（插件 ${plugIds.length} 件自成一档，不再算低槽；普通低槽件 ${lowIds.length} 件照旧）`,
+    )
   // ① 成员覆盖 + 族/地区一致
   const memberOf = new Map<string, string>()
   let dup = 0

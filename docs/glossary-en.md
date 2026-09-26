@@ -510,6 +510,37 @@
 | wh-exile-swarm | 残响蜂群 | `Echo Swarm` |
 | wh-exile-line | 残军战列线 | `Remnant Battle Line` |
 
+### 十一之二、专名表 · 敌方挂载件（14）· **2026-09-26 三号补 · 待船长过目**
+
+> 落点 = `packages/core/src/foeMounts.ts` 各件的 `en` 字段（`resolveFoeMounts` 的 `namePairs` 用它，
+> 英文界面经 `overlayCardFoeMounts` 覆盖）。**交接来源**：船长令「**翻译交给三号，你备注下我让三号去做**」
+> （二号备注于 `docs/roadmap.md` §三号交接开放项）。口径 = §一 命名规则（直译优先 · 族系前缀照译 ·
+> 档位 `T1~T4` 照抄 · 括号限用）。生效前这 10 件在英文界面**回退中文名**。
+
+| 件 id | 中文名 | English |
+|---|---|---|
+| foe-mount-charge-pirate | 劫掠冲锋推进器 | `Raider Charge Thruster` |
+| foe-mount-charge-swarm-t1 | 虫群冲锋器 T1 | `Hiveswarm Charger T1` |
+| foe-mount-charge-swarm-t2 | 虫群冲锋器 T2 | `Hiveswarm Charger T2` |
+| foe-mount-charge-swarm-t3 | 虫群冲锋器 T3 | `Hiveswarm Charger T3` |
+| foe-mount-charge-swarm-t4 | 虫群冲锋器 T4 | `Hiveswarm Charger T4` |
+| foe-mount-drone-range-x4 | 机巢增程阵列 | `Drone Nest Range Array` |
+| foe-mount-capture-web | 劫掠捕获网 | `Raider Snare Net` |
+| foe-mount-gun-range-x1-5 | 守墓远距观瞄 | `Gravekeeper Long-range Optics` |
+| foe-mount-titan-range-x1-5 | 巨构齐射观瞄 | `Megastructure Salvo Optics` |
+| foe-mount-support-call | 支援呼叫装置 | `Support Call Device` |
+| foe-mount-gyro-stabilizer | 姿态陀螺仪 | `Attitude Gyro` |
+| foe-mount-hull-repair | 船体修理装置 | `Hull Repair Unit` |
+| foe-mount-revive-escort | 支援舰船召唤装置 | `Support Recall Beacon` |
+| foe-mount-ink-range-debuff | 墨潮干扰阵列 | `Ink Tide Jammer Array` |
+
+**选词依据（逐条可查）**：族系前缀按 §一 第 4 条与既有表 —— 劫掠 → `Raider`（`foe-pirate-*` 同名族）、
+巢群/虫群 → `Hiveswarm`（`sh-wh-c-cruiser` 同词）、守墓 → `Gravekeeper`、巨构 → `Megastructure`；
+档位 `T1~T4` 照抄（第 3 条）；「阵列」= `Array`（与 `Tracking Array` 同族）；
+「捕获网」表内无冻结词条 ⇒ 取机制句英文侧同用的 `Snare Net`；
+D 族与 E 族那两件**刻意不同名**（该件 note 明写"名字要不同"）⇒ `Gravekeeper Long-range Optics` /
+`Megastructure Salvo Optics`；「观瞄」= `Optics`、「增程」= `Range`、「召唤」= `Recall`。
+
 ## 十二、专名表 · 装备（142）
 
 分组说明（本节新立的术语，已并入 §二 的口径）：采集器 = `Mining Laser` · 近防炮 = `Point Defense Gun`（缩写 PD）·

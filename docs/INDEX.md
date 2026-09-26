@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **333** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6154** KB · **43339** 行
-- 状态分布：**未标注** 180 · **已确认/已实现** 112 · **进行中** 30 · **待裁定** 10 · **历史留档** 1
-- 孤儿文档（0 引用）**47** 份 · 状态未标注 **180** 份
+- 文档总数 **335** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6175** KB · **43524** 行
+- 状态分布：**未标注** 181 · **已确认/已实现** 112 · **进行中** 30 · **待裁定** 11 · **历史留档** 1
+- 孤儿文档（0 引用）**49** 份 · 状态未标注 **181** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
-- 三、现行设计稿（design）：**213** 份
+- 三、现行设计稿（design）：**215** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**30** 份
 - 二、其它（docs 根目录）：**1** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -33,10 +33,10 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 30 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 26 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 248 KB / 273 行 | 14 / 3 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 255 KB / 276 行 | 14 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 65 KB / 692 行 | 76 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 481 KB / 987 行 | 218 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 108 KB / 337 行 | 328 / 17 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 109 KB / 343 行 | 330 / 18 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -53,16 +53,18 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 213 份
+## 三、现行设计稿（design） —— 215 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/ammo-mk2-book-price-20260926.md` | 弹药 MK2 图纸改价（2026-09-26） | 进行中（进行中） | 2026-09-26 | 3 KB / 54 行 | 0 / 0 |
 | `docs/design/announcement-draft-20260926-damage-control.md` | 公告待审稿 · 损伤管制装置（2026-09-26） | 待裁定（待船长审核） | 2026-09-26 | 2 KB / 37 行 | 2 / 0 |
+| `docs/design/blackbox-plug-category-20260926.md` | 黑匣独立成类 ＋ 装备归属档新增「舰船插件」（2026-09-26） | 待裁定（已实现 · 待船长验收） | 2026-09-26 | 6 KB / 82 行 | 0 / 0 |
 | `docs/design/dc-unique-fix-20260926.md` | 报障修复：玩家可以装多个损管（2026-09-26） | 待裁定（已修复 · 待船长验收） | 2026-09-26 | 3 KB / 42 行 | 0 / 0 |
 | `docs/design/drone-blueprints-20260926.md` | 制式无人机永久图纸（2026-09-26） | 进行中（进行中） | 2026-09-26 | 4 KB / 71 行 | 1 / 0 |
 | `docs/design/event-log-categories-20260926.md` | 事件日志重新分类（2026-09-26） | 待裁定（已实现 · 待船长验收） | 2026-09-26 | 11 KB / 142 行 | 0 / 1 |
 | `docs/design/faction-codex-20260926.md` | 工作文档 · 敌族图鉴（手册「航行须知」新开一节）（2026-09-26 · 三号） | 进行中（进行中 —— 已落码、闸门全绿） | 2026-09-26 | 4 KB / 71 行 | 1 / 0 |
+| `docs/design/faction-codex-cards-20260926.md` | 势力图鉴：卡片化改造（去切换 · 敌人舰船形象 · 专属件用图鉴卡 · 族徽角标） | 未标注 | 2026-09-26 | 5 KB / 63 行 | 0 / 0 |
 | `docs/design/faction-codex-tab-20260926.md` | 工作文档 · 势力图鉴（手册独立图鉴页签）（2026-09-26 · 三号） | 进行中（进行中 —— 四步闸门已走完） | 2026-09-26 | 6 KB / 72 行 | 0 / 0 |
 | `docs/design/foe-revive-20260926.md` | 入侵母舰「支援舰船召唤装置」改判：每次 2 艘 · 优先复活干扰舰（2026-09-26） | 待裁定（已实现 · 待船长验收） | 2026-09-26 | 3 KB / 50 行 | 0 / 0 |
 | `docs/design/h-price-salvage-order-20260926.md` | H 三件市场价改判（甲）＋ 打捞三级序口径同步（2026-09-26） | 进行中（进行中 —— 已落码、四道闸门全绿） | 2026-09-26 | 5 KB / 76 行 | 0 / 0 |
@@ -310,7 +312,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 44 KB / 767 行 | 14 / 17 |
+| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 46 KB / 798 行 | 18 / 18 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -403,12 +405,14 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 56 / 13 |
 
-## 附：孤儿文档（0 引用，47 份）
+## 附：孤儿文档（0 引用，49 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/ammo-mk2-book-price-20260926.md`（2026-09-26 · 3 KB）—— 弹药 MK2 图纸改价（2026-09-26）
+- `docs/design/blackbox-plug-category-20260926.md`（2026-09-26 · 6 KB）—— 黑匣独立成类 ＋ 装备归属档新增「舰船插件」（2026-09-26）
 - `docs/design/dc-unique-fix-20260926.md`（2026-09-26 · 3 KB）—— 报障修复：玩家可以装多个损管（2026-09-26）
+- `docs/design/faction-codex-cards-20260926.md`（2026-09-26 · 5 KB）—— 势力图鉴：卡片化改造（去切换 · 敌人舰船形象 · 专属件用图鉴卡 · 族徽角标）
 - `docs/design/faction-codex-tab-20260926.md`（2026-09-26 · 6 KB）—— 工作文档 · 势力图鉴（手册独立图鉴页签）（2026-09-26 · 三号）
 - `docs/design/foe-revive-20260926.md`（2026-09-26 · 3 KB）—— 入侵母舰「支援舰船召唤装置」改判：每次 2 艘 · 优先复活干扰舰（2026-09-26）
 - `docs/design/h-price-salvage-order-20260926.md`（2026-09-26 · 5 KB）—— H 三件市场价改判（甲）＋ 打捞三级序口径同步（2026-09-26）
@@ -455,8 +459,9 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（180 份，待补一行 `状态：…`）
+## 附：状态未标注（181 份，待补一行 `状态：…`）
 
+- `docs/design/faction-codex-cards-20260926.md`（2026-09-26）—— 势力图鉴：卡片化改造（去切换 · 敌人舰船形象 · 专属件用图鉴卡 · 族徽角标）
 - `docs/design/handoff-20260926-to-pilot2.md`（2026-09-26）—— 交接卡：新二号（2026-09-26 · 旧二号交班）
 - `docs/design/ship-attr-ia-20260926.md`（2026-09-26）—— 舰船属性表信息架构调整（动力 → 间接属性 · 机动速度进主表 · 括号瘦身）
 - `docs/design/hostile-factions-handbook-20260925.md`（2026-09-25）—— 敌族手册（手册 · 新增「敌对势力」一节）—— 挂起备忘（2026-09-25）

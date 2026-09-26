@@ -38,6 +38,7 @@ const KIND_ID: Record<ItemKind, string> = {
   // 以下 core 独有 ⇒ 新登记在 ui.labelsText.*
   part: 'ui.labelsText.001', // 零件 / Parts
   fragment: 'ui.labelsText.002', // 蓝图碎片 / Blueprint fragments
+  blackbox: 'ui.labelsText.069', // 黑匣 / Black boxes（2026-09-26 独立成档：仓库/货仓/图鉴/市场同一把尺）
 }
 
 /** 无人机机型 → id（core 的 `DRONE_CLASS_LABELS` 是纯中文表） */

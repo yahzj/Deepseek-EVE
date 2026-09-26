@@ -65,6 +65,9 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
   [FOE_MOUNT_IDS.chargePirate]: {
     id: FOE_MOUNT_IDS.chargePirate,
     name: '劫掠冲锋推进器',
+    // 2026-09-26 三号补英文名（交接项「敌方挂载件英文译名」）：`glossary-en.md` §一 命名规则
+    // 第 4 条「掠袭 → Raider」＋ 直译；效果说明本身中英齐备（`ui.foeIntro.107`），这里只给"装置叫什么"。
+    en: 'Raider Charge Thruster',
     charge: { mul: 1.6, cooldownMs: 30_000 },
     note:
       '船长 2026-09-16：「给A族虫洞内的海盗添加冲锋…冲锋倍率为1.6，冷却30秒」⇒ 只挂洞内三张 A 族卡的条目' +
@@ -73,30 +76,37 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
   [FOE_MOUNT_IDS.chargeSwarmT1]: {
     id: FOE_MOUNT_IDS.chargeSwarmT1,
     name: '虫群冲锋器 T1',
+    en: 'Hiveswarm Charger T1', // 族系前缀照译：巢群/虫群 = `Hiveswarm`；档位照抄（命名规则第 3 条）
     charge: { mul: 1.5, cooldownMs: 10_000 },
     note: 'C 族 T1（畸变幼虫 / 星髓幼虫）：船长 2026-09-14「给小虫子添加冲锋，倍率为1.5」。',
   },
   [FOE_MOUNT_IDS.chargeSwarmT2]: {
     id: FOE_MOUNT_IDS.chargeSwarmT2,
     name: '虫群冲锋器 T2',
+    en: 'Hiveswarm Charger T2',
     charge: { mul: 2, cooldownMs: 10_000 },
     note: 'C 族 T2（星髓成虫）：船长 2026-09-16「C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4」。',
   },
   [FOE_MOUNT_IDS.chargeSwarmT3]: {
     id: FOE_MOUNT_IDS.chargeSwarmT3,
     name: '虫群冲锋器 T3',
+    en: 'Hiveswarm Charger T3',
     charge: { mul: 2.5, cooldownMs: 10_000 },
     note: 'C 族 T3（孢群异虫）：同上按档口径（2026-09-16 前它是族内唯一不具冲锋资格的舰级）。',
   },
   [FOE_MOUNT_IDS.chargeSwarmT4]: {
     id: FOE_MOUNT_IDS.chargeSwarmT4,
     name: '虫群冲锋器 T4',
+    en: 'Hiveswarm Charger T4',
     charge: { mul: 3, cooldownMs: 10_000 },
     note: 'C 族 T4（噬口巨兽）：船长 2026-09-14「大虫子的冲锋倍率改为3」。',
   },
   [FOE_MOUNT_IDS.droneRangeX4]: {
     id: FOE_MOUNT_IDS.droneRangeX4,
     name: '机巢增程阵列',
+    // 「机巢」按同族既有译法 `Hive Dock`（`mod-wh-g-hangar` 亡军蜂巢坞）取 `Drone Nest`，
+    // 「增程」= `Range`、阵列 = `Array`（与 `Tracking Array` 同族写法）
+    en: 'Drone Nest Range Array',
     droneRangeOnHit: { mul: 4 },
     note:
       'E 族三舰（巨构残段 / 奥罗残骸段 / 巨构核心段）：本体被命中 ⇒ 整队机群射程 ×4（迁移前 droneRangeMulOnHit: 4）。' +
@@ -105,6 +115,8 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
   [FOE_MOUNT_IDS.captureWeb]: {
     id: FOE_MOUNT_IDS.captureWeb,
     name: '劫掠捕获网',
+    // 「捕获网」在英文表里没有冻结词条 ⇒ 取 `Snare Net`（机制句 `ui.foeIntro.102` 英文侧用的也是 snare net）
+    en: 'Raider Snare Net',
     web: { slowMul: 0.1, noThruster: true, noEvasion: true, rangeDownM: 500 },
     note:
       '船长 2026-09-16：「劫掠捕获网：降低目标90%移动速度，并关闭所有类型推进器。在自身第一次开火时发动。' +
@@ -116,6 +128,8 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
   [FOE_MOUNT_IDS.gunRangeX15]: {
     id: FOE_MOUNT_IDS.gunRangeX15,
     name: '守墓远距观瞄',
+    // 「观瞄」= `Optics`；族名按 §一 第 4 条与既有表：守墓 = `Gravekeeper`
+    en: 'Gravekeeper Long-range Optics',
     gunRangeOnHit: { mul: 1.5 },
     note:
       'D 族静滞卫舰：从它射程之外被命中 ⇒ 本舰炮台射程 ×1.5（迁移前 gunRangeMulOnHit: 1.5）。' +
@@ -124,6 +138,8 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
   [FOE_MOUNT_IDS.gunRangeX15Titan]: {
     id: FOE_MOUNT_IDS.gunRangeX15Titan,
     name: '巨构齐射观瞄',
+    // 与 D 族那件**刻意不同名**（该件 note 明写"名字要不同"）⇒ 取「齐射」= `Salvo`
+    en: 'Megastructure Salvo Optics',
     gunRangeOnHit: { mul: 1.5 },
     note:
       '船长 2026-09-19：「并挂载类似静滞卫舰的挨打后对方在射程外就增加射程的挂载件」＋同日澄清' +
@@ -134,6 +150,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
   [FOE_MOUNT_IDS.supportCall]: {
     id: FOE_MOUNT_IDS.supportCall,
     name: '支援呼叫装置',
+    en: 'Support Call Device',
     supportCall: { delaySec: 20, threatMul: 1.1 },
     note:
       '船长 2026-09-19：「战斗开始20秒后，增援2艘幽灵舰。如果对方在自己最远射程之外时，增援2艘静滞卫舰。」' +

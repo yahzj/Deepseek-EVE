@@ -13,9 +13,9 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { ITEM_KIND_ORDER, itemKindText, rackOf, shipCategoryKeyOf, visibleItemDefs } from '@whale/core'
-import type { DroneClass, FoeShipDef, ItemKind, ShipRole } from '@whale/core'
+import type { BlueprintDef, DamageType, DroneClass, FoeShipDef, ItemKind, ModuleDef, ShipBlueprintDef, ShipDef, ShipRole } from '@whale/core'
 // 稀有度小标签（2026-09-20 船长）：档位走单点 `itemRarityTierOf`（含 AI 核心与舰船的键映射）
-import { buildFactionCards, FACTION_CODEX_ORDER, FOE_SHIPS, itemRarityTierOf } from '@whale/data'
+import { buildFactionCards, factionOfExclusive, FACTION_CODEX_ORDER, FOE_SHIPS, itemRarityTierOf } from '@whale/data'
 import type { FactionCard } from '@whale/data'
 // 图鉴 →「↖ 查看市场」的条目→商品映射（2026-09-14 船长）：单点在 `ui/marketJump.ts`
 // （独立小模块的原因：体检要跨层调它，而本文件 import 了 `@whale/ui`、node 侧加载不了 CSS）
@@ -38,16 +38,17 @@ import {
   itemSubPasses,
   moduleSubKeyOf,
   presentSubs,
+  rackDimKeyOf,
   shipRolePasses,
   shipTierPasses,
   subText,
 } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 import { RowGlyph } from '../ui/itemView'
-import { combatBadges, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
+import { combatBadges, DmgChip, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import { plainSkillDesc } from '../ui/skillText'
 // 势力图鉴：逐舰级简报复用**悬赏卡悬停那一份**（同源出口，不另写文案）——2026-09-26
-import { foeBriefLinesOfShip } from '../ui/foeBrief'
+import { foeBriefLinesOfShip, mountLabelText } from '../ui/foeBrief'
 import { tr } from '../i18n/locale'
 import { kindTextOfItem, shipTierText, skillGroupText, slotText } from '../ui/labelsText'
 import { kindText, shipRoleText } from '../ui/labelsText'
@@ -67,6 +68,12 @@ const slotName = (k: string): string => slotText(k)
 const roleName = (k: string): string => shipRoleText(k as Parameters<typeof shipRoleText>[0])
 
 type Tab = 'guide' | 'rules' | 'items' | 'modules' | 'ships' | 'blueprints' | 'skills' | 'factions'
+/**
+ * **详情窗的卡片类型**（= 导航页 `Tab` ＋ `'foe'`）：势力图鉴的敌人卡也走同一条 `CellDetail` 路
+ * （2026-09-26 船长令「敌人卡和其他图鉴中一样，可以点开」），但 `foe` 不是导航页
+ * ⇒ 那几个 `Record<Tab, …>`（搜索占位 / 计数单位 / 筛选标签）不该被它污染，故单列这一型。
+ */
+type DetailTab = Tab | 'foe'
 /** 有图鉴内容的页（＝ `codexCells` 的键；筛选两级的现算都在这几页上做） */
 type CodexTab = 'items' | 'modules' | 'ships' | 'blueprints' | 'skills' | 'factions'
 type ViewMode = 'grid' | 'list'
@@ -124,6 +131,40 @@ function FactionDetailPanel({ engine, family }: { engine: GameEngine; family: st
     for (const bp of engine.shipBlueprints) if (bp.id === id) return engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId
     return id
   }
+  /** 本容器自己的详情窗（卡片可点开；与其它图鉴同一条 `CellDetail` 路） */
+  const [detail, setDetail] = useState<GridCell | null>(null)
+  /** ② 敌人卡：已遭遇 ⇒ 敌舰 SVG；未遭遇 ⇒ 通用「信号不良」图形 ＋「？？？」 */
+  const enemyCells: GridCell[] = card.enemies.map((e) => {
+    const ship = e.seen ? ships.get(e.id) : undefined
+    const line = ship !== undefined ? foeBriefLinesOfShip(ship) : null
+    // 副行：舰种 · 战术…（一条短句；与悬赏卡悬停同源，截断由卡片自己的换行处理）
+    const sub = line !== null ? [line.hull, ...line.bits].filter((x) => x !== '').join(' · ') : tr('ui.codex.010')
+    return {
+      key: e.id,
+      tab: 'foe',
+      glyph: e.seen ? 'ico-tact' : 'signal-lost',
+      name: e.seen ? (ship?.name ?? e.id) : tr('ui.codex.005'),
+      sub,
+      raw: (ship ?? { id: e.id, name: e.id, hullClassTier: 1, split: { s: 0, a: 0, h: 0 } }) as unknown as RawData,
+      ...(ship !== undefined ? { shipId: ship.id } : {}),
+    }
+  })
+  /** ③ 专属装备 / 舰船 / 图纸：三段都用**图鉴卡片的同一构造**（族徽由 builder 按所属势力加） */
+  const exclusiveModuleCells: GridCell[] = card.modules
+    .map((id) => engine.ctx.modules.get(id))
+    .filter((m): m is NonNullable<typeof m> => m !== undefined)
+    .map((m) => moduleCellOf(m))
+  const exclusiveShipCells: GridCell[] = card.ships
+    .map((id) => engine.ctx.ships.get(id))
+    .filter((s): s is NonNullable<typeof s> => s !== undefined)
+    .map((s) => shipCellOf(s))
+  const exclusiveBlueprintCells: GridCell[] = card.blueprints.flatMap((id) => {
+    const modBp = engine.blueprints.find((b) => b.id === id)
+    if (modBp !== undefined) return [blueprintCellOf(engine, modBp)]
+    const shipBp = engine.shipBlueprints.find((b) => b.id === id)
+    if (shipBp !== undefined) return [shipBlueprintCellOf(engine, shipBp)]
+    return []
+  })
   return (
     <Panel
       title={`${tr(card.nameId)} · ${tr('ui.codex.003', { p1: card.seenCount, p2: card.totalCount })}`}
@@ -143,38 +184,26 @@ function FactionDetailPanel({ engine, family }: { engine: GameEngine; family: st
         ))}
       </div>
 
-      {/* ② 敌人种类（未遭遇 = ？？？占位） */}
+      {/**
+       * ② **敌人种类**（**2026-09-26 船长令**：「**内容中的敌人窗口，每个敌人需要显示敌人的舰船SVG**」
+       * ＋「（未遭遇）**不显示剪影，改为类似信号不良的通用图形**」）。
+       *
+       * 每型敌人 = 一张**图标卡**（与其它图鉴同一套 `app-hand-cell`）：
+       * 舰影走 `ShipSprite`（敌舰逐舰资产表，与战斗画面同一张）；**未遭遇**画通用「信号不良」图形
+       * （`ico-antenna` 线稿 ＋ 噪点装饰，见 `SignalLostIcon`），名字与介绍仍按旧令打「？？？」。
+       * 卡片**可点开**（船长同批：「和其他图鉴中一样，可以点开」）⇒ 走 `CellDetail` 的 `foe` 分支。
+       */}
       <GroupSection label={tr('ui.codex.008')} unit={COUNT_UNIT.factions} count={card.totalCount}>
         {card.unlocked ? (
-          <ul className="app-inv-list">
-            {card.enemies.map((e) => {
-              const ship = e.seen ? ships.get(e.id) : undefined
-              const line = e.seen ? foeBriefLinesOfShip(ship) : null
-              // 2026-09-26：`mounts` 改成**逐件结构**（悬停要一件一行、装置名同色染）
-              // ⇒ 势力图鉴这条单行读数自己拼回字符串（装置名：效果，件间用顿号）
-              const mountText = line?.mounts?.map((m) => (m.name !== '' ? `${m.name}：${m.effect}` : m.effect)).join('、')
-              const body =
-                line !== null
-                  ? [line.hull, ...line.bits, ...(mountText !== undefined && mountText !== '' ? [mountText] : [])]
-                      .filter((x) => x !== '')
-                      .join(' · ')
-                  : ''
-              return (
-                <li key={e.id} className="app-inv-row is-static">
-                  <span className="app-inv-main">
-                    <span className="app-inv-name">{e.seen ? (ship?.name ?? e.id) : tr('ui.codex.005')}</span>
-                    <span className="app-inv-sub">{e.seen ? body : tr('ui.codex.010')}</span>
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
+          <IconGrid cells={enemyCells} onPick={setDetail} />
         ) : (
           <div className="app-dim app-inv-empty">{tr('ui.codex.006')}</div>
         )}
       </GroupSection>
 
-      {/* ③ 专属装备 / 专属舰船 / 图纸（未解锁：不给明细） */}
+      {/* ③ 专属装备 / 专属舰船 / 图纸（未解锁：不给明细）——三段都用**图鉴卡片**（船长 2026-09-26：
+          「专属装备也是过于简陋。装备和舰船以及蓝图这些应该使用装备图鉴舰船图鉴中的痛苦卡片」），
+          卡片构造与装备/舰船/蓝图图鉴**同一个 builder** ⇒ 观感与口径不会两处漂移。 */}
       {card.unlocked ? (
         <>
           <GroupSection
@@ -182,64 +211,27 @@ function FactionDetailPanel({ engine, family }: { engine: GameEngine; family: st
             unit={tr('ui.codex.014')}
             count={card.modules.length}
           >
-            <ul className="app-inv-list">
-              {card.modules.map((id) => {
-                const mod = engine.ctx.modules.get(id)
-                return (
-                  <li key={id} className="app-inv-row is-static">
-                    <span className="app-inv-main">
-                      <span className="app-inv-name">{itemName(id)}</span>
-                      <span className="app-inv-sub">
-                        {mod ? moduleShortEffect(mod) : engine.ctx.items.get(id)?.description ?? ''}
-                      </span>
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
+            <IconGrid cells={exclusiveModuleCells} onPick={setDetail} />
           </GroupSection>
           <GroupSection label={tr('ui.codex.012')} unit={tr('ui.codex.015')} count={card.ships.length}>
             {card.ships.length > 0 ? (
-              <ul className="app-inv-list">
-                {card.ships.map((id) => {
-                  const ship = engine.ctx.ships.get(id)
-                  return (
-                    <li key={id} className="app-inv-row is-static">
-                      <span className="app-inv-main">
-                        <span className="app-inv-name">{ship?.name ?? id}</span>
-                        <span className="app-inv-sub">{ship ? shipTierText(ship.tier) : ''}</span>
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
+              <IconGrid cells={exclusiveShipCells} onPick={setDetail} />
             ) : (
               <div className="app-dim app-inv-empty">{tr('ui.codex.016')}</div>
             )}
           </GroupSection>
           {card.blueprints.length > 0 ? (
             <GroupSection label={tr('ui.codex.013')} unit={tr('ui.codex.014')} count={card.blueprints.length}>
-              <ul className="app-inv-list">
-                {card.blueprints.map((id) => {
-                  const mod = engine.ctx.modules.get(id)
-                  const bp = engine.blueprints.find((b) => b.id === id)
-                  const prodMod = mod ?? (bp?.moduleId !== undefined ? engine.ctx.modules.get(bp.moduleId) : undefined)
-                  return (
-                    <li key={id} className="app-inv-row is-static">
-                      <span className="app-inv-main">
-                        <span className="app-inv-name">{`${prodMod?.name ?? bpNameOf(id)}（${tr('ui.codex.013')}）`}</span>
-                        <span className="app-inv-sub">{prodMod ? moduleShortEffect(prodMod) : ''}</span>
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
+              <IconGrid cells={exclusiveBlueprintCells} onPick={setDetail} />
             </GroupSection>
           ) : null}
         </>
       ) : (
         <div className="app-dim app-inv-empty">{tr('ui.codex.006')}</div>
       )}
+      {/* 卡片详情窗（2026-09-26 船长令：势力图鉴里的卡片「和其他图鉴中一样，可以点开」）——
+          与其它图鉴同一条 `CellDetail`；`foe` 分支见 `DetailBody` */}
+      {detail !== null ? <CellDetail engine={engine} cell={detail} onClose={() => setDetail(null)} /> : null}
     </Panel>
   )
 }
@@ -747,7 +739,11 @@ const RULE_SECTS: HandGroup[] = [
 
 interface GridCell {
   key: string
-  tab: Tab
+  /**
+   * 该卡属于哪一类。**`'foe'` 不是导航页**——它是**势力图鉴里敌人卡的详情类型**
+   * （2026-09-26 船长令「敌人卡可以点开」），只在详情窗里被消费 ⇒ 用 `DetailTab`（= `Tab` ＋ `'foe'`）。
+   */
+  tab: DetailTab
   glyph: string
   name: string
   sub: string
@@ -762,6 +758,14 @@ interface GridCell {
   rarity?: number
   /** **势力图鉴专用**：该卡的族字母（`faction` 页的卡片用它分组/排序，别的页恒缺省） */
   faction?: string
+  /**
+   * **族徽角标**（**2026-09-26 船长令**：「**给所有位置势力专属的舰船和装备的图标卡片的左上角
+   * 标注势力族徽**」）——值 = 势力族字母（`'A' | 'C' | 'D' | 'E' | 'G' | 'H'`）。
+   * 判据走**单一入口** `factionOfExclusive(id)`（内容体检在守），装备/舰船按自身 id 判、
+   * 蓝图按**产物**判（船长裁定「按照所属势力标」）⇒ 三处图鉴（装备 / 舰船 / 势力详情）同源。
+   * 恒缺省 = 非势力专属件，不标。
+   */
+  crest?: string
   /**
    * **图标模式改画舰船 SVGer 形象**（**2026-09-26 船长令**：「**手册的舰船图鉴中，图标模式舰船的
    * 图标使用舰船的SVG形象**」）——只有舰船图鉴的格子带本字段；带它时 `IconGrid` 走
@@ -811,13 +815,47 @@ function groupCells(
   return out
 }
 
+/**
+ * **「信号不良」通用图形**（**2026-09-26 船长裁定**：势力图鉴里**未遭遇**的敌人
+ * 「**不显示剪影，改为类似信号不良的通用图形**」）。
+ *
+ * 画法沿用全仓视觉铁律（**一律 SVG 线稿 · currentColor · 细描边 · 不用 CSS 拼形状**）：
+ * 天线 ＋ 两圈扫描弧 ＋ 一道斜划 ＋ 三点噪点——表达"有回波、认不出是什么"。
+ * 尺寸与卡片图标位一致（约 30px 高），颜色由父级 `--tone` 给（未遭遇卡的 tone 取暗淡档）。
+ */
+function SignalLostIcon({ size = 30 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 32 32" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {/* 天线杆与底座 */}
+      <path d="M16 9.5V25" />
+      <path d="M11 27h10" />
+      <path d="M13.5 25l2.5-2 2.5 2" />
+      {/* 两圈扫描弧（右上、右下不对称 ⇒ 有回波但不成形） */}
+      <path d="M12 7.5a6 6 0 0 1 8 0" opacity="0.75" />
+      <path d="M9.5 5a10 10 0 0 1 13 0" opacity="0.45" strokeDasharray="2 2.5" />
+      {/* 斜划 = 信号不可读 */}
+      <path d="M7 24L25 8" opacity="0.55" />
+      {/* 噪点 */}
+      <circle cx="24.5" cy="20" r="0.9" fill="currentColor" stroke="none" opacity="0.7" />
+      <circle cx="27" cy="24.5" r="0.7" fill="currentColor" stroke="none" opacity="0.5" />
+      <circle cx="21" cy="26.5" r="0.6" fill="currentColor" stroke="none" opacity="0.4" />
+    </svg>
+  )
+}
+
 function IconGrid({ cells, onPick }: { cells: GridCell[]; onPick: (c: GridCell) => void }) {
   return (
     <div className="app-hand-grid">
       {cells.map((c) => {
         const tone = toneOf(c.glyph)
         return (
-          <button key={c.key} className="app-hand-cell" onClick={() => onPick(c)} style={{ '--tone': tone } as React.CSSProperties}>
+          <button
+            key={c.key}
+            className="app-hand-cell"
+            onClick={() => onPick(c)}
+            /* `position: relative`：族徽与稀有度两枚角标都绝对定位（内联样式，不新增 CSS 类） */
+            style={{ '--tone': tone, position: 'relative' } as React.CSSProperties}
+          >
             <span className="app-hand-cell-icon">
               {/**
                * **舰船图鉴：图标画舰船 SVG 形象**（**2026-09-26 船长令**：「**手册的舰船图鉴中，
@@ -830,10 +868,29 @@ function IconGrid({ cells, onPick }: { cells: GridCell[]; onPick: (c: GridCell) 
                */}
               {c.shipId !== undefined ? (
                 <ShipSprite shipId={c.shipId} role={c.shipRole} size={64} engine={false} />
+              ) : c.glyph === 'signal-lost' ? (
+                /* 未遭遇的敌人：通用「信号不良」图形（船长裁定：不显示剪影） */
+                <SignalLostIcon size={30} />
               ) : (
                 <Glyph name={c.glyph} size={30} color={tone} />
               )}
             </span>
+            {/**
+             * **族徽角标（左上角）**（**2026-09-26 船长令**：「**给所有位置势力专属的舰船和装备的图标
+             * 卡片的左上角标注势力族徽**」）。
+             * 与右上角那枚稀有度标签**同一套绝对定位语言**（`top/left: 3px` ＋ 小圆角 ＋ 同族色），
+             * 徽记用已有的 `fam-a/c/d/e/g/h` 线稿（`Glyph`），颜色走 `toneOf('fam-x')` —— 不自造图形与颜色。
+             * `aria-label` 给无障碍/探针一个可读的锚（「势力 X 专属」）。
+             */}
+            {c.crest !== undefined ? (
+              <span
+                className={`app-map-famchip is-fam-${c.crest}`}
+                aria-label={`势力 ${c.crest} 专属`}
+                style={{ position: 'absolute', top: 3, left: 3, zIndex: 1, color: toneOf(`fam-${c.crest.toLowerCase()}`), pointerEvents: 'none' }}
+              >
+                <Glyph name={`fam-${c.crest.toLowerCase()}`} size={13} color="currentColor" />
+              </span>
+            ) : null}
             {/* 稀有度小标签（2026-09-20 船长）：与仓库/货仓图标模式同一语言 */}
             {c.rarity !== undefined ? (
               <span className={`app-hand-cell-rarity is-r${c.rarity}`} aria-label={`稀有度 R${c.rarity}`}>
@@ -855,6 +912,92 @@ function IconGrid({ cells, onPick }: { cells: GridCell[]; onPick: (c: GridCell) 
  *  体检那条跨层契约也读同一个函数——**不许在这里另写一份映射**） */
 function marketKeyOf(engine: GameEngine, cell: GridCell): string | null {
   return handMarketKeyOf(engine.ctx, cell.tab, cell.key)
+}
+
+/**
+ * **图鉴卡片的共用构造**（**2026-09-26 船长令**：「**装备和舰船以及蓝图这些应该使用装备图鉴舰船图鉴中的
+ * 痛苦卡片**」——即图标卡 `app-hand-cell`）。
+ *
+ * 为什么抽到模块作用域：同一张卡**两处消费**——① 各图鉴页的 `IconGrid`；② 势力图鉴详情容器里的
+ * 「专属装备 / 专属舰船 / 图纸」三段。原先那三段是纯文字列表行（船长：「**专属装备也是过于简陋**」），
+ * 若在详情里另写一份卡片构造，两处迟早漂移 ⇒ 这里做**唯一构造点**。
+ *
+ * **族徽角标**（同一条船长令：「**给所有位置势力专属的舰船和装备的图标卡片的左上角标注势力族徽**」）：
+ * 判据走**单一入口** `factionOfExclusive(id)`；装备/舰船按自身 id 判，**蓝图按产物判**
+ * （船长裁定「按照所属势力标」）⇒ 三处图鉴（装备 / 舰船 / 势力详情）同源、不各判一套。
+ */
+function moduleCellOf(mod: ModuleDef): GridCell {
+  return {
+    key: mod.id,
+    tab: 'modules',
+    glyph: mod.slot,
+    name: mod.name,
+    sub: `${slotName(mod.slot)} · ${moduleShortEffect(mod)}`,
+    raw: mod as unknown as RawData,
+    rarity: itemRarityTierOf(mod.id),
+    ...(factionOfExclusive(mod.id) !== undefined ? { crest: factionOfExclusive(mod.id)! } : {}),
+  }
+}
+
+function shipCellOf(ship: ShipDef): GridCell {
+  // 2026-09-16 船长：类别键走 `shipCategoryKeyOf` —— 装甲线 = `role: 'armored'` **或**武装舰里装甲占比 > 护盾占比
+  // （牛鲨级突击巡洋舰 + E 族专属舰；丙案「只在武装舰里判」）。图标/文字/分组/筛选四处同源这一处。
+  const cls = shipCategoryKeyOf(ship)
+  return {
+    key: ship.id,
+    tab: 'ships',
+    glyph: cls,
+    name: ship.name,
+    sub: `${roleName(cls)} · ${shipTierText(ship.tier)} · ${ship.cargoM3.toLocaleString('zh-CN')} m³`,
+    raw: ship as unknown as RawData,
+    rarity: itemRarityTierOf(ship.id),
+    // 图标模式画舰船 SVG 形象（船长 2026-09-26 令）——资产表命中走独立形，未命中按族别剪影
+    shipId: ship.id,
+    shipRole: ship.role,
+    ...(factionOfExclusive(ship.id) !== undefined ? { crest: factionOfExclusive(ship.id)! } : {}),
+  }
+}
+
+/** 装备蓝图卡（产物是模块/物品）：副行 = 产物门类 · 产物名；族徽按**产物**判 */
+function blueprintCellOf(engine: GameEngine, bp: BlueprintDef): GridCell {
+  const prodMod = bp.moduleId !== undefined ? engine.ctx.modules.get(bp.moduleId) : undefined
+  return {
+    key: bp.id,
+    tab: 'blueprints',
+    glyph: 'blueprint',
+    name: bp.name,
+    sub:
+      bp.itemId !== undefined
+        ? // 产物门类取**产物自己的**大类（2026-09-11 船长：「弹药蓝图改为消耗品蓝图」——
+          // 此前一律写死「弹药」，2 张修理组件蓝图被错标成弹药）
+          `${kindName(engine.ctx.items.get(bp.itemId)?.kind ?? 'ammo')} · ${engine.ctx.items.get(bp.itemId)?.name ?? bp.itemId}`
+        : tr("ui.Handbook.317", { p1: prodMod?.name ?? bp.moduleId ?? '' }),
+    raw: bp as unknown as RawData,
+    rarity: itemRarityTierOf(bp.id),
+    ...(crestOfProduct(bp.moduleId) !== undefined ? { crest: crestOfProduct(bp.moduleId)! } : {}),
+  }
+}
+
+/** 舰船蓝图卡：副行 = 产物舰名；族徽按**产物舰**判 */
+function shipBlueprintCellOf(engine: GameEngine, bp: ShipBlueprintDef): GridCell {
+  return {
+    key: bp.id,
+    tab: 'blueprints',
+    glyph: 'blueprint',
+    name: bp.name,
+    sub: tr("ui.Handbook.249", { p1: engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId }),
+    raw: bp as unknown as RawData,
+    rarity: itemRarityTierOf(bp.id),
+    ...(factionOfExclusive(bp.shipId) !== undefined ? { crest: factionOfExclusive(bp.shipId)! } : {}),
+  }
+}
+
+/** 图纸段族徽用的产物查询（模块 id；物品蓝图与舰船蓝图各自另有判据）——
+ *  ⚠ `factionOfExclusive` 对"不是任何势力专属"的件返回 `null`（找不到才是 `undefined`）
+ *  ⇒ 这里统一收窄成 `string | undefined`，让调用处只判一种"没有" */
+function crestOfProduct(moduleId: string | undefined): string | undefined {
+  const fam = moduleId !== undefined ? factionOfExclusive(moduleId) : undefined
+  return fam ?? undefined
 }
 
 /** 详情内容（按页签/数据类型给出完整字段） */
@@ -976,6 +1119,13 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       </span>,
     ])
     rows.push([tr("ui.Handbook.246"), tr("ui.Handbook.247", { p1: Math.round(Number(r.buildSeconds ?? 0) / 60) })])
+  } else if (cell.tab === 'foe') {
+    /**
+     * **敌舰**（2026-09-26 船长令：势力图鉴的敌人卡「和其他图鉴中一样，可以点开」）——
+     * 行内容由 `FoeBody` 单独渲染（三层血占比 / 伤害构成 / 特殊装置，且头部画舰影），
+     * 不走下面这套通用行表。这里提前 return，避免"空行表"。
+     */
+    return <FoeBody cell={cell} engine={engine} />
   } else if (cell.tab === 'skills') {
     rows.push([tr("ui.Handbook.132"), String(r.group ?? '')])
     rows.push([tr("ui.Handbook.316"), tr("ui.Handbook.113", { p1: Number(r.rank ?? 0) })])
@@ -992,6 +1142,97 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       {String(r.description ?? '') !== '' ? (
         <div className="app-detail-desc">{plainSkillDesc(String(r.description))}</div>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * **敌舰详情**（**2026-09-26 船长令**：敌人卡「**和其他图鉴中一样，可以点开**」）。
+ *
+ * 数据全部来自**敌舰自身的定义**（`FoeShipDef`）与既有单点，不在界面里另算一套：
+ * - 一句话战术/武器/主副伤/舰载机/精英档 ＋ 特殊装置：`foeBriefLinesOfShip`（与悬赏卡悬停**同一份**）；
+ * - 机体数值：三层血占比 `split`、命中 `hitRate`、装填 `reloadMs`、射程带、闪避、基础速度（机动速度）；
+ *   ⚠ **不含单发伤害**（船长 2026-09-26：「实际上并没有这个伤害」⇒ 舰级裸值不上面）；
+ * - 舰影：`ShipSprite`（敌舰逐舰资产表，与战斗画面同一张；未命中回退族形）。
+ *
+ * ⚠ 标签复用既有 `ui.*` 词条（舰级 / 护盾 / 装甲 / 结构 / 命中加成 / 回避率 / 射程带 /
+ * 装填 / 机动速度 / 特殊装置），**不新造文案、不新取 id**。
+ */
+function FoeBody({ cell, engine }: { cell: GridCell; engine: GameEngine }): ReactNode {
+  const def = cell.raw as unknown as FoeShipDef
+  const line = foeBriefLinesOfShip(def)
+  const row = (k: string, v: ReactNode): ReactNode => (
+    <div key={k} className="app-detail-row">
+      <span className="app-detail-key">{k}</span>
+      <span className="app-detail-val">{v}</span>
+    </div>
+  )
+  const pctOf = (v: number | undefined): string => (v === undefined ? '—' : `${Math.round(v * 100)}%`)
+  const mounts = line?.mounts ?? []
+  return (
+    <div className="app-detail-body">
+      <div style={{ display: 'flex', justifyContent: 'center', margin: '2px 0 10px' }}>
+        <ShipSprite shipId={def.id} size={200} engine={false} />
+      </div>
+      {row(tr('ui.Handbook.009'), `${line?.hull ?? ''}${def.elite === true ? ` · ${tr('ui.foeIntro.070')}` : ''}`)}
+      {/* 伤害构成：用与卡面同一枚 `DmgChip`（三系伤害色）＋ shares 百分比（`ui.foeIntro.030` 的句式） */}
+      {row(
+        tr('ui.Expedition.217'),
+        (() => {
+          const mix = Object.entries(def.dmgMix ?? {}).sort((a, b) => b[1] - a[1])
+          const total = mix.reduce((n, [, v]) => n + v, 0)
+          if (mix.length === 0 || total <= 0) return '—'
+          return (
+            <>
+              {mix.map(([t, v], i) => (
+                <span key={t} className="app-stack-inline">
+                  {i > 0 ? <span className="app-dim"> · </span> : null}
+                  <DmgChip t={t as DamageType} />
+                  <span className="app-dim">{` ${Math.round((v / total) * 100)}%`}</span>
+                </span>
+              ))}
+            </>
+          )
+        })(),
+      )}
+      {/* 三层血**占比**（不是绝对血量：敌舰按威胁缩放，占比才是卡面口径） */}
+      {row(
+        `${tr('ui.FitPage.014')} / ${tr('ui.FitPage.015')} / ${tr('ui.ShipPage.023')}`,
+        `${Math.round((def.split?.s ?? 0) * 100)}% / ${Math.round((def.split?.a ?? 0) * 100)}% / ${Math.round((def.split?.h ?? 0) * 100)}%`,
+      )}
+      {row(tr('ui.FitPage.006'), pctOf(def.hitRate))}
+      {row(tr('ui.FitPage.007'), pctOf(def.evasion))}
+      {/**
+       * **攻击范围**（**2026-09-26 船长令**：「**在手册内的敌人，还会显示其基础速度和攻击范围**」）——
+       * 标签复用既有的「射程带」（`ui.shipInfo.040`，与舰船属性表同词），数值 = `rangeMinM – rangeMaxM`。
+       * （原先这一行用的是「锁定范围」的标签，语义不对 —— 那是"能锁多远"，这里要报**火力够到哪**。）
+       */}
+      {row(tr('ui.shipInfo.040'), `${def.rangeMinM ?? 0} – ${def.rangeMaxM ?? 0} m`)}
+      {/**
+       * ⚠ **不显示「单发伤害」**（**2026-09-26 船长令**：「**敌人的单发伤害不要显示，因为实际上
+       * 并没有这个伤害**」）——`FoeShipDef.shotDmg` 是**舰级裸值**，实战单发在战斗建档时经
+       * `dmgMul × 多舰船补偿 × 越线折扣 × 逐卡缩放` 才成形，卡面上报它等于报一个不存在的数。
+       * 火力大小由上面那行**伤害构成占比**表达；装填仍留着（它是射速口径，不是伤害口径）。
+       */}
+      {row(tr('ui.shipInfo.032'), `${((def.reloadMs ?? 0) / 1000).toFixed(1)} s`)}
+      {/**
+       * **基础速度**（同上一条船长令）：`舰种基准 × speedRatio`，与战斗建档**同源同式**
+       * （`combat.createFoeSpecsFromShips`：`HULL_CLASS_BASE_SPEED[舰种档] × speedRatio × speedMul`，
+       * `speedMul` 只有编成条目会带、舰级不带 ⇒ 这里是"这条舰级的基础速度"）。
+       * 基准表读 core 的 `hullClassBaseSpeedMps`（`{1:340, 2:295, 3:258, 4:205, 5:155}`，
+       * data 包的 `HULL_CLASS_BASE_SPEED` 就是它的同源引用 ⇒ 不另存第二份数字）。
+       * ⚠ 括号里的倍率是**规格**（命名规则第 9 条允许），不是解释。
+       * ⚠ **标签不能用 `ui.shipInfo.009`**（那个键在"删最大速度"批里已删，`tr()` 会原样印出 id ——
+       * 实测踩过：格子里印出 `ui.shipInfo.009 = 391 m/s`）⇒ 这里复用既有词条「机动速度」。
+       */}
+      {row(
+        tr('ui.FitPage.049'),
+        `${Math.round((engine.ctx.balance.battle.hullClassBaseSpeedMps[def.hullClassTier] ?? 0) * (def.speedRatio ?? 1))} m/s（${def.speedRatio ?? 1}×）`,
+      )}
+      {row(tr('ui.Expedition.152', { p1: line?.bits[0] ?? '—' }), line !== null && line.bits.length > 1 ? line.bits.slice(1).join(' · ') : '—')}
+      {mounts.map((m, i) =>
+        row(`${mountLabelText()}${mounts.length > 1 ? ` ${i + 1}` : ''}`, `${m.name !== '' ? `${m.name}：` : ''}${m.effect}`),
+      )}
     </div>
   )
 }
@@ -1020,7 +1261,12 @@ function CellDetail({
       >
         <div className="app-detail-head">
           <span className="app-hand-cell-icon">
-            <Glyph name={cell.glyph} size={44} color={tone} />
+            {/* 舰船只/敌舰只：头部也画 SVG（与卡片同一张资产表）；其余条目仍是类别徽记 */}
+            {cell.shipId !== undefined ? (
+              <ShipSprite shipId={cell.shipId} role={cell.shipRole} size={120} engine={false} />
+            ) : (
+              <Glyph name={cell.glyph} size={44} color={tone} />
+            )}
           </span>
           <div className="app-detail-title">
             <div className="app-detail-name">{cell.name}</div>
@@ -1165,56 +1411,11 @@ export function Handbook({
     raw: item as unknown as RawData,
     rarity: itemRarityTierOf(item.id),
   }))
-  const moduleCells: GridCell[] = engine.modules.map((mod) => ({
-    key: mod.id,
-    tab: 'modules',
-    glyph: mod.slot,
-    name: mod.name,
-    sub: `${slotName(mod.slot)} · ${moduleShortEffect(mod)}`,
-    raw: mod as unknown as RawData,
-    rarity: itemRarityTierOf(mod.id),
-  }))
-  const shipCells: GridCell[] = engine.ships.map((ship) => {
-    // 2026-09-16 船长：类别键走 `shipCategoryKeyOf` —— 装甲线 = `role: 'armored'` **或**武装舰里装甲占比 > 护盾占比
-    // （牛鲨级突击巡洋舰 + E 族专属舰；丙案「只在武装舰里判」）。图标/文字/分组/筛选四处同源这一处。
-    const cls = shipCategoryKeyOf(ship)
-    return {
-      key: ship.id,
-      tab: 'ships',
-      glyph: cls,
-      name: ship.name,
-      sub: `${roleName(cls)} · ${shipTierText(ship.tier)} · ${ship.cargoM3.toLocaleString('zh-CN')} m³`,
-      raw: ship as unknown as RawData,
-      rarity: itemRarityTierOf(ship.id),
-      // 图标模式画舰船 SVG 形象（船长 2026-09-26 令）——资产表命中走独立形，未命中按族别剪影
-      shipId: ship.id,
-      shipRole: ship.role,
-    }
-  })
+  const moduleCells: GridCell[] = engine.modules.map((mod) => moduleCellOf(mod))
+  const shipCells: GridCell[] = engine.ships.map((ship) => shipCellOf(ship))
   const bpCells: GridCell[] = [
-    ...engine.blueprints.map((bp) => ({
-      key: bp.id,
-      tab: 'blueprints' as Tab,
-      glyph: 'blueprint',
-      name: bp.name,
-      sub:
-        bp.itemId !== undefined
-          ? // 产物门类取**产物自己的**大类（2026-09-11 船长：「弹药蓝图改为消耗品蓝图」——
-            // 此前一律写死「弹药」，2 张修理组件蓝图被错标成弹药）
-            `${kindName(engine.ctx.items.get(bp.itemId)?.kind ?? 'ammo')} · ${engine.ctx.items.get(bp.itemId)?.name ?? bp.itemId}`
-          : tr("ui.Handbook.317", { p1: engine.ctx.modules.get(bp.moduleId ?? '')?.name ?? bp.moduleId ?? '' }),
-      raw: bp as unknown as RawData,
-      rarity: itemRarityTierOf(bp.id),
-    })),
-    ...engine.shipBlueprints.map((bp) => ({
-      key: bp.id,
-      tab: 'blueprints' as Tab,
-      glyph: 'blueprint',
-      name: bp.name,
-      sub: tr("ui.Handbook.249", { p1: engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId }),
-      raw: bp as unknown as RawData,
-      rarity: itemRarityTierOf(bp.id),
-    })),
+    ...engine.blueprints.map((bp) => blueprintCellOf(engine, bp)),
+    ...engine.shipBlueprints.map((bp) => shipBlueprintCellOf(engine, bp)),
   ]
   const skillCells: GridCell[] = engine.skills.map((s) => ({
     key: s.id,
@@ -1249,7 +1450,8 @@ export function Handbook({
         return engine.ctx.items.get(String(c.raw.itemId))?.kind === 'part' ? 'part-advanced' : 'supply'
       }
       const mod = engine.ctx.modules.get(String(c.raw.moduleId ?? ''))
-      return mod ? rackOf(mod) : ''
+      // 2026-09-26 归属档单点：舰船插件的蓝图归「舰船插件」组（读 `rackOf` 会落进低槽）
+      return mod ? rackDimKeyOf(mod) : ''
     }
     return String(c.raw.group ?? '') // skills
   }
@@ -1438,7 +1640,8 @@ export function Handbook({
         return it !== undefined && it.kind === sub
       }
       const mod = engine.ctx.modules.get(String(c.raw.moduleId ?? ''))
-      return mod !== undefined && rackOf(mod) === sub
+      // 2026-09-26 归属档单点（同上）：插件蓝图在子筛选里归「舰船插件」档，不再算低槽
+      return mod !== undefined && rackDimKeyOf(mod) === sub
     }
     return true
   }
@@ -1782,7 +1985,13 @@ export function Handbook({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
-              {isCodex ? (
+              {/**
+               * **图标 / 列表切换**（2026-09-13 船长加）——**势力图鉴不给**（**2026-09-26 船长令**：
+               * 「**手册内，势力图鉴的图标和列表切换是多余的。而且有问题。**」）：
+               * 那一页只有 6 张势力卡、点开才是内容，而"列表"档把卡片按列表行的排版走 ⇒ 观感是坏的。
+               * 现在势力页**恒走卡片网格**；其余图鉴页的切换**原样保留**。
+               */}
+              {isCodex && !isFactionPage ? (
                 <div className="app-hand-viewbar">
                   <button className={`app-hand-viewbtn${view === 'grid' ? ' is-active' : ''}`} onClick={() => changeView('grid')}>
                     {tr("ui.Handbook.015")}
@@ -1864,25 +2073,9 @@ export function Handbook({
                     factionEntries.map((g) => (
                       <div key={g.key}>
                         <GroupSection key={g.key} label={subText(g)} unit={COUNT_UNIT[tab]} count={g.cells.length}>
-                          {view === 'grid' ? (
-                            <IconGrid cells={g.cells} onPick={(c) => setFactionSel(c.key)} />
-                          ) : (
-                            <ul className="app-inv-list">
-                              {g.cells.map((c) => (
-                                <li key={c.key}>
-                                  <button className="app-inv-row" onClick={() => setFactionSel(c.key)}>
-                                    <span className="app-hand-cell-icon">
-                                      <Glyph name={c.glyph} size={26} color={toneOf(c.glyph)} />
-                                    </span>
-                                    <span className="app-inv-main">
-                                      <span className="app-inv-name">{c.name}</span>
-                                      <span className="app-inv-sub">{c.sub}</span>
-                                    </span>
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
+                          {/* 势力页**恒走卡片网格**（2026-09-26 船长令：「图标和列表切换是多余的。而且有问题」）
+                              —— 原先那支列表档把卡片按 `.app-inv-row` 排版，观感是坏的，已整支删除 */}
+                          <IconGrid cells={g.cells} onPick={(c) => setFactionSel(c.key)} />
                         </GroupSection>
                         {/* 下方**窗口容器**：选中势力的档案 ＋ 敌人种类 ＋ 专属装备 / 舰船 / 图纸 */}
                         {g.cells.some((c) => c.key === factionSel) ? (

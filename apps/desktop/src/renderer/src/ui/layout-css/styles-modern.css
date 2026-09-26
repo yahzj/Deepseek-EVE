@@ -329,6 +329,56 @@ html[data-locale='en'] body {
 
 .app-root.is-mobile-rot .app-battle-screen-top { padding-top: var(--wui-sp-6); padding-bottom: var(--wui-sp-6); row-gap: var(--wui-sp-6); }
 
+/* ═══════════ 战斗画面 · 手机「可读可点」批（**2026-09-26 船长令**：「用 skill 对战斗画面的 UI 进行优化，
+   包括手机端的」；方案与读数见 `docs/design/battle-ui-opt-20260926.md`）═══════════
+   为什么需要这一块（读数）：手机路径是「旋转（设计宽 1200，390×844 机型 ×0.703）＋ 装不下再整块等比缩放
+   （k ≈ 0.79）」⇒ 字与按钮被**两次**缩小：13px 的字只剩 ≈7.2 物理 px、战术键高 ≈21 物理 px。
+   2026-09-26 起**整屏缩放已撤**（只缩战场，见 `ui/battleFit.ts`），于是顶栏/底栏回到 1:1 逻辑尺寸——
+   本块再把这两处的**字号与触控**抬到"×0.703 之后仍然达标"的档位：
+   - 触控 ≥ **44 逻辑 px**（×0.703 ≈ 31 物理 px；WCAG 2.5.8 的触屏下限是 24 CSS px）；
+   - 正文最小 **15 逻辑 px**（×0.703 ≈ 10.5 物理 px）。
+   ⚠ 与 `npm run ui:battle-fit` 的手机档判据一一对应（那边按**物理** px 判）。 */
+.app-root.is-mobile-rot .app-battle-screen-top .app-btn,
+.app-root.is-mobile-rot .app-bts-ops .app-btn,
+.app-root.is-mobile-rot .app-bts-speedx .app-btn {
+  /* 触控下限：44 逻辑 px 是**最低**口径，这里取 48（= 44 ＋ 4；不新增刻度档）⇒
+     ×0.703 ≈ **34 物理 px**，比"刚好 31"留出余量（iOS 44pt / Android 48dp 的同一量级）。 */
+  min-height: calc(var(--wui-sp-44) + var(--wui-sp-4));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 正文最小 15 逻辑 px：图例 / 装填 / 距离尺两端与游标 / 说明 / 滑动提示 / 舰名与血量层名
+   ⚠ 图例那条必须写成 `.app-bts-dock .app-bts-legends`（与本文件上方那条 2026-09-25 的手机规则**同形**）：
+   `.app-bts-dock` 那层多一个类 ⇒ 特异度更高，光写 `.app-bts-legends` 会被它压住（实测字号停在 13.5 ⇒ 物理 9px）。 */
+.app-root.is-mobile-rot .app-bts-dock .app-bts-legends,
+.app-root.is-mobile-rot .app-bts-legends,
+.app-root.is-mobile-rot .app-bts-reload,
+.app-root.is-mobile-rot .app-bts-reload-ms,
+.app-root.is-mobile-rot .app-bts-ruler-head,
+.app-root.is-mobile-rot .app-bts-ruler-speed,
+.app-root.is-mobile-rot .app-bts-note,
+.app-root.is-mobile-rot .app-bts-swipehint,
+.app-root.is-mobile-rot .app-bts-speedx .app-dim,
+.app-root.is-mobile-rot .app-bts-name,
+.app-root.is-mobile-rot .app-battle-hp-name,
+.app-root.is-mobile-rot .app-battle-hp-layer-label {
+  font-size: var(--wui-fs-lg);
+}
+
+.app-root.is-mobile-rot .app-bts-reload-ms { min-width: 56px; }
+/* 射击/开火统计（顶栏第三段）在手机上不参与信息主序 ⇒ 只保到"能看清"的下限，不挤占场景名 */
+.app-root.is-mobile-rot .app-battle-screen-top .app-dim { font-size: var(--wui-fs-base); }
+
+/* 安全区（刘海 / 手势条）：旋转 -90° 后 **物理上边 = 逻辑右边**、**物理下边 = 逻辑左边**
+   ⇒ 分别补右/左内边距。`env()` 给的是物理 px，而本层坐标被 `--mob-scale` 缩过 ⇒ 除以它换成逻辑 px。
+   桌面上 `is-mobile-rot` 不成立，本块不生效（独立/全屏模式下才有非 0 值，浏览器内一般为 0）。 */
+.app-root.is-mobile-rot .app-battle-screen {
+  padding-right: calc(env(safe-area-inset-top, 0px) / var(--mob-scale, 1));
+  padding-left: calc(env(safe-area-inset-bottom, 0px) / var(--mob-scale, 1));
+}
+
 /* 手机：悬浮说明（Tooltip）在横屏局部空间渲染——坐标换算见 ui/Tooltip.tsx；上限改按局部空间、字号加大（2026-09-06 船长） */
 .app-root.is-mobile-rot .app-tip { font-size: var(--wui-fs-base); padding: var(--wui-sp-9) var(--wui-sp-13); max-width: min(340px, 92%); max-height: 62%; }
 
@@ -8251,12 +8301,18 @@ html[data-locale='en'] body {
 
 .app-battle-screen { position: fixed; inset: 0; z-index: 100; background: radial-gradient(ellipse at 50% 40%, rgb(var(--wui-x93)) 0%, rgb(var(--wui-x239)) 78%); display: flex; flex-direction: column; }
 
-/* 战场「装不下就整块等比缩放」的包裹层（2026-09-25 船长令 · 方案甲；量高与算 k 见 `ui/battleFit.ts`）。
-   顶栏／舞台／底栏三层都包在里面：手机竖屏逻辑空间只有约 540~555px 高，而战斗界面内部按桌面版式要 ~700px
-   （顶栏 ＋ 距离尺 ＋ 战场 353 ＋ 底栏），只有整块缩才装得下 —— 否则舞台 `overflow: hidden` 会裁掉两排血条。
-   装得下时本层是 `height: 100%` ＋ 无 transform（桌面宽窗口恒为这一支）⇒ 与改造前逐像素一致；
-   真缩了才由脚本挂上 `.is-bts-fit`（整屏不再需要滚动：内容已等比缩进可用高度）。 */
+/* 战场「装不下就等比缩放」的包裹层（2026-09-25 船长令 · 方案甲；**2026-09-26 改成只缩战场**）。
+   口径：**顶栏与底栏不缩**（它们是读数与操作；手机上再叠旋转那层 0.703，字与按钮会被缩到不可读/点不准），
+   只有战场（距离尺 ＋ 车道）按「剩余高度」等比缩 —— 见 `.app-bts-stage-fit` 与 `ui/battleFit.ts`。
+   装得下时本层是 `height: 100%` ＋ 无 transform（桌面窗口恒为这一支）⇒ 与改造前逐像素一致；
+   真缩了才由脚本挂上 `.is-bts-fit`（整屏不再需要滚动：战场已等比缩进剩余高度）。 */
 .app-battle-fit { display: flex; flex-direction: column; width: 100%; height: 100%; transform-origin: top center; }
+
+/* 战场外层：flex 分配后的剩余高度就是"缩放预算"；缩放只发生在其内部的 `.app-bts-stage-fit`。 */
+.app-bts-stage { min-height: 0; overflow: hidden; }
+
+/* 战场内层（距离尺 ＋ 车道）：量高与承接 transform 的那一层（`transform-origin: top center`）。 */
+.app-bts-stage-fit { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; width: 100%; transform-origin: top center; }
 
 .app-battle-screen.is-bts-fit { overflow: hidden; }
 
@@ -8448,6 +8504,10 @@ html[data-locale='en'] body {
 .app-bts-range { width: 100%; }
 
 .app-bts-desire { font-size: var(--wui-fs-s); font-family: var(--wui-mono); flex: none; min-width: 130px; text-align: right; }
+
+/* 期望交距读数：**只在拖动/键盘调整时显示**（2026-09-26 信息层级批 I1）。
+   用 `visibility` 而不是 `display` —— **保留占位**，出现/隐去都不产生横向跳动。 */
+.app-bts-desire.is-idle { visibility: hidden; }
 
 .app-bts-note { font-size: var(--wui-fs-2xse); }
 

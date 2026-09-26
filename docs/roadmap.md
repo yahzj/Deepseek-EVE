@@ -270,7 +270,13 @@
 
 > **船长原话（照抄）**：「**翻译交给三号，你备注下我让三号去做。**」
 
-- **欠什么**：`packages/core/src/foeMounts.ts` 的 14 件敌方挂载件里 **10 件没有英文名**（`FoeMountDef.en`）——
+- **✅ 2026-09-26 已做完（三号）**：10 件 `en` 全部补齐（`Raider Charge Thruster` / `Hiveswarm Charger T1~T4` /
+  `Drone Nest Range Array` / `Raider Snare Net` / `Gravekeeper Long-range Optics` / `Megastructure Salvo Optics` /
+  `Support Call Device`），台账落在 `docs/glossary-en.md` **§十一之二 专名表 · 敌方挂载件（14）· 待船长过目**；
+  实测 `FOE_MOUNTS` 14 件 · **缺英文 0 件**，`namePairs` 第二列不再等于中文名；契约同步更新见
+  `packages/core/tests/foe-mounts-20260924.test.ts`（改为断言真英文名 ＋ 新增"英文名不得等于中文名"）。
+  —— 以下为交接时的原始描述（留档）：
+- **（原交接）欠什么**：`packages/core/src/foeMounts.ts` 的 14 件敌方挂载件里 **10 件没有英文名**（`FoeMountDef.en`）——
   缺的十件 = 劫掠冲锋推进器 / 虫群冲锋器 T1~T4 / 机巢增程阵列 / 劫掠捕获网 / 守墓远距观瞄 / 巨构齐射观瞄 / 支援呼叫装置。
   已有英文名的四件 = 姿态陀螺仪 `Attitude Gyro` / 船体维修装置 `Hull Repair Unit` / 支援舰船召唤装置 / 墨潮干扰阵列。
 - **影响面**：英文界面下这十件**回退中文名**（既有口径：`en` 缺省即回退）；
