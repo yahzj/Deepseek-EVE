@@ -61,6 +61,7 @@
     "ui:rot-check": "tsx tools/ui-rot-check.ts && tsx tools/ui-tdz-check.ts && tsx tools/ui-subs-check.ts",
     "ui:battle-fit": "tsx tools/ui-battle-fit.ts",
     "save:guard-check": "tsx tools/save-guard-check.ts",
+    "recycle:compare": "tsx tools/recycle-family-compare.ts",
     "weekend:board": "tsx tools/weekend-board-inspect.ts",
     "save:webfile-check": "tsx tools/web-savefile-check.ts",
     "ui:contrast": "tsx tools/ui-contrast.ts",
