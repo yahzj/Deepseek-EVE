@@ -1,5 +1,16 @@
 # 章鱼人削血与旗舰黑匣归属 · 代码整理（2026-09-27 · 二号 · d2）
 
+| ⑨ | **code-review 技能复审后的自纠**（2026-09-27）：引擎那支 `playerKilled` 与 `octopus` 同出 `weekendFlagshipOutcomeOf` ⇒ 二者互斥、`ui.weekend.115/116` 成**死分支** | **已修**：改按 `outcome` × `flagshipDown==='octopus'` 分档，六条文案全部可达 |
+| ⑩ | 同上复审：`weekendBossPoolView.needDmg` 与 `hpLeft` **恒同值**（同一算式两遍），且全仓无消费点 | **已修**：删 `needDmg`（连带 `weekendLaunch` 的兜底对象与用例断言改读 `hpLeft`） |
+| ⑪ | 同上复审：`weekendFlagshipRemainingOf`（可负的原始剩余）与 `weekendFlagshipHpRemaining`（抬到 ≥1）**名字近乎同形** | **已修**：私有那个改名 `flagshipRawLeftOf` |
+| ⑫ | 同上复审：新导出 `weekendFlagshipOutcomeOf` / `weekendClaimOctopus` 在 `tests/` **零引用**（违 §3「改行为必须同步改/加测试」） | **已修**：补两条用例（归属四条分支 · 认领一次做完三件事且幂等） |
+| ⑬ | 同上复审：改过的玩家可见文案**没留 `⟪文案调整⟫` 记号、也没有「文案调整台账」**（违 §十三） | **已修**：四处文案各加记号 ＋ 台账落在 `flagship-kill-record-20260927.md` |
+
+> ⚠ **一条被驳回的复审意见**（"看着实现了其实不对"那一类）：复审称 `weekendFlagshipDefeated` 改派生后，
+> `flagshipHpMax` 缺省会落到默认池 150,000、把"未击沉"翻成"击沉"。**核对为误报**：该函数在派生之前
+> 仍保留原守卫 `const hpMax = ev.flagshipHpMax ?? 0; if (hpMax <= 0) return false`（见函数体前两行）
+> ⇒ 缺 `hpMax` 时照旧返回 `false`，行为未变。
+
 状态：**已整理 · 自测全绿 · 待船长审核（未验收）**。按 AGENTS.md §8 归档。
 
 > 🔴 **流程自纠（2026-09-27 船长指出：「你是不是忘记要让我审核了」）**：本笔（`e4d2e764`）**先推送、

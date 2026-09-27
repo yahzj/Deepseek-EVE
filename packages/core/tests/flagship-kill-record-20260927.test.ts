@@ -33,6 +33,9 @@ import { weekendSettleCommsOf } from '../src/weekendComms'
 import {
   WEEKEND_FLAGSHIP_POOL_HP,
   WEEKEND_FLAGSHIP_SHIP_ID,
+  weekendClaimOctopus,
+  weekendFlagshipDefeated,
+  weekendFlagshipOutcomeOf,
   weekendFlagshipSharesOf,
   weekendNoteContribution,
   weekendNoteFlagshipDamage,
@@ -248,5 +251,42 @@ describe('旗舰战留档：玩家亲手击沉（2026-09-27 船长令）', () =>
     expect(ev.flagshipDown, '判玩家击沉').toBe('player')
     expect(r?.wreck, '残骸照发').toBeGreaterThan(0)
     expect(countWare(s, 'blackbox-h') - box0, '占比 100% ⇒ 必爆（与留档无关）').toBe(1)
+  })
+
+  /**
+   * ⑦ **归属判据的单点**（`weekendFlagshipOutcomeOf`，**2026-09-27 code-review 补**）：
+   * 结算快照与桌面引擎的结束日志都读它 ⇒ 它自己的四条分支必须有用例钉住（此前 tests/ 零引用）。
+   */
+  it('⑦ `weekendFlagshipOutcomeOf`：留档优先，其次 `flagshipDown`，都没有 = window', () => {
+    const { ev } = bossWorld(0)
+    expect(weekendFlagshipOutcomeOf(undefined), '没场次 ⇒ window').toBe('window')
+    expect(weekendFlagshipOutcomeOf(ev), '什么都没记 ⇒ window').toBe('window')
+    ev.flagshipDown = 'octopus'
+    expect(weekendFlagshipOutcomeOf(ev), '章鱼收走').toBe('octopus')
+    ev.flagshipDown = 'player'
+    expect(weekendFlagshipOutcomeOf(ev), '玩家打空').toBe('player')
+    /** 两条判据打架 ⇒ **留档优先**（这就是船长第 4 问要堵的那条） */
+    ev.flagshipDown = 'octopus'
+    ev.flagshipPlayerKill = { atWallMs: 9_000, runId: 7, downAtGameMs: 8_500 }
+    expect(weekendFlagshipOutcomeOf(ev), '留档优先于 flagshipDown').toBe('player')
+  })
+
+  /**
+   * ⑧ **章鱼得手收口是唯一的**（`weekendClaimOctopus`，**2026-09-27 code-review 补**）：
+   * 掷黑匣 ＋ 写归属 ＋ 结束本场三件事一次做完，且**幂等**（第二次调用返回 false、不覆盖）。
+   * ⚠ 这条正是 2026-09-26 那个"漏掷 ⇒ 玩家没拿到黑匣"的 bug 所在 —— 两条到点路径都走它。
+   */
+  it('⑧ `weekendClaimOctopus`：一次做完三件事 ＋ 幂等', () => {
+    const { s, ev } = bossWorld(WEEKEND_FLAGSHIP_POOL_HP - 10) // 池子只剩 10
+    expect(weekendFlagshipDefeated(ev), '还没见底').toBe(false)
+    weekendNoteFlagshipDamage(ev, WEEKEND_FLAGSHIP_POOL_HP - 10, 1) // 玩家打掉 149,990，剩 10
+    expect(weekendClaimOctopus(s, ev, 9_000), '章鱼认领成功').toBe(true)
+    expect(ev.flagshipDown, '写归属').toBe('octopus')
+    expect(ev.endedAtWallMs, '结束本场').toBe(9_000)
+    expect(ev.flagshipBlackBox, '**必须留下掷骰结果**（2026-09-26 漏掷那条）').not.toBeUndefined()
+    /** 幂等：同一场再调一次 ⇒ false，且三格都不动 */
+    const snapshot = { down: ev.flagshipDown, ended: ev.endedAtWallMs, box: ev.flagshipBlackBox }
+    expect(weekendClaimOctopus(s, ev, 9_999), '已结束 ⇒ 拒绝二次认领').toBe(false)
+    expect({ down: ev.flagshipDown, ended: ev.endedAtWallMs, box: ev.flagshipBlackBox }, '三格都不动').toEqual(snapshot)
   })
 })

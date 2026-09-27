@@ -249,21 +249,19 @@ export function weekendIsFlagshipShipId(shipId: string): boolean {
  */
 export function weekendFlagshipHpRemaining(ev: WeekendEventState | undefined): number {
   if (!ev || !weekendIsBossFamily(ev)) return WEEKEND_FLAGSHIP_POOL_HP
-  return Math.max(1, Math.round(weekendFlagshipRemainingOf(ev)))
+  return Math.max(1, Math.round(flagshipRawLeftOf(ev)))
 }
 
 /**
  * **血条还剩多少**（共享血条的**原始读数**；`2026-09-27 整理`：把原先散在三处的同一算式收成一处）：
- * `池子总量 −（玩家已造成 ＋ 章鱼人已削）`，可 ≤ 0（= 已被摧毁）。
- *
- * 三处读法都由它派生，别再各写一遍：
- * - `weekendFlagshipHpRemaining` = `max(1, 本值)`（开战入口/界面读数：0 会让人以为能打，故抬到 1）；
- * - `weekendFlagshipDefeated` = 本值 ≤ 0（击沉判据）；
- * - `weekendBossPoolView.needDmg` = `max(0, 本值)`（"还差多少打空"）。
+ * `池子总量 −（玩家已造成 ＋ 章鱼人已削）`，可 ≤ 0（= 已被摧毁）。三处读法都由它派生：
+ * `weekendFlagshipHpRemaining`（抬到 ≥ 1，给开战入口与界面）· `weekendFlagshipDefeated`（≤ 0 即击沉）·
+ * `weekendBossPoolView` 的 `hpLeft`。
+ * ⚠ 名字刻意与那个公开读数**拉开**：本函数是"原始剩余"（可负），那个是"抬到 ≥ 1 的展示值"。
  * ⚠ `weekendOctopusTick` 里的 `need`（= `池子 − 玩家已造成`）**语义不同**：那是"章鱼还差多少才够得手"，
- * 不是血条剩余 ⇒ 它**不**由本函数派生（血条已被玩家打空时它 ≤ 0，那一档归玩家、章鱼不认领）。
+ * 不是血条剩余 ⇒ 不由本函数派生（血条已被玩家打空时它 ≤ 0，那一档归玩家、章鱼不认领）。
  */
-function weekendFlagshipRemainingOf(ev: WeekendEventState | undefined): number {
+function flagshipRawLeftOf(ev: WeekendEventState | undefined): number {
   if (!ev || !weekendIsBossFamily(ev)) return WEEKEND_FLAGSHIP_POOL_HP
   const hpMax = ev.flagshipHpMax ?? WEEKEND_FLAGSHIP_POOL_HP
   return hpMax - Math.max(0, ev.flagshipHpDone ?? 0) - weekendOctopusDone(ev)
@@ -1383,8 +1381,6 @@ export interface WeekendBossPoolView {
   playerFrac: number
   /** 章鱼进度（0~1：`章鱼已削 / hpMax`）——**仅内部读数，界面不显示** */
   octopusFrac: number
-  /** 还需要打掉多少（= 剩余血条；0 = 差最后一击） */
-  needDmg: number
 }
 
 /**
@@ -1403,8 +1399,11 @@ export function weekendBossPoolView(
   const octopusDone = weekendOctopusDone(ev)
   /** 两份占比走**玩家优先**口径（2026-09-27 船长令：玩家允许挤掉章鱼人的输出） */
   const shares = weekendFlagshipSharesOf(ev)
-  /** 血条剩余走**单一算式**（`2026-09-27 整理`）：`hpLeft` 与 `needDmg` 都从它派生，不再各算一遍 */
-  const left = Math.max(0, weekendFlagshipRemainingOf(ev))
+  /**
+   * 血条剩余走**单一算式**（`2026-09-27 整理`）。⚠ 原先这里还有一个 `needDmg` 字段与 `hpLeft` **恒同值**
+   * （同一算式算两遍）⇒ 已删（全仓无消费点，只有一条用例在断言它）——要"还差多少打空"就读 `hpLeft`。
+   */
+  const left = Math.max(0, flagshipRawLeftOf(ev))
   void state
   return {
     hpMax,
@@ -1414,7 +1413,6 @@ export function weekendBossPoolView(
     octopusDone,
     playerFrac: shares.player,
     octopusFrac: shares.octopus,
-    needDmg: left,
   }
 }
 
@@ -1462,8 +1460,8 @@ export function weekendFlagshipDefeated(ev: WeekendEventState | undefined): bool
   if (!ev || !weekendIsBossFamily(ev) || ev.flagshipDown !== undefined) return false
   const hpMax = ev.flagshipHpMax ?? 0
   if (hpMax <= 0) return false
-  /** 判据与血条剩余**同一算式**（`weekendFlagshipRemainingOf`）：见底（≤ 0）即击沉 */
-  return weekendFlagshipRemainingOf(ev) <= 0
+  /** 判据与血条剩余**同一算式**（`flagshipRawLeftOf`）：见底（≤ 0）即击沉 */
+  return flagshipRawLeftOf(ev) <= 0
 }
 
 /**

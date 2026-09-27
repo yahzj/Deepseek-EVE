@@ -335,9 +335,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
   "core.weekend.001": { zh: "✦ 夺回「{p1}」：夺回奖励 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ Reclaimed “{p1}”: the reclaim reward of rare wrecks ×{p2} + {p3} credits is paid out when the invasion ends." },
   "core.weekend.002": { zh: "✦ 全部占领区夺回：「{p1}」是最后一处 —— 夺回奖励与全清额外奖励共 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ All occupied systems reclaimed: “{p1}” was the last one — the reclaim reward and the all-clear bonus (rare wrecks ×{p2} + {p3} credits) are paid out when the invasion ends." },
+  // ⟪文案调整 2026-09-27⟫ 船长令「只记录作为判定，根据不同情况改变措辞」：原「✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已存入物品仓库（…）」⇒ 点明"玩家击沉"（见工作文档 invasion-kill-roll / flagship-kill-record 的文案调整台账）
   "core.weekend.003": { zh: "✦ 玩家击沉入侵旗舰：母舰血量归零 —— 旗舰黑匣 ×1 ＋ 稀有残骸 ×{p1} 已存入物品仓库。", en: "✦ Invasion flagship sunk by the player: the mothership is down to zero — flagship black box ×1 + rare wrecks ×{p1} are stored in your item warehouse." },
   // 2026-09-25 船长令改黑匣爆率（>50% 输出抢到最后一下必爆，否则按占比衰减到 10%；没抢到最后一下 25%×占比）
   // ⇒ 原来的"击沉必掉黑匣"不再成立，日志/结束语按结果分两条。
+  // ⟪文案调整 2026-09-27⟫ 船长令同上：未爆那一条补「输出占比 {p2}% 未过半」（原句只有"旗舰黑匣未爆"）
   "core.weekend.016": { zh: "✦ 玩家击沉入侵旗舰：母舰血量归零 —— 稀有残骸 ×{p1} 已存入物品仓库；玩家输出占比 {p2}% 未过半，旗舰黑匣未爆。", en: "✦ Invasion flagship sunk by the player: the mothership is down to zero — rare wrecks ×{p1} are stored in your item warehouse; the player's damage share was {p2}%, under half, so no flagship black box dropped." },
   // 2026-09-26 船长批「甲」：入库失败（战利品未能落地）时留一条 warn —— 台账同时不记「已获得」，账实一致
   "core.weekend.038": { zh: "⚠ 入侵战利品未能入库：本场奖励未发放。", en: "⚠ Invasion spoils could not be stored: this battle's rewards were not granted." },
@@ -1655,6 +1657,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.weekend.100": { zh: "已收复 · 常驻悬赏待入侵结束后恢复", en: "Reclaimed · standing bounties resume when the invasion ends" },
   "ui.weekend.101": { zh: "母舰血量剩余 {p1}% · 可从入侵窗口发起旗舰战", en: "Mothership hull remaining: {p1}% · start the flagship battle from the invasion window" },
   // 2026-09-25 船长令改黑匣爆率：章鱼人得手也可能爆黑匣（25% × 输出占比）⇒ 结束语分两条
+  // ⟪文案调整 2026-09-27⟫ 船长令「措辞分档」：原「入侵结束：旗舰被章鱼人部队摧毁，残骸中寻获旗舰黑匣。」⇒ 改成"说清谁打的最后一击 ＋ 玩家输出占比"，不再让人读成"章鱼抢头"
   "ui.weekend.102": { zh: "入侵结束：玩家输出占比 {p1}%，但最后一击是章鱼人部队打出的 —— 残骸中寻获旗舰黑匣。", en: "Invasion over: the player's damage share was {p1}%, but the Octopus forces landed the final blow — a flagship black box was recovered from the wreck." },
   /* ── 2026-09-26 船长令：星系详细的「击退入侵舰队」卡片显示收复进度 ＋ 核心门禁提示 ──
      ③ 的文案为**船长照抄**（「核心提示写'至少需要夺回一个外围星系'」）；
@@ -3770,6 +3773,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // 2026-09-25 船长定文案：「事件日志应出现「有入侵舰队出现！」」⇒ 开局那条日志改短句（其余三条待船长定）
   "ui.weekend.001": { zh: "有入侵舰队出现！", en: "Invader fleets have appeared!" },
   "ui.weekend.002": { zh: "入侵核心已被打通：旗舰现身。", en: "The invasion core has been broken through: the flagship has appeared." },
+  // ⟪文案调整 2026-09-27⟫ 船长令同上：原「入侵结束：旗舰被章鱼人部队摧毁，黑匣归零。」⇒ 改成"最后一击由章鱼人打出 ＋ 黑匣被章鱼人拿走"
   "ui.weekend.003": { zh: "入侵结束：玩家输出占比 {p1}%，但最后一击是章鱼人部队打出的 —— 旗舰黑匣被章鱼人拿走。", en: "Invasion over: the player's damage share was {p1}%, but the Octopus forces landed the final blow — the Octopus took the flagship black box." },
   "ui.weekend.004": { zh: "入侵结束：占领区已恢复。", en: "Invasion over: the occupied systems have been restored." },
   /* ── 2026-09-27 船长令：旗舰战留档（玩家亲手击沉）＋ 措辞分档 ──

@@ -163,8 +163,7 @@ describe('主力舰队掉落稀有残骸 · 进残骸场（2026-09-27 船长令�
   })
 
   /** ⑧ 与旗舰那条互不干扰：旗舰卡没写 `rareWreckDrop`，它的 3 件走自己那条路 */
-  it('⑧ 卡面字段只在写了的那张卡上生效（旗舰不走这条）', () => {
-    const { s, ev } = invasion()
+  it('⑧ 卡面字段只在写了的那张卡上生效（旗舰不走这条）', () => {    const { s, ev } = invasion()
     weekendNoteContribution(ev, GID, 1)
     weekendNoteContribution(ev, CORE, 1)
     const spec = weekendFlagshipSpecOf(s, ctx, Date.now())!
