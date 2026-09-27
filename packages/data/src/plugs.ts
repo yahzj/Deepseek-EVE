@@ -61,7 +61,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     shieldHpAdd: 80,
     cpuUse: 0,
-    description: '舰体内部加装的护盾发生层：护盾上限 +80。装上后无法拆下。',
+    description: '舰体内部加装的护盾发生层：护盾上限 +80。',
   },
   {
     id: PLUG_IDS.armorPlate,
@@ -71,7 +71,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     armorHpAdd: 140,
     speedPenaltyMps: 20,
     cpuUse: 0,
-    description: '整块焊入舰体的复合装甲：装甲上限 +140，代价是最大速度 −20 m/s。装上后无法拆下。',
+    description: '整块焊入舰体的复合装甲：装甲上限 +140，代价是最大速度 −20 m/s。',
   },
   {
     id: PLUG_IDS.hullPlate,
@@ -80,7 +80,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     hullHpAdd: 80,
     cpuUse: 0,
-    description: '贯穿主梁的加强件：结构上限 +80。装上后无法拆下。',
+    description: '贯穿主梁的加强件：结构上限 +80。',
   },
   // ── ② 两条扩槽 ──
   {
@@ -90,7 +90,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     midSlotsAdd: 1,
     cpuUse: 0,
-    description: '在中层加开一段标准挂点：中槽 +1。装上后无法拆下。',
+    description: '在中层加开一段标准挂点：中槽 +1。',
   },
   {
     id: PLUG_IDS.lowBay,
@@ -99,7 +99,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     lowSlotsAdd: 1,
     cpuUse: 0,
-    description: '在底层加开一段标准挂点：低槽 +1。装上后无法拆下。',
+    description: '在底层加开一段标准挂点：低槽 +1。',
   },
   // ── ③ 预算与火力 ──
   {
@@ -109,7 +109,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     cpuBonus: 80,
     cpuUse: 0,
-    description: '并联的运算单元：装配 CPU 上限 +80。装上后无法拆下。',
+    description: '并联的运算单元：装配 CPU 上限 +80。',
   },
   {
     id: PLUG_IDS.firepower,
@@ -118,7 +118,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     damageBonusPct: 0.15,
     cpuUse: 0,
-    description: '直连武器总线的超载模块：武器单发伤害 +15%。装上后无法拆下。',
+    description: '直连武器总线的超载模块：武器单发伤害 +15%。',
   },
   {
     id: PLUG_IDS.sight,
@@ -127,7 +127,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     hitBonusPct: 0.15,
     cpuUse: 0,
-    description: '与火控并联的测距组件：武器命中 +15%。装上后无法拆下。',
+    description: '与火控并联的测距组件：武器命中 +15%。',
   },
   {
     id: PLUG_IDS.rangefinder,
@@ -143,7 +143,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
      */
     plugRangeBonusPct: 0.2,
     cpuUse: 0,
-    description: '沿舰体加装的加速导轨：武器射程 +20%。装上后无法拆下。',
+    description: '沿舰体加装的加速导轨：武器射程 +20%。',
   },
   // ── ④ 机动与选靶 ──
   {
@@ -153,7 +153,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     speedAddMps: 40,
     cpuUse: 0,
-    description: '舰尾加装的辅助喷口：最大速度 +40 m/s。装上后无法拆下。',
+    description: '舰尾加装的辅助喷口：最大速度 +40 m/s。',
   },
   {
     id: PLUG_IDS.targetBeacon,
@@ -162,7 +162,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     targetWeightMul: 3,
     cpuUse: 0,
-    description: '全功率辐射的诱饵信标：敌方更倾向于选中本舰。装上后无法拆下。',
+    description: '全功率辐射的诱饵信标：敌方更倾向于选中本舰。',
   },
   {
     id: PLUG_IDS.concealment,
@@ -171,6 +171,6 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     targetWeightMul: 0.7,
     cpuUse: 0,
-    description: '压平信号特征的外壳：敌方更少选中本舰。装上后无法拆下。',
+    description: '压平信号特征的外壳：敌方更少选中本舰。',
   },
 ]

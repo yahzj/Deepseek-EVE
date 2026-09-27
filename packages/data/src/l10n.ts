@@ -226,18 +226,18 @@ export const EN_SHIPS: EnTable = {
 export const EN_MODULES: EnTable = {
   /* 舰船插件（2026-09-26 船长令）：装上去拆不下来的固定件，走独立插件槽。
      ⚠ 英文名要与 `docs/glossary-en.md` 的命名规则一致（直译优先、档位照抄）；本批为初稿。 */
-  'plug-shield-plate': { name: 'Shield Reinforcement Plate', description: 'A shield-emitter layer built into the hull: shield capacity +80. Cannot be removed once fitted.' },
-  'plug-armor-plate': { name: 'Armor Reinforcement Plate', description: 'A composite plate welded through the hull: armor capacity +140, at the cost of 20 m/s of top speed. Cannot be removed once fitted.' },
-  'plug-hull-plate': { name: 'Hull Reinforcement Plate', description: 'Reinforcement running the length of the keel: structure capacity +80. Cannot be removed once fitted.' },
-  'plug-mid-bay': { name: 'Mid Bay Plug', description: 'An extra standard mount cut into the mid deck: mid slot +1. Cannot be removed once fitted.' },
-  'plug-low-bay': { name: 'Low Bay Plug', description: 'An extra standard mount cut into the lower deck: low slot +1. Cannot be removed once fitted.' },
-  'plug-cpu-core': { name: 'Coprocessor Plug', description: 'Paired compute units: fitting CPU cap +80. Cannot be removed once fitted.' },
-  'plug-firepower': { name: 'Firepower Plug', description: 'An overdrive module wired straight into the weapon bus: weapon damage +15%. Cannot be removed once fitted.' },
-  'plug-sight': { name: 'Sight Plug', description: 'A ranging unit slaved to the fire-control computer: weapon accuracy +15%. Cannot be removed once fitted.' },
-  'plug-thruster': { name: 'Thruster Plug', description: 'Auxiliary nozzles added at the stern: top speed +40 m/s. Cannot be removed once fitted.' },
-  'plug-rangefinder': { name: 'Range Plug', description: 'Acceleration rails running along the hull: weapon range +20%. Cannot be removed once fitted.' },
-  'plug-target-beacon': { name: 'Target Beacon Plug', description: 'A decoy beacon radiating at full power: enemies are more likely to pick this ship as their target. Cannot be removed once fitted.' },
-  'plug-concealment': { name: 'Concealment Plug', description: 'A shell that flattens the ship signal: enemies are less likely to pick this ship as their target. Cannot be removed once fitted.' },
+  'plug-shield-plate': { name: 'Shield Reinforcement Plate', description: 'A shield-emitter layer built into the hull: shield capacity +80.' },
+  'plug-armor-plate': { name: 'Armor Reinforcement Plate', description: 'A composite plate welded through the hull: armor capacity +140, at the cost of 20 m/s of top speed.' },
+  'plug-hull-plate': { name: 'Hull Reinforcement Plate', description: 'Reinforcement running the length of the keel: structure capacity +80.' },
+  'plug-mid-bay': { name: 'Mid Bay Plug', description: 'An extra standard mount cut into the mid deck: mid slot +1.' },
+  'plug-low-bay': { name: 'Low Bay Plug', description: 'An extra standard mount cut into the lower deck: low slot +1.' },
+  'plug-cpu-core': { name: 'Coprocessor Plug', description: 'Paired compute units: fitting CPU cap +80.' },
+  'plug-firepower': { name: 'Firepower Plug', description: 'An overdrive module wired straight into the weapon bus: weapon damage +15%.' },
+  'plug-sight': { name: 'Sight Plug', description: 'A ranging unit slaved to the fire-control computer: weapon accuracy +15%.' },
+  'plug-thruster': { name: 'Thruster Plug', description: 'Auxiliary nozzles added at the stern: top speed +40 m/s.' },
+  'plug-rangefinder': { name: 'Range Plug', description: 'Acceleration rails running along the hull: weapon range +20%.' },
+  'plug-target-beacon': { name: 'Target Beacon Plug', description: 'A decoy beacon radiating at full power: enemies are more likely to pick this ship as their target.' },
+  'plug-concealment': { name: 'Concealment Plug', description: 'A shell that flattens the ship signal: enemies are less likely to pick this ship as their target.' },
 
   /* 损伤管制装置线（2026-09-25 船长令：低槽 · 结构三系减伤 +30/40/50 ＋ 每场一次"结构锁定 1 秒"）
      ⚠ 模块英文必须写在本表（`EN_MODULES`）——写进 `EN_ITEMS` 的话覆盖层查不到（`l10n-overlay` 用例会红）。 */
