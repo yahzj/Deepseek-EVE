@@ -842,10 +842,18 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.state.040": { zh: "；AI 核心已归还核心库。", en: "; the AI core went back to the core library." },
   "core.state.041": { zh: "；AI 核心已归还核心库", en: "; the AI core went back to the core library" },
   "core.state.042": { zh: "。", en: "." },
-  "ui.main.001": { zh: "非法的备份文件名。", en: "Invalid backup file name." },
-  "ui.main.002": { zh: "选择要导入的存档文件", en: "Choose a save file to import" },
-  "ui.main.003": { zh: "导入此存档", en: "Import this save" },
-  "ui.main.004": { zh: "存档 JSON", en: "Save JSON" },
+  /**
+   * ⚠ **2026-09-27 修复（船长报障「打开游戏显示非法的备份文件名，然后正常进入游戏」）**：
+   * `ui.main.001~004` 是**渲染层启动序列**（`renderer/src/main.tsx`）用的四条，P1b（`004764f7`）引入时的原文见下；
+   * 后来"主进程本地化"批（`afcf3aee`）批量导入时**把这四条覆盖成了主进程导入/备份对话框的文案**
+   * ⇒ 启动占位显示成「非法的备份文件名。」（玩家以为报错了），启动失败提示也串成「选择要导入的存档文件」。
+   * 本次按 **id 一经使用不复用**（§十一之三）**恢复它们的原意**；主进程那套对话框文案本来就有自己的
+   * `ui.main.011~014`（同批登记的），不依赖这四条。**调用点一字未动。**
+   */
+  "ui.main.001": { zh: "正在启动星门引擎……", en: "Starting the Stargate engine…" },
+  "ui.main.002": { zh: "启动失败：{err}（详见开发者控制台）", en: "Startup failed: {err} (see developer console)" },
+  "ui.main.003": { zh: "性能采集模式启动失败", en: "Could not start the performance profiling mode" },
+  "ui.main.004": { zh: "启动引擎失败", en: "Could not start the game engine" },
   "ui.main.005": { zh: "文件过大（超过 10MB），不像是本游戏存档。", en: "The file is too large (over 10 MB) to be a save of this game." },
   "ui.main.006": { zh: "读取文件失败（{p1}）。", en: "Could not read the file ({p1})." },
   "ui.main.007": { zh: "非法的存档文本。", en: "Invalid save text." },
