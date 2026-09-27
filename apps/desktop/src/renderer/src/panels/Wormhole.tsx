@@ -2271,7 +2271,7 @@ export function WormholePanel({
                     </div>
                   ) : layerBlocked !== null ? (
                     <div className="app-wh-hold-overload">
-                      <span>{layerBlocked}</span>
+                      <span>{cmdText(layerBlocked)}</span>
                     </div>
                   ) : null}
                   {(run.relics ?? []).length > 0 ? (

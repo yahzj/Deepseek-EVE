@@ -36,6 +36,8 @@
  */
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
+// F5 用：直接跑真实的跳转表（纯函数、只依赖 MapTab 类型）⇒ 契约与实现同源，不抄一份
+import { goFor } from '../apps/desktop/src/renderer/src/ui/activityGo'
 
 const ROOT = process.cwd()
 const RENDERER = join(ROOT, 'apps', 'desktop', 'src', 'renderer', 'src')
@@ -91,6 +93,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '技能取消级联基线（只报"因本次取消才失效"的项）', symbol: 'preexistingUnmet', file: 'packages/core/src/engine.ts', exported: false },
   { concept: '存档清洗白名单（新增随档字段必须两处落笔）', symbol: 'normalizeState', file: 'packages/core/src/save.ts', exported: false },
   { concept: '活动栏「停止/取消」按钮文案（两套外壳共用）', symbol: 'stopLabel', file: 'apps/desktop/src/renderer/src/panels/activityStopLabel.ts', exported: true },
+  { concept: '活动栏行「点击去哪」的跳转表（两套外壳共用）', symbol: 'goFor', file: 'apps/desktop/src/renderer/src/ui/activityGo.ts', exported: true },
 ]
 
 /** F4：渲染层一级页/面板不许自己建仿真上下文（那是 `engine.ts` 的活） */
@@ -238,6 +241,52 @@ for (const file of rendererFiles) {
   })
 }
 
+/* ═══════════ F5 · 跳转目标契约：活动栏「点击去哪」必须落在真实存在的页/页签上 ═══════════
+ * 起因（船长 2026-09-27 报障）：「**送快递时，点击活动栏玩家的活动，跳转到空页面**」——
+ * 跳转表里还写着 `mapTab: 'task'`，而「任务中心」2026-09-14 已从星图页搬成独立一级页
+ * ⇒ `setMapTab('task')` 之后星图页六个页签的条件渲染全落空 = 空白页。
+ * 本检查把"跳转目标"变成契约：**页签必须是 `MAP_TABS` 里真实存在的键** ＋ **目的地名 id 必须在唯一表里**。
+ */
+{
+  const mapTabsSrc = sourceOf('apps/desktop/src/renderer/src/pages/MapPage.tsx')
+  const realTabs = new Set([...mapTabsSrc.matchAll(/\{\s*key:\s*'([a-z]+)'/g)].map((m) => m[1]))
+  const l10nSrc = sourceOf('packages/data/src/l10n/table.ts')
+  const kinds = [
+    'mining', 'scan', 'salvage', 'expedition', 'return', 'transit', 'standby', 'wormhole',
+    'courier', 'hauling', 'loop', 'manufacture', 'refine', 'train',
+  ]
+  if (realTabs.size === 0) {
+    hits.push({
+      check: 'F5',
+      file: 'apps/desktop/src/renderer/src/pages/MapPage.tsx',
+      line: 1,
+      detail: '读不出 `MAP_TABS` 的页签键（判据失效）',
+      fix: 'MAP_TABS 的写法变了 ⇒ 同步更新 arch-guard 的 F5 判据（必须继续读真实的 key 字面量）',
+    })
+  }
+  for (const k of kinds) {
+    const t = goFor(k)
+    if (t.mapTab !== undefined && realTabs.size > 0 && !realTabs.has(t.mapTab)) {
+      hits.push({
+        check: 'F5',
+        file: 'apps/desktop/src/renderer/src/ui/activityGo.ts',
+        line: 1,
+        detail: `活动 \`${k}\` 跳的星图页签 \`${t.mapTab}\` 在 MAP_TABS 里不存在（会落到空白页）`,
+        fix: `改跳真实页签（现有：${[...realTabs].join(' / ')}），或改跳它真正所属的一级页`,
+      })
+    }
+    if (!l10nSrc.includes(`"${t.labelId}"`)) {
+      hits.push({
+        check: 'F5',
+        file: 'apps/desktop/src/renderer/src/ui/activityGo.ts',
+        line: 1,
+        detail: `活动 \`${k}\` 的目的地名 id \`${t.labelId}\` 不在 l10n 唯一表里`,
+        fix: '在 packages/data/src/l10n/table.ts 补这条 id（zh + en），或改用已有的 id',
+      })
+    }
+  }
+}
+
 /* ═══════════ 输出 ═══════════ */
 const byCheck = new Map<string, Hit[]>()
 for (const h of hits) {
@@ -260,8 +309,9 @@ const LABEL: Record<string, string> = {
   F2: 'F2 单点覆盖（同一件事又写一份）',
   F3: 'F3 索引自检（索引与代码不一致）',
   F4: 'F4 取数口契约（页面旁路建上下文）',
+  F5: 'F5 跳转目标契约（活动栏点击落在不存在的页/页签）',
 }
-for (const key of ['F1', 'F2', 'F3', 'F4']) {
+for (const key of ['F1', 'F2', 'F3', 'F4', 'F5']) {
   const list = byCheck.get(key) ?? []
   if (list.length === 0) {
     console.log(`✅ ${LABEL[key]}：0 处`)

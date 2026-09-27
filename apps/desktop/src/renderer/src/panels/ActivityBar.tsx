@@ -18,6 +18,8 @@ import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { aiIndustrySlots, aiSlotTip } from '../ui/aiSlots'
 import { AiWorkFx } from '../ui/aiWorkFx'
 import { tr, cmdText } from '../i18n/locale'
+// 活动行「点击去哪」的跳转单点（2026-09-27 建：原先两套外壳各一份，快递那档跳到了已删除的星图页签 ⇒ 空白页）
+import { goFor } from '../ui/activityGo'
 // 活动栏「停止/取消」按钮文案 = 单点（两套外壳共用，见文件头注）
 import { stopLabel } from './activityStopLabel'
 
@@ -108,35 +110,6 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
  * 映射关系建议遵循：采矿→星图·矿带开采；扫描/远征/返航/待命→星图·远征；
  * 制造/精炼→工业；训练→技能页。跳转实现经 App 传入的 onGoPage（setPage + setMapTab）。
  */
-function goFor(kind: string): { page: string; mapTab?: string } {
-  switch (kind) {
-    case 'mining':
-      return { page: 'map', mapTab: 'mine' }
-    case 'scan':
-    case 'salvage':
-    case 'expedition':
-    case 'return':
-    case 'transit':
-    case 'standby':
-      return { page: 'map', mapTab: 'star' }
-    case 'courier':
-      return { page: 'map', mapTab: 'task' }
-    case 'hauling':
-      return { page: 'map', mapTab: 'haul' }
-    case 'loop':
-      return { page: 'map', mapTab: 'bounty' }
-    // 虫洞探索（船长 2026-09-13「活动栏显示」）：跳到星图·星图页——虫洞入口行就在那一页的行动区
-    case 'wormhole':
-      return { page: 'map', mapTab: 'star' }
-    case 'manufacture':
-    case 'refine':
-      return { page: 'industry' }
-    case 'train':
-      return { page: 'skills' }
-    default:
-      return { page: 'map' }
-  }
-}
 
 export function ActivityBar({
   engine,
@@ -148,7 +121,7 @@ export function ActivityBar({
   engine: GameEngine
   onToast: ToastFn
   onAiCenter?: () => void
-  onGoPage?: (page: string, mapTab?: string) => void
+  onGoPage?: (page: string, mapTab?: string, taskTab?: string) => void
   /**
    * **虫洞那条直接开面板**（船长 2026-09-13：「活动栏直接开面板」）：
    * 光跳星图页不够——星图要**先选中一个星系**才渲染「前往星系 · 行动」区，
@@ -254,20 +227,10 @@ export function ActivityBar({
         onOpenWormhole()
         return
       }
-      if (onGoPage) onGoPage(target.page, target.mapTab)
+      if (onGoPage) onGoPage(target.page, target.mapTab, target.taskTab)
     }
-    const goText =
-      target.page === 'map'
-        ? target.mapTab === 'mine'
-          ? tr("ui.MapPage.003")
-          : target.mapTab === 'bounty'
-            ? tr("ui.ActivityBar.016")
-            : target.mapTab === 'task'
-              ? tr("ui.App.008")
-              : tr("ui.MapPage.002")
-        : target.page === 'industry'
-          ? tr("ui.App.006")
-          : tr("ui.App.007")
+    /** 目的地名直接取跳转单点给的 id（原先按 mapTab 反推，嗅探的正是那个已删除的 'task' ⇒ 空白页） */
+    const goText = tr(target.labelId)
     return (
     <div
       key={v.id}

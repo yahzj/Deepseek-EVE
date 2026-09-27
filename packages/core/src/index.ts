@@ -423,7 +423,7 @@ export {
   planPrereqChain,
   skillCancelImpact,
 } from './engine'
-export type { CommandResult, HeadTrainingInfo, QueueView, SkillPrereqGap } from './engine'
+export type { CommandResult, CoreBlockReason, HeadTrainingInfo, QueueView, SkillPrereqGap } from './engine'
 
 export {
   currentShipState,

@@ -59,12 +59,14 @@ describe('虫洞解锁门槛（船长 2026-09-14：先定 35，当日改判提�
     expect(wormholeScanUnlocked(state)).toBe(false)
     expect(wormholeScanStanding(state)).toBe(0)
     const blocked = wormholeScanBlockReason(state)
-    expect(blocked).toContain('尚未解锁')
-    expect(blocked).toContain(`${WORMHOLE_SCAN_UNLOCK_STANDING}`)
+    // 甲案（本地化批二 · 2026-09-27）：拒因改走结构化 —— 断 id 与参数，不再断中文子串
+    expect(blocked?.errorId).toBe('core.wormholeScan.011')
+    expect(blocked?.errorParams?.p1).toBe(WORMHOLE_SCAN_UNLOCK_STANDING)
+    expect(blocked?.errorParams?.p2).toBe(0)
     // 差 1 点仍拦（边界跟着常量走，改门槛不用改用例）
     setStanding(state, 'dsi', WORMHOLE_SCAN_UNLOCK_STANDING - 1)
     expect(wormholeScanUnlocked(state)).toBe(false)
-    expect(wormholeScanBlockReason(state)).toContain('尚未解锁')
+    expect(wormholeScanBlockReason(state)?.errorId).toBe('core.wormholeScan.011')
     // 达标放行（其余前置都满足 ⇒ 理由是 null）
     setStanding(state, 'dsi', WORMHOLE_SCAN_UNLOCK_STANDING)
     expect(wormholeScanUnlocked(state)).toBe(true)

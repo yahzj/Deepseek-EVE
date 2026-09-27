@@ -23,7 +23,7 @@ import { matterTechScanCut } from './matterTech'
 import { addLog, wormholeScanHalt } from './state'
 import { applyActivityGate } from './activityGate'
 import type { SimContext } from './types'
-import type { CommandResult } from './engine'
+import type { CommandResult, CoreBlockReason } from './engine'
 import { scanSkillFactor } from './explore'
 import { WORMHOLE_MAX_SHIPS } from './wormhole'
 import { DSI_FACTION_ID, standingOf } from './expedition'
@@ -178,15 +178,27 @@ export function wormholeStockFull(state: GameState): boolean {
  * 只有长途运输先警告、远征/快递/战斗中/洞里/返航途中才拒）。理由（船长令）：「统一为能够直接切换
  * （自动取消当前活动）」——两个方向必须成对，反方向由同一把尺兜住。
  */
-export function wormholeScanBlockReason(state: GameState): string | null {
+export function wormholeScanBlockReason(state: GameState): CoreBlockReason | null {
   // 解锁门槛（船长 2026-09-14）：协会声望 ≥ 40 才开放扫描虫洞 —— 放在最前面，理由最有用
   if (!wormholeScanUnlocked(state)) {
-    return `扫描虫洞尚未解锁：需要「深空工业协会」声望 ${WORMHOLE_SCAN_UNLOCK_STANDING}（当前 ${wormholeScanStanding(state)}）——先去做协会的委托攒声望。`
+    return {
+      error: `扫描虫洞尚未解锁：需要「深空工业协会」声望 ${WORMHOLE_SCAN_UNLOCK_STANDING}（当前 ${wormholeScanStanding(state)}）——先去做协会的委托攒声望。`,
+      errorId: 'core.wormholeScan.011',
+      errorParams: { p1: WORMHOLE_SCAN_UNLOCK_STANDING, p2: wormholeScanStanding(state) },
+    }
   }
-  if (state.wormhole.run) return '已经在虫洞里了：先完成或撤离这一趟。'
-  if (state.encounter.active) return '遭遇战未决：先处理完当前遭遇。'
+  if (state.wormhole.run) {
+    return { error: '已经在虫洞里了：先完成或撤离这一趟。', errorId: 'core.wormholeScan.012' }
+  }
+  if (state.encounter.active) {
+    return { error: '遭遇战未决：先处理完当前遭遇。', errorId: 'core.wormholeScan.013' }
+  }
   if (wormholeStockFull(state)) {
-    return `已囤积 ${wormholeStockMaxOf(state)} 处未探索的虫洞：先去探索掉一处再扫。`
+    return {
+      error: `已囤积 ${wormholeStockMaxOf(state)} 处未探索的虫洞：先去探索掉一处再扫。`,
+      errorId: 'core.wormholeScan.014',
+      errorParams: { p1: wormholeStockMaxOf(state) },
+    }
   }
   return null
 }
@@ -194,7 +206,7 @@ export function wormholeScanBlockReason(state: GameState): string | null {
 /** 开始扫描（**只能在扫描界面里点**；船长：「玩家需要在扫描虫洞界面内开始」） */
 export function wormholeScanStart(state: GameState, _ctx: SimContext): CommandResult {
   const blocked = wormholeScanBlockReason(state)
-  if (blocked) return { ok: false, error: blocked }
+  if (blocked) return { ok: false, error: blocked.error, errorId: blocked.errorId, errorParams: blocked.errorParams }
   if ((state.wormholeScan ?? { active: false, progressMs: 0 }).active) {
     return { ok: false, error: '扫描已经在跑。', errorId: 'core.wormholeScan.001' }
   }
