@@ -75,11 +75,19 @@ export function weekendRollBlackBox(
   ev: WeekendEventState,
   lastHitByPlayer: boolean,
 ): boolean {
-  if (ev.flagshipBlackBox !== undefined) return ev.flagshipBlackBox
+  /**
+   * ⚠ **情境相同才幂等**（**2026-09-27 玩家报障修复**）：`weekendClaimOctopus` 会在"章鱼人得手"
+   * 时先按 `lastHitByPlayer = false` 掷一次；若玩家随后（或同时）真的把它打沉，必须按"抢到最后一下"
+   * **重掷**——否则那一场永远拿不到本该必爆的黑匣（见 `flagshipBlackBoxByPlayer` 的说明）。
+   */
+  if (ev.flagshipBlackBox !== undefined && ev.flagshipBlackBoxByPlayer === lastHitByPlayer) {
+    return ev.flagshipBlackBox
+  }
   const chance = weekendBlackBoxChanceOf(ev.flagshipHpDone ?? 0, ev.flagshipHpMax ?? 0, lastHitByPlayer)
   const rng = streamOf(state.rng.seed, ev.seq + WEEKEND_BLACKBOX_SALT)
   const hit = chance >= 1 || (chance > 0 && rng() < chance)
   ev.flagshipBlackBox = hit
+  ev.flagshipBlackBoxByPlayer = lastHitByPlayer
   return hit
 }
 
@@ -402,6 +410,16 @@ export interface WeekendEventState {
    * ⚠ **随档落盘**（`save.ts` 读档侧必须认它）：不然读档后结算会漏发或重掷。
    */
   flagshipBlackBox?: boolean
+  /**
+   * **上一次黑匣掷骰的"情境"**（**2026-09-27 玩家报障修复**）：`true` = 按"玩家抢到最后一下"掷的，
+   * `false` = 按"章鱼人得手（25% × 输出占比）"掷的。
+   *
+   * 为什么需要它：`weekendClaimOctopus`（章鱼人把血削到 0）会**先**掷一次并写 `flagshipBlackBox`
+   * （幂等）⇒ 而玩家其实可能**同时也把它打沉了**（留档 `flagshipPlayerKill` 为证）。
+   * 实战报障存档：`flagshipHpDone 148,676/150,000`（占比 99.1%，本应"必爆"）却 `flagshipBlackBox = false`
+   * —— 正是被章鱼人那次低占比掷骰**提前固化**。⇒ 情境变了就必须重掷，不能一次定终身。
+   */
+  flagshipBlackBoxByPlayer?: boolean
   /* ─── 旗舰 BOSS 化（2026-09-24 第二轮令；**只有 `WEEKEND_BOSS_FAMILIES` 里的族会写这三格**）─── */
   /** **池子总量**（首次接战后锁定；缺省 = 还没跟母舰交手过） */
   flagshipHpMax?: number
