@@ -18,7 +18,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import ExcelJS from 'exceljs'
-import { ANOMALIES, BELTS, FOE_SHIPS, ITEMS, MARKET_GOODS, MODULES, SHIPS, SKILLS } from '@whale/data'
+import { ANOMALIES, BELTS, BLUEPRINTS, FOE_SHIPS, ITEMS, MARKET_GOODS, MODULES, SHIPS, SKILLS } from '@whale/data'
 import { tableOf, type ColSpec } from './content-schema'
 
 const CATALOGS: Record<string, readonly unknown[]> = {
@@ -35,6 +35,13 @@ const CATALOGS: Record<string, readonly unknown[]> = {
    * 列定义见 `content-schema.ts`（只收舰级裸值，派生量与卡级覆写不在此表）。
    */
   foeShips: FOE_SHIPS,
+  /**
+   * **舰船插件 ＋ 插件图纸**（**2026-09-27 船长令**：「**你先将各种船插放入excel表，我打算微调和增加**」）——
+   * 第 9/10 张表。插件本体只取 `slot: 'plug'` 的那些（与引擎单点 `plugs.isPlugOf` 同判据）；
+   * 图纸只取 `bp-plug-*`（`blueprints.ts` 里其余数百张不在这条回路里）。
+   */
+  plugs: MODULES.filter((m) => m.slot === 'plug'),
+  plugBlueprints: BLUEPRINTS.filter((b) => b.id.startsWith('bp-plug-')),
 }
 
 const outDir = process.argv[2] ?? 'content-csv'
@@ -80,7 +87,7 @@ function rowsToCsv(cols: readonly ColSpec[], rows: readonly unknown[]): string {
   return [heads, ...body].map((r) => r.join(',')).join('\r\n') + '\r\n'
 }
 
-const SHEET_NAMES = ['skills', 'items', 'modules', 'ships', 'anomalies', 'belts', 'market', 'foeShips'] as const
+const SHEET_NAMES = ['skills', 'items', 'modules', 'ships', 'anomalies', 'belts', 'market', 'foeShips', 'plugs', 'plugBlueprints'] as const
 
 async function writeXlsx(colsList: readonly (readonly ColSpec[])[], rowSets: readonly (readonly unknown[])[]): Promise<void> {
   const wb = new ExcelJS.Workbook()

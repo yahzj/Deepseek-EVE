@@ -16,7 +16,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import * as ts from 'typescript'
 import ExcelJS from 'exceljs'
-import { ANOMALIES, BELTS, FOE_SHIPS, GALAXIES, ITEMS, MARKET_GOODS, MODULES, SHIPS, SKILLS } from '@whale/data'
+import { ANOMALIES, BELTS, BLUEPRINTS, FOE_SHIPS, GALAXIES, ITEMS, MARKET_GOODS, MODULES, SHIPS, SKILLS } from '@whale/data'
 import { normalizeHead, tableOf, type ColSpec } from './content-schema'
 
 /* ═══════════ CSV 解析（标准：引号转义/BOM/编码与分隔符自动容错） ═══════════
@@ -138,6 +138,9 @@ const IDS = {
   market: idSetOf(MARKET_GOODS, 'key'),
   // **敌舰级表**（2026-09-24 船长令：敌舰数值也走工作台回写）——主键 = `FoeShipDef.id`
   foeShips: idSetOf(FOE_SHIPS, 'id'),
+  /** **舰船插件 ＋ 插件图纸**（**2026-09-27 船长令**）：判据与导出侧同源（`slot: 'plug'` / `bp-plug-*`） */
+  plugs: idSetOf(MODULES.filter((m) => m.slot === 'plug'), 'id'),
+  plugBlueprints: idSetOf(BLUEPRINTS.filter((b) => b.id.startsWith('bp-plug-')), 'id'),
   galaxies: idSetOf(GALAXIES, 'id'),
 }
 
@@ -180,16 +183,60 @@ interface ObjInfo {
   srcPath: string
 }
 
+/**
+ * **同文件字符串常量表**（`const NAME = 'x'` 与 `const OBJ = { key: 'x' }` ⇒ 键 `OBJ.key`）。
+ *
+ * 为什么需要（**2026-09-27**）：`packages/data/src/plugs.ts` 的插件对象写的是
+ * `id: PLUG_IDS.shieldPlate`（**常量引用**，为的是"写错当场编译不过"）——
+ * 旧收集器只认字符串字面量 ⇒ `content:import plugs` 整张表报「源文件找不到对象块」。
+ * 这里把同文件的字符串常量收成一张表供 `collectObjects` 解析；**只认同文件、只认字符串字面量**，
+ * 解析不出就照旧跳过（不猜、不改写源文件）。
+ */
+function collectStrConsts(sf: ts.SourceFile): Map<string, string> {
+  /** 剥掉 `as const` / 括号 / 类型断言（`plugs.ts` 的 `PLUG_IDS` 正是 `{…} as const`） */
+  const unwrap = (e: ts.Expression): ts.Expression => {
+    let x = e
+    while (ts.isAsExpression(x) || ts.isParenthesizedExpression(x) || ts.isTypeAssertionExpression(x)) {
+      x = x.expression
+    }
+    return x
+  }
+  const map = new Map<string, string>()
+  for (const st of sf.statements) {
+    if (!ts.isVariableStatement(st)) continue
+    for (const d of st.declarationList.declarations) {
+      if (!d.initializer || !ts.isIdentifier(d.name)) continue
+      const init = unwrap(d.initializer)
+      if (ts.isStringLiteralLike(init)) map.set(d.name.text, init.text)
+      else if (ts.isObjectLiteralExpression(init)) {
+        for (const p of init.properties) {
+          if (ts.isPropertyAssignment(p) && ts.isStringLiteralLike(unwrap(p.initializer))) {
+            map.set(`${d.name.text}.${p.name.getText(sf)}`, (unwrap(p.initializer) as ts.StringLiteralLike).text)
+          }
+        }
+      }
+    }
+  }
+  return map
+}
+
+/** 主键取值：字符串字面量直接用；否则查同文件字符串常量表（`PLUG_IDS.shieldPlate` 一类） */
+function idOfExpr(expr: ts.Expression, sf: ts.SourceFile, strConsts: Map<string, string>): string | undefined {
+  if (ts.isStringLiteralLike(expr)) return expr.text
+  return strConsts.get(expr.getText(sf).trim())
+}
+
 function collectObjects(sf: ts.SourceFile, idPropName: string, srcPath: string): Map<string, ObjInfo> {
+  const strConsts = collectStrConsts(sf)
   const map = new Map<string, ObjInfo>()
   const visit = (node: ts.Node): void => {
     if (ts.isObjectLiteralExpression(node)) {
       const p = node.properties.find(
-        (x): x is ts.PropertyAssignment =>
-          ts.isPropertyAssignment(x) && x.name.getText(sf) === idPropName && ts.isStringLiteralLike(x.initializer),
+        (x): x is ts.PropertyAssignment => ts.isPropertyAssignment(x) && x.name.getText(sf) === idPropName,
       )
-      if (p && ts.isStringLiteralLike(p.initializer) && !map.has(p.initializer.text)) {
-        map.set(p.initializer.text, { obj: node, srcPath })
+      const idVal = p ? idOfExpr(p.initializer, sf, strConsts) : undefined
+      if (idVal !== undefined && !map.has(idVal)) {
+        map.set(idVal, { obj: node, srcPath })
       }
     }
     ts.forEachChild(node, visit)

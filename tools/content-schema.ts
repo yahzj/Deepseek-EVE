@@ -380,6 +380,66 @@ export const TABLES: readonly TableSpec[] = [
       col('冲锋倍率foeChargeMul(旧字段)', 'foeChargeMul', 'num', { min: 0, max: 5 }),
     ],
   },
+  /**
+   * **舰船插件**（**2026-09-27 船长令**：「**你先将各种船插放入excel表，我打算微调和增加**」）。
+   *
+   * 两处**有意留白**（本表只覆盖"数值可调"的部分）：
+   * - **英文名 / 英文描述**（`packages/data/src/l10n.ts` 的 `EN_MODULES`）不进表：那张表是"id → 译文"
+   *   的**长表**，与这里的对象块不是同一种形状；新增插件时英文由经办人按表补（id 制，见约定 §十一之三）。
+   * - **`unreleased` 等施工闸门**不进表：插件本来就该可见（见 `blueprints.ts` 里那条报障注释）。
+   *
+   * ⚠ **新增行要走代办**：`content:import` 的护栏是"主键只读 ⇒ 未知 id 一律拒绝"（防筛选视图误删/误加），
+   * 所以**表里加一行不会自动变出插件**；调数值可以回灌，加新件要经办人落码（连带图纸/英文/市场占位）。
+   */
+  {
+    name: 'plugs',
+    files: ['packages/data/src/plugs.ts'],
+    idProp: 'id',
+    cols: [
+      col('id', 'id', 'id'),
+      col('名称', 'name', 'str'),
+      col('家族slot(plug舰船插件)', 'slot', 'enum', { vals: ['plug'] }),
+      col('物理槽rack(high/mid/low；插件不进三类数组，此处是归属声明)', 'rack', 'enum', { vals: RACK_SLOTS }),
+      col('护盾上限固定值shieldHpAdd', 'shieldHpAdd', 'num', { min: 0 }),
+      col('装甲上限固定值armorHpAdd', 'armorHpAdd', 'num', { min: 0 }),
+      col('结构上限固定值hullHpAdd', 'hullHpAdd', 'num', { min: 0 }),
+      col('中槽加开midSlotsAdd', 'midSlotsAdd', 'num', { min: 0, int: true }),
+      col('低槽加开lowSlotsAdd', 'lowSlotsAdd', 'num', { min: 0, int: true }),
+      col('CPU上限加成cpuBonus', 'cpuBonus', 'num', { min: 0 }),
+      col('CPU占用cpuUse', 'cpuUse', 'num', { min: 0 }),
+      col('单发伤害加成damageBonusPct(0.12=+12%)', 'damageBonusPct', 'num', { min: -5, max: 5 }),
+      col('命中加成hitBonusPct(0.12=+12%)', 'hitBonusPct', 'num', { min: -5, max: 5 }),
+      col('射程加成rangeCutPct(负值=加成，-0.25=+25%)', 'rangeCutPct', 'num', { min: -1, max: 1 }),
+      col('速度加成speedAddMps', 'speedAddMps', 'num', { min: 0 }),
+      col('速度代价speedPenaltyMps', 'speedPenaltyMps', 'num', { min: 0 }),
+      col('选靶权重targetWeightMul(2=更易被选中/0.4=更少)', 'targetWeightMul', 'num', { min: 0, max: 10 }),
+      col('描述(高亮数值段须与引擎接线一致，改动后需人工复核)', 'description', 'str'),
+    ],
+  },
+  /**
+   * **舰船插件图纸**（同一条船长令）——每件插件的料单与工时。
+   *
+   * 材料列走通用 `list` 编码：`itemId×数量|itemId×数量|…`（与 `items` 表的精炼配方同一套写法）。
+   * ⚠ **"任意类型黑匣"不在本表体现**：那是引擎侧的**材料等价组**（组内任意一种都能交、按组序优先扣），
+   * 见 `manufacturing.materialGroupIdsOf`；表里照旧写配方具名的那一种。
+   */
+  {
+    name: 'plugBlueprints',
+    files: ['packages/data/src/blueprints.ts'],
+    idProp: 'id',
+    cols: [
+      col('id', 'id', 'id'),
+      col('名称', 'name', 'str'),
+      col('产物模块moduleId(须是 plug-* 插件)', 'moduleId', 'str'),
+      col('材料(itemId×数量|…)', 'materials', 'list', {
+        itemKey: 'itemId', valKey: 'count', valMin: 0.0001, ref: 'items',
+      }),
+      col('工时秒buildSeconds', 'buildSeconds', 'num', { min: 1, int: true }),
+      col('制造费buildCostIsk(历史遗留，恒 0)', 'buildCostIsk', 'num', { min: 0 }),
+      col('书价priceIsk(插件图纸不上市场 ⇒ 恒 0)', 'priceIsk', 'num', { min: 0 }),
+      col('描述(高亮数值段须与引擎接线一致，改动后需人工复核)', 'description', 'str'),
+    ],
+  },
 ]
 
 export function tableOf(name: string): TableSpec | undefined {
