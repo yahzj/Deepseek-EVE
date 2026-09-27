@@ -22,6 +22,7 @@
 import type { GameState } from './state'
 import type { ModuleDef, SimContext } from './types'
 import { addLog } from './state'
+import { addWare } from './inventory'
 // ⚠ 本模块被 `combat.ts`（建档）· `shipyard.ts` / `market.ts`（入仓与挂卖的闸门）反向引用
 //   ⇒ 依赖方向要保守：**只依赖 `state` / `types`**。原先还 import 了 `equipment.countModule`，
 //   但那只是一行取表（`state.moduleBay[id] ?? 0`），为省掉 `equipment → labels → …` 这条可能成环的
@@ -170,6 +171,48 @@ export function plugsToBlackBoxesOf(plugIds: readonly string[]): number {
 
 /** 单张插件图纸的声望价（**8 点**；真扣可支配那本，累计那本不动） */
 export const PLUG_BLUEPRINT_COST = 8
+
+/**
+ * **通用黑匣的声望价**（**2026-09-27 船长令**：「**玩家可以用30声望换一个通用黑匣**」）——
+ * 与图纸同口径：**只扣可支配那本**、门槛仍读累计；**可无限次兑换**（不像图纸会"已学会即隐藏"）。
+ */
+export const UNIVERSAL_BLACKBOX_COST = 30
+
+/** 通用黑匣的物品 id（**2026-09-27 船长令**；与 `blackbox-h` 互为制造替代料，见 `manufacturing.MATERIAL_GROUPS`） */
+export const UNIVERSAL_BLACKBOX_ITEM_ID = 'blackbox-universal'
+
+/**
+ * **用声望换一枚通用黑匣**（唯一入口；兑换窗口那张卡调它）。
+ *
+ * 三道校验：① 可支配声望够不够（不够则一点不动）⇒ ② 扣 30 点 ⇒ ③ **入物品仓库**
+ * （`addWare`；与"黑匣入库"同口径 —— 玩家在「物品」页就能看到，不进驾驶船货舱）。
+ * ⚠ 与图纸那支**不是一回事**：图纸是"兑换即学会"（消耗品性质），本件是**实物**（进仓库的制造料）。
+ */
+export function exchangeUniversalBlackBox(
+  state: GameState,
+  count = 1,
+): { ok: true; count: number } | { ok: false; errorId: string; error: string } {
+  const n = Math.max(1, Math.floor(count))
+  const price = UNIVERSAL_BLACKBOX_COST * n
+  const have = spendableStandingOf(state)
+  if (have < price) {
+    return {
+      ok: false,
+      errorId: 'core.plug.013',
+      error: `声望不足：换通用黑匣 ×${n} 要 ${price} 点，当前可支配 ${have} 点。`,
+    }
+  }
+  spendStanding(state, price)
+  addWare(state, UNIVERSAL_BLACKBOX_ITEM_ID, n)
+  addLog(
+    state,
+    'trade',
+    `章鱼人兑换：花 ${price} 点协会声望换到通用黑匣 ×${n}（已存入物品仓库）。`,
+    'core.plug.012',
+    { p1: price, p2: n },
+  )
+  return { ok: true, count: n }
+}
 
 /** 一件插件的图纸 id 约定（`data/blueprints.ts` 的 12 张按它派生） */
 export function plugBlueprintIdOf(moduleId: string): string {

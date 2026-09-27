@@ -1429,6 +1429,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.plug.009": { zh: "已经学过 {p1} 了，不用再兑换一次。", en: "You have already learned {p1}; no need to exchange again." },
   "core.plug.010": { zh: "声望不够：{p1} 要 {p2}，你手上有 {p3} 可以花。", en: "Not enough standing: {p1} costs {p2}, and you have {p3} spendable." },
   "core.plug.011": { zh: "章鱼人兑换：花掉 {p1} 点协会声望，换到并学会 {p2}，可直接在组装机无限次制造。", en: "Octopus exchange: spent {p1} association standing to learn {p2} — build it at the assembly unit as often as you like." },
+  "core.plug.012": { zh: "章鱼人兑换：花掉 {p1} 点协会声望，换到通用黑匣 ×{p2}，已存入物品仓库。", en: "Octopus exchange: spent {p1} association standing for {p2} Universal Black Box(es), stored in the item warehouse." },
+  "core.plug.013": { zh: "声望不够：通用黑匣 ×{p1} 要 {p2}，你手上有 {p3} 可以花。", en: "Not enough standing: {p1} Universal Black Box(es) cost {p2}, and you have {p3} spendable." },
   "ui.battleViewCore.001": { zh: "高爆", en: "High explosive" },
   "ui.battleViewCore.002": { zh: "能量", en: "Energy" },
   "ui.CargoPage.001": { zh: "↖ 查看市场", en: "↖ View market" },

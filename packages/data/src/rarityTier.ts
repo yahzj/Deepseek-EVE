@@ -619,6 +619,8 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'wreck-rare-h-hi': 4,
   // 墨潮旗舰黑匣（周末入侵击毁旗舰的彩头；2026-09-25「先做壳」）——与专属内容同档（奇货层 4）
   'blackbox-h': 4,
+  // 通用黑匣（2026-09-27 船长令：章鱼人商店 30 声望一枚）——同样与专属内容同档（奇货层 4）
+  'blackbox-universal': 4,
   'wreck-rare-a-lo': 3,
   'wreck-rare-c-lo': 3,
   'wreck-rare-d-lo': 3,

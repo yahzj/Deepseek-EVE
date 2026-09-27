@@ -871,6 +871,9 @@ export {
   plugBlueprintIdOf,
   exchangePlugBlueprint,
   plugExchangeRowsOf,
+  UNIVERSAL_BLACKBOX_COST,
+  UNIVERSAL_BLACKBOX_ITEM_ID,
+  exchangeUniversalBlackBox,
 } from './plugs'
 export type { ShipPlugBlock, PlugExchangeRow } from './plugs'
 /** **黑匣与插件解锁**（2026-09-26 船长令）：组装机插件档的解锁判据与拒因单点 */

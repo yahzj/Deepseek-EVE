@@ -1307,6 +1307,25 @@ export const WEEKEND_TROPHIES: readonly ItemDef[] = [
     baseSellPriceIsk: 80_000_000,
     description: '墨潮入侵母舰的核心记录匣：外壳是耐压墨晶，内里封着未破译的军用编码与航迹记录。可存入库房或售予回收商。',
   },
+  /**
+   * **通用黑匣**（**2026-09-27 船长令**：「**在章鱼人声望商店加入购买通用黑匣的卡片，玩家可以用30声望换一个
+   * 通用黑匣。（现有的舰船插件蓝图都只要使用任意类型黑匣就可以制作）**」）。
+   *
+   * - 与 `blackbox-h` **并列的一档 `blackbox`**（不是替代它）：旗舰黑匣仍由入侵掉落、仍卖 8,000 万；
+   *   本件**只能拿声望换**（30 点/枚，见 `core/plugs.ts` 的 `exchangeUniversalBlackBox`）；
+   * - 用途 = 制造舰船插件时的**等价料**：与旗舰黑匣互为替代（组序 = 先扣本件），见
+   *   `core/manufacturing.ts` 的 `MATERIAL_GROUPS`；
+   * - 卖价 **500 万**（**船长 2026-09-27 定**：「**按500万算价格，只收不卖**」）——
+   *   市场卡照做但 `playerBuyable: false`（NPC 不出售现货）。
+   */
+  {
+    id: 'blackbox-universal',
+    name: '通用黑匣',
+    kind: 'blackbox',
+    unitM3: 5,
+    baseSellPriceIsk: 5_000_000,
+    description: '章鱼人经手的空白记录匣：制造舰船插件时可替代任意类型的黑匣。可存入库房或售予回收商。',
+  },
 ]
 
 /** 全部物品（矿石/矿物在前为兼容旧展示顺序，其后气体/冰/弹药/无人机/修理组件） */

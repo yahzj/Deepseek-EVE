@@ -503,6 +503,7 @@ export const EN_ITEMS: EnTable = {
   'mat-field-repair': { name: 'Field Repair Unit', description: 'Automatically patches armor and structure after exchanges; inactive outside the wormhole (yields Wormhole Enigma on extraction).' },
   'mat-wh-essence': { name: 'Wormhole Enigma', description: 'A strange material found inside wormholes, spent as research material; can also be sold to recyclers per piece. Cold-glowing crystals in a sealed case.' },
   // 入侵旗舰黑匣（2026-09-25 船长「先做壳」）：只做壳 ⇒ 可存/可回收/可售，用途留待改装件那批
+  'blackbox-universal': { name: 'Universal Black Box', description: 'A blank recorder core handled by the octopi: it can stand in for any kind of black box when manufacturing ship plugs. Can be stored or sold to recyclers.' },
   'blackbox-h': { name: 'Ink Tide Flagship Black Box', description: 'The core recorder of an Ink Tide invasion carrier: a pressure-proof ink-crystal shell holding undeciphered military codes and flight logs. Can be stored or sold to recyclers.' },
   // 货柜
   'box-relic-a': { name: 'Ruins Safe Container (Pirate)', description: 'A whole container dragged out of the ruins: a locked shell with its markings ground off. Only unboxing back at the station reveals what is inside. Takes 2×2 cargo slots.' },

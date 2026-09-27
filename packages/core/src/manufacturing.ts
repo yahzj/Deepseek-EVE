@@ -252,12 +252,34 @@ export function matNeedCount(state: GameState, count: number): number {
   return Math.max(1, Math.floor(count * materialFactor(state)))
 }
 
+/**
+ * **材料等价组**（**2026-09-27 船长令**：「**在章鱼人声望商店加入购买通用黑匣的卡片，玩家可以用30声望换一个
+ * 通用黑匣。（现有的舰船插件蓝图都只要使用任意类型黑匣就可以制作）**」）。
+ *
+ * 口径：
+ * - **组内任意一种都能顶同一项料**（配方数据**一个字不用改**：插件图纸照旧写 `blackbox-h`）；
+ * - **组序 = 优先扣除序** ⇒ 先扣**通用黑匣**（声望换来的），把能卖 8,000 万的墨潮旗舰黑匣留给市场；
+ * - **退料按实际扣的那种退**：`spentMaterials` 记的就是实际扣的 id（见开工处那段），天然成立；
+ * - 不进任何组 = 一对一（既有全部配方零行为变化）。
+ */
+export const MATERIAL_GROUPS: readonly (readonly string[])[] = [['blackbox-universal', 'blackbox-h']]
+
+/** 该材料 id 所属的等价组（不在任何组里 ⇒ 只返回它自己） */
+export function materialGroupIdsOf(itemId: string): readonly string[] {
+  for (const g of MATERIAL_GROUPS) {
+    if (g.includes(itemId)) return g
+  }
+  return [itemId]
+}
+
 /** 材料缺口说明（界面提示用；材料从物品仓库取用；数量已按材料学折扣折算） */
 export function missingMaterials(state: GameState, ctx: SimContext, spec: BuildSpec): string[] {
   const missing: string[] = []
   for (const need of spec.materials) {
     const needCount = matNeedCount(state, need.count)
-    const have = countWare(state, need.itemId)
+    /** **等价组按组内合计**（2026-09-27）：通用黑匣 ＋ 旗舰黑匣凑够数就行 */
+    const ids = materialGroupIdsOf(need.itemId)
+    const have = ids.reduce((sum, id) => sum + countWare(state, id), 0)
     if (have < needCount) {
       const name = ctx.items.get(need.itemId)?.name ?? need.itemId
       missing.push(`${name} 还差 ${(needCount - have).toLocaleString('zh-CN')} 单位`)
@@ -414,9 +436,20 @@ export function startManufacturing(
    */
   const spentMaterials: { itemId: string; count: number }[] = []
   for (const need of buildable.spec.materials) {
-    const n = matNeedCount(state, need.count)
-    removeWare(state, need.itemId, n)
-    spentMaterials.push({ itemId: need.itemId, count: n })
+    let left = matNeedCount(state, need.count)
+    /**
+     * **按等价组扣料**（2026-09-27 船长令）：组内**按序取够**（先通用黑匣、后旗舰黑匣），
+     * 逐笔记进 `spentMaterials`（**记实际扣的那一种** ⇒ 停机退料退得回去，不会退错种类）。
+     */
+    for (const id of materialGroupIdsOf(need.itemId)) {
+      if (left <= 0) break
+      const have = countWare(state, id)
+      const take = Math.min(have, left)
+      if (take <= 0) continue
+      removeWare(state, id, take)
+      spentMaterials.push({ itemId: id, count: take })
+      left -= take
+    }
   }
   // 一次性图纸：**开工那一刻吃掉这本书**（船长裁定「3甲」，与材料同源）；
   // ⚠ 2026-09-20 船长改判：「一次性蓝图的制造取消后返还玩家蓝图」

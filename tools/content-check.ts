@@ -330,7 +330,7 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 // 2026-09-25（损伤管制装置批 · 船长令「维修组件新增新的消耗品，损管修理组件」）：+1（损管修理组件 `repairkit-dc`）
 //   → 物品总数 101→**102**
 // 2026-09-26（H 族势力装备批 · 船长令）：+1（墨潮重袭无人机 `drone-ink-heavy`）→ 物品总数 102→**103**
-check(itemDefs.length === 103, `物品总数应为 103（2026-09-26 起：损管修理组件 ＋ 墨潮重袭无人机），实际 ${itemDefs.length}`)
+check(itemDefs.length === 104, `物品总数应为 104（2026-09-27 起：通用黑匣），实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
