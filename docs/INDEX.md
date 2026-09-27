@@ -12,14 +12,14 @@
 
 ## 统计
 
-- 文档总数 **336** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6321** KB · **43991** 行
-- 状态分布：**未标注** 185 · **已确认/已实现** 111 · **进行中** 30 · **待裁定** 9 · **历史留档** 1
-- 孤儿文档（0 引用）**43** 份 · 状态未标注 **185** 份
+- 文档总数 **338** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6331** KB · **44162** 行
+- 状态分布：**未标注** 187 · **已确认/已实现** 111 · **进行中** 30 · **待裁定** 9 · **历史留档** 1
+- 孤儿文档（0 引用）**44** 份 · 状态未标注 **187** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**11** 份
-- 三、现行设计稿（design）：**212** 份
+- 三、现行设计稿（design）：**213** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**32** 份
-- 二、其它（docs 根目录）：**2** 份
+- 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**1** 份
 - 六、专题：舰船美术（design/ship-battle-art）：**7** 份
@@ -31,7 +31,7 @@
 |---|---|---|---|---|---|
 | `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 15 KB / 105 行 | 187 / 5 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 31 / 1 |
-| `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 29 / 3 |
+| `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 59 行 | 29 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 268 KB / 283 行 | 15 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 71 KB / 754 行 | 78 / 4 |
@@ -54,10 +54,11 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 212 份
+## 三、现行设计稿（design） —— 213 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/blackbox-miss-20260927.md` | 旗舰黑匣漏发（玩家亲手击沉却不爆）— 工作文档 | 未标注 | 2026-09-27 | 5 KB / 88 行 | 0 / 0 |
 | `docs/design/coupling-audit-20260927.md` | 五大功能耦合性体检（2026-09-27 · 二号 · d2） | 未标注（待办 · 船长 2026-09-27） | 2026-09-27 | 7 KB / 88 行 | 0 / 0 |
 | `docs/design/dev-process-20260927.md` | 开发流程规范：取数与派生纪律 ＋ 第 20 道护栏 arch:guard（2026-09-27 · 三号 verify） | 进行中（进行中） | 2026-09-27 | 5 KB / 62 行 | 0 / 0 |
 | `docs/design/handoff-20260927-main.md` | 交接卡：接一号班（主树 main · 2026-09-27） | 未标注（交接中） | 2026-09-27 | 11 KB / 116 行 | 0 / 0 |
@@ -308,10 +309,11 @@
 | `docs/archive/roadmap-2026-09-26.md` | 封存卷 · roadmap 批次条目 2026-09-26 | 未标注 | — | 104 KB / 102 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-27.md` | 封存卷 · roadmap 批次条目 2026-09-27 | 未标注 | — | 6 KB / 14 行 | 0 / 0 |
 
-## 二、其它（docs 根目录） —— 2 份
+## 二、其它（docs 根目录） —— 3 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 5 KB / 81 行 | 1 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 46 KB / 798 行 | 20 / 18 |
 | `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 6 KB / 74 行 | 11 / 6 |
 
@@ -406,10 +408,11 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 55 / 13 |
 
-## 附：孤儿文档（0 引用，43 份）
+## 附：孤儿文档（0 引用，44 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/blackbox-miss-20260927.md`（2026-09-27 · 5 KB）—— 旗舰黑匣漏发（玩家亲手击沉却不爆）— 工作文档
 - `docs/design/coupling-audit-20260927.md`（2026-09-27 · 7 KB）—— 五大功能耦合性体检（2026-09-27 · 二号 · d2）
 - `docs/design/dev-process-20260927.md`（2026-09-27 · 5 KB）—— 开发流程规范：取数与派生纪律 ＋ 第 20 道护栏 arch:guard（2026-09-27 · 三号 verify）
 - `docs/design/handoff-20260927-main.md`（2026-09-27 · 11 KB）—— 交接卡：接一号班（主树 main · 2026-09-27）
@@ -454,8 +457,9 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（185 份，待补一行 `状态：…`）
+## 附：状态未标注（187 份，待补一行 `状态：…`）
 
+- `docs/design/blackbox-miss-20260927.md`（2026-09-27）—— 旗舰黑匣漏发（玩家亲手击沉却不爆）— 工作文档
 - `docs/design/coupling-audit-20260927.md`（2026-09-27）—— 五大功能耦合性体检（2026-09-27 · 二号 · d2）
 - `docs/design/handoff-20260927-main.md`（2026-09-27）—— 交接卡：接一号班（主树 main · 2026-09-27）
 - `docs/design/handoff-20260927-verify.md`（2026-09-27）—— 交接卡：新三号（2026-09-27 · 旧三号交班）
@@ -608,6 +612,7 @@
 - `docs/archive/roadmap-2026-09-27.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-27
 - `docs/catalog.md`（无日期）—— 文档目录（指路 · 开工先读）
 - `docs/content-workbench.md`（无日期）—— 内容工作台（CSV 双向编辑内容数据）
+- `docs/data-map.md`（无日期）—— 数据速查页（改数值时该动哪几处）
 - `docs/design/ai-design.md`（无日期）—— V8 设计文档：AI 核心系统（玩家分身）
 - `docs/design/archive/handoff-b3-skills.md`（无日期）—— B3 技能挂接（2026-09-05 船长拍板：打捞相关技能一并完成 → 已实施）
 - `docs/design/archive/handoff-weapon-skills.md`（无日期）—— 交接：V18B 武器体系 → 战斗线技能填充（一号）
