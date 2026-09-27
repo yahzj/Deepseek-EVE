@@ -11,7 +11,7 @@
  * ① 每消耗 1 回合刷 1 个（本文件被每个扣回合点调用）· ② 层 ≥ 7 永久生效 ·
  * ③ 挡路（`wormholePathInterceptAt` 认得）· ④ 打掉后进入原内容（只清 `foe`，不动 `place`/`piles`）·
  * ⑤ 未扫描也看得到（`revealOf` 给 `{kind:'foe'}`）· ⑥ 不可扫描清除 ·
- * ⑦ 刷到当前格 ⇒ 先提示后确认（复用 `run.pendingNodeBattle` 那条确认链）·
+ * ⑦ 刷到当前格 ⇒ **直接攻击舰队**（2026-09-23 公告定稿；不再走确认链，引擎每拍按脚下格自动开战）·
  * ⑧ 强度 = 该层**普通节点**威胁（`kind: 'spawn'` 在 `wormholeFoeThreat` 里走缺省档）·
  * 卡 = **该层档位池随机一张**（`wormholeCardIdForRun` 的池内加权，序号 = 本层刷怪序号）·
  * ⑨ 打赢给东西（`wormholeGrantShipSpoils` 的 `'spawn'` 形状：1 堆普通残骸 ＋ 货柜掷骰，**不给稀有件**）·
@@ -36,7 +36,7 @@ import { wormholeCardIdForRun } from './wormholeFoes'
 export interface WormholeSpawnResult {
   /** 本次刷了几个（= 消耗的回合数，被上限/候选格掏空时更少） */
   spawned: number
-  /** 是否**刷到了玩家当前格**（⇒ 触发袭击事件，等玩家确认开战） */
+  /** 是否**刷到了玩家当前格**（⇒ 触发袭击事件：**直接开战**，2026-09-23 公告定稿口径） */
   ambush: boolean
   /** 最后一个落点（读数/用例用） */
   lastKey?: string
@@ -87,9 +87,11 @@ export function wormholeSpawnAfterTurns(state: GameState, turns: number): Wormho
     if (cell.key === hereKey) ambush = true
   }
   /**
-   * **袭击事件**（船长：「如果刷到玩家当前格就触发袭击事件」；十五问 ⑦ = **乙**：先提示、玩家确认后开战）。
-   * 复用"踩中埋伏"那条确认链（`run.pendingNodeBattle`）⇒ 标记没清之前别的动作一律被拦
-   * （`gridActionBlocked`），界面弹确认条、玩家点「迎战」即调 `wormholeStartBattle`。
+   * **袭击事件**（船长：「如果刷到玩家当前格就触发袭击事件」）。
+   *
+   * ⚠ **旧口径（已作废）**：十五问 ⑦ 曾裁「**乙 = 先提示、玩家确认后开战**」（复用 `run.pendingNodeBattle`
+   * 那条确认链）。**2026-09-23 公告定稿改写为「会直接攻击玩家的舰队」** ⇒ 现行见下方分支：
+   * 不置标记、不弹确认条，交火由引擎每拍自动开。
    */
   if (ambush) {
     /**

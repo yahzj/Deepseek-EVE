@@ -328,8 +328,9 @@ export function wormholeBagUsage(
 
 /**
  * 副本相位：`idle` 未在洞里（含未出发与已结算）· `inside` 洞里（节点推进中）·
- * `extracting` **已发起撤离、下一拍结算**（⚠ 2026-09-15 起**不再有撤离战**，见 `wormholeExtract`；
- * 相位值本身保留——存档里存过它，老档要能读，且撤离战已判负的老档还要走收口）。
+ * `extracting` **已发起撤离、等待收口**（⚠ 2026-09-15 起**不再有撤离战**；**2026-09-27 起渲染层在
+ * 点撤离那一刻就当拍走完收口** ⇒ 正常路径见不到这个相位，它留给老档／离线／临时离开那条路，
+ * 见 `wormholeExtract`。相位值本身保留——存档里存过它，老档要能读，且撤离战已判负的老档还要走收口）。
  *
  * ⚠ 两条硬约束（船长裁定）：
  * 1. **战斗没结束不能撤** ⇒ `wormholeExtract` 在 `run.battle` 非空时被拒；
@@ -477,8 +478,7 @@ export interface WormholeRunState {
   /**
    * **本层的网格探索状态**（F3a · 2026-09-13 船长确认「探索采用网格地图的形式，整体网格地图呈现圆型」）。
    * 可选字段：老档没有 = 该层走旧口径（零迁移）；新开层由 wormholeMakeGrid(seed, depth) 生成。
-   * 真相（place）随档保存，**遮蔽靠"未扫描不展示"**（
-evealOf）——不是靠不存。
+   * 真相（place）随档保存，**遮蔽靠"未扫描不展示"**（`revealOf`）——不是靠不存。
    */
   grid?: import('./wormholeGrid').WormholeGridState
   /**
@@ -1471,7 +1471,6 @@ export function wormholeBagSlotsOfFleet(
   return wormholeBagSlots(wormholeFleetCargoM3(state, ctx, shipIds))
 }
 
-/** 把一堆东西并进背包（同物品并格——一格只装一种物品，故同一 `itemId` 只留一条记录） */
 /**
  * **把一堆并进背包**（同类并格、否则新增一条；**纯函数**，不判容量、不扣回合、不写日志）。
  *

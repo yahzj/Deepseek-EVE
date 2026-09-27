@@ -128,7 +128,7 @@ describe('虫洞 · 围剿者（第 7 层起逐回合刷怪 · 2026-09-23 船长
     expect(hasLiveFoe(cleared), '已清掉的旧敌人格可以被占').toBe(true)
   })
 
-  it('⑤ 刷到玩家当前格 ⇒ 袭击：置 `pendingNodeBattle`（先确认、再迎战）＋ 一条日志', () => {
+  it('⑤ 刷到玩家当前格 ⇒ 袭击：**直接开战**（公告定稿口径 · 不再置 `pendingNodeBattle`）＋ 一条日志', () => {
     const state = enterAt(7)
     const grid = smallGrid(state)
     const r = wormholeSpawnAfterTurns(state, 1)

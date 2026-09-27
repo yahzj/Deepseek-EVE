@@ -1930,17 +1930,6 @@ export function wormholeRollRelicBox(
   return others[Math.min(others.length - 1, Math.floor(rng() * others.length))]!
 }
 
-/**
- * **撤离成功后把随行战利品入库**：
- * - 装备本体（`mod-*`）⇒ 装备库（`addModule`）；
- * - 一次性图纸（`bp-*` / `sbp-*`）⇒ 蓝图书架（组装机用掉）；
- * - **物品**（`ctx.items`：遗迹安全货柜、池里的族专属无人机…）⇒ 仓库，
- *   数量按 `wormholePoolGrantUnitsOf`（无人机一次 10 架，其余 1 件）。
- *
- * 由 `settleWormholeBattle` 在撤离战胜利那一支调用；**半路全损 ⇒ 一起丢**（本函数根本不跑）。
- * ⚠ 2026-09-13 修：F4 把遗迹掉落改成「安全货柜」= **物品**（`ctx.items`）后，这里原先只认模块/图纸
- * ⇒ 货柜走到这一步会被**静默丢掉**（"带回后精炼炉拆解"永远发生不了）。物品分支就是补这个洞。
- */
 /** 拆解一件货柜的抽取结果（`source` = 来源池，日志按它加后缀） */
 export interface WormholeUnboxDraw {
   itemId: string
@@ -2064,6 +2053,17 @@ export function wormholeFamilyOfBox(boxItemId: string): string | null {
   const m = /^box-relic-([a-g])$/i.exec(boxItemId)
   return m ? m[1]!.toUpperCase() : null
 }
+/**
+ * **撤离成功后把随行战利品入库**：
+ * - 装备本体（`mod-*`）⇒ 装备库（`addModule`）；
+ * - 一次性图纸（`bp-*` / `sbp-*`）⇒ 蓝图书架（组装机用掉）；
+ * - **物品**（`ctx.items`：遗迹安全货柜、池里的族专属无人机…）⇒ 仓库，
+ *   数量按 `wormholePoolGrantUnitsOf`（无人机一次 10 架，其余 1 件）。
+ *
+ * 由 `settleWormholeBattle` 在撤离战胜利那一支调用；**半路全损 ⇒ 一起丢**（本函数根本不跑）。
+ * ⚠ 2026-09-13 修：F4 把遗迹掉落改成「安全货柜」= **物品**（`ctx.items`）后，这里原先只认模块/图纸
+ * ⇒ 货柜走到这一步会被**静默丢掉**（"带回后精炼炉拆解"永远发生不了）。物品分支就是补这个洞。
+ */
 export function wormholeDeliverRelics(
   state: GameState,
   ctx: SimContext,
