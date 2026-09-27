@@ -25,6 +25,7 @@ import type { FittedModules, ModuleDef, ModuleSlot, RackSlot, SimContext, Damage
 import { allFittedIds, MODULE_SLOTS, rackBays, rackLabel, rackOf, shipSlotsOf, SLOT_LABELS, slotLabel as labelOf } from './labels'
 import { currentShipState, addWare, countWare, removeWare } from './inventory'
 import { fleetDefOf } from './instances'
+import { plugModulesOf } from './plugs'
 
 /** 槽位顺序（界面展示用；V18 保留家族序供清单/徽标） */
 export { MODULE_SLOTS } from './labels'
@@ -56,9 +57,23 @@ export function cpuBudgetOf(
   const shipDef = ctx.ships.get(state.fleet[shipId]?.defId ?? shipId)
   const base = effectiveCpu(state, ctx, shipDef)
   const fitted = fittedOverride === undefined ? state.fleet[shipId]?.fitted : fittedOverride
-  if (!fitted) return base
   let bonus = 0
-  for (const m of allFittedModules(fitted, ctx)) bonus += m.cpuBonus ?? 0
+  if (fitted) {
+    for (const m of allFittedModules(fitted, ctx)) bonus += m.cpuBonus ?? 0
+  }
+  /**
+   * 🔴 **舰船插件也要算进预算**（**2026-09-27 玩家报障修复**：「CPU上限的插件装上后无效」）。
+   *
+   * 根因：插件**不在 `fitted` 里**（走 `FleetShipState.plugs` 的独立插件槽，见 `plugs.ts` 头注
+   * 「`allFittedModules`（只扫 `fitted`）看不见插件，插件效果由战斗建档侧单独一段累加」）——
+   * 而**本函数没有那一段** ⇒ 数据侧的「协处理插件 `cpuBonus: 80`」装上后预算纹丝不动
+   * （装配页 CPU 条、`cpuOverloadText` 的判据、战斗建档 `cpuLeft` 全跟着错）。
+   *
+   * 为什么放在这里而不是战斗侧：`cpuBudgetOf` 是**CPU 预算的全仓单点**（装配校验 / 装配页 /
+   * 战斗建档 / 工具全走它）⇒ 补这一处即全线一致。插件**不可拆、不可替换**、恒随船
+   * ⇒ 预演 `fittedOverride` 时它们照样在，不需要替身位（与"预算随件走"的防套利口径无关）。
+   */
+  for (const p of plugModulesOf(state, ctx, shipId)) bonus += p.cpuBonus ?? 0
   return base + bonus
 }
 
