@@ -48,6 +48,8 @@ export interface ShellCtx {
   handleReset: () => void
   setShowSaveManager: (v: boolean) => void
   changeMapTab: (t: MapTab) => void
+  /** 任务中心内层页签定位（活动栏「快递」那档跳过去时要选中「快递任务」；2026-09-27 修） */
+  focusTaskTab: (tab: string) => void
   changeShipTab: (t: ShipTab) => void
   showToast: ToastFn
   hideActivityWin: () => void
@@ -88,6 +90,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
     handleReset,
     setShowSaveManager,
     changeMapTab,
+    focusTaskTab,
     changeShipTab,
     showToast,
     hideActivityWin,
@@ -272,9 +275,11 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
           changePage('ship')
           changeShipTab('ai') // AI 徽标 → 舰船页「AI 指挥中心」标签
           }}
-          onGoPage={(page, mapTab) => {
+          onGoPage={(page, mapTab, taskTab) => {
           changePage(page as PageKey)
           if (mapTab) changeMapTab(mapTab as MapTab)
+          // 快递那档落「任务中心 · 快递任务」内层页签（2026-09-27 修船长报障：原先跳已删除的星图页签 ⇒ 空白页）
+          if (taskTab) focusTaskTab(taskTab)
           }}
           onOpenWormhole={openWormhole}
           />
@@ -509,9 +514,11 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
                 changePage('ship')
                 changeShipTab('ai')
               }}
-              onGoPage={(p, mapTab) => {
+              onGoPage={(p, mapTab, taskTab) => {
                 changePage(p as PageKey)
                 if (mapTab) changeMapTab(mapTab as MapTab)
+                // 快递那档落「任务中心 · 快递任务」内层页签（2026-09-27 修船长报障：原先跳已删除的星图页签 ⇒ 空白页）
+                if (taskTab) focusTaskTab(taskTab)
               }}
               onOpenWormhole={openWormhole}
             />
