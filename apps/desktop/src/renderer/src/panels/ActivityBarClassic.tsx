@@ -24,6 +24,11 @@ import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { aiIndustrySlots, aiSlotTip } from '../ui/aiSlots'
+// ⚠ 本文件是**冻结件**（见头注）；此处是 2026-09-27 三号做「取数与派生纪律」单点收口时的一处**必要改动**：
+//   原先本文件与 `ActivityBar.tsx` 各抄了一份逐字相同的 `stopLabel()`（12 个 tr id 全同，见
+//   `docs/review/arch-guard-baseline-20260927.md` A1）⇒ 改为共用单点。**文案一字未改、DOM 与行为零变化**
+//   （冻结件要的"和昨天一模一样"在**观感与文本**上仍然成立；要回退只需把单点里的 switch 复制回本文件）。
+import { stopLabel } from './activityStopLabel'
 import { tr, cmdText } from '../i18n/locale'
 
 const KIND_ICON: Record<string, string> = {
@@ -46,43 +51,6 @@ const KIND_ICON: Record<string, string> = {
   /** 主控活动「扫描虫洞」（2026-09-14）：与洞内活动同一个图标，色调用其自身色调 */
   whscan: 'nav-wormhole',
   whauto: 'nav-wormhole',
-}
-
-function stopLabel(v: ActivityView): string {
-  switch (v.stop) {
-    case 'remove-training':
-      return tr("ui.ActivityBar.007")
-    case 'stop-mining':
-      return tr("ui.ActivityBar.005")
-    case 'stop-scan':
-      return tr("ui.ActivityBar.008")
-    case 'stop-whscan':
-      return tr("ui.ActivityBar.031")
-    case 'stop-whauto':
-      return tr("ui.ActivityBar.009")
-    case 'stop-salvage':
-      return tr("ui.ActivityBar.005")
-    case 'cancel-manufacture':
-      return tr("ui.ActivityBar.004")
-    case 'stop-refine':
-      return tr("ui.ActivityBar.010")
-    case 'recall-expedition':
-      return tr("ui.ActivityBar.009")
-    case 'recall-standby':
-      return tr("ui.ActivityBar.011")
-    case 'retreat-battle':
-      return tr("ui.ActivityBar.012")
-    case 'cancel-ai':
-      return tr("ui.ActivityBar.004")
-    case 'cancel-deliver-trip':
-      return tr("ui.ActivityBar.013")
-    case 'stop-loop':
-      return tr("ui.ActivityBar.032")
-    case 'stop-hauling':
-      return tr("ui.ActivityBar.014")
-    default:
-      return ''
-  }
 }
 
 function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {

@@ -1,0 +1,72 @@
+# 单点索引（谁有权算、谁只能读）· 2026-09-27 建
+
+> **这份是什么**：全仓「**这件事归谁管**」的索引。接活第一步查这里——同一个数字/同一句话，
+> **只许一个地方算它**，页面/工具只许调用。
+>
+> **为什么要有它**：船长 2026-09-27 原话（照抄）：「**现在的开发流程挺混乱的，各种代码都是地方单独调用，
+> 我们能否商量下，进行开发流程规范？**」——规矩写进了 `docs/development-conventions.md`「取数与派生纪律」，
+> **本文件是那张规矩的落地索引**，护栏 = `npm run arch:guard`（`tools/arch-guard.ts`）。
+>
+> **怎么用**：
+> 1. 要动某个数值/文案/派生显示 → **先在本表找它归谁**；找到就调用，找不到就**先在本表登记**再写码。
+> 2. 新增单点 ⇒ **两处同时登记**：本文件 ＋ `tools/arch-guard.ts` 的 `SINGLE_SOURCE`（F3 会核对两处一致）。
+> 3. 改名/搬家 ⇒ 同上两处一起改；漏改会红（这就是 F3 的用途）。
+>
+> **不一致时以代码为准**，并**当场把本表改对**（本表属 §十五「例外清单」里的活文档，随代码走）。
+
+## 一、core 引擎层（`packages/core/src`）
+
+| 关注点 | 唯一实现 | 护栏 |
+|---|---|---|
+| 技能取消的"连带失效"基线（只报/只删因本次取消才失效的项） | `preexistingUnmet()` · `engine.ts` | core 用例 `skill-cancel-baseline-20260926.test.ts` |
+| 存档清洗白名单（新增随档字段必须"写入点 ＋ 白名单"两处落笔） | `normalizeState()` · `save.ts` | `packages/core/tests/save.test.ts` 类型穷尽 ＋ `save:roundtrip-audit` |
+| 伤害类型配色（动能/爆破/能量 同族同色） | 伤害配色契约（token 单点） | `npm run ui:theme-check` 的 `dmg-color-check` |
+| 装备归属档（高/中/低/**舰船插件**四档） | `rackDimKeyOf()`（渲染层）＋ core `rackOf` | `content:check` 归属档契约 |
+| 回收/打捞产出与价值读数 | core `industry.ts` / `salvaging.ts` 的产出单点 | `npm run salvage:econ` · `recycle:compare` |
+
+## 二、data 表面（`packages/data/src`）
+
+| 关注点 | 唯一实现 | 护栏 |
+|---|---|---|
+| 仿真上下文（页面取数的唯一入口） | `buildSimContext()` · `context.ts` | `arch:guard` F1/F4 |
+| 玩家可见文案唯一表（`id → { zh, en }`） | `L10N` · `l10n/table.ts` | `npm run l10n:check` ＋ `l10n:list` |
+| 内容名/说明的英文覆盖层 | `packages/data/src/l10n.ts`（`EN_*` ＋ `overlay*`） | `l10n:check` ＋ core `l10n-overlay.test.ts` |
+| 势力族色 | `FOE_ACCENT` · `ui/tones.ts` | 与星图族标签/战场敌舰/图鉴族徽同源（人工核） |
+| 物品稀有度分档 | `itemRarityTierOf()` · `rarityTier.ts` | `content:check` 稀有度契约 |
+| 公告数据（**仅经船长批准后写入**） | `announcements.ts` | 约定 §十二（发布审核） |
+
+## 三、渲染表现层（`apps/desktop/src/renderer/src`）
+
+| 关注点 | 唯一实现 | 护栏 |
+|---|---|---|
+| 引擎与 `ctx` 的产地（页面取数都从它来） | `GameEngine` · `game/engine.ts` | `arch:guard` F1/F4 |
+| 标签取词（槽类/槽位/舰级/地点/机型/物品大类…） | `labelsText.ts`（`kindText` 一族） | `ui:subs-check` 的「本地化直读契约」 |
+| 族徽判据收窄（判"有没有族"只走它） | `crestFamOf()` · `panels/Handbook.tsx` | `ui:attr-check` 的「族徽判据契约」 |
+| 图鉴卡片构造（装备/舰船/物品/蓝图/势力同源） | `itemCellOf()` 等共用 builder · `panels/Handbook.tsx` | `ui:attr-check` ＋ `arch:guard` F2 |
+| 取色跨表兜底 | `toneOfAny()` · `ui/tones.ts` | 人工核（约定 §九） |
+| 悬停提示接管层（全站唯一延迟 500ms 与"内层优先"） | `ui/Tooltip.tsx`（`TIP_DELAY_MS`） | `ui:tip-check` ＋ `ui:rot-check` |
+| 悬停富卡皮肤（模块/物品/舰船参数表） | `ui/shipInfo.tsx`（`infoCardContent` 一族） | 约定 §九之七（人工核） |
+| 视口懒挂载（大列表流式加载） | `ui/LazyMount.tsx` | `industry:lag` 读数 ＋ 人工核 |
+| 活动栏「停止/取消」按钮文案（新版与旧版两套外壳共用） | `panels/activityStopLabel.ts` 的 `stopLabel()` | `arch:guard` F2（2026-09-27 收口 A1：原先两份逐字相同） |
+| 属性表拼装（装配页/图鉴/蓝图产物/舰队悬停四处） | `ui/shipInfo.tsx` 的行工厂 | `ui:attr-check` 的「同名两行」体检 |
+
+## 四、工具与文档层（`tools/` · `docs/`）
+
+| 关注点 | 唯一实现 | 护栏 |
+|---|---|---|
+| 正式工具与临时探针的区分与收尾 | 约定 §十（`tools/xxx.ts` vs `tools/_*.ts`） | `npm run tools:audit` |
+| 文档索引（全仓清册） | `docs/INDEX.md`（仅由 `npm run docs:index` 生成） | `docs:index --check` |
+| roadmap 滚动窗口与封存卷 | `npm run docs:seal` | 工具自带守恒校验 |
+| 工作文档 → 归档三步 | 约定 §十五 | 人工核（本批列出） |
+| 本索引自身 ↔ 护栏注册表一致性 | 本文件 ＋ `tools/arch-guard.ts` 的 `SINGLE_SOURCE` | `arch:guard` F3 |
+
+## 五、维护纪律（三条）
+
+1. **新派生值先登记再写码**：本表加一行 ⇒ 再去写实现；`arch:guard` F2 会对"已登记单点被别处再写一份"报红。
+2. **护栏栏写不出东西的条目** ⇒ 标 🟡「待补护栏」，不许假装已经上锁（人工核也是护栏，但要写明"人工核"）。
+3. **本表与代码不一致时以代码为准**，当场改本表；改完跑 `npm run arch:guard` 复核（F3 会挡住悬空条目）。
+
+---
+
+_建表：2026-09-27（三号 · verify）· 首批条目取自 2026-09-24~27 各批归档结论与本次全仓取证；_
+_条目增删随代码走，属 §十五 例外清单里的活文档。_
