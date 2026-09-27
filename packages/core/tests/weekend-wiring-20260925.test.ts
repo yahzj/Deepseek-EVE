@@ -49,6 +49,7 @@ import {
   weekendBattleInvolvedOf,
   weekendSettleAndGrant,
   weekendSettlePlanOf,
+  weekendSyncReclaimRewards,
   /** 2026-09-25 船长令：稀有残骸「件 → 单位(m³)」换算（1 件 = 30 单位） */
   weekendRareWreckUnits,
 } from '../src/weekendBattle'
@@ -231,7 +232,11 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     /** **进度收入**（船长 2026-09-25「按进度获取收入」；单价 20 万/1%） */
     const income = 0.5 * 100 * WEEKEND_PROGRESS_ISK_PER_PCT
     expect(r!.progressIsk, '进度收入 = 玩家投入 50% × 100 × 20 万').toBe(income)
-    expect(r!.isk).toBe(8_000_000 + income)
+    /**
+     * 玩家只推了 50% ⇒ 这一处**未夺回** ⇒ 结算里**没有**夺回奖那一份
+     * （夺回奖只发给"已夺回"的处 —— 2026-09-27 改逐拍检测后的口径）。
+     */
+    expect(r!.isk, '结算 = 贡献奖 8M ＋ 进度收入').toBe(8_000_000 + income)
     expect(r!.wreck, '×12 件 = 360 m³').toBe(weekendRareWreckUnits(12))
     expect(s.wallet.isk - isk0, 'ISK 真进钱包（贡献奖 ＋ 进度收入）').toBe(8_000_000 + income)
     expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '稀有残骸真到手（按 m³）').toBe(weekendRareWreckUnits(12))
@@ -443,8 +448,16 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(r1!.tier, '占比 ≈ 0.72 ⇒ B 档').toBe('B')
     /** 进度收入与贡献档位**各自独立**：这一处玩家推了 90% ⇒ 1,800 万（档位是 B 也不影响） */
     expect(r1!.progressIsk, '进度收入 = 90% × 20 万').toBe(90 * WEEKEND_PROGRESS_ISK_PER_PCT)
-    expect(r1!.isk).toBe(5_000_000 + 90 * WEEKEND_PROGRESS_ISK_PER_PCT)
-    expect(r1!.wreck, 'B 档 ×8 件 = 240 m³').toBe(weekendRareWreckUnits(8))
+    /**
+     * ⚠ **2026-09-27 修**：夺回奖改"逐拍检测（已夺回 ∧ 未记账）"后，这一处的夺回奖也会正常并入结算
+     * —— 本场景玩家推了 90% ＋ 54h 铺底 ⇒ **已夺回**；旧口径下它挂在战斗结算那一拍，这里恒为 0。
+     */
+    expect(r1!.isk, '结算 = 贡献奖 5M ＋ 夺回 2M ＋ 进度收入').toBe(
+      5_000_000 + WEEKEND_RECLAIM_ISK + 90 * WEEKEND_PROGRESS_ISK_PER_PCT,
+    )
+    expect(r1!.wreck, 'B 档 ×8 件 ＋ 夺回 ×8 件 = 480 m³').toBe(
+      weekendRareWreckUnits(8 + WEEKEND_RECLAIM_WRECK),
+    )
     /** 离线五天后再上线补结（引擎每拍补发那条路径的形状）：读数必须与结束时**逐值一致** */
     const late = build()
     const r2 = weekendSettleAndGrant(late, ctx, now + 5 * 24 * 3_600_000)
@@ -1141,6 +1154,101 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(s2.weekendLastResult!.flagshipOutcome).toBe('octopus')
     expect(s2.weekendLastResult!.flagship!.defeated, '章鱼人得手 ⇒ 未击沉').toBe(false)
     expect(s2.weekendLastResult!.blackBox, '黑匣归零').toBe(0)
+  })
+
+  /**
+   * 🔴 **夺回奖不再依赖"战斗结算"那一拍**（**2026-09-27 玩家报障修复**）。
+   *
+   * 报障现场（船长截图）：清缴贡献 100%（A 档）· 夺回星系 **4/4** · 四行却全是「贡献 100% ·
+   * 已夺回 · **—**」；对账 ⇒ 实发 = 450 m³（= 贡献奖 360 ＋ 旗舰 90，**不含夺回那 960**）＋
+   * 8,800 万（= 贡献奖 800 万 ＋ 进度收入 8,000 万，**不含夺回 800 万与全清 500 万**）。
+   * 根因：夺回奖原先只在 `weekendApplyBattleOutcome` 里记（`if (r.reclaimed !== undefined)`），
+   * 而夺回实际是**按进度判**的、多为逐拍推满 ⇒ 那段代码从不执行。
+   *
+   * 本用例刻意**一次战斗都不打**，只把时间轴推到"外围铺底自然满"。
+   */
+  it('⑬ 夺回奖不靠战斗：只把进度推到满（不走任何战斗结算）⇒ 照样记账并入结算 · 面板那格不再是「—」', () => {
+    const now = Date.now()
+    const s = invaded(GID)
+    s.debugQuick = false
+    /** T0 = 54 小时前 ⇒ 外围铺底自然满（一次战斗都不打；核心铺底只到 25% ⇒ 核心未夺回） */
+    s.weekendEvent!.startedAtWallMs = now - 54 * 3_600_000
+    const isk0 = s.wallet.isk
+    const wrecks0 = heldOf(s, 'wreck-rare-h-hi')
+    endWeekendEvent(s, now)
+    const r = weekendSettleAndGrant(s, ctx, now)
+    expect(r, '结束结算').not.toBeNull()
+    expect(s.weekendEvent!.reclaimPaid, '该处已被"逐拍检测"记上夺回奖').toEqual([GID])
+    expect(r!.wreck, '夺回 ×8 件 = 240 m³ 并入结算').toBeGreaterThanOrEqual(weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK))
+    expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '残骸真到手').toBe(r!.wreck)
+    expect(s.wallet.isk - isk0, 'ISK 真进钱包').toBe(r!.isk)
+    /** 结算面板那一列：该处要显示"残骸 ×8 · 200 万"，不再是「—」 */
+    const row = s.weekendLastResult!.galaxies.find((g) => g.galaxyId === GID)
+    expect(row?.reclaimed, '该处已夺回').toBe(true)
+    expect(row?.wreck, '该处奖励不再为 0 ⇒ 面板那格显示件数').toBe(weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK))
+    expect(row?.isk, '该处奖励 ISK').toBe(WEEKEND_RECLAIM_ISK)
+  })
+
+  /**
+   * 🔴 **迟到补发**（**船长报障那一场**的形态：本场已结算过，夺回奖却从没记上）。
+   *
+   * 引擎每拍都调 `weekendSettleAndGrant`（幂等靠 `prizePaidAtWallMs`）⇒ 现在它在 early-return
+   * **之前**先跑一次夺回奖同步，发现「已夺回 ∧ 未记账」就补记并**当场补发**；
+   * `reclaimPaid` 标记保证只补一次。⇒ 老档进游戏即自动补齐，不需要一次性补丁脚本。
+   */
+  it('⑭ 迟到补发：已结算过的场次被查出"已夺回却漏记" ⇒ 补发一次且不重复', () => {
+    const now = Date.now()
+    const s = invaded(GID)
+    s.debugQuick = false
+    s.weekendEvent!.startedAtWallMs = now - 54 * 3_600_000
+    endWeekendEvent(s, now)
+    weekendSettleAndGrant(s, ctx, now)
+    /** 模拟报障那一场的档：夺回奖那本账**整个是空的**（标记与台账都被抹掉） */
+    delete s.weekendEvent!.reclaimPaid
+    s.weekendEvent!.rewardLedger = { isk: 0, wreck: 0, blackBox: 0, byGalaxy: {} }
+    const isk1 = s.wallet.isk
+    const wrecks1 = heldOf(s, 'wreck-rare-h-hi')
+    const again = weekendSettleAndGrant(s, ctx, now)
+    expect(again, '已结算过 ⇒ 不再走正常结算').toBeNull()
+    expect(s.wallet.isk - isk1, '补发 ISK = 夺回那一份').toBe(WEEKEND_RECLAIM_ISK)
+    expect(heldOf(s, 'wreck-rare-h-hi') - wrecks1, '补发残骸 = 夺回那一份').toBe(
+      weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK),
+    )
+    expect(s.weekendEvent!.reclaimPaid, '补记后打上标记').toEqual([GID])
+    /** 再调一拍：不重复补 */
+    const isk2 = s.wallet.isk
+    const wrecks2 = heldOf(s, 'wreck-rare-h-hi')
+    weekendSettleAndGrant(s, ctx, now)
+    expect(s.wallet.isk, '不重复补 ISK').toBe(isk2)
+    expect(heldOf(s, 'wreck-rare-h-hi'), '不重复补残骸').toBe(wrecks2)
+  })
+
+  /**
+   * 🔴 **夺回奖的两本账必须随档**（**2026-09-27 修漏**）。
+   *
+   * 原先 `reclaimPaid`（防重复标记）与 `reclaimPending`（待到账）**都没写进存档清洗** ⇒
+   * 前者不随档 = **读一次档就把"已发过奖"忘掉** ⇒ 下一次同步再发一遍（刷档即可无限刷夺回奖）；
+   * 后者不随档 = 夺回后读档那笔待到账**直接丢**（活动结束结算时少发）。
+   * 本用例把"夺回了、活动还没结束、玩家读了一次档"这条路走完，并**反证**读档后不会重复记。
+   */
+  it('⑮ 夺回奖的两本账随档：读档后标记与待到账都还在，且不会因读档而重复记', () => {
+    const now = Date.now()
+    const s = invaded(GID)
+    s.debugQuick = false
+    s.weekendEvent!.startedAtWallMs = now - 54 * 3_600_000
+    weekendSyncReclaimRewards(s, s.weekendEvent!, now)
+    expect(s.weekendEvent!.reclaimPaid, '该处已记过奖').toEqual([GID])
+    const pending0 = { ...(s.weekendEvent!.reclaimPending ?? { isk: 0, wreck: 0 }) }
+    expect(pending0.wreck, '夺回奖已记进待到账').toBe(weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK))
+
+    const back = loadSaveFile(serializeSaveFile(s, now)).state
+    expect(back.weekendEvent!.reclaimPaid, '防重复标记随档').toEqual([GID])
+    expect(back.weekendEvent!.reclaimPending, '待到账随档').toEqual(pending0)
+
+    /** **反证**：读档后再同步一次 ⇒ 不该再记一遍（这正是"刷档无限刷奖"的入口） */
+    const before = { ...(back.weekendEvent!.reclaimPending ?? { isk: 0, wreck: 0 }) }
+    weekendSyncReclaimRewards(back, back.weekendEvent!, now)
+    expect(back.weekendEvent!.reclaimPending, '读档不导致重复记账').toEqual(before)
   })
 })
 

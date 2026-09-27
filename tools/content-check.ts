@@ -7951,6 +7951,86 @@ function checkFactionExclusive(): void {
 
 checkFactionExclusive()
 
+/* ─────────── 插件效果字段接线护栏（2026-09-27 船长令「做」）─────────── */
+
+/**
+ * **插件效果字段清单**（键 = `ModuleDef` 上的效果字段名）。
+ *
+ * 为什么要有这道护栏：舰船插件的效果字段**两次**出现"数据侧定义好、core 里没人读"——
+ * ① 三层血与速度（`combat.ts` 里留着前一位的记录：原先"只在下面那段里累加、**全仓没有任何消费点**"）；
+ * ② CPU 上限 `cpuBonus` 与扩槽 `midSlotsAdd` / `lowSlotsAdd`（**2026-09-27 玩家报障**
+ *    「CPU上限的插件装上后无效」＋船长追问「其他插件呢」⇒ 12 件逐个审计才挖出来）。
+ * 病根 = 插件效果分散在 `combat` / `equipment` 两处累加、**没有护栏** ⇒ 加字段忘了接线，玩家先发现。
+ * 本检查把它变成**当场红**。
+ *
+ * 两向都查（缺一不可）：
+ * ① **登记制**：`packages/data/src/plugs.ts` 里出现的每个效果字段都必须在本清单里
+ *    （新加字段不登记 ⇒ 红，逼作者先想清楚"这字段谁读"）；
+ * ② **接线制**：本清单里每个字段都必须在 `packages/core/src`（**除 `types.ts` 的定义处**）
+ *    找到读取点（登记了却没人读 ⇒ 红 —— 正是 CPU / 扩槽那两次的形态）。
+ */
+const PLUG_EFFECT_FIELDS: readonly string[] = [
+  'shieldHpAdd',
+  'armorHpAdd',
+  'hullHpAdd', // 三层血固定值
+  'midSlotsAdd',
+  'lowSlotsAdd', // 扩槽（加中/低槽）
+  'cpuBonus', // 装配 CPU 预算
+  'damageBonusPct',
+  'hitBonusPct',
+  'plugRangeBonusPct', // 火力 / 命中 / 射程
+  'speedAddMps',
+  'speedPenaltyMps', // 机动
+  'targetWeightMul', // 选靶权重
+]
+
+/** 数据侧插件的**非效果**字段（结构 / 成本 / 文案）——不参与"core 里谁读它"的接线检查 */
+const PLUG_PLAIN_FIELDS = new Set(['id', 'name', 'slot', 'rack', 'cpuUse', 'description'])
+
+function checkPlugEffectWiring(): void {
+  const dataText = readFileSync(join(process.cwd(), 'packages/data/src/plugs.ts'), 'utf8')
+  const listText = dataText
+    .slice(dataText.indexOf('export const SHIP_PLUGS'))
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/[^\n]*/g, '')
+  const used = new Set<string>()
+  for (const m of listText.matchAll(/^ {4}([a-zA-Z][a-zA-Z0-9]*):/gm)) {
+    const f = m[1]!
+    if (!PLUG_PLAIN_FIELDS.has(f)) used.add(f)
+  }
+  const unregistered = [...used].filter((f) => !PLUG_EFFECT_FIELDS.includes(f))
+  check(
+    unregistered.length === 0,
+    `插件字段登记契约：${unregistered.join('、')} 出现在 packages/data/src/plugs.ts 的 SHIP_PLUGS 里，` +
+      `但没登记进 tools/content-check.ts 的 PLUG_EFFECT_FIELDS —— 新加插件效果字段前先想清楚"core 里谁读它"`,
+  )
+
+  /**
+   * ⚠ **必须先去掉注释**（2026-09-27 实测教训）：第一版直接把源码文本拿来 `includes`，
+   * 而 core 的注释里到处写着字段名（例如 `plugs.ts` 的说明就点了几次 `midSlotsAdd`）
+   * ⇒ **停掉唯一读取点后检查照样通过 = 伪护栏**。这里剥掉块注释与行注释再查。
+   */
+  const stripComments = (s: string): string =>
+    s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+  const dir = join(process.cwd(), 'packages/core/src')
+  const coreText = stripComments(
+    readdirSync(dir)
+      .filter((f) => f.endsWith('.ts') && f !== 'types.ts')
+      .map((f) => readFileSync(join(dir, f), 'utf8'))
+      .join('\n'),
+  )
+  const dead = PLUG_EFFECT_FIELDS.filter((f) => !coreText.includes(f))
+  check(
+    dead.length === 0,
+    `插件接线契约：${dead.join('、')} 在 packages/core/src 里**没有任何读取点**（types.ts 的定义不算）` +
+      ` —— 这几个插件效果会"装上跟没装一样"（2026-09-27 的 CPU / 扩槽报障就是这个形态）`,
+  )
+  console.log(
+    `· 插件效果接线契约：${PLUG_EFFECT_FIELDS.length} 个字段全部有 core 读取点 · 数据侧用到 ${used.size} 个 · 全部已登记`,
+  )
+}
+checkPlugEffectWiring()
+
 /* ── 输出 ── */
 console.log(`· 蓝图：装备 ${BLUEPRINTS.length} 张 + 舰船 ${SHIP_BLUEPRINTS.length} 张`)
 if (warn.length > 0) {

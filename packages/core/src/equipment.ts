@@ -25,7 +25,7 @@ import type { FittedModules, ModuleDef, ModuleSlot, RackSlot, SimContext, Damage
 import { allFittedIds, MODULE_SLOTS, rackBays, rackLabel, rackOf, shipSlotsOf, SLOT_LABELS, slotLabel as labelOf } from './labels'
 import { currentShipState, addWare, countWare, removeWare } from './inventory'
 import { fleetDefOf } from './instances'
-import { plugModulesOf } from './plugs'
+import { plugModulesOf, shipSlotsWithPlugsOf } from './plugs'
 
 /** 槽位顺序（界面展示用；V18 保留家族序供清单/徽标） */
 export { MODULE_SLOTS } from './labels'
@@ -483,10 +483,14 @@ function ensureRackBays(fitted: FittedModules, rack: RackSlot, want: number): Ar
   return bays
 }
 
-/** 某船某槽类的"船型布局期望位数"（船型缺失 = 0，不做补齐） */
+/**
+ * 某船某槽类的**期望位数**（船型缺失 = 0，不做补齐）。
+ * ⚠ **2026-09-27 起含插件扩槽**（中层舱段 +1 中槽 / 下层舱段 +1 低槽）——改用槽位单点
+ * `plugs.shipSlotsWithPlugsOf`，否则装了扩槽插件也补不出新格子（同一批报障）。
+ */
 function wantedBaysOf(state: GameState, ctx: SimContext, shipId: string, rack: RackSlot): number {
-  const shipDef = fleetDefOf(state, ctx, shipId)
-  return shipDef ? shipSlotsOf(shipDef)[rack] : 0
+  if (!fleetDefOf(state, ctx, shipId)) return 0
+  return shipSlotsWithPlugsOf(state, ctx, shipId)[rack]
 }
 
 /**

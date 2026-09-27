@@ -1908,3 +1908,9 @@ export {
   skillLicenseMissing,
   buySkillLicense,
 } from './skillLicense'
+
+/**
+ * **槽位单点（含插件扩槽）**（2026-09-27 船长令「修」）：`midSlotsAdd` / `lowSlotsAdd` 生效 ——
+ * 装配校验与装配页格数共用同一把尺；`installPlug` 里同步就地补齐位数组。
+ */
+export { plugSlotAddsOf, shipSlotsWithPlugsOf } from './plugs'

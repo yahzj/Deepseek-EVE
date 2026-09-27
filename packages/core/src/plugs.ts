@@ -20,9 +20,10 @@
  * （⇒ 天然**不吃多件递减**，与船长「**③不吃**」一致）。
  */
 import type { GameState } from './state'
-import type { ModuleDef, SimContext } from './types'
+import type { ModuleDef, ShipSlots, SimContext } from './types'
 import { addLog } from './state'
 import { addWare } from './inventory'
+import { shipSlotsOf } from './labels'
 // ⚠ 本模块被 `combat.ts`（建档）· `shipyard.ts` / `market.ts`（入仓与挂卖的闸门）反向引用
 //   ⇒ 依赖方向要保守：**只依赖 `state` / `types`**。原先还 import 了 `equipment.countModule`，
 //   但那只是一行取表（`state.moduleBay[id] ?? 0`），为省掉 `equipment → labels → …` 这条可能成环的
@@ -63,6 +64,38 @@ export function plugInfoOf(
   shipId: string,
 ): { slots: number; installed: ModuleDef[] } {
   return { slots: plugSlotsOf(state, ctx, shipId), installed: plugModulesOf(state, ctx, shipId) }
+}
+
+/**
+ * **扩槽插件加成**（`midSlotsAdd` / `lowSlotsAdd`，**2026-09-27 船长令「修」**）——
+ * 多件加算、不吃递减（与插件批其余字段同口径）。
+ */
+export function plugSlotAddsOf(state: GameState, ctx: SimContext, shipId: string): { mid: number; low: number } {
+  let mid = 0
+  let low = 0
+  for (const p of plugModulesOf(state, ctx, shipId)) {
+    mid += p.midSlotsAdd ?? 0
+    low += p.lowSlotsAdd ?? 0
+  }
+  return { mid, low }
+}
+
+/**
+ * 🔴 **该船实际可用槽位**（= 船型布局 ＋ 插件扩槽）——**槽位单点**。
+ *
+ * 为什么需要它（**2026-09-27 玩家报障批**）：`midSlotsAdd` / `lowSlotsAdd` 原先**全仓无人消费**
+ * （只在 `shipInfo` 的说明文字里出现）⇒ 中层舱段 / 下层舱段插件"装上跟没装一样"——与同日修的
+ * CPU 上限插件同一个病根（插件字段定义了、没人读）。修法：把"槽位数"的口径收敛到本函数，
+ * 装配校验（`equipment.wantedBaysOf`）与装配页格数（`FitPage`）共用同一把尺。
+ *
+ * ⚠ 槽位数量在本作里 = `fitted.mid` / `fitted.low` 的**数组长度** ⇒ 光算出来不够，
+ * `installPlug` 里还要把数组**就地补齐**（插件不可拆 ⇒ 只增不减）。
+ */
+export function shipSlotsWithPlugsOf(state: GameState, ctx: SimContext, shipId: string): ShipSlots {
+  const defId = state.fleet[shipId]?.defId ?? shipId
+  const base = shipSlotsOf(ctx.ships.get(defId) ?? {})
+  const add = plugSlotAddsOf(state, ctx, shipId)
+  return { high: base.high, mid: base.mid + add.mid, low: base.low + add.low }
 }
 
 /**
@@ -107,6 +140,18 @@ export function installPlug(
   if (rest === 0) delete state.moduleBay[moduleId]
   else state.moduleBay[moduleId] = rest
   ship.plugs = [...have, moduleId]
+  /**
+   * **扩槽插件装上就生效**：格子数 = `fitted.mid` / `fitted.low` 的**数组长度** ⇒ 装完立刻就地补空位，
+   * 否则玩家装完插件、不碰装配页就看不到新格子（与"字段没人读"是同一种体感）。
+   * 插件**不可拆、不可替换** ⇒ 只增不减，不需要缩容逻辑；老档（已装插件、数组还是旧长度）
+   * 会在下一次装配动作时由 `equipment.ensureRackBays` 按同一把尺幂等补齐。
+   */
+  const wantSlots = shipSlotsWithPlugsOf(state, ctx, shipId)
+  for (const rack of ['mid', 'low'] as const) {
+    const bays = ship.fitted?.[rack]
+    if (!bays) continue
+    while (bays.length < wantSlots[rack]) bays.push(null)
+  }
   addLog(
     state,
     'fleet',
