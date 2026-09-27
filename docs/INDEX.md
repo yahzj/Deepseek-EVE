@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **335** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6311** KB · **43971** 行
-- 状态分布：**未标注** 184 · **已确认/已实现** 111 · **进行中** 30 · **待裁定** 9 · **历史留档** 1
-- 孤儿文档（0 引用）**42** 份 · 状态未标注 **184** 份
+- 文档总数 **336** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6316** KB · **44021** 行
+- 状态分布：**未标注** 185 · **已确认/已实现** 111 · **进行中** 30 · **待裁定** 9 · **历史留档** 1
+- 孤儿文档（0 引用）**43** 份 · 状态未标注 **185** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**11** 份
-- 三、现行设计稿（design）：**212** 份
+- 三、现行设计稿（design）：**213** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**31** 份
 - 二、其它（docs 根目录）：**2** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -33,7 +33,7 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 31 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 57 行 | 29 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 267 KB / 282 行 | 15 / 3 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 268 KB / 283 行 | 15 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 71 KB / 754 行 | 78 / 4 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 491 KB / 1007 行 | 216 / 16 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 83 KB / 396 行 | 338 / 18 |
@@ -54,7 +54,7 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 212 份
+## 三、现行设计稿（design） —— 213 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -65,6 +65,7 @@
 | `docs/design/inventory-20260927.md` | 工作盘点：要做的 / 做一半的 / 没做完的（2026-09-27 · 三号 verify） | 进行中（进行中） | 2026-09-27 | 9 KB / 71 行 | 0 / 0 |
 | `docs/design/l10n-core-zh-20260927.md` | 本地化批二：core 返回的裸中文 → id 制（虫洞链，2026-09-27 · 三号 verify） | 进行中（进行中） | 2026-09-27 | 7 KB / 93 行 | 0 / 0 |
 | `docs/design/plug-blackbox-20260927.md` | 舰船插件进 Excel ＋ 章鱼人商店卖通用黑匣（2026-09-27 · 二号 · d2） | 进行中（进行中 —— A 部分） | 2026-09-27 | 13 KB / 187 行 | 0 / 1 |
+| `docs/design/skill-license-20260927.md` | 技能训练许可（学习技能要有成本）— 工作文档 | 未标注 | 2026-09-27 | 4 KB / 49 行 | 0 / 0 |
 | `docs/design/steam-packaging-20260927.md` | Steam 打包与上传（2026-09-27 · 一号 · main） | 未标注（第一步已落码并本机验证通过） | 2026-09-27 | 6 KB / 84 行 | 1 / 0 |
 | `docs/design/window-end-hold-20260927.md` | 窗口到点顺延：玩家打完再满 60 秒才收场（2026-09-27 · 二号 · d2） | 进行中（进行中） | 2026-09-27 | 12 KB / 151 行 | 0 / 0 |
 | `docs/design/announcement-draft-20260926-battleships.md` | 公告待审稿 · 两艘新战列舰入列（2026-09-26） | 待裁定（待船长审核——按 AGENTS.md） | 2026-09-26 | 4 KB / 48 行 | 2 / 0 |
@@ -405,7 +406,7 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 55 / 13 |
 
-## 附：孤儿文档（0 引用，42 份）
+## 附：孤儿文档（0 引用，43 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
@@ -414,6 +415,7 @@
 - `docs/design/handoff-20260927-main.md`（2026-09-27 · 11 KB）—— 交接卡：接一号班（主树 main · 2026-09-27）
 - `docs/design/inventory-20260927.md`（2026-09-27 · 9 KB）—— 工作盘点：要做的 / 做一半的 / 没做完的（2026-09-27 · 三号 verify）
 - `docs/design/l10n-core-zh-20260927.md`（2026-09-27 · 7 KB）—— 本地化批二：core 返回的裸中文 → id 制（虫洞链，2026-09-27 · 三号 verify）
+- `docs/design/skill-license-20260927.md`（2026-09-27 · 4 KB）—— 技能训练许可（学习技能要有成本）— 工作文档
 - `docs/design/window-end-hold-20260927.md`（2026-09-27 · 12 KB）—— 窗口到点顺延：玩家打完再满 60 秒才收场（2026-09-27 · 二号 · d2）
 - `docs/design/spore-allfoes-gate-20260925.md`（2026-09-25 · 4 KB）—— 孢子导弹巢「全体攻击」：主目标未命中不再阻断副目标（2026-09-25）
 - `docs/design/handoff-foe-mounts-l10n-20260924.md`（2026-09-24 · 8 KB）—— 交接卡 · 存量八件敌方挂载件的英文名（本地化 · 2026-09-24 · 二号 → 三号）
@@ -452,11 +454,12 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（184 份，待补一行 `状态：…`）
+## 附：状态未标注（185 份，待补一行 `状态：…`）
 
 - `docs/design/coupling-audit-20260927.md`（2026-09-27）—— 五大功能耦合性体检（2026-09-27 · 二号 · d2）
 - `docs/design/handoff-20260927-main.md`（2026-09-27）—— 交接卡：接一号班（主树 main · 2026-09-27）
 - `docs/design/handoff-20260927-verify.md`（2026-09-27）—— 交接卡：新三号（2026-09-27 · 旧三号交班）
+- `docs/design/skill-license-20260927.md`（2026-09-27）—— 技能训练许可（学习技能要有成本）— 工作文档
 - `docs/design/steam-packaging-20260927.md`（2026-09-27）—— Steam 打包与上传（2026-09-27 · 一号 · main）
 - `docs/design/handoff-20260926-to-pilot2.md`（2026-09-26）—— 交接卡：新二号（2026-09-26 · 旧二号交班）
 - `docs/design/copy-jargon-20260924.md`（2026-09-24）—— 工作文档 · 玩家可见文案里的「开发字眼」清理（2026-09-24 · 三号）
