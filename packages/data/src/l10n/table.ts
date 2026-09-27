@@ -3286,8 +3286,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.IndustryPage.129": { zh: "仅看可造", en: "Buildable only" },
   "ui.IndustryPage.131": { zh: "去书架", en: "Open shelf" },
   "ui.IndustryPage.132": { zh: "切到蓝图书架并定位这一本", en: "Switch to the blueprint shelf and locate this book" },
-  "ui.IndustryPage.133": { zh: "未学会的一次性图纸", en: "Unlearned one-use blueprints" },
-  "ui.IndustryPage.134": { zh: "已学会的一次性图纸", en: "Learned one-use blueprints" },
+  /* ⚠ `ui.IndustryPage.133 / 134` 已于 2026-09-27 **删除**（船长令：「为什么会有'已学会一次性蓝图'，
+     一次性蓝图是无法学会的，删除多余的，将'未学会一次性蓝图'改名为'一次性蓝图'」）——
+     组装机/造船厂那一行现用既有文案 `ui.itemSubs.030`（一次性蓝图 / Single-use blueprint）。 */
   "ui.IndustryPage.126": { zh: "前往声望商店兑换", en: "Exchange at the standing shop" },
   /* 2026-09-26 船长令（兑换窗口两处）：① 已兑换（= 已学会）的图纸**隐藏**，全换完给空态；
      ② 兑换前弹**确认**，写明会扣多少声望与扣完还剩多少。 */

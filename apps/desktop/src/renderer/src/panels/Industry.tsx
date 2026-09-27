@@ -1579,15 +1579,14 @@ export function ManufacturingPanel({
       if (it.kindLabel.toLowerCase().includes(kq)) return true
       return it.materials.some((m) => (engine.ctx.items.get(m.itemId)?.name ?? m.itemId).toLowerCase().includes(kq))
     })
-    // 「蓝图」维度（原「学会」＋ 原三级「图纸」合并，2026-09-26 船长令）
-    // 四档各自判：学会那一轴 × 是否一次性那一轴；隐式蓝图视为已学会（2026-09-20 零件体系）
+    // 「蓝图」维度（**2026-09-27 船长令收口**：删掉「已学会的一次性图纸」、把「未学会的一次性图纸」改名为「一次性蓝图」）
+    // 三档各自判：已学会 / 未学会 / 一次性（还没学会 ＋ 是一次性）；隐式蓝图视为已学会（2026-09-20 零件体系）
     .filter((it) => {
       if (learn === SUB_ALL) return true
       const learned = it.learnless || ownsBlueprint(state, it.id)
       if (learn === 'learned') return learned
       if (learn === 'unlearned') return !learned
-      if (learn === 'learned-single') return learned && it.singleUse
-      // 'unlearned-single'
+      // 'single'（一次性蓝图）
       return !learned && it.singleUse
     })
     .filter((it) => inTab(it.kindLabel))
