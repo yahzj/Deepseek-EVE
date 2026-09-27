@@ -14,6 +14,14 @@
  * ⚠ **与手动进洞共用同一套常数**（回合预算 / 每步开销 / 层收益 / 堆大小 / 遗迹命中 / 网格与出口落点），
  * 一处改、两处同步 —— 不许在本模块里另抄一份魔数。
  *
+ * ⚠ **与手动进洞的两处"有意差异"**（2026-09-27 写明，免得后人当缺陷报）：
+ * ① **盘面不是同一张**：本模块用**独立可复现种子** `seed*31 + depth*7919` 建盘（手动用 `run.seed`
+ *    ＋ 扫描加成）——自动线要能"跑一趟而不碰真档/真盘"，这是刻意的；
+ * ② **不掷围剿**：第 7 层起"每消耗 1 回合刷 1 个"那条链（`wormholeSpawnAfterTurns`）是手动专有，
+ *    自动线不跑 ⇒ 收益与风险读数**不含围剿**（打赢围剿的小概率货柜同理不在内）。
+ * **空白地点占比已对齐手动**（2026-09-27 补）：建盘喂 `blankShareFactor`（= `blankShareFactorOf(state)`，
+ * 事件玄学满级 0.8）——此前漏了这一项，自动线面对的盘比手动"更空"。
+ *
  * ⚠ **战斗是"快速对判"**（船长口径 3）：只看"DPS × 有效血量"的期望比，不逐帧跑战斗、
  * 不掷单发命中；打不过就绕开或撤离。之所以敢这么简化：自动探索的既定红线是**绝不丢船**
  * （`WORMHOLE_AUTO_HULL_FLOOR` 与损伤公式在 `wormholeAuto.ts` 里照旧）。
@@ -139,8 +147,16 @@ export function wormholeAutoDescend(opts: {
   techTurnBonus?: number
   /** 谜质科技系数（与旧口径同一套：残骸线 / 采集线） */
   tech: { wreck: number; ore: number }
+  /**
+   * **事件玄学（`event-dividend`）给的"空白地点占比系数"** = `blankShareFactorOf(state)`
+   * （0 级 = 1 ⇒ 一字不变；满级 5 = 0.8）。**缺省 1**：不传就与本次改动前完全一致。
+   * ⚠ 2026-09-27 补：本模块原先建盘只写 `(seed, depth, 0)` ⇒ 漏了这个系数，自动线面对的盘
+   * 比手动"更空"（满级时手动空地点少两成，自动却按默认 1 算）⇒ 与手动不同尺。
+   */
+  blankShareFactor?: number
 }): WormholeAutoDescend {
-  const { seed, startDepth, totalMass, holdM3, miners, salvagers, power, guardPowerOf, tech, scanRadius } = opts
+  const { seed, startDepth, totalMass, holdM3, miners, salvagers, power, guardPowerOf, tech, scanRadius,
+    blankShareFactor = 1 } = opts
   const rng = mulberry(seed * 6364136223846793005 + 1442695040888963407)
   let turns = turnBudgetOf(totalMass, opts.techTurnBonus ?? 0)
 
@@ -162,7 +178,7 @@ export function wormholeAutoDescend(opts: {
   const archetype = wormholeArchetypeOf(seed)
 
   for (let depth = Math.max(1, startDepth); depth <= 9; depth++) {
-    const grid = wormholeMakeGrid(seed * 31 + depth * 7919, depth, 0)
+    const grid = wormholeMakeGrid(seed * 31 + depth * 7919, depth, 0, blankShareFactor)
     const mul = wormholeLayerRewardMul(depth)
     const radius = wormholeGridRadiusFor(depth)
     const holdCapThisLayer = holdM3 * WORMHOLE_AUTO_DESCEND_HOLD_SHARE
@@ -370,9 +386,16 @@ function turnBudgetOf(totalMass: number, techTurnBonus: number): number {
   return Math.floor(WORMHOLE_TURN_BASE * (1 - ratio * WORMHOLE_TURN_MASS_COEF)) + Math.max(0, Math.floor(techTurnBonus))
 }
 
-/** 一层的产出格统计（报告/用例读数用） */
-export function wormholeAutoLayerTally(seed: number, depth: number): ReturnType<typeof gridTally> {
-  return gridTally(wormholeMakeGrid(seed * 31 + depth * 7919, depth, 0))
+/**
+ * 一层的产出格统计（报告/用例读数用）。
+ * `blankShareFactor` 与模拟器**同一把尺**（缺省 1；要按玩家真实技能读盘面就读 `blankShareFactorOf(state)`）。
+ */
+export function wormholeAutoLayerTally(
+  seed: number,
+  depth: number,
+  blankShareFactor = 1,
+): ReturnType<typeof gridTally> {
+  return gridTally(wormholeMakeGrid(seed * 31 + depth * 7919, depth, 0, blankShareFactor))
 }
 
 /** 确定性乘法同余流（与 `wormholeGrid.wormholeStream` 同族，但独立一份：不共享全局 rng） */

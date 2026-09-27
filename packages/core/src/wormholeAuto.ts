@@ -25,7 +25,13 @@ import type { GameState, WormholeArchetype, WormholeAutoReport, WormholeAutoRun,
 import { addLog, shipLockedInWormhole } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
-import { WORMHOLE_ORE_ITEM_ID, wormholeAdmission, wormholeBagSlotsOfFleet, wormholeScanBonusOf } from './wormhole'
+import {
+  WORMHOLE_ORE_ITEM_ID,
+  blankShareFactorOf,
+  wormholeAdmission,
+  wormholeBagSlotsOfFleet,
+  wormholeScanBonusOf,
+} from './wormhole'
 import { matterTechLevel, matterTechNodes, matterTechWhBuffs, matterTechWorkEffBonus } from './matterTech'
 import { RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, wreckGroupOfCard, wreckItemIdOf } from './salvage'
 import { WORMHOLE_WRECK_PILE_M3_BASE, wormholeRelicBoxIdOf, WORMHOLE_CORE_WEIGHTS } from './wormholeSalvage'
@@ -714,6 +720,11 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
      * （`wormholeScanBonusOf`）：一次扫描揭开的格数按半径**平方**放大 ⇒ 4×鹦鹉螺 半径 5、一次 91 格。
      */
     scanRadius: 1 + wormholeScanBonusOf(ctx, run.shipIds),
+    /**
+     * **事件玄学的空白占比系数**（2026-09-27 补）：与手动建盘同一把尺（`wormholeMakeGrid` 第 4 参）——
+     * 漏了它，自动线在高等级事件玄学下会比手动多出两成空白格。
+     */
+    blankShareFactor: blankShareFactorOf(state),
     guardPowerOf: (d) => guardPowerOf(ctx, meta.family, d),
     // 谜质科技：回合加成由 `tf` 反推（`baseTurns × turnMul − baseTurns`）
     techTurnBonus: Math.max(0, Math.round(tf.baseTurns * tf.turnMul) - tf.baseTurns),
