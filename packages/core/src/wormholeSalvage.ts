@@ -20,6 +20,7 @@
  * salvaging, equipment }`；**`wormhole.ts` 不许 import 本文件**（它被 `state.ts` 顶层引用，
  * 而本文件经 `salvaging` 回头吃 `state` ⇒ 会成环，与 D/F 批两次踩过的坑同款）。
  */
+import type { CommandResult } from './engine'
 import { rareDropRateMulOf, tuningMul } from './tuning'
 import type { GameState, RngState } from './state'
 import { addLog } from './state'
@@ -1049,7 +1050,7 @@ export function wormholeTempStowPiece(
   state: GameState,
   ctx: SimContext,
   id: string,
-): { ok: boolean; error?: string; errorId?: string; errorParams?: Readonly<Record<string, string | number>> } {
+): CommandResult {
   const run = state.wormhole.run
   if (!run?.tempGrid) return { ok: false, error: '临时空间是空的。', errorId: 'core.wormholeSalvage.003' }
   const p = run.tempGrid.placements.find((q) => q.id === id)
@@ -1082,7 +1083,7 @@ export function wormholeTempDiscardPiece(
   state: GameState,
   ctx: SimContext,
   id: string,
-): { ok: boolean; error?: string; errorId?: string; errorParams?: Readonly<Record<string, string | number>> } {
+): CommandResult {
   const run = state.wormhole.run
   if (!run?.tempGrid) return { ok: false, error: '临时空间是空的。', errorId: 'core.wormholeSalvage.003' }
   const p = run.tempGrid.placements.find((q) => q.id === id)
@@ -1173,7 +1174,7 @@ export function wormholeStowOrTemp(
   ctx: SimContext,
   itemId: string,
   units = 1,
-): { ok: boolean; where?: 'hold' | 'temp'; error?: string; errorId?: string; errorParams?: Readonly<Record<string, string | number>> } {
+): CommandResult & { where?: 'hold' | 'temp' } {
   if (wormholeIsShapedItem(itemId)) {
     const stowed = wormholeHoldStow(state, ctx, itemId)
     if (stowed.ok) {
