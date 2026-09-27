@@ -1257,7 +1257,15 @@ export function wormholeGridTravel(
    * **这是第几个信标**（船长 2026-09-20「信标第一次显示下一层入口，后续还激活其他信标则显示谜质位置」）
    * ——数 `grid.activated` 里已触发过的信标格即可，**不新增存档字段**（本格还没入列 ⇒ +1 = 名次）。
    */
-  const beaconNo = beacon ? grid.activated.filter((k) => grid.cells.find((c) => c.key === k)?.place === 'beacon').length + 1 : 0
+  /**
+   * 已激活格里有几处「漂浮信标」（**+1** = 当前这一处）。
+   * ⚠ 2026-09-27 理顺：原写法在 `filter` 里套 `grid.cells.find(...)` —— 每个激活格都重扫一遍全表；
+   * 改为**一次建索引**再查。**读数一字不变**，只是不再 O(n²)（层内格数最多 91，收益在可读性）。
+   */
+  const cellByKey = new Map(grid.cells.map((c) => [c.key, c] as const))
+  const beaconNo = beacon
+    ? grid.activated.filter((k) => cellByKey.get(k)?.place === 'beacon').length + 1
+    : 0
   /**
    * **踩中埋伏**（船长 2026-09-16）：`!scanned` = 玩家点它时这一格**还没扫描过**（信息闸那一步算好的值）
    * ⇒ "走进去才发现里面是敌人"。**拦截不算**（那种玩家在移动前已确认过"会被拦下并开战"）。
@@ -1728,6 +1736,50 @@ export function blankShareFactorOf(state: GameState): number {
 }
 
 /**
+ * **进洞时停掉那一项活动，并取"停机前的读数"**（返给日志的 detail 段）。
+ *
+ * ⚠ **读数必须在停机之前取**（停完字段就清了）；没有可写读数的那几档走 `haltActivityForSwitch`
+ * （`state.ts` 的**执行**分派），detail 留空。
+ *
+ * ⚠ **与 `state.ts` 那张 `haltActivityForSwitch` 的关系（2026-09-27 理顺）**：那张 switch 只负责
+ * "按活动种类调各自 `*Halt`"（`state.ts` 拿不到 ctx、也没有这些读数）；本函数是"**执行 ＋ 取读数**"的
+ * 虫洞版入口 —— 两份**不是**同一张表的两份拷贝，但**能取读数的四档**（扫描／采矿／打捞／长途运输）
+ * 在这里分流 ⇒ **新增"可被进洞自动停掉"的活动种类时，两处都要看一眼**。
+ * （原先这段逻辑内联在 `wormholeEnter` 的循环里、与上面的说明隔了十几行，容易被读成"重复表"。）
+ */
+function haltEntryActivityOf(
+  state: GameState,
+  ctx: SimContext,
+  kind: MainActivityKind,
+): string | undefined {
+  if (kind === 'wormholeScan') {
+    const mins = wormholeScanHalt(state)
+    return mins !== null ? `已扫 ${mins} 分钟，回来可续扫` : undefined
+  }
+  if (kind === 'mining') {
+    const info = miningHalt(state)
+    if (info === null) return undefined
+    const belt = info.beltId ? ctx.belts.get(info.beltId) : undefined
+    const oreName = belt ? (ctx.items.get(belt.oreId)?.name ?? '') : ''
+    return `${belt?.name ?? '矿带'} · 本趟 ${info.tripUnits} 单位${oreName}，货物留在船上`
+  }
+  if (kind === 'salvaging') {
+    const info = salvageHalt(state)
+    if (info === null) return undefined
+    const gName = info.galaxyId ? (ctx.galaxies.get(info.galaxyId)?.name ?? '') : ''
+    return `${gName} · 本趟约 ${Math.round(info.tripM3 * 100) / 100} m³ 当量，货物留在船上`
+  }
+  if (kind === 'hauling') {
+    const info = haulingHalt(state)
+    if (info === null) return undefined
+    const originName = info.fromSiteId ? (ctx.stations.get(info.fromSiteId)?.name ?? info.fromSiteId) : '母港'
+    return `已即时返港停靠「${originName}」`
+  }
+  haltActivityForSwitch(state, kind)
+  return undefined
+}
+
+/**
  * **入洞**（界面「进入虫洞」的引擎落点）：校验编队 → 建副本 → 写进存档。
  * `seed` 由调用方给（引擎传 `state.rng.seed`），保证节点/拾取堆可复现。
  */
@@ -1754,34 +1806,7 @@ export function wormholeEnter(
    * 其余不可中断的主控活动（**远征 / 快递投送**）仍在门槛那一步拦住（见 `wormholeEntryBlockReason`）。
    */
   for (const a of wormholeEntryAutoStops(state)) {
-    // 读数在停机**之前**取（停完字段就清了）；没有可写读数的那几档就不带 detail 段
-    let detail: string | undefined
-    if (a.mainKind === 'wormholeScan') {
-      const mins = wormholeScanHalt(state)
-      if (mins !== null) detail = `已扫 ${mins} 分钟，回来可续扫`
-    } else if (a.mainKind === 'mining') {
-      const info = miningHalt(state)
-      if (info !== null) {
-        const belt = info.beltId ? ctx.belts.get(info.beltId) : undefined
-        const oreName = belt ? (ctx.items.get(belt.oreId)?.name ?? '') : ''
-        detail = `${belt?.name ?? '矿带'} · 本趟 ${info.tripUnits} 单位${oreName}，货物留在船上`
-      }
-    } else if (a.mainKind === 'salvaging') {
-      const info = salvageHalt(state)
-      if (info !== null) {
-        const gName = info.galaxyId ? (ctx.galaxies.get(info.galaxyId)?.name ?? '') : ''
-        detail = `${gName} · 本趟约 ${Math.round(info.tripM3 * 100) / 100} m³ 当量，货物留在船上`
-      }
-    } else if (a.mainKind === 'hauling') {
-      const info = haulingHalt(state)
-      if (info !== null) {
-        const originName = info.fromSiteId ? (ctx.stations.get(info.fromSiteId)?.name ?? info.fromSiteId) : '母港'
-        detail = `已即时返港停靠「${originName}」`
-      }
-    } else {
-      haltActivityForSwitch(state, a.mainKind)
-    }
-    logAutoHalt(state, a.mainKind, detail)
+    logAutoHalt(state, a.mainKind, haltEntryActivityOf(state, ctx, a.mainKind))
   }
   const r = wormholeStartRun(ctx, shipIds, seed, blankShareFactorOf(state), matterTechWhBuffs(state, ctx).turnBonus)
   if (!r.ok || !r.run) return r

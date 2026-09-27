@@ -8,6 +8,7 @@
  * `Cannot access 'HOME_GALAXY_ID' before initialization`）。依赖方向因此固定为：
  * `state → wormhole → wormholeFoes`、`wormholeBattle → {wormhole, combat, shipyard}`（单向）。
  */
+import type { CommandResult } from './engine'
 import type { BattleState, GameState } from './state'
 import { addLog } from './state'
 import type { AnomalyDef, SimContext } from './types'
@@ -79,7 +80,7 @@ export function wormholeStartBattle(
    * ⚠ 首版工具只在"单场阶梯"里传了它、整趟模拟没传 ⇒ 扫描结果全是同一个系数（读数为假的对比）。
    */
   opts?: { strengthMul?: number },
-): { ok: boolean; error?: string; errorId?: string; errorParams?: Readonly<Record<string, string | number>> } {
+): CommandResult {
   const run = state.wormhole.run
   if (!run) return { ok: false, error: '不在虫洞内。', errorId: 'core.wormholeBattle.001' }
   if (run.battle) return { ok: false, error: '战斗还没结束。', errorId: 'core.wormholeBattle.002' }
