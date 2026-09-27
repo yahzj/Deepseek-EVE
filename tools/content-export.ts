@@ -15,7 +15,7 @@
  * 列约定（与 import 端一致，见 content-schema.ts 头注）：首列主键只读；空单元格 = 不改该字段；
  * 可选字段填 '-' = 删除；数值 = 引擎原值（0.2 = 20%）；枚举 = 英文原值；布尔 = 是/否/空。
  */
-import { writeFileSync, mkdirSync } from 'node:fs'
+import { copyFileSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import ExcelJS from 'exceljs'
 import { ANOMALIES, BELTS, BLUEPRINTS, FOE_SHIPS, ITEMS, MARKET_GOODS, MODULES, SHIPS, SKILLS } from '@whale/data'
@@ -24,7 +24,7 @@ import { tableOf, type ColSpec } from './content-schema'
 const CATALOGS: Record<string, readonly unknown[]> = {
   skills: SKILLS,
   items: ITEMS,
-  modules: MODULES,
+  modules: MODULES.filter((m) => m.slot !== 'plug'),
   ships: SHIPS,
   anomalies: ANOMALIES,
   belts: BELTS,
@@ -121,6 +121,36 @@ async function writeXlsx(colsList: readonly (readonly ColSpec[])[], rowSets: rea
 }
 
 mkdirSync(outDir, { recursive: true })
+/**
+ * 🔴 **覆盖前先备份**（**2026-09-27 事故后加**）：工作台那份 xlsx / csv 是**船长手改的第三份**，
+ * 而本工具是**无条件覆盖**写 —— 事故经过：船长改完 11 件插件后，经办人在**导入之前**先跑了一次
+ * `content:export` ⇒ 船长那一版被"从 data 派生出来的干净版"整个盖掉，Excel 也没留自动恢复副本
+ * ⇒ **改动永久丢失**。
+ *
+ * 现口径：每次导出前，把**上一次的产物**整体复制到 `content-csv/_prev-<时间戳>/`（保留最近 3 份），
+ * 并在控制台明说"上一次的产物已备份到哪"。这样"先导出后导入"这类误操作最多只丢一次编辑，
+ * 从备份目录里就能捞回来（`content:import <表> content-csv/_prev-…/<表>.xlsx`）。
+ * ⚠ **正解仍然是"先导入、再导出"**：表里改过的值没回写进 data 之前，别跑导出。
+ */
+function backupPrevious(): string | null {
+  const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19)
+  const prev = readdirSync(outDir).filter((f) => f.endsWith('.xlsx') || f.endsWith('.csv'))
+  if (prev.length === 0) return null
+  const dir = join(outDir, `_prev-${stamp}`)
+  mkdirSync(dir, { recursive: true })
+  for (const f of prev) copyFileSync(join(outDir, f), join(dir, f))
+  /** 只留最近 3 份备份（免得目录越攒越多） */
+  const olds = readdirSync(outDir)
+    .filter((f) => f.startsWith('_prev-'))
+    .sort()
+  for (const d of olds.slice(0, Math.max(0, olds.length - 3))) rmSync(join(outDir, d), { recursive: true, force: true })
+  return dir
+}
+const backupDir = backupPrevious()
+if (backupDir !== null) {
+  console.log(`⚠ 覆盖前已备份上一次的产物 → ${backupDir}/`)
+  console.log('  （若那份里还有没导入的改动：npm run content:import <表> ' + backupDir + '/<表>.xlsx）')
+}
 let total = 0
 const rowSets: readonly unknown[][] = []
 for (const name of Object.keys(CATALOGS)) {

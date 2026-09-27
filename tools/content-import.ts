@@ -131,7 +131,7 @@ function idSetOf(rows: readonly unknown[], key: string): Set<string> {
 const IDS = {
   skills: idSetOf(SKILLS, 'id'),
   items: idSetOf(ITEMS, 'id'),
-  modules: idSetOf(MODULES, 'id'),
+  modules: idSetOf(MODULES.filter((m) => m.slot !== 'plug'), 'id'),
   ships: idSetOf(SHIPS, 'id'),
   anomalies: idSetOf(ANOMALIES, 'id'),
   belts: idSetOf(BELTS, 'id'),
