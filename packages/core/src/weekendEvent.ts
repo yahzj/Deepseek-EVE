@@ -437,8 +437,9 @@ export interface WeekendEventState {
    * - 窗口到点后有战斗在打 ⇒ 本拍**不结束**，并把本格推到 `now + 60 秒`（与章鱼停工同一把尺）；
    * - 战斗结束后这 60 秒里**仍然不结束**；满 60 秒那一拍才按窗口到点结束（文案走 `ui.weekend.117`）；
    * - **顺延期间章鱼人也不判得手**（船长同日裁定「要一起闸」）⇒ 不会出现"延期了却被章鱼先收走"；
-   * - **不设上限**（船长 2026-09-27 裁定「甲」）：那场没打完就一直等；弃场的最坏情况 = 本场入侵
-   *   吊到下周窗口开新场时被顶掉（`ensureWeekendEvent` 到点即开新场）。
+   * - **不设时限**（船长 2026-09-27 裁定「甲」）：那场没打完就一直等；真拖到下一场入侵的 T0 还没收场
+   *   ⇒ **下一场入侵取消**（`ensureWeekendEvent`：上一场没结束就不开新场），旧的这一场照旧由玩家打完
+   *   （船长同日令「到下周该开入侵的时候，我还没结束，那么下周的入侵就应该取消」）。
    *
    * ⚠ **随档落盘**（`save.ts` 读档侧必须认它）：否则读档即丢 ⇒ 顺延被读档绕过。
    * 缺省（老档 / 从没顺延过）= 不顺延 ⇒ **零迁移**。
@@ -569,6 +570,9 @@ export const WEEKEND_OCTOPUS_HOLD_MS = 60_000
  * 一个管"窗口什么时候算到点"，两把闸各自可调，**不要合并成一个常量**。
  * ⚠ **只有旗舰战**触发（与章鱼停工同一把尺）；其它入侵战斗不顺延。
  * ⚠ 顺延期间活动**仍然活着** ⇒ 战斗收尾走的是正常结算路径（不需要在结算侧另开特例）。
+ * ⚠ 顺延**不设时限**（船长 2026-09-27 裁定「甲」）：玩家真把入侵拖过下一场的 T0 ⇒
+ * **下一场入侵取消**（`ensureWeekendEvent` 的"上一场没结束就不开新场"，船长同日令
+ * 「到下周该开入侵的时候，我还没结束，那么下周的入侵就应该取消」）。
  */
 export const WEEKEND_WINDOW_END_HOLD_MS = 60_000
 
@@ -789,23 +793,6 @@ export function weekendT0Of(nowWallMs: number): number {
 /** 窗口是否还开着（T0 ~ T0+96h） */
 export function weekendWindowOpen(nowWallMs: number, t0: number): boolean {
   return nowWallMs >= t0 && nowWallMs < t0 + WEEKEND_WINDOW_MS
-}
-
-/** 一个"周"的长度（T0 到下一个 T0）；周排期与"陈旧场收口"的最后期限都按它算 */
-const WEEKEND_WEEK_MS = 7 * 24 * 3_600_000
-
-/**
- * **本场之后"下一场入侵的 T0"**（= 本场所在周的 T0 ＋ 一周）。
- *
- * ⚠ 必须从 `startedAtWallMs` **反推所在周的 T0** 再加一周，不能直接 `startedAt + 一周`：
- * 首场是**周五 22:00** 开的（`WEEKEND_FIRST_T0_WALL_MS`，比周排期的 20:00 晚 2 小时）⇒
- * 直接加一周会算到"周四 22:00"那种不存在的 T0。
- *
- * 用途 = `weekendTick` ⓪ **陈旧场收口**的最后期限：顺延最晚只能拖到这一刻，到点就把上一场收掉、
- * 免得下一场开新场时把还没结束的旧场**静默顶掉**（旧场的贡献奖/声望/结束通讯会一起丢）。
- */
-export function weekendNextT0Of(startedAtWallMs: number): number {
-  return weekendT0Of(startedAtWallMs) + WEEKEND_WEEK_MS
 }
 
 /* ─────────────── 占领：核心选取 ＋ 外围 ─────────────── */
@@ -1253,6 +1240,19 @@ export function ensureWeekendEvent(state: GameState, ctx: SimContext, nowWallMs:
    * 那一次偏移（首场结束后的下一拍不会再按周排期的 20:00 补开一场）。
    */
   if (ev && nowWallMs - ev.startedAtWallMs < WEEKEND_WINDOW_MS) return false
+  /**
+   * **上一场还没结束 ⇒ 本周入侵取消**（**2026-09-27 船长令**：「**假设，入侵我拖了一周，到下周该开入侵
+   * 的时候，我还没结束。那么下周的入侵就应该取消。**」）。
+   *
+   * 口径：**开新场的前提 = 上一场已经结束**。玩家把入侵拖过窗口（顺延那条路让它继续活着）、
+   * 到下一个 T0 还没收场 ⇒ 那一周的入侵**不开**（`started=false`、不记"入侵开始"日志），
+   * 旧的这一场照旧活着、照旧由玩家打完 —— 打完收场后若还落在某一周的窗口内，当周照常补开。
+   *
+   * ⚠ **绝不许绕开这一条去换场**：`weekendSettleAndGrant` 要求 `endedAtWallMs` 有值（见其头注）
+   * ⇒ 被换掉的、还没结束的场**永远不会结算**（贡献四档奖 / 待到账夺回奖励 / 协会声望 / 结束通讯
+   * 一起静默丢掉）。"拖一周就取消下一场"这条规则本身就保证了"永远不会覆盖未结束的场"。
+   */
+  if (ev && ev.endedAtWallMs === undefined) return false
   const seq = (ev?.seq ?? 0) + 1
   const rolled = weekendRollOccupation(state, ctx, seq)
   if (!rolled) return false
@@ -1312,28 +1312,6 @@ export function weekendTick(
   lastSeenWallMs: number,
   flagshipBattleActive = false,
 ): WeekendTickResult {
-  /**
-   * ⓪ **陈旧场收口**（**2026-09-27 船长令跟进**：船长指出「**如果顺延到了下次入侵还没结束，那么下一次入侵
-   * 将会被顶掉**」）——手上这一场**还没结束**、而**下一场入侵的 T0 已经到了** ⇒ 先按"本场窗口到点"
-   * 结束它，**本拍不开新场**（下一拍 `ensureWeekendEvent` 再开），让引擎照常走"结束日志 ＋ 结算 ＋ 结束通讯"。
-   *
-   * 为什么必须有这一步：`ensureWeekendEvent` 到点会**直接换掉** `state.weekendEvent`，而
-   * `weekendSettleAndGrant` 要求 `endedAtWallMs` 有值（见其头注）⇒ 被换掉的旧场**永远不会结算**：
-   * 贡献四档奖 / 待到账的夺回奖励 / 协会声望 / 结束通讯**一起静默丢掉**。顺延不设上限（船长裁定甲）
-   * ⇒ 玩家弃场时这条必然踩到；这一步把"换成静默丢弃"改回"先正常收场"。
-   * `endedAtWallMs` 取**本场窗口到点那一刻** ⇒ 占比/奖励与"正常到点收场"逐字一致。
-   * ⚠ 与 ④ 同一把尺：**只在正常模式**做（调试档走"结束后 1h 刷新"那条路，本就不会换掉未结束的场）。
-   */
-  const stale = state.weekendEvent
-  if (
-    stale !== undefined &&
-    stale.endedAtWallMs === undefined &&
-    !weekendDebugOn(state) &&
-    nowWallMs >= weekendNextT0Of(stale.startedAtWallMs)
-  ) {
-    endWeekendEvent(state, stale.startedAtWallMs + WEEKEND_WINDOW_MS)
-    return { started: false, flagshipShown: false, flagshipAnchored: false, ended: true, encounterRolls: [] }
-  }
   const started = ensureWeekendEvent(state, ctx, nowWallMs)
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) {
