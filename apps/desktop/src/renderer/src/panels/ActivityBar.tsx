@@ -18,6 +18,8 @@ import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { aiIndustrySlots, aiSlotTip } from '../ui/aiSlots'
 import { AiWorkFx } from '../ui/aiWorkFx'
 import { tr, cmdText } from '../i18n/locale'
+// 活动栏「停止/取消」按钮文案 = 单点（两套外壳共用，见文件头注）
+import { stopLabel } from './activityStopLabel'
 
 const KIND_ICON: Record<string, string> = {
   train: 'nav-skills',
@@ -39,43 +41,6 @@ const KIND_ICON: Record<string, string> = {
   /** 主控活动「扫描虫洞」（2026-09-14）：与洞内活动同一个图标，色调用其自身色调 */
   whscan: 'nav-wormhole',
   whauto: 'nav-wormhole',
-}
-
-function stopLabel(v: ActivityView): string {
-  switch (v.stop) {
-    case 'remove-training':
-      return tr("ui.ActivityBar.007")
-    case 'stop-mining':
-      return tr("ui.ActivityBar.005")
-    case 'stop-scan':
-      return tr("ui.ActivityBar.008")
-    case 'stop-whscan':
-      return tr("ui.ActivityBar.031")
-    case 'stop-whauto':
-      return tr("ui.ActivityBar.009")
-    case 'stop-salvage':
-      return tr("ui.ActivityBar.005")
-    case 'cancel-manufacture':
-      return tr("ui.ActivityBar.004")
-    case 'stop-refine':
-      return tr("ui.ActivityBar.010")
-    case 'recall-expedition':
-      return tr("ui.ActivityBar.009")
-    case 'recall-standby':
-      return tr("ui.ActivityBar.011")
-    case 'retreat-battle':
-      return tr("ui.ActivityBar.012")
-    case 'cancel-ai':
-      return tr("ui.ActivityBar.004")
-    case 'cancel-deliver-trip':
-      return tr("ui.ActivityBar.013")
-    case 'stop-loop':
-      return tr("ui.ActivityBar.032")
-    case 'stop-hauling':
-      return tr("ui.ActivityBar.014")
-    default:
-      return ''
-  }
 }
 
 function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
