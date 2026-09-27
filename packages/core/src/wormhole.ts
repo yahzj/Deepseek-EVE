@@ -1792,6 +1792,21 @@ export function wormholeEnter(
   r.run.archetype = origin?.archetype ?? wormholeArchetypeOf(seed)
   r.run.family = origin?.family ?? wormholeFamilyOfSeed(seed)
   state.wormhole.run = r.run
+  /**
+   * **进新一趟 ⇒ 上一趟的结算单作废**（**2026-09-27 玩家报障修复 · 甲案**，船长批「按你推荐来」）。
+   *
+   * 报障现象：「下虫洞结束后，点击其他虫洞开始探索时，会直接结算」。
+   * 根因链：① `lastSettle` 全仓**只有**结算界面的「确认」按钮会清（`engine.wormholeAckSettle`）；
+   * ② 面板的**关闭键与弹层遮罩**都能绕过「确认」离开（`panels/Wormhole.tsx` 的 `handleClose`
+   * 只拦交火中），③ 它还**随档落盘**（`save.ts` 的清洗器会写回）⇒ 退游戏/刷新也留着；
+   * ④ 而渲染层的判据是「有结算单 ⇒ 整页只显示结算界面」（`panels/Wormhole.tsx`，与"哪一趟"无关）
+   * ⇒ 玩家点另一处库存虫洞「开始探索」时，面板一打开就被**上一趟**的结算占住。
+   *
+   * 这里清掉它（进洞是"新一趟开始"的唯一入口，`wormholeEnter` / `wormholeEnterFromStock` 都走本函数）
+   * ⇒ 旧结算单不会跨趟存活。⚠ **玩家还没看过的结算信息不在这里兜**：面板侧另有一条
+   * 「带库存点进来时，先看完结算再落回准备页」的口径（乙案），两案合起来才盖住整条现象。
+   */
+  delete state.wormhole.lastSettle
   bumpFirst(state, 'wormholeRuns') // 第一次任务/链：进洞趟数
   addLog(
     state,

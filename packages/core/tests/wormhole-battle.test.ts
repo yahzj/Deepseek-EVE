@@ -685,6 +685,31 @@ describe('虫洞 · 战斗收口（F 批）', () => {
   })
 
   /**
+   * **进新一趟 ⇒ 上一趟的结算单作废**（**2026-09-27 玩家报障修复 · 甲案**，船长批「按你推荐来」）。
+   *
+   * 报障现象（船长转述）：「**下虫洞结束后，点击其他虫洞开始探索时，会直接结算**」。
+   * 现场 = 上一趟收口后**没点结算界面的「确认」**（点关闭键/遮罩，或直接退游戏 ⇒ 结算单随档落盘），
+   * 再点另一处库存虫洞「开始探索」时，面板整页显示的是**上一趟**的结算
+   * （渲染层判据「有结算单 ⇒ 整页只显示它」，见 `panels/Wormhole.tsx`）。
+   * 本用例钉住引擎侧那一半：**`wormholeEnter` 成功建趟时必须清掉 `lastSettle`**。
+   */
+  it('**进新一趟会清掉上一趟的结算单**（玩家报障：点其他虫洞「开始探索」直接结算）', () => {
+    const state = enterRun()
+    const run = state.wormhole.run!
+    run.bossCleared = run.depth
+    run.bag = [{ itemId: WORMHOLE_ORE_ITEM_ID, units: 100 }]
+    expect(wormholeExtract(run).ok).toBe(true)
+    advanceWormhole(state, ctx)
+    expect(state.wormhole.run).toBeNull()
+    expect(state.wormhole.lastSettle?.kind).toBe('extract') // 结算单已落地，玩家还没点「确认」
+    // 再进另一处（等价玩家点「开始探索」后真进洞）
+    const again = wormholeEnter(state, ctx, [state.shipId], 99)
+    expect(again.ok).toBe(true)
+    expect(state.wormhole.run).not.toBeNull()
+    expect(state.wormhole.lastSettle).toBeUndefined() // **旧结算单必须被清掉**
+  })
+
+  /**
    * **谜质装置 ⇒ 虫洞谜质**（2026-09-15 船长定「虫洞战利品与经济扩充」①，**改了 09-14 的老口径**）。
    *
    * 老口径（09-14 修一号核验缺陷时定的）：谜质装置与货柜**共用同一套形状件账本**（都记 `kind: 'box'`），
