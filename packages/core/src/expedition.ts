@@ -61,7 +61,7 @@ import {
   wormholeDerivedAnomaly,
 } from './combat'
 import { actionBlockReason, markExplored } from './explore'
-import { familyModules } from './equipment'
+import { familyModules, shipHasWeapon } from './equipment'
 import {
   FACTION_RARE_DROP_CHANCE,
   FACTION_RARE_DROP_COUNT,
@@ -680,14 +680,18 @@ export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: stri
   // V13 探索：实际到港 → 点亮该星系（去程结束进入交火 = 已抵达）
   if (anomaly?.galaxyId) markExplored(state, anomaly.galaxyId)
   const loaded = battle.ammo.kin + battle.ammo.exp + battle.ammo.pla
-  // V18B-1：武器形态分家——炮台（turret）与导弹架（missile）都算"已装武器"
-  const hasTurret =
-    familyModules(state, ctx, shipId, 'turret').length > 0 || familyModules(state, ctx, shipId, 'missile').length > 0
+  /**
+   * **这艘船装了武器吗**（**2026-09-27 玩家报障修复**）：改用全仓单点 `shipHasWeapon` ——
+   * 原先这里只认 `turret` / `missile`（注释自陈"V18B-1：炮台与导弹架都算"），
+   * 漏了 **V18B-2 归位的 `laser`（能量系）** 与**无人机线** ⇒ 装激光/无人机的船打悬赏时，
+   * 抵达目标那条日志会判「未装配武器：仅基础舰炮还击。」（与装配页所见相反）。
+   */
+  const armed = shipHasWeapon(state, ctx, shipId)
   const targetName = anomaly ? (exp.lairTier ? lairNameOf(anomaly, exp.lairTier) : anomaly.name) : ''
   addLog(
     state,
     'combat',
-    `⚔ 抵达目标（${targetName}）：进入交火。${hasTurret ? (loaded > 0 ? `预载弹药 ${loaded} 发。` : '警告：未携带弹药，武器无法开火（基础舰炮可还击）。') : '未装配武器：仅基础舰炮还击。'}` +
+    `⚔ 抵达目标（${targetName}）：进入交火。${armed ? (loaded > 0 ? `预载弹药 ${loaded} 发。` : '警告：未携带弹药，武器无法开火（基础舰炮可还击）。') : '未装配武器：仅基础舰炮还击。'}` +
       (exp.lairTier ? '（赏金任务目标：窝点守备强于常驻悬赏，注意弹药与修理件。）' : ''),
   )
   return true

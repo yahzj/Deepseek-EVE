@@ -177,6 +177,29 @@ export function familyModules(state: GameState, ctx: SimContext, shipId: string,
   if (!fitted) return []
   return allFittedModules(fitted, ctx).filter((d) => d.slot === family)
 }
+/**
+ * **算作"武器"的槽位家族**（炮台 / 导弹架 / 激光炮 / 无人机舱 / 战术导控）——**全仓唯一一份**。
+ *
+ * ⚠ 为什么抽出来（**2026-09-27 玩家报障修复**）：此前"这艘船装了武器吗"**两处各写一份**判据 ——
+ * `weekendLaunch.weekendPrepIssuesOf`（旗舰战准备页的「未装武器」警告条）列了这 5 个槽，
+ * 而 `expedition` 的「抵达目标」日志只列了 `turret` / `missile`（注释自陈"V18B-1"）——
+ * **V18B-2 把能量系归位成 `laser` 之后没同步** ⇒ 装**激光炮**或**无人机**的船打悬赏时，
+ * 被那条日志判成「未装配武器：仅基础舰炮还击。」（与装配页所见相反）。⇒ 两处都改用本单点。
+ */
+export const WEAPON_SLOTS: ReadonlySet<ModuleSlot> = new Set([
+  'turret',
+  'missile',
+  'laser',
+  'drone-rack',
+  'drone-tac',
+])
+
+/** **这艘船装了武器吗**（判据 = 高/中/低任一槽位上是武器类模块）——全仓唯一一份，见 `WEAPON_SLOTS` */
+export function shipHasWeapon(state: GameState, ctx: SimContext, shipId: string): boolean {
+  const fitted = state.fleet[shipId]?.fitted
+  if (!fitted) return false
+  return allFittedModules(fitted, ctx).some((d) => WEAPON_SLOTS.has(d.slot))
+}
 
 /* ═══════════ V18.1 多件收敛（取消同类唯一后的防超模机制） ═══════════ */
 
