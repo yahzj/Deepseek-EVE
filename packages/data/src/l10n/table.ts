@@ -1717,6 +1717,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.weekend.041": { zh: "⚠ 旗舰击沉归属出现两处不同记录：已按玩家亲手击沉处理。", en: "⚠ Two conflicting records for the flagship kill: treated as sunk by the player." },
   /* 2026-09-27 船长令：结算信里也留一句"旗舰是谁打沉的"（与快照的 flagsphipPlayerKill 同源） */
   "core.weekend.042": { zh: "你在本期的旗舰战中亲手击沉了入侵旗舰。", en: "You personally sank the invasion flagship in this invasion's flagship battle." },
+  /* 2026-09-27 船长令：主力舰队打赢 ⇒ 往该星系入侵残骸场里放一件稀有残骸（打捞时稀有池优先） */
+  "core.weekend.043": { zh: "✦ 击退「{p1}」的入侵舰队：残骸场里留下 {p2} 具稀有残骸 —— 可前往该星系打捞（回站用回收炉解体可得额外战利品）。", en: "✦ Invasion fleet repelled at “{p1}”: {p2} rare wreck(s) left in the debris field — salvage there (recycle back at the station for extra spoils)." },
   /* ── 2026-09-23 围剿批（第 7 层起逐回合刷怪）：core 侧新增的日志与拒因 ── */
   "core.wormholeSpawn.001": { zh: "🕳 围剿者扑到你所在的位置：先确认，再迎战。", en: "🕳 A sweep ship has pounced on your position: confirm, then engage." },
   "core.wormholeBattle.032": { zh: "围剿战只在网格层成立。", en: "Sweep battles only happen on the grid." },
@@ -3868,6 +3870,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // 2026-09-26 打捞对象（船长令「让玩家选择打捞对象……残骸也要分开算」）
   "ui.MapPage.120": { zh: "全部（按威胁加权）", en: "All (threat-weighted)" },
   "ui.MapPage.121": { zh: "入侵残骸", en: "Invasion wrecks" },
+  /* 2026-09-27 船长令：入侵残骸场里可能有箱子（主力舰队打赢掉落）⇒ 卡名上把稀有件数写出来 */
+  "ui.MapPage.122": { zh: "入侵残骸 · 稀有 ×{p1}", en: "Invasion wrecks · rare ×{p1}" },
   // 2026-09-26 墨潮电子舱 / 墨潮捕获网（H 族势力装备 · 高槽支援件）的装配页短行
   "ui.shipInfo.185": { zh: "敌方武器射程 −{p1}，最短 {p2} m", en: "Enemy weapon range −{p1}, floor {p2} m" },
   "ui.shipInfo.186": { zh: "{p2} 米内每 {p1} 秒钉住一艘未被钉住的敌舰", en: "Pins one un-webbed enemy ship every {p1} s within {p2} m" },  /* 舰船插件（2026-09-26 船长令）：装配页短行的逐类效果句 ＋ 一句"装上去拆不下来" */

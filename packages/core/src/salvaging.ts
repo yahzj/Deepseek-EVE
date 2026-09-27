@@ -34,6 +34,7 @@ import { PLUG_BLACKBOX_ITEM_ID } from './plugs'
 import { nextRandom, pickWeighted } from './rng'
 import {
   pullRareWreck,
+  rareStockForTargetOf,
   RARE_WRECK_VOLUME_M3,
   recycleTierOf,
   salvageRoundMulOf,
@@ -583,8 +584,16 @@ export function pullOneWreck(
    * - 选了某一组而**该组已捞干** ⇒ **本轮不出**（不自动换组——手动选的语义就是"只捞它"）；
    * - 缺省 = 全部（现状：按威胁加权抽、先扣入侵池）。
    * ⚠ 本闸**必须排在玩家残骸那一支之后**（见上）：残骸里的件与任何池的存量无关。
+   * ⚠ **2026-09-27 补一格**（船长令「主力舰队添加一个稀有残骸掉落」＋「进残骸场」）：**场里只剩箱子**
+   * （矿物被捞干、稀有还在）时**不许把这一轮挡掉** —— 否则玩家选「只捞入侵残骸」就永远拿不到那个箱子。
    */
-  if (target !== undefined && wreckGroupStockOf(state, ctx, galaxyId, target) <= 0.05) return null
+  if (
+    target !== undefined &&
+    wreckGroupStockOf(state, ctx, galaxyId, target) <= 0.05 &&
+    rareStockForTargetOf(state, ctx, galaxyId, target) <= 0
+  ) {
+    return null
+  }
   // ① **稀有池优先**（三级序第 1 档；2026-09-10 船长定"窝点战利品必捞"· 2026-09-26 复述
   //    「优先捞稀有池，稀有池捞完后开始普通池」）：稀有池有存量 ⇒ 本轮必出稀有，**捞干后**才轮到普通池。
   //    ⚠ **打捞对象只管普通池内部**（手选组 / 手选入侵都不影响稀有池——稀有残骸是窝点与派系活跃的战利品，

@@ -802,6 +802,10 @@ export {
   weekendWreckInjectionOf,
   injectWeekendWreck,
   advanceWeekendWreckDecay,
+  // 2026-09-27 船长令（「主力舰队添加一个稀有残骸掉落」＋「进残骸场」）：箱子的注入与读数
+  injectWeekendRareWreck,
+  weekendRareWreckCountOf,
+  rareStockForTargetOf,
   RECYCLE_BATCH_M3,
   RECYCLE_CYCLE_MS,
   RECYCLE_YIELD_PER_M3,

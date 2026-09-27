@@ -49,6 +49,8 @@ import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { WEEKEND_STANDING_MAX } from './weekendEvent'
 import { flagshipBattleLedger } from './combat'
 import { rareWreckItemIdOfCard, RARE_WRECK_VOLUME_M3 } from './salvage'
+/** 2026-09-27 船长令：主力舰队打赢 ⇒ 往该星系**入侵残骸场**里放箱子（稀有残骸） */
+import { injectWeekendRareWreck } from './salvage'
 import { WEEKEND_CARD_PREFIX, weekendOccupiedLiveAt } from './weekendBounty'
 import { DSI_FACTION_ID, noteStandingEarned } from './expedition'
 
@@ -217,7 +219,7 @@ export interface WeekendResolveResult {
 export function weekendResolveBattle(
   state: GameState,
   /** 保留参数位：奖励发放若需 ctx（物品表/日志）时用；当前纯记账不需要 */
-  _ctx: SimContext,
+  ctx: SimContext,
   spec: WeekendBattleSpec,
   outcome: WeekendOutcome,
   nowWallMs: number,
@@ -318,7 +320,7 @@ export function weekendResolveBattle(
    * 日志分在两个页签里。⚠ 两条令的先后与取舍见 `docs/development-conventions-changelog.md`。
    */
   if (res.reclaimed === undefined) {
-    const gname0 = _ctx.galaxies.get(spec.galaxyId)?.name ?? spec.galaxyId
+    const gname0 = ctx.galaxies.get(spec.galaxyId)?.name ?? spec.galaxyId
     if (gain > 0) {
       const pctBefore = Math.round(beforePct)
       const pctAfter = Math.round(weekendProgressAt(state, ev, spec.galaxyId, nowWallMs) * 100)
@@ -878,6 +880,39 @@ export function weekendApplyBattleOutcome(
         ? 'win'
         : 'loss'
   const r = weekendResolveBattle(state, ctx, spec, outcome, nowWallMs, flagshipDmg, battle?.startedAtGameMs)
+  /**
+   * **卡的稀有残骸掉落**（**2026-09-27 船长令**：「**主力舰队添加一个稀有残骸掉落**」＋追问落点答
+   * 「**进残骸场**」）。
+   *
+   * 落点 = **该星系的入侵残骸场**（`weekendWrecks.rare/rareBy`）⇒ 打捞时**稀有池优先、本轮必出一件**
+   * （物品 = 该卡所属组的稀有残骸，主力舰队即 `wreck-rare-h-hi`）。
+   *
+   * 口径（本次一并定下）：
+   * - **认"这一场实际打的那张卡"**（`anomalyId`，`wk-` 前缀先剥掉），**不是** `spec.cardId` ——
+   *   出击/遇袭的 spec 是按池子**另抽**的，只有 `anomalyId` 才是玩家真正打赢的那支舰队；
+   * - **只有战斗打赢算**：主动出击全歼（`win`）与迎袭击退（`repel`）都算；
+   *   **文字结算**（`offlineRepel`：离线 / 无人应答自动结算）与失利（`loss`）**不算**；
+   * - **不设每场上限**（船长同日令）；
+   * - 落账按**打它的那张卡**记账 ⇒ 打捞时据此归族取箱子。
+   */
+  const foughtCardId =
+    typeof anomalyId === 'string' && anomalyId.startsWith(WEEKEND_CARD_PREFIX)
+      ? anomalyId.slice(WEEKEND_CARD_PREFIX.length)
+      : typeof anomalyId === 'string'
+        ? anomalyId
+        : ''
+  const rareDrop = foughtCardId.length > 0 ? (ctx.anomalies.get(foughtCardId)?.rareWreckDrop ?? 0) : 0
+  if (rareDrop > 0 && (outcome === 'win' || outcome === 'repel')) {
+    injectWeekendRareWreck(state, involved.galaxyId, foughtCardId, rareDrop)
+    const gnameDrop = ctx.galaxies.get(involved.galaxyId)?.name ?? involved.galaxyId
+    addLog(
+      state,
+      'trade',
+      `✦ 击退「${gnameDrop}」的入侵舰队：残骸场里留下 ${rareDrop} 具稀有残骸 —— 可前往该星系打捞（回站用回收炉解体可得额外战利品）。`,
+      'core.weekend.043',
+      { p1: gnameDrop, p2: rareDrop },
+    )
+  }
   /**
    * **即时发放的只有"旗舰掉落"**（2026-09-25 船长令：「**夺回星区的奖励不要即时发放，放入结束后结算发放**」）：
    * 夺回奖励（逐处 ×8 ＋ 2M · 全清追加 5M）**只记台账**，等 `weekendSettleAndGrant` 在活动结束时连贡献奖一起发

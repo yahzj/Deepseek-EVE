@@ -23,10 +23,16 @@ export type WreckCardKind = 'ship-wrecks' | 'invasion' | 'all'
 export function wreckCardSequenceOf(input: {
   shipWreckCount: number
   invasionWreckM3: number
+  /**
+   * **入侵残骸场里的箱子（稀有残骸）件数**（**2026-09-27 加**，可选 ⇒ 老调用方逐字不变）：
+   * 船长 2026-09-27 令「主力舰队添加一个稀有残骸掉落」＋「进残骸场」后，**矿物可能被捞干、箱子还在**
+   * ⇒ 只看 `invasionWreckM3 > 0` 会让那张卡消失、玩家再也看不到场里的箱子。
+   */
+  invasionRareCount?: number
 }): WreckCardKind[] {
   const out: WreckCardKind[] = []
   if (input.shipWreckCount > 0) out.push('ship-wrecks')
-  if (input.invasionWreckM3 > 0) out.push('invasion')
+  if (input.invasionWreckM3 > 0 || (input.invasionRareCount ?? 0) > 0) out.push('invasion')
   out.push('all')
   return out
 }
