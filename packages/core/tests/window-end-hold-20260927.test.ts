@@ -30,6 +30,7 @@ import {
   weekendNoteFlagshipDamage,
   weekendT0Of,
   weekendTick,
+  weekendWindowOpen,
 } from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
 import type { GameState } from '../src/state'
@@ -216,5 +217,31 @@ describe('窗口到点顺延到"玩家打完 + 60 秒"（2026-09-27 船长令）
     expect(s.weekendEvent?.seq, '已经是新场').toBe(ev.seq + 1)
     expect(ev.endedAtWallMs, '旧场永远没被标结束').toBeUndefined()
     expect(weekendSettleAndGrant(s, ctx, NEXT_T0), '旧场结算不了 ⇒ 奖励全丢').toBeNull()
+  })
+
+  /**
+   * **⑩ 玩家不会错过下一场入侵**（**2026-09-27 船长追问**：「**被顶掉的意思是，直接错过该次入侵。**」）
+   * ——最坏情况：弃场之后玩家**下一场都过了一半才回来**。⓪ 先把旧场收口结算，**下一拍就开新场**，
+   * 而且新场**还剩着它该有的窗口**（不会因为上一场拖过 T0 就整场作废）。
+   */
+  it('⑩ 弃场到下一场过了几天才回来 ⇒ 旧场收口结算 ＋ **新场照开、窗口还剩着**', () => {
+    const { s, ev } = bossWorld()
+    for (const t of [WINDOW_END, NEXT_T0 - 1]) weekendTick(s, ctx, t, t, true) // 一直弃场
+    /** 玩家在下一场过了 3 天才上线：第一拍把旧场收口（本拍不开新场） */
+    const backAt = NEXT_T0 + 3 * 24 * 3_600_000
+    const first = weekendTick(s, ctx, backAt, backAt, false)
+    expect(first.ended, '旧场在本拍收口').toBe(true)
+    expect(ev.endedAtWallMs, '按本场窗口到点收口').toBe(WINDOW_END)
+    expect(weekendSettleAndGrant(s, ctx, backAt), '旧场照常结算').not.toBeNull()
+    /** 下一拍：新场开出来（编号 +1、T0 = 新 T0），而且**这一周的入侵还开着** */
+    const second = weekendTick(s, ctx, backAt + 1_000, backAt + 1_000, false)
+    expect(second.started, '新场开出来').toBe(true)
+    expect(s.weekendEvent?.seq, '编号 +1').toBe(ev.seq + 1)
+    expect(s.weekendEvent?.startedAtWallMs, '新场的 T0').toBe(NEXT_T0)
+    expect(s.weekendEvent?.endedAtWallMs, '新场活着（玩家没有错过这一场）').toBeUndefined()
+    /** 新场还剩 96h − 3 天（= 它自己该有的窗口，不因上一场拖延而缩水） */
+    const leftMs = NEXT_T0 + WEEKEND_WINDOW_MS - backAt
+    expect(leftMs).toBe(WEEKEND_WINDOW_MS - 3 * 24 * 3_600_000)
+    expect(weekendWindowOpen(backAt + 1_000, NEXT_T0), '新场此刻确实在窗口内').toBe(true)
   })
 })
