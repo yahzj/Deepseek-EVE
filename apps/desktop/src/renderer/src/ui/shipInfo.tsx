@@ -832,6 +832,8 @@ function crossFamilyShort(mod: ModuleDef): string {
   if (foreign('drone-relay') && (mod.droneRangeBonusPct ?? 0) > 0) parts.push(tr("ui.shipInfo.112", { p1: pct(mod.droneRangeBonusPct ?? 0) }))
   if (foreign('target-lock') && mod.lockDmgBonus !== undefined) parts.push(tr("ui.shipInfo.147", { p1: pct(mod.lockDmgBonus) }))
   if (foreign('cpu') && (mod.cpuBonus ?? 0) > 0) parts.push(tr("ui.shipInfo.148", { p1: fmt(mod.cpuBonus ?? 0) }))
+  /** 机群结构层加成（2026-09-27 补）：**任何槽位都可能带** ⇒ 与上面几条"跨槽位旋钮"同段，不进 `foreign()` 判据 */
+  if ((mod.droneHullHpBonusPct ?? 0) > 0) parts.push(tr("ui.shipInfo.202", { p1: pct(mod.droneHullHpBonusPct ?? 0) }))
   return parts.join(' · ')
 }
 
@@ -1180,6 +1182,15 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
     lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.201") })
   } else {
     lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.079") })
+  }
+  /**
+   * **机群结构层加成**（**2026-09-27 船长问：「鱿蜂结构层是否真的对无人机生效？」**）：
+   * 生效是真的（`combat.ts:2059` 把本舰各模块的 `droneHullHpBonusPct` 求和进 `UnitSpec`，
+   * `combat.ts:7663` 放飞无人机时按它放大结构层），**但卡面原先没有这一行** ⇒
+   * 说明写着「机群结构层 +80%」而玩家在卡上找不到。**任何槽位都可能带** ⇒ 与其它"跨槽位旋钮"同段处理。
+   */
+  if ((mod.droneHullHpBonusPct ?? 0) > 0) {
+    lines.push({ k: tr("ui.shipInfo.202"), v: `+${pct(mod.droneHullHpBonusPct ?? 0)}` })
   }
   if (mod.cpuUse !== undefined) lines.push({ k: tr("ui.shipInfo.169"), v: fmt(mod.cpuUse) })
   return lines

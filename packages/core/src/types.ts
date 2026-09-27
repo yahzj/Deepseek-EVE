@@ -2109,8 +2109,9 @@ export interface FoeShipDef {
    * ⇒ 既有舰级**零行为变化**。建档时分别装进 `UnitSpec.resists` 的 `shield` / `armor` / `hull`
    * （与敌机群的 `FoeDroneDef.defense` 同一条装配口径、同一份 `mergeResist` 形状）。
    *
-   * ⚠ **抗性只减不减**：`applyDamage` 是 `层伤害 × 克制倍率 × (1 − clamp(0, 0.9, 抗))` ⇒
-   * **负数（易伤）不生效**；要表达"某族怕某系"得另立字段（船长 2026-09-15 暂不做）。
+   * ⚠ **抗性现在允许负数**（**2026-09-27 船长令**「抗性打算允许负数」）：`applyDamage` 是
+   * `层伤害 × 克制倍率 × (1 − clamp(RESIST_FLOOR, 0.9, 抗))`，下限 `RESIST_FLOOR = −0.9`
+   * ⇒ **负抗性 = 该层受额外伤害**（最多 ×1.9）；上限仍是 0.9。
    * ⚠ 与"层位克制系数"（`typeLayerMult`，全局三系克制）**叠加**：本字段是**族/舰级自己的**那一层。
    */
   shieldResist?: DamageResists

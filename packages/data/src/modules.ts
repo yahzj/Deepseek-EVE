@@ -220,7 +220,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 12,
-    description: '攻城级动能巨炮：7.4 km，攻坚炮里的协会制式（蓝图可造，52 CPU 顶级重炮）。',
+    description: '攻城级动能巨炮：7.3 km，攻坚炮里的协会制式（蓝图可造，52 CPU 顶级重炮）。',
     cpuUse: 52,
     maxRangeM: 7350, // 2026-09-08 船长定：动能炮射程 −30%（10500→7350），装填等价缩短（4200→2940）
     // 2026-09-17 船长：「将动能炮MK1~MK3的最小射程修改为500/600/700」⇒ 本件 1200 → **700**（攻坚炮近盲带大幅收窄）
@@ -724,7 +724,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { explosive: 0.25 },
     cpuUse: 4,
-    description: '高爆抗 +25%（上限 90%）。高爆对装甲 ×1.5——这是第一道防线。',
+    description: '高爆抗 +25%（上限 90%）。专为硬抗爆破弹道的装甲层。',
   },
   {
     id: 'mod-armor-pla-1',

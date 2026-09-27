@@ -3943,6 +3943,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 2026-09-26 船长报障：墨潮电子舱原先掉在 `flat` 兜底里、卡面写「全额叠加」（读起来像"可以无限叠"）
      ⇒ 该件单列 `sum` 组，本档写真实机制：同舰多件加和（上限 90%）· 多舰乘法叠加。 */
   "ui.shipInfo.201": { zh: "同舰多件加和（上限 90%）· 多舰乘法叠加", en: "Same ship: additive (cap 90%) · Multiple ships: multiplicative" },
+  /** **机群结构层加成**（2026-09-27 补）：鱿蜂结构层的 `droneHullHpBonusPct` 引擎一直在算
+   *  （`combat.ts:2059` 求和 → `:7663` 放飞时放大结构层），但**卡面原先没有这一行** ⇒ 说明写着效果、卡上查不到。 */
+  "ui.shipInfo.202": { zh: "机群结构层 +{p1}", en: "Drone structure layer +{p1}" },
   "ui.shipInfo.184": { zh: "同类型武器单发 +{p1}（装其它伤害类型的武器无加成）", en: "Weapons of the same damage type deal +{p1} per shot (no bonus with other damage types)" },
   "ui.shipInfo.010": { zh: "跃迁速度", en: "Warp speed" },
   "ui.shipInfo.011": { zh: "质量", en: "Mass" },

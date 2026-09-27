@@ -401,6 +401,19 @@ function clamp(min: number, max: number, v: number): number {
 }
 
 /**
+ * **抗性下限（2026-09-27 船长令：「抗性打算允许负数」）**。
+ *
+ * 口径：抗性 = 减伤比例，**上限仍是 0.9**（既有 90% 顶格不变）；**下限由 0 放开到 −0.9**
+ * ⇒ 抗性可以被削成**负数**，此时该层**受到额外伤害**：`(1 − 抗) = 1 + |抗|`（最多 ×1.9）。
+ * 起因＝**掠袭折射涂层**的负面「全抗性 −15」原先被 `Math.max(0, …)` 吃掉 ⇒ 在**没有基础抗性**的层上
+ * 这条负面完全不生效（说明写着"代价是全抗性 −15"，实际代价为 0）。
+ *
+ * ⚠ 为什么下限也取 0.9：让 `(1 − 抗)` 恒为正且 ≤ 1.9（伤害倍率有界、不会出现负伤害）。
+ * ⚠ **本常量只在这一族（抗性）里用**：`evasion` 那两个 `clamp(0, 0.9, …)` 与它无关，不要顺手改。
+ */
+const RESIST_FLOOR = -0.9
+
+/**
  * 层位克制系数（远行星号体系削弱版）。
  * 2026-09-05 船长改：能量（plasma）对护盾 0.75 → 1.25（能量弹/激光对盾更有效，
  * 三系成为"各有克制侧重"：动能拆盾 1.5、爆炸破甲 1.5、能量拆盾 1.25 且不劣于任何层）。
@@ -517,7 +530,7 @@ export function applyDamage(
   const before = hp.s + hp.a + hp.h
   for (let i = 0; i < 3 && rest > 0; i++) {
     const res = resists[layerName[i]!]?.[type] ?? 0
-    const layerDmg = rest * typeLayerMult(type, layerName[i]!) * (1 - clamp(0, 0.9, res))
+    const layerDmg = rest * typeLayerMult(type, layerName[i]!) * (1 - clamp(RESIST_FLOOR, 0.9, res))
     const absorbed = Math.min(next[layerKey[i]!], layerDmg)
     next[layerKey[i]!] -= absorbed
     rest = Math.max(0, layerDmg - absorbed) // 层破溢出进下一层
@@ -1406,7 +1419,7 @@ function applyAdds(out: DamageResists, add: DamageResists | undefined): void {
     const a = add[t] ?? 0
     if (a <= 0) continue
     const cur = out[t] ?? 0
-    out[t] = clamp(0, 0.9, 1 - (1 - cur) * (1 - a))
+    out[t] = clamp(RESIST_FLOOR, 0.9, 1 - (1 - cur) * (1 - a))
   }
 }
 
@@ -1418,7 +1431,7 @@ function applyAdds(out: DamageResists, add: DamageResists | undefined): void {
 export function mergeResist(base: DamageResists | undefined, add: DamageResists | undefined): DamageResists {
   const out: DamageResists = {}
   for (const t of ['kinetic', 'explosive', 'plasma'] as const) {
-    out[t] = clamp(0, 0.9, 1 - (1 - (base?.[t] ?? 0)) * (1 - (add?.[t] ?? 0)))
+    out[t] = clamp(RESIST_FLOOR, 0.9, 1 - (1 - (base?.[t] ?? 0)) * (1 - (add?.[t] ?? 0)))
   }
   return out
 }
@@ -1749,11 +1762,11 @@ export function createPlayerSpec(
   /** 通用单发伤害加成（亡军火控「伤害 +6%」）：与按系稳定器同链、加算、只进炮台/光束。
    *  ⚠ **插件并进同一个加算池**（火力强化插件 +12%；多件全额、不吃递减 —— 它本就不在 `allDefs` 里）。 */
   const dmgFlat = allDefs.reduce((s, m) => s + (m.damageBonusPct ?? 0), 0) + plugDmg
-  // 全层抗性削减：三层同时扣、下限 0——放在抗性合成与调谐之后 ⇒ 作用于最终值
+  // 全层抗性削减：三层同时扣、**下限 RESIST_FLOOR（可成负数＝易伤）**——放在抗性合成与调谐之后 ⇒ 作用于最终值
   if (resistPen > 0) {
     for (const layer of ['shield', 'armor', 'hull'] as const) {
       for (const rt of ['kinetic', 'explosive', 'plasma'] as const) {
-        resists[layer][rt] = Math.max(0, (resists[layer][rt] ?? 0) - resistPen)
+        resists[layer][rt] = Math.max(RESIST_FLOOR, (resists[layer][rt] ?? 0) - resistPen)
       }
     }
   }
@@ -2757,7 +2770,8 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
        * **层位抗性**（2026-09-15 船长：「我现暂时只打给 **C 族**添加**全血条 25% 爆炸抗性**」）：
        * 从**舰级**读（`FoeShipDef.shieldResist / armorResist / hullResist`；三条都缺省 ⇒ `{}`，
        * 既有舰级零行为变化）。与敌机群那条装配口径一致（同 `FoeDroneDef.defense` 的展开写法）。
-       * ⚠ 抗性只减不减：`applyDamage` 夹 `0~0.9`，所以传进来的负数**不会**变成"易伤"。
+       * ⚠ 抗性**可为负**（2026-09-27 船长令）：`applyDamage` 夹 `RESIST_FLOOR(−0.9) ~ 0.9`，
+       * 所以这里传负数**会**变成"易伤"（该层受额外伤害，最多 ×1.9）。
        */
       resists: {
         ...(ship.shieldResist ? { shield: ship.shieldResist } : {}),

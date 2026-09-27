@@ -171,15 +171,17 @@ describe('虫洞装备新机制（2026-09-13）', () => {
     expect(specOf(w.state, w.ctx).weapons.find((x) => x.kind === 'gun')!.reloadMs).toBe(672)
   })
 
-  it('⑦ 全层抗性削减：三层同减、下限 0', () => {
+  it('⑦ 全层抗性削减：三层同减、**可扣成负数（2026-09-27 船长令「抗性打算允许负数」）**', () => {
     const w = world([gun('mod-g'), moduleDef('mod-pen', 'armor', 0, { rack: 'low', cpuUse: 1, allResistPenaltyPct: 0.15, armorHpBonus: 0.1 })], {
       high: ['mod-g', null, null, null],
       low: ['mod-pen', null, null, null],
     })
     const spec = specOf(w.state, w.ctx)
-    expect(spec.resists.armor?.kinetic ?? 0).toBeCloseTo(0.35, 5) // 船体 0.5 − 0.15
-    expect(spec.resists.shield?.kinetic ?? 0).toBe(0)
-    expect(spec.resists.hull?.kinetic ?? 0).toBe(0)
+    // 船体 0.5 − 0.15（有基础抗性 ⇒ 正数）
+    expect(spec.resists.armor?.kinetic ?? 0).toBeCloseTo(0.35, 5)
+    // 无基础抗性的两层：旧口径夹在 0（负面被吃掉），**新口径 = −0.15（易伤）**
+    expect(spec.resists.shield?.kinetic ?? 0).toBeCloseTo(-0.15, 5)
+    expect(spec.resists.hull?.kinetic ?? 0).toBeCloseTo(-0.15, 5)
   })
 
   it('⑧ 无人机出击周期：−8% 直接乘在无人机的装填（出击节拍）上', () => {
