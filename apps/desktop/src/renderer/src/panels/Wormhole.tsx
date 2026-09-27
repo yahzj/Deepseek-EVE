@@ -542,6 +542,14 @@ export function WormholePanel({
    */
   /** **本趟结算单**（有它 ⇒ 整页只显示结算界面，见船长 2026-09-13）；自动探索模式不看它（那趟与自动队无关） */
   const settle = auto ? null : state.wormhole.lastSettle
+  /**
+   * **乙案**（**2026-09-27 玩家报障修复**，船长批「按你推荐来」）：记下**本面板打开那一刻**
+   * 是否已经躺着一张**上一趟残留**的结算单 —— 玩家没点「确认」就离开了面板（关闭键 / 点遮罩）
+   * 或直接在结算界面退了游戏（`lastSettle` 随档落盘），于是下次点「开始探索」时它又压上来。
+   * 只有这种**残留**情形（且本次是带着库存点进来的）才在确认后**继续进准备页**；
+   * 面板内**撤离/全损当场**产生的结算单不算（那种照旧"确认即关面板"，船长 2026-09-13 原话）。
+   */
+  const settleAtMountRef = useRef(!auto && stockId !== null && state.wormhole.lastSettle !== undefined)
   const holdInfo = run ? engine.wormholeHoldInfo() : null
   const overloaded = holdInfo?.overload ?? false
   /**
@@ -1402,6 +1410,13 @@ export function WormholePanel({
               settle={settle}
               onConfirm={() => {
                 engine.wormholeAckSettle()
+                /**
+                 * **残留结算单 ＋ 带库存点进来 ⇒ 继续进准备页**（乙案）：玩家点「开始探索」的意图是
+                 * **探索这一处**，不是"看上一趟的结算" ⇒ 确认完**不关面板**；结算单一清，
+                 * 面板自然落回准备页（没有 `run` 时 `tab` 的初值本就是 `'prep'`，那处库存也还在 `stockId` 里）。
+                 * 其余情形照旧关面板（船长 2026-09-13：「玩家撤离后弹出一个结算界面…然后关闭虫洞界面」）。
+                 */
+                if (settleAtMountRef.current) return
                 onClose() // 船长：结算完关掉虫洞界面
               }}
             />
