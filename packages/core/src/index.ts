@@ -1896,3 +1896,15 @@ export type {
 /* 调试模式的「本机门禁」（2026-09-25 船长令：只有本地能用，上传后的版本关闭且隐藏） */
 export { isLocalDebugOrigin } from './debugGate'
 
+/**
+ * **技能训练许可**（2026-09-27 船长令：「我想让学习技能有成本」）——
+ * 收费档 rank4/5/6（rank6 为预留档）要先买许可才能排训练；rank1~3 免许可。
+ * 甲案：买许可只解锁**资格**，训练时长与前置链分毫不动。判据与 `enqueueSkill` 共用同一把尺。
+ */
+export {
+  SKILL_LICENSE_PRICES,
+  skillLicensePriceOf,
+  hasSkillLicense,
+  skillLicenseMissing,
+  buySkillLicense,
+} from './skillLicense'

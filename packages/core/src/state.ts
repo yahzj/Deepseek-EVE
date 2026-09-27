@@ -142,6 +142,14 @@ export interface SkillsState {
    * 键 = 技能编号，值 = 本级已练毫秒（0 < 值 < 该级总时长）。
    */
   savedProgress: Record<string, number>
+  /**
+   * **已购训练许可的技能编号**（2026-09-27 船长令「我想让学习技能有成本」）——
+   * 键 = 技能编号，值恒 `true`（用 Record 而非 Set：与 `trained` 同为可直接 JSON 落盘的普通对象）。
+   *
+   * 收费档 = rank4/5/6（价目见 `SKILL_LICENSE_PRICES`，rank6 为预留档）；rank1~3 免许可、
+   * 老档「已练到 Lv≥1」视同已购 ⇒ 判据看 `skillLicenseMissing`，**不写迁移键**。
+   */
+  licenses: Record<string, true>
 }
 
 /** 飞行员基础档案 */
@@ -3143,6 +3151,7 @@ export function createInitialState(opts?: {
       trained: {},
       queue: [],
       savedProgress: {},
+      licenses: {},
     },
     wallet: { isk: prologue ? 0 : DEFAULT_START_ISK },
     shipId: prologue ? 'sh-falconet' : DEFAULT_START_SHIP_ID,

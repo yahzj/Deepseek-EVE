@@ -35,6 +35,7 @@ import {
   changeShip,
   clearSkillQueue,
   createInitialState,
+  buySkillLicense,
   enqueueSkill,
   fitModule,
   adjustDroneLoad,
@@ -1816,6 +1817,20 @@ export class GameEngine {
       this.notify()
     }
     return result
+  }
+
+  /**
+   * **购买技能训练许可**（**2026-09-27 船长令**：「我想让学习技能有成本」）——
+   * 收费档（rank4/5/6，rank6 为**预留档**）先买许可才能排训练；rank1~3 免许可。
+   * 判定（免费档 / 已购 / 老档已练 / 余额）与扣款全在 core 的 `buySkillLicense`，这里只落盘 + 通知。
+   */
+  purchaseSkillLicense(skillId: string): CommandResult & { price?: number } {
+    const r = buySkillLicense(this.state, this.ctx.skills, skillId)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
   }
 
   /** 从训练队列移除第 index 项（0 = 队首）——2026-09-23 起带**依赖级联**（core 侧按 catalog 判） */

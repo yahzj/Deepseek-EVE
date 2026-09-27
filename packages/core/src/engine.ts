@@ -42,6 +42,7 @@ import { advanceComms } from './comms'
 import { FIRST_TASKS, advanceFirstChains, claimableFirstTasks, peakFirst } from './firstTasks'
 import { advanceAchievements } from './achievements'
 import { matterTechNodes } from './matterTech'
+import { skillLicenseMissing, skillLicensePriceOf } from './skillLicense'
 import { claimFirstTask, grantStartRewardsForCurrent } from './firstRewards'
 import { advanceSideTasks } from './sideTasks'
 import { weekendTickBoss } from './weekendEvent'
@@ -582,6 +583,11 @@ export function planPrereqChain(
     for (const pid of d.prereq ?? []) {
       const pdef = catalog.get(pid)
       if (!pdef) continue
+      /**
+       * ⚠ **2026-09-27 训练许可**：缺许可的前置**不排**（排了也会被 `enqueueSkill` 拒）——
+       * 跳过它连同它的更上游，让玩家先在界面买许可；目标入队时会明确报"需要先练 X"，路径不绕。
+       */
+      if (skillLicenseMissing(state, pdef)) continue
       visit(pdef) // 更深的前置先补
       const need = prereqNeedLevel(d, pid)
       while (planned(pid) < need && planned(pid) < MAX_SKILL_LEVEL) {
@@ -694,6 +700,21 @@ export function enqueueSkill(
       error: `「${def.name}」需要先练：${names}。`,
       errorId: 'core.engine.019',
       errorParams: { p1: def.name, p2: names },
+    }
+  }
+  /**
+   * **训练许可校验**（**2026-09-27 船长令**：「我想让学习技能有成本」）——
+   * 收费档（rank4/5/6，rank6 为**预留档**）必须先买许可才能排训练；rank1~3 免许可。
+   * 判据 `skillLicenseMissing` 与界面按钮**共用同一把尺**；老档「已练到 Lv≥1」视同已购（零迁移）。
+   * ⚠ 位置放在**真前置之后**：缺前置与缺许可同时存在时仍先报前置（既有报错顺序与用例一字不变）。
+   */
+  if (skillLicenseMissing(state, def)) {
+    const price = skillLicensePriceOf(def) ?? 0
+    return {
+      ok: false,
+      error: `「${def.name}」需要先购买训练许可（${price.toLocaleString('zh-CN')} ISK）才能训练。`,
+      errorId: 'core.engine.021',
+      errorParams: { p1: def.name, p2: price.toLocaleString('zh-CN') },
     }
   }
   if (!Number.isInteger(targetLevel) || targetLevel < 1 || targetLevel > MAX_SKILL_LEVEL) {
