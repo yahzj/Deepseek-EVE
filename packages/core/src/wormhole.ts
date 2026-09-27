@@ -1806,6 +1806,14 @@ export function wormholeEnter(
    * 「带库存点进来时，先看完结算再落回准备页」的口径（乙案），两案合起来才盖住整条现象。
    */
   delete state.wormhole.lastSettle
+  /**
+   * **"第一次下到第 7 层"的围剿通讯标记**（**2026-09-27 补**，船长批「按你推荐来」）：
+   * 原置位点只有 `wormholeDescend`（本文件 `maybeHintSiege` 的唯一调用处）——正常路径下库存项的
+   * 层深**恒 1**（船长 2026-09-14「所有虫洞都是从 1 层开始探索」）⇒ 要上 7 层必然经过 descend，
+   * 提醒不会漏；但**调试档／异常档**可能带 `origin.depth ≥ 7` 直接进洞 ⇒ 那类档收不到 `msg-wh-siege`。
+   * 这里按**同一把判据**补一道（`maybeHintSiege` 自身幂等：置过就不再送）。
+   */
+  maybeHintSiege(state, r.run.depth)
   bumpFirst(state, 'wormholeRuns') // 第一次任务/链：进洞趟数
   addLog(
     state,
