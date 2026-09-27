@@ -18,7 +18,7 @@
  * - `full`     真档舰队打一场（打出多少伤害、打到第几波、母舰有没有入场）
  * - `kill`     抢到最后一下 ＋ 占比 > 50%（船长爆率表：**必爆** ⇒ 仓库必须有黑匣）
  * - `lowShare` 章鱼先削掉 85%，玩家补最后一下（占比 ≤ 50% ⇒ 表定 10%~100% 线性，**允许不爆**）
- * - `window`   打到一半活动窗口到点（对照：旗舰撤走、不判击沉）
+ * - `window`   打到一半活动窗口到点（**2026-09-27 起的口径：顺延到"打完 + 60 秒"** ⇒ 这一场照常结算）
  *
  * 用法：`npx tsx tools/weekend-flagship-sim.ts [场景…]`（缺省 = 全部）；`npm run weekend:sim`。
  * **只读存档、不写任何档**；随机固定种子，读数可复现。
@@ -38,7 +38,7 @@ import {
   WEEKEND_WINDOW_MS,
 } from '@whale/core'
 import { weekendNoteFlagshipDamage, WEEKEND_FLAGSHIP_POOL_HP } from '../packages/core/src/weekendEvent'
-import { weekendStartFlagshipBattle } from '../packages/core/src/weekendLaunch'
+import { weekendStartFlagshipBattle, weekendFlagshipBattleActive } from '../packages/core/src/weekendLaunch'
 import { weekendFlagshipSpecOf } from '../packages/core/src/weekendBattle'
 import type { BattleState, GameState } from '../packages/core/src/state'
 
@@ -157,7 +157,8 @@ function run(s: GameState, nowWallMs: number, o: ScenarioOpts): Reading {
   let battle: BattleState | null = null
   for (let i = 0; i < (o.maxTicks ?? 3200); i += 1) {
     const wall = nowWallMs + i * STEP_MS
-    weekendTick(s, ctx, wall, wall - STEP_MS)
+    /** 第 5 参 = 旗舰战是否在打（2026-09-27 顺延口径；判据与引擎/战斗界面同源） */
+    weekendTick(s, ctx, wall, wall - STEP_MS, weekendFlagshipBattleActive(s))
     advanceGame(s, STEP_MS, ctx, { nowWallMs: wall })
     weekendSettleAndGrant(s, ctx, wall)
     ticks += 1
@@ -286,9 +287,14 @@ for (const name of list) {
     })
   }
   if (name === 'window') {
-    /** 打到一半活动窗口到点（把墙钟拨到 T0+窗口末尾前 20 秒 ⇒ `weekendTick` ④ 会在战斗中途结束本场） */
+    /**
+     * 打到一半活动窗口到点（把墙钟拨到 T0+窗口末尾前 20 秒）。
+     * ⚠ **2026-09-27 船长令后的预期**：还有没打完的旗舰战 ⇒ `weekendTick` ④ **不顺延就不结束**
+     * ——本场入侵顺延到"战斗打完 + 60 秒"才按窗口到点收场，那一场的伤害/判沉/掉落**照常落账**
+     * （改动前是"整场白打"：母舰血条打到 0 也不记）。
+     */
     const firstT0 = WEEKEND_FIRST_T0_WALL_MS ?? 0
-    scenario('window', '打到一半活动窗口到点（对照：旗舰撤走、不判击沉）', {
+    scenario('window', '打到一半活动窗口到点（顺延到"打完 + 60 秒" ⇒ 这一场照常结算）', {
       startedAgoMs: WEEKEND_WINDOW_MS - 20_000,
       clockOffsetMs: firstT0 + WEEKEND_WINDOW_MS - 20_000 - Date.now(),
       trace: true,

@@ -427,6 +427,23 @@ export interface WeekendEventState {
    * ⚠ **随档落盘**（`save.ts` 读档侧必须认它）：否则读档即丢 ⇒ 冷却被读档绕过。
    */
   octopusHoldUntilWallMs?: number
+  /**
+   * **窗口结束的顺延终点**（**船长 2026-09-27 令**：「**到点的延期到玩家打完1分钟后**」；
+   * 常量见 `WEEKEND_WINDOW_END_HOLD_MS`）。
+   *
+   * 口径：
+   * - **判据 = "此刻还有一场没打完的旗舰战"**（`weekendLaunch.weekendFlagshipBattleActive`，读的是
+   *   存档里的遭遇槽 ⇒ **打到一半退出游戏、回来接着打也算"没打完"**，不会因为掉线丢场次）；
+   * - 窗口到点后有战斗在打 ⇒ 本拍**不结束**，并把本格推到 `now + 60 秒`（与章鱼停工同一把尺）；
+   * - 战斗结束后这 60 秒里**仍然不结束**；满 60 秒那一拍才按窗口到点结束（文案走 `ui.weekend.117`）；
+   * - **顺延期间章鱼人也不判得手**（船长同日裁定「要一起闸」）⇒ 不会出现"延期了却被章鱼先收走"；
+   * - **不设上限**（船长 2026-09-27 裁定「甲」）：那场没打完就一直等；弃场的最坏情况 = 本场入侵
+   *   吊到下周窗口开新场时被顶掉（`ensureWeekendEvent` 到点即开新场）。
+   *
+   * ⚠ **随档落盘**（`save.ts` 读档侧必须认它）：否则读档即丢 ⇒ 顺延被读档绕过。
+   * 缺省（老档 / 从没顺延过）= 不顺延 ⇒ **零迁移**。
+   */
+  windowEndHoldUntilWallMs?: number
   /* ─── 结束结算（2026-09-25 · M1-b 收尾）─── */
   /**
    * **贡献奖已发放的墙钟**（幂等标记；缺省 = 还没结过）。
@@ -539,6 +556,21 @@ export const WEEKEND_BOSS_TICK_MAX_MS = 5_000
  * ⚠ 本常量**只影响"什么时候开始削"**：速率、窗口、封顶、`need ≤ 0` 不由章鱼认领等口径一律不变。
  */
 export const WEEKEND_OCTOPUS_HOLD_MS = 60_000
+
+/**
+ * **窗口到点的顺延时长**（**船长 2026-09-27 令**：「**到点的延期到玩家打完1分钟后**」）。
+ *
+ * 场景：活动窗口到点那一刻玩家**正在打旗舰战**——改动前那一场会被整场作废（伤害台账/判沉/黑匣/
+ * 残骸/日志全丢，玩家白打；`weekend:sim` 的 `window` 场景可复现）。现改为：还有没打完的旗舰战 ⇒
+ * 本场入侵**不结束**，每拍把 `ev.windowEndHoldUntilWallMs` 推后到 `now + 本常量` ⇒ 那场打完
+ * **再满 60 秒**才按窗口到点结束。
+ *
+ * ⚠ 与 `WEEKEND_OCTOPUS_HOLD_MS`（章鱼停工 60 秒）**同值但语义独立**：一个管"章鱼什么时候开始削"、
+ * 一个管"窗口什么时候算到点"，两把闸各自可调，**不要合并成一个常量**。
+ * ⚠ **只有旗舰战**触发（与章鱼停工同一把尺）；其它入侵战斗不顺延。
+ * ⚠ 顺延期间活动**仍然活着** ⇒ 战斗收尾走的是正常结算路径（不需要在结算侧另开特例）。
+ */
+export const WEEKEND_WINDOW_END_HOLD_MS = 60_000
 
 /**
  * 入侵族池（口径定稿：**A 变种 / C / G / 新族×2**）。
@@ -1245,17 +1277,23 @@ export interface WeekendTickResult {
  * **引擎每拍调用一次**（M1-b）：
  * 1. `ensureWeekendEvent` 开局面（正常模式：周五 20:00 的周排期 ＋ 声望前提；调试档：结束 +1h；
  * 2. 旗舰 anchor **落盘**（首次满分且在线那一拍 ⇒ 倒计时从此稳定，不再随 tick 漂移）；
- * 3. 章鱼人得手（`view.down === octopus`）⇒ 写 `flagshipDown` 并结束本场；
- * 4. 正常模式的窗口到点（T0+96h）⇒ 结束本场；
+ * 3. 章鱼人得手（`view.down === octopus`）⇒ 写 `flagshipDown` 并结束本场
+ *    （⚠ **还有没打完的旗舰战时不判**：见 `flagshipBattleActive`，船长 2026-09-27 裁定「要一起闸」）；
+ * 4. 正常模式的窗口到点（T0+96h）⇒ 结束本场
+ *    （⚠ **还有没打完的旗舰战 ⇒ 顺延到"打完 + 60 秒"**：船长 2026-09-27 令「到点的延期到玩家打完1分钟后」，
+ *    见 `WEEKEND_WINDOW_END_HOLD_MS`）；
  * 5. 交出"该掷遇袭骰的星系与概率"（**不在本函数里掷**：随机源归引擎）。
  *
  * ⚠ 纯函数（除改 `state.weekendEvent` 的落盘字段外不碰别处）⇒ 用例可对任意时刻断言。
+ *
+ * @param flagshipBattleActive 入侵旗舰战是否正在进行（**唯一会触发顺延的那一场**；缺省 = 否）
  */
 export function weekendTick(
   state: GameState,
   ctx: SimContext,
   nowWallMs: number,
   lastSeenWallMs: number,
+  flagshipBattleActive = false,
 ): WeekendTickResult {
   const started = ensureWeekendEvent(state, ctx, nowWallMs)
   const ev = state.weekendEvent
@@ -1272,17 +1310,29 @@ export function weekendTick(
   }
 
   // ③ 章鱼人得手 ⇒ 结束本场（贡献奖照给——结算由调用方做）
+  //    ⚠ **还有没打完的旗舰战 ⇒ 本拍不判**（船长 2026-09-27 裁定「要一起闸」）：否则掉线超 24h
+  //      回来的那一拍，章鱼可能先把玩家正在打的那一场判走 —— 等于白延期（与 ④ 用同一把闸）。
   let ended = false
   let flagshipDown: WeekendTickResult['flagshipDown']
-  if (view.down === 'octopus' && weekendClaimOctopus(state, ev, nowWallMs)) {
+  if (!flagshipBattleActive && view.down === 'octopus' && weekendClaimOctopus(state, ev, nowWallMs)) {
     flagshipDown = 'octopus'
     ended = true
   }
 
   // ④ 正常模式窗口到点（调试模式不定长，不按窗口收）
   if (!ended && !weekendDebugOn(state) && nowWallMs >= ev.startedAtWallMs + WEEKEND_WINDOW_MS) {
-    endWeekendEvent(state, nowWallMs)
-    ended = true
+    /**
+     * **顺延**（**船长 2026-09-27 令**：「**到点的延期到玩家打完1分钟后**」）：窗口到点那一刻还有
+     * 没打完的旗舰战 ⇒ 本拍**不结束**，把顺延终点推到 `now + 60 秒`；战斗结束后这 60 秒走完才结束。
+     * 于是"窗口到点那一场"照常结算（伤害/判沉/黑匣/残骸/日志），不再整场作废。
+     * ⚠ 不设上限（船长同日裁定「甲」）：那场没打完就一直等，弃场由"下周开新场"自然兜住。
+     */
+    if (flagshipBattleActive) {
+      ev.windowEndHoldUntilWallMs = nowWallMs + WEEKEND_WINDOW_END_HOLD_MS
+    } else if (nowWallMs >= (ev.windowEndHoldUntilWallMs ?? 0)) {
+      endWeekendEvent(state, nowWallMs)
+      ended = true
+    }
   }
 
   // ⑤ 交出遇袭候选（未夺回的占领区）

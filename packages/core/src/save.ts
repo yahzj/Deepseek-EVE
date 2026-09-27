@@ -3137,6 +3137,12 @@ function normalizeState(raw: unknown): GameState {
            * 不认它 ⇒ 读档即丢 ⇒ **冷却被读档绕过**（同类旧账：`bossHpLayers` 那三格当初没过清洗器）。
            */
           const octopusHold = strictKeep(weekendRaw.octopusHoldUntilWallMs)
+          /**
+           * **窗口结束的顺延终点**（**2026-09-27 船长令**：「到点的延期到玩家打完1分钟后」）——
+           * 与 `octopusHoldUntilWallMs` 同款：不认它 ⇒ 读档即丢 ⇒ **顺延被读档绕过**
+           * （窗口一到点、读一次档就把玩家正在打的那一场作废了）。
+           */
+          const windowEndHold = strictKeep(weekendRaw.windowEndHoldUntilWallMs)
           const prizePaid = strictKeep(weekendRaw.prizePaidAtWallMs)
           const assaultDraws = weekendKeep(weekendRaw.assaultDraws)
           /** 入侵「重复出击」的循环目标（**可选字段**：缺键 = 没开；本批新增，不动结构版本） */
@@ -3183,6 +3189,7 @@ function normalizeState(raw: unknown): GameState {
             ...(runId !== undefined ? { flagshipRunId: runId } : {}),
             ...(bossTick !== undefined ? { bossTickWallMs: bossTick } : {}),
             ...(octopusHold !== undefined ? { octopusHoldUntilWallMs: octopusHold } : {}),
+            ...(windowEndHold !== undefined ? { windowEndHoldUntilWallMs: windowEndHold } : {}),
             ...(prizePaid !== undefined ? { prizePaidAtWallMs: prizePaid } : {}),
             ...(assaultDraws !== undefined ? { assaultDraws } : {}),
             ...(autoLoopGalaxyId.length > 0 ? { autoLoopGalaxyId } : {}),

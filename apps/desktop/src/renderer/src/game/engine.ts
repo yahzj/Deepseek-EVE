@@ -1142,7 +1142,12 @@ export class GameEngine {
      * 开新场、把旧场覆盖掉。core 侧按 `prizePaidAtWallMs` 落盘标记判重 ⇒ 每拍调也只会发一次。
      */
     this.settleWeekendPrize(wallNow)
-    const weekend = weekendTick(this.state, this.ctx, wallNow, lastSeenWallMs)
+    /**
+     * ⚠ **第 5 参 = 旗舰战是否正在进行**（**船长 2026-09-27 令**：「**到点的延期到玩家打完1分钟后**」）：
+     * 窗口到点那一刻还有没打完的旗舰战 ⇒ `weekendTick` ④ 不结束本场、改为顺延到"打完 + 60 秒"
+     * （判据与战斗界面、章鱼停工同源：`weekendFlagshipBattleActive`），顺延期间章鱼人也不判得手。
+     */
+    const weekend = weekendTick(this.state, this.ctx, wallNow, lastSeenWallMs, weekendFlagshipBattleActive(this.state))
     this.refreshAnomaliesView() // 被占星系在界面侧换成入侵舰队（每拍刷新，开销极小）
     if (weekend.started) {
       addLog(this.state, 'system', tr('ui.weekend.001'), 'ui.weekend.001')
