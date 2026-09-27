@@ -28,7 +28,7 @@ import { addLog } from './state'
 import type { SkillCatalog, SkillDef } from './types'
 
 /**
- * **许可价目表**（ISK）——键 = 技能 rank。
+ * **许可价目表**（信用点）——键 = 技能 rank。
  * ⚠ rank6 是**预留档**（船长 2026-09-27：「rank6是预留的」）：当前无 rank6 技能，但表先写好，
  * 以后往 `SKILLS` 里加 rank6 技能即按 100 万收费，不需要改这里之外的任何代码。
  */
@@ -38,7 +38,7 @@ export const SKILL_LICENSE_PRICES: Readonly<Record<number, number>> = {
   6: 10_000_000, // 1000 万（预留档）
 }
 
-/** 该技能的许可价（ISK）；`null` = **免许可**（rank1~3 或数据表里没登记的 rank） */
+/** 该技能的许可价（信用点）；`null` = **免许可**（rank1~3 或数据表里没登记的 rank） */
 export function skillLicensePriceOf(def: Pick<SkillDef, 'rank'>): number | null {
   return SKILL_LICENSE_PRICES[def.rank] ?? null
 }
@@ -75,7 +75,7 @@ export function buySkillLicense(
   error?: string
   errorId?: string
   errorParams?: Readonly<Record<string, string | number>>
-  /** 成功时返回实付金额（ISK），供界面回话用 */
+  /** 成功时返回实付金额（信用点），供界面回话用 */
   price?: number
 } {
   const def = catalog.get(skillId)
@@ -116,7 +116,7 @@ export function buySkillLicense(
   if (state.wallet.isk < price) {
     return {
       ok: false,
-      error: `购买「${def.name}」的训练许可需要 ${price.toLocaleString('zh-CN')} ISK，当前只有 ${state.wallet.isk.toLocaleString('zh-CN')} ISK。`,
+      error: `购买「${def.name}」的训练许可需要 ${price.toLocaleString('zh-CN')} 信用点，当前只有 ${state.wallet.isk.toLocaleString('zh-CN')} 信用点。`,
       errorId: 'core.skillLicense.005',
       errorParams: { p1: def.name, p2: price.toLocaleString('zh-CN'), p3: state.wallet.isk.toLocaleString('zh-CN') },
     }

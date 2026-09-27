@@ -712,7 +712,7 @@ export function enqueueSkill(
     const price = skillLicensePriceOf(def) ?? 0
     return {
       ok: false,
-      error: `「${def.name}」需要先购买训练许可（${price.toLocaleString('zh-CN')} ISK）才能训练。`,
+      error: `「${def.name}」需要先购买训练许可（${price.toLocaleString('zh-CN')} 信用点）才能训练。`,
       errorId: 'core.engine.021',
       errorParams: { p1: def.name, p2: price.toLocaleString('zh-CN') },
     }
