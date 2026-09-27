@@ -400,9 +400,9 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
   /**
    * **④′ 反方向也补齐**（同一批修；**2026-09-21 改口径**）：
    * 长途运输 ⇒ 开扫**先警告**（`core.activityGate.002`，界面两段确认）· 快递在途 ⇒ **拒**（不可中断）·
-   * 亲自开炉 / 亲自开线 ⇒ **自动停掉后照常开扫**。两个方向仍由同一把尺兜住（不再各写一份）。
+   * 亲自开炉 / 亲自开线 ⇒ **也走"先警告"**（**2026-09-27 船长令「亲自开炉 · 亲自开线也添加警告」**）。
    */
-  it('④′ 长途运输（警告）/ 快递（拒）/ 亲自开炉·开线（自动停）⇒ 开扫的三种口径', () => {
+  it('④′ 长途运输 / 亲自开炉 / 亲自开线（都先警告）/ 快递（拒）⇒ 开扫的三种口径', () => {
     // 长途运输：首击只警告（可中断那一档）
     {
       const { state } = fresh()
@@ -422,7 +422,8 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
       expect(r.ok).toBe(false)
       expect(r.error ?? '').toContain('不能中断')
     }
-    // 亲自开炉 / 亲自开线：**自动停掉**后照常开扫（进度丢弃——船长 2026-09-21 答 2）
+    // 亲自开炉 / 亲自开线：**先警告**（**2026-09-27 船长令「亲自开炉 · 亲自开线也添加警告」**）
+    //   ⇒ 首击不切：回 warning id、**本线照旧在跑**（"当前那批进度丢弃"那条口径未变，只是不再静默执行）
     for (const [name, patch] of [
       [
         '亲自开炉（精炼）',
@@ -437,10 +438,13 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
       const { state } = fresh()
       patch(state)
       const r = wormholeScanStart(state, ctx)
-      expect(r.ok, `${name} 期间开扫应当自动停掉它`).toBe(true)
-      expect(state.refineRuns.some((x) => x.active && x.worker === 'pilot')).toBe(false)
-      expect(state.manufacturingRuns.some((x) => x.active && x.worker === 'pilot')).toBe(false)
-      expect(state.logs.some((l) => l.text.startsWith('已自动停止「'))).toBe(true)
+      expect(r.ok, `${name} 期间开扫应当先警告`).toBe(false)
+      expect(r.errorId, name).toBe('core.activityGate.002')
+      expect(
+        state.refineRuns.some((x) => x.active && x.worker === 'pilot') ||
+          state.manufacturingRuns.some((x) => x.active && x.worker === 'pilot'),
+        `${name} 首击不该被停掉`,
+      ).toBe(true)
     }
     // 对照：AI 核心驱动的炉/线**不占主控** ⇒ 照旧能开扫（且**不受影响**）
     {
