@@ -299,6 +299,8 @@ import {
   skillCancelImpact,
   /** 2026-09-27 船长令「措辞分档」：旗舰占比按玩家优先口径取（玩家允许挤掉章鱼人的输出） */
   weekendFlagshipSharesOf,
+  /** 2026-09-27 整理：旗舰归属判据收口（留档优先）——与结算快照同源 */
+  weekendFlagshipOutcomeOf,
 } from '@whale/core'
 import type {
   AiCoreType,
@@ -978,9 +980,10 @@ export class GameEngine {
    * ② `compensateMissingWeekendBlackBox` —— 给"推送前打完入侵却没拿到黑匣"的档补发 1 枚
    *    （判据 = 结算信 ＋ 快照实发数 0 ＋ 至今无黑匣/无插件实物）。
    *
-   * ⏳ **明日删除**（**船长令 2026-09-26**：「**备注下，明天删除这个修正，防止之后出错**」）：
-   * 这两条都是**一次性修正**，2026-09-27 连同本方法一起删（删除清单见
-   * `expedition.ts` / `weekendComms.ts` 里那两段同名横幅；`git grep 明日删除` 一次列全）。
+   * ⏳ **待删 · 但船长 2026-09-27 复令「先不删」**（原令 2026-09-26：「**备注下，明天删除这个修正，
+   * 防止之后出错**」）：这两条都是**一次性修正**，原定 2026-09-27 删，**现日期不再是删除条件**——
+   * 判据改成"**确认受影响的所有档都登录过、修正已生效/补发已落地**"再删（要删先问船长）。
+   * 删除清单见 `expedition.ts` / `weekendComms.ts` 里那两段同名横幅；`git grep 明日删除` 一次列全。
    *
    * **位置**：两条都必须在**离线结算之前**跑完 —— ① 决定声望门槛（离线远征/入侵按它判），
    * ② 决定黑匣是否入仓（离线期间的入库日志顺序也会跟着对）。
@@ -1161,45 +1164,51 @@ export class GameEngine {
     }
     if (weekend.ended) {
       const ev = this.state.weekendEvent
-      const octopus = weekend.flagshipDown === 'octopus'
       /**
-       * **章鱼人得手那一条按黑匣结果分文案**（**船长 2026-09-25 令**改爆率后："章鱼人摧毁 ⇒ 黑匣归零"
-       * 不再成立：玩家没抢到最后一下时按 `25% × 输出占比` 掷，掷中照发）⇒
-       * 掷中 = `ui.weekend.102`（残骸里寻获黑匣）· 没掷中 = `ui.weekend.003`（黑匣归零，原句）。
-       * ⚠ 窗口到点（`ui.weekend.004`：旗舰撤走）不掷黑匣，照旧。
+       * **归属只读一处判据**（**2026-09-27 整理**）：`weekendFlagshipOutcomeOf`（core，**留档优先**）——
+       * 结算快照读的是同一个它，界面这边不再自己拼一遍"留档 vs flagshipDown"。这里只做**文案分档**。
        *
-       * 🔴 **2026-09-27 船长令（措辞分档 ＋ 留档优先）**：「**只记录作为判定，根据不同情况改变措辞**
-       * （玩家只抢最后一下但是没多少输出就说玩家参与度过低，黑匣被章鱼人拿走之类的）」＋
-       * 「**都有开关记录了，为什么还会显示被章鱼人抢头？**」：
-       * - **有"玩家亲手击沉"的留档 ⇒ 一律按玩家击沉说**（`ui.weekend.107`；这类场次本不该出现，
-       *   一旦出现以留档为准并记一条 warn 诊断，见下）；
-       * - 章鱼收尾那两条**带上玩家输出占比**（`p1`，走 `weekendFlagshipSharesOf` 的玩家优先口径）；
-       * - 窗口到点：本场有旗舰 ⇒ `ui.weekend.106`（旗舰撤走、未判击沉）；没有旗舰 ⇒ 原句 `ui.weekend.004`。
+       * 三档 × 两个细分 = 六条文案，全部可达（**2026-09-27 code-review 修**：此前写成嵌套
+       * `playerKilled ? octopus ? … : …`，而 `playerKilled` 与 `octopus` 互斥 ⇒ 115/116 成了死分支）：
+       * - `octopus`（本场由章鱼收尾）⇒ 按黑匣结果分：掷中 `ui.weekend.102` · 没掷中 `ui.weekend.003`。
+       *   两条都带玩家输出占比（`p1`，走 `weekendFlagshipSharesOf` 的玩家优先口径）。
+       * - `player`（归属判给了玩家，但本场却是"章鱼/窗口"结束的 —— **留档与 `flagshipDown` 打架**，本不该出现）：
+       *   由章鱼收尾 ⇒ `ui.weekend.115`（黑匣到手）/ `ui.weekend.116`（未爆）；由窗口结束 ⇒ `ui.weekend.118`（战利品未能入账）。
+       *   同时记一条 warn 诊断，见下。
+       * - `window`（窗口到点）：本场有旗舰 ⇒ `ui.weekend.117`（旗舰撤走、未判击沉）；没有旗舰 ⇒ 原句 `ui.weekend.004`。
        */
       const box = ev?.flagshipBlackBox === true
-      const playerKilled = ev?.flagshipPlayerKill !== undefined
+      const outcome = weekendFlagshipOutcomeOf(ev)
       const hasFlagship = ev?.flagshipHpMax !== undefined
       const sharePct = Math.round(weekendFlagshipSharesOf(ev).player * 100)
-      const id = playerKilled
-        ? octopus
-          ? box
-            ? 'ui.weekend.115'
-            : 'ui.weekend.116'
-          : 'ui.weekend.118'
-        : octopus
+      /** 本场是不是"章鱼人得手"结束的（判"归属打架"那一档的细分要用它，不能拿 `outcome` 顶替） */
+      const endedByOctopus = ev?.flagshipDown === 'octopus'
+      /**
+       * ⟪文案调整 2026-09-27⟫ 船长令「措辞分档」：这一支决定玩家看到六条结束文案里的哪一条
+       * （文案本体与"原 → 新"见 `packages/data/src/l10n/table.ts` 的四个 `⟪文案调整⟫` 记号 ＋
+       * 本批工作文档的「文案调整台账」）。
+       */
+      const id =
+        outcome === 'octopus'
           ? box
             ? 'ui.weekend.102'
             : 'ui.weekend.003'
-          : hasFlagship
-            ? 'ui.weekend.117'
-            : 'ui.weekend.004'
+          : outcome === 'player'
+            ? endedByOctopus
+              ? box
+                ? 'ui.weekend.115'
+                : 'ui.weekend.116'
+              : 'ui.weekend.118'
+            : hasFlagship
+              ? 'ui.weekend.117'
+              : 'ui.weekend.004'
       addLog(this.state, 'system', tr(id, { p1: sharePct }), id, { p1: sharePct })
       /**
        * **归属不一致的诊断**（**2026-09-27 船长令**批的「以开关为准显示 ＋ 记一条 warn 诊断」）：
        * 留档说"玩家亲手击沉"、`flagshipDown` 却说"章鱼人得手"——两条判据打起来了。
        * 显示以留档为准（上面那两支），这里留一条 warn 便于日后查档。
        */
-      if (playerKilled && octopus) {
+      if (outcome === 'player' && endedByOctopus) {
         addLog(
           this.state,
           'warn',

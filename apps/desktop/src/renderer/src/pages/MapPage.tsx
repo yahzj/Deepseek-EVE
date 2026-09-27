@@ -27,6 +27,8 @@ import {
   wreckDensityOf,
   WEEKEND_WRECK_TARGET,
   weekendWreckDensityOf,
+  /** 2026-09-27 船长令：入侵残骸场里的箱子（主力舰队掉落）——卡名与置顶分级都要看它 */
+  weekendRareWreckCountOf,
   RECYCLE_YIELD_PER_M3,
   RECYCLE_POOL_AVG_ISK,
   RARE_WRECK_VOLUME_M3,
@@ -751,7 +753,8 @@ function SalvageTab({
    */
   const pinTierOf = (x: (typeof wreckRows)[number]): number => {
     if (shipWrecksOf(state, x.galaxy.id).length > 0) return 0
-    if (weekendWreckDensityOf(state, x.galaxy.id) > 0) return 1
+    // ⚠ 2026-09-27：**只剩箱子**（矿物捞干、稀有还在）也算"有入侵残骸"——不然那个星系会掉到 2 档
+    if (weekendWreckDensityOf(state, x.galaxy.id) > 0 || weekendRareWreckCountOf(state, x.galaxy.id) > 0) return 1
     return 2
   }
   const sortedGalaxies = [...wreckRows].sort((x, y) => {
@@ -905,9 +908,15 @@ function SalvageTab({
               const targets = engine.salvageTargetsAt(g.id, true) // 只读（渲染期不写档）
               const wrecks = shipWrecksOf(state, g.id)
               const invWreck = weekendWreckDensityOf(state, g.id)
+              /** **入侵残骸场里的箱子**（2026-09-27 船长令）：矿物可能被捞干、箱子还在 ⇒ 读数与卡序都要看它 */
+              const invRare = weekendRareWreckCountOf(state, g.id)
               const groupRows = targets.filter((t) => t.groupKey !== WEEKEND_WRECK_TARGET)
               /** 卡片序列 = 纯函数（同一个星系最多三张；顺序即优先级，见 `wreckCardSequenceOf` 头注） */
-              const cardSeq = wreckCardSequenceOf({ shipWreckCount: wrecks.length, invasionWreckM3: invWreck })
+              const cardSeq = wreckCardSequenceOf({
+                shipWreckCount: wrecks.length,
+                invasionWreckM3: invWreck,
+                invasionRareCount: invRare,
+              })
               const mk = (opts: { key: string; label: string; cardDensity: number; showAi?: boolean; showInvasionBar?: boolean }) => (
                 <WreckCard
                   key={`${g.id}|${opts.key}`}
@@ -940,7 +949,16 @@ function SalvageTab({
                   })
                 }
                 if (kind === 'invasion') {
-                  return mk({ key: WEEKEND_WRECK_TARGET, label: tr('ui.MapPage.121'), cardDensity: invWreck, showInvasionBar: true })
+                  return mk({
+                    key: WEEKEND_WRECK_TARGET,
+                    /**
+                     * **有箱子就把稀有件数写在卡名上**（**2026-09-27 船长令**：主力舰队打赢留下的箱子进残骸场
+                     * ⇒ 玩家得看得见它）：`ui.MapPage.121` = 「入侵残骸」· `ui.MapPage.122` = 「入侵残骸 · 稀有 ×N」。
+                     */
+                    label: invRare > 0 ? tr('ui.MapPage.122', { p1: String(invRare) }) : tr('ui.MapPage.121'),
+                    cardDensity: invWreck,
+                    showInvasionBar: true,
+                  })
                 }
                 return mk({ key: '', label: tr('ui.MapPage.120'), cardDensity: density, showAi: true })
               })

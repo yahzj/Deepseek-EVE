@@ -100,7 +100,8 @@ describe('旗舰 BOSS 池 · 累计伤害', () => {
     expect(weekendNoteFlagshipDamage(ev, 0)).toBe(false)
     expect(ev.flagshipHpMax, '2026-09-25：池子固定 ⇒ 接战即立起').toBe(WEEKEND_FLAGSHIP_POOL_HP)
     expect(ev.flagshipHpDone ?? 0).toBe(0)
-    expect(weekendBossPoolView(s, ev)!.needDmg).toBe(WEEKEND_FLAGSHIP_POOL_HP)
+    /** ⚠ 2026-09-27 整理：原先这里断言的是 `needDmg`（与 `hpLeft` 恒同值的重复读数）⇒ 该字段已删，改断言 `hpLeft` */
+    expect(weekendBossPoolView(s, ev)!.hpLeft).toBe(WEEKEND_FLAGSHIP_POOL_HP)
   })
 
   it('母舰血条 = **池子剩余**（船长选甲）：`weekendFlagshipHpRemaining` 随累计伤害下降、下限 1', () => {
