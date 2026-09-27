@@ -35,6 +35,7 @@ import {
   weekendSettleAndGrant,
   weekendTick,
   WEEKEND_FIRST_T0_WALL_MS,
+  WEEKEND_WINDOW_MS,
 } from '@whale/core'
 import { weekendNoteFlagshipDamage, WEEKEND_FLAGSHIP_POOL_HP } from '../packages/core/src/weekendEvent'
 import { weekendStartFlagshipBattle } from '../packages/core/src/weekendLaunch'
@@ -53,7 +54,7 @@ const SEED = 4092153844
 const BOSS_SHIP_ID = 'foe-h-ink-flagship'
 
 interface ScenarioOpts {
-  /** 活动已开了多久（毫秒）；窗口 = 74 小时。`startedAt` 另有下限：不得早于首场 T0 */
+  /** 活动已开了多久（毫秒）；窗口 = WEEKEND_WINDOW_MS（现 96 小时）。`startedAt` 另有下限：不得早于首场 T0 */
   startedAgoMs?: number
   /**
    * **模拟墙钟**（相对真实现在的偏移）：引擎的 `ensureWeekendEvent` 会按周排期/首场 T0 校正手上的场次，
@@ -285,11 +286,11 @@ for (const name of list) {
     })
   }
   if (name === 'window') {
-    /** 打到一半活动窗口到点（把墙钟拨到 T0+74h 前 20 秒 ⇒ `weekendTick` ④ 会在战斗中途结束本场） */
+    /** 打到一半活动窗口到点（把墙钟拨到 T0+窗口末尾前 20 秒 ⇒ `weekendTick` ④ 会在战斗中途结束本场） */
     const firstT0 = WEEKEND_FIRST_T0_WALL_MS ?? 0
     scenario('window', '打到一半活动窗口到点（对照：旗舰撤走、不判击沉）', {
-      startedAgoMs: 74 * 3_600_000 - 20_000,
-      clockOffsetMs: firstT0 + 74 * 3_600_000 - 20_000 - Date.now(),
+      startedAgoMs: WEEKEND_WINDOW_MS - 20_000,
+      clockOffsetMs: firstT0 + WEEKEND_WINDOW_MS - 20_000 - Date.now(),
       trace: true,
     })
   }

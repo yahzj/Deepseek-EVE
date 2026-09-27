@@ -1,7 +1,7 @@
 /**
  * **周末入侵活动 · M1 骨架用例**（2026-09-23 船长令：「Q1，威胁降低，依旧是单舰。其他按你推荐。」）
  *
- * 覆盖：时间轴（周五 20:00 / 74h 窗口 / 调试模式 +1h 刷新）· 占领（核心约束 ＋ 外围＝全部邻居）
+ * 覆盖：时间轴（周五 20:00 / 窗口 WEEKEND_WINDOW_MS，2026-09-27 起 96h / 调试模式 +1h 刷新）· 占领（核心约束 ＋ 外围＝全部邻居）
  * · 幂等与独立随机子流 · 进度（玩家投入 ＋ NPC 铺底 ＋ 核心门禁）· 遇袭概率与伏击强度
  * · 旗舰倒计时（含离线保护与 Q3 的">24h 自满 24h 起算"）· 贡献占比与四档 · 存档往返（老档缺键 ⇒ 无入侵）。
  */
@@ -76,13 +76,13 @@ function evOf(coreId: string, peripheryIds: string[], startedAtWallMs = 0): Week
 }
 
 describe('周末入侵 · 时间轴', () => {
-  it('T0 = 该时刻之前最近的周五 20:00；窗口 = 74 小时', () => {
+  it('T0 = 该时刻之前最近的周五 20:00；窗口 = WEEKEND_WINDOW_MS（96 小时）', () => {
     // 2026-09-25 是周五
     const fri = new Date(2026, 8, 25, 20, 0, 0, 0).getTime()
     expect(new Date(weekendT0Of(fri + 3 * H)).getDay(), '周五').toBe(5)
     expect(weekendT0Of(fri + 3 * H)).toBe(fri)
     expect(weekendWindowOpen(fri + 3 * H, fri)).toBe(true)
-    expect(weekendWindowOpen(fri + WEEKEND_WINDOW_MS, fri), '窗口 74h 后关闭').toBe(false)
+    expect(weekendWindowOpen(fri + WEEKEND_WINDOW_MS, fri), '窗口（96h）后关闭').toBe(false)
     // 周五 20:00 之前 ⇒ 用上一周的 T0；窗口已关
     expect(weekendT0Of(fri - H)).toBe(fri - 7 * 24 * H)
     expect(weekendWindowOpen(fri - H, weekendT0Of(fri - H))).toBe(false)
@@ -116,7 +116,7 @@ describe('周末入侵 · 时间轴', () => {
   /**
    * **一个窗口只开一场**（2026-09-25 修）：原判据要求"未结束" ⇒ 旗舰被击沉、窗口还没到点时，
    * 下一拍会**立刻又开一场**（与定稿「每周末一次」＋「只有调试模式才是结束后 1 小时刷新」冲突）。
-   * 现按窗口判：上一场开始至今不足 74h ⇒ 不再开新场。
+   * 现按窗口判：上一场开始至今不足一个窗口（96h）⇒ 不再开新场。
    */
   it('同一窗口内：上一场已结束也不再开新场（下一个 T0 才开）', () => {
     const fri = new Date(2026, 9, 2, 20, 0, 0, 0).getTime()  // 2026-10-02（首场时段之外，走纯周排期）
@@ -128,7 +128,7 @@ describe('周末入侵 · 时间轴', () => {
     ev.endedAtWallMs = fri + 3 * H // 打完了，但窗口还开着（到下周一 22:00）
     expect(ensureWeekendEvent(s, ctx, fri + 4 * H), '同窗口内 ⇒ 不再开第二场').toBe(false)
     expect(s.weekendEvent, '还是那场（没被换掉）').toBe(ev)
-    /** 跨过 74h（下周同一 T0 之后）⇒ 该开下一场 */
+    /** 跨过一个窗口（下周同一 T0 之后）⇒ 该开下一场 */
     expect(ensureWeekendEvent(s, ctx, fri + 7 * 24 * H + 1 * H), '下一个 T0 ⇒ 开新场').toBe(true)
     expect(s.weekendEvent!.seq, '场次号 +1').toBe(ev.seq + 1)
   })

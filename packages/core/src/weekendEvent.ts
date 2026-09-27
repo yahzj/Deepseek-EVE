@@ -302,10 +302,17 @@ export function weekendFlagshipLayersOf(
 
 /** 离线保护（第 10 条）：离线 ≤24h ⇒ 倒计时挂起，上线第一拍起算（Q3：离线满 24h 那一刻起算） */
 export const WEEKEND_OFFLINE_SHIELD_MS = 24 * 3_600_000
-/** 活动窗口（第 1/15 条）：T0 = 每周五 20:00（本地墙钟）→ 74h */
+/**
+ * 活动窗口（第 1/15 条）：T0 = 每周五 20:00（本地墙钟）。
+ *
+ * 🔴 **2026-09-27 船长令**：「**到点时间需要延长到96小时**」⇒ **74h → 96h**（周五 20:00 ~ 周二 20:00）。
+ * 直接效果：NPC 保底（外围 T0+48h 满 · 核心再 24h ⇒ T0+72h 满）之后，**旗舰的可打时间由 2 小时变成 24 小时**。
+ * ⚠ 本常量是"窗口"的**唯一出处**：窗口是否开着（`weekendWindowOpen`）· 章鱼那之外的所有到点判定
+ * （`weekendTick` ④）· "一个窗口只开一场"（`ensureWeekendEvent`）· 首场特例的失效时刻 —— 全部读它。
+ */
 export const WEEKEND_START_WEEKDAY = 5 // 5 = 周五（JS getDay）
 export const WEEKEND_START_HOUR = 20
-export const WEEKEND_WINDOW_MS = 74 * 3_600_000
+export const WEEKEND_WINDOW_MS = 96 * 3_600_000
 /**
  * **只有调试模式可见/可开**（**船长 2026-09-23 令**：「**目前入侵只有调试模式可见**」）——
  * ✅ **2026-09-25 船长解除**：「**现在可以解除限制，并在一会 22 点开始第一次入侵活动。**」
@@ -318,9 +325,9 @@ export const WEEKEND_DEBUG_ONLY = false
  * 22:00**」）：`2026-09-25 22:00`（**本地墙钟**）起开场，**此后一律回到每周五 20:00 的周排期**。
  *
  * 只在"到点 ＋ 手上还没有从这一刻起开过的场"时生效（见 `ensureWeekendEvent`）；过完这一晚就永久失效
- * （`nowWallMs >= 首场 + 74h`）。
+ * （`nowWallMs >= 首场 + 96h`）。
  * ⚠ 与"每周 20:00"的关系：首场结束后**不会**在同一窗口里按 20:00 补开一场 —— 靠
- * `ensureWeekendEvent` 里"一个窗口只开一场"那条判据兜住（窗口 = 74h）。
+ * `ensureWeekendEvent` 里"一个窗口只开一场"那条判据兜住（窗口 = 96h）。
  * ⚠ 置 `null` = 没有首场特例（恢复纯周排期）。
  */
 export const WEEKEND_FIRST_T0_WALL_MS: number | null = new Date(2026, 8, 25, 22, 0, 0, 0).getTime()
@@ -747,7 +754,7 @@ export function weekendT0Of(nowWallMs: number): number {
   return at - back * 86_400_000
 }
 
-/** 窗口是否还开着（T0 ~ T0+74h） */
+/** 窗口是否还开着（T0 ~ T0+96h） */
 export function weekendWindowOpen(nowWallMs: number, t0: number): boolean {
   return nowWallMs >= t0 && nowWallMs < t0 + WEEKEND_WINDOW_MS
 }
@@ -1120,7 +1127,7 @@ function clamp01(v: number): number {
 
 /**
  * **确保当前时刻有一场该有的入侵**（幂等）：
- * - 正常模式：窗口（周五 20:00 ~ +74h）内若 `startedAtWallMs` 不是本周 T0 ⇒ 开新一场（编号 +1）；
+ * - 正常模式：窗口（周五 20:00 ~ +96h）内若 `startedAtWallMs` 不是本周 T0 ⇒ 开新一场（编号 +1）；
  * - 调试模式：上一场结束 + 1h 后刷新（无历史 ⇒ 首次调用即开）；
  * - 返回是否发生了变化（供调用方决定是否落盘/记日志）。
  */
@@ -1193,7 +1200,7 @@ export function ensureWeekendEvent(state: GameState, ctx: SimContext, nowWallMs:
    * **一个窗口只开一场**（**2026-09-25 修**）：原判据 `ev.startedAtWallMs === t0 && ev.endedAtWallMs === undefined`
    * 要求"未结束" ⇒ 旗舰被击沉、窗口还没到点时，**下一拍就会立刻又开一场**（与定稿「每周末一次」
    * ＋「只有调试模式才是结束后 1 小时刷新」两处都冲突）。
-   * 现按**窗口**判：上一场开始至今不足一个窗口（74h）⇒ 不再开新场 —— 这同时兜住"首场 T0 = 22:00"
+   * 现按**窗口**判：上一场开始至今不足一个窗口（96h）⇒ 不再开新场 —— 这同时兜住"首场 T0 = 22:00"
    * 那一次偏移（首场结束后的下一拍不会再按周排期的 20:00 补开一场）。
    */
   if (ev && nowWallMs - ev.startedAtWallMs < WEEKEND_WINDOW_MS) return false
@@ -1204,7 +1211,7 @@ export function ensureWeekendEvent(state: GameState, ctx: SimContext, nowWallMs:
   return true
 }
 
-/** 结束本场（旗舰被摧毁 / 章鱼人摧毁 / T0+74h）：清占领、留编号与台账（结算由调用方做） */
+/** 结束本场（旗舰被摧毁 / 章鱼人摧毁 / T0+96h）：清占领、留编号与台账（结算由调用方做） */
 export function endWeekendEvent(state: GameState, nowWallMs: number): WeekendEventState | undefined {
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) return ev
@@ -1239,7 +1246,7 @@ export interface WeekendTickResult {
  * 1. `ensureWeekendEvent` 开局面（正常模式：周五 20:00 的周排期 ＋ 声望前提；调试档：结束 +1h；
  * 2. 旗舰 anchor **落盘**（首次满分且在线那一拍 ⇒ 倒计时从此稳定，不再随 tick 漂移）；
  * 3. 章鱼人得手（`view.down === octopus`）⇒ 写 `flagshipDown` 并结束本场；
- * 4. 正常模式的窗口到点（T0+74h）⇒ 结束本场；
+ * 4. 正常模式的窗口到点（T0+96h）⇒ 结束本场；
  * 5. 交出"该掷遇袭骰的星系与概率"（**不在本函数里掷**：随机源归引擎）。
  *
  * ⚠ 纯函数（除改 `state.weekendEvent` 的落盘字段外不碰别处）⇒ 用例可对任意时刻断言。
@@ -1566,7 +1573,7 @@ export function weekendTickBoss(
   return {}
 }
 
-/** 活动总时长（正常 = 74h；调试模式按 NPC 压缩口径无固定上限，取 74h÷60 供测试参考） */
+/** 活动总时长（正常 = 96h；调试模式按 NPC 压缩口径无固定上限，取 96h÷60 供测试参考） */
 export function weekendWindowMsOf(state: Pick<GameState, 'debugQuick'>): number {
   return weekendDebugOn(state) ? Math.round(WEEKEND_WINDOW_MS / WEEKEND_DEBUG_TIME_DIVISOR) : WEEKEND_WINDOW_MS
 }
