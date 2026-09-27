@@ -50,3 +50,25 @@ weekendRollBlackBox(state, ev, false)   // 按"25% × 输出占比"掷，结果�
 
 - [ ] 归档（§8 三步）
 - [ ] 追查 `weekendNoteFlagshipKilled` 未生效的原因
+## 补发工具（船长令「更新之前的补发工具」）
+
+**实现**：`reconcileWeekendBlackBox(state, ctx)`（`weekendBattle.ts`），**逐 tick 幂等对账**，
+接在引擎 tick 里（与 `reconcileWormholePromoGift` 同款模式）⇒ 玩家**进游戏自动补，不需要导入任何文件**
+（铁人档也能用）。
+
+**判定（三条同时成立才补）**：
+1. `flagshipPlayerKill !== undefined`（有"玩家亲手击沉"的留档 ⇒ 排除章鱼人得手/没打）；
+2. `flagshipHpDone ÷ flagshipHpMax > 0.5`（按爆率表这一档是**必爆**；占比不过半的一律不碰）；
+3. `flagshipBlackBox !== true` **且** `rewardLedger.blackBox === 0`（这一场确实没发过）。
+
+**补什么**：`blackbox-h` ×1 进物品仓库（走 `weekendGrantRewards`）＋ 打标记
+（`flagshipBlackBox` / `flagshipBlackBoxByPlayer`）＋ 归属字段**仅在为空时**对齐成 `player`
+（不覆盖已有值）＋ 已结束的场次重建战果快照 ＋ 一条日志（`core.weekend.039`）。
+
+**✅ 实测在玩家那份档上生效**（22:17:17 游戏自存档时写入）：
+```
+warehouse['blackbox-h'] = 1 · flagshipBlackBox = true · flagshipBlackBoxByPlayer = true
+flagshipDown = octopus（**未被覆盖** —— 与实现里"仅在为空时对齐"一致）
+```
+⚠ `flagshipBlackBoxByPlayer` 这个字段是本次修复**新引入**的，除 `reconcileWeekendBlackBox` 外无任何代码会写它
+⇒ 它的出现即"补发真的跑过"的铁证。（原档一次都没被我写过：我只另写过一份新文件并已删除。）
