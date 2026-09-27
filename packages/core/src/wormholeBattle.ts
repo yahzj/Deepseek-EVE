@@ -232,7 +232,9 @@ export function wormholeActivateAt(
    * 现在两条都读同一份拒因（`wormholePendingBattleReason`）⇒ 界面与 core 一致。
    */
   const pendingBattle = wormholePendingBattleReason(state)
-  if (pendingBattle) return { ok: false, error: pendingBattle }
+  if (pendingBattle) {
+    return { ok: false, error: pendingBattle.error, errorId: pendingBattle.errorId, errorParams: pendingBattle.errorParams }
+  }
   // **超载闸**（F4 · 船长裁定 8）：货仓装不下时不许再做任何"会装货"的动作（打捞/挖矿/开战都算）。
   const overloaded = wormholeActionBlockReason(state, ctx)
   if (overloaded) return { ok: false, error: overloaded }

@@ -1731,6 +1731,7 @@ async function applyLayoutAndQuit(): Promise<void> {
         handleReset={handleReset}
         setShowSaveManager={setShowSaveManager}
         changeMapTab={changeMapTab}
+        focusTaskTab={focusTaskTab}
         changeShipTab={changeShipTab}
         showToast={showToast}
         hideActivityWin={hideActivityWin}
