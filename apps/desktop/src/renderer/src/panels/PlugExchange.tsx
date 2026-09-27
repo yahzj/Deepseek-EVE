@@ -27,6 +27,8 @@ import { useState } from 'react'
 import {
   DSI_FACTION_ID,
   PLUG_BLUEPRINT_COST,
+  UNIVERSAL_BLACKBOX_COST,
+  UNIVERSAL_BLACKBOX_ITEM_ID,
   countModule,
   countWare,
   matNeedCount,
@@ -64,6 +66,14 @@ export function PlugExchangeModal({
    * 待确认的那一行（null = 没在确认）。确认层沿用全仓既有的 `.app-mkt-confirm*` 一族（不新造样式）。
    */
   const [ask, setAsk] = useState<{ moduleId: string; name: string } | null>(null)
+  /** **通用黑匣卡**（2026-09-27 船长令）：声望换制造料 —— 价格与持有数都走 core 单点，界面不自算 */
+  const boxPrice = UNIVERSAL_BLACKBOX_COST
+  const boxOwned = countWare(engine.state, UNIVERSAL_BLACKBOX_ITEM_ID)
+  const buyBox = (): void => {
+    const r = engine.exchangeUniversalBlackBoxAt()
+    onToast(r.ok ? tr('ui.IndustryPage.144') : (r.error ?? tr('ui.IndustryPage.121', { p1: boxPrice })))
+    setTick((n) => n + 1)
+  }
 
   const exchange = (moduleId: string): void => {
     /** 走引擎命令（成功才落盘 ＋ 广播刷新；与 `learnBlueprintAt` 同款） */
@@ -112,6 +122,29 @@ export function PlugExchangeModal({
             <div className="app-dim app-exp-idle">{tr('ui.IndustryPage.137')}</div>
           ) : (
             <div className="app-belt-grid">
+              {/* **通用黑匣卡**：摆在图纸卡前面（它是所有插件共用的料） */}
+              <div className="app-belt-card app-shelf-card">
+                <div className="app-belt-head">
+                  <span className="app-belt-name">
+                    <Glyph name="plug" size={15} /> {tr('ui.IndustryPage.141')}
+                  </span>
+                  <span className="app-belt-head-right">
+                    <span className="app-chip is-exotic" title={tr('ui.IndustryPage.120')}>
+                      {boxPrice}
+                    </span>
+                  </span>
+                </div>
+                <div className="app-belt-feat is-strong">{tr('ui.IndustryPage.142')}</div>
+                <div className="app-belt-ore">
+                  {tr('ui.IndustryPage.143')}
+                  <span className="app-dim"> {boxOwned.toLocaleString('zh-CN')}</span>
+                </div>
+                <div>
+                  <button className="app-btn is-small is-primary" disabled={spendable < boxPrice} onClick={buyBox}>
+                    {tr('ui.IndustryPage.145')}
+                  </button>
+                </div>
+              </div>
               {rows.map((row) => {
                 /**
                  * 卡面要用的三份现算读数（都走 core 单点，不在界面里自己数）：

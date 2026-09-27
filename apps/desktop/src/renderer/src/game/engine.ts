@@ -46,6 +46,7 @@ import {
   learnBlueprint,
   // 2026-09-26 船长令：章鱼人兑换（插件图纸用声望换）
   exchangePlugBlueprint,
+  exchangeUniversalBlackBox,
   // 2026-09-19 玩家报障修：碎片 → 蓝图（逆向解锁）的兑命令与读数单点
   redeemFragments,
   fragmentRedeemRowsOf,
@@ -2047,7 +2048,20 @@ export class GameEngine {
    * 与 `learnBlueprintAt` 同款：成功才落盘 ＋ 广播刷新。
    */
   exchangePlugBlueprintAt(moduleId: string): CommandResult {
+
     const r = exchangePlugBlueprint(this.state, this.ctx, moduleId)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r.ok ? { ok: true } : { ok: false, error: r.error }
+  }
+  /**
+   * **用声望换一枚通用黑匣**（**2026-09-27 船长令**：「**在章鱼人声望商店加入购买通用黑匣的卡片，
+   * 玩家可以用30声望换一个通用黑匣**」）。与 `exchangePlugBlueprintAt` 同款：成功才落盘 ＋ 广播刷新。
+   */
+  exchangeUniversalBlackBoxAt(count = 1): CommandResult {
+    const r = exchangeUniversalBlackBox(this.state, count)
     if (r.ok) {
       void this.persist()
       this.notify()
