@@ -25,7 +25,13 @@ import type { GameState, WormholeArchetype, WormholeAutoReport, WormholeAutoRun,
 import { addLog, shipLockedInWormhole } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
-import { WORMHOLE_ORE_ITEM_ID, wormholeAdmission, wormholeBagSlotsOfFleet, wormholeScanBonusOf } from './wormhole'
+import {
+  WORMHOLE_ORE_ITEM_ID,
+  blankShareFactorOf,
+  wormholeAdmission,
+  wormholeBagSlotsOfFleet,
+  wormholeScanBonusOf,
+} from './wormhole'
 import { matterTechLevel, matterTechNodes, matterTechWhBuffs, matterTechWorkEffBonus } from './matterTech'
 import { RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, wreckGroupOfCard, wreckItemIdOf } from './salvage'
 import { WORMHOLE_WRECK_PILE_M3_BASE, wormholeRelicBoxIdOf, WORMHOLE_CORE_WEIGHTS } from './wormholeSalvage'
@@ -106,17 +112,20 @@ export const WORMHOLE_AUTO_DURATION_MS = 5 * 60_000
 export const WORMHOLE_AUTO_MAX_SHIPS = 4
 
 /**
- * **产出系数 = 手动一趟的期望 × 40%**（船长 2026-09-14：「按"手动一趟的期望 × 40%"」）。
- * 手动期望的来源（都在代码里，可复核）：
+ * **手动一趟的期望**（"手动一趟值多少钱"的**唯一账本**；工具与用例都读它，改口径只改这里）。
+ * 数的来源（都在代码里，可复核）：
  * - **普通残骸堆**：墓场 `WORMHOLE_GRAVEYARD_COMMONS_MIN~MAX`(3~10，均值 6.5) ＋ 舰船信号 `WORMHOLE_SHIP_SPOIL_COMMONS`(2) ≈ **8.5 堆/趟**；
  * - **稀有残骸**：`tools/wormhole-econ.ts --runs=40` 实测 **≈1.25 件/趟**（专属装备的唯一来源）；
  * - **虚空母矿**：矿脉每格铺 1~3 堆（均值 **2 堆**）× `WORMHOLE_PILE_UNITS_BASE`(200) 单位；
  * - **遗迹安全货柜**：同一次实测 **≈0.23 件/趟**（层 2 起才出）。
- * 每堆的体积/数量仍走既有层收益曲线 `wormholeLayerRewardMul(depth)`，再乘 0.8~1.2 的确定性抖动。
+ *
+ * ⚠ **2026-09-27 删除旧"产出系数"常量（船长批「按你推荐来」）**：这里原有一行
+ * `WORMHOLE_AUTO_YIELD_MUL = 0.4`（"产出系数 = 手动一趟的期望 × 40%"，船长 2026-09-14 令）——
+ * 那是自动探索还是**抽象模拟**时的口径；`81615180` 起改成「**真进洞跑一趟**」（`wormholeAutoSim.ts`），
+ * 收成折扣另立于 `WORMHOLE_AUTO_SIM_YIELD_MUL = 0.8`，核心产出走本文件的 `coreChance`
+ * （层 1 = 10%、每层 +15%）⇒ 那个常量在生产代码里**早已零引用**，只剩导出与两条测试引用（伪护栏）。
+ * 沿革与核实见 `docs/design/wh-reenter-settle-20260927.md` 第九节。
  */
-export const WORMHOLE_AUTO_YIELD_MUL = 0.4
-
-/** 手动一趟的期望（= 上面注释里的四个数；改口径只改这里） */
 export const WORMHOLE_AUTO_MANUAL = {
   /** 普通残骸堆数/趟 */
   commons: 8.5,
@@ -711,6 +720,11 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
      * （`wormholeScanBonusOf`）：一次扫描揭开的格数按半径**平方**放大 ⇒ 4×鹦鹉螺 半径 5、一次 91 格。
      */
     scanRadius: 1 + wormholeScanBonusOf(ctx, run.shipIds),
+    /**
+     * **事件玄学的空白占比系数**（2026-09-27 补）：与手动建盘同一把尺（`wormholeMakeGrid` 第 4 参）——
+     * 漏了它，自动线在高等级事件玄学下会比手动多出两成空白格。
+     */
+    blankShareFactor: blankShareFactorOf(state),
     guardPowerOf: (d) => guardPowerOf(ctx, meta.family, d),
     // 谜质科技：回合加成由 `tf` 反推（`baseTurns × turnMul − baseTurns`）
     techTurnBonus: Math.max(0, Math.round(tf.baseTurns * tf.turnMul) - tf.baseTurns),

@@ -12,9 +12,9 @@
 
 ## 统计
 
-- 文档总数 **330** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6248** KB · **43416** 行
+- 文档总数 **330** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6252** KB · **43457** 行
 - 状态分布：**未标注** 184 · **已确认/已实现** 111 · **进行中** 26 · **待裁定** 8 · **历史留档** 1
-- 孤儿文档（0 引用）**40** 份 · 状态未标注 **184** 份
+- 孤儿文档（0 引用）**39** 份 · 状态未标注 **184** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
 - 三、现行设计稿（design）：**209** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 257 KB / 278 行 | 15 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 67 KB / 708 行 | 75 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 491 KB / 1007 行 | 216 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 82 KB / 372 行 | 335 / 18 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 84 KB / 395 行 | 336 / 18 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -61,7 +61,7 @@
 | `docs/design/handoff-20260927-main.md` | 交接卡：接一号班（主树 main · 2026-09-27） | 未标注（交接中） | 2026-09-27 | 11 KB / 116 行 | 0 / 0 |
 | `docs/design/handoff-20260927-verify.md` | 交接卡：新三号（2026-09-27 · 旧三号交班） | 未标注（交接中） | 2026-09-27 | 12 KB / 108 行 | 2 / 0 |
 | `docs/design/steam-packaging-20260927.md` | Steam 打包与上传（2026-09-27 · 一号 · main） | 未标注（第一步已落码并本机验证通过） | 2026-09-27 | 6 KB / 84 行 | 1 / 0 |
-| `docs/design/wh-reenter-settle-20260927.md` | 报障：下虫洞结束后点其他虫洞「开始探索」直接结算（2026-09-27 · 一号 · main） | 未标注（已落码） | 2026-09-27 | 9 KB / 117 行 | 0 / 0 |
+| `docs/design/wh-reenter-settle-20260927.md` | 报障：下虫洞结束后点其他虫洞「开始探索」直接结算（2026-09-27 · 一号 · main） | 未标注（已落码） | 2026-09-27 | 11 KB / 135 行 | 0 / 1 |
 | `docs/design/window-end-hold-20260927.md` | 窗口到点顺延：玩家打完再满 60 秒才收场（2026-09-27 · 二号 · d2） | 进行中（进行中） | 2026-09-27 | 12 KB / 151 行 | 0 / 0 |
 | `docs/design/announcement-draft-20260926-battleships.md` | 公告待审稿 · 两艘新战列舰入列（2026-09-26） | 待裁定（待船长审核——按 AGENTS.md） | 2026-09-26 | 4 KB / 48 行 | 2 / 0 |
 | `docs/design/ecm-stacking-copy-20260926.md` | 报障修正：墨潮电子舱卡面「全额叠加」＋ 缺最短射程 3,000 m（2026-09-26 · 二号 · d2） | 待裁定（已实现 · 待船长验收） | 2026-09-26 | 4 KB / 48 行 | 2 / 0 |
@@ -307,7 +307,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 46 KB / 798 行 | 16 / 18 |
+| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 46 KB / 798 行 | 17 / 18 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -400,13 +400,12 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 55 / 13 |
 
-## 附：孤儿文档（0 引用，40 份）
+## 附：孤儿文档（0 引用，39 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/coupling-audit-20260927.md`（2026-09-27 · 7 KB）—— 五大功能耦合性体检（2026-09-27 · 二号 · d2）
 - `docs/design/handoff-20260927-main.md`（2026-09-27 · 11 KB）—— 交接卡：接一号班（主树 main · 2026-09-27）
-- `docs/design/wh-reenter-settle-20260927.md`（2026-09-27 · 9 KB）—— 报障：下虫洞结束后点其他虫洞「开始探索」直接结算（2026-09-27 · 一号 · main）
 - `docs/design/window-end-hold-20260927.md`（2026-09-27 · 12 KB）—— 窗口到点顺延：玩家打完再满 60 秒才收场（2026-09-27 · 二号 · d2）
 - `docs/design/spore-allfoes-gate-20260925.md`（2026-09-25 · 4 KB）—— 孢子导弹巢「全体攻击」：主目标未命中不再阻断副目标（2026-09-25）
 - `docs/design/handoff-foe-mounts-l10n-20260924.md`（2026-09-24 · 8 KB）—— 交接卡 · 存量八件敌方挂载件的英文名（本地化 · 2026-09-24 · 二号 → 三号）

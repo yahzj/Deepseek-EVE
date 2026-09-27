@@ -2836,10 +2836,27 @@ export class GameEngine {
     return { ok: r.ok, error: r.error }
   }
 
+  /**
+   * **扣回合的洞内动作收尾：当拍走完这一拍**（**2026-09-27 船长令**）。
+   *
+   * 为什么：围剿者「落在玩家所在格会直接攻击舰队」（2026-09-23 公告定稿）原先要等**引擎下一拍**
+   * 才开战（判定在 `advanceWormhole` 里按"脚下格"做），而扫描／前往／激活这些动作是**同步返回**的
+   * ⇒ 玩家能在那一拍到来之前抢点一次移动走开，把围剿躲掉（公告口径落空）。
+   * 这里在动作成功后**当场补一次 `advanceWormhole`** ⇒ 刷到脚下当拍就开打。
+   *
+   * ⚠ 与「撤离当拍结算」（本文件 `wormholeExtract`）同款做法：**core 的状态机一个字不改**，
+   * 只把"下一拍"提前到"玩家看见结果的那一刻"。洞内非战斗、非撤离状态下这一拍只做"围剿开战判定"，
+   * 战斗步进与撤离收口各有前置条件，不会因多跑一拍而重复落账。
+   */
+  private wormholeTickNow(): void {
+    if (!this.state.wormhole.run) return
+    advanceWormhole(this.state, this.ctx)
+  }
   /** 虫洞：**扫描**（1 回合，揭开当前格周围一圈；顺带**驱散圈内的星云**——船长 2026-09-13 星云机制） */
   wormholeScan(): CommandResult {
     const r = wormholeGridScan(this.state)
     if (r.ok) {
+      this.wormholeTickNow()
       void this.persist()
       this.notify()
     }
@@ -2875,6 +2892,7 @@ export class GameEngine {
       { confirmUnknown, confirmIntercept, deferAmbush: true },
     )
     if (res.ok) {
+      this.wormholeTickNow()
       void this.persist()
       this.notify()
     }
@@ -2900,6 +2918,7 @@ export class GameEngine {
     // 遗迹收尾战**先提示、玩家确认后再开打**（船长 2026-09-13）⇒ 界面这条走 defer
     const r = wormholeActivateAt(this.state, this.ctx, undefined, { deferRuinsBattle: true })
     if (r.ok) {
+      this.wormholeTickNow()
       void this.persist()
       this.notify()
     }
