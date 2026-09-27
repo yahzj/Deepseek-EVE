@@ -18,12 +18,14 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { countWare, createInitialState } from '../src/index'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
-import { weekendApplyBattleOutcome } from '../src/weekendBattle'
+import { weekendApplyBattleOutcome, weekendSettleAndGrant } from '../src/weekendBattle'
 import {
   WEEKEND_FLAGSHIP_POOL_HP,
   WEEKEND_WINDOW_END_HOLD_MS,
   WEEKEND_WINDOW_MS,
+  ensureWeekendEvent,
   weekendFlagshipView,
+  weekendNextT0Of,
   weekendNoteContribution,
   weekendNoteFlagshipDamage,
   weekendT0Of,
@@ -38,16 +40,26 @@ const CORE = 'galaxy-kor'
 /**
  * ⚠ **必须用真 T0 当开场的开始时刻**：`weekendTick` 每拍先走 `ensureWeekendEvent`，而"一个窗口只开一场"
  * 的判据是"上一场开始至今不足一个窗口"⇒ 顺手编一个开始时刻会让它**在窗口到点那一拍另开一场**（把被测
- * 对象整个换掉）。取固定的 2026-09-27 12:00 反推最近的周五 20:00 ⇒ 与跑步日期无关、可复现。
+ * 对象整个换掉）。
+ * ⚠ 还要**避开首场特例那一周**（`WEEKEND_FIRST_T0_WALL_MS` = 2026-09-25 22:00：那一周里
+ * `ensureWeekendEvent` 会按"首场"再开一场）⇒ 取 10 月中旬反推的周五 20:00，与跑步日期无关、可复现。
  */
-const T0 = weekendT0Of(Date.parse('2026-09-27T12:00:00+08:00'))
+const T0 = weekendT0Of(Date.parse('2026-10-15T12:00:00+08:00'))
 /** 窗口到点那一刻（正常模式 = T0 + 96h；此刻正落在"窗口已关、还没到下一个 T0"的区间里） */
 const WINDOW_END = T0 + WEEKEND_WINDOW_MS
+/** 下一场入侵的 T0（= 本场所在周的 T0 ＋ 一周）——顺延的最后期限 */
+const NEXT_T0 = weekendNextT0Of(T0)
 
 /** H 族入侵 ＋ 池子已锁定（**正常模式**：窗口到点那条路只在非调试档生效 ⇒ 不能开 `debugQuick`） */
 function bossWorld(usedHp = 1_000): { s: GameState; ev: WeekendEventState } {
   const s = createInitialState({ nowWallMs: 0, seed: 20260927 })
   s.exploredGalaxies = [...ctx.galaxies.keys()]
+  /**
+   * **开新场有"累计声望 ≥ 40"的前提**（`weekendInvasionAllowedFor`）：⑧⑨ 两条要看"下一拍开新场"，
+   * 所以这里给足声望；本场是直接摆进 `state.weekendEvent` 的，不受它影响。
+   */
+  s.standingsEarned = { ...(s.standingsEarned ?? {}), dsi: 100 }
+  s.standings = { ...s.standings, dsi: 100 }
   const ev: WeekendEventState = {
     seq: 1,
     startedAtWallMs: T0,
@@ -160,5 +172,49 @@ describe('窗口到点顺延到"玩家打完 + 60 秒"（2026-09-27 船长令）
     const now = hold ?? 0
     expect(weekendTick(s, ctx, now - 1, now - 1, false).ended).toBe(false)
     expect(weekendTick(s, ctx, now, now, false).ended).toBe(true)
+  })
+
+  /**
+   * **⑧ 陈旧场收口**（**2026-09-27 船长指出**：「**如果顺延到了下次入侵还没结束，那么下一次入侵
+   * 将会被顶掉**」）——顺延不设上限 ⇒ 弃场时旧场会活到下一场入侵的那一刻，而 `ensureWeekendEvent`
+   * 会**直接换掉** `state.weekendEvent`；`weekendSettleAndGrant` 又要求 `endedAtWallMs` 有值
+   * ⇒ **旧场的贡献奖/夺回奖励/声望/结束通讯一起静默丢掉**。
+   * 修法 = `weekendTick` ⓪：到了下一场的 T0 就先按"本场窗口到点"收口（本拍不开新场），
+   * 让引擎照常走结束日志 ＋ 结算 ＋ 结束通讯；下一拍再开新场。
+   */
+  it('⑧ 陈旧场跨到下一场 T0 ⇒ 先正常收口并结算，**不静默顶掉**', () => {
+    const { s, ev } = bossWorld()
+    /** 弃场：窗口到点后一直"在打"（顺延每拍往后推） */
+    for (const t of [WINDOW_END, WINDOW_END + 6 * 3_600_000, NEXT_T0 - 1]) {
+      const r = weekendTick(s, ctx, t, t, true)
+      expect(r.ended, `t=+${((t - WINDOW_END) / 3_600_000).toFixed(1)}h 仍在打 ⇒ 一直顺延`).toBe(false)
+    }
+    expect(ev.endedAtWallMs, '到下一场 T0 之前都还没结束').toBeUndefined()
+    /** 下一场的 T0 到了 ⇒ ⓪ 收口：按"本场窗口到点"结束，且**本拍不开新场** */
+    const closed = weekendTick(s, ctx, NEXT_T0, NEXT_T0, true)
+    expect(closed.ended, '收口那一拍报"结束"（引擎据此记结束日志/通讯）').toBe(true)
+    expect(closed.started, '本拍不开新场（把结算那一拍留给旧的这一场）').toBe(false)
+    expect(ev.endedAtWallMs, '结束时刻 = 本场窗口到点那一刻').toBe(WINDOW_END)
+    expect(s.weekendEvent?.seq, '手上还是旧场').toBe(ev.seq)
+    /** 旧场**照常结算**：贡献奖/声望/结束通讯都还在（改动前这里是"直接丢掉"） */
+    const settle = weekendSettleAndGrant(s, ctx, NEXT_T0)
+    expect(settle, '旧场能结算（不是 null）').not.toBeNull()
+    expect(settle!.share, '占比照算').toBeGreaterThan(0)
+    /** 下一拍才开新场：编号 +1、开始时刻 = 新 T0 */
+    const next = weekendTick(s, ctx, NEXT_T0 + 1_000, NEXT_T0 + 1_000, true)
+    expect(next.started, '下一拍开新场').toBe(true)
+    expect(s.weekendEvent?.seq, '编号 +1').toBe(ev.seq + 1)
+    expect(s.weekendEvent?.startedAtWallMs, '新场的 T0').toBe(NEXT_T0)
+  })
+
+  it('⑨ 对照（改动前的路径）：被 `ensureWeekendEvent` 直接换掉 ⇒ 旧场一个奖励都发不出', () => {
+    const { s, ev } = bossWorld()
+    weekendTick(s, ctx, WINDOW_END, WINDOW_END, true) // 弃场：顺延
+    /** 绕开 ⓪ 直接换场（= 改动前 `ensureWeekendEvent` 到点就换的行为） */
+    const swapped = ensureWeekendEvent(s, ctx, NEXT_T0)
+    expect(swapped, '新场照开').toBe(true)
+    expect(s.weekendEvent?.seq, '已经是新场').toBe(ev.seq + 1)
+    expect(ev.endedAtWallMs, '旧场永远没被标结束').toBeUndefined()
+    expect(weekendSettleAndGrant(s, ctx, NEXT_T0), '旧场结算不了 ⇒ 奖励全丢').toBeNull()
   })
 })

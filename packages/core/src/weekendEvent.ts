@@ -791,6 +791,23 @@ export function weekendWindowOpen(nowWallMs: number, t0: number): boolean {
   return nowWallMs >= t0 && nowWallMs < t0 + WEEKEND_WINDOW_MS
 }
 
+/** 一个"周"的长度（T0 到下一个 T0）；周排期与"陈旧场收口"的最后期限都按它算 */
+const WEEKEND_WEEK_MS = 7 * 24 * 3_600_000
+
+/**
+ * **本场之后"下一场入侵的 T0"**（= 本场所在周的 T0 ＋ 一周）。
+ *
+ * ⚠ 必须从 `startedAtWallMs` **反推所在周的 T0** 再加一周，不能直接 `startedAt + 一周`：
+ * 首场是**周五 22:00** 开的（`WEEKEND_FIRST_T0_WALL_MS`，比周排期的 20:00 晚 2 小时）⇒
+ * 直接加一周会算到"周四 22:00"那种不存在的 T0。
+ *
+ * 用途 = `weekendTick` ⓪ **陈旧场收口**的最后期限：顺延最晚只能拖到这一刻，到点就把上一场收掉、
+ * 免得下一场开新场时把还没结束的旧场**静默顶掉**（旧场的贡献奖/声望/结束通讯会一起丢）。
+ */
+export function weekendNextT0Of(startedAtWallMs: number): number {
+  return weekendT0Of(startedAtWallMs) + WEEKEND_WEEK_MS
+}
+
 /* ─────────────── 占领：核心选取 ＋ 外围 ─────────────── */
 
 /** 核心候选：已探索 · **中安/低安**（非高安）· **无已建副站** */
@@ -1295,6 +1312,28 @@ export function weekendTick(
   lastSeenWallMs: number,
   flagshipBattleActive = false,
 ): WeekendTickResult {
+  /**
+   * ⓪ **陈旧场收口**（**2026-09-27 船长令跟进**：船长指出「**如果顺延到了下次入侵还没结束，那么下一次入侵
+   * 将会被顶掉**」）——手上这一场**还没结束**、而**下一场入侵的 T0 已经到了** ⇒ 先按"本场窗口到点"
+   * 结束它，**本拍不开新场**（下一拍 `ensureWeekendEvent` 再开），让引擎照常走"结束日志 ＋ 结算 ＋ 结束通讯"。
+   *
+   * 为什么必须有这一步：`ensureWeekendEvent` 到点会**直接换掉** `state.weekendEvent`，而
+   * `weekendSettleAndGrant` 要求 `endedAtWallMs` 有值（见其头注）⇒ 被换掉的旧场**永远不会结算**：
+   * 贡献四档奖 / 待到账的夺回奖励 / 协会声望 / 结束通讯**一起静默丢掉**。顺延不设上限（船长裁定甲）
+   * ⇒ 玩家弃场时这条必然踩到；这一步把"换成静默丢弃"改回"先正常收场"。
+   * `endedAtWallMs` 取**本场窗口到点那一刻** ⇒ 占比/奖励与"正常到点收场"逐字一致。
+   * ⚠ 与 ④ 同一把尺：**只在正常模式**做（调试档走"结束后 1h 刷新"那条路，本就不会换掉未结束的场）。
+   */
+  const stale = state.weekendEvent
+  if (
+    stale !== undefined &&
+    stale.endedAtWallMs === undefined &&
+    !weekendDebugOn(state) &&
+    nowWallMs >= weekendNextT0Of(stale.startedAtWallMs)
+  ) {
+    endWeekendEvent(state, stale.startedAtWallMs + WEEKEND_WINDOW_MS)
+    return { started: false, flagshipShown: false, flagshipAnchored: false, ended: true, encounterRolls: [] }
+  }
   const started = ensureWeekendEvent(state, ctx, nowWallMs)
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) {
