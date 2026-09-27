@@ -313,15 +313,15 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     expect(shipBusyForWormhole(state, pilot) !== null).toBe(shipBusyLabel(state, ctx, pilot) !== null)
   })
 
-  it('③ **临时离开 ⇒ 主控释放**（2026-09-13 船长批准的口径，与"洞内锁定"不冲突）', () => {
+  it('③ **临时离开也锁主控**（**2026-09-27 船长改判**：「进行虫洞时，阻止主控的任何其他活动。」）', () => {
     const { state, pilot } = fresh()
     const beltId = [...ctx.belts.keys()][0]!
     expect(wormholeEnter(state, ctx, [pilot], 4242).ok).toBe(true)
     wormholeLeave(state)
+    // 临时离开本身仍合法（关面板、本趟进度原样保存）——但它**不再释放主控**
     expect(state.wormhole.run!.attending).toBe(false)
-    // 临时离开 = 活动停止 ⇒ 主控可以去做别的（本趟进度原样保存）
-    expect(wormholePilotHoldReason(state)).toBeNull()
-    expect(startMining(state, beltId, ctx).ok).toBe(true)
+    expect(wormholePilotHoldReason(state)).not.toBeNull()
+    expect(startMining(state, beltId, ctx).ok).toBe(false)
   })
 
   /**

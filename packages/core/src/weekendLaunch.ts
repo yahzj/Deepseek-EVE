@@ -10,6 +10,7 @@
 import type { GameState } from './state'
 import type { AnomalyDef, SimContext } from './types'
 import { startFleetBattleFor } from './combat'
+import { shipHasWeapon } from './equipment'
 import { weekendFlagshipEncounterOf, weekendFlagshipSpecOf } from './weekendBattle'
 import {
   WEEKEND_FLAGSHIP_POOL_HP,
@@ -67,8 +68,6 @@ export interface WeekendFlagshipPrepView {
   defaultSquad: string[]
 }
 
-/** 有武装的槽位（判断"未装武器"用） */
-const WEAPON_SLOTS: ReadonlySet<string> = new Set(['turret', 'missile', 'laser', 'drone-rack', 'drone-tac'])
 
 /**
  * **一艘船的"缺口"**（准备界面照它出警告条；口径都是**既有的、看得见的事实**）：
@@ -80,11 +79,8 @@ export function weekendPrepIssuesOf(state: GameState, ctx: SimContext, shipId: s
   const ship = state.fleet[shipId]
   if (!ship) return []
   const out: WeekendPrepIssue[] = []
-  const armed = [...ship.fitted.high, ...ship.fitted.mid, ...ship.fitted.low].some((id) => {
-    if (id === null) return false
-    const slot = ctx.modules.get(id)?.slot
-    return slot !== undefined && WEAPON_SLOTS.has(slot)
-  })
+  /** **装了武器吗** —— 全仓单点（`equipment.shipHasWeapon`，判据 = `WEAPON_SLOTS` 那五类槽） */
+  const armed = shipHasWeapon(state, ctx, shipId)
   if (!armed) out.push('no-weapon')
   else {
     const hasAmmo =

@@ -165,12 +165,17 @@ export function cannotInterruptReason(state: GameState): string | null {
   }
   if (state.wormhole.run?.battle != null) return '战斗中：这一场打完才能切换主控活动。'
   /**
-   * ② 人在虫洞里（进洞 = 主控的一个活动；别的活动开不了）。
-   * ⚠ **判据含 `attending`**（与 `state.wormholePilotHoldReason` 同一把尺）：**临时离开虫洞界面
-   * ⇒ 活动停止、主控立刻释放**（船长 2026-09-13 批准）——这时 `run` 还在、但可以去做别的。
+   * ② **本趟虫洞没结束就锁住主控**（进洞 = 主控的一个活动；别的活动一律开不了）。
+   *
+   * ⚠ **2026-09-27 船长改判（原话：「进行虫洞时，阻止主控的任何其他活动。」）**：
+   * 判据由 `run != null && run.attending === true` 收紧为 **`run != null`** ——
+   * 原先那条口子（**临时离开虫洞界面 ⇒ 活动停止、主控立刻释放、可以去做别的**）是船长 2026-09-13
+   * 批准的旧口径，**本次作废**：临时离开仍可（关面板、本趟进度原样保存），但**不能再开任何别的
+   * 主控活动**，要去做别的必须先**撤离**（或本趟全损收场）。
+   * ⇒ 这也是"虫洞打到一半切出去跑快递"那条路的封口（原先 `attending === false` 时闸门放行）。
    */
-  if (state.wormhole.run != null && state.wormhole.run.attending === true) {
-    return '人在虫洞里：先撤离（或打完本层）才能切换主控活动。'
+  if (state.wormhole.run != null) {
+    return '本趟虫洞探索还没收场：先撤离，才能切换主控活动。'
   }
   /**
    * ③ **换港返航途中**（瞬时到站，等一拍就好）——⚠ **只认"不带交付批次"的 transit**：
