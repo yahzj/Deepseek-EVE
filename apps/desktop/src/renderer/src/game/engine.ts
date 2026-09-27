@@ -14,6 +14,7 @@ import {
   aiCoreName,
   advanceAutoLoopBounty,
   advanceGame,
+  advanceWormhole, // 2026-09-27 船长令「立即弹结算界面」：撤离当拍结算（见本文件 wormholeExtract）
   fightEncounter,
   fleeEncounter,
   formatDurationMs,
@@ -3165,6 +3166,22 @@ export class GameEngine {
     }
     const r = wormholeExtract(run)
     if (r.ok) {
+      /**
+       * **点下撤离 ⇒ 当拍结算**（**2026-09-27 船长令「立即弹结算界面」**）。
+       *
+       * 老口径要等引擎的**下一拍**（`advanceWormhole` 的 `extracting` 分支）才入港 —— 那是
+       * 2026-09-15「撤离战取消」时留下的骨架（原先那一拍是用来**打撤离战**的）；撤离战没了之后
+       * 它就只剩"延迟一拍"这一个效果，代价是**结算发生在玩家看不见的地方**：点完撤离只要在
+       * 下一拍之前关面板／退游戏，收益照样入账、结算单照样写进档（`lastSettle` 随档落盘），
+       * 玩家下次打开面板才被它弹一脸 —— 这正是船长报障
+       * 「下虫洞结束后，点击其他虫洞开始探索时，会直接结算」的根。
+       *
+       * 现在把这一拍**当场走完**：入港 ＋ 写结算单 ⇒ 面板当页切到结算界面（玩家眼前完成）。
+       * ⚠ 与老口径**逐条等价、只是提前**：`run.attending !== true`（临时离开中）照旧冻结不结算；
+       * 站在围剿者格上照旧**先开那一场围剿战**（战斗结束才结算）；离线那条走 `simulateOffline`
+       * （带 `freezeBattle`），与本函数无关。
+       */
+      advanceWormhole(this.state, this.ctx)
       void this.persist()
       this.notify()
     }
