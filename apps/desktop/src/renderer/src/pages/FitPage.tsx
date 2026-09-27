@@ -29,6 +29,8 @@ import {
   createPlayerSpec,
   /** 2026-09-26 船长令：装配页插件槽只读区（core 单点给槽位上限 + 已装清单） */
   plugInfoOf,
+  /** 2026-09-27 船长报障：装入入口（空槽可点，弹层选装，二次确认，installPlug） */
+  installPlug,
   droneCpuUsed,
   droneLoadM3,
   effectiveCpu, // 保留：船体预算（不含协处理器扩容）在别处仍可能用到；预算总额见 cpuBudgetOf
@@ -1375,8 +1377,34 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
   const state = engine.state
   const ctx = engine.ctx
   const { slots, installed } = plugInfoOf(state, ctx, target)
+  /**
+   * **装入入口**（**2026-09-27 船长报障**：「**找不到舰船插件安装的入口（装配处无法装入）**」）：
+   * 09-26 那批把这一区做成**只读**、并把装入动作推给"装备库"，而装备库那条入口**从来没做**
+   * （全仓 desktop 侧零个 `installPlug` 调用点）⇒ 插件造得出来却装不上。
+   * 现按船长指定的位置补在这里：**空槽可点** ⇒ 弹层列出装备库里**有货、未装**的插件 ⇒
+   * 选一件**二次确认**（写明装上拆不下来）⇒ `installPlug`（core 单点，六道校验都在）。
+   * 已装的格子仍只读（不给卸下/替换）。
+   */
+  const [picking, setPicking] = useState(false)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
   if (slots <= 0) return null
   const full = installed.length >= slots
+  const installedIds = new Set(installed.map((d) => d.id))
+  /** 装备库里**有货且本舰还没装**的插件（顺序 = `ctx.modules` 登记序；界面不自己判槽位上限，装入时由 core 再判一次） */
+  const pickable = [...ctx.modules.values()].filter(
+    (d) => d.slot === 'plug' && (state.moduleBay[d.id] ?? 0) > 0 && !installedIds.has(d.id),
+  )
+  const doInstall = (moduleId: string): void => {
+    const r = installPlug(state, ctx, moduleId, target)
+    if (r.ok) {
+      setConfirmId(null)
+      setPicking(false)
+      setErr(null)
+    } else {
+      setErr(r.error ?? '')
+    }
+  }
   return (
     <div className="app-fit-plugslots">
       <div className="app-fit-dronebay-head">
@@ -1390,11 +1418,23 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
         {Array.from({ length: slots }, (_, i) => {
           const def = installed[i]
           if (!def) {
-            // 空槽：**不可点**（这里没有装入入口；插件只能从装备库走 `installPlug`）
+            /**
+             * 空槽：**可点**（2026-09-27 补的装入入口；见本组件头注）。装满或无可装插件时点开是空列表，
+             * 弹层里给一句解释，不让玩家对着没反应的格子点。
+             */
             return (
-              <span key={`plug-${i}`} className="app-fit-slot-icon is-empty is-readonly">
-                <span className="app-fit-slot-icon-glyph">—</span>
-                <span className="app-fit-slot-icon-name">{tr('ui.Expedition.445')}</span>
+              <span
+                key={`plug-${i}`}
+                className="app-fit-slot-icon is-empty"
+                onClick={() => {
+                  setErr(null)
+                  setConfirmId(null)
+                  setPicking(true)
+                }}
+                title={tr('ui.FitPage.178')}
+              >
+                <span className="app-fit-slot-icon-glyph">＋</span>
+                <span className="app-fit-slot-icon-name">{tr('ui.FitPage.178')}</span>
               </span>
             )
           }
@@ -1416,6 +1456,46 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
           )
         })}
       </div>
+      {/* **装入弹层**（2026-09-27 补）：复用本页既有的 `.app-fit-overlay` / `.app-fit-modal` 一族，
+          不另造样式；二次确认在同一弹层内完成（第一次点「装入」⇒ 该行变成「确认装入」＋「取消」） */}
+      {picking ? (
+        <div className="app-fit-overlay" onClick={() => setPicking(false)}>
+          <div className="app-fit-modal app-fit-preset-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="app-fit-dronebay-head">
+              <span className="app-fit-dronebay-title">{tr('ui.FitPage.179')}</span>
+              <button className="app-btn is-small" onClick={() => setPicking(false)}>
+                {tr('ui.FitPage.183')}
+              </button>
+            </div>
+            {err !== null ? <div className="app-dim">{err}</div> : null}
+            {pickable.length === 0 ? (
+              <div className="app-dim">{tr('ui.FitPage.180')}</div>
+            ) : (
+              pickable.map((d) => (
+                <div key={d.id} className="app-fit-preset-row">
+                  <span className="app-fit-preset-name">{d.name}</span>
+                  <span className="app-dim">{moduleShortEffect(d)}</span>
+                  {confirmId === d.id ? (
+                    <>
+                      <span className="app-dim">{tr('ui.FitPage.182')}</span>
+                      <button className="app-btn is-small is-primary" onClick={() => doInstall(d.id)}>
+                        {tr('ui.FitPage.181')}
+                      </button>
+                      <button className="app-btn is-small" onClick={() => setConfirmId(null)}>
+                        {tr('ui.FitPage.183')}
+                      </button>
+                    </>
+                  ) : (
+                    <button className="app-btn is-small" onClick={() => setConfirmId(d.id)}>
+                      {tr('ui.FitPage.181')}
+                    </button>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
