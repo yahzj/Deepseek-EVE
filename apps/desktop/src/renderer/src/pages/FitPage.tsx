@@ -49,6 +49,7 @@ import {
   FIT_PRESET_NAME_MAX,
   shipDisplayName,
   shipSlotsOf,
+  shipSlotsWithPlugsOf,
   stackingOf,
   stackWeight,
   thrusterCycleFullText,
@@ -365,7 +366,12 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   const shipDef = fleetDefOf(state, engine.ctx, effectiveTarget)
   const shipName = shipDisplayName(state, engine.ctx, effectiveTarget)
   const fitted = state.fleet[effectiveTarget]?.fitted
-  const slots = shipDef ? shipSlotsOf(shipDef) : { high: 1, mid: 1, low: 1 }
+  /**
+   * 槽位格数 = **船型布局 ＋ 插件扩槽**（**2026-09-27 船长令「修」**）——
+   * 原先读 `shipSlotsOf(shipDef)`（不含插件）⇒ 装上「中层/下层舱段插件」后本页仍画旧格数，
+   * 玩家看不到多出来的格子（引擎侧已经能装，界面却点不到）。
+   */
+  const slots = shipDef ? shipSlotsWithPlugsOf(state, engine.ctx, effectiveTarget) : { high: 1, mid: 1, low: 1 }
   // 装后合成（与战斗引擎同源：血量含容量件、抗性含乘入缺口、速度含加力曲线、回避含陀螺缺口）
   const spec = shipDef ? createPlayerSpec(state, engine.ctx, effectiveTarget) : null
   // 命中率（2026-09-19 船长：「装配界面的舰船属性里，少了命中率属性」）：整机读数 + 括号明细

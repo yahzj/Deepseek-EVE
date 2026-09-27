@@ -197,6 +197,9 @@ export function moduleDef(
     hullResistAdd?: Partial<Record<DamageType, number>>
     // 协处理器（2026-09-11：低槽 CPU 预算扩容——cpuUse 0 + cpuBonus）
     cpuBonus?: number
+    /** 扩槽插件（2026-09-27 船长令「修」）：中层舱段 +1 中槽 / 下层舱段 +1 低槽 */
+    midSlotsAdd?: number
+    lowSlotsAdd?: number
     /* 2026-09-13 虫洞专属装备引出的新旋钮（船长「你来实现新机制」；设计与口径见
      * docs/design/wormhole-exclusive-20260913.md §3.6/§3.8） */
     /** 结构层容量加成（E 族巨构骨架起就有；此处补齐测试床） */
@@ -273,6 +276,8 @@ export function moduleDef(
     ...(opts?.lockDmgBonus !== undefined ? { lockDmgBonus: opts.lockDmgBonus } : {}),
     ...(opts?.droneRangeBonusPct !== undefined ? { droneRangeBonusPct: opts.droneRangeBonusPct } : {}),
     ...(opts?.cpuBonus !== undefined ? { cpuBonus: opts.cpuBonus } : {}),
+    ...(opts?.midSlotsAdd !== undefined ? { midSlotsAdd: opts.midSlotsAdd } : {}),
+    ...(opts?.lowSlotsAdd !== undefined ? { lowSlotsAdd: opts.lowSlotsAdd } : {}),
     // 2026-09-13 虫洞专属新机制（缺省不写 ⇒ 测试床的既有用例零变化）
     ...(opts?.hullHpBonus !== undefined ? { hullHpBonus: opts.hullHpBonus } : {}),
     // 2026-09-14 护盾充能装置（缺省不写 ⇒ 既有用例零变化）
