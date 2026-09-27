@@ -12,9 +12,9 @@
 
 ## 统计
 
-- 文档总数 **335** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6244** KB · **43718** 行
+- 文档总数 **335** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6247** KB · **43747** 行
 - 状态分布：**未标注** 185 · **已确认/已实现** 112 · **进行中** 28 · **待裁定** 9 · **历史留档** 1
-- 孤儿文档（0 引用）**42** 份 · 状态未标注 **185** 份
+- 孤儿文档（0 引用）**40** 份 · 状态未标注 **185** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**10** 份
 - 三、现行设计稿（design）：**214** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 257 KB / 278 行 | 14 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 67 KB / 708 行 | 75 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 486 KB / 991 行 | 216 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 74 KB / 362 行 | 330 / 18 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 74 KB / 362 行 | 331 / 18 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -59,9 +59,9 @@
 |---|---|---|---|---|---|
 | `docs/design/assembler-lazy-mount-20260927.md` | 组装机卡片流式加载（视口懒挂载）· 2026-09-27 | 进行中（进行中） | 2026-09-27 | 8 KB / 100 行 | 1 / 0 |
 | `docs/design/flagship-kill-record-20260927.md` | 旗舰战记录开关：玩家亲手击沉（2026-09-27 · 二号 · d2） | 已确认/已实现（船长已确认） | 2026-09-27 | 12 KB / 144 行 | 2 / 0 |
-| `docs/design/foe-support-engage-20260927.md` | 支援舰参战修复（"增援的敌舰不会攻击也没有效果"） | 进行中（进行中） | 2026-09-27 | 8 KB / 111 行 | 0 / 0 |
-| `docs/design/handoff-20260927-main.md` | 交接卡：接一号班（主树 main · 2026-09-27） | 未标注（交接中） | 2026-09-27 | 11 KB / 116 行 | 0 / 0 |
-| `docs/design/handoff-20260927-to-pilot1.md` | 交接：d2/workspace 待落 main（2026-09-27 · 二号 → 一号） | 未标注（船长已批「先合并） | 2026-09-27 | 3 KB / 53 行 | 0 / 0 |
+| `docs/design/foe-support-engage-20260927.md` | 支援舰参战修复（"增援的敌舰不会攻击也没有效果"） | 进行中（进行中） | 2026-09-27 | 8 KB / 111 行 | 1 / 0 |
+| `docs/design/handoff-20260927-main.md` | 交接卡：接一号班（主树 main · 2026-09-27） | 未标注（交接中） | 2026-09-27 | 11 KB / 116 行 | 1 / 0 |
+| `docs/design/handoff-20260927-to-pilot1.md` | 交接：d2/workspace 待落 main（2026-09-27 · 二号 → 一号） | 未标注（船长已批「先合并） | 2026-09-27 | 6 KB / 82 行 | 0 / 0 |
 | `docs/design/main-fleet-rare-wreck-20260927.md` | 主力舰队掉落稀有残骸（进残骸场）（2026-09-27 · 二号 · d2） | 未标注（船长令已落码 · 自测全绿 · 待验） | 2026-09-27 | 5 KB / 64 行 | 0 / 0 |
 | `docs/design/octopus-blackbox-code-review-20260927.md` | 章鱼人削血与旗舰黑匣归属 · 代码整理（2026-09-27 · 二号 · d2） | 待裁定（已整理 · 自测全绿 · 待船长审核） | 2026-09-27 | 7 KB / 61 行 | 0 / 0 |
 | `docs/design/steam-packaging-20260927.md` | Steam 打包与上传（2026-09-27 · 一号 · main） | 未标注（第一步已落码并本机验证通过） | 2026-09-27 | 6 KB / 84 行 | 1 / 0 |
@@ -306,7 +306,7 @@
 | `docs/archive/roadmap-2026-09-25-24.md` | 封存卷 · roadmap 批次条目 2026-09-25/24 | 未标注 | — | 5 KB / 10 行 | 0 / 0 |
 | `docs/archive/roadmap-2026-09-25-26.md` | 封存卷 · roadmap 批次条目 2026-09-25/26 | 未标注 | — | 9 KB / 10 行 | 0 / 0 |
 | `docs/archive/roadmap-2026-09-25.md` | 封存卷 · roadmap 批次条目 2026-09-25 | 未标注 | — | 39 KB / 34 行 | 1 / 0 |
-| `docs/archive/roadmap-2026-09-26.md` | 封存卷 · roadmap 批次条目 2026-09-26 | 未标注 | — | 79 KB / 66 行 | 2 / 0 |
+| `docs/archive/roadmap-2026-09-26.md` | 封存卷 · roadmap 批次条目 2026-09-26 | 未标注 | — | 79 KB / 66 行 | 3 / 0 |
 
 ## 二、其它（docs 根目录） —— 1 份
 
@@ -405,13 +405,11 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 55 / 13 |
 
-## 附：孤儿文档（0 引用，42 份）
+## 附：孤儿文档（0 引用，40 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/foe-support-engage-20260927.md`（2026-09-27 · 8 KB）—— 支援舰参战修复（"增援的敌舰不会攻击也没有效果"）
-- `docs/design/handoff-20260927-main.md`（2026-09-27 · 11 KB）—— 交接卡：接一号班（主树 main · 2026-09-27）
-- `docs/design/handoff-20260927-to-pilot1.md`（2026-09-27 · 3 KB）—— 交接：d2/workspace 待落 main（2026-09-27 · 二号 → 一号）
+- `docs/design/handoff-20260927-to-pilot1.md`（2026-09-27 · 6 KB）—— 交接：d2/workspace 待落 main（2026-09-27 · 二号 → 一号）
 - `docs/design/main-fleet-rare-wreck-20260927.md`（2026-09-27 · 5 KB）—— 主力舰队掉落稀有残骸（进残骸场）（2026-09-27 · 二号 · d2）
 - `docs/design/octopus-blackbox-code-review-20260927.md`（2026-09-27 · 7 KB）—— 章鱼人削血与旗舰黑匣归属 · 代码整理（2026-09-27 · 二号 · d2）
 - `docs/design/spore-allfoes-gate-20260925.md`（2026-09-25 · 4 KB）—— 孢子导弹巢「全体攻击」：主目标未命中不再阻断副目标（2026-09-25）
