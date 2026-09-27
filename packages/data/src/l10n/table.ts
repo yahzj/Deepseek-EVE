@@ -312,6 +312,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormholeScan.008": { zh: "这一处正在自动探索中：先召回那一趟，再放弃。", en: "That one is on an automated exploration run: recall that run before abandoning it." },
   "core.wormholeScan.009": { zh: "🛰 已放弃一处虫洞：{p1}（那处通道就此关闭）。", en: "🛰 Abandoned a wormhole: {p1} (that passage closes here)." },
   "core.wormholeScan.010": { zh: "🛰 已标记 {p1} 处虫洞坐标（未探索）——到「扫描虫洞」页决定何时探索。", en: "🛰 Marked {p1} wormhole coordinates (unexplored) — decide when to explore them on the Wormhole Scan page." },
+  /* ── 本地化批二（2026-09-27 · 三号）：扫描闸门的四条拒因改走 id（中文措辞照抄，未改文案）── */
+  "core.wormholeScan.011": { zh: "扫描虫洞尚未解锁：需要「深空工业协会」声望 {p1}（当前 {p2}）——先去做协会的委托攒声望。", en: "Wormhole scanning is not unlocked yet: it needs Deep Space Industry Association reputation {p1} (currently {p2}) — take Association commissions to build reputation." },
+  "core.wormholeScan.012": { zh: "已经在虫洞里了：先完成或撤离这一趟。", en: "You are already inside a wormhole: finish or withdraw from this run first." },
+  "core.wormholeScan.013": { zh: "遭遇战未决：先处理完当前遭遇。", en: "An encounter is unresolved: settle the current encounter first." },
+  "core.wormholeScan.014": { zh: "已囤积 {p1} 处未探索的虫洞：先去探索掉一处再扫。", en: "Already {p1} unexplored wormholes stockpiled: explore one before scanning again." },
   /* ── 第八批：encounters.ts / station.ts ── */
   "core.encounters.001": { zh: "⚠ [AI·{p1}] {p2}——已中止任务召回回港待命（请维修后再派；此状态下无法再派任务）。", en: "⚠ [AI·{p1}] {p2} — the task was aborted and the ship recalled to stand by in port (repair it before assigning more; it cannot take tasks in this state)." },
   "core.encounters.002": { zh: "⚠ 遭遇战后船体结构濒临崩溃（耐久仅剩 5%）——请尽快返港维修。", en: "⚠ After the encounter the hull is on the brink of collapse (durability down to 5%) — return to port for repairs as soon as you can." },
@@ -569,6 +574,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormhole.030": { zh: "🕳 抵达漂浮信标（{p1},{p2}）：信标标出一处谜质信号（Q{p3} · R{p4}）· 剩 {p5} 回合。", en: "🕳 Reached a drifting beacon ({p1},{p2}): it marked a spot of Enigma (Q{p3} · R{p4}) · {p5} turns left." },
   "core.wormhole.031": { zh: "🕳 抵达漂浮信标（{p1},{p2}）：信标标出一处谜质信号（Q{p3} · R{p4}）——顺带驱散了那里的星云 · 剩 {p5} 回合。", en: "🕳 Reached a drifting beacon ({p1},{p2}): it marked a spot of Enigma (Q{p3} · R{p4}) and dispersed the nebula there · {p5} turns left." },
   "core.wormhole.032": { zh: "🕳 抵达漂浮信标（{p1},{p2}）：这块信标没有新的谜质可标 · 剩 {p3} 回合。", en: "🕳 Reached a drifting beacon ({p1},{p2}): it has no further Enigma to mark · {p3} turns left." },
+  /* ── 本地化批二（2026-09-27 · 三号）：core 侧"返回裸中文"的闸门拒因改走 id（中文措辞照抄，未改文案）── */
+  "core.wormhole.033": { zh: "遗迹深处的守备已经惊动：先点「迎战」打完这一场。", en: "The ruins garrison is alerted: press “Engage” and finish this fight first." },
+  "core.wormhole.034": { zh: "对方已经发现我们：先点「开战」打完这一场。", en: "They have spotted us: press “Attack” and finish this fight first." },
+  "core.wormhole.035": { zh: "战斗中：先打完这一场。", en: "In combat: finish this fight first." },
+  "core.wormhole.036": { zh: "临时空间里有 {p1} 件没处理：先到「货仓」页放回货仓或丢弃，再继续。", en: "{p1} item(s) in temporary storage are unresolved: put them back into the hold or discard them on the Cargo page, then continue." },
   /* ── 第十七批：equipment.ts（装配 / 换装 / 无人机 / 弹药档位 / 卸下）── */
   "core.equipment.001": { zh: "未知装备：{p1}。", en: "Unknown module: {p1}." },
   "core.equipment.002": { zh: "装备库里没有 {p1}，先去组装机造一件。", en: "There is no {p1} in module storage — build one at the assembly unit first." },

@@ -204,7 +204,7 @@ export function WormholeScanTab({
               <button
                 className="app-btn is-small is-primary"
                 disabled={blocked !== null}
-                title={blocked ?? tr("ui.WormholeScan.010")}
+                title={blocked !== null ? cmdText(blocked) : tr("ui.WormholeScan.010")}
                 onClick={() => {
                   const r = engine.wormholeScanStart()
                   if (!r.ok) onToast(cmdText(r) || tr('ui.WormholeScan.060'), true)
@@ -216,7 +216,7 @@ export function WormholeScanTab({
             )}
             {full ? <span className="app-wh-hold-warn">{tr("ui.WormholeScan.012")}</span> : null}
           </div>
-          {blocked !== null && !scan.active ? <div className="app-dim">{blocked}</div> : null}
+          {blocked !== null && !scan.active ? <div className="app-dim">{cmdText(blocked)}</div> : null}
         </div>
 
         {/**

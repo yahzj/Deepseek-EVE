@@ -12,6 +12,8 @@
  */
 import { bumpFirst, peakFirst } from './firstTasks'
 import type { GameState, BattleState, WormholeArchetype, WormholeFamily } from './state'
+// 甲案（本地化批二 · 2026-09-27）：闸门拒因改走结构化（`{ error, errorId, errorParams }`）
+import type { CoreBlockReason } from './engine'
 import { addLog, haltActivityForSwitch, haulingHalt, miningHalt, salvageHalt, wormholeScanHalt } from './state'
 import {
   gateMainActivityHandoff,
@@ -1046,21 +1048,25 @@ function gridRun(state: GameState): { run: WormholeRunState; grid: WormholeGridS
  * 全读这一份 ⇒ 不会出现"界面拦了、core 没拦"（**2026-09-20 玩家报障**正是这个缺口：
  * 待迎战期间「打捞」按钮仍可点，见 `wormholeBattle.ts` 的遗迹收尾战注释）。
  */
-export function wormholePendingBattleReasonOf(run: WormholeRunState | undefined | null): string | null {
+export function wormholePendingBattleReasonOf(run: WormholeRunState | undefined | null): CoreBlockReason | null {
   if (!run) return null
-  if (run.pendingRuinsBattle === true) return '遗迹深处的守备已经惊动：先点「迎战」打完这一场。'
-  if (run.pendingNodeBattle === true) return '对方已经发现我们：先点「开战」打完这一场。'
+  if (run.pendingRuinsBattle === true) {
+    return { error: '遗迹深处的守备已经惊动：先点「迎战」打完这一场。', errorId: 'core.wormhole.033' }
+  }
+  if (run.pendingNodeBattle === true) {
+    return { error: '对方已经发现我们：先点「开战」打完这一场。', errorId: 'core.wormhole.034' }
+  }
   return null
 }
 
 /** 状态版（界面 / 工具用） */
-export function wormholePendingBattleReason(state: GameState): string | null {
+export function wormholePendingBattleReason(state: GameState): CoreBlockReason | null {
   return wormholePendingBattleReasonOf(state.wormhole.run)
 }
 
 /** 战斗中不许做任何层内动作（与"战斗没结束不能撤/不能深入"同一把尺） */
-function gridActionBlocked(run: WormholeRunState): string | null {
-  if (run.battle) return '战斗中：先打完这一场。'
+function gridActionBlocked(run: WormholeRunState): CoreBlockReason | null {
+  if (run.battle) return { error: '战斗中：先打完这一场。', errorId: 'core.wormhole.035' }
   // **遗迹守备已惊动 / 踩中埋伏**：先迎战（船长 2026-09-13：不要让战斗毫无提示地突然发生）
   const pendingBattle = wormholePendingBattleReasonOf(run)
   if (pendingBattle) return pendingBattle
@@ -1072,7 +1078,11 @@ function gridActionBlocked(run: WormholeRunState): string | null {
    */
   const pending = run.tempGrid?.placements.length ?? 0
   if (pending > 0) {
-    return `临时空间里有 ${pending} 件没处理：先到「货仓」页放回货仓或丢弃，再继续。`
+    return {
+      error: `临时空间里有 ${pending} 件没处理：先到「货仓」页放回货仓或丢弃，再继续。`,
+      errorId: 'core.wormhole.036',
+      errorParams: { p1: pending },
+    }
   }
   return null
 }
@@ -1096,7 +1106,7 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
   if (!hit) return { ok: false, error: '本层没有网格：无法扫描。', errorId: 'core.wormhole.010' }
   const { run, grid } = hit
   const blocked = gridActionBlocked(run)
-  if (blocked) return { ok: false, error: blocked }
+  if (blocked) return { ok: false, error: blocked.error, errorId: blocked.errorId, errorParams: blocked.errorParams }
   /**
    * **谜质增益**（F3c · 船长 2026-09-13）：扫描半径 +圈、每次额外驱散若干格星云。
    * 一律**现算**（装置躺在货仓里就生效，不必再同步状态）。
@@ -1189,7 +1199,7 @@ export function wormholeGridTravel(
   if (!hit) return { ok: false, error: '本层没有网格：无法前往。', errorId: 'core.wormhole.012' }
   const { run, grid } = hit
   const blocked = gridActionBlocked(run)
-  if (blocked) return { ok: false, error: blocked }
+  if (blocked) return { ok: false, error: blocked.error, errorId: blocked.errorId, errorParams: blocked.errorParams }
   const cell = gridCellAt(grid, target)
   if (!cell) return { ok: false, error: '那一格不在本层网格里。', errorId: 'core.wormhole.013' }
   if (cell.key === gridCellAt(grid, grid.pos)?.key) return { ok: false, error: '已经在这个地点了。', errorId: 'core.wormhole.014' }
@@ -1367,7 +1377,7 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   if (!hit) return { ok: false, error: '本层没有网格：无法激活。', errorId: 'core.wormhole.017' }
   const { run, grid } = hit
   const blocked = gridActionBlocked(run)
-  if (blocked) return { ok: false, error: blocked }
+  if (blocked) return { ok: false, error: blocked.error, errorId: blocked.errorId, errorParams: blocked.errorParams }
   const cell = gridCellAt(grid, grid.pos)
   if (!cell) return { ok: false, error: '当前位置不在网格里。', errorId: 'core.wormhole.018' }
   if (grid.activated.includes(cell.key)) {
@@ -1796,7 +1806,7 @@ export function wormholeEnter(
 ): WormholeStartResult {
   if (state.wormhole.run) return { ok: false, error: '已经在虫洞里了：先撤离或结算本趟。', errorId: 'core.wormhole.026' }
   const blocked = wormholeEntryBlockReason(state, ctx, shipIds)
-  if (blocked) return { ok: false, error: blocked }
+    if (blocked) return { ok: false, error: blocked }
   /**
    * **进洞自动停止**（船长 2026-09-14：「**进洞自动停止**」＋「『进洞会自动停掉的那一项活动』
    * **同样落实到采矿/打捞**」＋「**长途运输发出警告**」；**2026-09-21 统一批**：判据与停机全部改走

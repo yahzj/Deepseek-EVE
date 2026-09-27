@@ -304,7 +304,9 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     expect(mining.error ?? '').toContain('虫洞')
     const whscan = wormholeScanStart(state, ctx)
     expect(whscan.ok).toBe(false)
-    expect(wormholeScanBlockReason(state) ?? '').toContain('虫洞')
+    // 甲案（本地化批二 · 2026-09-27）：扫描闸的拒因改走结构化 ⇒ 断 id（"已经在虫洞里了"那条），
+    // 不再靠中文子串（英文界面渲染什么由 l10n 表决定）
+    expect(wormholeScanBlockReason(state)?.errorId).toBe('core.wormholeScan.012')
     // 对照（2026-09-15）：**星系扫描不占主控 ⇒ 人在洞里照样能派扫描艇**（它不是"主控手上的事"）
     expect(startScan(state, scanTarget, ctx).ok).toBe(true)
     expect(state.scanning.active).toBe(true)

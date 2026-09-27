@@ -59,6 +59,26 @@ function isPlayerInBattle(state: GameState): boolean {
   return false
 }
 
+/**
+ * **闸门拒因（结构化）** —— 那些"能不能做某事"的 core 函数（返回 `string | null` 的那批）用它。
+ *
+ * 与 `CommandResult.error/errorId/errorParams` **同一口径**（甲案 · 船长 2026-09-20）：
+ * `error` 是**中文原串、永远照写**（工具、老路径与回落用）；`errorId` / `errorParams` 给界面
+ * 走 `cmdText(r)` 按当前语言渲染。改造前后**判空写法不变**（`blocked !== null`），
+ * 只有渲染处从"直接显示字符串"改成 `cmdText(...)`。
+ *
+ * 为什么单独一个类型而不是复用 `CommandResult`：这类函数只表达"为什么不行"，
+ * 没有 `ok` / `code` / `autoBattle` 那些语义；结构对齐（三个字段同名）即可被 `cmdText` 消费。
+ */
+export interface CoreBlockReason {
+  /** 中文原串（照写，供工具与回落用；界面有 id 时按语言渲染） */
+  error: string
+  /** 文案 id（在 `packages/data/src/l10n/table.ts` 唯一表里登记 zh + en） */
+  errorId?: string
+  /** `errorId` 的插值参数（键 `p1` / `p2` …） */
+  errorParams?: Readonly<Record<string, string | number>>
+}
+
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
 export interface CommandResult {
   ok: boolean

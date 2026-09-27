@@ -307,6 +307,7 @@ import type {
   AiCoreType,
   BountyWinMC,
   CommandResult,
+  CoreBlockReason,
   FitPresetApplyResult,
   UnfitAllResult,
   DamageType,
@@ -2697,8 +2698,8 @@ export class GameEngine {
     return wormholeShipEntryBusy(this.state, shipId)
   }
 
-  /** 虫洞扫描：现在能不能开扫（不许时给理由，界面据此置灰） */
-  wormholeScanBlockReason(): string | null {
+  /** 虫洞扫描：现在能不能开扫（不许时给理由，界面据此置灰；甲案：理由带 id，界面走 `cmdText` 取词） */
+  wormholeScanBlockReason(): CoreBlockReason | null {
     return wormholeScanBlockReason(this.state)
   }
 
@@ -3045,7 +3046,7 @@ export class GameEngine {
    * 「确认期间层内动作全被拦，**但撤离照走**（逃生门）」⇒ 并把这条（撤离按钮会一起置灰）。
    * 面板的用法：**扫描/打捞/激活/深入**读"动作闸 ?? 本条"，**撤离**只读动作闸。
    */
-  wormholeLayerBlocked(): string | null {
+  wormholeLayerBlocked(): CoreBlockReason | null {
     return wormholePendingBattleReason(this.state)
   }
 
