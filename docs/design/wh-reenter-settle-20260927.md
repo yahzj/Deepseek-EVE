@@ -114,3 +114,22 @@
   `ui:rot-check` ✅ · `ui:theme-check` ✅ · `ui:tip-check` ✅ · 桌面 ＋ web 构建 ✅（产物已重建）。
 - **提交**：`7cfab443`。
 - ⚠ 渲染层无单测框架 ⇒ 该 UI 行为待**真机复读** ＋ 船长验收。
+## 八、围剿「直接攻击」改为当拍开战（2026-09-27 · 船长批「按你推荐来」＝ A 案）
+
+- **问题**（Standards 轴审查抓出 ＋ 一号核实）：公告定稿第③条写「落在玩家所在格**会直接攻击舰队**」，
+  而开战判定在 `advanceWormhole` 里按"脚下格"做 ⇒ 原先是**引擎下一拍**才开打，玩家可抢点一次移动走开。
+- **为什么不在 core 里改**：`wormholeStartBattle` 住在 `wormholeBattle.ts`，而 `wormholeBattle.ts:34` 已
+  `import … from './wormhole'` ⇒ 若让 `wormhole.ts` / `wormholeSalvage.ts` 的扣回合点也去调它，就形成
+  **`wormhole` ↔ `wormholeBattle` 互相引用**（本仓有 `ui:tdz` 体检，此类坑踩过）⇒ 不走 core。
+- **改法（A 案）**：渲染层 `game/engine.ts` 新增私有 `wormholeTickNow()`（动作成功后当场补一次
+  `advanceWormhole`），三个**扣回合**动作收尾调用它：`wormholeScan()` / `wormholeTravel()` /
+  `wormholeActivate()`（打捞与采集在 core 侧由 `wormholeActivateAt` 分流 ⇒ 同一个入口覆盖）。
+  **core 状态机一个字未改**；与「撤离当拍结算」（第七节）同款 —— 把"下一拍"提前到玩家看见结果的那一刻。
+- ⚠ **待办**：属渲染层交互，**真机复读待船长验收**（读数型：站上围剿者格后点扫描／移动 ⇒ 应当拍进战斗）。
+
+## 九、本地化尾巴转三号（2026-09-27 · 船长批「按你推荐来」）
+
+core 三处**返回裸中文、没有 `errorId`**（`wormholeScanBlockReason` 4 条 · `wormholePendingBattleReasonOf` 2 条 ·
+`wormholeBattle.ts:233` 转发其一）⇒ 英文界面下这几句仍是中文。按分工（roadmap「**一号不再动本地化**」，
+船长 2026-09-20 令）**只登记不落码**，已写进 `docs/roadmap.md` 的
+「2026-09-27 三号交接开放项（本地化：core 返回的裸中文 → id 制）」。

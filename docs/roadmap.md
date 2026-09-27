@@ -316,6 +316,29 @@
   （不锁焦点、保留 Esc 与无障碍名；理由 = 详情窗是只读速查件，"边翻边看"是主用法）；② **星图 H 族族徽缺口不是缺陷**——
   船长「**墨潮帮本来就不是星图常驻的**」⇒ `styles.css` 没有 `.app-map-famchip.is-fam-H` 属正常，不改。
 
+## 2026-09-27 三号交接开放项（本地化：core 返回的裸中文 → id 制）
+
+> **来源**：一号按船长令「改完后用 skill 检查下虫洞部分代码」跑 `code-review`（Standards 轴）时抓出 ——
+> 虫洞这条链上有 **3 处 core 函数直接返回裸中文、没有 `errorId`**，经 `engine` 原样上屏
+> ⇒ **英文界面下这几句仍然是中文**。
+> **分工依据**：本文件「2026-09-20 三号交接开放项」的交接口径 ——「**一号不再动本地化**」
+> （船长 2026-09-20 令「本地化交给三号」）⇒ 一号**只登记不落码**，船长 2026-09-27 批「按你推荐来」。
+
+- **要改的三处（2026-09-27 实测行号）**：
+  1. `packages/core/src/wormholeScan.ts:181` 的 `wormholeScanBlockReason(state): string | null` —— 内含 **4 条**裸中文：
+     尚未解锁（**带参数**：`声望 ${WORMHOLE_SCAN_UNLOCK_STANDING}（当前 ${wormholeScanStanding(state)}）`）·
+     已经在虫洞里了 · 遭遇战未决 · 已囤积（**带参数**：`${wormholeStockMaxOf(state)} 处`）。
+  2. `packages/core/src/wormhole.ts:1049` 的 `wormholePendingBattleReasonOf(run): string | null` —— **2 条**：
+     遗迹守备已经惊动 · 对方已经发现我们。
+  3. `packages/core/src/wormholeBattle.ts:233`（遗迹收尾战的闸门）—— 它只是**转发**第 2 条，跟着换 `errorId` 即可。
+- **改造面（实测）**：① 两个函数的签名从「返回 `string`」改成「返回结构化拒因（id ＋ params）」；
+  ② 调用点 3 处（`apps/desktop/src/renderer/src/game/engine.ts:2701` · `:3030` · core 内部 `wormholeScan.ts:196`）；
+  ③ **5 个测试文件**里的中文断言要跟着改：`wormhole-activity-lock.test.ts`（`toContain('虫洞')`）·
+  `wormhole-scan.test.ts`（`toContain('囤积')` / `toContain('15')`）· `wormhole-unlock.test.ts`（`toContain('尚未解锁')`）等
+  —— 断言宜改为"断言 id/拒因种类"，别再靠中文子串。
+- **口径**：按约定 §十一之三 造 id（域建议 `core.wormholeScan.*` / `core.wormhole.*`）＋ 在
+  `packages/data/src/l10n/table.ts` 补 `zh` 与 `en`；**中文照抄现有措辞**（不改文案），英文按 `docs/glossary-en.md` 出；
+  合入前跑 `l10n:check` ＋ `l10n:list`。
 ## 最近批次（滚动窗口 · 最新 20 条）
 
 > 越窗即封存（`npm run docs:seal`）；窗口大小 = 20 条，需要临时调大用 `--window=N`。
