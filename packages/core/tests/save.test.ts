@@ -1,6 +1,7 @@
 /**
  * 存档系统（读写 / 迁移 / 容错）的单元测试（M1：v1 → v2 迁移链）。
  */
+import { haltCurrentActivity } from '../src/activityGate'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { addLog, createInitialState, CURRENT_STATE_VERSION } from '../src/state'
@@ -286,6 +287,13 @@ describe('存档往返：引擎跑过的档不许丢键（自动护栏）', () =
     expect(learnBlueprint(state, simCtx, 'sbp-sandcat').ok).toBe(true)
     state.warehouse.items['min-tritanium'] = 400
     state.warehouse.items['min-pyerite'] = 100
+    // **2026-09-27 船长令**：亲自开炉 ⇒ 亲自开线属"先警告"档 ⇒ 首击只警告、二击执行
+    //   （本用例只求"跑过工业后往返不丢键"，故按二击路径把当前占主控的活动停掉再开线）
+    const mf1 = startManufacturing(state, 'sbp-sandcat', 'pilot', simCtx)
+    if (!mf1.ok) {
+      expect(mf1.errorId).toBe('core.activityGate.002')
+      haltCurrentActivity(state)
+    }
     expect(startManufacturing(state, 'sbp-sandcat', 'pilot', simCtx).ok).toBe(true)
     const good = [...simCtx.marketGoods.values()].find((g) => g.key === BELT_ORE)
     expect(placeBuyOrder(state, simCtx, good!.key, Math.max(1, Math.round(good!.basePrice ?? 1)), 10)).not.toBeNull()
