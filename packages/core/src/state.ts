@@ -2131,6 +2131,20 @@ export interface WeekendWreckRecord {
    * 兼容字段（可选、零迁移）：老档没记 ⇒ 打捞侧回落**当前事件族**。
    */
   family?: FoeFamily
+  /**
+   * **场里的稀有残骸存量（件数）**（**2026-09-27 船长令**：「**主力舰队添加一个稀有残骸掉落**」＋
+   * 追问落点答「**进残骸场**」）。
+   *
+   * 口径：与常驻残骸场的 `galaxyWrecks[gid].rare` **同义**（打捞时稀有池优先、本轮必出一件），
+   * 只是记在**入侵独立池**这本账上 ⇒ 打捞对象选「入侵残骸」也能捞到它。
+   * ⚠ **稀有不吃 48 小时衰减**（与常驻场同款：矿物会衰减、箱子不会）——箱子留在场里直到被捞走。
+   */
+  rare?: number
+  /**
+   * **这批稀有残骸按卡记账**（键 = 打它的那张卡 id，如 `ink-main`）——打捞时据此**归族取箱子**
+   * （与 `galaxyWrecks.rareBy` 同一套做法：`pullRareWreck` 认 `rareWreckItemIdOfCard`，取不到就跳过）。
+   */
+  rareBy?: Record<string, number>
 }
 
 /**

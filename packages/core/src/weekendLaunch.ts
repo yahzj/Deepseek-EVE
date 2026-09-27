@@ -126,7 +126,6 @@ export function weekendFlagshipPrepView(
     octopusDone: 0,
     playerFrac: 0,
     octopusFrac: 0,
-    needDmg: WEEKEND_FLAGSHIP_POOL_HP,
   }
   const candidates: WeekendPrepCandidate[] = []
   for (const shipId of Object.keys(state.fleet)) {

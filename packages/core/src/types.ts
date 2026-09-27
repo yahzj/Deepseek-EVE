@@ -2333,6 +2333,19 @@ export interface AnomalyDef {
    * ⚠ **只服务残骸经济**：战斗、威胁显示、速度/射程成长一律仍读 `threat`。
    */
   wreckThreat?: number
+  /**
+   * **打赢这张卡掉落几件稀有残骸**（**2026-09-27 船长令**：「**主力舰队添加一个稀有残骸掉落**」＋
+   * 追问落点答「**进残骸场**」）。
+   *
+   * 落点 = **该星系的入侵残骸场**（`state.weekendWrecks[galaxyId].rare/rareBy`，与常驻残骸场的
+   * `galaxyWrecks.rare/rareBy` 同义不同账）⇒ 打捞时**稀有池优先、本轮必出一件**（物品 = 该卡所属组的
+   * 稀有残骸，主力舰队即 `wreck-rare-h-hi`）。
+   *
+   * 触发口径（本次同时定的）：**只在战斗里打赢**（主动出击全歼 ⇒ `win`、遇袭击退 ⇒ `repel`）；
+   * 离线 / 无人应答的**文字结算**（`offlineRepel`）与失利**不算**。**不设每场上限**（船长令）。
+   * 缺省 = 不掉（既有卡逐字零变化）。
+   */
+  rareWreckDrop?: number
   /** 需要的势力声望 */
   standingReq: number
   /** 胜利声望增长 */
