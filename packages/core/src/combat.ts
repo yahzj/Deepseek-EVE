@@ -7894,10 +7894,18 @@ export function pickFoeDroneTarget(
   // 敌机没打过来（或已超出窗口）⇒ 近防炮不开火（"敌方无人机只有靠近你你才能反击"）。
   // ⚠ **2026-09-16 逐舰**（船长「将缺少的一并实现」）：令牌按**本舰**取/消费
   //   （旧口径 `droneHitAt.me` 全队共用一个、一次反击就消费掉 ⇒ 4 舰编队整队每轮只换到一发反击）。
-  const perShipTokens = b.droneHitAtMeBy
-  const hitAt = perShipTokens ? perShipTokens[myTag] : b.droneHitAt?.me
-  if (hitAt === undefined || b.lastTickGameMs - hitAt > PD_REACTIVE_WINDOW_MS)
-    return null;
+  /**
+   * **全队反击**（**2026-09-27 船长令**：「**将反击原本是被打的舰船反击改为全队反击一次（对我方也生效）**」）。
+   *
+   * 旧口径（2026-09-16 逐舰）：令牌记在**被打的那艘船**名下 ⇒ 只有它反击，编队里其它带近防炮的舰干看着。
+   * 新口径：令牌**全队共用**（`droneHitAt.me`，写入点见 `applyMyWeaponFire` 那一侧）——
+   * **任意一艘挨打 ⇒ 全队每艘带近防炮的舰各反击一次**；"各一次"用**逐舰消费时刻**保证
+   * （`droneHitAtMeBy[本舰tag] = 本次令牌时刻`，判据 `本舰消费时刻 >= 令牌时刻` ⇒ 同一次挨打不重复反击），
+   * 令牌本身**不清空** ⇒ 等下一次挨打刷新时刻、全队再来一轮。
+   */
+  const tokenAt = b.droneHitAt?.me
+  if (tokenAt === undefined || b.lastTickGameMs - tokenAt > PD_REACTIVE_WINDOW_MS) return null
+;
   /**
    * **逐门记账**（2026-09-17 修玩家报障：「**多个近防炮对无人机的伤害不叠加，同时装MK2和MK3只有一个开火**」）：
    *
@@ -7910,16 +7918,16 @@ export function pickFoeDroneTarget(
    * `PD_REACTIVE_WINDOW_MS` 判断兜底 ⇒ 不会退回"一直开火"。
    */
   const lockKey = dronePoolKey(myTag, wi)
-  if (perShipTokens) {
-    const answered = b.mePdAnsweredBy?.[lockKey]
-    if (answered !== undefined && answered >= hitAt) return null
-  } else {
-    // 旧形状（本改动之前开的在途战斗）：照旧消费旧令牌
-    b.droneHitAt = { ...(b.droneHitAt ?? {}), me: undefined };
-  }
-  /** 成功还手后记账（只有**选到目标**才算还过手：没目标时不消耗本门这次机会） */
+  /**
+   * **逐门记账**（2026-09-17 修「多门近防炮对无人机的伤害不叠加」那批）：键 = `舰tag:武器下标`。
+   * **2026-09-27 船长令**（「将反击原本是被打的舰船反击改为**全队反击一次**（对我方也生效）」）后判据统一到本表：
+   * **一次挨打 = 全队每艘舰的每一门近防炮各还手一次**（全队令牌 `droneHitAt.me` 共用且**不清空**，
+   * 靠"本门已对本次令牌时刻还手过"防重复；窗口过期由上面的 `PD_REACTIVE_WINDOW_MS` 兜底）。
+   */
+  const answered = b.mePdAnsweredBy?.[lockKey]
+  if (answered !== undefined && answered >= tokenAt) return null  /** 成功还手后记账（只有**选到目标**才算还过手：没目标时不消耗本门这次机会） */
   const markAnswered = (): void => {
-    if (perShipTokens) b.mePdAnsweredBy = { ...(b.mePdAnsweredBy ?? {}), [lockKey]: hitAt }
+    b.mePdAnsweredBy = { ...(b.mePdAnsweredBy ?? {}), [lockKey]: tokenAt }
   }
   // ⚠ **打机群不按两舰间距判射程**（船长 2026-09-11 裁定 · 甲案）：敌机在画面里是**飞到您舰旁**
   // 才开火的——机制服从画面 ⇒ 只要机还活着、近防炮就能打它（近防炮的射程只对"打舰"生效）。
@@ -8487,14 +8495,15 @@ function stepBattle(
         const dtgt = pickTarget()
         if (!dtgt) break // 我方已全灭（正常由结束判定收场）
         b.stats.foeShots += 1;
-        // **反应式防空**：敌机打过我方 ⇒ 记录时刻，供**我方近防炮**在窗口内反击。
-        // ⚠ **2026-09-16 逐舰**：令牌记在**被打的那艘船**名下（`droneHitAtMeBy[舰tag]`）——
-        //   旧口径全队共用一个令牌，僚舰的近防炮基本轮不到反击。
-        if (b.droneHitAtMeBy) {
-          b.droneHitAtMeBy = { ...b.droneHitAtMeBy, [dtgt.spec.tag]: b.lastTickGameMs }
-        } else {
-          b.droneHitAt = { ...(b.droneHitAt ?? {}), me: b.lastTickGameMs }
-        }
+        /**
+         * **全队令牌**（**2026-09-27 船长令**：「**将反击原本是被打的舰船反击改为全队反击一次（对我方也生效）**」）：
+         * 挨打即刷新**共用**时刻 `droneHitAt.me`；`droneHitAtMeBy` 从"挨打记录"改由**消费处独占**
+         * （记"本舰已对哪一次令牌反击过"）⇒ 这里不再写它。
+         *
+         * ⚠ **旧实现在逐舰路径下从不写 `droneHitAt.me`**（`if (逐舰表) 写逐舰表; else 写共用令牌`）——
+         * 而上一条令改判据后读的正是 `droneHitAt.me` ⇒ 这里**必须无条件写**，否则我方近防炮一发都不反击。
+         */
+        b.droneHitAt = { ...(b.droneHitAt ?? {}), me: b.lastTickGameMs }
         const dType = dw.fixedType ?? 'kinetic';
         // 机群为掷命中（`fixed`）：吃自己的 `hitRate`、吃我方回避与距离衰减——与我方无人机同源
         const droneHit = hitChance(dw, f, dtgt.spec, b.distanceM, bal)

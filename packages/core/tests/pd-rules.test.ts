@@ -67,13 +67,13 @@ describe('敌方近防炮 · 2026-09-12 船长八条裁决', () => {
    * 本用例钉两张表 + 一条"只动 H"：别的族/无族一律逐字走全局值。
    */
   it('H 族近防炮覆写：伤害 ×1.5 · 命中 +0.05（百分点）· 别的族不动', () => {
-    /** 基础值：命中 0.7 · 单发 5（T1 档系数 1.0 ⇒ 5） */
-    expect(pdShotOf(bal, undefined, 1), '旧路径/合成 spec ⇒ 全局值').toEqual({ acc: 0.7, dmg: 5 })
-    expect(pdShotOf(bal, 'A', 1), 'A 族 ⇒ 全局值（只特化 H）').toEqual({ acc: 0.7, dmg: 5 })
-    expect(pdShotOf(bal, 'H', 1), 'H 族 T1 ⇒ 命中 0.75 · 伤害 7.5').toEqual({ acc: 0.75, dmg: 7.5 })
-    /** 档系数照旧连乘（T5 旗舰 ×4）：H 族 = 5 × 4 × 1.5 = 30；命中那一项与档无关 */
-    expect(pdShotOf(bal, 'H', 5)).toEqual({ acc: 0.75, dmg: 30 })
-    expect(pdShotOf(bal, 'A', 5)).toEqual({ acc: 0.7, dmg: 20 })
+    /** 基础值：命中 0.7 · 单发 10（T1 档系数 1.0 ⇒ 10；**2026-09-27 船长令 5 → 10**） */
+    expect(pdShotOf(bal, undefined, 1), '旧路径/合成 spec ⇒ 全局值').toEqual({ acc: 0.7, dmg: 10 })
+    expect(pdShotOf(bal, 'A', 1), 'A 族 ⇒ 全局值（只特化 H）').toEqual({ acc: 0.7, dmg: 10 })
+    expect(pdShotOf(bal, 'H', 1), 'H 族 T1 ⇒ 命中 0.75 · 伤害 15').toEqual({ acc: 0.75, dmg: 15 })
+    /** 档系数照旧连乘（T5 旗舰 ×4）：H 族 = 10 × 4 × 1.5 = 60；命中那一项与档无关 */
+    expect(pdShotOf(bal, 'H', 5)).toEqual({ acc: 0.75, dmg: 60 })
+    expect(pdShotOf(bal, 'A', 5)).toEqual({ acc: 0.7, dmg: 40 })
     /** 与"命中下限"的关系：H 的加成是**加在 pdAcc 上**，仍要 clamp 到 [下限, 1] */
     const evasion = 0.12
     expect(Math.max(bal.pdHitFloor, pdShotOf(bal, 'H', 1).acc - evasion), 'H 打普通机型的命中').toBeCloseTo(0.63, 6)
