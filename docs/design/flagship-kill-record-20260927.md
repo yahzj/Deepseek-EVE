@@ -1,6 +1,6 @@
 # 旗舰战记录开关：玩家亲手击沉（2026-09-27 · 二号 · d2）
 
-状态：**待船长确认**（设计总结已递，未动工）。按 AGENTS.md §8 归档。
+状态：**船长已确认（「先按你推荐做」）· 已实现 · 待验收**。按 AGENTS.md §8 归档。
 
 ## 船长原话（照抄）
 
@@ -81,3 +81,49 @@
 1. 措辞分档是否照上表（尤其"输出占比未过半"那一句的说法）；
 2. 确认开关**只作判定与措辞**，黑匣仍按表掷；
 3. 开关为真而归属为章鱼时，**以开关为准显示**并记一条 `warn` 诊断日志。
+
+---
+
+## 六、已实现（2026-09-27 · 船长「先按你推荐做」＋ 章鱼输出玩家优先）
+
+### 6.1 落码清单
+
+| 文件 | 改动 |
+| --- | --- |
+| `packages/core/src/combat.ts` | **新增敌舰伤害唯一收口 `applyFoeUnitDamage`**：血写回 ＋ 死亡观测（算完再判，算术与随机数顺序一字不动）；打敌舰的**五处**（主段 / 附伤段 / 全体攻击两段 / 齐射溢火链）统一走它 |
+| `packages/core/src/state.ts` | `BattleUnitRt.downAtMs`（该单位阵亡时刻）＋ `BattleState.bossDownAtMs`（本场 BOSS 阵亡时刻） |
+| `packages/core/src/save.ts` | 两个新字段的清洗/登记：`bossDownAtMs` 入 `BATTLE_FIELDS`（**persist**）· 单位 `downAtMs` 过清洗器 · 场次留档 `flagshipPlayerKill` 过清洗器 · 快照两份占比与留档过清洗器 |
+| `packages/core/src/encounters.ts` | 旗舰战每拍推进后**读一个标记**（`bossDownAtMs`）抄进场次记录——不扫血、不判账；位置在两条收尾分支之前 ⇒ 收尾被丢也留得住 |
+| `packages/core/src/weekendEvent.ts` | `flagshipPlayerKill` 字段 ＋ **`weekendFlagshipSharesOf`**（占比玩家优先口径，血条视图与快照同源） |
+| `packages/core/src/weekendBattle.ts` | `weekendNoteFlagshipPlayerKill` · 快照归属**留档优先** · 快照带留档与两份占比 · 击沉两条日志改口径 |
+| `packages/core/src/weekendComms.ts` | 结算信多一段「你在本期的旗舰战中亲手击沉了入侵旗舰。」 |
+| `apps/desktop/.../engine.ts` | 结束那一刻的日志按**留档 → 章鱼 → 窗口**分档 ＋ 归属不一致的 `warn` 诊断 |
+| `packages/data/src/l10n/table.ts` | 改 `core.weekend.003` / `core.weekend.016` / `ui.weekend.102` / `ui.weekend.003`；新增 `core.weekend.041` / `core.weekend.042` / `ui.weekend.115` / `116` / `117` / `118`（各带 zh ＋ en） |
+| `packages/core/tests/flagship-kill-record-20260927.test.ts` | 新用例 6 条 |
+
+### 6.2 验证
+
+- `typecheck` 四包 0 错 · core **242 文件 / 2643 用例全绿** · `content:check` ✅ · `l10n:check` ✅ ·
+  `ui:rot-check` ✅ · `save:roundtrip-audit` ✅（丢键 0 · 类型变 0）。
+- **反向验证两处**：① 摘掉 `encounters` 里那一行抄写 ⇒ 用例 ①②③ 当场转红；② 摘掉 `combat` 里
+  `bossDownAtMs` 的写入 ⇒ 同样三条转红（改回即绿）。
+- 用例①走**真战斗**：4 艘巨齿鲨打满四波、第 4 波把母舰打沉 ⇒ 单位 `downAtMs`、`battle.bossDownAtMs`、
+  `ev.flagshipPlayerKill` 三处同时成立。
+  ⚠ 编队口径是**探针实测定下来的**：纯动能炮台在第二波（干扰舰射程压制）就打不动、只装高槽不装护盾
+  则在第三波被打散 ⇒ 都到不了母舰那一波；用例改为 6 门 MK3 导弹 ＋ 3 件护盾件。
+- 改口径带出的一处老断言：`weekend-wiring-20260925.test.ts` ⑩ 断言日志含「旗舰击沉」，文案改成
+  「玩家击沉入侵旗舰」后同步改断言（判据不变：这条 id 的日志在、且写明是玩家击沉的）。
+
+### 6.3 与本次一并落地的船长裁定
+
+- **占比玩家优先**（船长：「优先计算玩家的，玩家允许挤掉章鱼人的输出（最终输出占比），所以没必要快照」）：
+  `玩家 = 玩家已造成 ÷ 池子`（封顶 100%）· `章鱼 = min(章鱼已削, 池子 − 玩家已造成) ÷ 池子`
+  ⇒ 两份相加恒 ≤ 100%，玩家那份永不被挤掉；**留档只记事实（时刻/场次/波次），不记占比快照**。
+- **黑匣补发截止再延**（船长：「补发时间延长到现在」）：见 `invasion-kill-roll-20260926.md` 第五节 ——
+  已推 origin/main（`78900911`）。
+
+### 6.4 仍未裁的一件事
+
+**"活动窗口到点时正在打的旗舰战整场作废"**（`invasion-kill-roll-20260926.md` 第七节）不在本批范围内。
+有了留档之后，这类场次的**显示**已经不冤枉玩家（`ui.weekend.118`：「玩家亲手击沉了旗舰；战利品未能入账」），
+但**战利品仍然不会补发** —— 要不要补发（甲/乙/丙），等船长点名。

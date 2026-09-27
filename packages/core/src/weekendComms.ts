@@ -148,10 +148,16 @@ export function weekendSettleCommsOf(
   const standing = snapshot.standing ?? 0
   const standingLine = `本次入侵按你在清缴行动中的贡献，协会为你记入「深空工业协会」声望 +${standing}。`
   const subject = `航线通报：${family}入侵已被终结！星域恢复了和平！`
+  /**
+   * **旗舰战留档那一段**（**2026-09-27 船长令**：「和入侵结束的报告一样，留档玩家的旗舰战记录」）：
+   * 有"玩家亲手击沉"的记录才加这一段 ⇒ 结算信里也说得清"旗舰是谁打沉的"（原先只有面板的归属抬头）。
+   */
+  const kill = snapshot.flagshipPlayerKill
   const paragraphs = [
     hasReward
       ? `${family}的入侵已经结束，「${coreName}」附近的星系已经恢复正常。根据你在清缴行动中的表现，你将获得 ${listText} 等奖励以示鼓励（实物奖励已存入物品仓库）。`
       : `${family}的入侵已经结束，「${coreName}」附近的星系已经恢复正常。本次清缴你没有贡献记录，因此没有奖励。`,
+    ...(kill !== undefined ? ['你在本期的旗舰战中亲手击沉了入侵旗舰。'] : []),
     ...(standing > 0 ? [standingLine] : []),
   ]
   return {
@@ -165,6 +171,7 @@ export function weekendSettleCommsOf(
     paragraphs,
     bodyIds: [
       hasReward ? 'core.weekend.014' : 'core.weekend.015',
+      ...(kill !== undefined ? ['core.weekend.042'] : []),
       ...(standing > 0 ? ['core.weekend.037'] : []),
     ],
     params: {

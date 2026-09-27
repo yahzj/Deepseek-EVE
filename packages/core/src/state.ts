@@ -669,6 +669,16 @@ export interface BattleUnitRt {
    * （`combat.flagshipBattleLedger`）靠它认出"哪几个单位是母舰"。缺省 = 旧单位/旧档 ⇒ 零行为变化。
    */
   foeShipId?: string
+  /**
+   * **阵亡时刻**（战斗时钟 ms；**2026-09-27 船长令**：「给死亡加个触发挂载点，这样之后有什么死亡效果
+   * 也能添加」）——由 `combat` 的**敌舰伤害唯一收口**在"这一发把它三层血打空"那一刻置位，
+   * 与无人机的 `pool.alive = false` 同款"伤害点置位"。
+   *
+   * 用途：① 旗舰 BOSS 的"玩家亲手击沉"留档（`WeekendEventState.flagshipPlayerKill`）以它为准；
+   * ② 日后的死亡效果（死亡挂载件 / 爆炸演出 / 死亡触发技）统一挂这一点，不再各自用 `isAlive` 反推。
+   * 缺省 = 没死过或旧档 ⇒ **零行为变化**（生死判据仍是 `isAlive`，本字段只作观测记录）。
+   */
+  downAtMs?: number
   /** 每武器装填倒计时 ms（0 = 可开火；与静态武器卡顺序一一对应） */
   weapons: number[]
   /**
@@ -846,6 +856,15 @@ export interface BattleState {
     /** 哪一条舰级算母舰（`foeShipId`） */
     bossShipId?: string
   }
+  /**
+   * **本场 BOSS 被打沉的时刻**（战斗时钟 ms；**2026-09-27 船长令**）——由 `combat` 的敌舰伤害唯一收口
+   * 在"母舰单位三层血清零"那一刻置位（认舰 = `foeOverride.bossShipId`）。
+   *
+   * 为什么记在**战斗状态**上而不是直接写场次记录：战斗状态随档持久化 ⇒ 即便这一场的收尾结算被丢掉
+   * （活动已结束等），"玩家的战斗把母舰打沉了"这个**事实**仍然在档里，可由上层抄进场次记录。
+   * 缺省 = 母舰没死 / 本场没有 BOSS ⇒ 零行为变化。
+   */
+  bossDownAtMs?: number
   /** 多波次演出间隔（2026-09-09 船长反馈）：当前波全灭时刻（lastTick 口径），配合 waveEnterGapMs
    * 等爆炸/残骸演出播完再刷下一波（零迁移可选字段） */
   waveClearAt?: number

@@ -42,6 +42,8 @@ import {
   weekendWinGainOf,
   /** 2026-09-25 船长令：黑匣爆率按"输出占比 ＋ 抢没抢到最后一下"掷（结果写 `ev.flagshipBlackBox`） */
   weekendRollBlackBox,
+  /** 2026-09-27 船长令：占比按**玩家优先**口径取（玩家允许挤掉章鱼人的输出） */
+  weekendFlagshipSharesOf,
 } from './weekendEvent'
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { WEEKEND_STANDING_MAX } from './weekendEvent'
@@ -457,8 +459,24 @@ export function weekendResultSnapshotOf(
   })
   const hpMax = ev.flagshipHpMax
   const hpDone = Math.max(0, ev.flagshipHpDone ?? 0)
+  /**
+   * **归属（玩家优先 + 留档优先）**（**2026-09-27 船长令**：「开关不能挂旗舰身上吗？旗舰爆炸开启。」
+   * ＋「都有开关记录了，为什么还会显示被章鱼人抢头？」）：
+   *
+   * 判据顺序 = **① 有"玩家亲手击沉"的留档 ⇒ 一律玩家击沉**（`ev.flagshipPlayerKill`，母舰在玩家的战斗里
+   * 爆炸那一刻置位、与池子算术无关）；② 否则按原口径读 `flagshipDown`
+   * （`player` = 玩家把血条打空 · `octopus` = 章鱼收走 · 缺省 = 窗口到点）。
+   * ⇒ 从此不会出现"玩家的战斗明明打沉了母舰、报告却说章鱼抢头"。
+   */
+  const playerKill = ev.flagshipPlayerKill
   const flagshipOutcome: WeekendResultSnapshot['flagshipOutcome'] =
-    ev.flagshipDown === 'player' ? 'player' : ev.flagshipDown === 'octopus' ? 'octopus' : 'window'
+    playerKill !== undefined
+      ? 'player'
+      : ev.flagshipDown === 'player'
+        ? 'player'
+        : ev.flagshipDown === 'octopus'
+          ? 'octopus'
+          : 'window'
   /**
    * `defeated` = **这面「已击沉 / 未击沉」的判据与黑匣同源**（＝`flagshipDown === 'player'`）。
    *
@@ -471,7 +489,20 @@ export function weekendResultSnapshotOf(
    * 「入侵结算内，显示我未击沉，且给了我一个旗舰黑匣」）。
    * ⇒ 判据改为**读结局**（与 `weekendSettlePlanOf.blackBoxToPlayer` 同一把尺），面板与实发从此一致。
    */
-  const flagship = hpMax !== undefined ? { hpMax, hpDone, defeated: flagshipOutcome === 'player' } : undefined
+  const flagship =
+    hpMax !== undefined
+      ? (() => {
+          /** 两份占比走**玩家优先**口径（船长 2026-09-27：玩家允许挤掉章鱼人的输出） */
+          const shares = weekendFlagshipSharesOf(ev)
+          return {
+            hpMax,
+            hpDone,
+            defeated: flagshipOutcome === 'player',
+            playerFrac: shares.player,
+            octopusFrac: shares.octopus,
+          }
+        })()
+      : undefined
   void ctx // 目前不需要 ctx（星系名由界面现查）；保留参数位以免将来解析物品时改签名
   /**
    * **本期入侵按贡献获得的协会声望**（**2026-09-26 船长令**：「关于入侵的结算界面和结束通讯处，
@@ -489,6 +520,10 @@ export function weekendResultSnapshotOf(
     tier: plan.tier,
     galaxies,
     ...(flagship !== undefined ? { flagship } : {}),
+    /** 玩家亲手击沉的留档（换场即随事件对象消失；面板/通讯读它说"谁打沉的"） */
+    ...(playerKill !== undefined
+      ? { flagshipPlayerKill: { atWallMs: playerKill.atWallMs, ...(playerKill.waveIdx !== undefined ? { waveIdx: playerKill.waveIdx } : {}) } }
+      : {}),
     // **进度收入**（2026-09-25）：读数与实发同源（同一对纯函数）⇒ 面板上的数与到账的数一致
     progressPct: weekendPlayerContribution(ev),
     progressIsk: plan.progressIsk,
@@ -649,6 +684,37 @@ export function weekendFlagshipEncounterOf(
     enc.anomalyId !== null &&
     enc.anomalyId === weekendFoeCardOf(ev.family, 'flagship')
   )
+}
+
+/**
+ * **记下"玩家亲手击沉旗舰"这一事实**（**2026-09-27 船长令**：「开关不能挂旗舰身上吗？旗舰爆炸开启。」
+ * ＋「和入侵结束的报告一样，留档玩家的旗舰战记录。直到下一次入侵开始时覆盖清空。」）。
+ *
+ * **触发制**（同日船长问「为什么不能使用触发制」的落点）：不在这里判血、不在这里扫层——
+ * 事实由 `combat.applyFoeUnitDamage`（敌舰伤害唯一收口）在**母舰单位三层血清零那一发**落进
+ * `BattleState.bossDownAtMs`；本函数只是把它**抄进场次记录**（读一个标记）。
+ *
+ * 幂等：同一场只写一次；已有记录不覆盖。换场清空靠事件对象本身（新的一场是全新对象）。
+ *
+ * @returns 真的新记了一笔才 `true`
+ */
+export function weekendNoteFlagshipPlayerKill(
+  state: GameState,
+  battle: import('./state').BattleState,
+  nowWallMs: number,
+): boolean {
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs !== undefined) return false
+  const down = battle.bossDownAtMs
+  if (down === undefined || !Number.isFinite(down)) return false
+  if (ev.flagshipPlayerKill !== undefined) return false
+  ev.flagshipPlayerKill = {
+    atWallMs: nowWallMs,
+    runId: battle.startedAtGameMs,
+    ...(battle.waveIdx !== undefined ? { waveIdx: battle.waveIdx } : {}),
+    downAtGameMs: down,
+  }
+  return true
 }
 
 /**
@@ -884,16 +950,21 @@ export function weekendApplyBattleOutcome(
      * 黑匣**爆或不爆**分两条文案（2026-09-25 船长令改爆率后，"必掉黑匣"不再成立）；
      * 件数一律取**实际入账**的 `granted`，落点写明「物品仓库」（船长 2026-09-26 批「甲」第④条：
      * 原先只说"战利品已入账"，玩家会去货舱里找）。
+     *
+     * 🔴 **2026-09-27 船长令（措辞分档）**：「**只记录作为判定，根据不同情况改变措辞**（玩家只抢最后一下
+     * 但是没多少输出就说玩家参与度过低……）」⇒ 两条文案都点明**是玩家击沉的**；未爆那一条**把占比写出来**
+     * （`{p2}`，走 `weekendFlagshipSharesOf` 的玩家优先口径），让玩家明白是"输出占比未过半"而不是被系统吞了。
      */
     const box = granted.blackBox
+    const sharePct = Math.round(weekendFlagshipSharesOf(evNow).player * 100)
     addLog(
       state,
       'trade',
       box
-        ? `✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已存入物品仓库（旗舰黑匣 ×1 ＋ 稀有残骸 ×${granted.wreck}）。`
-        : `✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已存入物品仓库（稀有残骸 ×${granted.wreck}；旗舰黑匣未爆）。`,
+        ? `✦ 玩家击沉入侵旗舰：母舰血量归零 —— 旗舰黑匣 ×1 ＋ 稀有残骸 ×${granted.wreck} 已存入物品仓库。`
+        : `✦ 玩家击沉入侵旗舰：母舰血量归零 —— 稀有残骸 ×${granted.wreck} 已存入物品仓库；玩家输出占比 ${sharePct}% 未过半，旗舰黑匣未爆。`,
       box ? 'core.weekend.003' : 'core.weekend.016',
-      { p1: granted.wreck },
+      { p1: granted.wreck, p2: sharePct },
     )
   }
   return { galaxyId: involved.galaxyId, kind: involved.kind, gain: r.progressGain, isk: granted.isk, wreck: granted.wreck, note: r.note }

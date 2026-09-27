@@ -527,6 +527,56 @@ export function applyDamage(
 }
 
 /**
+ * **打敌舰本体的唯一收口**（**2026-09-27 船长令**：「**不能使用触发制吗？因为肯定已经有一个用于判断舰船
+ * 是否死亡的点了，假设给死亡加个触发挂载点，这样之后有什么死亡效果也能添加。**」）。
+ *
+ * 原先玩家打敌舰的四条伤害结算（主段 / 附加段 / 全体攻击两段）＋ 齐射协调仪的溢火链**各自**
+ * `applyDamage(...)` 再各自写回三层血，**没有"死亡那一刻"**——全仓的生死判据是 `isAlive` 这个纯读取，
+ * 每次要用就把三层血重算一遍（无人机的"击落"反倒是有事件点的：`pool.alive = false`）。
+ *
+ * 本函数把四＋一处收成一个口子，只做两件事、**不改算术**：
+ * 1. 照旧 `applyDamage` 并写回三层血（层抗、层克制、随机数消费顺序一字不动）；
+ * 2. **算完做观测**——这一发把它的三层血打空 ⇒ 在该单位上落 `downAtMs`（死亡时刻）；
+ *    若它正是本场 BOSS（`foeOverride.bossShipId`）⇒ 顺带在本场落 `BattleState.bossDownAtMs`。
+ *
+ * ⚠ `dealt` 仍由调用方记账（`stats.meDmg` / 飘字读数）——本函数只负责"血写回 ＋ 死亡观测"。
+ * ⚠ 尸体再挨打 ⇒ `killedNow = false`（死亡时刻只记第一次）。
+ *
+ * @returns `dealt` = 本发实收；`killedNow` = **这一发刚刚把它打沉**（此前还活着）
+ */
+function applyFoeUnitDamage(
+  b: {
+    units: Record<string, { hp: Hp3; foeShipId?: string; downAtMs?: number }>
+    foeOverride?: { bossShipId?: string }
+    lastTickGameMs?: number
+    bossDownAtMs?: number
+  },
+  /** 目标单位（认 tag；`resists` 取它自己的层抗） */
+  foe: { tag: string; resists?: UnitSpec['resists'] },
+  dmg: number,
+  type: DamageType,
+  /** 这一发的时刻（缺省 = 本拍起点）；诊断用，不参与结算 */
+  atMsOverride?: number,
+): { dealt: number; killedNow: boolean } {
+  const rt = b.units[foe.tag]
+  if (!rt) return { dealt: 0, killedNow: false }
+  const wasAlive = rt.hp.s + rt.hp.a + rt.hp.h > 0
+  const r = applyDamage(rt.hp, foe.resists ?? {}, dmg, type)
+  rt.hp = r.hp
+  let killedNow = false
+  if (rt.hp.s + rt.hp.a + rt.hp.h <= 0) {
+    const atMs = atMsOverride ?? b.lastTickGameMs ?? 0
+    if (rt.downAtMs === undefined) rt.downAtMs = atMs
+    killedNow = wasAlive
+    const bossId = b.foeOverride?.bossShipId
+    if (killedNow && bossId !== undefined && rt.foeShipId === bossId) {
+      b.bossDownAtMs ??= atMs
+    }
+  }
+  return { dealt: r.dealt, killedNow }
+}
+
+/**
  * **打空这一艘所需的最小原始伤害**（F3c B2 · 谜质「齐射协调仪」的溢火结转要用）。
  *
  * 为什么不用"实收伤害"算溢出：`applyDamage` 的消费是**逐层乘系数**的（层克制 × (1−该层该系抗性)），
@@ -560,7 +610,12 @@ export function rawDamageToKill(hp: Hp3, resists: UnitSpec['resists'], type: Dam
  * 参数刻意收成结构化小对象（`units` + `stats`）⇒ 用例可以拿一份手搓状态直接验这条机制。
  */
 export function carryVolleyOverflow(
-  b: { units: Record<string, { hp: Hp3 }>; stats: { meDmg: number } },
+  b: {
+    units: Record<string, { hp: Hp3; foeShipId?: string; downAtMs?: number }>
+    stats: { meDmg: number }
+    foeOverride?: { bossShipId?: string }
+    lastTickGameMs?: number
+  },
   foes: readonly UnitSpec[],
   killedTag: string,
   type: DamageType,
@@ -587,8 +642,8 @@ export function carryVolleyOverflow(
     if (!next) break
     const rt = b.units[next.tag]!
     const before = { ...rt.hp }
-    const r = applyDamage(rt.hp, next.resists ?? {}, excess, type)
-    rt.hp = r.hp
+    /** 走**敌舰伤害唯一收口**（血写回 ＋ 死亡观测；算术与随机数消费一字不变） */
+    const r = applyFoeUnitDamage(b, next, excess, type)
     b.stats.meDmg += r.dealt
     total += r.dealt
     hits += 1
@@ -8168,8 +8223,8 @@ function stepBattle(
           const dmgLocked = unit.lockedDmgBonus
             ? Math.round(dmg * (1 + unit.lockedDmgBonus))
             : dmg
-          const r = applyDamage(rt.hp, foeTarget!.resists ?? {}, dmgLocked, type)
-          rt.hp = r.hp
+          /** 主段：走**敌舰伤害唯一收口**（血写回 ＋ 死亡观测；算术与消费顺序一字不变） */
+          const r = applyFoeUnitDamage(b, foeTarget!, dmgLocked, type, b.lastTickGameMs + dtMs)
           b.stats.meDmg += r.dealt
           selfDealt = r.dealt
           /**
@@ -8192,8 +8247,8 @@ function stepBattle(
           if (secPct > 0 && rt.hp.s + rt.hp.a + rt.hp.h > 0) {
             const secType = w.secondaryDamageType ?? 'kinetic'
             const secDmg = Math.max(1, Math.round(dmgLocked * secPct))
-            const r2 = applyDamage(rt.hp, foeTarget!.resists ?? {}, secDmg, secType)
-            rt.hp = r2.hp
+            /** 附伤段：同走唯一收口（它也可能就是打沉那一发） */
+            const r2 = applyFoeUnitDamage(b, foeTarget!, secDmg, secType, b.lastTickGameMs + dtMs)
             b.stats.meDmg += r2.dealt
             selfDealt += r2.dealt
           }
@@ -8245,16 +8300,16 @@ function stepBattle(
           let oDealt = 0
           if (oHit) {
             b.stats.meHits += 1
-            const rAll = applyDamage(ort.hp, other.resists ?? {}, dmg, type)
-            ort.hp = rAll.hp
+            /** 全体攻击主段：同走唯一收口 */
+            const rAll = applyFoeUnitDamage(b, other, dmg, type, b.lastTickGameMs + dtMs)
             b.stats.meDmg += rAll.dealt
             oDealt = rAll.dealt
             const secPctAll = w.secondaryDamagePct ?? 0
             if (secPctAll > 0 && ort.hp.s + ort.hp.a + ort.hp.h > 0) {
               const secTypeAll = w.secondaryDamageType ?? 'kinetic'
               const secDmgAll = Math.max(1, Math.round(dmg * secPctAll))
-              const rAll2 = applyDamage(ort.hp, other.resists ?? {}, secDmgAll, secTypeAll)
-              ort.hp = rAll2.hp
+              /** 全体攻击附伤段：同走唯一收口 */
+              const rAll2 = applyFoeUnitDamage(b, other, secDmgAll, secTypeAll, b.lastTickGameMs + dtMs)
               b.stats.meDmg += rAll2.dealt
               oDealt += rAll2.dealt
             }

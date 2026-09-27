@@ -80,7 +80,12 @@ import { repairWithKitsFor } from './shipyard'
 // 2026-09-23 周末入侵：占领区破例遇袭（中安/高安一样掷）· 概率走入侵口径 · 悬赏池整池换成入侵舰队
 import { weekendAmbushPickOf, weekendEncounterChanceAt, weekendFoeCardOf } from './weekendEvent'
 import { WEEKEND_CARD_PREFIX, weekendBountyCardsOf, weekendEncounterAllowedIn } from './weekendBounty'
-import { weekendApplyBattleOutcome, weekendBattleInvolvedOf, weekendFlagshipEncounterOf } from './weekendBattle'
+import {
+  weekendApplyBattleOutcome,
+  weekendBattleInvolvedOf,
+  weekendFlagshipEncounterOf,
+  weekendNoteFlagshipPlayerKill,
+} from './weekendBattle'
 
 /** 一口遇袭伤害（HP）= 敌群火力代理 × 暴露系数（船长 2026-09-11 定：按敌人火力，不再用固定骰）。
  *  算法本体见 `hullDamage.ts`（与**战斗撤退**共用同一套：先扣装甲、吸完再进结构、结构 5% 底线）。 */
@@ -751,6 +756,18 @@ export function advanceEncounterWatch(state: GameState, ctx: SimContext, _deltaM
         return
       }
       advanceBattleFor(state, ctx, enc.battle, enc.shipId ?? state.shipId, foeKeyOf(enc), null)
+      /**
+       * **旗舰战：母舰被打沉 ⇒ 当场留档**（**2026-09-27 船长令**：「开关不能挂旗舰身上吗？旗舰爆炸开启。」
+       * ＋「和入侵结束的报告一样，留档玩家的旗舰战记录。直到下一次入侵开始时覆盖清空。」）。
+       *
+       * **触发制**：事实由 `combat.applyFoeUnitDamage`（敌舰伤害唯一收口）在母舰三层血清零那一发落在
+       * `enc.battle.bossDownAtMs`（**随档**）上；这里只把它抄进场次记录 —— **读一个标记，不扫血、不判账**。
+       * 位置在两条收尾分支**之前** ⇒ 即便这一场的结算随后被丢（活动已结束等），"玩家亲手打沉"也已入档。
+       * 幂等（同场只写一次）在 core 侧保证；非旗舰遭遇 ⇒ 一次 `false` 判据即返回。
+       */
+      if (weekendFlagshipEncounterOf(state, enc)) {
+        weekendNoteFlagshipPlayerKill(state, enc.battle, Date.now())
+      }
       // 自动脱离（2026-09-11 船长定：遭遇战挂同一个 50% 保险）→ 轻损脱离结算，随后撤退返港待命
       if (enc.battle.autoEscaped) {
         /**

@@ -415,9 +415,13 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(s.fleet[s.shipId]?.cargo?.['wreck-rare-h-hi'] ?? cargoWreck0, '货舱不动（残骸）').toBe(cargoWreck0)
     expect(s.weekendEvent!.flagshipDown, '记玩家击毁').toBe('player')
     expect(s.weekendEvent!.endedAtWallMs, '击沉即结束本场').toBeDefined()
-    /** 入账日志：旗舰击沉也要留一条（黑匣 + 残骸） */
+    /**
+     * 入账日志：旗舰击沉也要留一条（黑匣 + 残骸）。
+     * ⚠ 2026-09-27 船长令改了措辞（措辞分档）：文案由「入侵旗舰击沉」改为「**玩家击沉**入侵旗舰」
+     * ⇒ 断言跟着改成新口径的关键词（判据仍是"这条 id 的日志在、且说了是玩家击沉的"）。
+     */
     const killLog = [...s.logs].reverse().find((l) => l.textId === 'core.weekend.003')
-    expect(killLog?.text.includes('旗舰击沉'), '击沉要有入账日志').toBe(true)
+    expect(killLog?.text.includes('玩家击沉'), '击沉要有入账日志').toBe(true)
   })
 
   it('⑪ 贡献奖按"结束时刻"结算：离线五天后补结，档位与金额与结束时一模一样', () => {

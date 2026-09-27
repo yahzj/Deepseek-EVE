@@ -516,6 +516,13 @@ const BATTLE_FIELDS = {
   // 敌群覆写（2026-09-25 加）：**必须随档**——`advanceBattleFor` 每拍从 ctx 重建敌卡，覆写不存就会
   // "只有第 0 波吃到"（多波卡的后续波弹回满强度：遇袭 ×0.75 的 2 波卡首当其冲）。老档缺省 = 无覆写（零迁移）。
   foeOverride: { kind: 'persist' },
+  /**
+   * **本场 BOSS 被打沉的时刻**（**2026-09-27 船长令**：「给死亡加个触发挂载点」）——**必须随档**：
+   * 它就是"玩家的这一场战斗把母舰打沉了"的**事实**；漏了会让"战中读档后母舰已沉"凭空消失，
+   * 旗舰留档（`WeekendEventState.flagshipPlayerKill`）也就无从抄写。写入点 = `combat.applyFoeUnitDamage`
+   * （敌舰伤害唯一收口）。老档/本场没有 BOSS ⇒ 不写（零迁移）。
+   */
+  bossDownAtMs: { kind: 'persist' },
 } satisfies Record<keyof BattleState, BattleFieldSpec>
 
 /** **必须随档持久化**的战斗字段键（用例据此逐字段守"重载不丢"；顺序 = 登记表顺序） */
@@ -591,6 +598,10 @@ function cleanBattle(raw: unknown): BattleState | null {
         // **舰级 id**（2026-09-24 · 旗舰 BOSS 用）：**随档**——它决定"这个单位是不是母舰"，
         // 若读档后丢掉，池子记账就会把这一场算成 0 输出。老档/旧路径缺本字段 ⇒ 不写（零迁移）。
         ...(typeof u.foeShipId === 'string' && u.foeShipId.length > 0 ? { foeShipId: u.foeShipId } : {}),
+        // **阵亡时刻**（2026-09-27 船长令「给死亡加个触发挂载点」）：**随档**——它是"这艘敌舰
+        // 在玩家的这一场里什么时候被打沉的"事实记录，旗舰留档以它为准；漏了会让"战中读档后母舰已沉"
+        // 的事实凭空消失。老档 / 未阵亡的单位缺本字段 ⇒ 不写（零迁移）。
+        ...(typeof u.downAtMs === 'number' && Number.isFinite(u.downAtMs) ? { downAtMs: numf(u.downAtMs, 0) } : {}),
       }
     }
   }
@@ -739,6 +750,8 @@ function cleanBattle(raw: unknown): BattleState | null {
     return Object.keys(out).length > 0 ? out : undefined
   })()
   const dcKitsUsed = cleanPosNum(b.dcKitsUsed)
+  /** **本场 BOSS 阵亡时刻**（2026-09-27 船长令）：只收非负有限数；坏值/缺省 ⇒ 不写（零迁移） */
+  const bossDownAtMs = cleanPosNum(b.bossDownAtMs)
   const cleaned: Partial<Record<keyof BattleState, unknown>> = {
     startedAtGameMs: Math.max(0, Math.floor(numf(b.startedAtGameMs, 0))),
     ...(foeOverride !== undefined ? { foeOverride } : {}),
@@ -832,6 +845,8 @@ function cleanBattle(raw: unknown): BattleState | null {
     ...(droneLoadAtStartBy !== undefined ? { droneLoadAtStartBy } : {}),
     ...(foeDroneRangeBuff !== undefined ? { foeDroneRangeBuff } : {}),
     ...(foeGunRangeBuff !== undefined ? { foeGunRangeBuff } : {}),
+    // 2026-09-27 本场 BOSS 阵亡时刻（丢了 ⇒ "玩家亲手打沉"的事实消失，旗舰留档只能靠池子算术反推）
+    ...(bossDownAtMs !== undefined ? { bossDownAtMs: Math.round(bossDownAtMs) } : {}),
   }
   // 组装：**只带走登记为 persist 的字段**（漏登记的字段在 typecheck 就会被拦下，见 BATTLE_FIELDS）
   const out: Partial<BattleState> = {}
@@ -3107,6 +3122,21 @@ function normalizeState(raw: unknown): GameState {
           const assaultDraws = weekendKeep(weekendRaw.assaultDraws)
           /** 入侵「重复出击」的循环目标（**可选字段**：缺键 = 没开；本批新增，不动结构版本） */
           const autoLoopGalaxyId = weekendStr(weekendRaw.autoLoopGalaxyId)
+          /**
+           * **玩家亲手击沉的留档**（**2026-09-27 船长令**：「留档玩家的旗舰战记录，直到下一次入侵开始时
+           * 覆盖清空」）——四格逐字段认：墙钟/战斗身份/战斗时钟都要有限正数，`waveIdx` 可缺省。
+           * 缺任一必需格 ⇒ **整块丢**（不留半份）。不认它 ⇒ 读档即丢 ⇒ 结算报告又回落到池子算术反推。
+           */
+          const playerKill = ((): NonNullable<GameState['weekendEvent']>['flagshipPlayerKill'] => {
+            const raw = asRaw(weekendRaw.flagshipPlayerKill)
+            if (raw === null || typeof raw !== 'object') return undefined
+            const at = strictKeep(raw.atWallMs)
+            const rid = strictKeep(raw.runId)
+            const down = strictKeep(raw.downAtGameMs)
+            if (at === undefined || at <= 0 || rid === undefined || down === undefined || down <= 0) return undefined
+            const wi = strictKeep(raw.waveIdx)
+            return { atWallMs: at, runId: rid, ...(wi !== undefined && wi >= 0 ? { waveIdx: wi } : {}), downAtGameMs: down }
+          })()
           return {
             seq: Math.max(1, weekendNum(weekendRaw.seq) || 1),
             startedAtWallMs: weekendStartedAt,
@@ -3141,6 +3171,8 @@ function normalizeState(raw: unknown): GameState {
             ...(prizePaid !== undefined ? { prizePaidAtWallMs: prizePaid } : {}),
             ...(assaultDraws !== undefined ? { assaultDraws } : {}),
             ...(autoLoopGalaxyId.length > 0 ? { autoLoopGalaxyId } : {}),
+            // 2026-09-27 玩家亲手击沉的留档（换场即随事件对象消失 ⇒ 无需另写清空逻辑）
+            ...(playerKill !== undefined ? { flagshipPlayerKill: playerKill } : {}),
           }
         })()
       : undefined
@@ -3190,9 +3222,36 @@ function normalizeState(raw: unknown): GameState {
     })
     const fRaw = asRaw(w.flagship)
     const hpMax = weekendKeep(fRaw.hpMax)
+    /**
+     * **两份占比（玩家优先口径）**（**2026-09-27 船长令**：「优先计算玩家的，玩家允许挤掉章鱼人的输出」）：
+     * 可缺省（老快照）⇒ 界面按缺省不显示；值只收 0~1 的有限数。
+     */
+    const fracOf = (v: unknown): number | undefined => {
+      const n = num(v)
+      return Number.isFinite(n) ? clamp01(n) : undefined
+    }
+    const playerFrac = fracOf(fRaw.playerFrac)
+    const octopusFrac = fracOf(fRaw.octopusFrac)
     const flagship =
       hpMax !== undefined && hpMax > 0
-        ? { hpMax, hpDone: count(fRaw.hpDone), defeated: fRaw.defeated === true }
+        ? {
+            hpMax,
+            hpDone: count(fRaw.hpDone),
+            defeated: fRaw.defeated === true,
+            ...(playerFrac !== undefined ? { playerFrac } : {}),
+            ...(octopusFrac !== undefined ? { octopusFrac } : {}),
+          }
+        : undefined
+    /**
+     * **玩家亲手击沉的留档**（**2026-09-27 船长令**：「和入侵结束的报告一样，留档玩家的旗舰战记录」）：
+     * `atWallMs` 必须是有限正数，`waveIdx` 可缺省；缺/坏 ⇒ 整块丢（不留半份）。
+     */
+    const killRaw = asRaw(w.flagshipPlayerKill)
+    const killAt = weekendKeep(killRaw.atWallMs)
+    const killWave = weekendKeep(killRaw.waveIdx)
+    const flagshipPlayerKill =
+      killAt !== undefined && killAt > 0
+        ? { atWallMs: killAt, ...(killWave !== undefined && killWave >= 0 ? { waveIdx: killWave } : {}) }
         : undefined
     const outcome =
       w.flagshipOutcome === 'player' || w.flagshipOutcome === 'octopus' ? w.flagshipOutcome : 'window'
@@ -3222,6 +3281,7 @@ function normalizeState(raw: unknown): GameState {
       tier,
       galaxies,
       ...(flagship !== undefined ? { flagship } : {}),
+      ...(flagshipPlayerKill !== undefined ? { flagshipPlayerKill } : {}),
       ...(Number.isFinite(progressPct) ? { progressPct: Math.max(0, progressPct) } : {}),
       ...(progressIsk > 0 ? { progressIsk } : {}),
       ...(standingGain > 0 ? { standing: standingGain } : {}),

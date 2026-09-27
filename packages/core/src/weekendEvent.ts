@@ -351,6 +351,32 @@ export interface WeekendEventState {
   /** 旗舰结局：玩家击毁 / 章鱼人摧毁 */
   flagshipDown?: 'player' | 'octopus'
   /**
+   * **玩家亲手击沉旗舰的留档**（**2026-09-27 船长令**：「**和入侵结束的报告一样，留档玩家的旗舰战记录。
+   * 直到下一次入侵开始时覆盖清空。**」＋「**开关不能挂旗舰身上吗？旗舰爆炸开启。**」）。
+   *
+   * 为什么要有它（船长同日第 4 问的答案）：原先的归属只有一条算术——`玩家已造成 ＋ 章鱼已削 ≥ 池子`，
+   * 谁先把自己的账顶满谁得；而玩家的实战伤害**要到战斗收尾那一刻才进账**。于是"玩家的战斗其实把母舰
+   * 打沉了、却因为收尾被丢或账差一点而被显示成章鱼抢头"这类错配无法自证。本记录改记**事实**：
+   * 母舰在玩家的战斗里爆炸那一刻置位（来源 = `combat.applyFoeUnitDamage` 在母舰单位三层血清零时落的
+   * `BattleState.bossDownAtMs`），**与池子算术无关**。
+   *
+   * 生命周期：随事件对象**换场即消失**（下一次入侵开局是全新对象）⇒ 等价于"下一次入侵开始时覆盖清空"；
+   * 结算之后仍留在档里，供结算面板 / 结算通讯 / 查档读。
+   *
+   * 用途（船长裁定「**只记录作为判定**」）：① 归属与措辞以它为准（开关为真 ⇒ 一律按玩家击沉说）；
+   * ② **不参与发奖算术**（黑匣仍按爆率表掷）。
+   */
+  flagshipPlayerKill?: {
+    /** 母舰爆炸的墙钟（置位那一刻） */
+    atWallMs: number
+    /** 那一场战斗的身份（= `battle.startedAtGameMs`；查档/幂等用） */
+    runId: number
+    /** 母舰爆炸时打到第几波（0 基；查档用） */
+    waveIdx?: number
+    /** 母舰被打沉的战斗时钟（= 单位上的 `downAtMs`） */
+    downAtGameMs: number
+  }
+  /**
    * **黑匣掷骰结果**（**船长 2026-09-25 令**：爆率按"输出占比 ＋ 抢没抢到最后一下"算，
    * 见 `weekendBlackBoxChanceOf`）：`true` = 爆了 · `false` = 没爆 · `undefined` = 还没掷（母舰还在）。
    * ⚠ **随档落盘**（`save.ts` 读档侧必须认它）：不然读档后结算会漏发或重掷。
@@ -451,7 +477,13 @@ export interface WeekendResultSnapshot {
    * **不是**"玩家那份伤害 ≥ 池子"——共享血条下血条由玩家 ＋ 章鱼人一起削（2026-09-25 船长报障修，见
    * `weekendBattle.weekendResultSnapshotOf`）。
    */
-  flagship?: { hpMax: number; hpDone: number; defeated: boolean }
+  flagship?: { hpMax: number; hpDone: number; defeated: boolean; playerFrac?: number; octopusFrac?: number }
+  /**
+   * **玩家亲手击沉的留档**（**2026-09-27 船长令**：「和入侵结束的报告一样，留档玩家的旗舰战记录」）——
+   * 事实来源 = `WeekendEventState.flagshipPlayerKill`（母舰在玩家的战斗里爆炸那一刻置位）。
+   * 缺省 = 本场没有"玩家亲手击沉"的记录（老快照、或玩家没打沉）。面板/通讯以它为准显示归属。
+   */
+  flagshipPlayerKill?: { atWallMs: number; waveIdx?: number }
   /**
    * **进度收入**（2026-09-25 船长令「入侵舰队不应该有赏金……在结算时候直接按进度获取收入」）：
    * 玩家投入进度合计（0~1 的百分比读数，如 1.35 = 135%）与该笔收入（ISK）。
@@ -1306,6 +1338,26 @@ export function weekendOctopusDrainPerMs(state: Pick<GameState, 'debugQuick'>, h
   return hpTotal / weekendFlagshipWindowMs(state)
 }
 
+/**
+ * **旗舰血条的两份占比 · 玩家优先口径**（**2026-09-27 船长令**：「**关于章鱼人的输出，优先计算玩家的，
+ * 玩家允许挤掉章鱼人的输出（最终输出占比）**」）。
+ *
+ * 口径：**先算玩家那份** `玩家已造成 ÷ 池子`（封顶 100%）；章鱼那份取 `min(章鱼已削, 池子 − 玩家已造成)`。
+ * ⇒ 两份相加**恒 ≤ 100%**，且**玩家那份永不被章鱼挤掉**——两条账都越线时，多出来的那一截算章鱼的，
+ * 不回头啃玩家的占比（血条见底时读数上就表现为"章鱼那份被玩家挤掉"）。
+ *
+ * 唯一出处：血条视图（`weekendBossPoolView`）与结算快照（`weekendResultSnapshotOf`）都读它，
+ * 免得界面一处、报告一处各算一遍。
+ */
+export function weekendFlagshipSharesOf(ev: WeekendEventState | undefined): { player: number; octopus: number } {
+  if (!ev || !weekendIsBossFamily(ev)) return { player: 0, octopus: 0 }
+  const hpMax = ev.flagshipHpMax ?? 0
+  if (hpMax <= 0) return { player: 0, octopus: 0 }
+  const done = Math.max(0, ev.flagshipHpDone ?? 0)
+  const player = clamp01(done / hpMax)
+  return { player, octopus: clamp01(Math.min(weekendOctopusDone(ev), Math.max(0, hpMax - done)) / hpMax) }
+}
+
 /** **池子总量**（缺省 = 还没跟母舰交手过 ⇒ `undefined`；`floorHp` = 由卡面折算的下限） */
 export function weekendFlagshipPoolTotal(ev: WeekendEventState | undefined): number | undefined {
   if (!ev || !weekendIsBossFamily(ev)) return undefined
@@ -1346,6 +1398,8 @@ export function weekendBossPoolView(
   const hpDone = Math.max(0, ev.flagshipHpDone ?? 0)
   // ⚠ 章鱼那一份折成血量走 `weekendOctopusDone`（窗口常量口径，与 `state.debugQuick` 无关）
   const octopusDone = weekendOctopusDone(ev)
+  /** 两份占比走**玩家优先**口径（2026-09-27 船长令：玩家允许挤掉章鱼人的输出） */
+  const shares = weekendFlagshipSharesOf(ev)
   void state
   return {
     hpMax,
@@ -1353,8 +1407,8 @@ export function weekendBossPoolView(
     // **共享血条**：玩家那份与章鱼那份都真实减少它
     hpLeft: Math.max(0, hpMax - hpDone - octopusDone),
     octopusDone,
-    playerFrac: Math.min(1, hpDone / hpMax),
-    octopusFrac: Math.min(1, octopusDone / hpMax),
+    playerFrac: shares.player,
+    octopusFrac: shares.octopus,
     needDmg: Math.max(0, hpMax - hpDone - octopusDone),
   }
 }

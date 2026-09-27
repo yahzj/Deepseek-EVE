@@ -269,6 +269,8 @@ export {
   weekendGarrisonFoeCardId,
   // 2026-09-24 第二轮令：旗舰 BOSS 化（跨场累计伤害）——池子读数给界面、每拍推进给引擎
   weekendBossPoolView,
+  /** 2026-09-27 船长令：旗舰占比**玩家优先**口径（玩家允许挤掉章鱼人的输出）——血条读数与措辞同源 */
+  weekendFlagshipSharesOf,
   weekendTickBoss,
   weekendClockOf,
   weekendFoeCardOf,

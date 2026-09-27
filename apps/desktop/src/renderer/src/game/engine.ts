@@ -297,6 +297,8 @@ import {
   /** 技能前置按等级（2026-09-23 船长令）：一键补齐计划 ＋ 取消级联计划 */
   planPrereqChain,
   skillCancelImpact,
+  /** 2026-09-27 船长令「措辞分档」：旗舰占比按玩家优先口径取（玩家允许挤掉章鱼人的输出） */
+  weekendFlagshipSharesOf,
 } from '@whale/core'
 import type {
   AiCoreType,
@@ -1158,16 +1160,53 @@ export class GameEngine {
       void this.persist()
     }
     if (weekend.ended) {
+      const ev = this.state.weekendEvent
       const octopus = weekend.flagshipDown === 'octopus'
       /**
        * **章鱼人得手那一条按黑匣结果分文案**（**船长 2026-09-25 令**改爆率后："章鱼人摧毁 ⇒ 黑匣归零"
        * 不再成立：玩家没抢到最后一下时按 `25% × 输出占比` 掷，掷中照发）⇒
        * 掷中 = `ui.weekend.102`（残骸里寻获黑匣）· 没掷中 = `ui.weekend.003`（黑匣归零，原句）。
        * ⚠ 窗口到点（`ui.weekend.004`：旗舰撤走）不掷黑匣，照旧。
+       *
+       * 🔴 **2026-09-27 船长令（措辞分档 ＋ 留档优先）**：「**只记录作为判定，根据不同情况改变措辞**
+       * （玩家只抢最后一下但是没多少输出就说玩家参与度过低，黑匣被章鱼人拿走之类的）」＋
+       * 「**都有开关记录了，为什么还会显示被章鱼人抢头？**」：
+       * - **有"玩家亲手击沉"的留档 ⇒ 一律按玩家击沉说**（`ui.weekend.107`；这类场次本不该出现，
+       *   一旦出现以留档为准并记一条 warn 诊断，见下）；
+       * - 章鱼收尾那两条**带上玩家输出占比**（`p1`，走 `weekendFlagshipSharesOf` 的玩家优先口径）；
+       * - 窗口到点：本场有旗舰 ⇒ `ui.weekend.106`（旗舰撤走、未判击沉）；没有旗舰 ⇒ 原句 `ui.weekend.004`。
        */
-      const box = this.state.weekendEvent?.flagshipBlackBox === true
-      const id = octopus ? (box ? 'ui.weekend.102' : 'ui.weekend.003') : 'ui.weekend.004'
-      addLog(this.state, 'system', tr(id), id)
+      const box = ev?.flagshipBlackBox === true
+      const playerKilled = ev?.flagshipPlayerKill !== undefined
+      const hasFlagship = ev?.flagshipHpMax !== undefined
+      const sharePct = Math.round(weekendFlagshipSharesOf(ev).player * 100)
+      const id = playerKilled
+        ? octopus
+          ? box
+            ? 'ui.weekend.115'
+            : 'ui.weekend.116'
+          : 'ui.weekend.118'
+        : octopus
+          ? box
+            ? 'ui.weekend.102'
+            : 'ui.weekend.003'
+          : hasFlagship
+            ? 'ui.weekend.117'
+            : 'ui.weekend.004'
+      addLog(this.state, 'system', tr(id, { p1: sharePct }), id, { p1: sharePct })
+      /**
+       * **归属不一致的诊断**（**2026-09-27 船长令**批的「以开关为准显示 ＋ 记一条 warn 诊断」）：
+       * 留档说"玩家亲手击沉"、`flagshipDown` 却说"章鱼人得手"——两条判据打起来了。
+       * 显示以留档为准（上面那两支），这里留一条 warn 便于日后查档。
+       */
+      if (playerKilled && octopus) {
+        addLog(
+          this.state,
+          'warn',
+          '⚠ 旗舰击沉归属出现两处不同记录：已按玩家亲手击沉处理。',
+          'core.weekend.041',
+        )
+      }
       void this.persist()
     }
     /** **结束结算入账**：本拍刚结束的那一场立刻结；上一拍结束而没结的由开头那句兜（同一幂等口） */
