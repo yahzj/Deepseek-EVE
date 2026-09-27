@@ -409,7 +409,7 @@ export const TABLES: readonly TableSpec[] = [
       col('CPU占用cpuUse', 'cpuUse', 'num', { min: 0 }),
       col('单发伤害加成damageBonusPct(0.12=+12%)', 'damageBonusPct', 'num', { min: -5, max: 5 }),
       col('命中加成hitBonusPct(0.12=+12%)', 'hitBonusPct', 'num', { min: -5, max: 5 }),
-      col('射程加成rangeCutPct(负值=加成，-0.25=+25%)', 'rangeCutPct', 'num', { min: -1, max: 1 }),
+      col('射程加成plugRangeBonusPct(0.2=+20%；多件加算不吃递减)', 'plugRangeBonusPct', 'num', { min: -1, max: 1 }),
       col('速度加成speedAddMps', 'speedAddMps', 'num', { min: 0 }),
       col('速度代价speedPenaltyMps', 'speedPenaltyMps', 'num', { min: 0 }),
       col('选靶权重targetWeightMul(2=更易被选中/0.4=更少)', 'targetWeightMul', 'num', { min: 0, max: 10 }),

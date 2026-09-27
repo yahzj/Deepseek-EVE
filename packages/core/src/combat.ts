@@ -1585,10 +1585,35 @@ export function createPlayerSpec(
   const armoredOpsLv = shipCategoryKeyOf(ship) === 'armored' ? Math.min(5, state.skills.trained['armored-ops'] ?? 0) : 0
   const hullSkillMult =
     (1 + 0.04 * hullLv) * (1 + 0.04 * armoredOpsLv) * (1 + 0.03 * battleshipOpsLv) // 末项 = 战列操作（三容量同乘）
+  /**
+   * 🔴 **舰船插件的固定值：加在计算的最前端**（**2026-09-27 船长令**：「**插件给予的加成是直接加在
+   * 舰船面板上的。（放在计算的最前端，吃各种装备效果的放大）**」）。
+   *
+   * 落法：插件固定值先并入**基线**（船型裸值 ＋ 插件），再依次吃 **装备百分比 → 技能 → 舰种操作**
+   * ⇒ 护盾插板那 80 点会被 `shieldHpBonus` 一类百分比放大（"面板上直接加、且吃放大"是同一把尺）。
+   *
+   * ⚠ **改动前这三格是空头承诺**：`plugShieldAdd` / `plugArmorAdd` / `plugHullAdd` 只在下面那段里累加、
+   * **全仓没有任何消费点**（`grep plugShieldAdd` 只有"声明 ＋ 累加"两行）⇒ 插件加血**一点都没生效**；
+   * 速度那两格同理。本段把它们提到基线处，旧的死累加随之删除。
+   */
+  const plugDefs = plugModulesOf(state, ctx, shipId)
+  const plugHpAdd = {
+    s: plugDefs.reduce((n, p) => n + (p.shieldHpAdd ?? 0), 0),
+    a: plugDefs.reduce((n, p) => n + (p.armorHpAdd ?? 0), 0),
+    h: plugDefs.reduce((n, p) => n + (p.hullHpAdd ?? 0), 0),
+  }
+  /** 速度固定值（推进插件 ＋ / 装甲插板 −）：同口径并进基线，再吃百分比与技能 */
+  const plugSpeedMps = plugDefs.reduce((n, p) => n + (p.speedAddMps ?? 0) - (p.speedPenaltyMps ?? 0), 0)
+  /** **基线三层血** = 船型裸值 ＋ 插件固定值（下面三行各自再乘装备/技能/舰种操作的百分比） */
+  const baseHp = {
+    s: (ship.shieldHp ?? 0) + plugHpAdd.s,
+    a: (ship.armorHp ?? 0) + plugHpAdd.a,
+    h: (ship.hullHp ?? 0) + plugHpAdd.h,
+  }
   const hp: Hp3 = {
-    s: (ship.shieldHp ?? 0) * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv) * (1 + 0.03 * battleshipOpsLv),
-    a: (ship.armorHp ?? 0) * Math.max(1, armorHpMult) * hullSkillMult,
-    h: (ship.hullHp ?? 0) * Math.max(1, hullHpMult) * hullSkillMult,
+    s: baseHp.s * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv) * (1 + 0.03 * battleshipOpsLv),
+    a: baseHp.a * Math.max(1, armorHpMult) * hullSkillMult,
+    h: baseHp.h * Math.max(1, hullHpMult) * hullSkillMult,
   }
   const shieldRes = mergeResist(ship.shieldResist, undefined)
   for (const m of shieldDefs) applyAdds(shieldRes, m.shieldResistAdd)
@@ -1670,28 +1695,17 @@ export function createPlayerSpec(
    * 已接的效果：三层血固定值 · 速度固定值加减 · 单发伤害 · 命中 · 射程 · CPU 预算 ·
    * **选靶权重**（靶标 ×2 / 隐匿 ×0.4，消费在 `pickMyUnitTarget`）。
    */
-  const plugDefs = plugModulesOf(state, ctx, shipId)
-  let plugShieldAdd = 0
-  let plugArmorAdd = 0
-  let plugHullAdd = 0
-  let plugSpeedAdd = 0
-  let plugSpeedPen = 0
   let plugDmg = 0
   let plugHitMul = 1
-  let plugRangeCut = 0
-  /** **被选中权重**（船长：靶标插件 ×2 / 隐匿插件 ×0.4）——多件相乘、缺省 1 */
+  /** **射程加成**（2026-09-27 起走正向字段 `plugRangeBonusPct`；多件加算、不吃递减） */
+  let plugRangeBonus = 0
+  /** **被选中权重**（船长：靶标插件 ×3 / 隐匿插件 ×0.7）——多件相乘、缺省 1 */
   let plugTargetWeight = 1
   for (const p of plugDefs) {
-    plugShieldAdd += p.shieldHpAdd ?? 0
-    plugArmorAdd += p.armorHpAdd ?? 0
-    plugHullAdd += p.hullHpAdd ?? 0
-    plugSpeedAdd += p.speedAddMps ?? 0
-    plugSpeedPen += p.speedPenaltyMps ?? 0
     plugDmg += p.damageBonusPct ?? 0
     if (p.hitBonusPct !== undefined) plugHitMul *= 1 + p.hitBonusPct
     if (p.targetWeightMul !== undefined) plugTargetWeight *= p.targetWeightMul
-    // 射程插件用 `rangeCutPct` 的**负值**表达加成 ⇒ 这里取最小（最负）的那一件，与"多件只取最重"同形
-    plugRangeCut = Math.min(plugRangeCut, p.rangeCutPct ?? 0)
+    plugRangeBonus += p.plugRangeBonusPct ?? 0
   }
   /** 装填惩罚（巨构协处理器 +12%）：多件只取最重一件 */
   const reloadPen = Math.max(0, ...allDefs.map((m) => m.reloadPenaltyPct ?? 0))
@@ -1723,11 +1737,11 @@ export function createPlayerSpec(
    * 记下的 `bonusMul` 就漏掉它 ⇒ 带插件的武器会被**多压**。并进池后：
    * 只有装备 +22% ⇒ bonus 0.22；同一门炮再装射程插件 ⇒ bonus **0.47**（船长口径的加法）。
    */
-  const plugRangeBonus = -plugRangeCut // 插件用 `rangeCutPct` 的负值表达加成 ⇒ 取正
-  if (plugRangeBonus > 0) {
-    rangeBonus.kinetic += plugRangeBonus
-    rangeBonus.explosive += plugRangeBonus
-    rangeBonus.plasma += plugRangeBonus
+  const plugRangeBonusTotal = plugRangeBonus
+  if (plugRangeBonusTotal > 0) {
+    rangeBonus.kinetic += plugRangeBonusTotal
+    rangeBonus.explosive += plugRangeBonusTotal
+    rangeBonus.plasma += plugRangeBonusTotal
   }
   /** 武器实际射程 = 基准 × (1+该系加成)（按系加成 = 模块 + 船体固有 + **射程插件**，加算后一次乘） */
   const rangeOf = (base: number, type: DamageType): number =>
@@ -2060,7 +2074,7 @@ export function createPlayerSpec(
     // 2026-09-10 船长（推进器周期化）：**基础速度不含推进器**——推进器改走 thrusterBoost，
     // 只在爆发窗口内生效（见 thrusterPhase），冷却期回到本值。
     speedMps:
-      (ship.maxSpeedMps ?? 200) *
+      ((ship.maxSpeedMps ?? 200) + plugSpeedMps) *
       (1 + bal.speedPerLevel * Math.min(5, state.skills.trained[bal.speedSkillId] ?? 0)) *
       Math.max(0.1, 1 - worstSpeedPen),
     // 推进器爆发倍率（多件 EVE 曲线收敛后的合成值 − 1）：0 = 未装；爆发窗口内才乘上去

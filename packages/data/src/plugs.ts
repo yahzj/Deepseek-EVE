@@ -21,6 +21,10 @@
  *
  * ⚠ **图纸与产量**：每件**消耗黑匣 ×1**（`blackbox-h`）由组装机生产；图纸**找章鱼人用声望兑换**；
  * 插件与图纸**当前不上市场**（市场卡已做但挂 `unreleased` 并备注，日后要开只删标记）。
+ *
+ * ⟪文案调整 2026-09-27⟫ **11 件插件的数值由船长在工作台里改过**（护盾/装甲/结构固定值、CPU 占用、
+ * 伤害与命中百分比、射程、两条选靶权重），描述里的高亮数值随之同步（zh 在本文件、en 在 `l10n.ts` 的
+ * `EN_MODULES`）；"原 → 新"逐条见 `docs/design/plug-blackbox-20260927.md` 的「文案调整台账」。
  */
 import type { ModuleDef } from '@whale/core'
 
@@ -55,28 +59,28 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     name: '护盾强化插板',
     slot: 'plug',
     rack: 'low',
-    shieldHpAdd: 40,
-    cpuUse: 25,
-    description: '舰体内部加装的护盾发生层：护盾上限 +40。装上后无法拆下。',
+    shieldHpAdd: 80,
+    cpuUse: 0,
+    description: '舰体内部加装的护盾发生层：护盾上限 +80。装上后无法拆下。',
   },
   {
     id: PLUG_IDS.armorPlate,
     name: '装甲强化插板',
     slot: 'plug',
     rack: 'low',
-    armorHpAdd: 80,
+    armorHpAdd: 140,
     speedPenaltyMps: 20,
-    cpuUse: 30,
-    description: '整块焊入舰体的复合装甲：装甲上限 +80，代价是最大速度 −20 m/s。装上后无法拆下。',
+    cpuUse: 0,
+    description: '整块焊入舰体的复合装甲：装甲上限 +140，代价是最大速度 −20 m/s。装上后无法拆下。',
   },
   {
     id: PLUG_IDS.hullPlate,
     name: '结构强化插板',
     slot: 'plug',
     rack: 'low',
-    hullHpAdd: 60,
-    cpuUse: 28,
-    description: '贯穿主梁的加强件：结构上限 +60。装上后无法拆下。',
+    hullHpAdd: 80,
+    cpuUse: 0,
+    description: '贯穿主梁的加强件：结构上限 +80。装上后无法拆下。',
   },
   // ── ② 两条扩槽 ──
   {
@@ -85,7 +89,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     slot: 'plug',
     rack: 'low',
     midSlotsAdd: 1,
-    cpuUse: 40,
+    cpuUse: 0,
     description: '在中层加开一段标准挂点：中槽 +1。装上后无法拆下。',
   },
   {
@@ -94,7 +98,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     slot: 'plug',
     rack: 'low',
     lowSlotsAdd: 1,
-    cpuUse: 35,
+    cpuUse: 0,
     description: '在底层加开一段标准挂点：低槽 +1。装上后无法拆下。',
   },
   // ── ③ 预算与火力 ──
@@ -112,18 +116,18 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     name: '火力强化插件',
     slot: 'plug',
     rack: 'low',
-    damageBonusPct: 0.12,
-    cpuUse: 35,
-    description: '直连武器总线的超载模块：武器单发伤害 +12%。装上后无法拆下。',
+    damageBonusPct: 0.15,
+    cpuUse: 0,
+    description: '直连武器总线的超载模块：武器单发伤害 +15%。装上后无法拆下。',
   },
   {
     id: PLUG_IDS.sight,
     name: '瞄具插件',
     slot: 'plug',
     rack: 'low',
-    hitBonusPct: 0.12,
-    cpuUse: 30,
-    description: '与火控并联的测距组件：武器命中 +12%。装上后无法拆下。',
+    hitBonusPct: 0.15,
+    cpuUse: 0,
+    description: '与火控并联的测距组件：武器命中 +15%。装上后无法拆下。',
   },
   {
     id: PLUG_IDS.rangefinder,
@@ -131,14 +135,15 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     slot: 'plug',
     rack: 'low',
     /**
-     * 射程 +25% ⇒ 走既有 `rangeCutPct`（"全武器射程 ×(1 − 本值)"）**取负值**即加成。
-     * ⚠ 该字段的既定口径是"多件只取最重一件"，而船长对本批的裁决是**不吃递减** ⇒
-     * 插件**不进那条合成**：`combat.createPlayerSpec` 里插件是**单独一段**
-     * （`plugRangeCut` → `rangeOf` 的独立倍率），所以这里读到的就是"每一件全额 +25%"。
+     * 射程 +20% ⇒ **正向字段** `plugRangeBonusPct`（**2026-09-27 船长令**：原先借 `rangeCutPct` 写负值，
+     * 船长问「射程加成为什么负值才是加成」后按乙案改为写正数）。
+     * ⚠ 与 `rangeCutPct` 的口径**互不替代**：后者是"代价件"的削减（多件取最重一件）；
+     * 本字段**多件加算、不吃递减**（船长对插件批的裁决「③不吃」）——建档侧插件是**单独一段**，
+     * 直接并进"战前射程加成池"（与装备按系加成同池加算）。
      */
-    rangeCutPct: -0.25,
-    cpuUse: 35,
-    description: '沿舰体加装的加速导轨：武器射程 +25%。装上后无法拆下。',
+    plugRangeBonusPct: 0.2,
+    cpuUse: 0,
+    description: '沿舰体加装的加速导轨：武器射程 +20%。装上后无法拆下。',
   },
   // ── ④ 机动与选靶 ──
   {
@@ -147,7 +152,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     slot: 'plug',
     rack: 'low',
     speedAddMps: 40,
-    cpuUse: 28,
+    cpuUse: 0,
     description: '舰尾加装的辅助喷口：最大速度 +40 m/s。装上后无法拆下。',
   },
   {
@@ -155,8 +160,8 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     name: '靶标插件',
     slot: 'plug',
     rack: 'low',
-    targetWeightMul: 2,
-    cpuUse: 20,
+    targetWeightMul: 3,
+    cpuUse: 0,
     description: '全功率辐射的诱饵信标：敌方更倾向于选中本舰。装上后无法拆下。',
   },
   {
@@ -164,8 +169,8 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     name: '隐匿插件',
     slot: 'plug',
     rack: 'low',
-    targetWeightMul: 0.4,
-    cpuUse: 20,
+    targetWeightMul: 0.7,
+    cpuUse: 0,
     description: '压平信号特征的外壳：敌方更少选中本舰。装上后无法拆下。',
   },
 ]

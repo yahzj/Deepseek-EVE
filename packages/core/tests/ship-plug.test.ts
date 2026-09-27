@@ -283,13 +283,15 @@ describe('残骸：插件快照 → 整批换黑匣', () => {
   })
 })
 
-describe('选靶权重：靶标 ×2 / 隐匿 ×0.4（只改选靶，不改命中与回避）', () => {
+describe('选靶权重：靶标 ×3 / 隐匿 ×0.7（只改选靶，不改命中与回避）', () => {
   it('两艘同型船：装靶标的那艘被抽中的比例明显更高，装隐匿的明显更低', () => {
     /**
-     * 口径（船长）：「**增加被选中的权重**」×2 · 「**减少被攻击的权重**」×0.4 —— **不是"更容易被打中"**
+     * 口径（船长）：「**增加被选中的权重**」·「**减少被攻击的权重**」—— **不是"更容易被打中"**
      * ⇒ 只动 `pickMyUnitTarget` 的抽取，不动命中率 / 回避率（`evasion` 断言钉住这一点）。
+     * ⚠ **权重值 2026-09-27 由船长在工作台里改过**：靶标 ×2 → **×3**、隐匿 ×0.4 → **×0.7**
+     * （本用例读数跟着换；口径本身没变）。
      * 两艘**同型 T1 `sandcat`**（同档、同定位、同输出、同基础属性）⇒ 唯一变量就是插件权重；
-     * 权重 2 : 0.4 = 5 : 1 ⇒ 靶标那艘理论上约 83%。
+     * 权重 3 : 0.7 ≈ 4.29 : 1 ⇒ 靶标那艘理论上约 81%。
      */
     const state = world()
     // 第二艘同型船（uid 与船型分开：`uidDefId` 按 `#` 前缀推船型，故 uid 直接用船型名即可）
@@ -309,8 +311,8 @@ describe('选靶权重：靶标 ×2 / 隐匿 ×0.4（只改选靶，不改命中
     const conceal = createPlayerSpec(state, ctx, 'sandcat#2')!
     beacon.tag = 'beacon'
     conceal.tag = 'conceal'
-    expect(beacon.targetWeightMul, '靶标插件 ×2').toBe(2)
-    expect(conceal.targetWeightMul, '隐匿插件 ×0.4').toBeCloseTo(0.4, 10)
+    expect(beacon.targetWeightMul, '靶标插件 ×3').toBe(3)
+    expect(conceal.targetWeightMul, '隐匿插件 ×0.7').toBeCloseTo(0.7, 10)
     expect(beacon.evasion, '两艘同型船的基础回避一致').toBe(conceal.evasion)
 
     // **插件不改回避**：给同一艘船装上隐匿插件前后对比（否则"同型船基础回避一致"证明不了这条）
@@ -319,7 +321,7 @@ describe('选靶权重：靶标 ×2 / 隐匿 ×0.4（只改选靶，不改命中
     addModule(state2, 'plug-concealment', 1)
     expect(installPlug(state2, ctx, 'plug-concealment', T1).ok).toBe(true)
     const after = createPlayerSpec(state2, ctx, T1)!
-    expect(after.targetWeightMul).toBeCloseTo(0.4, 10)
+    expect(after.targetWeightMul).toBeCloseTo(0.7, 10)
     expect(after.evasion, '隐匿插件改的是选靶权重，不是回避率').toBe(before.evasion)
 
     const { aHits, bHits } = tallyTargets(state, beacon, conceal)
