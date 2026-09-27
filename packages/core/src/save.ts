@@ -3215,6 +3215,10 @@ for (const [key, value] of Object.entries(licensesRaw)) {
             ...(typeof weekendRaw.flagshipBlackBox === 'boolean'
               ? { flagshipBlackBox: weekendRaw.flagshipBlackBox }
               : {}),
+            /** 掷骰情境（2026-09-27）：不随档 ⇒ 读档后会按当前情境重掷一次（可接受，且能自愈旧档） */
+            ...(typeof weekendRaw.flagshipBlackBoxByPlayer === 'boolean'
+              ? { flagshipBlackBoxByPlayer: weekendRaw.flagshipBlackBoxByPlayer }
+              : {}),
             ...(hpMax > 0 ? { flagshipHpMax: hpMax } : {}),
             ...(hpDone !== undefined ? { flagshipHpDone: hpDone } : {}),
             ...(octopusHp !== undefined ? { octopusHpDone: octopusHp } : {}),

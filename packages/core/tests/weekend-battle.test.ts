@@ -235,7 +235,7 @@ describe('周末入侵 · 黑匣爆率（2026-09-25 船长令）', () => {
     }
   })
 
-  it('掷骰：必爆/必不爆确定 · 结果写 `ev.flagshipBlackBox` 且幂等 · 同种子同场可复现', () => {
+  it('掷骰：必爆/必不爆确定 · 结果写 `ev.flagshipBlackBox` · **同情境**幂等（情境变了重掷）· 同种子同场可复现', () => {
     const { s, ev } = setup()
     ev.flagshipHpMax = POOL
     /** ① 必爆：100% 输出 ＋ 抢到最后一下 */
@@ -243,7 +243,19 @@ describe('周末入侵 · 黑匣爆率（2026-09-25 船长令）', () => {
     expect(weekendRollBlackBox(s, ev, true), '必爆').toBe(true)
     expect(ev.flagshipBlackBox, '结果写进事件（随档）').toBe(true)
     /** 幂等：再调一次不改判（哪怕参数反了） */
-    expect(weekendRollBlackBox(s, ev, false), '已掷过 ⇒ 原样返回').toBe(true)
+      expect(weekendRollBlackBox(s, ev, true), '同情境 ⇒ 原样返回').toBe(true)
+      /**
+       * ⚠ **情境变了必须重掷**（**2026-09-27 玩家报障修复**）：`weekendClaimOctopus` 会在"章鱼人得手"
+       * 时先按 `false` 掷一次并写值；玩家随后真把它打沉时必须按"抢到最后一下"重掷 —— 否则那一场永远
+       * 拿不到本该必爆的黑匣（实战存档为证：`hpDone 148,676/150,000` 占比 99.1% 却 `flagshipBlackBox = false`）。
+       */
+      const c2 = setup()
+      c2.ev.flagshipHpMax = POOL
+      c2.ev.flagshipHpDone = POOL
+      weekendRollBlackBox(c2.s, c2.ev, false)
+      expect(c2.ev.flagshipBlackBoxByPlayer, '情境标记 = 章鱼人得手').toBe(false)
+      expect(weekendRollBlackBox(c2.s, c2.ev, true), '情境变了 ⇒ 重掷：100% ＋ 抢到最后一下 = 必爆').toBe(true)
+      expect(c2.ev.flagshipBlackBoxByPlayer, '情境标记跟着更新').toBe(true)
     /** ② 必不爆：0 输出 ＋ 没抢到最后一下 */
     const b = setup()
     b.ev.flagshipHpMax = POOL
