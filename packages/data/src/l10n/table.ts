@@ -2467,7 +2467,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.FitPage.188": { zh: "制造图纸不会返还。", en: "The blueprint is not returned." },
   "ui.FitPage.189": { zh: "确认拆解", en: "Dismantle" },
   "ui.FitPage.190": { zh: "装备 ×{p1} · 插件 ×{p2} · 无人机 ×{p3} 一并入装备库；货舱货物入物品仓库。", en: "{p1} fitted modules, {p2} plugs and {p3} drones go to the equipment bay; cargo goes to the item warehouse." },
-  "ui.fragmentRedeem.001": { zh: "「{p1}」已掌握：配方永久生效，这一路的碎片不再需要（也不会再掉落）。", en: "“{p1}” is already learned: the recipe is permanent, so fragments for this line are no longer needed (and no longer drop)." },
+  "ui.FitPage.191": { zh: "已装入。", en: "Fitted." },  "ui.FitPage.192": { zh: "已拆解回收：材料与装备均已入库。", en: "Recycled: materials and modules have been stored." },  "ui.fragmentRedeem.001": { zh: "「{p1}」已掌握：配方永久生效，这一路的碎片不再需要（也不会再掉落）。", en: "“{p1}” is already learned: the recipe is permanent, so fragments for this line are no longer needed (and no longer drop)." },
   "ui.fragmentRedeem.002": { zh: "已解锁配方", en: "Recipe unlocked" },
   "ui.fragmentRedeem.003": { zh: "还差 {p1} 片（现有 {p2}/{p3}）——碎片来自残骸回收的高威胁彩头；集齐后点这里换成「{p4}」永久蓝图。", en: "{p1} fragments short ({p2}/{p3} on hand) — fragments come from high-threat signature drops in salvage recycling; once complete, click here for the permanent “{p4}” blueprint." },
   "ui.fragmentRedeem.004": { zh: "消耗 {p1} 片（货仓 + 仓库一起扣）换成「{p2}」永久蓝图，之后可在工业页组装机无限次制造。", en: "Spend {p1} fragments (taken from the hold and storage together) for the permanent “{p2}” blueprint, which the assembler can then build any number of times on the Industry page." },

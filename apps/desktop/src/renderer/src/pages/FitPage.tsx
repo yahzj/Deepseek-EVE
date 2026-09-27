@@ -4,7 +4,7 @@
  * （高 = 炮台/采集器/无人机装置；中 = 盾系/推进；低 = 甲系/货舱扩展）。
  * 装备随船：换船后看到的是那艘船自己的装配；弃船时装备随船损失。
  */
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type {
   DamageResists,
   DamageType,
@@ -1391,6 +1391,8 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
   const [picking, setPicking] = useState(false)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  /** 上一步成功后的简短反馈（技能 Confirmation Messages：成功不要静默；失败走 err） */
+  const [note, setNote] = useState<string | null>(null)
   /**
    * **拆船回收**（**2026-09-27 船长令**：「**在舰船插件处加入一个回收按钮，点击后警告玩家，想要回收插件需要
    * 将舰船拆解回收，确认后弹出二次警告，告诉玩家当前舰船能回收多少材料并且无法回收蓝图（回收材料占比为
@@ -1400,6 +1402,16 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
    * 两次警告里的数字都取 `shipScrapPreviewOf`（与真正发放**同一份算术**，界面不自己算 50%）。
    */
   const [scrapStep, setScrapStep] = useState<0 | 1 | 2>(0)
+  /** Esc 关闭弹层（技能 Focus States：键盘可达；与 Handbook 的 Esc 口径一致） */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== 'Escape') return
+      setPicking(false)
+      setScrapStep(0)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   const scrap = shipScrapPreviewOf(state, ctx, target)
   if (slots <= 0) return null
   const full = installed.length >= slots
@@ -1414,8 +1426,10 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
       setConfirmId(null)
       setPicking(false)
       setErr(null)
+      setNote(tr('ui.FitPage.191'))
     } else {
       setErr(r.error ?? '')
+      setNote(null)
     }
   }
   return (
@@ -1445,6 +1459,16 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
               <span
                 key={`plug-${i}`}
                 className="app-fit-slot-icon is-empty"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setErr(null)
+                    setConfirmId(null)
+                    setPicking(true)
+                  }
+                }}
                 onClick={() => {
                   setErr(null)
                   setConfirmId(null)
@@ -1478,10 +1502,10 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
       {/* **装入弹层**（2026-09-27 补）：复用本页既有的 `.app-fit-overlay` / `.app-fit-modal` 一族，
           不另造样式；二次确认在同一弹层内完成（第一次点「装入」⇒ 该行变成「确认装入」＋「取消」） */}
       {picking ? (
-        <div className="app-fit-overlay" onClick={() => setPicking(false)}>
-          <div className="app-fit-modal app-fit-preset-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="app-fit-dronebay-head">
-              <span className="app-fit-dronebay-title">{tr('ui.FitPage.179')}</span>
+        <div className="app-mkt-confirm-mask" onClick={() => setPicking(false)}>
+          <div className="app-mkt-confirm" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="app-mkt-confirm-title">{tr('ui.FitPage.179')}</div>
+            <div className="app-mkt-confirm-row">
               <button className="app-btn is-small" onClick={() => setPicking(false)}>
                 {tr('ui.FitPage.183')}
               </button>
@@ -1515,14 +1539,13 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
           </div>
         </div>
       ) : null}
-      {/* **拆船回收：两次警告**（2026-09-27 船长令）——同一个弹层家族，不自造样式 */}
+      {note !== null ? <div className="app-dim">{note}</div> : null}
+      {/* **拆船回收：两次警告**（2026-09-27 船长令）：走全仓既有确认层 `.app-mkt-confirm*` 家族 */}
       {scrapStep > 0 ? (
-        <div className="app-fit-overlay" onClick={() => setScrapStep(0)}>
-          <div className="app-fit-modal app-fit-preset-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="app-fit-dronebay-head">
-              <span className="app-fit-dronebay-title">
-                {tr(scrapStep === 1 ? 'ui.FitPage.185' : 'ui.FitPage.186')}
-              </span>
+        <div className="app-mkt-confirm-mask" onClick={() => setScrapStep(0)}>
+          <div className="app-mkt-confirm" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="app-mkt-confirm-title">
+              {tr(scrapStep === 1 ? 'ui.FitPage.185' : 'ui.FitPage.186')}
             </div>
             {!scrap.ok ? <div className="app-dim">{scrap.block ?? tr('core.scrap.002')}</div> : null}
             {scrapStep === 2 && scrap.ok ? (
@@ -1555,15 +1578,17 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
                 </button>
               ) : (
                 <button
-                  className="app-btn is-small is-primary"
+                  className="app-btn is-small is-danger"
                   disabled={!scrap.ok}
                   onClick={() => {
                     const r = scrapShip(state, ctx, target)
                     if (r.ok) {
                       setScrapStep(0)
                       setErr(null)
+                      setNote(tr('ui.FitPage.192'))
                     } else {
                       setErr(r.error)
+                      setNote(null)
                     }
                   }}
                 >
