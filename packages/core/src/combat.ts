@@ -7773,7 +7773,18 @@ function resolvePointDefense(
   // 许可 b：**哨戒机在射程内**（不需令牌）
   const sentryOpen =
     sentryOk && aliveDroneKeys(b, SENTRY_DRONE_IDS, true, true).length > 0
-  if (!tokenOpen && !sentryOpen) return
+  /**
+   * 🔴 **冷却推进不受闸门管辖**（**2026-09-27 修**）。
+   *
+   * 原来的顺序是「先判令牌、没令牌就 `return`」⇒ **冷却只在"有令牌的拍"才递减**；而令牌是
+   * **消费制**、只靠"我方无人机再打中一次"刷新（无人机装填好几秒）⇒ 冷却几乎走不动
+   * ⇒ 实际火力退化成"每次令牌开启时**恰好就绪的那一两艘**各一发"。
+   * **实测**（探针 · 60 分钟 · 母舰波在场 4 艘点防舰）：只命中 **13 发** —— 与"每艘每 0.5 秒
+   * 判定一次"的设计差两个数量级。
+   *
+   * 令牌该管的是"**能不能开火**"，不该管"冷却走不走"⇒ 现在冷却照常推进，只关掉判定。
+   */
+  const canFire = tokenOpen || sentryOpen
   // **消费制**（船长 2026-09-11）：一次攻击换一次还手（对每艘点防舰各一次）
   // ⚠ **本令牌为敌方全队共用、非逐舰**（打到**任意一艘**敌舰 ⇒ 当场所有冷却已就绪的敌点防舰**各还手一次**，
   //   冷却仍各走各的 `pdCd[fi]`）。这与我方侧**故意不对称**——我方侧 2026-09-16 起是**逐舰令牌**
@@ -7789,6 +7800,7 @@ function resolvePointDefense(
     while (cd <= 0 && guard < 64) {
       guard++
       cd += period;
+      if (!canFire) break // 闸门关：**冷却照推、判定不做**（2026-09-27 修）
       // 候选 = 存活放飞条目（哨戒机**只在射程内**可选）
       const candsAll = aliveDroneKeys(b, SENTRY_DRONE_IDS, sentryOk)
       if (candsAll.length === 0) break
