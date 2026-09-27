@@ -42,3 +42,9 @@ _commitmsg.txt
 #   带进过提交（已在同一提交里撤回），加这条规则兜底）
 docs/test-saves/save-*.json
 docs/test-saves/save-*.json.json
+
+# Steam 上传的中间产物（steamcmd 自己管的 build 缓存；config.json 与两个 vdf 要入库）
+steam/buildoutput/
+# Steam：生成的 vdf 含本机绝对路径（一条命令即可重出）⇒ 只入库 config.json
+steam/app_build_*.vdf
+steam/depot_build_*.vdf

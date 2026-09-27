@@ -1,0 +1,18 @@
+# Steam 打包配置（**只出未打包目录** —— Steam 端不需要安装包；上传走 SteamPipe）
+#
+# 用法：`npm run steam:pack`（= tools/steam-pack.ts：构建 → electron-builder --dir → 生成 vdf）
+# 产物：`apps/desktop/release/steam/win-unpacked/`（这就是要传给 Steam 的内容根）
+#
+# ⚠ 本文件**只覆盖"目标形态"这一层**，其余（appId / productName / asar / files / 图标）全部继承
+# `electron-builder.yml` —— 改基础配置时这里不用跟着改。
+extends: ./electron-builder.yml
+
+directories:
+  output: release/steam
+
+win:
+  # 只出 dir（解包目录）：Steam 自己负责安装/更新，zip 与 NSIS 只留给站外分发（见基础配置）
+  target:
+    - target: dir
+      arch:
+        - x64
