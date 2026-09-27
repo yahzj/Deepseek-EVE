@@ -160,7 +160,7 @@ export function wormholeScanWindowMs(
   )
 }
 
-/** 当前库存（发现即入列；上限走 `wormholeStockMaxOf(state)`：基础 5 ＋ 星图记录学满级 10） */
+/** 当前库存（发现即入列；上限走 `wormholeStockMaxOf(state)`：基础 5 ＋ 星图记录学每级 +2、满级 +10） */
 export function wormholeStockOf(state: GameState): WormholeStockItem[] {
   return state.wormholeStock ?? []
 }

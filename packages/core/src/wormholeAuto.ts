@@ -59,7 +59,8 @@ function countFittedBySlot(state: GameState, ctx: SimContext, shipIds: readonly 
 /**
  * 编队战力（**快速对判**用：只比"DPS × 有效血量"的期望，不逐帧跑战斗、不掷单发）。
  *
- * ⚠ **量纲必须与对手同尺**：对手用游戏真值 `wormholeLayerThreat(depth)`（层 1 = 45，每层 ×1.10）。
+ * ⚠ **量纲必须与对手同尺**：对手用游戏真值 `wormholeLayerThreat(depth)`（层 1 = 45，每层 ×1.12
+ * —— 现行 `WORMHOLE_THREAT_GROWTH = 0.12`，2026-09-23 由 0.10 上调；见 `docs/design/wh-spawn-layer7-20260923.md`）。
  * 本函数第一版写成 `20 + 14×层`（层 8 = 132，比真值 96 高一大截）⇒ 4×T1 的自动探索
  * **连层 2 的守卫都过不去**，卡在层 2 一辈子（读数：层深恒 2.0、一次"回合尽"都没有）。
  * 现在按"武装数 × 一个护卫档的威胁量级"给玩家侧读数，两边才算可比。
@@ -87,7 +88,7 @@ function fleetPowerOf(state: GameState, ctx: SimContext, shipIds: readonly strin
 
 /**
  * 某层守卫的战力（快速对判的对手）：**直接用游戏真值** `wormholeLayerThreat(depth)`
- * （层 1 = 45，每层 ×1.10 ⇒ 层 9 ≈ 96）。
+ * （层 1 = 45，每层 ×1.12 ⇒ 层 9 ≈ 111；2026-09-23 由 0.10 上调）。
  */
 function guardPowerOf(ctx: SimContext, family: WormholeFamily, depth: number): WormholeAutoPower {
   void ctx

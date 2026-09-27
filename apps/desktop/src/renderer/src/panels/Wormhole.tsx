@@ -2247,8 +2247,9 @@ export function WormholePanel({
                     <span className="app-dim">{tr("ui.Wormhole.152")}</span>
                   </div>
                   {/**
-                   * 撤离进行中的一行读数：`extracting` 只是"已发起撤离、下一拍结算"（2026-09-15 起
-                   * 撤离不再触发战斗）⇒ 原来的「拦截舰队正在围堵你」警示条退场。
+                   * 撤离进行中的一行读数：`extracting` = 已发起撤离、等待收口（2026-09-15 起撤离不再触发
+                   * 战斗；**2026-09-27 起点撤离当拍结算** ⇒ 正常路径一闪而过，本条只兜老档／离线）。
+                   * 原来的「拦截舰队正在围堵你」警示条退场。
                    */}
                   {run.phase === 'extracting' && !run.battle ? (
                     <div className="app-wh-ask">{tr("ui.Wormhole.153")}</div>
