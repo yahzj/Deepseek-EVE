@@ -4076,7 +4076,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.139": { zh: "+{p1}（按机型射程加成）", en: "+{p1} (scales with the model's range bonus)" },
   "ui.shipInfo.140": { zh: "炮台装填间隔 −{p1}", en: "Turret reload interval −{p1}" },
   "ui.shipInfo.141": { zh: "炮台命中 ×{p1}", en: "Turret accuracy ×{p1}" },
-  "ui.shipInfo.142": { zh: "敌命中 ×{p1}（全船生效）", en: "Enemy accuracy ×{p1} (ship-wide)" },
+  /**
+   * ⚠ **2026-09-27 船长令**：原先写作「敌命中 ×{p1}（**全船生效**）」——
+   * 船长原话：「**还是听懂，只能装在低槽的装备，为什么还要任意槽位都生效。**」
+   * ⇒ 那句注解在**解释一个玩家在卡上看不见的区别**（卡上并不显示"本件只吃哪个槽"），
+   *   且"全船生效"不是本仓既有词（既有口径＝「全队」舰队级 / 「本舰」船自身）
+   *   ⇒ **删掉括号注解、只留读数**。
+   */
+  "ui.shipInfo.142": { zh: "敌命中 ×{p1}", en: "Enemy accuracy ×{p1}" },
   "ui.shipInfo.143": { zh: "全队集火首位，全队伤害 +{p1}", en: "Focuses fleet fire on the lead; fleet damage +{p1}" },
   "ui.shipInfo.144": { zh: "CPU 扩容", en: "CPU expansion" },
   "ui.shipInfo.145": { zh: "装配预算 +{p1}（本件不占 CPU）", en: "Fitting budget +{p1} (this module costs no CPU)" },
