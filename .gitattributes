@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+# git 钩子脚本：必须保持 LF（CRLF 会让 sh 解析首行失败）
+.githooks/** -text
+
