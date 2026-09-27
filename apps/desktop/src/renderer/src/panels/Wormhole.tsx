@@ -33,7 +33,6 @@ import {
   /** 自动探索（批次 3 · 船长定案）：准备页在自动模式下共用同一套结构，只有读数与按钮换口径 */
   WORMHOLE_AUTO_MAX_SHIPS,
   WORMHOLE_AUTO_DURATION_MS,
-  WORMHOLE_AUTO_YIELD_MUL,
   WORMHOLE_AUTO_DAMAGE_MIN,
   WORMHOLE_AUTO_DAMAGE_MAX,
   wormholeIsShapedItem,

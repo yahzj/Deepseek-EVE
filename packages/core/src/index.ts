@@ -1769,11 +1769,11 @@ export {
   dayWindowEndMs,
 } from './tuning'
 export type { ActivePromo, ActiveTuning, PromoOpenTarget, PromoRule, TunableKey, TuningRule } from './tuning'
-// 自动探索（发现线批次 3 · 2026-09-14 船长：最多 4 条副船各占 1 枚 AI 核心 · 5 分钟 · 收益 40% 入仓库 · 绝不丢船）
+// 自动探索（发现线批次 3 · 2026-09-14 船长：最多 4 条副船各占 1 枚 AI 核心 · 5 分钟 · 绝不丢船；
+// ⚠ 收成口径已随 2026-09-26「真进洞跑一趟」改判：折扣 80%（WORMHOLE_AUTO_SIM_YIELD_MUL），不再是旧的 40%）
 export {
   WORMHOLE_AUTO_DURATION_MS,
   WORMHOLE_AUTO_MAX_SHIPS,
-  WORMHOLE_AUTO_YIELD_MUL,
   WORMHOLE_AUTO_MANUAL,
   WORMHOLE_AUTO_HULL_FLOOR,
   WORMHOLE_AUTO_DAMAGE_MIN,

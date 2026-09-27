@@ -41,7 +41,6 @@ import { buyAtMarket, buyOrderBlockedReason, marketGoodOf } from '../src/market'
 import {
   WORMHOLE_AUTO_DURATION_MS,
   WORMHOLE_AUTO_MANUAL,
-  WORMHOLE_AUTO_YIELD_MUL,
   advanceWormholeAuto,
   wormholeAutoReportsOf,
   wormholeAutoStart,
@@ -182,8 +181,17 @@ describe('虫洞 · 遗迹掉落 AI 核心（2026-09-14 船长定）', () => {
     expect(marketGoodOf(ctx, 'aicore', 'gamma')).toBeDefined()
   })
 
-  it('自动探索也吃（按手动期望 ×40% 折算），且核心在报告里单列', () => {
-    expect(WORMHOLE_AUTO_MANUAL.cores * WORMHOLE_AUTO_YIELD_MUL).toBeCloseTo(0.04, 6) // 船长答「4%/趟」
+  it('自动探索也给核心（层 1 = 10%/趟、每层 +15%），且核心在报告里单列', () => {
+    /**
+     * **核心产出的现行口径**（2026-09-27 换成真护栏）：命中率 = `WORMHOLE_AUTO_MANUAL.cores`(0.1)
+     * × (1 + 0.15 × (真正下到的层 − 1)) × 限时残骸系数，上限 0.95 —— 见 `wormholeAuto.ts` 的 `coreChance`。
+     * ⇒ **层 1 就是 10%/趟**（船长答「层 1 也给 10%」），每深一层 +15%。
+     *
+     * ⚠ 旧断言是 `WORMHOLE_AUTO_MANUAL.cores × WORMHOLE_AUTO_YIELD_MUL(=0.4) ≈ 0.04`（船长 2026-09-14
+     * 答的「4%/趟」）—— 那是**两个常量相乘的恒等式**，不经过任何生产代码（实现怎么改它都不会红，属伪护栏）；
+     * 那个旧常量已随「真进洞跑一趟」改版作废，本条一并改成钉现行口径。
+     */
+    expect(WORMHOLE_AUTO_MANUAL.cores).toBeCloseTo(0.1, 6) // 层 1 命中率 = 10%/趟
     const hit = (seed: number): { cores: number; seesReport: boolean } => {
       const state = createInitialState({ nowWallMs: 0, seed })
       const uids = [0, 1, 2, 3].map(() => addShipToFleet(state, T3))

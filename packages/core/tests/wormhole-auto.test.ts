@@ -34,7 +34,6 @@ import {
   WORMHOLE_AUTO_HULL_FLOOR,
   WORMHOLE_AUTO_MAX_SHIPS,
   WORMHOLE_AUTO_REPORT_MAX,
-  WORMHOLE_AUTO_YIELD_MUL,
   advanceWormholeAuto,
   wormholeAutoBlockReason,
   wormholeAutoCandidates,
