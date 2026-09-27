@@ -120,6 +120,8 @@ export function ship(
     cpu?: number
     droneBayM3?: number
     slots?: ShipSlots
+    /** 舰船插件槽数（2026-09-26 插件批：`ShipDef.plugSlots`；缺省 0 = 测试船装不了插件） */
+    plugSlots?: number
   },
 ): ShipDef {
   return {
@@ -146,6 +148,7 @@ export function ship(
     scanResMm: opts?.scanResMm ?? 500,
     cpu: opts?.cpu ?? 120,
     droneBayM3: opts?.droneBayM3 ?? 0,
+    ...(opts?.plugSlots !== undefined ? { plugSlots: opts.plugSlots } : {}),
     description: '测试用舰船',
   }
 }

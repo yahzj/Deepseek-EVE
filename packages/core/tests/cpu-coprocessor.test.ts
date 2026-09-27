@@ -24,6 +24,7 @@ import {
   createInitialState,
   fitModule,
   fittedCpuUsed,
+  installPlug,
   swapModuleAt,
   unfitAt,
 } from '../src/index'
@@ -199,5 +200,63 @@ describe('协处理器（低槽 CPU 预算扩容件）', () => {
     expect(unfitAt(state, 'low', 0, uid, ctx)).toBe(true)
     expect(cpuBudgetOf(state, ctx, uid)).toBe(100)
     expect(fittedCpuUsed(state.fleet[uid]!.fitted, ctx)).toBe(60)
+  })
+})
+
+/**
+ * ═══ **舰船插件也进 CPU 预算**（**2026-09-27 玩家报障**：「CPU上限的插件装上后无效」）═══
+ *
+ * 根因：插件走 `FleetShipState.plugs` 的**独立插件槽**、**不在 `fitted` 里**（`plugs.ts` 头注自己写着
+ * 「`allFittedModules`（只扫 `fitted`）看不见插件」），而 `cpuBudgetOf` 原先只扫 `allFittedModules(fitted)`
+ * ⇒ 数据侧的「协处理插件 `cpuBonus: 80`」装上后预算**纹丝不动**（装配页 CPU 条、超载判据、战斗建档
+ * 的 `cpuLeft` 全跟着错）。
+ *
+ * 修法：在 `cpuBudgetOf`（CPU 预算**全仓单点**）补一段插件累加 ⇒ 装配校验 / 装配页 / 战斗建档同时转正。
+ * 插件不可拆、不可替换、恒随船 ⇒ 预演 `fittedOverride` 时照样在，不需要替身位。
+ */
+describe('舰船插件进 CPU 预算（2026-09-27 玩家报障）', () => {
+  /** 船 100 CPU ＋ **1 个插件槽**；插件 = 协处理插件（`cpuBonus: 80`，自身不占 CPU）；另备一件 110 CPU 的炮 */
+  function plugWorld() {
+    const ctx = makeTestCtx({
+      quietEvents: true,
+      ships: [ship('sh-plug', { cpu: 100, plugSlots: 1, slots: { high: 1, mid: 1, low: 1 } })],
+      modules: [
+        moduleDef('plug-cpu', 'plug', 0, { cpuUse: 0, cpuBonus: 80 }),
+        moduleDef('gun-110', 'turret', 0, { ...GUN, cpuUse: 110 }),
+      ],
+    })
+    const state = createInitialState({ nowWallMs: 0, seed: 41 })
+    const uid = addShipToFleet(state, 'sh-plug')
+    state.shipId = uid
+    return { state, ctx, uid }
+  }
+
+  it('装上 +80 的协处理插件 ⇒ 预算 100 → 180（此前装了跟没装一样）', () => {
+    const { state, ctx, uid } = plugWorld()
+    expect(cpuBudgetOf(state, ctx, uid)).toBe(100)
+    addModule(state, 'plug-cpu')
+    expect(installPlug(state, ctx, 'plug-cpu', uid).ok).toBe(true)
+    expect(state.fleet[uid]!.plugs).toEqual(['plug-cpu'])
+    expect(cpuBudgetOf(state, ctx, uid)).toBe(180)
+  })
+
+  it('插件不占 CPU（cpuUse 0）⇒ 装配占用恒 0，扩容纯赚', () => {
+    const { state, ctx, uid } = plugWorld()
+    addModule(state, 'plug-cpu')
+    expect(installPlug(state, ctx, 'plug-cpu', uid).ok).toBe(true)
+    expect(fittedCpuUsed(state.fleet[uid]!.fitted, ctx)).toBe(0)
+  })
+
+  it('装配校验跟着转正：110 CPU 的炮——没插件装不下（预算 100），装了 +80 插件就装得下（180）', () => {
+    const a = plugWorld()
+    addModule(a.state, 'gun-110')
+    expect(fitModule(a.state, 'gun-110', a.ctx, { shipId: a.uid }).ok).toBe(false)
+
+    const b = plugWorld()
+    addModule(b.state, 'plug-cpu')
+    expect(installPlug(b.state, b.ctx, 'plug-cpu', b.uid).ok).toBe(true)
+    addModule(b.state, 'gun-110')
+    expect(fitModule(b.state, 'gun-110', b.ctx, { shipId: b.uid }).ok).toBe(true)
+    expect(cpuBudgetOf(b.state, b.ctx, b.uid)).toBe(180)
   })
 })
