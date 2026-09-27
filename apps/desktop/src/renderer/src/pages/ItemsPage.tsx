@@ -254,7 +254,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const pickModUnits = pickMod ? (state.moduleBay[pickMod] ?? 0) : 0
 
   // 图标/列表切换（手册同款；网格为浏览视图）
-  const [mode, setMode] = useItemView()
+  const [mode, setMode] = useItemView('items')
   /**
    * 装备卡片（图标模式）——`hover` 挂**富卡**（`moduleHoverContent`：名称 + 参数表 + 描述），
    * 与列表模式的 `ModuleHover` 同一内容（船长 2026-09-19 报障：图标模式原先是纯文本简介）。

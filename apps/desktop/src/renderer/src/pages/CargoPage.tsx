@@ -73,7 +73,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
   const modRows = rows.filter(([id]) => engine.ctx.modules.get(id) !== undefined)
 
   // 图标/列表切换（手册同款；网格为浏览视图）
-  const [view, setView] = useItemView()
+  const [view, setView] = useItemView('cargo')
 
   function handleSell(id: string, qty: number): void {
     // 2026-09-08（船长定）：市场随"协会基地网络"——母港与已建成副站皆可出售（副站不设独立市场，共用全局市场）

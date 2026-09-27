@@ -81,7 +81,7 @@ export function SkillsTreePage({
    * 不嵌入旧目录。切换按钮就放搜索边上。」）：`icon`＝科技树（默认）、`list`＝旧目录那种分组行；
    * 两种形态共用页头搜索与页内「大类 / 技能书」导航、共用同一个详情窗与同一套训练动作。
    */
-  const [skillView, setSkillView] = useItemView()
+  const [skillView, setSkillView] = useItemView('skills')
   /** 「一并加入前置」的回话（补了几项）——就地显示，不另起 toast 机制 */
   const [prereqNote, setPrereqNote] = useState('')
   /**

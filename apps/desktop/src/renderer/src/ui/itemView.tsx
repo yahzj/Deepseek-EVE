@@ -14,25 +14,62 @@ import { tr } from '../i18n/locale'
 import { hoverTipProps } from './Tooltip'
 
 export type ItemViewMode = 'grid' | 'list'
+/**
+ * **旧版共用键**（2026-09-05 起）：所有用 `useItemView` 的页面共用一把尺 ⇒ 一处切换全站联动。
+ * 2026-09-27 船长令「**图标和列表的切换，不同页面进行独立，不要联动改变**」后改为**按页面分键**；
+ * 本键只作**过渡回落**（老档首次读时继承玩家上次的选择）与"保持最新"的兼容写入，不再作为主存储。
+ */
 export const ITEM_VIEW_KEY = 'whale-idle:inv-view'
+/** 分键前缀：`whale-idle:view:<页面域>` */
+export const ITEM_VIEW_PREFIX = 'whale-idle:view:'
 export const ICON_LIST_GROUP = 'icon-list-view'
 
-export function useItemView(): [ItemViewMode, (m: ItemViewMode) => void] {
-  const [mode, setMode] = useState<ItemViewMode>(() => {
-    try {
-      const raw = localStorage.getItem(ITEM_VIEW_KEY)
-      return raw === 'list' ? 'list' : 'grid' // 默认图标视图（船长 2026-09-05）
-    } catch {
-      return 'grid'
-    }
-  })
+/**
+ * 视图模式的作用域（**一页一个键**）。新页面要用图标/列表切换时：
+ * ① 在这里加一个域；② 在自己的页面里 `useItemView('你的域')`。
+ * ⚠ 同一页内的多个子标签（如物品页的「仓库/货仓」）**共用一个域**——它们是同一页的两个并列列表，
+ * 分太细会让玩家每切一次子标签都要重设一次；要再细分请先与船长确认。
+ */
+export type ItemViewScope = 'items' | 'cargo' | 'skills'
+
+const scopedKey = (scope: ItemViewScope): string => `${ITEM_VIEW_PREFIX}${scope}`
+
+function readStored(key: string): ItemViewMode | null {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw === 'list' || raw === 'grid' ? raw : null
+  } catch {
+    return null // 无 localStorage 环境
+  }
+}
+
+function writeStored(key: string, m: ItemViewMode): void {
+  try {
+    localStorage.setItem(key, m)
+  } catch {
+    /* 无 localStorage 环境忽略 */
+  }
+}
+
+/**
+ * 图标 / 列表视图切换（**按 `scope` 各自记住**；默认图标视图 · 船长 2026-09-05）。
+ *
+ * 2026-09-27 船长：「图标和列表的切换，不同页面进行独立，不要联动改变」⇒ 本钩子改为**按页分键**：
+ * 每个 `scope` 读自己的 `whale-idle:view:<scope>`，**互不影响**；本页内切换照旧即时生效。
+ * 过渡口径：本页的分键**还没写过**时，先继承旧共用键的值（老档不会因为这次改动被重置）；
+ * 旧共用键**从此不再被写入**——否则 A 页切一下，B 页首次进入会被它带跑，等于换个方式联动。
+ */
+export function useItemView(scope: ItemViewScope): [ItemViewMode, (m: ItemViewMode) => void] {
+  const key = scopedKey(scope)
+  const [mode, setMode] = useState<ItemViewMode>(() => readStored(key) ?? readStored(ITEM_VIEW_KEY) ?? 'grid')
   useEffect(() => {
-    try {
-      localStorage.setItem(ITEM_VIEW_KEY, mode)
-    } catch {
-      /* 无 localStorage 环境忽略 */
-    }
-  }, [mode])
+    writeStored(key, mode)
+    /**
+     * ⚠ **故意不写回旧共用键**（2026-09-27 船长令「不同页面独立、不要联动改变」）：
+     * 旧键只用于"本页分键还没初始化时继承一次"，**不再被任何写入更新**——
+     * 否则 A 页切一下，B 页下次进（若尚未初始化）会被它带跑，等于换了个方式联动。
+     */
+  }, [key, mode])
   return [mode, setMode]
 }
 
