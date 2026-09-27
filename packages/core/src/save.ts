@@ -3096,6 +3096,25 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     const n = num(v)
     return Number.isFinite(n) && n >= 0 ? Math.floor(n) : undefined
   }
+  /**
+   * **夺回奖的两本随档账**（**2026-09-27 修漏**）—— 原先**两个都没进这里**：
+   * - `reclaimPaid`（已发过奖的星系，同日新加的防重复标记）：不随档 ⇒ **读一次档标记就丢** ⇒
+   *   `weekendSyncReclaimRewards` 会重新把"已夺回"的处全当成漏记 ⇒ **再发一遍全部夺回奖**
+   *   （刷档即可无限刷）；⚠ 这是同日那次修复自己埋的雷，本行补上。
+   * - `reclaimPending`（待到账的夺回奖，2026-09-25 那批就有）：不随档 ⇒ 夺回之后**读一次档那笔就丢**，
+   *   活动结束结算时少发（"收复了却没给钱"的另一半根因）。
+   */
+  const reclaimPaid: string[] = []
+  if (Array.isArray(weekendRaw.reclaimPaid)) {
+    for (const x of weekendRaw.reclaimPaid) {
+      if (typeof x === 'string' && x.length > 0 && !reclaimPaid.includes(x)) reclaimPaid.push(x)
+    }
+  }
+  const reclaimPendingRaw = asRaw(weekendRaw.reclaimPending)
+  const reclaimPending = {
+    isk: Math.max(0, Math.floor(num(reclaimPendingRaw.isk) || 0)),
+    wreck: Math.max(0, Math.floor(num(reclaimPendingRaw.wreck) || 0)),
+  }
   const weekendCoreId = weekendStr(weekendRaw.coreId)
   const weekendStartedAt = weekendNum(weekendRaw.startedAtWallMs)
   const contributedRaw = asRaw(weekendRaw.contributed)
@@ -3208,6 +3227,9 @@ for (const [key, value] of Object.entries(licensesRaw)) {
             ...(autoLoopGalaxyId.length > 0 ? { autoLoopGalaxyId } : {}),
             // 2026-09-27 玩家亲手击沉的留档（换场即随事件对象消失 ⇒ 无需另写清空逻辑）
             ...(playerKill !== undefined ? { flagshipPlayerKill: playerKill } : {}),
+            /** 夺回奖的两本账（2026-09-27 修漏）：空 ⇒ 不写键（老档零迁移），读侧有 `??=` 兜底 */
+            ...(reclaimPaid.length > 0 ? { reclaimPaid } : {}),
+            ...(reclaimPending.isk > 0 || reclaimPending.wreck > 0 ? { reclaimPending } : {}),
           }
         })()
       : undefined
