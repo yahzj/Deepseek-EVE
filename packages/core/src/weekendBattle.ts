@@ -737,56 +737,6 @@ export function weekendGrantRewards(
   return { isk, wreck, blackBox }
 }
 
-  /**
-   * 🔴 **补发"本该必爆却漏掉的"旗舰黑匣**（**2026-09-27 玩家报障修复** · 船长令「更新之前的补发工具」）。
-   *
-   * 背景（只读玩家存档取证）：`flagshipHpDone 148,676 / hpMax 150,000`（占比 **99.1%**）、
-   * 有 `flagshipPlayerKill` 留档（玩家亲手击沉），却 `flagshipBlackBox = false`、仓库里没有黑匣。
-   * 根因 = `weekendClaimOctopus`（章鱼人得手）**先掷了一次**（按 25% × 占比）并把结果固化，
-   * 玩家随后真击沉时读到的是那个固化的 `false`（掷骰幂等已改为"同情境幂等"，见 `weekendRollBlackBox`）。
-   *
-   * 本函数 = **逐 tick 幂等的对账补发**（与 `reconcileWormholePromoGift` 同款模式，接在引擎 tick 里）：
-   * 判据 = 「**有玩家亲手击沉的留档** ∧ **占比 > 50%**（按爆率表这一档必爆）∧ **本场台账没有黑匣**」
-   * ⇒ 补发一枚并打标记 ⇒ 之后永不再补。
-   * ⚠ 判据严格到"只有真漏发才命中"：占比不过半的场次本来就不该必爆，一律不碰。
-   */
-  export function reconcileWeekendBlackBox(state: GameState, ctx: SimContext): boolean {
-    const ev = state.weekendEvent
-    if (!ev) return false
-    if (ev.flagshipPlayerKill === undefined) return false
-    const hpMax = ev.flagshipHpMax ?? 0
-    const p = hpMax > 0 ? Math.max(0, ev.flagshipHpDone ?? 0) / hpMax : 0
-    if (!(p > 0.5)) return false
-    if (ev.flagshipBlackBox === true) return false
-    if ((ev.rewardLedger?.blackBox ?? 0) > 0) return false
-    const granted = weekendGrantRewards(state, { blackBox: true })
-    if (granted.blackBox <= 0) return false
-    ev.flagshipBlackBox = true
-    ev.flagshipBlackBoxByPlayer = true
-    /** 归属与"留档优先"的读数口径对齐（免得字段与面板继续打架） */
-    if (ev.flagshipDown === undefined) ev.flagshipDown = 'player'
-    noteReward(ev, undefined, { blackBox: granted.blackBox })
-    /** 已结束的场次顺手重建战果快照 ⇒ 面板/结算信补出「旗舰黑匣 ×1」那一格 */
-    if (ev.endedAtWallMs !== undefined) {
-      const wreckItemId = weekendRareWreckIdFor(weekendFoeCardOf(ev.family, 'flagship'), ctx)
-      state.weekendLastResult = weekendResultSnapshotOf(
-        state,
-        ctx,
-        ev,
-        ev.endedAtWallMs,
-        weekendSettlePlanOf(state, ev, ev.endedAtWallMs),
-        wreckItemId,
-      )
-    }
-    addLog(
-      state,
-      'fleet',
-      `📦 补发：旗舰黑匣 ×${granted.blackBox}（你亲手击沉母舰、输出占比 ${Math.round(p * 100)}% ⇒ 必定爆出）——已存入物品仓库。`,
-      'core.weekend.039',
-      { p1: granted.blackBox, p2: Math.round(p * 100) },
-    )
-    return true
-  }
 /* ─────────────── 战斗结束 → 入侵结算（M1-b 第六片） ─────────────── */
 
 /**

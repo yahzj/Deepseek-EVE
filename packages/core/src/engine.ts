@@ -32,7 +32,6 @@ import { advanceMarket } from './market'
 import { advanceEncounterWatch } from './encounters'
 import { advanceScanning, ensureTransitExplored } from './explore'
 import { advanceWormholeScan, reconcileWormholePromoGift, reconcileWormholeScanWelcome } from './wormholeScan'
-import { reconcileWeekendBlackBox } from './weekendBattle'
 import { advanceWormholeAuto } from './wormholeAuto'
 import { advanceHauling } from './hauling'
 import { advanceWreckDrift } from './salvage'
@@ -226,8 +225,6 @@ export function advanceGame(
   reconcileWormholeScanWelcome(state)
   // 限时促销赠送（2026-09-16「虫洞大量生成」）：逐 tick 幂等、只发一次、只给已解锁者（见该函数头注）
   reconcileWormholePromoGift(state, ctx)
-  // 入侵旗舰黑匣补发（2026-09-27 玩家报障）：逐 tick 幂等，只补"玩家亲手击沉 ＋ 占比过半却没爆"的场次
-  reconcileWeekendBlackBox(state, ctx)
   advanceWormholeScan(state, ctx, d)
   // 自动探索（2026-09-14 批次 3）：到点即结算（收益入仓库 + 损伤 + 待确认报告）；离线大步长同样适用
   advanceWormholeAuto(state, ctx)

@@ -71,4 +71,17 @@ warehouse['blackbox-h'] = 1 · flagshipBlackBox = true · flagshipBlackBoxByPlay
 flagshipDown = octopus（**未被覆盖** —— 与实现里"仅在为空时对齐"一致）
 ```
 ⚠ `flagshipBlackBoxByPlayer` 这个字段是本次修复**新引入**的，除 `reconcileWeekendBlackBox` 外无任何代码会写它
-⇒ 它的出现即"补发真的跑过"的铁证。（原档一次都没被我写过：我只另写过一份新文件并已删除。）
+⇒ 它的出现即"补发真的跑过"的铁证。（原档一次都没被我写过：我只另写过一份新文件并已删除。）
+## 补发工具已撤（船长令 2026-09-27）
+
+船长令：「今天可以清理那个补发的工具了」⇒ `reconcileWeekendBlackBox` 及其在引擎 tick 的接线、
+日志文案 `core.weekend.039` **已全部移除**。
+
+撤除依据：它的使命已完成 —— 那一场已在 22:17 随游戏自存档补进玩家档
+（`warehouse['blackbox-h'] = 1` · `flagshipBlackBox = true` · `flagshipBlackBoxByPlayer = true`）；
+根因也已修（掷骰幂等改为"同情境幂等"）⇒ 兜底工具不必常驻。
+
+**仍保留**（船长未提，且性质不同）：
+- `weekendSettleAndGrant` 里的**夺回奖迟到补发**（同为 2026-09-27 加，针对"已结算过却没记账"的
+  老档，是夺回奖修复的一半）；
+- 09-25 既有的 `boxAtSettle`（章鱼人得手那一档的黑匣补发）。

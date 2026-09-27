@@ -347,7 +347,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // ⟪文案调整 2026-09-27⟫ 船长令同上：未爆那一条补「输出占比 {p2}% 未过半」（原句只有"旗舰黑匣未爆"）
   "core.weekend.016": { zh: "✦ 玩家击沉入侵旗舰：母舰血量归零 —— 稀有残骸 ×{p1} 已存入物品仓库；玩家输出占比 {p2}% 未过半，旗舰黑匣未爆。", en: "✦ Invasion flagship sunk by the player: the mothership is down to zero — rare wrecks ×{p1} are stored in your item warehouse; the player's damage share was {p2}%, under half, so no flagship black box dropped." },
   // 2026-09-26 船长批「甲」：入库失败（战利品未能落地）时留一条 warn —— 台账同时不记「已获得」，账实一致
-  "core.weekend.039": { zh: "📦 补发：旗舰黑匣 ×{p1}（你亲手击沉母舰、输出占比 {p2}% ⇒ 必定爆出）——已存入物品仓库。", en: "📦 Compensation: flagship black box ×{p1} (you sank the mothership yourself with {p2}% of the damage — a guaranteed drop) — stored in your item warehouse." },
   "core.weekend.038": { zh: "⚠ 入侵战利品未能入库：本场奖励未发放。", en: "⚠ Invasion spoils could not be stored: this battle's rewards were not granted." },
   // 2026-09-25 入侵两封通讯（船长给稿 · 经办人按"不出现括号备注"润色；每场覆盖同一 id）
   // ⚠ 段内不留括号备注：奖励清单是**清单里的一项**（结构化存下、界面按语言拼串后填进 {p3}）
