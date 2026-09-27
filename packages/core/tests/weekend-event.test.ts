@@ -572,6 +572,32 @@ describe('周末入侵 · 存档往返（零迁移）', () => {
   })
 
   /**
+   * **退役字段的兼容断言**（**2026-09-27 清理**）：`flagshipDmgLogged`（无任何读写）与
+   * `flagshipBestRunDmg`（只写不读）已从类型、清洗器与写入点删除 ⇒ 老档里若还带着这两个键，
+   * 读档必须**不炸、也不写回**（与 `octopusDrainedMs` 那条退役口径同款）。
+   */
+  it('老档带退役键 `flagshipDmgLogged` / `flagshipBestRunDmg` ⇒ 读档照常、两个键都不再写回', () => {
+    const s = fresh()
+    s.weekendEvent = {
+      ...evOf('galaxy-home', ['galaxy-kor'], 123),
+      family: 'H',
+      flagshipAtWallMs: 456,
+      flagshipHpMax: 150_000,
+      flagshipHpDone: 1_000,
+    }
+    const raw = JSON.parse(serializeSaveFile(s, 0)) as {
+      state: { weekendEvent: Record<string, unknown> }
+    }
+    // 伪造"带退役键的老档"
+    raw.state.weekendEvent.flagshipDmgLogged = 12_345
+    raw.state.weekendEvent.flagshipBestRunDmg = 12_345
+    const back = loadSaveFile(JSON.stringify(raw)).state.weekendEvent as Record<string, unknown> | undefined
+    expect(back?.flagshipHpDone, '正常字段照读').toBe(1_000)
+    expect(back?.flagshipDmgLogged, '退役键不写回').toBeUndefined()
+    expect(back?.flagshipBestRunDmg, '退役键不写回').toBeUndefined()
+  })
+
+  /**
    * **旧字段就地迁移**（2026-09-25 共享血条改口径）：旧档存的是**时长** `octopusDrainedMs`，
    * 新档存**血量** `octopusHpDone`。不迁移的话，读档后已削掉的那部分会**凭空回血**
    * （实测船长在玩的档：已削 24% ⇒ 血条会跳回去一截）。

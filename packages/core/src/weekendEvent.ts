@@ -263,7 +263,7 @@ export function weekendFlagshipHpRemaining(ev: WeekendEventState | undefined): n
  * ⚠ `weekendOctopusTick` 里的 `need`（= `池子 − 玩家已造成`）**语义不同**：那是"章鱼还差多少才够得手"，
  * 不是血条剩余 ⇒ 它**不**由本函数派生（血条已被玩家打空时它 ≤ 0，那一档归玩家、章鱼不认领）。
  */
-export function weekendFlagshipRemainingOf(ev: WeekendEventState | undefined): number {
+function weekendFlagshipRemainingOf(ev: WeekendEventState | undefined): number {
   if (!ev || !weekendIsBossFamily(ev)) return WEEKEND_FLAGSHIP_POOL_HP
   const hpMax = ev.flagshipHpMax ?? WEEKEND_FLAGSHIP_POOL_HP
   return hpMax - Math.max(0, ev.flagshipHpDone ?? 0) - weekendOctopusDone(ev)
@@ -1297,15 +1297,8 @@ export function weekendTick(
 
 /**
  * **玩家击毁旗舰**：记结局并结束本场（黑匣与贡献奖由调用方结算）。
- *
- * ⚠ **2026-09-27 清理**：原先这里上面还有 `weekendNotePlayerWin` / `weekendNoteRepel` 两个"记一笔进度"的
- * 小助手 —— 它们**在生产代码里一个调用点都没有**（只有用例在用），而胜利/击退的同一套 +10%/+5%/+3%
- * 早已收口在 `weekendBattle.weekendResolveBattle`（`weekendWinGainOf` / `WEEKEND_GAIN_REPEL` /
- * `WEEKEND_GAIN_OFFLINE_REPEL`）⇒ 属于**同一口径的第二份实现**，已删（连同那两个导出与只服务它们的用例）。
- * 新代码要记进度请走 `weekendNoteContribution`（单点），别再添平行助手。
+ * ⚠ 核心门禁：**核心条未满**（`weekendCoreProgressAt < 1`）⇒ 不认（返回 `false`）。
  */
-
-/** 玩家击毁旗舰：记结局并结束本场（黑匣与贡献奖由调用方结算） */
 export function weekendNoteFlagshipKilled(state: GameState, nowWallMs: number): boolean {
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) return false
@@ -1559,8 +1552,8 @@ export function weekendTickBoss(
    */
   if (inBattle || nowWallMs < (ev.octopusHoldUntilWallMs ?? 0)) return {}
   if (weekendOctopusTick(state, ev, dt, inBattle)) {
-    weekendClaimOctopus(state, ev, nowWallMs)
-    return { down: 'octopus' }
+    // 得手收口（掷黑匣 ＋ 写归属 ＋ 结束本场）只有一处：`weekendClaimOctopus`
+    return weekendClaimOctopus(state, ev, nowWallMs) ? { down: 'octopus' } : {}
   }
   return {}
 }

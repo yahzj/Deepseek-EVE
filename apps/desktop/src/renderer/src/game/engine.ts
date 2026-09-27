@@ -1179,7 +1179,13 @@ export class GameEngine {
       const box = ev?.flagshipBlackBox === true
       const outcome = weekendFlagshipOutcomeOf(ev)
       const octopus = outcome === 'octopus'
-      const playerKilled = outcome === 'player' && ev?.flagshipPlayerKill !== undefined
+      /**
+       * **"玩家击沉"这一档涵盖两个来源**（`weekendFlagshipOutcomeOf` 已把它们并成一个 `player`）：
+       * ① 有**亲手击沉的留档**（本版起的新场次）；② 只有 `flagshipDown === 'player'`（**老档**：
+       * 本版之前打完的场次没有留档）⇒ 文案一律按"玩家击沉"说，不再区分来源。
+       * ⚠ 别在这里补 `ev.flagshipPlayerKill !== undefined` 那道条件 —— 会把老档误判成"窗口到点、未判击沉"。
+       */
+      const playerKilled = outcome === 'player'
       const hasFlagship = ev?.flagshipHpMax !== undefined
       const sharePct = Math.round(weekendFlagshipSharesOf(ev).player * 100)
       const id = playerKilled
