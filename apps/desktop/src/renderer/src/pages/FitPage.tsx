@@ -31,6 +31,9 @@ import {
   plugInfoOf,
   /** 2026-09-27 船长报障：装入入口（空槽可点，弹层选装，二次确认，installPlug） */
   installPlug,
+  /** 2026-09-27 船长令：拆船回收（预览 ＋ 执行；界面两次警告都用预览那一份算术） */
+  shipScrapPreviewOf,
+  scrapShip,
   droneCpuUsed,
   droneLoadM3,
   effectiveCpu, // 保留：船体预算（不含协处理器扩容）在别处仍可能用到；预算总额见 cpuBudgetOf
@@ -1388,6 +1391,16 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
   const [picking, setPicking] = useState(false)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  /**
+   * **拆船回收**（**2026-09-27 船长令**：「**在舰船插件处加入一个回收按钮，点击后警告玩家，想要回收插件需要
+   * 将舰船拆解回收，确认后弹出二次警告，告诉玩家当前舰船能回收多少材料并且无法回收蓝图（回收材料占比为
+   * 制造材料的50%）。回收后，当前舰船的装备全部拆卸入库，将舰船转化成材料，舰船插件也入库。**」）。
+   *
+   * `scrapStep`：0 = 关 · 1 = 第一次警告（要回收插件就得拆整艘船）· 2 = 二次警告（列材料 ＋ 蓝图书不返还）。
+   * 两次警告里的数字都取 `shipScrapPreviewOf`（与真正发放**同一份算术**，界面不自己算 50%）。
+   */
+  const [scrapStep, setScrapStep] = useState<0 | 1 | 2>(0)
+  const scrap = shipScrapPreviewOf(state, ctx, target)
   if (slots <= 0) return null
   const full = installed.length >= slots
   const installedIds = new Set(installed.map((d) => d.id))
@@ -1412,6 +1425,12 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
         <span className="app-dim">
           {tr('ui.Expedition.444', { p1: installed.length, p2: slots })}
           {full ? ` · ${tr('ui.FitPage.177')}` : ''}
+        </span>
+        {/* 拆船回收入口（2026-09-27 船长令）：位置按船长指定放在插件槽区 */}
+        <span style={{ marginLeft: 'auto' }}>
+          <button className="app-btn is-small" onClick={() => setScrapStep(1)}>
+            {tr('ui.FitPage.184')}
+          </button>
         </span>
       </div>
       <div className="app-fit-icongrid">
@@ -1493,6 +1512,68 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
                 </div>
               ))
             )}
+          </div>
+        </div>
+      ) : null}
+      {/* **拆船回收：两次警告**（2026-09-27 船长令）——同一个弹层家族，不自造样式 */}
+      {scrapStep > 0 ? (
+        <div className="app-fit-overlay" onClick={() => setScrapStep(0)}>
+          <div className="app-fit-modal app-fit-preset-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="app-fit-dronebay-head">
+              <span className="app-fit-dronebay-title">
+                {tr(scrapStep === 1 ? 'ui.FitPage.185' : 'ui.FitPage.186')}
+              </span>
+            </div>
+            {!scrap.ok ? <div className="app-dim">{scrap.block ?? tr('core.scrap.002')}</div> : null}
+            {scrapStep === 2 && scrap.ok ? (
+              <>
+                <div className="app-dim">{tr('ui.FitPage.187')}</div>
+                {scrap.materials.map((m) => (
+                  <div key={m.itemId} className="app-fit-preset-row">
+                    <span className="app-fit-preset-name">{ctx.items.get(m.itemId)?.name ?? m.itemId}</span>
+                    <span className="app-dim">×{m.count.toLocaleString('zh-CN')}</span>
+                  </div>
+                ))}
+                <div className="app-dim">
+                  {tr('ui.FitPage.190', { p1: scrap.moduleCount, p2: scrap.plugCount, p3: scrap.droneCount })}
+                </div>
+                <div className="app-dim">{tr('ui.FitPage.188')}</div>
+              </>
+            ) : null}
+            {err !== null ? <div className="app-dim">{err}</div> : null}
+            <div className="app-fit-preset-row">
+              {scrapStep === 1 ? (
+                <button
+                  className="app-btn is-small is-primary"
+                  disabled={!scrap.ok}
+                  onClick={() => {
+                    setErr(null)
+                    setScrapStep(2)
+                  }}
+                >
+                  {tr('ui.FitPage.184')}
+                </button>
+              ) : (
+                <button
+                  className="app-btn is-small is-primary"
+                  disabled={!scrap.ok}
+                  onClick={() => {
+                    const r = scrapShip(state, ctx, target)
+                    if (r.ok) {
+                      setScrapStep(0)
+                      setErr(null)
+                    } else {
+                      setErr(r.error)
+                    }
+                  }}
+                >
+                  {tr('ui.FitPage.189')}
+                </button>
+              )}
+              <button className="app-btn is-small" onClick={() => setScrapStep(0)}>
+                {tr('ui.FitPage.183')}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

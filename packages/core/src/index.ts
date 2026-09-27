@@ -875,6 +875,9 @@ export {
   UNIVERSAL_BLACKBOX_ITEM_ID,
   exchangeUniversalBlackBox,
 } from './plugs'
+/** **拆船回收**（2026-09-27 船长令）：预览 ＋ 执行（唯一取数口：界面两次警告与实际发放同一份算术） */
+export { shipScrapPreviewOf, scrapShip, SHIP_SCRAP_MATERIAL_SHARE } from './scrap'
+export type { ShipScrapPreview } from './scrap'
 export type { ShipPlugBlock, PlugExchangeRow } from './plugs'
 /** **黑匣与插件解锁**（2026-09-26 船长令）：组装机插件档的解锁判据与拒因单点 */
 export { isBlackboxItem, noteBlackboxObtained, blackboxSeenOf, plugCraftUnlockedOf, plugCraftLockReasonOf } from './blackbox'
