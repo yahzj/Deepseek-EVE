@@ -109,15 +109,16 @@ describe('不可被打断的状态（船长：「处在战斗中的时候也设�
   })
 
   /**
-   * **临时离开虫洞 ⇒ 主控立刻释放**（船长 2026-09-13 批准的口径，`state.wormholePilotHoldReason` 同一把尺）：
-   * `run` 还在、只是 `attending = false` ⇒ 判据必须**不拦**（否则"离开虫洞去做别的"这条路会被堵死）。
+   * **临时离开虫洞也锁主控**（**2026-09-27 船长改判**：「进行虫洞时，阻止主控的任何其他活动。」）：
+   * 旧口径（2026-09-13：「`run` 还在、只是 `attending = false` ⇒ 判据必须不拦」）**已作废** ——
+   * 现在只要**本趟没收场**（`run != null`，含"临时离开"）就拦；要去做别的必须先**撤离**。
    */
-  it('临时离开虫洞（attending=false）⇒ 主控已释放，不算锁', () => {
+  it('临时离开虫洞（attending=false）⇒ **仍算锁**（船长 2026-09-27 改判）', () => {
     const s = state()
     s.wormhole.run = { attending: false } as unknown as NonNullable<GameState['wormhole']['run']>
-    expect(cannotInterruptReason(s)).toBeNull()
+    expect(cannotInterruptReason(s)).not.toBeNull()
     s.mining.active = true
-    expect(gateMainActivity(s, 'mining').action).toBe('ok')
+    expect(gateMainActivity(s, 'mining').action).not.toBe('ok')
   })
 })
 

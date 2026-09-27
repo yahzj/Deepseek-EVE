@@ -191,10 +191,10 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
     state.shipId = a
     expect(wormholeEnter(state, ctx, [b], 7).ok).toBe(true) // a=主控留洞外，b 进洞
     expect(state.wormhole.run!.attending).toBe(true)
-    expect(wormholePilotHoldReason(state) ?? '').toContain('虫洞里')
+    expect(wormholePilotHoldReason(state) ?? '').toContain('虫洞')
     const exp = startExpedition(state, 'ano-training', ctx)
     expect(exp.ok, `人在洞里还能出击：${exp.error ?? ''}`).toBe(false)
-    expect(exp.error ?? '').toContain('虫洞里')
+    expect(exp.error ?? '').toContain('虫洞')
     for (const [what, r] of [
       ['采矿', startMining(state, '__no_such_belt__', ctx)],
       ['扫描', startScan(state, 'gx-2', ctx)],
@@ -206,7 +206,7 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
     }
   })
 
-  it('**口径②③：临时离开 ⇒ 活动停止·进度保存·主控可干活；返回要主控空闲**', () => {
+  it('**口径②③（2026-09-27 船长改判后）：临时离开 ⇒ 仍锁主控 · 进度保存 · 回洞直接可回**', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     const a = addShipToFleet(state, T1)
     const b = addShipToFleet(state, T1)
@@ -215,23 +215,18 @@ describe('虫洞 · 并行战斗与忙态口径（船长 2026-09-13）', () => {
     const run = state.wormhole.run!
     run.turnsLeft = 17 // 造个"进度"读数，稍后验证没丢
     expect(startExpedition(state, 'ano-training', ctx).ok).toBe(false) // 人在洞里 ⇒ 挡
-    // ② 临时离开 ⇒ 活动停止、主控立刻释放
+    // ② 临时离开：洞内冻结、进度保存 —— 但**主控仍被本趟占着**（**2026-09-27 船长改判**：
+    //    「进行虫洞时，阻止主控的任何其他活动。」⇒ 旧口径"临时离开即释放主控"作废）
     wormholeLeave(state)
     expect(run.attending).toBe(false)
-    expect(wormholePilotHoldReason(state)).toBeNull()
+    expect(wormholePilotHoldReason(state)).not.toBeNull()
     expect(run.turnsLeft).toBe(17) // 进度保存
     expect(state.wormhole.run).not.toBeNull()
     const exp = startExpedition(state, 'ano-training', ctx)
-    expect(exp.ok, `离开后主控还是被占着：${exp.error ?? ''}`).toBe(true) // 主控能干活了
-    // ③ 返回要主控空闲：主控在远征 ⇒ 拒绝
+    expect(exp.ok, `本趟没收场就放行了别的活动：${exp.error ?? ''}`).toBe(false)
+    // ③ 回洞：本趟没收场 ⇒ 别的活动一个也开不了 ⇒ 主控天然空闲，直接回得去
     const back = wormholeResume(state, ctx)
-    expect(back.ok).toBe(false)
-    expect(back.error ?? '').toContain('远征')
-    // 收工后就能回去
-    state.expedition.active = false
-    state.expedition.battle = null
-    state.expedition.phase = 'back'
-    expect(wormholeResume(state, ctx).ok).toBe(true)
+    expect(back.ok, back.error ?? '').toBe(true)
     expect(state.wormhole.run!.attending).toBe(true)
     expect(state.wormhole.run!.turnsLeft).toBe(17) // 进度还在
   })
