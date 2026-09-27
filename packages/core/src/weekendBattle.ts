@@ -44,6 +44,8 @@ import {
   weekendRollBlackBox,
   /** 2026-09-27 船长令：占比按**玩家优先**口径取（玩家允许挤掉章鱼人的输出） */
   weekendFlagshipSharesOf,
+  /** 2026-09-27 整理：归属判据收口（**留档优先**）——结算快照与引擎结束日志共用同一个它 */
+  weekendFlagshipOutcomeOf,
 } from './weekendEvent'
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { WEEKEND_STANDING_MAX } from './weekendEvent'
@@ -462,23 +464,12 @@ export function weekendResultSnapshotOf(
   const hpMax = ev.flagshipHpMax
   const hpDone = Math.max(0, ev.flagshipHpDone ?? 0)
   /**
-   * **归属（玩家优先 + 留档优先）**（**2026-09-27 船长令**：「开关不能挂旗舰身上吗？旗舰爆炸开启。」
-   * ＋「都有开关记录了，为什么还会显示被章鱼人抢头？」）：
-   *
-   * 判据顺序 = **① 有"玩家亲手击沉"的留档 ⇒ 一律玩家击沉**（`ev.flagshipPlayerKill`，母舰在玩家的战斗里
-   * 爆炸那一刻置位、与池子算术无关）；② 否则按原口径读 `flagshipDown`
-   * （`player` = 玩家把血条打空 · `octopus` = 章鱼收走 · 缺省 = 窗口到点）。
-   * ⇒ 从此不会出现"玩家的战斗明明打沉了母舰、报告却说章鱼抢头"。
+   * **归属 = 一处判据**（`weekendEvent.weekendFlagshipOutcomeOf`，**留档优先**）：
+   * 有"玩家亲手击沉"的留档 ⇒ 一律玩家击沉（与池子算术无关）；否则读 `flagshipDown`；
+   * 都没有 ⇒ 窗口到点。引擎结束那一刻的日志读**同一个**它（免得界面一处、报告一处各判一遍）。
    */
   const playerKill = ev.flagshipPlayerKill
-  const flagshipOutcome: WeekendResultSnapshot['flagshipOutcome'] =
-    playerKill !== undefined
-      ? 'player'
-      : ev.flagshipDown === 'player'
-        ? 'player'
-        : ev.flagshipDown === 'octopus'
-          ? 'octopus'
-          : 'window'
+  const flagshipOutcome: WeekendResultSnapshot['flagshipOutcome'] = weekendFlagshipOutcomeOf(ev)
   /**
    * `defeated` = **这面「已击沉 / 未击沉」的判据与黑匣同源**（＝`flagshipDown === 'player'`）。
    *

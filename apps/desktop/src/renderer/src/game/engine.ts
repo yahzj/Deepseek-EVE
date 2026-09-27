@@ -299,6 +299,8 @@ import {
   skillCancelImpact,
   /** 2026-09-27 船长令「措辞分档」：旗舰占比按玩家优先口径取（玩家允许挤掉章鱼人的输出） */
   weekendFlagshipSharesOf,
+  /** 2026-09-27 整理：旗舰归属判据收口（留档优先）——与结算快照同源 */
+  weekendFlagshipOutcomeOf,
 } from '@whale/core'
 import type {
   AiCoreType,
@@ -1162,23 +1164,22 @@ export class GameEngine {
     }
     if (weekend.ended) {
       const ev = this.state.weekendEvent
-      const octopus = weekend.flagshipDown === 'octopus'
       /**
-       * **章鱼人得手那一条按黑匣结果分文案**（**船长 2026-09-25 令**改爆率后："章鱼人摧毁 ⇒ 黑匣归零"
-       * 不再成立：玩家没抢到最后一下时按 `25% × 输出占比` 掷，掷中照发）⇒
-       * 掷中 = `ui.weekend.102`（残骸里寻获黑匣）· 没掷中 = `ui.weekend.003`（黑匣归零，原句）。
-       * ⚠ 窗口到点（`ui.weekend.004`：旗舰撤走）不掷黑匣，照旧。
-       *
-       * 🔴 **2026-09-27 船长令（措辞分档 ＋ 留档优先）**：「**只记录作为判定，根据不同情况改变措辞**
-       * （玩家只抢最后一下但是没多少输出就说玩家参与度过低，黑匣被章鱼人拿走之类的）」＋
-       * 「**都有开关记录了，为什么还会显示被章鱼人抢头？**」：
-       * - **有"玩家亲手击沉"的留档 ⇒ 一律按玩家击沉说**（`ui.weekend.107`；这类场次本不该出现，
-       *   一旦出现以留档为准并记一条 warn 诊断，见下）；
-       * - 章鱼收尾那两条**带上玩家输出占比**（`p1`，走 `weekendFlagshipSharesOf` 的玩家优先口径）；
-       * - 窗口到点：本场有旗舰 ⇒ `ui.weekend.106`（旗舰撤走、未判击沉）；没有旗舰 ⇒ 原句 `ui.weekend.004`。
+       * **归属只读一处判据**（**2026-09-27 整理**）：`weekendFlagshipOutcomeOf`（core，**留档优先**）——
+       * 结算快照读的是同一个它，界面这边不再自己拼一遍"留档 vs flagshipDown"。
+       * 这里只做**文案分档**（文案归界面）：
+       * - 章鱼收尾那两条按黑匣结果分（船长 2026-09-25 令改爆率后："章鱼人摧毁 ⇒ 黑匣归零"不再成立：
+       *   没抢到最后一下时按 `25% × 输出占比` 掷，掷中照发）⇒ `ui.weekend.102` / `ui.weekend.003`；
+       * - **留档说玩家亲手击沉**（`player`）⇒ 一律按玩家击沉说（`ui.weekend.115/116/118`）——
+       *   这类场次本不该出现（归属与留档打架），一旦出现以留档为准并记一条 warn 诊断，见下；
+       * - **窗口到点**（`window`）：本场有旗舰 ⇒ `ui.weekend.117`（旗舰撤走、未判击沉）；
+       *   没有旗舰 ⇒ 原句 `ui.weekend.004`。
+       * - 章鱼那两条带上玩家输出占比（`p1`，走 `weekendFlagshipSharesOf` 的玩家优先口径）。
        */
       const box = ev?.flagshipBlackBox === true
-      const playerKilled = ev?.flagshipPlayerKill !== undefined
+      const outcome = weekendFlagshipOutcomeOf(ev)
+      const octopus = outcome === 'octopus'
+      const playerKilled = outcome === 'player' && ev?.flagshipPlayerKill !== undefined
       const hasFlagship = ev?.flagshipHpMax !== undefined
       const sharePct = Math.round(weekendFlagshipSharesOf(ev).player * 100)
       const id = playerKilled
@@ -1200,7 +1201,7 @@ export class GameEngine {
        * 留档说"玩家亲手击沉"、`flagshipDown` 却说"章鱼人得手"——两条判据打起来了。
        * 显示以留档为准（上面那两支），这里留一条 warn 便于日后查档。
        */
-      if (playerKilled && octopus) {
+      if (playerKilled && ev?.flagshipDown === 'octopus') {
         addLog(
           this.state,
           'warn',

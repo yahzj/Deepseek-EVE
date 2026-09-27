@@ -18,6 +18,7 @@ import {
   WEEKEND_FIRST_T0_WALL_MS,
   WEEKEND_FAMILIES,
   WEEKEND_GAIN_REPEL,
+  WEEKEND_GAIN_OFFLINE_REPEL,
   WEEKEND_NPC_CORE_MS,
   WEEKEND_NPC_PERIPHERY_MS,
   WEEKEND_MIN_STANDING,
@@ -27,8 +28,6 @@ import {
   WEEKEND_WINDOW_MS,
   endWeekendEvent,
   weekendNoteFlagshipKilled,
-  weekendNotePlayerWin,
-  weekendNoteRepel,
   weekendTick,
   weekendClockOf,
   WEEKEND_DEBUG_WIN_GAIN,
@@ -44,12 +43,11 @@ import {
   weekendCoreProgressAt,
   weekendEncounterChanceAt,
   weekendFlagshipView,
-  weekendDeadlineMs,
+  weekendNoteContribution,
   weekendFlagshipWindowMs,
   weekendBossPoolView,
   weekendTickBoss,
   weekendFoeCardOf,
-  weekendNoteContribution,
   weekendPeripheryClearedAt,
   weekendPeripheryOf,
   weekendPeripheryProgressAt,
@@ -484,7 +482,10 @@ describe('周末入侵 · 旗舰与倒计时（含离线保护 / Q3 / Q7）', ()
     s.weekendEvent = ev
     const windowMs = weekendFlagshipWindowMs(s)
     expect(windowMs, '正常档窗口 = 24 小时（船长令）').toBe(24 * 3_600_000)
-    expect(weekendDeadlineMs(s), '倒计时读数与窗口同源').toBe(24 * 3_600_000)
+    /**
+     * ⚠ **2026-09-27 清理**：原先这里还有一条 `weekendDeadlineMs(s)`（旧名的纯别名）——
+     * 它在生产代码里没有任何调用点，已删；倒计时那一路本来就只读 `weekendFlagshipWindowMs`（单点）。
+     */
     /** 在线非战斗推 1 小时（每拍 ≤5 秒上限 ⇒ 推 720 拍 = 3600 秒）⇒ 削掉 `150000 ÷ 24` */
     weekendTickBoss(s, 1_000, false)
     const t0 = 1_000
@@ -555,9 +556,7 @@ describe('周末入侵 · 存档往返（零迁移）', () => {
       flagshipHpMax: 150_000,
       flagshipHpDone: 42_000,
       octopusHpDone: 36_000,
-      flagshipDmgLogged: 12_345,
       flagshipRunId: 777,
-      flagshipBestRunDmg: 12_345,
       bossTickWallMs: 1_700_000_000_000,
       prizePaidAtWallMs: 1_700_000_600_000,
     }
@@ -565,9 +564,7 @@ describe('周末入侵 · 存档往返（零迁移）', () => {
     expect(back?.flagshipHpMax, '池子总量').toBe(150_000)
     expect(back?.flagshipHpDone, '已伤（BOSS 血条随档）').toBe(42_000)
     expect(back?.octopusHpDone, '章鱼人削掉的血量').toBe(36_000)
-    expect(back?.flagshipDmgLogged, '已记账伤害').toBe(12_345)
     expect(back?.flagshipRunId, '同场幂等键').toBe(777)
-    expect(back?.flagshipBestRunDmg, '单场最高伤害（读数）').toBe(12_345)
     expect(back?.bossTickWallMs, '削血心跳').toBe(1_700_000_000_000)
     expect(back?.endedAtWallMs, '结束时刻').toBe(1_700_000_500_000)
     expect(back?.flagshipDown, '旗舰结局').toBe('player')
@@ -662,19 +659,27 @@ describe('周末入侵 · 引擎 tick 与记账（M1-b）', () => {
     expect(ev.endedAtWallMs, '本场已结束').toBe(t3)
   })
 
-  it('记账：主动胜利 外围加 10 / 核心加 5 个百分点 · 击退加 3（离线 1）· 击毁旗舰要核心先满', () => {
+  /**
+   * 记账：进度台账**走单点 `weekendNoteContribution`**（+10%/+5%/+3%/+1% 都在调用方算好再传进来）·
+   * 击毁旗舰要核心先满。
+   *
+   * ⚠ **2026-09-27 清理**：原用例走的是 `weekendNotePlayerWin` / `weekendNoteRepel` 两个小助手 ——
+   * 它们在生产代码里**没有任何调用点**（胜利/击退的同一套口径早已收口在 `weekendResolveBattle`），
+   * 属于"同一口径的第二份实现"，已删。本用例改为直接钉**单点**与**结局门禁**。
+   */
+  it('记账：进度按 +10%/+5%/+3%/+1% 写进台账 · 击毁旗舰要核心先满', () => {
     const s = fresh(true)
     const T = 5_000_000
     weekendTick(s, ctx, T, T)
     const ev = s.weekendEvent!
     const per = ev.peripheryIds[0]!
-    weekendNotePlayerWin(s, per)
+    weekendNoteContribution(ev, per, WEEKEND_GAIN_PERIPHERY_WIN)
     expect(ev.contributed[per], '外围主动胜利 +10%').toBeCloseTo(0.1, 6)
-    weekendNoteRepel(s, per)
+    weekendNoteContribution(ev, per, WEEKEND_GAIN_REPEL)
     expect(ev.contributed[per], '击退再 +3%').toBeCloseTo(0.13, 6)
-    weekendNoteRepel(s, per, true)
+    weekendNoteContribution(ev, per, WEEKEND_GAIN_OFFLINE_REPEL)
     expect(ev.contributed[per], '离线击退 +1%').toBeCloseTo(0.14, 6)
-    weekendNotePlayerWin(s, ev.coreId)
+    weekendNoteContribution(ev, ev.coreId, WEEKEND_GAIN_CORE_WIN)
     expect(ev.contributed[ev.coreId], '核心主动胜利 +5%').toBeCloseTo(0.05, 6)
     expect(weekendNoteFlagshipKilled(s, T), '核心没满 ⇒ 击毁无效').toBe(false)
     for (const id of ev.peripheryIds) ev.contributed[id] = 1 // 清外围解门禁
@@ -682,8 +687,10 @@ describe('周末入侵 · 引擎 tick 与记账（M1-b）', () => {
     expect(weekendNoteFlagshipKilled(s, T)).toBe(true)
     expect(ev.flagshipDown).toBe('player')
     expect(ev.endedAtWallMs).toBe(T)
-    weekendNotePlayerWin(s, per)
-    expect(ev.contributed[per], '结束后不再记账（投入冻结，仍停在清门禁时的 1）').toBeCloseTo(1, 6)
+    /**
+     * "结束后不再记账"那条闸**不在台账单点上**，而在调用方（`weekendResolveBattle` 开头即挡
+     * `ev.endedAtWallMs !== undefined`）⇒ 这里不再断言台账本身会拒写（它本来就不判结束）。
+     */
   })
 
   /**

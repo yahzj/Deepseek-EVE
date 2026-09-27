@@ -233,9 +233,10 @@ export {
   /** 2026-09-25 船长令：入侵触发前提 = 协会声望 ≥ 40（调试模式不受限） */
   WEEKEND_MIN_STANDING,
   weekendInvasionAllowedFor,
-  /** 2026-09-25 船长令：黑匣爆率表（>50% 输出抢到最后一下必爆 · 否则按占比衰减 · 没抢到 25%×占比） */
-  WEEKEND_BLACKBOX_MIN_ON_LAST_HIT,
-  WEEKEND_BLACKBOX_MAX_OFF_LAST_HIT,
+  /** 2026-09-25 船长令：黑匣爆率表（>50% 输出抢到最后一下必爆 · 否则按占比衰减 · 没抢到 25%×占比）
+   *  ⚠ 2026-09-27 整理：爆率表两端那两个常量（`WEEKEND_BLACKBOX_MIN_ON_LAST_HIT` /
+   *  `WEEKEND_BLACKBOX_MAX_OFF_LAST_HIT`）只在 `weekendEvent` 内部用，已从本导出表移除；
+   *  外部要用爆率请走 `weekendBlackBoxChanceOf`（单一读数口）。 */
   weekendBlackBoxChanceOf,
   weekendRollBlackBox,
   WEEKEND_GAIN_PERIPHERY_WIN,
@@ -255,7 +256,6 @@ export {
   weekendContributionTier,
   weekendCoreCandidates,
   weekendCoreProgressAt,
-  weekendDeadlineMs,
   /* 2026-09-25：章鱼人削血窗口（正常 2h / 调试 10min）——倒计时/削血速率/池子读数/收口四处同源 */
   WEEKEND_DEBUG_FLAGSHIP_WINDOW_MS,
   weekendFlagshipWindowMs,
@@ -271,12 +271,14 @@ export {
   weekendBossPoolView,
   /** 2026-09-27 船长令：旗舰占比**玩家优先**口径（玩家允许挤掉章鱼人的输出）——血条读数与措辞同源 */
   weekendFlagshipSharesOf,
+  /** 2026-09-27 整理：旗舰归属判据收口（**留档优先**）——结算快照、结算信与引擎结束日志共用同一个它 */
+  weekendFlagshipOutcomeOf,
+  /** 2026-09-27 整理：章鱼人得手的唯一收口（掷黑匣 ＋ 写归属 ＋ 结束本场）——两条到点路径都走它 */
+  weekendClaimOctopus,
   weekendTickBoss,
   weekendClockOf,
   weekendFoeCardOf,
   weekendNoteFlagshipKilled,
-  weekendNotePlayerWin,
-  weekendNoteRepel,
   weekendTick,
   weekendNoteContribution,
   weekendNpcTimelineMs,

@@ -249,9 +249,24 @@ export function weekendIsFlagshipShipId(shipId: string): boolean {
  */
 export function weekendFlagshipHpRemaining(ev: WeekendEventState | undefined): number {
   if (!ev || !weekendIsBossFamily(ev)) return WEEKEND_FLAGSHIP_POOL_HP
+  return Math.max(1, Math.round(weekendFlagshipRemainingOf(ev)))
+}
+
+/**
+ * **血条还剩多少**（共享血条的**原始读数**；`2026-09-27 整理`：把原先散在三处的同一算式收成一处）：
+ * `池子总量 −（玩家已造成 ＋ 章鱼人已削）`，可 ≤ 0（= 已被摧毁）。
+ *
+ * 三处读法都由它派生，别再各写一遍：
+ * - `weekendFlagshipHpRemaining` = `max(1, 本值)`（开战入口/界面读数：0 会让人以为能打，故抬到 1）；
+ * - `weekendFlagshipDefeated` = 本值 ≤ 0（击沉判据）；
+ * - `weekendBossPoolView.needDmg` = `max(0, 本值)`（"还差多少打空"）。
+ * ⚠ `weekendOctopusTick` 里的 `need`（= `池子 − 玩家已造成`）**语义不同**：那是"章鱼还差多少才够得手"，
+ * 不是血条剩余 ⇒ 它**不**由本函数派生（血条已被玩家打空时它 ≤ 0，那一档归玩家、章鱼不认领）。
+ */
+export function weekendFlagshipRemainingOf(ev: WeekendEventState | undefined): number {
+  if (!ev || !weekendIsBossFamily(ev)) return WEEKEND_FLAGSHIP_POOL_HP
   const hpMax = ev.flagshipHpMax ?? WEEKEND_FLAGSHIP_POOL_HP
-  const done = Math.max(0, ev.flagshipHpDone ?? 0) + weekendOctopusDone(ev)
-  return Math.max(1, Math.round(hpMax - done))
+  return hpMax - Math.max(0, ev.flagshipHpDone ?? 0) - weekendOctopusDone(ev)
 }
 
 /**
@@ -397,12 +412,8 @@ export interface WeekendEventState {
   /** **章鱼人累计削掉的血量**（**2026-09-25 共享血条口径**：与玩家的 `flagshipHpDone` **加在同一条血**上；
    *  只累计"在线且非战斗"的时长 —— 战斗中/离线都暂停，速率 = `池子总量 ÷ 窗口`） */
   octopusHpDone?: number
-  /** **已记进池子的伤害**（幂等用：同一场只记一次——引擎可能在同一场调两次结算） */
-  flagshipDmgLogged?: number
   /** **上一场记账的战斗身份**（= `battle.startedAtGameMs`；同一场重复结算据此幂等） */
   flagshipRunId?: number
-  /** **玩家单场对母舰的最高原始伤害**（池子总量的锚；0 = 还没打出过伤害） */
-  flagshipBestRunDmg?: number
   /** **上一拍章鱼削血的心跳墙钟**（只用于算拍间增量；缺省 = 本拍只立基线、不累计） */
   bossTickWallMs?: number
   /**
@@ -707,15 +718,6 @@ export function weekendClockOf(
 /** NPC 时间轴的实际时长（调试模式 ÷60，Q6） */
 export function weekendNpcTimelineMs(state: Pick<GameState, 'debugQuick'>, baseMs: number): number {
   return weekendDebugOn(state) ? Math.max(1, Math.round(baseMs / WEEKEND_DEBUG_TIME_DIVISOR)) : baseMs
-}
-
-/**
- * **倒计时的实际时长**（= `weekendFlagshipWindowMs`，保留旧名以免改散调用点；
- * 2026-09-26 起正常 = **24 小时**（船长令「延长到默认最多24小时才能削完」）、调试 = 10 分钟）。
- * ⚠ 新代码请直接用 `weekendFlagshipWindowMs`（它才是"四处同源"的那个单点）。
- */
-export function weekendDeadlineMs(state: Pick<GameState, 'debugQuick'>): number {
-  return weekendFlagshipWindowMs(state)
 }
 
 /**
@@ -1274,17 +1276,8 @@ export function weekendTick(
   // ③ 章鱼人得手 ⇒ 结束本场（贡献奖照给——结算由调用方做）
   let ended = false
   let flagshipDown: WeekendTickResult['flagshipDown']
-  if (view.down === 'octopus' && ev.flagshipDown === undefined) {
-    ev.flagshipDown = 'octopus'
-    /**
-     * **黑匣掷骰（"没抢到最后一下"那一档）**（船长 2026-09-25 令 ＋ 四答之二"照发"）：
-     * 章鱼人把血条削空也算"旗舰被摧毁"，玩家按**输出占比**领 `25% × p` 的爆率——
-     * 掷中照发黑匣（旧文案「黑匣归零」按结果分成两条，见 `ui.weekend.003` / `102`）。
-     * ⚠ 窗口到点（旗舰**撤走**、没被摧毁）不掷：没有残骸可捞。
-     */
-    weekendRollBlackBox(state, ev, false)
+  if (view.down === 'octopus' && weekendClaimOctopus(state, ev, nowWallMs)) {
     flagshipDown = 'octopus'
-    endWeekendEvent(state, nowWallMs)
     ended = true
   }
 
@@ -1302,21 +1295,15 @@ export function weekendTick(
   return { started, flagshipShown: view.shown, flagshipAnchored, ...(flagshipDown !== undefined ? { flagshipDown } : {}), ended, encounterRolls }
 }
 
-/** 主动打赢一场：外围 +10% · 核心 +5%（第 6 条；核心同样受门禁约束，门禁在读数侧生效） */
-export function weekendNotePlayerWin(state: GameState, galaxyId: string): void {
-  const ev = state.weekendEvent
-  if (!ev || ev.endedAtWallMs !== undefined) return
-  const gain = galaxyId === ev.coreId ? WEEKEND_GAIN_CORE_WIN : WEEKEND_GAIN_PERIPHERY_WIN
-  if (galaxyId === ev.coreId || ev.peripheryIds.includes(galaxyId)) weekendNoteContribution(ev, galaxyId, gain)
-}
-
-/** 击退一次遇袭：+3%（离线自动结算的 +1% 由调用方传 `offline = true`） */
-export function weekendNoteRepel(state: GameState, galaxyId: string, offline = false): void {
-  const ev = state.weekendEvent
-  if (!ev || ev.endedAtWallMs !== undefined) return
-  if (galaxyId !== ev.coreId && !ev.peripheryIds.includes(galaxyId)) return
-  weekendNoteContribution(ev, galaxyId, offline ? WEEKEND_GAIN_OFFLINE_REPEL : WEEKEND_GAIN_REPEL)
-}
+/**
+ * **玩家击毁旗舰**：记结局并结束本场（黑匣与贡献奖由调用方结算）。
+ *
+ * ⚠ **2026-09-27 清理**：原先这里上面还有 `weekendNotePlayerWin` / `weekendNoteRepel` 两个"记一笔进度"的
+ * 小助手 —— 它们**在生产代码里一个调用点都没有**（只有用例在用），而胜利/击退的同一套 +10%/+5%/+3%
+ * 早已收口在 `weekendBattle.weekendResolveBattle`（`weekendWinGainOf` / `WEEKEND_GAIN_REPEL` /
+ * `WEEKEND_GAIN_OFFLINE_REPEL`）⇒ 属于**同一口径的第二份实现**，已删（连同那两个导出与只服务它们的用例）。
+ * 新代码要记进度请走 `weekendNoteContribution`（单点），别再添平行助手。
+ */
 
 /** 玩家击毁旗舰：记结局并结束本场（黑匣与贡献奖由调用方结算） */
 export function weekendNoteFlagshipKilled(state: GameState, nowWallMs: number): boolean {
@@ -1343,6 +1330,22 @@ export function weekendIsBossFamily(ev: WeekendEventState | undefined): boolean 
  */
 export function weekendOctopusDrainPerMs(state: Pick<GameState, 'debugQuick'>, hpTotal: number): number {
   return hpTotal / weekendFlagshipWindowMs(state)
+}
+
+/**
+ * **旗舰结局的唯一判据**（`player` / `octopus` / `window`）——结算快照与引擎结束日志**共用它**。
+ *
+ * 判据顺序（**2026-09-27 船长令**：「都有开关记录了，为什么还会显示被章鱼人抢头？」）：
+ * 1. **有"玩家亲手击沉"的留档 ⇒ 一律 `player`**（`ev.flagshipPlayerKill`：母舰在玩家的战斗里爆炸那一刻
+ *    置位、与池子算术无关）——从此不会出现"玩家的战斗明明打沉了母舰、报告却说章鱼抢头"；
+ * 2. 否则读 `ev.flagshipDown`（`player` = 玩家把血条打空 · `octopus` = 章鱼收走）；
+ * 3. 都没有 ⇒ `window`（窗口到点，旗舰撤走、未判定击沉）。
+ */
+export function weekendFlagshipOutcomeOf(ev: WeekendEventState | undefined): 'player' | 'octopus' | 'window' {
+  if (ev?.flagshipPlayerKill !== undefined) return 'player'
+  if (ev?.flagshipDown === 'player') return 'player'
+  if (ev?.flagshipDown === 'octopus') return 'octopus'
+  return 'window'
 }
 
 /**
@@ -1407,16 +1410,18 @@ export function weekendBossPoolView(
   const octopusDone = weekendOctopusDone(ev)
   /** 两份占比走**玩家优先**口径（2026-09-27 船长令：玩家允许挤掉章鱼人的输出） */
   const shares = weekendFlagshipSharesOf(ev)
+  /** 血条剩余走**单一算式**（`2026-09-27 整理`）：`hpLeft` 与 `needDmg` 都从它派生，不再各算一遍 */
+  const left = Math.max(0, weekendFlagshipRemainingOf(ev))
   void state
   return {
     hpMax,
     hpDone,
     // **共享血条**：玩家那份与章鱼那份都真实减少它
-    hpLeft: Math.max(0, hpMax - hpDone - octopusDone),
+    hpLeft: left,
     octopusDone,
     playerFrac: shares.player,
     octopusFrac: shares.octopus,
-    needDmg: Math.max(0, hpMax - hpDone - octopusDone),
+    needDmg: left,
   }
 }
 
@@ -1426,9 +1431,10 @@ export function weekendBossPoolView(
  * @param rawDmg 该场**打进母舰的原始伤害**（未截断；`0` = 该场没打到它）
  * @returns 本次是否**把池子打空**（= 旗舰被玩家击沉）
  *
- * ⚠ **2026-09-25 改口径**：池子 = **固定常量** `WEEKEND_FLAGSHIP_POOL_HP`（150,000），
- * 首次接战即立起（原先按"5 × 首战最高伤害"与"母舰卡面血 ×5"自适应，母舰 ×10 后已脱节）。
- * `flagshipBestRunDmg` 仍记（**只作读数/展示**，不再参与池子计算）。
+ * ⚠ **2026-09-25 改口径**：池子 = **固定常量** `WEEKEND_FLAGSHIP_POOL_HP`（150,000），首次接战即立起
+ * （原先按"5 × 首战最高伤害"与"母舰卡面血 ×5"自适应，母舰 ×10 后已脱节）。
+ * ⚠ **2026-09-27 清理**：原先还顺手记的 `flagshipBestRunDmg`（"单场最高伤害读数"）**没有任何读取点**，
+ * 已随 `flagshipDmgLogged` 一起删除 —— 别再往本函数里加"只写不读"的读数。
  */
 export function weekendNoteFlagshipDamage(
   ev: WeekendEventState,
@@ -1447,7 +1453,6 @@ export function weekendNoteFlagshipDamage(
   if (runId !== undefined) ev.flagshipRunId = runId
   if (ev.flagshipHpMax === undefined) ev.flagshipHpMax = WEEKEND_FLAGSHIP_POOL_HP
   if (dmg > 0) {
-    ev.flagshipBestRunDmg = Math.max(ev.flagshipBestRunDmg ?? 0, dmg)
     ev.flagshipHpDone = Math.max(0, (ev.flagshipHpDone ?? 0) + dmg)
   }
   return weekendFlagshipDefeated(ev)
@@ -1464,7 +1469,8 @@ export function weekendFlagshipDefeated(ev: WeekendEventState | undefined): bool
   if (!ev || !weekendIsBossFamily(ev) || ev.flagshipDown !== undefined) return false
   const hpMax = ev.flagshipHpMax ?? 0
   if (hpMax <= 0) return false
-  return Math.max(0, ev.flagshipHpDone ?? 0) + weekendOctopusDone(ev) >= hpMax
+  /** 判据与血条剩余**同一算式**（`weekendFlagshipRemainingOf`）：见底（≤ 0）即击沉 */
+  return weekendFlagshipRemainingOf(ev) <= 0
 }
 
 /**
@@ -1553,24 +1559,34 @@ export function weekendTickBoss(
    */
   if (inBattle || nowWallMs < (ev.octopusHoldUntilWallMs ?? 0)) return {}
   if (weekendOctopusTick(state, ev, dt, inBattle)) {
-    /**
-     * ⚠ **2026-09-26 玩家报障修（"入侵活动里没有判定击杀"）**：本分支与公开收口 `weekendTick` 的同类分支
-     * **必须同款先掷一次黑匣**。
-     *
-     * 章鱼人得手（血条由它削空）那一档，玩家按 `25% × 输出占比` 的爆率**照发**黑匣（船长 2026-09-25 令
-     * ＋ 四答之二"照发"）；而**引擎每拍走的就是本函数**（`engine.advanceGame` → `weekendTickBoss`），
-     * 它一旦在这里结束本场，公开收口 `weekendTick` 就因"本场已结束"直接返回 ⇒ **那一掷永远不发生**。
-     *
-     * 实测凭据（玩家导入档 `save-20260926-230119`）：`flagshipDown = 'octopus'`、`flagshipBlackBox` **缺省**、
-     * 战果快照 `blackBox: 0`；而按同一子流重算那一掷是 **命中**（0.0156 < 爆率 24.44%，p = 97.75%）
-     * ⇒ 玩家该拿的黑匣被这条漏掷吞掉了。
-     */
-    weekendRollBlackBox(state, ev, false)
-    ev.flagshipDown = 'octopus'
-    endWeekendEvent(state, nowWallMs)
+    weekendClaimOctopus(state, ev, nowWallMs)
     return { down: 'octopus' }
   }
   return {}
+}
+
+/**
+ * **章鱼人得手的唯一收口**（**2026-09-27 二号整理**：此前这段三行在两条路径里各写了一遍，
+ * 2026-09-26 就是因为**只有一处掷骰**而吞掉了玩家该拿的黑匣 —— 玩家报障「**入侵活动里没有判定击杀**」）。
+ *
+ * 三件事，顺序固定：
+ * 1. **掷黑匣**（"没抢到最后一下"那一档：`25% × 输出占比`；船长 2026-09-25 令 ＋ 四答之二"照发"）
+ *    —— 掷骰幂等（`ev.flagshipBlackBox` 有值即返回），走场次子流、读档重打结果相同；
+ * 2. 写归属 `ev.flagshipDown = 'octopus'`；
+ * 3. 结束本场（贡献奖由调用方结算）。
+ *
+ * 两条到点路径都走它：**逐拍削血**（`weekendTickBoss` → `weekendOctopusTick`，在线那一路）与
+ * **视图/离线判定**（`weekendTick` ③ 读 `weekendFlagshipView` 的 `down`，离线保护失效 ＋ 窗口到点那一路）。
+ * ⚠ **窗口到点（旗舰撤走、没被摧毁）不走这里、也不掷骰**：没有残骸可捞。
+ *
+ * @returns 真认领了才 `true`（已有归属 / 已结束 ⇒ `false`）
+ */
+export function weekendClaimOctopus(state: GameState, ev: WeekendEventState, nowWallMs: number): boolean {
+  if (ev.flagshipDown !== undefined || ev.endedAtWallMs !== undefined) return false
+  weekendRollBlackBox(state, ev, false)
+  ev.flagshipDown = 'octopus'
+  endWeekendEvent(state, nowWallMs)
+  return true
 }
 
 /** 活动总时长（正常 = 96h；调试模式按 NPC 压缩口径无固定上限，取 96h÷60 供测试参考） */

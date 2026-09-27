@@ -3130,7 +3130,6 @@ function normalizeState(raw: unknown): GameState {
             (drainedLegacy !== undefined && drainedLegacy > 0 && hpMax > 0
               ? Math.floor((hpMax * drainedLegacy) / weekendFlagshipWindowMs({ debugQuick }))
               : undefined)
-          const dmgLogged = weekendKeep(weekendRaw.flagshipDmgLogged)
           const runId = strictKeep(weekendRaw.flagshipRunId)
           const bossTick = strictKeep(weekendRaw.bossTickWallMs)
           /**
@@ -3181,11 +3180,7 @@ function normalizeState(raw: unknown): GameState {
             ...(hpMax > 0 ? { flagshipHpMax: hpMax } : {}),
             ...(hpDone !== undefined ? { flagshipHpDone: hpDone } : {}),
             ...(octopusHp !== undefined ? { octopusHpDone: octopusHp } : {}),
-            ...(dmgLogged !== undefined ? { flagshipDmgLogged: dmgLogged } : {}),
             ...(runId !== undefined ? { flagshipRunId: runId } : {}),
-            ...(weekendKeep(weekendRaw.flagshipBestRunDmg) !== undefined
-              ? { flagshipBestRunDmg: weekendKeep(weekendRaw.flagshipBestRunDmg) }
-              : {}),
             ...(bossTick !== undefined ? { bossTickWallMs: bossTick } : {}),
             ...(octopusHold !== undefined ? { octopusHoldUntilWallMs: octopusHold } : {}),
             ...(prizePaid !== undefined ? { prizePaidAtWallMs: prizePaid } : {}),
