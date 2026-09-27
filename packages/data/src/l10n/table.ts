@@ -2516,7 +2516,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.057": { zh: "怎么扫", en: "How to scan" },
   "ui.Handbook.058": { zh: "发现之后", en: "After a discovery" },
   "ui.Handbook.059": { zh: "三种处置", en: "Three outcomes" },
-  "ui.Handbook.060": { zh: "也可以派副船自动探索（约 5 分钟，收益约为亲自探索的四成，参与舰受损但不丢船），或直接放弃。", en: "You can also send an auxiliary ship to explore automatically (about 5 minutes, roughly 40% of the yield of exploring yourself; the ships involved take damage but are never lost), or simply give it up." },
+  "ui.Handbook.060": { zh: "也可以派副船自动探索（约 5 分钟，收益约为亲自探索的 8 折，参与舰受损但不丢船），或直接放弃。", en: "You can also send an auxiliary ship to explore automatically (about 5 minutes, roughly 80% of the yield of exploring yourself; the ships involved take damage but are never lost), or simply give it up." },
   "ui.Handbook.061": { zh: "回合代价", en: "Turn cost" },
   "ui.Handbook.062": { zh: "全损", en: "Total loss" },
   "ui.Handbook.063": { zh: "产出链", en: "Production chain" },
