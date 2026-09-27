@@ -3044,6 +3044,9 @@ function resolveSupportBranch(
  *   与波次转场/单波增援**同一套演出与窗口口径**；
  * - **表现 = 敌方支援舰船入场**：新 tag **`sup{n}-<原tag>`** ⇒ 界面上是一艘**新单位**（新舰影 +
  *   入场动画），而美术/体积/名称仍按原 tag 解析（`baseFoeTag` 剥壳，见 `foeShipAtTag`）；
+ * - **入场即参战**：本函数只写 `battle.units`（**编成表 `curFoes` 一个字段都不动**——槽位/上限/
+ *   优先名单全按它算）⇒ 参战列表由调用方用 `foesWithSupport` 重取（开火/选靶/判清波三处同源），
+ *   漏了这一步它就只是一具"会显示的摆设"（2026-09-27 玩家报障的根因）；
  * - 随机走 `state.rng`，但**只在挂了本件的战斗里消费** ⇒ 没挂件的战斗随机序列逐字不变。
  */
 function resolveFoeRevive(
@@ -3067,6 +3070,8 @@ function resolveFoeRevive(
    * **本波"槽位"口径**：一个编成条目 = 一个槽位，槽位里站着的是**原单位或它的支援舰**（`sup{n}-`）。
    * ⚠ 支援舰不是 `curFoes` 里的条目 ⇒ 数"在场数"必须把它们的**剥壳 tag** 一并算上，
    * 否则上限形同虚设（每次到点都能再补一艘，战场无限膨胀）。
+   * ⚠⚠ 同理，**参战列表**也得把它们的剥壳 tag 算上（`foesWithSupport`）——本函数只负责"补进场"，
+   * "补进来之后它算不算敌人"在调用方（2026-09-27 报障的根因）。
    */
   const specTags = new Set(curFoes.map((f) => f.tag))
   const aliveSlots = new Set<string>()
@@ -3141,6 +3146,41 @@ function resolveFoeRevive(
       { p1: spec.name, p2: n },
     )
   }
+}
+
+/**
+ * **本波"参战敌阵" = 编成条目 ＋ 已入场的支援舰**（`sup{n}-<原tag>`，见 `resolveFoeRevive`）。
+ *
+ * 为什么必须有这一层（**2026-09-27 玩家报障**，船长转述：「**增援的敌舰不会攻击也没有效果**」）：
+ * `resolveFoeRevive` 是直接 `seedUnit` 进 `battle.units` 的（它不、也不能改 `curFoes` ——
+ * 那是编成表，槽位/上限/优先名单全按它算），而**敌人开火、我方选靶、判清波/判胜**三件事
+ * 全都只看调用方递进 `stepBattle` 的那份 `foes` ⇒ 支援舰虽然入得了场（有舰影、有血条、
+ * 有入场动画），却**一炮不开、谁也打不着它、也不挡清波**——玩家看到的就是"增援入场但毫无作用"。
+ *
+ * 口径：
+ * - **配对靠剥壳回查本波编成**（`baseFoeTag`）：查得到才收（本波召唤的支援舰），查不到
+ *   （跨波遗留的尸体/支援舰）一律不收 —— 与"只补当前波"同一条边界；
+ * - **一律追加在队尾**，绝不插队：`battle.pdCd` / `pdFocus` 都是**按下标**对齐这份列表的
+ *   （见 `resolvePointDefense`），插队会让近防炮冷却与集火锁错位到别的舰上；
+ * - 规格由**原条目重建**（`{...base, tag}`）：存档里只有 tag ＋ 血量，规格本来就是这个口径
+ *   （换波/读档中断补缺也一样）⇒ **不新增任何存档字段**；
+ * - **没挂该件的战斗逐字不变**：`foeReviveCount` 缺省（= 本场一次都没召唤过）直接原样返回，
+ *   连数组都不建（与开战/逐拍路径的零变化口径一致）。
+ */
+function foesWithSupport(
+  b: import('./state').BattleState,
+  foes: readonly UnitSpec[],
+): UnitSpec[] {
+  if (b.foeReviveCount === undefined) return foes as UnitSpec[]
+  let extra: UnitSpec[] | null = null
+  for (const tag of Object.keys(b.units)) {
+    if (!FOE_SUPPORT_TAG_RE.test(tag)) continue
+    if (foes.some((f) => f.tag === tag)) continue
+    const base = foes.find((f) => f.tag === baseFoeTag(tag))
+    if (base === undefined) continue
+    ;(extra ??= []).push({ ...base, tag })
+  }
+  return extra === null ? (foes as UnitSpec[]) : [...foes, ...extra]
 }
 
 /**
@@ -6054,7 +6094,12 @@ export function battleArcsFor(
     /** **受击增程已触发**（2026-09-11 船长）——表现层据此把机群阵位后撤、出击/攻击线拉长 */
     rangeBuff: boolean
   }> = []
-  for (const f of foes) {
+  /**
+   * ⚠ **支援舰的机群也要画**（2026-09-27）：它的池由 `resolveFoeRevive` 建（`initFoeDronePools(b, [spec])`），
+   * 而"参战敌阵"含支援舰（`foesWithSupport`）⇒ 它复活的战列巡洋舰**真会放飞那架重袭机**；
+   * 若这里只遍历编成条目，那架无人机会**打人却看不见**（引擎与画面两套口径）。
+   */
+  for (const f of foesWithSupport(battle, foes)) {
     const pools = battle.foeDronePools?.[f.tag]
     if (!pools || pools.length === 0) continue
     // **备用机库**（2026-09-12）：在库待命的架次**不算出战架数**（画面不画、血条不计），
@@ -6692,7 +6737,13 @@ export function advanceBattleFor(
     //   （battle.lastTickGameMs 不推进——与击杀慢镜同语义：演出时间不计入 maxBattleMs 超时）；
     // - 实时战斗中游戏时钟与墙钟 1:1，窗口 = 上一波最后一艘的爆炸 + 残骸淡出完整播完；
     // - 大步长/离线推进下 state.gameMs 越过窗口即立刻续刷，无额外等待。
-    if (waves && waveIdx < lastIdx && !curFoes.some((f) => isAlive(battle, f.tag))) {
+    if (
+      waves &&
+      waveIdx < lastIdx &&
+      // 参战敌阵含**已入场的支援舰**（`sup{n}-`）：它们还活着就不算本波清空（否则"复活出来的船
+      // 还在场，下一波却已经刷出来"，两份编队同时在打）
+      !foesWithSupport(battle, curFoes).some((f) => isAlive(battle, f.tag))
+    ) {
       // ⚠ 转场窗口在**洞内现行玩法里几乎走不到**（网格层一律单波，只有老档 `pendingNode` 路径可能多波）；
       //   这里的 `× speedX` 与 `battleShowWindowMs` 同一口径（倍速只压进度、不压演出）
       const gapMs = Math.max(0, bal.waveEnterGapMs ?? 0) * speedX
@@ -6792,12 +6843,17 @@ export function advanceBattleFor(
      * 上一拍刚打死的僚舰，本拍就能被"复活/支援"补回场；没挂该件的战斗第一步就返回（零行为变化）。
      */
     resolveFoeRevive(state, battle, curFoes, bal, nowMs())
+    /**
+     * **本拍参战敌阵**（编成 ＋ 已入场支援舰）——**必须在 `resolveFoeRevive` 之后取**：
+     * 本拍刚召唤入场的支援舰这一拍就进开火循环/选靶池（支援舰与编成的关系见 `foesWithSupport`）。
+     */
+    const liveFoes = foesWithSupport(battle, curFoes)
     const dt = Math.min(BATTLE_STEP_MS, nowMs() - battle.lastTickGameMs)
     stepBattle(
       state,
       battle,
       myUnits,
-      curFoes,
+      liveFoes,
       foeDesire,
       // **钳制上界取"本波"的开战距离**（`desireCapM`；单波场次 = 上面的 `openM`，逐字不变）
       desireCapM,
