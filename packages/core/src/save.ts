@@ -1304,7 +1304,20 @@ function normalizeState(raw: unknown): GameState {
     }
   }
 
-  // --- 钱包（v2） ---
+  /**
+ * **技能训练许可**（2026-09-27 船长令「我想让学习技能有成本」）——
+ * 只收「值恒 `true`」的键（严格比较：写坏了的值一律丢弃 ⇒ 不会凭空给出一本许可）。
+ * ⚠ **老档零迁移**：改动前的档没有这个键 ⇒ 清洗出空表即可；"已经练到 Lv≥1 视同已购"
+ * 那条豁免走判据（`hasSkillLicense`），**不落任何迁移键**。
+ */
+const licenses: Record<string, true> = {}
+const licensesRaw = asRaw(skillsRaw.licenses)
+for (const [key, value] of Object.entries(licensesRaw)) {
+  if (key.length === 0) continue
+  if (value === true) licenses[key] = true
+}
+
+// --- 钱包（v2） ---
   const walletRaw = asRaw(src.wallet)
   const wallet = {
     isk:
@@ -3879,7 +3892,7 @@ function normalizeState(raw: unknown): GameState {
     logCap,
     character,
     rng,
-    skills: { trained, queue, savedProgress },
+    skills: { trained, queue, savedProgress, licenses },
     wallet,
     shipId,
     fleet,

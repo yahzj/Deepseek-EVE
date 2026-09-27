@@ -116,8 +116,29 @@ export const WORMHOLE_RUINS_RARES_MAX = 3
 export const WORMHOLE_RELIC_MIN_DEPTH = 2
 /** 遗迹打捞出专属货柜的**单次概率**（层 2 起固定 70%；层 1 恒不出） */
 export const WORMHOLE_RELIC_BOX_CHANCE = 0.7
-/** 遗迹掉落里**贵重品货柜**的占比（船长 2026-09-15：「贵重品货柜占比50%」）——其余 9 种平分剩下 50% */
+/**
+ * 遗迹掉落里**贵重品货柜**的占比（船长 2026-09-15：「贵重品货柜占比50%」）——其余种类平分剩下的比例。
+ *
+ * 🔴 **2026-09-27 船长改判**：「**我是想下调 WORMHOLE_RELIC_VALUABLES_SHARE 的比例，7层之后
+ * WORMHOLE_RELIC_VALUABLES_SHARE 比例下降到0.25**」。
+ *
+ * 口径：**浅层（层 ≤ 7）= 0.5**（原值一字未动）；**深层（层 ≥ 8）= 0.25**。
+ * ⚠ 边界写在 WORMHOLE_RELIC_VALUABLES_CUT_DEPTH（默认 8 = "第 7 层之后"；要含第 7 层就改成 7）；
+ * ⚠ **取数一律走 wormholeRelicValuablesShareOf(depth)**，别再在调用点直接读常量
+ * （否则深层仍按 0.5 抽，两个口径会打架）。
+ */
 export const WORMHOLE_RELIC_VALUABLES_SHARE = 0.5
+/** **深层**的贵重品货柜占比（船长 2026-09-27：「7层之后…下降到0.25」） */
+export const WORMHOLE_RELIC_VALUABLES_SHARE_DEEP = 0.25
+/** 分界层：**本层起**改用深档比例（默认 8 = 第 7 层之后；改 7 即含第 7 层） */
+export const WORMHOLE_RELIC_VALUABLES_CUT_DEPTH = 8
+/** 第 depth 层的贵重品货柜占比（唯一入口：浅层 0.5 / 深层 0.25） */
+export function wormholeRelicValuablesShareOf(depth: number): number {
+  const d = Math.max(1, Math.floor(depth))
+  return d >= WORMHOLE_RELIC_VALUABLES_CUT_DEPTH
+    ? WORMHOLE_RELIC_VALUABLES_SHARE_DEEP
+    : WORMHOLE_RELIC_VALUABLES_SHARE
+}
 
 /** 第 `depth` 层遗迹打捞出专属货柜的**单次概率**（层 1 = 0；层 2 起固定 `WORMHOLE_RELIC_BOX_CHANCE`） */
 export function wormholeRelicChanceOf(depth: number): number {
@@ -365,7 +386,8 @@ export const WORMHOLE_LUXURY_ITEM_IDS = [
  * ② **安全货柜改回"按本格敌卡的族"取** —— 玩家报障「E 族虫洞出了 D 族安全货柜」后，船长裁定
  * 「**A：遗迹渠道也按本格敌卡的族取（两渠道统一）**」⇒ 与残骸堆渠道同一把尺，柜内内容不再与本趟族错位）。
  *
- * 池 = 贵重品货柜（占 `WORMHOLE_RELIC_VALUABLES_SHARE` = 50%）
+ * 池 = 贵重品货柜（占 WORMHOLE_RELIC_VALUABLES_SHARE = **浅层 50% / 深层（层 ≥ 8）25%**，
+ * 见 wormholeRelicValuablesShareOf；2026-09-27 船长令）
  * ＋ **本族安全货柜**（`box-relic-<族小写>`）
  * ＋ **本层有资格的图纸货柜档**（浅档恒在 · 中 ≥5 · 深 ≥7）
  * ＋ 军用备货柜 —— 其余种类**平分剩下 50%**：
@@ -1904,7 +1926,8 @@ export function wormholeRelicBoxIdOf(family: string): string {
  *
  * 口径（**2026-09-15 船长改判后**；2026-09-19 追加图纸柜层门槛）：
  * - **概率固定 70%**（`WORMHOLE_RELIC_BOX_CHANCE`；层 2 起，**层 1 恒不出**）；
- * - **命中后按全货柜池抽**：**贵重品货柜 50%**（`WORMHOLE_RELIC_VALUABLES_SHARE`），
+ * - **命中后按全货柜池抽**：**贵重品货柜 浅层 50% / 深层（层 ≥ 8）25%**
+ *   （wormholeRelicValuablesShareOf；2026-09-27 船长令下调深层比例），
  *   其余**本层可掉的**种类（安全柜五族 · **本层有资格的图纸柜档** · 军用柜）**平分 50%**
  *   —— 层 1~4 各 ≈7.14% · 层 5~6 各 6.25% · 层 7+ 各 ≈5.6%，见 `wormholeRelicBoxPoolOf`；
  * - **不直接入库**：调用方把货柜**散落到该格**，玩家自己拾取（占货仓格数按形状现算；放不下整件拒收）；
@@ -1924,7 +1947,7 @@ export function wormholeRollRelicBox(
   const rng = wormholeStream(runSeedOf(state) * 53 + run.depth * 911 + (cell.q * 23 + cell.r * 29) * 13 + 7)
   if (rng() >= wormholeRelicChanceOf(run.depth)) return undefined
   // 命中后分种类。⚠ 这条流是**每格独立**的（种子含 q/r），多抽一个随机数不会影响别的格子"出不出货"。
-  if (rng() < WORMHOLE_RELIC_VALUABLES_SHARE) return WORMHOLE_VALUABLES_BOX_ID
+  if (rng() < wormholeRelicValuablesShareOf(run.depth)) return WORMHOLE_VALUABLES_BOX_ID
   const others = wormholeRelicBoxPoolOf(ctx, run.depth, familyOfCard(ctx, wormholeCellCardIdOf(run, cell))).filter(
     (id) => id !== WORMHOLE_VALUABLES_BOX_ID,
   )

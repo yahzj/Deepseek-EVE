@@ -3,6 +3,7 @@
  * 2026-09-08：制造劳动者制与精炼炉同款（主控亲自全局限 1 条 + 每闲置 AI 核心 1 条；
  * 主控手动位与精炼炉/回收炉共用；旧作业豁免）。
  */
+import { haltCurrentActivity } from '../src/activityGate'
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { SimContext } from '../src/types'
 import type { GameState } from '../src/state'
@@ -128,8 +129,13 @@ describe('制造作业（2026-09-08 劳动者制：主控亲自全局限 1 条�
     state.fleet[state.shipId].cargo['ore-a'] = 10
     expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
     state.warehouse.items['min-a'] = 10
+    // **2026-09-27 船长令**「亲自开炉 · 亲自开线也添加警告」⇒ 换机器改走"首击警告、二击执行"
+    const r1a = startManufacturing(state, 'bp-a', 'pilot', ctx)
+    expect(r1a.ok, '首击应当只警告').toBe(false)
+    expect(r1a.errorId, '首击警告 id').toBe('core.activityGate.002')
+    haltCurrentActivity(state) // 二击：停掉当前占主控的炉
     const r1 = startManufacturing(state, 'bp-a', 'pilot', ctx)
-    expect(r1.ok, '手动炉在跑也允许直接换线').toBe(true)
+    expect(r1.ok, '二击后允许直接换线').toBe(true)
     expect(state.manufacturingRuns.filter((x) => x.active && x.worker === 'pilot')).toHaveLength(1)
     expect(state.refineRuns.some((x) => x.active && x.worker === 'pilot'), '原炉已停').toBe(false)
     expect(state.logs.some((l) => l.text.includes('已自动停止「亲自开炉」'))).toBe(true)
@@ -145,8 +151,13 @@ describe('制造作业（2026-09-08 劳动者制：主控亲自全局限 1 条�
     s2.warehouse.items['min-a'] = 10
     expect(startManufacturing(s2, 'bp-a', 'pilot', ctx).ok).toBe(true)
     s2.fleet[s2.shipId].cargo['ore-a'] = 10
+    // 同上（**2026-09-27 船长令**）：首击只警告、二击才执行
+    const r2a = startRefineRun(s2, 'ore-a', 'pilot', ctx)
+    expect(r2a.ok, '首击应当只警告').toBe(false)
+    expect(r2a.errorId).toBe('core.activityGate.002')
+    haltCurrentActivity(s2) // 二击：停掉当前占主控的线
     const r2 = startRefineRun(s2, 'ore-a', 'pilot', ctx)
-    expect(r2.ok, '手动线在跑也允许直接换炉').toBe(true)
+    expect(r2.ok, '二击后允许直接换炉').toBe(true)
     expect(s2.manufacturingRuns.some((x) => x.active && x.worker === 'pilot'), '原线已停').toBe(false)
     expect(s2.refineRuns.filter((x) => x.active && x.worker === 'pilot')).toHaveLength(1)
   })
@@ -159,8 +170,13 @@ describe('制造作业（2026-09-08 劳动者制：主控亲自全局限 1 条�
   it('主控手动制造中反向封锁：**开始采矿 ⇒ 自动停线（当前那批丢弃）+ 统一日志**', () => {
     state.warehouse.items['min-a'] = 10
     expect(startManufacturing(state, 'bp-a', 'pilot', ctx).ok).toBe(true)
+    // **2026-09-27**：亲自开线属"先警告"档 ⇒ 首击只警告，二击才停线换活
+    const m1 = startMining(state, 'belt-a', ctx)
+    expect(m1.ok, '首击应当只警告').toBe(false)
+    expect(m1.errorId).toBe('core.activityGate.002')
+    haltCurrentActivity(state) // 二击：停掉线
     const m = startMining(state, 'belt-a', ctx)
-    expect(m.ok).toBe(true)
+    expect(m.ok, '二击后照常开矿').toBe(true)
     expect(state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')).toBe(false)
     expect(state.logs.some((l) => l.text.includes('已自动停止「亲自开线」'))).toBe(true)
     expect(state.logs.some((l) => l.text.includes('进度丢弃'))).toBe(true)

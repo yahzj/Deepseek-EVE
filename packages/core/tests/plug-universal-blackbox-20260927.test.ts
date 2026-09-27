@@ -1,0 +1,86 @@
+/**
+ * **通用黑匣 ＋ 材料等价组用例**（**2026-09-27 船长令**）
+ *
+ * 船长原话（照抄）：「**在章鱼人声望商店加入购买通用黑匣的卡片，玩家可以用30声望换一个通用黑匣。
+ * （现有的舰船插件蓝图都只要使用任意类型黑匣就可以制作）**」＋「**按500万算价格，只收不卖**」。
+ *
+ * 钉住四件事：① 兑换扣 30 可支配声望 ⇒ 入物品仓库；不足则一点不动 ② 等价组映射与**组序 = 优先扣除序**
+ * ③ 缺料判据按**组内合计** ④ 开工真扣料时**先扣通用黑匣**、退料退**实际扣的那一种**。
+ */
+import { describe, expect, it } from 'vitest'
+import { buildSimContext } from '@whale/data'
+import { addWare, countWare, createInitialState } from '../src/index'
+import { cancelManufacturing, materialGroupIdsOf, missingMaterials, startManufacturing } from '../src/manufacturing'
+import { UNIVERSAL_BLACKBOX_COST, UNIVERSAL_BLACKBOX_ITEM_ID, exchangeUniversalBlackBox } from '../src/plugs'
+import type { GameState } from '../src/state'
+
+const ctx = buildSimContext()
+/** 真数据里的插件图纸（料单里那一项写的是 `blackbox-h`） */
+const BP = 'bp-plug-shield-plate'
+
+function world(): GameState {
+  const s = createInitialState({ nowWallMs: 0, seed: 20260927 })
+  s.debugQuick = true
+  s.learnedRecipes.push(BP)
+  return s
+}
+
+describe('通用黑匣（2026-09-27 船长令）', () => {
+  it('① 兑换：扣 30 可支配声望 ⇒ 入物品仓库；不足则一枚都不给（可重复换）', () => {
+    const s = world()
+    expect(UNIVERSAL_BLACKBOX_COST, '价 = 30 点').toBe(30)
+    s.standings['dsi'] = UNIVERSAL_BLACKBOX_COST
+    const r = exchangeUniversalBlackBox(s)
+    expect(r.ok, '够 30 点 ⇒ 换得到').toBe(true)
+    expect(s.standings['dsi'], '真扣可支配那本').toBe(0)
+    expect(countWare(s, UNIVERSAL_BLACKBOX_ITEM_ID), '入物品仓库').toBe(1)
+
+    const poor = exchangeUniversalBlackBox(s)
+    expect(poor.ok, '0 点 ⇒ 拒绝').toBe(false)
+    expect(countWare(s, UNIVERSAL_BLACKBOX_ITEM_ID), '拒绝时不动仓库').toBe(1)
+
+    s.standings['dsi'] = UNIVERSAL_BLACKBOX_COST * 2
+    expect(exchangeUniversalBlackBox(s).ok, '可无限次兑换').toBe(true)
+    expect(countWare(s, UNIVERSAL_BLACKBOX_ITEM_ID), '第二次也进仓库').toBe(2)
+    expect(s.standings['dsi']).toBe(UNIVERSAL_BLACKBOX_COST)
+  })
+
+  it('② 等价组：旗舰黑匣与通用黑匣互为替代，**组序 = 优先扣除序（先通用）**；组外物品只返回自己', () => {
+    expect(materialGroupIdsOf('blackbox-h')).toEqual([UNIVERSAL_BLACKBOX_ITEM_ID, 'blackbox-h'])
+    expect(materialGroupIdsOf(UNIVERSAL_BLACKBOX_ITEM_ID)).toEqual([UNIVERSAL_BLACKBOX_ITEM_ID, 'blackbox-h'])
+    expect(materialGroupIdsOf('min-voidcrystal'), '非组内 ⇒ 一对一').toEqual(['min-voidcrystal'])
+  })
+
+  it('③ 缺料判据按组内合计：手上只有通用黑匣也能开工（配方仍具名旗舰黑匣，数据一个字没改）', () => {
+    const s = world()
+    const bp = ctx.blueprints.get(BP)!
+    expect(bp.materials.some((m) => m.itemId === 'blackbox-h'), '配方照旧写旗舰黑匣').toBe(true)
+    const spec = { materials: bp.materials, buildSeconds: bp.buildSeconds, buildCostIsk: bp.buildCostIsk }
+    /** 除黑匣外都给足，黑匣那一项只给**通用**黑匣 */
+    for (const m of bp.materials) {
+      if (m.itemId === 'blackbox-h') continue
+      addWare(s, m.itemId, m.count * 2)
+    }
+    expect(missingMaterials(s, ctx, spec).length, '什么都不给 ⇒ 缺一堆').toBeGreaterThan(0)
+    addWare(s, UNIVERSAL_BLACKBOX_ITEM_ID, 1)
+    expect(missingMaterials(s, ctx, spec), '通用黑匣顶上 ⇒ 不缺料').toEqual([])
+  })
+
+  it('④ 开工真扣料：两种黑匣都有时**先扣通用黑匣**；取消退料退**实际扣的那一种**', () => {
+    const s = world()
+    const bp = ctx.blueprints.get(BP)!
+    for (const m of bp.materials) addWare(s, m.itemId, m.count * 2)
+    addWare(s, UNIVERSAL_BLACKBOX_ITEM_ID, 1)
+    const oldBox = countWare(s, 'blackbox-h')
+    const start = startManufacturing(s, BP, 'pilot', ctx)
+    expect(start.ok, `开工成功（错误：${start.ok ? '' : start.error}）`).toBe(true)
+    expect(countWare(s, UNIVERSAL_BLACKBOX_ITEM_ID), '先扣通用黑匣').toBe(0)
+    expect(countWare(s, 'blackbox-h'), '旗舰黑匣原封不动').toBe(oldBox)
+    const run = s.manufacturingRuns[s.manufacturingRuns.length - 1]!
+    expect(run.spentMaterials?.some((x) => x.itemId === UNIVERSAL_BLACKBOX_ITEM_ID), '账本记的是实际扣的那种').toBe(true)
+    /** 取消 ⇒ 退料：通用黑匣原样退回，不会退成旗舰黑匣 */
+    expect(cancelManufacturing(s, ctx, run.id).ok, '取消成功').toBe(true)
+    expect(countWare(s, UNIVERSAL_BLACKBOX_ITEM_ID), '退料退实际那种（通用）').toBe(1)
+    expect(countWare(s, 'blackbox-h'), '旗舰黑匣始终没被动过').toBe(oldBox)
+  })
+})

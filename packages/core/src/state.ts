@@ -142,6 +142,14 @@ export interface SkillsState {
    * 键 = 技能编号，值 = 本级已练毫秒（0 < 值 < 该级总时长）。
    */
   savedProgress: Record<string, number>
+  /**
+   * **已购训练许可的技能编号**（2026-09-27 船长令「我想让学习技能有成本」）——
+   * 键 = 技能编号，值恒 `true`（用 Record 而非 Set：与 `trained` 同为可直接 JSON 落盘的普通对象）。
+   *
+   * 收费档 = rank4/5/6（价目见 `SKILL_LICENSE_PRICES`，rank6 为预留档）；rank1~3 免许可、
+   * 老档「已练到 Lv≥1」视同已购 ⇒ 判据看 `skillLicenseMissing`，**不写迁移键**。
+   */
+  licenses: Record<string, true>
 }
 
 /** 飞行员基础档案 */
@@ -2802,7 +2810,9 @@ export function shipLockedInWormhole(state: GameState, shipId: string): boolean 
  * **主控"手上那个活动"是否还占着**（船长 2026-09-13 批准实行 · 议案 A）。
  *
  * 口径：进洞 = 与采矿 / 打捞 / 交付 / 长途运输 / 掩护巡逻 / 远征 / 亲自开炉**同级的一个主控活动**，
- * 但它**只在"人在洞里"（`run.attending === true`）时占位**：
+ * **2026-09-27 船长改判后**：只要**本趟没结束**（`run != null`，含"临时离开"）就占位 ——
+ * 与 `activityGate.cannotInterruptReason` 同一把尺（旧口径"临时离开即释放主控"已作废）。
+ * 原注（留档）：原先它**只在"人在洞里"（`run.attending === true`）时占位**：
  * - 人在洞里 ⇒ 别的活动一律开不了（本函数给拒因）；
  * - **临时离开（关掉虫洞界面）⇒ 活动停止、主控立刻释放**（可以去做别的），**虫洞进度原样保存**；
  * - **返回虫洞**要求主控空闲（`wormhole.ts` 的 `wormholeResume`）。
@@ -2826,7 +2836,7 @@ export function wormholePilotHoldReason(state: GameState): string | null {
   if (state.wormholeScan?.active === true) {
     return '主控正在扫描虫洞：先停扫（进度保留、回来可续扫）再安排别的活动。'
   }
-  if (state.wormhole.run?.attending !== true) return null
+  if (state.wormhole.run == null) return null
   return '人在虫洞里（进虫洞这个活动还在进行）：先撤离或结算本趟；临时离开的话，关掉虫洞界面就能释放主控。'
 }
 
@@ -3141,6 +3151,7 @@ export function createInitialState(opts?: {
       trained: {},
       queue: [],
       savedProgress: {},
+      licenses: {},
     },
     wallet: { isk: prologue ? 0 : DEFAULT_START_ISK },
     shipId: prologue ? 'sh-falconet' : DEFAULT_START_SHIP_ID,

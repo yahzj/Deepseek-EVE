@@ -4,7 +4,7 @@
  * （高 = 炮台/采集器/无人机装置；中 = 盾系/推进；低 = 甲系/货舱扩展）。
  * 装备随船：换船后看到的是那艘船自己的装配；弃船时装备随船损失。
  */
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type {
   DamageResists,
   DamageType,
@@ -29,6 +29,11 @@ import {
   createPlayerSpec,
   /** 2026-09-26 船长令：装配页插件槽只读区（core 单点给槽位上限 + 已装清单） */
   plugInfoOf,
+  /** 2026-09-27 船长报障：装入入口（空槽可点，弹层选装，二次确认，installPlug） */
+  installPlug,
+  /** 2026-09-27 船长令：拆船回收（预览 ＋ 执行；界面两次警告都用预览那一份算术） */
+  shipScrapPreviewOf,
+  scrapShip,
   droneCpuUsed,
   droneLoadM3,
   effectiveCpu, // 保留：船体预算（不含协处理器扩容）在别处仍可能用到；预算总额见 cpuBudgetOf
@@ -1375,8 +1380,58 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
   const state = engine.state
   const ctx = engine.ctx
   const { slots, installed } = plugInfoOf(state, ctx, target)
+  /**
+   * **装入入口**（**2026-09-27 船长报障**：「**找不到舰船插件安装的入口（装配处无法装入）**」）：
+   * 09-26 那批把这一区做成**只读**、并把装入动作推给"装备库"，而装备库那条入口**从来没做**
+   * （全仓 desktop 侧零个 `installPlug` 调用点）⇒ 插件造得出来却装不上。
+   * 现按船长指定的位置补在这里：**空槽可点** ⇒ 弹层列出装备库里**有货、未装**的插件 ⇒
+   * 选一件**二次确认**（写明装上拆不下来）⇒ `installPlug`（core 单点，六道校验都在）。
+   * 已装的格子仍只读（不给卸下/替换）。
+   */
+  const [picking, setPicking] = useState(false)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  /** 上一步成功后的简短反馈（技能 Confirmation Messages：成功不要静默；失败走 err） */
+  const [note, setNote] = useState<string | null>(null)
+  /**
+   * **拆船回收**（**2026-09-27 船长令**：「**在舰船插件处加入一个回收按钮，点击后警告玩家，想要回收插件需要
+   * 将舰船拆解回收，确认后弹出二次警告，告诉玩家当前舰船能回收多少材料并且无法回收蓝图（回收材料占比为
+   * 制造材料的50%）。回收后，当前舰船的装备全部拆卸入库，将舰船转化成材料，舰船插件也入库。**」）。
+   *
+   * `scrapStep`：0 = 关 · 1 = 第一次警告（要回收插件就得拆整艘船）· 2 = 二次警告（列材料 ＋ 蓝图书不返还）。
+   * 两次警告里的数字都取 `shipScrapPreviewOf`（与真正发放**同一份算术**，界面不自己算 50%）。
+   */
+  const [scrapStep, setScrapStep] = useState<0 | 1 | 2>(0)
+  /** Esc 关闭弹层（技能 Focus States：键盘可达；与 Handbook 的 Esc 口径一致） */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== 'Escape') return
+      setPicking(false)
+      setScrapStep(0)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+  const scrap = shipScrapPreviewOf(state, ctx, target)
   if (slots <= 0) return null
   const full = installed.length >= slots
+  const installedIds = new Set(installed.map((d) => d.id))
+  /** 装备库里**有货且本舰还没装**的插件（顺序 = `ctx.modules` 登记序；界面不自己判槽位上限，装入时由 core 再判一次） */
+  const pickable = [...ctx.modules.values()].filter(
+    (d) => d.slot === 'plug' && (state.moduleBay[d.id] ?? 0) > 0 && !installedIds.has(d.id),
+  )
+  const doInstall = (moduleId: string): void => {
+    const r = installPlug(state, ctx, moduleId, target)
+    if (r.ok) {
+      setConfirmId(null)
+      setPicking(false)
+      setErr(null)
+      setNote(tr('ui.FitPage.191'))
+    } else {
+      setErr(r.error ?? '')
+      setNote(null)
+    }
+  }
   return (
     <div className="app-fit-plugslots">
       <div className="app-fit-dronebay-head">
@@ -1385,16 +1440,44 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
           {tr('ui.Expedition.444', { p1: installed.length, p2: slots })}
           {full ? ` · ${tr('ui.FitPage.177')}` : ''}
         </span>
+        {/* 拆船回收入口（2026-09-27 船长令）：位置按船长指定放在插件槽区 */}
+        <span style={{ marginLeft: 'auto' }}>
+          <button className="app-btn is-small" onClick={() => setScrapStep(1)}>
+            {tr('ui.FitPage.184')}
+          </button>
+        </span>
       </div>
       <div className="app-fit-icongrid">
         {Array.from({ length: slots }, (_, i) => {
           const def = installed[i]
           if (!def) {
-            // 空槽：**不可点**（这里没有装入入口；插件只能从装备库走 `installPlug`）
+            /**
+             * 空槽：**可点**（2026-09-27 补的装入入口；见本组件头注）。装满或无可装插件时点开是空列表，
+             * 弹层里给一句解释，不让玩家对着没反应的格子点。
+             */
             return (
-              <span key={`plug-${i}`} className="app-fit-slot-icon is-empty is-readonly">
-                <span className="app-fit-slot-icon-glyph">—</span>
-                <span className="app-fit-slot-icon-name">{tr('ui.Expedition.445')}</span>
+              <span
+                key={`plug-${i}`}
+                className="app-fit-slot-icon is-empty"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setErr(null)
+                    setConfirmId(null)
+                    setPicking(true)
+                  }
+                }}
+                onClick={() => {
+                  setErr(null)
+                  setConfirmId(null)
+                  setPicking(true)
+                }}
+                title={tr('ui.FitPage.178')}
+              >
+                <span className="app-fit-slot-icon-glyph">＋</span>
+                <span className="app-fit-slot-icon-name">{tr('ui.FitPage.178')}</span>
               </span>
             )
           }
@@ -1416,6 +1499,109 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
           )
         })}
       </div>
+      {/* **装入弹层**（2026-09-27 补）：复用本页既有的 `.app-fit-overlay` / `.app-fit-modal` 一族，
+          不另造样式；二次确认在同一弹层内完成（第一次点「装入」⇒ 该行变成「确认装入」＋「取消」） */}
+      {picking ? (
+        <div className="app-mkt-confirm-mask" onClick={() => setPicking(false)}>
+          <div className="app-mkt-confirm" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="app-mkt-confirm-title">{tr('ui.FitPage.179')}</div>
+            <div className="app-mkt-confirm-row">
+              <button className="app-btn is-small" onClick={() => setPicking(false)}>
+                {tr('ui.FitPage.183')}
+              </button>
+            </div>
+            {err !== null ? <div className="app-dim">{err}</div> : null}
+            {pickable.length === 0 ? (
+              <div className="app-dim">{tr('ui.FitPage.180')}</div>
+            ) : (
+              pickable.map((d) => (
+                <div key={d.id} className="app-fit-preset-row">
+                  <span className="app-fit-preset-name">{d.name}</span>
+                  <span className="app-dim">{moduleShortEffect(d)}</span>
+                  {confirmId === d.id ? (
+                    <>
+                      <span className="app-dim">{tr('ui.FitPage.182')}</span>
+                      <button className="app-btn is-small is-primary" onClick={() => doInstall(d.id)}>
+                        {tr('ui.FitPage.181')}
+                      </button>
+                      <button className="app-btn is-small" onClick={() => setConfirmId(null)}>
+                        {tr('ui.FitPage.183')}
+                      </button>
+                    </>
+                  ) : (
+                    <button className="app-btn is-small" onClick={() => setConfirmId(d.id)}>
+                      {tr('ui.FitPage.181')}
+                    </button>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      ) : null}
+      {note !== null ? <div className="app-dim">{note}</div> : null}
+      {/* **拆船回收：两次警告**（2026-09-27 船长令）：走全仓既有确认层 `.app-mkt-confirm*` 家族 */}
+      {scrapStep > 0 ? (
+        <div className="app-mkt-confirm-mask" onClick={() => setScrapStep(0)}>
+          <div className="app-mkt-confirm" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="app-mkt-confirm-title">
+              {tr(scrapStep === 1 ? 'ui.FitPage.185' : 'ui.FitPage.186')}
+            </div>
+            {!scrap.ok ? <div className="app-dim">{scrap.block ?? tr('core.scrap.002')}</div> : null}
+            {scrapStep === 2 && scrap.ok ? (
+              <>
+                <div className="app-dim">{tr('ui.FitPage.187')}</div>
+                {scrap.materials.map((m) => (
+                  <div key={m.itemId} className="app-fit-preset-row">
+                    <span className="app-fit-preset-name">{ctx.items.get(m.itemId)?.name ?? m.itemId}</span>
+                    <span className="app-dim">×{m.count.toLocaleString('zh-CN')}</span>
+                  </div>
+                ))}
+                <div className="app-dim">
+                  {tr('ui.FitPage.190', { p1: scrap.moduleCount, p2: scrap.plugCount, p3: scrap.droneCount })}
+                </div>
+                <div className="app-dim">{tr('ui.FitPage.188')}</div>
+              </>
+            ) : null}
+            {err !== null ? <div className="app-dim">{err}</div> : null}
+            <div className="app-fit-preset-row">
+              {scrapStep === 1 ? (
+                <button
+                  className="app-btn is-small is-primary"
+                  disabled={!scrap.ok}
+                  onClick={() => {
+                    setErr(null)
+                    setScrapStep(2)
+                  }}
+                >
+                  {tr('ui.FitPage.184')}
+                </button>
+              ) : (
+                <button
+                  className="app-btn is-small is-danger"
+                  disabled={!scrap.ok}
+                  onClick={() => {
+                    const r = scrapShip(state, ctx, target)
+                    if (r.ok) {
+                      setScrapStep(0)
+                      setErr(null)
+                      setNote(tr('ui.FitPage.192'))
+                    } else {
+                      setErr(r.error)
+                      setNote(null)
+                    }
+                  }}
+                >
+                  {tr('ui.FitPage.189')}
+                </button>
+              )}
+              <button className="app-btn is-small" onClick={() => setScrapStep(0)}>
+                {tr('ui.FitPage.183')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

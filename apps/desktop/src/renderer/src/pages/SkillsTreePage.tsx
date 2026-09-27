@@ -28,6 +28,8 @@ import {
   PREREQ_MIN_LEVEL,
   formatDurationMs,
   skillLevelTimeMs,
+  skillLicenseMissing,
+  skillLicensePriceOf,
   skillLockMissing,
   skillQueueStatus,
   trainingTimeFactor,
@@ -44,7 +46,7 @@ import { Glyph, toneOf } from '../ui/Glyphs'
 import { SKILL_BRANCHES, SKILL_TREE_POSITIONS } from '@whale/data'
 import { skillBranchText, skillGroupText } from '../ui/labelsText'
 import type { PageProps } from './common'
-import { tr } from '../i18n/locale'
+import { cmdText, tr } from '../i18n/locale'
 
 /** 排布算法抽到纯模块（可离线读坐标核对）：见 `ui/skillTreeLayout.ts` */
 
@@ -127,6 +129,29 @@ export function SkillsTreePage({
     setBranchTab('')
     setQuery('')
   }, [focusGroup?.seq])
+  /**
+   * **训练许可**（**2026-09-27 船长令**：「我想让学习技能有成本」）：收费档（rank4/5/6，rank6 为
+   * **预留档**）要先买许可才能排训练；rank1~3 免许可、老档「已练到 Lv≥1」视同已购。
+   * 判据与 `enqueueSkill` 的拒因**同一把尺**（core `skillLicenseMissing`），界面不自己判。
+   */
+  const [licenseAsk, setLicenseAsk] = useState<string | null>(null)
+  const isk = (n: number): string => n.toLocaleString('zh-CN')
+  const licensePriceOf = (s: SkillDef): number | null => skillLicensePriceOf(s)
+  const licenseMissingOf = (s: SkillDef): boolean => skillLicenseMissing(state, s)
+  /**
+   * **购买训练许可**：**两段确认**（首击只警告、二击才付款）——50 万 / 200 万是大钱，防误点。
+   * 判定与扣款全在 core（`buySkillLicense`），这里只负责回话。
+   */
+  const buyLicense = (skillId: string): void => {
+    if (licenseAsk !== skillId) {
+      setLicenseAsk(skillId)
+      return
+    }
+    const r = engine.purchaseSkillLicense(skillId)
+    setLicenseAsk(null)
+    setPrereqNote(r.ok ? tr('ui.SkillTree.024', { p1: isk(r.price ?? 0) }) : cmdText(r))
+  }
+
   const q = query.trim().toLowerCase()
   const view = skillQueueStatus(state, engine.ctx.skills)
   const tf = trainingTimeFactor(state)
@@ -458,6 +483,20 @@ export function SkillsTreePage({
                               {tr('ui.SkillsPage.046')}
                             </button>
                           </>
+                        ) : licenseMissingOf(s) ? (
+                          <>
+                            <span className="app-dim">
+                              {tr('ui.SkillTree.025', { p1: isk(licensePriceOf(s) ?? 0) })}
+                            </span>
+                            <button
+                              className={`app-btn is-small${licenseAsk === s.id ? ' is-primary' : ''}`}
+                              onClick={() => buyLicense(s.id)}
+                            >
+                              {licenseAsk === s.id
+                                ? tr('ui.SkillTree.026', { p1: isk(licensePriceOf(s) ?? 0) })
+                                : tr('ui.SkillTree.023', { p1: isk(licensePriceOf(s) ?? 0) })}
+                            </button>
+                          </>
                         ) : (
                           <>
                             <span className="app-dim">
@@ -517,7 +556,12 @@ export function SkillsTreePage({
                   st.queued > 0
                     ? (state.skills.queue.filter((x) => x.skillId === open.id).pop()?.targetLevel ?? st.lv)
                     : st.lv
-                const canAdd = !st.maxed && st.locked.length === 0 && lastQueued < MAX_SKILL_LEVEL
+                /** 2026-09-27 训练许可：缺许可 ⇒ 不给训练按钮（改为"购买训练许可"，与 core 同一把尺） */
+                const canAdd =
+                  !st.maxed &&
+                  st.locked.length === 0 &&
+                  !licenseMissingOf(open) &&
+                  lastQueued < MAX_SKILL_LEVEL
                 const targetLv = lastQueued + 1
                 const statusTxt = st.maxed
                   ? tr('ui.SkillsPage.025')
@@ -583,6 +627,20 @@ export function SkillsTreePage({
                             ? tr('ui.SkillsPage.034', { p1: targetLv })
                             : tr('ui.SkillsPage.035', { p1: targetLv })}
                         </button>
+                      ) : licenseMissingOf(open) ? (
+                        <>
+                          <span className="app-dim">
+                            {tr('ui.SkillTree.025', { p1: isk(licensePriceOf(open) ?? 0) })}
+                          </span>
+                          <button
+                            className={`app-btn is-small${licenseAsk === open.id ? ' is-primary' : ''}`}
+                            onClick={() => buyLicense(open.id)}
+                          >
+                            {licenseAsk === open.id
+                              ? tr('ui.SkillTree.026', { p1: isk(licensePriceOf(open) ?? 0) })
+                              : tr('ui.SkillTree.023', { p1: isk(licensePriceOf(open) ?? 0) })}
+                          </button>
+                        </>
                       ) : st.locked.length > 0 ? (
                         <>
                           <span className="app-dim is-locked">{prereqText}</span>

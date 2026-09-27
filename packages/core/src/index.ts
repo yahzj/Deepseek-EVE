@@ -875,6 +875,9 @@ export {
   UNIVERSAL_BLACKBOX_ITEM_ID,
   exchangeUniversalBlackBox,
 } from './plugs'
+/** **拆船回收**（2026-09-27 船长令）：预览 ＋ 执行（唯一取数口：界面两次警告与实际发放同一份算术） */
+export { shipScrapPreviewOf, scrapShip, SHIP_SCRAP_MATERIAL_SHARE } from './scrap'
+export type { ShipScrapPreview } from './scrap'
 export type { ShipPlugBlock, PlugExchangeRow } from './plugs'
 /** **黑匣与插件解锁**（2026-09-26 船长令）：组装机插件档的解锁判据与拒因单点 */
 export { isBlackboxItem, noteBlackboxObtained, blackboxSeenOf, plugCraftUnlockedOf, plugCraftLockReasonOf } from './blackbox'
@@ -1606,6 +1609,9 @@ export {
   WORMHOLE_RELIC_MIN_DEPTH,
   WORMHOLE_RELIC_BOX_CHANCE,
   WORMHOLE_RELIC_VALUABLES_SHARE,
+  WORMHOLE_RELIC_VALUABLES_SHARE_DEEP,
+  WORMHOLE_RELIC_VALUABLES_CUT_DEPTH,
+  wormholeRelicValuablesShareOf,
   wormholeRelicBoxPoolOf,
   familyOfCard,
   wormholeRelicChanceOf,
@@ -1890,3 +1896,15 @@ export type {
 /* 调试模式的「本机门禁」（2026-09-25 船长令：只有本地能用，上传后的版本关闭且隐藏） */
 export { isLocalDebugOrigin } from './debugGate'
 
+/**
+ * **技能训练许可**（2026-09-27 船长令：「我想让学习技能有成本」）——
+ * 收费档 rank4/5/6（rank6 为预留档）要先买许可才能排训练；rank1~3 免许可。
+ * 甲案：买许可只解锁**资格**，训练时长与前置链分毫不动。判据与 `enqueueSkill` 共用同一把尺。
+ */
+export {
+  SKILL_LICENSE_PRICES,
+  skillLicensePriceOf,
+  hasSkillLicense,
+  skillLicenseMissing,
+  buySkillLicense,
+} from './skillLicense'
