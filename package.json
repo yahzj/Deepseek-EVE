@@ -14,6 +14,8 @@
     "dev": "npm run dev -w @whale/desktop",
     "build": "npm run build -w @whale/desktop",
     "pack": "npm run pack -w @whale/desktop",
+    "steam:pack": "tsx tools/steam-pack.ts",
+    "steam:upload": "tsx tools/steam-upload.ts",
     "test": "npm run test -w @whale/core",
     "typecheck": "npm run typecheck -w @whale/core && npm run typecheck -w @whale/data && npm run typecheck -w @whale/ui && npm run typecheck -w @whale/desktop",
     "balance": "tsx tools/balance-check.ts",

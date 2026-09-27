@@ -1,0 +1,13 @@
+{
+  "_说明": "Steam 打包参数（tools/steam-pack.ts 读它；appId/depotId 都不是机密，可以入库）",
+  "_怎么填": {
+    "appId": "Steamworks 应用页标题后面括号里的那串数字",
+    "depotId": "Steamworks → 该应用 → SteamPipe → Depots 里新建『Windows』depot 后，那一行的 ID（形如 5260761）",
+    "branch": "上传到哪个分支：default = 默认分支（玩家直接拿到）；填 beta 则只进测试分支",
+    "description": "这次 build 的说明（只出现在 Steamworks 的 Builds 列表里，玩家看不到）"
+  },
+  "appId": "5260760",
+  "depotId": "",
+  "branch": "default",
+  "description": "大鲸鱼-深空放置 · Windows x64"
+}
