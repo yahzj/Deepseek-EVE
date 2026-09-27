@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **327** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6217** KB · **43035** 行
+- 文档总数 **327** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6218** KB · **43045** 行
 - 状态分布：**未标注** 182 · **已确认/已实现** 111 · **进行中** 25 · **待裁定** 8 · **历史留档** 1
 - 孤儿文档（0 引用）**38** 份 · 状态未标注 **182** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 257 KB / 278 行 | 15 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 67 KB / 708 行 | 75 / 3 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 489 KB / 992 行 | 216 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 81 KB / 362 行 | 334 / 18 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 82 KB / 372 行 | 334 / 18 |
 
 ## 七、评审与体检（review） —— 10 份
 
@@ -58,7 +58,7 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/handoff-20260927-main.md` | 交接卡：接一号班（主树 main · 2026-09-27） | 未标注（交接中） | 2026-09-27 | 11 KB / 116 行 | 0 / 0 |
-| `docs/design/handoff-20260927-verify.md` | 交接卡：新三号（2026-09-27 · 旧三号交班） | 未标注（交接中） | 2026-09-27 | 12 KB / 108 行 | 1 / 0 |
+| `docs/design/handoff-20260927-verify.md` | 交接卡：新三号（2026-09-27 · 旧三号交班） | 未标注（交接中） | 2026-09-27 | 12 KB / 108 行 | 2 / 0 |
 | `docs/design/steam-packaging-20260927.md` | Steam 打包与上传（2026-09-27 · 一号 · main） | 未标注（第一步已落码并本机验证通过） | 2026-09-27 | 6 KB / 84 行 | 1 / 0 |
 | `docs/design/announcement-draft-20260926-battleships.md` | 公告待审稿 · 两艘新战列舰入列（2026-09-26） | 待裁定（待船长审核——按 AGENTS.md） | 2026-09-26 | 4 KB / 48 行 | 2 / 0 |
 | `docs/design/ecm-stacking-copy-20260926.md` | 报障修正：墨潮电子舱卡面「全额叠加」＋ 缺最短射程 3,000 m（2026-09-26 · 二号 · d2） | 待裁定（已实现 · 待船长验收） | 2026-09-26 | 4 KB / 48 行 | 2 / 0 |
