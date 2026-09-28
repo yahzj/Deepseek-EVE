@@ -2228,7 +2228,7 @@ for (const d of drones) {
   check((d.dmg ?? 0) > 0 && Number.isFinite(d.dmg), `无人机 ${d.id} dmg 缺失或非正`)
   check((d.cpuUse ?? 0) > 0 && Number.isInteger(d.cpuUse), `无人机 ${d.id} cpuUse 缺失或非法（V10.5b 放飞占 CPU）`)
   // 2026-09-10 射程分类 + 分类字段契约（船长：机型分类入本体，界面「种类」显示无人机 · 侦察机）
-  const DRONE_CLASS_RANGE: Record<string, number> = { scout: 4000, combat: 4500, assault: 5000, sentry: 6500 } // 2026-09-14 船长「只有我方无人机，射程+1500」⇒ 档位标准整体 +1500（原 2500/3000/3500/5000）
+  const DRONE_CLASS_RANGE: Record<string, number> = { scout: 6000, combat: 4200, assault: 3000, sentry: 6500 } // 2026-09-27 船长令「无人机射程重排（哨戒 > 侦察 > 战斗 > 攻坚）」（原 4000/4500/5000/6500）
   const dc = d.droneClass
   check(dc !== undefined && DRONE_CLASS_RANGE[dc] !== undefined, `无人机 ${d.id} droneClass 缺失或非法：${String(dc)}`)
   if (dc !== undefined && DRONE_CLASS_RANGE[dc] !== undefined) {

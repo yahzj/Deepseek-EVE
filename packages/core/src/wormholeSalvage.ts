@@ -1946,11 +1946,31 @@ export function wormholeRollRelicBox(
   if (run.depth < WORMHOLE_RELIC_MIN_DEPTH) return undefined
   const rng = wormholeStream(runSeedOf(state) * 53 + run.depth * 911 + (cell.q * 23 + cell.r * 29) * 13 + 7)
   if (rng() >= wormholeRelicChanceOf(run.depth)) return undefined
-  // 命中后分种类。⚠ 这条流是**每格独立**的（种子含 q/r），多抽一个随机数不会影响别的格子"出不出货"。
-  if (rng() < wormholeRelicValuablesShareOf(run.depth)) return WORMHOLE_VALUABLES_BOX_ID
-  const others = wormholeRelicBoxPoolOf(ctx, run.depth, familyOfCard(ctx, wormholeCellCardIdOf(run, cell))).filter(
-    (id) => id !== WORMHOLE_VALUABLES_BOX_ID,
-  )
+  // 命中后分种类（**种类抽取 = 单点** `wormholeRollRelicBoxKind`，与自动探索共用同一把尺）。
+  // ⚠ 这条流是**每格独立**的（种子含 q/r），多抽一个随机数不会影响别的格子"出不出货"。
+  return wormholeRollRelicBoxKind(rng, ctx, run.depth, familyOfCard(ctx, wormholeCellCardIdOf(run, cell)))
+}
+
+/**
+ * **命中之后"是哪一种货柜"——种类抽取单点**（**手动逐格**与**自动探索**共用同一把尺）。
+ *
+ * 顺序（**与手动路径原实现逐字一致**，等价重构）：① 先按 `wormholeRelicValuablesShareOf(depth)`
+ * 判**贵重品货柜**（浅层 50% / 层 ≥ 8 为 25%）；② 否则在 `wormholeRelicBoxPoolOf` 去掉贵重品柜后
+ * **等权抽**（池 = 本族安全货柜 ＋ 本层有资格的图纸货柜档（浅档恒在 · 中 ≥5 · 深 ≥7）＋ 军用备货柜）。
+ *
+ * ⚠ **为什么抽成独立函数**（**2026-09-27 玩家报障**「自动探索带出的全是势力的安全货柜，没有其他货柜」）：
+ * `wormholeRollRelicBox` 是**格级**的（依赖 `run.grid` / `cell`），而自动探索**没有盘面**（只有模拟器
+ * 的件数）⇒ 原先它在发货处**写死了** `wormholeRelicBoxIdOf(family)` ⇒ 自动探索永远只出安全货柜。
+ * 本函数把"分种类"从"格"里解耦出来，两条路径共用 ⇒ 不会再各写一份、各走各的。
+ */
+export function wormholeRollRelicBoxKind(
+  rng: () => number,
+  ctx: SimContext,
+  depth: number,
+  family: string,
+): string | undefined {
+  if (rng() < wormholeRelicValuablesShareOf(depth)) return WORMHOLE_VALUABLES_BOX_ID
+  const others = wormholeRelicBoxPoolOf(ctx, depth, family).filter((id) => id !== WORMHOLE_VALUABLES_BOX_ID)
   if (others.length === 0) return undefined
   return others[Math.min(others.length - 1, Math.floor(rng() * others.length))]!
 }

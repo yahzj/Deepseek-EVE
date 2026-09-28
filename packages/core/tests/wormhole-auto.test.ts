@@ -46,11 +46,11 @@ import {
   wormholeAutoShipBlockReason,
   wormholeAutoStart,
   wormholeAutoStop,
+  wormholeAutoHoldM3Of,
   wormholeAutoTechFactors,
   wormholeAutoTechIsNeutral,
   wormholeAutoUnconfirmedCount,
 } from '../src/wormholeAuto'
-import { WORMHOLE_ORE_ITEM_ID } from '../src/wormhole'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
@@ -422,8 +422,21 @@ describe('虫洞 · 自动探索吃谜质科技（船长 2026-09-19 甲案）', 
     expect(f.total).toBeCloseTo(f.turnMul * f.holdMul, 6)
     expect(f.salvageEff).toBeCloseTo(0.6, 6) // 引力吊臂 3 级 × 20%
     expect(f.collectEff).toBeCloseTo(0.6, 6) // 富集钻头 3 级 × 20%
-    expect(f.wreck).toBeCloseTo(f.total * 1.6, 6)
-    expect(f.ore).toBeCloseTo(f.total * 1.6, 6)
+    /**
+     * ⚠ **回归护栏（2026-09-27 船长甲案）**：两条产出线**只吃各自的效率加成**，
+     * **不再乘 `total`**（= 回合 × 货仓）。旧写法 `total × (1+效率)` 把科技算了**两遍**——
+     * 回合由 `techTurnBonus` 真给、货仓由 `holdM3` 真给，产出再乘一次 `total` 就是重复计入。
+     * 本断言写成"与 `total` **无关**"的形式 ⇒ 谁把 `total` 加回去，这里立刻红。
+     */
+    expect(f.wreck).toBeCloseTo(1 + f.salvageEff, 6)
+    expect(f.ore).toBeCloseTo(1 + f.collectEff, 6)
+    expect(f.wreck).not.toBeCloseTo(f.total * (1 + f.salvageEff), 6)
+    /**
+     * ⚠ **货仓那条同款护栏**：容量 = 实有格数 × 每格 m³，**与 `total` 无关**。
+     * 旧写法 `… × tf.total` 把 `holdMul` 算了两遍、还把回合系数混进了船舱 ⇒ 满科技档放大 5.41 倍。
+     */
+    expect(wormholeAutoHoldM3Of(f)).toBeCloseTo(32 * 50, 6)
+    expect(wormholeAutoHoldM3Of(f)).not.toBeCloseTo(32 * 50 * f.total, 6)
     expect(f.battleProgress).toBe(1)
     expect(f.damage).toBeCloseTo(0.5, 6) // 战斗线点满 ⇒ 损伤减半
     expect(wormholeAutoTechIsNeutral(f)).toBe(false)
@@ -453,11 +466,19 @@ describe('虫洞 · 自动探索吃谜质科技（船长 2026-09-19 甲案）', 
       expect(rb.damage[i]!.armorLossPct).toBeLessThanOrEqual(Math.round(ra.damage[i]!.armorLossPct / 2) + 1)
       expect(rb.damage[i]!.durabilityPct).toBeGreaterThanOrEqual(Math.round(WORMHOLE_AUTO_HULL_FLOOR * 100))
     }
-    // 产出：普通残骸（该族残骸 id）与矿石都变多
+    // 产出：科技档总收成明显更多
     const unitOf = (r: typeof ra, prefix: string): number =>
       r.gains.filter((g) => g.itemId.startsWith(prefix)).reduce((s, g) => s + g.units, 0)
+    const totalUnits = (r: typeof ra): number => r.gains.reduce((s, g) => s + g.units, 0)
     expect(unitOf(rb, 'wreck-')).toBeGreaterThan(unitOf(ra, 'wreck-'))
-    expect(unitOf(rb, WORMHOLE_ORE_ITEM_ID)).toBeGreaterThan(unitOf(ra, WORMHOLE_ORE_ITEM_ID))
+    /**
+     * ⚠ **2026-09-27 改**：原先这里还断言 `ore-voidmother` 变多，但**本种子这一队两趟都没走到矿脉格**
+     * （科技档也一样）⇒ `0 > 0` 恒假。那条断言此前只是靠"货仓被 `total` 放大 5.41 倍"才偶然成立
+     * （额度撑大 ⇒ 在浅层一直磨到把遗迹/舰船清完 ⇒ 才轮到 rank 0 的矿脉）——**它其实在间接测那个重复计入的 bug**，
+     * bug 一修它就红。母矿线自己的科技系数由上面「满树」那条的 `f.ore` 直接钉住
+     * ⇒ 这里改钉**总收成**（四线一起算，比只看一条线更强；实测 386 → 1025）。
+     */
+    expect(totalUnits(rb)).toBeGreaterThan(totalUnits(ra))
     // 日志里写清了实际生效的系数（读数与结算同源）；⚠ 取"返航"那条——
     // 研究本身也会写「🔬 谜质科技…」日志，按关键词找会先撞上它
     const log = teched.logs.map((l) => l.text).find((t) => t.includes('自动探索队返航')) ?? ''

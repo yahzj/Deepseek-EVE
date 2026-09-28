@@ -71,15 +71,15 @@ describe('无人机射程插件 · 叠加惩罚（2026-09-14 船长 · 折权加
   it('接线（真战斗）：3× 中继 MK3 ⇒ 射程按折权系数，不是全额 3.4 倍', () => {
     const { state, uid } = world(['mod-drone-relay-3', 'mod-drone-relay-3', 'mod-drone-relay-3'])
     const mult = 1 + weightedSum([0.8, 0.8, 0.8])
-    expect(beeRange(state, uid)).toBe(Math.round(4000 * mult)) // 折权 ⇒ 11,807 m
-    expect(beeRange(state, uid)).not.toBe(Math.round(4000 * 3.4)) // 修前口径 ⇒ 13,600 m
+    expect(beeRange(state, uid)).toBe(Math.round(6000 * mult)) // 折权 ⇒ 17,711 m（基数 2026-09-27 起 = 侦察档 6000）
+    expect(beeRange(state, uid)).not.toBe(Math.round(6000 * 3.4)) // 修前口径 ⇒ 20,400 m
   })
 
   it('接线（真战斗）：混装 MK3 + MK1 ⇒ 同池一起折权（+97.4%，不是 +100%）', () => {
     const { state, uid } = world(['mod-drone-relay-3', 'mod-drone-relay-1', null])
     const mult = 1 + weightedSum([0.8, 0.2])
-    expect(beeRange(state, uid)).toBe(Math.round(4000 * mult)) // 7,895 m
-    expect(beeRange(state, uid)).not.toBe(8000)
+    expect(beeRange(state, uid)).toBe(Math.round(6000 * mult)) // 11,844 m
+    expect(beeRange(state, uid)).not.toBe(12000)
   })
 
   it('对照：战术导控（单发）仍**全额加算**——本次只动射程那一族', () => {
@@ -89,6 +89,6 @@ describe('无人机射程插件 · 叠加惩罚（2026-09-14 船长 · 折权加
     // 单发 = 3 × 2（引擎单发×2）× (1 + 0.25 + 0.25 两件导控全额相加) × (1 + 0.20 船体)
     // （船体 = 梭鱼级无人机护卫；2026-09-17 船长：无人机船按档位给无人机伤害 ⇒ T2 = +20%，原 +8% 作废）
     expect(bee.shotDmg).toBe(Math.round(3 * 2 * 1.5 * 1.2))
-    expect(bee.maxRangeM).toBe(4000) // 导控不加射程：基数原样
+    expect(bee.maxRangeM).toBe(6000) // 导控不加射程：基数原样（2026-09-27 侦察档 6000）
   })
 })
