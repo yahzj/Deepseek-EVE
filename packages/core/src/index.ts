@@ -276,6 +276,8 @@ export {
   weekendFlagshipSharesOf,
   /** 2026-09-27 整理：旗舰归属判据收口（**留档优先**）——结算快照、结算信与引擎结束日志共用同一个它 */
   weekendFlagshipOutcomeOf,
+  // 2026-09-28：判"是不是玩家完成的最后击杀"的唯一判据（黑匣掷骰与归属显示共用同一把尺）
+  weekendLastHitByPlayer,
   /** 2026-09-27 整理：章鱼人得手的唯一收口（掷黑匣 ＋ 写归属 ＋ 结束本场）——两条到点路径都走它 */
   weekendClaimOctopus,
   weekendTickBoss,

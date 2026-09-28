@@ -63,17 +63,38 @@ export function weekendBlackBoxChanceOf(playerDmg: number, hpMax: number, lastHi
 export const WEEKEND_BLACKBOX_SALT = 20_000
 
 /**
+ * **"是不是玩家完成的最后击杀" —— 唯一判据**（**2026-09-28 船长重申**）。
+ *
+ * 船长原话（照抄）：「**规则应该很清楚记录了：输出超过50%血量，完成最后击杀，就给黑匣。**」
+ * 记录在案的规则 = `weekendBlackBoxChanceOf` 的第一支：**`lastHitByPlayer && p > 0.5 ⇒ chance 1`（必爆）**。
+ *
+ * ⚠ **判据只能取"留档"，不能取"谁把共享血池顶满"**：
+ * - `ev.flagshipPlayerKill` = **母舰在玩家的战斗里爆炸那一刻**置位（`combat` 的 `bossDownAtMs` 抄进场次记录），
+ *   与池子算术无关 —— 这就是"玩家完成的最后击杀"这个事实本身；
+ * - 而"池子被谁顶满"是**章鱼人也在跑的另一本账**：玩家这一场把母舰打爆了、伤害却要等收尾才进账
+ *   ⇒ 章鱼人可能抢先补掉池子里剩下的那几点 ⇒ 以前这里因此判成"不是玩家击杀"，
+ *   把**明明满足记录规则**（占比 93.2% ＋ 亲手打爆）的玩家挡在必爆之外（2026-09-28 玩家报障）。
+ */
+export function weekendLastHitByPlayer(ev: WeekendEventState | undefined): boolean {
+  if (!ev) return false
+  return ev.flagshipPlayerKill !== undefined || ev.flagshipDown === 'player'
+}
+
+/**
  * **掷一次黑匣**（船长 2026-09-25 令）：按爆率表掷，结果写进 `ev.flagshipBlackBox`。
  *
  * - **幂等**：已掷过（字段有值）直接返回它 —— 收口路径与战斗收尾可能都走到，不能掷两次；
  * - **可复现**：走**独立子流**（存档种子 ＋ 场次号 ＋ 黑匣盐）⇒ 不消费主随机序列、读档重打同一场
  *   结果相同（船长四答之四）；
  * - `chance = 1` 必中、`chance = 0` 必不中（不必消耗随机数，但子流是无状态的，耗不耗都一样）。
+ *
+ * ⚠ **`lastHitByPlayer` 一律传 `weekendLastHitByPlayer(ev)`**（见它的说明）：调用点自己拍一个
+ * `true` / `false` 就会各自成一套口径 —— 2026-09-28 那次报障正是这么来的。
  */
 export function weekendRollBlackBox(
   state: Pick<GameState, 'rng'>,
   ev: WeekendEventState,
-  lastHitByPlayer: boolean,
+  lastHitByPlayer: boolean = weekendLastHitByPlayer(ev),
 ): boolean {
   /**
    * ⚠ **情境相同才幂等**（**2026-09-27 玩家报障修复**）：`weekendClaimOctopus` 会在"章鱼人得手"
@@ -1665,7 +1686,13 @@ export function weekendTickBoss(
  */
 export function weekendClaimOctopus(state: GameState, ev: WeekendEventState, nowWallMs: number): boolean {
   if (ev.flagshipDown !== undefined || ev.endedAtWallMs !== undefined) return false
-  weekendRollBlackBox(state, ev, false)
+  /**
+   * ⚠ **这里以前写死 `false`**（"章鱼人得手 ⇒ 不是玩家最后击杀"）——但**两件事不是一回事**：
+   * 章鱼人只是**把剩下的池子补掉**，而玩家那场战斗可能**已经把母舰打爆了**（`flagshipPlayerKill` 留档）。
+   * 按记录在案的规则「**输出超过50%血量 ＋ 完成最后击杀 ⇒ 必给黑匣**」，这种情形**必须按玩家击杀掷**
+   * ⇒ 判据取单点 `weekendLastHitByPlayer`（2026-09-28 玩家报障：占比 93.2% ＋ 亲手打爆却因写死 false 被挡）。
+   */
+  weekendRollBlackBox(state, ev, weekendLastHitByPlayer(ev))
   ev.flagshipDown = 'octopus'
   endWeekendEvent(state, nowWallMs)
   return true
