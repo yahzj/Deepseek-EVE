@@ -616,6 +616,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormhole.034": { zh: "对方已经发现我们：先点「开战」打完这一场。", en: "They have spotted us: press “Attack” and finish this fight first." },
   "core.wormhole.035": { zh: "战斗中：先打完这一场。", en: "In combat: finish this fight first." },
   "core.wormhole.036": { zh: "临时空间里有 {p1} 件没处理：先到「货仓」页放回货仓或丢弃，再继续。", en: "{p1} item(s) in temporary storage are unresolved: put them back into the hold or discard them on the Cargo page, then continue." },
+  /** 组合句：`{p1}` 由渲染层两步取词喂进（core 侧传 `p1Id` ＝忙态 id；见 `paramText` 约定） */
+  "core.wormhole.037": { zh: "主控正在{p1}：先把手上的活收工，才能回到虫洞。", en: "The pilot is {p1} — finish that job before returning to the wormhole." },
   /* ── 第十七批：equipment.ts（装配 / 换装 / 无人机 / 弹药档位 / 卸下）── */
   "core.equipment.001": { zh: "未知装备：{p1}。", en: "Unknown module: {p1}." },
   "core.equipment.002": { zh: "装备库里没有 {p1}，先去组装机造一件。", en: "There is no {p1} in module storage — build one at the assembly unit first." },

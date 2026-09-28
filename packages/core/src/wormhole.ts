@@ -1602,7 +1602,14 @@ export function wormholeResume(state: GameState, ctx: SimContext): WormholeStart
   const run = state.wormhole.run
   if (!run) return { ok: false, error: '现在没有进行中的虫洞探索。', errorId: 'core.wormhole.024' }
   const busy = shipActivityBusy(state, state.shipId)
-  if (busy) return { ok: false, error: `主控正在${busy.error}：先把手上的活收工，才能回到虫洞。` }
+  if (busy) {
+      return {
+        ok: false,
+        error: `主控正在${busy.error}：先把手上的活收工，才能回到虫洞。`,
+        errorId: 'core.wormhole.037',
+        errorParams: { p1Id: busy.errorId },
+      }
+    }
   shiftBattleClock(run.battle, state.gameMs - (run.leftAtGameMs ?? state.gameMs))
   run.leftAtGameMs = undefined
   run.attending = true
