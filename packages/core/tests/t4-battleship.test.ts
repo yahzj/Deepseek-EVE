@@ -80,7 +80,8 @@ describe('T4 战列舰定案 · 巨齿鲨级（2026-09-13）', () => {
     //   不应该对应矿舰」；系数 = 保持今天 13.5M ÷ 4.8M 的同档比 2.8125。
     expect(shipOf('sh-bowhead').priceIsk).toBe(shipOf('sh-swordfish').priceIsk * 2.8125) // 67.5M
     expect(shipOf('sh-swordfish').priceIsk).toBe(shipOf('sh-sailfish').priceIsk * 10) // 蜃楼货舰线：旗鱼 2.4M ×10 = 24M
-    expect(shipOf('sh-humpback').priceIsk).toBe(900_000 * 10) // 工业线：鲸吞 0.9M ×10 = 9M（矿舰锚矿舰）
+    // 2026-09-28：座头鲸升 T4 ⇒ 价按「T4 非战斗船 = T3 ×10」由 9M 抬到 90M（原锚鲸吞 0.9M ×10）
+    expect(shipOf('sh-humpback').priceIsk).toBe(90_000_000)
     expect(goodOf('ship', 'sh-megalodon')?.basePrice).toBe(shipOf('sh-electricray').priceIsk * 15) // 武装线：电鳐 15M ×15
     for (const id of ['sh-xuanwu', 'sh-bowhead', 'sh-swordfish', 'sh-hawksbill', 'sh-sailfish', 'sh-humpback']) {
       expect(goodOf('ship', id)?.basePrice, `${id} 市场行价未跟上 ships.ts`).toBe(shipOf(id).priceIsk)

@@ -517,13 +517,13 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-stealth-3', kind: 'blueprint', refId: 'bp-stealth-3', rarity: 'exotic', basePrice: 40000000, demandMultiplier: 0.75 },
   // 舰船蓝图（造船；稀有）
   { key: 'sbp-pioneer', kind: 'blueprint', refId: 'sbp-pioneer', rarity: 'exotic', basePrice: 3_600_000, demandMultiplier: 1.0, standingReq: 11 }, // 开拓级（蓝图=船价×3；2026-09-09 随全蓝图化升奇货档+声望 11）
-  { key: 'sbp-humpback', kind: 'blueprint', refId: 'sbp-humpback', rarity: 'exotic', basePrice: 36_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 座头鲸级（2026-09-13 价位重排：船价 9M ×4；T3 蓝图门槛 15）
+  { key: 'sbp-humpback', kind: 'blueprint', refId: 'sbp-humpback', rarity: 'exotic', basePrice: 360_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 座头鲸级（2026-09-28 升 T4：船价 90M ×4；蓝图门槛 15 不变）
   // 稀有舰船（V10 四条族线中坚）
   { key: 'ship-whale', kind: 'ship', refId: 'whale', rarity: 'rare', basePrice: 900_000, demandMultiplier: 0.65 },
   // 蓝图船（2026-09-09 船长：成品无现货、只收不卖）——玩家已拥有的开拓级可二手挂售，NPC 收购，
   // 市场不出售成品（图鉴「仅可制造」标注自洽；供给抽取侧 playerBuyable=false 天然排除）
   { key: 'ship-pioneer', kind: 'ship', refId: 'pioneer', rarity: 'rare', basePrice: 1_200_000, demandMultiplier: 0.65, playerBuyable: false },
-  { key: 'ship-humpback', kind: 'ship', refId: 'sh-humpback', rarity: 'rare', basePrice: 9_000_000, demandMultiplier: 0.65, standingReq: 12 }, // 2026-09-13 价位重排：T3 工业（鲸吞 0.9M ×10）；T3 门槛 12
+  { key: 'ship-humpback', kind: 'ship', refId: 'sh-humpback', rarity: 'rare', basePrice: 90_000_000, demandMultiplier: 0.65, standingReq: 12 }, // 2026-09-28 升 T4：T4 非战斗船 = T3 ×10（原 9M 是 T3 价）；声望 12 不变
   { key: 'ship-bowhead', kind: 'ship', refId: 'sh-bowhead', rarity: 'exotic', basePrice: 67_500_000, demandMultiplier: 1.0, standingReq: 20 }, // 2026-09-13：价位重排（T4 货舰，剑鱼 24M ×2.81）+ **渠道升奇货**（船长「蝠鲼现货和蓝图上调至奇货」）
   { key: 'ship-falconet', kind: 'ship', refId: 'sh-falconet', rarity: 'rare', basePrice: 42_000, demandMultiplier: 0.65 },
   { key: 'ship-shrike', kind: 'ship', refId: 'sh-shrike', rarity: 'rare', basePrice: 110_000, demandMultiplier: 0.65 },
@@ -628,10 +628,11 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //      ⑤ **权重**：引擎 `blueprintWeight` 对一次性舰船蓝图 = ×0.5（普通蓝图 ×0.05）；
   //      ⑥ **声望**（**2026-09-16 船长裁定「甲」**）：官方五艘巡洋舰（长尾鲨/电鳐/锤头鲨/牛鲨/鹦鹉螺）的
   //         一次性蓝图 **15 → 8**（原「2026-09-13：T3 蓝图门槛 15」对**这 5 张**作废；其余 T3 五张仍 15）。
+  { key: 'sbp-once-pioneer', kind: 'blueprint', refId: 'sbp-once-pioneer', rarity: 'rare', basePrice: 600_000, demandMultiplier: 0.65, standingReq: 15 }, // 2026-09-28 开拓升 T3 ⇒ 补一次性图（行价 1.2M ×50%）；层 2 稀释池 9 → 10 张
   { key: 'sbp-once-sailfish', kind: 'blueprint', refId: 'sbp-once-sailfish', rarity: 'rare', basePrice: 1_200_000, demandMultiplier: 0.65, standingReq: 15 },
   { key: 'sbp-once-sentinel', kind: 'blueprint', refId: 'sbp-once-sentinel', rarity: 'rare', basePrice: 1_300_000, demandMultiplier: 0.65, standingReq: 15 },
   { key: 'sbp-once-hawksbill', kind: 'blueprint', refId: 'sbp-once-hawksbill', rarity: 'rare', basePrice: 3_000_000, demandMultiplier: 0.65, standingReq: 15 },
-  { key: 'sbp-once-humpback', kind: 'blueprint', refId: 'sbp-once-humpback', rarity: 'rare', basePrice: 4_500_000, demandMultiplier: 0.65, standingReq: 15 },
+  { key: 'sbp-once-humpback', kind: 'blueprint', refId: 'sbp-once-humpback', rarity: 'rare', basePrice: 45_000_000, demandMultiplier: 0.65, standingReq: 15 }, // 2026-09-28 升 T4：行价 90M ×50%（原 9M ×50% = 4.5M）
   { key: 'sbp-once-thresher', kind: 'blueprint', refId: 'sbp-once-thresher', rarity: 'rare', basePrice: 4_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
   { key: 'sbp-once-nautilus', kind: 'blueprint', refId: 'sbp-once-nautilus', rarity: 'rare', basePrice: 4_500_000, demandMultiplier: 0.65, standingReq: 8 }, // ✅ 2026-09-14 随鹦鹉螺级同步放开；2026-09-16 甲案：15 → 8
   { key: 'sbp-once-hammerhead', kind: 'blueprint', refId: 'sbp-once-hammerhead', rarity: 'rare', basePrice: 5_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）

@@ -7139,10 +7139,11 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     const dil2 = wormholeDilutionPoolOf(poolCtx, 2)
     const dil3 = wormholeDilutionPoolOf(poolCtx, 3)
     const dil5 = wormholeDilutionPoolOf(poolCtx, 5)
-    // 件数是"防手滑"守卫：现内容 = T3 十艘 / T4 四艘 / T5 一艘（加船时这里与用例要一起改）
+    // 件数是"防手滑"守卫：现内容 = T3 十艘 / T4 七艘 / T5 一艘（加船时这里与用例要一起改）
+    // ⚠ 2026-09-28：开拓级升 T3（+1 张一次性）、座头鲸升 T4（层 2 → 层 3）⇒ 层 3 16 → 17、层 5 17 → 18；层 2 仍 10。
     check(dil2.length === 10, `稀释池契约：层 2 应为 T3 十张，实际 ${dil2.length} 张（${dil2.join('、')}）`)
-    check(dil3.length === 16, `稀释池契约：层 3 应加 T4 六张（共 16；2026-09-26 新两艘 T4 加入后 14 → 16），实际 ${dil3.length} 张`)
-    check(dil5.length === 17, `稀释池契约：层 5 应加 T5 一张（共 17；随 T4 同步 15 → 17），实际 ${dil5.length} 张`)
+    check(dil3.length === 17, `稀释池契约：层 3 应加 T4 七张（共 17；2026-09-28 座头鲸升 T4 后 16 → 17），实际 ${dil3.length} 张`)
+    check(dil5.length === 18, `稀释池契约：层 5 应加 T5 一张（共 18；随 T4 同步 17 → 18），实际 ${dil5.length} 张`)
     for (const id of dil5) {
       const bp = poolCtx.shipBlueprints.get(id)
       check(bp?.singleUse === true, `稀释池契约：${id} 不是一次性舰船蓝图（稀释池只放 ` + '`sbp-once-*` + singleUse）')
