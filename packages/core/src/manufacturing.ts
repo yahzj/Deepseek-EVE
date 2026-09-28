@@ -220,12 +220,18 @@ export function calcBuildDurationMs(state: GameState, ctx: SimContext, spec: Bui
   const batchLv = Math.min(5, state.skills.trained['batch-production'] ?? 0)
   // 2026-09-08（船长定：移除「最多缩短 60%」下限护栏；工业理论×批量生产学乘算本身有界）
   let ratio = Math.max(0, (1 - bal.timePerLevel * level) * (1 - 0.03 * batchLv))
+  // 2026-09-27 船长令（R4/R5 上位技能批）：流水线统合学 −1.5%/级（与工业理论乘算叠加）
+  ratio *= Math.max(0, 1 - 0.015 * Math.min(5, state.skills.trained['industry-integration'] ?? 0))
   if (spec.partTier === 'basic') {
     const lv = Math.min(5, state.skills.trained['part-forming'] ?? 0)
     ratio *= 1 - 0.08 * lv
+    // 2026-09-27 上位技能：零件成型统合学 −2.5%/级（与零件成型工艺学乘算叠加）
+    ratio *= Math.max(0, 1 - 0.025 * Math.min(5, state.skills.trained['part-forming-integration'] ?? 0))
   } else if (spec.partTier === 'advanced') {
     const lv = Math.min(5, state.skills.trained['precision-assembly'] ?? 0)
     ratio *= 1 - 0.08 * lv
+    // 2026-09-27 上位技能：精密装配统合学 −2.5%/级（与精密装配学乘算叠加）
+    ratio *= Math.max(0, 1 - 0.025 * Math.min(5, state.skills.trained['precision-assembly-integration'] ?? 0))
   }
   /**
    * 零件流水线（2026-09-22 船长令 · 制造系 T5「缩短所有零件生产周期每级 4%」）：

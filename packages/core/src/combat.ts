@@ -1500,6 +1500,41 @@ export function foeLayerSplit(profile: DefProfile | undefined): { s: number; a: 
 /** 我方规格快照（手动/AI/MC/预估同源）。
  * ammoIds（弹药 MK2，2026-09-09）：战斗内实装弹 id 覆盖（缺货回退等）——
  * 推进/视图重建传 battle.ammoIds 使伤害与实装弹种一致；缺省 = 船装配 ammoPref，再缺省 = 基础弹。 */
+/* ══════════ 2026-09-27 船长令：R4/R5 上位技能批 · 战斗侧乘数单点 ══════════
+ * 每级值 = 父技能每级 ÷ 3；全部与父技能**同乘区乘算**。数值与技能 id 写在同一句里，
+ * 既是唯一真相源，也让「技能说明契约」的现场复核（±400 字内找每级值）稳定命中。 */
+
+/** 单发伤害乘数 = 高级炮术学（每级 +1.5%，全武器通用；与炮术学同乘区） */
+export function damageUpgradeMult(state: GameState): number {
+  return 1 + 0.015 * Math.min(5, state.skills.trained['advanced-gunnery'] ?? 0)
+}
+
+/** 武器族上位技能 id（动能射击学 / 导弹制导学 / 光束聚焦学）——族与族互不串乘 */
+export function familyUpgradeSkillIdOf(famKey: 'turret' | 'missile' | 'laser'): string {
+  return famKey === 'turret' ? 'kinetic-ballistics' : famKey === 'missile' ? 'missile-guidance' : 'beam-focusing'
+}
+
+/** 武器族上位技能的乘数（每级 +1.5%） */
+export function familyUpgradeMult(state: GameState, famKey: 'turret' | 'missile' | 'laser' | null): number {
+  if (famKey === null) return 1
+  return 1 + 0.015 * Math.min(5, state.skills.trained[familyUpgradeSkillIdOf(famKey)] ?? 0)
+}
+
+/** 命中乘数 = 火控统合学（每级 +1%，与火控阵列学同乘区） */
+export function hitUpgradeMult(state: GameState): number {
+  return 1 + 0.01 * Math.min(5, state.skills.trained['fire-control-integration'] ?? 0)
+}
+
+/** 装填乘数 = 速射装填学（每级 −1.5%） */
+export function reloadUpgradeMult(state: GameState): number {
+  return 1 - 0.015 * Math.min(5, state.skills.trained['rapid-reload'] ?? 0)
+}
+
+/** 无人机装填乘数 = 无人机整备统合学（每级 −1.5%） */
+export function droneReloadUpgradeMult(state: GameState): number {
+  return 1 - 0.015 * Math.min(5, state.skills.trained['drone-servicing-integration'] ?? 0)
+}
+
 export function createPlayerSpec(
   state: GameState,
   ctx: SimContext,
@@ -1811,6 +1846,8 @@ export function createPlayerSpec(
   // 批次五：武装舰操作（**武装舰**驾驶 +3%/级 全武器单发，乘于炮术学之外）
   // 2026-09-16 船长：「装甲舰操作和武装舰操作各自只影响自身分类的舰船。」⇒ 判据由 `role` 改为**类别**
   // （`shipCategoryKeyOf`）⇒ 归入装甲线的牛鲨 + E 族三艘**不再吃**这一条（它们改吃装甲舰操作）
+  // 2026-09-27 船长令（R4/R5 上位技能批）：上位技能的伤害乘数走单点（见 damageUpgradeMult）
+  const dmgUpgradeMult = damageUpgradeMult(state)
   const arOpsLv = shipCategoryKeyOf(ship) === 'armed' ? Math.min(5, state.skills.trained['armed-ops'] ?? 0) : 0
   // 舰种操作（2026-09-22 船长令）：驱逐舰操作 +5%/级、巡洋舰操作 +3%/级——单发伤害进同一乘链
   const dmgScale =
@@ -1818,7 +1855,8 @@ export function createPlayerSpec(
     (1 + (ship.powerBonus ?? 0)) *
     (1 + 0.03 * arOpsLv) *
     (1 + 0.05 * destroyerOpsLv) *
-    (1 + 0.03 * cruiserOpsLv)
+    (1 + 0.03 * cruiserOpsLv) *
+    dmgUpgradeMult
 
   // 兜底武器：基础舰炮恒在（弱；无炮/无弹仍可还击）
   // **基准账**（`refs.weaponRanges`）：与武器条目**逐条一一对齐**（第 i 条 = 第 i 门武器的
@@ -1864,6 +1902,9 @@ export function createPlayerSpec(
       const engLv = Math.min(5, state.skills.trained['energy-management'] ?? 0)
       if (engLv > 0) famMult *= 1 + 0.03 * engLv
     }
+    // 2026-09-27 船长令（R4/R5 上位技能批）：武器族专精各挂一条上位（动能射击学 / 导弹制导学 / 光束聚焦学），
+    // 每级 +1.5%，与族专精乘算叠加；族与族之间照旧互不串乘——映射与数值都在 familyUpgradeMult 单点里。
+    famMult *= familyUpgradeMult(state, famKey)
     // V18.1：伤害稳定器（该系加算）乘入单发；射速计算机缩短装填
     // 船体武器族加成（2026-09-09 船长拍板：四族巡洋分型 EVE 式族加成）——按本武器固定弹型乘入，
     // 装别族武器 = 无加成（仍可用）；无人机与基础舰炮不在此链上，天然豁免
@@ -1873,7 +1914,10 @@ export function createPlayerSpec(
     )
     // 第二批技能（2026-09-05）：火控阵列学 命中 +3%/级（仅非必中 gun）；武器装填技术 −4%/级（≥60%，gun/beam 共用装填）
     const fireLv = Math.min(5, state.skills.trained['fire-control'] ?? 0)
-    const fireMult = fireLv > 0 ? 1 + 0.03 * fireLv : 1
+    // 2026-09-27 起为 `let`：火控统合学要在同一条乘链上再乘一次
+    let fireMult = fireLv > 0 ? 1 + 0.03 * fireLv : 1
+    // 2026-09-27 上位技能：火控统合学（单点 = hitUpgradeMult，与火控阵列学同乘区）
+    fireMult *= hitUpgradeMult(state)
     /**
      * **索敌统合（命中技能）· 2026-09-14 船长改判**（原话：「**索敌统合也改为炮台命中，缩减为 2% 每级**」）：
      * 与「火控阵列学」**同口径**（乘在武器基础命中上、两者**乘算叠加**），每级 `bal.hitPerLevel`（现 2%）。
@@ -1887,6 +1931,7 @@ export function createPlayerSpec(
       Math.round(
         (turret.reloadMs / reloadDiv) *
           (1 - 0.04 * Math.min(5, state.skills.trained['reload-drills'] ?? 0)) *
+          reloadUpgradeMult(state) *
           (1 + reloadPen),
       ),
     )
@@ -1992,6 +2037,7 @@ export function createPlayerSpec(
     Math.round(
       (def.reloadMs ?? 4400) *
         (1 - 0.04 * Math.min(5, state.skills.trained['drone-servicing'] ?? 0)) *
+        droneReloadUpgradeMult(state) *
         (1 - droneCycleCut),
     )
   if (bayLimit > 0 && cpuLeft > 0) {

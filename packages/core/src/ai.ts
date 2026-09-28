@@ -121,6 +121,14 @@ export function spendAiCores(state: GameState, type: AiCoreType, count: number):
   return true
 }
 
+/**
+ * **副船统合整备学**（2026-09-27 船长令 · R4/R5 上位技能批）：副船采矿循环乘数，每级 −1%
+ * （父技能「副船整备学」每级 −3% ⇒ 上位取三分之一）。任务读数口与推进口**共用本函数**。
+ */
+export function aiServicingUpgradeMult(state: GameState): number {
+  return 1 - 0.01 * Math.min(5, state.skills.trained['ai-servicing-integration'] ?? 0)
+}
+
 /** 占用一枚核心（出库；精炼炉 AI 自动化等"站内设施驱动"场景——不占副船名额） */
 export function occupyAiCore(state: GameState, type: AiCoreType): boolean {
   return spendAiCore(state, type)
@@ -602,7 +610,8 @@ export function aiTaskView(state: GameState, ctx: SimContext, shipId: string): A
     const params = getMiningParams(state, ctx, { shipId, beltId: task.beltId })
     if (!params) return { kind: 'mining', phase: task.phase, label: '采掘中', percent: null, remainingMs: null }
     const servLv = Math.min(5, state.skills.trained['ai-servicing'] ?? 0)
-    const cycleReal = Math.max(1, Math.ceil((params.cycleMs * (1 - 0.03 * servLv)) / eff))
+    // 2026-09-27 船长令（R4/R5 上位技能批）：副船统合整备学走单点 aiServicingUpgradeMult（与副船整备学乘算）
+    const cycleReal = Math.max(1, Math.ceil((params.cycleMs * (1 - 0.03 * servLv) * aiServicingUpgradeMult(state)) / eff))
     const acc = task.cycleAccMs ?? 0
     return {
       kind: 'mining',
@@ -794,7 +803,8 @@ function advanceAiMining(
       return
     }
     const servLv = Math.min(5, state.skills.trained['ai-servicing'] ?? 0)
-    const servFactor = 1 - 0.03 * servLv
+    // 2026-09-27 上位技能：副船统合整备学走单点（与读数口同一函数，天然同源）
+    const servFactor = (1 - 0.03 * servLv) * aiServicingUpgradeMult(state)
     const cycleReal = Math.max(1, Math.ceil((params.cycleMs * servFactor) / realCycleDiv))
     if (task.cycleAccMs < cycleReal) {
       const need = cycleReal - task.cycleAccMs

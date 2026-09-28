@@ -235,6 +235,7 @@ export function aiCoreText(type: AiCoreType): string {
 const SKILL_GROUP_ID: Record<string, string> = {
   舰船: 'ui.labelsText.019',
   工业: 'ui.labelsText.020',
+  矿业: 'ui.labelsText.070',
   战斗: 'ui.labelsText.021',
   工程: 'ui.labelsText.022',
   贸易: 'ui.labelsText.023',

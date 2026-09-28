@@ -64,7 +64,9 @@ export function refineRate(state: GameState, ctx: SimContext): number {
   const bal = ctx.balance.refining
   const level1 = state.skills.trained[bal.rateSkillId] ?? 0
   const level2 = state.skills.trained[bal.secondRateSkillId] ?? 0
-  const rate = bal.baseRate + bal.ratePerLevel * level1 + bal.secondRatePerLevel * level2
+  // 2026-09-27 船长令（R4/R5 上位技能批）：熔炉精通学 +1%/级——与高级回收处理一样**相加**计入产出倍率
+  const smeltUpLv = Math.min(5, state.skills.trained['smelting-mastery'] ?? 0)
+  const rate = bal.baseRate + bal.ratePerLevel * level1 + bal.secondRatePerLevel * level2 + 0.01 * smeltUpLv
   return Math.max(0, rate)
 }
 
@@ -266,8 +268,15 @@ export function startRefineRun(
   // 炉温精调学（2026-09-22 船长令 · 精炼系 T4「每级 4%」）：与炉心熔炼学**同一乘区**，手动与 AI 核心驱动同享
   const fineLv = Math.min(5, state.skills.trained['furnace-precision'] ?? 0)
   if (fineLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.04 * fineLv)))
+  // 2026-09-27 上位技能：恒温炉控学 −1.5%/级（与炉温精调学同乘区）
+  const fineUpLv = Math.min(5, state.skills.trained['furnace-thermal-control'] ?? 0)
+  if (fineUpLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.015 * fineUpLv)))
   const expLv = Math.min(5, state.skills.trained['furnace-expansion'] ?? 0)
-  if (expLv > 0) batchEff = Math.max(1, Math.round(batchUnits * (1 + 0.06 * expLv)))
+  // 2026-09-27 上位技能：炉膛倍增学 +2%/级（与炉膛扩容学同乘区）
+  const expUpLv = Math.min(5, state.skills.trained['furnace-amplification'] ?? 0)
+  if (expLv > 0 || expUpLv > 0) {
+    batchEff = Math.max(1, Math.round(batchUnits * (1 + 0.06 * expLv) * (1 + 0.02 * expUpLv)))
+  }
   // 产线节拍学（原"工业自动化"，id industrial-automation；2026-09-08 船长定：手动与 AI 核心驱动同享）：
   // 精炼炉作业每级再 −5% 周期（下限护栏已于同日移除，乘算本身有界）
   const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
@@ -448,6 +457,9 @@ export function startRecycleRun(
   // 2026-09-08 船长定：移除「至少保留 60%」护栏）
   const recLv = Math.min(5, state.skills.trained['salvage-recycling'] ?? 0)
   if (recLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.04 * recLv)))
+  // 2026-09-27 上位技能：残骸流水线学 −1.5%/级（与残骸回收学同乘区）
+  const recUpLv = Math.min(5, state.skills.trained['salvage-recycling-integration'] ?? 0)
+  if (recUpLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.015 * recUpLv)))
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。`, errorId: 'core.industry.013', errorParams: { p1: aiCoreName(worker) } }
   }

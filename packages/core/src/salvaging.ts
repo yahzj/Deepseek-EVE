@@ -78,7 +78,9 @@ export function salvagerCyclesOf(state: GameState, ctx: SimContext, shipId: stri
   const fleetShip = state.fleet[shipId]
   if (!fleetShip) return []
   const rigLv = Math.min(5, state.skills.trained['salvage-rigging'] ?? 0)
-  const rigFactor = rigLv > 0 ? Math.max(0, 1 - 0.03 * rigLv) : 1
+  // 2026-09-27 船长令（R4/R5 上位技能批）：打捞器超频学 −1%/级（与打捞装置整备学乘算叠加）
+  const rigUpLv = Math.min(5, state.skills.trained['salvager-overclock'] ?? 0)
+  const rigFactor = (rigLv > 0 ? Math.max(0, 1 - 0.03 * rigLv) : 1) * (rigUpLv > 0 ? Math.max(0, 1 - 0.01 * rigUpLv) : 1)
   const cycles: number[] = []
   for (const def of allFittedModules(fleetShip.fitted, ctx)) {
     if (def.slot === 'salvager') cycles.push(Math.max(100, Math.round((def.salvageCycleMs ?? 10_000) * rigFactor)))
