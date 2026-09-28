@@ -2566,7 +2566,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.fragmentRedeem.006": { zh: "逆向研究完成：已解锁「{p1}」，可到工业页组装机无限次制造。", en: "Reverse engineering complete: “{p1}” unlocked, and the assembler on the Industry page can build it any number of times." },
   "ui.fragmentRedeem.007": { zh: "逆向解锁", en: "Reverse-engineer" },
   "ui.fragmentRedeem.008": { zh: "逆向研究失败", en: "Reverse engineering failed" },
-  "ui.Handbook.002": { zh: "说明", en: "Description" },
   "ui.Handbook.003": { zh: "分类", en: "Category" },
   "ui.Handbook.004": { zh: "无人机", en: "Drone" },
   "ui.Handbook.005": { zh: "种类", en: "Type" },

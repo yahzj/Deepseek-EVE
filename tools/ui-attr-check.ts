@@ -25,7 +25,7 @@
 
 import { readFileSync } from 'node:fs'
 
-import { COMBAT_BASE_KEYS, FIT_MAIN_HIDDEN_KEYS, shipCurrentLayout, shipIndirectLines, shipInfoLines } from '../apps/desktop/src/renderer/src/ui/shipInfo'
+import { COMBAT_BASE_KEYS, FIT_MAIN_HIDDEN_KEYS, shipCodexBaseLines, shipCurrentLayout, shipIndirectLines, shipInfoLines } from '../apps/desktop/src/renderer/src/ui/shipInfo'
 import { tr } from '../apps/desktop/src/renderer/src/i18n/locale'
 import { SHIPS } from '@whale/data'
 
@@ -97,12 +97,12 @@ for (const ship of SHIPS) {
 
   // ② 手册图鉴详情窗 / ③ 蓝图产物（2026-09-26 船长报障「点击舰船图鉴内的舰船，当中的属性还是
   //    有动力，而没有机动速度」）：与装配页**同一口径**——主属性位报「机动速度」、动力只出现在
-  //    下面的间接属性块里；「无人机舱」在详情窗不重复输出。三条都钉死（上一版把键写反过，漏了整整一轮）。
-  // 只滤 `shipInfoLines` 那份「动力」（重复项）；间接属性块里那份「动力」要留
-  const codexRows = [
-    ...shipInfoLines(ship).filter((l) => l.k !== tr('ui.Handbook.012') && l.k !== tr('ui.FitPage.010')),
-    ...shipIndirectLines(ship),
-  ]
+  //    下面的间接属性块里。
+  // ⚠ 2026-09-27 收口：行口径**直接 import 单点 `shipCodexBaseLines`**，不再在本工具里手抄一份。
+  //    此前本工具抄的过滤（同时滤「动力」与「无人机舱」）与 Handbook 两支实现**三份互不相同**，
+  //    于是船长报障「而且还缺少无人机舱属性」时，这个体检照样是绿的（伪护栏）。
+  //    现行规则 = 滤「动力」＋ **只滤掉无舱船的「无人机舱 = 无」**（有舱的船必须报出来）。
+  const codexRows = [...shipCodexBaseLines(ship), ...shipIndirectLines(ship)]
   const codex = codexRows.map((l) => l.k)
   const dupCodex = dupOf(codex)
   if (dupCodex.length > 0) problems.push(`${ship.id}（图鉴档案 / 蓝图产物）重复：${[...new Set(dupCodex)].join(' / ')}`)
@@ -111,6 +111,14 @@ for (const ship of SHIPS) {
   }
   if (codex.filter((k) => k === tr('ui.Handbook.012')).length !== 1) {
     problems.push(`${ship.id}（图鉴档案 / 蓝图产物）「动力」应恰好出现一次（在间接属性块里），实际 ${codex.filter((k) => k === tr('ui.Handbook.012')).length} 次`)
+  }
+  // **有舱就必须报「无人机舱」**（2026-09-27 船长报障的正是这条：有舱的船在档案窗里看不到机舱）
+  if ((ship.droneBayM3 ?? 0) > 0 && !codex.includes(tr('ui.FitPage.010'))) {
+    problems.push(`${ship.id}（图鉴档案 / 蓝图产物）有机舱却没报「无人机舱」行 —— 船长 2026-09-27 报障的正是这条`)
+  }
+  // 反之，无舱的船不许白占一行「无人机舱 = 无」
+  if ((ship.droneBayM3 ?? 0) <= 0 && codex.includes(tr('ui.FitPage.010'))) {
+    problems.push(`${ship.id}（图鉴档案 / 蓝图产物）没有机舱却报了「无人机舱 = 无」—— 无舱的船不该白占一行`)
   }
 
   // ④ 舰队页悬停卡（当前属性，2026-09-26 船长令）：基础行被装后行**逐条顶替**（位置不变、值换掉），

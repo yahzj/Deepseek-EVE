@@ -46,7 +46,7 @@ import {
 } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 import { RowGlyph } from '../ui/itemView'
-import { combatBadges, DmgChip, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
+import { combatBadges, DmgChip, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipCodexBaseLines, shipIndirectLines } from '../ui/shipInfo'
 import { plainSkillDesc } from '../ui/skillText'
 // 势力图鉴：逐舰级简报复用**悬赏卡悬停那一份**（同源出口，不另写文案）——2026-09-26
 import { foeBriefLinesOfShip, mountLabelText } from '../ui/foeBrief'
@@ -1127,6 +1127,8 @@ function crestLabelOf(fam: string): string {
 function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
   const r = cell.raw
   const rows: Array<[string, ReactNode]> = []
+  /** 底部脚注（口径说明类文字；**不再冒充属性行** —— 见 ships 分支的说明） */
+  let note: ReactNode = null
 
   if (cell.tab === 'items') {
     const kind = String(r.kind ?? '')
@@ -1169,19 +1171,23 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       // ⇒ 本分支与装配页**同一口径**：主属性位报**机动速度**（船体基础值），**动力下沉到间接属性块**。
       // 上一版我把键写反了（藏了「机动速度」、留了「动力」），此处按报障改正：
       // ① `shipInfoLines` 的「机动速度」留下（= 船长第二令「图鉴内按照基础属性算」）；
-      // ② 只滤掉「动力」——它在下面的 `shipIndirectLines` 块里，别在两张表里各报一次；
-      // ③ 「无人机舱」也滤掉：本详情窗上方是 `app-combat-badges`（三层血量），且无机舱的船
-      //    原先会白占一行「无人机舱 = 无」。
-      for (const line of shipInfoLines(shipDef)) {
-        if (line.k === tr('ui.Handbook.012') || line.k === tr('ui.FitPage.010')) continue
-        rows.push([line.k, line.v])
-      }
+      // ② 「动力」与「无人机舱」的过滤口径**走单点 `shipCodexBaseLines`**（2026-09-27 收口：
+      //    此前本分支与「舰船蓝图产物」分支各写一遍、`tools/ui-attr-check.ts` 又抄第三份，三份互不相同）：
+      //    滤「动力」（下面的间接属性块会报一次）、**只滤掉无舱船的「无人机舱 = 无」**——
+      //    船长 2026-09-27 报障「**而且还缺少无人机舱属性**」，此前这里是**无条件滤掉**，有舱的船也看不到。
+      for (const line of shipCodexBaseLines(shipDef)) rows.push([line.k, line.v])
       // 2026-09-12 船长：「手册图鉴里的舰船信息可以查看舰船的间接属性」⇒ 追加间接属性行
       // （动力/跃迁速度/质量/锁定范围/信号半径/扫描分辨率/跃迁充能；与装配页同一数据源）。
       // ⚠ 行以 `k` 作 React key ⇒ `shipIndirectLines` 的键不得与 `shipInfoLines` 重名（当前无重名）。
       for (const line of shipIndirectLines(shipDef)) rows.push([line.k, line.v])
-      rows.push([tr("ui.Handbook.002"), tr("ui.Handbook.181")])
       rows.push([tr("ui.Handbook.315"), Number(r.priceIsk ?? 0) <= 0 ? tr("ui.Handbook.107") : tr("ui.Handbook.108")])
+      /**
+       * 「已生效战斗数值：抗性按递减方式合成（上限 90%）」是**口径脚注**，不是一项属性 ——
+       * 2026-09-27 船长报障：「有一条**意义不明的「说明」属性**」。
+       * 原先它被塞成一行 `[「说明」, 这句话]`，混在货舱 / 机动速度这些真属性里 ⇒ 看着莫名其妙。
+       * 现改为**脚注**（与舰船悬浮卡 `ShipHover` 同一句话、同一个 `.app-info-note` 类 ⇒ 样式参考同级相似项）。
+       */
+      note = tr('ui.Handbook.181')
     } else {
       const cls = shipCategoryKeyOf(r as unknown as { role?: ShipRole; shieldHp?: number; armorHp?: number })
       rows.push([tr("ui.Handbook.009"), `${roleName(cls)} · ${shipTierText(Number(r.tier ?? 0))}`])
@@ -1220,10 +1226,9 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       if (shipDef) {
         // V10.5：统一行（定位/货舱/采集/机动速度 + 盾甲结构抗性与槽位）；V17 战斗数值已生效
         // 2026-09-26 与「图鉴·舰船」分支同口径：动力走下面的间接属性块，不在主属性里重复一遍
-        for (const l of shipInfoLines(shipDef)) {
-          if (l.k === tr('ui.Handbook.012')) continue
-          prodRows.push([l.k, l.v])
-        }
+        // 2026-09-27：口径**收敛到单点 `shipCodexBaseLines`**（含"无人机舱真有舱才显示"）——
+        // 此前本支只滤了「动力」，与档案窗那支并不一致（注释却写着"同口径"）。
+        for (const l of shipCodexBaseLines(shipDef)) prodRows.push([l.k, l.v])
         // 2026-09-12 船长：舰船蓝图详情同样可见间接属性（与图鉴·舰船分支同口径）
         for (const l of shipIndirectLines(shipDef)) prodRows.push([l.k, l.v])
         if (shipDef.description) prodRows.push([tr("ui.Handbook.110"), shipDef.description])
@@ -1265,6 +1270,7 @@ function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {
       {String(r.description ?? '') !== '' ? (
         <div className="app-detail-desc">{plainSkillDesc(String(r.description))}</div>
       ) : null}
+      {note !== null ? <div className="app-info-note">{note}</div> : null}
     </div>
   )
 }
