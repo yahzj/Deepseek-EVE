@@ -8,7 +8,8 @@ import { bumpFirst } from './firstTasks'
 import { addLog, DEFAULT_START_SHIP_ID, shipLockedReason } from './state'
 import { cannotInterruptReason } from './activityGate'
 import type { CommandResult } from './engine'
-import type { FittedModules, FleetShipState, GameState } from './state'
+import type { FittedModules, FleetShipState, GameState, WreckLogCause } from './state'
+import { noteWreckLog } from './shipWrecks'
 import type { SimContext } from './types'
 import { allFittedIds, emptyFitted, uidDefId } from './labels'
 import { allFittedModules } from './equipment'
@@ -324,9 +325,34 @@ export function loseShip(
   ctx: SimContext,
   reason: string,
   wreckGalaxyId?: string,
+  /** 沉船记录用（**2026-09-27 船长令**）：结构化原因 + 虫洞层数（没有残骸的虫洞损失也要记） */
+  meta?: { cause?: WreckLogCause; wormholeDepth?: number },
 ): void {
   const display = shipDisplayName(state, ctx, shipId)
   const wasCurrent = state.shipId === shipId
+  /**
+   * **沉船记录**（2026-09-27 船长令）：与残骸快照**同序** —— 必须在删船之前抓装配/插件/无人机。
+   * 记录只留结构化字段（原因枚举 / 星系 id / 虫洞层数 / 时间），文案由界面走 l10n 渲染。
+   */
+  {
+    const doomed = state.fleet[shipId]
+    const defId = doomed?.defId ?? uidDefId(shipId)
+    const seq = (state.wreckLogSeq ?? 0) + 1
+    state.wreckLogSeq = seq
+    noteWreckLog(state, {
+      seq,
+      shipId,
+      shipName: display,
+      ...(ctx.ships.has(defId) ? { defId } : {}),
+      cause: meta?.cause ?? 'expedition-lost',
+      ...(wreckGalaxyId !== undefined && wreckGalaxyId.length > 0 ? { wreckGalaxyId } : {}),
+      ...(meta?.wormholeDepth !== undefined ? { wormholeDepth: meta.wormholeDepth } : {}),
+      atGameMs: state.gameMs,
+      ...(doomed?.fitted !== undefined ? { fitted: doomed.fitted } : {}),
+      ...((doomed?.plugs?.length ?? 0) > 0 ? { plugs: [...(doomed?.plugs ?? [])] } : {}),
+      ...(doomed?.droneLoad !== undefined ? { droneLoad: doomed.droneLoad } : {}),
+    })
+  }
   /**
    * **残骸快照**（顺序敏感，见函数头注）：船型、那一刻的显示名（含玩家自定义名）、三层血里的
    * 结构与装甲、装配与无人机舱、以及"加固结构插件"的整船回收率之和（接口见 `types.ModuleDef.hullRecoveryChance`）。

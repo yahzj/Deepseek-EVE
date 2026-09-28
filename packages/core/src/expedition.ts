@@ -987,6 +987,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
         // 2026-09-26：正常星系损毁 ⇒ 在这一格留「<船名>的残骸」（`foeGalaxyId` 优先 =
         // 打的是被占星系的驻留舰队时落在那个星系；缺省回落到本场目标卡所在星系）
         exp.foeGalaxyId ?? anomaly.galaxyId,
+        { cause: 'expedition-lost' },
       )
       exp.active = false
       exp.battle = null

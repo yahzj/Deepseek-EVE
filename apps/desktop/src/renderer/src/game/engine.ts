@@ -101,6 +101,7 @@ import {
   startSalvageOp,
   setSalvageAutoCycle,
   setSalvageStopAfterTrip,
+  wreckLogRowsOf,
   wreckGroupStocksOf,
   wreckTargetsOf,
   startScan,
@@ -3524,6 +3525,11 @@ export class GameEngine {
   /** 收件箱视图（全部已送达消息，按送达时间倒序；含未读标记与跳转提示） */
   commsInboxView(): ReturnType<typeof commsInbox> {
     return commsInbox(this.state, this.ctx)
+  }
+
+  /** 沉船记录视图（**2026-09-27 船长令**）：新的在前，含派生的残骸状态 */
+  wreckLogView(): ReturnType<typeof wreckLogRowsOf> {
+    return wreckLogRowsOf(this.state, this.ctx)
   }
 
   /* ─────────────── 2026-09-14 需要弹窗的通讯（船长：「解锁时发送通讯给玩家（同时也要直接弹窗）」） ─────────────── */

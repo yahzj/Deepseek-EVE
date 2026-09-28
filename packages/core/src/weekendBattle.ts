@@ -280,6 +280,11 @@ export function weekendResolveBattle(
        * ⚠ **只有 BOSS 族（有共享血池、才谈得上"输出占比"）才掷**；A/C/G 那些占位卡没有池子 ⇒
        * 保持老口径"击沉必掉"（`true`），免得把占位口径也改成掷骰。
        */
+      /**
+       * 走到这里 = **玩家把共享血池打空**（或非 BOSS 族的老口径取胜）⇒ 玩家的最后击杀**成立**，
+       * 传 `true` 与单点判据同结论（⚠ 判据本身见 `weekendEvent.weekendLastHitByPlayer`：
+       * 另一条路 `weekendClaimOctopus` 也按它取，别再各写一套）。
+       */
       const box = weekendIsBossFamily(ev) ? weekendRollBlackBox(state, ev, true) : true
       res.flagshipKilled = { blackBox: box, wreck: weekendRareWreckUnits(WEEKEND_FLAGSHIP_WRECK) }
       res.note = bossDown
@@ -412,8 +417,12 @@ export interface WeekendSettleGrant {
  * **记一笔到手台账**（2026-09-25 加）：三处入账（夺回 / 贡献奖 / 旗舰掉落）各调一次，全是**累加**。
  * 用途 = 结算面板与结算通讯里的奖励清单**不再另算一遍**（说的与发的逐值一致）。
  * `galaxyId` 给了才记逐星系那一栏（旗舰掉落与贡献奖是全局的）。
+ *
+ * ⚠ **对外导出只为补发工具**（`weekendComms.reconcileWeekendBlackBox`，2026-09-28 船长令）：
+ * 它补的黑匣同样要进这本台账，否则结算面板又会显示玩家手里没有/少一件的东西（账实分离）。
+ * 游戏内其余入账一律走本文件内的调用点，别在外面新开入口。
  */
-function noteReward(
+export function noteReward(
   ev: WeekendEventState,
   galaxyId: string | undefined,
   add: { isk?: number; wreck?: number; blackBox?: number },

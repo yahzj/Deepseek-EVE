@@ -276,6 +276,8 @@ export {
   weekendFlagshipSharesOf,
   /** 2026-09-27 整理：旗舰归属判据收口（**留档优先**）——结算快照、结算信与引擎结束日志共用同一个它 */
   weekendFlagshipOutcomeOf,
+  // 2026-09-28：判"是不是玩家完成的最后击杀"的唯一判据（黑匣掷骰与归属显示共用同一把尺）
+  weekendLastHitByPlayer,
   /** 2026-09-27 整理：章鱼人得手的唯一收口（掷黑匣 ＋ 写归属 ＋ 结束本场）——两条到点路径都走它 */
   weekendClaimOctopus,
   weekendTickBoss,
@@ -350,6 +352,8 @@ export {
   // 2026-09-26 船长令：给"推送前打完入侵却没拿到黑匣"的档补发 1 枚（判据见函数头注）
   WEEKEND_BOX_COMPENSATION_CUTOFF_WALL_MS,
   compensateMissingWeekendBlackBox,
+  // 2026-09-28 船长令「采用工具线上补发」：逐 tick 对账，补"记录在案的规则本该必爆却漏发"的场次
+  reconcileWeekendBlackBox,
   weekendFamilyNameId,
   weekendFamilyNameZh,
   weekendRewardLinesOf,
@@ -854,8 +858,11 @@ export {
   noteShipWreck,
   advanceShipWreckDecay,
   trySalvagePlayerWreckOf,
+  WRECK_LOG_MAX,
+  wreckLogRowsOf,
 } from './shipWrecks'
-export type { WreckLootRow, PlayerWreckSalvage } from './shipWrecks'
+export type { WreckLootRow, PlayerWreckSalvage, WreckLogRow } from './shipWrecks'
+export type { WreckLogEntry, WreckLogCause } from './state'
 /**
  * **舰船插件**（2026-09-26 船长令）：装配页只读区（`plugInfoOf`）· 闸门拒因（`plugBlockReasonOf`）·
  * 章鱼人兑换（`exchangePlugBlueprint` / `plugExchangeRowsOf` / `PLUG_BLUEPRINT_COST`）。

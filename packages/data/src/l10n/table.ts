@@ -1820,6 +1820,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 2026-09-26 船长令：「给所有打完入侵但是没有获取黑匣的玩家补发一个黑匣（必须是推送之前打完，
      同时也要检查玩家是否已经将黑匣制作成舰船插件）」⇒ 补发入仓时的那条系统日志（不发信）。 */
   "core.weekend.040": { zh: "入侵补偿：补发旗舰黑匣 ×1（已存入物品仓库）。", en: "Invasion compensation: 1 flagship black box issued (stored in item storage)." },
+  /* 2026-09-28 船长令：「不需要给本地存档补发，采用工具线上补发」⇒ 逐 tick 对账补发出手时的那条
+     系统日志（`weekendComms.reconcileWeekendBlackBox`）。{p1} = 补发枚数 · {p2} = 玩家输出占比整数。 */
+  "core.weekend.039": { zh: "📦 补发：旗舰黑匣 ×{p1}（你亲手击沉母舰、输出占比 {p2}% ⇒ 必定爆出）——已存入物品仓库。", en: "📦 Compensation: flagship black box ×{p1} (you sank the mothership yourself with {p2}% of the damage — a guaranteed drop) — stored in your item warehouse." },
   /* 2026-09-27 船长令：旗舰战留档（玩家亲手击沉）与归属记录打架时的诊断行 —— 显示以留档为准 */
   "core.weekend.041": { zh: "⚠ 旗舰击沉归属出现两处不同记录：已按玩家亲手击沉处理。", en: "⚠ Two conflicting records for the flagship kill: treated as sunk by the player." },
   /* 2026-09-27 船长令：结算信里也留一句"旗舰是谁打沉的"（与快照的 flagsphipPlayerKill 同源） */
@@ -4026,6 +4029,27 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.204": { zh: "结构锁定 {p1} 秒 · 每场一次", en: "Structure locked for {p1} s · once per battle" },
   /* 2026-09-27 无人机储备甲板（船长令）：参数行 = 复位周期；秒数由界面按 `droneReviveCycleMs` 现算
      （**说明文案里不手写数字** —— 本会话定的甲案）。.206 = 行名，.205 = 行值。 */
+  /* ── 沉船记录（2026-09-27 船长令：通讯内新增一个分类，记录玩家损失的舰船与当时的装配）── */
+  "ui.WreckLog.001": { zh: "沉船记录", en: "Ship Loss Log" },
+  "ui.WreckLog.002": { zh: "收件箱", en: "Inbox" },
+  "ui.WreckLog.003": { zh: "还没有沉船记录。", en: "No lost ships yet." },
+  "ui.WreckLog.004": { zh: "损失原因", en: "Cause" },
+  "ui.WreckLog.005": { zh: "地点", en: "Location" },
+  "ui.WreckLog.006": { zh: "损失时间", en: "Lost at" },
+  "ui.WreckLog.007": { zh: "装配", en: "Fitting" },
+  "ui.WreckLog.008": { zh: "舰船插件", en: "Ship plugs" },
+  "ui.WreckLog.009": { zh: "无人机舱", en: "Drone bay" },
+  "ui.WreckLog.010": { zh: "残骸", en: "Wreck" },
+  "ui.WreckLog.011": { zh: "可打捞（剩余 {p1}）", en: "Salvageable ({p1} left)" },
+  "ui.WreckLog.012": { zh: "已回收", en: "Recovered" },
+  "ui.WreckLog.013": { zh: "已过期", en: "Expired" },
+  "ui.WreckLog.014": { zh: "无残骸（虫洞内损毁）", en: "No wreck (lost inside a wormhole)" },
+  "ui.WreckLog.015": { zh: "虫洞 · 第 {p1} 层", en: "Wormhole · depth {p1}" },
+  "ui.WreckLog.016": { zh: "远征失利后遭追击", en: "Lost on an expedition after pursuit" },
+  "ui.WreckLog.017": { zh: "副船远征失联", en: "Auxiliary lost on expedition" },
+  "ui.WreckLog.018": { zh: "虫洞内被击沉", en: "Sunk inside a wormhole" },
+  "ui.WreckLog.019": { zh: "虫洞内整队失联", en: "Fleet lost inside a wormhole" },
+  "ui.WreckLog.020": { zh: "船型", en: "Hull" },
   "ui.shipInfo.205": { zh: "复位周期 {p1} 秒", en: "Reset cycle {p1} s" },
   "ui.shipInfo.206": { zh: "复位周期", en: "Reset cycle" },
   /* .207 = **属性行的值**（裸秒数）：行名已写了"复位周期"，值里不再重复（同族 drone-rack 同款做法）。 */

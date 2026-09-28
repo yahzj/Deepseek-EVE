@@ -34,12 +34,67 @@
  * （那两者处在装配与舰船域的中心，引进来容易成环）；"装配件求回收率之和"与"舰船显示名"都由调用方
  * （`shipyard.loseShip` / `salvaging`）算好传进来。
  */
-import type { GameState, ShipWreckRecord } from './state'
+import type { GameState, ShipWreckRecord, WreckLogEntry } from './state'
 import type { FittedModules, SimContext } from './types'
 import { nextInt, nextRandom } from './rng'
 
 /** 玩家舰船残骸的衰减时长（48 游戏小时线性到 0；与入侵残骸同一把尺） */
 export const SHIP_WRECK_DECAY_MS = 48 * 3_600_000
+
+/** 沉船记录条数上限（**2026-09-27 船长令**：留最近 30 条，超出丢最旧） */
+export const WRECK_LOG_MAX = 30
+
+/** 追加一条沉船记录（**新的在前**、超上限截尾；同记录号去重防御） */
+export function noteWreckLog(state: GameState, entry: WreckLogEntry): void {
+  const rest = (state.wreckLog ?? []).filter((e) => e.seq !== entry.seq)
+  state.wreckLog = [entry, ...rest].slice(0, WRECK_LOG_MAX)
+}
+
+/** 沉船记录列表行（界面只读它，不自己算状态） */
+export interface WreckLogRow {
+  entry: WreckLogEntry
+  /** 残骸状态：可打捞 / 已回收 / 已过期（残骸账里已无且没标已回收）/ 没有残骸（虫洞内损毁） */
+  wreck: 'salvageable' | 'recovered' | 'expired' | 'none'
+  /** 可打捞时：剩余游戏内毫秒 */
+  leftMs?: number
+}
+
+/**
+ * **沉船记录读数**（**2026-09-27 船长令**）：新的在前；残骸状态是**读残骸账算出来的**——
+ * 那边还有这具 ⇒ 可打捞（剩余 = 48h − 已衰减）；没了且记录标了 `recovered` ⇒ 已回收；否则 ⇒ 已过期。
+ */
+export function wreckLogRowsOf(state: GameState, ctx: SimContext): WreckLogRow[] {
+  const list = state.wreckLog ?? []
+  const out: WreckLogRow[] = []
+  for (const entry of list) {
+    const rec = entry.wreckGalaxyId !== undefined ? state.shipWrecks?.[entry.shipId] : undefined
+    if (rec !== undefined) {
+      const leftMs = Math.max(0, SHIP_WRECK_DECAY_MS - rec.decayAccMs)
+      out.push({ entry, wreck: 'salvageable', leftMs })
+    } else if (entry.wreckGalaxyId === undefined) {
+      out.push({ entry, wreck: 'none' })
+    } else if (entry.recovered === true) {
+      out.push({ entry, wreck: 'recovered' })
+    } else {
+      out.push({ entry, wreck: 'expired' })
+    }
+  }
+  void ctx
+  return out
+}
+
+/** 某艘船的残骸**被捞走** ⇒ 记录里标「已回收」（超出上限的老记录已不在列表 ⇒ 无事发生） */
+export function markWreckRecovered(state: GameState, shipId: string): void {
+  const list = state.wreckLog
+  if (!list || list.length === 0) return
+  let hit = false
+  const next = list.map((e) => {
+    if (e.shipId !== shipId || e.recovered === true) return e
+    hit = true
+    return { ...e, recovered: true }
+  })
+  if (hit) state.wreckLog = next
+}
 /**
  * **插件换回的黑匣物品 id**（船长：「**玩家回收按插件数量直接回收成黑匣**」）。
  *
@@ -330,6 +385,7 @@ export function trySalvagePlayerWreckOf(
       map[rec.shipId] = { ...rec, hullRolled: true }
     } else if (nextRandom(state.rng) < chance) {
       delete map[rec.shipId]
+      markWreckRecovered(state, rec.shipId) // 整船捞回 ⇒ 沉船记录标「已回收」
       return {
         kind: 'ship',
         wreckName: rec.name,
@@ -360,13 +416,16 @@ export function trySalvagePlayerWreckOf(
      * ⚠ **顺手把 `hullRolled` 置位**：插件都被拆成黑匣了，"这艘船还能整船捞回来"这件事就**翻篇了**
      * ——不置位的话，后面每一轮都会再掷一次整船回收（自己刷自己的概率）。
      */
-    if (rows.length === 0) delete map[rec.shipId]
-    else map[rec.shipId] = { ...rec, plugs: [], hullRolled: true }
+    if (rows.length === 0) {
+      delete map[rec.shipId]
+      markWreckRecovered(state, rec.shipId) // 拆完空壳 ⇒ 标「已回收」
+    } else map[rec.shipId] = { ...rec, plugs: [], hullRolled: true }
     return { kind: 'plugs', blackBoxes }
   }
 
   if (rows.length === 0) {
     delete map[rec.shipId] // 空壳：不该留（正常路径应在取走最后一件时删掉）
+    markWreckRecovered(state, rec.shipId)
     return { kind: 'none' }
   }
   let row = rows.find((r) => nextRandom(state.rng) < r.rate)
@@ -380,6 +439,7 @@ export function trySalvagePlayerWreckOf(
   const left = wreckLootRowsOf(after, ctx)
   if (left.length === 0) {
     delete map[rec.shipId]
+    markWreckRecovered(state, rec.shipId) // 逐件捞空 ⇒ 标「已回收」
   } else {
     map[rec.shipId] = { ...after, hullRolled: true, ...(usedPity ? { pityUsed: true } : {}) }
   }
