@@ -15,7 +15,7 @@ import type { ReactNode } from 'react'
 import { ITEM_KIND_ORDER, itemKindText, rackOf, shipCategoryKeyOf, visibleItemDefs } from '@whale/core'
 import type { BlueprintDef, DamageType, DroneClass, FoeShipDef, ItemDef, ItemKind, ModuleDef, ShipBlueprintDef, ShipDef, ShipRole } from '@whale/core'
 // 稀有度小标签（2026-09-20 船长）：档位走单点 `itemRarityTierOf`（含 AI 核心与舰船的键映射）
-import { buildFactionCards, factionOfExclusive, FACTION_CODEX, FACTION_CODEX_ORDER, FOE_SHIPS, itemRarityTierOf } from '@whale/data'
+import { buildFactionCards, FACTION_CODEX_ORDER, FOE_SHIPS, itemRarityTierOf } from '@whale/data'
 import type { FactionCard } from '@whale/data'
 // 图鉴 →「↖ 查看市场」的条目→商品映射（2026-09-14 船长）：单点在 `ui/marketJump.ts`
 // （独立小模块的原因：体检要跨层调它，而本文件 import 了 `@whale/ui`、node 侧加载不了 CSS）
@@ -53,6 +53,13 @@ import { foeBriefLinesOfShip, mountLabelText } from '../ui/foeBrief'
 import { tr } from '../i18n/locale'
 import { kindTextOfItem, shipTierText, skillGroupText, slotText } from '../ui/labelsText'
 import { kindText, shipRoleText } from '../ui/labelsText'
+/**
+ * **族徽判据与可读名单点**（2026-09-27 从本文件迁出到 `ui/labelsText.ts`）——船长报障
+ * 「**物品仓库内的势力装备，左上角没有角标，能否将所有功能相同的同类型的图标规则进行统一下**」：
+ * 同款图标卡不止图鉴有（物品页仓库 / 货仓走 `ui/itemView.tsx` 的 `ItemGlyphGrid`）⇒ 一份实现两处共用。
+ * 为什么必须收窄 `null`、`aria-label` 为什么取势力全称：见 `labelsText.ts` 两个函数的头注。
+ */
+import { crestFamOf, crestLabelOf } from '../ui/labelsText'
 // 2026-09-26 船长令：舰船图鉴的**图标模式改画舰船 SVG 形象**（与舰队页/装配页/星图同一张资产表）
 import { ShipSprite } from '../ui/ShipSprite'
 
@@ -1093,35 +1100,13 @@ function shipBlueprintCellOf(engine: GameEngine, bp: ShipBlueprintDef): GridCell
 }
 
 /**
- * **族专属判据的收窄单点**（**2026-09-27 修 · 船长报障**：「手册进入舰船图鉴会报错：
- * `Cannot read properties of null (reading 'toLowerCase')`」）。
+ * **族徽判据与可读名的单点 = `ui/labelsText.ts` 的 `crestFamOf` / `crestLabelOf`**（2026-09-27 迁出）。
  *
- * 真因：`factionOfExclusive(id)` 对"**不是任何势力专属**"的件返回 **`null`**（只有"id 查不到"才是 `undefined`），
- * 而四个 builder 原先一律写 `factionOfExclusive(id) !== undefined ? { crest: … } : {}` ——
- * `null !== undefined` 为**真** ⇒ 非专属的卡片也带上 `crest: null` ⇒ `IconGrid` 画角标时
- * `c.crest.toLowerCase()` **整个图鉴页崩掉**（装备 / 舰船 / 物品 / 蓝图四页都中招，势力页因卡片全是族字母而看不出）。
- *
- * 规矩：**判"有没有族"只许走本函数**（`null` 与 `undefined` 在这里被统一成 `undefined`），
- * 不许再在调用处写 `!== undefined`（护栏 = `tools/ui-attr-check.ts` 的「族徽判据契约」）。
+ * 迁出原因（**船长 2026-09-27 报障**）：「**物品仓库内的势力装备，左上角没有角标，能否将所有功能
+ * 相同的同类型的图标规则进行统一下**」——同款图标卡不止图鉴有，物品页仓库 / 货仓走 `ui/itemView.tsx`
+ * 的 `ItemGlyphGrid`，判据与可读名必须**一份实现两处共用**，否则迟早漂（一个标、一个不标）。
+ * 源码级护栏 = `tools/ui-attr-check.ts` 的族徽契约（已改为检查**单点文件**）。
  */
-function crestFamOf(id: string | undefined): string | undefined {
-  const fam = id === undefined ? undefined : factionOfExclusive(id)
-  return fam ?? undefined
-}
-
-/**
- * **族徽角标的可读名（单一入口）**：族字母 → 势力**全称**（`FACTION_CODEX` 的 `nameId`，随语言取词）。
- *
- * 用途有两个，都别绕开它：
- *  ① **无障碍**：角标只给颜色的话，读屏与色盲玩家拿不到"这件是谁家的"（"不许只靠颜色传达信息"）；
- *  ② **探针/契约**：族字母（A/C/D/E/G/H）不是玩家可见文案，**不许**漏进界面文本里。
- * `FACTION_CODEX` 只收 A/C/D/E/G/H 六族，而 `factionOfExclusive` 恰好只会返回这六个 ⇒
- * 兜底分支实际不可达，留 `fam` 字母只为"万一"（不新造文案 id）。
- */
-function crestLabelOf(fam: string): string {
-  const entry = FACTION_CODEX[fam]
-  return entry === undefined ? fam : tr(entry.nameId)
-}
 
 /** 详情内容（按页签/数据类型给出完整字段） */
 function DetailBody({ engine, cell }: { engine: GameEngine; cell: GridCell }) {

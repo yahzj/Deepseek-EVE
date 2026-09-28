@@ -56,6 +56,10 @@ const ALLOW_TABLE_READERS: Record<string, string> = {
     '⚠ 这两张表是**原始中文表**，英文界面下是否漏中文待核（已登记进清单，本批不改）',
   'panels/Wormhole.tsx': '`WORMHOLE_FAMILY_CARDS` 只用来做**族 → 卡 id 的反查**（`Object.keys/values` 匹配 id），不显示文本',
   'ui/wreckFlavor.tsx': '`FRAGMENT_RECIPES` 只按 `tier` 取配方行喂回收读数（id 与数值），不显示文本；逻辑在 core 单点',
+  'ui/labelsText.ts':
+    '**族徽判据单点**（2026-09-27 从 `panels/Handbook.tsx` 迁入）：读 `FACTION_CODEX` 只为两件事——' +
+    '① `factionOfExclusive(id)` 反查某件内容属于哪一族；② 族字母 → 势力**全称文案 id**（`nameId`）。' +
+    '两条都**不显示原始中文文本**（全称经 `tr(nameId)` 按当前语言取词），且必须与图鉴同一把尺 ⇒ 只能读表',
 }
 
 /**
@@ -82,7 +86,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '渲染层引擎（ctx 的产地，页面取数都从它来）', symbol: 'GameEngine', file: 'apps/desktop/src/renderer/src/game/engine.ts', exported: true },
   { concept: '玩家可见文案唯一表（id → 各语言）', symbol: 'L10N', file: 'packages/data/src/l10n/table.ts', exported: true },
   { concept: '标签取词单点（槽类/槽位/舰级/地点/机型…）', symbol: 'kindText', file: 'apps/desktop/src/renderer/src/ui/labelsText.ts', exported: true },
-  { concept: '族徽判据收窄（判"有没有族"只走它）', symbol: 'crestFamOf', file: 'apps/desktop/src/renderer/src/panels/Handbook.tsx', exported: false },
+  { concept: '族徽判据收窄（判"有没有族"只走它）＋族徽可读名', symbol: 'crestFamOf', file: 'apps/desktop/src/renderer/src/ui/labelsText.ts', exported: true },
   { concept: '取色跨表兜底（TONES → ICO_TONES → NAV_TONES）', symbol: 'toneOfAny', file: 'apps/desktop/src/renderer/src/ui/tones.ts', exported: true },
   { concept: '图鉴卡片构造（模块/舰船/物品/蓝图同源）', symbol: 'itemCellOf', file: 'apps/desktop/src/renderer/src/panels/Handbook.tsx', exported: false },
   { concept: '悬停提示接管层（全站唯一延迟与优先级）', symbol: 'TIP_DELAY_MS', file: 'apps/desktop/src/renderer/src/ui/Tooltip.tsx', exported: true },
