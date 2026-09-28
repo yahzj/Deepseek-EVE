@@ -280,6 +280,8 @@ export const EN_MODULES: EnTable = {
   'mod-drone-relay-1': { name: 'Drone Relay Antenna MK1', description: 'Guidance relay antenna: +20% range for launched drones. Gives close-in swarms a little more room to engage.' },
   'mod-drone-relay-2': { name: 'Drone Relay Antenna MK2', description: 'Guidance relay antenna: +45% range for launched drones. The range expansion for mid- to long-range drones.' },
   'mod-drone-relay-3': { name: 'Drone Relay Antenna MK3', description: 'Guidance relay antenna: +80% range for launched drones. Sentry drones can reach into laser-cannon bands.' },
+  'mod-drone-shield-2': { name: 'Drone Shield Projector MK2', description: '+⟦70%⟧ shield HP for launched drones (shield layer only; multiplies with Drone Durability and Drone Reinforcement).' },
+  'mod-drone-shield-3': { name: 'Drone Shield Projector MK3', description: '+⟦100%⟧ shield HP for launched drones (shield layer only; multiplies with Drone Durability and Drone Reinforcement).' },
   // 护盾 / 装甲
   'mod-shield-kin-1': { name: 'Shield Amplifier MK1 · Kinetic', description: '+20% kinetic resistance (cap 90%). Kinetic is the round the Association armed forces use most — default bounties all take it.' },
   'mod-shield-exp-1': { name: 'Shield Amplifier MK1 · Explosive', description: '+20% explosive resistance (cap 90%). Counters explosive rounds and torpedo-armed enemies.' },
@@ -1050,6 +1052,8 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-drone-relay-1': 'The signal relay unit of a guidance relay antenna, amplifying drone command links.',
   'bp-drone-relay-2': 'A dual-band guidance relay antenna with interference filtering pressed into the relay unit.',
   'bp-drone-relay-3': 'A long-range phased-array relay antenna; drone commands can run over inter-ship links.',
+  'bp-drone-shield-2': 'Phased resonant cavities and projection plates for a shield array: lays a shield field over every launched drone.',
+  'bp-drone-shield-3': 'Triple projection plates and self-calibrating cavities: merges the whole drone wing into one shield layer.',
   'bp-shield-kin-1': 'Shield generator coil plans (kinetic band tuning), with the magnetic envelope calibrated against ballistic impact.',
   'bp-shield-exp-1': 'Shield generator coil plans (explosive band tuning): shock fronts are torn apart by the phase difference in the deflection field.',
   'bp-shield-pla-1': 'Shield generator coil plans (energy band tuning): high-energy beams are refracted and defocused on the polar layer.',

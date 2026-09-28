@@ -23,6 +23,7 @@ export const MODULE_SLOTS: readonly ModuleSlot[] = [
   'drone-rack',
   'drone-tac',
   'drone-relay',
+  'drone-shield',
   'support',
   'cpu',
   'target-lock',
@@ -45,6 +46,7 @@ export const SLOT_LABELS: Record<ModuleSlot, string> = {
   'drone-rack': '无人机甲板扩展',
   'drone-tac': '战术导控阵列',
   'drone-relay': '无人机中继天线',
+  'drone-shield': '无人机护盾投射仪',
   support: '支援件',
   cpu: '协处理器',
   'target-lock': '锁定装置',
@@ -116,6 +118,8 @@ export function rackOf(def: {
   if (def.slot === 'miner' || def.slot === 'salvager') return 'high'
   // 无人机甲板扩展：**低槽**（**2026-09-27 船长令**：「将扩大无人机舱的装备从高槽移动到低槽」）
   if (def.slot === 'drone-rack') return 'low'
+  // 无人机护盾投射仪：**中槽**（**2026-09-27 船长令**：新家族 drone-shield，与护盾/推进/支援件同槽竞争）
+  if (def.slot === 'drone-shield') return 'mid'
   // 2026-09-11 协处理器：低槽（与装甲/货舱/支援件同槽类竞争——占一个低槽换 CPU 预算）
   if (def.slot === 'cpu') return 'low'
   return 'low'

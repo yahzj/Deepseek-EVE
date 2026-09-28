@@ -114,6 +114,7 @@ const SLOT_ID: Readonly<Record<ModuleSlot, string>> = {
   'drone-rack': 'ui.labelsText.055', // 无人机甲板扩展 / Drone Bay Extension
   'drone-tac': 'ui.labelsText.056', // 无人机战术 / Drone Tactical
   'drone-relay': 'ui.labelsText.057', // 无人机中继 / Drone Relay
+  'drone-shield': 'ui.labelsText.071', // 无人机护盾 / Drone Shield（2026-09-27 新家族）
   support: 'ui.labelsText.058', // 支援系统 / Support System
   cpu: 'ui.labelsText.059', // 协处理器 / Coprocessor
   'target-lock': 'ui.itemSubs.013', // 目标锁定 / Targeting

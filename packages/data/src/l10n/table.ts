@@ -1107,6 +1107,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.labelsText.055": { zh: "无人机甲板扩展", en: "Drone Bay Extension" },
   "ui.labelsText.056": { zh: "无人机战术", en: "Drone Tactical" },
   "ui.labelsText.057": { zh: "无人机中继", en: "Drone Relay" },
+  // 2026-09-27 船长令：中槽新家族「无人机护盾投射仪」
+  "ui.labelsText.071": { zh: "无人机护盾", en: "Drone Shield" },
   "ui.labelsText.058": { zh: "支援系统", en: "Support System" },
   "ui.labelsText.059": { zh: "协处理器", en: "Coprocessor" },
   /**
@@ -4015,6 +4017,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    *  从文案挪到卡面参数行 —— 时长读引擎常量 `DC_LOCK_MS`，不手写。 */
   "ui.shipInfo.203": { zh: "启动锁定", en: "Trigger lock" },
   "ui.shipInfo.204": { zh: "结构锁定 {p1} 秒 · 每场一次", en: "Structure locked for {p1} s · once per battle" },
+  "ui.shipInfo.205": { zh: "无人机护盾", en: "Drone shield" },
+  "ui.shipInfo.206": { zh: "无人机护盾 +{p1}", en: "Drone shield +{p1}" },
   "ui.shipInfo.184": { zh: "同类型武器单发 +{p1}（装其它伤害类型的武器无加成）", en: "Weapons of the same damage type deal +{p1} per shot (no bonus with other damage types)" },
   "ui.shipInfo.010": { zh: "跃迁速度", en: "Warp speed" },
   "ui.shipInfo.011": { zh: "质量", en: "Mass" },

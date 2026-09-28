@@ -240,6 +240,11 @@ export interface UnitSpec {
    * 只放大**机群生存池的结构层**（`DronePoolEntry.h`），与三层血 buff 同链、在建池时一次算清。
    */
   droneHullBonusPct?: number
+  /**
+   * **本舰无人机护盾层加成**（**2026-09-27 船长令**：无人机护盾投射仪）：该舰所装模块
+   * `droneShieldHpBonusPct` 之和；只放大**机群生存池的护盾层**（`DronePoolEntry.s`），与三层血同链。
+   */
+  droneShieldBonusPct?: number
   evasion: number
   hitBonus: number
   /** V17.1 开火失稳乘子（**点火期值**）：推进器点火期间命中整体 ×hitMul；V18.1 多件推进器只取
@@ -2116,6 +2121,8 @@ export function createPlayerSpec(
     resists,
     // 本舰无人机结构层加成（模块求和；2026-09-13 船长：鱿蜂结构层「提高无人机 80% 的结构」）
     droneHullBonusPct: allDefs.reduce((s, m) => s + (m.droneHullHpBonusPct ?? 0), 0),
+    // 本舰无人机护盾层加成（模块求和；2026-09-27 船长令：无人机护盾投射仪 MK2/MK3 = +70%/+100%，多件线性相加不设上限）
+    droneShieldBonusPct: allDefs.reduce((s, m) => s + (m.droneShieldHpBonusPct ?? 0), 0),
     // V18.1：回避 = 船体基础 + 姿态陀螺缺口复合（1−(1−基础)Π(1−x)）
     evasion,
     // ⚠ 2026-09-14 船长改判：**索敌统合不再放大舰船命中加成**（改去乘炮台基础命中，见上 `targetMult`）
@@ -7718,7 +7725,7 @@ function buildDronePoolsFor(
     const d = ctx.items.get(w.artId)?.defense
     pools[dronePoolKey(tag, i)] = {
       owner: tag,
-      s: Math.max(1, Math.round((d?.shieldHp ?? 1) * durMul)),
+      s: Math.max(1, Math.round((d?.shieldHp ?? 1) * durMul * (1 + (spec.droneShieldBonusPct ?? 0)))),
       a: Math.max(1, Math.round((d?.armorHp ?? 1) * durMul)),
       h: Math.max(1, Math.round((d?.hullHp ?? 1) * durMul * (1 + (spec.droneHullBonusPct ?? 0)))),
       alive: true,

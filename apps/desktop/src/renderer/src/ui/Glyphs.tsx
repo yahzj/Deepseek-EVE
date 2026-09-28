@@ -480,6 +480,14 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M15.2 10.6c1.1.7 1.1 2.5 0 3.2" fill="none" />
     </g>
   ),
+  /* 2026-09-27 无人机护盾投射仪（方框徽：盾面 + 投射中轴） */
+  'drone-shield': (
+    <g>
+      <rect x="7" y="7" width="10" height="10" rx="1.7" />
+      <path d="M12 9.2l2.9 1.1v3c0 1.6-1.2 2.6-2.9 3.2-1.7-.6-2.9-1.6-2.9-3.2v-3z" />
+      <path d="M12 11v3.4" />
+    </g>
+  ),
   /* V18B-2 激光炮（方框徽：光束横贯） */
   laser: (
     <g>
