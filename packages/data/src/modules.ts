@@ -524,6 +524,26 @@ export const MODULES: readonly ModuleDef[] = [
     cpuUse: 46, // 2026-09-10 船长：MK3 CPU 38 → 46（顶配装置高占用）
     description: '制导中继天线：放飞无人机射程 +80%。哨戒无人机可深入激光炮带。',
   },
+  /* ── 2026-09-27 船长令：中槽装备「无人机护盾投射仪」（第四支无人机装置家族）──
+   * 只加**放飞无人机的护盾层**（DronePoolEntry.s）；多件线性相加、不设上限；MK2/MK3 两档。 */
+  {
+    id: 'mod-drone-shield-2',
+    name: '无人机护盾投射仪 MK2',
+    slot: 'drone-shield',
+    rack: 'mid',
+    droneShieldHpBonusPct: 0.7,
+    cpuUse: 20,
+    description: '放飞无人机的护盾值 +⟦70%⟧（只作用于护盾层；与无人机耐久学、无人机强化学乘算）。',
+  },
+  {
+    id: 'mod-drone-shield-3',
+    name: '无人机护盾投射仪 MK3',
+    slot: 'drone-shield',
+    rack: 'mid',
+    droneShieldHpBonusPct: 1.0,
+    cpuUse: 45,
+    description: '放飞无人机的护盾值 +⟦100%⟧（只作用于护盾层；与无人机耐久学、无人机强化学乘算）。',
+  },
 
   // ══════════ 无人机储备甲板（**2026-09-27 船长令**：新需求原话「添加无人机**高槽**装备，无人机储备甲板，
   // 效果是有无人机被摧毁时开始运转周期，满了之后立刻补充（复活）被摧毁一架无人机（从仓库补充）。

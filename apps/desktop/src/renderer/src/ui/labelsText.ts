@@ -117,6 +117,8 @@ const SLOT_ID: Readonly<Record<ModuleSlot, string>> = {
   /* 2026-09-27 补（无人机储备甲板批）：新槽位 `drone-deck` —— 表类型收紧成 `Record<ModuleSlot,string>`
      之后，漏登记在 typecheck 就红（本条正是被那条契约逼出来的）。 */
   'drone-deck': 'ui.labelsText.071', // 无人机储备甲板 / Drone Reserve Deck
+  /* ⚠ 合并（2026-09-27）：两批各插一族、都用了 `.071` ⇒ **后合入的 drone-shield 顺移到 `.072`**（撞号让位）。 */
+  'drone-shield': 'ui.labelsText.072', // 无人机护盾 / Drone Shield（2026-09-27 新家族）
   support: 'ui.labelsText.058', // 支援系统 / Support System
   cpu: 'ui.labelsText.059', // 协处理器 / Coprocessor
   'target-lock': 'ui.itemSubs.013', // 目标锁定 / Targeting

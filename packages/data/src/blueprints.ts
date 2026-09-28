@@ -804,6 +804,36 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     description: '整队级储备机库段的舱段图：全队机位挂架与快速复位控制回路。',
   },
   {
+    id: 'bp-drone-shield-2',
+    name: '无人机护盾投射仪 MK2蓝图',
+    moduleId: 'mod-drone-shield-2',
+    materials: [
+      { itemId: 'min-tritanium', count: 10_900 },
+      { itemId: 'min-pyerite', count: 3_400 },
+      { itemId: 'min-mexallon', count: 2_300 },
+      { itemId: 'min-nocxium', count: 320 },
+    ],
+    buildSeconds: 900, // 无人机护盾投射仪 MK2（2026-09-27；材料≈产物价×0.45、蓝图=产物×2.5）
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 1_125_000,
+    description: '护盾投射阵列的相控谐振腔与投射极板，把护盾场铺到每一架放飞的无人机上。',
+  },
+  {
+    id: 'bp-drone-shield-3',
+    name: '无人机护盾投射仪 MK3蓝图',
+    moduleId: 'mod-drone-shield-3',
+    materials: [
+      { itemId: 'min-tritanium', count: 47_200 },
+      { itemId: 'min-pyerite', count: 15_000 },
+      { itemId: 'min-mexallon', count: 9_000 },
+      { itemId: 'min-nocxium', count: 1_810 },
+    ],
+    buildSeconds: 2000, // 无人机护盾投射仪 MK3（2026-09-27 船长令「MK3 蓝图放奇货」⇒ 书价 = 产物×4）
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 8_000_000,
+    description: '三重投射极板与自校准谐振腔，把整支机群的护盾场并成一层。',
+  },
+  {
     id: 'bp-shield-kin-1',
     name: '护盾增强器 MK1·动能型蓝图',
     moduleId: 'mod-shield-kin-1',

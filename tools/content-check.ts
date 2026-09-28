@@ -2335,6 +2335,13 @@ for (const m of MODULES) {
     if (hasBay) check((m.droneBayBonusM3 ?? 0) <= 500, `无人机甲板 ${m.id} droneBayBonusM3 越界`)
     if (hasDmg) check((m.droneDmgBonus ?? 0) <= 1, `战术导控 ${m.id} droneDmgBonus 越界`)
   }
+  if (m.slot === 'drone-shield') {
+    // 2026-09-27 无人机护盾投射仪：只说护盾层（值域 (0, 2]，与结构层同款"线性相加不设上限"）
+    check(
+      (m.droneShieldHpBonusPct ?? 0) > 0 && (m.droneShieldHpBonusPct ?? 0) <= 2,
+      `无人机护盾投射仪 ${m.id} droneShieldHpBonusPct 非法（需 (0, 2]）`,
+    )
+  }
   if (m.slot === 'drone-relay') {
     // 2026-09-10 无人机中继天线：百分比射程加成（值域 (0, 2]，多件线性求和乘入机型射程）
     check(

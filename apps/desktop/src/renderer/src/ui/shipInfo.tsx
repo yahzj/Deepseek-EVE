@@ -435,6 +435,11 @@ export function moduleShortEffect(mod: ModuleDef): string {
        */
       body = tr("ui.shipInfo.205", { p1: reviveCycleSecs(mod) })
       break
+    case 'drone-shield':
+      // 2026-09-27 无人机护盾投射仪（中槽）：只加放飞无人机的护盾层
+      // ⚠ 合并：该族 id 与储备甲板撞号 ⇒ 顺移到 `.209`（见 l10n 表内注释）。
+      body = tr("ui.shipInfo.209", { p1: pctOpt(mod.droneShieldHpBonusPct) })
+      break
     case 'support': {
       // V18.1 支援件：效果字段判别（稳定器按系可多件 → 逐系列出）
       const dmg = mod.damageTypeBonusPct
@@ -826,6 +831,11 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
   if (foreign('drone-deck') && (mod.droneReviveCycleMs ?? 0) > 0) {
     out.push({ k: tr("ui.shipInfo.206"), v: tr("ui.shipInfo.207", { p1: reviveCycleSecs(mod) }) })
   }
+  // 2026-09-27 无人机护盾投射仪（中槽）：只加放飞无人机的护盾层
+  // ⚠ 合并：id 撞号 ⇒ 顺移到 `.208`。
+  if (foreign('drone-shield') && (mod.droneShieldHpBonusPct ?? 0) > 0) {
+    out.push({ k: tr("ui.shipInfo.208"), v: `+${pct(mod.droneShieldHpBonusPct ?? 0)}` })
+  }
   // 支援件四族（炮台伤害 / 射速 / 命中 / 回避）
   if (foreign('support')) {
     const dmg = mod.damageTypeBonusPct
@@ -870,6 +880,7 @@ function crossFamilyShort(mod: ModuleDef): string {
   if (foreign('drone-rack') && (mod.droneBayBonusM3 ?? 0) > 0) parts.push(tr("ui.shipInfo.146", { p1: fmt(mod.droneBayBonusM3 ?? 0) }))
   if (foreign('drone-tac') && (mod.droneDmgBonus ?? 0) > 0) parts.push(tr("ui.shipInfo.111", { p1: pct(mod.droneDmgBonus ?? 0) }))
   if (foreign('drone-relay') && (mod.droneRangeBonusPct ?? 0) > 0) parts.push(tr("ui.shipInfo.112", { p1: pct(mod.droneRangeBonusPct ?? 0) }))
+  if (foreign('drone-shield') && (mod.droneShieldHpBonusPct ?? 0) > 0) parts.push(tr("ui.shipInfo.209", { p1: pct(mod.droneShieldHpBonusPct ?? 0) }))
   if (foreign('target-lock') && mod.lockDmgBonus !== undefined) parts.push(tr("ui.shipInfo.147", { p1: pct(mod.lockDmgBonus) }))
   if (foreign('cpu') && (mod.cpuBonus ?? 0) > 0) parts.push(tr("ui.shipInfo.148", { p1: fmt(mod.cpuBonus ?? 0) }))
   /** 机群结构层加成（2026-09-27 补）：**任何槽位都可能带** ⇒ 与上面几条"跨槽位旋钮"同段，不进 `foreign()` 判据 */

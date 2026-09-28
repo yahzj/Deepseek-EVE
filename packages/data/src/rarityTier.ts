@@ -95,6 +95,8 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'bp-drone-deck-1': 1,
   'bp-drone-deck-2': 2,
   'bp-drone-deck-3': 3,
+  'bp-drone-shield-2': 2, // 2026-09-27 无人机护盾投射仪
+  'bp-drone-shield-3': 3, // 2026-09-27（书走奇货档，稀有度档仍按 MK3 = 3）
   'bp-gyro-1': 1,
   'bp-gyro-2': 2,
   'bp-gyro-3': 3,
@@ -257,6 +259,8 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mod-drone-deck-1': 1,
   'mod-drone-deck-2': 2,
   'mod-drone-deck-3': 3,
+  'mod-drone-shield-2': 2, // 2026-09-27 无人机护盾投射仪
+  'mod-drone-shield-3': 3,
   'mod-gyro-1': 1,
   'mod-gyro-2': 2,
   'mod-gyro-3': 3,

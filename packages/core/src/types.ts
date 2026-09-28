@@ -1332,6 +1332,11 @@ export type ModuleSlot =
    * 而本件是新需求里明确的"**高槽**装备" ⇒ 单开一族，与 `drone-tac` / `drone-relay` 同槽竞争。
    */
   | 'drone-deck'
+  /**
+   * **无人机护盾投射仪**（**2026-09-27 船长令**：「添加新的中槽装备…增加无人机的护盾值」）：
+   * 第四支无人机装置家族，归**中槽**；效果字段见 ModuleDef.droneShieldHpBonusPct。
+   */
+  | 'drone-shield'
   | 'support'
   /** 2026-09-11 船长：协处理器（低槽，装配 CPU 预算扩容；见 ModuleDef.cpuBonus） */
   | 'cpu'
@@ -1573,6 +1578,12 @@ export interface ModuleDef {
    * - **不改战损账**：`droneLost` 照记（战后回收率要用），只在战后"净损失扣清单"里减去已复活的架数。
    */
   droneReviveCycleMs?: number
+  /**
+   * **无人机护盾层加成**（**2026-09-27 船长令**：无人机护盾投射仪「增加无人机的护盾值」）：
+   * 0.7 = +70%（MK2）/ 1.0 = +100%（MK3）；本舰多件**求和**（线性相加、**不设上限**，与「鱿蜂结构层」同款），
+   * 只放大机群生存池的**护盾层**（`DronePoolEntry.s`），与机型基础护盾值、耐久学/强化学同链。
+   */
+  droneShieldHpBonusPct?: number
   /* ═══ B3 打捞器（salvager 家族：高槽无伤害件；升级只缩短周期） ═══ */
   /** 打捞器单轮周期毫秒（每台每轮捞 1 具残骸；MK1/2/3 = 10s/8s/6s） */
   salvageCycleMs?: number

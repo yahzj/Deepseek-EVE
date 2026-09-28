@@ -1107,6 +1107,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.labelsText.055": { zh: "无人机甲板扩展", en: "Drone Bay Extension" },
   "ui.labelsText.056": { zh: "无人机战术", en: "Drone Tactical" },
   "ui.labelsText.057": { zh: "无人机中继", en: "Drone Relay" },
+  // 2026-09-27 船长令：中槽新家族「无人机护盾投射仪」
+  // ⚠ 合并：与「无人机储备甲板」撞号 `.071` ⇒ **后合入的 drone-shield 顺移到 `.072`**。
+  "ui.labelsText.072": { zh: "无人机护盾", en: "Drone Shield" },
   "ui.labelsText.058": { zh: "支援系统", en: "Support System" },
   "ui.labelsText.059": { zh: "协处理器", en: "Coprocessor" },
   /**
@@ -4023,6 +4026,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.206": { zh: "复位周期", en: "Reset cycle" },
   /* .207 = **属性行的值**（裸秒数）：行名已写了"复位周期"，值里不再重复（同族 drone-rack 同款做法）。 */
   "ui.shipInfo.207": { zh: "{p1} 秒", en: "{p1} s" },
+  /* ⚠ 合并（2026-09-27）：「无人机护盾投射仪」那一族原先也用 `.205/.206` ⇒ **后合入的它顺移到 `.208/.209`**。 */
+  "ui.shipInfo.208": { zh: "无人机护盾", en: "Drone shield" },
+  "ui.shipInfo.209": { zh: "无人机护盾 +{p1}", en: "Drone shield +{p1}" },
   "ui.shipInfo.184": { zh: "同类型武器单发 +{p1}（装其它伤害类型的武器无加成）", en: "Weapons of the same damage type deal +{p1} per shot (no bonus with other damage types)" },
   "ui.shipInfo.010": { zh: "跃迁速度", en: "Warp speed" },
   "ui.shipInfo.011": { zh: "质量", en: "Mass" },

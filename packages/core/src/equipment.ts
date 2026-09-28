@@ -268,6 +268,8 @@ export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } 
   // 惩罚」→「按推荐折算」）——第 2 件起按 `stackWeight` 的 87% / 57% / 28%… 折权后**仍相加**，
   // 不再"全额线性叠加"；收敛池 = 同 `kind`（制式 MK1/2/3 与 G 族「流亡中继桅」同槽同池）。
   if (def.droneRangeBonusPct !== undefined) return { group: 'weighted', kind: 'drone-relay' }
+  // 无人机护盾投射仪（2026-09-27 船长令）：护盾层加成 = **加算线性**（多件不衰减；与耐久学/强化学乘算）
+  if (def.droneShieldHpBonusPct !== undefined) return { group: 'flat', kind: 'drone-shield' }
   const sk = resistKey(def.shieldResistAdd)
   if (sk) return { group: 'gap', kind: `shield-${sk}` }
   const ak = resistKey(def.armorResistAdd)

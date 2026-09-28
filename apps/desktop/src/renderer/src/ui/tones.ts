@@ -95,6 +95,9 @@ export const TONES: Record<string, string> = {
   /* 2026-09-27 无人机储备甲板（船长令）：**复用无人机通用金** `toneVar('drone')`
      —— 与 `drone-rack` 同款做法（它的 CSS 值与 `drone` 本就相同）⇒ 不新增 CSS 变量、零主题改动。 */
   'drone-deck': toneVar('drone'),
+  // 2026-09-27 无人机护盾投射仪：**复用护盾族的色调**（与舰船插件复用 target-lock 同款口径——
+  // 不新造 CSS 变量，省掉七套主题各补一份；船长若要独立色相，改这里并补主题变量即可）
+  'drone-shield': toneVar('shield'),
   support: toneVar('support'),
   cpu: toneVar('cpu'),
   /* 2026-09-26 舰船插件（船长令）：复用 `target-lock` 那一档色调 —— 同属"外挂装置"语感，
