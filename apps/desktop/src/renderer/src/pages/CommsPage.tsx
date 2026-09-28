@@ -20,7 +20,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { CommsEntryView } from '@whale/core'
+import { formatDurationMs, type CommsEntryView } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { CommsDeviceFrame, CommsEave, CommsScreen } from '../panels/CommsReader'
 import { Glyph } from '../ui/Glyphs'
@@ -45,7 +45,7 @@ export function CommsPage({
   onOpenPlugExchange,
   focus,
 }: PageProps & {
-  /** 跳转出口（App 提供）：消息提示 → 对应一级页（可带星图标签 `tab`、任务中心内层标签 `taskTab`、舰船标签 `shipTab`） */
+/** 跳转出口（App 提供）：消息提示 → 对应一级页（可带星图标签 `tab`、任务中心内层标签 `taskTab`、舰船标签 `shipTab`） */
   onGoto: (page: string, tab?: string, shipTab?: string, taskTab?: string) => void
   /** 「前往章鱼人兑换」出口（**2026-09-26 船长令**：首匣那封信的跳转要直达**章鱼人声望商店**）。
    *  走 App 的**唯一开窗入口**（它同时把组装机切到「舰船插件」档）⇒ 三条入口行为一致。 */
@@ -54,6 +54,12 @@ export function CommsPage({
   focus?: { id: string; seq: number } | null
 }): ReactNode {
   const state = engine.state
+  /**
+   * **通讯分类**（**2026-09-27 船长令**：「在通讯内新增一个用于记录玩家损失的舰船和舰船上有什么装配」）：
+   * 收件箱 / 沉船记录。左列切换，右列各看各的详情。
+   */
+  const [view, setView] = useState<'inbox' | 'wreck'>('inbox')
+  const wrecks = useMemo(() => engine.wreckLogView(), [state, state.gameMs, engine])
   const inbox = useMemo(() => engine.commsInboxView(), [state, state.gameMs, engine])
   const unread = inbox.filter((e) => !e.read).length
 
@@ -124,7 +130,28 @@ export function CommsPage({
         }
       >
         <div className="app-win-body app-comms-body">
-          {inbox.length === 0 ? (
+          {/* 分类切换（2026-09-27）：收件箱 / 沉船记录 —— 复用同页既有按钮族 */}
+          <div className="app-tasktabs" role="tablist" style={{ marginBottom: 'var(--wui-sp-5)' }}>
+            <button
+              role="tab"
+              aria-selected={view === 'inbox'}
+              className={`app-tasktab${view === 'inbox' ? ' is-active' : ''}`}
+              onClick={() => setView('inbox')}
+            >
+              {tr('ui.WreckLog.002')}
+            </button>
+            <button
+              role="tab"
+              aria-selected={view === 'wreck'}
+              className={`app-tasktab${view === 'wreck' ? ' is-active' : ''}`}
+              onClick={() => setView('wreck')}
+            >
+              {tr('ui.WreckLog.001')}
+            </button>
+          </div>
+          {view === 'wreck' ? (
+            <WreckLogPane engine={engine} rows={wrecks} />
+          ) : inbox.length === 0 ? (
             <div className="app-dim app-exp-idle">{tr("ui.CommsPage.009")}</div>
           ) : (
             <div className="app-comms-grid">
@@ -208,6 +235,101 @@ export function CommsPage({
       {showPlugExchange ? (
         <PlugExchangeModal engine={engine} onToast={onToast} onClose={() => setShowPlugExchange(false)} />
       ) : null}
+    </div>
+  )
+}
+
+  /**
+ * **沉船记录面板**（2026-09-27 船长令）：左列沉船清单、右列一条的明细。
+ * 只用既有 `.app-comms-*` 族类名（与收件箱同观感），不新造样式。
+ */
+function WreckLogPane({ engine, rows }: { engine: PageProps['engine']; rows: ReturnType<PageProps['engine']['wreckLogView']> }): ReactNode {
+  const engineCtx = engine
+  const [sel, setSel] = useState<string | null>(null)
+  if (rows.length === 0) return <div className="app-dim app-exp-idle">{tr('ui.WreckLog.003')}</div>
+  const cur = rows.find((r) => String(r.entry.seq) === sel) ?? rows[0]!
+  const e = cur.entry
+  const modName = (id: string): string => engineCtx.ctx.modules.get(id)?.name ?? id
+  const shipName = (id: string | undefined): string =>
+    id === undefined ? '—' : (engineCtx.ctx.ships.get(id)?.name ?? id)
+  const clock = (ms: number): string => formatDurationMs(Math.max(0, ms))
+  const cause = tr(
+    e.cause === 'ai-lost'
+      ? 'ui.WreckLog.017'
+      : e.cause === 'wormhole-sunk'
+        ? 'ui.WreckLog.018'
+        : e.cause === 'wormhole-lost'
+          ? 'ui.WreckLog.019'
+          : 'ui.WreckLog.016',
+  )
+  const where =
+    e.wormholeDepth !== undefined
+      ? tr('ui.WreckLog.015', { p1: e.wormholeDepth })
+      : (engineCtx.ctx.galaxies.get(e.galaxyId ?? '')?.name ?? e.galaxyId ?? '—')
+  const wreckText =
+    cur.wreck === 'salvageable'
+      ? tr('ui.WreckLog.011', { p1: clock(cur.leftMs ?? 0) })
+      : cur.wreck === 'recovered'
+        ? tr('ui.WreckLog.012')
+        : cur.wreck === 'expired'
+          ? tr('ui.WreckLog.013')
+          : tr('ui.WreckLog.014')
+  const racks: Array<[string, Array<string | null>]> = [
+    ['H', e.fitted?.high ?? []],
+    ['M', e.fitted?.mid ?? []],
+    ['L', e.fitted?.low ?? []],
+  ]
+  return (
+    <div className="app-comms-grid">
+      <div className="app-comms-list" role="list">
+        {rows.map((r) => (
+          <button
+            key={r.entry.seq}
+            role="listitem"
+            className={`app-comms-item${String(r.entry.seq) === String(cur.entry.seq) ? ' is-sel' : ''}`}
+            onClick={() => setSel(String(r.entry.seq))}
+          >
+            <span className="app-comms-item-top">
+              <span className="app-comms-from">{r.entry.shipName}</span>
+              <span className="app-comms-time">{clock(Math.max(0, engineCtx.state.gameMs - r.entry.atGameMs))}</span>
+            </span>
+            <span className="app-comms-subject">{shipName(r.entry.defId)}</span>
+          </button>
+        ))}
+      </div>
+      <div className="app-comms-device">
+        <div className="app-comms-body-col">
+          <div className="app-comms-screen">
+            <div className="app-dim" style={{ marginBottom: 'var(--wui-sp-4)' }}>{tr('ui.WreckLog.007')}</div>
+            <div className="app-kv"><span>{tr('ui.WreckLog.020')}</span><span>{shipName(e.defId)}</span></div>
+            <div className="app-kv"><span>{tr('ui.WreckLog.004')}</span><span>{cause}</span></div>
+            <div className="app-kv"><span>{tr('ui.WreckLog.005')}</span><span>{where}</span></div>
+            <div className="app-kv"><span>{tr('ui.WreckLog.010')}</span><span>{wreckText}</span></div>
+            {racks.map(([label, list]) => (
+              <div className="app-kv" key={label}>
+                <span>{label}</span>
+                <span>{list.filter((x): x is string => x !== null).map(modName).join(' · ') || '—'}</span>
+              </div>
+            ))}
+            {(e.plugs?.length ?? 0) > 0 ? (
+              <div className="app-kv">
+                <span>{tr('ui.WreckLog.008')}</span>
+                <span>{e.plugs!.map(modName).join(' · ')}</span>
+              </div>
+            ) : null}
+            {Object.keys(e.droneLoad ?? {}).length > 0 ? (
+              <div className="app-kv">
+                <span>{tr('ui.WreckLog.009')}</span>
+                <span>
+                  {Object.entries(e.droneLoad!)
+                    .map(([id, n]) => `${engineCtx.ctx.items.get(id)?.name ?? id}×${n}`)
+                    .join(' · ')}
+                </span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

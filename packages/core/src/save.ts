@@ -26,6 +26,8 @@ import type { ShipFitPreset } from './state'
 import type { WormholeGridState } from './wormholeGrid'
 import { WORMHOLE_HOLD_COLS, cleanHoldPlacement } from './wormholeHold'
 import { WORMHOLE_SCAN_BASE_MS, WORMHOLE_STOCK_MAX_HARD } from './wormholeScan'
+// 沉船记录上限（2026-09-27 船长令）：读档截断与写入共用同一常量
+import { WRECK_LOG_MAX } from './shipWrecks'
 import { WORMHOLE_AUTO_MAX_SHIPS, WORMHOLE_AUTO_REPORT_MAX } from './wormholeAuto'
 import { WORMHOLE_ARCHETYPES, WORMHOLE_GRID_SAVE_MAX_R, wormholeArchetypeOf } from './wormholeGrid'
 import { WORMHOLE_FAMILY_ORDER, wormholeFamilyOfSeed } from './wormholeFoes'
@@ -2739,6 +2741,67 @@ for (const [key, value] of Object.entries(licensesRaw)) {
    * 缺 id / 缺主题或正文 / 段落不是字符串数组一律丢（宁可这封信没有，也不给界面喂半条）。
    * 参数与奖励清单只做浅层校验（值必须是 string|number），坏项丢掉不影响其余。
    */
+  /**
+   * **沉船记录**（2026-09-27 船长令）：最多 `WRECK_LOG_MAX` 条、新的在前。
+   * 只收形态合法的条目：船 id 与船名非空、原因枚举合法、时间有限；装配/插件/无人机逐位净化
+   * （与 `shipWrecks` 同手法）。
+   * ⚠ **漏登记就是"读档即丢"**（本文件头注那条老坑）⇒ 收发两处都要写。
+   */
+  const wreckLogCleanRack = (v: unknown): Array<string | null> => {
+    if (!Array.isArray(v)) return []
+    const out: Array<string | null> = []
+    for (const x of v.slice(0, RACK_MAX)) out.push(typeof x === 'string' && x.length > 0 ? x : null)
+    while (out.length > 0 && out[out.length - 1] === null) out.pop()
+    return out
+  }
+  const wreckLog: NonNullable<GameState['wreckLog']> = []
+  for (const raw of Array.isArray(src.wreckLog) ? src.wreckLog : []) {
+    if (wreckLog.length >= WRECK_LOG_MAX) break
+    const r = asRaw(raw)
+    const shipId = typeof r.shipId === 'string' ? r.shipId : ''
+    const shipName = typeof r.shipName === 'string' ? r.shipName.trim().slice(0, 120) : ''
+    const cause = r.cause
+    if (shipId.length === 0 || shipName.length === 0) continue
+    if (cause !== 'expedition-lost' && cause !== 'ai-lost' && cause !== 'wormhole-sunk' && cause !== 'wormhole-lost') {
+      continue
+    }
+    const atGameMs = num(r.atGameMs)
+    if (!Number.isFinite(atGameMs) || atGameMs < 0) continue
+    const fitRaw = asRaw(r.fitted)
+    const fitted: FittedModules = {
+      high: wreckLogCleanRack(fitRaw.high),
+      mid: wreckLogCleanRack(fitRaw.mid),
+      low: wreckLogCleanRack(fitRaw.low),
+    }
+    const droneLoad: Record<string, number> = {}
+    for (const [droneId, n] of Object.entries(asRaw(r.droneLoad))) {
+      if (droneId.length === 0) continue
+      if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) continue
+      droneLoad[droneId] = Math.floor(n)
+    }
+    const defId = typeof r.defId === 'string' && r.defId.length > 0 ? r.defId : undefined
+    const galaxyId = typeof r.galaxyId === 'string' && r.galaxyId.length > 0 ? r.galaxyId : undefined
+    const depthRaw = r.wormholeDepth
+    const wormholeDepth =
+      typeof depthRaw === 'number' && Number.isFinite(depthRaw) && depthRaw >= 1 ? Math.floor(depthRaw) : undefined
+    const wreckGalaxyId = typeof r.wreckGalaxyId === 'string' && r.wreckGalaxyId.length > 0 ? r.wreckGalaxyId : undefined
+    const logPlugs = cleanPlugIds(r.plugs)
+    wreckLog.push({
+      seq: num(r.seq),
+      shipId,
+      shipName,
+      ...(defId !== undefined ? { defId } : {}),
+      cause,
+      ...(galaxyId !== undefined ? { galaxyId } : {}),
+      ...(wormholeDepth !== undefined ? { wormholeDepth } : {}),
+      atGameMs,
+      fitted,
+      ...(logPlugs !== undefined ? { plugs: logPlugs } : {}),
+      ...(Object.keys(droneLoad).length > 0 ? { droneLoad } : {}),
+      ...(wreckGalaxyId !== undefined ? { wreckGalaxyId } : {}),
+      ...(r.recovered === true ? { recovered: true } : {}),
+    })
+  }
   const commsInstance: Record<string, CommsInstanceEntry> = {}
   for (const [key, value] of Object.entries(asRaw(src.commsInstance))) {
     if (key.length === 0) continue
@@ -4047,6 +4110,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     ...(Object.keys(weekendWrecks).length > 0 ? { weekendWrecks } : {}),
     // 玩家舰船残骸（2026-09-26 兼容字段）：空表不落字段；有残骸时连游标一起落（"最新那具优先"靠它）
     ...(Object.keys(shipWrecks).length > 0 ? { shipWrecks, shipWreckSeq: num(src.shipWreckSeq) } : {}),
+    ...(wreckLog.length > 0 ? { wreckLog, wreckLogSeq: num(src.wreckLogSeq) } : {}),
     rareOpenedUnits,
     rareBoxesOpened,
     rareBurnUnits,

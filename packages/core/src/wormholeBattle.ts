@@ -573,7 +573,10 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
     const name = ctx.ships.get(uidDefId(uid))?.name ?? uid
     // **插件先折黑匣、再沉船**（顺序敏感：`loseShip` 会删掉 fleet 条目）
     salvagePlugsOnSink(state, ctx, uid)
-    loseShip(state, uid, ctx, `虫洞内被击沉（${name}）`)
+    loseShip(state, uid, ctx, `虫洞内被击沉（${name}）`, undefined, {
+      cause: 'wormhole-sunk',
+      wormholeDepth: run.depth,
+    })
   }
   if (sunk.length > 0) {
     run.fleet = run.fleet.filter((uid) => !sunk.includes(uid))

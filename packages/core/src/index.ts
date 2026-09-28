@@ -854,8 +854,11 @@ export {
   noteShipWreck,
   advanceShipWreckDecay,
   trySalvagePlayerWreckOf,
+  WRECK_LOG_MAX,
+  wreckLogRowsOf,
 } from './shipWrecks'
-export type { WreckLootRow, PlayerWreckSalvage } from './shipWrecks'
+export type { WreckLootRow, PlayerWreckSalvage, WreckLogRow } from './shipWrecks'
+export type { WreckLogEntry, WreckLogCause } from './state'
 /**
  * **舰船插件**（2026-09-26 船长令）：装配页只读区（`plugInfoOf`）· 闸门拒因（`plugBlockReasonOf`）·
  * 章鱼人兑换（`exchangePlugBlueprint` / `plugExchangeRowsOf` / `PLUG_BLUEPRINT_COST`）。

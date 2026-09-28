@@ -2214,6 +2214,42 @@ export interface WeekendWreckRecord {
  *
  * ⚠ **残骸是一条"星系账"，不是物品**：不进市场、不进图鉴、不折算矿物/信用点（船长：「除此以外没有其他资源」）。
  */
+/**
+ * **沉船记录条目**（**2026-09-27 船长令**：「在通讯内新增一个用于记录玩家损失的舰船和舰船上有什么装配」）：
+ * 一条 = 一次我方舰船损失。范围 = **玩家全部舰船损失**（远征 / AI 副船 / 虫洞内被击沉 / 虫洞内整队失联）；
+ * 虫洞那两条**不生成残骸**（`wreckGalaxyId` 缺席）但一样记。
+ */
+export type WreckLogCause = 'expedition-lost' | 'ai-lost' | 'wormhole-sunk' | 'wormhole-lost'
+
+export interface WreckLogEntry {
+  /** 记录号（单调递增；列表按它倒序） */
+  seq: number
+  /** 原舰船 id（与残骸账同键，便于联动） */
+  shipId: string
+  /** 损毁那一刻的显示名（含玩家自定义名） */
+  shipName: string
+  /** 船型 id（界面显示船型名） */
+  defId?: string
+  /** 损失原因（结构化；文案走 l10n） */
+  cause: WreckLogCause
+  /** 正常星系 = 星系 id */
+  galaxyId?: string
+  /** 虫洞内损毁 = 当时的层数（1 起） */
+  wormholeDepth?: number
+  /** 发生时游戏内时间 */
+  atGameMs: number
+  /** 损毁那一刻的装配快照（高/中/低槽） */
+  fitted?: FittedModules
+  /** 损毁那一刻装着的舰船插件 id 列表 */
+  plugs?: string[]
+  /** 损毁那一刻的无人机舱清单（droneId → 架数） */
+  droneLoad?: Record<string, number>
+  /** 留下的残骸所在星系（虫洞内损毁不写） */
+  wreckGalaxyId?: string
+  /** 残骸被捞走时置位（trySalvagePlayerWreckOf） */
+  recovered?: boolean
+}
+
 export interface ShipWreckRecord {
   /** 记录号（单调递增；打捞"最新那具优先"就靠它排序） */
   seq: number
@@ -2333,6 +2369,20 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
    * 兼容字段（可选，**零迁移**）：老档缺席 = 一张空表。
    */
   shipWrecks?: Record<string, ShipWreckRecord>
+  /**
+   * **沉船记录**（**2026-09-27 船长令**）：最多 `WRECK_LOG_MAX`（30）条、**新的在前**；
+   * 装配/插件/无人机都是**损毁那一刻**的快照。
+   *
+   * ⚠ 与 `shipWrecks` 是**两本账**：那边是"残骸实体"（48 游戏小时衰减、捞完即删），这边是**长期记录**
+   * （留 30 条）；记录里的残骸状态是**读那边算出来的**（可打捞 / 已回收 / 已过期）。
+   * 兼容字段（可选，**零迁移**）：老档缺席 = 还没损失过船。
+   */
+  wreckLog?: WreckLogEntry[]
+  /**
+   * **沉船记录号游标**（单调递增；列表按它倒序）。
+   * 兼容字段（可选，**零迁移**）：老档缺席 = 0，下一条从 1 起。
+   */
+  wreckLogSeq?: number
   /**
    * **玩家舰船残骸的记录号游标**（单调递增；打捞"最新那具优先"与同星系多具排序用）。
    * 兼容字段（可选，**零迁移**）：老档缺席 = 0，下一具从 1 起。

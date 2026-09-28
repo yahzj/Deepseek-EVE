@@ -4026,6 +4026,27 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.204": { zh: "结构锁定 {p1} 秒 · 每场一次", en: "Structure locked for {p1} s · once per battle" },
   /* 2026-09-27 无人机储备甲板（船长令）：参数行 = 复位周期；秒数由界面按 `droneReviveCycleMs` 现算
      （**说明文案里不手写数字** —— 本会话定的甲案）。.206 = 行名，.205 = 行值。 */
+  /* ── 沉船记录（2026-09-27 船长令：通讯内新增一个分类，记录玩家损失的舰船与当时的装配）── */
+  "ui.WreckLog.001": { zh: "沉船记录", en: "Ship Loss Log" },
+  "ui.WreckLog.002": { zh: "收件箱", en: "Inbox" },
+  "ui.WreckLog.003": { zh: "还没有沉船记录。", en: "No lost ships yet." },
+  "ui.WreckLog.004": { zh: "损失原因", en: "Cause" },
+  "ui.WreckLog.005": { zh: "地点", en: "Location" },
+  "ui.WreckLog.006": { zh: "损失时间", en: "Lost at" },
+  "ui.WreckLog.007": { zh: "装配", en: "Fitting" },
+  "ui.WreckLog.008": { zh: "舰船插件", en: "Ship plugs" },
+  "ui.WreckLog.009": { zh: "无人机舱", en: "Drone bay" },
+  "ui.WreckLog.010": { zh: "残骸", en: "Wreck" },
+  "ui.WreckLog.011": { zh: "可打捞（剩余 {p1}）", en: "Salvageable ({p1} left)" },
+  "ui.WreckLog.012": { zh: "已回收", en: "Recovered" },
+  "ui.WreckLog.013": { zh: "已过期", en: "Expired" },
+  "ui.WreckLog.014": { zh: "无残骸（虫洞内损毁）", en: "No wreck (lost inside a wormhole)" },
+  "ui.WreckLog.015": { zh: "虫洞 · 第 {p1} 层", en: "Wormhole · depth {p1}" },
+  "ui.WreckLog.016": { zh: "远征失利后遭追击", en: "Lost on an expedition after pursuit" },
+  "ui.WreckLog.017": { zh: "副船远征失联", en: "Auxiliary lost on expedition" },
+  "ui.WreckLog.018": { zh: "虫洞内被击沉", en: "Sunk inside a wormhole" },
+  "ui.WreckLog.019": { zh: "虫洞内整队失联", en: "Fleet lost inside a wormhole" },
+  "ui.WreckLog.020": { zh: "船型", en: "Hull" },
   "ui.shipInfo.205": { zh: "复位周期 {p1} 秒", en: "Reset cycle {p1} s" },
   "ui.shipInfo.206": { zh: "复位周期", en: "Reset cycle" },
   /* .207 = **属性行的值**（裸秒数）：行名已写了"复位周期"，值里不再重复（同族 drone-rack 同款做法）。 */
