@@ -241,9 +241,9 @@ export const EN_MODULES: EnTable = {
 
   /* 损伤管制装置线（2026-09-25 船长令：低槽 · 结构三系减伤 +30/40/50 ＋ 每场一次"结构锁定 1 秒"）
      ⚠ 模块英文必须写在本表（`EN_MODULES`）——写进 `EN_ITEMS` 的话覆盖层查不到（`l10n-overlay` 用例会红）。 */
-  'mod-dc-1': { name: 'Damage Control Unit MK1', description: '+30% hull resistance to every damage type; when structure is first emptied, structure locks at 1 for 1 second (once per battle, spends 1 Damage Control Repair Kit).' },
-  'mod-dc-2': { name: 'Damage Control Unit MK2', description: '+40% hull resistance to every damage type; when structure is first emptied, structure locks at 1 for 1 second (once per battle, spends 1 Damage Control Repair Kit).' },
-  'mod-dc-3': { name: 'Damage Control Unit MK3', description: '+50% hull resistance to every damage type; when structure is first emptied, structure locks at 1 for 1 second (once per battle, spends 1 Damage Control Repair Kit).' },
+  'mod-dc-1': { name: 'Damage Control Unit MK1', description: '+30% hull resistance to every damage type; it engages automatically the first time structure is emptied.' },
+  'mod-dc-2': { name: 'Damage Control Unit MK2', description: '+40% hull resistance to every damage type; it engages automatically the first time structure is emptied.' },
+  'mod-dc-3': { name: 'Damage Control Unit MK3', description: '+50% hull resistance to every damage type; it engages automatically the first time structure is emptied.' },
   // 采集 / 货舱
   'mod-miner-civ': { name: 'Civilian Mining Laser', description: '+10% yield. A station staple and the first upgrade a new pilot can afford.' },
   'mod-miner-1': { name: 'Reinforced Mining Laser MK1', description: '+20% cycle yield. The first self-built piece of industrial gear.' },
@@ -271,7 +271,7 @@ export const EN_MODULES: EnTable = {
   'mod-missile-2': { name: 'Heavy Missile Launcher MK2', description: 'Heavy missile nest: 11.8 km explosive bombardment — the nightmare of armored formations.' },
   'mod-missile-3': { name: 'Cruise Missile Launcher MK3', description: 'Cruise missile nest: 14.9 km of long-range ruin — the pre-emptive fire before large fleets engage.' },
   // 无人机件
-  'mod-drone-rack-1': { name: 'Drone Deck Expansion MK1', description: 'External drone deck: +15 m³ drone bay (3 more scouts or 1 combat drone). Where drone fleets start.' },
+  'mod-drone-rack-1': { name: 'Drone Deck Expansion MK1', description: 'An external drone deck: it adds a hangar section. Where drone fleets start.' },
   'mod-drone-rack-2': { name: 'Drone Deck Expansion MK2', description: 'External drone deck: +35 m³ drone bay. The expansion plan for medium drone formations.' },
   'mod-drone-rack-3': { name: 'Drone Deck Expansion MK3', description: 'Formation-grade external deck: +70 m³ drone bay.' },
   'mod-drone-tac-1': { name: 'Tactical Control Array MK1', description: '+12% single-shot damage for launched drones. The firepower core of drone builds.' },
@@ -346,9 +346,9 @@ export const EN_MODULES: EnTable = {
   'mod-salvager-1': { name: 'Salvager MK1', description: 'Wreck salvage: pulls 1 wreck every 10 s; the denser the field, the fatter the haul.' },
   'mod-salvager-2': { name: 'Salvager MK2', description: 'Wreck salvage: cycle shortened to 8 s.' },
   'mod-salvager-3': { name: 'Salvager MK3', description: 'Wreck salvage: cycle shortened to 6 s.' },
-  'mod-hullrep-civ': { name: 'Civilian Hull Repair Unit', description: 'Mid-slot repair unit: restores 5 armor and 5 structure every 5 s in combat, spending 1 civilian repair kit per tick. A life-saver, not a match for enemy fire. Repair per tick scales with armor/structure capacity and Quick Hull Repair.' },
-  'mod-hullrep-1': { name: 'Hull Repair Unit MK1', description: 'Mid-slot repair unit: restores 10 armor and 10 structure every 5 s in combat, spending 1 military repair kit per tick — a marked extension of life, though still not a match for enemy fire. Repair per tick scales with armor/structure capacity and Quick Hull Repair.' },
-  'mod-hullrep-2': { name: 'Hull Repair Unit MK2', description: 'Mid-slot repair unit: restores 18 armor and 18 structure every 5 s in combat, spending 1 military repair kit per tick — the endurance card of a well-fitted cruiser or battleship. Repair per tick scales with armor/structure capacity and Quick Hull Repair.' },
+  'mod-hullrep-civ': { name: 'Civilian Hull Repair Unit', description: 'Mid-slot repair unit: restores armor and structure in combat, spending a civilian repair kit per tick. A life-saver, not a match for enemy fire. Repair per tick scales with armor/structure capacity and Quick Hull Repair.' },
+  'mod-hullrep-1': { name: 'Hull Repair Unit MK1', description: 'Mid-slot repair unit: restores armor and structure in combat, spending a military repair kit per tick — a marked extension of life, though still not a match for enemy fire. Repair per tick scales with armor/structure capacity and Quick Hull Repair.' },
+  'mod-hullrep-2': { name: 'Hull Repair Unit MK2', description: 'Mid-slot repair unit: restores armor and structure in combat, spending a military repair kit per tick — the endurance card of a well-fitted cruiser or battleship. Repair per tick scales with armor/structure capacity and Quick Hull Repair.' },
   'mod-lock-1': { name: 'Target Lock Array MK1', description: 'Focuses the whole formation on the lead ship; formation damage +8%.' },
   'mod-lock-2': { name: 'Target Lock Array MK2', description: 'Focuses the whole formation on the lead ship; formation damage +12%.' },
   'mod-lock-3': { name: 'Target Lock Array MK3', description: 'Focuses the whole formation on the lead ship; formation damage +20%.' },
@@ -365,7 +365,7 @@ export const EN_MODULES: EnTable = {
   'mod-lair-turret-d': { name: 'Gravekeeper Long Cannon', description: '100% accuracy at a 12 km extreme range (60% at the very end); extremely slow to reload and extremely heavy per shot.' },
   'mod-lair-armor-d': { name: 'Mausoleum Armor Layer', description: 'Gravekeeper lair-exclusive: mausoleum-grade composite heavy armor — armor capacity +110%, at the cost of −25% combat speed (multiple copies do not stack) and 42 CPU. Fitting it means one less heavy gun and a slower ship. Gravekeepers never needed to chase anyone.' },
   'mod-lair-turret-e': { name: 'Megastructure Wreck Cannon', description: 'Titan lair-exclusive: a main gun torn from a megastructure core section — one hammer blow every ten seconds with extreme single-shot power, at the cost of clumsy ballistics that miss more with range (nearly wasted at the band\'s end) and a base accuracy of only 70%. Explosive warheads crack armor hard but barely touch shields: the megastructure way of trading blows at medium range. Its construction is oddly simple, costing only 22 CPU.' },
-  'mod-lair-hangar-e': { name: 'Deep Hangar', description: 'Titan lair-exclusive: a whole hangar deck deep in the megastructure hull — drone bay +95 m³ (19 more scouts, 9 combat drones or 4 siege drones). It can stock them and launch them, at a cost of 50 CPU; what really caps launches is still CPU bandwidth — the hangar only guarantees you carry enough.' },
+  'mod-lair-hangar-e': { name: 'Deep Hangar', description: 'Titan lair-exclusive: a whole hangar deck deep in the megastructure hull — it can stock drones and launch them; what really caps launches is still CPU bandwidth, and the hangar only guarantees you carry enough.' },
   'mod-lair-frame-e': { name: 'Megastructure Frame', description: 'Titan lair-exclusive: a keel section cut whole from a megastructure — structure capacity +60% and armor capacity +30%. When shields and armor are punched through, this is the last stretch of HP. Megastructure constructs do not care about agility, only about lasting to the end.' },
   'mod-lair-drone-tac-g': { name: 'Squidwasp Swarm Control', description: 'Deadarmy lair-exclusive: a swarm console pulled off a wreck — +45% single-shot damage for launched drones, at only 32 CPU. Exiles have no new parts, only good hands.' },
   'mod-lair-drone-relay-g': { name: 'Exile Relay Mast', description: 'Deadarmy lair-exclusive: a relay array jury-rigged from scrap masts — +65% range for launched drones (Hummingbird 6,600 m / Redkite 7,425 m / Falcon 8,250 m / Thundergull 10,725 m). Only 34 CPU, leaving compute for elsewhere.' },

@@ -15,7 +15,7 @@
  */
 import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
-import { DEFAULT_BALANCE, droneBayTotalM3, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS } from '@whale/core'
+import { DEFAULT_BALANCE, DC_LOCK_MS, droneBayTotalM3, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS } from '@whale/core'
 import { hoverTipProps } from './Tooltip'
 import { tr } from '../i18n/locale'
 // ⚠ 槽类名（高/中/低槽）与舰船类别/舰级名**一律走这三个本地化单点**（2026-09-26 船长报障
@@ -1191,6 +1191,16 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
    */
   if ((mod.droneHullHpBonusPct ?? 0) > 0) {
     lines.push({ k: tr("ui.shipInfo.202"), v: `+${pct(mod.droneHullHpBonusPct ?? 0)}` })
+  }
+  /**
+   * **损伤管制装置的启动规格**（2026-09-27 · data-map 甲案「说明不再手写数字、数值由卡面参数行渲染」）：
+   * 行名 = `ui.shipInfo.024`「运转消耗」族的口径——这里用**独立行名 + 值**两段，时长读引擎常量 `DC_LOCK_MS`。
+   */
+  if (mod.hullSaveKit !== undefined) {
+    lines.push({
+      k: tr("ui.shipInfo.203"),
+      v: tr("ui.shipInfo.204", { p1: Math.round(DC_LOCK_MS / 1000) }),
+    })
   }
   if (mod.cpuUse !== undefined) lines.push({ k: tr("ui.shipInfo.169"), v: fmt(mod.cpuUse) })
   return lines

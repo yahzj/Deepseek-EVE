@@ -447,7 +447,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     droneBayBonusM3: 15,
     cpuUse: 5,
-    description: '外挂无人机甲板：无人机舱 +15 m³（可多带 3 架侦察机 / 1 架战斗机）。无人机流的起点。',
+    description: '外挂无人机甲板：加装机库段。无人机流的起点。',
   },
   {
     id: 'mod-drone-rack-2',
@@ -809,7 +809,7 @@ export const MODULES: readonly ModuleDef[] = [
     hullSaveKit: 'repairkit-dc',
     unique: true,
     cpuUse: 30,
-    description: '结构层三系减伤各 +30%；结构首次被打空时启动，结构锁定在 1 点、持续 1 秒（每场一次，启动消耗损管修理组件 ×1）。',
+    description: '结构层三系减伤各 +30%；结构首次被打空时自动启动。',
   },
   {
     id: 'mod-dc-2',
@@ -820,7 +820,7 @@ export const MODULES: readonly ModuleDef[] = [
     hullSaveKit: 'repairkit-dc',
     unique: true,
     cpuUse: 38,
-    description: '结构层三系减伤各 +40%；结构首次被打空时启动，结构锁定在 1 点、持续 1 秒（每场一次，启动消耗损管修理组件 ×1）。',
+    description: '结构层三系减伤各 +40%；结构首次被打空时自动启动。',
   },
   {
     id: 'mod-dc-3',
@@ -831,7 +831,7 @@ export const MODULES: readonly ModuleDef[] = [
     hullSaveKit: 'repairkit-dc',
     unique: true,
     cpuUse: 46,
-    description: '结构层三系减伤各 +50%；结构首次被打空时启动，结构锁定在 1 点、持续 1 秒（每场一次，启动消耗损管修理组件 ×1）。',
+    description: '结构层三系减伤各 +50%；结构首次被打空时自动启动。',
   },
   // ══════════ 装甲增厚板（armor 容量件：纯容量，与抗性件同槽二选一） ══════════
   {
@@ -1216,7 +1216,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairArmorHp: 5,
     repairHullHp: 5,
     repairKit: 'repairkit-civ',
-    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 5 点，每跳消耗 1 枚民用修理组件——保命件，修不过敌方火力。每跳修复量随装甲/结构容量加成与舰体快修学放大。',
+    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 5 点，每跳消耗民用修理组件——保命件，修不过敌方火力。每跳修复量随装甲/结构容量加成与舰体快修学放大。',
   },
   {
     id: 'mod-hullrep-1',
@@ -1227,7 +1227,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairArmorHp: 10,
     repairHullHp: 10,
     repairKit: 'repairkit-mil',
-    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 10 点，每跳消耗 1 枚军用修理组件——显著延寿，修不过敌方火力。每跳修复量随装甲/结构容量加成与舰体快修学放大。',
+    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 10 点，每跳消耗军用修理组件——显著延寿，修不过敌方火力。每跳修复量随装甲/结构容量加成与舰体快修学放大。',
   },
   {
     id: 'mod-hullrep-2',
@@ -1238,7 +1238,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairArmorHp: 18,
     repairHullHp: 18,
     repairKit: 'repairkit-mil',
-    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 18 点，每跳消耗 1 枚军用修理组件——高配巡洋/战列舰的持久战底牌。每跳修复量随装甲/结构容量加成与舰体快修学放大。',
+    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 18 点，每跳消耗军用修理组件——高配巡洋/战列舰的持久战底牌。每跳修复量随装甲/结构容量加成与舰体快修学放大。',
   },
 
   /* ═══ 2026-09-09 目标锁定阵列（target-lock 家族·高槽；船长拍板：集火 + 被锁目标受击加深；
@@ -1468,7 +1468,7 @@ export const MODULES: readonly ModuleDef[] = [
     droneBayBonusM3: 95,
     cpuUse: 50,
     description:
-      '泰坦巨构窝点专属：巨构舰体深处的整层机库——无人机舱 +95 m³（可多带 19 架侦察机 / 9 架战斗机 / 4 架攻坚机）。囤得起、放得出，代价是 50 点 CPU；真正卡放飞数量的仍是 CPU 带宽，机库只保证你带得够多。',
+      '泰坦巨构窝点专属：巨构舰体深处的整层机库——囤得起、放得出；真正卡放飞数量的仍是 CPU 带宽，机库只保证你带得够多。',
   },
   {
     id: 'mod-lair-frame-e',
