@@ -618,6 +618,22 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormhole.036": { zh: "临时空间里有 {p1} 件没处理：先到「货仓」页放回货仓或丢弃，再继续。", en: "{p1} item(s) in temporary storage are unresolved: put them back into the hold or discard them on the Cargo page, then continue." },
   /** 组合句：`{p1}` 由渲染层两步取词喂进（core 侧传 `p1Id` ＝忙态 id；见 `paramText` 约定） */
   "core.wormhole.037": { zh: "主控正在{p1}：先把手上的活收工，才能回到虫洞。", en: "The pilot is {p1} — finish that job before returning to the wormhole." },
+  /* ── 本地化批三（2026-09-27 · 三号）：进洞自动停机的**读数段**（原先裸中文塞进统一日志的 detail）──
+   * 挂法见 `core.activityGate.007` 的 `{p4}` 槽与 `activityGate.logAutoHalt` 头注。 */
+  "core.wormhole.038": { zh: "已扫 {p1} 分钟，回来可续扫", en: "{p1} minutes scanned; you can resume when you return" },
+  "core.wormhole.039": { zh: "「{p1}」 · 本趟 {p2} 单位{p3}，货物留在船上", en: "“{p1}” · {p2} units of {p3} this run; the cargo stays aboard" },
+  "core.wormhole.040": { zh: "{p1} · 本趟约 {p2} m³ 当量，货物留在船上", en: "{p1} · about {p2} m³ equivalent this run; the cargo stays aboard" },
+  "core.wormhole.041": { zh: "已即时返港停靠「{p1}」", en: "it docked back at “{p1}” at once" },
+  /**
+   * **两个通用词**（2026-09-27）：它们会出现在上面三句的**参数位**上，而参数值不会被翻译
+   * ⇒ 各配一个 id，由 core 传 `p1Id` 让渲染层先翻好（见 `wormhole.ts` 的 `haltEntryActivityOf`）。
+   * 落法：`p{n}p{k}Id` 与顶层 `p1Id` 同一约定（"该槽第一步先换成这个 id 的当前语言译文"）。
+   *
+   * ⚠ **只收通用词，不收内容专名**：内容名（矿带 / 矿石 / 空间站 / 星系）走 `packages/data/src/l10n.ts`
+   * 的**按 def id 的英文覆盖表**，不在本表里 ⇒ 那几处照旧是中文（已登记进核验基线，**不在 core 里硬造第二套解析**）。
+   */
+  "core.wormhole.042": { zh: "母港", en: "Home port" },
+  "core.wormhole.043": { zh: "矿带", en: "the belt" },
   /* ── 第十七批：equipment.ts（装配 / 换装 / 无人机 / 弹药档位 / 卸下）── */
   "core.equipment.001": { zh: "未知装备：{p1}。", en: "Unknown module: {p1}." },
   "core.equipment.002": { zh: "装备库里没有 {p1}，先去组装机造一件。", en: "There is no {p1} in module storage — build one at the assembly unit first." },
@@ -1137,6 +1153,22 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.activity.004": { zh: "远征", en: "Expedition" },
   "core.activity.005": { zh: "快递投送", en: "Courier delivery" },
   "core.activity.006": { zh: "建站交付", en: "Outpost delivery" },
+  /**
+   * **取消代价**（2026-09-27 三号核验批）：`activityGate.HALT_COST` 的十条。
+   *
+   * 它们是**参数值**（统一日志 `{p2}` 与警告句 `{p2}`），参数不会被翻译 ⇒ 必须各配一个 id 由
+   * 渲染层按"槽译文"约定先翻好；中文值与 `HALT_COST` **逐字相同**（用例钉住），中英语义对齐。
+   */
+  "core.activity.007": { zh: "本趟原矿留在船上，舰船返港", en: "ore from this run stays aboard and the ship returns to port" },
+  "core.activity.008": { zh: "本趟残骸留在船上，舰船返港", en: "wrecks from this run stay aboard and the ship returns to port" },
+  "core.activity.009": { zh: "本段报酬拿不到（报酬到站才结）", en: "this leg pays nothing (payment settles on arrival)" },
+  "core.activity.010": { zh: "扫描进度保留", en: "scan progress is kept" },
+  "core.activity.011": { zh: "舰船召回母港", en: "the ship is recalled to the home port" },
+  "core.activity.012": { zh: "停炉——当前那一批的进度丢弃", en: "the furnace stops and the current batch's progress is lost" },
+  "core.activity.013": { zh: "停线——当前那一批的进度丢弃", en: "the line stops and the current batch's progress is lost" },
+  "core.activity.014": { zh: "远征无法中断", en: "an expedition cannot be interrupted" },
+  "core.activity.015": { zh: "投送不可取消", en: "a delivery cannot be cancelled" },
+  "core.activity.016": { zh: "交付循环停止、舰船返港，本趟建材留在船上", en: "the delivery loop stops, the ship returns to port and this run's materials stay aboard" },
   /**
    * **推进器周期后缀的本地化版**（2026-09-22 · 手册本地化批）：
    * core `thrusterCycleFullText()` 是中文整句，被 `ui/shipInfo.tsx` 直接拼进模块说明里 ⇒
@@ -4939,7 +4971,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.activityGate.004": { zh: "战斗中：这一场打完才能切换主控活动。", en: "In combat: finish this fight before switching the command-ship activity." },
   "core.activityGate.005": { zh: "本趟虫洞探索还没收场：先撤离，才能切换主控活动。", en: "This wormhole run is still open: extract before switching the command-ship activity." },
   "core.activityGate.006": { zh: "换港返航途中：抵达后就能切换主控活动。", en: "Relocating to another port: switching becomes available on arrival." },
-  "core.activityGate.007": { zh: "已自动停止「{p1}」：{p2}。（{p3}）", en: "Stopped “{p1}” automatically: {p2}. ({p3})" },
+  "core.activityGate.007": { zh: "已自动停止「{p1}」：{p2}。（{p4}）", en: "Stopped “{p1}” automatically: {p2}. ({p4})" },
   "core.mining.037": { zh: "已切换矿带：停掉「{p1}」的开采（本趟 {p3} 单位留在船上），改采「{p2}」。", en: "Switched belts: stopped mining “{p1}” ({p3} units stay aboard this run) and started on “{p2}”." },
   "core.salvaging.028": { zh: "已切换打捞点：停掉「{p1}」的打捞（本趟约 {p3} m³ 当量留在船上），改去「{p2}」。", en: "Switched salvage sites: stopped salvaging “{p1}” (about {p3} m³ aboard this run) and moved to “{p2}”." }
 }

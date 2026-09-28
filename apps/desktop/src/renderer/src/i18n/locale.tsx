@@ -131,6 +131,19 @@ function resolveParamIds(
 }
 
 /**
+ * **一条 core 日志的文案字段**（`text` + 可选 `textId` / `textParams`）。
+ *
+ * ⚠ 值域比 core 的 `LogParams` **多一项 `readonly string[]`**：那是**段链 `parts`**
+ * （本渲染层认的约定键，见 `composeParts`）。core 侧刻意不把它并进 `LogParams`
+ * （并了会把全部读取点拖成联合类型），所以两边类型不同名也不同宽，**别互相照抄**。
+ */
+export interface LogEntryText {
+  text: string
+  textId?: string
+  textParams?: Readonly<Record<string, string | number | readonly string[]>>
+}
+
+/**
  * **多段文案收口（甲案配套 · 2026-09-20）**：把"由若干独立句子拼起来的一句日志"整体渲染。
  *
  * 约定（core 侧同款写法）：首段的 id 照常在 `textId`；后续段按顺序用 `p{n}Id` 绑定
@@ -138,11 +151,18 @@ function resolveParamIds(
  * 一次把"id 参数也要再翻"的链走到底 ⇒ **拼出来的每一段都是当前语言**，不会再出现半中半英。
  */
 function composeParts(
-  entry: { text: string; textId?: string; textParams?: Readonly<Record<string, string | number>> },
+  entry: LogEntryText,
   text: (id: string, params?: Record<string, string | number>) => string,
 ): string {
   if (entry.textId === undefined) return entry.text
-  const all: Record<string, string | number> = { ...(entry.textParams ?? {}) }
+  /**
+   * 收窄成"字符串/数值"的工作副本：`parts`（数组）在下面单独取，**不进插值表**。
+   * 这一步也是上面 `LogEntryText` 值域写全的原因——收窄只在这一个地方发生。
+   */
+  const all: Record<string, string | number> = {}
+  for (const [k, v] of Object.entries(entry.textParams ?? {})) {
+    if (typeof v === 'string' || typeof v === 'number') all[k] = v
+  }
   /**
    * 参数命名空间：**第 1 段**用顶层键（`p1`/`p2`…，与单段日志完全一致）；
    * **第 n(n≥2) 段**用 `p{n-1}p{k}`（例：第 4 段的 `{p1}` = `p3p1`），段间互不串味。
@@ -169,10 +189,32 @@ function composeParts(
         const deep: Record<string, string | number> = {}
         for (const p of tpl.zh.matchAll(/\{(\w+)\}/g)) {
           const name = p[1]!
-          // 先取"槽号 + 占位符名"（`p{n}p{k}`）；没有再回落顶层同名（`{p1}` 这类与槽同名的写法）
+          /**
+           * 先取"槽号 + 占位符名"（`p{n}p{k}`）；没有再回落顶层同名（`{p1}` 这类与槽同名的写法）。
+           *
+           * ⚠ **回落要看"顶层那名是不是本槽的"**（2026-09-27 实障修正）：顶层同名的
+           * `p1` 只有在该值确实是本槽预留的（配了 `p1Id` 槽译文）时才许回落 ——
+           * 否则会把**与本槽同号的顶层参数**（例：统一日志的 `{p1}` ＝ 活动名）填进本槽的
+           * `{p1}` 占位符里（张冠李戴）。既有写法 `p1` + `p1Id` 因此照旧工作，
+           * 而"只给了顶层参数、没给槽译文"的新写法会老实留空，由体检用例点名。
+           */
           const scoped = all[`${slot}${name}`]
           if (scoped !== undefined) deep[name] = scoped
-          else if (Object.prototype.hasOwnProperty.call(all, name)) deep[name] = all[name]!
+          else if (Object.prototype.hasOwnProperty.call(all, `${name}Id`)) deep[name] = all[name]!
+        }
+        /**
+         * **段内参数位自己也能配 id**（2026-09-27 补）：段里的一句读数可能**整段都是参数**
+         * （例：进洞停机读数的「开采」档——矿带名与矿石名都在参数位上，而参数不会被翻译）。
+         * 约定与顶层完全同款：`p{n}p{k}Id` ⇒ 该槽第一步先换成它的当前语言译文。
+         * 用**声明过的占位符名**去查（`{p1}` → `p4p1Id`），不让槽内键串味。
+         *
+         * 中文界面下这一步恒等于原值（`paramText` 只在**英文**时取表里的译文），
+         * 所以中文正文与改造前逐字相同（`l10n:render` 的夹具逐字核对着两种语言）。
+         */
+        for (const name of Object.keys(deep)) {
+          const idKey = `${slot}${name}Id`
+          const id = all[idKey]
+          if (typeof id === 'string') deep[name] = paramText(id)
         }
         /**
          * 该槽**有槽译文** ⇒ 从首段参数里移出：译文已含必要的值，若还留着原始值，
@@ -194,8 +236,10 @@ function composeParts(
   /**
    * 段链：core 用 `parts` **显式声明**第 2 段起的 id（缺席即单段）。
    * 单段外壳（`✦ {p1}{p2}` 那类"正文 + 可选附注"）**不走段链**——附注是外壳的第二个槽。
+   *
+   * ⚠ 取的是**原始入参**（不是上面收窄过的 `all`）：`parts` 是数组，收窄时已被滤掉。
    */
-  const rawParts = (all as { parts?: unknown }).parts
+  const rawParts = entry.textParams?.parts
   const parts = Array.isArray(rawParts) ? rawParts.filter((x): x is string => typeof x === 'string' && x !== '').slice(0, 7) : []
   let out = ''
   if (parts.length === 0) return text(entry.textId, paramsFor(0))
@@ -205,11 +249,7 @@ function composeParts(
 }
 
 /** 渲染一条 core 日志：有 `textId` ⇒ 按当前语言渲染；否则回退中文正文 */
-export function logText(entry: {
-  text: string
-  textId?: string
-  textParams?: Readonly<Record<string, string | number>>
-}): string {
+export function logText(entry: LogEntryText): string {
   return composeParts(entry, (id, params) => tr(id, params))
 }
 

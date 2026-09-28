@@ -9,8 +9,11 @@ import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import {
   ACTIVITY_CONFIRM_ID,
+  ACTIVITY_LABEL_ID,
   applyActivityGate,
   AUTO_HALT_KINDS,
+  HALT_COST,
+  HALT_COST_ID,
   KIND_LABEL,
   WARN_KINDS,
   cannotInterruptReason,
@@ -229,9 +232,31 @@ describe('10×10 矩阵：三档分类逐格钉死（船长 2026-09-21 ＋ 2026-
         SETUP[current](s)
         const skip = applyActivityGate(s, next)
         expect(skip?.errorId, `当前=${current} → 开始=${next} 应当拒`).toBe('core.activityGate.003')
-        expect(skip?.error ?? '').toContain('不能中断')
+        expect(skip?.error ?? '', `当前=${current}：原文里必须写清代价`).toContain(HALT_COST[current])
         expect(STOPPED[current](s), `当前=${current} 不许被停掉`).toBe(false)
       }
+    }
+  })
+
+  /**
+   * **代价表的 id 与中文原串必须一一对齐**（2026-09-27 三号核验批补的护栏）。
+   *
+   * 为什么需要：`HALT_COST`（中文原串，进日志与警告的**正文兜底**）与 `HALT_COST_ID`
+   * （英文界面的取词来源）是**两张手工维护的表**——错一处就是"日志里那半句是中文"或
+   * "英文界面显示另一句代价"。中文侧由 `logAutoHalt` 直接把 `p2` 写进正文，两边**逐字相同**才不失真。
+   */
+  it('**取消代价两表对齐**：`HALT_COST` 与 `HALT_COST_ID` 逐档同键同名，且 id 互不相同', () => {
+    expect(Object.keys(HALT_COST_ID).sort()).toEqual(Object.keys(HALT_COST).sort())
+    for (const kind of ALL_KINDS) {
+      expect(HALT_COST_ID[kind], `${kind} 缺代价 id`).toMatch(/^core\.activity\.\d{3}$/)
+    }
+    expect(new Set(Object.values(HALT_COST_ID)).size, '十条代价不许共用 id').toBe(ALL_KINDS.length)
+  })
+
+  it('**活动名两表对齐**：`KIND_LABEL` 与 `ACTIVITY_LABEL_ID` 逐档同键', () => {
+    expect(Object.keys(ACTIVITY_LABEL_ID).sort()).toEqual(Object.keys(KIND_LABEL).sort())
+    for (const kind of ALL_KINDS) {
+      expect(ACTIVITY_LABEL_ID[kind], `${kind} 缺活动名 id`).toMatch(/^(core|ui)\./)
     }
   })
 

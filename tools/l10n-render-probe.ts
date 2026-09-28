@@ -20,8 +20,9 @@
  *
  * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
  *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v30**（`CURRENT_STATE_VERSION`）
- *   - 本工具最后核对：**2026-09-20**（当日核对：事件日志三形态 + 市场成交税注，中英各一遍）
- *   - 本工具最后跑过：**2026-09-20**
+ *   - 本工具最后核对：**2026-09-27**（当日新增：进洞停机读数段三形态——`p4Id` 槽译文 /
+ *     段内 `p4p1Id` 取词 / 出发站名与"母港"两态，中英各一遍）
+ *   - 本工具最后跑过：**2026-09-27**
  *   - 判据：`CURRENT_STATE_VERSION − v30 ≥ 2` ⇒ **必须重跑核对**；此外 `locale.tsx` 的
  *     `composeParts` / `paramsFor` 一旦改动 ⇒ **必须重跑**（本工具就是它的验收口）。
  */
@@ -152,6 +153,72 @@ const FIXTURES: Fixture[] = [
     textParams: { p1: '长尾鲨级导弹巡洋舰', p2: '3', p3: '1,000', p4: '2', p5Id: 'core.market.037', p5p1: '88' },
     expectZh: '市价售出 长尾鲨级导弹巡洋舰×3（税后入账 1,000 信用点，2 笔），贸易税 88 信用点。',
     expectEn: 'Sold 长尾鲨级导弹巡洋舰×3 at market (1,000 credits after tax, 2 fills), trading tax 88 credits.',
+  },
+  {
+    /**
+     * **进洞自动停机 · 读数段**（2026-09-27 三号核验批）：读数原先是一整段裸中文塞进 `{p3}`，
+     * 现在挂在**第 4 槽**（`p4Id` + `p4p1…`），且**段内自己还有参数位要取词**——
+     * 这是全仓最深的一层（`p4p3Id`：段 → 参数 → 内容表 id），本夹具就是钉它。
+     *
+     * core 侧真实取值（`wormhole.ts` 的 `haltEntryActivityOf`，开采档）：
+     * 矿带「曦晶带」/ 12 单位 / 曦棱晶，中英对照见 `packages/data/src/l10n.ts`。
+     */
+    name: '进洞停机·开采读数（p4Id 槽译文）',
+    text: '已自动停止「开采」：本趟原矿留在船上，舰船返港。（「曦晶带」 · 本趟 12 单位曦棱晶，货物留在船上）',
+    textId: 'core.activityGate.007',
+    textParams: {
+      p1: '开采',
+      p1Id: 'ui.Expedition.144',
+      p2: '本趟原矿留在船上，舰船返港',
+      p2Id: 'core.activity.007',
+      p4: '「曦晶带」 · 本趟 12 单位曦棱晶，货物留在船上',
+      p4Id: 'core.wormhole.039',
+      p4p1: '曦晶带',
+      p4p2: 12,
+      p4p3: '曦棱晶',
+    },
+    expectZh: '已自动停止「开采」：本趟原矿留在船上，舰船返港。（「曦晶带」 · 本趟 12 单位曦棱晶，货物留在船上）',
+    // ⚠ 矿带名与矿石名是**内容专名**（走 `EN_BELTS` / `EN_ITEMS_ALL`，不在 `L10N` 里）⇒
+    //    本批只翻句子、专名照旧中文（边界见 `wormhole.ts` 的 `haltEntryActivityOf` 注释）。
+    expectEn:
+      'Stopped “Mine” automatically: ore from this run stays aboard and the ship returns to port. (“曦晶带” · 12 units of 曦棱晶 this run; the cargo stays aboard)',
+  },
+  {
+    /** 同一句读数段的**两态**：出发站名（内容专名 ⇒ 照旧中文）与**"母港"这个通用词**（有词条 ⇒ 翻） */
+    name: '进洞停机·长途运输读数（出发站名 / 母港 两态）',
+    text: '已自动停止「长途运输」：本段报酬拿不到（报酬到站才结）。（已即时返港停靠「红环前哨站」）',
+    textId: 'core.activityGate.007',
+    textParams: {
+      p1: '长途运输',
+      p1Id: 'ui.MapPage.006',
+      p2: '本段报酬拿不到（报酬到站才结）',
+      p2Id: 'core.activity.009',
+      p4: '已即时返港停靠「红环前哨站」',
+      p4Id: 'core.wormhole.041',
+      p4p1: '红环前哨站',
+    },
+    expectZh: '已自动停止「长途运输」：本段报酬拿不到（报酬到站才结）。（已即时返港停靠「红环前哨站」）',
+    expectEn:
+      'Stopped “Long-haul transport” automatically: this leg pays nothing (payment settles on arrival). (it docked back at “红环前哨站” at once)',
+  },
+  {
+    /** 同一条读数段的**母港态**：`p4p1Id` 指向的是"母港"这个**通用词**的词条（不是内容专名）⇒ 能翻 */
+    name: '进洞停机·长途运输读数（无出发站 ⇒ 母港）',
+    text: '已自动停止「长途运输」：本段报酬拿不到（报酬到站才结）。（已即时返港停靠「母港」）',
+    textId: 'core.activityGate.007',
+    textParams: {
+      p1: '长途运输',
+      p1Id: 'ui.MapPage.006',
+      p2: '本段报酬拿不到（报酬到站才结）',
+      p2Id: 'core.activity.009',
+      p4: '已即时返港停靠「母港」',
+      p4Id: 'core.wormhole.041',
+      p4p1: '母港',
+      p4p1Id: 'core.wormhole.042',
+    },
+    expectZh: '已自动停止「长途运输」：本段报酬拿不到（报酬到站才结）。（已即时返港停靠「母港」）',
+    expectEn:
+      'Stopped “Long-haul transport” automatically: this leg pays nothing (payment settles on arrival). (it docked back at “Home port” at once)',
   },
 ]
 

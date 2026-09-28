@@ -1754,7 +1754,7 @@ export function blankShareFactorOf(state: GameState): number {
 }
 
 /**
- * **进洞时停掉那一项活动，并取"停机前的读数"**（返给日志的 detail 段）。
+ * **进洞时停掉那一项活动，并取"停机前的读数"**（返给统一日志的 detail 段）。
  *
  * ⚠ **读数必须在停机之前取**（停完字段就清了）；没有可写读数的那几档走 `haltActivityForSwitch`
  * （`state.ts` 的**执行**分派），detail 留空。
@@ -1764,34 +1764,86 @@ export function blankShareFactorOf(state: GameState): number {
  * 虫洞版入口 —— 两份**不是**同一张表的两份拷贝，但**能取读数的四档**（扫描／采矿／打捞／长途运输）
  * 在这里分流 ⇒ **新增"可被进洞自动停掉"的活动种类时，两处都要看一眼**。
  * （原先这段逻辑内联在 `wormholeEnter` 的循环里、与上面的说明隔了十几行，容易被读成"重复表"。）
+ *
+ * ⚠ **2026-09-27 本地化**（三号核验批）：返回值由"中文串"改成**结构化拒因** `CoreBlockReason`
+ * （`error` 中文原串照写 + `errorId` + `errorParams`），交给 `logAutoHalt` 挂到统一日志的空槽上
+ * ⇒ 英文界面下这四段读数不再是中文。四个 id 见下表（域 `core.wormhole`）。
+ *
+ * | 档 | 读数 | id |
+ * |---|---|---|
+ * | 扫描虫洞 | 已扫分钟数 | `core.wormhole.038` |
+ * | 开采 | 矿带名 · 本趟单位数 · 矿石名 | `core.wormhole.039` |
+ * | 打捞 | 星系名 · 本趟 m³ 当量 | `core.wormhole.040` |
+ * | 长途运输 | 出发站名 | `core.wormhole.041` |
  */
 function haltEntryActivityOf(
   state: GameState,
   ctx: SimContext,
   kind: MainActivityKind,
-): string | undefined {
+): CoreBlockReason | undefined {
   if (kind === 'wormholeScan') {
     const mins = wormholeScanHalt(state)
-    return mins !== null ? `已扫 ${mins} 分钟，回来可续扫` : undefined
+    return mins !== null
+      ? {
+          error: `已扫 ${mins} 分钟，回来可续扫`,
+          errorId: 'core.wormhole.038',
+          errorParams: { p1: mins },
+        }
+      : undefined
   }
   if (kind === 'mining') {
     const info = miningHalt(state)
     if (info === null) return undefined
     const belt = info.beltId ? ctx.belts.get(info.beltId) : undefined
-    const oreName = belt ? (ctx.items.get(belt.oreId)?.name ?? '') : ''
-    return `${belt?.name ?? '矿带'} · 本趟 ${info.tripUnits} 单位${oreName}，货物留在船上`
+    const ore = belt ? ctx.items.get(belt.oreId) : undefined
+    const oreName = ore ? ore.name : ''
+    const beltName = belt?.name ?? '矿带'
+    return {
+      error: `「${beltName}」 · 本趟 ${info.tripUnits} 单位${oreName}，货物留在船上`,
+      errorId: 'core.wormhole.039',
+      /**
+       * `p1` / `p3` 是**内容名**（矿带名 / 矿石名）——⚠ **本批只做"句子"的本地化**：
+       * 内容名在英文界面下仍是中文，因为内容名称走的是 `packages/data/src/l10n.ts` 的
+       * **按 def id 的英文覆盖表**（`EN_BELTS` / `EN_ITEMS_ALL`），不在 `L10N` 里、
+       * 现有两步渲染（`paramText` 只认 `core.` 前缀）取不到它。已登记进
+       * `docs/review/arch-guard-baseline-20260927.md` 的"内容专名"那一条，**不在这里硬造第二套解析**。
+       * 只有"矿带"这个**通用兜底词**有词条（`p1Id`）——它在表里查不到矿带时才会出现。
+       */
+      errorParams: {
+        p1: beltName,
+        p2: info.tripUnits,
+        p3: oreName,
+        ...(belt !== undefined ? {} : { p1Id: 'core.wormhole.043' }),
+      },
+    }
   }
   if (kind === 'salvaging') {
     const info = salvageHalt(state)
     if (info === null) return undefined
     const gName = info.galaxyId ? (ctx.galaxies.get(info.galaxyId)?.name ?? '') : ''
-    return `${gName} · 本趟约 ${Math.round(info.tripM3 * 100) / 100} m³ 当量，货物留在船上`
+    return {
+      error: `${gName} · 本趟约 ${Math.round(info.tripM3 * 100) / 100} m³ 当量，货物留在船上`,
+      errorId: 'core.wormhole.040',
+      errorParams: { p1: gName, p2: Math.round(info.tripM3 * 100) / 100 },
+    }
   }
   if (kind === 'hauling') {
     const info = haulingHalt(state)
     if (info === null) return undefined
     const originName = info.fromSiteId ? (ctx.stations.get(info.fromSiteId)?.name ?? info.fromSiteId) : '母港'
-    return `已即时返港停靠「${originName}」`
+    return {
+      error: `已即时返港停靠「${originName}」`,
+      errorId: 'core.wormhole.041',
+      /**
+       * `p1Id` 只在"没有出发站"这一态上给：那时 `p1` 是**"母港"这个通用词**（不是内容专名）⇒
+       * 表里有词条、能翻。有出发站时 `p1` 是**站名**（内容专名）⇒ 与上面开采档同一条边界，
+       * 本批不翻（理由见那一段注释）。
+       */
+      errorParams: {
+        p1: originName,
+        ...(info.fromSiteId ? {} : { p1Id: 'core.wormhole.042' }),
+      },
+    }
   }
   haltActivityForSwitch(state, kind)
   return undefined

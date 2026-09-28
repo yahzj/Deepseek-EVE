@@ -155,6 +155,16 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     expect(logs.some((t) => t.includes('已自动停止「扫描虫洞」') && t.includes('7 分钟'))).toBe(true)
     expect(state.logs.some((l) => l.textId === 'core.activityGate.007')).toBe(true) // 带读数那一版 id
     /**
+     * **读数段的本地化**（2026-09-27 三号核验批）：中文正文一字未改，另挂 `p4Id` 槽译文
+     * （`core.wormhole.038` 已扫分钟数）⇒ 英文界面不再漏出中文原文。
+     */
+    {
+      const halt = state.logs.find((l) => l.textId === 'core.activityGate.007')!
+      expect(halt.textParams?.p4Id).toBe('core.wormhole.038')
+      expect(halt.textParams?.p4p1).toBe(7)
+      expect(halt.textParams?.p4).toBe('已扫 7 分钟，回来可续扫')
+    }
+    /**
      * 进度保留 ⇒ 出洞后能接着扫：人在洞里时扫描仍被挡（`wormholeScanBlockReason` 的那条
      * 「已经在虫洞里了」），**把本趟收掉之后**（`run = null`）就能续扫，且进度还是那 7 分钟。
      */
@@ -184,6 +194,16 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
       expect(state.mining.tripUnits).toBe(0)
       const logs = state.logs.map((l) => l.text)
       expect(logs.some((t) => t.includes('已自动停止「开采」') && t.includes('12 单位'))).toBe(true)
+      /** 读数段本地化（`core.wormhole.039`）：矿带名 · 本趟单位数 · 矿石名（内容专名照旧中文） */
+      {
+        const halt = state.logs.find((l) => l.textId === 'core.activityGate.007')!
+        const belt = ctx.belts.get(beltId)!
+        expect(halt.textParams?.p4Id).toBe('core.wormhole.039')
+        expect(halt.textParams?.p4p1).toBe(belt.name)
+        expect(halt.textParams?.p4p2).toBe(12)
+        expect(halt.textParams?.p4p3).toBe(ctx.items.get(belt.oreId)!.name)
+        expect(halt.textParams?.p4).toBe(`「${belt.name}」 · 本趟 12 单位${ctx.items.get(belt.oreId)!.name}，货物留在船上`)
+      }
     }
     // ── 打捞：同款现场 ──
     {
@@ -202,6 +222,13 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
       expect(state.salvaging.tripM3).toBe(0)
       const logs = state.logs.map((l) => l.text)
       expect(logs.some((t) => t.includes('已自动停止「打捞」') && t.includes('33.5'))).toBe(true)
+      /** 读数段本地化（`core.wormhole.040`）：星系名 · 本趟 m³ 当量（保留两位小数，与中文正文同值） */
+      {
+        const halt = state.logs.find((l) => l.textId === 'core.activityGate.007')!
+        expect(halt.textParams?.p4Id).toBe('core.wormhole.040')
+        expect(halt.textParams?.p4p1).toBe(ctx.galaxies.get('galaxy-hub')!.name)
+        expect(halt.textParams?.p4p2).toBe(33.5)
+      }
     }
     // ── 边界：**副船的 AI 采矿**不算主控活动 ⇒ 照旧拦住（不替玩家停别人的派工） ──
     {
@@ -263,6 +290,13 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     expect(state.awayGalaxy).toBeNull()
     const logs = state.logs.map((l) => l.text)
     expect(logs.some((t) => t.includes('已自动停止「长途运输」') && t.includes('母港'))).toBe(true)
+    /** 读数段本地化（`core.wormhole.041`）：出发站名（`fromSiteId` 为空 ⇒ 母港） */
+    {
+      const halt = state.logs.find((l) => l.textId === 'core.activityGate.007')!
+      expect(halt.textParams?.p4Id).toBe('core.wormhole.041')
+      expect(halt.textParams?.p4p1).toBe('母港')
+      expect(halt.textParams?.p4).toBe('已即时返港停靠「母港」')
+    }
   })
 
   /**

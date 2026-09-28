@@ -80,7 +80,7 @@ export type LogKind =
  *
  * ⚠ 落法（实测选型）：**加法式可选字段**，不把 `string` 改成 `string | CmdText` 联合——
  * 联合会外溢到全部读取点与用例（首轮实测砸了 30+ 处），而加法式零影响：
- * 日志 = `LogEntry.text`（中文，照写）+ 可选 `textId` / `textParams`；
+ * 日志 = `LogEntry.text`（中文，照写）+ 可选 `textId` / `textParams`（键的约定见 `LogParams`）；
  * 指令错误 = `CommandResult.error`（中文，照写）+ 可选 `errorId` / `errorParams`。
  */
 export interface CmdText {
@@ -89,6 +89,23 @@ export interface CmdText {
   /** 插值参数：`{ name: '…' }` 对应文案里的 `{name}` */
   readonly params?: Readonly<Record<string, string | number>>
 }
+
+/**
+ * **一条日志的文案参数**（甲案 · 2026-09-20）。
+ *
+ * 值域 = **字符串 / 数值**；除普通插值参数（`p1` / `p2`…）外还有**约定键**
+ * （渲染层 `i18n/locale.tsx` 的 `composeParts` 认它们）：
+ * - `p{n}Id` ＝ **槽译文**：把第 n 槽那句话换成该 id 的当前语言译文；
+ * - `p{n}p{k}` ＝ 上面那条的**段内参数**（该槽自己的 `{pk}`）；
+ * - `p{n}p{k}Id` ＝ 段内参数**自己也能配 id**（同上，先翻再用）。
+ *
+ * ⚠ 段链 `parts`（字符串数组）**不在本类型里**、core 侧也没有产生它的调用点：
+ * `parts` 是渲染层 `composeParts` 认的约定键（"第 2 段起的 id 链"，现行写法一律用
+ * 槽译文 `p{n}Id` 表达）；它一旦并进值域，`Record` 的每个读取点都会变成
+ * `string | number | readonly string[]`（实测砸了 4 个用例文件 11 处）⇒ 需要它时
+ * 在**写入点**收口，别动这里。
+ */
+export type LogParams = Readonly<Record<string, string | number>>
 
 /** 一条事件日志 */
 export interface LogEntry {
@@ -105,8 +122,8 @@ export interface LogEntry {
   text: string
   /** 甲案：文案 id（有 ⇒ 界面按当前语言渲染；无 ⇒ 显示 `text` 中文原串） */
   textId?: string
-  /** 甲案：插值参数（`textId` 的 `{…}` 占位符取值） */
-  textParams?: Readonly<Record<string, string | number>>
+  /** 甲案：插值参数（`textId` 的 `{…}` 占位符取值；约定键见 `LogParams`） */
+  textParams?: LogParams
 }
 
 /** 随机数状态：存种子与使用次数，保证任何时刻都能复现同一串随机 */
@@ -3094,13 +3111,14 @@ export function haltActivityForSwitch(state: GameState, kind: string): void {
 
 /** 向状态里追加一条日志（自动编号、自动裁剪超出 logCap 的旧日志）。 *
  * `textId` / `textParams`（2026-09-20 甲案，可选）：给界面按语言渲染用；
- * 不传 ⇒ 界面显示 `text`（中文原串）——即**未改造的调用点与老档的行为一字不变**。 */
+ * 不传 ⇒ 界面显示 `text`（中文原串）——即**未改造的调用点与老档的行为一字不变**。
+ * 参数的约定键（`p{n}Id` 槽译文 · `p{n}p{k}` 段内参数）见 `LogParams` 头注。 */
 export function addLog(
   state: GameState,
   kind: LogKind,
   text: string,
   textId?: string,
-  textParams?: Readonly<Record<string, string | number>>,
+  textParams?: LogParams,
 ): void {
   const lastId = state.logs.length > 0 ? state.logs[state.logs.length - 1]!.id : 0
   state.logs.push({

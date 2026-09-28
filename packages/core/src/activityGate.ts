@@ -21,6 +21,7 @@
  * 取消函数落地（`miningHalt` / `salvageHalt` / `haulingHalt` / `wormholeScanHalt` / `cancelStandby` /
  * `stopRefineRun` / `cancelManufacturing`）——这样语义只有一份、也不制造模块环。
  */
+import type { CoreBlockReason } from './engine'
 import type { GameState } from './state'
 import { addLog, haltActivityForSwitch } from './state'
 
@@ -94,6 +95,29 @@ export const HALT_COST: Readonly<Record<MainActivityKind, string>> = {
   expedition: '远征无法中断',
   deliver: '投送不可取消',
   siteDeliver: '交付循环停止、舰船返港，本趟建材留在船上',
+}
+
+/**
+ * **取消代价的文案 id**（2026-09-27 补；与上表逐字同义）。
+ *
+ * 为什么必须另配一张 id 表：`HALT_COST` 的值是**参数值**——它被塞进统一日志的 `{p2}`、
+ * 也被塞进警告句的 `{p2}`，而**参数值不会再被翻译**（见 `ACTIVITY_LABEL_ID` 头注的同一条口径）
+ * ⇒ 英文界面下这两句里就剩下这一截中文。改造前它和活动名是**同一个毛病**，
+ * 活动名那半截于 2026-09-26 补好了，代价这半截留到本次（三号核验批）。
+ *
+ * ⚠ 与 `HALT_COST` 的一致性靠用例钉（`activity-gate.test.ts`：两张表逐档同键、中文逐字相同）。
+ */
+export const HALT_COST_ID: Readonly<Record<MainActivityKind, string>> = {
+  mining: 'core.activity.007',
+  salvaging: 'core.activity.008',
+  hauling: 'core.activity.009',
+  wormholeScan: 'core.activity.010',
+  standby: 'core.activity.011',
+  refine: 'core.activity.012',
+  manufacturing: 'core.activity.013',
+  expedition: 'core.activity.014',
+  deliver: 'core.activity.015',
+  siteDeliver: 'core.activity.016',
 }
 
 /** 活动名（统一文案里用；与活动栏的写法一致） */
@@ -222,17 +246,48 @@ export const ACTIVITY_CONFIRM_ID = 'core.activityGate.002'
  *
  * `detail`（可选）= 那一趟的具体读数/去向（「本趟 12 单位钛，货物留在船上」「已扫 7 分钟」这类）——
  * 只在进洞那条路径上传（它原先的日志自带这些读数，改用统一日志后不能把这些信息丢掉）。
+ *
+ * ⚠ **2026-09-27 补齐本地化**（三号核验批：非虫洞链英文残留清理的第一步）：
+ * `detail` 从"中文串"改成**结构化拒因** `CoreBlockReason`（`error` 中文原串 + `errorId` +
+ * `errorParams`，与 `cannotInterruptReason` 那批同一口径）——中文正文仍由 `error` 逐字拼出，
+ * 英文界面则由渲染层按 `errorId` 渲成整句。
+ *
+ * 落法：**挂在外层模板的空槽上**（`p4Id` = 第 4 槽那句话的 id、`p4p1…` = 它的段内参数），
+ * 与 `wormholeBattleReport` 把"维修消耗"挂在 `p8Id` 上**同一套约定**，不新造机制
+ * （⚠ 曾考虑走 `parts` 段链，但本仓 core 侧现役写法就是 `p{n}Id`，两套并存才是真的坑）。
+ * 外层模板 `core.activityGate.007` 因此多出 `{p4}` 槽：`detail.error` 逐字落进去。
  */
-export function logAutoHalt(state: GameState, kind: MainActivityKind, detail?: string): void {
+export function logAutoHalt(state: GameState, kind: MainActivityKind, detail?: CoreBlockReason): void {
   const p1 = KIND_LABEL[kind]
   const p2 = HALT_COST[kind]
-  /** `p1Id` = 活动名的文案 id（渲染层按 `paramText` 约定翻好再喂进 `{p1}`；见 `ACTIVITY_LABEL_ID` 头注） */
+  /** `p1Id` / `p2Id` = 活动名与代价的文案 id（渲染层按"槽译文"约定先翻好再喂进 `{p1}` / `{p2}`） */
   const p1Id = ACTIVITY_LABEL_ID[kind]
-  if (detail !== undefined && detail.length > 0) {
-    addLog(state, 'warn', `已自动停止「${p1}」：${p2}。（${detail}）`, 'core.activityGate.007', { p1, p1Id, p2, p3: detail })
+  const p2Id = HALT_COST_ID[kind]
+  if (detail !== undefined && detail.error.length > 0) {
+    /** 段内参数：`p1`/`p2`… 是**该段自己**的占位符名（渲染层按"槽号 + 占位符名"取值） */
+    const detailParams: Record<string, string | number> = {}
+    for (const [k, v] of Object.entries(detail.errorParams ?? {})) {
+      /** 段链只承载字符串/数值（`LogParams` 里唯一的多值键是 `parts`，这里不产生） */
+      if (typeof v === 'string' || typeof v === 'number') detailParams[k] = v
+    }
+    addLog(state, 'warn', `已自动停止「${p1}」：${p2}。（${detail.error}）`, 'core.activityGate.007', {
+      p1,
+      p1Id,
+      p2,
+      p2Id,
+      p4: detail.error,
+      ...(detail.errorId !== undefined ? { p4Id: detail.errorId, ...prefixParams(detailParams, 'p4') } : {}),
+    })
     return
   }
-  addLog(state, 'warn', `已自动停止「${p1}」：${p2}。`, 'core.activityGate.001', { p1, p1Id, p2 })
+  addLog(state, 'warn', `已自动停止「${p1}」：${p2}。`, 'core.activityGate.001', { p1, p1Id, p2, p2Id })
+}
+
+/** 把段内参数改成 `p{n}p{k}` 形态（渲染层"槽号 + 占位符名"取值约定，见 `i18n/locale.tsx`） */
+function prefixParams(src: Readonly<Record<string, string | number>>, prefix: string): Record<string, string | number> {
+  const out: Record<string, string | number> = {}
+  for (const [k, v] of Object.entries(src)) out[`${prefix}${k}`] = v
+  return out
 }
 
 /**
@@ -264,14 +319,27 @@ function verdictOf(state: GameState, next: MainActivityKind | null): GateVerdict
   if (current === null) return { action: 'ok' }
   if (next !== null && current === next) return { action: 'ok' }
   const cost = HALT_COST[current]
+  const costId = HALT_COST_ID[current]
   const label = KIND_LABEL[current]
+  const labelId = ACTIVITY_LABEL_ID[current]
   if (AUTO_HALT_KINDS.includes(current)) return { action: 'halt', current }
   const interruptible = INTERRUPTIBLE[current] === true
   const messageId = interruptible ? ACTIVITY_CONFIRM_ID : 'core.activityGate.003'
   const message = interruptible
     ? `${label}进行中：切换会中断它——${cost}。再点一次即确认：自动停止并开始新活动。`
     : `${label}进行中：${cost}——这一趟不能中断，等它结束再切换。`
-  return { action: interruptible ? 'confirm' : 'reject', current, message, messageId, messageParams: { p1: label, p2: cost }, interruptible }
+  /**
+   * `p1Id`/`p2Id`（2026-09-27 补）：活动名与代价都是**参数值**、不会再被翻译 ⇒ 两个槽各配一个 id，
+   * 英文界面下这句警告才整句是英文（见 `HALT_COST_ID` 头注）。
+   */
+  return {
+    action: interruptible ? 'confirm' : 'reject',
+    current,
+    message,
+    messageId,
+    messageParams: { p1: label, p1Id: labelId, p2: cost, p2Id: costId },
+    interruptible,
+  }
 }
 
 /**

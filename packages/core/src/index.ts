@@ -97,6 +97,7 @@ export {
 export type {
   LogKind,
   LogEntry,
+  LogParams,
   CmdText,
   RngState,
   TrainingItem,
