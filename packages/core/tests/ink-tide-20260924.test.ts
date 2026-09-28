@@ -205,18 +205,18 @@ describe('H 族 · 墨潮干扰舰（射程压制 · 船长三例定死口径）
     const me = createPlayerSpec(s, ctx, sid, undefined, refs)!
     const droneAt = me.weapons.findIndex((w) => w.src === 'drone')!
     expect(droneAt).toBeGreaterThanOrEqual(0)
-    expect(me.weapons[droneAt]!.maxRangeM).toBe(4800) // 蜂鸟 4,000 × 1.2
+    expect(me.weapons[droneAt]!.maxRangeM).toBe(7200) // 蜂鸟 6,000 × 1.2（2026-09-27 侦察档改 6000）
     /** 基准账里无人机那条 = 机型射程 ＋ 中继倍率（②的护栏） */
-    expect(refs.weaponRanges![droneAt]).toEqual({ baseM: 4000, bonusMul: 1.2 })
+    expect(refs.weaponRanges![droneAt]).toEqual({ baseM: 6000, bonusMul: 1.2 })
 
     const foes = specsOf('foe-h-ink-jammer') // 我方不带电子舰 ⇒ 净 = 0.50
     const battle = createBattleState(me, foes, 0, 5_000)
     const net = meJammerNetOf(battle, foes)
     expect(net).toBeCloseTo(0.5, 10)
     applyMeJammerDebuff(me, net, refs.weaponRanges)
-    /** **无人机吃压制**（它就是我方武器条目之一）＋ 加法口径：`4,000 × (1 + 0.2 − 0.5) =` **2,800** */
-    expect(me.weapons[droneAt]!.maxRangeM).toBe(2800)
-    expect(me.weapons[droneAt]!.maxRangeM).not.toBe(Math.round(4800 * 0.5)) // 老口径 = 2,400（多压 400 m）
+    /** **无人机吃压制**（它就是我方武器条目之一）＋ 加法口径：`6,000 × (1 + 0.2 − 0.5) =` **4,200** */
+    expect(me.weapons[droneAt]!.maxRangeM).toBe(4200)
+    expect(me.weapons[droneAt]!.maxRangeM).not.toBe(Math.round(7200 * 0.5)) // 老口径 = 3,600（多压 600 m）
   })
 
   /**

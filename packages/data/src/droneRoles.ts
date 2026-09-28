@@ -34,7 +34,7 @@ export const DRONE_ROLE_SPECS: Record<DroneClass, DroneRoleSpec> = {
     evasion: [0.42, 0.55],
     totalHp: [30, 50], // 2026-09-11 船长：血条 ×2 ⇒ 定位档同步 ×2
     dmgShare: [1, 1.4],
-    rangeM: [3500, 4300], // 2026-09-14 船长「只有我方无人机，射程+1500」⇒ 整档区间同步 +1500（原 2000~2800）
+    rangeM: [5700, 6000], // 2026-09-27 船长令「无人机射程重排」：侦察改**次远**、上限压在哨戒机之下（原 3500~4300）
     hitRate: [0.7, 0.8],
     noFalloff: true,
   },
@@ -43,7 +43,7 @@ export const DRONE_ROLE_SPECS: Record<DroneClass, DroneRoleSpec> = {
     evasion: [0.2, 0.3],
     totalHp: [70, 100],
     dmgShare: [1.8, 2.4],
-    rangeM: [4300, 4700], // 2026-09-14 +1500（原 2800~3200）
+    rangeM: [4000, 4400], // 2026-09-27 船长令「无人机射程重排」：战斗机退到第三档（原 4300~4700）
     hitRate: [0.7, 0.8],
     noFalloff: true,
   },
@@ -52,7 +52,7 @@ export const DRONE_ROLE_SPECS: Record<DroneClass, DroneRoleSpec> = {
     evasion: [0.08, 0.14],
     totalHp: [180, 240],
     dmgShare: [3.4, 4.6],
-    rangeM: [4800, 5300], // 2026-09-14 +1500（原 3300~3800）
+    rangeM: [2800, 3200], // 2026-09-27 船长令「无人机射程重排」：攻坚改**最短**（原 4800~5300）
     hitRate: [0.7, 0.8],
     noFalloff: true,
   },

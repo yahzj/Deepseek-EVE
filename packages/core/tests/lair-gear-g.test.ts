@@ -5,7 +5,7 @@
  * 三件：①**鱿蜂无人机**（物品 · 侦察机 · exclusive）②鱿蜂群导控（模块 +45% / CPU 32）
  * ③流亡中继桅（模块 +65% / CPU 34）。
  * 裁决：①补给 = 一次掉 **×10 架**、仍不可造（打光后再刷可补）；②数值 = 闪避 0.55 / 血 15 /
- * 单发 **6** / 射程 4000（2026-09-14 +1500）/ 命中 0.75 / 体积 5 m³；③单发 6 越出四型区间（侦察机上限 1.4×锚点），
+ * 单发 **6** / 射程 6000（2026-09-27 无人机射程重排）/ 命中 0.75 / 体积 5 m³；③单发 6 越出四型区间（侦察机上限 1.4×锚点），
  * 由船长裁决**豁免区间校验**（CPU 提到 5），契约仍守硬边界与锚点阶梯。
  */
 import { describe, expect, it } from 'vitest'
@@ -76,7 +76,7 @@ describe('G 族专属装备：鱿蜂无人机 + 蜂群导控 + 中继桅（2026-
     expect(d.dmg).toBe(6)
     expect(d.cpuUse).toBe(5)
     expect(d.unitM3).toBe(5)
-    expect(d.maxRangeM).toBe(4000) // 2026-09-14 船长「只有我方无人机，射程+1500」（原 2500）
+    expect(d.maxRangeM).toBe(6000) // 2026-09-27 船长令「无人机射程重排」：侦察改次远（原 4000）
     expect(d.hitRate).toBe(0.75)
     expect(d.falloff).toBe(1)
     expect(d.defense).toEqual({ shieldHp: 12, armorHp: 6, hullHp: 12, evasion: 0.55 }) // 2026-09-11 血条 ×2
@@ -163,7 +163,7 @@ describe('G 族专属装备：鱿蜂无人机 + 蜂群导控 + 中继桅（2026-
     // 单发 = 6 × 2（引擎单发×2）× (1+0.45 导控) × (1+0.20 梭鱼船体加成)
     // （2026-09-17 船长：无人机船按档位给无人机伤害加成 ⇒ 梭鱼 T2 = +20%，原 +8% 作废）
     expect(bees[0]!.shotDmg).toBe(Math.round(6 * 2 * 1.45 * 1.2))
-    expect(bees[0]!.maxRangeM).toBe(Math.round(4000 * 1.65)) // 中继桅 +65%（基数 2026-09-14 +1500 ⇒ 6600）
+    expect(bees[0]!.maxRangeM).toBe(Math.round(6000 * 1.65)) // 中继桅 +65%（基数 2026-09-27 侦察档 6000 ⇒ 9900）
     expect(bees[0]!.hitRate).toBeCloseTo(0.75, 6)
     expect(bees[0]!.falloff).toBeCloseTo(1, 6)
   })
