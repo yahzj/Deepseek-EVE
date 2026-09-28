@@ -34,7 +34,7 @@ import {
 } from './wormhole'
 import { matterTechLevel, matterTechNodes, matterTechWhBuffs, matterTechWorkEffBonus } from './matterTech'
 import { RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, wreckGroupOfCard, wreckItemIdOf } from './salvage'
-import { WORMHOLE_WRECK_PILE_M3_BASE, wormholeRelicBoxIdOf, WORMHOLE_CORE_WEIGHTS } from './wormholeSalvage'
+import { WORMHOLE_WRECK_PILE_M3_BASE, wormholeRelicBoxIdOf, wormholeRollRelicBoxKind, WORMHOLE_CORE_WEIGHTS, WORMHOLE_ESSENCE_ITEM_ID } from './wormholeSalvage'
 import { wormholeCardIdOfFamily, wormholeFamilyOfSeed, wormholeLayerRewardMul, wormholeLayerThreat } from './wormholeFoes'
 import { WORMHOLE_ARCHETYPE_LABELS, wormholeArchetypeOf } from './wormholeGrid'
 import { wormholeStockOf, wormholeStockTake } from './wormholeScan'
@@ -750,7 +750,16 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
   // ④ 遗迹安全货柜：模拟器在遗迹格命中几次就给几件（同样按小数部分掷一次取整）
   const boxBase = Math.floor(descend.relicBoxes)
   const boxN = boxBase + (rng() < descend.relicBoxes - boxBase ? 1 : 0)
-  for (let i = 0; i < boxN; i++) gains.push({ itemId: wormholeRelicBoxIdOf(family), units: 1 })
+  /**
+   * ⚠ **2026-09-27 玩家报障修复**：这里原先**写死** `wormholeRelicBoxIdOf(family)`（只有本族安全货柜），
+   * 而手动路径早已改成"全货柜池"（贵重品柜 ＋ 安全柜 ＋ 图纸货柜档 ＋ 军用备货柜）⇒ 自动探索带出的
+   * 全是安全货柜、一件图纸货柜都没有。现在**逐件调用同一条种类抽取单点**（船长选**甲**：与手动同池）。
+   * 层取 `descend.depthReached`（真正下到的层，与 ⑤ 的 AI 核心同口径）。
+   */
+  for (let i = 0; i < boxN; i++) {
+    const boxId = wormholeRollRelicBoxKind(rng, ctx, descend.depthReached, family)
+    if (boxId !== undefined) gains.push({ itemId: boxId, units: 1 })
+  }
 
   /**
    * ⑤ **AI 核心**：命中率随**真正下到的层**抬升（层 1 起，与手动"层 1 也给"一致）。
@@ -771,6 +780,23 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
     gainAiCore(state, got)
     coresGained = { type: got, n: 1 }
   }
+
+  /**
+   * ⑥ **虫洞谜质**（2026-09-27 玩家报障修复 · 船长选**甲**）。
+   *
+   * 报障原话（船长转述）：「**而且自动探索不给谜质**」。根因在 `wormholeAutoSim` 的目标格白名单
+   * （只有矿脉/坟场/遗迹/舰船，`matter` 不在内）⇒ 整趟都不去谜质格，谜质恒为 0。
+   *
+   * **为什么折成"虫洞谜质"而不是给装置**：谜质储存器是**本趟限定**装置（占货仓 2×2、离开虫洞即失效），
+   * 而自动线没有 `run`、没有本趟货仓 ⇒ 只能按手动的**撤离成功**那一步折算：**1 台 = 1 枚**
+   * （`wormholeBattle.ts` 的 `deliverExtraction` 同一口径），直接进仓库。
+   * 台数已在模拟器里随其他产出打过 8 折 ⇒ 这里只做"小数部分掷一次取整"（与 ②④ 同一套写法）。
+   *
+   * ⚠ 本段**排在 ⑤ 之后**是刻意的：`rng` 是共享流，插在中间会改掉既有各线的随机数序列。
+   */
+  const essenceBase = Math.floor(descend.matterDevices)
+  const essenceN = essenceBase + (rng() < descend.matterDevices - essenceBase ? 1 : 0)
+  if (essenceN > 0) gains.push({ itemId: WORMHOLE_ESSENCE_ITEM_ID, units: essenceN })
 
   // 入仓库（船长：「收益进仓库」）
   for (const g of gains) {

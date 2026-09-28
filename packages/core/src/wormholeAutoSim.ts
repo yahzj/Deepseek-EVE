@@ -91,6 +91,17 @@ export interface WormholeAutoDescend {
   rareItems: number
   /** 触发过的遗迹安全货柜次数 */
   relicBoxes: number
+  /**
+   * 取回的**谜质储存器台数**（2026-09-27 玩家报障修复）。
+   *
+   * 报障原话（船长转述）：「**而且自动探索不给谜质**」——`worth` 白名单原先只有
+   * `vein / graveyard / ruins / ship`，`matter`（谜质格）**根本不在内** ⇒ 整趟都不去谜质格，
+   * 谜质恒为 0。船长选**甲**：与手动同口径（手动每格取回 1 台，撤离成功时 1 台折 1 枚虫洞谜质）。
+   *
+   * ⚠ **不占本模块的货仓额度**：手动取装置走**收货阶梯**（货仓 2×2 → 临时空间 → 两处都满才算失败），
+   * 探索期间货仓满也照样拿得到；且自动线最后把台数折算成虫洞谜质、不留装置形态 ⇒ 不记 `holdUsed`。
+   */
+  matterDevices: number
   /** 是否因货舱满而提前收工 */
   holdFull: boolean
   /** 是否因回合耗尽而收工 */
@@ -114,7 +125,9 @@ const round1 = (n: number) => Math.round(n * 10) / 10
  *
  * 策略（"一个老练玩家"的走法，逐条可读）：
  * 1. 每层**边走边扫**（移动前先扫落点，各 1 回合）——扫全盘太贵（层 1 就要 19 回合），实测会把人锁死在浅层；
- * 2. **贪心最近优先**访有产出的格（矿脉 / 坟场 / 遗迹）；空的格不去；
+ * 2. **贪心最近优先**访有产出的格（矿脉 / 坟场 / 遗迹 / 舰船信号 / **谜质**）；空的格不去；
+ *    优先级 = 遗迹与谜质**同档**（按远近）＞ 舰船信号 ＞ 矿脉与坟场（同档，按远近）；
+ *    ⚠ 谜质格 **2026-09-27 才进白名单**——此前整趟都不去，玩家报障「自动探索不给谜质」；
  * 3. 到格就干活：母矿按 `采集器台数` 堆/动作、坟场按 `打捞器台数` 堆/动作，各 1 回合一堆；
  * 4. 层末入口的守卫**打得过就打**（它是门，不打上不去；深层收益 ×1.2/层）；打不过就**留在本层继续捞**；
  * 5. 本层捡到 `货舱 × WORMHOLE_AUTO_DESCEND_HOLD_SHARE`（现行 **0.25**）就转去下潜（给深层留货舱）；
@@ -169,6 +182,7 @@ export function wormholeAutoDescend(opts: {
     oreUnits: 0,
     rareItems: 0,
     relicBoxes: 0,
+    matterDevices: 0,
     holdFull: false,
     outOfTurns: false,
     turnsOnScan: 0,
@@ -199,7 +213,7 @@ export function wormholeAutoDescend(opts: {
       if (!g) continue
       if (isExitCell(grid, cell)) continue
       const place = g.place
-      if (place === 'vein' || place === 'graveyard' || place === 'ruins' || place === 'ship') {
+      if (place === 'vein' || place === 'graveyard' || place === 'ruins' || place === 'ship' || place === 'matter') {
         worth.push({ cell, place })
       }
     }
@@ -235,12 +249,24 @@ export function wormholeAutoDescend(opts: {
       if (holdUsed >= holdCapThisLayer && !ruinsLeft) break
       // ① 最近目标（贪心；**遗迹优先**——它出稀有残骸与安全货柜，是这趟最值钱的一条线；
       //    实测"纯最近优先"会在回合用尽前根本轮不到遗迹 ⇒ 稀有/货柜两条线恒为 0）
+      /**
+       * **谜质格与遗迹同档（rank 2）**——2026-09-27 补，船长对同批两问均取推荐项
+       * （谜质线怎么补 = 甲「与手动同口径」；去不去抢 = E「与遗迹同档」）。
+       *
+       * 为什么不能只挂在 rank 0（与矿脉/坟场同档）：实测 200 趟里**只有 48 趟**拿得到谜质
+       * （0.24 枚/趟）——rank 0 的格要等遗迹与舰船全清完才轮得到，回合早用尽了 ⇒ 玩家仍会报"不给谜质"。
+       * 为什么不用 rank 3（最优先）：谜质会把遗迹整条挤掉，实测**稀有残骸 −45%**、货柜 −四成，代价过重。
+       * 同档 = **两者按远近竞争**：遗迹那条"不能被纯最近优先饿死"的既定意图原样保住，谜质也拿得到。
+       * 实测（200 趟 · 4× sh-thresher · ai-expert 6）：谜质 **1.91 枚/趟、194/200 趟命中**；
+       * 稀有残骸 −13%~−22%、货柜 −13%~−17%、母矿 +3% —— 这是加入谜质线必然的回合取舍
+       * （回合预算固定 45，手动玩家同样要选先去哪），不是缺陷。
+       */
       let bestIdx = -1
       let bestD = Infinity
       let bestRank = -1
       for (let i = 0; i < worth.length; i++) {
         const w = worth[i]!
-        const rank = w.place === 'ruins' ? 2 : w.place === 'ship' ? 1 : 0
+        const rank = w.place === 'ruins' || w.place === 'matter' ? 2 : w.place === 'ship' ? 1 : 0
         const d = hexDistance(pos, w.cell)
         if (rank > bestRank || (rank === bestRank && d < bestD)) {
           bestRank = rank
@@ -289,6 +315,18 @@ export function wormholeAutoDescend(opts: {
       pos = target.cell
       out.cellsExplored += 1
       worth.splice(bestIdx, 1)
+
+      /**
+       * **谜质格 ⇒ 取回一台谜质储存器**（2026-09-27 补 · 船长甲案"与手动同口径"）。
+       *
+       * 手动口径：到达该格后"激活"取回 **1 台**（`wormholeBattle.ts` L294），
+       * **激活一分回合都不扣**（`wormholeGrid.ts` L824 写明）⇒ 本模块只算移动的回合，到格即取、不掷骰。
+       * 是哪一台由 `(种子, 层, 格 key)` 定死（`wormholeMatterDeviceAt`），与本模块无关——自动线只数台数。
+       */
+      if (target.place === 'matter') {
+        out.matterDevices += 1
+        continue
+      }
 
       // ③ 到格干活：每动作 1 回合，回收 = 台数 堆（取"该地点该有的堆数"上限 2 堆，与节点口径一致）
       const piles = 2
@@ -360,6 +398,8 @@ export function wormholeAutoDescend(opts: {
     oreUnits: Math.round(out.oreUnits * WORMHOLE_AUTO_SIM_YIELD_MUL),
     rareItems: out.rareItems * WORMHOLE_AUTO_SIM_YIELD_MUL,
     relicBoxes: out.relicBoxes * WORMHOLE_AUTO_SIM_YIELD_MUL,
+    /** 谜质装置台数同样打 8 折（小数部分由调用方掷一次取整，与稀有残骸/货柜同一套写法） */
+    matterDevices: out.matterDevices * WORMHOLE_AUTO_SIM_YIELD_MUL,
     holdFull: out.holdFull,
     outOfTurns: out.outOfTurns,
     turnsOnScan: out.turnsOnScan,
