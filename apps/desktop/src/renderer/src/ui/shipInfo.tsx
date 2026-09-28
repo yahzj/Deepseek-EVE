@@ -582,6 +582,24 @@ export function slotListText(ship?: ShipDef): string {
   return MODULE_SLOTS.map((m) => slotText(m)).join(' · ')
 }
 
+/**
+ * **图鉴类窗口的舰船基础行（单点）** —— 手册「舰船档案窗」与「舰船蓝图产物」**两处同一口径**。
+ *
+ * 两条规则都由船长报障定下，别再各写一份（此前 `Handbook.tsx` 两处各写一遍、`tools/ui-attr-check.ts`
+ * 又抄了第三份，三份口径互不相同）：
+ * ① **「动力」滤掉** —— 下方 `shipIndirectLines` 的间接属性块会报一次（2026-09-26 船长报障
+ *    「点击舰船图鉴内的舰船，当中的属性还是有动力，而没有机动速度」）；
+ * ② **「无人机舱」真有舱才显示** —— 2026-09-27 船长报障「**而且还缺少无人机舱属性**」：
+ *    此前档案窗是**无条件滤掉**，于是有舱的船也看不到机舱；而反过来无条件显示，又会让无舱的船
+ *    白占一行「无人机舱 = 无」。⇒ 判据取 `droneBayM3 > 0`，只滤掉"无舱"那一种。
+ */
+export function shipCodexBaseLines(ship: ShipDef): ReturnType<typeof shipInfoLines> {
+  const hasBay = (ship.droneBayM3 ?? 0) > 0
+  return shipInfoLines(ship).filter(
+    (l) => l.k !== tr('ui.Handbook.012') && (l.k !== tr('ui.FitPage.010') || hasBay),
+  )
+}
+
 /** 舰船统一信息行：基础 + V10.5b 面板分组（护盾/装甲/结构区块各自血量与三系抗性；CPU/无人机舱） */
 export function shipInfoLines(ship: ShipDef): InfoLine[] {
   const lines: InfoLine[] = [
