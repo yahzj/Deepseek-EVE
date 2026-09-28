@@ -337,13 +337,16 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mod-turret-kin-1': 1,
   'mod-turret-kin-2': 2,
   'mod-turret-kin-3': 3,
-  'ore-glowstone': 1,
-  'ore-hemorphite': 1,
-  'ore-nebulite': 1,
-  'ore-scorched': 1,
-  'ore-sunshard': 1,
+  // **2026-09-28 矿石按体积平衡**：8 支原矿首次按稀缺度分档（原来一律 1）——
+  // 口径 = `items.ts` 的体积阶梯（0.5 / 1 / 2 / 4 / 8）与每 m³ 价值（14.0 → 18.125，域极差 1.295×）。
   'ore-veldspar': 1,
-  'ore-voidmother': 1, // 虚空母矿（2026-09-12 虫洞线新增原矿；数字档 = 1 常驻层，与其它原矿同档）
+  'ore-scorched': 1,
+  'ore-hemorphite': 2,
+  'ore-sunshard': 3,
+  'ore-glowstone': 3,
+  'ore-nebulite': 5,
+  'ore-voidmother': 5, // 虚空母矿（2026-09-12 虫洞线新增原矿；2026-09-28 随体积平衡入 R5，与星幽矿同档）
+  // ⚠ `ore-voidshard`（玄晶 R4）登记在本表更下方一处，**不在此重复**（对象字面量重名会被 tsc 拒编）
   // 遗迹安全货柜（F4 · 2026-09-13）：罕见的中间件（带回后拆解），数字档同常驻层（1）；✅ 2026-09-14 已上线
   'box-relic-a': 1,
   'box-relic-c': 1,
@@ -384,7 +387,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mat-field-repair': 1,
   'mat-volley': 1,
   'box-relic-g': 1,
-  'ore-voidshard': 1,
+  'ore-voidshard': 4, // 玄晶（R4 · 2026-09-28 矿石按体积平衡；本表唯一一处登记）
   'pioneer': 3,
   'repairkit-civ': 1,
   'repairkit-mil': 1,

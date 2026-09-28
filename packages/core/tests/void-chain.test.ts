@@ -31,20 +31,21 @@ function bookQty(book: Map<string, Array<{ qty: number }>> | Record<string, Arra
 }
 
 describe('洞内产出链（虚空母矿 / 虚空晶）只收不卖 ＋ 半量（2026-09-14 船长）', () => {
-  it('数据口径：两条市场行只收不卖 · 精炼虚空晶 perOre = 0.25（副产物不动）', () => {
+  it('数据口径：两条市场行只收不卖 · 精炼虚空晶 perOre = 0.107（2026-09-28 按体积平衡 +67% 整体缩放）', () => {
     const { ctx } = world()
     for (const key of ['ore-voidmother', 'min-voidcrystal']) {
       const def = ctx.marketGoods.get(key)
       expect(def, `${key} 应有市场行`).toBeTruthy()
       expect(def!.playerBuyable, `${key} 必须只收不卖`).toBe(false)
-      // 价格口径：船长「价格不动」⇒ 基础价与收购倍率都保持原值
-      expect(def!.basePrice, `${key} 基础价不动`).toBe(key === 'ore-voidmother' ? 1_300 : 1_800)
+      // 2026-09-28 矿石按体积平衡：虚空母矿入 R5（**体积保持 1 m³/单位**、单价 915 → 18）；虚空晶单价不动
+      expect(def!.basePrice, `${key} 基础价`).toBe(key === 'ore-voidmother' ? 18 : 1_800)
     }
     const ore = ITEMS.find((i) => i.id === 'ore-voidmother')!
     const row = (ore.refine ?? []).find((r) => r.mineralId === 'min-voidcrystal')
-    expect(row?.perOre, '虚空晶产出量 0.25（原 0.5 的一半）').toBe(0.25)
-    expect((ore.refine ?? []).find((r) => r.mineralId === 'min-isotope')?.perOre).toBe(1.0)
-    expect((ore.refine ?? []).find((r) => r.mineralId === 'min-starcore')?.perOre).toBe(0.25)
+    expect(row?.perOre, '虚空晶产出量 0.0133（2026-09-28 按 +67% 增值率整体缩放）').toBe(0.0133)
+    expect((ore.refine ?? []).find((r) => r.mineralId === 'min-isotope')?.perOre).toBe(0.0531)
+    expect((ore.refine ?? []).find((r) => r.mineralId === 'min-starcore')?.perOre).toBe(0.0133)
+    expect(ore.unitM3, '虚空母矿体积（洞内物流口径：保持 1 m³/单位）').toBe(1)
   })
 
   it('市场簿面：两条 **一笔 NPC 卖单都不铺**，但**照常收购**（对照组：普通原矿两侧都有单）', () => {
@@ -69,7 +70,7 @@ describe('洞内产出链（虚空母矿 / 虚空晶）只收不卖 ＋ 半量�
     expect(placeBuyOrder(state, ctx, 'ore-voidmother', 1_000, 10), '只收不卖商品不开放玩家挂买单').toBeNull()
   })
 
-  it('端到端精炼：100 单位母矿 ⇒ 虚空晶 = floor(100 × 0.25 × 精炼率)（半量生效）', () => {
+  it('端到端精炼：100 单位母矿 ⇒ 虚空晶 = floor(100 × 0.0133 × 精炼率)（2026-09-28 缩放后）', () => {
     const { state, ctx } = world()
     addWare(state, 'ore-voidmother', 100)
     const rate = refineRate(state, ctx)
@@ -78,9 +79,9 @@ describe('洞内产出链（虚空母矿 / 虚空晶）只收不卖 ＋ 半量�
     state.gameMs = 120_000
     advanceRefining(state, ctx)
     const got = state.warehouse.items['min-voidcrystal'] ?? 0
-    expect(got, `虚空晶产出应为 floor(100×0.25×${rate})`).toBe(Math.floor(100 * 0.25 * rate))
-    // 副产物照旧（同位聚晶 1.0 / 星髓晶 0.25）
-    expect(state.warehouse.items['min-isotope'] ?? 0).toBe(Math.floor(100 * 1.0 * rate))
-    expect(state.warehouse.items['min-starcore'] ?? 0).toBe(Math.floor(100 * 0.25 * rate))
+    expect(got, `虚空晶产出应为 floor(100×0.0133×${rate})`).toBe(Math.floor(100 * 0.0133 * rate))
+    // 副产物同比例缩放（同位聚晶 0.0531 / 星髓晶 0.0133）
+    expect(state.warehouse.items['min-isotope'] ?? 0).toBe(Math.floor(100 * 0.0531 * rate))
+    expect(state.warehouse.items['min-starcore'] ?? 0).toBe(Math.floor(100 * 0.0133 * rate))
   })
 })

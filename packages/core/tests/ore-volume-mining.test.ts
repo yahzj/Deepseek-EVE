@@ -38,16 +38,15 @@ function withOreVolume(volume: number): typeof ctx {
 describe('矿石按体积结算（2026-09-28 船长令：体积越小、每次采集到的单位量越多）', () => {
   it('① unitM3 = 1 时与旧算式逐位等价（零读数漂移）', () => {
     const s = bareState()
-    const p = getMiningParams(s, ctx, { shipId: 'sandcat', beltId: BELT })!
+    const p = getMiningParams(s, withOreVolume(1), { shipId: 'sandcat', beltId: BELT })!
     const ship = ctx.ships.get('sandcat')!
     // 无技能、无矿枪、无限时倍率 ⇒ 产量乘链 = 1
     expect(p.unitsPerCycle).toBe(Math.max(1, Math.floor(ship.oreUnitsPerCycle)))
-    expect(ctx.items.get(p.ore.id)?.unitM3).toBe(1)
   })
 
   it('② 件数随体积反比：小体积矿的件数 = 大体积矿 × 体积比', () => {
     const s = bareState()
-    const base = getMiningParams(s, ctx, { shipId: 'sandcat', beltId: BELT })!
+    const base = getMiningParams(s, withOreVolume(1), { shipId: 'sandcat', beltId: BELT })!
     for (const [mul, volume] of [
       [5, 0.2],
       [2, 0.5],
@@ -60,8 +59,8 @@ describe('矿石按体积结算（2026-09-28 船长令：体积越小、每次�
 
   it('③ 每循环 m³ 恒定：件数 × unitM3 与矿种无关（满舱节奏不变）', () => {
     const s = bareState()
-    const base = getMiningParams(s, ctx, { shipId: 'sandcat', beltId: BELT })!
-    const baseM3 = base.unitsPerCycle * (ctx.items.get(base.ore.id)?.unitM3 ?? 1)
+    const base = getMiningParams(s, withOreVolume(1), { shipId: 'sandcat', beltId: BELT })!
+    const baseM3 = base.unitsPerCycle * 1
     for (const volume of [0.1, 0.5, 1, 2, 5]) {
       const p = getMiningParams(s, withOreVolume(volume), { shipId: 'sandcat', beltId: BELT })!
       const m3 = p.unitsPerCycle * volume

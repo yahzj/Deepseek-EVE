@@ -337,7 +337,8 @@ describe('虫洞 · 收益估值口径（F3c：残骸的真价值在回收炉）
     const common = commonWreckOf('wh-pirate-scout')
     expect(wormholeWreckRecycleIskPerM3(ctx, common)).toBeCloseTo(56.8, 1) // common 档：5.8 × 9.8
     expect(wormholeLootValueIsk(ctx, common, 500)).toBeCloseTo(28_420, -2)
-    expect(wormholeLootValueIsk(ctx, COMMON_ORE_FOR_TEST, 500)).toBeCloseTo(457_500, -2) // 915 × 500
+    // 2026-09-28 矿石按体积平衡：虚空母矿单价 915 → 18（体积保持 1 m³/单位）⇒ 500 件 = 9,000
+    expect(wormholeLootValueIsk(ctx, COMMON_ORE_FOR_TEST, 500)).toBeCloseTo(9_000, -2)
     // 残骸的**基础价**口径确实接近 0（这就是为什么必须换尺）
     expect(ctx.items.get(common)?.baseSellPriceIsk).toBe(1)
   })
