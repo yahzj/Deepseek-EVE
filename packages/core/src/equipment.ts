@@ -22,7 +22,8 @@ import { addLog, shipLockedReason } from './state'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
 import type { FittedModules, ModuleDef, ModuleSlot, RackSlot, SimContext, DamageResists, DamageType } from './types'
-import { allFittedIds, MODULE_SLOTS, rackBays, rackLabel, rackOf, shipSlotsOf, SLOT_LABELS, slotLabel as labelOf } from './labels'
+import { allFittedIds, isRackModule, MODULE_SLOTS, rackBays, rackLabel, rackOf, shipSlotsOf, SLOT_LABELS, slotLabel as labelOf } from './labels'
+import { isPlugOf, plugSlotsOf } from './plugs'
 import { currentShipState, addWare, countWare, removeWare } from './inventory'
 import { fleetDefOf } from './instances'
 import { plugModulesOf, shipSlotsWithPlugsOf } from './plugs'
@@ -543,6 +544,20 @@ export function fitModule(
   if (lock) return { ok: false, error: lock }
   const def = ctx.modules.get(moduleId)
   if (!def) return { ok: false, error: `未知装备：${moduleId}。`, errorId: 'core.equipment.001' }
+  /**
+   * **舰船插件不许走高/中/低槽**（**2026-09-27 船长报障**：「有部分船插会在装备栏显示」）。
+   *
+   * 插件在数据里为过体检契约声明了 `rack: 'low'`，而 `rackOf()` 优先返回 `def.rack` ⇒ 不拦的话
+   * 低槽候选会把插件列出来、点下去就真写进 `fitted.low` ⇒ **插件变成可卸下**（破「不可拆卸、
+   * 不可替换」）且绕过插件槽上限。⇒ 装配入口按单点 `isRackModule` 一律拒收，插件只走 `installPlug`。
+   */
+  if (!isRackModule(def)) {
+    return {
+      ok: false,
+      error: `「${def.name}」是舰船插件，只能装进插件槽（装上去拆不下来，也不会占高/中/低槽）。`,
+      errorId: 'core.equipment.030',
+    }
+  }
   if (countModule(state, moduleId) < 1) {
     return { ok: false, error: `装备库里没有 ${def.name}，先去组装机造一件。`, errorId: 'core.equipment.002' }
   }
@@ -696,6 +711,18 @@ export function swapModuleAt(
   if (lock) return { ok: false, error: lock }
   const def = ctx.modules.get(moduleId)
   if (!def) return { ok: false, error: `未知装备：${moduleId}。`, errorId: 'core.equipment.001' }
+  /**
+   * **舰船插件不许走高/中/低槽**（**2026-09-27 船长报障**）：本函数是装配页候选卡的落点
+   * （`engine.swapModuleTo` → 这里），而低槽候选此前会把插件列出来 ⇒ 不拦就会被写进 `fitted.low`。
+   * 判据走单点 `isRackModule`（见 `labels.ts` 的说明）。
+   */
+  if (!isRackModule(def)) {
+    return {
+      ok: false,
+      error: `「${def.name}」是舰船插件，只能装进插件槽（装上去拆不下来，也不会占高/中/低槽）。`,
+      errorId: 'core.equipment.030',
+    }
+  }
   const shipId = opts.shipId ?? state.shipId
   const fleet = state.fleet[shipId]
   const fitted = fleet?.fitted
@@ -1322,6 +1349,55 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
       `同舰唯一归正：每舰只留一件损伤管制装置，退回装备库 ${dupReturned.length} 件（${dupReturned.join('、')}）。`,
       'core.equipment.029',
       { p1: dupReturned.length, p2: dupReturned.join('、') },
+    )
+  }
+  /**
+   * **插件归正**（**2026-09-27 船长报障**「有部分船插会在装备栏显示」⇒ 船长裁决**甲**：
+   * 「读档自动搬回插件槽／退回装备库」）。
+   *
+   * 病根：插件在数据里为过体检契约声明了 `rack: 'low'`，而 `rackOf()` 优先返回 `def.rack` ⇒ 装配页的
+   * 低槽候选把它列出来、点下去真写进 `fitted.low`（插件因此变成可卸下，破了「不可拆卸、不可替换」）。
+   * 入口已按 `isRackModule` 堵住；这里收存量：**先搬回插件槽**（有空位），**槽满或没插件槽就退回装备库**
+   * （**不销毁资产**）。判据走单点 `isPlugOf`，不自己比字符串。
+   *
+   * ⚠ 与上面那条同舰唯一归正同口径：**在洞编队跳过**（进洞锁定改装）⇒ 出洞后载入即归正。
+   */
+  const plugFixed: string[] = []
+  const plugReturned: string[] = []
+  for (const [uid, ship] of Object.entries(state.fleet)) {
+    if (inRunFleet.has(uid)) continue
+    const fitted = ship?.fitted
+    if (!fitted) continue
+    for (const rack of ['high', 'mid', 'low'] as const) {
+      const bays = rackBays(fitted, rack)
+      for (let i = 0; i < bays.length; i += 1) {
+        const id = bays[i]
+        if (!id) continue
+        const def = ctx.modules.get(id)
+        if (!def || !isPlugOf(def)) continue
+        bays[i] = null
+        const have = ship.plugs ?? []
+        if (have.length < plugSlotsOf(state, ctx, uid)) {
+          ship.plugs = [...have, id]
+          plugFixed.push(def.name)
+        } else {
+          state.moduleBay[id] = countModule(state, id) + 1
+          plugReturned.push(def.name)
+        }
+      }
+    }
+  }
+  if (plugFixed.length + plugReturned.length > 0) {
+    const parts = [
+      ...(plugFixed.length > 0 ? [`装回插件槽 ${plugFixed.length} 件（${plugFixed.join('、')}）`] : []),
+      ...(plugReturned.length > 0 ? [`退回装备库 ${plugReturned.length} 件（${plugReturned.join('、')}）`] : []),
+    ]
+    addLog(
+      state,
+      'fleet',
+      `舰船插件归正：${parts.join('；')}——插件只占插件槽，不占高/中/低槽。`,
+      'core.equipment.031',
+      { p1: plugFixed.length, p2: plugReturned.length, p3: [...plugFixed, ...plugReturned].join('、') },
     )
   }
   // 槽位对齐可能裁掉甲板扩展 → 机舱变小：超出容量的无人机同样自动卸下（2026-09-10 船长口径）

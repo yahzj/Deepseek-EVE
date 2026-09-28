@@ -1512,6 +1512,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.equipment.028": { zh: "损伤管制装置每舰只能装一件（已装 {p1}）。", en: "Only one Damage Control Unit may be fitted per ship (already fitted: {p1})." },
   // 2026-09-26 报障修复（“可以装多个损管”）：载入归正日志——每舰只留一件，多余的退回装备库
   "core.equipment.029": { zh: "同舰唯一归正：每舰只留一件损伤管制装置，退回装备库 {p1} 件（{p2}）。", en: "Per-ship uniqueness fix-up: one Damage Control Unit kept per ship; {p1} extra unit(s) returned to the module bay ({p2})." },
+  /* 2026-09-27 船长报障「有部分船插会在装备栏显示」：装配入口拒收插件（插件只走插件槽） */
+  "core.equipment.030": { zh: "「{p1}」是舰船插件，只能装进插件槽（装上去拆不下来，也不会占高/中/低槽）。", en: "“{p1}” is a ship plug: it can only go into a plug slot (it cannot be removed once fitted, and it never takes a high/mid/low slot)." },
+  /* 2026-09-27 同批：载入归正——把误装在高/中/低槽里的插件搬回插件槽或退回装备库 */
+  "core.equipment.031": { zh: "舰船插件归正：装回插件槽 {p1} 件、退回装备库 {p2} 件（{p3}）——插件只占插件槽，不占高/中/低槽。", en: "Ship plug fix-up: {p1} refitted into plug slots and {p2} returned to the module bay ({p3}) — plugs only take plug slots, never high/mid/low ones." },
   /* 舰船插件（2026-09-26 船长令）：「是一种类似装备的东西，同样装备在舰船上，但是不可拆卸，不可替换」 */
   "core.plug.001": { zh: "已为 {p1} 装上插件：{p2}。插件装上后无法拆下。", en: "{p1} has been fitted with a plug: {p2}. A plug cannot be removed once fitted." },
   "core.plug.002": { zh: "{p1} 不是舰船插件。", en: "{p1} is not a ship plug." },

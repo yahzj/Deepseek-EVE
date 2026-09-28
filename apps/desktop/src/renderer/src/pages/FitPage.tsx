@@ -40,6 +40,8 @@ import {
   fittedCpuUsed,
   fleetDefOf,
   rackOf,
+  // 2026-09-27 船长报障「有部分船插会在装备栏显示」：插件不走高/中/低槽 ⇒ 候选表按单点过滤
+  isRackModule,
   sameKindCount,
 
   fitPresetBrief,
@@ -527,7 +529,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   /** 打开/关闭浮层时重置筛选（与市场页切换类型时子分类归零同哲学） */
   const pickQuery = pickKw.trim().toLowerCase()
   function candidatesOf(rack: RackSlot): ModuleDef[] {
-    const base = bayModules.filter((m) => rackOf(m) === rack)
+    const base = bayModules.filter((m) => isRackModule(m) && rackOf(m) === rack)
     const hit = (m: ModuleDef): boolean => {
       if (pickSlot !== 'all' && m.slot !== pickSlot) return false
       if (pickQuery.length === 0) return true
@@ -553,7 +555,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   function pickSlotOptions(rack: RackSlot): Array<{ slot: string; label: string; count: number }> {
     const cnt = new Map<string, number>()
     for (const m of bayModules) {
-      if (rackOf(m) !== rack) continue
+      if (!isRackModule(m) || rackOf(m) !== rack) continue
       cnt.set(m.slot, (cnt.get(m.slot) ?? 0) + 1)
     }
     return [...cnt.entries()]

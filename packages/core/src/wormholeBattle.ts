@@ -16,6 +16,7 @@ import { uidDefId } from './labels'
 import { gainAiCore, aiCoreName } from './ai'
 import { addWare } from './inventory'
 import { loseShip } from './shipyard'
+import { PLUG_BLACKBOX_ITEM_ID, plugsToBlackBoxesOf } from './plugs'
 import { advanceBattleFor, battleClockNowMs, battleShowWindowMs, persistFleetHullDamage, refundAmmo, refundRepairKitsAll, repairUsageText, settleDroneLosses, stampFoeArrivalFx, startFleetBattleFor, wormholeDerivedAnomaly, captureBattleReport } from './combat'
 import {
   wormholeAdvanceNode,
@@ -534,6 +535,31 @@ function sunkShipIds(run: WormholeRunState, battle: BattleState): string[] {
  *   撤离战 ⇒ **结算收益**（背包并入仓库）并结束本趟；
  * - **负**（= 我方全灭，D 批口径）：**全损**——编队全丢、背包清空、本趟结束。
  */
+/**
+ * **洞内沉船的舰船插件 ⇒ 当场折成黑匣入库**（**2026-09-27 船长令**）。
+ *
+ * 船长问：「玩家如果有插件的船在虫洞内丢失了要怎么回收插件？」⇒ 裁决**甲：洞内沉船即折黑匣入库** ——
+ * 与现成的回收口径同一条（`plugs`：「**玩家回收按插件数量直接回收成黑匣**」，1 件插件 = 1 个黑匣、
+ * **无条件、不掷骰**），**不造残骸、不加打捞点**（"虫洞不留残骸"是船长 2026-09-26 的令，本批不动它）。
+ *
+ * ⚠ **必须在 `loseShip` 之前调用**：它会 `delete state.fleet[shipId]`，删完插件就抓不到了。
+ * ⚠ 这条修的是一个真缺口：插件那条令写着「玩家打捞自己的舰船残骸时，**总能**回收舰船插件」，
+ * 而虫洞那两处 `loseShip` **不传 `wreckGalaxyId`** ⇒ 压根不生成残骸 ⇒ 插件此前**永久消失、无路可回收**。
+ */
+export function salvagePlugsOnSink(state: GameState, ctx: SimContext, uid: string): void {
+  const plugs = state.fleet[uid]?.plugs ?? []
+  const n = plugsToBlackBoxesOf(plugs)
+  if (n <= 0) return
+  const name = ctx.ships.get(uidDefId(uid))?.name ?? uid
+  const boxName = ctx.items.get(PLUG_BLACKBOX_ITEM_ID)?.name ?? PLUG_BLACKBOX_ITEM_ID
+  addWare(state, PLUG_BLACKBOX_ITEM_ID, n)
+  addLog(
+    state,
+    'fleet',
+    `🕳 ${name} 沉没：船上 ${n} 件舰船插件当场折成 ${boxName} ×${n} 入库（洞内沉船不留残骸，捞不回来）。`,
+  )
+}
+
 function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRunState): void {
   const battle = run.battle
   if (!battle) return
@@ -545,6 +571,8 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   const sunk = sunkShipIds(run, battle)
   for (const uid of sunk) {
     const name = ctx.ships.get(uidDefId(uid))?.name ?? uid
+    // **插件先折黑匣、再沉船**（顺序敏感：`loseShip` 会删掉 fleet 条目）
+    salvagePlugsOnSink(state, ctx, uid)
     loseShip(state, uid, ctx, `虫洞内被击沉（${name}）`)
   }
   if (sunk.length > 0) {
@@ -655,7 +683,11 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
       const name = ctx.ships.get(uidDefId(uid))?.name ?? uid
       lostNames.push(name)
       // 本场沉掉的已经在上面 `loseShip` 过了：这里只补"还活着但整趟判负"的那几艘
-      if (!sunk.includes(uid)) loseShip(state, uid, ctx, `虫洞内失联（${name}）`)
+      if (!sunk.includes(uid)) {
+        // **同样是沉船 ⇒ 插件先折黑匣**（顺序敏感：`loseShip` 会删掉 fleet 条目）
+        salvagePlugsOnSink(state, ctx, uid)
+        loseShip(state, uid, ctx, `虫洞内失联（${name}）`)
+      }
     }
     state.wormhole.lastFleetLost += run.fleet.length
     const lostText = `🕳 虫洞探险失败：编队失联、货仓内容全部丢失（损失 ${lost.length} 艘）。`
