@@ -244,11 +244,21 @@ export const WORMHOLE_AUTO_REPORT_MAX = 20
  * ⚠ **一级未点 ⇒ 每个系数恒 1** ⇒ 未点科技的玩家读数与报告**一字不变**（用例钉住）。
  */
 export interface WormholeAutoTechFactors {
-  /** **总量系数**（回合 × 货仓；未点科技 = 1）——四条产出线一起乘 */
+  /**
+   * **总量系数**（回合 × 货仓；未点科技 = 1）。
+   *
+   * ⚠ **2026-09-27 起不再参与结算**——只留作**读数**（它的两个因子各自已有物理通道，见下）。
+   * 旧口径是"手动期望 × `total`"一笔算完，`total` 是科技进产出的**唯一**通道；09-26 改成
+   * "真进洞跑一趟"之后，**回合**由 `techTurnBonus` 真给（本趟多打若干回合）、**货仓**由 `holdM3`
+   * 真给（多装若干 m³）⇒ 再把 `total` 乘到产出与货仓上就是**同一份科技算了两遍**。
+   * 实测满科技档：货仓被放大 **5.41 倍** ⇒「留手额度」永远够不着 ⇒ 回合全耗在浅层打工，
+   * 反而**少下 0.41 层、少拿 11~13% 的稀有/货柜/谜质**（等于倒扣科技玩家）。
+   * 船长 2026-09-27 选**甲**：两处都摘掉 `total`。
+   */
   total: number
-  /** **残骸线系数**（总量 × 打捞效率加成；含普通残骸 / 稀有残骸 / 遗迹货柜 / AI 核心） */
+  /** **残骸线系数** = `1 + 打捞效率加成`（管普通残骸 / 稀有残骸 / 遗迹货柜 / AI 核心；未点 = 1） */
   wreck: number
-  /** **虚空母矿线系数**（总量 × 采集效率加成） */
+  /** **虚空母矿线系数** = `1 + 采集效率加成`（未点 = 1） */
   ore: number
   /** **损伤系数**（1 = 原区间；战斗线点满 = 0.5 ⇒ 损伤减半） */
   damage: number
@@ -314,8 +324,9 @@ export function wormholeAutoTechFactors(
   const battleProgress = max > 0 ? got / max : 0
   return {
     total,
-    wreck: total * (1 + salvageEff),
-    ore: total * (1 + collectEff),
+    // ⚠ 两条线**只吃各自的效率加成**，不再乘 `total`（2026-09-27 船长甲案：摘掉重复计入）
+    wreck: 1 + salvageEff,
+    ore: 1 + collectEff,
     damage: 1 - 0.5 * battleProgress,
     turnMul,
     holdMul,
@@ -330,6 +341,22 @@ export function wormholeAutoTechFactors(
 /** 这组系数是否"什么都没吃"（未点科技 ⇒ 界面不出现科技读数、日志不加那段） */
 export function wormholeAutoTechIsNeutral(f: WormholeAutoTechFactors): boolean {
   return f.wreck === 1 && f.ore === 1 && f.damage === 1
+}
+
+/**
+ * **本趟自动探索的货仓容量（m³）** = 该队**实有格数** × `WORMHOLE_AUTO_HOLD_M3_PER_CELL`。
+ *
+ * 实有格数 = `baseHold`（不含科技）× `holdMul`（折叠货舱 +4 格/级）= 与手动同一个口径。
+ *
+ * ⚠ **2026-09-27 船长甲案**：此处原先还乘了一个 `tf.total`（= 回合 × 货仓）——
+ * `holdMul` 被算了**两遍**，且**回合系数被混进了货仓容量**（回合多 ≠ 船舱大）。实测满科技档
+ * 把货仓放大 **5.41 倍** ⇒ 留手额度 `holdCapThisLayer = holdM3 × 0.25` 永远够不着
+ * ⇒ 回合全耗在浅层打工（残骸 +33%），反而**少下 0.41 层、少拿 11~13% 的稀有/货柜/谜质**。
+ *
+ * 抽成单点是为了**它能被用例直接钉住**（留在 `settleRun` 里则护栏够不着）。
+ */
+export function wormholeAutoHoldM3Of(f: WormholeAutoTechFactors): number {
+  return Math.max(1, Math.round(f.baseHold * f.holdMul)) * WORMHOLE_AUTO_HOLD_M3_PER_CELL
 }
 
 /** 在跑的自动探索（老档没有 ⇒ 空数组） */
@@ -709,7 +736,7 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
     seed: run.seed,
     startDepth: Math.max(1, Math.min(9, run.depth)),
     totalMass: adm.totalMass,
-    holdM3: Math.max(1, Math.round(tf.baseHold * tf.holdMul)) * WORMHOLE_AUTO_HOLD_M3_PER_CELL * tf.total,
+    holdM3: wormholeAutoHoldM3Of(tf),
     miners: countFittedBySlot(state, ctx, run.shipIds, 'miner'),
     salvagers: countFittedBySlot(state, ctx, run.shipIds, 'salvager'),
     power: fleetPowerOf(state, ctx, run.shipIds),
