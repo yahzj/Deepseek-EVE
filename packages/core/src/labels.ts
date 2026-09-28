@@ -131,6 +131,20 @@ export function rackOf(def: {
   return 'low'
 }
 
+/**
+ * **这件装备走不走高/中/低槽**（**2026-09-27 船长报障**：「有部分船插会在装备栏显示」）。
+ *
+ * 判据 = `slot !== 'plug'`。**为什么要这个单点**：舰船插件在数据里为过体检契约**声明了 `rack: 'low'`**
+ * （见 `ui/itemSubs.ts` 的说明），而 `rackOf()` **优先返回 `def.rack`** ⇒ 插件被判成**低槽** ⇒
+ * 装配页的低槽候选把它列出来，点下去还会真写进 `fitted.low`（破「不可拆卸、不可替换」那条红线）。
+ *
+ * ⚠ **不 import `plugs.ts`**：`plugs` 反向依赖本文件（它要 `shipSlotsOf`）⇒ 就地判据，避免成环。
+ * 凡"列高/中/低候选""校验某件能否装进某个槽"的地方，**一律先过本函数**。
+ */
+export function isRackModule(def: { slot: ModuleSlot }): boolean {
+  return def.slot !== 'plug'
+}
+
 /** 物品分类展示顺序 */
 export const ITEM_KIND_ORDER: readonly ItemKind[] = ['ore', 'mineral', 'part', 'gas', 'ice', 'ammo', 'drone', 'wreck', 'container', 'matter', 'essence', 'luxury', 'fragment', 'blackbox', 'kit', 'aicore']
 

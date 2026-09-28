@@ -162,6 +162,8 @@ export {
   rackLabel,
   shipSlotsOf,
   rackOf,
+  // 2026-09-27：判"这件走不走高/中/低槽"（插件不走）——装配页候选过滤与装配校验共用
+  isRackModule,
   allFittedIds,
   // 推进器周期口径文案（与 balance.battle 同源；2026-09-14 起支持「按件覆盖」= 微型跃迁引擎 10/60）
   thrusterCycleSeconds,
