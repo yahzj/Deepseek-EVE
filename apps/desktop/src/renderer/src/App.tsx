@@ -1790,6 +1790,14 @@ async function applyLayoutAndQuit(): Promise<void> {
             <div
             className={`app-page-content${PAGE_NO_SCROLL.has(page) ? ' no-scroll' : ''}${navBeat?.key === page ? ' is-beat' : ''}${winOnStage ? ' is-win-hidden' : ''}`}
             key={page}
+            /**
+             * **当前页的机器可读标记**（**2026-09-27 · 三号核验批**）：
+             * 内容区此前只有类名、没有"这是哪一页"的标记 ⇒ 无头工具（`tools/l10n-en-scan.ts`）
+             * 判不出"切页到底生效没有"，只能靠固定等待 + 猜，实测因此出现**整页读数缺失、
+             * 上一页的读数在好几个页名下重复**（读数失真）。
+             * 这个属性只为"读得出、核对得了"而存在：不改样式、不改行为、不参与任何逻辑分支。
+             */
+            data-page={page}
             >
             {page === 'ship' ? (
             <ShipPage
