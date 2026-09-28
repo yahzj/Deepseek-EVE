@@ -111,6 +111,8 @@ export const TONES: Record<string, string> = {
   'group-战斗': toneVar('group-combat'),
   'group-工程': toneVar('group-engineering'),
   'group-贸易': toneVar('group-trade'),
+  // 2026-09-27：新大类「矿业」（采矿 + 采矿舰操作从工业独立）——色相取紫晶，与既有五色相都不同
+  'group-矿业': toneVar('group-mining'),
 }
 
 /** NAV_TONES（17 条） */
