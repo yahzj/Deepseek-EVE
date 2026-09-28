@@ -68,18 +68,33 @@ const problems: string[] = []
 function crestContract(): string[] {
   const out: string[] = []
   // ⚠ 先剥注释再扫：这段契约自己的说明里就写着那个反面写法（不然工具会被自己的注释判红）
-  const src = readFileSync(new URL('../apps/desktop/src/renderer/src/panels/Handbook.tsx', import.meta.url), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/\/\/[^\n]*/g, '')
-  const badNarrow = [...src.matchAll(/factionOfExclusive\([^)]*\)\s*!==\s*undefined/g)]
-  if (badNarrow.length > 0) {
-    out.push(`Handbook.tsx 有 ${badNarrow.length} 处 \`factionOfExclusive(...) !== undefined\` —— 该函数"不是专属"返回 null，这么判会把 null 放进卡片（判据请走 crestFamOf()）`)
+  const strip = (s: string): string => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+  const hand = strip(readFileSync(new URL('../apps/desktop/src/renderer/src/panels/Handbook.tsx', import.meta.url), 'utf8'))
+  /**
+   * **2026-09-27 迁出单点**：判据与可读名从 `Handbook.tsx` 搬到了 `ui/labelsText.ts`
+   * （船长报障「物品仓库内的势力装备，左上角没有角标，能否将所有功能相同的同类型的图标规则进行统一下」
+   * ⇒ 物品页仓库 / 货仓的 `ItemGlyphGrid` 与手册图鉴的 `IconGrid` 共用一份）。
+   * 契约随之改成：**查单点文件**（判据收窄 ＋ 可读名），再核对**两处网格**都用 `!= null` 兜底。
+   */
+  const labels = strip(readFileSync(new URL('../apps/desktop/src/renderer/src/ui/labelsText.ts', import.meta.url), 'utf8'))
+  const itemView = strip(readFileSync(new URL('../apps/desktop/src/renderer/src/ui/itemView.tsx', import.meta.url), 'utf8'))
+  // ① 反面写法：判"有没有族"不许直接比 `!== undefined`（该函数"不是专属"返回 null）
+  for (const [name, src] of [['Handbook.tsx', hand], ['itemView.tsx', itemView], ['labelsText.ts', labels]] as const) {
+    const badNarrow = [...src.matchAll(/factionOfExclusive\([^)]*\)\s*!==\s*undefined/g)]
+    if (badNarrow.length > 0) {
+      out.push(`${name} 有 ${badNarrow.length} 处 \`factionOfExclusive(...) !== undefined\` —— 该函数"不是专属"返回 null，这么判会把 null 放进卡片（判据请走 crestFamOf()）`)
+    }
   }
-  if (!/function crestFamOf\([\s\S]{0,200}?\?\? undefined/.test(src)) {
-    out.push('Handbook.tsx 缺 `crestFamOf()`（把 null/undefined 收窄成一种"没有"的单点）')
+  // ② 单点必须把 null 收窄成一种"没有"
+  if (!/function crestFamOf\([\s\S]{0,200}?\?\? undefined/.test(labels)) {
+    out.push('labelsText.ts 缺 `crestFamOf()`（把 null/undefined 收窄成一种"没有"的单点）')
   }
-  if (!/\{c\.crest != null \? \(/.test(src)) {
+  // ③ 两处网格画角标的判据都必须是 `!= null`（同时挡 null 与 undefined）——最后一层防线
+  if (!/\{c\.crest != null \? \(/.test(hand)) {
     out.push('Handbook.tsx 的 IconGrid 画角标判据不是 `c.crest != null` —— null 会漏进去、整页 toLowerCase 崩')
+  }
+  if (!/\{c\.crest != null \? \(/.test(itemView)) {
+    out.push('itemView.tsx 的 ItemGlyphGrid 画角标判据不是 `c.crest != null` —— null 会漏进去、整页 toLowerCase 崩')
   }
   return out
 }
@@ -161,4 +176,4 @@ if (problems.length > 0) {
   process.exit(1)
 }
 console.log('✅ 属性表同名体检通过：四处拼装口径均无同名两行')
-console.log('✅ 族徽判据契约通过：判"有没有族"只走 crestFamOf()，IconGrid 用 `!= null` 兜底（null 不再能打崩图鉴页）')
+console.log('✅ 族徽判据契约通过：判"有没有族"只走 crestFamOf()（单点 = ui/labelsText.ts），IconGrid 与 ItemGlyphGrid 都用 `!= null` 兜底（null 不再能打崩图标卡）')

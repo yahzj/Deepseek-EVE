@@ -60,6 +60,20 @@ type Status = {
   cls: string
 }
 
+/**
+ * **六颗状态标签**（＝ 图例兼筛选器；`[状态 class, 文案 id]`——文案 id **复用既有那六条，一字未改**）。
+ * 顺序 = 船长 2026-09-27 原话里的顺序（已满级 · 训练中 · 已排队 · 已练 · 未学 · 未解锁）。
+ * 图例与"筛完为空"那句都读这一张表 ⇒ 两处不会各写一份、也就不会漂。
+ */
+const STATE_CHIPS = [
+  ['is-max', 'ui.SkillTree.004'],
+  ['is-training', 'ui.SkillTree.005'],
+  ['is-queued', 'ui.SkillTree.006'],
+  ['is-has', 'ui.SkillTree.007'],
+  ['is-none', 'ui.SkillTree.008'],
+  ['is-locked', 'ui.SkillTree.017'],
+] as const
+
 export function SkillsTreePage({
   engine,
   focusGroup,
@@ -96,6 +110,21 @@ export function SkillsTreePage({
     return v !== null && groups.includes(v) ? v : groups[0] ?? ''
   })
   const [branchTab, setBranchTabState] = useState<string>(() => sessionPick('skills.branch') ?? '')
+  /**
+   * **视图筛选：按状态筛**（**2026-09-27 船长令**：「点节点看说明与训练按钮 / 已满级 / 训练中 /
+   * 已排队 / 已练 / 未学 / 未解锁 / **技能科技树这几个标签允许玩家点击，点击后筛选出对应类型的技能。**」）。
+   *
+   * `''` = 不筛。取值为**状态 class**（`statusOf` 的 `cls`）：`is-max` / `is-training` /
+   * `is-queued` / `is-has` / `is-none` / `is-locked` —— 与节点染色、图例**同一把尺**，
+   * 不另立判据（免得"点标签筛出来的"与"看到的颜色"对不上）。
+   *
+   * ⚠ 三条口径（船长 2026-09-27「按你推荐来」裁定）：
+   * ① **未学 = 前置已满足且 Lv 0**（`is-none`）；`is-locked`（前置没满足）**归「未解锁」那颗**，
+   *    两者互不重叠 —— 一颗答"还差前置"、一颗答"现在就能开练"；
+   * ② 「已练」（`is-has`）**不含满级**（满级有自己那颗）；
+   * ③ 上面的「训练队列」面板**不参与筛选**（它是"正在发生的事"，与筛选无关）。
+   */
+  const [stateTab, setStateTab] = useState<string>('')
   const setGroupTab = (v: string): void => {
     setGroupTabState(v)
     setSessionPick('skills.group', v)
@@ -225,6 +254,16 @@ export function SkillsTreePage({
 
   const books = useMemo(() => booksOf(groupTab), [skills, groupTab])
   const shown = branchTab === '' ? books : books.filter((b) => b.branch === branchTab)
+  /**
+   * **状态筛选的三件套**（判定与前缀都在这里，两种视图共用；见 `stateTab` 头注）：
+   * ① `statePass` —— 这条技能过不过筛（值域 = 状态 class，与 `statusOf` 同一把尺）；
+   * ② `stateCount` —— 每颗标签的计数：**口径与"筛选后能看到的"完全同源**
+   *    （＝当前大类 ＋ 当前技能书里满足该状态的条数）⇒ 标签上的数就是点下去看到的数；
+   * ③ `stateScope` —— 计数的作用域（当前大类 · 当前技能书那一档），与视图范围一致。
+   */
+  const stateScope = shown.flatMap((b) => b.defs)
+  const statePass = (s: SkillDef): boolean => stateTab === '' || statusOf(s).cls === stateTab
+  const stateCount = (cls: string): number => stateScope.filter((s) => statusOf(s).cls === cls).length
   const layouts = useMemo(
     () => shown.map((b) => layoutBook(b.branch, b.defs, SKILL_TREE_POSITIONS)),
     [shown],
@@ -319,14 +358,34 @@ export function SkillsTreePage({
 
         {skillView === 'grid' ? (
           <>
+        {/**
+         * **图例兼筛选器**（**2026-09-27 船长令**：这七颗标签"允许玩家点击，点击后筛选出对应类型的技能"）。
+         *
+         * 做法：`<span>` → `<button>`（复用同一批 `.app-skilltree-key` 类，只多一个 `is-active`）＋
+         * 每颗带**计数**（计数口径见 `stateCount`：就是点下去能看到的条数）。
+         * 交互：**单选取筛**——点一颗只看那一类，再点同一颗取消（回到全部）。
+         * 筛选**不删节点、只压暗**（与搜索同一手法）：树的结构与前置连线照旧，玩家看得出"在哪一支上"。
+         */}
         <div className="app-skilltree-legend">
           <span className="app-dim">{tr('ui.SkillTree.009')}</span>
-          <span className="app-skilltree-key is-max">{tr('ui.SkillTree.004')}</span>
-          <span className="app-skilltree-key is-training">{tr('ui.SkillTree.005')}</span>
-          <span className="app-skilltree-key is-queued">{tr('ui.SkillTree.006')}</span>
-          <span className="app-skilltree-key is-has">{tr('ui.SkillTree.007')}</span>
-          <span className="app-skilltree-key is-none">{tr('ui.SkillTree.008')}</span>
-          <span className="app-skilltree-key is-locked">{tr('ui.SkillTree.017')}</span>
+          {STATE_CHIPS.map(([cls, id]) => (
+            <button
+              key={cls}
+              type="button"
+              className={`app-skilltree-key ${cls}${stateTab === cls ? ' is-active' : ''}`}
+              aria-pressed={stateTab === cls}
+              title={tr('ui.SkillTree.028', { p1: tr(id) })}
+              onClick={() => setStateTab((cur) => (cur === cls ? '' : cls))}
+            >
+              {tr(id)}
+              <span className="app-skilltree-key-n">{stateCount(cls)}</span>
+            </button>
+          ))}
+          {stateTab !== '' ? (
+            <button type="button" className="app-skilltree-key is-clear" onClick={() => setStateTab('')}>
+              {tr('ui.SkillTree.027')}
+            </button>
+          ) : null}
         </div>
 
         {/* 树画布：每本技能书一张小图（六边形蜂窝 ＋ 真前置连线）；窄窗横滑、画布自身滚 */}
@@ -379,12 +438,14 @@ export function SkillsTreePage({
                     {lay.nodes.map((n) => {
                       const st = statusOf(n.def)
                       const hit = isHit(n.def)
+                      /** 搜索与状态筛选**同一手法**：不命中（任一没过）就压暗，节点与连线照旧留在树上 */
+                      const dimmed = !hit || !statePass(n.def)
                       const lines = nameLines(n.def.name)
                       return (
                         <g
                           key={n.def.id}
                           role="listitem"
-                          className={`app-skilltree-hex ${st.cls}${hit ? '' : ' is-dimmed'}`}
+                          className={`app-skilltree-hex ${st.cls}${dimmed ? ' is-dimmed' : ''}`}
                           /* 悬停说明走自绘接管层（SVG 用 `data-tip`；**禁 `<title>` 子元素**，见 §6 与 content:check） */
                           data-tip={
                             st.locked.length > 0
@@ -445,7 +506,7 @@ export function SkillsTreePage({
                   {skillBranchText(b.branch)}
                   <span className="app-dim"> {b.defs.length}</span>
                 </div>
-                {b.defs.filter(isHit).map((s) => {
+                {b.defs.filter((s) => isHit(s) && statePass(s)).map((s) => {
                   const st = statusOf(s)
                   const lastQ =
                     st.queued > 0
@@ -528,6 +589,15 @@ export function SkillsTreePage({
             {tr('ui.SkillsPage.006')}
             {query.trim()}
             {tr('ui.SkillsPage.007')}
+          </div>
+        ) : null}
+        {/**
+         * **筛完为空**（2026-09-27 补）：状态筛选是"这一页里没有这一类"时点下去会一颗节点都不亮
+         * ⇒ 必须给一句话，别让玩家以为点了没反应（与上面的搜索空态同款样式，两条可同时出现）。
+         */}
+        {stateTab !== '' && stateCount(stateTab) === 0 ? (
+          <div className="app-dim app-skilltree-empty">
+            {tr('ui.SkillTree.028', { p1: tr(STATE_CHIPS.find((c) => c[0] === stateTab)?.[1] ?? 'ui.SkillTree.017') })}
           </div>
         ) : null}
       </Panel>

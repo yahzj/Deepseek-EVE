@@ -21,9 +21,11 @@ import type { GameState } from './state'
 import type { CommsInstanceEntry, CommsRewardLine, SimContext } from './types'
 import {
   WEEKEND_BLACKBOX_ITEM_ID,
+  weekendGrantRewards,
   weekendRareWreckIdFor,
+  noteReward,
 } from './weekendBattle'
-import { weekendFoeCardOf } from './weekendEvent'
+import { weekendFoeCardOf, weekendLastHitByPlayer } from './weekendEvent'
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 
 /** 预警信 id（固定 ⇒ 每场覆盖） */
@@ -285,6 +287,10 @@ export const WEEKEND_BOX_COMPENSATION_CUTOFF_WALL_MS = 1_790_468_640_000
  * 幂等靠**动作本身**：入库会置位"见过黑匣" ⇒ 第二次调用第 4 条即不成立，天然只补一次。
  * 落点 = 物品仓库 ＋ 一条系统日志（船长裁定「**不发**（信）」⇒ 不投递通讯）。
  *
+ * ⚠ **只负责 `WEEKEND_BOX_COMPENSATION_CUTOFF_WALL_MS` 之前的场次**：之后的归同文件下面的
+ * `reconcileWeekendBlackBox`（逐 tick 对账、按记录在案的规则判）。两条入口**按时间划界** ——
+ * 本函数付钱时**不写场次记录**，对面看不出它付过 ⇒ 判据一改宽就会**双发**，别动这条边界。
+ *
  * @returns 真补了才 `true`
  */
 export function compensateMissingWeekendBlackBox(state: GameState, ctx: SimContext): boolean {
@@ -326,4 +332,73 @@ function hasAnyPlug(state: GameState, ctx: SimContext): boolean {
     if (n > 0 && isPlugOf(ctx.modules.get(id))) return true
   }
   return false
+}
+
+/* ─────────────── 补发入口之二：逐 tick 对账（规则漏发） ─────────────── */
+
+/**
+ * **对账补发：把"本该必爆却漏掉"的旗舰黑匣补给玩家**（**2026-09-28 船长令**：
+ * 「**不需要给本地存档补发，采用工具线上补发**」）。
+ *
+ * 判据 = 船长**记录在案的规则**（原话：「**规则应该很清楚记录了：输出超过50%血量，完成最后击杀，
+ * 就给黑匣。**」＝ `weekendBlackBoxChanceOf` 的第一支「抢到最后一下 ＋ p > 50% ⇒ chance 1」）。
+ * 五条全过才补：
+ * 1. **有留档**：`weekendLastHitByPlayer(ev)` —— 玩家亲手打爆母舰（**唯一判据**，别另拍一套）；
+ * 2. **占比 > 50%**：按爆率表这一档**必爆**（≤ 50% 的场次本来就不该必爆，一律不碰）；
+ * 3. **本场已结束**：进行中的场次走正常掷骰路径（`weekendApplyBattleOutcome` 已按单一判据重掷），
+ *    不在这里抢着发；
+ * 4. **本场没按这个口径结过账**：`flagshipBlackBoxByPlayer !== true` —— 章鱼人抢先掷的那一次记的是
+ *    `false` 情境，**不构成"已结账"**（2026-09-28 报障的根因正在这里：玩家亲手打爆、占比 93.2%，
+ *    却读到章鱼人先掷的那个 `false`）；
+ * 5. **本场至今没有黑匣落地**：`flagshipBlackBox !== true` ∧ 台账 `rewardLedger.blackBox === 0`。
+ *
+ * ⚠ **与上面那次一次性补偿按时间划界**（不划界会**双发**，所以这两条判据必须一起看）：
+ * 那个入口判据更宽（不要求留档与占比）、付钱时**只入库 ＋ 一条日志，不写场次记录**
+ * ⇒ 本函数**看不出它已经付过**。因此以 `WEEKEND_BOX_COMPENSATION_CUTOFF_WALL_MS` 为界：
+ * **结束于它之前的场次归那次补偿，之后的归本函数**（补偿窗口内的场次本函数一律不碰）。
+ *
+ * 幂等靠**动作本身**：补了就写死 `flagshipBlackBox`／`flagshipBlackBoxByPlayer` ⇒ 第 4、5 条即不成立，
+ * 第二次调用直接返回。落点 = 物品仓库 ＋ 一条系统日志（**不投递通讯**，与那次补偿同口径）。
+ *
+ * @returns 真补了才 `true`
+ */
+export function reconcileWeekendBlackBox(state: GameState): boolean {
+  const ev = state.weekendEvent
+  if (ev === undefined) return false
+  /** ① 留档（单一判据）：没有"玩家亲手击沉"的记录 ⇒ 不是本工具的事 */
+  if (!weekendLastHitByPlayer(ev)) return false
+  /** ② 占比 > 50% ⇒ 记录在案的规则是"必爆" */
+  const hpMax = ev.flagshipHpMax ?? 0
+  const p = hpMax > 0 ? Math.max(0, ev.flagshipHpDone ?? 0) / hpMax : 0
+  if (!(p > 0.5)) return false
+  /** ③ 只补已结束的场次；④ 且不在一性补偿的窗口里 */
+  const endedAtWallMs = ev.endedAtWallMs
+  if (endedAtWallMs === undefined) return false
+  if (endedAtWallMs < WEEKEND_BOX_COMPENSATION_CUTOFF_WALL_MS) return false
+  /** ⑤ 本场没结过账：标记与台账都要空 */
+  if (ev.flagshipBlackBox === true || ev.flagshipBlackBoxByPlayer === true) return false
+  if ((ev.rewardLedger?.blackBox ?? 0) > 0) return false
+  const granted = weekendGrantRewards(state, { blackBox: true })
+  /** 物品契约破损（`addWare` 拒收）⇒ 一枚也没落地：不记账、不打标记，下一拍再试 */
+  if (granted.blackBox <= 0) return false
+  ev.flagshipBlackBox = true
+  ev.flagshipBlackBoxByPlayer = true
+  noteReward(ev, undefined, { blackBox: granted.blackBox })
+  /**
+   * **战果快照只补"变了的那一栏"**（`blackBox`）：结算面板与结算信读的就是它 —— 不补，玩家会看到
+   * "仓库里多了一枚、面板还写未爆"。⚠ 这里**不整张重建**快照：重建会把贡献占比、进度收入那些
+   * 与本次补发无关的数按"现在的 state"重算一遍，凭空改写历史读数（补发只该动它补的那一件）。
+   */
+  const snap = state.weekendLastResult
+  if (snap !== undefined && snap.endedAtWallMs === endedAtWallMs) {
+    snap.blackBox += granted.blackBox
+  }
+  addLog(
+    state,
+    'system',
+    `📦 补发：旗舰黑匣 ×${granted.blackBox}（你亲手击沉母舰、输出占比 ${Math.round(p * 100)}% ⇒ 必定爆出）——已存入物品仓库。`,
+    'core.weekend.039',
+    { p1: granted.blackBox, p2: Math.round(p * 100) },
+  )
+  return true
 }

@@ -417,8 +417,12 @@ export interface WeekendSettleGrant {
  * **记一笔到手台账**（2026-09-25 加）：三处入账（夺回 / 贡献奖 / 旗舰掉落）各调一次，全是**累加**。
  * 用途 = 结算面板与结算通讯里的奖励清单**不再另算一遍**（说的与发的逐值一致）。
  * `galaxyId` 给了才记逐星系那一栏（旗舰掉落与贡献奖是全局的）。
+ *
+ * ⚠ **对外导出只为补发工具**（`weekendComms.reconcileWeekendBlackBox`，2026-09-28 船长令）：
+ * 它补的黑匣同样要进这本台账，否则结算面板又会显示玩家手里没有/少一件的东西（账实分离）。
+ * 游戏内其余入账一律走本文件内的调用点，别在外面新开入口。
  */
-function noteReward(
+export function noteReward(
   ev: WeekendEventState,
   galaxyId: string | undefined,
   add: { isk?: number; wreck?: number; blackBox?: number },
@@ -516,7 +520,10 @@ export function weekendResultSnapshotOf(
   const playerKill = ev.flagshipPlayerKill
   const flagshipOutcome: WeekendResultSnapshot['flagshipOutcome'] = weekendFlagshipOutcomeOf(ev)
   /**
-   * `defeated` = **这面「已击沉 / 未击沉」的判据与黑匣同源**（＝`flagshipDown === 'player'`）。
+   * `defeated` = **这面「已击沉 / 未击沉」的判据与黑匣同源**（代码见下面 `flagshipOutcome === 'player'`）。
+   * ⚠ **2026-09-28 更正注释**：这里原先写「＝`flagshipDown === 'player'`」——那是**半套判据**
+   * （2026-09-28 报障那一场正是"留档说玩家打爆了、`flagshipDown` 却是 `octopus`"），
+   * 代码读的是**单点**`weekendFlagshipOutcomeOf`（留档优先），面板才不会与结算信打架。
    *
    * ⚠ **2026-09-25 船长报障修**：原判据写的是 `hpDone >= hpMax`（**玩家自己打的那份 ≥ 池子总量**）——
    * 那是"共享血条"落地**之前**的口径。改共享血条后，血条 = `池子 −（玩家 ＋ 章鱼人）`，

@@ -3212,6 +3212,35 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     isk: Math.max(0, Math.floor(num(reclaimPendingRaw.isk) || 0)),
     wreck: Math.max(0, Math.floor(num(reclaimPendingRaw.wreck) || 0)),
   }
+  /**
+   * **到手台账**（**2026-09-28 船长令「按你推荐来」⇒ 甲案：落盘**）—— 与上面那两本账**同一类漏**：
+   * 它原先**根本没进这个清洗器**（本文件 0 引用）⇒ 读一次档这本账就归零。两处实际后果：
+   * - `weekendSettleAndGrant` 的"迟到补发"（`boxAtSettle` ＝ 台账里没有黑匣 ∧ 掷骰掷中了）**只靠它幂等**
+   *   ⇒「击沉 → 发匣（台账记 1）→ 关游戏 → 读档（台账归 0、`flagshipBlackBox` 仍是 `true`）→ 结算」
+   *   这条路会**再发一枚黑匣**（实测口径见工作文档 `docs/design/weekend-blackbox-payout-20260928.md`）；
+   * - 结算面板与结算通讯的奖励清单读它（"说的与发的逐值一致"）⇒ 读档后清单整片归零。
+   * 口径：三格走 `weekendKeep`（**0 是合法值** = 一项都没发），`byGalaxy` 逐项清洗（星系 id 非空、两格 ≥ 0）；
+   * **缺键 ⇒ 不写键**（老档零迁移，读侧照旧 `??=` 兜底）。
+   */
+  const rewardLedger = ((): NonNullable<GameState['weekendEvent']>['rewardLedger'] => {
+    const raw = asRaw(weekendRaw.rewardLedger)
+    if (Object.keys(raw).length === 0) return undefined
+    const byGalaxy: Record<string, { isk: number; wreck: number }> = {}
+    for (const [gid, v] of Object.entries(asRaw(raw.byGalaxy))) {
+      if (gid.length === 0) continue
+      const g = asRaw(v)
+      byGalaxy[gid] = {
+        isk: Math.max(0, Math.floor(num(g.isk) || 0)),
+        wreck: Math.max(0, Math.floor(num(g.wreck) || 0)),
+      }
+    }
+    return {
+      isk: weekendKeep(raw.isk) ?? 0,
+      wreck: weekendKeep(raw.wreck) ?? 0,
+      blackBox: weekendKeep(raw.blackBox) ?? 0,
+      byGalaxy,
+    }
+  })()
   const weekendCoreId = weekendStr(weekendRaw.coreId)
   const weekendStartedAt = weekendNum(weekendRaw.startedAtWallMs)
   const contributedRaw = asRaw(weekendRaw.contributed)
@@ -3312,7 +3341,12 @@ for (const [key, value] of Object.entries(licensesRaw)) {
             ...(typeof weekendRaw.flagshipBlackBox === 'boolean'
               ? { flagshipBlackBox: weekendRaw.flagshipBlackBox }
               : {}),
-            /** 掷骰情境（2026-09-27）：不随档 ⇒ 读档后会按当前情境重掷一次（可接受，且能自愈旧档） */
+            /**
+             * 掷骰情境（2026-09-27）：**随档**（⚠ 2026-09-28 更正注释 —— 原注释写"不随档"，
+             * 与紧随其后的代码不符；代码一直是随档的）。
+             * 随档的理由 = 它是"同情境幂等"的判据（`weekendRollBlackBox`：情境相同才复用结果）：
+             * 丢了 ⇒ 读档后会按另一套情境**重掷一次** ⇒ 那一场可能白捡或白丢一枚黑匣。
+             */
             ...(typeof weekendRaw.flagshipBlackBoxByPlayer === 'boolean'
               ? { flagshipBlackBoxByPlayer: weekendRaw.flagshipBlackBoxByPlayer }
               : {}),
@@ -3331,6 +3365,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
             /** 夺回奖的两本账（2026-09-27 修漏）：空 ⇒ 不写键（老档零迁移），读侧有 `??=` 兜底 */
             ...(reclaimPaid.length > 0 ? { reclaimPaid } : {}),
             ...(reclaimPending.isk > 0 || reclaimPending.wreck > 0 ? { reclaimPending } : {}),
+            /** 到手台账（**2026-09-28 甲案：随档**）—— 结算的"迟到补发"靠它幂等、面板与通讯的清单读它 */
+            ...(rewardLedger !== undefined ? { rewardLedger } : {}),
           }
         })()
       : undefined

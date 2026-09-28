@@ -28,7 +28,7 @@ import {
   itemSubPasses,
   rackPasses, subText } from '../ui/itemSubs'
 import { useL10n, cmdText } from '../i18n/locale'
-import { kindText, slotText } from '../ui/labelsText'
+import { crestFamOf, kindText, slotText } from '../ui/labelsText'
 /** 装备库展示顺序（单点）：攻击类别 → 档位从低到高（2026-09-24 船长报障后立） */
 import { sortModEntries } from '../ui/modOrder'
 import type { PageProps } from './common'
@@ -263,6 +263,9 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   for (const [id, units] of modHits) {
     const def = engine.ctx.modules.get(id)
     if (!def) continue
+    /** **族徽角标**（**2026-09-27 船长报障**：「物品仓库内的势力装备，左上角没有角标」）——
+     *  判据走单点 `crestFamOf(id)`（与手册图鉴同一把尺：装备按自身 id 判）；非专属件恒不标。 */
+    const crest = crestFamOf(id)
     modCells.push({
       key: id,
       glyph: def.slot,
@@ -272,6 +275,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       hover: moduleHoverContent(def),
       // 稀有度小标签（2026-09-20 船长）：装备的市场 refId 本来就是 `mod-<id>` ⇒ 直接传 id
       rarity: itemRarityTierOf(id),
+      ...(crest !== undefined ? { crest } : {}),
     })
   }
 

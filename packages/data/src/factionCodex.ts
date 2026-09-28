@@ -22,6 +22,7 @@
  *  舰船图纸 = `sbp-wh-*`（与 `sh-wh-*` 同名同族）。界面按 `bp-` / `sbp-` 前缀渲染「图纸」徽标。
  */
 import type { FoeFamily } from '@whale/core'
+import { FOE_LAIR_GEAR } from '@whale/core'
 
 /** 图鉴里的势力条目 */
 export interface FactionCodexEntry {
@@ -189,11 +190,26 @@ export function buildFactionCards(
   })
 }
 
-/** 反查：某件族专属物品（装备/舰/图纸 id）属于哪一族 —— 契约与界面共用 */
+/**
+ * 反查：某件族专属物品（装备/舰/图纸 id）属于哪一族 —— 契约与界面共用。
+ *
+ * ⚠ **2026-09-27 修（船长报障）**：「**物品仓库内的势力装备，左上角没有角标**」——
+ * 真因就在本函数：它只翻本表的 `modules`/`ships`/`blueprints` 三栏，而**老窝点件**
+ * （`mod-lair-*`，A/C/D/E/G 五族那 15 件，2026-09-10 那批）**从来只登记在 core 的权威表
+ * `FOE_LAIR_GEAR` 里、本表没重列**（本表头注写着"引用它，不另写一份"）⇒ 那些件一律反查为 `null`
+ * ⇒ 角标判据落空 ⇒ 仓库里的「守墓者长炮」「生体甲壳板」等**一件都不带族徽**（H 族三件因为
+ * 是 2026-09-26 才登记进本表，反倒是全仓唯一带角标的那批）。
+ * ⇒ 现在**先查本表登记的三栏、再查 core 的 `FOE_LAIR_GEAR`**（后者是窝点掉落池的权威表，
+ * 按族给 id 清单）——两处合起来才等于"族专属件"的全集；`FOE_LAIR_GEAR` 里 B/F 两族恒空。
+ */
 export function factionOfExclusive(id: string): FoeFamily | null {
   for (const family of FACTION_CODEX_ORDER) {
     const e = FACTION_CODEX[family]!
     if (e.modules.includes(id) || e.ships.includes(id) || e.blueprints.includes(id)) return family
+  }
+  /** 老窝点件（`mod-lair-*` / 专属无人机 / 其一次性图纸）：权威表在 core，本表不重列 */
+  for (const family of FACTION_CODEX_ORDER) {
+    if (FOE_LAIR_GEAR[family]?.includes(id) === true) return family
   }
   return null
 }

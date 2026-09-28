@@ -23,6 +23,7 @@ import {
   stopHauling,
 } from '../src/hauling'
 import { cargoCapacityM3Of } from '../src/inventory'
+import { travelMinutesEff } from '../src/travel'
 import { startMining } from '../src/mining'
 import { startExpedition } from '../src/expedition'
 import { changeShip, addShipToFleet } from '../src/shipyard'
@@ -122,9 +123,32 @@ describe('长途运输（2026-09-09）', () => {
     // 甲案（2026-09-20）：本条是"多段拼接"——端点接单 ⇒ 无就位段，但有"卸货备注"段
     const log = state.logs.filter((l) => l.text.startsWith('长途运输开始')).at(-1)!
     expect(log.textId).toBe('core.hauling.024') // 无就位段的基础模板
-    expect(log.textParams?.p1Id).toBe('core.state.039') // 卸货备注 = 第 2 段
-    expect(log.textParams?.p1p1).toBe(50) // 段内 {p1} = 卸下的单位数
+    /**
+     * ⚠ **2026-09-27 起这里**不再**挂 `p1Id` / `p1p1`**：卸货备注改走模板自带的尾槽 `{p8}`
+     * （`p8` 中文兜底 ＋ `p8Id` 段 id ＋ **`p8p1` 槽内参数**）——段位命名空间（`p1*`）只留给
+     * "就位提示"那一段用，两个槽各管一件事，不再为一个附注占两个槽。
+     */
+    expect(log.textParams?.p1Id).toBeUndefined()
+    expect(log.textParams?.p1p1).toBeUndefined()
     expect(log.text).toContain('；船上原有货物已卸入仓库（50 单位）。')
+    /**
+     * **槽位映射与 `{p8}` 回归**（**2026-09-27 船长报障**：「长途运输的文本也有错误
+     * （数值不对，还有额外显示了个 `{p8}`）」）：
+     * 模板的槽 = `p1` 船名 · `p2`/`p3` 端点 · `p4` 货仓 · `p5` 单段分钟 · `p6`~`p7` 报酬区间 ·
+     * `{p8}` 卸货备注；曾按"p5 报酬下限 / p6 上限 / p7 分钟"喂 ⇒ 分钟显示成报酬、区间错位，
+     * 且 `{p8}` 一个值都没给 ⇒ 界面原样漏出 `{p8}`。
+     */
+    const tp = log.textParams!
+    const minutes = state.hauling.legMinutes
+    expect(tp.p5, 'p5 必须是单段分钟（不是报酬）').toBe(
+      Math.max(1, Math.round(travelMinutesEff(state, ctx, minutes))),
+    )
+    expect(String(tp.p6), 'p6 是报酬下限').toMatch(/[\d,]+/)
+    expect(String(tp.p7), 'p7 是报酬上限').toMatch(/[\d,]+/)
+    expect(Number(String(tp.p6).replace(/,/g, '')), '下限 ≤ 上限').toBeLessThanOrEqual(Number(String(tp.p7).replace(/,/g, '')))
+    expect(tp.p8, '`{p8}` 槽必须喂到（否则界面漏出 {p8}）').toBe('50')
+    expect(tp.p8Id, '`{p8}` 槽译文 id').toBe('core.state.039')
+    expect(tp.p8p1, '`{p8}` 槽内参数（`core.state.039` 的 {p1} = 卸下的单位数）').toBe(50)
   })
 
   it('非端点停靠也能接单：先飞"就位段"到较近端点，再按所选线循环（不要求停在指定港口）', () => {

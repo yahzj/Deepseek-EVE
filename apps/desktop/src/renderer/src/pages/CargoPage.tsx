@@ -31,7 +31,7 @@ import { RedeemFragmentButton } from '../ui/fragmentRedeem'
 import type { ItemNavProps } from './ItemsPage'
 import type { PageProps } from './common'
 import { useL10n, cmdText } from '../i18n/locale'
-import { kindText, slotText } from '../ui/labelsText'
+import { crestFamOf, kindText, slotText } from '../ui/labelsText'
 import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 import { tr } from '../i18n/locale'
@@ -384,6 +384,9 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               if (kindRows.length === 0) return null
               const cells: ItemGridCell[] = kindRows.map(([id, units]) => {
                 const def = engine.ctx.items.get(id)
+                /** **族徽角标**（**2026-09-27 船长报障**：「物品仓库内的势力装备，左上角没有角标」）
+                 *  —— 判据走单点 `crestFamOf(id)`（与手册图鉴同一把尺）；非专属件恒不标。 */
+                const crest = crestFamOf(id)
                 return {
                   key: id,
                   glyph: def?.kind ?? kind,
@@ -396,6 +399,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                   tone: inventoryItemTone(id, def?.kind ?? kind),
                   // 稀有度小标签（2026-09-20 船长）：物品按 id 查档（含市场外档表与 AI 核心的映射）
                   rarity: itemRarityTierOf(id),
+                  ...(crest !== undefined ? { crest } : {}),
                 }
               })
               const extra = kindExtraNote(kind)
@@ -421,6 +425,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               <ItemGlyphGrid
                 cells={modRows.map(([id, units]) => {
                   const def = engine.ctx.modules.get(id)
+                  /** 族徽角标（**2026-09-27 船长报障**）：船载装备同样按件 id 判族（单点 `crestFamOf`） */
+                  const crest = crestFamOf(id)
                   return {
                     key: id,
                     glyph: def?.slot ?? 'mod',
@@ -431,6 +437,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                     hover: def
                       ? moduleHoverContent(def, tr('ui.CargoPage.059'))
                       : undefined,
+                    ...(crest !== undefined ? { crest } : {}),
                   }
                 })}
                 onPick={(key) => setPickMod(key)}

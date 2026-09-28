@@ -10,6 +10,8 @@
  */
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { Glyph, toneOf } from './Glyphs'
+import { FOE_ACCENT } from './tones'
+import { crestLabelOf } from './labelsText'
 import { tr } from '../i18n/locale'
 import { hoverTipProps } from './Tooltip'
 
@@ -119,6 +121,19 @@ export interface ItemGridCell {
    * 也能照常不传；查不到档的物品（既非市场行也不在市场外档表里）**不显示标签**，不硬塞 R1。
    */
   rarity?: number
+  /**
+   * **族徽角标（左上角）** ——值 = 势力族字母（`'A' | 'C' | 'D' | 'E' | 'G' | 'H'`），缺省 = 不标。
+   *
+   * **2026-09-26 船长令**：「**给所有位置势力专属的舰船和装备的图标卡片的左上角标注势力族徽**」；
+   * **2026-09-27 船长报障**：「**物品仓库内的势力装备，左上角没有角标，能否将所有功能相同的同类型的
+   * 图标规则进行统一下**」⇒ 本组件（物品页仓库 / 货仓 / 一切用 `ItemGlyphGrid` 的图标卡）
+   * 与手册图鉴的 `IconGrid` 从此**同一套角标规则**（同位置、同大小、同取色、同可读名）。
+   *
+   * ⚠ 判据**不在这里**：调用方一律走单点 `crestFamOf(id)`（`ui/labelsText.ts`，把 `null`/`undefined`
+   * 收窄成一种"没有"）。本组件只认 `crest != null` 再画（**最后一层兜底**：`null` 漏进来会
+   * `toLowerCase` 崩整页 —— 2026-09-27 船长报障过的那次）。
+   */
+  crest?: string
 }
 
 /** 分类补充说明（仓库/货仓列表与图标模式共用；2026-09-08 船长反馈弹药/无人机存放含义） */
@@ -171,7 +186,8 @@ export function ItemGlyphGrid({ cells, onPick }: { cells: ItemGridCell[]; onPick
           <div
             key={c.key}
             className="app-hand-cell"
-            style={{ '--tone': tone } as CSSProperties}
+            /* `position: relative`：两枚角标（左上族徽 / 右上稀有度）都绝对定位 */
+            style={{ '--tone': tone, position: 'relative' } as CSSProperties}
             title={tip === null ? c.title : undefined}
             {...(tip ?? {})}
             onClick={onPick ? () => onPick(c.key) : undefined}
@@ -179,6 +195,20 @@ export function ItemGlyphGrid({ cells, onPick }: { cells: ItemGridCell[]; onPick
             <span className="app-hand-cell-icon">
               <Glyph name={c.glyph} size={30} color={tone} />
             </span>
+            {/**
+             * **族徽角标（左上角）** —— 与手册图鉴 `IconGrid` **同一套语言**（同 `left: 3px`、
+             * 同 `zIndex`、同 13px 线稿族徽、同 `FOE_ACCENT` 族色、同"可读名 = 势力全称"）。
+             * ⚠ 判据用 `!= null` 同时挡掉 `null` 与 `undefined`（见 `crest` 字段的说明）。
+             */}
+            {c.crest != null ? (
+              <span
+                className={`app-map-famchip is-fam-${c.crest}`}
+                aria-label={crestLabelOf(c.crest)}
+                style={{ position: 'absolute', top: 3, left: 3, zIndex: 1, color: FOE_ACCENT[c.crest] ?? tone, pointerEvents: 'none' }}
+              >
+                <Glyph name={`fam-${c.crest.toLowerCase()}`} size={13} color="currentColor" />
+              </span>
+            ) : null}
             {/* 稀有度小标签（2026-09-20 船长）：钉在格子右上角；查不到档就不渲染 */}
             {c.rarity !== undefined ? (
               <span className={`app-hand-cell-rarity is-r${c.rarity}`} aria-label={`稀有度 R${c.rarity}`}>

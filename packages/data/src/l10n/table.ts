@@ -1820,6 +1820,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 2026-09-26 船长令：「给所有打完入侵但是没有获取黑匣的玩家补发一个黑匣（必须是推送之前打完，
      同时也要检查玩家是否已经将黑匣制作成舰船插件）」⇒ 补发入仓时的那条系统日志（不发信）。 */
   "core.weekend.040": { zh: "入侵补偿：补发旗舰黑匣 ×1（已存入物品仓库）。", en: "Invasion compensation: 1 flagship black box issued (stored in item storage)." },
+  /* 2026-09-28 船长令：「不需要给本地存档补发，采用工具线上补发」⇒ 逐 tick 对账补发出手时的那条
+     系统日志（`weekendComms.reconcileWeekendBlackBox`）。{p1} = 补发枚数 · {p2} = 玩家输出占比整数。 */
+  "core.weekend.039": { zh: "📦 补发：旗舰黑匣 ×{p1}（你亲手击沉母舰、输出占比 {p2}% ⇒ 必定爆出）——已存入物品仓库。", en: "📦 Compensation: flagship black box ×{p1} (you sank the mothership yourself with {p2}% of the damage — a guaranteed drop) — stored in your item warehouse." },
   /* 2026-09-27 船长令：旗舰战留档（玩家亲手击沉）与归属记录打架时的诊断行 —— 显示以留档为准 */
   "core.weekend.041": { zh: "⚠ 旗舰击沉归属出现两处不同记录：已按玩家亲手击沉处理。", en: "⚠ Two conflicting records for the flagship kill: treated as sunk by the player." },
   /* 2026-09-27 船长令：结算信里也留一句"旗舰是谁打沉的"（与快照的 flagsphipPlayerKill 同源） */
@@ -4995,6 +4998,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.SkillTree.024": { zh: "已购买训练许可（{p1} 信用点）——现在可以把它排入训练队列了。", en: "Training License purchased ({p1} credits) — you can now queue this skill." },
   "ui.SkillTree.025": { zh: "需先购买训练许可（{p1} 信用点）", en: "Requires a Training License ({p1} credits)" },
   "ui.SkillTree.026": { zh: "确认支付 {p1} ISK", en: "Confirm — pay {p1} ISK" },
+  /**
+   * **状态筛选**（**2026-09-27 船长令**：「点节点看说明与训练按钮 / 已满级 / 训练中 / 已排队 / 已练 /
+   * 未学 / 未解锁 / **技能科技树这几个标签允许玩家点击，点击后筛选出对应类型的技能。**」）。
+   *
+   * 七颗标签**复用既有 id**（`ui.SkillTree.004~008` 与 `.017`，文案一字未改），这里只补"筛选态"用到的两句。
+   */
+  "ui.SkillTree.027": { zh: "查看全部", en: "Show all" },
+  "ui.SkillTree.028": { zh: "本页没有「{p1}」的技能。再点一次那颗标签可看全部。", en: "No skills are “{p1}” on this page. Click that chip again to show all." },
   "core.firstTasks.001": { zh: "◆ 任务已达成：「{p1}」——回「任务中心」点「完成」继续下一步。", en: "◆ Task reached: “{p1}” — open the Task Center and click Complete to move on." },
   "core.firstRewards.002": { zh: "未知任务：{p1}。", en: "Unknown task: {p1}." },
   "core.firstRewards.003": { zh: "这条任务已经完成过了。", en: "That task is already complete." },

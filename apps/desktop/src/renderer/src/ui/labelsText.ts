@@ -15,6 +15,7 @@
  * 只有 core 独有的少数几个（零件 / 蓝图碎片 / 无人机机型 / AI 核心四档 / 键值连接符）才新登记。
  */
 import type { AiCoreType, DroneClass, ItemKind, ModuleSlot, ShipRole, WormholeArchetype, WormholePlace } from '@whale/core'
+import { FACTION_CODEX, factionOfExclusive } from '@whale/data'
 import { tr } from '../i18n/locale'
 // 槽类名复用市场/手册那份**已本地化**的槽位表（`RACK_SUBS` · `subText`）——**不另存第二份文案**
 // （`rackText` 就建在它上面；`itemSubs.ts` 不 import 本文件 ⇒ 无环）
@@ -285,4 +286,32 @@ const SKILL_BRANCH_ID: Record<string, string> = {
 export function skillBranchText(branch: string): string {
   const id = SKILL_BRANCH_ID[branch]
   return id !== undefined ? tr(id) : branch
+}
+
+/* ═══════════ 族徽角标（**统一规则** · 2026-09-27 迁入本单点）═══════════
+ *
+ * **2026-09-26 船长令**：「**给所有位置势力专属的舰船和装备的图标卡片的左上角标注势力族徽**」；
+ * **2026-09-27 船长报障**：「**物品仓库内的势力装备，左上角没有角标，能否将所有功能相同的同类型的
+ * 图标规则进行统一下**」⇒ 那条令要落到**每一处同款图标卡**上，而不是只有图鉴有。
+ *
+ * 需要"哪些卡片要标"（判据）与"标出来读什么"（可读名）两件事：
+ *   · 判据 —— `factionOfExclusive(id)` 反查内容表；**⚠ 它对"不是任何势力专属"的件返回 `null`**
+ *     （只有 id 查不到才是 `undefined`）⇒ 必须经 `crestFamOf()` 收窄成一种"没有"。
+ *     曾经的实障：调用处写 `!== undefined` ⇒ 非专属件也带上 `crest: null` ⇒ 画角标时
+ *     `toLowerCase` 把**整页打崩**（2026-09-27 船长报障）。护栏 = `tools/ui-attr-check.ts` 的族徽契约。
+ *   · 可读名 —— 读屏/色盲玩家拿不到"颜色"这个信息（"不许只靠颜色传达信息"）⇒ 角标要有
+ *     `aria-label`，取势力**全称**（`FACTION_CODEX[fam].nameId`，随语言）；族字母**不许**进界面文本。
+ *
+ * 本文件是这两件事的**唯一实现**：`Handbook.tsx`（图鉴各页 + 势力详情）、`ui/itemView.tsx`
+ * （物品页仓库 / 货仓的图标卡）都从这里取，别再各写一份。
+ */
+export function crestFamOf(id: string | undefined): string | undefined {
+  const fam = id === undefined ? undefined : factionOfExclusive(id)
+  return fam ?? undefined
+}
+
+/** 族字母 → 势力全称（随语言）。⚠ 只用于 `aria-label`，不渲染成可见文本。 */
+export function crestLabelOf(fam: string): string {
+  const entry = FACTION_CODEX[fam]
+  return entry === undefined ? fam : tr(entry.nameId)
 }

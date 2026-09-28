@@ -552,9 +552,10 @@ export interface WeekendResultSnapshot {
   galaxies: Array<{ galaxyId: string; put: number; progress: number; reclaimed: boolean; isk: number; wreck: number }>
   /**
    * 旗舰战输出（没跟母舰交手过 = 缺省）。
-   * ⚠ `defeated` = **玩家击沉**（与黑匣同一判据，＝`flagshipDown === 'player'`），
-   * **不是**"玩家那份伤害 ≥ 池子"——共享血条下血条由玩家 ＋ 章鱼人一起削（2026-09-25 船长报障修，见
-   * `weekendBattle.weekendResultSnapshotOf`）。
+   * ⚠ `defeated` = **玩家击沉** —— 判据是**单点** `weekendFlagshipOutcomeOf`（**留档优先**：
+   * 有 `flagshipPlayerKill` ⇒ 一律算玩家击沉），**不是**"玩家那份伤害 ≥ 池子"（共享血条下血条由
+   * 玩家 ＋ 章鱼人一起削，2026-09-25 船长报障修），**也不是**半套的 `flagshipDown === 'player'`
+   * （2026-09-28 更正注释；那一场"留档说打爆了、`flagshipDown` 却是 `octopus`"正是报障现场）。
    */
   flagship?: { hpMax: number; hpDone: number; defeated: boolean; playerFrac?: number; octopusFrac?: number }
   /**

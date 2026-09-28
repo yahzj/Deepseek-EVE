@@ -309,7 +309,17 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
   /**
    * 甲案（2026-09-20）：多段拼接按"**中间可空附注**"处理——就位提示与卸货备注都可能为空，
    * 而多段链不能有空段（空 id 会把后面的段整段丢掉）⇒ 把空的那种形态另立一个基础模板
-   * （`.023` 带就位段 / `.024` 不带），两处附注各挂一个段 id；参数按段命名空间排（第 2 段 = `p1p*`）。
+   * （`.023` 带就位段 / `.024` 不带），两处附注各挂一个段 id。
+   *
+   * ⚠ **2026-09-27 船长报障「长途运输的文本也有错误（数值不对，还有额外显示了个 `{p8}`）」**
+   * —— 两处毛病都在**参数映射**上（模板没动，改的是喂进去的键）：
+   *  ① **槽位错位**：模板的槽是 `p1` 船名 · `p2`/`p3` 两端点 · `p4` 货仓 · **`p5` 单段分钟** ·
+   *     **`p6`~`p7` 报酬区间** · `{p8}` 卸货备注；而这里曾按"p5 报酬下限 / p6 上限 / p7 分钟"喂 ⇒
+   *     界面把**分钟数显示成报酬**、报酬区间整段错位（"数值不对"）；
+   *  ② **`{p8}` 没人喂**：模板尾槽写的是 `{p8}`，先前只挂了 `p1Id`/`p2Id` 那套段位 id，
+   *     一个 `p8` 值都没给 ⇒ 渲染层原样漏出 `{p8}`（与 2026-09-27 那处"机群结构层 +{p1}"同源）。
+   *     现在 `p8` 给**中文原串**（未改造路径的兜底）、`p8Id` 给段 id（界面按语言渲染）——与
+   *     `salvaging.ts` 的 `p6`/`p6Id` 同一套两步渲染写法。
    */
   const text =
     `长途运输开始：${shipName} 承运「${a.name} ⇄ ${b.name}」（货仓 ${cap.toLocaleString('zh-CN')} m³ 满载虚拟货物）` +
@@ -320,17 +330,15 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
     p2: a.name,
     p3: b.name,
     p4: cap.toLocaleString('zh-CN'),
-    p5: min.toLocaleString('zh-CN'),
-    p6: max.toLocaleString('zh-CN'),
-    p7: effMinutesOf(state, ctx, h.legMinutes),
+    p5: effMinutesOf(state, ctx, h.legMinutes),
+    p6: min.toLocaleString('zh-CN'),
+    p7: max.toLocaleString('zh-CN'),
   }
-  // 段 2 = 就位段（每段各带自己的 `p1`）· 段 3 = 卸货备注；空的那种形态不挂段 id
+  /** 段 1 = 就位提示（只在就位时挂）· `{p8}` 槽 = 卸货备注（两步渲染：`p8` 中文兜底 ＋ `p8Id` 段 id）
+   *  ⚠ 槽内参数键必须是 **`p8p1`**（"槽号 + 占位符名"，`core.state.039` 里就是 `{p1}`）——
+   *  写成 `p1p1`（段位命名空间）渲染层取不到 ⇒ 英文界面下会漏出 `{p1}`（本夹具实测抓到的）。 */
   if (isPos) Object.assign(params, { p1p1: haulEndpointName(ctx, firstTo), p1Id: 'core.state.037' })
-  if (unloaded > 0) {
-    // 就位与否决定谁是"段 2"（段号按实际顺序顺排，不许跳号）
-    if (isPos) Object.assign(params, { p2p1: unloaded, p2Id: 'core.state.039' })
-    else Object.assign(params, { p1p1: unloaded, p1Id: 'core.state.039' })
-  }
+  if (unloaded > 0) Object.assign(params, { p8: String(unloaded), p8Id: 'core.state.039', p8p1: unloaded })
   addLog(state, 'fleet', text, isPos ? 'core.hauling.023' : 'core.hauling.024', params)
   return { ok: true }
 }
