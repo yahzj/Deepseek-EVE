@@ -138,16 +138,6 @@ export const SKILLS: readonly SkillDef[] = [
     description: '武装舰专精驾驶：驾驶武装舰时所有武器（含基础舰炮）单发伤害每级 +⟦3%⟧（满级 +⟦15%⟧；与炮术学、武器类型加成乘算叠加）。',
   },
   {
-    id: 'armed-ops-integration',
-    name: '武装舰统合操作',
-    group: '战斗',
-    rank: 5,
-    branch: 'b-warship',
-    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「armed-ops」的上位补充，门槛只要父技能 Lv1
-    prereq: ['armed-ops'],
-    description: '武装舰统合驾驶：驾驶武装舰时所有武器单发伤害每级再 +⟦1%⟧（满级再 +⟦5%⟧；与武装舰操作乘算叠加）。',
-  },
-  {
     id: 'armored-ops',
     // 2026-09-16 船长：「将重装舰类的名称改为装甲舰」⇒ 展示名改「装甲舰操作」（id `armored-ops` 不变，存档零迁移）
     name: '装甲舰操作',

@@ -1140,7 +1140,6 @@ for (const sbp of SHIP_BLUEPRINTS) {
     { skill: 'fire-control-integration', per: 0.01, call: 'combat.ts fireMult（炮台/导弹命中）' },
     { skill: 'rapid-reload', per: 0.015, call: 'combat.ts（装填）' },
     { skill: 'drone-servicing-integration', per: 0.015, call: 'combat.ts（无人机装填）' },
-    { skill: 'armed-ops-integration', per: 0.01, call: 'combat.ts dmgScale（武装舰类别）' },
   ]
   const skillById = new Map(SKILLS.map((s) => [s.id, s]))
   const claimsOfSkill = (d: string): number[] => [...d.matchAll(/⟦([\d.]+)/g)].map((m) => Number(m[1]))

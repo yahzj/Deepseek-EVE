@@ -642,7 +642,6 @@ export const EN_SKILLS: EnTable = {
   'fire-control-integration': { name: 'Integrated fire-control and targeting solution', description: '+⟦1%⟧ turret and missile launcher accuracy per level (a further +⟦5%⟧ at max; multiplies with Fire Control).' },
   'rapid-reload': { name: 'Rapid reload drills', description: '−⟦1.5%⟧ reload time for turrets, missile launchers and laser cannons per level (a further −⟦7.5%⟧ at max; multiplies with Reload Drills).' },
   'drone-servicing-integration': { name: 'Integrated deck servicing', description: '−⟦1.5%⟧ drone reload time per level (a further −⟦7.5%⟧ at max; multiplies with Drone Servicing).' },
-  'armed-ops-integration': { name: 'Integrated armed-hull piloting', description: 'while flying an armed ship, +⟦1%⟧ single-shot damage for all weapons per level (a further +⟦5%⟧ at max; multiplies with Armed Ship Operations).' },
 }
 
 /**

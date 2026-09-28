@@ -16,11 +16,11 @@ describe('矿业大类拆分（2026-09-27）', () => {
     expect(SKILL_GROUPS).toEqual(['舰船', '工业', '矿业', '战斗', '工程', '贸易', '探索', '物流'])
   })
 
-  it('矿业 7 条 · 工业 31 条 · 总数 106 条', () => {
-    // ⚠ 批一当时是「工业 21 条 · 总数 88 条」；批二（18 条 R4/R5 上位）把 10 条挂进工业、8 条挂进战斗 ⇒ 现值如下
+  it('矿业 7 条 · 工业 31 条 · 总数 105 条', () => {
+    // ⚠ 批一当时是「工业 21 条 · 总数 88 条」；批二（R4/R5 上位）把 10 条挂进工业、7 条挂进战斗 ⇒ 现值如下
     expect(SKILLS.filter((s) => s.group === '矿业').length).toBe(7)
     expect(SKILLS.filter((s) => s.group === '工业').length).toBe(31)
-    expect(SKILLS.length).toBe(106)
+    expect(SKILLS.length).toBe(105)
   })
 
   it('矿业七条点名核对（防顺手多搬或少搬）', () => {

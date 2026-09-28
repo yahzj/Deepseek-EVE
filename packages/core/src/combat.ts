@@ -1504,11 +1504,9 @@ export function foeLayerSplit(profile: DefProfile | undefined): { s: number; a: 
  * 每级值 = 父技能每级 ÷ 3；全部与父技能**同乘区乘算**。数值与技能 id 写在同一句里，
  * 既是唯一真相源，也让「技能说明契约」的现场复核（±400 字内找每级值）稳定命中。 */
 
-/** 单发伤害乘数 = 高级炮术学（全武器）× 武装舰统合操作（仅武装舰类别） */
-export function damageUpgradeMult(state: GameState, armedShip: boolean): number {
-  const adv = Math.min(5, state.skills.trained['advanced-gunnery'] ?? 0)
-  const ops = armedShip ? Math.min(5, state.skills.trained['armed-ops-integration'] ?? 0) : 0
-  return (1 + 0.015 * adv) * (1 + 0.01 * ops)
+/** 单发伤害乘数 = 高级炮术学（每级 +1.5%，全武器通用；与炮术学同乘区） */
+export function damageUpgradeMult(state: GameState): number {
+  return 1 + 0.015 * Math.min(5, state.skills.trained['advanced-gunnery'] ?? 0)
 }
 
 /** 武器族上位技能 id（动能射击学 / 导弹制导学 / 光束聚焦学）——族与族互不串乘 */
@@ -1848,8 +1846,8 @@ export function createPlayerSpec(
   // 批次五：武装舰操作（**武装舰**驾驶 +3%/级 全武器单发，乘于炮术学之外）
   // 2026-09-16 船长：「装甲舰操作和武装舰操作各自只影响自身分类的舰船。」⇒ 判据由 `role` 改为**类别**
   // （`shipCategoryKeyOf`）⇒ 归入装甲线的牛鲨 + E 族三艘**不再吃**这一条（它们改吃装甲舰操作）
-  // 2026-09-27 船长令（R4/R5 上位技能批）：两条上位的伤害乘数走单点（见 damageUpgradeMult）
-  const dmgUpgradeMult = damageUpgradeMult(state, shipCategoryKeyOf(ship) === 'armed')
+  // 2026-09-27 船长令（R4/R5 上位技能批）：上位技能的伤害乘数走单点（见 damageUpgradeMult）
+  const dmgUpgradeMult = damageUpgradeMult(state)
   const arOpsLv = shipCategoryKeyOf(ship) === 'armed' ? Math.min(5, state.skills.trained['armed-ops'] ?? 0) : 0
   // 舰种操作（2026-09-22 船长令）：驱逐舰操作 +5%/级、巡洋舰操作 +3%/级——单发伤害进同一乘链
   const dmgScale =

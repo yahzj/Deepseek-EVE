@@ -17,7 +17,7 @@
  *
  * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v31** · 最后核对 2026-09-22 · 最后跑过 2026-09-22
  */
-import { SKILLS, SKILL_BRANCHES } from '@whale/data'
+import { SKILLS, SKILL_BRANCHES, SKILL_TREE_POSITIONS } from '@whale/data'
 import { GAP_X, HEX_H, HEX_W, layoutBook } from '../apps/desktop/src/renderer/src/ui/skillTreeLayout'
 
 let bad = 0
@@ -28,7 +28,9 @@ const fail = (msg: string): void => {
 
 for (const br of SKILL_BRANCHES) {
   const defs = SKILLS.filter((s) => s.branch === br.id)
-  const lay = layoutBook(br.id, defs)
+  // 2026-09-27 船长令：体检与技能页**同源** —— 技能页传 SKILL_TREE_POSITIONS，体检也传，
+  // 否则船长手调过的节点（如 2026-09-23「武装舰操作与战列舰操作同列」）在体检里看不见。
+  const lay = layoutBook(br.id, defs, SKILL_TREE_POSITIONS)
   const at = new Map(lay.nodes.map((n) => [n.def.id, n]))
 
   /** ① 越界 */

@@ -145,18 +145,9 @@ describe('批二上位技能 · 工业侧 10 条', () => {
 describe('批二上位技能 · 战斗侧 8 条', () => {
   it('高级炮术学：单发伤害 ×(1+1.5%/级)（满级 ×1.075）', () => {
     const { state } = mk(41)
-    expect(damageUpgradeMult(state, false)).toBeCloseTo(1, 10)
+    expect(damageUpgradeMult(state)).toBeCloseTo(1, 10)
     state.skills.trained['advanced-gunnery'] = 5
-    expect(damageUpgradeMult(state, false)).toBeCloseTo(1.075, 10)
-  })
-
-  it('武装舰统合操作：只对武装舰类别生效，满级再 ×1.05（与高级炮术学乘算）', () => {
-    const { state } = mk(42)
-    state.skills.trained['armed-ops-integration'] = 5
-    expect(damageUpgradeMult(state, false), '非武装舰不吃').toBeCloseTo(1, 10)
-    expect(damageUpgradeMult(state, true)).toBeCloseTo(1.05, 10)
-    state.skills.trained['advanced-gunnery'] = 5
-    expect(damageUpgradeMult(state, true)).toBeCloseTo(1.075 * 1.05, 10)
+    expect(damageUpgradeMult(state)).toBeCloseTo(1.075, 10)
   })
 
   it('武器族上位：动能射击学 / 导弹制导学 / 光束聚焦学各挂一族，每级 +1.5%', () => {
@@ -216,12 +207,11 @@ describe('批二上位技能 · 名单与树契约', () => {
     'fire-control-integration',
     'rapid-reload',
     'drone-servicing-integration',
-    'armed-ops-integration',
   ]
 
-  it('18 条全部在表里、rank ∈ {4,5}、只挂工业与战斗（不含矿业）', () => {
+  it('17 条全部在表里、rank ∈ {4,5}、只挂工业与战斗（不含矿业）', () => {
     const byId = new Map(SKILLS.map((s) => [s.id, s]))
-    expect(NEW.length).toBe(18)
+    expect(NEW.length).toBe(17)
     for (const id of NEW) {
       const def = byId.get(id)
       expect(def, id).toBeTruthy()
@@ -230,9 +220,9 @@ describe('批二上位技能 · 名单与树契约', () => {
       expect((def!.prereq ?? []).length, id).toBe(1)
       expect(def!.prereqLevel, `${id} 门槛按船长令只要 Lv1（不填 prereqLevel）`).toBeUndefined()
     }
-    expect(SKILLS.length).toBe(106)
+    expect(SKILLS.length).toBe(105)
     expect(SKILLS.filter((s) => s.group === '工业').length).toBe(31)
-    expect(SKILLS.filter((s) => s.group === '战斗').length).toBe(28)
+    expect(SKILLS.filter((s) => s.group === '战斗').length).toBe(27)
   })
 
   it('树契约：父 rank ≤ 子 rank，且父技能真实存在', () => {
