@@ -280,6 +280,11 @@ export function weekendResolveBattle(
        * ⚠ **只有 BOSS 族（有共享血池、才谈得上"输出占比"）才掷**；A/C/G 那些占位卡没有池子 ⇒
        * 保持老口径"击沉必掉"（`true`），免得把占位口径也改成掷骰。
        */
+      /**
+       * 走到这里 = **玩家把共享血池打空**（或非 BOSS 族的老口径取胜）⇒ 玩家的最后击杀**成立**，
+       * 传 `true` 与单点判据同结论（⚠ 判据本身见 `weekendEvent.weekendLastHitByPlayer`：
+       * 另一条路 `weekendClaimOctopus` 也按它取，别再各写一套）。
+       */
       const box = weekendIsBossFamily(ev) ? weekendRollBlackBox(state, ev, true) : true
       res.flagshipKilled = { blackBox: box, wreck: weekendRareWreckUnits(WEEKEND_FLAGSHIP_WRECK) }
       res.note = bossDown
