@@ -280,6 +280,10 @@ export const EN_MODULES: EnTable = {
   'mod-drone-relay-1': { name: 'Drone Relay Antenna MK1', description: 'Guidance relay antenna: +20% range for launched drones. Gives close-in swarms a little more room to engage.' },
   'mod-drone-relay-2': { name: 'Drone Relay Antenna MK2', description: 'Guidance relay antenna: +45% range for launched drones. The range expansion for mid- to long-range drones.' },
   'mod-drone-relay-3': { name: 'Drone Relay Antenna MK3', description: 'Guidance relay antenna: +80% range for launched drones. Sentry drones can reach into laser-cannon bands.' },
+  // 无人机储备甲板（2026-09-27 船长令）：说明文案不手写周期数字（数值由界面参数行给）
+  'mod-drone-deck-1': { name: 'Drone Reserve Deck MK1', description: 'An external reserve hangar section: when a drone is shot down a reset cycle starts, and when it ends one airframe is drawn from storage and rejoins at once.' },
+  'mod-drone-deck-2': { name: 'Drone Reserve Deck MK2', description: 'A larger reserve hangar section: a shorter reset cycle brings the swarm back up at a tighter pace.' },
+  'mod-drone-deck-3': { name: 'Drone Reserve Deck MK3', description: 'A squadron-scale reserve hangar section: the shortest reset cycle keeps the swarm from thinning out in a long firefight.' },
   // 护盾 / 装甲
   'mod-shield-kin-1': { name: 'Shield Amplifier MK1 · Kinetic', description: '+20% kinetic resistance (cap 90%). Kinetic is the round the Association armed forces use most — default bounties all take it.' },
   'mod-shield-exp-1': { name: 'Shield Amplifier MK1 · Explosive', description: '+20% explosive resistance (cap 90%). Counters explosive rounds and torpedo-armed enemies.' },
@@ -1050,6 +1054,9 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-drone-relay-1': 'The signal relay unit of a guidance relay antenna, amplifying drone command links.',
   'bp-drone-relay-2': 'A dual-band guidance relay antenna with interference filtering pressed into the relay unit.',
   'bp-drone-relay-3': 'A long-range phased-array relay antenna; drone commands can run over inter-ship links.',
+  'bp-drone-deck-1': 'Section plans for a reserve hangar bay: spare airframe racks, a supply rail and the reset control loop.',
+  'bp-drone-deck-2': 'Section plans for a larger reserve hangar bay: twin rack rows and a faster reset control loop.',
+  'bp-drone-deck-3': 'Section plans for a squadron-scale reserve hangar bay: racks for the whole wing and a fast reset control loop.',
   'bp-shield-kin-1': 'Shield generator coil plans (kinetic band tuning), with the magnetic envelope calibrated against ballistic impact.',
   'bp-shield-exp-1': 'Shield generator coil plans (explosive band tuning): shock fronts are torn apart by the phase difference in the deflection field.',
   'bp-shield-pla-1': 'Shield generator coil plans (energy band tuning): high-energy beams are refracted and defocused on the polar layer.',

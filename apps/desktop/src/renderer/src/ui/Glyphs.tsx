@@ -480,6 +480,15 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M15.2 10.6c1.1.7 1.1 2.5 0 3.2" fill="none" />
     </g>
   ),
+  /* 2026-09-27 无人机储备甲板（方框徽：停机格 + 复位上行箭头 —— "从储备里补回一架"） */
+  'drone-deck': (
+    <g>
+      <rect x="7" y="7" width="10" height="10" rx="1.7" />
+      <path d="M9.4 13.5h2.2v2.2H9.4z" />
+      <path d="M14.3 15.8V11.1" />
+      <path d="M12.9 12.5l1.4-1.4 1.4 1.4" fill="none" />
+    </g>
+  ),
   /* V18B-2 激光炮（方框徽：光束横贯） */
   laser: (
     <g>

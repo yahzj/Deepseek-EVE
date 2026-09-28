@@ -91,6 +91,10 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'bp-drone-tac-1': 1,
   'bp-drone-tac-2': 2,
   'bp-drone-tac-3': 3,
+  // 2026-09-27 无人机储备甲板（船长令）：**蓝图**也要登记档位（漏了 ⇒ 市场卡查不到档，体检判红）
+  'bp-drone-deck-1': 1,
+  'bp-drone-deck-2': 2,
+  'bp-drone-deck-3': 3,
   'bp-gyro-1': 1,
   'bp-gyro-2': 2,
   'bp-gyro-3': 3,
@@ -249,6 +253,10 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mod-drone-tac-1': 1,
   'mod-drone-tac-2': 2,
   'mod-drone-tac-3': 3,
+  // 2026-09-27 无人机储备甲板（船长令）：与同族 rack/relay/tac 同档阶梯 1/2/3
+  'mod-drone-deck-1': 1,
+  'mod-drone-deck-2': 2,
+  'mod-drone-deck-3': 3,
   'mod-gyro-1': 1,
   'mod-gyro-2': 2,
   'mod-gyro-3': 3,

@@ -52,8 +52,10 @@ import {
   // 2026-09-26 舰船插件（船长令）：建档时单独累加插件效果（插件不在 `fitted` 里，扫描不到）
   plugModulesOf,
 } from './plugs'
-import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, pulseStreamOf, refillDroneLoadTo, stackingOf, stackWeight, weightedSum } from './equipment'
+import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, pulseStreamOf, refillDroneLoadTo, stackingOf, stackWeight, takeDroneUnit, weightedSum } from './equipment'
 import { applyFirstBountyBuff, isFirstBountyBattle } from './firstTasks'
+// **无人机储备甲板**（2026-09-27 船长令）：战中复位状态机（建档 / 入队 / 每拍推进 / 复活计数）
+import { droneReviveNoteLoss, droneRevivedCount, droneRevivedOf, initDroneRevive, initDroneReviveStock, resolveDroneRevive } from './droneRevive'
 
 /** 战斗基本步长（毫秒） */
 export const BATTLE_STEP_MS = 100
@@ -5316,6 +5318,10 @@ export function startBattleFor(
     const load = { ...(state.fleet[shipId]?.droneLoad ?? {}) }
     battle.droneLoadAtStart = load
     battle.droneLoadAtStartBy = { [me.tag ?? 'player']: load }
+    // **无人机储备甲板建档**（2026-09-27 船长令）：装了这件才开账（没装 ⇒ 一个字段都不写）
+    // ⚠ **先拍库存快照**（复活预算，全队一本），再建逐舰的队列/周期账 —— 快照要读 `battle.dronePools`
+    initDroneReviveStock(state, ctx, battle, [shipId])
+    initDroneRevive(state, ctx, battle, shipId, me.tag ?? 'player')
   }
   // 敌机机群生存池（2026-09-11 机群批）：与敌方编队同建；无 `foeDrones` 的敌舰不建池 ⇒ 零行为变化
   initFoeDronePools(battle, foes);
@@ -5680,6 +5686,10 @@ export function startFleetBattleFor(
     for (const e of fleet) by[e.tag] = { ...(state.fleet[e.shipId]?.droneLoad ?? {}) }
     battle.droneLoadAtStartBy = by
     battle.droneLoadAtStart = { ...(state.fleet[fleet[0]!.shipId]?.droneLoad ?? {}) }
+    // **无人机储备甲板建档**（2026-09-27 船长令）：**逐舰**一份（每舰各自的复位周期与队列）
+    // ⚠ 预算快照**全队只拍一本**（`initDroneReviveStock`）——按舰各拍一份会从同一只仓库里超补
+    initDroneReviveStock(state, ctx, battle, fleet.map((e) => e.shipId))
+    for (const e of fleet) initDroneRevive(state, ctx, battle, e.shipId, e.tag)
   }
   initFoeDronePools(battle, foes);
   // 挂载件「船体修理装置」账本（2026-09-24 船长）：与多舰编队路径同一处（幂等，缺省不建）
@@ -6517,10 +6527,41 @@ export function settleDroneLosses(
     rest -= add
   }
 
-  // ── ③ 落库：扣除净损失、回收的留在清单继续服役 ──
+  // ── ③ 落库：先扣**战中复活**的货、再扣净损失、最后按出发快照补货 ──
+  /**
+   * **战中复活的扣货点（唯一一处）**（**2026-09-27 船长令**）。
+   *
+   * 船长两条原话：
+   * ① 「已经损失的无人机依旧计入战损，因为战后回收需要。**但是复活了的无人机等于已经补充了**。」
+   * ② 「战斗中损失的无人机是在战斗结束后一次性扣除吧？那么**复活无人机数量的上限在战斗开始时
+   *    设置一个库存的快照**可以吗」
+   *
+   * ⇒ 落地：
+   * - 战中**只扣预算快照**（`battle.droneReviveStock`，开战那一刻拍的备用机数），**绝不写玩家库存**；
+   * - **扣货全部收在本处**，顺序 = ①扣复活的 `v` 架 → ②扣净损失 → ③按出发快照补货（下面既有逻辑）；
+   * - `droneLost` / `droneLostBy` **照记不回冲**（上面算回收率读的就是它，回冲会让回收率失真）
+   *   ⇒ 只是把**清单纯损失**减掉战中复活的架数（那几架已经补回来了，不能再算一次损失）。
+   */
+  const revivedMap = droneRevivedOf(battle, ownerTag)
+  const revivedTotal = droneRevivedCount(battle, ownerTag)
+  /**
+   * ① **扣复活的那几架货**（本舰货舱 → 物品仓库；`takeDroneUnit` 是唯一取货口）。
+   * ⚠ 可能扣不满：预算快照是**开战那一刻**拍的，若同队其它舰在本场结算前先扣过同一只仓库，
+   * 到本舰时可能已空 ⇒ 记一条 warn（那几架等于白补，不静默吞掉）。
+   */
+  const revivedShort: string[] = []
+  for (const [id, n] of Object.entries(revivedMap)) {
+    for (let i = 0; i < n; i++) {
+      if (takeDroneUnit(state, shipId, id) === null) {
+        revivedShort.push(`${ctx.items.get(id)?.name ?? id} 缺 ${n - i} 架`)
+        break
+      }
+    }
+  }
   let recovered = 0
   for (const r of rows) {
-    const gone = r.lost - r.back
+    const goneInBattle = Math.max(0, (revivedMap[r.id] ?? 0))
+    const gone = Math.max(0, r.lost - r.back - goneInBattle)
     recovered += r.back
     if (gone > 0) {
       const left = (load[r.id] ?? 0) - gone
@@ -6581,10 +6622,12 @@ export function settleDroneLosses(
    */
   const who =
     ownerTag === 'player' ? '' : `${state.fleet[shipId] ? shipDisplayName(state, ctx, shipId) : ownerTag}：`
+  /** 「战中复活」那半句：只在真复活过时才加（没装储备甲板 ⇒ 文案与旧版**逐字一致**） */
+  const revivedTxt = revivedTotal > 0 ? `，战中复活 ${revivedTotal} 架（由无人机储备甲板补回）` : ''
   addLog(
     state,
     'warn',
-    `⚠ 机群战损${who ? `（${who.replace(/：$/, '')}）` : ''}：损坏 ${text}（合计 ${total} 架）${backTxt}（回收率 ${ratePct}%，优先回收高价值，净损失 ${total - recovered} 架）——净损失已从无人机舱清单扣除。`,
+    `⚠ 机群战损${who ? `（${who.replace(/：$/, '')}）` : ''}：损坏 ${text}（合计 ${total} 架）${backTxt}（回收率 ${ratePct}%，优先回收高价值，净损失 ${Math.max(0, total - recovered - revivedTotal)} 架${revivedTxt}）——净损失已从无人机舱清单扣除。`,
   )
   // 立刻补足（船长 2026-09-20）：补货结果单独一行；货源不足再补一行 warn 说明缺多少
   if (refillRows.length > 0) {
@@ -6597,10 +6640,22 @@ export function settleDroneLosses(
       `⚠ 机群未能补满${who ? `（${who.replace(/：$/, '')}）` : ''}：${shortTxt}——货仓与物品仓库都没有存货了，购买或制造后再到装配页装入。`,
     )
   }
+  /**
+   * 复活的货**没扣满**（预算快照是开战那一刻拍的；同队别的舰先结算过同一只仓库就可能不够）——
+   * 单独一条 warn，不静默吞掉。
+   */
+  if (revivedShort.length > 0) {
+    addLog(
+      state,
+      'warn',
+      `⚠ 无人机储备甲板的补货未能扣满${who ? `（${who.replace(/：$/, '')}）` : ''}：${revivedShort.join('、')}——` +
+        `开战时的备用库存已被同队其它舰的先期结算用掉，超出的那几架按白补处理。`,
+    )
+  }
   state.droneLossNotice =
     recovered > 0
-      ? `机群战损：损坏 ${total} 架，回收 ${recovered} 架归队（回收率 ${ratePct}%，优先回收高价值），净损失 ${total - recovered} 架。${refillRows.length > 0 ? `已自动补充 ${refillTxt}。` : ''}${shortTxt.length > 0 ? `仍有 ${shortTxt}。` : ''}`
-      : `机群战损：${text} 被近防炮击落、共 ${total} 架（回收率 ${ratePct}%，优先回收高价值）——已从无人机舱清单扣除。${refillRows.length > 0 ? `已自动补充 ${refillTxt}。` : ''}${shortTxt.length > 0 ? `仍有 ${shortTxt}。` : ''}`
+      ? `机群战损：损坏 ${total} 架，回收 ${recovered} 架归队（回收率 ${ratePct}%，优先回收高价值），净损失 ${Math.max(0, total - recovered - revivedTotal)} 架${revivedTxt}。${refillRows.length > 0 ? `已自动补充 ${refillTxt}。` : ''}${shortTxt.length > 0 ? `仍有 ${shortTxt}。` : ''}`
+      : `机群战损：${text} 被近防炮击落、共 ${total} 架（回收率 ${ratePct}%，优先回收高价值）${revivedTotal > 0 ? `，战中复活 ${revivedTotal} 架` : ''}——已从无人机舱清单扣除。${refillRows.length > 0 ? `已自动补充 ${refillTxt}。` : ''}${shortTxt.length > 0 ? `仍有 ${shortTxt}。` : ''}`
   // 结构化结果（2026-09-11：战报弹层要显示"回收了哪些、净损失哪些"；与 battle 起手时刻配对，
   // 避免并行会话/AI 战斗的结果串场）——只在**当前驾驶船**的结算里写，AI 副船的损失不进战报
   if (state.shipId === shipId) {
@@ -6609,7 +6664,7 @@ export function settleDroneLosses(
       rate,
       total,
       recovered,
-      gone: total - recovered,
+      gone: Math.max(0, total - recovered - revivedTotal),
       survivors,
       rows: byValue.map((r) => ({
         id: r.id,
@@ -6617,7 +6672,8 @@ export function settleDroneLosses(
         value: r.value,
         lost: r.lost,
         back: r.back,
-        gone: r.lost - r.back,
+        // 逐型的净损失同样减掉**该型**战中复活的架数（与总账同一口径）
+        gone: Math.max(0, r.lost - r.back - (revivedMap[r.id] ?? 0)),
       })),
     }
   }
@@ -6917,6 +6973,13 @@ export function advanceBattleFor(
      * 上一拍刚打死的僚舰，本拍就能被"复活/支援"补回场；没挂该件的战斗第一步就返回（零行为变化）。
      */
     resolveFoeRevive(state, battle, curFoes, bal, nowMs())
+    /**
+     * **无人机储备甲板：每拍复位**（2026-09-27 船长令）——与上面那条**同位置**（`stepBattle` 之前）：
+     * 本拍到点补回来的那架，这一拍就重新进开火循环/选靶池。
+     * 周期到点判定读的是**战斗时钟** ⇒ 离线大步长一次跨多秒也照样把该补的架数按周期逐格补齐
+     * （"离线折算"不必另写公式）；没装这件装备 ⇒ 字段不存在 ⇒ 一步返回（零行为变化）。
+     */
+    resolveDroneRevive(state, ctx, battle, nowMs())
     /**
      * **本拍参战敌阵**（编成 ＋ 已入场支援舰）——**必须在 `resolveFoeRevive` 之后取**：
      * 本拍刚召唤入场的支援舰这一拍就进开火循环/选靶池（支援舰与编成的关系见 `foesWithSupport`）。
@@ -7716,14 +7779,25 @@ function buildDronePoolsFor(
   spec.weapons.forEach((w, i) => {
     if (w.src !== 'drone' || !w.artId) return
     const d = ctx.items.get(w.artId)?.defense
+    const sMax = Math.max(1, Math.round((d?.shieldHp ?? 1) * durMul))
+    const aMax = Math.max(1, Math.round((d?.armorHp ?? 1) * durMul))
+    const hMax = Math.max(1, Math.round((d?.hullHp ?? 1) * durMul * (1 + (spec.droneHullBonusPct ?? 0))))
     pools[dronePoolKey(tag, i)] = {
       owner: tag,
-      s: Math.max(1, Math.round((d?.shieldHp ?? 1) * durMul)),
-      a: Math.max(1, Math.round((d?.armorHp ?? 1) * durMul)),
-      h: Math.max(1, Math.round((d?.hullHp ?? 1) * durMul * (1 + (spec.droneHullBonusPct ?? 0)))),
+      s: sMax,
+      a: aMax,
+      h: hMax,
       alive: true,
       artId: w.artId,
       evasion: clamp(0, 0.9, (d?.evasion ?? 0) * evaMul),
+      /**
+       * **本架满血三层值**（2026-09-27）：原先只有敌方池记这三个字段，我方池不记 ⇒
+       * 「无人机储备甲板」把一架打光的机子翻回 `alive` 时会停在 0 血上、下一拍立刻再死。
+       * 记满值后与敌方"备用机库补位"**同一套字段**（`p.s = p.maxS ?? p.s`）。
+       */
+      maxS: sMax,
+      maxA: aMax,
+      maxH: hMax,
       ...(d
         ? {
             resists: {
@@ -7917,6 +7991,12 @@ function resolvePointDefense(
         byOwner[ownerTag] = { ...(byOwner[ownerTag] ?? {}) }
         byOwner[ownerTag]![artId] = (byOwner[ownerTag]![artId] ?? 0) + 1
         b.droneLostBy = byOwner
+        /**
+         * **无人机储备甲板：入队**（2026-09-27 船长令）——与战损账**同一个事件点**：
+         * 有这件装备的舰把这一架压进待补队列，并按需起一条复位周期（详见 `core/droneRevive.ts`）。
+         * 没装 ⇒ `droneRevive` 字段不存在 ⇒ 本调用一步返回（**零行为变化**）。
+         */
+        droneReviveNoteLoss(state, b, key, b.lastTickGameMs + dtMs)
         // 击落演出事件（side='me' + src='drone' + droneDown：UI 出小爆炸/坠落）——**tag = 该架所属舰**
         pushBattleFx(b, {
           atMs: b.lastTickGameMs + dtMs,

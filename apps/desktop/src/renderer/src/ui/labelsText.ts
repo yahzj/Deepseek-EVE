@@ -114,6 +114,9 @@ const SLOT_ID: Readonly<Record<ModuleSlot, string>> = {
   'drone-rack': 'ui.labelsText.055', // 无人机甲板扩展 / Drone Bay Extension
   'drone-tac': 'ui.labelsText.056', // 无人机战术 / Drone Tactical
   'drone-relay': 'ui.labelsText.057', // 无人机中继 / Drone Relay
+  /* 2026-09-27 补（无人机储备甲板批）：新槽位 `drone-deck` —— 表类型收紧成 `Record<ModuleSlot,string>`
+     之后，漏登记在 typecheck 就红（本条正是被那条契约逼出来的）。 */
+  'drone-deck': 'ui.labelsText.071', // 无人机储备甲板 / Drone Reserve Deck
   support: 'ui.labelsText.058', // 支援系统 / Support System
   cpu: 'ui.labelsText.059', // 协处理器 / Coprocessor
   'target-lock': 'ui.itemSubs.013', // 目标锁定 / Targeting

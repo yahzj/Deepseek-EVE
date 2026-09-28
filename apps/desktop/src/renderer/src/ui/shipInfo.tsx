@@ -310,6 +310,14 @@ function salvageCycleSecs(mod: ModuleDef): string {
   return ((mod.salvageCycleMs ?? 10_000) / 1000).toFixed(0)
 }
 
+/**
+ * **无人机储备甲板的复位周期（秒）**（2026-09-27 船长令）——与 `salvageCycleSecs` 同款：
+ * 从 `droneReviveCycleMs` 现算、**不在文案里手写数字**（甲案）。
+ */
+function reviveCycleSecs(mod: ModuleDef): string {
+  return ((mod.droneReviveCycleMs ?? 14_000) / 1000).toFixed(0)
+}
+
 /** 结构层抗性短缀（任何槽位都可能带）：`结构抗 动能+25% 爆炸+25% 能量+25%` */
 function hullResistShortText(mod: ModuleDef): string {
   const bits = (['kinetic', 'explosive', 'plasma'] as const)
@@ -418,6 +426,14 @@ export function moduleShortEffect(mod: ModuleDef): string {
     case 'drone-relay':
       // 2026-09-10 无人机中继天线：放飞无人机射程加成
       body = tr("ui.shipInfo.112", { p1: pctOpt(mod.droneRangeBonusPct) })
+      break
+    case 'drone-deck':
+      /**
+       * 无人机储备甲板（2026-09-27 船长令）：短行报**复位周期秒数**。
+       * ⚠ 秒数从 `droneReviveCycleMs` **现算**（不手写数字 —— 本会话定的甲案：
+       * 说明文案里不写数值，数值只从界面参数行出）。
+       */
+      body = tr("ui.shipInfo.205", { p1: reviveCycleSecs(mod) })
       break
     case 'support': {
       // V18.1 支援件：效果字段判别（稳定器按系可多件 → 逐系列出）
@@ -804,6 +820,12 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
   if (foreign('drone-relay') && (mod.droneRangeBonusPct ?? 0) > 0) {
     out.push({ k: tr("ui.shipInfo.030"), v: tr("ui.shipInfo.139", { p1: pct(mod.droneRangeBonusPct ?? 0) }) })
   }
+  // 无人机储备甲板（2026-09-27 船长令）：第四族 —— 与上面三族同一支"外族件"清单
+  // ⚠ 行值用**裸秒数**（`.207`）：行名已经写了"复位周期"，值里再写一遍就成了「复位周期：复位周期 15 秒」
+  //   （同族 `drone-rack` 也是"行值裸值、短行带名"）。
+  if (foreign('drone-deck') && (mod.droneReviveCycleMs ?? 0) > 0) {
+    out.push({ k: tr("ui.shipInfo.206"), v: tr("ui.shipInfo.207", { p1: reviveCycleSecs(mod) }) })
+  }
   // 支援件四族（炮台伤害 / 射速 / 命中 / 回避）
   if (foreign('support')) {
     const dmg = mod.damageTypeBonusPct
@@ -1014,6 +1036,15 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
         k: tr("ui.shipInfo.030"),
         v: tr("ui.shipInfo.139", { p1: pct(mod.droneRangeBonusPct) }),
       })
+    }
+  } else if (mod.slot === 'drone-deck') {
+    /**
+     * 无人机储备甲板（2026-09-27 船长令）：装备卡/详情表的**参数行** —— 复位周期。
+     * ⚠ 与短行同一个单点 `reviveCycleSecs` ⇒ 两处永远同数。
+     * ⚠ 行名用 `.206`（`.031` 已被支援件的伤害行占用）。
+     */
+    if (mod.droneReviveCycleMs !== undefined) {
+      lines.push({ k: tr("ui.shipInfo.206"), v: tr("ui.shipInfo.207", { p1: reviveCycleSecs(mod) }) })
     }
   } else if (mod.slot === 'salvager') {
     // 2026-09-11 船长定精简时补：打捞器此前只显示"叠加方式 + CPU"，看不到真正的效果

@@ -1127,6 +1127,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
      （`SLOT_LABELS['shield-field']` / `LAIR_TIER_LABELS`）⇒ 英文界面下漏中文。
      现登记 id，由 `ui/labelsText.ts` 的 `slotText` / `lairTierText` 取词。 */
   "ui.labelsText.065": { zh: "护盾力场", en: "Shield Field" },
+  /* 2026-09-27 无人机储备甲板批：新槽位 `drone-deck` 的家族名（装配页 chip / 手册装备卡副标题共用） */
+  "ui.labelsText.071": { zh: "无人机储备甲板", en: "Drone Reserve Deck" },
   "ui.labelsText.066": { zh: "外围", en: "Periphery" },
   "ui.labelsText.067": { zh: "核心", en: "Core" },
   "ui.labelsText.068": { zh: "深层", en: "Deep" },
@@ -4015,6 +4017,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    *  从文案挪到卡面参数行 —— 时长读引擎常量 `DC_LOCK_MS`，不手写。 */
   "ui.shipInfo.203": { zh: "启动锁定", en: "Trigger lock" },
   "ui.shipInfo.204": { zh: "结构锁定 {p1} 秒 · 每场一次", en: "Structure locked for {p1} s · once per battle" },
+  /* 2026-09-27 无人机储备甲板（船长令）：参数行 = 复位周期；秒数由界面按 `droneReviveCycleMs` 现算
+     （**说明文案里不手写数字** —— 本会话定的甲案）。.206 = 行名，.205 = 行值。 */
+  "ui.shipInfo.205": { zh: "复位周期 {p1} 秒", en: "Reset cycle {p1} s" },
+  "ui.shipInfo.206": { zh: "复位周期", en: "Reset cycle" },
+  /* .207 = **属性行的值**（裸秒数）：行名已写了"复位周期"，值里不再重复（同族 drone-rack 同款做法）。 */
+  "ui.shipInfo.207": { zh: "{p1} 秒", en: "{p1} s" },
   "ui.shipInfo.184": { zh: "同类型武器单发 +{p1}（装其它伤害类型的武器无加成）", en: "Weapons of the same damage type deal +{p1} per shot (no bonus with other damage types)" },
   "ui.shipInfo.010": { zh: "跃迁速度", en: "Warp speed" },
   "ui.shipInfo.011": { zh: "质量", en: "Mass" },

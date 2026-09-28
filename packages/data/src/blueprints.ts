@@ -762,6 +762,48 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     description: '远程相位阵中继天线，无人机指令可走星间链路。',
   },
   {
+    id: 'bp-drone-deck-1',
+    name: '无人机储备甲板 MK1蓝图',
+    moduleId: 'mod-drone-deck-1',
+    materials: [
+      { itemId: 'min-tritanium', count: 800 }, // 6,400 信用点
+      { itemId: 'min-pyerite', count: 290 }, // 3,480 信用点
+    ], // 9,880 ≈ 22,000×0.45
+    buildSeconds: 200, // 无人机储备甲板 MK1（2026-09-27；材料≈产物价×0.45、蓝图=产物×2）
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 44000,
+    description: '储备机库段的舱段图：备用机体挂架、补给滑轨与复位控制回路。',
+  },
+  {
+    id: 'bp-drone-deck-2',
+    name: '无人机储备甲板 MK2蓝图',
+    moduleId: 'mod-drone-deck-2',
+    materials: [
+      { itemId: 'min-tritanium', count: 16_100 }, // 128,800 信用点
+      { itemId: 'min-pyerite', count: 4_900 }, // 58,800 信用点
+      { itemId: 'min-mexallon', count: 2_300 }, // 46,000 信用点
+    ], // 233,600 ≈ 520,000×0.45
+    buildSeconds: 900, // 无人机储备甲板 MK2（2026-09-27；材料≈产物价×0.45、蓝图=产物×2.5）
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 1300000,
+    description: '加大储备机库段的舱段图：双列挂架与更快的复位控制回路。',
+  },
+  {
+    id: 'bp-drone-deck-3',
+    name: '无人机储备甲板 MK3蓝图',
+    moduleId: 'mod-drone-deck-3',
+    materials: [
+      { itemId: 'min-tritanium', count: 61_100 }, // 488,800 信用点
+      { itemId: 'min-pyerite', count: 19_500 }, // 234,000 信用点
+      { itemId: 'min-mexallon', count: 11_650 }, // 233,000 信用点
+      { itemId: 'min-nocxium', count: 2_380 }, // 214,200 信用点
+    ], // 1,170,000 = 2,600,000×0.45
+    buildSeconds: 2000, // 无人机储备甲板 MK3（2026-09-27；材料≈产物价×0.45、蓝图=产物×3）
+    buildCostIsk: 0, // 制造费已取消（字段历史遗留）
+    priceIsk: 7800000,
+    description: '整队级储备机库段的舱段图：全队机位挂架与快速复位控制回路。',
+  },
+  {
     id: 'bp-shield-kin-1',
     name: '护盾增强器 MK1·动能型蓝图',
     moduleId: 'mod-shield-kin-1',

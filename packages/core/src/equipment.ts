@@ -894,6 +894,29 @@ export type DroneRefillResult = {
 }
 
 /**
+ * **取 1 架无人机**（**唯一入口**）—— 货源顺序 = **本舰货舱 → 物品仓库**（**不自动购买**）。
+ * 返回值 = 货从哪来；两处都没有 ⇒ `null`（调用方据此判"没货"）。
+ *
+ * ⚠ **这是一条货源纪律，不是一个便利函数**：船长 2026-09-20「**战斗结束立刻自动补充，优先货仓，
+ * 其次是仓库**」——战后自动补货（`refillDroneLoadTo`）与**战中复位**（`core/droneRevive.ts`
+ * 的无人机储备甲板）都走本函数 ⇒ 以后要改顺序**只改这一处**。
+ */
+export function takeDroneUnit(state: GameState, shipId: string, droneId: string): 'hold' | 'ware' | null {
+  const fleet = state.fleet[shipId]
+  if (!fleet) return null
+  if ((fleet.cargo[droneId] ?? 0) > 0) {
+    fleet.cargo[droneId] = (fleet.cargo[droneId] ?? 0) - 1
+    if (fleet.cargo[droneId]! <= 0) delete fleet.cargo[droneId]
+    return 'hold'
+  }
+  if (countWare(state, droneId) > 0) {
+    removeWare(state, droneId, 1)
+    return 'ware'
+  }
+  return null
+}
+
+/**
  * **战后立刻补足机群**（船长 2026-09-20：「**战斗结束立刻自动补充，优先货仓，其次是仓库**」＋
  * 「**按本场出发快照补**」）。
  *
@@ -941,19 +964,13 @@ export function refillDroneLoadTo(
     for (let i = 0; i < want; i++) {
       if (usedM3 + m3 > cap + 1e-6) break // 舱容
       if (cpuTotal > 0 && cpuFitted + usedCpu + cpu > cpuTotal) break // CPU 预算
-      if ((fleet.cargo[id] ?? 0) > 0) {
-        // **货仓优先**（船长 2026-09-20：船上现成的先补上）
-        fleet.cargo[id] = (fleet.cargo[id] ?? 0) - 1
-        if (fleet.cargo[id]! <= 0) delete fleet.cargo[id]
-        out.fromHold[id] = (out.fromHold[id] ?? 0) + 1
-      } else if (countWare(state, id) > 0) {
-        // 其次物品仓库（不自动购买）
-        removeWare(state, id, 1)
-        out.fromWare[id] = (out.fromWare[id] ?? 0) + 1
-      } else {
+      const src = takeDroneUnit(state, shipId, id)
+      if (src === null) {
         out.short[id] = want - i
         break
       }
+      if (src === 'hold') out.fromHold[id] = (out.fromHold[id] ?? 0) + 1
+      else out.fromWare[id] = (out.fromWare[id] ?? 0) + 1
       load[id] = (load[id] ?? 0) + 1
       out.added[id] = (out.added[id] ?? 0) + 1
       usedM3 += m3

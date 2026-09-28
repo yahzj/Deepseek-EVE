@@ -525,6 +525,40 @@ export const MODULES: readonly ModuleDef[] = [
     description: '制导中继天线：放飞无人机射程 +80%。哨戒无人机可深入激光炮带。',
   },
 
+  // ══════════ 无人机储备甲板（**2026-09-27 船长令**：新需求原话「添加无人机**高槽**装备，无人机储备甲板，
+  // 效果是有无人机被摧毁时开始运转周期，满了之后立刻补充（复活）被摧毁一架无人机（从仓库补充）。
+  // 复活的无人机可以重新加入战斗」）＝ **战中补损**件：族人以字段判别（`droneReviveCycleMs`）、
+  // 归槽 = high（见 `labels.rackOf`）。与"甲板扩展"（`drone-rack`，**低槽**，扩舱容）**分族**：
+  // 船长同日另令「将扩大无人机舱的装备从高槽移动到低槽」，而本件明确是高槽装备。
+  // ⚠ 说明文案**不手写数字**（本会话定的甲案）：周期数值由界面参数行给出。 ══════════
+  {
+    id: 'mod-drone-deck-1',
+    name: '无人机储备甲板 MK1',
+    slot: 'drone-deck',
+    rack: 'high',
+    droneReviveCycleMs: 14000,
+    cpuUse: 35,
+    description: '外挂储备机库段：有机组被击落后自动开始复位周期，到点自库存补回一架并立刻归队。',
+  },
+  {
+    id: 'mod-drone-deck-2',
+    name: '无人机储备甲板 MK2',
+    slot: 'drone-deck',
+    rack: 'high',
+    droneReviveCycleMs: 12000,
+    cpuUse: 45,
+    description: '加大储备机库段：复位周期更短，机群补回来的节奏更紧。',
+  },
+  {
+    id: 'mod-drone-deck-3',
+    name: '无人机储备甲板 MK3',
+    slot: 'drone-deck',
+    rack: 'high',
+    droneReviveCycleMs: 9000,
+    cpuUse: 55,
+    description: '整队级储备机库段：复位周期最短，长时间交火下机群编制掉不下去。',
+  },
+
   // ══════════ 护盾增强器（shield 抗性件：纯抗性，分系缺口乘入） ══════════
   {
     id: 'mod-shield-kin-1',

@@ -85,6 +85,8 @@ export function recoveryRateOfSlot(slot: string | undefined): number {
     case 'drone-relay':
       return WRECK_RECOVERY_RATE.weapon
     case 'drone-rack':
+    // 无人机储备甲板（2026-09-27）：与甲板扩展同档 —— 都是**无人机保障件**、不是武器
+    case 'drone-deck':
       return WRECK_RECOVERY_RATE.drone
     case 'armor':
     case 'shield':

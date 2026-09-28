@@ -451,6 +451,13 @@ const BATTLE_FIELDS = {
   // 2026-09-14 船长「逐舰机群」：逐舰战损账本 + 逐舰开战快照（`舰tag → 机型 → 架数`）
   droneLostBy: { kind: 'persist' },
   droneLoadAtStartBy: { kind: 'persist' },
+  // 2026-09-27 船长令：挂载件「无人机储备甲板」（战中复位周期装置）——
+  // **必须随档**：漏了会让战中重载后**待补队列清空、在跑的周期全部归零**（= 免费重置复位进度），
+  // 而复活消耗的是**开战快照**（`droneReviveStock`）⇒ 预算也会被重拍回满（同一批货能反复补）。
+  // 写入点 = combat/droneRevive，白名单 = cleanBattle。
+  droneRevive: { kind: 'persist' },
+  // **开战库存快照＝复活总预算**（全队一本）：丢了 ⇒ 重载后按当时的库存**重拍一份**（= 白赚预算）
+  droneReviveStock: { kind: 'persist' },
   foeDroneRangeBuff: { kind: 'persist' }, // E 族受击增程：一次触发、本场永久（丢了 ⇒ 机制静默重置）
   foeGunRangeBuff: { kind: 'persist' }, // D 族炮台受击增程：同上
   // 2026-09-26 船长令：我方「墨潮捕获网」（H 族势力装备 · 周期装置）——
@@ -701,6 +708,31 @@ function cleanBattle(raw: unknown): BattleState | null {
   /** 逐舰账本（键 = 舰 tag；值是 `机型 → 架数`）：2026-09-14「逐舰机群」新增，老档没有 ⇒ undefined */
   const droneLostBy = cleanCountMapBy(b.droneLostBy)
   const droneLoadAtStartBy = cleanCountMapBy(b.droneLoadAtStartBy)
+  /**
+   * **无人机储备甲板的复位账**（2026-09-27 船长令）：逐舰一份，**坏值整条丢**（与其余账本同款口径）——
+   * `q` 只收非空字符串、`t` 只收**有限非负数或 null**（null = 空闲）、`c` 只收**正数**（周期毫秒）、
+   * `v` 走 `cleanCountMap`、`shipId` 非空字符串。四样缺一 ⇒ 这一舰的账整条作废
+   * （宁可复位进度归零，也不让脏值把"扣两次库存"那条路走通）。
+   */
+  const droneRevive = cleanLedgerMap(b.droneRevive, (raw) => {
+    const r = asRaw(raw)
+    const shipId = typeof r.shipId === 'string' && r.shipId.length > 0 ? r.shipId : undefined
+    if (shipId === undefined) return undefined
+    const c = Array.isArray(r.c)
+      ? r.c.filter((x): x is number => typeof x === 'number' && Number.isFinite(x) && x > 0)
+      : []
+    if (c.length === 0) return undefined
+    const q = Array.isArray(r.q) ? r.q.filter((x): x is string => typeof x === 'string' && x.length > 0) : []
+    const tRaw = Array.isArray(r.t) ? r.t : []
+    const t: Array<number | undefined> = c.map((_, i) => {
+      const x = tRaw[i]
+      return typeof x === 'number' && Number.isFinite(x) && x >= 0 ? x : undefined
+    })
+    const v = cleanCountMap(r.v) ?? {}
+    return { q, t, c, v, shipId }
+  })
+  /** **复活总预算**（开战库存快照，全队一本）：机型 → 剩余可补架数（坏值整条丢） */
+  const droneReviveStock = cleanCountMap(b.droneReviveStock)
   const foeDroneRangeBuff = cleanPosNum(b.foeDroneRangeBuff)
   const foeGunRangeBuff = cleanPosNum(b.foeGunRangeBuff)
   /**
@@ -843,6 +875,8 @@ function cleanBattle(raw: unknown): BattleState | null {
     ...(droneLoadAtStart !== undefined ? { droneLoadAtStart } : {}),
     ...(droneLostBy !== undefined ? { droneLostBy } : {}),
     ...(droneLoadAtStartBy !== undefined ? { droneLoadAtStartBy } : {}),
+    ...(droneRevive !== undefined ? { droneRevive } : {}),
+    ...(droneReviveStock !== undefined ? { droneReviveStock } : {}),
     ...(foeDroneRangeBuff !== undefined ? { foeDroneRangeBuff } : {}),
     ...(foeGunRangeBuff !== undefined ? { foeGunRangeBuff } : {}),
     // 2026-09-27 本场 BOSS 阵亡时刻（丢了 ⇒ "玩家亲手打沉"的事实消失，旗舰留档只能靠池子算术反推）

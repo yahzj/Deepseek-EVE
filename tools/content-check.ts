@@ -2342,6 +2342,14 @@ for (const m of MODULES) {
       `无人机中继天线 ${m.id} droneRangeBonusPct 非法（需 (0, 2]）`,
     )
   }
+  if (m.slot === 'drone-deck') {
+    /**
+     * 2026-09-27 无人机储备甲板（船长令）：复位周期毫秒 —— 值域 (0, 60000]，
+     * 且必须**真带这个字段**（少了 ⇒ 引擎不认、这件装备就是个白板，属"数据写了引擎不认"的静默失效）。
+     */
+    const ms = m.droneReviveCycleMs ?? 0
+    check(ms > 0 && ms <= 60_000, `无人机储备甲板 ${m.id} droneReviveCycleMs 非法（需 (0, 60000]）`)
+  }
   if (m.slot === 'miner' || m.slot === 'cargo') {
     // V17：工业槽保留加成系数形态
     check((m.bonus ?? 0) > 0 && Number.isFinite(m.bonus), `工业装备 ${m.id} bonus 缺失或非法（V17 仅工业槽使用）`)
@@ -6094,6 +6102,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     droneBayBonusM3: 'drone-rack',
     droneDmgBonus: 'drone-tac',
     droneRangeBonusPct: 'drone-relay',
+    droneReviveCycleMs: 'drone-deck',
     damageTypeBonusPct: 'support',
     reloadCutPct: 'support',
     hitBonusPct: 'support',
