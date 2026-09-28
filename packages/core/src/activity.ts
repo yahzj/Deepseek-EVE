@@ -6,6 +6,7 @@
  * 3) UI 侧登记该 kind 的图标与停止动作。停止动作一律由"分发函数"承接，框架零改动。
  */
 import type { GameState } from './state'
+import { busyLabel, type BusyLabel } from './busyLabels'
 import type { SimContext } from './types'
 import { skillQueueStatus } from './engine'
 import { miningStatus, shipInReturn } from './mining'
@@ -559,18 +560,18 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
  * 判定源单一：驾驶船看主控作业（采矿/扫描/远征），副船看 AI 任务；
  * 制造与技能训练不绑船，不算忙。UI 的货仓页船徽标与以后复用都走这里。
  */
-export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string): string | null {
+export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string): BusyLabel | null {
   // **虫洞锁定**（船长 2026-09-13：「已经进洞的船将被锁定（包括货仓）」）——
   // 放在最前面：进了洞的船对外一律算"忙"（包括主控自己），于是 AI 指派、换驾驶、入洞门槛
   // 这些读同一把尺的地方**自动**把它挡在外面（不需要逐处加判断）。
-  if ((state.wormhole.run?.fleet ?? []).includes(shipId)) return '虫洞探索中'
+  if ((state.wormhole.run?.fleet ?? []).includes(shipId)) return busyLabel('wormhole')
   // 人在洞里时，主控本人也算忙（活动位被占）；**临时离开后即释放**（船长 2026-09-13 批准）
-  if (state.wormhole.run?.attending === true && shipId === state.shipId) return '虫洞探索中'
+  if (state.wormhole.run?.attending === true && shipId === state.shipId) return busyLabel('wormhole')
   if (shipId === state.shipId) {
     const mv = miningStatus(state, ctx)
     if (mv.active) {
-      if (state.mining.phase === 'mining') return '采矿中'
-      return state.mining.phase === 'outbound' ? '采矿·出航中' : '采矿·返航中'
+      if (state.mining.phase === 'mining') return busyLabel('mining')
+      return busyLabel(state.mining.phase === 'outbound' ? 'miningOut' : 'miningBack')
     }
     /**
      * ⚠ **2026-09-14 补齐五档**（与 `wormhole.ts` 的 `shipActivityBusy` 同一把尺，判据逐项对齐）：
@@ -579,40 +580,40 @@ export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string)
      * 洞门照样开着。两函数的一致性由 `tests/wormhole-activity-lock.test.ts` 逐档钉住。
      */
     if (state.salvaging.active) {
-      if (state.salvaging.phase === 'outbound') return '打捞·出航中'
-      return state.salvaging.phase === 'returning' ? '打捞·返航中' : '打捞中'
+      if (state.salvaging.phase === 'outbound') return busyLabel('salvageOut')
+      return busyLabel(state.salvaging.phase === 'returning' ? 'salvageBack' : 'salvage')
     }
-    if (state.hauling.active) return '长途运输中'
-    if (state.sideTasks.deliver !== null) return '快递投送中'
+    if (state.hauling.active) return busyLabel('hauling')
+    if (state.sideTasks.deliver !== null) return busyLabel('courier')
     const sb = standbyStatus(state, ctx)
-    if (sb.active) return `掩护巡逻·前往${sb.targetName}中`
-    if (state.wormholeScan?.active === true) return '扫描虫洞中'
+    if (sb.active) return busyLabel('patrolTo', { p1: sb.targetName })
+    if (state.wormholeScan?.active === true) return busyLabel('whscan')
     const ev = expeditionStatus(state, ctx)
     if (ev.active) {
-      if (ev.phase === 'out') return '远征·出航中'
-      if (ev.phase === 'combat') return '远征·交火中'
-      return '远征·返航中'
+      if (ev.phase === 'out') return busyLabel('expOut')
+      if (ev.phase === 'combat') return busyLabel('expCombat')
+      return busyLabel('expBack')
     }
-    if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return '亲自开炉精炼中'
-    if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) return '亲自开线制造中'
+    if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return busyLabel('refine')
+    if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) return busyLabel('manufacture')
     /**
      * **建站交付**（2026-09-22 船长令纳入主控活动表）：与 `wormhole.shipActivityBusy`、`activityGate.mainActivityOf`
      * **三处同源**（进洞门槛/货仓徽标/切换判据都读这一档）——判据含 `delivery` 批次，用来区分"换港返航"。
      */
-    if (state.transit.active && state.transit.delivery !== null) return '建站交付中'
+    if (state.transit.active && state.transit.delivery !== null) return busyLabel('deliver')
     return null
   }
   // T4 换船善后：自动返航中的船（优先于 AI 判定；两者互斥，仅顺序防御）
-  if (shipInReturn(state, shipId)) return '返航卸货中'
+  if (shipInReturn(state, shipId)) return busyLabel('unload')
   const assignment = state.aiAssignments[shipId]
   if (!assignment) return null
   const task = assignment.task
   if (task.kind === 'mining') {
-    if (task.phase === 'mining') return 'AI 采矿中'
-    return task.phase === 'outbound' ? 'AI 采矿·出航中' : 'AI 采矿·返航中'
+    if (task.phase === 'mining') return busyLabel('aiMining')
+    return busyLabel(task.phase === 'outbound' ? 'aiMiningOut' : 'aiMiningBack')
   }
-  if (task.kind === 'standby') return task.phase === 'out' ? 'AI 掩护巡逻·去程中' : 'AI 掩护巡逻中'
-  if (task.phase === 'out') return 'AI 远征·去程中'
-  if (task.phase === 'battle') return 'AI 远征·交火中'
-  return 'AI 远征·返航中'
+  if (task.kind === 'standby') return busyLabel(task.phase === 'out' ? 'aiPatrolTo' : 'aiPatrol')
+  if (task.phase === 'out') return busyLabel('aiExpOut')
+  if (task.phase === 'battle') return busyLabel('aiExpCombat')
+  return busyLabel('aiExpBack')
 }

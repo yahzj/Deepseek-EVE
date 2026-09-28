@@ -58,9 +58,9 @@ describe('T3 shipBusyLabel：船忙态判定', () => {
     // 采矿（主控）：去程已取消——指令即进入采掘
     const r = startMining(state, 'belt-a', ctx)
     expect(r.ok).toBe(true)
-    expect(shipBusyLabel(state, ctx, piloted)).toBe('采矿中')
+    expect(shipBusyLabel(state, ctx, piloted)?.error).toBe('采矿中')
     state.mining.phase = 'returning'
-    expect(shipBusyLabel(state, ctx, piloted)).toBe('采矿·返航中')
+    expect(shipBusyLabel(state, ctx, piloted)?.error).toBe('采矿·返航中')
     state.mining.active = false
 
     // 扫描探索：**2026-09-15 起不再算船忙**（船长：星系扫描 = 无人扫描艇，不占主控、不牵动舰船）
@@ -83,11 +83,11 @@ describe('T3 shipBusyLabel：船忙态判定', () => {
       phase: 'out',
       battle: null,
     }
-    expect(shipBusyLabel(state, ctx, piloted)).toBe('远征·出航中')
+    expect(shipBusyLabel(state, ctx, piloted)?.error).toBe('远征·出航中')
     state.expedition.phase = 'battle'
-    expect(shipBusyLabel(state, ctx, piloted)).toBe('远征·交火中')
+    expect(shipBusyLabel(state, ctx, piloted)?.error).toBe('远征·交火中')
     state.expedition.phase = 'back'
-    expect(shipBusyLabel(state, ctx, piloted)).toBe('远征·返航中')
+    expect(shipBusyLabel(state, ctx, piloted)?.error).toBe('远征·返航中')
   })
 
   it('副船：AI 采矿/远征各阶段有徽标；闲置副船与未知船 null', () => {
@@ -103,7 +103,7 @@ describe('T3 shipBusyLabel：船忙态判定', () => {
       }
     }
     assign('bighauler', { kind: 'mining', beltId: 'belt-a', phase: 'mining', cycleAccMs: 0, phaseAccMs: 0, tripUnits: 0 })
-    expect(shipBusyLabel(state, ctx, 'bighauler')).toBe('AI 采矿中')
+    expect(shipBusyLabel(state, ctx, 'bighauler')?.error).toBe('AI 采矿中')
     state.aiAssignments['bighauler']!.task = {
       kind: 'mining',
       beltId: 'belt-a',
@@ -112,7 +112,7 @@ describe('T3 shipBusyLabel：船忙态判定', () => {
       phaseAccMs: 0,
       tripUnits: 0,
     }
-    expect(shipBusyLabel(state, ctx, 'bighauler')).toBe('AI 采矿·返航中')
+    expect(shipBusyLabel(state, ctx, 'bighauler')?.error).toBe('AI 采矿·返航中')
 
     assign('bighauler', {
       kind: 'expedition',
@@ -123,7 +123,7 @@ describe('T3 shipBusyLabel：船忙态判定', () => {
       phase: 'battle',
       battle: null,
     })
-    expect(shipBusyLabel(state, ctx, 'bighauler')).toBe('AI 远征·交火中')
+    expect(shipBusyLabel(state, ctx, 'bighauler')?.error).toBe('AI 远征·交火中')
     state.aiAssignments['bighauler']!.task = {
       kind: 'expedition',
       anomalyId: 'ano-a',
@@ -133,6 +133,6 @@ describe('T3 shipBusyLabel：船忙态判定', () => {
       phase: 'out',
       battle: null,
     }
-    expect(shipBusyLabel(state, ctx, 'bighauler')).toBe('AI 远征·去程中')
+    expect(shipBusyLabel(state, ctx, 'bighauler')?.error).toBe('AI 远征·去程中')
   })
 })

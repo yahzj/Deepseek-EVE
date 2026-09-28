@@ -761,7 +761,8 @@ export function WormholePanel({
       name: shipDisplayName(state, ctx, uid),
       tier: def?.tier ?? 0,
       ok,
-      busy: auto ? autoBlocked : busy,
+      // 忙态文案在**建表时**就按当前语言取好（`cmdText`：有 id 按语言渲染、没有回落中文原串）
+      busy: auto ? autoBlocked : busy === null ? null : cmdText(busy),
       on: picked.includes(uid),
       // **损伤**（与舰队页「待维修」同一把尺）：装甲/结构未满 = 带伤；护盾每场满值重建、不持久、不计
       armor: state.fleet[uid]!.armorPct ?? 1,
@@ -1587,7 +1588,7 @@ export function WormholePanel({
                             ? tr("ui.Wormhole.024")
                             : tr("ui.Wormhole.136")
                       : busy
-                        ? tr("ui.Wormhole.025", { busy: busy })
+                        ? tr("ui.Wormhole.025", { busy })
                         : on
                           ? tr("ui.Wormhole.024")
                           : tr("ui.Wormhole.137")

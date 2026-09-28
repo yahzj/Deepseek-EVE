@@ -174,7 +174,8 @@ describe('虫洞 · 进洞门槛与锁定（船长 2026-09-13；2026-09-14 起�
     // 锁定：洞里那两艘不再出现在"可指派空闲船"里（船长：「已经进洞的船将被锁定（包括货仓）」）
     expect(idleAiShipIds(state)).not.toContain(b)
     expect(idleAiShipIds(state)).not.toContain(c)
-    expect(shipBusyLabel(state, ctx, b)).toBe('虫洞探索中')
+    expect(shipBusyLabel(state, ctx, b)?.error).toBe('虫洞探索中')
+    expect(shipBusyLabel(state, ctx, b)?.errorId).toBe('core.busy.001')
     // 也不能被重复编入（同一艘船不能同时下两个洞）
     state.wormhole.run = null
     expect(idleAiShipIds(state)).toContain(b)
