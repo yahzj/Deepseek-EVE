@@ -922,6 +922,9 @@ export {
 } from './expedition'
 export { cancelManufacturing } from './manufacturing'
 export { activityOverview, shipBusyLabel } from './activity'
+// 舰船忙态标签单点（2026-09-27）：档位 → 文案 + id；两处忙态函数与渲染层共用
+export { busyLabel, BUSY_LABEL_ID, BUSY_TEXT } from './busyLabels'
+export type { BusyLabel, BusyLabelId } from './busyLabels'
 export type { ActivityKind, ActivityStopKind, ActivityView } from './activity'
 /**
  * **主控活动切换的单点判据**（**2026-09-21 船长令**：「统一为能够直接切换（自动取消当前活动），

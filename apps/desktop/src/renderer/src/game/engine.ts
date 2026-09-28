@@ -309,6 +309,7 @@ import type {
   AiCoreType,
   BountyWinMC,
   CommandResult,
+  BusyLabel,
   CoreBlockReason,
   FitPresetApplyResult,
   UnfitAllResult,
@@ -2723,7 +2724,7 @@ export class GameEngine {
    * **准备页"这张卡能不能编入"用的忙态**（与进洞门槛同一把尺，核心单点 `wormholeShipEntryBusy`）：
    * 泛用徽标 `shipBusyLabel` 会把「扫描虫洞」报成忙，而进洞那一步会自动停扫 ⇒ 主控那一档放行。
    */
-  wormholeShipEntryBusy(shipId: string): string | null {
+  wormholeShipEntryBusy(shipId: string): BusyLabel | null {
     return wormholeShipEntryBusy(this.state, shipId)
   }
 

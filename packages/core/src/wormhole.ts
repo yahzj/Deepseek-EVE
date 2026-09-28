@@ -11,6 +11,7 @@
  * 本模块**只放纯逻辑**（数值换算与校验），不持状态、不碰存档；副本状态机在 C 批另开。
  */
 import { bumpFirst, peakFirst } from './firstTasks'
+import { busyLabel, type BusyLabel } from './busyLabels'
 import type { GameState, BattleState, WormholeArchetype, WormholeFamily } from './state'
 // 甲案（本地化批二 · 2026-09-27）：闸门拒因改走结构化（`{ error, errorId, errorParams }`）
 import type { CoreBlockReason } from './engine'
@@ -1519,8 +1520,8 @@ export function mergeIntoBag(bag: readonly WormholeBagSlot[], pile: WormholePile
  * 已知差异（有意）：这里**不覆盖** `shipInReturn`（换船善后返航，需 import `mining`）——
  * 那一档由界面侧的 `shipBusyLabel` 拦（准备页按它置灰），core 这层只保底。
  */
-export function shipBusyForWormhole(state: GameState, shipId: string): string | null {
-  if ((state.wormhole.run?.fleet ?? []).includes(shipId)) return '虫洞探索中'
+export function shipBusyForWormhole(state: GameState, shipId: string): BusyLabel | null {
+  if ((state.wormhole.run?.fleet ?? []).includes(shipId)) return busyLabel('wormhole')
   return shipActivityBusy(state, shipId)
 }
 
@@ -1534,29 +1535,29 @@ export function shipBusyForWormhole(state: GameState, shipId: string): string | 
  * （`refineRuns` / `manufacturingRuns` 里 `worker === 'pilot'` 且 `active`）⇒ 那些活动在跑时主控照样能进洞。
  * 由 `tests/wormhole-activity-lock.test.ts` 逐档钉住（含与 `shipBusyLabel` 的一致性）。
  */
-export function shipActivityBusy(state: GameState, shipId: string): string | null {
+export function shipActivityBusy(state: GameState, shipId: string): BusyLabel | null {
   if (shipId !== state.shipId) {
     const task = state.aiAssignments[shipId]?.task
     if (!task) return null
     // 用词与 `shipBusyLabel` 对齐（玩家在提示里看到的是这一串）
-    if (task.kind === 'mining') return 'AI 采矿中'
-    if (task.kind === 'standby') return 'AI 掩护巡逻中'
-    return 'AI 远征中'
+    if (task.kind === 'mining') return busyLabel('aiMining')
+    if (task.kind === 'standby') return busyLabel('aiPatrol')
+    return busyLabel('aiExpedition')
   }
-  if (state.mining.active) return '采矿中'
-  if (state.salvaging.active) return '打捞中'
-  if (state.hauling.active) return '长途运输中'
-  if (state.sideTasks.deliver !== null) return '快递投送中'
-  if (state.standby.active) return '掩护巡逻中'
-  if (state.wormholeScan?.active === true) return '扫描虫洞中'
-  if (state.expedition.active) return '远征中'
-  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return '亲自开炉精炼中'
-  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) return '亲自开线制造中'
+  if (state.mining.active) return busyLabel('mining')
+  if (state.salvaging.active) return busyLabel('salvage')
+  if (state.hauling.active) return busyLabel('hauling')
+  if (state.sideTasks.deliver !== null) return busyLabel('courier')
+  if (state.standby.active) return busyLabel('patrol')
+  if (state.wormholeScan?.active === true) return busyLabel('whscan')
+  if (state.expedition.active) return busyLabel('expedition')
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return busyLabel('refine')
+  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) return busyLabel('manufacture')
   /**
    * **建站交付**（2026-09-22 船长令纳入主控活动表）：占的是 `transit` 槽，靠 `delivery` 批次区分于
    * "换港返航"；用词与 `activity.shipBusyLabel` 对齐（两处必须成对，见 `activity-gate` / 本函数注释）。
    */
-  if (state.transit.active && state.transit.delivery !== null) return '建站交付中'
+  if (state.transit.active && state.transit.delivery !== null) return busyLabel('deliver')
   return null
 }
 
@@ -1601,7 +1602,14 @@ export function wormholeResume(state: GameState, ctx: SimContext): WormholeStart
   const run = state.wormhole.run
   if (!run) return { ok: false, error: '现在没有进行中的虫洞探索。', errorId: 'core.wormhole.024' }
   const busy = shipActivityBusy(state, state.shipId)
-  if (busy) return { ok: false, error: `主控正在${busy}：先把手上的活收工，才能回到虫洞。` }
+  if (busy) {
+      return {
+        ok: false,
+        error: `主控正在${busy.error}：先把手上的活收工，才能回到虫洞。`,
+        errorId: 'core.wormhole.037',
+        errorParams: { p1Id: busy.errorId },
+      }
+    }
   shiftBattleClock(run.battle, state.gameMs - (run.leftAtGameMs ?? state.gameMs))
   run.leftAtGameMs = undefined
   run.attending = true
@@ -1676,7 +1684,7 @@ export function wormholeEntryAutoStops(state: GameState): WormholeEntryAutoStop[
  * ⚠ 2026-09-21：放行判据改走 `activityGate`（原先按忙态文案逐字匹配——掩护巡逻那条是**动态**文案，
  * 逐字匹配根本认不出来）⇒ **只在"主控确实被某项可自动停的主控活动占着"时才放行**（洞内编队/AI 派工照旧报忙）。
  */
-export function wormholeShipEntryBusy(state: GameState, shipId: string): string | null {
+export function wormholeShipEntryBusy(state: GameState, shipId: string): BusyLabel | null {
   const busy = shipBusyForWormhole(state, shipId)
   if (busy === null) return null
   if (shipId === state.shipId && mainActivityOf(state) !== null && gateMainActivityHandoff(state, true).action === 'halt') {
@@ -1707,10 +1715,10 @@ export function wormholeEntryBlockReason(
   const verdict = gateMainActivityHandoff(state, true)
   if (verdict.action === 'reject' && verdict.message !== undefined) return verdict.message
   const pilotBusy = wormholeShipEntryBusy(state, state.shipId)
-  if (pilotBusy) return `主控正在${pilotBusy}：先把手上的活收工，才能指挥虫洞探索。`
+  if (pilotBusy) return `主控正在${pilotBusy.error}：先把手上的活收工，才能指挥虫洞探索。`
   for (const uid of shipIds) {
     const busy = wormholeShipEntryBusy(state, uid)
-    if (busy) return `${shipDisplayName(state, ctx, uid)}正在${busy}：先取消它的作业/派工，才能编入虫洞。`
+    if (busy) return `${shipDisplayName(state, ctx, uid)}正在${busy.error}：先取消它的作业/派工，才能编入虫洞。`
   }
   return null
 }

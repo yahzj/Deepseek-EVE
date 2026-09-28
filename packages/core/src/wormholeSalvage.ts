@@ -1618,7 +1618,7 @@ export function wormholeCollectOreAt(state: GameState, ctx: SimContext): Wormhol
   const blocked = wormholeActionBlockReason(state, ctx)
   if (blocked) return { ok: false, error: blocked }
   const cell = gridCellAt(grid, grid.pos)
-  if (!cell) return { ok: false, error: '当前位置不在网格里。' }
+  if (!cell) return { ok: false, error: '当前位置不在网格里。', errorId: 'core.wormhole.018' }
   if (cell.place !== 'vein') return { ok: false, error: '这个地点没有可采集的矿脉。', errorId: 'core.wormholeSalvage.017' }
   const baseMiners = wormholeMinersOf(state, ctx)
   if (baseMiners <= 0) return { ok: false, error: '编队里没有采集器：矿脉挖不动（至少装 1 台）。', errorId: 'core.wormholeSalvage.019' }
@@ -1727,7 +1727,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
   if (!run || !grid) return { ok: false, error: '本层没有网格：无法打捞。', errorId: 'core.wormholeSalvage.015' }
   if (run.battle) return { ok: false, error: '战斗中：先打完这一场。', errorId: 'core.wormholeSalvage.016' }
   const cell = gridCellAt(grid, grid.pos)
-  if (!cell) return { ok: false, error: '当前位置不在网格里。' }
+  if (!cell) return { ok: false, error: '当前位置不在网格里。', errorId: 'core.wormhole.018' }
   if (cell.place !== 'graveyard' && cell.place !== 'ruins') return { ok: false, error: '这个地点没有可打捞的残骸。', errorId: 'core.wormholeSalvage.018' }
   const baseRigs = wormholeSalvagersOf(state, ctx)
   if (baseRigs <= 0) {

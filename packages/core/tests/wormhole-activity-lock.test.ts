@@ -140,8 +140,10 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     const { state, pilot } = fresh()
     startWormholeScan(state)
     // 徽标照旧报"忙"（它确实占着主控），但**进洞门槛放行**
-    expect(shipBusyLabel(state, ctx, pilot)).toBe('扫描虫洞中')
-    expect(shipActivityBusy(state, pilot)).toBe('扫描虫洞中')
+    expect(shipBusyLabel(state, ctx, pilot)?.error).toBe('扫描虫洞中')
+    expect(shipBusyLabel(state, ctx, pilot)?.errorId).toBe('core.busy.012')
+    expect(shipActivityBusy(state, pilot)?.error).toBe('扫描虫洞中')
+    expect(shipActivityBusy(state, pilot)?.errorId).toBe('core.busy.012')
     expect(wormholeEntryAutoStops(state).map((a) => a.label)).toEqual(['扫描虫洞中'])
     expect(wormholeEntryBlockReason(state, ctx, [pilot])).toBeNull()
     // 进洞 ⇒ 自动停扫：active 归 false、**进度一字不动**、统一日志带已扫分钟
@@ -171,7 +173,8 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
       state.mining.beltId = beltId
       state.mining.phase = 'mining'
       state.mining.tripUnits = 12
-      expect(shipActivityBusy(state, pilot)).toBe('采矿中')
+      expect(shipActivityBusy(state, pilot)?.error).toBe('采矿中')
+    expect(shipActivityBusy(state, pilot)?.errorId).toBe('core.busy.002')
       expect(wormholeEntryAutoStops(state).map((a) => a.label)).toEqual(['采矿中'])
       expect(wormholeEntryBlockReason(state, ctx, [pilot]), '开采中应当能进洞了').toBeNull()
       expect(wormholeEnter(state, ctx, [pilot], 4242).ok).toBe(true)
@@ -189,7 +192,8 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
       state.salvaging.galaxyId = 'galaxy-hub'
       state.salvaging.phase = 'salvaging'
       state.salvaging.tripM3 = 33.5
-      expect(shipActivityBusy(state, pilot)).toBe('打捞中')
+      expect(shipActivityBusy(state, pilot)?.error).toBe('打捞中')
+        expect(shipActivityBusy(state, pilot)?.errorId).toBe('core.busy.005')
       expect(wormholeEntryAutoStops(state).map((a) => a.label)).toEqual(['打捞中'])
       expect(wormholeEntryBlockReason(state, ctx, [pilot]), '打捞中应当能进洞了').toBeNull()
       expect(wormholeEnter(state, ctx, [pilot], 4242).ok).toBe(true)
@@ -275,8 +279,10 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
     state.transit.legMs = 600_000
     state.transit.delivery = { siteId: 'site-x', phase: 'to-site', loaded: { 'item-titanium': 3 } }
     state.awayGalaxy = null
-    expect(shipActivityBusy(state, pilot)).toBe('建站交付中')
-    expect(shipBusyLabel(state, ctx, pilot)).toBe('建站交付中') // 两边忙态口径一致（与 ① 同一把尺）
+    expect(shipActivityBusy(state, pilot)?.error).toBe('建站交付中')
+    expect(shipActivityBusy(state, pilot)?.errorId).toBe('core.busy.019')
+    expect(shipBusyLabel(state, ctx, pilot)?.error).toBe('建站交付中') // 两边忙态口径一致（与 ① 同一把尺）
+    expect(shipBusyLabel(state, ctx, pilot)?.errorId).toBe('core.busy.019')
     const stops = wormholeEntryAutoStops(state)
     expect(stops.map((a) => a.label)).toEqual(['建站交付中'])
     expect(stops[0]!.warn, '交付停机无损 ⇒ 不发警告').toBe(false)

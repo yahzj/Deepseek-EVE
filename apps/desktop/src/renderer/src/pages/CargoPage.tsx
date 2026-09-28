@@ -170,12 +170,12 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
             tip={
               isPiloted
                 ? t('ui.CargoPage.032') +
-                  (busy ? ' ' + t('ui.CargoPage.033', { b: busy }) : '')
+                  (busy ? ' ' + t('ui.CargoPage.033', { b: cmdText(busy) }) : '')
                 : t('ui.CargoPage.034', {
                     ship: targetName,
                     piloted: shipDisplayName(state, engine.ctx, piloted),
                   }) +
-                  (busy ? ' ' + t('ui.CargoPage.035', { b: busy }) : ' ' + t('ui.CargoPage.036'))
+                  (busy ? ' ' + t('ui.CargoPage.035', { b: cmdText(busy) }) : ' ' + t('ui.CargoPage.036'))
             }
           />
         }
@@ -194,14 +194,14 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 key={id}
                 className={`app-shipchip${isSel ? ' is-active' : ''}${isP ? ' is-piloted' : ''}`}
                 onClick={() => setSelId(id)}
-                title={isP ? tr("ui.CargoPage.007") : b ?? tr('ui.CargoPage.060')}
+                title={isP ? tr("ui.CargoPage.007") : b !== null ? cmdText(b) : tr('ui.CargoPage.060')}
               >
                 <span className="app-shipchip-name">
                   {d ? <span className={`app-role-dot is-${d.role}`} /> : null}
                   {shipDisplayName(state, engine.ctx, id)}
                 </span>
                 {isP ? <span className="app-shipchip-tag">{tr("ui.ShipPage.010")}</span> : null}
-                {b ? <span className="app-shipchip-busy">·{b}</span> : null}
+                {b ? <span className="app-shipchip-busy">·{cmdText(b)}</span> : null}
               </button>
             )
           })}
