@@ -1008,7 +1008,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.labelsText.016": { zh: "T{p1} 巡洋舰", en: "T{p1} Cruiser" },
   "ui.labelsText.017": { zh: "T{p1} 战列舰", en: "T{p1} Battleship" },
   "ui.labelsText.018": { zh: "T{p1} 旗舰", en: "T{p1} Flagship" },
-  /* 技能分类（`SKILL_GROUPS`：舰船/工业/战斗/工程/贸易/探索/物流） */
+  /* 技能分类（`SKILL_GROUPS`：舰船/工业/矿业/战斗/工程/贸易/探索/物流） */
   "ui.labelsText.019": { zh: "舰船", en: "Ships" },
   "ui.labelsText.020": { zh: "工业", en: "Industry" },
   "ui.labelsText.021": { zh: "战斗", en: "Combat" },
@@ -1016,6 +1016,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.labelsText.023": { zh: "贸易", en: "Trade" },
   "ui.labelsText.024": { zh: "物流", en: "Logistics" },
   "ui.labelsText.025": { zh: "探索", en: "Explore" },
+  /* 矿业（2026-09-27 船长令：采矿从工业独立出去，成为第 8 个大类） */
+  "ui.labelsText.070": { zh: "矿业", en: "Mining Industry" },
   /* ── 技能书（2026-09-22 船长令「将现有的技能再进行细分」：技能大类之内再切细的 23 本）── */
   "ui.labelsText.026": { zh: "航行与机动", en: "Flight & Maneuvering" },
   "ui.labelsText.027": { zh: "采矿", en: "Mining" },

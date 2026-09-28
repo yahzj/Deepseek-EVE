@@ -39,13 +39,13 @@ import type { SkillDef } from '@whale/core'
  */
 export const SKILL_BRANCHES: readonly { readonly id: string; readonly group: string }[] = [
   { id: 'b-fly', group: '舰船' },
-  { id: 'b-mine', group: '工业' },
+  { id: 'b-mine', group: '矿业' },
   { id: 'b-refine', group: '工业' },
   { id: 'b-craft', group: '工业' },
   { id: 'b-salvage', group: '工业' },
   { id: 'b-auto', group: '工业' },
   { id: 'b-build', group: '工业' },
-  { id: 'b-indship', group: '工业' },
+  { id: 'b-indship', group: '矿业' },
   { id: 'b-weapon', group: '战斗' },
   { id: 'b-aim', group: '战斗' },
   { id: 'b-ammo', group: '战斗' },
@@ -106,7 +106,7 @@ export const SKILLS: readonly SkillDef[] = [
     // 2026-09-16 船长：「采矿护卫舰操作改名为采集器入门学。」
     // 2026-09-22 船长（技能树批，Excel 工作台回稿）：「采集器入门学」⇒ **采矿舰入门学**
     name: '采矿舰入门学',
-    group: '工业',
+    group: '矿业',
     rank: 2,
     branch: 'b-indship',
     description: '采集器的调校与作业流程入门：每级缩短采集循环时间 ⟦3%⟧。',
@@ -114,7 +114,7 @@ export const SKILLS: readonly SkillDef[] = [
   {
     id: 'industrial-ops',
     name: '采矿舰操作', // 2026-09-09 船长定：与 UI 徽标「采矿」一致（原"工业舰操作"）；id 不变
-    group: '工业',
+    group: '矿业',
     rank: 3,
     branch: 'b-indship',
     /**
@@ -230,7 +230,7 @@ export const SKILLS: readonly SkillDef[] = [
   {
     id: 'mining',
     name: '采矿技术',
-    group: '工业',
+    group: '矿业',
     rank: 3,
     branch: 'b-mine',
     prereq: ['astro-geology'],
@@ -239,7 +239,7 @@ export const SKILLS: readonly SkillDef[] = [
   {
     id: 'deep-space-harvesting',
     name: '深空采集学',
-    group: '工业',
+    group: '矿业',
     rank: 4,
     branch: 'b-mine',
     prereq: ['mining'],
@@ -313,7 +313,7 @@ export const SKILLS: readonly SkillDef[] = [
   {
     id: 'astro-geology',
     name: '星质地质学',
-    group: '工业',
+    group: '矿业',
     rank: 2,
     branch: 'b-mine',
     description: '岩层构成的进阶研究：全矿采集产量每级再 +⟦4%⟧（与采矿技术乘算叠加）。',
@@ -321,7 +321,7 @@ export const SKILLS: readonly SkillDef[] = [
   {
     id: 'deep-hole-blasting',
     name: '深井爆破学',
-    group: '工业',
+    group: '矿业',
     rank: 3,
     branch: 'b-mine',
     prereq: ['mining'],
@@ -330,7 +330,7 @@ export const SKILLS: readonly SkillDef[] = [
   {
     id: 'rich-vein-prospecting',
     name: '富矿勘探学',
-    group: '工业',
+    group: '矿业',
     rank: 2,
     branch: 'b-mine',
     prereq: ['astro-geology'],
@@ -889,7 +889,7 @@ export const SKILLS: readonly SkillDef[] = [
 ]
 
 /** 技能组清单（按此顺序分组展示） */
-export const SKILL_GROUPS: readonly string[] = ['舰船', '工业', '战斗', '工程', '贸易', '探索', '物流']
+export const SKILL_GROUPS: readonly string[] = ['舰船', '工业', '矿业', '战斗', '工程', '贸易', '探索', '物流']
 
 /** 把技能表建成引擎用的"按 id 快速查找"目录 */
 export function buildSkillCatalog(): ReadonlyMap<string, SkillDef> {
