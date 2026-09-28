@@ -47,6 +47,7 @@ import { claimFirstTask, grantStartRewardsForCurrent } from './firstRewards'
 import { advanceSideTasks } from './sideTasks'
 import { weekendTickBoss } from './weekendEvent'
 import { weekendFlagshipBattleActive } from './weekendLaunch'
+import { reconcileWeekendBlackBox } from './weekendComms'
 
 /**
  * **我方此刻是否在战斗中**（周末入侵的章鱼人削血要按它暂停）：远征战斗 / 虫洞战斗 / 低安遭遇战
@@ -225,6 +226,9 @@ export function advanceGame(
   reconcileWormholeScanWelcome(state)
   // 限时促销赠送（2026-09-16「虫洞大量生成」）：逐 tick 幂等、只发一次、只给已解锁者（见该函数头注）
   reconcileWormholePromoGift(state, ctx)
+  // 入侵旗舰黑匣**对账补发**（2026-09-28 船长令「采用工具线上补发」）：逐 tick 幂等，
+  // 只补「玩家亲手击沉 ＋ 输出占比过半（这一档必爆）却没落地」的场次（判据见该函数头注）
+  reconcileWeekendBlackBox(state)
   advanceWormholeScan(state, ctx, d)
   // 自动探索（2026-09-14 批次 3）：到点即结算（收益入仓库 + 损伤 + 待确认报告）；离线大步长同样适用
   advanceWormholeAuto(state, ctx)

@@ -1820,6 +1820,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 2026-09-26 船长令：「给所有打完入侵但是没有获取黑匣的玩家补发一个黑匣（必须是推送之前打完，
      同时也要检查玩家是否已经将黑匣制作成舰船插件）」⇒ 补发入仓时的那条系统日志（不发信）。 */
   "core.weekend.040": { zh: "入侵补偿：补发旗舰黑匣 ×1（已存入物品仓库）。", en: "Invasion compensation: 1 flagship black box issued (stored in item storage)." },
+  /* 2026-09-28 船长令：「不需要给本地存档补发，采用工具线上补发」⇒ 逐 tick 对账补发出手时的那条
+     系统日志（`weekendComms.reconcileWeekendBlackBox`）。{p1} = 补发枚数 · {p2} = 玩家输出占比整数。 */
+  "core.weekend.039": { zh: "📦 补发：旗舰黑匣 ×{p1}（你亲手击沉母舰、输出占比 {p2}% ⇒ 必定爆出）——已存入物品仓库。", en: "📦 Compensation: flagship black box ×{p1} (you sank the mothership yourself with {p2}% of the damage — a guaranteed drop) — stored in your item warehouse." },
   /* 2026-09-27 船长令：旗舰战留档（玩家亲手击沉）与归属记录打架时的诊断行 —— 显示以留档为准 */
   "core.weekend.041": { zh: "⚠ 旗舰击沉归属出现两处不同记录：已按玩家亲手击沉处理。", en: "⚠ Two conflicting records for the flagship kill: treated as sunk by the player." },
   /* 2026-09-27 船长令：结算信里也留一句"旗舰是谁打沉的"（与快照的 flagsphipPlayerKill 同源） */

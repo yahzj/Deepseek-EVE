@@ -352,6 +352,8 @@ export {
   // 2026-09-26 船长令：给"推送前打完入侵却没拿到黑匣"的档补发 1 枚（判据见函数头注）
   WEEKEND_BOX_COMPENSATION_CUTOFF_WALL_MS,
   compensateMissingWeekendBlackBox,
+  // 2026-09-28 船长令「采用工具线上补发」：逐 tick 对账，补"记录在案的规则本该必爆却漏发"的场次
+  reconcileWeekendBlackBox,
   weekendFamilyNameId,
   weekendFamilyNameZh,
   weekendRewardLinesOf,

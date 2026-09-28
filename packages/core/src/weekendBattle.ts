@@ -417,8 +417,12 @@ export interface WeekendSettleGrant {
  * **记一笔到手台账**（2026-09-25 加）：三处入账（夺回 / 贡献奖 / 旗舰掉落）各调一次，全是**累加**。
  * 用途 = 结算面板与结算通讯里的奖励清单**不再另算一遍**（说的与发的逐值一致）。
  * `galaxyId` 给了才记逐星系那一栏（旗舰掉落与贡献奖是全局的）。
+ *
+ * ⚠ **对外导出只为补发工具**（`weekendComms.reconcileWeekendBlackBox`，2026-09-28 船长令）：
+ * 它补的黑匣同样要进这本台账，否则结算面板又会显示玩家手里没有/少一件的东西（账实分离）。
+ * 游戏内其余入账一律走本文件内的调用点，别在外面新开入口。
  */
-function noteReward(
+export function noteReward(
   ev: WeekendEventState,
   galaxyId: string | undefined,
   add: { isk?: number; wreck?: number; blackBox?: number },
