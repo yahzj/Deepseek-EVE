@@ -37,8 +37,14 @@ describe('无人机专用舰槽位（2026-09-10 高槽 −2 · 2026-09-21 王鲭
     repairDeprecatedModules(state, ctx)
     expect(state.fleet[sent]!.fitted.mid).toEqual(['mod-shield-kin-3', 'mod-shield-kin-3', null, null, null])
     expect(state.fleet[sent]!.fitted.high).toHaveLength(4)
+    // 2026-09-27 起甲板扩展归低槽：高槽里那两件搬进低槽，低槽原占位件（从最后装的往前找）退回装备库
+    expect(state.fleet[sent]!.fitted.high.filter(Boolean)).toEqual(['mod-drone-tac-3', 'mod-drone-tac-3'])
+    expect(state.fleet[sent]!.fitted.low).toEqual(['mod-drone-rack-3', 'mod-drone-rack-3'])
+    expect(countModule(state, 'mod-armor-exp-3')).toBe(1)
+    expect(countModule(state, 'mod-cpu-3')).toBe(1)
     repairDeprecatedModules(state, ctx) // 幂等
     expect(state.fleet[sent]!.fitted.mid).toHaveLength(5)
+    expect(state.fleet[sent]!.fitted.low).toEqual(['mod-drone-rack-3', 'mod-drone-rack-3'])
     // ── 梭鱼：四槽时代遗留 → 尾件退回装备库（旧用例原样保留） ──
     const uid = addShipToFleet(state, 'sh-swarm')
     const entry = state.fleet[uid]!
@@ -54,7 +60,9 @@ describe('无人机专用舰槽位（2026-09-10 高槽 −2 · 2026-09-21 王鲭
 
     const after = state.fleet[uid]!
     expect(after.fitted.high).toHaveLength(3)
-    expect(after.fitted.high).toEqual(['mod-drone-rack-2', 'mod-drone-rack-2', 'mod-drone-tac-2'])
+    // 截断先跑（尾部第 4 件退库）⇒ 再把高槽里的两件甲板扩展搬进低槽（低槽本来空着）
+    expect(after.fitted.high).toEqual([null, null, 'mod-drone-tac-2'])
+    expect(after.fitted.low).toEqual(['mod-drone-rack-2', 'mod-drone-rack-2'])
     expect(countModule(state, 'mod-drone-tac-2')).toBe(1) // 第 4 件退库，不丢装备
     expect(after.droneLoad).toEqual({ 'drone-assault': 10, 'drone-heavy': 4, 'drone-sentry': 1 }) // 清单保留
     repairDeprecatedModules(state, ctx) // 幂等
@@ -62,19 +70,23 @@ describe('无人机专用舰槽位（2026-09-10 高槽 −2 · 2026-09-21 王鲭
     expect(countModule(state, 'mod-drone-tac-2')).toBe(1)
   })
 
-  it('装配面：三槽装满后第四件被拒（无空位）；王鲭四槽恰好容下 D3 配装、中槽可装到 5 件', () => {
+  it('装配面：甲板扩展占低槽、导控占高槽 ⇒ 两族不再抢同一组；王鲭 4 高 / 2 低恰好容下 D3 配装', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 11 })
     const swarm = addShipToFleet(state, 'sh-swarm')
     state.fleet[swarm]!.fitted = { high: [null, null, null], mid: [null, null, null], low: [null, null] }
     state.moduleBay['mod-drone-rack-2'] = 2
-    state.moduleBay['mod-drone-tac-2'] = 2
+    state.moduleBay['mod-drone-tac-2'] = 3
     state.shipId = swarm
-    expect(fitModule(state, 'mod-drone-rack-2', ctx).ok).toBe(true)
-    expect(fitModule(state, 'mod-drone-rack-2', ctx).ok).toBe(true)
-    expect(fitModule(state, 'mod-drone-tac-2', ctx).ok).toBe(true)
+    // 2026-09-27 起：甲板扩展占**低槽**、导控占高槽（梭鱼 3 高 / 2 低）
+    expect(fitModule(state, 'mod-drone-rack-2', ctx).ok).toBe(true) // 低槽 0
+    expect(fitModule(state, 'mod-drone-rack-2', ctx).ok).toBe(true) // 低槽 1
+    expect(fitModule(state, 'mod-drone-tac-2', ctx).ok).toBe(true) // 高槽 0
+    expect(fitModule(state, 'mod-drone-tac-2', ctx).ok).toBe(true) // 高槽 1
+    expect(fitModule(state, 'mod-drone-tac-2', ctx).ok).toBe(true) // 高槽 2
     const overflow = fitModule(state, 'mod-drone-tac-2', ctx)
     expect(overflow.ok).toBe(false) // 3 高槽已满
     expect(state.fleet[swarm]!.fitted.high.filter(Boolean)).toHaveLength(3)
+    expect(state.fleet[swarm]!.fitted.low.filter(Boolean)).toHaveLength(2)
 
     const sent = addShipToFleet(state, 'sh-sentinel')
     // 位对齐后中槽 = 5（2026-09-21 补齐）
@@ -87,11 +99,8 @@ describe('无人机专用舰槽位（2026-09-10 高槽 −2 · 2026-09-21 王鲭
     for (const id of ['mod-drone-rack-3', 'mod-drone-rack-3', 'mod-drone-tac-3', 'mod-drone-tac-3']) {
       expect(fitModule(state, id, ctx).ok).toBe(true)
     }
-    expect(state.fleet[sent]!.fitted.high.filter(Boolean)).toEqual([
-      'mod-drone-rack-3',
-      'mod-drone-rack-3',
-      'mod-drone-tac-3',
-      'mod-drone-tac-3',
-    ])
+    // 王鲭 4 高 / 2 低：两件扩舱进低槽、两件导控进高槽
+    expect(state.fleet[sent]!.fitted.low.filter(Boolean)).toEqual(['mod-drone-rack-3', 'mod-drone-rack-3'])
+    expect(state.fleet[sent]!.fitted.high.filter(Boolean)).toEqual(['mod-drone-tac-3', 'mod-drone-tac-3'])
   })
 })

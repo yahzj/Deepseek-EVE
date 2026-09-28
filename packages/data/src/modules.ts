@@ -437,14 +437,14 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 6.04,
   },
 
-  // ══════════ 无人机装置（V18 高槽装置位：远行星号式；与炮/矿共位竞争） ══════════
-  // 无人机甲板扩展 = +droneBayM3（携带/放飞上限；线性可叠件）；战术导控阵列 =
-  // 放飞无人机单发伤害加成（求和乘入；线性可叠件）。两者均为市场专供（无蓝图）。
+  // ══════════ 无人机装置（V18 远行星号式；**2026-09-27 船长令：甲板扩展改归低槽**） ══════════
+  // 无人机甲板扩展 = +droneBayM3（携带/放飞上限；线性可叠件）——**归低槽**：与装甲/货舱/支援件同槽竞争；
+  // 战术导控阵列 = 放飞无人机单发伤害加成（求和乘入；线性可叠件）——**仍归高槽**。两者均为市场专供（无蓝图）。
   {
     id: 'mod-drone-rack-1',
     name: '无人机甲板扩展 MK1',
     slot: 'drone-rack',
-    rack: 'high',
+    rack: 'low', // 2026-09-27 船长令：扩舱件从高槽移到低槽
     droneBayBonusM3: 15,
     cpuUse: 5,
     description: '外挂无人机甲板：加装机库段。无人机流的起点。',
@@ -453,7 +453,7 @@ export const MODULES: readonly ModuleDef[] = [
     id: 'mod-drone-rack-2',
     name: '无人机甲板扩展 MK2',
     slot: 'drone-rack',
-    rack: 'high',
+    rack: 'low', // 2026-09-27 船长令：扩舱件从高槽移到低槽
     droneBayBonusM3: 35,
     cpuUse: 15,
     description: '外挂无人机甲板：无人机舱 +35 m³。中型无人机编队的扩容方案。',
@@ -462,7 +462,7 @@ export const MODULES: readonly ModuleDef[] = [
     id: 'mod-drone-rack-3',
     name: '无人机甲板扩展 MK3',
     slot: 'drone-rack',
-    rack: 'high',
+    rack: 'low', // 2026-09-27 船长令：扩舱件从高槽移到低槽
     droneBayBonusM3: 70,
     cpuUse: 40,
     description: '整队级外挂甲板：无人机舱 +70 m³。',
@@ -1464,7 +1464,7 @@ export const MODULES: readonly ModuleDef[] = [
     id: 'mod-lair-hangar-e',
     name: '深层机库',
     slot: 'drone-rack',
-    rack: 'high',
+    rack: 'low', // 2026-09-27 船长令：扩舱件从高槽移到低槽
     droneBayBonusM3: 95,
     cpuUse: 50,
     description:
@@ -1574,14 +1574,15 @@ export const MODULES: readonly ModuleDef[] = [
     id: 'mod-wh-a-hangar',
     name: '掠袭机库', // 船长审核改：赃物机库 → 掠袭机库
     slot: 'drone-rack',
-    rack: 'high',
-    droneBayBonusM3: 30, // 船长审核：85 → 30
+    rack: 'low', // 2026-09-27 船长令：扩舱件从高槽移到低槽
+    droneBayBonusM3: 40, // 2026-09-27 船长令：30 → 40（原审批 85 → 30）
     droneCycleCutPct: 0.08, // 船长：无人机攻击间隔 −8%（澄清 = **出击周期**）
     cpuUse: 25, // 船长审核：46 → 25
     // ⚠ **待落**：船长要求「无人机攻击间隔减少 8%」——无人机当前没有"攻击间隔"可加的模块字段
     //   （只有 bay/dmg/range 三件），需新增字段（建议 `droneIntervalCutPct`）+ 战斗侧接入，见设计稿 §3.6。
-        description:
-      '把抢来的货舱隔板焊成的机库夹层：无人机舱 +30 m³，且放飞无人机的出击周期 −8%。装得下又放得快，代价只有 25 点 CPU。',
+        // ⟪文案调整 2026-09-27⟫ 船长令：无人机舱扩展 30 → 40 m³
+    description:
+      '把抢来的货舱隔板焊成的机库夹层：无人机舱 +40 m³，且放飞无人机的出击周期 −8%。装得下又放得快，代价只有 25 点 CPU。',
   },
   {
     id: 'mod-wh-a-prop',
@@ -1851,7 +1852,7 @@ export const MODULES: readonly ModuleDef[] = [
     id: 'mod-wh-g-hangar',
     name: '亡军蜂巢坞',
     slot: 'drone-rack',
-    rack: 'high',
+    rack: 'low', // 2026-09-27 船长令：扩舱件从高槽移到低槽
     droneBayBonusM3: 110, // 深层机库 = +95
     cpuUse: 54,
     description:

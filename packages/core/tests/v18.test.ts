@@ -84,11 +84,11 @@ describe('V18 无人机流', () => {
     expect(createPlayerSpec(state, ctx, state.shipId)!.weapons.filter((w) => w.label === DRONE_SCOUT.name)).toHaveLength(0)
 
     state.moduleBay['mod-drone-rack-1'] = 1
-    expect(fitModule(state, 'mod-drone-rack-1', ctx).ok).toBe(true) // 高槽自动首空位
+    expect(fitModule(state, 'mod-drone-rack-1', ctx).ok).toBe(true) // 低槽自动首空位（2026-09-27 起甲板扩展归低槽）
     const after = createPlayerSpec(state, ctx, state.shipId)!
     const drones = after.weapons.filter((w) => w.label === DRONE_SCOUT.name)
     expect(drones.length).toBeGreaterThanOrEqual(5) // +15 m³ → ≥5 架（1.5 m³/架）
-    expect(unfitAt(state, 'high', 0)).toBe(true)
+    expect(unfitAt(state, 'low', 0)).toBe(true)
     const again = createPlayerSpec(state, ctx, state.shipId)!
     expect(again.weapons.filter((w) => w.label === DRONE_SCOUT.name)).toHaveLength(0)
   })

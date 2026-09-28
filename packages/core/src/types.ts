@@ -1537,8 +1537,9 @@ export interface ModuleDef {
    * ⚠ 缺省不写 = 打不到敌机 ⇒ **既有装备零行为变化**。
    */
   antiDrone?: number;
-  /* ═══ V18 无人机装置位（远行星号式高槽装置；家族以字段判别：有 droneBayBonusM3 = 甲板扩展、
-     有 droneDmgBonus = 战术导控、有 droneRangeBonusPct = 中继天线；归槽 rack = high，见 labels.rackOf） ═══ */
+  /* ═══ V18 无人机装置位（远行星号式；家族以字段判别：有 droneBayBonusM3 = 甲板扩展、
+     有 droneDmgBonus = 战术导控、有 droneRangeBonusPct = 中继天线；**归槽见 labels.rackOf** ——
+     2026-09-27 船长令：甲板扩展（drone-rack）改归**低槽**，战术导控与中继天线仍归高槽） ═══ */
   /** 无人机甲板扩展：+droneBayM3（携带/放飞上限扩容；线性可叠件） */
   droneBayBonusM3?: number
   /** 战术导控阵列：放飞无人机单发伤害加成（0.12 = +12%；线性求和乘入；线性可叠件） */

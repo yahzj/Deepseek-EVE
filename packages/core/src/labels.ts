@@ -87,6 +87,8 @@ export function shipSlotsOf(ship: { slots?: ShipSlots }): ShipSlots {
  * **miner・salvager（采集器・打捞器）→ high**（2026-09-05 定稿高槽 → 2026-09-13 一度改判低槽
  * → **2026-09-14 船长「改回高槽」**：低槽口径下作业装备与装甲/货舱混在低槽组里，判定为错位 BUG
  * ⇒ 归位高槽，与炮台/矿枪/无人机装置同组竞争；content:check 有对应契约钉子防漂移）；
+ * **drone-rack（无人机甲板扩展）→ low**（**2026-09-27 船长令**「将扩大无人机舱的装备从高槽移动到低槽」
+ * ⇒ 与装甲/货舱/支援件同槽竞争；战术导控 drone-tac 与中继天线 drone-relay **仍归高槽**）；
  * armor・cargo（甲系・货舱）→ low；
  * support（V18.1 支援件）必须显式标注 rack（伤害/射速 = low、命中/闪避 = mid）。
  */
@@ -102,7 +104,6 @@ export function rackOf(def: {
     def.slot === 'turret' ||
     def.slot === 'missile' ||
     def.slot === 'laser' ||
-    def.slot === 'drone-rack' ||
     def.slot === 'drone-tac' ||
     def.slot === 'drone-relay' ||
     def.slot === 'target-lock'
@@ -113,6 +114,8 @@ export function rackOf(def: {
   if (def.slot === 'shield-field') return 'high'
   // 采集器 / 打捞器：高槽（船长 2026-09-14「改回高槽」——低槽口径作废）
   if (def.slot === 'miner' || def.slot === 'salvager') return 'high'
+  // 无人机甲板扩展：**低槽**（**2026-09-27 船长令**：「将扩大无人机舱的装备从高槽移动到低槽」）
+  if (def.slot === 'drone-rack') return 'low'
   // 2026-09-11 协处理器：低槽（与装甲/货舱/支援件同槽类竞争——占一个低槽换 CPU 预算）
   if (def.slot === 'cpu') return 'low'
   return 'low'

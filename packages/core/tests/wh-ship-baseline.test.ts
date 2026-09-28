@@ -31,6 +31,14 @@ const TIER_SLOT_BASE: Record<number, number> = { 1: 7, 2: 9, 3: 11, 4: 14, 5: 18
 const WH_SHIPS = SHIPS.filter((s) => s.id.startsWith('sh-wh-'))
 /** 2026-09-17 船长「D 族移动到武装舰」⇒ 这三艘转入 `armed`（布局按子分类，不吃"高槽多"弱断言） */
 const D_FAMILY: readonly string[] = ['sh-wh-d-frigate', 'sh-wh-d-destroyer', 'sh-wh-d-cruiser']
+/**
+ * **2026-09-27 船长令新增豁免**：「反而2艘势力的无人机，需要将一个中槽移动到低槽」⇒
+ * E 族两艘**无人机专用舰**各把一个中槽挪到低槽（机库无人机作战舰 4/3/3 → **4/2/4**、
+ * 巨构无人机作战舰 5/4/3 → **5/3/4**）。甲板扩展改归低槽后低槽才是这类舰的主战场
+ * ⇒ 与 D 族三艘、官方鹦鹉螺 / 虎鲸同款口径：**高槽少于低槽是设计本身，不是笔误**。
+ * 两艘的实际形状在下面「本批实际改动的 5 艘」里逐一钉住。
+ */
+const DRONE_SHIP_EXEMPT: readonly string[] = ['sh-wh-e-destroyer', 'sh-wh-e-carrier']
 const TORP_E = SHIPS.find((s) => s.id === 'sh-wh-e-frigate')!
 const TORP_G = SHIPS.find((s) => s.id === 'sh-wh-g-cruiser')!
 
@@ -49,6 +57,7 @@ describe('虫洞族专属舰船：槽位基准线（2026-09-14 船长）', () =>
   it('武装舰「高槽 ≥ 低槽 + 1」：官方船照旧；**D 族三艘按子分类布局豁免**（2026-09-17 转入武装舰）', () => {
     for (const s of WH_SHIPS.filter((x) => x.role === 'armed')) {
       if (D_FAMILY.includes(s.id)) continue // 见下一条：布局按子分类钉住
+      if (DRONE_SHIP_EXEMPT.includes(s.id)) continue // 2026-09-27：无人机专用舰（中槽→低槽后低槽更多）
       expect(s.slots!.high, `${s.name} 高槽 vs 低槽`).toBeGreaterThanOrEqual(s.slots!.low + 1)
     }
   })
@@ -60,11 +69,11 @@ describe('虫洞族专属舰船：槽位基准线（2026-09-14 船长）', () =>
     for (const id of D_FAMILY) expect(SHIPS.find((s) => s.id === id)!.role, `${id} 的 role`).toBe('armed')
   })
 
-  it('本批实际改动的 5 艘（形状逐一钉住）', () => {
+  it('本批实际改动的 5 艘 ＋ 2026-09-27 两艘无人机专用舰（形状逐一钉住）', () => {
     expect(slotsOf('sh-wh-a-frigate')).toEqual({ high: 3, mid: 4, low: 1 }) // 补回欠的 1 格中槽
-    expect(slotsOf('sh-wh-e-destroyer')).toEqual({ high: 4, mid: 3, low: 3 }) // 撤销批次加的中槽
+    expect(slotsOf('sh-wh-e-destroyer')).toEqual({ high: 4, mid: 2, low: 4 }) // 2026-09-27：中槽 → 低槽
     expect(slotsOf('sh-wh-g-destroyer')).toEqual({ high: 4, mid: 4, low: 2 }) // 撤销批次加的低槽
-    expect(slotsOf('sh-wh-e-carrier')).toEqual({ high: 5, mid: 4, low: 3 }) // 撤销批次加的中槽
+    expect(slotsOf('sh-wh-e-carrier')).toEqual({ high: 5, mid: 3, low: 4 }) // 2026-09-27：中槽 → 低槽
     expect(slotsOf('sh-wh-g-cruiser')).toEqual({ high: 6, mid: 4, low: 2 }) // 中槽→高槽（鱼雷舰）
   })
 })

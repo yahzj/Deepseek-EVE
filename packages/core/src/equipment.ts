@@ -1117,6 +1117,8 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
   let aligned = 0
   let rackMoved = 0
   let rackFreed = 0
+  let bayRackMoved = 0
+  let bayRackFreed = 0
   /** 在洞编队（uid）——与「进洞船只所有行为都锁定（含改装）」同口径：归位时跳过，出洞后再载入即归位 */
   const inRun = new Set<string>(state.wormhole?.run?.fleet ?? [])
   for (const [uid, ship] of Object.entries(state.fleet)) {
@@ -1204,6 +1206,43 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
         }
       }
     }
+    /**
+     * 2.6) **无人机甲板扩展归位低槽**（**2026-09-27 船长令**：「将扩大无人机舱的装备从高槽移动到低槽」）：
+     *      与 2.5 同款口径的镜像 —— 旧档里停在高/中槽的甲板扩展搬回**低槽**（幂等）。三条口径同 2.5：
+     *      · 低槽有空位 ⇒ 直接搬；低槽满 ⇒ 把**最后装上的那件**（跳过甲板扩展本身、跳过空位）
+     *        退回装备库腾位（船长 2026-09-27 认可「件不丢、随时可装回，日志写明件数」）；
+     *      · **只管甲板扩展一族**（slot === 'drone-rack'；战术导控 / 中继天线仍归高槽，不动）；
+     *      · **在洞编队跳过**（inRun）——进洞后改装是锁的，出洞后再载入即归位。
+     */
+    if (!inRun.has(uid)) {
+      const lowBays = rackBays(fitted, 'low')
+      for (const from of ['high', 'mid'] as const) {
+        const bays = rackBays(fitted, from)
+        for (let i = 0; i < bays.length; i++) {
+          const id = bays[i]
+          if (!id) continue
+          if (ctx.modules.get(id)?.slot !== 'drone-rack') continue
+          let free = lowBays.findIndex((x) => x === null)
+          if (free < 0) {
+            // 低槽满：腾出最后一个"非甲板扩展"的已装件（退回装备库）
+            for (let j = lowBays.length - 1; j >= 0; j--) {
+              const occupant = lowBays[j]
+              if (!occupant) continue
+              if (ctx.modules.get(occupant)?.slot === 'drone-rack') continue
+              lowBays[j] = null
+              state.moduleBay[occupant] = countModule(state, occupant) + 1
+              bayRackFreed += 1
+              free = j
+              break
+            }
+          }
+          if (free < 0) break // 低槽全是甲板扩展/空位异常 ⇒ 无处可搬，留着不错位更多
+          lowBays[free] = id
+          bays[i] = null
+          bayRackMoved += 1
+        }
+      }
+    }
   }
   // 3) 装备库：有迁移的已下架型号 → 计数并入迁移款后删除旧键（无迁移的保留不丢资产）
   for (const [id, n] of Object.entries(state.moduleBay)) {
@@ -1213,7 +1252,7 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
     delete state.moduleBay[id]
     bayMoved += n
   }
-  const total = fittedMoved + slotEmptied + bayMoved + aligned + rackMoved + rackFreed
+  const total = fittedMoved + slotEmptied + bayMoved + aligned + rackMoved + rackFreed + bayRackMoved + bayRackFreed
   if (total > 0) {
     addLog(
       state,
@@ -1221,7 +1260,9 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
       `装备修复：旧件按动能款迁移 ${fittedMoved + bayMoved} 件；悬空退回 ${slotEmptied} 件；` +
         (aligned > 0 ? `槽位数与船布局对齐，溢出件退回装备库 ${aligned} 件。` : '') +
         (rackMoved > 0 ? `作业装备（采集器 / 打捞器）归位到高槽 ${rackMoved} 件。` : '') +
-        (rackFreed > 0 ? `高槽已满，为归位腾出的 ${rackFreed} 件已退回装备库（随时可装回）。` : ''),
+        (rackFreed > 0 ? `高槽已满，为归位腾出的 ${rackFreed} 件已退回装备库（随时可装回）。` : '') +
+        (bayRackMoved > 0 ? `无人机甲板扩展归位到低槽 ${bayRackMoved} 件。` : '') +
+        (bayRackFreed > 0 ? `低槽已满，为归位腾出的 ${bayRackFreed} 件已退回装备库（随时可装回）。` : ''),
     )
   }
   /**
