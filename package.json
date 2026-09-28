@@ -57,6 +57,7 @@
     "foe:export": "tsx tools/foe-export.ts",
     "price:audit": "tsx tools/price-audit.ts",
     "liquidity:audit": "tsx tools/liquidity-audit.ts",
+    "econ:audit": "tsx tools/economy-audit.ts",
     "manufacture:econ": "tsx tools/manufacture-econ.ts",
     "ui:probe": "tsx tools/ui-probe.ts",
     "ui:overflow": "tsx tools/ui-overflow.ts",
