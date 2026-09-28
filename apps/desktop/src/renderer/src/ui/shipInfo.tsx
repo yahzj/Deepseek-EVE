@@ -1248,12 +1248,13 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
    * `combat.ts:7663` 放飞无人机时按它放大结构层），**但卡面原先没有这一行** ⇒
    * 说明写着「机群结构层 +80%」而玩家在卡上找不到。**任何槽位都可能带** ⇒ 与其它"跨槽位旋钮"同段处理。
    *
-   * ⚠ **行名用 `ui.shipInfo.205`（只有名字、没有占位符）**：**2026-09-27 船长报障**
+   * ⚠ **行名用 `ui.shipInfo.210`（只有名字、没有占位符）**：**2026-09-27 船长报障**
    * 「机群结构层 +{p1}」——原先这里挂的是**整句** `ui.shipInfo.202`（`机群结构层 +{p1}`），
    * 而行名栏只放名字、数值另起一栏 ⇒ `{p1}` 无人供给、原样漏给玩家。
+   * ⚠ 合并（2026-09-27）：该 id 原为 `.205`，与「无人机储备甲板」撞号 ⇒ 顺移到 `.210`。
    */
   if ((mod.droneHullHpBonusPct ?? 0) > 0) {
-    lines.push({ k: tr("ui.shipInfo.205"), v: `+${pct(mod.droneHullHpBonusPct ?? 0)}` })
+    lines.push({ k: tr("ui.shipInfo.210"), v: `+${pct(mod.droneHullHpBonusPct ?? 0)}` })
   }
   /**
    * **损伤管制装置的启动规格**（2026-09-27 · data-map 甲案「说明不再手写数字、数值由卡面参数行渲染」）：

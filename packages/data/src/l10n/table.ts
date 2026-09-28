@@ -5001,5 +5001,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    * ⚠ 判据（新增调用点时照做）：**一条文案里的占位符必须由每一个调用点都喂到**；
    * 拿整句当"行名"用就是漏喂参数的原形。
    */
-  "ui.shipInfo.205": { zh: "机群结构层", en: "Drone structure layer" }
+  /* ⚠ 合并（2026-09-27）：本条的 id 原为 `.205`，与「无人机储备甲板」的 `ui.shipInfo.205`
+     （复位周期）**撞号**（verify 那批写它时主树还没有 `.205`）⇒ **后合入的它顺移到 `.210`**。 */
+  "ui.shipInfo.210": { zh: "机群结构层", en: "Drone structure layer" }
 }
