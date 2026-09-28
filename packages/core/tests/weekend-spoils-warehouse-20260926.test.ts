@@ -12,10 +12,14 @@
  *
  * 口径（船长批「甲」）：**战利品一律入物品仓库** · 返回/记账取**实际入账量** ·
  * `addItem` 不再静默丢弃（兜底入仓库）· 「见过黑匣」只在确实入库后置位。
+ *
+ * **2026-09-28 追加一段**（船长令「按你推荐来」⇒ 甲案）：**到手台账 `rewardLedger` 随档**
+ * —— 同一类漏（没进清洗器 ⇒ 读一次档就归零），后果见 `killed()` 后面那两条用例。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
+import { serializeSaveFile, loadSaveFile } from '../src/index'
 import { addItem, countItem, countWare } from '../src/inventory'
 import { blackboxSeenOf } from '../src/blackbox'
 import {
@@ -108,5 +112,57 @@ describe('入侵战利品 · 落点 = 物品仓库（2026-09-26 船长批「甲�
     expect(snap.blackBox, '快照里的黑匣数 = 仓库实数').toBe(boxGot)
     expect(snap.wreck, '快照里的残骸总数 = 仓库实数').toBe(wreckGot)
     expect(s.fleet[s.shipId]?.cargo?.['blackbox-h'] ?? 0, '货舱里没有黑匣（玩家不会去货舱白找）').toBe(0)
+  })
+})
+
+/**
+ * **到手台账随档**（**2026-09-28 船长令「按你推荐来」⇒ 甲案**）。
+ *
+ * 病根与上面那两条同族：`rewardLedger` **原先没进清洗器**（`save.ts` 里 0 引用）⇒ 读一次档就归零。
+ * 它有两个读者，各自出问题：
+ * - `weekendSettleAndGrant` 的**迟到补发**（`boxAtSettle` ＝ 台账里没有黑匣 ∧ 掷骰掷中了）**只靠它幂等**
+ *   ⇒「击沉 → 发匣（台账记 1）→ 关游戏 → 读档（台账归 0）→ 结算」会**再发一枚**（本组用例钉住）；
+ * - 结算面板与结算通讯的奖励清单（"说的与发的逐值一致"）⇒ 读档后清单整片归零。
+ */
+describe('到手台账随档（2026-09-28 甲案）', () => {
+  /** 走到"刚击沉旗舰、活动已结束但**还没结算**"那一刻（＝夹在两次存档之间的状态） */
+  function killed(seed = 21): ReturnType<typeof createInitialState> {
+    const s = invaded(seed)
+    weekendNoteContribution(s.weekendEvent!, GID, 1)
+    weekendNoteContribution(s.weekendEvent!, CORE, 1)
+    weekendNoteFlagshipDamage(s.weekendEvent!, WEEKEND_FLAGSHIP_POOL_HP, 1001)
+    weekendApplyBattleOutcome(s, ctx, 'ink-flagship', true, Date.now(), null, {
+      kind: 'flagship',
+      galaxyId: CORE,
+    })
+    return s
+  }
+
+  it('⑤ 台账随档往返：三格与逐星系那本都还在（原先读档即归 0）', () => {
+    const s = killed()
+    const led = s.weekendEvent!.rewardLedger!
+    expect(led.blackBox, '击沉即时发的黑匣已记账').toBe(1)
+    expect(led.wreck, '至少含旗舰那 3 件（夺回奖那几笔也在这本账里）').toBeGreaterThanOrEqual(
+      weekendRareWreckUnits(WEEKEND_FLAGSHIP_WRECK),
+    )
+    const back = loadSaveFile(serializeSaveFile(s)).state
+    const led2 = back.weekendEvent!.rewardLedger
+    expect(led2, '读回来还在').toBeDefined()
+    expect(led2!.isk).toBe(led.isk)
+    expect(led2!.wreck).toBe(led.wreck)
+    expect(led2!.blackBox).toBe(led.blackBox)
+    expect(led2!.byGalaxy, '逐星系那本也随档').toEqual(led.byGalaxy)
+  })
+
+  it('⑥ **回归**：读档后再结算，不会再补发第二枚黑匣', () => {
+    const s = killed()
+    const box0 = countWare(s, 'blackbox-h')
+    expect(box0, '击沉即时发 1 枚').toBe(1)
+    /** 关游戏 → 重新读档（结算还没跑）——改前这本账在这里归零 ⇒ 结算会按"掷中了却没发"再补一枚 */
+    const back = loadSaveFile(serializeSaveFile(s)).state
+    expect(countWare(back, 'blackbox-h'), '读档不吞掉已到手的黑匣').toBe(1)
+    expect(weekendSettleAndGrant(back, ctx, Date.now()), '这次读档后照常结算').not.toBeNull()
+    expect(countWare(back, 'blackbox-h'), '结算不再补发第二枚').toBe(1)
+    expect(back.weekendLastResult?.blackBox, '快照里也就是 1 枚').toBe(1)
   })
 })

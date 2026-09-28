@@ -520,7 +520,10 @@ export function weekendResultSnapshotOf(
   const playerKill = ev.flagshipPlayerKill
   const flagshipOutcome: WeekendResultSnapshot['flagshipOutcome'] = weekendFlagshipOutcomeOf(ev)
   /**
-   * `defeated` = **这面「已击沉 / 未击沉」的判据与黑匣同源**（＝`flagshipDown === 'player'`）。
+   * `defeated` = **这面「已击沉 / 未击沉」的判据与黑匣同源**（代码见下面 `flagshipOutcome === 'player'`）。
+   * ⚠ **2026-09-28 更正注释**：这里原先写「＝`flagshipDown === 'player'`」——那是**半套判据**
+   * （2026-09-28 报障那一场正是"留档说玩家打爆了、`flagshipDown` 却是 `octopus`"），
+   * 代码读的是**单点**`weekendFlagshipOutcomeOf`（留档优先），面板才不会与结算信打架。
    *
    * ⚠ **2026-09-25 船长报障修**：原判据写的是 `hpDone >= hpMax`（**玩家自己打的那份 ≥ 池子总量**）——
    * 那是"共享血条"落地**之前**的口径。改共享血条后，血条 = `池子 −（玩家 ＋ 章鱼人）`，
