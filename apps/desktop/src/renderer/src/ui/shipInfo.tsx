@@ -1110,18 +1110,17 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
       ),
     })
   }
-  // 结构层：**容量**（E 族巨构骨架引出；任何槽位都可能带）与**抗性**（生体损管腔）两行分开，
-  // 语义各自成行——容量 = 最后那段血更厚、抗性 = 那段血更耐打
+  /**
+   * 结构层：**容量**（E 族巨构骨架引出；任何槽位都可能带）与**抗性**（生体损管腔）两行分开——
+   * 容量 = 那层血更厚、抗性 = 那层血更耐打。
+   *
+   * ⚠ **2026-09-27 船长报障后改**：原先容量那行的值后面还跟着一句灰色注
+   * 「（最后一段血量）」（`ui.shipInfo.067`）——那是**解释**（"结构是第几层"），
+   * 按 2026-09-17 立的硬规矩（说明/参数里只放规格，不写原因解释）不该出现在卡面；
+   * 且行名「结构容量」对「结构抗性」本就分得开，不必再解释。该注已删、id 已从表里撤掉。
+   */
   if ((mod.hullHpBonus ?? 0) > 0) {
-    lines.push({
-      k: tr("ui.shipInfo.066"),
-      v: (
-        <>
-          <span>{`+${pct(mod.hullHpBonus ?? 0)}`}</span>
-          <span className="app-dim">{tr("ui.shipInfo.067")}</span>
-        </>
-      ),
-    })
+    lines.push({ k: tr("ui.shipInfo.066"), v: `+${pct(mod.hullHpBonus ?? 0)}` })
   }
   const hullRow = resistAddLine(tr("ui.FitPage.005"), mod.hullResistAdd)
   if (hullRow) lines.push(hullRow)
@@ -1188,9 +1187,13 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
    * 生效是真的（`combat.ts:2059` 把本舰各模块的 `droneHullHpBonusPct` 求和进 `UnitSpec`，
    * `combat.ts:7663` 放飞无人机时按它放大结构层），**但卡面原先没有这一行** ⇒
    * 说明写着「机群结构层 +80%」而玩家在卡上找不到。**任何槽位都可能带** ⇒ 与其它"跨槽位旋钮"同段处理。
+   *
+   * ⚠ **行名用 `ui.shipInfo.205`（只有名字、没有占位符）**：**2026-09-27 船长报障**
+   * 「机群结构层 +{p1}」——原先这里挂的是**整句** `ui.shipInfo.202`（`机群结构层 +{p1}`），
+   * 而行名栏只放名字、数值另起一栏 ⇒ `{p1}` 无人供给、原样漏给玩家。
    */
   if ((mod.droneHullHpBonusPct ?? 0) > 0) {
-    lines.push({ k: tr("ui.shipInfo.202"), v: `+${pct(mod.droneHullHpBonusPct ?? 0)}` })
+    lines.push({ k: tr("ui.shipInfo.205"), v: `+${pct(mod.droneHullHpBonusPct ?? 0)}` })
   }
   /**
    * **损伤管制装置的启动规格**（2026-09-27 · data-map 甲案「说明不再手写数字、数值由卡面参数行渲染」）：

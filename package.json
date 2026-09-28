@@ -104,7 +104,8 @@
     "ui:actwin": "tsx tools/activity-win-probe.ts",
     "ui:whhold": "tsx tools/wh-hold-geom.ts",
     "filters:export": "tsx tools/filters-export.ts",
-    "l10n:scan": "tsx tools/l10n-en-scan.ts"
+    "l10n:scan": "tsx tools/l10n-en-scan.ts",
+    "l10n:params": "tsx tools/param-miss-check.ts"
   },
   "devDependencies": {
     "exceljs": "^4.4.0",

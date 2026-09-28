@@ -4074,7 +4074,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.064": { zh: "自身占用", en: "Own footprint" },
   "ui.shipInfo.065": { zh: "（纯扩容；卸下即收回扩容）", en: " (pure expansion; removing it takes the extra back)" },
   "ui.shipInfo.066": { zh: "结构容量", en: "Structure capacity" },
-  "ui.shipInfo.067": { zh: "（最后一段血量）", en: " (last HP layer)" },
+  /**
+   * ⚠ `ui.shipInfo.067`（「（最后一段血量）」）**已于 2026-09-27 撤掉**（船长报障「结构容量为什么要
+   * 备注（最后一段血量）」）——那是**解释**，按 2026-09-17 的硬规矩（说明只放规格）不该在卡面上；
+   * 渲染处已改回只出数值。**id 不复用**（约定：id 一经使用不改名、不回收，只递增）。
+   */
   "ui.shipInfo.068": { zh: "附加伤害", en: "Bonus damage" },
   "ui.shipInfo.069": { zh: "耗弹", en: "Ammo use" },
   "ui.shipInfo.070": { zh: "射程代价", en: "Range cost" },
@@ -4973,5 +4977,16 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.activityGate.006": { zh: "换港返航途中：抵达后就能切换主控活动。", en: "Relocating to another port: switching becomes available on arrival." },
   "core.activityGate.007": { zh: "已自动停止「{p1}」：{p2}。（{p4}）", en: "Stopped “{p1}” automatically: {p2}. ({p4})" },
   "core.mining.037": { zh: "已切换矿带：停掉「{p1}」的开采（本趟 {p3} 单位留在船上），改采「{p2}」。", en: "Switched belts: stopped mining “{p1}” ({p3} units stay aboard this run) and started on “{p2}”." },
-  "core.salvaging.028": { zh: "已切换打捞点：停掉「{p1}」的打捞（本趟约 {p3} m³ 当量留在船上），改去「{p2}」。", en: "Switched salvage sites: stopped salvaging “{p1}” (about {p3} m³ aboard this run) and moved to “{p2}”." }
+  "core.salvaging.028": { zh: "已切换打捞点：停掉「{p1}」的打捞（本趟约 {p3} m³ 当量留在船上），改去「{p2}」。", en: "Switched salvage sites: stopped salvaging “{p1}” (about {p3} m³ aboard this run) and moved to “{p2}”." },
+  /**
+   * **参数行的"行名"与"值"要分成两条**（**2026-09-27 船长报障**：「鱿蜂结构层出现了错误文本：
+   * 机群结构层 +{p1}」）。
+   *
+   * 病根：`ui.shipInfo.202` 是**整句**（`机群结构层 +{p1}`），两处用法只有一处能喂参数 ——
+   * 装备卡参数行的行名栏（`k:`）只放名字、数值另起一栏，于是 `{p1}` 无人供给、原样漏给玩家。
+   * ⇒ 行名另立一条（不带占位符），整句那条继续给"单行文案"用。
+   * ⚠ 判据（新增调用点时照做）：**一条文案里的占位符必须由每一个调用点都喂到**；
+   * 拿整句当"行名"用就是漏喂参数的原形。
+   */
+  "ui.shipInfo.205": { zh: "机群结构层", en: "Drone structure layer" }
 }
