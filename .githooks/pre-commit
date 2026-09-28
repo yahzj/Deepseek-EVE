@@ -30,11 +30,15 @@ if printf '%s\n' "$staged" | grep -qE '(^|/)save\.ts$|test-saves|ironman'; then
   echo "      ⇒ 停下来向船长报告（改了哪几处、为什么改、会不会影响玩家档），等他回复再继续。"
   ask=1
 fi
-# B-3 要动已冻结/已标定的东西（封存卷、封存工具、标定过的数值表）
-if printf '%s\n' "$staged" | grep -qE 'docs/archive/|tools/docs-seal\.ts|packages/core/src/balance\.ts'; then
+# B-3 要动已冻结/已标定的东西（封存工具、标定过的数值表）
+# ⚠ **2026-09-27 船长批：`docs/archive/` 已移出本档** —— 因为 `npm run docs:seal` 是它的
+#   **唯一正常写入者**（每次正常归档都会写封存卷），留着这条会让"每次归档都被拦"。
+#   改由规则约束：**封存卷只允许 `docs:seal` 写，手改才算违规**。
+#   保留的两项仍需裁决：改封存工具本身、改 balance.ts 的标定数值。
+if printf '%s\n' "$staged" | grep -qE 'tools/docs-seal\.ts|packages/core/src/balance\.ts'; then
   echo "⚠️ 需裁决：本次提交触及 **已冻结 / 已标定** 的内容："
-  printf '%s\n' "$staged" | grep -E 'docs/archive/|docs-seal\.ts|balance\.ts' | sed 's/^/      /'
-  echo "      ⇒ 封存卷是不可回改的冻结件；balance.ts 的数值多为已标定关系。先向船长报告再继续。"
+  printf '%s\n' "$staged" | grep -E 'docs-seal\.ts|balance\.ts' | sed 's/^/      /'
+  echo "      ⇒ 封存工具是冻结件的唯一写入者；balance.ts 的数值多为已标定关系。先向船长报告再继续。"
   ask=1
 fi
 
