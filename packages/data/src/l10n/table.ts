@@ -1760,9 +1760,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // ⇒ 已收复星系的悬赏区那一行状态占位（括号只放规格，不写原因解释）。
   "ui.weekend.100": { zh: "已收复 · 常驻悬赏待入侵结束后恢复", en: "Reclaimed · standing bounties resume when the invasion ends" },
   "ui.weekend.101": { zh: "母舰血量剩余 {p1}% · 可从入侵窗口发起旗舰战", en: "Mothership hull remaining: {p1}% · start the flagship battle from the invasion window" },
-  // 2026-09-25 船长令改黑匣爆率：章鱼人得手也可能爆黑匣（25% × 输出占比）⇒ 结束语分两条
-  // ⟪文案调整 2026-09-27⟫ 船长令「措辞分档」：原「入侵结束：旗舰被章鱼人部队摧毁，残骸中寻获旗舰黑匣。」⇒ 改成"说清谁打的最后一击 ＋ 玩家输出占比"，不再让人读成"章鱼抢头"
-  "ui.weekend.102": { zh: "入侵结束：玩家输出占比 {p1}%，但最后一击是章鱼人部队打出的 —— 残骸中寻获旗舰黑匣。", en: "Invasion over: the player's damage share was {p1}%, but the Octopus forces landed the final blow — a flagship black box was recovered from the wreck." },
+  /* 2026-09-25 那条「章鱼人得手也可能爆黑匣（25% × 输出占比）」的结束语 `ui.weekend.102`
+     已随 2026-09-28 船长令（击杀必给、没击杀一定没有）**作废删除**。 */
   /* ── 2026-09-26 船长令：星系详细的「击退入侵舰队」卡片显示收复进度 ＋ 核心门禁提示 ──
      ③ 的文案为**船长照抄**（「核心提示写'至少需要夺回一个外围星系'」）；
      ④ 是 ③ 的**变体**（已夺回部分外围时把话说准），船长可选 */
@@ -1820,11 +1819,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 2026-09-26 船长令：「给所有打完入侵但是没有获取黑匣的玩家补发一个黑匣（必须是推送之前打完，
      同时也要检查玩家是否已经将黑匣制作成舰船插件）」⇒ 补发入仓时的那条系统日志（不发信）。 */
   "core.weekend.040": { zh: "入侵补偿：补发旗舰黑匣 ×1（已存入物品仓库）。", en: "Invasion compensation: 1 flagship black box issued (stored in item storage)." },
-  /* 2026-09-28 船长令：「不需要给本地存档补发，采用工具线上补发」⇒ 逐 tick 对账补发出手时的那条
-     系统日志（`weekendComms.reconcileWeekendBlackBox`）。{p1} = 补发枚数 · {p2} = 玩家输出占比整数。 */
-  "core.weekend.039": { zh: "📦 补发：旗舰黑匣 ×{p1}（你亲手击沉母舰、输出占比 {p2}% ⇒ 必定爆出）——已存入物品仓库。", en: "📦 Compensation: flagship black box ×{p1} (you sank the mothership yourself with {p2}% of the damage — a guaranteed drop) — stored in your item warehouse." },
-  /* 2026-09-27 船长令：旗舰战留档（玩家亲手击沉）与归属记录打架时的诊断行 —— 显示以留档为准 */
-  "core.weekend.041": { zh: "⚠ 旗舰击沉归属出现两处不同记录：已按玩家亲手击沉处理。", en: "⚠ Two conflicting records for the flagship kill: treated as sunk by the player." },
+  /* 2026-09-28 船长令「不需要给本地存档补发，采用工具线上补发」⇒ 逐 tick 对账补发出手时的那条
+     系统日志（`weekendComms.reconcileWeekendBlackBox`）。{p1} = 补发枚数。
+     ⟪文案调整 2026-09-28⟫ 船长令「让玩家击杀BOSS就能获得黑匣，取消之前的复杂判定」：
+     原「…（你亲手击沉母舰、输出占比 {p2}% ⇒ 必定爆出）…」⇒ 去掉爆率口径（不再谈"爆出"）。 */
+  "core.weekend.039": { zh: "📦 补发：旗舰黑匣 ×{p1}（你在本场入侵中亲手击沉了旗舰）——已存入物品仓库。", en: "📦 Compensation: flagship black box ×{p1} (you personally sank the flagship in this invasion) — stored in your item warehouse." },
+  /* 2026-09-27 那条「旗舰击沉归属出现两处不同记录」的诊断行 `core.weekend.041` 已**作废删除**：
+     2026-09-28 起「留档 ＋ flagshipDown = octopus」是**正常组合**（玩家打爆母舰、章鱼人稍后收尾），
+     不再是两条判据互相矛盾 ⇒ warn 与其文案一并撤掉。 */
   /* 2026-09-27 船长令：结算信里也留一句"旗舰是谁打沉的"（与快照的 flagsphipPlayerKill 同源） */
   "core.weekend.042": { zh: "你在本期的旗舰战中亲手击沉了入侵旗舰。", en: "You personally sank the invasion flagship in this invasion's flagship battle." },
   /* 2026-09-27 船长令：主力舰队打赢 ⇒ 往该星系入侵残骸场里放一件稀有残骸（打捞时稀有池优先） */
@@ -3897,16 +3899,21 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // 2026-09-25 船长定文案：「事件日志应出现「有入侵舰队出现！」」⇒ 开局那条日志改短句（其余三条待船长定）
   "ui.weekend.001": { zh: "有入侵舰队出现！", en: "Invader fleets have appeared!" },
   "ui.weekend.002": { zh: "入侵核心已被打通：旗舰现身。", en: "The invasion core has been broken through: the flagship has appeared." },
-  // ⟪文案调整 2026-09-27⟫ 船长令同上：原「入侵结束：旗舰被章鱼人部队摧毁，黑匣归零。」⇒ 改成"最后一击由章鱼人打出 ＋ 黑匣被章鱼人拿走"
-  "ui.weekend.003": { zh: "入侵结束：玩家输出占比 {p1}%，但最后一击是章鱼人部队打出的 —— 旗舰黑匣被章鱼人拿走。", en: "Invasion over: the player's damage share was {p1}%, but the Octopus forces landed the final blow — the Octopus took the flagship black box." },
+  // ⟪文案调整 2026-09-28⟫ 船长令「让玩家击杀BOSS就能获得黑匣，取消之前的复杂判定」：
+  // 原「玩家输出占比 {p1}%，但最后一击是章鱼人部队打出的 —— 旗舰黑匣被章鱼人拿走。」
+  // ⇒ 新口径下这一档 = **没击杀**（章鱼人收尾），所以直接说"未获得"（不再讲"谁打的最后一击"）
+  "ui.weekend.003": { zh: "入侵结束：玩家输出占比 {p1}%，旗舰由章鱼人部队摧毁 —— 未获得旗舰黑匣。", en: "Invasion over: the player's damage share was {p1}%; the Octopus forces destroyed the flagship — no flagship black box obtained." },
   "ui.weekend.004": { zh: "入侵结束：占领区已恢复。", en: "Invasion over: the occupied systems have been restored." },
-  /* ── 2026-09-27 船长令：旗舰战留档（玩家亲手击沉）＋ 措辞分档 ──
-     115/116 = 留档说"玩家亲手击沉"而归属记为章鱼（本不该出现，以留档为准）·
-     117 = 窗口到点但本场有旗舰（撤走、未判击沉）· 118 = 留档说玩家亲手击沉、战利品却未能入账 */
+  /* ── 2026-09-28 船长令「让玩家击杀BOSS就能获得黑匣，取消之前的复杂判定」──
+     结束语从六条塌成三条（击杀 ⇒ 115 · 没击杀由章鱼收尾 ⇒ 003 · 窗口到点 ⇒ 117/004），
+     以下三条随之**作废删除**：
+     - `ui.weekend.102`（章鱼抢尾却爆出）：击杀必给 ⇒「章鱼收尾」与「有黑匣」不可能同时成立；
+     - `ui.weekend.116`（亲手击沉却没爆）：同上，这个状态不存在了；
+     - `ui.weekend.118`（亲手击沉却未能入账）：入账路径由结算与补发工具两条兜住。 */
+  /* ── 2026-09-27 船长令：旗舰战留档（玩家亲手击沉）──
+     115 = 玩家击杀（**新规则下这一条就是"击杀必给"的落地语**）· 117 = 窗口到点但本场有旗舰（撤走、未判击沉） */
   "ui.weekend.115": { zh: "入侵结束：玩家亲手击沉了旗舰，旗舰黑匣已存入物品仓库。", en: "Invasion over: the player personally sank the flagship; the flagship black box is in your item warehouse." },
-  "ui.weekend.116": { zh: "入侵结束：玩家亲手击沉了旗舰（输出占比 {p1}%），旗舰黑匣未爆。", en: "Invasion over: the player personally sank the flagship (damage share {p1}%); no flagship black box dropped." },
   "ui.weekend.117": { zh: "入侵结束：占领区已恢复；旗舰在窗口结束前撤走，未判定击沉。", en: "Invasion over: the occupied systems have been restored; the flagship withdrew before the window closed, so it was not judged sunk." },
-  "ui.weekend.118": { zh: "入侵结束：玩家亲手击沉了旗舰；战利品未能入账。", en: "Invasion over: the player personally sank the flagship; the spoils could not be credited." },
   "ui.weekend.005": { zh: "{p1}入侵", en: "{p1} invasion" },
   "ui.weekend.006": { zh: "核心：{p1}", en: "Core: {p1}" },
   "ui.weekend.007": { zh: "外围夺回 {p1}/{p2}", en: "Periphery reclaimed {p1}/{p2}" },

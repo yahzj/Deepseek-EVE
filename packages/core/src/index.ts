@@ -236,12 +236,12 @@ export {
   /** 2026-09-25 船长令：入侵触发前提 = 协会声望 ≥ 40（调试模式不受限） */
   WEEKEND_MIN_STANDING,
   weekendInvasionAllowedFor,
-  /** 2026-09-25 船长令：黑匣爆率表（>50% 输出抢到最后一下必爆 · 否则按占比衰减 · 没抢到 25%×占比）
-   *  ⚠ 2026-09-27 整理：爆率表两端那两个常量（`WEEKEND_BLACKBOX_MIN_ON_LAST_HIT` /
-   *  `WEEKEND_BLACKBOX_MAX_OFF_LAST_HIT`）只在 `weekendEvent` 内部用，已从本导出表移除；
-   *  外部要用爆率请走 `weekendBlackBoxChanceOf`（单一读数口）。 */
-  weekendBlackBoxChanceOf,
-  weekendRollBlackBox,
+  /** 2026-09-28 船长令「击杀BOSS就能获得黑匣，取消之前的复杂判定」：结清标记
+   *  （原爆率表 `weekendBlackBoxChanceOf` / `weekendRollBlackBox` 已整套删除；
+   *  击杀判据 `weekendLastHitByPlayer` 在下面那一组里导出，别再重复列）；同日
+   *  「BOSS输出的贡献占总贡献的60%」⇒ 贡献占比的权重常量。 */
+  weekendBlackBoxSettledOf,
+  WEEKEND_CONTRIBUTION_BOSS_WEIGHT,
   WEEKEND_GAIN_PERIPHERY_WIN,
   WEEKEND_GAIN_REPEL,
   WEEKEND_NPC_CORE_MS,

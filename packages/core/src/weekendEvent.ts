@@ -25,55 +25,36 @@ export const WEEKEND_PERIPHERY_THREAT = 78
 /** 核心 T5 旗舰威胁（口径定稿 #13：**核心 120**；4 波 · 4 艘小队战） */
 export const WEEKEND_CORE_THREAT = 120
 /**
- * **旗舰黑匣的爆率表**（**船长 2026-09-25 令**）：
+ * **旗舰黑匣：击杀 BOSS 就得**（**2026-09-28 船长令**）。
  *
- * > 「**修改敌方旗舰爆黑匣的概率，当玩家输出高于50%时，如果抢到最后一下，就必爆黑匣。
- * > 如果输出低于50%，按照输出占比，爆率衰减到10%（就是玩家只抢最后一下的话）。
- * > 如果玩家没抢到最后一下，爆率根据玩家输出，从25%开始衰减（100%输出都是玩家打的情况下）。
- * > 最终衰减到0(玩家0输出)**」
+ * 船长原话（照抄）：「**我想了下，算了，让玩家击杀BOSS就能获得黑匣，取消之前的复杂判定，
+ * 但是贡献权重要进行倾斜，BOSS输出的贡献占总贡献的60%。**」
  *
- * 设 `p` = **玩家输出占比 = 玩家对母舰的累计伤害 ÷ 池子总量**（与血条、结算面板
- * 「对母舰造成原始伤害 X · 血池 Y」同一把尺；船长四答之一）：
- *
- * | 情形 | 爆率 |
- * |---|---|
- * | **抢到最后一下**（血条是玩家打空的）＋ `p > 50%` | **100%**（必爆） |
- * | **抢到最后一下** ＋ `p ≤ 50%` | 从 `100%`（p = 50%）**线性衰减到 `10%`**（p = 0，"只抢最后一下"） |
- * | **没抢到最后一下**（章鱼人把血条削空） | `25% × p`（p = 100% ⇒ 25%，p = 0 ⇒ 0%） |
- *
- * ⚠ 两条性质：① **p = 50% 处两支接得上**（都算 100%），不跳变；② 同一 p 下，抢到最后一下**永远不低**于
- * 没抢到（10%~100% vs 0%~25%）。
- * ⚠ 窗口到点（**旗舰撤走**、没有被摧毁）**不掷**——没有残骸可捞；残骸本身照旧"玩家击沉必给 ×3"
- * （船长四答之三："残骸不变"）。
+ * 口径（同日七答，条条已确认）：
+ * - **击杀 ⇒ 必给 1 枚**；**没击杀 ⇒ 一定是 0**（章鱼人抢收 / 窗口到点旗舰撤走**都不再掷骰**）；
+ * - 判据 = `weekendLastHitByPlayer`（**留档优先**的唯一判据）；
+ * - ⚠ **旧的"爆率表"整套作废并删除**：`WEEKEND_BLACKBOX_MIN_ON_LAST_HIT` /
+ *   `WEEKEND_BLACKBOX_MAX_OFF_LAST_HIT` / `weekendBlackBoxChanceOf` / `WEEKEND_BLACKBOX_SALT`
+ *   掷骰子流 / `weekendRollBlackBox` / 字段 `flagshipBlackBoxByPlayer` —— 一个不留。
+ *   它曾按「抢到最后一下 × 输出占比」掷概率（2026-09-25 船长令），2026-09-28 由上面那条取代。
+ * - ⚠ **已知放宽**（当日已报船长确认，不是漏改）：「只抢最后一下」（输出接近 0、但母舰是你打爆的）
+ *   现在也**必得**；旧口径下这种只有 10%。
  */
-export const WEEKEND_BLACKBOX_MIN_ON_LAST_HIT = 0.1
-export const WEEKEND_BLACKBOX_MAX_OFF_LAST_HIT = 0.25
-
-/** 黑匣爆率（纯函数 · 表见上）—— 引擎 / 界面 / 用例读同一份 */
-export function weekendBlackBoxChanceOf(playerDmg: number, hpMax: number, lastHitByPlayer: boolean): number {
-  const p = hpMax > 0 ? Math.max(0, Math.min(1, Math.max(0, playerDmg) / hpMax)) : 0
-  if (lastHitByPlayer) {
-    if (p > 0.5) return 1
-    return WEEKEND_BLACKBOX_MIN_ON_LAST_HIT + (p / 0.5) * (1 - WEEKEND_BLACKBOX_MIN_ON_LAST_HIT)
-  }
-  return WEEKEND_BLACKBOX_MAX_OFF_LAST_HIT * p
-}
-
-/** 黑匣掷骰用的**独立子流盐**（与抽签流错开；口径见 `streamOf`：不消费主随机序列） */
-export const WEEKEND_BLACKBOX_SALT = 20_000
 
 /**
- * **"是不是玩家完成的最后击杀" —— 唯一判据**（**2026-09-28 船长重申**）。
+ * **"是不是玩家击杀了 BOSS" —— 唯一判据**（**2026-09-28 船长重申＋当日改口径**）。
  *
- * 船长原话（照抄）：「**规则应该很清楚记录了：输出超过50%血量，完成最后击杀，就给黑匣。**」
- * 记录在案的规则 = `weekendBlackBoxChanceOf` 的第一支：**`lastHitByPlayer && p > 0.5 ⇒ chance 1`（必爆）**。
+ * 船长原话（照抄，先重申后放宽）：
+ * 1. 「**规则应该很清楚记录了：输出超过50%血量，完成最后击杀，就给黑匣。**」
+ * 2. 「**我想了下，算了，让玩家击杀BOSS就能获得黑匣，取消之前的复杂判定**」
+ * ⇒ 现在只判**击杀**这一件事（`>50%` 那一档随爆率表一起取消）：**是 ⇒ 必给黑匣（1 枚）**。
  *
  * ⚠ **判据只能取"留档"，不能取"谁把共享血池顶满"**：
  * - `ev.flagshipPlayerKill` = **母舰在玩家的战斗里爆炸那一刻**置位（`combat` 的 `bossDownAtMs` 抄进场次记录），
- *   与池子算术无关 —— 这就是"玩家完成的最后击杀"这个事实本身；
+ *   与池子算术无关 —— 这就是"玩家击杀了 BOSS"这个事实本身；
  * - 而"池子被谁顶满"是**章鱼人也在跑的另一本账**：玩家这一场把母舰打爆了、伤害却要等收尾才进账
- *   ⇒ 章鱼人可能抢先补掉池子里剩下的那几点 ⇒ 以前这里因此判成"不是玩家击杀"，
- *   把**明明满足记录规则**（占比 93.2% ＋ 亲手打爆）的玩家挡在必爆之外（2026-09-28 玩家报障）。
+ *   ⇒ 章鱼人可能抢先补掉池子里剩下的那几点 ⇒ 若按它判，**明明亲手打爆的玩家会被判成"没击杀"**
+ *   （2026-09-28 玩家报障：占比 93.2% ＋ 亲手打爆）。
  */
 export function weekendLastHitByPlayer(ev: WeekendEventState | undefined): boolean {
   if (!ev) return false
@@ -81,35 +62,19 @@ export function weekendLastHitByPlayer(ev: WeekendEventState | undefined): boole
 }
 
 /**
- * **掷一次黑匣**（船长 2026-09-25 令）：按爆率表掷，结果写进 `ev.flagshipBlackBox`。
+ * **本场黑匣结清了没有** —— `ev.flagshipBlackBox` 自 2026-09-28 起的**新语义**：
+ * `true` = 这一枚**已经落到玩家手里并记了账**；缺省 / `false` = **还没结清**。
  *
- * - **幂等**：已掷过（字段有值）直接返回它 —— 收口路径与战斗收尾可能都走到，不能掷两次；
- * - **可复现**：走**独立子流**（存档种子 ＋ 场次号 ＋ 黑匣盐）⇒ 不消费主随机序列、读档重打同一场
- *   结果相同（船长四答之四）；
- * - `chance = 1` 必中、`chance = 0` 必不中（不必消耗随机数，但子流是无状态的，耗不耗都一样）。
+ * 四个写入口（都在"真发出去"之后才写）：击沉那一刻（`weekendApplyBattleOutcome`）·
+ * 结算时迟到补发（`weekendSettleAndGrant`）· 逐 tick 对账补发（`reconcileWeekendBlackBox`）·
+ * 推送前一次性补偿（`compensateMissingWeekendBlackBox`）。
  *
- * ⚠ **`lastHitByPlayer` 一律传 `weekendLastHitByPlayer(ev)`**（见它的说明）：调用点自己拍一个
- * `true` / `false` 就会各自成一套口径 —— 2026-09-28 那次报障正是这么来的。
+ * ⚠ **与旧语义的区别**（同一个字段、含义换了）：旧的是**掷骰结果**（"爆了没有"），随爆率表一起作废。
+ * 老档兼容**零迁移**：老档 `true` ⇒ 新语义下正好是"已结清"；老档 `false` ⇒ "未结清"，
+ * 于是会被补发工具按「有留档就补」捞回来（2026-09-28 船长选的口径）。
  */
-export function weekendRollBlackBox(
-  state: Pick<GameState, 'rng'>,
-  ev: WeekendEventState,
-  lastHitByPlayer: boolean = weekendLastHitByPlayer(ev),
-): boolean {
-  /**
-   * ⚠ **情境相同才幂等**（**2026-09-27 玩家报障修复**）：`weekendClaimOctopus` 会在"章鱼人得手"
-   * 时先按 `lastHitByPlayer = false` 掷一次；若玩家随后（或同时）真的把它打沉，必须按"抢到最后一下"
-   * **重掷**——否则那一场永远拿不到本该必爆的黑匣（见 `flagshipBlackBoxByPlayer` 的说明）。
-   */
-  if (ev.flagshipBlackBox !== undefined && ev.flagshipBlackBoxByPlayer === lastHitByPlayer) {
-    return ev.flagshipBlackBox
-  }
-  const chance = weekendBlackBoxChanceOf(ev.flagshipHpDone ?? 0, ev.flagshipHpMax ?? 0, lastHitByPlayer)
-  const rng = streamOf(state.rng.seed, ev.seq + WEEKEND_BLACKBOX_SALT)
-  const hit = chance >= 1 || (chance > 0 && rng() < chance)
-  ev.flagshipBlackBox = hit
-  ev.flagshipBlackBoxByPlayer = lastHitByPlayer
-  return hit
+export function weekendBlackBoxSettledOf(ev: WeekendEventState | undefined): boolean {
+  return ev?.flagshipBlackBox === true
 }
 
 /**
@@ -426,21 +391,13 @@ export interface WeekendEventState {
     downAtGameMs: number
   }
   /**
-   * **黑匣掷骰结果**（**船长 2026-09-25 令**：爆率按"输出占比 ＋ 抢没抢到最后一下"算，
-   * 见 `weekendBlackBoxChanceOf`）：`true` = 爆了 · `false` = 没爆 · `undefined` = 还没掷（母舰还在）。
-   * ⚠ **随档落盘**（`save.ts` 读档侧必须认它）：不然读档后结算会漏发或重掷。
+   * **本场黑匣结清了没有**（**2026-09-28 船长令改口径**后这个字段的含义换了，判据见
+   * `weekendBlackBoxSettledOf`）：`true` = 这一枚已经发到玩家手里并记了账 · 缺省 / `false` = 还没结清。
+   *
+   * ⚠ **随档落盘**（`save.ts` 读档侧必须认它）：不然读档后结算会重发。
+   * ⚠ 旧含义是"掷骰结果（爆了没有）"，随爆率表一起作废；老档两个取值在新语义下都自洽（零迁移）。
    */
   flagshipBlackBox?: boolean
-  /**
-   * **上一次黑匣掷骰的"情境"**（**2026-09-27 玩家报障修复**）：`true` = 按"玩家抢到最后一下"掷的，
-   * `false` = 按"章鱼人得手（25% × 输出占比）"掷的。
-   *
-   * 为什么需要它：`weekendClaimOctopus`（章鱼人把血削到 0）会**先**掷一次并写 `flagshipBlackBox`
-   * （幂等）⇒ 而玩家其实可能**同时也把它打沉了**（留档 `flagshipPlayerKill` 为证）。
-   * 实战报障存档：`flagshipHpDone 148,676/150,000`（占比 99.1%，本应"必爆"）却 `flagshipBlackBox = false`
-   * —— 正是被章鱼人那次低占比掷骰**提前固化**。⇒ 情境变了就必须重掷，不能一次定终身。
-   */
-  flagshipBlackBoxByPlayer?: boolean
   /* ─── 旗舰 BOSS 化（2026-09-24 第二轮令；**只有 `WEEKEND_BOSS_FAMILIES` 里的族会写这三格**）─── */
   /** **池子总量**（首次接战后锁定；缺省 = 还没跟母舰交手过） */
   flagshipHpMax?: number
@@ -1172,8 +1129,28 @@ export function weekendProgressIncomeIsk(ev: WeekendEventState): number {
 }
 
 /**
- * **贡献占比** = 玩家累计投入 ÷（玩家投入 ＋ NPC 铺底总量）。
- * NPC 铺底总量按"结算时刻各占领区的铺底之和"计 ⇒ 抢得越多、占比越高（第 11 条）。
+ * **BOSS 输出在总贡献里的权重**（**2026-09-28 船长令**：
+ * 「**贡献权重要进行倾斜，BOSS输出的贡献占总贡献的60%**」）。剩下的 `1 − 本值` 归**清缴**那一份。
+ * 与"击杀必给黑匣"同批定的口径，两者都由船长 2026-09-28 亲定。
+ */
+export const WEEKEND_CONTRIBUTION_BOSS_WEIGHT = 0.6
+
+/**
+ * **贡献占比**（**2026-09-28 船长令改口径**：给 BOSS 输出加权）：
+ *
+ * ```
+ * boss  = clamp01(旗舰HpDone ÷ 旗舰HpMax)      // 玩家对母舰的**实际输出占比**（玩家优先口径）
+ * clear = 玩家投入进度 ÷（玩家投入 ＋ NPC 铺底） // 清缴那一份（2026-09-25 起的原口径，未动）
+ * share = 0.6 × boss ＋ 0.4 × clear            // 权重见 WEEKEND_CONTRIBUTION_BOSS_WEIGHT
+ * ```
+ *
+ * ⚠ 三条边界（船长 2026-09-28 逐条定过，不是漏改）：
+ * - **没打 BOSS**（或本族没有共享池）⇒ `boss = 0` ⇒ 占比**上限 0.4**（最高 B 档）。
+ *   船长原话：「**三、不管ACG族，因为之后入侵的不一定是他们**」⇒ **不为占位族开特例分支**；
+ * - 「BOSS 输出」按**实际输出占比**算（打了 93% 就是 0.93），**不是**"击杀了就算满"；
+ * - 三处下游**同源**（贡献四档奖 · 结算声望 `round(share×15)` · 快照/面板显示的占比）；
+ *   **进度收入与夺回奖不受影响**（前者按进度台账算、后者按星系算）。
+ * ⚠ NPC 铺底总量按"结算时刻各占领区的铺底之和"计 ⇒ 抢得越多、清缴那份占比越高。
  */
 export function weekendContributionShareAt(
   state: Pick<GameState, 'debugQuick'>,
@@ -1188,7 +1165,9 @@ export function weekendContributionShareAt(
   }, 0)
   const mine = weekendPlayerContribution(ev)
   const total = npc + mine
-  return total <= 0 ? 0 : clamp01(mine / total)
+  const clear = total <= 0 ? 0 : clamp01(mine / total)
+  const boss = weekendFlagshipSharesOf(ev).player
+  return clamp01(WEEKEND_CONTRIBUTION_BOSS_WEIGHT * boss + (1 - WEEKEND_CONTRIBUTION_BOSS_WEIGHT) * clear)
 }
 
 /** 贡献奖档位（Q5 四档） */
@@ -1688,12 +1667,13 @@ export function weekendTickBoss(
 export function weekendClaimOctopus(state: GameState, ev: WeekendEventState, nowWallMs: number): boolean {
   if (ev.flagshipDown !== undefined || ev.endedAtWallMs !== undefined) return false
   /**
-   * ⚠ **这里以前写死 `false`**（"章鱼人得手 ⇒ 不是玩家最后击杀"）——但**两件事不是一回事**：
-   * 章鱼人只是**把剩下的池子补掉**，而玩家那场战斗可能**已经把母舰打爆了**（`flagshipPlayerKill` 留档）。
-   * 按记录在案的规则「**输出超过50%血量 ＋ 完成最后击杀 ⇒ 必给黑匣**」，这种情形**必须按玩家击杀掷**
-   * ⇒ 判据取单点 `weekendLastHitByPlayer`（2026-09-28 玩家报障：占比 93.2% ＋ 亲手打爆却因写死 false 被挡）。
+   * **不再掷骰**（**2026-09-28 船长令**「取消之前的复杂判定」）：黑匣只跟"击杀"挂钩 ⇒
+   * 章鱼人把池子收尾 = **玩家没击杀** ⇒ 本场黑匣为 0，这里什么都不发、也不写 `flagshipBlackBox`
+   * （它现在的含义是"已结清"）。
+   *
+   * ⚠ 与玩家的击杀**不冲突**：玩家若在别处已经把母舰打爆（留档 `flagshipPlayerKill`），
+   * 那一枚在黑匣的**唯一发放口**（`weekendApplyBattleOutcome` 的击沉分支 / 结算 / 补发工具）就给过了。
    */
-  weekendRollBlackBox(state, ev, weekendLastHitByPlayer(ev))
   ev.flagshipDown = 'octopus'
   endWeekendEvent(state, nowWallMs)
   return true

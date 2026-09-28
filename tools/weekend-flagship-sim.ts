@@ -31,7 +31,8 @@ import {
   advanceGame,
   countWare,
   loadSaveFile,
-  weekendBlackBoxChanceOf,
+  weekendBlackBoxSettledOf,
+  weekendLastHitByPlayer,
   weekendSettleAndGrant,
   weekendTick,
   WEEKEND_FIRST_T0_WALL_MS,
@@ -204,7 +205,6 @@ function run(s: GameState, nowWallMs: number, o: ScenarioOpts): Reading {
 function report(title: string, s: GameState, r: Reading): void {
   const ev = s.weekendEvent
   const p = (ev?.flagshipHpDone ?? 0) / WEEKEND_FLAGSHIP_POOL_HP
-  const lastHit = ev?.flagshipDown === 'player'
   console.log(`\n── ${title} ──`)
   console.log(`  推进 ${r.ticks} 拍（${((r.ticks * STEP_MS) / 1000).toFixed(0)}s 真实时间）· 打到第 ${r.waves || 0} 波 · 结束=${r.ended}`)
   console.log(`  收尾时手上的场次 = 第 ${ev?.seq ?? '—'} 场（换场 = 读数串场，须警惕）`)
@@ -212,7 +212,7 @@ function report(title: string, s: GameState, r: Reading): void {
     `  池子：玩家 ${r.poolDone}（p=${(p * 100).toFixed(2)}%）＋ 章鱼 ${r.octopusDone} = ${r.poolDone + r.octopusDone} / ${ev?.flagshipHpMax ?? '—'}`,
   )
   console.log(
-    `  结局 flagshipDown=${r.down} · flagshipBlackBox=${r.box} · 按表爆率=${(weekendBlackBoxChanceOf(ev?.flagshipHpDone ?? 0, ev?.flagshipHpMax ?? 0, lastHit) * 100).toFixed(2)}%`,
+    `  结局 flagshipDown=${r.down} · flagshipBlackBox=${r.box} · 击杀判据=${weekendLastHitByPlayer(ev)} · 已结清=${weekendBlackBoxSettledOf(ev)}`,
   )
   console.log(
     `  仓库黑匣 ×${countWare(s, 'blackbox-h')} · 战果快照 ${s.weekendLastResult ? `blackBox=${s.weekendLastResult.blackBox} outcome=${s.weekendLastResult.flagshipOutcome}` : '（无）'}`,

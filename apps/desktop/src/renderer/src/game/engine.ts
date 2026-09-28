@@ -1176,57 +1176,32 @@ export class GameEngine {
     if (weekend.ended) {
       const ev = this.state.weekendEvent
       /**
-       * **归属只读一处判据**（**2026-09-27 整理**）：`weekendFlagshipOutcomeOf`（core，**留档优先**）——
-       * 结算快照读的是同一个它，界面这边不再自己拼一遍"留档 vs flagshipDown"。这里只做**文案分档**。
+       * **归属只读一处判据**：`weekendFlagshipOutcomeOf`（core，**留档优先**）——结算快照、结算信
+       * 与黑匣发放读的都是同一个它（`weekendLastHitByPlayer` 与它同条件 ⇒ `player` 就是"击杀"）。
+       * 这里只做**文案分档**。
        *
-       * 三档 × 两个细分 = 六条文案，全部可达（**2026-09-27 code-review 修**：此前写成嵌套
-       * `playerKilled ? octopus ? … : …`，而 `playerKilled` 与 `octopus` 互斥 ⇒ 115/116 成了死分支）：
-       * - `octopus`（本场由章鱼收尾）⇒ 按黑匣结果分：掷中 `ui.weekend.102` · 没掷中 `ui.weekend.003`。
-       *   两条都带玩家输出占比（`p1`，走 `weekendFlagshipSharesOf` 的玩家优先口径）。
-       * - `player`（归属判给了玩家，但本场却是"章鱼/窗口"结束的 —— **留档与 `flagshipDown` 打架**，本不该出现）：
-       *   由章鱼收尾 ⇒ `ui.weekend.115`（黑匣到手）/ `ui.weekend.116`（未爆）；由窗口结束 ⇒ `ui.weekend.118`（战利品未能入账）。
-       *   同时记一条 warn 诊断，见下。
-       * - `window`（窗口到点）：本场有旗舰 ⇒ `ui.weekend.117`（旗舰撤走、未判击沉）；没有旗舰 ⇒ 原句 `ui.weekend.004`。
+       * **2026-09-28 船长令改口径**（「让玩家击杀BOSS就能获得黑匣，取消之前的复杂判定」）
+       * ⇒ 分支从六条塌成三条：
+       * - `player`（**玩家击杀**）⇒ `ui.weekend.115`「亲手击沉了旗舰，旗舰黑匣已存入物品仓库」；
+       * - `octopus`（章鱼人收尾 = 没击杀）⇒ `ui.weekend.003`，带玩家输出占比（`p1`，玩家优先口径）；
+       * - `window`（窗口到点）⇒ 有旗舰 `ui.weekend.117`（撤走、未判击沉）；没有旗舰 ⇒ 原句 `ui.weekend.004`。
+       * ⚠ 旧口径那三条已随爆率表作废：`ui.weekend.102`（章鱼抢尾却爆出）与 `ui.weekend.116`（击杀了却没爆）
+       * 在新规则下**不可能发生**（击杀必给）；`ui.weekend.118`（战利品未能入账）同理由结算路径兜住。
+       * ⚠ 同时**删掉"归属打架"的 warn**：留档 + `flagshipDown = octopus` 现在是**正常组合**
+       * （玩家打爆母舰、章鱼人稍后把池子收尾），不再是两条判据互相矛盾。
        */
-      const box = ev?.flagshipBlackBox === true
       const outcome = weekendFlagshipOutcomeOf(ev)
       const hasFlagship = ev?.flagshipHpMax !== undefined
       const sharePct = Math.round(weekendFlagshipSharesOf(ev).player * 100)
-      /** 本场是不是"章鱼人得手"结束的（判"归属打架"那一档的细分要用它，不能拿 `outcome` 顶替） */
-      const endedByOctopus = ev?.flagshipDown === 'octopus'
-      /**
-       * ⟪文案调整 2026-09-27⟫ 船长令「措辞分档」：这一支决定玩家看到六条结束文案里的哪一条
-       * （文案本体与"原 → 新"见 `packages/data/src/l10n/table.ts` 的四个 `⟪文案调整⟫` 记号 ＋
-       * 本批工作文档的「文案调整台账」）。
-       */
       const id =
-        outcome === 'octopus'
-          ? box
-            ? 'ui.weekend.102'
-            : 'ui.weekend.003'
-          : outcome === 'player'
-            ? endedByOctopus
-              ? box
-                ? 'ui.weekend.115'
-                : 'ui.weekend.116'
-              : 'ui.weekend.118'
+        outcome === 'player'
+          ? 'ui.weekend.115'
+          : outcome === 'octopus'
+            ? 'ui.weekend.003'
             : hasFlagship
               ? 'ui.weekend.117'
               : 'ui.weekend.004'
       addLog(this.state, 'system', tr(id, { p1: sharePct }), id, { p1: sharePct })
-      /**
-       * **归属不一致的诊断**（**2026-09-27 船长令**批的「以开关为准显示 ＋ 记一条 warn 诊断」）：
-       * 留档说"玩家亲手击沉"、`flagshipDown` 却说"章鱼人得手"——两条判据打起来了。
-       * 显示以留档为准（上面那两支），这里留一条 warn 便于日后查档。
-       */
-      if (outcome === 'player' && endedByOctopus) {
-        addLog(
-          this.state,
-          'warn',
-          '⚠ 旗舰击沉归属出现两处不同记录：已按玩家亲手击沉处理。',
-          'core.weekend.041',
-        )
-      }
       void this.persist()
     }
     /** **结束结算入账**：本拍刚结束的那一场立刻结；上一拍结束而没结的由开头那句兜（同一幂等口） */

@@ -8,7 +8,9 @@
  * ① **只有旗舰战**触发冷却（其它战斗照旧只"暂停削血"，不加尾巴）；
  * ② 调试档**同为 60 秒**；
  * ③ **不做**倒计时/提示（界面本来也没有倒计时）；
- * ④ 黑匣奖励位置**不动**（"打爆即给"那条不做）。
+ * ④ 黑匣奖励位置**不动**（"打爆即给"那条不做）—— ⚠ **这一条已被 2026-09-28 船长令取代**
+ * （「让玩家击杀BOSS就能获得黑匣，取消之前的复杂判定」⇒ 现在就是"击杀了必给"），
+ * 但本文件要钉的"冷却"口径不受影响；⑧/⑧b 两条用例已按新口径改写。
  *
  * 落点 = `weekendEvent.weekendTickBoss`（章鱼削血 ＋ 得手判定的唯一收口）：旗舰战进行中每拍把
  * `ev.octopusHoldUntilWallMs` 推后到 `now + 60 秒` ⇒ **战斗结束后 60 秒内既不削血、也不判得手**。
@@ -27,10 +29,10 @@ import {
   WEEKEND_BOSS_TICK_MAX_MS,
   WEEKEND_FLAGSHIP_POOL_HP,
   WEEKEND_OCTOPUS_HOLD_MS,
+  weekendBlackBoxSettledOf,
   weekendFlagshipView,
   weekendNoteContribution,
   weekendNoteFlagshipDamage,
-  weekendRollBlackBox,
   weekendTickBoss,
 } from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
@@ -195,24 +197,18 @@ describe('旗舰战后的章鱼人冷却（2026-09-26 船长令）', () => {
     expect(r.down, '章鱼人得手').toBe('octopus')
     expect(ev.flagshipDown).toBe('octopus')
     expect(ev.endedAtWallMs, '本场结束').not.toBeUndefined()
-    expect(ev.flagshipBlackBox, '**必须留下掷骰结果**（缺省 = 那一掷没发生）').not.toBeUndefined()
+    expect(ev.flagshipBlackBox, '章鱼人得手 = 没击杀 ⇒ **不掷骰、不写结清标记**').toBeUndefined()
   })
 
-  it('⑧b 与公开收口同源：两条收口路径掷出同一个结果（同种子同场次）', () => {
-    /** 同一状态掷两次必须是同一个值（`weekendRollBlackBox` 幂等：已有结果直接返回） */
+  it('⑧b 章鱼人得手 = 没击杀 ⇒ **一个黑匣都不发**（2026-09-28 船长令改口径）', () => {
     const a = bossWorld(WEEKEND_FLAGSHIP_POOL_HP - 100)
     a.s.debugQuick = true
     weekendTickBoss(a.s, 0, false, false)
     weekendTickBoss(a.s, 5_000, false, false)
-    const first = a.ev.flagshipBlackBox
-    expect(weekendRollBlackBox(a.s, a.ev, false), '再掷一次 = 原值').toBe(first)
-    /** 同一份档重放（同种子）⇒ 同一个结果 */
-    const b = bossWorld(WEEKEND_FLAGSHIP_POOL_HP - 100)
-    b.s.debugQuick = true
-    b.s.rng.seed = a.s.rng.seed
-    b.ev.seq = a.ev.seq
-    weekendTickBoss(b.s, 0, false, false)
-    weekendTickBoss(b.s, 5_000, false, false)
-    expect(b.ev.flagshipBlackBox, '同种子同场次 ⇒ 同结果').toBe(first)
+    expect(a.ev.flagshipDown, '章鱼人得手').toBe('octopus')
+    /** 旧口径下这条会按"25% × 输出占比"掷一次骰；新口径（击杀必给）下没有掷骰这回事 */
+    expect(a.ev.flagshipBlackBox, '不写结清标记（那是"发出去了"的标记）').toBeUndefined()
+    expect(weekendBlackBoxSettledOf(a.ev), '没结清').toBe(false)
+    expect(countWare(a.s, 'blackbox-h'), '仓库里没有黑匣').toBe(0)
   })
 })

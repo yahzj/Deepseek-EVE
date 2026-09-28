@@ -24,13 +24,14 @@ import {
 } from '../src/weekendBattle'
 import {
   WEEKEND_FLAGSHIP_POOL_HP,
-  weekendBlackBoxChanceOf,
+  weekendBlackBoxSettledOf,
   weekendFoeCardOf,
+  weekendLastHitByPlayer,
   weekendNoteContribution,
-  weekendRollBlackBox,
   weekendCoreGateView,
   weekendCoreProgressAt,
 } from '../src/weekendEvent'
+import * as weekendEventNS from '../src/weekendEvent'
 import { weekendGrantRewards, weekendRareWreckIdFor, weekendSettleAndGrant } from '../src/weekendBattle'
 import type { WeekendEventState } from '../src/weekendEvent'
 
@@ -206,110 +207,103 @@ describe('周末入侵 · 结果结算（M1-b）', () => {
   })
 })
 
-describe('周末入侵 · 黑匣爆率（2026-09-25 船长令）', () => {
+describe('周末入侵 · 黑匣改「击杀必给」（2026-09-28 船长令）', () => {
   const POOL = WEEKEND_FLAGSHIP_POOL_HP
-  /**
-   * 爆率表：`p` = 玩家输出 ÷ 池子总量。
-   * - **抢到最后一下**：`p > 50%` ⇒ 100%；`p ≤ 50%` ⇒ 从 100%（p=50%）线性降到 10%（p=0）
-   * - **没抢到最后一下**：`25% × p`
-   */
-  it('爆率表：>50% 抢到最后一下必爆；≤50% 线性衰减到 10%；没抢到最后一下 25%×占比', () => {
-    // 抢到最后一下
-    expect(weekendBlackBoxChanceOf(POOL, POOL, true), '100% 输出 ⇒ 必爆').toBe(1)
-    expect(weekendBlackBoxChanceOf(POOL * 0.500001, POOL, true), '刚过 50% ⇒ 必爆').toBe(1)
-    expect(weekendBlackBoxChanceOf(POOL * 0.5, POOL, true), '正好 50% ⇒ 100%').toBe(1)
-    expect(weekendBlackBoxChanceOf(POOL * 0.25, POOL, true), '25% 输出 ⇒ 中点 55%').toBeCloseTo(0.55, 6)
-    expect(weekendBlackBoxChanceOf(0, POOL, true), '只抢最后一下 ⇒ 10%').toBeCloseTo(0.1, 6)
-    // 没抢到最后一下
-    expect(weekendBlackBoxChanceOf(POOL, POOL, false), '100% 输出但没抢到 ⇒ 25%').toBeCloseTo(0.25, 6)
-    expect(weekendBlackBoxChanceOf(POOL * 0.5, POOL, false), '50% 输出 ⇒ 12.5%').toBeCloseTo(0.125, 6)
-    expect(weekendBlackBoxChanceOf(0, POOL, false), '0 输出 ⇒ 0').toBe(0)
-    // 边界：池子没锁定 / 伤害为负 ⇒ 按 0 处理（不炸）
-    expect(weekendBlackBoxChanceOf(1000, 0, true), '没池子 ⇒ 只有下限 10%（掷骰本身不会走这条）').toBeCloseTo(0.1, 6)
-    expect(weekendBlackBoxChanceOf(-5, POOL, false)).toBe(0)
-    // 同一 p 下"抢到最后一下"永远不低于"没抢到"
-    for (const p of [0, 0.1, 0.25, 0.4, 0.5, 0.75, 1]) {
-      expect(weekendBlackBoxChanceOf(POOL * p, POOL, true)).toBeGreaterThanOrEqual(
-        weekendBlackBoxChanceOf(POOL * p, POOL, false),
-      )
-    }
-  })
 
-  it('掷骰：必爆/必不爆确定 · 结果写 `ev.flagshipBlackBox` · **同情境**幂等（情境变了重掷）· 同种子同场可复现', () => {
+  it('击杀 ⇒ **必给**（不再掷骰，也不再要求输出过半）', () => {
     const { s, ev } = setup()
+    ev.family = 'H' // BOSS 族（有共享血池）
     ev.flagshipHpMax = POOL
-    /** ① 必爆：100% 输出 ＋ 抢到最后一下 */
-    ev.flagshipHpDone = POOL
-    expect(weekendRollBlackBox(s, ev, true), '必爆').toBe(true)
-    expect(ev.flagshipBlackBox, '结果写进事件（随档）').toBe(true)
-    /** 幂等：再调一次不改判（哪怕参数反了） */
-      expect(weekendRollBlackBox(s, ev, true), '同情境 ⇒ 原样返回').toBe(true)
-      /**
-       * ⚠ **情境变了必须重掷**（**2026-09-27 玩家报障修复**）：`weekendClaimOctopus` 会在"章鱼人得手"
-       * 时先按 `false` 掷一次并写值；玩家随后真把它打沉时必须按"抢到最后一下"重掷 —— 否则那一场永远
-       * 拿不到本该必爆的黑匣（实战存档为证：`hpDone 148,676/150,000` 占比 99.1% 却 `flagshipBlackBox = false`）。
-       */
-      const c2 = setup()
-      c2.ev.flagshipHpMax = POOL
-      c2.ev.flagshipHpDone = POOL
-      weekendRollBlackBox(c2.s, c2.ev, false)
-      expect(c2.ev.flagshipBlackBoxByPlayer, '情境标记 = 章鱼人得手').toBe(false)
-      expect(weekendRollBlackBox(c2.s, c2.ev, true), '情境变了 ⇒ 重掷：100% ＋ 抢到最后一下 = 必爆').toBe(true)
-      expect(c2.ev.flagshipBlackBoxByPlayer, '情境标记跟着更新').toBe(true)
-    /** ② 必不爆：0 输出 ＋ 没抢到最后一下 */
-    const b = setup()
-    b.ev.flagshipHpMax = POOL
-    b.ev.flagshipHpDone = 0
-    expect(weekendRollBlackBox(b.s, b.ev, false), '爆率 0 ⇒ 必不爆').toBe(false)
-    /** ③ 可复现：同种子 + 同场次号 ⇒ 同结果；换场次号 ⇒ 是另一条子流 */
-    const runs: boolean[] = []
-    for (let i = 0; i < 3; i++) {
-      const r = setup()
-      r.ev.flagshipHpMax = POOL
-      r.ev.flagshipHpDone = Math.round(POOL * 0.3) // 爆率 = 0.1 + 0.6×0.9 = 0.64
-      runs.push(weekendRollBlackBox(r.s, r.ev, true))
-    }
-    expect(runs[0], '同种子同场次 ⇒ 三次结果一致').toBe(runs[1])
-    expect(runs[1]).toBe(runs[2])
-  })
-
-  it('章鱼人得手那一档：掷中 ⇒ 结算补发黑匣（照发，船长四答之二）', () => {
-    const { s, ev } = setup()
-    ev.family = 'H' // BOSS 族才有共享血池
-    ev.flagshipHpMax = POOL
-    ev.flagshipHpDone = POOL // 100% 输出 ⇒ 没抢到最后一下也有 25%
-    ev.flagshipDown = 'octopus'
-    const box0 = countWare(s, 'blackbox-h')
-    const hit = weekendRollBlackBox(s, ev, false)
-    expect(ev.flagshipBlackBox).toBe(hit)
-    expect(weekendSettlePlanOf(s, ev, 0).blackBoxToPlayer, '结算面板的归属 = 掷骰结果').toBe(hit)
+    ev.flagshipHpDone = 1 // 只补了最后一刀（旧口径下这种只有 10%）
+    ev.flagshipPlayerKill = { atWallMs: 1, runId: 1, downAtGameMs: 1 }
+    expect(weekendLastHitByPlayer(ev), '有留档 ⇒ 击杀成立').toBe(true)
+    expect(weekendSettlePlanOf(s, ev, 0).blackBoxToPlayer, '结算计划：黑匣归玩家').toBe(true)
     ev.endedAtWallMs = 1_000_000
-    const r = weekendSettleAndGrant(s, ctx, 1_000_000)
-    expect(r, '结束结算要发').not.toBeNull()
-    expect(countWare(s, 'blackbox-h') - box0, '掷中 ⇒ 补发 1 个黑匣（入物品仓库）').toBe(hit ? 1 : 0)
-    expect(s.weekendLastResult?.blackBox, '快照里的黑匣数 = 实发').toBe(hit ? 1 : 0)
+    expect(weekendSettleAndGrant(s, ctx, 1_000_000), '结束结算要发').not.toBeNull()
+    expect(countWare(s, 'blackbox-h'), '必给 1 枚（入物品仓库）').toBe(1)
+    expect(s.weekendLastResult?.blackBox, '快照里的黑匣数 = 实发').toBe(1)
+    expect(weekendBlackBoxSettledOf(ev), '写"已结清"').toBe(true)
+  })
+
+  it('没击杀 ⇒ **一定是 0**（章鱼人收尾那一档不再掷骰，输出拉满也没用）', () => {
+    const { s, ev } = setup()
+    ev.family = 'H'
+    ev.flagshipHpMax = POOL
+    ev.flagshipHpDone = POOL // 输出 100% —— 但最后一击不是玩家拿的
+    ev.flagshipDown = 'octopus'
+    expect(weekendLastHitByPlayer(ev), '没击杀').toBe(false)
+    expect(weekendSettlePlanOf(s, ev, 0).blackBoxToPlayer, '不归玩家').toBe(false)
+    ev.endedAtWallMs = 1_000_000
+    expect(weekendSettleAndGrant(s, ctx, 1_000_000)).not.toBeNull()
+    expect(countWare(s, 'blackbox-h'), '一个都不发').toBe(0)
+    expect(s.weekendLastResult?.blackBox).toBe(0)
+  })
+
+  it('结算迟到补发：**击杀了却还没结清** ⇒ 结算补上（且只补一枚）', () => {
+    const { s, ev } = setup()
+    ev.family = 'H'
+    ev.flagshipHpMax = POOL
+    ev.flagshipHpDone = 10
+    ev.flagshipDown = 'player' // 归属判给玩家、但没走"击沉那一刻"的即时发放
+    ev.endedAtWallMs = 1_000_000
+    expect(weekendSettleAndGrant(s, ctx, 1_000_000)).not.toBeNull()
+    expect(countWare(s, 'blackbox-h'), '补 1 枚').toBe(1)
+    expect(weekendBlackBoxSettledOf(ev), '结清').toBe(true)
+    /** 再结一次（幂等口 = `prizePaidAtWallMs`）⇒ 不会第二枚 */
+    weekendSettleAndGrant(s, ctx, 1_000_000)
+    expect(countWare(s, 'blackbox-h'), '还是 1 枚').toBe(1)
+  })
+
+  it('爆率表与掷骰子流**已整套删除**（按模块导出面查，不受注释影响）', () => {
+    const gone = [
+      'weekendBlackBoxChanceOf',
+      'weekendRollBlackBox',
+      'WEEKEND_BLACKBOX_SALT',
+      'WEEKEND_BLACKBOX_MIN_ON_LAST_HIT',
+      'WEEKEND_BLACKBOX_MAX_OFF_LAST_HIT',
+    ]
+    for (const name of gone) {
+      expect((weekendEventNS as Record<string, unknown>)[name], `${name} 不该再导出`).toBeUndefined()
+    }
+    /** 随爆率表一起删的旧字段（"掷骰情境"）也不该再出现在场次类型上 */
+    const { ev } = setup()
+    expect('flagshipBlackBoxByPlayer' in ev, '旧字段已删').toBe(false)
   })
 })
 
 describe('周末入侵 · 结束结算（M1-b）', () => {
-  it('贡献占比决定档位；黑匣归属读"掷骰结果"（不再是"谁打空的"）', () => {
+  it('贡献占比决定档位（**BOSS 那 60% 的倾斜**）；黑匣归属读"有没有击杀"（2026-09-28 船长令）', () => {
     const { s, ev } = setup()
     ev.contributed[ev.coreId] = 0.9
-    const plan = weekendSettlePlanOf(s, ev, 0)
-    expect(plan.tier).toBe('A')
-    expect(plan.wreck, '×12 件 = 360 m³').toBe(weekendRareWreckUnits(12))
-    expect(plan.isk).toBe(8_000_000)
-    expect(plan.blackBoxToPlayer, '还没掷 ⇒ 不归玩家').toBe(false)
+    /**
+     * ⚠ **倾斜的直接体现**：只做清缴（没跟母舰交手）⇒ 占比重 = 0.4 ⇒ **封在 C 档**
+     * （旧口径下这种是 A 档）。要把档位抬上去就得去打 BOSS。
+     */
+    const clearOnly = weekendSettlePlanOf(s, ev, 0)
+    expect(clearOnly.share, '0.6×0 ＋ 0.4×1').toBeCloseTo(0.4, 6)
+    expect(clearOnly.tier, '清缴单干 ⇒ C 档').toBe('C')
+    expect(clearOnly.wreck, 'C 档 ×4 件 = 120 m³').toBe(weekendRareWreckUnits(4))
+    expect(clearOnly.isk).toBe(2_000_000)
+    /** 把 BOSS 也打满 ⇒ 0.6 ＋ 0.4×1 = 1.0 ⇒ 回到 A 档（⚠ 只有 BOSS 族才谈得上"BOSS 那份"） */
+    ev.flagshipHpMax = WEEKEND_FLAGSHIP_POOL_HP
+    ev.flagshipHpDone = WEEKEND_FLAGSHIP_POOL_HP
+    expect(weekendSettlePlanOf(s, ev, 0).share, 'A 族（占位族、没有共享池）⇒ boss 项恒 0').toBeCloseTo(0.4, 6)
+    ev.family = 'H' // BOSS 族：共享血池 ⇒ BOSS 那一项才计
+    const withBoss = weekendSettlePlanOf(s, ev, 0)
+    expect(withBoss.share, '1.0').toBeCloseTo(1, 6)
+    expect(withBoss.tier, 'BOSS 打满 ⇒ A 档').toBe('A')
+    expect(withBoss.wreck, '×12 件 = 360 m³').toBe(weekendRareWreckUnits(12))
+    expect(withBoss.isk).toBe(8_000_000)
+    /** 黑匣归属：读**有没有击杀**（`flagshipBlackBox` 只是"结清了没有"的标记，不参与判归属） */
+    expect(clearOnly.blackBoxToPlayer, '没击杀 ⇒ 不归玩家').toBe(false)
+    ev.flagshipPlayerKill = { atWallMs: 1, runId: 1, downAtGameMs: 1 }
+    expect(weekendSettlePlanOf(s, ev, 0).blackBoxToPlayer, '击杀了 ⇒ 归玩家').toBe(true)
     ev.flagshipBlackBox = true
-    expect(weekendSettlePlanOf(s, ev, 0).blackBoxToPlayer).toBe(true)
-    ev.flagshipBlackBox = false
-    expect(weekendSettlePlanOf(s, ev, 0).blackBoxToPlayer, '掷空 ⇒ 不归玩家').toBe(false)
-    /** 章鱼人得手也照样读掷骰结果（掷中 ⇒ 归玩家） */
+    expect(weekendSettlePlanOf(s, ev, 0).blackBoxToPlayer, '结清标记不改变归属').toBe(true)
+    /** 池子判给章鱼人、玩家也没留档 ⇒ 没击杀（哪怕输出拉满） */
+    delete ev.flagshipPlayerKill
     ev.flagshipDown = 'octopus'
-    ev.flagshipBlackBox = true
-    expect(weekendSettlePlanOf(s, ev, 0).blackBoxToPlayer, '章鱼人得手 ＋ 掷中 ⇒ 归玩家').toBe(true)
-    ev.flagshipBlackBox = false
-    expect(weekendSettlePlanOf(s, ev, 0).blackBoxToPlayer, '章鱼人得手 ＋ 掷空 ⇒ 不归玩家').toBe(false)
+    expect(weekendSettlePlanOf(s, ev, 0).blackBoxToPlayer, '没击杀 ⇒ 不归玩家').toBe(false)
   })
 })
 

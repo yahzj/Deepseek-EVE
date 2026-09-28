@@ -200,16 +200,20 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
       isk: WEEKEND_RECLAIM_ISK,
       wreck: weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK),
     })
-    /** 结束 ⇒ 结算那一刻连贡献奖与**进度收入**一起发（此处占比 100% ⇒ A 档 ×12 ＋ 8M；进度 100% ⇒ 2,000 万） */
+    /**
+     * 结束 ⇒ 结算那一刻连贡献奖与**进度收入**一起发。
+     * ⚠ **2026-09-28 船长令**起占比 = `0.6×BOSS输出 ＋ 0.4×清缴`：本场没跟母舰交手 ⇒ BOSS 那半为 0
+     * ⇒ 占比 0.4 ⇒ **C 档（×4 ＋ 2M）**；进度收入与占比无关（该处打满 100% ⇒ 2,000 万）。
+     */
     endWeekendEvent(s, now)
     const settle = weekendSettleAndGrant(s, ctx, now)
     expect(settle, '结束结算').not.toBeNull()
     const income = 100 * WEEKEND_PROGRESS_ISK_PER_PCT // 该处进度打满 100% × 20 万/1%
     expect(settle!.progressIsk, '进度收入单列在返回值里').toBe(income)
-    expect(settle!.isk, '结算 = 贡献奖 8M ＋ 夺回 2M ＋ 进度收入 20M').toBe(8_000_000 + WEEKEND_RECLAIM_ISK + income)
-    expect(settle!.wreck, '结算 = 贡献奖 ×12 件 ＋ 夺回 ×8 件 = 600 m³').toBe(weekendRareWreckUnits(12 + WEEKEND_RECLAIM_WRECK))
-    expect(s.wallet.isk - isk0, 'ISK 这时才进钱包').toBe(8_000_000 + WEEKEND_RECLAIM_ISK + income)
-    expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '残骸这时才到手（按 m³）').toBe(weekendRareWreckUnits(12 + WEEKEND_RECLAIM_WRECK))
+    expect(settle!.isk, '结算 = 贡献奖 2M（C 档）＋ 夺回 2M ＋ 进度收入 20M').toBe(2_000_000 + WEEKEND_RECLAIM_ISK + income)
+    expect(settle!.wreck, '结算 = 贡献奖 ×4 件 ＋ 夺回 ×8 件 = 360 m³').toBe(weekendRareWreckUnits(4 + WEEKEND_RECLAIM_WRECK))
+    expect(s.wallet.isk - isk0, 'ISK 这时才进钱包').toBe(2_000_000 + WEEKEND_RECLAIM_ISK + income)
+    expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '残骸这时才到手（按 m³）').toBe(weekendRareWreckUnits(4 + WEEKEND_RECLAIM_WRECK))
     /** 日志（id 制）：夺回是里程碑 ⇒ 留一条，且措辞是"待活动结束时统一发放"（不再说"已入账"） */
     const reclaimLog = [...s.logs].reverse().find((l) => l.textId === 'core.weekend.001')
     expect(reclaimLog?.text.includes('夺回'), '夺回要有日志').toBe(true)
@@ -221,25 +225,29 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const gid = GID
     const s = invaded(gid)
     const now = Date.now()
-    /** 玩家独自推了 50%（NPC 铺底此刻 ≈ 0）⇒ 占比 100% ⇒ A 档：稀有残骸 ×12 ＋ 8M；进度收入 = 50% × 20 万 */
+    /**
+     * 玩家独自推了 50%（NPC 铺底此刻 ≈ 0）⇒ **清缴那一份 = 100%**；
+     * ⚠ **2026-09-28 船长令**起占比 = `0.6×BOSS输出 ＋ 0.4×清缴`，本场**没跟母舰交手** ⇒ BOSS 那半为 0
+     * ⇒ 占比 **0.4** ⇒ **C 档**（稀有残骸 ×4 ＋ 2M）。这就是"BOSS 输出占总贡献 60%"那条倾斜的直接体现。
+     */
     weekendNoteContribution(s.weekendEvent!, gid, 0.5)
     endWeekendEvent(s, now)
     const isk0 = s.wallet.isk
     const wrecks0 = heldOf(s, 'wreck-rare-h-hi')
     const r = weekendSettleAndGrant(s, ctx, now)
     expect(r, '结束后的第一次调用要真发').not.toBeNull()
-    expect(r!.tier, '占比 = 玩家 ÷（玩家＋NPC 铺底）= 100% ⇒ A 档').toBe('A')
+    expect(r!.tier, '0.4 ⇒ C 档（清缴单干的封顶）').toBe('C')
     /** **进度收入**（船长 2026-09-25「按进度获取收入」；单价 20 万/1%） */
     const income = 0.5 * 100 * WEEKEND_PROGRESS_ISK_PER_PCT
-    expect(r!.progressIsk, '进度收入 = 玩家投入 50% × 100 × 20 万').toBe(income)
+    expect(r!.progressIsk, '进度收入 = 玩家投入 50% × 100 × 20 万（与占比无关）').toBe(income)
     /**
      * 玩家只推了 50% ⇒ 这一处**未夺回** ⇒ 结算里**没有**夺回奖那一份
      * （夺回奖只发给"已夺回"的处 —— 2026-09-27 改逐拍检测后的口径）。
      */
-    expect(r!.isk, '结算 = 贡献奖 8M ＋ 进度收入').toBe(8_000_000 + income)
-    expect(r!.wreck, '×12 件 = 360 m³').toBe(weekendRareWreckUnits(12))
-    expect(s.wallet.isk - isk0, 'ISK 真进钱包（贡献奖 ＋ 进度收入）').toBe(8_000_000 + income)
-    expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '稀有残骸真到手（按 m³）').toBe(weekendRareWreckUnits(12))
+    expect(r!.isk, '结算 = 贡献奖 2M（C 档）＋ 进度收入').toBe(2_000_000 + income)
+    expect(r!.wreck, '×4 件 = 120 m³').toBe(weekendRareWreckUnits(4))
+    expect(s.wallet.isk - isk0, 'ISK 真进钱包（贡献奖 ＋ 进度收入）').toBe(2_000_000 + income)
+    expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '稀有残骸真到手（按 m³）').toBe(weekendRareWreckUnits(4))
     expect(s.weekendLastResult?.progressIsk, '战果快照里也留一栏（面板/通讯读它）').toBe(income)
     expect(s.weekendLastResult?.progressPct, '快照记玩家投入合计').toBeCloseTo(0.5, 6)
     /**
@@ -247,18 +255,18 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
      * 结束通讯处，需要提及玩家获得了多少声望**」）。
      *
      * 口径：`round(占比 × WEEKEND_STANDING_MAX(15))`，与实发同一条公式 ⇒ 面板/信上的数 = 真加进账的数。
-     * 本处占比 100% ⇒ **15 点**，且信里多出 `core.weekend.037` 那一段（参数 `p4` = 点数）。
+     * 本处占比 0.4 ⇒ **6 点**，且信里多出 `core.weekend.037` 那一段（参数 `p4` = 点数）。
      */
-    expect(s.weekendLastResult?.standing, '快照带出本期声望（面板读它）').toBe(15)
+    expect(s.weekendLastResult?.standing, '快照带出本期声望（面板读它）').toBe(6)
     const settleMail = weekendSettleCommsOf(s, ctx, s.weekendLastResult!)
     expect(settleMail.bodyIds ?? [], '结算信正文追加声望那一段').toContain('core.weekend.037')
-    expect(settleMail.params?.['p4'], '参数 = 本期点数').toBe('15')
-    expect((settleMail.paragraphs ?? []).some((t) => t.includes('声望 +15')), '纯文本兜底段落也写了').toBe(true)
+    expect(settleMail.params?.['p4'], '参数 = 本期点数').toBe('6')
+    expect((settleMail.paragraphs ?? []).some((t) => t.includes('声望 +6')), '纯文本兜底段落也写了').toBe(true)
     expect(s.weekendEvent!.prizePaidAtWallMs, '随档幂等标记').toBe(now)
     /** 幂等：同一刻再调、以及**过一周再调**（离线补结的口径）都不再发 */
     expect(weekendSettleAndGrant(s, ctx, now)).toBeNull()
     expect(weekendSettleAndGrant(s, ctx, now + 7 * 24 * 3_600_000)).toBeNull()
-    expect(s.wallet.isk - isk0, '只发一次').toBe(8_000_000 + income)
+    expect(s.wallet.isk - isk0, '只发一次').toBe(2_000_000 + income)
     /** 零贡献 ⇒ 无奖（Q5「0% ⇒ 无」）且**进度收入也是 0**，但"已结"标记照写（免得每拍重算） */
     const s2 = invaded(gid)
     endWeekendEvent(s2, now)
@@ -445,29 +453,29 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const onTime = build()
     const r1 = weekendSettleAndGrant(onTime, ctx, now)
     expect(r1, '结束时结算').not.toBeNull()
-    expect(r1!.tier, '占比 ≈ 0.72 ⇒ B 档').toBe('B')
-    /** 进度收入与贡献档位**各自独立**：这一处玩家推了 90% ⇒ 1,800 万（档位是 B 也不影响） */
+    expect(r1!.tier, '清缴那份 ≈ 0.72 ⇒ 占比 0.4×0.72 ≈ 0.29 ⇒ C 档（本场没打 BOSS）').toBe('C')
+    /** 进度收入与贡献档位**各自独立**：这一处玩家推了 90% ⇒ 1,800 万（档位是 C 也不影响） */
     expect(r1!.progressIsk, '进度收入 = 90% × 20 万').toBe(90 * WEEKEND_PROGRESS_ISK_PER_PCT)
     /**
      * ⚠ **2026-09-27 修**：夺回奖改"逐拍检测（已夺回 ∧ 未记账）"后，这一处的夺回奖也会正常并入结算
      * —— 本场景玩家推了 90% ＋ 54h 铺底 ⇒ **已夺回**；旧口径下它挂在战斗结算那一拍，这里恒为 0。
      */
-    expect(r1!.isk, '结算 = 贡献奖 5M ＋ 夺回 2M ＋ 进度收入').toBe(
-      5_000_000 + WEEKEND_RECLAIM_ISK + 90 * WEEKEND_PROGRESS_ISK_PER_PCT,
+    expect(r1!.isk, '结算 = 贡献奖 2M（C 档）＋ 夺回 2M ＋ 进度收入').toBe(
+      2_000_000 + WEEKEND_RECLAIM_ISK + 90 * WEEKEND_PROGRESS_ISK_PER_PCT,
     )
-    expect(r1!.wreck, 'B 档 ×8 件 ＋ 夺回 ×8 件 = 480 m³').toBe(
-      weekendRareWreckUnits(8 + WEEKEND_RECLAIM_WRECK),
+    expect(r1!.wreck, 'C 档 ×4 件 ＋ 夺回 ×8 件 = 360 m³').toBe(
+      weekendRareWreckUnits(4 + WEEKEND_RECLAIM_WRECK),
     )
     /** 离线五天后再上线补结（引擎每拍补发那条路径的形状）：读数必须与结束时**逐值一致** */
     const late = build()
     const r2 = weekendSettleAndGrant(late, ctx, now + 5 * 24 * 3_600_000)
     expect(r2, '补结也要发').not.toBeNull()
-    expect(r2!.tier, '按结束时刻算 ⇒ 仍是 B 档（若改用"现在"会被铺底算低成 C 档）').toBe(r1!.tier)
+    expect(r2!.tier, '按结束时刻算 ⇒ 仍是 C 档（若改用"现在"会被铺底算低成 D 档）').toBe(r1!.tier)
     expect(r2!.isk).toBe(r1!.isk)
     expect(r2!.wreck).toBe(r1!.wreck)
     expect(late.weekendEvent!.prizePaidAtWallMs, '标记写的是"补结那一刻"').toBe(now + 5 * 24 * 3_600_000)
-    /** **反证**：若把"现在"当结算时刻，这一档会被铺底算低成 C 档 ⇒ 本用例确实在守"按结束时刻算" */
-    expect(weekendSettlePlanOf(late, late.weekendEvent!, now + 5 * 24 * 3_600_000).tier, '按"现在"算会降成 C 档').toBe('C')
+    /** **反证**：若把"现在"当结算时刻，清缴那份会被五天铺底摊薄 ⇒ 降成 D 档 ⇒ 本用例确实在守"按结束时刻算" */
+    expect(weekendSettlePlanOf(late, late.weekendEvent!, now + 5 * 24 * 3_600_000).tier, '按"现在"算会降成 D 档').toBe('D')
   })
 
   it('⑫ 两封通讯：预警开局送达 · 结算在贡献奖入账后送达 · 每场覆盖同一 id（只留一封）', () => {
@@ -497,10 +505,11 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(settle?.subjectId).toBe('core.weekend.013')
     /**
      * 有奖那一版正文 ＋ **声望那一段**（2026-09-26 船长令：结束通讯要写明拿到多少声望）——
-     * 本场占比 100% ⇒ 15 点 > 0 ⇒ 追加 `core.weekend.037`。
+     * ⚠ 2026-09-28 起占比 = `0.6×BOSS输出 ＋ 0.4×清缴`，本场没打 BOSS ⇒ 0.4 ⇒ **6 点** > 0 ⇒ 仍追加
+     * `core.weekend.037`。
      */
     expect(settle?.bodyIds, '有奖那一版正文（＋声望段）').toEqual(['core.weekend.014', 'core.weekend.037'])
-    expect(settle?.textParams?.['p4'], '声望段的参数 = 本期点数').toBe('15')
+    expect(settle?.textParams?.['p4'], '声望段的参数 = 本期点数').toBe('6')
     expect(settle?.action, '结算信的跳转是"弹面板"').toBe('weekendSummary')
     expect(settle?.rewards?.length, '奖励清单结构化随信（残骸 ＋ 信用点）').toBe(2)
 
@@ -511,11 +520,11 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(snap.coreId).toBe(core)
     expect(snap.galaxies.length, '核心 ＋ 外围都列出来').toBe(2)
     expect(snap.galaxies.find((g) => g.galaxyId === gid)?.put, '逐星系记玩家投入').toBeCloseTo(0.5, 6)
-    expect(snap.tier).toBe('A')
+    expect(snap.tier, '占比 0.4（没打 BOSS）⇒ C 档').toBe('C')
     expect(snap.progressPct, '快照记玩家投入合计').toBeCloseTo(0.5, 6)
     expect(snap.progressIsk, '快照记进度收入（面板那一行读它）').toBe(0.5 * 100 * WEEKEND_PROGRESS_ISK_PER_PCT)
-    expect(snap.isk, '到手合计 = 实发（贡献四档 ＋ 进度收入）').toBe(8_000_000 + 0.5 * 100 * WEEKEND_PROGRESS_ISK_PER_PCT)
-    expect(snap.wreck, '×12 件 = 360 m³').toBe(weekendRareWreckUnits(12))
+    expect(snap.isk, '到手合计 = 实发（贡献四档 ＋ 进度收入）').toBe(2_000_000 + 0.5 * 100 * WEEKEND_PROGRESS_ISK_PER_PCT)
+    expect(snap.wreck, '×4 件 = 120 m³').toBe(weekendRareWreckUnits(4))
 
     /** ④ 覆盖：下一场再同步 ⇒ 同 id 仍只有一封，内容换成新一场 */
     s.weekendEvent = { ...s.weekendEvent!, seq: 99, startedAtWallMs: now, endedAtWallMs: undefined, contributed: {} }

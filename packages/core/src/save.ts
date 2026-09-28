@@ -3335,20 +3335,14 @@ for (const [key, value] of Object.entries(licensesRaw)) {
               ? { flagshipDown: weekendRaw.flagshipDown as 'player' | 'octopus' }
               : {}),
             /**
-             * **黑匣掷骰结果**（2026-09-25 船长令改爆率后新增）：不认它 ⇒ 读档后收口那一拍会**重掷**
-             * 或结算漏发。只认真布尔（缺键 = 还没掷 ⇒ 该掷的时候自然会掷）。
+             * **黑匣结清标记**（`flagshipBlackBox`；**2026-09-28 船长令改口径**后它的含义从
+             * "掷骰结果"变成"这一枚结清了没有"，判据见 `weekendEvent.weekendBlackBoxSettledOf`）。
+             * 只认真布尔（缺键 = 还没结清 ⇒ 该发的时候自然会发）。
+             * ⚠ 同日的 `flagshipBlackBoxByPlayer`（旧"掷骰情境"）**已随爆率表一起删除**，
+             * 这里不再读写它：老档里那个键读档时直接丢掉。
              */
             ...(typeof weekendRaw.flagshipBlackBox === 'boolean'
               ? { flagshipBlackBox: weekendRaw.flagshipBlackBox }
-              : {}),
-            /**
-             * 掷骰情境（2026-09-27）：**随档**（⚠ 2026-09-28 更正注释 —— 原注释写"不随档"，
-             * 与紧随其后的代码不符；代码一直是随档的）。
-             * 随档的理由 = 它是"同情境幂等"的判据（`weekendRollBlackBox`：情境相同才复用结果）：
-             * 丢了 ⇒ 读档后会按另一套情境**重掷一次** ⇒ 那一场可能白捡或白丢一枚黑匣。
-             */
-            ...(typeof weekendRaw.flagshipBlackBoxByPlayer === 'boolean'
-              ? { flagshipBlackBoxByPlayer: weekendRaw.flagshipBlackBoxByPlayer }
               : {}),
             ...(hpMax > 0 ? { flagshipHpMax: hpMax } : {}),
             ...(hpDone !== undefined ? { flagshipHpDone: hpDone } : {}),

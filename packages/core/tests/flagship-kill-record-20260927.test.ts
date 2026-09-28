@@ -276,14 +276,19 @@ describe('旗舰战留档：玩家亲手击沉（2026-09-27 船长令）', () =>
    * 掷黑匣 ＋ 写归属 ＋ 结束本场三件事一次做完，且**幂等**（第二次调用返回 false、不覆盖）。
    * ⚠ 这条正是 2026-09-26 那个"漏掷 ⇒ 玩家没拿到黑匣"的 bug 所在 —— 两条到点路径都走它。
    */
-  it('⑧ `weekendClaimOctopus`：一次做完三件事 ＋ 幂等', () => {
+  it('⑧ `weekendClaimOctopus`：写归属 ＋ 结束本场 ＋ 幂等（**2026-09-28 起不再掷黑匣**）', () => {
     const { s, ev } = bossWorld(WEEKEND_FLAGSHIP_POOL_HP - 10) // 池子只剩 10
     expect(weekendFlagshipDefeated(ev), '还没见底').toBe(false)
     weekendNoteFlagshipDamage(ev, WEEKEND_FLAGSHIP_POOL_HP - 10, 1) // 玩家打掉 149,990，剩 10
     expect(weekendClaimOctopus(s, ev, 9_000), '章鱼认领成功').toBe(true)
     expect(ev.flagshipDown, '写归属').toBe('octopus')
     expect(ev.endedAtWallMs, '结束本场').toBe(9_000)
-    expect(ev.flagshipBlackBox, '**必须留下掷骰结果**（2026-09-26 漏掷那条）').not.toBeUndefined()
+    /**
+     * ⚠ **旧口径**（2026-09-26「漏掷」那条）要求这里"必须留下掷骰结果"；
+     * **2026-09-28 船长令**（击杀必给、取消复杂判定）之后**不再掷骰**：
+     * 章鱼收尾 = 没击杀 = 没黑匣 ⇒ 这一格（现在语义是"已结清"）应当**保持缺省**。
+     */
+    expect(ev.flagshipBlackBox, '不再掷骰 ⇒ 不写结清标记').toBeUndefined()
     /** 幂等：同一场再调一次 ⇒ false，且三格都不动 */
     const snapshot = { down: ev.flagshipDown, ended: ev.endedAtWallMs, box: ev.flagshipBlackBox }
     expect(weekendClaimOctopus(s, ev, 9_999), '已结束 ⇒ 拒绝二次认领').toBe(false)

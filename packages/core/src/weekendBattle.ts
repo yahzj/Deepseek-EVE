@@ -40,8 +40,9 @@ import {
   WEEKEND_GAIN_PERIPHERY_WIN,
   WEEKEND_GAIN_REPEL,
   weekendWinGainOf,
-  /** 2026-09-25 船长令：黑匣爆率按"输出占比 ＋ 抢没抢到最后一下"掷（结果写 `ev.flagshipBlackBox`） */
-  weekendRollBlackBox,
+  /** 2026-09-28 船长令「击杀BOSS就能获得黑匣」：击杀判据（**留档优先**的单点）＋ 结清标记 */
+  weekendLastHitByPlayer,
+  weekendBlackBoxSettledOf,
   /** 2026-09-27 船长令：占比按**玩家优先**口径取（玩家允许挤掉章鱼人的输出） */
   weekendFlagshipSharesOf,
   /** 2026-09-27 整理：归属判据收口（**留档优先**）——结算快照与引擎结束日志共用同一个它 */
@@ -274,22 +275,12 @@ export function weekendResolveBattle(
   if (spec.kind === 'flagship' && (bossDown || (outcome === 'win' && !weekendIsBossFamily(ev)))) {
     if (weekendNoteFlagshipKilled(state, nowWallMs)) {
       /**
-       * **黑匣爆率**（船长 2026-09-25 令）：玩家**抢到最后一下** ⇒ 按输出占比掷（> 50% 必爆）；
-       * **残骸照旧必给**（船长同日四答之三："残骸不变"）。掷骰走 `ev.flagshipBlackBox`（一条场次子流，
-       * 读档重打同一场结果相同）。
-       * ⚠ **只有 BOSS 族（有共享血池、才谈得上"输出占比"）才掷**；A/C/G 那些占位卡没有池子 ⇒
-       * 保持老口径"击沉必掉"（`true`），免得把占位口径也改成掷骰。
+       * **击杀 BOSS ⇒ 黑匣必给 1 枚**（**2026-09-28 船长令**：「让玩家击杀BOSS就能获得黑匣，
+       * 取消之前的复杂判定」）—— 这里**不再掷骰**；残骸照旧必给 ×3（船长 2026-09-25 四答之三"残骸不变"）。
+       * 走到这里 = 玩家把共享血池打空（或非 BOSS 族的老口径取胜）⇒ 击杀成立。
        */
-      /**
-       * 走到这里 = **玩家把共享血池打空**（或非 BOSS 族的老口径取胜）⇒ 玩家的最后击杀**成立**，
-       * 传 `true` 与单点判据同结论（⚠ 判据本身见 `weekendEvent.weekendLastHitByPlayer`：
-       * 另一条路 `weekendClaimOctopus` 也按它取，别再各写一套）。
-       */
-      const box = weekendIsBossFamily(ev) ? weekendRollBlackBox(state, ev, true) : true
-      res.flagshipKilled = { blackBox: box, wreck: weekendRareWreckUnits(WEEKEND_FLAGSHIP_WRECK) }
-      res.note = bossDown
-        ? `旗舰血量归零：击沉（跨场累计）${box ? '· 黑匣入手' : '· 黑匣未爆'}`
-        : `旗舰被击毁：战利品归玩家${box ? '（含黑匣）' : '（黑匣未爆）'}`
+      res.flagshipKilled = { blackBox: true, wreck: weekendRareWreckUnits(WEEKEND_FLAGSHIP_WRECK) }
+      res.note = bossDown ? '旗舰血量归零：击沉（跨场累计）· 黑匣入手' : '旗舰被击毁：战利品归玩家（含黑匣）'
       return res
     }
   }
@@ -393,11 +384,11 @@ export function weekendSettlePlanOf(
     progressIsk: weekendProgressIncomeIsk(ev),
     progressPct: weekendPlayerContribution(ev),
     /**
-     * **黑匣是否归玩家**（2026-09-25 改口径：爆率按"输出占比 ＋ 抢没抢到最后一下"掷，
-     * 见 `weekendEvent.weekendBlackBoxChanceOf`）⇒ 判据改成**掷骰结果** `ev.flagshipBlackBox`
-     * —— 章鱼人得手也可能爆（`25% × 输出占比`），玩家击沉也可能不爆（小幅输出那一档）。
+     * **黑匣是否归玩家**（**2026-09-28 船长令改口径**）＝ **玩家击杀了 BOSS 就给**，
+     * 判据取单点 `weekendEvent.weekendLastHitByPlayer`（留档优先）。
+     * ⚠ 旧口径是"掷骰结果 `ev.flagshipBlackBox`"（章鱼人得手也可能爆、玩家击沉也可能不爆）——已作废。
      */
-    blackBoxToPlayer: ev.flagshipBlackBox === true,
+    blackBoxToPlayer: weekendLastHitByPlayer(ev),
   }
 }
 
@@ -645,14 +636,19 @@ export function weekendSettleAndGrant(
    */
   const pending = ev.reclaimPending ?? { isk: 0, wreck: 0 }
   /**
-   * **章鱼人得手那一档的黑匣补发**（船长 2026-09-25 令 ＋ 四答之二"照发"）：
-   * 玩家没抢到最后一下时，黑匣按 `25% × 输出占比` 掷（掷骰在 `weekendTick` 收口那一拍，结果写进
-   * `ev.flagshipBlackBox`）；玩家击沉那一档已由 `weekendApplyBattleOutcome` 即时发过 ⇒ 这里只在
-   * **台账还没有黑匣**（`led.blackBox === 0`）且掷中时补发一次（`prizePaidAtWallMs` 保证只走一遍）。
+   * **结算时的"迟到补发"**（**2026-09-28 船长令改口径**）：本场**玩家已经击杀 BOSS**
+   * （判据 = 单点 `weekendLastHitByPlayer`，留档优先）却**还没结清** ⇒ 在这里补上那一枚。
+   * 之所以可能"击杀却没结清"：击沉那一刻的入账走 `weekendApplyBattleOutcome`，
+   * 而活动可能在别的路径上先结束（章鱼人收尾 / 窗口到点）⇒ 结算这条路兜住它。
+   * ⚠ 只走一遍：`prizePaidAtWallMs` 保证结算只发生一次。
+   * ⚠ 旧判据是「台账里没有黑匣 ∧ 掷骰掷中了」——它依赖台账随档（2026-09-28 甲案才修好）；
+   * 新判据只看**击杀 ＋ 未结清**，不再依赖台账，也就没有了"读档双发"那条老账。
    */
-  const boxAtSettle = (ev.rewardLedger?.blackBox ?? 0) === 0 && ev.flagshipBlackBox === true
-  /** 补发也取**实际入账**结果（掷中但没落地 ⇒ 台账照旧 0，见 `weekendGrantRewards` 的 ⚠） */
+  const boxAtSettle = weekendLastHitByPlayer(ev) && !weekendBlackBoxSettledOf(ev)
+  /** 补发也取**实际入账**结果（契约破损没落地 ⇒ 0，见 `weekendGrantRewards` 的 ⚠） */
   const boxGranted = boxAtSettle ? weekendGrantRewards(state, { blackBox: true }).blackBox : 0
+  /** 真发出去了才写"已结清"（`flagshipBlackBox` 的新语义，见 `weekendBlackBoxSettledOf`） */
+  if (boxGranted > 0) ev.flagshipBlackBox = true
   /**
    * **这一笔发三样**：贡献四档奖（`plan`）＋ 待到账的夺回奖励（`pending`）＋ **进度收入**（`plan.progressIsk`，
    * 船长 2026-09-25「按进度获取收入」）。
@@ -1010,8 +1006,8 @@ export function weekendApplyBattleOutcome(
   const granted = weekendGrantRewards(state, {
     isk,
     wreck,
-    /** 黑匣**按爆率表掷出来的结果**给（2026-09-25 船长令：>50% 输出抢到最后一下必爆；否则按占比衰减） */
-    blackBox: r.flagshipKilled?.blackBox === true,
+    /** 黑匣：**这一场是"击沉旗舰"那一支 ⇒ 必给 1 枚**（2026-09-28 船长令「击杀BOSS就能获得黑匣」） */
+    blackBox: r.flagshipKilled !== undefined,
     ...(wreckItemId !== undefined ? { wreckItemId } : {}),
   })
   /**
@@ -1035,11 +1031,13 @@ export function weekendApplyBattleOutcome(
     weekendSyncReclaimRewards(state, evNow, nowWallMs)
     if (r.flagshipKilled !== undefined) {
       /**
-       * 台账记的是**实际入账**的那一份（`granted`），不是"掷出来的那一份"（`r.flagshipKilled`）——
-       * 2026-09-26 船长批「甲」的第②条：掷中却没发出去时**不许**记「已获得」，
+       * 台账记的是**实际入账**的那一份（`granted`），不是"应该发的那一份"（`r.flagshipKilled`）——
+       * 2026-09-26 船长批「甲」的第②条：没真发出去时**不许**记「已获得」，
        * 否则结算面板/结算通讯又会显示玩家手里没有的东西（账实分离）。
        */
       noteReward(evNow, undefined, { wreck: granted.wreck, blackBox: granted.blackBox })
+      /** 真发出去了 ⇒ 写"已结清"（`flagshipBlackBox` 的新语义；结算与补发工具都靠它幂等） */
+      if (granted.blackBox > 0) evNow.flagshipBlackBox = true
     }
   }
   if (r.reclaimed !== undefined) {

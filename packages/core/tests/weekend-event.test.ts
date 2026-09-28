@@ -502,14 +502,20 @@ describe('周末入侵 · 旗舰与倒计时（含离线保护 / Q3 / Q7）', ()
 })
 
 describe('周末入侵 · 贡献与结算', () => {
-  it('占比 = 玩家投入 ÷（玩家 ＋ NPC 铺底）；四档奖励', () => {
+  it('占比 = 0.6×BOSS输出 ＋ 0.4×清缴份（2026-09-28 船长令）；四档奖励', () => {
     const s = fresh()
     const ev = evOf('core', ['p1'])
     weekendNoteContribution(ev, 'p1', 0.2)
+    /** 此刻 NPC 铺底还是 0 ⇒ 清缴那半全是玩家的；本族没有共享池 ⇒ BOSS 那半为 0 */
     const share = weekendContributionShareAt(s, ev, 0)
-    expect(share).toBeCloseTo(1, 6) // 此刻 NPC 铺底还是 0 ⇒ 全是玩家的
+    expect(share, '0.4 × 1（清缴单干封顶 0.4）').toBeCloseTo(0.4, 6)
     const later = weekendContributionShareAt(s, ev, 48 * H)
-    expect(later).toBeLessThan(share)
+    expect(later, 'NPC 铺底涨起来 ⇒ 清缴那份被摊薄').toBeLessThan(share)
+    /** 把 BOSS 那份补上（只有 BOSS 族才计）：0.6×1 ＋ 0.4×1 = 1.0 */
+    ev.family = 'H'
+    ev.flagshipHpMax = 100_000
+    ev.flagshipHpDone = 100_000
+    expect(weekendContributionShareAt(s, ev, 0), '1.0').toBeCloseTo(1, 6)
     expect(weekendContributionTier(0.9).tier).toBe('A')
     expect(weekendContributionTier(0.9).wreck).toBe(12)
     expect(weekendContributionTier(0.6).tier).toBe('B')
