@@ -27,7 +27,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 12_600, // 开拓级（2026-09-28 升 T3 ⇒ 工期改按 T3 带 3~5 时；原 T2 带 5,160 = 86 分）
     buildCostIsk: 250_000,
-    priceIsk: 3600000,
+    priceIsk: 32_000_000, // = 行价 8,000,000 × 4（2026-09-28 船长令「开拓市价上调」后同步；原 3.6M）
     description: '采矿艇，货舱 5,200 m³、循环 9 秒产 44 单位，比鲸吞级高约四成。',
   },
   {
@@ -1012,7 +1012,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 12_600,
     buildCostIsk: 0,
-    priceIsk: 600_000, // = 行价 ×50%（2026-09-14 船长改判口径；行价 = ship-pioneer 1,200,000）
+    priceIsk: 4_000_000, // = 行价 ×50%（2026-09-14 船长改判口径；行价 = ship-pioneer 8,000,000）
     /*
      * **2026-09-28 新增**：开拓级升 T3 后触发 `content:check` 的两条合同——
      * ①「一次性舰船蓝图缺失」（船长 2026-09-13：「T3/T4/T5 各出一张」）；

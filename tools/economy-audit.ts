@@ -291,6 +291,52 @@ say('\n════════ 五、卖矿变现：满舱一轮的实收单价
   )
 }
 
+/* ───────── ⑥ 每种矿石的精炼收益（2026-09-28 船长令） ───────── */
+say('\n════════ 六、每种矿石的精炼收益（每 m³ 原矿：直接卖 vs 炼成矿物卖）════════')
+{
+  /*
+   * 船长令：「**调整完后，将每种矿石的精炼收益也贴出来**」。
+   * 口径：两条路都以**市场常驻价 `basePrice`**（现货）计，都不含交易税 —— 比的是"同一批矿走哪条路更值"。
+   * - 直接卖：`1 单位 × 矿石价`，折成**每 m³**要 ÷ `unitM3`（体积越小、每 m³ 件数越多）；
+   * - 炼成矿物卖：`Σ(每单位原矿产出件数 × 矿物价)`，同样折成每 m³。
+   * - **精炼增值率 = 精炼 ÷ 直接卖 − 1**（负数 = 炼不如卖）。
+   */
+  const priceOf = (id: string): number => ctx.marketGoods.get(id)?.basePrice ?? ctx.items.get(id)?.baseSellPriceIsk ?? 0
+  say('| 矿石 | 单价 | unitM3 | **每 m³ 直接卖** | 炼成什么（每单位原矿 → 件数×单价） | **每 m³ 精炼** | 精炼增值率 | 炉周期 |')
+  say('|---|---|---|---|---|---|---|---|')
+  const rows: Array<{ name: string; raw: number; refined: number }> = []
+  for (const ore of ctx.items.values()) {
+    if (ore.kind !== 'ore') continue
+    const unitM3 = Math.max(0.01, ore.unitM3 ?? 1)
+    const rawPerM3 = (ore.baseSellPriceIsk ?? 0) / unitM3
+    const parts: string[] = []
+    let refinedPerUnit = 0
+    for (const r of ore.refine ?? []) {
+      const p = priceOf(r.mineralId)
+      refinedPerUnit += r.perOre * p
+      parts.push(`${ctx.items.get(r.mineralId)?.name ?? r.mineralId} ${r.perOre}×${isk(p)}`)
+    }
+    const refinedPerM3 = refinedPerUnit / unitM3
+    rows.push({ name: ore.name, raw: rawPerM3, refined: refinedPerM3 })
+    const gain = rawPerM3 > 0 ? refinedPerM3 / rawPerM3 - 1 : 0
+    say(
+      `| ${ore.name} | ${isk(ore.baseSellPriceIsk ?? 0)} | ${unitM3} | ${isk(rawPerM3)} | ${parts.join(' ＋ ')} | ${isk(refinedPerM3)} | ` +
+        `${gain >= 0 ? '+' : ''}${(gain * 100).toFixed(1)}% | ${ore.refineBatchUnits ?? '—'} 单位 / ${(ore.refineCycleMs ?? 0) / 1000}s |`,
+    )
+  }
+  const rawAvg = rows.reduce((a, r) => a + r.raw, 0) / Math.max(1, rows.length)
+  const refAvg = rows.reduce((a, r) => a + r.refined, 0) / Math.max(1, rows.length)
+  const best = rows.reduce((a, r) => (r.refined / Math.max(1, r.raw) > a.refined / Math.max(1, a.raw) ? r : a))
+  const worst = rows.reduce((a, r) => (r.refined / Math.max(1, r.raw) < a.refined / Math.max(1, a.raw) ? r : a))
+  say(
+    `· 均值：直接卖 ${isk(rawAvg)} ISK/m³ · 精炼 ${isk(refAvg)} ISK/m³ ⇒ 精炼整体 ${(((refAvg / rawAvg) - 1) * 100).toFixed(1)}%`,
+  )
+  say(
+    `· 最好 / 最差：**${best.name}** ${((best.refined / Math.max(1, best.raw) - 1) * 100).toFixed(1)}% ／ **${worst.name}** ${((worst.refined / Math.max(1, worst.raw) - 1) * 100).toFixed(1)}%`,
+  )
+  say(`· 单循环价值的域极差（每 m³ 直接卖）：${(Math.max(...rows.map((r) => r.raw)) / Math.min(...rows.map((r) => r.raw))).toFixed(2)}×`)
+}
+
 mkdirSync(join(process.cwd(), 'tools', '_ui-artifacts'), { recursive: true })
 writeFileSync(ARCHIVE, out.join('\n'), 'utf8')
 say()
