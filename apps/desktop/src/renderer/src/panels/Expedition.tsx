@@ -67,6 +67,8 @@ import {
   weekendOccupiedLiveAt,
   shortestTravelMinutes,
   standingOf,
+  /** 声望**可支配**余额（＝累计 − 已花）——声望商店子页标题行那两本账走它（与弹层同一口径） */
+  spendableStandingOf,
   travelLegMs,
   travelMinutesEff,
   playerAtSite,
@@ -92,6 +94,11 @@ import { FirstTasks } from './FirstTasks'
 import { bountyComparatorOf } from './bountySort'
 import { MilestoneTasks } from './MilestoneTasks'
 import { ImportantTasks } from './ImportantTasks'
+/**
+ * **声望商店内容体**（**2026-09-27 船长令**：「我打算将声望商店嵌入常驻悬赏内，作为子页面的存在」）——
+ * 与旧弹层 `PlugExchangeModal` **同一份实现**（兑换命令、卡面、确认层全在那边，这里只当容器）。
+ */
+import { PlugExchangeBody } from './PlugExchange'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { UI_TONES } from '../ui/tones'
 import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
@@ -548,9 +555,38 @@ export function TaskPanel({
 }
 
 /* ─────────── 常驻悬赏（船长 2026-09-05：从「任务中心」抽出，独立成出港顶级标签——悬赏卡列表；
- * 2026-09-10 船长定：改称「常驻悬赏」——与任务中心的「赏金任务」（临时战斗任务）区分） ─────────── */
-export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: ToastFn }) {
+ * 2026-09-10 船长定：改称「常驻悬赏」——与任务中心的「赏金任务」（临时战斗任务）区分）
+ *
+ * **2026-09-27 船长令**：「**我打算将声望商店嵌入常驻悬赏内，作为子页面的存在，类似扫描虫洞
+ * 页面内的虫洞探索和谜质科技**」⇒ 本面板加**两个子页**：`bounty`（默认，老内容一字不动）与
+ * `shop`（声望商店 = `PlugExchangeBody`）。
+ *
+ * 结构照抄 `panels/WormholeScan.tsx` 那一套（船长点名的先例）：
+ * `.app-subtabs` 两枚按钮 ＋ `.app-subpage is-hidden` 包住非当前子页；
+ * 子页切换**不落档**（会话内存，与虫洞那两个子页同款）。
+ * 切换信号由 `App` → `MapPage` → 本组件的 `focusShopSeq` 传入（"定位信号"手法与 `craftFocus` 同款）：
+ * 通讯弹窗/通讯页/组装机三处入口一律 **切到星图页 · 常驻悬赏 · 声望商店**（不再弹窗）。
+ * ─────────── */
+export function BountyPanel({
+  engine,
+  onToast,
+  focusShopSeq = 0,
+}: {
+  engine: GameEngine
+  onToast: ToastFn
+  /** **声望商店定位信号**（每次 +1）：变化即切到 `shop` 子页（与 `craftFocus` 同款的一次性信号） */
+  focusShopSeq?: number
+}) {
   const state = engine.state
+  /** 子页（`bounty` = 悬赏板 / `shop` = 声望商店）；默认悬赏板 = 老行为 */
+  const [sec, setSec] = useState<'bounty' | 'shop'>('bounty')
+  /**
+   * ⚠ 依赖只认 `focusShopSeq`：**首帧不切**（`seq` 初值 0 与"没请求"同貌）⇒ 进页面默认看悬赏板；
+   * 有请求（≥1）就落 `shop`。这样"点入口跳过来"与"自己点进来"两种情形不会互相踩。
+   */
+  useEffect(() => {
+    if (focusShopSeq > 0) setSec('shop')
+  }, [focusShopSeq])
   const [sort, setSort] = useState<TaskSort>(() => {
     try {
       const v = localStorage.getItem(TASK_SORT_KEY)
@@ -624,8 +660,40 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
     <Panel
       className="is-fill"
       title={tr("ui.MapPage.004")}
-      right={<span className="app-dim">{tr("ui.Expedition.131")} {listed.length} {tr("ui.Expedition.132")}</span>}
+      /* 标题行右侧随子页换口径：悬赏板报"N 处"，商店报**两本声望账**（可支配/累计获得） */
+      right={
+        sec === 'shop' ? (
+          <span className="app-dim">
+            {tr("ui.IndustryPage.119", { p1: spendableStandingOf(state, DSI_FACTION_ID), p2: standingOf(state, DSI_FACTION_ID) })}
+          </span>
+        ) : (
+          <span className="app-dim">{tr("ui.Expedition.131")} {listed.length} {tr("ui.Expedition.132")}</span>
+        )
+      }
     >
+      {/* **子页标签**（船长 2026-09-27 令）：常驻悬赏（老内容）/ 声望商店（章鱼人兑换）——
+          结构与 `.app-subtabs` 写法照抄 `panels/WormholeScan.tsx` 那两个子页。 */}
+      <div className="app-subtabs" role="tablist">
+        <button
+          role="tab"
+          aria-selected={sec === 'bounty'}
+          className={`app-subtab${sec === 'bounty' ? ' is-active' : ''}`}
+          onClick={() => setSec('bounty')}
+        >
+          {tr("ui.MapPage.004")}
+        </button>
+        <button
+          role="tab"
+          aria-selected={sec === 'shop'}
+          className={`app-subtab${sec === 'shop' ? ' is-active' : ''}`}
+          onClick={() => setSec('shop')}
+        >
+          {tr("ui.Expedition.446")}
+        </button>
+      </div>
+      {sec === 'shop' ? <PlugExchangeBody engine={engine} onToast={onToast} /> : null}
+      {/* ───── 以下 = 「常驻悬赏」子页（原内容，一字未动） ───── */}
+      <div className={`app-subpage${sec === 'bounty' ? '' : ' is-hidden'}`}>
       <div className="app-task-sortrow">
         <span className="app-dim">{tr("ui.Expedition.133")}</span>
         <select className="app-select" value={sort} onChange={(e) => changeSort(e.target.value as TaskSort)}>
@@ -645,6 +713,7 @@ export function BountyPanel({ engine, onToast }: { engine: GameEngine; onToast: 
         {sorted.map((item) => (
           <AnomalyCard key={item.a.id} engine={engine} anomaly={item.a} onToast={onToast} showFoeArt={showFoeArt} />
         ))}
+      </div>
       </div>
     </Panel>
   )

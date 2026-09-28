@@ -3434,6 +3434,15 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.443": { zh: "插件装上就拆不下来，也不能上市交易。", en: "A plug cannot be removed once fitted, and cannot be traded on the market." },
   "ui.Expedition.444": { zh: "已装 {p1} / {p2}", en: "Fitted {p1} / {p2}" },
   "ui.Expedition.445": { zh: "本舰没有舰船插件槽。", en: "This ship has no plug slots." },
+  /**
+   * **声望商店**（**2026-09-27 船长令**：「我打算将声望商店嵌入常驻悬赏内，作为子页面的存在，
+   * 类似扫描虫洞页面内的虫洞探索和谜质科技」）——**常驻悬赏页那个子页标签**用它。
+   *
+   * ⚠ 与 `ui.Expedition.441`（「章鱼人兑换」）**分开**：那条是**弹层标题**与兑换确认层里的落款，
+   * 口径是"章鱼人给你开的窗口"；这条是**常驻悬赏页里的子页名**，口径是"兑换柜台"
+   * （船长 2026-09-26 改口：「组装机这边不应该是前往章鱼人兑换，而是**前往声望商店**兑换」）。
+   */
+  "ui.Expedition.446": { zh: "声望商店", en: "Standing store" },
   "ui.itemSubs.041": { zh: "图纸", en: "Blueprint" },
   "ui.itemSubs.042": { zh: "舰船插件", en: "Ship plugs" },
   "ui.itemSubs.005": { zh: "军用备货柜", en: "Military supply container" },

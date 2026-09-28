@@ -1497,19 +1497,39 @@ async function applyLayoutAndQuit(): Promise<void> {
   /** 结算面板（弹窗里的「查看详细奖励」**直接弹它**；通讯页那一处入口照旧） */
   const [sumOpen, setSumOpen] = useState(false)
   /**
-   * **「章鱼人兑换」窗口**（**2026-09-26 船长令**：「通讯内跳转」＋ 船长报障「跳转界面不正确」）——
-   * 与 `sumOpen` 同款：**根组件持状态、就地弹 `.app-modal-*` 层**，弹窗版通讯与通讯页两处入口共用同一张窗口。
+   * **声望商店的落点 = 星图页 · 常驻悬赏 · 「声望商店」子页**（**2026-09-27 船长令**：
+   * 「**我打算将声望商店嵌入常驻悬赏内，作为子页面的存在，类似扫描虫洞页面内的虫洞探索和谜质科技**」，
+   * 同轮裁定**甲案**：旧弹层保留但不再有入口）。
+   *
+   * `bountyShopSeq` = **定位信号**（开商店时自增；变化即切子页，与 `craftFocus`/`mapGoto` 同款）；
+   * 离开常驻悬赏时由 `changeMapTab` 清零 ⇒ 请求是**一次性**的，不会把下次"自己点进来"也拽到商店。
+   */
+  const [bountyShopSeq, setBountyShopSeq] = useState(0)
+  /**
+   * **旧「章鱼人兑换」弹层**（**2026-09-26 船长令**立、**2026-09-27 甲案**撤入口）：
+   * 状态与组件都还留着（船长要先看子页观感），**但没有任何入口再打开它** ——
+   * 三条入口一律走 `openPlugExchange()` 跳到常驻悬赏的商店子页。删除时机 = 船长点头后，
+   * 与 `panels/PlugExchange.tsx` 的 `PlugExchangeModal` 一起删。
    */
   const [plugExchangeOpen, setPlugExchangeOpen] = useState(false)
   /**
    * **兑换窗口的开窗计数**（**2026-09-26 船长令**：「**而且也不会跳转到舰船插件的筛选内**」）——
-   * 开窗时自增；组装机读到变化就自动切到「舰船插件」档（与 `craftFocus` 同一套"定位信号"手法）。
-   * 三条入口（组装机卡片的「前往章鱼人兑换」・首匣通讯的弹窗「前往」・通讯页的「前往」）都喂它。
+   * 组装机读到变化就自动切到「舰船插件」档（与 `craftFocus` 同一套"定位信号"手法）。
+   * ⚠ 现在它只服务**组装机**那一路：三条入口都先跳到常驻悬赏的商店子页，再顺手喂它。
    */
   const [plugExchangeSeq, setPlugExchangeSeq] = useState(0)
-  /** 开兑换窗口的**唯一入口**（三条路都走它 ⇒ 开窗行为与"切到插件档"永远同进同退） */
+  /**
+   * **去声望商店的唯一入口**（三条路都走它）：① 切到星图页 ② 切到「常驻悬赏」页签
+   * ③ 自增定位信号（面板据此切「声望商店」子页）④ 顺手喂 `plugExchangeSeq`（组装机据此切插件档）。
+   */
   const openPlugExchange = (): void => {
-    setPlugExchangeOpen(true)
+    setPage('map')
+    /**
+     * ⚠ 走 `changeMapTab` 而**不是** `setMapTab`：它带「第一次」前置拦截
+     * （未解锁时给 toast 提示，而不是静默停在星图·远征什么都不说）——与 `mapGoto` 那条程序化跳转同款。
+     */
+    changeMapTab('bounty')
+    setBountyShopSeq((n) => n + 1)
     setPlugExchangeSeq((n) => n + 1)
   }
   /**
@@ -1662,6 +1682,12 @@ async function applyLayoutAndQuit(): Promise<void> {
       showToast(tr("ui.App.110", { p1: (k ? unlockNeedTitle(k) : undefined) ?? tr('ui.App.116') }), true)
       return
     }
+    /**
+     * **离开常驻悬赏 ⇒ 清掉"声望商店"定位请求**（**2026-09-27**，与技能页那条同款理由）：
+     * 请求是一次性的（`bountyShopSeq > 0` = 有请求）⇒ 留着的话，玩家下次**自己**点进常驻悬赏
+     * 也会被它拽回「声望商店」子页。
+     */
+    if (t !== 'bounty') setBountyShopSeq(0)
     setMapTab(t)
   }
   /**
@@ -1869,6 +1895,8 @@ async function applyLayoutAndQuit(): Promise<void> {
             onOpenWormhole={openWormhole}
             onExploreWormhole={(stockId) => openWormhole(stockId)}
             onAutoExploreWormhole={(stockId) => openWormholeAuto(stockId)}
+            /** 声望商店定位信号（船长 2026-09-27）：变化即让「常驻悬赏」切到「声望商店」子页 */
+            bountyShopSeq={bountyShopSeq}
             /** 打捞页「打捞需要打捞器」那行的「去装配」按钮（船长 2026-09-20）：与舰船页同一落点 */
             onGotoFit={(shipId) => {
             setFitShipId(shipId)
@@ -2231,9 +2259,12 @@ async function applyLayoutAndQuit(): Promise<void> {
         </div>
       ) : null}
       {/**
-       * **章鱼人兑换窗口**（**2026-09-26 船长令**：「通讯内跳转」；船长报障「跳转界面不正确」）——
-       * 弹窗版通讯的「前往」直达这里。组件与通讯页那一处**完全同源**（`PlugExchangeModal`），
-       * 弹层几何交给组件内部的 `.app-modal-*` 族，这里不再套一层壳（套两层会多一圈边框）。
+       * **旧「章鱼人兑换」弹层**（**2026-09-26 船长令**立；**2026-09-27 甲案**撤入口）。
+       *
+       * ⚠ **现在没有任何入口会打开它**：三条入口（通讯弹窗/通讯页/组装机）一律走
+       * `openPlugExchange()` → 跳到**星图页 · 常驻悬赏 · 「声望商店」子页**。
+       * 这一层与 `plugExchangeOpen` 状态**暂时留着**（船长要先看子页观感、确认后再删）；
+       * 删的时候把本块、那个状态、`PlugExchangeModal` 一起删掉即可（内容体 `PlugExchangeBody` 不动）。
        */}
       {plugExchangeOpen ? (
         <PlugExchangeModal engine={engine} onToast={showToast} onClose={() => setPlugExchangeOpen(false)} />

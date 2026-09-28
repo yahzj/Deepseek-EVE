@@ -42,15 +42,17 @@ import { Glyph } from '../ui/Glyphs'
 import { toneOfAny } from '../ui/tones'
 import { moduleShortEffect } from '../ui/shipInfo'
 
-export function PlugExchangeModal({
-  engine,
-  onToast,
-  onClose,
-}: {
-  engine: GameEngine
-  onToast: (text: string) => void
-  onClose: () => void
-}): React.JSX.Element {
+/**
+ * **「声望商店」的内容体**（**2026-09-27 拆出**）：
+ * 通用黑匣卡 ＋ 插件图纸卡 ＋ 兑换确认层 —— **一处实现、两处消费**：
+ * ① 旧弹层外壳 `PlugExchangeModal`（保留，但已无入口，见其头注）；
+ * ② **常驻悬赏页的「声望商店」子页**（**船长 2026-09-27 令**：「**我打算将声望商店嵌入常驻悬赏内，
+ *    作为子页面的存在，类似扫描虫洞页面内的虫洞探索和谜质科技**」）。
+ *
+ * 拆分的唯一动机就是"别写第二份"：卡面版式、兑换命令、确认弹层、空态全在这里，
+ * 两种外壳只决定"外面套 .app-modal 还是套子页容器"。
+ */
+export function PlugExchangeBody({ engine, onToast }: { engine: GameEngine; onToast: (text: string) => void }): React.JSX.Element {
   /** 本地重算计数：兑换只改 state 两本账与图书架，窗口自身要跟着重画 */
   const [, setTick] = useState(0)
   /**
@@ -84,41 +86,8 @@ export function PlugExchangeModal({
   }
 
   return (
-    <div className="app-modal-mask" onClick={onClose}>
-      <div className="app-modal app-modal-wide" onClick={(e) => e.stopPropagation()}>
-        <div className="app-modal-head">
-          {/**
-           * **章鱼人头像（最左侧）**（**2026-09-27 船长令**：「**声望商店内，顶上的标题处，能否加个和通讯内
-           * 同款的章鱼人头像。放在最左侧**」）。
-           *
-           * 与通讯**同源同款**：图形 = `FACTION_OCTOPUS_GLYPH`（`faction-octopus` 线稿，全仓 NPC 头像的那一枚）、
-           * 盒子与描边 = 通讯既有的 `.app-comms-avatar`（**不新造样式**），只在**尺寸**上按弹层标题栏收小
-           * （标题栏高 40px 上下，56px 的原尺寸会把条子撑开 ⇒ 宽度/高度/圆角走内联，不新增 CSS 类）。
-           *
-           * ⚠ **不要照抄通讯那个 `tone` 字符串**：通讯侧给的是 `'var(--wui-tone-nav-mail)'`，而色板 token 是
-           * **空格三元组** ⇒ 裸 `var()` 当色值用是**无效声明**、颜色会回落（见词典「色板 token 的三层」硬纪律 A）。
-           * 这里取包好 `rgb()` 的单点 **`toneOfAny('nav-mail')`**（＝官方深空工业协会的通讯色），才是"同款"的**真色**。
-           */}
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-            <span
-              className="app-comms-avatar"
-              title={tr('ui.Expedition.441')}
-              style={{ width: 26, height: 26, borderRadius: 7, marginTop: 0, color: toneOfAny('nav-mail'), borderColor: toneOfAny('nav-mail') }}
-            >
-              <Glyph name="faction-octopus" size={20} />
-            </span>
-            <span className="app-report-title">{tr('ui.Expedition.441')}</span>
-          </span>
-          {/* 两本账并排（船长口径：可支配 / 累计获得）——与卡面价格徽标同色系 */}
-          <span className="app-chip" title={tr('ui.IndustryPage.119', { p1: spendable, p2: earned })}>
-            {tr('ui.IndustryPage.119', { p1: spendable, p2: earned })}
-          </span>
-          <button className="app-btn is-small" onClick={onClose}>
-            {tr('ui.App.086')}
-          </button>
-        </div>
-        <div className="app-modal-body">
-          {rows.length === 0 ? (
+    <>
+      {rows.length === 0 ? (
             <div className="app-dim app-exp-idle">{tr('ui.IndustryPage.137')}</div>
           ) : (
             <div className="app-belt-grid">
@@ -246,11 +215,10 @@ export function PlugExchangeModal({
               })}
             </div>
           )}
-        </div>
-      </div>
       {/**
        * **确认层**（船长令）：标题 = 兑换哪一件；正文两行 = 扣多少 / 扣完还剩多少 ＋ 一句说明
        * （图纸直接进书架、声望不退）。样式整族复用 `.app-mkt-confirm*`（市场卖单那套）。
+       * ⚠ 它是 `position: fixed; z-index: 96` 的**独立遮罩**（不属于弹层内滚区）⇒ 在子页里同样盖在全屏上。
        */}
       {ask !== null ? (
         <div className="app-mkt-confirm-mask" onClick={() => setAsk(null)}>
@@ -276,6 +244,70 @@ export function PlugExchangeModal({
           </div>
         </div>
       ) : null}
+    </>
+  )
+}
+
+/**
+ * **旧「章鱼人兑换」弹层外壳**（**保留、但已无入口** —— 船长 2026-09-27 选定甲案）。
+ *
+ * 船长 2026-09-27 令：「**我打算将声望商店嵌入常驻悬赏内，作为子页面的存在，类似扫描虫洞页面内的
+ * 虫洞探索和谜质科技**」；同轮裁定**甲案**：弹层**先保留不删**，三条入口一律改跳子页
+ * （`常驻悬赏 · 声望商店`）⇒ 本外壳暂时没有任何调用点。
+ *
+ * 为什么留着：① 船长要先看子页观感，确认后再删（与"活动栏冻结件先保留"同款处置）；
+ * ② 它就是 `PlugExchangeBody` ＋ 一层 `.app-modal-*`（内容零重复）⇒ 留着不产生"第二份实现"的成本。
+ * 删除时机：船长点头后，本组件与 `App.tsx` 的 `plugExchangeOpen/Seq` 那套状态一起删。
+ */
+export function PlugExchangeModal({
+  engine,
+  onToast,
+  onClose,
+}: {
+  engine: GameEngine
+  onToast: (text: string) => void
+  onClose: () => void
+}): React.JSX.Element {
+  const spendable = spendableStandingOf(engine.state, DSI_FACTION_ID)
+  const earned = standingOf(engine.state, DSI_FACTION_ID)
+  return (
+    <div className="app-modal-mask" onClick={onClose}>
+      <div className="app-modal app-modal-wide" onClick={(e) => e.stopPropagation()}>
+        <div className="app-modal-head">
+          {/**
+           * **章鱼人头像（最左侧）**（**2026-09-27 船长令**：「**声望商店内，顶上的标题处，能否加个和通讯内
+           * 同款的章鱼人头像。放在最左侧**」）。
+           *
+           * 与通讯**同源同款**：图形 = `FACTION_OCTOPUS_GLYPH`（`faction-octopus` 线稿，全仓 NPC 头像的那一枚）、
+           * 盒子与描边 = 通讯既有的 `.app-comms-avatar`（**不新造样式**），只在**尺寸**上按弹层标题栏收小
+           * （标题栏高 40px 上下，56px 的原尺寸会把条子撑开 ⇒ 宽度/高度/圆角走内联，不新增 CSS 类）。
+           *
+           * ⚠ **不要照抄通讯那个 `tone` 字符串**：通讯侧给的是 `'var(--wui-tone-nav-mail)'`，而色板 token 是
+           * **空格三元组** ⇒ 裸 `var()` 当色值用是**无效声明**、颜色会回落（见词典「色板 token 的三层」硬纪律 A）。
+           * 这里取包好 `rgb()` 的单点 **`toneOfAny('nav-mail')`**（＝官方深空工业协会的通讯色），才是"同款"的**真色**。
+           */}
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <span
+              className="app-comms-avatar"
+              title={tr('ui.Expedition.441')}
+              style={{ width: 26, height: 26, borderRadius: 7, marginTop: 0, color: toneOfAny('nav-mail'), borderColor: toneOfAny('nav-mail') }}
+            >
+              <Glyph name="faction-octopus" size={20} />
+            </span>
+            <span className="app-report-title">{tr('ui.Expedition.441')}</span>
+          </span>
+          {/* 两本账并排（船长口径：可支配 / 累计获得）——与卡面价格徽标同色系 */}
+          <span className="app-chip" title={tr('ui.IndustryPage.119', { p1: spendable, p2: earned })}>
+            {tr('ui.IndustryPage.119', { p1: spendable, p2: earned })}
+          </span>
+          <button className="app-btn is-small" onClick={onClose}>
+            {tr('ui.App.086')}
+          </button>
+        </div>
+        <div className="app-modal-body">
+          <PlugExchangeBody engine={engine} onToast={onToast} />
+        </div>
+      </div>
     </div>
   )
 }

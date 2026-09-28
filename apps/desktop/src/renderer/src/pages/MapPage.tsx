@@ -121,7 +121,7 @@ const WRECK_SORT_LABEL: Record<WreckSortKey, string> = {
   name: tr("ui.MapPage.001"),
 }
 
-export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = null, onOpenWormhole, onExploreWormhole, onAutoExploreWormhole, onGotoFit }: PageProps & {
+export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = null, onOpenWormhole, onExploreWormhole, onAutoExploreWormhole, onGotoFit, bountyShopSeq = 0 }: PageProps & {
   mapTab?: MapTab
   onMapTab?: (tab: MapTab) => void
   mapGoto?: MapGotoTarget | null
@@ -136,6 +136,12 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
    * 打捞页在驾驶船没装打捞器时给一行提示 ＋ 一个直接落到该船装配页的按钮。
    */
   onGotoFit?: (shipId: string) => void
+  /**
+   * **声望商店定位信号**（**2026-09-27 船长令**：「我打算将声望商店嵌入常驻悬赏内，作为子页面的存在」）：
+   * 三条入口（通讯弹窗/通讯页/组装机）跳过来时自增 ⇒ 常驻悬赏面板据此切到「声望商店」子页。
+   * 与 `craftFocus` / `mapGoto` 同款的"一次性定位信号"（值本身无意义，只认变化）。
+   */
+  bountyShopSeq?: number
 }) {
   // 外部跳转高亮（与组装机「去精炼」同款 is-goto 视觉；多目标 = 全部高亮、滚动定位第一张；
   // seq 只在跨页跳转时递增，普通切回本页不重放）
@@ -214,7 +220,7 @@ export function MapPage({ engine, onToast, mapTab = 'star', onMapTab, mapGoto = 
 
       {mapTab === 'mine' ? <MiningTab engine={engine} onToast={onToast} focusIds={mapGoto?.tab === 'mine' ? hlIds : []} /> : null}
       {mapTab === 'star' ? <ExpeditionPanel engine={engine} onToast={onToast} onOpenWormhole={onOpenWormhole} /> : null}
-      {mapTab === 'bounty' ? <BountyPanel engine={engine} onToast={onToast} /> : null}
+      {mapTab === 'bounty' ? <BountyPanel engine={engine} onToast={onToast} focusShopSeq={bountyShopSeq} /> : null}
       {mapTab === 'salvage' ? <SalvageTab engine={engine} onToast={onToast} onGotoFit={onGotoFit} focusIds={mapGoto?.tab === 'salvage' ? hlIds : []} /> : null}
       {mapTab === 'haul' ? <HaulingPanel engine={engine} onToast={onToast} /> : null}
       {mapTab === 'whscan' ? (

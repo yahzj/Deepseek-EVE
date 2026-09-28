@@ -229,8 +229,9 @@ export function CommsPage({
         </div>
       ) : null}
       {/**
-       * **「章鱼人兑换」窗口**（2026-09-26 船长令）：首匣那封信的「前往」直达这里。
-       * 与上面的结算面板同款：`.app-modal-*` 族弹层，内容整块交给 `PlugExchangeModal`。
+       * **旧「章鱼人兑换」弹层**（2026-09-26 船长令立；**2026-09-27 甲案**撤入口）。
+       * 首匣那封信的「前往」现在走 `onOpenPlugExchange`（App 层：切到星图页 · 常驻悬赏 ·
+       * 「声望商店」子页）⇒ 本层**只在没有该回调时**才可能亮（保留待删，见 `App.tsx` 同处注释）。
        */}
       {showPlugExchange ? (
         <PlugExchangeModal engine={engine} onToast={onToast} onClose={() => setShowPlugExchange(false)} />
