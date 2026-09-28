@@ -220,6 +220,37 @@ const FIXTURES: Fixture[] = [
     expectEn:
       'Stopped “Long-haul transport” automatically: this leg pays nothing (payment settles on arrival). (it docked back at “Home port” at once)',
   },
+  {
+    /**
+     * **长途运输 · 开跑那条日志的槽位映射**（**2026-09-27 船长报障**：「长途运输的文本也有错误
+     * （数值不对，还有额外显示了个 `{p8}`）」）。
+     *
+     * 钉两件事：① `{p8}` 槽（卸货备注）必须渲出来、**不许再漏出 `{p8}`**；
+     * ② `p5` 是**分钟**、`p6`/`p7` 才是**报酬区间**（此前三者喂错位 ⇒ 分钟显示成报酬）。
+     *
+     * ⚠ 这一段英文里**仍夹着中文标点**（`core.state.039` 的英文值以 `;` 开头、段尾把外壳的 `。`
+     * 也带进去）——那是既有边界（多段拼接的段自带标点），已单列进 backlog，本夹具先把**实得**钉住。
+     */
+    name: '长途运输·开跑日志（`{p8}` 尾槽 ＋ 槽位映射）',
+    text: '长途运输开始：沙猫 承运「母港 ⇄ 新港」（货仓 320 m³ 满载虚拟货物）——单段航程约 45 分钟，单段报酬随行情浮动在 12,000 ~ 20,000 信用点（每趟一价，到站结算）；船上原有货物已卸入仓库（50 单位）。',
+    textId: 'core.hauling.024',
+    textParams: {
+      p1: '沙猫',
+      p2: '母港',
+      p3: '新港',
+      p4: '320',
+      p5: 45,
+      p6: '12,000',
+      p7: '20,000',
+      p8: '50',
+      p8Id: 'core.state.039',
+      p8p1: 50,
+    },
+    expectZh:
+      '长途运输开始：沙猫 承运「母港 ⇄ 新港」（货仓 320 m³ 满载虚拟货物）——单段航程约 45 分钟，单段报酬随行情浮动在 12,000 ~ 20,000 信用点（每趟一价，到站结算）；船上原有货物已卸入仓库（50 单位）。',
+    expectEn:
+      'Long-haul transport started: 沙猫 runs “母港 ⇄ 新港” (a hold of 320 m³ filled with virtual freight) — a single leg takes about 45 minutes; single-leg pay drifts with the market between 12,000 and 20,000 credits (one price per trip, settled on arrival); the cargo already aboard was unloaded into the warehouse (50 units).',
+  },
 ]
 
 async function main(): Promise<void> {
