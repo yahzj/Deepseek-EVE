@@ -116,17 +116,17 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   ——冥铁/星髓/重钨/同位聚晶原覆盖比 0.16~0.82×（炼出来卖不掉），钛钢/银纹/晶态本就 ≥5.7× 故仅微调；
   //   虚空晶无精炼来源（回收彩头），池不动。】
   { key: 'min-tritanium', kind: 'item', refId: 'min-tritanium', rarity: 'common', basePrice: 8, poolTarget: 2_386_800, supplyFlow: 19_890 },
-  { key: 'min-pyerite', kind: 'item', refId: 'min-pyerite', rarity: 'common', basePrice: 12, poolTarget: 1_193_400, supplyFlow: 9_945 },
-  { key: 'min-mexallon', kind: 'item', refId: 'min-mexallon', rarity: 'common', basePrice: 20, poolTarget: 438_720, supplyFlow: 3_656 },
-  { key: 'min-nocxium', kind: 'item', refId: 'min-nocxium', rarity: 'common', basePrice: 90, poolTarget: 149_760, supplyFlow: 1_248 },
-  { key: 'min-isotope', kind: 'item', refId: 'min-isotope', rarity: 'common', basePrice: 55, poolTarget: 637_200, supplyFlow: 5_310 },
-  { key: 'min-starcore', kind: 'item', refId: 'min-starcore', rarity: 'common', basePrice: 245, poolTarget: 112_680, supplyFlow: 939 },
-  { key: 'min-darkiron', kind: 'item', refId: 'min-darkiron', rarity: 'common', basePrice: 780, poolTarget: 17_880, supplyFlow: 149 },
+  { key: 'min-pyerite', kind: 'item', refId: 'min-pyerite', rarity: 'common', basePrice: 12, poolTarget: 1_432_080, supplyFlow: 11_934 },
+  { key: 'min-mexallon', kind: 'item', refId: 'min-mexallon', rarity: 'common', basePrice: 20, poolTarget: 507_720, supplyFlow: 4_231 },
+  { key: 'min-nocxium', kind: 'item', refId: 'min-nocxium', rarity: 'common', basePrice: 90, poolTarget: 95_280, supplyFlow: 794 },
+  { key: 'min-isotope', kind: 'item', refId: 'min-isotope', rarity: 'common', basePrice: 55, poolTarget: 175_320, supplyFlow: 1_461 },
+  { key: 'min-starcore', kind: 'item', refId: 'min-starcore', rarity: 'common', basePrice: 245, poolTarget: 15_960, supplyFlow: 133 },
+  { key: 'min-darkiron', kind: 'item', refId: 'min-darkiron', rarity: 'common', basePrice: 780, poolTarget: 3_120, supplyFlow: 26 },
   // 【虚空晶（2026-09-14 船长：「虚空晶和虚空母矿也添加只收不卖」「市场不会出现…卖单」）：
   //   它是**24 张洞内蓝图 + 皇带鱼级**的通用主料，来源只有"虚空母矿精炼"与"回收彩头"
   //   ⇒ 只收不卖（NPC 不铺卖单、买入被拦），**收购照常**。`poolTarget/supplyFlow` 保留：
   //   池面仍参与均衡价与收购阶梯的计算，只是不再铺供应单。】
-  { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 1_800, poolTarget: 720, supplyFlow: 6, playerBuyable: false }, // 只收不卖（2026-09-14 船长）
+  { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 1_800, poolTarget: 1_560, supplyFlow: 13, playerBuyable: false }, // 只收不卖（2026-09-14 船长）
   // ── 虫洞战利品与经济扩充（船长 2026-09-15 确认）：谜质精华只收不卖 · 奢侈品正常交易 · 两个新货柜只收不卖 ──
   //   ⚠ **档位口径（2026-09-15 落码）**：凡"玩家产出要拿去卖钱"的行一律 **common（常驻）**——
   //   common 才每 60s 窗口铺 3 档收购阶梯（池商品）或 85% 掷一次收购单（单件平价品）；

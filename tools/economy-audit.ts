@@ -292,21 +292,33 @@ say('\n════════ 五、卖矿变现：满舱一轮的实收单价
 }
 
 /* ───────── ⑥ 每种矿石的精炼收益（2026-09-28 船长令） ───────── */
-say('\n════════ 六、每种矿石的精炼收益（每 m³ 原矿：直接卖 vs 炼成矿物卖）════════')
+say('\n════════ 六、每种矿石的精炼收益（每 m³ 与**每台炉每小时**两张账）════════')
 {
   /*
-   * 船长令：「**调整完后，将每种矿石的精炼收益也贴出来**」。
+   * 船长令：「**调整完后，将每种矿石的精炼收益也贴出来**」＋（追问）「**精炼的增值率收益是按单位时间算吗**」
+   * ＋（据此下的令）「**调平炉子的时间，使其单位时间收益率差不多**」。
+   *
    * 口径：两条路都以**市场常驻价 `basePrice`**（现货）计，都不含交易税 —— 比的是"同一批矿走哪条路更值"。
    * - 直接卖：`1 单位 × 矿石价`，折成**每 m³**要 ÷ `unitM3`（体积越小、每 m³ 件数越多）；
    * - 炼成矿物卖：`Σ(每单位原矿产出件数 × 矿物价)`，同样折成每 m³。
-   * - **精炼增值率 = 精炼 ÷ 直接卖 − 1**（负数 = 炼不如卖）。
+   * - **精炼增值率 = 精炼 ÷ 直接卖 − 1**（比值 ⇒ 每 m³ 与每小时同值）。
+   *
+   * ⚠ **每台炉每小时**那一列才是"调平"的判据：炉子是"每 `refineBatchUnits` **单位**一炉"，
+   * 而单位体积从 0.5 m³ 到 8 m³ ⇒ 不调周期的话，单炉 m³/时 会差 20 倍。
+   * 2026-09-28 已把 `refineCycleMs` 调成与 `unitM3 × 每m³精炼价值` 成正比
+   * （目标 = 单炉 870,000 ISK/时；锚 = 6 台炉 ≈ 追平 1 艘鲸王满配的 195,353 m³/时）。
    */
   const priceOf = (id: string): number => ctx.marketGoods.get(id)?.basePrice ?? ctx.items.get(id)?.baseSellPriceIsk ?? 0
-  say('| 矿石 | 单价 | unitM3 | **每 m³ 直接卖** | 炼成什么（每单位原矿 → 件数×单价） | **每 m³ 精炼** | 精炼增值率 | 炉周期 |')
-  say('|---|---|---|---|---|---|---|---|')
-  const rows: Array<{ name: string; raw: number; refined: number }> = []
+  /** 主控炉满技能：批容 ×1.3（炉膛扩容学）、周期 ×0.600（炉心熔炼学 ×0.8 × 产线节拍学 ×0.75） */
+  const BATCH_MUL = 1 + 0.06 * 5
+  const CYCLE_MUL = (1 - 0.04 * 5) * (1 - 0.05 * 5)
+  /** 鲸王满配 m³/时（实测：369 m³ ÷ 6.80s）——"喂饱一艘船要几台炉"的分母 */
+  const KING_M3H = 195_353
+  say('| 矿石 | 单价 | unitM3 | **每 m³ 直接卖** | 炼成什么（每单位原矿 → 件数×单价） | **每 m³ 精炼** | 精炼增值率 | 炉周期（基础→满技能） | **单炉 m³/时** | **单炉精炼 ISK/时** | 喂饱 1 艘鲸王要几台炉 |')
+  say('|---|---|---|---|---|---|---|---|---|---|---|')
+  const rows: Array<{ name: string; raw: number; refined: number; perFurnace: number; m3h: number; gain: number }> = []
   for (const ore of ctx.items.values()) {
-    if (ore.kind !== 'ore') continue
+    if (ore.kind !== 'ore' && ore.kind !== 'gas' && ore.kind !== 'ice') continue
     const unitM3 = Math.max(0.01, ore.unitM3 ?? 1)
     const rawPerM3 = (ore.baseSellPriceIsk ?? 0) / unitM3
     const parts: string[] = []
@@ -317,24 +329,30 @@ say('\n════════ 六、每种矿石的精炼收益（每 m³ 原�
       parts.push(`${ctx.items.get(r.mineralId)?.name ?? r.mineralId} ${r.perOre}×${isk(p)}`)
     }
     const refinedPerM3 = refinedPerUnit / unitM3
-    rows.push({ name: ore.name, raw: rawPerM3, refined: refinedPerM3 })
-    const gain = rawPerM3 > 0 ? refinedPerM3 / rawPerM3 - 1 : 0
+    const baseCycleS = (ore.refineCycleMs ?? 0) / 1000
+    const cycleS = baseCycleS * CYCLE_MUL
+    const batchUnits = (ore.refineBatchUnits ?? 100) * BATCH_MUL
+    const m3h = cycleS > 0 ? (batchUnits / cycleS) * 3600 * unitM3 : 0
+    const perFurnace = m3h * refinedPerM3
+    rows.push({ name: ore.name, raw: rawPerM3, refined: refinedPerM3, perFurnace, m3h, gain: rawPerM3 > 0 ? refinedPerM3 / rawPerM3 - 1 : 0 })
     say(
       `| ${ore.name} | ${isk(ore.baseSellPriceIsk ?? 0)} | ${unitM3} | ${isk(rawPerM3)} | ${parts.join(' ＋ ')} | ${isk(refinedPerM3)} | ` +
-        `${gain >= 0 ? '+' : ''}${(gain * 100).toFixed(1)}% | ${ore.refineBatchUnits ?? '—'} 单位 / ${(ore.refineCycleMs ?? 0) / 1000}s |`,
+        `${(rows[rows.length - 1]!.gain * 100).toFixed(1)}% | ${baseCycleS.toFixed(0)}s → ${cycleS.toFixed(1)}s | ${isk(m3h)} | **${isk(perFurnace)}** | ${(KING_M3H / Math.max(1, m3h)).toFixed(2)} |`,
     )
   }
   const rawAvg = rows.reduce((a, r) => a + r.raw, 0) / Math.max(1, rows.length)
   const refAvg = rows.reduce((a, r) => a + r.refined, 0) / Math.max(1, rows.length)
-  const best = rows.reduce((a, r) => (r.refined / Math.max(1, r.raw) > a.refined / Math.max(1, a.raw) ? r : a))
-  const worst = rows.reduce((a, r) => (r.refined / Math.max(1, r.raw) < a.refined / Math.max(1, a.raw) ? r : a))
   say(
     `· 均值：直接卖 ${isk(rawAvg)} ISK/m³ · 精炼 ${isk(refAvg)} ISK/m³ ⇒ 精炼整体 ${(((refAvg / rawAvg) - 1) * 100).toFixed(1)}%`,
   )
+  say(`· 单循环价值的域极差（每 m³ 直接卖）：${(Math.max(...rows.map((r) => r.raw)) / Math.min(...rows.map((r) => r.raw))).toFixed(3)}×`)
+  say(`· **精炼增值率域极差**：${(Math.max(...rows.map((r) => r.gain)) / Math.min(...rows.map((r) => r.gain))).toFixed(3)}×（目标 ≈ 1）`)
+  const pf = rows.map((r) => r.perFurnace)
   say(
-    `· 最好 / 最差：**${best.name}** ${((best.refined / Math.max(1, best.raw) - 1) * 100).toFixed(1)}% ／ **${worst.name}** ${((worst.refined / Math.max(1, worst.raw) - 1) * 100).toFixed(1)}%`,
+    `· **单炉精炼 ISK/时 域极差**：${isk(Math.min(...pf))} ~ ${isk(Math.max(...pf))} ⇒ **${(Math.max(...pf) / Math.min(...pf)).toFixed(3)}×**（2026-09-28 调平前为 19.90×）`,
   )
-  say(`· 单循环价值的域极差（每 m³ 直接卖）：${(Math.max(...rows.map((r) => r.raw)) / Math.min(...rows.map((r) => r.raw))).toFixed(2)}×`)
+  const fu = rows.map((r) => KING_M3H / Math.max(1, r.m3h))
+  say(`· 喂饱 1 艘鲸王满配所需炉位数：${Math.min(...fu).toFixed(2)} ~ ${Math.max(...fu).toFixed(2)} 台（满配上限 = 主控 1 ＋ AI 核心 5 = 6 台）`)
 }
 
 mkdirSync(join(process.cwd(), 'tools', '_ui-artifacts'), { recursive: true })
