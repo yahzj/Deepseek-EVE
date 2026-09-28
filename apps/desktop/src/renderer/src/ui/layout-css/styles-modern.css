@@ -12057,6 +12057,15 @@ html[data-locale='en'] body {
 .app-skilltree-key.is-has { border-color: rgb(var(--wui-green-soft) / 0.45); color: rgb(var(--wui-green-soft)); }
 .app-skilltree-key.is-none { color: rgb(var(--wui-text-dim)); }
 .app-skilltree-key.is-locked { border-style: dashed; color: rgb(var(--wui-text-dim)); opacity: .75; }
+/* **图例兼筛选器**（**2026-09-27 船长令**：「这几个标签允许玩家点击，点击后筛选出对应类型的技能」）：
+   从 `<span>` 升为 `<button>` —— 这里只补"能点"与"选中"两层，**不改既有五态配色**（状态色照旧由上面那几条给）。
+   ⚠ 不写 `background: none`：本页这两颗按钮靠"描边 + 文字色"表状态，底色留空才与旁边那句灰字同底。 */
+.app-skilltree-key { font-family: inherit; cursor: pointer; transition: color .15s, border-color .15s; }
+.app-skilltree-key:hover { color: rgb(var(--wui-text)); }
+.app-skilltree-key.is-active { color: rgb(var(--wui-accent)); border-color: rgb(var(--wui-accent) / 0.75); background: rgb(var(--wui-accent) / 0.08); font-weight: 600; }
+/* 计数（点下去能看到的条数）：等宽数字，免得数字变化时标签宽度跳动 */
+.app-skilltree-key-n { margin-left: var(--wui-sp-5); font-family: var(--wui-mono); font-variant-numeric: tabular-nums; opacity: .8; }
+.app-skilltree-key.is-clear { border-style: dashed; }
 .app-skilltree-canvas { min-height: 0; overflow: auto; padding-right: var(--wui-sp-2); }
 /* 每本技能书一张小图，横向排开（「全部」档就是该大类所有书并排） */
 .app-skilltree-bookrow { display: flex; align-items: flex-start; gap: var(--wui-sp-12); flex-wrap: wrap; }

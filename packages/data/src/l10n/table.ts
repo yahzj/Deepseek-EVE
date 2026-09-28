@@ -4974,6 +4974,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.SkillTree.024": { zh: "已购买训练许可（{p1} 信用点）——现在可以把它排入训练队列了。", en: "Training License purchased ({p1} credits) — you can now queue this skill." },
   "ui.SkillTree.025": { zh: "需先购买训练许可（{p1} 信用点）", en: "Requires a Training License ({p1} credits)" },
   "ui.SkillTree.026": { zh: "确认支付 {p1} ISK", en: "Confirm — pay {p1} ISK" },
+  /**
+   * **状态筛选**（**2026-09-27 船长令**：「点节点看说明与训练按钮 / 已满级 / 训练中 / 已排队 / 已练 /
+   * 未学 / 未解锁 / **技能科技树这几个标签允许玩家点击，点击后筛选出对应类型的技能。**」）。
+   *
+   * 七颗标签**复用既有 id**（`ui.SkillTree.004~008` 与 `.017`，文案一字未改），这里只补"筛选态"用到的两句。
+   */
+  "ui.SkillTree.027": { zh: "查看全部", en: "Show all" },
+  "ui.SkillTree.028": { zh: "本页没有「{p1}」的技能。再点一次那颗标签可看全部。", en: "No skills are “{p1}” on this page. Click that chip again to show all." },
   "core.firstTasks.001": { zh: "◆ 任务已达成：「{p1}」——回「任务中心」点「完成」继续下一步。", en: "◆ Task reached: “{p1}” — open the Task Center and click Complete to move on." },
   "core.firstRewards.002": { zh: "未知任务：{p1}。", en: "Unknown task: {p1}." },
   "core.firstRewards.003": { zh: "这条任务已经完成过了。", en: "That task is already complete." },
