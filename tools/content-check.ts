@@ -1121,6 +1121,26 @@ for (const sbp of SHIP_BLUEPRINTS) {
     { skill: 'cartography', per: 0.06, call: 'explore.ts scanSkillFactor（2026-09-11 船长裁决「乙」接活到就地扫描窗口）' },
     { skill: 'part-forming', per: 0.08, call: 'manufacturing.ts calcBuildDurationMs（基础零件制造时间 · 2026-09-20 零件体系）' },
     { skill: 'precision-assembly', per: 0.08, call: 'manufacturing.ts calcBuildDurationMs（高级零件制造时间 · 2026-09-20 零件体系）' },
+
+    /* ── 2026-09-27 船长令（R4/R5 上位技能批）：18 条上位，每级值 = 父技能每级 ÷ 3 ── */
+    { skill: 'furnace-amplification', per: 0.02, call: 'industry.ts（精炼炉批容；与炉膛扩容学同乘区）' },
+    { skill: 'furnace-thermal-control', per: 0.015, call: 'industry.ts（精炼炉周期；与炉温精调学同乘区）' },
+    { skill: 'smelting-mastery', per: 0.01, call: 'industry.ts refineRate（相加计入产出倍率）' },
+    { skill: 'part-forming-integration', per: 0.025, call: 'manufacturing.ts calcBuildDurationMs（基础零件）' },
+    { skill: 'precision-assembly-integration', per: 0.025, call: 'manufacturing.ts calcBuildDurationMs（高级零件）' },
+    { skill: 'industry-integration', per: 0.015, call: 'manufacturing.ts calcBuildDurationMs' },
+    { skill: 'salvager-overclock', per: 0.01, call: 'salvaging.ts salvagerCyclesOf（打捞器周期）' },
+    { skill: 'wreck-refining', per: 0.025, call: 'salvage.ts recycleRefiningMultiplier（保底价值）' },
+    { skill: 'salvage-recycling-integration', per: 0.015, call: 'industry.ts（回收炉周期）' },
+    { skill: 'ai-servicing-integration', per: 0.01, call: 'ai.ts（副船采矿循环，读数口与推进口同源）' },
+    { skill: 'advanced-gunnery', per: 0.015, call: 'combat.ts dmgScale（全武器单发）' },
+    { skill: 'kinetic-ballistics', per: 0.015, call: 'combat.ts famMult（动能炮台）' },
+    { skill: 'missile-guidance', per: 0.015, call: 'combat.ts famMult（导弹架）' },
+    { skill: 'beam-focusing', per: 0.015, call: 'combat.ts famMult（激光炮）' },
+    { skill: 'fire-control-integration', per: 0.01, call: 'combat.ts fireMult（炮台/导弹命中）' },
+    { skill: 'rapid-reload', per: 0.015, call: 'combat.ts（装填）' },
+    { skill: 'drone-servicing-integration', per: 0.015, call: 'combat.ts（无人机装填）' },
+    { skill: 'armed-ops-integration', per: 0.01, call: 'combat.ts dmgScale（武装舰类别）' },
   ]
   const skillById = new Map(SKILLS.map((s) => [s.id, s]))
   const claimsOfSkill = (d: string): number[] => [...d.matchAll(/⟦([\d.]+)/g)].map((m) => Number(m[1]))

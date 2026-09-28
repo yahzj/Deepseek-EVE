@@ -624,6 +624,25 @@ export const EN_SKILLS: EnTable = {
   'hauler-ops': { name: 'Hauler Operations', description: 'Specialized piloting of the hauler family: +⟦5%⟧ cargo capacity per level while flying a hauler.' },
   compression: { name: 'Compression', description: 'Raw material compression: −⟦6%⟧ hold volume for ore, gas and ice per level (max −⟦30%⟧).' },
   'hold-management': { name: 'Hold Management', description: 'Hold planning and stowage: a further +⟦3%⟧ fleet-wide cargo capacity per level (stacks multiplicatively with Deep Space Logistics).' },
+  /* ── 2026-09-27 船长令（R4/R5 上位技能批）：18 条上位的英文（⟦⟧ 数量与中文一致）── */
+  'furnace-amplification': { name: 'Further rework of the refinery chamber', description: '+⟦2%⟧ refining batch size per level (a further +⟦10%⟧ at max; multiplies with Furnace Expansion).' },
+  'furnace-thermal-control': { name: 'Constant-temperature furnace control', description: '−⟦1.5%⟧ refining batch cycle per level (a further −⟦7.5%⟧ at max; multiplies with Furnace Precision).' },
+  'smelting-mastery': { name: 'Further refinery output multiplier', description: '+⟦1%⟧ per level (a further +⟦5%⟧ at max; added into the refinery output multiplier alongside Reprocessing).' },
+  'part-forming-integration': { name: 'Integrated forming scheduling', description: 'basic part build time −⟦2.5%⟧ per level (a further −⟦12.5%⟧ at max; multiplies with Part Forming).' },
+  'precision-assembly-integration': { name: 'Integrated precision assembly', description: 'advanced part build time −⟦2.5%⟧ per level (a further −⟦12.5%⟧ at max; multiplies with Precision Assembly).' },
+  'industry-integration': { name: 'Integrated multi-line scheduling', description: '−⟦1.5%⟧ blueprint build time per level (a further −⟦7.5%⟧ at max; multiplies with Industry).' },
+  'salvager-overclock': { name: 'Overclocked salvager operation', description: '−⟦1%⟧ salvager cycle per level (a further −⟦5%⟧ at max; multiplies with Salvage Rigging).' },
+  'wreck-refining': { name: 'Further reprocessing of wreck salvage', description: '+⟦2.5%⟧ guaranteed raw material output per level (a further +⟦12.5%⟧ at max; multiplies with Salvage Refining).' },
+  'salvage-recycling-integration': { name: 'Integrated wreck recycling line', description: '−⟦1.5%⟧ recycling batch cycle per level (a further −⟦7.5%⟧ at max; multiplies with Salvage Recycling).' },
+  'ai-servicing-integration': { name: 'Integrated servicing of AI auxiliary mining gear', description: '−⟦1%⟧ auxiliary mining cycle per level (a further −⟦5%⟧ at max; multiplies with Auxiliary Ship Servicing).' },
+  'advanced-gunnery': { name: 'Advanced shipboard weapons training', description: '+⟦1.5%⟧ real-time single-shot damage per level (a further +⟦7.5%⟧ at max; multiplies with Gunnery).' },
+  'kinetic-ballistics': { name: 'Kinetic ballistic computation', description: '+⟦1.5%⟧ kinetic weapon single-shot damage per level (a further +⟦7.5%⟧ at max; multiplies with Kinetic Gunnery).' },
+  'missile-guidance': { name: 'Missile guidance correction', description: '+⟦1.5%⟧ explosive ammo single-shot damage per level (a further +⟦7.5%⟧ at max; multiplies with Missile Launching).' },
+  'beam-focusing': { name: 'Beam focusing and shaping', description: '+⟦1.5%⟧ energy beam single-shot damage per level (a further +⟦7.5%⟧ at max; multiplies with Laser Cannon).' },
+  'fire-control-integration': { name: 'Integrated fire-control and targeting solution', description: '+⟦1%⟧ turret and missile launcher accuracy per level (a further +⟦5%⟧ at max; multiplies with Fire Control).' },
+  'rapid-reload': { name: 'Rapid reload drills', description: '−⟦1.5%⟧ reload time for turrets, missile launchers and laser cannons per level (a further −⟦7.5%⟧ at max; multiplies with Reload Drills).' },
+  'drone-servicing-integration': { name: 'Integrated deck servicing', description: '−⟦1.5%⟧ drone reload time per level (a further −⟦7.5%⟧ at max; multiplies with Drone Servicing).' },
+  'armed-ops-integration': { name: 'Integrated armed-hull piloting', description: 'while flying an armed ship, +⟦1%⟧ single-shot damage for all weapons per level (a further +⟦5%⟧ at max; multiplies with Armed Ship Operations).' },
 }
 
 /**

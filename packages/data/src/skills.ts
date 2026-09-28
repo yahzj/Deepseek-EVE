@@ -138,6 +138,16 @@ export const SKILLS: readonly SkillDef[] = [
     description: '武装舰专精驾驶：驾驶武装舰时所有武器（含基础舰炮）单发伤害每级 +⟦3%⟧（满级 +⟦15%⟧；与炮术学、武器类型加成乘算叠加）。',
   },
   {
+    id: 'armed-ops-integration',
+    name: '武装舰统合操作',
+    group: '战斗',
+    rank: 5,
+    branch: 'b-warship',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「armed-ops」的上位补充，门槛只要父技能 Lv1
+    prereq: ['armed-ops'],
+    description: '武装舰统合驾驶：驾驶武装舰时所有武器单发伤害每级再 +⟦1%⟧（满级再 +⟦5%⟧；与武装舰操作乘算叠加）。',
+  },
+  {
     id: 'armored-ops',
     // 2026-09-16 船长：「将重装舰类的名称改为装甲舰」⇒ 展示名改「装甲舰操作」（id `armored-ops` 不变，存档零迁移）
     name: '装甲舰操作',
@@ -265,6 +275,16 @@ export const SKILLS: readonly SkillDef[] = [
     description: '进一步提高精炼产出倍率：每级 +⟦3%⟧（与精炼学双修满级合计 ⟦165%⟧）。',
   },
   {
+    id: 'smelting-mastery',
+    name: '熔炉精通学',
+    group: '工业',
+    rank: 5,
+    branch: 'b-refine',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「reprocessing」的上位补充，门槛只要父技能 Lv1
+    prereq: ['reprocessing'],
+    description: '精炼炉产出倍率进一步提高：每级 +⟦1%⟧（满级再 +⟦5%⟧；与高级回收处理相加计入产出倍率）。',
+  },
+  {
     id: 'industry',
     name: '工业理论',
     group: '工业',
@@ -273,6 +293,16 @@ export const SKILLS: readonly SkillDef[] = [
     prereq: ['batch-production'],
     // 2026-09-08 技能加成下调约 20%：−5% → −4%
     description: '制造业核心理论：每级缩短蓝图制造时间 ⟦4%⟧（与批量生产学乘算叠加）。',
+  },
+  {
+    id: 'industry-integration',
+    name: '流水线统合学',
+    group: '工业',
+    rank: 5,
+    branch: 'b-craft',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「industry」的上位补充，门槛只要父技能 Lv1
+    prereq: ['industry'],
+    description: '多线装配统合排程：蓝图制造时间每级再 −⟦1.5%⟧（满级再 −⟦7.5%⟧；与工业理论乘算叠加）。',
   },
   {
     id: 'materials',
@@ -354,6 +384,16 @@ export const SKILLS: readonly SkillDef[] = [
     description: '精炼炉膛容积改造：精炼单批处理量每级 +⟦6%⟧（手动与 AI 核心驱动同享）。',
   },
   {
+    id: 'furnace-amplification',
+    name: '炉膛倍增学',
+    group: '工业',
+    rank: 4,
+    branch: 'b-refine',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「furnace-expansion」的上位补充，门槛只要父技能 Lv1
+    prereq: ['furnace-expansion'],
+    description: '精炼炉膛容积进一步改造：精炼单批处理量每级再 +⟦2%⟧（满级再 +⟦10%⟧；与炉膛扩容学乘算叠加）。',
+  },
+  {
     id: 'furnace-precision',
     name: '炉温精调学',
     group: '工业',
@@ -363,6 +403,16 @@ export const SKILLS: readonly SkillDef[] = [
     // 与炉心熔炼学同乘区（都是精炼炉周期），故挂它为前置。
     prereq: ['core-smelting'],
     description: '炉温精调与热工控制：精炼炉单批周期每级再缩短 ⟦4%⟧（满级 −⟦20%⟧；手动与 AI 核心驱动同享，与炉心熔炼学、产线节拍学乘算叠加）。',
+  },
+  {
+    id: 'furnace-thermal-control',
+    name: '恒温炉控学',
+    group: '工业',
+    rank: 5,
+    branch: 'b-refine',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「furnace-precision」的上位补充，门槛只要父技能 Lv1
+    prereq: ['furnace-precision'],
+    description: '精炼炉恒温控制：精炼炉单批周期每级再缩短 ⟦1.5%⟧（满级再 −⟦7.5%⟧；与炉温精调学乘算叠加）。',
   },
   {
     id: 'batch-production',
@@ -402,6 +452,16 @@ export const SKILLS: readonly SkillDef[] = [
     description: 'AI 副船的采集设备整备：副船采矿循环周期每级缩短 ⟦3%⟧（在 AI 核心效率之上乘算）。',
   },
   {
+    id: 'ai-servicing-integration',
+    name: '副船统合整备学',
+    group: '工业',
+    rank: 4,
+    branch: 'b-auto',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「ai-servicing」的上位补充，门槛只要父技能 Lv1
+    prereq: ['ai-servicing'],
+    description: 'AI 副船采集设备统合整备：副船采矿循环周期每级再缩短 ⟦1%⟧（满级再 −⟦5%⟧；与副船整备学乘算叠加）。',
+  },
+  {
     id: 'offline-ops',
     name: '离线作业管理学',
     group: '工程',
@@ -426,12 +486,32 @@ export const SKILLS: readonly SkillDef[] = [
     description: '残骸回收（精炼炉拆解残骸）的批周期优化：批周期每级 −⟦4%⟧（手动与 AI 核心驱动同享）。',
   },
   {
+    id: 'salvage-recycling-integration',
+    name: '残骸流水线学',
+    group: '工业',
+    rank: 5,
+    branch: 'b-salvage',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「salvage-recycling」的上位补充，门槛只要父技能 Lv1
+    prereq: ['salvage-recycling'],
+    description: '残骸回收线统合：回收批周期每级再 −⟦1.5%⟧（满级再 −⟦7.5%⟧；与残骸回收学乘算叠加）。',
+  },
+  {
     id: 'salvage-rigging',
     name: '打捞装置整备学',
     group: '工业',
     rank: 3,
     branch: 'b-salvage',
     description: '打捞器的维护与调校：打捞器单轮周期每级缩短 ⟦3%⟧（主控与 AI 同享）。',
+  },
+  {
+    id: 'salvager-overclock',
+    name: '打捞器超频学',
+    group: '工业',
+    rank: 4,
+    branch: 'b-salvage',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「salvage-rigging」的上位补充，门槛只要父技能 Lv1
+    prereq: ['salvage-rigging'],
+    description: '打捞器超频运转：打捞器单轮周期每级再缩短 ⟦1%⟧（满级再 −⟦5%⟧；与打捞装置整备学乘算叠加）。',
   },
   {
     id: 'wreck-assaying',
@@ -450,6 +530,16 @@ export const SKILLS: readonly SkillDef[] = [
     description: '回收提纯工艺：残骸回收的保底原材料产出每级 +⟦8%⟧（满级共 +40%）。',
   },
   {
+    id: 'wreck-refining',
+    name: '残骸精炼学',
+    group: '工业',
+    rank: 4,
+    branch: 'b-salvage',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「salvage-refining」的上位补充，门槛只要父技能 Lv1
+    prereq: ['salvage-refining'],
+    description: '残骸回收的再提纯：残骸回收保底原材料产出每级再 +⟦2.5%⟧（满级再 +⟦12.5%⟧；与残骸提纯学乘算叠加）。',
+  },
+  {
     id: 'part-forming',
     name: '零件成型工艺学',
     group: '工业',
@@ -457,6 +547,16 @@ export const SKILLS: readonly SkillDef[] = [
     branch: 'b-craft',
     // 2026-09-20 船长定：基础零件制造时间每级 −8%（满级 −40%）
     description: '基础零件（电路基板、装甲板、结构框架等）的成型排程：基础零件制造时间每级 −⟦8%⟧（满级 −⟦40%⟧）。',
+  },
+  {
+    id: 'part-forming-integration',
+    name: '零件成型统合学',
+    group: '工业',
+    rank: 4,
+    branch: 'b-craft',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「part-forming」的上位补充，门槛只要父技能 Lv1
+    prereq: ['part-forming'],
+    description: '零件成型排程统合：基础零件制造时间每级再 −⟦2.5%⟧（满级再 −⟦12.5%⟧；与零件成型工艺学乘算叠加）。',
   },
   {
     id: 'precision-assembly',
@@ -467,6 +567,16 @@ export const SKILLS: readonly SkillDef[] = [
     prereq: ['part-forming'],
     // 2026-09-20 船长定：高级零件制造时间每级 −8%（满级 −40%）
     description: '高级零件（无人机神经原件、护盾发生装置等）的精密装配：高级零件制造时间每级 −⟦8%⟧（满级 −⟦40%⟧）。',
+  },
+  {
+    id: 'precision-assembly-integration',
+    name: '精密装配统合学',
+    group: '工业',
+    rank: 5,
+    branch: 'b-craft',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「precision-assembly」的上位补充，门槛只要父技能 Lv1
+    prereq: ['precision-assembly'],
+    description: '高级零件精密装配统合：高级零件制造时间每级再 −⟦2.5%⟧（满级再 −⟦12.5%⟧；与精密装配学乘算叠加）。',
   },
 
   // ───────── 战斗（2026-09-05 武器族技能批次：三形态专精乘区，乘算于炮术学之上） ─────────
@@ -479,6 +589,16 @@ export const SKILLS: readonly SkillDef[] = [
     description: '舰载武器基础训练：每级提高实时战斗的单发伤害 ⟦5%⟧（三形态武器与基础舰炮通用，与舰船类型加成乘算）。',
   },
   {
+    id: 'advanced-gunnery',
+    name: '高级炮术学',
+    group: '战斗',
+    rank: 4,
+    branch: 'b-weapon',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「gunnery」的上位补充，门槛只要父技能 Lv1
+    prereq: ['gunnery'],
+    description: '舰载武器进阶训练：实时战斗单发伤害每级再 +⟦1.5%⟧（满级再 +⟦7.5%⟧；与炮术学乘算叠加）。',
+  },
+  {
     id: 'kinetic-gunnery',
     name: '动能炮术',
     group: '战斗',
@@ -486,6 +606,16 @@ export const SKILLS: readonly SkillDef[] = [
     branch: 'b-weapon',
     prereq: ['gunnery'],
     description: '动能武器（炮台）专精：单发伤害每级 +⟦5%⟧（与炮术学乘算叠加）。',
+  },
+  {
+    id: 'kinetic-ballistics',
+    name: '动能射击学',
+    group: '战斗',
+    rank: 4,
+    branch: 'b-weapon',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「kinetic-gunnery」的上位补充，门槛只要父技能 Lv1
+    prereq: ['kinetic-gunnery'],
+    description: '动能射击解算：动能武器单发伤害每级再 +⟦1.5%⟧（满级再 +⟦7.5%⟧；与动能炮术乘算叠加）。',
   },
   {
     id: 'missile-launching',
@@ -497,6 +627,16 @@ export const SKILLS: readonly SkillDef[] = [
     description: '导弹架专精：爆破弹药单发伤害每级 +⟦5%⟧（与炮术学乘算叠加；追踪命中与近盲安全射距不受影响）。',
   },
   {
+    id: 'missile-guidance',
+    name: '导弹制导学',
+    group: '战斗',
+    rank: 4,
+    branch: 'b-weapon',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「missile-launching」的上位补充，门槛只要父技能 Lv1
+    prereq: ['missile-launching'],
+    description: '导弹制导修正：爆破弹药单发伤害每级再 +⟦1.5%⟧（满级再 +⟦7.5%⟧；与导弹发射学乘算叠加）。',
+  },
+  {
     id: 'laser-cannon',
     name: '激光炮学',
     group: '战斗',
@@ -504,6 +644,16 @@ export const SKILLS: readonly SkillDef[] = [
     branch: 'b-weapon',
     prereq: ['gunnery'],
     description: '激光炮专精：能量光束单发伤害每级 +⟦5%⟧（与炮术学乘算叠加；必中特性不受影响）。',
+  },
+  {
+    id: 'beam-focusing',
+    name: '光束聚焦学',
+    group: '战斗',
+    rank: 4,
+    branch: 'b-weapon',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「laser-cannon」的上位补充，门槛只要父技能 Lv1
+    prereq: ['laser-cannon'],
+    description: '光束聚焦整形：能量光束单发伤害每级再 +⟦1.5%⟧（满级再 +⟦7.5%⟧；与激光炮学乘算叠加）。',
   },
   {
     id: 'fire-control',
@@ -514,12 +664,32 @@ export const SKILLS: readonly SkillDef[] = [
     description: '火控解算优化：炮台/导弹架的命中率每级 +⟦3%⟧（相对乘算；激光必中不受影响）。',
   },
   {
+    id: 'fire-control-integration',
+    name: '火控统合学',
+    group: '战斗',
+    rank: 5,
+    branch: 'b-aim',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「fire-control」的上位补充，门槛只要父技能 Lv1
+    prereq: ['fire-control'],
+    description: '火控与索敌统合解算：炮台与导弹架命中率每级再 +⟦1%⟧（满级再 +⟦5%⟧；与火控阵列学乘算叠加）。',
+  },
+  {
     id: 'reload-drills',
     name: '武器装填技术',
     group: '战斗',
     rank: 4,
     branch: 'b-aim',
     description: '装填班组训练：炮台/导弹架/激光炮的装填时间每级 −⟦4%⟧。',
+  },
+  {
+    id: 'rapid-reload',
+    name: '速射装填学',
+    group: '战斗',
+    rank: 5,
+    branch: 'b-aim',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「reload-drills」的上位补充，门槛只要父技能 Lv1
+    prereq: ['reload-drills'],
+    description: '速射装填流程：炮台、导弹架与激光炮的装填时间每级再 −⟦1.5%⟧（满级再 −⟦7.5%⟧；与武器装填技术乘算叠加）。',
   },
   {
     id: 'drone-warfare',
@@ -544,6 +714,16 @@ export const SKILLS: readonly SkillDef[] = [
     rank: 3,
     branch: 'b-drone',
     description: '甲板整备与再出击优化：无人机的装填时间每级 −⟦4%⟧（武器装填技术只作用于炮台/导弹架/激光炮，两者独立乘算）。',
+  },
+  {
+    id: 'drone-servicing-integration',
+    name: '无人机整备统合学',
+    group: '战斗',
+    rank: 5,
+    branch: 'b-drone',
+    // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「drone-servicing」的上位补充，门槛只要父技能 Lv1
+    prereq: ['drone-servicing'],
+    description: '无人机甲板整备统合：无人机装填时间每级再 −⟦1.5%⟧（满级再 −⟦7.5%⟧；与无人机整备学乘算叠加）。',
   },
   /* ───────── 无人机线扩展（2026-09-10 船长拍板：配合"近防炮可 100% 损坏机群 + 战后回收"） ─────────
    * 五条新技能覆盖"打得更痛 / 更耐打（两档）/ 更难被点中 / 战后捡得回来"；数值接线在 core/combat.ts */

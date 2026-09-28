@@ -1181,7 +1181,9 @@ export function recyclePoolMeanIsk(
  *  （2026-09-14 重构：原先 0.08 与技能 id 分处两个函数，契约报"读取点附近找不到"。） */
 export function recycleRefiningMultiplier(state: GameState): number {
   const lv = Math.min(5, state.skills.trained['salvage-refining'] ?? 0)
-  return 1 + 0.08 * lv
+  // 2026-09-27 船长令（R4/R5 上位技能批）：残骸精炼学 +2.5%/级（与残骸提纯学乘算叠加）
+  const upLv = Math.min(5, state.skills.trained['wreck-refining'] ?? 0)
+  return (1 + 0.08 * lv) * (1 + 0.025 * upLv)
 }
 
 /** 每批保底**价值**（ISK）：体积 × 当量单位 × 池均价 × 提纯学乘数。

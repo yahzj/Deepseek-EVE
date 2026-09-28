@@ -307,3 +307,45 @@
 
 - 新大类的标签页**没有图标与色调**（与「探索」「物流」一致，那两个本来也没有）——补不补图标属观感，留给船长定。
 - 技能页大类导航由 7 格变 8 格：`.app-skilltree-canvas` 本身是 `overflow:auto` 的滚动区，导航条若换行由画布高度吸收，不会让整页出现滚动条；**实际换不换行我没有跑渲染读数**。
+
+## 六、批二实现记录（2026-09-27）
+
+**行为变化**：技能 88 → **106 条**（+18 条 R4/R5 上位）；工业 21 → 31、战斗 20 → 28、矿业 7 不变；每条都是既有技能的上位补充，前置 = 父技能（**门槛只要 Lv1**），每级 = 父技能每级 ÷ 3，与父技能**同乘区乘算**；未训练时任何读数不变；**存档结构未动**。
+
+**改了哪些文件**：
+
+- `packages/data/src/skills.ts`：新增 18 条技能（各插在父技能条目之后）。
+- `packages/data/src/l10n.ts`：`EN_SKILLS` 补 18 条英文。
+- `packages/core/src/combat.ts`：新增 5 个导出乘数单点（`damageUpgradeMult` / `familyUpgradeSkillIdOf` / `familyUpgradeMult` / `hitUpgradeMult` / `reloadUpgradeMult` / `droneReloadUpgradeMult`）并接到 `dmgScale`、族加成 `famMult`、命中 `fireMult`、装填链、无人机装填五处；`fireMult` 由 `const` 改 `let`。
+- `packages/core/src/industry.ts`：精炼产出倍率、精炼批容、精炼周期、回收批周期四处接线。
+- `packages/core/src/manufacturing.ts`：制造时间与零件时间两处接线。
+- `packages/core/src/salvaging.ts`：打捞器周期接线。
+- `packages/core/src/salvage.ts`：残骸保底价值乘数接线。
+- `packages/core/src/ai.ts`：新增导出单点 `aiServicingUpgradeMult`，任务读数口与推进口**同源**接上。
+- `tools/content-check.ts`：「技能说明契约」`INLINE` 登记 18 条。
+- `packages/core/tests/skill-upgrades-20260927.test.ts`（新增 18 个用例）。
+- `packages/core/tests/mining-group-20260927.test.ts`：批一的条数断言随批二更新（总数 88 → 106 · 工业 21 → 31）。
+
+**验证结果**：`npm run typecheck` 全绿 · `npm run test -w @whale/core` **253 文件 / 2730 用例，1 处失败**（`wormhole-attend-invariant.test.ts` 的 v25→v30 迁移用例——**主树同样红**，与本批无关，属既有问题）· `npm run content:check` 通过（106 个技能登记来源、未接线 0 个）· `npm run l10n:check` 通过 · `npm run ui:rot-check` 通过 · `npm run skilltree:layout-check` **1 处红**（见 §七）。
+
+**过程中的三处返工（记下来防再犯）**：
+
+1. 「动能弹道学 / 动能弹道解算」撞上**陈旧术语契约** `/动能弹(?!药)/`（2026-09-16 起旧弹药名「动能弹」→「动能弹药」）⇒ 改名**动能射击学 / 动能射击解算**，id 与数值不变。
+2. 战斗侧乘数原先散在 `dmgScale` 与炮组循环里 ⇒ 收成导出单点，单测可精确断言、契约现场复核窗口也稳定命中；AI 侧同理收成 `aiServicingUpgradeMult`。
+3. `makeTestCtx()` 的模块表是**测试替身**，查不到「打捞器 MK1」⇒ 那条用例改用 `buildSimContext()`（真目录）。
+
+## 七、待船长裁决：技能树排布冲突（b-warship）
+
+**现象**：`npm run skilltree:layout-check` 报 1 处红 —— 「b-warship 没挂住：装甲舰操作 的子全是共享子（护卫舰操作、驱逐舰操作、巡洋舰操作、战列操作），且整族没有一条边向下生长」。
+
+**原因（读算法得出）**：`ui/skillTreeLayout.ts` 的列分配规定「父的**第一个更深子**承父列，其余开新列」。新技能「武装舰统合操作」是「武装舰操作」的**独占子**且排在四个共享子之前 ⇒ 它承了第 0 列，「护卫舰操作」被挤到第 1 列；而「装甲舰操作」的子全是共享子，体检要求这一族至少有一个子正落在某个父的列上 —— 第 0 列现在是独占子、四个共享子都不在，于是这一族"没有向下生长的边"。把新技能挪到本技能书最末再跑，红点变成「武装舰操作 的子（武装舰统合操作）没有一个在它正下方」——**两种顺序都过不了**，是结构性的。
+
+**另有一处口径值得记**：体检工具调 `layoutBook(branch, defs)` **不传坐标覆盖表**，而技能页传（`SkillsTreePage.tsx` 传 `SKILL_TREE_POSITIONS`）⇒ 船长 2026-09-23 手调的「武装舰操作与战列舰操作同列」只在页面生效，体检看的是算法原图。
+
+**三个做法，等船长裁**：
+
+- **甲（改动最小，推荐）**：把这一条改成**双前置**「武装舰操作 + 装甲舰操作」各 Lv1 —— 结构上它就成了共享子，体检三条全过；代价是门槛多一条 Lv1，且语义上要从"武装舰上位"改叫更像"战舰线集大成"的名字（例如「战舰统合操作」）。
+- **乙**：改排布算法 —— 给"子全是共享子"的父从它的共享子里拉一个到自己列上（更贴船长「上级摆在前置下方」的口径），但要动全仓 23 本书的排布并重跑体检，页面坐标会变，需要船长过目。
+- **丙**：这条不做，本批交付 **17 条**。
+
+**在裁决前，本批按"乙/丙都不做"停在原地**：代码与数据已在工作树提交（未合入 main），`skilltree:layout-check` 这一处红保留在案。
