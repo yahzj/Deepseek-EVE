@@ -11,10 +11,12 @@
  * `typecheck` 不报、单测不渲染 UI、`ui:rot-check` 只管物理单位、`ui:theme-check` 只管颜色 token、
  * `l10n:check` 只管未译字面量。**"同一张表里同一个键出现两次"这件事本身没人管**——本工具补这一格。
  *
- * 判据（三条，全部只读源码文本、不需要跑浏览器）：
+ * 判据（四条，全部只读源码文本、不需要跑浏览器）：
  *   ① **`key` 不得重复** —— 同一张表里同一个 `key` 出现两次＝两颗同名胶囊共用一把尺（本次的缺陷形态）；
  *   ② **`label` 不得重复** —— 同一栏出现两颗同名胶囊，玩家分不清点的是哪颗；
- *   ③ **`id` 不得重复**（有 `id` 的表）—— `id` 是本地化键，重复＝两处共用一条文案，多半也是复制粘贴残留。
+ *   ③ **`id` 不得重复**（有 `id` 的表）—— `id` 是本地化键，重复＝两处共用一条文案，多半也是复制粘贴残留；
+ *   ④ **不同键不得显示成同一个词**（Check 3 · 2026-09-27 加）—— 两个键挂**同一条 l10n 文案**
+ *      （或同一条文案的字面量）；这类在源码里长得完全不一样，只有把 id 翻成中文才看得出撞名。
  *
  * 覆盖范围：`apps/desktop/src/renderer/src` 与 `packages/ui/src` 下**所有模块级对象数组**
  * （含非导出的 `const`，如 `BP_MAIN`——它正是本次的肇事者，只扫 `export` 会漏掉）。
@@ -39,7 +41,8 @@
  *
  * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
  *   - 游戏版本：**v0.1.0**（`package.json`）
- *   - 本工具最后核对：**2026-09-26**（当日读数：26 张带 `key` 的选项表无重复项 · 直读命中 0 处）
+ *   - 本工具最后核对：**2026-09-27**（当日读数：26 张带 `key` 的选项表无重复项 · **同名标签 0 处**
+ *     · 直读命中 0 处；同日加 **Check 3** —— 船长报障「舰船插件的筛选标签显示为黑匣」引出）
  *   - 判据：选项表的写法改成非字面量 `key`（如键从函数来）⇒ 本工具会漏检，必须重核判据；
  *     新增 core 中文标签表时**同步登记进 `RAW_LABEL_SYMBOLS`**，否则它照样能悄悄漏中文
  */
@@ -259,6 +262,91 @@ if (problems.length === 0) {
   console.log('  修法：删掉重复项；若两处写法不同，应保留与判定口径一致的那一条。')
 }
 
+/* ═══════════ Check 3 · 选项表「同名标签」契约（2026-09-27 · 船长报障引出） ═══════════ */
+
+/**
+ * 病根（**船长 2026-09-27 报障**：「**舰船插件的筛选标签显示为黑匣，容易和另外一个黑匣标签弄混**」）：
+ * `ui/itemSubs.ts` 里**两个不同的键**（物品种类 `plug` 与归属档 `plug`）都挂着
+ * `ui.labelsText.069` —— 而那一条的文案是「**黑匣**」／Black boxes（黑匣自己的标签）。
+ * ⇒ 同一页上「舰船插件」与市场一级类型「黑匣」**显示成同一个词**。
+ *
+ * 为什么 Check 1 查不出来：它比的是**源码里的原样文本**（`tr("ui.labelsText.069")` 两次是"同一个值"，
+ * 但那是**同一个键出现两次**才算重复）；本例是**两个不同的键指向同一个 id** ⇒ 源码层面完全不同，
+ * 只有**把 id 翻成当前语言**之后才看得出撞名。本检查补的就是这一步。
+ *
+ * 判据：同一张表内，两个**不同的 `key`** 解析到**同一条 l10n 文案**（中文字串相同）⇒ 报。
+ * 只查"表内"（跨表的同名是正常的：如三个页面各自的「全部」）。
+ */
+import { L10N } from '../packages/data/src/l10n/table'
+
+type SameLabel = { file: string; line: number; table: string; zh: string; keys: string[]; ids: string[] }
+const sameLabels: SameLabel[] = []
+
+/** 把 `label: tr("id")` / `label: '字面量'` 归一成"最终显示的中文"（取不到一律回 `''`，调用点据此跳过） */
+const zhOf = (kind: 'id' | 'literal', v: string): string => (kind === 'id' ? (L10N[v]?.zh ?? '') : v)
+
+for (const root of ROOTS) {
+  for (const file of walk(root)) {
+    const src = readFileSync(file, 'utf8')
+    const rel = relative(ROOT, file).replace(/\\/g, '/')
+    for (const m of src.matchAll(TABLE_START)) {
+      const openIdx = (m.index ?? 0) + m[0].length - 1
+      const span = arrayBody(src, openIdx)
+      if (span === null) continue
+      const { body } = span
+      /**
+       * 逐元素取 `{ key, label }`（按 `key:` 切段，每段里找它自己的 label）。
+       *
+       * 两种写法都收：`label: tr("id")`（主流）与 `label: '字面量', id: '…'`（老口径，如 `MANU_TABS`——
+       * 那种表里 `label` 是中文兜底、`id` 才是本地化键 ⇒ **优先用 `label` 判"显示成什么"**，
+       * 因为那正是渲染层兜底时会显示的字）。
+       * 取不到显示串的（label 由变量/映射给出，如 `RACK_SUBS`、`SHIP_SUBS`）**跳过不猜**。
+       */
+      const items = [...body.matchAll(/\bkey:\s*['"]([^'"]+)['"]/g)].map((km) => {
+        const from = km.index ?? 0
+        const rest = body.slice(from)
+        const nextKey = rest.slice(1).search(/\bkey:\s*['"]/)
+        const seg = nextKey < 0 ? rest : rest.slice(0, nextKey + 1)
+        const lit = seg.match(LABEL_LITERAL)
+        const id = seg.match(LABEL_ID)
+        /** ⚠ 一律走 `String(...)` 兜底：正则半截匹配（如模板串里的 `${…}`）可能给出非字符串 */
+        const show = String(lit ? zhOf('literal', lit[1]!) : id ? zhOf('id', id[1]!) : '')
+        const raw = lit ? lit[1]! : id ? id[1]! : ''
+        if (raw === '') return null
+        /** ⚠ 显示串里带 `undefined`（`label:` 后面是模板/表达式，正则只吃到了半截）⇒ 丢弃不猜 */
+        if (show === '' || show.includes('undefined')) return null
+        return { key: km[1]!, show, ref: raw, at: lineOf(src, openIdx + from) }
+      })
+      const rows = items.filter((x): x is NonNullable<typeof x> => x !== null)
+      const byZh = new Map<string, typeof rows>()
+      for (const r of rows) byZh.set(r.show, [...(byZh.get(r.show) ?? []), r])
+      for (const [zh, list] of byZh) {
+        const keys = [...new Set(list.map((r) => r.key))]
+        if (keys.length < 2) continue // 同一个键出现两次归 Check 1 管
+        sameLabels.push({
+          file: rel,
+          line: list[0]!.at,
+          table: m[1]!,
+          zh,
+          keys,
+          ids: [...new Set(list.map((r) => r.ref))],
+        })
+      }
+    }
+  }
+}
+
+console.log(`\n同名标签体检：每张表内**不同键**是否显示成同一个词（跨表同名正常，不报）`)
+if (sameLabels.length === 0) {
+  console.log('✅ 同名标签：无「两个键同一句话」的选项表')
+} else {
+  console.log(`❌ 发现 ${sameLabels.length} 处同名标签（玩家分不清点的是哪一颗）：`)
+  for (const s of sameLabels) {
+    console.log(`  · ${s.file}:${s.line}  ${s.table}：键 ${s.keys.join(' / ')} 都显示成「${s.zh}」（id ${s.ids.join(' / ')}）`)
+  }
+  console.log('  修法：给其中一个键换一条**它自己**的文案 id（同义不同物 ⇒ 各用各的 id）。')
+}
+
 console.log(`\n本地化直读体检：渲染层引用 core/data 标签符号的模块已扫（共 ${Object.keys(RAW_LABEL_SYMBOLS).length} 个受管符号）`)
 if (rawHits.length === 0) {
   console.log('✅ 直读：渲染层无"直读 core 中文标签表/函数"的代码（豁免：' +
@@ -272,4 +360,4 @@ if (rawHits.length === 0) {
   console.log('  修法：改走 `ui/labelsText.ts` 的本地化单点；若该表尚无本地化版，先在 labelsText 里登记 id。')
 }
 
-process.exit(problems.length === 0 && rawHits.length === 0 ? 0 : 1)
+process.exit(problems.length === 0 && rawHits.length === 0 && sameLabels.length === 0 ? 0 : 1)

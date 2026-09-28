@@ -182,8 +182,16 @@ export const MODULE_SUBS: SubOption[] = [
   { key: 'cpu', label: tr("ui.itemSubs.012") },
   { key: 'salvager', label: tr("ui.Wormhole.001") },
   { key: 'lock', label: tr("ui.itemSubs.013") },
-  // 舰船插件（2026-09-26 船长令）：装备功能族里的一档 —— 文案与归属档、物品种类名共用一条 id
-  { key: 'plug', label: tr("ui.labelsText.069") },
+  /**
+   * 舰船插件（2026-09-26 船长令）：装备功能族里的一档。
+   *
+   * ⚠ **2026-09-27 船长报障**：「**舰船插件的筛选标签显示为黑匣，容易和另外一个黑匣标签弄混**」——
+   * 这里与 `RACK_LABELS.plug` 原先都挂着 `ui.labelsText.069`（= **黑匣**／Black boxes），
+   * 于是同一页上「舰船插件」与市场一级类型「黑匣」**显示成同一个词**。
+   * ⇒ 改挂 `ui.itemSubs.042`（**舰船插件**／Ship plugs；组装机的插件档用的就是它）。
+   * 单点口径：**舰船插件的标签全仓只有这一条 id**（本处与 `RACK_LABELS.plug` 都读它）。
+   */
+  { key: 'plug', label: tr("ui.itemSubs.042") },
 ]
 
 /**
@@ -349,8 +357,12 @@ export const RACK_LABELS: Record<string, string> = {
   high: tr("ui.itemSubs.025"),
   mid: tr("ui.itemSubs.026"),
   low: tr("ui.itemSubs.027"),
-  // 舰船插件（2026-09-26 船长令）：与高/中/低槽**同级**的一档；文案与物品种类名共用一条 id
-  plug: tr("ui.labelsText.069"),
+  /**
+   * 舰船插件（2026-09-26 船长令）：与高/中/低槽**同级**的一档。
+   * ⚠ 文案**不要**再挂 `ui.labelsText.069`（那是「黑匣」——2026-09-27 船长报障的串档就是它）；
+   * 插件这一档的标签单点 = `ui.itemSubs.042`（与装备功能子类的插件档共用同一条 id）。
+   */
+  plug: tr("ui.itemSubs.042"),
 }
 
 /**
