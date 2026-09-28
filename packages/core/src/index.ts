@@ -1106,6 +1106,8 @@ export {
   pulseFoeMountRepair,
   // 护盾充能脉冲周期（2026-09-14 船长新增件：同上，说明里的「每 30 秒」与它同源）
   SHIELD_PULSE_MS,
+  // 损伤管制装置的启动锁定时长（2026-09-27：卡面那行读它，说明不再手写「1 秒」）
+  DC_LOCK_MS,
   shieldPulsePctOf,
   shieldFieldOf,
   preloadShieldFieldFor,
