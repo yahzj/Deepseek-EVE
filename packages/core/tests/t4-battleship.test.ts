@@ -71,9 +71,8 @@ describe('T4 战列舰定案 · 巨齿鲨级（2026-09-13）', () => {
     const ratio = materialValue(bp!) / 225_000_000
     expect(ratio).toBeGreaterThan(0.44)
     expect(ratio).toBeLessThan(0.46)
-    // 2026-09-29 船长令：工期由"档位净收益带"反推，且 **T4 ≤ 24 时（硬顶）** ⇒ 巨齿鲨取硬顶 24 时
-    // （同步 main 后 T4 战斗船四条同为 225M、净额相同 ⇒ 并列落在硬顶上）
-    expect(bp!.buildSeconds).toBe(86_400)
+    // 2026-09-29 船长令：巨齿鲨**用零件** ⇒ 工期 = "档位净收益带"值（24 时硬顶）÷5 = 17,280（4.80 时）
+    expect(bp!.buildSeconds).toBe(17_280)
   })
 
   it('价位阶梯：三条线各按同定位锚抬升（2026-09-13 价位重排后的口径）', () => {
@@ -138,6 +137,12 @@ describe('T4 战列舰定案 · 巨齿鲨级（2026-09-13）', () => {
       const net = row.basePrice - materialValue(bp) * 0.855
       return net / (bp.buildSeconds / 3600)
     }
+    /**
+     * ⚠ **2026-09-29 船长令追加**：「T4 船有使用零件对吧，**如果使用了也采用 /5 的规则**」
+     * ⇒ **T4 零件舰**（剑鱼/蝠鲼/玄武/旋齿鲨/虎鲸/巨齿鲨）的工期 = 其"档位净收益带"值 **÷5**
+     * （等价于 **净/h = 本带 × 5**）；**座头鲸只吃矿物 ⇒ 走本带原值**。
+     */
+    const T4_PART = new Set(['sbp-swordfish', 'sbp-bowhead', 'sbp-xuanwu', 'sbp-helicoprion', 'sbp-orca', 'sbp-megalodon'])
     const byTier: Record<number, number[]> = {}
     for (const bp of SHIP_BLUEPRINTS) {
       if (bp.id.startsWith('sbp-wh-')) continue
@@ -146,7 +151,8 @@ describe('T4 战列舰定案 · 巨齿鲨级（2026-09-13）', () => {
       const t = shipOf(bp.shipId).tier
       const b = band[t]
       if (!b) continue // T5 走 ÷5 口径，不在本带内
-      const [lo, hi] = b
+      const scale = t === 4 && T4_PART.has(bp.id.replace('sbp-once-', 'sbp-')) ? 5 : 1
+      const [lo, hi] = [b[0] * scale, b[1] * scale]
       // 工期是整数秒 ⇒ 净/h 会有零点几个百分点的取整误差，判据留 ±0.5%
       expect(r, `${shipOf(bp.shipId).name}（${bp.id}）净/h ${Math.round(r)} 出带 ${lo}~${hi}`).toBeGreaterThanOrEqual(lo * 0.995)
       expect(r, `${shipOf(bp.shipId).name}（${bp.id}）净/h ${Math.round(r)} 出带 ${lo}~${hi}`).toBeLessThanOrEqual(hi * 1.005)
@@ -168,7 +174,13 @@ describe('T4 战列舰定案 · 巨齿鲨级（2026-09-13）', () => {
     /**
      * ⚠ **2026-09-29 船长令：「「使用零件的舰船工期 = 原值 ÷5」这个依旧保留」** ——
      * 上一版曾把皇带鱼改成跟"档位净收益带"走，**已按本条令回退**。
-     * 覆盖范围 = **皇带鱼（T5）＋ 虫洞专属 15 张**（= 2026-09-20 那批真正吃过 ÷5 的 16 张）。
+     *
+     * **覆盖范围 = 全部使用零件的舰船**：
+     * - 皇带鱼（T5）：162,000 ÷ 5 = **32,400**（9.00 时）；
+     * - 虫洞专属 15 张（`sbp-wh-*`）：240 / 840 / 2,880；
+     * - **T4 零件舰 6 型 ＋ 孪生**（船长 2026-09-29 追加令「T4 船…如果使用了也采用 /5 的规则」）：
+     *   原值取"档位净收益带"那片的值 ÷5。
+     * - ⚠ **座头鲸（T4）只吃矿物、不用零件 ⇒ 不在本条内**。
      */
     // 皇带鱼（永久 + 一次性）：162,000 ÷ 5 = 32,400
     expect(bpOfShip('sh-colossal')?.buildSeconds).toBe(32_400)
@@ -177,5 +189,14 @@ describe('T4 战列舰定案 · 巨齿鲨级（2026-09-13）', () => {
     expect(bpOfShip('sh-wh-a-frigate')?.buildSeconds).toBe(240)
     expect(bpOfShip('sh-wh-a-destroyer')?.buildSeconds).toBe(840)
     expect(bpOfShip('sh-wh-a-cruiser')?.buildSeconds).toBe(2_880)
+    // T4 零件舰（带值 ÷5）：剑鱼 34,075→6,815 · 蝠鲼 66,152→13,230 · 玄武/虎鲸/巨齿鲨 86,400→17,280 · 旋齿鲨 86,370→17,274
+    expect(bpOfShip('sh-swordfish')?.buildSeconds).toBe(6_815)
+    expect(bpOfShip('sh-bowhead')?.buildSeconds).toBe(13_230)
+    expect(bpOfShip('sh-xuanwu')?.buildSeconds).toBe(17_280)
+    expect(bpOfShip('sh-orca')?.buildSeconds).toBe(17_280)
+    expect(bpOfShip('sh-megalodon')?.buildSeconds).toBe(17_280)
+    expect(bpOfShip('sh-helicoprion')?.buildSeconds).toBe(17_274)
+    // 座头鲸不用零件 ⇒ 保持带值
+    expect(bpOfShip('sh-humpback')?.buildSeconds).toBe(67_285)
   })
 })
