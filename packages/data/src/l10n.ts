@@ -438,7 +438,7 @@ export const EN_ITEMS: EnTable = {
   'min-darkiron': { name: 'Darkiron Alloy', description: 'A heavy alloy only Voidcrystal and Darkstar Ice can refine — the mark of top-tier industry.' },
   'min-voidcrystal': { name: 'Void Crystal', description: 'The rarest material in the universe; only legendary manufacturing projects can afford it.' },
   // 跃迁燃料链三件套（2026-09-29 船长令）：星云 → 折跃等离子 · 冰 → 低温跃迁浆 · 高阶气/冰 → 曲率凝析物
-  'min-jumpplasma': { name: 'Jump Plasma', description: 'High-energy plasma separated from nebula gas: the main ingredient of jump fuel.' },
+  'min-jumplasma': { name: 'Jump Plasma', description: 'High-energy plasma separated from nebula gas: the main ingredient of jump fuel.' },
   'min-cryoslurry': { name: 'Cryo Jump Slurry', description: 'A dense slurry cryo-separated from ice — it only ignites when paired with Jump Plasma.' },
   'min-curvature': { name: 'Curvature Condensate', description: 'A primer that condenses only in high-tier gas pockets and deep ice; a tiny amount multiplies the fuel effect.' },
   // 气体 / 冰矿
