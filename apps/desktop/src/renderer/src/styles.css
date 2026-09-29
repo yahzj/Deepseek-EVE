@@ -12054,11 +12054,21 @@ html[data-locale='en'] body {
 .app-skilltree-key.is-none { color: rgb(var(--wui-text-dim)); }
 .app-skilltree-key.is-locked { border-style: dashed; color: rgb(var(--wui-text-dim)); opacity: .75; }
 /* **图例兼筛选器**（**2026-09-27 船长令**：「这几个标签允许玩家点击，点击后筛选出对应类型的技能」）：
-   从 `<span>` 升为 `<button>` —— 这里只补"能点"与"选中"两层，**不改既有五态配色**（状态色照旧由上面那几条给）。
-   ⚠ 不写 `background: none`：本页这两颗按钮靠"描边 + 文字色"表状态，底色留空才与旁边那句灰字同底。 */
-.app-skilltree-key { font-family: inherit; cursor: pointer; transition: color .15s, border-color .15s; }
-.app-skilltree-key:hover { color: rgb(var(--wui-text)); }
-.app-skilltree-key.is-active { color: rgb(var(--wui-accent)); border-color: rgb(var(--wui-accent) / 0.75); background: rgb(var(--wui-accent) / 0.08); font-weight: 600; }
+   从 `<span>` 升为 `<button>` —— 这里只补"能点"与"选中"两层。
+   ⚠ **选中态不许改文字色与描边色**（**2026-09-27 船长报障**：「技能页面的筛选标签，添加后颜色出现异常」）：
+   上一版 `is-active` 把 `color` 与 `border-color` 一起改成了主题青色 ⇒ **状态色被抹掉** ——
+   点「已满级」那颗金色标签，它会当场变成青色，与它代表的"满级金"对不上（六颗点一遍六种颜色全乱）。
+   正解 = **状态色是身份、选中是"被按下"**：文字/描边继续由上面那几条状态规则给（层叠里在本条之前、
+   同特异度 ⇒ 本规则**避开**这两个属性即可），选中只补"底纹 + 外圈 + 字重"。
+   底色留空：本页这些按钮靠"描边 + 文字色"表状态，不选中时才能与旁边那句灰字同底。 */
+.app-skilltree-key { font-family: inherit; cursor: pointer; transition: background .15s, box-shadow .15s; }
+.app-skilltree-key:hover { background: rgb(var(--wui-x01) / 0.06); }
+.app-skilltree-key.is-active {
+  background: rgb(var(--wui-accent) / 0.10);
+  /* 外圈用 box-shadow 而不是 border：**不占布局**，选中/取消时标签宽度不跳 */
+  box-shadow: 0 0 0 1px rgb(var(--wui-accent) / 0.55);
+  font-weight: 600;
+}
 /* 计数（点下去能看到的条数）：等宽数字，免得数字变化时标签宽度跳动 */
 .app-skilltree-key-n { margin-left: var(--wui-sp-5); font-family: var(--wui-mono); font-variant-numeric: tabular-nums; opacity: .8; }
 .app-skilltree-key.is-clear { border-style: dashed; }
