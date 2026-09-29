@@ -259,7 +259,7 @@ function SettingsPanel({
   layoutKind,
   onLayoutChange,
   layoutPending,
-  onApplyLayoutAndQuit,
+  onApplyLayoutReload,
   onCancelLayout,
   onDebugChange,
   saveState,
@@ -287,7 +287,7 @@ function SettingsPanel({
   /** 玩家已点选、但还没重启的布局（null = 没有待应用项）；设置里那个确认弹框据此显示 */
   layoutPending: LayoutKind | null
   /** 确认重开：写盘 + 存档 + 关游戏（实现在 App 层） */
-  onApplyLayoutAndQuit: () => void
+  onApplyLayoutReload: () => void
   /** 取消重开：清掉待应用项 */
   onCancelLayout: () => void
   /** 存档存储状态（2026-09-25 船长令 · 甲/丁）：`paused` = 旧档读不出来、写入已挂起 */
@@ -607,7 +607,7 @@ function SettingsPanel({
               <div className="app-modal-body">
                 <div className="app-note">{t('ui.App.151')}</div>
                 <div className="app-wh-actions">
-                  <button className="app-btn is-primary" onClick={onApplyLayoutAndQuit}>
+                  <button className="app-btn is-primary" onClick={onApplyLayoutReload}>
                     {tr('ui.App.152')}
                   </button>
                   <button className="app-btn is-small" onClick={onCancelLayout}>
@@ -1084,10 +1084,23 @@ function chooseLayout(k: LayoutKind): void {
   setLayoutPending(k)
 }
 /**
- * **确认重开**：先把偏好写盘（重启后才读得到），再存档，最后关游戏。
- * ⚠ 存档失败**不关**：让玩家先把档处理好（自动保存是定时的，这里补一次更稳）。
+ * **应用布局偏好：写盘 → 存档 → 重新载入文档**
+ *
+ * **2026-09-29 船长令**：「切换新版和旧版的现在重启，只对本地有效，**网页版应该为刷新网页**」。
+ *
+ * 原实现是 `window.close()`（桌面端：关窗即退出，主进程 `window-all-closed → app.quit()`）
+ * —— 桌面端有效，但**网页版的 `window.close()` 对非脚本打开的页签是空操作**（浏览器安全策略）
+ * ⇒ 网页版点「现在重开」什么都不会发生、布局永远切不过去。
+ *
+ * 改成 `location.reload()` 后**两端同一套动作**：整页重新载入 ⇒ 重新执行 bundle ⇒
+ * 重新读 `readLayoutPref()` 与对应的样式表（这正是"要重载而不能就地切"的原因：
+ * 两套外壳共用类名，样式表必须跟着换；船长原话「如果不重启，结构排版有问题」）。
+ * 桌面端等价性：桌面端载入的就是同一个页面 ⇒ 重载同样回到启动态，**且不必退出进程**。
+ *
+ * ⚠ 存档失败**不重载**：让玩家先把档处理好（自动保存是定时的，这里补一次更稳）。
+ * ⚠ `location.reload()` 失败（桌面端极端受限环境）⇒ 提示玩家手动重启，不静默失败。
  */
-async function applyLayoutAndQuit(): Promise<void> {
+async function applyLayoutAndReload(): Promise<void> {
   const k = layoutPending
   if (k === null) return
   try {
@@ -1101,8 +1114,11 @@ async function applyLayoutAndQuit(): Promise<void> {
     showToast(tr('ui.App.055'), true)
     return
   }
-  // 关窗即退出（主进程 window-all-closed → app.quit()，同款写法见 game/autoPerf.ts）
-  window.close()
+  try {
+    location.reload()
+  } catch {
+    showToast(tr('ui.App.167'), true)
+  }
 }
   // 性能监测（2026-09-08 诊断工具）：debug 开关在首帧前激活隐形采集；自动采集模式由 main.tsx 预激活
   useState(() => {
@@ -2356,7 +2372,7 @@ async function applyLayoutAndQuit(): Promise<void> {
           onDebugChange={setDebugOn}
           layoutKind={layoutKind}
           layoutPending={layoutPending}
-          onApplyLayoutAndQuit={() => void applyLayoutAndQuit()}
+          onApplyLayoutReload={() => void applyLayoutAndReload()}
           onCancelLayout={() => setLayoutPending(null)}
           onLayoutChange={chooseLayout}
           saveState={saveState}

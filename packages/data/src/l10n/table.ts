@@ -1017,8 +1017,13 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.148": { zh: "旧版", en: "Classic" },
   "ui.App.149": { zh: "切换后需要重开游戏生效。", en: "Reopen the game for the change to take effect." },
   "ui.App.150": { zh: "切换界面", en: "Switch interface" },
-  "ui.App.151": { zh: "界面将在重开游戏后更换。", en: "The interface changes after the game is reopened." },
-  "ui.App.152": { zh: "现在重开", en: "Reopen now" },
+  /**
+   * **切布局的两句**（**2026-09-29 船长令**：「切换新版和旧版的现在重启，只对本地有效，
+   * **网页版应该为刷新网页**」）——动作统一成"**重新载入当前页面**"：
+   * 网页版 = 刷新页面，桌面版 = 重载同一个页面（等价于原来那次重开，且不必退出进程）。
+   */
+  "ui.App.151": { zh: "界面将在页面重新载入后更换。", en: "The interface changes once the page reloads." },
+  "ui.App.152": { zh: "现在刷新", en: "Reload now" },
   /* 2026-09-26 船长令：「在设置界面切换新版界面出，给新版按钮加个文本'（测试中）'」——
      **只加在按钮上**（设置行的当前值那处不加：那是"现在用哪套"的读数，不是按钮标签） */
   "ui.App.153": { zh: "（测试中）", en: "(in testing)" },
@@ -5170,5 +5175,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.164": { zh: "声望", en: "Reputation" },
   "ui.App.165": { zh: "累计获得", en: "total earned" },
   /** 声望容器的悬停全精度读数（与钱包那句 `ui.MoneyFit.001` 同款；**必换**，否则提示会写"信用点"） */
-  "ui.App.166": { zh: "{p1}：{p2}", en: "{p1}: {p2}" }
+  "ui.App.166": { zh: "{p1}：{p2}", en: "{p1}: {p2}" },
+  /**
+   * **切布局的兜底提示**（**2026-09-29 船长令**：「切换新版和旧版的现在重启，只对本地有效，
+   * **网页版应该为刷新网页**」）——动作改为"重新载入当前页面"（两端同一套），本句只在极端环境下
+   * `location.reload()` 抛错时用（不静默失败）。
+   */
+  "ui.App.167": {
+    zh: "当前环境无法自动刷新，请手动刷新页面（或重启游戏）。",
+    en: "This environment cannot reload automatically — refresh the page (or restart the game) manually."
+  }
 }
