@@ -1190,13 +1190,18 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
         }
       }
     }
-    // 2) V18 槽位数对齐：长度 = 船布局（目标短 → 尾件退库；目标长 → 补空）
+    /**
+     * 2) V18 槽位数对齐：长度 = **实际可用槽位**（船型布局 ＋ 插件扩槽；目标短 → 尾件退库；目标长 → 补空）
+     *
+     * 🔴 **2026-09-28 玩家报障修**：目标长度原先直接取 `shipDef.slots`（**船型基础布局**，**不含插件扩槽**）
+     * ⇒ 装了「中层舱段插件 `midSlotsAdd`」「下层舱段插件 `lowSlotsAdd`」的船，**每次读档**都把
+     * `fitted.mid` / `fitted.low` 截回基础长度，**扩出来的那一格连同装在里面的装备一起被退回装备库**
+     * （玩家报障原话：「**船插增加的中槽和低槽上的装备无法保存进配置，重启游戏后会丢失**」）。
+     * ⇒ 改走**槽位单点** `plugs.shipSlotsWithPlugsOf`（与装配校验 `wantedBaysOf`、装配页格数、
+     * `ensureRackBays` 同一把尺；2026-09-27 那次只改了两处，漏了这一处与 `fitPresets.applyFitPreset`）。
+     */
     if (shipDef) {
-      const target = {
-        high: shipDef.slots?.high ?? 1,
-        mid: shipDef.slots?.mid ?? 1,
-        low: shipDef.slots?.low ?? 1,
-      } as Record<RackSlot, number>
+      const target = shipSlotsWithPlugsOf(state, ctx, uid) as Record<RackSlot, number>
       for (const rack of ['high', 'mid', 'low'] as const) {
         const bays = rackBays(fitted, rack)
         const want = target[rack]

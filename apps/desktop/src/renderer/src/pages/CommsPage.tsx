@@ -261,7 +261,9 @@ function WreckLogPane({ engine, rows }: { engine: PageProps['engine']; rows: Ret
         ? 'ui.WreckLog.018'
         : e.cause === 'wormhole-lost'
           ? 'ui.WreckLog.019'
-          : 'ui.WreckLog.016',
+          : e.cause === 'encounter-lost'
+            ? 'ui.WreckLog.021'
+            : 'ui.WreckLog.016',
   )
   const where =
     e.wormholeDepth !== undefined

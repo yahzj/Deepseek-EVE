@@ -991,7 +991,9 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               <div className="app-fit-preset-list">
                 {presets.map((p, i) => {
                   // 明细每渲染算一次（件名解析走 core 单点 `fitPresetDetailOf`，界面不自己拼）
-                  const detail = presetDetailAt === i && shipDef ? fitPresetDetailOf(p, engine.ctx, shipDef) : null
+                  // ⚠ 2026-09-28：把**实际可用槽位**（含插件扩槽，本页 `slots` 已是单点结果）一并传下去，
+                  //    否则装了扩槽插件的船会把扩出来的那一格当 overflow 报（玩家报障那批）
+                  const detail = presetDetailAt === i && shipDef ? fitPresetDetailOf(p, engine.ctx, shipDef, slots) : null
                   return (
                   <div className="app-fit-preset-item" key={`${p.name}-${i}`}>
                   <div className="app-fit-preset-row">

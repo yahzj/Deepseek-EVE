@@ -2216,10 +2216,17 @@ export interface WeekendWreckRecord {
  */
 /**
  * **沉船记录条目**（**2026-09-27 船长令**：「在通讯内新增一个用于记录玩家损失的舰船和舰船上有什么装配」）：
- * 一条 = 一次我方舰船损失。范围 = **玩家全部舰船损失**（远征 / AI 副船 / 虫洞内被击沉 / 虫洞内整队失联）；
- * 虫洞那两条**不生成残骸**（`wreckGalaxyId` 缺席）但一样记。
+ * 一条 = 一次我方舰船损失。范围 = **玩家全部舰船损失**（远征 / AI 副船 / 虫洞内被击沉 / 虫洞内整队失联 /
+ * **遭遇战中被击沉**）；虫洞那两条**不生成残骸**（`wreckGalaxyId` 缺席）但一样记。
+ * ⚠ `'encounter-lost'` = **2026-09-28 玩家报障修**（旗舰战等遭遇战里被打沉的船从"残血能被修好"
+ * 改成**真丢**）——它在**正常星系**里沉，故**带残骸**。
  */
-export type WreckLogCause = 'expedition-lost' | 'ai-lost' | 'wormhole-sunk' | 'wormhole-lost'
+export type WreckLogCause =
+  | 'expedition-lost'
+  | 'ai-lost'
+  | 'wormhole-sunk'
+  | 'wormhole-lost'
+  | 'encounter-lost'
 
 export interface WreckLogEntry {
   /** 记录号（单调递增；列表按它倒序） */

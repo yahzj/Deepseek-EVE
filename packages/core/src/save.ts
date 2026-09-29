@@ -2762,7 +2762,14 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     const shipName = typeof r.shipName === 'string' ? r.shipName.trim().slice(0, 120) : ''
     const cause = r.cause
     if (shipId.length === 0 || shipName.length === 0) continue
-    if (cause !== 'expedition-lost' && cause !== 'ai-lost' && cause !== 'wormhole-sunk' && cause !== 'wormhole-lost') {
+    if (
+      cause !== 'expedition-lost' &&
+      cause !== 'ai-lost' &&
+      cause !== 'wormhole-sunk' &&
+      cause !== 'wormhole-lost' &&
+      // 2026-09-28 加：遭遇战（含旗舰战）里被击沉 —— 不认它 ⇒ 读档即丢那几条沉船记录
+      cause !== 'encounter-lost'
+    ) {
       continue
     }
     const atGameMs = num(r.atGameMs)

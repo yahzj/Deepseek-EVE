@@ -4017,6 +4017,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Ironman.041": { zh: "铁人福利同时失效；代次与已获得的徽章保留。", en: "The Iron Man perks end as well; the generation and earned badges are kept." },
   "ui.Ironman.042": { zh: "模式选择", en: "Choose a mode" },
   "ui.Ironman.043": { zh: "本存档仅此一次选择机会。", en: "This save gets one choice only." },
+  /* 2026-09-28 船长令「可以加入一个'导入存档'入口」⇒ 模式选择框上那颗按钮旁边的说明
+     （按钮本体沿用存档页的 `ui.SaveManager.014`，不另造同义文案） */
+  "ui.Ironman.044": { zh: "换设备或换浏览器：先导入存档，再选模式。", en: "Switching device or browser: import your save first, then choose a mode." },
   "ui.SellQtyModal.001": { zh: "出售数量 ·", en: "Sell quantity ·" },
   "ui.SellQtyModal.002": { zh: "现有", en: "On hand" },
   "ui.SellQtyModal.003": { zh: "按市价卖出", en: "Sell at market" },
@@ -4095,6 +4098,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.WreckLog.018": { zh: "虫洞内被击沉", en: "Sunk inside a wormhole" },
   "ui.WreckLog.019": { zh: "虫洞内整队失联", en: "Fleet lost inside a wormhole" },
   "ui.WreckLog.020": { zh: "船型", en: "Hull" },
+  /* 2026-09-28 玩家报障（旗舰战沉船被撤退复活）⇒ 沉船记录新增一类原因：遭遇战里被打沉 */
+  "ui.WreckLog.021": { zh: "遭遇战中被击沉", en: "Sunk in an encounter battle" },
   "ui.shipInfo.205": { zh: "复位周期 {p1} 秒", en: "Reset cycle {p1} s" },
   "ui.shipInfo.206": { zh: "复位周期", en: "Reset cycle" },
   /* .207 = **属性行的值**（裸秒数）：行名已写了"复位周期"，值里不再重复（同族 drone-rack 同款做法）。 */

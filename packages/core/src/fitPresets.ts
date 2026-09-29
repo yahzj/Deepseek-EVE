@@ -28,6 +28,7 @@ import type { CommandResult } from './engine'
 import type { GameState, ShipFitPreset } from './state'
 import type { RackSlot, SimContext } from './types'
 import { rackBays, shipSlotsOf } from './labels'
+import { shipSlotsWithPlugsOf } from './plugs'
 import { addModule, adjustDroneLoad, countModule, fitModule, trimDroneLoadToBay } from './equipment'
 import { addWare } from './inventory'
 import { fleetDefOf } from './instances'
@@ -63,7 +64,8 @@ export function fitPresetBrief(preset: ShipFitPreset): string {
  * 行内展开 · 逐位列含空位）。
  *
  * 口径：
- * - **按目标船的槽位布局铺满**（`shipSlotsOf(ship)`）⇒ 空位显示为「空」（`name: '空'`、`id: null`），
+ * - **按目标船的槽位布局铺满**（**实际可用槽位**：调用方传 `plugs.shipSlotsWithPlugsOf` 的结果；
+ *   不传则退回船型基础布局）⇒ 空位显示为「空」（`name: '空'`、`id: null`），
  *   玩家能一眼看出"这位没装"；方案数组比船位少的那几位也照样铺成空位。
  * - **未知 / 已下架的件不隐藏**：`missing: true` ＋ `name` 回落成 id —— 与套用时"逐条报未装"同一口径
  *   （悄悄吞掉会让玩家以为方案里没有它）。
@@ -99,8 +101,14 @@ export function fitPresetDetailOf(
   preset: ShipFitPreset,
   ctx: SimContext,
   ship: { slots?: import('./types').ShipSlots },
+  /**
+   * **该船实际可用槽位**（含插件扩槽）——调用方传 `plugs.shipSlotsWithPlugsOf` 的结果。
+   * 缺省 ⇒ 退回船型基础布局（老调用点/用例的兼容口径）。
+   * ⚠ 2026-09-28 加：不传它的话，装了扩槽插件的船会把"扩出来的那一格"当成 `overflow` 报出去。
+   */
+  effSlots?: import('./types').ShipSlots,
 ): FitPresetDetail {
-  const bays = shipSlotsOf(ship)
+  const bays = effSlots ?? shipSlotsOf(ship)
   const slots: FitPresetSlotLine[] = []
   let overflow = 0
   for (const rack of RACK_ORDER) {
@@ -390,8 +398,16 @@ export function applyFitPreset(state: GameState, ctx: SimContext, shipId: string
   const removed = unfitAllModules(state, ctx, shipId, true).removed
   const dronesOut = clearDroneLoad(state, ctx, shipId)
 
-  // ② 装配清单：按目标船槽位布局对齐 + 扩容件优先 + 高→中→低 位序
-  const slots = shipSlotsOf(shipDef)
+  /**
+   * ② 装配清单：按目标船**实际可用槽位**对齐 + 扩容件优先 + 高→中→低 位序
+   *
+   * ⚠ **2026-09-28 玩家报障修**：这里原先取 `shipSlotsOf(shipDef)`（**船型基础布局**，不含插件扩槽）
+   * ⇒ 装了「中层舱段 / 下层舱段」插件的船**套用方案时**，方案里落在扩出来那几位的装备被
+   * `Math.min(src.length, slots[rack])` 直接丢掉、一件都装不上（与读档截断同一个病根）。
+   * ⇒ 改走**槽位单点** `plugs.shipSlotsWithPlugsOf`。
+   * ⚠ 槽位在 `unfitAllModules` **之后**取：插件不在三数组里（它们在 `fleet[uid].plugs`）⇒ 卸光不影响扩槽。
+   */
+  const slots = shipSlotsWithPlugsOf(state, ctx, shipId)
   const jobs: Array<{ rack: RackSlot; index: number; moduleId: string }> = []
   for (const rack of RACK_ORDER) {
     const src = preset.fitted[rack] ?? []

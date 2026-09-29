@@ -14,11 +14,18 @@ import type { GameState, SimContext } from '../src/index'
 import {
   addModule,
   addShipToFleet,
+  applyFitPreset,
+  countModule,
   cpuBudgetOf,
   createInitialState,
   fitModule,
+  fitPresetDetailOf,
   installPlug,
+  loadSaveFile,
   plugSlotAddsOf,
+  repairDeprecatedModules,
+  saveFitPreset,
+  serializeSaveFile,
   shipSlotsWithPlugsOf,
   unfitAt,
 } from '../src/index'
@@ -125,5 +132,93 @@ describe('扩槽插件（中层舱段 / 下层舱段 · 2026-09-27 船长令「�
     const idx = state.fleet[uid]!.fitted.mid.indexOf('mid-thing')
     expect(unfitAt(state, 'mid', idx, uid, ctx)).toBe(true)
     expect(shipSlotsWithPlugsOf(state, ctx, uid).mid).toBe(2) // 槽位不缩
+  })
+})
+
+/**
+ * **2026-09-28 玩家报障**（照抄）：「**船插增加的中槽和低槽上的装备无法保存进配置，重启游戏后会丢失**」。
+ *
+ * 病根 = 2026-09-27 那次"扩槽生效"**只改了两处**（装配校验 `wantedBaysOf` ＋ 装配页格数），**漏了两处**：
+ * ① 读档修复链 `repairDeprecatedModules` 的「V18 槽位数对齐」仍按**船型基础布局**裁数组
+ *    ⇒ 每次读档都把扩出来的那一格连同里面的装备**退回装备库**（= "重启就丢"）；
+ * ② 套用方案 `applyFitPreset` 仍按基础布局 `Math.min(src.length, slots[rack])`
+ *    ⇒ 方案里落在扩出来那几位的装备**一件都装不上**（= "存不进配置"）；
+ * ③ 附带：方案明细原先按基础布局铺 ⇒ 把扩出来的那一格当 `overflow` 报出去。
+ * 修法 = ①②③ 全部改走**槽位单点** `shipSlotsWithPlugsOf`。
+ */
+describe('扩槽插件上的装备"存不住"（2026-09-28 玩家报障）', () => {
+  /** 装两件扩槽插件 ＋ 在**扩出来的那一格**（中/低各第 2 位）各装一件装备 */
+  function withExtraSlotsFilled(): { state: GameState; ctx: SimContext; uid: string } {
+    const w = world()
+    addModule(w.state, 'plug-mid-bay')
+    addModule(w.state, 'plug-low-bay')
+    expect(installPlug(w.state, w.ctx, 'plug-mid-bay', w.uid).ok).toBe(true)
+    expect(installPlug(w.state, w.ctx, 'plug-low-bay', w.uid).ok).toBe(true)
+    expect(shipSlotsWithPlugsOf(w.state, w.ctx, w.uid)).toEqual({ high: 1, mid: 2, low: 2 })
+    addModule(w.state, 'mid-thing')
+    addModule(w.state, 'low-thing')
+    /** 明确装到**第 2 位**（= 插件扩出来的那一格） */
+    expect(fitModule(w.state, 'mid-thing', w.ctx, { rack: 'mid', index: 1, shipId: w.uid }).ok).toBe(true)
+    expect(fitModule(w.state, 'low-thing', w.ctx, { rack: 'low', index: 1, shipId: w.uid }).ok).toBe(true)
+    return w
+  }
+
+  it('① **读档修复链不再砍掉扩槽位**：跑 `repairDeprecatedModules` 后装备还在那一格（回归）', () => {
+    const { state, ctx, uid } = withExtraSlotsFilled()
+    expect(state.fleet[uid]!.fitted.mid).toEqual([null, 'mid-thing'])
+    /** 装完之后装备库里是 0（件都在船上）——修好后的修复链不该把它退回库 */
+    const bayMid = countModule(state, 'mid-thing')
+    const bayLow = countModule(state, 'low-thing')
+    expect(bayMid).toBe(0)
+    repairDeprecatedModules(state, ctx)
+    expect(state.fleet[uid]!.fitted.mid, '扩出来的中槽那一格没被裁掉').toEqual([null, 'mid-thing'])
+    expect(state.fleet[uid]!.fitted.low, '扩出来的低槽那一格也没被裁掉').toEqual([null, 'low-thing'])
+    expect(state.fleet[uid]!.fitted.mid.length, '数组长度仍是实际槽位数 2').toBe(2)
+    expect(state.fleet[uid]!.fitted.low.length).toBe(2)
+    expect(countModule(state, 'mid-thing'), '装备库没有凭空多出一件（原先会退库）').toBe(bayMid)
+    expect(countModule(state, 'low-thing')).toBe(bayLow)
+    /** 幂等：再跑一次（每次启动都会跑）结果不变 */
+    repairDeprecatedModules(state, ctx)
+    expect(state.fleet[uid]!.fitted.mid).toEqual([null, 'mid-thing'])
+  })
+
+  it('② **存档往返（端到端复现报障）**：存 → 读 → 跑修复链 ⇒ 装备仍在扩槽位上', () => {
+    const { state, ctx, uid } = withExtraSlotsFilled()
+    const text = serializeSaveFile(state, 1_000)
+    const back = loadSaveFile(text).state
+    expect(back.fleet[uid]!.fitted.mid, '读档时逐位照抄').toEqual([null, 'mid-thing'])
+    /** 引擎读档后必跑的那一步（这也是玩家"重启游戏后"发生的事） */
+    repairDeprecatedModules(back, ctx)
+    expect(back.fleet[uid]!.fitted.mid, '重启后装备还在').toEqual([null, 'mid-thing'])
+    expect(back.fleet[uid]!.fitted.low, '重启后装备还在').toEqual([null, 'low-thing'])
+    expect(countModule(back, 'mid-thing'), '没有被退回装备库').toBe(0)
+  })
+
+  it('③ **套用方案时扩槽位照装**：方案里第 2 位的装备能装回扩出来的那一格', () => {
+    const { state, ctx, uid } = withExtraSlotsFilled()
+    expect(saveFitPreset(state, ctx, uid, '扩槽方案').ok, '存方案').toBe(true)
+    const saved = state.fitPresets?.['sh-bay']?.[0]
+    expect(saved?.fitted.mid, '方案里如实记着扩槽那一格').toEqual([null, 'mid-thing'])
+    expect(saved?.fitted.low).toEqual([null, 'low-thing'])
+    const r = applyFitPreset(state, ctx, uid, 0)
+    expect(r.ok, `套用方案要成功：${r.error ?? ''}`).toBe(true)
+    expect(state.fleet[uid]!.fitted.mid, '第 2 位装回来了（原先被 Math.min 丢掉）').toEqual([null, 'mid-thing'])
+    expect(state.fleet[uid]!.fitted.low).toEqual([null, 'low-thing'])
+    /** 小结如实报"装上 2 件"、**不报缺件也不报未装**（旧口径下这两件会被静默丢弃） */
+    expect(r.summary, '小结里"装上 2 件"').toContain('装上 2 件')
+    expect(r.summary, '不该报"装备库缺"').not.toContain('装备库缺')
+    expect(r.summary, '不该报"未装"').not.toContain('件未装')
+  })
+
+  it('④ 方案明细按**实际槽位**铺：扩出来的那一格列出来、不算 overflow', () => {
+    const { state, ctx, uid } = withExtraSlotsFilled()
+    expect(saveFitPreset(state, ctx, uid, '扩槽方案').ok).toBe(true)
+    const preset = state.fitPresets!['sh-bay']![0]!
+    const shipDef = ctx.ships.get('sh-bay')!
+    const eff = shipSlotsWithPlugsOf(state, ctx, uid)
+    const detail = fitPresetDetailOf(preset, ctx, shipDef, eff)
+    expect(detail.overflow, '不再把扩出来的那一格当超位').toBe(0)
+    expect(detail.slots.filter((s) => s.rack === 'mid').length, '中槽列出 2 行（含扩出来的）').toBe(2)
+    expect(detail.slots.find((s) => s.rack === 'mid' && s.index === 2)?.id, '第 2 行 = 装的那件').toBe('mid-thing')
   })
 })
