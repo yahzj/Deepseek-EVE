@@ -42,7 +42,7 @@ import {
   ROW2_BAR_DROP, foeRowBoxesOf,
   FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE, DRONE_DOWN_LIFE, POPUP_LIFE,
   STAR_LAYERS, genStars, clamp01, approachOf, layout,
-  fanSegs, fanPath, ringPath, HpTri, boltGeom, resolveBoltAnchors,
+  fanSegs, fanPath, ringPath, HpTri, boltGeom, resolveBoltAnchors, droneOwnerAnchor, residentDroneFrom,
 } from './battleViewCore'
 import type { Dims, Anchor, BoltV, FlashV, Stage, OutroSnap } from './battleViewCore'
 import { tr, cmdText, mountNamesTextOf } from '../i18n/locale'
@@ -1168,82 +1168,18 @@ const meSpeedRef = useRef(200)
             const foeA = layDown.foe[0] ?? layDown.me
             const station = { x: foeA.x - off.x, y: foeA.y + off.y }
             const tk = droneTakeoff(lane)
-            const home = { x: layDown.me.x + tk.x, y: layDown.me.y + tk.y }
-            droneDownRef.current.push({
-              key: keyRef.current++,
-              artId,
-              x: station.x,
-              y: station.y,
-              ...oneThirdToward(station, home),
-              born: now,
+            /**
+             * **返航/滑行终点 = 这一架自己的母舰机库口**（**2026-09-29 修**；与常驻型开火起点同一处漏项）：
+             * 旧口径写死 `layDown.me`（主控锚）⇒ 僚舰的机体被点防击落时，会朝**主控**方向滑并在主控旁炸
+             * （"被打下来的是谁的机体"看不出来）。取锚统一走 `droneOwnerAnchor`
+             * （主控 / 缺 tag 旧事件 / 单船路径 ⇒ 回落主控锚 ⇒ 逐像素不变）。
+             */
+            const ownAnchor = droneOwnerAnchor({
+              ...(fx.tag !== undefined ? { tag: fx.tag } : {}),
+              meAnchors: meAnchorByTag,
+              meFallback: layDown.me,
             })
-          }
-          // **敌机被击落**（2026-09-11 修）：引擎打空一架时也推 droneDown（`side='foe'`）——
-          // 但落点必须用**敌机自己**的状态表与姿态函数；旧口径一律走我方 `droneSortieRef` +
-          // `dronePoseAt` ⇒ 敌机的爆炸被画到**我方机体那一侧**（船长实测："完全无法察觉"）。
-          // lane 取该舰**现存架数**（引擎已减 1，故它就是"刚消失那一架"的位次）。
-          if (fx.side === 'foe') {
-            // **死亡点不再随相位漂移**（船长 2026-09-11：「敌机**死亡位置**飘忽不定，爆炸动画跟着敌机位置」）：
-            // 旧口径连**死亡点**都取"渲染层自己以为的那一轮相位" ⇒ 那一击若落在**收舱段**，
-            // 姿态就等于停在敌舰机库口（表现为"刚出机库就炸"）。
-            // 现：**起点**仍取它**当时真实所在**（不跳），**终点固定**在「从攻击阵位（您舰旁）
-            // 往敌舰机库口返航 1/3 处」⇒ 机体从真实位置滑到那个固定点再炸，位置每次都一致。
-            const st = foeSortieRef.current.get(`${fx.tag}:${artId}`)
-            const elapsed = st ? now - st.startAt : Number.POSITIVE_INFINITY
-            const alive =
-              arcs?.foeDrones?.find(
-                (w) => w.tag === fx.tag && w.artId === artId,
-              )?.alive ?? 0
-            const rangeBuff =
-              arcs?.foeDrones?.find(
-                (w) => w.tag === fx.tag && w.artId === artId,
-              )?.rangeBuff === true
-            const lane = Math.max(0, Math.min(alive, DRONE_SHOW_MAX - 1))
-            const pose = foePoseAt(model, lane, st, layDown, elapsed, rangeBuff)
-            const off = st?.offs[lane % Math.max(1, st.offs.length)] ?? {
-              x: 52,
-              y: 0,
-            }
-            // ⚠ 与实时阵位**同源**（增程态下不能跳回"我舰旁"）
-            const station = foeDroneStation(
-              layDown.me,
-              layDown.foe[0] ?? layDown.me,
-              off,
-              rangeBuff,
-            )
-            const tk = droneTakeoff(lane)
-            const home = {
-              x: (layDown.foe[0]?.x ?? layDown.me.x) - tk.x,
-              y: (layDown.foe[0]?.y ?? layDown.me.y) + tk.y,
-            }
-            droneDownRef.current.push({
-              key: keyRef.current++,
-              artId,
-              x: pose.x,
-              y: pose.y,
-              ...oneThirdToward(station, home),
-              born: now,
-              foe: true,
-            })
-          } else {
-            /** **我方**机群：键一律走 `舰tag:机型`（2026-09-14「逐舰机群」——僚舰的机体也在这层，
-             *  击落演出必须找到**它自己那条舰**的机体位次） */
-            const meKey = `${fx.tag ?? 'player'}:${artId}`
-            const prevShow =
-              downCursor.get(meKey) ?? dronePrevShowRef.current.get(meKey) ?? 1
-            const lane = Math.max(0, Math.min(prevShow, DRONE_SHOW_MAX) - 1)
-            downCursor.set(meKey, lane)
-            const st = droneSortieRef.current.get(meKey);
-            // **爆炸点与相位无关**（同上，我方一侧对称）：固定取「从攻击阵位（敌舰旁）
-            // 往我舰机库口返航 1/3 处」，不随"当前轮次相位"漂移。
-            const off = st?.offs[lane % Math.max(1, st.offs.length)] ?? {
-              x: 46,
-              y: 0,
-            }
-            const foeA = layDown.foe[0] ?? layDown.me
-            const station = { x: foeA.x - off.x, y: foeA.y + off.y }
-            const tk = droneTakeoff(lane)
-            const home = { x: layDown.me.x + tk.x, y: layDown.me.y + tk.y }
+            const home = { x: ownAnchor.x + tk.x, y: ownAnchor.y + tk.y }
             droneDownRef.current.push({
               key: keyRef.current++,
               artId,
@@ -1409,7 +1345,22 @@ const meSpeedRef = useRef(200)
             )
           }
         } else {
-          from = droneHomeStation(dm, n % Math.max(1, Math.min(dm.slots.length, DRONE_SHOW_MAX)), layFx)
+          /**
+           * **常驻型（哨戒）无人机的开火起点 = 它自己那艘母舰的伴飞位**（**2026-09-29 修**：舰队战中
+           * 「僚舰的无人机攻击没有动画效果」）。
+           *
+           * ⚠ 旧口径这里写死 `droneHomeStation(dm, …, layFx)`（主控布局）⇒ **僚舰的哨戒机只在悬停、
+           * 曳光条却从主控上方凭空冒出**（无头 Chrome 实测：机体在僚舰 +(77,−38)、
+           * 弹道起点在主控 +(76,−39) —— 两个偏移一模一样，根因就此坐实）。
+           * 现统一走纯函数 `residentDroneFrom`（所属舰锚 ＋ `slots[0]`；单船/主控路径 = 主控锚 ⇒ 逐像素不变），
+           * 回归守卫 = `npm run battle:bolt`。
+           */
+          from = residentDroneFrom({
+            ...(fx.tag !== undefined ? { tag: fx.tag } : {}),
+            meAnchors: meAnchorByTag,
+            meFallback: layFx.me,
+            slot: dm.slots[0] ?? { x: 0, y: 0 },
+          })
         }
       } else {
         mounts = isMeShot ? mountsOf(meShip?.id, undefined) : mountsOf(undefined, foeKey)

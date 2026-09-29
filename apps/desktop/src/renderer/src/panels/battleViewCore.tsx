@@ -691,6 +691,49 @@ interface OutroSnap {
   wormholeKind?: 'node' | 'boss' | 'extract' | 'ruins' | 'spawn'
 }
 
+/**
+ * **无人机"所属舰"锚点解析**（2026-09-29 修「舰队战中僚舰的无人机攻击没有动画效果」）。
+ *
+ * 常驻型无人机（雷鸥哨戒）与"被我方点防击落"的坠落演出，都要以**它自己那艘母舰**的舰位为基准：
+ * - 僚舰携带 ⇒ 用**它自己的锚**（`meAnchors` 里 `ally-N` 那一条）；
+ * - 主控 `player` / 旧事件缺 `tag` / 单船路径（空表）⇒ **回落主控锚** ⇒ 逐像素与改造前一致。
+ *
+ * ⚠ 出这处漏项的原因同「弹道两端锚点」那条（见 `resolveBoltAnchors` 注释）：2026-09-14「逐舰机群」
+ * 批把机体层 / 出击返航 / 弹道返航段都改成了逐舰锚，**只漏了常驻型开火起点与坠落点这两处** ⇒
+ * 僚舰的哨戒机"只在悬停、从不攻击"（曳光条从主控上方凭空冒出）。
+ * 本函数是这两处的**唯一取锚口**（回归守卫 = `npm run battle:bolt`）。
+ */
+function droneOwnerAnchor(args: {
+  /** 该架无人机所属舰 tag（`'player'` / `'ally-N'`）；旧事件缺省 = 主控 */
+  tag?: string
+  /** 我方逐舰锚点（多舰路径才有；单船路径为空表） */
+  meAnchors: ReadonlyMap<string, Anchor>
+  /** 回落的主控锚 */
+  meFallback: Anchor
+}): Anchor {
+  const { tag, meAnchors, meFallback } = args
+  const t = tag ?? 'player'
+  return meAnchors.get(t) ?? meFallback
+}
+
+/**
+ * **常驻型（哨戒）无人机的开火起点** = **所属舰的伴飞位**（舰位锚 ＋ 机型槽位）。
+ *
+ * ⚠ 槽位恒取 `slots[0]`：常驻型机体层恒显 1 架（`show = 1`），用的就是 `slots[0]`
+ * ⇒ 弹道起点必须与它**同槽**，否则"机体在这、弹道从那"。
+ * 单船 / 主控 / 旧事件缺 tag ⇒ 回落主控锚（逐像素不变）。
+ */
+function residentDroneFrom(args: {
+  tag?: string
+  meAnchors: ReadonlyMap<string, Anchor>
+  meFallback: Anchor
+  /** 该机型 `slots[0]`（常驻型只有 1 个槽位） */
+  slot: { x: number; y: number }
+}): Anchor {
+  const own = droneOwnerAnchor(args)
+  return { x: own.x + args.slot.x, y: own.y + args.slot.y }
+}
+
 export {
   DMG_COLOR,
   DMG_LABEL,
@@ -733,5 +776,7 @@ export {
   HpTri,
   boltGeom,
   resolveBoltAnchors,
+  droneOwnerAnchor,
+  residentDroneFrom,
 }
 export type { StarPt, Dims, Anchor, BoltV, FlashV, Stage, OutroSnap, BarGeom, FoeSlot, FoeFormation }

@@ -13,10 +13,16 @@
  * 做法：把解析抽成 `battleViewCore.resolveBoltAnchors`（**纯函数** · 两侧对称），本工具直接调它，
  * 用合成的锚点表断言四种情形。这样"落点又塌回主控"这类回归会**立刻红**。
  *
+ * ── **2026-09-29 追加（第二个同族缺陷）**：玩家报障「**舰队战中，僚舰的无人机攻击没有动画效果**」。
+ * 病根同类：2026-09-14「逐舰机群」批把机体层 / 出击返航 / 弹道返航段都改成了**逐舰锚**，
+ * **只漏了常驻型（哨戒）无人机的开火起点与机群坠落点**这两处 ⇒ 僚舰的哨戒机"只在悬停、从不攻击"
+ * （曳光条从主控上方凭空冒出）。取锚口 = `battleViewCore.residentDroneFrom` / `droneOwnerAnchor`，
+ * 本工具下半场把这两条口径**逐坐标**钉住（含"旧口径会算成什么"的负向对照）。
+ *
  * 用法：`npm run battle:bolt`（或 `npx tsx tools/battle-bolt-anchor.ts`）。
  * 退出码：0 = 全过；1 = 有用例不通过（打印逐条对照）。
  */
-import { resolveBoltAnchors } from '../apps/desktop/src/renderer/src/panels/battleViewCore'
+import { resolveBoltAnchors, droneOwnerAnchor, residentDroneFrom } from '../apps/desktop/src/renderer/src/panels/battleViewCore'
 import type { Anchor } from '../apps/desktop/src/renderer/src/panels/battleViewCore'
 
 /** 合成锚点（刻意做成**互不相同**的坐标：一旦取错锚点，断言立刻看得见） */
@@ -112,3 +118,74 @@ if (failed > 0) {
   process.exit(1)
 }
 console.log(`✅ 弹道锚点核对通过：${CASES.length}/${CASES.length}（含船长报障"敌方弹道恒瞄主控"的正身用例）`)
+
+/* ══════════ 下半场：**无人机"所属舰"锚点**（2026-09-29 玩家报障「僚舰的无人机攻击没有动画效果」）══════════
+ *
+ * 口径（两条，缺一不可）：
+ * ① **常驻型（哨戒）无人机的开火起点** = 所属舰的伴飞位（舰位锚 ＋ `slots[0]`）；
+ * ② **机群坠落/滑行终点** = 这一架自己的母舰机库口。
+ * 单船 / 主控 / 旧事件缺 tag ⇒ 一律回落主控锚（改造前逐像素不变）。
+ *
+ * 负向对照（读数的关键）：旧口径给僚舰算出来的点 = **主控锚 ＋ 槽位** —— 与机体层用的
+ * "僚舰锚 ＋ 槽位"差着**整整一个编队错位**，画面上就是"机体在僚舰旁悬停、曳光条从主控上方冒出"。
+ */
+const SLOT = { x: 30, y: -22 } // 现网两个常驻机型（雷鸥哨戒 / 构件哨戒）的唯一槽位
+const D_CASES: Array<{ name: string; args: Parameters<typeof residentDroneFrom>[0]; want: Anchor; why: string }> = [
+  {
+    name: '僚舰的哨戒机 ⇒ 起点 = **僚舰锚** ＋ 槽位（不是主控）',
+    args: { tag: 'ally-1', meAnchors, meFallback: A_MAIN, slot: SLOT },
+    want: { x: A_ALLY1.x + SLOT.x, y: A_ALLY1.y + SLOT.y },
+    why: '★本次报障的正身：旧口径（layFx）算出来是主控那份 ⇒ 僚舰的无人机"从不攻击"',
+  },
+  {
+    name: '主控的哨戒机 ⇒ 起点 = 主控锚 ＋ 槽位（合法情形，与上一条配对）',
+    args: { tag: 'player', meAnchors, meFallback: A_MAIN, slot: SLOT },
+    want: { x: A_MAIN.x + SLOT.x, y: A_MAIN.y + SLOT.y },
+    why: '别把"主控自己那条"也一起改掉（改造前像素一致是硬要求）',
+  },
+  {
+    name: '旧事件缺 tag ⇒ 回落主控锚（向后兼容）',
+    args: { meAnchors, meFallback: A_MAIN, slot: SLOT },
+    want: { x: A_MAIN.x + SLOT.x, y: A_MAIN.y + SLOT.y },
+    why: '老档/工具构造的事件没有 tag，行为必须与旧版一致',
+  },
+  {
+    name: '单船路径（逐舰锚点表为空）⇒ 回落主控锚',
+    args: { tag: 'ally-1', meAnchors: new Map(), meFallback: A_MAIN, slot: SLOT },
+    want: { x: A_MAIN.x + SLOT.x, y: A_MAIN.y + SLOT.y },
+    why: '单船路径不建表 ⇒ 逐像素与改造前一致',
+  },
+]
+console.log('')
+console.log('════ 无人机"所属舰"锚点核对（residentDroneFrom / droneOwnerAnchor）════')
+console.log('')
+for (const c of D_CASES) {
+  const got = residentDroneFrom(c.args)
+  const ok = eq(got, c.want)
+  if (!ok) failed += 1
+  /** 旧口径会给什么（= 主控锚 ＋ 槽位）——用来一眼看出"差多少" */
+  const legacy = { x: A_MAIN.x + SLOT.x, y: A_MAIN.y + SLOT.y }
+  console.log(`${ok ? '✅' : '❌'} ${c.name}`)
+  console.log(`     起点 ${fmt(got)}（期望 ${fmt(c.want)}）· 旧口径会给 ${fmt(legacy)}`)
+  console.log(`     ${c.why}`)
+}
+/** 坠落点的取锚口（`droneOwnerAnchor`）：僚舰 / 主控两条各一 */
+for (const [tag, want, why] of [
+  ['ally-2', A_ALLY2, '僚舰的机体被点防打下来 ⇒ 朝**它自己**的机库口滑（旧口径朝主控滑）'],
+  ['player', A_MAIN, '主控那条一字不变'],
+] as const) {
+  const got = droneOwnerAnchor({ tag, meAnchors, meFallback: A_MAIN })
+  const ok = eq(got, want)
+  if (!ok) failed += 1
+  console.log(`${ok ? '✅' : '❌'} 坠落点取锚 · tag=${tag} ⇒ ${fmt(got)}（期望 ${fmt(want)}）`)
+  console.log(`     ${why}`)
+}
+console.log('')
+if (failed > 0) {
+  console.error(`❌ 无人机锚点核对失败：合计 ${failed} 条不通过`)
+  process.exit(1)
+}
+console.log(
+  `✅ 无人机锚点核对通过：${D_CASES.length + 2}/${D_CASES.length + 2}` +
+    `（含玩家报障"僚舰无人机从不攻击"的正身用例）`,
+)

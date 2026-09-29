@@ -1475,6 +1475,40 @@ for (const m of MODULES) {
   )
 }
 
+  /* ── 僚舰无人机锚点契约（**2026-09-29 玩家报障**「舰队战中，僚舰的无人机攻击没有动画效果」）──
+   *
+   * 病根：2026-09-14「逐舰机群」批把机体层 / 出击返航 / 弹道返航段都改成了**逐舰锚**，
+   * **只漏了常驻型（哨戒）无人机的开火起点与机群坠落点**这两处 ⇒ 僚舰的哨戒机"只在悬停、从不攻击"，
+   * 曳光条却从主控上方凭空冒出（无头 Chrome 实测：机体在僚舰 +(77,−38)、弹道起点在主控 +(76,−39)
+   * —— 两个偏移一模一样，根因就此坐实）。
+   *
+   * 契约（源码级扫描，防"日后又被改回内联口径"）：
+   * ① 常驻型开火起点必须走**唯一取锚口** `residentDroneFrom`（几何由 `npm run battle:bolt` 逐坐标守卫）；
+   * ② 机群坠落点必须走 `droneOwnerAnchor`（同一把尺：僚舰 → 它自己的机库口）；
+   * ③ **不许**再出现 `droneHomeStation(dm, …)`（把机型模型直接喂"主控布局"的旧写法）。
+   */
+  {
+    const uiSrc = readFileSync(join(process.cwd(), 'apps/desktop/src/renderer/src/panels/BattleScreen.tsx'), 'utf8')
+    /**
+     * ⚠ **必须先剥注释**（口径同上面那条「战斗宿主双口径契约」）：本批的修复说明里就**原样引用了**
+     * 旧写法 `droneHomeStation(dm, …)`——不剥注释的话，契约会被自己的解释文字绊倒（实测踩过一次）。
+     */
+    const uiCode = uiSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '')
+    const anchorCalls = (uiCode.match(/(?:\bresidentDroneFrom|\bdroneOwnerAnchor)\s*\(/g) ?? []).length
+    check(
+      anchorCalls >= 2,
+      `僚舰无人机锚点契约：BattleScreen **代码里**的逐舰取锚口只被调用 ${anchorCalls} 处（应 ≥ 2：常驻型起点 ＋ 坠落点）—— ` +
+        '僚舰的无人机又会从主控那一侧冒出来（2026-09-29 玩家报障）',
+    )
+    check(
+      !/\bdroneHomeStation\s*\(\s*dm\b/.test(uiCode),
+      '僚舰无人机锚点契约：代码里又出现了 `droneHomeStation(dm, …)` —— 常驻型（哨戒）无人机的开火起点会塌回主控',
+    )
+    console.log(
+      `· 僚舰无人机锚点契约：逐舰取锚口 ${anchorCalls} 处（常驻型起点 / 坠落点）· 无"喂主控布局"的旧写法`,
+    )
+  }
+
   /* ── 通讯弹窗"让位与上膛"契约（2026-09-25 船长报障「战斗胜利后，结算通讯并不会弹出」）──
    *
    * 病根（真档实证）：战场是全屏覆盖层 `z-index: 100`，送达弹窗的遮罩是 `88` ⇒ 结算信在**击杀那一拍**
