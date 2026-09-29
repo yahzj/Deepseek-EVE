@@ -4081,8 +4081,30 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.204": { zh: "结构锁定 {p1} 秒 · 每场一次", en: "Structure locked for {p1} s · once per battle" },
   /* 2026-09-27 无人机储备甲板（船长令）：参数行 = 复位周期；秒数由界面按 `droneReviveCycleMs` 现算
      （**说明文案里不手写数字** —— 本会话定的甲案）。.206 = 行名，.205 = 行值。 */
-  /* ── 沉船记录（2026-09-27 船长令：通讯内新增一个分类，记录玩家损失的舰船与当时的装配）── */
-  "ui.WreckLog.001": { zh: "沉船记录", en: "Ship Loss Log" },
+  /* ── 多装递减装备的「有效值（原值）」标注（**2026-09-29 船长令**：「之后所有多装递减的装备，能否采用
+     和维修装置类似的 '真实数值（原始数值）' 这样的方式标注参数？」）——
+     数值一律由 core 单点 `fittedEffectParamsOf` 现算（折权族 = 本件那一份；缺口族 = 装上后的合成值）。 ── */
+  "ui.shipInfo.218": { zh: "效果", en: "Effect" },
+  "ui.shipInfo.220": { zh: "（本件 {p1}）", en: " (this unit {p1})" },
+  "ui.shipInfo.221": { zh: "（原 {p1}）", en: " (base {p1})" },
+  "ui.shipInfo.222": { zh: "装上后", en: "Fitted value" },
+  "ui.shipInfo.223": { zh: "机动速度", en: "Speed" },
+  "ui.shipInfo.224": { zh: "无人机射程", en: "Drone range" },
+  "ui.shipInfo.225": { zh: "护盾脉冲", en: "Shield pulse" },
+  "ui.shipInfo.226": { zh: "力场", en: "Shield field" },
+  "ui.shipInfo.227": { zh: "命中", en: "Accuracy" },
+  "ui.shipInfo.228": { zh: "目标受击加深", en: "Target damage bonus" },
+  "ui.shipInfo.229": { zh: "跃迁速度", en: "Warp speed" },
+  "ui.shipInfo.230": { zh: "敌方射程压制", en: "Enemy range cut" },
+  "ui.shipInfo.231": { zh: "闪避", en: "Evasion" },
+  "ui.shipInfo.232": { zh: "护盾动能抗性", en: "Shield kinetic resist" },
+  "ui.shipInfo.233": { zh: "护盾高爆抗性", en: "Shield explosive resist" },
+  "ui.shipInfo.234": { zh: "护盾能量抗性", en: "Shield energy resist" },
+  "ui.shipInfo.235": { zh: "装甲动能抗性", en: "Armor kinetic resist" },
+  "ui.shipInfo.236": { zh: "装甲高爆抗性", en: "Armor explosive resist" },
+  "ui.shipInfo.237": { zh: "装甲能量抗性", en: "Armor energy resist" },
+
+  /* ── 沉船记录（2026-09-27 船长令：通讯内新增一个分类，记录玩家损失的舰船与当时的装配）── */  "ui.WreckLog.001": { zh: "沉船记录", en: "Ship Loss Log" },
   "ui.WreckLog.002": { zh: "收件箱", en: "Inbox" },
   "ui.WreckLog.003": { zh: "还没有沉船记录。", en: "No lost ships yet." },
   "ui.WreckLog.004": { zh: "损失原因", en: "Cause" },

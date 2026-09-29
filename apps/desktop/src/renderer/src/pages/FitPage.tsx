@@ -939,6 +939,24 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                           tr("ui.FitPage.150", { p1: i + 1, p2: stealthTraitNote(fittedDef) }),
                           engine,
                           effectiveTarget,
+                          /* **本件在同族里的位序**（2026-09-29：多装递减装备的「有效值（原值）」要用它折权）：
+                             按高→中→低槽位序遍历，数到本槽为止同收敛族的件数（含本件）。 */
+                          (() => {
+                            const kind = stackingOf(fittedDef).kind
+                            let n = 0
+                            for (const r of ['high', 'mid', 'low'] as const) {
+                              const arr = state.fleet[effectiveTarget]?.fitted?.[r] ?? []
+                              for (let k = 0; k < arr.length; k++) {
+                                const id = arr[k]
+                                if (!id) continue
+                                const d = engine.ctx.modules.get(id)
+                                if (!d || stackingOf(d).kind !== kind) continue
+                                n += 1
+                                if (r === rack && k === i) return n
+                              }
+                            }
+                            return Math.max(1, n)
+                          })(),
                         ),
                       )}
                     >

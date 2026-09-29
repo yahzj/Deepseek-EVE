@@ -7480,6 +7480,70 @@ export function foeDroneRangeOf(
 export const FOE_RANGE_DEBUFF_FLOOR_M = 3000
 
 /**
+ * **该件"装上船之后"的效果读数**（**2026-09-29 船长令**：「之后所有多装递减的装备，能否采用和维修装置
+ * 类似的 '真实数值（原始数值）' 这样的方式标注参数？」）——界面**唯一取数口**，
+ * 与 `repairStatsFor` 同一条纪律：**界面不许自己折权**，否则显示值与实战值必然漂移。
+ *
+ * 两类口径：
+ * - **折权族**（`stackingOf().group` = `curve` / `weighted` / `fleetDecay`）：本件**自己那一份**的有效值
+ *   = `原值 × stackWeight(该舰同族第 n 件)`（`ordinal` 由调用方按装配位序给，缺省 1）；
+ * - **缺口族**（`gap`：三系抗性 / 闪避）：逐件折权没有干净算法（缺口复合是非线性的）
+ *   ⇒ 报**装上后该舰的合成值**（走 `createPlayerSpec`，与战斗同一份规格），原值仍是本件那一份。
+ *
+ * 维修装置（`repairArmorHp` / `repairHullHp`）**不在本表内**——它另有 `repairStatsFor`
+ * （那条还要叠"层容量增幅 × 恢复量技能"）⇒ 两处各出一行、不重复。
+ *
+ * ⚠ 放在 `combat.ts` 而不是 `equipment.ts`：缺口族要读 `createPlayerSpec`，而 `equipment` 是被
+ * `combat` 依赖的那一层（放那边会成环；`repair.ts` 当初也是为同一件事单开的）。
+ */
+export function fittedEffectParamsOf(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+  mod: ModuleDef,
+  ordinal = 1,
+): Array<{ key: string; raw: number; eff: number }> {
+  const out: Array<{ key: string; raw: number; eff: number }> = []
+  const group = stackingOf(mod).group
+  const w = group === 'flat' || group === 'max' ? 1 : stackWeight(Math.max(1, ordinal))
+  /** 折权族：本件自己那一份（`raw × 曲线权重`） */
+  const folded = (key: string, raw: number | undefined): void => {
+    if (raw === undefined || raw === 0) return
+    out.push({ key, raw, eff: raw * w })
+  }
+  folded('speed', mod.speedBonusPct)
+  folded('droneRange', mod.droneRangeBonusPct)
+  folded('shieldPulse', mod.shieldPulsePct)
+  folded('shieldField', mod.shieldFieldPct)
+  folded('hit', mod.hitBonusPct)
+  folded('lock', mod.lockDmgBonus)
+  folded('warp', mod.warpSpeedBonusPct)
+  folded('ecmRangeCut', mod.foeRangeDebuffPct)
+  /** 缺口族：报装上后的**合成值**（`createPlayerSpec` = 引擎同一份规格） */
+  if (group === 'gap') {
+    const spec = createPlayerSpec(state, ctx, shipId)
+    if (spec) {
+      for (const [type, v] of Object.entries(mod.shieldResistAdd ?? {})) {
+        out.push({
+          key: `resistShield:${type}`,
+          raw: v ?? 0,
+          eff: spec.resists.shield?.[type as DamageType] ?? 0,
+        })
+      }
+      for (const [type, v] of Object.entries(mod.armorResistAdd ?? {})) {
+        out.push({
+          key: `resistArmor:${type}`,
+          raw: v ?? 0,
+          eff: spec.resists.armor?.[type as DamageType] ?? 0,
+        })
+      }
+      if (mod.evasionGapPct !== undefined) out.push({ key: 'evasion', raw: mod.evasionGapPct, eff: spec.evasion })
+    }
+  }
+  return out
+}
+
+/**
  * 编队当前的**敌舰射程削减率** `r`（无电子舰/无压制件 = 0）。
  *
  * **口径（2026-09-29 船长裁定「丙」· 同舰递减乘法 ＋ 舰间乘法 ＋ 整队封顶）**：

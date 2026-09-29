@@ -1170,6 +1170,10 @@ export {
   repairStatsFor,
   // 同一批：某舰**当前装着的维修装置**（按位序）——界面靠它把"这一件"对到 `repairStatsFor` 的哪一份
   fittedRepairModules,
+  // **多装递减装备的「有效值（原值）」读数**（**2026-09-29 船长令**：「之后所有多装递减的装备，能否采用
+  // 和维修装置类似的 '真实数值（原始数值）' 这样的方式标注参数？」）——折权族给本件那一份
+  // （`原值 × 同族第 n 件权重`）、缺口族给装上后的**合成值**；界面只许调本函数，别自己折权。
+  fittedEffectParamsOf,
 } from './combat'
 export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3, BattleVerdict } from './combat'
 

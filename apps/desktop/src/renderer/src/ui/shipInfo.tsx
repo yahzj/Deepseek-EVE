@@ -15,7 +15,7 @@
  */
 import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
-import { DEFAULT_BALANCE, DC_LOCK_MS, droneBayTotalM3, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules } from '@whale/core'
+import { DEFAULT_BALANCE, DC_LOCK_MS, droneBayTotalM3, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules, fittedEffectParamsOf } from '@whale/core'
 /** 引擎类型（"装上船之后的实修值"那一行要现算 —— 2026-09-29 船长令） */
 import type { GameEngine } from '../game/engine'
 import { hoverTipProps } from './Tooltip'
@@ -320,8 +320,48 @@ function fittedRepairLine(engine: GameEngine, shipId: string, mod: ModuleDef): I
     }),
   }
 }
-/** 维修件消耗的组件名（接线单点：repairKit → 物品名） */
-function repairKitName(mod: ModuleDef): string {
+/**
+ * **多装递减装备的「有效值（原值）」一行**（**2026-09-29 船长令**：「之后所有多装递减的装备，
+ * 能否采用和维修装置类似的 '真实数值（原始数值）' 这样的方式标注参数？」）——
+ * 与 `fittedRepairLine` 同一形状与同一纪律：**只对"已装上船"的卡出这一行**（仓库/市场/手册不上船 ⇒ 只见原值）；
+ * 数值一律走 core 单点 `fittedEffectParamsOf`（折权族 = 本件那一份；缺口族 = 装上后的合成值）。
+ *
+ * 显示形：折权族 `速度 +26%（原 +30%）` · 缺口族 `动能抗性 47%（本件 +20%）`；多字段用 ` · ` 连。
+ */
+function fittedDecayLine(engine: GameEngine, shipId: string, mod: ModuleDef, ordinal = 1): InfoLine | null {
+  const params = fittedEffectParamsOf(engine.state, engine.ctx, shipId, mod, ordinal)
+  if (params.length === 0) return null
+  const isGap = stackingOf(mod).group === 'gap'
+  const parts = params.map((p) => {
+    const name = tr(EFF_PARAM_LABEL[p.key] ?? 'ui.shipInfo.218')
+    const eff = pct(p.eff)
+    const raw = isGap ? tr('ui.shipInfo.220', { p1: pct(p.raw) }) : tr('ui.shipInfo.221', { p1: pct(p.raw) })
+    return `${name} ${eff}${raw}`
+  })
+  return { k: tr('ui.shipInfo.222'), v: parts.join(' · ') }
+}
+
+/** 效果字段 → 行内短名（`fittedDecayLine` 用；缺省走 `ui.shipInfo.218`「效果」） */
+const EFF_PARAM_LABEL: Record<string, string> = {
+  speed: 'ui.shipInfo.223',
+  droneRange: 'ui.shipInfo.224',
+  shieldPulse: 'ui.shipInfo.225',
+  shieldField: 'ui.shipInfo.226',
+  hit: 'ui.shipInfo.227',
+  lock: 'ui.shipInfo.228',
+  warp: 'ui.shipInfo.229',
+  ecmRangeCut: 'ui.shipInfo.230',
+  evasion: 'ui.shipInfo.231',
+  'resistShield:kinetic': 'ui.shipInfo.232',
+  'resistShield:explosive': 'ui.shipInfo.233',
+  'resistShield:plasma': 'ui.shipInfo.234',
+  'resistArmor:kinetic': 'ui.shipInfo.235',
+  'resistArmor:explosive': 'ui.shipInfo.236',
+  'resistArmor:plasma': 'ui.shipInfo.237',
+}
+
+
+/** 维修件消耗的组件名（接线单点：repairKit → 物品名） */function repairKitName(mod: ModuleDef): string {
   return mod.repairKit === 'repairkit-mil' ? tr("ui.shipInfo.002") : mod.repairKit === 'repairkit-civ' ? tr("ui.shipInfo.003") : (mod.repairKit ?? tr('ui.itemSubs.001'))
 }
 
@@ -937,7 +977,7 @@ function crossFamilyShort(mod: ModuleDef): string {
  * ⚠ **可选 `engine` ＋ `shipId`**（**2026-09-29 船长令**）：给了就把"装上船之后"的实修值也渲染出来
  * （如修理件的「装到船上：各 19（10）点」）。不传 = 与改动前逐字一致（仓库/市场/手册那些"还没上船"的卡）。
  */
-export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: string): InfoLine[] {
+export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: string, ordinal = 1): InfoLine[] {
   /**
    * 「槽位 / 类型」那一行的**类型**：默认 = 槽位名（`SLOT_LABELS`）。
    *
@@ -1322,6 +1362,14 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
     })
   }
   if (mod.cpuUse !== undefined) lines.push({ k: tr("ui.shipInfo.169"), v: fmt(mod.cpuUse) })
+  /**
+   * **多装递减装备的「有效值（原值）」**（**2026-09-29 船长令**）——已装卡专有（`engine + shipId` 都有才行）；
+   * 放在这里一次性收口：任何槽位分支都不用各自接线，新增递减件自动被覆盖。
+   */
+  if (shipId !== undefined && engine !== undefined) {
+    const dec = fittedDecayLine(engine, shipId, mod, ordinal)
+    if (dec) lines.push(dec)
+  }
   return lines
 }
 
@@ -1472,8 +1520,20 @@ export function infoCardContent(title: ReactNode, lines: InfoLine[], note?: Reac
  * ⚠ 同一元素**禁** `title` + `hoverTipProps` 并存（两个提示路径会在同一个单例层上互顶，见 `ui/Tooltip.tsx`）。
  * `hint` = 追加一行行动提示（如「点击更换 · 第 N 位」），与描述同款注脚样式。
  */
-export function moduleHoverContent(mod: ModuleDef, hint?: ReactNode, engine?: GameEngine, shipId?: string): ReactNode {
-  return infoCardContent(mod.name, moduleInfoLines(mod, engine, shipId), mod.description, hint ? <div className="app-info-note">{hint}</div> : null)
+export function moduleHoverContent(
+  mod: ModuleDef,
+  hint?: ReactNode,
+  engine?: GameEngine,
+  shipId?: string,
+  /** **本件在同族里的位序**（1 起；`fittedEffectParamsOf` 折权用）——由调用方按装配位序给 */
+  ordinal = 1,
+): ReactNode {
+  return infoCardContent(
+    mod.name,
+    moduleInfoLines(mod, engine, shipId, ordinal),
+    mod.description,
+    hint ? <div className="app-info-note">{hint}</div> : null,
+  )
 }
 
 /**
