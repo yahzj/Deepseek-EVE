@@ -250,6 +250,12 @@ export interface MiningState {
   /** 富矿红利窗口剩余循环数（卷B2⑥，2026-09-08 船长定稿）：触发当轮置 1，下一循环消耗至 0；
    *  0/缺省 = 无窗口（旧档零迁移）。窗口与矿带绑定：换带/停止/结束清零；自动循环返航卸货后回原带保留。 */
   rvLeft?: number
+  /**
+   * **本趟返航的跃迁燃料倍率**（**2026-09-29 船长令**）：`1`/缺省 = 没吃燃料；`10` = 这一趟返航速度 ×10。
+   * ⚠ 只在**返航腿开始**那一刻由 `jumpFuel.beginJumpFuelLeg` 定一次（扣料也在那一刻），
+   * 之后每拍的重算只按本字段折算 —— 详见 `core/jumpFuel.ts` 的文件头注（为什么不能现算）。
+   */
+  fuelMul?: number
 }
 
 /** T4 换船善后：旧船自动返航到港的记录（key = 船 id，独立于主控采矿推进） */
@@ -561,9 +567,33 @@ export interface RefineRunState {
   }
 }
 
+/**
+ * **实验室产线状态**（**2026-09-29 船长令 · 跃迁燃料批**）。
+ *
+ * 与 `RefineRunState` 同一族（多工位并行 · 主控/AI 核心驱动 · 料尽自停 · 台号稳定），差别只在
+ * **投料方式**：精炼炉是"单资源按批扣"，实验室是**一张配方表的多料 BOM**（每批一次性扣齐才出料）
+ * ⇒ 单独一张表（`state.labRuns`），推进/停线/视图全在 `core/lab.ts`。
+ */
+export interface LabRunState {
+  active: boolean
+  /** 稳定台号（`state.labSeq` 分配） */
+  id: number
+  /** 劳动者：主控亲自运转 / AI 核心类型（与精炼炉同款语义与效率口径） */
+  worker: 'pilot' | AiCoreType
+  /** 配方 id（`ctx.labRecipes` 的键；第一版只有 `jump-fuel`） */
+  recipeId: string
+  /** 单批产物单位（起线时按技能现算） */
+  batchUnits: number
+  /** 单批周期毫秒（已按 AI 核心效率与技能折算） */
+  cycleMs: number
+  /** 当前批到点时刻（游戏内毫秒） */
+  finishAtGameMs: number
+  /** 已完成批数（展示用） */
+  batchesDone: number
+}
+
 /** 精炼炉空态（兼容常量；v20 多台炉不用单例空态） */
-export const EMPTY_REFINE_RUN: RefineRunState = {
-  active: false,
+export const EMPTY_REFINE_RUN: RefineRunState = {  active: false,
   id: -1,
   worker: 'pilot',
   recipe: 'refine',
@@ -601,6 +631,8 @@ export interface SalvageOpState {
   targetGroup?: string
   /** 「本次返航卸货后停止」：勾选后强制自动循环开、卸完这一趟即收工（与采矿同款联动） */
   stopAfterTrip: boolean
+  /** 本趟返航的跃迁燃料倍率（同 `MiningState.fuelMul`；1/缺省 = 没吃燃料） */
+  fuelMul?: number
 }
 
 /** 打捞作业空态（新档 / 作业结束） */
@@ -677,6 +709,8 @@ export interface ExpeditionState {
    * 可选字段 ⇒ 零迁移（老路径不写它，逐字不变）。
    */
   rewardIskOverride?: number
+  /** 本次返航的跃迁燃料倍率（同 `MiningState.fuelMul`；1/缺省 = 没吃燃料） */
+  fuelMul?: number
 }
 
 /** V12 战斗单位运行状态（动态量：三层当前血量 + 每武器装填倒计时） */
@@ -1653,6 +1687,8 @@ export interface AiMiningTask {
   /** 富矿红利窗口剩余循环数（卷B2⑥，与主控 MiningState.rvLeft 同语义；每船独立；
    *  0/缺省 = 无窗口；换带/任务终止清零，自动循环返航卸货回原带保留） */
   rvLeft?: number
+  /** 本趟返航的跃迁燃料倍率（同主控 `MiningState.fuelMul`；1/缺省 = 没吃燃料） */
+  fuelMul?: number
 }
 
 /** AI 副船任务：打捞（自动循环，2026-09-09 船长定：outbound → salvaging → returning → 同星系再出航，直到取消） */
@@ -1669,6 +1705,8 @@ export interface AiSalvageTask {
   deviceAccMs: Record<string, number>
   /** 本趟捞取体积当量累计（m³，展示用） */
   tripM3: number
+  /** 本趟返航的跃迁燃料倍率（同主控 `MiningState.fuelMul`；1/缺省 = 没吃燃料） */
+  fuelMul?: number
 }
 
 /** AI 副船任务：远征（V12 两阶段：out → battle → back；AI 只接高胜率单，奖励全额） */
@@ -1685,6 +1723,8 @@ export interface AiExpeditionTask {
   phase: 'out' | 'battle' | 'back'
   /** 实时战斗状态（phase='battle' 时非空；与主控共用 BattleState 形状） */
   battle: BattleState | null
+  /** 本次返航的跃迁燃料倍率（同主控 `MiningState.fuelMul`；1/缺省 = 没吃燃料） */
+  fuelMul?: number
 }
 
 /** AI 副船任务：前往指定星系掩护巡逻（占名额；out 去程 → stand 驻留；可取消召回） */
@@ -2589,6 +2629,21 @@ export type GameStateV31 = Omit<GameStateV30, 'version'> & {
 export type GameState = GameStateV31 & {
   resupplyFromWarehouse?: boolean
   /**
+   * **跃迁燃料的活动开关**（**2026-09-29 船长令 · 跃迁燃料批**）：键 = 活动 id
+   * （`jumpFuel.JumpFuelActivity`：mine / salvage / expedition / ai），`true` = 该活动**允许**吃燃料。
+   * **缺省/缺键 = 关**（船长 2026-09-29「3 是」= 开关默认全关，防误耗）。
+   * 只有**已建成空间站 ≥ 1 座**之后才可从舰船页「跃迁燃料」子页改动（`jumpFuelUnlockedOf`）。
+   */
+  jumpFuel?: Partial<Record<'mine' | 'salvage' | 'expedition' | 'ai', boolean>>
+  /**
+   * **实验室产线**（**2026-09-29 船长令**：「为工业新增子页面：'实验室'。玩家可以在实验室生产燃料」）。
+   * 与精炼炉同一族形状（多工位并行 · 主控/AI 核心驱动 · 料尽自停），但**配方是 BOM 一括投料** ⇒ 单独一张表。
+   * 缺省/缺键 = 没有在跑的实验线（老档零迁移）。
+   */
+  labRuns?: LabRunState[]
+  /** 实验室台号分配（同 `refineSeq` 口径） */
+  labSeq?: number
+  /**
    * **实战胜利记录**（**2026-09-24 船长令**：「记录残血最多的一次，如果都是满血则不覆盖。夹回当前射程内。」
    * ＋「③按敌卡」）——键 = **敌卡 id**；值 = 那一次的期望距离与**剩余比例**（（装甲+结构）÷ 满值）。
    *
@@ -3098,6 +3153,22 @@ export function refundOneTimeBookOf(state: GameState, blueprintId: string): bool
  *
  * ⚠ 本函数放在 `state.ts`（活动位与四把 `*Halt` 都在这儿）⇒ **谁都能调、也不制造模块环**。
  */
+/**
+ * **摘掉"主控亲自运转"的实验线**（**2026-09-29 跃迁燃料批**）：手动工作位那一个名额是**跨产线**的
+ * —— 精炼/回收/拆解/制造与实验室共用它（见 `haltActivityForSwitch` 的 `'refine'` / `'lab'` 两档）。
+ *
+ * 为什么不退料：实验室的 BOM 是**每批到点才扣**（同精炼炉 v20 起的"实时扣料"）⇒ 当前那批还没到点，
+ * 它的料仍在货仓/仓库里，退无可退；代价只有当前那批的进度。
+ */
+function haltPilotLabRunsInline(state: GameState): void {
+  const runs = state.labRuns
+  if (!runs) return
+  for (let i = runs.length - 1; i >= 0; i--) {
+    const r = runs[i]!
+    if (r.active && r.worker === 'pilot') runs.splice(i, 1)
+  }
+}
+
 export function haltActivityForSwitch(state: GameState, kind: string): void {
   switch (kind) {
     case 'mining':
@@ -3141,6 +3212,17 @@ export function haltActivityForSwitch(state: GameState, kind: string): void {
         }
         r.active = false
       }
+      /**
+       * **手动工作位那一个名额是跨产线的**（**2026-09-29 跃迁燃料批**）：主控手上同时只能有一条
+       * 手动线 —— 精炼/回收/拆解/制造 **与实验室**都算（实验室的 BOM 是"每批到点才扣"，
+       * 停机不吃料 ⇒ 这里只摘线，无需退料）。
+       */
+      haltPilotLabRunsInline(state)
+      return
+    }
+    case 'lab': {
+      /** 实验室那一条（同上：BOM 每批到点才扣 ⇒ 停机不吃料、不退料） */
+      haltPilotLabRunsInline(state)
       return
     }
     case 'manufacturing': {

@@ -32,6 +32,7 @@ import { formatDurationMs } from './time'
 import { originGalaxyOf, nearestStationGalaxyId, builtSiteAtGalaxy } from './location'
 import { shortestTravelMinutes, travelLegMs } from './travel'
 import { RETURN_LEG_MUL } from './balance'
+import { beginJumpFuelLeg, jumpFuelLegMsOf } from './jumpFuel'
 import { asFoeFamily, bountyEnemyCount, bountyWreckInjection, injectWeekendWreck, injectWreckDensity, weekendWreckDensityOf, weekendWreckInjectionOf, wreckDensityOf, wreckInjectThreatOf } from './salvage'
 import {
   activeFoeSpecsOf,
@@ -937,7 +938,10 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     exp.eventId = null
     exp.eventFired = false
     const ret = returnBackMs(state, ctx, anomaly.galaxyId)
-    const backMs = ret.ms > 0 ? ret.ms : exp.outMs * RETURN_LEG_MUL
+    const rawBackMs = ret.ms > 0 ? ret.ms : exp.outMs * RETURN_LEG_MUL
+    /** **跃迁燃料**（2026-09-29）：按**原返航时长**（不含燃料）每秒扣 1 单位，本趟倍率存进 `exp.fuelMul` */
+    exp.fuelMul = beginJumpFuelLeg(state, 'expedition', rawBackMs)
+    const backMs = jumpFuelLegMsOf(rawBackMs, exp.fuelMul)
     const baseName =
       ret.base === HOME_GALAXY_ID
         ? '母港'
@@ -1030,7 +1034,10 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   const endAtD = Math.max(battle.startedAtGameMs, battle.lastTickGameMs)
   exp.returnAtGameMs = endAtD
   const retD = returnBackMs(state, ctx, anomaly.galaxyId)
-  exp.finishAtGameMs = endAtD + (retD.ms > 0 ? retD.ms : exp.outMs * RETURN_LEG_MUL)
+  const rawBackD = retD.ms > 0 ? retD.ms : exp.outMs * RETURN_LEG_MUL
+  /** 跃迁燃料（同胜利路径；失利返航照吃 —— 玩家开的是"这个活动用燃料"，不是"打赢才用"） */
+  exp.fuelMul = beginJumpFuelLeg(state, 'expedition', rawBackD)
+  exp.finishAtGameMs = endAtD + jumpFuelLegMsOf(rawBackD, exp.fuelMul)
   addLog(state, 'fleet', '舰队开始返航（去程时间并入返航）。', 'core.expedition.027')
 }
 
@@ -1224,7 +1231,9 @@ function settleBattleRetreat(
     return
   }
   const retR = anomaly ? returnBackMs(state, ctx, anomaly.galaxyId) : { ms: 0, base: HOME_GALAXY_ID }
-  exp.finishAtGameMs = endAtR + (retR.ms > 0 ? retR.ms : exp.outMs * RETURN_LEG_MUL)
+  const rawBackR = retR.ms > 0 ? retR.ms : exp.outMs * RETURN_LEG_MUL
+  exp.fuelMul = beginJumpFuelLeg(state, 'expedition', rawBackR)
+  exp.finishAtGameMs = endAtR + jumpFuelLegMsOf(rawBackR, exp.fuelMul)
   addLog(state, 'combat', '舰队脱离战场，自动返航（去程时间并入返航）。', 'core.expedition.029')
 }
 

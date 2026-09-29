@@ -377,6 +377,21 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.station.011": { zh: "抵达「{p1}」——协会的建站工地就在这里。", en: "Arrived at “{p1}” — the Association's construction site is right here." },
   "core.station.012": { zh: "[通讯] {p1}：{p2}", en: "[Comms] {p1}: {p2}" },
   "core.station.013": { zh: "舰船已抵达「{p1}」——协会的建站工地就在这里。可现场提交建材；也可停靠空间站后一键「前往工地交付」。副站建成前不提供停靠与站内功能，建成后并入基地网络并开放泊位与全部服务。", en: "The ship has reached “{p1}” — the Association's construction site is right here. Materials can be handed in on the spot, or you can dock at a station and use Deliver to Site in one click. Before an outpost is finished it offers no docking or station services; once complete it joins the base network and opens berths and all services." },
+  /* ═══ 跃迁燃料链（**2026-09-29 船长令**）：实验室 · 超空间折跃燃料 ═══
+     解锁门槛 = 首座空间站建成；燃料按"原返航秒数"消耗、返航速度 ×10；开关默认全关。 */
+  "core.station.014": { zh: "⌂ 首座空间站并网：工业页「实验室」已解锁 —— 可合成超空间折跃燃料；舰船页「跃迁燃料」页可设置哪些活动使用燃料。", en: "⌂ First station on the grid: the Industry page's Laboratory is unlocked — synthesize Hyperspace Jump Fuel there, and set which activities burn fuel on the Ship page's Jump Fuel tab." },
+  "core.jumpFuel.001": { zh: "✦ 跃迁燃料点火：本趟返航 {p1} → {p2}（消耗 {p3} 单位，余 {p4}）。", en: "✦ Jump fuel ignited: this return leg goes from {p1} to {p2} (burned {p3} units, {p4} left)." },
+  "core.jumpFuel.002": { zh: "跃迁燃料需在首座空间站建成后使用。", en: "Jump fuel becomes available once the first station is on the grid." },
+  "core.lab.001": { zh: "实验室停线：材料耗尽（{p1} 已完成 {p2} 批，共 {p3} 单位）。", en: "Laboratory line halted: materials exhausted ({p1} finished {p2} batches, {p3} units in total)." },
+  "core.lab.002": { zh: "实验室停线（手动）：{p1} 已完成 {p2} 批。", en: "Laboratory line halted (manual): {p1} finished {p2} batches." },
+  "core.lab.010": { zh: "实验室需在首座空间站建成后投入使用。", en: "The Laboratory comes online once the first station is built." },
+  "core.lab.011": { zh: "未知实验室配方：{p1}。", en: "Unknown laboratory recipe: {p1}." },
+  "core.lab.012": { zh: "材料不足一批：{p1}。", en: "Not enough material for one batch: {p1}." },
+  "core.lab.013": { zh: "实验室随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。", en: "The Laboratory runs on the Association base network: dock at a station (home port or a finished outpost) to start it — AI-core operation is exempt." },
+  "core.lab.014": { zh: "{p1} 库存不足，无法接入实验室。", en: "Not enough {p1} in store to run the Laboratory." },
+  "core.lab.015": { zh: "这条实验线已经停了。", en: "That laboratory line has already stopped." },
+  "core.lab.016": { zh: "实验室运转异常：配方记录缺失，该线已停（AI 核心已归还）。", en: "Laboratory malfunction: the recipe record is missing, so the line stopped (AI core returned)." },
+  "ui.labelsText.073": { zh: "道具", en: "Consumables" },
   /* ── 第九批：wormholeHold.ts（虫洞货仓：形状件摆放/整理/交换/取回）── */
   "core.wormholeHold.001": { zh: "这件东西是可叠加散货：应该走散货条（holdAddCargo）。", en: "That item is stackable loose cargo: it belongs to the loose-cargo lane (holdAddCargo)." },
   "core.wormholeHold.002": { zh: "货仓格数为 0：放不下任何形状件。", en: "The hold has 0 slots, so no shaped item fits." },

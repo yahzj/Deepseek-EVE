@@ -127,6 +127,19 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   ⇒ 只收不卖（NPC 不铺卖单、买入被拦），**收购照常**。`poolTarget/supplyFlow` 保留：
   //   池面仍参与均衡价与收购阶梯的计算，只是不再铺供应单。】
   { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 1_800, poolTarget: 1_560, supplyFlow: 13, playerBuyable: false }, // 只收不卖（2026-09-14 船长）
+  // ── 跃迁燃料链（**2026-09-29 船长令**：3 种新精炼材料 ＋ 燃料）──
+  // 【新矿物 = 玩家产出要拿去卖钱 ⇒ 照本文件既有口径走 **common 池**（船长 2026-09-29「4 是」：
+  //   新矿物放普通池）。池宽按"单炉满技能精炼产能的 ~2 倍"标（同 2026-09-10 那批的算法）：
+  //   折跃等离子/低温跃迁浆 ≈ 1,400~1,600/炉·h（气/冰 R3~R5 皆出）⇒ 取 flow 300/窗（≈18,000/h）；
+  //   曲率凝析物只从高阶气/冰少量出（≈120~130/炉·h）⇒ 取 flow 40/窗（≈2,400/h）。】
+  { key: 'min-jumplasma', kind: 'item', refId: 'min-jumplasma', rarity: 'common', basePrice: 120, poolTarget: 36_000, supplyFlow: 300 },
+  { key: 'min-cryoslurry', kind: 'item', refId: 'min-cryoslurry', rarity: 'common', basePrice: 120, poolTarget: 36_000, supplyFlow: 300 },
+  { key: 'min-curvature', kind: 'item', refId: 'min-curvature', rarity: 'common', basePrice: 420, poolTarget: 4_800, supplyFlow: 40 },
+  // 【超空间折跃燃料 —— **稀有档 ＋ 池 ＋ 批量档**（船长 2026-09-29：「燃料可买卖放入稀有（但是是池子）」）：
+  //   `rareQtyMul: 600` = 一张稀有供给单 600 单位（正好一批实验室产出）；`absorbQtyPerWindow` 与
+  //   实验室满产对齐（1 条线 600 单位/5 分钟 ⇒ 7,200/h = 120/分钟 ⇒ 窗吸收 14,400/h）。
+  //   `demandMultiplier: 0.6` 与弹药同档（消耗品，卖给协会不划算、留着自用）。】
+  { key: 'jump-fuel', kind: 'item', refId: 'jump-fuel', rarity: 'rare', basePrice: 120, demandMultiplier: 0.6, poolTarget: 28_800, supplyFlow: 240, rareQtyMul: 600, rareWeightMul: 3, absorbQtyPerWindow: 14_400 },
   // ── 虫洞战利品与经济扩充（船长 2026-09-15 确认）：谜质精华只收不卖 · 奢侈品正常交易 · 两个新货柜只收不卖 ──
   //   ⚠ **档位口径（2026-09-15 落码）**：凡"玩家产出要拿去卖钱"的行一律 **common（常驻）**——
   //   common 才每 60s 窗口铺 3 档收购阶梯（池商品）或 85% 掷一次收购单（单件平价品）；

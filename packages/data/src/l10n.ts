@@ -437,6 +437,10 @@ export const EN_ITEMS: EnTable = {
   'min-starcore': { name: 'Starcore Crystal', description: 'Crystallized starcore marrow; required for MK3 equipment and flagship hull frames.' },
   'min-darkiron': { name: 'Darkiron Alloy', description: 'A heavy alloy only Voidcrystal and Darkstar Ice can refine — the mark of top-tier industry.' },
   'min-voidcrystal': { name: 'Void Crystal', description: 'The rarest material in the universe; only legendary manufacturing projects can afford it.' },
+  // 跃迁燃料链三件套（2026-09-29 船长令）：星云 → 折跃等离子 · 冰 → 低温跃迁浆 · 高阶气/冰 → 曲率凝析物
+  'min-jumpplasma': { name: 'Jump Plasma', description: 'High-energy plasma separated from nebula gas: the main ingredient of jump fuel.' },
+  'min-cryoslurry': { name: 'Cryo Jump Slurry', description: 'A dense slurry cryo-separated from ice — it only ignites when paired with Jump Plasma.' },
+  'min-curvature': { name: 'Curvature Condensate', description: 'A primer that condenses only in high-tier gas pockets and deep ice; a tiny amount multiplies the fuel effect.' },
   // 气体 / 冰矿
   'gas-neon': { name: 'Neon Cloud Gas', description: 'A neon-helium cloud from low-gravity gas fields: easy to harvest, and a key source of Isotope Polycrystal.' },
   'gas-phosphor': { name: 'Phosphor Haze', description: 'Corrosive phosphor haze settled deep in the graveyards — a rare gas deposit of very high refining value.' },
@@ -464,6 +468,8 @@ export const EN_ITEMS: EnTable = {
   'drone-ink-heavy': { name: 'Ink Tide Striker Drone', description: 'The Ink Tide siege drone: heavy kinetic rounds for close-range suppression. A heavier single shot and thicker three-layer HP than the standard siege drone, at the cost of the lowest evasion of any drone — once it is caught, it cannot dodge.' },
   // 修理组件
   'repairkit-civ': { name: 'Civilian Repair Kit', description: 'Nano repair kit: a base 5 HP restored (structure and armor each scale with this value × capacity bonus × Quick Hull Repair — thicker plates and skills restore more). For emergencies in the field or before docking.' },
+  // 道具（2026-09-29 跃迁燃料批）：超空间折跃燃料 —— 实验室合成、按原返航秒数消耗
+  'jump-fuel': { name: 'Hyperspace Jump Fuel', description: 'A dense slurry that pushes jump engines into overload: it burns by the second of original return time and raises return speed tenfold.' },
   // 零件（2026-09-20 零件体系：基础 7 直接可造 / 高级 7 需蓝图）
   'part-circuit': { name: 'Circuit Board', description: 'Basic electronic component: a general-purpose board pressed from supermetal and gel — the base layer of advanced parts and exclusive gear.' },
   'part-armor-plate': { name: 'Armor Plate', description: 'Basic structural component: tritanium forged into plate, the standard cladding of ships and heavy equipment.' },

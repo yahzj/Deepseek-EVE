@@ -31,6 +31,7 @@ import { buildAnomalyCatalog } from './anomalies'
 import { buildTravelEvents } from './travelEvents'
 import { buildMarketGoodsCatalog } from './marketCatalog'
 import { buildStationCatalog } from './stations'
+import { buildLabRecipeCatalog } from './labRecipes'
 import { buildMatterTechCatalog } from './matterTech'
 import { ACHIEVEMENTS } from './achievements'
 import { buildCommsCatalog } from './messages'
@@ -80,6 +81,7 @@ export function buildSimContext(locale: Locale = 'zh'): SimContext {
       anomalies,
       travelEvents: buildTravelEvents(),
       stations: buildStationCatalog(),
+      labRecipes: buildLabRecipeCatalog(),
       marketGoods: buildMarketGoodsCatalog(),
       commsMessages: buildCommsCatalog(),
       commsFactions: buildCommsFactionCatalog(),

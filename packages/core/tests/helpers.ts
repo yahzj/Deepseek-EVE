@@ -501,6 +501,9 @@ export const DEFAULT_TEST_TRAVEL_EVENTS: readonly TravelEventDef[] = [
  * - 价格全部精确（无 jitter：开盘种子单），测试里不推进市场窗口就不会有波动。
  */
 import type { MarketGoodDef } from '../src/types'
+/** 实验室配方（2026-09-29 跃迁燃料批）：真实数据表做缺省，用例可覆盖 */
+import { LAB_RECIPES } from '@whale/data'
+import type { LabRecipeDef } from '../src/types'
 
 function autoMarketGoods(ctx: {
   items: ReadonlyMap<string, ItemDef>
@@ -594,6 +597,8 @@ export function makeTestCtx(opts?: {
   balance?: BalanceConfig
   /** 合成卡的残骸组画像覆盖（键 = 卡 id；见 `WreckGroupFixture`） */
   wreckGroups?: Record<string, WreckGroupFixture>
+  /** 实验室配方覆盖（缺省 = 真实数据表 `LAB_RECIPES`；2026-09-29 跃迁燃料批） */
+  labRecipes?: Iterable<LabRecipeDef>
 }): SimContext {
   const ships = [ship('sandcat'), ship('sandcat2', { cargo: 100, cycle: 6, perCycle: 5 }), ...(opts?.ships ?? [])]
   const belts = [belt('belt-a', 'ore-a'), ...(opts?.belts ?? [])]
@@ -693,6 +698,8 @@ export function makeTestCtx(opts?: {
     anomalies: new Map(anomalies.map((a) => [a.id, a])),
     travelEvents,
     stations,
+    /** 实验室配方（2026-09-29 跃迁燃料批）：用例可传自己的表，缺省 = 真实数据表 */
+    labRecipes: new Map(Array.from(opts?.labRecipes ?? LAB_RECIPES, (r) => [r.id, r])),
     marketGoods,
     commsMessages: new Map(Array.from(opts?.commsMessages ?? [], (m) => [m.id, m])),
     commsFactions: new Map(Array.from(opts?.commsFactions ?? [], (f) => [f.id, f])),

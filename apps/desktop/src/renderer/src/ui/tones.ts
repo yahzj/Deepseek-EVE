@@ -40,6 +40,8 @@ export const TONES: Record<string, string> = {
   aicore: toneVar('aicore'),
   // 2026-09-26 黑匣独立成档（船长报障「仓库内查看不到」）：色调 = 品红族，与 fragment（紫）/gas（淡紫）可分
   blackbox: toneVar('blackbox'),
+  /** 2026-09-29 道具档（跃迁燃料批）：色调走变量 `--tone-consumable`（未定义时由 `toneVar` 兜底） */
+  consumable: toneVar('consumable'),
   'box-relic': toneVar('box-relic'),
   'box-relic-a': toneVar('box-relic-a'),
   'box-relic-c': toneVar('box-relic-c'),

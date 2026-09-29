@@ -24,6 +24,7 @@ import { advanceStandby, advanceTransit, reconcileDockSanity } from './location'
 import { reconcilePilotShip } from './shipyard'
 import { advanceManufacturing } from './manufacturing'
 import { advanceRefining } from './industry'
+import { advanceLab } from './lab'
 import { advanceExpedition } from './expedition'
 import { advanceWormhole } from './wormholeBattle'
 import { advanceAi, AI_CORE_ORDER } from './ai'
@@ -205,6 +206,8 @@ export function advanceGame(
   advanceStandby(state, ctx)
   advanceManufacturing(state, ctx, opts?.settleStats)
   advanceRefining(state, ctx, opts?.settleStats)
+  /** 实验室（2026-09-29 跃迁燃料批）：与精炼炉并列的一条工业产线（BOM 投料 · 料尽自停） */
+  advanceLab(state, ctx)
   advanceExpedition(state, ctx, opts?.freezeBattle)
   // 终局玩法「虫洞」（F 批）：洞内战斗步进与收口 + 撤离战自动开打（不在洞里时零开销）
   advanceWormhole(state, ctx, opts?.freezeBattle, opts?.battleSpeedX)

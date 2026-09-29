@@ -263,6 +263,16 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
             </>
           ) : null}
           {/* 「保底 ≈N 信用点/h」整行已删（2026-09-23 船长令：残骸的信用点收入估价可以移除） */}
+          {/**
+           * **净收益/h（仅调试模式 · 2026-09-29 船长令「希望在调试模式下看到各个活动的净收益」）**：
+           * 残骸回收是**批量型活动**（一批 = `RECYCLE_BATCH_M3` m³、周期 = 上面那个 `cycleMs`）⇒
+           * `(整批保底矿物价值 − 耗料成本 0) ÷ 周期 × 3600`。**回收无耗料可扣**（残骸是打捞来的）
+           * ⇒ `costIsk = 0`。
+           * ⚠ **口径 = 上面逐项那几行的 `isk` 之和**（同一份 `mineralRowsOf` 估算，取站内收价基准），
+           * 即"这一炉拆出来的矿物值多少"——与卡面自洽；**不是**按市场行情另算一套。
+           * ⚠ 这是"**拆解成矿物再卖**"的读数；残骸**直销**那条路按船长定规**不计入估值**。
+           */}
+          <NetIncomeLine price={mineralRows.reduce((s, r) => s + r.isk, 0)} costIsk={0} buildMs={cycleMs} />
         </div>
       )
     }

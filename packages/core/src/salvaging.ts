@@ -56,6 +56,7 @@ import {
 } from './salvage'
 import { weekendBountyCardsOf } from './weekendBounty'
 import { scaledReturnMs } from './trips'
+import { beginJumpFuelLeg, jumpFuelLegMsOf } from './jumpFuel'
 
 /** 出航/返航共用腿（星系航程）：进出港基准（同采矿 localLegMs）+ 星系间航程（按船速换算） */
 export function legMsFor(state: GameState, ctx: SimContext, galaxyId: string, shipId?: string): number {
@@ -679,7 +680,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
       const leg =
         s.phase === 'outbound'
           ? outFull
-          : scaledReturnMs(legMsFor(state, ctx, galaxyId) + outFull, state, ctx, state.shipId)
+          : scaledReturnMs(legMsFor(state, ctx, galaxyId) + outFull, state, ctx, state.shipId, s.fuelMul)
       const need = leg - s.phaseAccMs
       if (remaining < need) {
         s.phaseAccMs += remaining
@@ -767,7 +768,15 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
           // 满仓（下一轮放不下）：自动返航（去程并入返航，总行程时间不变）
           s.phase = 'returning'
           s.phaseAccMs = 0
-          const mergedSec = Math.round((legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId)) / 1000)
+          /** 燃料：**原返航时长**（不含燃料）按秒扣料，本趟倍率存进 `s.fuelMul`（见 `jumpFuel`） */
+          const baseMs = scaledReturnMs(
+            legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId),
+            state,
+            ctx,
+            state.shipId,
+          )
+          s.fuelMul = beginJumpFuelLeg(state, 'salvage', baseMs)
+          const mergedSec = Math.round(jumpFuelLegMsOf(baseMs, s.fuelMul) / 1000)
           addLog(
             state,
             'salvage',

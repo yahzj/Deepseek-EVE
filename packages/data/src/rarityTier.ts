@@ -211,6 +211,11 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'min-starcore': 1,
   'min-tritanium': 1,
   'min-voidcrystal': 1,
+  /* 跃迁燃料链（2026-09-29 船长令）：新精炼三件套与燃料成品；档位与"可获得即上市场"的既有口径一致 */
+  'min-jumplasma': 1,
+  'min-cryoslurry': 1,
+  'min-curvature': 1,
+  'jump-fuel': 2,
   'mod-armor-exp-1': 1,
   'mod-armor-exp-2': 2,
   'mod-armor-exp-3': 3,

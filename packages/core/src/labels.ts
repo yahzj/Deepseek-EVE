@@ -146,7 +146,7 @@ export function isRackModule(def: { slot: ModuleSlot }): boolean {
 }
 
 /** 物品分类展示顺序 */
-export const ITEM_KIND_ORDER: readonly ItemKind[] = ['ore', 'mineral', 'part', 'gas', 'ice', 'ammo', 'drone', 'wreck', 'container', 'matter', 'essence', 'luxury', 'fragment', 'blackbox', 'kit', 'aicore']
+export const ITEM_KIND_ORDER: readonly ItemKind[] = ['ore', 'mineral', 'part', 'gas', 'ice', 'ammo', 'drone', 'wreck', 'container', 'matter', 'essence', 'luxury', 'fragment', 'blackbox', 'consumable', 'kit', 'aicore']
 
 /** 物品分类中文名（仓库/货仓分组标题与空态文案用）
  *  ⚠ **术语（船长 2026-09-12 定）**：`ore` = 「**原矿**」（未精炼的石头，1 m³/单位）；
@@ -169,6 +169,8 @@ export const ITEM_KIND_LABELS: Record<ItemKind, string> = {
   fragment: '蓝图碎片',
   /** **黑匣**（2026-09-26 独立成档）：墨潮旗舰黑匣等战利品——组件/图纸之外的第四类"带回来的东西" */
   blackbox: '黑匣',
+  /** **道具**（2026-09-29 跃迁燃料批）：仓库里的储备型消耗件（如超空间折跃燃料） */
+  consumable: '道具',
   kit: '修理组件',
   aicore: 'AI 核心',
 }
