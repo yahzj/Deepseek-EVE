@@ -4079,6 +4079,15 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    * 实际是加和封顶"那一类）⇒ 按 kind 分岔说。
    */
   "ui.shipInfo.243": { zh: "取最快一台（不叠加）", en: "Fastest unit only (no stacking)" },  /* 舰船插件（2026-09-26 船长令）：装配页短行的逐类效果句 ＋ 一句"装上去拆不下来" */
+  /**
+   * **「（不受其它射程效果影响）」**（**2026-09-29 船长令**：「网子需要备注**不受其他射程效果影响**」）
+   * —— 尾注在参数行的**投网射程**那一格（与 `ui.shipInfo.018/026` 同款短注，不另开一行长说明）。
+   *
+   * 为什么要写：卡面同时会出现「射程插件 +20%」这类**武器射程**加成，玩家会顺理成章地以为
+   * 网子也吃。而实现里捕获网射程走的是**自己的字段**（`captureWebRangeM`），
+   * 插件/技能/科技/敌方压制的增程只作用于**武器有效射程**，不进这个值 ⇒ 不写就是默认玩家会误解。
+   */
+  "ui.shipInfo.244": { zh: "（不受其它射程效果影响）", en: " (unaffected by other range effects)" },
   "ui.shipInfo.187": { zh: "护盾上限 +{p1}", en: "Shield capacity +{p1}" },
   "ui.shipInfo.188": { zh: "装甲上限 +{p1}", en: "Armor capacity +{p1}" },
   "ui.shipInfo.189": { zh: "结构上限 +{p1}", en: "Structure capacity +{p1}" },

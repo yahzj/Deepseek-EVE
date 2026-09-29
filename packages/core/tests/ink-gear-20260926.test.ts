@@ -11,7 +11,7 @@
  * ④ 距离 4000 米断开 ＋ 减速 50% ⑤ 敌方那件迁成具名挂载件 ＋ 重袭机数值 ＋ H 族残骸回收打开。
  */
 import { describe, expect, it } from 'vitest'
-import { ANOMALIES, EN_MODULES, FOE_SHIPS, MODULES, buildSimContext } from '@whale/data'
+import { ANOMALIES, EN_MODULES, FOE_SHIPS, L10N, MODULES, buildSimContext } from '@whale/data'
 import { FOE_MOUNT_IDS, FOE_MOUNTS } from '../src/foeMounts'
 import { FOE_LAIR_GEAR, lairGearOf } from '../src/lairs'
 import {
@@ -336,6 +336,63 @@ describe('墨潮捕获网（周期装置 · 独立瞄准 · 不看命中 · 不�
       expect(en, `英文说明不该再手写 ${n}`).not.toContain(n)
     }
     expect(en, '英文不得再写减速 90%').not.toContain('90%')
+  })
+
+  it('投网射程带「不受其它射程效果影响」尾注（2026-09-29 船长令 · 中英双语）', () => {
+    /**
+     * 船长原话：「**网子需要备注不受其他射程效果影响**」。
+     *
+     * 为什么必须有：卡面别处会出现「射程插件 +20%」这类**武器**射程加成，不注一句玩家会以为网子也吃；
+     * 而实现里网的射程只认 `captureWebRangeM`（插件/技能/科技/敌方压制只进武器有效射程）。
+     * 这条口径由两处共同保证，缺一即失效：
+     *   ① 本用例盯**文案存在**（id 有中英、词义对得上）；
+     *   ② 下面那条盯**数值互不串门**（射程插件拉武器射程，但拉不动 `myCaptureWeb.rangeM`）。
+     */
+    const note = L10N['ui.shipInfo.244']
+    expect(note, '尾注 id 必须在表里').toBeDefined()
+    expect(note!.zh, '中文口径').toContain('不受其它射程效果影响')
+    expect(note!.en, '英文口径').toContain('unaffected by other range effects')
+  })
+
+  it('射程插件拉得动武器射程，**拉不动**捕获网射程（尾注的数值侧守卫）', () => {
+    /**
+     * ⚠ 装机坑（第一版两次栽在这，都记下来）：
+     * 1. **插件不在 `fitted` 里** —— 它单独存在 `fleet[id].plugs`（见 `plugsOf`）；
+     *    写进 `fitted.plug` 等于没装，于是"网的射程没变"会因为插件压根没生效而**假绿**。
+     * 2. **船体自带的基础舰炮不吃射程加成**（`src: 'base'` 那条，`bonusMul` 恒 1）
+     *    ⇒ 对照必须挂一件**真炮台**（`slot: 'turret'`）并读它那一条账本。
+     */
+    const plug = MODULES.find((m) => (m.plugRangeBonusPct ?? 0) > 0)
+    expect(plug, '目录里得有一件射程插件，否则本用例证明不了什么').toBeDefined()
+    const turret = MODULES.find((m) => m.slot === 'turret')
+    expect(turret, '目录里得有一门真炮台，否则看不出插件的对照效果').toBeDefined()
+
+    /** 装同一件网 ＋ 同一门炮 ＋（可选）同一件射程插件；回读规格 + 武器射程账本 */
+    const build = (withPlug: boolean) => {
+      const state = createInitialState({ nowWallMs: 0, seed: 926 })
+      const id = addShipToFleet(state, 'sh-shrike')
+      state.shipId = id
+      state.fleet[id]!.fitted = { high: ['mod-lair-web-h', turret!.id], mid: [], low: [] } as never
+      if (withPlug) state.fleet[id]!.plugs = [plug!.id]
+      const refs: { weaponRanges?: Array<{ baseM: number; bonusMul: number }> } = { weaponRanges: [] }
+      const spec = createPlayerSpec(state, ctx, id, null, refs)!
+      return { spec, refs }
+    }
+
+    const plain = build(false)
+    const withPlug = build(true)
+    expect(plain.spec.myCaptureWeb!.rangeM, '无插件时 = 件上字段').toBe(3_800)
+    expect(withPlug.spec.myCaptureWeb!.rangeM, '装了射程插件，网的射程**一字不动**').toBe(3_800)
+    expect(plain.spec.myCaptureWeb!.breakM, '断开距离同理').toBe(4_500)
+    expect(withPlug.spec.myCaptureWeb!.breakM, '断开距离同理').toBe(4_500)
+    expect(withPlug.spec.myCaptureWeb!.slowMul, '减速幅度同理').toBe(0.5)
+    /**
+     * ⚠ **反向对照**：同一件插件**确实**拉动了同一门炮的射程 —— 否则上面那几条"没变"
+     * 可能只是因为插件压根没生效（那种绿是假的）。账本末条 = 刚挂的那门炮台。
+     */
+    expect(plain.refs.weaponRanges!.length, '武器射程账本非空').toBeGreaterThan(0)
+    expect(plain.refs.weaponRanges!.at(-1)!.bonusMul, '不装插件 ⇒ 炮台加成 1').toBeCloseTo(1, 6)
+    expect(withPlug.refs.weaponRanges!.at(-1)!.bonusMul, '插件确实进了炮台射程（对照成立）').toBeCloseTo(1.2, 6)
   })
 })
 

@@ -1200,14 +1200,26 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
     /**
      * **墨潮捕获网的三项关键属性进参数行**（**2026-09-29 船长令**：「将一些关键属性（比如射程，
      * 减速幅度）放进属性里」）——
-     * 投网射程 / 断开距离（米）成对写在一行、减速幅度单列一行（`−50%（机动 ×0.5）`）。
+     * 投网射程 / 断开距离（米）各一行、减速幅度单列一行（`−50%（机动 ×0.5）`）。
      * 数值全部**取件上字段**（缺省回落引擎常量），说明里不再重复这些数字。
      * 周期（秒）已在短行里报过，这里不重复。
+     *
+     * ⚠ **投网射程那一格带尾注「（不受其它射程效果影响）」**（**2026-09-29 船长令**：
+     * 「网子需要备注不受其他射程效果影响」）：卡面别处会出现"射程插件 +20%"这类**武器**射程加成，
+     * 不注一句玩家就会以为网子也吃。走 `app-dim` 短注（与 `ui.shipInfo.018/026` 同款），
+     * **不另开一行长说明**（船长 2026-09-29 刚因此砍掉过一条"修复量 ｜ 实际每跳 = …"）。
+     * 口径出处：插件/技能/科技/敌方压制的增程都只进**武器有效射程**（`combat` 的 `rangeBonus`），
+     * 网的射程只认 `captureWebRangeM`。
      */
     if (mod.captureWebCycleMs !== undefined) {
       lines.push({
         k: tr("ui.shipInfo.238"),
-        v: `${tr("ui.shipInfo.241", { p1: fmt(mod.captureWebRangeM ?? MY_WEB_RANGE_M) })}`,
+        v: (
+          <>
+            {tr("ui.shipInfo.241", { p1: fmt(mod.captureWebRangeM ?? MY_WEB_RANGE_M) })}
+            <span className="app-dim">{tr("ui.shipInfo.244")}</span>
+          </>
+        ),
       })
       lines.push({
         k: tr("ui.shipInfo.239"),
