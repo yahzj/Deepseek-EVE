@@ -193,6 +193,8 @@ export function moduleDef(
     lockDmgBonus?: number
     // 无人机中继天线（2026-09-10：高槽 drone-relay——放飞无人机射程加成）
     droneRangeBonusPct?: number
+    /** 对方对机群的命中收窄（**2026-09-29 船长令**：巨构导控塔 −5%；见 `docs/design/drone-hit-gap-20260929.md`） */
+    droneHitGapPct?: number
     // 结构层抗性（2026-09-11：生体损管腔引出——引擎按缺口复合，收敛分组 = gap）
     hullResistAdd?: Partial<Record<DamageType, number>>
     // 协处理器（2026-09-11：低槽 CPU 预算扩容——cpuUse 0 + cpuBonus）
@@ -275,6 +277,8 @@ export function moduleDef(
     ...(opts?.repairKit !== undefined ? { repairKit: opts.repairKit } : {}),
     ...(opts?.lockDmgBonus !== undefined ? { lockDmgBonus: opts.lockDmgBonus } : {}),
     ...(opts?.droneRangeBonusPct !== undefined ? { droneRangeBonusPct: opts.droneRangeBonusPct } : {}),
+    // 2026-09-29 对方对机群的命中收窄（巨构导控塔；缺省不写 ⇒ 既有用例零变化）
+    ...(opts?.droneHitGapPct !== undefined ? { droneHitGapPct: opts.droneHitGapPct } : {}),
     ...(opts?.cpuBonus !== undefined ? { cpuBonus: opts.cpuBonus } : {}),
     ...(opts?.midSlotsAdd !== undefined ? { midSlotsAdd: opts.midSlotsAdd } : {}),
     ...(opts?.lowSlotsAdd !== undefined ? { lowSlotsAdd: opts.lowSlotsAdd } : {}),

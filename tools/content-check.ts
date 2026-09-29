@@ -6108,6 +6108,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     hitPenalty: 'propulsion',
     droneBayBonusM3: 'drone-rack',
     droneDmgBonus: 'drone-tac',
+    droneHitGapPct: 'drone-tac', // 对方对机群的命中收窄（2026-09-29 船长令：巨构导控塔 −5%）
     droneRangeBonusPct: 'drone-relay',
     droneReviveCycleMs: 'drone-deck',
     damageTypeBonusPct: 'support',

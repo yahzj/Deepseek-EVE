@@ -2256,7 +2256,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 4200,
     buildCostIsk: 0,
     priceIsk: 6_009_000, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
-    description: '巨构导控塔，大幅提高无人机伤害与结构强度。',
+    description: '巨构导控塔，提高无人机伤害，并让对方更难打中机群。',
   },
   {
     id: 'bp-wh-e-cpu',

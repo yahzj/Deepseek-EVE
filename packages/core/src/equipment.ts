@@ -240,6 +240,15 @@ export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } 
     return null
   }
   if (def.evasionGapPct !== undefined) return { group: 'gap', kind: 'evasion' }
+  /**
+   * **对方对机群的命中收窄**（`droneHitGapPct`，**2026-09-29 船长令**：巨构导控塔）——
+   * 归 **`gap`**（缺口复合那把尺）而不是 `flat` 兜底：效果本质是"缺口收窄"，
+   * 掉进 `flat` 会被界面标成「全额叠加」（读起来像"可以无限叠"），与语义不符。
+   *
+   * ⚠ **kind 与 `evasion` 分开**：一个是"本舰更难被打中"（闪避侧），一个是"对方机群更难被本舰打中"
+   * （打机群那一支的命中侧），两者作用对象不同、不该并进同一个收敛池计数。
+   */
+  if (def.droneHitGapPct !== undefined) return { group: 'gap', kind: 'drone-hit' }
   if (def.hitBonusPct !== undefined) return { group: 'curve', kind: 'hit' }
   /**
    * **推进器（`speedBonusPct`）= 折权加算**（**2026-09-20 船长**：「**基础改为加算，但是依旧有多件衰减**」）。

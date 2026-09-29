@@ -247,6 +247,14 @@ export interface UnitSpec {
    * `droneShieldHpBonusPct` 之和；只放大**机群生存池的护盾层**（`DronePoolEntry.s`），与三层血同链。
    */
   droneShieldBonusPct?: number
+  /**
+   * **对方对机群的命中收窄**（**2026-09-29 船长令**：巨构导控塔「对方对无人机的命中收窄 5%」）＝
+   * 该舰所装模块 `droneHitGapPct` 之和（只有一件带它时与"取值"等价，与上面两条无人机旋钮同款）。
+   *
+   * 消费点 = `droneHitChance`：综合闪避 = 机型闪避 × (1 − 本值)，等价于**打机群的命中 ×0.95**。
+   * ⚠ 只作用于"打机群"这一支，打舰与敌方近防炮两条链一字不动（见 `ModuleDef.droneHitGapPct`）。
+   */
+  droneHitGapPct?: number
   evasion: number
   hitBonus: number
   /** V17.1 开火失稳乘子（**点火期值**）：推进器点火期间命中整体 ×hitMul；V18.1 多件推进器只取
@@ -513,14 +521,21 @@ export function hitChance(
  * 3. 同日一度改判「无视距离的 90」（连闪避也不减）⇒ 船长随即裁定「**哦 滚回到上一个闪避生效的版本**」
  *    ⇒ **以本实现（第 2 条）为准**：装备表的 0.9/0.92 是**基础命中**，机型闪避照常参与；
  *    报读数时须区分**基础值**与**实收值**（例如 0.9 基础 ⇒ 对 E 警戒机实收 0.72）。
+ *
+ * ⚠ **2026-09-29 加：对方对机群的命中收窄**（船长令：巨构导控塔「对方对无人机的命中收窄 5%」，
+ * 同日三选一裁定「**路径①（闪避处扣）**」）——`attacker.droneHitGapPct`（本舰 `drone-tac` 族模块求和）
+ * 作用在**被减数**上：综合闪避 = 机型闪避 × (1 − 收窄)。等价于"打机群的命中 ×0.95"
+ * （例：0.90 基础 − 0.45 闪避 = 0.45 ⇒ 收窄后 0.90 − 0.4275 = **0.4725**），
+ * 与回避缺口/抗性缺口**同一条链**（都在战前合成、都落在被减数或减法上，不是 clamp 外的独立乘子）。
  */
 export function droneHitChance(
   weapon: Parameters<typeof hitChance>[0],
-  attacker: Parameters<typeof hitChance>[1],
+  attacker: Parameters<typeof hitChance>[1] & { droneHitGapPct?: number },
   evasion: number,
   bal: BattleBalance,
 ): number {
-  return hitChance(weapon, attacker, { evasion }, 0, bal, 1)
+  const gap = clamp(0, 0.9, attacker.droneHitGapPct ?? 0)
+  return hitChance(weapon, attacker, { evasion: evasion * (1 - gap) }, 0, bal, 1)
 }
 
 /** 把一发伤害按层序消费（盾→甲→结构），返回更新后三层与实际扣血 */
@@ -2125,6 +2140,14 @@ export function createPlayerSpec(
     droneHullBonusPct: allDefs.reduce((s, m) => s + (m.droneHullHpBonusPct ?? 0), 0),
     // 本舰无人机护盾层加成（模块求和；2026-09-27 船长令：无人机护盾投射仪 MK2/MK3 = +70%/+100%，多件线性相加不设上限）
     droneShieldBonusPct: allDefs.reduce((s, m) => s + (m.droneShieldHpBonusPct ?? 0), 0),
+    /**
+     * 本舰"对方对机群的命中收窄"（模块求和；**2026-09-29 船长令**：巨构导控塔 −5%）。
+     * ⚠ 缺省**不写字段**（`> 0` 才写）：没有这件装备时 `UnitSpec` 与改动前**逐位等价**，
+     *   既有战斗快照/存档的字段面不受影响。
+     */
+    ...(allDefs.some((m) => (m.droneHitGapPct ?? 0) > 0)
+      ? { droneHitGapPct: allDefs.reduce((s, m) => s + (m.droneHitGapPct ?? 0), 0) }
+      : {}),
     // V18.1：回避 = 船体基础 + 姿态陀螺缺口复合（1−(1−基础)Π(1−x)）
     evasion,
     // ⚠ 2026-09-14 船长改判：**索敌统合不再放大舰船命中加成**（改去乘炮台基础命中，见上 `targetMult`）

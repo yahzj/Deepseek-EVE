@@ -885,6 +885,8 @@ function crossFamilyShort(mod: ModuleDef): string {
   if (foreign('cpu') && (mod.cpuBonus ?? 0) > 0) parts.push(tr("ui.shipInfo.148", { p1: fmt(mod.cpuBonus ?? 0) }))
   /** 机群结构层加成（2026-09-27 补）：**任何槽位都可能带** ⇒ 与上面几条"跨槽位旋钮"同段，不进 `foreign()` 判据 */
   if ((mod.droneHullHpBonusPct ?? 0) > 0) parts.push(tr("ui.shipInfo.202", { p1: pct(mod.droneHullHpBonusPct ?? 0) }))
+  /** 对方对机群的命中收窄（2026-09-29 船长令：巨构导控塔）：同上，任何槽位都可能带 */
+  if ((mod.droneHitGapPct ?? 0) > 0) parts.push(`${tr("ui.shipInfo.211")} ${tr("ui.shipInfo.212", { p1: pct(mod.droneHitGapPct ?? 0) })}`)
   return parts.join(' · ')
 }
 
@@ -1040,6 +1042,14 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
   } else if (mod.slot === 'drone-tac') {
     if (mod.droneDmgBonus !== undefined) {
       lines.push({ k: tr("ui.shipInfo.029"), v: `+${pct(mod.droneDmgBonus)}` })
+    }
+    /**
+     * **对方对机群的命中收窄**（**2026-09-29 船长令**：巨构导控塔「对方对无人机的命中收窄 5%」）：
+     * 行名 + 值两条（`.211`/`.212`），与 `.210`「机群结构层」同一套"行名不带占位符"的写法。
+     * 值栏写成 `−5%`（方向 = 变差的是**对方**的命中）。
+     */
+    if ((mod.droneHitGapPct ?? 0) > 0) {
+      lines.push({ k: tr("ui.shipInfo.211"), v: tr("ui.shipInfo.212", { p1: pct(mod.droneHitGapPct ?? 0) }) })
     }
   } else if (mod.slot === 'drone-relay') {
     if (mod.droneRangeBonusPct !== undefined) {
