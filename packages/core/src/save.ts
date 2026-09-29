@@ -3633,6 +3633,13 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   const bountyWindowRaw = Math.floor(num(stRaw.bountyWindow))
   const sideTaskBountyWindow = Number.isFinite(bountyWindowRaw) && bountyWindowRaw > 0 ? bountyWindowRaw : 0
   /**
+   * **派系活跃的换新界碑**（本地 12:00 墙钟毫秒；**2026-09-29 船长令**：活跃切换时间 24 时 → 12 时）。
+   * 兼容字段（无版本号变化）：老档缺省 0 = 从未换过 ⇒ 首次拿到有效墙钟即按新口径补一次；
+   * **0 时不写这个键**（老档与新档快照逐字一致，与下面的 `bountySeenWindow` 同款口径）。
+   */
+  const factionWindowRaw = Math.floor(num(stRaw.factionWindow))
+  const sideTaskFactionWindow = Number.isFinite(factionWindowRaw) && factionWindowRaw > 0 ? factionWindowRaw : 0
+  /**
    * 赏金**新板提示**的记账（2026-09-14 船长：「玩家进入后消除提示」）——玩家看过的日界墙钟毫秒。
    * 兼容字段：老档缺省 0 ⇒ 首帧徽标亮（船长同日定「老档默认亮起提示」）。
    */
@@ -3646,6 +3653,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     bounty: sideTaskBounty,
     faction: sideTaskFaction,
     bountyWindow: sideTaskBountyWindow,
+    /** 派系活跃的 12:00 界碑（2026-09-29）；⚠ 0 时不写（老档快照逐字一致，零迁移） */
+    ...(sideTaskFactionWindow > 0 ? { factionWindow: sideTaskFactionWindow } : {}),
     /**
      * ⚠ **缺省（0 = 从没看过）不写这个键** —— 老档与新档的 `sideTasks` 快照因此**逐字一致**
      * （`t5b` / `save` 的 `toEqual` 钉着这一点，与 `escrowShips[].from` 同款口径）；

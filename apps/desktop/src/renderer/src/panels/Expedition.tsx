@@ -1220,6 +1220,12 @@ function StarMap({
   // 弹窗里的完整倒计时（h:mm:ss，逐秒刷新；节点上不再显示倒计时，见下方节点注释）
   const taskEtaText = board.bountyOpened ? fmtDayClock(board.bountyRemainingMs) : ''
   /**
+   * **派系活跃的倒计时单独算**（**2026-09-29 船长令**：活跃切换时间 24 时 → **12 时（中午 12 点）**，
+   * 口径「只挪活跃」）——它与赏金板那条 0 点界碑**不再是同一时刻** ⇒ 星图那条活跃行不能再借
+   * `taskEtaText`（否则显示的是赏金板换板时间，与实际换活跃的时刻差最多 12 小时）。
+   */
+  const factionEtaText = fmtDayClock(board.factionRemainingMs)
+  /**
    * 敌对派系归属（2026-09-11 船长：「显示敌对派系」）——由该星系的悬赏卡推导
    * （**2026-09-11 起改为读数据侧 `AnomalyDef.foeFamily`**，不再走 `ui/shipArt` 的硬编码族表）
    * 排序 = 卡数降序 → 最高威胁降序 → 族字母（稳定）；首位 = **主族**（决定该星系"势力范围"光晕的颜色）。
@@ -1323,10 +1329,10 @@ function StarMap({
     return 0 // 兜底：保持居中（对齐优先，宁可压住邻居）
   }
   /* 敌对派系活跃（2026-09-10 船长：对应星系上要显示剩余时间）——当日选中的中安/低安星系，
-     该星系常驻悬赏 +10% 奖金/+10% 威胁、胜利概率掉稀有残骸、每天本地 0 点重选。
-     判定走 core 单点 `factionGalaxyId`（与战斗、任务中心同一个口径）；
-     倒计时与赏金日板同一界（每天 0 点整板替换）；该星系已被排除在赏金任务抽签池外，
-     故「✦ 派系活跃」与「⚑ 赏金任务」两枚徽标不会落在同一个节点上。 */
+     该星系常驻悬赏 +10% 奖金/+10% 威胁、胜利概率掉稀有残骸。
+     **2026-09-29 船长令**：换新界碑由本地 0 点改为**本地 12:00**（口径「只挪活跃」）⇒
+     倒计时与赏金板**不再是同一时刻**，走 `board.factionRemainingMs`。
+     判定走 core 单点 `factionGalaxyId`（与战斗、任务中心同一个口径）。 */
   const factionGalaxy = factionGalaxyId(state)
   const factionName = state.sideTasks.faction?.factionAnomalyName ?? ''
 
@@ -1840,13 +1846,14 @@ function StarMap({
               ) : null}
               {/* 敌对派系活跃（2026-09-10 船长）：与任务中心那条置顶卡同一个判定口（core factionGalaxyId），
                   口径同步 = 该星系全部常驻悬赏奖金 +10%、敌人威胁 +10%、胜利按概率掉稀有残骸；
-                  不因打赢而下板，每天本地 0 点重新选星系 → 剩余时间与赏金日板同一界 */}
+                  不因打赢而下板；**2026-09-29 船长令**：换新界碑由本地 0 点改为**本地 12:00**
+                  ⇒ 倒计时走 `factionEtaText`（不再借赏金板那条 `taskEtaText`） */}
               {factionGalaxy === selected.id ? (
                 <div className="app-map-taskline is-faction">
                   <span className="app-ico">✦</span>
                   {tr("ui.Expedition.201")}
                   {factionName.length > 0 ? tr("ui.Expedition.351", { factionName: factionName }) : ''}
-                  {taskEtaText.length > 0 ? tr("ui.Expedition.352", { taskEtaText: taskEtaText }) : ''}
+                  {tr("ui.Expedition.352", { taskEtaText: factionEtaText })}
                 </div>
               ) : null}
               {/* 稀有残骸战果（2026-09-11 船长：「稀有残骸能否在星图的星系详细里看到？」）：
@@ -3635,7 +3642,8 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
                         {tr("ui.Expedition.168")}
                       </em>
                     </span>
-                    <span className="app-dim">{tr("ui.Expedition.114")} {fmtDayClock(view.bountyRemainingMs)}</span>
+                    {/* 换新倒计时走**派系自己那条界碑**（本地 12:00；2026-09-29 船长令「只挪活跃」） */}
+                    <span className="app-dim">{tr("ui.Expedition.114")} {fmtDayClock(view.factionRemainingMs)}</span>
                   </div>
                   <div className="app-lair-kv">
                     <span>{tr("ui.Expedition.290")}{factionGalaxy.name}」</span>
@@ -3739,10 +3747,13 @@ function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToast: Toa
               )
             })()
           ) : null}
-          {/* 5 席已清空时：派系活跃卡仍在（上方），这里补一行说明为什么席位是空的 */}
+          {/* 5 席已清空时：派系活跃卡仍在（上方），这里补一行说明为什么席位是空的。
+              ⚠ **2026-09-29 起分两态**（活跃切换时间改本地 12 点、赏金板仍 0 点，两个时点不再相同）：
+              有活跃卡 ⇒ 用 `.447`（尾句讲"活跃星系明天中午 12 点重选"）；没有活跃卡 ⇒ 用 `.409`
+              （尾句讲"赏金板 0 点刷新"）。此前共用 `.409`，活跃在跑时会把赏金板的 0 点说成活跃的时点。 */}
           {tasks.length === 0 ? (
             <div className="app-dim app-exp-idle">
-              {tr('ui.Expedition.409')}
+              {faction && factionCard && factionGalaxy ? tr('ui.Expedition.447') : tr('ui.Expedition.409')}
             </div>
           ) : null}
           {tasks.map((t) => {

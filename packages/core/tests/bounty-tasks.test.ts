@@ -45,6 +45,9 @@ import {
   /* 2026-09-24：读数与结算同源（卡面/工具不再写死裸常量） */
   factionRareDropChanceOf,
   factionRareDropEffectiveRate,
+  /** 派系活跃的 12:00 界碑（2026-09-29 船长令：活跃切换时间 24 时 → 12 时，只挪活跃） */
+  factionNoonWallMs,
+  factionSwitchRemainingMs,
   FACTION_RARE_DROP_PITY_ROLLS,
   factionRareDropRateOf,
   enterIronman,
@@ -936,8 +939,7 @@ describe('敌对派系活跃（2026-09-10 船长定：每天一个中安/低安�
     expect(state.expedition.factionActive).toBeUndefined()
   })
 
-  it('**清空 5 席赏金任务不影响派系活跃**（2026-09-11 玩家反馈「清空赏金任务后敌对派系活跃消失了」）', () => {
-    // 根因在界面（派系卡原先渲染在"列表非空"分支里，5 席打完就被空态整块替换）——
+  it('**清空 5 席赏金任务不影响派系活跃**（2026-09-11 玩家反馈「清空赏金任务后敌对派系活跃消失了」）', () => {    // 根因在界面（派系卡原先渲染在"列表非空"分支里，5 席打完就被空态整块替换）——
     // 这里锁住 **core 侧的不变量**：把 5 席全部打完，派系条目与加成判定必须原样还在。
     const { state, ctx } = makeWorld(5)
     exploreAll(state)
@@ -957,6 +959,52 @@ describe('敌对派系活跃（2026-09-10 船长定：每天一个中安/低安�
     // 清空后继续推进时间（同一天内）也不会把派系条目清掉
     advanceGame(state, 6 * 60 * 60 * 1000, ctx)
     expect(factionGalaxyId(state)).toBe(f.galaxyId)
+  })
+
+  /**
+   * **派系活跃按本地 12:00 换新，赏金板仍按本地 0:00**（**2026-09-29 船长令**：
+   * 「**敌对势力活跃的切换时间从24时，改为12时（中午12点）**」，口径**乙案 = 只挪活跃**）。
+   *
+   * 钉四件事：① 界碑口径（12:00 前算前一天那界、之后算当天）；② 11:59 → 12:01 之间活跃**换了一条**；
+   * ③ **同一段时间里赏金板一动没动**（换板时刻仍是 0 点那条）；④ 12 点后再进同一天不重复换。
+   */
+  it('**活跃换新界碑 = 本地 12:00**；同一段时间赏金板不动（船长令「只挪活跃」）', () => {
+    const { state, ctx } = makeWorld(11)
+    exploreAll(state)
+    /** 基准 = 某个本地 12:00 之后的 1 小时（避开"正午前算前一天"那段，断言不受时区影响） */
+    const noon = factionNoonWallMs(Date.UTC(2026, 8, 10, 12, 0, 0))
+    expect(factionNoonWallMs(noon), '恰好落在界上 ⇒ 返回它自己').toBe(noon)
+    expect(factionNoonWallMs(noon - 1), '差 1ms ⇒ 仍是前一界').toBe(noon - 24 * 3_600_000)
+    expect(factionNoonWallMs(noon + 1), '过 1ms ⇒ 就是这一界').toBe(noon)
+    expect(factionSwitchRemainingMs(noon), '界上 ⇒ 剩满一轮').toBe(24 * 3_600_000)
+
+    /**
+     * **两条界碑互不干扰**（这才是"只挪活跃"要验的东西）。取两个时刻：
+     * · `A` = 当天 12:30（正午界刚过）· `B` = **次日 00:30**（跨过了 0 点、**还没到**次日正午）。
+     * ⇒ 赏金板应当**换新**（0 点界过了）、而**活跃那条界碑不该动**（次日正午还没到）——
+     *   恰好证明"活跃不再跟着 0 点走"。
+     */
+    const A = noon + 30 * 60_000
+    const B = bountyDayStartWallMs(A) + BOUNTY_BOARD_PERIOD_MS + 30 * 60_000
+    openBountyBoard(state, ctx, A)
+    const beforeBoard = [...state.sideTasks.bounty]
+    const beforeFactionId = state.sideTasks.faction!.id
+    expect(state.sideTasks.factionWindow, '开板即记下"当天中午"那一界').toBe(noon)
+
+    /** 同界内（+1h，仍是同一个中午界）推进：谁都不换 */
+    advanceGame(state, 1_000, ctx, { nowWallMs: A + 3_600_000 })
+    expect(state.sideTasks.faction!.id, '同界内不重复换').toBe(beforeFactionId)
+
+    /** 跨过 0 点（到次日 00:30）：**赏金板换新**，而**活跃那条界碑不动** */
+    advanceGame(state, 1_000, ctx, { nowWallMs: B })
+    expect(state.sideTasks.bountyWindow, '赏金日界推进到次日 0 点').toBe(bountyDayStartWallMs(B))
+    expect(state.sideTasks.bounty.map((t) => t.id), '赏金板换了一批').not.toEqual(beforeBoard.map((t) => t.id))
+    expect(state.sideTasks.factionWindow, '活跃界碑**不动**（次日正午还没到）').toBe(noon)
+    expect(state.sideTasks.faction!.id, '活跃还是那一条').toBe(beforeFactionId)
+
+    /** 再到**次日正午之后**（B + 12h）：活跃换新 */
+    advanceGame(state, 1_000, ctx, { nowWallMs: B + 12 * 3_600_000 })
+    expect(state.sideTasks.factionWindow, '界碑推进到次日中午').toBe(noon + 24 * 3_600_000)
   })
 
   it('多局统计：掉落频率逼近 FACTION_RARE_DROP_CHANCE（概率口径可复现）', () => {

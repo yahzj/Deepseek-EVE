@@ -162,7 +162,8 @@ export function advanceGame(
   opts?: {
     freezeBattle?: boolean
     settleStats?: SettleStats
-    /** 当前墙钟毫秒（现实时间；赏金日板按它对齐"每天本地 0 点"）。
+    /** 当前墙钟毫秒（现实时间；赏金日板按它对齐"每天本地 0 点"、**派系活跃按它对齐"每天本地 12 点"**
+     *  ——2026-09-29 船长令：活跃切换时间 24 时 → 12 时）。
      *  在线 = 心跳传入 Date.now()；离线结算 = 传入离线末刻；缺省退 state.savedAtWallMs */
     nowWallMs?: number
     /** **本拍想跑的虫洞内战斗倍速**（2026-09-19 谜质科技「时间压缩矩阵」）：
@@ -242,7 +243,8 @@ export function advanceGame(
   advanceMarket(state, d, ctx)
   // 任务中心·时效任务（v24）：资源/快递 = 与市场「补给刷新」周期（orderLifeMs.common，20 分钟）
   // 同节奏整板刷新（须在市场窗口推进后执行，让市场影响作用于刷新后的现行簿面）；
-  // 赏金 = 独立日板，24 小时一轮、每天本地 0 点整板替换（按 nowWallMs 墙钟对齐）。
+  // 赏金 = 独立日板，24 小时一轮、每天本地 0 点整板替换（按 nowWallMs 墙钟对齐）；
+  // **派系活跃 = 每天本地 12:00 换新**（2026-09-29 船长令：切换时间 24 时 → 12 时，只挪活跃）。
   // 离线大步长只按末窗结算一次（见 sideTasks.advanceSideTasks）
   advanceSideTasks(state, ctx, opts?.nowWallMs)
   // 通讯收件箱（2026-09-11）：数据消息按触发条件送达 + 未读记账（幂等；表为空时零开销）

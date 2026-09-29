@@ -1278,6 +1278,9 @@ export {
   BOUNTY_BOARD_PERIOD_MS,
   bountyDayStartWallMs,
   bountyBoardRemainingMs,
+  /** 派系活跃的 12:00 界碑与倒计时（2026-09-29 船长令：活跃切换时间 24 时 → 12 时） */
+  factionNoonWallMs,
+  factionSwitchRemainingMs,
   RESOURCE_TASK_LEVEL_MARGIN,
   SPAWN_SUPPLY_CUT,
   SPAWN_SHOCK_STEP,

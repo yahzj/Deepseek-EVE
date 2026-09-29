@@ -45,30 +45,38 @@ describe('离线结算：重复清剿续跑', () => {
 })
 
 /**
- * **离线跨 0 点：「敌对派系活跃」按哪一天算**（**2026-09-22 船长选「甲」**）。
+ * **离线跨正午：「敌对派系活跃」按哪一版算**（**2026-09-22 船长选「甲」**；
+ * **2026-09-29 船长令**：活跃切换时间由 24 时改为 **12 时（中午 12 点）**，故本组用例的"界"随之改到正午）。
  *
  * 船长之问：「假设玩家挂机活跃敌人星系后离线，第二天再上线，那么会计算前一天刷了多少活跃敌人吗？
  * 还是说刷了多少敌人只在上线时计算此时刷了多少敌人（因为换天了，活跃敌人的星系换了）」
  *
- * 口径：分片那条路**墙钟跟着片走** ⇒ 0 点前那些片按**离线前**那版日板判、0 点后的片按**上线日**那版；
+ * 口径：分片那条路**墙钟跟着片走** ⇒ 界前那些片按**离线前**那版活跃判、界后的片按**上线时**那版；
  * 离线前已在打的那一场不受影响（出发那一刻就锁定了 `exp.factionActive`，另有用例）。
  *
  * 读数判据（**确定性，不靠概率**）：稀有残骸**只有"派系活跃那场胜利"才掷骰**，且**连开 10 场未出即保底
  * 必掉**（`FACTION_RARE_DROP_PITY_ROLLS`）⇒ 只要某一段窗口里累计 ≥10 场"吃加成"的胜利，
  * 该星系 `galaxyWrecks[星系].rare` 必 > 0；一场都没吃着则恒为 0。
- * 窗口取 21:00 → 次日 02:00（0 点前 3 小时、0 点后 2 小时，两侧都够 10 场）。
+ * 窗口取 09:00 → 14:00（正午前 3 小时、正午后 2 小时，两侧都够 10 场）。
  */
-describe('离线跨 0 点：派系活跃按哪一天算（船长选「甲」）', () => {
+describe('离线跨正午：派系活跃按哪一版算（船长选「甲」）', () => {
   const TARGET = 'ano-faction'
   /** 目标悬赏所在星系 = **低安**（派系活跃只选中安/低安，高安不可能当选）*/
   const TARGET_GALAXY = 'galaxy-lo'
 
   const at = (d: number, h: number, mi = 0): number => new Date(2026, 8, d, h, mi, 0).getTime()
+  /** 离线前那一刻所处的"正午界"（＝上一个本地 12:00）——活跃界碑要按它种，否则首帧会被当成"从没换过" */
+  const noonBefore = (wallMs: number): number => {
+    const d = new Date(wallMs)
+    d.setHours(12, 0, 0, 0)
+    if (d.getTime() > wallMs) d.setDate(d.getDate() - 1)
+    return d.getTime()
+  }
 
   /**
    * 造上下文。
    * `withCandidate` = 让目标卡**能当窝点候选**（有核心词）⇒ 当日派系抽签的候选池里只有它
-   * ⇒ 换天必定抽中它（确定性）；传 `false` 则候选池为空 ⇒ 换天后是"今日无活跃"（同样确定）。
+   * ⇒ 跨界必定抽中它（确定性）；传 `false` 则候选池为空 ⇒ 跨界后是"今日无活跃"（同样确定）。
    */
   function seedCtx(withCandidate: boolean): SimContext {
     const tur = moduleDef('tur-b', 'turret', 0.5, {
@@ -94,8 +102,9 @@ describe('离线跨 0 点：派系活跃按哪一天算（船长选「甲」）'
   }
 
   /**
-   * 建一份"玩家把重复清剿挂在目标悬赏上、离线前那版日板 = 给定星系"的档。
-   * `bountyWindow` 用**离线前那一天**的 0 点 ⇒ 窗口里的 0 点会让日板按新的一天重抽。
+   * 建一份"玩家把重复清剿挂在目标悬赏上、离线前那版活跃 = 给定星系"的档。
+   * 赏金日界用**离线前那一天**的 0 点（保持既有口径）；**活跃界碑**用**离线前那一刻的正午界**
+   * ⇒ 窗口里的正午才会让它按新的一界重抽（2026-09-29 起活跃不再跟 0 点走）。
    */
   function seedState(ctx: SimContext, factionGalaxy: string | null): GameState {
     const state: GameState = createInitialState({ nowWallMs: 0, seed: 11 })
@@ -106,6 +115,7 @@ describe('离线跨 0 点：派系活跃按哪一天算（船长选「甲」）'
     state.autoLoopAnomalyId = TARGET
     state.exploredGalaxies.push(TARGET_GALAXY) // 低安目标：先探明才允许出击
     state.sideTasks.bountyWindow = at(21, 0) // 离线前那一天（9/21）的 0 点
+    state.sideTasks.factionWindow = noonBefore(at(21, 9)) // 离线前那一刻的正午界（9/21 12:00）
     state.sideTasks.faction = factionGalaxy
       ? {
           id: 1,
@@ -125,26 +135,26 @@ describe('离线跨 0 点：派系活跃按哪一天算（船长选「甲」）'
   /** 该星系的稀有残骸存量（只有"派系活跃那场胜利"才会掷骰/进保底） */
   const rareIn = (state: GameState, galaxyId: string): number => state.galaxyWrecks[galaxyId]?.rare ?? 0
 
-  it('① 离线前那版活跃 = 目标星系 ⇒ 0 点前那 3 小时的战果照吃加成（稀有残骸 > 0）', () => {
-    const ctx = seedCtx(false) // 无候选 ⇒ 换天后"今日无活跃"（确定性）
+  it('① 离线前那版活跃 = 目标星系 ⇒ **正午前那 3 小时**的战果照吃加成（稀有残骸 > 0）', () => {
+    const ctx = seedCtx(false) // 无候选 ⇒ 跨界后"今日无活跃"（确定性）
     const state = seedState(ctx, TARGET_GALAXY)
-    simulateOffline(state, at(21, 21), at(22, 2), ctx)
-    expect(state.sideTasks.faction, '换天后的活跃已被重抽（本场景抽不出候选）').toBeNull()
-    expect(rareIn(state, TARGET_GALAXY), '0 点前那段的胜利应进派系活跃掷骰链（靠保底必掉）').toBeGreaterThan(0)
+    simulateOffline(state, at(21, 9), at(21, 14), ctx)
+    expect(state.sideTasks.faction, '跨正午后的活跃已被重抽（本场景抽不出候选）').toBeNull()
+    expect(rareIn(state, TARGET_GALAXY), '正午前那段的胜利应进派系活跃掷骰链（靠保底必掉）').toBeGreaterThan(0)
   })
 
-  it('② 对照：离线前那版不是它 ⇒ 0 点前那 3 小时一场都不吃（稀有残骸 = 0）', () => {
+  it('② 对照：离线前那版不是它 ⇒ 正午前那 3 小时一场都不吃（稀有残骸 = 0）', () => {
     const ctx = seedCtx(false)
     const state = seedState(ctx, null)
-    simulateOffline(state, at(21, 21), at(22, 2), ctx)
+    simulateOffline(state, at(21, 9), at(21, 14), ctx)
     expect(rareIn(state, TARGET_GALAXY), '没吃到加成就不会掷骰').toBe(0)
   })
 
-  it('③ 上线日那版 = 目标星系 ⇒ 0 点后那 2 小时的战果吃的是**今天**这版', () => {
-    const ctx = seedCtx(true) // 唯一候选 = 目标星系所在 ⇒ 换天必抽中它（确定性）
+  it('③ 上线那版 = 目标星系 ⇒ 正午后那 2 小时的战果吃的是**新**那版', () => {
+    const ctx = seedCtx(true) // 唯一候选 = 目标星系所在 ⇒ 跨界必抽中它（确定性）
     const state = seedState(ctx, null)
-    simulateOffline(state, at(21, 21), at(22, 2), ctx)
-    expect(state.sideTasks.faction?.galaxyId, '换天后抽中的就是目标星系').toBe(TARGET_GALAXY)
-    expect(rareIn(state, TARGET_GALAXY), '0 点后那段的胜利应进派系活跃掷骰链').toBeGreaterThan(0)
+    simulateOffline(state, at(21, 9), at(21, 14), ctx)
+    expect(state.sideTasks.faction?.galaxyId, '跨界后抽中的就是目标星系').toBe(TARGET_GALAXY)
+    expect(rareIn(state, TARGET_GALAXY), '正午后那段的胜利应进派系活跃掷骰链').toBeGreaterThan(0)
   })
 })

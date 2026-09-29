@@ -2268,7 +2268,13 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.349": { zh: " · 扫描进行中", en: " · scanning" },
   "ui.Expedition.350": { zh: " · 剩余 {taskEtaText}（每天 0 点换新）", en: " · {taskEtaText} left (replaced at midnight)" },
   "ui.Expedition.351": { zh: " · 头号目标「{factionName}」", en: " · prime target “{factionName}”" },
-  "ui.Expedition.352": { zh: " · 剩余 {taskEtaText}（每天 0 点重选）", en: " · {taskEtaText} left (redrawn at midnight)" },
+  /**
+   * ⚠ **只改「派系活跃」那一条**（**2026-09-29 船长令**：「敌对势力活跃的切换时间从24时，改为12时
+   * （中午12点）」，口径**乙案 = 只挪活跃**）：
+   * `.352` 是**活跃**那行的尾巴 → 中午 12 点；`.350`（赏金任务行）与 `.234/235/236/233/370/409`
+   * 讲的都是**赏金日板**（仍本地 0 点）⇒ **一字不改**。
+   */
+  "ui.Expedition.352": { zh: " · 剩余 {taskEtaText}（每天中午 12 点重选）", en: " · {taskEtaText} left (redrawn at noon)" },
   "ui.Expedition.353": { zh: " · 远征中", en: " · on an expedition" },
   "ui.Expedition.354": { zh: " · 已首胜", en: " · won once" },
   "ui.Expedition.355": { zh: " · 胜利自动返航约 {p1} 分钟（不可召回）", en: " · about {p1} minutes flying home after a win (no recall)" },
@@ -2316,6 +2322,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Expedition.407": { zh: "该星系敌群正在集中活动：当天它的全部悬赏奖金 +10%、敌人威胁 +10%；肃清有概率留下稀有残骸，打捞必得、先带回仓库存放。", en: "Hostile groups in this system are massing: for the rest of the day all its bounties pay +10% and its enemies are +10% more threatening; clearing them has a chance to leave rare wrecks behind, which salvage always recovers — take them back to storage first." },
   "ui.Expedition.408": { zh: "停止剿灭", en: "Stop the sweep" },
   "ui.Expedition.409": { zh: "本日 5 席赏金任务已全部完成——上方的「敌对派系活跃」当天仍然有效（该星系常驻悬赏照常 +10% 奖金与威胁、胜利照常掉稀有残骸）；明天 0 点整板刷新。", en: "All 5 bounty slots for today are done — the Hostile faction active banner above still holds for the rest of the day (this system's standing bounties keep their +10% payout and threat, and victories still drop rare wrecks); the board refreshes at midnight." },
+  /**
+   * **本批新增**（**2026-09-29 船长令**：活跃切换时间 24 时 → **12 时**）：`本日 5 席` 那句的
+   * **派系活跃版**（原 `.409` 是"赏金席位用完"的语境，尾句讲的是**赏金板** 0 点刷新的时点）。
+   * 两件事的时点从此不同（活跃中午 12 点、赏金板 0 点）⇒ 各说各的，别借同一句。
+   */
+  "ui.Expedition.447": { zh: "本日 5 席赏金任务已全部完成——上方的「敌对派系活跃」仍然有效（该星系常驻悬赏照常 +10% 奖金与威胁、胜利照常掉稀有残骸）；活跃星系明天中午 12 点重选。", en: "All 5 bounty slots for today are done — the Hostile faction active banner above still holds (this system's standing bounties keep their +10% payout and threat, and victories still drop rare wrecks); the active system is redrawn at noon tomorrow." },
   "ui.Expedition.410": { zh: " 波", en: " waves" },
   "ui.Expedition.411": { zh: "虚拟货物按体积占用货舱（出发时真实货物已自动卸入仓库）。到站自动结算运费；期间舰船不可开矿/远征/扫描/打捞/掩护巡逻/换港返航（投送不可取消）。", en: "The virtual freight takes up hold space by volume (real cargo is unloaded into storage automatically on departure). The fare settles on arrival; while it runs the ship cannot mine, go on expeditions, scan, salvage, patrol as an escort or return to another port (the delivery cannot be cancelled)." },
   "ui.Expedition.412": { zh: " · 已停靠", en: " · docked" },

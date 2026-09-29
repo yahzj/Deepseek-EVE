@@ -765,11 +765,14 @@ function advanceCourierDeliveries(state: GameState, ctx: SimContext): void {
  * 引擎推进：时效任务板。
  * - 资源/快递：市场「补给刷新」20 分钟一轮（`orderLifeMs.common`，按 gameMs 对齐）；
  * - 赏金：**独立日板**（2026-09-10 船长定）——24 小时一轮、**每天本地 0 点整板替换**，
- *   按**现实墙钟**对齐（`nowWallMs`），与 20 分钟板互不影响。
+ *   按**现实墙钟**对齐（`nowWallMs`），与 20 分钟板互不影响；
+ * - 派系活跃：**每天本地 12:00 换新**（**2026-09-29 船长令**：切换时间 24 时 → **12 时（中午 12 点）**；
+ *   口径「只挪活跃」⇒ 与上面那条 0 点的赏金日界**各记各的界碑**）。
  */
 export function advanceSideTasks(state: GameState, ctx: SimContext, nowWallMs?: number): void {
   advanceCourierDeliveries(state, ctx)
   advanceBountyBoard(state, ctx, nowWallMs)
+  advanceFactionActivity(state, ctx, nowWallMs)
   const board = state.sideTasks
   const period = boardPeriodMs(ctx)
   const nowBoundary = state.market.lastTickGameMs
@@ -791,6 +794,28 @@ export function bountyDayStartWallMs(nowWallMs: number): number {
   return d.getTime()
 }
 
+/**
+ * **派系活跃的换新界碑 = 本地 12:00**（**2026-09-29 船长令**：「**敌对势力活跃的切换时间从24时，
+ * 改为12时（中午12点）**」，口径**乙案**：只挪活跃、赏金板仍 0 点）。
+ *
+ * 口径：该墙钟时刻**所在"中午界"的起点** —— 未到当天 12:00 时算**前一天**的 12:00，
+ * 到了当天 12:00 即算当天那界（与 `bountyDayStartWallMs` 对 0 点的处理逐字同构）。
+ * 用途两处：① 跨过新的一界 ⇒ 重抽派系活跃；② 界面那条「剩余 …（每天 12 点重选）」的读数。
+ */
+export function factionNoonWallMs(nowWallMs: number): number {
+  const d = new Date(nowWallMs)
+  d.setHours(12, 0, 0, 0)
+  if (d.getTime() > nowWallMs) d.setDate(d.getDate() - 1)
+  return d.getTime()
+}
+
+/** 距下一个本地 12:00 的剩余毫秒（墙钟；0 = 无法判定（无有效墙钟）时按 0 处理） */
+export function factionSwitchRemainingMs(nowWallMs: number): number {
+  if (!Number.isFinite(nowWallMs) || nowWallMs <= 0) return 0
+  const next = factionNoonWallMs(nowWallMs) + BOUNTY_BOARD_PERIOD_MS
+  return Math.max(0, next - nowWallMs)
+}
+
 /** 距下一个本地 0 点的剩余毫秒（墙钟；0 = 无法判定（无有效墙钟）时按 0 处理） */
 export function bountyBoardRemainingMs(nowWallMs: number): number {
   if (!Number.isFinite(nowWallMs) || nowWallMs <= 0) return 0
@@ -804,6 +829,11 @@ export function bountyBoardRemainingMs(nowWallMs: number): number {
  * - 跨日（含离线一夜/多日）→ 整板清空重刷，日界推进到"当前所在自然日的 0 点"
  *   （跨多日只补最后一道界：中间那些天的板早已作废）；
  * - 无有效墙钟（旧档 savedAtWallMs = 0）→ 不开日板（首次拿到真实墙钟时再开）。
+ *
+ * ⚠ **2026-09-29 起派系活跃不再跟着本函数换新**（船长令：「只挪活跃」）——它改由
+ * `advanceFactionActivity()` 按**本地 12:00**那条界碑单独重抽；本函数内的 `spawnFactionActivity()`
+ * 调用因此只剩一个用途：**新板开板时若活跃还没抽过**（老档首次拿墙钟 / 当天 12 点前开板）先补一条，
+ * 免得"板上有 5 席赏金、却没有任何活跃星系"。
  */
 function advanceBountyBoard(state: GameState, ctx: SimContext, nowWallMs?: number): void {
   const board = state.sideTasks
@@ -814,9 +844,33 @@ function advanceBountyBoard(state: GameState, ctx: SimContext, nowWallMs?: numbe
   if (dayStart <= last) return
   board.bounty = []
   board.bountyWindow = dayStart
-  // 派系活跃先选（它选的星系从常规席位抽签池里剔除），再抽 5 席
-  spawnFactionActivity(state, ctx)
+  /**
+   * 派系活跃先选（它选的星系从常规席位抽签池里剔除），再抽 5 席。
+   * ⚠ **只在"这一界还没抽过活跃"时抽**（`factionWindow` 落后于当前中午界）——
+   * 否则 0 点开板会把 12 点刚换的那条活跃**又重抽一次**（等于一天抽两次，船长要的"每天 12 点换"就废了）。
+   */
+  if ((board.factionWindow ?? 0) < factionNoonWallMs(now)) {
+    spawnFactionActivity(state, ctx)
+    board.factionWindow = factionNoonWallMs(now)
+  }
   spawnBountyTasks(state, ctx)
+}
+
+/**
+ * **派系活跃按本地 12:00 换新**（**2026-09-29 船长令**：切换时间 24 时 → **12 时（中午 12 点）**）。
+ *
+ * 与赏金板**各自独立**：赏金板仍按本地 0 点整板替换（`advanceBountyBoard`），活跃按中午 12 点重抽。
+ * 于是同一天里会出现"0 点换赏金板、12 点换活跃星系"两次动作 —— 这正是船长要的（只挪活跃）。
+ * 无有效墙钟 ⇒ 什么都不做（与赏金板同款：首次拿到真实墙钟时再补）。
+ */
+function advanceFactionActivity(state: GameState, ctx: SimContext, nowWallMs?: number): void {
+  const board = state.sideTasks
+  const now = nowWallMs ?? state.savedAtWallMs
+  if (!Number.isFinite(now) || now <= 0) return
+  const noon = factionNoonWallMs(now)
+  if (noon <= (board.factionWindow ?? 0)) return
+  board.factionWindow = noon
+  spawnFactionActivity(state, ctx)
 }
 
 /* ── 敌对派系活跃（2026-09-10 船长定：每天一个中安/低安星系，只作用于该星系的常驻悬赏） ── */
@@ -888,10 +942,17 @@ export function factionPoolOf(state: GameState, ctx: SimContext): AnomalyDef[] {
  * - 该星系的**全部可见悬赏**当天吃 +10% 奖金 / +10% 威胁；胜利后按概率掉稀有残骸；
  * - **不因打赢而下板**：当天可反复刷（掉落概率与保底口径见 `FACTION_RARE_DROP_CHANCE` /
  *   `FACTION_RARE_DROP_PITY_ROLLS`——2026-09-20 船长把出率与保底一并提高，派系活跃已成为稀有残骸的主力供给之一）。
+ *
+ * ⚠ **2026-09-29 起活跃与赏金板各按各的界碑换新**（船长令「只挪活跃」）：0 点换赏金板、12 点换活跃。
+ * 于是**两个方向的"同一星系同时既是活跃又是当日赏金席位"都可能出现**，这里能管的是**一个方向**：
+ * 换活跃时**把当前赏金板上的星系剔出候选** —— 抽签在"中午"这一刻发生，此刻板上的席位最显眼，
+ * 玩家第二天中午最可能撞见的就是这种叠加。反方向（0 点抽赏金时避开已抽的活跃）由 `spawnBountyTasks`
+ * 里既有的"派系活跃星系从常规席位池剔除"那条负责，两处合起来把叠加压到最小。
  */
 function spawnFactionActivity(state: GameState, ctx: SimContext): void {
   const board = state.sideTasks
-  const pool = factionPoolOf(state, ctx)
+  const taken = new Set(board.bounty.map((t) => t.galaxyId).filter((g): g is string => typeof g === 'string' && g !== ''))
+  const pool = factionPoolOf(state, ctx).filter((a) => !taken.has(a.galaxyId))
   board.faction = null
   if (pool.length === 0) return
   const pick = pool[nextInt(state.rng, pool.length)]!
@@ -981,6 +1042,11 @@ export interface SideTaskBoardView {
   /** 距下一个本地 0 点（赏金整板替换）的剩余毫秒（墙钟；未开板 = 0） */
   bountyRemainingMs: number
   /**
+   * 距下一个**本地 12:00**（派系活跃换新）的剩余毫秒（墙钟；0 = 无有效墙钟）。
+   * **2026-09-29 船长令**：活跃的切换时间由 24 时改为 **12 时（中午 12 点）**，与赏金板那条 0 点界碑分开报。
+   */
+  factionRemainingMs: number
+  /**
    * **这一板赏金任务玩家还没看过**（2026-09-14 船长：换板未看 = 提示）——导航「任务中心」徽标读它。
    * 进「任务中心」页会记账（`sideTasksMarkBountySeen`）⇒ 立刻变 false。
    */
@@ -1049,6 +1115,8 @@ export function sideTaskBoard(state: GameState, ctx: SimContext, nowWallMs?: num
     courierRemainingMs: Math.max(0, courierDeadlineMs(board.window) - state.gameMs),
     bountyOpened,
     bountyRemainingMs: bountyOpened ? bountyBoardRemainingMs(now) : 0,
+    /** 派系活跃的换新倒计时（本地 12:00；与上一条各报各的，2026-09-29 船长令「只挪活跃」） */
+    factionRemainingMs: factionSwitchRemainingMs(now),
     bountyFresh,
     bountyNewCount: bountyFresh ? board.bounty.length : 0,
   }
