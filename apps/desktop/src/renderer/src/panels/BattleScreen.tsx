@@ -312,11 +312,14 @@ export function BattleScreen({
   const [retreatAsk, setRetreatAsk] = useState(false)
   const [dragV, setDragV] = useState<number | null>(null)
   /**
-   * **期望交距读数只在"动它的时候"出现**（**2026-09-26 船长令** · 战斗界面信息层级批 I1）：
-   * 那个数字与滑条位置说的是同一件事，常驻只是加噪音 ⇒ 拖动/键盘调整时显示，松手隐去
-   * （用 `visibility` 隐，**保留占位** —— 不产生横向跳动）。
+   * **期望交距读数常驻**（**2026-09-29 船长报障**：「原先战斗中，会显示玩家选择的期望距离具体数值，
+   * 现在好像不见了」）。
+   *
+   * 改前（2026-09-26 信息层级批 I1）它**只在拖动/键盘调整时出现**，松手即隐 —— 那一批的取舍是
+   * "这个数字与滑条位置说的是同一件事，常驻只是加噪音"。船长的验收口径与之相反：**战斗中要一直看得到
+   * 自己选的期望距离** ⇒ 恢复常驻。占位与排版一字不动（`.app-bts-desire` 的 `min-width` 照旧），
+   * 所以底部那行不会因为这次改动跳动。
    */
-  const [desireShown, setDesireShown] = useState(false)
   const [dims, setDims] = useState<Dims>({ W: 1200, H: 460, meW: 330, foeW: 330 })
   /** 视觉插值距离（33ms 平滑引擎 ~100ms 拍；null = 尚未插值，直接用引擎值） */
   const [smoothM, setSmoothM] = useState<number | null>(null)
@@ -1771,7 +1774,6 @@ const meSpeedRef = useRef(200)
    * （我方 4 舰 + SVG 射程弧 + 事件环）重渲染几百次 ⇒ 顿挫（船长 2026-09-13：「依旧还是有顿挫感」）。
    */
   const pushDragV = (v: number): void => {
-    setDesireShown(true)
     dragPendingRef.current = v
     if (dragRafRef.current !== null) return
     dragRafRef.current = window.requestAnimationFrame(() => {
@@ -1798,7 +1800,6 @@ const meSpeedRef = useRef(200)
     }
     if (v !== null) commitDesire(v)
     setDragV(null)
-    setDesireShown(false)
   }
   const applyTactic = (t: 'assault' | 'mid' | 'kite'): void => {
     const m = battleTacticDesire(state, engine.ctx, t)
@@ -3051,8 +3052,8 @@ const meSpeedRef = useRef(200)
               <i className="app-bts-here" style={{ left: `${pct(visM)}%` }} title={tr("ui.BattleScreen.070")} />
             </div>
             <span className="app-dim app-bts-sideLabel">{tr("ui.BattleScreen.071")}</span>
-            {/* 期望交距读数：只在拖动/键盘调整时出现（隐去用 visibility，**保留占位**⇒不产生跳动） */}
-            <span className={`app-gold app-bts-desire${desireShown ? '' : ' is-idle'}`}>
+            {/* 期望交距读数：**常驻**（2026-09-29 船长报障「数值不见了」⇒ 恢复一直显示） */}
+            <span className="app-gold app-bts-desire">
               {tr("ui.BattleScreen.072")} {sliderToDesire(sliderV).toLocaleString('zh-CN')}m
             </span>
           </div>

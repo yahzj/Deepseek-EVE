@@ -8501,9 +8501,9 @@ html[data-locale='en'] body {
 
 .app-bts-desire { font-size: var(--wui-fs-s); font-family: var(--wui-mono); flex: none; min-width: 130px; text-align: right; }
 
-/* 期望交距读数：**只在拖动/键盘调整时显示**（2026-09-26 信息层级批 I1）。
-   用 `visibility` 而不是 `display` —— **保留占位**，出现/隐去都不产生横向跳动。 */
-.app-bts-desire.is-idle { visibility: hidden; }
+/* 期望交距读数：**常驻**（**2026-09-29 船长报障**：「原先战斗中，会显示玩家选择的期望距离具体数值，
+   现在好像不见了」）—— 2026-09-26 那批曾让它"只在拖动时出现"，船长口径与之相反 ⇒ 恢复一直显示。
+   `min-width: 130px` 与 `text-align: right` 保留 ⇒ 数字位数变化不引起横向跳动。 */
 
 .app-bts-note { font-size: var(--wui-fs-2xse); }
 
