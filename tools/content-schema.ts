@@ -34,9 +34,15 @@
  * `npm run content:export`**（导出件才是干净的现行表头）。
  */
 import { ITEM_KIND_LABELS, MODULE_SLOTS, RACK_SLOTS, SLOT_LABELS } from '@whale/core'
+import { DRONE_ROLE_SPECS } from '@whale/data'
 
 /** 物品类别：**引擎单点**（`ITEM_KIND_LABELS` 的键序即表头顺序，不再手抄） */
 const ITEM_KINDS = Object.keys(ITEM_KIND_LABELS) as Array<keyof typeof ITEM_KIND_LABELS>
+
+/** 无人机四型：**数据单点**（`DRONE_ROLE_SPECS` 的键序即表头顺序，不再手抄） */
+const DRONE_CLASSES = Object.keys(DRONE_ROLE_SPECS) as Array<keyof typeof DRONE_ROLE_SPECS>
+/** items 表 `droneClass` 列表头全文（`scout侦察/combat战斗/assault攻坚/sentry哨戒`，由单点派生 ⇒ 加机型自动跟随） */
+const DRONE_CLASS_HEAD = `机型分类droneClass(${DRONE_CLASSES.map((c) => `${c}${DRONE_ROLE_SPECS[c].label}`).join('/')})`
 /** items 表 `kind` 列表头全文（`ore原矿/mineral原材料/…`，由单点派生 ⇒ 加类别自动跟随） */
 const ITEM_KIND_HEAD = `kind(${ITEM_KINDS.map((k) => `${k}${ITEM_KIND_LABELS[k]}`).join('/')})`
 
@@ -129,6 +135,25 @@ export const TABLES: readonly TableSpec[] = [
       }),
       col('伤害基数dmg', 'dmg', 'num', { min: 0.0001 }),
       col('CPU占用cpuUse(无人机)', 'cpuUse', 'num', { min: 0 }),
+      /**
+       * ── **无人机战斗属性**（**2026-09-28 船长令「加」**：他要在工作台里看与改无人机）──
+       *
+       * 起因：这些字段**原先不在 items 表里**（表只有 13 列）⇒ 2026-09-28 那次「攻坚 4000 / 战斗 5000 /
+       * 侦察 6000」的射程改动**在工作台里看不见也改不了**。船长点头后加这 10 列。
+       * ⚠ `defense.*` 走 `obj`（`p = 'root.key'`，**按键合并**）；若某件的 `defense` 写成对象展开
+       * （独占机型常见），导入端会**只读跳过**该列并点名 —— 不会把整个对象换成字面量（既有规程）。
+       * ⚠ 三层抗性（`defense.*Resist.*`，共 9 键）**本次没加**：用得少且多半是展开写法；要加说一声。
+       */
+      col('射程maxRangeM', 'maxRangeM', 'num', { min: 1, int: true }),
+      col('命中hitRate', 'hitRate', 'num', { min: 0, max: 2 }),
+      col('距离衰减falloff', 'falloff', 'num', { min: 0, max: 1 }),
+      col(DRONE_CLASS_HEAD, 'droneClass', 'enum', { vals: DRONE_CLASSES }),
+      col('护盾值defense.shieldHp', 'defense.shieldHp', 'obj', { min: 0 }),
+      col('装甲值defense.armorHp', 'defense.armorHp', 'obj', { min: 0 }),
+      col('结构值defense.hullHp', 'defense.hullHp', 'obj', { min: 0 }),
+      col('闪避defense.evasion', 'defense.evasion', 'obj', { min: 0, max: 0.9 }),
+      col('装填msreloadMs', 'reloadMs', 'num', { min: 1, int: true }),
+      col('独占exclusive', 'exclusive', 'bool'),
       col('修理恢复repairRestore(0~1)', 'repairRestore', 'num', { min: 0, max: 100 }),
       col('描述', 'description', 'str'),
     ],
