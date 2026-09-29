@@ -71,8 +71,9 @@ describe('T4 战列舰定案 · 巨齿鲨级（2026-09-13）', () => {
     const ratio = materialValue(bp!) / 225_000_000
     expect(ratio).toBeGreaterThan(0.44)
     expect(ratio).toBeLessThan(0.46)
-    // 2026-09-29 船长令：工期由"档位净收益带"反推，且 **T4 ≤ 24 时** ⇒ 巨齿鲨（T4 最贵）取带上沿 = 23.99 时
-    expect(bp!.buildSeconds).toBe(86_370)
+    // 2026-09-29 船长令：工期由"档位净收益带"反推，且 **T4 ≤ 24 时（硬顶）** ⇒ 巨齿鲨取硬顶 24 时
+    // （同步 main 后 T4 战斗船四条同为 225M、净额相同 ⇒ 并列落在硬顶上）
+    expect(bp!.buildSeconds).toBe(86_400)
   })
 
   it('价位阶梯：三条线各按同定位锚抬升（2026-09-13 价位重排后的口径）', () => {
