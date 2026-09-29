@@ -35,14 +35,17 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '鲸王级舰船蓝图',
     shipId: 'whale-king',
     materials: [
-      { itemId: 'min-tritanium', count: 226_000 },
-      { itemId: 'min-pyerite', count: 116_000 },
-      { itemId: 'min-mexallon', count: 51_600 },
-      { itemId: 'min-nocxium', count: 12_900 },
+      // ⚠ **2026-09-29 船长裁决「甲」**：鲸王产量（26,100 m³/时）比 T4 座头鲸（24,000）还高，
+      //   却比它便宜 ⇒ 锚价 12M → **100M**（= 座头鲸 90M × 产能比 1.0875 取整）⇒ 材料整体 **×8.344**
+      //   以守住「材料货值 = 锚价 × 45%」这条内在规矩（44,996,400 ÷ 100,000,000 = **45.0%**）。
+      { itemId: 'min-tritanium', count: 1_885_700 },
+      { itemId: 'min-pyerite', count: 967_900 },
+      { itemId: 'min-mexallon', count: 430_600 },
+      { itemId: 'min-nocxium', count: 107_600 },
     ],
-    buildSeconds: 17_520, // 鲸王级（2026-09-13 价位重排后按带内插值：12M ⇒ 4.9 时）
+    buildSeconds: 17_520, // 鲸王级（2026-09-13 价位重排后按带内插值：12M ⇒ 4.9 时；2026-09-29 涨价不改工期）
     buildCostIsk: 900_000,
-    priceIsk: 48_000_000, // = 行价 12,000,000 × 4（2026-09-13 价位重排）
+    priceIsk: 400_000_000, // = 行价 100,000,000 × 4（⚠ 2026-09-29 船长裁决「甲」：原「行价 12M ×4 = 48M」作废）
     description: '采矿艇，货舱 7,000 m³、循环 8 秒产 58 单位，矿舰的产量顶点。',
   },
   {
@@ -991,14 +994,15 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'whale-king',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 226_000 },
-      { itemId: 'min-pyerite', count: 116_000 },
-      { itemId: 'min-mexallon', count: 51_600 },
-      { itemId: 'min-nocxium', count: 12_900 },
+      // ⚠ 2026-09-29 船长裁决「甲」：与永久蓝图同一张料单（同步 ×8.344 ⇒ 料货值 45.0% 于锚价 100M）
+      { itemId: 'min-tritanium', count: 1_885_700 },
+      { itemId: 'min-pyerite', count: 967_900 },
+      { itemId: 'min-mexallon', count: 430_600 },
+      { itemId: 'min-nocxium', count: 107_600 },
     ],
     buildSeconds: 17_520,
     buildCostIsk: 0,
-    priceIsk: 6_000_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
+    priceIsk: 50_000_000, // = 行价 100,000,000 × 50%（⚠ 2026-09-29 船长裁决「甲」：原 6M 作废）
     description: '采矿艇，货舱 7,000 m³、循环 8 秒产 58 单位，矿舰的产量顶点。',
   },
   {

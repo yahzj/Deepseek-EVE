@@ -561,8 +561,14 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
 
   // 鲸王级成品 2026-09-09 船长定只收不卖：蓝图船无现货——市场只供其造船蓝图书（sbp 奇货）；
   // 玩家已拥有的鲸王级可二手挂售（NPC 收购），成品永不出售
-  { key: 'ship-whale-king', kind: 'ship', refId: 'whale-king', rarity: 'exotic', basePrice: 12_000_000, demandMultiplier: 1.0, standingReq: 12, playerBuyable: false }, // 2026-09-13 价位重排：T3 工业（开拓 1.2M ×10）
-  { key: 'sbp-whale-king', kind: 'blueprint', refId: 'sbp-whale-king', rarity: 'exotic', basePrice: 48_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 2026-09-13：蓝图=船价×4；T3 蓝图门槛 15
+  //
+  // ⚠ **2026-09-29 船长裁决「甲」**（原话：「**鲸王蓝图的价格不对，鲸王在产量上甚至比座头鲸还高，
+  //   所以应该比座头鲸更贵**」⇒「**鲸王按照甲该**」）：鲸王 26,100 m³/时 > 座头鲸 24,000 m³/时，
+  //   价目却便宜 7.5× ⇒ **锚价 12M → 100M**（= 座头鲸 90M × 产能比 1.0875 取整）·
+  //   永久蓝图 48M → **400M** · 一次性 6M → **50M** · 料单 ×8.344（料/价恒 45%）。
+  //   作废的旧口径：「2026-09-13 价位重排：T3 工业（开拓 1.2M ×10）= 12M」。
+  { key: 'ship-whale-king', kind: 'ship', refId: 'whale-king', rarity: 'exotic', basePrice: 100_000_000, demandMultiplier: 1.0, standingReq: 12, playerBuyable: false }, // 2026-09-29：锚价随产量对齐（原 12M）
+  { key: 'sbp-whale-king', kind: 'blueprint', refId: 'sbp-whale-king', rarity: 'exotic', basePrice: 400_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 2026-09-29：蓝图 = 锚价 ×4（原 48M）；T3 蓝图门槛 15
   // V10 顶级船（声望解锁）
   { key: 'ship-sentinel', kind: 'ship', refId: 'sh-sentinel', rarity: 'exotic', basePrice: 2_600_000, demandMultiplier: 1.0, standingReq: 12 }, // 2026-09-13：T3 门槛统一 12（原 2026-09-09 定的 6→10 由本口径取代）
   { key: 'ship-whiteshark', kind: 'ship', refId: 'sh-whiteshark', rarity: 'exotic', basePrice: 1_100_000, demandMultiplier: 1.0, standingReq: 7 }, // T2：保留门槛（船长 2026-09-13「大白鲨作为稀有船，可以保留门槛」）
@@ -644,7 +650,10 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'sbp-once-thresher', kind: 'blueprint', refId: 'sbp-once-thresher', rarity: 'rare', basePrice: 4_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
   { key: 'sbp-once-nautilus', kind: 'blueprint', refId: 'sbp-once-nautilus', rarity: 'rare', basePrice: 4_500_000, demandMultiplier: 0.65, standingReq: 8 }, // ✅ 2026-09-14 随鹦鹉螺级同步放开；2026-09-16 甲案：15 → 8
   { key: 'sbp-once-hammerhead', kind: 'blueprint', refId: 'sbp-once-hammerhead', rarity: 'rare', basePrice: 5_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
-  { key: 'sbp-once-whale-king', kind: 'blueprint', refId: 'sbp-once-whale-king', rarity: 'rare', basePrice: 6_000_000, demandMultiplier: 0.65, standingReq: 15 },
+  // ⚠ 2026-09-29 船长裁决「甲」：一次性图纸随锚价重算 ⇒ 6M → **50M**（= 锚价 ×50%）。
+  //   ⚠ **渠道待裁**：现为 `rare`（稀有订单层 · 数字档 3 · 非奇货 0.65 回收率），
+  //   而 T4/T5 的一次性图纸都在奇货（数字档 4）——50M 这张留在稀有层是否合适，等船长点名。
+  { key: 'sbp-once-whale-king', kind: 'blueprint', refId: 'sbp-once-whale-king', rarity: 'rare', basePrice: 50_000_000, demandMultiplier: 0.65, standingReq: 15 },
   { key: 'sbp-once-bullshark', kind: 'blueprint', refId: 'sbp-once-bullshark', rarity: 'rare', basePrice: 6_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
   { key: 'sbp-once-electricray', kind: 'blueprint', refId: 'sbp-once-electricray', rarity: 'rare', basePrice: 7_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
   { key: 'sbp-once-swordfish', kind: 'blueprint', refId: 'sbp-once-swordfish', rarity: 'rare', basePrice: 12_000_000, demandMultiplier: 0.65, standingReq: 25 }, // T4：船长「剑鱼的一次性蓝图也下放稀有」
