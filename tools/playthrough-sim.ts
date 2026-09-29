@@ -517,20 +517,34 @@ function sellEverything(): void {
   }
 }
 
+/**
+ * **`doMine` 守卫级诊断**（2026-09-28 · 配合 `--trace`）：六天实测"采矿 0%、主控 86~99% 空闲"，
+ * 但 `doMine()` 的兜底调用点在主循环里、理论上每拍可达 ⇒ 必须分清"**没走到**"还是"**被哪条守卫挡回**"。
+ * 每条 early-return 各记一次，每天随 `--trace` 打印。
+ */
+const MINE_STAT: Record<string, number> = {}
+function mineBlock(why: string): void {
+  MINE_STAT[why] = (MINE_STAT[why] ?? 0) + 1
+}
+
 function doMine(): void {
-  if (state.mining.active) return
-  if (pilotLineBusy()) return
-  if (state.expedition.active || state.scanning.active || state.standby.active || state.transit.active) return
+  if (state.mining.active) return mineBlock('已在采矿')
+  if (pilotLineBusy()) return mineBlock('主控线忙')
+  if (state.expedition.active) return mineBlock('远征中')
+  if (state.scanning.active) return mineBlock('扫描中')
+  if (state.standby.active) return mineBlock('待命中')
+  if (state.transit.active) return mineBlock('在途')
   // 任意已探索星系的高价值矿带（本地带价值低，远程带采矿会自动往返）
   const pick = BELT_LIST.find(({ b }) => {
     if ((b.standingReq ?? 0) > standing()) return false
     if (b.galaxyId !== undefined && b.galaxyId !== HOME_GALAXY_ID && !isExplored(state, b.galaxyId)) return false
     return true
   })
-  if (!pick) return
+  if (!pick) return mineBlock('无可用矿带')
   const r = startMining(state, pick.b.id, ctx)
   if (r.ok) {
     setMiningAutoCycle(state, false) // 单趟：满舱返航后停下，回港决策
+    MINE_STAT['✅ 开工'] = (MINE_STAT['✅ 开工'] ?? 0) + 1
     mark(`采矿 ${pick.b.name}`)
   } else issue(`采矿 ${pick.b.id} 失败：${r.error}`)
 }
@@ -3255,6 +3269,11 @@ function tickStat(): void {
     console.log(
       `  [trace d${d}] 主控时间占比：${parts.join(' · ')} ｜ 现金 ${Math.round(state.wallet.isk).toLocaleString('zh-CN')} ｜ 首胜 ${state.completedBounties.length}`,
     )
+    const mineParts = Object.entries(MINE_STAT)
+      .filter(([, v]) => v > 0)
+      .map(([n, v]) => `${n} ${v}`)
+    console.log(`  [trace d${d}] doMine 调用结果：${mineParts.length > 0 ? mineParts.join(' · ') : '（一次都没被调用）'}`)
+    for (const n of Object.keys(MINE_STAT)) delete MINE_STAT[n]
     for (const n of Object.keys(TICK_STAT)) TICK_STAT[n] = 0
   }
 }
@@ -3267,6 +3286,23 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
   }
   tickStat()
   refillSkills()
+  /**
+   * **采矿兜底搬到"每拍"**（2026-09-28 修 · 由 `--trace` 定位）。
+   *
+   * 病根：这条兜底原先挂在 `if (homeLull()) { … }` 分支里 —— 而实测
+   * （`--trace`）主控 **86~99% 空闲、`doMine` 一天一次都没被调用**：
+   * 空闲 ≠ `homeLull()`，于是整段跑不到，现金 6 天恒定在 5~11 万（沙猫一小时就该挖 4.2 万）。
+   * 这与本文件 2026-09-21 批修 `buyShipAndGear` 时记下的**同一类病**
+   * （"旧口径只在 `homeLull()` 分支里调 ⇒ 模拟长期卡在循环里整段跑不到"）。
+   *
+   * 修法同款：**每拍都试**，`doMine()` 自带守卫（在采矿/主控线忙/在航/在远征一律跳过）。
+   * ⚠ 原"boss 冲刺就绪时不挖矿以免拖延最终验证"这条口径**原样保留**。
+   */
+  {
+    const bossDefEarly = ctx.anomalies.get('ano-vault-sentinel')
+    const bossWEarly = bossDefEarly ? winOf(state, ctx, bossDefEarly) : 0
+    if (!(WANTS.boss && !goalDone.boss && bossWEarly >= 0.85)) doMine()
+  }
   /**
    * **虫洞冲刺优先**（船长 2026-09-21 目标）：只要还没拿到六枚虫洞里程碑、且这趟没在收口，
    * 每一步都先喂它一拍决策（进洞 / 扫 / 走 / 打守卫 / 深入 / 撤离）。
