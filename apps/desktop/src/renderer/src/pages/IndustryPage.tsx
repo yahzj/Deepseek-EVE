@@ -35,10 +35,11 @@ import {
   ITEM_KIND_LABELS,
   /** 2026-09-22 船长令：缺料"零件"要指去组装机 ⇒ 用产物→蓝图反查（核心单点，含缓存） */
   blueprintProducingItem,
-  /** 2026-09-29 跃迁燃料批：实验室卡片的读数口（可跑批次 / 材料可用量） */
+  /** 2026-09-29 跃迁燃料批：实验室卡片的读数口（可跑批次 / 材料可用量）＋ 配方类型 */
   labAffordableBatches,
   labMaterialAvailable,
 } from '@whale/core'
+import type { LabRecipeDef, LabRunView } from '@whale/core'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
 import type { AiCoreType, GameState, ItemDef } from '@whale/core'
@@ -511,98 +512,208 @@ function WreckFlavorRow({ def, engine }: { def: ItemDef; engine: GameEngine }) {
  * **实验室面板**（**2026-09-29 船长令**：「为工业新增子页面：'实验室'。玩家可以在实验室生产燃料。
  * 实验室的生产卡片和其他工业卡片类似」）。
  *
- * 形态：每个配方一张卡（与精炼炉/组装机同族观感）——**材料行（有/需）· 每批产出 · 每批工期 ·
- * 可跑批次 · 开工（主控亲自运转 / AI 核心）**；下方列出**正在跑的线**（进度 ＋ 停线）。
+ * ⚠ **观感纪律（§6：先复刻同级相似项，不自造新样式）**：本页**逐件复刻精炼炉那一套**——
+ * `Panel`（标题 ＋ 圆形感叹号规格句 ＋ 右侧读数）→ `.app-win-body` → `.app-belt-grid` →
+ * 每配方一张 `.app-belt-card`（`app-belt-head` / `-name` / `-head-right` / `-desc` / `-ore` /
+ * `-econ` / `-actions` / `-workers` / `-ai`），**一个自造类名都没有**。
  * 解锁门槛 = 已建成空间站 ≥ 1 座（`engine.labUnlocked()`）；未解锁时本子页不渲染。
  */
-function LabPanel({ engine, onToast }: { engine: GameEngine; onToast: PageProps['onToast'] }): ReactNode {
+function LabPanel({
+  engine,
+  onToast,
+  onGotoMarket,
+}: {
+  engine: GameEngine
+  onToast: PageProps['onToast']
+  onGotoMarket?: (goodKey: string) => void
+}): ReactNode {
   const state = engine.state
   const recipes = [...engine.ctx.labRecipes.values()]
   const runs = engine.labRunViews()
-  const cores: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
   return (
-    <div className="ind-pane-scroll">
-      {recipes.map((r) => {
-        const affordable = labAffordableBatches(state, r)
-        const out = engine.ctx.items.get(r.outputItemId)
-        return (
-          <div className="app-card" key={r.id}>
-            <div className="app-card-title">{r.name}</div>
-            <div className="app-dim">
-              {tr('ui.lab.003')}：{out?.name ?? r.outputItemId} ×{r.outputUnits} ／{' '}
-              {tr('ui.lab.004')}：{Math.round(r.cycleMs / 60_000)} {tr('ui.lab.012')}
-            </div>
-            <div className="app-dim">{tr('ui.lab.010')}</div>
-            <ul className="app-list">
-              {r.materials.map((m) => {
-                const have = labMaterialAvailable(state, m.itemId)
-                const def = engine.ctx.items.get(m.itemId)
-                return (
-                  <li key={m.itemId} className={have >= m.units ? '' : 'app-bad'}>
-                    {def?.name ?? m.itemId} {Math.floor(have)}/{m.units}
-                  </li>
-                )
-              })}
-            </ul>
-            <div className="app-row">
-              <span className="app-dim">
-                {tr('ui.lab.005')}：{affordable}
-              </span>
-              <button
-                className="app-btn is-small is-primary"
-                disabled={affordable <= 0}
-                onClick={() => {
-                  const res = engine.startLabRunAt(r.id, 'pilot')
-                  if (!res.ok) onToast(cmdText(res) || tr('ui.lab.013'), true)
-                }}
-              >
-                {tr('ui.lab.006')}
-              </button>
-              {cores.map((t) =>
-                countAiCore(state, t) > 0 ? (
-                  <button
-                    key={t}
-                    className="app-btn is-small"
-                    disabled={affordable <= 0}
-                    title={tr('ui.lab.014', { p1: aiCoreText(t) })}
-                    onClick={() => {
-                      const res = engine.startLabRunAt(r.id, t)
-                      if (!res.ok) onToast(cmdText(res) || tr('ui.lab.013'), true)
-                    }}
-                  >
-                    {aiCoreText(t)}
-                  </button>
-                ) : null,
-              )}
-            </div>
-          </div>
-        )
-      })}
-      {runs.map((v) => (
-        <div className="app-card" key={v.id}>
-          <div className="app-card-title">
-            {v.recipeName} · {v.worker === 'pilot' ? tr('ui.IndustryPage.020') : aiCoreText(v.worker)}
-          </div>
-          <div className="app-dim">
-            {tr('ui.lab.007', { p1: v.batchesDone })} · {v.percent}% ·{' '}
-            {Math.max(1, Math.round(v.remainingMs / 1000))} {tr('ui.lab.015')}
-          </div>
-          <div className="app-bar">
-            <i style={{ width: `${v.percent}%` }} />
-          </div>
-          <div className="app-row">
-            <button
-              className="app-btn is-small"
-              onClick={() => {
-                const res = engine.stopLabRunAt(v.id)
-                if (!res.ok) onToast(cmdText(res) || tr('ui.lab.016'), true)
-              }}
-            >
-              {tr('ui.lab.008')}
-            </button>
-          </div>
+    <Panel
+      className="is-fill"
+      title={tr('ui.lab.001')}
+      hint={<HintIcon tip={tr('ui.lab.010')} />}
+      right={
+        <>
+          <span className="app-dim">{tr('ui.lab.017')}</span>
+          <AiSlotText state={state} ctx={engine.ctx} />
+        </>
+      }
+    >
+      <div className="app-win-body">
+        {recipes.length === 0 ? <div className="app-dim app-inv-empty">{tr('ui.lab.018')}</div> : null}
+        <div className="app-belt-grid">
+          {recipes.map((r) => (
+            <LabCard
+              key={r.id}
+              recipe={r}
+              engine={engine}
+              onToast={onToast}
+              onGotoMarket={onGotoMarket}
+              runs={runs.filter((v) => v.recipeId === r.id)}
+            />
+          ))}
         </div>
-      ))}
+      </div>
+    </Panel>
+  )
+}
+
+/**
+ * **一张实验室配方卡**（骨架与类名逐件照 `FurnaceCard`）。
+ *
+ * 与精炼炉卡的**唯一差异**：材料是**多料 BOM**（逐行给"×需量 ＋ 仓库量 ＋ 行情价"），
+ * 开工门槛从"够一批单料"变成"够一批全料"（`labAffordableBatches`）；产出与净收益/h 复用同一组件。
+ */
+function LabCard({
+  recipe,
+  engine,
+  onToast,
+  onGotoMarket,
+  runs,
+}: {
+  recipe: LabRecipeDef
+  engine: GameEngine
+  onToast: PageProps['onToast']
+  onGotoMarket?: (goodKey: string) => void
+  runs: LabRunView[]
+}): ReactNode {
+  const state = engine.state
+  const rate = refineRate(state, engine.ctx)
+  const out = engine.ctx.items.get(recipe.outputItemId)
+  const affordable = labAffordableBatches(state, recipe)
+  const batchValue = recipe.outputUnits * (marketPriceOf(state, engine.ctx, recipe.outputItemId) ?? out?.baseSellPriceIsk ?? 0)
+  const costIsk = recipe.materials.reduce(
+    (s, m) =>
+      s + m.units * (marketPriceOf(state, engine.ctx, m.itemId) ?? engine.ctx.items.get(m.itemId)?.baseSellPriceIsk ?? 0),
+    0,
+  )
+  const usableCores = CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
+  const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
+  const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
+  const manualBusy = manualBusyNote(state)
+  function runWith(worker: AiCoreType | 'pilot'): void {
+    const r = engine.startLabRunAt(recipe.id, worker)
+    if (!r.ok) {
+      onToast(cmdText(r) || tr('ui.lab.013'), true)
+      return
+    }
+    const who = worker === 'pilot' ? tr('ui.IndustryPage.020') : tr('ui.IndustryPage.068', { p1: aiCoreName(worker) })
+    onToast(tr('ui.lab.019', { p1: recipe.name, p2: recipe.outputUnits, who }))
+  }
+  return (
+    <div className="app-belt-card" key={recipe.id}>
+      <div className="app-belt-head">
+        <span className="app-belt-name">
+          <RowGlyph glyph="consumable" /> {recipe.name}
+        </span>
+        <span className="app-belt-head-right">
+          <span className="app-dim">
+            {tr('ui.lab.005')} {affordable}
+          </span>
+        </span>
+      </div>
+      <div className="app-belt-desc">{tr('ui.lab.010')}</div>
+      {/* 数据行（与精炼炉同款位置）：每批产出 / 每批工期 / 精炼速率 */}
+      <div className="app-belt-ore">
+        {tr('ui.lab.003')} {out?.name ?? recipe.outputItemId} ×{recipe.outputUnits}
+        {' · '}
+        {tr('ui.lab.004')} {Math.round(recipe.cycleMs / 60_000)} {tr('ui.lab.012')}
+        {' · '}
+        {tr('ui.IndustryPage.062')} {Math.round(rate * 100)}%
+      </div>
+      {/* 材料行：与精炼炉「♨ 产出：」同款缩进行（这里是"投料"），行尾给仓库量与行情价 */}
+      <div className="app-belt-econ">
+        <div>{tr('ui.lab.009')}</div>
+        {recipe.materials.map((m) => {
+          const def = engine.ctx.items.get(m.itemId)
+          const have = labMaterialAvailable(state, m.itemId)
+          return (
+            <div key={m.itemId} className={`app-belt-out${have >= m.units ? '' : ' app-bad'}`} title={def?.description ?? ''}>
+              {def?.name ?? m.itemId} ×{m.units}
+              <span className="app-dim">
+                {' '}
+                {tr('ui.Yield.004', {
+                  p1: Math.floor(have).toLocaleString('zh-CN'),
+                  p2: marketPriceOf(state, engine.ctx, m.itemId)?.toLocaleString('zh-CN') ?? '—',
+                })}
+              </span>
+            </div>
+          )
+        })}
+        <NetIncomeLine price={batchValue} costIsk={costIsk} buildMs={recipe.cycleMs} />
+      </div>
+      <div className="app-belt-actions">
+        {/* 运转单位名册（每台一行：劳动者 + 当前批进度条 + 停）——与精炼炉逐字同款 */}
+        {runs.length > 0 ? (
+          <div className="app-belt-workers">
+            {runs.map((v) => (
+              <span key={v.id} className="app-belt-worker">
+                <span className="app-belt-worker-name">
+                  {v.worker === 'pilot' ? tr('ui.IndustryPage.041') : tr('ui.IndustryPage.086', { p1: aiCoreText(v.worker) })} ·{' '}
+                  {tr('ui.lab.007', { p1: v.batchesDone })}
+                </span>
+                <span className="app-progress-mini" title={tr('ui.lab.020', { p1: v.percent, p2: v.batchUnits, p3: Math.round(v.cycleMs / 100) / 10 })}>
+                  <i style={{ width: `${v.percent}%` }} />
+                </span>
+                <button
+                  className="app-btn is-small is-warn"
+                  onClick={() => {
+                    const r = engine.stopLabRunAt(v.id)
+                    if (!r.ok) onToast(cmdText(r) || tr('ui.lab.016'), true)
+                  }}
+                  title={tr('ui.lab.008')}
+                >
+                  {tr('ui.IndustryPage.104')}
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <button
+          className="app-btn is-small is-primary"
+          disabled={manualBusy !== null || affordable <= 0}
+          title={manualBusy ?? (affordable <= 0 ? tr('ui.lab.021') : tr('ui.lab.006'))}
+          onClick={() => runWith('pilot')}
+        >
+          {tr('ui.lab.006')}
+        </button>
+        {/* AI 工位：核心下拉常驻（与精炼炉同款：无核心时置灰，卡面不跳动） */}
+        <div className="app-belt-ai">
+          <select
+            className="app-select"
+            value={usableCores.length === 0 ? '' : (core ?? '')}
+            onChange={(e) => setCoreSel(e.target.value as AiCoreType)}
+            disabled={usableCores.length === 0}
+            title={usableCores.length === 0 ? tr('ui.IndustryPage.051') : tr('ui.IndustryPage.052')}
+          >
+            {usableCores.length === 0 ? (
+              <option value="">{tr('ui.ShipPage.070')}</option>
+            ) : (
+              usableCores.map((t) => (
+                <option key={t} value={t}>
+                  {aiCoreText(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
+                </option>
+              ))
+            )}
+          </select>
+          <button
+            className="app-btn is-small"
+            disabled={!core || affordable <= 0}
+            title={core ? (affordable <= 0 ? tr('ui.lab.021') : tr('ui.lab.014', { p1: aiCoreText(core) })) : tr('ui.IndustryPage.055')}
+            onClick={() => core && runWith(core)}
+          >
+            {tr('ui.lab.022')}
+          </button>
+        </div>
+        {onGotoMarket ? (
+          <button className="app-btn is-small" onClick={() => onGotoMarket(recipe.outputItemId)} title={tr('ui.lab.023')}>
+            {tr('ui.lab.023')}
+          </button>
+        ) : null}
+      </div>
     </div>
   )
 }
@@ -1086,7 +1197,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
       {/* 实验室（**2026-09-29 船长令**）：与其余四页同一套保活手法（`IndPane` + 会话滚动记忆） */}
       {engine.labUnlocked() && seenSec.has('lab') ? (
         <IndPane scrollKey="industry.lab.scroll" off={sec !== 'lab'}>
-          <LabPanel engine={engine} onToast={onToast} />
+          <LabPanel engine={engine} onToast={onToast} onGotoMarket={onGotoMarket} />
         </IndPane>
       ) : null}
     </div>
