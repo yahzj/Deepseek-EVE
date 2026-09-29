@@ -31,6 +31,8 @@ import { bountyRewardFactor, DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, lootFact
 import { bountyEnemyCount, bountyWreckInjection, injectWreckDensity, wreckDensityOf, wreckInjectThreatOf } from './salvage'
 import { travelLegMs } from './travel'
 import { scaledReturnMs } from './trips'
+import { beginJumpFuelLeg } from './jumpFuel'
+import { legMsFor, outboundLegMsFor } from './salvaging'
 import { actionBlockReason, markExplored } from './explore'
 import { nearestStationGalaxyId } from './location'
 import {
@@ -603,7 +605,7 @@ export function aiTaskView(state: GameState, ctx: SimContext, shipId: string): A
       const base =
         task.phase === 'outbound'
           ? oneOutboundLegMs(state, ctx, task.beltId, shipId, stGal)
-          : scaledReturnMs(oneLegMs(state, ctx, task.beltId, shipId, stGal), state, ctx, shipId)
+          : scaledReturnMs(oneLegMs(state, ctx, task.beltId, shipId, stGal), state, ctx, shipId, task.fuelMul)
       const v = leg(base, task.phase === 'outbound')
       return { kind: 'mining', phase: task.phase, label: task.phase === 'returning' ? '返航卸货中' : '出航中', percent: v.percent, remainingMs: v.remain }
     }
@@ -628,7 +630,7 @@ export function aiTaskView(state: GameState, ctx: SimContext, shipId: string): A
       return Math.max(1, ctx.balance.mining.localLegMs + travelLegMs(state, ctx, Number.isFinite(mins) ? mins : 0, shipId))
     }
     if (task.phase === 'outbound' || task.phase === 'returning') {
-      const base = task.phase === 'outbound' ? Math.round(legBase() / 2) : scaledReturnMs(legBase(), state, ctx, shipId)
+      const base = task.phase === 'outbound' ? Math.round(legBase() / 2) : scaledReturnMs(legBase(), state, ctx, shipId, task.fuelMul)
       const v = leg(base, task.phase === 'outbound')
       return { kind: 'salvage', phase: task.phase, label: task.phase === 'returning' ? '返航卸货' : '出航', percent: v.percent, remainingMs: v.remain }
     }
@@ -741,7 +743,7 @@ function advanceAiMining(
       const legBase =
         task.phase === 'outbound'
           ? oneOutboundLegMs(state, ctx, task.beltId, shipId, stGal)
-          : scaledReturnMs(oneLegMs(state, ctx, task.beltId, shipId, stGal), state, ctx, shipId)
+          : scaledReturnMs(oneLegMs(state, ctx, task.beltId, shipId, stGal), state, ctx, shipId, task.fuelMul)
       const legMsReal = task.phase === 'outbound' ? Math.max(1, Math.round(legBase / eff)) : Math.max(1, Math.round(legBase))
       const need = legMsReal - task.phaseAccMs
       if (remaining < need) {
@@ -826,6 +828,20 @@ function advanceAiMining(
     if (oreM3PerCycle > freeM3) {
       task.phase = 'returning'
       task.phaseAccMs = 0
+      /**
+       * **跃迁燃料**（2026-09-29）：AI 副船这一支按 `'ai'` 这一个开关走（不按船分档）——
+       * 与"设置哪些活动使用燃料"的界面口径一致；原返航时长按秒扣料，倍率存进本条任务。
+       */
+      if (task.kind === 'mining') {
+        const stGalAi = beltDef?.galaxyId ? nearestStationGalaxyId(state, ctx, beltDef.galaxyId) : HOME_GALAXY_ID
+        const baseAi = scaledReturnMs(
+          oneLegMs(state, ctx, task.beltId, shipId, stGalAi) + oneOutboundLegMs(state, ctx, task.beltId, shipId, stGalAi),
+          state,
+          ctx,
+          shipId,
+        )
+        task.fuelMul = beginJumpFuelLeg(state, 'ai', baseAi)
+      }
       addLog(
         state,
         'fleet',
@@ -922,7 +938,7 @@ function advanceAiSalvage(
       const legBase =
         task.phase === 'outbound'
           ? Math.round(legBaseOf() / 2)
-          : scaledReturnMs(legBaseOf(), state, ctx, shipId)
+          : scaledReturnMs(legBaseOf(), state, ctx, shipId, task.fuelMul)
       const legReal = task.phase === 'outbound' ? Math.max(1, Math.round(legBase / eff)) : Math.max(1, Math.round(legBase))
       const need = legReal - task.phaseAccMs
       if (remaining < need) {
@@ -1010,6 +1026,16 @@ bumpFirst(state, 'salvageRuns')
         if (pulled.volumeM3 > freeM3) {
           task.phase = 'returning'
           task.phaseAccMs = 0
+          /** 跃迁燃料（同采矿那一支；`'ai'` 一个开关管全部副船）。AI 打捞的去程并入返航。 */
+          if (task.kind === 'salvage') {
+            const baseAi = scaledReturnMs(
+              legMsFor(state, ctx, task.galaxyId) + outboundLegMsFor(state, ctx, task.galaxyId),
+              state,
+              ctx,
+              shipId,
+            )
+            task.fuelMul = beginJumpFuelLeg(state, 'ai', baseAi)
+          }
           addLog(
             state,
             'fleet',

@@ -64,6 +64,13 @@ import {
   buyOrderBlockedReason,
   recallExpedition,
   refineRunViews,
+  /* 实验室 ＋ 跃迁燃料（2026-09-29 船长令） */
+  labUnlocked as labUnlockedCore,
+  labRunViews,
+  startLabRun,
+  stopLabRun,
+  jumpFuelStockOf,
+  jumpFuelEnabledOf,
   moveQueueItem,
   removeQueueAt,
   renameShip,
@@ -320,6 +327,9 @@ import type {
   ModuleSlot,
   RackSlot,
   RefineRunView,
+  /** 实验室线视图 ＋ 跃迁燃料活动档（2026-09-29 跃迁燃料批） */
+  LabRunView,
+  JumpFuelActivity,
   FragmentRedeemRow,
   SellResult,
   SettleStats,
@@ -1990,6 +2000,63 @@ export class GameEngine {
   /** 全部精炼炉工位运行视图（v19 多工位：工业页卡片逐台 / 活动栏逐条） */
   refineRunViews(): RefineRunView[] {
     return refineRunViews(this.state, this.ctx)
+  }
+
+  /* ═══ 实验室 ＋ 跃迁燃料（**2026-09-29 船长令**）═══ */
+
+  /** 实验室是否已解锁（判据 = 已建成空间站 ≥ 1 座；未解锁时工业页不渲染「实验室」子页） */
+  labUnlocked(): boolean {
+    return labUnlockedCore(this.state, this.ctx)
+  }
+
+  /** 起一条实验线（worker：'pilot' 主控亲自运转 / AI 核心类型；与精炼炉共用"手动工作位"名额） */
+  startLabRunAt(recipeId: string, worker: AiCoreType | 'pilot'): CommandResult {
+    return this.withActivitySwitch('refine', () => {
+      const result = startLabRun(this.state, this.ctx, recipeId, worker)
+      if (result.ok) {
+        void this.persist()
+        this.notify()
+      }
+      return result
+    })
+  }
+
+  /** 停指定台号的实验线（BOM 每批到点才扣 ⇒ 停机不吃料；AI 核心自动归还） */
+  stopLabRunAt(runId: number | string): CommandResult {
+    const result = stopLabRun(this.state, this.ctx, Number(runId))
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 实验室产线视图（工业页「实验室」卡片读它） */
+  labRunViews(): LabRunView[] {
+    return labRunViews(this.state, this.ctx)
+  }
+
+  /** 跃迁燃料库存（仓库 ＋ 驾驶船货仓；舰船页「跃迁燃料」子页顶行读它） */
+  jumpFuelStock(): number {
+    return jumpFuelStockOf(this.state)
+  }
+
+  /** 某活动是否开着跃迁燃料（界面开关的读数口） */
+  jumpFuelEnabled(activity: JumpFuelActivity): boolean {
+    return jumpFuelEnabledOf(this.state, activity)
+  }
+
+  /** 开关某活动的跃迁燃料（**门槛后**才有入口：未解锁时一律拒绝并返回原因） */
+  setJumpFuel(activity: JumpFuelActivity, on: boolean): CommandResult {
+    if (!this.labUnlocked()) {
+      return { ok: false, error: '跃迁燃料需在首座空间站建成后使用。', errorId: 'core.jumpFuel.002' }
+    }
+    const cur = (this.state.jumpFuel ??= {})
+    if (on) cur[activity] = true
+    else delete cur[activity]
+    void this.persist()
+    this.notify()
+    return { ok: true }
   }
 
   /**

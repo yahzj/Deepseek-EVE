@@ -34,6 +34,7 @@ import { nearestStationGalaxyId } from './location'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { familyModules } from './equipment'
 import { scaledReturnMs } from './trips'
+import { beginJumpFuelLeg, jumpFuelLegMsOf } from './jumpFuel'
 
 /** 一次循环的实际参数（技能+装备加成后的最终值） */
 export interface MiningParams {
@@ -420,6 +421,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
               state,
               ctx,
               state.shipId,
+              m.fuelMul,
             )
       const need = leg - m.phaseAccMs
       if (remaining < need) {
@@ -513,13 +515,13 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
         m.phaseAccMs = 0
         // 去程并入返航：返航腿 = (满载返航 + 空船去程) × 货仓占比（此处通常近满舱 → ≈原时长）
         const stGalNow = beltDef?.galaxyId ? nearestStationGalaxyId(state, ctx, beltDef.galaxyId) : HOME_GALAXY_ID
-        const mergedMs = scaledReturnMs(
+        const rawMs =
           oneLegMs(state, ctx, m.beltId, undefined, stGalNow) +
-            oneOutboundLegMs(state, ctx, m.beltId, undefined, m.originGalaxy ?? stGalNow),
-          state,
-          ctx,
-          state.shipId,
-        )
+          oneOutboundLegMs(state, ctx, m.beltId, undefined, m.originGalaxy ?? stGalNow)
+        /** **原返航时长**（不含燃料；含货仓占比）⇒ 燃料按它扣料（1 单位 = 1 秒），见 `jumpFuel` */
+        const baseMs = scaledReturnMs(rawMs, state, ctx, state.shipId)
+        m.fuelMul = beginJumpFuelLeg(state, 'mine', baseMs)
+        const mergedMs = jumpFuelLegMsOf(baseMs, m.fuelMul)
         addLog(
           state,
           'industry',
@@ -621,7 +623,7 @@ export function miningStatus(state: GameState, ctx: SimContext): MiningView {
   // 返航腿 = (满载返航 + 空船去程) × 货仓占比（空仓快、满仓原时长，船长 2026-09-05）
   const phaseLeg =
     m.phase === 'returning'
-      ? scaledReturnMs(leg + outLeg, state, ctx, state.shipId)
+      ? scaledReturnMs(leg + outLeg, state, ctx, state.shipId, m.fuelMul)
       : m.phase === 'outbound'
         ? outLeg
         : leg

@@ -348,6 +348,41 @@ export const MINERALS: readonly ItemDef[] = [
     baseSellPriceIsk: 3_600, // 2026-09-15 船长「调整虚空晶的价格，让现在精炼虚空母矿不会显示亏本」：1,800 → **3,600**（面板口径：每批 100 母矿耗料 91,500，产出 25 虚空晶 + 100 同位聚晶 + 25 星髓晶；盈亏平衡价 **3,195**，取 3,600 留约 13% 余量 ⇒ 净 +10,125/批）
     description: '全宇宙最稀有的原材料，只有传说级制造项目才用得起。',
   },
+  /**
+   * **跃迁燃料三件套**（**2026-09-29 船长令**：「为星云和冰添加新的精炼分解的主要材料，大概 2~3 种
+   * 用于制作'超空间折跃燃料'的材料」＋「Q4a 甲（给现有气/冰加新产出、重配比）· b 3 种 · d 能买卖」）。
+   *
+   * 口径：
+   * - **只从现有气/冰的重配比里出**（不新增矿带、不动星图）：气体 ⇒ 折跃等离子 · 冰矿 ⇒ 低温跃迁浆 ·
+   *   高阶气/冰（离子风暴云/极光云/寒髓冰/暗星冰）另出少量**曲率凝析物**；
+   * - **每种气/冰的精炼总价值与改前逐值同档**（新矿物切走 30~40% 的价值，老产出等比缩放 ⇒
+   *   增值率仍 ≈ +67%，见 `packages/data/src/items.ts` 里各资源 `refine` 的注释）；
+   * - 市场走**普通池**（与其它矿物同档、可买卖）——船长 2026-09-29「4 是」。
+   */
+  {
+    id: 'min-jumplasma',
+    name: '折跃等离子',
+    kind: 'mineral',
+    unitM3: 0.01,
+    baseSellPriceIsk: 120,
+    description: '星云气里分离出的高能等离子，跃迁燃料的主要成分。',
+  },
+  {
+    id: 'min-cryoslurry',
+    name: '低温跃迁浆',
+    kind: 'mineral',
+    unitM3: 0.01,
+    baseSellPriceIsk: 120,
+    description: '冰矿深冷分离出的稠浆，与折跃等离子配对才点得着。',
+  },
+  {
+    id: 'min-curvature',
+    name: '曲率凝析物',
+    kind: 'mineral',
+    unitM3: 0.01,
+    baseSellPriceIsk: 420,
+    description: '高阶气藏与深冰里才凝得出的引子，极少量即可让燃料成倍加速。',
+  },
 ]
 
 /** 气体（可采集可精炼；V10 新资源类） */
@@ -359,9 +394,12 @@ export const GASES: readonly ItemDef[] = [
     unitM3: 2,
     baseSellPriceIsk: 32,
     description: '低重力气田的氖氦混合云，采集容易，同位聚晶的重要来源。',
+    // ⟪2026-09-29 船长令（跃迁燃料链）⟫ 重配比：折跃等离子切走 40% 价值（0.178×120 = 21.36），
+    // 老产出等比 ×0.6（同位聚晶 0.533×55 = 29.315 · 钛钢 0.343×8 = 2.744）⇒ 合计 53.419（改前 53.416）
     refine: [
-      { mineralId: 'min-isotope', perOre: 0.888 },
-      { mineralId: 'min-tritanium', perOre: 0.572 },
+      { mineralId: 'min-jumplasma', perOre: 0.178 },
+      { mineralId: 'min-isotope', perOre: 0.533 },
+      { mineralId: 'min-tritanium', perOre: 0.343 },
     ],
     refineBatchUnits: 100,
     refineCycleMs: 40_000, // R3：unitM3 2 × 20s
@@ -373,10 +411,15 @@ export const GASES: readonly ItemDef[] = [
     unitM3: 8,
     baseSellPriceIsk: 144,
     description: '坟场深处沉淀的腐蚀性磷光霾云——提炼价值极高的稀有气藏。',
+    // ⟪2026-09-29 船长令⟫ 重配比（高阶气：主料 30% ＋ 曲率凝析物 10%，老产出等比 ×0.6）：
+    // 折跃等离子 72.12 · 曲率凝析物 23.94 · 同位聚晶 53.90 · 星髓晶 85.015 · 晶态胶体 5.40
+    // ⇒ 合计 240.375（改前 240.48）
     refine: [
-      { mineralId: 'min-isotope', perOre: 1.634 },
-      { mineralId: 'min-starcore', perOre: 0.578 },
-      { mineralId: 'min-mexallon', perOre: 0.45 },
+      { mineralId: 'min-jumplasma', perOre: 0.601 },
+      { mineralId: 'min-curvature', perOre: 0.057 },
+      { mineralId: 'min-isotope', perOre: 0.980 },
+      { mineralId: 'min-starcore', perOre: 0.347 },
+      { mineralId: 'min-mexallon', perOre: 0.270 },
     ],
     refineBatchUnits: 100,
     refineCycleMs: 160_000, // R5：unitM3 8 × 20s
@@ -388,10 +431,14 @@ export const GASES: readonly ItemDef[] = [
     unitM3: 4,
     baseSellPriceIsk: 68,
     description: '狂暴离子流内部反而凝集着纯净的星髓晶——敢进去的人才拿得到。',
+    // ⟪2026-09-29 船长令⟫ 重配比（高阶气）：折跃等离子 34.20 · 曲率凝析物 11.34 ·
+    // 星髓晶 50.225 · 冥铁合金 13.26 · 同位聚晶 4.565 ⇒ 合计 113.59（改前 113.81）
     refine: [
-      { mineralId: 'min-starcore', perOre: 0.341 },
-      { mineralId: 'min-darkiron', perOre: 0.029 },
-      { mineralId: 'min-isotope', perOre: 0.139 },
+      { mineralId: 'min-jumplasma', perOre: 0.285 },
+      { mineralId: 'min-curvature', perOre: 0.027 },
+      { mineralId: 'min-starcore', perOre: 0.205 },
+      { mineralId: 'min-darkiron', perOre: 0.017 },
+      { mineralId: 'min-isotope', perOre: 0.083 },
     ],
     refineBatchUnits: 100,
     refineCycleMs: 80_000, // R4：unitM3 4 × 20s
@@ -403,9 +450,13 @@ export const GASES: readonly ItemDef[] = [
     unitM3: 8,
     baseSellPriceIsk: 144,
     description: '极光粒子云团，传说其中沉淀着冥铁与星髓的混合物。',
+    // ⟪2026-09-29 船长令⟫ 重配比（高阶气）：折跃等离子 72.12 · 曲率凝析物 23.94 ·
+    // 星髓晶 69.335 · 冥铁合金 74.88 ⇒ 合计 240.275（改前 240.195）
     refine: [
-      { mineralId: 'min-starcore', perOre: 0.471 },
-      { mineralId: 'min-darkiron', perOre: 0.16 },
+      { mineralId: 'min-jumplasma', perOre: 0.601 },
+      { mineralId: 'min-curvature', perOre: 0.057 },
+      { mineralId: 'min-starcore', perOre: 0.283 },
+      { mineralId: 'min-darkiron', perOre: 0.096 },
     ],
     refineBatchUnits: 100,
     refineCycleMs: 160_000, // R5：unitM3 8 × 20s
@@ -421,9 +472,12 @@ export const ICES: readonly ItemDef[] = [
     unitM3: 2,
     baseSellPriceIsk: 32,
     description: '蓝白色寒冰星环的碎块，冰层里封存着高纯度同位聚晶。',
+    // ⟪2026-09-29 船长令⟫ 重配比：低温跃迁浆切走 40%（0.178×120 = 21.36），老产出等比 ×0.6
+    // （同位聚晶 0.526×55 = 28.93 · 晶态胶体 0.155×20 = 3.10）⇒ 合计 53.39（改前 53.415）
     refine: [
-      { mineralId: 'min-isotope', perOre: 0.877 },
-      { mineralId: 'min-mexallon', perOre: 0.259 },
+      { mineralId: 'min-cryoslurry', perOre: 0.178 },
+      { mineralId: 'min-isotope', perOre: 0.526 },
+      { mineralId: 'min-mexallon', perOre: 0.155 },
     ],
     refineBatchUnits: 100,
     refineCycleMs: 40_000, // R3：unitM3 2 × 20s
@@ -435,10 +489,14 @@ export const ICES: readonly ItemDef[] = [
     unitM3: 4,
     baseSellPriceIsk: 68,
     description: '冰核深处呈现髓质纹理的古老冰层，星髓晶藏量可观。',
+    // ⟪2026-09-29 船长令⟫ 重配比（高阶冰）：低温跃迁浆 34.08 · 曲率凝析物 11.34 ·
+    // 星髓晶 46.55 · 同位聚晶 19.14 · 晶态胶体 2.54 ⇒ 合计 113.65（改前 113.54）
     refine: [
-      { mineralId: 'min-starcore', perOre: 0.316 },
-      { mineralId: 'min-isotope', perOre: 0.58 },
-      { mineralId: 'min-mexallon', perOre: 0.211 },
+      { mineralId: 'min-cryoslurry', perOre: 0.284 },
+      { mineralId: 'min-curvature', perOre: 0.027 },
+      { mineralId: 'min-starcore', perOre: 0.190 },
+      { mineralId: 'min-isotope', perOre: 0.348 },
+      { mineralId: 'min-mexallon', perOre: 0.127 },
     ],
     refineBatchUnits: 100,
     refineCycleMs: 80_000, // R4：unitM3 4 × 20s
@@ -450,10 +508,14 @@ export const ICES: readonly ItemDef[] = [
     unitM3: 8,
     baseSellPriceIsk: 144,
     description: '吸收光线的黑色冰晶，暗星冰环深处才有的珍品。',
+    // ⟪2026-09-29 船长令⟫ 重配比（高阶冰）：低温跃迁浆 72.24 · 曲率凝析物 23.94 ·
+    // 冥铁合金 80.34 · 星髓晶 46.795 · 同位聚晶 17.49 ⇒ 合计 240.805（改前 240.685）
     refine: [
-      { mineralId: 'min-darkiron', perOre: 0.171 },
-      { mineralId: 'min-starcore', perOre: 0.319 },
-      { mineralId: 'min-isotope', perOre: 0.53 },
+      { mineralId: 'min-cryoslurry', perOre: 0.602 },
+      { mineralId: 'min-curvature', perOre: 0.057 },
+      { mineralId: 'min-darkiron', perOre: 0.103 },
+      { mineralId: 'min-starcore', perOre: 0.191 },
+      { mineralId: 'min-isotope', perOre: 0.318 },
     ],
     // 2026-09-09 顶阶档校准：58/8s 会使 120% 产出倍率净率 135.9% 超护栏(≤135%)——取 42/5.8s
     // （吞吐 ≈26,069/h，净率 132.7% 带内；min-darkiron 高价使 floor 阶梯敏感）
@@ -1344,6 +1406,29 @@ export const WEEKEND_TROPHIES: readonly ItemDef[] = [
   },
 ]
 
+/**
+ * **道具**（`kind: 'consumable'`；**2026-09-29 船长令 · 跃迁燃料批**）。
+ *
+ * **超空间折跃燃料**（`jump-fuel`）：
+ * - **计量 = 秒**：1 单位燃料 ⇒ 抵扣 **1 秒「原返航时长」**（原返航 = 不含燃料时的返航时长，
+ *   已含"货仓占比缩放"）；返航腿开始时**扣一次** `ceil(原返航秒)` 单位；
+ * - **效果 = 返航速度 ×10**（时长 ÷10，见 `core/jumpFuel.ts` 的 `JUMP_FUEL_SPEED_MUL`）；
+ * - **来源** = 工业页「**实验室**」合成（每批 600 单位 · 见 `labRecipes.ts`），
+ *   解锁门槛 = **已建成空间站 ≥ 1 座**（船长令：「需要玩家建设第一个空间站后才解锁相关内容」）；
+ * - **市场** = 稀有档（池商品，可买卖）——船长 2026-09-29「燃料可买卖放入稀有（但是是池子）」；
+ * - 体积 0.01 m³/单位（与原材料同尺：一趟长途返航 ≈1,200 单位 = 12 m³，搬运成本可忽略）。
+ */
+export const CONSUMABLES: readonly ItemDef[] = [
+  {
+    id: 'jump-fuel',
+    name: '超空间折跃燃料',
+    kind: 'consumable',
+    unitM3: 0.01,
+    baseSellPriceIsk: 120,
+    description: '把跃迁引擎推到过载的稠浆：按返航秒数消耗，返航速度提升至十倍。',
+  },
+]
+
 /** 全部物品（矿石/矿物在前为兼容旧展示顺序，其后气体/冰/弹药/无人机/修理组件） */
 export const ITEMS: readonly ItemDef[] = [
   ...ORES,
@@ -1363,6 +1448,7 @@ export const ITEMS: readonly ItemDef[] = [
   ...MILITARY_CONTAINERS,
   ...AI_CORE_ITEMS,
   ...WEEKEND_TROPHIES,
+  ...CONSUMABLES,
 ]
 
 /** 构建"物品 id → 定义"目录 */

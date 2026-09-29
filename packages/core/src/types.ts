@@ -129,10 +129,18 @@ export type ItemKind =
    * 不是修理消耗品；体检侧的"无配方豁免"由 `content:check` 按**登记在册的黑匣 id** 守。
    */
   | 'blackbox'
+  /**
+   * **道具**（**2026-09-29 船长令 · 跃迁燃料批**）：工业产出、**按单位数扣减**的活动增益件。
+   *
+   * 与 `kit`（修理组件）分开的理由：`kit` 是战斗里按次吃的修船件，本档是"仓库里的储备量"——
+   * 跃迁燃料每趟返航按**原返航秒数**扣几百~几千单位（见 `core/jumpFuel.ts`）。
+   * 仓库分类 / 货仓分组 / 手册图鉴 / 市场一级类型四处共用本档（本地化名见 `labels.ts`
+   * 与渲染层 `ui/labelsText.ts` 的 `KIND_ID`）。
+   */
+  | 'consumable'
 
 /** 伤害类型（V10.5 战斗数值契约：远行星号体系——动能/高爆/能量三系） */
 export type DamageType = 'kinetic' | 'explosive' | 'plasma'
-
 /** 一层装甲/护盾对三系伤害的减伤（V10.5b：EVE 式"每层多抗"的 3 类型版；0~0.9，缺省 0） */
 export type DamageResists = Partial<Record<DamageType, number>>
 
@@ -2579,6 +2587,11 @@ export interface SimContext {
   travelEvents: readonly TravelEventDef[]
   /** 副空间站建站点（T9） */
   stations: ReadonlyMap<string, StationSiteDef>
+  /**
+   * **实验室配方表**（**2026-09-29 船长令**：「为工业新增子页面：'实验室'。玩家可以在实验室生产燃料」）。
+   * 数据在 `packages/data/src/labRecipes.ts`；核心只认形状（`LabRecipeDef`）。
+   */
+  labRecipes: ReadonlyMap<string, LabRecipeDef>
   /** 市场商品目录（v9） */
   marketGoods: ReadonlyMap<string, MarketGoodDef>
   /** 通讯消息表（2026-09-11 通讯系统；data/src/messages.ts） */
@@ -2759,6 +2772,26 @@ export interface StationSiteDef {
   doneDialogueId: string | null
   /** 站点简介（任务卡文案） */
   description: string
+}
+
+/**
+ * **实验室配方**（**2026-09-29 船长令 · 跃迁燃料批**）。
+ *
+ * 与蓝图的差别：蓝图是"按产物 1 件扣料"的制造，实验室是**按批**的综合合成（一份 BOM 出一批产物，
+ * 可连续跑到料尽），第一版只有「超空间折跃燃料」这一张（`packages/data/src/labRecipes.ts`）。
+ */
+export interface LabRecipeDef {
+  id: string
+  /** 配方名（工业页实验线卡片标题） */
+  name: string
+  /** 产物物品 id（`items.ts`） */
+  outputItemId: string
+  /** **每批产出单位**（基准值；起线时按工业技能现算放大） */
+  outputUnits: number
+  /** **每批周期毫秒**（基准值；起线时按 AI 核心效率与工业技能现算缩短） */
+  cycleMs: number
+  /** 每批投料（一括扣齐才出料；缺任一料 ⇒ 该批不跑、线停） */
+  materials: readonly { itemId: string; units: number }[]
 }
 
 /** 通讯对话一句 */

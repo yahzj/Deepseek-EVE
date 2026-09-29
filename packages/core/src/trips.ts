@@ -11,6 +11,7 @@ import type { GameState } from './state'
 import type { SimContext } from './types'
 import { cargoUsedM3Of, cargoCapacityM3Of } from './inventory'
 import { fleetDefOf } from './instances'
+import { jumpFuelLegMsOf } from './jumpFuel'
 
 /** 货仓占用率（基础容量口径）：已用 m³ ÷ 船体基础 cargoM3；缺定义时回退到总容量兜底 */
 export function cargoHoldRatio(state: GameState, ctx: SimContext, shipId: string): number {
@@ -21,7 +22,12 @@ export function cargoHoldRatio(state: GameState, ctx: SimContext, shipId: string
   return Math.min(1, Math.max(0, used / base))
 }
 
-/** 把“满仓返航时长”按当前货仓占比缩放（纯占比；下限 1ms，避免 0 时长破坏进度条） */
-export function scaledReturnMs(fullMs: number, state: GameState, ctx: SimContext, shipId: string): number {
-  return Math.max(1, Math.round(fullMs * cargoHoldRatio(state, ctx, shipId)))
+/** 把“满仓返航时长”按当前货仓占比缩放（纯占比；下限 1ms，避免 0 时长破坏进度条）
+ *
+ * ⚠ **2026-09-29（跃迁燃料批）加第 5 参** `fuelMul`：本趟返航的**燃料倍率**（1 = 没吃燃料；
+ * 10 = 吃了，时长 ÷10）。**扣料不在本函数里**（它每拍都被重算 —— 见 `jumpFuel.ts` 的头注），
+ * 调用方在"返航腿开始"那一刻调一次 `beginJumpFuelLeg` 拿到倍率并**存进任务状态**，此后每拍只做折算。 */
+export function scaledReturnMs(fullMs: number, state: GameState, ctx: SimContext, shipId: string, fuelMul = 1): number {
+  const base = Math.max(1, Math.round(fullMs * cargoHoldRatio(state, ctx, shipId)))
+  return jumpFuelLegMsOf(base, fuelMul)
 }

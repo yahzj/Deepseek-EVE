@@ -639,6 +639,30 @@ export {
   buyShip,
 } from './industry'
 export type { RefineRunView, SellResult, FragmentRedeemRow } from './industry'
+/* ═══ 实验室 ＋ 跃迁燃料（**2026-09-29 船长令**：「为工业新增子页面：'实验室'」＋「添加超空间折跃燃料」）═══ */
+export {
+  labUnlocked,
+  labMaterialAvailable,
+  labAffordableBatches,
+  labMissingMaterials,
+  labRunViews,
+  startLabRun,
+  stopLabRun,
+  advanceLab,
+} from './lab'
+export type { LabRunView } from './lab'
+export {
+  JUMP_FUEL_ITEM_ID,
+  JUMP_FUEL_SPEED_MUL,
+  JUMP_FUEL_ACTIVITIES,
+  JUMP_FUEL_ACTIVITY_TEXT_ID,
+  jumpFuelEnabledOf,
+  jumpFuelStockOf,
+  jumpFuelLegMsOf,
+  beginJumpFuelLeg,
+} from './jumpFuel'
+export type { JumpFuelActivity, LabWorker } from './jumpFuel'
+export type { LabRecipeDef } from './types'
 
 export {
   ownsBlueprint,

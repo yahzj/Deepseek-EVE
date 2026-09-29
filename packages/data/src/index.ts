@@ -82,6 +82,7 @@ export {
   type HullClassTier,
 } from './hullClass'
 export { STATION_SITES, buildStationCatalog } from './stations'
+export { LAB_RECIPES, buildLabRecipeCatalog } from './labRecipes'
 export { DIALOGUES, buildDialogueCatalog } from './dialogues'
 export { COMMS_MESSAGES, buildCommsCatalog } from './messages'
 // 2026-09-11 通讯 v2：NPC 势力与船内系统档案（协会 8 部门 + 打捞队工会 + 信息库；发件人与立场口径的唯一权威）

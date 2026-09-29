@@ -38,6 +38,8 @@ import { pruneMarks } from './marks'
 import { FIT_PRESET_MAX, FIT_PRESET_NAME_MAX } from './fitPresets'
 // v27→v28 残骸合并（2026-09-19）：旧"每卡一种"残骸 id → 新「族 × 地区」组 id
 import { migratedWreckItemId } from './wreckGroups'
+/** 实验室产线的劳动者类型（洗完的 `worker` 字段用） */
+import type { AiCoreType } from './types'
 // 章鱼人削血的**旧字段迁移**（2026-09-25：`octopusDrainedMs` 时长 → `octopusHpDone` 血量）
 // ⚠ 窗口必须走**同一个单源** `weekendFlagshipWindowMs`（正常 **24h**（2026-09-26 船长令起）/ 调试 10min），
 //   不许在存档层再写一遍开关
@@ -1519,6 +1521,13 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   // --- AI 副船任务（v8）：条目或字段非法则丢弃（核心归还由引擎推进时保证一致性） ---
   const aiAssignmentsRaw = asRaw(src.aiAssignments)
   const aiAssignments: Record<string, unknown> = {}
+  /**
+   * **跃迁燃料倍率**（**2026-09-29 跃迁燃料批**）：存的是"本趟返航吃了燃料"这一事实（值 = 10）。
+   * 缺省/≤1/坏值 ⇒ 不写键（老档零迁移）。⚠ **必须随档**：若读一次档就丢，玩家已经被扣过料的那一趟
+   * 会变回原速飞完（扣了料却没加速，属"吃料"级事故）。
+   */
+  const fuelMulOf = (v: unknown): number | undefined =>
+    typeof v === 'number' && Number.isFinite(v) && v > 1 ? Math.floor(v) : undefined
   const validCoreType = (v: unknown): v is string =>
     typeof v === 'string' && (v === 'basic' || v === 'gamma' || v === 'beta' || v === 'alpha')
   for (const [shipKey, assignRaw] of Object.entries(aiAssignmentsRaw)) {
@@ -1554,6 +1563,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
               : 0,
           // 卷B2⑥ 零迁移：富矿红利窗口剩余循环数（缺失按 0；不升存档版本号）
           rvLeft: taskRaw.rvLeft === 1 ? 1 : 0,
+          ...(fuelMulOf(taskRaw.fuelMul) !== undefined ? { fuelMul: fuelMulOf(taskRaw.fuelMul)! } : {}),
         },
       }
     } else if (taskRaw.kind === 'standby') {
@@ -1609,6 +1619,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
               : 0,
           phase: phase === 'battle' && battle === null ? 'out' : phase,
           battle,
+          ...(fuelMulOf(taskRaw.fuelMul) !== undefined ? { fuelMul: fuelMulOf(taskRaw.fuelMul)! } : {}),
         },
       }
     } else if (taskRaw.kind === 'salvage') {
@@ -1636,6 +1647,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
           deviceAccMs: {},
           tripM3:
             typeof taskRaw.tripM3 === 'number' && Number.isFinite(taskRaw.tripM3) ? Math.max(0, taskRaw.tripM3) : 0,
+          ...(fuelMulOf(taskRaw.fuelMul) !== undefined ? { fuelMul: fuelMulOf(taskRaw.fuelMul)! } : {}),
         },
       }
     }
@@ -1687,6 +1699,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
         : null,
     // 卷B2⑥ 零迁移：富矿红利窗口剩余循环数（缺失按 0；不升存档版本号）
     rvLeft: miningRaw.rvLeft === 1 ? 1 : 0,
+    ...(fuelMulOf(miningRaw.fuelMul) !== undefined ? { fuelMul: fuelMulOf(miningRaw.fuelMul)! } : {}),
   }
 
   // --- 装备库（v3） ---
@@ -2158,6 +2171,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     expRaw.rewardIskOverride >= 0
       ? { rewardIskOverride: Math.round(expRaw.rewardIskOverride) }
       : {}),
+    /** **本趟返航的跃迁燃料倍率**（2026-09-29 跃迁燃料批）：>1 才收 —— 丢了它，已扣料的那一趟会变回原速 */
+    ...(fuelMulOf(expRaw.fuelMul) !== undefined ? { fuelMul: fuelMulOf(expRaw.fuelMul)! } : {}),
   }
 
   // --- 日志（逐条容错，超上限截掉最旧的） ---
@@ -2475,6 +2490,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
           ...(typeof slvRaw.targetGroup === 'string' && slvRaw.targetGroup.length > 0
             ? { targetGroup: slvRaw.targetGroup }
             : {}),
+          ...(fuelMulOf(slvRaw.fuelMul) !== undefined ? { fuelMul: fuelMulOf(slvRaw.fuelMul)! } : {}),
         }
       : {
           active: false,
@@ -3074,6 +3090,38 @@ for (const [key, value] of Object.entries(licensesRaw)) {
    * ⚠ 本清洗器逐字段重建 ⇒ 漏登记 = 每读一次档模式选择框就又弹一次（与 `salvagerGift` 那次同一类事故）。
    */
   const modeChosen = src.modeChosen === true ? true : undefined
+  /**
+   * **跃迁燃料的活动开关**（**2026-09-29 船长令 · 跃迁燃料批**）：只收 `true` 的键（缺省 = 关
+   * ⇒ 老档零迁移、往返逐字一致）。活动白名单与 `core/jumpFuel.ts` 的 `JumpFuelActivity` 同源。
+   * ⚠ 同款的坑：漏登记 = 每读一次档开关全被重置（玩家会以为"我明明开着"）。
+   */
+  const jumpFuel: NonNullable<GameState['jumpFuel']> = {}
+  for (const key of ['mine', 'salvage', 'expedition', 'ai'] as const) {
+    if (asRaw(src.jumpFuel)[key] === true) jumpFuel[key] = true
+  }
+  /**
+   * **实验室产线**（**2026-09-29 船长令**）：逐字段重建（台号/配方/劳动者/单批单位/周期/到点时刻/批数）。
+   * 配方号必须真实存在于 `ctx.labRecipes` 才收（坏行整条丢 —— 与精炼炉 `refineRuns` 同款口径）。
+   * 空表 ⇒ 不写键（老档零迁移）。
+   */
+  const labRuns: NonNullable<GameState['labRuns']> = []
+  for (const raw of Array.isArray(src.labRuns) ? src.labRuns : []) {
+    const r = asRaw(raw)
+    const recipeId = typeof r.recipeId === 'string' ? r.recipeId : ''
+    const worker = validCoreType(r.worker) || r.worker === 'pilot' ? (r.worker as 'pilot' | AiCoreType) : null
+    if (recipeId.length === 0 || worker === null) continue
+    labRuns.push({
+      active: r.active !== false,
+      id: Math.max(0, Math.floor(num(r.id) || 0)),
+      worker,
+      recipeId,
+      batchUnits: Math.max(1, Math.floor(num(r.batchUnits) || 0)),
+      cycleMs: Math.max(1, Math.floor(num(r.cycleMs) || 0)),
+      finishAtGameMs: Math.max(0, Math.floor(num(r.finishAtGameMs) || 0)),
+      batchesDone: Math.max(0, Math.floor(num(r.batchesDone) || 0)),
+    })
+  }
+  const labSeq = Math.max(1, Math.floor(num(src.labSeq) || 1))
   /**
    * **实战胜利记录**（2026-09-24 船长令 · 兼容字段无版本号）：键 = 敌卡 id，值 = 那一次的距离与剩余比例。
    * 只收合法行（`desireM` 为正有限数 · `remainPct` 落在 0~1）；**空表不写键** ⇒ 老档零迁移、往返逐字一致。
@@ -4145,6 +4193,9 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     // 造出第一艘自造船（true/false 都落键；缺失保持缺失 = 老档，交给触发器按船长裁决「丙」补发）
     ...(firstShipBuilt !== undefined ? { firstShipBuilt } : {}),
     ...(resupplyFromWarehouse !== undefined ? { resupplyFromWarehouse } : {}),
+    /** 跃迁燃料开关 ＋ 实验室产线（2026-09-29 跃迁燃料批；空 ⇒ 不写键，老档零迁移） */
+    ...(Object.keys(jumpFuel).length > 0 ? { jumpFuel } : {}),
+    ...(labRuns.length > 0 ? { labRuns, labSeq } : {}),
     // 模式选择已完成（2026-09-24 船长令）：只在 true 时落键；漏了这行 ⇒ 每次读档都重弹模式选择框
     ...(modeChosen !== undefined ? { modeChosen } : {}),
     // 实战胜利记录（2026-09-24 船长令）：**空表不写键**（老档/新档快照逐字一致 = 真零迁移）

@@ -330,9 +330,11 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 // 2026-09-25（损伤管制装置批 · 船长令「维修组件新增新的消耗品，损管修理组件」）：+1（损管修理组件 `repairkit-dc`）
 //   → 物品总数 101→**102**
 // 2026-09-26（H 族势力装备批 · 船长令）：+1（墨潮重袭无人机 `drone-ink-heavy`）→ 物品总数 102→**103**
-check(itemDefs.length === 104, `物品总数应为 104（2026-09-27 起：通用黑匣），实际 ${itemDefs.length}`)
+// 2026-09-29（跃迁燃料链批 · 船长令「为星云和冰添加新的精炼分解的主要材料」＋「添加超空间折跃燃料」）：
+//   +4（折跃等离子 / 低温跃迁浆 / 曲率凝析物 / 超空间折跃燃料）→ 物品总数 104→**108**、原材料 8→**11**
+check(itemDefs.length === 108, `物品总数应为 108（2026-09-29 起：跃迁燃料链 +4），实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
-check(minerals.length === 8, `原材料应为 8 种，实际 ${minerals.length}`)
+check(minerals.length === 11, `原材料应为 11 种（2026-09-29 跃迁燃料链 +3），实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
 check(ices.length === 3, `冰矿应为 3 种，实际 ${ices.length}`)
 check(ammos.length === 6, `弹药应为 6 种（每族基础弹 + MK2），实际 ${ammos.length}`)
@@ -549,6 +551,10 @@ for (const item of itemDefs) {
         item.kind === 'ammo' ||
         item.kind === 'drone' ||
         item.kind === 'kit' ||
+        /* **道具**（**2026-09-29 跃迁燃料批**）：`consumable` = 工业产出、按单位数扣减的活动增益件
+         * （超空间折跃燃料）。它**不是可采集资源**，来源是**实验室合成**（`core/lab.ts` +
+         * `data/labRecipes.ts` 的 BOM）⇒ 没有精炼配方是设计（豁免，与 `kit` 同款理由）。 */
+        item.kind === 'consumable' ||
         /* **零件**（2026-09-20 零件体系）：组装机制造的中间件（基础 = 隐式蓝图、高级 = 蓝图），
          * 无精炼配方是设计——豁免（制造链由蓝图表保证）。 */
         item.kind === 'part' ||

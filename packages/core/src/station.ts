@@ -162,6 +162,22 @@ function advanceTierIfFull(state: GameState, ctx: SimContext, site: StationSiteD
         if (p && p.stage >= s.tiers.length) built += 1
       }
       peakFirst(state, 'sitesBuilt', built)
+      /**
+       * **首座空间站建成 ⇒ 跃迁燃料链解锁**（**2026-09-29 船长令**：「需要玩家建设第一个空间站后
+       * 才解锁相关内容。第一个空间站的通讯内添加燃料相关内容」）。
+       *
+       * 这里只在"**刚跨过 1 座**"那一刻写一条**系统日志**做提示（解锁本身是**实时判据**
+       * `builtStationCount >= 1`，不落盘标志位 ⇒ 老档/多站档天然一致、零迁移）；
+       * 详细说明写在**该站的并网通报剧本**里（`dialogues.ts` 的 `dlg-*-done` 燃料段）。
+       */
+      if (built === 1) {
+        addLog(
+          state,
+          'system',
+          '⌂ 首座空间站并网：工业页「实验室」已解锁 —— 可合成超空间折跃燃料；舰船页「跃迁燃料」页可设置哪些活动使用燃料。',
+          'core.station.014',
+        )
+      }
       addLog(
         state,
         'trade',
