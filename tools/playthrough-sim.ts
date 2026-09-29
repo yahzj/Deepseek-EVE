@@ -86,6 +86,10 @@ import {
   sellShipAtMarket,
   // 2026-09-23 铁人模式：`--ironman` 开关（同一 seed 对照「普通 vs 铁人」的达成天数）
   enterIronman,
+  // 2026-09-28：技能训练许可（不接这一步 ⇒ 一条技能都练不成）
+  buySkillLicense,
+  skillLicenseMissing,
+  skillLicensePriceOf,
 } from '@whale/core'
 import type { GameState, SimContext, AnomalyDef, ShipDef } from '@whale/core'
 import { buildSimContext } from '@whale/data'
@@ -166,6 +170,31 @@ const GOAL_NAMES: Record<'boss' | 'tril' | 'collect' | 'bounties' | 'whach' | 'i
   bounties: '完成所有悬赏：23 张可见卡全部首胜',
   whach: '虫洞成就：层深 5 层 + 击破层末守卫 4 个（六枚里程碑全拿）',
   isk1b: '赚到 10 亿：钱包 ≥1,000,000,000 ISK',
+}
+
+/**
+ * **策略倾向（`--bias`，2026-09-28 船长令）**：船长要"以赚到 10 亿为目标跑三次全量测试，
+ * 三次的策略倾向分别为**采矿 / 战斗 / 工业生产**"。
+ *
+ * 本旋钮先落在**技能训练序**上（技能是全局闸门：不练就没有产线、没有舰船、没有炉位），
+ * 三档只换"先练哪一组"，其余决策（买船/买料/打捞）仍走同一套 AI。
+ * ⚠ 后续若要更深的倾向（例如战斗档优先造武装舰），在这三档上继续加决策点即可。
+ */
+const BIAS_IDX = ARGS.indexOf('--bias')
+const BIAS_RAW = BIAS_IDX >= 0 ? (ARGS[BIAS_IDX + 1] ?? 'mine') : 'mine'
+const BIAS = (['mine', 'combat', 'industry'] as const).includes(BIAS_RAW as 'mine')
+  ? (BIAS_RAW as 'mine' | 'combat' | 'industry')
+  : 'mine'
+const BIAS_LABEL: Record<'mine' | 'combat' | 'industry', string> = {
+  mine: '采矿倾向',
+  combat: '战斗倾向',
+  industry: '工业生产倾向',
+}
+/** 各倾向的技能组优先序（组名以 `packages/data/src/skills.ts` 的 `SKILL_GROUPS` 为准，**含「矿业」**） */
+const BIAS_GROUP_ORDER: Record<'mine' | 'combat' | 'industry', string[]> = {
+  mine: ['矿业', '工业', '工程', '舰船', '物流', '贸易', '战斗', '探索'],
+  combat: ['战斗', '舰船', '工程', '矿业', '工业', '贸易', '探索', '物流'],
+  industry: ['工业', '物流', '贸易', '矿业', '工程', '舰船', '探索', '战斗'],
 }
 
 const ctx: SimContext = buildSimContext()
@@ -390,11 +419,20 @@ const TRAIN_ORDER: string[] = []
 function buildTrainOrder(): void {
   if (TRAIN_ORDER.length > 0) return
   TRAIN_ORDER.push('ai-expert') // 先出 AI 名额，副船尽早开工
-  const groups = ['舰船', '工业', '战斗', '工程', '贸易', '探索', '物流']
-  for (const g of groups) {
+  /**
+   * ⚠ **2026-09-28 修**：本表原先硬编码 `['舰船','工业','战斗','工程','贸易','探索','物流']`
+   * ——**漏了「矿业」**（2026-09-27 新立的大类）。采矿系 7 条技能因此掉出训练序，
+   * 只在"全部练满后的兜底重扫"里才轮到 ⇒ 采矿线起步被推迟一整轮。现改为**按 `--bias` 取组序**，
+   * 且四张表都显式含「矿业」。
+   */
+  for (const g of BIAS_GROUP_ORDER[BIAS]) {
     for (const s of ctx.skills.values()) {
       if (s.group === g && s.id !== 'ai-expert') TRAIN_ORDER.push(s.id)
     }
+  }
+  // 兜底：不在任何已知组里的技能（防新组再被漏掉）
+  for (const s of ctx.skills.values()) {
+    if (s.id !== 'ai-expert' && !TRAIN_ORDER.includes(s.id)) TRAIN_ORDER.push(s.id)
   }
 }
 
@@ -406,6 +444,26 @@ function refillSkills(): void {
     if (!next) break
     const cur = state.skills.trained[next] ?? 0
     if (cur >= 5) continue
+    /**
+     * **技能训练许可**（2026-09-22 上线）：Lv1 之前必须先买许可
+     * ——本工具原先没接这一步，导致**整跑一条技能都练不成**（2026-09-28 实测：40+ 条技能各失败 3,676 次）。
+     * 现补上：够钱就买；不够就把这条技能**推回队首**，等有钱再来（不丢序）。
+     */
+    const def = ctx.skills.get(next)
+    if (def && skillLicenseMissing(state, def)) {
+      const price = skillLicensePriceOf(def) ?? 0
+      /** 留一点余钱给买船/买料（红线：不把钱包掏空） */
+      const reserve = 200_000
+      if (state.wallet.isk < price + reserve) {
+        TRAIN_ORDER.unshift(next)
+        return
+      }
+      const b = buySkillLicense(state, ctx.skills, next)
+      if (!b.ok) {
+        TRAIN_ORDER.unshift(next)
+        return
+      }
+    }
     // 一次只排一级（T2 连锁），排队放满无妨
     const r = enqueueSkill(state, next, cur + 1, ctx.skills)
     if (!r.ok) issue(`入队失败 ${next} Lv${cur + 1}：${r.error}`)
