@@ -452,8 +452,14 @@ function refillSkills(): void {
     const def = ctx.skills.get(next)
     if (def && skillLicenseMissing(state, def)) {
       const price = skillLicensePriceOf(def) ?? 0
-      /** 留一点余钱给买船/买料（红线：不把钱包掏空） */
-      const reserve = 200_000
+      /**
+       * 留**给买船/买料的资本**（红线的量化）：许可单价 500k / 2M，若只留 20 万，
+       * AI 会"每攒到 70 万就买一张许可"⇒ 现金永远到不了升级门槛
+       * （`upgradeGunsOneStep` 要 `价×1.5+10 万` ≈ 57 万、`buyShipAndGear` 要 `船价×1.3+40 万`），
+       * 2026-09-28 实测：30 天卡在沙猫级、现金 4~9 万。
+       * ⇒ 改成"**先留够一次像样的升级钱，再买许可**"。
+       */
+      const reserve = 600_000
       if (state.wallet.isk < price + reserve) {
         TRAIN_ORDER.unshift(next)
         return
