@@ -435,7 +435,7 @@ function currentCraftNeed(itemId: string): number {
 }
 
 function sellEverything(): void {
-  const moved = unloadCargoToWarehouse(state)
+  const moved = unloadCargoToWarehouse(state, ctx)
   if (moved > 0) mark('卸载入仓')
   for (const g of ctx.marketGoods.values()) {
     if (g.kind === 'ship' || g.kind === 'aicore' || g.kind === 'blueprint' || g.kind === 'module') continue // 装备不卖
@@ -2882,7 +2882,7 @@ function doPilotSalvageSession(): void {
       g2++
     }
   }
-  if (state.shipId === uid && isHome()) unloadCargoToWarehouse(state)
+  if (state.shipId === uid && isHome()) unloadCargoToWarehouse(state, ctx)
   if (state.shipId === uid) {
     const r2 = changeShip(state, prev, ctx)
     if (!r2.ok) issue(`打捞会话后切回驾驶失败：${r2.error}`)
