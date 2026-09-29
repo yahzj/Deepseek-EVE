@@ -60,7 +60,7 @@ import { AiSlotText } from '../ui/aiSlots'
 import { HintIcon } from '../ui/Hint'
 import { RowGlyph } from '../ui/itemView'
 /** 活动卡「产出」读数（2026-09-23 船长令：收入预估换口径；装备/舰船只显示市场当前价格）——全仓唯一实现 */
-import { GoodsLine, marginPctOf, marketPriceOf } from '../ui/yieldView'
+import { GoodsLine, marginPctOf, marketPriceOf, NetIncomeLine } from '../ui/yieldView'
 import { partToneKeyOf, toneOf } from '../ui/Glyphs'
 import { ASSEMBLER_CARD_MIN_H, LazyMount, useIdleChunk } from '../ui/LazyMount'
 import { useL10n, cmdText } from '../i18n/locale'
@@ -1006,12 +1006,16 @@ export const BlueprintCard = memo(function BlueprintCard({
                * 装备与舰船 1）。卡面显示的行情价仍是**每单位**（与市场页折线图同尺）。
                */
               return (
-                <GoodsLine
-                  name={productLabel}
-                  price={price}
-                  marginPct={marginPctOf(price, matCost, productUnits ?? 1)}
-                  unitsPerRun={productUnits ?? 1}
-                />
+                <>
+                  <GoodsLine
+                    name={productLabel}
+                    price={price}
+                    marginPct={marginPctOf(price, matCost, productUnits ?? 1)}
+                    unitsPerRun={productUnits ?? 1}
+                  />
+                  {/* **净收益/h**（**2026-09-29 船长令**：只在调试模式下显示）——与上面那行同一把尺 */}
+                  <NetIncomeLine price={price} costIsk={matCost} buildMs={buildMs} unitsPerRun={productUnits ?? 1} />
+                </>
               )
             })()
           : null}

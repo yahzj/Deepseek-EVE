@@ -5117,5 +5117,19 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.214": { zh: "装到船上：{p1}（{p2}）", en: "Fitted: {p1} ({p2})" },
   "ui.shipInfo.215": { zh: "各 {p1} 点", en: "{p1} each" },
   "ui.shipInfo.216": { zh: "装甲 {p1} 点", en: "armor {p1}" },
-  "ui.shipInfo.217": { zh: "结构 {p1} 点", en: "structure {p1}" }
+  "ui.shipInfo.217": { zh: "结构 {p1} 点", en: "structure {p1}" },
+  /**
+   * **「净收益/h」＝调试模式专属读数**（**2026-09-29 船长令**：「我只想在调试模式下显示」）。
+   *
+   * 沿革：这条读数原在组装机/造船厂/精炼/残骸四类卡上（`ui.Industry.111` 与 `ui.IndustryPage.106`
+   * 是当年的两段长解释），**2026-09-23 船长令**「旧的『≈ ISK/h』毛估彻底拿掉」把界面侧整段删了，
+   * 那两个 id 就此变成**孤儿**（0 调用点，但 l10n:check 不报——它只查"表里的 id 有没有被引用"的反向）。
+   * 现在按船长新令**只放回调试模式**（`game/debugFlag.debugEnabled()`；发布版恒 false）。
+   *
+   * 口径与正式工具 `npm run manufacture:econ` 的「劳动者价值/h」**同式**：
+   * `(整批产物行情值 − 材料行情成本) ÷ 本批耗时 × 3600`——与卡面**利润率**同一把尺（同一份行情、同一个"整批"）。
+   */
+  "ui.Yield.007": { zh: "净收益/h", en: "Net income/h" },
+  "ui.Yield.008": { zh: "{p1} 信用点/h", en: "{p1} credits/h" },
+  "ui.Yield.009": { zh: "调试 · 本批耗时 {p1}", en: "Debug · {p1} per run" }
 }

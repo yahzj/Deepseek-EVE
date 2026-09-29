@@ -54,7 +54,7 @@ import { aiCoreText } from '../ui/labelsText'
 import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
 /** 活动卡「产出」读数（2026-09-23 船长令：残骸卡的信用点估价移除 ⇒ 改显示市场当前行情价） */
-import { marketPriceOf } from '../ui/yieldView'
+import { marketPriceOf, NetIncomeLine } from '../ui/yieldView'
 import type { PageProps } from './common'
 import { MONEY_GLYPH, m3, wreckSourceGalaxyIdsOf } from './common'
 import { tr } from '../i18n/locale'
@@ -307,6 +307,19 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
             ))}
           </>
         )}
+        {/**
+         * **净收益/h**（**2026-09-29 船长令**：「我只想在调试模式下显示」）——
+         * 与上面每行的"×N/h（仓库 · 行情）"并列，但它是**整批口径的净值**：
+         * `(整批产物行情值 − 整批耗料行情成本) ÷ 精炼周期 × 3600`，与组装机/造船厂同一个组件、同一把尺。
+         * 发布版不渲染（`debugEnabled()` 在本机之外恒 false）。
+         */}
+        <NetIncomeLine
+          /* 整批产物行情值（每单位取市场折线图价、缺则基准价）× 整批耗料行情成本（按站内收价原值，
+             不下材料学折扣——本行与上面每行的读数同一把尺，只换口径不换取数）÷ 精炼周期。 */
+          price={outs.reduce((s, o) => s + o.units * (marketPriceOf(state, engine.ctx, o.def.id) ?? o.def.baseSellPriceIsk ?? 0), 0)}
+          costIsk={batch * (marketPriceOf(state, engine.ctx, def.id) ?? def.baseSellPriceIsk ?? 0)}
+          buildMs={cycleMs}
+        />
       </div>
     )
   }

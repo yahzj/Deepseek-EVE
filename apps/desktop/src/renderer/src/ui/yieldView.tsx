@@ -17,6 +17,9 @@
 import { marketGoodOf, marketHistory, marketQuote } from '@whale/core'
 import type { GameState, SimContext } from '@whale/core'
 import { tr } from '../i18n/locale'
+import { fmtDuration } from '../i18n/fmt'
+/** 调试门禁（本机 origin ∧ 本机开关；发布版恒 false）——「净收益/h」只在调试模式下渲染 */
+import { debugEnabled } from '../game/debugFlag'
 
 /** 一个产出条目：每小时产多少（装备/舰船类给 null ⇒ 只报行情价） */
 export interface YieldRow {
@@ -128,6 +131,63 @@ export function GoodsLine({
       {name} · {tr('ui.Yield.003')} {price !== null ? num(price) : '—'}
       {price !== null && units > 1 ? ` · ${tr('ui.Yield.006', { p1: num(price * units) })}` : ''}
       {marginPct !== null ? `（${tr('ui.Yield.005', { p1: marginPct })}）` : ''}
+    </div>
+  )
+}
+
+/**
+ * **净收益/h（调试模式专属）**（**2026-09-29 船长令**：「我只想在调试模式下显示」）。
+ *
+ * 沿革：这条读数当年在组装机/造船厂/精炼/残骸四类卡上，**2026-09-23 船长令**「旧的『≈ ISK/h』毛估
+ * 彻底拿掉（卡面与悬停都不再出现）」把它整段删了（见本文件头注）。现在按新令**只放回调试模式**。
+ *
+ * 口径 = 正式工具 `npm run manufacture:econ` 的「劳动者价值/h」**同式**：
+ * `(整批产物行情值 − 材料行情成本) ÷ 本批耗时 × 3600`——与卡面**利润率**同一把尺（同一份行情、同一个"整批"）。
+ *
+ * ⚠ `buildMs` 用**引擎折算后的本批耗时**（`calcBuildDurationMs`，含工业理论/批量生产等技能）：
+ * 技能缩短周期 ⇒ 每小时能跑更多批 ⇒ 本值随之升高，这才是"这条线每小时赚多少"的真读数。
+ * 调试模式 `debugQuick` 下它恒为 1 秒 ⇒ 读数会随之放大，这是调试口径的本来含义（与卡面"manual build 1秒"同源）。
+ *
+ * 返回 null = 不显示（产物无行情 / 成本 ≤ 0 / 耗时非法）。
+ */
+export function netIskPerHourOf(
+  price: number | null,
+  costIsk: number,
+  buildMs: number,
+  unitsPerRun = 1,
+): number | null {
+  if (price === null || costIsk <= 0 || !Number.isFinite(buildMs) || buildMs <= 0) return null
+  const net = price * Math.max(1, unitsPerRun) - costIsk
+  return Math.round((net / buildMs) * 3_600_000)
+}
+
+/**
+ * **「净收益/h」那一行（仅调试模式渲染）**（**2026-09-29 船长令**）。
+ *
+ * 为什么单开一个组件：组装机/造船厂/精炼三类卡的产出区各不相同，但这行读数的**口径与写法必须一致**
+ * （口径单点 = `netIskPerHourOf`）⇒ 三处都 `<NetIncomeLine …/>`，行文只在这里写一次。
+ *
+ * 调试门禁 = `game/debugFlag.debugEnabled()`（本机 origin ∧ 本机开关；**发布版恒 false ⇒ 玩家看不到**）。
+ * 顺带把"本批耗时"也用小字附上——调试模式下看收益必须知道分母是什么（否则 debugQuick 的放大读数会被误读）。
+ */
+export function NetIncomeLine({
+  price,
+  costIsk,
+  buildMs,
+  unitsPerRun = 1,
+}: {
+  price: number | null
+  costIsk: number
+  buildMs: number
+  unitsPerRun?: number
+}) {
+  if (!debugEnabled()) return null
+  const perHour = netIskPerHourOf(price, costIsk, buildMs, unitsPerRun)
+  if (perHour === null) return null
+  return (
+    <div className="app-belt-out app-net-line">
+      <span className="app-dim">{tr('ui.Yield.007')}</span> {tr('ui.Yield.008', { p1: num(perHour) })}
+      <span className="app-dim"> · {tr('ui.Yield.009', { p1: fmtDuration(buildMs) })}</span>
     </div>
   )
 }
