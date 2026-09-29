@@ -57,3 +57,27 @@
 
 ## 五、闸门
 `typecheck` ✅ · core **264 文件 / 2802 用例**全绿 · `content:check` ✅（含四型射程标准）· `l10n:check` ✅ · `ui:rot-check` ✅。
+
+## 六、追加：`items` 表加 10 列（**船长对 §四 缺口答「加」**）
+
+在 `tools/content-schema.ts` 的 items 表补上无人机战斗属性列（**只改列契约，数据源一行未动**）：
+
+| 新列（表头） | 路径 | 类型 |
+|---|---|---|
+| 射程maxRangeM | `maxRangeM` | num（≥1 · 整数） |
+| 命中hitRate | `hitRate` | num（0~2） |
+| 距离衰减falloff | `falloff` | num（0~1） |
+| **机型分类droneClass(scout侦察机/combat战斗机/assault攻坚机/sentry哨戒机)** | `droneClass` | enum（**值域由数据单点 `DRONE_ROLE_SPECS` 派生**，不手抄） |
+| 护盾值 / 装甲值 / 结构值 | `defense.shieldHp` · `defense.armorHp` · `defense.hullHp` | obj（`root.key`，按键合并） |
+| 闪避defense.evasion | 同左 | obj（0~0.9） |
+| 装填msreloadMs | `reloadMs` | num（≥1 · 整数） |
+| 独占exclusive | `exclusive` | bool（是/否） |
+
+- **三层抗性（`defense.*Resist.*` 共 9 键）本次没加**：用得少，且独占机型多半写成对象展开
+  （导入端按既有规程"只读跳过并点名"，不会写坏）。要加说一声。
+- ✅ **往返验证（加列最关键的一步）**：重导后 `npm run content:import items content-csv/items.csv` ⇒
+  「✅ 无差异：CSV 相对源数据没有改动」＋ `git diff packages/data/src/items.ts` **空**
+  ⇒ 新列**来去都一致**，不会因为加列把数据写坏。
+- 导出件抽查（八件无人机）：射程 **6000 / 5000 / 4000 / 6500 / 6000 / 4000 / 7500 / 4000** · 分类 · 三层血 ·
+  闪避 · 装填 · 独占全部就位 ⇒ **本次射程改动现在在工作台里看得见、也改得动了**。
+- 表头字符纪律照守（ASCII ＋ GBK 可表示字符，不使用上标/生僻符号）。
