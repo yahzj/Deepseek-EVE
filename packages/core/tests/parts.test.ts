@@ -33,15 +33,15 @@ function freshState(): GameState {
 }
 
 describe('零件体系：基础/高级零件与隐式蓝图（2026-09-20）', () => {
-  it('① 基础零件隐式蓝图：无需学习即可开工，一次产 10 件、8 秒一轮、完成不写事件日志', () => {
+  it('① 基础零件隐式蓝图：无需学习即可开工，一次产 10 件、5 秒一轮、完成不写事件日志', () => {
     const s = freshState()
     expect(canStartBlueprint(s, ctx, 'bp-part-circuit')).toBe(true)
     expect(startManufacturing(s, 'bp-part-circuit', 'pilot', ctx).ok).toBe(true)
-    // 2026-09-20 船长「基础零件的生产所需时间缩短至50%」：电路基板 15 → 8 秒（原值 ×0.5 · .5 进位）
+    // 2026-09-29 船长令「调零件」：基础件工时 ×0.6 ⇒ 电路基板 8 → 5 秒（历史：15 → 8 = 首批 ×0.5）
     const circuit = BLUEPRINTS.find((b) => b.id === 'bp-part-circuit')!
-    expect(calcBuildDurationMs(s, ctx, { materials: circuit.materials, buildSeconds: circuit.buildSeconds, buildCostIsk: 0 })).toBe(8_000)
+    expect(calcBuildDurationMs(s, ctx, { materials: circuit.materials, buildSeconds: circuit.buildSeconds, buildCostIsk: 0 })).toBe(5_000)
     const beforeLogs = s.logs.length
-    advanceGame(s, 9_000, ctx)
+    advanceGame(s, 6_000, ctx)
     expect(countWare(s, 'part-circuit')).toBe(10) // 一次产 10 件
     // 2026-09-20 船长「零件的制造完成不需要发送事件日志」——推进期间可以有别的事件日志，但不该有"制造完成"
     expect(s.logs.slice(beforeLogs).some((l) => l.text.includes('制造完成'))).toBe(false)
@@ -103,13 +103,15 @@ describe('零件体系：基础/高级零件与隐式蓝图（2026-09-20）', ()
       expect(Math.max(...rates) / Math.min(...rates)).toBeLessThanOrEqual(1.5)
     }
     /**
-     * **工时钉死**（2026-09-20 二批「高级件 ×0.25」＋ 三批「基础件 ×0.5」）：
-     * 高级 原 55/55/58/88/92/170/410 → **14/14/15/22/23/43/103 秒**；
-     * 基础 原 15/16/16/17/21/26/45 → **8/8/8/9/11/13/23 秒**（.5 秒一律进位）。
+     * **工时钉死**（现行口径 = 2026-09-29 船长令「调零件」：基础件工时 ×0.6，把这一层的每小时净收益
+     * 从 27.5~43.7 万抬到 44.4~72.6 万；**定价与配方一分未动**）：
+     * - 高级件（不动）：14/14/15/22/23/43/103 秒；
+     * - 基础件：原 8/8/8/9/11/13/23 → **5/5/5/5/7/8/14 秒**（×0.6 就近取整）。
+     * 历史：2026-09-20 二批「高级件 ×0.25」＋ 三批「基础件 ×0.5」（原值见 git 历史）。
      */
     const secsOf = (id: string): number => BLUEPRINTS.find((b) => b.id === id)!.buildSeconds
     expect(advances.map(([id]) => secsOf(id))).toEqual([14, 14, 15, 22, 23, 43, 103])
-    expect(basics.map(([id]) => secsOf(id))).toEqual([8, 8, 8, 9, 11, 13, 23])
+    expect(basics.map(([id]) => secsOf(id))).toEqual([5, 5, 5, 5, 7, 8, 14])
   })
 })
 
@@ -164,10 +166,15 @@ describe('零件体系：配方改造（2026-09-20）', () => {
       expect(k.raw, `${b.id} 矿物占比`).toBeGreaterThan(0.23)
     }
   })
-  it('⑥ 皇带鱼：总价分文不变 · **只用基础零件**（非专属不吃高级件）· 占比 75/25 · **虚空晶留在配方** · 工期 ÷5', () => {
+  it('⑥ 皇带鱼：总价分文不变 · **只用基础零件**（非专属不吃高级件）· 占比 75/25 · **虚空晶留在配方**', () => {
     const sbp = SHIP_BLUEPRINTS.find((b) => b.id === 'sbp-colossal')!
     expect(matValue(sbp.materials)).toBe(307_106_000) // 原总价（8 种矿物口径）⇒ 替换后逐分不变
-    expect(sbp.buildSeconds).toBe(32_400) // 162,000 ÷ 5
+    /**
+     * ⚠ **2026-09-29 船长令改判**：原「使用零件的舰船工期 = 原值 ÷5」那条**作废**——
+     * 现行口径 = **按档位净收益带反推工期**（皇带鱼 T5 带 3.9M~7.8M ⇒ 净/h 5.85M ⇒ 64.5 时）。
+     * 这里只钉"与一次性孪生同值"，档位带由 `shipbuild-income-ladder.test.ts` 统一守。
+     */
+    expect(sbp.buildSeconds).toBe(232_261)
     expect(sbp.materials.some((m) => m.itemId === 'part-frame')).toBe(true)
     // 2026-09-20 船长追加：「让虚空晶留在旗舰配方」⇒ 虫洞特产仍是旗舰的招牌料（**原量 10,320**）
     expect(sbp.materials.find((m) => m.itemId === 'min-voidcrystal')?.count).toBe(10_320)

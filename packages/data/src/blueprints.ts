@@ -2570,7 +2570,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-pyerite', count: 40 },
       { itemId: 'min-mexallon', count: 10 },
     ],
-    buildSeconds: 8, // 2026-09-20 船长「基础零件的生产所需时间缩短至50%」：15 → 8 秒（原值 ×0.5 四舍五入）
+    buildSeconds: 5, // 2026-09-20 船长「基础零件的生产所需时间缩短至50%」：15 → 8 秒（原值 ×0.5 四舍五入）
     buildCostIsk: 0,
     priceIsk: 0, // 隐式蓝图：无书、不上市场
     description: '基础零件：组装机直接可造，无需图纸。',
@@ -2586,7 +2586,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-tritanium', count: 150 },
       { itemId: 'min-pyerite', count: 50 },
     ],
-    buildSeconds: 13, // 2026-09-20 船长「基础零件的生产所需时间缩短至50%」：26 → 13 秒（原值 ×0.5 四舍五入）
+    buildSeconds: 8, // 2026-09-20 船长「基础零件的生产所需时间缩短至50%」：26 → 13 秒（原值 ×0.5 四舍五入）
     buildCostIsk: 0,
     priceIsk: 0,
     description: '基础零件：组装机直接可造，无需图纸。',
@@ -2602,7 +2602,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-tritanium', count: 100 },
       { itemId: 'min-pyerite', count: 20 },
     ],
-    buildSeconds: 8, // 2026-09-20 船长「基础零件的生产所需时间缩短至50%」：16 → 8 秒（原值 ×0.5 四舍五入）
+    buildSeconds: 5, // 2026-09-20 船长「基础零件的生产所需时间缩短至50%」：16 → 8 秒（原值 ×0.5 四舍五入）
     buildCostIsk: 0,
     priceIsk: 0,
     description: '基础零件：组装机直接可造，无需图纸。',
@@ -2618,7 +2618,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-pyerite', count: 60 },
       { itemId: 'min-mexallon', count: 20 },
     ],
-    buildSeconds: 9, // 2026-09-20 船长「基础零件的生产所需时间缩短至50%」：17 → 9 秒（原值 ×0.5 · .5 进位）
+    buildSeconds: 5, // 2026-09-20 船长「基础零件的生产所需时间缩短至50%」：17 → 9 秒（原值 ×0.5 · .5 进位）
     buildCostIsk: 0,
     priceIsk: 0,
     description: '基础零件：组装机直接可造，无需图纸。',
@@ -2634,7 +2634,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-tritanium', count: 80 },
       { itemId: 'min-mexallon', count: 10 },
     ],
-    buildSeconds: 8, // 2026-09-20 船长「基础零件的生产所需时间缩短至50%」：16 → 8 秒（原值 ×0.5 四舍五入）
+    buildSeconds: 5, // 2026-09-20 船长「基础零件的生产所需时间缩短至50%」：16 → 8 秒（原值 ×0.5 四舍五入）
     buildCostIsk: 0,
     priceIsk: 0,
     description: '基础零件：组装机直接可造，无需图纸。',
@@ -2650,7 +2650,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-nocxium', count: 20 },
       { itemId: 'min-pyerite', count: 100 },
     ],
-    buildSeconds: 23, // 2026-09-20 船长「基础零件的生产所需时间缩短至50%」：45 → 23 秒（原值 ×0.5 · .5 进位）
+    buildSeconds: 14, // 2026-09-20 船长「基础零件的生产所需时间缩短至50%」：45 → 23 秒（原值 ×0.5 · .5 进位）
     buildCostIsk: 0,
     priceIsk: 0,
     description: '基础零件：组装机直接可造，无需图纸。',
@@ -2666,7 +2666,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
       { itemId: 'min-mexallon', count: 40 },
       { itemId: 'min-isotope', count: 10 },
     ],
-    buildSeconds: 11, // 2026-09-20 船长「基础零件的生产所需时间缩短至50%」：21 → 11 秒（原值 ×0.5 · .5 进位）
+    buildSeconds: 7, // 2026-09-20 船长「基础零件的生产所需时间缩短至50%」：21 → 11 秒（原值 ×0.5 · .5 进位）
     buildCostIsk: 0,
     priceIsk: 0,
     description: '基础零件：组装机直接可造，无需图纸。',

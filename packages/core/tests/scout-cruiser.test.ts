@@ -130,7 +130,12 @@ describe('鹦鹉螺级测绘巡洋舰（2026-09-13 船长新增）', () => {
     const ratio = value / 9_000_000
     expect(ratio).toBeGreaterThan(0.44)
     expect(ratio).toBeLessThan(0.46)
-    expect(bp!.buildSeconds).toBe(16_920) // T3 带 3~5 时（同价同档 ⇒ 与长尾鲨级同值）
+    /**
+     * ⚠ **2026-09-29 船长令**：工期不再按"3~5 时"这条时长带定，改由**档位净收益带**反推
+     * （T3 带 625k~1.25M；鹦鹉螺净/h 902,784 ⇒ 22,079 秒）。同价同档不再必然同工期——
+     * 排序看的是"现有净/h 次序"，鹦鹉螺原排在长尾鲨之前 ⇒ 新值也不同（长尾鲨 23,918）。
+     */
+    expect(bp!.buildSeconds).toBe(22_079)
   })
 
   /**

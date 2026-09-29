@@ -8,10 +8,10 @@
  *    且 `ships.ts priceIsk` 必须为 0（定制船口径，content:check 同源守）；
  * ③ **价格同源**：`ships.ts priceIsk` == 市场行价；蓝图书价 == 行价 × 4（>400 万档系数）；
  *    材料货值 == 行价 × 45%（全表统一锚，按物品站内收价计）；
- * ④ **T4 档价位全面上调 + 全舰工期阶梯重排**（船长 2026-09-13 四条裁定）：
- *    T4 三条线各按 T3 锚 ×15（武装/装甲）、×10（货舰）；
- *    工期按档带：T1 15~25 分 · T2 51~86 分 · T3 3~5 时 · T4 9~20 时 · T5 45 时，
- *    且 **T4 平均 ÷ T3 平均 落在 3~4 倍**（船长口径「T4 平均翻 3~4 倍」，去掉了 T3 的 4 小时封顶）。
+ * ④ **T4 档价位全面上调**（船长 2026-09-13 四条裁定）：T4 三条线各按 T3 锚 ×15（武装/装甲）、×10（货舰）。
+ *    ⚠ **工期口径 2026-09-29 船长令改判**：旧「按档给时长带（T1 15~25 分 … T5 45 时）+ T4÷T3 平均 3~4 倍」
+ *    **已作废**，现行为「**按档位每小时净收益带反推工期、档间不重叠**」——见
+ *    `packages/data/src/shipBlueprints.ts` 文件头与下方"工期阶梯不漂"用例。
  */
 import { describe, expect, it } from 'vitest'
 import { MARKET_GOODS, SHIPS, SHIP_BLUEPRINTS, buildSimContext } from '@whale/data'
@@ -63,7 +63,7 @@ describe('T4 战列舰定案 · 巨齿鲨级（2026-09-13）', () => {
     expect(r.error ?? '').toContain('仅可制造')
   })
 
-  it('图纸：书价 == 行价 × 4；材料货值 == 行价 × 45%；工期 20 时', () => {
+  it('图纸：书价 == 行价 × 4；材料货值 == 行价 × 45%；工期落 T4 净收益带上沿', () => {
     const bp = bpOfShip('sh-megalodon')
     expect(bp, '缺 sbp-megalodon（舰船蓝图必须有市场卡，否则 content:check 红）').toBeTruthy()
     expect(bp!.priceIsk).toBe(900_000_000)
@@ -71,7 +71,8 @@ describe('T4 战列舰定案 · 巨齿鲨级（2026-09-13）', () => {
     const ratio = materialValue(bp!) / 225_000_000
     expect(ratio).toBeGreaterThan(0.44)
     expect(ratio).toBeLessThan(0.46)
-    expect(bp!.buildSeconds).toBe(72_000) // T4 带 9~20 时的上沿
+    // 2026-09-29 船长令：工期由"档位净收益带"反推 ⇒ T4 上沿 = 净/h 3,120,000（旧值 72,000 = 20 时，已作废）
+    expect(bp!.buildSeconds).toBe(159_728)
   })
 
   it('价位阶梯：三条线各按同定位锚抬升（2026-09-13 价位重排后的口径）', () => {
@@ -105,38 +106,60 @@ describe('T4 战列舰定案 · 巨齿鲨级（2026-09-13）', () => {
     expect(bpOfShip('sh-dunkleosteus')).toBeFalsy()
   })
 
-  it('工期阶梯不漂：按档带 + T4 平均 ÷ T3 平均 落在 3~4 倍', () => {
+  it('工期阶梯不漂（**2026-09-29 船长令改判**：按"档位净收益带"反推工期，档间不重叠）', () => {
+    /**
+     * 船长原话：「**舰船的收益不用收得太窄，但是要符合越高级的船单位时间收益率越高**」。
+     *
+     * 旧口径（T1 15~25 分 / T2 51~86 分 / T3 3~5 时 / T4 9~20 时 / T5 45 时，且 T4平均÷T3平均 3~4 倍）
+     * **已作废**——那个阶梯只按"时长"分档，而**净/h ∝ 行价 ÷ 工期**，工时不随行价走 ⇒
+     * 实测三处越档（T1 最高 354k > T2 最低 152k；T2 最高 481k > T3 最低 375k；T3 最高 1,846k > T4 最低 1,086k）。
+     *
+     * 新口径 = **每档一个净/h 带（2× 宽、档间留空隙），档内按既有次序摊开、工期由行价反推**：
+     * 净 = 行价 − 材料货值 × 0.855（材料学 × 组件标准化 满级折扣）。
+     */
     const band: Record<number, readonly [number, number]> = {
-      1: [900, 1_500], // 15~25 分
-      2: [3_060, 5_160], // 51~86 分
-      3: [10_800, 18_000], // 3~5 时
-      4: [32_400, 72_000], // 9~20 时
-      5: [162_000, 162_000], // 45 时（T4 带下沿 ×5）
+      1: [100_000, 200_000],
+      2: [250_000, 500_000],
+      3: [625_000, 1_250_000],
+      4: [1_560_000, 3_120_000],
+      5: [3_900_000, 7_800_000],
     }
-    // 2026-09-20 零件体系：使用零件的舰船（专属 15 艘 + 皇带鱼）建造时间砍到 1/5 ⇒ 出旧带是设计
-    const partTimeShips = new Set(
-      SHIP_BLUEPRINTS.filter((b) => b.id.startsWith('sbp-wh-') || b.id.includes('colossal')).map((b) => b.id),
-    )
+    // `sbp-wh-*`（虫洞专属 15 张）没有市场行价、不在本条阶梯内（仍走 2026-09-20 的 ÷5 口径）
+    const netPerHour = (bp: (typeof SHIP_BLUEPRINTS)[number]): number | null => {
+      const row = goodOf('ship', bp.shipId)
+      if (!row || row.basePrice <= 0) return null
+      const net = row.basePrice - materialValue(bp) * 0.855
+      return net / (bp.buildSeconds / 3600)
+    }
+    const byTier: Record<number, number[]> = {}
     for (const bp of SHIP_BLUEPRINTS) {
-      const s = shipOf(bp.shipId)
-      if (partTimeShips.has(bp.id)) continue
-      const [lo, hi] = band[s.tier]!
-      expect(bp.buildSeconds, `${s.name}（${bp.id}）工期 ${bp.buildSeconds}s 出带 ${lo}~${hi}`).toBeGreaterThanOrEqual(lo)
-      expect(bp.buildSeconds, `${s.name}（${bp.id}）工期 ${bp.buildSeconds}s 出带 ${lo}~${hi}`).toBeLessThanOrEqual(hi)
+      if (bp.id.startsWith('sbp-wh-')) continue
+      const r = netPerHour(bp)
+      if (r === null) continue
+      const t = shipOf(bp.shipId).tier
+      const [lo, hi] = band[t]!
+      // 工期是整数秒 ⇒ 净/h 会有零点几个百分点的取整误差，判据留 ±0.5%
+      expect(r, `${shipOf(bp.shipId).name}（${bp.id}）净/h ${Math.round(r)} 出带 ${lo}~${hi}`).toBeGreaterThanOrEqual(lo * 0.995)
+      expect(r, `${shipOf(bp.shipId).name}（${bp.id}）净/h ${Math.round(r)} 出带 ${lo}~${hi}`).toBeLessThanOrEqual(hi * 1.005)
+      ;(byTier[t] ??= []).push(r)
     }
-    const avg = (tier: number): number => {
-      const list = SHIP_BLUEPRINTS.filter((bp) => shipOf(bp.shipId).tier === tier && !partTimeShips.has(bp.id)).map((bp) => bp.buildSeconds)
-      return list.reduce((a, b) => a + b, 0) / list.length
+    // **越高级越高**：档间不重叠（低档上限 < 高档下限）
+    for (const t of [1, 2, 3, 4]) {
+      const cur = byTier[t]
+      const nxt = byTier[t + 1]
+      if (!cur || !nxt) continue
+      expect(Math.max(...cur), `T${t} 上限 应低于 T${t + 1} 下限`).toBeLessThan(Math.min(...nxt))
     }
-    const ratio = avg(4) / avg(3)
-    expect(ratio).toBeGreaterThan(3) // 船长口径：T4 平均翻 3~4 倍
-    expect(ratio).toBeLessThan(4)
   })
 
-  it('零件体系（2026-09-20 船长「大幅减少使用零件的舰船的建造时间」）：使用零件的舰船工期 = 原值 1/5', () => {
-    // 皇带鱼（永久 + 一次性）：45 时 → 9 时
-    expect(bpOfShip('sh-colossal')?.buildSeconds).toBe(32_400)
-    expect(SHIP_BLUEPRINTS.filter((b) => b.id === 'sbp-once-colossal')[0]?.buildSeconds).toBe(32_400)
+  it('零件体系（2026-09-20「大幅减少使用零件的舰船的建造时间」）：虫洞专属 15 张仍 = 原值 1/5', () => {
+    /**
+     * ⚠ **2026-09-29 船长令后本条范围收窄**：皇带鱼（`sh-colossal`）已改为**跟档位净收益带走**
+     * （T5 带 3.9M~7.8M ⇒ 净/h 5.85M ⇒ **64.5 时**），不再吃"÷5"这条；
+     * 仍吃 ÷5 的只有**虫洞专属 15 张**（`sbp-wh-*`，无市场行价、不在舰船收益阶梯内）。
+     */
+    expect(bpOfShip('sh-colossal')?.buildSeconds).toBe(232_261)
+    expect(SHIP_BLUEPRINTS.filter((b) => b.id === 'sbp-once-colossal')[0]?.buildSeconds).toBe(232_261)
     // 专属舰三档：T1 20 分 → 4 分 · T2 70 分 → 14 分 · T3 4 时 → 48 分
     expect(bpOfShip('sh-wh-a-frigate')?.buildSeconds).toBe(240)
     expect(bpOfShip('sh-wh-a-destroyer')?.buildSeconds).toBe(840)
