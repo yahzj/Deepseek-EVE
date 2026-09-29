@@ -219,14 +219,16 @@ export function shipHasWeapon(state: GameState, ctx: SimContext, shipId: string)
 
 /* ═══════════ V18.1 多件收敛（取消同类唯一后的防超模机制） ═══════════ */
 
-/** 收敛分组：gap = 缺口复合（抗性/闪避）· curve = EVE 曲线（命中/跃迁速度/目标锁定）· **weighted = 折权加算**（**速度**（2026-09-20 起）与无人机射程中继天线）· **max = 取最强一件**（多件不叠加，2026-09-15 起用于隐秘行动装置的隐身窗口）· **sum = 同舰多件加和（上限内不打折）而跨舰乘法合成**（2026-09-26 起用于墨潮电子舱的射程压制）· flat = 加算线性（不收敛） */
-export type StackGroup = 'gap' | 'curve' | 'weighted' | 'max' | 'sum' | 'flat'
+/** 收敛分组：gap = 缺口复合（抗性/闪避）· curve = EVE 曲线（命中/跃迁速度/目标锁定）· **weighted = 折权加算**（**速度**（2026-09-20 起）与无人机射程中继天线）· **max = 取最强一件**（多件不叠加，2026-09-15 起用于隐秘行动装置的隐身窗口）· **fleetDecay = 全队折权缺口乘法**（**2026-09-29 船长令**：全队型削减类效果——所有来源拉平进一个池、按 EVE 曲线逐件递减、再乘法合成；现用于墨潮电子舱的射程压制）· flat = 加算线性（不收敛） */
+export type StackGroup = 'gap' | 'curve' | 'weighted' | 'max' | 'fleetDecay' | 'flat'
 
 /**
  * 一件装备的收敛分组与收敛键（同键 = 同一收敛池，按单件效果从强到弱参与合成）。
  * - 抗性（盾/甲各系）与闪避 → gap（缺口复合 1−Π(1−x)，天然收敛）；
  * - 命中/跃迁速度/目标锁定 → curve（EVE 曲线 Π(1+pᵢ·wᵢ)）；
  * - **速度（推进器族）→ weighted（折权加算 Σpᵢ·wᵢ，2026-09-20 船长「基础改为加算，但是依旧有多件衰减」）**；
+ * - **全队型削减类效果（墨潮电子舱）→ fleetDecay（折权缺口乘法，2026-09-29 船长「这类全队型的效果……
+ *   做全队多装递减，并且效果也是乘法」）——**旧口径 `sum`（同舰加和上限 90% ＋ 跨舰乘法）已作废**；
  * - 伤害%/射速/容量%/矿枪/货舱/导控/炮台实体 → flat（加算线性，不额外收敛）。
  * UI 用 group 出"多装递减 / 可多装·全额叠加"标签；装配数件数用 kind 提示第 N 件。
  *
@@ -321,16 +323,21 @@ export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } 
     return { group: 'weighted', kind: 'repair' }
   }
   /**
-   * **墨潮电子舱**（`foeRangeDebuffPct`）：**同舰多件加和（上限 0.9）**，而**跨舰走乘法合成**
-   * （`combat.meFoeRangeDebuffOf`：`r = 1 − Π(1 − vᵢ)`），整条效果还压着**敌舰最短射程 3,000 m**
-   * 的地板 ⇒ **不能标"全额叠加"**（那三个字只讲同舰加算，读起来像"可以无限叠"）。
+   * **墨潮电子舱**（`foeRangeDebuffPct`）：**全队折权缺口乘法**（`fleetDecay`）——
+   * **整队所有来源拉平进一个池**（每艘电子舰船体自带的那份 ＋ 每一件电子舱各算一份），
+   * 按单件效果从强到弱套 **EVE 曲线权重**（100% / 87% / 57% / 28%…），再**乘法合成**
+   * `r = 1 − Π(1 − vᵢ·wᵢ)`（单点 `combat.meFoeRangeDebuffOf`）。
    *
-   * ⚠ **2026-09-26 船长报障**：「**发现BUG，墨潮电子舱怎么写着全额叠加，并且没有写上最短射程3000m**」
-   * ⇒ ① 本键从 `flat` 兜底里**单列一档 `sum`**（界面据 `kind: 'ecm'` 写
-   * 「同舰多件加和（上限 90%）· 多舰乘法叠加」）；② 最短射程 3,000 m 写进件说明与装配页短行
-   * （常量单点在 `combat.FOE_RANGE_DEBUFF_FLOOR_M`）。**机制一字未动**（同舰加和 ＋ 上限 0.9 ＋ 跨舰乘法照旧）。
+   * ⚠ **2026-09-29 船长两问改判**（原话）：「**墨潮电子舱玩家似乎将效果叠的很高，让所有敌人只剩下3000射程**」
+   * →「**这类全队型的效果，能否做全队多装递减，并且效果也是乘法**」→「**墨潮电子舱就照全队递减的乘法**」。
+   * **作废的旧口径**（2026-09-26 立的 `sum` 档）：**同舰多件加和、上限 90%** ＋ 跨舰乘法 ——
+   * 那条下"4 舰各 3 件 = 90.8%、4 舰各 6 件 = 99.99%"会把 12,000 m 的敌人一直压到地板 3,000 m。
+   * 新口径下**渐近上限 ≈ 36.7%**（再多件也不涨），12,000 m 的敌人最多被压到约 7,600 m。
+   *
+   * **仍生效的两条**：与敌方增程**做加法**（净倍率 = 增程倍率 − r）· **地板 3,000 m**
+   * （`combat.FOE_RANGE_DEBUFF_FLOOR_M`：基础 < 3,000 m 不削，削后下限 3,000 m）。
    */
-  if (def.foeRangeDebuffPct !== undefined) return { group: 'sum', kind: 'ecm' }
+  if (def.foeRangeDebuffPct !== undefined) return { group: 'fleetDecay', kind: 'ecm' }
   /**
    * **墨潮捕获网**（`captureWebCycleMs`，**2026-09-26 船长令**）：同舰多件**取最短周期**（更快的那台
    * 说了算，见 `combat.createPlayerSpec`）⇒ 归 `max` 组（该组的 UI 语义 = 不叠加、只取一件）。
@@ -404,6 +411,27 @@ export function gapCombine(gaps: number[], base = 0): number {
   const cut = (x: number): number => Math.min(0.9, Math.max(0, x))
   let remain = 1 - cut(base)
   for (const x of gaps) remain *= 1 - cut(x)
+  return 1 - remain
+}
+
+/**
+ * **折权缺口乘法**（**全队型削减类效果的统一口径** · **2026-09-29 船长令**）：
+ * 总削减 = `1 − Π(1 − pᵢ × wᵢ)`（p 从强到弱排位，`w = stackWeight(n)` ⇒ 100% / 87% / 57% / 28% / 11%…）。
+ *
+ * 船长原话（照抄）：「**这类全队型的效果，能否做全队多装递减，并且效果也是乘法**」→
+ * 「**墨潮电子舱就照全队递减的乘法**」⇒ 本函数是那把尺的**单点**（与 `curveMult` / `weightedSum` /
+ * `gapCombine` 并列的第四种合成形）：
+ * - **与 `gapCombine` 的区别**：那条不折权（件件满额、只靠乘法自然收敛），本条**逐件按曲线递减**
+ *   ⇒ 收敛得更狠、且有**渐近上限**（单件 15% 时 ≈ 36.7%，再多件也不涨）；
+ * - **与 `weightedSum` 的区别**：那条折权后**仍相加**（适合"加成"），本条是**缺口/削减**语义，故走乘法。
+ *
+ * ⚠ **调用方要给"全队所有来源"的完整清单**（例：射程削减 = 每艘电子舰船体自带的一份 ＋
+ * 每一件电子舱各一份）——池子按**整队**拉平排位，不再有"同舰先加和"这一步。
+ */
+export function weightedGap(bonuses: number[]): number {
+  const sorted = [...bonuses].map((p) => Math.min(0.9, Math.max(0, p))).filter((p) => p > 0).sort((a, b) => b - a)
+  let remain = 1
+  for (let i = 0; i < sorted.length; i++) remain *= 1 - sorted[i]! * stackWeight(i + 1)
   return 1 - remain
 }
 

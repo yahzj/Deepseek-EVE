@@ -553,9 +553,10 @@ export function moduleShortEffect(mod: ModuleDef): string {
   if (extras) body = body ? `${body} · ${extras}` : extras
   // V18.1：收敛件（抗性/闪避 = 缺口复合、命中/速度 = EVE 曲线）尾注"多装递减"；
   // 2026-09-15 隐秘行动装置（`max` 组）= **取最长一件、不叠加** ⇒ 既不标"多装递减"也不标"全额叠加"；
-  // 2026-09-26 墨潮电子舱（`sum` 组）= 同舰加和（有上限）＋ 跨舰乘法 ⇒ 同样不挂"多装递减"（加和不衰减）。
+  // ⚠ **2026-09-29**：墨潮电子舱改归 `fleetDecay`（全队折权缺口乘法）⇒ 它**开始**挂"多装递减"
+  //   （旧 `sum` 组"同舰加和、上限内不打折"已作废，当时正因不衰减而排除在外）。
   const stShort = stackingOf(mod).group
-  return body + (stShort === 'flat' || stShort === 'max' || stShort === 'sum' ? '' : tr('ui.shipInfo.179'))
+  return body + (stShort === 'flat' || stShort === 'max' ? '' : tr('ui.shipInfo.179'))
 }
 
 /** 三系抗性紧凑文本（整数主抗制简化后只列非零项；全零 = "无"） */
@@ -1283,11 +1284,14 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
     lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.077") })
   } else if (st.group === 'max') {
     lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.078") })
-  } else if (st.group === 'sum') {
+  } else if (st.group === 'fleetDecay') {
     /**
-     * **同舰多件加和（上限 90%）· 多舰乘法叠加**（**2026-09-26 船长报障**：墨潮电子舱原先掉在 `flat`
-     * 兜底里、卡面写「全额叠加」——那三个字读起来像"可以无限叠"，而实际是**同舰加和到 90% 封顶、
-     * 跨舰走乘法、还被敌舰最短射程 3,000 m 的地板压着**）。
+     * **全队多件递减（乘法叠加）**（**2026-09-29 船长令**：原话「这类全队型的效果，能否做全队多装递减，
+     * 并且效果也是乘法」→「墨潮电子舱就照全队递减的乘法」）。
+     *
+     * 旧口径（2026-09-26 立的 `sum` 档）写的是「同舰多件加和（上限 90%）· 多舰乘法叠加」——
+     * 那条下 4 舰各 3 件就到 90.8%、把敌人射程一路压到地板 3,000 m（玩家报障）。
+     * 现口径 = 整队所有来源拉平进一个池、按 EVE 曲线逐件递减再乘法 ⇒ 渐近上限 ≈ 36.7%。
      */
     lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.201") })
   } else {
