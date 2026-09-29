@@ -112,7 +112,25 @@ export function getMiningParams(
     if (opsLv > 0) prodMult *= 1 + 0.04 * opsLv
   }
   // 限时倍率：miningYield 乘在每循环产出上（×2 = 产量翻倍；取整后仍至少 1）
-  const unitsPerCycle = Math.max(1, Math.floor(ship.oreUnitsPerCycle * prodMult * (1 + minerBonus) * tuningMul(state, 'miningYield')))
+  /**
+   * **按体积结算（2026-09-28 船长令 · 矿石按体积平衡）**：
+   * 船长原话：「**原版 EVE 是通过不同矿石每单位体积不同来进行平衡的。体积越小的矿石，每次挖掘采集到的
+   * 单位量越多**」⇒ `ship.oreUnitsPerCycle` 的语义改为「**每循环多少 m³**」，件数 = m³ ÷ `ore.unitM3`。
+   *
+   * ⚠ **落地当天零行为变化**：现内容 8 支矿石的 `unitM3` 全是 1 ⇒ 新旧算式**逐位等价**
+   * （由 `tests/ore-volume-mining.test.ts` 钉住）。矿石体积阶梯与配套单价在 `packages/data/src/items.ts`
+   * 同批落地后，本行才真正开始区分矿种。
+   * ⚠ **满舱节奏不受影响**：满舱判据是 `unitsPerCycle × unitM3`（见本文件下方的满舱检查）＝每循环 m³，
+   * 该乘积与 `unitM3` 无关 ⇒ 装满货舱要几秒、一趟几循环都不变。
+   * ⚠ `Math.max(1, …)` 保底：极小体积矿 × 低产能船也不会算出 0 件。
+   */
+  const unitsPerCycle = Math.max(
+    1,
+    Math.floor(
+      (ship.oreUnitsPerCycle * prodMult * (1 + minerBonus) * tuningMul(state, 'miningYield')) /
+        Math.max(0.01, ore.unitM3 ?? 1),
+    ),
+  )
   return { ship, belt, ore, cycleMs, unitsPerCycle }
 }
 

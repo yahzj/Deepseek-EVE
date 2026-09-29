@@ -158,24 +158,35 @@ export const SHIPS: ShipDef[] = [
     id: 'pioneer',
     name: '开拓级采矿艇',
     role: 'industrial',
-    slots: { high: 3, mid: 2, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
-    tier: 2,
+    slots: { high: 3, mid: 3, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
+    /*
+     * **2026-09-28 船长令：T2 → T3（巡洋舰级）**——原话：「**我打算上调开拓者级采矿艇到巡洋舰级**」
+     * ＋「**开拓和座头鲸的槽位要提升，建议+1（非高槽）**」。
+     * 连带（同批、按既有合同同步）：
+     * - 槽位 3/2/2 → **3/3/2**（+1 **中槽**，非高槽；与同档 T3 的鲸王同型）
+     * - 血量三层和按 `CIVILIAN_HP_TARGET` 307 → **540**（三层按原比例同乘、余数进结构层）
+     * - 质量 5.50 → **6.50 Mt**（T3 档带 5.8~13 Mt）
+     * - 插件槽 4 → **3**（2026-09-26 令：T1~T5 = 5/4/3/2/1）
+     * - 采集量 38 → **44 m³/循环**（分级重排，见 `docs/design/economy-audit-20260928.md` §十）
+     * - 工期 86 分 → **3.5 时**（T3 档带 3~5 时）
+     */
+    tier: 3,
     cargoM3: 5200,
     cycleSeconds: 9,
-    oreUnitsPerCycle: 38,
+    oreUnitsPerCycle: 44,
     priceIsk: 0, // 商店买不到：只能靠舰船蓝图制造
     agility: 0.4,
     evasion: 0.15,
     hitBonus: 0.1,
-    shieldHp: 79,
+    shieldHp: 139,
     shieldResist: { kinetic: 0.25 }, // 鲸盟：护盾抗动能（整数主抗制）
-    armorHp: 70,
-    hullHp: 158,
-    cpu: 150,
+    armorHp: 123,
+    hullHp: 278,
+    cpu: 175,
     droneBayM3: 0,
     maxSpeedMps: 250,
     warpSpeedAus: 3.5,
-    massKg: 5_500_000,
+    massKg: 6_500_000,
     lockRangeM: 20_000,
     signatureM: 95,
     scanResMm: 470,
@@ -212,24 +223,38 @@ export const SHIPS: ShipDef[] = [
     id: 'sh-humpback',
     name: '座头鲸级矿舰',
     role: 'industrial',
-    slots: { high: 3, mid: 2, low: 3 }, // V18 槽位布局（草案表 v18-slots.md）
-    tier: 3,
+    slots: { high: 3, mid: 2, low: 4 }, // V18 槽位布局（草案表 v18-slots.md）
+    /*
+     * **2026-09-28 船长令：T3 → T4（战列舰级）**——原话：「**将座头鲸上调至战列舰级**」
+     * ＋「**开拓和座头鲸的槽位要提升，建议+1（非高槽）**」＋「**座头鲸的市价和制作材料需要上涨**」。
+     * 连带（同批、按既有合同同步）：
+     * - 槽位 3/2/3 → **3/2/4**（+1 **低槽**，非高槽；延续它「低槽货向」的既有定位）
+     * - 血量三层和按 `CIVILIAN_HP_TARGET` 540 → **1018**（三层按原比例同乘、余数进结构层）
+     * - 质量 9.00 → **15.00 Mt**（T4 档带 13~29 Mt）
+     * - 插件槽 3 → **2**（2026-09-26 令）
+     * - 采集量 140 → **200 m³/循环**（分级重排；**仍略低于 T3 的鲸王 26,100 m³/时**——
+     *   船长「鲸王收益会比座头鲸略高一点」⇒ 座头鲸走**吨位/货舱/生存**那条轴：
+     *   货舱 19,000 = 鲸王的 2.7 倍 · 血量 1018 = 鲸王的 1.9 倍）
+     * - 市价 9M → **90M**（2026-09-13 价位重排口径「T4 非战斗船 = T3 ×10」；原 9M 是 T3 价）
+     * - 工期 4.7 → **12 时**（T4 档带 9~20 时）· 蓝图 36M → **360M**（行价 ×4）· 材料 ×10
+     */
+    tier: 4,
     cargoM3: 19_000,
     cycleSeconds: 30,
-    oreUnitsPerCycle: 140,
-    priceIsk: 9_000_000, // 2026-09-13 价位重排：T3 工业（鲸吞 0.9M ×10；原 1.35M）
+    oreUnitsPerCycle: 200,
+    priceIsk: 90_000_000, // 2026-09-28 升 T4：T4 非战斗船 = T3 ×10（原 9M 是 T3 价）
     agility: 0.3,
     evasion: 0,
     hitBonus: 0.1,
-    shieldHp: 68,
+    shieldHp: 128,
     shieldResist: { kinetic: 0.25 }, // 鲸盟：护盾抗动能（整数主抗制）
-    armorHp: 193,
-    hullHp: 279,
-    cpu: 140,
+    armorHp: 364,
+    hullHp: 526,
+    cpu: 175,
     droneBayM3: 0,
     maxSpeedMps: 230,
     warpSpeedAus: 3.5,
-    massKg: 9_000_000,
+    massKg: 15_000_000,
     lockRangeM: 21_000,
     signatureM: 120,
     scanResMm: 430,
@@ -748,7 +773,7 @@ export const SHIPS: ShipDef[] = [
     cargoM3: 15200, // 2026-09-15 船长：重装线货舱 −20%（19000 ×0.8）
     cycleSeconds: 14,
     oreUnitsPerCycle: 26,
-    priceIsk: 90_000_000, // 2026-09-13 价位重排：T4 装甲（玳瑁 6M ×15；原 16.5M）
+    priceIsk: 0, // ⚠ 2026-09-29 船长裁决「乙」：玄武属 T4 战斗船 ⇒ 锚价统一为巨齿鲨 2.25 亿 且**成品下架** ⇒ 定制船口径必须为 0（原「2026-09-13：T4 装甲 90M · 现货在售」作废）
     agility: 0.4,
     evasion: 0.05,
     hitBonus: 0.05,
@@ -871,7 +896,7 @@ export const SHIPS: ShipDef[] = [
     cargoM3: 3600, // 战列舰口径（不做货舰 ⇒ 与玄武 15,200 明确分工）
     cycleSeconds: 12,
     oreUnitsPerCycle: 20,
-    priceIsk: 90_000_000, // 照玄武口径：现货在售（市场行同值，契约「舰船价格口径」守）
+    priceIsk: 0, // ⚠ 2026-09-29 船长裁决「乙」：旋齿鲨属 T4 战斗船 ⇒ 锚价统一为巨齿鲨 2.25 亿 且**成品下架** ⇒ 定制船口径必须为 0（原「照玄武口径：现货在售 90M」作废）
     agility: 0.4,
     evasion: 0.05,
     hitBonus: 0.05,

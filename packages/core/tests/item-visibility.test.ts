@@ -37,6 +37,7 @@ describe('物品目录级可见性（2026-09-13 立闸 · 2026-09-14 虫洞上�
     expect(itemReleased(ore)).toBe(true)
     // 玩法面照旧：全目录里也在（虫洞按体积换算背包格、精炼扣料都读 ctx.items）
     expect(ctx.items.has(WORMHOLE_ORE_ITEM_ID)).toBe(true)
+    // 2026-09-28 矿石按体积平衡：虚空母矿入 R5，但**体积保持 1 m³/单位**（洞内背包格数手感不动）
     expect(ore!.unitM3).toBe(1)
     expect(Object.keys(visibleItemDefs(ctx)).length).toBeGreaterThan(20) // 目录其余照旧
   })

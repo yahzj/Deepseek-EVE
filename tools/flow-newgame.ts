@@ -143,7 +143,7 @@ function mineTrip(state: GameState, tripNo: number): number {
   if (!state.mining.active) ok(`第 ${tripNo} 趟出航`, startMining(state, BELT, ctx).ok)
   until(state, () => holdOre(state) >= 60, 40 * 60_000)
   if (state.mining.active) stopMining(state, ctx)
-  const moved = unloadCargoToWarehouse(state)
+  const moved = unloadCargoToWarehouse(state, ctx)
   console.log(`   第 ${tripNo} 趟：卸入 ${moved} 单位（仓库累计 ${state.warehouse.items[ORE] ?? 0}）`)
   return moved
 }

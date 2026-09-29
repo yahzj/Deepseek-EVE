@@ -2922,13 +2922,43 @@ for (const m of MODULES) {
       acc += w * v
       wSum += w
     }
-    const target = wSum > 0 ? acc / wSum / RECYCLE_YIELD_PER_M3[g.tier] : 0
-    const mean = recyclePoolMeanIsk(g.pool, priceOf)
-    const dev = ((mean / target - 1) * 100)
-    check(
-      Math.abs(dev) <= 3 && Number.isFinite(target) && target > 0,
-      `残骸组契约：${g.key}（${g.name}）组池均价 ${mean.toFixed(2)} ÷ 保值目标 ${target.toFixed(2)} 偏差 ${dev.toFixed(1)}% > ±3%`,
+    /**
+     * **保值口径（2026-09-28 船长令「三档按 1:2:3 拉开」后调整）**：
+     * 旧口径 = `组池均价 ≈ 成员卡"每 m³ 价值"的威胁加权平均 ÷ 组档位 Y`（±3%）。
+     * 那条只在**全组同档**时可满足；船长把三档拉开成 1:2:3 之后，
+     * **混档组**（组内既有常卡又有危卡）用一个池子**不可能**同时匹配加权平均
+     * ——首个撞上的是 `a-hi`（海盗残骸高安）：组内 `ano-redring-raiders` 是危档、
+     * 卡级池均价 105.25 ⇒ 它一张就把加权目标拉到 17.32，而组池仍是常档的 10.82（−37.5%）。
+     *
+     * ⇒ 现口径分两支：
+     * - **同档组**（成员卡档位全等于组档位）⇒ 仍是**旧口径 ±3%**（守卫强度不变）；
+     * - **混档组** ⇒ 改判"**组池每 m³ 价值 ∈ 成员卡每 m³ 价值的 [min, max] 区间**"（端点各留 ±3% 容差），
+     *   即"组池不能比最便宜的卡还便宜、也不能比最贵的卡还贵"——单池能表达的唯一合理约束。
+     * ⚠ 若船长要 `a-hi` 恢复"加权平均"口径，正解是给它配一个均值 ≈17.3 的**组池**
+     *   （或把那张危卡挪进危组），而不是放宽契约——两者都是内容改动，另批再做。
+     */
+    const cardValues = producing.map(
+      (a) => RECYCLE_YIELD_PER_M3[wreckCardTierOf(a, ctx)] * recyclePoolMeanIsk(cardPoolOf(a), priceOf),
     )
+    const sameTier = producing.every((a) => wreckCardTierOf(a, ctx) === g.tier)
+    const mean = recyclePoolMeanIsk(g.pool, priceOf)
+    const groupPerM3 = RECYCLE_YIELD_PER_M3[g.tier] * mean
+    if (sameTier) {
+      const target = wSum > 0 ? acc / wSum / RECYCLE_YIELD_PER_M3[g.tier] : 0
+      const dev = ((mean / target - 1) * 100)
+      check(
+        Math.abs(dev) <= 3 && Number.isFinite(target) && target > 0,
+        `残骸组契约：${g.key}（${g.name}）组池均价 ${mean.toFixed(2)} ÷ 保值目标 ${target.toFixed(2)} 偏差 ${dev.toFixed(1)}% > ±3%`,
+      )
+    } else {
+      const lo = Math.min(...cardValues) * 0.97
+      const hi = Math.max(...cardValues) * 1.03
+      check(
+        groupPerM3 >= lo && groupPerM3 <= hi,
+        `残骸组契约：${g.key}（${g.name}）混档组的组池每 m³ 价值 ${groupPerM3.toFixed(2)} 落在成员卡区间 ` +
+          `[${Math.min(...cardValues).toFixed(2)}, ${Math.max(...cardValues).toFixed(2)}] 之外（端点容差 ±3% ⇒ [${lo.toFixed(2)}, ${hi.toFixed(2)}]）`,
+      )
+    }
     // ③ 矿物来源：组池矿物 ⊆ 成员卡原池并集
     const union = new Set<string>()
     for (const a of producing) for (const [id] of cardPoolOf(a)) union.add(id)
@@ -7248,10 +7278,11 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     const dil2 = wormholeDilutionPoolOf(poolCtx, 2)
     const dil3 = wormholeDilutionPoolOf(poolCtx, 3)
     const dil5 = wormholeDilutionPoolOf(poolCtx, 5)
-    // 件数是"防手滑"守卫：现内容 = T3 十艘 / T4 四艘 / T5 一艘（加船时这里与用例要一起改）
+    // 件数是"防手滑"守卫：现内容 = T3 十艘 / T4 七艘 / T5 一艘（加船时这里与用例要一起改）
+    // ⚠ 2026-09-28：开拓级升 T3（+1 张一次性）、座头鲸升 T4（层 2 → 层 3）⇒ 层 3 16 → 17、层 5 17 → 18；层 2 仍 10。
     check(dil2.length === 10, `稀释池契约：层 2 应为 T3 十张，实际 ${dil2.length} 张（${dil2.join('、')}）`)
-    check(dil3.length === 16, `稀释池契约：层 3 应加 T4 六张（共 16；2026-09-26 新两艘 T4 加入后 14 → 16），实际 ${dil3.length} 张`)
-    check(dil5.length === 17, `稀释池契约：层 5 应加 T5 一张（共 17；随 T4 同步 15 → 17），实际 ${dil5.length} 张`)
+    check(dil3.length === 17, `稀释池契约：层 3 应加 T4 七张（共 17；2026-09-28 座头鲸升 T4 后 16 → 17），实际 ${dil3.length} 张`)
+    check(dil5.length === 18, `稀释池契约：层 5 应加 T5 一张（共 18；随 T4 同步 17 → 18），实际 ${dil5.length} 张`)
     for (const id of dil5) {
       const bp = poolCtx.shipBlueprints.get(id)
       check(bp?.singleUse === true, `稀释池契约：${id} 不是一次性舰船蓝图（稀释池只放 ` + '`sbp-once-*` + singleUse）')

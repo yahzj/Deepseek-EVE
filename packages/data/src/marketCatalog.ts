@@ -37,13 +37,13 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   弹药 MK1 150 → **10,800/窗**（池 4,000 → **1,296,000**）、弹药 MK2 20 → **4,320**（池 → **518,400**）、
   //   民用修理组件 4 → **20**（池 300 → **2,400**）、军用修理组件 1.5 → **9**（池 120 → **1,080**）、
   //   无人机池同步为 flow×120（4/2/1/1 → 池 480/240/120/120）。价格、产率、其它池一律未动。】
-  { key: 'ore-veldspar', kind: 'item', refId: 'ore-veldspar', rarity: 'common', basePrice: 12, poolTarget: 598_920, supplyFlow: 4_991 },
-  { key: 'ore-scorched', kind: 'item', refId: 'ore-scorched', rarity: 'common', basePrice: 18, poolTarget: 598_920, supplyFlow: 4_991 },
-  { key: 'ore-hemorphite', kind: 'item', refId: 'ore-hemorphite', rarity: 'common', basePrice: 55, poolTarget: 239_640, supplyFlow: 1_997 },
-  { key: 'ore-glowstone', kind: 'item', refId: 'ore-glowstone', rarity: 'common', basePrice: 150, poolTarget: 184_680, supplyFlow: 1_539 },
-  { key: 'ore-sunshard', kind: 'item', refId: 'ore-sunshard', rarity: 'common', basePrice: 115, poolTarget: 184_680, supplyFlow: 1_539 },
-  { key: 'ore-voidshard', kind: 'item', refId: 'ore-voidshard', rarity: 'common', basePrice: 340, poolTarget: 92_400, supplyFlow: 770 },
-  { key: 'ore-nebulite', kind: 'item', refId: 'ore-nebulite', rarity: 'common', basePrice: 490, poolTarget: 61_560, supplyFlow: 513 },
+  { key: 'ore-veldspar', kind: 'item', refId: 'ore-veldspar', rarity: 'common', basePrice: 7, poolTarget: 1_178_160, supplyFlow: 9_818 },
+  { key: 'ore-scorched', kind: 'item', refId: 'ore-scorched', rarity: 'common', basePrice: 7, poolTarget: 1_178_160, supplyFlow: 9_818 },
+  { key: 'ore-hemorphite', kind: 'item', refId: 'ore-hemorphite', rarity: 'common', basePrice: 15, poolTarget: 235_680, supplyFlow: 1_964 },
+  { key: 'ore-glowstone', kind: 'item', refId: 'ore-glowstone', rarity: 'common', basePrice: 32, poolTarget: 115_560, supplyFlow: 963 },
+  { key: 'ore-sunshard', kind: 'item', refId: 'ore-sunshard', rarity: 'common', basePrice: 32, poolTarget: 115_560, supplyFlow: 963 },
+  { key: 'ore-voidshard', kind: 'item', refId: 'ore-voidshard', rarity: 'common', basePrice: 68, poolTarget: 20_760, supplyFlow: 173 },
+  { key: 'ore-nebulite', kind: 'item', refId: 'ore-nebulite', rarity: 'common', basePrice: 145, poolTarget: 6_120, supplyFlow: 51 },
   // 【虚空母矿 —— 虫洞线的唯一原矿（2026-09-12 船长定）。**虫洞落地前不对玩家可见**：
   //   `unreleased: true` ⇒ 不进 `ctx.marketGoods`（市场页/图鉴/挂单/任务全看不到），
   //   但契约照核（"每种物品必须有市场卡"）。**上线时删掉这一个字段即可开卖。**
@@ -52,7 +52,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   买入亦被拦；**收购照常**（带回的母矿随时能卖给 NPC）。
   //   数值（2026-09-14 半量后）：虚空晶 **0.25** + 同位聚晶 1.0 + 星髓晶 0.25 ⇒ 产出价值 **566.25**
   //   （改前 0.5 ⇒ 1,016.25）· basePrice 1,300 / demandMultiplier 0.6 ⇒ 收购 ≈780（价格按船长「价格不动」未调）。】
-  { key: 'ore-voidmother', kind: 'item', refId: 'ore-voidmother', rarity: 'common', basePrice: 1_300, demandMultiplier: 0.6, playerBuyable: false }, // 只收不卖（2026-09-14 船长）
+  { key: 'ore-voidmother', kind: 'item', refId: 'ore-voidmother', rarity: 'common', basePrice: 1_300, demandMultiplier: 0.6, playerBuyable: false }, // 只收不卖（2026-09-14 船长）；2026-09-28 船长令「把虚空母矿排除在体积平衡」⇒ 回到原价 1,300（收购 ≈780）
   // ── **遗迹安全货柜**（F4 · 2026-09-13；2026-09-14 船长改判：给像样的价、只收不卖）──
   // 【它是"带回后拆解"的中间件：**不带货进洞、只从洞内带出** ⇒ 市场**只收不卖**
   //   （`playerBuyable: false`，市场不出售现货 —— 否则花钱就能买箱子，洞内打捞这条渠道被架穿）。
@@ -115,18 +115,18 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   钛钢 90,734 件/h、银纹 63,385、晶态 22,523、同位聚晶 78,408、重钨 29,233、星髓 29,730、冥铁 7,722
   //   ——冥铁/星髓/重钨/同位聚晶原覆盖比 0.16~0.82×（炼出来卖不掉），钛钢/银纹/晶态本就 ≥5.7× 故仅微调；
   //   虚空晶无精炼来源（回收彩头），池不动。】
-  { key: 'min-tritanium', kind: 'item', refId: 'min-tritanium', rarity: 'common', basePrice: 8, poolTarget: 2_722_080, supplyFlow: 22_684 },
-  { key: 'min-pyerite', kind: 'item', refId: 'min-pyerite', rarity: 'common', basePrice: 12, poolTarget: 1_901_640, supplyFlow: 15_847 },
-  { key: 'min-mexallon', kind: 'item', refId: 'min-mexallon', rarity: 'common', basePrice: 20, poolTarget: 675_720, supplyFlow: 5_631 },
-  { key: 'min-nocxium', kind: 'item', refId: 'min-nocxium', rarity: 'common', basePrice: 90, poolTarget: 350_880, supplyFlow: 2_924 },
-  { key: 'min-isotope', kind: 'item', refId: 'min-isotope', rarity: 'common', basePrice: 55, poolTarget: 940_920, supplyFlow: 7_841 },
-  { key: 'min-starcore', kind: 'item', refId: 'min-starcore', rarity: 'common', basePrice: 245, poolTarget: 178_440, supplyFlow: 1_487 },
-  { key: 'min-darkiron', kind: 'item', refId: 'min-darkiron', rarity: 'common', basePrice: 780, poolTarget: 30_960, supplyFlow: 258 },
+  { key: 'min-tritanium', kind: 'item', refId: 'min-tritanium', rarity: 'common', basePrice: 8, poolTarget: 2_386_800, supplyFlow: 19_890 },
+  { key: 'min-pyerite', kind: 'item', refId: 'min-pyerite', rarity: 'common', basePrice: 12, poolTarget: 1_432_080, supplyFlow: 11_934 },
+  { key: 'min-mexallon', kind: 'item', refId: 'min-mexallon', rarity: 'common', basePrice: 20, poolTarget: 507_720, supplyFlow: 4_231 },
+  { key: 'min-nocxium', kind: 'item', refId: 'min-nocxium', rarity: 'common', basePrice: 90, poolTarget: 95_280, supplyFlow: 794 },
+  { key: 'min-isotope', kind: 'item', refId: 'min-isotope', rarity: 'common', basePrice: 55, poolTarget: 175_320, supplyFlow: 1_461 },
+  { key: 'min-starcore', kind: 'item', refId: 'min-starcore', rarity: 'common', basePrice: 245, poolTarget: 15_960, supplyFlow: 133 },
+  { key: 'min-darkiron', kind: 'item', refId: 'min-darkiron', rarity: 'common', basePrice: 780, poolTarget: 3_120, supplyFlow: 26 },
   // 【虚空晶（2026-09-14 船长：「虚空晶和虚空母矿也添加只收不卖」「市场不会出现…卖单」）：
   //   它是**24 张洞内蓝图 + 皇带鱼级**的通用主料，来源只有"虚空母矿精炼"与"回收彩头"
   //   ⇒ 只收不卖（NPC 不铺卖单、买入被拦），**收购照常**。`poolTarget/supplyFlow` 保留：
   //   池面仍参与均衡价与收购阶梯的计算，只是不再铺供应单。】
-  { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 1_800, poolTarget: 500, supplyFlow: 3, playerBuyable: false }, // 只收不卖（2026-09-14 船长）
+  { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 1_800, poolTarget: 1_560, supplyFlow: 13, playerBuyable: false }, // 只收不卖（2026-09-14 船长）
   // ── 虫洞战利品与经济扩充（船长 2026-09-15 确认）：谜质精华只收不卖 · 奢侈品正常交易 · 两个新货柜只收不卖 ──
   //   ⚠ **档位口径（2026-09-15 落码）**：凡"玩家产出要拿去卖钱"的行一律 **common（常驻）**——
   //   common 才每 60s 窗口铺 3 档收购阶梯（池商品）或 85% 掷一次收购单（单件平价品）；
@@ -157,14 +157,14 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'box-valuables', kind: 'item', refId: 'box-valuables', rarity: 'common', basePrice: 3_828_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 贵重品货柜（2 格）· 期望 = 17.5 件 × 十款均价 87.5 万 = 1,531.25 万 ×**0.25**（2026-09-15 船长改判的专属折扣；其余三类柜仍是 ×0.6）
   { key: 'box-military', kind: 'item', refId: 'box-military', rarity: 'common', basePrice: 2_800_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 军用备货柜（4 格）· 期望 = 2 件 × MK3 均价 235.5 万 = 470.95 万 ×0.6（2026-09-15 批 B 复核：原估值 700 万 > 拆解期望，会诱导"只卖箱不拆箱"⇒ 按同一条 ×0.6 规则下调）
   // ── 气体（V10 池商品） ──
-  { key: 'gas-neon', kind: 'item', refId: 'gas-neon', rarity: 'common', basePrice: 85, poolTarget: 227_880, supplyFlow: 1_899 },
-  { key: 'gas-phosphor', kind: 'item', refId: 'gas-phosphor', rarity: 'common', basePrice: 330, poolTarget: 114_000, supplyFlow: 950 },
-  { key: 'gas-ionstorm', kind: 'item', refId: 'gas-ionstorm', rarity: 'common', basePrice: 230, poolTarget: 114_000, supplyFlow: 950 },
-  { key: 'gas-aurora', kind: 'item', refId: 'gas-aurora', rarity: 'common', basePrice: 330, poolTarget: 114_000, supplyFlow: 950 },
+  { key: 'gas-neon', kind: 'item', refId: 'gas-neon', rarity: 'common', basePrice: 32, poolTarget: 143_280, supplyFlow: 1_194 },
+  { key: 'gas-phosphor', kind: 'item', refId: 'gas-phosphor', rarity: 'common', basePrice: 144, poolTarget: 9_240, supplyFlow: 77 },
+  { key: 'gas-ionstorm', kind: 'item', refId: 'gas-ionstorm', rarity: 'common', basePrice: 68, poolTarget: 27_720, supplyFlow: 231 },
+  { key: 'gas-aurora', kind: 'item', refId: 'gas-aurora', rarity: 'common', basePrice: 144, poolTarget: 9_240, supplyFlow: 77 },
   // ── 冰矿（V10 池商品） ──
-  { key: 'ice-frost', kind: 'item', refId: 'ice-frost', rarity: 'common', basePrice: 150, poolTarget: 227_880, supplyFlow: 1_899 },
-  { key: 'ice-marrow', kind: 'item', refId: 'ice-marrow', rarity: 'common', basePrice: 230, poolTarget: 114_000, supplyFlow: 950 },
-  { key: 'ice-darkstar', kind: 'item', refId: 'ice-darkstar', rarity: 'common', basePrice: 360, poolTarget: 114_000, supplyFlow: 950 },
+  { key: 'ice-frost', kind: 'item', refId: 'ice-frost', rarity: 'common', basePrice: 32, poolTarget: 143_280, supplyFlow: 1_194 },
+  { key: 'ice-marrow', kind: 'item', refId: 'ice-marrow', rarity: 'common', basePrice: 68, poolTarget: 27_720, supplyFlow: 231 },
+  { key: 'ice-darkstar', kind: 'item', refId: 'ice-darkstar', rarity: 'common', basePrice: 144, poolTarget: 9_240, supplyFlow: 77 },
   // ── 弹药（V10 占位消耗品：NPC 补给池，玩家可囤可回卖） ──
   { key: 'ammo-kinetic-l', kind: 'item', refId: 'ammo-kinetic-l', rarity: 'common', basePrice: 7, demandMultiplier: 0.6, poolTarget: 1_296_000, supplyFlow: 10_800 }, // 2026-09-11 消耗品池按产能标定（原 4,000/150）
   // 【基础零件 7 种（2026-09-20 零件体系）：常驻池商品——**池规则 = 幂律连续曲线**
@@ -516,14 +516,14 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-stealth-2', kind: 'blueprint', refId: 'bp-stealth-2', rarity: 'rare', basePrice: 7500000, demandMultiplier: 0.65 },
   { key: 'bp-stealth-3', kind: 'blueprint', refId: 'bp-stealth-3', rarity: 'exotic', basePrice: 40000000, demandMultiplier: 0.75 },
   // 舰船蓝图（造船；稀有）
-  { key: 'sbp-pioneer', kind: 'blueprint', refId: 'sbp-pioneer', rarity: 'exotic', basePrice: 3_600_000, demandMultiplier: 1.0, standingReq: 11 }, // 开拓级（蓝图=船价×3；2026-09-09 随全蓝图化升奇货档+声望 11）
-  { key: 'sbp-humpback', kind: 'blueprint', refId: 'sbp-humpback', rarity: 'exotic', basePrice: 36_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 座头鲸级（2026-09-13 价位重排：船价 9M ×4；T3 蓝图门槛 15）
+  { key: 'sbp-pioneer', kind: 'blueprint', refId: 'sbp-pioneer', rarity: 'exotic', basePrice: 32_000_000, demandMultiplier: 1.0, standingReq: 11 }, // 开拓级（2026-09-28 随船价 1.2M→8M：书价 = 8M ×4；2026-09-09 升奇货档 + 声望 11）
+  { key: 'sbp-humpback', kind: 'blueprint', refId: 'sbp-humpback', rarity: 'exotic', basePrice: 360_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 座头鲸级（2026-09-28 升 T4：船价 90M ×4；蓝图门槛 15 不变）
   // 稀有舰船（V10 四条族线中坚）
   { key: 'ship-whale', kind: 'ship', refId: 'whale', rarity: 'rare', basePrice: 900_000, demandMultiplier: 0.65 },
   // 蓝图船（2026-09-09 船长：成品无现货、只收不卖）——玩家已拥有的开拓级可二手挂售，NPC 收购，
   // 市场不出售成品（图鉴「仅可制造」标注自洽；供给抽取侧 playerBuyable=false 天然排除）
-  { key: 'ship-pioneer', kind: 'ship', refId: 'pioneer', rarity: 'rare', basePrice: 1_200_000, demandMultiplier: 0.65, playerBuyable: false },
-  { key: 'ship-humpback', kind: 'ship', refId: 'sh-humpback', rarity: 'rare', basePrice: 9_000_000, demandMultiplier: 0.65, standingReq: 12 }, // 2026-09-13 价位重排：T3 工业（鲸吞 0.9M ×10）；T3 门槛 12
+  { key: 'ship-pioneer', kind: 'ship', refId: 'pioneer', rarity: 'rare', basePrice: 8_000_000, demandMultiplier: 0.65, playerBuyable: false }, // 2026-09-28 船长令「开拓市价上调」：升 T3 后按同档鲸王 12M × 产能比（17,600÷26,100 = 0.674）⇒ 8M（原 T2 价 1.2M）
+  { key: 'ship-humpback', kind: 'ship', refId: 'sh-humpback', rarity: 'rare', basePrice: 90_000_000, demandMultiplier: 0.65, standingReq: 12 }, // 2026-09-28 升 T4：T4 非战斗船 = T3 ×10（原 9M 是 T3 价）；声望 12 不变
   { key: 'ship-bowhead', kind: 'ship', refId: 'sh-bowhead', rarity: 'exotic', basePrice: 67_500_000, demandMultiplier: 1.0, standingReq: 20 }, // 2026-09-13：价位重排（T4 货舰，剑鱼 24M ×2.81）+ **渠道升奇货**（船长「蝠鲼现货和蓝图上调至奇货」）
   { key: 'ship-falconet', kind: 'ship', refId: 'sh-falconet', rarity: 'rare', basePrice: 42_000, demandMultiplier: 0.65 },
   { key: 'ship-shrike', kind: 'ship', refId: 'sh-shrike', rarity: 'rare', basePrice: 110_000, demandMultiplier: 0.65 },
@@ -572,9 +572,11 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // 2026-09-13 船长：**鹦鹉螺级**（协会测绘处 · T3 侦察巡洋舰）——数字 4（与长尾鲨级同档同价）；
   // ✅ 2026-09-14 虫洞上线：**闸门已删**（与舰体/两张图纸同一批放开，见 design/scout-cruiser §2.3）
   { key: 'ship-swordfish', kind: 'ship', refId: 'sh-swordfish', rarity: 'exotic', basePrice: 24_000_000, demandMultiplier: 1.0, standingReq: 20 }, // 2026-09-13 价位重排：T4 货舰（旗鱼 2.4M ×10）；T4 门槛 20
-  { key: 'ship-xuanwu', kind: 'ship', refId: 'sh-xuanwu', rarity: 'exotic', basePrice: 90_000_000, demandMultiplier: 1.0, standingReq: 20 }, // 2026-09-13 价位重排：T4 装甲（玳瑁 6M ×15）；T4 门槛 20
+  { key: 'ship-xuanwu', kind: 'ship', refId: 'sh-xuanwu', rarity: 'exotic', basePrice: 225_000_000, demandMultiplier: 1.0, standingReq: 20, playerBuyable: false }, // ⚠ 2026-09-29 船长裁决「乙」：玄武属 T4 战斗船 ⇒ 价目锚**统一为巨齿鲨**（原「2026-09-13 价位重排：T4 装甲（玳瑁 6M ×15）= 90M ＋ 现货在售」作废）；成品下架（只收不卖）
   // 2026-09-13 船长裁定：巨齿鲨级（T4 战列舰）走**仅图纸制造**——成品只收不卖（照皇带鱼口径），
   // 行价 225M = T3 武装顶（电鳐 15M）×15；蓝图价 900M = 行价 ×4（>400 万档系数）。**T4 门槛 20**。
+  // ⚠ 2026-09-29 船长裁决「乙」：**225M 这条锚从"巨齿鲨专属"升为"全部 T4 战斗船"的口径** ⇒
+  //   虎鲸 / 旋齿鲨 / 玄武三艘一并对齐本条（见下方两行与 2026-09-29 段注释）。
   { key: 'ship-megalodon', kind: 'ship', refId: 'sh-megalodon', rarity: 'exotic', basePrice: 225_000_000, demandMultiplier: 1.0, standingReq: 20, playerBuyable: false },
   // 2026-09-11 船长裁决（甲）：皇带鱼与开拓/鲸王同口径——**蓝图船收起成品现货**（只收不卖，二手可卖）。
   // 此前它漏在 2026-09-09「蓝图船成品现货下架」那次清扫之外：图鉴写着「仅可制造」（ships.ts priceIsk=0），
@@ -585,8 +587,13 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   照巨齿鲨口径**仅图纸制造**（成品只收不卖）· 行价 150M · 蓝图 600M（= 行价 ×4）；
   // - 旋齿鲨级装甲战列舰 = 照**玄武**口径（现货在售 + 图纸）· 行价 90M · 蓝图 360M（= 行价 ×4）。
   // 两者 T4 门槛一律 20（现货）/ 25（图纸），与 2026-09-13 声望口径一致。
-  { key: 'ship-orca', kind: 'ship', refId: 'sh-orca', rarity: 'exotic', basePrice: 150_000_000, demandMultiplier: 1.0, standingReq: 20, playerBuyable: false },
-  { key: 'ship-helicoprion', kind: 'ship', refId: 'sh-helicoprion', rarity: 'exotic', basePrice: 90_000_000, demandMultiplier: 1.0, standingReq: 20 },
+  //
+  // ⚠ **2026-09-29 船长裁决「乙」＋「虎鲸也是」——本段的价格与渠道口径整段作废**（上面两行价格只是留痕）：
+  //   船长原话「作为T4战斗船，价格应该对标的巨齿鲨」⇒ **虎鲸 / 旋齿鲨 / 玄武三艘的价目锚统一为巨齿鲨**
+  //   （行价 225M · 成品**一律下架** · 蓝图 900M · 一次性 112.5M）；「与巨齿鲨做区分」改由**性能与舰影**承担，
+  //   不再由"更便宜 ＋ 能买现货"承担。T4 门槛（现货 20 / 图纸 25）不变，料单与工时不动。
+  { key: 'ship-orca', kind: 'ship', refId: 'sh-orca', rarity: 'exotic', basePrice: 225_000_000, demandMultiplier: 1.0, standingReq: 20, playerBuyable: false },
+  { key: 'ship-helicoprion', kind: 'ship', refId: 'sh-helicoprion', rarity: 'exotic', basePrice: 225_000_000, demandMultiplier: 1.0, standingReq: 20, playerBuyable: false },
   // 2026-09-09 全舰船蓝图化（第二批）：全部可造舰船开放蓝图书；**蓝图价 = 船市场价 × 档位系数**
   // （≤30 万 ×2 / 30~100 万 ×2.5 / 100~400 万 ×3 / >400 万 ×4）——这条**仍然有效**。
   // ⚠ **2026-09-13 旧规则作废**：同一条注释里的「船价 ≤100 万 → 稀有、>100 万 → 奇货+声望 11」已作废——
@@ -609,14 +616,15 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'sbp-nautilus', kind: 'blueprint', refId: 'sbp-nautilus', rarity: 'exotic', basePrice: 36_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 鹦鹉螺级（2026-09-13：T3 蓝图门槛 15；✅ 2026-09-14 上线放开）
   { key: 'sbp-tortoise', kind: 'blueprint', refId: 'sbp-tortoise', rarity: 'rare', basePrice: 830000, demandMultiplier: 0.65 }, // 陆龟级（蓝图=船价×2.5）
   { key: 'sbp-hawksbill', kind: 'blueprint', refId: 'sbp-hawksbill', rarity: 'exotic', basePrice: 24_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 玳瑁级（2026-09-13：船价 6M ×4 + **渠道升奇货**）
-  { key: 'sbp-xuanwu', kind: 'blueprint', refId: 'sbp-xuanwu', rarity: 'exotic', basePrice: 360_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 玄武级（2026-09-13 价位重排：船价 90M ×4；T4 蓝图门槛 25）
+  { key: 'sbp-xuanwu', kind: 'blueprint', refId: 'sbp-xuanwu', rarity: 'exotic', basePrice: 900_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 玄武级（⚠ 2026-09-29 船长裁决乙：随锚价统一 ⇒ 行价 225M ×4 = 900M；原「2026-09-13：船价 90M ×4 = 360M」作废）
   { key: 'sbp-flyingfish', kind: 'blueprint', refId: 'sbp-flyingfish', rarity: 'rare', basePrice: 420000, demandMultiplier: 0.65 }, // 飞鱼级（蓝图=船价×2）
   { key: 'sbp-sailfish', kind: 'blueprint', refId: 'sbp-sailfish', rarity: 'rare', basePrice: 7_200_000, demandMultiplier: 0.65, standingReq: 15 }, // 旗鱼级（2026-09-13 价位重排：船价 2.4M 属 100~400 万档 ⇒ ×3 = 7.2M；T3 蓝图门槛 15）
   { key: 'sbp-swordfish', kind: 'blueprint', refId: 'sbp-swordfish', rarity: 'exotic', basePrice: 96_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 剑鱼级（2026-09-13 价位重排：船价 24M ×4；T4 蓝图门槛 25）
   { key: 'sbp-megalodon', kind: 'blueprint', refId: 'sbp-megalodon', rarity: 'exotic', basePrice: 900_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 巨齿鲨级（船价 225M ×4；T4 蓝图门槛 25）
   // 2026-09-26 新增两艘 T4 的图纸（书价 = 行价 ×4 · T4 蓝图门槛 25，与同档邻舰一致）
-  { key: 'sbp-orca', kind: 'blueprint', refId: 'sbp-orca', rarity: 'exotic', basePrice: 600_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 虎鲸级指挥舰（船价 150M ×4）
-  { key: 'sbp-helicoprion', kind: 'blueprint', refId: 'sbp-helicoprion', rarity: 'exotic', basePrice: 360_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 旋齿鲨级装甲战列舰（船价 90M ×4）
+  // ⚠ 2026-09-29 船长裁决「乙」＋「虎鲸也是」：两艘与玄武一并按巨齿鲨锚价（225M）重算 ⇒ 书价一律 900M。
+  { key: 'sbp-orca', kind: 'blueprint', refId: 'sbp-orca', rarity: 'exotic', basePrice: 900_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 虎鲸级指挥舰（行价 225M ×4）
+  { key: 'sbp-helicoprion', kind: 'blueprint', refId: 'sbp-helicoprion', rarity: 'exotic', basePrice: 900_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 旋齿鲨级装甲战列舰（行价 225M ×4）
 
 // 2026-09-13 价位重排：皇带鱼 = 旗舰基准 8 亿 ×0.8 = 640M（蓝图 ×4 = 2.56B）；其余三张的价格口径见各自行注释
   { key: 'sbp-colossal', kind: 'blueprint', refId: 'sbp-colossal', rarity: 'exotic', basePrice: 2_560_000_000, demandMultiplier: 1.0, standingReq: 40 }, // 皇带鱼级（2026-09-13：船价 640M ×4；T5 蓝图门槛 40）
@@ -628,10 +636,11 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //      ⑤ **权重**：引擎 `blueprintWeight` 对一次性舰船蓝图 = ×0.5（普通蓝图 ×0.05）；
   //      ⑥ **声望**（**2026-09-16 船长裁定「甲」**）：官方五艘巡洋舰（长尾鲨/电鳐/锤头鲨/牛鲨/鹦鹉螺）的
   //         一次性蓝图 **15 → 8**（原「2026-09-13：T3 蓝图门槛 15」对**这 5 张**作废；其余 T3 五张仍 15）。
+  { key: 'sbp-once-pioneer', kind: 'blueprint', refId: 'sbp-once-pioneer', rarity: 'rare', basePrice: 4_000_000, demandMultiplier: 0.65, standingReq: 15 }, // 2026-09-28 开拓升 T3 ⇒ 补一次性图（行价 8M ×50%）；层 2 稀释池 9 → 10 张
   { key: 'sbp-once-sailfish', kind: 'blueprint', refId: 'sbp-once-sailfish', rarity: 'rare', basePrice: 1_200_000, demandMultiplier: 0.65, standingReq: 15 },
   { key: 'sbp-once-sentinel', kind: 'blueprint', refId: 'sbp-once-sentinel', rarity: 'rare', basePrice: 1_300_000, demandMultiplier: 0.65, standingReq: 15 },
   { key: 'sbp-once-hawksbill', kind: 'blueprint', refId: 'sbp-once-hawksbill', rarity: 'rare', basePrice: 3_000_000, demandMultiplier: 0.65, standingReq: 15 },
-  { key: 'sbp-once-humpback', kind: 'blueprint', refId: 'sbp-once-humpback', rarity: 'rare', basePrice: 4_500_000, demandMultiplier: 0.65, standingReq: 15 },
+  { key: 'sbp-once-humpback', kind: 'blueprint', refId: 'sbp-once-humpback', rarity: 'rare', basePrice: 45_000_000, demandMultiplier: 0.65, standingReq: 15 }, // 2026-09-28 升 T4：行价 90M ×50%（原 9M ×50% = 4.5M）
   { key: 'sbp-once-thresher', kind: 'blueprint', refId: 'sbp-once-thresher', rarity: 'rare', basePrice: 4_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
   { key: 'sbp-once-nautilus', kind: 'blueprint', refId: 'sbp-once-nautilus', rarity: 'rare', basePrice: 4_500_000, demandMultiplier: 0.65, standingReq: 8 }, // ✅ 2026-09-14 随鹦鹉螺级同步放开；2026-09-16 甲案：15 → 8
   { key: 'sbp-once-hammerhead', kind: 'blueprint', refId: 'sbp-once-hammerhead', rarity: 'rare', basePrice: 5_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
@@ -640,11 +649,13 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'sbp-once-electricray', kind: 'blueprint', refId: 'sbp-once-electricray', rarity: 'rare', basePrice: 7_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
   { key: 'sbp-once-swordfish', kind: 'blueprint', refId: 'sbp-once-swordfish', rarity: 'rare', basePrice: 12_000_000, demandMultiplier: 0.65, standingReq: 25 }, // T4：船长「剑鱼的一次性蓝图也下放稀有」
   { key: 'sbp-once-bowhead', kind: 'blueprint', refId: 'sbp-once-bowhead', rarity: 'rare', basePrice: 33_750_000, demandMultiplier: 0.65, standingReq: 25 }, // T4：船长「蝠鲼…一次性蓝图保留在稀有」
-  { key: 'sbp-once-xuanwu', kind: 'blueprint', refId: 'sbp-once-xuanwu', rarity: 'exotic', basePrice: 45_000_000, demandMultiplier: 1.0, standingReq: 25 },
+  // ⚠ 2026-09-29 船长裁决「乙」：玄武/旋齿鲨的一次性图纸随锚价重算（225M ×50% = 112.5M，与巨齿鲨同值）
+  { key: 'sbp-once-xuanwu', kind: 'blueprint', refId: 'sbp-once-xuanwu', rarity: 'exotic', basePrice: 112_500_000, demandMultiplier: 1.0, standingReq: 25 },
   { key: 'sbp-once-megalodon', kind: 'blueprint', refId: 'sbp-once-megalodon', rarity: 'exotic', basePrice: 112_500_000, demandMultiplier: 1.0, standingReq: 25 },
   // 2026-09-26 新增两艘 T4 的一次性图纸（价 = 行价 ×50% · 奇货 · T4 蓝图门槛 25）
-  { key: 'sbp-once-orca', kind: 'blueprint', refId: 'sbp-once-orca', rarity: 'exotic', basePrice: 75_000_000, demandMultiplier: 1.0, standingReq: 25 },
-  { key: 'sbp-once-helicoprion', kind: 'blueprint', refId: 'sbp-once-helicoprion', rarity: 'exotic', basePrice: 45_000_000, demandMultiplier: 1.0, standingReq: 25 },
+  // ⚠ 2026-09-29 船长裁决「乙」＋「虎鲸也是」：两艘一并按巨齿鲨锚价重算 ⇒ 112.5M
+  { key: 'sbp-once-orca', kind: 'blueprint', refId: 'sbp-once-orca', rarity: 'exotic', basePrice: 112_500_000, demandMultiplier: 1.0, standingReq: 25 },
+  { key: 'sbp-once-helicoprion', kind: 'blueprint', refId: 'sbp-once-helicoprion', rarity: 'exotic', basePrice: 112_500_000, demandMultiplier: 1.0, standingReq: 25 },
   { key: 'sbp-once-colossal', kind: 'blueprint', refId: 'sbp-once-colossal', rarity: 'exotic', basePrice: 320_000_000, demandMultiplier: 1.0, standingReq: 40 },
   /**
    * **异星原型装备**（V10：**超档收藏**，无蓝图、不可制造，需声望 10）。
@@ -739,7 +750,18 @@ const BM_MK3_KEYS = new Set([
  * 其中**洞内 5 组维持"无市场行"**（合并前洞内 15 张卡都是隐藏卡、本就没有收购行 ⇒ 逐字不变），
  * 故本表实际 **8 行**（`b-hi` 在列：B 族卡的残骸照样能卖）。
  */
-/** 残骸站内收价（信用点/m³；档位 = 组档位：常 30 / 险 40 / 危 50） */
+/**
+ * 残骸站内收价（信用点/m³；档位 = 组档位：常 30 / 险 40 / 危 50）
+ *
+ * ⚠ **2026-09-28 船长定：这条渠道只作"清理零星残骸"用，任何经济读数都不得把它算成收入**——
+ * 船长原话（照抄）：「**所有残骸的价值都不统计将残骸直接销售到市场
+ * （因为那个仅仅是作为玩家清理零星残骸用的）**」。
+ *
+ * 口径对照（满技能·残骸提纯学 5 后的回收炉产出 vs 本行的直销价）：
+ * 常 **40.06** vs 30（直销 = 75%）· 险 **80.06** vs 40（50%）· 危 **120.11** vs 50（42%）
+ * ⇒ 直接卖残骸**恒劣于**送回收炉，且档位越高差得越多（三档 1:2:3 之后差距拉开）。
+ * 经济工具一律走 `wormholeWreckRecycleIskPerM3` / 回收炉口径，**不读本表**。
+ */
 const WRECK_BUY_PRICE = { common: 30, risky: 40, dire: 50 } as const
 
 export const WRECK_BUY_GOODS: readonly MarketGoodDef[] = WRECK_GROUPS.filter((g) => g.region !== 'wh').map((g) => {

@@ -83,7 +83,7 @@ describe('G/H 提价：两轴同时齐平 D 族（船长令「按你推荐来」
     const h = WRECK_GROUP_BY_KEY.get('h-hi')!
     expect(h.pool).toEqual([['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]])
     expect(meanOf(h.pool)).toBeCloseTo(109.9, 4)
-    expect(perM3Of('h-hi')).toBeCloseTo(68.14, 2)
+    expect(perM3Of('h-hi')).toBeCloseTo(101.88, 2) // 2026-09-28 三档 1:2:3：危档 Y 0.62 → 0.927 ⇒ 0.927 × 109.9
     // 「和 D 族差不多」的硬读数：与 D 族高安组（d-hi）**逐值相等**
     expect(perM3Of('h-hi')).toBeCloseTo(perM3Of('d-hi'), 6)
     expect(meanOf(h.pool)).toBeCloseTo(meanOf(WRECK_GROUP_BY_KEY.get('d-hi')!.pool), 6)
@@ -94,19 +94,19 @@ describe('G/H 提价：两轴同时齐平 D 族（船长令「按你推荐来」
     expect(g.tier).toBe('dire') // 险档 → 危档
     expect(g.pool).toEqual([['min-tritanium', 40], ['min-darkiron', 19], ['min-isotope', 41]])
     expect(meanOf(g.pool)).toBeCloseTo(173.95, 4)
-    expect(perM3Of('g-lo')).toBeCloseTo(107.85, 2)
+    expect(perM3Of('g-lo')).toBeCloseTo(161.25, 2) // 2026-09-28 三档 1:2:3：0.927 × 173.95
     // D 低安组三张卡池均价 173.95 / 173.95 / 169.00 ⇒ 加权 106.6（差 1.2%）
     expect(Math.abs(perM3Of('g-lo') / perM3Of('d-lo') - 1)).toBeLessThan(0.02)
   })
 
-  it('提价前后对照（可复算的读数）：H 56.84 → 68.14 · G 76.20 → 107.85 ISK/m³', () => {
+  it('提价前后对照（可复算的读数）：H 28.62 → 101.88 · G 76.20 → 161.25 ISK/m³', () => {
     // 改前 = 常档基础池（H）/ 险档 + 三卡旧池（G）——按"卡级池 × 卡级档位当量"的旧口径复算
     const beforeH = RECYCLE_YIELD_PER_M3.common * RECYCLE_POOLS_COMMON_MEAN()
-    expect(beforeH).toBeCloseTo(56.84, 2)
+    expect(beforeH).toBeCloseTo(28.616, 2) // 2026-09-28：常档 Y 5.8 → 2.92
     expect(perM3Of('h-hi')).toBeGreaterThan(beforeH)
     // G 改前：三卡 (66.35 + 68.80 + 88.27) 按体量 42/52/66 加权 = 76.20
     const beforeG = (66.35 * 42 + 68.8 * 52 + 88.27 * 66) / (42 + 52 + 66)
-    expect(beforeG).toBeCloseTo(76.2, 1)
+    expect(beforeG).toBeCloseTo(76.2, 1) // 旧险/危档口径的加权值（历史留档，算式不变）
     expect(perM3Of('g-lo')).toBeGreaterThan(beforeG)
   })
 
