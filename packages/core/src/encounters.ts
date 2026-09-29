@@ -441,6 +441,7 @@ function weekendKindOfEncounter(state: GameState, enc: GameState['encounter']): 
 /**
  * 文字三档结算（Q2 甲）：击退（缴获 ISK）/ 受损（耐久 −5%~15%，clamp 5%）/ 被抢（至多 30% 货）。
  * ratio = 我方火力 / (我方火力 + 遭遇强度)；mode 仅影响日志措辞。
+ * ⚠ **被抢档只抢货**（2026-09-28 船长令取消"无货则抢信用点"那条兜底，见该分支注）。
  */
 function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): void {
   const enc = state.encounter
@@ -490,7 +491,12 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
     }
     if (hit) addLog(state, 'warn', hitLogText(shipName, galaxyName, enc.name, suffix, hit))
   } else {
-    // 被抢：至多 30% 船上货；无货则抢至多 5% 钱包
+    /**
+     * **被抢：只抢船上的货，至多 30%**（**2026-09-28 船长令**：「**取消遇袭事件中的抢劫信用点。**」）。
+     *
+     * 沿革：原先"无货可抢就改抢钱包"（至多 5% 信用点，旋钮 `balance.encounter.iskTakenMaxPct`）——
+     * 那条路连同旋钮、类型字段与"抢走 X 信用点"那句文案**一并删除**：空货仓遇袭 ⇒ 一无所获。
+     */
     let takenUnits = 0
     if (fleetShip) {
       const total = Object.values(fleetShip.cargo).reduce((a, b) => a + b, 0)
@@ -506,14 +512,12 @@ function resolveTextual(state: GameState, ctx: SimContext, viaFlee: boolean): vo
       }
       takenUnits = take - rest
     }
-    const takenIsk = takenUnits <= 0 ? Math.floor(state.wallet.isk * bal.iskTakenMaxPct * survF * nextRandom(state.rng)) : 0
-    state.wallet.isk = Math.max(0, state.wallet.isk - takenIsk)
     addLog(
       state,
       'combat',
       takenUnits > 0
         ? `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 被劫${suffix}——货仓损失 ${takenUnits.toLocaleString('zh-CN')} 单位货物，破财消灾。`
-        : `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 被洗劫${suffix}——${takenIsk > 0 ? `抢走 ${takenIsk.toLocaleString('zh-CN')} 信用点` : '一无所获的劫匪悻悻离去'}。`,
+        : `⚔ 遭遇（${galaxyName}·${enc.name}）：${shipName} 被洗劫${suffix}——一无所获的劫匪悻悻离去。`,
     )
   }
   clearEncounter(state)

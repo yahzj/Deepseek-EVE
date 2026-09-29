@@ -1002,10 +1002,8 @@ export interface EncounterBalance {
   /** 遇袭自动修理的**目标值**（2026-09-12 船长定；触发线 = 装甲或结构 < `retreatHullFrac`，
    *  修到两者都 ≥ 本值或组件耗尽——与重复清剿的 0.6 同口径） */
   repairTargetFrac: number
-  /** 被抢：至多损失船上货物比例（无货则抢钱包） */
+  /** 被抢：至多损失船上货物比例（**只抢货**；2026-09-28 船长令后不再有"无货则抢钱包"） */
   lootTakenMaxPct: number
-  /** 被抢（无货时）：至多损失钱包 ISK 比例 */
-  iskTakenMaxPct: number
   /** 击退 / 胜利缴获（2026-09-09 船长定）：= 伏击敌群（当地可见悬赏敌群）赏金 × 本系数（0.5 = 五折）；
    *  旧档遗留无 anomalyId 的遭遇按 威胁 × 1 兜底；缴获不计首胜/声望 */
   lootFracOfBounty: number
