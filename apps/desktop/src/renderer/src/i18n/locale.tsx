@@ -121,8 +121,16 @@ function resolveParamIds(
   for (const [k, v] of Object.entries(params)) {
     if (!k.endsWith('Id')) out[k] = v
   }
+  /**
+   * ⚠ **只有顶层槽译文（`p{n}Id`）才在这里"两步渲染"**（**2026-09-29 修**）。
+   *
+   * 更深的 `p{n}p{k}Id`（参数值自己那层的译文）此前也被一并提升成 `p{n}p{k}`
+   * ⇒ 顶层凭空多出一个键 `p3p1`，它会**盖掉** `composeParts` 里段模板算好的 `out['p3']`
+   * （后写入者胜），于是段内容被"标签模板"顶替、槽位原样漏出（实测「精炼所得：{p1}」）。
+   * 那类译文由 `composeParts` 的段内步骤处理（它认得自己的内层参数），这里不碰。
+   */
   for (const [k, v] of Object.entries(params)) {
-    if (!k.endsWith('Id')) continue
+    if (!/^p\d+Id$/.test(k)) continue
     const base = k.slice(0, -2)
     const rendered = paramText(v)
     if (rendered !== '') out[base] = rendered
@@ -200,7 +208,7 @@ function composeParts(
            */
           const scoped = all[`${slot}${name}`]
           if (scoped !== undefined) deep[name] = scoped
-          else if (Object.prototype.hasOwnProperty.call(all, `${name}Id`)) deep[name] = all[name]!
+          else if (/^p\d+$/.test(slot) && Object.prototype.hasOwnProperty.call(all, `${name}Id`)) deep[name] = all[name]!
         }
         /**
          * **段内参数位自己也能配 id**（2026-09-27 补）：段里的一句读数可能**整段都是参数**
@@ -214,7 +222,14 @@ function composeParts(
         for (const name of Object.keys(deep)) {
           const idKey = `${slot}${name}Id`
           const id = all[idKey]
-          if (typeof id === 'string') deep[name] = paramText(id)
+          if (typeof id !== 'string') continue
+          const inner: Record<string, string | number> = {}
+          for (const p of textOf(id, 'zh').matchAll(/\{(\w+)\}/g)) {
+            const pn = p[1]!
+            const v = all[`${idKey.slice(0, -2)}${pn}`] ?? all[`${slot}${name}p${pn.replace(/^p/, '')}`]
+            if (v !== undefined) inner[pn] = v
+          }
+          deep[name] = interpolate(textOf(id, activeLocale), inner)
         }
         /**
          * 该槽**有槽译文** ⇒ 从首段参数里移出：译文已含必要的值，若还留着原始值，
@@ -229,7 +244,17 @@ function composeParts(
     const prefix = `p${i}`
     const out: Record<string, string | number> = {}
     for (const [k, v] of Object.entries(all)) {
-      if (k.startsWith(prefix) && k.length > prefix.length && !k.endsWith('Id')) out[k.slice(prefix.length)] = v
+      if (!k.startsWith(prefix) || k.length <= prefix.length) continue
+      if (k.endsWith('Id')) continue
+      /**
+       * ⚠ **前缀要有边界**（**2026-09-29 修**，船长报障「{p1} 读不到参数」）：
+       * 原来的"以 `p1` 开头"会**吃掉上一层的槽键**——`p1Id`（首段槽译文）与 `p1p2`
+       * （进一步的内层参数）都被当成"本段的参数"，其中 `p1p2` 还会**覆盖**上一层的内层参数
+       * （它后写入）⇒ 实测把段模板的 `{p1}` 顶成了别的值（漏出 `{p1}`）。
+       * 本段的命名空间只有 `p{i}p{k}` 与更深的 `p{i}p{k}p{j}` ⇒ 只认这种形状。
+       */
+      if (!/^p\d+(p\d+)+$/.test(k)) continue
+      out[k.slice(prefix.length)] = v
     }
     return out
   }

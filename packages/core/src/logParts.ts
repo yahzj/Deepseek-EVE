@@ -28,12 +28,18 @@ export interface LogSeg {
  *
  * `firstSegNo`：**段号起点**。基础模板自己已占用 `p1…pN` 时，段链必须从 `N+1` 起排，
  * 否则段的 `p{n}Id` 会和外层同名参数抢同一个槽（外层 `p1` 是位次、段链 `p1` 是技能名 ⇒ 张冠李戴）。
+ *
+ * ⚠ **`parts`（**2026-09-29 修**）**：渲染层 `i18n/locale.tsx` 的 `composeParts` **只用 `parts` 拼段链**，
+ * `p{n}Id` 一律当**槽译文**（`{pN}` 那一槽换成该句）——本函数此前只产出 `p{n}Id`、不产出 `parts`
+ * ⇒ **段链在"界面按 id 渲染"这条路上整条丢失**：中文侧因为回落到 `text`（中文原串）看着正常，
+ * 英文侧只剩基础模板那一句。船长 2026-09-29 报障的「参数读不出来 / 段丢失」就是这一处 + 段号抢槽。
+ * ⇒ 现在一并产出 `parts`（按渲染顺序的段 id，空段不列）。
  */
 export function composeLog(
   lead: string,
   segs: Array<LogSeg | null | undefined>,
   firstSegNo = 1,
-): { text: string; textParams: Record<string, string | number> } {
+): { text: string; textParams: Record<string, string | number>; parts: string[] } {
   const kept = segs.filter((s): s is LogSeg => !!s && s.text !== '')
   const textParams: Record<string, string | number> = {}
   const walk = (seg: LogSeg, prefix: string): void => {
@@ -43,5 +49,20 @@ export function composeLog(
     for (const [j, sub] of (seg.subs ?? []).entries()) walk(sub, `${prefix}p${j + 1}`)
   }
   for (const [i, seg] of kept.entries()) walk(seg, String(firstSegNo + i))
-  return { text: lead + kept.map((s) => s.text).join(''), textParams }
+  const parts = kept.map((s) => s.id).filter((id): id is string => id !== undefined)
+  return { text: lead + kept.map((s) => s.text).join(''), textParams, parts }
+}
+
+/**
+ * **`composeLog` 的产物 → `addLog` 的参数**（**2026-09-29 加**）。
+ *
+ * 为什么要这一层收口：段链键 `parts`（字符串数组）**不在 `LogParams` 的值域里**
+ * （见 `state.LogParams` 头注：并进去会砸 11 处读取点）⇒ 按该头注的指示"**需要它时在写入点收口**"，
+ * 全仓**只有本函数**做这一次断言；各调用点写 `...logParamsOf(composed)` 即可，不必各自转一次类型。
+ */
+export function logParamsOf(composed: { textParams: Record<string, string | number>; parts: string[] }): Record<string, string | number> {
+  return { ...composed.textParams, ...(composed.parts.length > 0 ? { parts: composed.parts } : {}) } as Record<
+    string,
+    string | number
+  >
 }

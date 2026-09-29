@@ -14,7 +14,7 @@
  */
 
 import { tuningMul } from './tuning'
-import { composeLog } from './logParts'
+import { composeLog, logParamsOf } from './logParts'
 import { addLog, MAX_SKILL_LEVEL } from './state'
 import type { CmdText, GameState, TrainingItem } from './state'
 import type { SimContext, SkillCatalog, SkillDef } from './types'
@@ -886,7 +886,7 @@ export function removeQueueAt(state: GameState, index: number, catalog?: SkillCa
     p1: index + 1,
     p2: removed.skillId,
     p3: removed.targetLevel,
-    ...composed.textParams,
+    ...logParamsOf(composed),
   })
   // 级联单独记一条（段链已占用 p4+，另起一条最省事，玩家在日志里也能一眼看到被连带取消了什么）
   if (cascaded.length > 0) {
