@@ -19,6 +19,9 @@
  *
  * ⚠ 旧版是**冻结的历史形态**；新版后续新增（副AI活动 / 计时中组 / AI 迷你卡动画…）只在 modern 出现
  * —— 这是船长已知并接受的差异。
+ *
+ * ⚠ 例外 = **船长点名要两版同步的读数**：顶栏「钱包 ＋ 声望」（2026-09-29 令）走共用件
+ * （`standingChip()` 与 `MoneyFit`），两套布局各调一次 —— 别再往单边加。
  */
 import type { ReactNode } from 'react'
 import type { GameEngine } from '../game/engine'
