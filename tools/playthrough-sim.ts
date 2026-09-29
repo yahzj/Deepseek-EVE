@@ -3301,6 +3301,22 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
   {
     const bossDefEarly = ctx.anomalies.get('ano-vault-sentinel')
     const bossWEarly = bossDefEarly ? winOf(state, ctx, bossDefEarly) : 0
+    /**
+     * **策略倾向的中期分岔（`--bias`，2026-09-28 船长令）**：三档**只换"每拍先推进哪条线"的优先序**，
+     * 不新增玩法——下面的动作函数与守卫全部原样复用，因此三跑仍可比。
+     * - `mine`：**采矿优先**（直接落到本块末尾的 `doMine()`）；
+     * - `combat`：**悬赏优先**（先打悬赏/刷钱，采矿退成兜底）；
+     * - `industry`：**制造优先**（先推精炼与学图，采矿退成兜底）。
+     * ⚠ 三档都**保留采矿兜底**：不挖矿就没有现金与材料（2026-09-28 实测：兜底通道断掉时
+     * 6 天现金恒定在 5~11 万）。
+     */
+    if (BIAS === 'combat' && !pilotLineBusy()) {
+      doBounty()
+      if (!state.expedition.active && !state.scanning.active) doFarm()
+    } else if (BIAS === 'industry' && !state.mining.active && !pilotLineBusy()) {
+      doRefineCraft()
+      doLearnCraft()
+    }
     if (!(WANTS.boss && !goalDone.boss && bossWEarly >= 0.85)) doMine()
   }
   /**
