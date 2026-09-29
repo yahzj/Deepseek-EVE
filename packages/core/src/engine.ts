@@ -880,7 +880,6 @@ export function removeQueueAt(state: GameState, index: number, catalog?: SkillCa
       note === '' ? null : { text: note, id: noteId },
       demoted.length > 0 ? { text: '后续同技能队列已顺延一级。', id: 'core.engine.016' } : null,
     ],
-    4,
   )
   addLog(state, 'levelup', composed.text, index === 0 ? 'core.engine.014' : 'core.engine.015', {
     p1: index + 1,

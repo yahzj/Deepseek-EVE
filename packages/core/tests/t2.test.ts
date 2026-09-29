@@ -106,7 +106,7 @@ describe('T2 取消与进度保留', () => {
     expect(log.textId).toBe('core.engine.014')
     expect(log.textParams?.p2).toBe('a')
     expect(log.textParams?.p3).toBe(1)
-    expect(log.textParams?.p4Id).toBe('core.engine.016') // 段链从 p4 起（基础模板占了 p1…p3）
+    expect(log.textParams?.seg2Id).toBe('core.engine.016') // 段链用专属键空间 `seg{n}…`（2026-09-29 定）
     expect(log.textParams?.p1Id).toBeUndefined() // 空 note 不挂链
   })
 
@@ -124,7 +124,7 @@ describe('T2 取消与进度保留', () => {
     expect(log.textId).toBe('core.engine.015')
     expect(log.textParams?.p1).toBe(3) // = 下标 + 1（玩家看到的位次）
     expect(log.textParams?.p2).toBe('a')
-    expect(log.textParams?.p4Id).toBe('core.engine.016')
+    expect(log.textParams?.seg2Id).toBe('core.engine.016')
     expect(log.text).toContain('移除第 3 位：a（目标 Lv2）。后续同技能队列已顺延一级。')
     expect(state.skills.queue.map((q) => ({ skillId: q.skillId, targetLevel: q.targetLevel }))).toEqual([
       { skillId: 'a', targetLevel: 1 },

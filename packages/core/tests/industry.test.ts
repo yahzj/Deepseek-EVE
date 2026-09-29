@@ -196,49 +196,55 @@ describe('精炼与市场（M1 经济）', () => {
       // 甲案（2026-09-20）：本条是"多段 + 段内带词"的重头——基础模板 + 所得段 + 明细段 + 句号段
       expect(fin[0]!.textId).toBe('core.industry.077') // 精炼炉停 … 原料耗尽（共 N 批）
       /**
-       * ⚠ **2026-09-29 改判（船长报障「{p1} 读不到参数」）**：段链键有两种写法，
-       * **必须按"谁占着 `{pN}` 槽"分**：
-       * - 基础模板 `.077` 自己占 `p1`（船名）`p2`（批数）⇒ **段链从 `p3` 起**（此前从 `p1` 起 = 抢槽，
-       *   渲染层会把基础参数填进段位、段的 `{p1}` 无人供给 ⇒ 原样漏给玩家）；
-       * - 段链另由 `parts`（字符串数组）**显式声明**——渲染层 `composeParts` 只用它拼段链
-       *   （`p{n}Id` 一律当**槽译文**，见 `i18n/locale.tsx`）。
+       * ⚠ **2026-09-29 定（船长报障「各种事件里的参数都有问题」的最终修法）**：段链有**专属键空间**
+       * `seg{n}…`（`n` 从 2 起，第 1 段 = 基础模板本身），`parts` 数组**显式声明**段 id 链。
+       * 基础模板继续用 `p1`/`p2`（船名 / 批数），两者**前缀不同 ⇒ 不可能抢号**
+       * （此前段链借用 `p{n}Id`，与基础槽同号二义 ⇒ 渲染层只能猜，猜哪头都错）。
        */
-      expect(fin[0]!.textParams?.p1).toBe(fin[0]!.textParams?.p1) // 基础槽（船名）仍在 p1
-      expect(fin[0]!.textParams?.p3Id).toBe('core.industry.067') // 第 2 段（精炼所得）
-      expect(fin[0]!.textParams?.p3p1).toBeDefined() // 该段自己的清单值
+      expect(fin[0]!.textParams?.p1).toBe('矿甲') // 基础槽（船名）仍在 p1
+      expect(fin[0]!.textParams?.seg2Id).toBe('core.industry.067') // 第 2 段（精炼所得）
+      expect(fin[0]!.textParams?.seg2p1).toBeDefined() // 该段自己的清单值
+      expect(fin[0]!.textParams?.seg2p1p1).toBeDefined() // 清单那层模板（`.044`）的 `{p1}`
+      expect(fin[0]!.textParams?.seg2p1Id).toBe('core.industry.044') // 清单那层模板是谁
       expect(Array.isArray(fin[0]!.textParams?.parts)).toBe(true)
       const partIds = fin[0]!.textParams?.parts as unknown as string[]
       expect(partIds).toEqual(['core.industry.067', 'core.state.042'])
-      expect(fin[0]!.textParams?.p4Id).toBe('core.state.042') // 第 3 段（句号）
+      expect(fin[0]!.textParams?.seg3Id).toBe('core.state.042') // 第 3 段（句号）
       // 渲染层口径复算一遍英文（渲染层在 desktop 侧，core 测试里按同规则走 **parts 段链**）：
-      // 基础段用顶层键、第 n 段用 `p{n}p{k}`，逐段取 en 列拼起来 ⇒ 应当整句英文、不残留中文小词
+      // 基础段用顶层键、第 n 段用**专属键空间** `seg{n}p{k}`，逐段取 en 列拼起来 ⇒ 整句英文、不残留中文小词
       const tp = fin[0]!.textParams ?? {}
       const enOf = (id: string, params: Record<string, string | number>): string =>
         (L10N[id]?.en ?? `「缺 ${id}」`).replace(/\{(\w+)\}/g, (mm, k: string) => (k in params ? String(params[k]) : mm))
       const nsFor = (i: number): Record<string, string | number> => {
         const ns: Record<string, string | number> = {}
         const all = tp as Record<string, unknown>
-        for (const [k, v] of Object.entries(tp)) {
-          if (typeof v !== 'string' && typeof v !== 'number') continue
-          if (i === 0) {
+        if (i === 0) {
+          for (const [k, v] of Object.entries(tp)) {
+            if (typeof v !== 'string' && typeof v !== 'number') continue
+            if (k.startsWith('seg')) continue
             if (/^p\d+p\d+$/.test(k) || /^p\d+Id$/.test(k)) continue
             ns[k] = v
-          } else if (new RegExp(`^p${i}(p\\d+)+$`).test(k)) {
-            ns[k.slice(`p${i}`.length)] = v
           }
+          return ns
+        }
+        const seg = `seg${i + 1}`
+        for (const [k, v] of Object.entries(tp)) {
+          if (typeof v !== 'string' && typeof v !== 'number') continue
+          if (!k.startsWith(seg) || k.length <= seg.length) continue
+          if (k.endsWith('Id')) continue
+          ns[k.slice(seg.length)] = v
         }
         /**
-         * 段内参**自己也能配 id**（`p{n}p{k}Id` ⇒ 值换成该 id 的译文；渲染层同款）：
-         * 例：清单那一位挂 `.044`（`{p1}{p2}`）⇒ 先用**它自己那层的命名空间**
-         * （`p{n}p{k}p{j}`，见 `composeLog.walk`）把模板填好，再作为段内参数。
+         * 段内参**自己也能配 id**（`seg{n}p{k}Id` ⇒ 值换成该 id 的译文；渲染层同款）：
+         * 例：清单那一位挂 `.044`（`{p1}{p2}`）⇒ 先用**它自己那层**的命名空间填好再作为段内参数。
          */
         for (const name of Object.keys(ns)) {
-          const id = all[`p${i}${name}Id`]
+          const id = all[`${seg}${name}Id`]
           if (typeof id !== 'string') continue
           const inner: Record<string, string | number> = {}
           for (const pm of (L10N[id]?.zh ?? '').matchAll(/\{(\w+)\}/g)) {
             const pn = pm[1]!
-            const v = all[`p${i}${name}p${pn.replace(/^p/, '')}`]
+            const v = all[`${seg}${name}p${pn.replace(/^p/, '')}`]
             if (typeof v === 'string' || typeof v === 'number') inner[pn] = v
           }
           ns[name] = enOf(id, inner)
@@ -250,13 +256,8 @@ describe('精炼与市场（M1 经济）', () => {
       const rendered = partsEn.join('')
       expect(rendered).toContain('Refinery stopped')
       expect(rendered).toContain('refined:')
-      /**
-       * 🔴 **已知残留（2026-09-29 未修完 · 船长报障那一批）**：清单那一位挂的 `.044`（`{p1}{p2}`）
-       * 在**段内参数**这一层没有被填 —— 渲染层要按 `p{n}p{k}p{j}` 取内层值，而 core 目前把
-       * "清单本体"与"种数"放在**同一层**（`p{n}p{k}p1`/`p2`）⇒ 取不到 ⇒ 原样漏 `{p1}`。
-       * 这条断言把它**钉成显式的已知问题**（红着的期望值就是"漏一个槽"），修完改成 not.toMatch。
-       */
-      expect(rendered, '已知残留：段内参数层漏一个槽（见上注）').toMatch(/\{p\d+\}/)
+      // 段链三层贯通 ⇒ 不许残留任何占位符（2026-09-29 修完，此前是 toMatch 的"已知残留"）
+      expect(rendered, '段链不许漏占位符').not.toMatch(/\{p\d+\}/)
       // 腔调词（炉/所得/句号）全走 id ⇒ 英文侧只剩内容数据名（测试里是「矿甲」这类专名）
       expect(rendered).toContain('矿甲') // 内容名按专名原样带出（甲案边界内）
       expect(rendered.replace(/矿甲|矿粉[\w-]+×\d+|\{p\d+\}/g, '')).not.toMatch(/[\u4e00-\u9fff]/)

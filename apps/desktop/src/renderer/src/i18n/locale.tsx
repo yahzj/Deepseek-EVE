@@ -172,13 +172,24 @@ function composeParts(
     if (typeof v === 'string' || typeof v === 'number') all[k] = v
   }
   /**
-   * 参数命名空间：**第 1 段**用顶层键（`p1`/`p2`…，与单段日志完全一致）；
-   * **第 n(n≥2) 段**用 `p{n-1}p{k}`（例：第 4 段的 `{p1}` = `p3p1`），段间互不串味。
+   * **参数命名空间（两套，前缀分流 · 2026-09-29 定）**：
+   * - `paramsFor(0)` ＝ **基础模板**那份：顶层 `p{k}` ＋ **槽译文**（`p{n}Id` ⇒ 把 `{pN}` 换成该句）；
+   * - `paramsFor(i≥1)` ＝ **第 i+1 段**那份：core 侧段链用**专属键空间** `seg{n}…`
+   *   （`parts[0]` = 第 2 段 ⇒ 前缀 `seg{i+1}`）。
+   *
+   * 为什么必须分家（船长 2026-09-29 报障「各种事件里的参数都有问题」的根因）：
+   * 段链原先借用 `p{n}Id`/`p{n}p{k}`，于是 `p2Id` **二义**（槽译文 还是 段 id？）——
+   * 渲染层只能猜，猜哪头都错：当成槽译文 ⇒ 段的 `{p1}` 漏出；当成段 id ⇒ 基础槽被段内容顶掉。
+   * 现在两边前缀不同（`p…` / `seg…`），**不需要猜**。
    */
   const paramsFor = (i: number): Record<string, string | number> => {
     if (i === 0) {
       const out: Record<string, string | number> = {}
-      for (const [k, v] of Object.entries(all)) if (!/^p\d+p\d+$/.test(k) && !/^p\d+Id$/.test(k)) out[k] = v
+      for (const [k, v] of Object.entries(all)) {
+        if (k.startsWith('seg')) continue // 段链专属键空间（不属基础模板）
+        if (/^p\d+p\d+$/.test(k) || /^p\d+Id$/.test(k)) continue // 槽内参数 / 槽译文（下一轮处理）
+        out[k] = v
+      }
       /**
        * **槽位 id 代回（2026-09-20 实障修正）**：`p{n}Id` ＝ 首段 `{pN}` 这一槽那句话的 id。
        *
@@ -213,23 +224,27 @@ function composeParts(
         /**
          * **段内参数位自己也能配 id**（2026-09-27 补）：段里的一句读数可能**整段都是参数**
          * （例：进洞停机读数的「开采」档——矿带名与矿石名都在参数位上，而参数不会被翻译）。
-         * 约定与顶层完全同款：`p{n}p{k}Id` ⇒ 该槽第一步先换成它的当前语言译文。
+         * 约定与顶层同款：`p{n}p{k}Id` ⇒ 该槽第一步先换成它的当前语言译文。
          * 用**声明过的占位符名**去查（`{p1}` → `p4p1Id`），不让槽内键串味。
          *
-         * 中文界面下这一步恒等于原值（`paramText` 只在**英文**时取表里的译文），
-         * 所以中文正文与改造前逐字相同（`l10n:render` 的夹具逐字核对着两种语言）。
+         * ⚠ **段链的同类键在 `seg{n}p{k}Id` 上**（**2026-09-29 定** · 段链专属键空间，见 `paramsFor` 头注）：
+         * 这一轮也要认它，否则段模板的 `{p1}`（那一槽挂了清单层模板）会整套漏出
+         * （实测「精炼所得：{p1}」）。取参顺序：段内层 `seg{n}p{k}p{j}` → 段槽值 `seg{n}p{k}`。
          */
         for (const name of Object.keys(deep)) {
-          const idKey = `${slot}${name}Id`
-          const id = all[idKey]
-          if (typeof id !== 'string') continue
+          const innerId = all[`${slot}${name}Id`] ?? all[`seg${slot.slice(1)}${name}Id`]
+          if (typeof innerId !== 'string' || L10N[innerId] === undefined) continue
           const inner: Record<string, string | number> = {}
-          for (const p of textOf(id, 'zh').matchAll(/\{(\w+)\}/g)) {
+          for (const p of textOf(innerId, 'zh').matchAll(/\{(\w+)\}/g)) {
             const pn = p[1]!
-            const v = all[`${idKey.slice(0, -2)}${pn}`] ?? all[`${slot}${name}p${pn.replace(/^p/, '')}`]
+            const segSlot = `seg${slot.slice(1)}`
+            const v =
+              all[`${segSlot}${name}p${pn.replace(/^p/, '')}`] ??
+              all[`${segSlot}${name}${pn}`] ??
+              deep[name]
             if (v !== undefined) inner[pn] = v
           }
-          deep[name] = interpolate(textOf(id, activeLocale), inner)
+          deep[name] = interpolate(textOf(innerId, activeLocale), inner)
         }
         /**
          * 该槽**有槽译文** ⇒ 从首段参数里移出：译文已含必要的值，若还留着原始值，
@@ -241,19 +256,16 @@ function composeParts(
       }
       return out
     }
-    const prefix = `p${i}`
+    /**
+     * **链段那份**：读**专属键空间** `seg{n}…`（`n` = 段号，`parts[0]` = 第 2 段）。
+     * 产出给段模板用的命名空间：`p{k}`（段内参数）、`p{k}p{j}`（参数那层的内部值）。
+     * ⚠ 与基础模板**不同前缀** ⇒ 不可能互相覆盖（这正是这一版的核心）。
+     */
+    const prefix = `seg${i + 1}`
     const out: Record<string, string | number> = {}
     for (const [k, v] of Object.entries(all)) {
       if (!k.startsWith(prefix) || k.length <= prefix.length) continue
       if (k.endsWith('Id')) continue
-      /**
-       * ⚠ **前缀要有边界**（**2026-09-29 修**，船长报障「{p1} 读不到参数」）：
-       * 原来的"以 `p1` 开头"会**吃掉上一层的槽键**——`p1Id`（首段槽译文）与 `p1p2`
-       * （进一步的内层参数）都被当成"本段的参数"，其中 `p1p2` 还会**覆盖**上一层的内层参数
-       * （它后写入）⇒ 实测把段模板的 `{p1}` 顶成了别的值（漏出 `{p1}`）。
-       * 本段的命名空间只有 `p{i}p{k}` 与更深的 `p{i}p{k}p{j}` ⇒ 只认这种形状。
-       */
-      if (!/^p\d+(p\d+)+$/.test(k)) continue
       out[k.slice(prefix.length)] = v
     }
     return out

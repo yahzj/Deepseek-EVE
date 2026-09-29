@@ -251,6 +251,34 @@ const FIXTURES: Fixture[] = [
     expectEn:
       'Long-haul transport started: 沙猫 runs “母港 ⇄ 新港” (a hold of 320 m³ filled with virtual freight) — a single leg takes about 45 minutes; single-leg pay drifts with the market between 12,000 and 20,000 credits (one price per trip, settled on arrival); the cargo already aboard was unloaded into the warehouse (50 units).',
   },
+  /**
+   * **精炼停炉·段链三层**（**2026-09-29 加** · 船长报障「各种事件里的参数都有问题」的验收夹具）。
+   *
+   * 一条把三层走全：① 基础模板 `.077`（自己占 `p1` 船名 / `p2` 批数）
+   * ② 段 `.067`「；精炼所得：{p1}」（**专属键空间** `seg2…`）
+   * ③ 清单那层模板 `.044`「{p1}{p2}」（值在 `seg2p1p1`）
+   * 三种错都会现形：**抢槽**（段内容顶替基础槽）、**段丢失**（`parts` 缺席时英文只剩基础句）、
+   * **漏槽**（内层取不到值 ⇒ `{p1}` 原样漏出）。
+   */
+  {
+    name: '精炼停炉·段链三层（抢槽 / 段丢失 / 漏槽 三条一起守）',
+    text: '精炼炉停：矿甲 原料耗尽（共 1 批）；精炼所得：矿粉min-a×24、矿粉min-b×6。',
+    textId: 'core.industry.077',
+    textParams: {
+      p1: '矿甲',
+      p2: 1,
+      // 段链专属键空间 `seg{n}…`（n 从 2 起；第 1 段 = 基础模板本身）
+      seg2Id: 'core.industry.067',
+      seg2p1: '矿粉min-a×24、矿粉min-b×6',
+      seg2p1p1: '矿粉min-a×24、矿粉min-b×6', // 清单那层模板 `.044` 的 {p1}
+      seg2p1p2: '', // `.044` 的 {p2}（「等 N 种」尾巴；没截断 ⇒ 空串）
+      seg2p1Id: 'core.industry.044', // 清单那层模板是谁
+      seg3Id: 'core.state.042',
+      parts: ['core.industry.067', 'core.state.042'],
+    } as unknown as Record<string, string | number>,
+    expectZh: '精炼炉停：矿甲 原料耗尽（共 1 批）；精炼所得：矿粉min-a×24、矿粉min-b×6。',
+    expectEn: 'Refinery stopped: 矿甲 ran out of feedstock (1 batches); refined: 矿粉min-a×24、矿粉min-b×6.',
+  },
 ]
 
 async function main(): Promise<void> {

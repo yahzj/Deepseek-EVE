@@ -41,26 +41,45 @@ export type LogSeg = {
  * `firstSegNo`：**段号起点**。基础模板自己已占用 `p1…pN` 时，段链必须从 `N+1` 起排，
  * 否则段的 `p{n}Id` 会和外层同名参数抢同一个槽（外层 `p1` 是位次、段链 `p1` 是技能名 ⇒ 张冠李戴）。
  *
- * ⚠ **`parts`（**2026-09-29 修**）**：渲染层 `i18n/locale.tsx` 的 `composeParts` **只用 `parts` 拼段链**，
- * `p{n}Id` 一律当**槽译文**（`{pN}` 那一槽换成该句）——本函数此前只产出 `p{n}Id`、不产出 `parts`
- * ⇒ **段链在"界面按 id 渲染"这条路上整条丢失**：中文侧因为回落到 `text`（中文原串）看着正常，
- * 英文侧只剩基础模板那一句。船长 2026-09-29 报障的「参数读不出来 / 段丢失」就是这一处 + 段号抢槽。
- * ⇒ 现在一并产出 `parts`（按渲染顺序的段 id，空段不列）。
+ * 🔴 **段链用专属键空间 `seg…`**（**2026-09-29 定** · 船长报障「各种事件里的参数都有问题」的最终修法）：
+ *
+ * 段链此前借用槽号 `p{n}Id` / `p{n}p{k}` 表达，于是**键面二义**：
+ * `p2Id` 既可能是"基础模板 `{p2}` 那一槽的译文"、也可能是"第 2 段的 id"——
+ * 渲染层只能猜，猜哪头都会错（猜成槽译文 ⇒ 段的 `{p1}` 漏出；猜成段 id ⇒ 基础槽被段内容顶掉）。
+ *
+ * ⇒ 现在**两套键各归各**：
+ * - **基础模板**用 `p{n}` / `p{n}Id` / `p{n}p{k}`（槽值 · 槽译文 · 槽内参数；单段日志的老写法不变）；
+ * - **段链**用 `seg{n}Id` / `seg{n}p{k}` / `seg{n}p{k}p{j}`（`n` 从 **2** 起，第 1 段就是基础模板本身）。
+ *
+ * 两边**不可能撞号** ⇒ 渲染层按前缀分流即可，不用再猜。段号从 2 起是硬约定（见 `walk`）。
  */
 export function composeLog(
   lead: string,
   segs: Array<LogSeg | null | undefined>,
-  firstSegNo = 1,
+  firstSegNo = 2,
 ): { text: string; textParams: Record<string, string | number>; parts: string[] } {
+  const start = Math.max(2, firstSegNo)
   const kept = segs.filter((s): s is LogSeg => !!s && s.text !== '')
   const textParams: Record<string, string | number> = {}
   const walk = (seg: LogSeg, prefix: string): void => {
-    if (seg.id !== undefined) textParams[`p${prefix}Id`] = seg.id
+    if (seg.id !== undefined) textParams[`seg${prefix}Id`] = seg.id
     let k = 0
-    for (const v of Object.values(seg.params ?? {})) textParams[`p${prefix}p${++k}`] = v
+    for (const [key, value] of Object.entries(seg.params ?? {})) {
+      /**
+       * - `${值键}p<数字>` ⇒ **该值那层模板的内部值**（如清单那层 `.044` 的 `{p1}`）；
+       * - `${值键}Id` ⇒ **那层模板是谁**（渲染层认 `${段键}${值键}Id`）。
+       * 两者都**不占本段的位次**（位次只由"值"决定，值写 `p<数字>` 形的键）。
+       */
+      if (/^p\d+p\d+$/.test(key) || /^(p\d+)Id$/.test(key)) {
+        textParams[`seg${prefix}${key}`] = value
+        continue
+      }
+      k += 1
+      textParams[`seg${prefix}p${k}`] = value
+    }
     for (const [j, sub] of (seg.subs ?? []).entries()) walk(sub, `${prefix}p${j + 1}`)
   }
-  for (const [i, seg] of kept.entries()) walk(seg, String(firstSegNo + i))
+  for (const [i, seg] of kept.entries()) walk(seg, String(start + i))
   const parts = kept.map((s) => s.id).filter((id): id is string => id !== undefined)
   return { text: lead + kept.map((s) => s.text).join(''), textParams, parts }
 }

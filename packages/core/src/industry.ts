@@ -549,33 +549,29 @@ function yieldNoteFor(
   const parts: YieldNote['parts'] = []
   const isRecycle = kind === 'recycle'
   /**
-   * 一类产物 = **一个段**：段文本 `装备 A×1、B×2 等7种`（中文原串按此拼）；
-   * id 链 = 自带词（本段 `.058/.059/…` ＝「保底原材料 {p1}」这类**标签 + 清单**模板）
-   * → 清单值本身走**参数内部命名空间** `p{n}p{k}p{j}`
-   * （`p{n}p{k}` 是给本段 `{p1}` 用的清单、`p{n}p{k}p{j}` 是清单再往下那层）。
+   * 一类产物 = **一个段**：段文本 `装备 A×1、B×2 等7种`；
+   * 段 id（`.057/.058/…`）是**标签 + 清单**，清单自己那层模板是 `.044`（`{p1}{p2}`）。
    *
-   * ⚠ **2026-09-29 修**（船长报障「{p1} 读不到参数」）：此前把清单**又**声明成 `p{n}p{k}Id`
-   * 并把标签模板（`.044`「所得：{p1}」）挂上去 ⇒ 渲染层拿"标签模板"当清单去插，`{p1}` 无人供给、
-   * 原样漏给玩家（实测「精炼所得：{p1}」）。现清单只走值位，标签由**段 id** 承担，各归各位。
+   * ⚠ 段内参数按 `LogSeg` 头注的**有序三段式**写（值 → 它的内部值 → 那层模板的 id）：
+   * - `p1` ＝ 清单（段 id 的 `{p1}`）、`p1p1` ＝ 同一个清单（`.044` 的 `{p1}`）、`p1Id` ＝ `.044`；
+   * - `p2` ＝ 「等 N 种」尾巴、`p2p1` ＝ 种数、`p2Id` ＝ `.048`
+   *   （**没截断时 `p2` 传空串**：`.044`/`.058` 的 `{p2}` 槽恒在，不喂就漏一个 `{p2}` 给玩家）。
    */
   const typeSeg = (label: string, labelId: string, m: { list: string; capped: boolean; total: number }): LogSeg => {
-    const capTxt = ` 等${m.total}种`
-    const text = `${label}${m.list}${m.capped ? capTxt : ''}`
-    /**
-     * ⚠ **清单那一位要显式声明"它自己的 id"**（**2026-09-29 修**）：`composeLog.walk` 会按**位序**给参数配
-     * `p{n}p{k}Id`（第一位 → `[0]` 的值），而渲染层要靠这个 id 把清单值插进模板（`.044`「{p1}{p2}」）
-     * ⇒ 键序必须是"值在前、id 在后"，且 id 只声明一次（重复键会被 JS 合并、位置留在第一次出现处）。
-     */
-    /**
-     * ⚠ **第三层（清单那一层的内部参数）暂未打通**（**2026-09-29 · 见 `LogSeg` 头注的"已知缺口"**）：
-     * 段 id（`.057/.058…`「标签 {p1}」）那一层现在**够用**（`p{n}p{k}` 直接喂它）；
-     * 而清单值自己再挂一层模板（`.044`「{p1}」/`.048`「 等{p1}种」）需要 `p{n}p{k}p{j}` 的键序，
-     * 键序由 `walk` 按插入序生成、目前尚未按"值-内部参数-内部参数id"的三段式改写 ⇒ 先修到第二层。
-     */
+    const capTxt = m.capped ? ` 等${m.total}种` : ''
+    const text = `${label}${m.list}${capTxt}`
+    const params: Record<string, string | number> = {
+      p1: m.list,
+      p1p1: m.list,
+      p1Id: 'core.industry.044',
+      p2: capTxt,
+      p2Id: 'core.industry.048',
+    }
+    if (m.capped) params.p2p1 = m.total
     return {
       text,
       id: labelId,
-      params: m.capped ? { p1: m.list, p2: capTxt, p3: m.total } : { p1: m.list },
+      params,
     }
   }
 
@@ -669,8 +665,7 @@ export function stopRefineRun(state: GameState, ctx: SimContext, runId: number):
         ? { text: `。未用完的 ${refundName} ${refundedTxt} m³ 已退回物品仓库。`, id: 'core.industry.070', params: { p1: refundName, p2: refundedTxt } }
         : { text: '。原料未锁定无需退回，余料仍留在货仓/仓库。', id: 'core.industry.071' },
     ],
-    // 基础模板 `core.industry.068/069` 自己占 `p1`（资源名）`p2`（批数）⇒ 段链从 p3 起
-    3,
+    // 段号从 2 起（段链用专属键空间 seg{n}…，与基础模板的 p1/p2 不同前缀 ⇒ 不会抢号）
   )
   addLog(state, 'industry', composed.text, isRecycle ? 'core.industry.068' : 'core.industry.069', {
     p1: refundName,
@@ -774,8 +769,6 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
                 params: { p1: RARE_UNIT_M3 },
               },
             ],
-            // 基础模板 `core.industry.072` 占 p1/p2（2026-09-29 修：此前缺省从 p1 起 ⇒ 抢槽）
-            3,
           )
           addLog(state, 'industry', composed.text, 'core.industry.072', { p1: def.name, p2: doneBatches, ...logParamsOf(composed) })
         } else {
@@ -785,12 +778,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
               ? `残骸回收炉停：${def.name}`
               : `精炼炉停：${def.name}`
           const stopWhy = isUnbox ? `货柜已拆完（共 ${doneBatches} 件）` : `原料耗尽（共 ${doneBatches} 批）`
-          const composed = composeLog(
-            `${stopTitle} ${stopWhy}`,
-            [yieldSeg, coreSeg, { text: '。', id: 'core.state.042' }],
-            // 基础模板 `core.industry.075/076/077` 占 p1（名字）p2（批数/件数）⇒ 段链从 p3 起
-            3,
-          )
+          const composed = composeLog(`${stopTitle} ${stopWhy}`, [yieldSeg, coreSeg, { text: '。', id: 'core.state.042' }])
           addLog(state, 'industry', composed.text, isUnbox ? 'core.industry.075' : isRecycle ? 'core.industry.076' : 'core.industry.077', {
             p1: def.name,
             p2: doneBatches,
@@ -827,8 +815,6 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
               : { text: '，已停工、余料保留在货仓/仓库（凑够一批可再开）。', id: 'core.industry.079' },
             wasCore ? { text: '；AI 核心已归还核心库。', id: 'core.state.040' } : null,
           ],
-          // 基础模板 `core.industry.074/083` 占 p1…p5（名字/每批量/单位/余量/批数）⇒ 段链从 p6 起
-          6,
         )
         addLog(state, 'industry', composed.text, isRecycle ? 'core.industry.074' : 'core.industry.083', {
           p1: def.name,
