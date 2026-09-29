@@ -85,7 +85,14 @@ describe('T3/T4/T5 一次性舰船蓝图（2026-09-13）', () => {
     const exotic = ONCE.filter((b) => goodOf('blueprint', b.id)?.rarity === 'exotic').map((b) => b.id)
     expect(rare.length).toBe(13) // 2026-09-28：+sbp-once-pioneer（开拓级升 T3 后补）
     expect(exotic.length).toBe(5) // 2026-09-26：+sbp-once-orca / sbp-once-helicoprion
-    for (const id of rare) expect(RARITY_TIER[id], `${id} 数字档`).toBe(3)
+    for (const id of rare) {
+      /**
+       * ⚠ **2026-09-29 船长令**：`sbp-once-whale-king` 的数字档由 3 **上调到 5**
+       * （「鲸王一次性蓝图稀有度上调到5」）——调价后它成了稀有层最贵的一张，出率降到最低一档。
+       * **渠道仍是 `rare`**（本表不管渠道归属）⇒ 它是"稀有渠道 + 档 5"的唯一一条。
+       */
+      expect(RARITY_TIER[id], `${id} 数字档`).toBe(id === 'sbp-once-whale-king' ? 5 : 3)
+    }
     for (const id of exotic) expect(RARITY_TIER[id], `${id} 数字档`).toBe(4)
     expect(rare).toContain('sbp-once-swordfish') // 船长：剑鱼下放稀有
     expect(rare).toContain('sbp-once-bowhead') // 船长：蝠鲼一次性保留稀有

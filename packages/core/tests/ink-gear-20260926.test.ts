@@ -142,13 +142,14 @@ describe('墨潮电子舱（射程压制 · 高槽 · CPU 150）', () => {
     expect(FOE_RANGE_DEBUFF_FLOOR_M).toBe(3000)
   })
 
-  it('编队削减率：单装一件 = 15% · 一件 ＋ 一艘电子舰 = **26.08%**（全队递减乘法 · 2026-09-29 改判）', () => {
+  it('编队削减率：单装一件 = 15% · 一件 ＋ 一艘电子舰 = **27.75%**（两舰各一份 ⇒ 舰间乘法）', () => {
     const { state, id } = carrierOf('mod-lair-ecm-h')
     expect(meFoeRangeDebuffOf(state, ctx, [id])).toBeCloseTo(0.15, 10)
-    // 再加一艘电子舰（`foeRangeDebuffPct 0.15` 写在船体上）：两份拉平进一个池、按曲线递减再乘法
-    // ⇒ 1 − (1−0.15)(1−0.15×0.869) = 0.260813（旧口径"同舰加和 ＋ 跨舰乘法"给的 27.75% 已作废）
+    // 再加一艘电子舰（`foeRangeDebuffPct 0.15` 写在船体上）：**两份在不同船上** ⇒ 舰间乘法
+    // `1 − 0.85² = 0.2775`（**2026-09-29 裁定「丙」**：同舰递减乘法 ＋ 舰间乘法 ＋ 整队封顶 60%）；
+    // 若两份装在同一条船上，则是同舰递减后的 0.260813。
     const ew = addShipToFleet(state, 'sh-wh-a-frigate')
-    expect(meFoeRangeDebuffOf(state, ctx, [id, ew])).toBeCloseTo(0.260813, 5)
+    expect(meFoeRangeDebuffOf(state, ctx, [id, ew])).toBeCloseTo(0.2775, 5)
   })
 
   it('实际生效：敌舰武器射程按削减率缩短（走既有 `foeGunMaxRangeOf` 单一真相源）', () => {
