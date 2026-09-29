@@ -35,6 +35,9 @@ import {
   // 2026-09-26 船长令「所有声望门槛改读累计声望」：本页矿带下拉的锁定判据走唯一入口
   standingOf,
   DSI_FACTION_ID,
+  /** 2026-09-29 跃迁燃料批：活动清单与它们的文案 id（开关行的唯一出处） */
+  JUMP_FUEL_ACTIVITIES,
+  JUMP_FUEL_ACTIVITY_TEXT_ID,
 } from '@whale/core'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
@@ -94,7 +97,7 @@ function rarityLabel(rarity: 'common' | 'rare' | 'exotic'): string {
 /** 舰船页标签（MapPage/IndustryPage 同款 app-subtabs 规范，2026-09-05）
  *  ⚠ 2026-09-14 船长：「先将舰队页面中的舰船市场换成舰船仓库」⇒ 第三档 `'shop'`（舰船市场）**整档换成**
  *  `'store'`（舰船仓库）；**购买入口不丢**——买卖本来就在市场页，仓/库卡片行内保留「去市场查看 / 下单」。 */
-export type ShipTab = 'fleet' | 'ai' | 'store'
+export type ShipTab = 'fleet' | 'ai' | 'store' | 'fuel'
 /** 舰队检索（2026-09-10 船长：筛选 + 搜索，控件样式与仓库/技能目录统一；
  *  2026-09-11 船长：「**移除排序选项，改为按照舰船级别划分的子筛选**」——
  *  排序下拉（默认/名称/耐久/舰族）整条退场，改由**舰船级别**子筛选（`SHIP_TIER_SUBS`，与组装机同一张单点表）收窄；
@@ -126,6 +129,12 @@ const SHIP_TABS: Array<{ key: ShipTab; label: string; icon: string; title?: stri
   { key: 'ai', label: tr("ui.ShipPage.057"), icon: 'nav-ai', title: tr("ui.ShipPage.120") },
   // 2026-09-14 船长：「舰船市场」→「舰船仓库」（图标沿用物品仓库那只箱子，语义 = 存放）
   { key: 'store', label: tr("ui.ShipPage.036"), icon: 'nav-items', title: tr("ui.ShipPage.121") },
+  /**
+   * **跃迁燃料**（**2026-09-29 船长令**：「舰船页面内添加新的子页面：跃迁燃料。玩家可以在这个页面内
+   * 查看剩余燃料具体数值和设置哪些活动使用燃料。并能直接从这边跳转到工业的'实验室'页面」）。
+   * ⚠ **门槛后才有这一档**（首座空间站建成 ⇒ `labUnlocked`）：门槛前不渲染（不是灰掉）。
+   */
+  { key: 'fuel', label: tr('ui.jumpFuel.010'), icon: 'nav-items', title: tr('ui.jumpFuel.011') },
 ]
 
 /** 舰船仓库「拥有」筛选（2026-09-14 船长裁定**乙**：只看**仓库库存**——
@@ -179,6 +188,68 @@ function FleetShipHover({
   )
 }
 
+/**
+ * **跃迁燃料页**（**2026-09-29 船长令**：「舰船页面内添加新的子页面：跃迁燃料。玩家可以在这个页面内
+ * 查看剩余燃料具体数值和设置哪些活动使用燃料。并能直接从这边跳转到工业的'实验室'页面」）。
+ *
+ * 内容（按船长点名的三件事）：
+ * ① **剩余燃料数值**（仓库 ＋ 驾驶船货仓，与 core `jumpFuelStockOf` 同一把尺）；
+ * ② **四个活动开关**（采矿 / 打捞 / 悬赏与远征 / AI 副船作业；**默认全关**，写入 `state.jumpFuel`）；
+ * ③ **「前往实验室」**（跳工业页实验室档 —— 那边才是投料与生产的地方）。
+ * 规格句写在卡片里：**1 单位 = 1 秒原返航时长 · 返航速度 ×10 · 每趟返航开始扣一次**。
+ */
+function JumpFuelPanel({
+  engine,
+  onToast,
+  onGotoLab,
+}: {
+  engine: GameEngine
+  onToast: PageProps['onToast']
+  onGotoLab?: () => void
+}): ReactNode {
+  const stock = engine.jumpFuelStock()
+  return (
+    <>
+      <Panel
+        className="is-fill"
+        title={tr('ui.jumpFuel.010')}
+        right={
+          <span className="app-dim">
+            {tr('ui.jumpFuel.012')}：<b>{Math.floor(stock).toLocaleString('zh-CN')}</b> {tr('ui.jumpFuel.013')}
+          </span>
+        }
+      >
+        <div className="app-dim">{tr('ui.jumpFuel.014')}</div>
+        <div className="app-exp-list">
+          {JUMP_FUEL_ACTIVITIES.map((a) => {
+            const on = engine.jumpFuelEnabled(a)
+            return (
+              <label key={a} className="app-row app-row-tight" style={{ gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={on}
+                  onChange={(e) => {
+                    const res = engine.setJumpFuel(a, e.target.checked)
+                    if (!res.ok) onToast(cmdText(res) || tr('ui.jumpFuel.015'), true)
+                  }}
+                />
+                <span>{tr(JUMP_FUEL_ACTIVITY_TEXT_ID[a])}</span>
+                <span className="app-dim">{tr('ui.jumpFuel.016')}</span>
+              </label>
+            )
+          })}
+        </div>
+        <div className="app-row">
+          <button className="app-btn is-small" onClick={() => onGotoLab?.()} disabled={onGotoLab === undefined}>
+            {tr('ui.jumpFuel.017')}
+          </button>
+          {stock <= 0 ? <span className="app-bad">{tr('ui.jumpFuel.018')}</span> : null}
+        </div>
+      </Panel>
+    </>
+  )
+}
+
 export function ShipPage({
   engine,
   onToast,
@@ -186,12 +257,16 @@ export function ShipPage({
   onTab,
   onGotoMarket,
   onGotoFit,
+  onGotoIndustryLab,
 }: PageProps & {
   tab?: ShipTab
   onTab?: (t: ShipTab) => void
   onGotoMarket?: (goodKey: string) => void
   /** 进入某船的装配页（船长 2026-09-05：舰队卡片按钮直达该船装配） */
   onGotoFit?: (shipId: string) => void
+  /** **「前往实验室」**（**2026-09-29 船长令**：跃迁燃料页要能直接跳到工业页的实验室）——
+   *  与「第一次」卡片的段定位同一套手法（App 切页 ＋ `focusSec: 'lab'`）。 */
+  onGotoIndustryLab?: () => void
 }) {
   const state = engine.state
   const ctx = engine.ctx
@@ -424,19 +499,22 @@ export function ShipPage({
       {/* 舰队 / AI 指挥 / 舰船仓库（MapPage/IndustryPage 同款 app-subtabs 规范）；标签行固定，活跃面板吸满并 body 内滚 */}
       <div className="app-subtabs" role="tablist">
         {SHIP_TABS.map((t) => (
-          <button
-            key={t.key}
-            role="tab"
-            aria-selected={activeTab === t.key}
-            className={`app-subtab${activeTab === t.key ? ' is-active' : ''}`}
-            onClick={() => setActiveTab(t.key)}
-            title={t.title}
-          >
-            <span className="app-tab-ico">
-              <Glyph name={t.icon} size={15} color={NAV_TONES[t.icon]} />
-            </span>
-            <span>{t.label}</span>
-          </button>
+          /** 燃料那一档只在解锁后出现（`labUnlocked` = 首座空间站建成） */
+          t.key === 'fuel' && !engine.labUnlocked() ? null : (
+            <button
+              key={t.key}
+              role="tab"
+              aria-selected={activeTab === t.key}
+              className={`app-subtab${activeTab === t.key ? ' is-active' : ''}`}
+              onClick={() => setActiveTab(t.key)}
+              title={t.title}
+            >
+              <span className="app-tab-ico">
+                <Glyph name={t.icon} size={15} color={NAV_TONES[t.icon]} />
+              </span>
+              <span>{t.label}</span>
+            </button>
+          )
         ))}
       </div>
 
@@ -779,6 +857,11 @@ export function ShipPage({
       ) : null}
 
       {activeTab === 'ai' ? <AiCommandPanel engine={engine} onToast={onToast} /> : null}
+
+      {/* **跃迁燃料**（2026-09-29 船长令）：剩余数值 ＋ 四个活动开关 ＋ 「前往实验室」跳转 */}
+      {activeTab === 'fuel' && engine.labUnlocked() ? (
+        <JumpFuelPanel engine={engine} onToast={onToast} onGotoLab={onGotoIndustryLab} />
+      ) : null}
 
       {activeTab === 'store' ? (
         <Panel

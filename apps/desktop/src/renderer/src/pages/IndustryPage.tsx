@@ -35,6 +35,9 @@ import {
   ITEM_KIND_LABELS,
   /** 2026-09-22 船长令：缺料"零件"要指去组装机 ⇒ 用产物→蓝图反查（核心单点，含缓存） */
   blueprintProducingItem,
+  /** 2026-09-29 跃迁燃料批：实验室卡片的读数口（可跑批次 / 材料可用量） */
+  labAffordableBatches,
+  labMaterialAvailable,
 } from '@whale/core'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
@@ -504,6 +507,106 @@ function WreckFlavorRow({ def, engine }: { def: ItemDef; engine: GameEngine }) {
   )
 }
 
+/**
+ * **实验室面板**（**2026-09-29 船长令**：「为工业新增子页面：'实验室'。玩家可以在实验室生产燃料。
+ * 实验室的生产卡片和其他工业卡片类似」）。
+ *
+ * 形态：每个配方一张卡（与精炼炉/组装机同族观感）——**材料行（有/需）· 每批产出 · 每批工期 ·
+ * 可跑批次 · 开工（主控亲自运转 / AI 核心）**；下方列出**正在跑的线**（进度 ＋ 停线）。
+ * 解锁门槛 = 已建成空间站 ≥ 1 座（`engine.labUnlocked()`）；未解锁时本子页不渲染。
+ */
+function LabPanel({ engine, onToast }: { engine: GameEngine; onToast: PageProps['onToast'] }): ReactNode {
+  const state = engine.state
+  const recipes = [...engine.ctx.labRecipes.values()]
+  const runs = engine.labRunViews()
+  const cores: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
+  return (
+    <div className="ind-pane-scroll">
+      {recipes.map((r) => {
+        const affordable = labAffordableBatches(state, r)
+        const out = engine.ctx.items.get(r.outputItemId)
+        return (
+          <div className="app-card" key={r.id}>
+            <div className="app-card-title">{r.name}</div>
+            <div className="app-dim">
+              {tr('ui.lab.003')}：{out?.name ?? r.outputItemId} ×{r.outputUnits} ／{' '}
+              {tr('ui.lab.004')}：{Math.round(r.cycleMs / 60_000)} {tr('ui.lab.012')}
+            </div>
+            <div className="app-dim">{tr('ui.lab.010')}</div>
+            <ul className="app-list">
+              {r.materials.map((m) => {
+                const have = labMaterialAvailable(state, m.itemId)
+                const def = engine.ctx.items.get(m.itemId)
+                return (
+                  <li key={m.itemId} className={have >= m.units ? '' : 'app-bad'}>
+                    {def?.name ?? m.itemId} {Math.floor(have)}/{m.units}
+                  </li>
+                )
+              })}
+            </ul>
+            <div className="app-row">
+              <span className="app-dim">
+                {tr('ui.lab.005')}：{affordable}
+              </span>
+              <button
+                className="app-btn is-small is-primary"
+                disabled={affordable <= 0}
+                onClick={() => {
+                  const res = engine.startLabRunAt(r.id, 'pilot')
+                  if (!res.ok) onToast(cmdText(res) || tr('ui.lab.013'), true)
+                }}
+              >
+                {tr('ui.lab.006')}
+              </button>
+              {cores.map((t) =>
+                countAiCore(state, t) > 0 ? (
+                  <button
+                    key={t}
+                    className="app-btn is-small"
+                    disabled={affordable <= 0}
+                    title={tr('ui.lab.014', { p1: aiCoreText(t) })}
+                    onClick={() => {
+                      const res = engine.startLabRunAt(r.id, t)
+                      if (!res.ok) onToast(cmdText(res) || tr('ui.lab.013'), true)
+                    }}
+                  >
+                    {aiCoreText(t)}
+                  </button>
+                ) : null,
+              )}
+            </div>
+          </div>
+        )
+      })}
+      {runs.map((v) => (
+        <div className="app-card" key={v.id}>
+          <div className="app-card-title">
+            {v.recipeName} · {v.worker === 'pilot' ? tr('ui.IndustryPage.020') : aiCoreText(v.worker)}
+          </div>
+          <div className="app-dim">
+            {tr('ui.lab.007', { p1: v.batchesDone })} · {v.percent}% ·{' '}
+            {Math.max(1, Math.round(v.remainingMs / 1000))} {tr('ui.lab.015')}
+          </div>
+          <div className="app-bar">
+            <i style={{ width: `${v.percent}%` }} />
+          </div>
+          <div className="app-row">
+            <button
+              className="app-btn is-small"
+              onClick={() => {
+                const res = engine.stopLabRunAt(v.id)
+                if (!res.ok) onToast(cmdText(res) || tr('ui.lab.016'), true)
+              }}
+            >
+              {tr('ui.lab.008')}
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoWormhole, onGotoPlugExchange, plugExchangeFocus, focusSec = null }: PageProps & {
   onGotoMarket?: (goodKey: string) => void
   onGotoMap?: (tab: 'mine' | 'salvage', ids: string[]) => void
@@ -517,20 +620,20 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
   plugExchangeFocus?: number
   /** **内层段定位**（船长 2026-09-18：「第一次」卡片的跳转按钮要直达精炼炉 / 组装机）——
    *  页在切走时重挂载（`key={page}`）⇒ 取初值即可，不必 seq 机制。 */
-  focusSec?: 'refine' | 'shelf' | 'craft' | 'shipyard' | null
+  focusSec?: 'refine' | 'shelf' | 'craft' | 'shipyard' | 'lab' | null
 }) {
   const state = engine.state
   const rate = refineRate(state, engine.ctx)
 
-  const [sec, setSecState] = useState<'refine' | 'shelf' | 'craft' | 'shipyard'>(
+  const [sec, setSecState] = useState<'refine' | 'shelf' | 'craft' | 'shipyard' | 'lab'>(
     /**
      * 初值优先级：**程序化定位**（「第一次」卡片的跳转）> **会话级记忆**（2026-09-26 船长令）> 默认「精炼炉」。
      * 记忆只在本进程内有效（见 `ui/sessionView.ts`）；程序化跳转落定后同样写进记忆（见下面的 `setSec`）。
      */
-    () => focusSec ?? ((sessionPick('industry.sec') as 'refine' | 'shelf' | 'craft' | 'shipyard' | null) ?? 'refine'),
+    () => focusSec ?? ((sessionPick('industry.sec') as 'refine' | 'shelf' | 'craft' | 'shipyard' | 'lab' | null) ?? 'refine'),
   )
-  /** 切子页（四个签）＝ 写会话记忆；程序化跳转也走它 ⇒ 记的永远是"玩家最后看到的那个子页" */
-  const setSec = (v: 'refine' | 'shelf' | 'craft' | 'shipyard'): void => {
+  /** 切子页（五个签）＝ 写会话记忆；程序化跳转也走它 ⇒ 记的永远是"玩家最后看到的那个子页" */
+  const setSec = (v: 'refine' | 'shelf' | 'craft' | 'shipyard' | 'lab'): void => {
     setSecState(v)
     setSessionPick('industry.sec', v)
   }
@@ -538,8 +641,8 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
    * **已经进过的子页**（2026-09-22 第 2 步）：进过一次就常驻，切换只切显示（详见下面渲染处的说明）。
    * 初值 = 当前那一栏（含 `focusSec` 程序化跳转进来的落点），保证首屏只挂一个面板、不做无谓冷启动。
    */
-  const [seenSec, setSeenSec] = useState<ReadonlySet<'refine' | 'shelf' | 'craft' | 'shipyard'>>(
-    () => new Set(['refine', 'shelf', 'craft', 'shipyard'].filter((k) => k === (focusSec ?? 'refine')) as Array<'refine' | 'shelf' | 'craft' | 'shipyard'>),
+  const [seenSec, setSeenSec] = useState<ReadonlySet<'refine' | 'shelf' | 'craft' | 'shipyard' | 'lab'>>(
+    () => new Set(['refine', 'shelf', 'craft', 'shipyard', 'lab'].filter((k) => k === (focusSec ?? 'refine')) as Array<'refine' | 'shelf' | 'craft' | 'shipyard' | 'lab'>),
   )
   useEffect(() => {
     setSeenSec((s) => (s.has(sec) ? s : new Set(s).add(sec)))
@@ -784,6 +887,19 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
           <span>▦</span>
           <span>{tr("ui.IndustryPage.060")}</span>
         </button>
+        {/* **实验室**（**2026-09-29 船长令**）：**门槛后才出现**（首座空间站建成 ⇒ `labUnlocked`）——
+            不是灰掉，是不渲染（船长口径：门槛前"看不到相关内容"）。 */}
+        {engine.labUnlocked() ? (
+          <button
+            role="tab"
+            aria-selected={sec === 'lab'}
+            className={`app-subtab${sec === 'lab' ? ' is-active' : ''}`}
+            onClick={() => setSec('lab')}
+          >
+            <span>⚗</span>
+            <span>{tr("ui.lab.001")}</span>
+          </button>
+        ) : null}
       </div>
 
       {/* ═══ 四个子页**保活**（2026-09-22 工业页卡顿修复第 2 步）═══
@@ -966,6 +1082,12 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
           </div>
         </Panel>
       </IndPane>
+      ) : null}
+      {/* 实验室（**2026-09-29 船长令**）：与其余四页同一套保活手法（`IndPane` + 会话滚动记忆） */}
+      {engine.labUnlocked() && seenSec.has('lab') ? (
+        <IndPane scrollKey="industry.lab.scroll" off={sec !== 'lab'}>
+          <LabPanel engine={engine} onToast={onToast} />
+        </IndPane>
       ) : null}
     </div>
   )

@@ -967,7 +967,7 @@ export function App({ engine }: { engine: GameEngine }) {
    * 工业页的**内层段定位**（精炼炉 / 组装机）——「第一次」卡片上的跳转按钮要落到"这件活"那一档
    * （船长 2026-09-18）。一次性：页在切走时重挂载（`key={page}`），故只需给初值。
    */
-  const [indFocus, setIndFocus] = useState<'refine' | 'shelf' | 'craft' | 'shipyard' | null>(null)
+  const [indFocus, setIndFocus] = useState<'refine' | 'shelf' | 'craft' | 'shipyard' | 'lab' | null>(null)
   // 工业页精炼炉卡「去矿带/去打捞」→ 星图对应卡高亮（seq 递增触发一次；2026-09-09 船长定，与「去市场」同款 seq 机制）
   const [mapGoto, setMapGoto] = useState<MapGotoTarget | null>(null)
   /** 任务中心内层标签定位请求（通讯「前往」与开场信都落在「重要任务」） */
@@ -1853,6 +1853,14 @@ async function applyLayoutAndReload(): Promise<void> {
             onGotoFit={(shipId) => {
             setFitShipId(shipId)
             changePage('fit')
+            }}
+            /**
+             * **「前往实验室」**（**2026-09-29 船长令**：跃迁燃料页要能直接跳到工业的实验室）——
+             * 与「第一次」卡片的段定位同一套手法：切页 ＋ 喂 `focusSec`（页在切走时重挂载 ⇒ 取初值即可）。
+             */
+            onGotoIndustryLab={() => {
+            setIndFocus('lab')
+            changePage('industry')
             }}
             />
             ) : null}
