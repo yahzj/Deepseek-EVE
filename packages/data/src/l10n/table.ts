@@ -4086,6 +4086,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.WreckLog.018": { zh: "虫洞内被击沉", en: "Sunk inside a wormhole" },
   "ui.WreckLog.019": { zh: "虫洞内整队失联", en: "Fleet lost inside a wormhole" },
   "ui.WreckLog.020": { zh: "船型", en: "Hull" },
+  /* 2026-09-28 玩家报障（旗舰战沉船被撤退复活）⇒ 沉船记录新增一类原因：遭遇战里被打沉 */
+  "ui.WreckLog.021": { zh: "遭遇战中被击沉", en: "Sunk in an encounter battle" },
   "ui.shipInfo.205": { zh: "复位周期 {p1} 秒", en: "Reset cycle {p1} s" },
   "ui.shipInfo.206": { zh: "复位周期", en: "Reset cycle" },
   /* .207 = **属性行的值**（裸秒数）：行名已写了"复位周期"，值里不再重复（同族 drone-rack 同款做法）。 */

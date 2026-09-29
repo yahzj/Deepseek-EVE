@@ -6467,6 +6467,39 @@ export function persistFleetHullDamage(
 }
 
 /**
+ * **本场被打沉的我方舰 id 列表**（判据 = 该单位三层血 `s + a + h ≤ 0`）——**唯一判据**。
+ *
+ * 为什么抽成单点：这条判据原先有**两份**（`wormholeBattle.sunkShipIds` 与 `captureBattleReport`
+ * 里的推导），而 `captureBattleReport` 的注释早就写着"与 `wormholeBattle.sunkShipIds` 同一判据"。
+ * **2026-09-28 玩家报障「旗舰战里沉船、撤退后沉船被复活带出还能修理」** 正是**第三处（遭遇战）
+ * 漏了这条判据**：承伤照常落盘（`persistFleetHullDamage` 如实写出 `durability = 0`），
+ * 但没有任何一方按"沉船"处理 ⇒ 船以 0% 结构被带回港、维修即可复原。
+ * ⇒ 三处（虫洞 / 遭遇战 / 战报）共用本函数，别再各写一份。
+ *
+ * ⚠ 多舰场次（编队战）走 `battle.myFleet`（tag → shipId）；**单船场次没有 `myFleet`**
+ * ⇒ 回落到 `units['player']`，由调用方传它那艘船的 id（与 `persistFleetHullDamage` 同形）。
+ */
+export function sunkShipIdsOfBattle(
+  battle: import('./state').BattleState | null,
+  fallbackShipId?: string,
+): string[] {
+  const out: string[] = []
+  const dead = (hp: { s: number; a: number; h: number } | undefined): boolean =>
+    hp !== undefined && hp.s + hp.a + hp.h <= 0
+  const fleet = battle?.myFleet ?? []
+  if (fleet.length > 0) {
+    for (const entry of fleet) {
+      if (dead(battle?.units[entry.tag]?.hp)) out.push(entry.shipId)
+    }
+    return out
+  }
+  if (fallbackShipId !== undefined && fallbackShipId.length > 0 && dead(battle?.units['player']?.hp)) {
+    out.push(fallbackShipId)
+  }
+  return out
+}
+
+/**
  * 机群战损结算（2026-09-10 船长拍板「无人机可被击落」+ **永久损失制**；
  * 2026-09-11 船长：「当回收损坏的无人机时，**优先回收高价值的**」）：
  * 把本场被点防击落的架数从该船无人机舱清单里**永久扣除**（清单是"带上船的那批"，

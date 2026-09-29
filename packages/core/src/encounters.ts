@@ -76,7 +76,9 @@ import { stopSalvageOp } from './salvaging'
 import { startTransitHome } from './location'
 import { cancelAiTask } from './ai'
 import { applyArmorFirstDamage, firepowerHitHp, pctOf as pct, type HullHit } from './hullDamage'
-import { repairWithKitsFor } from './shipyard'
+/** 沉船判据单点（2026-09-28 玩家报障：旗舰战沉船被撤退复活）＋ 弃船入口 */
+import { sunkShipIdsOfBattle } from './combat'
+import { repairWithKitsFor, loseShip } from './shipyard'
 // 2026-09-23 周末入侵：占领区破例遇袭（中安/高安一样掷）· 概率走入侵口径 · 悬赏池整池换成入侵舰队
 import { weekendAmbushPickOf, weekendEncounterChanceAt, weekendFoeCardOf } from './weekendEvent'
 import { WEEKEND_CARD_PREFIX, weekendBountyCardsOf, weekendEncounterAllowedIn } from './weekendBounty'
@@ -554,6 +556,45 @@ function persistBattleDamage(
   persistFleetHullDamage(state, ctx, shipId, battle)
 }
 
+/**
+ * **本场被打沉的我方舰 ⇒ 真丢**（**2026-09-28 玩家报障**：「**玩家在入侵的旗舰战中沉船后撤退，
+ * 沉船会被复活带出并且能够修理，这是BUG**」）。
+ *
+ * 病根：旗舰战是**编队战**（承载在遭遇槽），而遭遇战的收场路径**只落盘承伤、从不判沉船**——
+ * `persistFleetHullDamage` 如实写出 `durability = 0`，可那一格在别处**没有任何"已沉"语义**
+ * （全仓只有 `< 0.5` 的自动修理/返港判据）⇒ 0% 的船以"活着但残血"被带回港、花钱就能修好。
+ * 虫洞那条同口径的路是**判沉船并 `loseShip`**（`wormholeBattle.settleWormholeBattle`）。
+ *
+ * 判据 = 单点 `combat.sunkShipIdsOfBattle`（三层血合计 ≤ 0）；落点 = `loseShip`：
+ * - **传 `enc.galaxyId`** ⇒ 按 **2026-09-26 船长令**「非虫洞的正常星系被摧毁 ⇒ 在该星系生成残骸」
+ *   留下可打捞的残骸（装配/机群/加固回收率一并进残骸快照，见 `loseShip`）；
+ * - `cause: 'encounter-lost'`（沉船记录那一栏的新枚举，界面文案 `ui.WreckLog.021`）；
+ * - 主控船被打沉时 `loseShip` 自会补驾驶船（既有机制）。
+ *
+ * ⚠ 调用点**必须在战报之后**（战报要读那艘船被打成什么样），且在 `clearEncounter` **之前**
+ * （残骸落点与文案要用 `enc.galaxyId` / `enc.name`）。
+ */
+function loseSunkShipsOfBattle(state: GameState, ctx: SimContext, shipId: string): number {
+  const enc = state.encounter
+  const battle = enc.battle
+  const sunk = sunkShipIdsOfBattle(battle, shipId)
+  if (sunk.length === 0) return 0
+  const galaxyName = ctx.galaxies.get(enc.galaxyId ?? '')?.name ?? enc.galaxyId ?? ''
+  for (const uid of sunk) {
+    const name = shipDisplayName(state, ctx, uid)
+    addLog(
+      state,
+      'warn',
+      `☠ ${name} 在「${galaxyName}·${enc.name}」被打沉（交火中结构归零）——船体与货仓全损；` +
+        `残骸留在该星系，可前往打捞。`,
+    )
+    loseShip(state, uid, ctx, `遭遇战中被击沉（${name}）`, enc.galaxyId ?? undefined, {
+      cause: 'encounter-lost',
+    })
+  }
+  return sunk.length
+}
+
 /** **收场时的机群战损**（同上一处口径）：多舰场次逐舰各扣各的机舱（`e.tag` 归属），单船场次一条。 */
 function settleBattleDroneLosses(
   state: GameState,
@@ -613,6 +654,8 @@ function settleEscape(state: GameState, ctx: SimContext, mode: 'hull' | 'manual'
   // 这一次"被打到自动脱身"也算发生过（船长 2026-09-14 裁定「也算自动脱离交火」）
   // ⚠ 主动脱离**不算**"被打到自动脱身" ⇒ 不记这笔（那是伏击口径的账）。
   if (mode === 'hull') markAmbushRetreat(state)
+  /** ⚠ **沉船在这里判**（2026-09-28 玩家报障修）：撤退/自动脱离都不是"复活"——打沉了就真丢 */
+  loseSunkShipsOfBattle(state, ctx, shipId)
   clearEncounter(state)
   // 收场尾巴（2026-09-12 船长定：先修后判；自动脱离时结构已 <50%，修不动才返港）
   settleEncounterTail(state, ctx, shipId)
@@ -697,6 +740,8 @@ function settleFight(state: GameState, ctx: SimContext): void {
      */
     if (battle) captureBattleReport(state, battle, { source: 'encounter', outcome: 'lose', summary: encLoseText })
   }
+  /** ⚠ **沉船在这里判**（2026-09-28 玩家报障修）：分胜负也一样——打沉了的船不许"活着回家" */
+  loseSunkShipsOfBattle(state, ctx, shipId)
   clearEncounter(state)
   // 收场尾巴（2026-09-12 船长定：先修后判）——应战胜、败两路共用
   settleEncounterTail(state, ctx, shipId)

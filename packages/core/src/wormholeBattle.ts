@@ -17,7 +17,7 @@ import { gainAiCore, aiCoreName } from './ai'
 import { addWare } from './inventory'
 import { loseShip } from './shipyard'
 import { PLUG_BLACKBOX_ITEM_ID, plugsToBlackBoxesOf } from './plugs'
-import { advanceBattleFor, battleClockNowMs, battleShowWindowMs, persistFleetHullDamage, refundAmmo, refundRepairKitsAll, repairUsageText, settleDroneLosses, stampFoeArrivalFx, startFleetBattleFor, wormholeDerivedAnomaly, captureBattleReport } from './combat'
+import { advanceBattleFor, battleClockNowMs, battleShowWindowMs, persistFleetHullDamage, refundAmmo, refundRepairKitsAll, repairUsageText, settleDroneLosses, stampFoeArrivalFx, startFleetBattleFor, wormholeDerivedAnomaly, captureBattleReport, sunkShipIdsOfBattle } from './combat'
 import {
   wormholeAdvanceNode,
   wormholeBagSlots,
@@ -517,16 +517,7 @@ function wormholeBattleReport(
           },
   }
 }
-/** 在本场战斗里被打沉的我方单位（三层血全 0；`player` = 主控） */
-function sunkShipIds(run: WormholeRunState, battle: BattleState): string[] {
-  const out: string[] = []
-  for (const entry of battle.myFleet ?? []) {
-    const u = battle.units[entry.tag]
-    if (!u) continue
-    if (u.hp.s + u.hp.a + u.hp.h <= 0) out.push(entry.shipId)
-  }
-  return out
-}
+/** 在本场战斗里被打沉的我方单位（三层血全 0；`player` = 主控）——判据已收口到 `combat.sunkShipIdsOfBattle` */
 
 /**
  * **收口一场洞内战斗**（胜/负两条路）：
@@ -568,7 +559,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   // 僚舰无人机不参战，见 `startFleetBattleFor`）——这里必须在**扣沉船之前**取到它，
   // 否则首舰一沉就找不到归属、机群战损会全部漏结。
   const droneOwner = run.fleet[0]
-  const sunk = sunkShipIds(run, battle)
+  const sunk = sunkShipIdsOfBattle(battle)
   for (const uid of sunk) {
     const name = ctx.ships.get(uidDefId(uid))?.name ?? uid
     // **插件先折黑匣、再沉船**（顺序敏感：`loseShip` 会删掉 fleet 条目）
