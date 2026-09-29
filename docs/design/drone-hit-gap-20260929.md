@@ -72,11 +72,29 @@
 
 ## 四、验证口径
 
-- `npm run typecheck` · `npm run test -w @whale/core` · `content:check` · `l10n:check` · `l10n:params`
-  · `ui:rot-check` · `ui:theme-check` · `arch:guard` · `ui:layout-css`（未动样式，应无差异）
-- 新增/扩展用例：`packages/core/tests/drone-hit.test.ts`（无塔 / 有塔 / 两塔 / 塔对"打舰"零影响）。
+- `npm run typecheck` · `npm run test -w @whale/core`（合并 main 后 **2807 用例 / 264 文件全绿**）
+  · `content:check` · `l10n:check` · `l10n:params`（明确漏喂 0）· `ui:rot-check` · `ui:theme-check`
+  · `arch:guard`（F1–F5 全 0）
+- 用例（`packages/core/tests/drone-hit.test.ts` 新增 5 条）：
+  ① 收窄只吃"闪避"那一截（裸 0.60 ⇒ 0.6225；无加成分支上 ⇔ 结果 ×0.95）；
+  ② 没装塔不写 `spec.droneHitGapPct`（字段面零漂移）、两座塔求和 = 0.10；
+  ③ 打舰的 `hitChance` 一字不动；④ 塔不再携带 `droneHullHpBonusPct`；⑤ 收窄值钳到 0.9。
+
+### 4.1 读数（实现后实测）
+
+| 项 | 读数 |
+| --- | --- |
+| 塔提供 | `droneHitGapPct = 0.05`（单件） |
+| 引擎消费 | 综合闪避 = 机型闪避 × 0.95（只作用于"打机群"） |
+| 蜂鸟例（闪避 0.45、基础命中 1.00、舰船命中 +0.05） | 0.60 ⇒ **0.6225**（+2.25 个百分点） |
+| 无命中加成分支（1.00 − 0.45） | 0.55 ⇒ **0.5725**（= 0.55 × 0.95，逐位等价） |
+| 打舰 | 一字不动 |
+| 敌方近防炮打我方机群 | 一字不动（另一条公式） |
 
 ## 五、已知取舍
 
 - 塔与「鱿蜂结构层」的功效从此**不重叠**：结构层给生存（血），塔给命中（对方难打中）。
 - 塔上线后，`droneHullHpBonusPct` 的唯一携带者 = 鱿蜂结构层（+80%），语义回到 2026-09-13 设计稿。
+- ⚠ **"对方对无人机的命中收窄 5%" ≠ "命中率整体 ×0.95"**：命中加成是加算项、失稳是乘子，
+  收窄只作用在闪避那一截 ⇒ 有命中加成时等效倍率略高于 0.95（裸值 0.60 ⇒ ×0.9625）。
+  船长若要"命中率直接 ×0.95"，那是另一种落法（clamp 外乘 0.95），需再裁。
