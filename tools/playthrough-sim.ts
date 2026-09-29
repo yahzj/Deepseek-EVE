@@ -284,7 +284,21 @@ const LOG_KINDS = new Set(['info', 'warn', 'error', 'trade', 'queue', 'levelup',
 function day(): number {
   return state.gameMs / 86_400_000
 }
+/**
+ * **每日动作计数 + 钱包账**（2026-09-28 加 · 配合 `--trace`）。
+ *
+ * 为什么必须记：三次全量实机暴露"某一维长期不动"时（声望 0/星系 1、现金恒定 5~11 万），
+ * 光看终态**分不清是哪条线没跑、还是跑了没收益**。这里按 `mark()` 的**首个词**给动作归类计数，
+ * 再加上"每天的净现金变化"，就能一眼看出"这一天谁在干活、钱往哪儿走"。
+ * 为什么挂在 `mark()` 上而不是各动作函数里：**所有成功动作都会 `mark()`**，
+ * 一处埋点即全覆盖，不必逐个函数加计数器（也就不会漏）。
+ */
+const MARK_STAT: Record<string, number> = {}
+let dayWalletIsk = 0
+
 function mark(msg: string): void {
+  const key = msg.split(/[ 　]/)[0] ?? msg
+  MARK_STAT[key] = (MARK_STAT[key] ?? 0) + 1
   if (milestoneSeen.has(msg)) return
   milestoneSeen.add(msg)
   milestones.push(`[${day().toFixed(2)}d] ${msg}`)
@@ -505,7 +519,15 @@ function sellEverything(): void {
     if (g.kind === 'ship' || g.kind === 'aicore' || g.kind === 'blueprint' || g.kind === 'module') continue // 装备不卖
     const def = ctx.items.get(g.refId)
     if (!def || def.kind === 'ammo' || def.kind === 'drone') continue // 弹药/无人机自用不卖
-    const keep = def.kind === 'mineral' ? Math.max(120, currentCraftNeed(g.refId)) : def.kind === 'ore' || def.kind === 'gas' || def.kind === 'ice' ? 150 : 0
+    /**
+     * **工业倾向要给炉留料**（2026-09-28 修 · 实测暴露）。
+     *
+     * 旧口径一律"每种原矿只留 150 个单位、其余全卖"，而开炉的门槛是 `oreAvailable >= 200`
+     * ⇒ **炉永远开不起来**（`--bias industry` 实测：`AI 炉 0 台`、精炼只剩主控炉 4 次/天）。
+     * 工业倾向改留 3,000 个单位当"在炉料"，其余照卖；其它倾向维持 150（不占资本）。
+     */
+    const oreKeep = 150 // ⚠ 试过"工业倾向留 3,000 料喂炉"，实测变差 ⇒ 已回退（见 AI_FURNACE_RESERVE 的账）
+    const keep = def.kind === 'mineral' ? Math.max(120, currentCraftNeed(g.refId)) : def.kind === 'ore' || def.kind === 'gas' || def.kind === 'ice' ? oreKeep : 0
     const avail = Math.max(0, countWare(state, g.refId) - keep) + Math.max(0, countItem(state, g.refId) - keep)
     if (avail <= 0) continue
     const res = marketSellHolding(state, ctx, g.key, avail)
@@ -527,26 +549,59 @@ function mineBlock(why: string): void {
   MINE_STAT[why] = (MINE_STAT[why] ?? 0) + 1
 }
 
-function doMine(): void {
-  if (state.mining.active) return mineBlock('已在采矿')
-  if (pilotLineBusy()) return mineBlock('主控线忙')
-  if (state.expedition.active) return mineBlock('远征中')
-  if (state.scanning.active) return mineBlock('扫描中')
-  if (state.standby.active) return mineBlock('待命中')
-  if (state.transit.active) return mineBlock('在途')
+function doMine(): boolean {
+  if (state.mining.active) {
+    mineBlock('已在采矿')
+    return false
+  }
+  if (pilotLineBusy()) {
+    mineBlock('主控线忙')
+    return false
+  }
+  if (state.expedition.active) {
+    mineBlock('远征中')
+    return false
+  }
+  if (state.scanning.active) {
+    mineBlock('扫描中')
+    return false
+  }
+  if (state.standby.active) {
+    mineBlock('待命中')
+    return false
+  }
+  if (state.transit.active) {
+    mineBlock('在途')
+    return false
+  }
+  // 2026-09-28 补：旧守卫漏了这两条 ⇒ 打捞/遭遇进行中也会去开工（引擎会拒，但日志成了噪声）
+  if (state.salvaging.active) {
+    mineBlock('打捞中')
+    return false
+  }
+  if (state.encounter.active) {
+    mineBlock('遭遇中')
+    return false
+  }
   // 任意已探索星系的高价值矿带（本地带价值低，远程带采矿会自动往返）
   const pick = BELT_LIST.find(({ b }) => {
     if ((b.standingReq ?? 0) > standing()) return false
     if (b.galaxyId !== undefined && b.galaxyId !== HOME_GALAXY_ID && !isExplored(state, b.galaxyId)) return false
     return true
   })
-  if (!pick) return mineBlock('无可用矿带')
+  if (!pick) {
+    mineBlock('无可用矿带')
+    return false
+  }
   const r = startMining(state, pick.b.id, ctx)
   if (r.ok) {
     setMiningAutoCycle(state, false) // 单趟：满舱返航后停下，回港决策
     MINE_STAT['✅ 开工'] = (MINE_STAT['✅ 开工'] ?? 0) + 1
     mark(`采矿 ${pick.b.name}`)
-  } else issue(`采矿 ${pick.b.id} 失败：${r.error}`)
+    return true
+  }
+  issue(`采矿 ${pick.b.id} 失败：${r.error}`)
+  return false
 }
 
 let lastRefineDay = -99
@@ -566,6 +621,37 @@ function doRefineCraft(): void {
     }
   }
   // 制造链统一由 doLearnCraft 走（市场买书→学习→造一件）；此处不再另起制造，避免同 bp 重复占产线
+  doAiRefine()
+}
+
+/**
+ * **AI 炉：把空闲 AI 核心喂满**（2026-09-28 新写 · 船长令「全量跑通时，**取 AI 核心最大数量利用**」）。
+ *
+ * 为什么必须补：本工具的 AI 核心此前**只用来派副船**（AI 采矿 / AI 打捞），**一台 AI 炉都没开过**
+ * ——实测 `--bias industry` 全量跑的每日账里只有「精炼 4/天」（主控炉，还被 6h 限频压着），
+ * 而引擎侧单人上限是**主控 1 ＋ AI 5 ＝ 6 工位**（`ai-expert` / `ai-core-dispatch` 抬上限），
+ * 也就是说**四分之一的工业产能一直空着**（AI 炉效率 40/50/60/75%，满配 4.75 炉当量）。
+ *
+ * 为什么 AI 炉比"主控炉"更该开满：引擎口径是「**精炼炉随协会基地网络运转：需停靠空间站
+ * （母港或已建成副站）才能启动（AI 核心驱动不受此限）**」⇒ 主控炉会把人钉在母港、
+ * 与采矿/远征互斥，而 AI 炉**不占主控**、可以边挖边炼。
+ *
+ * 名额口径与引擎同源：`aiCoreCapBlock(state, ctx, 'industry')` 为 null 才表示"工业这一档还有名额"，
+ * 光看"核心库存 > 0"不够（这正是本文件 `doLearnCraft` 里记过的那个坑）。
+ */
+function doAiRefine(): void {
+  if (state.refineRuns.filter((r) => r.active && r.worker !== 'pilot').length >= AI_FURNACE_RESERVE) return
+  if (aiCoreCapBlock(state, ctx, 'industry') !== null) return // 工业名额已满/被技能卡住
+  if (countAiCore(state, 'basic') <= 0) return // 没有闲置核心
+  const cand = [...ctx.items.values()]
+    .filter((i) => (i.kind === 'gas' || i.kind === 'ice' || i.kind === 'ore') && (i.refine?.length ?? 0) > 0)
+    .map((i) => ({ i, have: oreAvailable(state, i.id) }))
+    .filter((x) => x.have >= 200)
+    .sort((a, b) => b.have - a.have)[0] // 库存最多的那种先开（避免六台炉抢同一种、频繁断料）
+  if (!cand) return
+  const r = startRefineRun(state, cand.i.id, 'basic', ctx)
+  if (r.ok) mark(`AI 炉精炼 ${cand.i.name}`)
+  else issue(`AI 炉精炼 ${cand.i.id} 失败：${r.error}`)
 }
 
 function doExplore(): void {
@@ -585,6 +671,32 @@ function nextUnseenBountyGalaxy(): string | null {
   return next?.galaxyId ?? null
 }
 
+/**
+ * **AI 核心的分配口径**（2026-09-28 立 · 船长令「取 AI 核心最大数量利用」）。
+ *
+ * 引擎里 AI 核心是**一份共用上限**（`ai.ts`：副船任务与站内精炼炉/回收炉/制造线共用，
+ * 只有「工业自动化」给工业扩容名额）⇒ 派一艘 AI 副船 = 少开一台炉。
+ * 实测（`--bias industry` 6 天）：`副船占 5 / 上限 5` ⇒ **AI 炉 0 台**，精炼只剩主控炉那 4 次/天，
+ * 采矿出来的原矿几乎**全部按原价卖掉**（+67% 的精炼增值一点没吃到）。
+ *
+ * 所以按 `--bias` 预留：工业倾向留 3 个核心给炉（其余给副船），其它倾向不留。
+ * ⚠ 这个数字是**倾向参数**、不是"最优解"——它存在的意义正是让三跑的差异可见。
+ *
+ * ⚠⚠ **2026-09-28 实测后置 0（默认不开炉，全核心派副船）**：把"留 3 核开炉 + 每种矿留 3,000 料"
+ * 打开跑 8 天（`--bias industry`，同 seed），读数反而是**变差**：
+ *
+ * | 配置 | d5~d7 当日净现金 | 主控采矿 | AI 炉 |
+ * |---|---|---|---|
+ * | 全核心派副船 · 原矿全卖 | **+28.4M / +45.3M / +34.2M** | 469~472 趟/天 | 0 台 |
+ * | 留 3 核开炉 · 留 3,000 料 | +35.5M / +23.8M / **+39.4M** | **269~280 趟/天** | 3 台 |
+ *
+ * 即"开炉"这条路把主控采矿趟数压掉 **40%**（472→280），而三台 AI 炉补不回这个缺口。
+ * 机制**尚未完全定位**（炉不占主控，怀疑在"留料 ⇒ 卸货/卖货节奏变化"这一段），
+ * 已记进工作文档待查。**在那之前默认关掉**——三跑要用同一个"最好已知配置"才可比。
+ * 想复现这条读数：把下面的值改成 3，并把 `sellEverything` 的 `oreKeep` 改成 3,000。
+ */
+const AI_FURNACE_RESERVE = 0
+
 let lastAiRotateDay = -99
 function doAi(): void {
   if (state.wallet.isk < 60_000) return
@@ -594,6 +706,10 @@ function doAi(): void {
     const rb = buyBasicAiCore(state, ctx)
     if (!rb.ok) return
   }
+  // 给精炼炉预留的核心不算副船可用名额（见上 AI_FURNACE_RESERVE）
+  const freeForShips =
+    aiCoreCap(state, ctx) + industryAiBonus(state, ctx) - aiCoreShipUsed(state) - aiCoreIndustryUsed(state) - AI_FURNACE_RESERVE
+  if (freeForShips <= 0) return
   // AI 采矿是无限循环任务（名额不自动释放）——要派打捞就得主动召回轮换：
   // 无打捞在途且采矿 ≥3 时，每天至多召回一艘采矿船腾名额（B3 打捞链覆盖用）
   if (countAiKind('salvage') < 1 && countAiKind('mining') >= 3 && day() - lastAiRotateDay >= 1.0) {
@@ -1431,6 +1547,26 @@ function upgradeGunsOneStep(): void {
   mark(`升级火炮 ${from} → ${to}（${name} · 单发 ${dmgOf(from).toFixed(2)} → ${dmgOf(to).toFixed(2)}）`)
 }
 
+/** 上一次悬赏出击的游戏时刻（出击节流用，见 `doBounty` 里的说明） */
+let lastBountyStartMs = -99_999_999
+
+/**
+ * 出击节流窗口。**默认 0 = 不节流**；`--bounty-throttle` 打开 4 游戏小时（≈6 次/天）。
+ *
+ * A/B（同一 seed · `--bias mine` · `--goal isk1b`）：
+ * | 配置 | 达成 10 亿 |
+ * |---|---|
+ * | **不节流（默认）** | **35.60 天** |
+ * | 节流 4h | 63.03 天（`ensureFlagship()` 提到闸前也一样，45 天上限仍未达标） |
+ *
+ * 节流本来是冲着"`--bias industry` 实测每天 384 次出击 + 1,348 次装配 + 日净现金 ≈0"加的，
+ * 但那条读数**只出现在"留 3 核开炉 + 每种矿留 3,000 料"的实验配置里**（该配置已回退，见
+ * `AI_FURNACE_RESERVE` 的账）；默认配置下三跑的 `远征` 只有 1~7 次/天，**没有那个病**。
+ * ⇒ 按"**没有证据的病不要留药**"处置：默认关，留着开关以便复现。
+ * ⚠ 节流为什么会净损 27 天**尚未定位**（已试过把 `ensureFlagship()` 提到闸前，不是它）。
+ */
+const BOUNTY_THROTTLE_MS = ARGS.includes('--bounty-throttle') ? 4 * 3_600_000 : 0
+
 function doBounty(): void {
   if (state.expedition.active || state.encounter.active || state.transit.active || state.standby.active || state.scanning.active) return
   if (pilotLineBusy()) return
@@ -1478,7 +1614,16 @@ function doBounty(): void {
     }
   }
   if (!best) return
+  /**
+   * ⚠ **`ensureFlagship()` 必须在节流闸之前**（2026-09-28 实测修正）。
+   *
+   * 它做的是"**把驾驶位还给最强战舰**"（旗舰在 AI 出勤就召回）——这是**每拍都该成立的常态**，
+   * 不是"出击"的一部分。原先把它写在节流之后 ⇒ 节流顺手把它的调用频率也从"每拍"压到"6 次/天"，
+   * 实测代价极大：`--bias mine` 从 **35.60 天** 掉到 **63.03 天**（同一 seed、只差这一处），
+   * 因为主控长期开着一艘**不是旗舰的弱船**去挖矿（采矿产量与船挂钩）。
+   */
   ensureFlagship() // 批 4：出征前把驾驶位还给主力战船（它在 AI 出勤就召回）
+  if (state.gameMs - lastBountyStartMs < BOUNTY_THROTTLE_MS) return
   counterFitFor(best.id) // 批 4：按目标卡混伤构成换抗性件（盾抗主系 · 甲抗副系）
   /**
    * ⚠ **记一条"选中了哪张、预估多少"**（2026-09-21 第十九批诊断）。
@@ -1499,6 +1644,7 @@ function doBounty(): void {
   watchBountyNames.add(best.name)
   const r = startExpedition(state, best.id, ctx)
   if (r.ok) {
+    lastBountyStartMs = state.gameMs // 出击节流（见上）
     /**
      * ⚠⚠ **`r.ok` 之后立刻断言"远征真的开始了没有"**（2026-09-21 第二十三批 · 定性试验）。
      *
@@ -3240,6 +3386,12 @@ const TICK_STAT: Record<string, number> = {
   打捞: 0,
   在途: 0,
   在洞: 0,
+  /**
+   * ⚠ **2026-09-28 补这一类**：旧口径只按 mining/expedition/scanning/salvaging/transit 分类，
+   * **没看 `pilotLineBusy()`**（主控亲自开精炼炉/制造线的占位）⇒ 主控明明在工位上，读数却记成"空闲"。
+   * 那一版正是靠这个读数把"`doMine` 一天 0 次"误判成"决策环漂移"的，实际是**主控线被工位占着**。
+   */
+  工位: 0,
   空闲: 0,
 }
 let lastTraceDay = -1
@@ -3257,7 +3409,9 @@ function tickStat(): void {
             ? '打捞'
             : state.transit.active || state.standby.active
               ? '在途'
-              : '空闲'
+              : pilotLineBusy()
+                ? '工位'
+                : '空闲'
   TICK_STAT[k] = (TICK_STAT[k] ?? 0) + 1
   const d = Math.floor(state.gameMs / 86_400_000)
   if (d !== lastTraceDay) {
@@ -3273,6 +3427,18 @@ function tickStat(): void {
       .filter(([, v]) => v > 0)
       .map(([n, v]) => `${n} ${v}`)
     console.log(`  [trace d${d}] doMine 调用结果：${mineParts.length > 0 ? mineParts.join(' · ') : '（一次都没被调用）'}`)
+    const markParts = Object.entries(MARK_STAT)
+      .sort((a, b) => b[1] - a[1])
+      .map(([n, v]) => `${n}${v}`)
+    const netIsk = state.wallet.isk - dayWalletIsk
+    const aiRuns = state.refineRuns.filter((r) => r.active && r.worker !== 'pilot').length
+    console.log(
+      `  [trace d${d}] 当日动作：${markParts.length > 0 ? markParts.join(' · ') : '（什么都没做）'}` +
+        ` ｜ 当日净现金 ${netIsk >= 0 ? '+' : ''}${Math.round(netIsk).toLocaleString('zh-CN')}` +
+        ` ｜ AI 炉 ${aiRuns}/5 台（核心库存 ${countAiCore(state, 'basic')} · 上限 ${aiCoreCap(state, ctx)} · 副船占 ${aiCoreShipUsed(state)}）`,
+    )
+    dayWalletIsk = state.wallet.isk
+    for (const n of Object.keys(MARK_STAT)) delete MARK_STAT[n]
     for (const n of Object.keys(MINE_STAT)) delete MINE_STAT[n]
     for (const n of Object.keys(TICK_STAT)) TICK_STAT[n] = 0
   }
@@ -3287,37 +3453,53 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
   tickStat()
   refillSkills()
   /**
-   * **采矿兜底搬到"每拍"**（2026-09-28 修 · 由 `--trace` 定位）。
-   *
-   * 病根：这条兜底原先挂在 `if (homeLull()) { … }` 分支里 —— 而实测
-   * （`--trace`）主控 **86~99% 空闲、`doMine` 一天一次都没被调用**：
-   * 空闲 ≠ `homeLull()`，于是整段跑不到，现金 6 天恒定在 5~11 万（沙猫一小时就该挖 4.2 万）。
-   * 这与本文件 2026-09-21 批修 `buyShipAndGear` 时记下的**同一类病**
-   * （"旧口径只在 `homeLull()` 分支里调 ⇒ 模拟长期卡在循环里整段跑不到"）。
-   *
-   * 修法同款：**每拍都试**，`doMine()` 自带守卫（在采矿/主控线忙/在航/在远征一律跳过）。
-   * ⚠ 原"boss 冲刺就绪时不挖矿以免拖延最终验证"这条口径**原样保留**。
+   * ⚠ **本拍顺序总纲**（2026-09-28 第三次修后定型，改这里之前先读这段）：
+   * 1. 本块 = **策略倾向 `--bias` 的先手**（只换优先序，不新增玩法）；
+   * 2. 中段 = 虫洞冲刺 / 主控固定开战舰 / 买船配装 / 虫洞备战（各自带守卫，每拍可达）；
+   * 3. `homeLull()` 块 = **港口事务**（卖货 / 探索 / 悬赏 / 学图 / 精炼 / 打捞 / 回收 / 谜质科技）；
+   * 4. 全拍最后一件事 = **采矿兜底**（不看 `homeLull()`，`meBusy()` 为空才试）。
+   * 铁律：**动作函数自带守卫时，调用点不许把它藏在别的分支后面**——本文件 2026-09-21 修
+   * `buyShipAndGear`、2026-09-28 修 `doMine` 两次都是栽在这一点上（藏起来 = 整段跑不到，
+   * 而读数上看不出，只表现为"某一维长期不动"）。
    */
   {
-    const bossDefEarly = ctx.anomalies.get('ano-vault-sentinel')
-    const bossWEarly = bossDefEarly ? winOf(state, ctx, bossDefEarly) : 0
     /**
      * **策略倾向的中期分岔（`--bias`，2026-09-28 船长令）**：三档**只换"每拍先推进哪条线"的优先序**，
      * 不新增玩法——下面的动作函数与守卫全部原样复用，因此三跑仍可比。
-     * - `mine`：**采矿优先**（直接落到本块末尾的 `doMine()`）；
+     * - `mine`：**采矿优先**；
      * - `combat`：**悬赏优先**（先打悬赏/刷钱，采矿退成兜底）；
      * - `industry`：**制造优先**（先推精炼与学图，采矿退成兜底）。
      * ⚠ 三档都**保留采矿兜底**：不挖矿就没有现金与材料（2026-09-28 实测：兜底通道断掉时
      * 6 天现金恒定在 5~11 万）。
+     *
+     * ⚠⚠ **采矿兜底已从"每拍最前"退到"本拍最后"**（2026-09-28 第二次修 · 由三次全量实机暴露）。
+     *
+     * 病根：上一版把 `doMine()` 无条件放在这里 ⇒ **每一拍先把主控线抢走**（`setMiningAutoCycle(false)`
+     * 只是"一趟一停"，停下当拍就被本行重新开工），下面 `if (homeLull())` 那个港口事务块
+     * **永远看到 `state.mining.active === true`** ⇒ 探索 / 悬赏 / 学图 / 精炼整段跑不到。
+     * 三次全量实机（`--bias mine|combat|industry`）终态清一色 **声望 0~1 · 星系 1/20** ——
+     * 二十个星系一个没点亮，而正常流程第一天就该 20/20；也就是说那三跑实际是
+     * **"母港星带纯挖矿竞速"**，不是实机流程，读数不能当作三条线的对比。
+     *
+     * 修法：**港口事务先试、试不动才挖矿**。采矿兜底改挂在 `homeLull()` 块末尾那两处
+     * （`else if (!state.expedition.active)` 分支内 + 块尾通用兜底），与本文件 2026-09-21
+     * 修 `buyShipAndGear`、2026-09-28 修 `doMine` 记的是**同一条纪律**：
+     * 动作函数自带守卫，**调用点不许把它藏在别的分支后面**。
      */
     if (BIAS === 'combat' && !pilotLineBusy()) {
+      /**
+       * ⚠ **`doFarm()` 换掉了**（2026-09-28）：原写法"悬赏优先 = 每拍先刷钱"，而实测刷旧卡
+       * **负收益**（每天 −1.9 万，见下面对 `doFarm` 的账）⇒ 那不是"战斗倾向"、是"烧钱倾向"。
+       * 战斗倾向的真实收益面是 **B 线 = 悬赏首胜（声望）+ 打捞舰队 + 残骸回收炉**：
+       * 悬赏提供残骸原料（击杀注入），回收炉由 AI 核心驱动、不占主控。
+       */
       doBounty()
-      if (!state.expedition.active && !state.scanning.active) doFarm()
+      ensureSalvageFleet()
+      doRecycle()
     } else if (BIAS === 'industry' && !state.mining.active && !pilotLineBusy()) {
       doRefineCraft()
       doLearnCraft()
     }
-    if (!(WANTS.boss && !goalDone.boss && bossWEarly >= 0.85)) doMine()
   }
   /**
    * **虫洞冲刺优先**（船长 2026-09-21 目标）：只要还没拿到六枚虫洞里程碑、且这趟没在收口，
@@ -3376,7 +3558,14 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
         doBounty()
         if (!state.expedition.active && !state.scanning.active) {
           doExplore() // 解锁下一批星系（无 frontier 时自然空转）
-          if (!state.expedition.active && !state.scanning.active) doFarm() // 打不过新目标时先刷钱升装
+          /**
+           * ⚠ **这里原来还有一句 `doFarm()`（"打不过新目标时先刷钱升装"），2026-09-28 撤掉**。
+           * 它每拍都试、而 `doFarm` 挑的是**已首胜**的卡 ⇒ 主控被"刷旧卡"长期占满，采矿一次都开不了工。
+           * 实测账（`--trace` 新加的每日账，`--bias mine` 6 天）：第 3~5 天
+           * 「主控 空闲 86% · 刷钱 2 次/天 · 装配 381~440 次/天 · **当日净现金 −19,020 / −19,777**」
+           * —— 刷旧卡是**负收益**（打得赢的那几张卡奖励早就吃完了，只剩弹药/维修/反复配装的开销）。
+           * 现在"刷钱"退成**最后手段**：只有"这一拍采矿没开成工"才轮到它（见主循环末尾）。
+           */
         }
       } else if (WANTS.bounties && !goalDone.bounties) {
         /**
@@ -3393,7 +3582,6 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
          * 所以只要 `bounties` 目标还挂着，就**优先继续打悬赏**。
          */
         doBounty()
-        if (!state.expedition.active && !state.scanning.active) doFarm()
       } else if (exploredCount() < GALAXY_IDS.length) {
         doExplore()
       } else if (!state.expedition.active) {
@@ -3407,21 +3595,14 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
               goalDay.boss = day().toFixed(2)
               mark(`🎯 目标达成【通关】：第 ${day().toFixed(2)}d 终局悬赏连打 5/5`)
             }
-          } else doFarm() // 打不过最终目标：刷高奖悬赏换钱买装备
+          }
+          // 打不过最终目标时：**不再在这里刷旧卡**（2026-09-28 撤，理由同上——刷旧卡实测负收益），
+          // 改为"挖矿攒钱 → `buyShipAndGear` 每拍买船买炮"这条正收益通道，刷钱退到本拍末尾。
         } else {
           doPilotSalvageSession() // B3：主控低频打捞会话（打捞技能乘区在真实作业上生效）
-          // 剩余目标运营：优先打最高奖悬赏攒钱（通关后 boss 也进池，受冷却约束）；空窗采矿兜底
-          if (!state.expedition.active && !state.scanning.active && !state.salvaging.active) {
-            if (WANTS.tril && !goalDone.tril) doFarm()
-            if (!state.expedition.active && !state.scanning.active && !state.salvaging.active && !state.mining.active) doMine()
-          }
+          // 剩余目标运营：通关后 boss 也进池（受冷却约束）；空窗由本拍末尾的采矿兜底接手
+          if (WANTS.tril && !goalDone.tril) doFarm()
         }
-      }
-      // 采矿兜底（早期未就绪或打赏冷却空窗）；boss 冲刺就绪时不挖矿以免拖延最终验证
-      if (!allGoalsDone() && !state.expedition.active && !state.scanning.active && !state.salvaging.active && !state.mining.active) {
-        const bossDef2 = ctx.anomalies.get('ano-vault-sentinel')
-        const bossW2 = bossDef2 ? winOf(state, ctx, bossDef2) : 0
-        if (!(WANTS.boss && !goalDone.boss && bossW2 >= 0.85)) doMine()
       }
     } else if (state.gameMs % 1_800_000 < STEP_MS) {
       sellEverything() // 采矿往返间歇在港时卸货卖货
@@ -3432,6 +3613,32 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
     if (!state.expedition.active && standing() >= 13 && exploredCount() < GALAXY_IDS.length) doExplore()
     if (!state.expedition.active && !state.mining.active && !state.salvaging.active) goHomeIfAway()
   }
+  /**
+   * **采矿兜底：本拍最后一件事，且不看 `homeLull()`**（2026-09-28 第三次修 · 三次全量实机暴露）。
+   *
+   * 位置口径：上面的港口事务块（探索/悬赏/学图/精炼/打捞/购物）**先试**，试不动才落到这里挖矿。
+   * `homeLull()` 只管"在母港且没占远程作业位"，而采矿本身就在母港星带 ⇒ 挂在它里面会让
+   * "人不在港但主控空闲"（野外驻留、返航途中）这些拍**一次都不尝试开工**，正是六天现金
+   * 恒定 5~11 万那条病的残留形态。`doMine()` 自带守卫（在采矿／主控线忙／在航／在远征／
+   * 在扫描／待命／打捞／遭遇一律跳过并列进 `MINE_STAT`），读 `--trace` 就能看出被哪条挡回。
+   * ⚠ `boss 冲刺就绪就不挖矿`这条口径原样保留（避免拖延最终验证）。
+   */
+  let minedThisTick = false
+  if (!allGoalsDone()) {
+    const bossDefTail = ctx.anomalies.get('ano-vault-sentinel')
+    const bossWTail = bossDefTail ? winOf(state, ctx, bossDefTail) : 0
+    if (!(WANTS.boss && !goalDone.boss && bossWTail >= 0.85)) minedThisTick = doMine()
+  }
+  /**
+   * **刷钱兜底：本拍真正最后一件，且只在"这一拍采矿没开成工"时才试**（2026-09-28 新口径）。
+   *
+   * 为什么放到这里：`doFarm` 打的是**已首胜**的卡，实测是**负收益**（第 3~5 天每日净现金
+   * −19,020 / −19,777，同期 `装配` 381~440 次/天）——旧口径把它放在港口事务里每拍先试，
+   * 于是主控被"刷旧卡"长期占满，**正收益的采矿一次都开不了工**。现在它只在
+   * 「无可用矿带 / 主控线被工位占着 / 别的作业占位」这些"挖不了矿"的拍里接手，
+   * 功能本身保留（那正是它被写出来的场合），但不再抢采矿的班。
+   */
+  if (!allGoalsDone() && !minedThisTick && !state.mining.active) doFarm()
   // 进度探针（每 0.5 天）
   if (state.gameMs % (43_200_000) < STEP_MS) {
     mark(
