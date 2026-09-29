@@ -51,7 +51,7 @@ describe('无人机四型定位（2026-09-10 船长拍板）', () => {
     const sentry = droneOf('drone-sentry')
     expect(sentry.hitRate).toBe(1.1)
     expect(sentry.falloff).toBe(0.35)
-    expect(ALL.map((d) => d.maxRangeM)).toEqual([6000, 4200, 3000, 6500]) // 2026-09-27 船长令「无人机射程重排（哨戒 > 侦察 > 战斗 > 攻坚）」（原 [4000, 4500, 5000, 6500]）
+    expect(ALL.map((d) => d.maxRangeM)).toEqual([6000, 5000, 4000, 6500]) // **2026-09-28 船长令「微调无人机的射程：攻坚 4000 / 战斗机 5000 / 侦察机维持 6000」**（原 09-27 重排的 [6000, 4200, 3000, 6500]）
   })
 
   it('定位契约自检通过：四型逐机合规 + 跨类阶梯成立', () => {
