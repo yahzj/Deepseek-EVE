@@ -566,12 +566,16 @@ function yieldNoteFor(
      * `p{n}p{k}Id`（第一位 → `[0]` 的值），而渲染层要靠这个 id 把清单值插进模板（`.044`「{p1}{p2}」）
      * ⇒ 键序必须是"值在前、id 在后"，且 id 只声明一次（重复键会被 JS 合并、位置留在第一次出现处）。
      */
+    /**
+     * ⚠ **第三层（清单那一层的内部参数）暂未打通**（**2026-09-29 · 见 `LogSeg` 头注的"已知缺口"**）：
+     * 段 id（`.057/.058…`「标签 {p1}」）那一层现在**够用**（`p{n}p{k}` 直接喂它）；
+     * 而清单值自己再挂一层模板（`.044`「{p1}」/`.048`「 等{p1}种」）需要 `p{n}p{k}p{j}` 的键序，
+     * 键序由 `walk` 按插入序生成、目前尚未按"值-内部参数-内部参数id"的三段式改写 ⇒ 先修到第二层。
+     */
     return {
       text,
       id: labelId,
-      params: m.capped
-        ? { p1: m.list, p1p1: m.list, p1Id: 'core.industry.044', p2: capTxt, p2p1: m.total, p2Id: 'core.industry.048' }
-        : { p1: m.list, p1p1: m.list, p1Id: 'core.industry.044' },
+      params: m.capped ? { p1: m.list, p2: capTxt, p3: m.total } : { p1: m.list },
     }
   }
 
