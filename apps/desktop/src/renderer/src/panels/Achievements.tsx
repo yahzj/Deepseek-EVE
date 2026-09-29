@@ -24,10 +24,11 @@
 import { Glyph } from '../ui/Glyphs'
 import { Panel } from '@whale/ui'
 import { hoverTipProps } from '../ui/Tooltip'
-import { achievementCount, achievementOverview, formatDurationMs } from '@whale/core'
+import { achievementCount, achievementOverview } from '@whale/core'
 import type { AchievementDef } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { tr } from '../i18n/locale'
+import { fmtDuration } from '../i18n/fmt'
 
 /** 一枚徽章小卡（固定尺寸，防悬停内容变化引起跳动） */
 function BadgeCard({
@@ -77,7 +78,7 @@ function badgeTimeLine(
 ): string {
   if (earnedAt === null) return tr('ui.Achievements.001')
   if (legacy) return tr('ui.Achievements.002')
-  return tr('ui.Achievements.003', { t: formatDurationMs(earnedAt) })
+  return tr('ui.Achievements.003', { t: fmtDuration(earnedAt) })
 }
 
 /** 成就面板（一级页内容：页内"二级子窗口容器"，固定头 ＋ 内容内滚） */

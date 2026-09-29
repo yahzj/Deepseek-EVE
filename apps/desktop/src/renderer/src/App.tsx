@@ -12,7 +12,6 @@ import type { ReactNode, RefObject } from 'react'
 import { flushSync } from 'react-dom'
 import { useL10n } from './i18n/locale'
 import {
-  formatDurationMs,
   activePromos,
   activeTunings,
   moneyDelta,
@@ -75,6 +74,7 @@ import { AppShell } from './ui/AppShell'
 import type { LayoutKind } from './ui/AppShell'
 import { setSessionPick, sessionPick } from './ui/sessionView'
 import { cmdText, logText, tr } from './i18n/locale'
+import { fmtDuration } from './i18n/fmt'
 
 /** 左侧导航项（出港 = 星图主入口，为首并放大描边；船长 2026-09-05：文案「点击 出港」+强调配色避免被误认作栏目装饰） */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
@@ -2100,8 +2100,8 @@ async function applyLayoutAndQuit(): Promise<void> {
           </div>
           <div className="app-report-body">
             <div className="app-dim">
-              {tr("ui.App.087")} {formatDurationMs(offlineReport.wallAwayMs)}{tr('ui.App.115', { d: formatDurationMs(offlineReport.settledMs) })}
-              {offlineReport.overflowMs > 0 ? tr('ui.App.104', { d: formatDurationMs(offlineReport.overflowMs) }) : ''}
+              {tr("ui.App.087")} {fmtDuration(offlineReport.wallAwayMs)}{tr('ui.App.115', { d: fmtDuration(offlineReport.settledMs) })}
+              {offlineReport.overflowMs > 0 ? tr('ui.App.104', { d: fmtDuration(offlineReport.overflowMs) }) : ''}
             </div>
             <div className="app-report-line">
               {tr("ui.App.088")}

@@ -37,7 +37,6 @@ import {
   expeditionStatus,
   fleetDefOf,
   foeLayerSplit,
-  formatDurationMs,
   frontierGalaxyIds,
   idleAiShipIds,
   isExplored,
@@ -109,6 +108,7 @@ import { foeCardShipIdOf as coreFoeCardShipIdOf } from '@whale/core'
 import { ShipSprite } from '../ui/ShipSprite'
 // ⚠ 舰船角色名走本地化单点（2026-09-26 船长报障「舰船类型文本漏中文」）——core 的 shipRoleLabel 是纯中文表
 import { lairTierText, shipRoleText } from '../ui/labelsText'
+import { fmtDuration } from '../i18n/fmt'
 
 /* ─────────── 敌舰影列（2026-09-13 船长：「在常驻悬赏内，将悬赏敌族的舰船 SVG 图形，
  * 像我的舰队里的我方舰船那样，放入悬赏的最左侧」——同批扩到任务中心两处敌族卡） ───────────
@@ -280,8 +280,8 @@ export function ExpeditionPanel({
                   <Glyph name="ico-home" size={12} color={ICO_TONES['ico-home']} />
                 </span>
                 {tv.trip === 'deliver-to-site' || tv.trip === 'deliver-to-station'
-                  ? tr("ui.Expedition.126", { p1: tv.siteName ?? '', p2: formatDurationMs(Math.max(0, state.transit.finishAtGameMs - state.gameMs)) })
-                  : tr("ui.Expedition.244", { p1: formatDurationMs(Math.max(0, state.transit.finishAtGameMs - state.gameMs)) })}
+                  ? tr("ui.Expedition.126", { p1: tv.siteName ?? '', p2: fmtDuration(Math.max(0, state.transit.finishAtGameMs - state.gameMs)) })
+                  : tr("ui.Expedition.244", { p1: fmtDuration(Math.max(0, state.transit.finishAtGameMs - state.gameMs)) })}
               </>
             )
             : ''}
@@ -291,7 +291,7 @@ export function ExpeditionPanel({
               <span className="app-ico">
                 <Glyph name="ico-scan" size={12} color={ICO_TONES['ico-scan']} />
               </span>
-              {tr("ui.Expedition.127", { p1: formatDurationMs(scan.remainingMs) })}
+              {tr("ui.Expedition.127", { p1: fmtDuration(scan.remainingMs) })}
               <button
                 className="app-btn is-small is-warn"
                 style={{ marginLeft: 'var(--wui-sp-6)' }}
@@ -319,7 +319,7 @@ export function ExpeditionPanel({
                   {tr("ui.Expedition.071")}{view.anomalyName}{tr('ui.Expedition.379')} {view.power} {tr("ui.Expedition.008")} {view.threat}{tr("ui.Expedition.009")}
                 </>
               )
-              : tr("ui.Expedition.010", { p1: view.anomalyName, p2: view.galaxyName, p3: view.phaseLabel, p4: formatDurationMs(view.remainingMs) })
+              : tr("ui.Expedition.010", { p1: view.anomalyName, p2: view.galaxyName, p3: view.phaseLabel, p4: fmtDuration(view.remainingMs) })
             : ''}
         </div>
       ) : state.dockedSite !== null ? (
@@ -1561,7 +1561,7 @@ function StarMap({
           // T7 统一口径：边距显示"当前驾驶船实际耗时"（跃迁速度 × 航行技能），标称分钟只进悬停说明
           const actMin = travelMinutesEff(state, engine.ctx, e.travelMinutes)
           const actLabel = actMin >= 10 ? `${Math.round(actMin)}′` : `${Math.round(actMin * 10) / 10}′`
-          const actTitle = tr("ui.Expedition.197", { p1: e.travelMinutes, p2: formatDurationMs(Math.max(1, Math.round(actMin * 60_000))) })
+          const actTitle = tr("ui.Expedition.197", { p1: e.travelMinutes, p2: fmtDuration(Math.max(1, Math.round(actMin * 60_000))) })
           return (
             <g key={`${e.from.id}-${e.to.id}`}>
               <line
@@ -1812,7 +1812,7 @@ function StarMap({
                   <span className="app-ico"><Glyph name="ico-scan" size={13} color={ICO_TONES["ico-scan"]} /></span>{tr("ui.Expedition.136")}{scanWindowTextOf(selected.id)}）
                 </button>
                 <span className="app-dim app-map-scan-note">
-                  {scan.active ? tr("ui.Expedition.137", { p1: formatDurationMs(scan.remainingMs) }) : tr("ui.Expedition.077")}
+                  {scan.active ? tr("ui.Expedition.137", { p1: fmtDuration(scan.remainingMs) }) : tr("ui.Expedition.077")}
                 </span>
               </div>
             </div>
@@ -2958,7 +2958,7 @@ function AnomalyCard({
                 : tr("ui.Expedition.355", { p1: Math.max(1, Math.round(travelMinutesEff(state, engine.ctx, retMins) * RETURN_LEG_MUL)) })
           return (
             <>
-              {tr("ui.Expedition.096")} {formatDurationMs(anomaly.combatSeconds * 1000)}
+              {tr("ui.Expedition.096")} {fmtDuration(anomaly.combatSeconds * 1000)}
               {homeTarget ? tr("ui.Expedition.356") : backTxt}
             </>
           )
@@ -3067,7 +3067,7 @@ function AnomalyCard({
       {invadedHere ? null : (
         <div
           className="app-ano-econ"
-          title={tr("ui.Expedition.039", { p1: grossIsk.toLocaleString('zh-CN'), p2: formatDurationMs(roundTripMs) })}
+          title={tr("ui.Expedition.039", { p1: grossIsk.toLocaleString('zh-CN'), p2: fmtDuration(roundTripMs) })}
         >
           {MONEY_GLYPH} {tr("ui.Expedition.040")}{iskPerHourTxt} {tr("ui.Expedition.041")}
         </div>

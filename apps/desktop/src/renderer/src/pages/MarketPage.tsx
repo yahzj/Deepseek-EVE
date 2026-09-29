@@ -17,7 +17,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { askLineOf, buyLineOf, goodLockedReason, goodName, itemKindText, marketHistory, marketQuote, marketTrend, naturalHoldings, PRICE_SAMPLE_MS, rackOf, salesTaxRate, formatDurationMs, bmGateReason, shipStoredCount } from '@whale/core'
+import { askLineOf, buyLineOf, goodLockedReason, goodName, itemKindText, marketHistory, marketQuote, marketTrend, naturalHoldings, PRICE_SAMPLE_MS, rackOf, salesTaxRate, bmGateReason, shipStoredCount } from '@whale/core'
 import type { BlueprintDef, GameState, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
@@ -25,7 +25,7 @@ import { InfoHover, ItemHover, itemInfoLines, ModuleHover, moduleInfoLines, Ship
 import type { InfoLine } from '../ui/shipInfo'
 import type { PageProps } from './common'
 import { isk } from './common'
-import { fmtInt } from '../i18n/fmt'
+import { fmtDuration, fmtInt } from '../i18n/fmt'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { MarkStar, pinMarked } from '../ui/marks'
@@ -205,7 +205,7 @@ function blueprintHoverLines(
       ...prodLines,
       ...(bp.description ? [{ k: tr("ui.MarketPage.017"), v: bp.description }] : []),
       { k: tr("ui.MarketPage.018"), v: materials },
-      { k: tr("ui.MarketPage.019"), v: tr("ui.MarketPage.137", { p1: formatDurationMs(bp.buildSeconds * 1000) }) },
+      { k: tr("ui.MarketPage.019"), v: tr("ui.MarketPage.137", { p1: fmtDuration(bp.buildSeconds * 1000) }) },
     ],
     note: prodDesc || bp.description,
   }

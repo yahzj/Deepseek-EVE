@@ -9,7 +9,6 @@ import {
   aiEfficiency,
   aiTaskView,
   countAiCore,
-  formatDurationMs,
   getMiningParams,
   idleAiShipIds,
   isExplored,
@@ -63,6 +62,7 @@ import { isk, MONEY_GLYPH, rareWreckRefsOf } from './common'
 // 2026-09-26 船长报障：打捞页卡片序列（纯函数；单独成文件以便工具/用例直接断言这条顺序）
 import { wreckCardSequenceOf } from './wreckCards'
 import { tr, cmdText } from '../i18n/locale'
+import { fmtDuration } from '../i18n/fmt'
 
 /** 星图页的功能区（「星图·远征」放第一：这里本来就是玩家查看大地图的主入口）；icon = Glyphs 字形名 */
 export type MapTab = 'star' | 'mine' | 'bounty' | 'salvage' | 'haul' | 'whscan'
@@ -318,10 +318,10 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
 
   const phaseText = (): string => {
     if (view.phase === 'outbound') {
-      return tr("ui.MapPage.082", { p1: view.shipName || tr('ui.MapPage.117'), p2: view.beltName, p3: formatDurationMs(view.remainingMs ?? 0) })
+      return tr("ui.MapPage.082", { p1: view.shipName || tr('ui.MapPage.117'), p2: view.beltName, p3: fmtDuration(view.remainingMs ?? 0) })
     }
     if (view.phase === 'returning') {
-      return tr("ui.MapPage.083", { p1: view.shipName || tr('ui.MapPage.117'), p2: formatDurationMs(view.remainingMs ?? 0), p3: view.tripUnits.toLocaleString('zh-CN') })
+      return tr("ui.MapPage.083", { p1: view.shipName || tr('ui.MapPage.117'), p2: fmtDuration(view.remainingMs ?? 0), p3: view.tripUnits.toLocaleString('zh-CN') })
     }
     return tr("ui.MapPage.084", { p1: view.shipName || tr('ui.MapPage.117'), p2: view.beltName, p3: view.tripUnits.toLocaleString('zh-CN') })
   }

@@ -11,7 +11,6 @@ import {
   countAiCore,
   countWare,
   countModule,
-  formatDurationMs,
   manufacturingLoopOf,
   manufacturingRunViews,
   marketLockedReason,
@@ -84,6 +83,7 @@ import {
   type SubOption,
 } from '../ui/itemSubs'
 import { tr } from '../i18n/locale'
+import { fmtDuration } from '../i18n/fmt'
 
 const CORE_ORDER: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
 
@@ -891,10 +891,10 @@ export const BlueprintCard = memo(function BlueprintCard({
         {running ? (
           <>
             {' '}
-            {tr('ui.Industry.121', { n: runs.length })} {tr("ui.Industry.043")} {formatDurationMs(Math.min(...runs.map((v) => v.remainingMs)))} {tr("ui.Industry.044")}
+            {tr('ui.Industry.121', { n: runs.length })} {tr("ui.Industry.043")} {fmtDuration(Math.min(...runs.map((v) => v.remainingMs)))} {tr("ui.Industry.044")}
           </>
         ) : (
-          <>{tr('ui.Industry.122', { d: formatDurationMs(buildMs) })}{tr("ui.Industry.045")}</>
+          <>{tr('ui.Industry.122', { d: fmtDuration(buildMs) })}{tr("ui.Industry.045")}</>
         )}
       </div>
       <ul className="app-bp-mats">
@@ -1080,10 +1080,10 @@ export const BlueprintCard = memo(function BlueprintCard({
                 <span
                   className="app-belt-worker-name"
                   // l10n-keep：下面比较用的 kindLabel（'舰船'/'装备'/'消耗品'）是**内容层联合 key**，不是文案
-                  title={tr("ui.Industry.114", { p1: formatDurationMs(v.durationMs), p2: kindLabel === '舰船' ? tr("ui.Industry.064") : tr("ui.Industry.065"), p3: v.worker === null ? tr("ui.Industry.066") : '' })}
+                  title={tr("ui.Industry.114", { p1: fmtDuration(v.durationMs), p2: kindLabel === '舰船' ? tr("ui.Industry.064") : tr("ui.Industry.065"), p3: v.worker === null ? tr("ui.Industry.066") : '' })}
                 >
                   {v.worker === null ? tr("ui.Industry.067") : v.worker === 'pilot' ? tr("ui.Industry.068") : tr("ui.Industry.115", { p1: v.workerLabel })}
-                  {tr('ui.Industry.137', { p1: formatDurationMs(v.remainingMs) })}
+                  {tr('ui.Industry.137', { p1: fmtDuration(v.remainingMs) })}
                 </span>
                 <span className="app-progress-mini" title={tr("ui.Industry.116", { p1: v.percent })}>
                   <i style={{ width: `${v.percent}%` }} />

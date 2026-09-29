@@ -6,6 +6,7 @@
 import { formatDurationMs } from '@whale/core'
 import { tr } from '../i18n/locale'
 import type { AiTaskView } from '@whale/core'
+import { fmtDuration } from '../i18n/fmt'
 
 export function AiTaskBar({ view }: { view: AiTaskView | null }) {
   if (!view) return null
@@ -15,7 +16,7 @@ export function AiTaskBar({ view }: { view: AiTaskView | null }) {
     <span className="app-ai-taskbar">
       {showEta ? (
         <span className="app-dim">
-          {view.label}{tr('ui.aiProgress.001', { d: formatDurationMs(view.remainingMs ?? 0) })}
+          {view.label}{tr('ui.aiProgress.001', { d: fmtDuration(view.remainingMs ?? 0) })}
         </span>
       ) : (
         <span className="app-dim">{view.label}</span>

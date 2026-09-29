@@ -6,10 +6,11 @@
  * - `QueueBlock`：**训练队列面板**（"正在发生的事"，2026-09-10 船长定：它固定在上、不塞进树里）——
  *   显示排队中条目 ＋ 队首剩余，可上移/下移/顶到最前/取消（与 `engine.moveQueueAt/dequeueAt` 同源）。
  */
-import { formatDurationMs, skillQueueStatus } from '@whale/core'
+import { skillQueueStatus } from '@whale/core'
 import type { PageProps } from './common'
 import { tr } from '../i18n/locale'
 import { useState } from 'react'
+import { fmtDuration } from '../i18n/fmt'
 
 /** 把技能说明里的 ⟦效果数值⟧ 渲染成高亮段（符号本身不显示） */
 export function SkillDescText({ text }: { text: string }) {
@@ -45,8 +46,8 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
     <div>
       {totalMs > 0 ? (
         <div className="app-dim app-train-total">
-          {tr('ui.SkillsPage.010')} {formatDurationMs(totalMs)}
-          {view.head !== null ? tr('ui.SkillsPage.032', { p1: formatDurationMs(view.head.remainingMs) }) : ''}
+          {tr('ui.SkillsPage.010')} {fmtDuration(totalMs)}
+          {view.head !== null ? tr('ui.SkillsPage.032', { p1: fmtDuration(view.head.remainingMs) }) : ''}
           {tr('ui.SkillsPage.011')}
         </div>
       ) : null}
@@ -65,7 +66,7 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
                 <span>
                   {tr('ui.SkillsPage.040', { n: 1, name: view.head.skillName, lv: view.head.intoLevel })}
                 </span>
-                <span className="app-dim">{tr('ui.SkillsPage.041', { d: formatDurationMs(view.head.remainingMs) })}</span>
+                <span className="app-dim">{tr('ui.SkillsPage.041', { d: fmtDuration(view.head.remainingMs) })}</span>
               </span>
               {/* 操作按钮排在信息**下方**（2026-09-25 船长令：不该挤在右侧、应靠卡牌底边） */}
               <span className="app-train-chip-act">
@@ -96,9 +97,9 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
               <span className="app-train-chip-main">
                 <span>{tr('ui.SkillsPage.040', { n: p.queueIndex + 1, name: p.skillName, lv: p.targetLevel })}</span>
                 {p.progressMs > 0 ? (
-                  <span className="app-dim">{tr('ui.SkillsPage.041', { d: formatDurationMs(p.remainingMs) })}</span>
+                  <span className="app-dim">{tr('ui.SkillsPage.041', { d: fmtDuration(p.remainingMs) })}</span>
                 ) : p.levelMs > 0 ? (
-                  <span className="app-dim">{formatDurationMs(p.levelMs)}</span>
+                  <span className="app-dim">{fmtDuration(p.levelMs)}</span>
                 ) : null}
               </span>
               {/* 操作按钮（排序箭头 + 取消）排在信息**下方**（2026-09-25 船长令：靠卡牌底边，不挤右侧） */}

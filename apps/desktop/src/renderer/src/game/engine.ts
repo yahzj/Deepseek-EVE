@@ -17,7 +17,6 @@ import {
   advanceWormhole, // 2026-09-27 船长令「立即弹结算界面」：撤离当拍结算（见本文件 wormholeExtract）
   fightEncounter,
   fleeEncounter,
-  formatDurationMs,
   itemReleased, // 2026-09-13 施工期闸门：未上线内容不进"给玩家看的"目录枚举
   assignAiExpedition,
   assignAiStandby,
@@ -343,6 +342,7 @@ import { noteSaveWriteFailed, probeSaveStorage, requestPersistentStorage, saveSt
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
 import { tr, cmdText, paramText } from '../i18n/locale'
+import { fmtDuration } from '../i18n/fmt'
 
 type Listener = () => void
 
@@ -530,8 +530,8 @@ function buildOfflineReport(
  * 玩家能按类筛出来查（`LOG_KINDS` 的 `system` 这一档本来就存在，只改归类的 kind，文案与简报弹窗一字未动）。
  */
 function offlineReportLogText(r: OfflineReport): string {
-  const parts: string[] = [tr("ui.engine.008", { p1: formatDurationMs(r.wallAwayMs), p2: formatDurationMs(r.settledMs) })]
-  if (r.overflowMs > 0) parts.push(tr("ui.engine.009", { p1: formatDurationMs(r.overflowMs) }))
+  const parts: string[] = [tr("ui.engine.008", { p1: fmtDuration(r.wallAwayMs), p2: fmtDuration(r.settledMs) })]
+  if (r.overflowMs > 0) parts.push(tr("ui.engine.009", { p1: fmtDuration(r.overflowMs) }))
   parts.push(tr("ui.engine.010", { p1: r.iskDelta >= 0 ? '+' : '−', p2: Math.abs(r.iskDelta).toLocaleString('zh-CN') }))
   if (r.items.length > 0) parts.push(tr("ui.engine.011", { p1: r.items.map((i) => `${i.name}×${i.delta.toLocaleString('zh-CN')}`).join(tr("ui.MatterTechTab.017")) }))
   if (r.modules.length > 0) parts.push(tr("ui.engine.012", { p1: r.modules.map((m) => `${m.name}×${m.delta}`).join(tr("ui.MatterTechTab.017")) }))

@@ -28,6 +28,7 @@ import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { HintIcon } from '../ui/Hint'
 import { useL10n } from '../i18n/locale'
+import { fmtInt } from '../i18n/fmt'
 import {
   BLUEPRINT_LEARN_TABS,
   SHIP_SUBS,
@@ -134,9 +135,17 @@ export function ShipyardPanel({
        * 那些参数仍在产物名的悬停卡（`ShipHover`）里可查，信息没丢，只是不占卡面）。
        */
       const prodLabel = prodName
-      /** 产物名后的参数（货舱/循环）——**只进悬停卡**（2026-09-23 船长令：卡面上的括号属性去掉） */
+      /**
+       * 产物名后的参数（货舱/循环）——**只进悬停卡**（2026-09-23 船长令：卡面上的括号属性去掉）。
+       * ⚠ **2026-09-29 修漏译**：原先这里是手写中文整句 ＋ `toLocaleString('zh-CN')`
+       * ⇒ 英文界面下漏中文（英文扫描读数里 ×37，是船厂页最大的一处）。现在走 id ＋ `fmtInt`。
+       */
       const prodParams = shipDef
-        ? `（货舱 ${shipDef.cargoM3.toLocaleString('zh-CN')} m³ · ${shipDef.cycleSeconds} 秒 × ${shipDef.oreUnitsPerCycle} 单位/循环）`
+        ? t('ui.shipInfo.213', {
+            cargo: fmtInt(shipDef.cargoM3),
+            cycle: shipDef.cycleSeconds,
+            perCycle: shipDef.oreUnitsPerCycle,
+          })
         : ''
       // 产物名一律金色（2026-09-13 船长）
       const prodText = <span className="app-gold">{prodName}</span>

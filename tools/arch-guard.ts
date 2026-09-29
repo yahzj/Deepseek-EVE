@@ -24,13 +24,20 @@
  *   F3 **索引自检**：索引里写的"落点文件"必须真实存在、`SINGLE_SOURCE` 里的"单点导出"必须在源码里真的导出
  *      ⇒ 悬空即红（防索引变成废纸）。
  *   F4 **取数口契约**：一级页/面板不许自己 new 引擎旁路取数（`buildSimContext(...)`）——那是 `engine.ts` 的活。
+ *   F5 **跳转目标契约**：活动栏跳转表指向的页/页签必须真实存在。
+ *   F6 **日期格式化本地化**（**2026-09-29 加**）：渲染层不许写死 `toLocaleDateString('zh-CN')` 这类
+ *      **把语言焊死**的调用 —— 英文界面下它的输出顺序仍是中文的。走 `i18n/fmt.ts` 的
+ *      `fmtDate` / `fmtDateTime`（内部取 `localeTag()`）。
+ *      ⚠ **只管日期/时间**：`toLocaleString('zh-CN')` 用于**数字千分位**时在 zh/en 下逐位同值
+ *      （`i18n/fmt.ts` 头注已写明）⇒ 那 ~180 处不在本检查范围内（避免大批无收益改动）。
  *
  * 用法：`npm run arch:guard`（或 `npx tsx tools/arch-guard.ts`，加 `--list` 打印全部读数）。
  * **反例实测**（每条判据都要证明它真能报红，见头注末的「自检记录」）。
  *
  * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
  *   - 游戏版本：**v0.1.0**（`package.json`）
- *   - 本工具最后核对：**2026-09-27**（当日读数：F1 越层 0 处 · F2 重复 0 处 · F3 悬空 0 处 · F4 旁路 0 处）
+ *   - 本工具最后核对：**2026-09-29**（当日读数：F1 越层 0 处 · F2 重复 0 处 · F3 悬空 0 处 · F4 旁路 0 处
+ *     · F5 跳转 0 处 · **F6 日期本地化 0 处**（F6 同日新增））
  *   - 判据：新增"游戏数据表"时**同步登记进 `DATA_TABLES`**，否则它照样能被页面直读而无人拦；
  *     新增单点时**同步登记进 `SINGLE_SOURCE` 与 `docs/single-source.md`**（两处一起，F3 会核对）。
  */
@@ -291,6 +298,31 @@ for (const file of rendererFiles) {
   }
 }
 
+/* ═══════════ F6 · 日期格式化本地化：渲染层不许把语言焊死 ═══════════
+ * 起因（**2026-09-29 船长令**：英文界面残留中文清理 · 甲案）：`toLocaleDateString('zh-CN')` 这类写法
+ * 在英文界面下照样按中文顺序出日期。走 `i18n/fmt.ts` 的 `fmtDate` / `fmtDateTime` 即可。
+ * ⚠ 只管**日期/时间**：`toLocaleString('zh-CN')` 用于数字千分位时 zh/en 逐位同值 ⇒ 不报。
+ */
+{
+  const DATE_LOCALE = /toLocale(Date|Time)String\s*\(\s*['"]zh-CN['"]/g
+  for (const file of rendererFiles) {
+    const rel = relOf(file)
+    if (rel === 'i18n/fmt.ts') continue // 本地化封装自家（它有 localeTag() 那条）
+    const src = stripComments(readFileSync(file, 'utf8'))
+    src.split('\n').forEach((line, i) => {
+      if (!DATE_LOCALE.test(line)) return
+      DATE_LOCALE.lastIndex = 0
+      hits.push({
+        check: 'F6',
+        file: rel,
+        line: i + 1,
+        detail: '把语言焊死的日期格式化（`toLocaleDateString(\'zh-CN\')`）',
+        fix: '改走 `i18n/fmt.ts` 的 `fmtDate` / `fmtDateTime`（内部取 `localeTag()`）',
+      })
+    })
+  }
+}
+
 /* ═══════════ 输出 ═══════════ */
 const byCheck = new Map<string, Hit[]>()
 for (const h of hits) {
@@ -314,8 +346,9 @@ const LABEL: Record<string, string> = {
   F3: 'F3 索引自检（索引与代码不一致）',
   F4: 'F4 取数口契约（页面旁路建上下文）',
   F5: 'F5 跳转目标契约（活动栏点击落在不存在的页/页签）',
+  F6: 'F6 日期格式化本地化（把语言焊死）',
 }
-for (const key of ['F1', 'F2', 'F3', 'F4', 'F5']) {
+for (const key of ['F1', 'F2', 'F3', 'F4', 'F5', 'F6']) {
   const list = byCheck.get(key) ?? []
   if (list.length === 0) {
     console.log(`✅ ${LABEL[key]}：0 处`)

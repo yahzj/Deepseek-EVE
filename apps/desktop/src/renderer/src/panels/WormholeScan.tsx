@@ -38,6 +38,7 @@ import { archetypeText } from '../ui/labelsText'
 import { MatterTechTab } from './MatterTechTab'
 import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
 import { tr, cmdText } from '../i18n/locale'
+import { fmtDuration } from '../i18n/fmt'
 
 /**
  * **「发现于 9月14日」**（船长 2026-09-14：卡片上不要相对时间，要日期）。
@@ -121,7 +122,7 @@ export function WormholeScanTab({
          与同页「残骸打捞」的写法一致，原先那行可见的 `.app-note` 收进提示、不再占版面） */
       hint={
         <HintIcon
-          tip={tr("ui.WormholeScan.046", { p1: formatDurationMs(WORMHOLE_SCAN_BASE_MS), stockMax: stockMax })}
+          tip={tr("ui.WormholeScan.046", { p1: fmtDuration(WORMHOLE_SCAN_BASE_MS), stockMax: stockMax })}
         />
       }
       right={
@@ -133,7 +134,7 @@ export function WormholeScanTab({
           <span className="app-dim">
             {tr("ui.WormholeScan.002")} {tr("ui.WormholeScan.064", { p1: `${stock.length}/${stockMax}` })}
             {runs.length > 0 ? ` ${tr("ui.WormholeScan.068", { p1: runs.length })}` : ''}
-            {pending > 0 ? ` · 待确认报告 ${pending} 份` : ''}{tr('ui.WormholeScan.056', { d: formatDurationMs(windowMs) })}
+            {pending > 0 ? ` · 待确认报告 ${pending} 份` : ''}{tr('ui.WormholeScan.056', { d: fmtDuration(windowMs) })}
           </span>
         )
       }
@@ -181,8 +182,8 @@ export function WormholeScanTab({
             {tr("ui.WormholeScan.008")} <b>{percent}%</b>
             <span className="app-dim">
               {' '}
-              {tr('ui.WormholeScan.057', { a: formatDurationMs(done), b: formatDurationMs(windowMs) })}
-              {scan.active ? ` · 还需 ${formatDurationMs(Math.max(0, windowMs - done))}` : ''}
+              {tr('ui.WormholeScan.057', { a: fmtDuration(done), b: fmtDuration(windowMs) })}
+              {scan.active ? ` · 还需 ${fmtDuration(Math.max(0, windowMs - done))}` : ''}
             </span>
           </div>
           <div className="app-wh-scanbar-track">
@@ -392,7 +393,7 @@ export function WormholeScanTab({
                       <span className="app-inv-name">{tr("ui.WormholeScan.028")}</span>
                       <span className="app-inv-count">
                         {run.shipIds.length} {tr("ui.WormholeScan.029")}{' '}
-                        {formatDurationMs(Math.max(0, run.finishAtGameMs - state.gameMs))}
+                        {fmtDuration(Math.max(0, run.finishAtGameMs - state.gameMs))}
                       </span>
                     </div>
                     <div className="app-inv-btns">
@@ -468,7 +469,7 @@ export function WormholeScanTab({
                     </span>
                     <span className="app-inv-count">
                       {rep.shipIds.length} {tr("ui.WormholeScan.042")} {rep.coresReleased} {tr("ui.WormholeScan.043")}{' '}
-                      {tr("ui.WormholeScan.067", { p1: formatDurationMs(Math.max(0, state.gameMs - rep.finishedAtGameMs)) })}
+                      {tr("ui.WormholeScan.067", { p1: fmtDuration(Math.max(0, state.gameMs - rep.finishedAtGameMs)) })}
                     </span>
                   </div>
                   <div className="app-inv-btns">

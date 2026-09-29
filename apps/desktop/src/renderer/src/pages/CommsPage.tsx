@@ -20,7 +20,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { formatDurationMs, type CommsEntryView } from '@whale/core'
+import { type CommsEntryView } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { CommsDeviceFrame, CommsEave, CommsScreen } from '../panels/CommsReader'
 import { Glyph } from '../ui/Glyphs'
@@ -31,6 +31,7 @@ import { commsBriefText, commsClockText, commsSenderText, commsSubjectText } fro
 import { WeekendSummaryView } from '../panels/WeekendSummary'
 import { PlugExchangeModal } from '../panels/PlugExchange'
 import { sessionPick, setSessionPick, useSessionScroll } from '../ui/sessionView'
+import { fmtDuration } from '../i18n/fmt'
 
 /**
  * ⚠ **右栏（机身 + 内嵌屏幕 + 下檐口）已抽成公共件 `panels/CommsReader.tsx`**
@@ -253,7 +254,7 @@ function WreckLogPane({ engine, rows }: { engine: PageProps['engine']; rows: Ret
   const modName = (id: string): string => engineCtx.ctx.modules.get(id)?.name ?? id
   const shipName = (id: string | undefined): string =>
     id === undefined ? '—' : (engineCtx.ctx.ships.get(id)?.name ?? id)
-  const clock = (ms: number): string => formatDurationMs(Math.max(0, ms))
+  const clock = (ms: number): string => fmtDuration(Math.max(0, ms))
   const cause = tr(
     e.cause === 'ai-lost'
       ? 'ui.WreckLog.017'

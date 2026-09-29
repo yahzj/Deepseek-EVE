@@ -26,7 +26,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   MAX_SKILL_LEVEL,
   PREREQ_MIN_LEVEL,
-  formatDurationMs,
   skillLevelTimeMs,
   skillLicenseMissing,
   skillLicensePriceOf,
@@ -47,6 +46,7 @@ import { SKILL_BRANCHES, SKILL_TREE_POSITIONS } from '@whale/data'
 import { skillBranchText, skillGroupText } from '../ui/labelsText'
 import type { PageProps } from './common'
 import { cmdText, tr } from '../i18n/locale'
+import { fmtDuration } from '../i18n/fmt'
 
 /** 排布算法抽到纯模块（可离线读坐标核对）：见 `ui/skillTreeLayout.ts` */
 
@@ -513,7 +513,7 @@ export function SkillsTreePage({
                       ? (state.skills.queue.filter((x) => x.skillId === s.id).pop()?.targetLevel ?? st.lv)
                       : st.lv
                   const nextLv = Math.min(MAX_SKILL_LEVEL, lastQ + 1)
-                  const eta = formatDurationMs(Math.max(1, Math.round(skillLevelTimeMs(s, nextLv) * tf)))
+                  const eta = fmtDuration(Math.max(1, Math.round(skillLevelTimeMs(s, nextLv) * tf)))
                   return (
                     <div className={`app-skill-row${st.cls === 'is-locked' ? ' is-locked' : ''}`} key={s.id}>
                       <div className="app-inv-main">
@@ -679,7 +679,7 @@ export function SkillsTreePage({
                       <div className="app-skilltree-row">
                         <span className="app-dim">{tr('ui.SkillTree.015')}</span>
                         <span className="app-skilltree-row-value">
-                          {formatDurationMs(Math.max(1, Math.round(skillLevelTimeMs(open, targetLv) * tf)))}
+                          {fmtDuration(Math.max(1, Math.round(skillLevelTimeMs(open, targetLv) * tf)))}
                           {tf < 1 ? tr('ui.SkillsPage.019') : ''}
                         </span>
                       </div>
@@ -689,7 +689,7 @@ export function SkillsTreePage({
                         <button
                           className="app-btn is-primary is-small"
                           title={tr('ui.SkillsPage.036', {
-                            p1: formatDurationMs(Math.max(1, Math.round(skillLevelTimeMs(open, targetLv) * tf))),
+                            p1: fmtDuration(Math.max(1, Math.round(skillLevelTimeMs(open, targetLv) * tf))),
                           })}
                           onClick={() => engine.trainNextLevel(open.id)}
                         >

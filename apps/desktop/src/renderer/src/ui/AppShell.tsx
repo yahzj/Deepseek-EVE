@@ -21,7 +21,7 @@
 import type { ReactNode } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ActivePromo, ActiveTuning, GameState } from '@whale/core'
-import { formatDurationMs, formatDurationShort } from '@whale/core'
+import { formatDurationShort } from '@whale/core'
 import type { ToastFn } from '../pages/common'
 import { ActivityBar } from '../panels/ActivityBar'
 // 旧版活动栏：从「昨天那版」原样拆出的冻结件（船长令「旧版建议你从昨天的版本中 git 下来进行拆解」）
@@ -36,6 +36,7 @@ import type { MapTab } from '../pages/MapPage'
 import type { ShipTab } from '../pages/ShipPage'
 import type { PageKey } from '../App'
 import { tr, useL10n } from '../i18n/locale'
+import { fmtDate, fmtDuration, fmtDurationShort } from '../i18n/fmt'
 
 export type LayoutKind = 'modern' | 'classic'
 
@@ -162,7 +163,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
                 className="app-header-tuning app-header-promo"
                 title={
                   `${p.label}${p.detail ? `\n${p.detail}` : ''}\n` +
-                  tr("ui.ActivityBar.054", { p1: new Date(p.untilMs - 1).toLocaleDateString('zh-CN'), p2: formatDurationMs(Math.max(0, p.untilMs - tuningTick)) }) +
+                  tr("ui.ActivityBar.054", { p1: fmtDate(p.untilMs - 1), p2: fmtDuration(Math.max(0, p.untilMs - tuningTick)) }) +
                   tr("ui.ActivityBar.059", { p1: p.open === 'wormhole-scan' ? tr("ui.MapPage.007") : tr("ui.ActivityBar.006") })
                 }
                 onClick={() => {
@@ -179,7 +180,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
                   <Glyph name="ico-scan" size={12} color={ICO_TONES['ico-scan']} />
                 </span>
                 <span className="app-header-tuning-name">{p.label}</span>
-                <span className="app-header-tuning-time">{formatDurationShort(Math.max(0, p.untilMs - tuningTick))}</span>
+                <span className="app-header-tuning-time">{fmtDurationShort(Math.max(0, p.untilMs - tuningTick))}</span>
               </button>
             ))}
             {tuningsNow.map((tn) => (
@@ -188,7 +189,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
                 className="app-header-tuning"
                 title={
                   tr("ui.ActivityBar.060", { p1: tn.name, p2: tn.mul, p3: tn.note ? `\n${tn.note}` : '' }) +
-                  tr("ui.ActivityBar.054", { p1: new Date(tn.untilMs - 1).toLocaleDateString('zh-CN'), p2: formatDurationMs(Math.max(0, tn.untilMs - tuningTick)) })
+                  tr("ui.ActivityBar.054", { p1: fmtDate(tn.untilMs - 1), p2: fmtDuration(Math.max(0, tn.untilMs - tuningTick)) })
                 }
                 onClick={() => {
                   changePage('map')
@@ -199,7 +200,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
                   <Glyph name="ico-scan" size={12} color={ICO_TONES['ico-scan']} />
                 </span>
                 <span className="app-header-tuning-name">{tn.name} ×{tn.mul}</span>
-                <span className="app-header-tuning-time">{formatDurationShort(Math.max(0, tn.untilMs - tuningTick))}</span>
+                <span className="app-header-tuning-time">{fmtDurationShort(Math.max(0, tn.untilMs - tuningTick))}</span>
               </button>
             ))}
           </div>
@@ -220,7 +221,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
             {/* 在线时长。⚠ 本条注释原写「金钱栏已移到左侧栏」（船长 2026-09-13 令）；
                  **2026-09-25 船长令「钱包显示移动到顶部玩家名字的右侧」** ⇒ 钱包已回到顶栏
                  （见上方 `app-pilot` 右侧的 `MoneyFit`），本注释随之更正。 */}
-            <span className="app-clock">{tr("ui.App.059")} {formatDurationMs(state.gameMs)}</span>
+            <span className="app-clock">{tr("ui.App.059")} {fmtDuration(state.gameMs)}</span>
             {/* 公告弹层一开就收起嵌入的活动窗口（2026-09-21 船长令：打开弹层即隐藏并最小化） */}
             <AnnouncementHub engine={engine} onOpen={hideActivityWin} />
             <button
@@ -406,7 +407,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
              * ⚠ **金钱栏已移到左侧栏**（船长 2026-09-13：「将顶部的金钱栏移动到左侧的出港上方」）
              * ⇒ 顶栏这里不再显示余额，只留在线时长与公告/按钮。落点在 `app-nav-side` 首项上方。
              */}
-            <span className="app-clock">{tr("ui.App.059")} {formatDurationMs(state.gameMs)}</span>
+            <span className="app-clock">{tr("ui.App.059")} {fmtDuration(state.gameMs)}</span>
             {/* 公告弹层一开就收起嵌入的活动窗口（2026-09-21 船长令：打开弹层即隐藏并最小化） */}
             <AnnouncementHub engine={engine} onOpen={hideActivityWin} />
             <button

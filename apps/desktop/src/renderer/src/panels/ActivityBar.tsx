@@ -10,7 +10,7 @@
  */
 import { activityOverview, activePromos, activeTunings, aiCoreIndustryUsed, aiCoreShipUsed, scanAwaitingView, scanStatus } from '@whale/core'
 import type { ActivityView } from '@whale/core'
-import { formatDurationMs, formatDurationShort } from '@whale/core'
+import { formatDurationShort } from '@whale/core'
 import { useEffect, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -22,6 +22,7 @@ import { tr, cmdText } from '../i18n/locale'
 import { goFor } from '../ui/activityGo'
 // 活动栏「停止/取消」按钮文案 = 单点（两套外壳共用，见文件头注）
 import { stopLabel } from './activityStopLabel'
+import { fmtDuration } from '../i18n/fmt'
 
 const KIND_ICON: Record<string, string> = {
   train: 'nav-skills',
@@ -153,7 +154,7 @@ export function ActivityBar({
     const lines = items.slice(0, 8).map((v) => {
       const tail =
         v.remainingMs !== null && v.remainingMs > 0
-          ? ` · 剩 ${formatDurationMs(v.remainingMs)}`
+          ? ` · 剩 ${fmtDuration(v.remainingMs)}`
           : v.percent !== null
             ? ` · ${Math.round(v.percent)}%`
             : ''
@@ -250,7 +251,7 @@ export function ActivityBar({
           ) : null}
           <span className="app-activitybar-time">
             {v.percent !== null ? `${Math.round(v.percent)}%` : ''}
-            {v.remainingMs !== null && v.remainingMs > 0 ? ` · 剩 ${formatDurationMs(v.remainingMs)}` : ''}
+            {v.remainingMs !== null && v.remainingMs > 0 ? ` · 剩 ${fmtDuration(v.remainingMs)}` : ''}
           </span>
         </div>
         {/**
@@ -345,7 +346,7 @@ export function ActivityBar({
               title={
                 scanBar.done
                   ? tr("ui.ActivityBar.055", { p1: scanName(scanBar.galaxyId) })
-                  : tr("ui.ActivityBar.058", { p1: scanName(scanBar.galaxyId), p2: formatDurationMs(scanBar.remainingMs) })
+                  : tr("ui.ActivityBar.058", { p1: scanName(scanBar.galaxyId), p2: fmtDuration(scanBar.remainingMs) })
               }
               onClick={() => {
                 // 完成态点一下 = 看过（收条）；进行中点一下 = 纯跳转（星图页有「终止扫描」）

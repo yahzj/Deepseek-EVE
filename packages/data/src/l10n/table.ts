@@ -5097,5 +5097,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    * 与 `ui.shipInfo.202/.210` 的「机群结构层」（我方机群的属性）分得清。
    */
   "ui.shipInfo.211": { zh: "敌方对机群命中", en: "Enemy accuracy vs drones" },
-  "ui.shipInfo.212": { zh: "−{p1}", en: "−{p1}" }
+  "ui.shipInfo.212": { zh: "−{p1}", en: "−{p1}" },
+  /**
+   * **造船厂产物悬停卡那行括号**（**2026-09-29** · 英文界面残留中文清理）：原先在
+   * `panels/Shipyard.tsx` 里**手写中文整句 ＋ `toLocaleString('zh-CN')`** ⇒ 英文界面下漏中文。
+   */
+  "ui.shipInfo.213": { zh: "（货舱 {cargo} m³ · {cycle} 秒 × {perCycle} 单位/循环）", en: "(hold {cargo} m³ · {cycle} s × {perCycle} units/cycle)" }
 }

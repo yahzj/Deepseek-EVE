@@ -8,9 +8,11 @@ import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
 import { tr, cmdText } from '../i18n/locale'
+import { localeTag } from '../i18n/fmt'
 
+/** 存档时间戳（按当前语言；原先写死 `zh-CN` ⇒ 英文界面下日期顺序是中文的） */
 function fmtTime(wallMs: number): string {
-  return new Date(wallMs).toLocaleString('zh-CN', { hour12: false })
+  return new Date(wallMs).toLocaleString(localeTag(), { hour12: false })
 }
 
 /** 铁人模式读数（S4b）：代次/开关/救援门槛，全部由引擎现取 */

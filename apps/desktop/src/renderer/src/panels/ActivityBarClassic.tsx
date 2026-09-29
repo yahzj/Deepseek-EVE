@@ -18,7 +18,7 @@
  */
 import { activityOverview, activePromos, activeTunings, aiCoreIndustryUsed, aiCoreShipUsed, scanAwaitingView, scanStatus } from '@whale/core'
 import type { ActivityView } from '@whale/core'
-import { formatDurationMs, formatDurationShort } from '@whale/core'
+import { formatDurationShort } from '@whale/core'
 import { useEffect, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -32,6 +32,7 @@ import { stopLabel } from './activityStopLabel'
 import { tr, cmdText } from '../i18n/locale'
 // 活动行「点击去哪」的跳转单点（2026-09-27 建：原先两套外壳各一份，快递那档跳到了已删除的星图页签 ⇒ 空白页）
 import { goFor } from '../ui/activityGo'
+import { fmtDate, fmtDuration, fmtDurationShort } from '../i18n/fmt'
 
 const KIND_ICON: Record<string, string> = {
   train: 'nav-skills',
@@ -163,7 +164,7 @@ export function ActivityBarClassic({
     const lines = items.slice(0, 8).map((v) => {
       const tail =
         v.remainingMs !== null && v.remainingMs > 0
-          ? ` · 剩 ${formatDurationMs(v.remainingMs)}`
+          ? ` · 剩 ${fmtDuration(v.remainingMs)}`
           : v.percent !== null
             ? ` · ${Math.round(v.percent)}%`
             : ''
@@ -260,7 +261,7 @@ export function ActivityBarClassic({
           ) : null}
           <span className="app-activitybar-time">
             {v.percent !== null ? `${Math.round(v.percent)}%` : ''}
-            {v.remainingMs !== null && v.remainingMs > 0 ? ` · 剩 ${formatDurationMs(v.remainingMs)}` : ''}
+            {v.remainingMs !== null && v.remainingMs > 0 ? ` · 剩 ${fmtDuration(v.remainingMs)}` : ''}
           </span>
         </div>
       </div>
@@ -367,7 +368,7 @@ export function ActivityBarClassic({
             title={
               scanBar.done
                 ? tr("ui.ActivityBar.055", { p1: scanName(scanBar.galaxyId) })
-                : tr("ui.ActivityBar.058", { p1: scanName(scanBar.galaxyId), p2: formatDurationMs(scanBar.remainingMs) })
+                : tr("ui.ActivityBar.058", { p1: scanName(scanBar.galaxyId), p2: fmtDuration(scanBar.remainingMs) })
             }
             onClick={() => {
               // 完成态点一下 = 看过（收条）；进行中点一下 = 纯跳转（星图页有「终止扫描」）
@@ -398,7 +399,7 @@ export function ActivityBarClassic({
             className="app-activitybar-tuning app-activitybar-promo"
             title={
               `${p.label}${p.detail ? `\n${p.detail}` : ''}\n` +
-              tr("ui.ActivityBar.054", { p1: new Date(p.untilMs - 1).toLocaleDateString('zh-CN'), p2: formatDurationMs(Math.max(0, p.untilMs - tuningTick)) }) +
+              tr("ui.ActivityBar.054", { p1: fmtDate(p.untilMs - 1), p2: fmtDuration(Math.max(0, p.untilMs - tuningTick)) }) +
               tr("ui.ActivityBar.059", { p1: p.open === 'wormhole-scan' ? tr("ui.MapPage.007") : tr("ui.ActivityBar.006") })
             }
             onClick={() => {
@@ -413,7 +414,7 @@ export function ActivityBarClassic({
               <Glyph name="ico-scan" size={13} color={ICO_TONES['ico-scan']} />
             </span>
             <span className="app-activitybar-tuning-name">{p.label}</span>
-            <span className="app-activitybar-tuning-time">{formatDurationShort(Math.max(0, p.untilMs - tuningTick))}</span>
+            <span className="app-activitybar-tuning-time">{fmtDurationShort(Math.max(0, p.untilMs - tuningTick))}</span>
           </button>
         ))}
         {/* 限时加成（2026-09-15 船长）：摆在**扫描条右侧** —— 生效中的加成项 + 剩余时间；无加成不渲染 */}
@@ -423,7 +424,7 @@ export function ActivityBarClassic({
             className="app-activitybar-tuning"
             title={
               tr("ui.ActivityBar.060", { p1: t.name, p2: t.mul, p3: t.note ? `\n${t.note}` : '' }) +
-              tr("ui.ActivityBar.054", { p1: new Date(t.untilMs - 1).toLocaleDateString('zh-CN'), p2: formatDurationMs(Math.max(0, t.untilMs - tuningTick)) })
+              tr("ui.ActivityBar.054", { p1: fmtDate(t.untilMs - 1), p2: fmtDuration(Math.max(0, t.untilMs - tuningTick)) })
             }
             onClick={() => onGoPage?.('map', 'star')}
           >
@@ -434,7 +435,7 @@ export function ActivityBarClassic({
               {t.name} ×{t.mul}
             </span>
             {/* 时间列同样用紧凑时长：全量格式会把"名称 ×倍率"挤成省略号（见促销徽标同处注释） */}
-            <span className="app-activitybar-tuning-time">{formatDurationShort(Math.max(0, t.untilMs - tuningTick))}</span>
+            <span className="app-activitybar-tuning-time">{fmtDurationShort(Math.max(0, t.untilMs - tuningTick))}</span>
           </button>
         ))}
       </div>

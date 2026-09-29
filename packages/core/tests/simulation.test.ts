@@ -218,4 +218,23 @@ describe('中文时长格式化', () => {
     expect(formatDurationShort(86_400_000 + 180_000)).toBe('1天3分')
     expect(formatDurationShort(-100)).toBe('0秒')
   })
+
+  /**
+   * **英文口径**（**2026-09-29 船长令**：英文界面残留中文清理 · 甲案）——
+   * 单位词表 ＋ 空格分隔在 `packages/core/src/time.ts` 的单点里；渲染层走 `i18n/fmt.ts` 的
+   * `fmtDuration` / `fmtDurationShort`（**渲染层不再直接调这两支**，见 `arch-guard` F6 的同批口径）。
+   */
+  it('英文口径：单位词换掉、分隔改空格（中文口径逐字不变）', () => {
+    expect(formatDurationMs(0, 'en')).toBe('0s')
+    expect(formatDurationMs(59_000, 'en')).toBe('59s')
+    expect(formatDurationMs(61_000, 'en')).toBe('1m 1s')
+    expect(formatDurationMs(3_721_000, 'en')).toBe('1h 2m 1s')
+    expect(formatDurationMs(90_061_000, 'en')).toBe('1d 1h 1m 1s')
+    expect(formatDurationMs(-100, 'en')).toBe('0s')
+    expect(formatDurationShort(90_061_000, 'en')).toBe('1d 1h')
+    expect(formatDurationShort(86_400_000 + 180_000, 'en')).toBe('1d 3m')
+    // 缺省参数 = 中文（core 侧既有调用零变化）
+    expect(formatDurationMs(61_000)).toBe(formatDurationMs(61_000, 'zh'))
+    expect(formatDurationShort(61_000)).toBe(formatDurationShort(61_000, 'zh'))
+  })
 })
