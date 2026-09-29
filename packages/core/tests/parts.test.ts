@@ -170,11 +170,10 @@ describe('零件体系：配方改造（2026-09-20）', () => {
     const sbp = SHIP_BLUEPRINTS.find((b) => b.id === 'sbp-colossal')!
     expect(matValue(sbp.materials)).toBe(307_106_000) // 原总价（8 种矿物口径）⇒ 替换后逐分不变
     /**
-     * ⚠ **2026-09-29 船长令改判**：原「使用零件的舰船工期 = 原值 ÷5」那条**作废**——
-     * 现行口径 = **按档位净收益带反推工期**（皇带鱼 T5 带 3.9M~7.8M ⇒ 净/h 5.85M ⇒ 64.5 时）。
-     * 这里只钉"与一次性孪生同值"，档位带由 `shipbuild-income-ladder.test.ts` 统一守。
+     * ⚠ **2026-09-29 船长令**：「使用零件的舰船工期 = 原值 ÷5」**依旧保留** ⇒
+     * 皇带鱼维持 **162,000 ÷ 5 = 32,400**（上一版曾改为跟档位净收益带走，已回退）。
      */
-    expect(sbp.buildSeconds).toBe(232_261)
+    expect(sbp.buildSeconds).toBe(32_400)
     expect(sbp.materials.some((m) => m.itemId === 'part-frame')).toBe(true)
     // 2026-09-20 船长追加：「让虚空晶留在旗舰配方」⇒ 虫洞特产仍是旗舰的招牌料（**原量 10,320**）
     expect(sbp.materials.find((m) => m.itemId === 'min-voidcrystal')?.count).toBe(10_320)
