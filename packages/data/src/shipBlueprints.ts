@@ -19,11 +19,23 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     id: 'sbp-pioneer',
     name: '开拓级舰船蓝图',
     shipId: 'pioneer',
+    /*
+     * **2026-09-28 船长令「调整舰船所需材料量，维持之前的 45%」**。
+     *
+     * 病根：同日「开拓市价上调 1.2M → 8M」时**材料没跟着调** ⇒ 料/价 从 45.2% 掉到 **6.8%**
+     * （542,300 ÷ 8,000,000），成了全表 45 张舰船蓝图里**唯一出带**的一张
+     * （`content:check` 的舰船料/价预警正是撞在这条上）。
+     *
+     * 算法：材料价值 = 行价 × 45% = 8,000,000 × 0.45 = **3,600,000**，
+     * 四种矿物**按原配比整体放大**（钛钢 36.4% / 银纹 27.2% / 麦氏 19.0% / 诺克 17.4% → 36.0/27.0/19.0/18.0），
+     * 数量全部取整数、总价正好 3,600,000（= 45.000%）：
+     * 162,000×8 + 81,000×12 + 34,200×20 + 7,200×90 = 1,296,000+972,000+684,000+648,000。
+     */
     materials: [
-      { itemId: 'min-tritanium', count: 24_650 },
-      { itemId: 'min-pyerite', count: 12_300 },
-      { itemId: 'min-mexallon', count: 5_150 },
-      { itemId: 'min-nocxium', count: 1_050 },
+      { itemId: 'min-tritanium', count: 162_000 },
+      { itemId: 'min-pyerite', count: 81_000 },
+      { itemId: 'min-mexallon', count: 34_200 },
+      { itemId: 'min-nocxium', count: 7_200 },
     ],
     buildSeconds: 12_600, // 开拓级（2026-09-28 升 T3 ⇒ 工期改按 T3 带 3~5 时；原 T2 带 5,160 = 86 分）
     buildCostIsk: 250_000,
@@ -1004,11 +1016,12 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '开拓级舰船蓝图（一次性）',
     shipId: 'pioneer',
     singleUse: true,
+    // 材料与常规图 sbp-pioneer 完全一致（2026-09-28 船长令拉回 45%：3,600,000 ÷ 8,000,000）
     materials: [
-      { itemId: 'min-tritanium', count: 24_650 },
-      { itemId: 'min-pyerite', count: 12_300 },
-      { itemId: 'min-mexallon', count: 5_150 },
-      { itemId: 'min-nocxium', count: 1_050 },
+      { itemId: 'min-tritanium', count: 162_000 },
+      { itemId: 'min-pyerite', count: 81_000 },
+      { itemId: 'min-mexallon', count: 34_200 },
+      { itemId: 'min-nocxium', count: 7_200 },
     ],
     buildSeconds: 12_600,
     buildCostIsk: 0,
