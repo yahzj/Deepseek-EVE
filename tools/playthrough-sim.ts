@@ -8,6 +8,12 @@
  *       [--goal boss|tril|collect|all]（目标制，2026-09-05 船长：boss=通关连打 5/5；
  *       tril=现金 ≥1 万亿 ISK；collect=全收集（全舰船/全可造蓝图/全装备）；all=三者都要；默认 boss）
  * 默认 debugQuick=true（技能 1s/级、扫描 1s）——聚焦系统链一致性（平衡归二号 C4）。
+ * ⚠⚠ **2026-09-28 船长报障「工具似乎作弊了：0.2 天点亮 20 个星系」——属实，见下面这条**：
+ *   `debugQuick` **不是"同一段游戏时间算得快一点"，而是把每段作业压到 1 秒**
+ *   （扫描 / 采矿循环与行程腿 / 制造 / 打捞 / 航行 / 技能每级 / AI 任务，全仓 8 处）。
+ *   实测量级：20 个星系的**真实扫描窗口合计 3.23 天**（无技能）／**0.95 天**（扫描三技能满级），
+ *   而加速模式只要 20 秒；采矿循环 1 秒 vs 真实 8~30 秒 ⇒ 一天 474 趟 vs 真实 ~50 趟。
+ *   ⇒ **要"实机流程"口径的读数，必须加 `--real-training`**；加速模式的报告现已钉上警告行。
  * 在独立副本钉死基线运行；主仓库并行开发不受干扰。
  * v1.1（B3 + 目标制）：AI 打捞任务（轮换、单趟自动返港）+ 主控低频打捞会话 + 残骸回收炉
  *   （打捞五技能效果随实际作业被触发：整备/漂流物/富集识别走打捞，回收/提纯走炉）；
@@ -295,6 +301,22 @@ function day(): number {
  */
 const MARK_STAT: Record<string, number> = {}
 let dayWalletIsk = 0
+/**
+ * **每日资金流向账**（2026-09-28 加 · 船长令「先调花钱策略，再跑真实三跑」）。
+ *
+ * 为什么需要：`--trace` 原来只有"当日净现金"一个数 —— 真实模式下看到的是
+ * 「采矿 96% 时间、一天 50 趟、净现金在 ±1M 之间来回」，**但看不出钱花在哪**，
+ * 于是"该调哪条策略"只能猜。这里把主控的几类花钱动作按**钱包前后差**记账：
+ * 许可 / 学图制造 / 买船配装 / AI 核心 / 卖货（正），余下的算「其它（含推进期：弹药/维修/远征奖励）」。
+ * 记账方式是**包一层**（花钱前后各取一次 `state.wallet.isk`），不改任何动作函数。
+ */
+const FLOW: Record<string, number> = {}
+function tracked(kind: string, fn: () => void): void {
+  const before = state.wallet.isk
+  fn()
+  const d = state.wallet.isk - before
+  if (d !== 0) FLOW[kind] = (FLOW[kind] ?? 0) + d
+}
 
 function mark(msg: string): void {
   const key = msg.split(/[ 　]/)[0] ?? msg
@@ -1148,6 +1170,42 @@ function ensureWhShipBuild(): void {
 }
 
 /**
+ * **学图/制造的预算闸**（2026-09-28 · 由真实模式的资金流账定位 · 船长令「先调花钱策略」）。
+ *
+ * 账（`--real-training --trace`，`--bias mine` 第 4~7 天，全部为当日实收）：
+ *
+ * | 天 | 卖货(进) | **学图制造(出)** | 其它(推进期) |
+ * |---|---|---|---|
+ * | d4 | +670k | −276k | +476k |
+ * | d5 | +929k | **−1,110k** | +498k |
+ * | d6 | +957k | **−2,131k** | +579k |
+ * | d7 | +1,042k | −590k | +669k |
+ *
+ * 也就是说：**这条线一天能吃掉全部收入**，于是现金永远在 60 万~250 万之间摆动、十天不见涨。
+ *
+ * 为什么它在加速模式下没暴露：那里采矿一天 474 趟、日收入 2,400 万，学习与制造的开销
+ * 被收入盖住了；真实模式一天只有 ~50 趟、日收入约 100 万，同一条策略就成了致命伤。
+ *
+ * ⚠ 而且要认清**这条线在本工具里是纯支出**：制成品（装备）**从不卖出**
+ * ——`sellEverything` 明确跳过 `module`/`ship`/`aicore`/`blueprint`，只卖矿/气/冰/矿物/零件。
+ * 所以"学图制造"= 花钱买收藏与自用件，**不是收入**。
+ *
+ * ⇒ 闸门口径：**先有钱，再收藏**。开工前要求钱包高过"起收线"，且每次买书/买料都必须留下保留金。
+ * 目标里带 `collect`（全收集）时起收线压低（那是明确要做的事），纯赚钱目标则要等资本成形。
+ */
+const CRAFT_RESERVE_ISK = 1_500_000
+function craftBudgetOk(): boolean {
+  /**
+   * 起收线：目标里带 `collect`（全收集）时 100 万就开工——那是明确要做的事；
+   * **纯赚钱目标（`isk1b`）抬到 5,000 万**——依据是 40 天真实跑的账：
+   * 第 32~36 天钱包一过 800 万，学图制造立刻每天吃掉 10 万~170 万（约占当日收入的 30~50%），
+   * 而它是**纯支出**（制成品不卖）⇒ 在攒钱目标下应当"等资本成形再收藏"。
+   */
+  const start = WANTS.collect ? 1_000_000 : 50_000_000
+  return state.wallet.isk >= start
+}
+
+/**
  * 蓝图：市场买书 → 学习 → 制造一件（制造链验证一次；防重复造抽血）。
  * 只处理市场有书可购的配方（碎片/原型专属配方无书，模拟不代打碎片）；无书配方跳过不卡循环。
  */
@@ -1158,6 +1216,7 @@ function doLearnCraft(): void {
     ensureWhShipBuild()
     return
   }
+  if (!craftBudgetOk()) return // 预算闸（见上）：钱没成形之前不收藏
   const bp = [...ctx.blueprints.values()]
     .filter((b) => goodOf('blueprint', b.id) !== undefined)
     .sort((a, b) => a.priceIsk - b.priceIsk)
@@ -1167,7 +1226,7 @@ function doLearnCraft(): void {
   if (book) {
     const stock = state.blueprintStock[bp.id] ?? 0
     if (stock <= 0) {
-      if (state.wallet.isk < book.basePrice + 30_000) return
+      if (state.wallet.isk < book.basePrice + CRAFT_RESERVE_ISK) return
       buyAtMarket(state, ctx, book.key, 1)
       return
     }
@@ -1184,14 +1243,16 @@ function doLearnCraft(): void {
   // 一号 v1.0 的 m.itemId/m.count 循环从不买料，导致制造永不启动：模拟器自身缺陷，2026-09-05 修）
   const bld = findBuildable(ctx, bp.id)
   if (!bld) return
-  if (state.wallet.isk < 50_000) return // 留现金缓冲（制造费已于 2026-09-08 取消；此处为日常开销保底）
+  if (state.wallet.isk < CRAFT_RESERVE_ISK) return // 留现金缓冲（制造费已于 2026-09-08 取消；此处为日常开销保底）
   if (bld.spec.materials.some((n) => countWare(state, n.itemId) < n.count)) {
     for (const n of bld.spec.materials) {
       const have = countWare(state, n.itemId)
       const want = n.count - have
       if (want <= 0) continue
       const g = [...ctx.marketGoods.values()].find((x) => x.kind === 'item' && x.refId === n.itemId)
-      if (g && state.wallet.isk > (g.basePrice ?? 10) * want * 2) buyAtMarket(state, ctx, g.key, want)
+      // 预算闸：这一笔买完仍须留下保留金（旧写法只看"买得起这一笔"，会把钱包抽干）
+      const cost = (g?.basePrice ?? 10) * want
+      if (g && state.wallet.isk > cost * 2 + CRAFT_RESERVE_ISK) buyAtMarket(state, ctx, g.key, want)
     }
     return
   }
@@ -3438,6 +3499,17 @@ function tickStat(): void {
         ` ｜ AI 炉 ${aiRuns}/5 台（核心库存 ${countAiCore(state, 'basic')} · 上限 ${aiCoreCap(state, ctx)} · 副船占 ${aiCoreShipUsed(state)}）`,
     )
     dayWalletIsk = state.wallet.isk
+    // 资金流向账（正 = 进账，负 = 出账）；「其它」= 当日净额 − 已记账的各项，主要是推进期（弹药/维修/远征奖励）
+    const flowParts = Object.entries(FLOW)
+      .sort((a, b) => a[1] - b[1])
+      .map(([n, v]) => `${n} ${v >= 0 ? '+' : ''}${Math.round(v / 1000)}k`)
+    const trackedSum = Object.values(FLOW).reduce((a, b) => a + b, 0)
+    const other = netIsk - trackedSum
+    console.log(
+      `  [trace d${d}] 资金流：${flowParts.length > 0 ? flowParts.join(' · ') : '（无主控收支）'}` +
+        ` · 其它(推进期) ${other >= 0 ? '+' : ''}${Math.round(other / 1000)}k`,
+    )
+    for (const n of Object.keys(FLOW)) delete FLOW[n]
     for (const n of Object.keys(MARK_STAT)) delete MARK_STAT[n]
     for (const n of Object.keys(MINE_STAT)) delete MINE_STAT[n]
     for (const n of Object.keys(TICK_STAT)) TICK_STAT[n] = 0
@@ -3451,7 +3523,7 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
     lastAuditMs = state.gameMs
   }
   tickStat()
-  refillSkills()
+  tracked('技能许可', () => refillSkills())
   /**
    * ⚠ **本拍顺序总纲**（2026-09-28 第三次修后定型，改这里之前先读这段）：
    * 1. 本块 = **策略倾向 `--bias` 的先手**（只换优先序，不新增玩法）；
@@ -3531,21 +3603,21 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
    * 远征/采矿循环时**整段跑不到**（实测 50 天只买到 1 门炮、始终开着采矿艇）。函数内部自带守卫
    * （在忙/在航/在采矿一律跳过，买船每天至多一次）⇒ 放到这里只是把"有机会就升级"这件事做足。
    */
-  buyShipAndGear()
+  tracked('买船配装', () => buyShipAndGear())
   /**
    * **虫洞备战（凑 4 艘 T3+ 战斗舰）**（2026-09-21 补）：`buyShipAndGear` 只会把**主控那一艘**
    * 往上换（判据是"比驾驶船更强"）⇒ 舰队永远是"1 艘 T3 + 一堆 T1"，而虫洞按 4×T3 满配配平。
    * 这里补"**数量**"这一维，与上面同拍、同样自带守卫（在忙/在航/采矿一律跳过，买不到就每天记一条原因）。
    */
-  ensureWhFleet()
+  tracked('虫洞备战', () => ensureWhFleet())
   if (homeLull()) {
     if (!state.mining.active) {
-      sellEverything()
+      tracked('卖货', () => sellEverything())
       useFreeFalconet()
-      doRefineCraft()
-      doLearnCraft()
-      doAi()
-      ensureSalvageFleet()
+      tracked('精炼', () => doRefineCraft())
+      tracked('学图制造', () => doLearnCraft())
+      tracked('AI 核心', () => doAi())
+      tracked('打捞舰队', () => ensureSalvageFleet())
       doRecycle()
       /**
        * **谜质科技每拍都试**（2026-09-21 第二十八批）：谜质由虫洞产出，
@@ -3663,6 +3735,26 @@ const wallSec = ((Date.now() - wall0) / 1000).toFixed(1)
 const lines: string[] = []
 lines.push('══════════ 全流程模拟报告 ═══════════')
 lines.push(`debugQuick=${!REAL_TRAINING} seed=${SEED} 上限 ${MAX_DAYS} 天 目标=${GOAL_RAW} 模式=${IRONMAN ? '铁人' : '普通'}`)
+/**
+ * ⚠⚠ **加速模式警告（2026-09-28 加 · 船长报「工具似乎作弊了：0.2 天点亮 20 个星系」）**。
+ *
+ * 船长说得对。`debugQuick` 不是"把同一段游戏时间算得快一点"，而是**把每一段作业都压到 1 秒**
+ * ——全仓共 8 处（`explore.ts` 扫描 · `mining.ts` 采矿循环与行程腿 · `manufacturing.ts` 制造 ·
+ * `salvaging.ts` 打捞 · `expedition.ts` 远征本地段 · `location.ts` 航行 · `engine.ts` 技能每级 ·
+ * `ai.ts` AI 任务）。后果的实测量级：
+ * - **扫描**：20 个星系的真实窗口合计 **3.23 天**（无技能）／**0.95 天**（扫描三技能满级）
+ *   ⇒ 0.2~0.5 天点亮 20/20 **只有 1 秒/次的加速模式下才可能**；
+ * - **采矿**：循环 1 秒 vs 真实 8~30 秒 ⇒ 一天 **474 趟**（加速）vs **~50 趟**（真实，实测）。
+ *
+ * ⇒ 只要开着 debugQuick，**任何"多少天达成"的读数都不代表实机**。本行把它钉在报告最上面，
+ * 就是不让这种读数被误读（要实机口径就用 `--real-training`）。
+ */
+if (!REAL_TRAINING) {
+  lines.push(
+    '⚠ 加速模式（debugQuick）：扫描/采矿/制造/打捞/航行/技能全部按 **1 秒** 结算 —— ' +
+      '本报告的"天数"**不代表实机时长**，只看系统链是否自洽；要实机口径请加 `--real-training`。',
+  )
+}
 const resultTxt = allGoalsDone()
   ? '✅ 目标全部达成'
   : holeEarlyExit

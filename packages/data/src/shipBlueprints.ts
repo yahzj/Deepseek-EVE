@@ -10,6 +10,26 @@
  *   基础零件 75% + 矿物 25%（**非专属不吃高级零件**）；
  * - **等值替换**：每张的材料总价**分文不变**（书价 / 舰价 / 料价比全部不受影响）；
  * - **允许删原材料**：每张只留至多 4 行矿物（原价值前 3 名 + 一枚大宗矿作细面额配平）。
+ *
+ * ⚠⚠ **工期口径（2026-09-29 船长令，取代此前所有"按档给时长带"的版本）**：
+ * 船长原话：「**舰船的收益不用收得太窄，但是要符合越高级的船单位时间收益率越高**」。
+ *
+ * **规则**：每档一个**每小时净收益带**（2× 宽、档间不重叠），**档内按既有净/h 次序摊开**，
+ * **工期由行价反推**：`工期(s) = (行价 − 材料货值 × 0.855) ÷ 目标净/h × 3600`
+ * （0.855 = 材料学 × 组件标准化 满级折扣；料/价 45% 锚、行价、配方一律未动）。
+ *
+ * | 档 | 净/h 带 | 工期落点 |
+ * |---|---|---|
+ * | T1 | 100,000 ~ 200,000 | 0.26 ~ 0.74 时 |
+ * | T2 | 250,000 ~ 500,000 | 0.52 ~ 1.35 时 |
+ * | T3 | 625,000 ~ 1,250,000 | 2.30 ~ 7.38 时 |
+ * | T4 | 1,560,000 ~ 3,120,000 | 9.47 ~ 44.37 时 |
+ * | T5 | 3,900,000 ~ 7,800,000 | 64.52 时 |
+ *
+ * **为什么改**：旧口径按"时长"分档（T1 15~25 分 / T2 51~86 分 / T3 3~5 时 / T4 9~20 时 / T5 45 时），
+ * 而净/h ∝ 行价 ÷ 工期、工时不随行价走 ⇒ 实测**三处越档**（T1 最高 354k > T2 最低 152k；
+ * T2 最高 481k > T3 最低 375k；T3 最高 1,846k > T4 最低 1,086k）。
+ * **虫洞专属 15 张（`sbp-wh-*`）不在本条阶梯内**（无市场行价），仍走 2026-09-20 的 ÷5 口径。
  */
 
 import type { ShipBlueprintDef } from '@whale/core'
@@ -19,13 +39,25 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     id: 'sbp-pioneer',
     name: '开拓级舰船蓝图',
     shipId: 'pioneer',
+    /*
+     * **2026-09-28 船长令「调整舰船所需材料量，维持之前的 45%」**。
+     *
+     * 病根：同日「开拓市价上调 1.2M → 8M」时**材料没跟着调** ⇒ 料/价 从 45.2% 掉到 **6.8%**
+     * （542,300 ÷ 8,000,000），成了全表 45 张舰船蓝图里**唯一出带**的一张
+     * （`content:check` 的舰船料/价预警正是撞在这条上）。
+     *
+     * 算法：材料价值 = 行价 × 45% = 8,000,000 × 0.45 = **3,600,000**，
+     * 四种矿物**按原配比整体放大**（钛钢 36.4% / 银纹 27.2% / 麦氏 19.0% / 诺克 17.4% → 36.0/27.0/19.0/18.0），
+     * 数量全部取整数、总价正好 3,600,000（= 45.000%）：
+     * 162,000×8 + 81,000×12 + 34,200×20 + 7,200×90 = 1,296,000+972,000+684,000+648,000。
+     */
     materials: [
-      { itemId: 'min-tritanium', count: 24_650 },
-      { itemId: 'min-pyerite', count: 12_300 },
-      { itemId: 'min-mexallon', count: 5_150 },
-      { itemId: 'min-nocxium', count: 1_050 },
+      { itemId: 'min-tritanium', count: 162_000 },
+      { itemId: 'min-pyerite', count: 81_000 },
+      { itemId: 'min-mexallon', count: 34_200 },
+      { itemId: 'min-nocxium', count: 7_200 },
     ],
-    buildSeconds: 12_600, // 开拓级（2026-09-28 升 T3 ⇒ 工期改按 T3 带 3~5 时；原 T2 带 5,160 = 86 分）
+    buildSeconds: 17_010, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 250_000,
     priceIsk: 32_000_000, // = 行价 8,000,000 × 4（2026-09-28 船长令「开拓市价上调」后同步；原 3.6M）
     description: '采矿艇，货舱 5,200 m³、循环 9 秒产 44 单位，比鲸吞级高约四成。',
@@ -43,7 +75,9 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-mexallon', count: 430_600 },
       { itemId: 'min-nocxium', count: 107_600 },
     ],
-    buildSeconds: 17_520, // 鲸王级（2026-09-13 价位重排后按带内插值：12M ⇒ 4.9 时；2026-09-29 涨价不改工期）
+    // 工期取二号本批「舰船工期按档位净收益带重排」（2026-09-29 船长令）：23,940 秒
+    // （⚠ 与主树那笔"鲸王价目对齐"不冲突——那笔只动锚价/蓝图/料单，工期一字未动）
+    buildSeconds: 177_180, // 2026-09-29 ?????????????????? 61,528,078 ? T3 ??? 1.25M/h = 49.2 ?
     buildCostIsk: 900_000,
     priceIsk: 400_000_000, // = 行价 100,000,000 × 4（⚠ 2026-09-29 船长裁决「甲」：原「行价 12M ×4 = 48M」作废）
     description: '采矿艇，货舱 7,000 m³、循环 8 秒产 58 单位，矿舰的产量顶点。',
@@ -60,7 +94,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-mexallon', count: 390_000 },
       { itemId: 'min-isotope', count: 75_000 },
     ],
-    buildSeconds: 43_200, // 座头鲸级（2026-09-28 升 T4 ⇒ 工期改按 T4 带 9~20 时；原 4.7 时）
+    buildSeconds: 76_687, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 420_000,
     priceIsk: 360_000_000, // = 行价 90,000,000 × 4（2026-09-28 升 T4 后市价 ×10）
     description: '矿舰，货舱 19,000 m³、循环 30 秒产 200 单位，矿舰的吨位旗舰。',
@@ -82,7 +116,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-circuit', count: 363_678 },
       { itemId: 'part-coolant', count: 200_286 },
     ],
-    buildSeconds: 32_400, // 皇带鱼级（2026-09-13 工期阶梯：T5 = T4 带下沿 9h ×5 = 45 时；价位重排后不变）
+    buildSeconds: 232_261, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 2_400_000,
     priceIsk: 2_560_000_000, // = 行价 640,000,000 × 4（2026-09-13 价位重排：旗舰基准 8 亿 ×0.8）
     description: '旗舰货舰，货舱 108,000 m³、循环 33 秒产 129 单位，移动要塞。', // 2026-09-09 货舱数值随船校正（原描述 26000 为旧稿）；2026-09-14 随货仓 ×3 改 108,000
@@ -109,7 +143,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-tritanium', count: 200 },
       { itemId: 'min-pyerite', count: 50 },
     ],
-    buildSeconds: 900,
+    buildSeconds: 900, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 20_000,
     description: '采矿艇，T1 起步船，货舱 800 m³、循环 12 秒产 10 单位。',
@@ -122,7 +156,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-tritanium', count: 4_750 },
       { itemId: 'min-pyerite', count: 1_350 },
     ],
-    buildSeconds: 1_260, // 掘洞级（2026-09-13 工期阶梯重排：T1 带 15~25 分；原 480）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2）
+    buildSeconds: 1_591, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 240000,
     description: '采矿艇，T1 起步船，货舱 1,800 m³、循环 11 秒产 18 单位。',
@@ -136,7 +170,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-pyerite', count: 8_450 },
       { itemId: 'min-mexallon', count: 4_050 },
     ],
-    buildSeconds: 4_800, // 鲸吞级（2026-09-13 工期阶梯重排：T2 带 51~86 分；原 3360）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
+    buildSeconds: 4_428, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 2250000,
     description: '采矿艇，货舱 4,500 m³、循环 10 秒产 34 单位，矿舰的量产主力。',
@@ -155,7 +189,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-circuit', count: 35_928 },
       { itemId: 'part-coolant', count: 19_786 },
     ],
-    buildSeconds: 59_610, // 蝠鲼级（2026-09-13 价位重排后按带内插值：67.5M ⇒ 16.6 时）
+    buildSeconds: 82_205, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 270_000_000, // = 行价 67,500,000 × 4（2026-09-13 价位重排）
     description: '重载货舰，货舱 26,000 m³、循环 36 秒产 110 单位，囤货主力。',
@@ -168,7 +202,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-tritanium', count: 1_650 },
       { itemId: 'min-pyerite', count: 450 },
     ],
-    buildSeconds: 900, // 鲣鱼级（2026-09-13 工期阶梯重排：T1 带 15~25 分；原 180）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2）
+    buildSeconds: 939, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 84_000, // 同步：42,000 × 2
     description: '武装护卫舰，T1 最快的轻火力平台。',
@@ -181,7 +215,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-tritanium', count: 4_300 },
       { itemId: 'min-pyerite', count: 1_250 },
     ],
-    buildSeconds: 1_230, // 马鲛级（2026-09-13 工期阶梯重排：T1 带 15~25 分；原 420）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2）
+    buildSeconds: 1_830, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 220000,
     description: '武装护卫舰，火力略高于鲣鱼级，代价是航速。',
@@ -194,7 +228,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-tritanium', count: 9_450 },
       { itemId: 'min-pyerite', count: 2_700 },
     ],
-    buildSeconds: 1_500, // 虎鲨级（2026-09-13 工期阶梯重排：T1 带 15~25 分；原 900）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2）
+    buildSeconds: 2_658, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 480000,
     description: '武装护卫舰，火力骨架更强，深空护航的常客。',
@@ -208,7 +242,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-pyerite', count: 4_500 },
       { itemId: 'min-mexallon', count: 2_150 },
     ],
-    buildSeconds: 4_050, // 灰鲭鲨级（2026-09-13 工期阶梯重排：T2 带 51~86 分；原 1800）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
+    buildSeconds: 3_039, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 1200000,
     description: '驱逐舰，货舱 2,300 m³、循环 13 秒产 15 单位，火力与容量都均衡。',
@@ -222,7 +256,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-pyerite', count: 10_300 },
       { itemId: 'min-mexallon', count: 4_950 },
     ],
-    buildSeconds: 5_070, // 大白鲨级（2026-09-13 工期阶梯重排：T2 带 51~86 分；原 4140）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×3）
+    buildSeconds: 4_873, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 3300000,
     description: '炮舰，货舱 3,200 m³、循环 13 秒产 18 单位，武装舰的量产主力。',
@@ -236,7 +270,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-pyerite', count: 5_800 },
       { itemId: 'min-mexallon', count: 2_800 },
     ],
-    buildSeconds: 4_350, // 梭鱼级（2026-09-13 工期阶梯重排：T2 带 51~86 分；原 2340）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
+    buildSeconds: 3_432, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 1550000,
     description: '无人机护卫，靠放飞机群替主炮撑火力。',
@@ -251,7 +285,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-mexallon', count: 11_700 },
       { itemId: 'min-nocxium', count: 2_350 },
     ],
-    buildSeconds: 14_340, // 王鲭级（2026-09-13 工期阶梯重排：T3 带 3~5 时；原 9780）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×3）
+    buildSeconds: 8_288, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 7800000,
     description: '无人机母舰，货舱 3,600 m³，机巢宽裕、靠放飞机群撑火力。',
@@ -267,7 +301,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-nocxium', count: 6_300 },
       { itemId: 'min-isotope', count: 11_050 },
     ],
-    buildSeconds: 16_920, // 长尾鲨级（2026-09-13 工期阶梯重排：T3 带 3~5 时，去封顶；原 14400）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×4）
+    buildSeconds: 23_918, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 36000000,
     description: '导弹巡洋舰，货舱 2,600 m³，靠齐射导弹先声夺人。',
@@ -283,7 +317,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-nocxium', count: 10_500 },
       { itemId: 'min-isotope', count: 18_400 },
     ],
-    buildSeconds: 18_000, // 电鳐级（2026-09-13 工期阶梯重排：T3 带 3~5 时，去封顶；原 14400）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×4）
+    buildSeconds: 26_579, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 60000000,
     description: '激光巡洋舰，货舱 2,500 m³，接敌即烧穿护盾。',
@@ -299,7 +333,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-nocxium', count: 7_700 },
       { itemId: 'min-isotope', count: 13_500 },
     ],
-    buildSeconds: 17_340, // 锤头鲨级（2026-09-13 工期阶梯重排：T3 带 3~5 时，去封顶；原 14400）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×4）
+    buildSeconds: 25_058, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 44000000,
     description: '炮击巡洋舰，货舱 2,800 m³，重炮动能阵列的中坚。',
@@ -315,7 +349,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-nocxium', count: 9_100 },
       { itemId: 'min-isotope', count: 15_950 },
     ],
-    buildSeconds: 17_700, // 牛鲨级（2026-09-13 工期阶梯重排：T3 带 3~5 时，去封顶；原 14400）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×4）
+    buildSeconds: 24_390, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 52000000,
     description: '突击巡洋舰，货舱 3,000 m³，厚盾重炮的咬合者。',
@@ -331,7 +365,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-nocxium', count: 6_000 },
       { itemId: 'min-isotope', count: 12_700 },
     ],
-    buildSeconds: 16_920, // 鹦鹉螺级（2026-09-13 工期阶梯：T3 带 3~5 时；同价同档 ⇒ 与长尾鲨级同值）
+    buildSeconds: 22_079, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 36_000_000, // = 行价 9,000,000 × 4（>400 万档系数）
     // ✅ 2026-09-14 虫洞上线：闸门已删（与 `sh-nautilus` / 两张市场卡同批放开，见 design/scout-cruiser §2.3）
@@ -346,7 +380,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-pyerite', count: 4_200 },
       { itemId: 'min-mexallon', count: 2_050 },
     ],
-    buildSeconds: 3_960, // 陆龟级（2026-09-13 工期阶梯重排：T2 带 51~86 分；原 1260）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2.5）
+    buildSeconds: 3_321, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 1_125_000, // 同步：450,000 × 2.5（2026-09-13 船价跟涨）
     description: '轻装艇，装甲与结构远超同档，换来的航速与货舱都紧。',
@@ -360,7 +394,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-pyerite', count: 56_000 },
       { itemId: 'min-mexallon', count: 17_400 },
     ],
-    buildSeconds: 16_080, // 玳瑁级（2026-09-13 价位重排后按带内插值：6M ⇒ 4.5 时）
+    buildSeconds: 17_397, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 24_000_000, // = 行价 6,000,000 × 4（2026-09-13 价位重排；此前与市场卡不同值，本次一并归位）
     description: '重装巡舰，货舱 9,600 m³、循环 13 秒产 22 单位，厚壳仓库。',
@@ -370,16 +404,17 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '玄武级舰船蓝图',
     shipId: 'sh-xuanwu',
     materials: [
-      { itemId: 'min-tritanium', count: 531_281 },
-      { itemId: 'min-pyerite', count: 321_896 },
-      { itemId: 'min-mexallon', count: 100_005 },
-      { itemId: 'part-frame', count: 83_687 },
-      { itemId: 'part-armor-plate', count: 24_270 },
-      { itemId: 'part-cable', count: 29_358 },
-      { itemId: 'part-circuit', count: 47_901 },
-      { itemId: 'part-coolant', count: 26_380 },
+      // ? 2026-09-29?????T4 ???????????? 2.25 ? ? ????????**???**???? 101,250,000 = ?? ?45%?
+      { itemId: 'min-pyerite', count: 970_274 },
+      { itemId: 'min-tritanium', count: 1_202_469 },
+      { itemId: 'min-mexallon', count: 202_505 },
+      { itemId: 'part-frame', count: 209_480 },
+      { itemId: 'part-armor-plate', count: 60_750 },
+      { itemId: 'part-cable', count: 73_487 },
+      { itemId: 'part-circuit', count: 119_901 },
+      { itemId: 'part-coolant', count: 66_032 },
     ],
-    buildSeconds: 62_580, // 玄武级（2026-09-13 价位重排后按带内插值：90M ⇒ 17.4 时）
+    buildSeconds: 159_728, // 2026-09-29????????? ? ?????/h = 3.12M?T4 ????
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 900_000_000, // = 行价 225,000,000 × 4（⚠ 2026-09-29 船长裁决「乙」：锚价统一为巨齿鲨 ⇒ 原「2026-09-13：90M ×4 = 360M」作废）
     description: '重装战列，货舱 15,200 m³、三层血最厚，重装线的顶点。',
@@ -392,7 +427,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-tritanium', count: 8_250 },
       { itemId: 'min-pyerite', count: 2_350 },
     ],
-    buildSeconds: 3_060, // 飞鱼级（2026-09-13 工期阶梯重排：T2 带 51~86 分；原 780）（2026-09-09 全蓝图化；材料≈船价×0.22、蓝图=船价×2）
+    buildSeconds: 1_864, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 420000,
     description: '快运舰，货舱 5,000 m³、航速 430，专项跑短途快件。',
@@ -406,7 +441,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-pyerite', count: 22_500 },
       { itemId: 'min-mexallon', count: 6_900 },
     ],
-    buildSeconds: 14_160, // 旗鱼级（2026-09-13 价位重排后按带内插值：2.4M ⇒ 3.9 时）
+    buildSeconds: 8_505, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 7_200_000, // = 行价 2,400,000 × 3（100~400 万档系数；2026-09-13 价位重排）
     description: '高速货舰，货舱 8,500 m³、循环 11 秒产 18 单位。',
@@ -425,7 +460,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-circuit', count: 12_789 },
       { itemId: 'part-coolant', count: 7_043 },
     ],
-    buildSeconds: 48_960, // 剑鱼级（2026-09-13 价位重排后按带内插值：24M ⇒ 13.6 时）
+    buildSeconds: 34_075, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 96_000_000, // = 行价 24,000,000 × 4（2026-09-13 价位重排）
     description: '大型货舰，货舱 14,000 m³、循环 12 秒产 16 单位。',
@@ -444,7 +479,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-circuit', count: 119_901 },
       { itemId: 'part-coolant', count: 66_032 },
     ],
-    buildSeconds: 72_000, // 巨齿鲨级（2026-09-13 工期阶梯：T4 带 9~20 时，取带上沿）
+    buildSeconds: 159_728, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 900_000_000, // = 行价 225,000,000 × 4（>400 万档系数；契约「舰船价格口径」守）
     description: '战列舰，货舱 4,000 m³，敢站在编队最前面的火力平台。',
@@ -460,16 +495,17 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '虎鲸级舰船蓝图',
     shipId: 'sh-orca',
     materials: [
-      { itemId: 'min-pyerite', count: 646_850 },
-      { itemId: 'min-tritanium', count: 801_646 },
-      { itemId: 'min-mexallon', count: 135_003 },
-      { itemId: 'part-frame', count: 139_653 },
-      { itemId: 'part-armor-plate', count: 40_500 },
-      { itemId: 'part-cable', count: 48_991 },
-      { itemId: 'part-circuit', count: 79_934 },
-      { itemId: 'part-coolant', count: 44_021 },
+      // ? 2026-09-29?????T4 ???????????? 2.25 ? ? ????????**???**???? 101,250,000 = ?? ?45%?
+      { itemId: 'min-pyerite', count: 970_274 },
+      { itemId: 'min-tritanium', count: 1_202_469 },
+      { itemId: 'min-mexallon', count: 202_505 },
+      { itemId: 'part-frame', count: 209_480 },
+      { itemId: 'part-armor-plate', count: 60_750 },
+      { itemId: 'part-cable', count: 73_487 },
+      { itemId: 'part-circuit', count: 119_901 },
+      { itemId: 'part-coolant', count: 66_032 },
     ],
-    buildSeconds: 57_600, // 虎鲸级（战巡：T4 带 9~20 时内偏短 ⇒ 16 时）
+    buildSeconds: 159_728, // 2026-09-29????????? ? ?????/h = 3.12M?T4 ????
     buildCostIsk: 0,
     priceIsk: 900_000_000, // = 行价 225,000,000 × 4（⚠ 2026-09-29 船长裁决「乙」＋「虎鲸也是」：锚价统一为巨齿鲨 ⇒ 原 150M ×4 = 600M 作废）
     description: '指挥舰，货舱 4,700 m³，速度是它的立身之本。',
@@ -479,16 +515,17 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '旋齿鲨级舰船蓝图',
     shipId: 'sh-helicoprion',
     materials: [
-      { itemId: 'min-tritanium', count: 531_281 },
-      { itemId: 'min-pyerite', count: 321_896 },
-      { itemId: 'min-mexallon', count: 100_005 },
-      { itemId: 'part-frame', count: 83_687 },
-      { itemId: 'part-armor-plate', count: 24_270 },
-      { itemId: 'part-cable', count: 29_358 },
-      { itemId: 'part-circuit', count: 47_901 },
-      { itemId: 'part-coolant', count: 26_380 },
+      // ? 2026-09-29?????T4 ???????????? 2.25 ? ? ????????**???**???? 101,250,000 = ?? ?45%?
+      { itemId: 'min-pyerite', count: 970_274 },
+      { itemId: 'min-tritanium', count: 1_202_469 },
+      { itemId: 'min-mexallon', count: 202_505 },
+      { itemId: 'part-frame', count: 209_480 },
+      { itemId: 'part-armor-plate', count: 60_750 },
+      { itemId: 'part-cable', count: 73_487 },
+      { itemId: 'part-circuit', count: 119_901 },
+      { itemId: 'part-coolant', count: 66_032 },
     ],
-    buildSeconds: 62_580, // 旋齿鲨级（照玄武 17.4 时）
+    buildSeconds: 159_728, // 2026-09-29????????? ? ?????/h = 3.12M?T4 ????
     buildCostIsk: 0,
     priceIsk: 900_000_000, // = 行价 225,000,000 × 4（⚠ 2026-09-29 船长裁决「乙」：锚价统一为巨齿鲨 ⇒ 原 90M ×4 = 360M 作废）
     description: '装甲战列舰，货舱 3,600 m³，装甲层厚到能顶住第一轮齐射。',
@@ -519,7 +556,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-fire-control', count: 9 },
       { itemId: 'part-grav-comp', count: 2 },
     ],
-    buildSeconds: 240, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
+    buildSeconds: 240, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 1_153_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '掠袭电子舰，锁定与分辨率冠绝同级，先看见、先锁上。',
@@ -543,7 +580,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-fire-control', count: 19 },
       { itemId: 'part-grav-comp', count: 4 },
     ],
-    buildSeconds: 840, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
+    buildSeconds: 840, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 2_555_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '掠袭炮舰，动能炮阵加持，正面火力扎实。',
@@ -567,7 +604,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-fire-control', count: 37 },
       { itemId: 'part-grav-comp', count: 8 },
     ],
-    buildSeconds: 2880, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
+    buildSeconds: 2880, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 4_942_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '掠袭重型突击巡洋舰，动能火力全开、甲壳同步加厚，专啃硬目标。',
@@ -591,7 +628,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-fire-control', count: 10 },
       { itemId: 'part-grav-comp', count: 2 },
     ],
-    buildSeconds: 240, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
+    buildSeconds: 240, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 1_307_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '幼虫截击舰，快得不像话，护盾几乎不设防、靠甲壳撑着。',
@@ -615,7 +652,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-fire-control', count: 21 },
       { itemId: 'part-grav-comp', count: 4 },
     ],
-    buildSeconds: 840, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
+    buildSeconds: 840, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 2_822_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '甲壳截击舰，速度与机动拉满，伤害全由装甲与结构承担。',
@@ -639,7 +676,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-fire-control', count: 42 },
       { itemId: 'part-grav-comp', count: 9 },
     ],
-    buildSeconds: 2880, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
+    buildSeconds: 2880, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 5_680_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '巢群重型突击巡洋舰，能量主炮配厚甲厚壳，正面硬碰硬。',
@@ -663,7 +700,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-fire-control', count: 11 },
       { itemId: 'part-grav-comp', count: 2 },
     ],
-    buildSeconds: 240, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
+    buildSeconds: 240, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 1_536_500, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '哨戒电子舰，锁定与分辨率远压同级，替全队先敌发现。',
@@ -687,7 +724,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-fire-control', count: 27 },
       { itemId: 'part-grav-comp', count: 6 },
     ],
-    buildSeconds: 840, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
+    buildSeconds: 840, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 3_722_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '陵卫指挥舰，锁定、分辨率与机巢一并拉高，是编队的眼睛与中枢。',
@@ -711,7 +748,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-fire-control', count: 54 },
       { itemId: 'part-grav-comp', count: 12 },
     ],
-    buildSeconds: 2880, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
+    buildSeconds: 2880, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 7_680_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '陵寝巡洋舰，三层血最厚、炮位最多，站在阵线中央扛火力。',
@@ -735,7 +772,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-fire-control', count: 11 },
       { itemId: 'part-grav-comp', count: 2 },
     ],
-    buildSeconds: 240, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
+    buildSeconds: 240, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 1_437_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '构件鱼雷舰，爆破弹头拆甲，命中扎实。',
@@ -759,7 +796,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-fire-control', count: 23 },
       { itemId: 'part-grav-comp', count: 5 },
     ],
-    buildSeconds: 840, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
+    buildSeconds: 840, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 3_107_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '机库无人机作战舰，机巢与无人机战力双高，一座能跑的机库。',
@@ -783,7 +820,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-fire-control', count: 51 },
       { itemId: 'part-grav-comp', count: 11 },
     ],
-    buildSeconds: 2880, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
+    buildSeconds: 2880, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 7_172_500, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '巨构无人机作战舰，机巢最大、无人机伤害最高，放飞即是主武器。',
@@ -807,7 +844,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-fire-control', count: 11 },
       { itemId: 'part-grav-comp', count: 2 },
     ],
-    buildSeconds: 240, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T1 20 分；原 1500）
+    buildSeconds: 240, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 1_515_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '幽影侦察舰，信号极小、闪避极高，负责先看见别人。',
@@ -831,7 +868,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-fire-control', count: 24 },
       { itemId: 'part-grav-comp', count: 5 },
     ],
-    buildSeconds: 840, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T2 70 分；原 3000）
+    buildSeconds: 840, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 3_335_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '亡军后勤舰，货舱与机巢最大，跟着编队补给、换机。',
@@ -855,7 +892,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-fire-control', count: 48 },
       { itemId: 'part-grav-comp', count: 10 },
     ],
-    buildSeconds: 2880, // 2026-09-13 工期阶梯重排（虫洞一次性图纸按档取带中值：T3 4 时；原 6000）
+    buildSeconds: 2880, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 6_693_000, // = 舰价 ×0.5（09-14 一次性舰船蓝图规则；舰价 = 料÷0.45×4 · 与市场行同值）
     description: '亡军鱼雷舰，爆破弹头配扎实命中，专挑大目标的装甲。',
@@ -883,7 +920,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-pyerite', count: 22_500 },
       { itemId: 'min-mexallon', count: 6_900 },
     ],
-    buildSeconds: 14_160,
+    buildSeconds: 8_505, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 1_200_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%） // = 行价 ×100%
     description: '高速货舰，货舱 8,500 m³、循环 11 秒产 18 单位。',
@@ -899,7 +936,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-mexallon', count: 11_700 },
       { itemId: 'min-nocxium', count: 2_350 },
     ],
-    buildSeconds: 14_340,
+    buildSeconds: 8_288, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 1_300_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '无人机母舰，货舱 3,600 m³，机巢宽裕、靠放飞机群撑火力。',
@@ -914,7 +951,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-pyerite', count: 56_000 },
       { itemId: 'min-mexallon', count: 17_400 },
     ],
-    buildSeconds: 16_080,
+    buildSeconds: 17_397, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 3_000_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '重装巡舰，货舱 9,600 m³、循环 13 秒产 22 单位，厚壳仓库。',
@@ -931,7 +968,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-mexallon', count: 390_000 },
       { itemId: 'min-isotope', count: 75_000 },
     ],
-    buildSeconds: 43_200,
+    buildSeconds: 76_687, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 45_000_000, // = 行价 ×50%（2026-09-14 船长改判；2026-09-28 行价 9M→90M 同步 ×10）
     description: '矿舰，货舱 19,000 m³、循环 30 秒产 200 单位，矿舰的吨位旗舰。',
@@ -948,7 +985,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-nocxium', count: 6_300 },
       { itemId: 'min-isotope', count: 11_050 },
     ],
-    buildSeconds: 16_920,
+    buildSeconds: 23_918, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 4_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '导弹巡洋舰，货舱 2,600 m³，靠齐射导弹先声夺人。',
@@ -966,7 +1003,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-nocxium', count: 6_000 },
       { itemId: 'min-isotope', count: 12_700 },
     ],
-    buildSeconds: 16_920,
+    buildSeconds: 22_079, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 4_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '测绘巡洋舰，货舱 5,600 m³，编入队伍即扩大扫描范围一圈。',
@@ -983,7 +1020,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-nocxium', count: 7_700 },
       { itemId: 'min-isotope', count: 13_500 },
     ],
-    buildSeconds: 17_340,
+    buildSeconds: 25_058, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 5_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '炮击巡洋舰，货舱 2,800 m³，重炮动能阵列的中坚。',
@@ -1000,7 +1037,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-mexallon', count: 430_600 },
       { itemId: 'min-nocxium', count: 107_600 },
     ],
-    buildSeconds: 17_520,
+    buildSeconds: 177_180, // 2026-09-29 ?????????????????? 61,528,078 ? T3 ??? 1.25M/h = 49.2 ?
     buildCostIsk: 0,
     priceIsk: 50_000_000, // = 行价 100,000,000 × 50%（⚠ 2026-09-29 船长裁决「甲」：原 6M 作废）
     description: '采矿艇，货舱 7,000 m³、循环 8 秒产 58 单位，矿舰的产量顶点。',
@@ -1010,13 +1047,14 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     name: '开拓级舰船蓝图（一次性）',
     shipId: 'pioneer',
     singleUse: true,
+    // 材料与常规图 sbp-pioneer 完全一致（2026-09-28 船长令拉回 45%：3,600,000 ÷ 8,000,000）
     materials: [
-      { itemId: 'min-tritanium', count: 24_650 },
-      { itemId: 'min-pyerite', count: 12_300 },
-      { itemId: 'min-mexallon', count: 5_150 },
-      { itemId: 'min-nocxium', count: 1_050 },
+      { itemId: 'min-tritanium', count: 162_000 },
+      { itemId: 'min-pyerite', count: 81_000 },
+      { itemId: 'min-mexallon', count: 34_200 },
+      { itemId: 'min-nocxium', count: 7_200 },
     ],
-    buildSeconds: 12_600,
+    buildSeconds: 17_010, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 4_000_000, // = 行价 ×50%（2026-09-14 船长改判口径；行价 = ship-pioneer 8,000,000）
     /*
@@ -1039,7 +1077,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-nocxium', count: 9_100 },
       { itemId: 'min-isotope', count: 15_950 },
     ],
-    buildSeconds: 17_700,
+    buildSeconds: 24_390, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 6_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '突击巡洋舰，货舱 3,000 m³，厚盾重炮的咬合者。',
@@ -1056,7 +1094,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'min-nocxium', count: 10_500 },
       { itemId: 'min-isotope', count: 18_400 },
     ],
-    buildSeconds: 18_000,
+    buildSeconds: 26_579, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 7_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '激光巡洋舰，货舱 2,500 m³，接敌即烧穿护盾。',
@@ -1076,7 +1114,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-circuit', count: 12_789 },
       { itemId: 'part-coolant', count: 7_043 },
     ],
-    buildSeconds: 48_960,
+    buildSeconds: 34_075, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 12_000_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '大型货舰，货舱 14,000 m³、循环 12 秒产 16 单位。',
@@ -1096,7 +1134,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-circuit', count: 35_928 },
       { itemId: 'part-coolant', count: 19_786 },
     ],
-    buildSeconds: 59_610,
+    buildSeconds: 82_205, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 33_750_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '重载货舰，货舱 26,000 m³、循环 36 秒产 110 单位，囤货主力。',
@@ -1107,16 +1145,17 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-xuanwu',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 531_281 },
-      { itemId: 'min-pyerite', count: 321_896 },
-      { itemId: 'min-mexallon', count: 100_005 },
-      { itemId: 'part-frame', count: 83_687 },
-      { itemId: 'part-armor-plate', count: 24_270 },
-      { itemId: 'part-cable', count: 29_358 },
-      { itemId: 'part-circuit', count: 47_901 },
-      { itemId: 'part-coolant', count: 26_380 },
+      // ? 2026-09-29?????T4 ???????????? 2.25 ? ? ????????**???**???? 101,250,000 = ?? ?45%?
+      { itemId: 'min-pyerite', count: 970_274 },
+      { itemId: 'min-tritanium', count: 1_202_469 },
+      { itemId: 'min-mexallon', count: 202_505 },
+      { itemId: 'part-frame', count: 209_480 },
+      { itemId: 'part-armor-plate', count: 60_750 },
+      { itemId: 'part-cable', count: 73_487 },
+      { itemId: 'part-circuit', count: 119_901 },
+      { itemId: 'part-coolant', count: 66_032 },
     ],
-    buildSeconds: 62_580,
+    buildSeconds: 159_728, // 2026-09-29????????? ? ?????/h = 3.12M?T4 ????
     buildCostIsk: 0,
     priceIsk: 112_500_000, // = 行价 225,000,000 ×50%（⚠ 2026-09-29 船长裁决「乙」：玄武随锚价统一为巨齿鲨 ⇒ 原 45M 作废）
     description: '重装战列，货舱 15,200 m³、三层血最厚，重装线的顶点。',
@@ -1136,7 +1175,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-circuit', count: 119_901 },
       { itemId: 'part-coolant', count: 66_032 },
     ],
-    buildSeconds: 72_000,
+    buildSeconds: 159_728, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 112_500_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '战列舰，货舱 4,000 m³，敢站在编队最前面的火力平台。',
@@ -1148,16 +1187,17 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-orca',
     singleUse: true,
     materials: [
-      { itemId: 'min-pyerite', count: 646_850 },
-      { itemId: 'min-tritanium', count: 801_646 },
-      { itemId: 'min-mexallon', count: 135_003 },
-      { itemId: 'part-frame', count: 139_653 },
-      { itemId: 'part-armor-plate', count: 40_500 },
-      { itemId: 'part-cable', count: 48_991 },
-      { itemId: 'part-circuit', count: 79_934 },
-      { itemId: 'part-coolant', count: 44_021 },
+      // ? 2026-09-29?????T4 ???????????? 2.25 ? ? ????????**???**???? 101,250,000 = ?? ?45%?
+      { itemId: 'min-pyerite', count: 970_274 },
+      { itemId: 'min-tritanium', count: 1_202_469 },
+      { itemId: 'min-mexallon', count: 202_505 },
+      { itemId: 'part-frame', count: 209_480 },
+      { itemId: 'part-armor-plate', count: 60_750 },
+      { itemId: 'part-cable', count: 73_487 },
+      { itemId: 'part-circuit', count: 119_901 },
+      { itemId: 'part-coolant', count: 66_032 },
     ],
-    buildSeconds: 57_600,
+    buildSeconds: 159_728, // 2026-09-29????????? ? ?????/h = 3.12M?T4 ????
     buildCostIsk: 0,
     priceIsk: 112_500_000, // = 行价 225,000,000 ×50%（⚠ 2026-09-29 船长「虎鲸也是」：锚价统一为巨齿鲨 ⇒ 原 75M 作废）
     description: '指挥舰，货舱 4,700 m³，速度是它的立身之本。',
@@ -1168,16 +1208,17 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     shipId: 'sh-helicoprion',
     singleUse: true,
     materials: [
-      { itemId: 'min-tritanium', count: 531_281 },
-      { itemId: 'min-pyerite', count: 321_896 },
-      { itemId: 'min-mexallon', count: 100_005 },
-      { itemId: 'part-frame', count: 83_687 },
-      { itemId: 'part-armor-plate', count: 24_270 },
-      { itemId: 'part-cable', count: 29_358 },
-      { itemId: 'part-circuit', count: 47_901 },
-      { itemId: 'part-coolant', count: 26_380 },
+      // ? 2026-09-29?????T4 ???????????? 2.25 ? ? ????????**???**???? 101,250,000 = ?? ?45%?
+      { itemId: 'min-pyerite', count: 970_274 },
+      { itemId: 'min-tritanium', count: 1_202_469 },
+      { itemId: 'min-mexallon', count: 202_505 },
+      { itemId: 'part-frame', count: 209_480 },
+      { itemId: 'part-armor-plate', count: 60_750 },
+      { itemId: 'part-cable', count: 73_487 },
+      { itemId: 'part-circuit', count: 119_901 },
+      { itemId: 'part-coolant', count: 66_032 },
     ],
-    buildSeconds: 62_580,
+    buildSeconds: 159_728, // 2026-09-29????????? ? ?????/h = 3.12M?T4 ????
     buildCostIsk: 0,
     priceIsk: 112_500_000, // = 行价 225,000,000 ×50%（⚠ 2026-09-29 船长裁决「乙」：锚价统一为巨齿鲨 ⇒ 原 45M 作废）
     description: '装甲战列舰，货舱 3,600 m³，装甲层厚到能顶住第一轮齐射。',
@@ -1199,7 +1240,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
       { itemId: 'part-circuit', count: 363_678 },
       { itemId: 'part-coolant', count: 200_286 },
     ],
-    buildSeconds: 32_400,
+    buildSeconds: 232_261, // 2026-09-29 按"档位净收益带"重排（船长令；旧值与旧理由见 git 历史）
     buildCostIsk: 0,
     priceIsk: 320_000_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
     description: '旗舰货舰，货舱 108,000 m³、循环 33 秒产 129 单位，移动要塞。', // 2026-09-14 随货仓 ×3（36,000 → 108,000）
