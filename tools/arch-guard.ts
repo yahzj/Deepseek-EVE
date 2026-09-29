@@ -30,6 +30,12 @@
  *      `fmtDate` / `fmtDateTime`（内部取 `localeTag()`）。
  *      ⚠ **只管日期/时间**：`toLocaleString('zh-CN')` 用于**数字千分位**时在 zh/en 下逐位同值
  *      （`i18n/fmt.ts` 头注已写明）⇒ 那 ~180 处不在本检查范围内（避免大批无收益改动）。
+ *   F7 **落盘心跳单点**（**2026-09-29 加**）：自动存盘的间隔**只许有一个出处**
+ *      （`game/engine.ts` 的 `SAVE_INTERVAL_MS`）。起因 = 船长当日令「**存档间隔不是太短了，
+ *      延迟到1分钟**」：这个数一旦散落，就会出现"心跳 60 秒、别处还写 15 秒"的双口径，
+ *      而且**改小了没人拦**（存档写得越频越不易察觉，只在低端机上表现为卡顿）。
+ *      ⇒ 报红两种情形：① `SAVE_INTERVAL_MS` 不是 60_000（改回更短的值要显式改本检查并写理由）；
+ *      ② 落盘 `setInterval` 里写了**裸数字**（绕过常量的第二出处）。
  *
  * 用法：`npm run arch:guard`（或 `npx tsx tools/arch-guard.ts`，加 `--list` 打印全部读数）。
  * **反例实测**（每条判据都要证明它真能报红，见头注末的「自检记录」）。
@@ -37,7 +43,7 @@
  * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
  *   - 游戏版本：**v0.1.0**（`package.json`）
  *   - 本工具最后核对：**2026-09-29**（当日读数：F1 越层 0 处 · F2 重复 0 处 · F3 悬空 0 处 · F4 旁路 0 处
- *     · F5 跳转 0 处 · **F6 日期本地化 0 处**（F6 同日新增））
+ *     · F5 跳转 0 处 · **F6 日期本地化 0 处**（F6 同日新增）· **F7 落盘心跳 0 处**（F7 同日新增））
  *   - 判据：新增"游戏数据表"时**同步登记进 `DATA_TABLES`**，否则它照样能被页面直读而无人拦；
  *     新增单点时**同步登记进 `SINGLE_SOURCE` 与 `docs/single-source.md`**（两处一起，F3 会核对）。
  */
@@ -323,6 +329,58 @@ for (const file of rendererFiles) {
   }
 }
 
+/* ═══════════ F7 · 落盘心跳单点：间隔只许有一个出处 ═══════════
+ * 起因（**2026-09-29 船长令**：「**存档间隔不是太短了，延迟到1分钟**」；原 15 秒）：
+ * 间隔值散落就会出现"心跳 60 秒、别处还写 15 秒"的双口径，且**改小了没人拦**。
+ * 判据两条：① `SAVE_INTERVAL_MS` 必须存在且等于 60_000；② 落盘 `setInterval` 里不许写裸数字。
+ */
+{
+  const EXPECTED = 60_000
+  const ENGINE_REL = 'game/engine.ts'
+  const engineFile = rendererFiles.find((f) => relOf(f) === ENGINE_REL)
+  if (engineFile === undefined) {
+    hits.push({
+      check: 'F7',
+      file: ENGINE_REL,
+      line: 0,
+      detail: '找不到落盘心跳所在的文件（路径变了？本检查需同步更新）',
+      fix: '确认 `apps/desktop/src/renderer/src/game/engine.ts` 还在；不在则改本检查的路径',
+    })
+  } else {
+    const src = stripComments(readFileSync(engineFile, 'utf8'))
+    const decl = /const\s+SAVE_INTERVAL_MS\s*=\s*([0-9_]+)/.exec(src)
+    const value = decl === null ? null : Number(decl[1]!.replace(/_/g, ''))
+    if (value === null) {
+      hits.push({
+        check: 'F7',
+        file: ENGINE_REL,
+        line: 0,
+        detail: '`SAVE_INTERVAL_MS` 不见了（落盘心跳间隔失去了单点出处）',
+        fix: '恢复 `const SAVE_INTERVAL_MS = 60_000` 并让 `ensureSaveInterval` 用它',
+      })
+    } else if (value !== EXPECTED) {
+      hits.push({
+        check: 'F7',
+        file: ENGINE_REL,
+        line: 0,
+        detail: `落盘心跳 = ${value} ms，与船长给定的 ${EXPECTED} ms（1 分钟）不一致`,
+        fix: `改回 ${EXPECTED}；确有新裁决时**同时**更新本检查的 EXPECTED 并在提交说明里写理由`,
+      })
+    }
+    // ② 落盘 setInterval 里写裸数字 = 绕过常量的第二出处
+    const rawTick = /setInterval\s*\(\s*\([^)]*\)\s*=>\s*\{[^}]*persist\(\)[^}]*\}\s*,\s*[0-9_]/.exec(src)
+    if (rawTick !== null) {
+      hits.push({
+        check: 'F7',
+        file: ENGINE_REL,
+        line: src.slice(0, rawTick.index).split('\n').length,
+        detail: '落盘定时器里写了裸数字（绕开 `SAVE_INTERVAL_MS` 的第二出处）',
+        fix: '把 `setInterval(..., N)` 改成 `setInterval(..., SAVE_INTERVAL_MS)`',
+      })
+    }
+  }
+}
+
 /* ═══════════ 输出 ═══════════ */
 const byCheck = new Map<string, Hit[]>()
 for (const h of hits) {
@@ -347,8 +405,9 @@ const LABEL: Record<string, string> = {
   F4: 'F4 取数口契约（页面旁路建上下文）',
   F5: 'F5 跳转目标契约（活动栏点击落在不存在的页/页签）',
   F6: 'F6 日期格式化本地化（把语言焊死）',
+  F7: 'F7 落盘心跳单点（间隔散落 / 被人改短）',
 }
-for (const key of ['F1', 'F2', 'F3', 'F4', 'F5', 'F6']) {
+for (const key of ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7']) {
   const list = byCheck.get(key) ?? []
   if (list.length === 0) {
     console.log(`✅ ${LABEL[key]}：0 处`)
