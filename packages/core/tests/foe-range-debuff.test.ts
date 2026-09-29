@@ -3,15 +3,15 @@
  * 可以乘法叠加，与敌人的射程增加效果做加法处理。（比如10000m射程，我方一艘电子舰，对方拥有射程+50%，
  * 那么对方实际射程为13500.）射程最短只能削弱到3000m（不足3000m的无法被削弱）。**」）
  *
- * 口径（三问三答全取甲；多艘合成**2026-09-29 船长令改判为"全队折权缺口乘法"**）：
- * - **全队所有来源拉平进一个池、逐件按 EVE 曲线递减再乘法**：1 艘 15% · 2 艘 **26.08%** ·
- *   4 份 35.28% · 渐近上限 ≈ 36.7%（**旧口径"多艘乘法合成 1 − Π(1−vᵢ)"= 2 艘 27.75% 已作废**，
- *   详见 `ecm-fleet-decay-20260929.test.ts`）；
+ * 口径（三问三答全取甲；多艘合成**2026-09-29 船长裁定「丙」**）：
+ * - **同舰递减乘法 ＋ 舰间乘法 ＋ 整队封顶 60%**：1 艘 15% · 2 艘 **27.75%**（两舰各一份 ⇒ 舰间乘法）·
+ *   单舰多件走曲线（1/2/3 件 = 15% / 26.08% / 32.41%）· 整队最多 60%
+ *   （详见 `ecm-fleet-decay-20260929.test.ts`）；
  * - **与敌方增程做加法**：净倍率 = `增程倍率 − r`；
  * - **地板**：基础射程 < 3000m ⇒ **完全不削**；否则削后**下限 3000m**；**只动最远射程**、近界不动；
  * - **作用面** = 敌方全部武器（舰体武器走 `foeGunMaxRangeOf`、机群走 `foeDroneRangeOf`）。
  *
- * 本文件钉住：数值公式（含船长给的两个例子：13500m 与改判后的 2 份读数）、地板两道闸、
+ * 本文件钉住：数值公式（含船长给的两个例子：13500m 与 12225m）、地板两道闸、
  * 两处单一真相源都被压到、以及"没有电子舰 ⇒ 逐字不变"。
  */
 import { describe, expect, it } from 'vitest'
@@ -97,14 +97,13 @@ describe('电子舰 · 压制敌舰武器射程（船长 2026-09-18）', () => {
     expect(foeGunMaxRangeOf(b, { foeGunRangeMulOnHit: 1.5 }, GUN(10_000))).not.toBe(12_750)
   })
 
-  it('**两艘**（2026-09-29 改判后 = **26.08%**）：10000 无增程 → 7392，敌 +50% → 12392', () => {
+  it('**两艘**（2026-09-29 裁定「丙」：两舰各一份 15% ⇒ 舰间乘法 = **27.75%**）：10000 → 7225，敌 +50% → 12225', () => {
     const { state, ctx, ids } = world(2)
     const b = battleWith(state, ctx, ids)
-    // 全队折权缺口乘法：1 − (1−0.15)(1−0.15×0.869) = 0.260813（旧口径"多艘乘法"是 0.2775，已作废）
-    expect(b.meFoeRangeDebuff).toBeCloseTo(0.260813, 5)
-    expect(foeGunMaxRangeOf(b, {}, GUN(10_000))).toBe(7_392)
+    expect(b.meFoeRangeDebuff).toBeCloseTo(0.2775, 10)
+    expect(foeGunMaxRangeOf(b, {}, GUN(10_000))).toBe(7_225)
     b.foeGunRangeBuff = 1.5
-    expect(foeGunMaxRangeOf(b, { foeGunRangeMulOnHit: 1.5 }, GUN(10_000))).toBe(12_392)
+    expect(foeGunMaxRangeOf(b, { foeGunRangeMulOnHit: 1.5 }, GUN(10_000))).toBe(12_225)
   })
 
   it('**地板 3000m**：3500 被削到 3000（不更低）；削到底也≥3000', () => {
@@ -149,14 +148,14 @@ describe('电子舰 · 压制敌舰武器射程（船长 2026-09-18）', () => {
     expect(foeDroneRangeOf(b, DRONE(5_000) as never)).toBe(20_000)
   })
 
-  it('合成口径单点：`meFoeRangeDebuffOf` 按编队把**所有来源拉平进一个池**（1 艘 0.15 · 2 艘 0.260813 · 混编只数带字段的船）', () => {
+  it('合成口径单点：`meFoeRangeDebuffOf` = **同舰递减乘法 ＋ 舰间乘法 ＋ 整队封顶 60%**（1 艘 0.15 · 2 艘 0.2775 · 混编只数带字段的船）', () => {
     const one = world(1)
     expect(meFoeRangeDebuffOf(one.state, one.ctx, one.ids)).toBeCloseTo(0.15, 10)
     const two = world(2)
-    expect(meFoeRangeDebuffOf(two.state, two.ctx, two.ids)).toBeCloseTo(0.260813, 5)
+    expect(meFoeRangeDebuffOf(two.state, two.ctx, two.ids)).toBeCloseTo(0.2775, 10)
     // 混编：电子舰 + 普通舰 ⇒ 只数带字段那艘
     const mixedIds = [...two.ids, addShipToFleet(two.state, NON_EW)]
-    expect(meFoeRangeDebuffOf(two.state, two.ctx, mixedIds)).toBeCloseTo(0.260813, 5)
+    expect(meFoeRangeDebuffOf(two.state, two.ctx, mixedIds)).toBeCloseTo(0.2775, 10)
     // 编队里没有电子舰 ⇒ 0（不写运行态）
     const none = world(0)
     expect(meFoeRangeDebuffOf(none.state, none.ctx, none.ids)).toBe(0)
@@ -268,9 +267,9 @@ describe('敌人期望距离随削减收缩（船长 2026-09-18）', () => {
     expect(cut).toBeLessThan(plain) // 敌人主动压近
   })
 
-  it('**两艘**（2026-09-29 改判后 26.0813%）：有效上界 7392 ⇒ 期望距离进一步收缩', () => {
+  it('**两艘**（2026-09-29 裁定「丙」：两舰各一份 15% ⇒ 舰间乘法 27.75%）：有效上界 7225 ⇒ 期望距离收缩', () => {
     const foes = [foeWith({ min: 2000, max: 10_000 })]
-    expect(foeDesiredRange(foes[0]!, foes, BAL, 0.260813)).toBe(Math.round(2000 + pos * 5392))
+    expect(foeDesiredRange(foes[0]!, foes, BAL, 0.2775)).toBe(Math.round(2000 + pos * 5225))
   })
 
   it('**钉住的期望距离按同一比例收缩**（E 族那种 `foeDesireRangeM` 覆写）', () => {
