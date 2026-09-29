@@ -75,7 +75,12 @@ describe('倾销惩罚（每层 −10% · 收购量只吃补偿 · 挂卖单量�
     const floorPrice = Math.max(1, Math.round(def.basePrice * bal.minPriceRatio))
     expect(price).toBeGreaterThanOrEqual(floorPrice)
     expect(price).toBeLessThanOrEqual(floorPrice + 1)
-    expect(price / def.basePrice).toBeGreaterThanOrEqual(0.15)
+    /**
+     * ⚠ **2026-09-28 改**（矿石按体积平衡）：本卡（橄榄岩）基础价 12 → **7**，地板 = `round(7×0.2)` = **1**
+     * ⇒ 比值 **1/7 = 0.143**，低于原先写死的 0.15 —— 那是"整数取整"的必然结果（越便宜的商品，地板比值越低），
+     * 不是地板机制变了。判据改成"不低于地板自身的比值"。
+     */
+    expect(price / def.basePrice).toBeGreaterThanOrEqual(floorPrice / def.basePrice - 1e-9)
   })
 
   it('砸得越狠、来收货的买家越多：本窗新铺收购单量按**乘幂**放大（不再被库存压力压制）', () => {

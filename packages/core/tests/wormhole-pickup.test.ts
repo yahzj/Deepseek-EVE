@@ -189,7 +189,8 @@ describe('虫洞 · 拾取堆（E 批；F5 收口：网格层退场、只留老�
     // 其他操作，和之前的超载类似」）——此时连"整条回滚"都轮不到：门都进不去
     run.bag = [
       { itemId: WORMHOLE_ORE_ITEM_ID, units: cap * 500 },
-      { itemId: 'ore-veldspar', units: WORMHOLE_TEMP_CELLS * 500 },
+      // 2026-09-28 矿石按体积平衡：橄榄岩 0.5 m³/单位 ⇒ 一格 500 m³ 装 1,000 件
+      { itemId: 'ore-veldspar', units: WORMHOLE_TEMP_CELLS * 1_000 },
     ]
     wormholeHoldSyncCargo(state, ctx)
     expect(wormholeHoldUsage(state, ctx).unplacedCells).toBe(0)

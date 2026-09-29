@@ -51,7 +51,7 @@ describe('T3/T4/T5 一次性舰船蓝图（2026-09-13）', () => {
     const withPrice = SHIPS.filter(
       (s) => s.tier >= 3 && shipPrice(s.id) > 0 && SHIP_BLUEPRINTS.some((b) => b.shipId === s.id && b.singleUse !== true),
     )
-    expect(withPrice.length).toBe(17) // T3 十 + T4 六（2026-09-26 +虎鲸/旋齿鲨）+ T5 一
+    expect(withPrice.length).toBe(18) // T3 十 + T4 七（2026-09-28 座头鲸升 T4）+ T5 一
     for (const s of withPrice) {
       const once = SHIP_BLUEPRINTS.find((b) => b.shipId === s.id && b.singleUse === true)
       expect(once, `${s.name}（${s.id}）缺一次性蓝图`).toBeTruthy()
@@ -66,7 +66,7 @@ describe('T3/T4/T5 一次性舰船蓝图（2026-09-13）', () => {
     }
     // 壳体（邓氏鱼）不出一次性图纸
     expect(SHIP_BLUEPRINTS.some((b) => b.shipId === 'sh-dunkleosteus')).toBe(false)
-    expect(ONCE.length).toBe(17)
+    expect(ONCE.length).toBe(18)
   })
 
   it('② 权重白盒：一次性 ×0.5 · 普通蓝图 ×0.05 · 非蓝图 1（旋钮可调）', () => {
@@ -80,10 +80,10 @@ describe('T3/T4/T5 一次性舰船蓝图（2026-09-13）', () => {
     expect(blueprintWeight(goodOf('blueprint', 'sbp-once-sailfish')!, tuned)).toBe(0.25)
   })
 
-  it('③ 渠道与数字稀有度：T3 十张 + 剑鱼/蝠鲼 = rare+3；玄武/巨齿鲨/皇带鱼 = exotic+4', () => {
+  it('③ 渠道与数字稀有度：T3 十一张 + 剑鱼/蝠鲼 = rare+3；玄武/巨齿鲨/皇带鱼 = exotic+4', () => {
     const rare = ONCE.filter((b) => goodOf('blueprint', b.id)?.rarity === 'rare').map((b) => b.id)
     const exotic = ONCE.filter((b) => goodOf('blueprint', b.id)?.rarity === 'exotic').map((b) => b.id)
-    expect(rare.length).toBe(12)
+    expect(rare.length).toBe(13) // 2026-09-28：+sbp-once-pioneer（开拓级升 T3 后补）
     expect(exotic.length).toBe(5) // 2026-09-26：+sbp-once-orca / sbp-once-helicoprion
     for (const id of rare) expect(RARITY_TIER[id], `${id} 数字档`).toBe(3)
     for (const id of exotic) expect(RARITY_TIER[id], `${id} 数字档`).toBe(4)
@@ -113,14 +113,14 @@ describe('T3/T4/T5 一次性舰船蓝图（2026-09-13）', () => {
     const d2 = wormholeDilutionPoolOf(ctx, 2)
     expect(d2.length).toBe(10)
     expect(d2.every((id) => tierOf(id) === 3)).toBe(true)
-    // 层 3：加 T4 四张
+    // 层 3：加 T4 七张
     const d3 = wormholeDilutionPoolOf(ctx, 3)
-    expect(d3.length).toBe(16) // 2026-09-26：新两艘 T4（虎鲸/旋齿鲨）各带一张一次性图纸 ⇒ 14 → 16
+    expect(d3.length).toBe(17) // 2026-09-28：座头鲸升 T4（层 2 → 层 3）⇒ 16 → 17
     expect(d3).toContain('sbp-once-swordfish')
-    expect(d3.filter((id) => tierOf(id) === 4).length).toBe(6)
+    expect(d3.filter((id) => tierOf(id) === 4).length).toBe(7)
     // 层 5：加 T5 一张（皇带鱼）
     const d5 = wormholeDilutionPoolOf(ctx, 5)
-    expect(d5.length).toBe(17)
+    expect(d5.length).toBe(18)
     expect(d5).toContain('sbp-once-colossal')
     // 池里只许一次性舰船蓝图
     for (const id of d5) {
