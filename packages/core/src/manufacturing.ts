@@ -278,6 +278,26 @@ export function materialGroupIdsOf(itemId: string): readonly string[] {
   return [itemId]
 }
 
+/**
+ * **这一项料该用哪个 id "报名字"**（**2026-09-29 船长报障**：「**组装机中，舰船插件材料消耗列表中还是
+ * 显示了墨潮黑匣（应该显示通用黑匣）**」）。
+ *
+ * 口径（与 `MATERIAL_GROUPS` 的**组序**同一把尺）：**优先报玩家手上有的那一种**；
+ * 都没有 ⇒ 报**组内第一种**（＝ 优先扣除序的第一种，也就是"该去弄哪一种"的那一种）。
+ *
+ * 为什么必须收成 core 单点：这句话在两处出现——**组装机卡的材料行**（界面）与
+ * `missingMaterials()` 的缺口提示（引擎）——两处各判一次就会漂（一个说通用、一个说旗舰）。
+ * 配方数据里写的仍是 `blackbox-h`（**数据一字不改**，见 `MATERIAL_GROUPS` 头注）。
+ */
+export function materialDisplayIdOf(state: GameState, itemId: string): string {
+  const ids = materialGroupIdsOf(itemId)
+  if (ids.length === 1) return itemId
+  for (const id of ids) {
+    if (countWare(state, id) > 0) return id
+  }
+  return ids[0]!
+}
+
 /** 材料缺口说明（界面提示用；材料从物品仓库取用；数量已按材料学折扣折算） */
 export function missingMaterials(state: GameState, ctx: SimContext, spec: BuildSpec): string[] {
   const missing: string[] = []
@@ -287,7 +307,9 @@ export function missingMaterials(state: GameState, ctx: SimContext, spec: BuildS
     const ids = materialGroupIdsOf(need.itemId)
     const have = ids.reduce((sum, id) => sum + countWare(state, id), 0)
     if (have < needCount) {
-      const name = ctx.items.get(need.itemId)?.name ?? need.itemId
+      /** 报名字也走 `materialDisplayIdOf`（与界面材料行同一把尺） */
+      const displayId = materialDisplayIdOf(state, need.itemId)
+      const name = ctx.items.get(displayId)?.name ?? displayId
       missing.push(`${name} 还差 ${(needCount - have).toLocaleString('zh-CN')} 单位`)
     }
   }

@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { addWare, countWare, createInitialState } from '../src/index'
-import { cancelManufacturing, materialGroupIdsOf, missingMaterials, startManufacturing } from '../src/manufacturing'
+import { cancelManufacturing, materialDisplayIdOf, materialGroupIdsOf, missingMaterials, startManufacturing } from '../src/manufacturing'
 import { UNIVERSAL_BLACKBOX_COST, UNIVERSAL_BLACKBOX_ITEM_ID, exchangeUniversalBlackBox } from '../src/plugs'
 import type { GameState } from '../src/state'
 
@@ -62,8 +62,27 @@ describe('通用黑匣（2026-09-27 船长令）', () => {
       addWare(s, m.itemId, m.count * 2)
     }
     expect(missingMaterials(s, ctx, spec).length, '什么都不给 ⇒ 缺一堆').toBeGreaterThan(0)
+    /**
+     * **报名字走"优先那一种"**（**2026-09-29 船长报障**：「组装机中，舰船插件材料消耗列表中还是显示了
+     * 墨潮黑匣（应该显示通用黑匣）」）：一件黑匣都没有时，缺口提示该说**通用黑匣**（组内第一种 =
+     * 优先扣除序的第一种 = "该去弄的那一种"），而不是配方数据里写的 `blackbox-h`。
+     */
+    expect(
+      missingMaterials(s, ctx, spec).some((t) => t.startsWith('通用黑匣')),
+      '缺口提示报通用黑匣',
+    ).toBe(true)
     addWare(s, UNIVERSAL_BLACKBOX_ITEM_ID, 1)
     expect(missingMaterials(s, ctx, spec), '通用黑匣顶上 ⇒ 不缺料').toEqual([])
+  })
+
+  it('②之补 报名字规则：有哪种报哪种，都没有报组内第一种（界面材料行与缺口提示同一把尺）', () => {
+    const s = world()
+    expect(materialDisplayIdOf(s, 'blackbox-h'), '都没有 ⇒ 组内第一种（通用黑匣）').toBe(UNIVERSAL_BLACKBOX_ITEM_ID)
+    addWare(s, 'blackbox-h', 2)
+    expect(materialDisplayIdOf(s, 'blackbox-h'), '只有旗舰 ⇒ 报旗舰').toBe('blackbox-h')
+    addWare(s, UNIVERSAL_BLACKBOX_ITEM_ID, 1)
+    expect(materialDisplayIdOf(s, 'blackbox-h'), '两种都有 ⇒ 仍报通用（优先扣除序）').toBe(UNIVERSAL_BLACKBOX_ITEM_ID)
+    expect(materialDisplayIdOf(s, 'min-voidcrystal'), '组外 ⇒ 只返回自己').toBe('min-voidcrystal')
   })
 
   it('④ 开工真扣料：两种黑匣都有时**先扣通用黑匣**；取消退料退**实际扣的那一种**', () => {

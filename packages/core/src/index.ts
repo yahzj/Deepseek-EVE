@@ -645,6 +645,9 @@ export {
   missingMaterials,
   materialFactor,
   matNeedCount,
+  /** 材料等价组的"报名字用哪个 id"（2026-09-29 船长报障：材料消耗列表要显通用黑匣） */
+  materialGroupIdsOf,
+  materialDisplayIdOf,
   startManufacturing,
   setManufacturingLoop,
   manufacturingLoopOf,

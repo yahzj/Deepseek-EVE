@@ -3218,6 +3218,16 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     zh: "已取消该条制造线：材料全额退回物品仓库（AI 核心已归还）；一次性图纸连同制造名额一起退回蓝图书架。其余线不受影响。",
     en: "Production line cancelled: all materials were returned to item storage (AI cores included); a one-use blueprint goes back to the blueprint shelf together with its manufacturing allowance. Other lines are unaffected.",
   },
+  /**
+   * **材料行的"去哪弄"那一支：声望商店**（**2026-09-29 船长报障**：「组装机中，舰船插件材料消耗列表中
+   * 还是显示了墨潮黑匣（应该显示通用黑匣）」同批查出的**指错路**）。
+   *
+   * 「通用黑匣」只有章鱼人声望商店一条来路（市场**只收不卖**、价格表里没有它的卖单）⇒ 它原先落进
+   * "去市场购买"那一支，点过去只会看到一个空行情。判据 = 该材料 id 是通用黑匣（core 单点
+   * `UNIVERSAL_BLACKBOX_ITEM_ID`），不新造机制。
+   */
+  "ui.Industry.158": { zh: "「{matName}」在声望商店兑换——点击前往", en: "“{matName}” is exchanged at the standing store — click to go there" },
+  "ui.Industry.159": { zh: "🛒 去声望商店", en: "🛒 To the standing store" },
   "ui.IndustryPage.001": { zh: "全部", en: "All" },
   "ui.IndustryPage.002": { zh: "可精炼资源", en: "Refinable resources" },
   "ui.IndustryPage.003": { zh: "残骸回收", en: "Wreck salvage" },
@@ -3431,6 +3441,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.IndustryPage.143": { zh: "已持有", en: "Owned" },
   "ui.IndustryPage.144": { zh: "已换到通用黑匣 ×1，存入物品仓库。", en: "Exchanged: 1 Universal Black Box stored in the item warehouse." },
   "ui.IndustryPage.145": { zh: "兑换", en: "Exchange" },
+  /**
+   * **通用黑匣的兑换前确认**（**2026-09-29 船长报障**：「**声望商店中，购买通用黑匣没有警告**」）。
+   *
+   * 与图纸那两句（`.139` / `.140`）**刻意分开**：图纸换的是"学会配方"，黑匣换的是"一件实物"，
+   * 落款处与去处都不同；但**扣款口径一致**（花声望、不可退）⇒ 两件商品同一套确认层、各用各的措辞。
+   */
+  "ui.IndustryPage.146": { zh: "将扣除「深空工业协会」声望 {p1} 点，扣除后剩余 {p2}。", en: "This spends {p1} Deepspace Industry Association standing, leaving {p2}." },
+  "ui.IndustryPage.147": { zh: "通用黑匣直接存入物品仓库；声望一旦扣除不会退还。", en: "The Universal Black Box goes straight into item storage; spent standing is not refunded." },
   "ui.Expedition.441": { zh: "章鱼人兑换", en: "Octopus Exchange" },
   "ui.Expedition.442": { zh: "前往声望商店兑换", en: "Exchange at the standing shop" },
   "ui.Expedition.443": { zh: "插件装上就拆不下来，也不能上市交易。", en: "A plug cannot be removed once fitted, and cannot be traded on the market." },

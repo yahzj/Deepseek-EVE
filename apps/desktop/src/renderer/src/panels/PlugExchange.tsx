@@ -32,6 +32,9 @@ import {
   countModule,
   countWare,
   matNeedCount,
+  /** 材料等价组（2026-09-29 船长报障同批）：材料行的名字与"现有"读数与组装机同一把尺 */
+  materialDisplayIdOf,
+  materialGroupIdsOf,
   plugExchangeRowsOf,
   spendableStandingOf,
   standingOf,
@@ -65,15 +68,21 @@ export function PlugExchangeBody({ engine, onToast }: { engine: GameEngine; onTo
   const earned = standingOf(engine.state, DSI_FACTION_ID)
   /**
    * **兑换前确认**（**2026-09-26 船长令**：「**玩家兑换时弹出一个确认，告诉玩家会扣除声望**」）：
-   * 待确认的那一行（null = 没在确认）。确认层沿用全仓既有的 `.app-mkt-confirm*` 一族（不新造样式）。
+   * 待确认的那一项（null = 没在确认）。确认层沿用全仓既有的 `.app-mkt-confirm*` 一族（不新造样式）。
+   *
+   * ⚠ **2026-09-29 扩到"通用黑匣"**（**船长报障**：「**声望商店中，购买通用黑匣没有警告**」）：
+   * 原本只有图纸走确认，黑匣那条是**一步直扣** —— 而它同样是花声望（30 点/枚）、同样不可退，
+   * 按"会扣声望就得先讲清"的既定口径，两件商品必须同一套。`kind` 只决定确认层那两句话，
+   * 扣款仍各走各的 core 命令。
    */
-  const [ask, setAsk] = useState<{ moduleId: string; name: string } | null>(null)
+  const [ask, setAsk] = useState<{ kind: 'box' | 'blueprint'; moduleId?: string; name: string } | null>(null)
   /** **通用黑匣卡**（2026-09-27 船长令）：声望换制造料 —— 价格与持有数都走 core 单点，界面不自算 */
   const boxPrice = UNIVERSAL_BLACKBOX_COST
   const boxOwned = countWare(engine.state, UNIVERSAL_BLACKBOX_ITEM_ID)
   const buyBox = (): void => {
     const r = engine.exchangeUniversalBlackBoxAt()
     onToast(r.ok ? tr('ui.IndustryPage.144') : (r.error ?? tr('ui.IndustryPage.121', { p1: boxPrice })))
+    setAsk(null)
     setTick((n) => n + 1)
   }
 
@@ -109,7 +118,12 @@ export function PlugExchangeBody({ engine, onToast }: { engine: GameEngine; onTo
                   <span className="app-dim"> {boxOwned.toLocaleString('zh-CN')}</span>
                 </div>
                 <div>
-                  <button className="app-btn is-small is-primary" disabled={spendable < boxPrice} onClick={buyBox}>
+                  {/* ⚠ 2026-09-29 船长报障后改：**先确认再扣声望**（与图纸卡同一套口径），不再一步直扣 */}
+                  <button
+                    className="app-btn is-small is-primary"
+                    disabled={spendable < boxPrice}
+                    onClick={() => setAsk({ kind: 'box', name: tr('ui.IndustryPage.141') })}
+                  >
                     {tr('ui.IndustryPage.145')}
                   </button>
                 </div>
@@ -174,18 +188,32 @@ export function PlugExchangeBody({ engine, onToast }: { engine: GameEngine; onTo
                       </span>
                     </div>
 
-                    {/* 材料清单（整批所需 ＋ 各项现有）——**次要信息**：换之前能估"造不造得起"即可 */}
+                    {/* 材料清单（整批所需 ＋ 各项现有）——**次要信息**：换之前能估"造不造得起"即可
+                        ⚠ **等价组同尺**（2026-09-29 船长报障同批）：名字走 `materialDisplayIdOf`、
+                        "现有"读数走组内合计 —— 与组装机那张卡、与引擎的缺料提示**完全同一把尺**，
+                        免得这里说"墨潮旗舰黑匣"、那儿说"通用黑匣"。 */}
                     {bp ? (
                       <ul className="app-bp-mats">
                         {bp.materials.map((need) => {
                           const needCount = matNeedCount(engine.state, need.count)
-                          const have = countWare(engine.state, need.itemId)
-                          const matName = engine.ctx.items.get(need.itemId)?.name ?? need.itemId
+                          const groupIds = materialGroupIdsOf(need.itemId)
+                          const displayId = materialDisplayIdOf(engine.state, need.itemId)
+                          const have = groupIds.reduce((sum, id) => sum + countWare(engine.state, id), 0)
+                          const matName = engine.ctx.items.get(displayId)?.name ?? displayId
+                          const split =
+                            groupIds.length > 1
+                              ? groupIds
+                                  .map((id) => ({ id, n: countWare(engine.state, id) }))
+                                  .filter((x) => x.n > 0)
+                                  .map((x) => `${engine.ctx.items.get(x.id)?.name ?? x.id} ${x.n.toLocaleString('zh-CN')}`)
+                                  .join(tr('ui.MatterTechTab.017'))
+                              : ''
                           return (
                             <li key={need.itemId} className={`app-bp-mat${have < needCount ? ' is-short' : ''}`}>
                               {matName} ×{needCount.toLocaleString('zh-CN')}
                               <span className="app-dim">
-                                （{tr('ui.IndustryPage.029')} {have.toLocaleString('zh-CN')}）
+                                （{tr('ui.IndustryPage.029')} {have.toLocaleString('zh-CN')}
+                                {split !== '' ? `（${split}）` : ''}）
                               </span>
                             </li>
                           )
@@ -203,7 +231,7 @@ export function PlugExchangeBody({ engine, onToast }: { engine: GameEngine; onTo
                       <button
                         className={`app-btn is-small${row.affordable ? ' is-primary' : ''}`}
                         disabled={!row.affordable}
-                        onClick={() => setAsk({ moduleId: row.moduleId, name: row.name })}
+                        onClick={() => setAsk({ kind: 'blueprint', moduleId: row.moduleId, name: row.name })}
                       >
                         {row.affordable
                           ? tr('ui.IndustryPage.120')
@@ -217,8 +245,11 @@ export function PlugExchangeBody({ engine, onToast }: { engine: GameEngine; onTo
           )}
       {/**
        * **确认层**（船长令）：标题 = 兑换哪一件；正文两行 = 扣多少 / 扣完还剩多少 ＋ 一句说明
-       * （图纸直接进书架、声望不退）。样式整族复用 `.app-mkt-confirm*`（市场卖单那套）。
+       * （声望不退）。样式整族复用 `.app-mkt-confirm*`（市场卖单那套）。
        * ⚠ 它是 `position: fixed; z-index: 96` 的**独立遮罩**（不属于弹层内滚区）⇒ 在子页里同样盖在全屏上。
+       *
+       * ⚠ **两件商品同一套确认**（**2026-09-29 船长报障**：「声望商店中，购买通用黑匣没有警告」）：
+       * 图纸那两句讲"兑换即学会"，黑匣那两句讲"直接入物品仓库"——**只有措辞不同，扣款口径与不可退一样**。
        */}
       {ask !== null ? (
         <div className="app-mkt-confirm-mask" onClick={() => setAsk(null)}>
@@ -229,15 +260,28 @@ export function PlugExchangeBody({ engine, onToast }: { engine: GameEngine; onTo
               <b>{tr('ui.IndustryPage.119', { p1: spendable, p2: earned })}</b>
             </div>
             <div className="app-mkt-confirm-note">
-              {tr('ui.IndustryPage.139', { p1: PLUG_BLUEPRINT_COST, p2: spendable - PLUG_BLUEPRINT_COST })}
-              <br />
-              {tr('ui.IndustryPage.140')}
+              {ask.kind === 'box' ? (
+                <>
+                  {tr('ui.IndustryPage.146', { p1: boxPrice, p2: spendable - boxPrice })}
+                  <br />
+                  {tr('ui.IndustryPage.147')}
+                </>
+              ) : (
+                <>
+                  {tr('ui.IndustryPage.139', { p1: PLUG_BLUEPRINT_COST, p2: spendable - PLUG_BLUEPRINT_COST })}
+                  <br />
+                  {tr('ui.IndustryPage.140')}
+                </>
+              )}
             </div>
             <div className="app-mkt-confirm-btns">
               <button className="app-btn is-small" onClick={() => setAsk(null)}>
                 {tr('ui.ActivityBar.004')}
               </button>
-              <button className="app-btn is-small is-primary" onClick={() => exchange(ask.moduleId)}>
+              <button
+                className="app-btn is-small is-primary"
+                onClick={() => (ask.kind === 'box' ? buyBox() : exchange(ask.moduleId ?? ''))}
+              >
                 {tr('ui.IndustryPage.120')}
               </button>
             </div>

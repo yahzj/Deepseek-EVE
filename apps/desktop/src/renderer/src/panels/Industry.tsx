@@ -37,6 +37,14 @@ import {
   // 2026-09-26 船长令「所有声望门槛改读累计声望」：虫洞闸的读数走唯一入口
   standingOf,
   DSI_FACTION_ID,
+  /**
+   * **材料等价组**（**2026-09-29 船长报障**：「组装机中，舰船插件材料消耗列表中还是显示了墨潮黑匣
+   * （应该显示通用黑匣）」）⇒ 材料行的名字与"现有"读数都按 core 这把尺来（见两个函数的头注）。
+   */
+  materialDisplayIdOf,
+  materialGroupIdsOf,
+  /** 通用黑匣 id（2026-09-29：材料行的"去哪弄"那一支要按它判 —— 它只有声望商店一条来路） */
+  UNIVERSAL_BLACKBOX_ITEM_ID,
 } from '@whale/core'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
@@ -523,7 +531,14 @@ export function cardLiveKeyOf(
   ownedCount: number,
 ): string {
   const state = engine.state
-  const mats = materials.map((m) => countWare(state, m.itemId)).join(',')
+  /**
+   * ⚠ 材料读数按**等价组合计**（`materialGroupIdsOf`）——与卡面那行（`CardMats`）**同一把尺**：
+   * 只数"配方写的那个 id"的话，玩家把旗舰黑匣换成通用黑匣时**指纹不变** ⇒ React 认为卡片没变、
+   * 不重画 ⇒ 卡面停在旧读数（2026-09-29 那批报障的连带风险）。
+   */
+  const mats = materials
+    .map((m) => materialGroupIdsOf(m.itemId).reduce((sum, id) => sum + countWare(state, id), 0))
+    .join(',')
   const needs = materials.map((m) => matNeedCount(state, m.count)).join(',')
   const loop = manufacturingLoopOf(state, blueprintId)
   const singleUse =
@@ -885,9 +900,28 @@ export const BlueprintCard = memo(function BlueprintCard({
       <ul className="app-bp-mats">
         {materials.map((need) => {
           const needCount = matNeedCount(state, need.count) // 材料学折扣后的实际需求
-          const have = countWare(state, need.itemId)
+          /**
+           * **等价组**（**2026-09-29 船长报障**：「组装机中，舰船插件材料消耗列表中还是显示了墨潮黑匣
+           * （**应该显示通用黑匣**）」）：
+           * ① **名字**按 `materialDisplayIdOf`（有哪种报哪种、都没有报组内第一种 = 通用黑匣）；
+           * ② **"现有"读数与缺口判据按组内合计**（`materialGroupIdsOf`）——与开工真扣料、
+           *    与引擎的缺料提示**同一把尺**（此前这里只数"配方写的那个 id"，手上全是通用黑匣时
+           *    会被误判成缺料、且行名写着旗舰黑匣）；
+           * ③ 组内多于一种时补一句**分项**（`现有 3（通用 1 · 其他 2）`），换装/换料前看得清手里是什么。
+           */
+          const groupIds = materialGroupIdsOf(need.itemId)
+          const displayId = materialDisplayIdOf(state, need.itemId)
+          const have = groupIds.reduce((sum, id) => sum + countWare(state, id), 0)
           const enough = have >= needCount
-          const matName = engine.ctx.items.get(need.itemId)?.name ?? need.itemId
+          const matName = engine.ctx.items.get(displayId)?.name ?? displayId
+          const split =
+            groupIds.length > 1
+              ? groupIds
+                  .map((id) => ({ id, n: countWare(state, id) }))
+                  .filter((x) => x.n > 0)
+                  .map((x) => `${engine.ctx.items.get(x.id)?.name ?? x.id} ${x.n.toLocaleString('zh-CN')}`)
+                  .join(tr('ui.MatterTechTab.017'))
+              : ''
           // 空闲态才标红缺口；制造中仓库余量只影响「加开一条线」，红色会误读成故障
           return (
             <li key={need.itemId} className={`app-bp-mat${!enough && !running ? ' is-short' : ''}`}>
@@ -895,19 +929,29 @@ export const BlueprintCard = memo(function BlueprintCard({
               {needCount !== need.count ? (
                 <span className="app-dim">{tr("ui.Industry.046")}{need.count.toLocaleString('zh-CN')}{tr('ui.Industry.123')}</span>
               ) : null}
-              <span className="app-dim">{tr("ui.IndustryPage.029")} {have.toLocaleString('zh-CN')}）</span>
+              <span className="app-dim">
+                {tr("ui.IndustryPage.029")} {have.toLocaleString('zh-CN')}
+                {split !== '' ? `（${split}）` : ''}）
+              </span>
               {onNeedMineral ? (
                 (() => {
                   /* 2026-09-22 船长令：「组装机和造船厂需要零件时，提示不是去组装机，而是去市场」⇒
                      「希望提示玩家去组装机生产零件，不要提示去市场」＋「高级零件依旧去相应的组装机」。
-                     三支（优先级从上到下）：有精炼源 ⇒ 去精炼炉 · **能在这台机器上造出来（如零件）⇒ 去组装机** ·
-                     既炼不出也造不出 ⇒ 去市场。文案按 §十三.5 不写原因解释（旧文案那句「无法经精炼炉产出」
-                     属解释，已随本次改写删掉）。 */
+                     四支（优先级从上到下）：**声望商店有 ⇒ 去声望商店** · 有精炼源 ⇒ 去精炼炉 ·
+                     **能在这台机器上造出来（如零件）⇒ 去组装机** · 既炼不出也造不出 ⇒ 去市场。
+                     文案按 §十三.5 不写原因解释（旧文案那句「无法经精炼炉产出」属解释，已随本次改写删掉）。
+                     ⚠ **新增第一支的由来**（**2026-09-29 船长报障**）：「通用黑匣」只有章鱼人声望商店
+                     一条来路（市场**只收不卖**、价格表里没有它的卖单）⇒ 原先落进第四支、显示
+                     「要到市场购买——点击跳转」是**指错路**（点过去只会看到一个空行情）。
+                     ⚠ 判据按**等价组**（`groupIds.includes(通用黑匣)`）而不是 `need.itemId === …`：
+                     配方里写的是 `blackbox-h`，直接比 id 永远不成立（实测踩到，读数照旧"去市场"）。 */
+                  const fromShop = groupIds.includes(UNIVERSAL_BLACKBOX_ITEM_ID)
                   const srcs = refineSourcesOf(engine, need.itemId)
                   const srcName = (id: string): string => engine.ctx.items.get(id)?.name ?? id
-                  const madeBy = blueprintProducingItem(engine.ctx, need.itemId)
-                  const title =
-                    srcs.length > 0
+                  const madeBy = fromShop ? undefined : blueprintProducingItem(engine.ctx, need.itemId)
+                  const title = fromShop
+                    ? tr('ui.Industry.158', { matName: matName })
+                    : srcs.length > 0
                       ? tr('ui.Industry.109', { matName: matName, p2: srcs.map(srcName).join(tr('ui.MatterTechTab.017')) })
                       : madeBy
                         ? tr('ui.Industry.155', { matName: matName, p2: madeBy.name })
@@ -918,13 +962,15 @@ export const BlueprintCard = memo(function BlueprintCard({
                       role="button"
                       tabIndex={0}
                       title={title}
-                      onClick={() => onNeedMineral?.(need.itemId)}
+                      onClick={() => (fromShop ? onGotoPlugExchange?.() : onNeedMineral?.(need.itemId))}
                     >
-                      {srcs.length > 0
-                        ? tr('ui.Industry.047')
-                        : madeBy
-                          ? tr('ui.Industry.154')
-                          : tr('ui.Industry.048')}
+                      {fromShop
+                        ? tr('ui.Industry.159')
+                        : srcs.length > 0
+                          ? tr('ui.Industry.047')
+                          : madeBy
+                            ? tr('ui.Industry.154')
+                            : tr('ui.Industry.048')}
                     </span>
                   )
                 })()
