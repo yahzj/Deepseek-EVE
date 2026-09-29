@@ -930,7 +930,14 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                          `ModuleHover` 的内容，标题 + 统一参数表 + 描述），行动提示降为末行注脚。
                          ⚠ 不再写 `title`：同一元素禁 `title` + 富提示并存（两个提示路径互顶）。 */
                       {...hoverTipProps(
-                        moduleHoverContent(fittedDef, tr("ui.FitPage.150", { p1: i + 1, p2: stealthTraitNote(fittedDef) })),
+                        /* 2026-09-29 船长令：修理类装备的卡要显示"装上船之后的实修值" ⇒ 这张卡是**已装**的，
+                           把 engine ＋ 本舰 id 一并传下去（不传的卡 = "还没上船"，只显示基础值）。 */
+                        moduleHoverContent(
+                          fittedDef,
+                          tr("ui.FitPage.150", { p1: i + 1, p2: stealthTraitNote(fittedDef) }),
+                          engine,
+                          effectiveTarget,
+                        ),
                       )}
                     >
                       <span className="app-fit-slot-icon-glyph">
@@ -1187,7 +1194,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                     /* 2026-09-16 同批：候选卡也换成**仓库同款富卡**（标题 + 参数表 + 描述），
                        `fitOptionLabel` 里那串"第 N 件衰减/取最长一件"的行动信息降为末行注脚。
                        ⚠ 不再写 `title`（同一元素禁 `title` + 富提示并存）。 */
-                    {...hoverTipProps(moduleHoverContent(m, fitOptionLabel(m)))}
+                    {...hoverTipProps(moduleHoverContent(m, fitOptionLabel(m), engine, effectiveTarget))}
                     onClick={() => pickModule(m)}
                     disabled={sameAsOld}
                   >
@@ -1497,7 +1504,8 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
               key={`plug-${i}`}
               className="app-fit-slot-icon is-filled is-readonly"
               {...hoverTipProps(
-                moduleHoverContent(def, tr('ui.Expedition.443')),
+                /* 插件槽（只读展示）：同批 —— 也给本舰上下文（插件里的维修类效果按同一把尺显示） */
+                moduleHoverContent(def, tr('ui.Expedition.443'), engine, target),
               )}
             >
               <span className="app-fit-slot-icon-glyph">

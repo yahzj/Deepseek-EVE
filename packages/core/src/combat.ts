@@ -3969,6 +3969,69 @@ export function fittedRepairModules(state: GameState, ctx: SimContext, shipId: s
 }
 
 /**
+ * **维修装置每跳实修值的唯一算法**（开战预载 `preloadRepairFor` 与界面读数 `repairStatsFor` 共用）。
+ *
+ * 口径：`每跳 = 装配件值 × 曲线权重(全族第 n 台) × 层容量增幅(a/h) × 恢复量技能`，两条例外见函数内注释。
+ * **为什么要抽出来**：这是"显示值与实战值漂移"那个旧坑的正解——两份口径一旦各写一份，
+ * 界面迟早与战斗账本对不上（2026-09-29 船长令：修理类装备要显示"实际维修值"）。
+ */
+function perPulseRepairUnits(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+): { moduleId: string; kitId: string; free: boolean; armorPerPulse: number; hullPerPulse: number }[] {
+  const defs = fittedRepairModules(state, ctx, shipId)
+  if (defs.length === 0) return []
+  const amp = layerAmpOf(state, ctx, shipId)
+  const quickRepair = quickRepairFactor(state, ctx)
+  const parts = fittedPulseParts(state, ctx, shipId, 'repair').filter((p) => pulsePartLive('repair', p))
+  return defs.map((d, i) => {
+    const isFree = d.repairFree === true
+    const p = parts[i]
+    const w = stackWeight(i + 1) // ← **全族第 n 台**的权重（跨型号同池）
+    const decayA = (p?.armorHp ?? d.repairArmorHp ?? 0) * w
+    const decayH = (p?.hullHp ?? d.repairHullHp ?? 0) * w
+    /**
+     * 两条例外：
+     * ① `repairFree`（无消耗自愈）**不吃恢复量技能**（技能讲的是用件效率，它不消耗组件）；
+     * ② `repairIgnoresCapacityAmp`（只有生体甲壳板）**不吃层容量增幅**（2026-09-17 船长「按平值结算」）。
+     */
+    const flat = d.repairIgnoresCapacityAmp === true
+    const skill = isFree ? 1 : quickRepair
+    return {
+      moduleId: d.id,
+      kitId: isFree ? '' : (d.repairKit ?? 'repairkit-civ'),
+      free: isFree,
+      armorPerPulse: Math.max(0, Math.round(decayA * skill * (flat ? 1 : amp.a))),
+      hullPerPulse: Math.max(0, Math.round(decayH * skill * (flat ? 1 : amp.h))),
+    }
+  })
+}
+
+/**
+ * **维修装置装上船之后的每跳实修值**（**2026-09-29 船长令**：「我希望对修理类装备属性进行统一的数值显示……
+ * 当装备到船上后，显示实际维修值：每 5 秒修复装甲与结构各 XX（10）点。XX 为加成后的修理值」）。
+ *
+ * 算法 = `perPulseRepairUnits`（与开战时真正写进战斗账本的那一份**同一份代码**）；
+ * 本函数只是把它摊成界面好读的形状（附脉冲间隔）。
+ *
+ * ⚠ **为什么单开一个导出函数而不在界面里现算**：这条链有"曲线权重 × 层容量增幅 × 恢复量技能 ＋ 两条例外"，
+ * 界面自己拼一份必然与引擎漂移。**界面只许调本函数。**
+ */
+export function repairStatsFor(
+  state: GameState,
+  ctx: SimContext,
+  shipId: string,
+): { units: { moduleId: string; armorPerPulse: number; hullPerPulse: number; free: boolean }[]; intervalMs: number } | null {
+  const units = perPulseRepairUnits(state, ctx, shipId)
+  if (units.length === 0) return null
+  return {
+    units: units.map(({ moduleId, armorPerPulse, hullPerPulse, free }) => ({ moduleId, armorPerPulse, hullPerPulse, free })),
+    intervalMs: REPAIR_PULSE_MS,
+  }
+}
+
+/**
  * 维修装置开战预载：装配快照 + 组件装载（货舱优先、仓库兜底，单型一次抽足）。
  * 每台预载上限 = 整场最长战斗时间能跳的脉冲数 + 1（多波演出窗口冻结战斗时钟，余量防不足）；
  * 库存不足的装置直接标记停机（组件一枚没有 = 开战即停）。无装置返回 null。
@@ -3986,67 +4049,25 @@ export function preloadRepairFor(
   const units: import('./state').BattleRepairUnit[] = []
   const need = new Map<string, number>()
   const perUnit = Math.max(1, Math.ceil(maxBattleMs / REPAIR_PULSE_MS)) + 1
-  // 舰体快修学（2026-09-13 船长「船体维修装置修改为也吃舰体快修学」）：与**直接使用修理组件**
-  // 共用同一处系数（`repair.quickRepairFactor`，技能 id 与每级加成走 `balance.repair`）
-  const quickRepair = quickRepairFactor(state, ctx)
   /**
-   * **层容量增幅**（2026-09-16 船长「统一吃」＋「并在相关说明中提及（提高维修量等）」）：
-   * 每跳修复量从此与**修理组件同一把尺**——额外护甲/结构加成（装甲增厚板 · 结构件 ·
-   * 船体加固理论 · 装甲舰操作）会按同比例抬高每跳值；开战预载时一并折进快照（与"装配 + 技能"同一份快照语义）。
-   * ⚠ **2026-09-17 例外**：无消耗自愈里带 `repairIgnoresCapacityAmp` 的件（只有生体甲壳板）按**平值**结算，
-   * 见下方该分支的注释——那条例外只作用于"无消耗自愈"，耗组件装置照旧吃本增幅。
-   */
-  const amp = layerAmpOf(state, ctx, shipId)
-  /**
-   * **逐型号衰减**（**2026-09-21 船长令**：「**包括船体维修装置的不同型号也一样的规则**」）。
+   * ⚠ **2026-09-29 改：每跳值不再由本函数计算**——统一走 `perPulseRepairUnits`
+   * （**船长令**「修理类装备……当装备到船上后，显示实际维修值」⇒ 界面读数与战斗账本必须**同一份算法**，
+   * 否则就是"显示值与实战值漂移"那个旧坑）。
    *
-   * 改前：**耗组件的维修装置按件 id 计数**（每台各拿满权）、无消耗自愈件按**同型**计数 ⇒
-   * 民用级 + MK1 + MK2 三台各修各的满额。现统一走装配单点 `repairStreamsOf`：**维修全族同池**
-   * （`stackingOf` 的 `'repair'`）⇒ 第 n 台按 EVE 曲线折减（100% / 87% / 57%…）。
-   * ⚠ 这是**难度改动**（同舰多台维修的总量下调；船长 2026-09-21 已知情并选定）。
-   *
-   * ⚠⚠ **按"位次"取，不能按 modelId 建映射**：同型号三台的位次是 1/2/3（权重 1 / 0.869 / 0.571），
-   * 映射会把三台都写成第 3 件的权重（我第一版就是这么错的，用例当场抓出）⇒ 现**按下标逐台取**。
-   * ⚠ 这里用的是**逐台**口径（`fittedPulseParts` + 下标），**不是** `repairStreamsOf` —— 后者把同型号
-   * 合并成"一路"（供调度），而每台装置各有各的 `armorPerPulse`，两份口径不能互借。
+   * 该助手内含本处原先的四项口径（**全族第 n 台**的曲线权重 · **层容量增幅** a/h · **恢复量技能** ·
+   * 无消耗自愈与 `repairIgnoresCapacityAmp` 两条例外），逐条注释随它搬走了。
+   * 本函数此后只负责**组件账**：`perUnit` 的预留口径保留给老档在途战斗（见下方注释）。
    */
-  const parts = fittedPulseParts(state, ctx, shipId, 'repair').filter((p) => pulsePartLive('repair', p))
-  for (let i = 0; i < defs.length; i++) {
-    const d = defs[i]!
-    const isFree = d.repairFree === true
-    const p = parts[i]
-    const w = stackWeight(i + 1) // ← **全族第 n 台**的权重（跨型号同池）
-    const decayA = (p?.armorHp ?? d.repairArmorHp ?? 0) * w
-    const decayH = (p?.hullHp ?? d.repairHullHp ?? 0) * w
-    if (isFree) {
-      /**
-       * **平值例外**（2026-09-17 船长：「**生体甲壳板的维修量，我希望不吃装甲容量的加成**」）：
-       * 带 `repairIgnoresCapacityAmp` 的件每跳 = `值 × 曲线权重`，**不乘** `amp.a / amp.h`
-       * （2026-09-16「统一吃层容量加成」那条**只对耗组件装置继续有效**）。全表只有生体甲壳板带这个字段。
-       */
-      const flat = d.repairIgnoresCapacityAmp === true
-      units.push({
-        moduleId: d.id,
-        kitId: '',
-        free: true,
-        armorPerPulse: Math.max(0, Math.round(decayA * (flat ? 1 : amp.a))),
-        hullPerPulse: Math.max(0, Math.round(decayH * (flat ? 1 : amp.h))),
-        stopped: false,
-      })
-      continue
-    }
-    const kitId = d.repairKit ?? 'repairkit-civ'
-    // 舰体快修学（2026-09-13 船长「船体维修装置修改为也吃舰体快修学」）：与**直接使用修理组件**
-    // 共用同一处系数（`shipyard.quickRepairFactor`，技能 id 与每级加成走 `balance.repair`）——
-    // 开战预载时按**开战那一刻的技能**折算成每跳值（与"装配快照 + 组件预载"同一份快照语义）。
+  for (const u of perPulseRepairUnits(state, ctx, shipId)) {
+    if (!u.free) need.set(u.kitId, (need.get(u.kitId) ?? 0) + perUnit)
     units.push({
-      moduleId: d.id,
-      kitId,
-      armorPerPulse: Math.max(0, Math.round(decayA * quickRepair * amp.a)),
-      hullPerPulse: Math.max(0, Math.round(decayH * quickRepair * amp.h)),
+      moduleId: u.moduleId,
+      kitId: u.kitId,
+      free: u.free,
+      armorPerPulse: u.armorPerPulse,
+      hullPerPulse: u.hullPerPulse,
       stopped: false,
     })
-    need.set(kitId, (need.get(kitId) ?? 0) + perUnit)
   }
   /**
    * **不再预载**（**2026-09-23 船长令**：「做一个开关，开启时，所有船的弹药和修理组件直接从仓库取用。

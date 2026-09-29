@@ -7,12 +7,12 @@
  * 本文件用**真内容**（`buildSimContext`）守住：数值不漂（5/10）· 装置吃技能 · 直接使用基数同为 5/10。
  */
 import { describe, expect, it } from 'vitest'
-import { buildSimContext, MODULES, SKILLS } from '@whale/data'
+import { buildSimContext, MODULES, SHIPS, SKILLS } from '@whale/data'
 import type { SimContext } from '../src/types'
 import { addShipToFleet, createInitialState } from '@whale/core'
 import { addModule, fitModule } from '../src/equipment'
 import { hullLayerCaps, useOneRepairKit } from '../src/shipyard'
-import { preloadRepairFor, REPAIR_PULSE_MS } from '../src/combat'
+import { preloadRepairFor, repairStatsFor, REPAIR_PULSE_MS } from '../src/combat'
 import { quickRepairFactor } from '../src/repair'
 
 const ctx = buildSimContext() as SimContext
@@ -116,5 +116,47 @@ describe('修理组件回血口径（2026-09-13 船长定）', () => {
       expect(state.warehouse.items['repairkit-mil']).toBe(500)
       expect(state.fleet[uid]!.cargo['repairkit-civ']).toBe(4)
     }
+  })
+
+  /**
+   * **界面读数与战斗账本同源**（**2026-09-29 船长令**：「修理类装备……当装备到船上后，显示实际维修值：
+   * 每 5 秒修复装甲与结构各 XX（10）点。XX 为加成后的修理值」）。
+   *
+   * 装备卡那一行由 `repairStatsFor` 现算；本用例把它与 `preloadRepairFor`（开战时真正写进账本的那份）
+   * **逐台逐层对齐**——这是"显示值与实战值漂移"那个旧坑的正解。
+   */
+  it('`repairStatsFor`（界面读数）与 `preloadRepairFor`（战斗账本）逐台逐层同值', () => {
+    const one = world(5, 'mod-hullrep-2')
+    one.state.skills.trained['repair-engineering'] = 5
+    const stats1 = repairStatsFor(one.state, ctx, one.uid)!
+    const led1 = preloadRepairFor(one.state, ctx, one.uid, 10 * REPAIR_PULSE_MS)!
+    expect(stats1.intervalMs).toBe(REPAIR_PULSE_MS)
+    expect(stats1.units).toHaveLength(1)
+    expect(stats1.units[0]!.armorPerPulse).toBe(led1.units[0]!.armorPerPulse)
+    expect(stats1.units[0]!.hullPerPulse).toBe(led1.units[0]!.hullPerPulse)
+
+    /* 同舰两台（型号不同）：**按位序各自取值**（第 2 台吃 EVE 曲线 87% 衰减）——
+       卡上一台一行，两行不同值，且都与账本逐台对齐（界面靠"位序"把卡片对到 units 的第几份）。
+       ⚠ 沙猫（T1 采矿艇）中槽只有 1 个 ⇒ 这里换一艘中槽 ≥ 2 的真船。 */
+    const two = world(5)
+    const carrier = SHIPS.find((s) => (s.slots?.mid ?? 0) >= 2 && s.id !== two.state.fleet[two.uid]!.defId)
+    expect(carrier, '真数据里应有中槽 ≥ 2 的船').toBeTruthy()
+    two.state.fleet[two.uid]!.defId = carrier!.id
+    addModule(two.state, 'mod-hullrep-1', 1)
+    addModule(two.state, 'mod-hullrep-civ', 1)
+    expect(fitModule(two.state, 'mod-hullrep-1', ctx).ok).toBe(true)
+    expect(fitModule(two.state, 'mod-hullrep-civ', ctx).ok).toBe(true)
+    const stats2 = repairStatsFor(two.state, ctx, two.uid)!
+    const led2 = preloadRepairFor(two.state, ctx, two.uid, 10 * REPAIR_PULSE_MS)!
+    expect(stats2.units).toHaveLength(2)
+    for (let i = 0; i < 2; i++) {
+      expect(stats2.units[i]!.armorPerPulse).toBe(led2.units[i]!.armorPerPulse)
+      expect(stats2.units[i]!.hullPerPulse).toBe(led2.units[i]!.hullPerPulse)
+    }
+    expect(stats2.units[1]!.armorPerPulse).toBeLessThan(stats2.units[0]!.armorPerPulse)
+
+    // 没装维修装置 ⇒ null（界面据此不渲染那一行）
+    const none = world(0)
+    expect(repairStatsFor(none.state, ctx, none.uid)).toBeNull()
   })
 })

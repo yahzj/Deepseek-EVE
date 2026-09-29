@@ -5102,5 +5102,20 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    * **造船厂产物悬停卡那行括号**（**2026-09-29** · 英文界面残留中文清理）：原先在
    * `panels/Shipyard.tsx` 里**手写中文整句 ＋ `toLocaleString('zh-CN')`** ⇒ 英文界面下漏中文。
    */
-  "ui.shipInfo.213": { zh: "（货舱 {cargo} m³ · {cycle} 秒 × {perCycle} 单位/循环）", en: "(hold {cargo} m³ · {cycle} s × {perCycle} units/cycle)" }
+  "ui.shipInfo.213": { zh: "（货舱 {cargo} m³ · {cycle} 秒 × {perCycle} 单位/循环）", en: "(hold {cargo} m³ · {cycle} s × {perCycle} units/cycle)" },
+  /**
+   * **修理类装备装上船后的"实际维修值"**（**2026-09-29 船长令**：
+   * 「对修理类装备属性进行统一的数值显示……当装备到船上后，显示实际维修值：每 5 秒修复装甲与结构各
+   * XX（10）点。XX 为加成后的修理值；并删除下方'修复量 实际每跳 = …'这个过于长的说明属性」）。
+   *
+   * 四条 = 三种层组合 × 一条替换式：
+   * - `.214` 装到船上：`{p1}` = 引擎实算每跳（`core.repairStatsFor`）、`{p2}` = 装备卡上的基础值；
+   * - `.215/.216/.217` = 供 `.214` 的 `{p1}` 槽用的层组合（§十一之三：**每个调用点都要喂到占位符**）。
+   * ⚠ **行名沿用 `ui.shipInfo.059`「修复量」**——但**那一行原先的长解释 `.060` 已随本批删除**
+   * （船长明确点名删掉；数值由本行如实给出，不再写公式）。
+   */
+  "ui.shipInfo.214": { zh: "装到船上：{p1}（{p2}）", en: "Fitted: {p1} ({p2})" },
+  "ui.shipInfo.215": { zh: "各 {p1} 点", en: "{p1} each" },
+  "ui.shipInfo.216": { zh: "装甲 {p1} 点", en: "armor {p1}" },
+  "ui.shipInfo.217": { zh: "结构 {p1} 点", en: "structure {p1}" }
 }

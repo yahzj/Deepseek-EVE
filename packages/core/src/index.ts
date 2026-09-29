@@ -1164,6 +1164,12 @@ export {
   // 敌舰射程削减的**最短射程地板**（2026-09-26 船长报障：墨潮电子舱要写明"最短射程 3000m"）
   // ——界面侧（短行文案）从这里取值，同样不硬写数字
   FOE_RANGE_DEBUFF_FLOOR_M,
+  // **维修装置装上船后的每跳实修值**（**2026-09-29 船长令**：「当装备到船上后，显示实际维修值」）——
+  // 与开战预载 `preloadRepairFor` **同一份算法**（`perPulseRepairUnits`）⇒ 显示值不会与实战值漂移。
+  // 界面（装备卡参数行）只许调本函数，别自己拼那四项乘数与两条例外。
+  repairStatsFor,
+  // 同一批：某舰**当前装着的维修装置**（按位序）——界面靠它把"这一件"对到 `repairStatsFor` 的哪一份
+  fittedRepairModules,
 } from './combat'
 export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3, BattleVerdict } from './combat'
 

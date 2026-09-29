@@ -15,7 +15,9 @@
  */
 import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
-import { DEFAULT_BALANCE, DC_LOCK_MS, droneBayTotalM3, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS } from '@whale/core'
+import { DEFAULT_BALANCE, DC_LOCK_MS, droneBayTotalM3, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules } from '@whale/core'
+/** 引擎类型（"装上船之后的实修值"那一行要现算 —— 2026-09-29 船长令） */
+import type { GameEngine } from '../game/engine'
 import { hoverTipProps } from './Tooltip'
 import { tr } from '../i18n/locale'
 // ⚠ 槽类名（高/中/低槽）与舰船类别/舰级名**一律走这三个本地化单点**（2026-09-26 船长报障
@@ -282,6 +284,41 @@ function repairAmountText(mod: ModuleDef): string {
   if (arm > 0 && hul > 0) return arm === hul ? tr("ui.shipInfo.088", { p1: fmt(arm) }) : tr("ui.shipInfo.089", { p1: fmt(arm), p2: fmt(hul) })
   if (arm > 0) return tr("ui.shipInfo.090", { p1: fmt(arm) })
   return tr("ui.shipInfo.091", { p1: fmt(hul) })
+}
+/**
+ * **按层组合给出"值文本"**（**2026-09-29 船长令**：修理类装备的数值显示统一）。
+ * `arm`/`hul` 已由调用方算好（基础值或实修值），本函数只负责挑形状：
+ * `各 N 点` / `装甲 N 点` / `结构 N 点`（英文 `N each` / `armor N` / `structure N`）。
+ * ⚠ 与 `repairAmountText` **同一条形状规则**（那边是基础值的整句版，这边是层组合的短版）——
+ * 新增层组合时两处一起改。
+ */
+function repairLayerText(arm: number, hul: number): string {
+  if (arm > 0 && hul > 0) return arm === hul ? tr('ui.shipInfo.215', { p1: fmt(arm) }) : `${tr('ui.shipInfo.216', { p1: fmt(arm) })} / ${tr('ui.shipInfo.217', { p1: fmt(hul) })}`
+  if (arm > 0) return tr('ui.shipInfo.216', { p1: fmt(arm) })
+  return tr('ui.shipInfo.217', { p1: fmt(hul) })
+}
+/**
+ * **装上船之后的实修值一行**（**2026-09-29 船长令**：「当装备到船上后，显示实际维修值：
+ * 每 5 秒修复装甲与结构各 XX（10）点。XX 为加成后的修理值」）。
+ *
+ * - `XX` = `core.repairStatsFor` 现算的**该台自己那一份**每跳（船长同日三选一：按单台，不按全舰合计）；
+ * - 括号里 = 装备卡上的**基础值**；
+ * - **只对"已装上船"的卡出这一行**（同一问：仓库/市场/手册不上船 ⇒ 仍只显示基础值）。
+ * - 多台同族时按**位序**取该台那一份（第 2 台吃 87% 衰减，与 `preloadRepairFor` 同源）。
+ */
+function fittedRepairLine(engine: GameEngine, shipId: string, mod: ModuleDef): InfoLine | null {
+  const stats = repairStatsFor(engine.state, engine.ctx, shipId)
+  if (!stats) return null
+  const idx = fittedRepairModules(engine.state, engine.ctx, shipId).findIndex((d) => d.id === mod.id)
+  const u = idx >= 0 ? stats.units[idx] : undefined
+  if (!u) return null
+  return {
+    k: tr('ui.shipInfo.059'),
+    v: tr('ui.shipInfo.214', {
+      p1: repairLayerText(u.armorPerPulse, u.hullPerPulse),
+      p2: repairLayerText(mod.repairArmorHp ?? 0, mod.repairHullHp ?? 0),
+    }),
+  }
 }
 /** 维修件消耗的组件名（接线单点：repairKit → 物品名） */
 function repairKitName(mod: ModuleDef): string {
@@ -895,8 +932,11 @@ function crossFamilyShort(mod: ModuleDef): string {
  * 工业槽 = 加成系数；炮台 = 武器卡（配弹/射程带/命中衰减/装填/伤害倍率）；
  * 护盾/装甲 = 容量 + 分系"缺口削减"抗性（合成：实际抗性 = 1 − (1−船体基础) × (1−缺口)，
  * 上限 90%——基础抗越高的船装同系模块收益越低）；推进器 = 加力推进（战斗速度）。
+ *
+ * ⚠ **可选 `engine` ＋ `shipId`**（**2026-09-29 船长令**）：给了就把"装上船之后"的实修值也渲染出来
+ * （如修理件的「装到船上：各 19（10）点」）。不传 = 与改动前逐字一致（仓库/市场/手册那些"还没上船"的卡）。
  */
-export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
+export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: string): InfoLine[] {
   /**
    * 「槽位 / 类型」那一行的**类型**：默认 = 槽位名（`SLOT_LABELS`）。
    *
@@ -1140,14 +1180,15 @@ export function moduleInfoLines(mod: ModuleDef): InfoLine[] {
         })
       }
       /**
-       * **修复量口径**（2026-09-16 船长「统一吃」＋「并在相关说明中提及（提高维修量等）」）：
-       * 上面那行是**基础值**；实战每跳还要乘**额外护甲/结构加成**与两条恢复量技能——与修理组件同一把尺。
-       * 不写这一行 = 玩家看到"每跳 5 点"会以为增厚板/加固理论对维修没用（显示值与实战值漂移的旧坑）。
+       * **修复量的呈现（2026-09-29 船长令改判）**：
+       * 原先这里固定再加一行长解释「修复量 ｜ 实际每跳 = 上表值 × 装甲/结构容量加成 × 恢复量技能（…）」
+       * —— 船长点名**删掉**（"过于长的说明属性"）。改为：**装了船就把实修值直接算出来**（上一行 `.214`），
+       * 没装船就只有上表的基础值（本行的第一段）。
        */
-      lines.push({
-        k: tr("ui.shipInfo.059"),
-        v: tr("ui.shipInfo.060"),
-      })
+      if (shipId !== undefined && engine !== undefined) {
+        const fitted = fittedRepairLine(engine, shipId, mod)
+        if (fitted) lines.push(fitted)
+      }
     }
   } else if (mod.slot === 'target-lock') {
     // 2026-09-09 目标锁定阵列（高槽 target-lock）：集火 + 目标受击加深
@@ -1427,8 +1468,8 @@ export function infoCardContent(title: ReactNode, lines: InfoLine[], note?: Reac
  * ⚠ 同一元素**禁** `title` + `hoverTipProps` 并存（两个提示路径会在同一个单例层上互顶，见 `ui/Tooltip.tsx`）。
  * `hint` = 追加一行行动提示（如「点击更换 · 第 N 位」），与描述同款注脚样式。
  */
-export function moduleHoverContent(mod: ModuleDef, hint?: ReactNode): ReactNode {
-  return infoCardContent(mod.name, moduleInfoLines(mod), mod.description, hint ? <div className="app-info-note">{hint}</div> : null)
+export function moduleHoverContent(mod: ModuleDef, hint?: ReactNode, engine?: GameEngine, shipId?: string): ReactNode {
+  return infoCardContent(mod.name, moduleInfoLines(mod, engine, shipId), mod.description, hint ? <div className="app-info-note">{hint}</div> : null)
 }
 
 /**
