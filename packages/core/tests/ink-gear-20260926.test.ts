@@ -122,10 +122,14 @@ describe('墨潮电子舱（射程压制 · 高槽 · CPU 150）', () => {
   /**
    * **2026-09-26 船长报障**：「**发现BUG，墨潮电子舱怎么写着全额叠加，并且没有写上最短射程3000m**」
    * ⇒ 本件不得再走 `flat` 兜底（那会把卡面标成「全额叠加」）；说明里必须写明最短射程 3,000 m。
+   *
+   * ⚠ **2026-09-29 改判**：该件从当时单列的 `sum` 档（「同舰多件加和（上限 90%）· 多舰乘法叠加」）
+   * 改为 **`fleetDecay`（全队折权缺口乘法）** —— 船长令「这类全队型的效果，能否做全队多装递减，
+   * 并且效果也是乘法」→「墨潮电子舱就照全队递减的乘法」。**仍不走 `flat`**（本条守卫的本意不变）。
    */
-  it('报障回归：叠加分组单列 `sum`（不再标「全额叠加」）· 说明写明最短射程 3,000 m', () => {
+  it('报障回归：叠加分组单列 `fleetDecay`（不再标「全额叠加」）· 说明写明最短射程 3,000 m', () => {
     const m = MODULES.find((x) => x.id === 'mod-lair-ecm-h')!
-    expect(stackingOf(m)).toEqual({ group: 'sum', kind: 'ecm' })
+    expect(stackingOf(m)).toEqual({ group: 'fleetDecay', kind: 'ecm' })
     // 对照：普通加算件仍是 flat（本档只服务这一件，不是新兜底）
     expect(stackingOf(MODULES.find((x) => x.id === 'mod-stab-kin-3')!).group, '稳定器仍是 flat').toBe('flat')
     expect(m.description).toContain('3,000 m')
@@ -138,12 +142,13 @@ describe('墨潮电子舱（射程压制 · 高槽 · CPU 150）', () => {
     expect(FOE_RANGE_DEBUFF_FLOOR_M).toBe(3000)
   })
 
-  it('编队削减率：单装一件 = 15% · 一件 ＋ 一艘电子舰 = **27.75%**（乘法叠加）', () => {
+  it('编队削减率：单装一件 = 15% · 一件 ＋ 一艘电子舰 = **26.08%**（全队递减乘法 · 2026-09-29 改判）', () => {
     const { state, id } = carrierOf('mod-lair-ecm-h')
     expect(meFoeRangeDebuffOf(state, ctx, [id])).toBeCloseTo(0.15, 10)
-    // 再加一艘电子舰（`foeRangeDebuffPct 0.15` 写在船体上）
+    // 再加一艘电子舰（`foeRangeDebuffPct 0.15` 写在船体上）：两份拉平进一个池、按曲线递减再乘法
+    // ⇒ 1 − (1−0.15)(1−0.15×0.869) = 0.260813（旧口径"同舰加和 ＋ 跨舰乘法"给的 27.75% 已作废）
     const ew = addShipToFleet(state, 'sh-wh-a-frigate')
-    expect(meFoeRangeDebuffOf(state, ctx, [id, ew])).toBeCloseTo(1 - 0.85 * 0.85, 10)
+    expect(meFoeRangeDebuffOf(state, ctx, [id, ew])).toBeCloseTo(0.260813, 5)
   })
 
   it('实际生效：敌舰武器射程按削减率缩短（走既有 `foeGunMaxRangeOf` 单一真相源）', () => {

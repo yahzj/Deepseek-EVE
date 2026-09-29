@@ -52,7 +52,7 @@ import {
   // 2026-09-26 舰船插件（船长令）：建档时单独累加插件效果（插件不在 `fitted` 里，扫描不到）
   plugModulesOf,
 } from './plugs'
-import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, pulseStreamOf, refillDroneLoadTo, stackingOf, stackWeight, takeDroneUnit, weightedSum } from './equipment'
+import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, pulseStreamOf, refillDroneLoadTo, stackingOf, stackWeight, takeDroneUnit, weightedGap, weightedSum } from './equipment'
 import { applyFirstBountyBuff, isFirstBountyBattle } from './firstTasks'
 // **无人机储备甲板**（2026-09-27 船长令）：战中复位状态机（建档 / 入队 / 每拍推进 / 复活计数）
 import { droneReviveNoteLoss, droneRevivedCount, droneRevivedOf, initDroneRevive, initDroneReviveStock, resolveDroneRevive } from './droneRevive'
@@ -7479,33 +7479,43 @@ export function foeDroneRangeOf(
  * **削减率每拍重算进运行态 `BattleState.meFoeRangeDebuff`**（不随档 ⇒ 读档/中途换编队都不陈旧）。 */
 export const FOE_RANGE_DEBUFF_FLOOR_M = 3000
 
-/** 编队当前的**敌舰射程削减率** `r = 1 − Π(1 − vᵢ)`（无电子舰/无压制件 = 0）。
+/**
+ * 编队当前的**敌舰射程削减率** `r`（无电子舰/无压制件 = 0）。
  *
- * 两个来源，**一起进同一条乘法合成链**（船长 2026-09-18 定的多艘口径）：
- * - **船体特性** `ShipDef.foeRangeDebuffPct`（电子舰 15%）；
- * - **装配件** `ModuleDef.foeRangeDebuffPct`（**2026-09-26 船长令：墨潮电子舱 15%**）——
- *   同舰多件**先加和**（上限 0.9）再作为一份参与合成。
- * ⇒ 一件电子舱 ＋ 一艘电子舰 = `1 − 0.85 × 0.85 = 27.75%`（与我方承诺的读数一致）。 */
+ * **口径（2026-09-29 船长令改判 · 全队折权缺口乘法）**：整队所有来源**拉平进一个池**——
+ * 每艘带 `ShipDef.foeRangeDebuffPct` 的电子舰各算一份（15%）、每一件带 `ModuleDef.foeRangeDebuffPct`
+ * 的装配件各算一份（墨潮电子舱 15%）——按单件效果从强到弱套 **EVE 曲线权重**
+ * （`equipment.stackWeight`：100% / 87% / 57% / 28%…），再**乘法合成** `r = 1 − Π(1 − vᵢ·wᵢ)`
+ * （单点 = `equipment.weightedGap`）。
+ *
+ * 船长原话（照抄）：「**墨潮电子舱玩家似乎将效果叠的很高，让所有敌人只剩下3000射程**」→
+ * 「**这类全队型的效果，能否做全队多装递减，并且效果也是乘法**」→「**墨潮电子舱就照全队递减的乘法**」。
+ * **作废的旧口径**（2026-09-26 立）：**同舰多件先加和、上限 0.9**（6 件即到顶）＋ 跨舰乘法 ——
+ * 那条下"4 舰各 3 件 = 90.8% / 4 舰各 6 件 = 99.99%"会把 12,000 m 的敌人一直压到地板 3,000 m。
+ *
+ * **读数（本口径）**：1 件 15.0% · 2 件 26.1% · 3 件 32.4% · 4 件 35.3% · 12 件 36.7% ⇒
+ * **渐近上限 ≈ 36.7%**（再多件也不涨）；12,000 m 的敌人最多压到约 7,600 m（不再是 3,000）。
+ */
 export function meFoeRangeDebuffOf(
   state: GameState,
   ctx: SimContext,
   shipIds: readonly string[],
 ): number {
-  let prod = 1
+  /** 整队所有来源的削减率清单（每份单独入池：船体一份、每件装备各一份） */
+  const copies: number[] = []
   for (const sid of shipIds) {
     const entry = state.fleet[sid]
     const defId = entry?.defId
-    const parts: number[] = []
     const hull = defId ? (ctx.ships.get(defId)?.foeRangeDebuffPct ?? 0) : 0
-    if (hull > 0 && hull < 1) parts.push(hull)
-    let gear = 0
+    if (hull > 0 && hull < 1) copies.push(hull)
     if (entry?.fitted) {
-      for (const m of allFittedModules(entry.fitted, ctx)) gear += Math.max(0, m.foeRangeDebuffPct ?? 0)
+      for (const m of allFittedModules(entry.fitted, ctx)) {
+        const v = Math.max(0, m.foeRangeDebuffPct ?? 0)
+        if (v > 0) copies.push(v)
+      }
     }
-    if (gear > 0) parts.push(Math.min(0.9, gear))
-    for (const v of parts) prod *= 1 - v
   }
-  return prod >= 1 ? 0 : 1 - prod
+  return copies.length === 0 ? 0 : weightedGap(copies)
 }
 
 /** 把编队削减率写进运行态（战斗建档与**每拍**各调一次——只写开战那一刻会在换编队/读档后陈旧）。 */

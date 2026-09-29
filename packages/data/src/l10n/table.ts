@@ -4066,8 +4066,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.199": { zh: "更少被敌方选为目标", en: "Enemies pick this ship less often" },
   "ui.shipInfo.200": { zh: "装上后无法拆下", en: "Cannot be removed once fitted" },
   /* 2026-09-26 船长报障：墨潮电子舱原先掉在 `flat` 兜底里、卡面写「全额叠加」（读起来像"可以无限叠"）
-     ⇒ 该件单列 `sum` 组，本档写真实机制：同舰多件加和（上限 90%）· 多舰乘法叠加。 */
-  "ui.shipInfo.201": { zh: "同舰多件加和（上限 90%）· 多舰乘法叠加", en: "Same ship: additive (cap 90%) · Multiple ships: multiplicative" },
+     ⇒ 该件单列一档（当时叫 `sum`），本档写真实机制。
+     ⟪文案调整 2026-09-29⟫ 船长令「这类全队型的效果，能否做全队多装递减，并且效果也是乘法」
+     →「墨潮电子舱就照全队递减的乘法」⇒ 旧口径「同舰多件加和（上限 90%）· 多舰乘法叠加」**作废**
+     （那条下 4 舰各 3 件即 90.8%，把敌人射程一路压到地板 3,000 m）；现行 = 整队拉平、逐件按曲线递减、乘法。
+     台账见 `docs/design/ecm-fleet-decay-20260929.md`。 */
+  "ui.shipInfo.201": { zh: "全队多件递减（乘法叠加）", en: "Fleet-wide diminishing returns (multiplicative)" },
   /** **机群结构层加成**（2026-09-27 补）：鱿蜂结构层的 `droneHullHpBonusPct` 引擎一直在算
    *  （`combat.ts:2059` 求和 → `:7663` 放飞时放大结构层），但**卡面原先没有这一行** ⇒ 说明写着效果、卡上查不到。 */
   "ui.shipInfo.202": { zh: "机群结构层 +{p1}", en: "Drone structure layer +{p1}" },

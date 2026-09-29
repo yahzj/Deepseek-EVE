@@ -428,7 +428,10 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'sbp-once-sentinel': 3,
   'sbp-once-swordfish': 3,
   'sbp-once-thresher': 3,
-  'sbp-once-whale-king': 3,
+  // ⚠ **2026-09-29 船长令：鲸王一次性图纸档位上调到 5**（原 3）——调价后（6M → 50M）它成了稀有层里最贵的一张，
+  //   按本表语义「5 = 可走奇货层的高档、稀有订单渠道权重 ×0.05」⇒ 出率降到最低一档。
+  //   ⚠ **渠道（marketCatalog 的 `rarity`）本轮未动**，仍是 `rare`（稀有订单层）——本表不管渠道归属。
+  'sbp-once-whale-king': 5,
   'sbp-once-xuanwu': 4,
   'sbp-pioneer': 4,
   'sbp-sailfish': 3,
