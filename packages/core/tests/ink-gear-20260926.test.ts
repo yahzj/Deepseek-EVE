@@ -313,19 +313,28 @@ describe('墨潮捕获网（周期装置 · 独立瞄准 · 不看命中 · 不�
     expect(b.myWebs![spec.tag]!.targetTag).toBe(foes[0]!.tag)
   })
 
-  it('装备说明文案与引擎同口径：3800 米射程 ＋ 4500 米断开即冷却（中英双语）', () => {
+  it('关键属性进字段（2026-09-29 船长令）＋说明不再重复数字（中英双语）', () => {
     const m = MODULES.find((x) => x.id === 'mod-lair-web-h')!
-    expect(m.description, '文案写清 ×0.5').toContain('×0.5')
-    expect(m.description, '文案写清投网射程 3800 米').toContain('3800 米')
-    expect(m.description, '文案写清断开距离 4500 米').toContain('4500 米')
-    expect(m.description, '文案写清断开即冷却').toContain('冷却 20 秒')
+    /**
+     * ⚠ **2026-09-29 船长报障**：「墨潮捕获网现在各种属性都只显示在说明文本内。**而且还有重复文本**。
+     * 将一些关键属性（比如射程，减速幅度）放进属性里」⇒ 三项读数落成**数据字段**（引擎读字段、
+     * 卡面参数行渲染字段），说明只讲机制。本用例从"文案里有没有数字"翻成"字段值对不对 + 说明里没有数字"。
+     */
+    expect(m.captureWebRangeM, '投网射程进字段').toBe(3_800)
+    expect(m.captureWebBreakM, '断开距离进字段').toBe(4_500)
+    expect(m.captureWebSlowMul, '减速倍率进字段').toBe(0.5)
+    expect(m.captureWebCycleMs, '周期仍在字段上').toBe(20_000)
+    // 说明只讲机制 ⇒ 不许再出现这些读数（甲案：数值由卡面参数行渲染）
+    for (const n of ['3800', '4500', '3,800', '4,500', '×0.5', '20 秒']) {
+      expect(m.description, `说明不该再手写 ${n}`).not.toContain(n)
+    }
+    expect(m.description, '机制仍在（机动 / 推进器 / 闪避三层）').toContain('推进器熄火')
     expect(m.description, '不得再写旧的 ×0.1').not.toContain('×0.1')
     expect(m.description, '不得再写旧的「开战即钉」').not.toContain('开战即钉')
     const en = EN_MODULES['mod-lair-web-h']!.description!
-    expect(en, '英文同口径').toContain('3,800 m')
-    expect(en).toContain('4,500 m')
-    expect(en).toContain('0.5')
-    expect(en, '英文写清断开即冷却').toContain('cools down for 20 seconds')
+    for (const n of ['3,800', '4,500', '0.5', '20 seconds']) {
+      expect(en, `英文说明不该再手写 ${n}`).not.toContain(n)
+    }
     expect(en, '英文不得再写减速 90%').not.toContain('90%')
   })
 })

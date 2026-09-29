@@ -4058,7 +4058,27 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.MapPage.122": { zh: "入侵残骸 · 稀有 ×{p1}", en: "Invasion wrecks · rare ×{p1}" },
   // 2026-09-26 墨潮电子舱 / 墨潮捕获网（H 族势力装备 · 高槽支援件）的装配页短行
   "ui.shipInfo.185": { zh: "敌方武器射程 −{p1}，最短 {p2} m", en: "Enemy weapon range −{p1}, floor {p2} m" },
-  "ui.shipInfo.186": { zh: "{p2} 米内每 {p1} 秒钉住一艘未被钉住的敌舰", en: "Pins one un-webbed enemy ship every {p1} s within {p2} m" },  /* 舰船插件（2026-09-26 船长令）：装配页短行的逐类效果句 ＋ 一句"装上去拆不下来" */
+  "ui.shipInfo.186": { zh: "{p2} 米内每 {p1} 秒钉住一艘未被钉住的敌舰", en: "Pins one un-webbed enemy ship every {p1} s within {p2} m" },
+  /**
+   * **墨潮捕获网的三项关键属性**（**2026-09-29 船长令**：「将一些关键属性（比如射程，减速幅度）
+   * 放进属性里」）——行名 + 值两条，与其它装备的参数行同款（值由数据字段渲染，说明不再手写数字）。
+   */
+  "ui.shipInfo.238": { zh: "投网射程", en: "Web range" },
+  "ui.shipInfo.239": { zh: "断开距离", en: "Break range" },
+  "ui.shipInfo.240": { zh: "减速幅度", en: "Slow" },
+  /** 值：`{p1} m`（射程类）与 `−{p1}%（机动 ×{p2}）`（减速类） */
+  "ui.shipInfo.241": { zh: "{p1} m", en: "{p1} m" },
+  "ui.shipInfo.242": { zh: "−{p1}%（机动 ×{p2}）", en: "−{p1}% (speed ×{p2})" },
+  /**
+   * **「取最快一台（不叠加）」**（**2026-09-29 补**）：`max` 组里**周期型**装置（捕获网）的措辞。
+   *
+   * 为什么单列：`ui.shipInfo.078`「取最长一件（不叠加）」是给**隐秘行动装置**（取最长窗口）写的，
+   * 而捕获网走的是 `{ group: 'max', kind: 'capture-web' }` —— 实现里同舰多件**取最短周期**
+   * （`combat` 的 `webCycleMs` 用 `Math.min`：更快的那台说了算）。
+   * 拿"取最长"去说一件"取最短"的事就是**谎报方向**（船长 2026-09-27 报障过"卡面写着全额叠加、
+   * 实际是加和封顶"那一类）⇒ 按 kind 分岔说。
+   */
+  "ui.shipInfo.243": { zh: "取最快一台（不叠加）", en: "Fastest unit only (no stacking)" },  /* 舰船插件（2026-09-26 船长令）：装配页短行的逐类效果句 ＋ 一句"装上去拆不下来" */
   "ui.shipInfo.187": { zh: "护盾上限 +{p1}", en: "Shield capacity +{p1}" },
   "ui.shipInfo.188": { zh: "装甲上限 +{p1}", en: "Armor capacity +{p1}" },
   "ui.shipInfo.189": { zh: "结构上限 +{p1}", en: "Structure capacity +{p1}" },

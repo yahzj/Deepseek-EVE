@@ -15,7 +15,7 @@
  */
 import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
-import { DEFAULT_BALANCE, DC_LOCK_MS, droneBayTotalM3, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules, fittedEffectParamsOf } from '@whale/core'
+import { DEFAULT_BALANCE, DC_LOCK_MS, droneBayTotalM3, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules, fittedEffectParamsOf, WEB_BREAK_DIST_M } from '@whale/core'
 /** 引擎类型（"装上船之后的实修值"那一行要现算 —— 2026-09-29 船长令） */
 import type { GameEngine } from '../game/engine'
 import { hoverTipProps } from './Tooltip'
@@ -545,10 +545,17 @@ export function moduleShortEffect(mod: ModuleDef): string {
          */
         body = tr("ui.shipInfo.185", { p1: pct(mod.foeRangeDebuffPct), p2: String(FOE_RANGE_DEBUFF_FLOOR_M) })
       } else if (mod.captureWebCycleMs !== undefined) {
-        // 2026-09-26 墨潮捕获网（H 族势力装备 · 高槽支援件）：周期张网（射程 = 引擎单点 `MY_WEB_RANGE_M`）
+        /**
+         * 2026-09-26 墨潮捕获网（H 族势力装备 · 高槽支援件）：周期张网。
+         *
+         * ⚠ **2026-09-29 船长报障**：「墨潮捕获网现在各种属性都只显示在说明文本内。**而且还有重复文本**。
+         * 将一些关键属性（比如射程，减速幅度）放进属性里」——
+         * ① 射程原先取**引擎常量** `MY_WEB_RANGE_M`，现在改取**件上字段**（缺省回落常量）；
+         * ② 说明里那串数字同步撤掉，数值只由**卡面参数行**渲染（甲案）。
+         */
         body = tr("ui.shipInfo.186", {
           p1: Math.round(mod.captureWebCycleMs / 1000),
-          p2: String(MY_WEB_RANGE_M),
+          p2: String(mod.captureWebRangeM ?? MY_WEB_RANGE_M),
         })
       }
       break
@@ -1190,6 +1197,28 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
       })
       lines.push({ k: tr("ui.shipInfo.057"), v: tr("ui.shipInfo.058") })
     }
+    /**
+     * **墨潮捕获网的三项关键属性进参数行**（**2026-09-29 船长令**：「将一些关键属性（比如射程，
+     * 减速幅度）放进属性里」）——
+     * 投网射程 / 断开距离（米）成对写在一行、减速幅度单列一行（`−50%（机动 ×0.5）`）。
+     * 数值全部**取件上字段**（缺省回落引擎常量），说明里不再重复这些数字。
+     * 周期（秒）已在短行里报过，这里不重复。
+     */
+    if (mod.captureWebCycleMs !== undefined) {
+      lines.push({
+        k: tr("ui.shipInfo.238"),
+        v: `${tr("ui.shipInfo.241", { p1: fmt(mod.captureWebRangeM ?? MY_WEB_RANGE_M) })}`,
+      })
+      lines.push({
+        k: tr("ui.shipInfo.239"),
+        v: `${tr("ui.shipInfo.241", { p1: fmt(mod.captureWebBreakM ?? WEB_BREAK_DIST_M) })}`,
+      })
+      const slowMul = mod.captureWebSlowMul ?? 0.5
+      lines.push({
+        k: tr("ui.shipInfo.240"),
+        v: tr("ui.shipInfo.242", { p1: Math.round((1 - slowMul) * 100), p2: String(slowMul) }),
+      })
+    }
     // 船体维修装置 / 生体自愈件（2026-09-09 船长定自动修复；2026-09-10 增无消耗自愈）
     if ((mod.repairArmorHp ?? 0) > 0 || (mod.repairHullHp ?? 0) > 0) {
       const secs = ((mod.repairIntervalMs ?? 5_000) / 1_000).toFixed(0)
@@ -1323,7 +1352,13 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   if (st.group === 'flat') {
     lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.077") })
   } else if (st.group === 'max') {
-    lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.078") })
+    /**
+     * ⚠ **`max` 组里有两类，措辞要分开**（**2026-09-29 补**）：
+     * - 隐秘行动装置 = **取最长一件**（最长隐身窗口说了算）；
+     * - 捕获网（`kind: 'capture-web'`）= **取最快一台**（实现里 `webCycleMs` 用 `Math.min`，
+     *   更快的那台说了算）——拿"取最长"去说"取最短"就是谎报方向。
+     */
+    lines.push({ k: tr("ui.shipInfo.076"), v: st.kind === 'capture-web' ? tr("ui.shipInfo.243") : tr("ui.shipInfo.078") })
   } else if (st.group === 'fleetDecay') {
     /**
      * **全队多件递减（乘法叠加）**（**2026-09-29 船长令**：原话「这类全队型的效果，能否做全队多装递减，

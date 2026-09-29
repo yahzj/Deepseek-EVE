@@ -367,8 +367,12 @@ export interface UnitSpec {
    * 船长同日追答「断开也当使用一次」）——冷却结束再选新目标；**携带者被击沉** ⇒ 该网解除。
    * 效果三层：机动 ×0.5（**减速 50%**，船长 2026-09-26 改判；原 ×0.1）· 推进器全关 · 闪避归零（⚠ **不含射程**，船长同日明令移除）。
    * 周期账本 = `BattleState.myWebs`，被钉状态 = `BattleState.foeWebDebuffs`（见 `advanceMyCaptureWebs`）。
+   *
+   * ⚠ **三项读数随件上字段走**（**2026-09-29 船长令**：关键属性要"进属性里"）：
+   * `rangeM`（投网射程）/ `breakM`（断开距离）/ `slowMul`（减速倍率）由 `ModuleDef.captureWeb*` 供给，
+   * 缺省回落到 `MY_WEB_RANGE_M` / `WEB_BREAK_DIST_M` / 0.5 ⇒ 老档与既有件零行为变化。
    */
-  myCaptureWeb?: { cycleMs: number }
+  myCaptureWeb?: { cycleMs: number; rangeM: number; breakM: number; slowMul: number }
   /** **单次出击上限**（见 `FoeShipDef.droneLaunch`；2026-09-12 船长「限制敌机单次出击数量」） */
   foeDroneLaunch?: { maxAloft: number; cycleMs?: number; keepDps?: boolean }
   /** **备用机库**（见 `FoeShipDef.droneReserve`；2026-09-12 船长「损坏后补充敌机」） */
@@ -1280,6 +1284,14 @@ export function advanceMyCaptureWebs(
     // ⚠ 已阵亡的网手**不再张网**（上面的清理段刚把它的账本删掉；这里不跳过就会被 `??=` 重建）
     if (!isAlive(b, me.tag)) continue
     const cycleMs = me.myCaptureWeb!.cycleMs
+    /**
+     * ⚠ **三项读数按"网手"各自取**（**2026-09-29 船长令**：关键属性进属性栏）——
+     * 原先这里读的是引擎常量（`MY_WEB_RANGE_M` / `WEB_BREAK_DIST_M` / 写死的 0.5），
+     * 卡面因此看不到任何一项。现在取 `myCaptureWeb` 上的三个值（由件上字段供给、缺省回落常量）。
+     */
+    const webRangeM = me.myCaptureWeb!.rangeM
+    const webBreakM = me.myCaptureWeb!.breakM
+    const webSlowMul = me.myCaptureWeb!.slowMul
     b.myWebs = { ...(b.myWebs ?? {}) }
     const st = (b.myWebs[me.tag] ??= { cooldownUntilMs: 0 })
     // ② 目标已死/已不在本波 ⇒ 清目标并进冷却
@@ -1298,7 +1310,7 @@ export function advanceMyCaptureWebs(
      *
      * ⚠ **4500 与 3800 之间是滞回带**：拉远到 3900~4500 米**不会**掉网（只是张不了新网）。
      */
-    if (st.targetTag !== undefined && b.distanceM > WEB_BREAK_DIST_M) {
+    if (st.targetTag !== undefined && b.distanceM > webBreakM) {
       const gone = b.units[st.targetTag]?.name ?? st.targetTag
       if (b.foeWebDebuffs) delete b.foeWebDebuffs[st.targetTag]
       delete st.targetTag
@@ -1306,12 +1318,12 @@ export function advanceMyCaptureWebs(
       addLog(
         state,
         'combat',
-        `墨潮捕获网断开：${gone} 与 ${me.name} 的距离超过 ${WEB_BREAK_DIST_M} 米，` +
+        `墨潮捕获网断开：${gone} 与 ${me.name} 的距离超过 ${webBreakM} 米，` +
           `${me.name} 的网开始冷却。`,
       )
     }
     // ③ 待发且冷却已过 ⇒ 张网（不看命中、独立瞄准、跳过已被钉住的；**超出投网射程不张**）
-    if (st.targetTag === undefined && now >= st.cooldownUntilMs && b.distanceM <= MY_WEB_RANGE_M) {
+    if (st.targetTag === undefined && now >= st.cooldownUntilMs && b.distanceM <= webRangeM) {
       const taken = new Set(Object.keys(b.foeWebDebuffs ?? {}))
       const pick = aliveFoes.find((f) => !taken.has(f.tag))
       if (!pick) continue // 无目标可选 ⇒ 保持待发（不空转冷却）
@@ -1320,17 +1332,22 @@ export function advanceMyCaptureWebs(
         ...(b.foeWebDebuffs ?? {}),
         [pick.tag]: {
           byTag: me.tag,
-          slowMul: 0.5,
+          slowMul: webSlowMul,
           noThruster: true,
           noEvasion: true,
           atMs: now,
         },
       }
       pushBattleFx(b, { atMs: now, side: 'me', tag: me.tag, to: pick.tag, type: 'kinetic', hit: true, web: true })
+      /**
+       * 战报正文按**本网自己的减速**说（2026-09-29 起三项读数随件走）：
+       * 减速 50% 仍读作「机动减半」，其它倍率读成「机动 ×N」——数字由 `webSlowMul` 现算，不再写死"减半"。
+       */
+      const slowTxt = webSlowMul === 0.5 ? '机动减半' : `机动 ×${webSlowMul}`
       addLog(
         state,
         'warn',
-        `${me.name} 张开墨潮捕获网，钉住了 ${pick.name}：机动减半、推进器熄火、闪避失效——` +
+        `${me.name} 张开墨潮捕获网，钉住了 ${pick.name}：${slowTxt}、推进器熄火、闪避失效——` +
           `击沉目标或击沉网手才能解除。`,
       )
     }
@@ -1614,6 +1631,16 @@ export function createPlayerSpec(
     (m, d) => (d.captureWebCycleMs === undefined ? m : m === 0 ? d.captureWebCycleMs : Math.min(m, d.captureWebCycleMs)),
     0,
   )
+  /**
+   * **墨潮捕获网的三项读数**（**2026-09-29 船长令**：「将一些关键属性（比如射程，减速幅度）放进属性里」）：
+   * 投网射程 / 断开距离 / 减速倍率改为**从件上取**（多件取**最有利**的一件：射程取最长、断开取最远、
+   * 减速取最狠），缺省回落引擎常量 ⇒ 数据没写时与改动前**逐值相同**。
+   * 卡面参数行渲染的就是这三项（`ui/shipInfo`），说明文案不再手写数字。
+   */
+  const webDefs = allFittedModules(fitted, ctx).filter((d) => d.captureWebCycleMs !== undefined)
+  const webRangeM = webDefs.reduce((m, d) => Math.max(m, d.captureWebRangeM ?? MY_WEB_RANGE_M), MY_WEB_RANGE_M)
+  const webBreakM = webDefs.reduce((m, d) => Math.max(m, d.captureWebBreakM ?? WEB_BREAK_DIST_M), WEB_BREAK_DIST_M)
+  const webSlowMul = webDefs.reduce((m, d) => Math.min(m, d.captureWebSlowMul ?? 0.5), 0.5)
 
   // 盾/甲：容量加成加算求和；抗性按系逐件缺口乘入（mergeResist 链；V18.1 同系可多件）
   let shieldHpMult = 1
@@ -2183,8 +2210,11 @@ export function createPlayerSpec(
      * **墨潮捕获网**（**船长 2026-09-26**，H 族势力装备）：带本字段 = 本舰担任"网手"。
      * 周期取所装件里**最短**的一件（多件 = 更快的那台说了算，与隐身取最长相反：
      * 这是攻击性装置，重叠装没有收益）；账本与判定见 `advanceMyCaptureWebs`。
+     * ⚠ 射程 / 断开 / 减速三项随件上字段走（见上方 `webRangeM` 一族）。
      */
-    ...(webCycleMs > 0 ? { myCaptureWeb: { cycleMs: webCycleMs } } : {}),
+    ...(webCycleMs > 0
+      ? { myCaptureWeb: { cycleMs: webCycleMs, rangeM: webRangeM, breakM: webBreakM, slowMul: webSlowMul } }
+      : {}),
     foeTactic: null,
   }
 }
