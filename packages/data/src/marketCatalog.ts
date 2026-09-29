@@ -572,9 +572,11 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // 2026-09-13 船长：**鹦鹉螺级**（协会测绘处 · T3 侦察巡洋舰）——数字 4（与长尾鲨级同档同价）；
   // ✅ 2026-09-14 虫洞上线：**闸门已删**（与舰体/两张图纸同一批放开，见 design/scout-cruiser §2.3）
   { key: 'ship-swordfish', kind: 'ship', refId: 'sh-swordfish', rarity: 'exotic', basePrice: 24_000_000, demandMultiplier: 1.0, standingReq: 20 }, // 2026-09-13 价位重排：T4 货舰（旗鱼 2.4M ×10）；T4 门槛 20
-  { key: 'ship-xuanwu', kind: 'ship', refId: 'sh-xuanwu', rarity: 'exotic', basePrice: 90_000_000, demandMultiplier: 1.0, standingReq: 20 }, // 2026-09-13 价位重排：T4 装甲（玳瑁 6M ×15）；T4 门槛 20
+  { key: 'ship-xuanwu', kind: 'ship', refId: 'sh-xuanwu', rarity: 'exotic', basePrice: 225_000_000, demandMultiplier: 1.0, standingReq: 20, playerBuyable: false }, // ⚠ 2026-09-29 船长裁决「乙」：玄武属 T4 战斗船 ⇒ 价目锚**统一为巨齿鲨**（原「2026-09-13 价位重排：T4 装甲（玳瑁 6M ×15）= 90M ＋ 现货在售」作废）；成品下架（只收不卖）
   // 2026-09-13 船长裁定：巨齿鲨级（T4 战列舰）走**仅图纸制造**——成品只收不卖（照皇带鱼口径），
   // 行价 225M = T3 武装顶（电鳐 15M）×15；蓝图价 900M = 行价 ×4（>400 万档系数）。**T4 门槛 20**。
+  // ⚠ 2026-09-29 船长裁决「乙」：**225M 这条锚从"巨齿鲨专属"升为"全部 T4 战斗船"的口径** ⇒
+  //   虎鲸 / 旋齿鲨 / 玄武三艘一并对齐本条（见下方两行与 2026-09-29 段注释）。
   { key: 'ship-megalodon', kind: 'ship', refId: 'sh-megalodon', rarity: 'exotic', basePrice: 225_000_000, demandMultiplier: 1.0, standingReq: 20, playerBuyable: false },
   // 2026-09-11 船长裁决（甲）：皇带鱼与开拓/鲸王同口径——**蓝图船收起成品现货**（只收不卖，二手可卖）。
   // 此前它漏在 2026-09-09「蓝图船成品现货下架」那次清扫之外：图鉴写着「仅可制造」（ships.ts priceIsk=0），
@@ -585,8 +587,13 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   照巨齿鲨口径**仅图纸制造**（成品只收不卖）· 行价 150M · 蓝图 600M（= 行价 ×4）；
   // - 旋齿鲨级装甲战列舰 = 照**玄武**口径（现货在售 + 图纸）· 行价 90M · 蓝图 360M（= 行价 ×4）。
   // 两者 T4 门槛一律 20（现货）/ 25（图纸），与 2026-09-13 声望口径一致。
-  { key: 'ship-orca', kind: 'ship', refId: 'sh-orca', rarity: 'exotic', basePrice: 150_000_000, demandMultiplier: 1.0, standingReq: 20, playerBuyable: false },
-  { key: 'ship-helicoprion', kind: 'ship', refId: 'sh-helicoprion', rarity: 'exotic', basePrice: 90_000_000, demandMultiplier: 1.0, standingReq: 20 },
+  //
+  // ⚠ **2026-09-29 船长裁决「乙」＋「虎鲸也是」——本段的价格与渠道口径整段作废**（上面两行价格只是留痕）：
+  //   船长原话「作为T4战斗船，价格应该对标的巨齿鲨」⇒ **虎鲸 / 旋齿鲨 / 玄武三艘的价目锚统一为巨齿鲨**
+  //   （行价 225M · 成品**一律下架** · 蓝图 900M · 一次性 112.5M）；「与巨齿鲨做区分」改由**性能与舰影**承担，
+  //   不再由"更便宜 ＋ 能买现货"承担。T4 门槛（现货 20 / 图纸 25）不变，料单与工时不动。
+  { key: 'ship-orca', kind: 'ship', refId: 'sh-orca', rarity: 'exotic', basePrice: 225_000_000, demandMultiplier: 1.0, standingReq: 20, playerBuyable: false },
+  { key: 'ship-helicoprion', kind: 'ship', refId: 'sh-helicoprion', rarity: 'exotic', basePrice: 225_000_000, demandMultiplier: 1.0, standingReq: 20, playerBuyable: false },
   // 2026-09-09 全舰船蓝图化（第二批）：全部可造舰船开放蓝图书；**蓝图价 = 船市场价 × 档位系数**
   // （≤30 万 ×2 / 30~100 万 ×2.5 / 100~400 万 ×3 / >400 万 ×4）——这条**仍然有效**。
   // ⚠ **2026-09-13 旧规则作废**：同一条注释里的「船价 ≤100 万 → 稀有、>100 万 → 奇货+声望 11」已作废——
@@ -609,14 +616,15 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'sbp-nautilus', kind: 'blueprint', refId: 'sbp-nautilus', rarity: 'exotic', basePrice: 36_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 鹦鹉螺级（2026-09-13：T3 蓝图门槛 15；✅ 2026-09-14 上线放开）
   { key: 'sbp-tortoise', kind: 'blueprint', refId: 'sbp-tortoise', rarity: 'rare', basePrice: 830000, demandMultiplier: 0.65 }, // 陆龟级（蓝图=船价×2.5）
   { key: 'sbp-hawksbill', kind: 'blueprint', refId: 'sbp-hawksbill', rarity: 'exotic', basePrice: 24_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 玳瑁级（2026-09-13：船价 6M ×4 + **渠道升奇货**）
-  { key: 'sbp-xuanwu', kind: 'blueprint', refId: 'sbp-xuanwu', rarity: 'exotic', basePrice: 360_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 玄武级（2026-09-13 价位重排：船价 90M ×4；T4 蓝图门槛 25）
+  { key: 'sbp-xuanwu', kind: 'blueprint', refId: 'sbp-xuanwu', rarity: 'exotic', basePrice: 900_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 玄武级（⚠ 2026-09-29 船长裁决乙：随锚价统一 ⇒ 行价 225M ×4 = 900M；原「2026-09-13：船价 90M ×4 = 360M」作废）
   { key: 'sbp-flyingfish', kind: 'blueprint', refId: 'sbp-flyingfish', rarity: 'rare', basePrice: 420000, demandMultiplier: 0.65 }, // 飞鱼级（蓝图=船价×2）
   { key: 'sbp-sailfish', kind: 'blueprint', refId: 'sbp-sailfish', rarity: 'rare', basePrice: 7_200_000, demandMultiplier: 0.65, standingReq: 15 }, // 旗鱼级（2026-09-13 价位重排：船价 2.4M 属 100~400 万档 ⇒ ×3 = 7.2M；T3 蓝图门槛 15）
   { key: 'sbp-swordfish', kind: 'blueprint', refId: 'sbp-swordfish', rarity: 'exotic', basePrice: 96_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 剑鱼级（2026-09-13 价位重排：船价 24M ×4；T4 蓝图门槛 25）
   { key: 'sbp-megalodon', kind: 'blueprint', refId: 'sbp-megalodon', rarity: 'exotic', basePrice: 900_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 巨齿鲨级（船价 225M ×4；T4 蓝图门槛 25）
   // 2026-09-26 新增两艘 T4 的图纸（书价 = 行价 ×4 · T4 蓝图门槛 25，与同档邻舰一致）
-  { key: 'sbp-orca', kind: 'blueprint', refId: 'sbp-orca', rarity: 'exotic', basePrice: 600_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 虎鲸级指挥舰（船价 150M ×4）
-  { key: 'sbp-helicoprion', kind: 'blueprint', refId: 'sbp-helicoprion', rarity: 'exotic', basePrice: 360_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 旋齿鲨级装甲战列舰（船价 90M ×4）
+  // ⚠ 2026-09-29 船长裁决「乙」＋「虎鲸也是」：两艘与玄武一并按巨齿鲨锚价（225M）重算 ⇒ 书价一律 900M。
+  { key: 'sbp-orca', kind: 'blueprint', refId: 'sbp-orca', rarity: 'exotic', basePrice: 900_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 虎鲸级指挥舰（行价 225M ×4）
+  { key: 'sbp-helicoprion', kind: 'blueprint', refId: 'sbp-helicoprion', rarity: 'exotic', basePrice: 900_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 旋齿鲨级装甲战列舰（行价 225M ×4）
 
 // 2026-09-13 价位重排：皇带鱼 = 旗舰基准 8 亿 ×0.8 = 640M（蓝图 ×4 = 2.56B）；其余三张的价格口径见各自行注释
   { key: 'sbp-colossal', kind: 'blueprint', refId: 'sbp-colossal', rarity: 'exotic', basePrice: 2_560_000_000, demandMultiplier: 1.0, standingReq: 40 }, // 皇带鱼级（2026-09-13：船价 640M ×4；T5 蓝图门槛 40）
@@ -641,11 +649,13 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'sbp-once-electricray', kind: 'blueprint', refId: 'sbp-once-electricray', rarity: 'rare', basePrice: 7_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
   { key: 'sbp-once-swordfish', kind: 'blueprint', refId: 'sbp-once-swordfish', rarity: 'rare', basePrice: 12_000_000, demandMultiplier: 0.65, standingReq: 25 }, // T4：船长「剑鱼的一次性蓝图也下放稀有」
   { key: 'sbp-once-bowhead', kind: 'blueprint', refId: 'sbp-once-bowhead', rarity: 'rare', basePrice: 33_750_000, demandMultiplier: 0.65, standingReq: 25 }, // T4：船长「蝠鲼…一次性蓝图保留在稀有」
-  { key: 'sbp-once-xuanwu', kind: 'blueprint', refId: 'sbp-once-xuanwu', rarity: 'exotic', basePrice: 45_000_000, demandMultiplier: 1.0, standingReq: 25 },
+  // ⚠ 2026-09-29 船长裁决「乙」：玄武/旋齿鲨的一次性图纸随锚价重算（225M ×50% = 112.5M，与巨齿鲨同值）
+  { key: 'sbp-once-xuanwu', kind: 'blueprint', refId: 'sbp-once-xuanwu', rarity: 'exotic', basePrice: 112_500_000, demandMultiplier: 1.0, standingReq: 25 },
   { key: 'sbp-once-megalodon', kind: 'blueprint', refId: 'sbp-once-megalodon', rarity: 'exotic', basePrice: 112_500_000, demandMultiplier: 1.0, standingReq: 25 },
   // 2026-09-26 新增两艘 T4 的一次性图纸（价 = 行价 ×50% · 奇货 · T4 蓝图门槛 25）
-  { key: 'sbp-once-orca', kind: 'blueprint', refId: 'sbp-once-orca', rarity: 'exotic', basePrice: 75_000_000, demandMultiplier: 1.0, standingReq: 25 },
-  { key: 'sbp-once-helicoprion', kind: 'blueprint', refId: 'sbp-once-helicoprion', rarity: 'exotic', basePrice: 45_000_000, demandMultiplier: 1.0, standingReq: 25 },
+  // ⚠ 2026-09-29 船长裁决「乙」＋「虎鲸也是」：两艘一并按巨齿鲨锚价重算 ⇒ 112.5M
+  { key: 'sbp-once-orca', kind: 'blueprint', refId: 'sbp-once-orca', rarity: 'exotic', basePrice: 112_500_000, demandMultiplier: 1.0, standingReq: 25 },
+  { key: 'sbp-once-helicoprion', kind: 'blueprint', refId: 'sbp-once-helicoprion', rarity: 'exotic', basePrice: 112_500_000, demandMultiplier: 1.0, standingReq: 25 },
   { key: 'sbp-once-colossal', kind: 'blueprint', refId: 'sbp-once-colossal', rarity: 'exotic', basePrice: 320_000_000, demandMultiplier: 1.0, standingReq: 40 },
   /**
    * **异星原型装备**（V10：**超档收藏**，无蓝图、不可制造，需声望 10）。

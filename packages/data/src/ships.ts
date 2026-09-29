@@ -773,7 +773,7 @@ export const SHIPS: ShipDef[] = [
     cargoM3: 15200, // 2026-09-15 船长：重装线货舱 −20%（19000 ×0.8）
     cycleSeconds: 14,
     oreUnitsPerCycle: 26,
-    priceIsk: 90_000_000, // 2026-09-13 价位重排：T4 装甲（玳瑁 6M ×15；原 16.5M）
+    priceIsk: 0, // ⚠ 2026-09-29 船长裁决「乙」：玄武属 T4 战斗船 ⇒ 锚价统一为巨齿鲨 2.25 亿 且**成品下架** ⇒ 定制船口径必须为 0（原「2026-09-13：T4 装甲 90M · 现货在售」作废）
     agility: 0.4,
     evasion: 0.05,
     hitBonus: 0.05,
@@ -896,7 +896,7 @@ export const SHIPS: ShipDef[] = [
     cargoM3: 3600, // 战列舰口径（不做货舰 ⇒ 与玄武 15,200 明确分工）
     cycleSeconds: 12,
     oreUnitsPerCycle: 20,
-    priceIsk: 90_000_000, // 照玄武口径：现货在售（市场行同值，契约「舰船价格口径」守）
+    priceIsk: 0, // ⚠ 2026-09-29 船长裁决「乙」：旋齿鲨属 T4 战斗船 ⇒ 锚价统一为巨齿鲨 2.25 亿 且**成品下架** ⇒ 定制船口径必须为 0（原「照玄武口径：现货在售 90M」作废）
     agility: 0.4,
     evasion: 0.05,
     hitBonus: 0.05,

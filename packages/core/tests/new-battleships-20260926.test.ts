@@ -11,14 +11,18 @@
  *    甲向（甲 700 > 盾 200）· 甲层动能抗 0.35（装甲线 T4 档位）· **不得带单发加成**（装甲线契约）·
  *    与玄武（4/4/6 · 甲 493/结构 614 · 速度 100 · 货 15,200 的堡垒货舰）区分：**快、甲厚、货小**。
  * 3. **阶梯与契约**：两艘都守 T4（槽位高/中/低各 1~7 · 总血 1,273/1,050 由中位口径放行 · CPU 整数 · 质量落档）。
- * 4. **渠道**：虎鲸级照巨齿鲨（**仅图纸制造**：成品只收不卖 · `priceIsk = 0`）· 旋齿鲨级照玄武（现货在售）。
- *    两者的永久图纸与一次性图纸都在奇货 · 数字档 4 · T4 门槛 25；一次性图纸价 = 行价 ×50%（船长 2026-09-14 口径）。
+ * 4. **渠道**：⚠ **2026-09-29 船长裁决「乙」＋「虎鲸也是」改判**——T4 战斗船的价目锚统一为巨齿鲨
+ *    （行价 2.25 亿 · **成品一律下架** · 蓝图 9 亿 · 一次性 1.125 亿）⇒ 虎鲸 / 旋齿鲨 / 玄武三艘同口径
+ *    （原「旋齿鲨照玄武：现货在售 90M· 蓝图 3.6 亿」作废）。永久与一次性图纸都在奇货 · 数字档 4 ·
+ *    T4 门槛 25；一次性图纸价 = 行价 ×50%（船长 2026-09-14 口径）。
  * 5. **图形与挂点**：两艘都必须有独立 SVG 形与挂点（船长 2026-09-16：「每艘需要单独的SVG图形」）。
  */
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { buildSimContext } from '@whale/data'
+import { createInitialState } from '../src/state'
+import { buyShip } from '../src/industry'
 
 const ctx = buildSimContext()
 const ship = (id: string) => ctx.ships.get(id)!
@@ -95,13 +99,23 @@ describe('旋齿鲨级装甲战列舰（T4 装甲线 · 2026-09-26 船长令）'
 })
 
 describe('两艘的渠道 / 图纸 / 图形挂点', () => {
-  it('渠道：虎鲸只收不卖（仅图纸制造）· 旋齿鲨现货在售；价与定义同值', () => {
-    const orca = good('sh-orca')!
-    const heli = good('sh-helicoprion')!
-    expect(orca.playerBuyable).toBe(false)
-    expect(ship('sh-orca').priceIsk).toBe(0) // 只收不卖 ⇒ 定义价必须 0（content:check 契约）
-    expect(heli.playerBuyable ?? true).toBe(true)
-    expect(ship('sh-helicoprion').priceIsk).toBe(heli.basePrice)
+  it('渠道：三艘 T4 战斗船一律**仅图纸制造**（成品下架）；价与定义同值', () => {
+    /**
+     * ⚠ **2026-09-29 船长裁决「乙」＋「虎鲸也是」**：T4 战斗船的价目锚统一为巨齿鲨（行价 2.25 亿、
+     * 成品不售、蓝图 9 亿、一次性 1.125 亿）⇒ 原「旋齿鲨现货在售 90M」与「虎鲸 150M」两条口径作废。
+     */
+    for (const shipId of ['sh-orca', 'sh-helicoprion', 'sh-xuanwu'] as const) {
+      const g = good(shipId)!
+      expect(g.playerBuyable, `${shipId} 应成品下架`).toBe(false)
+      expect(g.basePrice, `${shipId} 锚价 = 巨齿鲨口径`).toBe(225_000_000)
+      expect(ship(shipId).priceIsk, `${shipId} 定制船定义价必须 0`).toBe(0) // content:check 契约
+      // 真路径：钱够也买不到成品（`buyShip` 走市场行；与巨齿鲨同一条判据）
+      const state = createInitialState({ nowWallMs: 0, seed: 1 })
+      state.wallet.isk = 5_000_000_000
+      const r = buyShip(state, shipId, ctx)
+      expect(r.ok, `${shipId} 不该能买成品`).toBe(false)
+      expect(r.error ?? '', `${shipId} 拒因应为"仅可制造"`).toContain('仅可制造')
+    }
   })
 
   it('图纸四条齐备：永久 + 一次性（价 = 行价 ×50%）· 都在奇货', () => {
@@ -113,6 +127,8 @@ describe('两艘的渠道 / 图纸 / 图形挂点', () => {
       expect(bp(bpId).singleUse ?? false).toBe(false)
       expect(good(bpId)!.rarity).toBe('exotic')
       expect(good(bpId)!.basePrice).toBe(bp(bpId).priceIsk)
+      // 2026-09-29 船长裁决乙：书价 = 锚价 2.25 亿 ×4 = 9 亿（与巨齿鲨同值）
+      expect(good(bpId)!.basePrice).toBe(900_000_000)
     }
     for (const [bpId, shipId] of [
       ['sbp-once-orca', 'sh-orca'],
@@ -120,7 +136,8 @@ describe('两艘的渠道 / 图纸 / 图形挂点', () => {
     ] as const) {
       expect(bp(bpId).shipId).toBe(shipId)
       expect(bp(bpId).singleUse).toBe(true)
-      expect(good(bpId)!.basePrice).toBe(ship(shipId).priceIsk === 0 ? 75_000_000 : 45_000_000)
+      // 2026-09-29：一次性 = 锚价 2.25 亿 ×50% = 1.125 亿（两艘同值；原 7,500 万 / 4,500 万作废）
+      expect(good(bpId)!.basePrice).toBe(112_500_000)
     }
   })
 

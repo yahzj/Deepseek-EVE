@@ -378,7 +378,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 62_580, // 玄武级（2026-09-13 价位重排后按带内插值：90M ⇒ 17.4 时）
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
-    priceIsk: 360_000_000, // = 行价 90,000,000 × 4（2026-09-13 价位重排）
+    priceIsk: 900_000_000, // = 行价 225,000,000 × 4（⚠ 2026-09-29 船长裁决「乙」：锚价统一为巨齿鲨 ⇒ 原「2026-09-13：90M ×4 = 360M」作废）
     description: '重装战列，货舱 15,200 m³、三层血最厚，重装线的顶点。',
   },
   {
@@ -449,7 +449,9 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
   /* ══════════ 2026-09-26 船长令：两艘新官方战列舰的图纸 ══════════
    * 口径：照同级邻舰缩放（材料按船价比例折算 · 书价 = 行价 ×4 · 工期落 T4 带 9~20 时）。
    * - 虎鲸级（战巡 · 比战列舰薄一档）⇒ 材料取巨齿鲨 ×2/3、工期 16 时、书价 = 行价 1.5 亿 ×4 = 6 亿；
-   * - 旋齿鲨级（装甲战列舰）⇒ 材料照玄武（同为装甲线 T4 现货档）、工期 17.4 时、书价 = 行价 9,000 万 ×4 = 3.6 亿。 */
+   * - 旋齿鲨级（装甲战列舰）⇒ 材料照玄武（同为装甲线 T4 现货档）、工期 17.4 时、书价 = 行价 9,000 万 ×4 = 3.6 亿。
+   * ⚠ **2026-09-29 船长裁决「乙」＋「虎鲸也是」**：两艘的**锚价统一为巨齿鲨（2.25 亿）** ⇒ 书价一律 **9 亿**
+   *   （材料与工期不动，上面两条只作价格留痕）。 */
   {
     id: 'sbp-orca',
     name: '虎鲸级舰船蓝图',
@@ -466,7 +468,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 57_600, // 虎鲸级（战巡：T4 带 9~20 时内偏短 ⇒ 16 时）
     buildCostIsk: 0,
-    priceIsk: 600_000_000, // = 行价 150,000,000 × 4
+    priceIsk: 900_000_000, // = 行价 225,000,000 × 4（⚠ 2026-09-29 船长裁决「乙」＋「虎鲸也是」：锚价统一为巨齿鲨 ⇒ 原 150M ×4 = 600M 作废）
     description: '指挥舰，货舱 4,700 m³，速度是它的立身之本。',
   },
   {
@@ -485,7 +487,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 62_580, // 旋齿鲨级（照玄武 17.4 时）
     buildCostIsk: 0,
-    priceIsk: 360_000_000, // = 行价 90,000,000 × 4
+    priceIsk: 900_000_000, // = 行价 225,000,000 × 4（⚠ 2026-09-29 船长裁决「乙」：锚价统一为巨齿鲨 ⇒ 原 90M ×4 = 360M 作废）
     description: '装甲战列舰，货舱 3,600 m³，装甲层厚到能顶住第一轮齐射。',
   },
 
@@ -1112,7 +1114,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 62_580,
     buildCostIsk: 0,
-    priceIsk: 45_000_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%）
+    priceIsk: 112_500_000, // = 行价 225,000,000 ×50%（⚠ 2026-09-29 船长裁决「乙」：玄武随锚价统一为巨齿鲨 ⇒ 原 45M 作废）
     description: '重装战列，货舱 15,200 m³、三层血最厚，重装线的顶点。',
   },
   {
@@ -1153,7 +1155,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 57_600,
     buildCostIsk: 0,
-    priceIsk: 75_000_000, // = 行价 150,000,000 ×50%
+    priceIsk: 112_500_000, // = 行价 225,000,000 ×50%（⚠ 2026-09-29 船长「虎鲸也是」：锚价统一为巨齿鲨 ⇒ 原 75M 作废）
     description: '指挥舰，货舱 4,700 m³，速度是它的立身之本。',
   },
   {
@@ -1173,7 +1175,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     ],
     buildSeconds: 62_580,
     buildCostIsk: 0,
-    priceIsk: 45_000_000, // = 行价 90,000,000 ×50%
+    priceIsk: 112_500_000, // = 行价 225,000,000 ×50%（⚠ 2026-09-29 船长裁决「乙」：锚价统一为巨齿鲨 ⇒ 原 45M 作废）
     description: '装甲战列舰，货舱 3,600 m³，装甲层厚到能顶住第一轮齐射。',
   },
   {
