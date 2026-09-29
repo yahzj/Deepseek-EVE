@@ -156,16 +156,39 @@ export function netIskPerHourOf(
   buildMs: number,
   unitsPerRun = 1,
 ): number | null {
-  if (price === null || costIsk <= 0 || !Number.isFinite(buildMs) || buildMs <= 0) return null
+  /**
+   * ⚠ **允许 `costIsk === 0`**（**2026-09-29 船长令**「希望在调试模式下看到各个活动的净收益」）：
+   * 采矿 / 残骸回收这类**没有耗料成本**的活动，净额就是产出值本身
+   * （旧写法 `costIsk <= 0` 会把它们一律判成"不显示"，等于把这些活动排除在这条读数之外）。
+   * 负成本仍是非法输入 ⇒ 返回 null。
+   */
+  if (price === null || costIsk < 0 || !Number.isFinite(buildMs) || buildMs <= 0) return null
   const net = price * Math.max(1, unitsPerRun) - costIsk
   return Math.round((net / buildMs) * 3_600_000)
 }
 
 /**
- * **「净收益/h」那一行（仅调试模式渲染）**（**2026-09-29 船长令**）。
+ * **「净收益/h」那一行（渲染单点）**——批量型与连续型共用同一份行文与样式
+ * （口径各自算好再交给它 ⇒ 界面永远只有一种写法）。
+ * `buildMs` 省略 ⇒ 不附"本批耗时"（连续型活动没有"批"这个概念）。
+ */
+function NetLine({ value, buildMs }: { value: number | null; buildMs?: number }) {
+  if (value === null) return null
+  return (
+    <div className="app-belt-out app-net-line">
+      <span className="app-dim">{tr('ui.Yield.007')}</span> {tr('ui.Yield.008', { p1: num(value) })}
+      {buildMs !== undefined && Number.isFinite(buildMs) && buildMs > 0 ? (
+        <span className="app-dim"> · {tr('ui.Yield.009', { p1: fmtDuration(buildMs) })}</span>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * **「净收益/h」那一行（仅调试模式渲染 · 批量型）**（**2026-09-29 船长令**）。
  *
- * 为什么单开一个组件：组装机/造船厂/精炼三类卡的产出区各不相同，但这行读数的**口径与写法必须一致**
- * （口径单点 = `netIskPerHourOf`）⇒ 三处都 `<NetIncomeLine …/>`，行文只在这里写一次。
+ * 为什么单开一个组件：组装机/造船厂/精炼/回收四类卡的产出区各不相同，但这行读数的**口径与写法必须一致**
+ * （口径单点 = `netIskPerHourOf`）⇒ 各处都 `<NetIncomeLine …/>`，行文只在这里写一次。
  *
  * 调试门禁 = `game/debugFlag.debugEnabled()`（本机 origin ∧ 本机开关；**发布版恒 false ⇒ 玩家看不到**）。
  * 顺带把"本批耗时"也用小字附上——调试模式下看收益必须知道分母是什么（否则 debugQuick 的放大读数会被误读）。
@@ -182,14 +205,21 @@ export function NetIncomeLine({
   unitsPerRun?: number
 }) {
   if (!debugEnabled()) return null
-  const perHour = netIskPerHourOf(price, costIsk, buildMs, unitsPerRun)
-  if (perHour === null) return null
-  return (
-    <div className="app-belt-out app-net-line">
-      <span className="app-dim">{tr('ui.Yield.007')}</span> {tr('ui.Yield.008', { p1: num(perHour) })}
-      <span className="app-dim"> · {tr('ui.Yield.009', { p1: fmtDuration(buildMs) })}</span>
-    </div>
-  )
+  return <NetLine value={netIskPerHourOf(price, costIsk, buildMs, unitsPerRun)} buildMs={buildMs} />
+}
+
+/**
+ * **「净收益/h」那一行（仅调试模式渲染 · 连续型）**（**2026-09-29 船长令**）。
+ *
+ * 用于**按小时持续产出**的活动（矿带卡＝采矿）：这类活动没有"批"与"周期"，
+ * 净/h 就是 **Σ(每小时产出 × 该产物行情价) − 耗料成本（采矿为 0）**。
+ * 与批量型的区别只在分母：批量型是"一批 ÷ 本批耗时"，连续型分母本来就是 1 小时 ⇒ 直接相加。
+ * 行情取数与卡面「×N/h（仓库 · 行情）」**同一把尺**（`marketPriceOf`）。
+ */
+export function NetIncomeLinePerHour({ rows }: { rows: readonly { perHour: number; price: number | null }[] }) {
+  if (!debugEnabled()) return null
+  const total = rows.reduce((s, r) => s + (r.price ?? 0) * r.perHour, 0)
+  return <NetLine value={total > 0 ? Math.round(total) : null} />
 }
 
 /** 一行产出：`名称 ×179/h（仓库 9,440,375 · 行情 12,345）`；装备/舰船 ⇒ `名称（行情 12,000,000）` */

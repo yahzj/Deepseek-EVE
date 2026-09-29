@@ -230,13 +230,24 @@ const AMMO_MK2_GOODS = [...ctx.marketGoods.values()].filter((g) =>
   ['ammo-kinetic-2', 'ammo-explosive-2', 'ammo-plasma-2'].includes(g.refId),
 )
 /**
- * **"可以开始花钱换战力"的现金门槛**（2026-09-21 第十批定）。
+ * **"可以开始花钱换战力"的现金门槛**（2026-09-21 第十批定 · **2026-09-29 按真实经济重标**）。
  *
  * 为什么需要这道闸：第五轮两个隔离实验（装船体维修装置 / 换 MK2 弹药）**都因为挤占早期现金
  * 而整体退化**（维修装置 ⇒ 现金 −34%；MK2 弹药 ⇒ 现金掉到 4.5 万、层深 0）。
- * 而本模拟的经济是**前紧后松**：第 12 天 8 亿、第 60 天 **286 亿**
- * ⇒ 把"多花钱换战力"的支出**推迟到 10 亿目标基本达成之后**，就能既拿战力、又不拖垮那条目标。
- * 取 **8 亿**（留安全边际；实测第 12 天左右越过）。
+ * 定这道闸时的经济形状是**前紧后松**：第 12 天 8 亿、第 60 天 **286 亿** ⇒ 取 **8 亿**"留安全边际"。
+ *
+ * ⚠⚠ **2026-09-29 重标**：那个形状是**加速模式（debugQuick）**下的 —— 真实模式里日收入只有
+ * 5~8M（§30.4 / §41），**8 亿 ≈ 整个 10 亿目标的 80%** ⇒ 这道闸**整跑都不打开**。
+ * 后果实测（`--trace`）：`doBounty` 的 `bold` 恒 false ⇒ `minWin` 恒 0.5 ⇒ **只打"预估胜率 >50%"的卡**；
+ * 而门槛 ≤6 的 17 张卡里只赢了 6 张，剩下 11 张全是硬卡 ⇒ **首胜卡在 6~7/23、声望锁 6~7**，
+ * 于是 T3 船与一次性图纸（图纸有声望 8~25 的门槛）**一条都拿不到** ⇒ 战力封顶。
+ *
+ * ⚠⚠ **2026-09-29 试过重标到 2,000 万 —— 实测更糟，已撤回**（留档别再试）：
+ * 那一版里 `bold` 从第 1 天就为真 ⇒ `minWin` 落到 0.02 ⇒ 模拟开始拿手上的船硬撞高威胁卡，
+ * **武装船被打光**（d1 起驾驶位退到沙猫级采矿艇、火力 10 < 初始 12），而首胜仍停在 6/23。
+ * ⇒ 说明这道闸在真实经济里**不该靠"降门槛"解决**：钱是约束、船也是约束，敢赌的前提是**赔得起**。
+ * 真正的解锁路径应当是"**先靠买/自造把战力抬上去、再打更高门槛的卡**"（即 B-1 的另一半），
+ * 而不是把胜率门槛放低。**本常量维持 8 亿不动**，此条待下一轮连同"声望 6~7 怎么破"一起处理。
  */
 const SPEND_FOR_POWER_ISK = 800_000_000
 
@@ -1103,6 +1114,87 @@ let whShipBuild: string | null = null
  *    "**书架有书**就可用"（书优先于名额）⇒ 再造一次就是**再买一本**。
  * ③ 未学过的普通图纸 `canStartBlueprint` 返回 false，但一次性图纸只要有书就 true ⇒ 走本函数。
  */
+/**
+ * **主控旗舰升级：现货买不到就自造**（2026-09-29 修 B-1 · 船长令「按你说的来」）。
+ *
+ * 病根（实测）：`buyShipAndGear` 的"买一条更强的船"那条分支**全程 261 天一次都没成功**
+ * （里程碑里只有 `主力归驾驶位` 与 `升级火炮`，从来没有 `换驾 X（tier N）`），
+ * 于是主控永远开白送的**鲣鱼级护卫舰**（火力 23）⇒ 高威胁悬赏打不过 ⇒ **首胜卡 6~7/23、声望锁 6~7**
+ * ⇒ T4 船与虫洞等高阶层内容整条进不去，三跑的读数只在"采矿＋AI 副船"底盘上成立。
+ *
+ * 卡在两处：① T1/T2 战舰都是 `rare` 行，而引擎的 rare 供给是"**每 10 分钟全市场抽 1 件**"
+ * （`RARE_DRAW_PERIOD_MS`）⇒ 目标船长期无现货（`buyAtMarket` 如实返回 `blocked='no-stock'`，
+ * 旧写法把这个原因丢了）；② 唯一绕开现货的**自造舰船**那条路挂在虫洞目标下
+ * （`ensureWhShipBuild` 第一行 `if (!WANTS.whach …) return`）⇒ `--goal isk1b` 的跑里**从不执行**。
+ *
+ * 本函数把两件事**解绑**：
+ * - **凑虫洞编队（4 艘 T3+）** 仍然只在虫洞目标下跑（那是它的本意）；
+ * - **给主控换一条更强的船** 不再看虫洞目标 —— 只要"现货这条路走不通"（`shipBuyBlocked` 非空）
+ *   且**手上这条不是舰队最强**，就用**一次性蓝图自造**一条更强的（自造不吃 rare 现货窗口）。
+ *
+ * ⚠ 现金闸比 `ensureWhShipBuild` **温和得多**：那边等 `成本 + 3 亿`（虫洞是后期目标），
+ * 这里只留 `成本 + 200 万` 的周转金 —— 否则这条链在 10 亿目标下同样等于关着。
+ */
+function ensureFlagshipUpgradeByBuild(): void {
+  if (shipBuyBlocked === null) return // 现货买得到 ⇒ 不走自造（别跟买船那条路抢钱）
+  if (state.manufacturingRuns.length > 0) return // 一次只开一条线
+  if (meBusy() || !isHome()) return
+  if (state.expedition.active || state.scanning.active || state.transit.active || state.standby.active) return
+  const curScore = shipPowerScore(fleetDefOf(state, ctx, state.shipId))
+  const ownedDefs = new Set<string>()
+  for (const f of Object.values(state.fleet)) if (f?.defId) ownedDefs.add(f.defId)
+  const cands = SHIP_BLUEPRINTS.filter((b) => {
+    if (b.singleUse !== true) return false
+    const good = goodOf('blueprint', b.id)
+    if (!good) return false
+    const s = ctx.ships.get(b.shipId)
+    if (!s) return false
+    if (s.role !== 'armed' && s.role !== 'armored') return false
+    if (shipPowerScore(s) <= curScore + 0.01) return false // 不比手上这条强就不造
+    if (ownedDefs.has(b.shipId)) return false // 同型一艘就够
+    return true
+  }).sort((a, b) => {
+    // 够得着的**最便宜**优先（先换掉白送艇，别一步盯着 T5）
+    const pa = ctx.ships.get(a.shipId)?.priceIsk ?? 0
+    const pb = ctx.ships.get(b.shipId)?.priceIsk ?? 0
+    return pa - pb || a.priceIsk - b.priceIsk
+  })
+  const pick = cands[0]
+  if (!pick) return
+  const good = goodOf('blueprint', pick.id)!
+  const sdef = ctx.ships.get(pick.shipId)
+  const stock = state.blueprintStock[pick.id] ?? 0
+  if (stock <= 0) {
+    if (state.wallet.isk < good.basePrice + 2_000_000) return
+    buyAtMarket(state, ctx, good.key, 1)
+    return
+  }
+  const bld = findBuildable(ctx, pick.id)
+  if (!bld) return
+  const missing = bld.spec.materials.filter((n) => countWare(state, n.itemId) < n.count)
+  if (missing.length > 0) {
+    let cost = 0
+    for (const n of missing) {
+      const g = [...ctx.marketGoods.values()].find((x) => x.kind === 'item' && x.refId === n.itemId)
+      cost += (g?.basePrice ?? 10) * (n.count - countWare(state, n.itemId))
+    }
+    if (state.wallet.isk < cost + 2_000_000) return // 温和周转金（见上注）
+    for (const n of missing) {
+      const g = [...ctx.marketGoods.values()].find((x) => x.kind === 'item' && x.refId === n.itemId)
+      if (g) buyAtMarket(state, ctx, g.key, n.count - countWare(state, n.itemId))
+    }
+    return
+  }
+  const basicFree = countAiCore(state, 'basic') > 0 && aiCoreCapBlock(state, ctx, 'industry') === null
+  const worker: 'pilot' | 'basic' = basicFree ? 'basic' : 'pilot'
+  if (worker === 'pilot' && pilotLineBusy()) return
+  const r = startManufacturing(state, pick.id, worker, ctx)
+  if (r.ok) {
+    act.craft++
+    mark(`🔧 自造升级舰：${sdef?.name ?? pick.shipId}（现货买不到 · 一次性蓝图 · 耗时 ${Math.round(pick.buildSeconds / 3600)}h）`)
+  } else issue(`自造升级舰 ${pick.id} 开机失败：${r.error}`)
+}
+
 function ensureWhShipBuild(): void {
   if (!WANTS.whach || goalDone.whach) return
   if (whCapableShips().length >= WH_FLEET_SIZE) {
@@ -1274,6 +1366,16 @@ function doLearnCraft(): void {
 let lastShipUpgradeDay = -99
 
 /**
+ * **"买更强的船"这条路当前卡在哪**（2026-09-29 · B-1）：`buyShipAndGear` 每次尝试后写入，
+ * `null` = 上一次尝试成功（或还没试过）· 取值来自引擎 `buyAtMarket.blocked`
+ * （`no-stock` / `not-buyable` / `standing` / `insufficient-isk`）＋工具自加的
+ * `no-candidate`（筛不出比手上更强的）与 `no-market-row`（没有市场行）。
+ * 用途有二：① `--trace` 每天打印（让"从来不升级"这个现象带上原因）；
+ * ② `ensureFlagshipUpgradeByBuild` 只在它非空时启动**自造**那条路。
+ */
+let shipBuyBlocked: string | null = null
+
+/**
  * **把无人机库里的机装进各舰机舱**（2026-09-21 新写；见 `buyShipAndGear` 里的调用点注释）。
  *
  * 顺序：① 先补齐货架（三种制式机各备几架，缺了才买）→ ② 给**舰队里每艘有舱的船**按
@@ -1406,6 +1508,18 @@ function buyShipAndGear(): void {
         if (scoreOf(s) <= curScore + 0.01) return false // 不比手上这条强就不买
         const g = [...ctx.marketGoods.values()].find((x) => x.kind === 'ship' && x.refId === s.id)
         if (!g) return false
+        /**
+         * ⚠⚠ **必须"市场真的卖给玩家"**（**2026-09-29 修 B-1 的关键一刀**）。
+         *
+         * 实测（`--trace` 新增的"换船受阻"列）：第 2 天起**每天**都返回 `not-buyable` ——
+         * 因为 T4 那批**定制船**（玄武/巨齿鲨/虎鲸/旋齿鲨…）在 `ships.ts` 里的 `priceIsk` 是 **0**
+         * （"商店买不到、只能靠蓝图造"），现金闸 `0×1.3+40 万` **恒过**；而排序取"最强的先看"
+         * ⇒ 每天都挑中同一条**买不到**的船 ⇒ 下面 `buyAtMarket` 如实拒单 ⇒
+         * **"买更强的船"这条路 261 天一次都没成功**（里程碑里从来没有 `换驾 X（tier N）`）。
+         * 现在把"市场行**真的可买**"并进筛选条件 ⇒ 候选落到真能买的现货（虎鲨/灰鲭鲨/大白鲨…）；
+         * 而"定制船"那条线改由**自造**接手（见 `ensureFlagshipUpgradeByBuild`）。
+         */
+        if (g.playerBuyable === false) return false
         if ((g.standingReq ?? 0) > standing()) return false
         return state.wallet.isk > s.priceIsk * 1.3 + 400_000
       })
@@ -1421,6 +1535,7 @@ function buyShipAndGear(): void {
       if (g) {
         const got = buyAtMarket(state, ctx, g.key, 1)
         if (got.shipUid) {
+          shipBuyBlocked = null
           const r = changeShip(state, got.shipUid, ctx)
           if (r.ok) {
             lastShipUpgradeDay = day()
@@ -1428,9 +1543,21 @@ function buyShipAndGear(): void {
             // ② 买完立刻配装（否则裸船出航，战力还不如旧的）
             autoFitGear(got.shipUid)
           }
+        } else {
+          /**
+           * **买不到就记下原因**（2026-09-29 修 B-1）：`buyAtMarket` 会如实返回
+           * `blocked = 'no-stock' | 'not-buyable' | 'standing' | 'insufficient-isk'`。
+           * 旧写法**把这个原因丢掉了** ⇒ 外面只看得到"从来不升级"，看不到"为什么"。
+           */
+          shipBuyBlocked = got.blocked ?? 'unknown'
         }
+      } else {
+        shipBuyBlocked = 'no-market-row'
       }
-    } else if (!owned.has(state.fleet[state.shipId]?.defId ?? '')) {
+    } else {
+      shipBuyBlocked = 'no-candidate'
+    }
+    if (!target && !owned.has(state.fleet[state.shipId]?.defId ?? '')) {
       // 手上这条不在手里（异常态）⇒ 至少把自己配起来
       autoFitGear(state.shipId)
     }
@@ -3496,7 +3623,8 @@ function tickStat(): void {
     console.log(
       `  [trace d${d}] 当日动作：${markParts.length > 0 ? markParts.join(' · ') : '（什么都没做）'}` +
         ` ｜ 当日净现金 ${netIsk >= 0 ? '+' : ''}${Math.round(netIsk).toLocaleString('zh-CN')}` +
-        ` ｜ AI 炉 ${aiRuns}/5 台（核心库存 ${countAiCore(state, 'basic')} · 上限 ${aiCoreCap(state, ctx)} · 副船占 ${aiCoreShipUsed(state)}）`,
+        ` ｜ AI 炉 ${aiRuns}/5 台（核心库存 ${countAiCore(state, 'basic')} · 上限 ${aiCoreCap(state, ctx)} · 副船占 ${aiCoreShipUsed(state)}）` +
+        ` ｜ 换船受阻 ${shipBuyBlocked ?? '—'}`,
     )
     dayWalletIsk = state.wallet.isk
     // 资金流向账（正 = 进账，负 = 出账）；「其它」= 当日净额 − 已记账的各项，主要是推进期（弹药/维修/远征奖励）
@@ -3610,6 +3738,12 @@ while (state.gameMs < MAX_MS && !allGoalsDone()) {
    * 这里补"**数量**"这一维，与上面同拍、同样自带守卫（在忙/在航/采矿一律跳过，买不到就每天记一条原因）。
    */
   tracked('虫洞备战', () => ensureWhFleet())
+  /**
+   * **主控旗舰升级：现货买不到就自造**（2026-09-29 修 B-1）。
+   * 与 `ensureWhFleet`（凑数量）**分工不同**：这里只管"**把主控那条换成更强的**"，
+   * 且只在"买船那条路走不通"时动手（`shipBuyBlocked` 非空）——见函数头注。
+   */
+  ensureFlagshipUpgradeByBuild()
   if (homeLull()) {
     if (!state.mining.active) {
       tracked('卖货', () => sellEverything())
