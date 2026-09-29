@@ -33,37 +33,26 @@ export const WEEKEND_CARD_PREFIX = 'wk-'
 /** 外围入侵舰队的赏金倍率（数值表：奖励 = 该星系原卡 ×1.4） */
 export const WEEKEND_BOUNTY_REWARD_MUL = 1.4
 
+/**
+ * **（已作废）曾有一条「收复星系的常驻悬赏押后到活动结束」的判据 —— 2026-09-28 船长令撤销。**
+ *
+ * 沿革：**船长 2026-09-25 令**「入侵期间，被占领星系的所有被收复的星系的常驻悬赏依旧处于隐藏状态，
+ * 要等到入侵活动结束」⇒ 当时加了 `weekendStandingBountyHeldAt`，界面侧据此整区藏起悬赏卡。
+ * **2026-09-28 船长令**：「**入侵期间，赏金任务照常发放（只有势力活跃关闭）。**」
+ * ⇒ 该判据连同界面那两处调用、状态占位文案（`ui.weekend.100`）与相应用例**一并删除**：
+ * 收复后照常列常驻悬赏，**入侵期间关掉的只有「敌对派系活跃」**（`sideTasks.factionSuppressedByInvasion`，那条不变）。
+ *
+ * ⚠ 与本函数无关的两件事**照旧**（船长只说了"赏金任务照常发放"）：
+ * - **仍被占**的星系照旧由**入侵舰队卡**替换（`weekendBountyCardsOf`，2026-09-23 设计口径）；
+ * - 入侵舰队卡**不给赏金**（收入按进度在结算时发，2026-09-25 口径）。
+ */
+
 /** 该星系当前是否处于占领区（核心或外围）且**尚未夺回** */
 export function weekendOccupiedLiveAt(state: GameState, galaxyId: string, nowWallMs: number): boolean {
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) return false
   if (galaxyId !== ev.coreId && !ev.peripheryIds.includes(galaxyId)) return false
   return weekendProgressAt(state, ev, galaxyId, nowWallMs) < 1
-}
-
-/**
- * **该星系的常驻悬赏是否"押后到活动结束"**（**船长 2026-09-25 令**：「**入侵期间，被占领星系的
- * 所有被收复的星系的常驻悬赏依旧处于隐藏状态，要等到入侵活动结束。**」）。
- *
- * 判据 = 活动**未结束** ＋ 该星系 ∈ 占领集（核心或外围）＋ **已被夺回**（进度 ≥ 1）。
- *
- * ⚠ **只管"板面/详细页列不列"这一层**，**不动** `weekendBountyCardsOf` 那份取数：
- * - `weekendBountyCardsOf` 仍按设计稿给"夺回 ⇒ 原卡"（遇袭敌群池、残骸打捞取卡池都读它）——
- *   若在那一层清空，会把打捞池也一起清掉（收复后的星系就不能打捞了）；
- * - 仍被占的星系**不归本判据管**：那一边照旧由入侵舰队卡替换（既有口径不变）。
- *
- * ⚠ **与旧设计稿的冲突已由船长裁决**（`docs/design/weekend-invasion.md` 2026-09-25 改判那两行）：
- * 旧口径「夺回 ⇒ 悬赏恢复」作废一轮，改成"收复后仍隐藏到活动结束"。
- */
-export function weekendStandingBountyHeldAt(
-  state: GameState,
-  galaxyId: string,
-  nowWallMs: number,
-): boolean {
-  const ev = state.weekendEvent
-  if (!ev || ev.endedAtWallMs !== undefined) return false
-  if (galaxyId !== ev.coreId && !ev.peripheryIds.includes(galaxyId)) return false
-  return weekendProgressAt(state, ev, galaxyId, nowWallMs) >= 1
 }
 
 /**
@@ -122,9 +111,9 @@ function weekendIndependentFoeOf(base: AnomalyDef, drawn: AnomalyDef, family: st
 
 /**
  * **某星系当前该显示的悬赏卡**（引擎/界面的唯一取数口）：
- * - 不在占领区（或已夺回 / 活动结束）⇒ **原卡原样**；
- *   ⚠ 已夺回的那些**在界面上仍被押后到活动结束**（`weekendStandingBountyHeldAt` 单点判据；本函数
- *   只管"取哪张卡"，遇袭敌群池与残骸打捞池都读它 ⇒ 不在这里清空）；
+ * - 不在占领区（或已夺回 / 活动结束）⇒ **原卡原样**
+ *   （⚠ 2026-09-28 船长令后"已夺回"这一支**界面也照常列**——那条押后判据已删，见 `weekendOccupiedLiveAt` 上方注。
+ *   本函数只管"取哪张卡"，遇袭敌群池与残骸打捞池都读它 ⇒ 不在这里清空）；
  * - 在占领区 ⇒ **换成入侵舰队**：H 族 = 抽到的那张**独立卡**（真实 id · 覆写星系/名字）；
  *   A/C/G 三族 = 该星系**原卡的派生版**（占位口径，只换族名/威胁 78·120）；
  *   ⚠ 两条路的**赏金都是 0**（船长 2026-09-25「入侵舰队不应该有赏金」；界面改显「结算时按进度发放」）。

@@ -153,7 +153,8 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     // 触发线 = 装甲**或**结构 <50%（与重复清剿同口径），修到两者都 ≥ 本值；目标低于撤退线之外留缓冲
     repairTargetFrac: 0.6,
     lootTakenMaxPct: 0.3, // 被抢：至多 30% 船上货
-    iskTakenMaxPct: 0.05, // 无货被抢：至多 5% 钱包
+    // ⚠ 原有 `iskTakenMaxPct`（无货被抢 ⇒ 至多 5% 钱包）**已删除**：
+    //   2026-09-28 船长令「取消遇袭事件中的抢劫信用点」⇒ 空货仓遇袭 = 一无所获（旋钮、类型字段与文案一并撤）
     lootFracOfBounty: 0.5, // 2026-09-09 船长定：击退/胜利缴获 = 当地悬赏敌群赏金 ×50%（旧档兜底 = 威胁 ×1）
   },
   travel: {

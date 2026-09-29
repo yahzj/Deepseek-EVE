@@ -31,8 +31,6 @@ import {
   weekendFoeCardOf,
   /** 2026-09-25 船长令：核心节点上方那根**母舰血量条**（读数与事件日志那条同源） */
   weekendBossPoolView,
-  /** 2026-09-25 船长令：已收复星系的常驻悬赏**押后到活动结束**（板面与星系详细都按它隐藏） */
-  weekendStandingBountyHeldAt,
   cargoCapacityM3Of,
   cargoUsedM3Of,
   countAiCore,
@@ -615,11 +613,10 @@ export function BountyPanel({
   // 同日**作废** V13 旧口径「悬赏情报例外：列表照常可见」（见 docs/design/v13-exploration.md §四）；
   // 星图上的 ⚔N 悬赏情报徽标与剪影窗口的「悬赏情报 N 处」**照旧**（那是协会共享情报，不是卡面）。
   // 判定口径与卡内 `unexplored` 逐字同式：星系条目缺失（脏数据）不隐藏，按现状照常显示。
-  // ⚠ **2026-09-25 船长令**：「入侵期间，被占领星系的所有被收复的星系的常驻悬赏依旧处于隐藏状态，
-  // 要等到入侵活动结束」⇒ 再叠一条 core 判据（`weekendStandingBountyHeldAt`，只在板面这一层过滤；
-  // 遇袭敌群池与残骸打捞池读的是 `weekendBountyCardsOf`，不受影响）。
+  // ⚠ **2026-09-28 船长令**：「入侵期间，赏金任务照常发放（只有势力活跃关闭）」⇒ 原先那条
+  // 「已收复的占领星系把常驻悬赏押后到活动结束」的过滤（`weekendStandingBountyHeldAt`）**已删除**：
+  // 这里不再按入侵状态过滤，收复后照常列悬赏；入侵期间关掉的只有「敌对派系活跃」。
   const listed = engine.anomalies.filter((a) => {
-    if (weekendStandingBountyHeldAt(state, a.galaxyId, Date.now())) return false
     const g = engine.ctx.galaxies.get(a.galaxyId)
     return g ? isExplored(state, g.id) : true
   })
@@ -2060,25 +2057,16 @@ function GalaxyActions({
     return weekendProgressAt(state, ev, galaxy.id, Date.now()) < 1 ? ev : null
   })()
   /**
-   * **已收复 ⇒ 常驻悬赏押后到活动结束**（**船长 2026-09-25 令**：「入侵期间，被占领星系的所有被收复的
-   * 星系的常驻悬赏依旧处于隐藏状态，要等到入侵活动结束」）。
-   *
-   * 与 `invadedHere` 正好互补：仍被占 ⇒ 那一行是「击退入侵舰队」；已收复 ⇒ 常驻悬赏**不列出**、
-   * 只留一行状态占位（`ui.weekend.100`）——活动一结束，判据自然转假，悬赏照旧整批回来。
-   * 判据在 core 单点（`weekendStandingBountyHeldAt`），界面不另判一遍。
-   */
-  const bountyHeldHere = weekendStandingBountyHeldAt(state, galaxy.id, Date.now())
-  /**
    * **「悬赏（N）」里的 N = 这一格实际列出的行数**（**船长 2026-09-25 报障**：「**被入侵的星系，
    * 星系详细界面，悬赏的标题显示"悬赏（2）"而实际上这时候只显示了"击退入侵舰队"这一个**」）。
    *
    * - 仍被占（`invadedHere`）⇒ 整池换成**一行**「击退入侵舰队」⇒ **1**（原先报的是被替换掉的那 2 张卡）；
-   * - 已收复押后（`bountyHeldHere`）⇒ 一张不列、只留状态占位 ⇒ **0**；
-   * - 平常 ⇒ 该星系拥有的卡数（**声望不足时的空态照旧**：那时列出 0 张但"这里有几张悬赏"本身是
-   *   给玩家的信息，另有 `ui.Expedition.264` 明说原因，故这一档保持原口径）。
+   * - 平常（含**已收复**的占领星系）⇒ 该星系拥有的卡数（**声望不足时的空态照旧**：那时列出 0 张但
+   *   "这里有几张悬赏"本身是给玩家的信息，另有 `ui.Expedition.264` 明说原因，故这一档保持原口径）。
+   *   ⚠ **2026-09-28 船长令**后"已收复押后 ⇒ 0"那一档没了（押后判据已删，见文件上部那条注）。
    */
   const bountyRowCount =
-    invadedHere !== null ? 1 : bountyHeldHere ? 0 : engine.anomalies.filter((a) => a.galaxyId === galaxy.id).length
+    invadedHere !== null ? 1 : engine.anomalies.filter((a) => a.galaxyId === galaxy.id).length
 
   // —— 主控掩护巡逻（原"待命"） ——
   const inFlight = state.standby.active && state.standby.galaxyId === galaxy.id
@@ -2336,7 +2324,7 @@ function GalaxyActions({
       )}
       {/* ④ 悬赏（2026-09-24 船长：**重复清剿的环按钮就挂在这一行**，不再开容器）
           ⚠ 括号里的数 = **这一格实际列出的行数**（`bountyRowCount`）——仍被占 ⇒ 1（只有「击退入侵舰队」
-          那一行）· 已收复押后 ⇒ 0（只有状态占位）· 平常 ⇒ 该星系卡数。 */}
+          那一行）· 平常（含已收复）⇒ 该星系卡数。 */}
       <div className="app-bay-title app-ga-sub">{tr("ui.Expedition.145")}{bountyRowCount}）
       </div>
       {/* ⚠ 本列表**列出该星系全部悬赏**（只按声望门槛过滤）：冷却中/进行中的卡原先被滤掉，
@@ -2346,13 +2334,6 @@ function GalaxyActions({
       {(() => {
         const cands = engine.anomalies.filter((a) => a.galaxyId === galaxy.id)
         const list = cands.filter((a) => standingOf(state, DSI_FACTION_ID) >= a.standingReq)
-        /**
-         * **已收复 ⇒ 整区押后**（船长 2026-09-25 令，见 `bountyHeldHere`）：不列常驻悬赏，
-         * 只留一行状态占位 —— 与 `invadedHere` 那一支互补（那边是"仍被占 ⇒ 击退入侵舰队"）。
-         */
-        if (bountyHeldHere) {
-          return <div className="app-dim app-ga-empty">{tr('ui.weekend.100')}</div>
-        }
         if (list.length === 0) {
           return <div className="app-dim app-ga-empty">{cands.length === 0 ? tr("ui.Expedition.437") : tr("ui.Expedition.264")}</div>
         }

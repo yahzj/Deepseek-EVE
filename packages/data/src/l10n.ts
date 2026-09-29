@@ -625,7 +625,7 @@ export const EN_SKILLS: EnTable = {
   'chart-archive': { name: 'Chart Archive', description: 'Deep-space charts and wormhole archives: +⟦2⟧ wormholes that can be kept on the star map per level (max +⟦10⟧, from 5 to 15).' },
   'salvage-diving': { name: 'Salvage Diving', description: 'Wreck salvage and loot collection: +⟦12%⟧ expedition loot volume and salvage yield per level (applies to the player ship and AI alike).' },
   'seizure-appraisal': { name: 'Seizure Appraisal', description: 'Loot appraisal and fencing channels: +⟦10%⟧ credits seized from Low-sec repulses and victories per level.' },
-  'lowsec-survival': { name: 'Low-sec Survival', description: 'Staying alive in dangerous space: −⟦12%⟧ cap on Low-sec losses per level (max −⟦60%⟧, covering cargo and cash alike).' },
+  'lowsec-survival': { name: 'Low-sec Survival', description: 'Staying alive in dangerous space: −⟦12%⟧ cap on cargo seized in Low-sec per level (max −⟦60%⟧).' },
   'deep-space-logistics': { name: 'Deep Space Logistics', description: 'Deep-space logistics and hold planning: +⟦4%⟧ fleet-wide cargo capacity per level (max +⟦20%⟧; multiplies with cargo expanders and Hold Management).' },
   'hauler-ops': { name: 'Hauler Operations', description: 'Specialized piloting of the hauler family: +⟦5%⟧ cargo capacity per level while flying a hauler.' },
   compression: { name: 'Compression', description: 'Raw material compression: −⟦6%⟧ hold volume for ore, gas and ice per level (max −⟦30%⟧).' },

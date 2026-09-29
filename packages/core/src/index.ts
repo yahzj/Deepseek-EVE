@@ -384,7 +384,8 @@ export {
   weekendEncounterAllowedIn,
   weekendEncounterRollOf,
   weekendOccupiedLiveAt,
-  weekendStandingBountyHeldAt,
+  // ⚠ `weekendStandingBountyHeldAt`（收复星系的悬赏押后到活动结束）已随 2026-09-28 船长令
+  //   「入侵期间，赏金任务照常发放（只有势力活跃关闭）」删除 —— 别再往这里加回来。
 } from './weekendBounty'
 export { DEFAULT_BALANCE, RETURN_LEG_MUL } from './balance'
 // 敌方挂载件目录（2026-09-16 船长：把冲锋 / 受击增程做成「给敌人装配件」；表放 core 的理由见该文件头注）
