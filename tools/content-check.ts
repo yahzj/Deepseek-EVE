@@ -1401,6 +1401,80 @@ for (const m of MODULES) {
       `\`expedition.battle\` 1 处（带 whView 兜底）· 状态窗与公告均带洞内分支 · 四处均带入侵旗舰战分支`,
   )
 
+  /* ── 结算口径契约（**2026-09-28 玩家报障**「旗舰战沉船被撤退复活」）──
+ *
+ * 病根：**新增战斗宿主时只对齐了"在不在打"，没人管"收场结算逐项对齐"** ——
+ * 上面那条契约扫的全是**界面侧**（战斗屏挂不挂 / 敌卡解析 / 公告），于是"沉船判定"这种
+ * **只在虫洞那条路上写过一次**的东西，在**遭遇槽**这条宿主上静默缺失：
+ * `persistFleetHullDamage` 如实写出 `durability = 0`，可全仓没有一处把 0% 当"已沉"
+ * ⇒ 打沉的船以"活着但残血"被带回港、花钱就能修好。玩家报障才发现。
+ *
+ * 契约（源码级扫描）：**凡是"我方的船真会沉"的编队战收场路径，必须判沉船**——
+ * 判据 = 单点 `combat.sunkShipIdsOfBattle`（或包着它的 `encounters.loseSunkShipsOfBattle`）。
+ * 名单写死 + 各带一句理由 ⇒ **以后加第四个宿主时漏了会红**，不用再等玩家报障。
+ *
+ * ⚠ **例外（故意不判）**：远征 / 入侵主动出击那条（`expedition.resolveBattleOutcome`）走的是
+ * 「失利 ⇒ **弃船骰 3%~50%**」这套**另一套损失模型**（单船场次、且有结构过半自动脱离保险）——
+ * 本契约不要求它调沉船判据，但要求它那行底线还在：**耐久归零 ⇒ 必弃船**。
+ */
+{
+  /** 本块自带读取（不依赖上面那条契约的作用域，日后谁被挪走都不会连带失效） */
+  const readSource = (rel: string): string => readFileSync(join(process.cwd(), rel), 'utf8')
+  /** 取某个函数体（从含 `head` 的那一行起，按花括号配平到收尾）；找不到 ⇒ 空串（检查当场红，正是想要的） */
+  const bodyOf = (src: string, head: string): string => {
+    const lines = src.split('\n')
+    const at = lines.findIndex((l) => l.includes(head))
+    if (at < 0) return ''
+    let depth = 0
+    let started = false
+    const out: string[] = []
+    for (let i = at; i < lines.length; i += 1) {
+      const l = lines[i]!
+      out.push(l)
+      for (const ch of l) {
+        if (ch === '{') {
+          depth += 1
+          started = true
+        } else if (ch === '}') depth -= 1
+      }
+      if (started && depth <= 0) break
+    }
+    return out.join('\n')
+  }
+  check(
+    bodyOf(readSource('packages/core/src/combat.ts'), 'export function sunkShipIdsOfBattle').includes('myFleet'),
+    '结算口径契约：`combat.sunkShipIdsOfBattle`（沉船判据单点）不见了或不再看编队 —— 三套宿主会各判各的',
+  )
+  /** 我方"船真会沉"的编队战收场路径：每条都必须判沉船（单点本身，或包着它的助手） */
+  for (const [rel, head, why] of [
+    ['packages/core/src/wormholeBattle.ts', 'function settleWormholeBattle', '洞内收口（沉了就真丢 ＋ 插件折黑匣）'],
+    ['packages/core/src/encounters.ts', 'function loseSunkShipsOfBattle', '遭遇槽的沉船助手（它必须调判据单点）'],
+    ['packages/core/src/encounters.ts', 'function settleEscape', '遭遇槽 · 撤退 / 自动脱离'],
+    ['packages/core/src/encounters.ts', 'function settleFight', '遭遇槽 · 分胜负'],
+  ] as const) {
+    const body = bodyOf(readSource(rel), head)
+    /**
+     * ⚠ **必须是"调用"而不是"提到"**：第一版写成 `body.includes(名字)`，反向探针当场抓到
+     * —— 把调用改成 `void 名字 // 注释` 也照样通过。故改为**带左括号的调用式**。
+     */
+    const callsJudge = /(?:\bsunkShipIdsOfBattle|\bloseSunkShipsOfBattle)\s*\(/.test(body)
+    check(
+      callsJudge,
+      `结算口径契约：${rel} 的 \`${head}\`（${why}）没**调用**沉船判据 —— ` +
+        `打沉的船会被"活着带回家、还能修"（2026-09-28 玩家报障）`,
+    )
+  }
+  check(
+    bodyOf(readSource('packages/core/src/expedition.ts'), 'export function resolveBattleOutcome').includes('abandoned = true'),
+    '结算口径契约：远征 / 入侵主动出击那条路的「耐久归零 ⇒ 必弃船」不见了 —— ' +
+      '那是它那套损失模型（弃船骰）的底线，删了等于"输了也不丢船"',
+  )
+  console.log(
+    '· 结算口径契约：4 条编队战收场路径均判沉船（判据单点 `combat.sunkShipIdsOfBattle`）· ' +
+      '远征那条的「归零 ⇒ 必弃船」在',
+  )
+}
+
   /* ── 通讯弹窗"让位与上膛"契约（2026-09-25 船长报障「战斗胜利后，结算通讯并不会弹出」）──
    *
    * 病根（真档实证）：战场是全屏覆盖层 `z-index: 100`，送达弹窗的遮罩是 `88` ⇒ 结算信在**击杀那一拍**

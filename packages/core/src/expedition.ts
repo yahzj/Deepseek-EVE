@@ -655,6 +655,15 @@ export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: stri
     shipId,
     anomalyId,
     arrivalGameMs,
+    /**
+     * ⚠ **这里保持 `undefined` 是对的，别"顺手补一个 desirePrefOf"**（**2026-09-28 查证**）：
+     * `startBattleFor` 在 `desireM === undefined` 时**自己就会**回落 `desirePrefOf(state, anomaly.galaxyId)`
+     * （`combat.ts` 的"`null` = 强制默认档；显式值优先；否则该星系偏好 → 默认档"）。
+     * 远征/入侵主动出击的目标卡**自带被占星系** ⇒ 引擎那一读与写入端（`setBattleDesire` 也写
+     * `anomaly.galaxyId`）**逐字同源** ⇒ 记忆本来就是通的。
+     * （真正漏读的是**旗舰战**那条：它的卡是隐藏卡、`galaxyId` 是母港 `galaxy-hub` ⇒ 引擎回落会读错星系，
+     *  故 `weekendLaunch.weekendStartFlagshipBattle` 必须**显式**传核心星系那一份。）
+     */
     undefined,
     weekendThreat !== undefined ? { threat: weekendThreat } : undefined,
   )
