@@ -362,11 +362,11 @@ describe('墨潮重袭无人机（船长给定值）＋ H 族残骸回收打开'
     console.log(`  [读数] 三层血 墨潮 ${total(d)} vs 制式攻坚 ${total(std)} · 闪避 ${d.defense!.evasion}（全机型最低 ${minEvasion}）`)
   })
 
-  it('数值逐项：单发 16 动能 · 血 40/80/100 · 射程 3000 · 闪避 0.05 · CPU 13 · 攻坚机', () => {
+  it('数值逐项：单发 16 动能 · 血 40/80/100 · 射程 4000 · 闪避 0.05 · CPU 13 · 攻坚机', () => {
     const d = ctx.items.get('drone-ink-heavy')!
     expect(d.damageType).toBe('kinetic')
     expect(d.dmg).toBe(16)
-    expect(d.maxRangeM).toBe(3000) // 2026-09-27 船长令「无人机射程重排」：攻坚改最短（原 4500）
+    expect(d.maxRangeM).toBe(4000) // **2026-09-28 船长令「攻坚机 4000」**（原 09-27 重排的 3000）
     expect(d.cpuUse).toBe(13)
     expect(d.droneClass).toBe('assault')
     expect(d.unitM3).toBe(20)
