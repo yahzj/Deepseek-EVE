@@ -547,6 +547,12 @@ describe('离线窗口推进（A1：未开市档在离线起点开盘，整段�
     expect(filled.textId).toBe('core.market.028')
     expect(filled.textParams?.p4Id).toBe('core.market.034') // 「（贸易税 {p1} 信用点）」
     expect(filled.textParams?.p4).toBe('（贸易税 60 信用点）') // 中文原串并存（老档/未改造路径回退用）
+    /**
+     * **槽内参数 `p4p1` 必须一起喂**（**2026-09-29 实障修正**）：`core.market.034` 自己带 `{p1}`，
+     * 渲染层按 `p4p1` 取它 —— 只给 `p4Id` 就会把「（贸易税 **{p1}** 信用点）」原样漏给玩家
+     * （船长 2026-09-29 报障的残留形态）。这条与 `offline-cap` 那条同属一批。
+     */
+    expect(filled.textParams?.p4p1, '槽内参数（税额）').toBe('60')
     // 市场簿与价格小史已随离线推进
     expect((state.market.priceHistory['it-ore-a'] ?? []).length).toBeGreaterThan(0)
   })

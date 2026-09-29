@@ -196,7 +196,8 @@ export function simulateOffline(
     if (unitsNow > unitsBefore) gained.push(`${ctx.items.get(id)?.name ?? id}×${unitsNow - unitsBefore}`)
   }
   const minedText = gained.length > 0 ? `；离线采集 ${gained.join('、')}` : ''
-  const tail = overflowMs > 0 ? `；超出上限的 ${formatDurationMs(overflowMs)} 未结算` : ''
+  const overflowTxt = formatDurationMs(overflowMs)
+  const tail = overflowMs > 0 ? `；超出上限的 ${overflowTxt} 未结算` : ''
   addLog(
     state,
     'system',
@@ -207,7 +208,14 @@ export function simulateOffline(
       p2: tail,
       p3: minedText,
       p4: eventCount,
-      ...(overflowMs > 0 ? { p2Id: 'core.state.023' } : {}),
+      /**
+       * ⚠ **槽译文必须连"槽内参数"一起喂**（`p{n}p{k}`；**2026-09-29 实障修正**）：
+       * 槽模板 `core.state.023`（「；超出上限的 {p1} 未结算」）自己带一个 `{p1}`，
+       * 渲染层按 `p2p1` 取它 —— 只给 `p2Id` 的话那一槽的 `{p1}` **无人供给、原样漏出**
+       * （实测日志里就是「超出上限的 {p1} 未结算」）。同款范式见 `events.ts` 的 `p2p1`、
+       * `hauling.ts` 的 `p8p1`；漏喂已由 `npm run l10n:params` 的"槽内参数"检查兜住。
+       */
+      ...(overflowMs > 0 ? { p2Id: 'core.state.023', p2p1: overflowTxt } : {}),
     },
   )
 }

@@ -290,4 +290,33 @@ describe('虫洞 · 逐舰维修（船长 2026-09-16 裁定「甲」）', () => 
     expect(text).toContain('民用修理组件 ×2')
     expect(text).toContain('军用修理组件 ×3')
   })
+
+  it('⑦ 战报的维修尾巴：槽译文与**槽内参数**成对（`p8Id` ＋ `p8p1` · 2026-09-29 实障修正）', () => {
+    /**
+     * **船长 2026-09-29 报障**：「各种事件里的参数都有问题……很多都读取不到参数」——
+     * 战报尾巴那一槽的模板（`core.wormholeBattle.031`）**自己就是 `{p1}`**，
+     * 渲染层按 `p8p1` 取它 ⇒ 只给 `p8Id` 会把 `{p1}` 原样漏给玩家（「船体维修装置{p1}」）。
+     */
+    const { state, run, leader } = enterRun()
+    state.fleet[leader]!.fitted = { high: [], mid: [REP_CIV], low: [] }
+    state.fleet[leader]!.cargo = { 'repairkit-civ': 50 }
+    const battle = startBattle(state, run)
+    pacifyFoes(battle)
+    battle.repairBy!['player']!.kitsUsed = 1
+    battle.repairBy!['player']!.kitsUsedByType = { 'repairkit-civ': 1 }
+    // 走几拍让维修账本落定，再把敌舰清空并收尾 ⇒ 战报那条日志才写出来（口径同 wormhole-battle 的 win/settle 助手）
+    tickSeconds(state, 3)
+    for (const u of Object.values(battle.units)) {
+      if (u.side === 'foe') u.hp = { s: 0, a: 0, h: 0 }
+    }
+    battle.ended = 'me'
+    state.gameMs = battle.lastTickGameMs + 10_000
+    advanceWormhole(state, ctx)
+    const entry = state.logs.filter((l) => l.text.includes('交火结束')).at(-1)
+    expect(entry, '战报必须在').toBeDefined()
+    expect(entry!.textParams?.p8Id, '有尾巴时才挂槽译文').toBe('core.wormholeBattle.031')
+    expect(entry!.textParams?.p8p1, '**槽内参数必须一起喂**').toBe('消耗 民用修理组件 ×1')
+    expect(entry!.text, '中文原串里也不得残留模板').not.toContain('{p1}')
+    expect(entry!.text).toContain('船体维修装置消耗 民用修理组件 ×1')
+  })
 })

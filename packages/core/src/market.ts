@@ -466,6 +466,15 @@ function tradeNoteText(note: TradeNote, tax: number): string {
   if (note === 'bonusTax') return `（含协会声望加成）${taxTxt}`
   return ''
 }
+/**
+ * 槽译文的 id（`p4Id`）。
+ *
+ * ⚠ **调用点必须连"槽内参数" `p4p1` 一起喂**（**2026-09-29 实障修正**）：
+ * `core.market.034/035` 自己带 `{p1}`（税额），渲染层按 `p4p1` 取它 ——
+ * 只给 `p4Id` 的话那一槽的 `{p1}` **无人供给、原样漏出**（实测日志里出现
+ * 「（贸易税 {p1} 信用点）」）。同款范式见 `events.ts` 的 `p2p1`、`hauling.ts` 的 `p8p1`；
+ * 漏喂由 `npm run l10n:params` 的"槽内参数"检查兜住。
+ */
 function tradeNoteId(note: TradeNote): string | undefined {
   switch (note) {
     case 'bonus':
@@ -1084,7 +1093,7 @@ function settleSell(
     const params = { p1: goodName(ctx, order.good), p2: take.toLocaleString('zh-CN'), p3: net.toLocaleString('zh-CN') }
     const noteId = tradeNoteId(note)
     if (noteId === undefined) addLog(state, 'trade', text, id, params)
-    else addLog(state, 'trade', text, id, { ...params, p4: taxNote, p4Id: noteId })
+    else addLog(state, 'trade', text, id, { ...params, p4: taxNote, p4Id: noteId, p4p1: tax.toLocaleString('zh-CN') })
   }
 }
 
@@ -1171,7 +1180,7 @@ function settleSnatchSell(state: GameState, ctx: SimContext, order: PlayerOrder,
     const params = { p1: goodName(ctx, order.good), p2: take.toLocaleString('zh-CN'), p3: net.toLocaleString('zh-CN') }
     const noteId = tradeNoteId(note)
     if (noteId === undefined) addLog(state, 'trade', text, id, params)
-    else addLog(state, 'trade', text, id, { ...params, p4: taxNote, p4Id: noteId })
+    else addLog(state, 'trade', text, id, { ...params, p4: taxNote, p4Id: noteId, p4p1: tax.toLocaleString('zh-CN') })
   }
 }
 
@@ -1325,7 +1334,7 @@ function settleStationTake(state: GameState, ctx: SimContext, order: PlayerOrder
     const params = { p1: goodName(ctx, order.good), p2: take.toLocaleString('zh-CN'), p3: net.toLocaleString('zh-CN') }
     const noteId = tradeNoteId(note)
     if (noteId === undefined) addLog(state, 'trade', text, id, params)
-    else addLog(state, 'trade', text, id, { ...params, p4: taxNote, p4Id: noteId })
+    else addLog(state, 'trade', text, id, { ...params, p4: taxNote, p4Id: noteId, p4p1: tax.toLocaleString('zh-CN') })
   }
 }
 
@@ -2205,3 +2214,4 @@ export function listSellHolding(
   addLog(state, 'trade', placeOrderLogText(ctx, 'sell', goodKey, order.price, n, r))
   return { ok: true, orderId: order.id, price: order.price, filled: r.filled, resting: r.resting }
 }
+
