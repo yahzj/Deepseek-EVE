@@ -335,8 +335,9 @@ describe('虫洞 · 确定性随机流（2026-09-13 修掉的分布坑）', () =
 describe('虫洞 · 收益估值口径（F3c：残骸的真价值在回收炉）', () => {
   it('普通残骸按**拆解**估值（不是基础价 1 ISK/单位）；母矿仍按基础卖价', () => {
     const common = commonWreckOf('wh-pirate-scout')
-    expect(wormholeWreckRecycleIskPerM3(ctx, common)).toBeCloseTo(56.8, 1) // common 档：5.8 × 9.8
-    expect(wormholeLootValueIsk(ctx, common, 500)).toBeCloseTo(28_420, -2)
+    // 2026-09-28 三档 1:2:3：常档 Y 5.8 → 2.92 ⇒ 2.92 × 9.8 = 28.616 ISK/m³
+    expect(wormholeWreckRecycleIskPerM3(ctx, common)).toBeCloseTo(28.62, 1)
+    expect(wormholeLootValueIsk(ctx, common, 500)).toBeCloseTo(14_308, -2)
     // 2026-09-28 矿石按体积平衡：虚空母矿单价 915 → 18（体积保持 1 m³/单位）⇒ 500 件 = 9,000
     expect(wormholeLootValueIsk(ctx, COMMON_ORE_FOR_TEST, 500)).toBeCloseTo(9_000, -2)
     // 残骸的**基础价**口径确实接近 0（这就是为什么必须换尺）
