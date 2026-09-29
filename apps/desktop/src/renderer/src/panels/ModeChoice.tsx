@@ -28,6 +28,7 @@ import { tr, cmdText } from '../i18n/locale'
 export function ModeChoice({ engine, onDone }: { engine: GameEngine; onDone: () => void }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [ok, setOk] = useState('')
 
   /** 选普通：落一次"已选择"记账，然后放行 */
   const chooseStandard = async (): Promise<void> => {
@@ -50,6 +51,33 @@ export function ModeChoice({ engine, onDone }: { engine: GameEngine; onDone: () 
       return
     }
     onDone()
+  }
+
+  /**
+   * **导入存档**（**2026-09-28 船长令**：「**可以加入一个"导入存档"入口**」）。
+   *
+   * **为什么放在模式选择框上**：本框是**强制二选一**（不设关闭键、进游戏之后才弹），而"导入"原本只在
+   * 游戏内的存档页 ⇒ 换设备/换浏览器来的玩家**必须先过这一关**才能碰到导入按钮；偏偏**选铁人会立刻
+   * 开始抬代次**（每存一次盘 +1）⇒「先进游戏、选了铁人、再导入」这条路会把铁人档的装载闸门抬到
+   * 自己那份旧档头上，导入被判成"回滚"而**拒绝**（2026-09-28 玩家实测报障）。
+   * 入口挪到这里 ⇒ 玩家**先导入、再选模式**，那条坑从流程上消失。
+   *
+   * 导入后本框**自动重判**（`App` 按 `engine.modeChoiceNeeded()` 挂载）：新档若已选过模式 ⇒ 本框
+   * 自动卸载；没选过（例如刚被重置过模式选择的那份档）⇒ 照常请他选这一次。
+   * 文案与类名沿用存档页那一套（`ui.SaveManager.014/013/029/003`），不另造同义文案。
+   */
+  const doImport = async (): Promise<void> => {
+    setBusy(true)
+    setErr('')
+    setOk('')
+    const r = await engine.importSaveFromFile()
+    setBusy(false)
+    if (r.canceled) return
+    if (!r.ok) {
+      setErr(cmdText(r) || tr('ui.SaveManager.029'))
+      return
+    }
+    setOk(tr('ui.SaveManager.003'))
   }
 
   return (
@@ -81,8 +109,23 @@ export function ModeChoice({ engine, onDone }: { engine: GameEngine; onDone: () 
               <span className="app-pro-mode-li">{tr('ui.Ironman.038')}</span>
             </button>
           </div>
+          {/* 导入入口：与存档页那颗同一套类名/文案 id（§6 同级复刻），见 `doImport` 的说明 */}
+          <div className="app-save-actions" style={{ marginTop: 'var(--wui-sp-10)' }}>
+            <button
+              className="app-btn is-small"
+              disabled={busy}
+              onClick={() => void doImport()}
+              title={tr('ui.SaveManager.013')}
+            >
+              {tr('ui.SaveManager.014')}
+            </button>
+            <span className="app-dim">{busy ? tr('ui.SaveManager.017') : tr('ui.Ironman.044')}</span>
+          </div>
           {err ? (
             <div className="app-dim" style={{ marginTop: 'var(--wui-sp-8)' }}>{err}</div>
+          ) : null}
+          {ok ? (
+            <div className="app-dim" style={{ marginTop: 'var(--wui-sp-8)' }}>{ok}</div>
           ) : null}
         </div>
       </div>

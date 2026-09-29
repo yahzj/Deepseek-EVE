@@ -4005,6 +4005,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Ironman.041": { zh: "铁人福利同时失效；代次与已获得的徽章保留。", en: "The Iron Man perks end as well; the generation and earned badges are kept." },
   "ui.Ironman.042": { zh: "模式选择", en: "Choose a mode" },
   "ui.Ironman.043": { zh: "本存档仅此一次选择机会。", en: "This save gets one choice only." },
+  /* 2026-09-28 船长令「可以加入一个'导入存档'入口」⇒ 模式选择框上那颗按钮旁边的说明
+     （按钮本体沿用存档页的 `ui.SaveManager.014`，不另造同义文案） */
+  "ui.Ironman.044": { zh: "换设备或换浏览器：先导入存档，再选模式。", en: "Switching device or browser: import your save first, then choose a mode." },
   "ui.SellQtyModal.001": { zh: "出售数量 ·", en: "Sell quantity ·" },
   "ui.SellQtyModal.002": { zh: "现有", en: "On hand" },
   "ui.SellQtyModal.003": { zh: "按市价卖出", en: "Sell at market" },
