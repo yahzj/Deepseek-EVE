@@ -83,7 +83,12 @@ export const DEFAULT_BALANCE: BalanceConfig = {
     // 2026-09-08 船长定、2026-09-11 改为**按技能记系数**：工业专用扩容——表内技能每级 +对应枚数
     // 「工业专用 AI 工位」（只对站内精炼炉/回收炉/制造线生效，不增加 AI 副船任务上限；
     // 每个工位仍占用一枚实体 AI 核心）。新增"工业 AI 专用扩容技能"只需往该表追加一行。
-    industrySkillSlots: { 'industrial-ai-cap-basic': 1, 'industrial-ai-cap': 2 } as Readonly<Record<string, number>>,
+    industrySkillSlots: {
+      'industrial-ai-cap-basic': 1,
+      'industrial-ai-cap': 2,
+      // 2026-09-29 船长令：新增 R5「工业自动化统合」——工业专用工位再 +2/级（满级再 +10）
+      'industrial-ai-cap-integration': 2,
+    } as Readonly<Record<string, number>>,
     dispatchSkillId: 'ai-core-dispatch', // AI 核心调度学（卷B3⑩，2026-09-08 船长定）：核心驱动作业效率累加区
     dispatchPerLevel: 0.02, // 每级 +2 个百分点（基础 40% → 满级 50%；伽马 60%/贝塔 70%/阿尔法 85%，封顶 100%）
     basicPriceIsk: 25_000, // 基础核心直购价

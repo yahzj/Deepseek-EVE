@@ -14,6 +14,7 @@ import { scanWindowMsOf } from '../src/explore'
 import { getMiningParams, richVeinFactor } from '../src/mining'
 import { cargoCapacityM3Of, cargoUnitM3 } from '../src/inventory'
 import { startRefineRun, stopRefineRun } from '../src/industry'
+import { industryAiBonus } from '../src/ai'
 import { repairCostIsk, addShipToFleet } from '../src/shipyard'
 import { bountyRewardFactor } from '../src/expedition'
 import { simulateOffline } from '../src/simulation'
@@ -510,17 +511,53 @@ describe('2026-09-22 技能批：炉温精调学 / 零件流水线 / 舰种操�
     expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
     expect(state.refineRuns[0]!.cycleMs).toBe(4_800) // 6000 ×0.8（只有炉心熔炼学）
     expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
-    // 再点满炉温精调学 ⇒ 6000 ×0.8 ×0.8
+    // 再点满炉温精调学 ⇒ 6000 ×0.8 ×0.85（2026-09-29 船长令：炉温精调学 4%→3%/级）
     state.skills.trained['furnace-precision'] = 5
     expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
-    expect(state.refineRuns[0]!.cycleMs).toBe(3_840)
+    expect(state.refineRuns[0]!.cycleMs).toBe(4_080)
     expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
-    // AI 核心驱动同享（basic 效率 0.4 ⇒ 15000，再 ×0.8×0.8）
+    // 再点满新 R3 炉压调控学 ⇒ 6000 ×0.8 ×0.85 ×0.8（2026-09-29 船长令新增，插在炉心熔炼学与炉温精调学之间）
+    state.skills.trained['furnace-pressure'] = 5
+    expect(startRefineRun(state, 'ore-a', 'pilot', ctx).ok).toBe(true)
+    expect(state.refineRuns[0]!.cycleMs).toBe(3_264)
+    expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
+    // AI 核心驱动同享（basic 效率 0.4 ⇒ 15000，再 ×0.8×0.85×0.8）
     state.aiCores['basic'] = 1
     state.skills.trained['ai-expert'] = 1
     expect(startRefineRun(state, 'ore-a', 'basic', ctx).ok).toBe(true)
-    expect(state.refineRuns[0]!.cycleMs).toBe(9_600)
+    expect(state.refineRuns[0]!.cycleMs).toBe(8_160)
     expect(stopRefineRun(state, ctx, state.refineRuns[0]!.id).ok).toBe(true)
+  })
+
+  it('2026-09-29 船长令（炉系批）：炉膛重构学 +2%/级 · 工业自动化统合 +2 工位/级 · 炉心熔炼学无下限', () => {
+    const ctx = makeTestCtx()
+    // ① 炉膛重构学（新 R5）：与炉膛扩容学、炉膛倍增学**乘算**（测试矿走兜底批容 10 ⇒ 10×1.3×1.2×1.1）
+    const s1 = createInitialState({ nowWallMs: 0, seed: 41 })
+    const u1 = addShipToFleet(s1, 'sh-falconet')
+    s1.shipId = u1
+    s1.warehouse.items['ore-a'] = 500
+    expect(startRefineRun(s1, 'ore-a', 'pilot', ctx).ok).toBe(true)
+    const baseBatch = s1.refineRuns[0]!.batchUnits
+    stopRefineRun(s1, ctx, s1.refineRuns[0]!.id)
+    s1.skills.trained['furnace-expansion'] = 5 // ×1.30
+    s1.skills.trained['furnace-amplification'] = 5 // ×1.20（本批 2%→4%）
+    s1.skills.trained['furnace-reconfiguration'] = 5 // ×1.10（新）
+    expect(startRefineRun(s1, 'ore-a', 'pilot', ctx).ok).toBe(true)
+    expect(s1.refineRuns[0]!.batchUnits).toBe(Math.round(baseBatch * 1.3 * 1.2 * 1.1))
+    stopRefineRun(s1, ctx, s1.refineRuns[0]!.id)
+    // ② 工业自动化统合（新 R5）：工业专用工位 +2/级（满级再 +10）⇒ 与基础 5 + 自动化 10 合计 25
+    const s2 = createInitialState({ nowWallMs: 0, seed: 42 })
+    for (const id of ['industrial-ai-cap-basic', 'industrial-ai-cap', 'industrial-ai-cap-integration']) s2.skills.trained[id] = 5
+    expect(industryAiBonus(s2, ctx)).toBe(25)
+    // ③ 炉心熔炼学：**下限已移除** —— 近满级时不再被 0.6 夹住（5 级 = ×0.80；旧下限只在 ≥10 级才咬，属假护栏）
+    const s3 = createInitialState({ nowWallMs: 0, seed: 43 })
+    const u3 = addShipToFleet(s3, 'sh-falconet')
+    s3.shipId = u3
+    s3.warehouse.items['ore-a'] = 500
+    s3.skills.trained['core-smelting'] = 5
+    expect(startRefineRun(s3, 'ore-a', 'pilot', ctx).ok).toBe(true)
+    expect(s3.refineRuns[0]!.cycleMs).toBe(4_800)
+    stopRefineRun(s3, ctx, s3.refineRuns[0]!.id)
   })
 
   it('零件流水线：零件蓝图周期 ×0.8（满级）；非零件蓝图不受影响', () => {
@@ -615,7 +652,8 @@ describe('2026-09-22 技能批：炉温精调学 / 零件流水线 / 舰种操�
 
   it('四条的声明：书/等级/前置与船长令一致（前置 = 武装舰操作 ＋ 装甲舰操作）', () => {
     const want: Array<[string, number, string, string[]]> = [
-      ['furnace-precision', 4, 'b-refine', ['core-smelting']],
+      // 2026-09-29 船长令：炉温精调学的前置改挂**新插入的 R3「炉压调控学」**（插在炉心熔炼学与炉温精调学之间）
+    ['furnace-precision', 4, 'b-refine', ['furnace-pressure']],
       ['parts-line', 5, 'b-craft', ['batch-production']],
       ['frigate-ops', 4, 'b-warship', ['armed-ops', 'armored-ops']],
       ['destroyer-ops', 4, 'b-warship', ['armed-ops', 'armored-ops']],

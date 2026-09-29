@@ -1057,8 +1057,9 @@ for (const sbp of SHIP_BLUEPRINTS) {
     { skill: 'deep-hole-blasting', per: 0.06, call: 'mining.ts（低品位矿 ≤55 ISK）' },
     { skill: 'deep-space-harvesting', per: 0.05, call: 'mining.ts（气/冰）' },
     { skill: 'rich-vein-prospecting', per: 0.2, call: 'mining.ts richVeinFactor' },
-    { skill: 'core-smelting', per: 0.04, call: 'industry.ts（精炼炉周期；2026-09-22 起手动与 AI 核心驱动同享）' },
-    { skill: 'furnace-precision', per: 0.04, call: 'industry.ts（精炼炉周期；2026-09-22 精炼系 T4，手动与 AI 同享）' },
+    { skill: 'core-smelting', per: 0.04, call: 'industry.ts（精炼炉周期；2026-09-22 起手动与 AI 核心驱动同享；2026-09-29 船长令删掉 0.6 下限）' },
+    { skill: 'furnace-pressure', per: 0.04, call: 'industry.ts（精炼炉周期；2026-09-29 船长令新增 R3，插在炉心熔炼学与炉温精调学之间）' },
+    { skill: 'furnace-precision', per: 0.03, call: 'industry.ts（精炼炉周期；2026-09-29 船长令 4%→3%）' },
     { skill: 'parts-line', per: 0.04, call: 'manufacturing.ts calcBuildDurationMs（零件类蓝图周期）' },
     /**
      * 舰种操作四技能（2026-09-22 船长令）：每级值分散在 combat.ts 的**五个使用点**
@@ -1129,7 +1130,9 @@ for (const sbp of SHIP_BLUEPRINTS) {
     { skill: 'precision-assembly', per: 0.08, call: 'manufacturing.ts calcBuildDurationMs（高级零件制造时间 · 2026-09-20 零件体系）' },
 
     /* ── 2026-09-27 船长令（R4/R5 上位技能批）：18 条上位，每级值 = 父技能每级 ÷ 3 ── */
-    { skill: 'furnace-amplification', per: 0.02, call: 'industry.ts（精炼炉批容；与炉膛扩容学同乘区）' },
+    { skill: 'furnace-amplification', per: 0.04, call: 'industry.ts（精炼炉批容；与炉膛扩容学同乘区；2026-09-29 船长令 2%→4%）' },
+    { skill: 'furnace-reconfiguration', per: 0.02, call: 'industry.ts（精炼炉批容；2026-09-29 船长令新增 R5，炉膛倍增学的后续）' },
+    { skill: 'industrial-ai-cap-integration', per: 2, call: 'balance.ts aiCore.industrySkillSlots（工业专用工位；2026-09-29 船长令新增 R5，工业自动化的后续）' },
     { skill: 'furnace-thermal-control', per: 0.015, call: 'industry.ts（精炼炉周期；与炉温精调学同乘区）' },
     { skill: 'smelting-mastery', per: 0.01, call: 'industry.ts refineRate（相加计入产出倍率）' },
     { skill: 'part-forming-integration', per: 0.025, call: 'manufacturing.ts calcBuildDurationMs（基础零件）' },
