@@ -3212,12 +3212,60 @@ function growthSnapshot(): void {
 /* ═══════════ 主循环（目标制：通关 / 万亿现金 / 全收集；B3 打捞回收闭环） ═══════════ */
 const wall0 = Date.now()
 
+/**
+ * **主循环诊断（`--trace`，2026-09-28 加）**：船长令「**先把工具全部跟上进度**」——
+ * 实测 30 天现金恒定在 4.7~12.2 万区间来回（沙猫一小时就该挖 4.2 万 ⇒ 一天 ~100 万），
+ * 说明**主控大部分时间没在采矿**。本开关每拍把主控状态归类，每天打印一次占比，
+ * 用来回答"空转在哪个分支"（不是数值问题，是决策环漂移）。
+ */
+const TRACE = ARGS.includes('--trace')
+const TICK_STAT: Record<string, number> = {
+  采矿: 0,
+  远征: 0,
+  扫描: 0,
+  打捞: 0,
+  在途: 0,
+  在洞: 0,
+  空闲: 0,
+}
+let lastTraceDay = -1
+function tickStat(): void {
+  if (!TRACE) return
+  const k = state.wormhole.run
+    ? '在洞'
+    : state.mining.active
+      ? '采矿'
+      : state.expedition.active
+        ? '远征'
+        : state.scanning.active
+          ? '扫描'
+          : state.salvaging.active
+            ? '打捞'
+            : state.transit.active || state.standby.active
+              ? '在途'
+              : '空闲'
+  TICK_STAT[k] = (TICK_STAT[k] ?? 0) + 1
+  const d = Math.floor(state.gameMs / 86_400_000)
+  if (d !== lastTraceDay) {
+    lastTraceDay = d
+    const total = Object.values(TICK_STAT).reduce((a, b) => a + b, 0)
+    const parts = Object.entries(TICK_STAT)
+      .filter(([, v]) => v > 0)
+      .map(([n, v]) => `${n} ${((v / total) * 100).toFixed(0)}%`)
+    console.log(
+      `  [trace d${d}] 主控时间占比：${parts.join(' · ')} ｜ 现金 ${Math.round(state.wallet.isk).toLocaleString('zh-CN')} ｜ 首胜 ${state.completedBounties.length}`,
+    )
+    for (const n of Object.keys(TICK_STAT)) TICK_STAT[n] = 0
+  }
+}
+
 while (state.gameMs < MAX_MS && !allGoalsDone()) {
   auditLogs()
   if (state.gameMs - lastAuditMs > 300_000) {
     audit()
     lastAuditMs = state.gameMs
   }
+  tickStat()
   refillSkills()
   /**
    * **虫洞冲刺优先**（船长 2026-09-21 目标）：只要还没拿到六枚虫洞里程碑、且这趟没在收口，
