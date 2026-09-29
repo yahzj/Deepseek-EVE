@@ -1012,19 +1012,25 @@ html[data-locale='en'] body {
 }
 
 /**
- * **左侧栏金钱栏**（船长 2026-09-13：「将顶部的金钱栏移动到左侧的**出港上方**」）。
+ * **钱包 / 声望 · 顶栏容器**（**2026-09-29 船长令**：「将旧版界面的钱包也和新版一样移动到顶部玩家名字
+ * 右侧，然后在钱包的右侧，新增一个容器显示玩家的声望，移除其他地方显示的声望」）。
  *
- * 与**舰船状态窗同族**（同圆角 12 / 同族描边 / 同族渐变底 —— 约定 §六：新增内容优先复刻同级相似项），
- * 只把色调换成金色以续上它原本在顶栏的"钱"语汇；文字居中、等宽数字。
- * `min-height` 固定 ⇒ 数值从 `999` 涨到 `1.2 亿` 时高度不变（防界面跳动，§六）。
+ * 两个读数**同一族**（复刻同级相似项 · 约定 §六）：圆角 12 / 族描边 / 渐变底，
+ * 只把色语汇分开 —— 钱包延续**金色**（它原本在顶栏就是金色），声望用**青蓝**
+ * （与「协会」语汇一致，见 `--wui-x145` 那族中性描边）。
+ * `min-height` 固定 ⇒ 数值位数变化时**高度不变**（防界面跳动，§六）；
+ * 数字等宽（`tabular-nums`）⇒ 列宽稳定。
+ *
+ * ⚠ **这里取代的是左侧栏那条金钱栏**（2026-09-13 令「把金钱栏移到出港上方」——
+ * 该令已由 2026-09-29 新令撤回：钱包回顶栏、紧随玩家名）。旧的居中/撑满写法随之作废。
  */
-.app-wallet {
+.app-wallet,
+.app-standing {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: var(--wui-sp-6);
   min-height: 30px;
-  margin: 0 0 var(--wui-sp-6);
-  padding: var(--wui-sp-4) var(--wui-sp-8);
+  padding: var(--wui-sp-4) var(--wui-sp-10);
   border: 1px solid rgb(var(--wui-x145) / 0.38);
   border-radius: var(--wui-sp-12);
   background: linear-gradient(180deg, rgb(var(--wui-x254) / 0.3), rgb(var(--wui-x155) / 0.5));
@@ -1036,8 +1042,46 @@ html[data-locale='en'] body {
   text-overflow: ellipsis;
 }
 
-/* ---------- 采矿台：矿带选择 ---------- */
+/* 声望容器：青蓝色语汇（与钱包的金色区分开），标签用次级字号 */
+.app-standing {
+  color: rgb(var(--wui-accent));
+  border-color: rgb(var(--wui-accent) / 0.32);
+}
 
+.app-standing-key {
+  color: rgb(var(--wui-text-dim));
+  font-size: var(--wui-fs-s);
+  letter-spacing: 0;
+}
+
+/**
+ * **顶栏左块可压缩**（**2026-09-29 补** · 与钱包/声望上顶栏同批）：
+ * 加了两个读数之后，窄窗口（实测 900px 以下）里顶栏会横向溢出。
+ *
+ * 处置口径 = **让"名字类"先让位、读数不动**：
+ * - 游戏名与玩家名可以省略号截断（信息量最低、又最容易长）；
+ * - 钱包与声望**不许被压**（`flex-shrink: 0`）——它们的文本宽度是 JS 按容器实测挑的，
+ *   容器被压窄会让"挑中的档"与实际宽度对不上（`MoneyFit` 那套的前提是宽度稳定）。
+ * ⚠ 这不违反「一级页不滚」：**没有裁掉任何内容**，只是让长名字在小窗口里显示成省略号。
+ */
+.app-header-left {
+  min-width: 0;
+}
+
+.app-header-left .app-logo,
+.app-header-left .app-pilot {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-header-left .app-wallet,
+.app-header-left .app-standing {
+  flex-shrink: 0;
+}
+
+/* ---------- 采矿台：矿带选择 ---------- */
 .app-belt-list {
 
   display: flex;

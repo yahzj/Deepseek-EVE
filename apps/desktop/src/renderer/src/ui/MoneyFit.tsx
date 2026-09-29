@@ -35,7 +35,30 @@ const PROBE_STYLE: React.CSSProperties = {
   contain: 'layout style',
 }
 
-export function MoneyFit({ amount, className }: { amount: number; className?: string }) {
+/**
+ * **同一套自适应读数、换一个单位词**（**2026-09-29 船长令**：「在钱包的右侧，新增一个容器显示玩家的声望」）。
+ *
+ * 为什么给 `MoneyFit` 加这个口子而不另写一份：这份"逐候选实测宽度"的机制与坑（`clientWidth` 含内边距、
+ * 亚像素 ±1 容错、`ResizeObserver` 复量、字体加载后补量）全部与金额那份相同 —— 复制一份必然漂。
+ * 声望与金额的差别**只有单位词**：`moneyFitCandidates` 把它写死成「信用点 / ISK」，
+ * 所以这里传 `unit` 时**跳过单位档**（只用数字档），单位词由调用方用当前语言给。
+ *
+ * `exact`：`title` 里那句"全精度"文案（默认沿用钱包那句「钱包余额：…」；
+ * 声望这类非金额读数**必须显式换**，否则提示会说"信用点"）。
+ */
+export function MoneyFit({
+  amount,
+  className,
+  unit,
+  exact,
+}: {
+  amount: number
+  className?: string
+  /** 单位词（给 ⇒ **只用数字档**、单位由调用方渲染；不给 ⇒ 沿用金额那套「信用点」档） */
+  unit?: string
+  /** `title` 文案（给 ⇒ 用它；不给 ⇒ 钱包那句） */
+  exact?: string
+}) {
   const boxRef = useRef<HTMLSpanElement | null>(null)
   const probeRef = useRef<HTMLSpanElement | null>(null)
   const [text, setText] = useState(() => moneyExactText(amount))
@@ -51,10 +74,14 @@ export function MoneyFit({ amount, className }: { amount: number; className?: st
     const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0)
     const avail = box.clientWidth - padX
     if (avail <= 0) return
-    const cands = moneyFitCandidates(amount)
+    /**
+     * 候选来源：给 `unit` ⇒ 取数字档（剥掉原有的单位词，含"万/亿"缩写里的数量级词保留）
+     * ——`moneyFitCandidates` 的档位里单位词是尾缀，按长度排的次序不受影响。
+     */
+    const cands = unit === undefined ? moneyFitCandidates(amount) : moneyFitCandidates(amount).map((c) => c.replace(/(信用点|ISK)$/, '').trim())
     let chosen = cands[cands.length - 1]!
     for (const c of cands) {
-      probe.textContent = c
+      probe.textContent = unit === undefined ? c : `${c} ${unit}`
       // +1 容错：亚像素取整/字体回退会让 scrollWidth 偶尔少 1px
       if (probe.scrollWidth <= avail + 1) {
         chosen = c
@@ -81,8 +108,13 @@ export function MoneyFit({ amount, className }: { amount: number; className?: st
   }, [amount])
 
   return (
-    <span ref={boxRef} className={className} title={tr("ui.MoneyFit.001", { p1: moneyExactText(amount) })}>
+    <span
+      ref={boxRef}
+      className={className}
+      title={exact ?? tr("ui.MoneyFit.001", { p1: moneyExactText(amount) })}
+    >
       {text}
+      {unit !== undefined ? <span className="app-standing-key"> {unit}</span> : null}
       <span ref={probeRef} style={PROBE_STYLE} aria-hidden="true" />
     </span>
   )

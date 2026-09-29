@@ -258,7 +258,6 @@ export function ExpeditionPanel({
   onOpenWormhole?: () => void
 }) {
   const state = engine.state
-  const standing = standingOf(state, DSI_FACTION_ID)
   const view = expeditionStatus(state, engine.ctx)
   const scan = scanStatus(state)
   const tv = transitStatus(state, engine.ctx)
@@ -267,7 +266,12 @@ export function ExpeditionPanel({
     <Panel
       className="is-fill app-exp-panel"
       title={tr("ui.Expedition.187")}
-      right={<span className="app-standing">{tr("ui.Expedition.068")} {standing}</span>}
+      /**
+       * ⚠ **本面板标题行右侧原先挂着「声望 N」**（`app-standing` 那枚芯片）——
+       * **2026-09-29 船长令**：「在钱包的右侧，新增一个容器显示玩家的声望，**移除其他地方显示的声望**」
+       * ⇒ 顶栏那枚容器成为声望的**唯一常显点**，这里撤掉（面板标题只留名字）。
+       * 阈值类读数（"还差多少声望""需要声望 N"）是**门槛提示**、不是"显示声望"，照旧保留。
+       */
     >
       {/* T1：远征作业状态与停止入口已收敛到顶部活动窗口；**星系扫描不再占主控**（船长 2026-09-15）
           ⇒ 顶部没有它的"玩家活动"行了，这里补一条读数 + 「终止扫描」（扫描艇只有一艘，要换目标得先召回） */}

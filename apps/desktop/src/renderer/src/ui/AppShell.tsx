@@ -21,7 +21,7 @@
 import type { ReactNode } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ActivePromo, ActiveTuning, GameState } from '@whale/core'
-import { formatDurationShort } from '@whale/core'
+import { DSI_FACTION_ID, formatDurationShort, standingOf } from '@whale/core'
 import type { ToastFn } from '../pages/common'
 import { ActivityBar } from '../panels/ActivityBar'
 // 旧版活动栏：从「昨天那版」原样拆出的冻结件（船长令「旧版建议你从昨天的版本中 git 下来进行拆解」）
@@ -388,6 +388,26 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
                 注意「深空工业协会」是**游戏内势力**、不随游戏名改） */}
             <span className="app-logo">{tr("ui.App.056")}</span>
             <span className="app-pilot">{state.character.name}</span>
+            {/**
+             * **钱包 ＋ 声望**（**2026-09-29 船长令**：「将旧版界面的钱包也和新版一样移动到顶部玩家名字
+             * 右侧，然后在钱包的右侧，新增一个容器显示玩家的声望，移除其他地方显示的声望」）。
+             *
+             * - 钱包原先在左侧栏「出港上方」（2026-09-13 令）——该位置**随本令撤回**；
+             * - 声望值 = **累计获得的协会声望**（core 单点 `standingOf`，与"所有声望门槛改读累计声望"
+             *   那令同一本账），卡内小标注写明是哪本账，免得与声望商店里的**可支配**那本混淆；
+             * - 两者都走 `MoneyFit`（数值按容器宽度自适应、精确值恒挂 `title`）——与新版同一套实现。
+             */}
+            <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
+            <span className="app-standing">
+              <span className="app-standing-key">
+                {tr("ui.App.164")}·{tr("ui.App.165")}
+              </span>
+              <MoneyFit
+                amount={standingOf(state, DSI_FACTION_ID)}
+                unit={tr("ui.Expedition.068")}
+                exact={tr("ui.App.166", { p1: tr("ui.App.165"), p2: String(standingOf(state, DSI_FACTION_ID)) })}
+              />
+            </span>
           </div>
           <div className="app-header-right">
             {/* V15 调试模式入口（开发工具：DevTools 置 whale-idle:debug=1 后出现） */}
@@ -447,14 +467,10 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
             {/* 舰船状态小窗：2026-09-21 起同时是**窗口最小化后的还原按钮**（见 `windowRestore`） */}
             <ShipStatusWin engine={engine} restore={windowRestore} />
             {/**
-             * **金钱栏**（船长 2026-09-13：「将顶部的金钱栏移动到左侧的**出港上方**」＋
-             * 「更换金钱单位为**信用点**」）：位置 = 舰船状态窗之下、**第一个导航项（出港）之上**。
-             * ⚠ 显示口径（船长同日二次口径）：「**如果有条件，还是优先显示全额数字**…如果实在显示不下，
-             * 采用数量级缩写（**但是仍要尽可能保证数字够长**）」⇒ 值走 `ui/MoneyFit`：
-             * **逐候选实测宽度**，档序 = 全额（带单位 → 去掉单位）→ 缩写（带单位 → 去掉单位，长的在前），
-             * **精确值恒挂 `title`**。窄栏里优先保住的是**数字**，不是「信用点」三个字。
+             * ⚠ **钱包已移回顶栏**（**2026-09-29 船长令**：「将旧版界面的钱包也和新版一样移动到顶部玩家
+             * 名字右侧」）——原先这里那条金钱栏是 2026-09-13 令「移到左侧的出港上方」的落点，
+             * 该位置随本令撤回 ⇒ 现在顶栏（玩家名右侧）是**唯一**的钱包显示点。
              */}
-            <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
             {[...NAV_ITEMS, ...(readDebugEnabled() ? DEBUG_NAV_ITEMS : [])].map((item) => {
               // 「第一次」前置未达 ⇒ **该导航项不显示**（船长：未解锁页面与任务都隐藏）
               if (!unlocked(state, item.key)) return null

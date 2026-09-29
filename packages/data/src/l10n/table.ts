@@ -5157,5 +5157,15 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    */
   "ui.Yield.007": { zh: "净收益/h", en: "Net income/h" },
   "ui.Yield.008": { zh: "{p1} 信用点/h", en: "{p1} credits/h" },
-  "ui.Yield.009": { zh: "调试 · 本批耗时 {p1}", en: "Debug · {p1} per run" }
+  "ui.Yield.009": { zh: "调试 · 本批耗时 {p1}", en: "Debug · {p1} per run" },
+  /**
+   * **顶栏声望容器**（**2026-09-29 船长令**：「在钱包的右侧，新增一个容器显示玩家的声望」）。
+   *
+   * 值 = **累计获得的协会声望**（core 单点 `standingOf`）——与"所有声望门槛改读累计声望"
+   * （2026-09-26 船长令）同一本账；卡内小标注写明是哪本账，免得与商店里的**可支配**那本混淆。
+   */
+  "ui.App.164": { zh: "声望", en: "Reputation" },
+  "ui.App.165": { zh: "累计获得", en: "total earned" },
+  /** 声望容器的悬停全精度读数（与钱包那句 `ui.MoneyFit.001` 同款；**必换**，否则提示会写"信用点"） */
+  "ui.App.166": { zh: "{p1}：{p2}", en: "{p1}: {p2}" }
 }
