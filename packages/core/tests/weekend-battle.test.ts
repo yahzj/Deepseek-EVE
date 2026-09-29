@@ -19,6 +19,9 @@ import {
   weekendFlagshipSpecOf,
   weekendResolveBattle,
   weekendSettlePlanOf,
+  /** 2026-09-29 船长令（乙案）：夺回奖按投入比例缩水 —— 两个纯函数是用例的读数口 */
+  weekendReclaimAwardOf,
+  weekendAllClearAwardOf,
   /** 2026-09-25 船长令：稀有残骸「件 → 单位(m³)」换算（1 件 = 30 单位） */
   weekendRareWreckUnits,
 } from '../src/weekendBattle'
@@ -172,23 +175,30 @@ describe('周末入侵 · 结果结算（M1-b）', () => {
     expect(g2.progress, '外围清完 + 已过 48h ⇒ 核心铺底已开动').toBeGreaterThan(0)
   })
 
-  it('夺回奖励：越过 100% 那一次发 稀有残骸 ×8 ＋ 2M；**再打不重复发**；全清再 +5M', () => {
+  it('夺回奖励：越过 100% 那一次只认一次（判据 = 事实）；**金额按投入比例**在结算拍算（乙案）', () => {
     const { s, ev } = setup('galaxy-kor', ['galaxy-home'])
     const per = ev.peripheryIds[0]!
     const spec = weekendAssaultSpecOf(s, ctx, per)!
     weekendNoteContribution(ev, per, 0.95)
     const r1 = weekendResolveBattle(s, ctx, spec, 'win', 0)
-    expect(r1.reclaimed?.wreck, '×8 件 = 240 m³').toBe(weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK))
-    expect(r1.reclaimed?.isk, '还有核心没夺回 ⇒ 不发全清奖').toBe(WEEKEND_RECLAIM_ISK)
-    expect(r1.reclaimed?.allClear).toBe(false)
+    expect(r1.reclaimed, '夺回那一刻只记"这件事发生了"，不带金额').toEqual({ galaxyId: per, allClear: false })
     const r2 = weekendResolveBattle(s, ctx, spec, 'win', 0)
-    expect(r2.reclaimed, '已经满了 ⇒ 不再发').toBeUndefined()
-    // 再夺回核心 ⇒ 全清奖
+    expect(r2.reclaimed, '已经满了 ⇒ 不再记').toBeUndefined()
+    // 再夺回核心 ⇒ 全清
     weekendNoteContribution(ev, ev.coreId, 0.99)
     const coreSpec = weekendAssaultSpecOf(s, ctx, ev.coreId)!
     const r3 = weekendResolveBattle(s, ctx, coreSpec, 'win', 0)
     expect(r3.reclaimed?.allClear).toBe(true)
-    expect(r3.reclaimed?.isk).toBe(WEEKEND_RECLAIM_ISK + WEEKEND_ALL_CLEAR_ISK)
+    /**
+     * 🔴 **2026-09-29 船长令（乙案）**：金额 = 全额 × 玩家在该处的投入比例（此处玩家自己把两处都推到满
+     * —— 调试档每场 +50% ⇒ 台账被 `clamp01` 封顶到 1）⇒ 两处都是全额；全清按平均参与度 1 ⇒ 全额。
+     * 比例与"挂机拿满"的反例见 `reclaim-share-20260929.test.ts`。
+     */
+    expect(weekendReclaimAwardOf(ev, per)).toEqual({
+      wreck: weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK),
+      isk: WEEKEND_RECLAIM_ISK,
+    })
+    expect(weekendAllClearAwardOf(ev), '两处参与度都是 1 ⇒ 平均 1 ⇒ 全额').toBe(WEEKEND_ALL_CLEAR_ISK)
   })
 
   it('旗舰击毁：核心满 + 打赢 ⇒ 黑匣 ＋ 稀有残骸 ×3，且本场结束', () => {

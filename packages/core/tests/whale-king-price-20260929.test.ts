@@ -62,13 +62,21 @@ describe('鲸王级价目对齐（2026-09-29 船长裁决「甲」）', () => {
     }
   })
 
-  it('⑤ 只动价目：产能 / 工期 / 声望门槛 逐项未变', () => {
+  it('⑤ 只动价目：产能 / 声望门槛 逐项未变（工期见下条：已由「档位净收益带」口径反推）', () => {
     expect(shipOf('whale-king').cycleSeconds).toBe(8)
     expect(shipOf('whale-king').oreUnitsPerCycle).toBe(58)
-    expect(bpOf('sbp-whale-king').buildSeconds).toBe(17_520)
-    expect(bpOf('sbp-once-whale-king').buildSeconds).toBe(17_520)
     expect(goodOf('whale-king')?.standingReq, '成品行声望门槛 12').toBe(12)
     expect(goodOf('sbp-whale-king')?.standingReq).toBe(15)
     expect(goodOf('sbp-once-whale-king')?.standingReq).toBe(15)
+  })
+
+  it('⑥ 工期按「档位净收益带」反推（2026-09-29 船长令 · 与本次涨价同批收口）', () => {
+    // 净 = 行价 1 亿 − 料 44,996,400 ×0.855 = 61,528,078 ⇒ 落 T3 带（0.625M~1.25M/h）⇒ 49.2 时
+    const net = 100_000_000 - materialValue('sbp-whale-king') * 0.855
+    const perHour = net / (bpOf('sbp-whale-king').buildSeconds / 3600)
+    expect(perHour).toBeGreaterThanOrEqual(625_000 * 0.995)
+    expect(perHour).toBeLessThanOrEqual(1_250_000 * 1.005)
+    expect(bpOf('sbp-whale-king').buildSeconds).toBe(177_180)
+    expect(bpOf('sbp-once-whale-king').buildSeconds).toBe(177_180)
   })
 })
