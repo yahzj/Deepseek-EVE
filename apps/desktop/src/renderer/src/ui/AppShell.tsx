@@ -12,8 +12,10 @@
  *
  * ## 两套布局
  * · modern（新）：顶栏 +（**左列**：舰船窗 + 活动栏）+ 主区 → **底部横栏**导航 + 右侧日志浮层
- * · classic（旧，取自 main 分支原文）：顶栏（含存档按钮）+（**左侧竖栏**：舰船窗 + 钱包 + 导航项）
- *   +（活动栏横条 + 主区 + 日志坞），**原样冻结**
+ * · classic（旧，取自 main 分支原文）：顶栏（含存档按钮 ＋ **钱包 ＋ 声望**）+（**左侧竖栏**：
+ *   舰船窗 + 导航项）+（活动栏横条 + 主区 + 日志坞），**原样冻结**
+ *   —— ⚠ 唯一例外：**2026-09-29 船长令**把钱包从左侧栏移回顶栏、并在其右侧加了声望容器
+ *   （两套布局共用 `standingChip`）；左侧栏那条金钱栏已随令撤掉。
  *
  * ⚠ 旧版是**冻结的历史形态**；新版后续新增（副AI活动 / 计时中组 / AI 迷你卡动画…）只在 modern 出现
  * —— 这是船长已知并接受的差异。
@@ -138,6 +140,33 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
 
   return layoutKind === 'classic' ? renderClassic() : renderModern()
 
+  /**
+   * **顶栏「声望」容器**（**2026-09-29 船长令**：「在钱包的右侧，新增一个容器显示玩家的声望，
+   * 移除其他地方显示的声望」）。
+   *
+   * 两套布局**共用这一个函数**（抽出来的原因：上一轮只加进了 classic 分支，
+   * 船长随后报障「新版界面没有上一轮添加的顶部声望」——两处各写一份必然再次漂移）。
+   *
+   * - 数值 = **累计获得的协会声望**（core 单点 `standingOf`，与"所有声望门槛改读累计声望"同一本账），
+   *   卡内小标注写明是哪本账，免得与声望商店里的**可支配**那本混淆；
+   * - 走 `MoneyFit`（数值按容器宽度自适应、精确值恒挂 `title`）——与钱包同一套实现。
+   */
+  function standingChip(): JSX.Element {
+    const value = standingOf(state, DSI_FACTION_ID)
+    return (
+      <span className="app-standing">
+        <span className="app-standing-key">
+          {tr("ui.App.164")}·{tr("ui.App.165")}
+        </span>
+        <MoneyFit
+          amount={value}
+          unit={tr("ui.Expedition.068")}
+          exact={tr("ui.App.166", { p1: tr("ui.App.165"), p2: String(value) })}
+        />
+      </span>
+    )
+  }
+
   /* ─────────────────── 新版（modern）─────────────────── */
   function renderModern(): JSX.Element {
     return (
@@ -152,6 +181,8 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
             {/* **钱包**（2026-09-25 船长令：「钱包显示移动到顶部玩家名字的右侧」）
                 —— 原在左侧栏「出港上方」（2026-09-13 令），本轮随外壳重排移到顶栏。 */}
             <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
+            {/* **声望**（**2026-09-29 船长令**）：放在钱包右侧；与旧版同一枚容器（见 `standingChip`） */}
+            {standingChip()}
             {/*
              * **限时活动 + 限时加成**（2026-09-25 船长令：「限时活动和限时加成，放到顶部钱包的右侧」）
              * —— 原来在活动栏的标题栏里；标题栏移除后归到顶栏、紧跟钱包。
@@ -393,21 +424,10 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
              * 右侧，然后在钱包的右侧，新增一个容器显示玩家的声望，移除其他地方显示的声望」）。
              *
              * - 钱包原先在左侧栏「出港上方」（2026-09-13 令）——该位置**随本令撤回**；
-             * - 声望值 = **累计获得的协会声望**（core 单点 `standingOf`，与"所有声望门槛改读累计声望"
-             *   那令同一本账），卡内小标注写明是哪本账，免得与声望商店里的**可支配**那本混淆；
-             * - 两者都走 `MoneyFit`（数值按容器宽度自适应、精确值恒挂 `title`）——与新版同一套实现。
+             * - 声望容器与新版**共用 `standingChip`**（口径见该函数头注）。
              */}
             <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
-            <span className="app-standing">
-              <span className="app-standing-key">
-                {tr("ui.App.164")}·{tr("ui.App.165")}
-              </span>
-              <MoneyFit
-                amount={standingOf(state, DSI_FACTION_ID)}
-                unit={tr("ui.Expedition.068")}
-                exact={tr("ui.App.166", { p1: tr("ui.App.165"), p2: String(standingOf(state, DSI_FACTION_ID)) })}
-              />
-            </span>
+            {standingChip()}
           </div>
           <div className="app-header-right">
             {/* V15 调试模式入口（开发工具：DevTools 置 whale-idle:debug=1 后出现） */}
