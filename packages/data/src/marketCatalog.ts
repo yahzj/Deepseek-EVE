@@ -52,7 +52,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   买入亦被拦；**收购照常**（带回的母矿随时能卖给 NPC）。
   //   数值（2026-09-14 半量后）：虚空晶 **0.25** + 同位聚晶 1.0 + 星髓晶 0.25 ⇒ 产出价值 **566.25**
   //   （改前 0.5 ⇒ 1,016.25）· basePrice 1,300 / demandMultiplier 0.6 ⇒ 收购 ≈780（价格按船长「价格不动」未调）。】
-  { key: 'ore-voidmother', kind: 'item', refId: 'ore-voidmother', rarity: 'common', basePrice: 18, demandMultiplier: 0.6, playerBuyable: false }, // 只收不卖（2026-09-14 船长）；2026-09-28 按体积平衡入 R5：915 → 18（体积保持 1 m³/单位，洞内物流不动）
+  { key: 'ore-voidmother', kind: 'item', refId: 'ore-voidmother', rarity: 'common', basePrice: 1_300, demandMultiplier: 0.6, playerBuyable: false }, // 只收不卖（2026-09-14 船长）；2026-09-28 船长令「把虚空母矿排除在体积平衡」⇒ 回到原价 1,300（收购 ≈780）
   // ── **遗迹安全货柜**（F4 · 2026-09-13；2026-09-14 船长改判：给像样的价、只收不卖）──
   // 【它是"带回后拆解"的中间件：**不带货进洞、只从洞内带出** ⇒ 市场**只收不卖**
   //   （`playerBuyable: false`，市场不出售现货 —— 否则花钱就能买箱子，洞内打捞这条渠道被架穿）。

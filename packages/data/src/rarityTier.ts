@@ -345,7 +345,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'ore-sunshard': 3,
   'ore-glowstone': 3,
   'ore-nebulite': 5,
-  'ore-voidmother': 5, // 虚空母矿（2026-09-12 虫洞线新增原矿；2026-09-28 随体积平衡入 R5，与星幽矿同档）
+  'ore-voidmother': 1, // 虚空母矿（2026-09-12 虫洞线新增原矿；2026-09-28 船长令排除在体积平衡之外 ⇒ 档位回到 1）
   // ⚠ `ore-voidshard`（玄晶 R4）登记在本表更下方一处，**不在此重复**（对象字面量重名会被 tsc 拒编）
   // 遗迹安全货柜（F4 · 2026-09-13）：罕见的中间件（带回后拆解），数字档同常驻层（1）；✅ 2026-09-14 已上线
   'box-relic-a': 1,

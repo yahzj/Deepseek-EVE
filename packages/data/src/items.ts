@@ -163,16 +163,16 @@ export const ORES: readonly ItemDef[] = [
     id: 'ore-voidmother',
     name: '虚空母矿',
     kind: 'ore',
-    unitM3: 1, // R5 特殊：**洞内唯一原矿，体积保持 1 m³/单位**（虫洞背包按格算，改体积会动洞内物流手感）
-    baseSellPriceIsk: 18,
+    unitM3: 1, // **排除在体积平衡之外**（2026-09-28 船长令：「把虚空母矿排除在体积平衡」）
+    baseSellPriceIsk: 915,
     description: '深空裂隙里结出的黑色母岩，炼得出虚空晶。',
     refine: [
-      { mineralId: 'min-voidcrystal', perOre: 0.0133 }, // 2026-09-28 按 +67% 增值率整体缩放（原 0.25）
-      { mineralId: 'min-isotope', perOre: 0.0531 },
-      { mineralId: 'min-starcore', perOre: 0.0133 },
+      { mineralId: 'min-voidcrystal', perOre: 0.25 }, // 2026-09-14 船长：产出量下调到一半（原 0.5）
+      { mineralId: 'min-isotope', perOre: 1.0 },
+      { mineralId: 'min-starcore', perOre: 0.25 },
     ],
     refineBatchUnits: 100,
-    refineCycleMs: 27_000,
+    refineCycleMs: 60_000, // 排除在体积平衡之外 ⇒ 周期也回到原值（调平那刀不落在它身上）
   },
 ]
 
