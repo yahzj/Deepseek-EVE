@@ -187,19 +187,17 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const wrecks0 = heldOf(s, 'wreck-rare-h-hi')
     const r = weekendApplyBattleOutcome(s, ctx, 'ink-harass', true, now, null)
     expect(r?.note, '这一场越过 100% ⇒ 夺回').toContain('夺回')
-    /** 船长 2026-09-25：「夺回星区的奖励不要即时发放，放入结束后结算发放」⇒ 此刻**一分不发**，只记台账 */
+    /**
+     * 船长 2026-09-25：「夺回星区的奖励不要即时发放，放入结束后结算发放」⇒ 此刻**一分不发**。
+     * 🔴 **2026-09-29 船长令（乙案）后再进一步**：金额 = 全额 × 玩家在该处的**最终**投入比例，
+     * 夺回这一刻还算不出 ⇒ **连"待到账/台账"也不在战斗拍记**，一律归结算那一拍。
+     */
     expect(r?.isk, '即时不发 ISK').toBe(0)
     expect(r?.wreck, '即时不发残骸').toBe(0)
     expect(s.wallet.isk - isk0, '钱包不动').toBe(0)
     expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '货舱也不动').toBe(0)
-    expect(s.weekendEvent!.reclaimPending, '待到账那一格记着').toEqual({
-      isk: WEEKEND_RECLAIM_ISK,
-      wreck: weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK),
-    })
-    expect(s.weekendEvent!.rewardLedger?.byGalaxy[gid], '台账按星系记着（面板那一列读它）').toEqual({
-      isk: WEEKEND_RECLAIM_ISK,
-      wreck: weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK),
-    })
+    expect(s.weekendEvent!.reclaimPaid, '战斗拍不记夺回奖（记账归结算拍）').toBeUndefined()
+    expect(s.weekendEvent!.reclaimPending, '待到账那一格此刻还是空的').toBeUndefined()
     /**
      * 结束 ⇒ 结算那一刻连贡献奖与**进度收入**一起发。
      * ⚠ **2026-09-28 船长令**起占比 = `0.6×BOSS输出 ＋ 0.4×清缴`：本场没跟母舰交手 ⇒ BOSS 那半为 0
@@ -214,11 +212,23 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(settle!.wreck, '结算 = 贡献奖 ×4 件 ＋ 夺回 ×8 件 = 360 m³').toBe(weekendRareWreckUnits(4 + WEEKEND_RECLAIM_WRECK))
     expect(s.wallet.isk - isk0, 'ISK 这时才进钱包').toBe(2_000_000 + WEEKEND_RECLAIM_ISK + income)
     expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '残骸这时才到手（按 m³）').toBe(weekendRareWreckUnits(4 + WEEKEND_RECLAIM_WRECK))
-    /** 日志（id 制）：夺回是里程碑 ⇒ 留一条，且措辞是"待活动结束时统一发放"（不再说"已入账"） */
+    /** 结算拍才落账（乙案后唯一的记账点）：标记 ＋ 台账那一列（面板/通讯读它） */
+    expect(s.weekendEvent!.reclaimPaid, '结算拍记账并打标记').toEqual([gid])
+    expect(s.weekendEvent!.rewardLedger?.byGalaxy[gid], '台账按星系记着（本处投入 100% ⇒ 全额）').toEqual({
+      isk: WEEKEND_RECLAIM_ISK,
+      wreck: weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK),
+    })
+    /**
+     * 日志（id 制）：夺回是里程碑 ⇒ 留一条，且措辞是"活动结束时统一发放"（不再说"已入账"）。
+     * ⚠ **2026-09-29 船长令（乙案）后金额不再随日志**（= 全额 × 玩家在该处的**最终**投入比例，
+     * 夺回那一刻算不出）⇒ 断言改看"按比例结算"这句规格，`p2/p3` 两个参数已删除。
+     */
     const reclaimLog = [...s.logs].reverse().find((l) => l.textId === 'core.weekend.001')
     expect(reclaimLog?.text.includes('夺回'), '夺回要有日志').toBe(true)
-    expect(reclaimLog?.text.includes('待活动结束时统一发放'), '措辞 = 待发放').toBe(true)
-    expect(reclaimLog?.textParams?.p2, '日志里的残骸数与台账一致（都按 m³）').toBe(weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK))
+    expect(reclaimLog?.text.includes('活动结束时统一发放'), '措辞 = 待发放').toBe(true)
+    expect(reclaimLog?.text.includes('按玩家在该星系的投入比例结算'), '措辞 = 按比例（乙案）').toBe(true)
+    expect(reclaimLog?.textParams?.p1, '只带星系名这一个参数').toBe(ctx.galaxies.get(gid)?.name ?? gid)
+    expect(reclaimLog?.textParams?.p2, '金额参数已删').toBeUndefined()
   })
 
   it('⑤ 活动结束 ⇒ 贡献奖入账（四档）＋ 进度收入 · 只发一次 · 占比按结束时刻算', () => {
@@ -459,13 +469,22 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     /**
      * ⚠ **2026-09-27 修**：夺回奖改"逐拍检测（已夺回 ∧ 未记账）"后，这一处的夺回奖也会正常并入结算
      * —— 本场景玩家推了 90% ＋ 54h 铺底 ⇒ **已夺回**；旧口径下它挂在战斗结算那一拍，这里恒为 0。
+     *
+     * 🔴 **2026-09-29 船长令（乙案）**：金额再按"玩家在该处的投入比例"缩水 —— 本处投入 0.9
+     * ⇒ 残骸 `8 × 0.9 = 7.2` 件**四舍五入 = 7 件 = 210 m³**、ISK `200 万 × 0.9 = 180 万`
+     * （核心没夺回 ⇒ 不发全清；见 `weekendReclaimAwardOf`）。
      */
-    expect(r1!.isk, '结算 = 贡献奖 2M（C 档）＋ 夺回 2M ＋ 进度收入').toBe(
-      2_000_000 + WEEKEND_RECLAIM_ISK + 90 * WEEKEND_PROGRESS_ISK_PER_PCT,
+    expect(r1!.isk, '结算 = 贡献奖 2M（C 档）＋ 夺回 180 万（0.9 比例）＋ 进度收入').toBe(
+      2_000_000 + Math.round(WEEKEND_RECLAIM_ISK * 0.9) + 90 * WEEKEND_PROGRESS_ISK_PER_PCT,
     )
-    expect(r1!.wreck, 'C 档 ×4 件 ＋ 夺回 ×8 件 = 360 m³').toBe(
-      weekendRareWreckUnits(4 + WEEKEND_RECLAIM_WRECK),
+    expect(r1!.wreck, 'C 档 ×4 件 ＋ 夺回 7 件（= 210 m³）= 330 m³').toBe(
+      weekendRareWreckUnits(4 + Math.round(WEEKEND_RECLAIM_WRECK * 0.9)),
     )
+    const row1 = onTime.weekendLastResult!.galaxies.find((g) => g.galaxyId === gid)
+    expect(row1?.wreck, '面板那一列读台账 ⇒ 也是缩水后的 210 m³').toBe(
+      weekendRareWreckUnits(Math.round(WEEKEND_RECLAIM_WRECK * 0.9)),
+    )
+    expect(row1?.isk, '面板那一列 ISK 同样缩水').toBe(Math.round(WEEKEND_RECLAIM_ISK * 0.9))
     /** 离线五天后再上线补结（引擎每拍补发那条路径的形状）：读数必须与结束时**逐值一致** */
     const late = build()
     const r2 = weekendSettleAndGrant(late, ctx, now + 5 * 24 * 3_600_000)
@@ -1174,7 +1193,11 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
    * 根因：夺回奖原先只在 `weekendApplyBattleOutcome` 里记（`if (r.reclaimed !== undefined)`），
    * 而夺回实际是**按进度判**的、多为逐拍推满 ⇒ 那段代码从不执行。
    *
-   * 本用例刻意**一次战斗都不打**，只把时间轴推到"外围铺底自然满"。
+   * 本用例刻意**一次战斗都不打**（不走任何战斗结算），只把时间轴推到"外围铺底自然满"，
+   * 再直接用 `weekendNoteContribution` 记上玩家的投入 ⇒ 记账照旧发生、并入结算。
+   *
+   * 🔴 **2026-09-29 船长令（乙案）补**：金额按该处投入比例缩水 —— 本用例给它 90% ⇒ 7 件（210 m³）
+   * ＋ 180 万。**完全 0 贡献 ⇒ 记 0** 那条反例见 `reclaim-share-20260929.test.ts`。
    */
   it('⑬ 夺回奖不靠战斗：只把进度推到满（不走任何战斗结算）⇒ 照样记账并入结算 · 面板那格不再是「—」', () => {
     const now = Date.now()
@@ -1182,20 +1205,24 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     s.debugQuick = false
     /** T0 = 54 小时前 ⇒ 外围铺底自然满（一次战斗都不打；核心铺底只到 25% ⇒ 核心未夺回） */
     s.weekendEvent!.startedAtWallMs = now - 54 * 3_600_000
+    /** 玩家在别处打出来的这一处投入（模拟"逐拍推进"留下的台账；值 = 0.9） */
+    weekendNoteContribution(s.weekendEvent!, GID, 0.9)
     const isk0 = s.wallet.isk
     const wrecks0 = heldOf(s, 'wreck-rare-h-hi')
     endWeekendEvent(s, now)
     const r = weekendSettleAndGrant(s, ctx, now)
     expect(r, '结束结算').not.toBeNull()
-    expect(s.weekendEvent!.reclaimPaid, '该处已被"逐拍检测"记上夺回奖').toEqual([GID])
-    expect(r!.wreck, '夺回 ×8 件 = 240 m³ 并入结算').toBeGreaterThanOrEqual(weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK))
+    expect(s.weekendEvent!.reclaimPaid, '该处已被结算拍记上夺回奖').toEqual([GID])
+    const wantWreck = weekendRareWreckUnits(Math.round(WEEKEND_RECLAIM_WRECK * 0.9))
+    const wantIsk = Math.round(WEEKEND_RECLAIM_ISK * 0.9)
+    expect(r!.wreck, '夺回 ×7 件 = 210 m³ 并入结算').toBeGreaterThanOrEqual(wantWreck)
     expect(heldOf(s, 'wreck-rare-h-hi') - wrecks0, '残骸真到手').toBe(r!.wreck)
     expect(s.wallet.isk - isk0, 'ISK 真进钱包').toBe(r!.isk)
-    /** 结算面板那一列：该处要显示"残骸 ×8 · 200 万"，不再是「—」 */
+    /** 结算面板那一列：该处要显示"残骸 210 m³ · 180 万"，不再是「—」 */
     const row = s.weekendLastResult!.galaxies.find((g) => g.galaxyId === GID)
     expect(row?.reclaimed, '该处已夺回').toBe(true)
-    expect(row?.wreck, '该处奖励不再为 0 ⇒ 面板那格显示件数').toBe(weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK))
-    expect(row?.isk, '该处奖励 ISK').toBe(WEEKEND_RECLAIM_ISK)
+    expect(row?.wreck, '面板那格 = 缩水后的实发（0.9 比例 ⇒ 7 件）').toBe(wantWreck)
+    expect(row?.isk, '面板那格 ISK = 缩水后的实发').toBe(wantIsk)
   })
 
   /**
@@ -1210,6 +1237,8 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const s = invaded(GID)
     s.debugQuick = false
     s.weekendEvent!.startedAtWallMs = now - 54 * 3_600_000
+    /** 玩家在这一处的投入 = 100%（**2026-09-29 乙案**后金额按它缩水；取满额便于断言"补发那一份"） */
+    weekendNoteContribution(s.weekendEvent!, GID, 1)
     endWeekendEvent(s, now)
     weekendSettleAndGrant(s, ctx, now)
     /** 模拟报障那一场的档：夺回奖那本账**整个是空的**（标记与台账都被抹掉） */
@@ -1245,6 +1274,8 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const s = invaded(GID)
     s.debugQuick = false
     s.weekendEvent!.startedAtWallMs = now - 54 * 3_600_000
+    /** 满额参与（乙案下金额 = 全额 × 投入比例；取 1 便于两本账的断言与改前逐值可比） */
+    weekendNoteContribution(s.weekendEvent!, GID, 1)
     weekendSyncReclaimRewards(s, s.weekendEvent!, now)
     expect(s.weekendEvent!.reclaimPaid, '该处已记过奖').toEqual([GID])
     const pending0 = { ...(s.weekendEvent!.reclaimPending ?? { isk: 0, wreck: 0 }) }

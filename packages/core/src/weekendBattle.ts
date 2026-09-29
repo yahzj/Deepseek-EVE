@@ -108,6 +108,50 @@ export const WEEKEND_FLAGSHIP_WRECK = 3
 export function weekendRareWreckUnits(pieces: number): number {
   return Math.max(0, Math.round(pieces)) * RARE_WRECK_VOLUME_M3
 }
+
+/**
+ * **夺回奖按"玩家在该处的投入比例"缩水**（**2026-09-29 船长令 · 乙案**）。
+ *
+ * 病根（船长报障原话：「**玩家在入侵中完全0贡献，但是却有每个星系240残骸+200万**」）：
+ * 夺回奖原先**只看"进度 ≥ 1"**，而进度 = `NPC 铺底(时间函数) ＋ 玩家投入` —— 外围 T0+48h、
+ * 核心 T0+72h 之后**时间自己就把条推满** ⇒ 一次都不打的玩家照样每处拿 240 m³ ＋ 200 万
+ * （同一批的贡献四档奖与进度收入本来就有 0 贡献保护，只有这条漏了）。实测：4 处占领区、
+ * 一次不打 ⇒ 1,300 万 ＋ 960 m³。
+ *
+ * 新口径（船长三答）：**每处 = 全额 × 玩家在该处的投入比例**（比例 = `contributed[星系]`，
+ * 0~1，NPC 铺底那一份不算）；**全清追加 = 全额 × 平均参与度**（见 `weekendAllClearAwardOf`）。
+ * - **残骸按"件"四舍五入**（1 件 = 30 m³ ⇒ 记的永远是 30 的整数倍，不会往仓库塞 2 m³ 碎渣）；
+ * - **ISK 四舍五入到 1 元**；
+ * - 0 贡献 ⇒ **两笔都记 0**（挂机不再产生任何收入）。
+ *
+ * ⚠ **算的是"最终"投入比例**：调用点只有一个 —— 结算那一拍（`weekendSettleAndGrant` 的幂等早退
+ * **之前**，传的是 `ev.endedAtWallMs`）。**不许**改回"夺回那一刻按当时比例记"：那样同一处
+ * "先被 NPC 铺满、玩家事后才去清缴"会被记成 0，且结果取决于他当时恰好在别处打过没打过一场
+ * （同一行为算出不同奖励）；挂到结算拍后与 `contributed` 台账（随档）同源、与出手顺序无关、
+ * 与进度收入（同样在结算拍按台账算）同一把尺。
+ */
+export function weekendReclaimAwardOf(ev: WeekendEventState, galaxyId: string): { wreck: number; isk: number } {
+  const put = ev.contributed[galaxyId] ?? 0
+  const ratio = Number.isFinite(put) ? Math.min(1, Math.max(0, put)) : 0
+  return {
+    wreck: weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK * ratio),
+    isk: Math.round(WEEKEND_RECLAIM_ISK * ratio),
+  }
+}
+
+/**
+ * **全清追加（5,000,000 ISK）按"平均参与度"缩水**（**2026-09-29 船长令 · 甲案**）：
+ * `全额 × (玩家总投入 ÷ 占领区数)`，封顶 1 ⇒ 处处打满 = 全额，一处没碰过就摊薄，完全挂机 = 0。
+ * 与 `weekendReclaimAwardOf` 同拍、同一把尺（都读 `contributed` 台账）。
+ */
+export function weekendAllClearAwardOf(ev: WeekendEventState): number {
+  const ids = weekendOccupiedIds(ev)
+  if (ids.length === 0) return 0
+  const total = weekendPlayerContribution(ev)
+  if (!Number.isFinite(total) || total <= 0) return 0
+  return Math.round(WEEKEND_ALL_CLEAR_ISK * Math.min(1, total / ids.length))
+}
+
 export const WEEKEND_FLAGSHIP_REWARD_MUL = 3
 /** 主动出击的赏金倍率（外围） */
 export const WEEKEND_ASSAULT_REWARD_MUL = 1.4
@@ -206,8 +250,13 @@ export interface WeekendResolveResult {
   progressGain: number
   /** 战果说明（供日志；中文原串，界面按 id 映射另接） */
   note: string
-  /** 这次是否**夺回了某处**（含奖励） */
-  reclaimed?: { galaxyId: string; wreck: number; isk: number; allClear: boolean }
+  /**
+   * 这次是否**夺回了某处**（只记"这件事发生了" —— **不带金额**）。
+   *
+   * ⚠ **2026-09-29 船长令（乙案）后金额要按"最终投入比例"算**（`weekendReclaimAwardOf`），
+   * 夺回那一刻算不出最终值 ⇒ 金额一律归**结算拍**（`weekendSettleAndGrant`）。
+   */
+  reclaimed?: { galaxyId: string; allClear: boolean }
   /** 击毁旗舰 ⇒ 黑匣（**按爆率表掷出来的结果**，可能不爆）＋ 稀有残骸（必给） */
   flagshipKilled?: { blackBox: boolean; wreck: number }
 }
@@ -285,16 +334,11 @@ export function weekendResolveBattle(
     }
   }
 
-  // 夺回：这一次越过 100% ⇒ 发一次奖励（用"打之前没满、打之后满"判据 ⇒ 天然幂等）
+  // 夺回：这一次越过 100% ⇒ 只记下"这处刚夺回"这件事（**金额不在这里算**：按最终投入比例，见 `weekendReclaimAwardOf`）
   if (!wasReclaimed && weekendProgressAt(state, ev, spec.galaxyId, nowWallMs) >= 1) {
     const allClear = weekendOccupiedIds(ev).every((id) => weekendProgressAt(state, ev, id, nowWallMs) >= 1)
-    res.reclaimed = {
-      galaxyId: spec.galaxyId,
-      wreck: weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK),
-      isk: WEEKEND_RECLAIM_ISK + (allClear ? WEEKEND_ALL_CLEAR_ISK : 0),
-      allClear,
-    }
-    res.note = allClear ? '全部占领区夺回：额外奖励入账' : '该星系夺回'
+    res.reclaimed = { galaxyId: spec.galaxyId, allClear }
+    res.note = allClear ? '全部占领区夺回：全清追加待结算' : '该星系夺回：奖励待结算'
   } else if (res.note === '') {
     res.note = outcome === 'win' ? '推进进度' : '击退遇袭'
   }
@@ -457,6 +501,15 @@ function noteReclaimPending(ev: WeekendEventState, add: { isk?: number; wreck?: 
  *   不需要一次性补丁脚本、不碰存档**）；
  * - 全清那 5M 用 `reclaimPaid.length === 总处数` 判 ⇒ 首达那一刻记一次，天然不重复；
  * - 战斗结算路径也调它（见 `weekendApplyBattleOutcome`）⇒ 全仓**只有一份**夺回奖口径。
+ *
+ * 🔴 **2026-09-29 船长令（乙案）改口径：金额按"玩家在该处的投入比例"缩水** —— 见
+ * `weekendReclaimAwardOf` / `weekendAllClearAwardOf`。三条随之而来的变化：
+ * 1. **调用点只剩一个** = 结算那一拍（`weekendSettleAndGrant` 的幂等早退**之前**，传 `ev.endedAtWallMs`）
+ *    —— 战斗那一拍**不再调它**（那时算不出"最终投入比例"，见 `weekendReclaimAwardOf` 的 ⚠）；
+ * 2. **比例的时间基准 = 结算时刻**：传进来的 `nowWallMs` 只用来判"哪几处已夺回"（进度 ≥ 1），
+ *    而比例一律读 `contributed` 台账（随档、封顶 1）⇒ 与出手顺序无关；
+ * 3. **0 贡献照样"记账"但数额是 0**：标记照打（幂等靠它），台账/待到账两笔都记 0
+ *    ⇒ 面板那处显示 0，而不是显示"应得 240 m³"。
  */
 export function weekendSyncReclaimRewards(
   state: GameState,
@@ -469,15 +522,17 @@ export function weekendSyncReclaimRewards(
   const fresh = reclaimed.filter((id) => !paid.includes(id))
   if (fresh.length === 0) return { galaxies: [], allClear: false }
   for (const id of fresh) {
-    noteReward(ev, id, { isk: WEEKEND_RECLAIM_ISK, wreck: weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK) })
-    noteReclaimPending(ev, { isk: WEEKEND_RECLAIM_ISK, wreck: weekendRareWreckUnits(WEEKEND_RECLAIM_WRECK) })
+    const award = weekendReclaimAwardOf(ev, id)
+    noteReward(ev, id, award)
+    noteReclaimPending(ev, award)
     paid.push(id)
   }
   /** 全清追加（**记进全局**，不带星系 ⇒ 面板逐星系那一列不会被它撑歪）：首达"全处夺回"时记一次 */
   const allClear = paid.length >= all.length && all.length > 0
   if (allClear) {
-    noteReward(ev, undefined, { isk: WEEKEND_ALL_CLEAR_ISK })
-    noteReclaimPending(ev, { isk: WEEKEND_ALL_CLEAR_ISK })
+    const bonus = weekendAllClearAwardOf(ev)
+    noteReward(ev, undefined, { isk: bonus })
+    noteReclaimPending(ev, { isk: bonus })
   }
   return { galaxies: fresh, allClear }
 }
@@ -600,6 +655,10 @@ export function weekendSettleAndGrant(
    * **先做一次夺回奖同步**（2026-09-27 修）：本函数**引擎每拍都会调**（幂等靠 `prizePaidAtWallMs`）
    * ⇒ 把同步放在 early-return **之前**，「已夺回却漏记」的场次（含已结算过的老档，如船长报障的第 1 场）
    * 会在下一次调用时被补记，再由下面的迟到补发真正入账。
+   *
+   * 🔴 **2026-09-29 船长令（乙案）后，这里成了全仓唯一的夺回奖记账点**：金额 = 全额 × 玩家在**该处**的
+   * **最终**投入比例（`weekendReclaimAwardOf`），而"最终"只有结算拍才知道 ⇒ 战斗那一拍不再记账。
+   * 传 `ev.endedAtWallMs` 保证比例取的是**结束时刻**的台账（与贡献占比/进度收入同一把尺）。
    */
   weekendSyncReclaimRewards(state, ev, ev.endedAtWallMs)
   if (ev.prizePaidAtWallMs !== undefined) {
@@ -1023,12 +1082,11 @@ export function weekendApplyBattleOutcome(
   const evNow = state.weekendEvent
   if (evNow !== undefined) {
     /**
-     * **夺回奖**：改走**唯一判据**（2026-09-27 修）——不再按"这一场战斗有没有夺回"判，
-     * 而是按「已夺回 ∧ 未记账」逐拍同步（`weekendSyncReclaimRewards`）。
-     * 这里保留一次调用只是为了"打完这一拍立刻记上"，判据与 tick 那侧完全同一份；
-     * 原先按 `r.reclaimed` 记的那两行已删除（它对"进度推满"型夺回永远不触发，是本次报障的根因）。
+     * **夺回奖不在这里记**（**2026-09-29 船长令 · 乙案**）：金额 = 全额 × 玩家在**该处**的最终投入比例，
+     * 而"最终"要到结算才知道 ⇒ 记账收口在**结算那一拍**（`weekendSettleAndGrant` 的幂等早退之前）。
+     * ⚠ 这里原先那次 `weekendSyncReclaimRewards` 调用已删除：它会在"打完这一拍"按**当时**比例记账，
+     * 之后玩家再为该处出力也补不回来（同一行为算出不同奖励），且与结算拍的口径会打架。
      */
-    weekendSyncReclaimRewards(state, evNow, nowWallMs)
     if (r.flagshipKilled !== undefined) {
       /**
        * 台账记的是**实际入账**的那一份（`granted`），不是"应该发的那一份"（`r.flagshipKilled`）——
@@ -1041,22 +1099,26 @@ export function weekendApplyBattleOutcome(
     }
   }
   if (r.reclaimed !== undefined) {
-    const allClearIsk = (WEEKEND_RECLAIM_ISK + (r.reclaimed.allClear ? WEEKEND_ALL_CLEAR_ISK : 0)).toLocaleString('zh-CN')
+    /**
+     * **夺回那两条日志不再报金额**（**2026-09-29 船长令 · 乙案**）：金额 = 全额 × 玩家在该处的
+     * **最终**投入比例，夺回这一刻算不出（他后面还能继续为这处出力）⇒ 文案只写规格，数额到
+     * **结算面板 / 结算通讯**里逐处列明（那两处读的是实发台账）。⚠ 旧的 `p2/p3` 参数已删除。
+     */
     if (r.reclaimed.allClear) {
       addLog(
         state,
         'trade',
-        `✦ 全部占领区夺回：「${gname}」是最后一处 —— 夺回奖励与全清额外奖励共 稀有残骸 ×${r.reclaimed.wreck} ＋ ${allClearIsk} 信用点，待活动结束时统一发放。`,
+        `✦ 全部占领区夺回：「${gname}」是最后一处 —— 夺回奖励与全清额外奖励按玩家的投入比例结算，活动结束时统一发放。`,
         'core.weekend.002',
-        { p1: gname, p2: r.reclaimed.wreck, p3: allClearIsk },
+        { p1: gname },
       )
     } else {
       addLog(
         state,
         'trade',
-        `✦ 夺回「${gname}」：夺回奖励 稀有残骸 ×${r.reclaimed.wreck} ＋ ${WEEKEND_RECLAIM_ISK.toLocaleString('zh-CN')} 信用点，待活动结束时统一发放。`,
+        `✦ 夺回「${gname}」：夺回奖励按玩家在该星系的投入比例结算，活动结束时统一发放。`,
         'core.weekend.001',
-        { p1: gname, p2: r.reclaimed.wreck, p3: WEEKEND_RECLAIM_ISK.toLocaleString('zh-CN') },
+        { p1: gname },
       )
     }
   }

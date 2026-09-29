@@ -338,8 +338,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // ⚠ 战报尾巴那一段（`combat.dcUsageText`）与「船体维修装置」那条同式：报告正文是**拼接串**，
   //   不走 id 渲染 ⇒ 这里**不再留**废弃 id（原来加过 `core.combat.004`，未接线，已删）。
   // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
-  "core.weekend.001": { zh: "✦ 夺回「{p1}」：夺回奖励 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ Reclaimed “{p1}”: the reclaim reward of rare wrecks ×{p2} + {p3} credits is paid out when the invasion ends." },
-  "core.weekend.002": { zh: "✦ 全部占领区夺回：「{p1}」是最后一处 —— 夺回奖励与全清额外奖励共 稀有残骸 ×{p2} ＋ {p3} 信用点，待活动结束时统一发放。", en: "✦ All occupied systems reclaimed: “{p1}” was the last one — the reclaim reward and the all-clear bonus (rare wrecks ×{p2} + {p3} credits) are paid out when the invasion ends." },
+  // ⟪文案调整 2026-09-29⟫ 船长令「夺回奖按投入比例缩水」（乙案 · 全清乘平均参与度）：夺回那一刻算不出
+  //   最终金额（= 全额 × 玩家在该处的最终投入比例）⇒ 两条日志去掉金额与 `p2/p3` 两个参数，只留规格
+  //   （数额到结算面板/结算通讯里逐处列明）。台账见工作文档 reclaim-share-20260929。
+  "core.weekend.001": { zh: "✦ 夺回「{p1}」：夺回奖励按玩家在该星系的投入比例结算，活动结束时统一发放。", en: "✦ Reclaimed “{p1}”: the reclaim reward is settled by the player's share of that system and paid out when the invasion ends." },
+  "core.weekend.002": { zh: "✦ 全部占领区夺回：「{p1}」是最后一处 —— 夺回奖励与全清额外奖励按玩家的投入比例结算，活动结束时统一发放。", en: "✦ All occupied systems reclaimed: “{p1}” was the last one — the reclaim reward and the all-clear bonus are settled by the player's contribution and paid out when the invasion ends." },
   // ⟪文案调整 2026-09-27⟫ 船长令「只记录作为判定，根据不同情况改变措辞」：原「✦ 入侵旗舰击沉：母舰血量归零 —— 战利品已存入物品仓库（…）」⇒ 点明"玩家击沉"（见工作文档 invasion-kill-roll / flagship-kill-record 的文案调整台账）
   "core.weekend.003": { zh: "✦ 玩家击沉入侵旗舰：母舰血量归零 —— 旗舰黑匣 ×1 ＋ 稀有残骸 ×{p1} 已存入物品仓库。", en: "✦ Invasion flagship sunk by the player: the mothership is down to zero — flagship black box ×1 + rare wrecks ×{p1} are stored in your item warehouse." },
   // 2026-09-25 船长令改黑匣爆率（>50% 输出抢到最后一下必爆，否则按占比衰减到 10%；没抢到最后一下 25%×占比）
