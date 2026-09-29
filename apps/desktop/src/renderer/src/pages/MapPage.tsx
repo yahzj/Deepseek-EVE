@@ -47,7 +47,7 @@ import type { AiCoreType, BeltDef, GalaxyDef } from '@whale/core'
 import type { ShipWreckRecord } from '@whale/core'
 import { unlocked, WORMHOLE_SCAN_UNLOCK_STANDING } from '@whale/core'
 /** 活动卡「产出」读数（2026-09-23 船长令：收入预估换口径）——全仓唯一实现 */
-import { YieldLines, yieldLinesOf, type YieldRow } from '../ui/yieldView'
+import { NetIncomeLinePerHour, YieldLines, yieldLinesOf, marketPriceOf, type YieldRow } from '../ui/yieldView'
 import { Panel, ProgressBar } from '@whale/ui'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
@@ -543,6 +543,14 @@ function BeltCard({
           {effLine ? <div><span className="app-ico"><Glyph name="nav-mine" size={12} color={NAV_TONES["nav-mine"]} /></span>{effLine}</div> : null}
           {/* 产出逐项列（2026-09-23 船长令）：原来的「≈N ISK/h」折算值已彻底拿掉 */}
           <YieldLines lines={yieldLinesOf(state, engine.ctx, yieldRows)} />
+          {/**
+           * **净收益/h（仅调试模式 · 2026-09-29 船长令「希望在调试模式下看到各个活动的净收益」）**：
+           * 采矿是**连续型活动**（没有"批"与"周期"）⇒ 净/h = Σ(每小时产出 × 行情价)，**无耗料成本可扣**。
+           * 行情取数与上面那行「行情 P」同一把尺（`marketPriceOf`）。发布版不渲染。
+           */}
+          <NetIncomeLinePerHour
+            rows={yieldRows.map((r) => ({ perHour: r.perHour ?? 0, price: marketPriceOf(state, engine.ctx, r.itemId) }))}
+          />
         </div>
       ) : null}
       {/* V16 复合矿带：本带可采出的全部产物与权重（每循环按权重抽取一种） */}
