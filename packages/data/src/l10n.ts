@@ -471,6 +471,9 @@ export const EN_ITEMS: EnTable = {
   // 道具（2026-09-29 跃迁燃料批）：超空间折跃燃料 —— 实验室合成、按原返航秒数消耗
   // 2026-09-30 船长令：体积 1 m³/单位 ＋ 普通舰船货仓无法装入（说明同步补规格）
   'jump-fuel': { name: 'Hyperspace Jump Fuel', description: 'A dense slurry that pushes jump engines into overload: it burns by the second of original return time and raises return speed tenfold. One unit takes 1 m³ and only the item warehouse can hold it.' },
+  // 实验室后续内容（2026-09-30 船长令「信号发射器和技能加速剂」）：施工期 unreleased，英文先就位
+  'invasion-beacon': { name: 'Signal Beacon', description: 'A beacon that provokes an invasion: using it picks a system at random under the standing rules, and the invading faction is chosen from the factions that have already appeared. Usable only while no invasion is running; one beacon per use.' },
+  'synaptic-accelerant': { name: 'Synaptic Accelerant', description: 'A short-lived overclock for neural pathways: for 24 hours after use, skill training time is halved. Only one dose can be active at a time.' },
   // 零件（2026-09-20 零件体系：基础 7 直接可造 / 高级 7 需蓝图）
   'part-circuit': { name: 'Circuit Board', description: 'Basic electronic component: a general-purpose board pressed from supermetal and gel — the base layer of advanced parts and exclusive gear.' },
   'part-armor-plate': { name: 'Armor Plate', description: 'Basic structural component: tritanium forged into plate, the standard cladding of ships and heavy equipment.' },

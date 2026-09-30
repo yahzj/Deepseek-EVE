@@ -1433,6 +1433,32 @@ export const CONSUMABLES: readonly ItemDef[] = [
     baseSellPriceIsk: 120,
     description: '把跃迁引擎推到过载的稠浆：按返航秒数消耗，返航速度提升至十倍。单件 1 m³，仅存于物品仓库。',
   },
+  /* ═══ 实验室后续内容（**2026-09-30 船长令**「你先继续制作后续实验室内容」＋「信号发射器和技能加速剂」·
+   *   口径见工作文档 `docs/design/lab-consumables-20260930.md`：第 2 批信号发射器 10,000 虚空晶 ·
+   *   第 3 批突触加速剂 2,000 虚空晶（船长 2026-09-29 六答））═══
+   *
+   * ⚠ **施工期一律 `unreleased`**（与虫洞同批惯例）：效果与界面还没接完 —— 数据先就位、**玩家看不到也拿不到**，
+   * 等 core 的"使用"动作与界面落地后一起摘掉这个字段（`content:check` 的物品/市场契约照旧盯着）。 */
+  {
+    id: 'invasion-beacon',
+    name: '信号发射器',
+    kind: 'consumable',
+    unitM3: 0.01,
+    baseSellPriceIsk: 96_000_000,
+    unreleased: true,
+    description:
+      '主动诱发一次入侵的信标：使用后按现有规则随机选一处星系，被入侵势力从已出现的入侵势力中指定。' +
+      '只在当前没有入侵时可用，每次消耗 1 枚。',
+  },
+  {
+    id: 'synaptic-accelerant',
+    name: '突触加速剂',
+    kind: 'consumable',
+    unitM3: 0.01,
+    baseSellPriceIsk: 18_000_000,
+    unreleased: true,
+    description: '神经通路的短时超频剂：使用后 24 小时内技能训练时长减半。同一时间内只能生效一剂。',
+  },
 ]
 
 /** 全部物品（矿石/矿物在前为兼容旧展示顺序，其后气体/冰/弹药/无人机/修理组件） */

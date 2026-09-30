@@ -34,8 +34,42 @@ export const LAB_RECIPES: readonly LabRecipeDef[] = [
       { itemId: 'min-isotope', units: 100 },
     ],
   },
+  /* ═══ 实验室后续内容（**2026-09-30 船长令**「你先继续制作后续实验室内容」＋「信号发射器和技能加速剂」）═══
+   * 口径（见工作文档 `docs/design/lab-consumables-20260930.md`）：
+   * - **造价**（船长 2026-09-29 定）：突触加速剂 **2,000 虚空晶** · 信号发射器 **10,000 虚空晶**；
+   * - **其余材料与工期**＝我按"料价 ×2.4 ⇒ 奇货行价"的口径提的（待船长核，见文档"待确认"节）；
+   * - ⚠ **施工期 `unreleased: true`**：效果与"使用"动作还没接完 ⇒ 工位与界面一律不列这两张（见 `core/lab.ts` 的过滤），
+   *   接完摘掉即可上线。 */
+  {
+    id: 'synaptic-accelerant',
+    name: '突触加速剂',
+    outputItemId: 'synaptic-accelerant',
+    outputUnits: 1,
+    cycleMs: 30 * 60 * 1000,
+    unreleased: true,
+    materials: [
+      { itemId: 'min-voidcrystal', units: 2_000 },
+      { itemId: 'min-curvature', units: 400 },
+      { itemId: 'min-isotope', units: 4_000 },
+    ],
+  },
+  {
+    id: 'invasion-beacon',
+    name: '信号发射器',
+    outputItemId: 'invasion-beacon',
+    outputUnits: 1,
+    cycleMs: 2 * 60 * 60 * 1000,
+    unreleased: true,
+    materials: [
+      { itemId: 'min-voidcrystal', units: 10_000 },
+      { itemId: 'min-curvature', units: 2_000 },
+      { itemId: 'min-jumplasma', units: 10_000 },
+      { itemId: 'min-isotope', units: 20_000 },
+    ],
+  },
 ]
 
+/** 玩家可见的配方（施工期 `unreleased` 的不列；界面与开工校验都读它） */
 export function buildLabRecipeCatalog(): ReadonlyMap<string, LabRecipeDef> {
-  return new Map(LAB_RECIPES.map((r) => [r.id, r]))
+  return new Map(LAB_RECIPES.filter((r) => r.unreleased !== true).map((r) => [r.id, r]))
 }

@@ -2832,6 +2832,13 @@ export interface LabRecipeDef {
   cycleMs: number
   /** 每批投料（一括扣齐才出料；缺任一料 ⇒ 该批不跑、线停） */
   materials: readonly { itemId: string; units: number }[]
+  /**
+   * **施工期未上线闸门**（**2026-09-30 加**，与物品/市场卡的 `unreleased` 同口径）：
+   * 数据先就位、**玩家看不到也开不了工** —— `buildLabRecipeCatalog()` 会滤掉它，
+   * 于是界面列不出、`startLabRun` 也拿不到配方（`ctx.labRecipes` 查不到 ⇒ 直接拒）。
+   * 效果与界面接完后摘掉本字段即上线。
+   */
+  unreleased?: boolean
 }
 
 /** 通讯对话一句 */

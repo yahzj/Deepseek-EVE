@@ -140,6 +140,11 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   `absorbQtyPerWindow` 与实验室满产对齐（1 条线 600 单位/5 分钟 ⇒ 7,200/h = 120/分钟 ⇒ 窗吸收 14,400/h）。
   //   `demandMultiplier: 0.6` 与弹药同档（消耗品，卖给协会不划算、留着自用）。】
   { key: 'jump-fuel', kind: 'item', refId: 'jump-fuel', rarity: 'rare', basePrice: 120, demandMultiplier: 0.6, poolTarget: 28_800, supplyFlow: 240, rareQtyMul: 200, rareWeightMul: 3, absorbQtyPerWindow: 14_400 },
+  /* 实验室后续内容（**2026-09-30 船长令**）：信号发射器与突触加速剂走**奇货档**
+   * （船长 2026-09-29 Q8「燃料可买卖放入稀有（但是是池子）。**其他放入奇货**」）。
+   * ⚠ 施工期 `unreleased`（效果/界面未接完）——玩家既看不到也买不到；行价 = 我按料价 ×2.4 的口径提的（待船长核）。 */
+  { key: 'invasion-beacon', kind: 'item', refId: 'invasion-beacon', rarity: 'exotic', basePrice: 96_000_000, demandMultiplier: 1.0, playerBuyable: false, unreleased: true },
+  { key: 'synaptic-accelerant', kind: 'item', refId: 'synaptic-accelerant', rarity: 'exotic', basePrice: 18_000_000, demandMultiplier: 1.0, playerBuyable: false, unreleased: true },
   // ── 虫洞战利品与经济扩充（船长 2026-09-15 确认）：谜质精华只收不卖 · 奢侈品正常交易 · 两个新货柜只收不卖 ──
   //   ⚠ **档位口径（2026-09-15 落码）**：凡"玩家产出要拿去卖钱"的行一律 **common（常驻）**——
   //   common 才每 60s 窗口铺 3 档收购阶梯（池商品）或 85% 掷一次收购单（单件平价品）；

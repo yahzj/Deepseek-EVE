@@ -645,6 +645,9 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'blackbox-h': 4,
   // 通用黑匣（2026-09-27 船长令：章鱼人商店 30 声望一枚）——同样与专属内容同档（奇货层 4）
   'blackbox-universal': 4,
+  // 实验室后续内容（2026-09-30 船长令）：信号发射器 / 突触加速剂 —— 奇货档（与 `blackbox-*` / 谜质同档 4）
+  'invasion-beacon': 4,
+  'synaptic-accelerant': 4,
   'wreck-rare-a-lo': 3,
   'wreck-rare-c-lo': 3,
   'wreck-rare-d-lo': 3,

@@ -339,7 +339,9 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 // 2026-09-26（H 族势力装备批 · 船长令）：+1（墨潮重袭无人机 `drone-ink-heavy`）→ 物品总数 102→**103**
 // 2026-09-29（跃迁燃料链批 · 船长令「为星云和冰添加新的精炼分解的主要材料」＋「添加超空间折跃燃料」）：
 //   +4（折跃等离子 / 低温跃迁浆 / 曲率凝析物 / 超空间折跃燃料）→ 物品总数 104→**108**、原材料 8→**11**
-check(itemDefs.length === 108, `物品总数应为 108（2026-09-29 起：跃迁燃料链 +4），实际 ${itemDefs.length}`)
+// 2026-09-30（实验室后续内容批 · 船长令「信号发射器和技能加速剂」）：+2（信号发射器 / 突触加速剂，
+//   走奇货档 · 施工期 `unreleased`）→ 物品总数 108→**110**
+check(itemDefs.length === 110, `物品总数应为 110（2026-09-30 起：实验室后续内容 +2），实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 11, `原材料应为 11 种（2026-09-29 跃迁燃料链 +3），实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
