@@ -61,7 +61,8 @@ import type { PageProps, ToastFn } from './common'
 import { isk, MONEY_GLYPH, rareWreckRefsOf } from './common'
 // 2026-09-26 船长报障：打捞页卡片序列（纯函数；单独成文件以便工具/用例直接断言这条顺序）
 import { wreckCardSequenceOf } from './wreckCards'
-import { tr, cmdText } from '../i18n/locale'
+import { isEn, tr, cmdText } from '../i18n/locale'
+import { wreckGroupText } from '@whale/data'
 import { fmtDuration } from '../i18n/fmt'
 
 /** 星图页的功能区（「星图·远征」放第一：这里本来就是玩家查看大地图的主入口）；icon = Glyphs 字形名 */
@@ -1084,7 +1085,15 @@ function WreckCard({
     const group = wreckGroupOfAnomaly(a.id)
     if (!group || groupKeys.includes(group.key)) continue
     groupKeys.push(group.key)
-    if (group.note.length > 0 && !notes.includes(group.note)) notes.push(group.note)
+    if (group.note.length > 0) {
+      /**
+       * ⚠ **说明要按语言取**（**2026-09-29 批 2**）：`group.note` 是 `core/wreckGroups.ts` 的**中文原串**
+       * ⇒ 英文界面下这段成分说明整段是中文（英文扫描里 12 处残留的真凶）。
+       * 走数据层的 `wreckGroupText`（按组 key 反查英文覆盖），中文侧照旧用原串。
+       */
+      const note = wreckGroupText(group.key, isEn() ? 'en' : 'zh', 'note') ?? group.note
+      if (!notes.includes(note)) notes.push(note)
+    }
     const feature = recycleFeatureOf(
       { lowSec, threat: group.threat, loot: group.theme },
       { mods: engine.ctx.modules, items: engine.ctx.items },

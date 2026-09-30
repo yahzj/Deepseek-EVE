@@ -15,7 +15,7 @@
  */
 import type { FoeMountId, MatterTechNodeDef, SimContext, StationSiteDef } from '@whale/core'
 // 2026-09-26：残骸英文区名改读组表（`wreckGroupOfItemId` ⇒ `region`），不再按 id 后缀解
-import { resolveFoeMounts, wreckGroupOfItemId } from '@whale/core'
+import { WRECK_GROUPS, resolveFoeMounts, wreckGroupOfItemId } from '@whale/core'
 import { BLUEPRINTS } from './blueprints'
 import { SHIP_BLUEPRINTS } from './shipBlueprints'
 
@@ -743,6 +743,92 @@ const WRECK_IDS = [
 ] as const
 
 export const EN_WRECKS: EnTable = Object.fromEntries(WRECK_IDS.map((id) => [id, wreckEnText(id)]))
+
+/**
+ * **残骸组的三处文案**（**2026-09-29 加** · 英文界面残留中文清理批 2）：
+ * `WRECK_GROUPS` 的 `name` / `rareName` / `note` —— 星图「残骸打捞」页那几行
+ * （`武装拾荒者残骸（高安）：钛钢结构料为主…`）走的就是它们，此前**整段中文**。
+ *
+ * ⚠ **族名与区名复用残骸物品那两张小表**（`WRECK_FAMILY_EN` / `WRECK_AREA_EN`）——
+ * 同一个族/区在"残骸物品名"与"残骸组名"里**必须同一个词**，各写一张迟早漂
+ * （物品那边已经是 `Pirate Wreck (High-sec)` 这套）。
+ * `note` 与 `name` 不同：它是一句**成分说明**，按组逐条写（8 族 × 成分不同）。
+ *
+ * `name` / `rareName` 由 `wreckGroupEnName()` 按 `<族> Wreck (<区>)` / `<族> Rare Wreck (<区>)` 派生
+ * —— 与 `wreckEnText` 的普通/稀有**同一套模板**，两处不会说出两种残骸名。
+ */
+const WRECK_GROUP_NOTE_EN: Readonly<Record<string, string>> = {
+  'a-hi': 'Tritanium structure stock, with Silvervein armour plate and Crystalline Colloid',
+  'b-hi': 'Tritanium structure stock, with Silvervein and Crystalline Colloid',
+  'd-hi': 'Starcore Crystal marrow stock and Heavy Tungsten Alloy plate',
+  'a-lo': 'Rich in Isotope Polycrystal',
+  'c-lo': 'Mostly Starcore Crystal marrow, with Heavy Tungsten and Darkiron Alloy',
+  'd-lo': 'Darkiron Alloy fragments and Isotope Polycrystal',
+  'e-lo': 'Starcore Crystal and Isotope Polycrystal from megastructure fragments',
+  'g-lo': 'Mostly Darkiron Alloy and Isotope Polycrystal, with structure and armour stock',
+  'h-hi': 'Mostly Starcore Crystal and Heavy Tungsten Alloy, with structure stock',
+}
+
+/** 组名（普通 / 稀有）按族名 + 区名派生 —— 与 `wreckEnText` 同源 */
+function wreckGroupEnName(key: string, rare: boolean): string {
+  const group = WRECK_GROUPS.find((g) => g.key === key)
+  if (!group) throw new Error(`残骸组 key 不存在：${key}`)
+  const fam = WRECK_FAMILY_EN[group.family.toLowerCase()]!
+  const area = WRECK_AREA_EN[group.region]!
+  return `${fam}${rare ? ' Rare' : ''} Wreck (${area})`
+}
+
+export const EN_WRECK_GROUPS: Readonly<Record<string, { name: string; rareName: string; note?: string }>> =
+  Object.fromEntries(
+    WRECK_GROUPS.map((g) => [
+      g.key,
+      {
+        name: wreckGroupEnName(g.key, false),
+        rareName: wreckGroupEnName(g.key, true),
+        ...(WRECK_GROUP_NOTE_EN[g.key] !== undefined
+          ? { note: `${wreckGroupEnName(g.key, false)}: ${WRECK_GROUP_NOTE_EN[g.key]}` }
+          : {}),
+      },
+    ]),
+  )
+
+/**
+ * **按"组 key"取当前语言的那三处文案**（渲染层直接用）。
+ *
+ * 为什么按 key 而不是按对象：`group.note` 会被 core 的 `recycleProfileOf` **拷进 profile**
+ * （`salvage.ts`），于是工业页/星图两处渲染点手里都有的是**中文原串** —— 按 key 反查最省事，
+ * 也不必让 core 认识语言。
+ *
+ * ⚠ 与 `EN_WRECK_GROUPS` **同一个真相源**（两处各写一份必然漂）；查不到组或没配英文 ⇒ 返回 undefined。
+ */
+export function wreckGroupText(
+  key: string,
+  locale: Locale,
+  field: 'name' | 'rareName' | 'note',
+): string | undefined {
+  if (locale === 'zh') return undefined // 中文侧就叫调用方用原串（零拷贝、逐字不变）
+  return EN_WRECK_GROUPS[key]?.[field]
+}
+
+/**
+ * **残骸组的嵌套覆盖**（`name` / `rareName` / `note` 三处，`overlayMap` 够不着后两个）。
+ * 一条都没命中时返回**原数组**（与 `overlayList` 同款：省一次拷贝，也让"没翻译"可分辨）。
+ */
+export function overlayWreckGroups<T extends { key: string; name: string; rareName: string; note: string }>(
+  src: readonly T[],
+  locale: Locale,
+): readonly T[] {
+  if (locale === 'zh') return src
+  let out: T[] | null = null
+  for (let i = 0; i < src.length; i++) {
+    const g = src[i]!
+    const en = EN_WRECK_GROUPS[g.key]
+    if (en === undefined) continue
+    out ??= [...src]
+    out[i] = { ...g, name: en.name, rareName: en.rareName, ...(en.note !== undefined ? { note: en.note } : {}) }
+  }
+  return out ?? src
+}
 
 /** 异常点 / 敌卡（42 · `docs/glossary-en.md` §十/§十一）—— **名称 + 说明** */
 export const EN_ANOMALIES: EnTable = {

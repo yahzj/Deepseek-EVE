@@ -627,7 +627,11 @@ export class GameEngine {
    * （只覆盖 id / 名字 / 威胁 / 奖励；夺回或活动结束即恢复原卡）。引擎每拍在 `weekendTick` 之后调一次。
    */
   private refreshAnomaliesView(): void {
-    const base = ANOMALIES_FLAVORED.filter((a) => !a.hidden)
+    /**
+     * ⚠ **起算表必须是"当前语言那一份"**（**2026-09-29 修**）：原来写死 `ANOMALIES_FLAVORED`（中文原表）
+     * ⇒ 英文档上每拍刷新一次就把悬赏板整块刷回中文（英文扫描里 46 处残留的真凶）。
+     */
+    const base = this.localizedAnomalies.filter((a) => !a.hidden)
     const ev = this.state.weekendEvent
     if (!ev || ev.endedAtWallMs !== undefined) {
       this.anomalies = base
@@ -872,8 +876,17 @@ export class GameEngine {
     this.allAnomalies = locCards
     this.galaxies = overlayList(GALAXIES, EN_GALAXIES, locale)
     this.belts = overlayList(BELTS, EN_BELTS, locale)
+    /**
+     * ⚠ **本地化后的原始卡表也必须留一份**（**2026-09-29 修** · 英文界面残留批 2 前置）：
+     * `refreshAnomaliesView()`（每拍随入侵活动刷新）此前是从 `ANOMALIES_FLAVORED`（**中文原表**）
+     * 重新起算的 ⇒ **英文档上只要刷过一次，悬赏板整块变回中文**。这里把本地化那份存下来供它用。
+     */
+    this.localizedAnomalies = locCards
     this.notify()
   }
+
+  /** 本地化后的异常点全表（含 hidden；`setLocale` 维护，缺省中文原表） */
+  private localizedAnomalies: readonly (typeof ANOMALIES_FLAVORED)[number][] = ANOMALIES_FLAVORED
 
   /**
    * **现在有没有"要在战场里看"的战斗**（2026-09-25 收口）：远征 / 虫洞 / **入侵旗舰战**三个宿主。
