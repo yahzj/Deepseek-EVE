@@ -31,6 +31,11 @@ import {
   // 2026-09-19 本地化 ID 制：读源码的契约要认两种写法（中文源串 / `tr('ui.x.001')`），
   // 「这句文案该是什么」以唯一表的 zh 列为准（表见 `packages/data/src/l10n/table.ts`）
   L10N,
+  /* **实验室配方契约**（**2026-09-30 加**；起因 = P0：`labRecipes.ts` 的 BOM 写了个表里没有的主料 id
+     `min-jumpplasma`（双 p），而真的矿物是 `min-jumplasma` ⇒ 实验室永远"材料不足一批"、燃料链是死的，
+     却一路跑绿——因为当时**没有这条契约**，用例又是照配方自己的 id 灌料）。
+     判据：每张配方的产物与**每一样材料**都必须在物品目录里解析得到。 */
+  LAB_RECIPES,
   DRONES,
   SHIP_BLUEPRINTS,
   SHIPS,
@@ -474,6 +479,33 @@ for (const item of itemDefs) {
      * ⇒ 带齐批量档的卡不再报这条（它的"玩家产出卖不掉"已经解决了）。
      */
     warn.push(`物品 ${item.id} 的市场卡非常驻（${good.rarity}）且无批量档，玩家产出将无法稳定卖出`)
+  }
+}
+
+/**
+ * **实验室配方契约**（**2026-09-30 加**，P0 复盘）：
+ * `labRecipes.ts` 的 BOM 写了个**表里没有的主料 id**（`min-jumpplasma` 双 p，真矿物是 `min-jumplasma`）
+ * ⇒ `labAffordableBatches` 永远 0 批 ⇒ **实验室起不了线、燃料链是死的**，而当时所有闸门都绿
+ * （缺这条契约；用例又是照配方自己的 id 灌料，幽灵 id 在测试里也能"备齐"）。
+ *
+ * 判据（三条）：
+ * ① **产物**在物品目录里；② **每一样材料**在物品目录里（这条就是当年漏的那条）；
+ * ③ 材料的单位数为正整数（写 0/负数 = 白送或永远备不齐）。
+ */
+{
+  for (const r of LAB_RECIPES) {
+    const out = items.get(r.outputItemId)
+    check(!!out, `实验室配方 ${r.id} 的产物 ${r.outputItemId} 不在物品目录里`)
+    check(r.materials.length > 0, `实验室配方 ${r.id} 没有任何材料（= 凭空产出）`)
+    for (const m of r.materials) {
+      check(
+        !!items.get(m.itemId),
+        `实验室配方 ${r.id} 的材料 ${m.itemId} 不在物品目录里（幽灵 id ⇒ 这条产线永远"材料不足一批"）`,
+      )
+      check(Number.isFinite(m.units) && m.units > 0, `实验室配方 ${r.id} 的材料 ${m.itemId} 单位数非法：${m.units}`)
+    }
+    check(r.outputUnits > 0 && Number.isFinite(r.outputUnits), `实验室配方 ${r.id} 的每批产出非法：${r.outputUnits}`)
+    check(r.cycleMs > 0 && Number.isFinite(r.cycleMs), `实验室配方 ${r.id} 的周期非法：${r.cycleMs}`)
   }
 }
 

@@ -481,9 +481,22 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                         </span>
                       </div>
                       <div className="app-inv-btns">
-                        <button className="app-btn is-small" onClick={() => handleLoad(id)} title={tr("ui.ItemsPage.024")}>
-                          {tr("ui.ItemsPage.025")}
-                        </button>
+                        {/* **2026-09-30 船长令**：「置灰，点击后弹出提示无法装入舰船货仓」——
+                            装不进货仓的东西（`ItemDef.holdForbidden`，如超空间折跃燃料）按钮**置灰但可点**：
+                            点下去照旧走 `handleLoad` 弹提示（原生 `disabled` 点不动，故用 `aria-disabled`）。 */}
+                        {(() => {
+                          const blocked = def.holdForbidden === true
+                          return (
+                            <button
+                              className="app-btn is-small"
+                              aria-disabled={blocked ? 'true' : undefined}
+                              onClick={() => handleLoad(id)}
+                              title={blocked ? tr('ui.ItemsPage.053', { p1: def.name }) : tr('ui.ItemsPage.024')}
+                            >
+                              {tr('ui.ItemsPage.025')}
+                            </button>
+                          )
+                        })()}
                         {sellable ? (
                           <button className="app-btn is-small is-primary" onClick={() => setSellItem(id)}>
                             {tr("ui.CargoPage.038")}
@@ -670,9 +683,20 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 {/* **碎片详情的「逆向解锁」**（2026-09-19 船长：「建议在物品的蓝图碎片详细页内，
                     也添加一个合并碎片的按钮」）——不是碎片 ⇒ 本组件返回 null，其余物品照旧 */}
                 <RedeemFragmentButton engine={engine} itemId={pickItem} onToast={onToast} />
-                <button className="app-btn is-small" onClick={() => handleLoad(pickItem)} title={tr("ui.ItemsPage.035")}>
-                  {tr("ui.ItemsPage.025")}
-                </button>
+                {/* 同列表行：装不进货仓的东西**置灰但可点**（点了弹提示，见上） */}
+                {(() => {
+                  const blocked = pickItemDef.holdForbidden === true
+                  return (
+                    <button
+                      className="app-btn is-small"
+                      aria-disabled={blocked ? 'true' : undefined}
+                      onClick={() => handleLoad(pickItem)}
+                      title={blocked ? tr('ui.ItemsPage.053', { p1: pickItemDef.name }) : tr('ui.ItemsPage.035')}
+                    >
+                      {tr('ui.ItemsPage.025')}
+                    </button>
+                  )
+                })()}
                 {pickItemSellable ? (
                   <button
                     className="app-btn is-primary is-small"

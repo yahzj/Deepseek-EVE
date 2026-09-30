@@ -800,7 +800,11 @@ html[data-locale='en'] body {
 
 }
 
-.app-btn:disabled {
+.app-btn:disabled,
+/* **2026-09-30 船长令**：「置灰，点击后弹出提示无法装入舰船货仓」——即"看着不可用、但点得动"：
+   原生 `disabled` 的按钮**不派发鼠标事件**（点了没有任何反应，弹不出提示）⇒ 改用 `aria-disabled` 表达
+   "不可用"，视觉与 `:disabled` **复用同一条规则**（不另造样式）。 */
+.app-btn[aria-disabled='true'] {
 
   opacity: 0.4;
 
