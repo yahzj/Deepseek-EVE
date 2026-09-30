@@ -183,7 +183,18 @@ export {
   trainingTimeFactor,
   totalTimeToLevel,
   totalQueueTimeMs,
+  /** 2026-09-30 实验室后续内容：突触加速剂（24h ×0.5 · 不可叠用） */
+  SYNAPTIC_ACCELERANT_MS,
+  SYNAPTIC_ACCELERANT_MUL,
+  synapticAccelerantActive,
 } from './training'
+/* 实验室道具的「使用」动作（2026-09-30 船长令「信号发射器和技能加速剂」） */
+export {
+  SYNAPTIC_ACCELERANT_ITEM_ID,
+  consumableStockOf,
+  useSynapticAccelerant,
+  synapticAccelerantRemainMs,
+} from './consumables'
 export {
   IRONMAN_COMMON_FLOW_MUL,
   IRONMAN_EXOTIC_CAP_BONUS,

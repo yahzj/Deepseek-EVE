@@ -3123,6 +3123,11 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   }
   const labSeq = Math.max(1, Math.floor(num(src.labSeq) || 1))
   /**
+   * **突触加速剂生效截止**（**2026-09-30 船长令**）：可选键 —— 0 / 非有限 / 已过期一律按"无加成"读，
+   * **空值不写键** ⇒ 老档零迁移、往返逐字一致（与 `jumpFuel` / `labRuns` 同款）。
+   */
+  const skillBoostUntilMs = Math.max(0, Math.floor(num(src.skillBoostUntilMs) || 0))
+  /**
    * **实战胜利记录**（2026-09-24 船长令 · 兼容字段无版本号）：键 = 敌卡 id，值 = 那一次的距离与剩余比例。
    * 只收合法行（`desireM` 为正有限数 · `remainPct` 落在 0~1）；**空表不写键** ⇒ 老档零迁移、往返逐字一致。
    * ⚠ 与 `resupplyFromWarehouse` 同款：漏登记 = 每读一次档记录就被清空，胜率预估退回三点采样。
@@ -4196,6 +4201,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     /** 跃迁燃料开关 ＋ 实验室产线（2026-09-29 跃迁燃料批；空 ⇒ 不写键，老档零迁移） */
     ...(Object.keys(jumpFuel).length > 0 ? { jumpFuel } : {}),
     ...(labRuns.length > 0 ? { labRuns, labSeq } : {}),
+    ...(skillBoostUntilMs > 0 ? { skillBoostUntilMs } : {}),
     // 模式选择已完成（2026-09-24 船长令）：只在 true 时落键；漏了这行 ⇒ 每次读档都重弹模式选择框
     ...(modeChosen !== undefined ? { modeChosen } : {}),
     // 实战胜利记录（2026-09-24 船长令）：**空表不写键**（老档/新档快照逐字一致 = 真零迁移）

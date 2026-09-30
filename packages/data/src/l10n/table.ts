@@ -461,6 +461,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.jumpFuel.024": { zh: "实验室未解锁", en: "Laboratory locked" },
   "ui.jumpFuel.025": { zh: "燃料只存于物品仓库（普通舰船货仓无法装入）", en: "Fuel is stored in the item warehouse only (ordinary holds cannot take it)" },
   "ui.jumpFuel.026": { zh: "在产速率 = 当前在跑的实验线合计产出（单位/时）；仓库放不下下一批时实验室停线。", en: "Production rate is the combined output of the laboratory lines running now (units/h); a line halts when the store cannot fit another batch." },
+  /* 实验室后续内容（**2026-09-30 船长令**「信号发射器和技能加速剂」）：道具「使用」动作的文案 */
+  "core.consumable.001": { zh: "仓库里没有突触加速剂。", en: "There is no Synaptic Accelerant in store." },
+  "core.consumable.002": { zh: "突触加速剂正在生效中（还剩 {p1} 分钟）：同一时间内只能生效一剂。", en: "A Synaptic Accelerant is already active ({p1} minutes left): only one dose can be active at a time." },
+  "core.consumable.003": { zh: "✦ 突触加速剂生效：未来 {p1} 小时内技能训练时长减半。", en: "✦ Synaptic Accelerant active: skill training time is halved for the next {p1} hours." },
   /* ═══ 工业 HUD 页（调试专用 · 2026-09-30 船长令）：**少字多图标** ——
      页面上的文字只做"2~4 字标签/单位"，解释性长句一律进 `title`（悬停）。═══════════════ */
   "ui.hud.001": { zh: "精炼炉", en: "Refinery" },

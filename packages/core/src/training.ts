@@ -27,11 +27,24 @@ import type { SkillDef } from './types'
 import type { GameState } from './state'
 import { ironmanTrainingMul } from './ironman'
 
+/** 突触加速剂：效果时长 **24 小时** · 训练时长乘区 **×0.5**（**2026-09-30 船长令**：「技能加速剂」·
+ *   口径「使用后 24 小时内训练时长减半 · 同一时间内只能生效一剂」）。 */
+export const SYNAPTIC_ACCELERANT_MS = 24 * 60 * 60 * 1000
+export const SYNAPTIC_ACCELERANT_MUL = 0.5
+
+/** 突触加速剂是否正在生效（时间基准 = 游戏时钟 `state.gameMs`；缺省/过期 = 无加成） */
+export function synapticAccelerantActive(state: GameState): boolean {
+  return (state.skillBoostUntilMs ?? 0) > state.gameMs
+}
+
 /** 高效学习法（accelerated-learning）：训练时长 −4%/级（2026-09-08 船长定：移除 60% 保留下限）——推进/预估/界面显示同源乘算
- * **铁人福利 C**（2026-09-23 船长令「技能训练时长 −10%」）：非铁人档 ×1 ⇒ 既有读数逐字不变 */
+ * **铁人福利 C**（2026-09-23 船长令「技能训练时长 −10%」）：非铁人档 ×1 ⇒ 既有读数逐字不变
+ * **突触加速剂**（2026-09-30 船长令）：生效期内再 ×0.5 —— 本函数是训练时长的**唯一乘区入口**
+ *   （推进 / 预估 / 界面显示都读它），所以加速剂只在这里插一处即可全覆盖。 */
 export function trainingTimeFactor(state: GameState): number {
   const lv = Math.min(5, state.skills.trained['accelerated-learning'] ?? 0)
-  return (1 - 0.04 * lv) * ironmanTrainingMul(state)
+  const boost = synapticAccelerantActive(state) ? SYNAPTIC_ACCELERANT_MUL : 1
+  return (1 - 0.04 * lv) * ironmanTrainingMul(state) * boost
 }
 
 /** 默认单级基础时长：60 秒（毫秒）——rank 1 档（低档快，保持上手节奏） */
