@@ -70,6 +70,8 @@ describe('谜质科技树 · 节点表与货币', () => {
     expect([drip.tier, drip.effect, drip.per, drip.maxLevel]).toEqual([5, 'voidOreDrip', 200, 3])
     const fuel = byId.get('mt-industry-fuel-advanced')!
     expect([fuel.tier, fuel.effect, fuel.per, fuel.maxLevel]).toEqual([5, 'fuelRecipeAdvanced', 1, 1])
+    // 信用点 2 亿（船长令）：仍高过 T4 首级最高（1.2 亿）⇒ 体检的"费用随层上升"契约照旧成立
+    expect([fuel.essence, fuel.isk]).toEqual([[200], [200_000_000]])
     // T5 是本表第一次出现的层：首级费用必须高过 T4 最高（体检契约④同款口径）
     const t4MaxEss = Math.max(...nodes.filter((n) => n.tier === 4).map((n) => n.essence[0] ?? 0))
     const t4MaxIsk = Math.max(...nodes.filter((n) => n.tier === 4).map((n) => n.isk[0] ?? 0))

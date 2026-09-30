@@ -408,7 +408,9 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     per: 1,
     maxLevel: 1,
     essence: [200],
-    isk: [800_000_000],
+    // 2026-09-30 船长令：「燃料配方改为2亿」（先令「下调和 T4 一致」= 1.2 亿 ⇒ 会撞体检契约
+    // 「本层首级 > 上一层最高」，因为 T4 首级正好也是 1.2 亿；改 2 亿则 2 > 1.2 ✓ 契约不动）
+    isk: [200_000_000],
     prereq: { 'mt-industry-void': 1 },
     note: '解锁实验室配方「浓缩折跃燃料」：每批 600 单位，虚空晶消耗更低、总料价更高。',
   },
