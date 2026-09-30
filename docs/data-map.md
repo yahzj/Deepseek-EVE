@@ -65,6 +65,7 @@
 | UI/样式体检（改界面必跑） | `npm run ui:rot-check` |
 | 双端构建 | `npm run build` |
 | 数据表 ⇄ 工作台 | `npm run content:export` / `npm run content:import` |
+| 采矿收益曲线（船 × 配置 × 技能档 × 建站前后 × 燃料） | `npm run mining:curve`（`--skills=mine` / `--stations=built` / `--fuel=on` / `--ships=…`） |
 | 文档索引 / 批次封存 | `npm run docs:index` / `npm run docs:seal`（先 `-- --dry-run`） |
 
 ## 五、甲案：迁移一件装备说明的标准动作（随改随迁）
