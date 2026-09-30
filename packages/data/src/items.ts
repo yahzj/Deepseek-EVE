@@ -1456,7 +1456,7 @@ export const CONSUMABLES: readonly ItemDef[] = [
     kind: 'consumable',
     unitM3: 0.01,
     baseSellPriceIsk: 18_000_000,
-    unreleased: true,
+    // ⟪2026-09-30 上线⟫ 效果（24h ×0.5 · 不可叠用）、「使用」动作与物品页按钮都已接完 ⇒ 摘掉施工期 `unreleased`
     description: '神经通路的短时超频剂：使用后 24 小时内技能训练时长减半。同一时间内只能生效一剂。',
   },
 ]

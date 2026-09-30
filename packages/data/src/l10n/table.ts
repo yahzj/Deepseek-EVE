@@ -3620,6 +3620,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // 2026-09-30 船长令：燃料等"普通货仓装不进去"的东西（`ItemDef.holdForbidden`）装船时给专门提示
   "ui.ItemsPage.052": { zh: "{p1} 无法装入舰船货仓（仅存于物品仓库）。", en: "{p1} cannot be loaded into a ship's hold — it is stored in the item warehouse only." },
   "ui.ItemsPage.053": { zh: "普通舰船货仓无法装入（仅存于物品仓库）", en: "Ordinary ship holds cannot take it (item warehouse only)" },
+  /* 实验室后续内容（2026-09-30 船长令「技能加速剂」）：能"用"的道具在物品页给的那颗按钮 */
+  "ui.ItemsPage.054": { zh: "使用：24 小时内技能训练时长减半（同一时间内只能生效一剂）", en: "Use: halves skill training time for 24 hours (only one dose can be active at a time)" },
+  "ui.ItemsPage.055": { zh: "突触加速剂已生效：24 小时内技能训练时长减半。", en: "Synaptic Accelerant active: skill training time is halved for 24 hours." },
+  "ui.ItemsPage.056": { zh: "使用", en: "Use" },
   "ui.itemSubs.001": { zh: "修理组件", en: "Repair Kit" },
   "ui.itemSubs.002": { zh: "遗迹安全货柜", en: "Ruins safe container" },
   "ui.itemSubs.003": { zh: "图纸货柜", en: "Blueprint container" },

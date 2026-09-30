@@ -46,7 +46,6 @@ export const LAB_RECIPES: readonly LabRecipeDef[] = [
     outputItemId: 'synaptic-accelerant',
     outputUnits: 1,
     cycleMs: 30 * 60 * 1000,
-    unreleased: true,
     materials: [
       { itemId: 'min-voidcrystal', units: 2_000 },
       { itemId: 'min-curvature', units: 400 },

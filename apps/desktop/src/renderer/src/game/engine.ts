@@ -82,6 +82,9 @@ import {
   repairDeprecatedModules,
   repairShip,
   useOneRepairKit,
+  /* 2026-09-30 实验室后续内容：道具「使用」（突触加速剂） */
+  useSynapticAccelerant,
+  synapticAccelerantRemainMs,
   retreatBattle,
   retreatEncounterBattle,
   sellCargoItem,
@@ -3913,6 +3916,24 @@ export class GameEngine {
       this.notify()
     }
     return result
+  }
+
+  /**
+   * **使用一枚突触加速剂**（**2026-09-30 船长令**「技能加速剂」）：24 小时内训练时长 ×0.5 · 不可叠用。
+   * 与 `useRepairKitNow` 同款：成功才落盘与通知，失败把原因原样交回界面弹提示。
+   */
+  useSynapticAccelerantNow(): CommandResult {
+    const result = useSynapticAccelerant(this.state)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 突触加速剂剩余生效毫秒（0 = 未生效；技能页/物品页读数用） */
+  synapticAccelerantRemainMs(): number {
+    return synapticAccelerantRemainMs(this.state)
   }
 
   /* ─────────────── AI 核心 / 副船任务（v8） ─────────────── */

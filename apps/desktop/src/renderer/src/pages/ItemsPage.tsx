@@ -6,7 +6,7 @@
  * - 货仓 tab：原货仓页（T3 船选择条 / 驾驶船可装卸出售，副船只读）整体并入。
  */
 import { useEffect, useState } from 'react'
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, marketGoodOf } from '@whale/core'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, marketGoodOf, SYNAPTIC_ACCELERANT_ITEM_ID } from '@whale/core'
 import { itemRarityTierOf } from '@whale/data'
 import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemHoverContent, itemInfoLines, moduleHoverContent, ModuleHover, moduleInfoLines } from '../ui/shipInfo'
@@ -481,6 +481,22 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                         </span>
                       </div>
                       <div className="app-inv-btns">
+                        {/* **2026-09-30 船长令**（实验室后续内容）：**能"用"的道具**给一颗「使用」按钮
+                            —— 目前只有突触加速剂（判据 = core 的 id 常量单点，不在页面里写死字面量）；
+                            生效中再点会被 core 拒绝并回「还剩 N 分钟」，物品不消耗。 */}
+                        {id === SYNAPTIC_ACCELERANT_ITEM_ID ? (
+                          <button
+                            className="app-btn is-small is-warn"
+                            title={tr('ui.ItemsPage.054')}
+                            onClick={() => {
+                              const r = engine.useSynapticAccelerantNow()
+                              if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.054'), true)
+                              else onToast(tr('ui.ItemsPage.055'))
+                            }}
+                          >
+                            {tr('ui.ItemsPage.056')}
+                          </button>
+                        ) : null}
                         {/* **2026-09-30 船长令**：「置灰，点击后弹出提示无法装入舰船货仓」——
                             装不进货仓的东西（`ItemDef.holdForbidden`，如超空间折跃燃料）按钮**置灰但可点**：
                             点下去照旧走 `handleLoad` 弹提示（原生 `disabled` 点不动，故用 `aria-disabled`）。 */}
