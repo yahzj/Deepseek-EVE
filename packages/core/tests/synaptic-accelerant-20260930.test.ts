@@ -91,10 +91,10 @@ describe('突触加速剂 · 使用与效果', () => {
 })
 
 describe('突触加速剂 · 存档与配方闸门', () => {
-  it('配方闸门：加速剂已上线（在目录里）；信号发射器仍施工中（被滤掉）', () => {
+  it('配方闸门：两张新配方都已上线（效果接完 · 摘掉 unreleased）', () => {
     expect(ctx.labRecipes.has('jump-fuel'), '燃料照旧').toBe(true)
     expect(ctx.labRecipes.has('synaptic-accelerant'), '加速剂 2026-09-30 上线').toBe(true)
-    expect(ctx.labRecipes.has('invasion-beacon'), '信号发射器效果未接完 ⇒ 仍被滤掉').toBe(false)
+    expect(ctx.labRecipes.has('invasion-beacon'), '信号发射器 2026-09-30 上线').toBe(true)
   })
 
   it('存档往返：生效截止能存能读，未生效不写键（老档零迁移）', async () => {

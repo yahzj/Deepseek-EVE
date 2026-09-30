@@ -1445,7 +1445,7 @@ export const CONSUMABLES: readonly ItemDef[] = [
     kind: 'consumable',
     unitM3: 0.01,
     baseSellPriceIsk: 96_000_000,
-    unreleased: true,
+    // ⟪2026-09-30 上线⟫ 效果（主动诱发一次入侵）与物品页「使用」按钮都已接完 ⇒ 摘掉施工期 `unreleased`
     description:
       '主动诱发一次入侵的信标：使用后按现有规则随机选一处星系，被入侵势力从已出现的入侵势力中指定。' +
       '只在当前没有入侵时可用，每次消耗 1 枚。',

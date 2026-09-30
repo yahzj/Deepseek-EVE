@@ -194,6 +194,9 @@ export {
   consumableStockOf,
   useSynapticAccelerant,
   synapticAccelerantRemainMs,
+  INVASION_BEACON_ITEM_ID,
+  INVASION_BEACON_FAMILIES,
+  useInvasionBeacon,
 } from './consumables'
 export {
   IRONMAN_COMMON_FLOW_MUL,

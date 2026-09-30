@@ -465,6 +465,15 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.consumable.001": { zh: "仓库里没有突触加速剂。", en: "There is no Synaptic Accelerant in store." },
   "core.consumable.002": { zh: "突触加速剂正在生效中（还剩 {p1} 分钟）：同一时间内只能生效一剂。", en: "A Synaptic Accelerant is already active ({p1} minutes left): only one dose can be active at a time." },
   "core.consumable.003": { zh: "✦ 突触加速剂生效：未来 {p1} 小时内技能训练时长减半。", en: "✦ Synaptic Accelerant active: skill training time is halved for the next {p1} hours." },
+  /* 信号发射器（第 2 批）：可选入侵势力列表 ＋ 使用/拒绝文案 */
+  "ui.consumable.002": { zh: "墨潮帮（H 族）", en: "Ink Tide Syndicate (family H)" },
+  "core.consumable.004": { zh: "仓库里没有信号发射器。", en: "There is no Signal Beacon in store." },
+  "core.consumable.005": { zh: "已经有一场入侵在进行中：等它结束再用信号发射器。", en: "An invasion is already under way — wait until it ends before using a Signal Beacon." },
+  "core.consumable.006": { zh: "未知的入侵势力：{p1}。", en: "Unknown invading faction: {p1}." },
+  "core.consumable.007": { zh: "当前没有可入侵的目标星系。", en: "There is no system available to invade right now." },
+  "core.consumable.008": { zh: "✦ 信号发射器已启动：入侵舰队正在逼近「{p1}」（第 {p2} 场）。", en: "✦ Signal Beacon lit: an invasion fleet is closing on “{p1}” (event #{p2})." },
+  "ui.ItemsPage.057": { zh: "使用：主动诱发一次入侵（随机星系 · 只能在没有入侵时使用 · 消耗 1 枚）", en: "Use: provoke an invasion (random system; only while no invasion is running; consumes one)" },
+  "ui.ItemsPage.058": { zh: "信号发射器已启动：入侵舰队正在逼近。", en: "Signal Beacon lit: an invasion fleet is closing in." },
   /* ═══ 工业 HUD 页（调试专用 · 2026-09-30 船长令）：**少字多图标** ——
      页面上的文字只做"2~4 字标签/单位"，解释性长句一律进 `title`（悬停）。═══════════════ */
   "ui.hud.001": { zh: "精炼炉", en: "Refinery" },

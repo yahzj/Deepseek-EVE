@@ -6,7 +6,7 @@
  * - 货仓 tab：原货仓页（T3 船选择条 / 驾驶船可装卸出售，副船只读）整体并入。
  */
 import { useEffect, useState } from 'react'
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, marketGoodOf, SYNAPTIC_ACCELERANT_ITEM_ID } from '@whale/core'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, marketGoodOf, SYNAPTIC_ACCELERANT_ITEM_ID, INVASION_BEACON_ITEM_ID } from '@whale/core'
 import { itemRarityTierOf } from '@whale/data'
 import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemHoverContent, itemInfoLines, moduleHoverContent, ModuleHover, moduleInfoLines } from '../ui/shipInfo'
@@ -492,6 +492,22 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                               const r = engine.useSynapticAccelerantNow()
                               if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.054'), true)
                               else onToast(tr('ui.ItemsPage.055'))
+                            }}
+                          >
+                            {tr('ui.ItemsPage.056')}
+                          </button>
+                        ) : null}
+                        {/* 信号发射器（2026-09-30 船长令）：同一颗「使用」——**势力取列表第一支**
+                            （Q2 的"列表"由 core 的 `INVASION_BEACON_FAMILIES` 单点驱动，今天只有 H 族；
+                            将来多族时在这里按同一张表渲染成选择器即可，引擎那边已经吃 `familyId`）。 */}
+                        {id === INVASION_BEACON_ITEM_ID ? (
+                          <button
+                            className="app-btn is-small is-warn"
+                            title={tr('ui.ItemsPage.057')}
+                            onClick={() => {
+                              const r = engine.useInvasionBeaconNow()
+                              if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.057'), true)
+                              else onToast(tr('ui.ItemsPage.058'))
                             }}
                           >
                             {tr('ui.ItemsPage.056')}

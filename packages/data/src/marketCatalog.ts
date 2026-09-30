@@ -143,7 +143,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   /* 实验室后续内容（**2026-09-30 船长令**）：信号发射器与突触加速剂走**奇货档**
    * （船长 2026-09-29 Q8「燃料可买卖放入稀有（但是是池子）。**其他放入奇货**」）。
    * ⚠ 施工期 `unreleased`（效果/界面未接完）——玩家既看不到也买不到；行价 = 我按料价 ×2.4 的口径提的（待船长核）。 */
-  { key: 'invasion-beacon', kind: 'item', refId: 'invasion-beacon', rarity: 'exotic', basePrice: 96_000_000, demandMultiplier: 1.0, playerBuyable: false, unreleased: true },
+  { key: 'invasion-beacon', kind: 'item', refId: 'invasion-beacon', rarity: 'exotic', basePrice: 96_000_000, demandMultiplier: 1.0, playerBuyable: false },
   { key: 'synaptic-accelerant', kind: 'item', refId: 'synaptic-accelerant', rarity: 'exotic', basePrice: 18_000_000, demandMultiplier: 1.0, playerBuyable: false },
   // ── 虫洞战利品与经济扩充（船长 2026-09-15 确认）：谜质精华只收不卖 · 奢侈品正常交易 · 两个新货柜只收不卖 ──
   //   ⚠ **档位口径（2026-09-15 落码）**：凡"玩家产出要拿去卖钱"的行一律 **common（常驻）**——

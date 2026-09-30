@@ -58,7 +58,6 @@ export const LAB_RECIPES: readonly LabRecipeDef[] = [
     outputItemId: 'invasion-beacon',
     outputUnits: 1,
     cycleMs: 2 * 60 * 60 * 1000,
-    unreleased: true,
     materials: [
       { itemId: 'min-voidcrystal', units: 10_000 },
       { itemId: 'min-curvature', units: 2_000 },

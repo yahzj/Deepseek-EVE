@@ -82,9 +82,10 @@ import {
   repairDeprecatedModules,
   repairShip,
   useOneRepairKit,
-  /* 2026-09-30 实验室后续内容：道具「使用」（突触加速剂） */
+  /* 2026-09-30 实验室后续内容：道具「使用」（突触加速剂 / 信号发射器） */
   useSynapticAccelerant,
   synapticAccelerantRemainMs,
+  useInvasionBeacon,
   retreatBattle,
   retreatEncounterBattle,
   sellCargoItem,
@@ -3934,6 +3935,19 @@ export class GameEngine {
   /** 突触加速剂剩余生效毫秒（0 = 未生效；技能页/物品页读数用） */
   synapticAccelerantRemainMs(): number {
     return synapticAccelerantRemainMs(this.state)
+  }
+
+  /**
+   * **使用一枚信号发射器**（**2026-09-30 船长令**「信号发射器」）：主动诱发一次入侵
+   * （随机星系；只能在没有入侵时使用）。`familyId` 缺省 = 列表里第一支（今天只有 H 族 · 墨潮帮）。
+   */
+  useInvasionBeaconNow(familyId?: string): CommandResult {
+    const result = useInvasionBeacon(this.state, this.ctx, familyId)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
   }
 
   /* ─────────────── AI 核心 / 副船任务（v8） ─────────────── */
