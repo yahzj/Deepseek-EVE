@@ -126,6 +126,43 @@ interface Read {
   网格: Grid[]
 }
 
+/** 工位面板 · 折叠 ＋ 动图读数（**2026-09-30 船长令**：工位可最小化成标题栏 ＋ 最左列换精炼动图） */
+const READ_STATION = `(() => {
+  const R = (el) => { const b = el.getBoundingClientRect(); return { top: Math.round(b.top), h: Math.round(b.height) } }
+  const panels = [...document.querySelectorAll('.hud-body .hud-panel')]
+  const head = document.querySelector('[aria-controls="hud-station-body"]')
+  const panel = head ? head.closest('.hud-panel') : null
+  const tr = document.querySelector('.hud-table.is-station tbody tr')
+  const b = document.querySelector('.hud-body')
+  return {
+    折叠按钮: head !== null,
+    ariaExpanded: head ? head.getAttribute('aria-expanded') : null,
+    无障碍名: head ? head.getAttribute('aria-label') : null,
+    工位面板: panel ? R(panel) : null,
+    正文在否: document.getElementById('hud-station-body') !== null,
+    动图槽数: document.querySelectorAll('.hud-fx-cell .app-inv-fx').length,
+    动图种类: [...new Set([...document.querySelectorAll('.hud-fx-cell .app-inv-fx')].map((e) => [...e.classList].find((c) => c.startsWith('is-'))))],
+    运行中动画数: document.getAnimations ? document.getAnimations().filter((a) => a.playState === 'running').length : -1,
+    下一面板top: panels[1] ? R(panels[1]).top : null,
+    工位行高: tr ? Math.round(tr.getBoundingClientRect().height) : null,
+    页内横滚: b ? Math.round(b.scrollWidth - b.clientWidth) : null,
+    表溢出: (() => { const t = document.querySelector('.hud-table.is-station'); return t ? Math.round(t.scrollWidth - t.clientWidth) : null })(),
+  }
+})()`
+
+/** 帧率采样（2 秒 rAF 计数）——用来回答船长「逐行都动有什么性能压力」 */
+const FPS = `new Promise((res) => {
+  let n = 0
+  const t0 = performance.now()
+  const step = () => {
+    n += 1
+    const dt = performance.now() - t0
+    if (dt < 2000) requestAnimationFrame(step)
+    else res({ fps: Math.round(n / (dt / 1000)), frames: n, ms: Math.round(dt) })
+  }
+  requestAnimationFrame(step)
+})`
+
 /** 页面侧读数：两列网格的列宽 / 面板越出 / 表格溢出与越出 */
 const READ = `(() => {
   const R = (el) => { const b = el.getBoundingClientRect(); return { x: Math.round(b.x), w: Math.round(b.width), right: Math.round(b.right) } }
@@ -148,6 +185,35 @@ const READ = `(() => {
   }
   return out
 })()`
+
+/**
+ * **悬停卡抽查**（船长令：投料窗口内也要有那张卡，且要能用到组装机/造船厂）：
+ * 真发 `Input.dispatchMouseEvent` 到第 `idx` 行的中部——全仓提示有 500ms 停驻延迟 ⇒ 等 900ms 再读 `.app-tip`。
+ */
+async function hoverRowTip(cdp: Cdp, label: string, selector: string, idx = 0): Promise<void> {
+  const box = await cdp.evalJS<{ x: number; y: number } | null>(`(() => {
+    const rows = [...document.querySelectorAll(${JSON.stringify(selector)})].filter((t) => t.getBoundingClientRect().height > 0)
+    const pick = rows[${idx}]
+    if (!pick) return null
+    const b = pick.getBoundingClientRect()
+    return { x: Math.round(b.left + 24), y: Math.round(b.top + b.height / 2) }
+  })()`)
+  if (box === null) {
+    console.log(`  悬停卡·${label}：行没找到`)
+    return
+  }
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: box.x, y: box.y, buttons: 0 })
+  await sleep(900)
+  const tip = await cdp.evalJS<string>(
+    `(() => {
+      const t = document.querySelector('.app-tip')
+      if (t) return t.innerText.replace(/\\s+/g, ' ').slice(0, 220)
+      const under = document.elementFromPoint(${box.x}, ${box.y})
+      return '（无卡）落点=' + (under ? under.tagName + '.' + String(under.className).slice(0, 40) : 'null')
+    })()`,
+  )
+  console.log(`  悬停卡·${label}：${tip}`)
+}
 
 async function main(): Promise<void> {
   const text = readFileSync(SAVE, 'utf8')
@@ -215,6 +281,42 @@ async function main(): Promise<void> {
           `视口 ${w} · ${tab}｜页面区 ${r.页面区宽}｜${r.网格.length} 组两列：${列串}｜页内横滚 ${r.页内横滚}｜` +
             (违规.length === 0 ? '✅ 全在列内' : `❌ ${违规.join(' · ')}`),
         )
+        /* 工位面板专项：折叠前后 ＋ 动图槽 ＋（1600 档）帧率对照
+           —— 船长问「动画密度如果逐行都动有什么性能压力吗」，读数分两档：
+           ① 逐行动（默认）② `prefers-reduced-motion: reduce`（同一份代码、动画全停）⇒ 差值即动画成本。 */
+        if (tab === '精炼炉') {
+          const before = await cdp.evalJS<Record<string, unknown>>(READ_STATION)
+          const folded = await cdp.evalJS<boolean>(`(() => {
+            const b = document.querySelector('[aria-controls="hud-station-body"]')
+            if (!b) return false
+            b.click(); return true
+          })()`)
+          await sleep(300)
+          const after = await cdp.evalJS<Record<string, unknown>>(READ_STATION)
+          console.log(`  折叠前 ${JSON.stringify(before)}`)
+          if (folded) console.log(`  折叠后 ${JSON.stringify(after)}`)
+          await cdp.evalJS(`(() => { const b = document.querySelector('[aria-controls="hud-station-body"]'); if (b) b.click(); return true })()`)
+          await sleep(300)
+          if (w === 1600) {
+            /* 帧率取样 3 次取中位数（单次 2 秒的抖动很大，报给船长的是中位数） */
+            const sample = async (): Promise<number> => (await cdp.evalJS<{ fps: number }>(FPS)).fps
+            const ani = [await sample(), await sample(), await sample()].sort((a, b) => a - b)
+            await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
+            const stat = [await sample(), await sample(), await sample()].sort((a, b) => a - b)
+            const animsOff = await cdp.evalJS<number>(`document.getAnimations().filter((a) => a.playState === 'running').length`)
+            await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] })
+            console.log(
+              `  帧率（3 次中位）：逐行动 ${ani[1]} fps（样本 ${ani.join('/')}）｜ 停动画 ${stat[1]} fps（样本 ${stat.join('/')}，停后运行中动画 ${animsOff} 条）`,
+            )
+            /* 悬停卡抽查：工位行（左列表）・投料行（右列表） */
+            await hoverRowTip(cdp, '工位行', '.hud-table.is-station tbody tr', 2)
+            await hoverRowTip(cdp, '投料行', '.hud-grid.two > .hud-grid:nth-child(2) table tbody tr')
+          }
+        }
+        /* 组装机书架行 / 造船厂可造舰船行：同一张卡的另两个消费方（1600 档抽查） */
+        if (w === 1600 && (tab === '组装机' || tab === '造船厂')) {
+          await hoverRowTip(cdp, `${tab}行`, '.hud-grid.two .hud-table tbody tr', 2)
+        }
       }
     }
   } finally {

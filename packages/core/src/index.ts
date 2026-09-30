@@ -639,6 +639,10 @@ export {
   refineRateMax,
   REFINE_SKILL_MAX_LEVEL,
   refineBatchOutputOf,
+  /* 2026-09-30 船长令（HUD 悬浮卡）：未起炉时的**基准运转参数**与**残骸单批体积**——
+     悬停卡要显示"每批 X 件 / 每批 Y 秒 / 每批 Z m³"，界面不许自己乘（单点，与起炉共用） */
+  refineBaseParamsOf,
+  recycleBatchM3Of,
   oreAvailable,
   refineRunActive,
   refineManualActive,

@@ -39,6 +39,10 @@ import {
   oreAvailable,
   ownsBlueprint,
   recipeCapability,
+  recycleBatchM3Of,
+  recycleMineralPoolOf,
+  recycleProfileOf,
+  refineBaseParamsOf,
   refineBatchOutputOf,
   refineRate,
   refineRateMax,
@@ -51,8 +55,9 @@ import {
 import type { PageProps } from './common'
 import type { GameEngine } from '../game/engine'
 import { Glyph } from '../ui/Glyphs'
+import { AiWorkFx, industryWorkKindOf } from '../ui/aiWorkFx'
 import { RowGlyph } from '../ui/itemView'
-import { IconBtn, Readout } from '../ui/hud'
+import { HudHoverCard, IconBtn, Readout, type HudIoLine } from '../ui/hud'
 import { aiCoreText } from '../ui/labelsText'
 import { marketPriceOf } from '../ui/yieldView'
 import { ShipSprite } from '../ui/ShipSprite'
@@ -181,16 +186,39 @@ interface HudShelfRow {
  * 百分比与"缺哪几项"用文字给出（`title` 与可见读数同源）。
  */
 function readinessOf(engine: GameEngine, materials: readonly MaterialNeed[]): { pct: number; short: string[] } {
-  if (materials.length === 0) return { pct: 1, short: [] }
+  const rows = matRowsOf(engine, materials)
+  if (rows.length === 0) return { pct: 1, short: [] }
   let sum = 0
   const short: string[] = []
-  for (const m of materials) {
+  for (const r of rows) {
+    sum += Math.min(1, r.need > 0 ? r.have / r.need : 1)
+    if (!r.ok) short.push(r.name)
+  }
+  return { pct: sum / rows.length, short }
+}
+
+/**
+ * **材料清单行**（组装机 / 造船厂 / 实验室的输入都是"多料"）——取数口径与 `readinessOf` 同一份，
+ * 悬浮卡的**左列**直接用它的输出（**2026-09-30 船长令**：「因为还需要应用到组装机和造船厂，
+ * 所以请对左侧输入进行一定优化」⇒ 左列做成清单形态，而不是写死"一味料"）。
+ */
+function matRowsOf(
+  engine: GameEngine,
+  materials: readonly MaterialNeed[],
+): Array<{ id: string; name: string; glyph: string; need: number; have: number; ok: boolean }> {
+  return materials.map((m) => {
     const need = matNeedCount(engine.state, m.count)
     const have = materialGroupIdsOf(m.itemId).reduce((s, id) => s + countWare(engine.state, id), 0)
-    sum += Math.min(1, need > 0 ? have / need : 1)
-    if (have < need) short.push(engine.ctx.items.get(materialDisplayIdOf(engine.state, m.itemId))?.name ?? m.itemId)
-  }
-  return { pct: sum / materials.length, short }
+    const def = engine.ctx.items.get(materialDisplayIdOf(engine.state, m.itemId))
+    return {
+      id: m.itemId,
+      name: def?.name ?? m.itemId,
+      glyph: def?.kind ?? 'item',
+      need,
+      have,
+      ok: have >= need,
+    }
+  })
 }
 
 /** 一批料的**料值**（按当前行情价估；取不到行情退回物品基准价——与卡面行情同一把尺） */
@@ -221,6 +249,13 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
   const [feedSub, setFeedSub] = useState<string>(SUB_ALL)
   const [feedKwRaw, setFeedKwRaw] = useState('')
   const feedKw = feedKwRaw.trim().toLowerCase()
+  /**
+   * **工位窗口折叠**（**2026-09-30 船长令**：「当屏幕过窄时，在工位窗口加个最小化的按钮，
+   * 允许玩家将工位界面最小化成一个标题栏」）——按当日设计总结的三条裁定：**按钮常显 ·
+   * 状态不落盘 · 只做工位面板**（投料不做）。窄屏（≤1500 单列档）下工位表把投料顶得很远，
+   * 折叠一下就能跳过去；宽屏也能折（折叠是玩家自己的选择，不随窗口忽隐忽现）。
+   */
+  const [foldStation, setFoldStation] = useState(false)
   const [coreSel, setCoreSel] = useState<AiCoreType>(() => {
     const usable = (['alpha', 'beta', 'gamma', 'basic'] as AiCoreType[]).find((t) => countAiCore(state, t) > 0)
     return usable ?? 'basic'
@@ -436,46 +471,111 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
           : engine.startRefineRunAt(def.id, worker)
     if (!r.ok) onToast(cmdText(r) || tr('ui.hud.021'), true)
   }
-  /** 工位行的「输入 → 输出」悬停卡（**2026-09-30 船长令**：左输入 / 右输出两列） */
+  /**
+   * **工位行的「输入 → 输出」悬停卡**（**2026-09-30 船长令**：左输入 / 右输出两列；同日第三批：
+   * 标题带**工位号**——编号列已按船长令下屏，编号改在这里与「停炉」提示里出现，仍可核对是哪一台）。
+   */
   const stationTip = (v: (typeof runs)[number]): ReactNode => {
     const def = v.itemId !== null ? ctx.items.get(v.itemId) : undefined
     const outs = def !== undefined ? refineBatchOutputOf(state, ctx, def, v.batchUnits) : []
     const have = v.itemId !== null ? oreAvailable(state, v.itemId) : 0
     return (
-      <>
-        <span className="app-ship-hover-title">
-          {v.itemName} · {v.worker === 'pilot' ? tr('ui.hud.082') : aiCoreText(v.worker)}
-        </span>
-        <div className="hud-io">
-          <div className="hud-io-col">
-            <div className="hud-tiny">{tr('ui.hud.116')}</div>
-            <div className="hud-io-row">
-              {def !== undefined ? <RowGlyph glyph={def.kind} /> : null}
-              <span>{def?.name ?? v.itemName}</span>
-            </div>
-            <div className="hud-io-num">
-              {tr('ui.hud.117', { p1: v.batchUnits.toLocaleString('zh-CN') })}
-            </div>
-            <div className="hud-io-num">{tr('ui.hud.118', { p1: Math.floor(have).toLocaleString('zh-CN') })}</div>
-            <div className="hud-io-num">{tr('ui.hud.119', { p1: Math.round(v.cycleMs / 100) / 10 })}</div>
-          </div>
-          <div className="hud-io-col">
-            <div className="hud-tiny">{tr('ui.hud.120')}</div>
-            {outs.length === 0 ? (
-              <div className="hud-io-num">{tr('ui.hud.122')}</div>
-            ) : (
-              outs.map((o) => (
-                <div className="hud-io-row" key={o.mineralId}>
-                  <RowGlyph glyph="mineral" />
-                  <span>{ctx.items.get(o.mineralId)?.name ?? o.mineralId}</span>
-                  <b className="hud-io-num">×{o.units.toLocaleString('zh-CN')}</b>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-        <div className="app-info-note">{tr('ui.hud.125', { p1: Math.round(v.percent) })}</div>
-      </>
+      <HudHoverCard
+        title={`${tr('ui.hud.143', { p1: String(v.id).padStart(2, '0') })} · ${v.itemName} · ${
+          v.worker === 'pilot' ? tr('ui.hud.082') : aiCoreText(v.worker)
+        }`}
+        input={[
+          { glyph: def?.kind ?? 'item', name: def?.name ?? v.itemName },
+          { name: tr('ui.hud.117', { p1: v.batchUnits.toLocaleString('zh-CN') }) },
+          { name: tr('ui.hud.118', { p1: Math.floor(have).toLocaleString('zh-CN') }) },
+          { name: tr('ui.hud.119', { p1: Math.round(v.cycleMs / 100) / 10 }) },
+        ]}
+        output={outs.map((o) => ({
+          glyph: 'mineral',
+          name: ctx.items.get(o.mineralId)?.name ?? o.mineralId,
+          qty: `×${o.units.toLocaleString('zh-CN')}`,
+        }))}
+        note={tr('ui.hud.125', { p1: Math.round(v.percent) })}
+      />
+    )
+  }
+
+  /**
+   * **投料行的悬停卡**（**2026-09-30 船长令**：「鼠标悬停工位的悬浮窗，在投料窗口内也要有」）。
+   *
+   * ⚠ 与工位卡的区别只在"这味料**还没起炉**"：引擎在未起炉时不给每批口径 ⇒
+   * **矿/气/冰**用物品规格（`refineBaseParamsOf`，与 `startRefineRun` 同一函数，界面不复算）；
+   * **残骸**按体积（`recycleBatchM3Of`，同样与起炉共用单点）⇒ 手上与每批都用 m³；
+   * **货柜**是一箱一件（`UNBOX_CYCLE_MS`）。
+   * 输出列：矿类走 `refineBatchOutputOf` 真值；残骸在未起炉时**只有保底原材料名**（引擎不给件数，
+   * 界面的估算口径留在工业页的回收卡里，不往这里搬）；货柜的产出写不出件数 ⇒ 给物品自己的说明。
+   */
+  const feedTip = (def: (typeof feedDefs)[number]['def'], have: number): ReactNode => {
+    const isWreck = def.kind === 'wreck'
+    const isBox = def.kind === 'container'
+    const base = refineBaseParamsOf(def)
+    const batchM3 = isWreck ? recycleBatchM3Of(def.id) : 0
+    const wreckPool = isWreck ? recycleProfileOf(ctx, def.id) : null
+    const outs = !isWreck && !isBox ? refineBatchOutputOf(state, ctx, def, base.batchUnits) : []
+    const input: HudIoLine[] = [{ glyph: def.kind, name: def.name, qty: `×${Math.floor(have).toLocaleString('zh-CN')}` }]
+    if (isWreck) {
+      input.push({ name: tr('ui.hud.144', { p1: Math.floor(have).toLocaleString('zh-CN') }) })
+      input.push({ name: tr('ui.hud.145', { p1: batchM3 }) })
+    } else if (isBox) {
+      input.push({ name: tr('ui.hud.117', { p1: 1 }) })
+      input.push({ name: tr('ui.hud.119', { p1: Math.round(UNBOX_CYCLE_MS / 1000) }) })
+    } else {
+      input.push({ name: tr('ui.hud.117', { p1: base.batchUnits.toLocaleString('zh-CN') }) })
+      input.push({ name: tr('ui.hud.118', { p1: Math.floor(have).toLocaleString('zh-CN') }) })
+      input.push({ name: tr('ui.hud.119', { p1: Math.round(base.cycleMs / 100) / 10 }) })
+    }
+    const output: HudIoLine[] = outs.map((o) => ({
+      glyph: 'mineral',
+      name: ctx.items.get(o.mineralId)?.name ?? o.mineralId,
+      qty: `×${o.units.toLocaleString('zh-CN')}`,
+    }))
+    if (isWreck) {
+      const pool = wreckPool !== null ? recycleMineralPoolOf(wreckPool) : []
+      output.push({ name: `${tr('ui.hud.146')}：` })
+      for (const [mineralId] of pool) {
+        output.push({ glyph: 'mineral', name: ctx.items.get(mineralId)?.name ?? mineralId })
+      }
+    }
+    return (
+      <HudHoverCard
+        title={def.name}
+        input={input}
+        output={output}
+        /* 货柜：拆不出矿物 ⇒ 用物品自己的说明兜住产出列（不新写一句玩家文案） */
+        emptyOutput={isBox ? def.description : undefined}
+      />
+    )
+  }
+
+  /**
+   * **书架行 / 造船厂行的悬停卡**（**2026-09-30 船长令**：悬浮窗要应用到组装机与造船厂）。
+   * 这两处都是"多料蓝图"⇒ 左列直接用 `matRowsOf` 的清单（每料一行：图标 ＋ 名 ＋ `×需要`），
+   * 缺料由卡底那行**齐备度（缺：…）**点出（颜色不是唯一载体）。
+   */
+  const shelfTip = (row: { product: string; glyph: string; materials: readonly MaterialNeed[] }): ReactNode => {
+    const rows = matRowsOf(engine, row.materials)
+    const ready = readinessOf(engine, row.materials)
+    return (
+      <HudHoverCard
+        title={row.product}
+        input={rows.map((m) => ({
+          glyph: m.glyph,
+          name: m.name,
+          qty: `×${m.need.toLocaleString('zh-CN')} · ${tr('ui.hud.118', { p1: m.have.toLocaleString('zh-CN') })}`,
+          ok: m.ok,
+        }))}
+        output={[{ glyph: row.glyph, name: row.product }]}
+        note={
+          ready.short.length === 0
+            ? `${tr('ui.hud.104')} ${Math.round(ready.pct * 100)}%`
+            : tr('ui.hud.111', { p1: Math.round(ready.pct * 100), p2: ready.short.join(tr('ui.MatterTechTab.017')) })
+        }
+      />
     )
   }
   return (
@@ -564,18 +664,35 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                 </div>
               </div>
 
-              <div className="hud-panel">
-                <h3>
-                  <Glyph name="ico-furnace" size={13} color="currentColor" /> {tr('ui.hud.041')}
+              <div className={`hud-panel${foldStation ? ' is-folded' : ''}`}>
+                {/* 标题行 = 标题 ＋ 右侧折叠按钮（**2026-09-30 船长令**：工位窗口可最小化成标题栏）。
+                    无障碍：真 `<button>` ＋ `aria-expanded` ＋ `aria-controls`（指向正文 id），
+                    名字用稳定的面板名，动作提示走 `title`（全仓 Tooltip 接管）。 */}
+                <h3 className="hud-panel-head">
+                  <Glyph name="ico-furnace" size={13} color="currentColor" />
+                  <span className="hud-panel-title">{tr('ui.hud.041')}</span>
+                  <IconBtn
+                    glyph={foldStation ? 'ico-unfold' : 'ico-fold'}
+                    title={foldStation ? tr('ui.hud.142') : tr('ui.hud.141')}
+                    ariaLabel={tr('ui.hud.041')}
+                    ariaExpanded={!foldStation}
+                    ariaControls="hud-station-body"
+                    onClick={() => setFoldStation((v) => !v)}
+                  />
                 </h3>
-                {/* ⚠ `is-station` = 「首列是工位号的窄表」可压缩档（**2026-09-30 船长报障**：
-                    这张 7 列表原先按 132px 首列 + 132px 主列 + 130px 进度列排版 ⇒ 最小宽 690px，
+                {foldStation ? null : (
+                <div id="hud-station-body">
+                {/* ⚠ `is-station` = 「首列是动图、主列是资源名」的窄表可压缩档（**2026-09-30 船长报障**：
+                    这张表原先按 132px 首列 + 132px 主列 + 130px 进度列排版 ⇒ 最小宽 690px，
                     比左列还宽 ⇒ 整块按 690px 固定排版、不随窗口缩放，右边被右列盖住。
+                    ⚠ 同日第三批船长令：「**工作最左侧不要显示工位编号**」＋「将精炼的动图应用到工位内」
+                    ⇒ 首列从"工位号"改成 **AI 指挥中心那套精炼/回收动画**（同一实现 `AiWorkFx`，
+                    判据 `industryWorkKindOf` 单点），编号下屏、改在悬停卡与「停炉」提示里出现。
                     档位定义见 `_hud-industry.css` 的 `.hud-table.is-station`） */}
                 <table className="hud-table is-station">
                   <thead>
                     <tr>
-                      <th>#</th>
+                      <th className="hud-fx-cell" aria-label={tr('ui.hud.147')} />
                       <th>{tr('ui.hud.042')}</th>
                       <th>{tr('ui.hud.131')}</th>
                       <th className="n">{tr('ui.hud.043')}</th>
@@ -594,7 +711,10 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                       const def = v.itemId !== null ? ctx.items.get(v.itemId) : undefined
                       return (
                         <tr key={v.id} {...hoverTipProps(stationTip(v))}>
-                          <td className="hud-tiny">{String(v.id).padStart(2, '0')}</td>
+                          {/* 精炼/回收动画（AI 指挥中心同一份实现；固定尺寸槽位 ⇒ 行高不跳动） */}
+                          <td className="hud-fx-cell">
+                            <AiWorkFx kind={industryWorkKindOf(v.itemId, ctx.items)} />
+                          </td>
                           {/* ⚠ 图标 2026-09-30 修（船长报障「工位那边资源图标是错误的」）：
                               原先这里挂的是**劳动者**图标（船/核心），现在挂**资源自身**的类别图标 */}
                           <td className="hud-cell-main">
@@ -619,7 +739,8 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                           <td className="act">
                             <IconBtn
                               glyph="ico-stop"
-                              title={tr('ui.hud.047')}
+                              /* 编号下屏后，「停炉」提示要带上工位号（免得停错炉时无从核对） */
+                              title={tr('ui.hud.047', { p1: String(v.id).padStart(2, '0') })}
                               onClick={() => {
                                 const r = engine.stopRefineRunAt(v.id)
                                 if (!r.ok) onToast(cmdText(r) || tr('ui.hud.021'), true)
@@ -651,6 +772,8 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                   </select>
                   <span className="hud-chip">{tr('ui.hud.050')}</span>
                 </div>
+                </div>
+                )}
               </div>
             </div>
 
@@ -719,7 +842,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                   <table className="hud-table">
                     <tbody>
                       {feedShown.map(({ def, have }) => (
-                        <tr key={def.id} className={have <= 0 ? 'is-dim' : ''}>
+                        <tr key={def.id} className={have <= 0 ? 'is-dim' : ''} {...hoverTipProps(feedTip(def, have))}>
                           <td>
                             <span className="hud-row" style={{ gap: 6 }}>
                               <RowGlyph glyph={def.kind} />
@@ -913,7 +1036,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                       const can = shelfCanStart(r)
                       const learned = ownsBlueprint(state, r.id) || ctx.blueprints.get(r.id)?.learnless === true
                       return (
-                        <tr key={r.id}>
+                        <tr key={r.id} {...hoverTipProps(shelfTip(r))}>
                           <td>
                             <span className="hud-row" style={{ gap: 6 }}>
                               <RowGlyph glyph={r.glyph} />
@@ -1042,7 +1165,8 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                       missingMaterials(state, ctx, specOf(r.materials, r.buildSeconds)).length === 0
                     const learned = ownsBlueprint(state, r.id)
                     return (
-                      <tr key={r.id}>
+                      /* 悬浮卡与组装机书架**同一份**（都是"多料蓝图"⇒ 左列走材料清单） */
+                      <tr key={r.id} {...hoverTipProps(shelfTip({ product: r.name, glyph: 'nav-ship', materials: r.materials }))}>
                         <td>
                           <span className="hud-row" style={{ gap: 6 }}>
                             <RowGlyph glyph={r.role} />

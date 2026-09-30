@@ -131,13 +131,30 @@ export function oreAvailable(state: GameState, oreId: string): number {
 const FALLBACK_BATCH_UNITS = 10
 const FALLBACK_CYCLE_MS = 6_000
 
-/** 某资源的运转参数：单批单位 / 单批周期毫秒 */
-function refineParamsOf(def: ItemDef): { batchUnits: number; cycleMs: number } {
+/**
+ * 某资源的**基准运转参数**：单批单位 / 单批周期毫秒（吃技能与核心效率之前的规格值）。
+ *
+ * ⚠ **导出理由**（2026-09-30）：HUD 页的「投料悬停卡」要显示**还没起炉**的那味料的
+ * "每批 X 件 / 每批 Y 秒"——那时没有 run 可读（run 上的 `batchUnits/cycleMs` 是结算后的真值），
+ * 唯一不改口径的来源就是物品自己的规格 ⇒ 与 `startRefineRun` **同一函数**（单点，禁止 UI 自己乘）。
+ */
+export function refineBaseParamsOf(def: ItemDef): { batchUnits: number; cycleMs: number } {
   const batchUnits =
     def.refineBatchUnits !== undefined && def.refineBatchUnits > 0 ? Math.floor(def.refineBatchUnits) : FALLBACK_BATCH_UNITS
   const cycleMs =
     def.refineCycleMs !== undefined && def.refineCycleMs > 0 ? Math.floor(def.refineCycleMs) : FALLBACK_CYCLE_MS
   return { batchUnits, cycleMs }
+}
+
+/**
+ * 某残骸的**单批体积（m³）**：普通残骸 = `RECYCLE_BATCH_M3`、稀有残骸 = 一件的体积（`RARE_UNIT_M3`）。
+ *
+ * ⚠ **单点**（2026-09-30）：原先这条三元判断只写在 `startRecycleRun` 里，HUD 页要显示
+ * "还没起炉的残骸每批多少 m³"就得自己再写一遍（口径一漂移，卡面与拒绝开工的提示就会说两种话）
+ * ⇒ 抽成函数，起炉与卡面共用。
+ */
+export function recycleBatchM3Of(wreckItemId: string): number {
+  return isRareWreck(wreckItemId) ? RARE_UNIT_M3 : RECYCLE_BATCH_M3
 }
 
 /** 精炼炉此刻是否有炉在运转（任一工位） */
@@ -298,7 +315,7 @@ export function startRefineRun(
   if (stationIndustryBlocked(worker, state, ctx)) {
     return { ok: false, error: '精炼炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
   }
-  const { batchUnits, cycleMs } = refineParamsOf(def)
+  const { batchUnits, cycleMs } = refineBaseParamsOf(def)
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
   let cycleEff = Math.max(1, Math.round(cycleMs / eff))
   let batchEff = batchUnits
@@ -494,7 +511,7 @@ export function startRecycleRun(
   // **普通残骸 = 批 100 m³ / 起炉 100**、**稀有残骸 = 批 30 m³ / 起炉 30**（`RARE_UNIT_M3` = 一件的体积）。
   // 于是稀有一炉 = 一件 = **必给一次彩头**（节奏 1:1，"一炉一件"名副其实）；09-11 定下的"不预占、不分件、
   // 彩头按体积必给"三条全部保留，只是批大小不再与普通共用。
-  const batchM3 = isRareWreck(wreckItemId) ? RARE_UNIT_M3 : RECYCLE_BATCH_M3
+  const batchM3 = recycleBatchM3Of(wreckItemId)
   if (available < batchM3) {
     return {
       ok: false,

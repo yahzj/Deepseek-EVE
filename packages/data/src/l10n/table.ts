@@ -500,7 +500,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.hud.044": { zh: "进度", en: "Progress" },
   "ui.hud.045": { zh: "周期", en: "Cycle" },
   "ui.hud.046": { zh: "没有在跑的工位", en: "No station is running" },
-  "ui.hud.047": { zh: "停炉（已完成批保留）", en: "Stop the station (finished batches are kept)" },
+  "ui.hud.047": { zh: "停炉（已完成批保留）· 工位 {p1}", en: "Stop station {p1} (finished batches are kept)" },
   "ui.hud.048": { zh: "选一枚 AI 核心驱动新工位", en: "Pick an AI core to drive a new station" },
   "ui.hud.049": { zh: "无可用核心", en: "No core available" },
   "ui.hud.050": { zh: "主控手上一台", en: "One station per pilot" },
@@ -590,6 +590,16 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.hud.138": { zh: "产出构成：{p1}", en: "Output mix: {p1}" },
   "ui.hud.139": { zh: "本配方 {p1} 件/分 · 同产物最优 {p2} 件/分", en: "This recipe {p1}/min · best for this product {p2}/min" },
   "ui.hud.140": { zh: "本配方 {p1}/分", en: "This recipe {p1}/min" },
+  /* 工位窗口折叠 ＋ 工位号进悬停（**2026-09-30 船长令**：窄屏时工位可最小化成标题栏、编号不再上屏） */
+  "ui.hud.141": { zh: "最小化为标题栏：工位表收起，随时可展开", en: "Collapse to the title bar: the station table folds away and can be reopened any time" },
+  "ui.hud.142": { zh: "展开工位表", en: "Reopen the station table" },
+  "ui.hud.143": { zh: "工位 {p1}", en: "Station {p1}" },
+  "ui.hud.144": { zh: "手上 {p1} m³", en: "{p1} m³ on hand" },
+  "ui.hud.145": { zh: "每批 {p1} m³", en: "{p1} m³ per batch" },
+  /* 投料悬停卡的输出列（残骸没有 `refine` 配方 ⇒ 引擎在"未起炉"时给不出每批件数，只列保底原材料名） */
+  "ui.hud.146": { zh: "保底原材料", en: "Guaranteed materials" },
+  /* 工位表最左列（动画槽）的列名：表头不显示文字，只给读屏用 */
+  "ui.hud.147": { zh: "工位动画", en: "Station animation" },
   "ui.hud.101": { zh: "工业 HUD（调试）", en: "Industry HUD (debug)" },
   /* 舰船页「跃迁燃料」子页（HUD 化 · 2026-09-30）：202~209 为本页规格 chip 与开关行；
      原 201 / 203 / 210 / 211 见下方 ⟪文案调整⟫（随"趟数"那把界面自造的尺一起删）。 */

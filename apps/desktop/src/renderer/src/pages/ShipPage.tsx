@@ -57,7 +57,7 @@ import type { GameEngine } from '../game/engine'
 import type { ShipDef } from '@whale/core'
 import { ShipSprite } from '../ui/ShipSprite'
 import { AiTaskBar } from '../ui/aiProgress'
-import { AiWorkFx } from '../ui/aiWorkFx'
+import { AiWorkFx, industryWorkKindOf } from '../ui/aiWorkFx'
 import type { AiWorkKind } from '../ui/aiWorkFx'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { MarkStar, pinMarked } from '../ui/marks'
@@ -1680,8 +1680,8 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
           </div>
           <ul className="app-inv-list">
             {aiRefineRuns.map((v) => {
-              // 回收炉 vs 精炼炉：料是残骸即回收炉——同一判据同时驱动文案与动画差分（只写一处）
-              const isReclaim = v.itemId !== null && engine.ctx.items.get(v.itemId)?.kind === 'wreck'
+              // 回收炉 vs 精炼炉：料是残骸即回收炉——同一判据同时驱动文案与动画差分（单点见 `aiWorkFx.industryWorkKindOf`）
+              const isReclaim = industryWorkKindOf(v.itemId, engine.ctx.items) === 'reclaim'
               return (
                 <li key={`rf-${v.id}`} className="app-inv-row">
                   <div className="app-inv-main is-aiwork">

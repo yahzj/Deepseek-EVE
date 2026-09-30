@@ -149,6 +149,44 @@
   text-transform: uppercase;
   color: var(--hud-fg-dim);
 }
+/* ── 面板标题行（可折叠面板用）：标题 ＋ 撑开 ＋ 折叠按钮 ──
+   **2026-09-30 船长令**：「当屏幕过窄时，在工位窗口加个最小化的按钮，允许玩家将工位界面
+   最小化成一个标题栏」。当前只有工位面板带这枚按钮（船长同日裁定：**投料不做**）。
+   ⚠ 折叠是**直接置位**（正文不渲染），过渡只做视觉、状态不等 `transitionend` —— 技能口径
+   UX「Cancellable State Transitions（High）：set the final semantic state directly」。 */
+.hud-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+/* 标题文字：**不换行不裁字**（技能口径 UX「Text Reflow（Critical）：Don't clip text in
+   fixed-width or fixed-height boxes」）——列再窄也只让后面的按钮吃空间 */
+.hud-panel-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hud-panel-head > .hud-btn { flex: none; margin-left: auto; }
+/* 折叠态：面板只剩标题行 ⇒ 不留标题的下边距（多出来的 10px 会看着像空盒子） */
+.hud-panel.is-folded > .hud-panel-head { margin-bottom: 0; }
+/* ── 工位表首列：精炼/回收动画槽（原来这里放工位号，**2026-09-30 船长令**「工作最左侧不要显示
+   工位编号」＋「将精炼的动图应用到工位内」）──
+   尺寸固定（40×26，等比缩自 56×36）⇒ 内容变化不引起行高跳动（§六）；行高由这一格决定，
+   船长同日明确「动画不建议压缩，可以拉高行高」。 */
+.hud-fx-cell { width: 40px; padding-right: 0; }
+.hud-fx-cell .app-inv-fx { width: 40px; height: 26px; }
+/* 输入列里"这一项不够"的行：整行弱化（**缺哪几项另有文字**，颜色不是唯一载体） */
+.hud-io-row.is-short { color: var(--hud-warn); }
+/* 无动画偏好 / 关特效：**停帧但保留静态线稿**（技能口径 UX「Reduced Motion（High）」） */
+@media (prefers-reduced-motion: reduce) {
+  .hud-fx-cell .app-inv-fx *,
+  .hud-fx-cell .app-inv-fx { animation: none; }
+}
+body.no-fx .hud-fx-cell .app-inv-fx *,
+body.no-fx .hud-fx-cell .app-inv-fx { animation: none; }
 .hud-sub { color: var(--hud-fg-dim); font-size: 11.5px; }
 .hud-tiny { color: var(--hud-fg-faint); font-size: 11px; letter-spacing: 0.05em; }
 

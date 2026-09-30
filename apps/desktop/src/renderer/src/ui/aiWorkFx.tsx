@@ -18,6 +18,16 @@ import { memo } from 'react'
 /** 六类工作（与船长确认的差分粒度一致）；配色见 styles.css `.app-inv-fx.is-*`（与 NAV_TONES 同族语汇） */
 export type AiWorkKind = 'mining' | 'salvage' | 'standby' | 'refine' | 'reclaim' | 'craft'
 
+/**
+ * **站内工业那一行画哪一种**：料是残骸 ⇒ 回收炉（`reclaim`），其余（矿 / 气 / 冰 / 货柜）⇒ 精炼炉（`refine`）。
+ *
+ * ⚠ **单点**（2026-09-30）：这句话原先写死在 `ShipPage`（驱动"精炼炉/回收炉"的**文案**与动画差分），
+ * 工业 HUD 页的工位行也要同一差分 ⇒ 抽到这里两处共用，免得同一炉在两页说两种话。
+ */
+export function industryWorkKindOf(itemId: string | null, items: ReadonlyMap<string, { kind: string }>): AiWorkKind {
+  return itemId !== null && items.get(itemId)?.kind === 'wreck' ? 'reclaim' : 'refine'
+}
+
 /** 各场景共用的舰影线稿（朝右的小镖形；本地坐标同 56×36 画布） */
 function hull(): JSX.Element {
   return <path d="M8 20 L17 15 L26 17.5 L17 22 Z" />
