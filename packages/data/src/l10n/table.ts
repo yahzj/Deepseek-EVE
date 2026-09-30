@@ -5154,7 +5154,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Wormhole.340": { zh: "· {p1} {p2}/{p3} 级：{p4}", en: "· {p1} level {p2}/{p3}: {p4}" },
   "ui.Wormhole.341": { zh: "无法开战。", en: "Cannot start the fight." },
   "ui.Wormhole.342": { zh: " 堆", en: " piles" },
-  "ui.Wormhole.343": { zh: "格，货仓只剩 {p1} 格）——装不下的会留在原地，先把散货抛掉或腾出货仓格再来，或者直接撤离带货回家。", en: " slots while the hold has only {p1} left) — whatever does not fit stays where it is, so jettison loose cargo or free up hold slots first, or simply withdraw and take the loot home." },
+  // ⟪文案调整 2026-09-30⟫ 文案审核批：这条是接在「…这一格还有 N 堆、约 M 格」后面的**从句**，
+  //   原文少了开括号 ⇒ 玩家看到孤零零一个「）」；补上「（」，中英同步（英文列同缺）
+  "ui.Wormhole.343": { zh: "（货仓只剩 {p1} 格）——装不下的会留在原地，先把散货抛掉或腾出货仓格再来，或者直接撤离带货回家。", en: "(the hold has only {p1} left) — whatever does not fit stays where it is, so jettison loose cargo or free up hold slots first, or simply withdraw and take the loot home." },
   "ui.Wormhole.344": { zh: "科技 残骸", en: "Tech wrecks" },
   "ui.Wormhole.345": { zh: "· 母矿", en: "· Motherlode" },
   "ui.Wormhole.346": { zh: "格", en: " slots" },

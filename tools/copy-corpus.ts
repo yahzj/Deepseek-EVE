@@ -212,6 +212,34 @@ console.log(`  · 界面长句（>120 字）：${uiLong.length} 处 · 含 8 字
 console.log('  · 最长的 10 条（逐条过目）：')
 for (const r of uiRows.slice(0, 10)) console.log(`      [${r.len}] ${r.id}`)
 
+/** **标点配对扫描**（2026-09-30 加：批次 C 通读时在 `mod-lair-drone-tac-g` 抓到"多出一个「）」"，
+ *  这类"手滑"靠人眼一行行看太费，机器判又快又准）：逐条数成对符号，不配对即点名。 */
+console.log('\n▍标点配对')
+const PAIRS: ReadonlyArray<readonly [string, string]> = [
+  ['（', '）'],
+  ['「', '」'],
+  ['《', '》'],
+]
+/**
+ * **拼接片段豁免**（扫描只看单条字符串，看不到"调用点拼起来"的那一半）——
+ * 每条都注明它拼在谁后面，避免把正常文案报成缺陷：
+ * - `ui.ShipPage.110`：接在 `ui.ShipPage.29` ＋ 自定义船名之后，开头那个「」是**闭合**前一条的引号；
+ * - `ui.Expedition.423`：接在调用点写的「（L{level}」之后，括号由调用点开。
+ */
+const CONCAT_FRAGMENT = new Set(['ui.ShipPage.110', 'ui.Expedition.423'])
+const unpaired: string[] = []
+for (const r of rows) {
+  const bareId = r.id.split('(').pop()?.replace(/\)$/, '') ?? r.id
+  if (CONCAT_FRAGMENT.has(bareId)) continue
+  for (const [open, close] of PAIRS) {
+    const a = r.text.split(open).length - 1
+    const b = r.text.split(close).length - 1
+    if (a !== b) unpaired.push(`${r.src} · ${r.id}：「${open}」×${a} ／「${close}」×${b} ⇒ ${r.text.slice(0, 50)}…`)
+  }
+}
+console.log(`  · 成对符号不匹配：**${unpaired.length} 处**（豁免拼接片段：${[...CONCAT_FRAGMENT].join(' · ')}）`)
+for (const s of unpaired.slice(0, 20)) console.log(`      ${s}`)
+
 /** 逐类点名（每类前 `PER_TELL` 条）：审校时照这份清单回上下文复核 */
 const PER_TELL = 8
 for (const [name] of [...byTell].sort((a, b) => b[1] - a[1])) {
