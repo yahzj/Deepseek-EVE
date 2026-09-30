@@ -1833,6 +1833,8 @@ export {
   WORMHOLE_SALVAGE_BOX_MAX,
   wormholeMk3PoolOf,
   wormholeRareBoxThemePoolOf,
+  // 2026-09-30：与上面那个扁平池同族——`content:check` 的洞内高级箱契约要按"生效池"判（甲2/乙案修复的护栏）
+  wormholeRareBoxThemeGroupsOf,
   wormholeSalvageBoxClassesOf,
   wormholeRollSalvageBox,
 } from './wormholeSalvage'

@@ -50,11 +50,13 @@ export const EN_SHIPS: EnTable = {
   },
   'whale-king': {
     name: 'Whaleking-class Mining Corvette',
-    description: 'The peak of deep-space industry: double the Whaleswallow-class output. A heavy-tungsten devourer, and the longest-term material goal in the game.',
+    // ⟪文案调整 2026-09-30⟫ 与 zh 同步补定位句（船长令「鲸王添加适合路途短的挖掘」）
+    description: 'The peak of deep-space industry: double the Whaleswallow-class output. A heavy-tungsten devourer, and the longest-term material goal in the game; a tight hold and a fast fill, built for short-haul belts.',
   },
   'sh-humpback': {
     name: 'Humpback-class Mining Ship',
-    description: 'The third-generation Leviathan mining ship: a freighter-grade hold with another step up in output.',
+    // ⟪文案调整 2026-09-30⟫ 与 zh 同步补定位句（船长令「给座头鲸添加说明，适合遥远星系挖掘」）
+    description: 'The third-generation Leviathan mining ship: a freighter-grade hold with another step up in output; built for belts in distant systems.',
   },
   'sh-bowhead': {
     name: 'Manta-class Heavy Freighter',

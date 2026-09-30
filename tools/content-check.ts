@@ -261,6 +261,8 @@ securityZoneOf,
   wormholeRelicChanceOf,
   wormholeMk3PoolOf,
   wormholeRareBoxThemePoolOf,
+  // 2026-09-30：高级箱契约改读"生效池"，需要带权重回落组（洞内 MK2 w=1 / MK3 w=0.25）
+  wormholeRareBoxThemeGroupsOf,
   wormholeSalvageBoxClassesOf,
   // 2026-09-19 残骸合并（族 × 地区）：13 组定表 + 出量梯度 + 卡/物品互查
   WRECK_GROUPS,
@@ -5564,13 +5566,17 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     )
   }
 
-  /* ── 洞内高级箱契约（2026-09-16 船长**甲1案**：`rareBoxThemePoolOf` 的洞内回落；2026-09-19 改按组）──
+  /* ── 洞内高级箱契约（2026-09-16 船长**甲1案**：`rareBoxThemePoolOf` 的洞内回落；2026-09-19 改按组；
+   *    2026-09-30 改读**实际生效**的池）──
    * 背景（当日玩家报障「**稀有残骸拆解只拆除了 300 钛钢合金**」）：**洞内卡从没配过主题件**
    * ⇒ 高级箱第②支（未中族专属时的"特色装备"）恒空、只剩第③支那批矿物（常档 300 单位 · 基础池钛钢 65%）。
-   * 裁定甲1 = 洞内回落**「军用备货柜」同款 MK3 池**抽 1 件。钉三件事：
+   * 裁定甲1 = 洞内回落**「军用备货柜」同款 MK3 池**抽 1 件。钉四件事：
    *  ① 回落池本身非空（MK3 池被清空 ⇒ 这条兜底会退化成"只有一批矿物"，红线）；
    *  ② 洞内**5 组**的稀有残骸**能建出回收画像**；
-   *  ③ 每组的高级箱主题件池非空（= 未中族专属时**必有装备**）。
+   *  ③ 每组的高级箱主题件池非空（= 未中族专属时**必有装备**）；
+   *  ④ **带权重回落组非空**（2026-09-30 加：船长 2026-09-24 令「未命中则从 MK2 和 MK3 里抽，
+   *     MK3 权重降为 0.25」当时被非空的甲1案扁平池挡死 ⇒ 洞内只出 MK3、MK2 = 0。本契约原来读的
+   *     正是那把扁平池，所以一直是绿的 ⇒ 现按 `rollRareBoxExtra` 的真实优先级取"生效池"来判）。
    *  ⚠ 洞外组一律回落空池 ⇒ 洞外行为逐字不变（用例另有对照钉子）。 */
   {
     const mk3 = wormholeMk3PoolOf(lairCtx)
@@ -5586,13 +5592,19 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
         bad.push(`${g.key}（建不出回收画像）`)
         continue
       }
-      const pool = rareBoxThemePoolOf(profile, wormholeRareBoxThemePoolOf(lairCtx, profile.region))
-      if (pool.length === 0) bad.push(`${g.key}（高级箱主题件池为空）`)
+      // 实际生效池 = 卡面 theme ?? 带权重组 ?? 扁平兜底池（与 `salvage.rollRareBoxExtra` 同一顺序）
+      const own = rareBoxThemePoolOf(profile, [])
+      const groups = wormholeRareBoxThemeGroupsOf(lairCtx, profile.region).filter((x) => x.ids.length > 0 && x.weight > 0)
+      const effective = own.length > 0 ? own : groups.length > 0 ? groups.flatMap((x) => [...x.ids]) : wormholeRareBoxThemePoolOf(lairCtx, profile.region)
+      if (effective.length === 0) bad.push(`${g.key}（高级箱主题件池为空）`)
+      // ④ 带权重组必须真的有内容——否则"MK2+MK3 按权重抽"这条令会静默失效
+      const mk2Group = wormholeRareBoxThemeGroupsOf(lairCtx, profile.region).find((x) => x.ids.some((id) => id.endsWith('-2')))
+      if (groups.length > 0 && (mk2Group?.ids.length ?? 0) === 0) bad.push(`${g.key}（带权回落组里没有 MK2 组）`)
     }
     check(bad.length === 0, `洞内高级箱契约：${bad.join(' · ')}`)
     console.log(
       `· 洞内高级箱契约：${whGroups.length} 个洞内组的稀有残骸高级箱**主题件池均非空**` +
-        `（未中族专属时回落军用备货柜 MK3 池 ${mk3.length} 件抽 1 件）`,
+        `（未中族专属时按权重从 MK2 / MK3 两组抽，MK3 权重 0.25 ⇒ 实出约 20%；甲1案 MK3 池 ${mk3.length} 件仍留作最后兜底）`,
     )
   }
 

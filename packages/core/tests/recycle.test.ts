@@ -13,7 +13,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import type { ItemDef, SimContext } from '../src/types'
 import { anomaly, blueprint, galaxy, makeTestCtx, moduleDef } from './helpers'
 import { FRAGMENT_RECIPES, fragmentPoolOf, rareBoxThemePoolOf, rareWreckItemDefOf, rareWreckItemIdOf, recycleBatchValueIsk, recycleRefiningMultiplier, recycleMineralPoolOf, recyclePoolMeanIsk, recycleProfileOf, rollRecycleGuarantee, wreckItemIdOf } from '../src/salvage'
-import { wormholeMk3PoolOf, wormholeRareBoxThemePoolOf } from '../src/wormholeSalvage'
+import { wormholeMk3PoolOf, wormholeRareBoxThemeGroupsOf, wormholeRareBoxThemePoolOf } from '../src/wormholeSalvage'
 
 /** 测试矿物（id = 真实矿物 id，价格占位） */
 function mineral(id: string, price: number): ItemDef {
@@ -579,7 +579,7 @@ describe('稀有残骸回收：普通机制 + 每 30 m³ 必给彩头', () => {
  * 玩家报障「**稀有残骸拆解只拆除了 300 钛钢合金**」⇒ 根因：**洞内 15 张卡从没配 `recycleLoot`**
  * ⇒ 高级箱第②支恒空、只剩那批矿物（常档 300 单位 · 基础池钛钢 65%）。
  * 裁定甲1：洞内卡回落「军用备货柜」同款 MK3 池抽 **1 件**；**洞外一行不动**。 */
-describe('洞内稀有残骸高级箱：主题件回落 MK3 池（船长 2026-09-16 甲1）', () => {
+describe('洞内稀有残骸高级箱：主题件回落池（2026-09-16 甲1 → 2026-09-24 按权重 → 2026-09-30 修正生效顺序）', () => {
   const WH_ANOMALY = 'wh-alien-brood'
   const WH_ID = rareWreckItemIdOf(WH_ANOMALY)
   const OUT_ANOMALY = 'ano-grave'
@@ -602,7 +602,7 @@ describe('洞内稀有残骸高级箱：主题件回落 MK3 池（船长 2026-09
     }
   }
 
-  function ctxWithMk3() {
+  function ctxWithWhFallbacks() {
     return makeTestCtx({
       galaxies: [{ ...galaxy('galaxy-hub', '母港'), security: 1.0 }],
       anomalies: [
@@ -637,23 +637,34 @@ describe('洞内稀有残骸高级箱：主题件回落 MK3 池（船长 2026-09
     return { mods, logs: state.logs.slice(from).map((l) => l.text) }
   }
 
-  it('回落池：**虫洞组**取「军用备货柜」同款 MK3 池，洞外组一律空（回落不外溢）', () => {
-    const ctx = ctxWithMk3()
+  it('回落池：虫洞组有「MK2 w=1 / MK3 w=0.25」两组 ＋ 甲1案 MK3 扁平兜底池，洞外组一律空（回落不外溢）', () => {
+    const ctx = ctxWithWhFallbacks()
     expect(wormholeMk3PoolOf(ctx)).toEqual(['mod-turret-kin-3'])
     expect(wormholeRareBoxThemePoolOf(ctx, 'wh')).toEqual(['mod-turret-kin-3'])
+    // 2026-09-24 船长令的两组（2026-09-30 前被上面那把扁平池挡死 ⇒ 现在才是真正生效的那条路）
+    expect(wormholeRareBoxThemeGroupsOf(ctx, 'wh')).toEqual([
+      { ids: ['mod-armor-plate-2'], weight: 1 },
+      { ids: ['mod-turret-kin-3'], weight: 0.25 },
+    ])
     expect(wormholeRareBoxThemePoolOf(ctx, 'hi')).toEqual([])
     expect(wormholeRareBoxThemePoolOf(ctx, 'lo')).toEqual([])
+    expect(wormholeRareBoxThemeGroupsOf(ctx, 'hi')).toEqual([])
+    expect(wormholeRareBoxThemeGroupsOf(ctx, 'lo')).toEqual([])
   })
 
-  it('洞内稀有残骸：未中族专属时**必给一件装备**（改前只剩一批矿物）', () => {
-    const ctx = ctxWithMk3()
+  it('洞内稀有残骸：未中族专属时**必给一件装备**（来自生效回落池；改前只剩一批矿物）', () => {
+    const ctx = ctxWithWhFallbacks()
     const { mods, logs } = burnOne(ctx, WH_ID)
-    expect(mods['mod-turret-kin-3'], `应出一件 MK3 主题件，实际 ${JSON.stringify(mods)}`).toBe(1)
+    const got = Object.keys(mods)
+    expect(got.length, `应恰好出一件主题件，实际 ${JSON.stringify(mods)}`).toBe(1)
+    // 生效池 = 带权重两组（MK2 组 ＋ MK3 组）⇒ 出哪一件都合法；"MK3 只占约 20%"由
+    // `rare-box-weight.test.ts` ④ 用 2000 次抽样钉住，这里单次抽样只钉"必出一件且在生效池内"
+    expect(['mod-armor-plate-2', 'mod-turret-kin-3']).toContain(got[0])
     expect(logs.some((t) => t.includes('额外战利品') && t.includes('主题装备'))).toBe(true)
   })
 
   it('洞外稀有残骸：组画像没有主题件 ⇒ **不**吃回落（行为逐字不变，只出矿物）', () => {
-    const ctx = ctxWithMk3()
+    const ctx = ctxWithWhFallbacks()
     const { mods, logs } = burnOne(ctx, OUT_ID)
     expect(Object.keys(mods), `不该出任何主题件，实际 ${JSON.stringify(mods)}`).toEqual([])
     expect(logs.some((t) => t.includes('额外战利品') && t.includes('主题装备'))).toBe(false)

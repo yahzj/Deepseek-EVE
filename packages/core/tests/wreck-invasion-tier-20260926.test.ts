@@ -24,6 +24,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import {
   RARE_BOX_GEAR_CHANCE,
+  RECYCLE_POOL_AVG_ISK,
   RECYCLE_YIELD_PER_M3,
   rareBoxThemePoolOf,
   recyclePoolMeanIsk,
@@ -161,8 +162,9 @@ describe('联动读数：高级箱命中率（组档位派生）', () => {
   })
 })
 
-/** 常档基础池均价（H 改前用）——从常驻档池现算，不手抄常量 */
+/** 常档基础池均价（H 改前用）——直接读档基数常量，不借组池做代理
+ *  ⚠ 2026-09-30 改：原先借 `a-wh` 组池当代理（当时"洞内组池 = 常档基础池"成立）；
+ *  该口径随船长令「虫洞残骸也调整到危级别」失效 ⇒ 改读 `RECYCLE_POOL_AVG_ISK.common`（单点、不漂移）。 */
 function RECYCLE_POOLS_COMMON_MEAN(): number {
-  const g = WRECK_GROUP_BY_KEY.get('a-wh')! // 洞内组池 = 常档基础池（与 `RECYCLE_POOLS.common` 同值）
-  return meanOf(g.pool)
+  return RECYCLE_POOL_AVG_ISK.common
 }
