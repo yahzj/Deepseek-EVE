@@ -10,7 +10,7 @@ import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, marketGoodOf, SYNAPTIC_ACCELERANT_IT
 import { itemRarityTierOf } from '@whale/data'
 import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemHoverContent, itemInfoLines, moduleHoverContent, ModuleHover, moduleInfoLines } from '../ui/shipInfo'
-import { Glyph, inventoryItemTone, toneOf } from '../ui/Glyphs'
+import { Glyph, inventoryItemTone, toneOf, itemGlyphName } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { ItemActionModal } from '../ui/ItemActionModal'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
@@ -471,7 +471,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                     >
                       <div className="app-inv-main">
                         <span className="app-inv-name">
-                          <RowGlyph glyph={def.kind} tone={inventoryItemTone(id, def.kind)} /> {def.name}
+                          {/* 图标走**物品 id 单点映射**（三件道具各有专属线稿；其余回落大类键） */}
+                          <RowGlyph glyph={itemGlyphName(id, def.kind)} tone={inventoryItemTone(id, def.kind)} /> {def.name}
                           {def.kind !== 'ore' && def.kind !== 'mineral' ? (
                             <span className="app-dim">（{ITEM_KIND_LABELS[def.kind]}）</span>
                           ) : null}

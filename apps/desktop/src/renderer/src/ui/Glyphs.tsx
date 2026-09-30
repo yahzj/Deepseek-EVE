@@ -220,7 +220,36 @@ const SHAPES: Record<string, ReactNode> = {
       <circle cx="13.4" cy="14.4" r="0.7" />
     </g>
   ),
-  /* ── 谜质装置 20 台（2026-09-13 F3c：每台一枚专属线稿）──
+  /* ── 三件道具的**专属线稿**（**2026-09-30 船长报障**：「这三样东西没有配套的图标」）──
+     沿用同一套物品语言（圆环徽 ＋ 细描边 ＋ currentColor），靠**内部纹样**区分：
+     `ico-fuel` 液面波动 · `ico-beacon` 发射塔与信号弧 · `ico-boost` 双箭头加速。
+     取用走下方 `itemGlyphName()`（**按物品 id 的单点映射**），不在各处写死。 */
+  'ico-fuel': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M8.8 8.2h6.4v7.6a1.2 1.2 0 0 1-1.2 1.2h-4a1.2 1.2 0 0 1-1.2-1.2z" />
+      <path d="M8.8 11.4c1.1-.9 2 -.9 3.2 0s2.1.9 3.2 0" />
+      <path d="M8.8 13.6c1.1-.9 2 -.9 3.2 0s2.1.9 3.2 0" />
+    </g>
+  ),
+  'ico-beacon': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M12 20V11.6" />
+      <path d="M10.2 20h3.6" />
+      <path d="M12 11.6 9.6 8.2h4.8z" />
+      <path d="M7.2 6.4a6.4 6.4 0 0 1 2.2-2.2M16.8 6.4a6.4 6.4 0 0 0-2.2-2.2" />
+      <path d="M5.6 8.6a8.6 8.6 0 0 1 1.4-1.6M18.4 8.6a8.6 8.6 0 0 0-1.4-1.6" />
+    </g>
+  ),
+  'ico-boost': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M10.4 8.4 14 12l-3.6 3.6" />
+      <path d="M13.6 8.4 17.2 12l-3.6 3.6" />
+      <path d="M6.8 12h3.2" />
+    </g>
+  ),  /* ── 谜质装置 20 台（2026-09-13 F3c：每台一枚专属线稿）──
      全部沿用"圆环徽 + 内部几何"这套物品语言，靠**内部纹样**区分用途（远看同族、近看可辨）。 */
   /* 探索：测绘 / 时序 / 星云 / 扩展 */
   'mat-surveyor': (
@@ -1209,6 +1238,24 @@ SHAPES['part-advanced'] = SHAPES.part
 import { ICO_TONES, NAV_TONES, SCALARS, TONES } from './tones'
 
 export { ICO_TONES, NAV_TONES, TONES }
+
+/**
+ * **物品 id → 专属图标的唯一登记处**（**2026-09-30 船长报障**：「这三样东西没有配套的图标」——
+ * 原先物品一律按**大类键**取图标（`consumable` 一个罐子）⇒ 燃料 / 信号发射器 / 突触加速剂长得一样）。
+ *
+ * 口径：**有专属线稿的登记在这里，其余一律回落大类键 `kind`**（老调用点零改动）；
+ * 取用一律走 {@link itemGlyphName}，不在页面里写死图标名。
+ */
+export const ITEM_GLYPH_OVERRIDES: Readonly<Record<string, string>> = {
+  'jump-fuel': 'ico-fuel',
+  'invasion-beacon': 'ico-beacon',
+  'synaptic-accelerant': 'ico-boost',
+}
+
+/** 物品该用哪枚图标（专属优先、否则回落 `kind`）；`id` 缺省时直接返回 `kind` */
+export function itemGlyphName(itemId: string | undefined, kind: string): string {
+  return itemId !== undefined ? (ITEM_GLYPH_OVERRIDES[itemId] ?? kind) : kind
+}
 
 export const RARE_WRECK_TONE = SCALARS.RARE_WRECK_TONE
 

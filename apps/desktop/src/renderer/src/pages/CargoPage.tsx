@@ -23,7 +23,7 @@ import {
 import { Panel, ProgressBar } from '@whale/ui'
 import { itemRarityTierOf } from '@whale/data'
 import { ItemHover, InfoTable, itemHoverContent, itemInfoLines, moduleHoverContent, ModuleHover, moduleInfoLines } from '../ui/shipInfo'
-import { Glyph, inventoryItemTone, toneOf } from '../ui/Glyphs'
+import { Glyph, inventoryItemTone, toneOf, itemGlyphName } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { ItemActionModal } from '../ui/ItemActionModal'
 import { SellQtyModal } from '../ui/SellQtyModal'
@@ -286,7 +286,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                     >
                       <div className="app-inv-main">
                         <span className="app-inv-name">
-                          <RowGlyph glyph={def.kind} tone={inventoryItemTone(id, def.kind)} /> {def.name}
+                          <RowGlyph glyph={itemGlyphName(id, def.kind)} tone={inventoryItemTone(id, def.kind)} /> {def.name}
                         </span>
                         <span className="app-inv-count">
                           ×{units.toLocaleString('zh-CN')}（{m3(units * def.unitM3)}{tr('ui.CargoPage.054')}{' '}
@@ -449,7 +449,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
             <ItemActionModal onClose={() => setPickId(null)}>
               <div className="app-itempick-head">
                 <span className="app-itempick-icon">
-                  <Glyph name={pickDef.kind} size={40} color={inventoryItemTone(pickId, pickDef.kind)} />
+                  <Glyph name={itemGlyphName(pickId, pickDef.kind)} size={40} color={inventoryItemTone(pickId, pickDef.kind)} />
                 </span>
                 <div className="app-itempick-info">
                   <div className="app-itempick-name">{pickDef.name}</div>
