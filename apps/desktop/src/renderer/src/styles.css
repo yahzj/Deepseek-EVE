@@ -40,6 +40,30 @@ body {
 
 }
 
+/* ── 全站 `button` 基底（**2026-09-30 加** · 船长报障「技能页那几个筛选标签没选择时还是白底的」）──
+
+   本仓**没有**任何元素级 `button` reset：凡是"只给描边与文字色、没写 `background`"的按钮类，
+   都会露出浏览器默认的按钮底 `ButtonFace`（≈ `rgb(240,240,240)`）。深空主题下它是一块**浅灰**、
+   亮白主题下就是**纯白**——船长一眼看到的就是这个。
+
+   ⚠ **为什么放在这里而不是逐个类补**（上一轮就是逐个补的，于是漏了 `.app-skilltree-key` 的默认态）：
+   这是**基底**、不是样式——`button` 元素选择器特异度 0,0,1 ⇒ **任何类规则都能盖过它**，
+   所以：① 没写背景的按钮自动变成"与面板同底"；② 已写背景的（`.app-btn` / `.app-subtab` /
+   `.app-tasktab` … 几百处）**逐像素不变**。补 `font: inherit` 同理：默认按钮字体是系统的，
+   不继承会与自绘 UI 的字号/字重不一致（`.app-linklike` 那类早有这条，这里只是提成全站）。
+   ⚠ `cursor: pointer` 也一并给（默认按钮是箭头，与全站可点元素的手型不一致）。 */
+button {
+
+  background: transparent;
+
+  font: inherit;
+
+  color: inherit;
+
+  cursor: pointer;
+
+}
+
 /* 英文界面换 Latin 优先字体栈（2026-09-19 船长令「英语本地化」）：中文栈的 Latin 字形偏窄且字重单薄，
    英文下改用系统 UI 字体；中文侧一字不动（`html[data-locale='en']` 由 i18n/locale.tsx 挂上）。 */
 html[data-locale='en'] body {
@@ -12100,8 +12124,18 @@ html[data-locale='en'] body {
    点「已满级」那颗金色标签，它会当场变成青色，与它代表的"满级金"对不上（六颗点一遍六种颜色全乱）。
    正解 = **状态色是身份、选中是"被按下"**：文字/描边继续由上面那几条状态规则给（层叠里在本条之前、
    同特异度 ⇒ 本规则**避开**这两个属性即可），选中只补"底纹 + 外圈 + 字重"。
-   底色留空：本页这些按钮靠"描边 + 文字色"表状态，不选中时才能与旁边那句灰字同底。 */
-.app-skilltree-key { font-family: inherit; cursor: pointer; transition: background .15s, box-shadow .15s; }
+   ⚠ **底色必须显式写 `transparent`**（**2026-09-30 船长报障**：「这几个标签为什么没选择的时候还是白底的？
+   之前没修好吗」）：本仓**没有** `button` 元素级的全局 reset（`appearance` / `background` 都没人清），
+   所以 `<button>` 不写背景就露出浏览器默认的 `ButtonFace` —— 深色主题下几乎看不出来，
+   **亮白主题下就是一块白底**。上一轮只把"选中"那层补齐、漏了"默认"这层（`<span>` 时代不需要它）。
+   ⇒ 这里补 `background: transparent`：未选中的标签与旁边那句灰字**同底**（这正是当初要的效果）。 */
+.app-skilltree-key {
+  font-family: inherit;
+  cursor: pointer;
+  /* 不写就会露出浏览器默认按钮底（亮白主题下 = 白底） */
+  background: transparent;
+  transition: background .15s, box-shadow .15s;
+}
 .app-skilltree-key:hover { background: rgb(var(--wui-x01) / 0.06); }
 .app-skilltree-key.is-active {
   background: rgb(var(--wui-accent) / 0.10);
