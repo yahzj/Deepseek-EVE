@@ -580,6 +580,8 @@ export type { MarkKind } from './marks'
 
 export {
   getMiningParams,
+  beltYieldRows,
+  beltValuePerHour,
   oneLegMs,
   oneOutboundLegMs,
   rollBeltOutput,
@@ -592,7 +594,7 @@ export {
   setMiningStopAfterTrip,
   shipInReturn,
 } from './mining'
-export type { MiningParams, MiningView } from './mining'
+export type { MiningParams, MiningView, BeltYieldRow } from './mining'
 
 export { warpSpeedAus, warpBonusMult, travelTimeFactor, travelLegMs, travelMinutesEff, shortestTravelMinutes, shortestTravelPath } from './travel'
 

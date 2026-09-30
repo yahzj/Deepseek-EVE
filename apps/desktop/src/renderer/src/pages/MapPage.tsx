@@ -10,6 +10,9 @@ import {
   aiTaskView,
   countAiCore,
   getMiningParams,
+  // 2026-09-30 船长令（「原矿价值最高的排序已经落后」）：矿带每小时产出与行情产值的唯一实现在 core
+  beltYieldRows,
+  beltValuePerHour,
   idleAiShipIds,
   isExplored,
   isSiteBuilt,
@@ -106,7 +109,12 @@ export const TAB_UNLOCK_KEY: Partial<Record<MapTab, string>> = {
 }
 
 /* 矿带 / 打捞排序（2026-09-09 船长拍板：危险=所在星系安全等级 sec 降序=安全在前，为默认；
- * 选择存本地，键形如 whale-idle:*-sort）。 */
+ * 选择存本地，键形如 whale-idle:*-sort）。
+ * ⚠ **`value` 档口径 2026-09-30 重定**（**船长令**：「**矿带开采的排序，原矿价值最高的排序已经落后**」）：
+ * 旧口径「每小时产出 × **基准价**」是 2026-09-09 按"与矿带卡内效率行同口径"定的，而卡面 **2026-09-23**
+ * 已改为「物资 ×N/h（仓库 · **行情** P）」⇒ 旧前提失效、排序与卡面数字对不上（17 条矿带全部换位）。
+ * 现口径 = **每小时产出 × 当前行情价**（`beltValuePerHour` ＋ `marketPriceOf`，无行情退基准价），
+ * 选项文案同批改「**行情产值最高**」（`ui.MapPage.010`）。 */
 type BeltSortKey = 'danger' | 'galaxy' | 'value' | 'name'
 const BELT_SORT_KEY = 'whale-idle:mine-sort'
 const BELT_SORT_LABEL: Record<BeltSortKey, string> = {
@@ -264,22 +272,14 @@ function MiningTab({ engine, onToast, focusIds = [] }: { engine: GameEngine; onT
     }
   }
 
-  // 排序行数据（与矿带卡内效率行同口径：矿石价值 = 每小时产出估价，按物品 baseSellPriceIsk 加权）
+  /**
+   * 排序行数据 —— **口径 2026-09-30 换过**（**船长令**：「**矿带开采的排序，原矿价值最高的排序已经落后**」）：
+   * 产值 = `beltValuePerHour`（core 单点：逐项每小时产出 × 当前行情价，无行情退基准价），行情取数与
+   * 卡面「×N/h（仓库 · 行情）」**同一把尺**（`marketPriceOf`）。旧口径用的基准价已不用在排序里。
+   */
   const beltRows = engine.belts.map((belt) => {
     const galaxy = belt.galaxyId ? engine.ctx.galaxies.get(belt.galaxyId) : undefined
-    const mp = getMiningParams(state, engine.ctx, { beltId: belt.id })
-    let valuePerHour: number | null = null
-    if (mp) {
-      const cyclesPerHour = 3_600_000 / mp.cycleMs
-      const rows = belt.outputs?.length ? belt.outputs : [{ itemId: belt.oreId, weight: 1 }]
-      const wsum = rows.reduce((s, r) => s + r.weight, 0)
-      let valuePerUnit = 0
-      for (const r of rows) {
-        const d = engine.ctx.items.get(r.itemId)
-        valuePerUnit += (r.weight / wsum) * (d?.baseSellPriceIsk ?? 0)
-      }
-      valuePerHour = Math.round(Math.round(mp.unitsPerCycle * cyclesPerHour) * valuePerUnit)
-    }
+    const valuePerHour = beltValuePerHour(state, engine.ctx, belt, (id) => marketPriceOf(state, engine.ctx, id))
     return { belt, galaxyName: galaxy?.name ?? tr('ui.Expedition.007'), sec: galaxy?.security ?? 1, valuePerHour }
   })
   const byBeltName = (x: (typeof beltRows)[number], y: (typeof beltRows)[number]): number =>
@@ -431,23 +431,22 @@ function BeltCard({
   const galaxy = belt.galaxyId ? engine.ctx.galaxies.get(belt.galaxyId) : undefined
   const galaxyName = galaxy?.name ?? tr('ui.Expedition.007')
   // 效率行（试点 2026-09-05）：每循环产量 × 循环时长 → 每小时产出与每小时估价。
-  // 估价按物品本身 baseSellPriceIsk（不随市场浮动）；复合带按权重加权期望价值。
   /**
    * **产出读数换口径**（**2026-09-23 船长令**：「各个有收益的卡牌上写着的收入预估…会严重误导玩家…
    * 其他活动只显示每小时能收获多少资源以及产出的物资的市场当前价格」）⇒
    * 卡面不再出现「≈N ISK/h」这种折算值，改为逐项列「物资 ×N/h（仓库 M · 行情 P）」；
    * 行文与取数全在 `ui/yieldView.tsx`（唯一实现），本页只交"每小时产什么、产多少"。
+   * ⚠ **2026-09-30**：这段"每小时产出"的算式搬进 core 单点 `beltYieldRows`（排序与卡面原先各写一份，
+   * 排序那份还停在基准价口径 ⇒ 见 `BeltSortKey` 上方注释）；卡面仍按老样子取整显示。
    */
   const yieldRows: YieldRow[] = []
   let effLine: string | null = null
   const mp = getMiningParams(state, engine.ctx, { beltId: belt.id })
   if (mp) {
-    const cyclesPerHour = 3_600_000 / mp.cycleMs
-    const rows = belt.outputs?.length ? belt.outputs : [{ itemId: belt.oreId, weight: 1 }]
-    const wsum = rows.reduce((s, r) => s + r.weight, 0)
+    const rows = beltYieldRows(state, engine.ctx, belt) ?? []
     // 复合矿带：按权重把"每小时总单位数"摊到各产出上（各行相加 = 总产量）
     for (const r of rows) {
-      yieldRows.push({ itemId: r.itemId, perHour: Math.round((mp.unitsPerCycle * cyclesPerHour * r.weight) / wsum) })
+      yieldRows.push({ itemId: r.itemId, perHour: Math.round(r.perHour) })
     }
     const sec = Math.round(mp.cycleMs / 1000)
     // **尾部「≈N 单位/h」已删**（**2026-09-23 船长令**：「可以将后面的这个总数/h删除，和下面产出重复了」）：

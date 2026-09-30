@@ -3035,7 +3035,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.265": { zh: "零件蓝图", en: "Part blueprints" },
   "ui.Handbook.266": { zh: "舰船页「AI 指挥中心」可统一指派与取消这些作业。", en: "The AI Command Center on the Ships page is where these jobs are assigned and cancelled in one place." },
   "ui.Handbook.267": { zh: "返航落点", en: "Where the ship returns" },
-  "ui.Handbook.268": { zh: "采矿 / 打捞自动返航、悬赏的胜利返航都会停到最近已建成的站；手动召回仍回母港（星系扫描自 2026-09-15 起是无人扫描艇，不再牵动舰船与停靠）。", en: "Automatic returns from mining and salvaging, and victorious bounty returns, all dock at the nearest completed station; a manual recall still goes to the home port (system scanning has used an unmanned ship since 2026-09-15 and no longer involves a ship or docking)." },
+  // ⟪文案调整 2026-09-30⟫ 文案审核批：删掉玩家可见文案里的变更日期（"自某日起"是版本语言，玩家读手册不需要它）
+  "ui.Handbook.268": { zh: "采矿 / 打捞自动返航、悬赏的胜利返航都会停到最近已建成的站；手动召回仍回母港（星系扫描由无人扫描艇执行，不再牵动舰船与停靠）。", en: "Automatic returns from mining and salvaging, and victorious bounty returns, all dock at the nearest completed station; a manual recall still goes to the home port (system scanning is flown by an unmanned ship and no longer involves a ship or docking)." },
   "ui.Handbook.269": { zh: "解锁", en: "Unlocking" },
   "ui.Handbook.270": { zh: "选一条两站航线即可开始自动往返货运——虚拟货物占满货仓（不影响真实货物），每段按货仓容量 × 航程结算报酬，到站自动续下一段。", en: "Pick a route between two stations to start automatic round-trip hauling — virtual freight fills the hold (without touching real cargo), each leg pays hold capacity × distance, and docking starts the next leg automatically." },
   "ui.Handbook.271": { zh: "随时「停止运输」会立即返港停靠，无惩罚。", en: "Stop hauling at any time docks the ship at once, with no penalty." },
@@ -3585,6 +3586,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ItemsPage.051": { zh: "丢弃失败", en: "Discard failed" },
   // 2026-09-30 船长令：燃料等"普通货仓装不进去"的东西（`ItemDef.holdForbidden`）装船时给专门提示
   "ui.ItemsPage.052": { zh: "{p1} 无法装入舰船货仓（仅存于物品仓库）。", en: "{p1} cannot be loaded into a ship's hold — it is stored in the item warehouse only." },
+  "ui.ItemsPage.053": { zh: "普通舰船货仓无法装入（仅存于物品仓库）", en: "Ordinary ship holds cannot take it (item warehouse only)" },
   "ui.itemSubs.001": { zh: "修理组件", en: "Repair Kit" },
   "ui.itemSubs.002": { zh: "遗迹安全货柜", en: "Ruins safe container" },
   "ui.itemSubs.003": { zh: "图纸货柜", en: "Blueprint container" },
@@ -3694,7 +3696,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.MapPage.007": { zh: "扫描虫洞", en: "Scan wormhole" },
   "ui.MapPage.008": { zh: "危险（安全优先）", en: "Dangerous (safety first)" },
   "ui.MapPage.009": { zh: "星系名称", en: "System name" },
-  "ui.MapPage.010": { zh: "原矿价值最高", en: "Highest ore value" },
+  "ui.MapPage.010": { zh: "行情产值最高", en: "Highest market value" },
   "ui.MapPage.011": { zh: "矿带名称", en: "Belt name" },
   "ui.MapPage.012": { zh: "残骸密度最高", en: "Highest wreck density" },
   "ui.MapPage.013": { zh: "本地矿带开采", en: "Local belt mining" },
@@ -4065,7 +4067,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.SaveManager.008": { zh: "已导出：{p1}", en: "Exported: {p1}" },
   "ui.SaveManager.009": { zh: "备份已开始下载（保存在下载目录）。", en: "The backup download has started (saved in your downloads folder)." },
   "ui.SaveManager.010": { zh: "已删除备份：{name}", en: "Backup deleted: {name}" },
-  "ui.SaveManager.011": { zh: "备份 = 把当前进度复制成时间戳文件（保存在游戏数据目录），最多 30 份。⚠ 恢复 / 导入不会自动备份原档（2026-09-17 船长定）——想留退路请先点「备份当前档」；删除 = 移除所选备份文件，不影响当前档。导入 = 从任意存档文件恢复，导入时会按文件保存时刻与现在的时间差补齐离线进度；导出 = 把当前进度存成文件（手机网页会优先弹系统分享：选「存储到文件」或发给自己；浏览器不支持分享时才改为下载到下载目录——若内置浏览器拦了下载，请用系统浏览器打开本页）。", en: "Back up = copies the current progress into a timestamped file (kept in the game data folder), up to 30 of them. ⚠ Restoring or importing does not back up the old save automatically — click Back up current save first if you want a fallback. Delete = removes the selected backup file and leaves the current save alone. Import = restores from any save file, catching up offline progress from the gap between when the file was written and now. Export = saves the current progress to a file (mobile web opens the system share sheet first: choose Save to Files or send it to yourself; if the browser cannot share, it downloads to your downloads folder instead — and if an in-app browser blocks the download, open this page in your system browser)." },
+  // ⟪文案调整 2026-09-30⟫ 文案审核批（船长令「对现有所有通讯或者长文本进行下审核」）：删掉玩家可见文案里的
+  //   开发侧日期（英文那列本来就没有这句）——「版本/日期/复核/待定/占位/口径等开发文本留在开发侧，发现残留即清理」（AGENTS.md §5）
+  "ui.SaveManager.011": { zh: "备份 = 把当前进度复制成时间戳文件（保存在游戏数据目录），最多 30 份。⚠ 恢复 / 导入不会自动备份原档——想留退路请先点「备份当前档」；删除 = 移除所选备份文件，不影响当前档。导入 = 从任意存档文件恢复，导入时会按文件保存时刻与现在的时间差补齐离线进度；导出 = 把当前进度存成文件（手机网页会优先弹系统分享：选「存储到文件」或发给自己；浏览器不支持分享时才改为下载到下载目录——若内置浏览器拦了下载，请用系统浏览器打开本页）。", en: "Back up = copies the current progress into a timestamped file (kept in the game data folder), up to 30 of them. ⚠ Restoring or importing does not back up the old save automatically — click Back up current save first if you want a fallback. Delete = removes the selected backup file and leaves the current save alone. Import = restores from any save file, catching up offline progress from the gap between when the file was written and now. Export = saves the current progress to a file (mobile web opens the system share sheet first: choose Save to Files or send it to yourself; if the browser cannot share, it downloads to your downloads folder instead — and if an in-app browser blocks the download, open this page in your system browser)." },
   "ui.SaveManager.012": { zh: "备份当前档", en: "Back up current save" },
   "ui.SaveManager.013": { zh: "选择一个 .json 存档文件导入（⚠ 不备份原档；按时间差补齐离线进度）", en: "Choose a .json save file to import (⚠ the old save is not backed up; offline progress is caught up from the time gap)" },
   "ui.SaveManager.014": { zh: "导入存档…", en: "Import save…" },
@@ -5150,7 +5154,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Wormhole.340": { zh: "· {p1} {p2}/{p3} 级：{p4}", en: "· {p1} level {p2}/{p3}: {p4}" },
   "ui.Wormhole.341": { zh: "无法开战。", en: "Cannot start the fight." },
   "ui.Wormhole.342": { zh: " 堆", en: " piles" },
-  "ui.Wormhole.343": { zh: "格，货仓只剩 {p1} 格）——装不下的会留在原地，先把散货抛掉或腾出货仓格再来，或者直接撤离带货回家。", en: " slots while the hold has only {p1} left) — whatever does not fit stays where it is, so jettison loose cargo or free up hold slots first, or simply withdraw and take the loot home." },
+  // ⟪文案调整 2026-09-30⟫ 文案审核批：这条是接在「…这一格还有 N 堆、约 M 格」后面的**从句**，
+  //   原文少了开括号 ⇒ 玩家看到孤零零一个「）」；补上「（」，中英同步（英文列同缺）
+  "ui.Wormhole.343": { zh: "（货仓只剩 {p1} 格）——装不下的会留在原地，先把散货抛掉或腾出货仓格再来，或者直接撤离带货回家。", en: "(the hold has only {p1} left) — whatever does not fit stays where it is, so jettison loose cargo or free up hold slots first, or simply withdraw and take the loot home." },
   "ui.Wormhole.344": { zh: "科技 残骸", en: "Tech wrecks" },
   "ui.Wormhole.345": { zh: "· 母矿", en: "· Motherlode" },
   "ui.Wormhole.346": { zh: "格", en: " slots" },

@@ -135,6 +135,66 @@ export function getMiningParams(
   return { ship, belt, ore, cycleMs, unitsPerCycle }
 }
 
+/** 一条"每小时产出"：某物品每小时多少单位（复合带按权重分摊，各行相加 = 该带每小时总单位数） */
+export interface BeltYieldRow {
+  itemId: string
+  /** 每小时产出（单位 · **精确值不取整**，展示层按需 `Math.round`） */
+  perHour: number
+}
+
+/**
+ * **矿带每小时产出（逐项）—— 唯一实现**（**2026-09-30 船长令**：「**矿带开采的排序，原矿价值最高的排序
+ * 已经落后**」）。
+ *
+ * 沿革：这块算式原先**在渲染层写了两遍**（`pages/MapPage.tsx` 的排序一份、矿带卡片一份），
+ * 且排序用的还是 2026-09-09 定的「**基准价** × 每小时产出」——而卡面口径 **2026-09-23 船长令**已改成
+ * 「物资 ×N/h（仓库 · **行情** P）」（不再出现 ≈ISK/h）⇒ 排序的前提「与矿带卡内效率行同口径」失效，
+ * 排序与卡面数字对不上（读数：17 条矿带**全部换位**，A 档第 1 名在新口径下第 15 名）。
+ *
+ * 搬进 core 的理由与组装机排序（`sortManuRows`，2026-09-14）同款：**渲染层没有测试运行器**，
+ * 而口径漂移只会表现为"看着乱"、不报错。
+ *
+ * 口径：`getMiningParams` 的每循环产量 × 每小时循环数，复合带（`belt.outputs`）按权重摊到各产出；
+ * 权重池非法（Σ ≤ 0）回落主产物 `belt.oreId`（与 `rollBeltOutput` 的兜底同源）。
+ * 返回 `null` = **无采矿参数**（无驾驶船 / 无该矿带）⇒ 调用方按"排最后"处理。
+ */
+export function beltYieldRows(state: GameState, ctx: SimContext, belt: BeltDef): BeltYieldRow[] | null {
+  const mp = getMiningParams(state, ctx, { beltId: belt.id })
+  if (!mp) return null
+  const total = (mp.unitsPerCycle * 3_600_000) / mp.cycleMs
+  const outs = belt.outputs?.length ? belt.outputs : [{ itemId: belt.oreId, weight: 1 }]
+  const wsum = outs.reduce((s, r) => s + r.weight, 0)
+  if (!(wsum > 0)) return [{ itemId: belt.oreId, perHour: total }]
+  return outs.map((r) => ({ itemId: r.itemId, perHour: (total * r.weight) / wsum }))
+}
+
+/**
+ * **矿带每小时产值（当前行情价）**（**2026-09-30 船长令**：「**矿带开采的排序，原矿价值最高的排序已经
+ * 落后**」＋ 同日裁定：口径取「**每小时产出 × 当前行情价**」）。
+ *
+ * 算式 = `Σ(逐项每小时产出 × priceOf(物品))`，取整到 ISK；**`priceOf` 返回 `null`（无行情）的项退回
+ * 该物品基准价** `baseSellPriceIsk`，免得整条带因缺行情沉底。
+ * ⚠ `priceOf` **由调用方交入**：卡面行情价的唯一实现在渲染层 `ui/yieldView.tsx` 的 `marketPriceOf`
+ * （价史右端点 → 挂单价兜底），core 不另建第二份行情口径。
+ * 返回 `null` = 无采矿参数（同 `beltYieldRows`）。
+ */
+export function beltValuePerHour(
+  state: GameState,
+  ctx: SimContext,
+  belt: BeltDef,
+  priceOf: (itemId: string) => number | null,
+): number | null {
+  const rows = beltYieldRows(state, ctx, belt)
+  if (!rows) return null
+  let total = 0
+  for (const r of rows) {
+    const live = priceOf(r.itemId)
+    const unit = live !== null && live > 0 ? live : ctx.items.get(r.itemId)?.baseSellPriceIsk ?? 0
+    total += r.perHour * unit
+  }
+  return Math.round(total)
+}
+
 /**
  * V16 复合矿带：按权重池掷出本循环产物（每循环一掷；单产物带不掷，保持既有 rng 序列）。
  * 主控与 AI 共用（随机源同一）。权重非法/抽空时回落到主产物 belt.oreId。

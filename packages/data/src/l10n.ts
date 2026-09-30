@@ -405,7 +405,7 @@ export const EN_MODULES: EnTable = {
   'mod-wh-g-fcs': { name: 'Deadarmy Fire Control', description: 'Fire-control wreckage salvaged from a sunken ship, still running its old parameters: turret accuracy ×1.12 overall plus +6% single-shot damage for all weapons. It remembers its previous owner\'s shooting habits.' },
   'mod-wh-g-ballistic': { name: 'Wraith Ballistic Corrector', description: 'A ballistic computer with no master: +22% single-shot damage for kinetic weapons and +22% kinetic weapon range, for 60 CPU. The deadarmy\'s guns are all salvaged kinetic pieces, so the corrector honors that family too.' },
   'mod-wh-g-hull': { name: 'Squidwasp Hull Layer', description: '+28% damage reduction against all three types on the structure layer; +18% armor capacity; +80% structure for this ship\'s drones.' },
-  'mod-wh-g-turret': { name: 'Deadarmy Wreck Cannon', description: 'Three wrecked guns rebuilt into one: more than double the single-shot damage of a Siege Turret MK3, with accuracy of only 0.75 — it has passed through too many hands, and the rifling wore out long ago.' },
+  'mod-wh-g-turret': { name: 'Deadarmy Wreck Cannon', description: 'Three wrecked guns rebuilt into one: extremely heavy single shots at very long range, at the cost of a very slow reload and accuracy of only 0.75 — it has passed through too many hands, and the rifling wore out long ago.' },
   'mod-wh-g-prop': { name: 'Wraith Thruster', description: 'A drive section with no exhaust trail: +85% combat speed and no penalty to accuracy. The wraith way is to close in without a sound.' },
 }
 

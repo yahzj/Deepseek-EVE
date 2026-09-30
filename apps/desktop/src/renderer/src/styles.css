@@ -244,11 +244,10 @@ html[data-locale='en'] body {
 
 }
 
-/* 手机：战斗距离滑条放大（2026-09-06 船长：横屏缩放后太小、难拖）——仅 is-mobile-rot 生效 */
+/* 手机：战斗距离轴放大（2026-09-06 船长：横屏缩放后太小、难拖）——仅 is-mobile-rot 生效 */
+/* ⚠ 2026-09-30：原「滑条行 / 滑条容器」两条随拖动条合并进距离轴而删；轴行沿用放大后的间距。 */
 
-.app-root.is-mobile-rot .app-bts-sliderRow { gap: var(--wui-sp-12); }
-
-.app-root.is-mobile-rot .app-bts-sliderWrap { height: 46px; }
+.app-root.is-mobile-rot .app-bts-axisRow { gap: var(--wui-sp-12); }
 
 .app-root.is-mobile-rot .app-bts-range { -webkit-appearance: none; appearance: none; height: 46px; background: transparent; }
 
@@ -260,7 +259,11 @@ html[data-locale='en'] body {
 
 .app-root.is-mobile-rot .app-bts-range::-moz-range-thumb { width: 30px; height: 30px; border-radius: 50%; background: rgb(var(--wui-gold-soft-2)); border: 2px solid rgb(var(--wui-x19)); box-shadow: 0 3px 10px rgba(0,0,0,.55); }
 
-.app-root.is-mobile-rot .app-bts-sideLabel { font-size: var(--wui-fs-base); }
+/* 合并后的**拖动旋钮**压在距离轴刻度上 ⇒ 轨道必须透明（刻度图形由 `.app-bts-scale` 自己画），
+   只保留上面那颗放大的金色抓手（34px，触屏够点）。写在这批之后 ⇒ 同特异度靠顺序取胜。 */
+.app-root.is-mobile-rot .app-bts-knob::-webkit-slider-runnable-track { height: 46px; background: transparent; border: none; }
+
+.app-root.is-mobile-rot .app-bts-knob::-moz-range-track { height: 46px; background: transparent; border: none; }
 
 .app-root.is-mobile-rot .app-bts-desire { min-width: 180px; font-size: var(--wui-fs-md); }
 
@@ -270,7 +273,8 @@ html[data-locale='en'] body {
 
 .app-root.is-mobile-rot .app-bts-dock { width: min(96%, 1180px); gap: var(--wui-sp-10); }
 
-.app-root.is-mobile-rot .app-bts-ruler { width: min(96%, 1180px); }
+/* ⚠ 2026-09-30：距离尺搬进底栏后不再自己定宽（原来这里是 `width: min(96%, 1180px)`）——
+   宽度由所在 `.app-bts-dock` 给。 */
 
 .app-root.is-mobile-rot .app-bts-ruler-head { font-size: var(--wui-fs-sm); }
 
@@ -337,9 +341,10 @@ html[data-locale='en'] body {
 /* 留白收紧（覆盖上面 2026-09-06 那批的外边距，不动内部尺寸与触控区） */
 .app-root.is-mobile-rot .app-battle-controls { padding-top: var(--wui-sp-6); padding-bottom: var(--wui-sp-8); }
 
-.app-root.is-mobile-rot .app-bts-dock { gap: var(--wui-sp-6); }
+/* 顶部读数区（2026-09-30 新块）同款收紧；它贴页头，上边距再省一点 */
+.app-root.is-mobile-rot .app-bts-topdock { padding: var(--wui-sp-4) var(--wui-sp-16) var(--wui-sp-6); }
 
-.app-root.is-mobile-rot .app-bts-ruler { margin-top: 0; padding-top: var(--wui-sp-2); }
+.app-root.is-mobile-rot .app-bts-dock { gap: var(--wui-sp-6); }
 
 .app-root.is-mobile-rot .app-bts-ruler-speed { line-height: 1.2; }
 
@@ -800,7 +805,11 @@ html[data-locale='en'] body {
 
 }
 
-.app-btn:disabled {
+.app-btn:disabled,
+/* **2026-09-30 船长令**：「置灰，点击后弹出提示无法装入舰船货仓」——即"看着不可用、但点得动"：
+   原生 `disabled` 的按钮**不派发鼠标事件**（点了没有任何反应，弹不出提示）⇒ 改用 `aria-disabled` 表达
+   "不可用"，视觉与 `:disabled` **复用同一条规则**（不另造样式）。 */
+.app-btn[aria-disabled='true'] {
 
   opacity: 0.4;
 
@@ -8430,6 +8439,11 @@ html[data-locale='en'] body {
 
 .app-battle-controls { display: flex; flex-direction: column; gap: var(--wui-sp-6); padding: var(--wui-sp-10) var(--wui-sp-16) var(--wui-sp-14); border-top: 1px solid rgb(var(--wui-border)); background: rgb(var(--wui-bg-winbox) / 0.9); }
 
+/* **顶部读数区**（**2026-09-30 船长令**：「将所有炮和冷却相关的放到屏幕上方」）——
+   倍速 / 图例 chip / 装填冷却平铺三块从底栏搬到这里；宽度与底栏同规（内层复用 `.app-bts-dock`，
+   于是手机那批 `.app-bts-dock .app-bts-legends` 之类的规则自动跟着走）。 */
+.app-bts-topdock { display: flex; flex-direction: column; gap: var(--wui-sp-6); padding: var(--wui-sp-10) var(--wui-sp-16) var(--wui-sp-8); border-bottom: 1px solid rgb(var(--wui-border)); background: rgb(var(--wui-bg-winbox) / 0.9); }
+
 .app-battle-entry-hint { margin-top: var(--wui-sp-6); font-size: var(--wui-fs-xs); }
 
 .app-sprite { position: relative; display: inline-block; }
@@ -8448,7 +8462,9 @@ html[data-locale='en'] body {
 
 .app-bts-stage { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
-.app-bts-ruler { flex: none; padding: 6px 7% 0; }
+/* 距离轴（2026-09-30 船长令：原战场顶部的距离条搬到底栏，与拖动旋钮合成一条）——
+   宽度不再自己 clamp + 居中：由底栏 `.app-bts-dock` 分配，轴行里与「期望」读数并排。 */
+.app-bts-ruler { flex: 1; min-width: 0; }
 
 /* 双方战斗机动速度行（2026-09-16 船长：距离条两端的上方分别显示敌我速度）——
    与 `.app-bts-ruler-head` 同款 flex 两端对齐 + 同字号；绿/红沿用射程带与敌我色调，不新增色板 */
@@ -8535,8 +8551,6 @@ html[data-locale='en'] body {
 
 @keyframes app-bts-puffmiss { 0% { transform: scale(.4); opacity: .4; } 100% { transform: scale(1.2); opacity: 0; } }
 
-.app-bts-here { position: absolute; left: 0; top: 50%; width: 3px; height: 16px; margin: -8px 0 0 -1.5px; background: rgb(var(--wui-blue-4)); box-shadow: 0 0 6px rgba(127,212,255,.9); border-radius: var(--wui-sp-2); pointer-events: none; z-index: 2; }
-
 .app-bts-legends { display: flex; flex-wrap: wrap; align-items: center; gap: var(--wui-sp-6); font-size: var(--wui-fs-xs); }
 
 .app-bts-chip { display: inline-flex; align-items: center; gap: var(--wui-sp-5); border: 1px solid rgb(var(--wui-x01) / 0.08); background: rgb(var(--wui-bg-panel) / 0.5); border-radius: var(--wui-sp-4); padding: var(--wui-sp-2) var(--wui-sp-7); color: rgb(var(--wui-text-dim)); }
@@ -8561,11 +8575,19 @@ html[data-locale='en'] body {
 .app-bts-repair.is-down i { background: rgb(var(--wui-x179)); box-shadow: none; animation: none; }
 @keyframes app-bts-repair-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
 
-.app-bts-sliderRow { display: flex; align-items: center; gap: var(--wui-sp-10); }
+/* 距离轴行（**2026-09-30 船长令**：距离条与拖动按钮合并）——轴 ＋ 「期望 N m」读数并排；
+   轴自己撑满，读数固定宽（见 `.app-bts-desire`）。 */
+.app-bts-axisRow { display: flex; align-items: center; gap: var(--wui-sp-10); }
 
-.app-bts-sideLabel { font-size: var(--wui-fs-xs); flex: none; }
-
-.app-bts-sliderWrap { position: relative; flex: 1; display: flex; align-items: center; height: 22px; }
+/* 刻度 ＋ 拖动旋钮的叠放层：旋钮（原生 `input[type=range]`）绝对定位压在刻度上 ⇒
+   **同一根轴的同一比例**，拖到哪读到哪；轨道透明，刻度图形仍由 `.app-bts-scale` 自己画。 */
+.app-bts-axisTrack { position: relative; }
+.app-bts-knob { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); width: 100%; height: 30px; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; }
+.app-bts-knob::-webkit-slider-runnable-track { height: 30px; background: transparent; border: none; }
+.app-bts-knob::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 26px; margin-top: 2px; border-radius: var(--wui-sp-4); background: linear-gradient(180deg, rgb(var(--wui-x217)), rgb(var(--wui-gold-soft-2))); border: 2px solid rgb(var(--wui-x19)); box-shadow: 0 2px 8px rgba(0,0,0,.5), 0 0 10px rgba(255,214,120,.55); cursor: grab; }
+.app-bts-knob:active::-webkit-slider-thumb { cursor: grabbing; }
+.app-bts-knob::-moz-range-track { height: 30px; background: transparent; border: none; }
+.app-bts-knob::-moz-range-thumb { width: 12px; height: 24px; border-radius: var(--wui-sp-4); background: rgb(var(--wui-gold-soft-2)); border: 2px solid rgb(var(--wui-x19)); box-shadow: 0 2px 8px rgba(0,0,0,.5); }
 
 .app-bts-range { width: 100%; }
 
@@ -8672,7 +8694,7 @@ html[data-locale='en'] body {
 
 /* V12.3 realtime battle: micro-tween + foe escort hp width (ASCII-safe) */
 
-.app-bts-col, .app-bts-cursor, .app-bts-cur-chip, .app-bts-here { transition: left 80ms linear; }
+.app-bts-col, .app-bts-cursor, .app-bts-cur-chip { transition: left 80ms linear; }
 
 .app-bts-arcs g { transition: transform 80ms linear; }
 
@@ -8818,10 +8840,12 @@ html[data-locale='en'] body {
 
 /* V12.5 narrow centered ruler & dock (ASCII-safe) */
 
-.app-bts-ruler { width: clamp(420px, 52vw, 780px); margin: 4px auto 0; padding: var(--wui-sp-6) var(--wui-sp-4) 0; }
+/* ⚠ 2026-09-30：原来这里给距离尺 `width: clamp(420px,52vw,780px); margin: 4px auto 0; padding: …`
+   —— 距离尺已按船长令搬进底栏成为**距离轴**，宽度由 `.app-bts-ruler { flex: 1 }`（上方那条）分配，
+   这里不再重复定义（留此注释说明"为什么这块少了一条"）。 */
 
-/* 洞内倍速控件（2026-09-19 谜质科技「时间压缩矩阵」）：**顶部中间、距离条上方**，只显示已解锁档。
-   选中态复刻 `.app-fit-ammotier-opt.is-active`（同语言：亮青底 + 深字 + 加粗），不另造样式。 */
+/* 洞内倍速控件（2026-09-19 谜质科技「时间压缩矩阵」）：**顶部读数区第一行居中**，只显示已解锁档。
+   ⚠ 2026-09-30 船长令「所有炮和冷却相关的放到屏幕上方」后，它仍是这块读数区的最上一行。 */
 .app-bts-speedx { display: flex; align-items: center; justify-content: center; gap: var(--wui-sp-6); margin: 2px auto 0; }
 .app-bts-speedx .app-dim { font-size: var(--wui-fs-xs); margin-right: var(--wui-sp-2); }
 .app-bts-speedx .app-btn.is-active { color: rgb(var(--wui-bg-scene-2)); background: rgb(var(--wui-blue)); border-color: rgb(var(--wui-blue)); font-weight: 600; }
@@ -8835,17 +8859,19 @@ html[data-locale='en'] body {
    ① 顶栏在窄屏会折成多行；② 底栏 `.app-bts-dock` 有 `clamp(420px, 52vw, 780px)` 的**最小宽度**
    ⇒ 390px 宽的屏幕上底栏直接横向溢出、把舞台与操作区一起挤出视口，屏幕上只剩那块深色径向底。
    乙 = **窄屏适配（桌面一字不动）**：
-   - **舞台（标尺 + 车道）改为横向可滑动**，并给它们 680px 的设计宽 ⇒ 几何按 `measure()` 实测的
-     车道宽布局 ⇒ 手机上仍是完整的双方编队，左右滑动查看（标尺与车道**同一个滚动容器**，不会错位）；
+   - **舞台（车道）改为横向可滑动**，并给它 680px 的设计宽 ⇒ 几何按 `measure()` 实测的
+     车道宽布局 ⇒ 手机上仍是完整的双方编队，左右滑动查看；
    - **底栏（操作区）适配屏幕宽**（不再撑宽），滑条/按钮照旧可点；
-   - 整屏允许**纵向滚动**，任何一段都不会被永久挤出视口。 */
+   - 整屏允许**纵向滚动**，任何一段都不会被永久挤出视口。
+   ⚠ **2026-09-30 起距离尺不在舞台上**（船长令：搬到底栏成距离轴）⇒ 原来那条"标尺与车道
+   同一个滚动容器、不会错位"的前提没了：车道独自横滑，距离轴留在底栏按屏宽铺满（不再给 680px）。 */
 @media (max-width: 640px) {
   .app-battle-screen { overflow-y: auto; }
   .app-battle-screen-top { padding: var(--wui-sp-6) var(--wui-sp-8); gap: var(--wui-sp-8); row-gap: var(--wui-sp-6); flex-wrap: wrap; }
   .app-battle-screen-top > span { font-size: var(--wui-fs-sm); }
   .app-battle-screen-top .app-btn { font-size: var(--wui-fs-base); padding: var(--wui-sp-8) var(--wui-sp-14); }
   .app-bts-stage { overflow-x: auto; overflow-y: hidden; }
-  .app-bts-speedx, .app-bts-ruler, .app-bts-lane { min-width: 680px; }
+  .app-bts-lane { min-width: 680px; }
   .app-bts-lane { min-height: 240px; }
   .app-bts-dock { width: min(96%, 1180px); }
   .app-bts-swipehint { display: block; }
@@ -9818,13 +9844,13 @@ html[data-locale='en'] body {
 
 .app-bts-sub { display: none; }
 
-.app-bts-col, .app-bts-cursor, .app-bts-cur-chip, .app-bts-here { transition: none; }
+.app-bts-col, .app-bts-cursor, .app-bts-cur-chip { transition: none; }
 
 .app-bts-arcs g { transition: opacity .3s; }
 
 /* V16.4b unified smooth motion: all battle elements transition together (ASCII-safe) */
 
-.app-bts-col, .app-bts-cursor, .app-bts-cur-chip, .app-bts-here { transition: left 90ms linear; }
+.app-bts-col, .app-bts-cursor, .app-bts-cur-chip { transition: left 90ms linear; }
 
 .app-bts-arcs g { transition: transform 90ms linear, opacity .3s; }
 
@@ -9834,7 +9860,7 @@ html[data-locale='en'] body {
 
 /* V16.4d motion driven by 33ms interpolation - no CSS transitions on positions (ASCII-safe) */
 
-.app-bts-col, .app-bts-cursor, .app-bts-cur-chip, .app-bts-here { transition: none; }
+.app-bts-col, .app-bts-cursor, .app-bts-cur-chip { transition: none; }
 
 .app-bts-arcs g { transition: none; }
 

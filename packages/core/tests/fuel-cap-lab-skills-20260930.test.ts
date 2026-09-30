@@ -57,6 +57,17 @@ const CAP_SKILLS = ['fuel-tank-structure', 'orbital-fuel-depot'] as const
 const LAB_SKILLS = ['industrial-automation', 'fuel-catalytic-cracking', 'fuel-yield-engineering'] as const
 
 describe('燃料上限 · 只算物品仓库', () => {
+  it('配方契约：BOM 每一样材料与产物都能在物品目录里解析（P0 幽灵 id 的回归）', () => {
+    // 2026-09-30 P0：`labRecipes.ts` 原先写 `min-jumpplasma`（双 p，表里没有）⇒ 实验室永远"材料不足一批"。
+    // 这条用例照**目录**核对，不照配方自己的 id 灌料（那正是当年漏掉它的原因）。
+    expect(ctx.items.get(recipe.outputItemId), `产物 ${recipe.outputItemId}`).toBeDefined()
+    for (const m of recipe.materials) {
+      expect(ctx.items.get(m.itemId), `材料 ${m.itemId} 必须在物品目录里`).toBeDefined()
+    }
+    // 幽灵 id 不得再出现（写死一次，防止有人"修"回去）
+    expect(ctx.items.get('min-jumpplasma'), '双 p 的幽灵 id 不存在').toBeUndefined()
+  })
+
   it('物品数据：燃料 1 m³/单位 ＋ 普通货仓装不进去', () => {
     const def = ctx.items.get(JUMP_FUEL_ITEM_ID)!
     expect(def.unitM3, '每单位 1 m³（船长令）').toBe(1)
