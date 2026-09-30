@@ -2174,7 +2174,7 @@ function GalaxyActions({
   /** 位置限制（**2026-09-30 船长令**：不可以在有空间站的地方使用）——在基地时按钮置灰并就地说明 */
   const beaconAtStation = isAtHomeLike(state, ctx)
   /** 高安点火（**同日令**：二次警告 + 扣声望）——判据单点在 core */
-  const beaconHighSec = beaconLaunchHighSecOf(state, ctx)
+  const beaconHighSec = beaconLaunchHighSecOf(state, ctx, galaxy.id)
   const [beaconWarn, setBeaconWarn] = useState(false)
   /** 统一的"点火"动作（指定星系那条；成功/失败都给回执） */
   const launchBeaconHere = (): void => {

@@ -34,12 +34,12 @@ export function playerGalaxyIdOf(state: GameState): string {
 
 /** 此刻是否"在高安点火"（＝要弹二次警告 + 扣声望的那种场合）——**单点**，界面与 core 共用
  *
- *  ⚠ **2026-09-30 船长报障**：「我在仓库使用的时候，提示我处于大鲸鱼，还有扣声望警告」——
- *  真因：界面这道门**只看高安、没先看位置**，于是"人在母港（高安）"时会先弹扣声望警告；
- *  而 core 的顺序是**先拒位置**（`core.consumable.010`）⇒ 玩家确认后又被拒，前后两句话打架。
- *  ⇒ 定成：**只要在空间站（母港/已建成副站）就不算"高安点火"**（那一路由位置门负责拒并说明），
- *  界面与 core 的顺序从此一致：**位置 → 高安**。 */
-export function beaconLaunchHighSecOf(state: GameState, ctx: SimContext): boolean {
+ *  ⚠ **2026-09-30 船长纠正**：「仓库使用的效果不是触发一次默认的入侵吗？**这和我在哪没有关系，
+ *  只有使用在指定星系时候才需要判断**。」⇒ 本判据只在**指定星系**那条路上成立：
+ *  `targetGalaxyId` 缺省（物品页/货仓页直接使用 ⇒ 走默认入侵规则）时**一律 false**——
+ *  既不警告、也不扣声望，和玩家站在哪儿无关。 */
+export function beaconLaunchHighSecOf(state: GameState, ctx: SimContext, targetGalaxyId?: string): boolean {
+  if (targetGalaxyId === undefined) return false
   if (isAtHomeLike(state, ctx)) return false
   return securityZoneOf(ctx, playerGalaxyIdOf(state)) === '高安'
 }
@@ -145,7 +145,12 @@ export function useInvasionBeacon(
    * 判据 = `location.isAtHomeLike`（母港 或 **已建成**副站；在建工地不算）⇒ 那时**拒绝启动**。
    * ⚠ 排在"已有入侵"之后：两者同时成立时，"等这场打完"是更贴切的那句。
    */
-  if (isAtHomeLike(state, ctx)) {
+  /**
+   * ⚠ **位置门只管"指定星系"那条路**（**2026-09-30 船长纠正**：「仓库使用的效果不是触发一次默认的
+   * 入侵吗？**这和我在哪没有关系，只有使用在指定星系时候才需要判断**」）——默认那条（物品页/货仓页
+   * 直接使用）**不判玩家在哪**，与每周那次默认入侵同一套规则。
+   */
+  if (galaxyId !== undefined && isAtHomeLike(state, ctx)) {
     return { ok: false, error: '不能在空间站所在地使用信号发射器：先把船开到没有空间站的星系再启动。', errorId: 'core.consumable.010' }
   }
   const family = INVASION_BEACON_FAMILIES.find((f) => f.id === (familyId ?? INVASION_BEACON_FAMILIES[0]!.id))
@@ -163,7 +168,7 @@ export function useInvasionBeacon(
    * ⚠ 扣的是 `state.standings`（可支配那本，与章鱼人兑换同账），**不动累计** ⇒ 已达成的门槛不受影响。
    */
   const here = playerGalaxyIdOf(state)
-  const highSec = beaconLaunchHighSecOf(state, ctx)
+  const highSec = beaconLaunchHighSecOf(state, ctx, galaxyId)
   if (highSec && spendableStandingOf(state, DSI_FACTION_ID) < HIGH_SEC_PENALTY) {
     return {
       ok: false,
