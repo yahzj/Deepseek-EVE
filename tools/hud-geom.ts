@@ -207,7 +207,13 @@ async function hoverRowTip(cdp: Cdp, label: string, selector: string, idx = 0): 
   const tip = await cdp.evalJS<string>(
     `(() => {
       const t = document.querySelector('.app-tip')
-      if (t) return t.innerText.replace(/\\s+/g, ' ').slice(0, 220)
+      if (t) {
+        const b = t.getBoundingClientRect()
+        /* 顺带量"盒宽"与"有没有行被折"（船长 2026-09-30：「悬浮窗建议加宽50~100px」）：
+           scrollWidth 大于 clientWidth ＝ 有内容横向溢出。 */
+        return '［盒 ' + Math.round(b.width) + '×' + Math.round(b.height) + ' · 横溢 ' + Math.round(t.scrollWidth - t.clientWidth) + '］ ' +
+          t.innerText.replace(/\\s+/g, ' ').slice(0, 220)
+      }
       const under = document.elementFromPoint(${box.x}, ${box.y})
       return '（无卡）落点=' + (under ? under.tagName + '.' + String(under.className).slice(0, 40) : 'null')
     })()`,

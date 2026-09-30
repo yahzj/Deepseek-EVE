@@ -30,8 +30,10 @@ interface TipState {
   y: number
 }
 
-/** 预估提示宽度（与实际 CSS max-width 一致；渲染后按实测精修） */
-const TIP_W = 300
+/** 预估提示宽度（与实际 CSS max-width 一致；渲染后按实测精修）
+ *  ⚠ **2026-09-30 船长令：300 → 380px**（「悬浮窗建议加宽50~100px」）——
+ *  必须与 `styles.css` 里 `.app-tip { max-width }` 同步（本常量驱动"右边放不下就翻到左边"的定位）。 */
+const TIP_W = 380
 const PAD = 8
 
 /**

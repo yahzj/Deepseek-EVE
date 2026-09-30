@@ -130,3 +130,17 @@
 - **丁**：窄档**收内容**（投料表隐藏档位 chip ＋ 收紧动作列内边距）——能再挤出约 78px，但会少一项可见信息。
 
 ⚠ 乙/丙/丁都要改已定的口径（外壳行为 / 表格呈现 / 内容），按 §5.2 先摆给船长；本次只落**甲**。
+
+## 七、同批：悬停卡限宽 300 → 380px（船长令）
+
+**船长原话**：「**悬浮窗建议加宽50~100px**」（继"数字被截断自动换行"与"库存另起一行"之后的第三步）。
+
+- 取 **+80px**（落在船长给的 50~100 区间）：`styles.css` 的 `.app-tip { max-width }` **300 → 380px**、
+  旋转模式档 `min(340px, 92%)` → `min(420px, 92%)`；`ui/Tooltip.tsx` 的 **`TIP_W` 300 → 380**（两处必须同步，
+  它驱动"右边放不下就翻到左边"的定位）。
+- **规则档已同步**：`docs/development-conventions.md` §九 的「限宽 300px」改成 380px（并订正同一条里过期的
+  「悬停 200ms」→ 停驻 `TIP_DELAY_MS` ＝ 500ms）；changelog 顶部记了一条。
+- 技能依据（§九之八）：UX「Text Reflow（Critical）：Don't clip text in fixed-width or fixed-height boxes」·
+  「Essential Text Truncation（Critical）」·「Container Width：limit max-width for text content」——三条都指向放宽，无冲突。
+- 读数（`tools/hud-geom.ts` 新增"盒宽 ＋ 横溢"）：四张卡 **横溢全部 0**、盒宽 298 / 298 / 358 / 319px
+  （`max-width` 是上限不是定宽 ⇒ 短卡不会被拉宽），组装机卡从被 300px 截住变为 358px 自然展开。
