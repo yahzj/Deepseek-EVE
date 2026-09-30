@@ -1051,13 +1051,18 @@ export function rollRareBoxExtra(
   state: GameState,
   ctx: SimContext,
   profile: RecycleProfile,
-  /** 主题件**回落池**（洞内稀有残骸用；见 `rareBoxThemePoolOf` 的注释。缺省空 = 旧口径） */
+  /**
+   * 主题件**最后兜底池**（甲1案：洞内稀有残骸用 `wormholeSalvage.wormholeRareBoxThemePoolOf`。
+   * ⚠ **2026-09-30 修正顺序**：本池只在「卡面 `theme` 空 **且** 下面的带权重组也空」时才用——
+   * 修前它被当成"卡面池"先返回，非空就把带权重组挡死 ⇒ 洞内只出 MK3）。
+   */
   themeFallback: readonly string[] = [],
   /**
    * **带权重的回落池组**（**2026-09-24 船长令**：「洞内残骸如果未命中，则从 MK2 和 MK3 里抽，
    * MK3 的权重降低为 0.25」＋同日确认「**MK2 的权重按 1**」）：卡面 `theme` 为空时**优先**用这里 ——
    * 先按 `weight` 选组、再在组内均匀抽 1 件 ⇒ MK2 w=1 / MK3 w=0.25 ⇒ 出 MK3 的实际概率 = **20%**。
-   * 组为空 / 未传 ⇒ 退回 `themeFallback`（扁平池 = 旧口径，留给别的调用点）。
+   * 组为空 / 未传 ⇒ 退回上面那个扁平兜底池（旧口径，留给别的调用点）。
+   * ⚠ 2026-09-30 前这里实际上**永远走不到**（被非空的 `themeFallback` 挡住），见上面实现内的注释。
    */
   weightedFallback: ReadonlyArray<{ ids: readonly string[]; weight: number }> = [],
 ): {
@@ -1103,16 +1108,29 @@ export function rollRareBoxExtra(
       notes.push(`专属装备「${itemDef?.name ?? pick}」×${RARE_BOX_DRONE_UNITS} 架`)
     }
   } else {
-    // ② 主题追加件（未出专属时保底一件主题件；卡面池为空时用**回落池**）
-    // **2026-09-24 船长令**：洞内未命中 ⇒ 从 **MK2 + MK3** 里抽，**MK3 权重 0.25**（MK2 = 1 ⇒ MK3 实际 20%）。
-    // 实现：先把"哪一组池"按权重抽出来，再在组内均匀抽 1 件（`pickWeighted` 是 rng 里的既有单点）。
-    const theme = rareBoxThemePoolOf(profile, themeFallback)
+    /**
+     * ② 主题追加件（未出专属时保底一件主题件）。**取值优先级**（2026-09-30 修 · 船长报障「洞内稀有残骸
+     * 回收疑似还是只有 MK3，没有 MK2 池」）：
+     *   ① **卡面 `theme`** —— 各族自己的主题件，洞外组走这里；
+     *   ② **带权重的洞内回落组** —— 2026-09-24 船长令：MK2 w=1 / MK3 w=0.25 ⇒ 出 MK3 实际 20%；
+     *   ③ **扁平回落池** —— 2026-09-16 甲1案的洞内 MK3 池，只在 ①② 都空时兜底。
+     *
+     * ⚠ **修前 ②③ 的顺序是反的**：`rareBoxThemePoolOf(profile, themeFallback)` 把甲1案那 35 件 MK3 池
+     * 当"卡面池"先返回 ⇒ 它非空 ⇒ ②永远走不到 ⇒ 洞内高级箱**只出 MK3**（引擎 2 万次实测 MK2 = 0）。
+     * 本函数的注释本来就写着「卡面 `theme` 为空时**优先**用带权重组」⇒ 这里只是让实现回到注释与船长令的口径。
+     */
+    const theme = rareBoxThemePoolOf(profile, [])
     const pick = ((): string | undefined => {
       if (theme.length > 0) return pickOne(state.rng, theme)
       const groups = weightedFallback.filter((g) => g.ids.length > 0 && g.weight > 0)
-      if (groups.length === 0) return undefined
-      const chosen = pickWeighted(state.rng, groups, (g) => g.weight, { bound: 'lte' }) ?? groups[0]!
-      return pickOne(state.rng, chosen.ids)
+      if (groups.length > 0) {
+        // 先把"哪一组池"按权重抽出来，再在组内均匀抽 1 件（`pickWeighted` 是 rng 里的既有单点）
+        const chosen = pickWeighted(state.rng, groups, (g) => g.weight, { bound: 'lte' }) ?? groups[0]!
+        return pickOne(state.rng, chosen.ids)
+      }
+      // ③ 最后兜底：扁平回落池（甲1案）。缺省空 ⇒ 旧口径不变
+      const flat = [...themeFallback]
+      return flat.length > 0 ? pickOne(state.rng, flat) : undefined
     })()
     if (pick !== undefined) {
       /**
