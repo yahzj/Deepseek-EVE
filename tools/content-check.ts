@@ -4139,6 +4139,42 @@ for (const m of MODULES) {
             }
           }
         }
+        /**
+         * ⑧ **2026-09-30 船长两条令的归属契约**（「**给拦截舰添加效果，不会被网子选为目标**」＋
+         *    「**给C族添加族设定，他们的冲锋不会被网子解除**」；口径追问三答取「甲 = 网『关推进器』
+         *    对 C 族无效 / 甲 = 截击舰不能被选为目标 / 两项都做成数据开关」）：
+         *    ① **C 族族设定在件上**——四件「虫群冲锋器」（`chargeSwarmT1`~`T4`）**必须**带
+         *       `charge.webImmune`；其余任何冲锋件（A 族劫掠冲锋推进器 / H 族突击舰那件）**一律不许带**
+         *       （豁免只给 C 族；带错 = 别的族也免网关推进器，玩家看不到区别但战斗读数会漂）；
+         *    ② **截击舰特性在船上**——全仓**恰好两艘**舰写 `ShipDef.interceptorImmuneToWeb`，
+         *       且它们的 `subClass` 必须是「截击舰」（判据是数据字段，契约守"哪几艘写"）。
+         */
+        {
+          const swarm = [
+            FOE_MOUNT_IDS.chargeSwarmT1,
+            FOE_MOUNT_IDS.chargeSwarmT2,
+            FOE_MOUNT_IDS.chargeSwarmT3,
+            FOE_MOUNT_IDS.chargeSwarmT4,
+          ] as const
+          for (const id of swarm) {
+            if (FOE_MOUNTS[id].charge?.webImmune !== true) {
+              bad.push(`${FOE_MOUNTS[id].name} 没带 C 族族设定旗标 charge.webImmune——该族冲锋须免网关推进器`)
+            }
+          }
+          for (const m of Object.values(FOE_MOUNTS)) {
+            if (m.charge === undefined || m.charge.webImmune !== true) continue
+            if (!(swarm as readonly string[]).includes(m.id)) {
+              bad.push(`${m.name}（${m.id}）带了 C 族族设定旗标——该旗标只允许四件虫群冲锋器写`)
+            }
+          }
+          const immuneShips = SHIPS.filter((s) => s.interceptorImmuneToWeb === true)
+          if (immuneShips.length !== 2 || immuneShips.some((s) => s.subClass !== '截击舰')) {
+            bad.push(
+              `截击舰特性契约：写「不会被网子选为目标」的舰应为**两艘截击舰**，实为 ` +
+                immuneShips.map((s) => `${s.name}（${s.id} · ${s.subClass ?? '未写子分类'}）`).join('、'),
+            )
+          }
+        }
       }
       check(bad.length === 0, `敌方挂载件契约：${bad.join(' · ')}`)
       // 汇总行**按目录实算**（血泪清单：硬编码"冲锋 5 · 增程 2"会在加件时说过期话）
@@ -4147,11 +4183,16 @@ for (const m of MODULES) {
       const nDrone = allMounts.filter((m) => m.droneRangeOnHit !== undefined).length
       const nGun = allMounts.filter((m) => m.gunRangeOnHit !== undefined).length
       const nWeb = allMounts.filter((m) => m.web !== undefined).length
+      // 2026-09-30 两条令的读数（按目录实算，不写死数字）
+      const nWebImmune = allMounts.filter((m) => m.charge?.webImmune === true).length
+      const webImmuneShips = SHIPS.filter((s) => s.interceptorImmuneToWeb === true)
       console.log(
         `· 敌方挂载件契约：${allMounts.length} 件（冲锋 ${nCharge} · 机群增程 ${nDrone} · 炮台增程 ${nGun} · 捕获网 ${nWeb}）· ` +
           `C 族 ${aliens.length} 条按档挂件（${aliens.map((s) => `${s.name} T${s.hullClassTier}×${resolveFoeMounts(s.mounts).foeChargeMul}`).join('　')}）· ` +
           `A 族洞内 3 卡条目挂海盗件（×${wantPirate.mul} / ${wantPirate.cooldownMs / 1000} 秒）· 洞外零冲锋件` +
-          `${nWeb > 0 ? ` · **劫掠捕获网** 仅「劫掠电子舰」＋ H 族突击舰/干扰舰（首次开火钉住目标：减速 90% / 关推进器 / 闪避归零 / 射程 −500m；击沉发动者或交战距离超过 4500m 解除）` : ''}`,
+          `${nWeb > 0 ? ` · **劫掠捕获网** 仅「劫掠电子舰」＋ H 族突击舰/干扰舰（首次开火钉住目标：减速 90% / 关推进器 / 闪避归零 / 射程 −500m；击沉发动者或交战距离超过 4500m 解除）` : ''}` +
+          `${nWebImmune > 0 ? ` · **C 族冲锋免网** ${nWebImmune} 件（网「关推进器」对该族不生效）` : ''}` +
+          `${webImmuneShips.length > 0 ? ` · **截击舰不可被网选中** ${webImmuneShips.length} 艘（${webImmuneShips.map((s) => s.name).join('、')}）` : ''}`,
       )
     }
     console.log(

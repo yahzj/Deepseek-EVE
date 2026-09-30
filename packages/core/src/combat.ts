@@ -302,6 +302,23 @@ export interface UnitSpec {
   /** **本单位的冲锋冷却覆写**（2026-09-16 船长：A 族海盗「冲锋倍率为1.6，**冷却30秒**」）——
    *  缺省不写 ⇒ 走全局 `BattleBalance.foeChargeCooldownMs`（10 秒）。 */
   foeChargeCooldownMs?: number;
+  /**
+   * **本条冲锋不吃网子的「关推进器」**（**2026-09-30 船长令**「给C族添加族设定，他们的冲锋不会被网子
+   * 解除」；见 `FoeMountDef.charge.webImmune`）——C 族四件「虫群冲锋器」解析出来的旗标。
+   *
+   * 消费单点 = `applyFoeWebDebuff`：本旗标为 true 时**不清零** `thrusterBoost`
+   * （我方「墨潮捕获网」三层的"推进器全关"对本族不生效；**减速与闪避归零照旧**）。
+   * 缺省不写 ⇒ 旧口径（能被网关推进器）。
+   */
+  foeChargeWebImmune?: true;
+  /**
+   * **截击舰特性 · 不会被网子选为目标**（**2026-09-30 船长令**「给拦截舰添加效果，不会被网子选为目标」；
+   * 数据开关 = `ShipDef.interceptorImmuneToWeb`）。
+   *
+   * 消费单点 = `fireFoeCaptureWeb` 的入口守卫（敌方「劫掠捕获网」在首次开火选靶时跳过本船）。
+   * ⚠ 只豁免那四层减益，**普通炮火照旧会打**。缺省不写 ⇒ 旧口径（会被网钉住）。
+   */
+  interceptorImmuneToWeb?: boolean;
   /** **本单位的挂载件展示名**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——建档时由 `mounts` 解析，
    *  视图与战报直接渲染；**不是 id**、也不参与任何判定。 */
   foeMountNames?: readonly string[]
@@ -1134,6 +1151,8 @@ export function applyMeWebDebuff<T extends UnitSpec>(spec: T, d: import('./state
  * 2. **多艘不叠加**：目标已有账本 ⇒ **不再上账本、不推特效、不写日志**（只留最早那条）；
  * 3. ⚠ **打空不算用掉**：第 2 条那种"目标已被别的网钉住"的情形下，**本舰的网保留**，
  *    等它**真正钉住一个未被捕获的目标**时才记 `foeWebFired`。
+ * 4. **截击舰跳过**（**船长 2026-09-30**「给拦截舰添加效果，不会被网子选为目标」）：
+ *    目标带 `interceptorImmuneToWeb` ⇒ 与第 3 条同款处置（不发出、不算用掉、网保留）。
  *
  * 为什么第 3 条必须这样（船长 2026-09-25 原话）：「**装备劫掠捕获网的船攻击时，如果命中已经被捕获的船时，
  * 并不会触发，而是保留直到攻击了没有被捕获的船**」。修前：本函数**无条件**先记 `foeWebFired` 再判"已钉"，
@@ -1149,6 +1168,15 @@ function fireFoeCaptureWeb(
 ): void {
   const web = f.foeCaptureWeb
   if (!web) return
+  /**
+   * **截击舰不可被网选中**（**船长 2026-09-30**：「**给拦截舰添加效果，不会被网子选为目标**」；
+   * 数据开关 = `ShipDef.interceptorImmuneToWeb` ⇒ `spec.interceptorImmuneToWeb`）。
+   *
+   * 与下一条"目标已被别的网钉住"**同一处置**：本发的网**不发出、也不算用掉**（`foeWebFired` 不记）
+   * ⇒ 该舰保留着网，等它某一发打到合法目标再张（既有口径第 3 条「打空不算用掉」）。
+   * ⚠ 只挡**网**：这一发炮火的命中判定与伤害不受影响（选靶在调用方，已定）。
+   */
+  if (target.interceptorImmuneToWeb === true) return
   // ⚠ 目标已被别的网钉住 ⇒ **本次不算发放**（本舰的网保留到它钉住新目标为止）——见函数头注第 3 条
   if (b.meWebDebuffs?.[target.tag]) return
   b.foeWebFired = { ...(b.foeWebFired ?? {}), [f.tag]: true }
@@ -1230,7 +1258,13 @@ export function applyFoeWebDebuff<T extends UnitSpec>(
   d: import('./state').BattleFoeWebDebuff,
 ): T {
   spec.speedMps = Math.max(20, spec.speedMps * d.slowMul)
-  if (d.noThruster) spec.thrusterBoost = 0
+  /**
+   * **C 族族设定**（**船长 2026-09-30**：「给C族添加族设定，**他们的冲锋不会被网子解除**」；
+   * 口径追问取甲 = 「网『关推进器』对 C 族无效」）⇒ 带 `foeChargeWebImmune` 的单位**不清零推进器层**
+   * （见 `FoeMountDef.charge.webImmune`；四件虫群冲锋器带它，A 族那件不带）。
+   * ⚠ 其余两层（减速 / 闪避归零）对 C 族**照常生效**。
+   */
+  if (d.noThruster && spec.foeChargeWebImmune !== true) spec.thrusterBoost = 0
   if (d.noEvasion) spec.evasion = 0
   return spec
 }
@@ -2158,6 +2192,11 @@ export function createPlayerSpec(
     // 2026-09-16 船长：后勤舰的维修装置改修队友（**数据字段驱动**，见 `ShipDef.repairPulseTargetsFleet`；
     // 同日追批「并添加到船体特性属性中」⇒ 判据从 `subClass === '后勤舰'` 改为读字段，界面「船体特性」栏同源）
     ...(ship.repairPulseTargetsFleet === true ? { logistics: true } : {}),
+    /**
+     * **截击舰特性 · 不会被网子选为目标**（**2026-09-30 船长令**；数据字段驱动，同上一行「后勤舰」先例）。
+     * 只带出这一个旗标，判定在 `fireFoeCaptureWeb`（敌方捕获网的入口守卫）。
+     */
+    ...(ship.interceptorImmuneToWeb === true ? { interceptorImmuneToWeb: true } : {}),
     /** 损伤管制装置（2026-09-25 船长令）：本舰装没装、启动时吃哪种组件；`shipId` 供"从本舰货仓取组件"用 */
     shipId: ship.id,
     ...(dcKit !== undefined ? { hullSaveKit: dcKit } : {}),
@@ -2932,6 +2971,9 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       })(),
       // **逐单位冲锋冷却**（2026-09-16 船长：A 族海盗「冲锋倍率为1.6，**冷却30秒**」）——挂了件才写
       ...(mount.foeChargeCooldownMs !== undefined ? { foeChargeCooldownMs: mount.foeChargeCooldownMs } : {}),
+      // **C 族族设定**（2026-09-30 船长令）：四件虫群冲锋器带 `webImmune` ⇒ 本单位的冲锋不被网的
+      // 「关推进器」解除（消费点 = `applyFoeWebDebuff`）。缺省不写 ⇒ 其余冲锋单位零行为变化。
+      ...(mount.foeChargeWebImmune === true ? { foeChargeWebImmune: true } : {}),
       // **挂载件展示名**（船长同日「要：敌舰悬停/战报展示挂载件」）——视图/战报直接渲染
       ...(mount.names.length > 0 ? { foeMountNames: mount.names } : {}),
       // **同序双语名对**（2026-09-24）：显示层按语言取一列（`mountPairsOf` 那条链）

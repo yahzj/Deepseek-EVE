@@ -1930,6 +1930,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 2026-09-26 补：**射程压制阵列**（H 族墨潮干扰阵列）此前没有效果说明 ⇒ 战斗画面悬停只能显示装置名
      （船长报障「不应该复读一遍相同的文字」）。与其余八条同款：触发/持续条件 ＋ 效果。 */
   "ui.foeIntro.108": { zh: "交战中持续压制我方武器射程 −{p1}%", en: "suppresses our weapon range by {p1}% while engaged" },
+  /* 2026-09-30 补：**C 族族设定**（船长「给C族添加族设定，他们的冲锋不会被网子解除」；追问取甲
+     = 网「关推进器」对 C 族无效）——接在 `ui.foeIntro.107`（冲锋那句）后面，只给四件虫群冲锋器用
+     （`FoeMountDef.charge.webImmune`，A 族那件不带）。 */
+  "ui.foeIntro.109": { zh: "；冲锋不会被网子解除", en: "; webs cannot cancel this charge" },
   /* ── 入侵「重复出击」（2026-09-25 船长令：「入侵活动的悬赏，允许玩家开启自动重复，照常计算返回时间」）── */
   "ui.weekend.106": { zh: "重复出击", en: "Repeat assault" },
   "ui.weekend.107": { zh: "开启重复出击：每场从该星系的入侵舰队里重抽一支，胜利后自动返航（返航路程 = 单程）、随后自动再次出发；该星系被夺回或活动结束时自动停止", en: "Start repeat assault: each run draws a fresh invader fleet from that system; after a win the fleet flies home (return leg = one way) and sets out again automatically. It stops when the system is reclaimed or the event ends" },
@@ -4264,6 +4268,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.235": { zh: "装甲动能抗性", en: "Armor kinetic resist" },
   "ui.shipInfo.236": { zh: "装甲高爆抗性", en: "Armor explosive resist" },
   "ui.shipInfo.237": { zh: "装甲能量抗性", en: "Armor energy resist" },
+  /* 2026-09-30 截击舰特性（船长「给拦截舰添加效果，不会被网子选为目标」）——「船体特性」栏那一行，
+     与 `ShipDef.interceptorImmuneToWeb`（数据开关）同源。 */
+  "ui.shipInfo.245": { zh: "不会被网子选为目标", en: "Cannot be targeted by webs" },
 
   /* ── 沉船记录（2026-09-27 船长令：通讯内新增一个分类，记录玩家损失的舰船与当时的装配）── */  "ui.WreckLog.001": { zh: "沉船记录", en: "Ship Loss Log" },
   "ui.WreckLog.002": { zh: "收件箱", en: "Inbox" },
