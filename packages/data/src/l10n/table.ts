@@ -610,6 +610,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.hud.146": { zh: "保底原材料", en: "Guaranteed materials" },
   /* 工位表最左列（动画槽）的列名：表头不显示文字，只给读屏用 */
   "ui.hud.147": { zh: "工位动画", en: "Station animation" },
+  /* 「优先使用的 AI」选择器（**2026-09-30 船长令**：四个工业页签都加、放各页"队列/配方"窗口顶部，
+     左侧加可见标签、右侧显示该核心的剩余数量）。文案依据：`ui-ux-pro-max` Forms·Input Labels（High）
+     「Every input needs a visible label」＋ Accessibility·Contextual Live Badge Updates（High）
+     「announce a meaningful contextual status such as 3 items in cart」「Don't: Announce a bare number」。 */
+  "ui.hud.148": { zh: "优先使用的 AI：", en: "Preferred AI:" },
+  "ui.hud.149": { zh: "剩余 {p1} 枚", en: "{p1} left" },
   /* ── 信号发射器 · 星图「星系详细」内的启动容器（**2026-09-30 船长令**：「在星图的星系详细窗口内，
      新增一项『启动信号发射器』的使用按钮（独立一个容器…），并在其容器内说明使用会产生什么效果」）──
      ⚠ 落点两条路是船长同日裁定：「**直接使用是随机星系（这个要提醒玩家）。选择了星系后是固定。**」 */

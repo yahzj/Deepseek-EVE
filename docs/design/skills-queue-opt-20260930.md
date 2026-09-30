@@ -182,6 +182,54 @@
 - rebase 后复测（含一号新版 `Tooltip.tsx`）：typecheck ✅ · core 276 文件/2905 用例 ✅ ·
   `ui:layout-css:check` ✅ · desktop＋web 构建 ✅ · 上表读数逐条重取一致。
 
+## 10. 追加批：工业 HUD「优先使用的 AI」选择器（同日 · 船长三条令）
+
+**船长原话（照抄，按先后）**：
+1. 「还是新的工业页面的精炼炉页面，将选择AI的下拉框移动到长产出窗口的底部，并添加一个'优先使用的AI：'在其左侧并显示对应AI核心的剩余数量。」
+2. （落点确认时）「**放在队列的顶部选择。实验室放到配方顶部**」
+3. （范围确认时）「**只改工业，将工业几个页面都添加AI选择。**」
+
+⚠ 第 2 条**改判**了第 1 条的落点：不是"产出窗口底部"，而是**各页签"队列/配方"窗口的顶部**
+（改前的下拉框在「工位」窗口**底部**，实测 y 1190–1219 —— 已在 940 视口之外，得滚才够得着）。
+
+**技能依据**（`ui-ux-pro-max`，2026-09-30）：
+- Forms · **Input Labels**（High）「Every input needs a visible label」/「Do: Always show label above or beside input」/「Don't: Placeholder as only label」⇒ 左侧「优先使用的 AI：」可见标签（改前只有 `title`）。
+- Accessibility · **Contextual Live Badge Updates**（High）「announce a meaningful contextual status such as 3 items in cart」/「Don't: Announce a bare number or make every badge a competing live region」⇒ 剩余数写成整句「剩余 N 枚」＋ `aria-describedby`（focus 读一次），**不做 live region**。
+- **未命中（照实说）**：「控件应与它影响的数据同处」这条试了 `group controls with related content` 与 `label proximity form field` 两次都没命中 ⇒ 落点按仓库 §六 ＋「跟着它驱动的按钮走」定。
+
+**落点与实现**：
+
+| 页签 | 落点（＝"队列/配方"窗口顶部） | 该窗口里的起炉/起线入口 |
+|---|---|---|
+| 精炼炉 | 「工位」窗口正文顶部（在折叠体内，随"最小化为标题栏"一起收） | 投料表行内「用所选核心起炉」 |
+| 组装机 | 「制造队列」窗口顶部 | 蓝图书架表行内「起线」 |
+| 造船厂 | 「在建舰船」窗口顶部 | 可建造舰船表行内「起线」 |
+| 实验室 | 「投料」（配方详情）窗口顶部 | 「起炉」（`startLabRunAt(recipe.id, core)`） |
+
+| 文件 | 改动 |
+|---|---|
+| `apps/desktop/.../pages/IndustryHudPage.tsx` | 新增模块级组件 **`AiCorePick`**（四处共用同一实现与同一枚页面级状态 `coreSel`）；四个页签各渲染一处；**删掉**工位窗口底部那份旧行 |
+| `apps/desktop/.../ui/layout-css/_hud-industry.css` | 新增 `.hud-aipick`（整行外边距）· `.hud-label`（可见标签，比 `.hud-tiny` 亮一档） |
+| `apps/desktop/.../ui/layout-css/styles-{classic,modern}.css` | `npm run ui:layout-css` 生成 |
+| `packages/data/src/l10n/table.ts` | `ui.hud.148`「优先使用的 AI：」/「Preferred AI:」· `ui.hud.149`「剩余 {p1} 枚」/「{p1} left」 |
+
+**不动**：旧工业页（导航「工业」）的**逐卡**核心下拉（`IndustryPage` 455/704 行，2026-09-10 那条"每卡独立选择"）· 星图页的两处同类选择器（船长令"只改工业"）· 引擎与存档 · 下拉框取值逻辑（`usableCores` 只列库存 > 0 的档）。
+
+**验收读数**（1540×940＝船长当前默认窗口；日志 `tools/_ui-artifacts/hud-ai-pick-readings-20260930.log`；
+截图 `tools/_ui-artifacts/shots/hud-ai-pick-{refine,craft,shipyard,lab}.png`）：
+
+| 页签 | 选择器数 | 挂在 | 是正文第一块 | 标签关联 | 剩余文字 | 在视口内 |
+|---|---|---|---|---|---|---|
+| 精炼炉 | 1 | 工位 | 是（在折叠体内） | `label.control === select` ✅ | 剩余 2 枚 | ✅ 574–603 |
+| 组装机 | 1 | 制造队列 | 是 | ✅ | 剩余 2 枚 | ✅ 349–378 |
+| 造船厂 | 1 | 在建舰船 | 是 | ✅ | 剩余 2 枚 | ✅ 332–361 |
+| 实验室 | 1 | 投料（配方详情） | 是 | ✅ | 剩余 2 枚 | ✅ 332–394（该列较窄 ⇒ 剩余数换到第二行） |
+
+四处的 `id`/`htmlFor`/`aria-describedby` 均带页签后缀（`hud-ai-core-<tab>` / `hud-ai-stock-<tab>`）且命中 ✅；
+选项 = 「伽马 AI 核心 · 60%」（本档只有伽马 ×2）。闸门：typecheck ✅ · core 276 文件/2907 用例 ✅ ·
+content/l10n/l10n:render/l10n:params/rot/theme/layout-css:check/arch ✅ · desktop＋web 构建 ✅。
+
+
 
 
 
