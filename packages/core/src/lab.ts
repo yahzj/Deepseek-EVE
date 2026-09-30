@@ -31,10 +31,36 @@ import { applyActivityGate, logAutoHalt } from './activityGate'
 import { jumpFuelCapOf, jumpFuelWareOf } from './jumpFuel'
 /** 已建成空间站座数 = 跃迁燃料链的解锁门槛（复用 `sideTasks` 的同名实现，不另写一份判据） */
 import { builtStationCount } from './sideTasks'
+/** 谜质科技的效果门（T5「解锁新的燃料配方」按 `requiresTech` 关键字判；见 `labRecipeUnlocked`） */
+import { matterTechEffectActive } from './matterTech'
 
 /** 实验室是否已解锁（**唯一判据**：已建成空间站 ≥ 1 座） */
 export function labUnlocked(state: GameState, ctx: SimContext): boolean {
   return builtStationCount(state, ctx) >= 1
+}
+
+/**
+ * **配方是否已解锁**（**2026-09-30 船长令**：「再添加一个 T5 是解锁新的燃料配方」）。
+ *
+ * 判据 = 配方声明的 `requiresTech` 效果关键字**至少点过一级**（走 `matterTechEffectActive`，
+ * 也就是"按效果关键字汇总"的既有口径——**core 不认节点 id**，改节点名/挪层都不影响这里）。
+ * **没声明 `requiresTech` 的配方恒开** ⇒ 老配方零变化。
+ *
+ * 消费点两处：`startLabRun` 的开工拒绝（`core.lab.019`）与工业页实验室卡片的"锁着"显示。
+ */
+export function labRecipeUnlocked(state: GameState, ctx: SimContext, recipe: LabRecipeDef): boolean {
+  return recipe.requiresTech === undefined || matterTechEffectActive(state, ctx, recipe.requiresTech)
+}
+
+/**
+ * **该配方要求的那条谜质科技的名字**（界面"锁着"提示用；无门槛/找不到 ⇒ `undefined`）。
+ * 与 `labRecipeUnlocked` 同一判据来源（按 `requiresTech` 关键字找节点）⇒ 数据侧改节点名即热更，
+ * 界面不写死任何节点名。
+ */
+export function labTechRequirementOf(ctx: SimContext, recipe: LabRecipeDef): string | undefined {
+  if (recipe.requiresTech === undefined) return undefined
+  for (const n of ctx.matterTech?.values() ?? []) if (n.effect === recipe.requiresTech) return n.name
+  return undefined
 }
 
 /* ───────── 实验室技能乘区（**2026-09-30 船长问「新功能是否模块化？降低耦合」的落法**） ───────── */
@@ -60,7 +86,8 @@ export interface LabSkillRow {
  */
 export const LAB_CYCLE_SKILLS: readonly LabSkillRow[] = [
   { id: 'industrial-automation', perLevel: 0.05 },
-  { id: 'fuel-catalytic-cracking', perLevel: 0.04, recipes: ['jump-fuel'] },
+  // 2026-09-30：第二张燃料配方（`jump-fuel-dense`）同属"燃料类" ⇒ 一并吃这两条燃料专精技能
+  { id: 'fuel-catalytic-cracking', perLevel: 0.04, recipes: ['jump-fuel', 'jump-fuel-dense'] },
 ]
 
 /**
@@ -68,7 +95,7 @@ export const LAB_CYCLE_SKILLS: readonly LabSkillRow[] = [
  * ⇒ 产量类技能没有插口，本表就是那个插口。
  */
 export const LAB_YIELD_SKILLS: readonly LabSkillRow[] = [
-  { id: 'fuel-yield-engineering', perLevel: 0.06, recipes: ['jump-fuel'] },
+  { id: 'fuel-yield-engineering', perLevel: 0.06, recipes: ['jump-fuel', 'jump-fuel-dense'] },
 ]
 
 /** 某条技能行对某个配方是否生效（作用域判据的单点） */
@@ -104,10 +131,14 @@ function labYieldMulOf(state: GameState, recipe: LabRecipeDef): number {
 }
 
 /**
- * **产物存量封顶登记表**（键 = 配方 id）：产物现存达到上限 ⇒ **自动停线**（船长 2026-09-30 裁「甲」）。
+ * **产物存量封顶登记表**（键 = **产物物品 id**）：产物现存达到上限 ⇒ **自动停线**（船长 2026-09-30 裁「甲」）。
  *
  * 为什么是登记表而不是写死在 `advanceLab` 里：实验室是"配方驱动"的通用产线，**不该认识燃料**；
  * 将来别的消耗品要封顶，在这里加一行即可（判据与日志 id 都跟着走）。
+ *
+ * ⚠ **键从"配方 id"改成"产物物品 id"**（2026-09-30）：T5 加了第二张燃料配方后，两张配方**同产物**
+ * ⇒ 按配方 id 登记要写两行、日后加第三张还得再补一行（漏一行就是"这条线能越过上限"）。按产物登记
+ * 则一条覆盖全部同产物配方（`jump-fuel` 那一行同时管 `jump-fuel` 与 `jump-fuel-dense`）。
  */
 const LAB_OUTPUT_CAP: Readonly<Record<string, { readonly stockOf: (s: GameState) => number; readonly capOf: (s: GameState) => number }>> = {
   'jump-fuel': { stockOf: jumpFuelWareOf, capOf: jumpFuelCapOf },
@@ -115,7 +146,7 @@ const LAB_OUTPUT_CAP: Readonly<Record<string, { readonly stockOf: (s: GameState)
 
 /** 本配方的产物是否**已放不下下一批**（没登记封顶的配方恒为 false） */
 export function labOutputCapped(state: GameState, recipe: LabRecipeDef): boolean {
-  const cap = LAB_OUTPUT_CAP[recipe.id]
+  const cap = LAB_OUTPUT_CAP[recipe.outputItemId]
   if (!cap) return false
   /**
    * 判据 = **下一批放不下**（而不是"现有量已经 ≥ 上限"）——这样仓库**永远不会越过上限**
@@ -127,7 +158,7 @@ export function labOutputCapped(state: GameState, recipe: LabRecipeDef): boolean
 
 /** 本配方产物的现有量 / 上限（界面读数用；没登记封顶的配方返回 undefined） */
 export function labOutputStockOf(state: GameState, recipe: LabRecipeDef): { stock: number; cap: number } | undefined {
-  const cap = LAB_OUTPUT_CAP[recipe.id]
+  const cap = LAB_OUTPUT_CAP[recipe.outputItemId]
   if (!cap) return undefined
   return { stock: cap.stockOf(state), cap: cap.capOf(state) }
 }
@@ -271,6 +302,18 @@ export function startLabRun(
   const recipe = ctx.labRecipes.get(recipeId)
   if (!recipe) {
     return { ok: false, error: `未知实验室配方：${recipeId}。`, errorId: 'core.lab.011', errorParams: { p1: recipeId } }
+  }
+  /**
+   * **谜质科技门槛**（2026-09-30 船长令 · T5「解锁新的燃料配方」）：没研究到 ⇒ 拒绝开工。
+   * 放在"材料够不够"之前：材料不足是临时状态，科技没点才是玩家真正要先解决的那件事。
+   */
+  if (!labRecipeUnlocked(state, ctx, recipe)) {
+    return {
+      ok: false,
+      error: `「${recipe.name}」需要先在扫描虫洞的谜质科技里研究对应科技。`,
+      errorId: 'core.lab.019',
+      errorParams: { p1: recipe.name },
+    }
   }
   if (labAffordableBatches(state, recipe) <= 0) {
     const missing = labMissingMaterials(state, ctx, recipe)

@@ -2705,6 +2705,13 @@ export interface AchievementEarned {
 export interface MatterTechState {
   /** 节点 id → 已研究等级（0/缺省 = 未研究） */
   levels: Record<string, number>
+  /**
+   * **涓流累积器**（**2026-09-30 船长令**：T5「每小时自动获得虚空母矿」）——存"还没发货的枚数"，
+   * **可以是小数**（按毫秒累积 ⇒ 零星 delta 不丢账、离线大步长照算）。
+   *
+   * 可选：老档没有该字段 ⇒ 读侧一律 `?? 0` ⇒ **零迁移**。
+   */
+  oreDrip?: number
 }
 
 /** 第十九版存档结构：v19 = v18 的"精炼炉多工位并行"（2026-09-05 船长拍板：

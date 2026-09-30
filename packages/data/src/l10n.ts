@@ -1687,6 +1687,11 @@ export const EN_MATTER_TECH: EnTable = {
   'mt-industry-void': { name: 'Void Refining' },
   'mt-industry-wreck': { name: 'Wreck Analysis' },
   'mt-industry-ai': { name: 'Industrial Multi-core Dispatch' },
+  // 2026-09-30 船长令：精炼提速两支 ＋ T5 层首批
+  'mt-industry-refine-speed': { name: 'Void Refining Acceleration' },
+  'mt-industry-refine-integration': { name: 'Void Refining Integration' },
+  'mt-industry-void-drip': { name: 'Void Ore Siphon' },
+  'mt-industry-fuel-advanced': { name: 'High-density Fuel Recipe' },
 }
 
 /**
@@ -1726,6 +1731,11 @@ export const EN_MATTER_TECH_NOTES: Readonly<Record<string, string>> = {
   'mt-industry-void': 'Each level raises the Void Crystal yield from refining Void Ore by 10%.',
   'mt-industry-wreck': 'Each level raises the guaranteed raw material output of wreck recovery by 5%.',
   'mt-industry-ai': 'Each level raises the AI-only berth cap for on-station industry by 1 (up to +5 at max level; each berth still occupies one physical core).',
+  // 2026-09-30 船长令：精炼提速两支 ＋ T5 层首批
+  'mt-industry-refine-speed': 'Each level shortens the refining cycle of Void Ore by 10%.',
+  'mt-industry-refine-integration': 'Each level shortens the refining cycle of Void Ore by a further 5%.',
+  'mt-industry-void-drip': 'Each level grants 100 Void Ore per hour automatically (300 per hour at max level; offline time counts).',
+  'mt-industry-fuel-advanced': 'Unlocks the laboratory recipe "Condensed Jump Fuel": 600 units per batch, less Void Crystal and a higher total material cost.',
 }
 
 /**

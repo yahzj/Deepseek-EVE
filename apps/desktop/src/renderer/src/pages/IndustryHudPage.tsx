@@ -30,6 +30,8 @@ import {
   formatDurationShort,
   industryAiBonus,
   labAffordableBatches,
+  labRecipeUnlocked,
+  labTechRequirementOf,
   labMaterialAvailable,
   matNeedCount,
   materialDisplayIdOf,
@@ -267,6 +269,13 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
   const manuRuns = manufacturingRunViews(state, ctx)
   const recipes = [...ctx.labRecipes.values()]
   const recipe = recipes.find((r) => r.id === recipeId) ?? recipes[0] ?? null
+  /**
+   * **谜质科技门槛**（**2026-09-30 船长令**：T5「解锁新的燃料配方」）——判据与起线拒绝同一把尺
+   * （`labRecipeUnlocked`）：锁着的配方**照列**（要看得见缺哪棵树），但两个开工键一起置灰。
+   */
+  const lockTip = recipe !== null && !labRecipeUnlocked(state, ctx, recipe)
+    ? tr('ui.lab.025', { p1: labTechRequirementOf(ctx, recipe) ?? recipe.name })
+    : null
   const rate = refineRate(state, ctx)
   /** 可精炼资源（与工业页同一取数口：`visibleItemDefs` + 有 `refine` 配方） */
   const refineDefs = visibleItemDefs(ctx)
@@ -1221,6 +1230,9 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
               {recipes.map((r) => {
                 const out = ctx.items.get(r.outputItemId)
                 const affordable = labAffordableBatches(state, r)
+                /** 谜质科技门槛（2026-09-30 船长令 · T5 解锁新燃料配方）：锁着 ⇒ 两个开工键一起置灰 */
+                const locked = !labRecipeUnlocked(state, ctx, r)
+                const lockTip = locked ? tr('ui.lab.025', { p1: labTechRequirementOf(ctx, r) ?? r.name }) : null
                 const on = recipe?.id === r.id
                 const eff = labEff.perMinute(r)
                 const effGroup = labEff.groups.get(r.outputItemId) ?? [eff]
@@ -1238,15 +1250,15 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                     className={`hud-card${on ? ' is-sel' : ''}`}
                     aria-pressed={on}
                     onClick={() => setRecipeId(r.id)}
-                    title={tr('ui.hud.062')}
+                    title={locked ? lockTip! : tr('ui.hud.062')}
                   >
                     <div className="hud-row between">
                       <span className="hud-row" style={{ gap: 7 }}>
                         {out !== undefined ? <RowGlyph glyph={itemGlyphName(out.id, out.kind)} /> : null}
                         <span className="nm">{r.name}</span>
                       </span>
-                      <span className={`hud-chip${affordable > 0 ? ' is-ok' : ' is-warn'}`}>
-                        <Glyph name="ico-play" size={11} color="currentColor" /> {affordable}
+                      <span className={`hud-chip${locked ? ' is-bad' : affordable > 0 ? ' is-ok' : ' is-warn'}`}>
+                        <Glyph name={locked ? 'ico-lock' : 'ico-play'} size={11} color="currentColor" /> {locked ? tr('ui.lab.026') : affordable}
                       </span>
                     </div>
                     <div className="hud-row between" style={{ marginTop: 5 }}>
@@ -1338,9 +1350,9 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                       <IconBtn
                         glyph="ico-play"
                         label={tr('ui.hud.073')}
-                        title={tr('ui.hud.074')}
+                        title={lockTip ?? tr('ui.hud.074')}
                         primary
-                        disabled={labAffordableBatches(state, recipe) <= 0}
+                        disabled={lockTip !== null || labAffordableBatches(state, recipe) <= 0}
                         onClick={() => {
                           const r = engine.startLabRunAt(recipe.id, 'pilot')
                           if (!r.ok) onToast(cmdText(r) || tr('ui.hud.075'), true)
@@ -1349,8 +1361,8 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                       <IconBtn
                         glyph="ai-core"
                         label={tr('ui.hud.076')}
-                        title={tr('ui.hud.077')}
-                        disabled={labAffordableBatches(state, recipe) <= 0 || core === null}
+                        title={lockTip ?? tr('ui.hud.077')}
+                        disabled={lockTip !== null || labAffordableBatches(state, recipe) <= 0 || core === null}
                         onClick={() => {
                           if (recipe === null || core === null) return
                           const r = engine.startLabRunAt(recipe.id, core)

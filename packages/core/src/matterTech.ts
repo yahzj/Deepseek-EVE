@@ -20,9 +20,9 @@
  */
 import { addLog } from './state'
 import type { GameState } from './state'
-import { countWare, removeWare } from './inventory'
+import { addWare, countWare, removeWare } from './inventory'
 import { peakFirst } from './firstTasks'
-import type { MatterTechNodeDef, SimContext } from './types'
+import type { MatterTechEffect, MatterTechNodeDef, SimContext } from './types'
 import { WORMHOLE_TECH_BUFFS_NONE } from './wormholeMatter'
 import type { WormholeTechBuffs } from './wormholeMatter'
 
@@ -267,6 +267,55 @@ export function matterTechWorkEffBonus(
   kind: 'salvage' | 'collect',
 ): number {
   return matterTechSum(state, ctx, kind === 'salvage' ? 'whSalvageEff' : 'whCollectEff')
+}
+
+/* ───────── 2026-09-30 船长令：T5 层首批 ＋ 精炼提速两支 ───────── */
+
+/**
+ * **虚空母矿的精炼周期削减**（`voidRefineSpeed`：−10%/级 ＋ −5%/级，**加法口径**，封顶 0.9）。
+ * 消费点 = `industry.ts` 起炉那一刻的周期折算（**只对虚空母矿**那一支生效）。
+ */
+export function matterTechVoidRefineCut(state: GameState, ctx: SimContext): number {
+  return Math.min(0.9, matterTechSum(state, ctx, 'voidRefineSpeed'))
+}
+
+/** **每小时自动获得的虚空母矿枚数**（`voidOreDrip`；未点 = 0） */
+export function matterTechVoidOrePerHour(state: GameState, ctx: SimContext): number {
+  return Math.max(0, matterTechSum(state, ctx, 'voidOreDrip'))
+}
+
+/**
+ * **某效果是否已点过一级**（"解锁型"效果的门，如 `fuelRecipeAdvanced`）——
+ * 与按数值取用的 `matterTechSum` 并列；**core 不认节点 id**，所以门也按效果关键字判。
+ */
+export function matterTechEffectActive(state: GameState, ctx: SimContext, effect: MatterTechEffect): boolean {
+  return matterTechSum(state, ctx, effect) > 0
+}
+
+/**
+ * **虚空母矿涓流**（T5「虚空母矿汲取」；**引擎每拍调一次**，与 `advanceLab` 并列）。
+ *
+ * 口径：
+ * - **按毫秒累积**（`state.research.oreDrip` 存"还没发货的枚数"，可为小数）⇒ 满 1 枚才入库，
+ *   零星 delta 不丢账、离线大步长照算；
+ * - 只进**物品仓库**（与燃料/精炼同一把尺），不走货仓；
+ * - 未点该节点（rate = 0）⇒ **立刻返回**，老档/未研究者零开销。
+ *
+ * ⚠ 虚空母矿的物品 id 这里写**字面量**：`wormhole.ts` 已经反向依赖本模块所在的一族
+ * （`matterTech → wormholeMatter`），引过去会成环 ⇒ 与 `MATTER_TECH_ESSENCE_ITEM_ID` 同一处置，
+ * 一致性由用例断言钉住。
+ */
+export const MATTER_TECH_VOID_ORE_ITEM_ID = 'ore-voidmother'
+
+export function advanceMatterOreDrip(state: GameState, ctx: SimContext, deltaMs: number): void {
+  if (!(deltaMs > 0)) return
+  const rate = matterTechVoidOrePerHour(state, ctx)
+  if (rate <= 0) return
+  const acc = (state.research?.oreDrip ?? 0) + (deltaMs / 3_600_000) * rate
+  const whole = Math.floor(acc)
+  if (!state.research) state.research = { levels: {} }
+  state.research.oreDrip = acc - whole
+  if (whole > 0) addWare(state, MATTER_TECH_VOID_ORE_ITEM_ID, whole)
 }
 
 /**

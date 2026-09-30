@@ -42,7 +42,7 @@ import { advanceFindHumans, publishFindHumansWhenReady } from './onboarding'
 import { advanceComms } from './comms'
 import { FIRST_TASKS, advanceFirstChains, claimableFirstTasks, peakFirst } from './firstTasks'
 import { advanceAchievements } from './achievements'
-import { matterTechNodes } from './matterTech'
+import { advanceMatterOreDrip, matterTechNodes } from './matterTech'
 import { skillLicenseMissing, skillLicensePriceOf } from './skillLicense'
 import { claimFirstTask, grantStartRewardsForCurrent } from './firstRewards'
 import { advanceSideTasks } from './sideTasks'
@@ -208,6 +208,8 @@ export function advanceGame(
   advanceRefining(state, ctx, opts?.settleStats)
   /** 实验室（2026-09-29 跃迁燃料批）：与精炼炉并列的一条工业产线（BOM 投料 · 料尽自停） */
   advanceLab(state, ctx)
+  /** 谜质科技 T5「虚空母矿汲取」（2026-09-30 船长令）：每小时自动进账虚空母矿，未点该节点零开销 */
+  advanceMatterOreDrip(state, ctx, d)
   advanceExpedition(state, ctx, opts?.freezeBattle)
   // 终局玩法「虫洞」（F 批）：洞内战斗步进与收口 + 撤离战自动开打（不在洞里时零开销）
   advanceWormhole(state, ctx, opts?.freezeBattle, opts?.battleSpeedX)

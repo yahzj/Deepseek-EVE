@@ -2704,6 +2704,16 @@ export type MatterTechEffect =
   /** **站内工业 AI 专用工位上限 +v/级**（v = 1；与技能那两支 `aiCore.industrySkillSlots` **相加**，
    *  不增加 AI 副船任务上限；消费点 = `core/ai.ts` 的 `industryAiBonus`） */
   | 'industryAiSlots'
+  /* ── 2026-09-30 船长令追加（T5 层首批 ＋ 精炼提速两支） ── */
+  /** **虚空母矿精炼周期 −v/级**（v = 0.10 / 0.05，**加法口径**、封顶 0.9；只作用于
+   *  `WORMHOLE_ORE_ITEM_ID`（虚空母矿）那一支——消费点 = `core/industry.ts` 起炉时的周期折算） */
+  | 'voidRefineSpeed'
+  /** **每小时自动获得虚空母矿 v 枚/级**（v = 100 ⇒ 满级 300 枚/时；只进物品仓库，
+   *  离线照算；消费点 = `core/matterTech.ts` 的 `advanceMatterOreDrip`） */
+  | 'voidOreDrip'
+  /** **解锁实验室的高级燃料配方**（v 无意义、只看"有没有点过一级"；判据单点 =
+   *  `core/lab.ts` 的 `labRecipeUnlocked`，配方侧用 `LabRecipeDef.requiresTech` 声明要哪一条） */
+  | 'fuelRecipeAdvanced'
 
 /** 科技树分支（界面分组 / 契约判据用） */
 export type MatterTechBranch = 'explore' | 'battle' | 'industry'
@@ -2839,6 +2849,16 @@ export interface LabRecipeDef {
    * 效果与界面接完后摘掉本字段即上线。
    */
   unreleased?: boolean
+  /**
+   * **谜质科技门槛**（**2026-09-30 船长令**：「再添加一个 T5 是解锁新的燃料配方」）：
+   * 填了 = 该配方要**对应效果关键字**至少点过一级才开得了工（判据单点 = `core/lab.ts`
+   * 的 `labRecipeUnlocked`，走 `matterTechSum(state, ctx, 本值) > 0`——**core 不认节点 id**，
+   * 与谜质树"按效果关键字汇总"的既有口径一致）。
+   *
+   * ⚠ 配方仍**列在目录里**（`buildLabRecipeCatalog` 不过滤它）⇒ 界面能显示"锁着、要点哪棵树"，
+   * 起线动作与界面按钮同读 `labRecipeUnlocked`。缺省 = 无门槛（老配方零变化）。
+   */
+  requiresTech?: MatterTechEffect
 }
 
 /** 通讯对话一句 */

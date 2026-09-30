@@ -350,6 +350,67 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     prereq: { 'mt-industry-void': 1 },
     note: '每级提高站内工业的 AI 专用工位上限 1 个（满级 +5；每个工位仍占一枚实体核心）。',
   },
+
+  /* ══════════ 2026-09-30 船长令：精炼提速两支 ＋ T5 层首批 ══════════
+   * 船长原话：「给扫描虫洞的谜质科技，添加新的洞外工业科技：2个缩短虚空晶的精炼周期的技能，
+   * 效果分别为每级10%和每级5%（更高级的），满级3级。再添加一个新的科技，每小时自动获得少了的
+   * 虚空母矿，这个要T5。再添加一个T5是解锁新的燃料配方。新配方比旧配方更贵，但是消耗虚空晶更少。」
+   * ＋修正两条：「每小时虚空母矿产量建议满级300虚空母矿」·「新配方将同位聚晶换成冷却导管」
+   * ＋「其他按你推荐来」（= −5% 那条放 T4；新配方数字照提案）。
+   * ⚠ **T5 是本表第一次出现的层**：体检契约要求"本层首级费用 > 上一层最高"，而 T4 最高 =
+   * 谜质 150 枚 / 6 亿 ISK ⇒ T5 首级必须 > 150 枚、> 6 亿 ISK（下面两条即按此下限配）。 */
+  {
+    id: 'mt-industry-refine-speed',
+    name: '虚空精炼加速',
+    branch: 'industry',
+    tier: 3,
+    effect: 'voidRefineSpeed',
+    per: 0.1,
+    maxLevel: 3,
+    essence: [10, 20, 30],
+    isk: [10_000_000, 20_000_000, 30_000_000],
+    prereq: { 'mt-industry-unbox': 1 },
+    note: '每级缩短虚空母矿的精炼周期 10%。',
+  },
+  {
+    id: 'mt-industry-refine-integration',
+    name: '虚空精炼统合',
+    branch: 'industry',
+    tier: 4,
+    effect: 'voidRefineSpeed',
+    per: 0.05,
+    maxLevel: 3,
+    essence: [30, 60, 90],
+    isk: [120_000_000, 240_000_000, 360_000_000],
+    prereq: { 'mt-industry-refine-speed': 1 },
+    note: '每级再缩短虚空母矿的精炼周期 5%。',
+  },
+  {
+    id: 'mt-industry-void-drip',
+    name: '虚空母矿汲取',
+    branch: 'industry',
+    tier: 5,
+    effect: 'voidOreDrip',
+    per: 100,
+    maxLevel: 3,
+    essence: [160, 320, 480],
+    isk: [700_000_000, 1_400_000_000, 2_100_000_000],
+    prereq: { 'mt-industry-refine-integration': 1 },
+    note: '每级每小时自动获得 100 枚虚空母矿（满级 300 枚/时；离线照算）。',
+  },
+  {
+    id: 'mt-industry-fuel-advanced',
+    name: '高密度燃料配方',
+    branch: 'industry',
+    tier: 5,
+    effect: 'fuelRecipeAdvanced',
+    per: 1,
+    maxLevel: 1,
+    essence: [200],
+    isk: [800_000_000],
+    prereq: { 'mt-industry-void': 1 },
+    note: '解锁实验室配方「浓缩折跃燃料」：每批 600 单位，虚空晶消耗更低、总料价更高。',
+  },
 ]
 
 /** 按 id 索引（`ctx.matterTech` 用它；体检校验 id 唯一与前置可解析） */

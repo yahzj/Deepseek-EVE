@@ -17,7 +17,7 @@
 import type { GameState } from './state'
 import type { LabRecipeDef, SimContext } from './types'
 import { JUMP_FUEL_ITEM_ID, jumpFuelCapOf, jumpFuelHeadroomOf, jumpFuelWareOf } from './jumpFuel'
-import { labOutputCapped, labOutputPerHourOf, labUnlocked } from './lab'
+import { labOutputCapped, labOutputPerHourOf, labRecipeUnlocked, labUnlocked } from './lab'
 
 /** 燃料补给状态（界面按它换措辞；见文件头口径） */
 export type JumpFuelFlowStatus = 'locked' | 'full' | 'flowing' | 'idle'
@@ -36,17 +36,34 @@ export interface JumpFuelSupply {
 
 /** 产出燃料的那张配方（按**产物物品 id** 认，不在 core 写死配方 id —— 数据表说了算） */
 export function jumpFuelRecipeOf(ctx: SimContext): LabRecipeDef | undefined {
-  for (const r of ctx.labRecipes.values()) if (r.outputItemId === JUMP_FUEL_ITEM_ID) return r
-  return undefined
+  return jumpFuelRecipesOf(ctx)[0]
+}
+
+/**
+ * **产出燃料的全部配方**（**2026-09-30 船长令**：T5 解锁第二张燃料配方 ⇒ 同一产物会有两张）。
+ *
+ * 为什么改成"列表 + 首张"：原实现 `for (...) return r` 只认**第一张** ⇒ 加了第二张以后，
+ * 燃料页的读数会漏掉另一条线的产量、封顶判据也只看一半。现在：
+ * - `jumpFuelRecipeOf` 保留（首张，给"默认是哪张"这类调用点用）；
+ * - 速率/封顶按**全部燃料配方**汇总（`jumpFuelRecipesOf`）。
+ */
+export function jumpFuelRecipesOf(ctx: SimContext): LabRecipeDef[] {
+  const out: LabRecipeDef[] = []
+  for (const r of ctx.labRecipes.values()) if (r.outputItemId === JUMP_FUEL_ITEM_ID) out.push(r)
+  return out
 }
 
 export function jumpFuelSupplyOf(state: GameState, ctx: SimContext): JumpFuelSupply {
   const ware = jumpFuelWareOf(state)
   const cap = jumpFuelCapOf(state)
-  const recipe = jumpFuelRecipeOf(ctx)
+  const recipes = jumpFuelRecipesOf(ctx)
   const unlocked = labUnlocked(state, ctx)
-  const perHour = labOutputPerHourOf(state, ctx, recipe?.id)
-  const full = unlocked && recipe !== undefined && labOutputCapped(state, recipe)
-  const status: JumpFuelFlowStatus = !unlocked ? 'locked' : full ? 'full' : perHour > 0 ? 'flowing' : 'idle'
+  /** 在产速率 = **全部燃料配方**的在跑线之和（两张配方同产物 ⇒ 必须一起算） */
+  let perHour = 0
+  for (const r of recipes) perHour += labOutputPerHourOf(state, ctx, r.id)
+  /** 封顶：任一张**已解锁**的配方放不下下一批就算满（两张同产物、同一个上限，判一张即可） */
+  const full = unlocked && recipes.some((r) => labRecipeUnlocked(state, ctx, r) && labOutputCapped(state, r))
+  const anyUnlocked = recipes.some((r) => labRecipeUnlocked(state, ctx, r))
+  const status: JumpFuelFlowStatus = !unlocked || (recipes.length > 0 && !anyUnlocked) ? 'locked' : full ? 'full' : perHour > 0 ? 'flowing' : 'idle'
   return { ware, cap, headroom: jumpFuelHeadroomOf(state), perHour, status }
 }

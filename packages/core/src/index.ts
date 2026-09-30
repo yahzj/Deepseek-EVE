@@ -426,6 +426,12 @@ export {
   matterTechWreckYield,
   matterTechWorkEffBonus,
   matterTechWhBuffs,
+  // 2026-09-30 船长令：T5 层首批 ＋ 精炼提速两支
+  matterTechVoidRefineCut,
+  matterTechVoidOrePerHour,
+  matterTechEffectActive,
+  advanceMatterOreDrip,
+  MATTER_TECH_VOID_ORE_ITEM_ID,
 } from './matterTech'
 export { WORMHOLE_TECH_BUFFS_NONE } from './wormholeMatter'
 export type { WormholeTechBuffs } from './wormholeMatter'
@@ -672,6 +678,8 @@ export type { RefineRunView, RefineOutputRow, SellResult, FragmentRedeemRow } fr
 /* ═══ 实验室 ＋ 跃迁燃料（**2026-09-29 船长令**：「为工业新增子页面：'实验室'」＋「添加超空间折跃燃料」）═══ */
 export {
   labUnlocked,
+  labRecipeUnlocked,
+  labTechRequirementOf,
   labMaterialAvailable,
   labAffordableBatches,
   labMissingMaterials,
@@ -706,7 +714,7 @@ export {
 } from './jumpFuel'
 export type { JumpFuelActivity, LabWorker } from './jumpFuel'
 /** 2026-09-30 上限批：燃料补给读数（库存 / 上限 / 在产速率 / 状态）—— 界面取数唯一入口 */
-export { jumpFuelSupplyOf, jumpFuelRecipeOf } from './fuelSupply'
+export { jumpFuelSupplyOf, jumpFuelRecipeOf, jumpFuelRecipesOf } from './fuelSupply'
 export type { JumpFuelSupply, JumpFuelFlowStatus } from './fuelSupply'
 export type { LabRecipeDef } from './types'
 

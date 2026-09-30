@@ -71,6 +71,30 @@ export const LAB_RECIPES: readonly LabRecipeDef[] = [
       { itemId: 'part-circuit', units: 18_000 },
     ],
   },
+  {
+    id: 'jump-fuel-dense',
+    /**
+     * **浓缩折跃燃料**（**2026-09-30 船长令**：「再添加一个 T5 是解锁新的燃料配方。新配方比旧配方更贵，
+     * 但是消耗虚空晶更少」＋「新配方将同位聚晶换成冷却导管」）。
+     *
+     * 口径：产物与每批产量与旧配方**完全相同**（都是 600 单位 `jump-fuel`），差别在"更贵、更省虚空晶"：
+     * 料价 **280,000/批**（旧 240,940 ⇒ **+16.2%**）、虚空晶 **15 枚**（旧 60 ⇒ **−75%**）、
+     * 工期 **6 分钟**（旧 5 分钟）；同位聚晶整条换成基础零件**冷却导管 400 枚**。
+     * 门槛 = 谜质科技 T5「高密度燃料配方」（`requiresTech`，见 `core/lab.ts` 的 `labRecipeUnlocked`）。
+     */
+    name: '浓缩折跃燃料',
+    outputItemId: 'jump-fuel',
+    outputUnits: 600,
+    cycleMs: 6 * 60 * 1000,
+    materials: [
+      { itemId: 'min-voidcrystal', units: 15 },
+      { itemId: 'min-jumplasma', units: 400 },
+      { itemId: 'min-cryoslurry', units: 400 },
+      { itemId: 'min-curvature', units: 200 },
+      { itemId: 'part-coolant', units: 400 },
+    ],
+    requiresTech: 'fuelRecipeAdvanced',
+  },
 ]
 
 /** 玩家可见的配方（施工期 `unreleased` 的不列；界面与开工校验都读它） */

@@ -411,6 +411,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // ⟪文案调整 2026-09-30⟫ 船长报障「燃料生产并不受上限的影响」⇒ 产物封顶：放不下下一批就停线 / 拒起线
   "core.lab.017": { zh: "实验室停线：{p1} 的仓库余量放不下下一批（{p2} / {p3} 单位，已完成 {p4} 批）。", en: "Laboratory line halted: the store cannot fit another batch of {p1} ({p2} / {p3} units; {p4} batches finished)." },
   "core.lab.018": { zh: "{p1} 的仓库余量放不下下一批（{p2} / {p3} 单位）：先消耗或卖出再开工。", en: "The store cannot fit another batch of {p1} ({p2} / {p3} units) — spend or sell some first." },
+  /* 2026-09-30 船长令（T5「解锁新的燃料配方」）：配方被谜质科技锁着时起线被拒 */
+  "core.lab.019": { zh: "「{p1}」需要先在扫描虫洞的谜质科技里研究对应科技。", en: "\"{p1}\" requires the matching Matter Tech research under Wormhole Scanning first." },
   "ui.labelsText.073": { zh: "道具", en: "Consumables" },
   // 2026-09-30 船长令（上限批）：技能书「实验室」——四条燃料技能的书名（`b-lab`）
   "ui.labelsText.074": { zh: "实验室", en: "Laboratory" },
@@ -436,6 +438,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.lab.021": { zh: "材料不足一批：先集齐投料。", en: "Not enough material for one batch — gather the feedstock first." },
   "ui.lab.022": { zh: "用核心开工", en: "Start with core" },
   "ui.lab.023": { zh: "查看行情", en: "View market" },
+  /* 2026-09-30 船长令（T5「解锁新的燃料配方」）：配方被谜质科技锁着时，卡片提示与按钮标题都用它 */
+  "ui.lab.025": { zh: "需先在谜质科技研究「{p1}」", en: "Requires the Matter Tech research \"{p1}\"" },
+  "ui.lab.026": { zh: "未解锁", en: "Locked" },
   /* ⟪文案调整 2026-09-30⟫ 船长报障「两张新配方卡片的说明还是燃料那套」：实验室面板的**通用**说明
      （原来面板/卡片复用了燃料专用的 `ui.lab.010` / `ui.lab.017`；**每张配方卡片的说明改取产出物自己的 description**） */
   "ui.lab.024": { zh: "实验室：按配方投入材料，到点产出成品（与精炼炉共用主控工作位）", en: "Laboratory: feed a recipe's materials and collect the finished product (shares the pilot work slot with the refinery)" },

@@ -19,7 +19,9 @@
  *   与旧版空间站收购价一致（波动来自池淤积与冲击动量）；
  * - 舰船购买（V9）：市场有现货立即购得；无现货自动挂收购单（市场有货时自动成交）。
  */
-import { matterTechUnboxCut, matterTechVoidYield, matterTechWreckYield } from './matterTech'
+import { matterTechUnboxCut, matterTechVoidRefineCut, matterTechVoidYield, matterTechWreckYield } from './matterTech'
+/** 虚空母矿的物品 id（精炼提速只作用于它这一支）——与 `wormhole.ts` 同值，用常量不写字面量 */
+import { WORMHOLE_ORE_ITEM_ID } from './wormhole'
 import { addLog, haltActivityForSwitch, shipLockedReason } from './state'
 import { applyActivityGate, logAutoHalt } from './activityGate'
 import type { CommandResult } from './engine'
@@ -374,6 +376,16 @@ export function startRefineRun(
   // 精炼炉作业每级再 −5% 周期（下限护栏已于同日移除，乘算本身有界）
   const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
   if (autoLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.05 * autoLv)))
+  /**
+   * **谜质科技「虚空精炼加速 / 虚空精炼统合」**（**2026-09-30 船长令**：两个洞外工业科技，
+   * 每级 −10% / −5%，各 3 级）——**只作用于虚空母矿那一支**（判据 = 物品 id，与
+   * `refineBatchOutputOf` 里"虚空晶那一支吃 `voidCrystalYield`"同一把尺）。
+   * 与上面那串技能**同乘区**（都是精炼炉周期），两支加法汇总后一次性折算。
+   */
+  if (def.id === WORMHOLE_ORE_ITEM_ID) {
+    const voidCut = matterTechVoidRefineCut(state, ctx)
+    if (voidCut > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - voidCut)))
+  }
   /**
    * ⚠ 这里的 batch 门槛（够不够一批）与上面那个 gate 谁先谁后都行：**停机不改余量**
    * （采矿/打捞停下来的货留在船上，`oreAvailable` 读的就是"货仓 + 仓库"）⇒ 不构成"先停活再报开不了"。

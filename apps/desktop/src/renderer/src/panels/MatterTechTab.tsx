@@ -80,7 +80,13 @@ export function MatterTechTab({ engine, onToast }: { engine: GameEngine; onToast
               <Glyph name={br.icon} size={13} color={br.tone} />
               <span style={{ color: br.tone }}>{t(br.label)}</span>
             </div>
-            {[1, 2, 3, 4].map((tier) => {
+            {/**
+             * **层列表由数据推导**（**2026-09-30**：船长令加了 T5 ⇒ 原先写死的 `[1,2,3,4]` 会把
+             * 新节点整层吞掉、界面上看不见任何异常）。空层不渲染（与逐层 `row.length === 0` 同款）。
+             */}
+            {[...new Set(nodes.filter((d) => d.branch === br.key).map((d) => d.tier))]
+              .sort((a, b) => a - b)
+              .map((tier) => {
               const row = nodes.filter((d) => d.branch === br.key && d.tier === tier)
               if (row.length === 0) return null
               return (

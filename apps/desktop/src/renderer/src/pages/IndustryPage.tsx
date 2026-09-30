@@ -38,6 +38,8 @@ import {
   /** 2026-09-29 跃迁燃料批：实验室卡片的读数口（可跑批次 / 材料可用量）＋ 配方类型 */
   labAffordableBatches,
   labMaterialAvailable,
+  labRecipeUnlocked,
+  labTechRequirementOf,
 } from '@whale/core'
 import type { LabRecipeDef, LabRunView } from '@whale/core'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
@@ -609,6 +611,13 @@ function LabCard({
   const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
   const manualBusy = manualBusyNote(state)
+  /**
+   * **谜质科技门槛**（**2026-09-30 船长令**：T5「解锁新的燃料配方」）——判据与起线拒绝**同一把尺**
+   * （`labRecipeUnlocked`）；锁着时卡片照列（玩家要看得见"有这么张配方、缺哪棵树"），
+   * 但两个开工按钮一起置灰，并把缺哪条科技写在标题与卡片提示行上。
+   */
+  const locked = !labRecipeUnlocked(state, engine.ctx, recipe)
+  const lockTip = locked ? tr('ui.lab.025', { p1: labTechRequirementOf(engine.ctx, recipe) ?? recipe.name }) : null
   function runWith(worker: AiCoreType | 'pilot'): void {
     const r = engine.startLabRunAt(recipe.id, worker)
     if (!r.ok) {
@@ -637,6 +646,7 @@ function LabCard({
           还是采用燃料的」）——原来这里写死 `ui.lab.010`（燃料口径）⇒ 所有配方卡片都在念燃料那套话。
           现改成**取产出物自己的 `description`**：一件产品一份说明（单一来源，不再每张配方各写一段）。 */}
       <div className="app-belt-desc">{out?.description ?? ''}</div>
+      {lockTip !== null ? <div className="app-belt-desc app-bad">{lockTip}</div> : null}
       {/* 数据行（与精炼炉同款位置）：每批产出 / 每批工期 / 精炼速率 */}
       <div className="app-belt-ore">
         {tr('ui.lab.003')} {out?.name ?? recipe.outputItemId} ×{recipe.outputUnits}
@@ -695,8 +705,8 @@ function LabCard({
         ) : null}
         <button
           className="app-btn is-small is-primary"
-          disabled={manualBusy !== null || affordable <= 0}
-          title={manualBusy ?? (affordable <= 0 ? tr('ui.lab.021') : tr('ui.lab.006'))}
+          disabled={locked || manualBusy !== null || affordable <= 0}
+          title={lockTip ?? manualBusy ?? (affordable <= 0 ? tr('ui.lab.021') : tr('ui.lab.006'))}
           onClick={() => runWith('pilot')}
         >
           {tr('ui.lab.006')}
@@ -722,8 +732,8 @@ function LabCard({
           </select>
           <button
             className="app-btn is-small"
-            disabled={!core || affordable <= 0}
-            title={core ? (affordable <= 0 ? tr('ui.lab.021') : tr('ui.lab.014', { p1: aiCoreText(core) })) : tr('ui.IndustryPage.055')}
+            disabled={locked || !core || affordable <= 0}
+            title={lockTip ?? (core ? (affordable <= 0 ? tr('ui.lab.021') : tr('ui.lab.014', { p1: aiCoreText(core) })) : tr('ui.IndustryPage.055'))}
             onClick={() => core && runWith(core)}
           >
             {tr('ui.lab.022')}

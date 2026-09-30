@@ -7,24 +7,29 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { addWare, createInitialState, researchMatterTech, matterTechCanResearch } from '../src/index'
+import { addWare, countWare, createInitialState, researchMatterTech, matterTechCanResearch, startLabRun, startRefineRun, stopRefineRun } from '../src/index'
 import {
   MATTER_TECH_ESSENCE_ITEM_ID,
+  MATTER_TECH_VOID_ORE_ITEM_ID,
+  advanceMatterOreDrip,
   matterTechBattleSpeed,
   matterTechLevel,
   matterTechNodes,
   matterTechScanCut,
   matterTechUnboxCut,
+  matterTechVoidOrePerHour,
+  matterTechVoidRefineCut,
   matterTechVoidYield,
   matterTechWhBuffs,
   matterTechWorkEffBonus,
   matterTechWreckYield,
 } from '../src/matterTech'
+import { labRecipeUnlocked, labTechRequirementOf } from '../src/lab'
 import { WORMHOLE_ESSENCE_ITEM_ID, wormholeSyncMatterTurns, wormholeWorkEfficiencyOf, wormholeWorkEfficiencyOfFleet } from '../src/wormholeSalvage'
 import { applyMatterPlayerBuffs, wormholeMatterBattleModsOf } from '../src/combat'
 import { WORMHOLE_MATTER_BUFFS_NONE } from '../src/wormholeMatter'
 import { addShipToFleet } from '../src/shipyard'
-import { wormholeAdmission, wormholeEnter, wormholeTurnBudget } from '../src/wormhole'
+import { wormholeAdmission, wormholeEnter, wormholeTurnBudget, WORMHOLE_ORE_ITEM_ID } from '../src/wormhole'
 import { wormholeMatterBuffs } from '../src/wormholeMatter'
 import { CURRENT_STATE_VERSION } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -40,16 +45,42 @@ function world(): ReturnType<typeof createInitialState> {
 }
 
 describe('谜质科技树 · 节点表与货币', () => {
-  it('24 个节点、id 唯一、效果关键字非空；研究货币 = 虫洞谜质', () => {
+  it('28 个节点、id 唯一、效果关键字非空；研究货币 = 虫洞谜质', () => {
     const nodes = matterTechNodes(ctx)
-    expect(nodes.length).toBe(24)
-    expect(new Set(nodes.map((n) => n.id)).size).toBe(24)
+    expect(nodes.length).toBe(28)
+    expect(new Set(nodes.map((n) => n.id)).size).toBe(28)
     expect(nodes.every((n) => n.effect.length > 0 && n.maxLevel >= 1)).toBe(true)
-    // 三条线的节点数：探索 6 / 战斗 14 / 工业 4（2026-09-20 船长追加工业 T4「工业多核调度」）
+    // 三条线的节点数：探索 6 / 战斗 14 / 工业 8（2026-09-30 船长令追加工业两支精炼提速 ＋ T5 两条）
     const byBranch = (b: string): number => nodes.filter((n) => n.branch === b).length
-    expect([byBranch('explore'), byBranch('battle'), byBranch('industry')]).toEqual([6, 14, 4])
+    expect([byBranch('explore'), byBranch('battle'), byBranch('industry')]).toEqual([6, 14, 8])
     // 货币常量与产出侧同源（本模块写的是字面量，防漂）
     expect(MATTER_TECH_ESSENCE_ITEM_ID).toBe(WORMHOLE_ESSENCE_ITEM_ID)
+    // 虚空母矿 id 同源（涓流按它入库；同样是字面量防漂）
+    expect(MATTER_TECH_VOID_ORE_ITEM_ID).toBe(WORMHOLE_ORE_ITEM_ID)
+  })
+
+  it('洞外工业 2026-09-30 新增四条：精炼提速两支（T3/T4）＋ T5 两条（涓流 / 燃料配方门）', () => {
+    const nodes = matterTechNodes(ctx)
+    const byId = new Map(nodes.map((n) => [n.id, n]))
+    const speed = byId.get('mt-industry-refine-speed')!
+    expect([speed.tier, speed.effect, speed.per, speed.maxLevel]).toEqual([3, 'voidRefineSpeed', 0.1, 3])
+    const integ = byId.get('mt-industry-refine-integration')!
+    expect([integ.tier, integ.effect, integ.per, integ.maxLevel]).toEqual([4, 'voidRefineSpeed', 0.05, 3])
+    const drip = byId.get('mt-industry-void-drip')!
+    expect([drip.tier, drip.effect, drip.per, drip.maxLevel]).toEqual([5, 'voidOreDrip', 100, 3])
+    const fuel = byId.get('mt-industry-fuel-advanced')!
+    expect([fuel.tier, fuel.effect, fuel.per, fuel.maxLevel]).toEqual([5, 'fuelRecipeAdvanced', 1, 1])
+    // T5 是本表第一次出现的层：首级费用必须高过 T4 最高（体检契约④同款口径）
+    const t4MaxEss = Math.max(...nodes.filter((n) => n.tier === 4).map((n) => n.essence[0] ?? 0))
+    const t4MaxIsk = Math.max(...nodes.filter((n) => n.tier === 4).map((n) => n.isk[0] ?? 0))
+    for (const n of nodes.filter((x) => x.tier === 5)) {
+      expect(n.essence[0]!).toBeGreaterThan(t4MaxEss)
+      expect(n.isk[0]!).toBeGreaterThan(t4MaxIsk)
+    }
+    // 双满 ⇒ 周期 −45%（10%×3 ＋ 5%×3，加法口径）
+    expect(speed.per * speed.maxLevel + integ.per * integ.maxLevel).toBeCloseTo(0.45, 10)
+    // 涓流满级 = 300 枚/时（船长令）
+    expect(drip.per * drip.maxLevel).toBe(300)
   })
 
   it('洞外工业 T4「工业多核调度」：每级 +1 站内工业 AI 工位、最高 5 级（船长 2026-09-20）', () => {
@@ -300,6 +331,97 @@ describe('谜质科技树 · 效果聚合与四条机制读数', () => {
     expect(wormholeEnter(state, ctx, [a, b], 777).ok).toBe(true)
     expect(wormholeWorkEfficiencyOf(state, ctx, 'salvager')).toBeCloseTo(1.4, 6)
     expect(wormholeWorkEfficiencyOf(state, ctx, 'miner')).toBeCloseTo(0.4, 6)
+  })
+})
+
+describe('谜质科技树 · 2026-09-30 新增四条（精炼提速 · 涓流 · 燃料配方门）', () => {
+  /** 已建成首座站的档（实验室判据）；虚空母矿备足、信用点与谜质照 `world()` */
+  function labReady(): ReturnType<typeof createInitialState> {
+    const s = world()
+    for (const site of ctx.stations.values()) s.stationSites[site.id] = { stage: site.tiers.length, delivered: {} }
+    return s
+  }
+
+  it('精炼提速：只作用于虚空母矿那一支，双满 −45% 周期', () => {
+    const s = labReady()
+    addWare(s, WORMHOLE_ORE_ITEM_ID, 1_000)
+    addWare(s, 'ore-voidshard', 1_000)
+    expect(startRefineRun(s, WORMHOLE_ORE_ITEM_ID, 'pilot', ctx).ok).toBe(true)
+    const baseVoid = s.refineRuns.at(-1)!.cycleMs
+    stopRefineRun(s, ctx, s.refineRuns.at(-1)!.id)
+    expect(startRefineRun(s, 'ore-voidshard', 'pilot', ctx).ok).toBe(true)
+    const baseOther = s.refineRuns.at(-1)!.cycleMs
+    stopRefineRun(s, ctx, s.refineRuns.at(-1)!.id)
+    expect(matterTechVoidRefineCut(s, ctx)).toBe(0)
+    // 双满：T3 那条 3 级 + T4 那条 3 级 = 0.45
+    s.research = { levels: { 'mt-industry-refine-speed': 3, 'mt-industry-refine-integration': 3 } }
+    expect(matterTechVoidRefineCut(s, ctx)).toBeCloseTo(0.45, 6)
+    expect(startRefineRun(s, WORMHOLE_ORE_ITEM_ID, 'pilot', ctx).ok).toBe(true)
+    expect(s.refineRuns.at(-1)!.cycleMs).toBe(Math.max(1, Math.round(baseVoid * 0.55)))
+    stopRefineRun(s, ctx, s.refineRuns.at(-1)!.id)
+    // 别的矿一字不动
+    expect(startRefineRun(s, 'ore-voidshard', 'pilot', ctx).ok).toBe(true)
+    expect(s.refineRuns.at(-1)!.cycleMs).toBe(baseOther)
+  })
+
+  it('涓流：每级 100 枚/时；推进一小时入库 100 枚；未点 ⇒ 一枚不给', () => {
+    const s = labReady()
+    advanceMatterOreDrip(s, ctx, 3_600_000)
+    expect(countWare(s, WORMHOLE_ORE_ITEM_ID)).toBe(0)
+    expect(matterTechVoidOrePerHour(s, ctx)).toBe(0)
+    s.research = { levels: { 'mt-industry-void-drip': 1 } }
+    expect(matterTechVoidOrePerHour(s, ctx)).toBe(100)
+    advanceMatterOreDrip(s, ctx, 3_600_000)
+    expect(countWare(s, WORMHOLE_ORE_ITEM_ID)).toBe(100)
+    // 半小时 ⇒ 50 枚；再半小时 ⇒ 再 50（小数累积不丢账）
+    advanceMatterOreDrip(s, ctx, 1_800_000)
+    expect(countWare(s, WORMHOLE_ORE_ITEM_ID)).toBe(150)
+    advanceMatterOreDrip(s, ctx, 1_800_000)
+    expect(countWare(s, WORMHOLE_ORE_ITEM_ID)).toBe(200)
+    // 零星 delta 不丢：0.6 枚的碎账留在累积器里，下一拍凑整
+    advanceMatterOreDrip(s, ctx, 21_600)
+    expect(countWare(s, WORMHOLE_ORE_ITEM_ID)).toBe(200)
+    expect(s.research.oreDrip).toBeCloseTo(0.6, 6)
+    advanceMatterOreDrip(s, ctx, 21_600)
+    expect(countWare(s, WORMHOLE_ORE_ITEM_ID)).toBe(201)
+    // 满级 300/时（船长令）
+    s.research.levels['mt-industry-void-drip'] = 3
+    expect(matterTechVoidOrePerHour(s, ctx)).toBe(300)
+  })
+
+  it('燃料配方门：没研究 ⇒ 起线被拒（core.lab.019）；研究一级 ⇒ 放行', () => {
+    const s = labReady()
+    const dense = ctx.labRecipes.get('jump-fuel-dense')!
+    const plain = ctx.labRecipes.get('jump-fuel')!
+    expect(dense.requiresTech).toBe('fuelRecipeAdvanced')
+    expect(labRecipeUnlocked(s, ctx, dense)).toBe(false)
+    expect(labRecipeUnlocked(s, ctx, plain), '老配方没有门槛').toBe(true)
+    expect(labTechRequirementOf(ctx, dense)).toBe('高密度燃料配方')
+    // 备料（新配方那一组）
+    for (const m of dense.materials) addWare(s, m.itemId, m.units * 2)
+    const denied = startLabRun(s, ctx, 'jump-fuel-dense', 'pilot')
+    expect(denied.ok).toBe(false)
+    expect(denied.errorId).toBe('core.lab.019')
+    s.research = { levels: { 'mt-industry-fuel-advanced': 1 } }
+    expect(labRecipeUnlocked(s, ctx, dense)).toBe(true)
+    expect(startLabRun(s, ctx, 'jump-fuel-dense', 'pilot').ok).toBe(true)
+  })
+
+  it('新配方：更贵但更省虚空晶（旧 60 → 新 15；同位聚晶换成冷却导管）', () => {
+    const dense = ctx.labRecipes.get('jump-fuel-dense')!
+    const plain = ctx.labRecipes.get('jump-fuel')!
+    const priceOf = (id: string): number => ctx.items.get(id)?.baseSellPriceIsk ?? 0
+    const valueOf = (r: { materials: readonly { itemId: string; units: number }[] }): number =>
+      r.materials.reduce((s, m) => s + m.units * priceOf(m.itemId), 0)
+    const voidOf = (r: typeof plain): number => r.materials.find((m) => m.itemId === 'min-voidcrystal')?.units ?? 0
+    expect([plain.outputItemId, dense.outputItemId]).toEqual(['jump-fuel', 'jump-fuel'])
+    expect([plain.outputUnits, dense.outputUnits]).toEqual([600, 600])
+    expect(voidOf(dense)).toBe(15)
+    expect(voidOf(plain)).toBe(60)
+    expect(valueOf(dense)).toBe(280_000)
+    expect(valueOf(dense)).toBeGreaterThan(valueOf(plain))
+    expect(dense.materials.some((m) => m.itemId === 'part-coolant')).toBe(true)
+    expect(dense.materials.some((m) => m.itemId === 'min-isotope'), '同位聚晶已换掉').toBe(false)
   })
 })
 
