@@ -712,6 +712,8 @@ export {
   // 2026-09-16 船长：价格采样间隔（48 点 = 24 小时）；界面换算时间用同一个常量
   PRICE_SAMPLE_MS,
   goodName,
+  /** AI 核心四档的市场行名 id（渲染层用；2026-09-30 批 5） */
+  aiCoreGoodNameId,
   salesTaxRate,
   goodLockedReason,
   /** 声望门槛锁的"结构化"版本（给渲染层按语言渲染；2026-09-30 批 5） */
@@ -1982,4 +1984,5 @@ export {
  * 装配校验与装配页格数共用同一把尺；`installPlug` 里同步就地补齐位数组。
  */
 export { plugSlotAddsOf, shipSlotsWithPlugsOf } from './plugs'
+
 

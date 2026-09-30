@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 市场引擎（V9）：NPC 订单簿 + 库存池 + 冲击动量 + 内部消化 + 玩家限价/市价单。
  *
  * 规则（中文说明，设计文档 V4/V5 已确认）：
@@ -30,13 +30,13 @@
 import { bumpFirst } from './firstTasks'
 import { addLog, shipLockedReason } from './state'
 import type { GameState, NpcMarketOrder, PlayerOrder } from './state'
-import type { MarketBalance, MarketGoodDef, MarketGoodKind, MarketRarity, SimContext } from './types'
+import type { AiCoreType, MarketBalance, MarketGoodDef, MarketGoodKind, MarketRarity, SimContext } from './types'
 import { nextInt, nextRandom, pickWeighted } from './rng'
 import { addWare, countWare, removeWare } from './inventory'
 import { addModule, countModule, removeModule } from './equipment'
 import { addShipToFleet, fleetDefOf, isShipLocked, shipDisplayName, shipStoredCount } from './shipyard'
 import { emptyFitted, uidDefId, allFittedIds } from './labels'
-import { countAiCore, gainAiCore, spendAiCores } from './ai'
+import { aiCoreName, countAiCore, gainAiCore, spendAiCores } from './ai'
 import { shipInReturn } from './mining'
 import { DSI_FACTION_ID, standingOf } from './expedition'
 import { ironmanCommonFlowMul, ironmanExoticCapBonus, ironmanExoticWeightMul, ironmanRareWeightMul } from './ironman'
@@ -535,17 +535,32 @@ export function goodName(ctx: SimContext, goodKey: string): string {
     case 'blueprint':
       return ctx.blueprints.get(def.refId)?.name ?? ctx.shipBlueprints.get(def.refId)?.name ?? goodKey
     case 'aicore':
-      return (
-        def.refId === 'basic'
-          ? '基础 AI 核心'
-          : def.refId === 'gamma'
-            ? '伽马 AI 核心'
-            : def.refId === 'beta'
-              ? '贝塔 AI 核心'
-              : def.refId === 'alpha'
-                ? '阿尔法 AI 核心'
-                : def.refId
-      )
+      /**
+       * ⚠ **AI 核心四档没有"物品行"可查**（它们走 `state.aiCores` 账本，不在物品表里）
+       * ⇒ 名字原先**写死中文**，英文界面下市场/工业那几行一直是中文（**2026-09-30 批 5**）。
+       * 现在改走**数据层的 id 侧面通道** `nameId`（口径同 `marketLockNote` 一族），
+       * 渲染层写 `tr(def.nameId)`；没配 `nameId` 的（老档/夹具的临时货）仍回落中文原串。
+       */
+      return aiCoreName(def.refId as AiCoreType)
+  }
+}
+
+/**
+ * **AI 核心那四档的市场行该用哪个 id**（渲染层用；与上面 `goodName` 的回落同源）。
+ * 抽出来是为了**不让渲染层自己拼 id 字符串**（拼错了静默出中文，体检也看不出来）。
+ */
+export function aiCoreGoodNameId(refId: string): string | undefined {
+  switch (refId) {
+    case 'basic':
+      return 'ui.labelsText.009'
+    case 'gamma':
+      return 'ui.labelsText.010'
+    case 'beta':
+      return 'ui.labelsText.011'
+    case 'alpha':
+      return 'ui.labelsText.012'
+    default:
+      return undefined
   }
 }
 
@@ -2248,4 +2263,7 @@ export function listSellHolding(
   addLog(state, 'trade', placeOrderLogText(ctx, 'sell', goodKey, order.price, n, r))
   return { ok: true, orderId: order.id, price: order.price, filled: r.filled, resting: r.resting }
 }
+
+
+
 
