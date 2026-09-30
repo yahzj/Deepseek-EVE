@@ -34,24 +34,28 @@ export interface FuelTankProps {
   units: number
   /** 满格（单位）——刻度尺；缺省按"一趟长途"的 5 倍由调用方给 */
   capacity: number
-  /** 罐身高度（px；宽度自动 = 高度的 0.46）。`fill` 为真时本值只当基准，实际按父容器高度缩放 */
+  /** 罐身高度（px）——调用方量出可用高度后传进来（缺省 148） */
   height?: number
   /**
-   * **撑满父容器高度**（**2026-09-30 船长手改稿**：「大致效果.png」= 燃料罐放大成靠左整列、几乎满页高）。
-   * 做法 = 固定 `viewBox`（几何/液位全部按视箱算）＋ `height:100%` ＋ `preserveAspectRatio=meet`
-   * ⇒ **等比缩放**（不会把罐子拉扁），父容器多高罐子就多高。
+   * 罐身宽度（px）——缺省按高度的 0.46（细长罐形）。
+   *
+   * ⚠ **不要用 CSS 给罐子铺满父容器**（**2026-09-30 船长报障「燃料罐高度太低了」的真因**）：
+   * SVG 一旦被 `width/height:100%` 撑开，`preserveAspectRatio` 就按**等比缩放到框内**解析 ——
+   * 罐身 0.46 的宽高比 ＋ 罐列只有 84px 宽 ⇒ 实际画出来最高被卡在 `84 / 0.46 ≈ 182px`，
+   * 无论如何加高容器都是这个高度。
+   * 现在改成**由调用方量出宽高、组件按 1:1（`viewBox` = 实际像素）作画** ⇒ 想多高就多高、不变形。
    */
-  fill?: boolean
+  width?: number
   /** 刻度提示：这些单位处画一条长刻度（例：一趟长途 ≈1,200 单位） */
   tickUnits?: number
   /** 无障碍名（读屏/悬停） */
   label: string
 }
 
-export function FuelTank({ units, capacity, height = 148, fill = false, tickUnits, label }: FuelTankProps): ReactNode {
-  /** `fill` 模式下用固定视箱高度（几何都按它算），视觉高度交给 CSS —— 见 `fill` 的注释 */
-  const H = fill ? 300 : height
-  const W = Math.round(H * 0.46)
+export function FuelTank({ units, capacity, height = 148, width, tickUnits, label }: FuelTankProps): ReactNode {
+  /** 1:1 作画（见 `width` 的注释）：`W`/`H` 既是几何单位、也是实际像素，因此下夹两档防止退化成一条线 */
+  const H = Math.max(80, Math.round(height))
+  const W = Math.max(28, Math.round(width ?? H * 0.46))
   const padX = 7
   const padTop = 16
   const padBottom = 10
@@ -70,14 +74,13 @@ export function FuelTank({ units, capacity, height = 148, fill = false, tickUnit
   const waveH = innerH - surfaceY + amp * 3
   const d = wavePath(waveW, waveH, amp)
   const tickY = tickUnits !== undefined && capacity > 0 ? innerH * (1 - Math.min(1, tickUnits / capacity)) : undefined
-  const uid = `ft${Math.round(H)}${Math.round(capacity)}`.replace(/[^a-zA-Z0-9]/g, '')
+  const uid = `ft${W}x${H}${Math.round(capacity)}`.replace(/[^a-zA-Z0-9]/g, '')
   return (
     <svg
-      className={`hud-tank${filled ? ' is-filled' : ''}${fill ? ' is-fill' : ''}`}
-      width={fill ? undefined : W}
-      height={fill ? undefined : H}
+      className={`hud-tank${filled ? ' is-filled' : ''}`}
+      width={W}
+      height={H}
       viewBox={`0 0 ${W} ${H}`}
-      preserveAspectRatio={fill ? 'xMidYMid meet' : undefined}
       /**
        * **波长位移量**（**2026-09-30 船长报障「液体动画的循环并不对齐」的修法**）：
        * 交给 CSS 的必须是**用户单位**（px = SVG 用户单位）且**正好 2 个波长**（= 波层自身宽度的一半），
@@ -85,10 +88,7 @@ export function FuelTank({ units, capacity, height = 148, fill = false, tickUnit
        * 若像原先那样写百分比，SVG 会按 viewBox 参考框解析 ⇒ 位移不是整数波长 ⇒ 每轮跳一下。
        * （几何核对：波层宽 = `innerW × 2`，内含 4 个整周期 ⇒ 1 周期 = `innerW / 2` ⇒ 2 周期 = `innerW`。）
        */
-      style={{
-        ...(fill ? { height: '100%', width: '100%', display: 'block' } : {}),
-        ['--tank-shift' as string]: `-${innerW}px`,
-      }}
+      style={{ ['--tank-shift' as string]: `-${innerW}px` }}
       role="img"
       aria-label={label}
     >

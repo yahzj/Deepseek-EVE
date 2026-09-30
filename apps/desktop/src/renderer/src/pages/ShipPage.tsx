@@ -224,22 +224,38 @@ function JumpFuelPanel({
 }): ReactNode {
   const stock = Math.floor(engine.jumpFuelStock())
   /**
-   * **罐高实测**（船长 2026-09-30 两连报障后的定稿做法）：量"罐列"的实际高度再画定值 ——
-   * 比 `height:100%` 可靠（后者在流式/网格里解析不稳，窄屏还会按宽等比放大成巨罐）。
-   * 夹在 `160~460`：下限保证小窗也看得见液位，上限避免高分辨率屏把罐子拉成一根柱子。
+   * **罐身尺寸实测**（**2026-09-30 船长三连报障的定稿做法**）：
+   * ① 「燃料罐高度太低了…让高度自适应（和右侧的总高度一致）」② 窄屏罐子超大 ③ 液面循环不对齐。
+   *
+   * 量两处**取小**：
+   * - **高** = `min(右列内容高, 罐列盒高)` —— 右列（`.hud-fuel-main`）用 `align-self:start` 不参与拉伸
+   *   ⇒ 量到的就是它的**内容自然高**，罐子与右列**等高**；再与罐列盒高取小，
+   *   既不会"越长越高"（罐子一旦高过右列就会把栅格行撑高 ⇒ 越滚越大），窄屏也不会撑破那一列。
+   * - **宽** = `min(罐列宽, 高 × 0.46)` —— 窄屏（媒体查询把罐列钉成 168px 高）罐子自动收到
+   *   ≈77px 宽，不会按屏宽等比放大成巨罐（前一条报障的成因）。
+   *
+   * ⚠ 尺寸必须**由这里量出来再交给组件按 1:1 画**：交给 CSS 铺满（`width/height:100%`）时，
+   * 罐身 0.46 的宽高比会让 SVG 按"等比缩放进框"解析 ⇒ 84px 宽的列最高只能画出 ≈182px 的罐子，
+   * 这正是"高度太低"的真因（详见 `ui/FuelTank.tsx` 的 `width` 注释）。
    */
   const railRef = useRef<HTMLDivElement | null>(null)
-  const [railH, setRailH] = useState(320)
+  const mainRef = useRef<HTMLDivElement | null>(null)
+  const [tank, setTank] = useState({ w: 84, h: 320 })
   useEffect(() => {
-    const el = railRef.current
-    if (!el || typeof ResizeObserver === 'undefined') return
-    const clampH = (h: number): number => Math.max(160, Math.min(460, Math.round(h)))
-    const ro = new ResizeObserver((entries) => {
-      const h = entries[0]?.contentRect.height ?? 0
-      if (h > 0) setRailH(clampH(h))
-    })
-    ro.observe(el)
-    setRailH(clampH(el.clientHeight))
+    const rail = railRef.current
+    const main = mainRef.current
+    if (!rail || !main || typeof ResizeObserver === 'undefined') return
+    const sync = (): void => {
+      const railH = rail.clientHeight
+      const mainH = main.clientHeight
+      const h = Math.max(140, Math.min(mainH > 0 ? mainH : railH, railH > 0 ? railH : mainH))
+      const w = Math.max(28, Math.min(rail.clientWidth, Math.round(h * 0.46)))
+      setTank((prev) => (prev.h === h && prev.w === w ? prev : { w, h }))
+    }
+    const ro = new ResizeObserver(sync)
+    ro.observe(rail)
+    ro.observe(main)
+    sync()
     return () => ro.disconnect()
   }, [])
   /** 一趟"长途返航"的量级（20 分钟 = 1,200 秒 ⇒ 1,200 单位）——库存条与"可支撑趟数"共用这一把尺 */
@@ -255,23 +271,21 @@ function JumpFuelPanel({
     <Panel className="is-fill" title={tr('ui.jumpFuel.010')}>
       <div className="hud hud-embed hud-fuel-split">
         {/* ═══ 左：**燃料罐整列**（**2026-09-30 船长手改稿「大致效果.png」**：罐体放大成靠左整列、
-            几乎满页高、罐内零文字）═══
-            ⚠ **罐高改成"实测容器高度后画定值"**（**2026-09-30 船长报障两连**：① 窄屏时罐子按屏宽
-            等比放大、变得超大；② 宽屏时 `height:100%` 在流式布局里解析不可靠、罐子又被压小）。
-            现在：`ResizeObserver` 量这一列的实际高度（并夹在 160~460 之间）⇒ 交给 `FuelTank` 画定值；
-            窄屏那份高度由 CSS 媒体查询直接定死（168px），量到的就是它。 */}
+            与右列**等高**、罐内零文字）═══
+            ⚠ 尺寸由上面那段实测给出（罐高跟着**右列内容高**走，取 `min(右列高, 罐列盒高)`）。 */}
         <div className="hud-fuel-rail" ref={railRef} title={tr('ui.jumpFuel.014')}>
           <FuelTank
             units={stock}
             capacity={TRIP_UNITS * 5}
             tickUnits={TRIP_UNITS}
-            height={railH}
+            width={tank.w}
+            height={tank.h}
             label={tr('ui.jumpFuel.014')}
           />
         </div>
 
         {/* ═══ 右：读数 → 规格 → 开关（自上而下一条竖读线）═══ */}
-        <div className="hud-fuel-main">
+        <div className="hud-fuel-main" ref={mainRef}>
           <div className="hud-panel">
             <div className="hud-tank-side">
               {/* ① 主读数（最大号） */}

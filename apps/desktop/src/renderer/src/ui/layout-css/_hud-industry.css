@@ -347,24 +347,26 @@
   align-items: stretch;
   min-height: 260px;
 }
-/* 罐体那一列：纵向拉伸但**封顶**（`FuelTank` 的 `fill` 等比铺满，不会被拉扁） */
+/* 罐体那一列：纵向拉伸到**与右列等高**（**2026-09-30 船长令**：「高度自适应（和右侧的总高度一致）」）
+ * ⚠ 这里**只给盒子**，尺寸由 `ShipPage` 实测后交给 `FuelTank` 按 1:1 画（原因见该页实测段注释：
+ * 让 CSS 铺满会被 0.46 的宽高比卡死在 ≈182px）。因此**不设 min/max-height**，
+ * 也不再给 `.hud-tank` 定宽高 —— 罐子多高由实测决定。 */
 .hud-fuel-rail {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  min-height: 220px;
-  max-height: 420px;
-  padding: 2px 4px 0;
+  min-height: 0;
+  padding: 0;
 }
-.hud-fuel-rail .hud-tank { width: 100%; height: 100%; max-width: 84px; }
 @media (max-width: 900px) {
   /* 窄屏：罐子回到**固定小尺寸**（不再按屏宽等比放大），横排放到内容上方 */
   .hud-fuel-split { grid-template-columns: 1fr; }
   .hud-fuel-rail { height: 168px; max-height: 168px; min-height: 168px; justify-content: flex-start; }
-  .hud-fuel-rail .hud-tank { max-width: 62px; }
 }
-/* 右侧内容列：纵向排布（读数面板在上、开关面板在下） */
-.hud-fuel-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+/* 右侧内容列：纵向排布（读数面板在上、开关面板在下）
+ * ⚠ `align-self: start` = **不参与栅格拉伸** ⇒ 这一列的高度恒等于它的**内容自然高**，
+ * 于是"量它"就能得到给罐子用的高度，且罐子长高不会把它顶高（否则会互相撑高）。 */
+.hud-fuel-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; align-self: start; }
 @media (prefers-reduced-motion: reduce) {
   .hud-tank .wave-a, .hud-tank .wave-b, .hud-tank.is-filled .glow { animation: none; }
 }
