@@ -113,6 +113,19 @@ export interface FirstReward {
 export interface FirstTaskDef {
   id: string
   title: string
+  /**
+   * **英文标题 / 英文正文**（**2026-09-29 加** · 英文界面残留中文清理批 1）。
+   *
+   * ⚠ **口径取舍（已如实记下，便于日后改判）**：本仓英文覆盖的主流做法是
+   * 「`packages/data/src/l10n.ts` 的 `EN_*` 表 ＋ `localizeCtx` 覆盖」（见 `EN_SHIPS` 一族）。
+   * 「第一次」任务这批**没有那么做**，而是把英文**就近写在本表的字段上**，理由两条：
+   * ① `FIRST_TASKS` 是 **core 的模块级常量**、渲染层直接 import（不走 `ctx`）——
+   *    走 EN 表就得给 `SimContext` 新增字段、把 core 的表搬进 data，改动面远超"补 26 句译文"；
+   * ② 这些文案与本条的 `title`/`detail` **逐条一一对应**，写在一起**改中文时英文就在眼皮底下**
+   *    （散到另一张表最容易出的就是"改了中文忘了英文"）。
+   * 取值一律走 {@link firstTaskText}，渲染层不许直接读 `title`/`detail`（否则英文界面漏中文）。
+   */
+  titleEn?: string
   /** 任务卡一句话（**不写原因解释、≤30 字**，与 §5 文案硬规矩同口径） */
   brief: string
   /**
@@ -121,6 +134,8 @@ export interface FirstTaskDef {
    * ⚠ 它会超过 §5「说明文案 ≤30 字」那条规矩（那是给商品说明定的）；是否把任务卡正文豁免，已上报船长。
    */
   detail: string
+  /** 英文正文（口径与取舍见 `titleEn` 的头注） */
+  detailEn?: string
   /** 完成判据：`count` 达到 1（或技能/声望这类直接判） */
   judge: (state: GameState, ctx: SimContext) => number
   /** 完成时发的通讯 id（`messages.ts` 里的 `first-*`） */
@@ -282,9 +297,12 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
   {
     id: 'first-scan',
     title: '第一次扫描',
+    titleEn: 'First Scan',
     brief: '对星图上的未知信号执行一次扫描探索',
     detail:
       '在探索一个新的星系时，需要先派一艘深空扫描艇进行扫描作业，了解该星系的航线、矿带、悬赏与残骸情报等。初始的章鱼人母港只需十来秒，后续其他星系越危险扫得越久。',
+    detailEn:
+      'To explore a new system, send a deep-space scanning vessel to scan it first: that reveals its routes, belts, bounties and wreck intel. The starting Octopus home port takes only a dozen seconds; the more dangerous the system, the longer the scan.',
     judge: (state, ctx) => state.exploredGalaxies.filter((g) => ctx.galaxies.has(g)).length,
     commsId: 'first-scan',
     /**
@@ -300,11 +318,14 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     //   （现行 = 原矿 / 原材料；本行首版就被 `content:check` 的陈旧术语契约拦下）
     //   ⇒ 本批按**现行口径**写成「第一次采集原矿」。若船长要保留"矿物"字样，把它登记为例外即可。
     title: '第一次采集原矿',
+    titleEn: 'First Ore Haul',
     brief: '到矿带采一批原矿',
     // 2026-09-20 船长令：「任务文本添加建议玩家去舰船切换采矿船」——鲣鱼级是护卫舰（无矿枪），
     //   采矿艇沙猫级开局就在舰船仓库里 ⇒ 文本第一句直接点明"先去舰船页换驾驶"。
     detail:
       '先到「舰船」页把驾驶换成采矿艇（沙猫级），再到矿带派出采矿。采掘、返航、卸货都会自动完成。原矿可以按市价卖出，也可以送进精炼炉炼成原材料——绝大多数情况下精炼会更加划算。',
+    detailEn:
+      'First go to the Ships page and switch to a mining vessel (Sandcat-class), then send it to a belt. Digging, returning and unloading all happen automatically. Ore can be sold at market price, or fed into the refinery to make materials — refining pays better in almost every case.',
     judge: (state) => (state.firstStats?.mineUnits ?? 0),
     commsId: 'first-mine',
     /**
@@ -328,9 +349,12 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
      */
     id: 'first-refine',
     title: '第一次操作精炼炉',
+    titleEn: 'First Refinery Run',
     brief: '让精炼炉出一批料',
     detail:
       '精炼炉按批运转：原料足够就能一直运转，直到原料全部用光。生产装备和舰船需要大量的材料都是通过精炼炉来生产。可以通过学习技能来大幅提高精炼效率。',
+    detailEn:
+      'The refinery runs in batches: as long as it has feedstock it keeps going until the feedstock runs out. The bulk of the materials needed for gear and ships comes out of the refinery, and skills can raise its efficiency a lot.',
     judge: (state) => (state.firstStats?.refineBatches ?? 0),
     commsId: 'first-refine',
     // 奖励（船长 2026-09-18 定、2026-09-22 Excel 复核不变）：动能弹药生产线蓝图
@@ -347,9 +371,12 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
      */
     id: 'first-bounty',
     title: '第一次完成悬赏',
+    titleEn: 'First Bounty Cleared',
     brief: '打赢一场悬赏讨伐',
     detail:
       '各个星系都有常驻悬赏。章鱼人通常将悬赏按威胁分档：档位越高敌人越厚、火力越重，报酬与协会声望也越高。声望是协会渠道的通行证，市场门槛与虫洞扫描都看它。',
+    detailEn:
+      'Every system keeps a standing bounty board. Bounties are tiered by threat: the higher the tier, the tougher and harder-hitting the enemy — and the better the pay and Association reputation. Reputation is your pass to Association channels; market gates and wormhole scanning both check it.',
     judge: (state) => (state.firstStats?.bountyWins ?? 0),
     commsId: 'first-bounty',
     // 奖励（船长 2026-09-18 定、2026-09-22 Excel 复核不变）：一艘鲣鱼级（直接进机库；同型自动编号 #2）
@@ -359,9 +386,12 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
   {
     id: 'first-repair',
     title: '第一次维修舰船',
+    titleEn: 'First Ship Repair',
     brief: '用修理组件或港内维修修一次船',
     detail:
       '在战斗结束后，舰船的护盾会自行回满，而装甲与结构的损伤则会跨场保留。返回星港进行修理吧。想要自动修理的话，你需要一个船体维修装置和一些修理组件。不同的船体维修装置会消耗不同类型的修理组件。',
+    detailEn:
+      'After a battle a ship\'s shields refill on their own, but armour and structure damage carries over between fights. Head back to a station to repair. For automatic repairs you need a hull repair unit plus repair kits — different hull repair units consume different kit types.',
     judge: (state) => (state.firstStats?.repairs ?? 0),
     commsId: 'first-repair',
     /**
@@ -386,9 +416,12 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
      */
     id: 'first-salvage',
     title: '第一次打捞残骸',
+    titleEn: 'First Wreck Salvage',
     brief: '到残骸地点打捞一批',
     detail:
       '星系里的残骸点可以派船打捞，打捞到的残骸可以送入精炼炉进行回收。除了回收出各种材料外，偶尔还能发现完好的装备和图纸碎片。图纸碎片集齐后可以在蓝图书架处拼接成完整蓝图。带稀有标记的残骸更值钱，也有概率出现更好的装备。',
+    detailEn:
+      'Wreck sites in a system can be salvaged by sending a ship; the wrecks you pull in can be recycled in the refinery. Besides materials, salvage occasionally turns up intact gear and blueprint fragments. Collect enough fragments and the Blueprint Shelf can assemble them into a full blueprint. Wrecks marked as rare are worth more and may hold better gear.',
     judge: (state) => (state.firstStats?.salvageRuns ?? 0),
     commsId: 'first-salvage',
     reward: { ware: [{ itemId: 'wreck-a-hi', units: 1_000 }] },
@@ -402,9 +435,12 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
      */
     id: 'first-skill',
     title: '第一次学习技能',
+    titleEn: 'First Skill Trained',
     brief: '把 AI 核心操作学练到 Lv1',
     detail:
       '鉴于数据库的遗失，我们需要重新收集各种数据进行技能学习。越高级的技能需要学习的时间越长。初期建议优先将 AI 核心操作学升到 Lv3，这样就能驱动 AI 副手帮我们完成工作。它在「技能」页的「工程」里，切过去就能看到。',
+    detailEn:
+      'With the database lost, data has to be gathered again before skills can be trained, and higher-level skills take longer. Early on, raise AI Core Operation to Lv3 so AI auxiliaries can take work off your hands. It sits under Engineering on the Skills page — switch over and you will see it.',
     judge: (state) => state.skills.trained['ai-expert'] ?? 0,
     commsId: 'first-skill',
     /**
@@ -418,9 +454,12 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     /** **位置：第 8 条**（同上 Excel：紧接「第一次学习技能」之后）。 */
     id: 'first-ai',
     title: '第一次指派 AI 副船',
+    titleEn: 'First AI Auxiliary Assigned',
     brief: '给一艘闲置舰船派个 AI 任务',
     detail:
       '闲置舰船配上一枚 AI 核心就能自己出海：采矿、打捞、驻留待命都能接。初期建议让 AI 副手驾驶采矿艇（沙猫级）进行挖矿作业。因为战斗、运输、扫描虫洞较为复杂，所以无法通过 AI 副手完成。',
+    detailEn:
+      'An idle ship plus one AI core can head out on its own: mining, salvage or standing by on station. Early on, put an AI auxiliary in a mining vessel (Sandcat-class) to dig. Combat, hauling and wormhole scanning are too involved to hand to an AI auxiliary.',
     // 船长 2026-09-17：「将安排 AI 核心的任务设置为需要玩家完成学习技能才出现」
     judge: (state) => (state.firstStats?.aiAssigns ?? 0),
     commsId: 'first-ai',
@@ -437,8 +476,11 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     /** **位置：第 9 条**（同上 Excel：生产 / 挂单 / 造船三块**整体后移**到 AI 副船之后）。 */
     id: 'first-produce',
     title: '第一次生产',
+    titleEn: 'First Production Run',
     brief: '让组装机造出一件东西',
     detail: '组装机要三样：蓝图、材料、时间。一般会安排其他 AI 副手进行自动生产加工，加工生产弹药是一个不错的初始资金来源。',
+    detailEn:
+      'The assembler needs three things: a blueprint, materials and time. Production is usually handed to an AI auxiliary; making ammunition is a solid first source of income.',
     judge: (state) => (state.firstStats?.produceUnits ?? 0),
     commsId: 'first-produce',
     /**
@@ -455,6 +497,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
   {
     id: 'first-order',
     title: '第一次挂单销售',
+    titleEn: 'First Listing Sold',
     /**
      * ⚠ **2026-09-22 船长令**：「第一次挂单允许玩家挂买单或者直接市价购买卖出都算完成」——
      * 卡面的一句话随之从「在市场挂出一张卖单」放宽成"做成一笔买卖"（**标题照旧**，是他定的名字）。
@@ -462,6 +505,8 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     brief: '在市场做成一笔买卖（挂单或市价都算）',
     detail:
       '在市场上进行交易物资是很重要的一个补充资源缺口和获取信用点来源的好办法。你可以直接按市价快速买入卖出，或者挂定一个期望价格等待有人收购或者卖出。对于一些稀有东西，你可以挂出数倍的价格进行求购，说不定什么时候就有人会心动于你的价格将东西买给你。',
+    detailEn:
+      'Trading at market is an important way to cover resource shortfalls and earn credits. You can buy and sell instantly at market price, or post your own price and wait for someone to take it. For rare goods you can post a buy order at several times the going rate — sooner or later someone may like your price and sell to you.',
     /**
      * 判据 = `firstStats.orders`（**2026-09-22 船长令**后语义 = "做过几笔市场交易"）：
      * 挂卖单 / **挂买单** / **市价买入** / **市价卖出**（含整船）四条路各记一笔
@@ -477,8 +522,11 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
   {
     id: 'first-ship',
     title: '第一条船',
+    titleEn: 'First Ship Built',
     brief: '造出第一艘自造船',
     detail: '造船厂对任何人来说都是十分重要的地方。除去市场外，这里是我们获取舰船的主要来源。制造一艘船并不便宜，但是回报绝对值得这个价格。',
+    detailEn:
+      'The shipyard matters to everyone: apart from the market, it is where ships come from. Building one is not cheap, but the return is well worth the price.',
     judge: (state) => (state.firstStats?.ships ?? 0),
     commsId: 'first-ship',
     /**
@@ -495,8 +543,11 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     id: 'first-haul',
     title: '第一次长途运输',
     brief: '完成一趟长途运输',
+    titleEn: 'First Long-haul Run',
     detail:
       '长途运输是一笔十分稳定的收入，各个空间站之间一直有着常驻的货运需求，不过前提是需要有 2 个以上空间站，红环航带一直有一个空间站的建设计划，完成后就能够开始长途运输。',
+    detailEn:
+      'Long-haul transport is a very steady income: stations always need freight moved, but it takes two or more stations to start. The Redring Corridor has a standing station construction plan — once it is finished, long-haul runs open up.',
     judge: (state) => (state.firstStats?.haulTrips ?? 0),
     commsId: 'first-haul',
     // 奖励（船长 2026-09-18 定、2026-09-22 Excel 复核不变）：飞鱼级快运舰（直接进机库）
@@ -506,9 +557,12 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
   {
     id: 'first-wormhole',
     title: '第一次虫洞',
+    titleEn: 'First Wormhole',
     brief: '把深空工业协会声望攒到 40',
     detail:
       '协会声望攒到 40 就能解禁虫洞扫描阵列。通过扫描发现隐藏在各个星系的虫洞入口。不过需要注意，大部分虫洞都已经成为各个势力的躲藏点，前往虫洞内搜寻稀有资源时极有可能会遭遇强力的敌人。并且因为虫洞的特殊性，在虫洞中的战斗很难逃离，请做好充足的准备再前往。',
+    detailEn:
+      'At 40 Association reputation the wormhole scanning array unlocks, letting you scan out wormhole entrances hidden across the systems. Be warned: most wormholes have become hiding places for one faction or another, so hunting rare resources inside will very likely run into tough enemies — and because of how wormholes work, a fight inside is hard to run from. Prepare properly before you go in.',
     // 任务目标就是"完成解锁条件的内容"（船长原话）⇒ 判据 = 声望门槛（虫洞解锁线 40）
     judge: (state) => (dsiStanding(state) >= WORMHOLE_UNLOCK_STANDING ? 1 : 0),
     commsId: 'first-wormhole',
@@ -601,6 +655,26 @@ export function claimableFirstTasks(state: GameState, ctx: SimContext): FirstTas
   return FIRST_TASKS.filter(
     (d) => isParallelTail(d.id) && state.importantTasks[d.id]?.done !== true && d.judge(state, ctx) >= 1,
   )
+}
+
+/**
+ * **取"当前语言的"任务标题 / 正文**（**2026-09-29 加** · 英文界面残留中文清理批 1）。
+ *
+ * 为什么要有这个取数口：`titleEn` / `detailEn` 是可选字段（老档 / 测试夹具可能没有），
+ * 渲染层若各写一遍 `locale === 'en' ? def.titleEn ?? def.title : def.title`，漏一处就是一处中文残留
+ * ⇒ 收成一个函数，**渲染层只许从这里取**（口径与取舍见 `FirstTaskDef.titleEn` 的头注）。
+ *
+ * ⚠ 参数用**结构型**（`Pick<FirstTaskDef, …>`）而不是渲染层的 `Locale` 类型：
+ * core 不认识那个类型，也不为它新增跨包依赖 —— 传 `'zh' | 'en'` 字面量就够。
+ */
+export function firstTaskText(
+  def: Pick<FirstTaskDef, 'title' | 'titleEn' | 'detail' | 'detailEn'>,
+  locale: 'zh' | 'en',
+  field: 'title' | 'detail',
+): string {
+  if (locale !== 'en') return field === 'title' ? def.title : def.detail
+  if (field === 'title') return def.titleEn ?? def.title
+  return def.detailEn ?? def.detail
 }
 
 /**
@@ -771,10 +845,15 @@ export function unlockNeedTitle(key: string): string | undefined {
  * ⚠ 本函数与 `advanceFirstTasks` 的"当前那一条 / 当前那一批"**是同一把尺**：
  * 显示哪些就只判哪些——这正是船长同日第二道令「未显示的第一次任务可以提前完成」的修法。
  */
-export function visibleFirstTasks(state: GameState): FirstTaskDef[] {
+export function visibleFirstTasks(state: GameState, locale: 'zh' | 'en' = 'zh'): FirstTaskDef[] {
+  // 本地化：只把 title/detail 换成当前语言那份（对象其余字段与判据函数一字不动）
+  const localized = (d: FirstTaskDef): FirstTaskDef =>
+    locale === 'en'
+      ? { ...d, title: firstTaskText(d, 'en', 'title'), detail: firstTaskText(d, 'en', 'detail') }
+      : d
   const next = FIRST_TASKS.find((d) => !isParallelTail(d.id) && state.importantTasks[d.id]?.done !== true)
-  if (next) return [next]
-  return FIRST_TASKS.filter((d) => isParallelTail(d.id) && state.importantTasks[d.id]?.done !== true)
+  if (next) return [localized(next)]
+  return FIRST_TASKS.filter((d) => isParallelTail(d.id) && state.importantTasks[d.id]?.done !== true).map(localized)
 }
 
 /** 「第一次」的页头读数：**已完成条数 / 总条数**（顺序解锁下"当前第几条"= done + 1） */
@@ -798,13 +877,17 @@ export function firstTaskProgress(state: GameState): { done: number; total: numb
  * 返回值带标题与 `ready`：徽标的悬停文案要写清"新的是哪一条"；`ready = true` 表示**这条已达成、
  * 正等玩家回任务中心点「完成」**（2026-09-21 船长令改手动完成后的新语义 ⇒ 达成那一刻也要亮一次）。
  */
-export function firstTaskNotice(state: GameState): { taskId: string; title: string; ready: boolean } | null {
-  const shown = visibleFirstTasks(state)
+export function firstTaskNotice(
+  state: GameState,
+  locale: 'zh' | 'en' = 'zh',
+): { taskId: string; title: string; ready: boolean } | null {
+  const shown = visibleFirstTasks(state, locale)
   if (shown.length === 0) return null
   const ready = shown.some((d) => d.id === state.firstTaskReadyId)
   const sig = shown.map((d) => d.id).join('|') + (ready ? '|ready' : '')
   if (state.firstTaskSeenId === sig) return null
-  return { taskId: shown[0]!.id, title: shown.map((d) => d.title).join('、'), ready }
+  // 并列批那条合起来的标题按语言的分隔符走（中文顿号 / 英文逗号）
+  return { taskId: shown[0]!.id, title: shown.map((d) => d.title).join(locale === 'en' ? ', ' : '、'), ready }
 }
 
 /** **记一笔"这一组看过了"**（进「任务中心」页时调用；幂等：同一组不写第二次）。返回是否真的记了。 */
@@ -919,4 +1002,5 @@ export function firstTaskBoard(state: GameState): FirstTaskRow[] {
   const rank = (r: FirstTaskRow): number => (r.pendingIsk > 0 ? 0 : r.done ? 1 : 2)
   return rows.filter((r) => !r.hidden).sort((a, b) => rank(a) - rank(b))
 }
+
 

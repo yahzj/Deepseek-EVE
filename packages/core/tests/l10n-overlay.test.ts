@@ -7,7 +7,7 @@
  * ③ **覆盖表的 id 必须真实存在**（写错的 id 悄悄无效 ⇒ 英文界面里冒中文，本用例点名）。
  */
 import { buildSimContext } from '@whale/data'
-import { EN_ANOMALIES, EN_BELTS, EN_COMMS_FACTIONS, EN_FOE_SHIPS, EN_GALAXIES, EN_ITEMS, EN_MATTER_TECH, EN_MATTER_TECH_NOTES, EN_MODULES, EN_SHIPS, EN_SKILLS, EN_STATIONS, EN_TRAVEL_EVENTS, EN_WRECKS, ITEMS, MODULES, SHIPS, SKILLS, overlayList } from '@whale/data'
+import { EN_ANOMALIES, EN_BELTS, EN_COMMS_FACTIONS, EN_FOE_SHIPS, EN_GALAXIES, EN_ITEMS, EN_MATTER_TECH, EN_MATTER_TECH_NOTES, EN_MODULES, EN_SHIPS, EN_SKILLS, EN_STATIONS, EN_STATION_TIERS, EN_TRAVEL_EVENTS, EN_WRECKS, ITEMS, MODULES, SHIPS, SKILLS, overlayList } from '@whale/data'
 import { describe, expect, it } from 'vitest'
 
 const zh = buildSimContext()
@@ -218,6 +218,31 @@ describe('英文覆盖层（P2）', () => {
     for (const [id, def] of zh.galaxies) expect(strip(en.galaxies.get(id)!), `星系 ${id}`).toBe(strip(def))
     for (const [id, def] of zh.belts) expect(strip(en.belts.get(id)!), `矿带 ${id}`).toBe(strip(def))
     for (const [id, def] of zh.commsFactions) expect(strip(en.commsFactions.get(id)!), `势力 ${id}`).toBe(strip(def))
+    /**
+     * **建站阶段名（奠基 / 完善 / 建成）＋ 那句 `unlockDesc`**（**2026-09-29 加** · 英文界面残留批 1）：
+     * 它们**嵌在 `tiers[]` 里**，`overlayMap` 只认顶层 `name`/`description` ⇒ 够不着，
+     * 走的是 `overlayStations` ＋ `EN_STATION_TIERS`。这条断言就是那个缺口的护栏：
+     * 站点新增档位却忘了配英文 ⇒ 这里当场红（否则英文界面里那一格显示中文）。
+     */
+    const missedTiers: string[] = []
+    for (const [id, def] of zh.stations) {
+      for (const t of def.tiers) if (!(t.name in EN_STATION_TIERS)) missedTiers.push(`${id}/${t.name}`)
+    }
+    expect(missedTiers, `这些建站阶段还没英文名：${missedTiers.join(', ')}`).toEqual([])
+    for (const [id, def] of zh.stations) {
+      const localized = en.stations.get(id)!
+      expect(localized.tiers.length, `站点 ${id} 的档数`).toBe(def.tiers.length)
+      for (let i = 0; i < def.tiers.length; i++) {
+        const before = def.tiers[i]!
+        const after = localized.tiers[i]!
+        expect(after.name, `${id} 第 ${i + 1} 档阶段名`).toBe(EN_STATION_TIERS[before.name]!.name)
+        expect(after.bill, `${id} 第 ${i + 1} 档材料单（数值一字不动）`).toEqual(before.bill)
+        // 那句 unlockDesc 也必须有英文（有中文原文却没配英文 ⇒ 红）
+        if (before.unlockDesc !== undefined) {
+          expect(after.unlockDesc, `${id} 第 ${i + 1} 档 unlockDesc`).toBe(EN_STATION_TIERS[before.name]!.unlockDesc)
+        }
+      }
+    }
   })
 
   it('旅行事件 + 谜质科技：全覆盖 + 英文名生效 + 数值深比一字不动', () => {

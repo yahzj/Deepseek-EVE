@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 通讯页（2026-09-11 船长定；设计稿 `docs/design/comms-20260911.md` + `docs/design/npc-factions-20260911.md`）。
  *
  * 六条已定决策的落点：
@@ -27,7 +27,7 @@ import { Glyph } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import type { PageProps } from './common'
 import { cmdText, tr } from '../i18n/locale'
-import { commsBriefText, commsClockText, commsSenderText, commsSubjectText } from '../ui/commsText'
+import { commsBriefText, commsClockText, commsEntrySubjectText, commsSenderText } from '../ui/commsText'
 import { WeekendSummaryView } from '../panels/WeekendSummary'
 import { PlugExchangeModal } from '../panels/PlugExchange'
 import { sessionPick, setSessionPick, useSessionScroll } from '../ui/sessionView'
@@ -177,7 +177,10 @@ export function CommsPage({
                       <span className="app-comms-from">{commsSenderText(e.from)}</span>
                       <span className="app-comms-time">{commsClockText(e.deliveredAtGameMs)}</span>
                     </span>
-                    <span className="app-comms-subject">{commsSubjectText(e.id, e.subject)}</span>
+                    {/* ⚠ 发件人/时间/主题都是数据侧中文 ⇒ 过 `ui/commsText.ts` 单点映射（2026-09-22 通讯本地化批）
+                        ⚠ 2026-09-30 批 5：**实例通讯**（带 `subjectId` 的，如周末入侵警告）必须走
+                        `commsEntrySubjectText` —— 它的主题是"模板 ＋ 参数"，静态 id 表里查不到。 */}
+                    <span className="app-comms-subject">{commsEntrySubjectText(e, (id) => engine.ctx.items.get(id)?.name ?? id)}</span>
                   </button>
                 ))}
               </div>
@@ -337,3 +340,4 @@ function WreckLogPane({ engine, rows }: { engine: PageProps['engine']; rows: Ret
     </div>
   )
 }
+

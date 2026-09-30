@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @whale/core 对外统一出口。
  * 其他包（data / ui / desktop / 未来服务端）只允许从这里 import。
  */
@@ -169,6 +169,7 @@ export {
   thrusterCycleSeconds,
   thrusterCycleText,
   thrusterCycleFullText,
+  thrusterCycleNote,
   thrusterCycleOfModule,
 } from './labels'
 export type { ThrusterCycleOverride } from './labels'
@@ -711,11 +712,16 @@ export {
   // 2026-09-16 船长：价格采样间隔（48 点 = 24 小时）；界面换算时间用同一个常量
   PRICE_SAMPLE_MS,
   goodName,
+  /** AI 核心四档的市场行名 id（渲染层用；2026-09-30 批 5） */
+  aiCoreGoodNameId,
   salesTaxRate,
   goodLockedReason,
+  /** 声望门槛锁的"结构化"版本（给渲染层按语言渲染；2026-09-30 批 5） */
+  marketLockNote,
   marketLockedReason,
   bmGateLocked,
   bmGateReason,
+  bmGateNote,
   acquisitionFactorOf,
   buyLineOf,
   askLineOf,
@@ -1244,8 +1250,13 @@ export { formatDurationShort } from './time'
 
 // **金额显示单点**（2026-09-13 船长：「更换金钱单位为信用点」＋「希望考虑到钱位数过多时的处理」）：
 // 单位名 / 万·亿分级 / 精确值提示 —— 玩家可见金额文案一律走这里（引擎内部字段仍叫 `isk`）。
+// ⚠ 2026-09-29 起全部**带可选 `lang`**（缺省 `'zh'` ⇒ 既有调用零变化；`'en'` ⇒ `credits` ＋ M/B 缩写）。
 export {
+  MONEY_B_DECIMALS,
+  MONEY_B_THRESHOLD,
   MONEY_LARGE_DECIMALS,
+  MONEY_M_DECIMALS,
+  MONEY_M_THRESHOLD,
   MONEY_UNIT,
   MONEY_WAN_DECIMALS,
   MONEY_WAN_THRESHOLD,
@@ -1257,6 +1268,7 @@ export {
   moneyFitCandidates,
   moneyFormatCandidates,
   moneyText,
+  type MoneyLang,
 } from './money'
 
 export {
@@ -1376,6 +1388,8 @@ export {
   advanceFirstChains,
   claimChainReward,
   visibleFirstTasks,
+  /* 取"当前语言的"任务标题/正文（2026-09-29 批 1：英文界面残留中文清理 · 渲染层只许从这里取） */
+  firstTaskText,
   /* 末段并列批（2026-09-20 船长第三道令：完成第 11 条后，长途运输/虫洞/寻找人类一起显示） */
   PARALLEL_TAIL_IDS,
   isParallelTail,
@@ -1970,3 +1984,5 @@ export {
  * 装配校验与装配页格数共用同一把尺；`installPlug` 里同步就地补齐位数组。
  */
 export { plugSlotAddsOf, shipSlotsWithPlugsOf } from './plugs'
+
+

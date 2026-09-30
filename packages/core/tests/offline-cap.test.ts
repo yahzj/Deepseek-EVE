@@ -46,4 +46,25 @@ describe('离线结算上限 · 技能加成与读数同源', () => {
     simulateOffline(state, 1_000, 1_000 + 20 * H, ctx)
     expect(state.gameMs).toBe(DEFAULT_OFFLINE_CAP_MS)
   })
+
+  it('溢出那句日志的「槽内参数」也喂了（`p2p1` · 2026-09-29 实障修正）', () => {
+    /**
+     * **船长 2026-09-29 报障**：「各种事件里的参数都有问题……很多都读取不到参数」——
+     * 这批修完后线上日志里**仍然**能读到「超出上限的 **{p1}** 未结算」。
+     *
+     * 根因：`core.state.023`（`；超出上限的 {p1} 未结算`）是**槽译文**，渲染层按 `p2p1` 取它 ——
+     * 只给 `p2Id` 的话那一槽的 `{p1}` 无人供给、原样漏给玩家。本用例钉住"值 ＋ id 成对出现"。
+     */
+    const state = createInitialState({ nowWallMs: 0, seed: 11 })
+    state.skills.trained['offline-ops'] = 5 // 上限 → 16h
+    const ctx = buildSimContext()
+    simulateOffline(state, 1_000, 1_000 + 20 * H, ctx)
+    const entry = state.logs.find((l) => l.textId === 'core.simulation.002')
+    expect(entry, '离线结算那条日志必须在').toBeDefined()
+    expect(entry!.textParams?.p2Id, '槽译文的 id').toBe('core.state.023')
+    expect(entry!.textParams?.p2p1, '**槽内参数必须一起喂**（漏了就漏 {p1} 给玩家）').toBe('4小时')
+    // 中文原串里也要是"补好的那句"，不是模板
+    expect(entry!.text).toContain('超出上限的 4小时 未结算')
+    expect(entry!.text, '不得把模板原样写进 text').not.toContain('{p1}')
+  })
 })

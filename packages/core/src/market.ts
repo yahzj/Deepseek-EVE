@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 市场引擎（V9）：NPC 订单簿 + 库存池 + 冲击动量 + 内部消化 + 玩家限价/市价单。
  *
  * 规则（中文说明，设计文档 V4/V5 已确认）：
@@ -30,13 +30,13 @@
 import { bumpFirst } from './firstTasks'
 import { addLog, shipLockedReason } from './state'
 import type { GameState, NpcMarketOrder, PlayerOrder } from './state'
-import type { MarketBalance, MarketGoodDef, MarketGoodKind, MarketRarity, SimContext } from './types'
+import type { AiCoreType, MarketBalance, MarketGoodDef, MarketGoodKind, MarketRarity, SimContext } from './types'
 import { nextInt, nextRandom, pickWeighted } from './rng'
 import { addWare, countWare, removeWare } from './inventory'
 import { addModule, countModule, removeModule } from './equipment'
 import { addShipToFleet, fleetDefOf, isShipLocked, shipDisplayName, shipStoredCount } from './shipyard'
 import { emptyFitted, uidDefId, allFittedIds } from './labels'
-import { countAiCore, gainAiCore, spendAiCores } from './ai'
+import { aiCoreName, countAiCore, gainAiCore, spendAiCores } from './ai'
 import { shipInReturn } from './mining'
 import { DSI_FACTION_ID, standingOf } from './expedition'
 import { ironmanCommonFlowMul, ironmanExoticCapBonus, ironmanExoticWeightMul, ironmanRareWeightMul } from './ironman'
@@ -362,10 +362,31 @@ export function marketGoodOf(
  * ——改前界面按可支配判、命令按累计判，换过图纸后会出现"星图说锁着、点下去却能开工"的错位。
  */
 export function goodLockedReason(state: GameState, def: MarketGoodDef): string | null {
+  return marketLockNote(state, def)?.text ?? null
+}
+
+/**
+ * **声望门槛那枚锁的"结构化"版本**（`{ text, textId, params }`）——**2026-09-30 加**（英文残留批 5）。
+ *
+ * 为什么要有它：`goodLockedReason` 返回的是一句**拼好的中文**，而它在界面上有 5 处渲染点
+ * （市场两处 / 舰船 / 工业 / 引擎提示）⇒ 英文界面下那枚「需「深空工业协会」声望 12（当前 9）」永远是中文。
+ * core 不能直接翻译（不认识渲染层的语言）⇒ 按本仓既定的**id 侧面通道**给出
+ * `textId` + `params`（口径同 §十一之三：调用点写 `tr(textId, params)`），
+ * 中文原串照旧返回（老调用点与"只判空"的路径零变化）。
+ */
+export function marketLockNote(
+  state: GameState,
+  def: MarketGoodDef,
+): { text: string; textId: string; params: Record<string, string | number> } | null {
   const need = def.standingReq
   if (!need || need <= 0) return null
   const have = standingOf(state, DSI_FACTION_ID)
-  return have >= need ? null : `需「深空工业协会」声望 ${need}（当前 ${have}）`
+  if (have >= need) return null
+  return {
+    text: `需「深空工业协会」声望 ${need}（当前 ${have}）`,
+    textId: 'core.market.039',
+    params: { p1: need, p2: have },
+  }
 }
 
 /** 按商品 key 查询购买门槛（界面展示锁标用） */
@@ -383,9 +404,22 @@ export function bmGateLocked(state: GameState, def: MarketGoodDef): boolean {
 /** 暗市闸展示文案（2026-09-06 船长定：暗市对玩家隐身——仅声望锁指引，与 standingReq 锁同观感；
  * 闸内偶发 ×4 到货在外观与文案上与普通稀有单无异） */
 export function bmGateReason(state: GameState, def: MarketGoodDef): string | null {
+  return bmGateNote(state, def)?.text ?? null
+}
+
+/** 暗市闸那枚锁的"结构化"版本（口径与 `marketLockNote` 同款；同一句文案 ⇒ 同一个 id） */
+export function bmGateNote(
+  state: GameState,
+  def: MarketGoodDef,
+): { text: string; textId: string; params: Record<string, string | number> } | null {
   if (!def.bmStanding || def.bmStanding <= 0) return null
   const have = standingOf(state, DSI_FACTION_ID)
-  return have >= def.bmStanding ? null : `需「深空工业协会」声望 ${def.bmStanding}（当前 ${have}）`
+  if (have >= def.bmStanding) return null
+  return {
+    text: `需「深空工业协会」声望 ${def.bmStanding}（当前 ${have}）`,
+    textId: 'core.market.039',
+    params: { p1: def.bmStanding, p2: have },
+  }
 }
 
 /** 当前均衡价 L（展示/估价用；不含单边价差与 jitter） */
@@ -466,6 +500,15 @@ function tradeNoteText(note: TradeNote, tax: number): string {
   if (note === 'bonusTax') return `（含协会声望加成）${taxTxt}`
   return ''
 }
+/**
+ * 槽译文的 id（`p4Id`）。
+ *
+ * ⚠ **调用点必须连"槽内参数" `p4p1` 一起喂**（**2026-09-29 实障修正**）：
+ * `core.market.034/035` 自己带 `{p1}`（税额），渲染层按 `p4p1` 取它 ——
+ * 只给 `p4Id` 的话那一槽的 `{p1}` **无人供给、原样漏出**（实测日志里出现
+ * 「（贸易税 {p1} 信用点）」）。同款范式见 `events.ts` 的 `p2p1`、`hauling.ts` 的 `p8p1`；
+ * 漏喂由 `npm run l10n:params` 的"槽内参数"检查兜住。
+ */
 function tradeNoteId(note: TradeNote): string | undefined {
   switch (note) {
     case 'bonus':
@@ -492,17 +535,32 @@ export function goodName(ctx: SimContext, goodKey: string): string {
     case 'blueprint':
       return ctx.blueprints.get(def.refId)?.name ?? ctx.shipBlueprints.get(def.refId)?.name ?? goodKey
     case 'aicore':
-      return (
-        def.refId === 'basic'
-          ? '基础 AI 核心'
-          : def.refId === 'gamma'
-            ? '伽马 AI 核心'
-            : def.refId === 'beta'
-              ? '贝塔 AI 核心'
-              : def.refId === 'alpha'
-                ? '阿尔法 AI 核心'
-                : def.refId
-      )
+      /**
+       * ⚠ **AI 核心四档没有"物品行"可查**（它们走 `state.aiCores` 账本，不在物品表里）
+       * ⇒ 名字原先**写死中文**，英文界面下市场/工业那几行一直是中文（**2026-09-30 批 5**）。
+       * 现在改走**数据层的 id 侧面通道** `nameId`（口径同 `marketLockNote` 一族），
+       * 渲染层写 `tr(def.nameId)`；没配 `nameId` 的（老档/夹具的临时货）仍回落中文原串。
+       */
+      return aiCoreName(def.refId as AiCoreType)
+  }
+}
+
+/**
+ * **AI 核心那四档的市场行该用哪个 id**（渲染层用；与上面 `goodName` 的回落同源）。
+ * 抽出来是为了**不让渲染层自己拼 id 字符串**（拼错了静默出中文，体检也看不出来）。
+ */
+export function aiCoreGoodNameId(refId: string): string | undefined {
+  switch (refId) {
+    case 'basic':
+      return 'ui.labelsText.009'
+    case 'gamma':
+      return 'ui.labelsText.010'
+    case 'beta':
+      return 'ui.labelsText.011'
+    case 'alpha':
+      return 'ui.labelsText.012'
+    default:
+      return undefined
   }
 }
 
@@ -1084,7 +1142,7 @@ function settleSell(
     const params = { p1: goodName(ctx, order.good), p2: take.toLocaleString('zh-CN'), p3: net.toLocaleString('zh-CN') }
     const noteId = tradeNoteId(note)
     if (noteId === undefined) addLog(state, 'trade', text, id, params)
-    else addLog(state, 'trade', text, id, { ...params, p4: taxNote, p4Id: noteId })
+    else addLog(state, 'trade', text, id, { ...params, p4: taxNote, p4Id: noteId, p4p1: tax.toLocaleString('zh-CN') })
   }
 }
 
@@ -1171,7 +1229,7 @@ function settleSnatchSell(state: GameState, ctx: SimContext, order: PlayerOrder,
     const params = { p1: goodName(ctx, order.good), p2: take.toLocaleString('zh-CN'), p3: net.toLocaleString('zh-CN') }
     const noteId = tradeNoteId(note)
     if (noteId === undefined) addLog(state, 'trade', text, id, params)
-    else addLog(state, 'trade', text, id, { ...params, p4: taxNote, p4Id: noteId })
+    else addLog(state, 'trade', text, id, { ...params, p4: taxNote, p4Id: noteId, p4p1: tax.toLocaleString('zh-CN') })
   }
 }
 
@@ -1325,7 +1383,7 @@ function settleStationTake(state: GameState, ctx: SimContext, order: PlayerOrder
     const params = { p1: goodName(ctx, order.good), p2: take.toLocaleString('zh-CN'), p3: net.toLocaleString('zh-CN') }
     const noteId = tradeNoteId(note)
     if (noteId === undefined) addLog(state, 'trade', text, id, params)
-    else addLog(state, 'trade', text, id, { ...params, p4: taxNote, p4Id: noteId })
+    else addLog(state, 'trade', text, id, { ...params, p4: taxNote, p4Id: noteId, p4p1: tax.toLocaleString('zh-CN') })
   }
 }
 
@@ -2205,3 +2263,7 @@ export function listSellHolding(
   addLog(state, 'trade', placeOrderLogText(ctx, 'sell', goodKey, order.price, n, r))
   return { ok: true, orderId: order.id, price: order.price, filled: r.filled, resting: r.resting }
 }
+
+
+
+

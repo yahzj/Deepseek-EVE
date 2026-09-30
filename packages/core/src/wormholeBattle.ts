@@ -511,6 +511,13 @@ function wormholeBattleReport(
             p6: s.foeHits,
             p7: frac,
             p8: repair,
+            /**
+             * ⚠ **槽内参数 `p8p1` 必须一起喂**（**2026-09-29 实障修正**）：
+             * `core.wormholeBattle.031` 就是 `{p1}`，渲染层按 `p8p1` 取它 ——
+             * 只给 `p8Id` 会让那一槽原样漏出 `{p1}`（战报尾巴变成「船体维修装置{p1}」）。
+             * 同款范式：`events.ts` 的 `p2p1`、`market.ts` 的 `p4p1`。
+             */
+            p8p1: repair,
             p8Id: 'core.wormholeBattle.031',
             p9: '。',
             p9Id: 'core.state.042',

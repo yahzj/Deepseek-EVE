@@ -13,9 +13,9 @@
  * P2 后续批次追加（`localizeCtx` 里没登记的目录 ⇒ 原样中文）。
  * ⚠ 覆盖表里的 id 必须真实存在于内容表 —— `packages/core/tests/l10n-overlay.test.ts` 钉住这条。
  */
-import type { FoeMountId, MatterTechNodeDef, SimContext } from '@whale/core'
+import type { FoeMountId, MatterTechNodeDef, SimContext, StationSiteDef } from '@whale/core'
 // 2026-09-26：残骸英文区名改读组表（`wreckGroupOfItemId` ⇒ `region`），不再按 id 后缀解
-import { resolveFoeMounts, wreckGroupOfItemId } from '@whale/core'
+import { WRECK_GROUPS, resolveFoeMounts, wreckGroupOfItemId } from '@whale/core'
 import { BLUEPRINTS } from './blueprints'
 import { SHIP_BLUEPRINTS } from './shipBlueprints'
 
@@ -747,6 +747,106 @@ const WRECK_IDS = [
 
 export const EN_WRECKS: EnTable = Object.fromEntries(WRECK_IDS.map((id) => [id, wreckEnText(id)]))
 
+/**
+ * **蓝图碎片**（**2026-09-30 加** · 英文界面残留批 5）。
+ *
+ * 为什么单列：碎片物品**不在静态物品表里**——它由 `core/salvage.ts` 的 `fragmentItemDefOf(moduleId, moduleName)`
+ * **按目标装备现场生成**（`frag-<装备 id>`）。名字是**拼**出来的（`${moduleName}蓝图碎片`），
+ * 所以 `EN_ITEMS` 那种按 id 覆盖的写法够不着 ⇒ 落成"两句模板 + 调用方喂已本地化的装备名"。
+ * ⚠ 装备名由 `context.ts` 传**覆盖后**的那份（英文界面下就是英文名）⇒ 拼出来整句同语言。
+ */
+export const EN_FRAGMENT: Readonly<{ name: string; description: string }> = {
+  name: '{p1} Blueprint Fragment',
+  description:
+    'A blueprint fragment recovered by reverse-engineering wrecks: collect {p1} of them, then hit "Reverse-engineer" in the Blueprint Fragments group on the Items page to turn them into a permanent blueprint for that module (docking at a station required). The same blueprint will not drop fragments twice before it is complete — once you own the blueprint they stop appearing.',
+}
+
+/**
+ * **残骸组的三处文案**（**2026-09-29 加** · 英文界面残留中文清理批 2）：
+ * `WRECK_GROUPS` 的 `name` / `rareName` / `note` —— 星图「残骸打捞」页那几行
+ * （`武装拾荒者残骸（高安）：钛钢结构料为主…`）走的就是它们，此前**整段中文**。
+ *
+ * ⚠ **族名与区名复用残骸物品那两张小表**（`WRECK_FAMILY_EN` / `WRECK_AREA_EN`）——
+ * 同一个族/区在"残骸物品名"与"残骸组名"里**必须同一个词**，各写一张迟早漂
+ * （物品那边已经是 `Pirate Wreck (High-sec)` 这套）。
+ * `note` 与 `name` 不同：它是一句**成分说明**，按组逐条写（8 族 × 成分不同）。
+ *
+ * `name` / `rareName` 由 `wreckGroupEnName()` 按 `<族> Wreck (<区>)` / `<族> Rare Wreck (<区>)` 派生
+ * —— 与 `wreckEnText` 的普通/稀有**同一套模板**，两处不会说出两种残骸名。
+ */
+const WRECK_GROUP_NOTE_EN: Readonly<Record<string, string>> = {
+  'a-hi': 'Tritanium structure stock, with Silvervein armour plate and Crystalline Colloid',
+  'b-hi': 'Tritanium structure stock, with Silvervein and Crystalline Colloid',
+  'd-hi': 'Starcore Crystal marrow stock and Heavy Tungsten Alloy plate',
+  'a-lo': 'Rich in Isotope Polycrystal',
+  'c-lo': 'Mostly Starcore Crystal marrow, with Heavy Tungsten and Darkiron Alloy',
+  'd-lo': 'Darkiron Alloy fragments and Isotope Polycrystal',
+  'e-lo': 'Starcore Crystal and Isotope Polycrystal from megastructure fragments',
+  'g-lo': 'Mostly Darkiron Alloy and Isotope Polycrystal, with structure and armour stock',
+  'h-hi': 'Mostly Starcore Crystal and Heavy Tungsten Alloy, with structure stock',
+}
+
+/** 组名（普通 / 稀有）按族名 + 区名派生 —— 与 `wreckEnText` 同源 */
+function wreckGroupEnName(key: string, rare: boolean): string {
+  const group = WRECK_GROUPS.find((g) => g.key === key)
+  if (!group) throw new Error(`残骸组 key 不存在：${key}`)
+  const fam = WRECK_FAMILY_EN[group.family.toLowerCase()]!
+  const area = WRECK_AREA_EN[group.region]!
+  return `${fam}${rare ? ' Rare' : ''} Wreck (${area})`
+}
+
+export const EN_WRECK_GROUPS: Readonly<Record<string, { name: string; rareName: string; note?: string }>> =
+  Object.fromEntries(
+    WRECK_GROUPS.map((g) => [
+      g.key,
+      {
+        name: wreckGroupEnName(g.key, false),
+        rareName: wreckGroupEnName(g.key, true),
+        ...(WRECK_GROUP_NOTE_EN[g.key] !== undefined
+          ? { note: `${wreckGroupEnName(g.key, false)}: ${WRECK_GROUP_NOTE_EN[g.key]}` }
+          : {}),
+      },
+    ]),
+  )
+
+/**
+ * **按"组 key"取当前语言的那三处文案**（渲染层直接用）。
+ *
+ * 为什么按 key 而不是按对象：`group.note` 会被 core 的 `recycleProfileOf` **拷进 profile**
+ * （`salvage.ts`），于是工业页/星图两处渲染点手里都有的是**中文原串** —— 按 key 反查最省事，
+ * 也不必让 core 认识语言。
+ *
+ * ⚠ 与 `EN_WRECK_GROUPS` **同一个真相源**（两处各写一份必然漂）；查不到组或没配英文 ⇒ 返回 undefined。
+ */
+export function wreckGroupText(
+  key: string,
+  locale: Locale,
+  field: 'name' | 'rareName' | 'note',
+): string | undefined {
+  if (locale === 'zh') return undefined // 中文侧就叫调用方用原串（零拷贝、逐字不变）
+  return EN_WRECK_GROUPS[key]?.[field]
+}
+
+/**
+ * **残骸组的嵌套覆盖**（`name` / `rareName` / `note` 三处，`overlayMap` 够不着后两个）。
+ * 一条都没命中时返回**原数组**（与 `overlayList` 同款：省一次拷贝，也让"没翻译"可分辨）。
+ */
+export function overlayWreckGroups<T extends { key: string; name: string; rareName: string; note: string }>(
+  src: readonly T[],
+  locale: Locale,
+): readonly T[] {
+  if (locale === 'zh') return src
+  let out: T[] | null = null
+  for (let i = 0; i < src.length; i++) {
+    const g = src[i]!
+    const en = EN_WRECK_GROUPS[g.key]
+    if (en === undefined) continue
+    out ??= [...src]
+    out[i] = { ...g, name: en.name, rareName: en.rareName, ...(en.note !== undefined ? { note: en.note } : {}) }
+  }
+  return out ?? src
+}
+
 /** 异常点 / 敌卡（42 · `docs/glossary-en.md` §十/§十一）—— **名称 + 说明** */
 export const EN_ANOMALIES: EnTable = {
   'ano-training': {
@@ -1459,6 +1559,68 @@ export const EN_STATIONS: EnTable = {
   },
 }
 
+/**
+ * **建站阶段名**（**2026-09-29 加** · 英文界面残留中文清理批 1）。
+ *
+ * 为什么单列一张按 zh 名查的表：阶段名**嵌在站点定义的 `tiers[].name` 里**（`stations.ts` 每档一个
+ * `奠基/完善/建成`），而 `overlayMap` 只认顶层的 `name` / `description` —— 够不着嵌在数组里的那层
+ * （同一个原因见 `overlayMatterTech` 的头注）。`unlockDesc` 同理（那也是一句玩家可见说明）。
+ */
+export const EN_STATION_TIERS: Readonly<Record<string, { name: string; unlockDesc?: string }>> = {
+  奠基: { name: 'Foundation', unlockDesc: 'Construction underway: groundwork and main frame (station services open once it is fully built)' },
+  完善: { name: 'Fitting-out', unlockDesc: 'Construction underway: equipment installation and system checks (station services open once it is fully built)' },
+  建成: { name: 'Commissioning', unlockDesc: 'Outpost complete: joins the station network — berths, unloading, repair, resupply, ship switching and all in-station services open' },
+}
+
+/**
+ * 按期号取**当前语言的阶段名**（渲染层直接用；查不到英文覆盖就保留中文）。
+ * ⚠ 与 `localizeCtx` 的那份覆盖**同一个真相源**（`EN_STATION_TIERS`）——两处各写一份必然漂。
+ */
+export function stationTierText(
+  tier: { name: string },
+  locale: Locale,
+  field: 'name' | 'unlockDesc' = 'name',
+): string | undefined {
+  if (locale === 'zh') return field === 'name' ? tier.name : undefined
+  const hit = EN_STATION_TIERS[tier.name]
+  if (hit === undefined) return field === 'name' ? tier.name : undefined
+  return field === 'name' ? hit.name : hit.unlockDesc
+}
+
+/**
+ * **建站点的嵌套覆盖**：顶层走 `overlayMap` 那套，`tiers[].name` / `tiers[].unlockDesc` 另外接一层。
+ * 一条都没命中时返回**原对象**（与 `overlayMap` 同款：省一次拷贝，也让"没翻译"可分辨）。
+ */
+function overlayStations(
+  src: ReadonlyMap<string, StationSiteDef>,
+  en: EnTable,
+  locale: Locale,
+): ReadonlyMap<string, StationSiteDef> {
+  if (locale === 'zh') return src
+  let out: Map<string, StationSiteDef> | null = null
+  for (const [id, def] of src) {
+    const text = en[id]
+    const tiers = def.tiers.map((t) => {
+      const hit = EN_STATION_TIERS[t.name]
+      if (hit === undefined) return t
+      return {
+        ...t,
+        name: hit.name,
+        ...(hit.unlockDesc !== undefined ? { unlockDesc: hit.unlockDesc } : {}),
+      }
+    })
+    if (text === undefined && tiers.every((t, i) => t === def.tiers[i])) continue
+    out ??= new Map(src)
+    out.set(id, {
+      ...def,
+      ...(text?.name !== undefined ? { name: text.name } : {}),
+      ...(text?.description !== undefined ? { description: text.description } : {}),
+      tiers,
+    })
+  }
+  return out ?? src
+}
+
 /** 势力与部门（13 · §六；通讯页的发件人/署名会用） */
 export const EN_COMMS_FACTIONS: EnTable = {
   dshi: { name: 'Deep Space Industry Association' },
@@ -1601,7 +1763,7 @@ export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
     shipBlueprints: overlayMap(ctx.shipBlueprints, EN_SHIP_BLUEPRINTS, locale),
     galaxies: overlayMap(ctx.galaxies, EN_GALAXIES, locale),
     belts: overlayMap(ctx.belts, EN_BELTS, locale),
-    stations: overlayMap(ctx.stations, EN_STATIONS, locale),
+    stations: overlayStations(ctx.stations, EN_STATIONS, locale),
     commsFactions: overlayMap(ctx.commsFactions, EN_COMMS_FACTIONS, locale),
     // matterTech 在 SimContext 里是可选字段（缺省 = 该档内容没装）⇒ 有才覆盖
     // ⚠ 不用 `overlayMap`：节点的说明字段是 `note`（不是 `description`）⇒ 走专用覆盖

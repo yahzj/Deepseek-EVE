@@ -14,10 +14,10 @@
  * - **2026-09-18 第三轮**：链条目奖金行改写**"完成本级能拿多少"的具体数额**（`nextRewardIsk`）——
  *   该行**自 2026-09-20 起只画在「里程碑任务」页**（见 `MilestoneTasks.tsx`）。
  */
-import { claimableFirstTasks, firstTaskBoard, firstTaskProgress } from '@whale/core'
+import { claimableFirstTasks, firstTaskBoard, firstTaskProgress, firstTaskText } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
-import { tr } from '../i18n/locale'
+import { tr, useL10n } from '../i18n/locale'
 
 /** 一条任务的跳转落点（**按"这件活在哪干"定**，与情报信的"前往"分属两处：信是完成后的回看指引） */
 interface TaskJump {
@@ -72,6 +72,12 @@ export function FirstTasks({
   }) => void
 }) {
   const state = engine.state
+  /**
+   * **语言**（**2026-09-29 批 1**）：任务标题与正文由 core 的 `firstTaskText` 按语言取
+   * （口径与取舍见 `FirstTaskDef.titleEn` 头注）——渲染层**不许直接读 `def.title` / `def.detail`**。
+   */
+  const { locale } = useL10n()
+  const loc: 'zh' | 'en' = locale === 'en' ? 'en' : 'zh'
   /** 卡片序列（顺序解锁下**恒为当前这一条**；判定都在 core 的 `firstTaskBoard`，面板只渲染） */
   const ordered = firstTaskBoard(state)
   /** 页头进度：**已完成 / 总数**（顺序解锁后"当前第几条"= done + 1，见 core `firstTaskProgress`） */
@@ -118,7 +124,7 @@ export function FirstTasks({
           <div key={def.id} className="app-station-card">
             <div className="app-station-head">
               <span className="app-station-name">
-                {'◆'} {def.title}
+                {'◆'} {firstTaskText(def, loc, 'title')}
               </span>
               <span className="app-station-actions">
                 {/* 右上角：跳转按钮（船长 2026-09-18：「所有'第一次'任务都加一个跳转界面的按钮」）
@@ -155,7 +161,7 @@ export function FirstTasks({
               </span>
             </div>
             {/* 正文：一段话讲清怎么做 / 做成什么样 / 有什么奖励 */}
-            <div className="app-station-mats">{def.detail}</div>
+            <div className="app-station-mats">{firstTaskText(def, loc, 'detail')}</div>
             {/**
              * **奖励两段**（船长 2026-09-21：起手道具与完成奖励分开写；沿用 2026-09-18「独立成行 + 金色」口径）：
              * 「开始即给」只在有 `startReward` 时出现；里程碑链的奖金行仍只在「里程碑任务」页。

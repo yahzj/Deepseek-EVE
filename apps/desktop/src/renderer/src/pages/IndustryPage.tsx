@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 工业页：精炼炉（多工位并行卡片网格）+ 蓝图书架 + 组装机。
  *
  * 精炼模型（2026-09-04 船长定稿运转周期制；2026-09-05 船长拍板多工位并行）：
@@ -44,6 +44,7 @@ import type { LabRecipeDef, LabRunView } from '@whale/core'
 import { bestAiCoreOf } from '@whale/core'
 import type { AiCoreType, GameState, ItemDef } from '@whale/core'
 import { Panel } from '@whale/ui'
+import { wreckGroupText } from '@whale/data'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { BlueprintShelfPanel, ManufacturingPanel } from '../panels/Industry'
 import { ShipyardPanel } from '../panels/Shipyard'
@@ -53,7 +54,7 @@ import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
 import { WRECK_SUBS, SUB_ALL, presentSubs, wreckTierOf, subText } from '../ui/itemSubs'
-import { useL10n, cmdText } from '../i18n/locale'
+import { isEn, useL10n, cmdText } from '../i18n/locale'
 import { aiCoreText } from '../ui/labelsText'
 import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
@@ -246,7 +247,19 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         // 稀有残骸卡：批大小是**稀有批 30 m³**（2026-09-23 乙案），不是普通那 100 ⇒ 这里传稀有批
         tr("ui.IndustryPage.083", { RECYCLE_BATCH_M3: RARE_WRECK_VOLUME_M3 }) +
         tr('ui.IndustryPage.113') +
-        (profile.note ? tr("ui.IndustryPage.084", { p1: profile.note }) : '')
+        (profile.note
+          ? tr("ui.IndustryPage.084", {
+              /**
+               * ⚠ **成分说明按语言取**（**2026-09-29 批 2**）：`profile.note` 是 core 的**中文原串**
+               * （`recycleProfileOf` 从 `WRECK_GROUPS[].note` 拷来）⇒ 英文界面下那段整段中文。
+               * 按 `profile.groupKey` 反查数据层的英文覆盖，中文侧照旧用原串。
+               */
+              p1:
+                (profile.groupKey !== undefined
+                  ? wreckGroupText(profile.groupKey, isEn() ? 'en' : 'zh', 'note')
+                  : undefined) ?? profile.note,
+            })
+          : '')
       econ = (
         <div className="app-belt-econ">
           {mineralRows.length > 0 ? (
@@ -1223,3 +1236,5 @@ function IndPane({ scrollKey, off, children }: { scrollKey: string; off: boolean
     </div>
   )
 }
+
+

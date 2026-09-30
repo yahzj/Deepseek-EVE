@@ -57,6 +57,8 @@ import type { ToastFn } from '../pages/common'
 import { ItemHover, ModuleHover, ShipHover } from '../ui/shipInfo'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
+/** AI 核心档位名按语言取（2026-09-30 批 5：core 的 `aiCoreName` 只出中文） */
+import { aiCoreText } from '../ui/labelsText'
 import { HintIcon } from '../ui/Hint'
 import { RowGlyph } from '../ui/itemView'
 /** 活动卡「产出」读数（2026-09-23 船长令：收入预估换口径；装备/舰船只显示市场当前价格）——全仓唯一实现 */
@@ -781,7 +783,7 @@ export const BlueprintCard = memo(function BlueprintCard({
     onToast(
       worker === 'pilot'
         ? tr("ui.Industry.031")
-        : tr("ui.Industry.105", { p1: aiCoreName(worker) }),
+        : tr("ui.Industry.105", { p1: aiCoreText(worker) }),
     )
   }
 
@@ -1132,7 +1134,7 @@ export const BlueprintCard = memo(function BlueprintCard({
                 ) : (
                   usableCores.map((t) => (
                     <option key={t} value={t}>
-                      {aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
+                      {aiCoreText(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
                     </option>
                   ))
                 )}
@@ -1477,10 +1479,17 @@ export function ManufacturingPanel({
       const prodName = itemDef?.name ?? bp.itemId
       const prodLabel = tr("ui.Industry.120", { prodName: prodName, units: units })
       // 产物名金色（按类型分色作废，2026-09-13 船长）；「×N 发」等参数不上色
+      /**
+       * ⚠ **「×N 发」也要按语言**（**2026-09-30 批 5**）：原先这里是**裸模板串** `` ` ×${units} 发` ``
+       * ⇒ 英文界面下弹药产物一律显示「×120 发」（英文扫描实测 2 处）。
+       * `ui.Industry.120` 就是同一句的 id（`{prodName} ×{units} 发` / `… rounds`）——
+       * 只取它的**量词那半段**：把 `{prodName}` 喂空串再拼金色产物名，视觉与改前一致。
+       */
+      const unitTail = tr("ui.Industry.120", { prodName: '', units: units })
       const prodText = (
         <>
           <span className="app-gold">{prodName}</span>
-          {` ×${units} 发`}
+          {unitTail}
         </>
       )
       const itemId = bp.itemId
@@ -1882,3 +1891,4 @@ export function ManufacturingPanel({
     </Panel>
   )
 }
+

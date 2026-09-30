@@ -20,8 +20,8 @@
  * 船长要的是"**够长且完整可读**"——宁可换成 `1.23 亿`，也不要 `1,234,5…`（`ellipsis` 只当最后一道保险）。
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { moneyExactText, moneyFitCandidates } from '@whale/core'
-import { tr } from '../i18n/locale'
+import { moneyExactText, moneyFitCandidates, type MoneyLang } from '@whale/core'
+import { tr, useL10n } from '../i18n/locale'
 
 /** 测量用的样式：与正文完全同源（字体/字号/字距/字重都由 `inherit` 从容器继承） */
 const PROBE_STYLE: React.CSSProperties = {
@@ -61,7 +61,16 @@ export function MoneyFit({
 }) {
   const boxRef = useRef<HTMLSpanElement | null>(null)
   const probeRef = useRef<HTMLSpanElement | null>(null)
-  const [text, setText] = useState(() => moneyExactText(amount))
+  /**
+   * **语言**（**2026-09-29 加** · 英文界面残留中文清理批 0）：金额的**单位词与量级词**都按语言取
+   * （`信用点`/`万`/`亿` ↔ `credits`/`M`/`B`）—— 判据取**上下文里的 locale**（不是模块级的 `isEn()`），
+   * 这样语言一变本组件必然重算（模块级那份在 `setLocale` 里同步更新，但组件不订阅它 ⇒ 不会重渲）。
+   *
+   * ⚠ 与 `i18n/fmt.ts` 的 `creditUnit()` 同一个真相源（那边是"句子里的单位"，这边是"栏里的整串"）。
+   */
+  const { locale } = useL10n()
+  const lang: MoneyLang = locale === 'en' ? 'en' : 'zh'
+  const [text, setText] = useState(() => moneyExactText(amount, lang))
 
   /** 逐候选试宽：返回第一个装得下的（都装不下就取最短的那个） */
   const pick = (): void => {
@@ -77,10 +86,32 @@ export function MoneyFit({
     /**
      * 候选来源：给 `unit` ⇒ 取数字档（剥掉原有的单位词，含"万/亿"缩写里的数量级词保留）
      * ——`moneyFitCandidates` 的档位里单位词是尾缀，按长度排的次序不受影响。
+     * ⚠ 剥的是**当前语言的**单位词（`MONEY_UNIT` ＝ core 单点的中文那个；英文那份由 `unitWordOf` 出）。
      */
-    const cands = unit === undefined ? moneyFitCandidates(amount) : moneyFitCandidates(amount).map((c) => c.replace(/(信用点|ISK)$/, '').trim())
-    let chosen = cands[cands.length - 1]!
-    for (const c of cands) {
+    const strip = (c: string): string => c.replace(/\s?(信用点|credits?|ISK)$/, '').trim()
+    const raw = moneyFitCandidates(amount, lang)
+    const cands = unit === undefined ? raw : raw.map(strip)
+    /**
+     * **带单位的档优先**（**2026-09-29 改** · 船长词典 §三「信用点数额 = `476,945,470 credits`」）。
+     *
+     * 起因（本批实测抓出来的）：英文那份带单位的全额串比中文长（`…,988 credits` vs `…,988 信用点`），
+     * 顶栏窄格装不下它、却装得下"不带单位的全额" ⇒ 旧档序会挑中**光秃秃一个数字**，
+     * 玩家在英文界面看到的钱包是 `161,381,988`——数字全对，但**单位没了**。
+     * 单位是玩家判断"这是什么数"的锚，不能因为排得下更多位数就丢 ⇒ 先找**任意带单位的档**，
+     * 一个都装不下才退回"不带单位"的档（那种极端窄格下 `title` 仍挂着全精度 + 单位）。
+     */
+    const unitRe = /(信用点|credits?|ISK)$/
+    const withUnit = raw.filter((c) => unitRe.test(c))
+    const noUnit = raw.filter((c) => !unitRe.test(c))
+    /**
+     * ⚠ **两组的处理不一样**：带单位那一组**保持原样**（单位要显示出来），
+     * 不带单位那一组才 `strip`（它本来就是"去掉单位的写法"）。
+     * 曾经写成 `[...withUnit, ...noUnit].map(strip)` ⇒ **连带单位那组也被剥了**，
+     * 于是挑出来的永远是光秃秃的数字（实测抓到的就是这个）。
+     */
+    const ordered = unit !== undefined ? cands : [...withUnit, ...noUnit.map(strip)]
+    let chosen = ordered[ordered.length - 1]!
+    for (const c of ordered) {
       probe.textContent = unit === undefined ? c : `${c} ${unit}`
       // +1 容错：亚像素取整/字体回退会让 scrollWidth 偶尔少 1px
       if (probe.scrollWidth <= avail + 1) {
@@ -89,30 +120,41 @@ export function MoneyFit({
       }
     }
     setText((prev) => (prev === chosen ? prev : chosen))
+    /**
+     * **调试读数钩子**（`localStorage['whale-idle:debug'] === '1'` 时才写）：把"这一格量到多少、
+     * 候选长什么样、最后挑了哪条"写进**元素自己的 `data-mf-debug`**（不是 `document.title`——
+     * 一页里有多枚 MoneyFit，写 title 只会剩最后一个，查不出是哪一格出的问题）。
+     */
+    if (localStorage.getItem('whale-idle:debug') === '1') {
+      box.dataset.mfDebug = `avail=${Math.round(avail)} lang=${lang} unit=${unit ?? '-'} raw=[${raw.join(' | ')}] ordered=[${ordered.join(' | ')}] chosen=${chosen}`
+    }
   }
 
-  // 首帧就量（useLayoutEffect：在浏览器绘制前定稿，避免"先撑破再缩回"的闪动）
-  useLayoutEffect(pick)
-  // 依赖：数值变化 + 容器宽度变化（ResizeObserver）
+  /**
+   * 首帧就量（useLayoutEffect：在浏览器绘制前定稿，避免"先撑破再缩回"的闪动）。
+   * ⚠ **`lang` 必须在依赖里**：语言一换，候选串（单位词与量级词都变了）也就变了，
+   * 不重挑就会留着上一种语言的写法（`1,234 信用点` 停在英文界面上）。
+   */
+  useLayoutEffect(pick, [amount, lang])
+  // 依赖：数值变化 + 语言变化 + 容器宽度变化（ResizeObserver）
   useLayoutEffect(() => {
     const box = boxRef.current
     if (!box || typeof ResizeObserver === 'undefined') return
     const ro = new ResizeObserver(() => pick())
     ro.observe(box)
     return () => ro.disconnect()
-  }, [amount])
+  }, [amount, lang])
   // 字体加载完成后字宽会变（网页版首屏），补量一次
   useEffect(() => {
     const fonts = (document as unknown as { fonts?: { ready?: Promise<unknown> } }).fonts
     if (fonts?.ready) void fonts.ready.then(() => pick())
-  }, [amount])
+  }, [amount, lang])
 
   return (
     <span
       ref={boxRef}
       className={className}
-      title={exact ?? tr("ui.MoneyFit.001", { p1: moneyExactText(amount) })}
-    >
+      title={exact ?? tr("ui.MoneyFit.001", { p1: moneyExactText(amount, lang) })}    >
       {text}
       {unit !== undefined ? <span className="app-standing-key"> {unit}</span> : null}
       <span ref={probeRef} style={PROBE_STYLE} aria-hidden="true" />

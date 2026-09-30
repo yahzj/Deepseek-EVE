@@ -1,4 +1,4 @@
-/**
+﻿/**
  * V10.5/V10.5b + V17 统一舰船/装备属性展示模块（装配页 / 舰船悬停 / 手册图鉴共用同一数据源与渲染）。
  *
  * 设计（中文说明）：
@@ -15,7 +15,7 @@
  */
 import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
-import { DEFAULT_BALANCE, DC_LOCK_MS, droneBayTotalM3, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules, fittedEffectParamsOf, WEB_BREAK_DIST_M } from '@whale/core'
+import { DEFAULT_BALANCE, DC_LOCK_MS, droneBayTotalM3, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, ITEM_KIND_LABELS, itemKindText, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleNote, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules, fittedEffectParamsOf, WEB_BREAK_DIST_M } from '@whale/core'
 /** 引擎类型（"装上船之后的实修值"那一行要现算 —— 2026-09-29 船长令） */
 import type { GameEngine } from '../game/engine'
 import { hoverTipProps } from './Tooltip'
@@ -79,7 +79,14 @@ export function fittedSpeedLine(spec: Pick<UnitSpec, 'speedMps'> & Partial<UnitS
         {`${fmt(Math.round(spec.speedMps))} m/s`}
         {spec.thrusterBoost !== undefined && spec.thrusterBoost > 0 ? (
           <span className="app-dim">
-            {tr("ui.FitPage.145", { p1: fmt(Math.round(spec.speedMps * (1 + spec.thrusterBoost))), p2: thrusterCycleFullText(battle, { boostMs: spec.thrusterBoostMs, cooldownMs: spec.thrusterCooldownMs }) })}
+            {/* 点火周期按语言（2026-09-30 批 5）：`thrusterCycleNote` 给 { textId, params }，原来直接把中文串喂进 {p2} */}
+            {tr("ui.FitPage.145", {
+              p1: fmt(Math.round(spec.speedMps * (1 + spec.thrusterBoost))),
+              p2: (() => {
+                const note = thrusterCycleNote(battle, { boostMs: spec.thrusterBoostMs, cooldownMs: spec.thrusterCooldownMs })
+                return tr(note.textId, note.params)
+              })(),
+            })}
           </span>
         ) : null}
       </>
@@ -1716,3 +1723,4 @@ export function ItemHover({
     </InfoHover>
   )
 }
+

@@ -90,8 +90,40 @@ const COMMS_SUBJECT_ID: Record<string, string> = {
   'msg-wh-siege': 'ui.comms.067', // 围剿通报（2026-09-23 船长令：首次下到第 7 层）
 }
 
-/** 主题行（有登记走当前语言；没登记回落数据侧原文） */
-export function commsSubjectText(id: string, fallback: string): string {
+/**
+ * 主题行（有登记走当前语言；没登记回落数据侧原文）。
+ *
+ * ⚠ **两条路**（**2026-09-30 批 5 补第二条**）：
+ * ① 静态表 `COMMS_SUBJECT_ID`：主题**不带参数**的通讯（13 封「第一次」＋协会剧本）；
+ * ② **动态**：`subjectId` 是 core 现场给的一句模板（例：周末入侵那封 `core.weekend.010`
+ *    「航线警告：{p1}入侵」，`{p1}` 还要再过 `p1Id` 翻族名）⇒ 走 `tr(subjectId, 参数)`。
+ * 为什么必须补 ②：英文扫描实测通讯页那封入侵警告的主题一直是中文 —— 静态表里**没有**
+ * `msg-weekend-warn`（它压根不是"一句话"，而是"模板 ＋ 参数"）。
+ */
+export function commsSubjectText(
+  id: string,
+  fallback: string,
+  dynamic?: { subjectId?: string; params?: Readonly<Record<string, string | number>> },
+): string {
+  if (dynamic?.subjectId !== undefined) {
+    const raw = dynamic.params ?? {}
+    const out: Record<string, string | number> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      if (k === 'parts') continue // 数组不进插值表（口径同 `locale.tsx` 的 `composeParts`）
+      if (typeof v !== 'string' && typeof v !== 'number') continue
+      out[k] = v
+    }
+    /**
+     * `p{n}Id` ＝「第 n 槽那句话的 id」⇒ 先渲染成当前语言再喂进去
+     * （口径同 `locale.tsx` 的 `paramText`；例：族名那句 `core.weekend.*`）。
+     */
+    for (const [k, v] of Object.entries(raw)) {
+      if (!k.endsWith('Id') || typeof v !== 'string') continue
+      const slot = k.slice(0, -2)
+      if (out[slot] !== undefined) out[slot] = paramText(v)
+    }
+    return tr(dynamic.subjectId, out)
+  }
   const l10nId = COMMS_SUBJECT_ID[id]
   return l10nId !== undefined ? tr(l10nId) : fallback
 }

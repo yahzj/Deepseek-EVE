@@ -1200,8 +1200,9 @@ async function applyLayoutAndReload(): Promise<void> {
   }, [engine])
 
   /**
-   * **丙 · 关页/切后台前补一次落盘**：自动落盘是 15 秒一拍，玩家关窗时最后这一段本来会丢。
-   * `pagehide` 覆盖关窗/刷新/前进后退；`visibilitychange → hidden` 覆盖切标签页与手机切后台。
+   * **丙 · 关页/切后台前补一次落盘**：自动落盘是一分钟一拍（`SAVE_INTERVAL_MS`），
+   * 玩家关窗时最后这一段本来会丢。`pagehide` 覆盖关窗/刷新/前进后退；
+   * `visibilitychange → hidden` 覆盖切标签页与手机切后台。
    */
   useEffect(() => {
     const flush = (): void => {
@@ -2149,7 +2150,7 @@ async function applyLayoutAndReload(): Promise<void> {
             <div className="app-report-line">
               {tr("ui.App.088")}
               <b className={offlineReport.iskDelta >= 0 ? 'app-trend-up' : 'app-trend-down'}>
-                {moneyDelta(offlineReport.iskDelta)}
+                {moneyDelta(offlineReport.iskDelta, locale === 'en' ? 'en' : 'zh')}
               </b>{' '}
               {tr("ui.FirstTasks.003")}
               {/**

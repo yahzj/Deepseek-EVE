@@ -51,6 +51,8 @@ import { NetIncomeLinePerHour, YieldLines, yieldLinesOf, marketPriceOf, type Yie
 import { Panel, ProgressBar } from '@whale/ui'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
+/** AI 核心档位名按语言取（2026-09-30 批 5：core 的 `aiCoreName` 只出中文） */
+import { aiCoreText } from '../ui/labelsText'
 import { FlavorTip, recycleFeatureOf } from '../ui/wreckFlavor'
 import { AiTaskBar } from '../ui/aiProgress'
 import { ExpeditionPanel, BountyPanel } from '../panels/Expedition'
@@ -61,7 +63,8 @@ import type { PageProps, ToastFn } from './common'
 import { isk, MONEY_GLYPH, rareWreckRefsOf } from './common'
 // 2026-09-26 船长报障：打捞页卡片序列（纯函数；单独成文件以便工具/用例直接断言这条顺序）
 import { wreckCardSequenceOf } from './wreckCards'
-import { tr, cmdText } from '../i18n/locale'
+import { isEn, tr, cmdText } from '../i18n/locale'
+import { wreckGroupText } from '@whale/data'
 import { fmtDuration } from '../i18n/fmt'
 
 /** 星图页的功能区（「星图·远征」放第一：这里本来就是玩家查看大地图的主入口）；icon = Glyphs 字形名 */
@@ -578,7 +581,7 @@ function BeltCard({
                   <div className="app-belt-worker-line">
                     <span className="app-belt-worker-name">
                       <span className="app-ico"><Glyph name="nav-ai" size={12} color={NAV_TONES["nav-ai"]} /></span>{shipDisplayName(state, engine.ctx, sid)}
-                      <span className="app-dim">（{aiCoreName(a.coreType)} · {Math.round(aiEfficiency(state, engine.ctx, a.coreType) * 100)}%）</span>
+                      <span className="app-dim">（{aiCoreText(a.coreType)} · {Math.round(aiEfficiency(state, engine.ctx, a.coreType) * 100)}%）</span>
                     </span>
                     <button
                       className="app-btn is-small is-warn"
@@ -652,7 +655,7 @@ function BeltCard({
           </select>
           <select className="app-select" value={effCore} onChange={(e) => setAiCoreSel(e.target.value as AiCoreType)} title={tr("ui.MapPage.044")}>
             {usableCores.map((t) => (
-              <option key={t} value={t}>{aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
+              <option key={t} value={t}>{aiCoreText(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
             ))}
           </select>
           <button
@@ -1084,7 +1087,15 @@ function WreckCard({
     const group = wreckGroupOfAnomaly(a.id)
     if (!group || groupKeys.includes(group.key)) continue
     groupKeys.push(group.key)
-    if (group.note.length > 0 && !notes.includes(group.note)) notes.push(group.note)
+    if (group.note.length > 0) {
+      /**
+       * ⚠ **说明要按语言取**（**2026-09-29 批 2**）：`group.note` 是 `core/wreckGroups.ts` 的**中文原串**
+       * ⇒ 英文界面下这段成分说明整段是中文（英文扫描里 12 处残留的真凶）。
+       * 走数据层的 `wreckGroupText`（按组 key 反查英文覆盖），中文侧照旧用原串。
+       */
+      const note = wreckGroupText(group.key, isEn() ? 'en' : 'zh', 'note') ?? group.note
+      if (!notes.includes(note)) notes.push(note)
+    }
     const feature = recycleFeatureOf(
       { lowSec, threat: group.threat, loot: group.theme },
       { mods: engine.ctx.modules, items: engine.ctx.items },
@@ -1214,7 +1225,7 @@ function WreckCard({
                   <div className="app-belt-worker-line">
                     <span className="app-belt-worker-name">
                       <span className="app-ico"><Glyph name="nav-ai" size={12} color={NAV_TONES["nav-ai"]} /></span>{shipDisplayName(state, engine.ctx, w.sid)}
-                      <span className="app-dim">（{aiCoreName(w.coreType)} · {Math.round(aiEfficiency(state, engine.ctx, w.coreType) * 100)}%）</span>
+                      <span className="app-dim">（{aiCoreText(w.coreType)} · {Math.round(aiEfficiency(state, engine.ctx, w.coreType) * 100)}%）</span>
                     </span>
                     <button
                       className="app-btn is-small is-warn"
@@ -1262,7 +1273,7 @@ function WreckCard({
           </select>
           <select className="app-select" value={effCore} onChange={(e) => setAiCoreSel(e.target.value as AiCoreType)} title={tr("ui.MapPage.073")}>
             {usableCores.map((t) => (
-              <option key={t} value={t}>{aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
+              <option key={t} value={t}>{aiCoreText(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
             ))}
           </select>
           <button
@@ -1279,3 +1290,4 @@ function WreckCard({
     </div>
   )
 }
+

@@ -3,7 +3,7 @@
  *
  * 职责（中文说明）：
  * 1. 启动流程：读档（没有则开新档）→ 有旧档就结算离线时间 → 每秒把真实流逝时间
- *    交给核心引擎推进（技能训练 + 采矿并行）→ 每 15 秒自动保存；
+ *    交给核心引擎推进（技能训练 + 采矿并行）→ 每 60 秒自动保存（`SAVE_INTERVAL_MS`）；
  * 2. 把玩家动作（训练/开采/精炼/出售/买船/重置…）翻译成核心引擎指令；
  * 3. 状态一变就通知界面刷新（subscribe）。
  */
@@ -352,6 +352,11 @@ import { noteSaveWriteFailed, probeSaveStorage, requestPersistentStorage, saveSt
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
 import { tr, cmdText, paramText } from '../i18n/locale'
+/**
+ * ⚠ **只借"档位名文案"这一个纯函数**（不起循环依赖：`labelsText` 不反向引 engine，见其文件头）——
+ * 离线简报的 AI 核心作业行要按语言出档位名（**2026-09-30 批 5**）。
+ */
+import { aiCoreText } from '../ui/labelsText'
 import { fmtDuration } from '../i18n/fmt'
 
 type Listener = () => void
@@ -509,7 +514,8 @@ function buildOfflineReport(
       if (s.shipsDone > 0) acts.push(tr("ui.engine.006", { p1: s.shipsDone }))
       if (acts.length === 0) continue
       coreJobs.push(
-        tr("ui.engine.048", { p1: aiCoreName(t), p2: acts.join(' · '), p3: s.income > 0 ? tr("ui.engine.007", { p1: s.income.toLocaleString('zh-CN') }) : '' }),
+        // ⚠ 档位名走 `aiCoreText`（本地化）：`aiCoreName` 只出中文 ⇒ 英文界面下这行会夹中文（批 5）
+        tr("ui.engine.048", { p1: aiCoreText(t), p2: acts.join(' · '), p3: s.income > 0 ? tr("ui.engine.007", { p1: s.income.toLocaleString('zh-CN') }) : '' }),
       )
     }
   }
@@ -553,6 +559,19 @@ function offlineReportLogText(r: OfflineReport): string {
   if (r.coreJobs.length > 0) parts.push(tr("ui.engine.017", { p1: r.coreJobs.join('；') }))
   return tr("ui.engine.018", { p1: parts.join('；') })
 }
+
+/**
+ * **自动落盘心跳间隔**（**2026-09-29 船长令**：「**存档间隔不是太短了，延迟到1分钟**」；原 15 秒）。
+ *
+ * 为什么这是一处**单点常量**：这个数写在三个地方就会漂——① 心跳本身（`ensureSaveInterval`）
+ * ② 关页补盘那条说明（`App.tsx` 的"丙"）③ 铁人代次口径（`ironman.ts`：代次 = 落盘次数）。
+ * ⇒ `arch:guard` 的 **F7** 盯着本常量（不许散落、不许被改短），改它要连着改那条检查。
+ *
+ * ⚠ **不要把"动作后立刻落盘"一起拉长**：心跳只管**挂机期间的兜底**；玩家动作（装配/买卖/
+ * 出征/技能/设置…）当场各落一次盘（那几百处 `void this.persist()`），所以本项调大**不会**
+ * 让"刚做完的操作"处于未保存状态。代价仅是：**纯挂机**时段崩溃/断电最多丢 1 分钟进度（原 15 秒）。
+ */
+const SAVE_INTERVAL_MS = 60_000
 
 /**
  * **活动切换"再点一次即确认"的时间窗**（2026-09-21 统一批）：首击弹警告（`ui.Hauling.033` 那句手感），
@@ -614,7 +633,11 @@ export class GameEngine {
    * （只覆盖 id / 名字 / 威胁 / 奖励；夺回或活动结束即恢复原卡）。引擎每拍在 `weekendTick` 之后调一次。
    */
   private refreshAnomaliesView(): void {
-    const base = ANOMALIES_FLAVORED.filter((a) => !a.hidden)
+    /**
+     * ⚠ **起算表必须是"当前语言那一份"**（**2026-09-29 修**）：原来写死 `ANOMALIES_FLAVORED`（中文原表）
+     * ⇒ 英文档上每拍刷新一次就把悬赏板整块刷回中文（英文扫描里 46 处残留的真凶）。
+     */
+    const base = this.localizedAnomalies.filter((a) => !a.hidden)
     const ev = this.state.weekendEvent
     if (!ev || ev.endedAtWallMs !== undefined) {
       this.anomalies = base
@@ -859,8 +882,17 @@ export class GameEngine {
     this.allAnomalies = locCards
     this.galaxies = overlayList(GALAXIES, EN_GALAXIES, locale)
     this.belts = overlayList(BELTS, EN_BELTS, locale)
+    /**
+     * ⚠ **本地化后的原始卡表也必须留一份**（**2026-09-29 修** · 英文界面残留批 2 前置）：
+     * `refreshAnomaliesView()`（每拍随入侵活动刷新）此前是从 `ANOMALIES_FLAVORED`（**中文原表**）
+     * 重新起算的 ⇒ **英文档上只要刷过一次，悬赏板整块变回中文**。这里把本地化那份存下来供它用。
+     */
+    this.localizedAnomalies = locCards
     this.notify()
   }
+
+  /** 本地化后的异常点全表（含 hidden；`setLocale` 维护，缺省中文原表） */
+  private localizedAnomalies: readonly (typeof ANOMALIES_FLAVORED)[number][] = ANOMALIES_FLAVORED
 
   /**
    * **现在有没有"要在战场里看"的战斗**（2026-09-25 收口）：远征 / 虫洞 / **入侵旗舰战**三个宿主。
@@ -1043,7 +1075,8 @@ export class GameEngine {
       addLog(this.state, 'warn', tr("ui.engine.024", { why: why }))
       /**
        * **丁 · 读档抛错 ⇒ 挂起写入**（2026-09-25 船长令）：抛错 ≠"没有档"——旧档很可能还在、
-       * 只是这一次读不出来（权限/存储一时不可用/文件损坏）。挂起后 15 秒心跳与首次落盘都不写，
+       * 只是这一次读不出来（权限/存储一时不可用/文件损坏）。挂起后落盘心跳（`SAVE_INTERVAL_MS`）
+       * 与首次落盘都不写，
        * 等玩家在「设置 → 存档」里点「允许写入存档」（`allowSaveAfterLoadError`）再写，
        * 免得新档把旧档盖掉。存储本来就不可写（甲）时不挂起——挂起没意义，设置里会显示"不可写"。
        */
@@ -1083,9 +1116,10 @@ export class GameEngine {
     // 心跳周期按当前局面启动：战斗/教学加速/远征去程 100ms，普通挂机 500ms（低负载；2026-09-08 降频优化）
     this.ensurePump()
     /**
-     * **自动落盘心跳（15 秒）**——但**存储不可写**（甲：启动体检不通）或**写入已挂起**（丁：旧档读取失败）时
-     * 一律不启动：写进去也没用，更不该把读不出来的旧档盖掉。放行入口 = 设置 → 存档 →「允许写入存档」
-     * （`allowSaveAfterLoadError()`），或换一个能写存储的窗口重开。
+     * **自动落盘心跳（`SAVE_INTERVAL_MS` = 60 秒）**——但**存储不可写**（甲：启动体检不通）或
+     * **写入已挂起**（丁：旧档读取失败）时一律不启动：写进去也没用，更不该把读不出来的旧档盖掉。
+     * 放行入口 = 设置 → 存档 →「允许写入存档」（`allowSaveAfterLoadError()`），
+     * 或换一个能写存储的窗口重开。
      */
     if (this.saveWriteState() === 'ok') this.ensureSaveInterval()
 
@@ -1093,12 +1127,12 @@ export class GameEngine {
     this.notify()
   }
 
-  /** 启动自动落盘心跳（幂等） */
+  /** 启动自动落盘心跳（幂等；间隔值见 `SAVE_INTERVAL_MS` 的头注，F7 盯着它） */
   private ensureSaveInterval(): void {
     if (this.saveIntervalId !== null) return
     this.saveIntervalId = window.setInterval(() => {
       void this.persist()
-    }, 15_000)
+    }, SAVE_INTERVAL_MS)
   }
 
   /**
@@ -3352,7 +3386,8 @@ export class GameEngine {
       /**
        * **只重绘、不写盘**（2026-09-13 性能修）：拖距离条时每 160ms 提交一次，若每次都整档
        * `persist()`（大档 JSON + localStorage 写）会把主线程顶出顿挫——船长："依旧还是有顿挫感"。
-       * 偏好不是易失数据：**15 秒自动存盘**与其它任何动作都会把它落盘（`ensurePump` 里的定时器）。
+       * 偏好不是易失数据：**自动存盘心跳**（`SAVE_INTERVAL_MS`，现 60 秒）与其它任何动作
+       * 都会把它落盘（`ensureSaveInterval` 里的定时器）。
        */
       this.notify()
     }

@@ -2823,7 +2823,8 @@ const meSpeedRef = useRef(200)
               >
                 <i style={{ background: DMG_COLOR[b.type] }} />
                 {tr("ui.BattleScreen.052")} {b.minM.toLocaleString('zh-CN')}~{b.maxM.toLocaleString('zh-CN')}m
-                {b.count > 1 ? ` ×${b.count} 艘` : ''}
+                {/* 艘数量词按语言（2026-09-30 批 5）：原先是裸模板串 `` ×${n} 艘 `` */}
+                {b.count > 1 ? tr('ui.BattleScreen.113', { p1: b.count }) : ''}
                 <span className={`app-a-chip app-a-${b.type}`}>{DMG_LABEL[b.type]}</span>
               </span>
             ))}

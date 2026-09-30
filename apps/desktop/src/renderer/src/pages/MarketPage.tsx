@@ -17,7 +17,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { askLineOf, buyLineOf, goodLockedReason, goodName, itemKindText, marketHistory, marketQuote, marketTrend, naturalHoldings, PRICE_SAMPLE_MS, rackOf, salesTaxRate, bmGateReason, shipStoredCount } from '@whale/core'
+import { askLineOf, buyLineOf, bmGateNote, marketLockNote, aiCoreGoodNameId, goodName, itemKindText, marketHistory, marketQuote, marketTrend, naturalHoldings, PRICE_SAMPLE_MS, rackOf, salesTaxRate, shipStoredCount } from '@whale/core'
 import type { BlueprintDef, GameState, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
@@ -140,11 +140,27 @@ function earliestSellRemaining(engine: PageProps['engine'], goodKey: string): nu
 
 /* ═══════════════ 单个商品行（行情 + 买卖 + 手动挂单） ═══════════════ */
 
+/**
+ * **商品行名（按语言）**（**2026-09-30 批 5**）。
+ *
+ * 为什么不能只调 `goodName`：**AI 核心四档没有"物品行"可查**（走 `state.aiCores` 账本），
+ * `goodName` 对它们只能回落中文原串 ⇒ 英文界面下市场那行一直是「基础 AI 核心」。
+ * 数据侧给了 `aiCoreGoodNameId(refId)` ⇒ 有 id 就走 `tr`；其余（物品/装备/舰船/蓝图）**逐字仍是 `goodName`**。
+ */
+function goodDisplayName(ctx: PageProps['engine']['ctx'], goodKey: string): string {
+  const def = ctx.marketGoods.get(goodKey)
+  if (def?.kind === 'aicore') {
+    const id = aiCoreGoodNameId(def.refId)
+    if (id !== undefined) return tr(id)
+  }
+  return goodName(ctx, goodKey)
+}
+
 /** 商品悬停说明（名称/类型/稀有度 + 数据表描述；AI 核心按效率动态描述）
  *  2026-09-10 船长：不再写「常驻」（普通商品的常驻标记对玩家没有信息量），只标稀有/限定 */
 function goodTipText(engine: PageProps['engine'], good: MarketGoodDef): string {
   const rarity = good.rarity !== 'common' ? ` · ${RARITY_TEXT[good.rarity] ?? ''}` : ''
-  const head = `${goodName(engine.ctx, good.key)}（${kindTextOf(engine.ctx, good)}${rarity}）`
+  const head = `${goodDisplayName(engine.ctx, good.key)}（${kindTextOf(engine.ctx, good)}${rarity}）`
   let desc = ''
   if (good.kind === 'item') desc = engine.ctx.items.get(good.refId)?.description ?? ''
   else if (good.kind === 'module') desc = engine.ctx.modules.get(good.refId)?.description ?? ''
@@ -328,11 +344,15 @@ function GoodRow({
   // 2026-09-10 船长：行内不再显示「站内库存」（空间站库存池，玩家看的是自己的货）——
   // 改显示**玩家自己**这件东西的库存（舰船按机库同型艘数；其余走 core「自然库存」单点）
   const holdings = myStockOf(state, good)
-  const lock = goodLockedReason(state, good)
-  const bm = bmGateReason(state, good)
-  const lockShow = lock ?? bm // 玩家侧统一观感：暗市对玩家隐身，仅显示声望锁指引（与顶船同款）
+  /**
+   * 声望门槛锁按语言渲染（2026-09-30 批 5）：`marketLockNote` 给 `{ textId, params }`，
+   * 由 `tr` 出当前语言；中文侧出的句子与 `note.text` 逐字相同（同一个模板）。
+   * 暗市那枚对玩家隐身，共用同一句（`bmGateNote`）。
+   */
+  const lockNote = marketLockNote(state, good) ?? bmGateNote(state, good)
+  const lockShow = lockNote !== null ? tr(lockNote.textId, lockNote.params) : null // 玩家侧统一观感：暗市对玩家隐身，仅显示声望锁指引（与顶船同款）
   const life = good.rarity !== 'common' ? earliestSellRemaining(engine, good.key) : undefined
-  const name = goodName(engine.ctx, good.key)
+  const name = goodDisplayName(engine.ctx, good.key)
   const clickable = onSelect !== undefined
 
   return (
@@ -652,7 +672,9 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   /** 舰船的量词是「艘」（其余商品是「件」）；舰队同型艘数用于"可卖量从哪来"的提示 */
   const unit = good.kind === 'ship' ? tr("ui.MarketPage.116") : tr("ui.MarketPage.117")
   const shipInFleet = good.kind === 'ship' ? fleetCountOf(state, good.refId) : 0
-  const lock = goodLockedReason(state, good)
+  /** 声望门槛锁（按语言出；同文件上面对话框那处用的是同一个 `marketLockNote`） */
+  const lockNote = marketLockNote(state, good)
+  const lock = lockNote !== null ? tr(lockNote.textId, lockNote.params) : null
   /**
    * 买卖盘显示几档：**随这块自己的实测高度自适应**（船长 2026-09-14：「当窗口高度不足时，可以隐藏部分订单
    * （最少显示5个订单）」）。做法 = 让买卖盘那块可被压缩（`styles.css` 的 flex/ min-height 105px = 5 档下限），
@@ -675,7 +697,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
   const maxOrderQty = Math.max(1, ...buyOrders.map((o) => o.qty), ...sellOrders.map((o) => o.qty))
   const sortedHist = hist.length ? [...hist].sort((a, b) => a - b) : []
   const median = sortedHist.length ? sortedHist[Math.floor(sortedHist.length / 2)]! : undefined
-  const name = goodName(engine.ctx, good.key)
+  const name = goodDisplayName(engine.ctx, good.key)
   const buyable = good.playerBuyable !== false // 只收不卖商品（残骸等）：不可买入
   const [tab, setTab] = useState<'buy' | 'sell'>(buyable ? 'buy' : 'sell')
   const [qty, setQty] = useState(1)
@@ -1379,7 +1401,7 @@ export function MarketPage({
           if (kind !== 'all' && !kindPasses(engine.ctx, good, kind)) return false
           if (sub !== SUB_ALL && !subPasses(engine.ctx, good, kind, sub, engine.state)) return false
           if (query.length > 0) {
-            const name = goodName(engine.ctx, good.key).toLowerCase()
+            const name = goodDisplayName(engine.ctx, good.key).toLowerCase()
             if (!name.includes(query) && !good.key.toLowerCase().includes(query)) return false
           }
           return true
@@ -1608,3 +1630,6 @@ export function MarketPage({
     </div>
   )
 }
+
+
+

@@ -127,6 +127,13 @@ export {
   EN_GALAXIES,
   EN_BELTS,
   EN_STATIONS,
+  /** 残骸组的三处文案（组名/稀有组名/成分说明）＋ 按 key 反查 —— 星图打捞页与工业页回收卡要用 */
+  EN_WRECK_GROUPS,
+  wreckGroupText,
+  overlayWreckGroups,
+  /** 建站阶段名（奠基/完善/建成）＋ 那句 unlockDesc —— 嵌在 `tiers[]` 里，`overlayMap` 够不着 */
+  EN_STATION_TIERS,
+  stationTierText,
   EN_COMMS_FACTIONS,
   EN_TRAVEL_EVENTS,
   EN_MATTER_TECH,
