@@ -642,8 +642,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     zh: "该星系暂不能作为入侵目标：需要已探索 · 非高安 · 且尚未建成副站",
     en: "This system cannot be an invasion target yet: it must be explored, not high-sec, and without a completed outpost",
   },
-  /* 位置限制的就地说明**已删**（2026-09-30 船长令：「不需要玩家将舰船开过去…移除所有的
-     这个玩家舰船必须到场的需求」⇒ 整条位置门移除，`ui.beacon.005` 随之作废按纪律删除） */
+  /* 位置限制的就地说明（**2026-09-30 船长令**：指定星系那条路「**不允许在空间站使用**」） */
+  "ui.beacon.005": {
+    zh: "当前在空间站（母港或已建成副站）：把船开出去再启动",
+    en: "You are at a station (home port or a completed outpost): undock before lighting it",
+  },
   /* 高安点火的二次警告（**2026-09-30 船长令**：「且当玩家在高安使用时候，弹出二次警告，警告玩家这么做会被扣声望」） */
   "ui.beacon.006": { zh: "⚠ 在高安启动信号发射器：扣 {p1} 点声望", en: "⚠ Lighting a Signal Beacon in high-sec costs {p1} standing" },
   "ui.beacon.007": {

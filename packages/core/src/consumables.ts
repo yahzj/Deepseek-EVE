@@ -34,10 +34,9 @@ export function playerGalaxyIdOf(state: GameState): string {
 
 /** 此刻是否"在高安点火"（＝要弹二次警告 + 扣声望的那种场合）——**单点**，界面与 core 共用
  *
- *  ⚠ **2026-09-30 船长纠正**：「仓库使用的效果不是触发一次默认的入侵吗？**这和我在哪没有关系，
- *  只有使用在指定星系时候才需要判断**。」⇒ 本判据只在**指定星系**那条路上成立：
- *  `targetGalaxyId` 缺省（物品页/货仓页直接使用 ⇒ 走默认入侵规则）时**一律 false**——
- *  既不警告、也不扣声望，和玩家站在哪儿无关。 */
+ *  ⚠ **2026-09-30 船长令**：「在指定星系使用信号发射器时，**允许在高安使用**，但是**不允许在空间站使用**」
+ *  ⇒ 本判据**只管安等**（与是否在空间站无关，两条规则互不短路）；
+ *  `targetGalaxyId` 缺省（默认那条路）⇒ 一律 false：不警告、不扣声望。 */
 export function beaconLaunchHighSecOf(state: GameState, ctx: SimContext, targetGalaxyId?: string): boolean {
   if (targetGalaxyId === undefined) return false
   return securityZoneOf(ctx, playerGalaxyIdOf(state)) === '高安'
@@ -145,12 +144,16 @@ export function useInvasionBeacon(
    * ⚠ 排在"已有入侵"之后：两者同时成立时，"等这场打完"是更贴切的那句。
    */
   /**
-   * ⚠ **位置门已整条移除**（**2026-09-30 船长令**：「在指定星系使用时也不对，**不需要玩家将舰船开过去**。
-   * **移除所有的这个玩家舰船必须到场的需求**。」）——指定星系那条路也**不再要求玩家人在哪里**：
-   * 站在母港、在别的高安星系、在远征途中，都可以对着任意合格星系点火。
-   * 仍然保留的两道（**都不是"到场"要求**）：① 目标星系要合格（已探索·非高安·无已建副站）
-   * ② 在高安点火要付声望（`core.consumable.011`；那是"代价"不是"门槛"，界面会给二次警告）。
+   * **指定星系那条路的两条规则互不干扰**（**2026-09-30 船长令**：「在指定星系使用信号发射器时，
+   * **允许在高安使用，但是不允许在空间站使用**」）：
+   *   ① **不允许在空间站使用**（母港 / 已建成副站 ⇒ 拒 `core.consumable.010`）—— 这条**只管位置**；
+   *   ② **允许在高安使用**（但要付声望 ⇒ `core.consumable.011`，界面给二次警告）—— 这条**只管安等**。
+   * ⚠ 两条**独立判定、不再互相短路**（上一版让"在空间站"把高安那条吃掉，船长指出冲突）。
+   * ⚠ **默认那条路（不传 `galaxyId`）两条都不判**：与每周默认入侵同一套规则，不看玩家在哪。
    */
+  if (galaxyId !== undefined && isAtHomeLike(state, ctx)) {
+    return { ok: false, error: '不能在空间站使用信号发射器：先把船开出母港/副站再启动。', errorId: 'core.consumable.010' }
+  }
   const family = INVASION_BEACON_FAMILIES.find((f) => f.id === (familyId ?? INVASION_BEACON_FAMILIES[0]!.id))
   if (!family) {
     return {

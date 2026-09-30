@@ -2171,7 +2171,8 @@ function GalaxyActions({
   const beaconStock = consumableStockOf(state, INVASION_BEACON_ITEM_ID)
   /** 本星系能不能当入侵目标（与随机那条路**同一套**候选：已探索 · 非高安 · 无已建副站） */
   const beaconEligible = weekendCoreCandidates(state, ctx).includes(galaxy.id)
-  /** 位置限制**已整条移除**（2026-09-30 船长令：「不需要玩家将舰船开过去」）⇒ 不再有"在基地置灰"这一支 */
+  /** 位置：**不允许在空间站使用**（2026-09-30 船长令：「允许在高安使用，但不允许在空间站使用」） */
+  const beaconAtStation = isAtHomeLike(state, ctx)
   /** 高安点火（**同日令**：二次警告 + 扣声望）——判据单点在 core */
   const beaconHighSec = beaconLaunchHighSecOf(state, ctx, galaxy.id)
   const [beaconWarn, setBeaconWarn] = useState(false)
@@ -2303,14 +2304,24 @@ function GalaxyActions({
           ) : (
             <button
               className="app-btn is-small is-warn"
-              aria-disabled={beaconEligible ? undefined : 'true'}
-              title={beaconEligible ? tr('ui.beacon.003', { p1: galaxy.name }) : tr('ui.beacon.004')}
+              aria-disabled={beaconEligible && !beaconAtStation ? undefined : 'true'}
+              title={
+                beaconAtStation
+                  ? tr('ui.beacon.005')
+                  : beaconEligible
+                    ? tr('ui.beacon.003', { p1: galaxy.name })
+                    : tr('ui.beacon.004')
+              }
               onClick={() => {
+                /* 两条规则**互不干扰**（船长 2026-09-30）：空间站 ⇒ 拒（就地说明）；高安 ⇒ 允许但二次警告 */
+                if (beaconAtStation) {
+                  onToast(tr('ui.beacon.005'), true)
+                  return
+                }
                 if (!beaconEligible) {
                   onToast(tr('ui.beacon.004'), true)
                   return
                 }
-                /* **高安点火 ⇒ 先弹二次警告**（船长 2026-09-30 令）；非高安走"再点一下"就地确认 */
                 if (beaconHighSec) {
                   setBeaconWarn(true)
                   return
