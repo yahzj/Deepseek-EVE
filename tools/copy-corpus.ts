@@ -143,6 +143,7 @@ const TELLS: ReadonlyArray<{ name: string; re: RegExp; why: string }> = [
   { name: '随着…发展', re: /随着[^，。；\n]{1,20}(的)?(发展|进步|推进|深入)/, why: '背景无独立信息时可压缩' },
   { name: '限定词堆叠', re: /(可能|也许|大概|或许)[^，。；\n]{0,8}(可能|也许|大概|或许)/, why: '压缩同一层不确定性' },
   { name: '开发语残留', re: /本批|待定|占位|复核|校准|对齐|口径|目标带|版本号|TODO|WIP/, why: '玩家向文案里不许出现开发话术' },
+  { name: '开发标注残留', re: /船长|待裁决|待确认|\d{4}-\d{2}-\d{2}|验收|回归测/, why: '开发侧的日期/裁决标注混进了玩家可见文案（2026-09-30 在 ui.SaveManager.011 抓到实例）' },
 ]
 
 const hits: Array<{ tell: string; why: string; at: string; snippet: string }> = []
@@ -201,6 +202,15 @@ console.log(`  · 要点里带 6 字以上括号注释：${bParen.length} 处`)
 for (const x of bParen.slice(0, 6)) console.log(`      ${x.id}：${(/（[^）]{6,}）/).exec(x.b)?.[0] ?? ''}`)
 console.log(`  · 指代不清（本批/该批/上述/前述）：${bDeixis.length} 处`)
 for (const x of bDeixis.slice(0, 6)) console.log(`      ${x.id}：「${(/[^。；]{0,12}(本批|该批|上述|前述)[^。；]{0,12}/).exec(x.b)?.[0] ?? ''}」`)
+
+/** **界面提示与悬停扫描**（D 类：`ui.*` 文案表长句）：长度分布 + 括号注释 + 最长的若干条（逐条过目用） */
+console.log('\n▍界面提示与悬停（D 类）')
+const uiRows = rows.filter((r) => r.src === '文案表 L10N')
+const uiLong = uiRows.filter((r) => r.len > 120)
+const uiParen = uiRows.filter((r) => /（[^）]{8,}）/.test(r.text))
+console.log(`  · 界面长句（>120 字）：${uiLong.length} 处 · 含 8 字以上括号注释：${uiParen.length} 处`)
+console.log('  · 最长的 10 条（逐条过目）：')
+for (const r of uiRows.slice(0, 10)) console.log(`      [${r.len}] ${r.id}`)
 
 /** 逐类点名（每类前 `PER_TELL` 条）：审校时照这份清单回上下文复核 */
 const PER_TELL = 8
