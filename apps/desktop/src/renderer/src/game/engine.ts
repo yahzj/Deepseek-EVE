@@ -352,6 +352,11 @@ import { noteSaveWriteFailed, probeSaveStorage, requestPersistentStorage, saveSt
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
 import { tr, cmdText, paramText } from '../i18n/locale'
+/**
+ * ⚠ **只借"档位名文案"这一个纯函数**（不起循环依赖：`labelsText` 不反向引 engine，见其文件头）——
+ * 离线简报的 AI 核心作业行要按语言出档位名（**2026-09-30 批 5**）。
+ */
+import { aiCoreText } from '../ui/labelsText'
 import { fmtDuration } from '../i18n/fmt'
 
 type Listener = () => void
@@ -509,7 +514,8 @@ function buildOfflineReport(
       if (s.shipsDone > 0) acts.push(tr("ui.engine.006", { p1: s.shipsDone }))
       if (acts.length === 0) continue
       coreJobs.push(
-        tr("ui.engine.048", { p1: aiCoreName(t), p2: acts.join(' · '), p3: s.income > 0 ? tr("ui.engine.007", { p1: s.income.toLocaleString('zh-CN') }) : '' }),
+        // ⚠ 档位名走 `aiCoreText`（本地化）：`aiCoreName` 只出中文 ⇒ 英文界面下这行会夹中文（批 5）
+        tr("ui.engine.048", { p1: aiCoreText(t), p2: acts.join(' · '), p3: s.income > 0 ? tr("ui.engine.007", { p1: s.income.toLocaleString('zh-CN') }) : '' }),
       )
     }
   }

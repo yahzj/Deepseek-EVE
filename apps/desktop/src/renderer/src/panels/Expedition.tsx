@@ -1,4 +1,4 @@
-/**
+﻿/**
  * M3 远征中心：势力声望、星图（SVG）、悬赏任务卡。
  * 中列面板：SkirmishStatus（远征中作业）→ StarMap（可点选）→ Standing → 任务列表。
  */
@@ -107,7 +107,7 @@ import { sessionPick, setSessionPick, useSessionScroll } from '../ui/sessionView
 import { foeCardShipIdOf as coreFoeCardShipIdOf } from '@whale/core'
 import { ShipSprite } from '../ui/ShipSprite'
 // ⚠ 舰船角色名走本地化单点（2026-09-26 船长报障「舰船类型文本漏中文」）——core 的 shipRoleLabel 是纯中文表
-import { lairTierText, shipRoleText } from '../ui/labelsText'
+import { aiCoreText, lairTierText, shipRoleText } from '../ui/labelsText'
 import { fmtDuration } from '../i18n/fmt'
 
 /* ─────────── 敌舰影列（2026-09-13 船长：「在常驻悬赏内，将悬赏敌族的舰船 SVG 图形，
@@ -2276,7 +2276,7 @@ function GalaxyActions({
           ) : (
             usableCores.map((t) => (
               <option key={t} value={t}>
-                {aiCoreName(t)}
+                {aiCoreText(t)}
               </option>
             ))
           )}
@@ -4193,3 +4193,5 @@ function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; onToast
     </>
   )
 }
+
+

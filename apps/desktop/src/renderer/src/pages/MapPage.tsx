@@ -51,6 +51,8 @@ import { NetIncomeLinePerHour, YieldLines, yieldLinesOf, marketPriceOf, type Yie
 import { Panel, ProgressBar } from '@whale/ui'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
+/** AI 核心档位名按语言取（2026-09-30 批 5：core 的 `aiCoreName` 只出中文） */
+import { aiCoreText } from '../ui/labelsText'
 import { FlavorTip, recycleFeatureOf } from '../ui/wreckFlavor'
 import { AiTaskBar } from '../ui/aiProgress'
 import { ExpeditionPanel, BountyPanel } from '../panels/Expedition'
@@ -579,7 +581,7 @@ function BeltCard({
                   <div className="app-belt-worker-line">
                     <span className="app-belt-worker-name">
                       <span className="app-ico"><Glyph name="nav-ai" size={12} color={NAV_TONES["nav-ai"]} /></span>{shipDisplayName(state, engine.ctx, sid)}
-                      <span className="app-dim">（{aiCoreName(a.coreType)} · {Math.round(aiEfficiency(state, engine.ctx, a.coreType) * 100)}%）</span>
+                      <span className="app-dim">（{aiCoreText(a.coreType)} · {Math.round(aiEfficiency(state, engine.ctx, a.coreType) * 100)}%）</span>
                     </span>
                     <button
                       className="app-btn is-small is-warn"
@@ -653,7 +655,7 @@ function BeltCard({
           </select>
           <select className="app-select" value={effCore} onChange={(e) => setAiCoreSel(e.target.value as AiCoreType)} title={tr("ui.MapPage.044")}>
             {usableCores.map((t) => (
-              <option key={t} value={t}>{aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
+              <option key={t} value={t}>{aiCoreText(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
             ))}
           </select>
           <button
@@ -1223,7 +1225,7 @@ function WreckCard({
                   <div className="app-belt-worker-line">
                     <span className="app-belt-worker-name">
                       <span className="app-ico"><Glyph name="nav-ai" size={12} color={NAV_TONES["nav-ai"]} /></span>{shipDisplayName(state, engine.ctx, w.sid)}
-                      <span className="app-dim">（{aiCoreName(w.coreType)} · {Math.round(aiEfficiency(state, engine.ctx, w.coreType) * 100)}%）</span>
+                      <span className="app-dim">（{aiCoreText(w.coreType)} · {Math.round(aiEfficiency(state, engine.ctx, w.coreType) * 100)}%）</span>
                     </span>
                     <button
                       className="app-btn is-small is-warn"
@@ -1271,7 +1273,7 @@ function WreckCard({
           </select>
           <select className="app-select" value={effCore} onChange={(e) => setAiCoreSel(e.target.value as AiCoreType)} title={tr("ui.MapPage.073")}>
             {usableCores.map((t) => (
-              <option key={t} value={t}>{aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
+              <option key={t} value={t}>{aiCoreText(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）</option>
             ))}
           </select>
           <button
@@ -1288,3 +1290,4 @@ function WreckCard({
     </div>
   )
 }
+

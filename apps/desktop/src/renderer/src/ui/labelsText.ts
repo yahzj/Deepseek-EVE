@@ -235,6 +235,20 @@ export function aiCoreText(type: AiCoreType): string {
 }
 
 /**
+ * **core 日志要用的"档位名 id"**（**2026-09-30 加** · 英文残留批 5）。
+ *
+ * 为什么需要：core 的 `aiCoreName()` 只出中文，而它被**塞进 `textParams.p{n}`**（例：
+ * `core.ai.015`「已召回 {p1}（{p2} 归还核心库）」的 `p2`）—— 参数值**不会再被翻译**，
+ * 所以英文界面下日志里的核心名一直是中文。约定 §十一之三的解法 = 给这一槽配 `p{n}Id`，
+ * 由 `paramText()` 先渲染成当前语言再喂进去 ⇒ 这里导出 id，调用点写 `p2Id: aiCoreTextId(t)`。
+ *
+ * ⚠ 与本文件的 `aiCoreText()` **同一张表**（`AICORE_ID`）—— 两处各写一份必然漂。
+ */
+export function aiCoreTextId(type: AiCoreType): string | undefined {
+  return AICORE_ID[type]
+}
+
+/**
  * 技能分类名（= `SKILL_GROUPS` 的本地化版）。
  * ⚠ 入参是 core/data 侧的**中文分类名**（中文即键，见 `packages/data/src/skills.ts` 的 `SKILL_GROUPS`），
  * 故这里按中文名查表；查不到就原样返回（新分类漏登记时**看得见**，不会静默变空）。

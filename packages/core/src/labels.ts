@@ -337,6 +337,27 @@ export function thrusterCycleFullText(
   return `${boost} 秒点火 / ${cooldown} 秒冷却，开场即点火`
 }
 
+/**
+ * **点火周期那截的"结构化"版本**（`{ text, textId, params }`）——**2026-09-30 加**（英文残留批 5）。
+ *
+ * 为什么要有它：`thrusterCycleFullText` 出的是一句**拼好的中文**，而它被塞进 `ui.FitPage.145` 的
+ * `{p2}` 槽（`（加力推进点火期 {p1} m/s；{p2}）`）——**参数值不会再被翻译** ⇒ 英文界面下括号里
+ * 永远夹着「10 秒点火 / 60 秒冷却，开场即点火」（英文扫描实测 1 处）。
+ * core 不认识渲染层的语言 ⇒ 按既有 id 侧面通道给出 `textId` + `params`，渲染层写 `tr(id, params)`。
+ * 中文原串照旧返回（老调用点零变化）。
+ */
+export function thrusterCycleNote(
+  bal: BattleBalance = DEFAULT_BALANCE.battle,
+  cycle?: ThrusterCycleOverride,
+): { text: string; textId: string; params: Record<string, string | number> } {
+  const { boost, cooldown } = thrusterCycleSeconds(bal, cycle)
+  return {
+    text: `${boost} 秒点火 / ${cooldown} 秒冷却，开场即点火`,
+    textId: 'core.combat.004',
+    params: { p1: boost, p2: cooldown },
+  }
+}
+
 /* ───── T5-B（v17）舰船实例 uid 工具（内容约定：ShipDef.id 不得含 '#'，实例号分隔符） ───── */
 
 /** 实例 uid → 船型 id（第 1 艘 uid = 船型 id 本身，无后缀） */

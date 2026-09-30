@@ -745,6 +745,20 @@ const WRECK_IDS = [
 export const EN_WRECKS: EnTable = Object.fromEntries(WRECK_IDS.map((id) => [id, wreckEnText(id)]))
 
 /**
+ * **蓝图碎片**（**2026-09-30 加** · 英文界面残留批 5）。
+ *
+ * 为什么单列：碎片物品**不在静态物品表里**——它由 `core/salvage.ts` 的 `fragmentItemDefOf(moduleId, moduleName)`
+ * **按目标装备现场生成**（`frag-<装备 id>`）。名字是**拼**出来的（`${moduleName}蓝图碎片`），
+ * 所以 `EN_ITEMS` 那种按 id 覆盖的写法够不着 ⇒ 落成"两句模板 + 调用方喂已本地化的装备名"。
+ * ⚠ 装备名由 `context.ts` 传**覆盖后**的那份（英文界面下就是英文名）⇒ 拼出来整句同语言。
+ */
+export const EN_FRAGMENT: Readonly<{ name: string; description: string }> = {
+  name: '{p1} Blueprint Fragment',
+  description:
+    'A blueprint fragment recovered by reverse-engineering wrecks: collect {p1} of them, then hit "Reverse-engineer" in the Blueprint Fragments group on the Items page to turn them into a permanent blueprint for that module (docking at a station required). The same blueprint will not drop fragments twice before it is complete — once you own the blueprint they stop appearing.',
+}
+
+/**
  * **残骸组的三处文案**（**2026-09-29 加** · 英文界面残留中文清理批 2）：
  * `WRECK_GROUPS` 的 `name` / `rareName` / `note` —— 星图「残骸打捞」页那几行
  * （`武装拾荒者残骸（高安）：钛钢结构料为主…`）走的就是它们，此前**整段中文**。

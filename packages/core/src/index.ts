@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @whale/core 对外统一出口。
  * 其他包（data / ui / desktop / 未来服务端）只允许从这里 import。
  */
@@ -169,6 +169,7 @@ export {
   thrusterCycleSeconds,
   thrusterCycleText,
   thrusterCycleFullText,
+  thrusterCycleNote,
   thrusterCycleOfModule,
 } from './labels'
 export type { ThrusterCycleOverride } from './labels'
@@ -713,9 +714,12 @@ export {
   goodName,
   salesTaxRate,
   goodLockedReason,
+  /** 声望门槛锁的"结构化"版本（给渲染层按语言渲染；2026-09-30 批 5） */
+  marketLockNote,
   marketLockedReason,
   bmGateLocked,
   bmGateReason,
+  bmGateNote,
   acquisitionFactorOf,
   buyLineOf,
   askLineOf,
@@ -1978,3 +1982,4 @@ export {
  * 装配校验与装配页格数共用同一把尺；`installPlug` 里同步就地补齐位数组。
  */
 export { plugSlotAddsOf, shipSlotsWithPlugsOf } from './plugs'
+

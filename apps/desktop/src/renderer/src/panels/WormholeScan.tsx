@@ -1,4 +1,4 @@
-/**
+﻿/**
  * **「扫描虫洞」页**（2026-09-14 船长：「将扫描虫洞放入出港界面的选项卡内。新增主控活动：'扫描虫洞'。
  * 玩家需要在扫描虫洞界面内开始。…进度条满后。玩家就可以发现一个虫洞。玩家最多可以囤积5个未开始探索的虫洞。」）。
  *
@@ -34,7 +34,7 @@ import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
 // ⚠ 原型名走本地化单点（2026-09-26 乙批）——core 的 `WORMHOLE_ARCHETYPE_LABELS` 是纯中文表
-import { archetypeText } from '../ui/labelsText'
+import { aiCoreText, archetypeText } from '../ui/labelsText'
 import { MatterTechTab } from './MatterTechTab'
 import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
 import { tr, cmdText } from '../i18n/locale'
@@ -452,7 +452,7 @@ export function WormholeScanTab({
                     {rep.cores && rep.cores.length > 0 ? (
                       <span className="app-inv-count">
                         {tr("ui.WormholeScan.039")}
-                        {rep.cores.map((c) => `${aiCoreName(c.type)} ×${c.n}`).join(tr("ui.MatterTechTab.017"))}
+                        {rep.cores.map((c) => `${aiCoreText(c.type)} ×${c.n}`).join(tr("ui.MatterTechTab.017"))}
                         {tr("ui.WormholeScan.040")}
                       </span>
                     ) : null}
@@ -495,3 +495,5 @@ export function WormholeScanTab({
     </Panel>
   )
 }
+
+

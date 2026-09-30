@@ -335,6 +335,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* ── 损伤管制装置（2026-09-25 船长令：结构首次被打空时启动，锁定 1 秒，消耗损管修理组件 ×1）── */
   "core.combat.002": { zh: "✦ 损伤管制装置启动：结构锁定在 1 点、持续 1 秒（消耗损管修理组件 ×1）。", en: "✦ Damage Control Unit engaged: structure locked at 1 for 1 second (spent 1 Damage Control Repair Kit)." },
   "core.combat.003": { zh: "⚠ 损伤管制装置未能启动：损管修理组件不足。", en: "⚠ Damage Control Unit could not engage: no Damage Control Repair Kit available." },
+  /**
+   * English-residual batch 5 (2026-09-30): the afterburner cycle tail fed into `ui.FitPage.145`'s
+   * `{p2}` slot. Single source in core = `labels.thrusterCycleNote` (`{ text, textId, params }`).
+   */
+  "core.combat.004": { zh: "{p1} 秒点火 / {p2} 秒冷却，开场即点火", en: "{p1} s burn / {p2} s cooldown, ignites as the fight opens" },
   // ⚠ 战报尾巴那一段（`combat.dcUsageText`）与「船体维修装置」那条同式：报告正文是**拼接串**，
   //   不走 id 渲染 ⇒ 这里**不再留**废弃 id（原来加过 `core.combat.004`，未接线，已删）。
   // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
@@ -716,6 +721,15 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.market.036": { zh: "挂单成交：{p1}×{p2}，税后入账 {p3} 信用点（含协会声望加成）{p4}。", en: "Order filled: {p1}×{p2} brought in {p3} credits after tax (with the Association reputation bonus){p4}." },
   "core.market.037": { zh: "，贸易税 {p1} 信用点", en: ", trading tax {p1} credits" },
   "core.market.038": { zh: "市价售出 {p1}×{p2}（税后入账 {p3} 信用点，{p4} 笔）（含协会声望加成）{p5}。", en: "Sold {p1}×{p2} at market ({p3} credits after tax, {p4} fills) (with the Association reputation bonus){p5}." },
+  /**
+   * Standing-gate lock label (2026-09-30, English-residual batch 5): the lock chip on the market,
+   * ship warehouse and industry pages. Single source in core = `market.marketLockNote` / `bmGateNote`
+   * (they return `{ text, textId, params }`; the renderer calls `tr(note.textId, note.params)`).
+   */
+  "core.market.039": {
+    zh: "需「深空工业协会」声望 {p1}（当前 {p2}）",
+    en: "Requires Deep Space Industry Association reputation {p1} (currently {p2})",
+  },
   "core.market.040": { zh: "市价售出 {p1}×{p2}（税后入账 {p3} 信用点，{p4} 笔）{p5}。", en: "Sold {p1}×{p2} at market ({p3} credits after tax, {p4} fills){p5}." },  /* ── 第十九批：expedition.ts（远征 / 悬赏：出击前置 / 撤退 / 召回）── */
   "core.expedition.001": { zh: "当前不在交火中。", en: "You are not in combat right now." },
   "core.expedition.002": { zh: "战斗记录缺失。", en: "The battle record is missing." },
@@ -1531,6 +1545,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.BattleScreen.111": { zh: "{p1}：存活 {p2}/{p3} 架", en: "{p1}: {p2}/{p3} airframes alive" },
   /* 距离尺的语义标签（2026-09-26 战斗界面优化批 I4）：尺是纯图形读数 ⇒ 给读屏一个可读口径（视觉零变化） */
   "ui.BattleScreen.112": { zh: "距离尺：当前 {p1} 米 · 远端 {p2} 米 · 近端 {p3} 米", en: "Range ruler: {p1} m now, {p2} m at the far end, {p3} m at the near end" },
+  /**
+   * English-residual batch 5 (2026-09-30): the enemy range-band chip's ship count.
+   * It used to be a raw template literal (` ×${b.count} 艘`) in `panels/BattleScreen.tsx`.
+   */
+  "ui.BattleScreen.113": { zh: " ×{p1} 艘", en: " ×{p1} ships" },
   /* 损伤管制装置同舰唯一（2026-09-25 船长令「损管只能装备一件」）：装配被拒时的原因 id */
   "core.equipment.028": { zh: "损伤管制装置每舰只能装一件（已装 {p1}）。", en: "Only one Damage Control Unit may be fitted per ship (already fitted: {p1})." },
   // 2026-09-26 报障修复（“可以装多个损管”）：载入归正日志——每舰只留一件，多余的退回装备库

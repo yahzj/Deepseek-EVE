@@ -1327,15 +1327,38 @@ export function fragmentPoolOf(state: GameState, ctx: SimContext, tier: 2 | 3): 
 export function fragmentItemIdOf(moduleId: string): string {
   return `frag-${moduleId}`
 }
-/** 碎片物品定义（按目标装备生成；不可出售） */
-export function fragmentItemDefOf(moduleId: string, moduleName: string): ItemDef {
+/**
+ * 碎片物品定义（按目标装备生成；不可出售）。
+ *
+ * ⚠ **名字是"拼"出来的**（`${moduleName}蓝图碎片`）⇒ 英文界面下必须是
+ * `${moduleName} Blueprint Fragment`。core 不认识渲染层的语言，所以这里收成一个
+ * **可选 `en` 覆盖对象**（键与下面两句同形，由数据层 `EN_FRAGMENT` 供给，见 `context.ts` 的调用点）：
+ * 给了就是英文侧的那两句（`{p1}` ＝ 装备名、`{p1}` ＝ 门槛片数），不给就仍出中文原串
+ * （工具 / 用例 / 中文侧零变化）。
+ */
+export function fragmentItemDefOf(
+  moduleId: string,
+  moduleName: string,
+  en?: Readonly<{ name: string; description: string }>,
+): ItemDef {
+  const need = FRAGMENT_RECIPES[moduleId]?.need ?? '?'
+  if (en !== undefined) {
+    return {
+      id: fragmentItemIdOf(moduleId),
+      name: en.name.replace('{p1}', moduleName),
+      kind: 'fragment',
+      unitM3: 0.02,
+      baseSellPriceIsk: 1,
+      description: en.description.replace('{p1}', String(need)),
+    }
+  }
   return {
     id: fragmentItemIdOf(moduleId),
     name: `${moduleName}蓝图碎片`,
     kind: 'fragment',
     unitM3: 0.02,
     baseSellPriceIsk: 1,
-    description: `逆向研究残骸得到的蓝图碎片：集齐 ${FRAGMENT_RECIPES[moduleId]?.need ?? '?'} 片后，在物品页的「蓝图碎片」分组里点「逆向解锁」即可换成该装备的永久蓝图（需停靠空间站）。集齐前不会重复掉落同一本书的碎片——拿到蓝图后它就不再出现。`,
+    description: `逆向研究残骸得到的蓝图碎片：集齐 ${need} 片后，在物品页的「蓝图碎片」分组里点「逆向解锁」即可换成该装备的永久蓝图（需停靠空间站）。集齐前不会重复掉落同一本书的碎片——拿到蓝图后它就不再出现。`,
   }
 }
 

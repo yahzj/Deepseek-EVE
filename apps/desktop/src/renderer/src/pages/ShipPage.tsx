@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 舰船页：我的舰队（耐久/维修/切换驾驶）+ AI 指挥中心 + 空间站商店。
  */
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
@@ -64,7 +64,7 @@ import { isk } from './common'
 import { tr, cmdText } from '../i18n/locale'
 /** 金额 + 单位（按语言；2026-09-29 批 0：出售确认那句原先是中文字面量拼 `isk()`） */
 import { fmtCredits } from '../i18n/fmt'
-import { shipRoleText } from '../ui/labelsText'
+import { aiCoreText, shipRoleText } from '../ui/labelsText'
 
 // ── 舰队卡片左侧舰影（2026-09-10 船长：每艘船的舰船形象放在对应卡片最左侧展示；
 //    屏幕宽度不足时隐藏舰船图形）──
@@ -1205,7 +1205,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
         <div className="app-core-badges">
           {AI_CORE_ORDER.map((type) => (
             <span key={type} className={`app-chip${countAiCore(state, type) > 0 ? '' : ' is-dim'}`}>
-              {aiCoreName(type)} ×{countAiCore(state, type)}（{Math.round(aiEfficiency(state, engine.ctx, type) * 100)}%）
+              {aiCoreText(type)} ×{countAiCore(state, type)}（{Math.round(aiEfficiency(state, engine.ctx, type) * 100)}%）
             </span>
           ))}
           <button className="app-btn is-small is-primary" onClick={handleBuyCore}>
@@ -1259,7 +1259,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
             ) : (
               usableCores.map((t) => (
                 <option key={t} value={t}>
-                  {aiCoreName(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
+                  {aiCoreText(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
                 </option>
               ))
             )}
@@ -1439,7 +1439,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                   <div className="app-inv-text">
                   <span className="app-inv-name">{shipDisplayName(state, engine.ctx, sid)}</span>
                   <span className="app-inv-count">
-                    {desc} · {aiCoreName(assignment.coreType)}{tr("ui.ShipPage.093")} {Math.round(eff * 100)}%）
+                    {desc} · {aiCoreText(assignment.coreType)}{tr("ui.ShipPage.093")} {Math.round(eff * 100)}%）
                   </span>
                   <span className="app-inv-count">
                     <AiTaskBar view={aiView} />
@@ -1551,3 +1551,5 @@ function standingOfState(state: GameState): number {
   return standingOf(state, DSI_FACTION_ID)
 }
 // l10n-keep-end
+
+

@@ -38,7 +38,7 @@ import { buildCommsCatalog } from './messages'
 import { buildCommsFactionCatalog } from './commsFactions'
 import { buildDialogueCatalog } from './dialogues'
 import { GALAXY_EDGES } from './universe'
-import { localizeCtx, type Locale } from './l10n'
+import { EN_FRAGMENT, localizeCtx, type Locale } from './l10n'
 
 export function buildSimContext(locale: Locale = 'zh'): SimContext {
   const galaxies = buildGalaxyCatalog()
@@ -100,8 +100,10 @@ export function buildSimContext(locale: Locale = 'zh'): SimContext {
     if (!mod) continue
     const id = fragmentItemIdOf(moduleId)
     if (itemsFinal.has(id)) continue
-    itemsFinal.set(id, fragmentItemDefOf(moduleId, mod.name))
+    /** ⚠ 英文侧把两份模板喂进去（名字由装备名拼出，故装备名走**覆盖后**的 mod.name）——2026-09-30 批 5 */
+    itemsFinal.set(id, fragmentItemDefOf(moduleId, mod.name, locale === 'en' ? EN_FRAGMENT : undefined))
     addedFragment = true
   }
   return addedFragment ? { ...base, items: itemsFinal } : base
 }
+
