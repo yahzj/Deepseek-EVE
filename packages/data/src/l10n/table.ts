@@ -494,7 +494,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     zh: "⚠ 在「{p1}」启动信号发射器：协会扣了 {p2} 点声望。",
     en: "⚠ Signal Beacon lit at “{p1}”: the Association docked {p2} standing.",
   },
-  "ui.ItemsPage.057": { zh: "使用：主动诱发一次入侵（随机星系 · 只能在没有入侵时使用 · 消耗 1 枚 · 不能在空间站所在地启动）", en: "Use: provoke an invasion (random system; only while no invasion is running; consumes one; cannot be lit where a station is)" },
+  "ui.ItemsPage.057": { zh: "使用：主动诱发一次入侵（目标按入侵默认规则抽取 · 只能在没有入侵时使用 · 消耗 1 枚 · 不能在空间站所在地启动）", en: "Use: provoke an invasion (the target is drawn by the regular invasion trigger; only while no invasion is running; consumes one; cannot be lit where a station is)" },
   "ui.ItemsPage.058": { zh: "信号发射器已启动：入侵舰队正在逼近。", en: "Signal Beacon lit: an invasion fleet is closing in." },
   /* 活动窗口的突触加速剂读数（2026-09-30 船长令：放进活动窗口 · 图标带倍率） */
   "ui.ActivityBar.066": { zh: "技能加速 ×{p1}", en: "Skill boost ×{p1}" },
@@ -634,8 +634,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
      ⚠ 落点两条路是船长同日裁定：「**直接使用是随机星系（这个要提醒玩家）。选择了星系后是固定。**」 */
   "ui.beacon.001": { zh: "启动信号发射器", en: "Light the Signal Beacon" },
   "ui.beacon.002": {
-    zh: "消耗 1 枚信号发射器：入侵舰队将锁定「{p1}」及其相邻星系，按入侵规则活满一个窗口。在物品页或货仓页直接使用则落点随机。",
-    en: "Consumes one Signal Beacon: the invasion fleet locks onto “{p1}” and its neighbouring systems and runs a full invasion window. Using it from the Items page or the cargo hold picks the system at random instead.",
+    zh: "消耗 1 枚信号发射器：入侵舰队将锁定「{p1}」及其相邻星系，按入侵规则活满一个窗口。在物品页或货仓页直接使用，则按入侵默认规则在「已探索 · 非高安 · 尚未建成副站」的星系里抽取目标。",
+    en: "Consumes one Signal Beacon: the invasion fleet locks onto “{p1}” and its neighbouring systems and runs a full invasion window. Using it from the Items page or the cargo hold draws the target from the same range the regular invasion trigger uses: explored, non-high-sec systems without a completed outpost.",
   },
   "ui.beacon.003": { zh: "再点一下确认：发射器将消耗 1 枚，目标锁定「{p1}」", en: "Click again to confirm: one beacon is spent and the target is locked to “{p1}”" },
   "ui.beacon.004": {
