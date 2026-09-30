@@ -5,7 +5,7 @@
  * 1. **船 × 配置**：每条矿带上，哪艘船、装什么，每小时挣多少（逐带取 **CPU 合法配置里的最优**）；
  * 2. **建站前后**：起点 = 母港，还是「母港 / 已建成副站」里**最近**的那个
  *    （与引擎真实路径同源：`location.nearestStationGalaxyId`，采矿推进三处都走它）；
- * 3. **燃料开关**：1 单位抵 1 秒「满载返航」、返航 ÷10；净收益 = 毛收益 − 燃料成本（自产/市场两档单价）；
+ * 3. **燃料开关**：1 单位抵 1 秒**航程**（空船去程 ＋ 满载返航 —— 与引擎 `mining.ts:577-584` 自动返航那一刻的扣料腿同口径）、整条返航腿 ÷10；净收益 = 毛收益 − 燃料成本（自产/市场两档单价）；
  * 4. **技能档**：`full`（全技能 5）与 `mine`（只点采矿两条 —— 当年 A3 表的技能侧口径）。
  *
  * 口径（全部走引擎单点，逐条注明）：
@@ -16,7 +16,7 @@
  *   （多件**加算** × 深空物流学/货舱管理学）；
  * - **CPU 合法性**：件 `cpuUse` 求和 ≤ 舰船 `cpu`（MK3 = 40 · MK2 = 15 · MK1 = 5 · 民用 = 3）；
  * - **燃料成本**：自产 = 实验室一批（600 单位）的原料按矿物基准价折算（**77.57 ISK/单位**）；
- *   市场 = `marketCatalog` 的 `jump-fuel` 基准价（**120 ISK/单位**）。消耗 = `ceil(满载返航秒)`。
+ *   市场 = `marketCatalog` 的 `jump-fuel` 基准价（**120 ISK/单位**）。消耗 = `ceil(航程秒)` = `ceil(空船去程 ＋ 满载返航)`。
  *
  * 用法：
  *   npm run mining:curve                      # 默认：两艘矿船 × 满技能 × 未建站 × 不用燃料
@@ -177,7 +177,7 @@ function main(): void {
   console.log(
     `船：${shipIds.map((id) => `${ctx.ships.get(id)?.name ?? id}（CPU ${ctx.ships.get(id)?.cpu ?? '?'} · 槽 ${ctx.ships.get(id)?.slots.high}/${ctx.ships.get(id)?.slots.mid}/${ctx.ships.get(id)?.slots.low}）`).join(' · ')}`,
   )
-  console.log(`燃料单价：自产 ${FUEL_ISK.lab.toFixed(2)} ISK/单位 · 市场 ${FUEL_ISK.market} ISK/单位（消耗 = ceil(满载返航秒)）`)
+  console.log(`燃料单价：自产 ${FUEL_ISK.lab.toFixed(2)} ISK/单位 · 市场 ${FUEL_ISK.market} ISK/单位（消耗 = ceil(航程秒) = ceil(空船去程 ＋ 满载返航)）`)
 
   const belts = [...ctx.belts.values()]
     .map((b) => {
@@ -220,9 +220,10 @@ function main(): void {
         console.log(base)
         continue
       }
-      const backS = best.backS
-      const units = Math.ceil(backS)
-      const tripFuelS = best.outS + best.mineS + backS / 10
+      /** 引擎口径：扣料与 ÷10 都吃**整条返航腿**（空船去程 ＋ 满载返航），不是只算满载返航那一半 */
+      const travelS = best.outS + best.backS
+      const units = Math.ceil(travelS)
+      const tripFuelS = best.mineS + travelS / 10
       const gross = (best.hold * ((ctx.items.get(belt.oreId)?.baseSellPriceIsk ?? 0) / (ctx.items.get(belt.oreId)?.unitM3 ?? 1)) * 3600) / tripFuelS
       const fuelPerH = units * (3600 / tripFuelS)
       const netLab = gross - fuelPerH * FUEL_ISK.lab
