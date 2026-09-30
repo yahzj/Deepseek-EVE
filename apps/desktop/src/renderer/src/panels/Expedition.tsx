@@ -1,4 +1,4 @@
-﻿/**
+/**
  * M3 远征中心：势力声望、星图（SVG）、悬赏任务卡。
  * 中列面板：SkirmishStatus（远征中作业）→ StarMap（可点选）→ Standing → 任务列表。
  */
@@ -22,6 +22,10 @@ import {
   calcPower,
   // 2026-09-25 入侵旗舰入口（星系详细里那一行）：族名全称走 core 的同一张表（别在本文件另写一份）
   weekendFamilyNameId,
+  weekendCoreCandidates,
+  /* 信号发射器（2026-09-30 船长令）：持有量 + 指定星系的资格判据都走 core 单点 */
+  INVASION_BEACON_ITEM_ID,
+  consumableStockOf,
   weekendProgressAt,
   weekendCoreGateView,
   /** 旗舰视图（2026-09-25：核心的"旗舰期红光"与旗舰准备入口读同一份判据，不许在本文件另判一遍） */
@@ -96,7 +100,7 @@ import { ImportantTasks } from './ImportantTasks'
  * 与旧弹层 `PlugExchangeModal` **同一份实现**（兑换命令、卡面、确认层全在那边，这里只当容器）。
  */
 import { PlugExchangeBody } from './PlugExchange'
-import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
+import { Glyph, NAV_TONES, ICO_TONES, itemGlyphName } from '../ui/Glyphs'
 import { UI_TONES } from '../ui/tones'
 import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
@@ -2156,6 +2160,12 @@ function GalaxyActions({
   })()
   const miningActive = state.mining.active
   const [goAskAno, setGoAskAno] = useState<string | null>(null)
+  /** 信号发射器的**二次确认**（哪个星系正处于"再点一下"的状态；null = 没有）——与 `goAskAno` 同款内联警示 */
+  const [beaconAsk, setBeaconAsk] = useState<string | null>(null)
+  /** 持有几枚信号发射器（**货仓优先 + 仓库**，core 单点）—— 0 枚时整个容器不渲染 */
+  const beaconStock = consumableStockOf(state, INVASION_BEACON_ITEM_ID)
+  /** 本星系能不能当入侵目标（与随机那条路**同一套**候选：已探索 · 非高安 · 无已建副站） */
+  const beaconEligible = weekendCoreCandidates(state, ctx).includes(galaxy.id)
   /** 待确认"顶替环目标"的那张卡（null = 没有待确认）——**内联警示**，照抄 `goAskAno` 的写法，不新增弹窗机制 */
   const [loopAskAno, setLoopAskAno] = useState<string | null>(null)
   function handleAnoGo(ano: AnomalyDef): void {
@@ -2224,7 +2234,66 @@ function GalaxyActions({
             {tr('ui.weekend.062')}
           </button>
         </div>
-      ) : null}      {/* ⑧ 野外停留应急修理（修理系统 2026-09-05：驾驶船正停留本星系且带修理组件时可用） */}
+      ) : null}
+      {/**
+       * **信号发射器**（**2026-09-30 船长令**：「当持有信号发射器时，在星图的星系详细窗口内，新增一项
+       * 『启动信号发射器』的使用按钮（独立一个容器，玩家可以在这个星系指定召唤入侵），并在其容器内
+       * 说明使用会产生什么效果」）。
+       *
+       * 口径（船长同日裁定）：「**直接使用是随机星系（这个要提醒玩家）。选择了星系后是固定。**」
+       * ⇒ 这颗按钮**锁定本星系**；物品页/货仓页那颗仍是随机（两边提示各自写明）。
+       *
+       * 护栏：① 资格判据**与随机那条路同一套**（`weekendCoreCandidates`：已探索 · 非高安 · 无已建副站）
+       * ⇒ 不合格时按钮**置灰但仍可点**（点了由 core / 本地提示说清原因，与"装不进货仓"同一套语言）；
+       * ② 消耗一件 10,000 虚空晶的道具 ⇒ **二次确认**（技能口径 UX「Confirmation Dialogs（High）：
+       * Confirm before delete/irreversible actions」），确认态照抄页内既有的"再点一下"写法。
+       */}
+      {beaconStock > 0 ? (
+        <div className="app-ga-row app-ga-beacon">
+          <span className="app-ga-main">
+            <span className="app-ico">
+              <Glyph name={itemGlyphName(INVASION_BEACON_ITEM_ID, 'consumable')} size={13} color={ICO_TONES['ico-tact']} />
+            </span>
+            {tr('ui.beacon.001')}
+            <span className="app-dim app-ga-desc">{tr('ui.beacon.002', { p1: galaxy.name })}</span>
+          </span>
+          {beaconAsk === galaxy.id ? (
+            <>
+              <span className="app-dim">{tr('ui.beacon.003', { p1: galaxy.name })}</span>
+              <button
+                className="app-btn is-small is-danger"
+                onClick={() => {
+                  setBeaconAsk(null)
+                  const r = engine.useInvasionBeaconNow({ galaxyId: galaxy.id })
+                  if (!r.ok) onToast(cmdText(r) || tr('ui.beacon.001'), true)
+                  else onToast(tr('ui.ItemsPage.058'))
+                }}
+              >
+                {tr('ui.ItemsPage.056')}
+              </button>
+              <button className="app-btn is-small" onClick={() => setBeaconAsk(null)}>
+                {tr('ui.Expedition.108')}
+              </button>
+            </>
+          ) : (
+            <button
+              className="app-btn is-small is-warn"
+              aria-disabled={beaconEligible ? undefined : 'true'}
+              title={beaconEligible ? tr('ui.beacon.003', { p1: galaxy.name }) : tr('ui.beacon.004')}
+              onClick={() => {
+                if (!beaconEligible) {
+                  onToast(tr('ui.beacon.004'), true)
+                  return
+                }
+                setBeaconAsk(galaxy.id)
+              }}
+            >
+              {tr('ui.beacon.001')}
+            </button>
+          )}
+        </div>
+      ) : null}
+      {/* ⑧ 野外停留应急修理（修理系统 2026-09-05：驾驶船正停留本星系且带修理组件时可用） */}
       {state.awayGalaxy === galaxy.id ? (
         <FieldKitRepair engine={engine} onToast={onToast} />
       ) : null}

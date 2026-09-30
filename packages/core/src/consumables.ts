@@ -14,7 +14,7 @@ import type { SimContext } from './types'
 import { countItem, countWare, removeItem, removeWare } from './inventory'
 import { addLog } from './state'
 import { SYNAPTIC_ACCELERANT_MS, synapticAccelerantActive } from './training'
-import { weekendRollOccupation } from './weekendEvent'
+import { weekendCoreCandidates, weekendPeripheryOf, weekendRollOccupation } from './weekendEvent'
 
 /** 突触加速剂物品 id（与 `data/items.ts` 的 `CONSUMABLES` 同源） */
 export const SYNAPTIC_ACCELERANT_ITEM_ID = 'synaptic-accelerant'
@@ -86,18 +86,25 @@ export const INVASION_BEACON_FAMILIES: readonly { readonly id: string; readonly 
 ]
 
 /**
- * **使用一枚信号发射器**：主动诱发一次入侵（**船长 2026-09-29 六答**：
- * Q3a「和现有规则一样（**随机星系**入侵）」· Q3b「**只能在没有入侵时候使用**」·
- * Q3c「**消耗一个**，不做限制」· Q3d「能获得虚空晶必然声望达标。**不做限制**」）。
+ * **使用一枚信号发射器**：主动诱发一次入侵。
  *
- * 落法 = **复用现有那一抽**：`weekendRollOccupation(state, ctx, seq)` 正是"随机核心星系 ＋ 外围 ＋ 势力"，
- * 抽到后把 `startedAtWallMs` 设为**现在**（而不是本周排期的 T0）⇒ 这一场按既有规则活满 96 小时窗口
- * （`weekendWindowOpen` 按 `startedAtWallMs` 起算，正常排期那条路也会因为"上一场不足一个窗口"而不重复开）。
+ * **落点两条路**（**2026-09-30 船长裁定**：「**直接使用是随机星系（这个要提醒玩家）。选择了星系后是固定。**」）：
+ * - **不传 `galaxyId`**（物品页 / 货仓页那颗「使用」）⇒ **随机星系**：复用现有那一抽
+ *   `weekendRollOccupation(state, ctx, seq)`（随机核心星系 ＋ 外围 ＋ 势力）；
+ * - **传 `galaxyId`**（星图 · 星系详细里那颗「启动信号发射器」）⇒ **就用玩家选的那个星系**：
+ *   资格判据**与随机那条路同一套** `weekendCoreCandidates`（已探索 · 非高安 · 无已建副站），
+ *   不合格当场拒（界面按同一条判据预先置灰 ＋ 就地说明原因），外围走 `weekendPeripheryOf`。
  *
- * ⚠ **不做的事**（照 Q3b/c/d）：**不判声望、不判窗口、不判周排期**；只在**已有一场未结束的入侵**时拒绝。
- * ⚠ **抽不到目标星系时不扣料**（`weekendRollOccupation` 返回 null ⇒ 直接拒，避免白扔 10,000 虚空晶）。
+ * 其余口径照 2026-09-29 六答：`startedAtWallMs` 设为**现在**（这一场按既有规则活满 96 小时窗口）·
+ * **不判声望、不判窗口、不判周排期**；只在**已有一场未结束的入侵**时拒绝。
+ * ⚠ **抽不到 / 选不到目标星系时都不扣料**（避免白扔 10,000 虚空晶）。
  */
-export function useInvasionBeacon(state: GameState, ctx: SimContext, familyId?: string): CommandResult {
+export function useInvasionBeacon(
+  state: GameState,
+  ctx: SimContext,
+  opts: { familyId?: string; galaxyId?: string } = {},
+): CommandResult {
+  const { familyId, galaxyId } = opts
   if (consumableStockOf(state, INVASION_BEACON_ITEM_ID) <= 0) {
     return { ok: false, error: '仓库里没有信号发射器。', errorId: 'core.consumable.004' }
   }
@@ -115,9 +122,24 @@ export function useInvasionBeacon(state: GameState, ctx: SimContext, familyId?: 
     }
   }
   const seq = (ev?.seq ?? 0) + 1
-  const rolled = weekendRollOccupation(state, ctx, seq)
-  if (!rolled) {
-    return { ok: false, error: '当前没有可入侵的目标星系。', errorId: 'core.consumable.007' }
+  /* 两条路各走各的：指定星系必须先过资格判据（与随机那条**同一套**候选，避免出现两套落点规则） */
+  let rolled: { coreId: string; peripheryIds: string[]; family: string } | null = null
+  if (galaxyId !== undefined) {
+    if (!weekendCoreCandidates(state, ctx).includes(galaxyId)) {
+      const name = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
+      return {
+        ok: false,
+        error: `「${name}」不能作为入侵目标：只有已探索、非高安、且尚未建成副站的星系可以作为目标。`,
+        errorId: 'core.consumable.009',
+        errorParams: { p1: name },
+      }
+    }
+    rolled = { coreId: galaxyId, peripheryIds: weekendPeripheryOf(ctx, galaxyId), family: family.id }
+  } else {
+    rolled = weekendRollOccupation(state, ctx, seq)
+    if (!rolled) {
+      return { ok: false, error: '当前没有可入侵的目标星系。', errorId: 'core.consumable.007' }
+    }
   }
   takeOne(state, INVASION_BEACON_ITEM_ID)
   state.weekendEvent = {

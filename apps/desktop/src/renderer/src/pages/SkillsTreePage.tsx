@@ -26,12 +26,16 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   MAX_SKILL_LEVEL,
   PREREQ_MIN_LEVEL,
+  SYNAPTIC_ACCELERANT_ITEM_ID,
+  SYNAPTIC_ACCELERANT_MUL,
+  consumableStockOf,
   skillLevelTimeMs,
   skillLicenseMissing,
   skillLicensePriceOf,
   skillLockMissing,
   skillQueueStatus,
   trainingTimeFactor,
+  synapticAccelerantRemainMs,
 } from '@whale/core'
 import type { SkillDef, SkillPrereqGap } from '@whale/core'
 import { Panel } from '@whale/ui'
@@ -41,12 +45,88 @@ import { QueueBlock, SkillDescText } from './skillShared'
 import { ItemViewBar, useItemView } from '../ui/itemView'
 import { plainSkillDesc } from '../ui/skillText'
 import { GAP_Y, HEX_H, HEX_W, PAD, TAG_W, hexPath, layoutBook, nameLines } from '../ui/skillTreeLayout'
-import { Glyph, toneOf } from '../ui/Glyphs'
+import { Glyph, itemGlyphName, toneOf } from '../ui/Glyphs'
+import { RowGlyph } from '../ui/itemView'
+import type { GameEngine } from '../game/engine'
 import { SKILL_BRANCHES, SKILL_TREE_POSITIONS } from '@whale/data'
 import { skillBranchText, skillGroupText } from '../ui/labelsText'
 import type { PageProps } from './common'
 import { cmdText, tr } from '../i18n/locale'
 import { fmtDuration } from '../i18n/fmt'
+
+/**
+ * **技能加速块**（**2026-09-30 船长令**：「在技能页面内新增一个子窗口『技能加速』，窗口内顶部显示玩家
+ * 当前已经应用的技能加速效果和剩余时间，下方是列表，显示玩家还有多少技能加速类的道具。这个页面建议
+ * 使用 skill 优化。」）。
+ *
+ * 技能判定落点（`ui-ux-pro-max`）：**Confirmation Messages（Medium）**「Brief success message /
+ * Don't: Silent success」⇒ 用掉一枚给一句回执；**Contextual Live Badge Updates（High）**「one appropriate
+ * atomic status message」⇒ 剩余时间只做**一条**状态文本，不挂多个 live region。
+ *
+ * 取数一律走 core 单点：`synapticAccelerantRemainMs`（剩余）· `consumableStockOf`（**货仓优先 + 仓库**）·
+ * `SYNAPTIC_ACCELERANT_MUL`（倍率，界面不写死 ×2）。
+ */
+function SkillBoostBlock({ engine, onToast }: { engine: GameEngine; onToast: (m: string, bad?: boolean) => void }) {
+  const state = engine.state
+  const remainMs = engine.synapticAccelerantRemainMs()
+  const stock = consumableStockOf(state, SYNAPTIC_ACCELERANT_ITEM_ID)
+  const def = engine.ctx.items.get(SYNAPTIC_ACCELERANT_ITEM_ID)
+  const mul = Math.round(1 / SYNAPTIC_ACCELERANT_MUL)
+  return (
+    <div className="app-boost-block">
+      {/* 顶部：当前生效、剩余时间、效果口径 —— 一条原子状态（无 second live region） */}
+      <div className={`app-boost-now${remainMs > 0 ? ' is-on' : ''}`} role="status">
+        <span className="app-boost-now-head">
+          <Glyph name={iconKeyOfBoost()} size={15} color="currentColor" />
+          <b>{tr('ui.ActivityBar.066', { p1: mul })}</b>
+          <span className="app-dim">
+            {remainMs > 0 ? tr('ui.boost.005', { p1: fmtDuration(remainMs) }) : tr('ui.boost.002')}
+          </span>
+        </span>
+        <span className="app-dim app-boost-now-note">
+          {remainMs > 0
+            ? tr('ui.ActivityBar.067', { p1: fmtDuration(remainMs) })
+            : tr('ui.boost.007')}
+        </span>
+      </div>
+      {/* 下方：持有的加速类道具清单（今天只有突触加速剂；将来加同类道具就往这一支里塞行） */}
+      <div className="app-boost-list-head">{tr('ui.boost.003')}</div>
+      {stock <= 0 ? (
+        <div className="app-dim app-inv-empty">{tr('ui.boost.004')}</div>
+      ) : (
+        <ul className="app-inv-list">
+          <li className="app-inv-row">
+            <div className="app-inv-main">
+              <span className="app-inv-name">
+                {def !== undefined ? <RowGlyph glyph={itemGlyphName(def.id, def.kind)} /> : null} {def?.name ?? SYNAPTIC_ACCELERANT_ITEM_ID}
+              </span>
+              <span className="app-inv-count">{tr('ui.boost.006', { p1: stock.toLocaleString('zh-CN') })}</span>
+            </div>
+            <div className="app-inv-btns">
+              <button
+                className="app-btn is-small is-warn"
+                aria-disabled={remainMs > 0 ? 'true' : undefined}
+                title={tr('ui.ItemsPage.054')}
+                onClick={() => {
+                  const r = engine.useSynapticAccelerantNow()
+                  if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.054'), true)
+                  else onToast(tr('ui.ItemsPage.055'))
+                }}
+              >
+                {tr('ui.ItemsPage.056')}
+              </button>
+            </div>
+          </li>
+        </ul>
+      )}
+    </div>
+  )
+}
+
+/** 加速道具的图标（走物品 id 单点映射；取不到就回落大类键） */
+function iconKeyOfBoost(): string {
+  return itemGlyphName(SYNAPTIC_ACCELERANT_ITEM_ID, 'consumable')
+}
 
 /** 排布算法抽到纯模块（可离线读坐标核对）：见 `ui/skillTreeLayout.ts` */
 
@@ -76,6 +156,7 @@ const STATE_CHIPS = [
 
 export function SkillsTreePage({
   engine,
+  onToast,
   focusGroup,
 }: PageProps & {
   /**
@@ -102,11 +183,11 @@ export function SkillsTreePage({
    * 初值 = 会话记忆 > 默认 `'tree'`；`focusGroup` 在 ⇒ 必然 `'tree'`（那次跳转的目的就是
    * "去技能页练那门技能"，落在队列页看不到它）。
    */
-  const [sec, setSecState] = useState<'queue' | 'tree'>(
-    () => (focusGroup != null ? 'tree' : ((sessionPick('skills.sec') as 'queue' | 'tree' | null) ?? 'tree')),
+  const [sec, setSecState] = useState<'queue' | 'tree' | 'boost'>(
+    () => (focusGroup != null ? 'tree' : ((sessionPick('skills.sec') as 'queue' | 'tree' | 'boost' | null) ?? 'tree')),
   )
   /** 切子页 ＝ 写会话记忆（程序化跳转也走它 ⇒ 记的永远是"玩家最后看到的那个子页"） */
-  const setSec = (v: 'queue' | 'tree'): void => {
+  const setSec = (v: 'queue' | 'tree' | 'boost'): void => {
     setSecState(v)
     setSessionPick('skills.sec', v)
   }
@@ -332,8 +413,27 @@ export function SkillsTreePage({
           <span>⌛</span>
           <span>{tr('ui.SkillsPage.001')}</span>
         </button>
+        {/* **技能加速**（**2026-09-30 船长令**：「在技能页面内新增一个子窗口『技能加速』，窗口内顶部显示
+            玩家当前已经应用的技能加速效果和剩余时间，下方是列表，显示玩家还有多少技能加速类的道具」）
+            —— 与上面两颗签**同一家族**（`.app-subtab` ＋ 会话记忆），内容走一个 `Panel` 子窗口容器。 */}
+        <button
+          role="tab"
+          aria-selected={sec === 'boost'}
+          className={`app-subtab${sec === 'boost' ? ' is-active' : ''}`}
+          onClick={() => setSec('boost')}
+        >
+          <span>⚡</span>
+          <span>{tr('ui.boost.001')}</span>
+        </button>
       </div>
-      {sec === 'queue' ? (
+      {sec === 'boost' ? (
+        /* ⚡ 技能加速：顶部＝当前生效与剩余时间，下方＝持有的加速道具清单（船长 2026-09-30 令）。
+           ⚠ 实时读数只做**一条原子状态文本**（技能口径 UX「Contextual Live Badge Updates（High）：
+           use one appropriate atomic status message / Don't make every badge a competing live region」）。*/
+        <Panel className="is-fill" title={tr('ui.boost.001')}>
+          <SkillBoostBlock engine={engine} onToast={onToast} />
+        </Panel>
+      ) : sec === 'queue' ? (
         /* 训练队列（"正在发生的事"）——拆页后它独占一整屏（原先与树上下叠，把树挤掉一大截） */
         <Panel
           className="is-fill"
