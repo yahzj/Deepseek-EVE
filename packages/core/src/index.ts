@@ -1382,6 +1382,8 @@ export {
   advanceFirstChains,
   claimChainReward,
   visibleFirstTasks,
+  /* 取"当前语言的"任务标题/正文（2026-09-29 批 1：英文界面残留中文清理 · 渲染层只许从这里取） */
+  firstTaskText,
   /* 末段并列批（2026-09-20 船长第三道令：完成第 11 条后，长途运输/虫洞/寻找人类一起显示） */
   PARALLEL_TAIL_IDS,
   isParallelTail,
