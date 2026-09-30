@@ -34,21 +34,29 @@ export interface FuelTankProps {
   units: number
   /** 满格（单位）——刻度尺；缺省按"一趟长途"的 5 倍由调用方给 */
   capacity: number
-  /** 罐身高度（px；宽度自动 = 高度的 0.46） */
+  /** 罐身高度（px；宽度自动 = 高度的 0.46）。`fill` 为真时本值只当基准，实际按父容器高度缩放 */
   height?: number
+  /**
+   * **撑满父容器高度**（**2026-09-30 船长手改稿**：「大致效果.png」= 燃料罐放大成靠左整列、几乎满页高）。
+   * 做法 = 固定 `viewBox`（几何/液位全部按视箱算）＋ `height:100%` ＋ `preserveAspectRatio=meet`
+   * ⇒ **等比缩放**（不会把罐子拉扁），父容器多高罐子就多高。
+   */
+  fill?: boolean
   /** 刻度提示：这些单位处画一条长刻度（例：一趟长途 ≈1,200 单位） */
   tickUnits?: number
   /** 无障碍名（读屏/悬停） */
   label: string
 }
 
-export function FuelTank({ units, capacity, height = 148, tickUnits, label }: FuelTankProps): ReactNode {
-  const W = Math.round(height * 0.46)
+export function FuelTank({ units, capacity, height = 148, fill = false, tickUnits, label }: FuelTankProps): ReactNode {
+  /** `fill` 模式下用固定视箱高度（几何都按它算），视觉高度交给 CSS —— 见 `fill` 的注释 */
+  const H = fill ? 300 : height
+  const W = Math.round(H * 0.46)
   const padX = 7
   const padTop = 16
   const padBottom = 10
   const innerW = W - padX * 2
-  const innerH = height - padTop - padBottom
+  const innerH = H - padTop - padBottom
   const ratio = capacity > 0 ? Math.max(0, Math.min(1, units / capacity)) : 0
   const filled = units > 0
   /** 液面 y（罐内坐标）：满 = 顶部 0 */
@@ -62,13 +70,15 @@ export function FuelTank({ units, capacity, height = 148, tickUnits, label }: Fu
   const waveH = innerH - surfaceY + amp * 3
   const d = wavePath(waveW, waveH, amp)
   const tickY = tickUnits !== undefined && capacity > 0 ? innerH * (1 - Math.min(1, tickUnits / capacity)) : undefined
-  const uid = `ft${Math.round(height)}${Math.round(capacity)}`.replace(/[^a-zA-Z0-9]/g, '')
+  const uid = `ft${Math.round(H)}${Math.round(capacity)}`.replace(/[^a-zA-Z0-9]/g, '')
   return (
     <svg
-      className={`hud-tank${filled ? ' is-filled' : ''}`}
-      width={W}
-      height={height}
-      viewBox={`0 0 ${W} ${height}`}
+      className={`hud-tank${filled ? ' is-filled' : ''}${fill ? ' is-fill' : ''}`}
+      width={fill ? undefined : W}
+      height={fill ? undefined : H}
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio={fill ? 'xMidYMid meet' : undefined}
+      style={fill ? { height: '100%', width: '100%', display: 'block' } : undefined}
       role="img"
       aria-label={label}
     >

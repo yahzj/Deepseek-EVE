@@ -330,6 +330,30 @@
 @keyframes hud-breathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.62; } }
 /* 读数块（罐右侧的数字与 chip） */
 .hud-tank-side { display: flex; flex-direction: column; gap: 6px; min-width: 132px; }
+
+/* ═══ **跃迁燃料页的"左罐右文"整页版式**（**2026-09-30 船长手改稿「大致效果.png」**）═══
+ * 船长把燃料罐放大成**靠左整列、几乎满页高**，文字与开关整体让到右侧 ⇒ 这里落成两列：
+ * 左列 = 罐体（撑满可用高度，罐内零文字）；右列 = 读数 → 规格 → 开关。 */
+.hud-fuel-split {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+  min-height: 260px;
+}
+@media (max-width: 900px) {
+  .hud-fuel-split { grid-template-columns: 1fr; }
+}
+/* 罐体那一列：纵向拉伸（`FuelTank` 的 `fill` 会等比铺满，不会被拉扁） */
+.hud-fuel-rail {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 260px;
+  padding: 2px 4px 0;
+}
+/* 右侧内容列：纵向排布（读数面板在上、开关面板在下） */
+.hud-fuel-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 @media (prefers-reduced-motion: reduce) {
   .hud-tank .wave-a, .hud-tank .wave-b, .hud-tank.is-filled .glow { animation: none; }
 }
