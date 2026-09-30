@@ -635,6 +635,10 @@ export {
 
 export {
   refineRate,
+  // 2026-09-30 三号接手批：产出倍率的**真实上限**与**一批产出的逐项读数**（HUD 页不再自造刻度/自己乘）
+  refineRateMax,
+  REFINE_SKILL_MAX_LEVEL,
+  refineBatchOutputOf,
   oreAvailable,
   refineRunActive,
   refineManualActive,
@@ -658,7 +662,7 @@ export {
   sellPriceMultiplier,
   buyShip,
 } from './industry'
-export type { RefineRunView, SellResult, FragmentRedeemRow } from './industry'
+export type { RefineRunView, RefineOutputRow, SellResult, FragmentRedeemRow } from './industry'
 /* ═══ 实验室 ＋ 跃迁燃料（**2026-09-29 船长令**：「为工业新增子页面：'实验室'」＋「添加超空间折跃燃料」）═══ */
 export {
   labUnlocked,

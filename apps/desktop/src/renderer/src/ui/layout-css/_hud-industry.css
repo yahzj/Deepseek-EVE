@@ -162,10 +162,19 @@
 /* 动作列（图标按钮）固定宽、不参与挤压 */
 .hud-table td.act, .hud-table th.act { width: 44px; text-align: right; white-space: nowrap; }
 /* ⚠ **首列（产物名）要有下限宽**：其余列 nowrap ⇒ 表被压时浏览器只压"能压的那列"，
-   产物名会被挤成一字一行（1340×900 实测就是这样）。给首列兜底 + 让名字在词内断行。 */
-.hud-table td:first-child, .hud-table th:first-child { min-width: 108px; }
+   产物名会被挤成一字一行（1340×900 实测就是这样）。给首列兜底 + 让名字在词内断行。
+   ⚠ 2026-09-30 二批读数：精炼炉工位表加了「劳动者」列之后 7 列挤在左栏里 ⇒ 资源名又出现
+   竖排（「曦棱晶」拆成两行）⇒ 首列下限抬到 132px、并允许它优先拿宽度。 */
+.hud-table td:first-child, .hud-table th:first-child { min-width: 132px; }
 .hud-table td:first-child .hud-row { min-width: 0; align-items: flex-start; }
 .hud-table td:first-child .hud-row > span:last-child { overflow-wrap: anywhere; }
+/* ⚠ 精炼炉工位表的**主列不是首列**（首列是 `#` 工位号）⇒ 那种表给主列显式挂 `.hud-cell-main`
+   （2026-09-30 二批读数：不挂的话 min-width 全加在 `#` 上，资源名照样被挤成竖排） */
+.hud-table td.hud-cell-main, .hud-table th.hud-cell-main { min-width: 132px; }
+.hud-table td.hud-cell-main .hud-row { min-width: 0; align-items: flex-start; }
+.hud-table td.hud-cell-main .hud-row > span:last-child { overflow-wrap: anywhere; }
+/* 工位表：资源列再宽一点、劳动者 chip 不换行（不然又被挤竖） */
+.hud-panel .hud-table td .hud-chip { white-space: nowrap; }
 /* 两行小字读数列（料值 / 工期合列时用） */
 .hud-cell2 { display: block; }
 
@@ -243,7 +252,15 @@ button.hud-chip:hover { border-color: var(--hud-accent); color: var(--hud-accent
 /* ── 进度条 / 扫掠 ── */
 .hud-bar { position: relative; display: block; height: 6px; background: var(--hud-muted); border-radius: 2px; overflow: hidden; }
 .hud-bar.lg { height: 9px; }
-.hud-bar > i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--hud-accent), var(--hud-accent-soft)); }
+.hud-bar > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  transform-origin: left center;
+  transform: scaleX(calc(var(--v, 0) / 100));
+  transition: transform 0.35s ease;
+  background: linear-gradient(90deg, var(--hud-accent), var(--hud-accent-soft));
+}
 .hud-bar.is-ok > i { background: linear-gradient(90deg, var(--hud-ok), #a7f3d0); }
 .hud-bar.is-warn > i { background: linear-gradient(90deg, var(--hud-warn), #fde68a); }
 .hud-bar.is-bad > i { background: linear-gradient(90deg, var(--hud-bad), #fca5a5); }
@@ -257,11 +274,69 @@ button.hud-chip:hover { border-color: var(--hud-accent); color: var(--hud-accent
 }
 @keyframes hud-scan { from { top: -45%; } to { top: 110%; } }
 
+/* ── 倍率区间条（**2026-09-30 真值修正**：替代原先那条无目标的 Bullet）──
+   区间 = 「基础倍率 → 满级倍率」（都来自 balance）；刻度 = 当前倍率；两端各有文字读数。 */
+.hud-range { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; margin-top: 10px; }
+.hud-range .hud-bar { height: 8px; }
+.hud-range-tick { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--hud-fg); transition: left 0.35s ease; }
+
+/* ── 精炼产出构成环（SVG 多段环 · **2026-09-30 船长令**）──
+   段色 = 主题令牌里挑 6 个可辨色（强调/金/蓝/良/危/灰），与构成表的圆点**同色**（但颜色不是唯一载体：
+   构成表与 `aria-label` 都带文字与占比）；动画走 strokeDasharray/Offset（不触发布局）。 */
+.hud-ring { flex: none; }
+.hud-ring-bg { stroke: var(--hud-muted); }
+.hud-ring-seg { transition: stroke-dasharray 0.35s ease, stroke-dashoffset 0.35s ease; cursor: help; }
+.hud-ring-seg:hover { stroke-width: 18; }
+.hud-ring-seg[data-seg='0'], .hud-seg-dot[data-seg='0'] { stroke: var(--hud-accent); background: var(--hud-accent); }
+.hud-ring-seg[data-seg='1'], .hud-seg-dot[data-seg='1'] { stroke: rgb(var(--wui-gold)); background: rgb(var(--wui-gold)); }
+.hud-ring-seg[data-seg='2'], .hud-seg-dot[data-seg='2'] { stroke: rgb(var(--wui-blue-4)); background: rgb(var(--wui-blue-4)); }
+.hud-ring-seg[data-seg='3'], .hud-seg-dot[data-seg='3'] { stroke: rgb(var(--wui-heal)); background: rgb(var(--wui-heal)); }
+.hud-ring-seg[data-seg='4'], .hud-seg-dot[data-seg='4'] { stroke: rgb(var(--wui-danger)); background: rgb(var(--wui-danger)); }
+.hud-ring-seg[data-seg='5'], .hud-seg-dot[data-seg='5'] { stroke: var(--hud-fg-dim); background: var(--hud-fg-dim); }
+.hud-ring-num { fill: var(--hud-fg); font-family: var(--hud-mono); font-size: 17px; font-variant-numeric: tabular-nums; }
+.hud-ring-cap { fill: var(--hud-fg-dim); font-family: var(--hud-mono); font-size: 9px; letter-spacing: 0.08em; }
+.hud-seg-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+/* ── 搜索框（与 `.hud-select` 同族：同 token、同圆角；不引 `.app-*` 样式）── */
+.hud-search {
+  width: 100%;
+  margin: 4px 0 8px;
+  font-family: var(--hud-mono);
+  font-size: 12px;
+  background: var(--hud-muted);
+  color: var(--hud-fg);
+  border: 1px solid var(--hud-line-control);
+  border-radius: 2px;
+  padding: 5px 7px;
+}
+.hud-search:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: 1px; }
+.hud-search::placeholder { color: var(--hud-fg-dim); }
+/* 手上 0 件的那一行压暗（仍可读、按钮禁用） */
+.hud-table tr.is-dim td { opacity: 0.55; }
+
+/* ── 生产项悬停卡：左「输入」／右「输出」两列（**2026-09-30 船长令**）──
+   内容由全站悬停层（`ui/Tooltip.tsx`）渲染 ⇒ 这里只管两列排版与数字对齐。 */
+.hud-io { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-top: 4px; }
+.hud-io-col { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.hud-io-col + .hud-io-col { border-left: 1px dashed var(--hud-line-decor); padding-left: 10px; }
+.hud-io-row { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+.hud-io-num { font-family: var(--hud-mono); font-size: 11.5px; color: var(--hud-fg-dim); font-variant-numeric: tabular-nums; }
+
 /* ── Bullet chart（技能推荐的"效率/产能对比"图形）：区间条 ＋ 目标刻度 ── */
 .hud-bullet { position: relative; display: block; height: 14px; background: var(--hud-muted); border-radius: 2px; overflow: hidden; margin-top: 5px; }
 .hud-bullet .rng { position: absolute; top: 0; bottom: 0; background: rgba(143, 163, 191, 0.18); }
-.hud-bullet .val { position: absolute; top: 3px; bottom: 3px; left: 0; background: linear-gradient(90deg, var(--hud-accent), var(--hud-accent-soft)); }
-.hud-bullet .tgt { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--hud-fg); }
+/* ⚠ 与 `.hud-bar` 同一套动画口径（2026-09-30）：填充用 `transform: scaleX(var(--v)/100)`，
+   调用处只传 `--v` ⇒ 变化时是"涨"而不是"跳"。 */
+.hud-bullet .val {
+  position: absolute;
+  top: 3px; bottom: 3px; left: 0;
+  width: 100%;
+  transform-origin: left center;
+  transform: scaleX(calc(var(--v, 0) / 100));
+  transition: transform 0.35s ease;
+  background: linear-gradient(90deg, var(--hud-accent), var(--hud-accent-soft));
+}
+.hud-bullet .tgt { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--hud-fg); transition: left 0.35s ease; }
 
 /* ── Gauge（概览读数）── */
 .hud-gauge {
@@ -456,5 +531,8 @@ body.no-fx .hud-tank .wave-a, body.no-fx .hud-tank .wave-b, body.no-fx .hud-tank
  */
 @media (prefers-reduced-motion: reduce) {
   .hud-bar.scan::after, .hud-led { animation: none; }
+  /* 进度条与构成环：**退化为瞬时更新**（技能 Reduced Motion 口径：不做动画，但保留最终状态） */
+  .hud-bar > i, .hud-range-tick, .hud-ring-seg { transition: none; }
 }
 body.no-fx .hud-bar.scan::after, body.no-fx .hud-led { animation: none; }
+body.no-fx .hud-bar > i, body.no-fx .hud-range-tick, body.no-fx .hud-ring-seg { transition: none; }
