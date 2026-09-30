@@ -1,0 +1,257 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * **工业 HUD 页（调试）专用样式层**（**2026-09-30 船长令**）
+ *
+ * 船长原话：「**实验室界面采用统一界面…或者你利用skill进行设计也行**」＋「**和之前技能树一样，
+ * 先复制现有工业页面，然后修改后单独做一个新的工业页面入口放在导航栏，仅调试模式可见。
+ * 配色先做一套默认的深空配色。其他按你推荐来。我已经验收**」。
+ *
+ * 三条纪律：
+ * 1. **只作用于 `.hud` 根**（新页最外层挂 `hud` 类）⇒ 现有工业页与全仓 `.app-*` 一字不动；
+ * 2. **一套默认深空配色**（下方 `--hud-*` 令牌），不跟随三套主题（船长："先做一套默认的深空配色"）；
+ * 3. 视觉语汇 = 发丝线 ＋ 角标 ＋ 等宽数字 ＋ 扫掠进度条（**扫掠与闪烁尊重 `prefers-reduced-motion`**，
+ *    并由 `body.no-fx`（玩家「关特效」开关）一并关掉 —— 见文件末尾）。
+ *
+ * 设计来源：`ui-ux-pro-max`（MASTER = HUD / Sci-Fi FUI · 密度 8/10 · 动效 Subtle）；
+ * 草稿与令牌出处见工作文档 `docs/design/industry-console-design-20260930.md`。
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+.hud {
+  /* ── 深空配色（默认一套）── */
+  --hud-bg: #070a12;
+  --hud-bg-soft: #0b1019;
+  --hud-card: #0e1420;
+  --hud-muted: #131b29;
+  --hud-line: #1e2b40;
+  --hud-fg: #e6edf7;
+  --hud-fg-dim: #8fa3bf;
+  --hud-fg-faint: #5c718f;
+  --hud-accent: #4ea1ff;
+  --hud-accent-soft: #93c5fd;
+  --hud-ok: #3ddc97;
+  --hud-warn: #ffc857;
+  --hud-bad: #ff6b6b;
+  --hud-mono: 'Fira Code', ui-monospace, Consolas, 'Sarasa Mono SC', 'Microsoft YaHei Mono', monospace;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  background:
+    radial-gradient(1100px 620px at 78% -12%, rgba(78, 161, 255, 0.10), transparent 62%),
+    var(--hud-bg);
+  color: var(--hud-fg);
+  font-family: var(--hud-mono);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* ── 顶栏：标题 ＋ 页签 ＋ 读数 ── */
+.hud-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px 0;
+  border-bottom: 1px solid var(--hud-line);
+}
+.hud-title { letter-spacing: 0.2em; text-transform: uppercase; font-size: 14px; }
+.hud-title .cn { font-size: 16px; letter-spacing: 0.06em; }
+.hud-title .en { color: var(--hud-fg-dim); font-size: 11px; letter-spacing: 0.12em; }
+.hud-readouts { display: flex; gap: 18px; color: var(--hud-fg-dim); font-size: 11.5px; padding-bottom: 10px; }
+.hud-readouts b { color: var(--hud-fg); font-variant-numeric: tabular-nums; }
+.hud-tabs { display: flex; gap: 2px; }
+.hud-tab {
+  font-family: var(--hud-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--hud-fg-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 3px 3px 0 0;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+.hud-tab:hover { color: var(--hud-fg); }
+.hud-tab.is-on {
+  color: var(--hud-fg);
+  background: var(--hud-card);
+  border-color: var(--hud-line);
+  box-shadow: inset 0 2px 0 var(--hud-accent);
+}
+.hud-tab:focus-visible, .hud-btn:focus-visible, .hud-select:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: 2px; }
+
+/* ── 主体：两列网格（与草稿一致；窄屏回落单列）── */
+.hud-body { flex: 1; min-height: 0; overflow: auto; padding: 14px 18px 20px; }
+.hud-grid { display: grid; gap: 12px; align-items: start; }
+.hud-grid.two { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+.hud-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1080px) { .hud-grid.two, .hud-grid.three { grid-template-columns: 1fr; } }
+
+/* ── 面板：角标 ＋ 发丝描边 ── */
+.hud-panel {
+  position: relative;
+  background: linear-gradient(180deg, rgba(14, 20, 32, 0.97), rgba(14, 20, 32, 0.88));
+  border: 1px solid var(--hud-line);
+  border-radius: 4px;
+  padding: 13px 15px;
+}
+.hud-panel::before, .hud-panel::after {
+  content: '';
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--hud-accent);
+  opacity: 0.85;
+}
+.hud-panel::before { left: -1px; top: -1px; border-right: 0; border-bottom: 0; }
+.hud-panel::after { right: -1px; bottom: -1px; border-left: 0; border-top: 0; }
+.hud-panel > h3 {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--hud-fg-dim);
+}
+.hud-sub { color: var(--hud-fg-dim); font-size: 11.5px; }
+.hud-tiny { color: var(--hud-fg-faint); font-size: 11px; letter-spacing: 0.05em; }
+
+/* ── 表格：发丝线 ＋ 等宽右对齐数字 ── */
+.hud-table { width: 100%; border-collapse: collapse; }
+.hud-table th, .hud-table td {
+  text-align: left;
+  padding: 5px 6px;
+  border-bottom: 1px solid rgba(30, 43, 64, 0.7);
+  font-size: 12px;
+}
+.hud-table th {
+  color: var(--hud-fg-dim);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.hud-table td.n, .hud-table th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.hud-table tr:last-child td { border-bottom: 0; }
+
+/* ── 卡片（配方 / 工位 / 作业）── */
+.hud-card {
+  border: 1px solid var(--hud-line);
+  background: rgba(19, 27, 41, 0.55);
+  border-radius: 3px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.hud-card:last-child { margin-bottom: 0; }
+.hud-card.is-sel { border-color: var(--hud-accent); box-shadow: 0 0 0 1px rgba(78, 161, 255, 0.32); }
+.hud-card.muted { opacity: 0.62; }
+.hud-card .nm { font-size: 14px; letter-spacing: 0.03em; }
+.hud-row { display: flex; align-items: center; gap: 10px; }
+.hud-row.between { justify-content: space-between; }
+.hud-row.wrap { flex-wrap: wrap; }
+
+/* ── chip ── */
+.hud-chip {
+  border: 1px solid var(--hud-line);
+  color: var(--hud-fg-dim);
+  border-radius: 2px;
+  padding: 2px 7px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.hud-chip.is-acc { border-color: var(--hud-accent); color: var(--hud-accent-soft); }
+.hud-chip.is-ok { border-color: var(--hud-ok); color: var(--hud-ok); }
+.hud-chip.is-warn { border-color: var(--hud-warn); color: var(--hud-warn); }
+.hud-chip.is-bad { border-color: var(--hud-bad); color: var(--hud-bad); }
+
+/* ── 进度条 / 扫掠 ── */
+.hud-bar { position: relative; display: block; height: 6px; background: var(--hud-muted); border-radius: 2px; overflow: hidden; }
+.hud-bar.lg { height: 9px; }
+.hud-bar > i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--hud-accent), var(--hud-accent-soft)); }
+.hud-bar.is-ok > i { background: linear-gradient(90deg, var(--hud-ok), #a7f3d0); }
+.hud-bar.is-warn > i { background: linear-gradient(90deg, var(--hud-warn), #fde68a); }
+.hud-bar.is-bad > i { background: linear-gradient(90deg, var(--hud-bad), #fca5a5); }
+.hud-bar.scan { position: relative; }
+.hud-bar.scan::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; height: 40%;
+  background: linear-gradient(180deg, transparent, rgba(78, 161, 255, 0.16), transparent);
+  animation: hud-scan 4s linear infinite;
+}
+@keyframes hud-scan { from { top: -45%; } to { top: 110%; } }
+
+/* ── Bullet chart（技能推荐的"效率/产能对比"图形）：区间条 ＋ 目标刻度 ── */
+.hud-bullet { position: relative; display: block; height: 14px; background: var(--hud-muted); border-radius: 2px; overflow: hidden; margin-top: 5px; }
+.hud-bullet .rng { position: absolute; top: 0; bottom: 0; background: rgba(143, 163, 191, 0.18); }
+.hud-bullet .val { position: absolute; top: 3px; bottom: 3px; left: 0; background: linear-gradient(90deg, var(--hud-accent), var(--hud-accent-soft)); }
+.hud-bullet .tgt { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--hud-fg); }
+
+/* ── Gauge（概览读数）── */
+.hud-gauge {
+  width: 96px; height: 96px; border-radius: 50%;
+  background: conic-gradient(var(--hud-accent) calc(var(--p) * 1%), rgba(143, 163, 191, 0.14) 0);
+  display: grid; place-items: center; position: relative;
+}
+.hud-gauge::after { content: ''; position: absolute; inset: 9px; border-radius: 50%; background: var(--hud-card); }
+.hud-gauge span { position: relative; font-size: 16px; font-variant-numeric: tabular-nums; }
+
+/* ── 键值行 ── */
+.hud-kv { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; color: var(--hud-fg-dim); font-size: 12px; border-bottom: 1px dashed rgba(30, 43, 64, 0.85); }
+.hud-kv:last-child { border-bottom: 0; }
+.hud-kv b { color: var(--hud-fg); font-variant-numeric: tabular-nums; }
+
+/* ── 按钮 / 下拉（与 .app-btn 视觉无关，避免误用既有观感）── */
+.hud-btn {
+  font-family: var(--hud-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  background: transparent;
+  color: var(--hud-fg);
+  border: 1px solid var(--hud-line);
+  border-radius: 2px;
+  padding: 6px 12px;
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+.hud-btn:hover { border-color: var(--hud-accent); color: var(--hud-accent-soft); }
+.hud-btn.is-primary { background: var(--hud-accent); border-color: var(--hud-accent); color: #04121f; font-weight: 600; }
+.hud-btn.is-primary:hover { color: #04121f; }
+.hud-btn:disabled { opacity: 0.42; cursor: not-allowed; border-color: var(--hud-line); color: var(--hud-fg-dim); }
+.hud-select {
+  font-family: var(--hud-mono);
+  background: var(--hud-muted);
+  color: var(--hud-fg);
+  border: 1px solid var(--hud-line);
+  border-radius: 2px;
+  padding: 5px 7px;
+}
+
+/* ── 走马灯读数 ── */
+.hud-ticker {
+  margin-top: 10px;
+  border-top: 1px solid var(--hud-line);
+  padding-top: 8px;
+  color: var(--hud-fg-dim);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+/* ── 闪烁状态灯（尊重 reduced-motion 与"关特效"）── */
+.hud-led { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--hud-ok); margin-right: 7px; animation: hud-blink 2.4s infinite; }
+@keyframes hud-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/**
+ * **关特效**（船长「其他按你推荐来」⇒ 我按技能的性能提示给的两条出口）：
+ * ① 系统级 `prefers-reduced-motion`；② 玩家侧 `body.no-fx`（与既有"关特效"开关同源；
+ * 没有该开关时这条恒不生效，等于零开销）。两处一起把扫掠/闪烁停掉，并保留最终状态。
+ */
+@media (prefers-reduced-motion: reduce) {
+  .hud-bar.scan::after, .hud-led { animation: none; }
+}
+body.no-fx .hud-bar.scan::after, body.no-fx .hud-led { animation: none; }

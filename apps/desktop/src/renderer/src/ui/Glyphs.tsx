@@ -1118,6 +1118,68 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M9.4 13.2h5.2v1.4H9.4z" />
     </g>
   ),
+  /* ── **工业 HUD 页专用图标**（**2026-09-30 船长令**：「现在文字太多了，适量的图标也不能拉下」）──
+     与全表同一套线稿语言（圆环徽 ＋ 细描边 ＋ currentColor）：四座设施 ＋ 四个动作/读数。 */
+  'ico-furnace': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M8.4 15.6V9.2h7.2v6.4z" />
+      <path d="M10.2 15.6v-2.2a1.8 1.8 0 0 1 3.6 0v2.2" />
+      <path d="M12 6.6V4.6M9.6 7.4 8.4 5.9M14.4 7.4l1.2-1.5" />
+    </g>
+  ),
+  'ico-assembler': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M7.6 17.4v-3.2l3.4-1.6" />
+      <path d="M11 12.6l3.4-2.2 2.6 1.6" />
+      <circle cx="14.6" cy="9.4" r="1.6" />
+      <path d="M16.2 9.4h2.2" />
+    </g>
+  ),
+  'ico-drydock': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M5.6 10.2h12.8" />
+      <path d="M7.4 10.2v6.4M16.6 10.2v6.4" />
+      <path d="M9.4 15.4h5.2l-1 1.6h-3.2z" />
+      <path d="M12 7.2v3" />
+    </g>
+  ),
+  'ico-lab': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M10.4 6.4v4.2L8 15.6a1.2 1.2 0 0 0 1 1.8h6a1.2 1.2 0 0 0 1-1.8l-2.4-5V6.4" />
+      <path d="M9.8 6.4h4.4" />
+      <path d="M9.2 13.6h5.6" />
+    </g>
+  ),
+  'ico-play': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M10.2 8.6l5 3.4-5 3.4z" />
+    </g>
+  ),
+  'ico-stop': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <rect x="9.4" y="9.4" width="5.2" height="5.2" rx="0.8" />
+    </g>
+  ),
+  'ico-eff': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M7.6 15.4a5.6 5.6 0 0 1 8.8 0" />
+      <path d="M12 13.2l3-3.4" />
+      <circle cx="12" cy="13.6" r="0.9" />
+    </g>
+  ),
+  'ico-feed': (
+    <g>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M8.4 8.4h7.2l-2.6 3.4v4.2l-2 1.6v-5.8z" />
+    </g>
+  ),
   fallback: (
     <g>
       <circle cx="12" cy="12" r="8.4" />

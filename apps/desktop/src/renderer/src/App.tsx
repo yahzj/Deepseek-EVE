@@ -50,6 +50,7 @@ import { ShipPage, type ShipTab } from './pages/ShipPage'
 import { ItemsPage } from './pages/ItemsPage'
 import { MarketPage } from './pages/MarketPage'
 import { IndustryPage } from './pages/IndustryPage'
+import { IndustryHudPage } from './pages/IndustryHudPage'
 import { SkillsTreePage } from './pages/SkillsTreePage'
 import { MapPage, MAP_TABS, TAB_UNLOCK_KEY } from './pages/MapPage'
 import { CommsPage } from './pages/CommsPage'
@@ -105,7 +106,14 @@ const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
  * 旧技能目录 `pages/SkillsPage.tsx` 退役删除（它的训练队列面板与说明高亮搬进 `pages/skillShared.tsx`）。
  * 本数组保留为空壳，给以后"临时调试页"用（现在没有任何项 ⇒ 调试模式下导航与正式完全一致）。
  */
-const DEBUG_NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = []
+const DEBUG_NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
+  /**
+   * **工业 HUD 页**（**2026-09-30 船长令**：「和之前技能树一样，先复制现有工业页面，然后修改后
+   * 单独做一个新的工业页面入口放在导航栏，仅调试模式可见」）——与当年技能科技树同一条路：
+   * 先进 `DEBUG_NAV_ITEMS`（只有调试模式看得见），验收通过再决定要不要转正/替换。
+   */
+  { key: 'industryHud', label: 'ui.hud.101', icon: 'nav-industry' },
+]
 
 export type PageKey =
   | 'ship'
@@ -113,6 +121,7 @@ export type PageKey =
   | 'items'
   | 'market'
   | 'industry'
+  | 'industryHud'
   | 'skills'
   | 'map'
   | 'task'
@@ -120,7 +129,7 @@ export type PageKey =
   | 'comms'
 
 /** 已转换"一级页不滚"的页面（每完成一页在此登记；见 docs/design/page-scroll-layout.md 实施清单） */
-const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'skills', 'items', 'task', 'achieve', 'comms'])
+const PAGE_NO_SCROLL = new Set<string>(['ship', 'fit', 'market', 'map', 'industry', 'industryHud', 'skills', 'items', 'task', 'achieve', 'comms'])
 
 /** 游戏内时钟（HH:MM，日志前缀用） */
 function gameClock(gameMs: number): string {
@@ -1880,6 +1889,16 @@ async function applyLayoutAndReload(): Promise<void> {
             focusKey={mktFocus?.key ?? null}
             focusSeq={mktFocus?.seq ?? 0}
             onFocusUsed={() => setMktFocus(null)} // 一次性聚焦：应用后即清，避免每次进市场都带出上次的物品
+            />
+            ) : null}
+            {page === 'industryHud' ? (
+            /* **工业 HUD 页（调试）**（2026-09-30 船长令）：另起一页，现有工业页一字不动 */
+            <IndustryHudPage
+            {...pageProps}
+            onGotoMarket={(goodKey) => {
+            setMktFocus((p) => ({ key: goodKey, seq: (p?.seq ?? 0) + 1 }))
+            changePage('market')
+            }}
             />
             ) : null}
             {page === 'industry' ? (
