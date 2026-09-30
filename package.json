@@ -21,6 +21,7 @@
     "balance": "tsx tools/balance-check.ts",
     "balance:chains": "tsx tools/chain-balance.ts",
     "balance:mine-refine": "tsx tools/mine-refine-balance.ts",
+    "mining:curve": "tsx tools/mining-curve.ts",
     "salvage:econ": "tsx tools/salvage-econ.ts",
     "content:check": "tsx tools/content-check.ts",
     "arch:guard": "tsx tools/arch-guard.ts",
