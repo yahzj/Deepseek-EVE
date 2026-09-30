@@ -173,3 +173,65 @@ describe('金额显示（信用点 · 位数分级）', () => {
     }
   })
 })
+
+/**
+ * **英文侧金额**（**2026-09-29 加** · 英文界面残留中文清理批 0）。
+ *
+ * 口径出处 = `docs/glossary-en.md` §三：「信用点数额 `476,945,470 credits`（=1 时写 `1 credit`）·
+ * 千分位用 `,`（`en-US`）· **不写 ISK**」。
+ *
+ * ⚠ 本批最容易写错的一处：**英文的量级词不是"把万/亿换个字"** —— `1 万 = 10K`、`1 亿 = 100M`，
+ * 阈值与数字都得换。下面专门有一条钉住"两套阈值各自的边界"，防的就是"只换字不换数"。
+ */
+describe('金额显示 · 英文侧（credits · M/B · 单复数）', () => {
+  it('**单位词**：英文 `credit` / `credits`（=1 单数），中文恒「信用点」', () => {
+    expect(moneyExactText(1, 'en')).toBe('1 credit')
+    expect(moneyExactText(0, 'en')).toBe('0 credits')
+    expect(moneyExactText(2, 'en')).toBe('2 credits')
+    expect(moneyText(1, 'en')).toBe('1 credit')
+    expect(moneyText(0)).toBe('0 信用点') // 缺省仍是中文（既有调用零变化）
+  })
+
+  it('**不写 ISK**（船长 2026-09-19 裁决）：英文侧任何档位都不许出现 `ISK`', () => {
+    for (const v of [0, 1, 1_234, 582_902, 476_945_470, 9_876_543_210_000]) {
+      for (const s of [moneyText(v, 'en'), moneyExactText(v, 'en'), ...moneyFitCandidates(v, 'en')]) {
+        expect(s, `${v} 的英文写法不该出现 ISK`).not.toContain('ISK')
+        expect(s, `${v} 的英文写法不该出现中文量级词`).not.toMatch(/[万亿]/)
+        expect(s, `${v} 的英文写法不该出现「信用点」`).not.toContain('信用点')
+      }
+    }
+  })
+
+  it('**M/B 档的阈值与数字**（两套数各自独立，不是"换字"）', () => {
+    // 1 万（中文的「万」档起点）在英文里还不够 M 档：照旧千分位全写
+    expect(moneyAmount(10_000, 'en')).toBe('10,000')
+    // 1M 起走 M 档（1 位小数）
+    expect(moneyAmount(1_000_000, 'en')).toBe('1 M')
+    expect(moneyAmount(476_945_470, 'en')).toBe('476.9 M')
+    // 1B 起走 B 档（2 位小数）
+    expect(moneyAmount(1_000_000_000, 'en')).toBe('1 B')
+    expect(moneyAmount(1_234_567_890, 'en')).toBe('1.23 B')
+    // 负数按绝对值同序
+    expect(moneyAmount(-2_500_000, 'en')).toBe('-2.5 M')
+  })
+
+  it('**中文侧逐字未变**（缺省参数就是老行为，本批不动中文）', () => {
+    expect(moneyAmount(10_000)).toBe('1 万')
+    expect(moneyAmount(100_000_000)).toBe('1 亿')
+    expect(moneyText(476_945_470)).toBe('4.77 亿 信用点')
+    expect(moneyFitCandidates(1234)).toEqual(['1,234 信用点', '1,234'])
+  })
+
+  it('**候选序列**：英文侧同样"全额优先"，缩写档按字数从长到短、且无重复', () => {
+    const c = moneyFitCandidates(1_234_567_890, 'en')
+    expect(c[0]).toBe('1,234,567,890 credits') // 全额带单位永远第一
+    expect(c[1]).toBe('1,234,567,890') // 再去单位
+    expect(c[c.length - 1]).toBe('1 B') // 最短档仍带量级
+    expect(new Set(c).size, '无重复').toBe(c.length)
+    // 长度单调不增（调用方"从头挑第一个装得下的"才等于"挑最长的那个"）
+    const scaled = c.slice(2)
+    for (let i = 1; i < scaled.length; i++) {
+      expect(scaled[i - 1]!.length, `${scaled[i - 1]} 不该比 ${scaled[i]} 短`).toBeGreaterThanOrEqual(scaled[i]!.length)
+    }
+  })
+})

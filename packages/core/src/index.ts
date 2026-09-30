@@ -1244,8 +1244,13 @@ export { formatDurationShort } from './time'
 
 // **金额显示单点**（2026-09-13 船长：「更换金钱单位为信用点」＋「希望考虑到钱位数过多时的处理」）：
 // 单位名 / 万·亿分级 / 精确值提示 —— 玩家可见金额文案一律走这里（引擎内部字段仍叫 `isk`）。
+// ⚠ 2026-09-29 起全部**带可选 `lang`**（缺省 `'zh'` ⇒ 既有调用零变化；`'en'` ⇒ `credits` ＋ M/B 缩写）。
 export {
+  MONEY_B_DECIMALS,
+  MONEY_B_THRESHOLD,
   MONEY_LARGE_DECIMALS,
+  MONEY_M_DECIMALS,
+  MONEY_M_THRESHOLD,
   MONEY_UNIT,
   MONEY_WAN_DECIMALS,
   MONEY_WAN_THRESHOLD,
@@ -1257,6 +1262,7 @@ export {
   moneyFitCandidates,
   moneyFormatCandidates,
   moneyText,
+  type MoneyLang,
 } from './money'
 
 export {

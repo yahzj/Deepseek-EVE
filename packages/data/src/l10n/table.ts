@@ -4569,6 +4569,16 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ShipPage.198": { zh: "解锁", en: "Unlock" },
   "ui.ShipPage.199": { zh: "；站内产业另获「工业自动化」扩容 {p1} 枚工业专用工位（仅炉/线可用——工业占用先抵这 {p1} 枚，不占副船名额；超出扩容的部分才占用共用上限）", en: "; in-station industry also gets {p1} industry-only work slots from Industrial Automation (units and lines only — industry use draws on those {p1} slots first and does not take auxiliary slots; only what exceeds the expansion eats into the shared cap)" },
   "ui.ShipPage.200": { zh: "购买失败", en: "Purchase failed" },
+  /**
+   * 出售确认里那句「**预计到手约 {p1}（税后以实际成交计）。**」（**2026-09-29 加** ·
+   * 英文界面残留中文清理批 0）——原先是**源码里的中文字面量**（`预计到手约 ${isk(quote.buy)} 信用点…`），
+   * 英文界面下整句中文 ⇒ 提 id。`{p1}` = **已带单位的金额串**（调用方用 `fmtCredits` 给，
+   * 于是英文侧是「1,234 credits」、中文侧「1,234 信用点」，不必再拼单位词）。
+   */
+  "ui.ShipPage.201": {
+    zh: " 预计到手约 {p1}（税后以实际成交计）。",
+    en: " Roughly {p1} net (final amount depends on the actual fill, after tax).",
+  },
   "ui.SkillsPage.001": { zh: "训练队列", en: "Training queue" },
   "ui.SkillsPage.002": { zh: "技能与采矿/远征/制造并行 · 取消训练保留本级进度，重排同一级自动续接", en: "Skills run alongside mining, expeditions and manufacturing · cancelling keeps this level's progress, and requeueing the same level resumes it" },
   "ui.SkillsPage.004": { zh: "搜索技能…", en: "Search skills…" },

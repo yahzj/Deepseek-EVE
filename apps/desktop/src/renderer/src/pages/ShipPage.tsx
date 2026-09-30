@@ -62,6 +62,8 @@ import {
 import type { PageProps } from './common'
 import { isk } from './common'
 import { tr, cmdText } from '../i18n/locale'
+/** 金额 + 单位（按语言；2026-09-29 批 0：出售确认那句原先是中文字面量拼 `isk()`） */
+import { fmtCredits } from '../i18n/fmt'
 import { shipRoleText } from '../ui/labelsText'
 
 // ── 舰队卡片左侧舰影（2026-09-10 船长：每艘船的舰船形象放在对应卡片最左侧展示；
@@ -967,7 +969,8 @@ export function ShipPage({
                             <div className="app-sell-confirm-title">{tr("ui.ShipPage.053")}{def.name}{tr("ui.ShipPage.054")}</div>
                             <div className="app-dim app-sell-confirm-note">
                               {tr("ui.ShipPage.055")}
-                              {quote?.buy !== undefined ? ` 预计到手约 ${isk(quote.buy)} 信用点（税后以实际成交计）。` : ''}
+                              {/* ⚠ 金额与单位都按语言（`fmtCredits` 出口，2026-09-29 批 0）：原来是中文字面量拼 `isk()` */}
+                              {quote?.buy !== undefined ? tr("ui.ShipPage.201", { p1: fmtCredits(quote.buy) }) : ''}
                             </div>
                             <div className="app-sell-confirm-btns">
                               <button className="app-btn is-small is-warn" onClick={() => doSellStored(def.id)}>

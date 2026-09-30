@@ -21,11 +21,40 @@ export const MONEY_YI_THRESHOLD = 100_000_000
 export const MONEY_WAN_DECIMALS = 1
 /** 「亿」档保留的小数位 */
 export const MONEY_LARGE_DECIMALS = 2
+/**
+ * **英文侧的数量级档位**（**2026-09-29 加** · 英文界面残留中文清理批 0）。
+ *
+ * 为什么必须单列一套：中文的量级词是「万 / 亿」，直接用 K/M/B 换掉**数字本身也得换**
+ * （1 万 = 10K，1 亿 = 100M），不是替换两个字那么简单 ⇒ 阈值与小数位各按各的：
+ * - `M` 档起于 1,000,000（＝中文的「100 万」），保留 1 位小数（`476.9M`）；
+ * - `B` 档起于 1,000,000,000（＝中文的「10 亿」），保留 2 位小数（`1.23B`）。
+ * ⚠ 这里是**英文的数量级缩写**，不是"把万换成 M"——两者数值不同，写错就是差 10000 倍。
+ */
+export const MONEY_M_THRESHOLD = 1_000_000
+export const MONEY_B_THRESHOLD = 1_000_000_000
+export const MONEY_M_DECIMALS = 1
+export const MONEY_B_DECIMALS = 2
 
 /** 单位名（玩家可见文案的唯一出处；要改单位只改这里） */
 export const MONEY_UNIT = '信用点'
 
-/** 千分位（全精度；不带单位） */
+/**
+ * **金额文案的语言**（**2026-09-29 加**）：
+ * - `'zh'`（缺省）＝ 单位「信用点」＋ 万/亿缩写 —— **既有调用零变化**；
+ * - `'en'` ＝ 单位 `credit / credits`（**单复数有别**）＋ `M / B` 缩写。
+ *
+ * 口径出处 = `docs/glossary-en.md` §三：「信用点数额 `476,945,470 credits`（=1 时写 `1 credit`）·
+ * 千分位用 `,`（en-US）· **不写 ISK**」。
+ */
+export type MoneyLang = 'zh' | 'en'
+
+/** 该语言下的单位词（英文单复数有别：`1 credit` / `2 credits`） */
+function unitWordOf(lang: MoneyLang, amount: number): string {
+  if (lang === 'en') return Math.abs(amount) === 1 ? 'credit' : 'credits'
+  return MONEY_UNIT
+}
+
+/** 千分位（全精度；不带单位）。⚠ 中英的千分位与小数点**逐位同值** ⇒ 语言只影响单位词，不影响本函数 */
 export function moneyExact(amount: number): string {
   if (!Number.isFinite(amount)) return '0'
   return Math.round(amount).toLocaleString('zh-CN')
@@ -49,33 +78,41 @@ function formatScaled(scaled: number, decimals: number): string {
 
 /**
  * **金额主体**（不含单位）：分级显示，便于一眼读数。
- * - `< 1 万`：千分位全写（`1,234`）
- * - `≥ 1 万`：`1.2 万`（1 位小数）
- * - `≥ 1 亿`：`1.23 亿`（2 位小数）
+ * - `< 1 万`（英文 `< 1M`）：千分位全写（`1,234`）
+ * - `≥ 1 万` / `≥ 1M`：`1.2 万` / `1.2M`（1 位小数）
+ * - `≥ 1 亿` / `≥ 1B`：`1.23 亿` / `1.23B`（2 位小数）
  * - 负数按其绝对值分级（`-1.2 万`）
+ *
+ * @param lang `'zh'`（缺省）＝ 万/亿；`'en'` ＝ M/B（**阈值与数字都不同**，见 {@link MoneyLang}）
  */
-export function moneyAmount(amount: number): string {
+export function moneyAmount(amount: number, lang: MoneyLang = 'zh'): string {
   if (!Number.isFinite(amount)) return '0'
   const neg = amount < 0
   const abs = Math.abs(amount)
   const sign = neg ? '-' : ''
-  if (abs < MONEY_WAN_THRESHOLD) return `${sign}${Math.round(abs).toLocaleString('zh-CN')}`
-  if (abs < MONEY_YI_THRESHOLD) {
-    return `${sign}${formatScaled(abs / MONEY_WAN_THRESHOLD, MONEY_WAN_DECIMALS)} 万`
-  }
-  return `${sign}${formatScaled(abs / MONEY_YI_THRESHOLD, MONEY_LARGE_DECIMALS)} 亿`
+  const mid = lang === 'en' ? MONEY_M_THRESHOLD : MONEY_WAN_THRESHOLD
+  const top = lang === 'en' ? MONEY_B_THRESHOLD : MONEY_YI_THRESHOLD
+  const midWord = lang === 'en' ? 'M' : '万'
+  const topWord = lang === 'en' ? 'B' : '亿'
+  const midDec = lang === 'en' ? MONEY_M_DECIMALS : MONEY_WAN_DECIMALS
+  const topDec = lang === 'en' ? MONEY_B_DECIMALS : MONEY_LARGE_DECIMALS
+  if (abs < mid) return `${sign}${Math.round(abs).toLocaleString('zh-CN')}`
+  if (abs < top) return `${sign}${formatScaled(abs / mid, midDec)} ${midWord}`
+  return `${sign}${formatScaled(abs / top, topDec)} ${topWord}`
 }
 
 /**
  * 按指定**小数位**格式化一个"缩放后"的显示档（供 {@link moneyFormatCandidates} 逐级降级用）。
- * ⚠ 与 {@link moneyAmount} 的区别：**能给出 0 位小数**的版本（`1 亿` / `12 亿`）——
+ * ⚠ 与 {@link moneyAmount} 的区别：**能给出 0 位小数**的版本（`1 亿` / `1B`）——
  * 固定档位不需要它，但"尽可能长地显示"需要（少一位小数往往就能多装下一位有效数字）。
+ *
+ * @param div 缩放除数（中文 = 万/亿阈值，英文 = M/B 阈值 —— **两套数不一样**，由调用方给）
+ * @param word 量级词（`万`/`亿` 或 `M`/`B`）
  */
-function scaledAt(amount: number, unit: '万' | '亿', decimals: number): string {
+function scaledAt(amount: number, div: number, word: string, decimals: number): string {
   const neg = amount < 0
   const abs = Math.abs(amount)
-  const div = unit === '万' ? MONEY_WAN_THRESHOLD : MONEY_YI_THRESHOLD
-  return `${neg ? '-' : ''}${formatScaled(abs / div, decimals)} ${unit}`
+  return `${neg ? '-' : ''}${formatScaled(abs / div, decimals)} ${word}`
 }
 
 /**
@@ -92,22 +129,29 @@ function scaledAt(amount: number, unit: '万' | '亿', decimals: number): string
  * `582,902` 会降到 `0 亿` —— **那是撒谎**（看着像没钱）。序列到此为止；真遇到"连最短档都装不下"
  * 的极端宽度，交给容器的 `text-overflow: ellipsis` 截断（**宁可截断，也不显示一个错的数**）。
  *
- * @param withUnit 是否带「信用点」后缀（窄容器里通常先试带单位、装不下再试不带）
+ * @param withUnit 是否带单位后缀（窄容器里通常先试带单位、装不下再试不带）
+ * @param lang `'zh'`（缺省）＝ 万/亿；`'en'` ＝ M/B
  */
-export function moneyFormatCandidates(amount: number, withUnit = false): string[] {
+export function moneyFormatCandidates(amount: number, withUnit = false, lang: MoneyLang = 'zh'): string[] {
   const safe = Number.isFinite(amount) ? amount : 0
   const abs = Math.abs(safe)
-  const unit = withUnit ? ` ${MONEY_UNIT}` : ''
+  const unit = withUnit ? ` ${unitWordOf(lang, safe)}` : ''
+  const mid = lang === 'en' ? MONEY_M_THRESHOLD : MONEY_WAN_THRESHOLD
+  const top = lang === 'en' ? MONEY_B_THRESHOLD : MONEY_YI_THRESHOLD
+  const midWord = lang === 'en' ? 'M' : '万'
+  const topWord = lang === 'en' ? 'B' : '亿'
+  const midDec = lang === 'en' ? MONEY_M_DECIMALS : MONEY_WAN_DECIMALS
+  const topDec = lang === 'en' ? MONEY_B_DECIMALS : MONEY_LARGE_DECIMALS
   // ① 全额（永远排第一：**能显全额就显全额**）
   const full = `${moneyExact(safe)}${unit}`
   const scaled: string[] = []
-  if (abs >= MONEY_YI_THRESHOLD) {
-    for (const d of [MONEY_LARGE_DECIMALS, 1, 0]) scaled.push(`${scaledAt(safe, '亿', d)}${unit}`)
+  if (abs >= top) {
+    for (const d of [topDec, 1, 0]) scaled.push(`${scaledAt(safe, top, topWord, d)}${unit}`)
   }
-  if (abs >= MONEY_WAN_THRESHOLD) {
-    for (const d of [MONEY_WAN_DECIMALS, 0]) scaled.push(`${scaledAt(safe, '万', d)}${unit}`)
+  if (abs >= mid) {
+    for (const d of [midDec, 0]) scaled.push(`${scaledAt(safe, mid, midWord, d)}${unit}`)
   }
-  // ② 缩写档：去重后按字数**从长到短**（同长保留原序，亿在前——量级更大、读起来更"整"）
+  // ② 缩写档：去重后按字数**从长到短**（同长保留原序，高档在前——量级更大、读起来更"整"）
   const uniq = [...new Set(scaled)].filter((s) => s !== full)
   uniq.sort((a, b) => b.length - a.length)
   return [full, ...uniq]
@@ -127,33 +171,34 @@ export function moneyFormatCandidates(amount: number, withUnit = false): string[
  * 多出来的 4 位有效数字比重复一遍单位名值钱。**若要改成"单位优先"，只需把两档对调。**
  *
  * @param amount 金额（`NaN`/`Infinity` 走 0 兜底）
+ * @param lang `'zh'`（缺省）＝ 万/亿 ＋「信用点」；`'en'` ＝ M/B ＋ `credits`
  */
-export function moneyFitCandidates(amount: number): string[] {
-  const withUnit = moneyFormatCandidates(amount, true)
-  const noUnit = moneyFormatCandidates(amount, false)
+export function moneyFitCandidates(amount: number, lang: MoneyLang = 'zh'): string[] {
+  const withUnit = moneyFormatCandidates(amount, true, lang)
+  const noUnit = moneyFormatCandidates(amount, false, lang)
   // 全额带单位 → 全额不带 → 缩写带单位 → 缩写不带（各自已是"从长到短"）
   const out = [withUnit[0]!, noUnit[0]!, ...withUnit.slice(1), ...noUnit.slice(1)]
   return [...new Set(out)] // 去重：金额小时两档可能完全重合
 }
 
-/** **金额 + 单位**（玩家可见文案的统一写法；例：`1.2 万 信用点`） */
-export function moneyText(amount: number): string {
-  return `${moneyAmount(amount)} ${MONEY_UNIT}`
+/** **金额 + 单位**（玩家可见文案的统一写法；例：`1.2 万 信用点` / `1.2M credits`） */
+export function moneyText(amount: number, lang: MoneyLang = 'zh'): string {
+  return `${moneyAmount(amount, lang)} ${unitWordOf(lang, amount)}`
 }
 
 /**
- * **精确值提示**（悬停用；例：`1,234,567 信用点`）——分级显示时把全精度值挂进 `title`，
+ * **精确值提示**（悬停用；例：`1,234,567 信用点` / `1,234,567 credits`）——分级显示时把全精度值挂进 `title`，
  * 保证"看得快"与"查得到"同时成立。
  */
-export function moneyExactText(amount: number): string {
-  return `${moneyExact(amount)} ${MONEY_UNIT}`
+export function moneyExactText(amount: number, lang: MoneyLang = 'zh'): string {
+  return `${moneyExact(amount)} ${unitWordOf(lang, amount)}`
 }
 
 /**
  * **净额写法**（涨跌/收支）：正数带 `+`、负数带 `−`（U+2212，与全站既有写法一致）。
- * 分级口径与 {@link moneyAmount} 同源。
+ * 分级口径与 {@link moneyAmount} 同源（含语言）。
  */
-export function moneyDelta(amount: number): string {
+export function moneyDelta(amount: number, lang: MoneyLang = 'zh'): string {
   const sign = amount >= 0 ? '+' : '−'
-  return `${sign}${moneyAmount(Math.abs(amount))}`
+  return `${sign}${moneyAmount(Math.abs(amount), lang)}`
 }

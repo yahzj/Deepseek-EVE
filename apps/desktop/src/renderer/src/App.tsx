@@ -2123,7 +2123,7 @@ async function applyLayoutAndReload(): Promise<void> {
             <div className="app-report-line">
               {tr("ui.App.088")}
               <b className={offlineReport.iskDelta >= 0 ? 'app-trend-up' : 'app-trend-down'}>
-                {moneyDelta(offlineReport.iskDelta)}
+                {moneyDelta(offlineReport.iskDelta, locale === 'en' ? 'en' : 'zh')}
               </b>{' '}
               {tr("ui.FirstTasks.003")}
               {/**
