@@ -3695,7 +3695,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.MapPage.007": { zh: "扫描虫洞", en: "Scan wormhole" },
   "ui.MapPage.008": { zh: "危险（安全优先）", en: "Dangerous (safety first)" },
   "ui.MapPage.009": { zh: "星系名称", en: "System name" },
-  "ui.MapPage.010": { zh: "原矿价值最高", en: "Highest ore value" },
+  "ui.MapPage.010": { zh: "行情产值最高", en: "Highest market value" },
   "ui.MapPage.011": { zh: "矿带名称", en: "Belt name" },
   "ui.MapPage.012": { zh: "残骸密度最高", en: "Highest wreck density" },
   "ui.MapPage.013": { zh: "本地矿带开采", en: "Local belt mining" },

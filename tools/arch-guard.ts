@@ -111,6 +111,12 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '存档清洗白名单（新增随档字段必须两处落笔）', symbol: 'normalizeState', file: 'packages/core/src/save.ts', exported: false },
   { concept: '活动栏「停止/取消」按钮文案（两套外壳共用）', symbol: 'stopLabel', file: 'apps/desktop/src/renderer/src/panels/activityStopLabel.ts', exported: true },
   { concept: '活动栏行「点击去哪」的跳转表（两套外壳共用）', symbol: 'goFor', file: 'apps/desktop/src/renderer/src/ui/activityGo.ts', exported: true },
+  {
+    concept: '矿带每小时产出与行情产值（排序与矿带卡面共用 · 2026-09-30 船长令「原矿价值最高的排序已经落后」）',
+    symbol: 'beltYieldRows',
+    file: 'packages/core/src/mining.ts',
+    exported: true,
+  },
 ]
 
 /** F4：渲染层一级页/面板不许自己建仿真上下文（那是 `engine.ts` 的活） */
