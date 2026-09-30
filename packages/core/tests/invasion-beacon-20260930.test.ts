@@ -14,10 +14,13 @@ import { weekendCoreCandidates } from '../src/weekendEvent'
 
 const ctx = buildSimContext()
 
-/** 造一个"有可入侵目标"的档：把全图都标成已探索（`weekendCoreCandidates` = 已探索 且 非高安 且 无已建成副站） */
+/** 造一个"有可入侵目标"的档：把全图都标成已探索（`weekendCoreCandidates` = 已探索 且 非高安 且 无已建成副站）
+ *  ⚠ **2026-09-30 船长令**「信号发射器不可以在有空间站的地方使用」⇒ 还要**离开基地**
+ *  （`awayGalaxy` 非空 = 不在母港/已建成副站），否则一律被 `core.consumable.010` 拦下。 */
 function readyState() {
   const s = createInitialState({ nowWallMs: 0, seed: 41 })
   s.exploredGalaxies = [...ctx.galaxies.keys()]
+  s.awayGalaxy = [...ctx.galaxies.keys()][0]!
   addWare(s, INVASION_BEACON_ITEM_ID, 1)
   return s
 }
@@ -76,11 +79,23 @@ describe('信号发射器 · 使用与拒绝', () => {
     expect(consumableStockOf(a, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
 
     const b = createInitialState({ nowWallMs: 0, seed: 41 })
+    b.awayGalaxy = [...ctx.galaxies.keys()][0]! // 先离开基地（否则先被位置限制 core.consumable.010 拦）
     addWare(b, INVASION_BEACON_ITEM_ID, 1)
     const none = useInvasionBeacon(b, ctx)
     expect(none.ok).toBe(false)
     expect(none.errorId, '一个星系都没探索 ⇒ 抽不到目标').toBe('core.consumable.007')
     expect(consumableStockOf(b, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
+  })
+
+  it('在基地（母港 / 已建成副站）⇒ 拒绝 core.consumable.010，不扣料（**2026-09-30 船长令**：不可以在有空间站的地方使用）', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 41 })
+    s.exploredGalaxies = [...ctx.galaxies.keys()]
+    addWare(s, INVASION_BEACON_ITEM_ID, 1)
+    const r = useInvasionBeacon(s, ctx)
+    expect(r.ok).toBe(false)
+    expect(r.errorId).toBe('core.consumable.010')
+    expect(consumableStockOf(s, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
+    expect(s.weekendEvent, '没建事件').toBeUndefined()
   })
 
   /**
@@ -101,8 +116,9 @@ describe('信号发射器 · 使用与拒绝', () => {
   })
 
   it('指定不合格星系 ⇒ 拒绝 core.consumable.009 且不扣料（未探索 / 高安 / 已有已建副站）', () => {
-    /* ① 没探索过 */
+    /* ① 没探索过（**先离开基地**，否则先撞位置限制） */
     const a = createInitialState({ nowWallMs: 0, seed: 41 })
+    a.awayGalaxy = [...ctx.galaxies.keys()][0]!
     addWare(a, INVASION_BEACON_ITEM_ID, 1)
     a.exploredGalaxies = [] // 全部标成未探索
     const r1 = useInvasionBeacon(a, ctx, { galaxyId: [...ctx.galaxies.keys()][0]! })

@@ -480,7 +480,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     zh: "「{p1}」不能作为入侵目标：只有已探索、非高安、且尚未建成副站的星系可以作为目标。",
     en: "“{p1}” cannot be an invasion target: only explored, non-high-sec systems without a completed outpost qualify.",
   },
-  "ui.ItemsPage.057": { zh: "使用：主动诱发一次入侵（随机星系 · 只能在没有入侵时使用 · 消耗 1 枚）", en: "Use: provoke an invasion (random system; only while no invasion is running; consumes one)" },
+  /* 2026-09-30 船长令：「新的限制，信号发射器不可以在有空间站的地方使用。」 */
+  "core.consumable.010": {
+    zh: "不能在空间站所在地使用信号发射器：先把船开到没有空间站的星系再启动。",
+    en: "A Signal Beacon cannot be lit where a station is: fly to a system without one first.",
+  },
+  "ui.ItemsPage.057": { zh: "使用：主动诱发一次入侵（随机星系 · 只能在没有入侵时使用 · 消耗 1 枚 · 不能在空间站所在地启动）", en: "Use: provoke an invasion (random system; only while no invasion is running; consumes one; cannot be lit where a station is)" },
   "ui.ItemsPage.058": { zh: "信号发射器已启动：入侵舰队正在逼近。", en: "Signal Beacon lit: an invasion fleet is closing in." },
   /* 活动窗口的突触加速剂读数（2026-09-30 船长令：放进活动窗口 · 图标带倍率） */
   "ui.ActivityBar.066": { zh: "技能加速 ×{p1}", en: "Skill boost ×{p1}" },
@@ -617,6 +622,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.beacon.004": {
     zh: "该星系暂不能作为入侵目标：需要已探索 · 非高安 · 且尚未建成副站",
     en: "This system cannot be an invasion target yet: it must be explored, not high-sec, and without a completed outpost",
+  },
+  /* 位置限制的就地说明（**2026-09-30 船长令**：不可以在有空间站的地方使用） */
+  "ui.beacon.005": {
+    zh: "当前在空间站（母港或已建成副站）：把船开到没有空间站的星系再启动",
+    en: "You are at a station (home port or a completed outpost): fly to a system without one before lighting it",
   },
   /* ── 技能页「技能加速」子窗口（**2026-09-30 船长令**：「在技能页面内新增一个子窗口『技能加速』…」）──
      顶部＝当前生效与剩余时间（与活动栏 `ui.ActivityBar.066/067` 同一套措辞），下方＝持有的加速道具清单 */

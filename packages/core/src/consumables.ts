@@ -13,6 +13,7 @@ import type { CommandResult } from './engine'
 import type { SimContext } from './types'
 import { countItem, countWare, removeItem, removeWare } from './inventory'
 import { addLog } from './state'
+import { isAtHomeLike } from './location'
 import { SYNAPTIC_ACCELERANT_MS, synapticAccelerantActive } from './training'
 import { weekendCoreCandidates, weekendPeripheryOf, weekendRollOccupation } from './weekendEvent'
 
@@ -111,6 +112,14 @@ export function useInvasionBeacon(
   const ev = state.weekendEvent
   if (ev !== undefined && ev.endedAtWallMs === undefined) {
     return { ok: false, error: '已经有一场入侵在进行中：等它结束再用信号发射器。', errorId: 'core.consumable.005' }
+  }
+  /**
+   * **新的限制**（**2026-09-30 船长令**：「**新的限制，信号发射器不可以在有空间站的地方使用。**」）：
+   * 判据 = `location.isAtHomeLike`（母港 或 **已建成**副站；在建工地不算）⇒ 那时**拒绝启动**。
+   * ⚠ 排在"已有入侵"之后：两者同时成立时，"等这场打完"是更贴切的那句。
+   */
+  if (isAtHomeLike(state, ctx)) {
+    return { ok: false, error: '不能在空间站所在地使用信号发射器：先把船开到没有空间站的星系再启动。', errorId: 'core.consumable.010' }
   }
   const family = INVASION_BEACON_FAMILIES.find((f) => f.id === (familyId ?? INVASION_BEACON_FAMILIES[0]!.id))
   if (!family) {

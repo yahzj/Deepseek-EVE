@@ -23,9 +23,10 @@ import {
   // 2026-09-25 入侵旗舰入口（星系详细里那一行）：族名全称走 core 的同一张表（别在本文件另写一份）
   weekendFamilyNameId,
   weekendCoreCandidates,
-  /* 信号发射器（2026-09-30 船长令）：持有量 + 指定星系的资格判据都走 core 单点 */
+  /* 信号发射器（2026-09-30 船长令）：持有量 + 指定星系的资格判据 + 位置限制（有空间站的地方不能启动） */
   INVASION_BEACON_ITEM_ID,
   consumableStockOf,
+  isAtHomeLike,
   weekendProgressAt,
   weekendCoreGateView,
   /** 旗舰视图（2026-09-25：核心的"旗舰期红光"与旗舰准备入口读同一份判据，不许在本文件另判一遍） */
@@ -2166,6 +2167,8 @@ function GalaxyActions({
   const beaconStock = consumableStockOf(state, INVASION_BEACON_ITEM_ID)
   /** 本星系能不能当入侵目标（与随机那条路**同一套**候选：已探索 · 非高安 · 无已建副站） */
   const beaconEligible = weekendCoreCandidates(state, ctx).includes(galaxy.id)
+  /** 位置限制（**2026-09-30 船长令**：不可以在有空间站的地方使用）——在基地时按钮置灰并就地说明 */
+  const beaconAtStation = isAtHomeLike(state, ctx)
   /** 待确认"顶替环目标"的那张卡（null = 没有待确认）——**内联警示**，照抄 `goAskAno` 的写法，不新增弹窗机制 */
   const [loopAskAno, setLoopAskAno] = useState<string | null>(null)
   function handleAnoGo(ano: AnomalyDef): void {
@@ -2278,9 +2281,19 @@ function GalaxyActions({
           ) : (
             <button
               className="app-btn is-small is-warn"
-              aria-disabled={beaconEligible ? undefined : 'true'}
-              title={beaconEligible ? tr('ui.beacon.003', { p1: galaxy.name }) : tr('ui.beacon.004')}
+              aria-disabled={beaconEligible && !beaconAtStation ? undefined : 'true'}
+              title={
+                beaconAtStation
+                  ? tr('ui.beacon.005')
+                  : beaconEligible
+                    ? tr('ui.beacon.003', { p1: galaxy.name })
+                    : tr('ui.beacon.004')
+              }
               onClick={() => {
+                if (beaconAtStation) {
+                  onToast(tr('ui.beacon.005'), true)
+                  return
+                }
                 if (!beaconEligible) {
                   onToast(tr('ui.beacon.004'), true)
                   return
