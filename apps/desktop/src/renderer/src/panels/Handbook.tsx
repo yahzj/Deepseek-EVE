@@ -1055,7 +1055,8 @@ function itemCellOf(item: ItemDef): GridCell {
     key: item.id,
     tab: 'items',
     // 2026-09-20 零件两档：glyph 用档位键 ⇒ 图鉴里基础/高级零件分色（形状同一枚 part 线稿）
-    glyph: item.kind === 'part' ? partToneKeyOf(item.id) : item.kind,
+    // ⚠ 2026-09-30：其余物品一律走**物品 id 单点映射**（三件道具在图鉴网格里也要各自的线稿）
+    glyph: item.kind === 'part' ? partToneKeyOf(item.id) : itemGlyphName(item.id, item.kind),
     name: item.name,
     sub: `${kindName(item.kind)} · ${item.unitM3} m³`,
     raw: item as unknown as RawData,

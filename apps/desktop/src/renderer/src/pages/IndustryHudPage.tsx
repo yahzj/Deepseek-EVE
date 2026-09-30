@@ -54,7 +54,7 @@ import {
 } from '@whale/core'
 import type { PageProps } from './common'
 import type { GameEngine } from '../game/engine'
-import { Glyph } from '../ui/Glyphs'
+import { Glyph, itemGlyphName } from '../ui/Glyphs'
 import { AiWorkFx, industryWorkKindOf } from '../ui/aiWorkFx'
 import { RowGlyph } from '../ui/itemView'
 import { HudHoverCard, IconBtn, Readout, type HudIoLine } from '../ui/hud'
@@ -213,7 +213,7 @@ function matRowsOf(
     return {
       id: m.itemId,
       name: def?.name ?? m.itemId,
-      glyph: def?.kind ?? 'item',
+      glyph: itemGlyphName(def?.id, def?.kind ?? 'item'),
       need,
       have,
       ok: have >= need,
@@ -485,7 +485,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
           v.worker === 'pilot' ? tr('ui.hud.082') : aiCoreText(v.worker)
         }`}
         input={[
-          { glyph: def?.kind ?? 'item', name: def?.name ?? v.itemName },
+          { glyph: itemGlyphName(def?.id, def?.kind ?? 'item'), name: def?.name ?? v.itemName },
           { name: tr('ui.hud.117', { p1: v.batchUnits.toLocaleString('zh-CN') }) },
           { name: tr('ui.hud.118', { p1: Math.floor(have).toLocaleString('zh-CN') }) },
           { name: tr('ui.hud.119', { p1: Math.round(v.cycleMs / 100) / 10 }) },
@@ -523,7 +523,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
      * 输入列只给"料名 ＋ 每批多少 ＋ 可用多少 ＋ 每批多久"，库存自己起一行
      * （船长同日：「建议『手上XXXX件』另外起一行，修改为（仓库：XXXX）」）。
      */
-    const input: HudIoLine[] = [{ glyph: def.kind, name: def.name }]
+    const input: HudIoLine[] = [{ glyph: itemGlyphName(def.id, def.kind), name: def.name }]
     if (isWreck) {
       input.push({ name: tr('ui.hud.145', { p1: batchM3 }) })
       input.push({ name: tr('ui.hud.144', { p1: Math.floor(have).toLocaleString('zh-CN') }) })
@@ -1242,7 +1242,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                   >
                     <div className="hud-row between">
                       <span className="hud-row" style={{ gap: 7 }}>
-                        {out !== undefined ? <RowGlyph glyph={out.kind} /> : null}
+                        {out !== undefined ? <RowGlyph glyph={itemGlyphName(out.id, out.kind)} /> : null}
                         <span className="nm">{r.name}</span>
                       </span>
                       <span className={`hud-chip${affordable > 0 ? ' is-ok' : ' is-warn'}`}>

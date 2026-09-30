@@ -650,7 +650,10 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               const def = engine.ctx.items.get(id)
               return {
                 key: id,
-                glyph: def?.kind ?? kind,
+                /* ⚠ **2026-09-30 船长报障「我在仓库看到的道具依旧没有图标」**：这一条是**图标模式**的
+                   格子取图口，原先按大类键 ⇒ 三件道具在图鉴式网格里还是通用「消耗品」图标。
+                   与列表模式同一处判定：走 `itemGlyphName` 单点。 */
+                glyph: itemGlyphName(def?.id ?? id, def?.kind ?? kind),
                 name: def?.name ?? id,
                 sub: `×${units.toLocaleString('zh-CN')} · ${m3(units * (def?.unitM3 ?? 1))}`,
                 title: def?.description,
@@ -832,7 +835,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
         return (
           <SellQtyModal
             name={def.name}
-            glyph={def.kind}
+            glyph={itemGlyphName(def.id, def.kind)}
             max={units}
             unit={tr('ui.Expedition.102')}
             priceText={buy !== undefined ? tr("ui.CargoPage.055", { p1: isk(buy) }) : undefined}
@@ -849,7 +852,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
         return (
           <SellQtyModal
             name={def.name}
-            glyph={def.kind}
+            glyph={itemGlyphName(def.id, def.kind)}
             max={units}
             unit={tr('ui.Expedition.102')}
             priceText={tr('ui.ItemsPage.050')}

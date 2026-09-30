@@ -422,7 +422,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 const crest = crestFamOf(id)
                 return {
                   key: id,
-                  glyph: def?.kind ?? kind,
+                  glyph: itemGlyphName(def?.id ?? id, def?.kind ?? kind),
                   name: def?.name ?? id,
                   sub: `×${units.toLocaleString('zh-CN')} · ${m3(units * (def?.unitM3 ?? 1))}`,
                   title: def?.description,
