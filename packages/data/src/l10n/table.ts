@@ -485,6 +485,15 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     zh: "不能在空间站所在地使用信号发射器：先把船开到没有空间站的星系再启动。",
     en: "A Signal Beacon cannot be lit where a station is: fly to a system without one first.",
   },
+  /* 2026-09-30 船长令：在高安使用要二次警告 + 扣声望（「按你推荐来」＝扣可支配 10 点、不足则拒） */
+  "core.consumable.011": {
+    zh: "在高安启动信号发射器要付 {p1} 点声望：当前可支配声望不够。",
+    en: "Lighting a Signal Beacon in high-sec costs {p1} standing, and you do not have enough spendable standing.",
+  },
+  "core.consumable.012": {
+    zh: "⚠ 在「{p1}」启动信号发射器：协会扣了 {p2} 点声望。",
+    en: "⚠ Signal Beacon lit at “{p1}”: the Association docked {p2} standing.",
+  },
   "ui.ItemsPage.057": { zh: "使用：主动诱发一次入侵（随机星系 · 只能在没有入侵时使用 · 消耗 1 枚 · 不能在空间站所在地启动）", en: "Use: provoke an invasion (random system; only while no invasion is running; consumes one; cannot be lit where a station is)" },
   "ui.ItemsPage.058": { zh: "信号发射器已启动：入侵舰队正在逼近。", en: "Signal Beacon lit: an invasion fleet is closing in." },
   /* 活动窗口的突触加速剂读数（2026-09-30 船长令：放进活动窗口 · 图标带倍率） */
@@ -634,6 +643,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     zh: "当前在空间站（母港或已建成副站）：把船开到没有空间站的星系再启动",
     en: "You are at a station (home port or a completed outpost): fly to a system without one before lighting it",
   },
+  /* 高安点火的二次警告（**2026-09-30 船长令**：「且当玩家在高安使用时候，弹出二次警告，警告玩家这么做会被扣声望」） */
+  "ui.beacon.006": { zh: "⚠ 在高安启动信号发射器：扣 {p1} 点声望", en: "⚠ Lighting a Signal Beacon in high-sec costs {p1} standing" },
+  "ui.beacon.007": {
+    zh: "「{p1}」属高安：现在启动，入侵照样只能落到非高安星系，但协会会扣你 {p2} 点可支配声望。确定要继续吗？",
+    en: "“{p1}” is high-sec: lighting it here still sends the invasion to a non-high-sec system, but the Association docks {p2} spendable standing. Continue?",
+  },
+  "ui.beacon.008": { zh: "取消", en: "Cancel" },
+  "ui.beacon.009": { zh: "仍然启动", en: "Light it anyway" },
   /* ── 技能页「技能加速」子窗口（**2026-09-30 船长令**：「在技能页面内新增一个子窗口『技能加速』…」）──
      顶部＝当前生效与剩余时间（与活动栏 `ui.ActivityBar.066/067` 同一套措辞），下方＝持有的加速道具清单 */
   "ui.boost.001": { zh: "技能加速", en: "Skill Boost" },

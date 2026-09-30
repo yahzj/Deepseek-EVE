@@ -25,8 +25,11 @@ import {
   weekendCoreCandidates,
   /* 信号发射器（2026-09-30 船长令）：持有量 + 指定星系的资格判据 + 位置限制（有空间站的地方不能启动） */
   INVASION_BEACON_ITEM_ID,
+  HIGH_SEC_PENALTY,
+  beaconLaunchHighSecOf,
   consumableStockOf,
   isAtHomeLike,
+  playerGalaxyIdOf,
   weekendProgressAt,
   weekendCoreGateView,
   /** 旗舰视图（2026-09-25：核心的"旗舰期红光"与旗舰准备入口读同一份判据，不许在本文件另判一遍） */
@@ -102,6 +105,7 @@ import { ImportantTasks } from './ImportantTasks'
  */
 import { PlugExchangeBody } from './PlugExchange'
 import { Glyph, NAV_TONES, ICO_TONES, itemGlyphName } from '../ui/Glyphs'
+import { BeaconHighSecPrompt } from '../ui/beaconPrompt'
 import { UI_TONES } from '../ui/tones'
 import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
 import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
@@ -2169,6 +2173,15 @@ function GalaxyActions({
   const beaconEligible = weekendCoreCandidates(state, ctx).includes(galaxy.id)
   /** 位置限制（**2026-09-30 船长令**：不可以在有空间站的地方使用）——在基地时按钮置灰并就地说明 */
   const beaconAtStation = isAtHomeLike(state, ctx)
+  /** 高安点火（**同日令**：二次警告 + 扣声望）——判据单点在 core */
+  const beaconHighSec = beaconLaunchHighSecOf(state, ctx)
+  const [beaconWarn, setBeaconWarn] = useState(false)
+  /** 统一的"点火"动作（指定星系那条；成功/失败都给回执） */
+  const launchBeaconHere = (): void => {
+    const r = engine.useInvasionBeaconNow({ galaxyId: galaxy.id })
+    if (!r.ok) onToast(cmdText(r) || tr('ui.beacon.001'), true)
+    else onToast(tr('ui.ItemsPage.058'))
+  }
   /** 待确认"顶替环目标"的那张卡（null = 没有待确认）——**内联警示**，照抄 `goAskAno` 的写法，不新增弹窗机制 */
   const [loopAskAno, setLoopAskAno] = useState<string | null>(null)
   function handleAnoGo(ano: AnomalyDef): void {
@@ -2194,6 +2207,18 @@ function GalaxyActions({
 
   return (
     <div className="app-galaxy-actions">
+      {/* 高安点火前的**二次警告**（船长 2026-09-30 令：在高安使用要警告会扣声望） */}
+      {beaconWarn ? (
+        <BeaconHighSecPrompt
+          galaxyName={ctx.galaxies.get(playerGalaxyIdOf(state))?.name ?? ''}
+          penalty={HIGH_SEC_PENALTY}
+          onCancel={() => setBeaconWarn(false)}
+          onConfirm={() => {
+            setBeaconWarn(false)
+            launchBeaconHere()
+          }}
+        />
+      ) : null}
       {/* 旗舰战战前准备弹层（2026-09-25）：本地状态开合，弹层自包含 */}
       {prepOpen ? <WeekendFlagshipPrepModal engine={engine} onClose={() => setPrepOpen(false)} /> : null}
       <div className="app-bay-title">{tr("ui.Expedition.083")}</div>
@@ -2267,9 +2292,7 @@ function GalaxyActions({
                 className="app-btn is-small is-danger"
                 onClick={() => {
                   setBeaconAsk(null)
-                  const r = engine.useInvasionBeaconNow({ galaxyId: galaxy.id })
-                  if (!r.ok) onToast(cmdText(r) || tr('ui.beacon.001'), true)
-                  else onToast(tr('ui.ItemsPage.058'))
+                  launchBeaconHere()
                 }}
               >
                 {tr('ui.ItemsPage.056')}
@@ -2296,6 +2319,11 @@ function GalaxyActions({
                 }
                 if (!beaconEligible) {
                   onToast(tr('ui.beacon.004'), true)
+                  return
+                }
+                /* **高安点火 ⇒ 先弹二次警告**（船长 2026-09-30 令）；非高安走"再点一下"就地确认 */
+                if (beaconHighSec) {
+                  setBeaconWarn(true)
                   return
                 }
                 setBeaconAsk(galaxy.id)

@@ -9,18 +9,36 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { addWare, countWare } from '../src/inventory'
-import { INVASION_BEACON_FAMILIES, INVASION_BEACON_ITEM_ID, consumableStockOf, useInvasionBeacon } from '../src/consumables'
+import {
+  HIGH_SEC_PENALTY,
+  INVASION_BEACON_FAMILIES,
+  INVASION_BEACON_ITEM_ID,
+  consumableStockOf,
+  useInvasionBeacon,
+} from '../src/consumables'
 import { weekendCoreCandidates } from '../src/weekendEvent'
+import { securityZoneOf } from '../src/sideTasks'
+import { DSI_FACTION_ID, noteStandingEarned } from '../src/expedition'
 
 const ctx = buildSimContext()
 
+/** 一个**非高安**星系（高安点火要付声望代价 ⇒ 绝大多数用例应在非高安点火） */
+function nonHighSecId(): string {
+  return [...ctx.galaxies.keys()].find((id) => securityZoneOf(ctx, id) !== '高安')!
+}
+/** 一个**高安**星系（专测"高安点火要扣声望"） */
+function highSecId(): string {
+  return [...ctx.galaxies.keys()].find((id) => securityZoneOf(ctx, id) === '高安')!
+}
+
 /** 造一个"有可入侵目标"的档：把全图都标成已探索（`weekendCoreCandidates` = 已探索 且 非高安 且 无已建成副站）
  *  ⚠ **2026-09-30 船长令**「信号发射器不可以在有空间站的地方使用」⇒ 还要**离开基地**
- *  （`awayGalaxy` 非空 = 不在母港/已建成副站），否则一律被 `core.consumable.010` 拦下。 */
+ *  （`awayGalaxy` 非空 = 不在母港/已建成副站），否则一律被 `core.consumable.010` 拦下。
+ *  ⚠ 同日令「在高安使用要扣声望」⇒ 默认落在**非高安**，高安那条单独造。 */
 function readyState() {
   const s = createInitialState({ nowWallMs: 0, seed: 41 })
   s.exploredGalaxies = [...ctx.galaxies.keys()]
-  s.awayGalaxy = [...ctx.galaxies.keys()][0]!
+  s.awayGalaxy = nonHighSecId()
   addWare(s, INVASION_BEACON_ITEM_ID, 1)
   return s
 }
@@ -79,7 +97,7 @@ describe('信号发射器 · 使用与拒绝', () => {
     expect(consumableStockOf(a, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
 
     const b = createInitialState({ nowWallMs: 0, seed: 41 })
-    b.awayGalaxy = [...ctx.galaxies.keys()][0]! // 先离开基地（否则先被位置限制 core.consumable.010 拦）
+    b.awayGalaxy = nonHighSecId() // 先离开基地（否则先被位置限制 core.consumable.010 拦）
     addWare(b, INVASION_BEACON_ITEM_ID, 1)
     const none = useInvasionBeacon(b, ctx)
     expect(none.ok).toBe(false)
@@ -118,7 +136,7 @@ describe('信号发射器 · 使用与拒绝', () => {
   it('指定不合格星系 ⇒ 拒绝 core.consumable.009 且不扣料（未探索 / 高安 / 已有已建副站）', () => {
     /* ① 没探索过（**先离开基地**，否则先撞位置限制） */
     const a = createInitialState({ nowWallMs: 0, seed: 41 })
-    a.awayGalaxy = [...ctx.galaxies.keys()][0]!
+    a.awayGalaxy = nonHighSecId()
     addWare(a, INVASION_BEACON_ITEM_ID, 1)
     a.exploredGalaxies = [] // 全部标成未探索
     const r1 = useInvasionBeacon(a, ctx, { galaxyId: [...ctx.galaxies.keys()][0]! })
@@ -136,5 +154,42 @@ describe('信号发射器 · 使用与拒绝', () => {
       expect(r2.errorId).toBe('core.consumable.009')
       expect(consumableStockOf(b, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
     }
+  })
+
+  /**
+   * **高安点火的声望代价**（**2026-09-30 船长令**：「且当玩家在高安使用时候，弹出二次警告，警告玩家
+   * 这么做会被扣声望」→ 船长「按你推荐来」＝扣**可支配声望 10 点**、不足则拒）。
+   */
+  it('在高安（非基地）点火 ⇒ 允许，但**可支配声望 −10**，累计不动', () => {
+    const s = readyState()
+    s.awayGalaxy = highSecId()
+    noteStandingEarned(s, DSI_FACTION_ID, 50)
+    const before = { spendable: s.standings[DSI_FACTION_ID] ?? 0, earned: s.standingsEarned?.[DSI_FACTION_ID] ?? 0 }
+    const r = useInvasionBeacon(s, ctx)
+    expect(r.ok, r.ok ? '' : String(r.error)).toBe(true)
+    expect(s.standings[DSI_FACTION_ID] ?? 0, '可支配 −10').toBe(before.spendable - HIGH_SEC_PENALTY)
+    expect(s.standingsEarned?.[DSI_FACTION_ID] ?? 0, '累计不动（已达成的门槛不受影响）').toBe(before.earned)
+    expect(
+      s.logs.some((l) => l.textId === 'core.consumable.012'),
+      '留下扣声望的日志',
+    ).toBe(true)
+  })
+
+  it('在高安但**可支配声望不足** ⇒ 拒绝 core.consumable.011，不扣料也不建事件', () => {
+    const s = readyState()
+    s.awayGalaxy = highSecId() // 新档声望为 0
+    const r = useInvasionBeacon(s, ctx)
+    expect(r.ok).toBe(false)
+    expect(r.errorId).toBe('core.consumable.011')
+    expect(consumableStockOf(s, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
+    expect(s.weekendEvent, '没建事件').toBeUndefined()
+  })
+
+  it('在**非高安**点火 ⇒ 不扣声望', () => {
+    const s = readyState()
+    noteStandingEarned(s, DSI_FACTION_ID, 50)
+    const before = s.standings[DSI_FACTION_ID] ?? 0
+    expect(useInvasionBeacon(s, ctx).ok).toBe(true)
+    expect(s.standings[DSI_FACTION_ID] ?? 0, '非高安不扣').toBe(before)
   })
 })

@@ -36,7 +36,8 @@ import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 import { tr } from '../i18n/locale'
 /* 「使用」按钮的判据 = core 的 id 常量（**单点**，不在页面里写死字面量） */
-import { INVASION_BEACON_ITEM_ID, SYNAPTIC_ACCELERANT_ITEM_ID } from '@whale/core'
+import { INVASION_BEACON_ITEM_ID, HIGH_SEC_PENALTY, SYNAPTIC_ACCELERANT_ITEM_ID, beaconLaunchHighSecOf, playerGalaxyIdOf } from '@whale/core'
+import { BeaconHighSecPrompt } from '../ui/beaconPrompt'
 
 const KIND_EMPTY: Record<string, string> = {
   ore: 'ui.CargoPage.010',
@@ -48,6 +49,8 @@ const KIND_EMPTY: Record<string, string> = {
 }
 
 export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNavProps) {
+  /** 高安点火的二次警告（船长 2026-09-30 令）——货仓页那颗「使用」也走同一道门 */
+  const [beaconWarn, setBeaconWarn] = useState(false)
   const state = engine.state
   /** 语言（2026-09-19 船长令「英语本地化」）：界面串走 `t(中文源串)`；缺词条回退中文 */
   const { t } = useL10n()
@@ -319,9 +322,13 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                             className="app-btn is-small is-warn"
                             title={tr('ui.ItemsPage.057')}
                             onClick={() => {
-                              const r = engine.useInvasionBeaconNow()
-                              if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.057'), true)
-                              else onToast(tr('ui.ItemsPage.058'))
+                              /* 高安点火 ⇒ 先弹二次警告（船长 2026-09-30 令），确认后才调 core */
+                              if (beaconLaunchHighSecOf(state, engine.ctx)) setBeaconWarn(true)
+                              else {
+                                const r = engine.useInvasionBeaconNow()
+                                if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.057'), true)
+                                else onToast(tr('ui.ItemsPage.058'))
+                              }
                             }}
                           >
                             {tr('ui.ItemsPage.056')}
@@ -574,6 +581,20 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               note={sellDef.description}
               onClose={() => setSellId(null)}
               onConfirm={(qty) => handleSell(sellId, qty)}
+            />
+          ) : null}
+          {/* 高安点火前的**二次警告**（船长 2026-09-30 令） */}
+          {beaconWarn ? (
+            <BeaconHighSecPrompt
+              galaxyName={engine.ctx.galaxies.get(playerGalaxyIdOf(state))?.name ?? ''}
+              penalty={HIGH_SEC_PENALTY}
+              onCancel={() => setBeaconWarn(false)}
+              onConfirm={() => {
+                setBeaconWarn(false)
+                const r = engine.useInvasionBeaconNow()
+                if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.057'), true)
+                else onToast(tr('ui.ItemsPage.058'))
+              }}
             />
           ) : null}
         </>

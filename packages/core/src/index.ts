@@ -197,6 +197,11 @@ export {
   INVASION_BEACON_ITEM_ID,
   INVASION_BEACON_FAMILIES,
   useInvasionBeacon,
+  /* 2026-09-30 船长令（高安点火二次警告 + 扣声望 / 有空间站的地方不能用）：
+     界面与 core 共用同一批判据与常量 */
+  HIGH_SEC_PENALTY,
+  beaconLaunchHighSecOf,
+  playerGalaxyIdOf,
 } from './consumables'
 export {
   IRONMAN_COMMON_FLOW_MUL,
