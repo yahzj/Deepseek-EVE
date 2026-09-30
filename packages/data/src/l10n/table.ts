@@ -5291,6 +5291,17 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    */
   "ui.SkillTree.027": { zh: "查看全部", en: "Show all" },
   "ui.SkillTree.028": { zh: "本页没有「{p1}」的技能。再点一次那颗标签可看全部。", en: "No skills are “{p1}” on this page. Click that chip again to show all." },
+  /**
+   * **技能页拆成两个平级子页**（**2026-09-30 船长令**：「将技能页的训练队列和技能科技树分做 2 个平级的子页面，
+   * 类似工业里的一样。现在同时存在挤占屏幕太多了」）。
+   *
+   * 沿革：这两块**原先同页上下叠**（队列在上、树在下，2026-09-10 定的"队列固定在上"）——
+   * 树的画布被上面那块挤掉一大截。拆开后两块各占一整屏：`.app-subtabs` 那排签
+   * （与工业页/星图页**同一家族**）切显示，`.app-skilltree-*` 那套内部结构一字未动。
+   * 签名复用既有 id（`ui.SkillsPage.001` / `ui.SkillTree.001`），这里只补两条**副标题**。
+   */
+  "ui.SkillTree.029": { zh: "技能与采矿/远征/制造并行 · 取消训练保留本级进度，重排同一级自动续接", en: "Skills run alongside mining, expeditions and manufacturing · cancelling keeps this level's progress, and requeueing the same level resumes it" },
+  "ui.SkillTree.030": { zh: "自上而下由浅入深：连线 = 前置；点节点看说明与训练按钮", en: "Shallow to deep, top to bottom: a line means a prerequisite; click a node for its details and the train button" },
   "core.firstTasks.001": { zh: "◆ 任务已达成：「{p1}」——回「任务中心」点「完成」继续下一步。", en: "◆ Task reached: “{p1}” — open the Task Center and click Complete to move on." },
   "core.firstRewards.002": { zh: "未知任务：{p1}。", en: "Unknown task: {p1}." },
   "core.firstRewards.003": { zh: "这条任务已经完成过了。", en: "That task is already complete." },

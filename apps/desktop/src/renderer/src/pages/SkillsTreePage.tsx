@@ -92,6 +92,22 @@ export function SkillsTreePage({
   const [openId, setOpenId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   /**
+   * **两个平级子页**（**2026-09-30 船长令**：「将技能页的训练队列和技能科技树分做 2 个平级的子页面，
+   * 类似工业里的一样。现在同时存在挤占屏幕太多了」）。
+   *
+   * 与工业页 `industry.sec` **同一套口径**（`ui/sessionView.ts` 的会话级记忆）：
+   * 初值 = `focusGroup` 在 ⇒ `'tree'`（那次跳转的目的就是"去技能页练那门技能"，落在队列页看不到它）；
+   * 否则 = 会话记忆 > 默认**训练队列**（"正在发生的事"排第一，与旧版把队列放最上同一个理由）。
+   */
+  const [sec, setSecState] = useState<'queue' | 'tree'>(
+    () => (focusGroup != null ? 'tree' : ((sessionPick('skills.sec') as 'queue' | 'tree' | null) ?? 'queue')),
+  )
+  /** 切子页 ＝ 写会话记忆（程序化跳转也走它 ⇒ 记的永远是"玩家最后看到的那个子页"） */
+  const setSec = (v: 'queue' | 'tree'): void => {
+    setSecState(v)
+    setSessionPick('skills.sec', v)
+  }
+  /**
    * **图标 / 列表**（**2026-09-23 船长令**：「旧版技能页面的技能目录，合并到现有的技能树页面内，加一个类似
    * 其他页面图标/列表的切换按钮」＋口径「**玩家默认是技能树，切换列表显示旧目录**，但是搜索栏依旧在标题上，
    * 不嵌入旧目录。切换按钮就放搜索边上。」）：`icon`＝科技树（默认）、`list`＝旧目录那种分组行；
@@ -157,6 +173,8 @@ export function SkillsTreePage({
     setGroupTab(focusGroup.group)
     setBranchTab('')
     setQuery('')
+    /** ⚠ 还要**切到树那个子页**（2026-09-30 拆页）：跳转的目的是"去练那门技能"，落在队列页就白跳了 */
+    setSec('tree')
   }, [focusGroup?.seq])
   /**
    * **训练许可**（**2026-09-27 船长令**：「我想让学习技能有成本」）：收费档（rank4/5/6，rank6 为
@@ -277,10 +295,49 @@ export function SkillsTreePage({
 
   return (
     <div className="page-stack page-wide page-fill">
-      {/* 训练队列（"正在发生的事"）固定在上——沿用旧技能目录那条面板（2026-09-10 船长定：它不塞进树里） */}
-      <Panel title={tr('ui.SkillsPage.001')} right={<span className="app-dim">{tr('ui.SkillsPage.002')}</span>}>
-        <QueueBlock engine={engine} />
-      </Panel>
+      {/**
+       * **两个平级子页**（**2026-09-30 船长令**：「将技能页的训练队列和技能科技树分做 2 个平级的子页面，
+       * 类似工业里的一样。**现在同时存在挤占屏幕太多了**」）。
+       *
+       * 做法 = **逐字照搬工业页那套**（`pages/IndustryPage.tsx` 的五个签）：同一家族
+       * `.app-subtabs/.app-subtab` ＋ **会话级记忆**（`sessionPick('skills.sec')`，与
+       * `industry.sec` 同一套 `ui/sessionView.ts` 口径）＋ 「进过一次就常驻、切换只切显示」。
+       *
+       * ⚠ **两块的内容一字未动**：拆的只是"同页上下叠"这层容器 ——
+       * 上面那块（训练队列）本来就是自带面板的独立块；下面那块（树）整块搬进 `sec === 'tree'` 那一支。
+       * ⚠ 「第一次学习技能」的跳转（`focusGroup`）**同时切到树**：不切的话玩家落在队列页，
+       * 看不到刚被选中的那个大类（那次跳转的目的就是"去技能页练那门技能"）。
+       */}
+      <div className="app-subtabs" role="tablist">
+        <button
+          role="tab"
+          aria-selected={sec === 'queue'}
+          className={`app-subtab${sec === 'queue' ? ' is-active' : ''}`}
+          onClick={() => setSec('queue')}
+        >
+          <span>⌛</span>
+          <span>{tr('ui.SkillsPage.001')}</span>
+        </button>
+        <button
+          role="tab"
+          aria-selected={sec === 'tree'}
+          className={`app-subtab${sec === 'tree' ? ' is-active' : ''}`}
+          onClick={() => setSec('tree')}
+        >
+          <span>✦</span>
+          <span>{tr('ui.SkillTree.001')}</span>
+        </button>
+      </div>
+      {sec === 'queue' ? (
+        /* 训练队列（"正在发生的事"）——拆页后它独占一整屏（原先与树上下叠，把树挤掉一大截） */
+        <Panel
+          className="is-fill"
+          title={tr('ui.SkillsPage.001')}
+          right={<span className="app-dim">{tr('ui.SkillTree.029')}</span>}
+        >
+          <QueueBlock engine={engine} />
+        </Panel>
+      ) : (
       <Panel
         className="is-fill"
         title={tr('ui.SkillTree.001')}
@@ -601,8 +658,10 @@ export function SkillsTreePage({
           </div>
         ) : null}
       </Panel>
+      )}
 
-      {/* 详情窗（点节点才开）：说明全文 ＋ 前置 ＋ 下一级时长 ＋ 训练按钮（与正式技能页同一套动作） */}
+      {/* 详情窗（点节点才开。**拆页后它仍留在树那一支之外**：它是"选了节点才开"的浮层，
+          与当前在哪个子页无关 —— 关掉子页切换不会让它消失（玩家点开就看着，不会被切页吞掉）。 */}
       {open ? (
         <div className="app-modal-mask" onClick={() => setOpenId(null)}>
           <div className="app-modal app-skilltree-modal" onClick={(e) => e.stopPropagation()}>
