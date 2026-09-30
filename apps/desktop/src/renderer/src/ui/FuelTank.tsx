@@ -15,12 +15,12 @@
  */
 import type { ReactNode } from 'react'
 
-/** 一条正弦波路径（宽 = 罐内宽 × 2，便于横移 50% 无缝循环） */
-function wavePath(width: number, height: number, amplitude: number): string {
-  const seg = width / 4
+/** 一条正弦波路径（宽度 = 波长 × `periods`，便于横移整数个波长无缝循环） */
+function wavePath(width: number, height: number, amplitude: number, periods: number): string {
+  const seg = width / periods
   const mid = height / 2
   let d = `M0 ${mid}`
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < periods; i++) {
     const x0 = i * seg
     d += ` Q${x0 + seg / 4} ${mid - amplitude} ${x0 + seg / 2} ${mid}`
     d += ` Q${x0 + (seg * 3) / 4} ${mid + amplitude} ${x0 + seg} ${mid}`
@@ -70,9 +70,21 @@ export function FuelTank({ units, capacity, height = 148, width, tickUnits, labe
    * 让波峰波谷都落在裁区里（否则波动会在液面处露出直边）。
    */
   const amp = 2.8
-  const waveW = innerW * 2
+  /**
+   * **波长 = `innerW / 2`**（一个"上-下"为一个周期）；**横移量 = `innerW` = 正好 2 个波长** ⇒ 无缝。
+   *
+   * ⚠ **波层宽度是 6 个波长（= 3×innerW），不是 4 个**（**2026-09-30 船长截图报障**：
+   * 「在循环结束时候会有短暂的出现水波边缘的情况」）。几何账：
+   * - 裁剪窗（内腔）在 x ∈ [`padX`, `padX + innerW`]；
+   * - 波层从 x=0 一路横移到 `−innerW` ⇒ 要**在循环的任意时刻**都盖住裁剪窗，路径至少得盖到
+   *   `padX + 2×innerW`；
+   * - 原来只有 4 个波长 = `2×innerW` ⇒ **末尾差 `padX`（=7px）那一条没有波形**，于是右边缘"露边"。
+   * - 取 6 个波长 = `3×innerW`：只要 `innerW ≥ padX`（本组件把 W 下夹到 28 ⇒ innerW ≥ 14）就恒有富余。
+   */
+  const WAVE_PERIODS = 6
+  const waveW = (innerW / 2) * WAVE_PERIODS
   const waveH = innerH - surfaceY + amp * 3
-  const d = wavePath(waveW, waveH, amp)
+  const d = wavePath(waveW, waveH, amp, WAVE_PERIODS)
   const tickY = tickUnits !== undefined && capacity > 0 ? innerH * (1 - Math.min(1, tickUnits / capacity)) : undefined
   const uid = `ft${W}x${H}${Math.round(capacity)}`.replace(/[^a-zA-Z0-9]/g, '')
   return (

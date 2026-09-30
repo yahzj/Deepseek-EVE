@@ -26,7 +26,7 @@
 import type { ReactNode } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ActivePromo, ActiveTuning, GameState } from '@whale/core'
-import { DSI_FACTION_ID, formatDurationShort, standingOf } from '@whale/core'
+import { DSI_FACTION_ID, formatDurationShort, spendableStandingOf, standingOf } from '@whale/core'
 import type { ToastFn } from '../pages/common'
 import { ActivityBar } from '../panels/ActivityBar'
 // 旧版活动栏：从「昨天那版」原样拆出的冻结件（船长令「旧版建议你从昨天的版本中 git 下来进行拆解」）
@@ -150,21 +150,29 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
    * 两套布局**共用这一个函数**（抽出来的原因：上一轮只加进了 classic 分支，
    * 船长随后报障「新版界面没有上一轮添加的顶部声望」——两处各写一份必然再次漂移）。
    *
-   * - 数值 = **累计获得的协会声望**（core 单点 `standingOf`，与"所有声望门槛改读累计声望"同一本账），
-   *   卡内小标注写明是哪本账，免得与声望商店里的**可支配**那本混淆；
-   * - 走 `MoneyFit`（数值按容器宽度自适应、精确值恒挂 `title`）——与钱包同一套实现。
+   * ⚠ **2026-09-30 船长令**（原话：「游戏窗口顶部的'声望·累计获得'需要修改，直接显示玩家当前 XX 声望」）
+   * ⇒ 改判两条：
+   * - 数值改读**可支配**那本（`spendableStandingOf` = 当前余额，章鱼人兑换会扣它）——与左边的钱包并列，
+   *   都是"手上能花的"；
+   * - 容器标签只写「声望」（不再挂「·累计获得」）；**另一本账改为悬停里交代**
+   *   ⇒ `声望：可支配 N · 累计获得 M`（那句写法与声望商店标题行 `ui.IndustryPage.119` 同源，不另写一句）。
+   *   **门槛依旧一律读累计那本**（2026-09-26 令未变）——所以门槛提示文案同批改称「累计」，免得"当前"
+   *   一词同时指两个数。
+   * - 数值按容器宽度自适应、精确值恒挂 `title`（`MoneyFit`，与钱包同一套实现）。
    */
   function standingChip(): JSX.Element {
-    const value = standingOf(state, DSI_FACTION_ID)
+    const spendable = spendableStandingOf(state, DSI_FACTION_ID)
+    const earned = standingOf(state, DSI_FACTION_ID)
     return (
       <span className="app-standing">
-        <span className="app-standing-key">
-          {tr("ui.App.164")}·{tr("ui.App.165")}
-        </span>
+        <span className="app-standing-key">{tr("ui.App.164")}</span>
         <MoneyFit
-          amount={value}
+          amount={spendable}
           unit={tr("ui.Expedition.068")}
-          exact={tr("ui.App.166", { p1: tr("ui.App.165"), p2: String(value) })}
+          exact={tr("ui.App.166", {
+            p1: tr("ui.App.164"),
+            p2: tr("ui.IndustryPage.119", { p1: spendable, p2: earned }),
+          })}
         />
       </span>
     )

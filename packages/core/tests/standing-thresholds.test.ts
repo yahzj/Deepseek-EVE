@@ -77,9 +77,11 @@ describe('市场：商品购买门槛与暗市闸都按累计判', () => {
     const s = fresh()
     setStanding(s, 'dsi', 39)
     s.standings['dsi'] = 999
-    expect(goodLockedReason(s, reqGood(40))).toContain('当前 39')
+    // 文案用词 2026-09-30 改：门槛那本账在提示里一律叫「累计」（顶栏改显示可支配后
+    // "当前"一词会同时指两个数，船长令改成「累计」）
+    expect(goodLockedReason(s, reqGood(40))).toContain('累计 39')
     expect(bmGateLocked(s, bmGood(40))).toBe(true)
-    expect(bmGateReason(s, bmGood(40))).toContain('当前 39')
+    expect(bmGateReason(s, bmGood(40))).toContain('累计 39')
   })
 
   it('累计达标即放行——可支配为 0 也不锁（换光图纸不影响买货）', () => {

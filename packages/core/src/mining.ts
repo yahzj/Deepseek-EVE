@@ -279,7 +279,7 @@ function miningPreflight(state: GameState, beltId: string, ctx: SimContext): Com
     if (have < needStanding) {
       return {
         ok: false,
-        error: `采集点「${belt.name}」需要「深空工业协会」声望 ${needStanding}（当前 ${have}）——多完成悬赏任务攒声望。`,
+        error: `采集点「${belt.name}」需要「深空工业协会」声望 ${needStanding}（累计 ${have}）——多完成悬赏任务攒声望。`,
         errorId: 'core.mining.003',
         errorParams: { p1: belt.name, p2: needStanding, p3: have },
       }

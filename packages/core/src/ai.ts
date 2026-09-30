@@ -334,7 +334,7 @@ export function assignAiMining(
   if (needStanding > 0) {
     const have = standingOf(state, DSI_FACTION_ID)
     if (have < needStanding) {
-      return { ok: false, error: `采集点「${belt.name}」需要「深空工业协会」声望 ${needStanding}（当前 ${have}）。` }
+      return { ok: false, error: `采集点「${belt.name}」需要「深空工业协会」声望 ${needStanding}（累计 ${have}）。` }
     }
   }
   // V13 探索封锁：所在星系未点亮 → 拒绝派发（母港与已点亮星系不受限）

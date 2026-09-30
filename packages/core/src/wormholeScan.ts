@@ -182,7 +182,7 @@ export function wormholeScanBlockReason(state: GameState): CoreBlockReason | nul
   // 解锁门槛（船长 2026-09-14）：协会声望 ≥ 40 才开放扫描虫洞 —— 放在最前面，理由最有用
   if (!wormholeScanUnlocked(state)) {
     return {
-      error: `扫描虫洞尚未解锁：需要「深空工业协会」声望 ${WORMHOLE_SCAN_UNLOCK_STANDING}（当前 ${wormholeScanStanding(state)}）——先去做协会的委托攒声望。`,
+      error: `扫描虫洞尚未解锁：需要「深空工业协会」声望 ${WORMHOLE_SCAN_UNLOCK_STANDING}（累计 ${wormholeScanStanding(state)}）——先去做协会的委托攒声望。`,
       errorId: 'core.wormholeScan.011',
       errorParams: { p1: WORMHOLE_SCAN_UNLOCK_STANDING, p2: wormholeScanStanding(state) },
     }

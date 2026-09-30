@@ -575,7 +575,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                     <button
                       className="app-btn is-small"
                       onClick={() => handleLoadMod(id)}
-                      title={tr("ui.ItemsPage.032")}
+                      title={tr("ui.ItemsPage.036")}
                     >
                       {tr("ui.ItemsPage.025")}
                     </button>

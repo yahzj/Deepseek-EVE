@@ -322,7 +322,13 @@
  * ⚠ **位移必须用用户单位、且正好等于整数个波长**（**2026-09-30 船长报障「循环并不对齐」**）：
  * 原先写的是 `translateX(-50%)` —— CSS 百分比 transform 在 SVG 元素上按 **viewBox（参考框）** 解析，
  * 不是按波自身的宽度 ⇒ 实际位移 ≈1.26 个波长 ⇒ **每轮循环跳一下**。
- * 现在由组件把「一个波长 ×2」的偏移量以 `--tank-shift`（px = SVG 用户单位）传进来 ⇒ 无缝循环。 */
+ * 现在由组件把「一个波长 ×2」的偏移量以 `--tank-shift`（px = SVG 用户单位）传进来 ⇒ 无缝循环
+ * （实测：位移 −innerW 与 −2×波长逐点比对，最大差 0.0000px）。
+ *
+ * ⚠ **周期保持 3.6s / 5.4s / 微光 4.2s 不动**（**2026-09-30 船长令**：「只需要修水波边缘，
+ * 上一条中关于水波的修改回滚」）—— 我上一版把它们改成"可通约的 7.2s 分频"，船长不要这个改动，已回滚。
+ * 循环末尾"露水波边缘"的**真因不在周期**，而在**波层宽度不够**（见 `ui/FuelTank.tsx` 的 `WAVE_PERIODS` 注释：
+ * 裁剪窗有 `padX` 偏移，波层必须盖到 `padX + 2×innerW`，原先只有 `2×innerW` ⇒ 末尾差 7px）。 */
 .hud-tank .wave-a { animation: hud-wave 3.6s linear infinite; }
 .hud-tank .wave-b { animation: hud-wave 5.4s linear infinite; animation-direction: reverse; }
 @keyframes hud-wave {
