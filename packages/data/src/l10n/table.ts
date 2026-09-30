@@ -567,7 +567,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* ── 精炼炉：真值修正 ＋ 产出构成环 ＋ 输入/输出悬停卡 ＋ 三族投料筛选（**2026-09-30** 船长令）── */
   "ui.hud.116": { zh: "输入", en: "Input" },
   "ui.hud.117": { zh: "每批 {p1} 件", en: "{p1} units per batch" },
-  "ui.hud.118": { zh: "手上 {p1} 件", en: "{p1} on hand" },
+  "ui.hud.118": { zh: "（可用：{p1} 件）", en: "({p1} available)" },
   "ui.hud.119": { zh: "每批 {p1} 秒", en: "{p1} s per batch" },
   "ui.hud.120": { zh: "输出", en: "Output" },
   "ui.hud.121": { zh: "资源构成", en: "Resource mix" },
@@ -594,7 +594,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.hud.141": { zh: "最小化为标题栏：工位表收起，随时可展开", en: "Collapse to the title bar: the station table folds away and can be reopened any time" },
   "ui.hud.142": { zh: "展开工位表", en: "Reopen the station table" },
   "ui.hud.143": { zh: "工位 {p1}", en: "Station {p1}" },
-  "ui.hud.144": { zh: "手上 {p1} m³", en: "{p1} m³ on hand" },
+  "ui.hud.144": { zh: "（可用：{p1} m³）", en: "({p1} m³ available)" },
   "ui.hud.145": { zh: "每批 {p1} m³", en: "{p1} m³ per batch" },
   /* 投料悬停卡的输出列（残骸没有 `refine` 配方 ⇒ 引擎在"未起炉"时给不出每批件数，只列保底原材料名） */
   "ui.hud.146": { zh: "保底原材料", en: "Guaranteed materials" },

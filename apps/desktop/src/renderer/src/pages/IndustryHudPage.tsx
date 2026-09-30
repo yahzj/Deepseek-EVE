@@ -517,12 +517,19 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
     const batchM3 = isWreck ? recycleBatchM3Of(def.id) : 0
     const wreckPool = isWreck ? recycleProfileOf(ctx, def.id) : null
     const outs = !isWreck && !isBox ? refineBatchOutputOf(state, ctx, def, base.batchUnits) : []
-    const input: HudIoLine[] = [{ glyph: def.kind, name: def.name, qty: `×${Math.floor(have).toLocaleString('zh-CN')}` }]
+    /**
+     * ⚠ **2026-09-30 船长报障**：「精炼炉的投料悬浮窗有 BUG，**输入直接乘仓库内数量**」——
+     * 原先材料行尾挂的是 `×拥有量`（看着像"这一炉要吃下全部库存"）⇒ **去掉**：
+     * 输入列只给"料名 ＋ 每批多少 ＋ 可用多少 ＋ 每批多久"，库存自己起一行
+     * （船长同日：「建议『手上XXXX件』另外起一行，修改为（仓库：XXXX）」）。
+     */
+    const input: HudIoLine[] = [{ glyph: def.kind, name: def.name }]
     if (isWreck) {
-      input.push({ name: tr('ui.hud.144', { p1: Math.floor(have).toLocaleString('zh-CN') }) })
       input.push({ name: tr('ui.hud.145', { p1: batchM3 }) })
+      input.push({ name: tr('ui.hud.144', { p1: Math.floor(have).toLocaleString('zh-CN') }) })
     } else if (isBox) {
       input.push({ name: tr('ui.hud.117', { p1: 1 }) })
+      input.push({ name: tr('ui.hud.118', { p1: Math.floor(have).toLocaleString('zh-CN') }) })
       input.push({ name: tr('ui.hud.119', { p1: Math.round(UNBOX_CYCLE_MS / 1000) }) })
     } else {
       input.push({ name: tr('ui.hud.117', { p1: base.batchUnits.toLocaleString('zh-CN') }) })
@@ -560,15 +567,19 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
   const shelfTip = (row: { product: string; glyph: string; materials: readonly MaterialNeed[] }): ReactNode => {
     const rows = matRowsOf(engine, row.materials)
     const ready = readinessOf(engine, row.materials)
+    /**
+     * 多料蓝图：**每味料两行**——第一行「图标 ＋ 名 ＋ ×需要量」，第二行「（可用：M 件）」
+     * （**2026-09-30 船长报障**：一行里塞不下，数字会被折行截断 ⇒ 库存另起一行）。
+     */
+    const input: HudIoLine[] = []
+    for (const m of rows) {
+      input.push({ glyph: m.glyph, name: m.name, qty: `×${m.need.toLocaleString('zh-CN')}`, ok: m.ok })
+      input.push({ name: tr('ui.hud.118', { p1: m.have.toLocaleString('zh-CN') }) })
+    }
     return (
       <HudHoverCard
         title={row.product}
-        input={rows.map((m) => ({
-          glyph: m.glyph,
-          name: m.name,
-          qty: `×${m.need.toLocaleString('zh-CN')} · ${tr('ui.hud.118', { p1: m.have.toLocaleString('zh-CN') })}`,
-          ok: m.ok,
-        }))}
+        input={input}
         output={[{ glyph: row.glyph, name: row.product }]}
         note={
           ready.short.length === 0
