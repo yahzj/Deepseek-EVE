@@ -60,7 +60,13 @@ function maxedState(fittedHigh: string[]): GameState {
     'refining',
     'reprocessing',
     'core-smelting',
+    // 2026-09-29 补齐：本表原先漏了「恒温炉控学」与「炉温精调学」，且缺本批新增的两条
+    'furnace-pressure',
+    'furnace-precision',
+    'furnace-thermal-control',
     'furnace-expansion',
+    'furnace-amplification',
+    'furnace-reconfiguration',
     'industrial-automation',
     'ai-core-dispatch',
     'ai-expert',
@@ -123,22 +129,33 @@ for (const [tag, belt] of [
 
 /* ── 二、精炼（每台炉吃矿速度） ── */
 const lv = (id: string): number => mineState.skills.trained[id] ?? 0
-const smeltMul = Math.max(0.6, 1 - 0.04 * lv('core-smelting'))
+/**
+ * ⚠ **2026-09-29 补齐乘区**（本表原先只覆盖 2 条周期技能 + 1 条批容技能 ⇒ **低估炉子产能**）：
+ * 周期 = 炉心熔炼学 ×0.80 · **炉压调控学 ×0.80**（本批新增 R3）· 炉温精调学 **×0.85**（本批 4%→3%）
+ *       · 恒温炉控学 ×0.925 · 产线节拍学 ×0.75；**炉心熔炼学的 0.6 下限本批已删**。
+ * 批容 = 炉膛扩容学 ×1.30 · 炉膛倍增学 **×1.20**（本批 2%→4%）· **炉膛重构学 ×1.10**（本批新增 R5）。
+ */
+const smeltMul = 1 - 0.04 * lv('core-smelting') // 下限已删（2026-09-29 船长令）
+const pressMul = 1 - 0.04 * lv('furnace-pressure')
+const fineMul = 1 - 0.03 * lv('furnace-precision')
+const thermalMul = 1 - 0.015 * lv('furnace-thermal-control')
 const autoMul = Math.max(0, 1 - 0.05 * lv('industrial-automation'))
-const expMul = 1 + 0.06 * lv('furnace-expansion')
+const cycleMul = smeltMul * pressMul * fineMul * thermalMul * autoMul
+const expMul = (1 + 0.06 * lv('furnace-expansion')) * (1 + 0.04 * lv('furnace-amplification')) * (1 + 0.02 * lv('furnace-reconfiguration'))
 const effPilot = 1
 const effCore = aiEfficiency(mineState, ctx, CORE)
 say()
 say(`═══ 二、精炼（每台炉吃矿速度，技能全 Lv${MAXLV}）═══`)
 say(
-  `  乘区：炉膛扩容学 ×${expMul.toFixed(2)}（批容）· 炉心熔炼学 ×${smeltMul.toFixed(2)} × 产线节拍学 ×${autoMul.toFixed(2)} = ×${(smeltMul * autoMul).toFixed(3)}（周期）`,
+  `  乘区：批容 炉膛扩容学 ×1.30 · 炉膛倍增学 ×1.20 · 炉膛重构学 ×1.10 = ×${expMul.toFixed(3)}` +
+    ` · 周期 炉心熔炼学 ×0.80 · 炉压调控学 ×0.80 · 炉温精调学 ×0.85 · 恒温炉控学 ×0.925 · 产线节拍学 ×0.75 = ×${cycleMul.toFixed(4)}`,
 )
 say(`  劳动者：主控 效率 ${effPilot.toFixed(2)} · AI 核心「${CORE}」效率 ${effCore.toFixed(2)}（含 AI 核心调度学 +2%/级）`)
 
 /** 每台炉的吃矿速度（单位/小时）：批容×倍率 ÷ 周期(ms) ×3.6e6 */
 function furnaceRate(batchUnits: number, cycleMs: number, eff: number): { batch: number; cycle: number; perHour: number } {
   const batch = Math.max(1, Math.round(batchUnits * expMul))
-  const cycle = Math.max(1, Math.round((cycleMs / eff) * smeltMul * autoMul))
+  const cycle = Math.max(1, Math.round((cycleMs / eff) * cycleMul))
   return { batch, cycle, perHour: (batch * 3_600_000) / cycle }
 }
 

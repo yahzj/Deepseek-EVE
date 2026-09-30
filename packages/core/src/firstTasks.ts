@@ -38,7 +38,7 @@ import type { GameState } from './state'
 import type { SimContext } from './types'
 /**
  * ⚠ **本模块刻意只做"类型 import"，不在运行期 import 任何 core 模块**（2026-09-17 实测教训）：
- * irstTasks 被 engine / ai / market / wormhole / shipyard… **反向依赖**，一旦它再 import 那些模块
+ * firstTasks 被 engine / ai / market / wormhole / shipyard… **反向依赖**，一旦它再 import 那些模块
  * 就会形成环，工具侧加载时崩在「Cannot access 'HOME_GALAXY_ID' before initialization」。
  * 故下面两个常量**就地写死**（值从源头抽取核对），改动源头时请同步这里。
  */
@@ -160,7 +160,7 @@ export interface FirstTaskDef {
  *
  * ⚠ **⟪2026-09-23 船长令⟫ 第三轮标定**：「**L1 依旧是 2500，但是 L10 奖金降低至 2500 万。除扫描外统计量所需数量
  * 1 级不变的情况下，满级提高 10 倍**」＋「**成就需求量的中间级进行平滑处理**」⇒
- * 除 scan（5 级封顶、不动）外，12 条链 **L1~L5 保持原值、L6~L10 按  = (新L10 ÷ L5)^(1/5) 等比平滑**（新 L10 = 旧 ×10）。
+ * 除 scan（5 级封顶、不动）外，12 条链 **L1~L5 保持原值、L6~L10 按 r = (新L10 ÷ L5)^(1/5) 等比平滑**（新 L10 = 旧 ×10）。
  */
 export const CHAIN_TIERS: Readonly<Record<string, readonly number[]>> = {
   // 扫描：全图 20 星系 ⇒ 5 级封顶（船长：「至少 5 级」，有内容上限的按上限做）

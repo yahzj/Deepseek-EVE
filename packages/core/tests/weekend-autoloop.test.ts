@@ -83,13 +83,13 @@ describe('入侵重复出击 · 再出发', () => {
     expect(s.expedition.foeGalaxyId, '目标星系 = 被占星系（不是卡自带母港）').toBe(TARGET)
     /**
      * **赏金 0 是靠"这一场算入侵场次"在结算处收口的**（weekendBattleInvolvedOf ⇒ 结算走 0 分支），
-     * 不是靠这里的 override（ewardIskOverride 是"原卡 ×1.4"的退役基底，手动出击也照传）。
+     * 不是靠这里的 override（rewardIskOverride 是"原卡 ×1.4"的退役基底，手动出击也照传）。
      */
     expect(weekendBattleInvolvedOf(s, ctx, s.expedition.anomalyId, Date.now()), '这一场算入侵场次 ⇒ 结算不发赏金').toBeDefined()
     expect(ev.assaultDraws ?? 0, '抽过才计数 ⇒ 下一场换一支').toBe(drawsBefore + 1)
     const firstCard = s.expedition.anomalyId
     /**
-     * 让这一场**整场结束**（只把 ctive 置 false 不够：活动闸门看的是"主控是不是在打仗"，
+     * 让这一场**整场结束**（只把 active 置 false 不够：活动闸门看的是"主控是不是在打仗"，
      * 直接改 active 会得到「战斗中：这一场打完才能切换主控活动」）。这里按空闲态清干净。
      */
     s.expedition.active = false

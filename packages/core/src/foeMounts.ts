@@ -77,28 +77,30 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     id: FOE_MOUNT_IDS.chargeSwarmT1,
     name: '虫群冲锋器 T1',
     en: 'Hiveswarm Charger T1', // 族系前缀照译：巢群/虫群 = `Hiveswarm`；档位照抄（命名规则第 3 条）
-    charge: { mul: 1.5, cooldownMs: 10_000 },
+    // **C 族族设定**（船长 2026-09-30：「给C族添加族设定，他们的冲锋不会被网子解除」；追问取甲）：
+    // 网子的「关推进器」对本族无效 ⇒ 四件虫群冲锋器一律 `webImmune`（A 族那件**不带**）。
+    charge: { mul: 1.5, cooldownMs: 10_000, webImmune: true },
     note: 'C 族 T1（畸变幼虫 / 星髓幼虫）：船长 2026-09-14「给小虫子添加冲锋，倍率为1.5」。',
   },
   [FOE_MOUNT_IDS.chargeSwarmT2]: {
     id: FOE_MOUNT_IDS.chargeSwarmT2,
     name: '虫群冲锋器 T2',
     en: 'Hiveswarm Charger T2',
-    charge: { mul: 2, cooldownMs: 10_000 },
+    charge: { mul: 2, cooldownMs: 10_000, webImmune: true },
     note: 'C 族 T2（星髓成虫）：船长 2026-09-16「C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4」。',
   },
   [FOE_MOUNT_IDS.chargeSwarmT3]: {
     id: FOE_MOUNT_IDS.chargeSwarmT3,
     name: '虫群冲锋器 T3',
     en: 'Hiveswarm Charger T3',
-    charge: { mul: 2.5, cooldownMs: 10_000 },
+    charge: { mul: 2.5, cooldownMs: 10_000, webImmune: true },
     note: 'C 族 T3（孢群异虫）：同上按档口径（2026-09-16 前它是族内唯一不具冲锋资格的舰级）。',
   },
   [FOE_MOUNT_IDS.chargeSwarmT4]: {
     id: FOE_MOUNT_IDS.chargeSwarmT4,
     name: '虫群冲锋器 T4',
     en: 'Hiveswarm Charger T4',
-    charge: { mul: 3, cooldownMs: 10_000 },
+    charge: { mul: 3, cooldownMs: 10_000, webImmune: true },
     note: 'C 族 T4（噬口巨兽）：船长 2026-09-14「大虫子的冲锋倍率改为3」。',
   },
   [FOE_MOUNT_IDS.droneRangeX4]: {
@@ -232,6 +234,11 @@ export interface ResolvedFoeMounts {
   foeCanCharge?: true
   foeChargeMul?: number
   foeChargeCooldownMs?: number
+  /**
+   * **本条冲锋不吃网子的「关推进器」**（＝ C 族族设定，见 `FoeMountDef.charge.webImmune`）——
+   * 由带该旗标的冲锋件解析而来；消费单点 = `combat.applyFoeWebDebuff`。
+   */
+  foeChargeWebImmune?: true
   foeDroneRangeMulOnHit?: number
   foeGunRangeMulOnHit?: number
   /** **劫掠捕获网**参数（原样带给单位；触发/作用面见 `FoeMountDef.web`） */
@@ -268,6 +275,7 @@ export interface ResolvedFoeMounts {
 /**
  * **解析挂载件 → 运行时字段**（单点：建档与体检同源）。
  * 多件同类相撞：**闪避加数取「加和」**（可叠加）、其余效果取**最后一件**（后写覆盖先写）；
+ * **`foeChargeWebImmune` 是"沾上就生效"的旗标**（只有 true、不会被后面的件抹掉）；
  * 未知 id 不生效、只登记在 `unknown` 里。`names` 与 `namePairs` 保持挂载顺序、逐项对齐。
  */
 export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFoeMounts {
@@ -284,6 +292,8 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
       out.foeCanCharge = true
       out.foeChargeMul = def.charge.mul
       out.foeChargeCooldownMs = def.charge.cooldownMs
+      // **C 族族设定**（2026-09-30）：四件虫群冲锋器带 `webImmune` ⇒ 本单位的冲锋不被网的「关推进器」解除
+      if (def.charge.webImmune === true) out.foeChargeWebImmune = true
     }
     if (def.droneRangeOnHit) out.foeDroneRangeMulOnHit = def.droneRangeOnHit.mul
     if (def.gunRangeOnHit) out.foeGunRangeMulOnHit = def.gunRangeOnHit.mul

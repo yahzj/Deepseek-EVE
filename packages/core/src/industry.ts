@@ -264,18 +264,42 @@ export function startRefineRun(
    * （炉膛扩容学满级 10 → 13 单位，囤货不足 13 就开不了工）。要放宽这道门是另一件事，本函数不做。
    */
   const smeltLv = Math.min(5, state.skills.trained['core-smelting'] ?? 0)
-  if (smeltLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0.6, 1 - 0.04 * smeltLv)))
-  // 炉温精调学（2026-09-22 船长令 · 精炼系 T4「每级 4%」）：与炉心熔炼学**同一乘区**，手动与 AI 核心驱动同享
+  /**
+   * ⚠ **下限 0.6 已移除**（**2026-09-29 船长令**：「炉心熔炼学为什么还会有下限？移除」）——
+   * 旧写法是 `Math.max(0.6, 1 - 0.04 * smeltLv)`，而满级 5 级 = 恰好 0.80，**下限从来没生效过**
+   * （它只在"技能等级被外力写到 10 以上"时才会咬，属历史遗留的假护栏）。
+   * 现在与同乘区的其余四条一致：**只做乘算、不设下限**（乘算本身有界：每条 ≤5 级）。
+   */
+  if (smeltLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * (1 - 0.04 * smeltLv)))
+  /**
+   * 炉压调控学（**2026-09-29 船长令**：新 R3，插在炉心熔炼学与炉温精调学之间，每级 −4%）——
+   * 与炉心熔炼学**同一乘区**（都是精炼炉周期），手动与 AI 核心驱动同享。
+   */
+  const pressLv = Math.min(5, state.skills.trained['furnace-pressure'] ?? 0)
+  if (pressLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * (1 - 0.04 * pressLv)))
+  /**
+   * 炉温精调学：**每级 4% → 3%**（**2026-09-29 船长令**：「炉温精调学效果下调到 −3%/级」）
+   * —— 与炉心熔炼学、炉压调控学同一乘区，手动与 AI 核心驱动同享。
+   */
   const fineLv = Math.min(5, state.skills.trained['furnace-precision'] ?? 0)
-  if (fineLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.04 * fineLv)))
+  if (fineLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.03 * fineLv)))
   // 2026-09-27 上位技能：恒温炉控学 −1.5%/级（与炉温精调学同乘区）
   const fineUpLv = Math.min(5, state.skills.trained['furnace-thermal-control'] ?? 0)
   if (fineUpLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.015 * fineUpLv)))
   const expLv = Math.min(5, state.skills.trained['furnace-expansion'] ?? 0)
-  // 2026-09-27 上位技能：炉膛倍增学 +2%/级（与炉膛扩容学同乘区）
+  const expMul = 1 + 0.06 * expLv
+  /**
+   * 炉膛倍增学：**每级 2% → 4%**（**2026-09-29 船长令**：「炉膛倍增学效果上调到 4%/级」）；
+   * 炉膛重构学（**2026-09-29 船长令**：新 R5，炉膛倍增学的后续，每级再 +2%）——
+   * 三者同乘区（精炼炉批容），手动与 AI 核心驱动同享。
+   * ⚠ 每级的乘式都紧挨自己的 id 字面量写：`content:check` 的技能说明契约按"id ±400 字符"现场复核每级值。
+   */
   const expUpLv = Math.min(5, state.skills.trained['furnace-amplification'] ?? 0)
-  if (expLv > 0 || expUpLv > 0) {
-    batchEff = Math.max(1, Math.round(batchUnits * (1 + 0.06 * expLv) * (1 + 0.02 * expUpLv)))
+  const expUpMul = 1 + 0.04 * expUpLv
+  const expReLv = Math.min(5, state.skills.trained['furnace-reconfiguration'] ?? 0)
+  const expReMul = 1 + 0.02 * expReLv
+  if (expLv > 0 || expUpLv > 0 || expReLv > 0) {
+    batchEff = Math.max(1, Math.round(batchUnits * expMul * expUpMul * expReMul))
   }
   // 产线节拍学（原"工业自动化"，id industrial-automation；2026-09-08 船长定：手动与 AI 核心驱动同享）：
   // 精炼炉作业每级再 −5% 周期（下限护栏已于同日移除，乘算本身有界）

@@ -740,6 +740,9 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
           tr("ui.shipInfo.129", { p1: Math.round((ship.foeRangeDebuffPct ?? 0) * 100) }),
         )
       }
+      // 2026-09-30 船长：**截击舰特性 · 不会被网子选为目标**（数据字段 `ShipDef.interceptorImmuneToWeb`；
+      // 引擎消费点 = `combat.fireFoeCaptureWeb`，与这里同源）
+      if (ship.interceptorImmuneToWeb === true) bits.push(tr("ui.shipInfo.245"))
       return bits.length > 0 ? [{ k: tr("ui.shipInfo.006"), v: bits.join(' · ') }] : []
     })(),
     { k: tr("ui.Handbook.010"), v: `${fmt(ship.cargoM3)} m³` },

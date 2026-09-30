@@ -81,7 +81,15 @@ export function mountEffectText(id: string): string | null {
     return tr('ui.foeIntro.106', { p1: pct(def.evasionBonus.add) })
   }
   if (def.charge) {
-    return tr('ui.foeIntro.107', { p1: String(def.charge.mul), p2: String(Math.round(def.charge.cooldownMs / 1000)) })
+    const base = tr('ui.foeIntro.107', { p1: String(def.charge.mul), p2: String(Math.round(def.charge.cooldownMs / 1000)) })
+    /**
+     * **C 族族设定**（**船长 2026-09-30**：「给C族添加族设定，他们的冲锋不会被网子解除」；
+     * 追问取甲 = 网「关推进器」对 C 族无效）——四件「虫群冲锋器」带 `charge.webImmune`
+     * ⇒ 在冲锋那句后接一条明文（`ui.foeIntro.109`）；A 族「劫掠冲锋推进器」不带、照旧只有冲锋那句。
+     * ⚠ 三处显示同源：战斗悬停（`mountEffectTextByName`）· 悬赏卡悬停 / 势力图鉴（`bitsOf`）——
+     * 都从这里取，不另写一份文案。
+     */
+    return def.charge.webImmune === true ? `${base}${tr('ui.foeIntro.109')}` : base
   }
   if (def.rangeDebuff) {
     return tr('ui.foeIntro.108', { p1: pct(def.rangeDebuff.pct) })

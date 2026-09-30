@@ -694,7 +694,7 @@ export function wormholeCellCardIdOf(run: WormholeRunState, cell: WormholeGridCe
 }
 
 /** 某格的产出族（从敌卡 id 反查：`wh-*` 卡都带 `foeFamily`，取不到就当 A 族兜底） */
-/** 本格敌卡的族（ox-relic-* 按它取；两条货柜渠道与专属掉落同一把尺）。未知/缺省 ⇒ 'A' */
+/** 本格敌卡的族（box-relic-* 按它取；两条货柜渠道与专属掉落同一把尺）。未知/缺省 ⇒ 'A' */
 export function familyOfCard(ctx: SimContext, cardId: string): string {
   const card: AnomalyDef | undefined = ctx.anomalies.get(cardId)
   const f = String(card?.foeFamily ?? 'A')
@@ -2093,7 +2093,7 @@ export function wormholeUnboxRoll(
   return { itemId: id, units: wormholePoolGrantUnitsOf(id), source: 'family' }
 }
 
-/** 货柜 id ⇒ 族（ox-relic-a ⇒ A；不是货柜 ⇒ null） */
+/** 货柜 id ⇒ 族（box-relic-a ⇒ A；不是货柜 ⇒ null） */
 export function wormholeFamilyOfBox(boxItemId: string): string | null {
   const m = /^box-relic-([a-g])$/i.exec(boxItemId)
   return m ? m[1]!.toUpperCase() : null

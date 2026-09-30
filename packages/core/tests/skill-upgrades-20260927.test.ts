@@ -85,13 +85,13 @@ describe('批二上位技能 · 工业侧 10 条', () => {
     expect(recycleRefiningMultiplier(state)).toBeCloseTo(1.575, 10)
   })
 
-  it('炉膛倍增学：精炼批容 ×(1+2%/级)（满级再 +10%，与炉膛扩容学乘算）', async () => {
+  it('炉膛倍增学：精炼批容 ×(1+4%/级)（满级再 +20%，与炉膛扩容学乘算）——2026-09-29 船长令 2%→4%', async () => {
     const a = mk(6)
     const base = await refineViewOf(a.state, a.ctx)
     const b = mk(7)
     b.state.skills.trained['furnace-amplification'] = 5
     const withUp = await refineViewOf(b.state, b.ctx)
-    expect(withUp.batchUnits).toBe(Math.round(base.batchUnits * 1.1))
+    expect(withUp.batchUnits).toBe(Math.round(base.batchUnits * 1.2))
   })
 
   it('恒温炉控学：精炼单批周期 ×(1−1.5%/级)（满级 ×0.925）', async () => {
@@ -220,8 +220,9 @@ describe('批二上位技能 · 名单与树契约', () => {
       expect((def!.prereq ?? []).length, id).toBe(1)
       expect(def!.prereqLevel, `${id} 门槛按船长令只要 Lv1（不填 prereqLevel）`).toBeUndefined()
     }
-    expect(SKILLS.length).toBe(105)
-    expect(SKILLS.filter((s) => s.group === '工业').length).toBe(31)
+    // 2026-09-29 船长令：本表仍是 2026-09-27 那批的 17 条（新批的 3 条不在 NEW 里）；总数与工业条数随新批更新
+    expect(SKILLS.length).toBe(108)
+    expect(SKILLS.filter((s) => s.group === '工业').length).toBe(34)
     expect(SKILLS.filter((s) => s.group === '战斗').length).toBe(27)
   })
 

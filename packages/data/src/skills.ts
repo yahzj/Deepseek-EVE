@@ -331,6 +331,16 @@ export const SKILLS: readonly SkillDef[] = [
     description: '自动化产线扩容：AI 核心驱动的站内精炼炉/回收炉/制造线，在 AI 核心共用上限之外每级 +⟦2⟧ 枚工业专用工位（满级 +⟦10⟧；仅对站内产业生效，不增加 AI 副船任务上限；每个工位仍占用一枚实体 AI 核心）。',
   },
   {
+    // 2026-09-29 船长令：新增 R5，工业自动化的后续——工业专用工位再 +2/级
+    id: 'industrial-ai-cap-integration',
+    name: '工业自动化统合',
+    group: '工业',
+    rank: 5,
+    branch: 'b-auto',
+    prereq: ['industrial-ai-cap'],
+    description: '自动化产线统合：AI 核心驱动的站内精炼炉/回收炉/制造线，在 AI 核心共用上限之外每级再 +⟦2⟧ 枚工业专用工位（满级再 +⟦10⟧；仅对站内产业生效，不增加 AI 副船任务上限；每个工位仍占用一枚实体 AI 核心）。',
+  },
+  {
     id: 'astro-geology',
     name: '星质地质学',
     group: '矿业',
@@ -362,7 +372,18 @@ export const SKILLS: readonly SkillDef[] = [
     group: '工业',
     rank: 2,
     branch: 'b-refine',
+    // 2026-09-29 船长令：「炉心熔炼学为什么还会有下限？移除」——引擎里那个 0.6 下限已删（乘算本身有界）
     description: '精炼炉温控与搅拌工艺：精炼炉单批周期每级缩短 ⟦4%⟧（手动与 AI 核心驱动同享）。',
+  },
+  {
+    // 2026-09-29 船长令：新增 R3「−4%/级」，插在炉心熔炼学与炉温精调学之间
+    id: 'furnace-pressure',
+    name: '炉压调控学',
+    group: '工业',
+    rank: 3,
+    branch: 'b-refine',
+    prereq: ['core-smelting'],
+    description: '精炼炉压力调控：精炼炉单批周期每级再缩短 ⟦4%⟧（满级再 −⟦20%⟧；手动与 AI 核心驱动同享，与炉心熔炼学、炉温精调学、产线节拍学乘算叠加）。',
   },
   {
     id: 'furnace-expansion',
@@ -380,8 +401,19 @@ export const SKILLS: readonly SkillDef[] = [
     rank: 4,
     branch: 'b-refine',
     // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「furnace-expansion」的上位补充，门槛只要父技能 Lv1
+    // 2026-09-29 船长令：「炉膛倍增学效果上调到 4%/级」（原 2%/级）
     prereq: ['furnace-expansion'],
-    description: '精炼炉膛容积进一步改造：精炼单批处理量每级再 +⟦2%⟧（满级再 +⟦10%⟧；与炉膛扩容学乘算叠加）。',
+    description: '精炼炉膛容积进一步改造：精炼单批处理量每级再 +⟦4%⟧（满级再 +⟦20%⟧；与炉膛扩容学乘算叠加）。',
+  },
+  {
+    // 2026-09-29 船长令：新增 R5，炉膛倍增学的后续——批容再 +2%/级
+    id: 'furnace-reconfiguration',
+    name: '炉膛重构学',
+    group: '工业',
+    rank: 5,
+    branch: 'b-refine',
+    prereq: ['furnace-amplification'],
+    description: '精炼炉膛结构重构：精炼单批处理量每级再 +⟦2%⟧（满级再 +⟦10%⟧；与炉膛扩容学、炉膛倍增学乘算叠加）。',
   },
   {
     id: 'furnace-precision',
@@ -391,8 +423,10 @@ export const SKILLS: readonly SkillDef[] = [
     branch: 'b-refine',
     // 2026-09-22 船长令（精炼系 T4）：「添加一个精炼系T4的精炼炉周期缩短技能，每级4%」——
     // 与炉心熔炼学同乘区（都是精炼炉周期），故挂它为前置。
-    prereq: ['core-smelting'],
-    description: '炉温精调与热工控制：精炼炉单批周期每级再缩短 ⟦4%⟧（满级 −⟦20%⟧；手动与 AI 核心驱动同享，与炉心熔炼学、产线节拍学乘算叠加）。',
+    // ⚠ 2026-09-29 船长令：「炉温精调学效果下调到 −3%/级」（原 −4%/级）；
+    //   同时把前置改挂**新插入的 R3「炉压调控学」**（船长要求它插在炉心熔炼学与炉温精调学之间）。
+    prereq: ['furnace-pressure'],
+    description: '炉温精调与热工控制：精炼炉单批周期每级再缩短 ⟦3%⟧（满级 −⟦15%⟧；手动与 AI 核心驱动同享，与炉心熔炼学、炉压调控学、产线节拍学乘算叠加）。',
   },
   {
     id: 'furnace-thermal-control',

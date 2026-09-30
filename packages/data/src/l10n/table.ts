@@ -337,6 +337,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.combat.003": { zh: "⚠ 损伤管制装置未能启动：损管修理组件不足。", en: "⚠ Damage Control Unit could not engage: no Damage Control Repair Kit available." },
   // ⚠ 战报尾巴那一段（`combat.dcUsageText`）与「船体维修装置」那条同式：报告正文是**拼接串**，
   //   不走 id 渲染 ⇒ 这里**不再留**废弃 id（原来加过 `core.combat.004`，未接线，已删）。
+  //   ⚠ **2026-09-30 起 `core.combat.004` 重新有主**：墨潮捕获网钉住 **C 族**时那条战报
+  //   （船长令「网钉住 C 族，按族改一句」——C 族冲锋不吃网的「关推进器」，故该句不写"推进器熄火"）。
+  //   槽 3 的减速那句自己带模板：`p3Id` 选 `core.combat.005`（机动减半）/ `core.combat.006`（机动 ×N）。
+  "core.combat.004": { zh: "{p1} 张开墨潮捕获网，钉住了 {p2}：{p3}、闪避失效，C 族的冲锋不受网的推进器压制——击沉目标或击沉网手才能解除。", en: "{p1} casts the Ink Tide capture web, pinning {p2}: {p3}, evasion disabled; Aberrant charges are unaffected by the thruster lockout — sink the target or the caster to break free." },
+  "core.combat.005": { zh: "机动减半", en: "speed halved" },
+  "core.combat.006": { zh: "机动 ×{p1}", en: "speed ×{p1}" },
   // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
   // ⟪文案调整 2026-09-29⟫ 船长令「夺回奖按投入比例缩水」（乙案 · 全清乘平均参与度）：夺回那一刻算不出
   //   最终金额（= 全额 × 玩家在该处的最终投入比例）⇒ 两条日志去掉金额与 `p2/p3` 两个参数，只留规格
@@ -1930,6 +1936,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 2026-09-26 补：**射程压制阵列**（H 族墨潮干扰阵列）此前没有效果说明 ⇒ 战斗画面悬停只能显示装置名
      （船长报障「不应该复读一遍相同的文字」）。与其余八条同款：触发/持续条件 ＋ 效果。 */
   "ui.foeIntro.108": { zh: "交战中持续压制我方武器射程 −{p1}%", en: "suppresses our weapon range by {p1}% while engaged" },
+  /* 2026-09-30 补：**C 族族设定**（船长「给C族添加族设定，他们的冲锋不会被网子解除」；追问取甲
+     = 网「关推进器」对 C 族无效）——接在 `ui.foeIntro.107`（冲锋那句）后面，只给四件虫群冲锋器用
+     （`FoeMountDef.charge.webImmune`，A 族那件不带）。 */
+  "ui.foeIntro.109": { zh: "；冲锋不会被网子解除", en: "; webs cannot cancel this charge" },
   /* ── 入侵「重复出击」（2026-09-25 船长令：「入侵活动的悬赏，允许玩家开启自动重复，照常计算返回时间」）── */
   "ui.weekend.106": { zh: "重复出击", en: "Repeat assault" },
   "ui.weekend.107": { zh: "开启重复出击：每场从该星系的入侵舰队里重抽一支，胜利后自动返航（返航路程 = 单程）、随后自动再次出发；该星系被夺回或活动结束时自动停止", en: "Start repeat assault: each run draws a fresh invader fleet from that system; after a win the fleet flies home (return leg = one way) and sets out again automatically. It stops when the system is reclaimed or the event ends" },
@@ -4264,6 +4274,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.235": { zh: "装甲动能抗性", en: "Armor kinetic resist" },
   "ui.shipInfo.236": { zh: "装甲高爆抗性", en: "Armor explosive resist" },
   "ui.shipInfo.237": { zh: "装甲能量抗性", en: "Armor energy resist" },
+  /* 2026-09-30 截击舰特性（船长「给拦截舰添加效果，不会被网子选为目标」）——「船体特性」栏那一行，
+     与 `ShipDef.interceptorImmuneToWeb`（数据开关）同源。 */
+  "ui.shipInfo.245": { zh: "不会被网子选为目标", en: "Cannot be targeted by webs" },
 
   /* ── 沉船记录（2026-09-27 船长令：通讯内新增一个分类，记录玩家损失的舰船与当时的装配）── */  "ui.WreckLog.001": { zh: "沉船记录", en: "Ship Loss Log" },
   "ui.WreckLog.002": { zh: "收件箱", en: "Inbox" },

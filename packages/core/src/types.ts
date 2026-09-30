@@ -339,7 +339,23 @@ export interface FoeMountDef {
    * **冲锋装置**：触发后**本单位自己的机动 ×`mul`**（不外溢），解除后 `cooldownMs` 内不能再冲。
    * `triggerMarginM` 缺省 = 走全局 `BattleBalance.foeChargeTriggerMarginM`。
    */
-  charge?: { mul: number; cooldownMs: number; triggerMarginM?: number }
+  charge?: {
+    mul: number
+    cooldownMs: number
+    triggerMarginM?: number
+    /**
+     * **网子的「关推进器」对本条冲锋无效**（**船长 2026-09-30**：「**给C族添加族设定，他们的冲锋
+     * 不会被网子解除**」；口径追问取「**甲：网『关推进器』对 C 族无效**」）。
+     *
+     * 归属 = **C 族四件「虫群冲锋器」**（`chargeSwarmT1`~`T4`，C 族全舰常驻的那一件）；
+     * A 族「劫掠冲锋推进器」**不写**。落点两处（缺一不可）：
+     * ① 引擎 = `combat.applyFoeWebDebuff` **不清零**该单位的 `thrusterBoost`（我方「墨潮捕获网」那三层
+     *    里的"推进器全关"对本族不生效，减速与闪避归零照旧）；
+     * ② 玩家可见文案 = 件上的明文效果（`ui/foeBrief.mountEffectText` 在冲锋那句后多一句"网无法解除"）
+     *    —— 战斗悬停 / 悬赏卡悬停 / 势力图鉴三处同源。
+     */
+    webImmune?: true
+  }
   /**
    * **机群受击增程**：本体被命中一次 ⇒ **整支敌队的机群**射程 ×`mul`（整队标量 `foeDroneRangeBuff`，
    * 口径与迁移前**逐字一致**：任一挂件舰挨打即盖章、此后全队机群都吃）。
@@ -626,6 +642,22 @@ export interface ShipDef {
    * 界面「船体特性」栏同源。缺省 = 不削（零行为变化）。
    */
   foeRangeDebuffPct?: number
+  /**
+   * **截击舰特性 · 不会被网子选为目标**（**船长 2026-09-30**：「**给拦截舰添加效果，不会被网子选为目标**」）。
+   *
+   * 语义：敌方「劫掠捕获网」（`FoeMountDef.web`——A 族劫掠电子舰 / H 族突击舰与干扰舰）在**首次开火**
+   * 选靶时**跳过本船** ⇒ 本船既不会被钉住、也不吃那四层减益（机动骤降 / 推进器熄火 / 闪避归零 / 射程缩短）。
+   * ⚠ 只豁免**那四层减益**：普通炮火的选靶、命中判定与伤害**一字不改**（照旧会被打）。
+   *
+   * 实现口径 = **数据字段驱动**（照 2026-09-16「后勤舰」先例，**不硬判 `subClass === '截击舰'`**）：
+   * `combat.createPlayerSpec` 带出 `spec.interceptorImmuneToWeb`，**消费单点** =
+   * `combat.fireFoeCaptureWeb` 的入口守卫；被跳过时敌方那张网**保留待发**（与"目标已被别的网钉住"
+   * 同一处置，见该函数头注第 3 条），等它这一发/下一发打到合法目标再发。
+   *
+   * 全仓现只有两艘截击舰写它（`sh-wh-c-frigate` / `sh-wh-c-destroyer`），
+   * 契约见 `tools/content-check.ts`「截击舰特性契约」。缺省 ⇒ 旧口径（零行为变化）。
+   */
+  interceptorImmuneToWeb?: boolean
   description: string
   /**
    * **未上线闸门（施工期）**——语义与口径**完全同 `ItemDef.unreleased`**（2026-09-13 船长铁律
@@ -1780,14 +1812,14 @@ export interface ModuleDef {
   /** **通用单发伤害加成**（亡军火控「伤害 +6%」）：与按系 damageTypeBonusPct 同链（**只进炮台/光束**，
    *  不喂无人机——无人机归战术导控）；多件加算。缺省 0。 */
   damageBonusPct?: number
-  /** **装填惩罚**（巨构协处理器「装填 +12%」）：装填 × (1 + 本值)（与 eloadCutPct 的
+  /** **装填惩罚**（巨构协处理器「装填 +12%」）：装填 × (1 + 本值)（与 reloadCutPct 的
    *  "÷(1+x)"是两件事）；多件**只取最重一件**。缺省 0。 */
   reloadPenaltyPct?: number
   /** **全层抗性削减**（掠袭折射涂层「全抗性 −15」）：盾/甲/结构**三层抗性各减该值**（下限 0）；
    *  多件**只取最重一件**（不叠成"抗性清零"）。缺省 0。 */
   allResistPenaltyPct?: number
   /** **无人机出击周期折减**（掠袭机库「无人机攻击间隔 −8%」= 船长 2026-09-13 澄清的**出击周期**）：
-   *  周期 × (1 − 本值)；多件加算、上限 0.9（与 eloadCutPct 同款）。缺省 0。 */
+   *  周期 × (1 − 本值)；多件加算、上限 0.9（与 reloadCutPct 同款）。缺省 0。 */
   droneCycleCutPct?: number
   /* ═══ 2026-09-11 协处理器（cpu 家族·低槽；装配 CPU 预算扩容——船长定：本件自身不占 CPU） ═══ */
   /**

@@ -1155,6 +1155,9 @@ export const SHIPS: ShipDef[] = [
     role: 'armored',
     subClass: '截击舰',
     // 子分类「截击舰」（船长 2026-09-13）：速度 +35% · 机动 +35% · 命中 +0.04 ｜ 货舱 −30% · 护盾血占比 −30% · 信号 +15%
+    // **截击舰特性**（**船长 2026-09-30**：「给拦截舰添加效果，不会被网子选为目标」）——数据开关，
+    // 引擎消费点 = `combat.fireFoeCaptureWeb`（敌方捕获网选靶时跳过本船）；界面「船体特性」栏同源。
+    interceptorImmuneToWeb: true,
     slots: { high: 2, mid: 3, low: 3 },
     tier: 1,
     cargoM3: 630,
@@ -1186,6 +1189,8 @@ export const SHIPS: ShipDef[] = [
     role: 'armored',
     subClass: '截击舰',
     // 子分类「截击舰」（船长 2026-09-13）：同上（C 族两艘同子分类）
+    // 截击舰特性「不会被网子选为目标」同 `sh-wh-c-frigate`（船长 2026-09-30）
+    interceptorImmuneToWeb: true,
     slots: { high: 2, mid: 4, low: 4 },
     tier: 2,
     cargoM3: 1330,
