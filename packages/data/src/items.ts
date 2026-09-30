@@ -1416,16 +1416,20 @@ export const WEEKEND_TROPHIES: readonly ItemDef[] = [
  * - **来源** = 工业页「**实验室**」合成（每批 600 单位 · 见 `labRecipes.ts`），
  *   解锁门槛 = **已建成空间站 ≥ 1 座**（船长令：「需要玩家建设第一个空间站后才解锁相关内容」）；
  * - **市场** = 稀有档（池商品，可买卖）——船长 2026-09-29「燃料可买卖放入稀有（但是是池子）」；
- * - 体积 0.01 m³/单位（与原材料同尺：一趟长途返航 ≈1,200 单位 = 12 m³，搬运成本可忽略）。
+ * - **体积 1 m³/单位，且普通舰船货仓无法装入**（**2026-09-30 船长令**：「每单位燃料体积为1m³，
+ *   但是普通舰船的货仓无法装入」⇒ `holdForbidden`）：燃料只存在于**物品仓库**，
+ *   上限也只算仓库（`core/jumpFuel.ts` 的 `JUMP_FUEL_CAP_BASE`）；老档残留在货仓的那份由读档迁移归仓。
  */
 export const CONSUMABLES: readonly ItemDef[] = [
   {
     id: 'jump-fuel',
     name: '超空间折跃燃料',
     kind: 'consumable',
-    unitM3: 0.01,
+    unitM3: 1,
+    /** 普通舰船货仓装不进去（判据单点在物品数据上，装船入口读它；见 `core/inventory.ts`） */
+    holdForbidden: true,
     baseSellPriceIsk: 120,
-    description: '把跃迁引擎推到过载的稠浆：按返航秒数消耗，返航速度提升至十倍。',
+    description: '把跃迁引擎推到过载的稠浆：按返航秒数消耗，返航速度提升至十倍。单件 1 m³，仅存于物品仓库。',
   },
 ]
 

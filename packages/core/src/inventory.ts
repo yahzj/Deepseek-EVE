@@ -59,6 +59,16 @@ export function visibleItemDefs(ctx: SimContext): ItemDef[] {
   return out
 }
 
+/**
+ * **这个物品能不能装进舰船货仓**（**唯一判据 = 数据表 `ItemDef.holdForbidden`**；缺省可装）。
+ *
+ * 2026-09-30 船长令：「每单位燃料体积为1m³，但是普通舰船的货仓无法装入」——
+ * 判据放在**物品数据**上（不是 core 里写一份 id 名单），日后任何"只能存仓库"的东西在数据表加一个字段即可。
+ */
+export function cargoHoldForbidden(ctx: SimContext, itemId: string): boolean {
+  return ctx.items.get(itemId)?.holdForbidden === true
+}
+
 /* ───────── 基础访问（容错） ───────── */
 
 /** 当前驾驶船的舰队条目（异常时返回 null，调用方按空处理） */
@@ -278,8 +288,32 @@ export function repairMisplacedWarehouseModules(state: GameState, ctx: SimContex
   return moved
 }
 
-/** 仓库 → 货仓（装船，可指定数量上限防超舱由调用方校验）；返回实际装船单位数 */
-export function loadWarehouseToCargo(state: GameState, itemId: string, units: number): number {
+/**
+ * **把"装不进货仓"的东西从各船货仓搬回物品仓库**（**2026-09-30 船长令**：
+ * 「每单位燃料体积为1m³，但是普通舰船的货仓无法装入」的**存量修复**）。
+ *
+ * 口径与 `repairMisplacedWarehouseModules` 同款：**每次读档跑一次、幂等、不销毁任何东西**
+ * （老档里躺在货仓的燃料照搬进仓库；新档本来就装不进去 ⇒ 恒为 0）。
+ *
+ * @returns 搬回仓库的单位数（>0 时调用方可记日志）
+ */
+export function repairHoldForbiddenCargo(state: GameState, ctx: SimContext): number {
+  let moved = 0
+  for (const ship of Object.values(state.fleet)) {
+    const cargo = ship?.cargo
+    if (cargo === undefined || Object.isFrozen(cargo)) continue
+    for (const [id, units] of Object.entries(cargo)) {
+      if (units === undefined || units <= 0) continue
+      if (!cargoHoldForbidden(ctx, id)) continue
+      state.warehouse.items[id] = (state.warehouse.items[id] ?? 0) + units
+      delete cargo[id]
+      moved += units
+    }
+  }
+  return moved
+}
+
+/** 仓库 → 货仓（装船，可指定数量上限防超舱由调用方校验）；返回实际装船单位数 */export function loadWarehouseToCargo(state: GameState, itemId: string, units: number): number {
   // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
   const lock = shipLockedReason(state, state.shipId, '往它货仓装货')
   if (lock) return 0
@@ -302,6 +336,8 @@ export function loadWarehouseToCargoFit(state: GameState, itemId: string, ctx: S
   // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
   const lock = shipLockedReason(state, state.shipId, '往它货仓装货')
   if (lock) return 0
+  /** **货仓装不进去的东西直接拒绝**（数据表判据；界面另有专门提示，见 `ItemsPage.handleLoad`） */
+  if (cargoHoldForbidden(ctx, itemId)) return 0
   const def = ctx.items.get(itemId)
   const mod = def ? undefined : ctx.modules.get(itemId)
   if (!def && !mod) return 0

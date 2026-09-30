@@ -281,6 +281,8 @@ const SKILL_BRANCH_ID: Record<string, string> = {
   'b-salvage': 'ui.labelsText.030',
   'b-auto': 'ui.labelsText.031',
   'b-build': 'ui.labelsText.032',
+  // 2026-09-30 船长令（上限批）：燃料上限 / 节拍 / 收率四条技能的书名 = 「实验室」
+  'b-lab': 'ui.labelsText.074',
   'b-indship': 'ui.labelsText.033',
   'b-weapon': 'ui.labelsText.034',
   'b-aim': 'ui.labelsText.035',

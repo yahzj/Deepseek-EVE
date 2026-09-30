@@ -1,4 +1,4 @@
-﻿/**
+/**
  * **唯一本地化表**（船长 2026-09-19 定：所有本地化文本一律走 **ID 引用**，一份表即可整体替换语言）。
  *
  * 结构：`id → { zh, en }`。ID 规则 = `<域>.<文件短名>.<序号>`（工具自动生成；`ui.` 段由
@@ -408,7 +408,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.lab.014": { zh: "{p1} 库存不足，无法接入实验室。", en: "Not enough {p1} in store to run the Laboratory." },
   "core.lab.015": { zh: "这条实验线已经停了。", en: "That laboratory line has already stopped." },
   "core.lab.016": { zh: "实验室运转异常：配方记录缺失，该线已停（AI 核心已归还）。", en: "Laboratory malfunction: the recipe record is missing, so the line stopped (AI core returned)." },
+  // ⟪文案调整 2026-09-30⟫ 船长报障「燃料生产并不受上限的影响」⇒ 产物封顶：放不下下一批就停线 / 拒起线
+  "core.lab.017": { zh: "实验室停线：{p1} 的仓库余量放不下下一批（{p2} / {p3} 单位，已完成 {p4} 批）。", en: "Laboratory line halted: the store cannot fit another batch of {p1} ({p2} / {p3} units; {p4} batches finished)." },
+  "core.lab.018": { zh: "{p1} 的仓库余量放不下下一批（{p2} / {p3} 单位）：先消耗或卖出再开工。", en: "The store cannot fit another batch of {p1} ({p2} / {p3} units) — spend or sell some first." },
   "ui.labelsText.073": { zh: "道具", en: "Consumables" },
+  // 2026-09-30 船长令（上限批）：技能书「实验室」——四条燃料技能的书名（`b-lab`）
+  "ui.labelsText.074": { zh: "实验室", en: "Laboratory" },
   /* 实验室子页（**2026-09-29 船长令**）：工业页第 5 个子页的卡面文案 */
   "ui.lab.001": { zh: "实验室", en: "Laboratory" },
   "ui.lab.003": { zh: "每批产出", en: "Output per batch" },
@@ -445,6 +450,15 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.jumpFuel.016": { zh: "该活动返航时使用燃料", en: "burn fuel on this activity's returns" },
   "ui.jumpFuel.017": { zh: "前往实验室", en: "Go to Laboratory" },
   "ui.jumpFuel.018": { zh: "仓库里没有燃料：去实验室合成。", en: "No fuel in store — synthesize it in the Laboratory." },
+  /* ⟪文案调整 2026-09-30⟫ 船长令：读数改成「仓库量 / 上限 单位」，删掉"≈N 趟"与"一趟长途"刻度说明 */
+  "ui.jumpFuel.019": { zh: "{p1} / {p2} 单位", en: "{p1} / {p2} units" },
+  "ui.jumpFuel.020": { zh: "{p1} 单位/时", en: "{p1} units/h" },
+  "ui.jumpFuel.021": { zh: "未开工", en: "Idle" },
+  "ui.jumpFuel.022": { zh: "已满", en: "Full" },
+  "ui.jumpFuel.023": { zh: "上限 {p1} 单位", en: "Capacity {p1} units" },
+  "ui.jumpFuel.024": { zh: "实验室未解锁", en: "Laboratory locked" },
+  "ui.jumpFuel.025": { zh: "燃料只存于物品仓库（普通舰船货仓无法装入）", en: "Fuel is stored in the item warehouse only (ordinary holds cannot take it)" },
+  "ui.jumpFuel.026": { zh: "在产速率 = 当前在跑的实验线合计产出（单位/时）；仓库放不下下一批时实验室停线。", en: "Production rate is the combined output of the laboratory lines running now (units/h); a line halts when the store cannot fit another batch." },
   /* ═══ 工业 HUD 页（调试专用 · 2026-09-30 船长令）：**少字多图标** ——
      页面上的文字只做"2~4 字标签/单位"，解释性长句一律进 `title`（悬停）。═══════════════ */
   "ui.hud.001": { zh: "精炼炉", en: "Refinery" },
@@ -504,20 +518,18 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.hud.085": { zh: "这条线已经停了。", en: "That line has already stopped." },
   "ui.hud.086": { zh: "燃料按返航本来要飞的时间扣：1 单位抵 1 秒，速度 ×10", en: "Fuel burns by the return time the trip would have taken: 1 unit per second, speed ×10" },
   "ui.hud.101": { zh: "工业 HUD（调试）", en: "Industry HUD (debug)" },
-  /* 舰船页「跃迁燃料」子页（HUD 化 · 2026-09-30）：201~209 为本页读数与开关行 */
-  "ui.hud.201": { zh: "按 20 分钟返航 ≈1,200 单位计", en: "At a 20-minute return ≈1,200 units" },
+  /* 舰船页「跃迁燃料」子页（HUD 化 · 2026-09-30）：202~209 为本页规格 chip 与开关行；
+     原 201 / 203 / 210 / 211 见下方 ⟪文案调整⟫（随"趟数"那把界面自造的尺一起删）。 */
   "ui.hud.202": { zh: "实验室", en: "Laboratory" },
-  "ui.hud.203": { zh: "满格 {p1} 单位", en: "Full band {p1} units" },
   "ui.hud.204": { zh: "1 单位 = 1 秒", en: "1 unit = 1 s" },
   "ui.hud.205": { zh: "×10 速度", en: "×10 speed" },
   "ui.hud.206": { zh: "每趟扣一次", en: "Burns once per leg" },
   "ui.hud.207": { zh: "启用活动", en: "Enabled activities" },
   "ui.hud.208": { zh: "已开", en: "On" },
   "ui.hud.209": { zh: "未开", en: "Off" },
-  /* 燃料罐读数栏（2026-09-30 船长问"罐体独占左侧、文字右侧纵向"后按技能定稿）：
-     210 = 阈值读数（够飞几趟）· 211 = 虚线刻度说明（一趟长途） */
-  "ui.hud.210": { zh: "≈{p1} 趟", en: "≈{p1} trips" },
-  "ui.hud.211": { zh: "一趟长途 {p1} 单位", en: "One long trip {p1} units" },
+  // ⟪文案调整 2026-09-30⟫ 删四条：`ui.hud.201`（按 20 分钟返航 ≈1,200 单位计）· `ui.hud.203`（满格 {p1} 单位）·
+  //   `ui.hud.210`（≈{p1} 趟）· `ui.hud.211`（一趟长途 {p1} 单位）——船长令「估算约能跑多少趟没有实际意义」；
+  //   读数改成「仓库量 / 上限 单位」（`ui.jumpFuel.019`），上限由 core 给（`jumpFuelCapOf`），界面不再自造"一趟"。
   /* ── 第九批：wormholeHold.ts（虫洞货仓：形状件摆放/整理/交换/取回）── */
   "core.wormholeHold.001": { zh: "这件东西是可叠加散货：应该走散货条（holdAddCargo）。", en: "That item is stackable loose cargo: it belongs to the loose-cargo lane (holdAddCargo)." },
   "core.wormholeHold.002": { zh: "货仓格数为 0：放不下任何形状件。", en: "The hold has 0 slots, so no shaped item fits." },
@@ -3571,6 +3583,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ItemsPage.023": { zh: "档位", en: "Tier" },
   "ui.ItemsPage.050": { zh: "丢弃没有任何收益（要变现请用「市价卖出」或精炼炉）", en: "Discarding brings no return (to turn it into credits, use Sell at market or a refinery)" },
   "ui.ItemsPage.051": { zh: "丢弃失败", en: "Discard failed" },
+  // 2026-09-30 船长令：燃料等"普通货仓装不进去"的东西（`ItemDef.holdForbidden`）装船时给专门提示
+  "ui.ItemsPage.052": { zh: "{p1} 无法装入舰船货仓（仅存于物品仓库）。", en: "{p1} cannot be loaded into a ship's hold — it is stored in the item warehouse only." },
   "ui.itemSubs.001": { zh: "修理组件", en: "Repair Kit" },
   "ui.itemSubs.002": { zh: "遗迹安全货柜", en: "Ruins safe container" },
   "ui.itemSubs.003": { zh: "图纸货柜", en: "Blueprint container" },

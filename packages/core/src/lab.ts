@@ -22,17 +22,114 @@
 import type { GameState, LabRunState } from './state'
 import type { SimContext, LabRecipeDef, AiCoreType } from './types'
 import type { CommandResult } from './engine'
-import { addLog, haltActivityForSwitch } from './state'
+import { addLog, haltActivityForSwitch, MAX_SKILL_LEVEL } from './state'
 import { addWare, countItem, countWare, removeItem, removeWare } from './inventory'
 import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
 import { stationIndustryBlocked } from './location'
 import { applyActivityGate, logAutoHalt } from './activityGate'
+/** 燃料产物的封顶判据（`LAB_OUTPUT_CAP` 登记表用；**单向依赖**：实验室 → 燃料，反向没有） */
+import { jumpFuelCapOf, jumpFuelWareOf } from './jumpFuel'
 /** 已建成空间站座数 = 跃迁燃料链的解锁门槛（复用 `sideTasks` 的同名实现，不另写一份判据） */
 import { builtStationCount } from './sideTasks'
 
 /** 实验室是否已解锁（**唯一判据**：已建成空间站 ≥ 1 座） */
 export function labUnlocked(state: GameState, ctx: SimContext): boolean {
   return builtStationCount(state, ctx) >= 1
+}
+
+/* ───────── 实验室技能乘区（**2026-09-30 船长问「新功能是否模块化？降低耦合」的落法**） ───────── */
+
+/**
+ * **一条实验室技能乘区**。`recipes` 缺省 = **全实验室**（所有配方都吃）；填了 = **只对这些配方生效**
+ * （船长 2026-09-30：「燃料合成节拍学叫燃料了，自然只对燃料生效」）。
+ */
+export interface LabSkillRow {
+  readonly id: string
+  /** 每级值（周期类按"缩短比例"，产出类按"提高比例"） */
+  readonly perLevel: number
+  /** 作用域：配方 id 列表；缺省 = 全实验室 */
+  readonly recipes?: readonly string[]
+}
+
+/**
+ * **缩短实验周期的技能**（乘算叠加）。加技能 = 这里加一行 ⇒ 引擎与界面自动生效，**不再写死技能 id**。
+ *
+ * - `industrial-automation` 产线节拍学：**全实验室**（它原本就管精炼炉与组装机；实验室在 2026-09-29
+ *   落地时就吃了它，说明漏写「实验室」，本批补文案——见工作文档的 ⟪文案调整⟫ 台账）；
+ * - `fuel-catalytic-cracking` 催化裂解学：**只对燃料配方**（船长令）。
+ */
+export const LAB_CYCLE_SKILLS: readonly LabSkillRow[] = [
+  { id: 'industrial-automation', perLevel: 0.05 },
+  { id: 'fuel-catalytic-cracking', perLevel: 0.04, recipes: ['jump-fuel'] },
+]
+
+/**
+ * **提高单批产出的技能**（乘算叠加）。原先实验室**完全不读技能**（`labBatchUnitsOf` 忽略等级）
+ * ⇒ 产量类技能没有插口，本表就是那个插口。
+ */
+export const LAB_YIELD_SKILLS: readonly LabSkillRow[] = [
+  { id: 'fuel-yield-engineering', perLevel: 0.06, recipes: ['jump-fuel'] },
+]
+
+/** 某条技能行对某个配方是否生效（作用域判据的单点） */
+function labSkillApplies(row: LabSkillRow, recipe: LabRecipeDef): boolean {
+  return row.recipes === undefined || row.recipes.includes(recipe.id)
+}
+
+/** 某条技能行的等级（夹在 0~`MAX_SKILL_LEVEL`） */
+function labSkillLevel(state: GameState, id: string): number {
+  return Math.max(0, Math.min(MAX_SKILL_LEVEL, state.skills.trained[id] ?? 0))
+}
+
+/** 周期乘区（≤1；`Π(1 − perLevel × 等级)`） */
+function labCycleMulOf(state: GameState, recipe: LabRecipeDef): number {
+  let mul = 1
+  for (const row of LAB_CYCLE_SKILLS) {
+    if (!labSkillApplies(row, recipe)) continue
+    const lv = labSkillLevel(state, row.id)
+    if (lv > 0) mul *= Math.max(0, 1 - row.perLevel * lv)
+  }
+  return mul
+}
+
+/** 产出乘区（≥1；`Π(1 + perLevel × 等级)`） */
+function labYieldMulOf(state: GameState, recipe: LabRecipeDef): number {
+  let mul = 1
+  for (const row of LAB_YIELD_SKILLS) {
+    if (!labSkillApplies(row, recipe)) continue
+    const lv = labSkillLevel(state, row.id)
+    if (lv > 0) mul *= 1 + row.perLevel * lv
+  }
+  return mul
+}
+
+/**
+ * **产物存量封顶登记表**（键 = 配方 id）：产物现存达到上限 ⇒ **自动停线**（船长 2026-09-30 裁「甲」）。
+ *
+ * 为什么是登记表而不是写死在 `advanceLab` 里：实验室是"配方驱动"的通用产线，**不该认识燃料**；
+ * 将来别的消耗品要封顶，在这里加一行即可（判据与日志 id 都跟着走）。
+ */
+const LAB_OUTPUT_CAP: Readonly<Record<string, { readonly stockOf: (s: GameState) => number; readonly capOf: (s: GameState) => number }>> = {
+  'jump-fuel': { stockOf: jumpFuelWareOf, capOf: jumpFuelCapOf },
+}
+
+/** 本配方的产物是否**已放不下下一批**（没登记封顶的配方恒为 false） */
+export function labOutputCapped(state: GameState, recipe: LabRecipeDef): boolean {
+  const cap = LAB_OUTPUT_CAP[recipe.id]
+  if (!cap) return false
+  /**
+   * 判据 = **下一批放不下**（而不是"现有量已经 ≥ 上限"）——这样仓库**永远不会越过上限**
+   * （船长报障原话是「燃料生产并不受上限的影响」，越限一批仍算不受影响）；
+   * 存量恰好等于上限时也判"满"（`+batch > cap`）。
+   */
+  return cap.stockOf(state) + labBatchUnitsOf(state, recipe) > cap.capOf(state)
+}
+
+/** 本配方产物的现有量 / 上限（界面读数用；没登记封顶的配方返回 undefined） */
+export function labOutputStockOf(state: GameState, recipe: LabRecipeDef): { stock: number; cap: number } | undefined {
+  const cap = LAB_OUTPUT_CAP[recipe.id]
+  if (!cap) return undefined
+  return { stock: cap.stockOf(state), cap: cap.capOf(state) }
 }
 
 /** 某材料的可用量（货仓 ＋ 物品仓库；与精炼炉 `oreAvailable` 同一把尺） */
@@ -78,18 +175,34 @@ export function labMissingMaterials(
   return out
 }
 
-/** 单批周期（毫秒，已按 AI 核心效率与产线节拍学折算） */
+/** 单批周期（毫秒，已按 AI 核心效率与 `LAB_CYCLE_SKILLS` 的乘区折算） */
 function labCycleMsOf(state: GameState, ctx: SimContext, recipe: LabRecipeDef, worker: 'pilot' | AiCoreType): number {
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
-  let ms = Math.max(1, Math.round(recipe.cycleMs / eff))
-  const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
-  if (autoLv > 0) ms = Math.max(1, Math.round(ms * Math.max(0, 1 - 0.05 * autoLv)))
-  return ms
+  const ms = Math.max(1, Math.round(recipe.cycleMs / eff))
+  return Math.max(1, Math.round(ms * labCycleMulOf(state, recipe)))
 }
 
-/** 单批产物单位（基准值原样；实验室不吃炉膛那几条技能，见文件头注） */
-function labBatchUnitsOf(recipe: LabRecipeDef): number {
-  return Math.max(1, Math.floor(recipe.outputUnits))
+/** 单批产物单位（基准值 × `LAB_YIELD_SKILLS` 乘区；向下取整到 1 单位） */
+function labBatchUnitsOf(state: GameState, recipe: LabRecipeDef): number {
+  return Math.max(1, Math.floor(recipe.outputUnits * labYieldMulOf(state, recipe)))
+}
+
+/**
+ * **某配方当前的在产速率**（单位/时）= Σ 在跑的实验线「单批产出 × 3,600,000 ÷ 单批周期」。
+ *
+ * ⚠ 读的是**产线自己存下来的** `batchUnits` / `cycleMs`（起线那一刻按当时技能与劳动者算好的），
+ * **不重算**——否则读数会与引擎真正在跑的节奏对不上（技能中途升级时也如此，口径 = 实际在产的节奏）。
+ */
+export function labOutputPerHourOf(state: GameState, ctx: SimContext, recipeId?: string): number {
+  let perHour = 0
+  for (const r of state.labRuns ?? []) {
+    if (!r.active) continue
+    if (recipeId !== undefined && r.recipeId !== recipeId) continue
+    if (!ctx.labRecipes.has(r.recipeId)) continue
+    if (r.cycleMs <= 0) continue
+    perHour += (r.batchUnits * 3_600_000) / r.cycleMs
+  }
+  return Math.round(perHour)
 }
 
 /** 实验线视图（工业页「实验室」卡片读它） */
@@ -169,6 +282,19 @@ export function startLabRun(
       errorParams: { p1: need },
     }
   }
+  /**
+   * **放不下下一批 ⇒ 起线直接拒绝**（**2026-09-30 船长裁「甲」**：满仓时实验室自动停线；
+   * 起线这一步同样要拦，否则"开一条立刻就停"的空转更费解）。上限判据走 `LAB_OUTPUT_CAP` 登记表。
+   */
+  const capped = labOutputStockOf(state, recipe)
+  if (labOutputCapped(state, recipe)) {
+    return {
+      ok: false,
+      error: `${recipe.name} 的仓库余量放不下下一批（${(capped?.stock ?? 0).toLocaleString('zh-CN')} / ${(capped?.cap ?? 0).toLocaleString('zh-CN')} 单位）：先消耗或卖出再开工。`,
+      errorId: 'core.lab.018',
+      errorParams: { p1: (capped?.stock ?? 0).toLocaleString('zh-CN'), p2: (capped?.cap ?? 0).toLocaleString('zh-CN') },
+    }
+  }
   if (worker === 'pilot') {
     /** 主控 = 手动工作位：与精炼炉/回收炉/拆解台/制造线共用**同一个名额**（统一判据 + 统一日志） */
     const gateSkip = applyActivityGate(state, 'refine')
@@ -201,7 +327,7 @@ export function startLabRun(
     id: (state.labSeq ??= 1),
     worker,
     recipeId,
-    batchUnits: labBatchUnitsOf(recipe),
+    batchUnits: labBatchUnitsOf(state, recipe),
     cycleMs,
     finishAtGameMs: state.gameMs + cycleMs,
     batchesDone: 0,
@@ -253,6 +379,29 @@ export function advanceLab(state: GameState, ctx: SimContext): void {
     let guard = 0
     while (r.active && state.gameMs >= r.finishAtGameMs) {
       if (++guard > 100_000) break
+      /**
+       * **产物到上限 ⇒ 停线**（**2026-09-30 船长裁「甲」**：与"料尽自停"同款，留一条日志）。
+       * 判据来自 `LAB_OUTPUT_CAP` 登记表（燃料 = 物品仓库上限，见 `jumpFuel.ts`）。
+       */
+      if (labOutputCapped(state, recipe)) {
+        const capped = labOutputStockOf(state, recipe)
+        const done = r.batchesDone
+        if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
+        runs.splice(i, 1)
+        addLog(
+          state,
+          'industry',
+          `实验室停线：${recipe.outputItemId} 的仓库余量放不下下一批（${(capped?.stock ?? 0).toLocaleString('zh-CN')} / ${(capped?.cap ?? 0).toLocaleString('zh-CN')} 单位；${recipe.name} 已完成 ${done} 批）${r.worker === 'pilot' ? '。' : '；AI 核心已归还核心库。'}`,
+          'core.lab.017',
+          {
+            p1: recipe.name,
+            p2: (capped?.stock ?? 0).toLocaleString('zh-CN'),
+            p3: (capped?.cap ?? 0).toLocaleString('zh-CN'),
+            p4: done,
+          },
+        )
+        break
+      }
       if (labAffordableBatches(state, recipe) <= 0) {
         const done = r.batchesDone
         if (r.worker !== 'pilot') releaseAiCore(state, r.worker)

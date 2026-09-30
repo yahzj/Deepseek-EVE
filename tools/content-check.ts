@@ -1076,7 +1076,12 @@ for (const sbp of SHIP_BLUEPRINTS) {
     { skill: 'furnace-expansion', per: 0.06, call: 'industry.ts（精炼炉批容；2026-09-22 起手动与 AI 核心驱动同享）' },
     { skill: 'batch-production', per: 0.03, call: 'manufacturing.ts calcBuildDurationMs' },
     { skill: 'materials', per: 0.015, call: 'manufacturing.ts materialFactor' },
-    { skill: 'industrial-automation', per: 0.05, call: 'industry.ts / manufacturing.ts（炉线与制造线周期）' },
+    { skill: 'industrial-automation', per: 0.05, call: 'industry.ts / manufacturing.ts（炉线与制造线周期）＋ lab.ts LAB_CYCLE_SKILLS（实验室，2026-09-30 起说明补「实验室」）' },
+    /* 2026-09-30 上限批（船长令）：实验室书四条 —— 上限两条在 jumpFuel.ts，节拍/收率在 lab.ts（声明式表） */
+    { skill: 'fuel-tank-structure', per: 0.1, call: 'jumpFuel.ts JUMP_FUEL_CAP_SKILLS（燃料仓库上限）' },
+    { skill: 'orbital-fuel-depot', per: 0.1, call: 'jumpFuel.ts JUMP_FUEL_CAP_SKILLS（上限再 +10%，与储罐结构学乘算）' },
+    { skill: 'fuel-catalytic-cracking', per: 0.04, call: 'lab.ts LAB_CYCLE_SKILLS（燃料配方周期；作用域 recipes=[jump-fuel]）' },
+    { skill: 'fuel-yield-engineering', per: 0.06, call: 'lab.ts LAB_YIELD_SKILLS（燃料单批产出；作用域 recipes=[jump-fuel]）' },
     { skill: 'ai-expert', per: 1, call: 'ai.ts aiCoreCap（每级 +1 枚核心上限）' },
     { skill: 'navigation', per: 0.04, call: 'balance.travel.skillIds/cutPerLevel' },
     { skill: 'warp-drive-operation', per: 0.04, call: 'balance.travel.skillIds/cutPerLevel' },

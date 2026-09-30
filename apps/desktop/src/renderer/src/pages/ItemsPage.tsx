@@ -185,6 +185,14 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   function handleLoad(id: string): void {
     const def = engine.ctx.items.get(id)
     if (!def) return
+    /**
+     * **普通货仓装不进去的东西**（**2026-09-30 船长令**：「每单位燃料体积为1m³，但是普通舰船的货仓无法装入」）
+     * —— 判据是**物品数据上的字段**（`ItemDef.holdForbidden`），引擎那边同样会拒绝（`loadWarehouseToCargoFit`），
+     * 这里只是把"装不下"换成一句说明白的话。 */
+    if (def.holdForbidden === true) {
+      onToast(t('ui.ItemsPage.052', { p1: def.name }), true)
+      return
+    }
     const loaded = engine.loadWareToCargoFit(id)
     if (loaded === 0) onToast(t('ui.ItemsPage.012'), true)
     else {

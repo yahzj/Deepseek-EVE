@@ -71,6 +71,10 @@ import {
   stopLabRun,
   jumpFuelStockOf,
   jumpFuelEnabledOf,
+  /* 2026-09-30 上限批：燃料补给读数（上限 / 在产速率 / 状态）＋ 货仓禁装的存量迁移 */
+  jumpFuelSupplyOf,
+  repairHoldForbiddenCargo,
+  cargoHoldForbidden,
   moveQueueItem,
   removeQueueAt,
   renameShip,
@@ -330,6 +334,8 @@ import type {
   /** 实验室线视图 ＋ 跃迁燃料活动档（2026-09-29 跃迁燃料批） */
   LabRunView,
   JumpFuelActivity,
+  /** 2026-09-30 上限批：燃料补给读数（仓库量 / 上限 / 速率 / 状态） */
+  JumpFuelSupply,
   FragmentRedeemRow,
   SellResult,
   SettleStats,
@@ -1095,6 +1101,12 @@ export class GameEngine {
      * 分流判据已改成查装备目录；这里把**已经落错的那部分**搬回来 —— 每次读档跑、幂等、只搬真装备。
      */
     repairMisplacedWarehouseModules(this.state, this.ctx)
+    /**
+     * **把"普通货仓装不进去"的东西（燃料）从各船货仓搬回物品仓库**
+     * （**2026-09-30 船长令**：「每单位燃料体积为1m³，但是普通舰船的货仓无法装入」的存量修复）。
+     * 与上一条同款：每次读档跑、幂等、不销毁任何东西。
+     */
+    repairHoldForbiddenCargo(this.state, this.ctx)
     const now = Date.now()
     if (lastSavedWall !== null) {
       // B4：离线结算前后对比，生成启动简报（离线 ≥1 分钟才展示）；stats 收集 AI 核心作业
@@ -2070,9 +2082,18 @@ export class GameEngine {
     return labRunViews(this.state, this.ctx)
   }
 
-  /** 跃迁燃料库存（仓库 ＋ 驾驶船货仓；舰船页「跃迁燃料」子页顶行读它） */
+  /** 跃迁燃料库存（**只算物品仓库**；船长 2026-09-30 令「不算任何舰船库存」） */
   jumpFuelStock(): number {
     return jumpFuelStockOf(this.state)
+  }
+
+  /**
+   * **燃料补给读数**（仓库量 / 上限 / 在产速率 / 状态）——界面唯一取数口
+   * （**2026-09-30 船长令**：「只需要显示上限多少……下方实验室按钮边上显示现在燃料大概的生产速度/h」；
+   * 口径见 `core/fuelSupply.ts`：界面不再自造"一趟长途"这类常量）。
+   */
+  jumpFuelSupply(): JumpFuelSupply {
+    return jumpFuelSupplyOf(this.state, this.ctx)
   }
 
   /** 某活动是否开着跃迁燃料（界面开关的读数口） */

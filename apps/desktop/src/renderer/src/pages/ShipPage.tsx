@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 舰船页：我的舰队（耐久/维修/切换驾驶）+ AI 指挥中心 + 空间站商店。
  */
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
@@ -224,7 +224,16 @@ function JumpFuelPanel({
   onToast: PageProps['onToast']
   onGotoLab?: () => void
 }): ReactNode {
-  const stock = Math.floor(engine.jumpFuelStock())
+  /**
+   * **燃料补给读数**（**2026-09-30 船长令**：「只需要显示上限多少（比如本地存档现在是5,200单位，
+   * 那就显示5,200/6000单位），下方实验室按钮边上显示现在燃料大概的生产速度/h」）。
+   *
+   * 全部来自 core 的 `jumpFuelSupplyOf`（仓库量 / 上限 / 在产速率 / 状态）——
+   * 界面**零算法、零自造常量**：原先那套「一趟长途 = 1,200 单位 × 5 = 6,000」是界面自己编的尺，
+   * 船长判「估算约能跑多少趟没有实际意义」⇒ 连同 `TRIP_UNITS`、趟数 chip 与虚线刻度说明一起删除。
+   */
+  const supply = engine.jumpFuelSupply()
+  const stock = supply.ware
   /**
    * **罐身尺寸实测**（**2026-09-30 船长三连报障的定稿做法**）：
    * ① 「燃料罐高度太低了…让高度自适应（和右侧的总高度一致）」② 窄屏罐子超大 ③ 液面循环不对齐。
@@ -260,9 +269,6 @@ function JumpFuelPanel({
     sync()
     return () => ro.disconnect()
   }, [])
-  /** 一趟"长途返航"的量级（20 分钟 = 1,200 秒 ⇒ 1,200 单位）——库存条与"可支撑趟数"共用这一把尺 */
-  const TRIP_UNITS = 1_200
-  const trips = Math.floor(stock / TRIP_UNITS)
   const activities: ReadonlyArray<{ k: JumpFuelActivity; g: string }> = [
     { k: 'mine', g: 'miner' },
     { k: 'salvage', g: 'salvager' },
@@ -278,8 +284,8 @@ function JumpFuelPanel({
         <div className="hud-fuel-rail" ref={railRef} title={tr('ui.jumpFuel.014')}>
           <FuelTank
             units={stock}
-            capacity={TRIP_UNITS * 5}
-            tickUnits={TRIP_UNITS}
+            capacity={supply.cap}
+            tickUnits={Math.round(supply.cap / 2)}
             width={tank.w}
             height={tank.h}
             label={tr('ui.jumpFuel.014')}
@@ -290,27 +296,24 @@ function JumpFuelPanel({
         <div className="hud-fuel-main" ref={mainRef}>
           <div className="hud-panel">
             <div className="hud-tank-side">
-              {/* ① 主读数（最大号） */}
-              <span className="hud-row" style={{ gap: 8 }}>
+              {/* ① 主读数（最大号）= **仓库量 / 上限 单位**（船长 2026-09-30 令：显示上限多少；
+                  仓库里的量就是全部燃料——燃料装不进普通货仓，见 `ui.jumpFuel.025` 的悬停说明） */}
+              <span className="hud-row" style={{ gap: 8 }} title={tr('ui.jumpFuel.025')}>
                 <Glyph name="consumable" size={18} color="currentColor" />
-                <span className="hud-fuel-num">{stock.toLocaleString('zh-CN')}</span>
+                <span className="hud-fuel-num">
+                  {tr('ui.jumpFuel.019', {
+                    p1: stock.toLocaleString('zh-CN'),
+                    p2: supply.cap.toLocaleString('zh-CN'),
+                  })}
+                </span>
                 <span className="hud-tiny">{tr('ui.jumpFuel.013')}</span>
               </span>
-              {/* ② 目标/阈值读数（"够飞几趟"） */}
-              <span className="hud-chip is-acc" title={tr('ui.hud.201')}>
-                <Glyph name="nav-ship" size={12} color="currentColor" /> {tr('ui.hud.210', { p1: trips })}
+              {/* ② 上限读数（罐身那根长刻度 = 满仓的一半，纯图形示意；不再有"趟数"估算） */}
+              <span className="hud-chip" title={tr('ui.jumpFuel.025')}>
+                <Glyph name="ico-furnace" size={12} color="currentColor" />{' '}
+                {tr('ui.jumpFuel.023', { p1: supply.cap.toLocaleString('zh-CN') })}
               </span>
-              {/* ③ 刻度说明（罐身那根虚线 = 一趟长途；用小 SVG 虚线示意，不靠文字描述） */}
-              <span className="hud-row" style={{ gap: 6 }}>
-                <svg width="18" height="6" viewBox="0 0 18 6" aria-hidden="true">
-                  <path d="M0 3h18" stroke="var(--hud-fg)" strokeOpacity="0.34" strokeWidth="1" strokeDasharray="3 3" />
-                </svg>
-                <span className="hud-tiny">
-                  {tr('ui.hud.211', { p1: TRIP_UNITS.toLocaleString('zh-CN') })} ·{' '}
-                  {tr('ui.hud.203', { p1: (TRIP_UNITS * 5).toLocaleString('zh-CN') })}
-                </span>
-              </span>
-              {/* ④ 规格：三枚图标 chip（长句只进 title） */}
+              {/* ③ 规格：三枚图标 chip（长句只进 title） */}
               <div className="hud-row wrap" style={{ gap: 6, marginTop: 2 }}>
                 <span className="hud-chip" title={tr('ui.jumpFuel.014')}>
                   <Glyph name="ico-clock" size={12} color="currentColor" /> {tr('ui.hud.204')}
@@ -322,7 +325,7 @@ function JumpFuelPanel({
                   <Glyph name="ico-feed" size={12} color="currentColor" /> {tr('ui.hud.206')}
                 </span>
               </div>
-              {/* ⑤ 动作 */}
+              {/* ④ 动作 ＋ **在产速率**（船长 2026-09-30 令：实验室按钮边上显示现在燃料大概的生产速度/h） */}
               <div className="hud-row" style={{ gap: 8 }}>
                 <IconBtn
                   glyph="ico-lab"
@@ -331,6 +334,19 @@ function JumpFuelPanel({
                   disabled={onGotoLab === undefined}
                   onClick={() => onGotoLab?.()}
                 />
+                <span
+                  className={`hud-chip${supply.status === 'flowing' ? ' is-ok' : supply.status === 'full' ? ' is-acc' : ''}`}
+                  title={tr('ui.jumpFuel.026')}
+                >
+                  <Glyph name="ico-eff" size={12} color="currentColor" />{' '}
+                  {supply.status === 'flowing'
+                    ? tr('ui.jumpFuel.020', { p1: supply.perHour.toLocaleString('zh-CN') })
+                    : supply.status === 'full'
+                      ? tr('ui.jumpFuel.022')
+                      : supply.status === 'locked'
+                        ? tr('ui.jumpFuel.024')
+                        : tr('ui.jumpFuel.021')}
+                </span>
                 {stock <= 0 ? (
                   <span className="hud-tiny" style={{ color: 'var(--hud-warn)' }}>
                     {tr('ui.jumpFuel.018')}

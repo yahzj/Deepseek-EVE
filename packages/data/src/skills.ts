@@ -45,6 +45,8 @@ export const SKILL_BRANCHES: readonly { readonly id: string; readonly group: str
   { id: 'b-salvage', group: '工业' },
   { id: 'b-auto', group: '工业' },
   { id: 'b-build', group: '工业' },
+  // 2026-09-30 船长令：燃料上限/节拍/收率四条技能进「实验室」书（工业大类下的子标签）
+  { id: 'b-lab', group: '工业' },
   { id: 'b-indship', group: '矿业' },
   { id: 'b-weapon', group: '战斗' },
   { id: 'b-aim', group: '战斗' },
@@ -310,7 +312,7 @@ export const SKILLS: readonly SkillDef[] = [
     group: '工业',
     rank: 3,
     branch: 'b-auto',
-    description: '产线节拍优化：精炼炉与组装机的作业周期每级缩短 ⟦5%⟧（满级 −⟦25%⟧；手动与 AI 核心驱动同享，与炉心熔炼学/批量生产学乘算叠加）。',
+    description: '产线节拍优化：精炼炉、组装机与实验室的作业周期每级缩短 ⟦5%⟧（满级 −⟦25%⟧；手动与 AI 核心驱动同享，与炉心熔炼学/批量生产学乘算叠加）。',
   },
   {
     // 2026-09-11 船长定：rank3 下级技能（工业自动化的基础课程）——满级 +5 站内工位
@@ -601,6 +603,46 @@ export const SKILLS: readonly SkillDef[] = [
     // 2026-09-27 船长令（R4/R5 上位技能批）：父技能「precision-assembly」的上位补充，门槛只要父技能 Lv1
     prereq: ['precision-assembly'],
     description: '高级零件精密装配统合：高级零件制造时间每级再 −⟦2.5%⟧（满级再 −⟦12.5%⟧；与精密装配学乘算叠加）。',
+  },
+
+  /* ═══ 实验室（**2026-09-30 船长令**：燃料上限 / 节拍 / 收率四条；技能书 b-lab）═══
+   * 船长原话：「打算添加2个增加燃料上限的技能，并添加1个燃料生产速度和1个燃料产量的技能」＋
+   * 「名字有些过于相似了。参考EVE让不同技能直接名称差异更大一些」＋「速度和产量的技能放到RANK4」
+   * ＋「燃料合成节拍学叫燃料了，自然只对燃料生效」。
+   * 接线：上限 = `core/jumpFuel.ts` 的 `JUMP_FUEL_CAP_SKILLS`；节拍/收率 = `core/lab.ts` 的
+   * `LAB_CYCLE_SKILLS` / `LAB_YIELD_SKILLS`（**声明式表**，加技能=表里加一行）。 */
+  {
+    id: 'fuel-tank-structure',
+    name: '储罐结构学',
+    group: '工业',
+    rank: 2,
+    branch: 'b-lab',
+    description: '燃料储罐结构改造：燃料仓库上限每级 +⟦10%⟧（满级 +⟦50%⟧）。',
+  },
+  {
+    id: 'orbital-fuel-depot',
+    name: '轨道储备库学',
+    group: '工业',
+    rank: 4,
+    branch: 'b-lab',
+    prereq: ['fuel-tank-structure'],
+    description: '轨道储备库扩建：燃料仓库上限每级再 +⟦10%⟧（满级再 +⟦50%⟧；与储罐结构学乘算叠加）。',
+  },
+  {
+    id: 'fuel-catalytic-cracking',
+    name: '催化裂解学',
+    group: '工业',
+    rank: 4,
+    branch: 'b-lab',
+    description: '催化裂解工艺：燃料合成周期每级缩短 ⟦4%⟧（满级 −⟦20%⟧；与产线节拍学乘算叠加，只对燃料配方生效）。',
+  },
+  {
+    id: 'fuel-yield-engineering',
+    name: '收率工艺学',
+    group: '工业',
+    rank: 4,
+    branch: 'b-lab',
+    description: '合成收率优化：燃料合成每批产出每级 +⟦6%⟧（满级 +⟦30%⟧；只对燃料配方生效）。',
   },
 
   // ───────── 战斗（2026-09-05 武器族技能批次：三形态专精乘区，乘算于炮术学之上） ─────────

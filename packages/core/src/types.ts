@@ -165,6 +165,14 @@ export interface ItemDef {
   kind: ItemKind
   /** 每单位占用货舱体积（立方米），矿石 1 m³，矿物很小 */
   unitM3: number
+  /**
+   * **普通舰船货仓装不进去**（**2026-09-30 船长令**：「每单位燃料体积为1m³，但是普通舰船的货仓无法装入」）。
+   *
+   * 判据**只此一处**（数据表声明），装船入口一律读它 ⇒ core 里不写物品 id 名单（见 `inventory.ts`
+   * 的 `cargoHoldForbidden`）。这类物品只存在于物品仓库；老档里残留在货仓的那份由读档迁移归仓
+   * （`save.ts`，不销毁）。
+   */
+  holdForbidden?: boolean
   /** 空间站收购单价（ISK/单位，展示/兜底用；市场权威价见 marketCatalog.basePrice） */
   baseSellPriceIsk: number
   /** 一句话介绍（哪里产出、有什么用） */

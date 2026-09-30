@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @whale/core 对外统一出口。
  * 其他包（data / ui / desktop / 未来服务端）只允许从这里 import。
  */
@@ -455,6 +455,9 @@ export {
   // 2026-09-26 玩家报障：误落进物品仓库的装备（插件装货仓再卸货）搬回装备库（读档时跑、幂等）
   isModuleCargoId,
   repairMisplacedWarehouseModules,
+  /** 2026-09-30 船长令：货仓装不进去的东西（燃料）—— 判据在物品数据上，存量由读档迁移归仓 */
+  cargoHoldForbidden,
+  repairHoldForbiddenCargo,
   loadWarehouseToCargo,
   loadWarehouseToCargoFit,
   // 2026-09-13：未上线闸门（给玩家看的物品目录 vs 引擎全目录）
@@ -650,19 +653,35 @@ export {
   startLabRun,
   stopLabRun,
   advanceLab,
+  /** 2026-09-30 上限批：技能乘区表（声明式）＋ 产物封顶判据 ＋ 在产速率读数 */
+  LAB_CYCLE_SKILLS,
+  LAB_YIELD_SKILLS,
+  labOutputCapped,
+  labOutputStockOf,
+  labOutputPerHourOf,
 } from './lab'
-export type { LabRunView } from './lab'
+export type { LabRunView, LabSkillRow } from './lab'
 export {
   JUMP_FUEL_ITEM_ID,
   JUMP_FUEL_SPEED_MUL,
   JUMP_FUEL_ACTIVITIES,
   JUMP_FUEL_ACTIVITY_TEXT_ID,
+  JUMP_FUEL_CAP_BASE,
+  JUMP_FUEL_CAP_SKILLS,
   jumpFuelEnabledOf,
   jumpFuelStockOf,
   jumpFuelLegMsOf,
   beginJumpFuelLeg,
+  /** 2026-09-30 上限批：上限 / 仓库量 / 余量（**只算物品仓库**，船长令） */
+  jumpFuelCapOf,
+  jumpFuelWareOf,
+  jumpFuelHeadroomOf,
+  jumpFuelWareFull,
 } from './jumpFuel'
 export type { JumpFuelActivity, LabWorker } from './jumpFuel'
+/** 2026-09-30 上限批：燃料补给读数（库存 / 上限 / 在产速率 / 状态）—— 界面取数唯一入口 */
+export { jumpFuelSupplyOf, jumpFuelRecipeOf } from './fuelSupply'
+export type { JumpFuelSupply, JumpFuelFlowStatus } from './fuelSupply'
 export type { LabRecipeDef } from './types'
 
 export {

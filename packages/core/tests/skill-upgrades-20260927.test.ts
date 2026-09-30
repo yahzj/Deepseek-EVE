@@ -221,8 +221,9 @@ describe('批二上位技能 · 名单与树契约', () => {
       expect(def!.prereqLevel, `${id} 门槛按船长令只要 Lv1（不填 prereqLevel）`).toBeUndefined()
     }
     // 2026-09-29 船长令：本表仍是 2026-09-27 那批的 17 条（新批的 3 条不在 NEW 里）；总数与工业条数随新批更新
-    expect(SKILLS.length).toBe(108)
-    expect(SKILLS.filter((s) => s.group === '工业').length).toBe(34)
+    // 2026-09-30 船长令（燃料上限批）：再加 4 条实验室书技能（上限 ×2 / 节拍 / 收率）⇒ 总 108 → 112、工业 34 → 38
+    expect(SKILLS.length).toBe(112)
+    expect(SKILLS.filter((s) => s.group === '工业').length).toBe(38)
     expect(SKILLS.filter((s) => s.group === '战斗').length).toBe(27)
   })
 

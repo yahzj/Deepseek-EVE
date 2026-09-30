@@ -469,7 +469,8 @@ export const EN_ITEMS: EnTable = {
   // 修理组件
   'repairkit-civ': { name: 'Civilian Repair Kit', description: 'Nano repair kit: a base 5 HP restored (structure and armor each scale with this value × capacity bonus × Quick Hull Repair — thicker plates and skills restore more). For emergencies in the field or before docking.' },
   // 道具（2026-09-29 跃迁燃料批）：超空间折跃燃料 —— 实验室合成、按原返航秒数消耗
-  'jump-fuel': { name: 'Hyperspace Jump Fuel', description: 'A dense slurry that pushes jump engines into overload: it burns by the second of original return time and raises return speed tenfold.' },
+  // 2026-09-30 船长令：体积 1 m³/单位 ＋ 普通舰船货仓无法装入（说明同步补规格）
+  'jump-fuel': { name: 'Hyperspace Jump Fuel', description: 'A dense slurry that pushes jump engines into overload: it burns by the second of original return time and raises return speed tenfold. One unit takes 1 m³ and only the item warehouse can hold it.' },
   // 零件（2026-09-20 零件体系：基础 7 直接可造 / 高级 7 需蓝图）
   'part-circuit': { name: 'Circuit Board', description: 'Basic electronic component: a general-purpose board pressed from supermetal and gel — the base layer of advanced parts and exclusive gear.' },
   'part-armor-plate': { name: 'Armor Plate', description: 'Basic structural component: tritanium forged into plate, the standard cladding of ships and heavy equipment.' },
@@ -564,7 +565,12 @@ export const EN_SKILLS: EnTable = {
   reprocessing: { name: 'Reprocessing', description: 'Further raises the refinery output multiplier: +⟦3%⟧ per level (with Refining maxed as well, ⟦165%⟧ in total).' },
   industry: { name: 'Industry', description: 'Core manufacturing theory: each level shortens blueprint build time by ⟦4%⟧ (multiplies with Batch Production).' },
   materials: { name: 'Materials', description: 'Refined manufacturing: each level cuts blueprint material cost by ⟦1.5%⟧ (max −⟦7.5%⟧; multiplies with Component Standardization).' },
-  'industrial-automation': { name: 'Production Cadence', description: 'Line cadence optimization: refinery and assembler cycles shorten by ⟦5%⟧ per level (max −⟦25%⟧; applies to manual and AI-core operation alike, and multiplies with Core Smelting and Batch Production).' },
+  'industrial-automation': { name: 'Production Cadence', description: 'Line cadence optimization: refinery, assembler and laboratory cycles shorten by ⟦5%⟧ per level (max −⟦25%⟧; applies to manual and AI-core operation alike, and multiplies with Core Smelting and Batch Production).' },
+  // 2026-09-30 船长令（上限批）：实验室书四条 —— 燃料上限 ×2 · 燃料节拍 ×1 · 燃料收率 ×1
+  'fuel-tank-structure': { name: 'Fuel Tank Structure', description: 'Fuel tank structural rework: fuel warehouse capacity +⟦10%⟧ per level (max +⟦50%⟧).' },
+  'orbital-fuel-depot': { name: 'Orbital Fuel Depot', description: 'Orbital depot expansion: fuel warehouse capacity rises by a further +⟦10%⟧ per level (a further +⟦50%⟧ at max; multiplies with Fuel Tank Structure).' },
+  'fuel-catalytic-cracking': { name: 'Catalytic Cracking', description: 'Catalytic cracking process: fuel synthesis cycles shorten by ⟦4%⟧ per level (max −⟦20%⟧; multiplies with Production Cadence and applies to fuel recipes only).' },
+  'fuel-yield-engineering': { name: 'Yield Engineering', description: 'Synthesis yield optimization: fuel output per batch +⟦6%⟧ per level (max +⟦30%⟧; fuel recipes only).' },
   'industrial-ai-cap-basic': { name: 'Industrial Automation Basics', description: 'Automated line basics (the foundation course of Industrial Automation): AI-core-driven station refineries, recyclers and manufacturing lines gain +⟦1⟧ industry-only work slot per level beyond the shared AI core cap (max +⟦5⟧; applies to station industry only and does not raise the AI auxiliary task cap; stacks with Industrial Automation).' },
   'industrial-ai-cap': { name: 'Industrial Automation', description: 'Automated line expansion: AI-core-driven station refineries, recyclers and manufacturing lines gain +⟦2⟧ industry-only work slots per level beyond the shared AI core cap (max +⟦10⟧; applies to station industry only and does not raise the AI auxiliary task cap; every slot still uses one physical AI core).' },
   'industrial-ai-cap-integration': { name: 'Integrated Industrial Automation', description: 'Automated line integration: AI-core-driven station refineries, recyclers and manufacturing lines gain +⟦2⟧ further industry-only work slots per level beyond the shared AI core cap (a further +⟦10⟧ at max; applies to station industry only and does not raise the AI auxiliary task cap; every slot still uses one physical AI core).' },
