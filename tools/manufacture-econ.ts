@@ -17,8 +17,9 @@
  *   无技能 ×1、满技能 **×0.629**）；AI 线 = ÷核心效率 ×
  *   (1 − 5%/级 × 产线节拍学，满级 ×0.75)（该技能 2026-09-08 由"工业自动化"改名，id 未变；
  *   AI 仅效率差，产出一件同样耗时；返航/出航无关）；
- *   ⚠ 本工具的 `T_FULL` 常数仍是旧口径 **0.6**（按"工业理论 −5%/级 × 批量生产学 −4%/级"写死）
- *   ⇒ 「耗时」与「净/h 满技·AI」那几栏比引擎偏乐观约 4.8%；改与不改等船长定。
+ *   ⚠ 2026-09-30 已按船长令「按照引擎现在值来」把 `T_FULL` 跟到 **0.629**（含 2026-09-27 的
+ *   流水线统合学）；**零件类蓝图**另吃一条链（见 `PART_FULL`）⇒ 零件满技倍率 = 0.264。
+ *   连带：零件行的料/价天然落在 66~73%（中间品的价值由"替代关系"决定，不套成品 45% 锚）。
  * - 劳动者价值/h = 单件净收益 ÷ 单件耗时 × 3600（一条线同时一件；供料与市场消化另议）；
  * - **料/价 = 材料成本 ÷ 成品现货价**（2026-09-10 船长定"组装机生产的物品贩卖"平衡口径）：
  *   仓库既有同族锚 = **45%**（MK1 全线 / 民用 / 弹药 / 修理组件实测 44.8~51%），
@@ -34,11 +35,18 @@ import { acquisitionFactorOf } from '@whale/core'
 
 const ctx = buildSimContext()
 
-/** 满技能时间倍率（工业理论 5 × 批量生产学 5 × **流水线统合学 5**）：0.8×0.85×0.925 = **0.629**
- *  ⚠ 2026-09-30：注释原写 (1−0.05×5)×(1−0.04×5) = 0.6，那是引擎把两项下调（−5%→−4%、−4%→−3%）
- *  并在 2026-09-27 加进流水线统合学（−1.5%/级）**之前**的旧值——两项改动这里都没跟。
- *  **常数仍是 0.6**（保留读数连续性，等船长定要不要跟改）。 */
-const T_FULL = 0.6
+/** 满技能制造时间倍率 —— 与引擎 `calcBuildDurationMs`（manufacturing.ts:222-224）逐项同源：
+ *  工业理论 −4%/级（`balance.manufacturing.timePerLevel`；2026-09-08 由 −5% 下调）
+ *  × 批量生产学 −3%/级 × 流水线统合学 −1.5%/级（2026-09-27 加）⇒ 0.8 × 0.85 × 0.925 = **0.629**。
+ *  ⚠ 2026-09-30 按船长令「**按照引擎现在值来**」跟改：原常数写死 **0.6**（两项下调前的旧值）
+ *  ⇒ 改前「耗时 / 净h 满技·AI」那几栏偏乐观约 4.8%。 */
+const T_FULL = (1 - (ctx.balance.manufacturing?.timePerLevel ?? 0.04) * 5) * (1 - 0.03 * 5) * (1 - 0.015 * 5)
+/** 零件类蓝图（`spec.partTier` 有值）满技能下**再**乘的一条链 —— 引擎同段（manufacturing.ts:225-243）：
+ *  基础件 = 零件成型工艺学 −8%/级 × 零件成型统合学 −2.5%/级；
+ *  高级件 = 精密装配学 −8%/级 × 精密装配统合学 −2.5%/级（两项数值同链）；
+ *  之后**两档都**再乘 零件流水线 −4%/级 ⇒ 0.6 × 0.875 × 0.8 = **0.42**
+ *  （与 T_FULL 相乘 ⇒ 零件满技倍率 = 0.629 × 0.42 = **0.264**）。 */
+const PART_FULL = (1 - 0.08 * 5) * (1 - 0.025 * 5) * (1 - 0.04 * 5)
 /** 满技能材料倍率（材料学 5 × 组件标准化 5）：0.925×0.96 = **0.888** > 下限 0.7
  *  （= 引擎 `materialFactor` 同值。注释原写 0.9×0.95 = 0.855，那是 2026-09-08 技能加成
  *  下调**之前**的旧值——代码这一行当时跟改了、注释没跟改） */
@@ -88,12 +96,15 @@ function rows(
   kind: 'module' | 'ship' | 'item',
   refId: string,
   units: number,
+  /** 零件类蓝图（`partTier` 有值）⇒ 满技耗时另乘 `PART_FULL`（与引擎同链） */
+  partTier?: 'basic' | 'advanced',
 ): void {
   const p = productOf(kind, refId, units)
   const mat0 = materialCost(materials, 1)
   const mat5 = materialCost(materials, M_FULL)
   const sec0 = buildSeconds
-  const sec5 = Math.round(buildSeconds * T_FULL)
+  // 引擎是「buildSeconds × 1000 × 倍率，最后取整毫秒」；这里按秒取整，误差 <1 秒
+  const sec5 = Math.max(1, Math.round(buildSeconds * T_FULL * (partTier ? PART_FULL : 1)))
   const net0Base = p.base - mat0
   const net0Acq = p.acq - mat0
   const net5Base = p.base - mat5
@@ -115,10 +126,10 @@ function rows(
 }
 
 console.log('=== 组装机(制造)收益体检（2026-09-08 二号；口径见工具头注）===')
-console.log('—— 装备/物品蓝图 ——')
+console.log('—— 装备/物品蓝图（含 14 张零件隐式蓝图：其耗时另吃零件那条技能链） ——')
 for (const [bpId, bp] of ctx.blueprints) {
-  if (bp.moduleId) rows(bpId, ctx.modules.get(bp.moduleId)?.name ?? bpId, bp.materials, bp.buildSeconds, 'module', bp.moduleId, 1)
-  else if (bp.itemId) rows(bpId, ctx.items.get(bp.itemId)?.name ?? bpId, bp.materials, bp.buildSeconds, 'item', bp.itemId, bp.outputUnits ?? 1)
+  if (bp.moduleId) rows(bpId, ctx.modules.get(bp.moduleId)?.name ?? bpId, bp.materials, bp.buildSeconds, 'module', bp.moduleId, 1, bp.partTier)
+  else if (bp.itemId) rows(bpId, ctx.items.get(bp.itemId)?.name ?? bpId, bp.materials, bp.buildSeconds, 'item', bp.itemId, bp.outputUnits ?? 1, bp.partTier)
 }
 console.log('—— 舰船蓝图 ——')
 for (const [bpId, bp] of ctx.shipBlueprints) {
