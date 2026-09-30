@@ -7,10 +7,13 @@
  *   显示排队中条目 ＋ 队首剩余，可上移/下移/顶到最前/取消（与 `engine.moveQueueAt/dequeueAt` 同源）。
  *   **2026-09-30 船长令**（「训练项右侧顶到窗口」＋「训练队列过于单一」）⇒ 每行补真实读数：
  *   行首六边形徽（技能树同款）· 技能书名 · 队首进度条与百分比 · 排队项「练这一级需 X」与「轮到还需 ≈X」。
+ *   **同日船长报障**（「部分技能在队列中置顶无效」）⇒ 三个箭头改走 core 的 `queueMovePlan`：
+ *   挪不动的（会排到前置之前 / 同技能按位置逐级排 ⇒ 挪了等于没挪）**置灰 ＋ 悬停说明原因**，
+ *   点了也会就地讲清楚 —— 不再"点了没反应"。
  */
-import { skillQueueStatus } from '@whale/core'
+import { queueMovePlan, skillQueueStatus } from '@whale/core'
 import type { PageProps } from './common'
-import { tr } from '../i18n/locale'
+import { cmdText, tr } from '../i18n/locale'
 import { useState } from 'react'
 import { fmtDuration } from '../i18n/fmt'
 import { Glyph, toneOf } from '../ui/Glyphs'
@@ -67,7 +70,28 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
   const lastIndex = state.skills.queue.length - 1
   /** 正在等确认的级联取消（null = 没弹确认条）；计划每次渲染现算（纯函数、无副作用） */
   const [askCancel, setAskCancel] = useState<number | null>(null)
+  /**
+   * **"这一步挪不动"的就地说明**（**2026-09-30 船长裁定甲**：不能让玩家"点了没反应"）。
+   * 三个箭头都先问 core 的 `queueMovePlan`：不能挪 ⇒ 按钮置灰 ＋ `title` 写明原因；
+   * 真点了 ⇒ 在**那一行自己的底下**把原因摆出来（⚠ 不放在列表末尾：17 条的队列里那条会落在屏幕外，
+   * 等于没说 —— 与技能树页"一并加入前置"的回话同一手法：就地显示，不另起 toast）。
+   */
+  const [moveNote, setMoveNote] = useState<{ index: number; text: string } | null>(null)
   const cancelImpact = askCancel !== null ? engine.skillCancelImpactAt(askCancel) : null
+  /** 挪一步：不可挪就把原因写在那一行下面，绝不静默 */
+  const tryMove = (from: number, to: number): void => {
+    const plan = queueMovePlan(state, from, to, engine.ctx.skills)
+    if (!plan.ok) {
+      setMoveNote({ index: from, text: cmdText(plan) || tr('ui.SkillsPage.051') })
+      return
+    }
+    if (!engine.moveQueueAt(from, to)) {
+      // 计划说能挪、引擎却拒绝 ⇒ 只可能是状态在两次判断之间变了；给一条兜底说明（不静默）
+      setMoveNote({ index: from, text: tr('ui.SkillsPage.051') })
+      return
+    }
+    setMoveNote(null)
+  }
   const skillNameOf = (id: string): string => engine.ctx.skills.get(id)?.name ?? id
   /** 技能定义（拿大类/技能书；查不到时两个空白，行内自然少两段，不静默报错） */
   const defOf = (id: string): { group: string; branch: string } => {
@@ -111,13 +135,19 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
                 <span className="app-dim">{tr('ui.SkillsPage.041', { d: fmtDuration(view.head.remainingMs) })}</span>
               </span>
               {/* 操作按钮排在信息**下方**（2026-09-25 船长令：不该挤在右侧、应靠卡牌底边）；
-                  2026-09-30 船长核定：仍在信息下方一行，**靠右对齐** */}
+                  2026-09-30 船长核定：仍在信息下方一行，**靠右对齐**；同日起"挪不动"的要置灰并说明原因 */}
               <span className="app-train-chip-act">
                 <button
-                  className="app-train-arrow"
-                  title={tr('ui.SkillsPage.015')}
-                  disabled={lastIndex < 1}
-                  onClick={() => engine.moveQueueAt(0, 1)}
+                  className={`app-train-arrow${lastIndex < 1 ? ' is-off' : ''}`}
+                  aria-disabled={lastIndex < 1}
+                  title={lastIndex < 1 ? tr('ui.SkillsPage.016') : tr('ui.SkillsPage.015')}
+                  onClick={() => {
+                    if (lastIndex < 1) {
+                      setMoveNote({ index: 0, text: tr('ui.SkillsPage.016') })
+                      return
+                    }
+                    tryMove(0, 1)
+                  }}
                 >
                   ↓
                 </button>
@@ -133,9 +163,24 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
                   ×
                 </button>
               </span>
+              {/* 挪不动时：把原因写在**这一行自己的底下**（2026-09-30 甲案） */}
+              {moveNote !== null && moveNote.index === 0 ? <span className="app-train-note">{moveNote.text}</span> : null}
             </span>
           ) : null}
-          {view.pending.map((p) => (
+          {view.pending.map((p) => {
+            /**
+             * **三个箭头各自先问一句"挪得动吗"**（2026-09-30 船长裁定甲）——
+             * `queueMovePlan` 与 `engine.moveQueueAt` 同一套判据（core 单点），这里只负责把它翻译成
+             * "置灰 + 说明"。⚠ 用 `aria-disabled` 而不是 `disabled`：原生 disabled 元素收不到悬停/点击，
+             * 说明与点击回话都会丢掉（本页末尾原本"队尾 ↓ 只有 title"就是这个毛病，这里一并改掉）。
+             */
+            const planTop = queueMovePlan(state, p.queueIndex, 0, engine.ctx.skills)
+            const planUp = queueMovePlan(state, p.queueIndex, p.queueIndex - 1, engine.ctx.skills)
+            const atTail = p.queueIndex >= lastIndex
+            const planDown = atTail ? null : queueMovePlan(state, p.queueIndex, p.queueIndex + 1, engine.ctx.skills)
+            /** 队尾的 ↓ 与"挪不动"的箭头同一副长相（暗一档 + 不给手型），点一下都会就地说明 */
+            const downOff = atTail || (planDown !== null && !planDown.ok)
+            return (
             <span key={`${p.skillId}-${p.targetLevel}`} className="app-chip app-train-chip">
               <span className="app-train-chip-main">
                 <QueueHexBadge group={defOf(p.skillId).group} />
@@ -157,23 +202,41 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
                 <span className="app-dim app-train-eta">{tr('ui.SkillsPage.050', { p1: fmtDuration(p.etaMs) })}</span>
               </span>
               {/* 操作按钮（排序箭头 + 取消）排在信息**下方**（2026-09-25 船长令：靠卡牌底边，不挤右侧）；
-                  2026-09-30 船长核定：仍在信息下方一行，**靠右对齐** */}
+                  2026-09-30 船长核定：仍在信息下方一行，**靠右对齐**；同日起"挪不动"的要置灰并说明原因 */}
               <span className="app-train-chip-act">
-                <button className="app-train-arrow" title={tr('ui.SkillsPage.012')} onClick={() => engine.moveQueueAt(p.queueIndex, 0)}>
+                <button
+                  className={`app-train-arrow${planTop.ok ? '' : ' is-off'}`}
+                  aria-disabled={!planTop.ok}
+                  title={planTop.ok ? tr('ui.SkillsPage.012') : cmdText(planTop)}
+                  onClick={() => tryMove(p.queueIndex, 0)}
+                >
                   ⇈
                 </button>
                 <button
-                  className="app-train-arrow"
-                  title={p.queueIndex === 1 ? tr('ui.SkillsPage.013') : tr('ui.SkillsPage.014')}
-                  onClick={() => engine.moveQueueAt(p.queueIndex, p.queueIndex - 1)}
+                  className={`app-train-arrow${planUp.ok ? '' : ' is-off'}`}
+                  aria-disabled={!planUp.ok}
+                  title={
+                    !planUp.ok
+                      ? cmdText(planUp)
+                      : p.queueIndex === 1
+                        ? tr('ui.SkillsPage.013')
+                        : tr('ui.SkillsPage.014')
+                  }
+                  onClick={() => tryMove(p.queueIndex, p.queueIndex - 1)}
                 >
                   ↑
                 </button>
                 <button
-                  className="app-train-arrow"
-                  title={p.queueIndex < lastIndex ? tr('ui.SkillsPage.015') : tr('ui.SkillsPage.016')}
-                  disabled={p.queueIndex >= lastIndex}
-                  onClick={() => engine.moveQueueAt(p.queueIndex, p.queueIndex + 1)}
+                  className={`app-train-arrow${downOff ? ' is-off' : ''}`}
+                  aria-disabled={downOff}
+                  title={planDown === null ? tr('ui.SkillsPage.016') : planDown.ok ? tr('ui.SkillsPage.015') : cmdText(planDown)}
+                  onClick={() => {
+                    if (atTail) {
+                      setMoveNote({ index: p.queueIndex, text: tr('ui.SkillsPage.016') })
+                      return
+                    }
+                    tryMove(p.queueIndex, p.queueIndex + 1)
+                  }}
                 >
                   ↓
                 </button>
@@ -196,8 +259,14 @@ export function QueueBlock({ engine }: { engine: PageProps['engine'] }) {
                 ×
                 </button>
               </span>
+              {/* 挪不动时：把原因写在**这一行自己的底下**（2026-09-30 甲案）——不放到列表末尾去，
+                  否则长队列里"点了看不到说明"，等于没说 */}
+              {moveNote !== null && moveNote.index === p.queueIndex ? (
+                <span className="app-train-note">{moveNote.text}</span>
+              ) : null}
             </span>
-          ))}
+            )
+          })}
         </div>
       ) : (
         <div className="app-dim app-train-idle">{tr('ui.SkillsPage.018')}</div>

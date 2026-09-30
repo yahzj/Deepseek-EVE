@@ -435,6 +435,8 @@ export {
   enqueueSkill,
   removeQueueAt,
   moveQueueItem,
+  /** 挪不挪得动（2026-09-30：让队列 ⇈/↑/↓ 说实话，别再"点了没反应"）——与 `moveQueueItem` 同一套判据 */
+  queueMovePlan,
   clearSkillQueue,
   skillQueueStatus,
   HIDDEN_SKILL_IDS,
@@ -446,7 +448,7 @@ export {
   planPrereqChain,
   skillCancelImpact,
 } from './engine'
-export type { CommandResult, CoreBlockReason, HeadTrainingInfo, QueueView, SkillPrereqGap } from './engine'
+export type { CommandResult, CoreBlockReason, HeadTrainingInfo, QueueView, QueueMovePlan, SkillPrereqGap } from './engine'
 
 export {
   currentShipState,

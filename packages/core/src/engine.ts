@@ -537,24 +537,37 @@ export function skillLockMissingAtQueue(
 }
 
 /**
- * **队列顺序是否成立**（逐项按"**排在它前面**的同技能条数"算可用等级）：
- * 供 `moveQueueItem` 挡掉"把吃前置的项挪到前置之前"这种会卡住队首的排法（2026-09-23 起队列允许
- * 排在后面的项依赖前面还没练的级，所以顺序本身成了一条要守的契约）。
+ * **顺序契约的第一处违反**（`null` ＝ 顺序成立）：逐项按"**排在它前面的同技能条数**"算可用等级。
+ * `queueOrderOk`（挡下非法挪动）与 `queueMovePlan`（告诉玩家为什么挪不动）**共用这一把尺** ⇒ 判据只有一份。
  */
-function queueOrderOk(state: GameState, catalog: SkillCatalog, queue: readonly TrainingItem[]): boolean {
+function firstOrderBlocker(
+  state: GameState,
+  catalog: SkillCatalog,
+  queue: readonly TrainingItem[],
+): { skillId: string; needLevel: number; haveLevel: number } | null {
   const before = new Map<string, number>()
   for (const it of queue) {
     const def = catalog.get(it.skillId)
     if (def) {
       for (const pid of def.prereq ?? []) {
         if (!catalog.get(pid)) continue
-        const avail = (state.skills.trained[pid] ?? 0) + (before.get(pid) ?? 0)
-        if (avail < prereqNeedLevel(def, pid)) return false
+        const needLevel = prereqNeedLevel(def, pid)
+        const haveLevel = (state.skills.trained[pid] ?? 0) + (before.get(pid) ?? 0)
+        if (haveLevel < needLevel) return { skillId: pid, needLevel, haveLevel }
       }
     }
     before.set(it.skillId, (before.get(it.skillId) ?? 0) + 1)
   }
-  return true
+  return null
+}
+
+/**
+ * **队列顺序是否成立**（逐项按"**排在它前面的同技能条数**"算可用等级）：
+ * 供 `moveQueueItem` 挡掉"把吃前置的项挪到前置之前"这种会卡住队首的排法（2026-09-23 起队列允许
+ * 排在后面的项依赖前面还没练的级，所以顺序本身成了一条要守的契约）。
+ */
+function queueOrderOk(state: GameState, catalog: SkillCatalog, queue: readonly TrainingItem[]): boolean {
+  return firstOrderBlocker(state, catalog, queue) === null
 }
 
 /**
@@ -901,6 +914,45 @@ export function removeQueueAt(state: GameState, index: number, catalog?: SkillCa
   return true
 }
 
+/** 各技能"队内首条"的进度快照（仅当它在冲 已学+1 这一级时有效）——`moveQueueItem` 与 `queueMovePlan` 共用 */
+function queueHeadProgress(queue: readonly TrainingItem[]): Map<string, { progressMs: number; targetLevel: number }> {
+  const out = new Map<string, { progressMs: number; targetLevel: number }>()
+  const seen = new Set<string>()
+  for (const it of queue) {
+    if (seen.has(it.skillId)) continue
+    seen.add(it.skillId)
+    if (it.progressMs > 0) out.set(it.skillId, { progressMs: it.progressMs, targetLevel: it.targetLevel })
+  }
+  return out
+}
+
+/**
+ * **挪一次队列的纯计算**（`from → to` ＋ 重算目标等级与进度归属）：返回**挪好的新数组**，不碰 `state`。
+ * 等级规则：同技能按"新出现次序"重算（＝已学 ＋ 队内第 N 条）⇒ **逐级不可拆**；所以同技能相邻两条互换
+ * 会得到与原来逐项相同的队列（`queueMovePlan` 判成"挪了等于没挪"，见下）。
+ */
+function reorderQueue(
+  state: GameState,
+  queue: readonly TrainingItem[],
+  fromIndex: number,
+  toIndex: number,
+  progOf: ReadonlyMap<string, { progressMs: number; targetLevel: number }>,
+): TrainingItem[] {
+  const next = queue.map((it) => ({ ...it }))
+  const [moved] = next.splice(fromIndex, 1)
+  next.splice(toIndex, 0, moved!)
+  const ranks = new Map<string, number>()
+  for (const it of next) {
+    const r = (ranks.get(it.skillId) ?? 0) + 1
+    ranks.set(it.skillId, r)
+    // 重算目标等级：已学 + 队内第 N 条；再夹一道技能上限（正常入队已保证 ≤5，此处防异常档/将来新路径）
+    it.targetLevel = Math.min(MAX_SKILL_LEVEL, (state.skills.trained[it.skillId] ?? 0) + r)
+    const saved = progOf.get(it.skillId)
+    it.progressMs = saved !== undefined && r === 1 && it.targetLevel === saved.targetLevel ? saved.progressMs : 0
+  }
+  return next
+}
+
 /**
  * 玩家指令：调整训练队列顺序（2026-09-08 船长：前移到顶可“交换式顶替”当前训练——
  * 原队首带着本级进度退回其空出的位置，零损失）。
@@ -910,6 +962,8 @@ export function removeQueueAt(state: GameState, index: number, catalog?: SkillCa
  *
  * **2026-09-23 追加（顺序契约）**：传 `catalog` 时，挪完会校验「没有哪一项排在它要的前置之前」
  * （队列允许排在后面的项依赖前面还没练的级 ⇒ 顺序本身成了契约）；破了就**整单回滚并返回 false**。
+ * ⚠ **2026-09-30 追加**：`false` 有两种成因（顺序契约 / 挪了等于没挪），界面要靠
+ * `queueMovePlan` 提前问清楚 —— 别让玩家点了没反应。
  */
 export function moveQueueItem(
   state: GameState,
@@ -921,37 +975,80 @@ export function moveQueueItem(
   if (!Number.isInteger(fromIndex) || !Number.isInteger(toIndex)) return false
   if (fromIndex === toIndex) return true
   if (fromIndex < 0 || fromIndex >= queue.length || toIndex < 0 || toIndex >= queue.length) return false
-  // 捕获各技能“队内首条”进度（仅当其在冲 已学+1 这一级时有效）
-  const progOf = new Map<string, { progressMs: number; targetLevel: number }>()
-  const seen = new Set<string>()
-  for (const it of queue) {
-    if (seen.has(it.skillId)) continue
-    seen.add(it.skillId)
-    if (it.progressMs > 0) progOf.set(it.skillId, { progressMs: it.progressMs, targetLevel: it.targetLevel })
-  }
-  /** 整单快照（破契约时原样还原：含目标等级与进度） */
-  const backup = queue.map((it) => ({ ...it }))
-  const restore = (): void => {
-    queue.splice(0, queue.length, ...backup)
-  }
-  const [moved] = queue.splice(fromIndex, 1)
-  queue.splice(toIndex, 0, moved)
-  // 重算目标等级 + 进度归属
-  const ranks = new Map<string, number>()
-  for (const it of queue) {
-    const r = (ranks.get(it.skillId) ?? 0) + 1
-    ranks.set(it.skillId, r)
-    // 重算目标等级：已学 + 队内第 N 条；再夹一道技能上限（正常入队已保证 ≤5，此处防异常档/将来新路径）
-    it.targetLevel = Math.min(MAX_SKILL_LEVEL, (state.skills.trained[it.skillId] ?? 0) + r)
-    const saved = progOf.get(it.skillId)
-    it.progressMs = saved !== undefined && r === 1 && it.targetLevel === saved.targetLevel ? saved.progressMs : 0
-  }
-  // 顺序契约（只在传了 catalog 时校验；破了整单回滚 ⇒ 队列永远保持"前置在前"）
-  if (catalog && !queueOrderOk(state, catalog, queue)) {
-    restore()
-    return false
-  }
+  // 先算"挪好的队列"（纯计算），校验通过才写回 ⇒ 破契约时 state 原样不动，不需要整单还原
+  const next = reorderQueue(state, queue, fromIndex, toIndex, queueHeadProgress(queue))
+  if (catalog && !queueOrderOk(state, catalog, next)) return false
+  queue.splice(0, queue.length, ...next)
   return true
+}
+
+/**
+ * **这一步挪不挪得动**（纯函数 · **2026-09-30 船长令**：「部分技能在队列中置顶无效」——
+ * 让 ⇈/↑/↓ 说实话，别再"点了没反应"）。
+ *
+ * 回答两类"挪不动"，与 `moveQueueItem` **同一套判据**（`reorderQueue` ＋ `firstOrderBlocker`）：
+ * ① `core.engine.023` **挪了等于没挪**：同技能在队列里按位置逐级排 ⇒ 把第 2..N 条往前挪一格
+ *    会得到逐项相同的队列（相邻同级互换、或把块内一条挪到块首都是这种）；
+ * ② `core.engine.022` **挪不过去**：这一步会让它排在它要的前置之前（顺序契约）——
+ *    附上卡住它的前置与"需要几级 / 当前只有几级"。
+ *
+ * 返回结构沿用 `CommandResult` 的文案三件套（`error` / `errorId` / `errorParams`），
+ * 界面直接 `cmdText(plan)` 取当期语言的说明（id 见 `packages/data/src/l10n/table.ts`）。
+ *
+ * ⚠ **计划比 `moveQueueItem` 严一档**：判"挪了等于没挪"时引擎照样返回 `true`（队列确实没变、也没报错），
+ * 但这一步对玩家没有意义 ⇒ 计划判成不可挪，界面把按钮置灰并说明原因。
+ */
+export interface QueueMovePlan {
+  readonly ok: boolean
+  readonly error?: string
+  readonly errorId?: string
+  readonly errorParams?: Readonly<Record<string, string | number>>
+}
+
+export function queueMovePlan(
+  state: GameState,
+  fromIndex: number,
+  toIndex: number,
+  catalog: SkillCatalog,
+): QueueMovePlan {
+  const queue = state.skills.queue
+  if (
+    !Number.isInteger(fromIndex) ||
+    !Number.isInteger(toIndex) ||
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= queue.length ||
+    toIndex >= queue.length
+  ) {
+    return {
+      ok: false,
+      error: '队列里没有这一条（下标越界）。',
+      errorId: 'core.engine.024',
+      errorParams: {},
+    }
+  }
+  if (fromIndex === toIndex) return { ok: true }
+  const next = reorderQueue(state, queue, fromIndex, toIndex, queueHeadProgress(queue))
+  const same = next.every((it, i) => it.skillId === queue[i]!.skillId && it.targetLevel === queue[i]!.targetLevel)
+  if (same) {
+    return {
+      ok: false,
+      error: '挪了等于没挪：同一技能在队列里按位置逐级排，这一步与它前一条等价。',
+      errorId: 'core.engine.023',
+      errorParams: {},
+    }
+  }
+  const blocker = firstOrderBlocker(state, catalog, next)
+  if (blocker !== null) {
+    const name = catalog.get(blocker.skillId)?.name ?? blocker.skillId
+    return {
+      ok: false,
+      error: `挪不过去：这条会排在它要的前置之前 —— ${name} 需 Lv${blocker.needLevel}，当前只有 Lv${blocker.haveLevel}。`,
+      errorId: 'core.engine.022',
+      errorParams: { p1: name, p2: blocker.needLevel, p3: blocker.haveLevel },
+    }
+  }
+  return { ok: true }
 }
 
 /** 玩家指令：清空整个训练队列，返回移除了几项（队首进度保留，可续接） */

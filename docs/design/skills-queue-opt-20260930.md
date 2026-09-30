@@ -131,4 +131,57 @@
 
 ⚠ 以上全是**读数**；「好不好看」由船长判（§六）。
 
+## 8. 追加批：队列「置顶无效」排查 ＋ 修法（同日 · 船长裁定甲）
+
+**船长原话**：
+> 「我发现部分技能在队列中置顶无效，进行下排查」
+
+**排查读数**（日志 `tools/_ui-artifacts/queue-pin-readings-20260930.log`；探针 `tools/_probe-queue-pin.mts`）——
+两种机制，都不是"按钮坏了"：
+
+1. **顺序契约挡下 ＋ 完全静默**（`moveQueueItem` 传 catalog 时校验"没有哪一项排在它要的前置之前"，
+   破了整单回滚返回 false；界面 `onClick` 丢弃返回值、`moveQueueAt` 只在成功时 notify）⇒ 玩家点 ⇈/↑
+   **毫无反馈**。复现（真实入口 `planPrereqChain`＋`enqueueSkill`）：`舰船操控学→Lv1 | 导航学→Lv1`，
+   对导航学置顶 ⇒ 返回 false，界面无提示。
+2. **同技能多级按位置重算等级**⇒ 点哪条都一样：本档 维修工程学 5 条、工业理论 2 条，
+   第 13/14/15/16 位的 ⇈ 与第 12 位**逐字相同**；相邻同级互换（`[A Lv1, A Lv2]` 点第 2 条 ⇈/↑）
+   **返回 true 但队列逐项没变**。
+
+**修法（甲案）**：core 出纯计划 `queueMovePlan(state, from, to, catalog)`（与 `moveQueueItem` 同一套判据：
+`reorderQueue` ＋ `firstOrderBlocker` 单点），界面据此**置灰 ＋ 说明原因**，点了就地讲清楚。
+
+| 文件 | 改动 |
+|---|---|
+| `packages/core/src/engine.ts` | 抽出 `firstOrderBlocker`（`queueOrderOk` 与计划共用）· `queueHeadProgress` / `reorderQueue`（`moveQueueItem` 改为"先算新队列、校验通过才写回"，不再需要整单还原）· 新增 `queueMovePlan` ＋ `QueueMovePlan` |
+| `packages/core/src/index.ts` | 导出 `queueMovePlan` / `QueueMovePlan` |
+| `packages/core/tests/queue-reorder.test.ts` | 新增一组用例：契约挡住（带 p1/p2/p3 卡点）· 挪了等于没挪（并断言队列逐项不变）· 挪得动时计划与引擎一致 · 越界不抛错 |
+| `apps/desktop/.../pages/skillShared.tsx` | 三个箭头先问 `queueMovePlan`：`aria-disabled` ＋ `.is-off` 置灰 ＋ `title` 写明原因；点了在**那一行底下**就地显示原因（`.app-train-note`）；`↑/↓/⇈` 与队首 `↓` 一并改（原"队尾 ↓ 用原生 disabled ⇒ title 永远弹不出来"的毛病一并修掉） |
+| `apps/desktop/.../styles.css` | `.app-train-arrow.is-off`（与 `:disabled` 同长相）· 悬停高亮排除 `.is-off` · 新增 `.app-train-note`（警示色小字，写在行内） |
+| `apps/desktop/.../ui/layout-css/styles-{classic,modern}.css` | `npm run ui:layout-css` 生成 |
+| `packages/data/src/l10n/table.ts` | `core.engine.022`（挪不过去：…需 Lv{p2}，当前只有 Lv{p3}）· `core.engine.023`（挪了等于没挪）· `core.engine.024`（越界）· `ui.SkillsPage.051`（兜底说明） |
+
+**验收读数**（1340×900 · 造出"前置在前、目标在后"的 17 条队列；日志 `queue-pin-ui-readings-20260930.log`）：
+
+| 项 | 读数 |
+|---|---|
+| 箭头总数 / 置灰数 | 49 / **14** |
+| 「挪不过去」样例 | 「星质地质学 需 Lv1，当前只有 Lv0。」（该行 ⇈/↑/↓ 三个一起挡下——↓ 也会让后一条排在它的前置之前） |
+| 「挪了等于没挪」样例 | 「同一技能在队列里按位置逐级排，这一步与它前一条等价。」 |
+| 队尾 ↓ / 末行 ↑ | 置灰：`已在队尾` / `挪了等于没挪` |
+| 点"挪不过去"的 ⇈ | 说明出现在**被点那一行内**，且落在面板可视区内（说明顶 533 ∈ 面板体 294–893） |
+| 无需挡下的行 | 末行 ⇈ 仍可点（`off=false`）——置灰只针对真挪不动的 |
+| 真悬停一次置灰箭头 | 接管层 `.app-tip` 弹出同一条原因（＝用 `aria-disabled` 而不是原生 `disabled` 的意义：原生 disabled 收不到悬停，说明永远弹不出来），鼠标落点 [914,524] |
+
+## 9. 合入状态（2026-09-30 · 被主树在途改动挡住）
+
+- 本批已在 `verify` 提交：`75485a42` → rebase 到 main `1341e27a` 后为 **`a05696a9`**；
+  rebase 只 `docs/INDEX.md` 冲突（重跑 `docs:index` 解决），其余与一号的 HUD 改动**自动合并干净**。
+- **`git merge --ff-only verify` 被拒**（主树里一号有未提交改动，重叠文件：
+  `apps/desktop/src/renderer/src/styles.css` · `ui/layout-css/styles-classic.css` · `styles-modern.css` · `docs/INDEX.md`）；
+  git 已自动中止，**主树一个字节没动**（HEAD 仍 `1341e27a`，一号的改动原样保留）。按 §4 停手，等他提交后再 rebase ＋ ff 合入。
+- rebase 后复测（含一号新版 `Tooltip.tsx`）：typecheck ✅ · core 276 文件/2905 用例 ✅ ·
+  `ui:layout-css:check` ✅ · desktop＋web 构建 ✅ · 上表读数逐条重取一致。
+
+
+
 

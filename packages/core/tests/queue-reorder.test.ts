@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import type { SimContext } from '../src/types'
 import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
-import { enqueueSkill, moveQueueItem, skillQueueStatus } from '../src/engine'
+import { enqueueSkill, moveQueueItem, queueMovePlan, skillQueueStatus } from '../src/engine'
 import { makeTestCtx, skill } from './helpers'
 
 function world() {
@@ -100,5 +100,59 @@ describe('训练队列：总时长与“轮到还需”同源（skillQueueStatus
     expect(empty.head).toBeNull()
     expect(empty.pending).toHaveLength(0)
     expect(empty.totalRemainingMs).toBe(0)
+  })
+})
+
+/**
+ * **挪不挪得动**（**2026-09-30 船长报障**「部分技能在队列中置顶无效」＋裁定甲「让 ⇈/↑/↓ 说实话」）——
+ * `queueMovePlan` 是界面置灰与说明的唯一出处，判据与 `moveQueueItem` 同源（`reorderQueue` ＋ `firstOrderBlocker`）。
+ * 两种"挪不动"：① 会排在它要的前置之前（顺序契约）② 同技能多级按位置逐级排 ⇒ 挪了等于没挪。
+ */
+describe('训练队列：挪不挪得动（queueMovePlan）', () => {
+  it('顺序契约：把"吃前置的项"挪到前置之前 ⇒ 挪不过去（带卡点），moveQueueItem 同样拒绝且队列原样', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 1 })
+    const ctx = makeTestCtx({
+      skills: [skill('a'), { ...skill('b'), prereq: ['a'], prereqLevel: { a: 1 } }],
+      quietEvents: true,
+    })
+    expect(enqueueSkill(state, 'a', 1, ctx.skills).ok).toBe(true)
+    expect(enqueueSkill(state, 'b', 1, ctx.skills).ok).toBe(true) // 队列允许"依赖前面还没练的级"
+    const plan = queueMovePlan(state, 1, 0, ctx.skills)
+    expect(plan.ok).toBe(false)
+    expect(plan.errorId).toBe('core.engine.022')
+    expect(plan.errorParams).toMatchObject({ p1: '技能a', p2: 1, p3: 0 })
+    expect(moveQueueItem(state, 1, 0, ctx.skills)).toBe(false)
+    expect(state.skills.queue.map((q) => q.skillId)).toEqual(['a', 'b'])
+  })
+
+  it('同技能多级：往前挪一格判成"挪了等于没挪"（引擎执行了，但队列逐项不变）', () => {
+    const { state, ctx } = world()
+    expect(enqueueSkill(state, 'a', 1, ctx.skills).ok).toBe(true)
+    expect(enqueueSkill(state, 'a', 2, ctx.skills).ok).toBe(true)
+    expect(enqueueSkill(state, 'b', 1, ctx.skills).ok).toBe(true)
+    const sig = (): string => state.skills.queue.map((q) => `${q.skillId}#${q.targetLevel}`).join(',')
+    const before = sig()
+    const plan = queueMovePlan(state, 1, 0, ctx.skills)
+    expect(plan.ok).toBe(false)
+    expect(plan.errorId).toBe('core.engine.023')
+    expect(moveQueueItem(state, 1, 0, ctx.skills)).toBe(true)
+    expect(sig()).toBe(before) // 计划判"没意义"的依据：结果确实逐项相同
+  })
+
+  it('挪得动：计划说 ok，引擎真挪（两者一致）', () => {
+    const { state, ctx } = world()
+    expect(enqueueSkill(state, 'a', 1, ctx.skills).ok).toBe(true)
+    expect(enqueueSkill(state, 'b', 1, ctx.skills).ok).toBe(true)
+    expect(queueMovePlan(state, 1, 0, ctx.skills).ok).toBe(true)
+    expect(moveQueueItem(state, 1, 0, ctx.skills)).toBe(true)
+    expect(state.skills.queue.map((q) => q.skillId)).toEqual(['b', 'a'])
+  })
+
+  it('越界下标 ⇒ 判成挪不动（越界原因），不抛错', () => {
+    const { state, ctx } = world()
+    expect(enqueueSkill(state, 'a', 1, ctx.skills).ok).toBe(true)
+    expect(queueMovePlan(state, 0, 5, ctx.skills).errorId).toBe('core.engine.024')
+    expect(queueMovePlan(state, -1, 0, ctx.skills).ok).toBe(false)
+    expect(queueMovePlan(state, 0, 0, ctx.skills).ok).toBe(true) // 原地 = 无需挪
   })
 })
