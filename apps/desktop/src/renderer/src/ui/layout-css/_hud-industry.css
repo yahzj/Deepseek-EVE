@@ -63,24 +63,30 @@
 }
 
 /* ── 顶栏：标题 ＋ 页签 ＋ 读数 ── */
+/* ⚠ **窄档不许"把字挤断"**（**2026-09-30 船长报障**：「默认的宽度下工业 HUD 的精炼炉会直接进入
+   窄屏的压缩模式」）：标题、页签、读数**一律 nowrap**，装不下就**整块换行**（本行允许 wrap），
+   而不是把「精炼炉」折成「精炼 / 炉」、「工业 HUD（调试）」折成两行。 */
 .hud-top {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
+  row-gap: 6px;
   padding: 14px 18px 0;
   border-bottom: 1px solid var(--hud-line);
 }
-.hud-title { letter-spacing: 0.2em; text-transform: uppercase; font-size: 14px; }
+.hud-title { letter-spacing: 0.2em; text-transform: uppercase; font-size: 14px; white-space: nowrap; }
 .hud-title .cn { font-size: 16px; letter-spacing: 0.06em; }
 .hud-title .en { color: var(--hud-fg-dim); font-size: 11px; letter-spacing: 0.12em; }
-.hud-readouts { display: flex; gap: 18px; color: var(--hud-fg-dim); font-size: 11.5px; padding-bottom: 10px; }
+.hud-readouts { display: flex; flex-wrap: wrap; gap: 18px; color: var(--hud-fg-dim); font-size: 11.5px; padding-bottom: 10px; white-space: nowrap; }
 .hud-readouts b { color: var(--hud-fg); font-variant-numeric: tabular-nums; }
-.hud-tabs { display: flex; gap: 2px; }
+.hud-tabs { display: flex; flex-wrap: wrap; gap: 2px; }
 .hud-tab {
   font-family: var(--hud-mono);
   font-size: 12px;
   letter-spacing: 0.12em;
+  white-space: nowrap;
   color: var(--hud-fg-dim);
   background: transparent;
   border: 1px solid transparent;
@@ -121,7 +127,22 @@
    ⇒ 两栏同时装下的门槛是**页面区 ≳ 900px**（实测：1600 干净、1440 右列表越出 10~33px、
    1340 越出 50~73px 并把 `.hud-body` 顶出横向滚动条）。与其"看着两栏、实际互相盖"，
    不如在这个门槛以下回落单列（整页宽，四张表都装得下）。 */
-@media (max-width: 1500px) { .hud-grid.two, .hud-grid.three { grid-template-columns: minmax(0, 1fr); } }
+/* ⚠ 折列断点 = **实测门槛**（**2026-09-30 船长报障**：「默认的宽度下…会直接进入窄屏的压缩模式，
+   那个应该是过窄时才触发」）。两栏要装下，靠的是**左右两张表的最小宽**（读数取自
+   `tools/hud-geom.ts` 的「最小宽拆解」，日志 `tools/_ui-artifacts/_hud-threshold2-20260930.log`）：
+     · 工位表最小 **366px**（逐列 46/84/53/35/56/42/50）＋ 面板内边距 32 ⇒ 左列需 **398px**；
+     · 投料表最小 **307px**（逐列 127/80/50/50）＋ 面板内边距 32 ⇒ 右列需 **339px**；
+     ⇒ 网格区需 **749px** ⇒ `.hud-body` 需 785px ⇒ **视口 ≈ 1360px**。
+   低于这条线就是"两栏装不下"，回落单列（内容全在、不用横向滚动）——这才是"过窄"的真实含义。
+   ⚠ 1280×860（本仓默认窗口）落在门槛之下：页面区实测 719px，比两栏所需少 78px。
+   要在这个宽度也要两栏，可选（都已摆给船长）：开大默认窗口 · 窄档自动收起事件日志坞 ·
+   面板内横向滚动 · 窄档收掉投料表的档位 chip 与动作列内边距。 */
+@media (max-width: 1440px) { .hud-grid.two, .hud-grid.three { grid-template-columns: minmax(0, 1fr); } }
+/* 窄档（但仍是两栏之前的那一段）把外框的空白收一收，给网格多让出 ~20px */
+@media (max-width: 1500px) {
+  .hud-body { padding: 12px 10px 18px; }
+  .hud-grid { gap: 10px; }
+}
 
 /* ── 面板：角标 ＋ 发丝描边 ── */
 .hud-panel {
@@ -211,7 +232,9 @@ body.no-fx .hud-fx-cell .app-inv-fx { animation: none; }
 .hud-table td { vertical-align: top; }
 .hud-table tr:last-child td { border-bottom: 0; }
 /* 动作列（图标按钮）固定宽、不参与挤压 */
-.hud-table td.act, .hud-table th.act { width: 40px; text-align: right; white-space: nowrap; }
+/* ⚠ 2026-09-30（船长报障「默认宽度就进压缩模式」同批）：44 → 40 → **32px** ——
+   实测两栏门槛由它 + 首列下限共同决定（见下一条与 `.hud-grid.two` 的折列注释）。 */
+.hud-table td.act, .hud-table th.act { width: 32px; text-align: right; white-space: nowrap; }
 /* ⚠ **首列（产物名）要有下限宽**：其余列 nowrap ⇒ 表被压时浏览器只压"能压的那列"，
    产物名会被挤成一字一行（1340×900 实测就是这样）。给首列兜底 + 让名字在词内断行。
    ⚠ 2026-09-30 二批读数：精炼炉工位表加了「劳动者」列之后 7 列挤在左栏里 ⇒ 资源名又出现
@@ -219,8 +242,11 @@ body.no-fx .hud-fx-cell .app-inv-fx { animation: none; }
    ⚠ **同日第三批：132 → 96**（船长报障「左侧固定宽度、不随窗口缩放」同批）——132px 是按
    "内容最小宽锁死列宽"那套旧排版调出来的补偿值；列宽现在真的跟着窗口走 ⇒ 下限只需保证
    **图标 ＋ 三字名不断成一字一行**（图标 15 ＋ 间距 6 ＋ 三字 39 ≈ 60px）⇒ 96px 有余量，
-   省下的 36px 正是投料表能收进右列的关键。 */
-.hud-table td:first-child, .hud-table th:first-child { min-width: 96px; }
+   省下的 36px 正是投料表能收进右列的关键。
+   ⚠ **同日第四批：96 → 72**（船长报障「默认宽度就进压缩模式」）—— 实测两栏最低要求
+   ≈ 左表 435px ＋ 右表 332px ＋ 间距；把首列下限与动作列各收一档后门槛下降约 60px
+   （读数见 `tools/_ui-artifacts/_hud-narrow-20260930.log`）。 */
+.hud-table td:first-child, .hud-table th:first-child { min-width: 72px; }
 .hud-table td:first-child .hud-row { min-width: 0; align-items: flex-start; }
 .hud-table td:first-child .hud-row > span:last-child { overflow-wrap: anywhere; }
 /* ⚠ 精炼炉工位表的**主列不是首列**（首列是 `#` 工位号）⇒ 那种表给主列显式挂 `.hud-cell-main`
@@ -240,8 +266,8 @@ body.no-fx .hud-fx-cell .app-inv-fx { animation: none; }
      · 劳动者 chip 允许换行（核心名可断成两行，比把表顶出列外强）。
    收完这张表的最小宽从 690px 降到约 420px ⇒ 两栏档（≥1500）里左列（页面区 60%）装得下且有余量。 */
 .hud-table.is-station td:first-child, .hud-table.is-station th:first-child { min-width: 34px; }
-.hud-table.is-station td.hud-cell-main, .hud-table.is-station th.hud-cell-main { min-width: 96px; }
-.hud-table.is-station td.hud-cell-bar, .hud-table.is-station th.hud-cell-bar { min-width: 64px; }
+.hud-table.is-station td.hud-cell-main, .hud-table.is-station th.hud-cell-main { min-width: 72px; }
+.hud-table.is-station td.hud-cell-bar, .hud-table.is-station th.hud-cell-bar { min-width: 44px; }
 .hud-table.is-station td .hud-chip { white-space: normal; }
 /* 两行小字读数列（料值 / 工期合列时用） */
 .hud-cell2 { display: block; }

@@ -45,10 +45,10 @@ const CDP = process.env.UI_CDP_URL ?? 'http://127.0.0.1:9333'
 const SAVE = process.env.UI_SAVE ?? 'docs/test-saves/save-20260928-181547.json.json'
 const VIEWPORTS: ReadonlyArray<readonly [number, number]> = [
   [1280, 860],
-  [1340, 900],
+  [1400, 900],
   [1440, 900],
+  [1460, 900],
   [1600, 1000],
-  [1920, 1080],
 ]
 const TABS = ['精炼炉', '组装机', '造船厂', '实验室'] as const
 
@@ -312,6 +312,30 @@ async function main(): Promise<void> {
             await hoverRowTip(cdp, '工位行', '.hud-table.is-station tbody tr', 2)
             await hoverRowTip(cdp, '投料行', '.hud-grid.two > .hud-grid:nth-child(2) table tbody tr')
           }
+        }
+        if (w === 1300 && tab === '精炼炉') {
+          /* 逐列**最小宽度**拆解（把表的克隆放进 `width: min-content` 的离屏盒子量）——
+             "右列表最小宽 332px"是哪一列顶出来的，靠这条读数定，而不是猜。 */
+          const cols = await cdp.evalJS<string>(
+            `(() => {
+              const pick = (sel) => {
+                const t = document.querySelector(sel)
+                if (!t) return '没找到'
+                const box = document.createElement('div')
+                box.style.cssText = 'position:absolute;left:-9999px;top:0;width:min-content'
+                const c = t.cloneNode(true)
+                box.appendChild(c)
+                document.body.appendChild(box)
+                const total = Math.round(c.getBoundingClientRect().width)
+                const row = c.querySelector('tbody tr')
+                const cells = row ? [...row.children].map((td) => Math.round(td.getBoundingClientRect().width)) : []
+                box.remove()
+                return total + 'px（逐列 ' + cells.join(' / ') + '）'
+              }
+              return '投料表 ' + pick('.hud-grid.two > .hud-grid:nth-child(2) table') + '｜工位表 ' + pick('.hud-table.is-station')
+            })()`,
+          )
+          console.log(`  最小宽拆解：${cols}`)
         }
         /* 组装机书架行 / 造船厂可造舰船行：同一张卡的另两个消费方（1600 档抽查） */
         if (w === 1600 && (tab === '组装机' || tab === '造船厂')) {
