@@ -325,19 +325,18 @@
  * 现在由组件把「一个波长 ×2」的偏移量以 `--tank-shift`（px = SVG 用户单位）传进来 ⇒ 无缝循环
  * （实测：位移 −innerW 与 −2×波长逐点比对，最大差 0.0000px）。
  *
- * ⚠ **2026-09-30 船长再报「循环还是有问题」⇒ 根因是三个动画的周期不可通约**：
- * 单层虽然无缝，但 3.6s / 5.4s / 微光 4.2s 的最小公倍数是 **75.6s** —— 整片液面（两层波 ＋ 微光）
- * 要过一分多钟才回到同一状态，看上去就是"一直没对上"。现改为**全部 7.2s 的整数分频**：
- * 波 A 3.6s（2 个波长/轮）· 波 B 7.2s（2 个波长/轮、反向）· 微光 7.2s
- * ⇒ **整罐每 7.2 秒回到逐像素相同的状态**，同时保留两层错速的效果。 */
+ * ⚠ **周期保持 3.6s / 5.4s / 微光 4.2s 不动**（**2026-09-30 船长令**：「只需要修水波边缘，
+ * 上一条中关于水波的修改回滚」）—— 我上一版把它们改成"可通约的 7.2s 分频"，船长不要这个改动，已回滚。
+ * 循环末尾"露水波边缘"的**真因不在周期**，而在**波层宽度不够**（见 `ui/FuelTank.tsx` 的 `WAVE_PERIODS` 注释：
+ * 裁剪窗有 `padX` 偏移，波层必须盖到 `padX + 2×innerW`，原先只有 `2×innerW` ⇒ 末尾差 7px）。 */
 .hud-tank .wave-a { animation: hud-wave 3.6s linear infinite; }
-.hud-tank .wave-b { animation: hud-wave 7.2s linear infinite; animation-direction: reverse; }
+.hud-tank .wave-b { animation: hud-wave 5.4s linear infinite; animation-direction: reverse; }
 @keyframes hud-wave {
   from { transform: translateX(0); }
   to { transform: translateX(var(--tank-shift, -50%)); }
 }
-/* 罐内微光呼吸（只在有料时有意义；空罐不闪）——周期与波层对齐（7.2s），保证整罐同步循环 */
-.hud-tank.is-filled .glow { animation: hud-breathe 7.2s ease-in-out infinite; }
+/* 罐内微光呼吸（只在有料时有意义；空罐不闪） */
+.hud-tank.is-filled .glow { animation: hud-breathe 4.2s ease-in-out infinite; }
 @keyframes hud-breathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.62; } }
 /* 读数块（罐右侧的数字与 chip） */
 .hud-tank-side { display: flex; flex-direction: column; gap: 6px; min-width: 132px; }
