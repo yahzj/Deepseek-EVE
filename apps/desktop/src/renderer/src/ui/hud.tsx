@@ -96,13 +96,18 @@ export interface HudIoLine {
 
 function IoLine({ line }: { line: HudIoLine }): ReactNode {
   if (line.glyph === undefined) return <div className="hud-io-num">{line.name}</div>
+  /* 缺多少**单独起一行**（**2026-09-30 船长令**：「缺料的文本也单独起一行」）——
+     与书架卡「每味料两行」（名/需要一行、（可用：M）另起一行）同一手法：
+     行内只留"叫什么、够不够得上色"，读数另起一行 ⇒ 不挤、不折行。 */
   return (
-    <div className={`hud-io-row${line.ok === false ? ' is-short' : ''}`}>
-      <RowGlyph glyph={line.glyph} />
-      <span>{line.name}</span>
-      {line.qty !== undefined ? <b className="hud-io-num">{line.qty}</b> : null}
-      {line.short !== undefined ? <b className="hud-io-short">{line.short}</b> : null}
-    </div>
+    <>
+      <div className={`hud-io-row${line.ok === false ? ' is-short' : ''}`}>
+        <RowGlyph glyph={line.glyph} />
+        <span>{line.name}</span>
+        {line.qty !== undefined ? <b className="hud-io-num">{line.qty}</b> : null}
+      </div>
+      {line.short !== undefined ? <div className="hud-io-short">{line.short}</div> : null}
+    </>
   )
 }
 

@@ -942,10 +942,6 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                             <span className="hud-row" style={{ gap: 6 }}>
                               <RowGlyph glyph={def.kind} />
                               <span>{def.name}</span>
-                              {/* 缺料：**不靠悬停也看得见**（船长同日令；触屏没有 hover）——红字 ＋ 真值「缺 N」 */}
-                              {feedShortOf(def, have) !== null ? (
-                                <b className="hud-row-short">{feedShortOf(def, have)}</b>
-                              ) : null}
                               {def.kind === 'wreck' ? (
                                 <span className="hud-chip">{tr(`ui.IndustryPage.00${wreckTierOf(def.id) === 'rare' ? 9 : 8}`)}</span>
                               ) : null}
@@ -953,6 +949,11 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                                 <span className="hud-chip">{Math.round(UNBOX_CYCLE_MS / 1000)}s</span>
                               ) : null}
                             </span>
+                            {/* 缺料：**不靠悬停也看得见**（船长同日令；触屏没有 hover）——红字 ＋ 真值「缺 N」；
+                                **单独起一行**（船长同日追加：「缺料的文本也单独起一行」），不挤在资源名后面 */}
+                            {feedShortOf(def, have) !== null ? (
+                              <span className="hud-row-short">{feedShortOf(def, have)}</span>
+                            ) : null}
                           </td>
                           <td className="n hud-tiny">{Math.floor(have).toLocaleString('zh-CN')}</td>
                           <td className="act">

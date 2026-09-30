@@ -226,15 +226,19 @@
    见文件头那条令牌注释）；⚠ 红色只是补充 —— 缺多少另有文字（`.hud-io-short` 行尾真值「缺 N」），
    不靠颜色单独承载（`ui-ux-pro-max` Accessibility·Color Only（High）：「Use icons/text in addition to color」）。 */
 .hud-io-row.is-short { color: var(--hud-short); font-weight: 600; }
+/* 缺多少**单独起一行**（**2026-09-30 船长令追加**：「缺料的文本也单独起一行」）——
+   与书架卡「每味料两行」（名/需要一行、（可用：M）另起一行）同一手法：行内只留"叫什么"，读数另起一行。 */
 .hud-io-short {
-  margin-left: auto;
   color: var(--hud-short);
+  font-weight: 600;
   font-family: var(--hud-mono);
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
 }
-/* 表格行上的缺料标记（船长同日令：不靠悬停也要看得见——触屏没有 hover）——与卡内那处同色同字 */
+/* 表格行上的缺料标记（船长同日令：不靠悬停也要看得见——触屏没有 hover；**且单独一行**） */
 .hud-row-short {
+  display: block;
+  margin-top: 2px;
   color: var(--hud-short);
   font-weight: 600;
   font-family: var(--hud-mono);
