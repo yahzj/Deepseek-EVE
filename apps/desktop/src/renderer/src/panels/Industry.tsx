@@ -63,7 +63,7 @@ import { HintIcon } from '../ui/Hint'
 import { RowGlyph } from '../ui/itemView'
 /** 活动卡「产出」读数（2026-09-23 船长令：收入预估换口径；装备/舰船只显示市场当前价格）——全仓唯一实现 */
 import { GoodsLine, marginPctOf, marketPriceOf, NetIncomeLine } from '../ui/yieldView'
-import { partToneKeyOf, toneOf } from '../ui/Glyphs'
+import { itemGlyphName, partToneKeyOf, toneOf } from '../ui/Glyphs'
 import { ASSEMBLER_CARD_MIN_H, LazyMount, useIdleChunk } from '../ui/LazyMount'
 import { useL10n, cmdText } from '../i18n/locale'
 import { MONEY_GLYPH } from '../pages/common'
@@ -1497,7 +1497,7 @@ export function ManufacturingPanel({
         id: bp.id,
         kindLabel: tr("ui.MarketPage.007"),
         subKey: itemDef?.kind ?? '',
-        productGlyph: itemDef?.kind ?? 'blueprint',
+        productGlyph: itemGlyphName(itemDef?.id, itemDef?.kind ?? 'blueprint'),
         name: bp.name,
         description: bp.description,
         materials: bp.materials,

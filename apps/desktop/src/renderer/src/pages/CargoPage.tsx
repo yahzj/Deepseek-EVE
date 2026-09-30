@@ -35,6 +35,8 @@ import { crestFamOf, kindText, slotText } from '../ui/labelsText'
 import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 import { tr } from '../i18n/locale'
+/* 「使用」按钮的判据 = core 的 id 常量（**单点**，不在页面里写死字面量） */
+import { INVASION_BEACON_ITEM_ID, SYNAPTIC_ACCELERANT_ITEM_ID } from '@whale/core'
 
 const KIND_EMPTY: Record<string, string> = {
   ore: 'ui.CargoPage.010',
@@ -294,6 +296,37 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                         </span>
                       </div>
                       <div className="app-inv-btns">
+                        {/* **2026-09-30 船长报障**：「**如何使用（除了燃料）的途径也没有**」——
+                            这两件道具原先只有**物品页**（只列物品仓库存量）给了「使用」⇒ 一旦装进货仓
+                            就点不到了。这里按同一套 id 常量判据补上（core 的取料本就是**货仓优先**：
+                            `consumableStockOf`），生效中被拒时由 core 回话、物品不消耗。
+                            ⚠ 与 `isPiloted` 无关：用加速剂/发射器不需要在驾驶位上。 */}
+                        {id === SYNAPTIC_ACCELERANT_ITEM_ID ? (
+                          <button
+                            className="app-btn is-small is-warn"
+                            title={tr('ui.ItemsPage.054')}
+                            onClick={() => {
+                              const r = engine.useSynapticAccelerantNow()
+                              if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.054'), true)
+                              else onToast(tr('ui.ItemsPage.055'))
+                            }}
+                          >
+                            {tr('ui.ItemsPage.056')}
+                          </button>
+                        ) : null}
+                        {id === INVASION_BEACON_ITEM_ID ? (
+                          <button
+                            className="app-btn is-small is-warn"
+                            title={tr('ui.ItemsPage.057')}
+                            onClick={() => {
+                              const r = engine.useInvasionBeaconNow()
+                              if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.057'), true)
+                              else onToast(tr('ui.ItemsPage.058'))
+                            }}
+                          >
+                            {tr('ui.ItemsPage.056')}
+                          </button>
+                        ) : null}
                         {isPiloted && sellable ? (
                           <>
                             <button className="app-btn is-small is-primary" onClick={() => setSellId(id)}>

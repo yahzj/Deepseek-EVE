@@ -64,3 +64,37 @@
 
 `typecheck` ✅ · `content:check` ✅（物品总数契约已同步）· `l10n:check` ✅ ·
 核心用例 **274 文件 / 2 885 用例全绿** ✅ · 提交前三闸门全绿。
+
+## 六、船长复审：图标没接线 ＋ 使用途径缺失（2026-09-30 · 同日补修）
+
+> **船长原话（照抄）**：「**我发现新道具图标你还没定。并且如何使用（除了燃料）的途径也没有**」
+
+**① 图标：确实是"没接全"，不是"没画"。** 三枚专属线稿在 `94a93858` 就画好了、也登记进了
+`ITEM_GLYPH_OVERRIDES`（`jump-fuel → ico-fuel` · `invasion-beacon → ico-beacon` ·
+`synaptic-accelerant → ico-boost`），但**只接了物品页与货仓页两处**；其余渲染点仍按**大类键**取图标：
+
+| 渲染点 | 改前 | 改后 |
+|---|---|---|
+| 工业页「实验室」配方卡（`IndustryPage.tsx`） | **写死 `glyph="consumable"`** ⇒ 三张卡图标**完全一样** | `itemGlyphName(recipe.outputItemId, out?.kind ?? 'consumable')` |
+| 手册 · 物品图鉴（`Handbook.tsx`） | `item.kind` | `itemGlyphName(item.id, item.kind)` |
+| 工业页精炼炉资源行（`IndustryPage.tsx`） | `def.kind` | `itemGlyphName(def.id, def.kind)` |
+| 蓝图书架产物图标（`panels/Industry.tsx`） | `itemDef?.kind` | `itemGlyphName(itemDef?.id, …)` |
+| 市场页 | —— | **本就不画物品图标**（只有锁定/时钟小标），无需改 |
+
+⇒ 现在 `itemGlyphName` 共 **7 处接线**（物品页 1 · 货仓页 2 · 工业页 2 · 图鉴 1 · 工业面板 1），
+**取用一律走这一个单点**，页面里不再出现大类键硬编码。
+
+**② 使用途径：物品页有、货仓页没有 ⇒ 装进货仓就点不到。** `使用` 按钮（`9a1c1ffd`/`fd0f5ace`）
+只加在物品页，而物品页列的是**物品仓库**的存量；这两件道具体积 0.01 m³、可装货仓
+（`consumableStockOf` 本就是**货仓优先**）⇒ 装船之后界面里再没有入口。补：
+- `CargoPage.tsx`：货仓行也按**同一套 id 常量判据**给出「使用」按钮（与 `isPiloted` 无关——
+  用加速剂/发射器不需要在驾驶位上；被 core 拒绝时照样弹原因、物品不消耗）；
+- `items.ts` ＋ `l10n.ts`（中英同步）：两件道具的说明各补一句**在哪儿用**
+  ——「在物品页或货仓页点「使用」。」（燃料那条不动：它的入口是舰船页「跃迁燃料」子页的开关，船长已认可）。
+
+闸门：`typecheck` ✅ · `content:check` ✅（说明文案原因解释契约 577 条 0 报红）· `l10n:check` ✅ ·
+`copy:audit` ✅（公告要点数越界那 5 条是 09-08~09-12 的存量，与本批无关）· desktop build ✅。
+
+⚠ **另有一条重要事实**：图标与使用按钮的代码在**今天早些时候就已在 main**（`94a93858` / `9a1c1ffd` /
+`fd0f5ace`），而船长那个 dev 实例跑的是 **verify 工作树**——该树在本轮合并追平（`ee851a90`）之前
+**不含这些提交** ⇒ 船长看到的极可能是旧界面。**重建/重启后**再看这两处。

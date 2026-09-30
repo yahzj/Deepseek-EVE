@@ -53,6 +53,8 @@ import type { GameEngine } from '../game/engine'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
+/* 图标一律走**物品 id 单点映射**（2026-09-30 船长报障：新道具在实验室卡上是通用「消耗品」图标） */
+import { itemGlyphName } from '../ui/Glyphs'
 import { WRECK_SUBS, SUB_ALL, presentSubs, wreckTierOf, subText } from '../ui/itemSubs'
 import { isEn, useL10n, cmdText } from '../i18n/locale'
 import { aiCoreText } from '../ui/labelsText'
@@ -355,7 +357,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
     <div className={`app-belt-card${highlight ? ' is-goto' : ''}`} key={def.id}>
       <div className="app-belt-head">
         <span className="app-belt-name">
-          <RowGlyph glyph={def.kind} /> {def.name}
+          <RowGlyph glyph={itemGlyphName(def.id, def.kind)} /> {def.name}
           {isRareBox ? (
             <em
               className="app-chip is-rare"
@@ -620,7 +622,10 @@ function LabCard({
     <div className="app-belt-card" key={recipe.id}>
       <div className="app-belt-head">
         <span className="app-belt-name">
-          <RowGlyph glyph="consumable" /> {recipe.name}
+          {/* ⚠ **2026-09-30 船长报障「新道具图标你还没定」**：这里原先把图标写死成 `consumable`
+              ⇒ 实验室三张卡（燃料/加速剂/发射器）全是通用「消耗品」图标。改走**物品 id 单点映射**
+              `itemGlyphName`（与物品页/货仓页同一处判定，三件各有专属线稿）。 */}
+          <RowGlyph glyph={itemGlyphName(recipe.outputItemId, out?.kind ?? 'consumable')} /> {recipe.name}
         </span>
         <span className="app-belt-head-right">
           <span className="app-dim">

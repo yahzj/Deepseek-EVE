@@ -46,6 +46,7 @@ import {
 } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 import { RowGlyph } from '../ui/itemView'
+import { itemGlyphName } from '../ui/Glyphs'
 import { combatBadges, DmgChip, InfoHover, itemCombatLines, itemInfoLines, ItemHover, ModuleHover, moduleInfoLines, moduleShortEffect, ShipHover, shipCodexBaseLines, shipIndirectLines } from '../ui/shipInfo'
 import { plainSkillDesc } from '../ui/skillText'
 // 势力图鉴：逐舰级简报复用**悬赏卡悬停那一份**（同源出口，不另写文案）——2026-09-26
@@ -1837,7 +1838,8 @@ export function Handbook({
                   className="app-hand-entry"
                 >
                   <div className="app-inv-name">
-                    <RowGlyph glyph={item.kind} /> {item.name}
+                    {/* 图标走**物品 id 单点映射**（2026-09-30 船长报障：图鉴里新道具还是通用图标） */}
+                    <RowGlyph glyph={itemGlyphName(item.id, item.kind)} /> {item.name}
                     <span className="app-chip is-dim">{kindTextOfItem(item)}</span>
                     <span className="app-dim"> · {item.unitM3} {tr("ui.Handbook.117")}</span>
                   </div>
