@@ -13,6 +13,7 @@ import {
   HIGH_SEC_PENALTY,
   INVASION_BEACON_FAMILIES,
   INVASION_BEACON_ITEM_ID,
+  beaconLaunchHighSecOf,
   consumableStockOf,
   useInvasionBeacon,
 } from '../src/consumables'
@@ -186,6 +187,10 @@ describe('信号发射器 · 使用与拒绝', () => {
   })
 
   it('在**非高安**点火 ⇒ 不扣声望', () => {
+    /* ⚠ 另有一条：**在空间站（母港也是高安）时不该报"高安点火"** ——那是位置门的活
+       （船长 2026-09-30 报障：「提示我处于大鲸鱼，还有扣声望警告」）*/
+    const atHome = createInitialState({ nowWallMs: 0, seed: 41 })
+    expect(beaconLaunchHighSecOf(atHome, ctx), '在母港 ⇒ 不算高安点火（该由位置门拒）').toBe(false)
     const s = readyState()
     noteStandingEarned(s, DSI_FACTION_ID, 50)
     const before = s.standings[DSI_FACTION_ID] ?? 0

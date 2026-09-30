@@ -32,8 +32,15 @@ export function playerGalaxyIdOf(state: GameState): string {
   return state.awayGalaxy ?? HOME_GALAXY_ID
 }
 
-/** 此刻是否"在高安点火"（＝要弹二次警告 + 扣声望的那种场合）——**单点**，界面与 core 共用 */
+/** 此刻是否"在高安点火"（＝要弹二次警告 + 扣声望的那种场合）——**单点**，界面与 core 共用
+ *
+ *  ⚠ **2026-09-30 船长报障**：「我在仓库使用的时候，提示我处于大鲸鱼，还有扣声望警告」——
+ *  真因：界面这道门**只看高安、没先看位置**，于是"人在母港（高安）"时会先弹扣声望警告；
+ *  而 core 的顺序是**先拒位置**（`core.consumable.010`）⇒ 玩家确认后又被拒，前后两句话打架。
+ *  ⇒ 定成：**只要在空间站（母港/已建成副站）就不算"高安点火"**（那一路由位置门负责拒并说明），
+ *  界面与 core 的顺序从此一致：**位置 → 高安**。 */
 export function beaconLaunchHighSecOf(state: GameState, ctx: SimContext): boolean {
+  if (isAtHomeLike(state, ctx)) return false
   return securityZoneOf(ctx, playerGalaxyIdOf(state)) === '高安'
 }
 
