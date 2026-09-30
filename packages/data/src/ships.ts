@@ -196,7 +196,15 @@ export const SHIPS: ShipDef[] = [
     id: 'whale-king',
     name: '鲸王级采矿艇',
     role: 'industrial',
-    slots: { high: 3, mid: 3, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
+    slots: { high: 4, mid: 3, low: 3 }, // V18 槽位布局（草案表 v18-slots.md）
+    /*
+     * **2026-09-30 船长令：+1 高槽 ＋ +1 低槽**（原话：「**先给鲸王添加一个高槽和低槽**」）
+     * ⇒ **3/3/2（8 位）→ 4/3/3（10 位）**；T3 官方默认总数 11 位，仍差 1（鲸王不在
+     * `OFFICIAL_SLOT_ALIGNED` 逐艘对齐名单里 ⇒ 本改动不与任何槽位契约冲突）。
+     * ⚠ **CPU 仍 190** ⇒ 只够 4 件 40 CPU 的 MK3：4 矿枪 = 160 ✓ · 4 矿枪 ＋ 1 货舱 = 200 ✗ ·
+     *   3× MK3 ＋ 1× MK2（135）再 ＋ 1 货舱 MK3（40）= 175 ✓ ⇒ **混装能把新槽用上，全 MK3 装不满**。
+     *   要不要同批抬 CPU 见 `docs/design/whale-king-slots-20260930.md`。
+     */
     tier: 3,
     cargoM3: 7_000,
     cycleSeconds: 8,
