@@ -23,20 +23,29 @@ export const PAD = 10
 /** 孤立点与"树列"之间多留一点空（视觉上分组，但仍不画线） */
 export const ISO_GAP = 14
 
-/** 平顶六边形（左右出尖、上下平边）——参考图的形状，横向宽正好放两行名字 */
-export function hexPath(cx: number, cy: number): string {
-  const w = HEX_W / 2
-  const h = HEX_H / 2
-  const q = HEX_W / 4
+/**
+ * **平顶六边形路径**（任意中心 + 任意宽高；**全仓只有这一份六边形算法**）——
+ * 树上那一版 `hexPath` 与队列行首的小号徽（2026-09-30「用技能树内图标模式那种卡片」）都走它，
+ * 免得两处各写一串 `M/L` 顶点、日后改形状只改一处。
+ */
+export function hexPathAt(cx: number, cy: number, w: number, h: number): string {
+  const hw = w / 2
+  const hh = h / 2
+  const q = w / 4
   return [
-    `M ${cx - q} ${cy - h}`,
-    `L ${cx + q} ${cy - h}`,
-    `L ${cx + w} ${cy}`,
-    `L ${cx + q} ${cy + h}`,
-    `L ${cx - q} ${cy + h}`,
-    `L ${cx - w} ${cy}`,
+    `M ${cx - q} ${cy - hh}`,
+    `L ${cx + q} ${cy - hh}`,
+    `L ${cx + hw} ${cy}`,
+    `L ${cx + q} ${cy + hh}`,
+    `L ${cx - q} ${cy + hh}`,
+    `L ${cx - hw} ${cy}`,
     'Z',
   ].join(' ')
+}
+
+/** 平顶六边形（左右出尖、上下平边）——参考图的形状，横向宽正好放两行名字 */
+export function hexPath(cx: number, cy: number): string {
+  return hexPathAt(cx, cy, HEX_W, HEX_H)
 }
 
 /** 名字按不超过 4 字一行折成最多两行（全名不裁字——船长令「先试试看全名的效果」） */

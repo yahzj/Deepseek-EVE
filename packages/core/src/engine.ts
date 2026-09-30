@@ -1004,13 +1004,21 @@ export interface QueueView {
     progressMs: number
     /** 该级剩余毫秒 = levelMs − progressMs */
     remainingMs: number
+    /**
+     * **轮到这一条开练还要等多久**（毫秒）＝ 它前面所有条目（含队首本级剩余）剩余之和。
+     * ⚠ 这是**口径**、不是界面各算一遍：2026-09-30 训练队列每行要显示"轮到还需 ≈X"，
+     * 前缀和必须与总时长同源，否则两处数字会互相打架（`totalRemainingMs` 就是这条前缀和的末项）。
+     */
+    etaMs: number
   }>
+  /** **全队列剩余合计**（含队首本级剩余）——界面的"队列总时长"只认这一个出处 */
+  totalRemainingMs: number
 }
 
 /** 只读查询：把队列翻译成界面容易直接显示的结构 */
 export function skillQueueStatus(state: GameState, catalog: SkillCatalog): QueueView {
   const queue = state.skills.queue
-  if (queue.length === 0) return { head: null, pending: [] }
+  if (queue.length === 0) return { head: null, pending: [], totalRemainingMs: 0 }
   const item = queue[0]!
   const def = catalog.get(item.skillId)
   const currentLevel = state.skills.trained[item.skillId] ?? 0
@@ -1029,10 +1037,15 @@ export function skillQueueStatus(state: GameState, catalog: SkillCatalog): Queue
     remainingMs,
     percent,
   }
+  /** 前缀和游标：进 pending 循环前 = 队首本级剩余 ⇒ 每一项的 `etaMs` 都从它身上取，末项即全队列合计 */
+  let cursorMs = remainingMs
   const pending = queue.slice(1).map((p: TrainingItem, i) => {
     const pDef = catalog.get(p.skillId)
     const levelMs = pDef ? Math.max(1, Math.round(skillLevelTimeMs(pDef, p.targetLevel) * trainingTimeFactor(state) * tuningMul(state, 'skillTrainMs'))) : 0
     const progressMs = Math.min(Math.max(0, p.progressMs), Math.max(0, levelMs - 1))
+    /** 前缀和：累到这一条之前的所有剩余 ⇒ 这条的"轮到还需" */
+    const etaMs = cursorMs
+    cursorMs += levelMs - progressMs
     return {
       queueIndex: i + 1,
       skillId: p.skillId,
@@ -1041,7 +1054,8 @@ export function skillQueueStatus(state: GameState, catalog: SkillCatalog): Queue
       levelMs,
       progressMs,
       remainingMs: levelMs - progressMs,
+      etaMs,
     }
   })
-  return { head, pending }
+  return { head, pending, totalRemainingMs: cursorMs }
 }

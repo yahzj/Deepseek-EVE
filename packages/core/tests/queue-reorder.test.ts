@@ -67,3 +67,38 @@ describe('训练队列：调整顺序（moveQueueItem）', () => {
     expect(state.skills.queue.filter((q) => q.skillId === 'a').map((q) => q.targetLevel)).toEqual([1, 2])
   })
 })
+
+/**
+ * **队列读数单点**（2026-09-30：训练队列每行要显示「轮到还需 ≈X」，界面不再各算一遍）——
+ * 总时长与"轮到还需"是**同一条前缀和**，末项必须收口到总时长，否则两处数字会互相打架。
+ */
+describe('训练队列：总时长与“轮到还需”同源（skillQueueStatus）', () => {
+  it('etaMs = 前面所有条目剩余之和；末项 + 自身剩余 = 全队列总时长', () => {
+    const { state, ctx } = world()
+    expect(enqueueSkill(state, 'a', 1, ctx.skills).ok).toBe(true) // 队首（rank1 Lv1 = 60s 档）
+    expect(enqueueSkill(state, 'b', 1, ctx.skills).ok).toBe(true)
+    expect(enqueueSkill(state, 'b', 2, ctx.skills).ok).toBe(true) // 同技能连排：Lv2 时长更长
+    state.skills.queue[0]!.progressMs = 30_000 // 队首练了一半
+
+    const v = skillQueueStatus(state, ctx.skills)
+    expect(v.head!.remainingMs).toBe(30_000)
+    expect(v.totalRemainingMs).toBe(totalOf(state, ctx)) // 与测试里手算的口径一致
+    expect(v.pending).toHaveLength(2)
+    // 第一条排队项：等队首练完
+    expect(v.pending[0]!.etaMs).toBe(v.head!.remainingMs)
+    // 第二条排队项：队首 + 第一条
+    expect(v.pending[1]!.etaMs).toBe(v.pending[0]!.etaMs + v.pending[0]!.remainingMs)
+    // 收口：末项 eta + 末项自身剩余 = 总时长
+    expect(v.pending[1]!.etaMs + v.pending[1]!.remainingMs).toBe(v.totalRemainingMs)
+    // 逐项单调不减
+    expect(v.pending[1]!.etaMs).toBeGreaterThanOrEqual(v.pending[0]!.etaMs)
+  })
+
+  it('空队列：总时长为 0（不是 undefined），排队列表为空', () => {
+    const { ctx } = world()
+    const empty = skillQueueStatus(createInitialState({ nowWallMs: 0, seed: 1 }), ctx.skills)
+    expect(empty.head).toBeNull()
+    expect(empty.pending).toHaveLength(0)
+    expect(empty.totalRemainingMs).toBe(0)
+  })
+})

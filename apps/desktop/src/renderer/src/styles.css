@@ -2632,9 +2632,15 @@ html[data-locale='en'] body {
 
 /* **技能队列芯片：操作按钮移到信息下方**（2026-09-25 船长令：「包括技能训练也是」）——
    芯片由「一行横排」改为「上下两块」：上=信息（名称/时间），下=操作（排序箭头 + 取消）。
-   ⚠ 芯片自身由 `inline-flex` 改 `column`：否则两块仍会横排。 */
+   ⚠ 芯片自身由 `inline-flex` 改 `column`：否则两块仍会横排。
+   ⚠ **2026-09-30 收拢成这一条**：原先后头还有一条「面板外兜底」的 `.app-train-chip`
+   （同权重、写在文件后面）会把 `align-items: center` 覆盖回来，队列每行的信息块与按钮块都被居中
+   （实测：`align-items: center`、`main` 只有 258px 宽）；而全仓只有本页两处用它、都在
+   `.app-train-pending` 里 ⇒ 兜底那条已删，方向与对齐只在这里与下面那条队列规则里定。 */
 
 .app-train-chip {
+
+  display: flex;
 
   flex-direction: column;
 
@@ -2644,15 +2650,22 @@ html[data-locale='en'] body {
 
 }
 
+/* **信息行**（2026-09-30 船长令：队列过于单一 ⇒ 每行补大类徽/技能书/进度/轮到还需）：
+   一行不换行（`nowrap`）＋ 只有"技能书名"是可缩字段（`min-width:0` + 省略号）——
+   其余读数都有界（时长/百分比/技能名长度可控）。护栏见约定 §九之八 的技能依据
+   「Compact Label Overflow：nowrap with a shrinkable label」。 */
+
 .app-train-chip-main {
 
   display: flex;
 
   align-items: center;
 
-  gap: var(--wui-sp-4);
+  gap: var(--wui-sp-6);
 
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+
+  min-width: 0;
 
 }
 
@@ -2664,7 +2677,32 @@ html[data-locale='en'] body {
 
   gap: var(--wui-sp-4);
 
+  /* 2026-09-30 船长核定：按钮仍在信息下方一行，但**靠右对齐**（原先被兜底条居中） */
+  justify-content: flex-end;
+
 }
+
+/* ---- 队列每行的读数组件（2026-09-30）----
+   · 行首六边形徽：形状复用技能树的平顶六边形（`ui/skillTreeLayout.ts` 的 `hexPathAt`），
+     字形是大类字形 `group-<大类>`，颜色走 `toneOf('group-…')` ⇒ 与技能树同一套语汇（§6 复刻同级）；
+    · `.app-train-bar` 直接复用活动窗口「技能训练」那条进度条（`.app-activitybar-*`），不另造一族；
+    · `.app-train-name` 是行内唯一的"大字"档（12px，其余读数 11px）⇒ 层级来自字号，不靠加粗堆叠。 */
+
+.app-train-hex-wrap { flex: none; display: inline-flex; align-items: center; }
+
+.app-train-hex { display: block; }
+
+.app-train-hex-bg { fill: rgb(var(--wui-x01) / 0.04); stroke: currentColor; stroke-width: 1.2; opacity: 0.9; }
+
+.app-train-name { flex: none; white-space: nowrap; font-size: var(--wui-fs-s); font-weight: 600; }
+
+.app-train-branch { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.app-train-bar { flex: 1 1 auto; min-width: 44px; max-width: 240px; }
+
+.app-train-pct { flex: none; font-family: var(--wui-mono); font-variant-numeric: tabular-nums; }
+
+.app-train-eta { flex: none; margin-left: auto; }
 
 .app-train-arrow {
 
@@ -2729,23 +2767,17 @@ html[data-locale='en'] body {
 
 /* 纵向排列后每条占一整行（`app-chip` 默认是 `inline-block` ⇒ 不撑满，这里补上）
    ⚠ 方向仍走上面那条 `.app-train-chip { flex-direction: column }`（信息在上、按钮在下，
-   2026-09-25 船长令「按钮靠卡牌底边」）——这里只补"撑满整行"，**不覆盖方向**。 */
+   2026-09-25 船长令「按钮靠卡牌底边」）——这里只补"撑满整行"，**不覆盖方向**。
+   ⚠ **`box-sizing: border-box` 必须跟着 `width: 100%`**（2026-09-30 船长报障「训练项右侧顶到窗口」）：
+   `.app-chip` 是 `content-box` ＋ 内边距 8px×2 ＋ 描边 1px×2 ⇒ 只写 `width:100%` 时每条比容器宽 18px
+   （实测 753 → 771），顶到面板框（右缘 993 / 面板 996）并在面板体里压出一条横向滚动条。
+   同一个坑仓库里记过一次（见本文件顶栏 `--app-max-w` 注释「② 写 `width:100%` 但不加 `box-sizing`」）。
+   ⚠ `align-items: stretch` 也在这里重申：历史上它在文件后头被同名规则覆盖成 `center`（现已删）。 */
 .app-train-pending .app-train-chip {
   display: flex;
   width: 100%;
-}
-
-/* ⚠ 这条是 `.app-train-chip` 在**面板外**（历史遗留）的兜底：本页两种用法都在
-   `.app-train-pending` 里、方向由上面那条 column 说了算 ⇒ 这里只留"横排 + 居中"的默认，
-   不写 `flex-direction`（写了就会**后手覆盖**上一条的 column，把按钮挤回右侧）。 */
-.app-train-chip {
-
-  display: inline-flex;
-
-  align-items: center;
-
-  gap: var(--wui-sp-4);
-
+  box-sizing: border-box;
+  align-items: stretch;
 }
 
 .app-train-x {
