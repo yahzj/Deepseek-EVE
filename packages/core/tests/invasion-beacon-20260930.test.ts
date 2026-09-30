@@ -10,6 +10,7 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { addWare, countWare } from '../src/inventory'
 import { INVASION_BEACON_FAMILIES, INVASION_BEACON_ITEM_ID, consumableStockOf, useInvasionBeacon } from '../src/consumables'
+import { weekendCoreCandidates } from '../src/weekendEvent'
 
 const ctx = buildSimContext()
 
@@ -69,7 +70,7 @@ describe('信号发射器 · 使用与拒绝', () => {
 
   it('未知势力 ⇒ 拒绝（core.consumable.006）；没有可入侵星系 ⇒ 拒绝且不扣料（core.consumable.007）', () => {
     const a = readyState()
-    const bad = useInvasionBeacon(a, ctx, 'ZZ')
+    const bad = useInvasionBeacon(a, ctx, { familyId: 'ZZ' })
     expect(bad.ok).toBe(false)
     expect(bad.errorId).toBe('core.consumable.006')
     expect(consumableStockOf(a, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
@@ -80,5 +81,44 @@ describe('信号发射器 · 使用与拒绝', () => {
     expect(none.ok).toBe(false)
     expect(none.errorId, '一个星系都没探索 ⇒ 抽不到目标').toBe('core.consumable.007')
     expect(consumableStockOf(b, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
+  })
+
+  /**
+   * **指定星系那条路**（**2026-09-30 船长裁定**：「直接使用是随机星系（这个要提醒玩家）。
+   * **选择了星系后是固定**。」）——资格判据与随机那条**同一套** `weekendCoreCandidates`。
+   */
+  it('指定星系 ⇒ 落点就是它（不随机），外围按它算，扣一枚', () => {
+    const s = readyState()
+    /* 目标取**合格候选**（与界面同一条判据：非高安 · 已探索 · 无已建副站），不挑家星系 */
+    const candidates = weekendCoreCandidates(s, ctx)
+    expect(candidates.length, '全图已探索 ⇒ 合格目标非空').toBeGreaterThan(0)
+    const target = candidates[Math.min(3, candidates.length - 1)]!
+    const r = useInvasionBeacon(s, ctx, { galaxyId: target })
+    expect(r.ok, r.ok ? '' : String(r.error)).toBe(true)
+    expect(s.weekendEvent!.coreId, '落点 = 玩家选的那个').toBe(target)
+    expect(s.weekendEvent!.peripheryIds.length, '外围非空').toBeGreaterThan(0)
+    expect(consumableStockOf(s, INVASION_BEACON_ITEM_ID), '扣掉一枚').toBe(0)
+  })
+
+  it('指定不合格星系 ⇒ 拒绝 core.consumable.009 且不扣料（未探索 / 高安 / 已有已建副站）', () => {
+    /* ① 没探索过 */
+    const a = createInitialState({ nowWallMs: 0, seed: 41 })
+    addWare(a, INVASION_BEACON_ITEM_ID, 1)
+    a.exploredGalaxies = [] // 全部标成未探索
+    const r1 = useInvasionBeacon(a, ctx, { galaxyId: [...ctx.galaxies.keys()][0]! })
+    expect(r1.ok).toBe(false)
+    expect(r1.errorId).toBe('core.consumable.009')
+    expect(consumableStockOf(a, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
+    expect(a.weekendEvent, '没建事件').toBeUndefined()
+
+    /* ② 高安星系（拿全探索档里第一个高安作目标） */
+    const b = readyState()
+    const highSec = [...ctx.galaxies.keys()].find((id) => !weekendCoreCandidates(b, ctx).includes(id) && ctx.galaxies.has(id))
+    if (highSec !== undefined) {
+      const r2 = useInvasionBeacon(b, ctx, { galaxyId: highSec })
+      expect(r2.ok, '高安或已建副站 ⇒ 拒').toBe(false)
+      expect(r2.errorId).toBe('core.consumable.009')
+      expect(consumableStockOf(b, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
+    }
   })
 })

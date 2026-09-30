@@ -10543,6 +10543,43 @@ html[data-locale='en'] body {
 .app-ga-row.app-ga-invasion .app-ga-main { color: rgb(var(--wui-danger)); font-weight: 700; }
 .app-ga-row.app-ga-invasion .app-ga-desc { color: rgb(var(--wui-red) / 0.85); }
 
+/* ── 信号发射器（**2026-09-30 船长令**：星图 · 星系详细里"独立一个容器"）──
+   与入侵旗舰那一行**同一套写法**（`app-ga-row` ＋ 一个专属修饰），只是配色走**道具档的薄荷色**
+   （`--wui-tone-consumable`，与物品页/货仓页那枚图标同色 ⇒ 一眼认出是同一件道具）。 */
+.app-ga-row.app-ga-beacon {
+  border: 1px solid rgb(var(--wui-tone-consumable) / 0.45);
+  border-left: 3px solid rgb(var(--wui-tone-consumable));
+  border-radius: var(--wui-sp-6);
+  background: rgb(var(--wui-tone-consumable) / 0.07);
+  padding: var(--wui-sp-6) var(--wui-sp-8);
+}
+.app-ga-row.app-ga-beacon:hover { background: rgb(var(--wui-tone-consumable) / 0.14); }
+.app-ga-row.app-ga-beacon .app-ga-main { color: rgb(var(--wui-tone-consumable)); font-weight: 700; }
+.app-ga-row.app-ga-beacon .app-ga-desc { color: rgb(var(--wui-tone-consumable) / 0.8); }
+
+/* ── 技能页「技能加速」子窗口（**2026-09-30 船长令**）──
+   顶部那条状态块：**一条**原子读数（生效中给它强调色与左边框），下方清单复用 `.app-inv-*` 家族。 */
+.app-boost-block { display: flex; flex-direction: column; gap: var(--wui-sp-6); }
+.app-boost-now {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wui-sp-3);
+  padding: var(--wui-sp-7) var(--wui-sp-9);
+  border: 1px solid rgb(var(--wui-dim) / 0.45);
+  border-left: 3px solid rgb(var(--wui-dim) / 0.5);
+  border-radius: var(--wui-sp-6);
+  background: rgb(var(--wui-slot) / 0.35);
+}
+.app-boost-now.is-on {
+  border-color: rgb(var(--wui-tone-consumable) / 0.45);
+  border-left-color: rgb(var(--wui-tone-consumable));
+  background: rgb(var(--wui-tone-consumable) / 0.08);
+}
+.app-boost-now-head { display: flex; align-items: center; gap: var(--wui-sp-6); color: rgb(var(--wui-tone-consumable)); font-size: var(--wui-fs-base); }
+.app-boost-now-head b { font-variant-numeric: tabular-nums; }
+.app-boost-now-note { font-size: var(--wui-fs-s); }
+.app-boost-list-head { color: rgb(var(--wui-dim)); font-size: var(--wui-fs-s); letter-spacing: 0.06em; }
+
 .app-ga-main {
 
   font-size: var(--wui-fs-base);

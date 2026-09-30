@@ -3938,11 +3938,15 @@ export class GameEngine {
   }
 
   /**
-   * **使用一枚信号发射器**（**2026-09-30 船长令**「信号发射器」）：主动诱发一次入侵
-   * （随机星系；只能在没有入侵时使用）。`familyId` 缺省 = 列表里第一支（今天只有 H 族 · 墨潮帮）。
+   * **使用一枚信号发射器**（**2026-09-30 船长令**「信号发射器」）：主动诱发一次入侵。
+   *
+   * ⚠ **落点两条路**（船长 2026-09-30 裁定：「直接使用是随机星系（这个要提醒玩家）。选择了星系后是固定。」）：
+   * **不传 `galaxyId`**（物品页/货仓页那颗「使用」）＝**随机星系**；
+   * **传 `galaxyId`**（星图 · 星系详细那颗「启动信号发射器」）＝**就用玩家选的那个星系**
+   * （资格判据在 core：已探索 · 非高安 · 无已建副站）。
    */
-  useInvasionBeaconNow(familyId?: string): CommandResult {
-    const result = useInvasionBeacon(this.state, this.ctx, familyId)
+  useInvasionBeaconNow(opts: { familyId?: string; galaxyId?: string } = {}): CommandResult {
+    const result = useInvasionBeacon(this.state, this.ctx, opts)
     if (result.ok) {
       void this.persist()
       this.notify()

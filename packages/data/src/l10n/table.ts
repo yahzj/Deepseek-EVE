@@ -475,6 +475,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.consumable.006": { zh: "未知的入侵势力：{p1}。", en: "Unknown invading faction: {p1}." },
   "core.consumable.007": { zh: "当前没有可入侵的目标星系。", en: "There is no system available to invade right now." },
   "core.consumable.008": { zh: "✦ 信号发射器已启动：入侵舰队正在逼近「{p1}」（第 {p2} 场）。", en: "✦ Signal Beacon lit: an invasion fleet is closing on “{p1}” (event #{p2})." },
+  /* 2026-09-30 船长裁定「选择了星系后是固定」⇒ 指定星系那条路要给"这个星系不合资格"一个玩家可见的理由 */
+  "core.consumable.009": {
+    zh: "「{p1}」不能作为入侵目标：只有已探索、非高安、且尚未建成副站的星系可以作为目标。",
+    en: "“{p1}” cannot be an invasion target: only explored, non-high-sec systems without a completed outpost qualify.",
+  },
   "ui.ItemsPage.057": { zh: "使用：主动诱发一次入侵（随机星系 · 只能在没有入侵时使用 · 消耗 1 枚）", en: "Use: provoke an invasion (random system; only while no invasion is running; consumes one)" },
   "ui.ItemsPage.058": { zh: "信号发射器已启动：入侵舰队正在逼近。", en: "Signal Beacon lit: an invasion fleet is closing in." },
   /* 活动窗口的突触加速剂读数（2026-09-30 船长令：放进活动窗口 · 图标带倍率） */
@@ -600,6 +605,32 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.hud.146": { zh: "保底原材料", en: "Guaranteed materials" },
   /* 工位表最左列（动画槽）的列名：表头不显示文字，只给读屏用 */
   "ui.hud.147": { zh: "工位动画", en: "Station animation" },
+  /* ── 信号发射器 · 星图「星系详细」内的启动容器（**2026-09-30 船长令**：「在星图的星系详细窗口内，
+     新增一项『启动信号发射器』的使用按钮（独立一个容器…），并在其容器内说明使用会产生什么效果」）──
+     ⚠ 落点两条路是船长同日裁定：「**直接使用是随机星系（这个要提醒玩家）。选择了星系后是固定。**」 */
+  "ui.beacon.001": { zh: "启动信号发射器", en: "Light the Signal Beacon" },
+  "ui.beacon.002": {
+    zh: "消耗 1 枚信号发射器：入侵舰队将锁定「{p1}」及其相邻星系，按入侵规则活满一个窗口。在物品页或货仓页直接使用则落点随机。",
+    en: "Consumes one Signal Beacon: the invasion fleet locks onto “{p1}” and its neighbouring systems and runs a full invasion window. Using it from the Items page or the cargo hold picks the system at random instead.",
+  },
+  "ui.beacon.003": { zh: "再点一下确认：发射器将消耗 1 枚，目标锁定「{p1}」", en: "Click again to confirm: one beacon is spent and the target is locked to “{p1}”" },
+  "ui.beacon.004": {
+    zh: "该星系暂不能作为入侵目标：需要已探索 · 非高安 · 且尚未建成副站",
+    en: "This system cannot be an invasion target yet: it must be explored, not high-sec, and without a completed outpost",
+  },
+  /* ── 技能页「技能加速」子窗口（**2026-09-30 船长令**：「在技能页面内新增一个子窗口『技能加速』…」）──
+     顶部＝当前生效与剩余时间（与活动栏 `ui.ActivityBar.066/067` 同一套措辞），下方＝持有的加速道具清单 */
+  "ui.boost.001": { zh: "技能加速", en: "Skill Boost" },
+  "ui.boost.002": { zh: "未生效", en: "Not active" },
+  "ui.boost.003": { zh: "持有的加速道具", en: "Boost items on hand" },
+  "ui.boost.005": { zh: "剩余 {p1}", en: "{p1} left" },
+  /* 未生效时的效果说明（生效中那条用 `ui.ActivityBar.067`，两句不许混用——否则会读成"生效中·剩 0 秒"） */
+  "ui.boost.007": { zh: "效果：使用后 24 小时内技能训练时长减半；同一时间只能生效一剂。", en: "Effect: for 24 hours after use, skill training time is halved; only one dose can be active at a time." },
+  "ui.boost.006": { zh: "持有 ×{p1}", en: "×{p1} on hand" },
+  "ui.boost.004": {
+    zh: "当前没有技能加速类道具：可在工业页「实验室」按批生产。",
+    en: "No skill-boost items on hand: the Laboratory on the Industry page produces them by the batch.",
+  },
   "ui.hud.101": { zh: "工业 HUD（调试）", en: "Industry HUD (debug)" },
   /* 舰船页「跃迁燃料」子页（HUD 化 · 2026-09-30）：202~209 为本页规格 chip 与开关行；
      原 201 / 203 / 210 / 211 见下方 ⟪文案调整⟫（随"趟数"那把界面自造的尺一起删）。 */
