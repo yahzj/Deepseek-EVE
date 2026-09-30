@@ -99,6 +99,7 @@
     "art:ships:check": "tsx tools/shipart-preview.ts --check",
     "wh:ui": "tsx tools/wh-ui-check.ts",
     "docs:index": "tsx tools/docs-index.ts",
+    "copy:audit": "tsx tools/copy-corpus.ts",
     "docs:seal": "tsx tools/docs-seal.ts",
     "tools:audit": "tsx tools/tools-audit.ts",
     "commit:msg": "tsx tools/commit-msg.ts",
