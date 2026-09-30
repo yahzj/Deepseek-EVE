@@ -12,9 +12,30 @@ import type { GameState } from './state'
 import type { CommandResult } from './engine'
 import type { SimContext } from './types'
 import { countItem, countWare, removeItem, removeWare } from './inventory'
-import { addLog } from './state'
+import { HOME_GALAXY_ID, addLog } from './state'
+import { isAtHomeLike } from './location'
 import { SYNAPTIC_ACCELERANT_MS, synapticAccelerantActive } from './training'
+import { securityZoneOf } from './sideTasks'
+import { DSI_FACTION_ID, spendableStandingOf } from './expedition'
 import { weekendCoreCandidates, weekendPeripheryOf, weekendRollOccupation } from './weekendEvent'
+
+/**
+ * **高安启动的声望代价**（**2026-09-30 船长令**：「且当玩家在高安使用时候，弹出二次警告，警告玩家
+ * 这么做会被扣声望」→ 船长「按你推荐来」= 扣**可支配声望 10 点**、**不足则拒绝**）。
+ * ⚠ 扣的是 `state.standings`（可支配那本，与章鱼人兑换同账），**不动累计** ⇒ 已达成的门槛不受影响。
+ * 界面按同一个常量渲染警告文案（`ui.beacon.006`）。
+ */
+export const HIGH_SEC_PENALTY = 10
+
+/** 玩家**此刻所在星系**（不在基地时 = `awayGalaxy`；在母港 = 母港） */
+export function playerGalaxyIdOf(state: GameState): string {
+  return state.awayGalaxy ?? HOME_GALAXY_ID
+}
+
+/** 此刻是否"在高安点火"（＝要弹二次警告 + 扣声望的那种场合）——**单点**，界面与 core 共用 */
+export function beaconLaunchHighSecOf(state: GameState, ctx: SimContext): boolean {
+  return securityZoneOf(ctx, playerGalaxyIdOf(state)) === '高安'
+}
 
 /** 突触加速剂物品 id（与 `data/items.ts` 的 `CONSUMABLES` 同源） */
 export const SYNAPTIC_ACCELERANT_ITEM_ID = 'synaptic-accelerant'
@@ -112,6 +133,14 @@ export function useInvasionBeacon(
   if (ev !== undefined && ev.endedAtWallMs === undefined) {
     return { ok: false, error: '已经有一场入侵在进行中：等它结束再用信号发射器。', errorId: 'core.consumable.005' }
   }
+  /**
+   * **新的限制**（**2026-09-30 船长令**：「**新的限制，信号发射器不可以在有空间站的地方使用。**」）：
+   * 判据 = `location.isAtHomeLike`（母港 或 **已建成**副站；在建工地不算）⇒ 那时**拒绝启动**。
+   * ⚠ 排在"已有入侵"之后：两者同时成立时，"等这场打完"是更贴切的那句。
+   */
+  if (isAtHomeLike(state, ctx)) {
+    return { ok: false, error: '不能在空间站所在地使用信号发射器：先把船开到没有空间站的星系再启动。', errorId: 'core.consumable.010' }
+  }
   const family = INVASION_BEACON_FAMILIES.find((f) => f.id === (familyId ?? INVASION_BEACON_FAMILIES[0]!.id))
   if (!family) {
     return {
@@ -119,6 +148,21 @@ export function useInvasionBeacon(
       error: `未知的入侵势力：${familyId ?? '(空)'}。`,
       errorId: 'core.consumable.006',
       errorParams: { p1: familyId ?? '(空)' },
+    }
+  }
+  /**
+   * **高安启动的声望代价**（**2026-09-30 船长令**：「**且当玩家在高安使用时候，弹出二次警告，警告玩家
+   * 这么做会被扣声望。**」→ 船长「按你推荐来」= 扣**可支配声望 10 点**、**不足则拒绝**）。
+   * ⚠ 扣的是 `state.standings`（可支配那本，与章鱼人兑换同账），**不动累计** ⇒ 已达成的门槛不受影响。
+   */
+  const here = playerGalaxyIdOf(state)
+  const highSec = beaconLaunchHighSecOf(state, ctx)
+  if (highSec && spendableStandingOf(state, DSI_FACTION_ID) < HIGH_SEC_PENALTY) {
+    return {
+      ok: false,
+      error: `在高安启动信号发射器要付 ${HIGH_SEC_PENALTY} 点声望：当前可支配声望不够。`,
+      errorId: 'core.consumable.011',
+      errorParams: { p1: HIGH_SEC_PENALTY },
     }
   }
   const seq = (ev?.seq ?? 0) + 1
@@ -142,6 +186,17 @@ export function useInvasionBeacon(
     }
   }
   takeOne(state, INVASION_BEACON_ITEM_ID)
+  /* 高安启动：扣可支配声望（**在扣料之后**，与"发射器确实用掉了"同一笔成交；不足时上面已拒） */
+  if (highSec) {
+    state.standings[DSI_FACTION_ID] = Math.max(0, spendableStandingOf(state, DSI_FACTION_ID) - HIGH_SEC_PENALTY)
+    addLog(
+      state,
+      'fleet',
+      `⚠ 在「${ctx.galaxies.get(here)?.name ?? here}」启动信号发射器：协会扣了 ${HIGH_SEC_PENALTY} 点声望。`,
+      'core.consumable.012',
+      { p1: ctx.galaxies.get(here)?.name ?? here, p2: HIGH_SEC_PENALTY },
+    )
+  }
   state.weekendEvent = {
     seq,
     startedAtWallMs: state.wallMs ?? Date.now(),

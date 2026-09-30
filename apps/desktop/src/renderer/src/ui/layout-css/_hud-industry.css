@@ -472,6 +472,13 @@ button.hud-chip:hover { border-color: var(--hud-accent); color: var(--hud-accent
   padding: 5px 7px;
 }
 
+/* ── 「优先使用的 AI」选择器（2026-09-30 船长令：四个工业页签都加，放各页"队列/配方"窗口顶部）──
+   `.hud-aipick` = 整行（标签 ＋ 下拉 ＋ 剩余数量 ＋ 备注 chip）：与下一块内容留 8px；
+   `.hud-label` = **可见标签**（`ui-ux-pro-max` Forms·Input Labels（High）「Every input needs a
+   visible label」）——比 `.hud-tiny` 亮一档（它是控件名，不是脚注），但不抢主读数。 */
+.hud-aipick { margin: 0 0 8px; }
+.hud-label { color: var(--hud-fg-dim); font-size: 12px; letter-spacing: 0.03em; }
+
 /* ── 走马灯读数 ── */
 .hud-ticker {
   margin-top: 10px;
