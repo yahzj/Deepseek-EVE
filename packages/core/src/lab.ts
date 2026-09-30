@@ -292,7 +292,16 @@ export function startLabRun(
       ok: false,
       error: `${recipe.name} 的仓库余量放不下下一批（${(capped?.stock ?? 0).toLocaleString('zh-CN')} / ${(capped?.cap ?? 0).toLocaleString('zh-CN')} 单位）：先消耗或卖出再开工。`,
       errorId: 'core.lab.018',
-      errorParams: { p1: (capped?.stock ?? 0).toLocaleString('zh-CN'), p2: (capped?.cap ?? 0).toLocaleString('zh-CN') },
+      /**
+       * ⚠ **槽位必须与模板一一对应**（**2026-09-30 船长报障「提示里有错误的 {p3}」**）：
+       * 模板是「{p1} 的仓库余量放不下下一批（{p2} / {p3} 单位）：…」⇒ p1 = **配方名**、p2 = 存量、p3 = 上限；
+       * 原先只喂了 p1/p2（而且喂的是存量/上限）⇒ 玩家看到「5,400 的仓库余量…（6,000 / **{p3}** 单位）」。
+       */
+      errorParams: {
+        p1: recipe.name,
+        p2: (capped?.stock ?? 0).toLocaleString('zh-CN'),
+        p3: (capped?.cap ?? 0).toLocaleString('zh-CN'),
+      },
     }
   }
   if (worker === 'pilot') {

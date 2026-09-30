@@ -436,6 +436,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.lab.021": { zh: "材料不足一批：先集齐投料。", en: "Not enough material for one batch — gather the feedstock first." },
   "ui.lab.022": { zh: "用核心开工", en: "Start with core" },
   "ui.lab.023": { zh: "查看行情", en: "View market" },
+  /* ⟪文案调整 2026-09-30⟫ 船长报障「两张新配方卡片的说明还是燃料那套」：实验室面板的**通用**说明
+     （原来面板/卡片复用了燃料专用的 `ui.lab.010` / `ui.lab.017`；**每张配方卡片的说明改取产出物自己的 description**） */
+  "ui.lab.024": { zh: "实验室：按配方投入材料，到点产出成品（与精炼炉共用主控工作位）", en: "Laboratory: feed a recipe's materials and collect the finished product (shares the pilot work slot with the refinery)" },
   /* 舰船页「跃迁燃料」子页（**2026-09-29 船长令**）：001~004 = 四个活动名（`JUMP_FUEL_ACTIVITY_TEXT_ID`） */
   "ui.jumpFuel.001": { zh: "采矿返航", en: "Mining returns" },
   "ui.jumpFuel.002": { zh: "打捞返航", en: "Salvage returns" },

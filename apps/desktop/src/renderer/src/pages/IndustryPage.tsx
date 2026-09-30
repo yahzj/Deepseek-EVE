@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 工业页：精炼炉（多工位并行卡片网格）+ 蓝图书架 + 组装机。
  *
  * 精炼模型（2026-09-04 船长定稿运转周期制；2026-09-05 船长拍板多工位并行）：
@@ -547,10 +547,10 @@ function LabPanel({
     <Panel
       className="is-fill"
       title={tr('ui.lab.001')}
-      hint={<HintIcon tip={tr('ui.lab.010')} />}
+      hint={<HintIcon tip={tr('ui.lab.024')} />}
       right={
         <>
-          <span className="app-dim">{tr('ui.lab.017')}</span>
+          <span className="app-dim">{tr('ui.lab.024')}</span>
           <AiSlotText state={state} ctx={engine.ctx} />
         </>
       }
@@ -628,7 +628,10 @@ function LabCard({
           </span>
         </span>
       </div>
-      <div className="app-belt-desc">{tr('ui.lab.010')}</div>
+      {/* **产品自己的说明**（**2026-09-30 船长报障**：「信号发射器 · 突触加速剂的实验室生产卡片说明
+          还是采用燃料的」）——原来这里写死 `ui.lab.010`（燃料口径）⇒ 所有配方卡片都在念燃料那套话。
+          现改成**取产出物自己的 `description`**：一件产品一份说明（单一来源，不再每张配方各写一段）。 */}
+      <div className="app-belt-desc">{out?.description ?? ''}</div>
       {/* 数据行（与精炼炉同款位置）：每批产出 / 每批工期 / 精炼速率 */}
       <div className="app-belt-ore">
         {tr('ui.lab.003')} {out?.name ?? recipe.outputItemId} ×{recipe.outputUnits}
