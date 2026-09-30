@@ -14,6 +14,11 @@
  *   ③ **桌面档**：等比缩放必须**不介入**（`k = 1`、无 transform、整屏不隐藏溢出）——
  *      ⇒ 桌面逐像素与改造前一致（各部件高度同时打印出来供人工对照）。
  *
+ * ⚠ **2026-09-30 起版式变了两处**（船长令：炮/冷却上移、距离条下移合并拖动条）：
+ *   页面上现在有**两个** `.app-bts-dock`（顶部读数区 `.app-bts-topdock` 与底栏 `.app-battle-controls`），
+ *   距离尺 `.app-bts-ruler` 也从战场内层搬进底栏 —— 本工具的读数与判据已按新结构分开量
+ *   （读数区与底栏都查"裁内容"），别再用"第一个 `.app-bts-dock`"当底栏。
+ *
  * 运行前置（与 `ui-overflow.ts` 同款，**不自己起浏览器、也绝不动别人的浏览器**）：
  *   1) 网页版已构建并在跑：本仓 `npm run build --prefix web` 后
  *      `npm run preview --prefix web -- --port 4199 --strictPort`（**别占别人的端口**；
@@ -28,7 +33,8 @@
  *
  * 输出：控制台读数表 ＋ `tools/_ui-artifacts/shots/battle-fit-*.png`（可重建、不入库）
  *
- * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v31** · 最后核对 2026-09-25 · 最后跑过 2026-09-25
+ * **版本自检**：游戏版本 v0.1.0 · 存档结构 **v31** · 最后核对 2026-09-25 · 最后跑过 **2026-09-30**
+ *   （2026-09-30 那次用 `--save=small` 跑：满装配底档 `save-20260924-022747.json.json` 不在本工作树）
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -173,7 +179,13 @@ const READ = `(() => {
       : null,
     尺寸: {
       顶栏高: document.querySelector('.app-battle-screen-top')?.clientHeight ?? 0,
-      底栏高: document.querySelector('.app-bts-dock')?.clientHeight ?? 0,
+      /**
+       * 2026-09-30 船长令（所有炮和冷却相关的放到屏幕上方 ＋ 距离条搬到底栏）之后，
+       * 页面上有**两个** .app-bts-dock：顶部读数区（倍速/图例/装填）与底栏（距离轴/战术）。
+       * 这里分开量，别再一律取第一个（否则"底栏"读数实际上量的是顶部那块）。
+       */
+      读数区高: document.querySelector('.app-bts-topdock')?.clientHeight ?? 0,
+      底栏高: document.querySelector('.app-battle-controls .app-bts-dock')?.clientHeight ?? 0,
       战术键高: btn ? Math.round(btn.offsetHeight) : 0,
       顶栏键高: topBtn ? Math.round(topBtn.offsetHeight) : 0,
       图例chip高: chip ? Math.round(chip.offsetHeight) : 0,
@@ -183,7 +195,7 @@ const READ = `(() => {
     },
     武器行数: screen ? screen.querySelectorAll('.app-bts-reload').length : 0,
     车道: laneBox,
-    部件: ['.app-battle-screen-top', '.app-bts-stage', '.app-bts-stage-fit', '.app-bts-ruler', '.app-bts-lane', '.app-bts-dock', '.app-bts-legends', '.app-bts-reloads', '.app-bts-ops'].map((sel) => {
+    部件: ['.app-battle-screen-top', '.app-bts-topdock', '.app-bts-stage', '.app-bts-stage-fit', '.app-bts-ruler', '.app-bts-lane', '.app-battle-controls .app-bts-dock', '.app-bts-legends', '.app-bts-reloads', '.app-bts-ops'].map((sel) => {
       const el = document.querySelector(sel)
       const b = boxOf(el)
       return b ? { sel, ...b } : null
@@ -237,7 +249,9 @@ function check(tag: string, r: Reading, mobile: boolean): string[] {
   const stage = part(r, '.app-bts-stage')
   const lane = part(r, '.app-bts-lane')
   const top = part(r, '.app-battle-screen-top')
-  const dock = part(r, '.app-bts-dock')
+  /** 顶部读数区（倍速/图例/装填）——2026-09-30 新块，与底栏一样不参与缩放 */
+  const topdock = part(r, '.app-bts-topdock')
+  const dock = part(r, '.app-battle-controls .app-bts-dock')
   const k = Number(r.等比缩放?.k ?? '1')
   const need = Number(r.等比缩放?.内容自然高 ?? '0')
   const avail = Number(r.等比缩放?.可用高 ?? '0')
@@ -245,12 +259,13 @@ function check(tag: string, r: Reading, mobile: boolean): string[] {
   const sc = Number(r.页面缩放) || 1
   if (mobile) {
     if (k > 1) bad.push(`[${tag}] 缩放系数 ${r.等比缩放?.k} > 1（只缩不放的口径被破坏）`)
-    // 缩了 ⇒ 缩后必须装得下（scale 只压战场，顶栏/底栏不缩）
+    // 缩了 ⇒ 缩后必须装得下（scale 只压战场，顶栏/读数区/底栏不缩）
     if (k < 1 && need * k > avail + 1) bad.push(`[${tag}] 战场缩后仍溢出：${Math.round(need * k)} > ${avail}`)
     // 没缩（k=1）⇒ 战场自然高本来就装得下
     if (k >= 1 && stage && stage.纵向溢出 > 0) bad.push(`[${tag}] 战场未缩放却裁内容 ${stage.纵向溢出}px`)
     if (lane && lane.纵向溢出 > 0) bad.push(`[${tag}] 车道裁内容 ${lane.纵向溢出}px`)
     if (top && top.纵向溢出 > 0) bad.push(`[${tag}] 顶栏裁内容 ${top.纵向溢出}px（顶栏不参与缩放，必须自己装得下）`)
+    if (topdock && topdock.纵向溢出 > 0) bad.push(`[${tag}] 顶部读数区裁内容 ${topdock.纵向溢出}px（不参与缩放，必须自己装得下）`)
     if (dock && dock.纵向溢出 > 0) bad.push(`[${tag}] 底栏裁内容 ${dock.纵向溢出}px（底栏不参与缩放，必须自己装得下）`)
     if (r.车道 && r.车道.越界项.length > 0) bad.push(`[${tag}] 车道里 ${r.车道.越界项.length} 件要紧件越出下沿（最低 ${r.车道.最低下沿} / 车道 ${r.车道.逻辑高}）`)
     // 手机可读可点（物理 px）：触控 ≥31（= 44 逻辑 × 390×844 的 0.703）· 正文 ≥10.5
@@ -380,24 +395,24 @@ async function main(): Promise<void> {
       }
       table.push(
         `│ ${tag.padEnd(22)} │ ${(r.等比缩放?.k ?? '-').padEnd(7)} │ ${(r.等比缩放?.内容自然高 ?? '-').padEnd(5)} │ ` +
-          `${g('.app-battle-screen-top').padEnd(9)} │ ${g('.app-bts-stage').padEnd(9)} │ ${g('.app-bts-ruler').padEnd(9)} │ ` +
-          `${g('.app-bts-lane').padEnd(9)} │ ${g('.app-bts-dock').padEnd(9)} │ ${String(r.武器行数).padEnd(3)} │`,
+          `${g('.app-battle-screen-top').padEnd(9)} │ ${g('.app-bts-topdock').padEnd(9)} │ ${g('.app-bts-stage').padEnd(9)} │ ` +
+          `${g('.app-bts-ruler').padEnd(9)} │ ${g('.app-bts-lane').padEnd(9)} │ ${g('.app-battle-controls .app-bts-dock').padEnd(9)} │ ${String(r.武器行数).padEnd(3)} │`,
       )
       const sc = Number(r.页面缩放) || 1
       const phy = (v: number): string => `${Math.round(v * sc)}`
       console.log(
         `   ↳ ${tag} ${r.旋转模式 ? '旋转模式' : '非旋转'} 物理读数（×${sc.toFixed(3)}）：战术键 ${phy(r.尺寸.战术键高)}px · 顶栏键 ${phy(r.尺寸.顶栏键高)}px · ` +
-          `图例字 ${phy(r.尺寸.图例字号)}px · 正文最小 ${phy(r.尺寸.正文最小字号)}px · 顶栏 ${phy(r.尺寸.顶栏高)}px · 底栏 ${phy(r.尺寸.底栏高)}px`,
+          `图例字 ${phy(r.尺寸.图例字号)}px · 正文最小 ${phy(r.尺寸.正文最小字号)}px · 顶栏 ${phy(r.尺寸.顶栏高)}px · 读数区 ${phy(r.尺寸.读数区高)}px · 底栏 ${phy(r.尺寸.底栏高)}px`,
       )
       await shoot(cdp, `battle-fit-${layout}-${v.tag}`)
     }
   }
   console.log('\n部件「clientH(溢N)」＝该件实际高与它裁掉多少逻辑 px：')
-  console.log('┌────────────────────────┬─────────┬───────┬───────────┬───────────┬───────────┬───────────┬───────────┬─────┐')
-  console.log('│ 视口 · 布局            │ 缩放 k  │ 需高  │ 顶栏      │ 舞台      │ 距离尺    │ 车道      │ 底栏      │武器 │')
-  console.log('├────────────────────────┼─────────┼───────┼───────────┼───────────┼───────────┼───────────┼───────────┼─────┤')
+  console.log('┌────────────────────────┬─────────┬───────┬───────────┬───────────┬───────────┬───────────┬───────────┬───────────┬─────┐')
+  console.log('│ 视口 · 布局            │ 缩放 k  │ 需高  │ 页头      │ 读数区    │ 舞台      │ 距离轴    │ 车道      │ 底栏      │武器 │')
+  console.log('├────────────────────────┼─────────┼───────┼───────────┼───────────┼───────────┼───────────┼───────────┼───────────┼─────┤')
   for (const row of table) console.log(row)
-  console.log('└────────────────────────┴─────────┴───────┴───────────┴───────────┴───────────┴───────────┴───────────┴─────┘')
+  console.log('└────────────────────────┴─────────┴───────┴───────────┴───────────┴───────────┴───────────┴───────────┴───────────┴─────┘')
   console.log(`\n截图：${OUT_DIR}\\battle-fit-*.png`)
   cdp.close()
   if (problems.length > 0) {
@@ -405,7 +420,7 @@ async function main(): Promise<void> {
     for (const p of problems) console.log(`  · ${p}`)
     process.exitCode = 1
   } else {
-    console.log('\n✅ 手机档：战场缩后装得下、顶栏/底栏不裁、车道要紧件不越界、触控与字号达物理下限；桌面档：等比缩放不介入（k=1）。')
+    console.log('\n✅ 手机档：战场缩后装得下、页头/读数区/底栏不裁、车道要紧件不越界、触控与字号达物理下限；桌面档：等比缩放不介入（k=1）。')
   }
 }
 
