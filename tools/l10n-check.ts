@@ -191,6 +191,42 @@ function placeholders(text: string): string[] {
 const scans = walk(ROOT).map(scanFile)
 const entries = Object.entries(L10N)
 const ids = new Set(entries.map(([id]) => id))
+
+/**
+ * **重键体检**（**2026-09-30 加**；起因 = 一号与二号两批**同日各写了一条 `core.combat.004`**，
+ * 文本合并零冲突、两边各自跑绿 —— 只有 `tsc` 的 TS1117 才拎得出来，本工具当时漏了）。
+ *
+ * 为什么它必须是**红**而不是读数：`Object.entries(L10N)` 看不见重键（**后来者覆盖前者**），
+ * 后果是**玩家看到的文案被悄悄换成另一条**（本次差点让战报显示成"点火周期"说明），
+ * 而且 `l10n:check` 的其余判据全都仍然通过 —— 属于"跑绿但已经错了"的那一类。
+ *
+ * 做法：不看运行时对象，读**源码文本**；TS 编译器解析后取 `L10N` 对象字面量的属性名计数 >1 即报。
+ */
+function duplicateTableKeys(): string[] {
+  const file = join(process.cwd(), 'packages', 'data', 'src', 'l10n', 'table.ts')
+  const src = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true)
+  const seen = new Map<string, number>()
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === 'L10N' &&
+      node.initializer !== undefined &&
+      ts.isObjectLiteralExpression(node.initializer)
+    ) {
+      for (const prop of node.initializer.properties) {
+        const name = prop.name !== undefined && (ts.isStringLiteral(prop.name) || ts.isIdentifier(prop.name)) ? prop.name.text : undefined
+        if (name !== undefined) seen.set(name, (seen.get(name) ?? 0) + 1)
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(src)
+  return [...seen.entries()].filter(([, n]) => n > 1).map(([k, n]) => `${k} 出现 ${n} 次`)
+}
+const dupKeys = duplicateTableKeys()
+check(dupKeys.length === 0, `文案表有**重键** ${dupKeys.length} 个：${dupKeys.join(' · ')} —— 重键会让后一条静默覆盖前一条（玩家看到的是后一条）`)
+
 const used = new Set<string>()
 const badShapeRefs: string[] = []
 const cjkRefs: string[] = []
@@ -280,6 +316,7 @@ const byDomain = new Map<string, number>()
 for (const [id] of entries) byDomain.set(id.split('.')[0]!, (byDomain.get(id.split('.')[0]!) ?? 0) + 1)
 
 console.log(`· 表：**${entries.length}** 条（${[...byDomain].map(([d, n]) => `${d} ${n}`).join(' · ')}）· 源码引用 **${used.size}** 个 id`)
+console.log(`· 重键体检（源码文本层）：**${dupKeys.length}** 个重复 id${dupKeys.length > 0 ? '（见下方红字）' : ' —— 无静默覆盖'}`)
 console.log(`· 接线：渲染层 \`t()\`/\`tr()\` 调用点 **${callTotal}** 处 · 扫描 ${scans.length} 个源文件`)
 console.log(`· core 文案 id（甲案）：**${coreRefs.length}** 处引用（\`textId\` / \`errorId\`）——全部在表内、形态合规`)
 console.log(

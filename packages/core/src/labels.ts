@@ -345,6 +345,10 @@ export function thrusterCycleFullText(
  * 永远夹着「10 秒点火 / 60 秒冷却，开场即点火」（英文扫描实测 1 处）。
  * core 不认识渲染层的语言 ⇒ 按既有 id 侧面通道给出 `textId` + `params`，渲染层写 `tr(id, params)`。
  * 中文原串照旧返回（老调用点零变化）。
+ *
+ * ⚠ **2026-09-30 合入时撞号改 id**：本条原本占 `core.combat.004`，与二号同日写的
+ * 「墨潮捕获网钉住 C 族」战报**同号**（两边各自跑绿 ⇒ 只有 TS1117 拎得出来）⇒ 本条改用
+ * `core.combat.007`（让给已进测试与台账的那条）。表里的 id 见 `packages/data/src/l10n/table.ts`。
  */
 export function thrusterCycleNote(
   bal: BattleBalance = DEFAULT_BALANCE.battle,
@@ -353,7 +357,7 @@ export function thrusterCycleNote(
   const { boost, cooldown } = thrusterCycleSeconds(bal, cycle)
   return {
     text: `${boost} 秒点火 / ${cooldown} 秒冷却，开场即点火`,
-    textId: 'core.combat.004',
+    textId: 'core.combat.007',
     params: { p1: boost, p2: cooldown },
   }
 }

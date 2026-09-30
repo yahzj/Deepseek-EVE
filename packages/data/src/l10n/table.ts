@@ -335,11 +335,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* ── 损伤管制装置（2026-09-25 船长令：结构首次被打空时启动，锁定 1 秒，消耗损管修理组件 ×1）── */
   "core.combat.002": { zh: "✦ 损伤管制装置启动：结构锁定在 1 点、持续 1 秒（消耗损管修理组件 ×1）。", en: "✦ Damage Control Unit engaged: structure locked at 1 for 1 second (spent 1 Damage Control Repair Kit)." },
   "core.combat.003": { zh: "⚠ 损伤管制装置未能启动：损管修理组件不足。", en: "⚠ Damage Control Unit could not engage: no Damage Control Repair Kit available." },
-  /**
-   * English-residual batch 5 (2026-09-30): the afterburner cycle tail fed into `ui.FitPage.145`'s
-   * `{p2}` slot. Single source in core = `labels.thrusterCycleNote` (`{ text, textId, params }`).
-   */
-  "core.combat.004": { zh: "{p1} 秒点火 / {p2} 秒冷却，开场即点火", en: "{p1} s burn / {p2} s cooldown, ignites as the fight opens" },
   // ⚠ 战报尾巴那一段（`combat.dcUsageText`）与「船体维修装置」那条同式：报告正文是**拼接串**，
   //   不走 id 渲染 ⇒ 这里**不再留**废弃 id（原来加过 `core.combat.004`，未接线，已删）。
   //   ⚠ **2026-09-30 起 `core.combat.004` 重新有主**：墨潮捕获网钉住 **C 族**时那条战报
@@ -348,6 +343,17 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.combat.004": { zh: "{p1} 张开墨潮捕获网，钉住了 {p2}：{p3}、闪避失效，C 族的冲锋不受网的推进器压制——击沉目标或击沉网手才能解除。", en: "{p1} casts the Ink Tide capture web, pinning {p2}: {p3}, evasion disabled; Aberrant charges are unaffected by the thruster lockout — sink the target or the caster to break free." },
   "core.combat.005": { zh: "机动减半", en: "speed halved" },
   "core.combat.006": { zh: "机动 ×{p1}", en: "speed ×{p1}" },
+  /**
+   * 加力推进「点火周期」那截（英文残留批 5 · 2026-09-30）：喂给 `ui.FitPage.145` 的 `{p2}` 槽，
+   * 唯一来源 = core 的 `labels.thrusterCycleNote`（`{ text, textId, params }`）。
+   *
+   * ⚠ **2026-09-30 合入时撞号改 id**：本批与二号那批**同一天各写了一条 `core.combat.004`**
+   * （本条 vs 墨潮捕获网战报），两边各自跑绿、文本合并没有冲突，只有 `typecheck` 的 TS1117
+   * 才把它拎出来（`l10n:check` 当时没查重键）。裁决：本条的 id 让给**已进测试与工作文档**的那条
+   * （`web-immunity-20260930.test.ts` 断言 + `economy-audit-20260928.md` 台账都写的是 004），
+   * 本条改用当时空闲的 `core.combat.007`（只被 `labels.ts` 引用一处，无测试断言）。
+   */
+  "core.combat.007": { zh: "{p1} 秒点火 / {p2} 秒冷却，开场即点火", en: "{p1} s burn / {p2} s cooldown, ignites as the fight opens" },
   // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
   // ⟪文案调整 2026-09-29⟫ 船长令「夺回奖按投入比例缩水」（乙案 · 全清乘平均参与度）：夺回那一刻算不出
   //   最终金额（= 全额 × 玩家在该处的最终投入比例）⇒ 两条日志去掉金额与 `p2/p3` 两个参数，只留规格
