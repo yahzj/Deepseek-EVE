@@ -1734,7 +1734,7 @@ export const EN_MATTER_TECH_NOTES: Readonly<Record<string, string>> = {
   // 2026-09-30 船长令：精炼提速两支 ＋ T5 层首批
   'mt-industry-refine-speed': 'Each level shortens the refining cycle of Void Ore by 10%.',
   'mt-industry-refine-integration': 'Each level shortens the refining cycle of Void Ore by a further 5%.',
-  'mt-industry-void-drip': 'Each level grants 100 Void Ore per hour automatically (300 per hour at max level; offline time counts).',
+  'mt-industry-void-drip': 'Each level grants 200 Void Ore per hour automatically (600 per hour at max level; offline time counts).',
   'mt-industry-fuel-advanced': 'Unlocks the laboratory recipe "Condensed Jump Fuel": 600 units per batch, less Void Crystal and a higher total material cost.',
 }
 

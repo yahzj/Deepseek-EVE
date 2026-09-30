@@ -67,7 +67,7 @@ describe('谜质科技树 · 节点表与货币', () => {
     const integ = byId.get('mt-industry-refine-integration')!
     expect([integ.tier, integ.effect, integ.per, integ.maxLevel]).toEqual([4, 'voidRefineSpeed', 0.05, 3])
     const drip = byId.get('mt-industry-void-drip')!
-    expect([drip.tier, drip.effect, drip.per, drip.maxLevel]).toEqual([5, 'voidOreDrip', 100, 3])
+    expect([drip.tier, drip.effect, drip.per, drip.maxLevel]).toEqual([5, 'voidOreDrip', 200, 3])
     const fuel = byId.get('mt-industry-fuel-advanced')!
     expect([fuel.tier, fuel.effect, fuel.per, fuel.maxLevel]).toEqual([5, 'fuelRecipeAdvanced', 1, 1])
     // T5 是本表第一次出现的层：首级费用必须高过 T4 最高（体检契约④同款口径）
@@ -79,8 +79,8 @@ describe('谜质科技树 · 节点表与货币', () => {
     }
     // 双满 ⇒ 周期 −45%（10%×3 ＋ 5%×3，加法口径）
     expect(speed.per * speed.maxLevel + integ.per * integ.maxLevel).toBeCloseTo(0.45, 10)
-    // 涓流满级 = 300 枚/时（船长令）
-    expect(drip.per * drip.maxLevel).toBe(300)
+    // 涓流满级 = 600 枚/时（船长令二次调整：每级 200）
+    expect(drip.per * drip.maxLevel).toBe(600)
   })
 
   it('洞外工业 T4「工业多核调度」：每级 +1 站内工业 AI 工位、最高 5 级（船长 2026-09-20）', () => {
@@ -364,29 +364,30 @@ describe('谜质科技树 · 2026-09-30 新增四条（精炼提速 · 涓流 ·
     expect(s.refineRuns.at(-1)!.cycleMs).toBe(baseOther)
   })
 
-  it('涓流：每级 100 枚/时；推进一小时入库 100 枚；未点 ⇒ 一枚不给', () => {
+  it('涓流：每级 200 枚/时；推进一小时入库 200 枚；未点 ⇒ 一枚不给', () => {
     const s = labReady()
     advanceMatterOreDrip(s, ctx, 3_600_000)
     expect(countWare(s, WORMHOLE_ORE_ITEM_ID)).toBe(0)
     expect(matterTechVoidOrePerHour(s, ctx)).toBe(0)
     s.research = { levels: { 'mt-industry-void-drip': 1 } }
-    expect(matterTechVoidOrePerHour(s, ctx)).toBe(100)
+    expect(matterTechVoidOrePerHour(s, ctx)).toBe(200)
     advanceMatterOreDrip(s, ctx, 3_600_000)
-    expect(countWare(s, WORMHOLE_ORE_ITEM_ID)).toBe(100)
-    // 半小时 ⇒ 50 枚；再半小时 ⇒ 再 50（小数累积不丢账）
-    advanceMatterOreDrip(s, ctx, 1_800_000)
-    expect(countWare(s, WORMHOLE_ORE_ITEM_ID)).toBe(150)
-    advanceMatterOreDrip(s, ctx, 1_800_000)
     expect(countWare(s, WORMHOLE_ORE_ITEM_ID)).toBe(200)
-    // 零星 delta 不丢：0.6 枚的碎账留在累积器里，下一拍凑整
-    advanceMatterOreDrip(s, ctx, 21_600)
-    expect(countWare(s, WORMHOLE_ORE_ITEM_ID)).toBe(200)
-    expect(s.research.oreDrip).toBeCloseTo(0.6, 6)
-    advanceMatterOreDrip(s, ctx, 21_600)
-    expect(countWare(s, WORMHOLE_ORE_ITEM_ID)).toBe(201)
-    // 满级 300/时（船长令）
+    // 半小时 ⇒ 100 枚；再半小时 ⇒ 再 100（小数累积不丢账）
+    advanceMatterOreDrip(s, ctx, 1_800_000)
+    expect(countWare(s, WORMHOLE_ORE_ITEM_ID)).toBe(300)
+    advanceMatterOreDrip(s, ctx, 1_800_000)
+    expect(countWare(s, WORMHOLE_ORE_ITEM_ID)).toBe(400)
+    // 零星 delta 不丢：9 秒 = 0.5 枚 ⇒ 先挂账、再一拍凑整入库 1 枚
+    advanceMatterOreDrip(s, ctx, 9_000)
+    expect(countWare(s, WORMHOLE_ORE_ITEM_ID)).toBe(400)
+    expect(s.research.oreDrip).toBeCloseTo(0.5, 6)
+    advanceMatterOreDrip(s, ctx, 9_000)
+    expect(countWare(s, WORMHOLE_ORE_ITEM_ID)).toBe(401)
+    expect(s.research.oreDrip).toBeCloseTo(0, 6)
+    // 满级 600/时（船长令二次调整：每级 200）
     s.research.levels['mt-industry-void-drip'] = 3
-    expect(matterTechVoidOrePerHour(s, ctx)).toBe(300)
+    expect(matterTechVoidOrePerHour(s, ctx)).toBe(600)
   })
 
   it('燃料配方门：没研究 ⇒ 起线被拒（core.lab.019）；研究一级 ⇒ 放行', () => {

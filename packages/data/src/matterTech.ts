@@ -391,12 +391,13 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     branch: 'industry',
     tier: 5,
     effect: 'voidOreDrip',
-    per: 100,
+    // 2026-09-30 船长令二次调整：「虚空母矿汲取效果上调到200枚每小时」⇒ 100 → 200 枚/级（满级 600）
+    per: 200,
     maxLevel: 3,
     essence: [160, 320, 480],
     isk: [700_000_000, 1_400_000_000, 2_100_000_000],
     prereq: { 'mt-industry-refine-integration': 1 },
-    note: '每级每小时自动获得 100 枚虚空母矿（满级 300 枚/时；离线照算）。',
+    note: '每级每小时自动获得 200 枚虚空母矿（满级 600 枚/时；离线照算）。',
   },
   {
     id: 'mt-industry-fuel-advanced',
