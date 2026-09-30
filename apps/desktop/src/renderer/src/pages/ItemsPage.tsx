@@ -702,7 +702,12 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             <ItemActionModal onClose={() => setPickItem(null)}>
               <div className="app-itempick-head">
                 <span className="app-itempick-icon">
-                  <Glyph name={pickItemDef.kind} size={40} color={inventoryItemTone(pickItem, pickItemDef.kind)} />
+                  {/* 图标走**物品 id 单点映射**（2026-09-30 船长报障：图标模式里点开详情卡的大图标还是通用图标） */}
+                  <Glyph
+                    name={itemGlyphName(pickItemDef.id, pickItemDef.kind)}
+                    size={40}
+                    color={inventoryItemTone(pickItem, pickItemDef.kind)}
+                  />
                 </span>
                 <div className="app-itempick-info">
                   <div className="app-itempick-name">{pickItemDef.name}</div>
@@ -716,6 +721,41 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               <InfoTable lines={itemInfoLines(pickItemDef, (id) => engine.ctx.items.get(id)?.name)} />
               <div className="app-dim app-itempick-note">{pickItemDef.description}</div>
               <div className="app-itempick-actions">
+                {/* **2026-09-30 船长报障**：「**图标模式无法使用道具（没有按钮）**」——
+                    图标模式点格子开的就是这张卡，但卡上原先只有「装到船上 / 卖出 / 去市场」⇒ 那两件
+                    道具在图标模式下没有使用入口。这里与列表行**同一套 id 常量判据**补上「使用」。 */}
+                {pickItem === SYNAPTIC_ACCELERANT_ITEM_ID ? (
+                  <button
+                    className="app-btn is-small is-warn"
+                    title={tr('ui.ItemsPage.054')}
+                    onClick={() => {
+                      const r = engine.useSynapticAccelerantNow()
+                      if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.054'), true)
+                      else {
+                        setPickItem(null)
+                        onToast(tr('ui.ItemsPage.055'))
+                      }
+                    }}
+                  >
+                    {tr('ui.ItemsPage.056')}
+                  </button>
+                ) : null}
+                {pickItem === INVASION_BEACON_ITEM_ID ? (
+                  <button
+                    className="app-btn is-small is-warn"
+                    title={tr('ui.ItemsPage.057')}
+                    onClick={() => {
+                      const r = engine.useInvasionBeaconNow()
+                      if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.057'), true)
+                      else {
+                        setPickItem(null)
+                        onToast(tr('ui.ItemsPage.058'))
+                      }
+                    }}
+                  >
+                    {tr('ui.ItemsPage.056')}
+                  </button>
+                ) : null}
                 {/* **碎片详情的「逆向解锁」**（2026-09-19 船长：「建议在物品的蓝图碎片详细页内，
                     也添加一个合并碎片的按钮」）——不是碎片 ⇒ 本组件返回 null，其余物品照旧 */}
                 <RedeemFragmentButton engine={engine} itemId={pickItem} onToast={onToast} />

@@ -1019,6 +1019,8 @@
   --wui-tone-part-basic: 159 208 232;
   --wui-tone-part-advanced: 255 212 121;
   --wui-tone-container: 224 176 96;
+  /* ⚠ 2026-09-30 补：`ui/tones.ts` 的 `TONES.consumable` 一直在引用它，但色板里没有定义 ⇒ 道具图标描边非法 ⇒ 图标隐形（取同块 ore 的薄荷值）。 */
+  --wui-tone-consumable: 94 230 200;
   --wui-tone-matter: 166 240 255;
   --wui-tone-essence: 105 226 255;
   --wui-tone-luxury: 242 217 138;
@@ -1160,6 +1162,8 @@
   --wui-tone-part-basic: 23 72 96;
   --wui-tone-part-advanced: 114 77 0;
   --wui-tone-container: 116 81 23;
+  /* ⚠ 2026-09-30 补：`ui/tones.ts` 的 `TONES.consumable` 一直在引用它，但色板里没有定义 ⇒ 道具图标描边非法 ⇒ 图标隐形（取同块 ore 的薄荷值）。 */
+  --wui-tone-consumable: 15 99 81;
   --wui-tone-matter: 0 74 89;
   --wui-tone-essence: 0 96 119;
   --wui-tone-luxury: 108 85 12;
@@ -1665,6 +1669,8 @@
   --wui-tone-part-basic: 246 251 254;
   --wui-tone-part-advanced: 255 252 245;
   --wui-tone-container: 255 251 245;
+  /* ⚠ 2026-09-30 补：`ui/tones.ts` 的 `TONES.consumable` 一直在引用它，但色板里没有定义 ⇒ 道具图标描边非法 ⇒ 图标隐形（取同块 ore 的薄荷值）。 */
+  --wui-tone-consumable: 245 255 253;
   --wui-tone-matter: 245 253 255;
   --wui-tone-essence: 245 253 255;
   --wui-tone-luxury: 255 253 245;
@@ -2159,6 +2165,8 @@
   --wui-tone-part-basic: 169 203 230;
   --wui-tone-part-advanced: 227 213 157;
   --wui-tone-container: 214 188 113;
+  /* ⚠ 2026-09-30 补：`ui/tones.ts` 的 `TONES.consumable` 一直在引用它，但色板里没有定义 ⇒ 道具图标描边非法 ⇒ 图标隐形（取同块 ore 的薄荷值）。 */
+  --wui-tone-consumable: 116 215 205;
   --wui-tone-matter: 193 224 237;
   --wui-tone-essence: 144 198 223;
   --wui-tone-luxury: 227 219 160;
@@ -2653,6 +2661,8 @@
   --wui-tone-part-basic: 123 186 217;
   --wui-tone-part-advanced: 246 193 81;
   --wui-tone-container: 217 173 99;
+  /* ⚠ 2026-09-30 补：`ui/tones.ts` 的 `TONES.consumable` 一直在引用它，但色板里没有定义 ⇒ 道具图标描边非法 ⇒ 图标隐形（取同块 ore 的薄荷值）。 */
+  --wui-tone-consumable: 94 222 194;
   --wui-tone-matter: 118 226 248;
   --wui-tone-essence: 71 212 245;
   --wui-tone-luxury: 230 199 101;
@@ -3147,6 +3157,8 @@
   --wui-tone-part-basic: 169 203 230;
   --wui-tone-part-advanced: 227 213 157;
   --wui-tone-container: 214 188 113;
+  /* ⚠ 2026-09-30 补：`ui/tones.ts` 的 `TONES.consumable` 一直在引用它，但色板里没有定义 ⇒ 道具图标描边非法 ⇒ 图标隐形（取同块 ore 的薄荷值）。 */
+  --wui-tone-consumable: 116 215 205;
   --wui-tone-matter: 193 224 237;
   --wui-tone-essence: 144 198 223;
   --wui-tone-luxury: 227 219 160;
@@ -3641,6 +3653,8 @@
   --wui-tone-part-basic: 159 189 232;
   --wui-tone-part-advanced: 252 220 124;
   --wui-tone-container: 224 192 96;
+  /* ⚠ 2026-09-30 补：`ui/tones.ts` 的 `TONES.consumable` 一直在引用它，但色板里没有定义 ⇒ 道具图标描边非法 ⇒ 图标隐形（取同块 ore 的薄荷值）。 */
+  --wui-tone-consumable: 94 151 230;
   --wui-tone-matter: 168 203 253;
   --wui-tone-essence: 109 168 251;
   --wui-tone-luxury: 242 216 138;

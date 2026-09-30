@@ -82,6 +82,27 @@ function main(): void {
   const defined = definedTokens(readFileSync(PALETTE, 'utf8'))
   const files = SRC_DIRS.flatMap((d) => walk(d))
   const missing = new Map<string, string[]>() // token → 位置列表
+  /* ⚠ **拼接名专项**（**2026-09-30 加**，船长报障「仓库图标模式里道具图标是空的」）：
+     上面 `usedTokens` 会**主动跳过**拼接名（`var(--wui-tone-${kind})`），于是
+     `ui/tones.ts` 的 `toneVar('consumable')` 这种"名字是拼出来的"就**从来没被核过** ——
+     色板里漏定义 `--wui-tone-consumable` 整整一天没人发现，直到船长看见图标是空的。
+     ⇒ 这里把 `toneVar('x')` 的字面量调用逐个对色板核一遍（要求每个主题块都有：定义数 ≥ 主题块数）。*/
+  const themeBlocks = (readFileSync(PALETTE, 'utf8').match(/^\s*--wui-tone-ore\s*:/gm) ?? []).length
+  const toneCalls = new Map<string, string[]>()
+  for (const f of files) {
+    const src = readFileSync(f, 'utf8')
+    for (const m of src.matchAll(/toneVar\(\s*'([a-z0-9-]+)'\s*\)/g)) {
+      const token = `--wui-tone-${m[1]!}`
+      const line = src.slice(0, m.index).split('\n').length
+      const list = toneCalls.get(token) ?? []
+      list.push(`${relative(ROOT, f).replace(/\\/g, '/')}:${line}`)
+      toneCalls.set(token, list)
+    }
+  }
+  for (const [token, where] of toneCalls) {
+    if (defined.has(token)) continue
+    missing.set(token, where)
+  }
   let uses = 0
   for (const f of files) {
     for (const { token, line } of usedTokens(f)) {
@@ -94,7 +115,8 @@ function main(): void {
     }
   }
   console.log(
-    `色板 token 契约：定义 ${defined.size} 个 · 引用 ${uses} 处（${files.length} 个文件，扫 ${SRC_DIRS.length} 个源码根）`,
+    `色板 token 契约：定义 ${defined.size} 个 · 引用 ${uses} 处（${files.length} 个文件，扫 ${SRC_DIRS.length} 个源码根）` +
+      ` · 拼接名专项：toneVar(…) 共 ${toneCalls.size} 个键（色板 tone 块 ${themeBlocks} 个）`,
   )
   if (missing.size === 0) {
     console.log('✅ 通过：渲染层引用的每个 var(--wui-*) 都在色板里有定义')

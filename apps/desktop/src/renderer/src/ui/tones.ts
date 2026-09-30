@@ -16,8 +16,15 @@
  * ⚠ 必须包 `rgb(...)`：色板 token 存的是**空格三元组**（`--wui-tone-ore: 94 230 200;`），
  *   裸写 `var(--wui-tone-ore)` 当色值是**非法声明**（整条失效、描边消失）——
  *   2026-09-22 船长报障「各种 svg 图标都失效了」的真因就是这里：本函数第一版少了这层 `rgb()`。
+ * ⚠ **2026-09-30 补兜底值**（船长报障「仓库图标模式里道具图标是空的」）：色板里**漏定义**了
+ *   `--wui-tone-consumable` ⇒ `rgb(var(--wui-tone-consumable))` 整体非法 ⇒ `stroke` 声明被丢 ⇒
+ *   描边回到初始值 `none` ⇒ **图标彻底看不见**（不是"颜色不对"，是"什么都没画"）。
+ *   ⇒ 这里统一给一个**灰兜底**：以后任何一条 tone 忘了在色板登记，最坏也只是变灰，不会隐形。
+ *   ⚠ 兜底只能兜"看不见"，**兜不了"颜色不对"** ⇒ 真正的护栏是 `npm run ui:theme-check` 里
+ *   新增的「每个 `toneVar(键名)` 调用的键，色板必须有对应 `--wui-tone-<键>`」契约。
  */
-export const toneVar = (name: string): string => 'rgb(var(--wui-tone-' + name + '))'
+export const toneVar = (name: string): string =>
+  'rgb(var(--wui-tone-' + name + ', 143 163 184))'
 
 /** TONES（83 条） */
 export const TONES: Record<string, string> = {
@@ -40,7 +47,9 @@ export const TONES: Record<string, string> = {
   aicore: toneVar('aicore'),
   // 2026-09-26 黑匣独立成档（船长报障「仓库内查看不到」）：色调 = 品红族，与 fragment（紫）/gas（淡紫）可分
   blackbox: toneVar('blackbox'),
-  /** 2026-09-29 道具档（跃迁燃料批）：色调走变量 `--tone-consumable`（未定义时由 `toneVar` 兜底） */
+  /** 2026-09-29 道具档（跃迁燃料批）：色调走变量 `--tone-consumable`
+   *  ⚠ 2026-09-30 补：色板里**原先漏定义**这个变量（道具图标因此隐形，船长报障）⇒ 已在
+   *  `packages/ui/src/index.css` 的每个主题块补上（取同块 `--wui-tone-ore` 的薄荷值）。 */
   consumable: toneVar('consumable'),
   'box-relic': toneVar('box-relic'),
   'box-relic-a': toneVar('box-relic-a'),
