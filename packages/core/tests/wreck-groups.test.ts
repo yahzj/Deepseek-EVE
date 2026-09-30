@@ -10,6 +10,7 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import {
   RECYCLE_POOLS,
+  RECYCLE_POOL_AVG_ISK,
   recyclePoolMeanIsk,
   recycleProfileOf,
   wreckBaseDensity,
@@ -83,17 +84,34 @@ describe('残骸组表（14 组 · 族 × 地区）', () => {
     expect(wreckGroupOfItemId('ore-voidmother')).toBeNull()
   })
 
-  it('洞内 5 组：池 = 常档基础池、档位常、非低安、无主题件 —— 与合并前逐字一致（零变化）', () => {
-    for (const g of WRECK_GROUPS.filter((x) => x.region === 'wh')) {
-      expect(g.pool).toEqual(RECYCLE_POOLS.common)
-      expect(g.tier).toBe('common')
+  it('洞内 5 组：**危档 + 按族特色池**（2026-09-30 船长令「虫洞残骸也调整到危级别」）· 非低安 · 无主题件', () => {
+    // 沿革：2026-09-19 合并时这 5 组同走常档基础池（每 m³ 28.62）；2026-09-30 船长令升危档 + 按族分池
+    // ⇒ 每 m³ 85 上下（×3）。⚠ 出量梯度按**打捞星系密度**取、与组档位无关 ⇒ 本次只涨价不增量。
+    const whGroups = WRECK_GROUPS.filter((x) => x.region === 'wh')
+    expect(whGroups).toHaveLength(5)
+    const seen = new Set<string>()
+    for (const g of whGroups) {
+      expect(g.tier, `${g.key} 档位`).toBe('dire')
       expect(g.theme.modules ?? []).toEqual([])
       expect(g.theme.mk2 ?? []).toEqual([])
+      // 五张池子**互不相同**（船长选乙：按族给特色池）
+      const sig = JSON.stringify(g.pool)
+      expect(seen.has(sig), `${g.key} 的池子与别组重复`).toBe(false)
+      seen.add(sig)
+      // 契约三条：钛钢权重 ≥40% · 均价 = 危档基准 ±3% · 只含危档六矿物
+      const wSum = g.pool.reduce((s, [, w]) => s + w, 0)
+      const trit = g.pool.filter(([id]) => id === 'min-tritanium').reduce((s, [, w]) => s + w, 0)
+      expect(trit / wSum, `${g.key} 钛钢权重占比`).toBeGreaterThanOrEqual(0.4)
+      const mean = recyclePoolMeanIsk(g.pool, (id) => ctx.items.get(id)?.baseSellPriceIsk ?? 0)
+      expect(Math.abs(mean / RECYCLE_POOL_AVG_ISK.dire - 1), `${g.key} 均价 ${mean}`).toBeLessThan(0.03)
+      for (const [id] of g.pool) {
+        expect(RECYCLE_POOLS.dire.some(([x]) => x === id), `${g.key} 含非危档矿物 ${id}`).toBe(true)
+      }
       const profile = recycleProfileOf(ctx, wreckItemIdOf(g.key))!
-      expect(profile.tier).toBe('common')
+      expect(profile.tier).toBe('dire')
       expect(profile.lowSec).toBe(false) // 洞内卡挂在母港星系（sec 1）⇒ 旧口径也是 false
       expect(profile.region).toBe('wh')
-      expect(profile.pool).toEqual(RECYCLE_POOLS.common)
+      expect(profile.pool).toEqual(g.pool)
     }
   })
 

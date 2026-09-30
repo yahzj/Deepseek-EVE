@@ -67,6 +67,7 @@ const ANCHOR_THREAT = 45
 export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   {
     id: 'wh-pirate-scout',
+    wreckTier: 'dire', // 2026-09-30 船长令「虫洞残骸也调整到危级别」：卡级回收档覆写危档（组池同步升危）
     foeFamily: 'A',
     name: '劫掠支队',
     galaxyId: 'galaxy-hub', // 只作日志/展示的星系归属；本卡不进任何星系目录（hidden）
@@ -99,6 +100,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   },
   {
     id: 'wh-alien-swarm',
+    wreckTier: 'dire', // 2026-09-30 船长令「虫洞残骸也调整到危级别」：卡级回收档覆写危档（组池同步升危）
     foeFamily: 'C',
     name: '星髓游猎群',
     galaxyId: 'galaxy-hub',
@@ -127,6 +129,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   },
   {
     id: 'wh-grave-watch',
+    wreckTier: 'dire', // 2026-09-30 船长令「虫洞残骸也调整到危级别」：卡级回收档覆写危档（组池同步升危）
     foeFamily: 'D',
     name: '守墓巡哨',
     galaxyId: 'galaxy-hub',
@@ -151,6 +154,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   },
   {
     id: 'wh-exile-blockade',
+    wreckTier: 'dire', // 2026-09-30 船长令「虫洞残骸也调整到危级别」：卡级回收档覆写危档（组池同步升危）
     foeFamily: 'G',
     name: '亡军封锁',
     galaxyId: 'galaxy-hub',
@@ -172,6 +176,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   },
   {
     id: 'wh-titan-echo',
+    wreckTier: 'dire', // 2026-09-30 船长令「虫洞残骸也调整到危级别」：卡级回收档覆写危档（组池同步升危）
     foeFamily: 'E',
     name: '巨构残响',
     galaxyId: 'galaxy-hub',
@@ -205,6 +210,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
    * 口径与分批见设计稿 `docs/design/wormhole-foe-variety-20260915.md`。 */
   {
     id: 'wh-pirate-hunt',
+    wreckTier: 'dire', // 2026-09-30 船长令「虫洞残骸也调整到危级别」：卡级回收档覆写危档（组池同步升危）
     foeFamily: 'A',
     name: '劫掠围猎',
     galaxyId: 'galaxy-hub', // 只作日志/展示的星系归属；本卡不进任何星系目录（hidden）
@@ -245,6 +251,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   },
   {
     id: 'wh-pirate-warband',
+    wreckTier: 'dire', // 2026-09-30 船长令「虫洞残骸也调整到危级别」：卡级回收档覆写危档（组池同步升危）
     foeFamily: 'A',
     name: '海盗战团',
     galaxyId: 'galaxy-hub',
@@ -280,6 +287,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   /* ══════════ 2026-09-15 扩充 · C 族中/深两张（批 2）══════════ */
   {
     id: 'wh-alien-brood',
+    wreckTier: 'dire', // 2026-09-30 船长令「虫洞残骸也调整到危级别」：卡级回收档覆写危档（组池同步升危）
     foeFamily: 'C',
     name: '孢群兵潮',
     galaxyId: 'galaxy-hub',
@@ -307,6 +315,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   },
   {
     id: 'wh-alien-hive',
+    wreckTier: 'dire', // 2026-09-30 船长令「虫洞残骸也调整到危级别」：卡级回收档覆写危档（组池同步升危）
     foeFamily: 'C',
     name: '噬口深巢',
     galaxyId: 'galaxy-hub',
@@ -334,6 +343,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   /* ══════════ 2026-09-15 扩充 · D 族中/深两张（批 3）══════════ */
   {
     id: 'wh-grave-sentry',
+    wreckTier: 'dire', // 2026-09-30 船长令「虫洞残骸也调整到危级别」：卡级回收档覆写危档（组池同步升危）
     foeFamily: 'D',
     name: '静滞哨链',
     galaxyId: 'galaxy-hub',
@@ -358,6 +368,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   },
   {
     id: 'wh-grave-throne',
+    wreckTier: 'dire', // 2026-09-30 船长令「虫洞残骸也调整到危级别」：卡级回收档覆写危档（组池同步升危）
     foeFamily: 'D',
     name: '陵墓王庭',
     galaxyId: 'galaxy-hub',
@@ -413,6 +424,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   /* ══════════ 2026-09-15 扩充 · E 族中/深两张（批 4）══════════ */
   {
     id: 'wh-titan-missile',
+    wreckTier: 'dire', // 2026-09-30 船长令「虫洞残骸也调整到危级别」：卡级回收档覆写危档（组池同步升危）
     foeFamily: 'E',
     name: '导弹残响',
     galaxyId: 'galaxy-hub',
@@ -436,6 +448,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   },
   {
     id: 'wh-titan-hulk',
+    wreckTier: 'dire', // 2026-09-30 船长令「虫洞残骸也调整到危级别」：卡级回收档覆写危档（组池同步升危）
     foeFamily: 'E',
     name: '巨构压境',
     galaxyId: 'galaxy-hub',
@@ -457,6 +470,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   /* ══════════ 2026-09-15 扩充 · G 族中/深两张（批 5 · 收口）══════════ */
   {
     id: 'wh-exile-swarm',
+    wreckTier: 'dire', // 2026-09-30 船长令「虫洞残骸也调整到危级别」：卡级回收档覆写危档（组池同步升危）
     foeFamily: 'G',
     name: '残响蜂群',
     galaxyId: 'galaxy-hub',
@@ -476,6 +490,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   },
   {
     id: 'wh-exile-line',
+    wreckTier: 'dire', // 2026-09-30 船长令「虫洞残骸也调整到危级别」：卡级回收档覆写危档（组池同步升危）
     foeFamily: 'G',
     name: '残军战列线',
     galaxyId: 'galaxy-hub',

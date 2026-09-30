@@ -207,17 +207,28 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     theme: { mk2: ['mod-armor-pla-2', 'mod-shield-ext-2', 'mod-rof-2', 'mod-track-2'] },
     members: ['ano-cinder-siege', 'ano-echo-haunt', 'ano-nadir-static'],
   },
-  /* ── 洞内 5 组：15 张洞内卡的回收画像本来就完全一致（同走常档基础池、无特色池、无主题件）
-   *    ⇒ 合并**零变化**，池即 `RECYCLE_POOLS.common`；出量乘数也因常档 = 1.00 而不动洞内堆量。 ── */
+  /* ── 洞内 5 组（**2026-09-30 船长令：升危档**）──
+   * 船长原话（照抄）：「**虫洞残骸也调整到危级别**」；口径三答：**甲** = 档位与池子一起升
+   * （每 m³ 28.62 → 85 上下，×3）· **乙** = 按族给 5 张不同特色池 · **甲** = 稀有箱参数跟随危档。
+   *
+   * 沿革：2026-09-19 合并时这 15 张洞内卡的回收画像**完全一致**（同走常档基础池 `RECYCLE_POOLS.common`、
+   * 无特色池、无主题件）⇒ 当时五组同池；本次按船长令改成**按族分池**的危档口径。
+   *
+   * 契约口径（`content:check` 残骸组契约逐条核）：钛钢权重占比 **40%** · 组池均价 = 危档基准 92.55 **±3%** ·
+   * 组池矿物 ⊆ 成员卡池并集（15 张卡同步写 `wreckTier: 'dire'` ⇒ 卡池 = `RECYCLE_POOLS.dire` 六矿物）。
+   * ⚠ **出量梯度不动**：`WRECK_YIELD_TIER_MUL` 按**打捞星系的密度**取、不按残骸身份取 ⇒ 洞内每轮捞到的 m³
+   * 与改动前一致，本次**只涨价不增量**。
+   * ⚠ 稀有残骸的两处参数（保底矿物单位数 / 专属件概率）**按档位读**，随本次升档自动生效，无代码改动。 ── */
   {
     key: 'a-wh',
     family: 'A',
     region: 'wh',
     name: '海盗残骸（虫洞）',
     rareName: '海盗稀有残骸（虫洞）',
-    tier: 'common',
-    pool: [['min-tritanium', 65], ['min-pyerite', 30], ['min-mexallon', 5]],
-    note: '',
+    // 2026-09-30 船长令「虫洞残骸也调整到危级别」⇒ 档位升危、池子按族特色给（均价 91.75 · 偏差 −0.86%）
+    tier: 'dire',
+    pool: [['min-tritanium', 40], ['min-nocxium', 23], ['min-starcore', 25], ['min-isotope', 12]],
+    note: '海盗残骸（虫洞）：重钨合金甲与星髓晶髓材为主，夹同位聚晶',
     threat: 45,
     theme: {},
     members: ['wh-pirate-scout', 'wh-pirate-hunt', 'wh-pirate-warband'],
@@ -228,9 +239,10 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     region: 'wh',
     name: '异形生物残骸（虫洞）',
     rareName: '异形生物稀有残骸（虫洞）',
-    tier: 'common',
-    pool: [['min-tritanium', 65], ['min-pyerite', 30], ['min-mexallon', 5]],
-    note: '',
+    // 2026-09-30 船长令：升危档 + 按族特色池（均价 93.60 · 偏差 +1.13%）
+    tier: 'dire',
+    pool: [['min-tritanium', 40], ['min-starcore', 28], ['min-isotope', 20], ['min-nocxium', 12]],
+    note: '异形生物残骸（虫洞）：星髓晶髓材为主，夹同位聚晶与重钨',
     threat: 45,
     theme: {},
     members: ['wh-alien-swarm', 'wh-alien-brood', 'wh-alien-hive'],
@@ -241,9 +253,10 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     region: 'wh',
     name: '守墓者残骸（虫洞）',
     rareName: '守墓者稀有残骸（虫洞）',
-    tier: 'common',
-    pool: [['min-tritanium', 65], ['min-pyerite', 30], ['min-mexallon', 5]],
-    note: '',
+    // 2026-09-30 船长令：升危档 + 按族特色池（均价 92.60 · 偏差 +0.05%）
+    tier: 'dire',
+    pool: [['min-tritanium', 40], ['min-darkiron', 4], ['min-nocxium', 24], ['min-starcore', 10], ['min-isotope', 22]],
+    note: '守墓者残骸（虫洞）：冥铁合金残片与重钨合金甲为主，夹星髓晶髓材',
     threat: 45,
     theme: {},
     members: ['wh-grave-watch', 'wh-grave-sentry', 'wh-grave-throne'],
@@ -254,9 +267,10 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     region: 'wh',
     name: '泰坦巨构残骸（虫洞）',
     rareName: '泰坦巨构稀有残骸（虫洞）',
-    tier: 'common',
-    pool: [['min-tritanium', 65], ['min-pyerite', 30], ['min-mexallon', 5]],
-    note: '',
+    // 2026-09-30 船长令：升危档 + 按族特色池（均价 93.50 · 偏差 +1.03%）
+    tier: 'dire',
+    pool: [['min-tritanium', 40], ['min-isotope', 26], ['min-darkiron', 2], ['min-starcore', 24], ['min-mexallon', 8]],
+    note: '泰坦巨构残骸（虫洞）：同位聚晶为主，夹冥铁合金与星髓晶髓材',
     threat: 45,
     theme: {},
     members: ['wh-titan-echo', 'wh-titan-missile', 'wh-titan-hulk'],
@@ -267,9 +281,10 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     region: 'wh',
     name: '鱿烬亡军残骸（虫洞）',
     rareName: '鱿烬亡军稀有残骸（虫洞）',
-    tier: 'common',
-    pool: [['min-tritanium', 65], ['min-pyerite', 30], ['min-mexallon', 5]],
-    note: '',
+    // 2026-09-30 船长令：升危档 + 按族特色池（均价 93.80 · 偏差 +1.35%）
+    tier: 'dire',
+    pool: [['min-tritanium', 40], ['min-darkiron', 8], ['min-starcore', 2], ['min-isotope', 38], ['min-mexallon', 12]],
+    note: '鱿烬亡军残骸（虫洞）：冥铁合金与同位聚晶为主，夹晶态胶体',
     threat: 45,
     theme: {},
     members: ['wh-exile-blockade', 'wh-exile-swarm', 'wh-exile-line'],
