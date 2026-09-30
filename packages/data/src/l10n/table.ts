@@ -645,6 +645,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.engine.019": { zh: "「{p1}」需要先练：{p2}。", en: "“{p1}” requires {p2} first." },
   "core.engine.020": { zh: "连带取消 {p1} 项依赖训练：{p2}。", en: "Also cancelled {p1} dependent training item(s): {p2}." },
   "core.engine.021": { zh: "「{p1}」需要先购买训练许可（{p2} 信用点）才能训练。", en: "\"{p1}\" requires a Training License ({p2} credits) before it can be trained." },
+  /* 队列调整"挪不动"的两条说明（2026-09-30 船长令：让 ⇈/↑/↓ 说实话，别再"点了没反应"；判据 = core 的 queueMovePlan） */
+  "core.engine.022": { zh: "挪不过去：这条会排在它要的前置之前 —— {p1} 需 Lv{p2}，当前只有 Lv{p3}。", en: "Cannot move it there: it would come before its prerequisite — {p1} needs Lv{p2}, only Lv{p3} available." },
+  "core.engine.023": { zh: "挪了等于没挪：同一技能在队列里按位置逐级排，这一步与它前一条等价。", en: "This move changes nothing: a skill's queued levels are ordered by position, so this step equals its previous entry." },
+  "core.engine.024": { zh: "队列里没有这一条（下标越界）。", en: "No such entry in the queue (index out of range)." },
   "core.skillLicense.001": { zh: "未知技能：{p1}（数据表里没有）。", en: "Unknown skill: {p1} (not in the data table)." },
   "core.skillLicense.002": { zh: "「{p1}」无需训练许可（rank{p2}）。", en: "\"{p1}\" needs no Training License (rank {p2})." },
   "core.skillLicense.003": { zh: "已经买过「{p1}」的训练许可了。", en: "You already own the Training License for \"{p1}\"." },
@@ -4865,6 +4869,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.SkillsPage.049": { zh: "确认取消", en: "Confirm cancel" },
   /* 训练队列每行的「轮到还需」（2026-09-30 船长令：队列过于单一 ⇒ 补真实读数；口径＝core 的 etaMs 前缀和） */
   "ui.SkillsPage.050": { zh: "轮到还需 ≈ {p1}", en: "Starts in ≈ {p1}" },
+  /* 队列调整的兜底说明（2026-09-30 甲案：计划说能挪、引擎却仍拒绝时的回话——不静默） */
+  "ui.SkillsPage.051": { zh: "这次调整没生效：队列要保持「前置在前」的顺序。", en: "That reorder did not take effect: the queue must keep prerequisites ahead." },
   /* ── 活动卡「产出」读数（2026-09-23 船长令：收入预估换口径）── */
   "ui.Yield.001": { zh: "产出", en: "Output" },
   "ui.Yield.002": { zh: "仓库", en: "in storage" },

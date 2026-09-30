@@ -2722,13 +2722,17 @@ html[data-locale='en'] body {
 
 }
 
-.app-train-arrow:hover:not(:disabled) {
+/* ⚠ `.is-off` 与 `:disabled` 同一副长相：**挪不动**的箭头（2026-09-30 甲案）用 `aria-disabled` 而不是原生
+   `disabled` —— 原生 disabled 元素收不到悬停与点击，`title` 说明与"点了给你讲原因"都会丢掉。
+   样子（暗一档 + 不给手型）与原来 `:disabled` 逐字一致，所以观感没变，变的是**它终于会说话**。 */
+.app-train-arrow:hover:not(:disabled):not(.is-off) {
 
   color: rgb(var(--wui-flag));
 
 }
 
-.app-train-arrow:disabled {
+.app-train-arrow:disabled,
+.app-train-arrow.is-off {
 
   opacity: 0.3;
 
@@ -2906,6 +2910,14 @@ html[data-locale='en'] body {
 }
 
 .app-train-ask-title { font-size: var(--wui-fs-xsb); }
+
+/* **"这一步挪不动"的就地说明**（2026-09-30 船长裁定甲：箭头不再静默）——写在**被点的那一行底下**，
+   用警示色小字（不是危险操作，所以不铺底色、不占整条）：长队列里也能立刻看到"为什么没动"。 */
+.app-train-note {
+  font-size: var(--wui-fs-xs);
+  color: rgb(var(--wui-warn-soft));
+  line-height: 1.4;
+}
 
 /* **队首那条**（2026-09-23 船长：正在训练的首位技能也要列进队列、排第一）：加一点强调色与描边，
    与排队中的条目区分开（它已经在练，只能往下挪）。 */
