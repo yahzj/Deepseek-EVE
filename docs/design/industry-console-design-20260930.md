@@ -94,7 +94,25 @@
 的一版；**现状以实现为准**（页面里图标已补齐、文字已收短）。
 
 
-## 七、原裁决清单（**已被船长否决/改判，留档**）
+## 七、跃迁燃料页的 skill 优化（2026-09-30 · 船长令「我的舰队的跃迁燃料页面先用 skill 优化」）
+
+- **技能口径**：`--design-system --page jumpfuel`（查询 `dark sci-fi HUD fuel gauge settings toggles status readout`）
+  ⇒ 与 Master 同源的 **HUD / Sci-Fi FUI**（页级覆盖已落盘 `pages/jumpfuel.md`）；
+  另取 `--domain ux` 两条相关结论：**当前状态必须有可见反馈**、**交互语义要用真控件**。
+- **落点**：`apps/desktop/src/renderer/src/pages/ShipPage.tsx` 的 `JumpFuelPanel` 重做 ＋
+  `ui/hud.tsx`（`IconBtn` / `Readout` 公共小件，与工业 HUD 页共用）＋
+  `_hud-industry.css` 新增 `.hud.hud-embed` / `.hud-sw` / `.hud-fuel-num` / `.hud-bullet.is-empty`。
+- **五条优化**（少字多图标）：
+  1. 库存 = **燃料罐图标 ＋ 大数字 ＋ 单位**（不再写"剩余燃料：N 单位"整句）；
+  2. **Bullet 条**：区间 = 满格 6,000 单位（≈5 趟长途），刻度 = 一趟长途（1,200 单位）⇒ 一眼看出够不够；
+  3. **规格压成三枚图标 chip**（1 单位 = 1 秒 / ×10 速度 / 每趟扣一次），完整口径进悬停；
+  4. **开关行**：真 `<input type="checkbox">` ＋ HUD 视觉件（键盘/读屏可用）＋「已开／未开」chip **双保险**（不靠颜色单一表达）；
+  5. 新增 **「≈ N 趟」读数**（按 20 分钟返航 ≈1,200 单位估算）＋「前往实验室」图标按钮。
+- **不越界**：仅改这一子页；舰船页其它子页不受影响（`.hud-embed` 是局部嵌入，不带整页底色）。
+- **草稿截图**：`tools/_ui-artifacts/jumpfuel-skill.png`（草稿页签「跃迁燃料」）。
+
+## 八、原裁决清单（**已被船长否决/改判，留档**）
+
 
 船长对该清单的回复：「**实验室实际上只是说会有这些东西（燃料和消耗品），并不一定真按这个进行分类。
 先保留现有页面。和之前技能树一样，先复制现有工业页面，然后修改后单独做一个新的工业页面入口放在导航栏，

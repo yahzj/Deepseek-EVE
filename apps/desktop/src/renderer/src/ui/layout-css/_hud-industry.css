@@ -242,6 +242,66 @@
   letter-spacing: 0.06em;
 }
 
+/* ═══ **嵌入式用法**（**2026-09-30 船长令**：舰船页「跃迁燃料」子页用同一套 HUD 语汇）═══
+ * 该页挂在既有 `Panel` 里 ⇒ 这里把 `.hud` 的"整页"属性撤掉（透明底、高度自适应），
+ * 只保留令牌与组件观感 —— 于是**舰船页其它子页一字不受影响**。 */
+.hud.hud-embed {
+  height: auto;
+  min-height: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 12.5px;
+}
+
+/* 大号燃料读数（图标 ＋ 数字，少字） */
+.hud-fuel-num {
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* 开关行：真 `<input type="checkbox">` ＋ HUD 视觉件（技能 UX：交互语义用真控件；状态另有 chip 双保险） */
+.hud-sw-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 2px;
+  border-bottom: 1px dashed rgba(30, 43, 64, 0.85);
+  cursor: pointer;
+}
+.hud-sw-row:last-child { border-bottom: 0; }
+.hud-sw-row:hover { color: var(--hud-accent-soft); }
+.hud-sw {
+  appearance: none;
+  width: 36px;
+  height: 18px;
+  border: 1px solid var(--hud-line);
+  border-radius: 10px;
+  background: var(--hud-muted);
+  position: relative;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.hud-sw::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--hud-fg-dim);
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+.hud-sw:checked { border-color: var(--hud-ok); background: rgba(61, 220, 151, 0.16); }
+.hud-sw:checked::after { transform: translateX(18px); background: var(--hud-ok); }
+.hud-sw:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: 2px; }
+
+/* 空库存的 Bullet 条：只留轨道（不给"有一点点"的错觉） */
+.hud-bullet.is-empty .val { background: transparent; }
+
+
 /* ── 闪烁状态灯（尊重 reduced-motion 与"关特效"）── */
 .hud-led { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--hud-ok); margin-right: 7px; animation: hud-blink 2.4s infinite; }
 @keyframes hud-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }

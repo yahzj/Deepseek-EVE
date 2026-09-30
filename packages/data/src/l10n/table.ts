@@ -487,6 +487,16 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.hud.085": { zh: "这条线已经停了。", en: "That line has already stopped." },
   "ui.hud.086": { zh: "燃料按返航本来要飞的时间扣：1 单位抵 1 秒，速度 ×10", en: "Fuel burns by the return time the trip would have taken: 1 unit per second, speed ×10" },
   "ui.hud.101": { zh: "工业 HUD（调试）", en: "Industry HUD (debug)" },
+  /* 舰船页「跃迁燃料」子页（HUD 化 · 2026-09-30）：201~209 为本页读数与开关行 */
+  "ui.hud.201": { zh: "按 20 分钟返航 ≈1,200 单位计", en: "At a 20-minute return ≈1,200 units" },
+  "ui.hud.202": { zh: "实验室", en: "Laboratory" },
+  "ui.hud.203": { zh: "满格 {p1} 单位", en: "Full band {p1} units" },
+  "ui.hud.204": { zh: "1 单位 = 1 秒", en: "1 unit = 1 s" },
+  "ui.hud.205": { zh: "×10 速度", en: "×10 speed" },
+  "ui.hud.206": { zh: "每趟扣一次", en: "Burns once per leg" },
+  "ui.hud.207": { zh: "启用活动", en: "Enabled activities" },
+  "ui.hud.208": { zh: "已开", en: "On" },
+  "ui.hud.209": { zh: "未开", en: "Off" },
   /* ── 第九批：wormholeHold.ts（虫洞货仓：形状件摆放/整理/交换/取回）── */
   "core.wormholeHold.001": { zh: "这件东西是可叠加散货：应该走散货条（holdAddCargo）。", en: "That item is stackable loose cargo: it belongs to the loose-cargo lane (holdAddCargo)." },
   "core.wormholeHold.002": { zh: "货仓格数为 0：放不下任何形状件。", en: "The hold has 0 slots, so no shaped item fits." },

@@ -34,6 +34,7 @@ import type { PageProps } from './common'
 import type { GameEngine } from '../game/engine'
 import { Glyph } from '../ui/Glyphs'
 import { RowGlyph } from '../ui/itemView'
+import { IconBtn, Readout } from '../ui/hud'
 import { aiCoreText } from '../ui/labelsText'
 import { marketPriceOf } from '../ui/yieldView'
 import { ManufacturingPanel } from '../panels/Industry'
@@ -42,45 +43,6 @@ import { tr, cmdText } from '../i18n/locale'
 import '../ui/layout-css/_hud-industry.css'
 
 type HudTab = 'refine' | 'craft' | 'shipyard' | 'lab'
-
-/** 图标按钮（图标为主、文字为辅；无文字时靠 `title` 兜底 —— 少字原则） */
-function IconBtn({
-  glyph,
-  label,
-  title,
-  primary,
-  disabled,
-  onClick,
-}: {
-  glyph: string
-  label?: string
-  title: string
-  primary?: boolean
-  disabled?: boolean
-  onClick: () => void
-}): ReactNode {
-  return (
-    <button
-      className={`hud-btn${primary ? ' is-primary' : ''}`}
-      title={title}
-      disabled={disabled}
-      onClick={onClick}
-    >
-      <Glyph name={glyph} size={14} color="currentColor" />
-      {label !== undefined ? <span style={{ marginLeft: 6 }}>{label}</span> : null}
-    </button>
-  )
-}
-
-/** 带图标的读数（图标 ＋ 数字；单位进悬停） */
-function Readout({ glyph, value, title }: { glyph: string; value: ReactNode; title: string }): ReactNode {
-  return (
-    <span className="hud-row" style={{ gap: 6 }} title={title}>
-      <Glyph name={glyph} size={13} color="currentColor" />
-      <b>{value}</b>
-    </span>
-  )
-}
 
 /** 页面入参：`onGotoMarket` 与工业页同款（透传 App 的「去市场」；缺省时市场按钮点了不动） */
 export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {

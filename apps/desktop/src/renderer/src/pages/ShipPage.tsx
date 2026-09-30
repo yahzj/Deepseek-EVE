@@ -38,7 +38,12 @@ import {
   /** 2026-09-29 跃迁燃料批：活动清单与它们的文案 id（开关行的唯一出处） */
   JUMP_FUEL_ACTIVITIES,
   JUMP_FUEL_ACTIVITY_TEXT_ID,
+  type JumpFuelActivity,
 } from '@whale/core'
+/** 2026-09-30 船长令「跃迁燃料页先用 skill 优化」：HUD 语汇（图标按钮/图标读数）＋ 深空样式层 */
+import { RowGlyph } from '../ui/itemView'
+import { IconBtn } from '../ui/hud'
+import '../ui/layout-css/_hud-industry.css'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
 import type { AiCoreType, FleetShipState, GameState, ShipRole } from '@whale/core'
@@ -192,11 +197,19 @@ function FleetShipHover({
  * **跃迁燃料页**（**2026-09-29 船长令**：「舰船页面内添加新的子页面：跃迁燃料。玩家可以在这个页面内
  * 查看剩余燃料具体数值和设置哪些活动使用燃料。并能直接从这边跳转到工业的'实验室'页面」）。
  *
+ * **2026-09-30 船长追令**：「**我的舰队的跃迁燃料页面先用 skill 优化**」＋「**现在文字太多了，
+ * 适量的图标也不能拉下**」⇒ 本页按 `ui-ux-pro-max` 的 **HUD / Sci-Fi FUI** 页级覆盖重做：
+ * - **图标优先**：库存/规格/活动/动作全部"图标 ＋ 2~4 字"，长句只挂 `title`（悬停）；
+ * - **图形读数**：库存 Bullet 条（区间 = 一趟长途返航的量级）＋ 可支撑趟数，代替文字描述；
+ * - **开关语义**（技能 UX 提示）：真 `<input type="checkbox">`（键盘/读屏可用）＋ `.hud-sw` 视觉件，
+ *   开关状态另有 chip 双保险（不靠颜色单一表达）；
+ * - 配色与 `.hud` 命名空间同一套（深空），**不影响舰船页其它子页**（`.hud-embed` 只做局部嵌入）。
+ *
  * 内容（按船长点名的三件事）：
  * ① **剩余燃料数值**（仓库 ＋ 驾驶船货仓，与 core `jumpFuelStockOf` 同一把尺）；
  * ② **四个活动开关**（采矿 / 打捞 / 悬赏与远征 / AI 副船作业；**默认全关**，写入 `state.jumpFuel`）；
  * ③ **「前往实验室」**（跳工业页实验室档 —— 那边才是投料与生产的地方）。
- * 规格句写在卡片里：**1 单位 = 1 秒原返航时长 · 返航速度 ×10 · 每趟返航开始扣一次**。
+ * 规格：**1 单位 = 1 秒原返航时长 · 返航速度 ×10 · 每趟返航开始扣一次**（不足则不加速也不消耗）。
  */
 function JumpFuelPanel({
   engine,
@@ -207,46 +220,101 @@ function JumpFuelPanel({
   onToast: PageProps['onToast']
   onGotoLab?: () => void
 }): ReactNode {
-  const stock = engine.jumpFuelStock()
+  const stock = Math.floor(engine.jumpFuelStock())
+  /** 一趟"长途返航"的量级（20 分钟 = 1,200 秒 ⇒ 1,200 单位）——库存条与"可支撑趟数"共用这一把尺 */
+  const TRIP_UNITS = 1_200
+  const trips = Math.floor(stock / TRIP_UNITS)
+  const fill = Math.max(0, Math.min(100, Math.round((stock / (TRIP_UNITS * 5)) * 100)))
+  const activities: ReadonlyArray<{ k: JumpFuelActivity; g: string }> = [
+    { k: 'mine', g: 'miner' },
+    { k: 'salvage', g: 'salvager' },
+    { k: 'expedition', g: 'nav-bounty' },
+    { k: 'ai', g: 'nav-ai' },
+  ]
   return (
-    <>
-      <Panel
-        className="is-fill"
-        title={tr('ui.jumpFuel.010')}
-        right={
-          <span className="app-dim">
-            {tr('ui.jumpFuel.012')}：<b>{Math.floor(stock).toLocaleString('zh-CN')}</b> {tr('ui.jumpFuel.013')}
+    <Panel className="is-fill" title={tr('ui.jumpFuel.010')}>
+      <div className="hud hud-embed">
+        {/* ── 库存读数：图标 ＋ 大数字 ＋ 图形条（少字）── */}
+        <div className="hud-panel">
+          <div className="hud-row between">
+            <span className="hud-row" style={{ gap: 10 }}>
+              <Glyph name="consumable" size={26} color="currentColor" />
+              <span className="hud-fuel-num">{stock.toLocaleString('zh-CN')}</span>
+              <span className="hud-tiny">{tr('ui.jumpFuel.013')}</span>
+            </span>
+            <span className="hud-row" style={{ gap: 8 }}>
+              <span className="hud-chip" title={tr('ui.hud.201')}>
+                <Glyph name="nav-ship" size={12} color="currentColor" /> {trips}
+              </span>
+              <IconBtn
+                glyph="ico-lab"
+                label={tr('ui.hud.202')}
+                title={tr('ui.jumpFuel.017')}
+                disabled={onGotoLab === undefined}
+                onClick={() => onGotoLab?.()}
+              />
+            </span>
+          </div>
+          <div className="hud-row between" style={{ marginTop: 8 }}>
+            <span className="hud-tiny">{tr('ui.hud.201')}</span>
+            <span className="hud-tiny">{tr('ui.hud.203', { p1: (TRIP_UNITS * 5).toLocaleString('zh-CN') })}</span>
+          </div>
+          <span className={`hud-bullet${stock <= 0 ? ' is-empty' : ''}`} title={tr('ui.jumpFuel.014')}>
+            <span className="rng" style={{ left: 0, width: '100%' }} />
+            <span className="val" style={{ width: `${fill}%` }} />
+            <span className="tgt" style={{ left: `${Math.min(100, Math.round((TRIP_UNITS / (TRIP_UNITS * 5)) * 100))}%` }} />
           </span>
-        }
-      >
-        <div className="app-dim">{tr('ui.jumpFuel.014')}</div>
-        <div className="app-exp-list">
-          {JUMP_FUEL_ACTIVITIES.map((a) => {
-            const on = engine.jumpFuelEnabled(a)
+          {stock <= 0 ? (
+            <div className="hud-tiny" style={{ marginTop: 6, color: 'var(--hud-warn)' }}>
+              {tr('ui.jumpFuel.018')}
+            </div>
+          ) : null}
+        </div>
+
+        {/* ── 规格：三枚图标 chip（长句进 title）── */}
+        <div className="hud-row wrap" style={{ marginTop: 10 }}>
+          <span className="hud-chip" title={tr('ui.jumpFuel.014')}>
+            <Glyph name="ico-clock" size={12} color="currentColor" /> {tr('ui.hud.204')}
+          </span>
+          <span className="hud-chip" title={tr('ui.jumpFuel.014')}>
+            <Glyph name="ico-swap" size={12} color="currentColor" /> {tr('ui.hud.205')}
+          </span>
+          <span className="hud-chip" title={tr('ui.jumpFuel.014')}>
+            <Glyph name="ico-feed" size={12} color="currentColor" /> {tr('ui.hud.206')}
+          </span>
+        </div>
+
+        {/* ── 四个活动开关（真 checkbox ＋ HUD 视觉件；状态另给 chip 双保险）── */}
+        <div className="hud-panel" style={{ marginTop: 10 }}>
+          <h3>
+            <Glyph name="ico-loop" size={13} color="currentColor" /> {tr('ui.hud.207')}
+          </h3>
+          {activities.map(({ k, g }) => {
+            const on = engine.jumpFuelEnabled(k)
             return (
-              <label key={a} className="app-row app-row-tight" style={{ gap: 8 }}>
-                <input
-                  type="checkbox"
-                  checked={on}
-                  onChange={(e) => {
-                    const res = engine.setJumpFuel(a, e.target.checked)
-                    if (!res.ok) onToast(cmdText(res) || tr('ui.jumpFuel.015'), true)
-                  }}
-                />
-                <span>{tr(JUMP_FUEL_ACTIVITY_TEXT_ID[a])}</span>
-                <span className="app-dim">{tr('ui.jumpFuel.016')}</span>
+              <label key={k} className="hud-sw-row" title={tr('ui.jumpFuel.016')}>
+                <span className="hud-row" style={{ gap: 8 }}>
+                  <RowGlyph glyph={g} />
+                  <span>{tr(JUMP_FUEL_ACTIVITY_TEXT_ID[k])}</span>
+                </span>
+                <span className="hud-row" style={{ gap: 8 }}>
+                  <span className={`hud-chip${on ? ' is-ok' : ''}`}>{on ? tr('ui.hud.208') : tr('ui.hud.209')}</span>
+                  <input
+                    type="checkbox"
+                    className="hud-sw"
+                    checked={on}
+                    onChange={(e) => {
+                      const res = engine.setJumpFuel(k, e.target.checked)
+                      if (!res.ok) onToast(cmdText(res) || tr('ui.jumpFuel.015'), true)
+                    }}
+                  />
+                </span>
               </label>
             )
           })}
         </div>
-        <div className="app-row">
-          <button className="app-btn is-small" onClick={() => onGotoLab?.()} disabled={onGotoLab === undefined}>
-            {tr('ui.jumpFuel.017')}
-          </button>
-          {stock <= 0 ? <span className="app-bad">{tr('ui.jumpFuel.018')}</span> : null}
-        </div>
-      </Panel>
-    </>
+      </div>
+    </Panel>
   )
 }
 
