@@ -568,14 +568,18 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                 <h3>
                   <Glyph name="ico-furnace" size={13} color="currentColor" /> {tr('ui.hud.041')}
                 </h3>
-                <table className="hud-table">
+                {/* ⚠ `is-station` = 「首列是工位号的窄表」可压缩档（**2026-09-30 船长报障**：
+                    这张 7 列表原先按 132px 首列 + 132px 主列 + 130px 进度列排版 ⇒ 最小宽 690px，
+                    比左列还宽 ⇒ 整块按 690px 固定排版、不随窗口缩放，右边被右列盖住。
+                    档位定义见 `_hud-industry.css` 的 `.hud-table.is-station`） */}
+                <table className="hud-table is-station">
                   <thead>
                     <tr>
                       <th>#</th>
                       <th>{tr('ui.hud.042')}</th>
                       <th>{tr('ui.hud.131')}</th>
                       <th className="n">{tr('ui.hud.043')}</th>
-                      <th>{tr('ui.hud.044')}</th>
+                      <th className="hud-cell-bar">{tr('ui.hud.044')}</th>
                       <th className="n">{tr('ui.hud.045')}</th>
                       <th className="act" />
                     </tr>
@@ -606,7 +610,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                             </span>
                           </td>
                           <td className="n">{v.batchUnits.toLocaleString('zh-CN')}</td>
-                          <td style={{ minWidth: 130 }}>
+                          <td className="hud-cell-bar">
                             <span className="hud-bar scan">
                               <i style={{ ['--v' as string]: Math.round(v.percent) }} />
                             </span>

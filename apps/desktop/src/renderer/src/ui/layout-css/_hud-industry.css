@@ -105,10 +105,23 @@
 
 /* ── 主体：两列网格（与草稿一致；窄屏回落单列）── */
 .hud-body { flex: 1; min-height: 0; overflow: auto; padding: 14px 18px 20px; }
-.hud-grid { display: grid; gap: 12px; align-items: start; }
+/* ⚠ **单列也必须写死 `minmax(0, 1fr)`**（**2026-09-30 船长报障「精炼炉左侧用的是固定宽度、
+   不随窗口缩放」**）：不写时隐式轨道是 `auto` ⇒ 轨道的下限 = 内容的最小宽度 ⇒ 列里的面板/表格
+   被按"内容最小宽（精炼炉左列实测 **690px**：7 列工位表 ＋ 132px 首列）"排版，
+   **列本身不再跟随窗口**：1200/1340/1600/1920 四档窗口下左列内容宽度读数全是 690，
+   多出来的部分被右列盖住（读数数值、工位表右边三列全看不见）。 */
+.hud-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+/* ⚠ 右列同样要吃 `minmax(0, …)`：`1fr` 的隐式下限是 `auto`（= 右列内容最小宽）⇒
+   右列会把左列挤到配额之下（实测左列 439px / 应得约 460px，且窗口越窄差得越多）。 */
 .hud-grid.two { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
 .hud-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 1080px) { .hud-grid.two, .hud-grid.three { grid-template-columns: 1fr; } }
+/* ⚠ 折列断点 1080 → **1500**（2026-09-30 船长报障「精炼炉左侧用的是固定宽度、不随窗口缩放」同批）：
+   两栏时右列只拿到页面区的 40%，而**右列那两张表（投料 / 构成）的最小宽 ≈ 350px**
+   （资源名 ＋ 九位数的拥有量 ＋ 两枚起炉按钮），左列的 7 列工位表最小宽 ≈ 420px
+   ⇒ 两栏同时装下的门槛是**页面区 ≳ 900px**（实测：1600 干净、1440 右列表越出 10~33px、
+   1340 越出 50~73px 并把 `.hud-body` 顶出横向滚动条）。与其"看着两栏、实际互相盖"，
+   不如在这个门槛以下回落单列（整页宽，四张表都装得下）。 */
+@media (max-width: 1500px) { .hud-grid.two, .hud-grid.three { grid-template-columns: minmax(0, 1fr); } }
 
 /* ── 面板：角标 ＋ 发丝描边 ── */
 .hud-panel {
@@ -160,12 +173,16 @@
 .hud-table td { vertical-align: top; }
 .hud-table tr:last-child td { border-bottom: 0; }
 /* 动作列（图标按钮）固定宽、不参与挤压 */
-.hud-table td.act, .hud-table th.act { width: 44px; text-align: right; white-space: nowrap; }
+.hud-table td.act, .hud-table th.act { width: 40px; text-align: right; white-space: nowrap; }
 /* ⚠ **首列（产物名）要有下限宽**：其余列 nowrap ⇒ 表被压时浏览器只压"能压的那列"，
    产物名会被挤成一字一行（1340×900 实测就是这样）。给首列兜底 + 让名字在词内断行。
    ⚠ 2026-09-30 二批读数：精炼炉工位表加了「劳动者」列之后 7 列挤在左栏里 ⇒ 资源名又出现
-   竖排（「曦棱晶」拆成两行）⇒ 首列下限抬到 132px、并允许它优先拿宽度。 */
-.hud-table td:first-child, .hud-table th:first-child { min-width: 132px; }
+   竖排（「曦棱晶」拆成两行）⇒ 首列下限抬到 132px、并允许它优先拿宽度。
+   ⚠ **同日第三批：132 → 96**（船长报障「左侧固定宽度、不随窗口缩放」同批）——132px 是按
+   "内容最小宽锁死列宽"那套旧排版调出来的补偿值；列宽现在真的跟着窗口走 ⇒ 下限只需保证
+   **图标 ＋ 三字名不断成一字一行**（图标 15 ＋ 间距 6 ＋ 三字 39 ≈ 60px）⇒ 96px 有余量，
+   省下的 36px 正是投料表能收进右列的关键。 */
+.hud-table td:first-child, .hud-table th:first-child { min-width: 96px; }
 .hud-table td:first-child .hud-row { min-width: 0; align-items: flex-start; }
 .hud-table td:first-child .hud-row > span:last-child { overflow-wrap: anywhere; }
 /* ⚠ 精炼炉工位表的**主列不是首列**（首列是 `#` 工位号）⇒ 那种表给主列显式挂 `.hud-cell-main`
@@ -175,6 +192,19 @@
 .hud-table td.hud-cell-main .hud-row > span:last-child { overflow-wrap: anywhere; }
 /* 工位表：资源列再宽一点、劳动者 chip 不换行（不然又被挤竖） */
 .hud-panel .hud-table td .hud-chip { white-space: nowrap; }
+/* ⚠ **工位表（首列 = 工位号的那种表）的可压缩档**（**2026-09-30 船长报障**「精炼炉左侧用的是
+   固定宽度、不随窗口缩放」）：这张表有 7 列，上面那批"给首列兜底 132px / 主列 132px"的下限
+   原本是按"表能越出列外"写的（越出的部分被右列盖住 ⇒ 反而更看不见）。列里要装得下，必须把
+   下限收到**真实可读所需**：
+     · `#` 工位号只要两位数 ⇒ 34px（原来白拿 132px，实测首列宽 144px）；
+     · 主列（资源名，`.hud-cell-main`）96px（3 字名 ＋ 图标；低于这个才是"一字一行"）；
+     · 进度列 64px（进度条本来就是弹性的，原来写死 130px）；
+     · 劳动者 chip 允许换行（核心名可断成两行，比把表顶出列外强）。
+   收完这张表的最小宽从 690px 降到约 420px ⇒ 两栏档（≥1500）里左列（页面区 60%）装得下且有余量。 */
+.hud-table.is-station td:first-child, .hud-table.is-station th:first-child { min-width: 34px; }
+.hud-table.is-station td.hud-cell-main, .hud-table.is-station th.hud-cell-main { min-width: 96px; }
+.hud-table.is-station td.hud-cell-bar, .hud-table.is-station th.hud-cell-bar { min-width: 64px; }
+.hud-table.is-station td .hud-chip { white-space: normal; }
 /* 两行小字读数列（料值 / 工期合列时用） */
 .hud-cell2 { display: block; }
 
