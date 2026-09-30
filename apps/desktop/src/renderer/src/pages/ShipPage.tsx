@@ -281,14 +281,14 @@ function JumpFuelPanel({
         {/* ═══ 左：**燃料罐整列**（**2026-09-30 船长手改稿「大致效果.png」**：罐体放大成靠左整列、
             与右列**等高**、罐内零文字）═══
             ⚠ 尺寸由上面那段实测给出（罐高跟着**右列内容高**走，取 `min(右列高, 罐列盒高)`）。 */}
-        <div className="hud-fuel-rail" ref={railRef} title={tr('ui.jumpFuel.014')}>
+        <div className="hud-fuel-rail" ref={railRef}>
           <FuelTank
             units={stock}
             capacity={supply.cap}
             tickUnits={Math.round(supply.cap / 2)}
             width={tank.w}
             height={tank.h}
-            label={tr('ui.jumpFuel.014')}
+            label={tr('ui.jumpFuel.010')}
           />
         </div>
 
@@ -296,8 +296,10 @@ function JumpFuelPanel({
         <div className="hud-fuel-main" ref={mainRef}>
           <div className="hud-panel">
             <div className="hud-tank-side">
-              {/* ① 主读数（最大号）= **仓库量 / 上限 单位**（船长 2026-09-30 令：显示上限多少；
-                  仓库里的量就是全部燃料——燃料装不进普通货仓，见 `ui.jumpFuel.025` 的悬停说明） */}
+              {/* ① 主读数（最大号）= **仓库量 / 上限 单位**（船长 2026-09-30 令：显示上限多少）。
+                  ⚠ **⟪文案调整 2026-09-30⟫ 船长报障「上限 6000 单位出现两次，而且'单位'还重复出现」**：
+                  原来这里在读数后面又跟了一枚 `.hud-tiny` 的「单位」（模板里已经带"单位"⇒ 变成"…单位 单位"），
+                  下面还另挂了一枚「上限 6,000 单位」的 chip（上限被说了第二遍）⇒ **两处都删**，单位只在模板里出现一次。 */}
               <span className="hud-row" style={{ gap: 8 }} title={tr('ui.jumpFuel.025')}>
                 <Glyph name="consumable" size={18} color="currentColor" />
                 <span className="hud-fuel-num">
@@ -306,26 +308,13 @@ function JumpFuelPanel({
                     p2: supply.cap.toLocaleString('zh-CN'),
                   })}
                 </span>
-                <span className="hud-tiny">{tr('ui.jumpFuel.013')}</span>
               </span>
-              {/* ② 上限读数（罐身那根长刻度 = 满仓的一半，纯图形示意；不再有"趟数"估算） */}
-              <span className="hud-chip" title={tr('ui.jumpFuel.025')}>
-                <Glyph name="ico-furnace" size={12} color="currentColor" />{' '}
-                {tr('ui.jumpFuel.023', { p1: supply.cap.toLocaleString('zh-CN') })}
-              </span>
-              {/* ③ 规格：三枚图标 chip（长句只进 title） */}
-              <div className="hud-row wrap" style={{ gap: 6, marginTop: 2 }}>
-                <span className="hud-chip" title={tr('ui.jumpFuel.014')}>
-                  <Glyph name="ico-clock" size={12} color="currentColor" /> {tr('ui.hud.204')}
-                </span>
-                <span className="hud-chip" title={tr('ui.jumpFuel.014')}>
-                  <Glyph name="ico-swap" size={12} color="currentColor" /> {tr('ui.hud.205')}
-                </span>
-                <span className="hud-chip" title={tr('ui.jumpFuel.014')}>
-                  <Glyph name="ico-feed" size={12} color="currentColor" /> {tr('ui.hud.206')}
-                </span>
-              </div>
-              {/* ④ 动作 ＋ **在产速率**（船长 2026-09-30 令：实验室按钮边上显示现在燃料大概的生产速度/h） */}
+              {/* ② 规格：**直接写在页面上**（**船长令**：「'1 单位 = 1 秒 / ×10 速度 / 每趟扣一次'这三个可以移除，
+                  直接将其悬浮窗内的说明写在外面」）——原来那三枚 chip 的悬停内容（`ui.jumpFuel.014`）现在整句可见。 */}
+              <p className="hud-tiny" style={{ margin: '2px 0 0', lineHeight: 1.65 }}>
+                {tr('ui.jumpFuel.014')}
+              </p>
+              {/* ③ 动作 ＋ **在产速率**（船长 2026-09-30 令：实验室按钮边上显示现在燃料大概的生产速度/h） */}
               <div className="hud-row" style={{ gap: 8 }}>
                 <IconBtn
                   glyph="ico-lab"

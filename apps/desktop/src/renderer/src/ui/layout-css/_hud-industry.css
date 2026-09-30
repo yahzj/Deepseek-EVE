@@ -322,15 +322,22 @@
  * ⚠ **位移必须用用户单位、且正好等于整数个波长**（**2026-09-30 船长报障「循环并不对齐」**）：
  * 原先写的是 `translateX(-50%)` —— CSS 百分比 transform 在 SVG 元素上按 **viewBox（参考框）** 解析，
  * 不是按波自身的宽度 ⇒ 实际位移 ≈1.26 个波长 ⇒ **每轮循环跳一下**。
- * 现在由组件把「一个波长 ×2」的偏移量以 `--tank-shift`（px = SVG 用户单位）传进来 ⇒ 无缝循环。 */
+ * 现在由组件把「一个波长 ×2」的偏移量以 `--tank-shift`（px = SVG 用户单位）传进来 ⇒ 无缝循环
+ * （实测：位移 −innerW 与 −2×波长逐点比对，最大差 0.0000px）。
+ *
+ * ⚠ **2026-09-30 船长再报「循环还是有问题」⇒ 根因是三个动画的周期不可通约**：
+ * 单层虽然无缝，但 3.6s / 5.4s / 微光 4.2s 的最小公倍数是 **75.6s** —— 整片液面（两层波 ＋ 微光）
+ * 要过一分多钟才回到同一状态，看上去就是"一直没对上"。现改为**全部 7.2s 的整数分频**：
+ * 波 A 3.6s（2 个波长/轮）· 波 B 7.2s（2 个波长/轮、反向）· 微光 7.2s
+ * ⇒ **整罐每 7.2 秒回到逐像素相同的状态**，同时保留两层错速的效果。 */
 .hud-tank .wave-a { animation: hud-wave 3.6s linear infinite; }
-.hud-tank .wave-b { animation: hud-wave 5.4s linear infinite; animation-direction: reverse; }
+.hud-tank .wave-b { animation: hud-wave 7.2s linear infinite; animation-direction: reverse; }
 @keyframes hud-wave {
   from { transform: translateX(0); }
   to { transform: translateX(var(--tank-shift, -50%)); }
 }
-/* 罐内微光呼吸（只在有料时有意义；空罐不闪） */
-.hud-tank.is-filled .glow { animation: hud-breathe 4.2s ease-in-out infinite; }
+/* 罐内微光呼吸（只在有料时有意义；空罐不闪）——周期与波层对齐（7.2s），保证整罐同步循环 */
+.hud-tank.is-filled .glow { animation: hud-breathe 7.2s ease-in-out infinite; }
 @keyframes hud-breathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.62; } }
 /* 读数块（罐右侧的数字与 chip） */
 .hud-tank-side { display: flex; flex-direction: column; gap: 6px; min-width: 132px; }

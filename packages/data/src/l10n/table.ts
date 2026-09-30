@@ -444,7 +444,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.jumpFuel.010": { zh: "跃迁燃料", en: "Jump Fuel" },
   "ui.jumpFuel.011": { zh: "查看剩余燃料与设置哪些活动使用燃料", en: "Check remaining fuel and pick which activities burn it" },
   "ui.jumpFuel.012": { zh: "剩余燃料", en: "Fuel in store" },
-  "ui.jumpFuel.013": { zh: "单位", en: "units" },
+  // ⟪文案调整 2026-09-30⟫ 删：`ui.jumpFuel.013`（「单位」）——船长报障「'单位'还重复出现」：
+  //   主读数模板 `ui.jumpFuel.019` 已带「单位」，页面又在后面跟了一枚"单位"⇒ 删掉这一条。
   "ui.jumpFuel.014": { zh: "每 1 单位燃料抵扣 1 秒返航时长（按返航本来要飞的时间扣），返航速度提升至十倍；每趟返航开始时扣一次，不足则不加速也不消耗。", en: "Each unit of fuel covers one second of return time (charged against the time the trip would have taken) and raises return speed tenfold. It burns once at the start of each return leg; if there is not enough, the leg simply runs unboosted and nothing is spent." },
   "ui.jumpFuel.015": { zh: "跃迁燃料需在首座空间站建成后使用。", en: "Jump fuel becomes available once the first station is on the grid." },
   "ui.jumpFuel.016": { zh: "该活动返航时使用燃料", en: "burn fuel on this activity's returns" },
@@ -455,7 +456,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.jumpFuel.020": { zh: "{p1} 单位/时", en: "{p1} units/h" },
   "ui.jumpFuel.021": { zh: "未开工", en: "Idle" },
   "ui.jumpFuel.022": { zh: "已满", en: "Full" },
-  "ui.jumpFuel.023": { zh: "上限 {p1} 单位", en: "Capacity {p1} units" },
+  // ⟪文案调整 2026-09-30⟫ 删：`ui.jumpFuel.023`（「上限 {p1} 单位」）——船长报障「上限 6000 单位出现两次」：
+  //   主读数已经是「仓库量 / 上限 单位」，那枚上限 chip 是第二遍 ⇒ 连 chip 一起删。
   "ui.jumpFuel.024": { zh: "实验室未解锁", en: "Laboratory locked" },
   "ui.jumpFuel.025": { zh: "燃料只存于物品仓库（普通舰船货仓无法装入）", en: "Fuel is stored in the item warehouse only (ordinary holds cannot take it)" },
   "ui.jumpFuel.026": { zh: "在产速率 = 当前在跑的实验线合计产出（单位/时）；仓库放不下下一批时实验室停线。", en: "Production rate is the combined output of the laboratory lines running now (units/h); a line halts when the store cannot fit another batch." },
@@ -521,9 +523,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 舰船页「跃迁燃料」子页（HUD 化 · 2026-09-30）：202~209 为本页规格 chip 与开关行；
      原 201 / 203 / 210 / 211 见下方 ⟪文案调整⟫（随"趟数"那把界面自造的尺一起删）。 */
   "ui.hud.202": { zh: "实验室", en: "Laboratory" },
-  "ui.hud.204": { zh: "1 单位 = 1 秒", en: "1 unit = 1 s" },
-  "ui.hud.205": { zh: "×10 速度", en: "×10 speed" },
-  "ui.hud.206": { zh: "每趟扣一次", en: "Burns once per leg" },
+  // ⟪文案调整 2026-09-30⟫ 删：`ui.hud.204/205/206`（「1 单位 = 1 秒」「×10 速度」「每趟扣一次」三枚规格 chip）——
+  //   船长令「这三个可以移除，直接将其悬浮窗内的说明写在外面」⇒ 三枚 chip 删掉，`ui.jumpFuel.014` 整句改为可见正文。
   "ui.hud.207": { zh: "启用活动", en: "Enabled activities" },
   "ui.hud.208": { zh: "已开", en: "On" },
   "ui.hud.209": { zh: "未开", en: "Off" },
