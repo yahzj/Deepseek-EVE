@@ -106,16 +106,16 @@ describe('信号发射器 · 使用与拒绝', () => {
     expect(consumableStockOf(b, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
   })
 
-  it('**指定星系**时在基地（母港 / 已建成副站）⇒ 拒绝 core.consumable.010，不扣料（**2026-09-30 船长令**：不可以在有空间站的地方使用）', () => {
+  it('**指定星系**时人在基地（母港）也**允许**（2026-09-30 船长令：移除所有"舰船必须到场"的需求）', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 41 })
     s.exploredGalaxies = [...ctx.galaxies.keys()]
+    noteStandingEarned(s, DSI_FACTION_ID, 50) // 母港在高安 ⇒ 指定那条要付声望（保留的"代价"，非门槛）
     addWare(s, INVASION_BEACON_ITEM_ID, 1)
     const target = weekendCoreCandidates(s, ctx)[0]!
     const r = useInvasionBeacon(s, ctx, { galaxyId: target })
-    expect(r.ok).toBe(false)
-    expect(r.errorId).toBe('core.consumable.010')
-    expect(consumableStockOf(s, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
-    expect(s.weekendEvent, '没建事件').toBeUndefined()
+    expect(r.ok, r.ok ? '' : String(r.error)).toBe(true)
+    expect(s.weekendEvent!.coreId, '落点 = 玩家选的那个（人到不到场无关）').toBe(target)
+    expect(consumableStockOf(s, INVASION_BEACON_ITEM_ID), '扣掉一枚').toBe(0)
   })
 
   it('**默认使用**（不指定星系）⇒ **不看位置**：在母港也能开，且不扣声望（**2026-09-30 船长纠正**）', () => {
