@@ -4,7 +4,7 @@
  * 存档安全（中文说明）：保存时先写 ".tmp" 再改名覆盖，即使中途断电/崩溃，
  * 原档也完好无损，最多丢一次保存间隔的内容。
  */
-import { app, BrowserWindow, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, screen } from 'electron'
 import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import { L10N } from '@whale/data'
@@ -246,9 +246,22 @@ function registerSaveHandlers(): void {
 
 /** 创建主窗口 */
 function createWindow(): void {
+  /**
+   * **默认窗口尺寸：1280×860 → 1540×940**（**2026-09-30 船长裁定「甲」**）。
+   *
+   * 起因：船长报障「**默认的宽度下工业 HUD（调试）的精炼炉会直接进入窄屏的压缩模式，那个应该是过窄时才触发**」。
+   * 实测（`tools/hud-geom.ts` 的逐列最小宽拆解）工业 HUD 两栏要装下：工位表 366px＋32 内边距 ＝ 左列 398px、
+   * 投料表 307px＋32 ＝ 右列 339px，＋列间距 12 ⇒ 网格 749px ⇒ **页面区 ≈785px ⇒ 视口 ≈1440px**；
+   * 而 1280 窗口的页面区只有 719px（少 66px）⇒ 那个宽度下只能单列。
+   * 船长在四条路里挑了「**甲：把默认窗口开大**」⇒ 取 **1540×940**（外框尺寸，含系统边框；
+   * 渲染区约 1524×901 ⇒ 满足两栏门槛并留 ~30px 余量）。
+   * ⚠ 仍按**显示器工作区**收口：小屏（1366×768 一类）自动退到能放下的尺寸，
+   * 窄了就是单列布局（那本来就是它的设计行为），不会把窗口开到屏幕外。
+   */
+  const { workAreaSize } = screen.getPrimaryDisplay()
   const win = new BrowserWindow({
-    width: 1280,
-    height: 860,
+    width: Math.min(1540, workAreaSize.width),
+    height: Math.min(940, workAreaSize.height),
     minWidth: 1024,
     minHeight: 700,
     show: false, // 等页面就绪再显示，避免白屏闪烁
