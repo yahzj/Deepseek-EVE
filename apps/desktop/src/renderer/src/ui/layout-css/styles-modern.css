@@ -2707,26 +2707,32 @@ html[data-locale='en'] body {
 
 }
 
+/* **队列纵向排列 + 窗口高度解除**（**2026-09-30 船长令**：「训练队列因为不用压缩窗口了，
+   所以窗口固定高度解除，将技能队列纵向排列」）。
+   沿革：这两条都是**为"与技能树同页上下叠"服务的**——① `flex-wrap` 让队列横着铺几列，
+   把下面那块的高度省出来；② `max-height` 把队列锁在约 4 行 chip，超出窗内自滚。
+   2026-09-30 拆成两个平级子页后（队列独占一整屏），两条都成了多余的约束 ⇒ 一起撤：
+   队列改成**纵向一列**（每条一行、宽度撑满，按钮仍在右侧）、**不再自己滚**
+   （整块交给面板体的 `overflow: auto`，与技能树画布同一个滚动手法）。 */
 .app-train-pending {
-
   display: flex;
-
-  flex-wrap: wrap;
-
+  flex-direction: column;
+  align-items: stretch;
   gap: var(--wui-sp-4);
-
   margin-top: var(--wui-sp-6);
-
-  /* 队列过长时窗内滚动（2026-09-09 船长：防挤占下方技能目录）——上限约 4 行 chip */
-
-  max-height: 148px;
-
-  overflow-y: auto;
-
-  padding-right: var(--wui-sp-4);
-
 }
 
+/* 纵向排列后每条占一整行（`app-chip` 默认是 `inline-block` ⇒ 不撑满，这里补上）
+   ⚠ 方向仍走上面那条 `.app-train-chip { flex-direction: column }`（信息在上、按钮在下，
+   2026-09-25 船长令「按钮靠卡牌底边」）——这里只补"撑满整行"，**不覆盖方向**。 */
+.app-train-pending .app-train-chip {
+  display: flex;
+  width: 100%;
+}
+
+/* ⚠ 这条是 `.app-train-chip` 在**面板外**（历史遗留）的兜底：本页两种用法都在
+   `.app-train-pending` 里、方向由上面那条 column 说了算 ⇒ 这里只留"横排 + 居中"的默认，
+   不写 `flex-direction`（写了就会**后手覆盖**上一条的 column，把按钮挤回右侧）。 */
 .app-train-chip {
 
   display: inline-flex;

@@ -95,12 +95,15 @@ export function SkillsTreePage({
    * **两个平级子页**（**2026-09-30 船长令**：「将技能页的训练队列和技能科技树分做 2 个平级的子页面，
    * 类似工业里的一样。现在同时存在挤占屏幕太多了」）。
    *
+   * ⚠ **同日追加令：「技能科技树的子页面前移」** ⇒ 签名顺序 = **技能科技树在前**，
+   * 且**默认也落在它**（"前移"在子页签这套里就是"它当第一页"；首访落在训练队列就白移了）。
+   *
    * 与工业页 `industry.sec` **同一套口径**（`ui/sessionView.ts` 的会话级记忆）：
-   * 初值 = `focusGroup` 在 ⇒ `'tree'`（那次跳转的目的就是"去技能页练那门技能"，落在队列页看不到它）；
-   * 否则 = 会话记忆 > 默认**训练队列**（"正在发生的事"排第一，与旧版把队列放最上同一个理由）。
+   * 初值 = 会话记忆 > 默认 `'tree'`；`focusGroup` 在 ⇒ 必然 `'tree'`（那次跳转的目的就是
+   * "去技能页练那门技能"，落在队列页看不到它）。
    */
   const [sec, setSecState] = useState<'queue' | 'tree'>(
-    () => (focusGroup != null ? 'tree' : ((sessionPick('skills.sec') as 'queue' | 'tree' | null) ?? 'queue')),
+    () => (focusGroup != null ? 'tree' : ((sessionPick('skills.sec') as 'queue' | 'tree' | null) ?? 'tree')),
   )
   /** 切子页 ＝ 写会话记忆（程序化跳转也走它 ⇒ 记的永远是"玩家最后看到的那个子页"） */
   const setSec = (v: 'queue' | 'tree'): void => {
@@ -309,15 +312,8 @@ export function SkillsTreePage({
        * 看不到刚被选中的那个大类（那次跳转的目的就是"去技能页练那门技能"）。
        */}
       <div className="app-subtabs" role="tablist">
-        <button
-          role="tab"
-          aria-selected={sec === 'queue'}
-          className={`app-subtab${sec === 'queue' ? ' is-active' : ''}`}
-          onClick={() => setSec('queue')}
-        >
-          <span>⌛</span>
-          <span>{tr('ui.SkillsPage.001')}</span>
-        </button>
+        {/* ⚠ 顺序 = **技能科技树在前**（2026-09-30 追加令「技能科技树的子页面前移」）；
+            两颗签的文案各复用既有 id，副标题由各自面板头承担。 */}
         <button
           role="tab"
           aria-selected={sec === 'tree'}
@@ -326,6 +322,15 @@ export function SkillsTreePage({
         >
           <span>✦</span>
           <span>{tr('ui.SkillTree.001')}</span>
+        </button>
+        <button
+          role="tab"
+          aria-selected={sec === 'queue'}
+          className={`app-subtab${sec === 'queue' ? ' is-active' : ''}`}
+          onClick={() => setSec('queue')}
+        >
+          <span>⌛</span>
+          <span>{tr('ui.SkillsPage.001')}</span>
         </button>
       </div>
       {sec === 'queue' ? (

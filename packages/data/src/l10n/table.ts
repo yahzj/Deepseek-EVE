@@ -1,4 +1,4 @@
-/**
+﻿/**
  * **唯一本地化表**（船长 2026-09-19 定：所有本地化文本一律走 **ID 引用**，一份表即可整体替换语言）。
  *
  * 结构：`id → { zh, en }`。ID 规则 = `<域>.<文件短名>.<序号>`（工具自动生成；`ui.` 段由
@@ -5398,3 +5398,4 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     en: "This environment cannot reload automatically — refresh the page (or restart the game) manually."
   }
 }
+
