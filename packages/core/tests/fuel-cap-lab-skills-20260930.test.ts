@@ -6,7 +6,7 @@
  * 打算添加2个增加燃料上限的技能，并添加1个燃料生产速度和1个燃料产量的技能」＋「只算仓库，就是只算仓库，
  * 不算任何舰船库存。还有，每单位燃料体积为1m³，但是普通舰船的货仓无法装入」。
  *
- * 覆盖：上限（基准 6,000 / 两条技能乘算 13,500 / 只算仓库）· 放不下下一批就停线与拒起线 ·
+ * 覆盖：上限（基准 **60,000** / 两条技能乘算 **135,000** / 只算仓库）· 放不下下一批就停线与拒起线 ·
  * 在产速率读数（7,200 → 15,600 单位/时）· 节拍与收率**只对燃料配方生效** · 燃料装不进货仓 ＋ 老档归仓。
  */
 import { describe, expect, it } from 'vitest'
@@ -76,16 +76,16 @@ describe('燃料上限 · 只算物品仓库', () => {
     expect(cargoHoldForbidden(ctx, 'min-voidcrystal'), '别的物品不受影响').toBe(false)
   })
 
-  it('上限基准 6,000；两条技能满级乘算 ⇒ 13,500', () => {
+  it('上限基准 60,000；两条技能满级乘算 ⇒ 135,000（2026-09-30 船长令：基准 6,000 → 6 万）', () => {
     const s = stationState()
     expect(jumpFuelCapOf(s)).toBe(JUMP_FUEL_CAP_BASE)
-    expect(JUMP_FUEL_CAP_BASE).toBe(6_000)
+    expect(JUMP_FUEL_CAP_BASE).toBe(60_000)
     s.skills.trained['fuel-tank-structure'] = 5
-    expect(jumpFuelCapOf(s), '储罐结构学满级 +50%').toBe(9_000)
+    expect(jumpFuelCapOf(s), '储罐结构学满级 +50%').toBe(90_000)
     s.skills.trained['orbital-fuel-depot'] = 5
-    expect(jumpFuelCapOf(s), '轨道储备库学满级再 +50%（乘算）').toBe(13_500)
+    expect(jumpFuelCapOf(s), '轨道储备库学满级再 +50%（乘算）').toBe(135_000)
     trainAll(s, CAP_SKILLS)
-    expect(jumpFuelCapOf(s)).toBe(13_500)
+    expect(jumpFuelCapOf(s)).toBe(135_000)
   })
 
   it('上限与库存都只算物品仓库：老档货仓里那份不参与', () => {
@@ -94,7 +94,7 @@ describe('燃料上限 · 只算物品仓库', () => {
     s.fleet[s.shipId]!.cargo[JUMP_FUEL_ITEM_ID] = 5_000
     expect(jumpFuelWareOf(s), '仓库量').toBe(100)
     expect(jumpFuelStockOf(s), '不含任何舰船库存（船长令）').toBe(100)
-    expect(jumpFuelCapOf(s), '上限不被货仓抬高').toBe(6_000)
+    expect(jumpFuelCapOf(s), '上限不被货仓抬高').toBe(60_000)
   })
 
   it('扣料只从仓库扣（货仓残留不动）', () => {
@@ -111,21 +111,21 @@ describe('燃料上限 · 只算物品仓库', () => {
 describe('燃料上限 · 生产受上限约束', () => {
   it('仓库放不下下一批 ⇒ 起线被拒（core.lab.018）', () => {
     const s = withMaterials(stationState())
-    addWare(s, JUMP_FUEL_ITEM_ID, 5_700) // +600 会越过 6,000
+    addWare(s, JUMP_FUEL_ITEM_ID, 59_700) // +600 会越过 60,000
     const r = startLabRun(s, ctx, recipe.id, 'pilot')
     expect(r.ok).toBe(false)
     expect(r.errorId).toBe('core.lab.018')
   })
 
-  it('恰好装满：5,400 + 600 = 6,000 能跑满；跑满后停线且留 core.lab.017 日志', () => {
+  it('恰好装满：59,400 + 600 = 60,000 能跑满；跑满后停线且留 core.lab.017 日志', () => {
     const s = withMaterials(stationState())
-    addWare(s, JUMP_FUEL_ITEM_ID, 5_400)
+    addWare(s, JUMP_FUEL_ITEM_ID, 59_400)
     expect(startLabRun(s, ctx, recipe.id, 'pilot').ok, '放得下 ⇒ 能起线').toBe(true)
     advanceGame(s, recipe.cycleMs + 1, ctx)
-    expect(countWare(s, JUMP_FUEL_ITEM_ID), '第一批刚好装满').toBe(6_000)
+    expect(countWare(s, JUMP_FUEL_ITEM_ID), '第一批刚好装满').toBe(60_000)
     expect(jumpFuelWareOf(s), '绝不越过上限').toBeLessThanOrEqual(jumpFuelCapOf(s))
     advanceGame(s, recipe.cycleMs * 2 + 1, ctx)
-    expect(countWare(s, JUMP_FUEL_ITEM_ID), '不再生产').toBe(6_000)
+    expect(countWare(s, JUMP_FUEL_ITEM_ID), '不再生产').toBe(60_000)
     expect(s.labRuns?.length ?? 0, '线被摘掉（满仓自停）').toBe(0)
     expect(s.logs.some((l) => l.textId === 'core.lab.017'), '停线日志').toBe(true)
   })
@@ -133,9 +133,9 @@ describe('燃料上限 · 生产受上限约束', () => {
   it('抬高上限后可以继续生产（技能同时决定"满"在哪）', () => {
     const s = withMaterials(stationState())
     trainAll(s, CAP_SKILLS)
-    addWare(s, JUMP_FUEL_ITEM_ID, 5_700) // 双满上限 13,500 ⇒ 放得下
-    expect(jumpFuelCapOf(s)).toBe(13_500)
-    expect(startLabRun(s, ctx, recipe.id, 'pilot').ok, '上限抬到 13,500 ⇒ 能起线').toBe(true)
+    addWare(s, JUMP_FUEL_ITEM_ID, 59_700) // 双满上限 135,000 ⇒ 放得下
+    expect(jumpFuelCapOf(s)).toBe(135_000)
+    expect(startLabRun(s, ctx, recipe.id, 'pilot').ok, '上限抬到 135,000 ⇒ 能起线').toBe(true)
   })
 })
 
@@ -148,8 +148,8 @@ describe('燃料在产速率读数', () => {
     expect(sup.perHour).toBe(0)
     expect(sup.status).toBe('idle')
     expect(sup.ware).toBe(0)
-    expect(sup.cap).toBe(6_000)
-    expect(sup.headroom).toBe(6_000)
+    expect(sup.cap).toBe(60_000)
+    expect(sup.headroom).toBe(60_000)
   })
 
   it('一条线在跑 ⇒ 7,200 单位/时；点满节拍与收率 ⇒ 15,600 单位/时', () => {
@@ -171,10 +171,10 @@ describe('燃料在产速率读数', () => {
 
   it('满仓（放不下下一批）⇒ 状态 full', () => {
     const s = withMaterials(stationState())
-    addWare(s, JUMP_FUEL_ITEM_ID, 5_700)
+    addWare(s, JUMP_FUEL_ITEM_ID, 59_700)
     const sup = jumpFuelSupplyOf(s, ctx)
     expect(sup.status).toBe('full')
-    expect(sup.ware).toBe(5_700)
+    expect(sup.ware).toBe(59_700)
     expect(sup.headroom).toBe(300)
   })
 })

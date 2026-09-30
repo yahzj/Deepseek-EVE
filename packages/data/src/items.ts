@@ -1430,7 +1430,9 @@ export const CONSUMABLES: readonly ItemDef[] = [
     unitM3: 1,
     /** 普通舰船货仓装不进去（判据单点在物品数据上，装船入口读它；见 `core/inventory.ts`） */
     holdForbidden: true,
-    baseSellPriceIsk: 120,
+    /** 货值（站内收价）：**与市场行同值是全表惯例**（见 `marketCatalog.ts` 的 `jump-fuel` 行）。
+     *  2026-09-30 船长令「调整燃料价格」＋同日虚空晶 ×10 ⇒ 120 → **420**（与自产单价 401.57 同档）。 */
+    baseSellPriceIsk: 420,
     description: '把跃迁引擎推到过载的稠浆：按返航秒数消耗，返航速度提升至十倍。单件 1 m³，仅存于物品仓库。',
   },
   /* ═══ 实验室后续内容（**2026-09-30 船长令**「你先继续制作后续实验室内容」＋「信号发射器和技能加速剂」·

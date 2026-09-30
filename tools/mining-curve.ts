@@ -15,8 +15,10 @@
  * - 采集 = `getMiningParams`（舰船循环 × 采矿技能 × 多矿枪加成求和），货舱 = `cargoCapacityM3Of`
  *   （多件**加算** × 深空物流学/货舱管理学）；
  * - **CPU 合法性**：件 `cpuUse` 求和 ≤ 舰船 `cpu`（MK3 = 40 · MK2 = 15 · MK1 = 5 · 民用 = 3）；
- * - **燃料成本**：自产 = 实验室一批（600 单位）的原料按矿物基准价折算（**77.57 ISK/单位**）；
- *   市场 = `marketCatalog` 的 `jump-fuel` 基准价（**120 ISK/单位**）。消耗 = `ceil(航程秒)` = `ceil(空船去程 ＋ 满载返航)`。
+ * - **燃料成本**：自产 = 实验室「超空间折跃燃料」一批（600 单位）的原料按站内收价折算
+ *   —— **现算**（读 `LAB_RECIPES` ＋ `ctx.items`，不写死；2026-09-30 虚空晶 ×10 那天正因为写死
+ *   46,540/600 = 77.57 而落后过一版）；市场 = `marketCatalog` 的 `jump-fuel` 行价（同现算）。
+ *   消耗 = `ceil(航程秒)` = `ceil(空船去程 ＋ 满载返航)`。
  *
  * 用法：
  *   npm run mining:curve                      # 默认：两艘矿船 × 满技能 × 未建站 × 不用燃料
@@ -27,7 +29,7 @@
  *
  * ⚠ 本工具只读数据 + 现算，不改任何状态；读数留档到 `docs/design/` 的工作文档里。
  */
-import { buildSimContext } from '@whale/data'
+import { buildSimContext, LAB_RECIPES } from '@whale/data'
 import {
   addShipToFleet,
   cargoCapacityM3Of,
@@ -55,8 +57,18 @@ const MOD_CPU: Readonly<Record<string, number>> = {
 const MINERS = ['mod-miner-3', 'mod-miner-2', 'mod-miner-1'] as const
 const CARGOS = ['mod-cargo-3', 'mod-cargo-2', 'mod-cargo-1'] as const
 
-/** 燃料单价：自产（一批 600 单位的原料按基准价折算）与市场基准价 */
-const FUEL_ISK = { lab: 46_540 / 600, market: 120 } as const
+/** 燃料单价（**运行时现算**，见 `main()` 里的 `fuelIsk`）—— 这里是唯一取值点，读数据不写死。 */
+function fuelPriceOf(ctx: SimContext): { lab: number; market: number } {
+  const recipe = LAB_RECIPES.find((r) => r.id === 'jump-fuel')
+  const lab = recipe
+    ? recipe.materials.reduce((s, m) => s + m.units * (ctx.items.get(m.itemId)?.baseSellPriceIsk ?? 0), 0) / recipe.outputUnits
+    : 0
+  let market = 0
+  for (const g of ctx.marketGoods.values()) {
+    if (g.kind === 'item' && g.refId === 'jump-fuel') market = g.basePrice ?? 0
+  }
+  return { lab, market }
+}
 
 interface Build {
   miners: readonly string[]
@@ -177,7 +189,10 @@ function main(): void {
   console.log(
     `船：${shipIds.map((id) => `${ctx.ships.get(id)?.name ?? id}（CPU ${ctx.ships.get(id)?.cpu ?? '?'} · 槽 ${ctx.ships.get(id)?.slots.high}/${ctx.ships.get(id)?.slots.mid}/${ctx.ships.get(id)?.slots.low}）`).join(' · ')}`,
   )
-  console.log(`燃料单价：自产 ${FUEL_ISK.lab.toFixed(2)} ISK/单位 · 市场 ${FUEL_ISK.market} ISK/单位（消耗 = ceil(航程秒) = ceil(空船去程 ＋ 满载返航)）`)
+  const fuelIsk = fuelPriceOf(ctx)
+  console.log(
+    `燃料单价（现算）：自产 ${fuelIsk.lab.toFixed(2)} ISK/单位 · 市场 ${fuelIsk.market} ISK/单位（消耗 = ceil(航程秒) = ceil(空船去程 ＋ 满载返航)）`,
+  )
 
   const belts = [...ctx.belts.values()]
     .map((b) => {
@@ -226,11 +241,11 @@ function main(): void {
       const tripFuelS = best.mineS + travelS / 10
       const gross = (best.hold * ((ctx.items.get(belt.oreId)?.baseSellPriceIsk ?? 0) / (ctx.items.get(belt.oreId)?.unitM3 ?? 1)) * 3600) / tripFuelS
       const fuelPerH = units * (3600 / tripFuelS)
-      const netLab = gross - fuelPerH * FUEL_ISK.lab
-      const netMkt = gross - fuelPerH * FUEL_ISK.market
+      const netLab = gross - fuelPerH * fuelIsk.lab
+      const netMkt = gross - fuelPerH * fuelIsk.market
       const be = (gross - best.iskH) / fuelPerH
       console.log(
-        `${base} | ${units.toLocaleString('zh-CN')} | ${Math.round(fuelPerH * FUEL_ISK.lab).toLocaleString('zh-CN')} | ${Math.round(netLab).toLocaleString('zh-CN')} | ${be.toFixed(0)}（市场买净 ${Math.round(netMkt).toLocaleString('zh-CN')}）`,
+        `${base} | ${units.toLocaleString('zh-CN')} | ${Math.round(fuelPerH * fuelIsk.lab).toLocaleString('zh-CN')} | ${Math.round(netLab).toLocaleString('zh-CN')} | ${be.toFixed(0)}（市场买净 ${Math.round(netMkt).toLocaleString('zh-CN')}）`,
       )
     }
     console.log('')

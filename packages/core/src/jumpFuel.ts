@@ -11,7 +11,7 @@
  *   解锁门槛 = **已建成空间站 ≥ 1 座**（`station.builtStationCount`）。
  *
  * **2026-09-30 船长令（上限批）**：
- * - **上限 = 只算物品仓库**（基准 6,000，两条技能可提到 13,500；口径见 `JUMP_FUEL_CAP_BASE` 注释）；
+ * - **上限 = 只算物品仓库**（基准 **60,000**，两条技能可提到 **135,000**；口径见 `JUMP_FUEL_CAP_BASE` 注释）；
  * - 燃料**每单位 1 m³、普通舰船货仓无法装入**（`ItemDef.holdForbidden`）⇒ 扣料只走仓库；
  * - 读数与上限同尺（界面不再自造"一趟长途 = 1,200 单位"这类常量）。
  *
@@ -61,14 +61,18 @@ export function jumpFuelEnabledOf(state: GameState, activity: JumpFuelActivity):
  * 上限与库存读数**都只看物品仓库**（`state.warehouse.items`），驾驶船货仓不参与；
  * 且燃料**普通舰船货仓装不进去**（`ItemDef.holdForbidden`，见 `data/items.ts`），
  * 所以"货仓里的燃料"正常情况下恒为 0（老档残留由读档迁移归仓，见 `save.ts`）。
+ *
+ * ⚠ **2026-09-30 船长令**：「**燃料罐初始最大容量提高到 6 万**」⇒ 基准 6,000 → **60,000**；
+ * 两条上限技能（各 +10%/级、乘算）不动 ⇒ 满级 **135,000**。**老档无需迁移**：旧上限（6,000）
+ * 恒 ≤ 新上限，不会出现"存量超上限"的存档。
  */
-export const JUMP_FUEL_CAP_BASE = 6_000
+export const JUMP_FUEL_CAP_BASE = 60_000
 
 /**
  * **提高燃料上限的技能**（声明式表 —— 船长 2026-09-30 问「新功能是否模块化？降低耦合」的落法之一：
  * **加技能 = 表里加一行**，上限算法与界面都不用改）。
  *
- * 叠加口径 = **乘算**（两条满级 1.5 × 1.5 = 2.25 ⇒ 上限 13,500）。
+ * 叠加口径 = **乘算**（两条满级 1.5 × 1.5 = 2.25 ⇒ 上限 **135,000**；基准 60,000，2026-09-30 船长令）。
  */
 export const JUMP_FUEL_CAP_SKILLS: readonly { readonly id: string; readonly perLevel: number }[] = [
   { id: 'fuel-tank-structure', perLevel: 0.1 }, // 储罐结构学（rank 2）：上限每级 +10%

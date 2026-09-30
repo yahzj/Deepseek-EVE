@@ -138,8 +138,10 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // 【超空间折跃燃料 —— **稀有档 ＋ 池 ＋ 批量档**（船长 2026-09-29：「燃料可买卖放入稀有（但是是池子）」）：
   //   `rareQtyMul: 200` 与弹药同档（**存量口径：稀有批量档恒 200 件/张**，见 market.test.ts 的契约）；
   //   `absorbQtyPerWindow` 与实验室满产对齐（1 条线 600 单位/5 分钟 ⇒ 7,200/h = 120/分钟 ⇒ 窗吸收 14,400/h）。
-  //   `demandMultiplier: 0.6` 与弹药同档（消耗品，卖给协会不划算、留着自用）。】
-  { key: 'jump-fuel', kind: 'item', refId: 'jump-fuel', rarity: 'rare', basePrice: 120, demandMultiplier: 0.6, poolTarget: 28_800, supplyFlow: 240, rareQtyMul: 200, rareWeightMul: 3, absorbQtyPerWindow: 14_400 },
+  //   `demandMultiplier: 0.6` 与弹药同档（消耗品，卖给协会不划算、留着自用）。
+  //   ⚠ **2026-09-30 船长令「调整燃料价格」**：同日虚空晶用量 ×10 ⇒ 自产单价 77.57 → **401.57 ISK/单位**
+  //   ⇒ 行价 120 → **420**（与自产同价：自产不再是"省钱路"，而是"用虚空晶换时间"；市场退为应急渠道）。】
+  { key: 'jump-fuel', kind: 'item', refId: 'jump-fuel', rarity: 'rare', basePrice: 420, demandMultiplier: 0.6, poolTarget: 28_800, supplyFlow: 240, rareQtyMul: 200, rareWeightMul: 3, absorbQtyPerWindow: 14_400 },
   /* 实验室后续内容（**2026-09-30 船长令**）：信号发射器与突触加速剂走**奇货档**
    * （船长 2026-09-29 Q8「燃料可买卖放入稀有（但是是池子）。**其他放入奇货**」）。
    * ⚠ 施工期 `unreleased`（效果/界面未接完）——玩家既看不到也买不到；行价 = 我按料价 ×2.4 的口径提的（待船长核）。 */
