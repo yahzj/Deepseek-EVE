@@ -223,6 +223,25 @@ function JumpFuelPanel({
   onGotoLab?: () => void
 }): ReactNode {
   const stock = Math.floor(engine.jumpFuelStock())
+  /**
+   * **罐高实测**（船长 2026-09-30 两连报障后的定稿做法）：量"罐列"的实际高度再画定值 ——
+   * 比 `height:100%` 可靠（后者在流式/网格里解析不稳，窄屏还会按宽等比放大成巨罐）。
+   * 夹在 `160~460`：下限保证小窗也看得见液位，上限避免高分辨率屏把罐子拉成一根柱子。
+   */
+  const railRef = useRef<HTMLDivElement | null>(null)
+  const [railH, setRailH] = useState(320)
+  useEffect(() => {
+    const el = railRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const clampH = (h: number): number => Math.max(160, Math.min(460, Math.round(h)))
+    const ro = new ResizeObserver((entries) => {
+      const h = entries[0]?.contentRect.height ?? 0
+      if (h > 0) setRailH(clampH(h))
+    })
+    ro.observe(el)
+    setRailH(clampH(el.clientHeight))
+    return () => ro.disconnect()
+  }, [])
   /** 一趟"长途返航"的量级（20 分钟 = 1,200 秒 ⇒ 1,200 单位）——库存条与"可支撑趟数"共用这一把尺 */
   const TRIP_UNITS = 1_200
   const trips = Math.floor(stock / TRIP_UNITS)
@@ -236,9 +255,19 @@ function JumpFuelPanel({
     <Panel className="is-fill" title={tr('ui.jumpFuel.010')}>
       <div className="hud hud-embed hud-fuel-split">
         {/* ═══ 左：**燃料罐整列**（**2026-09-30 船长手改稿「大致效果.png」**：罐体放大成靠左整列、
-            几乎满页高、罐内零文字；撑满做法见 `FuelTank` 的 `fill`）═══ */}
-        <div className="hud-fuel-rail" title={tr('ui.jumpFuel.014')}>
-          <FuelTank units={stock} capacity={TRIP_UNITS * 5} tickUnits={TRIP_UNITS} fill label={tr('ui.jumpFuel.014')} />
+            几乎满页高、罐内零文字）═══
+            ⚠ **罐高改成"实测容器高度后画定值"**（**2026-09-30 船长报障两连**：① 窄屏时罐子按屏宽
+            等比放大、变得超大；② 宽屏时 `height:100%` 在流式布局里解析不可靠、罐子又被压小）。
+            现在：`ResizeObserver` 量这一列的实际高度（并夹在 160~460 之间）⇒ 交给 `FuelTank` 画定值；
+            窄屏那份高度由 CSS 媒体查询直接定死（168px），量到的就是它。 */}
+        <div className="hud-fuel-rail" ref={railRef} title={tr('ui.jumpFuel.014')}>
+          <FuelTank
+            units={stock}
+            capacity={TRIP_UNITS * 5}
+            tickUnits={TRIP_UNITS}
+            height={railH}
+            label={tr('ui.jumpFuel.014')}
+          />
         </div>
 
         {/* ═══ 右：读数 → 规格 → 开关（自上而下一条竖读线）═══ */}

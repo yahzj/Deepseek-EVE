@@ -318,12 +318,16 @@
   gap: 12px;
 }
 .hud-tank { display: block; }
-/* 液面波动：两层波以不同速度横移（错速 ⇒ 看上去是流动的液体而不是平移的贴图） */
+/* 液面波动：两层波以不同速度横移（错速 ⇒ 看上去是流动的液体而不是平移的贴图）
+ * ⚠ **位移必须用用户单位、且正好等于整数个波长**（**2026-09-30 船长报障「循环并不对齐」**）：
+ * 原先写的是 `translateX(-50%)` —— CSS 百分比 transform 在 SVG 元素上按 **viewBox（参考框）** 解析，
+ * 不是按波自身的宽度 ⇒ 实际位移 ≈1.26 个波长 ⇒ **每轮循环跳一下**。
+ * 现在由组件把「一个波长 ×2」的偏移量以 `--tank-shift`（px = SVG 用户单位）传进来 ⇒ 无缝循环。 */
 .hud-tank .wave-a { animation: hud-wave 3.6s linear infinite; }
 .hud-tank .wave-b { animation: hud-wave 5.4s linear infinite; animation-direction: reverse; }
 @keyframes hud-wave {
   from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  to { transform: translateX(var(--tank-shift, -50%)); }
 }
 /* 罐内微光呼吸（只在有料时有意义；空罐不闪） */
 .hud-tank.is-filled .glow { animation: hud-breathe 4.2s ease-in-out infinite; }
@@ -336,21 +340,28 @@
  * 左列 = 罐体（撑满可用高度，罐内零文字）；右列 = 读数 → 规格 → 开关。 */
 .hud-fuel-split {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  /* ⚠ 罐列**必须给定宽**（**2026-09-30 船长报障「窄屏时燃料罐变得超大」**）：
+     原先写 `auto` ＋ 罐体 `width:100%` ⇒ 单列回落时罐子按整屏宽等比放大（68:300 ⇒ 高度几千 px）。 */
+  grid-template-columns: 84px minmax(0, 1fr);
   gap: 18px;
   align-items: stretch;
   min-height: 260px;
 }
-@media (max-width: 900px) {
-  .hud-fuel-split { grid-template-columns: 1fr; }
-}
-/* 罐体那一列：纵向拉伸（`FuelTank` 的 `fill` 会等比铺满，不会被拉扁） */
+/* 罐体那一列：纵向拉伸但**封顶**（`FuelTank` 的 `fill` 等比铺满，不会被拉扁） */
 .hud-fuel-rail {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  min-height: 260px;
+  min-height: 220px;
+  max-height: 420px;
   padding: 2px 4px 0;
+}
+.hud-fuel-rail .hud-tank { width: 100%; height: 100%; max-width: 84px; }
+@media (max-width: 900px) {
+  /* 窄屏：罐子回到**固定小尺寸**（不再按屏宽等比放大），横排放到内容上方 */
+  .hud-fuel-split { grid-template-columns: 1fr; }
+  .hud-fuel-rail { height: 168px; max-height: 168px; min-height: 168px; justify-content: flex-start; }
+  .hud-fuel-rail .hud-tank { max-width: 62px; }
 }
 /* 右侧内容列：纵向排布（读数面板在上、开关面板在下） */
 .hud-fuel-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }

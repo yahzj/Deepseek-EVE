@@ -78,7 +78,17 @@ export function FuelTank({ units, capacity, height = 148, fill = false, tickUnit
       height={fill ? undefined : H}
       viewBox={`0 0 ${W} ${H}`}
       preserveAspectRatio={fill ? 'xMidYMid meet' : undefined}
-      style={fill ? { height: '100%', width: '100%', display: 'block' } : undefined}
+      /**
+       * **波长位移量**（**2026-09-30 船长报障「液体动画的循环并不对齐」的修法**）：
+       * 交给 CSS 的必须是**用户单位**（px = SVG 用户单位）且**正好 2 个波长**（= 波层自身宽度的一半），
+       * 这样 `translateX(0 → -shift)` 结束时波形与起点逐点重合 ⇒ 无缝。
+       * 若像原先那样写百分比，SVG 会按 viewBox 参考框解析 ⇒ 位移不是整数波长 ⇒ 每轮跳一下。
+       * （几何核对：波层宽 = `innerW × 2`，内含 4 个整周期 ⇒ 1 周期 = `innerW / 2` ⇒ 2 周期 = `innerW`。）
+       */
+      style={{
+        ...(fill ? { height: '100%', width: '100%', display: 'block' } : {}),
+        ['--tank-shift' as string]: `-${innerW}px`,
+      }}
       role="img"
       aria-label={label}
     >
