@@ -8,7 +8,7 @@
  * 界面查看后才移除）」⇒ 扫描不再是"玩家活动"行，改为头部 AI 徽标右侧一条常驻进度条
  * （进行中 = 进度 + 剩余；完成待查看 = 满格金色高亮，进「星图」或点它即收）。
  */
-import { activityOverview, activePromos, activeTunings, aiCoreIndustryUsed, aiCoreShipUsed, scanAwaitingView, scanStatus } from '@whale/core'
+import { activityOverview, activePromos, activeTunings, aiCoreIndustryUsed, aiCoreShipUsed, scanAwaitingView, scanStatus, SYNAPTIC_ACCELERANT_MUL } from '@whale/core'
 import type { ActivityView } from '@whale/core'
 import { formatDurationShort } from '@whale/core'
 import { useEffect, useState } from 'react'
@@ -138,6 +138,13 @@ export function ActivityBar({
   //   数字取 core 单点（与 AI 指挥中心标题行同源），不再从活动列表反推
   const aiShips = aiCoreShipUsed(state)
   const aiProd = aiCoreIndustryUsed(state)
+  /**
+   * **突触加速剂读数**（**2026-09-30 船长令**：「'生效中'倒计时读数放入活动窗口内，和 AI 核心一样，
+   * 用一个图标表示。最好图标能展示技能加速的倍率」）—— 归到「计时中」那一组（与扫描条同组），
+   * 图标 ＋ **倍率**＋ 剩余时间；倍率由 core 的乘区反算（`1 / SYNAPTIC_ACCELERANT_MUL`）⇒ 改数值不会说两套话。
+   */
+  const boostRemainMs = engine.synapticAccelerantRemainMs()
+  const boostMul = Math.round(1 / SYNAPTIC_ACCELERANT_MUL)
   /** AI 核心占用说明（与 AI 指挥中心/工业页同源的单点文案，挂在两枚徽标的悬停里） */
   const aiSlotsNote = aiSlotTip(aiIndustrySlots(state, engine.ctx))
   const playerItems = all.filter((i) => i.kind !== 'ai' && i.kind !== 'train')
@@ -365,6 +372,16 @@ export function ActivityBar({
                 {scanBar.done ? tr("ui.ActivityBar.036") : `${Math.round(scanBar.percent)}%`}
               </span>
             </button>
+          ) : null}
+          {/* 突触加速剂生效中（**2026-09-30 船长令**）：与扫描条同一套类名（不自造样式），不可点 */}
+          {boostRemainMs > 0 ? (
+            <span className="app-activitybar-scan" title={tr('ui.ActivityBar.067', { p1: fmtDuration(boostRemainMs) })}>
+              <span className="app-ico">
+                <Glyph name="ico-eff" size={13} color={ICO_TONES['ico-eff']} />
+              </span>
+              <span className="app-activitybar-scan-name">{tr('ui.ActivityBar.066', { p1: boostMul })}</span>
+              <span className="app-activitybar-scan-time">{fmtDuration(boostRemainMs)}</span>
+            </span>
           ) : null}
       </div>
       <div className="app-activitybar-group">

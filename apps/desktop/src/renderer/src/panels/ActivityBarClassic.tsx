@@ -16,7 +16,7 @@
  * ⚠ 这是一份**冻结件**：除"跟随 core 接口的必要改动"外**不要美化/重构**它 ——
  *   它的价值就是"和昨天一模一样"。新版活动栏请改 `ActivityBar.tsx`。
  */
-import { activityOverview, activePromos, activeTunings, aiCoreIndustryUsed, aiCoreShipUsed, scanAwaitingView, scanStatus } from '@whale/core'
+import { activityOverview, activePromos, activeTunings, aiCoreIndustryUsed, aiCoreShipUsed, scanAwaitingView, scanStatus, SYNAPTIC_ACCELERANT_MUL } from '@whale/core'
 import type { ActivityView } from '@whale/core'
 import { formatDurationShort } from '@whale/core'
 import { useEffect, useState } from 'react'
@@ -387,6 +387,22 @@ export function ActivityBarClassic({
               {scanBar.done ? tr("ui.ActivityBar.036") : `${Math.round(scanBar.percent)}%`}
             </span>
           </button>
+        ) : null}
+        {/* 突触加速剂生效中（**2026-09-30 船长令**「读数放进活动窗口、和 AI 核心一样用图标、图标带倍率」）：
+            与扫描条同一套类名（不自造样式），不可点；倍率由 core 乘区反算 ⇒ 与引擎同源 */}
+        {engine.synapticAccelerantRemainMs() > 0 ? (
+          <span
+            className="app-activitybar-scan"
+            title={tr('ui.ActivityBar.067', { p1: fmtDuration(engine.synapticAccelerantRemainMs()) })}
+          >
+            <span className="app-ico">
+              <Glyph name="ico-eff" size={13} color={ICO_TONES['ico-eff']} />
+            </span>
+            <span className="app-activitybar-scan-name">
+              {tr('ui.ActivityBar.066', { p1: Math.round(1 / SYNAPTIC_ACCELERANT_MUL) })}
+            </span>
+            <span className="app-activitybar-scan-time">{fmtDuration(engine.synapticAccelerantRemainMs())}</span>
+          </span>
         ) : null}
         {/* 限时活动（2026-09-16 促销）：与限时加成同一处、同一族样式 —— 游戏内说法 + 剩余时间；
             被它认领的倍率键已在上面从 `tunings` 里滤掉，同一件事只显示这一枚。

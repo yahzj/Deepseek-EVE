@@ -474,6 +474,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.consumable.008": { zh: "✦ 信号发射器已启动：入侵舰队正在逼近「{p1}」（第 {p2} 场）。", en: "✦ Signal Beacon lit: an invasion fleet is closing on “{p1}” (event #{p2})." },
   "ui.ItemsPage.057": { zh: "使用：主动诱发一次入侵（随机星系 · 只能在没有入侵时使用 · 消耗 1 枚）", en: "Use: provoke an invasion (random system; only while no invasion is running; consumes one)" },
   "ui.ItemsPage.058": { zh: "信号发射器已启动：入侵舰队正在逼近。", en: "Signal Beacon lit: an invasion fleet is closing in." },
+  /* 活动窗口的突触加速剂读数（2026-09-30 船长令：放进活动窗口 · 图标带倍率） */
+  "ui.ActivityBar.066": { zh: "技能加速 ×{p1}", en: "Skill boost ×{p1}" },
+  "ui.ActivityBar.067": { zh: "突触加速剂生效中：技能训练时长减半（剩 {p1}）", en: "Synaptic Accelerant active: skill training time halved ({p1} left)" },
   /* ═══ 工业 HUD 页（调试专用 · 2026-09-30 船长令）：**少字多图标** ——
      页面上的文字只做"2~4 字标签/单位"，解释性长句一律进 `title`（悬停）。═══════════════ */
   "ui.hud.001": { zh: "精炼炉", en: "Refinery" },
