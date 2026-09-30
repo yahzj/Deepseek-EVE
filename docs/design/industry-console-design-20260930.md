@@ -110,6 +110,13 @@
   5. 新增 **「≈ N 趟」读数**（按 20 分钟返航 ≈1,200 单位估算）＋「前往实验室」图标按钮。
 - **不越界**：仅改这一子页；舰船页其它子页不受影响（`.hud-embed` 是局部嵌入，不带整页底色）。
 - **草稿截图**：`tools/_ui-artifacts/jumpfuel-skill.png`（草稿页签「跃迁燃料」）。
+- **2026-09-30 追加（船长提问「罐体独占左侧、文字移到右侧上下布局会不会更好？你使用 skill 进行判断」）**：
+  **技能判定 = 支持船长这一版**。依据（chart 域 · Gauge/Bullet 条目）：
+  「**Place the number and target text beside the gauge** and label threshold zones; red/yellow/green alone
+  is insufficient」＋「Single metric per gauge」⇒ **数字与阈值文字放仪表旁边、罐内不放字**；
+  右栏再按「主数字 → 阈值读数（≈N 趟）→ 刻度说明（虚线 = 一趟长途）→ 动作（实验室）」**自上而下**一条竖读线。
+  落地：`ShipPage.tsx` 的读数栏重排（罐内零文字）＋ 新增 `ui.hud.210/211`（≈N 趟 / 一趟长途刻度说明，
+  刻度说明旁给**一小段 SVG 虚线示意**，不让玩家靠文字猜哪根线是哪根）＋ 预览 `tools/_ui-artifacts/jumpfuel-tank-v2.png`。
 
 ## 八、原裁决清单（**已被船长否决/改判，留档**）
 

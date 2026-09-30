@@ -497,6 +497,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.hud.207": { zh: "启用活动", en: "Enabled activities" },
   "ui.hud.208": { zh: "已开", en: "On" },
   "ui.hud.209": { zh: "未开", en: "Off" },
+  /* 燃料罐读数栏（2026-09-30 船长问"罐体独占左侧、文字右侧纵向"后按技能定稿）：
+     210 = 阈值读数（够飞几趟）· 211 = 虚线刻度说明（一趟长途） */
+  "ui.hud.210": { zh: "≈{p1} 趟", en: "≈{p1} trips" },
+  "ui.hud.211": { zh: "一趟长途 {p1} 单位", en: "One long trip {p1} units" },
   /* ── 第九批：wormholeHold.ts（虫洞货仓：形状件摆放/整理/交换/取回）── */
   "core.wormholeHold.001": { zh: "这件东西是可叠加散货：应该走散货条（holdAddCargo）。", en: "That item is stackable loose cargo: it belongs to the loose-cargo lane (holdAddCargo)." },
   "core.wormholeHold.002": { zh: "货仓格数为 0：放不下任何形状件。", en: "The hold has 0 slots, so no shaped item fits." },

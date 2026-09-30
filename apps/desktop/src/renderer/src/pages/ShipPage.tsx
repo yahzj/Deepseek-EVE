@@ -235,7 +235,11 @@ function JumpFuelPanel({
   return (
     <Panel className="is-fill" title={tr('ui.jumpFuel.010')}>
       <div className="hud hud-embed">
-        {/* ── 库存读数：**竖直燃料罐**（玻璃外壳 ＋ 液面波动）＋ 右侧数字（少字）── */}
+        {/* ── 库存读数：**竖直燃料罐（罐内不放字）＋ 右侧纵向读数栏** ──
+            布局依据（**船长 2026-09-30 提问后按技能复核**）：`ui-ux-pro-max` 的 chart 域对 Gauge/Bullet
+            明确写「**Place the number and target text beside the gauge** and label threshold zones」
+            ⇒ **数字与阈值文字放仪表旁边**、罐内保持纯图形；右栏再按"主数字 → 目标读数 → 刻度说明 → 动作"
+            自上而下排（单指标 + 阈值 + 动作 = 一条竖读线）。 */}
         <div className="hud-panel">
           <div className="hud-tank-wrap">
             <FuelTank
@@ -245,14 +249,26 @@ function JumpFuelPanel({
               label={tr('ui.jumpFuel.014')}
             />
             <div className="hud-tank-side">
+              {/* ① 主读数（最大号） */}
               <span className="hud-row" style={{ gap: 8 }}>
                 <Glyph name="consumable" size={18} color="currentColor" />
                 <span className="hud-fuel-num">{stock.toLocaleString('zh-CN')}</span>
+                <span className="hud-tiny">{tr('ui.jumpFuel.013')}</span>
               </span>
-              <span className="hud-tiny">{tr('ui.jumpFuel.013')}</span>
-              <span className="hud-chip" title={tr('ui.hud.201')}>
-                <Glyph name="nav-ship" size={12} color="currentColor" /> {trips}
+              {/* ② 目标/阈值读数（"够飞几趟"） */}
+              <span className="hud-chip is-acc" title={tr('ui.hud.201')}>
+                <Glyph name="nav-ship" size={12} color="currentColor" /> {tr('ui.hud.210', { p1: trips })}
               </span>
+              {/* ③ 刻度说明（右边那根虚线 = 一趟长途；用小 SVG 虚线示意，不靠文字描述） */}
+              <span className="hud-row" style={{ gap: 6 }}>
+                <svg width="18" height="6" viewBox="0 0 18 6" aria-hidden="true">
+                  <path d="M0 3h18" stroke="var(--hud-fg)" strokeOpacity="0.34" strokeWidth="1" strokeDasharray="3 3" />
+                </svg>
+                <span className="hud-tiny">
+                  {tr('ui.hud.211', { p1: TRIP_UNITS.toLocaleString('zh-CN') })} · {tr('ui.hud.203', { p1: (TRIP_UNITS * 5).toLocaleString('zh-CN') })}
+                </span>
+              </span>
+              {/* ④ 动作 */}
               <IconBtn
                 glyph="ico-lab"
                 label={tr('ui.hud.202')}
@@ -260,7 +276,6 @@ function JumpFuelPanel({
                 disabled={onGotoLab === undefined}
                 onClick={() => onGotoLab?.()}
               />
-              <span className="hud-tiny">{tr('ui.hud.203', { p1: (TRIP_UNITS * 5).toLocaleString('zh-CN') })}</span>
               {stock <= 0 ? (
                 <span className="hud-tiny" style={{ color: 'var(--hud-warn)' }}>
                   {tr('ui.jumpFuel.018')}
