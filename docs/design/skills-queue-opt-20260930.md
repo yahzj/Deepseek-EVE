@@ -170,6 +170,18 @@
 | 队尾 ↓ / 末行 ↑ | 置灰：`已在队尾` / `挪了等于没挪` |
 | 点"挪不过去"的 ⇈ | 说明出现在**被点那一行内**，且落在面板可视区内（说明顶 533 ∈ 面板体 294–893） |
 | 无需挡下的行 | 末行 ⇈ 仍可点（`off=false`）——置灰只针对真挪不动的 |
+| 真悬停一次置灰箭头 | 接管层 `.app-tip` 弹出同一条原因（＝用 `aria-disabled` 而不是原生 `disabled` 的意义：原生 disabled 收不到悬停，说明永远弹不出来），鼠标落点 [914,524] |
+
+## 9. 合入状态（2026-09-30 · 被主树在途改动挡住）
+
+- 本批已在 `verify` 提交：`75485a42` → rebase 到 main `1341e27a` 后为 **`a05696a9`**；
+  rebase 只 `docs/INDEX.md` 冲突（重跑 `docs:index` 解决），其余与一号的 HUD 改动**自动合并干净**。
+- **`git merge --ff-only verify` 被拒**（主树里一号有未提交改动，重叠文件：
+  `apps/desktop/src/renderer/src/styles.css` · `ui/layout-css/styles-classic.css` · `styles-modern.css` · `docs/INDEX.md`）；
+  git 已自动中止，**主树一个字节没动**（HEAD 仍 `1341e27a`，一号的改动原样保留）。按 §4 停手，等他提交后再 rebase ＋ ff 合入。
+- rebase 后复测（含一号新版 `Tooltip.tsx`）：typecheck ✅ · core 276 文件/2905 用例 ✅ ·
+  `ui:layout-css:check` ✅ · desktop＋web 构建 ✅ · 上表读数逐条重取一致。
+
 
 
 
