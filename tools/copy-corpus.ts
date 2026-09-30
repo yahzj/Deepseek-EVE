@@ -157,6 +157,51 @@ for (const h of hits) byTell.set(h.tell, (byTell.get(h.tell) ?? 0) + 1)
 
 console.log(`\n腔调线索命中：${hits.length} 处（**线索，不是判定**——每条都要回上下文看）`)
 for (const [name, n] of [...byTell].sort((a, b) => b[1] - a[1])) console.log(`  ${String(n).padStart(4)}  ${name}`)
+/**
+ * **说明文本契约扫描**（C 类：物品／模块／舰船／异常／技能 的 `description`）。
+ * 判据来自约定 §十三：说明**只写规格**（不写原因）、**括号只放规格**（数字与单位）；另给 >100 字的可读性提示。
+ * 技能说明里的 `（满级 −⟦25%⟧；与…乘算叠加）` 属合规规格括号，不会命中"括号内无数字"。
+ */
+console.log('\n▍说明文本契约（C 类）')
+const DESC_SRC = ['物品 ITEMS', '模块 MODULES', '舰船 SHIPS', '异常 ANOMALIES', '异常·风味 ANOMALIES_FLAVORED', '技能 SKILLS']
+const descRows = rows.filter((r) => DESC_SRC.includes(r.src))
+const reasonHits: string[] = []
+const parenHits: string[] = []
+const longHits: string[] = []
+for (const r of descRows) {
+  const rm = /因为|由于|为了|之所以|原因是|是为了/.exec(r.text)
+  if (rm) reasonHits.push(`${r.id}：「…${r.text.slice(Math.max(0, rm.index - 8), rm.index + 18)}…」`)
+  for (const m of r.text.matchAll(/（([^）]*)）/g)) {
+    const inner = m[1] ?? ''
+    if (inner && !/[\dA-Za-z%³]/.test(inner)) parenHits.push(`${r.id}：「（${inner}）」`)
+  }
+  if (r.text.length > 100) longHits.push(`${r.id}：${r.text.length} 字`)
+}
+console.log(`  · 说明里出现原因解释词（说明契约禁止）：**${reasonHits.length} 处**`)
+for (const s of reasonHits.slice(0, 40)) console.log(`      ${s}`)
+console.log(`  · 括号里不含数字/单位（"括号只放规格"）：**${parenHits.length} 处**`)
+for (const s of parenHits.slice(0, 60)) console.log(`      ${s}`)
+console.log(`  · 说明 >100 字（可读性提示，非违规）：**${longHits.length} 处**`)
+for (const s of longHits.slice(0, 8)) console.log(`      ${s}`)
+
+/** **公告可读性扫描**（B 类）：要点过长 / 括号注释 / 指代不清（"本批/该批/上述"在公告里没有上下文） */
+console.log('\n▍公告可读性（B 类）')
+const allBullets = ANNOUNCEMENTS.flatMap((a) =>
+  (((a as { bullets?: readonly string[] }).bullets ?? []) as readonly string[]).map((b) => ({
+    id: (a as { id?: string }).id ?? '(无 id)',
+    b,
+  })),
+)
+const bLong = allBullets.filter((x) => x.b.length > 120)
+const bParen = allBullets.filter((x) => /（[^）]{6,}）/.test(x.b))
+const bDeixis = allBullets.filter((x) => /本批|该批|上述|前述/.test(x.b))
+console.log(`  · 要点 >120 字：${bLong.length} 处`)
+for (const x of bLong.slice(0, 6)) console.log(`      ${x.id}：${x.b.length} 字`)
+console.log(`  · 要点里带 6 字以上括号注释：${bParen.length} 处`)
+for (const x of bParen.slice(0, 6)) console.log(`      ${x.id}：${(/（[^）]{6,}）/).exec(x.b)?.[0] ?? ''}`)
+console.log(`  · 指代不清（本批/该批/上述/前述）：${bDeixis.length} 处`)
+for (const x of bDeixis.slice(0, 6)) console.log(`      ${x.id}：「${(/[^。；]{0,12}(本批|该批|上述|前述)[^。；]{0,12}/).exec(x.b)?.[0] ?? ''}」`)
+
 /** 逐类点名（每类前 `PER_TELL` 条）：审校时照这份清单回上下文复核 */
 const PER_TELL = 8
 for (const [name] of [...byTell].sort((a, b) => b[1] - a[1])) {
