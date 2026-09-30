@@ -165,3 +165,27 @@ for (const [name] of [...byTell].sort((a, b) => b[1] - a[1])) {
   for (const h of list.slice(0, PER_TELL)) console.log(`  · ${h.at}\n    「${h.snippet}」`)
   if (list.length > PER_TELL) console.log(`  …（其余 ${list.length - PER_TELL} 处同类）`)
 }
+
+/**
+ * **结构契约扫描**（不靠人眼，能机器判的一律机器判）：
+ * ① **公告要点 3~5 条**（约定 §十二：一条一个变化）；
+ * ② **公告第三人称**：正文不许出现「你／我／咱们」（船长 2026-09-08 定；公告只用第三人称「玩家」）；
+ * ③ **通讯第二人称**：通讯与对白**应当**用「你」（反着查：整篇不出现「你」的通讯要人眼复核一遍）。
+ */
+console.log('\n▍结构契约')
+const badBullets: string[] = []
+const badPerson: string[] = []
+for (const a of ANNOUNCEMENTS) {
+  const bullets = (a as { bullets?: readonly string[] }).bullets ?? []
+  const title = (a as { id?: string }).id ?? '(无 id)'
+  if (bullets.length < 3 || bullets.length > 5) badBullets.push(`${title}：${bullets.length} 条`)
+  for (const b of bullets) {
+    const m = /[你我咱]/.exec(b)
+    if (m) badPerson.push(`${title}：「${b.slice(Math.max(0, m.index - 15), m.index + 15)}」`)
+  }
+}
+console.log(`  · 公告要点数 3~5 条：${badBullets.length === 0 ? '全部合规 ✅' : `**${badBullets.length} 条越界**`}`)
+for (const s of badBullets.slice(0, 10)) console.log(`      ${s}`)
+console.log(`  · 公告第三人称（正文不出现 你/我/咱）：${badPerson.length === 0 ? '全部合规 ✅' : `**${badPerson.length} 处**`}`)
+for (const s of badPerson.slice(0, 10)) console.log(`      ${s}`)
+if (badPerson.length > 10) console.log(`      …（其余 ${badPerson.length - 10} 处）`)
