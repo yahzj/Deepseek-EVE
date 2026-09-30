@@ -83,6 +83,8 @@ import {
   FACTION_CODEX,
   FACTION_CODEX_ORDER,
   FOE_SHIPS,
+  // 2026-09-30 文案审核批：开发侧残留契约要逐条扫公告正文（此前本文件没读过公告表）
+  ANNOUNCEMENTS,
 } from '@whale/data'
 // ⚠ **跨层 import（有意为之）**：装配页卡片正文由渲染层 `moduleShortEffect` 生成，而 `apps/desktop`
 //   **没有测试运行器** ⇒ 这条口径只能由体检兜住（见下方「装备卡片说明契约」）。
@@ -479,6 +481,63 @@ for (const item of itemDefs) {
      * ⇒ 带齐批量档的卡不再报这条（它的"玩家产出卖不掉"已经解决了）。
      */
     warn.push(`物品 ${item.id} 的市场卡非常驻（${good.rarity}）且无批量档，玩家产出将无法稳定卖出`)
+  }
+}
+
+/**
+ * **开发侧残留契约**（**2026-09-30 加**，起因 = 文案审核批 `docs/design/copy-audit-20260930.md`）：
+ * 玩家可见范围（界面文案 / 日志 / 公告 / 通讯 / 手册 / 说明）**只允许玩家向内容**——
+ * 开发/商讨阶段文本（**日期** · 复核 · 待定 · 占位 · 验收 · 「船长定」…）留在开发侧
+ * （`AGENTS.md` §5：「交付前自查，**发现残留即清理并报告**」）。
+ *
+ * 这一条之所以要机器查：**两只漏网**是真的发生过的 ——
+ * ① `ui.SaveManager.011` 里写着「（2026-09-17 船长定）」；② `ui.Handbook.268` 写着「星系扫描自 2026-09-15 起…」。
+ * 两者都被玩家看得到，且**人工审校几轮都没抓到**（长度扫描不覆盖短句、语义扫描不看日期）。
+ *
+ * 判据只收**无歧义**的开发痕迹（有歧义的一律不收，免得把正常文案判红）：
+ * `YYYY-MM-DD` 日期 · 「船长定 / 船长令 / 船长裁」 · 待定/待裁决/占位/复核/验收/TODO/WIP。
+ *
+ * 两处**故意不判**（各有实证，写在这里免得后人再踩）：
+ * ① **不收「船长」**：它是游戏内的正常名词 —— `core.events.006`「像是某个**老船长**的遗言」、
+ *    `core.events.058`「路过的货船**船长**」；只收"船长+裁决动词"那种开发标注。
+ * ② **不收 `ui.perf.*` 域**：那是调试用的性能快照/导出件（`game/perf.ts` 的 `tr('ui.perf.002')`
+ *    进的是 perfHub JSON，不进玩家界面），名字里带 `perfHub 2026-09-08` 是**有意的工具标识**。
+ * ③ **不收「本批」**：`ui.Expedition.*` 的「本批投送订单」是**游戏名词**（订单批次），
+ *    收了它会把正常文案判红——那一类交给 `npm run copy:audit` 的人工复核。
+ */
+{
+  const DEV_RE = /\d{4}-\d{2}-\d{2}|船长定|船长令|船长裁|待定|待裁决|占位|复核|验收|\bTODO\b|\bWIP\b/
+  const SKIP_ID = /^ui\.perf\./
+  const where = (label: string, text: string, id?: string): void => {
+    if (id !== undefined && SKIP_ID.test(id)) return
+    const m = DEV_RE.exec(text)
+    if (m) errors.push(`玩家可见文案里有开发侧残留：${label} → 「…${text.slice(Math.max(0, m.index - 12), m.index + 14)}…」（命中「${m[0]}」）`)
+  }
+  for (const [id, e] of Object.entries(L10N)) {
+    where(`${id}.zh`, e.zh, id)
+    where(`${id}.en`, e.en, id)
+  }
+  for (const a of ANNOUNCEMENTS) {
+    const ann = a as { id?: string; title?: string; subject?: string; bullets?: readonly string[] }
+    const base = ann.id ?? ann.title ?? '(公告)'
+    if (ann.title) where(`${base}.title`, ann.title)
+    if (ann.subject) where(`${base}.subject`, ann.subject)
+    for (const [i, b] of (ann.bullets ?? []).entries()) where(`${base}.bullets[${i}]`, b)
+  }
+  for (const d of DIALOGUES) {
+    const dlg = d as { id?: string; subject?: string; lines?: ReadonlyArray<{ text?: string }> }
+    const base = dlg.id ?? '(通讯)'
+    if (dlg.subject) where(`${base}.subject`, dlg.subject)
+    for (const [i, l] of (dlg.lines ?? []).entries()) if (l.text) where(`${base}.lines[${i}]`, l.text)
+  }
+  for (const m of COMMS_MESSAGES as ReadonlyArray<{ id?: string; subject?: string; body?: readonly string[] }>) {
+    const base = m.id ?? '(通讯)'
+    if (m.subject) where(`${base}.subject`, m.subject)
+    for (const [i, b] of (m.body ?? []).entries()) where(`${base}.body[${i}]`, b)
+  }
+  for (const def of [...ITEMS, ...MODULES, ...SKILLS, ...SHIPS]) {
+    const d = def as { id?: string; name?: string; description?: string }
+    if (d.description) where(`${d.id ?? d.name ?? '(说明)'}.description`, d.description)
   }
 }
 
