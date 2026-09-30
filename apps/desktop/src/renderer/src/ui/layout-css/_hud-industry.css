@@ -26,9 +26,20 @@
   --hud-muted: rgb(var(--wui-bg-sunken));
   --hud-line: rgb(var(--wui-border));
   --hud-line-bright: rgb(var(--wui-border-bright));
+  /* **两类线分开**（2026-09-30 三号接手批）：读数 = 7 套主题里 `--wui-border` 当**装饰分隔**可以
+     （发丝线本来就是弱对比），但拿它当**控件边界**时只有 1.15~1.51:1（非文字要 3:1）。
+     ⇒ 装饰线仍走 `--hud-line`；按钮/chip/卡片/下拉这些**控件的边框**走 `--hud-line-control`
+     （= text-dim × 0.70，扫 alpha 找的最小达标值 0.66 → 全主题最差 3.02:1，取 0.70 留余量）。 */
+  --hud-line-decor: var(--hud-line);
+  --hud-line-control: rgb(var(--wui-text-dim) / 0.7);
   --hud-fg: rgb(var(--wui-text));
   --hud-fg-dim: rgb(var(--wui-text-dim));
-  --hud-fg-faint: rgb(var(--wui-text-dim) / 0.72);
+  /* ⚠ **极弱字 alpha 2026-09-30 由 0.72 提到 0.88**（三号接手批）——读数（7 套主题 × WCAG）：
+     0.72 时 6 套主题只有 3.41~4.09:1（正文要 4.5）⇒ 扫 alpha 找最小达标值 = **0.86**（全主题最差
+     4.62:1，daylight），取 0.88 留余量。层级差改由**字号/字距**表达（`.hud-tiny` = 11px），不再靠压暗。 */
+  --hud-fg-faint: rgb(var(--wui-text-dim) / 0.88);
+  /* 纯装饰用（分隔点、网格纹这类**不承载信息**的图形）——不适用文字对比度判据 */
+  --hud-fg-ghost: rgb(var(--wui-text-dim) / 0.55);
   --hud-accent: rgb(var(--wui-accent));
   --hud-accent-soft: rgb(var(--wui-accent) / 0.78);
   --hud-accent-deep: rgb(var(--wui-accent-deep));
@@ -86,7 +97,11 @@
   border-color: var(--hud-line);
   box-shadow: inset 0 2px 0 var(--hud-accent);
 }
-.hud-tab:focus-visible, .hud-btn:focus-visible, .hud-select:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: 2px; }
+.hud-tab:focus-visible, .hud-btn:focus-visible, .hud-select:focus-visible,
+.hud-card:focus-visible, .hud-chip:focus-visible, .hud-sw:focus-visible {
+  outline: 2px solid var(--hud-accent);
+  outline-offset: 2px;
+}
 
 /* ── 主体：两列网格（与草稿一致；窄屏回落单列）── */
 .hud-body { flex: 1; min-height: 0; overflow: auto; padding: 14px 18px 20px; }
@@ -139,16 +154,37 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-.hud-table td.n, .hud-table th.n { text-align: right; font-variant-numeric: tabular-nums; }
+/* ⚠ 右对齐数字列一律不换行（2026-09-30 三号接手批读数：书架表的「2分45秒」曾按字换行成两行，
+   行高被撑成两倍 ⇒ 工期/料值这类读数必须 nowrap，列宽由内容决定） */
+.hud-table td.n, .hud-table th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hud-table td { vertical-align: top; }
 .hud-table tr:last-child td { border-bottom: 0; }
+/* 动作列（图标按钮）固定宽、不参与挤压 */
+.hud-table td.act, .hud-table th.act { width: 44px; text-align: right; white-space: nowrap; }
+/* ⚠ **首列（产物名）要有下限宽**：其余列 nowrap ⇒ 表被压时浏览器只压"能压的那列"，
+   产物名会被挤成一字一行（1340×900 实测就是这样）。给首列兜底 + 让名字在词内断行。 */
+.hud-table td:first-child, .hud-table th:first-child { min-width: 108px; }
+.hud-table td:first-child .hud-row { min-width: 0; align-items: flex-start; }
+.hud-table td:first-child .hud-row > span:last-child { overflow-wrap: anywhere; }
+/* 两行小字读数列（料值 / 工期合列时用） */
+.hud-cell2 { display: block; }
 
-/* ── 卡片（配方 / 工位 / 作业）── */
+/* ── 卡片（配方 / 工位 / 作业）──
+   ⚠ 卡片在实验室那页是**可点件**（选中配方）⇒ 已经是真 `<button>`（2026-09-30 三号接手时由
+   `<div onClick>` 改过来，技能预交付清单 Compact Control Semantics 是 Critical 级）
+   ⇒ 这里必须显式给按钮"复位"（块级 + 占满 + 左对齐），并给可见焦点环。 */
 .hud-card {
-  border: 1px solid var(--hud-line);
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  border: 1px solid var(--hud-line-control);
   background: rgba(19, 27, 41, 0.55);
   border-radius: 3px;
   padding: 10px 12px;
   margin-bottom: 8px;
+  cursor: pointer;
 }
 .hud-card:last-child { margin-bottom: 0; }
 .hud-card.is-sel { border-color: var(--hud-accent); box-shadow: 0 0 0 1px rgba(78, 161, 255, 0.32); }
@@ -158,10 +194,14 @@
 .hud-row.between { justify-content: space-between; }
 .hud-row.wrap { flex-wrap: wrap; }
 
-/* ── chip ── */
+/* ── chip ──（其中「全部 / 装备 / 消耗品 / 仅可造 / 舰级」这几枚是**按钮**：真点击件） */
 .hud-chip {
-  border: 1px solid var(--hud-line);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--hud-line-control);
   color: var(--hud-fg-dim);
+  background: transparent;
   border-radius: 2px;
   padding: 2px 7px;
   font-size: 11px;
@@ -169,10 +209,36 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+button.hud-chip { cursor: pointer; min-height: 22px; }
+button.hud-chip:hover { border-color: var(--hud-accent); color: var(--hud-accent-soft); }
 .hud-chip.is-acc { border-color: var(--hud-accent); color: var(--hud-accent-soft); }
 .hud-chip.is-ok { border-color: var(--hud-ok); color: var(--hud-ok); }
 .hud-chip.is-warn { border-color: var(--hud-warn); color: var(--hud-warn); }
 .hud-chip.is-bad { border-color: var(--hud-bad); color: var(--hud-bad); }
+
+/* chip 行（书架/舰级的筛选条）：等距排布，窄屏换行 */
+.hud-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 8px; }
+
+/* ── 空态（技能口径 Empty States：给一句引导，而不是留白）── */
+.hud-empty {
+  border: 1px dashed var(--hud-line);
+  border-radius: 3px;
+  padding: 14px 12px;
+  color: var(--hud-fg-dim);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ── 材料齐备度一行（Bullet ＋ **文字读数**：技能口径"每个区间与目标都要有文字标注"）── */
+.hud-mat { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; margin-top: 6px; }
+.hud-mat .hud-bullet { margin-top: 0; }
+
+/* ── 干船坞：左线稿 ＋ 右读数（三格读数 ＋ 骨架进度 ＋ 取消）── */
+.hud-dock { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; }
+.hud-dock-art { display: grid; place-items: center; min-width: 132px; color: var(--hud-fg-dim); }
+.hud-dock-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.hud-cells { display: flex; flex-wrap: wrap; gap: 14px; color: var(--hud-fg-dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+.hud-cells > span { display: inline-flex; align-items: center; gap: 5px; }
 
 /* ── 进度条 / 扫掠 ── */
 .hud-bar { position: relative; display: block; height: 6px; background: var(--hud-muted); border-radius: 2px; overflow: hidden; }
@@ -207,7 +273,7 @@
 .hud-gauge span { position: relative; font-size: 16px; font-variant-numeric: tabular-nums; }
 
 /* ── 键值行 ── */
-.hud-kv { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; color: var(--hud-fg-dim); font-size: 12px; border-bottom: 1px dashed rgba(30, 43, 64, 0.85); }
+.hud-kv { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; color: var(--hud-fg-dim); font-size: 12px; border-bottom: 1px dashed var(--hud-line-decor); }
 .hud-kv:last-child { border-bottom: 0; }
 .hud-kv b { color: var(--hud-fg); font-variant-numeric: tabular-nums; }
 
@@ -219,7 +285,7 @@
   cursor: pointer;
   background: transparent;
   color: var(--hud-fg);
-  border: 1px solid var(--hud-line);
+  border: 1px solid var(--hud-line-control);
   border-radius: 2px;
   padding: 6px 12px;
   transition: border-color 0.18s ease, color 0.18s ease;
@@ -227,12 +293,12 @@
 .hud-btn:hover { border-color: var(--hud-accent); color: var(--hud-accent-soft); }
 .hud-btn.is-primary { background: var(--hud-accent); border-color: var(--hud-accent); color: #04121f; font-weight: 600; }
 .hud-btn.is-primary:hover { color: #04121f; }
-.hud-btn:disabled { opacity: 0.42; cursor: not-allowed; border-color: var(--hud-line); color: var(--hud-fg-dim); }
+.hud-btn:disabled { opacity: 0.42; cursor: not-allowed; border-color: var(--hud-line-decor); color: var(--hud-fg-dim); }
 .hud-select {
   font-family: var(--hud-mono);
   background: var(--hud-muted);
   color: var(--hud-fg);
-  border: 1px solid var(--hud-line);
+  border: 1px solid var(--hud-line-control);
   border-radius: 2px;
   padding: 5px 7px;
 }
@@ -272,7 +338,7 @@
   justify-content: space-between;
   gap: 10px;
   padding: 7px 2px;
-  border-bottom: 1px dashed rgba(30, 43, 64, 0.85);
+  border-bottom: 1px dashed var(--hud-line-decor);
   cursor: pointer;
 }
 .hud-sw-row:last-child { border-bottom: 0; }
