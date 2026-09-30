@@ -465,9 +465,9 @@ export interface WormholeRunState {
    */
   attending?: boolean
   /**
-   * **临时离开的时刻**（state.gameMs；仅 ttending === false 时有意义）。
+   * **临时离开的时刻**（state.gameMs；仅 attending === false 时有意义）。
    * 回来时按 state.gameMs - leftAtGameMs 把**进行中的战斗时钟整体前移**——
-   * 否则 dvanceBattleFor 的步进基准（while (state.gameMs > battle.lastTickGameMs)）
+   * 否则 advanceBattleFor 的步进基准（while (state.gameMs > battle.lastTickGameMs)）
    * 会把"离开的这段时间"一次性当作战时间补算：实测 2×T1 离开 6 秒回来**当场团灭**，
    * 冻结就白做了。随档保存（离线离开同样适用）。
    */

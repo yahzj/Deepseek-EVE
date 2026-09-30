@@ -2585,10 +2585,34 @@ C 族每条舰级都挂一件「**虫群冲锋器 T1~T4**」（舰级级挂载�
    （`git ls-files --eol` = `i/-text w/-text`）⇒ 整份文档 diff 不可读。**已按 CRLF 归一**
    （逐行验证：去 CR 后与改前逐字相等 · 现 `CRLF=2,491 / 裸 CR=0 / 裸 LF=0` / UTF-8 无 BOM）。
    全仓扫描：**只有这一份文本文件**有此问题（其余命中全是 PNG 的字节巧合）。
-2. **`packages/core/src/types.ts` 有 2 处「`reloadCutPct` 的 r 被换行符吃掉」**：
-   源码里写着 `与 <CR>eloadCutPct`（`CR` = 0x0D 裸回车；`git show HEAD` 里就有 ⇒ **不是本批引入**），
-   是历史上某次用 PowerShell 写文件时误把 `` `r `` 当字面量写进去的。**本批未动**（越出本批范围），
-   留报船长处置。
+2. **控制字符吃字（同一类缺陷 · 全仓已扫并修复）**——**船长 2026-09-30 令「你进行修复」**：
+   历史上某几次用 PowerShell 写文件时把**转义符当了字面量**——`` `r `` = 回车（0x0D）· `` `a `` = 响铃（0x07）·
+   `` `b `` = 退格（0x08）· `` `f `` = 换页（0x0C） ⇒ 源码里那几个**字母被替换成了控制字符**
+   （`reloadCutPct` 写成「与 `⟨CR⟩`eloadCutPct」这类）。**全仓扫描结果 = 27 处 / 9 个文件，已全部修回本字**
+   （每次只改那 1 个字节，行尾与其余内容一字不动）：
+
+   | 文件 | 处数 | 修回的字（控制字符 → 本字） |
+   |---|---|---|
+   | `packages/core/src/types.ts` | 2 | `reloadCutPct` ×2（CR → r） |
+   | `packages/core/src/firstTasks.ts` | 2 | `FirstTasks`（FF → f）· 等比平滑公式里的 `r = (新L10 ÷ L5)^(1/5)`（CR → r） |
+   | `packages/core/tests/weekend-autoloop.test.ts` | 2 | `rewardIskOverride`（CR → r）· `active 置 false`（BEL → a） |
+   | `packages/core/src/wormhole.ts` | 2 | `attending` / `advanceBattleFor`（BEL → a） |
+   | `packages/core/src/wormholeSalvage.ts` | 2 | `box-relic-*` / `box-relic-a ⇒ A`（BS → b） |
+   | `apps/desktop/src/renderer/src/styles.css` | 5 | `app-workspace` · `app-root`（BEL）· `border-box`（BS）· `flex` ×2（FF） |
+   | `apps/desktop/src/renderer/src/ui/layout-css/styles-classic.css` | 5 | 同上五处 |
+   | `apps/desktop/src/renderer/src/ui/layout-css/styles-modern.css` | 5 | 同上五处 |
+   | `docs/development-conventions-changelog.md` | 2 | `Announcements.ts`（BEL → a）· `Armed ⇒ high >= low + 1`（BEL → a） |
+
+   ⚠ **零行为变化**：27 处**全部落在注释 / 文档散文 / CSS 注释**里，没有一处是代码路径或玩家可见文案
+   （四条闸门全绿为准；CSS 那三个文件另跑了 `ui:rot-check`）。
+   ⚠ **两处没动**（**AGENTS §8**「其余旧文档留到归档再动」）：`docs/design/import-save-edge-20260922.md` 与
+   `docs/design/offline-cap-skill-20260922.md` 各 1 处 BEL（都是 `Announcements.ts` 的 A）⇒ 归档时顺手清，或船长说一句我立刻清。
+   ⚠ 另有一类**不是缺陷**、本批未动：`docs/design/battle-data/*.txt` 那批旧探针日志是 **UTF-16LE 带 BOM**
+   （含大量 NUL 字节）——早期 PowerShell 重定向的产物，属**数据留档**不是源码。
+   ⚠ 记账：`types.ts` 与 `weekend-autoloop.test.ts` 这两个文件的**存储态行尾是 CRLF**（`git ls-files --eol` = `i/-text w/crlf`），
+   与全仓其余文件（`i/lf w/crlf`）不一致 ⇒ 用常规 `git add` 会把整份文件重写成 LF、diff 变 3000 行。
+   本批**保留原存储态**入库（`hash-object --no-filters` ＋ `update-index --cacheinfo`），把 diff 压回"只改那一行"。
+   要不要把这两个文件的存储行尾归一到全仓口径 = 另一件独立的家务，等船长定。
 
 ### 44.7 船长裁决（2026-09-30）与仍未决的一条
 
@@ -2599,4 +2623,4 @@ C 族每条舰级都挂一件「**虫群冲锋器 T1~T4**」（舰级级挂载�
 | ② 那条族设定算不算「按族、不分敌我」 | **只针对敌人** | **与实现一致，无需改动**：只落「我方的网 × 敌方的 C 族」这一侧，`applyMeWebDebuff` 不加豁免 ⇒ 我方 C 族舰挨网时点火爆发**照旧被清零** |
 | ② 要不要接进敌阵机动链 | **不用写** | **不做**：②维持"规则声明 ＋ 玩家可见文案 ＋ 防回归守卫"，不改任何既有战斗读数 |
 | 我方网钉住 C 族时的战报仍写「推进器熄火」 | **按族改一句** | **已落地**：战报按族分岔 ＋ 三个新 id（见 44.3 第三条），新增用例 1 条把两族两句都钉住 |
-| `types.ts` 那 2 处被吃掉的 `r`（44.6 第 2 条） | **未答** | **仍挂着**：本批未动，等船长一句话 |
+| 那批被控制字符吃掉的字母（44.6 第 2 条） | **「你进行修复」** | **已修 27 处 / 9 文件**（明细见 44.6 第 2 条）；**两处旧文档**按 §8 留到归档 |
