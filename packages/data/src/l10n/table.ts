@@ -3384,7 +3384,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Industry.140": { zh: "跳到组装机并定位这张图纸的卡片（那里才能开工制造）", en: "Jump to the assembly unit and locate this blueprint's card (only there can manufacturing start)" },
   "ui.Industry.141": { zh: "去造船厂", en: "Go to the shipyard" },
   "ui.Industry.142": { zh: "去组装机", en: "Go to the assembly unit" },
-  "ui.Industry.143": { zh: "已取消该条制造线：材料全额退回物品仓库（AI 核心已归还）；一次性图纸连同制造名额一起退回蓝图书架。其余线不受影响。", en: "That production line was cancelled: all materials went back to the item warehouse (the AI core has been returned); a single-use blueprint goes back to the blueprint shelf together with its build slot. Other lines are unaffected." },
+  // ⟪文案调整 2026-09-30⟫ 文案审核批 E16（船长批「按你推荐来」）：本 id 的中文与 `ui.Industry.157` 完全相同，
+  //   调用点也早已改用 157（此处仅剩注释引用）⇒ 按"一条文本一个 id"的口径删除本 id。
   "ui.Industry.144": { zh: "基础零件：无需图纸学习，组装机直接可造。", en: "Basic parts: no blueprint needed — the assembly unit can build them directly." },
   "ui.Industry.145": { zh: "无需图纸", en: "No blueprint" },
   "ui.Industry.146": { zh: "已学会", en: "Learned" },
@@ -3562,7 +3563,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ItemsPage.029": { zh: "种 · 空间站库存", en: "types · station stock" },
   "ui.ItemsPage.030": { zh: "当前筛选下没有装备——换个分类或槽类试试。", en: "No modules under this filter — try another category or slot type." },
   "ui.ItemsPage.031": { zh: "装备库还是空的——在「市场」页购买或在「工业」页制造装备后，装备会先存放于此，再到「装配」页安装上船。", en: "Module Storage is still empty — buy modules on the Market page or build them on the Industry page, and they land here before you fit them to a ship on the Fitting page." },
-  "ui.ItemsPage.032": { zh: "装入船货仓携带（按 1 m³/件 计入货舱）；安装到槽位请到「装配」页——装配台取料自装备库，船上装备需先卸回", en: "Load into the ship's hold to carry it (1 m³ per unit counts against the hold); to fit it into a slot go to the Fitting page — the fitting bay draws from Module Storage, so modules already aboard have to be unloaded first" },
+  // ⟪文案调整 2026-09-30⟫ 文案审核批 E17（船长批「按你推荐来」）：本 id 与 `ui.ItemsPage.036` 是同一提示的两种写法
+  //   （本条约后半句用「——」串、036 用「（）」括）⇒ 统一保留 036，本 id 删除、调用点已改指 036。
   "ui.ItemsPage.033": { zh: "不在市场流通目录或不可售", en: "Not in the market catalog or not sellable" },
   "ui.ItemsPage.034": { zh: "装备库是空的——购买 / 制造后先存放于此，再到「装配」页安装。", en: "Module Storage is empty — bought or built modules land here first, then you fit them on the Fitting page." },
   "ui.ItemsPage.035": { zh: "装到当前驾驶船的货仓（按单位体积占舱）", en: "Load into the piloted ship's hold (takes up its unit volume)" },
