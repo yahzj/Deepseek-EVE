@@ -495,7 +495,8 @@ for (const item of itemDefs) {
  * 两者都被玩家看得到，且**人工审校几轮都没抓到**（长度扫描不覆盖短句、语义扫描不看日期）。
  *
  * 判据只收**无歧义**的开发痕迹（有歧义的一律不收，免得把正常文案判红）：
- * `YYYY-MM-DD` 日期 · 「船长定 / 船长令 / 船长裁」 · 待定/待裁决/占位/复核/验收/TODO/WIP。
+ * `YYYY-MM-DD` 日期 · 「船长定 / 船长令 / 船长裁」 · 待定/待裁决/占位/复核/验收/TODO/WIP ·
+ * **路线图编号**（`B3.1` 这种"字母+序号"式开发编号，**排除 `T1`~`T5`** —— 那是舰船分级的正式叫法）。
  *
  * 两处**故意不判**（各有实证，写在这里免得后人再踩）：
  * ① **不收「船长」**：它是游戏内的正常名词 —— `core.events.006`「像是某个**老船长**的遗言」、
@@ -506,7 +507,8 @@ for (const item of itemDefs) {
  *    收了它会把正常文案判红——那一类交给 `npm run copy:audit` 的人工复核。
  */
 {
-  const DEV_RE = /\d{4}-\d{2}-\d{2}|船长定|船长令|船长裁|待定|待裁决|占位|复核|验收|\bTODO\b|\bWIP\b/
+  const DEV_RE =
+    /\d{4}-\d{2}-\d{2}|船长定|船长令|船长裁|待定|待裁决|占位|复核|验收|\bTODO\b|\bWIP\b|(?<![A-Za-z0-9])(?!T[1-5]\b)[A-Z]\d\.\d/
   const SKIP_ID = /^ui\.perf\./
   const where = (label: string, text: string, id?: string): void => {
     if (id !== undefined && SKIP_ID.test(id)) return
