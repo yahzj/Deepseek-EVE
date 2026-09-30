@@ -337,6 +337,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.combat.003": { zh: "⚠ 损伤管制装置未能启动：损管修理组件不足。", en: "⚠ Damage Control Unit could not engage: no Damage Control Repair Kit available." },
   // ⚠ 战报尾巴那一段（`combat.dcUsageText`）与「船体维修装置」那条同式：报告正文是**拼接串**，
   //   不走 id 渲染 ⇒ 这里**不再留**废弃 id（原来加过 `core.combat.004`，未接线，已删）。
+  //   ⚠ **2026-09-30 起 `core.combat.004` 重新有主**：墨潮捕获网钉住 **C 族**时那条战报
+  //   （船长令「网钉住 C 族，按族改一句」——C 族冲锋不吃网的「关推进器」，故该句不写"推进器熄火"）。
+  //   槽 3 的减速那句自己带模板：`p3Id` 选 `core.combat.005`（机动减半）/ `core.combat.006`（机动 ×N）。
+  "core.combat.004": { zh: "{p1} 张开墨潮捕获网，钉住了 {p2}：{p3}、闪避失效，C 族的冲锋不受网的推进器压制——击沉目标或击沉网手才能解除。", en: "{p1} casts the Ink Tide capture web, pinning {p2}: {p3}, evasion disabled; Aberrant charges are unaffected by the thruster lockout — sink the target or the caster to break free." },
+  "core.combat.005": { zh: "机动减半", en: "speed halved" },
+  "core.combat.006": { zh: "机动 ×{p1}", en: "speed ×{p1}" },
   // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
   // ⟪文案调整 2026-09-29⟫ 船长令「夺回奖按投入比例缩水」（乙案 · 全清乘平均参与度）：夺回那一刻算不出
   //   最终金额（= 全额 × 玩家在该处的最终投入比例）⇒ 两条日志去掉金额与 `p2/p3` 两个参数，只留规格

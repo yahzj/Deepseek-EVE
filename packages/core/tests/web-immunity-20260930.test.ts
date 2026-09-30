@@ -35,7 +35,9 @@ import {
   createFoeSpecs,
   resolveFoeMounts,
 } from '../src/index'
-import { advanceBattleFor, applyFoeWebDebuff } from '../src/combat'
+import { advanceBattleFor, advanceMyCaptureWebs, applyFoeWebDebuff } from '../src/combat'
+import type { UnitSpec } from '../src/combat'
+import type { BattleState, GameState } from '../src/state'
 import { anomaly, makeTestCtx } from './helpers'
 
 const realCtx = buildSimContext()
@@ -49,6 +51,33 @@ const SWARM_MOUNTS = [
   FOE_MOUNT_IDS.chargeSwarmT3,
   FOE_MOUNT_IDS.chargeSwarmT4,
 ] as const
+
+/** 造一条装了墨潮捕获网的我方船（H 族件 `mod-lair-web-h`，高槽；网手） */
+function webCarrier(): { state: GameState; spec: UnitSpec } {
+  const state = createInitialState({ nowWallMs: 0, seed: 930 })
+  const id = addShipToFleet(state, 'sh-shrike')
+  state.shipId = id
+  state.fleet[id]!.fitted = { high: ['mod-lair-web-h'], mid: [], low: [] } as never
+  return { state, spec: createPlayerSpec(state, realCtx, id)! }
+}
+
+/** 只放指定敌舰的一条临时卡，走真建档 ⇒ 规格带该舰级的全部旗标 */
+function foeSpecsOf(shipId: string): UnitSpec[] {
+  const card = {
+    ...anomaly('probe-web', 'g-test', { threat: 20, tactic: 'brawl' }),
+    ships: [{ ship: FOE_SHIPS.find((s) => s.id === shipId)! }],
+  }
+  return createFoeSpecs(card, realCtx.balance.battle)
+}
+
+/** 最小战斗态：敌我各一条**活着**的单位记录（`isAlive` 读三系血），交距 2000 m（在投网射程内） */
+function battleOf(spec: UnitSpec, foes: readonly UnitSpec[]): BattleState {
+  const units: Record<string, { name: string; hp: { s: number; a: number; h: number } }> = {
+    [spec.tag]: { name: spec.name, hp: { s: 100, a: 100, h: 100 } },
+  }
+  for (const f of foes) units[f.tag] = { name: f.name, hp: { s: 100, a: 100, h: 100 } }
+  return { lastTickGameMs: 0, units, fx: [], fxSeq: 0, distanceM: 2_000 } as unknown as BattleState
+}
 
 /* ══════════════ ① 截击舰：不会被网子选为目标 ══════════════ */
 
@@ -209,5 +238,34 @@ describe('文案落点（中英齐备 · id 制）', () => {
     expect(trait, 'ui.shipInfo.245 应登记').toBeTruthy()
     expect(trait!.zh).toBe('不会被网子选为目标')
     expect(trait!.en.length).toBeGreaterThan(0)
+  })
+
+  /**
+   * **按族改一句**（**船长 2026-09-30 裁决**：「网钉住 C 族，**按族改一句**」）——
+   * 我方墨潮捕获网钉住 C 族时的战报**不再写「推进器熄火」**（那层对本族不生效），
+   * 改说「冲锋不受网的推进器压制」，且这句走 **id 制**（`core.combat.004` ＋ 槽 3 的 `p3Id` 模板）。
+   */
+  it('战报按族分岔：钉住 C 族不写「推进器熄火」，钉住别族照旧', () => {
+    const c = webCarrier()
+    const cFoes = foeSpecsOf('foe-alien-maw')
+    expect(cFoes[0]!.foeChargeWebImmune, 'C 族 T4 带旗标').toBe(true)
+    advanceMyCaptureWebs(c.state, battleOf(c.spec, cFoes), [c.spec], cFoes)
+    const cLog = c.state.logs[c.state.logs.length - 1]!
+    expect(cLog.text, 'C 族那句不说推进器熄火').not.toContain('推进器熄火')
+    expect(cLog.text).toContain('C 族的冲锋不受网的推进器压制')
+    expect(cLog.textId, '新写的玩家可见文案走 id 制').toBe('core.combat.004')
+    expect(cLog.textParams).toMatchObject({ p1: c.spec.name, p2: cFoes[0]!.name, p3Id: 'core.combat.005' })
+    // 效果照旧：减速 ×0.5 与闪避归零对 C 族**仍然生效**，只有推进器那层被豁免
+    expect(cFoes[0]!.evasion).toBe(0)
+    expect(cFoes[0]!.thrusterBoost).toBeUndefined()
+
+    const h = webCarrier()
+    const hFoes = foeSpecsOf('foe-h-ink-corvette')
+    expect(hFoes[0]!.foeChargeWebImmune, 'H 族不带该旗标').toBeUndefined()
+    advanceMyCaptureWebs(h.state, battleOf(h.spec, hFoes), [h.spec], hFoes)
+    const hLog = h.state.logs[h.state.logs.length - 1]!
+    expect(hLog.text).toContain('推进器熄火')
+    expect(hLog.textId, '既有那句文案不动（仍是中文原串）').toBeUndefined()
+    expect(hFoes[0]!.thrusterBoost, '别族照旧被关推进器').toBe(0)
   })
 })

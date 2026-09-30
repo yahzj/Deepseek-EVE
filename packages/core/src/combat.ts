@@ -1378,11 +1378,34 @@ export function advanceMyCaptureWebs(
        * 减速 50% 仍读作「机动减半」，其它倍率读成「机动 ×N」——数字由 `webSlowMul` 现算，不再写死"减半"。
        */
       const slowTxt = webSlowMul === 0.5 ? '机动减半' : `机动 ×${webSlowMul}`
+      /**
+       * **按族改一句**（**船长 2026-09-30 裁决**：「网钉住 C 族，**按族改一句**」）——
+       * C 族的冲锋不吃网的「关推进器」那层（见 `FoeMountDef.charge.webImmune` / `applyFoeWebDebuff`），
+       * 所以钉住 C 族时**不写「推进器熄火」**，改说「冲锋不受网的推进器压制」。
+       *
+       * ⚠ 新写的玩家可见文案走 **id 制**（甲案）：本句 `core.combat.004`，槽 3 的减速那句自己的模板
+       * 由 `p3Id` 选（`core.combat.005` = 机动减半 / `core.combat.006` = 机动 ×N，`p3p1` 给倍率）；
+       * `text` 仍是中文原串（老档 / 工具断言 / 控制台用）。非 C 族那一句**照旧**（既有文案，不动）。
+       */
+      const immune = pick.foeChargeWebImmune === true
       addLog(
         state,
         'warn',
-        `${me.name} 张开墨潮捕获网，钉住了 ${pick.name}：${slowTxt}、推进器熄火、闪避失效——` +
-          `击沉目标或击沉网手才能解除。`,
+        immune
+          ? `${me.name} 张开墨潮捕获网，钉住了 ${pick.name}：${slowTxt}、闪避失效，` +
+            `C 族的冲锋不受网的推进器压制——击沉目标或击沉网手才能解除。`
+          : `${me.name} 张开墨潮捕获网，钉住了 ${pick.name}：${slowTxt}、推进器熄火、闪避失效——` +
+            `击沉目标或击沉网手才能解除。`,
+        immune ? 'core.combat.004' : undefined,
+        immune
+          ? {
+              p1: me.name,
+              p2: pick.name,
+              p3: slowTxt,
+              p3Id: webSlowMul === 0.5 ? 'core.combat.005' : 'core.combat.006',
+              ...(webSlowMul === 0.5 ? {} : { p3p1: webSlowMul }),
+            }
+          : undefined,
       )
     }
   }

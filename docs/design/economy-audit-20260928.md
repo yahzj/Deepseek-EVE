@@ -2534,6 +2534,14 @@ C 族每条舰级都挂一件「**虫群冲锋器 T1~T4**」（舰级级挂载�
   A 族「劫掠冲锋推进器」照旧只有冲锋那句。
 - `ui.shipInfo.245`：zh「**不会被网子选为目标**」/ en「Cannot be targeted by webs」——
   进舰船「**船体特性**」栏（与 `ShipDef.interceptorImmuneToWeb` 同源，判据是数据字段不是硬判子分类）。
+- **战报按族分岔**（**船长 2026-09-30 裁决**：「网钉住 C 族，**按族改一句**」）——我方墨潮捕获网钉住
+  **C 族**时不再写「推进器熄火」（那层对本族不生效），改说「冲锋不受网的推进器压制」：
+  - `core.combat.004`：zh「`{p1}` 张开墨潮捕获网，钉住了 `{p2}`：`{p3}`、闪避失效，C 族的冲锋不受网的推进器压制——击沉目标或击沉网手才能解除。」
+    en「… casts the Ink Tide capture web, pinning …: …, evasion disabled; Aberrant charges are unaffected by the thruster lockout — sink the target or the caster to break free.」
+    ⚠ 英文按 `ui.Handbook.335` 的官方名「Aberrant lifeforms」取 `Aberrant`，件名按 `mod-lair-web-h` 的 `Ink Tide Capture Web`。
+  - `core.combat.005`（`机动减半` / `speed halved`）与 `core.combat.006`（`机动 ×{p1}` / `speed ×{p1}`）＝
+    槽 3 那句自己的模板，由 `p3Id` 选、`p3p1` 给倍率（**id 制**；`text` 仍是中文原串兜底）。
+  - 非 C 族那一句**一字未动**（既有文案、仍走中文原串，不强行改造）。
 
 ### 44.4 本批改了哪些文件（逐个列出）
 
@@ -2541,24 +2549,24 @@ C 族每条舰级都挂一件「**虫群冲锋器 T1~T4**」（舰级级挂载�
 |---|---|
 | `packages/core/src/types.ts` | `ShipDef.interceptorImmuneToWeb` ＋ `FoeMountDef.charge.webImmune` 两个数据开关（含口径注释） |
 | `packages/core/src/foeMounts.ts` | 四件虫群冲锋器置 `webImmune`；`ResolvedFoeMounts.foeChargeWebImmune` ＋ 解析单点 |
-| `packages/core/src/combat.ts` | `UnitSpec` 两个字段 · `createFoeSpecsFromShips` / `createPlayerSpec` 带出 · **两处单点守卫**（`fireFoeCaptureWeb` / `applyFoeWebDebuff`） |
+| `packages/core/src/combat.ts` | `UnitSpec` 两个字段 · `createFoeSpecsFromShips` / `createPlayerSpec` 带出 · **两处单点守卫**（`fireFoeCaptureWeb` / `applyFoeWebDebuff`）· 战报按族分岔（`advanceMyCaptureWebs` 的那一条日志） |
 | `packages/data/src/ships.ts` | `sh-wh-c-frigate` / `sh-wh-c-destroyer` 置 `interceptorImmuneToWeb: true` |
-| `packages/data/src/l10n/table.ts` | 新 id 两条：`ui.foeIntro.109` · `ui.shipInfo.245`（中英齐备） |
+| `packages/data/src/l10n/table.ts` | 新 id 五条：`ui.foeIntro.109` · `ui.shipInfo.245` · `core.combat.004/005/006`（中英齐备） |
 | `apps/desktop/src/renderer/src/ui/foeBrief.ts` | 挂载件明文效果：带旗标的冲锋件多接一句（三处显示同源） |
 | `apps/desktop/src/renderer/src/ui/shipInfo.tsx` | 「船体特性」栏新增一行（截击舰特性） |
 | `tools/content-check.ts` | 敌方挂载件契约新增第 ⑧ 组：四件冲锋器必须有旗标、别件不许有；截击舰特性**恰好两艘**且子分类对；汇总行补两条读数 |
-| `packages/core/tests/web-immunity-20260930.test.ts` | **新增** 8 条用例（数据 / 建档 / 两处单点 / 真战斗取证 ＋ 对照 / 文案） |
+| `packages/core/tests/web-immunity-20260930.test.ts` | **新增** 9 条用例（数据 / 建档 / 两处单点 / 真战斗取证 ＋ 对照 / 文案 ＋ 战报按族分岔） |
 | `docs/design/economy-audit-20260928.md` | 本节 ＋ ⚠ **行尾修复**（见 44.6） |
 
-⚠ 提交形态：一条提交落在 **`d2/workspace`**（提交信息 `feat(combat): 网与冲锋的边界 …`），提交前闸门四条全绿；
-随后 `git rebase main` 追平主线，**main 未由二号改动**（合入仍由一号/船长按老规矩办）。
+⚠ 提交形态：落在 **`d2/workspace`**（提交信息 `feat(combat): 网与冲锋的边界 …` ＋ 一条裁决落地提交），
+提交前闸门四条全绿；`git rebase main` 追平主线，**main 未由二号改动**（合入仍由一号/船长按老规矩办）。
 
 ### 44.5 验证
 
-`typecheck` 绿 · **2,857 测试全过（272 文件）** · `content:check` 绿
+`typecheck` 绿 · **2,858 测试全过（272 文件）** · `content:check` 绿
 （`· **C 族冲锋免网** 4 件（网「关推进器」对该族不生效） · **截击舰不可被网选中** 2 艘（幼虫截击舰、甲壳截击舰）`）·
 `l10n:check` 绿 · `ui:rot-check` 绿。
-⚠ 上面是**追平 main 之后**的读数（追平前本批自己的读数是 2,848 / 271 文件 —— 差的 9 条是 main 那批的用例）。
+⚠ 上面是**追平 main 之后**的读数（追平前本批自己的读数是 2,848 / 271 文件 —— 差的那些是 main 那批的用例）。
 
 ① 的**真战斗取证**（新用例，非模拟）：同一条真实洞内卡 `wh-pirate-warband`（深度 4）、同一段 60 秒，
 我方只有一艘**截击舰** ⇒ 敌方**照常开火**（`stats.foeShots > 0`）却**一次网都没落**（`meWebDebuffs` 空、
@@ -2582,18 +2590,13 @@ C 族每条舰级都挂一件「**虫群冲锋器 T1~T4**」（舰级级挂载�
    是历史上某次用 PowerShell 写文件时误把 `` `r `` 当字面量写进去的。**本批未动**（越出本批范围），
    留报船长处置。
 
-### 44.7 待裁决点（本节新增）
+### 44.7 船长裁决（2026-09-30）与仍未决的一条
 
-- **⚠ 最重要的一条：②现在只落在"敌阵一侧"**。本批按已确认设计实现成
-  「**我方的网 × 敌方的 C 族**」（单点 `applyFoeWebDebuff`），而**战斗读数上真正会变的**是另一侧：
-  **我方 C 族舰船**（幼虫截击舰 / 甲壳截击舰 / 那艘巡洋舰）吃**敌方**劫掠捕获网时，
-  它的「关推进器」层**会把我方的点火爆发清零**（`applyMeWebDebuff` → `thrusterBoost = 0`，
-  这是我方机动链真读的一格）。
-  ⇒ 若船长那句「网『关推进器』对 C 族无效」是**按族**算（不分敌我），那还该在 `applyMeWebDebuff` 上
-  加同款豁免（判据 = `ShipDef` 侧的 C 族字段），届时**有真实读数变化**（C 族舰挨网后仍有点火速度）。
-  **本批没做**（不在已确认的范围内），等船长一句话。
-- **②要不要接进敌阵机动链**（现状是"无战斗读数变化的规则声明"）：若要它真的影响战斗，
-  等于把 `thrusterBoost` 层接进敌阵规格 ⇒ 会**同时改变**A 族/H 族被网后的表现，属新机制，等船长定。
-- **我方网钉住 C 族时的日志文案**仍写「机动减半、**推进器熄火**、闪避失效」（该层对本族已不生效）
-  —— 要不要按族改一句？属玩家可见文案（改动要取新 id 并接 `addLog` 那条链），等船长定。
-- `types.ts` 那 2 处被吃掉的 `r`（44.6 第 2 条）要不要顺手清掉。
+**船长原话（照抄）**：「**族设定只针对敌人。第 2 条不用写。网钉住 C 族，按族改一句**」
+
+| 上一轮的待裁决点 | 船长裁决 | 落地结果 |
+|---|---|---|
+| ② 那条族设定算不算「按族、不分敌我」 | **只针对敌人** | **与实现一致，无需改动**：只落「我方的网 × 敌方的 C 族」这一侧，`applyMeWebDebuff` 不加豁免 ⇒ 我方 C 族舰挨网时点火爆发**照旧被清零** |
+| ② 要不要接进敌阵机动链 | **不用写** | **不做**：②维持"规则声明 ＋ 玩家可见文案 ＋ 防回归守卫"，不改任何既有战斗读数 |
+| 我方网钉住 C 族时的战报仍写「推进器熄火」 | **按族改一句** | **已落地**：战报按族分岔 ＋ 三个新 id（见 44.3 第三条），新增用例 1 条把两族两句都钉住 |
+| `types.ts` 那 2 处被吃掉的 `r`（44.6 第 2 条） | **未答** | **仍挂着**：本批未动，等船长一句话 |
