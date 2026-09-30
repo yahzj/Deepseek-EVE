@@ -16,20 +16,25 @@
  * ═══════════════════════════════════════════════════════════════════════════════ */
 
 .hud {
-  /* ── 深空配色（默认一套）── */
-  --hud-bg: #070a12;
-  --hud-bg-soft: #0b1019;
-  --hud-card: #0e1420;
-  --hud-muted: #131b29;
-  --hud-line: #1e2b40;
-  --hud-fg: #e6edf7;
-  --hud-fg-dim: #8fa3bf;
-  --hud-fg-faint: #5c718f;
-  --hud-accent: #4ea1ff;
-  --hud-accent-soft: #93c5fd;
-  --hud-ok: #3ddc97;
-  --hud-warn: #ffc857;
-  --hud-bad: #ff6b6b;
+  /* ── **调色板全部派生自主题令牌**（**2026-09-30 船长令**：「**需要和主题配色的色表对接**」）──
+     原先这里是一套硬编码的深空 hex；现在每一格都指向 `packages/ui/src/index.css` 的 `--wui-*`
+     （七套主题各有一份）⇒ **换主题时这一页跟着走**，不再是一块"钉死的皮肤"。
+     取色口径：底/卡/弱底/线/字取语义令牌；强调取该主题的 accent；良/警/危取 accent / gold / danger。 */
+  --hud-bg: rgb(var(--wui-bg-deep));
+  --hud-bg-soft: rgb(var(--wui-bg-winbox));
+  --hud-card: rgb(var(--wui-bg-panel));
+  --hud-muted: rgb(var(--wui-bg-sunken));
+  --hud-line: rgb(var(--wui-border));
+  --hud-line-bright: rgb(var(--wui-border-bright));
+  --hud-fg: rgb(var(--wui-text));
+  --hud-fg-dim: rgb(var(--wui-text-dim));
+  --hud-fg-faint: rgb(var(--wui-text-dim) / 0.72);
+  --hud-accent: rgb(var(--wui-accent));
+  --hud-accent-soft: rgb(var(--wui-accent) / 0.78);
+  --hud-accent-deep: rgb(var(--wui-accent-deep));
+  --hud-ok: rgb(var(--wui-accent));
+  --hud-warn: rgb(var(--wui-gold));
+  --hud-bad: rgb(var(--wui-danger));
   --hud-mono: 'Fira Code', ui-monospace, Consolas, 'Sarasa Mono SC', 'Microsoft YaHei Mono', monospace;
 
   position: relative;
@@ -38,7 +43,7 @@
   min-height: 0;
   height: 100%;
   background:
-    radial-gradient(1100px 620px at 78% -12%, rgba(78, 161, 255, 0.10), transparent 62%),
+    radial-gradient(1100px 620px at 78% -12%, rgb(var(--wui-accent) / 0.10), transparent 62%),
     var(--hud-bg);
   color: var(--hud-fg);
   font-family: var(--hud-mono);
@@ -300,6 +305,35 @@
 
 /* 空库存的 Bullet 条：只留轨道（不给"有一点点"的错觉） */
 .hud-bullet.is-empty .val { background: transparent; }
+
+/* ═══ **竖直燃料罐**（**2026-09-30 船长令**：「燃料罐的容量能否采用竖型的动态条（内部需要有动画，
+ * 液体条的顶部部分像真的液体一样波动，燃料罐的外壳条有玻璃质感）？并且需要和主题配色的色表对接」）═══
+ *
+ * 纪律（§6）：**形状一律 SVG**（罐体/玻璃/液体/刻度全在 `ui/FuelTank.tsx` 里画），这里只负责
+ * ① 布局尺寸 ② 液面波动的**位移动画**（动的是 SVG 内部元素的 transform，不是用 CSS 拼形状）。
+ * 配色全部走主题令牌（`--hud-*` → `--wui-*`），玻璃高光另用 SVG 渐变（不在 CSS 里做形状）。 */
+.hud-tank-wrap {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+.hud-tank { display: block; }
+/* 液面波动：两层波以不同速度横移（错速 ⇒ 看上去是流动的液体而不是平移的贴图） */
+.hud-tank .wave-a { animation: hud-wave 3.6s linear infinite; }
+.hud-tank .wave-b { animation: hud-wave 5.4s linear infinite; animation-direction: reverse; }
+@keyframes hud-wave {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+/* 罐内微光呼吸（只在有料时有意义；空罐不闪） */
+.hud-tank.is-filled .glow { animation: hud-breathe 4.2s ease-in-out infinite; }
+@keyframes hud-breathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.62; } }
+/* 读数块（罐右侧的数字与 chip） */
+.hud-tank-side { display: flex; flex-direction: column; gap: 6px; min-width: 132px; }
+@media (prefers-reduced-motion: reduce) {
+  .hud-tank .wave-a, .hud-tank .wave-b, .hud-tank.is-filled .glow { animation: none; }
+}
+body.no-fx .hud-tank .wave-a, body.no-fx .hud-tank .wave-b, body.no-fx .hud-tank.is-filled .glow { animation: none; }
 
 
 /* ── 闪烁状态灯（尊重 reduced-motion 与"关特效"）── */

@@ -43,6 +43,8 @@ import {
 /** 2026-09-30 船长令「跃迁燃料页先用 skill 优化」：HUD 语汇（图标按钮/图标读数）＋ 深空样式层 */
 import { RowGlyph } from '../ui/itemView'
 import { IconBtn } from '../ui/hud'
+/** 2026-09-30 船长令：竖直燃料罐（玻璃外壳 ＋ 液面波动，形状全在 SVG 里画） */
+import { FuelTank } from '../ui/FuelTank'
 import '../ui/layout-css/_hud-industry.css'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
@@ -224,7 +226,6 @@ function JumpFuelPanel({
   /** 一趟"长途返航"的量级（20 分钟 = 1,200 秒 ⇒ 1,200 单位）——库存条与"可支撑趟数"共用这一把尺 */
   const TRIP_UNITS = 1_200
   const trips = Math.floor(stock / TRIP_UNITS)
-  const fill = Math.max(0, Math.min(100, Math.round((stock / (TRIP_UNITS * 5)) * 100)))
   const activities: ReadonlyArray<{ k: JumpFuelActivity; g: string }> = [
     { k: 'mine', g: 'miner' },
     { k: 'salvage', g: 'salvager' },
@@ -234,15 +235,21 @@ function JumpFuelPanel({
   return (
     <Panel className="is-fill" title={tr('ui.jumpFuel.010')}>
       <div className="hud hud-embed">
-        {/* ── 库存读数：图标 ＋ 大数字 ＋ 图形条（少字）── */}
+        {/* ── 库存读数：**竖直燃料罐**（玻璃外壳 ＋ 液面波动）＋ 右侧数字（少字）── */}
         <div className="hud-panel">
-          <div className="hud-row between">
-            <span className="hud-row" style={{ gap: 10 }}>
-              <Glyph name="consumable" size={26} color="currentColor" />
-              <span className="hud-fuel-num">{stock.toLocaleString('zh-CN')}</span>
+          <div className="hud-tank-wrap">
+            <FuelTank
+              units={stock}
+              capacity={TRIP_UNITS * 5}
+              tickUnits={TRIP_UNITS}
+              label={tr('ui.jumpFuel.014')}
+            />
+            <div className="hud-tank-side">
+              <span className="hud-row" style={{ gap: 8 }}>
+                <Glyph name="consumable" size={18} color="currentColor" />
+                <span className="hud-fuel-num">{stock.toLocaleString('zh-CN')}</span>
+              </span>
               <span className="hud-tiny">{tr('ui.jumpFuel.013')}</span>
-            </span>
-            <span className="hud-row" style={{ gap: 8 }}>
               <span className="hud-chip" title={tr('ui.hud.201')}>
                 <Glyph name="nav-ship" size={12} color="currentColor" /> {trips}
               </span>
@@ -253,22 +260,14 @@ function JumpFuelPanel({
                 disabled={onGotoLab === undefined}
                 onClick={() => onGotoLab?.()}
               />
-            </span>
-          </div>
-          <div className="hud-row between" style={{ marginTop: 8 }}>
-            <span className="hud-tiny">{tr('ui.hud.201')}</span>
-            <span className="hud-tiny">{tr('ui.hud.203', { p1: (TRIP_UNITS * 5).toLocaleString('zh-CN') })}</span>
-          </div>
-          <span className={`hud-bullet${stock <= 0 ? ' is-empty' : ''}`} title={tr('ui.jumpFuel.014')}>
-            <span className="rng" style={{ left: 0, width: '100%' }} />
-            <span className="val" style={{ width: `${fill}%` }} />
-            <span className="tgt" style={{ left: `${Math.min(100, Math.round((TRIP_UNITS / (TRIP_UNITS * 5)) * 100))}%` }} />
-          </span>
-          {stock <= 0 ? (
-            <div className="hud-tiny" style={{ marginTop: 6, color: 'var(--hud-warn)' }}>
-              {tr('ui.jumpFuel.018')}
+              <span className="hud-tiny">{tr('ui.hud.203', { p1: (TRIP_UNITS * 5).toLocaleString('zh-CN') })}</span>
+              {stock <= 0 ? (
+                <span className="hud-tiny" style={{ color: 'var(--hud-warn)' }}>
+                  {tr('ui.jumpFuel.018')}
+                </span>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
 
         {/* ── 规格：三枚图标 chip（长句进 title）── */}
