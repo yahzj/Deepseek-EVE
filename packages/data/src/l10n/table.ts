@@ -625,6 +625,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
      「announce a meaningful contextual status such as 3 items in cart」「Don't: Announce a bare number」。 */
   "ui.hud.148": { zh: "优先使用的 AI：", en: "Preferred AI:" },
   "ui.hud.149": { zh: "剩余 {p1} 枚", en: "{p1} left" },
+  /* 缺料标记（**2026-09-30 船长令**：「工业生产项如果缺料的话，在悬浮窗内，缺料的项目需换红色字体
+     （或者其他方式标注出来）」＋同日追加「顺手在表格行上也标一处」）。
+     ⚠ 红字只是补充：这行文字才是主载体（Color Only（High）「Use icons/text in addition to color」）。 */
+  "ui.hud.150": { zh: "缺 {p1}", en: "{p1} short" },
   /* ── 信号发射器 · 星图「星系详细」内的启动容器（**2026-09-30 船长令**：「在星图的星系详细窗口内，
      新增一项『启动信号发射器』的使用按钮（独立一个容器…），并在其容器内说明使用会产生什么效果」）──
      ⚠ 落点两条路是船长同日裁定：「**直接使用是随机星系（这个要提醒玩家）。选择了星系后是固定。**」 */

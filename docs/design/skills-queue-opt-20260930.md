@@ -229,6 +229,58 @@
 选项 = 「伽马 AI 核心 · 60%」（本档只有伽马 ×2）。闸门：typecheck ✅ · core 276 文件/2907 用例 ✅ ·
 content/l10n/l10n:render/l10n:params/rot/theme/layout-css:check/arch ✅ · desktop＋web 构建 ✅。
 
+## 11. 追加批：工业 HUD 缺料标红（同日 · 船长令）
+
+**船长原话（照抄）**：
+> 「工业生产项如果缺料的话，在悬浮窗内，缺料的项目需换红色字体（或者其他方式标注出来）」
+
+**三问三答（同日裁定 · 全选甲）**：① 红色令牌＝`--hud-bad`（＝主题 danger）② 只在**未开工**时标红（照旧页口径）
+③ 顺手在**表格行上**也标一处。
+
+**技能依据**（`ui-ux-pro-max`，现场检索）：
+- Accessibility · **Color Only**（High）「Don't convey information by color alone」/「Do: Use icons/text in
+  addition to color」/「Don't: Red/green only for error/success」/ Good 例「Red text + error icon」/ Bad 例
+  「Red border only for error」⇒ **支持标红，但红字必须配文字**（同条也是仓库硬线）。
+- Typography/Accessibility · **Contrast Readability / Color Contrast**（High）「Body text needs good contrast」
+  /「Text must be readable against background」⇒ 用主题令牌、不写死色值。
+
+**排查中发现的两处既有问题（本批一并修）**：
+
+1. **缺料判定只做了一半**：`HudIoLine.ok` 只有书架/造船厂卡传过；**精炼炉投料卡根本没传**（＝船长报障的根因）。
+2. **`--hud-*` 令牌在悬浮卡里一个都取不到**（实测读 `getComputedStyle(.app-tip)`：`--hud-fg-dim`/`--hud-mono`/
+   `--hud-short` 全为空）——悬停卡由 `ui/Tooltip.tsx` 的**全局层**渲染，挂在 app 根、在 `.hud` **之外**
+   ⇒ 卡内所有 `var(--hud-*)` 静默失效（`.hud-tiny` 是继承色、`.hud-io-num` 不是等宽字体，
+   **改前那条 `is-short` 金色其实从未生效**）。修法＝把令牌块的selector 从 `.hud` 扩成 `.hud, .app-tip`
+   （**只搬令牌**，`.hud` 的布局不落到提示层上）⇒ 卡内配色/字体一次性恢复成 HUD 该有的样子。
+3. **红色的令牌选择被读数推翻**：船长选的是 `--hud-bad`（＝`--wui-danger`），但实测六套主题里
+   **高对比主题的 `--wui-danger` ＝ `255 246 245`（近白）**、`--wui-red` 同样 `254 245 245` ⇒ 那里根本不红；
+   `--wui-danger-strong`（`#E53935`，2026-09-25 船长选定的六主题同值固定深红）才是唯一"到哪都红"的
+   ⇒ HUD 内另立 `--hud-short: rgb(var(--wui-danger-strong))` 承载它（换色只改这一行）。
+   对比度：`#E53935` 对 HUD 面板底 ≈ 4.6:1 ⇒ 过 AA。
+
+| 文件 | 改动 |
+|---|---|
+| `apps/desktop/.../ui/hud.tsx` | `HudIoLine` 增 `short?: ReactNode`（缺多少的**成文真值**）；`IoLine` 渲染 `.hud-io-short`；改掉与实现不符的 `ok` 注释 |
+| `apps/desktop/.../pages/IndustryHudPage.tsx` | 新增 `feedBatchOf` / `feedShortOf`（与起炉同一套口径：矿/气/冰 = `refineBaseParamsOf`、残骸 = m³、货柜 = 1 件）；`feedTip` 补 `ok`/`short`；**投料表行**加 `.hud-row-short`；`shelfTip` 的材料行补 `short`；在跑的工位卡**不标**（照旧页口径） |
+| `apps/desktop/.../ui/layout-css/_hud-industry.css` | 令牌块扩到 `.hud, .app-tip`（见上第 2 条）· 新增 `--hud-short` · `.hud-io-row.is-short`/`.hud-io-short`/`.hud-row-short` 改用它 |
+| `apps/desktop/.../ui/layout-css/styles-{classic,modern}.css` | `npm run ui:layout-css` 生成 |
+| `packages/data/src/l10n/table.ts` | `ui.hud.150`「缺 {p1}」/「{p1} short」 |
+
+**验收读数**（日志 `tools/_ui-artifacts/hud-short-mark-readings-20260930.log`；截图 `shots/hud-short-mark.png`）：
+造一条缺料行（橄榄岩：每批 100 件、库存压到 97 ⇒ 应缺 3 件）：
+
+| 项 | 读数 |
+|---|---|
+| 投料**行**标记 | 「缺 3」· `rgb(229, 57, 53)` · font-weight 600（深空/高对比/亮白 **三套主题逐套复测同值**） |
+| 悬停该行 ⇒ 卡内 | 卡标题「橄榄岩」· `缺料行数 = 1` · 缺料行文字「橄榄岩缺 3」· 行尾真值「缺 3」· 颜色同为 `rgb(229, 57, 53)` |
+| 对照（不缺的投料行） | 行上无标记 · 卡内 `缺料行数 = 0` |
+| 在跑的工位卡 | `缺料行数 = 0`（照旧页口径：在跑的不标红，免得读成故障） |
+| 令牌对照 | 深空 `--wui-danger 255 131 115` ✅ · **高对比 `255 246 245` ❌（近白）** · 亮白 `140 16 0` ✅；`--wui-danger-strong` 三套都 `229 57 53` ✅ |
+
+闸门：typecheck ✅ · core 276 文件/2908 用例 ✅ · content/l10n/l10n:render/l10n:params/rot/theme/
+layout-css:check/arch ✅ · desktop＋web 构建 ✅。
+
+
 
 
 

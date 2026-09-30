@@ -15,7 +15,14 @@
  * 草稿与令牌出处见工作文档 `docs/design/industry-console-design-20260930.md`。
  * ═══════════════════════════════════════════════════════════════════════════════ */
 
-.hud {
+/* **令牌块挂两个作用域**：页面根 `.hud` ＋ **悬停卡层 `.app-tip`**。
+   ⚠ 为什么必须带 `.app-tip`（2026-09-30 实测，读 `getComputedStyle`）：悬浮卡由 `ui/Tooltip.tsx` 的
+   **全局层**渲染（挂在 app 根、在 `.hud` 之外）⇒ 卡内的 `var(--hud-*)` 一个都取不到：
+   `.hud-tiny` 在卡里是继承色（240,243,246，本该是弱字色）、`.hud-io-num` 不是等宽字体、
+   缺料红字 `--hud-short` 为空 ⇒ **整张卡的 HUD 配色静默失效**（改前那条 `is-short` 金色也从未生效）。
+   ⚠ 只搬**令牌**：`.hud` 的布局（position/display/height/背景）不落到提示层上。 */
+.hud,
+.app-tip {
   /* ── **调色板全部派生自主题令牌**（**2026-09-30 船长令**：「**需要和主题配色的色表对接**」）──
      原先这里是一套硬编码的深空 hex；现在每一格都指向 `packages/ui/src/index.css` 的 `--wui-*`
      （七套主题各有一份）⇒ **换主题时这一页跟着走**，不再是一块"钉死的皮肤"。
@@ -46,8 +53,23 @@
   --hud-ok: rgb(var(--wui-accent));
   --hud-warn: rgb(var(--wui-gold));
   --hud-bad: rgb(var(--wui-danger));
+  /**
+   * **缺料专用的红**（2026-09-30 船长令：「缺料的项目需换红色字体」）。
+   *
+   * ⚠ **为什么不用 `--hud-bad`（＝`--wui-danger`）**——实测（1540×940 · 六套主题逐套读 `getComputedStyle`）：
+   *   · `--wui-danger`：深空 `255 131 115` ✓ · 亮白 `140 16 0` ✓ · **高对比 `255 246 245`（近白）✗** ·
+   *     暖色 `225 169 152` ✓ · 夜间 `246 96 76` ✓ · 色盲 `225 169 152` ✓ ⇒ **高对比主题下不是红**；
+   *   · `--wui-red` 同样在高对比里是 `254 245 245`（近白）✗；
+   *   · `--wui-danger-strong`（`#E53935`）**六套主题同值**（2026-09-25 船长选定的固定深红）
+   *     ⇒ 只有它在六套里都真的是红。文字对比：`#E53935` 对 HUD 面板底（近黑）≈ 4.6:1 ⇒ 过 AA。
+   * 语义上它本来给"入侵标记"用；这里是**借它的色值**，故在 HUD 内另立一个语义令牌 `--hud-short`，
+   * 以后要换色只改这一行。
+   */
+  --hud-short: rgb(var(--wui-danger-strong));
   --hud-mono: 'Fira Code', ui-monospace, Consolas, 'Sarasa Mono SC', 'Microsoft YaHei Mono', monospace;
+}
 
+.hud {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -199,8 +221,26 @@
    船长同日明确「动画不建议压缩，可以拉高行高」。 */
 .hud-fx-cell { width: 40px; padding-right: 0; }
 .hud-fx-cell .app-inv-fx { width: 40px; height: 26px; }
-/* 输入列里"这一项不够"的行：整行弱化（**缺哪几项另有文字**，颜色不是唯一载体） */
-.hud-io-row.is-short { color: var(--hud-warn); }
+/* 缺料行（2026-09-30 船长令：「缺料的项目需换红色字体（或者其他方式标注出来）」）：
+   **红字 ＋ 加粗**（与旧工业页 `.app-bp-mat.is-short` 同款语义），色取 `--hud-short`（六套主题都真的是红，
+   见文件头那条令牌注释）；⚠ 红色只是补充 —— 缺多少另有文字（`.hud-io-short` 行尾真值「缺 N」），
+   不靠颜色单独承载（`ui-ux-pro-max` Accessibility·Color Only（High）：「Use icons/text in addition to color」）。 */
+.hud-io-row.is-short { color: var(--hud-short); font-weight: 600; }
+.hud-io-short {
+  margin-left: auto;
+  color: var(--hud-short);
+  font-family: var(--hud-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+/* 表格行上的缺料标记（船长同日令：不靠悬停也要看得见——触屏没有 hover）——与卡内那处同色同字 */
+.hud-row-short {
+  color: var(--hud-short);
+  font-weight: 600;
+  font-family: var(--hud-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
 /* 无动画偏好 / 关特效：**停帧但保留静态线稿**（技能口径 UX「Reduced Motion（High）」） */
 @media (prefers-reduced-motion: reduce) {
   .hud-fx-cell .app-inv-fx *,

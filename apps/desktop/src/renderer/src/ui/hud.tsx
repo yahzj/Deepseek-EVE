@@ -69,7 +69,15 @@ export function Readout({ glyph, value, title }: { glyph: string; value: ReactNo
  * ⇒ 左列不能写死成"一味料"，必须是**清单形态（1..N 行材料）**：
  *   · 精炼 / 回收 / 拆解（单料）：一行材料 ＋ 若干**规格行**（每批件数 / 手上件数 / 每批秒数）；
  *   · 组装机 / 造船厂（多料）：逐材料一行（图标 ＋ 名 ＋ 需要 ×N），缺料由卡底那行文字点出。
- * 结构（`.hud-io` 两列）与工位卡原本的写法一致，只是抽成公共件、四个页签共用一份。 */
+ * 结构（`.hud-io` 两列）与工位卡原本的写法一致，只是抽成公共件、四个页签共用一份。
+ *
+ * **同日追加令**（「**工业生产项如果缺料的话，在悬浮窗内，缺料的项目需换红色字体
+ * （或者其他方式标注出来）**」）⇒ 缺料行＝**红字（`--hud-bad`，＋加粗）＋ 行尾真值「缺 N」**：
+ * 依据 `ui-ux-pro-max` Accessibility · **Color Only**（High）「Don't convey information by color
+ * alone」/「Do: Use icons/text in addition to color」/「Don't: Red/green only for error/success」
+ * ⇒ **红色只是补充，文字才是主载体**（同条也是仓库硬线「颜色不能是唯一载体」）。
+ * ⚠ 只在"**未开工**"的项上标（旧工业页 `.app-bp-mat.is-short` 那条口径：制造中/在跑的红字会被
+ * 误读成故障）——在跑的工位卡因此不传 `ok`。 */
 
 /** 悬浮卡里的一行：**有图标 = 材料行**；**没图标 = 规格行**（整行弱化读数，如「每批 100 件」） */
 export interface HudIoLine {
@@ -77,8 +85,13 @@ export interface HudIoLine {
   name?: ReactNode
   /** 行尾读数（材料行 = 「×N」/「×N · 手上 M」；规格行不用） */
   qty?: ReactNode
-  /** 输入列专用：这一项够不够（不够时整行弱化；**缺什么另有文字**，不靠颜色单独承载） */
+  /** 输入列专用：这一项够不够（不够 ⇒ 整行红字加粗；**缺多少另有文字**，见 `short`） */
   ok?: boolean
+  /**
+   * 输入列专用：**缺多少的成文真值**（如「缺 12」/「缺 12 m³」）——由调用点按 core 口径算好，
+   * 这里只负责摆；与 `ok: false` 配对使用（红字 ＋ 文字两件一起，缺一不算达标）。
+   */
+  short?: ReactNode
 }
 
 function IoLine({ line }: { line: HudIoLine }): ReactNode {
@@ -88,6 +101,7 @@ function IoLine({ line }: { line: HudIoLine }): ReactNode {
       <RowGlyph glyph={line.glyph} />
       <span>{line.name}</span>
       {line.qty !== undefined ? <b className="hud-io-num">{line.qty}</b> : null}
+      {line.short !== undefined ? <b className="hud-io-short">{line.short}</b> : null}
     </div>
   )
 }

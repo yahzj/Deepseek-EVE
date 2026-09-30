@@ -582,6 +582,26 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
    * 输出列：矿类走 `refineBatchOutputOf` 真值；残骸在未起炉时**只有保底原材料名**（引擎不给件数，
    * 界面的估算口径留在工业页的回收卡里，不往这里搬）；货柜的产出写不出件数 ⇒ 给物品自己的说明。
    */
+  /**
+   * **投料行"每批要吃多少"**（**2026-09-30 船长令**：缺料的项要在悬浮窗与行上标红＋标出缺多少）——
+   * 与起炉**同一套口径**、界面不复算：矿/气/冰 = `refineBaseParamsOf().batchUnits`（件）、
+   * 残骸 = `recycleBatchM3Of()`（m³，与 `ui.hud.144/145` 同单位）、货柜 = 1 件（一箱一件）。
+   */
+  const feedBatchOf = (def: (typeof feedDefs)[number]['def']): { per: number; unit: string } => {
+    if (def.kind === 'wreck') return { per: recycleBatchM3Of(def.id), unit: ' m³' }
+    if (def.kind === 'container') return { per: 1, unit: '' }
+    return { per: refineBaseParamsOf(def).batchUnits, unit: '' }
+  }
+  /**
+   * **缺料真值文字**（够 ⇒ `null`）：`ui.hud.150`「缺 {p1}」——**红字之外的文字载体**
+   * （`ui-ux-pro-max` Color Only（High）：红/绿不能单独承载信息）。**只在"未起炉"的行上用**：
+   * 投料表里的行本来就是待开工项；在跑的工位不标（旧工业页那条口径：在跑的红字会被误读成故障）。
+   */
+  const feedShortOf = (def: (typeof feedDefs)[number]['def'], have: number): string | null => {
+    const { per, unit } = feedBatchOf(def)
+    if (have >= per) return null
+    return tr('ui.hud.150', { p1: `${Math.ceil(per - have).toLocaleString('zh-CN')}${unit}` })
+  }
   const feedTip = (def: (typeof feedDefs)[number]['def'], have: number): ReactNode => {
     const isWreck = def.kind === 'wreck'
     const isBox = def.kind === 'container'
@@ -595,7 +615,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
      * 输入列只给"料名 ＋ 每批多少 ＋ 可用多少 ＋ 每批多久"，库存自己起一行
      * （船长同日：「建议『手上XXXX件』另外起一行，修改为（仓库：XXXX）」）。
      */
-    const input: HudIoLine[] = [{ glyph: itemGlyphName(def.id, def.kind), name: def.name }]
+    const input: HudIoLine[] = [{ glyph: itemGlyphName(def.id, def.kind), name: def.name, ok: feedShortOf(def, have) === null, short: feedShortOf(def, have) ?? undefined }]
     if (isWreck) {
       input.push({ name: tr('ui.hud.145', { p1: batchM3 }) })
       input.push({ name: tr('ui.hud.144', { p1: Math.floor(have).toLocaleString('zh-CN') }) })
@@ -645,7 +665,15 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
      */
     const input: HudIoLine[] = []
     for (const m of rows) {
-      input.push({ glyph: m.glyph, name: m.name, qty: `×${m.need.toLocaleString('zh-CN')}`, ok: m.ok })
+      /* 缺料行：红字 ＋ 行尾真值「缺 N」（`ok:false` 只上色，文字由 `short` 给 —— 颜色不是唯一载体）；
+         ⚠ 只在**未开工**的书架/造船厂行上标（正在制造的线不标红：旧工业页那条口径，免得误读成故障） */
+      input.push({
+        glyph: m.glyph,
+        name: m.name,
+        qty: `×${m.need.toLocaleString('zh-CN')}`,
+        ok: m.ok,
+        short: m.ok ? undefined : tr('ui.hud.150', { p1: (m.need - m.have).toLocaleString('zh-CN') }),
+      })
       input.push({ name: tr('ui.hud.118', { p1: m.have.toLocaleString('zh-CN') }) })
     }
     return (
@@ -914,6 +942,10 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                             <span className="hud-row" style={{ gap: 6 }}>
                               <RowGlyph glyph={def.kind} />
                               <span>{def.name}</span>
+                              {/* 缺料：**不靠悬停也看得见**（船长同日令；触屏没有 hover）——红字 ＋ 真值「缺 N」 */}
+                              {feedShortOf(def, have) !== null ? (
+                                <b className="hud-row-short">{feedShortOf(def, have)}</b>
+                              ) : null}
                               {def.kind === 'wreck' ? (
                                 <span className="hud-chip">{tr(`ui.IndustryPage.00${wreckTierOf(def.id) === 'rare' ? 9 : 8}`)}</span>
                               ) : null}
