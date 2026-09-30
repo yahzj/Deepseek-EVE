@@ -470,7 +470,7 @@ function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: strin
   if (pilotBlock) return { ok: false, error: pilotBlock }
   const standing = standingOf(state, DSI_FACTION_ID)
   if (standing < anomaly.standingReq) {
-    return { ok: false, error: `需要「深空工业协会」声望 ${anomaly.standingReq}（当前 ${standing}），多完成低级目标攒声望。` }
+    return { ok: false, error: `需要「深空工业协会」声望 ${anomaly.standingReq}（累计 ${standing}），多完成低级目标攒声望。` }
   }
   // V13 探索封锁：目标星系未点亮（且非母港）→ 拒绝出发
   const block = actionBlockReason(state, anomaly.galaxyId)
