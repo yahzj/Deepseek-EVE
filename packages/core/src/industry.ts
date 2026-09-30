@@ -70,6 +70,58 @@ export function refineRate(state: GameState, ctx: SimContext): number {
   return Math.max(0, rate)
 }
 
+/**
+ * **精炼产出倍率的真实上限**（满技能时的那一格）——**2026-09-30 三号接手批新增**。
+ *
+ * 为什么要有它（读数）：HUD 页原先在环旁边写「满产基准 = 当前倍率 × 120%」（实测 184%），
+ * 而真实上限是 `baseRate + 5×精炼学 + 5×高级回收 + 5×熔炉精通`（该档应为 170%）——
+ * 那个 120 没有任何出处、还会超过真实满级 ⇒ 改成从 `ctx.balance` **现算**，页面不再自造刻度。
+ *
+ * 口径 = 三个加成技能的**封顶等级都取 5**（`SMELT_MASTERY_MAX_LEVEL` 等三支各自的 5 级；
+ * 与 `refineRate` 的算式逐项同源，改一支不会漏改另一支）。
+ */
+export const REFINE_SKILL_MAX_LEVEL = 5
+export function refineRateMax(ctx: SimContext): number {
+  const bal = ctx.balance.refining
+  const perLevel = bal.ratePerLevel + bal.secondRatePerLevel + 0.01 // 精炼学 ＋ 高级回收 ＋ 熔炉精通学
+  return Math.max(0, bal.baseRate + perLevel * REFINE_SKILL_MAX_LEVEL)
+}
+
+/** 精炼一批的**逐项产出**（矿物种 id → 件数；结算与界面读数共用这一把尺） */
+export interface RefineOutputRow {
+  mineralId: string
+  units: number
+}
+
+/**
+ * **一批精炼的产出（唯一实现）**——**2026-09-30 三号接手批抽出**。
+ *
+ * 算式与结算逐字同源：`floor(每批件数 × 该矿物 perOre × 当前产出倍率 × 该矿专属倍率)`
+ * （虚空晶那一支额外吃「虚空精炼技术」加成，见 `matterTechVoidYield`；其余矿种不动）。
+ * 抽出来的理由：HUD 页的"生产项悬停卡"要显示**真实产出**，而渲染层没有测试运行器、
+ * 自己乘一遍必然与结算漂移（本仓 F2 单点纪律）。
+ *
+ * ⚠ 只认 `kind === 'mineral'` 的产出项（与结算的跳过条件一致）；件数为 0 的行**不返回**
+ * （与结算"units > 0 才入库"一致）。
+ */
+export function refineBatchOutputOf(
+  state: GameState,
+  ctx: SimContext,
+  def: ItemDef,
+  perBatchUnits: number,
+): RefineOutputRow[] {
+  const rate = refineRate(state, ctx)
+  const out: RefineOutputRow[] = []
+  for (const row of def.refine ?? []) {
+    const mineral = ctx.items.get(row.mineralId)
+    if (!mineral || mineral.kind !== 'mineral') continue
+    const rowMul = row.mineralId === 'min-voidcrystal' ? 1 + matterTechVoidYield(state, ctx) : 1
+    const units = Math.floor(perBatchUnits * row.perOre * rate * rowMul)
+    if (units > 0) out.push({ mineralId: row.mineralId, units })
+  }
+  return out
+}
+
 /** 矿石在"货仓+仓库"的合计数量 */
 export function oreAvailable(state: GameState, oreId: string): number {
   return countItem(state, oreId) + countWare(state, oreId)
@@ -1025,19 +1077,13 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         r.recAcc = acc
       } else {
         // 精炼批：产物矿物入库，并累计进 r.recAcc.min（停炉/结束日志出明细）
-        const rate = refineRate(state, ctx)
         const acc = r.recAcc ?? { min: {}, mod: {}, frag: {} }
-        for (const row of def.refine ?? []) {
-          const mineral = ctx.items.get(row.mineralId)
-          if (!mineral || mineral.kind !== 'mineral') continue
-          // 谜质科技「虚空精炼技术」：只抬「虚空母矿 → 虚空晶」这一支（船长 2026-09-19；其它矿种与副产物不动）
-          const rowMul = row.mineralId === 'min-voidcrystal' ? 1 + matterTechVoidYield(state, ctx) : 1
-          const units = Math.floor(qty * row.perOre * rate * rowMul)
-          if (units > 0) {
-            addWare(state, row.mineralId, units)
-            acc.min[row.mineralId] = (acc.min[row.mineralId] ?? 0) + units
-            batchIncome += units * (mineral.baseSellPriceIsk ?? 0)
-          }
+        // ⚠ 产出算式 = core 单点 `refineBatchOutputOf`（界面悬停卡读同一支 ⇒ 结算与读数不会漂）
+        for (const out of refineBatchOutputOf(state, ctx, def, qty)) {
+          const mineral = ctx.items.get(out.mineralId)
+          addWare(state, out.mineralId, out.units)
+          acc.min[out.mineralId] = (acc.min[out.mineralId] ?? 0) + out.units
+          batchIncome += out.units * (mineral?.baseSellPriceIsk ?? 0)
         }
         r.recAcc = acc
       }

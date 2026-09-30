@@ -3062,7 +3062,7 @@ html[data-locale='en'] body {
 
 }
 
-.app-skill-card-bar i {
+.app-skill-card-bar i { transition: width 0.35s ease;
 
   display: block;
 
@@ -3914,7 +3914,7 @@ html[data-locale='en'] body {
 .app-act-dock { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--wui-sp-8) var(--wui-sp-18); padding: var(--wui-sp-10) var(--wui-sp-14) var(--wui-sp-12); border-top: 1px solid rgb(var(--wui-border)); background: rgb(var(--wui-bg-winbox) / 0.9); }
 .app-act-line { font-size: var(--wui-fs-sm); color: rgb(var(--wui-text-dim)); }
 .app-act-progress { position: relative; flex: 1 1 220px; height: 14px; min-width: 160px; border: 1px solid rgb(var(--wui-x01) / 0.14); border-radius: var(--wui-sp-7); background: rgb(var(--wui-bg-panel) / 0.7); overflow: hidden; }
-.app-act-bar { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, rgb(var(--wui-blue) / 0.55), rgb(var(--wui-blue) / 0.95)); }
+.app-act-bar { transition: width 0.35s ease; position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, rgb(var(--wui-blue) / 0.55), rgb(var(--wui-blue) / 0.95)); }
 .app-act-pct { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: var(--wui-fs-2xse); font-family: var(--wui-mono); color: rgb(var(--wui-bg-scene-2)); }
 @keyframes app-swin-sway { 0%, 100% { transform: rotate(-1.4deg); } 50% { transform: rotate(1.4deg); } }
 @keyframes app-swin-shake { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-1px, 0.6px); } 50% { transform: translate(1px, -0.6px); } 75% { transform: translate(-0.6px, -1px); } }
@@ -4402,7 +4402,7 @@ html[data-locale='en'] body {
 
 }
 
-.app-dur-fill {
+.app-dur-fill { transition: width 0.35s ease;
 
   height: 100%;
 
@@ -9493,7 +9493,7 @@ html[data-locale='en'] body {
 
 }
 
-.app-activitybar-fill {
+.app-activitybar-fill { transition: width 0.35s ease;
 
   display: block;
 
@@ -9587,7 +9587,7 @@ html[data-locale='en'] body {
 
 }
 
-.app-activitybar-scan.is-done .app-activitybar-fill { background: rgb(var(--wui-gold)); }
+.app-activitybar-scan.is-done .app-activitybar-fill { transition: width 0.35s ease; background: rgb(var(--wui-gold)); }
 
 .app-activitybar-scan.is-done .app-activitybar-scan-time { color: rgb(var(--wui-gold)); }
 
@@ -12576,4 +12576,28 @@ html[data-locale='en'] body {
 
   white-space: nowrap;
 
+}
+
+/* ═══════════ 进度条过渡（**2026-09-30 三号批** · 船长报障「除了原工业界面的卡牌上的进度条外，
+   其他地方的进度条都是瞬间涨幅的」）═══════════
+   四处填充原先**没有任何过渡** ⇒ 每拍直接跳：活动栏进度 .app-activitybar-fill（两套外壳共用）、
+   活动卡 .app-act-bar、舰船页工期 .app-dur-fill、技能卡 .app-skill-card-bar i。
+   本批统一补 **与原工业卡牌同一参数**的过渡（.app-card-progress i 就是 width .35s ease，
+   口径 = 船长那句"和原工业界面的卡牌一致"）。
+   ⚠ 新 HUD 页（.hud-bar > i）走的是技能口径的 	ransform: scaleX()（动效只碰 transform/opacity），
+   两条路线**参数一致（0.35s ease）**，观感对得上。
+   ⚠ 关动画偏好下不"涨"，直接给终态（无障碍硬线）。 */
+.app-activitybar-fill,
+.app-act-bar,
+.app-dur-fill,
+.app-skill-card-bar i {
+  transition: width 0.35s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-activitybar-fill,
+  .app-act-bar,
+  .app-dur-fill,
+  .app-skill-card-bar i {
+    transition: none;
+  }
 }
