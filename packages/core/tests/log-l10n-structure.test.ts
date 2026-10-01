@@ -207,7 +207,7 @@ describe('日志结构体检（甲案 · 2026-09-20 船长报障回归）', () =
         if (!k.startsWith('p1') || k === 'p1Id' || k === 'p1') continue
         deep[k.slice(2)] = v
       }
-      if (Object.prototype.hasOwnProperty.call(l.textParams ?? {}, 'p1')) deep.p1 = (l.textParams as Record<string, string | number>).p1!
+      if (Object.prototype.hasOwnProperty.call(l.textParams ?? {}, 'p1') && !Object.prototype.hasOwnProperty.call(deep, 'p1')) deep.p1 = (l.textParams as Record<string, string | number>).p1!
       const bodyEn = interpolate(L10N[bodyId]?.en ?? '', deep)
       if (bodyEn !== '') expect(en, `[${l.textId}] 正文必须真的在`).toContain(bodyEn)
       if (l.text.includes('（+')) {

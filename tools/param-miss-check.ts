@@ -305,7 +305,13 @@ for (const root of CORE_ROOTS) {
               if (ts.isPropertyAssignment(prop) || ts.isShorthandPropertyAssignment(prop)) keys.add(prop.name.getText(sf))
               else if (ts.isSpreadAssignment(prop)) spread = true
             }
-            const missing = need.filter((k) => !keys.has(k))
+            /**
+             * `logEvent` 的 id 不是基础模板，而是**正文槽译文**——函数内部把它挂成 `p1Id`
+             * （见 `events.ts` 的 `logEvent`），所以它的占位符 `{p{k}}` 由**槽内参数** `p1p{k}`
+             * 供给，而非顶层 `p{k}`。`addLog` 才是基础模板 ⇒ 仍对顶层 `p{k}`。
+             */
+            const isLogEvent = node.expression.text === 'logEvent'
+            const missing = need.filter((k) => !keys.has(isLogEvent ? `p1${k}` : k))
             if (!spread && missing.length > 0) {
               const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1
               thirdFindings.push({

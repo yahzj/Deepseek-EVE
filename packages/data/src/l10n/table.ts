@@ -274,7 +274,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.events.087": { zh: "突现大宗收购：有人以 {p1} 信用点/单位求购「{p2}」×{p3}（20 分钟内有效）。", en: "A bulk buy order appeared: someone wants “{p2}”×{p3} at {p1} credits per unit (valid for 20 minutes)." },
   "core.events.088": { zh: "突现大宗抛售：有人以 {p1} 信用点/单位放出「{p2}」×{p3}（20 分钟内有效）。", en: "A bulk sell order appeared: someone is offering “{p2}”×{p3} at {p1} credits per unit (valid for 20 minutes)." },
   "core.events.089": { zh: "黑市商人挂出一件「{p1}」：开价 {p2} 信用点（约为行情价 ×{p3} 的溢价现货），仅存 {p4} 分钟，手慢无——急用免蹲货，不差钱可出手。", en: "A black-market dealer listed one “{p1}”: {p2} credits (a premium of about ×{p3} over the market price), available for only {p4} minutes — first come, first served; pay up if you need it now." },
-  "core.events.090": { zh: "神秘买家以 {p1} 信用点的天价求购「{p2}」×1——远高于常态收购价，约 45 分钟内有效。", en: "A mysterious buyer is paying a sky-high {p1} credits for one “{p2}” — far above the usual buy price, valid for about 45 minutes." },
+  "core.events.090": { zh: "神秘买家以 {p1} 信用点的天价求购「{p2}」×1——远高于常态收购价，约 {p3} 分钟内有效。", en: "A mysterious buyer is paying a sky-high {p1} credits for one “{p2}” — far above the usual buy price, valid for about {p3} minutes." },
   "core.firstRewards.001": { zh: "◆ 任务奖励已发放：{p1}。", en: "◆ Task rewards granted: {p1}." },
   /* ── 第六批：onboarding / matterTech / explore（`未知星系` 两文件复用 ⇒ 归 state 命名空间）── */
   "core.state.024": { zh: "未知星系：{p1}。", en: "Unknown system: {p1}." },

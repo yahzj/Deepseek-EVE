@@ -275,14 +275,14 @@ export function fireMarketShockEvent(state: GameState, ctx: SimContext, offline 
     const def = goods[nextInt(state.rng, goods.length)]!
     if (!offline) {
       mk.pools[def.key]!.shock += 0.1
-      logEvent(state, `协会发布收购周通告：「${goodName(ctx, def.key)}」热度上升，行情看涨。`, undefined, 'core.events.084', { p1: goodName(ctx, def.key) })
+      logEvent(state, `协会发布收购周通告：「${goodName(ctx, def.key)}」热度上升，行情看涨。`, undefined, 'core.events.084', { p1p1: goodName(ctx, def.key) })
     }
   } else if (variant === 1) {
     const def = goods[nextInt(state.rng, goods.length)]!
     if (!offline) {
       mk.pools[def.key]!.shock -= 0.08
       mk.pools[def.key]!.q += Math.round(def.poolTarget! * 0.15)
-      logEvent(state, `站台倾销潮：有人集中抛售「${goodName(ctx, def.key)}」，价格被压低。`, undefined, 'core.events.085', { p1: goodName(ctx, def.key) })
+      logEvent(state, `站台倾销潮：有人集中抛售「${goodName(ctx, def.key)}」，价格被压低。`, undefined, 'core.events.085', { p1p1: goodName(ctx, def.key) })
     }
   } else if (variant === 2) {
     for (const def of goods) {
@@ -300,12 +300,12 @@ export function fireMarketShockEvent(state: GameState, ctx: SimContext, offline 
       const price = clampPrice(ctx, def, Math.round(level * (0.99 + nextRandom(state.rng) * 0.02)))
       if (offline) return
       mk.npcBuy[def.key]!.push({ price, qty, expiresAtGameMs: state.gameMs + bal.orderLifeMs.common })
-      logEvent(state, `突现大宗收购：有人以 ${price.toLocaleString('zh-CN')} 信用点/单位求购「${goodName(ctx, def.key)}」×${qty.toLocaleString('zh-CN')}（20 分钟内有效）。`, undefined, 'core.events.087', { p1: price.toLocaleString('zh-CN'), p2: goodName(ctx, def.key), p3: qty.toLocaleString('zh-CN') })
+      logEvent(state, `突现大宗收购：有人以 ${price.toLocaleString('zh-CN')} 信用点/单位求购「${goodName(ctx, def.key)}」×${qty.toLocaleString('zh-CN')}（20 分钟内有效）。`, undefined, 'core.events.087', { p1p1: price.toLocaleString('zh-CN'), p1p2: goodName(ctx, def.key), p1p3: qty.toLocaleString('zh-CN') })
     } else {
       const price = clampPrice(ctx, def, Math.max(Math.round(level * (1.05 + nextRandom(state.rng) * 0.02)), level + 1))
       if (offline) return
       mk.npcSell[def.key]!.push({ price, qty, expiresAtGameMs: state.gameMs + bal.orderLifeMs.common })
-      logEvent(state, `突现大宗抛售：有人以 ${price.toLocaleString('zh-CN')} 信用点/单位放出「${goodName(ctx, def.key)}」×${qty.toLocaleString('zh-CN')}（20 分钟内有效）。`, undefined, 'core.events.088', { p1: price.toLocaleString('zh-CN'), p2: goodName(ctx, def.key), p3: qty.toLocaleString('zh-CN') })
+      logEvent(state, `突现大宗抛售：有人以 ${price.toLocaleString('zh-CN')} 信用点/单位放出「${goodName(ctx, def.key)}」×${qty.toLocaleString('zh-CN')}（20 分钟内有效）。`, undefined, 'core.events.088', { p1p1: price.toLocaleString('zh-CN'), p1p2: goodName(ctx, def.key), p1p3: qty.toLocaleString('zh-CN') })
     }
   }
 }
@@ -351,7 +351,7 @@ export function fireMarketOrderEvent(state: GameState, ctx: SimContext, offline 
       `黑市商人挂出一件「${name}」：开价 ${price.toLocaleString('zh-CN')} 信用点（约为行情价 ×${mul.toFixed(1)} 的溢价现货），仅存 ${Math.round(BLACK_MARKET_LIFE_MS / 60_000)} 分钟，手慢无——急用免蹲货，不差钱可出手。`,
       undefined,
       'core.events.089',
-      { p1: name, p2: price.toLocaleString('zh-CN'), p3: mul.toFixed(1), p4: Math.round(BLACK_MARKET_LIFE_MS / 60_000) },
+      { p1p1: name, p1p2: price.toLocaleString('zh-CN'), p1p3: mul.toFixed(1), p1p4: Math.round(BLACK_MARKET_LIFE_MS / 60_000) },
     )
   } else {
     const lifeMs = ctx.balance.market.orderLifeMs[def.rarity]
@@ -363,7 +363,7 @@ export function fireMarketOrderEvent(state: GameState, ctx: SimContext, offline 
       `神秘买家以 ${price.toLocaleString('zh-CN')} 信用点的天价求购「${name}」×1——远高于常态收购价，约 ${Math.round(lifeMs / 60_000)} 分钟内有效。`,
       undefined,
       'core.events.090',
-      { p1: price.toLocaleString('zh-CN'), p2: name, p3: Math.round(lifeMs / 60_000) },
+      { p1p1: price.toLocaleString('zh-CN'), p1p2: name, p1p3: Math.round(lifeMs / 60_000) },
     )
   }
 }

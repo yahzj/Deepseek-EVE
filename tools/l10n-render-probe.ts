@@ -141,9 +141,32 @@ const FIXTURES: Fixture[] = [
     name: '事件·带槽模板（协会收购周：正文 id 自己就带 {p1}）',
     text: '✦ 协会发布收购周通告：「爆破弹药」热度上升，行情看涨。',
     textId: 'core.events.001',
-    textParams: { p1: '爆破弹药', p2: '', p1Id: 'core.events.084' },
+    textParams: { p1: '协会发布收购周通告：「爆破弹药」热度上升，行情看涨。', p2: '', p1p1: '爆破弹药', p1Id: 'core.events.084' },
     expectZh: '✦ 协会发布收购周通告：「爆破弹药」热度上升，行情看涨。',
     expectEn: '✦ The Association announced a buy week: demand for “爆破弹药” is up and the market looks bullish.',
+  },
+  {
+    /**
+     * **神秘买家回归**（船长 2026-10 报障：「神秘买家 … 求购「{p2}」×1… 损伤管制装置 MK1」）。
+     * 病根：市场事件调用点把槽值喂成**顶层** `p1/p2/p3`，而渲染层的槽译文 `p1Id` 按
+     * **槽内参数** `p1p1/p1p2/p1p3` 取 —— 于是 `{p2}`（商品名）无人供给、原样漏出，
+     * 且顶层 `p2` 被外壳当"金额附注槽"顶到句尾（商品名跑到了句末）。
+     * 修复后：槽值一律 `p1p{k}`，外壳 `{p2}` 恒空串，正文槽由 `p1Id` 译文代回。
+     */
+    name: '事件·神秘买家（{p1} 价格 / {p2} 商品名 —— 泄漏回归钉）',
+    text: '✦ 神秘买家以 856,159 信用点的天价求购「损伤管制装置 MK1」×1——远高于常态收购价，约 9 分钟内有效。',
+    textId: 'core.events.001',
+    textParams: {
+      p1: '神秘买家以 856,159 信用点的天价求购「损伤管制装置 MK1」×1——远高于常态收购价，约 9 分钟内有效。',
+      p2: '',
+      p1p1: '856,159',
+      p1p2: '损伤管制装置 MK1',
+      p1p3: 9,
+      p1Id: 'core.events.090',
+    },
+    expectZh: '✦ 神秘买家以 856,159 信用点的天价求购「损伤管制装置 MK1」×1——远高于常态收购价，约 9 分钟内有效。',
+    expectEn:
+      '✦ A mysterious buyer is paying a sky-high 856,159 credits for one “损伤管制装置 MK1” — far above the usual buy price, valid for about 9 minutes.',
   },
   {
     name: '市场·成交 + 贸易税尾槽（p5Id + p5p1）',
