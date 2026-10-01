@@ -34,6 +34,7 @@
  *    「快要建造完成时也只有右下角 1/4 有显示」）。
  * 3. **坞内舰形的位置靠"嵌套 svg 视口"给**（早期版本靠变换叠加，实测把船甩到 svg 左上角外）。
  */
+import { useId } from 'react'
 import type { ShipRole } from '@whale/core'
 import { ShipSpriteShape, shipArtSizeOf } from './ShipSprite'
 
@@ -102,7 +103,7 @@ export function DryDockFx({
    */
   const clipX = -shipW / 2 - 1
   const clipW = Math.max(1, shipW * pct + 2)
-  const CLIP_ID = 'hud-dock-progress-clip'
+
   /**
    * **显影用 mask ＋ 硬边渐变**（**2026-10-01 船长报障**：「舰船的上半部分线条始终不亮，只有下半部分的亮」）。
    *
@@ -111,10 +112,19 @@ export function DryDockFx({
    * 典型表现就是"上下只亮一半"。现在改成：mask 与渐变**都定义在舰形那个嵌套 svg 内部**
    * （同一坐标系，不再跨界），渐变用**硬边**（过渡区间仅 0.9%）标出"已成形 / 未成形"的分界。
    */
-  const maskId = 'hud-dock-progress-mask'
-  /** 船体区域遮罩（让"船体不透明"生效，但不显示自身） */
-  const hullMaskId = 'hud-dock-hull-mask'
-  const gradId = 'hud-dock-progress-grad'
+
+  /**
+   * ⚠ **SVG 的 id 必须每实例唯一**（**2026-10-01 船长报障**：「所有遮罩大小只会按照队列内最顶上这艘来决定」）：
+   * 原先三个 id 都是固定字符串，而造船厂队列里**每个在建舰各渲染一个 `DryDockFx`** ⇒ 同页多份同 id，
+   * 浏览器只会认**文档里第一个** ⇒ **所有船都用第一艘的遮罩尺寸**（正是船长看到的现象）。
+   * 现在用 React 的 `useId()` 给每个实例加后缀，各自引用自己的遮罩与渐变。
+   */
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '')
+  const maskId = `hud-dock-progress-mask-${uid}`
+  const gradId = `hud-dock-progress-grad-${uid}`
+  /** 船体区域遮罩（让"船体不透明"生效，但不显示自身；尺寸随本实例的 T 级） */
+  const hullMaskId = `hud-dock-hull-mask-${uid}`
+
   /** 硬边位置（0~1 的渐变坐标）；`pct` 为 0 时整段透明（什么都不亮） */
   const edge = Math.max(0.0001, Math.min(1, pct))
   const gradFrom = Math.max(0, edge - 0.009)
