@@ -443,7 +443,8 @@ button.hud-chip:hover { border-color: var(--hud-accent); color: var(--hud-accent
 /* ⚠ **选择器必须比 `.app-wh-ship-shape` 更具体**（它自带 `transform-box: fill-box; transform-origin: center`），
    而且**必须落在真正带 `transform` 属性的那个 `<g>` 上** —— `transform-origin` 是 CSS 属性、**不会继承**，
    挂在父层无效。`.hud-dock-craft` 是坞内舰体那一层的类（两层后代选择器 ⇒ 特异性足够覆盖）。 */
-.hud-dock-craft .app-wh-ship-shape { transform-box: view-box; transform-origin: 0 0; }
+/* 坞内舰形的**居中变换由坞景自己写在 `.hud-dock-craft` 的 `transform` 上**（见 `ui/dryDockFx.tsx`），
+   不再覆盖 `.app-wh-ship-shape` 的 transform-box/origin —— 那条实测无效（实机读数见该文件注释）。 */
 .hud-dock-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 /* 坞内动效：只碰 transform / opacity（§十四）；reduced-motion 与「关特效」下全停 */
 .hud-dock-craft { animation: hud-dock-float 7.5s ease-in-out infinite; }

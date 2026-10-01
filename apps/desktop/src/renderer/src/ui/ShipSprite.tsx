@@ -167,7 +167,11 @@ export function ShipSprite({
  *
  * 为什么要导出来：`ShipSpriteShape` 自己按这个比例放置舰形，而**外面的容器**（太空坞场景
  * `ui/dryDockFx.tsx` 的系留臂端点、裁剪窗）也需要知道"船实际的半高是多少"才能摆对位置 ——
- * 各自写死一份必然对不上（坞景第一版就把 110/240 写死，未命中回退时整条船被摆错）。
+ * 各自写死一份必然对不上。
+ * ⚠ **实情（2026-10-01 更正一次误报）**：数据层 40 个舰级**逐个都有独立形**（`sh-*` 40/40），
+ * 所以 140×64 那条回退在正式内容里**走不到**（只对异常旧档/未录形生效）；当时坞内摆错的真因是
+ * **坞景的定位方案**（`ui/dryDockFx.tsx`：最后改用**嵌套 `<svg>` 视口**一次性定死位置与缩放），
+ * 与"有没有资产"无关。
  */
 export function shipArtSizeOf(shipId?: string): { w: number; h: number; hit: boolean } {
   const hit = shipId !== undefined && SHIP_ART[shipId] !== undefined

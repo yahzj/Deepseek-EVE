@@ -30,6 +30,13 @@
  * - 动效只碰 `transform` / `opacity`（飞船悬浮漂移 ＋ 焊点闪烁），`prefers-reduced-motion` 与玩家
  *   「关特效」（`body.no-fx`）下全停（§十四）；
  * - 纯展示件（`aria-hidden`），不参与交互；坞景高度由外层 `.hud-dock-art` 定死 ⇒ 卡片不跳动。
+
+## 资产实情（2026-10-01 更正一次误报）
+
+数据层 **40 个舰级 100% 都有独立线稿**（`SHIP_ART` 的 `sh-*` 键 40/40），逐段显影对每一艘都成立；
+`ShipSpriteShape` 里那条 140×64 回退**在正式内容里走不到**（只对异常旧档/未录形生效）。
+我一度把"23/40"当事实报给船长 —— 那是**统计脚本只匹配单引号键**、而 `shipArtData.tsx` 用双引号键
+导致整文件被跳过所致。**教训**：统计资产先对齐"键的书写形态"，别拿一次正则的结果当结论。
  */
 import type { ShipRole } from '@whale/core'
 import { ShipSpriteShape, shipArtSizeOf } from './ShipSprite'
@@ -63,6 +70,25 @@ export function DryDockFx({
       —— 系留臂端点与裁剪窗都按它算，绝不在这里再写死一个比例（坞景第一版就是栽在这） */
   const art = shipArtSizeOf(shipId)
   /**
+   * **让舰形以坞中线为中心**：`ShipSpriteShape` 自己带 `transform="scale(s) translate(-w/2,-h/2)"`，
+   * 而那句在坞景里**整条被当成了位移**（实机读数：`matrix(0.958,0,0,0.958,-115,-52.7)`，舰形中心
+   * 跑到 svg 左上角外、偏移 −176/−94 px）⇒ 坞景自己把变换显式写出来，摆到 (0,0)：
+   * 先 `translate(-w/2,-h/2)` 把舰形移到原点，再按目标宽度缩放。
+   */
+  /**
+   * **舰形用"嵌套 svg 视口"定位**（2026-10-01 实机实测后的方案）：
+   * 之前试过两条路都不成立 —— ① 只靠 `ShipSpriteShape` 自带的 `scale(s) translate(-w/2,-h/2)`：
+   * 实测把整条舰甩到 svg 左上角外（中心偏移 −176/−94 px，截图见工作文档）；
+   * ② 在外层 `<g>` 上写变换、再给子层加"反向抵消"：实测只收敛到 −57/−39，抵消不干净。
+   * 现在改成：**坞景里嵌一个 `<svg viewBox="0 0 w h">` 小视口**，把舰形画布坐标直接映射进坞的坐标系
+   * —— 不依赖任何外层 transform 的叠加，位置与缩放各由 `<svg>` 的几何属性一次定死。
+   */
+  const shipVp = { x: VB_W / 2 - art.w / 2, y: VB_H / 2 - art.h / 2, w: art.w, h: art.h }
+  /** 把 `ShipSpriteShape` **自己那句** `scale(s) translate(-w/2,-h/2)` 反向抵消（先反缩放、再反平移）
+      —— 实机实测那句话在坞景里会把整条舰甩到 svg 左上角外（读数 −176/−94 px，截图为证），
+      而坞景这一层的 transform 是生效的 ⇒ 由坞景独占定位，子组件只出"未变换的形状"。 */
+  const undoShip = `translate(${art.w / 2},${art.h / 2}) scale(${(SHIP_W / art.w).toFixed(5)})`
+  /**
    * ⚠ **2026-10-01 撤掉一次"内容中心补偿"**：上一笔我曾按"回退剪影的内容中心 y≈50、画布中心 32"
    * 加过 30px 的垂直补偿 —— 那是**在错误前提下猜的**（当时真正的病是 `transform-box` 缺失、
    * 舰形整条堆在原点，见下）。前提修好后这个补偿只会把船推离坞中线 ⇒ **删除**。
@@ -70,8 +96,8 @@ export function DryDockFx({
    */
   const shipH = Math.round(SHIP_W * (art.h / art.w))
   /** 显影前沿的 x（从船尾即左端起算；两端各留 2px 余量，免得描边被切） */
-  const clipX = VB_W / 2 - SHIP_W / 2 - 1
-  const clipW = Math.max(1, SHIP_W * pct + 2)
+  const clipX = -1
+  const clipW = Math.max(1, shipVp.w * pct + 2)
   const CLIP_ID = 'hud-dock-progress-clip'
 
   return (
@@ -89,7 +115,7 @@ export function DryDockFx({
       <defs>
         {/* 显影窗口：宽度跟着进度长 ⇒ 建造从**船尾（引擎段）**往**船头**推进 */}
         <clipPath id={CLIP_ID}>
-          <rect x={clipX} y={0} width={clipW} height={VB_H} />
+          <rect x={clipX} y={0} width={clipW} height={shipVp.h} />
         </clipPath>
       </defs>
 
@@ -142,7 +168,16 @@ export function DryDockFx({
       })}
 
       {/* ── 坞内的在建舰：**真实线稿** ＋ 按进度逐段显影（船尾 → 船头）── */}
-      <g className="hud-dock-craft" color="var(--hud-accent-soft)">
+      <svg
+        className="hud-dock-craft"
+        x={shipVp.x}
+        y={shipVp.y}
+        width={shipVp.w}
+        height={shipVp.h}
+        viewBox={`${-shipVp.w / 2} ${-shipVp.h / 2} ${shipVp.w} ${shipVp.h}`}
+        color="var(--hud-accent-soft)"
+        overflow="visible"
+      >
         {/* 未来段：整条淡淡描一遍（让玩家看出还差多少），再叠上已成形的这一段 */}
         <g opacity="0.14">
           <ShipSpriteShape shipId={shipId} role={role} size={SHIP_W} />
@@ -150,11 +185,11 @@ export function DryDockFx({
         <g clipPath={`url(#${CLIP_ID})`}>
           <ShipSpriteShape shipId={shipId} role={role} size={SHIP_W} />
         </g>
-      </g>
+      </svg>
 
       {/* 焊点（两处，错相位闪；只动 opacity）——跟着**显影前沿**走 */}
-      <circle className="hud-dock-spark" cx={clipX + clipW} cy={VB_H / 2 - 15} r="2" />
-      <circle className="hud-dock-spark is-late" cx={clipX + clipW * 0.7} cy={VB_H / 2 + 19} r="1.7" />
+      <circle className="hud-dock-spark" cx={shipVp.x + clipW} cy={VB_H / 2 - 15} r="2" />
+      <circle className="hud-dock-spark is-late" cx={shipVp.x + clipW * 0.7} cy={VB_H / 2 + 19} r="1.7" />
       {/* 坞体航行灯（静态细条；太空坞靠灯识别姿态） */}
       <path
         d={
