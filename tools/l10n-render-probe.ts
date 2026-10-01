@@ -330,6 +330,37 @@ async function main(): Promise<void> {
       }
     }
   }
+  /**
+   * **入侵通讯专项**（**2026-10-01 船长报障**：「**入侵的通讯应该采取更正式的名称，不应该直接用X族**」）。
+   *
+   * 为什么要单独一段：通讯的标题/正文走的是 `commsText.ts` 的 `commsEntrySubjectText` /
+   * `commsEntryBodyText` —— 它们的取参口径是 `pNId ⇒ paramText()`（与日志的 `composeParts`
+   * **同源但不是同一个函数**，`composeParts` 认得段链与槽内参数，通讯这两个只认槽译文）。
+   * 所以这里用真身的 `paramText` ＋ `tr` 把两族（H 墨潮帮 / R 光环）的标题与正文各复算一遍。
+   */
+  const tr = mod.tr as (id: string, p?: Record<string, string | number>) => string
+  const paramText = mod.paramText as (s: string) => string
+  const COMMS_FAMILIES = [
+    { fam: 'H', id: 'core.weekend.023', zh: '墨潮帮', en: 'Ink Tide' },
+    { fam: 'R', id: 'core.weekend.024', zh: '光环', en: 'Corona Systems' },
+  ] as const
+  const famCode = /[A-Z]\d?\s*族|family\s+[A-Z]/
+  console.log('\n===== 入侵通讯 · 族名（`p1Id` ⇒ `paramText`）=====')
+  for (const loc of ['zh', 'en'] as const) {
+    setLocale(loc)
+    for (const c of COMMS_FAMILIES) {
+      const fam = paramText(c.id)
+      const subject = tr('core.weekend.010', { p1: fam })
+      const body = tr('core.weekend.011', { p1: fam, p2: 3, p3: '示例星系' })
+      const want = loc === 'zh' ? c.zh : c.en
+      const ok = fam === want && !famCode.test(subject) && !famCode.test(body)
+      if (!ok) bad += 1
+      console.log(`${ok ? '✓' : '✗'} [${c.fam} 族] ${loc} · 族名「${fam}」`)
+      console.log(`    标题：${subject}`)
+      console.log(`    正文：${body}`)
+      if (!ok) console.log(`    期望族名：${want}（且标题/正文不许出现族代号）`)
+    }
+  }
   console.log(bad === 0 ? '\n✅ 渲染层真身核对通过：各形态 × 两种语言，逐字相符且无残留占位符。' : `\n❌ 有 ${bad} 处不符。`)
   process.exitCode = bad === 0 ? 0 : 1
 }

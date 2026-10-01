@@ -26,7 +26,13 @@ import {
   weekendRareWreckIdFor,
   noteReward,
 } from './weekendBattle'
-import { weekendBlackBoxSettledOf, weekendFoeCardOf, weekendLastHitByPlayer } from './weekendEvent'
+import {
+  weekendBlackBoxSettledOf,
+  weekendFamilyNameId,
+  weekendFamilyNameZh,
+  weekendFoeCardOf,
+  weekendLastHitByPlayer,
+} from './weekendEvent'
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 
 /** 预警信 id（固定 ⇒ 每场覆盖） */
@@ -38,33 +44,13 @@ export const WEEKEND_COMMS_FACTION_ID = 'dshi'
 export const WEEKEND_COMMS_DEPT_ID = 'dept-route-safety'
 
 /**
- * **族名的中文全称**（通讯文案用；族字母只是简称）。
- * 口径与残骸族名同源（`wreckGroups.ts`：海盗 / 异形生物 / 鱿烬亡军 / 墨潮帮）；
- * 英文同 `WRECK_FAMILY_EN`（Pirate / Alien / Deadarmy / Ink Tide），两侧都在
- * `l10n/table.ts` 的 `core.weekend.020~023` 里逐族登记（界面按 `p1Id` 取译名）。
+ * 族名（**唯一登记处已移到 `weekendEvent.ts`** —— 悬赏侧与战斗侧也要取它
+ * （`weekendBounty` / `weekendBattle`），而那两个模块被本文件反过来 import
+ * ⇒ 族名表放那里，三个消费方才能共用而不绕成循环依赖）。
+ *
+ * 本文件只**转发**这两个函数：`index.ts` 与渲染层都从 `@whale/core` 取，对外接口不变。
  */
-const WEEKEND_FAMILY_NAME_ZH: Readonly<Record<string, string>> = {
-  A: '海盗',
-  C: '异形生物',
-  G: '鱿烬亡军',
-  H: '墨潮帮',
-}
-const WEEKEND_FAMILY_NAME_ID: Readonly<Record<string, string>> = {
-  A: 'core.weekend.020',
-  C: 'core.weekend.021',
-  G: 'core.weekend.022',
-  H: 'core.weekend.023',
-}
-
-/** 族名中文全称（未知族回落到「X 族」） */
-export function weekendFamilyNameZh(family: string): string {
-  return WEEKEND_FAMILY_NAME_ZH[family] ?? `${family} 族`
-}
-
-/** 族名文案 id（未知族 ⇒ undefined ⇒ 调用方不写 `p1Id`，界面直接用中文原文） */
-export function weekendFamilyNameId(family: string): string | undefined {
-  return WEEKEND_FAMILY_NAME_ID[family]
-}
+export { weekendFamilyNameId, weekendFamilyNameZh } from './weekendEvent'
 
 /** 一笔奖励 → 中文原文（界面另有按语言拼串的同款逻辑；两边读的是同一份 `rewards`） */
 function rewardLineZh(ctx: SimContext, line: CommsRewardLine): string {

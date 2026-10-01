@@ -1434,13 +1434,16 @@ export function advanceMyCaptureWebs(
        * 由 `p3Id` 选（`core.combat.005` = 机动减半 / `core.combat.006` = 机动 ×N，`p3p1` 给倍率）；
        * `text` 仍是中文原串（老档 / 工具断言 / 控制台用）。非 C 族那一句**照旧**（既有文案，不动）。
        */
+      /* ⟪文案调整 2026-10-01⟫ 船长报障「不应该直接用X族」：本句中文原写「C 族的冲锋…」（数据侧族
+         代号，而英文侧早已用正式族名）⇒ 中文改正式名「异形生物」、英文改权威族名表的 `Alien`
+         （同 `core.combat.004` 的两列；口径见 `weekendComms.ts` 的族名表头注）。 */
       const immune = pick.foeChargeWebImmune === true
       addLog(
         state,
         'warn',
         immune
           ? `${me.name} 张开墨潮捕获网，钉住了 ${pick.name}：${slowTxt}、闪避失效，` +
-            `C 族的冲锋不受网的推进器压制——击沉目标或击沉网手才能解除。`
+            `异形生物的冲锋不受网的推进器压制——击沉目标或击沉网手才能解除。`
           : `${me.name} 张开墨潮捕获网，钉住了 ${pick.name}：${slowTxt}、推进器熄火、闪避失效——` +
             `击沉目标或击沉网手才能解除。`,
         immune ? 'core.combat.004' : undefined,

@@ -48,7 +48,10 @@ describe('周末入侵 · 悬赏替换（M1-b）', () => {
     // 2026-09-23 船长报障「前往入侵星系战斗提示未知目标」⇒ 派生卡**保留原卡 id**（出发/开战路径都按 id 取卡）
     // ⚠ 2026-09-25 修：这一行的换行曾被写成字面 `\`n`，把断言整条吞进注释里（等于没测）——已复原
     expect(d.id).toBe(card.id)
-    expect(d.name).toContain('C 族舰队')
+    /* ⟪文案调整 2026-10-01⟫ 船长报障「不应该直接用X族」：悬赏名原印族代号（「C 族舰队 · …」），
+       现改用**正式族名**（`weekendFamilyNameZh`）⇒ 这里钉正式名，并加一条"不许出现族代号"。 */
+    expect(d.name).toContain('异形生物舰队')
+    expect(d.name, '不许把数据侧族代号印给玩家').not.toMatch(/[A-Z]\d?\s*族/)
     expect(d.name).toContain(card.name)
     expect(d.threat).toBe(78)
     // **赏金 = 0**（船长 2026-09-25：「入侵舰队不应该有赏金」；原口径"原卡 ×1.4"已退役）
@@ -93,7 +96,9 @@ describe('周末入侵 · 悬赏替换（M1-b）', () => {
     const drawn = ctx.anomalies.get(out[0]!.id)!
     expect(out[0]!.threat, '威胁 = 卡面自身（定价式落值）').toBe(drawn.threat)
     expect(out[0]!.galaxyId, 'galaxyId 覆写成被占星系（独立卡自带母港）').toBe('galaxy-home')
-    expect(out[0]!.name).toContain('H 族舰队')
+    expect(out[0]!.name).toContain('墨潮帮')
+    expect(out[0]!.name, '卡名自带族名 ⇒ 不再重复加前缀（否则「墨潮帮舰队 · 墨潮帮骚扰舰队」）').not.toContain('墨潮帮舰队 · 墨潮帮')
+    expect(out[0]!.name, '不许把数据侧族代号印给玩家（2026-10-01 船长报障）').not.toMatch(/[A-Z]\d?\s*族/)
     expect(out[0]!.rewardIsk, '无赏金（船长 2026-09-25；收入改在结算时按进度发）').toBe(0)
     // 同一场入侵内**稳定**（板面不会每次刷新换卡）
     expect(weekendBountyCardsOf(s, ctx, [perCard], 'galaxy-home', T)[0]!.id).toBe(out[0]!.id)

@@ -49,7 +49,7 @@ import {
   weekendFlagshipOutcomeOf,
 } from './weekendEvent'
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
-import { weekendStandingGainOf } from './weekendEvent'
+import { weekendFoeFleetNameOf, weekendStandingGainOf } from './weekendEvent'
 import { flagshipBattleLedger } from './combat'
 import { rareWreckItemIdOfCard, RARE_WRECK_VOLUME_M3 } from './salvage'
 /** 2026-09-27 船长令：主力舰队打赢 ⇒ 往该星系**入侵残骸场**里放箱子（稀有残骸） */
@@ -185,7 +185,7 @@ export function weekendAssaultSpecOf(state: GameState, ctx: SimContext, galaxyId
     waves: Math.max(1, card?.waves?.length ?? 1),
     squadSize: 1,
     rewardMul: WEEKEND_ASSAULT_REWARD_MUL,
-    name: `${ev.family} 族舰队 · ${cardNameOf(ctx, cardId)}`,
+    name: weekendFoeFleetNameOf(ev.family, cardNameOf(ctx, cardId)),
   }
 }
 

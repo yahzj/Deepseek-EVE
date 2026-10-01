@@ -19,6 +19,7 @@ import {
   WEEKEND_CORE_THREAT,
   WEEKEND_PERIPHERY_THREAT,
   weekendEncounterChanceAt,
+  weekendFoeFleetNameOf,
   weekendFoeCardsSelfPriced,
   weekendDrawFoeCardId,
   weekendGarrisonFoeCardId,
@@ -83,7 +84,7 @@ export function weekendDerivedCardOf(
     // ⚠ **保留原卡 id**（2026-09-23 船长报障后改）：出发/开战/情报各路径都按 `ctx.anomalies.get(id)` 取卡，
     //   改了 id 就会被判成「未知目标」；入侵的差异只体现在名字/威胁/奖励上，威胁由开战入口用覆写口传。
     id: card.id,
-    name: `${family} 族舰队 · ${card.name}`,
+    name: weekendFoeFleetNameOf(family, card.name),
     threat,
     rewardIsk: 0,
   }
@@ -104,7 +105,7 @@ function weekendIndependentFoeOf(base: AnomalyDef, drawn: AnomalyDef, family: st
   return {
     ...drawn,
     galaxyId,
-    name: `${family} 族舰队 · ${drawn.name}`,
+    name: weekendFoeFleetNameOf(family, drawn.name),
     rewardIsk: 0,
   }
 }

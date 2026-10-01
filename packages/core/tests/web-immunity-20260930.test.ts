@@ -244,6 +244,10 @@ describe('文案落点（中英齐备 · id 制）', () => {
    * **按族改一句**（**船长 2026-09-30 裁决**：「网钉住 C 族，**按族改一句**」）——
    * 我方墨潮捕获网钉住 C 族时的战报**不再写「推进器熄火」**（那层对本族不生效），
    * 改说「冲锋不受网的推进器压制」，且这句走 **id 制**（`core.combat.004` ＋ 槽 3 的 `p3Id` 模板）。
+   *
+   * ⟪文案调整 2026-10-01⟫ 船长报障「**不应该直接用X族**」：本句中文原印数据侧族代号「C 族」
+   * （英文侧却早已用正式族名）⇒ 中文改正式名「异形生物」、英文改权威族名表的 `Alien`。
+   * 这条断言因此改钉**正式名**，并加一条"不许再出现族代号"的钉子。
    */
   it('战报按族分岔：钉住 C 族不写「推进器熄火」，钉住别族照旧', () => {
     const c = webCarrier()
@@ -252,7 +256,8 @@ describe('文案落点（中英齐备 · id 制）', () => {
     advanceMyCaptureWebs(c.state, battleOf(c.spec, cFoes), [c.spec], cFoes)
     const cLog = c.state.logs[c.state.logs.length - 1]!
     expect(cLog.text, 'C 族那句不说推进器熄火').not.toContain('推进器熄火')
-    expect(cLog.text).toContain('C 族的冲锋不受网的推进器压制')
+    expect(cLog.text).toContain('异形生物的冲锋不受网的推进器压制')
+    expect(cLog.text, '不许把数据侧族代号印给玩家（2026-10-01 船长报障）').not.toMatch(/[A-Z]\d?\s*族/)
     expect(cLog.textId, '新写的玩家可见文案走 id 制').toBe('core.combat.004')
     expect(cLog.textParams).toMatchObject({ p1: c.spec.name, p2: cFoes[0]!.name, p3Id: 'core.combat.005' })
     // 效果照旧：减速 ×0.5 与闪避归零对 C 族**仍然生效**，只有推进器那层被豁免

@@ -670,6 +670,79 @@ export const WEEKEND_WINDOW_END_HOLD_MS = 60_000
  */
 export const WEEKEND_FAMILIES: readonly string[] = ['A', 'C', 'G', 'H', 'R']
 
+/* ─────────────── 族名（正式称呼 · 玩家可见；**唯一登记处**） ─────────────── */
+
+/**
+ * **族名的中文全称 / 文案 id**（族字母只是内部简称，**不许进玩家可见文案**）。
+ *
+ * 口径与残骸族名同源（`data/` 的 `WRECK_FAMILY_EN`：Pirate / Alien / Deadarmy / Ink Tide /
+ * Corona Systems），中文两侧都在 `l10n/table.ts` 的 `core.weekend.020~024` 里逐族登记
+ * （界面按 `p1Id` 取译名 ⇒ **中英各自成句**）。
+ *
+ * 🔴 **加族必须同步本表**（**2026-10-01 实障 · 船长报障**：「**入侵的通讯应该采取更正式的名称，
+ * 不应该直接用X族**」）：R 族（光环）进 `WEEKEND_FAMILIES` 时本表**漏登记**，兜底便把**内部族代号**
+ * 原样印给了玩家 —— 通讯标题成了「航线警告：**R 族**入侵」、悬赏名成了「**R 族**舰队 · …」。
+ * ⇒ 现由 `weekend-event.test.ts` 的「族名表覆盖全族池」用例守着：**族池里每一族都必须登记**。
+ *
+ * ⚠ 放在本文件（而不是 `weekendComms.ts`）是因为**悬赏侧与战斗侧也要取它**
+ * （`weekendBounty` / `weekendBattle`），而那两个模块被 `weekendComms` 反过来 import
+ * ⇒ 族名表放这里，三个消费方才能共用而不绕成循环依赖。
+ */
+const WEEKEND_FAMILY_NAME_ZH: Readonly<Record<string, string>> = {
+  A: '海盗',
+  C: '异形生物',
+  G: '鱿烬亡军',
+  H: '墨潮帮',
+  R: '光环',
+}
+const WEEKEND_FAMILY_NAME_ID: Readonly<Record<string, string>> = {
+  A: 'core.weekend.020',
+  C: 'core.weekend.021',
+  G: 'core.weekend.022',
+  H: 'core.weekend.023',
+  R: 'core.weekend.024',
+}
+/** 未知族的中性称呼（中文原文；同一句的英文由 `core.weekend.025` 给） */
+const UNKNOWN_FAMILY_ZH = '未知势力'
+
+/**
+ * 族名中文全称（**未知族 ⇒ 回落到「未知势力」**，**绝不印内部族代号**）。
+ *
+ * ⚠ **2026-10-01 实障修正**：原兜底写作 `` `${family} 族` ``（把内部代号直接印进玩家可见文案）。
+ * 加族时一旦漏登记，玩家看到的就是「R 族」这种开发字眼 —— 船长已两次同款报障
+ * （2026-09-24「'XX族'这类开发字眼」/ 2026-10-01「不应该直接用X族」）。
+ * 宁可给一个中性称呼，也不许族代号进玩家可见范围。
+ */
+export function weekendFamilyNameZh(family: string): string {
+  return WEEKEND_FAMILY_NAME_ZH[family] ?? UNKNOWN_FAMILY_ZH
+}
+
+/**
+ * 族名文案 id（**未知族 ⇒ `core.weekend.025`「未知势力」**，中英都能翻）。
+ *
+ * 保留 `| undefined` 的签名只是为兼容既有调用点的 `?? 'core.weekend.023'`（那已是死分支）；
+ * 实际**永远返回一个表内 id**，不会再出现"取不到族名 ⇒ 界面回落到别的族"的张冠李戴。
+ */
+export function weekendFamilyNameId(family: string): string | undefined {
+  return WEEKEND_FAMILY_NAME_ID[family] ?? 'core.weekend.025'
+}
+
+/**
+ * **入侵舰队在玩家界面上显示的名字**（＝ `<族名>舰队 · <卡名>`）。
+ *
+ * ⚠ **2026-10-01 实障**：原写法是 `` `${family} 族舰队 · ${cardName}` `` —— 直接把**内部族代号**
+ * 印给了玩家（「H 族舰队 · 墨潮帮骚扰舰队」「R 族舰队 · 光环 · 游弋集群」；
+ * 船长报障「**入侵的通讯应该采取更正式的名称，不应该直接用X族**」）。
+ *
+ * ⚠ 后半段那个 `·` 只在**卡名自己不带族名**时才拼：H / R 两族的独立卡卡名自带族名
+ * （「墨潮帮骚扰舰队」「光环 · 游弋集群」）⇒ 再加前缀会成「墨潮帮舰队 · 墨潮帮骚扰舰队」，
+ * 这类只印卡名；A/C/G 三族仍用虫洞卡（卡名不带族名）⇒ 照旧加前缀。
+ */
+export function weekendFoeFleetNameOf(family: string, cardName: string): string {
+  const fam = weekendFamilyNameZh(family)
+  return cardName.includes(fam) ? cardName : `${fam}舰队 · ${cardName}`
+}
+
 /* ─────────────── 敌卡：独立卡（H 族）· 虫洞池卡（A/C/G 占位）· 随机抽取 ─────────────── */
 
 /**

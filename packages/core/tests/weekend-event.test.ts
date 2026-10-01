@@ -56,6 +56,8 @@ import {
   weekendWindowOpen,
 } from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
+import { weekendFamilyNameId, weekendFamilyNameZh, weekendWarnCommsOf } from '../src/weekendComms'
+import { weekendFoeFleetNameOf } from '../src/weekendEvent'
 import { setStanding } from './helpers'
 
 const ctx = buildSimContext()
@@ -258,6 +260,63 @@ describe('周末入侵 · 敌卡（M1 暂用虫洞族卡）', () => {
       expect(ctx.anomalies.get(flagship), fam + ' 旗舰卡必须在敌卡表里').toBeTruthy()
     }
     expect(weekendFoeCardOf('不存在的族', 'assault')).toBe(weekendFoeCardOf('A', 'assault'))
+  })
+})
+
+/**
+ * **族名 = 正式称呼**（**2026-10-01 船长报障**：「**入侵的通讯应该采取更正式的名称，不应该直接用X族**」）。
+ *
+ * 病根（实查）：R 族（光环）加进 `WEEKEND_FAMILIES` 时，通讯侧的 `WEEKEND_FAMILY_NAME_ZH`
+ * **漏登记 R** ⇒ 兜底把**内部族代号**原样印给了玩家：通讯标题成了「航线警告：**R 族**入侵」、
+ * 正文写「**R 族**的舰队正在入侵这片空域…」（英文界面同款 —— 因为没有 `p1Id` 可翻）。
+ *
+ * 本组即那道护栏：**族池里每一族都必须有正式名与文案 id**；未知族一律走中性兜底，不许印代号。
+ */
+describe('周末入侵 · 族名（通讯正文只印正式称呼）', () => {
+  it('**族池逐族都有正式名与文案 id**（加族忘了登记 ⇒ 这里红）', () => {
+    for (const fam of WEEKEND_FAMILIES) {
+      expect(weekendFamilyNameZh(fam), `${fam} 族必须有正式中文名（不许印族代号）`).not.toMatch(/^[A-Z]\d?\s*族$/)
+      expect(weekendFamilyNameId(fam), `${fam} 族必须登记文案 id（否则英文界面漏中文）`).toBeTruthy()
+    }
+    // 未知族 ⇒ 中性兜底，**绝不**把代号或「族」字印出去
+    expect(weekendFamilyNameZh('不存在的族')).toBe('未知势力')
+    expect(weekendFamilyNameZh('不存在的族')).not.toContain('族')
+    expect(weekendFamilyNameId('不存在的族')).toBe('core.weekend.025')
+  })
+
+  it('**悬赏名用正式族名**：占位族加前缀、独立卡不重复加前缀、任何一族都不印代号', () => {
+    // A/C/G 三族用虫洞卡（卡名不带族名）⇒ 加「<正式族名>舰队 · 」前缀
+    expect(weekendFoeFleetNameOf('C', '测试通缉')).toBe('异形生物舰队 · 测试通缉')
+    expect(weekendFoeFleetNameOf('A', '测试通缉')).toBe('海盗舰队 · 测试通缉')
+    // H/R 两族的独立卡卡名自带族名 ⇒ 只印卡名（否则「墨潮帮舰队 · 墨潮帮骚扰舰队」）
+    expect(weekendFoeFleetNameOf('H', '墨潮帮骚扰舰队')).toBe('墨潮帮骚扰舰队')
+    expect(weekendFoeFleetNameOf('R', '光环 · 游弋集群')).toBe('光环 · 游弋集群')
+    // 任何一族、任何卡名都不许把族代号印出来
+    for (const fam of WEEKEND_FAMILIES) {
+      expect(weekendFoeFleetNameOf(fam, '测试卡'), `${fam} 族`).not.toMatch(/[A-Z]\d?\s*族/)
+    }
+  })
+
+  it('**R 族 = 光环**：调试档那封预警信印的是正式名，不是「R 族」', () => {
+    const s = fresh(true) // 调试档 ⇒ 开局面判 R 族（见 `weekend-debug-family-20261001.test.ts`）
+    const rolled = weekendRollOccupation(s, ctx, 1)!
+    expect(rolled.family, '调试档抽到 R 族').toBe('R')
+    const ev: WeekendEventState = {
+      seq: 1,
+      startedAtWallMs: 0,
+      coreId: rolled.coreId,
+      peripheryIds: rolled.peripheryIds,
+      family: rolled.family,
+      contributed: {},
+    }
+    const mail = weekendWarnCommsOf(s, ctx, ev)
+    expect(mail.subject, '主题用正式名').toBe('航线警告：光环入侵')
+    expect(mail.subject, '主题不许出现族代号').not.toMatch(/R\s*族/)
+    expect(mail.params?.['p1'], '槽值 = 正式名').toBe('光环')
+    expect(mail.params?.['p1Id'], '槽译文 id 指向 R 族词条').toBe('core.weekend.024')
+    const body = mail.paragraphs.join('')
+    expect(body, '正文用正式名').toContain('光环的舰队正在入侵')
+    expect(body, '正文不许出现族代号').not.toMatch(/R\s*族/)
   })
 })
 

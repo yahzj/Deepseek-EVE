@@ -346,7 +346,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   //   ⚠ **2026-09-30 起 `core.combat.004` 重新有主**：墨潮捕获网钉住 **C 族**时那条战报
   //   （船长令「网钉住 C 族，按族改一句」——C 族冲锋不吃网的「关推进器」，故该句不写"推进器熄火"）。
   //   槽 3 的减速那句自己带模板：`p3Id` 选 `core.combat.005`（机动减半）/ `core.combat.006`（机动 ×N）。
-  "core.combat.004": { zh: "{p1} 张开墨潮捕获网，钉住了 {p2}：{p3}、闪避失效，C 族的冲锋不受网的推进器压制——击沉目标或击沉网手才能解除。", en: "{p1} casts the Ink Tide capture web, pinning {p2}: {p3}, evasion disabled; Aberrant charges are unaffected by the thruster lockout — sink the target or the caster to break free." },
+  /* ⟪文案调整 2026-10-01⟫ 船长报障「不应该直接用X族」：本句中文原写 **「C 族的冲锋…」**（数据侧族代号），
+     英文却已用正式族名 ⇒ 中英不一致、且族代号进了玩家可见范围。现中文改正式名「异形生物」，
+     英文由 `Aberrant` 改为权威族名表（`WRECK_FAMILY_EN.c` / `core.weekend.021`）的 **`Alien`**。 */
+  "core.combat.004": { zh: "{p1} 张开墨潮捕获网，钉住了 {p2}：{p3}、闪避失效，异形生物的冲锋不受网的推进器压制——击沉目标或击沉网手才能解除。", en: "{p1} casts the Ink Tide capture web, pinning {p2}: {p3}, evasion disabled; Alien charges are unaffected by the thruster lockout — sink the target or the caster to break free." },
   "core.combat.005": { zh: "机动减半", en: "speed halved" },
   "core.combat.006": { zh: "机动 ×{p1}", en: "speed ×{p1}" },
   /**
@@ -393,6 +396,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.weekend.021": { zh: "异形生物", en: "Alien" },
   "core.weekend.022": { zh: "鱿烬亡军", en: "Deadarmy" },
   "core.weekend.023": { zh: "墨潮帮", en: "Ink Tide" },
+  /* R 族（光环 · Corona Systems · 2026-10-01 船长令建族）—— 名字取自既有定名口径
+     （`l10n.ts` 的 `WRECK_FAMILY_EN.r` ＋ `ui.Handbook.381`），**不另立新名**。 */
+  "core.weekend.024": { zh: "光环", en: "Corona Systems" },
+  /* 未知族的**中性兜底**（2026-10-01 实障：R 族进池而族名表漏登记 ⇒ 通讯标题印出内部代号「R 族」）。
+     加族时若忘了登记族名，界面上读到的是这一句，而不是开发字眼。 */
+  "core.weekend.025": { zh: "未知势力", en: "Unknown faction" },
   "core.station.001": { zh: "未知建站点：{p1}。", en: "Unknown construction site: {p1}." },
   "core.station.002": { zh: "「{p1}」已建成，无需再提交。", en: "“{p1}” is already complete; there is nothing left to hand in." },
   "core.station.003": { zh: "「{p1}」当前档不收这种材料或已收齐——本档材料单：{p2}。", en: "“{p1}” does not take that material at this tier, or has already collected enough — this tier's bill: {p2}." },
@@ -491,7 +500,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.consumable.002": { zh: "突触加速剂正在生效中（还剩 {p1} 分钟）：同一时间内只能生效一剂。", en: "A Synaptic Accelerant is already active ({p1} minutes left): only one dose can be active at a time." },
   "core.consumable.003": { zh: "✦ 突触加速剂生效：未来 {p1} 小时内技能训练时长减半。", en: "✦ Synaptic Accelerant active: skill training time is halved for the next {p1} hours." },
   /* 信号发射器（第 2 批）：可选入侵势力列表 ＋ 使用/拒绝文案 */
-  "ui.consumable.002": { zh: "墨潮帮（H 族）", en: "Ink Tide Syndicate (family H)" },
+  /* ⟪文案调整 2026-10-01⟫ 船长报障「不应该直接用X族」：原「墨潮帮（H 族）」把数据侧族代号写进了
+     玩家可见名（英文 "family H" 同款），且英文名与权威族名表（`core.weekend.023` = `Ink Tide`）
+     不一致 ⇒ 两侧都只印正式名（这条是信号发射器的可选入侵势力名，界面按本 id 渲染）。 */
+  "ui.consumable.002": { zh: "墨潮帮", en: "Ink Tide" },
   "core.consumable.004": { zh: "仓库里没有信号发射器。", en: "There is no Signal Beacon in store." },
   "core.consumable.005": { zh: "已经有一场入侵在进行中：等它结束再用信号发射器。", en: "An invasion is already under way — wait until it ends before using a Signal Beacon." },
   "core.consumable.006": { zh: "未知的入侵势力：{p1}。", en: "Unknown invading faction: {p1}." },
