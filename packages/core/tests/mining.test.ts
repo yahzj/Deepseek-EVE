@@ -7,7 +7,7 @@ import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { countItem } from '../src/inventory'
-import { beltTravelMinutes, miningStatus, oneLegMs, richVeinP, setMiningAutoCycle, setMiningStopAfterTrip, startMining, stopMining } from '../src/mining'
+import { beltTravelMinutes, miningStatus, oneLegMs, richVeinP, setMiningAutoCycle, setMiningStopAfterTrip, startMining, stopMining, advanceShipReturns } from '../src/mining'
 import { makeTestCtx, belt, ship, skill , fittedOf } from './helpers'
 
 describe('采矿作业', () => {
@@ -158,6 +158,46 @@ describe('采矿作业', () => {
     expect(state.mining.active).toBe(false)
     expect(state.logs.some((l) => l.text.includes('50 单位'))).toBe(true)
     expect(stopMining(state, ctx)).toBe(false)
+  })
+
+  /**
+   * 🔴 **船长 2026-10-02 报障**：「**当玩家终止残骸打捞活动后，舰船并不会返港**」——
+   * 打捞与采矿**同一个 BUG**（两条 `stopXxx` 都只清作业态、**不安排返航**）。
+   * 船长裁定「**真实返航航程**」＋「**到港自动卸入仓库**」＋「**采矿一起修**」。
+   *
+   * 本条钉住修好后的形状：停止 ⇒ 建返航账本（`shipReturns`）⇒ 推进到港 ⇒ 原矿入物品仓库 ＋ 清账。
+   */
+  it('手动停止开采后舰船真的返港：建返航账本 → 到港自动卸入仓库 → 清账（船长 2026-10-02 报障）', () => {
+    startMining(state, 'belt-a', ctx)
+    advanceGame(state, 60_000, ctx) // 5 循环 = 50 单位（本趟产出）
+    const shipId = state.shipId
+    expect(stopMining(state, ctx)).toBe(true)
+    /** ① 停止后**必须**留下返航账本（旧实现在这里啥都没有 ⇒ 舰船凭空停在原地） */
+    expect(state.shipReturns[shipId], '停止开采后应留下返航账本').toBeDefined()
+    expect(state.shipReturns[shipId]!.reason, '与"换船善后"区分开：停止返航有自己的来源标记').toBe('miningStop')
+    expect(state.logs.some((l) => l.text.includes('开采已停止') && l.text.includes('返航空间站'))).toBe(true)
+    expect(countItem(state, 'ore-a'), '停止当刻：货还在船上').toBe(50)
+    /** ② 推进到港：整仓卸入物品仓库 ＋ 账本清空 */
+    advanceShipReturns(state, 10 * 60_000, ctx)
+    expect(state.shipReturns[shipId], '到港后应清账').toBeUndefined()
+    expect(countItem(state, 'ore-a'), '货已卸下（船上清零）').toBe(0)
+    expect(state.logs.some((l) => l.text.includes('已随开采停止返航到港'))).toBe(true)
+  })
+
+  /**
+   * **新指令取消"停止返航"**（**船长 2026-10-02** 报障的连带）——不取消的后果（实测踩到）：
+   * `advanceShipReturns` 每拍到港即整仓卸货 ⇒ 新采的矿**当拍被搬进仓库**（船上恒 0、仓库涨），
+   * 采矿看着"没产出"。本仓真实复现见 `tests/v10.test.ts` 的"气体开采"那条。
+   */
+  it('返航中下新开采指令 ⇒ 就地开工：清掉返航账本，产物留在船上', () => {
+    startMining(state, 'belt-a', ctx)
+    expect(stopMining(state, ctx)).toBe(true)
+    expect(state.shipReturns[state.shipId], '停止后应有返航账本').toBeDefined()
+    expect(startMining(state, 'belt-a', ctx).ok).toBe(true)
+    expect(state.shipReturns[state.shipId], '新指令应取消那次返航').toBeUndefined()
+    expect(state.mining.active, '新指令就地开工').toBe(true)
+    advanceGame(state, 60_000, ctx)
+    expect(countItem(state, 'ore-a'), '产物应留在船上（不再被返航账本当拍卸走）').toBe(50)
   })
 
   it('推进游戏时间不影响闲置的采矿状态', () => {

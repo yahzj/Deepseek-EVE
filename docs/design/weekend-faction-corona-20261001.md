@@ -1290,3 +1290,74 @@ typecheck 四包绿 · **core 284 文件 / 2993 用例全绿** · `content:check
 
 typecheck 四包绿 · **core 284 文件 / 2993 用例全绿** · `ui:rot-check` 绿 · 构建通过（三份 CSS 逐字一致已核）。
 ⚠ 观感（"看不看得见"）**只有船长能判** —— 本批按他的拆分落码，等他实测反馈。
+
+---
+
+## §28 🔴 BUG 修复：**停止打捞/开采后舰船不返港**（2026-10-02 · 船长报障 · **已落码**）
+
+### 28.1 船长原话与追问四答（照抄）
+
+> 「**我发现一个BUG，当玩家终止残骸打捞活动后，舰船并不会返港。**」
+
+| 追问 | 船长裁定 |
+|---|---|
+| 怎么回港 | **真实返航航程**（与换船善后同一条链） |
+| 到港后的货 | **到港自动卸入仓库** |
+| 采矿同一个毛病 | **一起修** |
+| 「进洞前自动停捞/停采」也走同一个 `halt` | **只修手动停止**（自动停保持瞬停） |
+
+### 28.2 根因（复现读数）
+
+```
+开工前：awayGalaxy=null dockedSite=null
+开工后：phase=salvaging（舰船"位置"由作业态承载）
+捞了 5 秒：tripM3=443.20
+停止后：active=false · awayGalaxy=null · dockedSite=null
+再推 60 秒：什么都没发生
+```
+
+`stopSalvageOp` → `salvageHalt`（`state.ts`）**只清作业态、不安排返航**；同一族的 `haulingHalt`
+是显式写 `state.awayGalaxy = null` 才回港的。**而设计意图三处都写着要返港**：
+`activityGate` 的取消代价表（`salvaging: '本趟残骸留在船上，舰船返港'`）、`salvageHalt` 自己的注释
+（「终止即瞬时返港」）、以及**换船善后 `retireSalvageShip` 反而是对的**（它建 `shipReturns` 让船真实返航）。
+⚠ **采矿（`stopMining` → `miningHalt`）逐字同构，同一个 BUG。**
+
+### 28.3 落码
+
+| 落点 | 改法 |
+|---|---|
+| `salvaging.armReturnLeg()`（新） | 建返航账本 `shipReturns = { beltId: null, legMs, phaseAccMs: 0, reason: 'salvageStop' }`；腿长 = `返航腿 + 出航腿`（去程并入）再按货仓占比缩放（与 `advanceSalvageOp` 返航段同一口径） |
+| `mining.armMiningReturnLeg()`（新） | 同构，`reason: 'miningStop'`，腿长走 `oneLegMs + oneOutboundLegMs` |
+| **为什么新增两个 `reason` 值** | 到港日志要分开说（"作业已停止返航"≠"换船善后"）；`ShipReturnState.reason` 加 `'salvageStop'` / `'miningStop'`（可选字段 ⇒ **旧档零迁移**） |
+| `advanceShipReturns`（`mining.ts`） | 两个新 `reason` 各走自己那条到港日志（残骸 / 原矿 ＋ 货仓为空两版） |
+| `stopSalvageOp` / `stopMining` | 停止后调 `armReturnLeg` ⇒ 写一条"返航空间站、约 N 秒后到港"日志（**只手动停走这条**；进洞前自动停仍是瞬停） |
+
+### 28.4 ⚠ 两处连带修正（都是实测踩出来的）
+
+1. **新指令必须取消"停止返航"**（`startMining` / `startSalvageOp` 各加一行 `delete state.shipReturns[state.shipId]`）：
+   不清账的后果 —— `advanceShipReturns` 每拍到港即整仓卸货 ⇒ **新采的矿当拍被搬进仓库**
+   （船上 `countItem` 恒 0、仓库 `countWare` 涨），采矿看着"没产出"（`v10.test.ts` 的两条用例就是这么红的）。
+2. **`shipSellable` 的检查顺序**：把"正在返航"移到"装备/货载"**之后** ⇒ 先报玩家**自己就能立刻解决**的
+   那一条（卸模块 / 清货仓），再报"得等它飞回来"那一条。
+
+### 28.5 🔴 新增 6 条玩家可见文案（**已写入，等你审**）
+
+| id | 中文（英文已齐） |
+|---|---|
+| `core.salvaging.029` | 打捞已停止：{p1} 从「{p2}」返航空间站{p3}——约 {p4} 秒后到港。 |
+| `core.mining.042` | 开采已停止：{p1} 从「{p2}」返航空间站{p3}——约 {p4} 秒后到港。 |
+| `core.mining.038` | {p1} 已随开采停止返航到港：原矿已卸入物品仓库（{p2} 单位）。 |
+| `core.mining.039` | {p1} 已随打捞停止返航到港：残骸已卸入物品仓库（{p2} m³ 当量）。 |
+| `core.mining.040` / `core.mining.041` | {p1} 已随打捞停止/开采停止返航到港（货仓为空）。 |
+
+### 28.6 新增用例（3 条）
+
+| 用例 | 内容 |
+|---|---|
+| `mining.test.ts`「停止后真的返港」 | 停止 ⇒ 有返航账本（`reason='miningStop'`）⇒ 推进到港 ⇒ 原矿入仓库 ＋ 清账 ＋ 日志 |
+| `mining.test.ts`「返航中下新指令」 | 新指令取消返航 ⇒ 产物留在船上（钉住 28.4 那处连带） |
+| `salvaging.test.ts`「停止后真的返港」 | 同构：残骸入仓库 ＋ 清账 ＋ 两条日志 |
+
+### 28.7 验证
+
+typecheck 四包绿 · **core 284 文件 / 2996 用例全绿** · `content:check` · `l10n:check` 绿。

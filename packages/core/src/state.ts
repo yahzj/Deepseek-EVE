@@ -268,8 +268,12 @@ export interface ShipReturnState {
   phaseAccMs: number
   /** 善后来源（2026-09-08 船长定）：'mining' = 采矿换船（缺省）/ 'expedition' = 返航中换船
    *  把远征返航转为旧船善后账本（到港自动卸货，无其余战果结算）/ 'salvage' = 打捞换船
-   *  （2026-09-09：与采矿同构——打捞作业中换船，旧船自动返航到港卸货） */
-  reason?: 'mining' | 'expedition' | 'salvage'
+   *  （2026-09-09：与采矿同构——打捞作业中换船，旧船自动返航到港卸货）
+   *
+   *  **2026-10-02 加两个值**（船长报障「终止残骸打捞活动后，舰船并不会返港」⇒ 裁定「真实返航航程」）：
+   *  `'salvageStop'` / `'miningStop'` = **玩家手动停止作业**后的返航——与"换船善后"走同一条账本链，
+   *  只是到港日志要分开说（"作业已停止"而不是"换船善后"）。 */
+  reason?: 'mining' | 'expedition' | 'salvage' | 'salvageStop' | 'miningStop'
 }
 
 /**

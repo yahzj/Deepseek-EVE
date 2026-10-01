@@ -5666,6 +5666,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.activityGate.007": { zh: "已自动停止「{p1}」：{p2}。（{p4}）", en: "Stopped “{p1}” automatically: {p2}. ({p4})" },
   "core.mining.037": { zh: "已切换矿带：停掉「{p1}」的开采（本趟 {p3} 单位留在船上），改采「{p2}」。", en: "Switched belts: stopped mining “{p1}” ({p3} units stay aboard this run) and started on “{p2}”." },
   "core.salvaging.028": { zh: "已切换打捞点：停掉「{p1}」的打捞（本趟约 {p3} m³ 当量留在船上），改去「{p2}」。", en: "Switched salvage sites: stopped salvaging “{p1}” (about {p3} m³ aboard this run) and moved to “{p2}”." },
+  "core.salvaging.029": { zh: "打捞已停止：{p1} 从「{p2}」返航空间站{p3}——约 {p4} 秒后到港。", en: "Salvage stopped: {p1} is returning to the station from “{p2}”{p3} — docking in about {p4} seconds." },
+  "core.mining.042": { zh: "开采已停止：{p1} 从「{p2}」返航空间站{p3}——约 {p4} 秒后到港。", en: "Mining stopped: {p1} is returning to the station from “{p2}”{p3} — docking in about {p4} seconds." },
+  "core.mining.038": { zh: "{p1} 已随开采停止返航到港：原矿已卸入物品仓库（{p2} 单位）。", en: "{p1} has returned to port after mining stopped: the ore was unloaded into the item warehouse ({p2} units)." },
+  "core.mining.039": { zh: "{p1} 已随打捞停止返航到港：残骸已卸入物品仓库（{p2} m³ 当量）。", en: "{p1} has returned to port after salvage stopped: the wrecks were unloaded into the item warehouse ({p2} m³ equivalent)." },
+  "core.mining.040": { zh: "{p1} 已随打捞停止返航到港（货仓为空）。", en: "{p1} has returned to port after salvage stopped (empty hold)." },
+  "core.mining.041": { zh: "{p1} 已随开采停止返航到港（货仓为空）。", en: "{p1} has returned to port after mining stopped (empty hold)." },
   /**
    * **参数行的"行名"与"值"要分成两条**（**2026-09-27 船长报障**：「鱿蜂结构层出现了错误文本：
    * 机群结构层 +{p1}」）。

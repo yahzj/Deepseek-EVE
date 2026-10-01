@@ -345,6 +345,16 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
    */
   const gateSkip = applyActivityGate(state, 'mining')
   if (gateSkip) return gateSkip
+  /**
+   * **新指令取消"停止返航"**（**船长 2026-10-02** 报障的连带）——
+   * 上一拍刚「停止开采」留下了返航账本（船正飞回港卸货）；玩家又下新开采指令 ⇒ **就地开工**
+   * （船已在矿带，不必先飞完那一趟）。
+   *
+   * ⚠ 不清账的后果（实测踩到）：`advanceShipReturns` 到港即整仓卸货 ⇒ 新采的矿会被它
+   * **当拍搬进仓库**（船上 `countItem` 恒为 0、仓库 `countWare` 涨），采矿看着"没产出"。
+   * ⚠ 只清**本船**那一条（别的船的换船善后账本照旧）。
+   */
+  delete state.shipReturns[state.shipId]
 
   // T8：从野外停留点出发 → 记录起点（首次到带后清空；自动循环以空间站为基准）；野外标记交作业表达
   const fromField = state.awayGalaxy !== null ? state.awayGalaxy : null
@@ -423,6 +433,25 @@ export function startMiningFromExpedition(state: GameState, beltId: string, ctx:
 }
 
 /** 停止开采（手动）：任何阶段都会停（若在返航/去程遗留相位中，货物留在船上） */
+/**
+ * **安排"停止开采后的返航"**（**船长 2026-10-02 报障 / 裁定「真实返航航程」**，与打捞侧 `armReturnLeg` 同构）——
+ * 建"善后返航账本"（`state.shipReturns`）：由 `advanceShipReturns` 每拍推进，**到港自动整仓卸入物品仓库并清账**。
+ *
+ * 腿长口径与 `advanceMining` 的返航段一致：`返航腿 + 出航腿`（去程并入返航），再按货仓占比缩放。
+ * ⚠ `miningHalt` 已把 `phaseAccMs` 清零 ⇒ 返航进度从 0 起（**取最坏**：宁可多飞一段，也不凭空瞬移回港）。
+ *
+ * @returns 约几秒后到港；**不需要返航**（舰船已不在）⇒ `null`
+ */
+function armMiningReturnLeg(state: GameState, ctx: SimContext, beltId: string): number | null {
+  const ship = state.fleet[state.shipId]
+  if (!ship) return null
+  const outFull = oneOutboundLegMs(state, ctx, beltId)
+  const fullLeg = oneLegMs(state, ctx, beltId) + outFull
+  const legMs = Math.max(1, scaledReturnMs(fullLeg, state, ctx, state.shipId))
+  state.shipReturns[state.shipId] = { beltId: null, legMs, phaseAccMs: 0, reason: 'miningStop' }
+  return Math.max(0, Math.round(legMs / 1000))
+}
+
 export function stopMining(state: GameState, ctx: SimContext): boolean {
   /** 状态改动走 `state.ts` 的单点 `miningHalt`（**进洞前自动停采**也用它）⇒ 两条停采路径不会各写一份 */
   const info = miningHalt(state)
@@ -445,6 +474,30 @@ export function stopMining(state: GameState, ctx: SimContext): boolean {
     'core.mining.021',
     { p1: beltName, p2: tripUnits, p3: oreName, p4: phaseNote },
   )
+  /**
+   * 🔴 **安排真实返航**（**船长 2026-10-02**：与打捞同一个 BUG —— 旧实现只清作业态、**没有返港动作**）
+   * ⇒ 建返航账本：飞回来、到港整仓卸货、写「已随打捞善后返航到港」那条日志。
+   */
+  if (info.beltId !== null) {
+    const remainSec = armMiningReturnLeg(state, ctx, info.beltId)
+    if (remainSec !== null) {
+      const shipName = shipDisplayName(state, ctx, state.shipId)
+      const haveCargo = tripUnits > 0
+      addLog(
+        state,
+        'industry',
+        `开采已停止：${shipName} 从「${beltName}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+        'core.mining.042',
+        {
+          p1: shipName,
+          p2: beltName,
+          p3: haveCargo ? '（到港整仓卸货）' : '',
+          ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
+          p4: remainSec,
+        },
+      )
+    }
+  }
   return true
 }
 
@@ -794,6 +847,30 @@ export function advanceShipReturns(state: GameState, deltaMs: number, ctx: SimCo
             ? `${name} 已随打捞善后返航到港：残骸已卸入物品仓库（${moved.toLocaleString('zh-CN')} m³ 当量）。`
             : `${name} 已随打捞善后返航到港（货仓为空）。`,
           moved > 0 ? 'core.mining.033' : 'core.mining.034',
+          moved > 0 ? { p1: name, p2: moved.toLocaleString('zh-CN') } : { p1: name },
+        )
+        continue
+      }
+      if (r.reason === 'salvageStop') {
+        addLog(
+          state,
+          'industry',
+          moved > 0
+            ? `${name} 已随打捞停止返航到港：残骸已卸入物品仓库（${moved.toLocaleString('zh-CN')} m³ 当量）。`
+            : `${name} 已随打捞停止返航到港（货仓为空）。`,
+          moved > 0 ? 'core.mining.039' : 'core.mining.040',
+          moved > 0 ? { p1: name, p2: moved.toLocaleString('zh-CN') } : { p1: name },
+        )
+        continue
+      }
+      if (r.reason === 'miningStop') {
+        addLog(
+          state,
+          'industry',
+          moved > 0
+            ? `${name} 已随开采停止返航到港：原矿已卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。`
+            : `${name} 已随开采停止返航到港（货仓为空）。`,
+          moved > 0 ? 'core.mining.038' : 'core.mining.041',
           moved > 0 ? { p1: name, p2: moved.toLocaleString('zh-CN') } : { p1: name },
         )
         continue

@@ -319,6 +319,13 @@ export function startSalvageOp(
    */
   const gateSkip = applyActivityGate(state, 'salvaging')
   if (gateSkip) return gateSkip
+  /**
+   * **新指令取消"停止返航"**（**船长 2026-10-02** 报障的连带，与 `mining.startMining` 同款）——
+   * 上一拍刚「停止打捞」留下了返航账本（船正飞回港卸货）；玩家又下新打捞指令 ⇒ **就地开工**。
+   * ⚠ 不清账的后果同采矿：`advanceShipReturns` 到港即整仓卸货 ⇒ 新捞的残骸被它当拍搬进仓库
+   * （船上恒 0、仓库涨），看着"没产出"。只清**本船**那一条。
+   */
+  delete state.shipReturns[state.shipId]
   const s = state.salvaging
   s.active = true
   s.galaxyId = galaxyId
@@ -385,6 +392,38 @@ export function setSalvageStopAfterTrip(state: GameState, stopAfterTrip: boolean
   if (stopAfterTrip) state.salvaging.autoCycle = true
 }
 
+/**
+ * **安排"停止打捞后的返航"**（**船长 2026-10-02 报障 / 裁定「真实返航航程」**）——
+ * 建"善后返航账本"（`state.shipReturns`，与换船善后 `retireSalvageShip` **同一条链**）：
+ * 由 `advanceShipReturns` 每拍推进，**到港自动整仓卸入物品仓库并清账**。
+ *
+ * 腿长口径与 `advanceSalvageOp` 的返航段**逐字一致**：`返航腿 + 出航腿`（去程并入返航），
+ * 再按货仓占比缩放（空仓快、满仓 = 原时长）。旧档遗留的出航相位按"空船半程"折半折算。
+ *
+ * @returns 约几秒后到港；**不需要返航**（舰船已不在或已在港）⇒ `null`
+ */
+function armReturnLeg(
+  state: GameState,
+  ctx: SimContext,
+  galaxyId: string,
+  phase: 'outbound' | 'salvaging' | 'returning',
+): number | null {
+  const ship = state.fleet[state.shipId]
+  if (!ship) return null
+  const outFull = outboundLegMsFor(state, ctx, galaxyId)
+  const fullLeg = legMsFor(state, ctx, galaxyId) + outFull
+  const legMs = Math.max(1, scaledReturnMs(fullLeg, state, ctx, state.shipId))
+  /**
+   * ⚠ **`salvageHalt` 已经把 `phaseAccMs` 清零了**（它要复位作业态）⇒ 返航进度只能由调用方从**相位**推：
+   * - `returning`：本就在返航路上 ⇒ 接续剩余（`legMs` 是全腿长，`advanceShipReturns` 按剩余推）；
+   *   这里给 0 是**取最坏**（宁可多飞一段，也不凭空瞬移回港）；
+   * - `outbound` / `salvaging`：还没上路 ⇒ 0（从头飞）。
+   */
+  void phase
+  state.shipReturns[state.shipId] = { beltId: null, legMs, phaseAccMs: 0, reason: 'salvageStop' }
+  return Math.max(0, Math.round(legMs / 1000))
+}
+
 /** 手动停止（任何阶段；未返航的货物留在船上） */
 export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
   /** 状态改动走 `state.ts` 的单点 `salvageHalt`（**进洞前自动停捞**也用它）⇒ 两条停捞路径不会各写一份 */
@@ -395,6 +434,16 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
     info.phase === 'returning' ? '（返航途中，货物留在船上）' : info.phase === 'outbound' ? '（出航途中）' : ''
   const phaseNoteId =
     info.phase === 'returning' ? 'core.mining.019' : info.phase === 'outbound' ? 'core.mining.020' : undefined
+  /**
+   * 🔴 **安排真实返航**（**船长 2026-10-02**：报障「终止残骸打捞后舰船并不会返港」⇒ 裁定「真实返航航程」
+   * ＋「到港自动卸入仓库」）——
+   * 这是本函数**原来漏掉的一步**：旧实现只 `salvageHalt` 清了作业态，**没有任何返港动作**
+   * （舰船"位置"本来由作业态承载 ⇒ 作业一停，船就凭空消失在原地，既不飞回来也不卸货）。
+   * 现在建返航账本 ⇒ 与换船善后同链：飞回来、到港整仓卸货、写「已随打捞善后返航到港」日志。
+   * ⚠ `tripM3` 归零（同旧行为）：它已被下面那条日志消费过了。
+   */
+  const remainSec = info.galaxyId === null ? null : armReturnLeg(state, ctx, info.galaxyId, info.phase)
+  state.salvaging.tripM3 = 0
   addLog(
     state,
     'salvage',
@@ -407,6 +456,23 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
       ...(phaseNoteId !== undefined ? { p3Id: phaseNoteId } : {}),
     },
   )
+  if (remainSec !== null) {
+    const shipName = shipDisplayName(state, ctx, state.shipId)
+    const haveCargo = info.tripM3 > 0
+    addLog(
+      state,
+      'salvage',
+      `打捞已停止：${shipName} 从「${galaxy?.name ?? ''}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+      'core.salvaging.029',
+      {
+        p1: shipName,
+        p2: galaxy?.name ?? '',
+        p3: haveCargo ? '（到港整仓卸货）' : '',
+        ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
+        p4: remainSec,
+      },
+    )
+  }
   return true
 }
 
