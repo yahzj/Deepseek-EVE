@@ -638,12 +638,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     en: "Consumes one Signal Beacon: a randomly drawn invasion fleet locks onto “{p1}” and its neighbouring systems.",
   },
   "ui.beacon.003": { zh: "再点一下确认：发射器将消耗 1 枚，目标锁定「{p1}」", en: "Click again to confirm: one beacon is spent and the target is locked to “{p1}”" },
-  "ui.beacon.004": {
-    zh: "该星系暂不能作为入侵目标：需要已探索 · 非高安 · 且尚未建成副站",
-    en: "This system cannot be an invasion target yet: it must be explored, not high-sec, and without a completed outpost",
-  },
-  /* 位置限制的就地说明（**2026-09-30 船长令**：指定星系那条路「**不允许在空间站使用**」，
-     提示语由船长逐字给定：「该星系信号被压制，无法使用信号发射器。」） */
+  /* 目标不合格（含"该星系有空间站"）的就地说明 —— **2026-09-30 船长令**：提示语由船长逐字给定
+     「该星系信号被压制，无法使用信号发射器。」；原先那条"需要已探索·非高安·尚未建成副站"的长说明
+     按船长「说明有些多余」一并删除（`ui.beacon.004` 作废，按纪律不留死键）。 */
   "ui.beacon.005": {
     zh: "该星系信号被压制，无法使用信号发射器。",
     en: "Signals are jammed in this system — the Signal Beacon cannot be lit here.",
