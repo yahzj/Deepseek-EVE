@@ -94,6 +94,8 @@ export function DryDockFx({
    * （同一坐标系，不再跨界），渐变用**硬边**（过渡区间仅 0.9%）标出"已成形 / 未成形"的分界。
    */
   const maskId = 'hud-dock-progress-mask'
+  /** 船体区域遮罩（让"船体不透明"生效，但不显示自身） */
+  const hullMaskId = 'hud-dock-hull-mask'
   const gradId = 'hud-dock-progress-grad'
   /** 硬边位置（0~1 的渐变坐标）；`pct` 为 0 时整段透明（什么都不亮） */
   const edge = Math.max(0.0001, Math.min(1, pct))
@@ -111,7 +113,13 @@ export function DryDockFx({
       strokeLinejoin="round"
       aria-hidden="true"
     >
-
+      <defs>
+        {/* 船体区域遮罩：白色＝保留、黑色＝抹掉；椭圆形状取船体的横长比（不可见，只影响被遮罩的元素） */}
+        <mask id={hullMaskId} maskUnits="userSpaceOnUse" x={0} y={0} width={VB_W} height={VB_H}>
+          <rect x="0" y="0" width={VB_W} height={VB_H} fill="#fff" />
+          <ellipse cx={VB_W / 2} cy={VB_H / 2} rx={(shipVp.w / 2 - 4) * 0.96} ry={shipVp.h * 0.42} fill="#000" />
+        </mask>
+      </defs>
       {/* ── 坞体：两条纵向主梁（±48）＋ 三道桁架拱 ＋ 端环（两头开口，没有坞门）── */}
       <path d={`M${VB_W / 2 - BEAM_HALF} ${VB_H / 2 - BEAM_Y} H${VB_W / 2 + BEAM_HALF}`} />
       <path d={`M${VB_W / 2 - BEAM_HALF} ${VB_H / 2 + BEAM_Y} H${VB_W / 2 + BEAM_HALF}`} />
@@ -122,11 +130,18 @@ export function DryDockFx({
         * - **左半**（上顶点 → 左顶点 → 下顶点）挪到**舰船之后**画 ⇒ 压在船体前面；
         * ⇒ 船看起来是从这三道框里**穿过去**的（同一个菱形，一半在前一半在后）。
         */}
+      {/**
+        * **舰船"不透明"用遮罩实现**（**2026-10-01 船长令**：「能否让船坞的舰船中间是不透明的」）：
+        * 起初试过"在船体处铺一层底色填充"，三版截图都不行（椭圆总会显形成一团阴影盘）。
+        * 改成把**后半菱形**用 `hud-dock-hull-mask` 遮罩掉船体范围内的部分 —— 遮罩本身**不可见**，
+        * 效果就是"后方线条在船体处被挡住"，同时船体自己的线条完整保留。
+        */}
       {ARCH_X.map((dx) => (
         <path
           key={`arch-back-${dx}`}
+          className="hud-dock-arch-back"
+          mask={`url(#${hullMaskId})`}
           d={`M${VB_W / 2 + dx} ${VB_H / 2 - BEAM_Y} L${VB_W / 2 + dx + 14} ${VB_H / 2} L${VB_W / 2 + dx} ${VB_H / 2 + BEAM_Y}`}
-          opacity="0.55"
         />
       ))}
       {/* 端环（两头是开口的桁架环） */}
@@ -187,6 +202,13 @@ export function DryDockFx({
             <rect x={-shipVp.w / 2} y={-shipVp.h / 2} width={shipVp.w} height={shipVp.h} fill={`url(#${gradId})`} />
           </mask>
         </defs>
+        {/* **舰船本体不透明**（**2026-10-01 船长令**：「能否让船坞的舰船中间是不透明的」）：
+            先在舰形**线条之前**铺一层与坞景底色同色的填充 —— 后方（右半菱形等）线条被真正盖住，
+            立体感不再依赖"线稿透光"的视觉习惯。颜色取坞景深色底，不引入新色值。 */}
+        {/* ⚠ 实测第一版过大过暗（截图里像扣了个阴影盘）：改成**基本贴合舰形画布**的椭圆、
+            颜色取坞景最深底、略留透光 ⇒ 只"压掉"后方线条，不喧宾夺主。 */}
+        {/* ⚠ 两版实测（截图对比）：太大 ⇒ 像"扣了个阴影盘"；本版**收到船体横向范围内**、
+            再用略低的透明度，只做"挡住后方线条"这一件事。 */}
         {/* 未来段：整条淡淡描一遍（让玩家看出还差多少），再叠上已成形的这一段 */}
         <g opacity="0.14">
           <ShipSpriteShape shipId={shipId} role={role} size={SHIP_W} />
@@ -200,8 +222,8 @@ export function DryDockFx({
       {ARCH_X.map((dx) => (
         <path
           key={`arch-front-${dx}`}
+          className="hud-dock-arch-front"
           d={`M${VB_W / 2 + dx} ${VB_H / 2 - BEAM_Y} L${VB_W / 2 + dx - 14} ${VB_H / 2} L${VB_W / 2 + dx} ${VB_H / 2 + BEAM_Y}`}
-          opacity="0.55"
         />
       ))}
       {/* ── 二段式焊接机械臂（**2026-10-01 船长令**：「机械臂不用让它移动」）──

@@ -511,6 +511,10 @@ body.no-fx .hud-dock-craft, body.no-fx .hud-dock-spark { animation: none; }
   0%, 67.8% { transform: scale(1, 1); }
   67.9%, 100% { transform: scale(-1, 1); }
 }
+/* **桁架拱前后半亮度不同**（**2026-10-01 船长令**：「前后半用不同亮度」）：
+   前半（压在船体上、离观察者近）更亮，后半（在船体之后）更暗 ⇒ 立体感更强。 */
+.hud-dock-arch-front { opacity: 0.75; }
+.hud-dock-arch-back { opacity: 0.3; }
 /* 机械臂**不移动**（**2026-10-01 船长令**：「机械臂不用让它移动」）：固定在一处、只做原地二段屈伸。 */
 /* **二段式**：肩段恒定微摆 ＋ 肘段反向屈伸（相位错开 ⇒ 两节在配合） */
 .hud-dock-arm2 {
