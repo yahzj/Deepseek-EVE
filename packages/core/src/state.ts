@@ -2033,6 +2033,16 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    */
   foeShipSeen?: Record<string, true>
   firstShipBuilt?: boolean
+  /**
+   * **第一次进入实验室页面**（**2026-09-30 船长令**：「当玩家第一次进入实验室页面时，给玩家发送一封通讯，
+   * 来源不能是官方…为玩家详细说明下信号发射器和突触加速剂」）。
+   *
+   * 三态与同类标记一致：`true` = 进过（送达记账另由 `commsDelivered` 保证只发一次）·
+   * `false` = 新档（还没进过）· **缺失 = 老档** ⇒ 按船长同日裁定「**甲：老档也补发**」，
+   * 即缺失与 `false` 同判（都不是 true）⇒ 老档读档后**首次进实验室**照常收到那封信。
+   * 置位点唯一 = `engine.noteLabOpened()`（两个实验室入口都调它）。
+   */
+  labOpened?: boolean
   /** 2026-09-11 通讯：消息 id -> 已读（只记 true；缺失 = 未读） */
   commsRead?: Record<string, boolean>
   /**
@@ -3522,6 +3532,8 @@ export function createInitialState(opts?: {
     ambushRetreatSeen: false,
     // 2026-09-15 造出第一艘自造船：同上——**新档显式写 false**，只等真建造（老档缺字段则按「丙」补发）
     firstShipBuilt: false,
+    // 2026-09-30 首次进实验室：**新档显式写 false**（老档缺字段与 false 同判 ⇒ 首次进实验室照常补发）
+    labOpened: false,
     foeShipSeen: {},
     commsPopups: [], // 2026-09-14 需弹窗的通讯队列（空档 = 不弹）
     commsRead: {},

@@ -445,6 +445,8 @@ export {
   queueMovePlan,
   clearSkillQueue,
   skillQueueStatus,
+  /** 首次进实验室（2026-09-30 船长令：首访发一封黑市通讯）——随档标记的唯一置位点 */
+  noteLabOpened,
   HIDDEN_SKILL_IDS,
   /** 真前置（2026-09-22 船长令）：门槛常数 ＋ 界面置灰与 `enqueueSkill` 共用的那一把尺 */
   PREREQ_MIN_LEVEL,

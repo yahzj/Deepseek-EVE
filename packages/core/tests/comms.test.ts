@@ -26,7 +26,7 @@ import {
 } from '../src/comms'
 import { COMMS_DAY_MS } from '../src/comms'
 import { onArriveAtGalaxy, playDialogue } from '../src/station'
-import { advanceGame } from '../src/engine'
+import { advanceGame, noteLabOpened } from '../src/engine'
 import { startManufacturing } from '../src/manufacturing'
 import { shipStoredCount, addShipToFleet } from '../src/shipyard'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
@@ -865,5 +865,46 @@ describe('通讯 · 首艘自造船（造过才发 · 2026-09-16 收窄）', () 
     advanceGame(legacyLoaded, 61_000, legacy.ctx)
     expect(legacyLoaded.firstShipBuilt).toBe(true)
     expect(commsInbox(legacyLoaded, legacy.ctx).map((e) => e.id)).toContain('msg-first-ship-x')
+  })
+})
+
+/**
+ * **首次进实验室**（**2026-09-30 船长令**：「当玩家第一次进入实验室页面时，给玩家发送一封通讯，
+ * 来源不能是官方（毕竟信号发射器是违法的）…」）——触发种 `labOpened` 读随档标记 `state.labOpened`，
+ * 置位点唯一 = `noteLabOpened()`（两个实验室入口都调它），送达仍由 `commsDelivered` 幂等记账。
+ * 老档口径（船长同日裁定「甲」）：**缺字段 = 也补发**（与 false 同判）。
+ */
+describe('通讯 · 首次进实验室（labOpened）', () => {
+  const LAB_MSGS: readonly CommsMessageDef[] = [
+    { id: 'msg-lab-x', factionId: 'dshi', deptId: 'dept-industry', kind: '提示', subject: '违禁货', body: ['正文。'], trigger: { kind: 'labOpened' } },
+  ]
+
+  it('没进实验室不发；置位后送达一次且只一次', () => {
+    const { state, ctx } = world(LAB_MSGS)
+    tick(state, ctx, 1000)
+    expect(commsTriggerMet(state, ctx, { kind: 'labOpened' })).toBe(false)
+    expect(state.commsDelivered?.['msg-lab-x']).toBeUndefined()
+
+    expect(noteLabOpened(state)).toBe(true) // 第一次：真的置位
+    expect(noteLabOpened(state)).toBe(false) // 幂等：第二次不再置位（调用方据此不重复落盘）
+    expect(commsTriggerMet(state, ctx, { kind: 'labOpened' })).toBe(true)
+    tick(state, ctx, 1000)
+    expect(state.commsDelivered?.['msg-lab-x']).toBeDefined()
+    const at = state.commsDelivered!['msg-lab-x']!
+    tick(state, ctx, 5000)
+    expect(state.commsDelivered!['msg-lab-x']).toBe(at) // 幂等：时间戳不被刷新
+  })
+
+  it('老档（缺 labOpened 字段）也补发：读档后首次进实验室照常收到', () => {
+    const fresh = world(LAB_MSGS)
+    const raw = JSON.parse(serializeSaveFile(fresh.state, 1)) as { state: Record<string, unknown> }
+    delete raw.state.labOpened
+    const legacy = loadSaveFile(JSON.stringify(raw)).state
+    expect(legacy.labOpened).toBeUndefined() // 老档：保持缺失
+    advanceComms(legacy, fresh.ctx)
+    expect(commsInbox(legacy, fresh.ctx).map((e) => e.id)).not.toContain('msg-lab-x') // 没进过就不发
+    expect(noteLabOpened(legacy)).toBe(true)
+    advanceComms(legacy, fresh.ctx)
+    expect(commsInbox(legacy, fresh.ctx).map((e) => e.id)).toContain('msg-lab-x')
   })
 })

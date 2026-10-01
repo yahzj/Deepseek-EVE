@@ -36,6 +36,9 @@ const COMMS_NAME_ID: Record<string, string> = {
   财务处: 'ui.comms.011',
   航线安全: 'ui.comms.012',
   老陈一队: 'ui.comms.013',
+  // 2026-09-30 船长令：实验室首访通讯的发件方（非官方 · 黑市）
+  黑市: 'ui.comms.074',
+  违禁品柜: 'ui.comms.075',
 }
 
 /**
@@ -88,6 +91,8 @@ const COMMS_SUBJECT_ID: Record<string, string> = {
   'msg-first-ship': 'ui.comms.042',
   'msg-pirate-capture-web': 'ui.comms.043',
   'msg-wh-siege': 'ui.comms.067', // 围剿通报（2026-09-23 船长令：首次下到第 7 层）
+  'msg-blackbox-plug-unlock': 'ui.comms.072', // 首个黑匣解锁插件（2026-09-26 船长令）
+  'msg-lab-contraband': 'ui.comms.076', // 首访实验室：黑市的违禁货通讯（2026-09-30 船长令）
 }
 
 /**
@@ -145,6 +150,8 @@ const COMMS_ALIGN_ID: Record<string, string> = {
   官方: 'ui.comms.045',
   民间: 'ui.comms.046',
   系统: 'ui.comms.047',
+  // 2026-09-30 新增（黑市用）：枚举里本来就有这一档，只是此前没有势力用过、故缺一条映射
+  中立: 'ui.comms.078',
 }
 /** 内容类型片（数据侧 `CommsKind`：剧情 / 提示 / 委托） */
 const COMMS_KIND_ID: Record<string, string> = {
@@ -176,6 +183,8 @@ const COMMS_HINT_ID: Record<string, string> = {
   // 2026-09-25 周末入侵两封（实例通讯）：预警跳星图 · 结算弹面板
   '星图 · 被占星系有红色发光与旗标': 'ui.comms.069',
   查看详细奖励: 'ui.comms.070',
+  // 2026-09-30 首访实验室（黑市那封）：跳工业页实验室
+  '工业页的实验室能造这两样。': 'ui.comms.077',
 }
 // l10n-keep-end
 
@@ -318,6 +327,14 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
     'A sweep ship wears its family crest, and it holds whatever tile it lands on — you can see it whether or not you have scanned that tile. It blocks the way: fight it or route around it.',
     'It never leaves on its own and cannot be scanned away: only a fight clears it. Once it is gone, whatever that tile originally held is still there to salvage or mine.',
     'The worst case is one landing on the tile you are standing on: you get a prompt first and the fight starts once you confirm. Each layer caps how many can be out at once, and killing one frees a slot; the count resets on the next layer.',
+  ],
+  // 2026-09-30 首访实验室：黑市那封（非官方来源，诱导口径；与中文逐行对齐，5 段）
+  'msg-lab-contraband': [
+    'The two new things your lab turns out, the beacon and the overclock pack, both passed through my line. Other people sell you goods; I sell you one sentence.',
+    'The beacon is contraband: it will not light in a system holding your home port or a completed outpost, and lighting it in high-sec costs you 10 standing by the Association’s rules. The rules are theirs; whether to use it is yours.',
+    'The overclock pack breaks no rules: one dose lasts a day, halves training time, and only one can be running at a time.',
+    'Once your name carries, my door opens on its own — you will find me then.',
+    'How to use them, and the fine print, are in your own item descriptions.',
   ],
   // ── 长设定文 9 封（2026-09-26 三号补齐 · roadmap L3 尾巴；逐段与中文行数对齐）──
   /**

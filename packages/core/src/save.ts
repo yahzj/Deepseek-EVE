@@ -3080,6 +3080,12 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   const firstShipBuilt =
     src.firstShipBuilt === true ? true : src.firstShipBuilt === false ? false : undefined
   /**
+   * **第一次进实验室页面**（2026-09-30 船长令：首访发一封黑市通讯）——三态读法，同 `firstShipBuilt`：
+   * `true` = 进过；`false` = 新档（必须落键）；**缺失 = 老档**（保持缺失）。
+   * ⚠ 本清洗器逐字段重建 ⇒ 漏登记 = 每读一次档标记就被抹掉（那封信会在每次读档后重发一次）。
+   */
+  const labOpened = src.labOpened === true ? true : src.labOpened === false ? false : undefined
+  /**
    * **弹药 / 修理组件取用来源开关**（2026-09-23 船长令）：三态读法（缺省 = 未设过 = 走默认"只仓库"）。
    * ⚠ 本清洗器逐字段重建 ⇒ 漏登记 = 每读一次档开关就被重置（与 `foe`/`turnsSpent` 同一类事故）。
    */
@@ -4197,6 +4203,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     ...(ambushRetreatSeen !== undefined ? { ambushRetreatSeen } : {}),
     // 造出第一艘自造船（true/false 都落键；缺失保持缺失 = 老档，交给触发器按船长裁决「丙」补发）
     ...(firstShipBuilt !== undefined ? { firstShipBuilt } : {}),
+    // 第一次进实验室（2026-09-30：true/false 都落键；缺失保持缺失 = 老档，按船长裁定「甲」也补发）
+    ...(labOpened !== undefined ? { labOpened } : {}),
     ...(resupplyFromWarehouse !== undefined ? { resupplyFromWarehouse } : {}),
     /** 跃迁燃料开关 ＋ 实验室产线（2026-09-29 跃迁燃料批；空 ⇒ 不写键，老档零迁移） */
     ...(Object.keys(jumpFuel).length > 0 ? { jumpFuel } : {}),

@@ -120,6 +120,8 @@ import {
   typeLayerMult,
   REPAIR_PULSE_MS,
   SHIELD_PULSE_MS,
+  /** 高安启动信号发射器的声望代价（2026-09-30：物品说明里写明「付 10 点声望」⇒ 登记为语境常量） */
+  HIGH_SEC_PENALTY,
   DRONE_SKILL,
   MINEABLE_KINDS,
   RACK_SLOTS,
@@ -954,6 +956,9 @@ for (const sbp of SHIP_BLUEPRINTS) {
     ['爆破对护盾', typeLayerMult('explosive', 'shield')],
     ['能量对护盾', typeLayerMult('plasma', 'shield')],
     ['能量对装甲', typeLayerMult('plasma', 'armor')],
+    /* 2026-09-30：信号发射器说明里的「在高安启动要付 10 点声望」——数值真身 = core 的
+       `HIGH_SEC_PENALTY`（`consumables.ts`，与界面警告同源）⇒ 登记成语境常量，别在说明里写凭空的数 */
+    ['高安启动信号发射器的声望代价', HIGH_SEC_PENALTY],
   ]
   let total = 0
   let unexplained = 0
@@ -7691,6 +7696,9 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
     // 2026-09-15 造出第一艘自造船（船长：「当玩家造好第一条船后，弹出通讯祝贺玩家，并告诉玩家
     // 新建造的舰船在舰船仓库页面」）——判定读随档三态标记 `state.firstShipBuilt`
     'shipBuilt',
+    // 2026-09-30 首次进实验室页面（船长令：「当玩家第一次进入实验室页面时，给玩家发送一封通讯，
+    // 来源不能是官方…」）——判定读随档标记 `state.labOpened`（置位点 `engine.noteLabOpened()`）
+    'labOpened',
   ])
   const KINDS = new Set(['剧情', '提示', '委托', '教程'])
   const ALIGNMENTS = new Set(['官方', '民间', '中立', '系统'])

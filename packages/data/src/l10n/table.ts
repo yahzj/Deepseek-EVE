@@ -2018,6 +2018,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.comms.071": { zh: "{p1} 信用点", en: "{p1} credits" },
   "ui.comms.072": { zh: "{p1} ×{p2}", en: "{p1} ×{p2}" },
   "ui.comms.073": { zh: "、", en: ", " },
+  /* ── 2026-09-30 首访实验室：黑市那封（船长令「来源不能是官方」「口气是黑市商人诱导你」）──
+     074/075 = 新发件方名与部门名（`ui/commsText.ts` 的 `COMMS_NAME_ID`）
+     076 = 主题行 · 077 = 跳转栏那句 · 078 = 立场片「中立」（枚举里本来就有，此前没势力用过） */
+  "ui.comms.074": { zh: "黑市", en: "Black Market" },
+  "ui.comms.075": { zh: "违禁品柜", en: "Contraband Desk" },
+  "ui.comms.076": { zh: "有门生意，你先看看货", en: "A line of business — take a look at the goods" },
+  "ui.comms.077": { zh: "工业页的实验室能造这两样。", en: "The Lab on the Industry page builds both of these." },
+  "ui.comms.078": { zh: "中立", en: "Neutral" },
   // 2026-09-25 入侵结算面板（点结算通讯的跳转弹出；照虫洞撤离结算的骨相）
   "ui.weekend.030": { zh: "入侵结算", en: "Invasion summary" },
   "ui.weekend.031": { zh: "核心「{p1}」 · {p2} · 第 {p3} 场", en: "Core “{p1}” · {p2} · Run {p3}" },
