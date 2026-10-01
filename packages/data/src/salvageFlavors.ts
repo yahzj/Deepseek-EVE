@@ -58,6 +58,16 @@ export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = 
   'ink-raid': { modules: ['mod-shield-pla-2'] },
   'ink-main': { modules: ['mod-shield-pla-2'] },
   'ink-flagship': { modules: ['mod-shield-pla-2'] },
+  /* ── R 族（余晖 · Afterglow · 2026-10-01 船长令「是新势力：余晖」）四张入侵卡 ──
+   * 与 H 族同款：主题件 = **通用 MK2 一件**（照 D 高安组同款 `mod-shield-pla-2`）。
+   * ⚠ R 族**P0 阶段没有势力装备**（`FOE_LAIR_GEAR.R` 恒空）⇒ 高级箱只有第 ② 支（主题件）有货；
+   *    P1 定下三件势力装备后，把件名加进 `core/lairs.ts` 的 `FOE_LAIR_GEAR.R` 即可，本行不用动。
+   * ⚠ 契约特别处与 H 族同：它们锚在展示用的 `galaxy-hub`（sec 1.0，高安）⇒ 读 `content:check` 的
+   *   「主题彩头仅限 sec<0.5 星系」得走**入侵卡例外**（判据 = 卡级 `region` 覆写为 `inv`）。 ── */
+  'glow-drift': { modules: ['mod-shield-pla-2'] },
+  'glow-split': { modules: ['mod-shield-pla-2'] },
+  'glow-converge': { modules: ['mod-shield-pla-2'] },
+  'glow-nexus': { modules: ['mod-shield-pla-2'] },
 }
 
 /** 卡级特色池与产出倾向（**构建依据 · 体检输入**；运行时见 `@whale/core` 的 `WRECK_GROUPS`） */
@@ -212,6 +222,27 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
   'ink-flagship': {
     recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
     recycleNote: '墨潮旗舰部队残骸：星髓晶与重钨合金为主',
+  },
+  /* ── R 族（余晖 · Afterglow · 2026-10-01 船长令「是新势力：余晖」）四张入侵卡 ──
+   *   与 H 族同款：**卡级池对标 D 族高安组**（钛钢 40 · 星髓晶 34 · 重钨合金 26 · 均价 109.90），
+   *   配合四张卡的 `wreckTier: 'dire'` ⇒ 卡级价值 0.62 × 109.90 = **68.14 ISK/m³**（与 H 族同值）。
+   *   为什么必须写卡级池：与 H 族同因 —— 这四张卡锚在展示用的 `galaxy-hub`（密度 58）
+   *   ⇒ 缺省池 = 常档基础池 9.8，组池也就上不去（B3.1「保值」：组池均价 = 卡级加权目标 ±3%）。 ── */
+  'glow-drift': {
+    recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
+    recycleNote: '余晖游弋集群残骸：星髓晶与重钨合金为主',
+  },
+  'glow-split': {
+    recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
+    recycleNote: '余晖分光集群残骸：星髓晶与重钨合金为主',
+  },
+  'glow-converge': {
+    recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
+    recycleNote: '余晖汇聚集群残骸：星髓晶与重钨合金为主',
+  },
+  'glow-nexus': {
+    recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
+    recycleNote: '余晖中枢卫队残骸：星髓晶与重钨合金为主',
   },
 }
 

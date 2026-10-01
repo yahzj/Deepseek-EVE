@@ -59,6 +59,11 @@ import {
   FOE_H_INK_JAMMER,
   FOE_H_INK_TORPEDO,
   FOE_H_INK_BATTLECRUISER,
+  FOE_R_AFT_GLINT, // 2026-10-01 船长：R 族（余晖）五档壳体（周末入侵第二族）
+  FOE_R_AFT_ECHO,
+  FOE_R_AFT_PRISM,
+  FOE_R_AFT_DUSK,
+  FOE_R_AFT_NEXUS,
 } from './foe-ships'
 
 /** 洞内敌卡的缩放锚点威胁（= core `WORMHOLE_THREAT_BASE`，第 1 层基准） */
@@ -771,6 +776,163 @@ export const WEEKEND_INK_FLAGSHIP_CARD: AnomalyDef = {
   description: '周末入侵：墨潮帮的旗舰部队（隐藏卡，只由入侵活动生成）。',
 }
 
+/* ═══════════ R 族 · 余晖（Afterglow）（2026-10-01 船长令 · 周末入侵第二族）═══════════
+ * 船长原话（照抄）：「**是新势力：余晖，你可以查阅下远行星号中的无人机敌对势力余晖，我们参考那个做。**」
+ *
+ * 四张卡与 H 族**同构**（骚扰 / 袭击 / 汇聚 / 中枢卫队），威胁档沿用 **90 / 108 / 129 / 170**
+ * （船长裁定「沿用 —— 同档可比、玩家已有手感基准」）。
+ * 编成体现本族族格：**护盾特化 · 偏等离子 · 每艘自带机巢**（机型 = `FOE_DRONE_R_PRISM`「折光机」）。
+ *
+ * ⚠ **定价口径与 H 族同一套**：`hpMul` = K · `dmgMul` = K ÷ 多舰补偿；威胁 = 卡面实测价，
+ * 达成预算须 `≤ F(威胁)`。**R 族舰级值低于 H 族同档**（T1 221 vs 364，走"脆而多"）
+ * ⇒ 同样的威胁档需要**更大的 K**。读数以 `npm run battle:calibrate` 与 `content:check` 为准。
+ */
+
+/**
+ * **R 族 · 1「余晖 · 游弋集群」**（外围常驻 · 威胁 90）。
+ *
+ * 编成 = **粼光级 ×5**（对照 H 族骚扰卡：突击舰 ×4）—— 余晖走"多而脆"，故 5 艘。
+ * 全卡都是粼光级 ⇒ `dmgMix` 与舰级一致（等离子为主）。
+ */
+export const WEEKEND_GLOW_DRIFT_CARD: AnomalyDef = {
+  id: 'glow-drift',
+  foeFamily: 'R',
+  name: '余晖 · 游弋集群',
+  galaxyId: 'galaxy-hub', // 只作日志/展示归属（与 H 族四张卡同款；本卡 hidden、不进星系目录）
+  region: 'inv', // 与 H 族同口径：入侵族的残骸走「入侵」类
+  wreckTier: 'dire', // 与 H 族同口径：残骸价提到 D 族水平（卡级回收档覆写危档）
+  threat: 90,
+  foeTargeting: 'random',
+  dmgMix: { plasma: 8, kinetic: 2 },
+  ships: [{ ship: FOE_R_AFT_GLINT, count: 5, hpMul: 3.0, dmgMul: 1.875 }],
+  standingReq: 0,
+  standingGain: 0,
+  rewardIsk: 0,
+  loot: [],
+  combatSeconds: 50,
+  hidden: true,
+  description: '周末入侵：余晖的游弋集群（隐藏卡，只由入侵活动生成）。',
+}
+
+/**
+ * **R 族 · 2「余晖 · 分光集群」**（2 波 · 威胁 108）。
+ *
+ * 第 1 波 = 粼光级 ×3（轻兵先上）· 第 2 波 = 回响级 ×3（驱逐档接战）。
+ */
+export const WEEKEND_GLOW_SPLIT_CARD: AnomalyDef = {
+  id: 'glow-split',
+  foeFamily: 'R',
+  name: '余晖 · 分光集群',
+  galaxyId: 'galaxy-hub',
+  region: 'inv',
+  wreckTier: 'dire',
+  threat: 108,
+  foeTargeting: 'random',
+  dmgMix: { plasma: 8, kinetic: 2 },
+  waves: [
+    { units: 3, hpShare: 0.5 },
+    { units: 3, hpShare: 0.5 },
+  ],
+  ships: [
+    { ship: FOE_R_AFT_GLINT, count: 3, wave: 0, hpMul: 3.5, dmgMul: 2.1 },
+    { ship: FOE_R_AFT_ECHO, count: 3, wave: 1, hpMul: 3.5, dmgMul: 2.1 },
+  ],
+  standingReq: 0,
+  standingGain: 0,
+  rewardIsk: 0,
+  loot: [],
+  combatSeconds: 60,
+  hidden: true,
+  description: '周末入侵：余晖的分光集群（隐藏卡，只由入侵活动生成）。',
+}
+
+/**
+ * **R 族 · 3「余晖 · 汇聚集群」**（2 波 · 威胁 129）。
+ *
+ * 第 1 波 = 回响级 ×3 · 第 2 波 = **垂暮级 ×1 ＋ 棱镜级 ×1 ＋ 回响级 ×2**（共 7 艘）。
+ * ⚠ **条目顺序 = 本波"敌方期望距离"的取数依据**（`foeDesiredRange` 取 `foes[0]`）⇒
+ * **主体（垂暮级，射程 1~6,000）排在第一**，与 H 族主力卡同一条纪律。
+ */
+export const WEEKEND_GLOW_CONVERGE_CARD: AnomalyDef = {
+  id: 'glow-converge',
+  foeFamily: 'R',
+  name: '余晖 · 汇聚集群',
+  galaxyId: 'galaxy-hub',
+  region: 'inv',
+  wreckTier: 'dire',
+  threat: 129,
+  /**
+   * **打赢本卡掉 1 件稀有残骸**（与 H 族主力卡同款；船长 2026-09-27 令「主力舰队添加一个稀有残骸掉落」
+   * ＋ 追问落点答「进残骸场」）。落点 = 该星系的入侵残骸场，打捞时稀有池优先、本轮必出一件。
+   */
+  rareWreckDrop: 1,
+  foeTargeting: 'random',
+  dmgMix: { plasma: 8, kinetic: 2 },
+  waves: [
+    { units: 3, hpShare: 0.5 },
+    { units: 4, hpShare: 0.5 },
+  ],
+  ships: [
+    { ship: FOE_R_AFT_ECHO, count: 3, wave: 0, hpMul: 1.7, dmgMul: 0.9714 },
+    { ship: FOE_R_AFT_DUSK, count: 1, wave: 1, hpMul: 1.7, dmgMul: 0.9714 },
+    { ship: FOE_R_AFT_PRISM, count: 1, wave: 1, hpMul: 1.7, dmgMul: 0.9714 },
+    { ship: FOE_R_AFT_ECHO, count: 2, wave: 1, hpMul: 1.7, dmgMul: 0.9714 },
+  ],
+  standingReq: 0,
+  standingGain: 0,
+  rewardIsk: 0,
+  loot: [],
+  combatSeconds: 70,
+  hidden: true,
+  description: '周末入侵：余晖的汇聚集群（隐藏卡，只由入侵活动生成）。',
+}
+
+/**
+ * **R 族 · 4「余晖 · 中枢卫队」**（4 波 · 威胁 170）—— 周末入侵的族旗舰卡。
+ *
+ * 4 波各 4 / 4 / 3 / 4 艘（共 15 艘，**余晖中枢**在最后一波压轴）——本卡**自带波表**
+ * （与 H 族旗舰卡同款：`combat.FoeOverride.keepCardWaves`）。
+ *
+ * ⚠ **BOSS 口径**：与 H 族同款 —— 战斗里的血条 = **池子剩余**（`FoeOverride.bossHp`，
+ * 池子 = 固定 150,000），中枢的舰级血 39,200 只作**卡面基准** ⇒ 单场不死名副其实。
+ * ⚠ 第 4 波条目顺序 = 中枢在首（主体决定本波期望距离）。
+ */
+export const WEEKEND_GLOW_NEXUS_CARD: AnomalyDef = {
+  id: 'glow-nexus',
+  foeFamily: 'R',
+  name: '余晖 · 中枢卫队',
+  galaxyId: 'galaxy-hub',
+  region: 'inv',
+  wreckTier: 'dire',
+  threat: 170,
+  foeTargeting: 'random',
+  dmgMix: { plasma: 8, kinetic: 2 },
+  waves: [
+    { units: 4, hpShare: 0.2 },
+    { units: 4, hpShare: 0.25 },
+    { units: 3, hpShare: 0.25 },
+    { units: 4, hpShare: 0.3 },
+  ],
+  ships: [
+    { ship: FOE_R_AFT_GLINT, count: 4, wave: 0, hpMul: 2.2, dmgMul: 1.1733 },
+    { ship: FOE_R_AFT_ECHO, count: 3, wave: 1, hpMul: 2.2, dmgMul: 1.1733 },
+    { ship: FOE_R_AFT_PRISM, count: 1, wave: 1, hpMul: 2.2, dmgMul: 1.1733 },
+    { ship: FOE_R_AFT_DUSK, count: 2, wave: 2, hpMul: 2.2, dmgMul: 1.1733 },
+    { ship: FOE_R_AFT_PRISM, count: 1, wave: 2, hpMul: 2.2, dmgMul: 1.1733 },
+    { ship: FOE_R_AFT_NEXUS, count: 1, wave: 3, hpMul: 2.2, dmgMul: 1.1733 },
+    { ship: FOE_R_AFT_PRISM, count: 1, wave: 3, hpMul: 2.2, dmgMul: 1.1733 },
+    { ship: FOE_R_AFT_DUSK, count: 1, wave: 3, hpMul: 2.2, dmgMul: 1.1733 },
+    { ship: FOE_R_AFT_ECHO, count: 1, wave: 3, hpMul: 2.2, dmgMul: 1.1733 },
+  ],
+  standingReq: 0,
+  standingGain: 0,
+  rewardIsk: 0,
+  loot: [], // 奖励由入侵侧发（中枢匣 ＋ 稀有残骸；卡上不给）
+  combatSeconds: 90,
+  hidden: true,
+  description: '周末入侵：余晖的中枢卫队（隐藏卡，只由入侵活动生成）。',
+}
+
 /** 周末入侵·独立卡的 id（core 的 `weekendFoeCardOf` 按族路由到它们；**本表是唯一登记处**） */
 export const WEEKEND_FOE_CARD_IDS = {
   /** H 族（墨潮帮）· 1 骚扰舰队（外围常驻） */
@@ -783,6 +945,16 @@ export const WEEKEND_FOE_CARD_IDS = {
   H_flagship: WEEKEND_INK_FLAGSHIP_CARD.id,
   /** 兼容旧引用：旗舰 = 旗舰部队 · 普通 = 骚扰舰队 */
   H_assault: WEEKEND_INK_HARASS_CARD.id,
+  /** R 族（余晖）· 1 游弋集群（外围常驻） */
+  R_drift: WEEKEND_GLOW_DRIFT_CARD.id,
+  /** R 族（余晖）· 2 分光集群（2 波） */
+  R_split: WEEKEND_GLOW_SPLIT_CARD.id,
+  /** R 族（余晖）· 3 汇聚集群（2 波） */
+  R_converge: WEEKEND_GLOW_CONVERGE_CARD.id,
+  /** R 族（余晖）· 4 中枢卫队（4 波 · 自带波表） */
+  R_nexus: WEEKEND_GLOW_NEXUS_CARD.id,
+  /** 兼容旧引用：旗舰 = 中枢卫队 · 普通 = 游弋集群 */
+  R_assault: WEEKEND_GLOW_DRIFT_CARD.id,
 } as const
 
 /** 周末入侵·独立卡清单（`data/context.ts` 把它们并进 `ANOMALIES_FLAVORED` ⇒ 引擎 `ctx.anomalies` 能取到） */
@@ -791,4 +963,8 @@ export const WEEKEND_FOE_CARDS: readonly AnomalyDef[] = [
   WEEKEND_INK_RAID_CARD,
   WEEKEND_INK_MAIN_CARD,
   WEEKEND_INK_FLAGSHIP_CARD,
+  WEEKEND_GLOW_DRIFT_CARD,
+  WEEKEND_GLOW_SPLIT_CARD,
+  WEEKEND_GLOW_CONVERGE_CARD,
+  WEEKEND_GLOW_NEXUS_CARD,
 ]

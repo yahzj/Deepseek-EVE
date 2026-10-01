@@ -694,6 +694,9 @@ const WRECK_FAMILY_EN: Readonly<Record<string, string>> = {
   g: 'Deadarmy',
   // H 族（墨潮帮 · 2026-09-24 船长定名「The Ink Tide」）：A 族海盗的变种/叛出分支
   h: 'Ink Tide',
+  // R 族（余晖 · 2026-10-01 船长令「是新势力：余晖」）：参考远行星号 Remnants 的全无人 AI 舰队残余。
+  // 英文名取 **Afterglow**（"余晖"的直译；船长 2026-10-01 选「甲：照提案」批定）
+  r: 'Afterglow',
 }
 const WRECK_AREA_EN: Readonly<Record<string, string>> = {
   hi: 'High-sec',
@@ -758,6 +761,10 @@ const WRECK_IDS = [
   // （旧 'h-wh' 已退役：它此前没有任何产出路径，任何存档都不可能持有 ⇒ 改名零迁移）
   'wreck-h-hi',
   'wreck-rare-h-hi',
+  // R 族（余晖）第 15 组（2026-10-01 船长令「是新势力：余晖」）：'r-inv' —— 第二个**入侵类**残骸组
+  // （与 H 族同构：一次到位、无历史包袱 ⇒ 组 key 就叫 `r-inv`，不像 H 那样保留旧的 `h-hi`）
+  'wreck-r-inv',
+  'wreck-rare-r-inv',
 ] as const
 
 export const EN_WRECKS: EnTable = Object.fromEntries(WRECK_IDS.map((id) => [id, wreckEnText(id)]))
@@ -799,6 +806,8 @@ const WRECK_GROUP_NOTE_EN: Readonly<Record<string, string>> = {
   'e-lo': 'Starcore Crystal and Isotope Polycrystal from megastructure fragments',
   'g-lo': 'Mostly Darkiron Alloy and Isotope Polycrystal, with structure and armour stock',
   'h-hi': 'Mostly Starcore Crystal and Heavy Tungsten Alloy, with structure stock',
+  // R 族（余晖 · 2026-10-01）：与 H 族同池同价位（组池 = D 高安组那套：钛钢 40 · 星髓晶 34 · 重钨合金 26）
+  'r-inv': 'Mostly Starcore Crystal and Heavy Tungsten Alloy, with structure stock',
 }
 
 /** 组名（普通 / 稀有）按族名 + 区名派生 —— 与 `wreckEnText` 同源 */
@@ -1049,6 +1058,23 @@ export const EN_ANOMALIES: EnTable = {
   'ink-flagship': {
     name: 'Ink Tide Flagship Group',
     description: 'Weekend incursion: the Ink Tide flagship group (hidden card, spawned by the incursion event only).',
+  },
+  // R 族（余晖）· 周末入侵的四张独立敌卡（2026-10-01 船长令建族 · 编成与 H 族同构）
+  'glow-drift': {
+    name: 'Afterglow Drift Swarm',
+    description: 'Weekend incursion: a drifting swarm of the Afterglow (hidden card, spawned by the incursion event only).',
+  },
+  'glow-split': {
+    name: 'Afterglow Split Swarm',
+    description: 'Weekend incursion: a split swarm of the Afterglow (hidden card, spawned by the incursion event only).',
+  },
+  'glow-converge': {
+    name: 'Afterglow Converge Swarm',
+    description: 'Weekend incursion: a converging swarm of the Afterglow (hidden card, spawned by the incursion event only).',
+  },
+  'glow-nexus': {
+    name: 'Afterglow Nexus Guard',
+    description: 'Weekend incursion: the Afterglow nexus guard (hidden card, spawned by the incursion event only).',
   },
 }
 
@@ -1423,6 +1449,13 @@ export const EN_FOE_SHIPS: EnTable = {
   'foe-h-ink-torpedo': { name: 'Ink Tide Torpedo Ship' },
   'foe-h-ink-battlecruiser': { name: 'Ink Tide Battlecruiser' },
   'foe-h-ink-flagship': { name: 'Ink Tide Invasion Carrier' },
+  // R 族（余晖 · Afterglow · 2026-10-01 船长令建族 · 船长选「甲：照提案」批定自创舰名）
+  // 舰名一律**自创**（"光现象/残响"意象）—— 参考对象的舰名不照抄；英文 = 族名 + 光现象词
+  'foe-r-aft-glint': { name: 'Afterglow Glint' },
+  'foe-r-aft-echo': { name: 'Afterglow Echo' },
+  'foe-r-aft-prism': { name: 'Afterglow Prism' },
+  'foe-r-aft-dusk': { name: 'Afterglow Dusk' },
+  'foe-r-aft-nexus': { name: 'Afterglow Nexus' },
 }
 
 /**

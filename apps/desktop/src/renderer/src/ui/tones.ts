@@ -161,6 +161,8 @@ export const ICO_TONES: Record<string, string> = {
   'fam-e': toneVar('fam-e'),
   'fam-g': toneVar('fam-g'),
   'fam-h': toneVar('fam-h'),
+  // R 族（余晖 · 2026-10-01 建族）：族徽色 = 冷白银青（与 fam-g 的亮青拉开；呼应设定里的冷白舰体）
+  'fam-r': toneVar('fam-r'),
   'ico-home': toneVar('ico-home'),
   'ico-lock': toneVar('ico-lock'),
   'ico-clock': toneVar('ico-clock'),
@@ -180,20 +182,21 @@ export const ICO_TONES: Record<string, string> = {
  *
  * 症状与真因：手册的卡片统一走 `toneOf(glyph)` 取色，而 `toneOf()` **只查 `TONES`**（物品/装备/分组那 83 条）。
  * 图标键落在 `ICO_TONES`（`fam-*` 族徽 / `ico-*`）或 `NAV_TONES`（`nav-*`）的卡片就会**静默取到兜底灰**：
- *   · 势力图鉴六张势力卡的 glyph = 族徽 `fam-a/c/d/e/g/h` ⇒ **六张卡同一个灰色**（就是船长看到的那样）；
+ *   · 势力图鉴七张势力卡的 glyph = 族徽 `fam-a/c/d/e/g/h/r` ⇒ **七张卡同一个灰色**（就是船长看到的那样）；
  *   · 势力详情里的敌人卡 = `ico-tact` ⇒ 同灰；
  *   · 左上角族徽角标的内联色 = `toneOf('fam-x')` ⇒ 也灰（还**压掉**了 `.app-map-famchip.is-fam-X` 的类色）。
  *
  * 本函数按 **TONES → ICO_TONES → NAV_TONES** 顺次查，三张表都没有才回落 `--wui-dim`：
  * 对物品/装备键的行为与 `toneOf()` **逐字一致**（`TONES` 仍是第一顺位），只是不再让另外两张表的键掉进灰兜底。
- * 族色本身仍是单点：`FOE_ACCENT`（见下）＝ `toneVar('A'..'H')`，与星图族标签、战场敌舰同源。
+ * 族色本身仍是单点：`FOE_ACCENT`（见下）＝ `toneVar('A'..'R')`，与星图族标签、战场敌舰同源。
  */
 export function toneOfAny(key: string | undefined): string {
   if (!key) return 'rgb(var(--wui-dim))'
   return TONES[key] ?? ICO_TONES[key] ?? NAV_TONES[key] ?? 'rgb(var(--wui-dim))'
 }
 
-/** FOE_ACCENT（8 条；H = 墨潮帮 · 2026-09-24 新增，**仍是红色系**（船长令）但比 A 族深/暗一档） */
+/** FOE_ACCENT（9 条；H = 墨潮帮 · 2026-09-24 新增，**仍是红色系**（船长令）但比 A 族深/暗一档 ·
+ *  R = 余晖 · 2026-10-01 新增，**青白冷冽**（船长选「甲：照提案」），与 H 族正对照） */
 export const FOE_ACCENT: Record<string, string> = {
   A: toneVar('A'),
   B: toneVar('B'),
@@ -204,6 +207,8 @@ export const FOE_ACCENT: Record<string, string> = {
   G: toneVar('G'),
   // H 族（墨潮帮）：与 A 同为红（船长「依旧红色色系最好」），靠**更深更沉**区分
   H: toneVar('H'),
+  // R 族（余晖）：青白冷冽（能量护盾的意象）—— 与 H 族的深红形成正对照
+  R: toneVar('R'),
 }
 
 /** WORK_ACCENT（4 条） */

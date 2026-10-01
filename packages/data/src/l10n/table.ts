@@ -3352,6 +3352,22 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.378": { zh: "活动星域", en: "Territory" },
   "ui.Handbook.379": { zh: "行踪不定。", en: "Their whereabouts are never certain." },
   "ui.Handbook.380": { zh: "清空搜索与筛选", en: "Clear search and filters" },
+  /* ── R 族（余晖 · Afterglow · 2026-10-01 船长令建族）：势力图鉴第 7 族 ──
+   * 9 格 = 族名 ＋ 四对「小标题 ＋ 正文」（与 H 族 371~379 同构）。
+   * ⚠ **387 那格 = 船长手改稿逐字照抄**（2026-10-01 草稿审校时，船长只改了「交手记录」这一格：
+   * 「拥有未知折跃能力的无人舰船，使用以激光为主的武器。非常擅长风筝战术。」）—— 其余三格照原稿落。
+   * ⚠ 文案与机制的对齐：激光 = 五档舰级的 `energyForm: 'beam'` · 风筝 = `tactic: 'kite'` ✓ 已落码；
+   * **「折跃能力」对应的「闪现」敌挂载件尚在设计中**（引擎级新机制，P0.5）。
+   * 当前 `WEEKEND_LOCKED_FAMILY` 仍是 `'H'` ⇒ **余晖未上线、玩家看不到**，不存在文案与设定不符的可见问题。 */
+  "ui.Handbook.381": { zh: "余晖", en: "Afterglow" },
+  "ui.Handbook.382": { zh: "档案摘要", en: "Summary" },
+  "ui.Handbook.383": { zh: "一支没有舰员的舰队，由计算核心驾驶。", en: "A fleet with no crew aboard, piloted by compute cores." },
+  "ui.Handbook.384": { zh: "舰体特征", en: "Hull profile" },
+  "ui.Handbook.385": { zh: "舰体线条冷白，护盾占全舰一半以上；装甲与结构都薄。", en: "Cold-white lines, with shields taking more than half the hull; armor and structure are both thin." },
+  "ui.Handbook.386": { zh: "交手记录", en: "Engagement record" },
+  "ui.Handbook.387": { zh: "拥有未知折跃能力的无人舰船，使用以激光为主的武器。非常擅长风筝战术。", en: "Unmanned hulls with an unknown blink drive, armed mainly with lasers, and very adept at kiting." },
+  "ui.Handbook.388": { zh: "活动星域", en: "Territory" },
+  "ui.Handbook.389": { zh: "随入侵现身，不设固定据点。", en: "They appear with an incursion and keep no fixed hold." },
 
   /* ── 2026-09-26 势力图鉴页（船长：「敌族图鉴单独列出吧，放在蓝图图鉴下方，叫『势力图鉴』」）──
      图鉴页自己的标签/占位/三块标题；势力名与五段简介**复用** ui.Handbook.326~391（原先那节搬过来）。 */
@@ -4400,6 +4416,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipArt.007": { zh: "鱿烬", en: "Deadarmy" },
   // H 族（墨潮帮 · 2026-09-24 船长定名「The Ink Tide」）：短名取两字「墨潮」（星图标签位窄）
   "ui.shipArt.008": { zh: "墨潮", en: "Ink Tide" },
+  // R 族（余晖 · Afterglow · 2026-10-01 船长令「是新势力：余晖」）：短名取两字「余晖」（与族名同形）
+  "ui.shipArt.009": { zh: "余晖", en: "Afterglow" },
   "ui.shipInfo.001": { zh: "（上限 90%）", en: " (cap 90%)" },
   "ui.shipInfo.002": { zh: "军用修理组件", en: "Military Repair Kit" },
   "ui.shipInfo.003": { zh: "民用修理组件", en: "Civilian Repair Kit" },

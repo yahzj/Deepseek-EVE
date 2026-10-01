@@ -212,6 +212,42 @@ export const FOE_DRONE_H_HEAVY: FoeDroneDef = {
   reloadMs: 3600, // 少架数下仍能持续输出
 }
 
+/**
+ * **R 族「折光机」**（**2026-10-01 船长令**建族「**余晖**」；参考远行星号 Remnants 的
+ * 「全无人 AI 舰队」设定）—— 余晖**每艘舰都自带机巢**，故本机型是这族的招牌。
+ *
+ * 定位 = **多而灵**，与 H 族「墨潮重袭机」的**少而极强**正好构成一组对照：
+ * - **三层血 120**（护盾 60 / 装甲 30 / 结构 30）—— 对照：我方制式攻坚机 194 · C 族孢群机 88 ·
+ *   E 警戒机 55 · G 蜂群机 26 · H 族重袭机 600 ⇒ 落在"轻"这一档；
+ * - **闪避 0.35** —— 全游敌机最高（H 族重袭机 0.12 是最低）⇒ 靠"打不中"活，而不是靠血厚；
+ * - **单发 30** —— H 族是 120 ⇒ 单架只有它四分之一，靠**架数**补（余晖 T1 起就带机巢、旗舰带 4 架）；
+ * - **伤害系 = 等离子**，与 R 族船体武器同源（余晖是**能量/护盾特化**，对照 H 族的导弹=爆炸线）。
+ *
+ * ⚠ 它是**敌方机群**：我方只有带防空属性的武器（近防炮）能打它 ⇒ 0.35 闪避会让"打不打得掉"
+ * 成为读数项；若实测偏硬，按 `content:check` 的机群契约调三层血或闪避（改一处即全族生效）。
+ */
+export const FOE_DRONE_R_PRISM: FoeDroneDef = {
+  id: 'foe-drone-r-prism',
+  name: '折光机',
+  family: 'R',
+  role: 'combat', // 战斗机档（数量型；H 族那架走 assault 档「厚甲重击」，两族正相反）
+  defense: {
+    shieldHp: 60,
+    armorHp: 30,
+    hullHp: 30, // 三层共 **120**
+    shieldResist: { kinetic: 0.15, explosive: 0.15, plasma: 0.15 },
+    armorResist: { kinetic: 0.15, explosive: 0.15, plasma: 0.15 },
+    hullResist: { kinetic: 0.15, explosive: 0.15, plasma: 0.15 },
+    evasion: 0.35, // 全游敌机最高（H 族重袭机 0.12 最低）—— 靠闪避活，不靠血厚
+  },
+  dmg: 30,
+  damageType: 'plasma', // 与 R 族船体武器同源
+  hitRate: 1.1,
+  falloff: 1, // 战斗机档：命中不随距离衰减（与 H 族重袭机同口径）
+  maxRangeM: 12000, // 与全游机群同口径（船长 2026-09-25 令「机群交战距离是 12000」）
+  reloadMs: 4400, // 我方制式节奏（数量型不需要 H 族那 3,600ms 的高频）
+}
+
 /** 敌机机型表（按 id 索引；`content:check` 校验舰级引用的机型必须在此） */
 export const FOE_DRONES: readonly FoeDroneDef[] = [
   FOE_DRONE_E_ALERT,
@@ -220,4 +256,5 @@ export const FOE_DRONES: readonly FoeDroneDef[] = [
   FOE_DRONE_G_BEE_PLA,
   FOE_DRONE_C_SPORE,
   FOE_DRONE_H_HEAVY, // 2026-09-24 船长：H 族「墨潮重袭机」（单架属性极高；战列巡洋舰 ×1 / 入侵母舰 ×2）
+  FOE_DRONE_R_PRISM, // 2026-10-01 船长：R 族「余晖」折光机（多而灵；五档壳体逐档带机巢，旗舰 ×4）
 ];
