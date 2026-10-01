@@ -235,7 +235,16 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       id: `whauto:${run.id}`,
       kind: 'whauto',
       label: '自动探索',
-      sub: `${run.shipIds.length} 条舰（各占 1 枚 AI 核心）`,
+      /**
+       * ⚠ **⟪文案调整 2026-10-01⟫（船长报障）**（原话：「自动探索虫洞的活动栏，还是显示各占一个 AI 核心
+       * （实际上现在总共只占一个，有些多余，建议删除）」）：核心占用早就是**整队一趟 1 枚**
+       * （`wormholeAuto.ts` 的「整队一趟只占 1 枚」＋ `ai.ts` 的 `aiCoreShipUsed` 按趟计），
+       * 只有这句副标题还停在旧口径上 ⇒ 改成「整队占 1 枚」（只派 1 条舰时不必说"整队"）。
+       */
+      sub:
+        run.shipIds.length > 1
+          ? `${run.shipIds.length} 条舰 · 整队占 1 枚 AI 核心`
+          : `${run.shipIds.length} 条舰 · 占 1 枚 AI 核心`,
       percent: Math.max(0, Math.min(100, Math.round((done / span) * 100))),
       remainingMs: Math.max(0, run.finishAtGameMs - state.gameMs),
       stopable: true,

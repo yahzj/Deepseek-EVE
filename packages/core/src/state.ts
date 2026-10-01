@@ -370,7 +370,7 @@ export interface WormholeAutoRun {
   family?: WormholeFamily
   /** 该处的内容原型（丙 · 内容原型；缺省按 `seed` 现算 ⇒ 零迁移） */
   archetype?: WormholeArchetype
-  /** 参与舰（每条各占 1 枚 AI 核心；任务期间锁定） */
+  /** 参与舰（**整队一趟占 1 枚 AI 核心**，2026-09-26 船长令；任务期间锁定） */
   shipIds: string[]
   startedAtGameMs: number
   finishAtGameMs: number

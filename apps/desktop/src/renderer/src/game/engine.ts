@@ -2906,7 +2906,7 @@ export class GameEngine {
     return { free: wormholeAutoFreeCores(this.state, this.ctx), cap: aiCoreCap(this.state, this.ctx) }
   }
 
-  /** 自动探索：开始一趟（消耗该处库存、按参与舰数占 AI 名额、参与舰锁定到返航） */
+  /** 自动探索：开始一趟（消耗该处库存、**整队占 1 枚 AI 核心**、参与舰锁定到返航） */
   wormholeAutoStart(stockId: string, shipIds: readonly string[]): CommandResult {
     const r = wormholeAutoStart(this.state, this.ctx, stockId, shipIds)
     if (r.ok) {
