@@ -1315,6 +1315,17 @@ html[data-locale='en'] body {
   color: rgb(var(--wui-text));
 }
 
+/* ---------- 实验室卡（**2026-10-01 船长令**：「你漏了产物部分的样式（包括产物的title）」） ----------
+ * 产物行与组装机卡**同一口径**：**只有产物名金色**，其余（「产物：」标签、拥有数、每批工期、产出倍率）
+ * 回普通文字色——即上面那条 2026-09-13 的令。
+ * ⚠ **为什么不直接给实验室卡挂 `.is-assembler`**：那条还带 `content-visibility: auto` ＋
+ *   `contain-intrinsic-size: auto 523px`（组装机 151 张卡的屏外跳过与占位高度，见 `ui/LazyMount.tsx`）；
+ *   实验室只有几张卡，既不需要屏外跳过，也不该继承那个 523px 的占位高度。
+ * ⚠ 金色落在产物名上靠 JSX 里的 `.app-gold`（现成类，不新增色值）。 */
+.app-belt-card.is-lab .app-belt-ore {
+  color: rgb(var(--wui-text));
+}
+
 /* ---------- 星图显示模式切换（2026-09-11 船长：名称 / 安全等级 / 敌对派系 三态互斥） ---------- */
 
 .app-map-viewbar {
