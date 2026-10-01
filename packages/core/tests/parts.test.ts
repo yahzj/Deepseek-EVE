@@ -140,7 +140,7 @@ describe('零件体系：配方改造（2026-09-20）', () => {
 
   it('④ 专属装备：总价不变（+50% 口径保留）· 占比 = 基础 45% / 高级 30% / 矿物 25% · 书价不变', () => {
     const bp = BLUEPRINTS.find((b) => b.id === 'bp-wh-a-frag')!
-    expect(matValue(bp.materials)).toBe(1_181_970) // 改造前定稿值（等值替换 ⇒ 分文不变）
+    expect(matValue(bp.materials)).toBe(1_255_770) // 改造前定稿值（等值替换 ⇒ 当时分文不变；**2026-10-01 甲**：虚空晶 3,600 → 5,400 ⇒ 含虚空晶的那几张按 ×41 枚上浮 73,800）
     expect(bp.priceIsk).toBe(5_244_500) // 书价不变
     const s = shares(bp.materials)
     expect(s.basic).toBeCloseTo(0.45, 1)
@@ -149,26 +149,30 @@ describe('零件体系：配方改造（2026-09-20）', () => {
     // 全部 30 张专属装备/无人机同口径（±2 个百分点，取整余量）
     for (const b of BLUEPRINTS.filter((x) => x.id.startsWith('bp-wh-'))) {
       const k = shares(b.materials)
-      expect(k.basic, `${b.id} 基础件占比`).toBeGreaterThan(0.43)
+      // **2026-10-01 船长裁「甲」**（虚空晶 3,600 → 5,400）把**矿物桶**抬高 ⇒ 基础件占比 45% → **42.3%**、
+      // 矿物 25% → 约 27.7%：45/30/25 这条 09-20 口径**发生漂移**，下界放到 0.41 兜住现状；
+      // 要不要重排料把 45/30/25 拉回来，等船长裁（见本批工作文档）。
+      expect(k.basic, `${b.id} 基础件占比`).toBeGreaterThan(0.41)
       expect(k.basic, `${b.id} 基础件占比`).toBeLessThan(0.47)
-      expect(k.adv, `${b.id} 高级件占比`).toBeGreaterThan(0.28)
+      expect(k.adv, `${b.id} 高级件占比`).toBeGreaterThan(0.26) // 2026-10-01 甲后：30% → 27.4~27.6%
       expect(k.adv, `${b.id} 高级件占比`).toBeLessThan(0.32)
     }
   })
   it('⑤ 专属舰船：总价不变 · 占比同口径（45/30/25）· 工期 ÷5', () => {
     const sbp = SHIP_BLUEPRINTS.find((b) => b.id === 'sbp-wh-a-frigate')!
-    expect(matValue(sbp.materials)).toBe(510_280) // 改造前定稿值（等值替换）
+    expect(matValue(sbp.materials)).toBe(540_880) // 改造前定稿值（等值替换；**2026-10-01 甲**：虚空晶 3,600 → 5,400 ⇒ ＋30,600 = 17 枚 ×1,800）
     expect(sbp.buildSeconds).toBe(240) // 1200 ÷ 5
     for (const b of SHIP_BLUEPRINTS.filter((x) => x.id.startsWith('sbp-wh-'))) {
       const k = shares(b.materials)
-      expect(k.basic, `${b.id} 基础件占比`).toBeGreaterThan(0.43)
-      expect(k.adv, `${b.id} 高级件占比`).toBeGreaterThan(0.28)
+      // 同 ④：**2026-10-01 甲**把矿物桶抬高 ⇒ 基础件占比 45% → **42.3%**
+      expect(k.basic, `${b.id} 基础件占比`).toBeGreaterThan(0.41)
+      expect(k.adv, `${b.id} 高级件占比`).toBeGreaterThan(0.26) // 同上：30% → 27.6%
       expect(k.raw, `${b.id} 矿物占比`).toBeGreaterThan(0.23)
     }
   })
   it('⑥ 皇带鱼：总价分文不变 · **只用基础零件**（非专属不吃高级件）· 占比 75/25 · **虚空晶留在配方**', () => {
     const sbp = SHIP_BLUEPRINTS.find((b) => b.id === 'sbp-colossal')!
-    expect(matValue(sbp.materials)).toBe(307_106_000) // 原总价（8 种矿物口径）⇒ 替换后逐分不变
+    expect(matValue(sbp.materials)).toBe(325_682_000) // 原总价（8 种矿物口径）⇒ 替换后逐分不变；**2026-10-01 甲**：虚空晶 3,600 → 5,400 ⇒ ＋18,576,000 = 10,320 枚 ×1,800
     /**
      * ⚠ **2026-09-29 船长令**：「使用零件的舰船工期 = 原值 ÷5」**依旧保留** ⇒
      * 皇带鱼维持 **162,000 ÷ 5 = 32,400**（上一版曾改为跟档位净收益带走，已回退）。
