@@ -360,6 +360,13 @@ export interface WeekendEventState {
   family: string
   /** 玩家推进台账：galaxyId → 累计投入比例（0~1 的加数） */
   contributed: Record<string, number>
+  /**
+   * **点火来源留痕**（**2026-10-01 船长令**：「**如果玩家在高安使用信号发射器，触发入侵的通讯会在开头
+   * 怀疑玩家，并在文本中说扣玩家的声望。**」）⇒ 高安点火那一场记 `true`，预警信改用怀疑变体首段
+   * （`weekendComms.weekendWarnCommsOf` 读它决定要不要加 `core.weekend.044`）。
+   * ⚠ 缺键 = 老档 / 每周那场自己爆发的入侵 / 默认路点火（不扣声望）⇒ **没有怀疑段**，行为与从前一致。
+   */
+  beaconHighSec?: boolean
   /** 核心条满（旗舰现身）的墙钟 */
   flagshipAtWallMs?: number
   /** 旗舰结局：玩家击毁 / 章鱼人摧毁 */

@@ -13,6 +13,7 @@
  * 这里同时给一份**中文原文**（core 侧兜底，界面按 id 重新渲染 ⇒ 中英各自成句）。
  */
 import { deliverCommsInstance } from './comms'
+import { HIGH_SEC_PENALTY } from './consumables'
 import { blackboxSeenOf } from './blackbox'
 import { addWare } from './inventory'
 import { isPlugOf } from './plugs'
@@ -91,6 +92,19 @@ export function weekendRewardLinesOf(snapshot: WeekendResultSnapshot): CommsRewa
 
 /**
  * **预警信**（活动开局那一拍送达）：落点处数 = 全部占领区（核心 ＋ 外围）；核心星系按名字写进正文。
+ *
+ * **两副正文**（**2026-10-01 船长令**：「**如果玩家在高安使用信号发射器，触发入侵的通讯会在开头
+ * 怀疑玩家，并在文本中说扣玩家的声望。**」）：
+ * - **默认**（每周自己爆发 / 默认路点火）⇒ 两段：实况 ＋ 招募（`core.weekend.011` / `.012`）；
+ * - **高安点火那一场** ⇒ 前面加一段质问（`core.weekend.044`），说清"只发现了你的舰船信号"与
+ *   **扣了 `HIGH_SEC_PENALTY` 点声望**。
+ *
+ * 船长同日对措辞的两条口径：① 只写**怀疑**（「我们在附近只发现了你的舰船信号」式），**不写**"登记在
+ * 你名下"这类确凿证据；② 裁定「**按 B**」⇒ 原实况段同时改成能接住质问的承接口气（去掉侦查叙述与
+ * 「就在刚刚」，战况四件事一件不少；见 `core.weekend.011` 的 `⟪文案调整 2026-10-01⟫`）。
+ *
+ * ⚠ 判据 = **事件上的留痕** `beaconHighSec`（点火那一刻写进 `state.weekendEvent`，存档同字段往返）
+ * ⇒ 读档、离线跨场、每拍补发都走同一份数据，这里**不另判一次**位置或安等。
  */
 export function weekendWarnCommsOf(
   state: GameState,
@@ -102,8 +116,15 @@ export function weekendWarnCommsOf(
   const coreName = ctx.galaxies.get(ev.coreId)?.name ?? ev.coreId
   const count = ev.peripheryIds.length + 1
   const subject = `航线警告：${family}入侵`
+  /** 这一场是不是玩家在高安点的火（决定要不要加质问段 ＋ 喂 `p4`） */
+  const suspicion = ev.beaconHighSec === true
   const paragraphs = [
-    `就在刚刚，协会检测到大量非法舰队信号。经观测员核实，确定是${family}的舰队正在入侵这片空域，落点 ${count} 处，核心是「${coreName}」。标记已经打到星图上。被入侵的星系会有大量${family}舰队活动，请非战斗人员避开危险星系。`,
+    ...(suspicion
+      ? [
+          `协会要先确认一件事：这次入侵的信号，来自一次在高安启动的信号发射器。发射前后，我们在附近只发现了你的舰船信号。协会不认为这是巧合，已经按规矩从你的声望里扣了 ${HIGH_SEC_PENALTY} 点。这件事协会会继续追查。`,
+        ]
+      : []),
+    `现在，${family}的舰队正在入侵这片空域，落点 ${count} 处，核心是「${coreName}」，标记已经打到星图上。被入侵的星系会有大量${family}舰队活动，请非战斗人员避开危险星系。`,
     `但如果你想为协会出一份力，或者单纯想赚上一笔，我们也欢迎你加入清缴入侵舰队的行列。战役结束后，协会会统一按各位的贡献发放报酬。`,
   ]
   return {
@@ -115,13 +136,14 @@ export function weekendWarnCommsOf(
     subject,
     subjectId: 'core.weekend.010',
     paragraphs,
-    bodyIds: ['core.weekend.011', 'core.weekend.012'],
+    bodyIds: [...(suspicion ? ['core.weekend.044'] : []), 'core.weekend.011', 'core.weekend.012'],
     params: {
       seq: ev.seq,
       p1: family,
       ...(familyId !== undefined ? { p1Id: familyId } : {}),
       p2: count,
       p3: coreName,
+      ...(suspicion ? { p4: HIGH_SEC_PENALTY } : {}),
     },
     hint: { text: '星图 · 被占星系有红色发光与旗标', page: 'map' },
   }

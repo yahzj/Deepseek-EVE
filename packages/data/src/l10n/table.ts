@@ -371,7 +371,13 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // 2026-09-25 入侵两封通讯（船长给稿 · 经办人按"不出现括号备注"润色；每场覆盖同一 id）
   // ⚠ 段内不留括号备注：奖励清单是**清单里的一项**（结构化存下、界面按语言拼串后填进 {p3}）
   "core.weekend.010": { zh: "航线警告：{p1}入侵", en: "Route warning: {p1} invasion" },
-  "core.weekend.011": { zh: "就在刚刚，协会检测到大量非法舰队信号。经观测员核实，确定是{p1}的舰队正在入侵这片空域，落点 {p2} 处，核心是「{p3}」。标记已经打到星图上。被入侵的星系会有大量{p1}舰队活动，请非战斗人员避开危险星系。", en: "The Association has just detected a large number of unlawful fleet signals. Our observers have confirmed it: {p1} fleets are invading this volume of space — {p2} landing sites, the core being “{p3}”. The markers are already on the star map. The invaded systems will see heavy {p1} fleet activity, so non-combat personnel should keep clear of the danger zone." },
+  /* ⟪文案调整 2026-10-01⟫ 船长令「你需要对原通讯文也做修改，使其衔接怀疑衔接的更为自然」＋裁定「按 B」
+     ⇒ 实况段改成能接住质问的承接口气（删侦查叙述与「就在刚刚」，战况四件事一件不少）；
+     质问段另起一条 `core.weekend.044`（只在高安点火那场出现在最前面） */
+  "core.weekend.011": { zh: "现在，{p1}的舰队正在入侵这片空域，落点 {p2} 处，核心是「{p3}」，标记已经打到星图上。被入侵的星系会有大量{p1}舰队活动，请非战斗人员避开危险星系。", en: "For now, {p1} fleets are invading this volume of space: {p2} landing sites, the core being “{p3}”. The markers are already on the star map. The invaded systems will see heavy {p1} fleet activity, so non-combat personnel should keep clear of the danger zone." },
+  /* 2026-10-01 高安点火那场的怀疑首段（船长口述要点：开头怀疑玩家 · 文中说清扣了声望；措辞由船长改成
+     "只发现舰船信号"式怀疑，不写"登记在你名下"这种确凿证据） */
+  "core.weekend.044": { zh: "协会要先确认一件事：这次入侵的信号，来自一次在高安启动的信号发射器。发射前后，我们在附近只发现了你的舰船信号。协会不认为这是巧合，已经按规矩从你的声望里扣了 {p4} 点。这件事协会会继续追查。", en: "The Association needs one thing confirmed first: the signal behind this invasion came from a Signal Beacon lit in high-sec. Around the time it was lit, yours was the only ship signal we found in the vicinity. The Association does not consider this a coincidence, and has docked {p4} standing from your account as the rules require. The Association will keep looking into this." },
   "core.weekend.012": { zh: "但如果你想为协会出一份力，或者单纯想赚上一笔，我们也欢迎你加入清缴入侵舰队的行列。战役结束后，协会会统一按各位的贡献发放报酬。", en: "But if you want to do the Association a service, or simply to earn a good sum, you are welcome to join the sweep against the invader fleets. When the campaign is over the Association will pay out by contribution, all at once." },
   "core.weekend.013": { zh: "航线通报：{p1}入侵已被终结！星域恢复了和平！", en: "Route bulletin: the {p1} invasion has been ended! The volume is at peace again!" },
   "core.weekend.014": { zh: "{p1}的入侵已经结束，「{p2}」附近的星系已经恢复正常。根据你在清缴行动中的表现，你将获得 {p3} 等奖励以示鼓励（实物奖励已存入物品仓库）。", en: "{p1}'s invasion is over; the systems around “{p2}” are back to normal. For your performance in the sweep you will receive {p3} and other rewards as a token of encouragement (item rewards are in your item warehouse)." },
