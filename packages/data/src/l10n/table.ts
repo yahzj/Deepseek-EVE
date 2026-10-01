@@ -1405,7 +1405,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.aiSlots.001": { zh: "{p1} {p2} 级 → +{p3}", en: "{p1} Lv{p2} → +{p3}" },
   "ui.aiSlots.002": { zh: "暂无扩容技能", en: "No expansion skill yet" },
   "ui.aiSlots.003": { zh: "站内 AI 核心可启动上限 {cap} 枚 = 共用上限 {sharedCap}（AI 核心操作学）", en: "Station AI core limit {cap} = shared limit {sharedCap} (AI Core Operation)" },
-  "ui.aiSlots.004": { zh: "+ 工业专用扩容 {bonus}（{detail}）；当前占用 {used} 枚（精炼炉/回收炉 {refineUsed} 台 + 制造线 {makeUsed} 条）。", en: "+ industry-only expansion {bonus} ({detail}); {used} cores in use (refineries and recyclers {refineUsed} units + production lines {makeUsed})." },
+  "ui.aiSlots.004": { zh: "+ 工业专用扩容 {bonus}（{detail}）；当前占用 {used} 枚（精炼炉/回收炉 {refineUsed} 台 + 制造线 {makeUsed} 条 + 实验室 {labUsed} 条）。", en: "+ industry-only expansion {bonus} ({detail}); {used} cores in use (refineries and recyclers {refineUsed} units + production lines {makeUsed} + laboratories {labUsed})." },
   "ui.aiSlots.005": { zh: "AI 副船任务另占 {shipUsed} 艘，与站内工业共用同一总上限。", en: "AI auxiliary tasks occupy {shipUsed} more ships, sharing the same overall limit as station industry." },
   "ui.aiSlots.006": { zh: "AI 核心可启动", en: "AI cores available" },
   "ui.aiSlots.007": { zh: " · 占用 {n}", en: " · {n} in use" },

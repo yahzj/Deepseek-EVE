@@ -106,26 +106,42 @@
 
 | 落点 | 内容 |
 |---|---|
-| `core/activity.ts` | `ActivityKind` ＋ `'lab'` · `ActivityStopKind` ＋ `'stop-lab'` · `activityOverview` 新增实验室行（**只出 `worker === 'pilot'` 那条**；取数走 `labRunViews` 单点，不自己读 `state.labRuns`）· `shipBusyLabel` 补 lab 分支 |
+| `core/activity.ts` | `ActivityKind` ＋ `'lab'` · `ActivityStopKind` ＋ `'stop-lab'` · `activityOverview` 新增实验室行（取数走 `labRunViews` 单点，不自己读 `state.labRuns`）· `shipBusyLabel` 补 lab 分支 |
+| `core/ai.ts` | `aiCoreIndustryUsed` 补数实验室线（见下方船长裁定） |
+| `apps/desktop/src/renderer/src/ui/aiSlots.tsx` | 占用分解加 `labUsed`（悬停模板同步，见下方裁定） |
 | `core/busyLabels.ts` | 忙态档 `lab`（「亲自运转实验室中」· id `core.busy.030`——序号排表尾：id 一经使用不复用、不改名） |
 | `core/wormhole.ts` | `shipActivityBusy` 补 lab 分支（与 `shipBusyLabel`、`activityGate.mainActivityOf` **三处同源**）＋ `ENTRY_STOP_META.lab`（进洞那一刻自动停线、`warn:false`）。⚠ 原先两处都漏 ⇒ **实验线在跑时主控照样能进洞**（经另一扇门的双占） |
 | `core/lab.ts` | 手动工作位"再开一条 = 换线"时的停机**按实际在跑的档位**分别记日志（原先固定写「已自动停止『亲自开炉』」，停的却是实验线） |
 | `data/l10n/table.ts` | `core.busy.030` · `ui.ActivityBar.068`（停止回执）· `ui.ActivityBar.069`（按钮悬停）中英；「**停线**」二字**复用**工业页那颗停止键的 `ui.hud.084`（同一件事一种说法，不另写一份同义短词） |
-| 两套活动栏 | `panels/ActivityBar.tsx` / `ActivityBarClassic.tsx`：图标 `ico-lab`（工业页实验室页签那枚；本文件是冻结件，只跟随 core 新增 kind 补一档）· 停止分派 `stop-lab → engine.stopLabRunAt(stopParam)` · 按钮悬停提示 |
+| 两套活动栏 | `panels/ActivityBar.tsx` / `ActivityBarClassic.tsx`：图标与精炼炉/制造线同一枚 `nav-industry`（见下方裁定）· 停止分派 `stop-lab → engine.stopLabRunAt(stopParam)` · 按钮悬停提示 |
 | `panels/activityStopLabel.ts` | `stop-lab → ui.hud.084`（**两套外壳共用的单点**，只改这一处） |
 | `ui/activityGo.ts` | `lab → 工业页`（与精炼炉/制造线同落点） |
 | `game/engine.ts` | `startLabRunAt` 的两段确认 `key` 由 `'refine'` 改成 `'lab'`——它是**另一颗按钮**；原先共用 key ⇒ 在"起炉"的警告窗口内点"起线"会被当成二击、直接执行 |
-| 用例 | `tests/activity-lab-20261001.test.ts` ＋3 条（真命令建现场：活动行与停线入口 · AI 驱动不进玩家活动列表 · 忙态文案 id）；`tests/wormhole-activity-lock.test.ts` 的 `ACTIVITIES` 表加「实验室（亲自运转）」⇒ ① 忙态两边一致、①″ 进洞自动停 两组矩阵自动覆盖该档 |
+| 用例 | `tests/activity-lab-20261001.test.ts` ＋3 条（真命令建现场：活动行与停线入口 · AI 驱动走同一套机制 · 忙态文案 id）；`tests/wormhole-activity-lock.test.ts` 的 `ACTIVITIES` 表加「实验室（亲自运转）」⇒ ① 忙态两边一致、①″ 进洞自动停 两组矩阵自动覆盖该档 |
 
 **读数**（`npm run test -w @whale/core`）：**2949 条 / 278 个文件全绿**（本批 +3 条）。
 
-### 待裁决（本批**没**动，先报不改）
+### 船长裁定：实验室走"工业其他页面"同一套机制（2026-10-01）
 
-1. **AI 核心驱动的实验室线在活动栏里一条都不出现**：AI 驱动的精炼炉/制造线会以 `kind:'ai'`
-   （`aiGroup:'industry'`）进「副AI活动」组 —— 实验室这条没接（本批只接了主控那条）。同族功能口径不一致。
-2. **`aiCoreIndustryUsed`（`core/ai.ts`）没数实验室线**：AI 实验室线 `occupyAiCore` 占了核心，
-   却不计入站内工业占用 ⇒ ① 「副AI活动」徽标数字少算 ② `startLabRun` 调用的
-   `aiCoreCapBlock(…, 'industry')` **守不住上限**（可以超出 AI 核心上限起线）。
-   这与船长 2026-10-01 那条「天然排查」报障**同一类漏登记**（换了一张手抄表：`refineRuns` / `manufacturingRuns`
-   各扫一遍，`labRuns` 没扫）。修法 = 那个循环里补一段；**会改变玩家能同时起几条线**，故等船长一句话。
+> **船长原话（照抄）**：「**实验室和工业的其他页面没有本质区别，所以AI和活动栏图标都使用一样的机制**」
+> （针对上面两条待裁决：① AI 驱动的实验室线在活动栏里不出现 ② `aiCoreIndustryUsed` 不数实验室线）。
+
+**口径（现行）**：实验室**只是工业的又一条产线**，不另立一套显示/计数规则 ⇒ 与精炼炉/制造线**逐项同款**：
+
+| 面 | 落地 |
+|---|---|
+| 活动栏图标 | `lab` 与 `refine` / `manufacture` **同一枚 `nav-industry`**（两套外壳都是；原先那枚 `ico-lab` 撤回，工业页自己的页签图标不动） |
+| AI 驱动那条 | 与 AI 开炉/开线同一套：`kind: 'ai'` ＋ `aiGroup: 'industry'`（进「副AI活动」组）＋ `aiWorkKind: 'craft'`（六档动画里没有专门给实验室画一档，取"投料→出产物"的产线那一档）；**不占玩家活动位** |
+| AI 核心占用 | `core/ai.ts` 的 `aiCoreIndustryUsed` **补数实验室线**（`active && worker !== 'pilot'`）⇒ ① 「副AI活动」徽标不再少算 ② `startLabRun` 的 `aiCoreCapBlock(…, 'industry')` **上限守得住**（改前能超上限起线） |
+| 占用读数 | `ui/aiSlots.tsx` 的分解加 `labUsed`，悬停模板 `ui.aiSlots.004` 补「＋ 实验室 N 条」中英——`used` 与括号里那三项从此永远对得上 |
+| 用例 | `tests/activity-lab-20261001.test.ts` 的第 2 条改写为"同一套机制"三连：进副AI组（`aiGroup`/`aiWorkKind`）· 计入 `aiCoreIndustryUsed` · **上限已满时拒起线** |
+
+⚠ **行为面变化（如实登记）**：AI 核心上限从此**把实验室线算进去**——玩家不能再超上限起 AI 实验线。
+存量超限（读档/技能变化）**不中断运行**（`aiCoreCapBlock` 既有口径），只是起不了新的。
+
+**闸门（本裁定落地后复跑）**：`typecheck` ✅ · core 全量 **2949 条** ✅ · `content:check` ✅ ·
+`l10n:check` / `l10n:params`（新槽 `labUsed` 已喂）✅ · `arch:guard` ✅ · `ui:rot-check` ✅ · 桌面构建 ✅。
+
+**至此 §五 的"stage 1 还没做的一格"与两条待裁决全部收口**；stage 2（契约护栏，先做读数档）仍待做。
+
 

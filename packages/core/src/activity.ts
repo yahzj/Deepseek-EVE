@@ -19,7 +19,7 @@ import { refineRunViews } from './industry'
 import { labRunViews } from './lab'
 import { expeditionStatus, bountyCooldownRemainingMs, bountyCooldownMsFor, autoLoopWaitLabel } from './expedition'
 import { standbyStatus, transitStatus } from './location'
-import { aiTaskView } from './ai'
+import { aiTaskView, aiCoreName } from './ai'
 import { shipDisplayName } from './instances'
 import { legMsFor, outboundLegMsFor, salvagerCyclesOf } from './salvaging'
 import { haulEndpointName } from './hauling'
@@ -50,8 +50,8 @@ export type ActivityKind =
   | 'hauling'
   /**
    * **实验室产线**（**2026-10-01 接入活动栏**）：与 `refine` / `manufacture` 同一族（站内产线，
-   * 一行 = 一条在跑的线）。只出「主控亲自运转」那一条 —— AI 核心驱动的实验室线与"AI 开炉/开线"
-   * 同款（不占玩家活动位）。
+   * 一行 = 一条在跑的线）—— 主控亲自运转那条出本档；AI 核心驱动那条并入 `'ai'` 一族
+   * （`aiGroup: 'industry'`，与 AI 开炉/开线同一套机制）。
    */
   | 'lab'
 
@@ -312,17 +312,19 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
    * 判据 = `labRuns` 里 `active && worker === 'pilot'`），而活动栏此前只认精炼炉与制造线
    * ⇒ 玩家在主控亲自运转实验室时，活动窗口里看不到这条活、也没有"停线"入口（门禁已认它、界面还看不见）。
    *
-   * ⚠ 只列 `worker === 'pilot'` 那条：AI 核心驱动的实验线与"AI 开炉 / AI 开线"同款
-   * （不占玩家活动位、不逐条上玩家活动列表）。文案形态照同一族的精炼炉那条（线名 ＋ 批数读数），
-   * 因此**不新造样式**。
+   * ⚠ **AI 核心驱动的那条走"AI 开炉 / AI 开线"同一套机制**（**2026-10-01 船长令**：
+   * 「**实验室和工业的其他页面没有本质区别，所以 AI 和活动栏图标都使用一样的机制**」）：
+   * 它不占玩家活动位，改以 `kind: 'ai'` ＋ `aiGroup: 'industry'` 进「副AI活动」组（动画取 `craft`
+   * ——实验室是"投料 → 出产物"的产线，与制造线同族；`aiWorkFx` 那六档里没有专门给实验室画一档）。
    */
   for (const lv of labRunViews(state, ctx)) {
-    if (lv.worker !== 'pilot') continue
+    const aiProd = lv.worker !== 'pilot'
     out.push({
-      id: `lab:${lv.id}`,
-      kind: 'lab',
+      id: aiProd ? `ai-prod-l:${lv.id}` : `lab:${lv.id}`,
+      kind: aiProd ? 'ai' : 'lab',
+      ...(aiProd ? { aiGroup: 'industry' as const, aiWorkKind: 'craft' as const } : {}),
       label: `实验室 · ${lv.recipeName}`,
-      sub: `主控亲自运转 · 已 ${lv.batchesDone} 批（每批 ${lv.batchUnits} 单位）`,
+      sub: `${lv.worker === 'pilot' ? '主控亲自运转' : `${aiCoreName(lv.worker)}驱动`} · 已 ${lv.batchesDone} 批（每批 ${lv.batchUnits} 单位）`,
       percent: lv.percent,
       remainingMs: lv.remainingMs,
       stopable: true,

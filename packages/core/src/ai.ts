@@ -166,9 +166,14 @@ export function aiCoreShipUsed(state: GameState): number {
   return Object.keys(state.aiAssignments).length + autoRuns
 }
 
-/** 站内工业 AI 工位占用数（AI 精炼/回收炉 + AI 制造线；
+/** 站内工业 AI 工位占用数（AI 精炼/回收炉 + AI 制造线 + AI 实验室线；
  * 旧作业豁免的制造线 worker=undefined 未占核心 → 不计入）。2026-09-09 玩家反馈修复口径：
- * 站内工业占用先抵「工业自动化」扩容工位，只有超出扩容的部分才挤占共用名额（见 aiCoreCapBlock） */
+ * 站内工业占用先抵「工业自动化」扩容工位，只有超出扩容的部分才挤占共用名额（见 aiCoreCapBlock）
+ *
+ * ⚠ **2026-10-01 补实验室线**（船长令「**实验室和工业的其他页面没有本质区别，所以 AI 和活动栏图标
+ * 都使用一样的机制**」）：AI 实验室线同样 `occupyAiCore` 占了核心，原先这张手抄表只扫
+ * `refineRuns` / `manufacturingRuns` ⇒ ① 活动栏「副AI活动」徽标少算 ② `startLabRun` 调的
+ * `aiCoreCapBlock(…, 'industry')` **守不住上限**（可以超出上限起线）。 */
 export function aiCoreIndustryUsed(state: GameState): number {
   let used = 0
   for (const r of state.refineRuns) {
@@ -177,10 +182,13 @@ export function aiCoreIndustryUsed(state: GameState): number {
   for (const m of state.manufacturingRuns) {
     if (m.worker !== undefined && m.worker !== 'pilot') used += 1
   }
+  for (const l of state.labRuns ?? []) {
+    if (l.active && l.worker !== 'pilot') used += 1
+  }
   return used
 }
 
-/** 总启用数（AI 副船任务 + 站内 AI 精炼炉/回收炉/制造线） */
+/** 总启用数（AI 副船任务 + 站内 AI 精炼炉/回收炉/制造线/实验室线） */
 export function aiCoreUsed(state: GameState): number {
   return aiCoreShipUsed(state) + aiCoreIndustryUsed(state)
 }
@@ -209,7 +217,7 @@ export function industryAiBonus(state: GameState, ctx: SimContext): number {
 /** AI 核心启用守卫（任何启用点共用）：null = 可启用；否则返回拒绝文案（上限未解锁 / 已满）。
  * scope = 'ship'：AI 副船任务，只受共用上限约束——站内工业占用先抵工业扩容（industryAiBonus），
  *   仅超出扩容的部分计入共用名额（2026-09-09 玩家反馈修复：工业核心全开不得挤占副船名额）；
- * scope = 'industry'：站内精炼炉/回收炉/制造线，上限 = 共用上限 + 工业专用扩容（industryAiBonus）。
+ * scope = 'industry'：站内精炼炉/回收炉/制造线/实验室线，上限 = 共用上限 + 工业专用扩容（industryAiBonus）。
  * 船长 2026-09-08 定：存量超限（读档/技能变化）不中断运行，但同样计入各池占用——
  * 想再启用新的必须先把占用降到上限以内。 */
 export function aiCoreCapBlock(state: GameState, ctx: SimContext, scope: 'ship' | 'industry' = 'ship'): string | null {
@@ -217,7 +225,7 @@ export function aiCoreCapBlock(state: GameState, ctx: SimContext, scope: 'ship' 
   const bonus = industryAiBonus(state, ctx)
   const eff = cap + bonus
   if (eff <= 0 || (scope === 'ship' && cap <= 0)) {
-    return 'AI 核心上限为 0：训练提升 AI 核心上限的技能（如「AI 核心操作学」）后才能启用 AI 核心（AI 副船任务与站内精炼炉/回收炉/制造线共用上限）。'
+    return 'AI 核心上限为 0：训练提升 AI 核心上限的技能（如「AI 核心操作学」）后才能启用 AI 核心（AI 副船任务与站内精炼炉/回收炉/制造线/实验室共用上限）。'
   }
   const shipUsed = aiCoreShipUsed(state)
   const indUsed = aiCoreIndustryUsed(state)
@@ -233,13 +241,13 @@ export function aiCoreCapBlock(state: GameState, ctx: SimContext, scope: 'ship' 
     }
     return null
   }
-  // scope = 'industry'：站内炉/线上限 = 共用 + 扩容，全量占用计入
+  // scope = 'industry'：站内炉/线/实验室上限 = 共用 + 扩容，全量占用计入
   const used = shipUsed + indUsed
   if (used >= eff) {
     if (bonus > 0) {
-      return `AI 核心启用已满（${used}/${eff}：共用上限 ${cap} + 工业扩容 ${bonus}）：先停用其它 AI 核心（AI 副船任务或站内炉/线），或训练「工业自动化」再扩工业工位。`
+      return `AI 核心启用已满（${used}/${eff}：共用上限 ${cap} + 工业扩容 ${bonus}）：先停用其它 AI 核心（AI 副船任务或站内炉/线/实验室），或训练「工业自动化」再扩工业工位。`
     }
-    return `AI 核心启用已满（${used}/${cap}）：先停用其它 AI 核心（AI 副船任务或站内精炼炉/回收炉/制造线）再启用新的。`
+    return `AI 核心启用已满（${used}/${cap}）：先停用其它 AI 核心（AI 副船任务或站内精炼炉/回收炉/制造线/实验室）再启用新的。`
   }
   return null
 }

@@ -45,10 +45,11 @@ const KIND_ICON: Record<string, string> = {
   whscan: 'nav-wormhole',
   whauto: 'nav-wormhole',
   /**
-   * 实验室产线（**2026-10-01 接入**）：用工业页「实验室」页签那枚 `ico-lab`（全仓唯一一处实验室视觉符号），
-   * 与精炼炉/制造线行的 `nav-industry` 区分开，玩家一眼认得出是哪台机器在跑。
+   * 实验室产线（**2026-10-01 接入**）：与精炼炉/制造线**同一枚 `nav-industry`**
+   * （**船长 2026-10-01 令**：「**实验室和工业的其他页面没有本质区别，所以 AI 和活动栏图标都使用
+   * 一样的机制**」）——它只是工业的又一条产线，不另立视觉符号。
    */
-  lab: 'ico-lab',
+  lab: 'nav-industry',
 }
 
 function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {

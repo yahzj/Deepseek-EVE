@@ -13,6 +13,7 @@ import type { GameState } from '../src/state'
 import { addWare } from '../src/inventory'
 import { startLabRun } from '../src/lab'
 import { activityOverview, shipBusyLabel } from '../src/activity'
+import { aiCoreIndustryUsed } from '../src/ai'
 import {
   AUTO_HALT_KINDS,
   HALT_COST,
@@ -55,7 +56,11 @@ describe('主控活动登记表 · 实验室（2026-10-01 船长令）', () => {
  * 门禁认出 `'lab'` 之后还差"界面看得见"：`activityOverview` 原先完全不读 `state.labRuns`
  * ⇒ 玩家主控亲自运转实验室时，活动窗口里既没有这条活、也没有「停线」入口。
  * 本组用**真命令**（`startLabRun`）建现场，钉三件事：① 主控那条**出一行**且带停线入口
- * ② AI 核心驱动的那条**不进玩家活动列表**（与"AI 开炉/开线"同款）③ 忙态文案认得这一档。
+ * ② AI 核心驱动那条走**与 AI 开炉/开线同一套机制**（进「副AI活动」组 ＋ 计入站内工业占用）
+ * ③ 忙态文案认得这一档。
+ *
+ * ⚠ 口径来源：**船长 2026-10-01 令**「**实验室和工业的其他页面没有本质区别，所以 AI 和活动栏图标
+ * 都使用一样的机制**」——实验室只是工业的又一条产线，不另立一套显示/计数规则。
  */
 describe('活动栏 · 实验室产线（2026-10-01 接入）', () => {
   const ctx = buildSimContext()
@@ -85,13 +90,28 @@ describe('活动栏 · 实验室产线（2026-10-01 接入）', () => {
     expect(row!.remainingMs).toBeGreaterThan(0)
   })
 
-  it('AI 核心驱动 ⇒ 不进玩家活动列表；忙态也不认它（与 AI 开炉 / AI 开线同款）', () => {
+  it('AI 核心驱动 ⇒ 与 AI 开炉 / AI 开线**同一套机制**：进「副AI活动」组 · 计入站内工业占用', () => {
     const s = labReady()
-    s.skills.trained['ai-expert'] = 1 // AI 核心上限（= 核心操作学等级）
-    s.aiCores['basic'] = 1
+    s.skills.trained['ai-expert'] = 2 // AI 核心上限（= 核心操作学等级）留出第二枚，好验"上限守得住"
+    s.aiCores['basic'] = 2
     expect(startLabRun(s, ctx, RECIPE, 'basic').ok).toBe(true)
+    // ① 活动栏：AI 那条走 kind:'ai' ＋ aiGroup:'industry'（不占玩家活动位）
+    const row = activityOverview(s, ctx).find((a) => a.kind === 'ai' && a.id.startsWith('ai-prod-l'))
+    expect(row, 'AI 驱动的实验室线没有并入 AI 那一族').toBeDefined()
+    expect(row!.aiGroup).toBe('industry')
+    expect(row!.aiWorkKind).toBe('craft')
     expect(activityOverview(s, ctx).some((a) => a.kind === 'lab'), 'AI 驱动的线不该占玩家活动位').toBe(false)
+    // ② 占用：它同样占核心 ⇒ 计入站内工业占用（上限守卫读的就是这个数）
+    expect(aiCoreIndustryUsed(s)).toBe(1)
     expect(shipBusyLabel(s, ctx, s.shipId)).toBeNull()
+    /**
+     * ③ **上限守得住**：上限 2 枚，先占掉 2 条其它 AI 线 ⇒ 再起 AI 实验线必须被拒。
+     * 改前 `aiCoreIndustryUsed` 不数实验室线（本条用例前半段就是那个漏法的反证：
+     * 上限 1 枚时也照样能起 AI 实验线）。
+     */
+    s.refineRuns.push({ id: 9, active: true, worker: 'basic', blueprintId: 'bp-titanium', count: 1 } as never)
+    const blocked = startLabRun(s, ctx, RECIPE, 'basic')
+    expect(blocked.ok, 'AI 核心上限已满却还能起线').toBe(false)
   })
 
   it('船忙文案认得「主控亲自运转实验室」（core.busy.030）', () => {

@@ -54,8 +54,9 @@ const KIND_ICON: Record<string, string> = {
   /** 主控活动「扫描虫洞」（2026-09-14）：与洞内活动同一个图标，色调用其自身色调 */
   whscan: 'nav-wormhole',
   whauto: 'nav-wormhole',
-  /** 实验室产线（2026-10-01 接入；本文件是冻结件，这里只跟随 core 新增的 kind 补一档） */
-  lab: 'ico-lab',
+  /** 实验室产线（2026-10-01 接入；本文件是冻结件，这里只跟随 core 新增的 kind 补一档）
+   *  图标与精炼炉/制造线同一枚（船长令：实验室与工业其他页面没有本质区别 ⇒ 用一样的机制） */
+  lab: 'nav-industry',
 }
 
 function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
