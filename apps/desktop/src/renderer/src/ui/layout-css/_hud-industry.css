@@ -481,7 +481,15 @@ body.no-fx .hud-dock-craft, body.no-fx .hud-dock-spark { animation: none; }
   /* 节奏：**飞到左 → 焊接停留 → 飞到右 → 焊接停留**（10s 一趟、两端各停 ~2.2s），船头方向永远朝舰船 */
   animation: hud-dock-drone 8.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
-.hud-dock-drone.is-late { animation-delay: -4.2s; }
+/**
+ * **两架无人机不同步**（**2026-10-01 船长令**：「两个无人机不要同步进行。每次循环之间添加一个随机等待」）。
+ *
+ * 为什么用"**不同周期**"而不是给每轮插一段随机延时：纯 CSS 的 `animation` 无法生成真随机间隔，
+ * 而**周期不同 ⇒ 相位每轮都在漂移**，两架的相对关系永远不固定（看着就是"各自按自己的节奏干活"），
+ * 且不引入任何 JS 定时器（`transform`/`opacity` 之外零开销，符合 §十四）。
+ * 第一架 8.4s、第二架 **10.9s**（≈1.3×）——两个周期互质倾向强，长时间也不会回到同步。
+ */
+.hud-dock-drone.is-late { animation-duration: 10.9s; animation-delay: -3.7s; }
 /* ⚠ **相位必须闭环**（2026-10-01 船长报障「你漏了循环，无人机左→停→右→停→从头循环」）：
    旧版左停 22% ＋ 飞 12% ＋ 右停 22% ＋ 只飞回一半就进 100% ⇒ **循环处跳变**（看着像"漏了一段"）。
    现在按"左停(3s) → 飞(1.2s) → 右停(3s) → 飞回(1.2s)"精确排相位，合计 8.4s ＝ 一个周期 ⇒ 首尾自然衔接。 */
@@ -498,7 +506,7 @@ body.no-fx .hud-dock-craft, body.no-fx .hud-dock-spark { animation: none; }
   transform-origin: 0 0;
   animation: hud-dock-drone-turn 8.4s steps(1, end) infinite;
 }
-.hud-dock-drone-turn.is-late { animation-delay: -4.2s; }
+.hud-dock-drone-turn.is-late { animation-duration: 10.9s; animation-delay: -3.7s; }
 @keyframes hud-dock-drone-turn {
   0%, 67.8% { transform: scale(1, 1); }
   67.9%, 100% { transform: scale(-1, 1); }
