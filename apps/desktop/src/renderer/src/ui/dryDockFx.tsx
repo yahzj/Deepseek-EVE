@@ -32,7 +32,7 @@
  * - 纯展示件（`aria-hidden`），不参与交互；坞景高度由外层 `.hud-dock-art` 定死 ⇒ 卡片不跳动。
  */
 import type { ShipRole } from '@whale/core'
-import { ShipSpriteShape } from './ShipSprite'
+import { ShipSpriteShape, shipArtSizeOf } from './ShipSprite'
 
 /** 坞景画布（船长要的"更大的船坞"）：与 `.hud-dock-art` 的 190px 高同比例 */
 const VB_W = 380
@@ -45,8 +45,6 @@ const BEAM_HALF = 150
 const ARCH_X = [-96, 0, 96] as const
 /** 舰体显示宽度（占坞长 ~62%，两端留给端环与系留臂） */
 const SHIP_W = 230
-/** 真实线稿画布 240×110（船头朝右）；与 `ShipSpriteShape` 同一口径 */
-const SHIP_ASPECT = 110 / 240
 
 export function DryDockFx({
   progress,
@@ -61,8 +59,17 @@ export function DryDockFx({
   role?: ShipRole
 }): JSX.Element {
   const pct = Math.max(0, Math.min(1, progress))
-  /** 舰体半高（用于系留臂端点与裁剪窗） */
-  const shipH = Math.round(SHIP_W * SHIP_ASPECT)
+  /** 舰体显示高度：**走单点** `shipArtSizeOf`（命中资产 240×110 / 未命中回退剪影 140×64）
+      —— 系留臂端点与裁剪窗都按它算，绝不在这里再写死一个比例（坞景第一版就是栽在这） */
+  const art = shipArtSizeOf(shipId)
+  /**
+   * **坞内垂直对齐用"内容中心"而不是"画布几何中心"**：
+   * 命中独立线稿 ⇒ 内容大体占满 240×110，两者重合；**未命中走 140×64 回退剪影时**，
+   * 那条剪影的内容中心在 y≈50（画布中心是 32）⇒ 直接按几何中心摆，船看着会**沉在坞中线下方**。
+   * 补偿量按比例换算到当前显示高度。
+   */
+  const contentShiftY = art.hit ? 0 : Math.round(((32 - 50) * SHIP_W * (art.h / art.w)) / art.h)
+  const shipH = Math.round(SHIP_W * (art.h / art.w))
   /** 显影前沿的 x（从船尾即左端起算；两端各留 2px 余量，免得描边被切） */
   const clipX = VB_W / 2 - SHIP_W / 2 - 1
   const clipW = Math.max(1, SHIP_W * pct + 2)
@@ -136,7 +143,7 @@ export function DryDockFx({
       })}
 
       {/* ── 坞内的在建舰：**真实线稿** ＋ 按进度逐段显影（船尾 → 船头）── */}
-      <g className="hud-dock-craft" color="var(--hud-accent-soft)">
+      <g className="hud-dock-craft" color="var(--hud-accent-soft)" transform={`translate(0 ${contentShiftY})`}>
         {/* 未来段：整条淡淡描一遍（让玩家看出还差多少），再叠上已成形的这一段 */}
         <g opacity="0.14">
           <ShipSpriteShape shipId={shipId} role={role} size={SHIP_W} />

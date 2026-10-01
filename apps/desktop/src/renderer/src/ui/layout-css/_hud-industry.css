@@ -433,7 +433,7 @@ button.hud-chip:hover { border-color: var(--hud-accent); color: var(--hud-accent
   /* 坞内氛围光：只用背景渐变（§6：CSS 只允许背景氛围，形状一律 SVG） */
   background: radial-gradient(120% 90% at 50% 46%, rgba(78, 161, 255, 0.07), transparent 70%);
 }
-.hud-dock-art > svg { max-height: 100%; }
+.hud-dock-art > svg { max-width: 100%; max-height: 100%; }
 .hud-dock-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 /* 坞内动效：只碰 transform / opacity（§十四）；reduced-motion 与「关特效」下全停 */
 .hud-dock-craft { animation: hud-dock-float 7.5s ease-in-out infinite; }

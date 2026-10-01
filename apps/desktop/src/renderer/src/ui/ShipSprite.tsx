@@ -161,6 +161,19 @@ export function ShipSprite({
  * 外层 `<g>`（例如地图格子上做 CSS transform 过渡）即可。
  * 尾焰默认**不画**（地图格子小，焰形会糊成一团；要画就传 `engine`）。
  */
+/**
+ * **舰形画布尺寸的单一出处**（**2026-10-01**）：命中 `SHIP_ART` ⇒ **240×110**（逐舰矢量形）；
+ * 未命中 ⇒ **140×64**（V12 role 线描剪影的回退形）。
+ *
+ * 为什么要导出来：`ShipSpriteShape` 自己按这个比例放置舰形，而**外面的容器**（太空坞场景
+ * `ui/dryDockFx.tsx` 的系留臂端点、裁剪窗）也需要知道"船实际的半高是多少"才能摆对位置 ——
+ * 各自写死一份必然对不上（坞景第一版就把 110/240 写死，未命中回退时整条船被摆错）。
+ */
+export function shipArtSizeOf(shipId?: string): { w: number; h: number; hit: boolean } {
+  const hit = shipId !== undefined && SHIP_ART[shipId] !== undefined
+  return hit ? { w: 240, h: 110, hit } : { w: 140, h: 64, hit }
+}
+
 export function ShipSpriteShape({
   role,
   shipId,
@@ -176,8 +189,7 @@ export function ShipSpriteShape({
   engine?: boolean
 }) {
   const art: ReactNode | undefined = shipId ? SHIP_ART[shipId] : undefined
-  const w = art ? 240 : 140
-  const h = art ? 110 : 64
+  const { w, h } = shipArtSizeOf(shipId)
   const s = size / w
   const place = `scale(${s.toFixed(5)}) translate(${-w / 2},${-h / 2})`
   const mirror = flip ? ` scale(-1,1) translate(${-w},0)` : ''
