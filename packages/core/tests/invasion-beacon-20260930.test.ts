@@ -18,6 +18,8 @@ import {
   useInvasionBeacon,
 } from '../src/consumables'
 import { weekendCoreCandidates, weekendHasBuiltStation } from '../src/weekendEvent'
+import { weekendWarnCommsOf } from '../src/weekendComms'
+import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { securityZoneOf } from '../src/sideTasks'
 import { DSI_FACTION_ID, noteStandingEarned } from '../src/expedition'
 
@@ -226,5 +228,71 @@ describe('信号发射器 · 使用与拒绝', () => {
     const before = s.standings[DSI_FACTION_ID] ?? 0
     expect(useInvasionBeacon(s, ctx).ok).toBe(true)
     expect(s.standings[DSI_FACTION_ID] ?? 0, '非高安不扣').toBe(before)
+  })
+})
+
+/**
+ * **高安点火那一场的通讯变体**（**2026-10-01 船长令**：「如果玩家在高安使用信号发射器，触发入侵的通讯
+ * 会在开头怀疑玩家，并在文本中说扣玩家的声望。」）＋ 船长对措辞的两条口径：只写"怀疑"（"只发现了你的
+ * 舰船信号"式，不写"登记在你名下"这种确凿证据）；实况段改成能接住质问的承接口气（裁定「按 B」）。
+ */
+describe('信号发射器 · 高安点火的通讯变体', () => {
+  /** 高安点火那一场（⚠ `beaconLaunchHighSecOf` 判的是**玩家所在地**是高安 ⇒ 把 `awayGalaxy` 挪到高安；
+   *  目标星系仍取合法的候选（非高安、无副站），两条规则互不短路） */
+  function highSecLitState() {
+    const s = readyState()
+    s.awayGalaxy = highSecId()
+    noteStandingEarned(s, DSI_FACTION_ID, 50)
+    const target = weekendCoreCandidates(s, ctx)[0]!
+    expect(useInvasionBeacon(s, ctx, { galaxyId: target }).ok, '高安点火应当成功').toBe(true)
+    return s
+  }
+
+  it('高安点火 ⇒ 事件留痕 `beaconHighSec`，预警信**首段**换成质问（`core.weekend.044`）并喂上扣分槽 p4', () => {
+    const s = highSecLitState()
+    expect(s.weekendEvent?.beaconHighSec, '点火来源写进这一场事件').toBe(true)
+    const mail = weekendWarnCommsOf(s, ctx, s.weekendEvent!)
+    expect(mail.bodyIds).toEqual(['core.weekend.044', 'core.weekend.011', 'core.weekend.012'])
+    expect(mail.params?.['p4'], '扣分槽 = 实扣数').toBe(HIGH_SEC_PENALTY)
+    expect(mail.paragraphs[0]).toContain('只发现了你的舰船信号')
+    expect(mail.paragraphs[0]).toContain(`扣了 ${HIGH_SEC_PENALTY} 点`)
+    expect(mail.paragraphs[0], '只写怀疑，不写确凿证据').not.toContain('登记在你名下')
+  })
+
+  it('非高安点火 ⇒ 不留痕，预警信仍是原两段（无质问、不喂 p4）', () => {
+    const s = readyState()
+    noteStandingEarned(s, DSI_FACTION_ID, 50)
+    expect(useInvasionBeacon(s, ctx, { galaxyId: nonHighSecId() }).ok).toBe(true)
+    expect(s.weekendEvent?.beaconHighSec).toBeUndefined()
+    const mail = weekendWarnCommsOf(s, ctx, s.weekendEvent!)
+    expect(mail.bodyIds).toEqual(['core.weekend.011', 'core.weekend.012'])
+    expect(mail.params?.['p4']).toBeUndefined()
+  })
+
+  it('默认路点火（不指定星系 · 不扣声望）⇒ 同样没有质问段', () => {
+    const s = readyState()
+    expect(useInvasionBeacon(s, ctx).ok).toBe(true)
+    expect(s.weekendEvent?.beaconHighSec).toBeUndefined()
+    expect(weekendWarnCommsOf(s, ctx, s.weekendEvent!).bodyIds).toEqual(['core.weekend.011', 'core.weekend.012'])
+  })
+
+  it('实况段改成承接口气（侦查叙述换成「现在，…」，战况四件事一件不少）', () => {
+    const s = readyState()
+    noteStandingEarned(s, DSI_FACTION_ID, 50)
+    expect(useInvasionBeacon(s, ctx, { galaxyId: nonHighSecId() }).ok).toBe(true)
+    const mail = weekendWarnCommsOf(s, ctx, s.weekendEvent!)
+    const live = mail.paragraphs[mail.bodyIds.indexOf('core.weekend.011')]!
+    expect(live.startsWith('现在，')).toBe(true)
+    expect(live, '原稿的侦查叙述已换掉').not.toContain('就在刚刚')
+    expect(live).toContain('落点')
+    expect(live).toContain('标记已经打到星图上')
+    expect(live).toContain('请非战斗人员避开危险星系')
+  })
+
+  it('存档往返：留痕跟着这一场走（读档后照样发质问段）', () => {
+    const s = highSecLitState()
+    const back = loadSaveFile(serializeSaveFile(s, 0)).state
+    expect(back.weekendEvent?.beaconHighSec).toBe(true)
+    expect(weekendWarnCommsOf(back, ctx, back.weekendEvent!).bodyIds[0]).toBe('core.weekend.044')
   })
 })

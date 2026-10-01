@@ -3395,6 +3395,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
               .filter((x) => x.length > 0),
             family: weekendStr(weekendRaw.family) || 'A',
             contributed,
+            /* 点火来源留痕（2026-10-01）：只认真布尔，缺键 = 老档 / 每周默认场 ⇒ 不写键（零迁移） */
+            ...(weekendRaw.beaconHighSec === true ? { beaconHighSec: true } : {}),
             ...(weekendNum(weekendRaw.endedAtWallMs) > 0 ? { endedAtWallMs: weekendNum(weekendRaw.endedAtWallMs) } : {}),
             ...(weekendNum(weekendRaw.flagshipAtWallMs) > 0 ? { flagshipAtWallMs: weekendNum(weekendRaw.flagshipAtWallMs) } : {}),
             ...(weekendRaw.flagshipDown === 'player' || weekendRaw.flagshipDown === 'octopus'

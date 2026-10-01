@@ -215,6 +215,8 @@ export function useInvasionBeacon(
     ...rolled,
     family: family.id,
     contributed: {},
+    /* 高安点火留痕（2026-10-01 船长令）：这一场的预警信要在开头怀疑玩家并说清扣了声望 */
+    ...(highSec ? { beaconHighSec: true } : {}),
   }
   const galaxyName = ctx.galaxies.get(rolled.coreId)?.name ?? rolled.coreId
   addLog(
