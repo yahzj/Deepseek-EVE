@@ -12,9 +12,9 @@
 
 ## 统计
 
-- 文档总数 **387** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6909** KB · **50544** 行
+- 文档总数 **387** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6919** KB · **50639** 行
 - 状态分布：**未标注** 213 · **已确认/已实现** 117 · **进行中** 43 · **待裁定** 13 · **历史留档** 1
-- 孤儿文档（0 引用）**64** 份 · 状态未标注 **213** 份
+- 孤儿文档（0 引用）**62** 份 · 状态未标注 **213** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**11** 份
 - 三、现行设计稿（design）：**262** 份
@@ -33,10 +33,10 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 32 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 59 行 | 34 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 285 KB / 299 行 | 17 / 3 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 78 KB / 806 行 | 93 / 4 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 502 KB / 1016 行 | 225 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 457 行 | 354 / 19 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 286 KB / 300 行 | 17 / 3 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 80 KB / 836 行 | 93 / 4 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 503 KB / 1016 行 | 226 / 16 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 457 行 | 355 / 19 |
 
 ## 七、评审与体检（review） —— 11 份
 
@@ -64,12 +64,12 @@
 | `docs/design/comms-param-fix-20261001.md` | 文案占位符漏出两处（工作文档） | 进行中（进行中） | 2026-10-01 | 6 KB / 73 行 | 0 / 1 |
 | `docs/design/handover-20261001.md` | 交接卡 · 一号会话（2026-10-01 收尾） | 未标注 | 2026-10-01 | 7 KB / 71 行 | 0 / 0 |
 | `docs/design/hud-industry-filter-20261001.md` | 工业 HUD 页：组装机书架筛选收口 ＋ 卡片溢出修复（工作文档） | 进行中（进行中） | 2026-10-01 | 8 KB / 89 行 | 0 / 0 |
-| `docs/design/industry-line-parity-20261001.md` | 三条工业产线的逻辑对照（实验室 vs 炉子 vs 制造线）· 2026-10-01 | 进行中（进行中） | 2026-10-01 | 12 KB / 141 行 | 0 / 0 |
+| `docs/design/industry-line-parity-20261001.md` | 三条工业产线的逻辑对照（实验室 vs 炉子 vs 制造线）· 2026-10-01 | 进行中（进行中） | 2026-10-01 | 15 KB / 175 行 | 1 / 0 |
 | `docs/design/industry-manual-slot-guard-20261001.md` | 新工业 HUD 页：主控手动位守卫复原（工作文档） | 进行中（进行中） | 2026-10-01 | 6 KB / 75 行 | 0 / 0 |
 | `docs/design/lab-comms-rewrite-20261001.md` | 首访实验室 · 黑市通讯正文重写（工作文档） | 进行中（进行中） | 2026-10-01 | 5 KB / 57 行 | 0 / 0 |
 | `docs/design/voidcrystal-price-20261001.md` | 虚空晶一物一价（精炼面板修正）· 2026-10-01 | 未标注 | 2026-10-01 | 5 KB / 64 行 | 3 / 0 |
 | `docs/design/weekend-faction-corona-20261001.md` | 设计案：入侵新敌对势力「光环科技 / Corona Systems」（参考远行星号 Remnants）（2026-10-01 · 二号） | 未标注 | 2026-10-01 | 62 KB / 851 行 | 0 / 1 |
-| `docs/design/weekend-family-name-20261001.md` | 入侵族名用正式称呼（R 族 = 光环）· 2026-10-01 | 未标注 | 2026-10-01 | 5 KB / 74 行 | 0 / 0 |
+| `docs/design/weekend-family-name-20261001.md` | 入侵族名用正式称呼（R 族 = 光环）· 2026-10-01 | 未标注 | 2026-10-01 | 8 KB / 104 行 | 1 / 0 |
 | `docs/design/announcement-draft-20260930.md` | 公告待审稿 · 2026-09-30 批次（实验室投产）（2026-09-30） | 未标注 | 2026-09-30 | 11 KB / 180 行 | 5 / 2 |
 | `docs/design/beacon-parts-20260930.md` | 信号发射器配方改用零件（2026-09-30） | 未标注 | 2026-09-30 | 3 KB / 49 行 | 1 / 2 |
 | `docs/design/copy-audit-20260930.md` | 文案审核批（全仓通讯与长文本 · 2026-09-30） | 进行中（进行中） | 2026-09-30 | 38 KB / 398 行 | 4 / 1 |
@@ -328,7 +328,7 @@
 | `docs/archive/glossary-detail-03-econ-20260915.md` | 封存卷 · 词典「三、装备 / 制造 / 经济」词条详解（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 11 KB / 26 行 | 6 / 0 |
 | `docs/archive/glossary-retired-20260915.md` | 封存卷 · 词典的作废词条与沿革（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 3 KB / 16 行 | 3 / 0 |
 | `docs/archive/roadmap-todo-done-20260915.md` | 封存卷 · roadmap 待办活面的已办结项（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 92 KB / 75 行 | 3 / 0 |
-| `docs/archive/README.md` | 封存区（docs/archive/）—— 冻结的历史件 | 未标注 | — | 2 KB / 30 行 | 55 / 13 |
+| `docs/archive/README.md` | 封存区（docs/archive/）—— 冻结的历史件 | 未标注 | — | 2 KB / 30 行 | 56 / 13 |
 | `docs/archive/roadmap-2026-09-04.md` | 封存卷 · roadmap 批次条目 2026-09-04 | 未标注 | — | 13 KB / 68 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-05.md` | 封存卷 · roadmap 批次条目 2026-09-05 | 未标注 | — | 12 KB / 32 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-06.md` | 封存卷 · roadmap 批次条目 2026-09-06 | 未标注 | — | 2 KB / 10 行 | 1 / 0 |
@@ -364,7 +364,7 @@
 |---|---|---|---|---|---|
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 5 KB / 82 行 | 5 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 46 KB / 799 行 | 25 / 20 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 7 KB / 76 行 | 12 / 7 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 7 KB / 76 行 | 13 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -376,7 +376,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 72 KB / 721 行 | 55 / 13 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 72 KB / 721 行 | 56 / 13 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -388,7 +388,7 @@
 | `docs/design/ship-battle-art/battle-sprite-tier-20260911.md` | 战斗画面「舰种体积」（舰身大小随舰种档，2026-09-11 船长定；状态：已实现，但按船长裁决暂时关闭 —— 显示还原、系统保留） | 已确认/已实现（已实现） | 2026-09-11 | 14 KB / 177 行 | 8 / 0 |
 | `docs/design/ship-battle-art/mounts-20260910.md` | 舰船战斗图形·挂点对齐（引擎喷口 + 真实炮口）2026-09-10 | 已确认/已实现（已确认） | 2026-09-10 | 6 KB / 94 行 | 2 / 1 |
 | `docs/design/ship-battle-art/acceptance-visual-20260909.md` | 舰船战斗图形 · 真机目测与细节验收清单（2026-09-09 三号，给船长） | 未标注 | 2026-09-09 | 4 KB / 54 行 | 2 / 0 |
-| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 55 / 13 |
+| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 56 / 13 |
 
 ## 四、已归档设计稿（design/archive） —— 62 份
 
@@ -455,9 +455,9 @@
 | `docs/design/archive/handoff-20260909-dsh-reinstall.md` | 二号会话续接卡(2026-09-09 DSH 重装;交给新继承人) | 未标注 | 2026-09-09 | 5 KB / 48 行 | 5 / 0 |
 | `docs/design/archive/handoff-b3-skills.md` | B3 技能挂接（2026-09-05 船长拍板：打捞相关技能一并完成 → 已实施） | 未标注（打捞对标技能组已实施 ✅） | — | 4 KB / 52 行 | 4 / 0 |
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
-| `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 55 / 13 |
+| `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 56 / 13 |
 
-## 附：孤儿文档（0 引用，64 份）
+## 附：孤儿文档（0 引用，62 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
@@ -465,10 +465,8 @@
 - `docs/design/comms-export-20261001.md`（2026-10-01 · 5 KB）—— 通讯文案工作台（导出工具）· 2026-10-01
 - `docs/design/handover-20261001.md`（2026-10-01 · 7 KB）—— 交接卡 · 一号会话（2026-10-01 收尾）
 - `docs/design/hud-industry-filter-20261001.md`（2026-10-01 · 8 KB）—— 工业 HUD 页：组装机书架筛选收口 ＋ 卡片溢出修复（工作文档）
-- `docs/design/industry-line-parity-20261001.md`（2026-10-01 · 12 KB）—— 三条工业产线的逻辑对照（实验室 vs 炉子 vs 制造线）· 2026-10-01
 - `docs/design/industry-manual-slot-guard-20261001.md`（2026-10-01 · 6 KB）—— 新工业 HUD 页：主控手动位守卫复原（工作文档）
 - `docs/design/lab-comms-rewrite-20261001.md`（2026-10-01 · 5 KB）—— 首访实验室 · 黑市通讯正文重写（工作文档）
-- `docs/design/weekend-family-name-20261001.md`（2026-10-01 · 5 KB）—— 入侵族名用正式称呼（R 族 = 光环）· 2026-10-01
 - `docs/design/handoff-20260930-d2.md`（2026-09-30 · 12 KB）—— 交接卡：接二号班（工作树 d2/workspace · 2026-09-30）
 - `docs/design/hud-layout-scale-20260930.md`（2026-09-30 · 6 KB）—— 工业 HUD · 左列宽度不随窗口缩放（精炼炉页签）修复（状态：进行中 · 2026-09-30）
 - `docs/design/escort-drone-anchor-20260929.md`（2026-09-29 · 8 KB）—— 僚舰无人机锚点修复（2026-09-29）

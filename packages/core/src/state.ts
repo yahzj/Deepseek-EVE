@@ -570,9 +570,10 @@ export interface RefineRunState {
 /**
  * **实验室产线状态**（**2026-09-29 船长令 · 跃迁燃料批**）。
  *
- * 与 `RefineRunState` 同一族（多工位并行 · 主控/AI 核心驱动 · 料尽自停 · 台号稳定），差别只在
- * **投料方式**：精炼炉是"单资源按批扣"，实验室是**一张配方表的多料 BOM**（每批一次性扣齐才出料）
- * ⇒ 单独一张表（`state.labRuns`），推进/停线/视图全在 `core/lab.ts`。
+ * ⚠ **2026-10-01 船长令**：「实验室本质上也是一个组装机，建议按照组装机的来」⇒ **一条线 = 一批**
+ * （与 `ManufacturingRunState` 同构：开工整批扣料 · 只吃物品仓库 · 完成即结束 · 循环开关续做）。
+ * 与 `RefineRunState`（炉子那一族）的差别现在是：**投料时机**（整批先扣 vs 每批到点扣）与
+ * **取料来源**（只仓库 vs 货仓优先）。推进/停线/视图全在 `core/lab.ts`。
  */
 export interface LabRunState {
   active: boolean
@@ -580,16 +581,33 @@ export interface LabRunState {
   id: number
   /** 劳动者：主控亲自运转 / AI 核心类型（与精炼炉同款语义与效率口径） */
   worker: 'pilot' | AiCoreType
-  /** 配方 id（`ctx.labRecipes` 的键；第一版只有 `jump-fuel`） */
+  /** 配方 id（`ctx.labRecipes` 的键） */
   recipeId: string
-  /** 单批产物单位（起线时按技能现算） */
+  /** 单批产物单位（起批时按技能现算；循环续做时重算） */
   batchUnits: number
-  /** 单批周期毫秒（已按 AI 核心效率与技能折算） */
+  /** 单批周期毫秒（已按 AI 核心效率与技能折算；续做时重算） */
   cycleMs: number
   /** 当前批到点时刻（游戏内毫秒） */
   finishAtGameMs: number
-  /** 已完成批数（展示用） */
-  batchesDone: number
+  /**
+   * **本批已扣的料**（退料账 · **与组装机同一本账的语义**）：停机/换线/取消时**按实际扣的那种退**；
+   * 一批交付时结清（置空）。`state.ts` 的停机单点没有 `ctx` ⇒ 退料必须靠这本账。
+   */
+  spentMaterials?: { itemId: string; count: number }[]
+}
+
+/**
+ * **实验室「循环实验」卡片级配置**（**2026-10-01 船长令**：按组装机那套 ⇒ 一线一批，连续生产靠循环）。
+ * 与 `ManufacturingLoopState` **同构**，只是 key = **配方 id**。缺省 `{}` = 全部不循环。
+ */
+export interface LabLoopState {
+  on: boolean
+  /** 目标批数（缺省/0 = 直到材料不足或产物封顶） */
+  goal?: number
+  /** 本轮合计产出批数（该配方全部线共享） */
+  produced: number
+  /** 上一次自动停线原因（空 = 无） */
+  stopWhy?: string
 }
 
 /** 精炼炉空态（兼容常量；v20 多台炉不用单例空态） */
@@ -3032,6 +3050,12 @@ export type GameStateV24 = Omit<GameStateV23, 'version'> & {
    * 之后引擎只读写本字段）。key = 蓝图 id，见 ManufacturingLoopState。
    */
   manufacturingLoops: Record<string, ManufacturingLoopState>
+  /**
+   * 实验室「循环实验」卡片级配置（**2026-10-01 船长令**：实验室按组装机那套 ⇒ 一线一批、
+   * 连续生产靠循环；与 `manufacturingLoops` 同构，key = **配方 id**）。
+   * 兼容字段、无版本号变化——缺省 `{}` = 全部不循环，老档零迁移。
+   */
+  labLoops?: Record<string, LabLoopState>
 }
 
 /**
@@ -3253,15 +3277,19 @@ export function refundOneTimeBookOf(state: GameState, blueprintId: string): bool
  * **摘掉"主控亲自运转"的实验线**（**2026-09-29 跃迁燃料批**）：手动工作位那一个名额是**跨产线**的
  * —— 精炼/回收/拆解/制造与实验室共用它（见 `haltActivityForSwitch` 的 `'refine'` / `'lab'` 两档）。
  *
- * 为什么不退料：实验室的 BOM 是**每批到点才扣**（同精炼炉 v20 起的"实时扣料"）⇒ 当前那批还没到点，
- * 它的料仍在货仓/仓库里，退无可退；代价只有当前那批的进度。
+ * ⚠ **2026-10-01 改**（船长令「实验室本质上也是一个组装机，建议按照组装机的来」）：实验室改成
+ * **开工整批扣料**⇒ 停机**必须把那本退料账退回仓库**（`spentMaterials`；与制造线那一档同一口径），
+ * 否则当前那批的料会随"线被摘掉"而**凭空消失**——正是船长不许的"吃料"。
+ * （旧语义"每批到点才扣、退无可退"已随该批作废。）
  */
 function haltPilotLabRunsInline(state: GameState): void {
   const runs = state.labRuns
   if (!runs) return
   for (let i = runs.length - 1; i >= 0; i--) {
     const r = runs[i]!
-    if (r.active && r.worker === 'pilot') runs.splice(i, 1)
+    if (!r.active || r.worker !== 'pilot') continue
+    refundMaterialsToWarehouse(state, r.spentMaterials ?? [])
+    runs.splice(i, 1)
   }
 }
 
@@ -3549,6 +3577,8 @@ export function createInitialState(opts?: {
     manufacturingRuns: [],
     manufacturingSeq: 1,
     manufacturingLoops: {},
+    /** 实验室循环实验（2026-10-01）：缺省空表 = 全部不循环 */
+    labLoops: {},
     /**
      * **新档初始声望 = 0**（**2026-09-26 船长裁定**：初始赠送一律清理 ⇒ 两条账都由空表起步，
      * 声望只能靠悬赏首胜与入侵贡献挣；见 `INITIAL_STANDING` 那段沿革）。

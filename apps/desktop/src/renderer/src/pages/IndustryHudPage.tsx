@@ -335,6 +335,12 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
   const { locale } = useL10n()
   const [tab, setTab] = useState<HudTab>('refine')
   /**
+   * **实验室「循环实验」开关的输入草稿**（**2026-10-01**：实验室按组装机那套 ⇒ 一线一批 ＋ 循环）。
+   * 与组装机那张卡的 `goalDraft` 同款：只在本页留住草稿，**回车/失焦时提交一次**；
+   * 输入框没有"受控回写"⇒ 打到一半不会被引擎 tick 的刷新冲掉。
+   */
+  const [labGoalDraft, setLabGoalDraft] = useState('')
+  /**
    * **首访实验室**（**2026-09-30 船长令**：第一次进实验室给玩家发一封黑市通讯）——
    * 与旧工业页的实验室子页同一处口径（`engine.noteLabOpened()` 内部幂等，通讯由 `advanceComms` 送达）。
    */
@@ -396,6 +402,17 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
   const lockTip = recipe !== null && !labRecipeUnlocked(state, ctx, recipe)
     ? tr('ui.lab.025', { p1: labTechRequirementOf(ctx, recipe) ?? recipe.name })
     : null
+  /**
+   * **循环实验读数与开关提交**（**2026-10-01 船长令**：实验室按组装机那套 ⇒ 一线一批 ＋ 卡片级循环）。
+   * 与组装机那张卡同款：`goalText` 解析成目标批数（≤0 / 非数 ⇒ 不限），开关状态与目标一起提交。
+   */
+  const labLoop = engine.labLoopOf(recipe !== null ? recipe.id : null)
+  const commitLabLoop = (on: boolean, goalText: string): void => {
+    if (recipe === null) return
+    const n = Number.parseInt(goalText, 10)
+    const r = engine.setLabLoopAt(recipe.id, on, on ? (Number.isFinite(n) && n > 0 ? n : null) : null)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.lab.031'), true)
+  }
   const rate = refineRate(state, ctx)
   /** 可精炼资源（与工业页同一取数口：`visibleItemDefs` + 有 `refine` 配方） */
   const refineDefs = visibleItemDefs(ctx)
@@ -1634,13 +1651,70 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                 <h3>
                   <Glyph name="ico-loop" size={13} color="currentColor" /> {tr('ui.hud.080')}
                 </h3>
+                {/**
+                 * **循环实验**（**2026-10-01 船长令**：「实验室本质上也是一个组装机，建议按照组装机的来」）
+                 * —— 一条线只出一批，连续生产靠这个卡片级开关（与组装机那张卡的控件同构）。
+                 * 控件形态照**同级相似项**：HUD 家族的开关行（`hud-sw-row` ＋ `hud-sw` ＋ 状态 chip，
+                 * 见 `ShipPage` 的跃迁燃料活动开关）；文案见 `ui.lab.031~035`。
+                 */}
+                {recipe !== null ? (
+                  <label className="hud-sw-row" title={tr('ui.lab.032', { p1: labLoop.on ? tr('ui.Industry.055') : tr('ui.Industry.056') })}>
+                    <span className="hud-row" style={{ gap: 8 }}>
+                      <span>{tr('ui.lab.031')}</span>
+                      <span className="hud-tiny app-dim">{tr('ui.lab.035')}{labRuns.length > 0 ? tr('ui.Industry.113', { p1: labRuns.length }) : ''}</span>
+                    </span>
+                    <span className="hud-row" style={{ gap: 8 }}>
+                      {labLoop.on ? (
+                        <span className="hud-row" style={{ gap: 6 }}>
+                          <span className="hud-tiny">{tr('ui.Industry.058')}</span>
+                          <input
+                            type="number"
+                            min={1}
+                            /** 样式复刻同级相似项：HUD 家族现有的输入类 `hud-search`（只加一个定宽，不自造新类） */
+                            className="hud-search"
+                            style={{ width: 64 }}
+                            placeholder="∞"
+                            value={labGoalDraft !== '' ? labGoalDraft : labLoop.goal > 0 ? String(labLoop.goal) : ''}
+                            title={tr('ui.lab.033')}
+                            onChange={(e) => setLabGoalDraft(e.target.value)}
+                            onBlur={(e) => {
+                              setLabGoalDraft('')
+                              commitLabLoop(true, e.target.value)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                setLabGoalDraft('')
+                                commitLabLoop(true, (e.target as HTMLInputElement).value)
+                              }
+                            }}
+                          />
+                        </span>
+                      ) : null}
+                      {labLoop.produced > 0 ? (
+                        <span className="hud-chip">
+                          {tr('ui.Industry.061')} {labLoop.produced.toLocaleString('zh-CN')} {tr('ui.lab.034')}
+                        </span>
+                      ) : null}
+                      {labLoop.stopWhy.length > 0 ? <span className="hud-chip is-warn">{tr('ui.Industry.062')}{labLoop.stopWhy}</span> : null}
+                      <input
+                        type="checkbox"
+                        className="hud-sw"
+                        checked={labLoop.on}
+                        onChange={(e) =>
+                          commitLabLoop(e.target.checked, e.target.checked ? (labGoalDraft || (labLoop.goal > 0 ? String(labLoop.goal) : '')) : '')
+                        }
+                      />
+                    </span>
+                  </label>
+                ) : null}
                 {labRuns.length === 0 ? <div className="hud-tiny">{tr('ui.hud.081')}</div> : null}
                 {labRuns.map((v) => (
                   <div key={v.id} className="hud-row" style={{ gap: 10, marginBottom: 8 }}>
                     <span style={{ flex: 1 }}>
                       <span className="hud-tiny">
                         {v.worker === 'pilot' ? tr('ui.hud.082') : aiCoreText(v.worker)} ·{' '}
-                        {tr('ui.hud.083', { p1: v.batchesDone })}
+                        {/* 一线一批（2026-10-01）：本行显示**这一批**的产出与进度；累计批数改读循环读数（上方开关行） */}
+                        {tr('ui.lab.036', { p1: v.batchUnits })}
                       </span>
                       <span className="hud-bar scan" style={{ marginTop: 5 }}>
                         <i style={{ ['--v' as string]: Math.round(v.percent) }} />

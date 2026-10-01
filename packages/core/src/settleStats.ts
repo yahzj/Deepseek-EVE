@@ -23,6 +23,11 @@ export interface CoreSettleStats {
   makeDone: number
   /** 制造完成的**舰船**件数（与 `makeDone` 并列单列：舰船产出入舰船仓库，离线简报据此写明去处） */
   shipsDone: number
+  /**
+   * 实验室完成的**批数**（**2026-10-01 补** · 普查发现实验室原先完全不参与离线统计
+   * ⇒ 离线简报上看不到 AI 实验室线的产出与收入；`advanceLab` 现在接本统计器）
+   */
+  labBatches: number
   /** 预估收入（ISK，累计） */
   income: number
 }
@@ -39,7 +44,7 @@ export function newSettleStats(): SettleStats {
 function rec(stats: SettleStats | undefined, type: AiCoreType): CoreSettleStats | null {
   if (!stats) return null
   let s = stats[type]
-  if (!s) s = stats[type] = { miningTrips: 0, salvageDone: 0, refineBatches: 0, recycleBatches: 0, makeDone: 0, shipsDone: 0, income: 0 }
+  if (!s) s = stats[type] = { miningTrips: 0, salvageDone: 0, refineBatches: 0, recycleBatches: 0, makeDone: 0, shipsDone: 0, labBatches: 0, income: 0 }
   return s
 }
 
@@ -63,6 +68,12 @@ export function addAiRefineBatch(stats: SettleStats | undefined, type: AiCoreTyp
 export function addAiMakeDone(stats: SettleStats | undefined, type: AiCoreType): void {
   const s = rec(stats, type)
   if (s) s.makeDone += 1
+}
+
+/** 实验室出料一批（**2026-10-01 补**：实验室原先完全不参与离线统计 ⇒ 简报上看不到它的产出与收入） */
+export function addAiLabBatch(stats: SettleStats | undefined, type: AiCoreType): void {
+  const s = rec(stats, type)
+  if (s) s.labBatches += 1
 }
 
 /** 造船完成单列（2026-09-14 船长「补」：舰船产出入舰船仓库，离线简报要写明去处） */

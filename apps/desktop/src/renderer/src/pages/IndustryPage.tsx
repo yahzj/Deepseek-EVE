@@ -634,6 +634,18 @@ function LabCard({
    */
   const locked = !labRecipeUnlocked(state, engine.ctx, recipe)
   const lockTip = locked ? tr('ui.lab.025', { p1: labTechRequirementOf(engine.ctx, recipe) ?? recipe.name }) : null
+  /**
+   * **循环实验**（**2026-10-01 船长令**：实验室按组装机那套 ⇒ 一线一批，连续生产靠卡片级循环开关）。
+   * 控件与提交口径**照组装机那张卡**（`panels/Industry.tsx` 的 `goalDraft` 那套）：
+   * 打到一半的草稿留在本页，回车/失焦各提交一次。
+   */
+  const loop = engine.labLoopOf(recipe.id)
+  const [goalDraft, setGoalDraft] = useState('')
+  function commitLoop(on: boolean, goalText: string): void {
+    const n = Number.parseInt(goalText, 10)
+    const r = engine.setLabLoopAt(recipe.id, on, on ? (Number.isFinite(n) && n > 0 ? n : null) : null)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.Industry.133'), true)
+  }
   function runWith(worker: AiCoreType | 'pilot'): void {
     const r = engine.startLabRunAt(recipe.id, worker)
     if (!r.ok) {
@@ -718,7 +730,8 @@ function LabCard({
               <span key={v.id} className="app-belt-worker">
                 <span className="app-belt-worker-name">
                   {v.worker === 'pilot' ? tr('ui.IndustryPage.041') : tr('ui.IndustryPage.086', { p1: aiCoreText(v.worker) })} ·{' '}
-                  {tr('ui.lab.007', { p1: v.batchesDone })}
+                  {/* 一线一批（2026-10-01）：本行给**这一批**的产出读数；累计批数改读循环读数（卡上开关行） */}
+                  {tr('ui.lab.036', { p1: v.batchUnits })}
                 </span>
                 <span className="app-progress-mini" title={tr('ui.lab.020', { p1: v.percent, p2: v.batchUnits, p3: Math.round(v.cycleMs / 100) / 10 })}>
                   <i style={{ width: `${v.percent}%` }} />
@@ -778,6 +791,65 @@ function LabCard({
             {tr('ui.lab.023')}
           </button>
         ) : null}
+        {/**
+         * **循环实验**（**2026-10-01 船长令**：「实验室本质上也是一个组装机，建议按照组装机的来」）——
+         * 一条线只出一批，连续生产靠这个卡片级开关：**结构照组装机那张卡的循环块**
+         * （`.app-belt-loop` ＋ `.app-toggle` ＋ `.app-mf-goal`，见 `panels/Industry.tsx`），
+         * 文案用本机器自己的那一组（`ui.lab.031~035`；通用词如「目标」「已产」「已停线：」直接复用）。
+         */}
+        <div className="app-belt-loop">
+          <label className="app-toggle" title={tr('ui.lab.032', { p1: loop.on ? tr('ui.Industry.055') : tr('ui.Industry.056') })}>
+            <input
+              type="checkbox"
+              className="app-toggle-input"
+              checked={loop.on}
+              onChange={(e) => commitLoop(e.target.checked, e.target.checked ? (goalDraft || (loop.goal > 0 ? String(loop.goal) : '')) : '')}
+            />
+            <span className="app-toggle-track" aria-hidden="true" />
+            <span className="app-toggle-label">{tr('ui.lab.031')}</span>
+          </label>
+          {loop.on ? (
+            <span className="app-mf-goal">
+              {tr('ui.Industry.058')}
+              <input
+                type="number"
+                min={1}
+                className="app-mf-goal-input"
+                placeholder="∞"
+                value={goalDraft !== '' ? goalDraft : loop.goal > 0 ? String(loop.goal) : ''}
+                onChange={(e) => setGoalDraft(e.target.value)}
+                onBlur={(e) => {
+                  setGoalDraft('')
+                  commitLoop(true, e.target.value)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setGoalDraft('')
+                    commitLoop(true, (e.target as HTMLInputElement).value)
+                  }
+                }}
+                title={tr('ui.lab.033')}
+              />
+              {tr('ui.lab.034')}
+              <em className="app-dim">{tr('ui.Industry.060')}</em>
+            </span>
+          ) : null}
+          {loop.produced > 0 ? (
+            <span className="app-mf-made">
+              {tr('ui.Industry.061')} {loop.produced.toLocaleString('zh-CN')} {tr('ui.lab.034')}
+            </span>
+          ) : null}
+          {loop.stopWhy.length > 0 ? (
+            <span className="app-mf-why">
+              {tr('ui.Industry.062')}
+              {loop.stopWhy}
+            </span>
+          ) : null}
+          <span className="app-dim app-mf-note">
+            {tr('ui.lab.035')}
+            {runs.length > 0 ? tr('ui.Industry.113', { p1: runs.length }) : ''}
+          </span>
+        </div>
       </div>
     </div>
   )
