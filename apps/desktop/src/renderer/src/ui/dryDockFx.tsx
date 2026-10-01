@@ -22,6 +22,11 @@
  * 4. **按进度逐段显影**（船长）：坞内画的是**该舰的真实线稿**（`ui/shipArt` 的 `SHIP_ART`，
  *    经 `ShipSpriteShape` 嵌入 —— 240×110、船头朝右，与全仓同一份资产），用 `clipPath` 把显影宽度
  *    从**船尾**推向**船头**：进度越高、线越多 —— 这才是"建到一半"的**真实**含义，
+ *
+ * **动效清单**（2026-10-01 船长令「希望添加更多动效（比如无人机来回飞行焊接）」）：
+ * ① 飞船极缓慢悬浮漂移 · ② **两只焊接无人机沿船体上下往返**、机身焊光微闪（错相位）·
+ * ③ **坞壁机械臂缓慢屈伸** · ④ 坞体航行灯缓慢呼吸 · ⑤ 两处焊点闪烁。
+ * 全部**只动 `transform` / `opacity`**，且 `prefers-reduced-motion` 与「关特效」下全停（§十四）。
  *    不再靠"故意少画几根线"来假装。
  *
  * ## 纪律
@@ -48,6 +53,10 @@ const VB_H = 190
 const BEAM_Y = 48
 /** 梁的半纵长（坞的开口范围；两端再各留一段端环） */
 const BEAM_HALF = 150
+/** 无人机的横向摆动幅度（用户单位；用 `--vx` 喂给 CSS 动画，避免写死两套 keyframes） */
+const DRONE_TRAVEL = 116
+/** 无人机轨道相对坞中线的纵向偏移（一上一下，贴着船体两侧飞） */
+const DRONE_Y = 28
 /** 三道桁架拱沿纵轴的 x 偏移（两端各一道 ＋ 正中一道） */
 const ARCH_X = [-96, 0, 96] as const
 /** 舰体显示宽度（占坞长 ~62%，两端留给端环与系留臂） */
@@ -187,11 +196,40 @@ export function DryDockFx({
         </g>
       </svg>
 
+      {/* ── 坞壁机械臂（船长令：从桁架伸向船体、缓慢屈伸）：只动 rotate，布局/动效分层 ── */}
+      <g transform={`translate(${VB_W / 2 + 118} ${VB_H / 2 + BEAM_Y - 2})`}>
+        <g className="hud-dock-arm">
+          <path d="M0 0 L-30 -16" opacity="0.8" />
+          <circle cx="-31" cy="-17" r="2" opacity="0.9" />
+        </g>
+      </g>
+      {/* ── 焊接无人机（船长令「无人机来回飞行焊接」）：两只一上一下沿船体往返，机身焊光微闪 ── */}
+      <g transform={`translate(${VB_W / 2} ${VB_H / 2 - 34})`}>
+        <g className="hud-dock-drone" style={{ ['--vx' as string]: `${DRONE_TRAVEL}px` }}>
+          <g className="hud-dock-drone-body">
+            <rect x="-7" y="-2.5" width="14" height="5" rx="1.5" />
+            <path d="M-9 -2.5 H9 M-9 2.5 H9" opacity="0.7" />
+            <path d="M-4 -4.5 V-6.5 M4 -4.5 V-6.5" opacity="0.6" />
+            <circle className="hud-dock-weld" cx="9.5" cy="0" r="1.7" />
+          </g>
+        </g>
+      </g>
+      <g transform={`translate(${VB_W / 2} ${VB_H / 2 + 34})`}>
+        <g className="hud-dock-drone is-late" style={{ ['--vx' as string]: `${DRONE_TRAVEL}px` }}>
+          <g className="hud-dock-drone-body">
+            <rect x="-7" y="-2.5" width="14" height="5" rx="1.5" />
+            <path d="M-9 -2.5 H9 M-9 2.5 H9" opacity="0.7" />
+            <path d="M-4 4.5 V6.5 M4 4.5 V6.5" opacity="0.6" />
+            <circle className="hud-dock-weld" cx="9.5" cy="0" r="1.7" />
+          </g>
+        </g>
+      </g>
       {/* 焊点（两处，错相位闪；只动 opacity）——跟着**显影前沿**走 */}
       <circle className="hud-dock-spark" cx={shipVp.x + clipW} cy={VB_H / 2 - 15} r="2" />
       <circle className="hud-dock-spark is-late" cx={shipVp.x + clipW * 0.7} cy={VB_H / 2 + 19} r="1.7" />
       {/* 坞体航行灯（静态细条；太空坞靠灯识别姿态） */}
       <path
+        className="hud-dock-beacon"
         d={
           `M${VB_W / 2 - BEAM_HALF - 6} ${VB_H / 2 - BEAM_Y - 3} h8 ` +
           `M${VB_W / 2 + BEAM_HALF - 2} ${VB_H / 2 - BEAM_Y - 3} h8 ` +
