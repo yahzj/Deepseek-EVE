@@ -63,12 +63,11 @@ export function DryDockFx({
       —— 系留臂端点与裁剪窗都按它算，绝不在这里再写死一个比例（坞景第一版就是栽在这） */
   const art = shipArtSizeOf(shipId)
   /**
-   * **坞内垂直对齐用"内容中心"而不是"画布几何中心"**：
-   * 命中独立线稿 ⇒ 内容大体占满 240×110，两者重合；**未命中走 140×64 回退剪影时**，
-   * 那条剪影的内容中心在 y≈50（画布中心是 32）⇒ 直接按几何中心摆，船看着会**沉在坞中线下方**。
-   * 补偿量按比例换算到当前显示高度。
+   * ⚠ **2026-10-01 撤掉一次"内容中心补偿"**：上一笔我曾按"回退剪影的内容中心 y≈50、画布中心 32"
+   * 加过 30px 的垂直补偿 —— 那是**在错误前提下猜的**（当时真正的病是 `transform-box` 缺失、
+   * 舰形整条堆在原点，见下）。前提修好后这个补偿只会把船推离坞中线 ⇒ **删除**。
+   * 若日后真发现某些舰形在坞内不居中，**先用读数确认**（别再用坐标手算）。
    */
-  const contentShiftY = art.hit ? 0 : Math.round(((32 - 50) * SHIP_W * (art.h / art.w)) / art.h)
   const shipH = Math.round(SHIP_W * (art.h / art.w))
   /** 显影前沿的 x（从船尾即左端起算；两端各留 2px 余量，免得描边被切） */
   const clipX = VB_W / 2 - SHIP_W / 2 - 1
@@ -143,7 +142,7 @@ export function DryDockFx({
       })}
 
       {/* ── 坞内的在建舰：**真实线稿** ＋ 按进度逐段显影（船尾 → 船头）── */}
-      <g className="hud-dock-craft" color="var(--hud-accent-soft)" transform={`translate(0 ${contentShiftY})`}>
+      <g className="hud-dock-craft" color="var(--hud-accent-soft)">
         {/* 未来段：整条淡淡描一遍（让玩家看出还差多少），再叠上已成形的这一段 */}
         <g opacity="0.14">
           <ShipSpriteShape shipId={shipId} role={role} size={SHIP_W} />
