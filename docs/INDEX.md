@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **375** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6761** KB · **48690** 行
+- 文档总数 **375** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6761** KB · **48691** 行
 - 状态分布：**未标注** 208 · **已确认/已实现** 117 · **进行中** 36 · **待裁定** 13 · **历史留档** 1
 - 孤儿文档（0 引用）**56** 份 · 状态未标注 **208** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 283 KB / 298 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 76 KB / 785 行 | 91 / 4 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 502 KB / 1016 行 | 224 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 97 KB / 456 行 | 347 / 19 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 455 行 | 347 / 19 |
 
 ## 七、评审与体检（review） —— 11 份
 
@@ -344,7 +344,7 @@
 | `docs/archive/roadmap-2026-09-25-26.md` | 封存卷 · roadmap 批次条目 2026-09-25/26 | 未标注 | — | 9 KB / 10 行 | 0 / 0 |
 | `docs/archive/roadmap-2026-09-25.md` | 封存卷 · roadmap 批次条目 2026-09-25 | 未标注 | — | 39 KB / 34 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-26.md` | 封存卷 · roadmap 批次条目 2026-09-26 | 未标注 | — | 106 KB / 104 行 | 2 / 0 |
-| `docs/archive/roadmap-2026-09-27.md` | 封存卷 · roadmap 批次条目 2026-09-27 | 未标注 | — | 32 KB / 44 行 | 1 / 0 |
+| `docs/archive/roadmap-2026-09-27.md` | 封存卷 · roadmap 批次条目 2026-09-27 | 未标注 | — | 33 KB / 46 行 | 1 / 0 |
 
 ## 二、其它（docs 根目录） —— 3 份
 
