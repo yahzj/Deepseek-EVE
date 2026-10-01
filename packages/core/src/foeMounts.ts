@@ -75,7 +75,7 @@ export const FOE_MOUNT_IDS = {
    * R 族「光环科技 / Corona Systems」的族级挂载件，**五档壳体逐档常挂**。
    *
    * 效果 = **本体被命中时拉开交战距离**（详见 `FoeMountDef.blink` 头注）。
-   * ⚠ 件名是**提案**（草稿已递船长审，见工作文档 §12）；批后若改名，只改本处 `name` / `en`。
+   * ✅ **件名已获船长批准**（**2026-10-01 船长令**：「**「瞬光跃迁仪」等件名提案可用**」）——
    */
   coronaBlink: 'foe-mount-corona-blink',
 } as const
@@ -254,7 +254,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
       '五档壳体逐档常挂（船长选「乙：五档全带」；距离与触发选「甲：一次 2,000m / 被命中触发」；冷却 5 秒（船长同日令「全族闪现的间隔下调到5秒」））。' +
       '效果 = 本体被命中时把交战距离拉开 2,000 m（本仓战斗只有 `distanceM` 一个标量 ⇒ 闪现即距离突变），' +
       '冷却期内再挨打不闪。⚠ 与族设定配套：该族是「激光（必中）+ 风筝」，闪现用来在被我方近身时重建射程优势。' +
-      '件名与效果句是提案（草稿已递船长审）——批后若改名只改本处 `name` / `en`。',
+      '件名与效果句经船长 2026-10-01 批准（「「瞬光跃迁仪」等件名提案可用」）。',
   },
   [FOE_MOUNT_IDS.coronaOverlayDrive]: {
     id: FOE_MOUNT_IDS.coronaOverlayDrive,
