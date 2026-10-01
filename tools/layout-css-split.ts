@@ -65,6 +65,24 @@ const SHELL_SELECTORS = [
   '.app-nav-side .app-nav-icon',
   '.app-nav-side .app-shipwin',
   '.app-nav-item',
+  /**
+   * ⚠ **这个"修饰态"必须一起登记**（**2026-10-01 船长报障**：「**导航栏的选中框不见了**」· 旧版 · a＋c）。
+   *
+   * 原理是一条**特异性反噬**：上面那条**裸的** `.app-nav-item` 加上 classic 前缀后 = **0,3,0**，
+   * 而 `.is-active` 只有 **0,2,0** ⇒ 被整个盖掉 —— 0,3,0 那条把 `color` / `background` /
+   * `border` **三样全重置**成旧版基础值，而 `is-active` 恰好**只改这三样** ⇒ 改了等于没改。
+   * ⚠ **新版不犯病**（那份没有前缀、0,1,0，盖不过 0,2,0）⇒ **只有旧版丢选中框**。
+   * ⇒ 补登记后它同样拿到前缀（0,4,0），恢复正常。
+   *
+   * ⚠ **`.app-nav-item.is-beat`（点击脉冲）故意不进本清单**：它的视觉反馈是
+   * `.app-nav-item.is-beat .app-nav-icon` 的**缩放动画**（顶层规则、只改 `animation`，
+   * 与上面那条改的三样不冲突 ⇒ 本来就没被盖）；而改 `border-color` 的那条在
+   * `@media (prefers-reduced-motion: reduce)` 内（无障碍退化的"静态描边"款），
+   * **本生成器只扫顶层规则**（登记它会直接抛错）⇒ 属**已知边界**，记在文件末尾 backlog。
+   *
+   * ⇒ **新增"裸基础选择器"时，务必回头看它有哪些顶层修饰态**（`.is-*` / `:hover`），漏一个哑一个。
+   */
+  '.app-nav-item.is-active',
   // 日志族（旧版是流内右栏，新版是右侧浮层）
   '.app-log-dock',
   '.app-log-side',

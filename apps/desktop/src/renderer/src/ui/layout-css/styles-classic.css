@@ -12971,6 +12971,17 @@ html[data-locale='en'] body {
   transition: all 0.15s;
 
 }
+.app-root.is-layout-classic .app-nav-item.is-active {
+
+  color: rgb(var(--wui-accent));
+
+  border-color: rgb(var(--wui-accent) / 0.45);
+
+  background: rgb(var(--wui-accent) / 0.07);
+
+  font-weight: 600;
+
+}
 .app-root.is-layout-classic /* ═══════════════ 日志面板：右滑隐藏 + 类型过滤（2026-09） ═══════════════ */
 
 .app-log-dock {

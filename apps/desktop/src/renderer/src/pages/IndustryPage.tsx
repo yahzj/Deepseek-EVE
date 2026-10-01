@@ -35,9 +35,11 @@ import {
   ITEM_KIND_LABELS,
   /** 2026-09-22 船长令：缺料"零件"要指去组装机 ⇒ 用产物→蓝图反查（核心单点，含缓存） */
   blueprintProducingItem,
-  /** 2026-09-29 跃迁燃料批：实验室卡片的读数口（可跑批次 / 材料可用量）＋ 配方类型 */
+  /** 2026-09-29 跃迁燃料批：实验室卡片的读数口（可跑批次 / 材料可用量 / 实际批产）＋ 配方类型 */
   labAffordableBatches,
   labMaterialAvailable,
+  labBatchUnitsOf,
+  labCycleMsOf,
   labRecipeUnlocked,
   labTechRequirementOf,
   /** 2026-10-01：材料行尾那枚「这一味料从哪来」链接的等价组判据（通用黑匣）走 core 单点 */
@@ -65,6 +67,8 @@ import { MatSourceLink } from '../ui/matSourceLink'
 import { itemGlyphName } from '../ui/Glyphs'
 import { WRECK_SUBS, SUB_ALL, presentSubs, wreckTierOf, subText } from '../ui/itemSubs'
 import { isEn, useL10n, cmdText } from '../i18n/locale'
+/** 工期读数（2026-10-01：与组装机卡同款 ⇒ 同一个格式化件） */
+import { fmtDuration } from '../i18n/fmt'
 import { aiCoreText } from '../ui/labelsText'
 import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
@@ -628,11 +632,21 @@ function LabCard({
   runs: LabRunView[]
 }): ReactNode {
   const state = engine.state
-  const rate = refineRate(state, engine.ctx)
   const out = engine.ctx.items.get(recipe.outputItemId)
   const affordable = labAffordableBatches(state, recipe)
   const running = runs.length > 0
-  const batchValue = recipe.outputUnits * (marketPriceOf(state, engine.ctx, recipe.outputItemId) ?? out?.baseSellPriceIsk ?? 0)
+  /**
+   * **本批实际产出单位**（走 core 单点 `labBatchUnitsOf`：基准 × `LAB_YIELD_SKILLS` 收率乘区）——
+   * 卡面那个 `×N` 与下面的净收益读数**共用这一个数**（2026-10-01 船长裁：卡上不许两个口径；
+   * 原先 `×N` 读配方基础值、净收益也按基础值算 ⇒ 收率技能的效果在卡面完全看不见）。
+   */
+  const batchUnits = labBatchUnitsOf(state, recipe)
+  /**
+   * **主控亲自那一批的实际周期**（走 core 单点 `labCycleMsOf`：吃 `LAB_CYCLE_SKILLS`；AI 核心另按效率拉长）——
+   * 卡面「主控耗时」读数与净收益读数共用它（2026-10-01 船长令：工期也照组装机卡那套）。
+   */
+  const pilotCycleMs = labCycleMsOf(state, engine.ctx, recipe, 'pilot')
+  const batchValue = batchUnits * (marketPriceOf(state, engine.ctx, recipe.outputItemId) ?? out?.baseSellPriceIsk ?? 0)
   const costIsk = recipe.materials.reduce(
     (s, m) =>
       s + m.units * (marketPriceOf(state, engine.ctx, m.itemId) ?? engine.ctx.items.get(m.itemId)?.baseSellPriceIsk ?? 0),
@@ -701,7 +715,11 @@ function LabCard({
           ⚠ 金字靠本卡 `is-lab` 那条 CSS 把整行拉回普通文字色（复用不了 `.is-assembler`：那条还带
           `content-visibility:auto` ＋ `contain-intrinsic-size`，是组装机 151 张卡的屏外跳过用的）。
           ⚠ 产物名挂**物品悬停**（与组装机卡同一个 `ItemHover` —— 就是船长说的"产物的title"）。
-          实验室自己的两个读数（每批工期 / 产出倍率）留在行尾。 */}
+          ⚠ **`×N` 读 `labBatchUnitsOf`（实际批产）**，不再读 `recipe.outputUnits` 基础值（2026-10-01 船长裁：
+          收率工艺学的效果必须在卡面看得见、卡上不许两个口径）。
+          ⚠ 「产出倍率」那枚读数**已删**（2026-10-01 船长裁）：它读的是精炼族的 `refineRate`，而实验室
+          压根不吃那条倍率（`lab.ts` 只吃产线节拍学 ＋ 实验室族那两条）⇒ 是个假读数；产出侧的真数字
+          就是这个 `×N`。 */}
       <div className="app-belt-ore">
         {tr('ui.Handbook.013')}
         <span className="app-gold">
@@ -713,17 +731,27 @@ function LabCard({
             recipe.outputItemId
           )}
         </span>{' '}
-        ×{recipe.outputUnits}
+        ×{batchUnits.toLocaleString('zh-CN')}
         <span
           className="app-dim"
           title={tr('ui.Industry.108', { ownedWhere: tr('ui.ItemsPage.001') })}
         >
           （{tr('ui.ItemsPage.001')} {countWare(state, recipe.outputItemId).toLocaleString('zh-CN')}）
         </span>
-        {' · '}
-        {tr('ui.lab.004')} {Math.round(recipe.cycleMs / 60_000)} {tr('ui.lab.012')}
-        {' · '}
-        {tr('ui.IndustryPage.062')} {Math.round(rate * 100)}%
+        {/* 工期读数**与组装机卡逐字同款**（**2026-10-01 船长令**：「『每批工期 X 分钟』这个也和组装机卡同步」）：
+            空闲 ⇒ ` · 主控耗时 {技能修正后的周期}（技能修正后；AI 核心另按效率拉长）`；
+            在跑 ⇒ ` · 已开 N 条线，首条约 T 到点`。数值走 core 单点 `labCycleMsOf`（不许界面自己乘技能）。 */}
+        {running ? (
+          <>
+            {tr('ui.Industry.121', { n: runs.length })} {tr('ui.Industry.043')}{' '}
+            {fmtDuration(Math.min(...runs.map((v) => v.remainingMs)))} {tr('ui.Industry.044')}
+          </>
+        ) : (
+          <>
+            {tr('ui.Industry.122', { d: fmtDuration(labCycleMsOf(state, engine.ctx, recipe, 'pilot')) })}
+            {tr('ui.Industry.045')}
+          </>
+        )}
       </div>
       {/* 材料行：**与组装机卡逐字同款**（2026-10-01 船长令：实验室卡不许自成一套富文本规则）——
           `.app-bp-mats` ＋ `.app-bp-mat`（普通文字色）＋ 缺料 `is-short` ＋ 行尾「去哪弄」四支跳转。
@@ -758,7 +786,8 @@ function LabCard({
         })}
       </ul>
       <div className="app-belt-econ">
-        <NetIncomeLine price={batchValue} costIsk={costIsk} buildMs={recipe.cycleMs} />
+        {/* 净收益/h 的工期**与产物行同一把尺**（2026-10-01 船长令：工期读数同步组装机卡）——走 core 单点 */}
+        <NetIncomeLine price={batchValue} costIsk={costIsk} buildMs={pilotCycleMs} />
       </div>
       <div className="app-belt-actions">
         {/**

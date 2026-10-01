@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **388** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6957** KB · **51204** 行
+- 文档总数 **388** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6964** KB · **51260** 行
 - 状态分布：**未标注** 214 · **已确认/已实现** 118 · **进行中** 42 · **待裁定** 13 · **历史留档** 1
 - 孤儿文档（0 引用）**62** 份 · 状态未标注 **214** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -33,8 +33,8 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 32 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 59 行 | 34 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 286 KB / 300 行 | 17 / 3 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 80 KB / 836 行 | 92 / 4 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 288 KB / 301 行 | 18 / 3 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 82 KB / 850 行 | 93 / 4 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 503 KB / 1016 行 | 226 / 16 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 457 行 | 356 / 19 |
 
@@ -65,7 +65,7 @@
 | `docs/design/comms-param-fix-20261001.md` | 文案占位符漏出两处（工作文档） | 进行中（进行中） | 2026-10-01 | 6 KB / 73 行 | 0 / 1 |
 | `docs/design/handover-20261001.md` | 交接卡 · 一号会话（2026-10-01 收尾） | 未标注 | 2026-10-01 | 7 KB / 71 行 | 0 / 0 |
 | `docs/design/hud-industry-filter-20261001.md` | 工业 HUD 页：组装机书架筛选收口 ＋ 卡片溢出修复（工作文档） | 进行中（进行中） | 2026-10-01 | 8 KB / 89 行 | 0 / 0 |
-| `docs/design/industry-line-parity-20261001.md` | 三条工业产线的逻辑对照 ＋ 生产两族口径落地（工作文档）· 2026-10-01 | 已确认/已实现（已落地） | 2026-10-01 | 18 KB / 216 行 | 1 / 0 |
+| `docs/design/industry-line-parity-20261001.md` | 三条工业产线的逻辑对照 ＋ 生产两族口径落地（工作文档）· 2026-10-01 | 已确认/已实现（已落地） | 2026-10-01 | 21 KB / 257 行 | 2 / 0 |
 | `docs/design/industry-manual-slot-guard-20261001.md` | 新工业 HUD 页：主控手动位守卫复原（工作文档） | 进行中（进行中） | 2026-10-01 | 6 KB / 75 行 | 0 / 0 |
 | `docs/design/lab-comms-rewrite-20261001.md` | 首访实验室 · 黑市通讯正文重写（工作文档） | 进行中（进行中） | 2026-10-01 | 5 KB / 57 行 | 0 / 0 |
 | `docs/design/voidcrystal-price-20261001.md` | 虚空晶一物一价（精炼面板修正）· 2026-10-01 | 未标注 | 2026-10-01 | 5 KB / 64 行 | 3 / 0 |

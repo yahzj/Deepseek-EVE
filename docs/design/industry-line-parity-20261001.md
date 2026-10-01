@@ -185,25 +185,66 @@
 是组装机 151 张卡的屏外跳过与占位高度，实验室几张卡既不需要也不该继承）；已 `npm run ui:layout-css` 重生成。
 ④ `ui.lab.003`（每批产出）随之不再被引用（留表不删）。
 
-**⚠ 待裁（本批只查未改）**：产物行行尾那枚 **`产出倍率 X%`（= core `refineRate`）与实验室的真实产出无关** ——
-`lab.ts` 的单批工期只吃 `aiEfficiency` ＋ `LAB_CYCLE_SKILLS`、单批件数只吃 `LAB_YIELD_SKILLS`
-（`labCycleMsOf` / `labBatchUnitsOf`，lab.ts:228~238），`refineRate`（精炼学 · 高级回收 · 熔炉精通学，
-industry.ts:67~75）在 `lab.ts` 里**一次都没被读**。⇒ 三选一：**删掉这枚读数**（我推荐，它在卡片上是误读）·
-改成实验室自己的乘区读数（需要 core 开一个单点）· 或让实验室真的吃这条倍率（属数值改动，要另批）。
-同源问题：行里的 `×N` 读的是 `recipe.outputUnits`（**基础值**），而实际每批产出是 `labBatchUnitsOf`
-（吃 `LAB_YIELD_SKILLS`，目前未导出单点）—— 是否要改读实际值，也一并等你定。
-
 **闸门读数（二次令）**：`typecheck`（core/data/ui/desktop）✅ · `content:check` ✅ · `l10n:check` ✅ ·
 `ui:rot-check` ✅ · `ui:layout-css:check` ✅（两份与源码一致）· `ui:tip-check` ✅（0 处两套提示并存）·
 桌面构建 ✅。**§九之八 技能判定**：本轮又跑一次 `ui-ux-pro-max`（「gold accent single element hierarchy readout」
 → 返回缓动函数/面包屑/拖拽三條，**与本次无关**）⇒ 依据仍是仓库 §6「同级相似项」＋ 2026-09-13 那条金色口径令。
+
+## 13.3 三次令：技能作用域口径 ＋ 删掉那枚假读数（2026-10-01）
+
+**船长原话**：「如果没有特意说明，实验室吃一些通用技能加成。」→ 我把它当"通用候选"报了 `refineRate`，
+船长追问「**为什么精炼的技能算通用加成？**」⇒ **我归类错了**：`refineRate`（精炼学 / 高级回收处理 /
+熔炉精通学）只在 `industry.ts` 读，只作用于**精炼炉那一台机器的三个活计**（原矿精炼 · 残骸回收 · 货柜拆解），
+是**精炼族专属**；拿"卡上正显示着它"当依据是错的（那是现状，不是设计依据）。
+
+**普查结论（实测 `skills.trained` 全部直读点）**：
+- **通用（跨机器共用）＝ 只有一条**：`industrial-automation` **产线节拍学**（精炼炉 industry.ts:379/487 ·
+  组装机＋造船厂 manufacturing.ts:491/805 · 实验室 lab.ts:86）。
+- **家族专属**：精炼族（精炼学 / 高级回收处理 / 熔炉精通学 / 熔炉压力学 / 核心熔炼学）· 制造族（工业理论 /
+  批量生产学 / 流水线统合学 / 材料学 / 组件标准化）· 实验室族（`LAB_CYCLE_SKILLS` / `LAB_YIELD_SKILLS`）。
+- ⇒ **实验室的技能接线本来就是对的**（通用吃、别族不吃、自己专属也吃），**错的只是那枚读数**。
+
+**船长裁定**：① 那枚「产出倍率 X%」**删掉** ② 产物行 `×N` **改读实际批产** ③ 口径**写进约定**。
+
+**落地**：
+| 落点 | 内容 |
+|---|---|
+| `packages/core/src/lab.ts` | `labBatchUnitsOf` **改为导出**（卡面读数的单一来源；封顶判据与交付本来就走它） |
+| `packages/core/src/index.ts` | 导出 `labBatchUnitsOf` |
+| `pages/IndustryPage.tsx`（实验室卡） | 删「产出倍率 X%」；`×N` 改读 `batchUnits = labBatchUnitsOf(...)`；**净收益读数同源同改**（原先按 `recipe.outputUnits` 基础值算，收率技能的效果在卡面完全看不见）；清掉本卡不再用的 `refineRate` |
+| `packages/core/tests/fuel-cap-lab-skills-20260930.test.ts` | **＋1 条**：`labBatchUnitsOf` 无技能 ＝ 基础值 600 · 收率满级 ＝ **780** · 起线记录与之**同一个数**（把"三处同源"钉住） |
+| `docs/development-conventions.md` §十七 | 补「技能作用域口径」三档（通用 / 家族 / 专属）＋ 两条硬线：**卡片只允许显示本产线真的吃到的读数** · 这类读数**一律走 core 导出单点** |
+| `docs/development-conventions-changelog.md` | 顶部记一条 |
+
+**闸门读数（三次令）**：`typecheck` 全仓 ✅ · core 全量 **2994 条 / 284 文件** ✅ · `content:check` ✅ ·
+`l10n:check` ✅ · `ui:rot-check` ✅ · 桌面构建 ✅。
+
+## 13.4 四次令：工期读数也照组装机卡（2026-10-01）
+
+**船长原话**：「『每批工期 X 分钟』这个也和组装机卡同步」。
+
+**组装机卡那把尺**（`panels/Industry.tsx` 产物行）：空闲 ⇒ ` · 主控耗时 {技能修正后的工期}（技能修正后；
+AI 核心另按效率拉长）`；在跑 ⇒ ` · 已开 N 条线，首条约 T 到点`。两处都用 `fmtDuration` 格式化。
+
+**落地**：
+
+| 落点 | 内容 |
+|---|---|
+| `packages/core/src/lab.ts` | `labCycleMsOf` **改为导出**（卡面工期与净收益读数的单一来源；起线与循环续批本来就走它） |
+| `packages/core/src/index.ts` | 导出 `labCycleMsOf` |
+| 实验室卡 | 删掉「每批工期 5 分钟」（那是配方规格值 `recipe.cycleMs`）；改组装机卡同款两支：空闲 ⇒ ` · 主控耗时 {fmtDuration(labCycleMsOf(…, 'pilot'))}` ＋ 同一句 `ui.Industry.045` 注解；在跑 ⇒ ` · 已开 N 条线，首条约 T 到点`。**复用 `ui.Industry.043/044/045/121/122`，不新增文案** |
+| 净收益读数 | `buildMs` 改读同一条单点（原先传配方规格值 ⇒ 与产物行两个口径） |
+| 用例 | ＋1（同文件）：无技能 ＝ 规格值 5 分 · 节拍满 −25% × 裂解满 −20% ＝ **3 分** · 起线记录与卡面读数**同一个数** · AI 核心只会更长（`aiEfficiency ≤ 1`） |
+| 文案 | `ui.lab.004`（每批工期）· `ui.lab.012`（分钟）随之不再被引用（按 id 不复用规则留表不删） |
+
+**闸门读数（四次令）**：`typecheck` 全仓 ✅ · core **2995 条 / 284 文件** ✅ · `content:check` ✅ · `l10n:check` ✅ ·
+`ui:rot-check` ✅ · 桌面构建 ✅。
 
 ## 13.2 未做（下一批）
 
 - **HUD 页实验室卡的同类对齐**（船长本轮明确"只指经典页面"）。
 - **材料过多时折叠成「原材料列表」按钮**（味数分布实测：3味 50 / 4味 49 / 5味 28 / **6味 2 / 8味 12 /
   9味 15 / 10味 3 / 11味 23 / 12味 21** ⇒ 6 味是天然分界，≥6 味 76 张卡；形态待定：二级浮层 vs 卡内拉开）。
-- §13.1 里那三条**产出读数口径**的裁决。
 
 ---
 

@@ -221,19 +221,32 @@ export function labMissingMaterials(
   return out
 }
 
-/** 单批周期（毫秒，已按 AI 核心效率与 `LAB_CYCLE_SKILLS` 的乘区折算）
- *  ⚠ **2026-09-30 船长令**：「实验室的生产能被调试开启缩短到 1 秒」——`debugQuick`（调试面板「1 秒化」）
+/**
+ * **单批周期**（毫秒，已按 AI 核心效率与 `LAB_CYCLE_SKILLS` 的乘区折算）——**对外公开的单点**
+ * （**2026-10-01 船长令**：「『每批工期 X 分钟』这个也和组装机卡同步」）：卡面那枚工期读数与净收益读数
+ * 都读这里，界面**不许**再拿 `recipe.cycleMs` 规格值或自己乘技能。
+ *
+ * `worker` 口径与组装机卡那句「主控耗时 …（技能修正后；AI 核心另按效率拉长）」同一把尺：
+ * 主控（`'pilot'`）＝ 原周期 × `LAB_CYCLE_SKILLS` 乘区；AI 核心 ＝ 再 ÷ `aiEfficiency`（该值 ≤ 1 ⇒ 只会更长）。
+ *
+ * ⚠ **2026-09-30 船长令**：「实验室的生产能被调试开启缩短到 1 秒」——`debugQuick`（调试面板「1 秒化」）
  *  的既有触点原本漏了实验室（mining/travel/ai/salvaging/expedition/manufacturing/explore/wormholeScan/
  *  training 都有，lab 没有）⇒ 这里补上，口径与其它产线一致：调试下一批 1 秒。 */
-function labCycleMsOf(state: GameState, ctx: SimContext, recipe: LabRecipeDef, worker: 'pilot' | AiCoreType): number {
+export function labCycleMsOf(state: GameState, ctx: SimContext, recipe: LabRecipeDef, worker: 'pilot' | AiCoreType): number {
   if (state.debugQuick) return 1000
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
   const ms = Math.max(1, Math.round(recipe.cycleMs / eff))
   return Math.max(1, Math.round(ms * labCycleMulOf(state, recipe)))
 }
 
-/** 单批产物单位（基准值 × `LAB_YIELD_SKILLS` 乘区；向下取整到 1 单位） */
-function labBatchUnitsOf(state: GameState, recipe: LabRecipeDef): number {
+/**
+ * **单批产物单位**（基准值 × `LAB_YIELD_SKILLS` 乘区；向下取整到 1 单位）。
+ *
+ * **对外公开的单点**（**2026-10-01 船长裁**：卡面那个「×N」必须读这里）——原先界面读的是
+ * `recipe.outputUnits`（**基础值**）⇒ 收率工艺学的效果在卡面看不见，同一张卡上"批产"与"速率"
+ * 两个口径。产出封顶（`labOutputCapped`）与实际交付（`advanceLab`）走的也都是它。
+ */
+export function labBatchUnitsOf(state: GameState, recipe: LabRecipeDef): number {
   return Math.max(1, Math.floor(recipe.outputUnits * labYieldMulOf(state, recipe)))
 }
 
