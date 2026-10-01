@@ -46,8 +46,21 @@ const BEAM_Y = 48
 const BEAM_HALF = 150
 /** 三道桁架拱沿纵轴的 x 偏移 */
 const ARCH_X = [-96, 0, 96] as const
-/** 舰体显示宽度（占坞长 ~62%） */
-const SHIP_W = 230
+/** 舰体显示宽度基准（T3；占坞长 ~60%） */
+const SHIP_W_BASE = 230
+/**
+ * **舰体大小随 T 级缩放**（**2026-10-01 船长令**：「我方舰船是否没有跟随舰船T级放大缩小？」→
+ * 裁定「按 T 级阶梯缩放」＋「更温和（1.15 倍/级）」）。
+ *
+ * 以 T3 为基准 1.0，每级 ×1.15：T1 0.70 · T2 0.81 · T3 1.00 · T4 1.15 · T5 1.32（缺省按 T3）。
+ * 换算到坞景：T1 ≈ 161 宽 → T5 ≈ 304 宽（坞景画布 380 宽 ⇒ 最大的船也不会顶出坞框）。
+ */
+const TIER_SCALE: Record<number, number> = { 1: 0.7, 2: 0.81, 3: 1, 4: 1.15, 5: 1.32 }
+
+/** 该 T 级的舰体显示宽度（用户单位） */
+function shipDisplayWidthOf(tier: number | undefined): number {
+  return Math.round(SHIP_W_BASE * (TIER_SCALE[tier ?? 3] ?? 1))
+}
 /**
  * 无人机的横向摆动幅度（用户单位；用 `--vx` 喂给 CSS 动画）。
  * **2026-10-01 船长令（二次）**：「可能是因为缩放的关系，到坞景中线降低到60」
@@ -62,6 +75,7 @@ export function DryDockFx({
   progress,
   shipId,
   role,
+  tier,
 }: {
   /** 建造进度 0~1 —— 逐段显影的驱动量 */
   progress: number
@@ -69,9 +83,13 @@ export function DryDockFx({
   shipId: string
   /** 回退剪影用的舰种（资产表未命中时才有意义；正式内容里 40/40 都有独立线稿） */
   role?: ShipRole
+  /** 舰船 T 级（1~5）—— 决定坞内舰体的显示大小（见 `TIER_SCALE`） */
+  tier?: number
 }): JSX.Element {
   const pct = Math.max(0, Math.min(1, progress))
   const art = shipArtSizeOf(shipId)
+  /** 本舰显示宽度（按 T 级缩放；T3 = 基准 230） */
+  const shipW = shipDisplayWidthOf(tier)
   /**
    * 舰形用**嵌套 svg 视口**定位（`x/y` 定位置、`viewBox` 定缩放），不依赖任何外层 transform 叠加。
    * `ShipSpriteShape` 把画布中心摆到原点 ⇒ viewBox 取 `-w/2 -h/2 w h`。
@@ -82,8 +100,8 @@ export function DryDockFx({
    * ⚠ **必须按舰形画布宽 `art.w` 算**：早期按显示宽 `SHIP_W` 算 ⇒ 右端永远差 10 用户单位，
    * 进度到 100% 也盖不满 ⇒ 船长看到的"快建完时只有右下角 1/4 亮着"。
    */
-  const clipX = -shipVp.w / 2 - 1
-  const clipW = Math.max(1, shipVp.w * pct + 2)
+  const clipX = -shipW / 2 - 1
+  const clipW = Math.max(1, shipW * pct + 2)
   const CLIP_ID = 'hud-dock-progress-clip'
   /**
    * **显影用 mask ＋ 硬边渐变**（**2026-10-01 船长报障**：「舰船的上半部分线条始终不亮，只有下半部分的亮」）。
@@ -117,7 +135,13 @@ export function DryDockFx({
         {/* 船体区域遮罩：白色＝保留、黑色＝抹掉；椭圆形状取船体的横长比（不可见，只影响被遮罩的元素） */}
         <mask id={hullMaskId} maskUnits="userSpaceOnUse" x={0} y={0} width={VB_W} height={VB_H}>
           <rect x="0" y="0" width={VB_W} height={VB_H} fill="#fff" />
-          <ellipse cx={VB_W / 2} cy={VB_H / 2} rx={(shipVp.w / 2 - 4) * 0.96} ry={shipVp.h * 0.42} fill="#000" />
+          <rect
+            x={VB_W / 2 - shipW / 2}
+            y={VB_H / 2 - (shipW * (art.h / art.w)) / 2}
+            width={shipW}
+            height={shipW * (art.h / art.w)}
+            fill="#000"
+          />
         </mask>
       </defs>
       {/* ── 坞体：两条纵向主梁（±48）＋ 三道桁架拱 ＋ 端环（两头开口，没有坞门）── */}
@@ -170,7 +194,8 @@ export function DryDockFx({
       ] as const).map(([dx, sign]) => {
         const x = VB_W / 2 + dx
         const y1 = VB_H / 2 + sign * BEAM_Y
-        const y2 = VB_H / 2 + sign * (shipVp.h / 2 + 6)
+        // 端点跟**舰体实际显示高度**走（船大 ⇒ 臂端点外移）
+        const y2 = VB_H / 2 + sign * ((shipW * (art.h / art.w)) / 2 + 6)
         return (
           <g key={`tether-${dx}-${sign}`} opacity="0.7">
             <path d={`M${x} ${y1} L${x} ${y2}`} />
@@ -211,10 +236,10 @@ export function DryDockFx({
             再用略低的透明度，只做"挡住后方线条"这一件事。 */}
         {/* 未来段：整条淡淡描一遍（让玩家看出还差多少），再叠上已成形的这一段 */}
         <g opacity="0.14">
-          <ShipSpriteShape shipId={shipId} role={role} size={SHIP_W} />
+          <ShipSpriteShape shipId={shipId} role={role} size={shipW} />
         </g>
         <g mask={`url(#${maskId})`}>
-          <ShipSpriteShape shipId={shipId} role={role} size={SHIP_W} />
+          <ShipSpriteShape shipId={shipId} role={role} size={shipW} />
         </g>
       </svg>
 

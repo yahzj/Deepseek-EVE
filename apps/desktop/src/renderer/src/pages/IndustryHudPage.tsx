@@ -1325,6 +1325,8 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                           progress={v.percent / 100}
                           shipId={def?.id ?? ''}
                           role={def?.role}
+                          /* T 级 ⇒ 坞内舰体大小（2026-10-01 船长令「按 T 级阶梯缩放」） */
+                          tier={def?.tier}
                         />
                       </div>
                       <div className="hud-dock-info">
