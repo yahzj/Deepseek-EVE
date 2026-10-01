@@ -3725,6 +3725,19 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    */
   "ui.Industry.158": { zh: "「{matName}」在声望商店兑换——点击前往", en: "“{matName}” is exchanged at the standing store — click to go there" },
   "ui.Industry.159": { zh: "🛒 去声望商店", en: "🛒 To the standing store" },
+  /**
+   * **原材料列表折叠**（**2026-10-01 船长令**：「**「原材料列表」折叠，超过2个材料就进行折叠**」）。
+   *
+   * 材料味数 > 2 时，材料块只留一行开关，点开才列出全部 N 行（公共件 `ui/matList.tsx`，
+   * 组装机／造船厂卡与实验室卡共用一份）。`160/161` = 开与收的**可见文案**（也是它的无障碍名），
+   * `162` = 折叠态那枚**缺料提示**（红字，只在未开工时出现 —— 缺料不许因为折叠而看不见），
+   * `163/164` = 悬停说明（只写这一点会做什么，按 §十三 不写原因）。
+   */
+  "ui.Industry.160": { zh: "原材料列表 ×{n}", en: "Material list ×{n}" },
+  "ui.Industry.161": { zh: "收起原材料列表", en: "Hide material list" },
+  "ui.Industry.162": { zh: "缺 {n} 味", en: "{n} short" },
+  "ui.Industry.163": { zh: "展开全部 {n} 味原料", en: "Show all {n} ingredients" },
+  "ui.Industry.164": { zh: "收起到一行", en: "Collapse back to one line" },
   "ui.IndustryPage.001": { zh: "全部", en: "All" },
   "ui.IndustryPage.002": { zh: "可精炼资源", en: "Refinable resources" },
   "ui.IndustryPage.003": { zh: "残骸回收", en: "Wreck salvage" },

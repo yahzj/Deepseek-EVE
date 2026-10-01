@@ -44,7 +44,7 @@ import { bestAiCoreOf } from '@whale/core'
 import type { AiCoreType, GameState, MaterialNeed } from '@whale/core'
 import { RedeemFragmentButton } from '../ui/fragmentRedeem'
 import { Panel } from '@whale/ui'
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
@@ -61,6 +61,8 @@ import { itemGlyphName, partToneKeyOf, toneOf } from '../ui/Glyphs'
 import { ASSEMBLER_CARD_MIN_H, LazyMount, useIdleChunk } from '../ui/LazyMount'
 /** 材料行尾「这一味料从哪来」的四支判定（2026-10-01：与实验室卡共用一份，见本件头注） */
 import { MatSourceLink } from '../ui/matSourceLink'
+/** 原材料列表折叠（2026-10-01 船长令：味数 > 2 折叠成一行「原材料列表」，点开才拉开）——与实验室卡共用一份 */
+import { MATS_COLLAPSE_OVER, MatListToggle } from '../ui/matList'
 import { useL10n, cmdText } from '../i18n/locale'
 import { MONEY_GLYPH } from '../pages/common'
 import {
@@ -782,6 +784,14 @@ export const BlueprintCard = memo(function BlueprintCard({
    */
   const goalDraftRef = useRef('')
   goalDraftRef.current = goalDraft
+  /**
+   * **原材料列表折叠**（**2026-10-01 船长令**：「**「原材料列表」折叠，超过2个材料就进行折叠**」）：
+   * 味数 > `MATS_COLLAPSE_OVER` 时材料块只留一行开关，点开才拉开全部行（公共件 `ui/matList.tsx`）。
+   * 状态**不落盘**（每张卡各自的 `useState`，切页/重挂载即回到折叠）；缺料味数取 `short`（本卡那把尺）。
+   */
+  const matsListId = useId()
+  const [matsOpen, setMatsOpen] = useState(false)
+  const matsCollapsible = materials.length > MATS_COLLAPSE_OVER
   /** 「这一版草稿是玩家打出来的」——只有它为真，卸载时才补提交；任何一次正式提交后即清账 */
   const goalTouchedRef = useRef(false)
   useEffect(
@@ -868,8 +878,21 @@ export const BlueprintCard = memo(function BlueprintCard({
           <>{tr('ui.Industry.122', { d: fmtDuration(buildMs) })}{tr("ui.Industry.045")}</>
         )}
       </div>
-      <ul className="app-bp-mats">
-        {materials.map((need) => {
+      <ul className="app-bp-mats" id={matsListId}>
+        {/* 原材料列表折叠（2026-10-01 船长令：味数 > 2 ⇒ 只留这一行开关，点开才拉开全部） */}
+        {matsCollapsible ? (
+          <MatListToggle
+            count={materials.length}
+            open={matsOpen}
+            shortCount={short.length}
+            running={running}
+            listId={matsListId}
+            onToggle={() => setMatsOpen((v) => !v)}
+          />
+        ) : null}
+        {matsCollapsible && !matsOpen
+          ? null
+          : materials.map((need) => {
           const needCount = matNeedCount(state, need.count) // 材料学折扣后的实际需求
           /**
            * **等价组**（**2026-09-29 船长报障**：「组装机中，舰船插件材料消耗列表中还是显示了墨潮黑匣
