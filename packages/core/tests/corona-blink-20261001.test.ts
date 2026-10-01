@@ -131,15 +131,19 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
     expect(seen.size, '至少有一艘闪过').toBeGreaterThan(0)
   })
 
-  it('⑦ 方向 = 与我方意图距离「反着来」（船长 2026-10-01 改判）', () => {
+  it('⑦ 方向 = **以期望距离为目标**（船长 2026-10-01 二次改判）', () => {
     /**
-     * 本质判据（不依赖具体是拉远还是拉进）：**闪现后，该舰与"我方期望距离"的偏离必须变大**
-     * —— 我方想近它就拉开、我方想远它就拉近 ⇒ 净效果永远是"破坏我方当前的走位意图"。
+     * **船长 2026-10-01 改判**（原话照抄）：「**闪烁的方向问题反而导致敌人能被无伤，建议修改为，
+     * 闪烁方向以期望距离为目标。**」——旧口径是"与我方意图反着来"，会把敌舰一路推到**我方射程之外**
+     * （船长实测"敌人能被无伤"）。
+     *
+     * 新判据：**闪现后，该舰与"目标交战距离"（`myDesireM`）的偏离必须变小**（一次闪到位）；
+     * 已经站在目标距离上 ⇒ 不闪（冷却不白盖）。
      */
     const { b, tick } = coronaBattle()
     let checked = 0
     let prevBlinks = new Set(Object.keys(b.foeBlinks ?? {}))
-    for (let t = 500; t <= 120_000 && b.ended === null; t += 500) {
+    for (let t = 100; t <= 120_000 && b.ended === null; t += 100) {
       const before = b.distanceM
       tick(t)
       const nowTags = Object.keys(b.foeBlinks ?? {})
@@ -148,13 +152,15 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
         const desire = b.myDesireM
         const gapBefore = Math.abs(before - desire)
         const gapAfter = Math.abs(b.distanceM - desire)
+        // 容差 200m：闪现后同一拍里引擎的走位逻辑还会再挪一点
         expect(
           gapAfter,
-          `闪现后应离我方意图更远（${before} → ${b.distanceM}，我方意图 ${desire}）`,
-        ).toBeGreaterThan(gapBefore)
+          `闪现后应更贴近目标距离（${before} → ${b.distanceM}，目标 ${desire}）`,
+        ).toBeLessThan(gapBefore + 200)
+        expect(gapAfter, `闪现后应真的落在目标距离附近（差距 ${gapAfter}）`).toBeLessThan(600)
         checked += 1
         console.log(
-          `  [读数] 闪现 #${checked}：距离 ${before} → ${b.distanceM}（我方意图 ${desire}）⇒ 偏离 ${gapBefore} → ${gapAfter}`,
+          `  [读数] 闪现 #${checked}：距离 ${before} → ${b.distanceM}（目标 ${desire}）⇒ 偏离 ${gapBefore} → ${gapAfter}`,
         )
         prevBlinks = new Set(nowTags)
       }
