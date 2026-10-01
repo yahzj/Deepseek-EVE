@@ -479,29 +479,29 @@ body.no-fx .hud-dock-craft, body.no-fx .hud-dock-spark { animation: none; }
   transform-box: view-box;
   transform-origin: 0 0;
   /* 节奏：**飞到左 → 焊接停留 → 飞到右 → 焊接停留**（10s 一趟、两端各停 ~2.2s），船头方向永远朝舰船 */
-  animation: hud-dock-drone 10s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  animation: hud-dock-drone 8.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
-.hud-dock-drone.is-late { animation-delay: -5s; }
+.hud-dock-drone.is-late { animation-delay: -4.2s; }
+/* ⚠ **相位必须闭环**（2026-10-01 船长报障「你漏了循环，无人机左→停→右→停→从头循环」）：
+   旧版左停 22% ＋ 飞 12% ＋ 右停 22% ＋ 只飞回一半就进 100% ⇒ **循环处跳变**（看着像"漏了一段"）。
+   现在按"左停(3s) → 飞(1.2s) → 右停(3s) → 飞回(1.2s)"精确排相位，合计 8.4s ＝ 一个周期 ⇒ 首尾自然衔接。 */
 @keyframes hud-dock-drone {
-  0% { transform: translateX(calc(var(--vx, 110px) * -1)); }   /* 左端：焊接位置 */
-  22% { transform: translateX(calc(var(--vx, 110px) * -1)); }  /* 焊接停留（~2.2s） */
-  34% { transform: translateX(var(--vx, 110px)); }             /* 飞到右端 */
-  56% { transform: translateX(var(--vx, 110px)); }             /* 焊接停留（~2.2s） */
-  68% { transform: translateX(calc(var(--vx, 110px) * -1)); }  /* 飞回左端 */
-  90% { transform: translateX(calc(var(--vx, 110px) * -1)); }  /* 焊接停留（~2.2s） */
-  100% { transform: translateX(var(--vx, 110px)); }
+  0%, 35.7% { transform: translateX(calc(var(--vx, 110px) * -1)); } /* 左端焊接停留（3s） */
+  50% { transform: translateX(var(--vx, 110px)); }                  /* 飞到右端（1.2s） */
+  85.7% { transform: translateX(var(--vx, 110px)); }                /* 右端焊接停留（3s） */
+  100% { transform: translateX(calc(var(--vx, 110px) * -1)); }      /* 飞回左端（1.2s）＝ 接回 0% */
 }
 /* **转向**：到端点时把焊枪对着船体（左端朝右 / 右端朝左），飞行途中不翻
    ⚠ 用 `scale(±1)` 而不是 `rotate`：负 scale 会**连火花一起镜像**，正好也是想要的观感。 */
 .hud-dock-drone-turn {
   transform-box: view-box;
   transform-origin: 0 0;
-  animation: hud-dock-drone-turn 10s steps(1, end) infinite;
+  animation: hud-dock-drone-turn 8.4s steps(1, end) infinite;
 }
-.hud-dock-drone-turn.is-late { animation-delay: -5s; }
+.hud-dock-drone-turn.is-late { animation-delay: -4.2s; }
 @keyframes hud-dock-drone-turn {
-  0%, 58% { transform: scale(1, 1); }
-  58.01%, 100% { transform: scale(-1, 1); }
+  0%, 67.8% { transform: scale(1, 1); }
+  67.9%, 100% { transform: scale(-1, 1); }
 }
 /* 机械臂**整条**在两端之间移动：两端各停 ~4.2s 焊接 */
 .hud-dock-armcar {
