@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **387** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6919** KB · **50639** 行
-- 状态分布：**未标注** 213 · **已确认/已实现** 117 · **进行中** 43 · **待裁定** 13 · **历史留档** 1
-- 孤儿文档（0 引用）**62** 份 · 状态未标注 **213** 份
+- 文档总数 **388** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6935** KB · **50890** 行
+- 状态分布：**未标注** 214 · **已确认/已实现** 117 · **进行中** 43 · **待裁定** 13 · **历史留档** 1
+- 孤儿文档（0 引用）**62** 份 · 状态未标注 **214** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**11** 份
-- 三、现行设计稿（design）：**262** 份
+- 三、现行设计稿（design）：**263** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**32** 份
 - 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 286 KB / 300 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 80 KB / 836 行 | 93 / 4 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 503 KB / 1016 行 | 226 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 457 行 | 355 / 19 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 457 行 | 356 / 19 |
 
 ## 七、评审与体检（review） —— 11 份
 
@@ -54,13 +54,14 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 262 份
+## 三、现行设计稿（design） —— 263 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/activity-gate-registry-20261001.md` | 主控活动登记表（实验室漏登记）· 2026-10-01 | 未标注 | 2026-10-01 | 13 KB / 148 行 | 3 / 0 |
 | `docs/design/boost-autorenew-20261001.md` | 技能加速「自动续用」开关 ＋ 工业页标签顺序（工作文档） | 进行中（进行中） | 2026-10-01 | 6 KB / 84 行 | 0 / 0 |
-| `docs/design/comms-export-20261001.md` | 通讯文案工作台（导出工具）· 2026-10-01 | 进行中（进行中） | 2026-10-01 | 5 KB / 67 行 | 0 / 0 |
+| `docs/design/comms-export-20261001.md` | 通讯文案工作台（导出工具）· 2026-10-01 | 进行中（进行中） | 2026-10-01 | 5 KB / 67 行 | 1 / 0 |
+| `docs/design/comms-import-20261001.md` | 通讯文案工作台 · 回写（船长改稿落地）· 2026-10-01 | 未标注 | 2026-10-01 | 5 KB / 83 行 | 0 / 0 |
 | `docs/design/comms-param-fix-20261001.md` | 文案占位符漏出两处（工作文档） | 进行中（进行中） | 2026-10-01 | 6 KB / 73 行 | 0 / 1 |
 | `docs/design/handover-20261001.md` | 交接卡 · 一号会话（2026-10-01 收尾） | 未标注 | 2026-10-01 | 7 KB / 71 行 | 0 / 0 |
 | `docs/design/hud-industry-filter-20261001.md` | 工业 HUD 页：组装机书架筛选收口 ＋ 卡片溢出修复（工作文档） | 进行中（进行中） | 2026-10-01 | 8 KB / 89 行 | 0 / 0 |
@@ -68,7 +69,7 @@
 | `docs/design/industry-manual-slot-guard-20261001.md` | 新工业 HUD 页：主控手动位守卫复原（工作文档） | 进行中（进行中） | 2026-10-01 | 6 KB / 75 行 | 0 / 0 |
 | `docs/design/lab-comms-rewrite-20261001.md` | 首访实验室 · 黑市通讯正文重写（工作文档） | 进行中（进行中） | 2026-10-01 | 5 KB / 57 行 | 0 / 0 |
 | `docs/design/voidcrystal-price-20261001.md` | 虚空晶一物一价（精炼面板修正）· 2026-10-01 | 未标注 | 2026-10-01 | 5 KB / 64 行 | 3 / 0 |
-| `docs/design/weekend-faction-corona-20261001.md` | 设计案：入侵新敌对势力「光环科技 / Corona Systems」（参考远行星号 Remnants）（2026-10-01 · 二号） | 未标注 | 2026-10-01 | 62 KB / 851 行 | 0 / 1 |
+| `docs/design/weekend-faction-corona-20261001.md` | 设计案：入侵新敌对势力「光环科技 / Corona Systems」（参考远行星号 Remnants）（2026-10-01 · 二号） | 未标注 | 2026-10-01 | 73 KB / 1019 行 | 0 / 1 |
 | `docs/design/weekend-family-name-20261001.md` | 入侵族名用正式称呼（R 族 = 光环）· 2026-10-01 | 未标注 | 2026-10-01 | 8 KB / 104 行 | 1 / 0 |
 | `docs/design/announcement-draft-20260930.md` | 公告待审稿 · 2026-09-30 批次（实验室投产）（2026-09-30） | 未标注 | 2026-09-30 | 11 KB / 180 行 | 5 / 2 |
 | `docs/design/beacon-parts-20260930.md` | 信号发射器配方改用零件（2026-09-30） | 未标注 | 2026-09-30 | 3 KB / 49 行 | 1 / 2 |
@@ -462,7 +463,7 @@
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/boost-autorenew-20261001.md`（2026-10-01 · 6 KB）—— 技能加速「自动续用」开关 ＋ 工业页标签顺序（工作文档）
-- `docs/design/comms-export-20261001.md`（2026-10-01 · 5 KB）—— 通讯文案工作台（导出工具）· 2026-10-01
+- `docs/design/comms-import-20261001.md`（2026-10-01 · 5 KB）—— 通讯文案工作台 · 回写（船长改稿落地）· 2026-10-01
 - `docs/design/handover-20261001.md`（2026-10-01 · 7 KB）—— 交接卡 · 一号会话（2026-10-01 收尾）
 - `docs/design/hud-industry-filter-20261001.md`（2026-10-01 · 8 KB）—— 工业 HUD 页：组装机书架筛选收口 ＋ 卡片溢出修复（工作文档）
 - `docs/design/industry-manual-slot-guard-20261001.md`（2026-10-01 · 6 KB）—— 新工业 HUD 页：主控手动位守卫复原（工作文档）
@@ -524,9 +525,10 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（213 份，待补一行 `状态：…`）
+## 附：状态未标注（214 份，待补一行 `状态：…`）
 
 - `docs/design/activity-gate-registry-20261001.md`（2026-10-01）—— 主控活动登记表（实验室漏登记）· 2026-10-01
+- `docs/design/comms-import-20261001.md`（2026-10-01）—— 通讯文案工作台 · 回写（船长改稿落地）· 2026-10-01
 - `docs/design/handover-20261001.md`（2026-10-01）—— 交接卡 · 一号会话（2026-10-01 收尾）
 - `docs/design/voidcrystal-price-20261001.md`（2026-10-01）—— 虚空晶一物一价（精炼面板修正）· 2026-10-01
 - `docs/design/weekend-faction-corona-20261001.md`（2026-10-01）—— 设计案：入侵新敌对势力「光环科技 / Corona Systems」（参考远行星号 Remnants）（2026-10-01 · 二号）
