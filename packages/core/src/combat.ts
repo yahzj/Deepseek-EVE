@@ -3733,26 +3733,32 @@ export function battleOpenM(me: UnitSpec, foes: UnitSpec[], bal: BattleBalance):
 }
 
 /**
- * 🔴 **R 族族格：以「玩家的射程盲区」为期望距离**（**船长 2026-10-01 三次澄清 · 正解**，原话照抄）：
+ * 🔴 **R 族族格：以「玩家的射程盲区 / 射程线」为期望距离**（**船长 2026-10-01 令**，原话照抄）：
  *
- * > 「**这个机制是给敌人用的，是R族以玩家的盲区为期望目标。并不是玩家使用的。等于R族敌人会寻找
- * > 玩家的射程漏洞，玩家如果射程短，则R族采取风筝玩家，如果玩家射程长，有近盲区，则R族会主动贴身。**」
+ * > 「这个机制是给敌人用的，是R族以玩家的盲区为期望目标。并不是玩家使用的。等于R族敌人会寻找玩家的
+ * > 射程漏洞，玩家如果射程短，则R族采取风筝玩家，玩家射程长、有近盲区，则R族会主动贴身。」
+ * > 「**R 族也按照头目/队长算。期望距离优先选择靠近对方最大射程的位置。比如我方4000射程，
+ * > 敌人10000射程。优先选择4000更远一点的距离。而不是按照默认的。**」
+ * > 「按你推荐」（= 风筝距离取 `我方射程上限 + 100`；多波卡**每波各自取本波第一个 R 族单位**当队长）
  *
- * 口径：
- * - **"玩家的射程盲区"= 我方武器的近程盲区**：距离低于某门武器的 `minRangeM` ⇒ **那门武器开不了火**。
- *   一艘船挂多门时，**最远的那条近界**才是全船的有效近界（主力武器够不着就是够不着）
- *   ⇒ `meBlindM = max(我方各武器 minRangeM)`、`meTop = max(我方各武器 maxRangeM)`；
- * - **R 族的决策优先级**（船长五次令＋六次令：**风筝 > 钻近盲区 > 默认**）：
- *   - **① 风筝（最高优先）**：**它打得比我方远**（`foeTop > meTop`）⇒ 站 `max(meTop + 100, min(foeTop−100, foeTop×0.8))`；
- *   - **② 钻近盲区（次优先）**：我方**射程长但有近盲区**（`0 < meBlindM < meTop`）⇒ 贴到我方近界下沿
- *     `meBlindM − 100`（那里我方主力打不着、它却能打；它的 `rangeMinM` 都是 1，没有近界）；
- *     "全船都在盲区内"（`meBlindM ≥ meTop`）也走这一支，取 `meTop + 500`；
- *   - **③ 都没有 ⇒ 默认期望距离**（返回 `null`，不覆写）；
- * - **只对 R 族生效**；调用方拿 `null` 就逐字走原口径（期望距离与开战距离都不动）。
+ * **队长**（2026-10-01 定案）= **本波编成里第一个 R 族单位**——
+ * 与既有引擎"期望距离由 `foes[0]` 决定"同一把尺（`foeDesiredRange` 的 `head = foes[0]`），
+ * 只是跳过非 R 族：混编卡里若第一个是别的族，队长仍取**第一个 R 族**（族格的决策者必须是 R 族）。
+ * 多波卡**逐波各取自己那一波**的第一个（与既有"每波各自算"一致）。
  *
- * ⚠ 用途三层（都是"R 族想站在哪"）：① 建档时写进每个 R 族单位的 `foeDesireRangeM`
- * （⇒ `foeDesiredRange` 会读它、逐拍的走位按它拉扯）；② 作为**开战距离**（R 族一入场就在它想站的位置）；
- * ③ 我方 `myDesireM` **不动**（玩家仍是自己设的期望距离，被不被风筝取决于双方的走位拔河）。
+ * 三类优先级（高 → 低）：
+ * 1. **① 风筝（最高）**：队长射程 `capTop > meTop`（它打得比我方远）⇒ 站 **`meTop + 100`**
+ *    （就地贴在我方射程线**外侧**：我方刚够不着、它却在自己火力最强的区间）。
+ *    ⚠ 这一条是**船长明确纠正**过的取值：早先版本往"队长射程的 8 成"跑（我方 4000 / 它 10000 会站到 8000），
+ *    船长要的是**靠近我方最大射程的位置**（⇒ 4100）。
+ * 2. **② 钻近盲区**：①不成立、且我方 `0 < meBlindM < meTop` ⇒ 贴到我方近界下沿 `meBlindM − 100`；
+ *    "全船都在盲区内"（`meBlindM ≥ meTop`，纯近战装配）⇒ 取 `meTop + 500`。
+ * 3. **③ 默认**：都不成立（我方射程 ≥ 队长射程、且我方无近界）⇒ **不覆写**（返回 `null`），
+ *    由 `foeDesiredRange` 按队长自己的射程带 ×战术系数算。
+ *
+ * 用途三层：① 写进各 R 族单位的 `foeDesireRangeM`（`foeDesiredRange` 读它 ⇒ 逐拍走位按它拉扯）；
+ * ② **本场目标交战距离**（`battle.myDesireM`）；③ 放在 `if (wormhole) / else` **之外** ⇒ 洞内洞外都生效。
+ * **非 R 族 `null` ⇒ 整段不执行、逐字走原口径。**
  */
 export function rFamilyDesireOf(
   me: UnitSpec,
@@ -3766,38 +3772,17 @@ export function rFamilyDesireOf(
     meBlindM = Math.max(meBlindM, w.minRangeM ?? 0)
   }
   if (meTop <= 0) return null
-  // 只有 R 族在编成里时才判定（混编的旧卡不参与 ⇒ 零行为变化）
-  let foeTop = 0
-  let hasR = false
-  for (const f of foes) {
-    if (f.family !== 'R') continue
-    hasR = true
-    for (const w of f.weapons) foeTop = Math.max(foeTop, w.maxRangeM)
-  }
-  if (!hasR || foeTop <= 0) return null
+  // **队长 = 本波编成里第一个 R 族单位**（跳过其它族；一族都没有 ⇒ 本函数不介入）
+  const cap = foes.find((f) => f.family === 'R')
+  if (!cap) return null
+  let capTop = 0
+  for (const w of cap.weapons) capTop = Math.max(capTop, w.maxRangeM)
+  if (capTop <= 0) return null
   const floor = bal.minDistanceM
-  const clampTo = (v: number): number => Math.max(floor, Math.min(Math.round(v), foeTop))
-  /**
-   * 🔴 **决策优先级**（**船长 2026-10-01 五次令＋六次令**，原话照抄）：
-   * > 五：「**你的优先级不对，最高优先级是你的射程外（风筝你），其次才考虑你的近盲区。
-   * > 都没有就按照默认期望距离。**」
-   * > 六：「**为什么第二条还是选择钻盲区？明明射程比我们远。**」
-   *
-   * ① **风筝（最高优先）**：判据只看**射程上限**——`foeTop > meTop`（它打得比你远，就有条件风筝）
-   *    ⇒ 站到 `max(meTop + 100, foeTop × 0.8)`，上限 `foeTop − 100`：
-   *    **恰好越过我方射程线**（多 100m；射程差大时直接站到它自己射程带的 0.8 位），
-   *    同时**不出自己的射程**。⚠ 六次令修正的就是这里：早先版本用 `foeTop × 0.8 > meTop` 当判据，
-   *    射程只比我方远一点（如 6000 vs 5740）时会被判成"风筝不了"而错误地落到 ② 去贴脸。
-   * ② **钻近盲区（次优先）**：我方**射程长但有近盲区**（`0 < meBlindM < meTop`）⇒ 贴到我方近界的下沿
-   *    `meBlindM − 100`（那里我方主力打不着、它却能打）。"全船都在盲区内"（`meBlindM ≥ meTop`）也走这一支，
-   *    取 `meTop + 500`（等于站到我方完全够不着处，与本条同义）。
-   * ③ **都没有 ⇒ 默认期望距离**：不覆写（返回 `null`），由 `foeDesiredRange` 按它的射程带 ×战术系数算。
-   */
-  // ① 风筝：它打得比我方远 ⇒ 站到我方射程线外侧（且不出自己的射程）
-  if (foeTop > meTop) {
-    return clampTo(Math.max(meTop + 100, Math.min(foeTop - 100, foeTop * 0.8)))
-  }
-  // ② 钻近盲区：贴到我方近界的下沿
+  const clampTo = (v: number): number => Math.max(floor, Math.min(Math.round(v), capTop))
+  // ① 风筝（最高优先）：队长打得比我方远 ⇒ 贴到我方射程线外侧
+  if (capTop > meTop) return clampTo(meTop + 100)
+  // ② 钻近盲区：贴到我方近界的下沿（纯近战装配 ⇒ 站到我方射程之外）
   if (meBlindM > 0) {
     return clampTo(meBlindM < meTop ? Math.max(floor, meBlindM - 100) : meTop + 500)
   }
