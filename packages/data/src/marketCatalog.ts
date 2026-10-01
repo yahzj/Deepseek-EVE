@@ -959,6 +959,10 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
      */
     { key: 'mod-lair-ecm-h', kind: 'module', refId: 'mod-lair-ecm-h', rarity: 'exotic', basePrice: 12_000_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 墨潮电子舱（⟪2026-09-26 船长令⟫ 40,000,000 → 12,000,000：与同池最高件「酸液喷吐器」同价）
     { key: 'mod-lair-web-h', kind: 'module', refId: 'mod-lair-web-h', rarity: 'exotic', basePrice: 9_600_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 墨潮捕获网（⟪2026-09-26 船长令⟫ 40,000,000 → 9,600,000：CPU 44 低于电子舱 150 ⇒ 低一档）
+  // ── R 族（光环）势力特色装备（**船长 2026-10-01 令**）：只收不卖 · 同池还有 AI 核心（核心不走市场行，
+  //    它是账本制、三种实物物品一律 unreleased）。定价 = 同槽位最高档 MK3 价 × 4（与既有 12 件同一算式）。
+  { key: 'mod-lair-laser-r', kind: 'module', refId: 'mod-lair-laser-r', rarity: 'exotic', basePrice: 9_580_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 叠光激光炮（同槽位最高档 2,395,000×4）
+  { key: 'mod-lair-blink-r', kind: 'module', refId: 'mod-lair-blink-r', rarity: 'exotic', basePrice: 10_400_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 跃迁规避装置（同槽位最高档 2,600,000×4）
   // ── 专属无人机 3 型（自带货值 ×4；无人机线**无制式图纸**，这三型各有一张一次性图纸，见 blueprints.ts）──
     { key: 'drone-exile-bee', kind: 'item', refId: 'drone-exile-bee', rarity: 'exotic', basePrice: 24_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂无人机（自带货值 6000×4）
     { key: 'drone-wh-c-heavy', kind: 'item', refId: 'drone-wh-c-heavy', rarity: 'exotic', basePrice: 48_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巢卫攻坚无人机（自带货值 12000×4）

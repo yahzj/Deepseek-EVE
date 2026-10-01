@@ -257,6 +257,9 @@ export {
   WEEKEND_DEBUG_WIN_GAIN,
   WEEKEND_GAIN_OFFLINE_REPEL,
   WEEKEND_LOCKED_FAMILY,
+  // **调试档锁定的入侵族**（2026-10-01 船长令「先让本地调试模式必定出新的R族入侵」）
+  WEEKEND_DEBUG_FAMILY,
+  weekendLockedFamilyOf,
   weekendWinGainOf,
   /** 2026-09-25 船长令：入侵触发前提 = 协会声望 ≥ 40（调试模式不受限） */
   WEEKEND_MIN_STANDING,
@@ -1270,6 +1273,10 @@ export {
   // 和维修装置类似的 '真实数值（原始数值）' 这样的方式标注参数？」）——折权族给本件那一份
   // （`原值 × 同族第 n 件权重`）、缺口族给装上后的**合成值**；界面只许调本函数，别自己折权。
   fittedEffectParamsOf,
+  // **敌舰开火单发的两把折减尺**（后勤舰修理折减 + R 族「叠光装置」的伤害 ×0.3）——
+  // 2026-10-01 起对外只读：`corona-devices-20261001` 用例靠它验"折减真的落在每一发单发上"
+  // （引擎侧照旧走同一函数，加导出不改行为）。
+  foeRepairDiscountedShot,
 } from './combat'
 export type { WeaponSpec, WeaponSrc, UnitSpec, Hp3, BattleVerdict } from './combat'
 

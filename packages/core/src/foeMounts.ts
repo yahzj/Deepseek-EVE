@@ -58,6 +58,26 @@ export const FOE_MOUNT_IDS = {
    * 把墨潮干扰舰的**舰级字段** `foeRangeDebuffPct = 0.5` 迁成**具名挂载件**，数值一字不变）。
    */
   inkRangeDebuff: 'foe-mount-ink-range-debuff',
+  /**
+   * **叠光装置**（**船长 2026-10-01 令**：「**添加叠光装置：效果是每次攻击或者闪现后，攻击间隔缩短，
+   * 最多缩短至0.5秒攻击间隔。伤害给予一个0.3的倍率。**」）—— R 族 T3 **叠光级**专属。
+   * 效果 = 装填自加速（每次攻击/闪现 −400ms，下限 500ms）＋ 该舰全部伤害 ×0.3。
+   */
+  coronaOverlayDrive: 'foe-mount-corona-overlay-drive',
+  /**
+   * **闪烁过载装置**（**船长 2026-10-01 令**：「**粼光添加闪烁过载装置，效果是每次触发闪现后，
+   * 恢复所有护盾值。但是会损失最大结构值5%的结构。**」）—— R 族 T1 **粼光级**专属。
+   * 效果 = 每次闪现后护盾回满，代价是结构 −结构上限的 5%（**可扣死自毁**）。
+   */
+  coronaFlashOverload: 'foe-mount-corona-flash-overload',
+  /**
+   * **瞬光跃迁仪**（**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」）——
+   * R 族「光环科技 / Corona Systems」的族级挂载件，**五档壳体逐档常挂**。
+   *
+   * 效果 = **本体被命中时拉开交战距离**（详见 `FoeMountDef.blink` 头注）。
+   * ✅ **件名已获船长批准**（**2026-10-01 船长令**：「**「瞬光跃迁仪」等件名提案可用**」）——
+   */
+  coronaBlink: 'foe-mount-corona-blink',
 } as const
 
 /** 全部挂载件（键 = id；`FoeMountId` 联合类型保证穷尽） */
@@ -222,6 +242,46 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
       '与我方那件「墨潮电子舱」（`mod-lair-ecm-h`）是敌我同源的一对。' +
       '口径 = 削减我方武器最远射程 50%，与我方电子舰的削减做加法抵消（见 `meJammerNetOf`）。',
   },
+  [FOE_MOUNT_IDS.coronaBlink]: {
+    id: FOE_MOUNT_IDS.coronaBlink,
+    name: '瞬光跃迁仪',
+    en: 'Corona Blink Drive',
+    // 距离 = 船长 2026-10-01 批的参数（选「甲」）：一次闪开 2,000 m · **被命中时触发**
+    // 🔴 **冷却 12 秒 → 5 秒**（**船长 2026-10-01 令**：「**全族闪现的间隔下调到5秒**」）
+    blink: { distanceM: 2_000, cooldownMs: 5_000 },
+    note:
+      '船长 2026-10-01：「激光武器+闪现效果的挂载件」——R 族（光环科技 / Corona Systems）' +
+      '五档壳体逐档常挂（船长选「乙：五档全带」；距离与触发选「甲：一次 2,000m / 被命中触发」；冷却 5 秒（船长同日令「全族闪现的间隔下调到5秒」））。' +
+      '效果 = 本体被命中时把交战距离拉开 2,000 m（本仓战斗只有 `distanceM` 一个标量 ⇒ 闪现即距离突变），' +
+      '冷却期内再挨打不闪。⚠ 与族设定配套：该族是「激光（必中）+ 风筝」，闪现用来在被我方近身时重建射程优势。' +
+      '件名与效果句经船长 2026-10-01 批准（「「瞬光跃迁仪」等件名提案可用」）。',
+  },
+  [FOE_MOUNT_IDS.coronaOverlayDrive]: {
+    id: FOE_MOUNT_IDS.coronaOverlayDrive,
+    name: '叠光装置',
+    // 「叠光」按舰级译名 `Overlay`（l10n 的 `Corona Overlay`）⇒ 本件取 `Corona Overlay Drive`
+    en: 'Corona Overlay Drive',
+    // 船长 2026-10-01 定案：步长 **300ms**（同日二次改判，原 400ms）、下限 500ms、该舰全部伤害 ×0.3（选「甲」）
+    overlayDrive: { stepMs: 300, floorMs: 500, dmgMul: 0.3 },
+    note:
+      '船长 2026-10-01：「添加叠光装置：效果是每次攻击或者闪现后，攻击间隔缩短，最多缩短至0.5秒攻击间隔。' +
+      '伤害给予一个0.3的倍率。」⇒ 只挂 R 族 T3 叠光级。三条追问的裁定：伤害 ×0.3 = 该舰全部伤害 ×0.3（甲）；' +
+      '缩短量步长 300ms（船长先令「先计算叠满大概要打多久」，读数后选「丙：400ms」，同日二次改判为 300ms）；' +
+      '「叠满」= 装填间隔降到下限 500ms。' +
+      '初始 4200ms ⇒ 纯攻击 30.3 秒叠满、含每 5 秒一次闪现约 18 秒叠满。' +
+      '当前间隔记在运行时的 foeOverlayReload（与 foeBlinks 同口径，有意不入档）。',
+  },
+  [FOE_MOUNT_IDS.coronaFlashOverload]: {
+    id: FOE_MOUNT_IDS.coronaFlashOverload,
+    name: '闪烁过载装置',
+    en: 'Corona Flash Overload',
+    // 船长 2026-10-01 定案：护盾全回、结构按上限 5% 扣（选「甲」）、可扣死自毁（选「乙」）
+    flashOverload: { healShield: true, hullCostPct: 0.05 },
+    note:
+      '船长 2026-10-01：「粼光添加闪烁过载装置，效果是每次触发闪现后，恢复所有护盾值。但是会损失最大结构值5%的结构。」' +
+      '⇒ 只挂 R 族 T1 粼光级。两条追问的裁定：5% = 结构上限的 5%（甲，粼光级结构上限 29.85 ⇒ 每次扣 1.49）；' +
+      '可以扣死自毁（乙，不设保底）⇒ 反复闪现会把结构扣到 0、该舰当场自毁。',
+  },
 }
 
 /** 按 id 取件（未知 id ⇒ `undefined`；体检会把它判红） */
@@ -260,6 +320,21 @@ export interface ResolvedFoeMounts {
    * 与舰级字段 `FoeShipDef.foeRangeDebuffPct` **同源不同入口**：解析后写进**同一个运行时字段**。
    */
   foeRangeDebuffPct?: number
+  /**
+   * **闪现跃迁参数**（原样带给单位；触发/钳制/冷却口径见 `FoeMountDef.blink`）。
+   * ⚠ 这是本仓**唯一**会改 `BattleState.distanceM` 的敌方挂载件 —— 消费单点 = `combat` 的受击钩子旁。
+   */
+  foeBlink?: { distanceM: number; cooldownMs: number }
+  /**
+   * **叠光装置的两条参数**（原样带给单位；装填自加速的触发/下限口径见 `FoeMountDef.overlayDrive`）。
+   * 消费单点 = `combat` 的装填推进处（按 `BattleState.foeOverlayReload[tag]` 现算）。
+   */
+  foeOverlayDrive?: { stepMs: number; floorMs: number; dmgMul: number }
+  /**
+   * **闪烁过载装置的参数**（原样带给单位；护盾全回/结构代价口径见 `FoeMountDef.flashOverload`）。
+   * 消费单点 = `combat` 的闪现触发处（与 `markFoeBlink` 同点，闪现成功才结算）。
+   */
+  foeFlashOverload?: { healShield: true; hullCostPct: number }
   /** 展示名（保持挂载顺序；`foeMountNames` 直接用它） */
   names: string[]
   /**
@@ -304,6 +379,11 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
     if (def.repairPulse) out.foeRepairPulse = { ...def.repairPulse }
     if (def.reviveEscort) out.foeReviveEscort = { ...def.reviveEscort }
     if (def.rangeDebuff) out.foeRangeDebuffPct = def.rangeDebuff.pct
+    // 闪现跃迁（2026-10-01）：多件相撞取**最后一件**（与冲锋/射程倍率同款"后写覆盖先写"）
+    if (def.blink) out.foeBlink = { ...def.blink }
+    // 叠光 / 闪烁过载（2026-10-01）：同款"后写覆盖先写"
+    if (def.overlayDrive) out.foeOverlayDrive = { ...def.overlayDrive }
+    if (def.flashOverload) out.foeFlashOverload = { ...def.flashOverload }
   }
   return out
 }

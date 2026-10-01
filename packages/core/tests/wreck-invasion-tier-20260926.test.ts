@@ -71,11 +71,11 @@ describe('残骸新类别「入侵」（2026-09-26 船长令）', () => {
     for (const id of H_CARDS) expect(ctx.anomalies.get(id)?.region, id).toBe('inv')
   })
 
-  it('全表仍 14 组 · 高安 3 / 低安 5 / 虫洞 5 / 入侵 1', () => {
+  it('全表仍 15 组 · 高安 3 / 低安 5 / 虫洞 5 / 入侵 2', () => {
     const tally = { hi: 0, lo: 0, wh: 0, inv: 0 }
     for (const g of WRECK_GROUPS) tally[g.region] += 1
-    expect(WRECK_GROUPS.length).toBe(14)
-    expect(tally).toEqual({ hi: 3, lo: 5, wh: 5, inv: 1 })
+    expect(WRECK_GROUPS.length).toBe(15)
+    expect(tally).toEqual({ hi: 3, lo: 5, wh: 5, inv: 2 })
   })
 })
 

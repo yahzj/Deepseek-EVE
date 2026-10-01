@@ -113,6 +113,11 @@ export interface WeaponSpec {
   shotDmg?: number
   /** gun：弹型 → 单发伤害（构建期含 dmgMult×(1+炮术×5%)×(1+powerBonus)×伤害稳定器） */
   shotsByType?: Partial<Record<DamageType, number>>
+  /**
+   * **【我方】叠光同款 · 装填自加速参数**（**船长 2026-10-01 令**）—— 由 R 族势力特色激光炮
+   * （`mod-lair-laser-r` 的 `ModuleDef.overlayDrive`）在建档时带来；缺省不写 ⇒ 既有各武器零行为变化。
+   */
+  overlayDrive?: { stepMs: number; floorMs: number }
   /** V18 同型合并条目代表的**武器门数**（同 id 同参炮台/激光合并为「×N 齐射」一条，缺省 1）。
    *  **2026-09-11 修复**：一轮齐射按**门数**扣弹（此前只扣 1 发 → 多门武器等于白嫖弹药；
    *  弹药预载同样按门数放大，见 `ammoLoadTotals`）。 */
@@ -303,6 +308,33 @@ export interface UnitSpec {
    *  缺省不写 ⇒ 走全局 `BattleBalance.foeChargeCooldownMs`（10 秒）。 */
   foeChargeCooldownMs?: number;
   /**
+   * **本单位的「闪现跃迁」参数**（**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」）——
+   * 由 R 族那件「瞬光跃迁仪」（`FoeMountDef.blink`）解析而来。
+   *
+   * 消费点 = **本体被命中的那一处**（与 `foeDroneRangeMulOnHit` / `foeGunRangeMulOnHit` 同一个钩子）：
+   * 拉开 `BattleState.distanceM` 并盖冷却（冷却态记在 `BattleState.foeBlinks[tag]`，`kind: 'runtime'`）。
+   * 缺省不写 ⇒ 既有各族各件零行为变化。
+   */
+  foeBlink?: { distanceM: number; cooldownMs: number };
+  /**
+   * **本单位的「叠光装置」参数**（**船长 2026-10-01 令**：「**添加叠光装置：效果是每次攻击或者
+   * 闪现后，攻击间隔缩短，最多缩短至0.5秒攻击间隔。伤害给予一个0.3的倍率。**」）——
+   * 由 R 族 T3 叠光级那件「叠光装置」（`FoeMountDef.overlayDrive`）解析而来。
+   *
+   * 消费点两处：① **开火**处（用当前间隔重置装填计时、随后递减）；② **闪现**处（闪现一次也递减）。
+   * 当前间隔记在 `BattleState.foeOverlayReload[tag]`（`kind: 'runtime'`）。缺省不写 ⇒ 零行为变化。
+   */
+  foeOverlayDrive?: { stepMs: number; floorMs: number; dmgMul: number };
+  /**
+   * **本单位的「闪烁过载装置」参数**（**船长 2026-10-01 令**：「**粼光添加闪烁过载装置，效果是每次
+   * 触发闪现后，恢复所有护盾值。但是会损失最大结构值5%的结构。**」）——
+   * 由 R 族 T1 粼光级那件「闪烁过载装置」（`FoeMountDef.flashOverload`）解析而来。
+   *
+   * 消费单点 = 闪现**成功**那一刻（`settleFoeBlinkExtras`）：护盾直接回满、结构 −结构上限的 `hullCostPct`
+   * （**无保底 ⇒ 可扣死自毁**，船长选「乙」）。缺省不写 ⇒ 零行为变化。
+   */
+  foeFlashOverload?: { healShield: true; hullCostPct: number };
+  /**
    * **本条冲锋不吃网子的「关推进器」**（**2026-09-30 船长令**「给C族添加族设定，他们的冲锋不会被网子
    * 解除」；见 `FoeMountDef.charge.webImmune`）——C 族四件「虫群冲锋器」解析出来的旗标。
    *
@@ -319,6 +351,13 @@ export interface UnitSpec {
    * ⚠ 只豁免那四层减益，**普通炮火照旧会打**。缺省不写 ⇒ 旧口径（会被网钉住）。
    */
   interceptorImmuneToWeb?: boolean;
+  /**
+   * **【我方】闪现跃迁参数**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
+   * 但是冷却时间延长到12秒。」）—— 由 R 族势力特色中槽件 `mod-lair-blink-r` 带来。
+   * 消费点 = 敌方舰炮命中我方那两处（光束 / 实弹）；冷却态记在 `BattleState.meBlinks`。
+   * 缺省不写 ⇒ 既有各装配零行为变化。
+   */
+  meBlink?: { distanceM: number; cooldownMs: number }
   /** **本单位的挂载件展示名**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——建档时由 `mounts` 解析，
    *  视图与战报直接渲染；**不是 id**、也不参与任何判定。 */
   foeMountNames?: readonly string[]
@@ -715,15 +754,23 @@ export function carryVolleyOverflow(
 /* ═══════════ 敌方后勤舰（船长 2026-09-16）═══════════ */
 
 /**
- * **敌方后勤舰：开火单发打折**（船长 2026-09-16：「**敌人后勤舰则是将 50% 的自身DPS转换为修理值**」）。
- * 把该单位打出去的单发按 `×(1 − repairPct)` 折掉——被折掉的那半**按秒转成修理量**
- * （见 `pulseFoeRepair`）。⚠ **只折炮台（`src` 非 `drone`）**：后勤舰本就不挂机群（我方新舰如此设计），
- * 且"自身 DPS"的修理口径也只算炮台 ⇒ 两边同一把尺。
- * 缺省（无 `repairPct`）⇒ **原值返回，零行为变化**。
+ * **敌舰开火单发的两把折减尺**（按下面的顺序逐层相乘；两层都不挂 ⇒ **原值返回，零行为变化**）：
+ *
+ * ① **后勤舰打折**（船长 2026-09-16：「**敌人后勤舰则是将 50% 的自身DPS转换为修理值**」）——
+ *    把该单位打出去的单发按 `×(1 − repairPct)` 折掉，被折掉的那半**按秒转成修理量**
+ *    （见 `pulseFoeRepair`）。⚠ **只折炮台（`src` 非 `drone`）**：后勤舰本就不挂机群（我方新舰如此设计），
+ *    且"自身 DPS"的修理口径也只算炮台 ⇒ 两边同一把尺。
+ *
+ * ② **叠光装置的伤害折减**（**船长 2026-10-01 令**：「伤害给予一个0.3的倍率。」；追问裁定
+ *    「**甲：该舰全部伤害 ×0.3**」）——`FoeOverlayDrive.dmgMul` 乘在该舰**打出去的每一发**上
+ *    （光束与实弹**都走本收口**）。它是「装填间隔越缩越短」的对价：间隔缩到 500ms（8.4 倍射速）时
+ *    单发只剩 0.3 ⇒ 峰值 DPS 仍被压在预算内。⚠ 卡面 `threat` 与账面 DPS **不动**（预算锚点不变）。
  */
 export function foeRepairDiscountedShot(f: UnitSpec, dmg: number): number {
   const pct = f.repairPct ?? 0
-  return pct > 0 ? Math.max(1, Math.round(dmg * (1 - pct))) : dmg
+  const afterRepair = pct > 0 ? Math.max(1, Math.round(dmg * (1 - pct))) : dmg
+  const ov = f.foeOverlayDrive?.dmgMul
+  return ov !== undefined && ov >= 0 ? Math.max(1, Math.round(afterRepair * ov)) : afterRepair
 }
 
 /**
@@ -2057,6 +2104,8 @@ export function createPlayerSpec(
         hitRate: 1,
         falloff: turret.falloff ?? 0.3,
         reloadMs: reload,
+        // **叠光同款 · 装填自加速**（船长 2026-10-01 令）：只有带该字段的件（R 族叠光激光炮）才写
+        ...(turret.overlayDrive !== undefined ? { overlayDrive: turret.overlayDrive } : {}),
       })
       continue
     }
@@ -2261,6 +2310,20 @@ export function createPlayerSpec(
     ...(speedEq > 1 ? { thrusterBoost: speedEq - 1 } : {}),
     // 本单位自己的点火周期（只在有覆盖件时写；没写 = 全局 60/60，见 `unitThrusterCycle`）
     ...(cycleOverridden ? { thrusterBoostMs: propCycle!.boostMs, thrusterCooldownMs: propCycle!.cooldownMs } : {}),
+    /**
+     * **跃迁规避装置**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
+     * 但是冷却时间延长到12秒。」）—— 中槽件里带 `blink` 的那件（R 族 `mod-lair-blink-r`）。
+     * 多件装 ⇒ 取**拉开距离最大、同距取冷却最短**那一件（与推进器周期同一把"挑最有利的一件"的尺）。
+     * 没装 ⇒ 不写字段 ⇒ 零行为变化。
+     */
+    ...(() => {
+      const blinks = allFittedModules(fitted, ctx).filter((m) => m.blink !== undefined)
+      if (blinks.length === 0) return {}
+      const pick = [...blinks].sort(
+        (a, b) => b.blink!.distanceM - a.blink!.distanceM || a.blink!.cooldownMs - b.blink!.cooldownMs,
+      )[0]!
+      return { meBlink: { ...pick.blink! } }
+    })(),
     agility: ship.agility,
     weapons,
     // 锁定装置（2026-09-09）：被锁目标受击加深等效比例（>0 同时开启集火模式）
@@ -3001,6 +3064,19 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       ...(mount.names.length > 0 ? { foeMountNames: mount.names } : {}),
       // **同序双语名对**（2026-09-24）：显示层按语言取一列（`mountPairsOf` 那条链）
       ...(mount.namePairs.length > 0 ? { foeMountNamePairs: mount.namePairs } : {}),
+      // **闪现跃迁**（**船长 2026-10-01 令**：「激光武器+闪现效果的挂载件」）——挂了件才写；
+      // 消费点 = 下面受击钩子旁那一处（本体被命中 ⇒ 拉开 `distanceM` 并盖冷却）。
+      // 缺省不写 ⇒ 既有各族各件**零行为变化**。
+      ...(mount.foeBlink !== undefined ? { foeBlink: mount.foeBlink } : {}),
+      // **叠光装置**（**船长 2026-10-01 令**：「添加叠光装置：效果是每次攻击或者闪现后，攻击间隔缩短，
+      // 最多缩短至0.5秒攻击间隔。伤害给予一个0.3的倍率。」）——挂了件才写；消费点两处：
+      // ① 开火处（用当前间隔重置装填计时）；② 闪现后（`settleFoeBlinkExtras`）。
+      // 缺省不写 ⇒ 既有各族各件**零行为变化**。
+      ...(mount.foeOverlayDrive !== undefined ? { foeOverlayDrive: mount.foeOverlayDrive } : {}),
+      // **闪烁过载装置**（**船长 2026-10-01 令**：「粼光添加闪烁过载装置，效果是每次触发闪现后，
+      // 恢复所有护盾值。但是会损失最大结构值5%的结构。」）——挂了件才写；
+      // 消费点 = 闪现成功后那一处（`settleFoeBlinkExtras`）。缺省不写 ⇒ 零行为变化。
+      ...(mount.foeFlashOverload !== undefined ? { foeFlashOverload: mount.foeFlashOverload } : {}),
       // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）——带本字段的单位**不进开战编队**
       ...(reinforceAt ? { foeReinforceAt: reinforceAt } : {}),
       // **支援呼叫分支**（2026-09-19）：纯标签、一律带上（派生侧的"互斥分支记账"要用它）
@@ -7944,6 +8020,202 @@ function markFoeGunRangeBuff(rt: UnitSpec, b: import('./state').BattleState): bo
   return true
 }
 
+/**
+ * **闪现跃迁触发器**（**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」）——
+ * 只由"我方武器**命中敌舰本体**"调用：**打机群不算、未命中不算**（与上面两条受击增程**同一个钩子**）。
+ *
+ * **方向 = 与我方的意图距离"反着来"**（**船长 2026-10-01 改判**，原话照抄）：
+ * 「**不一定是拉开距离，如果距离过远也可能是拉进，根据我方的意图距离而定
+ * （如果我方希望拉远，则闪现是拉进，如果我方希望拉进，闪现则是拉远）**」
+ * ⇒ 判据 = `BattleState.myDesireM`（我方期望距离）与 `distanceM` 的大小关系：
+ * - 我方想让距离**更近**（`distanceM > myDesireM`）⇒ 闪现**拉远** `+distanceM`；
+ * - 我方想让距离**更远**（`distanceM < myDesireM`）⇒ 闪现**拉进** `−distanceM`；
+ * - 两者相等（我方已到位）⇒ 取**拉远**（`sign` 取 +1，保证"总要有一下效果"）。
+ * ⇒ 净效果 = **闪现永远破坏我方当前的走位意图**（这正是"风筝/扰乱"的味道）。
+ *
+ * ⚠ 本仓战斗**不做二维坐标**（只有 `distanceM` 这一个标量）⇒「闪现」= 距离突变，不涉及位置/寻路。
+ * 突变后双向钳制 `[bal.minDistanceM, 战场最大距离]` ⇒ 不会闪出战场。
+ * 冷却态记在 `BattleState.foeBlinks[tag]`（`save.ts` 登记 `kind: 'runtime'`，**有意不入档** ——
+ * 与 `foeCharges`（冲锋循环）同一口径：落在"重载即重置循环"内）。
+ *
+ * @returns 本次是否真的闪了（供画面提示＋**闪现动画**用）
+ */
+function markFoeBlink(
+  rt: UnitSpec,
+  tag: string,
+  b: import('./state').BattleState,
+  bal: BattleBalance,
+  maxDistanceM: number,
+): boolean {
+  const bl = rt.foeBlink
+  if (bl === undefined || bl.distanceM <= 0 || bl.cooldownMs <= 0) return false
+  const nowMs = b.lastTickGameMs
+  if (nowMs < (b.foeBlinks?.[tag] ?? 0)) return false // 冷却中 ⇒ 再挨打也不闪
+  // **方向**：与我方意图距离反着来（见头注）。相等时取拉远。
+  const away = b.distanceM >= b.myDesireM
+  const want = away ? b.distanceM + bl.distanceM : b.distanceM - bl.distanceM
+  const capped = Math.max(bal.minDistanceM, Math.min(maxDistanceM, want))
+  if (capped === b.distanceM) return false // 已被钳到边界 ⇒ 闪不动（不白盖冷却）
+  b.distanceM = capped
+  if (!b.foeBlinks) b.foeBlinks = {}
+  b.foeBlinks[tag] = nowMs + bl.cooldownMs
+  return true
+}
+
+/**
+ * **叠光装置的当前装填间隔**（**船长 2026-10-01 令**：「**添加叠光装置：效果是每次攻击或者闪现后，
+ * 攻击间隔缩短，最多缩短至0.5秒攻击间隔。**」）——读 `/ 懒初始化 / 顺带推进` 三合一。
+ *
+ * `baseReloadMs` = 条目的固定装填间隔（本舰主武器那条）。首次访问时把基准值**登记**进
+ * `BattleState.foeOverlayReload[tag]`；此后每次调用都按
+ * `基准 − stepMs × (开火次数 + 闪现次数)` 现算、夹下限 `floorMs`，并把结果写回登记表。
+ *
+ * **为什么现算而不是逐次累减**：装填间隔本身决定开火次数 ⇒ 逐次累减要维护两个计数器、还要防
+ * "同一拍多算一次"；而 `nowMs` 基准的**开火次数**与**闪现次数**都是单调可数的整数
+ * （闪现次数由已过时间 ÷ 冷却直接算出，不缺一个字段），于是同一拍内重复调用**幂等**、重载重开也
+ * 不会漂。⚠ 登记表仍记着"当前间隔"，供战报/悬停等展示读（与 `foeBlinks` 同一口径：有意不入档）。
+ *
+ * @returns 本发的装填间隔（毫秒）；本舰没挂叠光装置 ⇒ 原样返回 `baseReloadMs`
+ */
+function foeOverlayReloadOf(
+  rt: UnitSpec,
+  tag: string,
+  b: import('./state').BattleState,
+  /** 本发的**基准**装填间隔 = 条目上的固定 `reloadMs`（只用来定义"起点"与加速度，不当作当前值） */
+  baseReloadMs: number,
+): number {
+  const od = rt.foeOverlayDrive
+  if (od === undefined) return baseReloadMs
+  const step = Math.max(1, od.stepMs)
+  const reg = b.foeOverlayReload ?? (b.foeOverlayReload = {})
+  // 闪现台阶：数"这艘敌舰已经闪现过几次"，再扣掉**已经折算过**的那几次
+  //（⚠ 不能由 `lastTickGameMs ÷ 冷却` 推：到点却没挨打 ⇒ 没闪、不该推进；只能查 `foeBlinks`）
+  const blink = rt.foeBlink
+  const blinkCount =
+    blink !== undefined && blink.cooldownMs > 0
+      ? Math.max(reg[tag]?.bs ?? 0, countFoeBlinksAt(b, tag, blink.cooldownMs))
+      : 0
+  const prev = reg[tag]
+  // 首次访问 = 基准值；此后按（开火次数 + 闪现次数）现算、夹下限
+  const fired = prev?.f ?? 0
+  const next = Math.max(od.floorMs, baseReloadMs - (fired + blinkCount) * step)
+  reg[tag] = { r: next, f: fired + 1, bs: blinkCount }
+  return next
+}/**
+ * **我方「叠光同款 · 装填自加速」的当前装填间隔**（**船长 2026-10-01 令**：「激光武器为叠光同款叠加攻速的，
+ * 基础伤害偏低，需要玩家叠满才威力较强」）——与敌方 `foeOverlayReloadOf` **逐字同款**的机制，
+ * 只有两处差别：① 键是 `tag#炮位`（一艘船可能装多门）；② **不乘伤害倍率**（船长令只说了"基础伤害偏低"，
+ * 那由 `dmgMult` 本身表达 ⇒ 本处不再叠一层折减）。
+ *
+ * @param baseReloadMs 本条目的**基准**装填间隔（建档时已是"过完技能/射速计算机"的有效值）
+ * @returns 本发要用的装填间隔（毫秒）；本门没挂该件 ⇒ 原样返回 `baseReloadMs`
+ */
+function meOverlayReloadOf(
+  spec: UnitSpec,
+  tag: string,
+  wi: number,
+  b: import('./state').BattleState,
+  baseReloadMs: number,
+): number {
+  const od = spec.weapons[wi]?.overlayDrive
+  if (od === undefined) return baseReloadMs
+  const step = Math.max(1, od.stepMs)
+  const key = `${tag}#${wi}`
+  const reg = b.meOverlayReload ?? (b.meOverlayReload = {})
+  const cur = reg[key] ?? (reg[key] = { r: baseReloadMs, f: 0 })
+  const next = Math.max(od.floorMs, baseReloadMs - (cur.f + 1) * step)
+  reg[key] = { r: next, f: cur.f + 1 }
+  return next
+}
+
+/**
+ * **我方「跃迁规避装置」的闪现触发器**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
+ * 但是冷却时间延长到12秒。」）——只由"**敌方舰炮命中我方舰船本体**"调用
+ * （打我方无人机不算、未命中不算；与敌方那件的受击钩子同口径）。
+ *
+ * **方向 = 纯粹的拉开**（与敌方那件**相反**：敌方是"破坏我方走位意图"、专挑我方的意图反着来；
+ * 我方这件是玩家自己的保命件 ⇒ 一律朝**远离敌人**一侧拉开 `distanceM`）。
+ * 拉开后引擎的走位逻辑会按 `myDesireM` 逐拍把我方拉回去 ⇒ 净效果 = "挨打换一口气"。
+ * 突变受既有钳制（`bal.minDistanceM` 与战场最大距离）；**闪不动时不白耗冷却**。
+ *
+ * @returns 本次是否真的闪了（供画面提示与闪现动画用）
+ */
+function markMeBlink(
+  spec: UnitSpec,
+  tag: string,
+  b: import('./state').BattleState,
+  bal: BattleBalance,
+  maxDistanceM: number,
+): boolean {
+  const bl = spec.meBlink
+  if (bl === undefined || bl.distanceM <= 0 || bl.cooldownMs <= 0) return false
+  const nowMs = b.lastTickGameMs
+  if (nowMs < (b.meBlinks?.[tag] ?? 0)) return false // 冷却中 ⇒ 再挨打也不闪
+  const capped = Math.max(bal.minDistanceM, Math.min(maxDistanceM, b.distanceM + bl.distanceM))
+  if (capped === b.distanceM) return false // 已被钳到边界 ⇒ 闪不动（不白盖冷却）
+  b.distanceM = capped
+  if (!b.meBlinks) b.meBlinks = {}
+  b.meBlinks[tag] = nowMs + bl.cooldownMs
+  return true
+}
+function countFoeBlinksAt(
+  b: import('./state').BattleState,
+  tag: string,
+  cooldownMs: number,
+): number {
+  const until = b.foeBlinks?.[tag]
+  if (until === undefined) return 0
+  const elapsed = b.lastTickGameMs - (until - cooldownMs)
+  if (elapsed < 0) return 0
+  return Math.floor(elapsed / cooldownMs) + 1
+}
+
+/**
+ * **闪现成功后的挂载件结算**（**船长 2026-10-01 令**）——把"闪现"这件事通知给两个挂在闪现上的装置：
+ *
+ * - **闪烁过载装置**（粼光级）：「**每次触发闪现后，恢复所有护盾值。但是会损失最大结构值5%的结构。**」
+ *   ⇒ 护盾**直接回满**（`hpMax.s`，缺省回落规格 `spec.hp.s`），结构 −`hpMax.h × hullCostPct`；
+ *   ⚠ **无保底、可扣死自毁**（船长选「乙」）——扣到 ≤0 就把护盾一并清零 ⇒ 该舰按既有"三层全空 = 阵亡"
+ *   口径当场自毁，照常进战报与残骸（**不是**"死不掉"或"锁 1 点"）。
+ * - **叠光装置**（叠光级）：「每次…闪现后，攻击间隔缩短」⇒ 这里调一次 `foeOverlayReloadOf` 把它推进一格
+ *   （返回值由**开火**那处消费，本处只需保证闪现这一格被算进去）。
+ *
+ * ⚠ 只由"闪现**真的发生了**"调用（`markFoeBlink` 返回 true / 本函数自身的两个装置均缺省 ⇒ 什么都不做）。
+ * 缺省不写 ⇒ 既有各族零行为变化。
+ */
+function settleFoeBlinkExtras(
+  rt: UnitSpec,
+  tag: string,
+  b: import('./state').BattleState,
+  /** 本舰主武器的固定装填间隔（叠光级从调用点带进来；不带叠光的舰走缺省 ⇒ 本函数不推进装填） */
+  baseReloadMs?: number,
+): void {
+  const fo = rt.foeFlashOverload
+  if (fo !== undefined) {
+    const rtUnit = b.units[tag]
+    if (rtUnit !== undefined) {
+      // ① 护盾回满（上限优先读容量，缺省回落规格 —— 与全仓「满盾」同一把尺）
+      const capS = Math.max(0, rtUnit.hpMax?.s ?? rt.hp.s)
+      rtUnit.hp.s = capS
+      // ② 结构代价：**结构上限的 5%**（船长选「甲」）——无保底（船长选「乙」：可扣死自毁）
+      const capH = Math.max(0, rtUnit.hpMax?.h ?? rt.hp.h)
+      if (capH > 0 && fo.hullCostPct > 0) {
+        rtUnit.hp.h = rtUnit.hp.h - capH * fo.hullCostPct
+        if (rtUnit.hp.h <= 0) {
+          rtUnit.hp.h = 0
+          rtUnit.hp.s = 0
+          rtUnit.hp.a = 0
+          pushBattleNotice(b, '闪烁过载：结构崩解，目标自毁')
+        }
+      }
+    }
+  }
+  // 叠光装置：闪现也推进一格装填（写回登记表；下一发开火时由 `foeOverlayReloadOf` 读出）
+  if (rt.foeOverlayDrive !== undefined && baseReloadMs !== undefined) {
+    foeOverlayReloadOf(rt, tag, b, baseReloadMs)
+  }
+}
+
 /** **战斗内提示条**（画面顶部提示位，与「敌方增援」同一处显示）——2026-09-11 船长二次裁定：
  *  「**日志内不用显示提示，将该提示放入战斗画面内显示**（和敌方增援统一下系统，**显示位置改为战斗
  *  窗口正上方**）」⇒ 机制提示**不写 `addLog`**，改推这里；UI 按 `atMs` 限时显示后自动消失。
@@ -8605,7 +8877,8 @@ function stepBattle(
         type = pick
         dmg = w.shotsByType?.[pick] ?? 0
         b.ammo[ammoKeyOf(pick)] -= roundsPerVolley
-        meRt.weapons[wi] = w.reloadMs
+        // **叠光同款 · 装填自加速**（船长 2026-10-01 令）：挂了该件的门每开一火就缩短装填（夹下限）
+        meRt.weapons[wi] = meOverlayReloadOf(me, me.tag, wi, b, w.reloadMs)
       } else if (w.kind === 'beam') {
         // V18B-2 激光：必中光束——逐发扣能量弹药（按门数）；威力随距离衰减（beamPowerFactor）
         if (b.ammo.pla < roundsPerVolley) {
@@ -8615,12 +8888,14 @@ function stepBattle(
         type = 'plasma'
         b.ammo.pla -= roundsPerVolley
         dmg = Math.max(1, Math.round((w.shotDmg ?? 0) * beamPowerFactor(b.distanceM, w)))
-        meRt.weapons[wi] = w.reloadMs
+        // **叠光同款 · 装填自加速**（船长 2026-10-01 令）：激光这一路同样推进
+        meRt.weapons[wi] = meOverlayReloadOf(me, me.tag, wi, b, w.reloadMs)
         autoHit = true
       } else {
         type = w.fixedType ?? 'kinetic'
         dmg = w.shotDmg ?? 0
-        meRt.weapons[wi] = w.reloadMs
+        // **叠光同款 · 装填自加速**（船长 2026-10-01 令）：固定值武器这一路同样推进
+        meRt.weapons[wi] = meOverlayReloadOf(me, me.tag, wi, b, w.reloadMs)
       }
       // **对无人机伤害加成**（船长 2026-09-12：「近防炮给予一个对无人机伤害加成」→「**那伤害倍率按2倍算**」）：
       // 只作用于**打机群**这一支（`droneHit` 非空 ⇔ 本发打的是敌机，见上方 `pickFoeDroneTarget`）；
@@ -8760,6 +9035,33 @@ function stepBattle(
           if (markFoeGunRangeBuff(foeTarget!, b)) {
             pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
           }
+          // **闪现跃迁触发点（唯一）**——**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」。
+          // 与上面两条**同一个钩子**（本体被命中；打机群／未命中都进不到这里）。冷却期内静默。
+          if (
+            markFoeBlink(
+              foeTarget!,
+              foeTarget!.tag,
+              b,
+              bal,
+              battleMaxDistanceM(b, me, foes, bal, myUnits),
+            )
+          ) {
+            pushBattleNotice(b, '跃迁规避：目标瞬时换位')
+            // **闪现演出**（**船长 2026-10-01 令**：「闪现时候要给舰船一个闪现的动画」）——
+            // 与捕获网同款承载（`: true` 旗标 + `type` 占位）；界面对该 tag 播"淡出→淡入"。
+            pushBattleFx(b, {
+              atMs: b.lastTickGameMs,
+              side: 'foe',
+              tag: foeTarget!.tag,
+              type: 'kinetic',
+              hit: true,
+              blink: true,
+            })
+            // **挂在闪现上的两个装置**（2026-10-01）：闪烁过载（护盾回满 / 结构 −上限5%）
+            // ＋ 叠光（攻击间隔再缩一格）。只在"闪现真的发生了"这一支里结算。
+            // ⚠ 装填基准取本舰主武器那条（与开火处同一个数）。
+            settleFoeBlinkExtras(foeTarget!, foeTarget!.tag, b, foeTarget!.weapons[0]?.reloadMs)
+          }
         }
       }
       // **全体攻击**（2026-09-13 船长：C 孢子导弹巢「对所有敌方同时攻击」）——
@@ -8810,6 +9112,25 @@ function stepBattle(
             }
             if (markFoeGunRangeBuff(other, b)) {
               pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
+            }
+            // **闪现跃迁**（2026-10-01）：与上面两条**同款**——"全体攻击"打到的副目标同样会触发。
+            // ⚠ 2026-10-01 补：初版只写在了主目标那处 ⇒ 用全体攻击武器（孢子导弹巢那类）打中带闪现的
+            // 敌舰时**不会闪**，与两条受击增程的行为不一致。
+            if (
+              markFoeBlink(other, other.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits))
+            ) {
+              pushBattleNotice(b, '跃迁规避：目标瞬时换位')
+              pushBattleFx(b, {
+                atMs: b.lastTickGameMs,
+                side: 'foe',
+                tag: other.tag,
+                type: 'kinetic',
+                hit: true,
+                blink: true,
+              })
+              // **挂在闪现上的两个装置**（2026-10-01）：与主目标那处**同一函数** ⇒ 全体攻击
+              // 打中带闪烁过载 / 叠光的敌舰同样结算（不因"它是副目标"而漏）。
+              settleFoeBlinkExtras(other, other.tag, b, other.weapons[0]?.reloadMs)
             }
           }
           pushBattleFx(b, {
@@ -8963,7 +9284,14 @@ function stepBattle(
       rt.weapons[0] = Math.max(0, cd - dtMs)
       continue
     }
-    rt.weapons[0] = w.reloadMs
+    /**
+     * **本发的装填间隔**（**船长 2026-10-01 令**：「**添加叠光装置：效果是每次攻击或者闪现后，
+     * 攻击间隔缩短，最多缩短至0.5秒攻击间隔。伤害给予一个0.3的倍率。**」）——
+     * 挂了「叠光装置」的舰（R 族 T3 叠光级）用**当前间隔**重置计时（首访问 = 条目的固定 `reloadMs`，
+     * 此后每开一火 −400ms、夹下限 500ms、闪现另算一格）；没挂的舰走缺省 ⇒ **返回 `w.reloadMs`，
+     * 读数与行为逐字不变**。⚠ 间隔的递减状态记在 `BattleState.foeOverlayReload[tag]`（运行态、不入档）。
+     */
+    rt.weapons[0] = foeOverlayReloadOf(f, f.tag, b, w.reloadMs)
     // V18B（2026-09-05 船长拍板）：敌人近盲带（dist < minRange）内**不停火**——放行到
     // maxRange 内即可开火；伤害按 blindDmgMul 打折（玩家贴脸钻近盲不再零风险）。
     // 玩家武器无此待遇（近盲带内仍不开火）——双方在近盲带上行为区分。
@@ -9012,7 +9340,24 @@ function stepBattle(
       // 本发实收（2026-09-24 船长令：飘字读数；光束必中 ⇒ 恒有值）
       const beamDealt = Math.max(0, beamBefore - (gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h))
       pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: true, ...(beamDealt > 0 ? { dmg: beamDealt } : {}) })
-      continue
+      /**
+       * **我方「跃迁规避装置」触发点**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
+       * 但是冷却时间延长到12秒。」）—— **敌方舰炮命中我方舰船本体**这一支（打我方无人机不算、
+       * 未命中不算，与敌方那两件受击挂载件同一钩子口径）。
+       */
+      if (
+        markMeBlink(gtgt.spec, gtgt.spec.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits))
+      ) {
+        pushBattleNotice(b, '跃迁规避：本舰瞬时换位')
+        pushBattleFx(b, {
+          atMs: b.lastTickGameMs,
+          side: 'me',
+          tag: gtgt.spec.tag,
+          type: 'kinetic',
+          hit: true,
+          blink: true,
+        })
+      }      continue
     }
     const blindMul = b.distanceM < w.minRangeM ? (w.blindDmgMul ?? 0.3) : 1
     const shotDmgRaw = blindMul < 1 ? Math.max(1, Math.round((w.shotDmg ?? 0) * blindMul)) : (w.shotDmg ?? 0)
@@ -9049,7 +9394,24 @@ function stepBattle(
       releaseFoeChargeOnHit(b, f.tag, bal, f.foeChargeCooldownMs)
     }
     pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: fHit, ...(gunDealt > 0 ? { dmg: gunDealt } : {}) })
-  }
+      /**
+       * **我方「跃迁规避装置」触发点**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
+       * 但是冷却时间延长到12秒。」）—— **敌方舰炮命中我方舰船本体**这一支（打我方无人机不算、
+       * 未命中不算，与敌方那两件受击挂载件同一钩子口径）。
+       */
+      if (
+        markMeBlink(gtgt.spec, gtgt.spec.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits))
+      ) {
+        pushBattleNotice(b, '跃迁规避：本舰瞬时换位')
+        pushBattleFx(b, {
+          atMs: b.lastTickGameMs,
+          side: 'me',
+          tag: gtgt.spec.tag,
+          type: 'kinetic',
+          hit: true,
+          blink: true,
+        })
+      }  }
 
   // ── 敌方点防（2026-09-10 船长「无人机可被击落」）：对我方放飞机群逐架结算 ──
   // ⚠ 机群池自 2026-09-14「逐舰机群」起是**逐舰**建的（键 = `舰tag:武器下标`，见 4803 一带），

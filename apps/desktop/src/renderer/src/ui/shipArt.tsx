@@ -280,4 +280,6 @@ export const FOE_FAMILY_LABEL: Record<string, string> = {
   G: tr("ui.shipArt.007"),
   // H 族（墨潮帮 · The Ink Tide · 2026-09-24 船长定名）：A 族海盗的变种/叛出分支 —— 短名取两字「墨潮」
   H: tr("ui.shipArt.008"),
+  // R 族（光环 · Corona Systems · 2026-10-01 船长令「是新势力：余晖」）：全无人 AI 舰队残余 —— 短名取两字「光环」
+  R: tr("ui.shipArt.009"),
 }

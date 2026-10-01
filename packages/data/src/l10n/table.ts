@@ -1228,6 +1228,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.industry.041": { zh: "{p1} 市场暂无现货——已自动挂收购单 @ {p2} 信用点，到货自动停入机库（可随时撤销）。", en: "{p1} is out of stock on the market — a buy order was placed automatically @ {p2} credits, and it docks into the hangar on arrival (cancel it at any time)." },
   "core.industry.042": { zh: "逆向研究完成：{p1} ×{p2} → 已解锁「{p3}」蓝图（{p4} 可自制备；无需市场购图）。", en: "Reverse engineering done: {p1} ×{p2} → the “{p3}” blueprint is unlocked ({p4} can be built in-house; no market purchase needed)." },
   "core.industry.044": { zh: "{p1}{p2}", en: "{p1}{p2}" },
+  // **R 族残骸回收的 AI 核心**（船长 2026-10-01 令「AI 核心为 R 族残骸回收的特色」）：
+  // 回收炉烧光环残骸每批追加 10% 掷核心，抽中即直接入核心库（不进仓库）并推这一条。
+  "core.industry.045": {
+    zh: "✦ 额外产出：{p1} ×{p2}。",
+    en: "✦ Bonus output: {p1} ×{p2}.",
+  },
   "core.industry.048": { zh: " 等{p1}种", en: " and {p1} kinds in all" },
   "core.industry.057": { zh: "额外掉落：", en: "Extra drops: " },
   "core.industry.058": { zh: "保底原材料 {p1}{p2}", en: "Guaranteed raw materials {p1}{p2}" },
@@ -3417,6 +3423,22 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.378": { zh: "活动星域", en: "Territory" },
   "ui.Handbook.379": { zh: "行踪不定。", en: "Their whereabouts are never certain." },
   "ui.Handbook.380": { zh: "清空搜索与筛选", en: "Clear search and filters" },
+  /* ── R 族（光环 · Corona Systems · 2026-10-01 船长令建族）：势力图鉴第 7 族 ──
+   * 9 格 = 族名 ＋ 四对「小标题 ＋ 正文」（与 H 族 371~379 同构）。
+   * ⚠ **387 那格 = 船长手改稿逐字照抄**（2026-10-01 草稿审校时，船长只改了「交手记录」这一格：
+   * 「拥有未知折跃能力的无人舰船，使用以激光为主的武器。非常擅长风筝战术。」）—— 其余三格照原稿落。
+   * ⚠ 文案与机制的对齐：激光 = 五档舰级的 `energyForm: 'beam'` · 风筝 = `tactic: 'kite'` ✓ 已落码；
+   * **「折跃能力」对应的「闪现」敌挂载件尚在设计中**（引擎级新机制，P0.5）。
+   * 当前 `WEEKEND_LOCKED_FAMILY` 仍是 `'H'` ⇒ **光环未上线、玩家看不到**，不存在文案与设定不符的可见问题。 */
+  "ui.Handbook.381": { zh: "光环", en: "Corona Systems" },
+  "ui.Handbook.382": { zh: "档案摘要", en: "Summary" },
+  "ui.Handbook.383": { zh: "一支没有舰员的舰队，由计算核心驾驶。", en: "A fleet with no crew aboard, piloted by compute cores." },
+  "ui.Handbook.384": { zh: "舰体特征", en: "Hull profile" },
+  "ui.Handbook.385": { zh: "舰体线条冷白，护盾占全舰一半以上；装甲与结构都薄。", en: "Cold-white lines, with shields taking more than half the hull; armor and structure are both thin." },
+  "ui.Handbook.386": { zh: "交手记录", en: "Engagement record" },
+  "ui.Handbook.387": { zh: "拥有未知折跃能力的无人舰船，使用以激光为主的武器。非常擅长风筝战术。", en: "Unmanned hulls with an unknown blink drive, armed mainly with lasers, and very adept at kiting." },
+  "ui.Handbook.388": { zh: "活动星域", en: "Territory" },
+  "ui.Handbook.389": { zh: "随入侵现身，不设固定据点。", en: "They appear with an incursion and keep no fixed hold." },
 
   /* ── 2026-09-26 势力图鉴页（船长：「敌族图鉴单独列出吧，放在蓝图图鉴下方，叫『势力图鉴』」）──
      图鉴页自己的标签/占位/三块标题；势力名与五段简介**复用** ui.Handbook.326~391（原先那节搬过来）。 */
@@ -4465,6 +4487,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipArt.007": { zh: "鱿烬", en: "Deadarmy" },
   // H 族（墨潮帮 · 2026-09-24 船长定名「The Ink Tide」）：短名取两字「墨潮」（星图标签位窄）
   "ui.shipArt.008": { zh: "墨潮", en: "Ink Tide" },
+  // R 族（光环 · Corona Systems · 2026-10-01 船长令「是新势力：余晖」）：短名取两字「光环」（与族名同形）
+  "ui.shipArt.009": { zh: "光环", en: "Corona Systems" },
   "ui.shipInfo.001": { zh: "（上限 90%）", en: " (cap 90%)" },
   "ui.shipInfo.002": { zh: "军用修理组件", en: "Military Repair Kit" },
   "ui.shipInfo.003": { zh: "民用修理组件", en: "Civilian Repair Kit" },
@@ -4568,6 +4592,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 2026-09-30 截击舰特性（船长「给拦截舰添加效果，不会被网子选为目标」）——「船体特性」栏那一行，
      与 `ShipDef.interceptorImmuneToWeb`（数据开关）同源。 */
   "ui.shipInfo.245": { zh: "不会被网子选为目标", en: "Cannot be targeted by webs" },
+  // **R 族势力特色装备**（船长 2026-10-01 令）：叠光激光炮的"装填自加速"与跃迁规避装置的"挨打闪现"
+  "ui.shipInfo.246": { zh: "装填 {p1} 秒，每次开火缩短 {p2} 秒，最低 {p3} 秒", en: "Reload {p1}s; each shot cuts {p2}s, down to {p3}s" },
+  "ui.shipInfo.247": { zh: "被命中时拉开交战距离 {p1} km；冷却 {p2} 秒", en: "When hit, opens engagement range by {p1} km; {p2}s cooldown" },
 
   /* ── 沉船记录（2026-09-27 船长令：通讯内新增一个分类，记录玩家损失的舰船与当时的装配）── */  "ui.WreckLog.001": { zh: "沉船记录", en: "Ship Loss Log" },
   "ui.WreckLog.002": { zh: "收件箱", en: "Inbox" },

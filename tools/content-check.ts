@@ -64,6 +64,7 @@ import {
   G_FLAGSHIP_SHIP_IDS,
   H_FLAGSHIP_SHIP_IDS,
   INK_SPEED_EXEMPT_SHIP_IDS,
+  CORONA_SPEED_BAND,
   ALIEN_CHARGE_MUL_BY_TIER,
   ALIEN_SLOW_SHIP_IDS,
   COMMS_MESSAGES,
@@ -2667,7 +2668,21 @@ for (const m of MODULES) {
     }
   } else if (m.slot === 'propulsion') {
     // 2026-09-08 船长：取消 speedBonusPct ≤0.9 上限护栏（推进器提速档位改由设计定；命中代价 hitPenalty 仍受检）
-    check(m.speedBonusPct !== undefined && m.speedBonusPct > 0, `推进器 ${m.id} speedBonusPct 非法（需为正）`)
+    /**
+     * ⚠ **2026-10-01 开一个口子：带 `blink` 的推进器豁免"必须有速度加成"** ——
+     * R 族「跃迁规避装置」（中槽）不是提速件：它给的是**挨打时拉开交战距离**（闪现），
+     * 没有 `speedBonusPct`。豁免只认 `blink` 这一个字段（别的推进器照旧必须有正的速度加成）。
+     */
+    if (m.blink === undefined) {
+      check(m.speedBonusPct !== undefined && m.speedBonusPct > 0, `推进器 ${m.id} speedBonusPct 非法（需为正）`)
+    }
+    // 闪现件自己的值域：距离 > 0、冷却 > 0（缺省/非正即红）
+    if (m.blink !== undefined) {
+      check(
+        m.blink.distanceM > 0 && m.blink.cooldownMs > 0,
+        `闪现件 ${m.id} blink 非法（距离与冷却都需为正）`,
+      )
+    }
     check(m.hitPenalty === undefined || (m.hitPenalty >= 0 && m.hitPenalty <= 0.5), `推进器 ${m.id} hitPenalty 非法（需 [0, 0.5]，V17.1 命中代价）`)
   } else if (m.slot === 'missile') {
     // V18B-1 导弹架：爆炸系武器形态——追踪命中（不随距离衰减）+ 近盲安全射距（防自爆）
@@ -3114,7 +3129,7 @@ for (const m of MODULES) {
     check(g.tier === majority, `残骸组契约：${g.key} 档位记 ${g.tier}，成员产残骸卡多数档是 ${majority}`)
     groupsChecked += 1
   }
-  check(WRECK_GROUPS.length === 14, `残骸组契约：组数应为 14（2026-09-24 起含 H 族墨潮帮那组），实际 ${WRECK_GROUPS.length}`)
+  check(WRECK_GROUPS.length === 15, `残骸组契约：组数应为 15（2026-09-24 起含 H 族墨潮帮那组 · 2026-10-01 起含 R 族光环那组），实际 ${WRECK_GROUPS.length}`)
   // ⑥ 出量梯度：常 ≡ 1.00、常 ≤ 险 ≤ 危
   check(WRECK_YIELD_TIER_MUL.common === 1, `残骸组契约：常档出量乘数应为 1.00，实际 ${WRECK_YIELD_TIER_MUL.common}`)
   check(
@@ -3173,7 +3188,7 @@ for (const m of MODULES) {
   // 行数 = 洞外 9 组（洞内 5 组维持无市场行 —— 合并前洞内 15 张隐藏卡本就没有收购行）
   const wreckBuyPrice = { common: 30, risky: 40, dire: 50 }
   const noSkillPerM3 = 82_000 / 1_440
-  check(WRECK_BUY_GOODS.length === 9, `残骸收购卡应有 9 张（洞外 14−5 组；2026-09-25 新增 H 族洞外组 h-hi），实际 ${WRECK_BUY_GOODS.length}`)
+  check(WRECK_BUY_GOODS.length === 10, `残骸收购卡应有 10 张（洞外 15−5 组；2026-09-25 新增 H 族洞外组 h-hi · 2026-10-01 新增 R 族洞外组 r-inv），实际 ${WRECK_BUY_GOODS.length}`)
   for (const g of WRECK_BUY_GOODS) {
     const key = g.refId.startsWith('wreck-') ? g.refId.slice('wreck-'.length) : ''
     const def = WRECK_GROUP_BY_KEY.get(key)
@@ -3532,6 +3547,9 @@ for (const m of MODULES) {
     // H 族（墨潮帮 · 2026-09-24）：族级中速带的读数计数（与 A/B/C/D/E 同款）
     let inkReadings = 0
     const inkSample: string[] = []
+    // R 族（光环 · 2026-10-01）：族级速带的读数计数（与 A/B/C/D/E/H 同款）
+    let coronaReadings = 0
+    const coronaSample: string[] = []
     for (const def of ANOMALIES_FLAVORED) {
       // 舰级路径（2026-09-11）：速度由**舰级登记值**决定，故不再要求逐卡 foeSpeedMps；
       // 改按"该卡实际会建出的单位速度"（非僚机编成条目）校验比率。
@@ -3600,6 +3618,30 @@ for (const m of MODULES) {
                   `基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
               )
             }
+            continue
+          }
+          if (def.foeFamily === 'R') {
+            // **R 族（光环 · Corona Systems）口径**（**2026-10-01 船长令**：「**是新势力：余晖，你可以查阅下
+            // 远行星号中的无人机敌对势力余晖，我们参考那个做**」＋ 族格裁定「**甲：新立族格**」）
+            // ⇒ 本分支是**另立的一份判据**（不是 A/H 那两条的副本，也不是任何既有族的分支）：
+            // ①**每档实速必须高于本档舰种基准**（`spd > base`）—— 与 A/H 同款（光环也是主动压上来打的族）；
+            // ②比率落**本族速带** `CORONA_SPEED_BAND`（**0.55~1.35×**，单点定义在 data 的 `foe-ships.ts`）——
+            //   带比 A/H 那条**更宽、下限更低**，因为光环的性格是**"护卫快、主力慢"**
+            //   （参考对象 Remnants 的主力 Radiant 是全游最慢的舰之一）。
+            // ⚠ **本族不需要任何破例白名单**（对照 H 族要两条豁免）：五档实速全在带内，
+            //   读数见 `CORONA_SPEED_BAND` 头注那张表。
+            coronaReadings++
+            coronaSample.push(`${def.id}/${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
+            check(
+              spd > base,
+              `敌速口径契约：R 族 ${def.name} 的舰级「${slot.ship.name}」实速 ${spd} m/s **未高于本档舰种基准 ${base} m/s**——` +
+                `R 族族格另立（船长 2026-10-01 裁定「新立族格」）⇒ 每档都必须高于基准`,
+            )
+            check(
+              ratio >= CORONA_SPEED_BAND[0] && ratio <= CORONA_SPEED_BAND[1],
+              `敌速口径契约：R 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出**本族速带** ` +
+                `${CORONA_SPEED_BAND[0]}~${CORONA_SPEED_BAND[1]}×（R 族族格另立；基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+            )
             continue
           }
           if (def.foeFamily === 'B') {
@@ -3777,7 +3819,9 @@ for (const m of MODULES) {
         `同档实速须高于 A 族；T4 巨兽例外允许慢${ALIEN_SLOW_SHIP_IDS.length > 0 ? `；${ALIEN_SLOW_SHIP_IDS.join(' / ')} 例外允许慢（无人机母舰）` : ''}）、` +
         `D 族 ${graveReadings} 条按**族格"越往里越慢"口径**（幽灵舰 1.10 / 守墓长舰 1.00 / 静滞卫舰 0.50，比率落 ${GRAVE_SPEED_BAND[0]}~${GRAVE_SPEED_BAND[1]}×）、` +
         `E 族 ${titanReadings} 条按**族格"巨构不讲机动"口径**（族速度倍率 0 = 静物残骸、靠机群作战，比率落 ${TITAN_SPEED_BAND[0]}~${TITAN_SPEED_BAND[1]}×）、` +
-        `G 族 ${swarmReadings} 条按**族级速带口径**（船长「速度口径按照 1.05 算」＝残军按舰种走，比率落 ${G_SPEED_BAND[0]}~${G_SPEED_BAND[1]}×）`,
+        `G 族 ${swarmReadings} 条按**族级速带口径**（船长「速度口径按照 1.05 算」＝残军按舰种走，比率落 ${G_SPEED_BAND[0]}~${G_SPEED_BAND[1]}×）、` +
+        `H 族 ${inkReadings} 条按**族格中速带口径**（船长 2026-09-24「新族复制一份A族族格」＝独立副本，比率落 ${INK_SPEED_BAND[0]}~${INK_SPEED_BAND[1]}×）、` +
+        `R 族 ${coronaReadings} 条按**另立族格速带口径**（船长 2026-10-01「新立族格」；"护卫快、主力慢"，比率落 ${CORONA_SPEED_BAND[0]}~${CORONA_SPEED_BAND[1]}×）`,
     )
     if (pirateSample.length > 0)
       console.log(`  ↳ A 族实测读数（实速/比率）：${pirateSample.join("　")}`)
@@ -3790,6 +3834,10 @@ for (const m of MODULES) {
     if (swarmSample.length > 0) console.log(`  ↳ G 族实测读数（实速/比率）：${swarmSample.join("　")}`)
     if (titanSample.length > 0)
       console.log(`  ↳ E 族实测读数（实速/比率）：${titanSample.join("　")}`)
+    if (inkSample.length > 0)
+      console.log(`  ↳ H 族实测读数（实速/比率）：${inkSample.join("　")}`)
+    if (coronaSample.length > 0)
+      console.log(`  ↳ R 族实测读数（实速/比率）：${coronaSample.join("　")}`)
   }
 
   /* ── 机群与防空契约（2026-09-11 机群批 S4 加 · 船长「我记得巨构需要制作敌方无人机系统」+
@@ -5509,7 +5557,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
    * ③ 登记的族必须是合法族字母（A~E / G；`'F'` 除外）。
    * 落码顺序：**先**给四张旧遭遇模板（`enc-pirate-1..4`）显式登记 A 族、**后**加本契约。 */
   {
-    const LEGAL_FAMILIES: readonly string[] = ['A', 'B', 'C', 'D', 'E', 'G', 'H']
+    const LEGAL_FAMILIES: readonly string[] = ['A', 'B', 'C', 'D', 'E', 'G', 'H', 'R']
     let famRegistered = 0
     for (const def of ANOMALIES_FLAVORED) {
       check(

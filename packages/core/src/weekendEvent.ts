@@ -185,6 +185,29 @@ export const WEEKEND_GAIN_OFFLINE_REPEL = 0.01
 export const WEEKEND_LOCKED_FAMILY: string | null = 'H'
 
 /**
+ * **调试模式下锁定的入侵族**（**船长 2026-10-01 令**：「**先让本地调试模式必定出新的R族入侵，我进行本地测试**」）。
+ *
+ * 口径：
+ * - **`debugQuick` 打开时**（本机调试档）⇒ 开局面一律判为 **R 族（光环）**，
+ *   与 `WEEKEND_DEBUG_WIN_GAIN`（两场夺回）· `WEEKEND_DEBUG_TIME_DIVISOR`（时间 ÷60）·
+ *   `WEEKEND_DEBUG_RESTART_MS`（1 小时后可重开）同属"调试便利"，只为让本机能反复实测新族；
+ * - **非调试档逐字不变** ⇒ 仍走 `WEEKEND_LOCKED_FAMILY`（现 `'H'`）⇒ **真实玩家线看不到 R 族**。
+ *
+ * ⚠ 想换调试族只改这一个常量（`null` = 调试档也走 `WEEKEND_LOCKED_FAMILY`）。
+ */
+export const WEEKEND_DEBUG_FAMILY: string | null = 'R'
+
+/**
+ * **本次开局面实际锁定的族**（单点）——调试档优先于玩家线锁定：
+ * `null` 表示"不锁"（恢复随机）。
+ */
+export function weekendLockedFamilyOf(state: Pick<GameState, 'debugQuick'>): string | null {
+  return state.debugQuick === true && WEEKEND_DEBUG_FAMILY !== null
+    ? WEEKEND_DEBUG_FAMILY
+    : WEEKEND_LOCKED_FAMILY
+}
+
+/**
  * **调试模式下的单场推进量**（2026-09-25 船长令：「**调试模式下，收复只需要玩家打 2 场**」）。
  *
  * 口径：`debugQuick` 时**主动胜利一律 +50%**（外围与核心同档）⇒ 任意一处占领区**两场夺回**；
@@ -241,8 +264,10 @@ export const WEEKEND_FLAGSHIP_DEADLINE_MS = 24 * 3_600_000
  * ⚠ **上线开关**：本机制**按族启用**——只有登记在 `WEEKEND_BOSS_FAMILIES` 里的族才走池子口径，
  * 其余族逐字走老口径（"核心满 + 打赢 ⇒ 直接击毁"＋ 到点直接被章鱼击败）。
  * 2026-09-24 第二轮：**H 族先上**（船长令就是针对墨潮入侵母舰下的）。
+ * 2026-10-01：**加 R 族（光环）**——船长令「新势力：光环」，与新族同批进本表
+ * （不进则光环没有旗舰战，与 H 族体感不对等）。
  */
-export const WEEKEND_BOSS_FAMILIES: readonly string[] = ['H']
+export const WEEKEND_BOSS_FAMILIES: readonly string[] = ['H', 'R']
 /**
  * **BOSS 池子总量 = 固定 150,000**（船长 2026-09-25：「**BOSS 血条 15 万（约 2.5 个母舰）来算**」）。
  *
@@ -637,18 +662,23 @@ export const WEEKEND_WINDOW_END_HOLD_MS = 60_000
  * ⚠ **2026-09-24 M2 逐族落地**：第一族 = **H 墨潮帮**（船长定名「The Ink Tide」）——
  * 它有**自家的独立入侵卡**（`ink-assault` / `ink-flagship`，见 `weekendFoeCardOf`），
  * 故**在此进池**；A/C/G 三族仍按 M1 口径用虫洞卡，等各自的旗舰卡设计好再逐族迁移。
+ *
+ * ⚠ **2026-10-01 第二族 = R 光环**（船长令「**是新势力：余晖，你可以查阅下远行星号中的无人机敌对势力
+ * 光环，我们参考那个做**」）——同 H 族口径：**自家四张独立入侵卡**、自带定价、进 BOSS 表。
+ * ⚠ 本期（到 2026-10-09 那期为止）**实际跑哪一族由 `weekendLockedFamilyOf(state)` 决定**，
+ * 本行只声明"允许进池的族"。
  */
-export const WEEKEND_FAMILIES: readonly string[] = ['A', 'C', 'G', 'H']
+export const WEEKEND_FAMILIES: readonly string[] = ['A', 'C', 'G', 'H', 'R']
 
 /* ─────────────── 敌卡：独立卡（H 族）· 虫洞池卡（A/C/G 占位）· 随机抽取 ─────────────── */
 
 /**
  * **该族的入侵敌卡是否"自带定价"**（独立卡 ⇒ 威胁 = 卡面实测价，可被抽签换卡）。
- * H 族 = 真（四张独立卡已按定价式落到 90 / 108 / 129 与"待定的旗舰"）；
- * A/C/G 三族 = 假（仍用虫洞池卡 + 入侵覆写威胁 78/120，属 M1 占位口径，等各自旗舰卡设计好再迁）。
+ * H / R 两族 = 真（各自的四张独立卡已按定价式落档）；A/C/G 三族 = 假（仍用虫洞池卡 + 入侵覆写威胁
+ * 78/120，属 M1 占位口径，等各自旗舰卡设计好再迁）。
  */
 export function weekendFoeCardsSelfPriced(family: string): boolean {
-  return family === 'H'
+  return family === 'H' || family === 'R'
 }
 
 /**
@@ -660,12 +690,21 @@ const H_FOE_POOL_PERIPHERY: readonly string[] = ['ink-harass', 'ink-raid']
 const H_FOE_POOL_CORE: readonly string[] = ['ink-raid', 'ink-main']
 
 /**
+ * **R 族（光环）入侵敌卡池**（2026-10-01 船长令建族；**沿用 H 族那条口径**：外围 = {游弋, 分光} ·
+ * 核心 = {分光, 汇聚}）——id 的唯一登记处同样是 `data/wormholeFoes.ts` 的 `WEEKEND_FOE_CARD_IDS`。
+ */
+const R_FOE_POOL_PERIPHERY: readonly string[] = ['corona-drift', 'corona-split']
+const R_FOE_POOL_CORE: readonly string[] = ['corona-split', 'corona-converge']
+
+/**
  * **某族某区域的入侵敌卡池**：
  * - H 族：外围 `{骚扰 90, 袭击 108}` · 核心 `{袭击 108, 主力 129}`（等概率）；
+ * - R 族：外围 `{游弋 90, 分光 108}` · 核心 `{分光 108, 汇聚 129}`（同上，威胁档沿用 H 族）；
  * - A/C/G 三族：仍取该族虫洞池（外围 = 层 5 池 · 核心 = 层 9 池）——**池长 1 ⇒ 抽签退化为取那一张**（逐字不变）。
  */
 export function weekendFoePoolOf(family: string, isCore: boolean): readonly string[] {
   if (family === 'H') return isCore ? H_FOE_POOL_CORE : H_FOE_POOL_PERIPHERY
+  if (family === 'R') return isCore ? R_FOE_POOL_CORE : R_FOE_POOL_PERIPHERY
   const fam = (WEEKEND_FAMILIES.includes(family) ? family : WEEKEND_FAMILIES[0]!) as WormholeFamily
   return [wormholeCardPoolAt(fam, isCore ? 9 : 5)[0]!.id]
 }
@@ -744,11 +783,12 @@ export function weekendAmbushPickOf(
 }
 
 /**
- * **入侵旗舰战的敌卡**（**唯一换卡点**）：H 族 = 自家旗舰部队卡；A/C/G = 该族最深池卡。
+ * **入侵旗舰战的敌卡**（**唯一换卡点**）：H / R 族 = 自家旗舰部队卡；A/C/G = 该族最深池卡。
  * ⚠ 旗舰卡**不参与抽签**（船长 2026-09-25：「**旗舰卡单独**」）。
  */
 export function weekendFoeCardOf(family: string, kind: 'assault' | 'flagship'): string {
   if (family === 'H') return kind === 'flagship' ? 'ink-flagship' : H_FOE_POOL_PERIPHERY[0]!
+  if (family === 'R') return kind === 'flagship' ? 'corona-nexus' : R_FOE_POOL_PERIPHERY[0]!
   const fam = (WEEKEND_FAMILIES.includes(family) ? family : WEEKEND_FAMILIES[0]!) as WormholeFamily
   const pool = wormholeCardPoolAt(fam, kind === 'flagship' ? 9 : 5)
   return pool[0]!.id
@@ -897,12 +937,12 @@ export function weekendRollOccupation(
   const rng = streamOf(state.rng.seed, seq)
   const coreId = candidates[Math.min(candidates.length - 1, Math.floor(rng() * candidates.length))]!
   /**
-   * 族：**照旧消费一次随机数**（保持子流形状不变），但若 `WEEKEND_LOCKED_FAMILY` 有值就判成它
+   * 族：**照旧消费一次随机数**（保持子流形状不变），但若 `weekendLockedFamilyOf(state)` 有值就判成它
    * —— 船长 2026-09-25「目前只做了H族，所以先锁定H族」；M2/M3 补齐三族后把该常量置回 `null` 即恢复随机。
    */
   const familyRoll = rng()
   const family =
-    WEEKEND_LOCKED_FAMILY ??
+    weekendLockedFamilyOf(state) ??
     WEEKEND_FAMILIES[Math.min(WEEKEND_FAMILIES.length - 1, Math.floor(familyRoll * WEEKEND_FAMILIES.length))]!
   return { coreId, peripheryIds: weekendPeripheryOf(ctx, coreId), family }
 }
@@ -1291,10 +1331,10 @@ export function ensureWeekendEvent(state: GameState, ctx: SimContext, nowWallMs:
     if (
       ev !== undefined &&
       ev.endedAtWallMs === undefined &&
-      WEEKEND_LOCKED_FAMILY !== null &&
-      ev.family !== WEEKEND_LOCKED_FAMILY
+      weekendLockedFamilyOf(state) !== null &&
+      ev.family !== weekendLockedFamilyOf(state)
     ) {
-      ev.family = WEEKEND_LOCKED_FAMILY
+      ev.family = weekendLockedFamilyOf(state)!
     }
     if (ev && ev.endedAtWallMs === undefined) return false
     if (ev && nowWallMs - ev.endedAtWallMs! < WEEKEND_DEBUG_RESTART_MS) return false

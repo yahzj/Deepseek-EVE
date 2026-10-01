@@ -31,7 +31,7 @@ import { bumpFirst } from './firstTasks'
 import { wormholeDeliverRelics, wormholeRareBoxThemeGroupsOf, wormholeRareBoxThemePoolOf, wormholeUnboxRoll } from './wormholeSalvage'
 import type { AiCoreType, ItemDef, SimContext } from './types'
 import { addItem, addWare, countItem, countWare, removeItem, removeWare } from './inventory'
-import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
+import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, gainAiCore, occupyAiCore, releaseAiCore } from './ai'
 import { isAtHomeLike, stationIndustryBlocked } from './location'
 import { formatDurationMs } from './time'
 import { composeLog, logParamsOf, type LogSeg } from './logParts'
@@ -49,6 +49,8 @@ import {
   rollRecycleGuarantee,
   rollRareBoxExtra,
   rollRecycleLoot,
+  // **R 族残骸回收的 AI 核心**（2026-10-01 船长令「AI 核心为 R 族残骸回收的特色」）
+  rollRecycleCoreGain,
 } from './salvage'
 import { addAiIncome, addAiRefineBatch, type SettleStats } from './settleStats'
 
@@ -1103,6 +1105,24 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
         for (const row of out) acc.min[row.mineralId] = (acc.min[row.mineralId] ?? 0) + row.units
         for (const modId of loot.modules) acc.mod[modId] = (acc.mod[modId] ?? 0) + 1
         for (const [m, n] of fragUnits) acc.frag[m] = (acc.frag[m] ?? 0) + n
+        /**
+         * **R 族残骸回收的 AI 核心**（**船长 2026-10-01 令**：「**AI 核心为 R 族残骸回收的特色**」＋
+         * 追问裁定「核心结算方式…如果是〔回收时抽中〕，**直接入账**」）。
+         *
+         * 本批 = R 族残骸 ⇒ 掷一次（10%，命中后 60/30/10）；抽中即 `gainAiCore()` **直接进核心账本**
+         * （**不进仓库** —— 核心是一本账，见 `marketCatalog.ts` 那条硬契约），并推一条日志。
+         * 掷骰走**独立流**（`rollRecycleCoreGain`，种子含残骸 id ＋ 批序号）⇒ 既有各族的回收产出
+         * **逐字不变**；批序号 = 本炉已完批数 + 1（每批唯一、同一档可复现）。
+         */
+        const coreGain = rollRecycleCoreGain(r.itemId ?? '', r.batchesDone + 1)
+        if (coreGain !== undefined) {
+          gainAiCore(state, coreGain, 1)
+          const coreName = aiCoreName(coreGain)
+          addLog(state, 'industry', `✦ 额外产出：${coreName} ×1。`, 'core.industry.045', {
+            p1: coreName,
+            p2: '1',
+          })
+        }
         r.recAcc = acc
       } else {
         // 精炼批：产物矿物入库，并累计进 r.recAcc.min（停炉/结束日志出明细）

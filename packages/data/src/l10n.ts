@@ -383,6 +383,9 @@ export const EN_MODULES: EnTable = {
   // H 族（墨潮帮）势力装备（2026-09-26 船长定：射程压制 · 捕获网 · 重袭机）
   'mod-lair-ecm-h': { name: 'Ink Tide EW Pod', description: 'A captured, rebuilt electronic-warfare core: fitted to a deployed fleet it suppresses enemy weapon range by 15%, stacking multiplicatively with electronic-warfare ships. Enemy range can only be pushed down to 3,000 m, and weapons whose base range is under 3,000 m are unaffected. It costs 150 CPU — a hull that fits it serves nothing else.' },
   'mod-lair-web-h': { name: 'Ink Tide Capture Web', description: 'A cycling web: it pins one un-webbed enemy ship, dropping its speed, cutting its thrusters and nullifying its evasion; the web releases and goes on cooldown when the target is sunk or the range opens past the break distance, and sinking the webbing ship releases it.' },
+  // **R 族（光环）势力特色装备**（船长 2026-10-01 令）：叠光激光炮 + 跃迁规避装置 —— 两件同出「光环稀有残骸的高级箱专属池」（与 AI 核心同一个池子）。
+  'mod-lair-laser-r': { name: 'Overlay Laser Cannon', description: 'Energy beam, always hits; 7 km range. Reload 4.4s, cut by 0.3s per shot down to 0.6s; 250 rounds per engagement.' },
+  'mod-lair-blink-r': { name: 'Blink Evasion Drive', description: 'Mid slot. When hit, opens engagement range by 2 km; 12s cooldown.' },
   // 虫洞族专属（mod-wh-*）
   'mod-wh-a-frag': { name: 'Raider Fragment Cannon', description: 'Fragment rounds that burst on their own: inside 7.3 km they scatter a cloud of explosive shrapnel with extreme single-shot power. The fragments ignore armor seams and add 50% kinetic damage (independent of the explosive ammo spent). The cost: accuracy only 0.80 and a 5.6 s reload.' },
   'mod-wh-a-hangar': { name: 'Raider Hangar', description: 'A hangar mezzanine welded from stolen cargo bulkheads: drone bay +40 m³ and launched drones cycle 8% faster. It carries more and launches faster for only 25 CPU.' },
@@ -694,6 +697,12 @@ const WRECK_FAMILY_EN: Readonly<Record<string, string>> = {
   g: 'Deadarmy',
   // H 族（墨潮帮 · 2026-09-24 船长定名「The Ink Tide」）：A 族海盗的变种/叛出分支
   h: 'Ink Tide',
+  // R 族（光环 · 2026-10-01 船长令「是新势力：余晖」）：参考远行星号 Remnants 的全无人 AI 舰队残余。
+  // 英文名 = **Corona Systems**（Corona = 日冕/"光环"的天文学对应词）。
+  // 🔴 **2026-10-01 船长改判**：「**这个势力不能真叫余晖（有侵权嫌疑），改名叫光环科技。**」
+  // ⇒ 中文族名/短名/舰名/卡名/残骸名一律改「光环」；英文由原提案 Afterglow 改为 **Corona Systems**
+  //   （不取 Halo：Halo 是微软的著名游戏 IP，避嫌要避彻底）。
+  r: 'Corona Systems',
 }
 const WRECK_AREA_EN: Readonly<Record<string, string>> = {
   hi: 'High-sec',
@@ -758,6 +767,10 @@ const WRECK_IDS = [
   // （旧 'h-wh' 已退役：它此前没有任何产出路径，任何存档都不可能持有 ⇒ 改名零迁移）
   'wreck-h-hi',
   'wreck-rare-h-hi',
+  // R 族（光环）第 15 组（2026-10-01 船长令「是新势力：余晖」）：'r-inv' —— 第二个**入侵类**残骸组
+  // （与 H 族同构：一次到位、无历史包袱 ⇒ 组 key 就叫 `r-inv`，不像 H 那样保留旧的 `h-hi`）
+  'wreck-r-inv',
+  'wreck-rare-r-inv',
 ] as const
 
 export const EN_WRECKS: EnTable = Object.fromEntries(WRECK_IDS.map((id) => [id, wreckEnText(id)]))
@@ -799,6 +812,8 @@ const WRECK_GROUP_NOTE_EN: Readonly<Record<string, string>> = {
   'e-lo': 'Starcore Crystal and Isotope Polycrystal from megastructure fragments',
   'g-lo': 'Mostly Darkiron Alloy and Isotope Polycrystal, with structure and armour stock',
   'h-hi': 'Mostly Starcore Crystal and Heavy Tungsten Alloy, with structure stock',
+  // R 族（光环 · 2026-10-01）：与 H 族同池同价位（组池 = D 高安组那套：钛钢 40 · 星髓晶 34 · 重钨合金 26）
+  'r-inv': 'Mostly Starcore Crystal and Heavy Tungsten Alloy, with structure stock',
 }
 
 /** 组名（普通 / 稀有）按族名 + 区名派生 —— 与 `wreckEnText` 同源 */
@@ -1049,6 +1064,23 @@ export const EN_ANOMALIES: EnTable = {
   'ink-flagship': {
     name: 'Ink Tide Flagship Group',
     description: 'Weekend incursion: the Ink Tide flagship group (hidden card, spawned by the incursion event only).',
+  },
+  // R 族（光环）· 周末入侵的四张独立敌卡（2026-10-01 船长令建族 · 编成与 H 族同构）
+  'corona-drift': {
+    name: 'Corona Drift Swarm',
+    description: 'Weekend incursion: a drifting swarm of Corona Systems (hidden card, spawned by the incursion event only).',
+  },
+  'corona-split': {
+    name: 'Corona Split Swarm',
+    description: 'Weekend incursion: a split swarm of Corona Systems (hidden card, spawned by the incursion event only).',
+  },
+  'corona-converge': {
+    name: 'Corona Converge Swarm',
+    description: 'Weekend incursion: a converging swarm of Corona Systems (hidden card, spawned by the incursion event only).',
+  },
+  'corona-nexus': {
+    name: 'Corona Nexus Guard',
+    description: 'Weekend incursion: the Corona Systems nexus guard (hidden card, spawned by the incursion event only).',
   },
 }
 
@@ -1423,6 +1455,13 @@ export const EN_FOE_SHIPS: EnTable = {
   'foe-h-ink-torpedo': { name: 'Ink Tide Torpedo Ship' },
   'foe-h-ink-battlecruiser': { name: 'Ink Tide Battlecruiser' },
   'foe-h-ink-flagship': { name: 'Ink Tide Invasion Carrier' },
+  // R 族（光环 · Corona Systems · 2026-10-01 船长令建族 · 船长选「甲：照提案」批定自创舰名）
+  // 舰名一律**自创**（"光现象/残响"意象）—— 参考对象的舰名不照抄；英文 = 族名 + 光现象词
+  'foe-r-corona-glint': { name: 'Corona Glint' },
+  'foe-r-corona-echo': { name: 'Corona Echo' },
+  'foe-r-corona-overlay': { name: 'Corona Overlay' },
+  'foe-r-corona-dusk': { name: 'Corona Dusk' },
+  'foe-r-corona-nexus': { name: 'Corona Nexus' },
 }
 
 /**

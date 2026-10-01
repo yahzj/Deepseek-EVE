@@ -487,6 +487,9 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'wreck-g-lo': 1,
   // H 族（墨潮帮）· 入侵卡的洞外组（2026-09-25 船长令「修，②」）：与其余高安普通残骸同档（1）
   'wreck-h-hi': 1,
+  // R 族（光环 · 2026-10-01 船长令「是新势力：余晖」）· 入侵卡的独立组（第 15 组）：
+  // 与 H 族同档（普通 1 / 稀有 4）—— 两族的残骸价位/回收档完全同构（组池同为 D 高安组那套）
+  'wreck-r-inv': 1,
   // 2026-09-14 新增（船长「允许玩家挂卖」批）：专属内容补市场行 ⇒ 全部奇货层（数字 4）
   // —— 舰船图纸 15 · 装备图纸 28 · 虫洞装备 28 · 虫洞舰船 15 · 窝点专属装备 14 · 专属无人机 3
   // —— 外加 3 张无人机一次性蓝图（bp-lair-g-drone / bp-wh-c-drone / bp-wh-e-drone）
@@ -559,6 +562,9 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mod-lair-armor-d': 4,
   'mod-lair-cargo-a': 4,
   'mod-lair-dc-c': 4,
+  // R 族（光环）势力特色装备（2026-10-01 船长令）：与既有 12 件窝点专属同档 = 4（exotic）
+  'mod-lair-laser-r': 4,
+  'mod-lair-blink-r': 4,
   'mod-lair-drone-relay-g': 4,
   'mod-lair-drone-tac-g': 4,
   'mod-lair-frame-e': 4,
@@ -641,6 +647,8 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'wreck-rare-d-hi': 4,
   // H 族（墨潮帮）· 入侵卡的洞外组（2026-09-25 船长令「修，②」）：与其余**高安**稀有残骸同档（4）
   'wreck-rare-h-hi': 4,
+  // R 族（光环 · 2026-10-01）：入侵组第 15 组的稀有残骸，与 H 族同档（4）
+  'wreck-rare-r-inv': 4,
   // 墨潮旗舰黑匣（周末入侵击毁旗舰的彩头；2026-09-25「先做壳」）——与专属内容同档（奇货层 4）
   'blackbox-h': 4,
   // 通用黑匣（2026-09-27 船长令：章鱼人商店 30 声望一枚）——同样与专属内容同档（奇货层 4）
