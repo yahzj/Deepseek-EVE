@@ -72,8 +72,19 @@
 | `table.ts` | 新增 `core.activity.017`（停线代价）· `core.activity.018`（活动名「实验室」）中英 |
 | 用例 | 新增 `tests/activity-lab-20261001.test.ts`（3 条：亲自运转占主控 · AI 驱动不占 · 分档/名称/代价齐备）**＋既有矩阵自动扩到 11×11**（`SETUP`/`STOPPED` 各加一行 `lab`，四条矩阵用例自动覆盖新档） |
 
-**stage 1 还没做的一格**：**活动栏**（`activity.ts`）仍不显示实验室产线 —— 门禁已认它、界面还看不见，
-下一轮补（要配活动名 id，已备 `core.activity.018`）。
+**stage 1 还没做的一格**：**活动栏**（`activity.ts`）仍不显示实验室产线 —— 门禁已认它、界面还看不见。
+
+⚠ **这一格的现场评估（2026-10-01 续做时的结论，供下一轮直接开工）**：它不是"core 加一行"就完事的，
+`activity.ts` 的条目要带 `kind`（`ActivityKind` 联合类型，UI 按它取图标）＋ `stop`（`ActivityStopKind`
+→ desktop engine 的方法映射）⇒ 完整接入 = **① `ActivityKind` 加 `'lab'` ② UI 图标映射加一档
+③ `ActivityStopKind` 加"停实验室线"＋ desktop engine 落一个方法 ④ 活动名词条（已备 `core.activity.018`）
+⑤ `labRunViews` 若缺视图函数则先补**。⇒ 这是一小批 UI 活（含 `ui:rot-check` 与桌面构建），
+**不半途开工**；本轮先把门禁侧落定（已绿）。
+
+**stage 2 仍待做**：契约护栏（`start*` 主控入口必调 `applyActivityGate`；`state` 新增占主控字段必进登记表）
+＋ 接力入口（`startMiningFromExpedition` / `startExpeditionFromMining`）收口。
+⚠ 护栏要避免"吵闹的判据"（本仓既有教训）：先以**读数档**（列出漏调入口）上线、确认误报为 0 再进阻断，
+白名单要写明理由（`startScan` 不占主控 · `startTransitHome` 属锁定态 · `startBattleFor` 等非主控入口）。
 
 **stage 2 仍待做**：契约护栏（`start*` 主控入口必调 `applyActivityGate`；`state` 新增占主控字段必进登记表）
 ＋ 接力入口（`startMiningFromExpedition` / `startExpeditionFromMining`）收口。
