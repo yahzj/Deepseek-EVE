@@ -329,11 +329,12 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
     'The worst case is one landing on the tile you are standing on: you get a prompt first and the fight starts once you confirm. Each layer caps how many can be out at once, and killing one frees a slot; the count resets on the next layer.',
   ],
   // 2026-09-30 首访实验室：黑市那封（非官方来源，诱导口径；与中文逐行对齐，5 段）
+  // ⚠ 第 4 段 = 黑市开门口槛句（船长二次裁定「门槛句 ＋ 染色照做」）——中文改动时这里必须同步、行数不变
   'msg-lab-contraband': [
     'The two new things your lab turns out, the beacon and the overclock pack, both passed through my line. Other people sell you goods; I sell you one sentence.',
     'The beacon is contraband: it will not light in a system holding your home port or a completed outpost, and lighting it in high-sec costs you 10 standing by the Association’s rules. The rules are theirs; whether to use it is yours.',
     'The overclock pack breaks no rules: one dose lasts a day, halves training time, and only one can be running at a time.',
-    'Once your name carries, my door opens on its own — you will find me then.',
+    'Once your accumulated standing reaches 100, my door opens for you — before that, you will not find me.',
     'How to use them, and the fine print, are in your own item descriptions.',
   ],
   // ── 长设定文 9 封（2026-09-26 三号补齐 · roadmap L3 尾巴；逐段与中文行数对齐）──
