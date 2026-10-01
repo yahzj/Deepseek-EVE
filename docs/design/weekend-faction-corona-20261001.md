@@ -984,19 +984,65 @@ l10n:params · arch:guard 全绿。
 `corona-blink`（7 用例）· `corona-devices`（7 用例）全绿；core 全量 **282 文件 / 2980 用例全绿**，
 并入 main 后（与一号工业批次同树）**284 文件 / 2992 用例全绿**。
 
+### 23.6 🔴 三次改判：**单次位移不得超过件上的 2,000 m**（同日 · **已落码**）
+
+#### 船长原话（照抄）
+
+> 「**闪现之前不是设定每次闪现最多2000米吗**」
+
+#### 我漏了什么（如实记）
+
+第二次改判我写成"闪到**它自己的**期望距离"时，**把件上那个 `distanceM`（2,000m）当成无用字段丢在一边**
+（当时还在注释里明写"不再决定位移量"）⇒ 期望距离一突变就变成**一键归位式的大瞬移**。
+
+| 场景 | 旧实现（本次修前） | 修后 |
+|---|---|---|
+| `corona-drift`（期望距离稳定 5,100） | 跳变 0 / 17 / 17 m | 0 / 17 / 17 m（不变） |
+| **`corona-nexus` 第 4 波**（期望 5,740 → 8,925） | ⚠ **一跳 3,185 m** | ✅ **一跳 2,000 m**（5,740 → 7,740，要归位得再闪一次） |
+| `corona-nexus` · 8 舰 | 超上限 1 / 2 次 | **超上限 0 / 4 次**（最大 2,000 m） |
+
+#### 定案口径（`combat.blinkStep` · **敌我同一口径**）
+
+```
+从当前位置朝目标走一跳，单次位移不超过件上的 blink.distanceM：
+· 相距不到 2,000 ⇒ 正好落在目标上（一次闪到位）
+· 相距超过 2,000 ⇒ 只走 2,000（差得远就多闪几次）
+```
+
+| 侧 | 件 | 目标（方向） | 步长（幅度） |
+|---|---|---|---|
+| 敌方 | 瞬光跃迁仪（冷却 5s） | **它自己的**期望交战距离（吃 R 族格覆写） | 2,000 m |
+| 我方 | 跃迁规避装置（冷却 12s） | **朝远离侧拉开**（保命件） | 2,000 m |
+
+🔴 **船长的第二句裁定**：「**与敌舰统一口径**」⇒ 两件都走同一个 `blinkStep`，**只差"目标"这一项**
+（代码上不再有两套各写一遍的位移逻辑）。
+
+⚠ 两点如实记：
+1. **多闪几次才归位 = 闪烁过载的结构代价真的按次计**（每闪一次扣上限 5%）——这正是该件设计意图；
+2. **方向与步长是两件事**：⑦ 管方向（朝它自己的期望走）、⑧ 管步长（一跳最多 2 公里），缺一条都会出问题
+   （只做方向 ⇒ 一键归位；只做步长 ⇒ 越闪越远被无伤）。
+
+### 23.7 本次新增/改动的用例
+
+| 用例 | 内容 |
+|---|---|
+| `corona-blink` **⑧（新增）** | 单次位移 ≤ 件上的 `distanceM`（从件定义读，不写死字面量）· 朝目标走不反向 · 起点观察点设在采样循环之前（否则漏掉第一拍） |
+| `corona-blink` ⑦ | tag→建档案 spec 的映射改成**按 tag 精确匹配**（多波卡的建档案 tag 是连续的 `w0-foe-1..14`，不是"每波一小段"） |
+| `corona-blink` ⑤ | 标题里过期的"12 秒"改成 **5 秒**（船长同日把全族闪现间隔下调过；判据当时就是 5,000，只是文字没跟上） |
+
 ---
 
 ## §24 本批改动的文件逐个列出（2026-10-01 · 二号）
 
 | 文件 | 改了什么 |
 |---|---|
-| `packages/core/src/combat.ts` | `applyDamage` 按"整发只吃一个系数"重写；`markFoeBlink` 落点改 `foeDesiredRange(它自己)` ＋ 新增 `foeRangeDebuffR` 入参（两处调用点都传） |
+| `packages/core/src/combat.ts` | ① `applyDamage` 按"整发只吃一个系数"重写；② **新增 `blinkStep`**（闪现一跳：朝目标走、单次 ≤ 件上的 `distanceM`）；③ `markFoeBlink` 目标改 `foeDesiredRange(它自己)` ＋ 步长交给 `blinkStep` ＋ 新增 `foeRangeDebuffR` 入参（两处调用点都传）；④ `markMeBlink` 同步改走 `blinkStep`（**与敌舰统一口径**） |
 | `packages/core/tests/combat.test.ts` | `applyDamage` 那条按新口径重写（未破盾 / 打穿盾 / 带抗性三格） |
 | `packages/core/tests/battle-speed.test.ts` | 倍速比值下限 3.5 → 3.15（战斗提前结束导致时钟冻结，理由写在用例内） |
 | `packages/core/tests/ink-tide-20260924.test.ts` | 编成强度 0.2 → 0.15（我方 DPS 降后原编成打不到第 1 波，理由写在用例内） |
-| `packages/core/tests/corona-blink-20261001.test.ts` | ⑦ 判据改钉"它自己的期望距离"；导入 `foeDesiredRange` / `createFoeSpecs` / `wormholeDerivedAnomaly` ＋ tag→建档案映射 |
+| `packages/core/tests/corona-blink-20261001.test.ts` | ⑦ 判据改钉"它自己的期望距离" ＋ tag→spec 映射改精确匹配；**新增 ⑧**（单次位移 ≤ 2,000 m）；⑤ 标题 12 秒改 5 秒 |
 | `packages/core/tests/corona-devices-20261001.test.ts` | ⑦ 编成 12 舰·0.2 → **24 舰·2.0**（纯净窗口）；自毁升为**强断言**（第 20 次精确归零、三层全清） |
-| `docs/design/weekend-faction-corona-20261001.md` | 新增 §22（伤害改判）· §23（闪现落点）· §24（本表） |
+| `docs/design/weekend-faction-corona-20261001.md` | 新增 §22（伤害改判）· §23（闪现落点 ＋ 步长上限）· §24（本表） |
 | `docs/INDEX.md` | `npm run docs:index` 生成 |
 
 ### 24.1 验证（全绿口径）
@@ -1004,7 +1050,7 @@ l10n:params · arch:guard 全绿。
 | 闸门 | 结果 |
 |---|---|
 | `npm run typecheck` | ✅ 四包（core / data / ui / desktop） |
-| `npm run test -w @whale/core` | ✅ **284 文件 / 2992 用例**（并入 main 后） |
+| `npm run test -w @whale/core` | ✅ **284 文件 / 2993 用例**（并入 main ＋ 步长上限 ＋ 新增 ⑧ 之后） |
 | `npm run content:check` | ✅ 通过（2 条蓝图价格旧账 ⚠ 提示，与本批无关） |
 | `npm run l10n:check` · `l10n:params` | ✅ 通过 |
 | `npm run arch:guard` | ✅ F1~F7 全 0 |

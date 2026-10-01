@@ -25,7 +25,7 @@ import {
   foeDesiredRange,
   wormholeDerivedAnomaly,
 } from '../src/combat'
-import { FOE_MOUNT_IDS, resolveFoeMounts } from '../src/foeMounts'
+import { FOE_MOUNT_IDS, FOE_MOUNTS, resolveFoeMounts } from '../src/foeMounts'
 
 const ctx = buildSimContext()
 const bal = ctx.balance.battle
@@ -105,7 +105,7 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
     }
   }
 
-  it('⑤ 跑满一场：真的闪过（foeBlinks 里出现冷却戳），且冷却戳 = 触发时刻 + 12 秒', () => {
+  it('⑤ 跑满一场：真的闪过（foeBlinks 里出现冷却戳），且冷却戳 = 触发时刻 + 5 秒', () => {
     const { b, tick } = coronaBattle()
     let sawBlink = false
     for (let t = 500; t <= 120_000 && b.ended === null; t += 500) {
@@ -113,7 +113,9 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
       const stamps = Object.values(b.foeBlinks ?? {})
       if (stamps.length > 0) {
         sawBlink = true
-        // 冷却戳必须是「某个 500ms 整数拍的 lastTickGameMs + 12,000」
+        // 冷却戳必须是「某个 500ms 整数拍的 lastTickGameMs + 5,000」
+        // ⚠ 2026-10-01 船长令把全族闪现间隔由 12 秒下调到 **5 秒**（件定义 `cooldownMs: 5000`）——
+        //   本行判据与注释原写 12 秒，随该令改正（判据本身当时就是 5,000，只是文字没跟上）。
         for (const v of stamps) expect((v - 5_000) % 500, '冷却戳 = 触发时刻 + 5 秒').toBe(0)
         break
       }
@@ -158,11 +160,14 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
     /**
      * 由运行态 tag 回查"建档案里的那一条"（`foeDesiredRange` 读的是建档案 spec 上的
      * `foeTactic` / `foeRangeBand` / `foeDesireRangeM`，运行态单位不带这三样）。
-     * 本卡建档案 tag = `foe-0` + `w0-foe-1..4` ⇒ **首波**（`w0-` 前缀）取索引 1~4 那四条。
+     * ⚠ 建档案 tag 与运行态 tag **同名**（`createFoeSpecs` 恒用 `foe-0` / `w0-foe-N` 这一套）
+     * ⇒ **按 tag 精确匹配**；匹配不到（运行态带了波次前缀而建档案没带）再按序号回退。
      */
     const specOf = (tag: string) => {
+      const exact = specs.find((sp) => sp.tag === tag)
+      if (exact) return exact
       const n = Number(tag.slice(tag.lastIndexOf('-') + 1))
-      const band = tag.startsWith('w0-') ? specs.slice(1, 5) : specs
+      const band = tag.startsWith('w0-') ? specs.slice(1) : specs
       return Number.isFinite(n) ? band[n] : undefined
     }
     const { b, tick } = coronaBattle()
@@ -196,5 +201,74 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
       if (checked >= 3) break
     }
     expect(checked, '至少应观察到一次闪现').toBeGreaterThan(0)
+  })
+
+  it('⑧ 单次位移不超过件上的上限（2,000 m · 船长第三次改判）', () => {
+    /**
+     * 🔴 **船长 2026-10-01 第三次裁定**（原话照抄）：「**闪现之前不是设定每次闪现最多2000米吗**」
+     * ——我第二次改判时把落点改成"闪到它自己的期望距离"，**却把件上的 `distanceM`（2,000m）丢在一边**
+     * ⇒ 期望距离一突变（换波 / 我方射程变化）就出现**一键归位式的大瞬移**。
+     * 实测报障场景 `corona-nexus` 第 4 波：期望距离 5,740 → 8,925 ⇒ 旧实现一跳 **3,185 m**。
+     *
+     * 本用例钉住修好后的形状（`combat.blinkStep`）：
+     * ① 单次位移 ≤ **件上写的那个数**（从件定义读，不写死字面量 ⇒ 以后改参数这里自动跟随）；
+     * ② 跳完必须**落在"跳前位置 → 它自己的期望距离"这段区间之内**（朝目标走、且不过冲）；
+     * ③ 差得远 ⇒ 只走一格（**不越到期望位置之外**）。
+     *
+     * ⚠ **方向与步长是两件事**：⑦ 管方向（朝它自己的期望走）、本条管步长（一跳最多 2 公里）——
+     * 两条都在，才不会"越闪越远被无伤"、也不会"一键归位"。
+     */
+    const blinkDef = FOE_MOUNTS[FOE_MOUNT_IDS.coronaBlink].blink!
+    const stepCap = blinkDef.distanceM
+    expect(stepCap, '件上应写着单次位移上限').toBeGreaterThan(0)
+
+    const derived = wormholeDerivedAnomaly(ctx, ctx.anomalies.get('corona-nexus')!, {
+      depth: 4,
+      kind: 'node',
+      waves: 1,
+    })!
+    const specs = createFoeSpecs(derived, bal, {})
+    /** 同上：**按 tag 精确匹配**（多波卡的建档案 tag 是连续的 `w0-foe-1..14`，不是"每波一小段"） */
+    const specOf = (tag: string) => specs.find((sp) => sp.tag === tag)
+    const state = createInitialState({ nowWallMs: 0, seed: 11 })
+    const ids: string[] = []
+    for (let i = 0; i < 24; i++) ids.push(addShipToFleet(state, 'sh-thresher'))
+    state.shipId = ids[0]!
+    for (const id of ids) state.fleet[id]!.fitted = { high: ['mod-turret-kin-2'], mid: [], low: [] }
+    for (const a of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) state.warehouse.items[a] = 9_000
+    const b = startFleetBattleFor(state, ctx, ids, 'corona-nexus', 0, null, { depth: 4, kind: 'node', waves: 1 }, { strengthMul: 2 })!
+    expect(b, '开战应成功').toBeTruthy()
+
+    /** 起始观察点：**采样循环之前**也记一次（否则第一拍（t=100）的闪现会被当成冷启动而漏掉） */
+    const prevSeen = new Map<string, number>()
+    for (const [tag, until] of Object.entries(b.foeBlinks ?? {})) prevSeen.set(tag, until)
+    let checked = 0
+    let maxJump = 0
+    for (let t = 100; t <= 400_000 && b.ended === null; t += 100) {
+      const before = b.distanceM
+      state.gameMs = t
+      advanceBattleFor(state, ctx, b, ids[0]!, 'corona-nexus')
+      for (const [tag, until] of Object.entries(b.foeBlinks ?? {})) {
+        if (prevSeen.get(tag) === until) continue
+        prevSeen.set(tag, until)
+        const own = specOf(tag)
+        expect(own, `${tag} 应在建档案里找得到（否则判据无意义）`).toBeTruthy()
+        const want = foeDesiredRange(own!, [own!], bal, b.meFoeRangeDebuff ?? 0)
+        const moved = Math.abs(b.distanceM - before)
+        maxJump = Math.max(maxJump, moved)
+        expect(moved, `${tag} t=${t} 单次位移 ${Math.round(moved)} m 不得超过件上的 ${stepCap} m`).toBeLessThanOrEqual(stepCap)
+        expect(
+          (b.distanceM - before) * (want - before),
+          `${tag} t=${t} 应朝它自己的期望（${want}）走，不得反向（${Math.round(before)} → ${Math.round(b.distanceM)}）`,
+        ).toBeGreaterThanOrEqual(0)
+        checked += 1
+        console.log(
+          `  [读数] 闪现（${tag} · t=${t}）：${Math.round(before)} → ${Math.round(b.distanceM)}` +
+            `（位移 ${Math.round(moved)} m · 上限 ${stepCap} · 它自己的期望 ${want}）`,
+        )
+      }
+    }
+    expect(checked, '至少应观察到一次闪现').toBeGreaterThan(0)
+    console.log(`  [读数] 本场闪现 ${checked} 次 · 最大单次位移 ${Math.round(maxJump)} m（上限 ${stepCap} m）`)
   })
 })

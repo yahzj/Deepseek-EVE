@@ -8164,19 +8164,36 @@ function markFoeGunRangeBuff(rt: UnitSpec, b: import('./state').BattleState): bo
 }
 
 /**
- * **闪现跃迁触发器**（**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」）——
- * 只由"我方武器**命中敌舰本体**"调用：**打机群不算、未命中不算**（与上面两条受击增程**同一个钩子**）。
+ * **闪现的"一跳"**（**船长 2026-10-01 三次裁定**，敌我**同一口径**）：
+ * 从当前位置朝目标距离走一跳，**单次位移不超过 `stepM`**：
+ * - 相距不到 `stepM` ⇒ 正好落在目标上（"一次闪到位"）；
+ * - 相距超过 `stepM` ⇒ 只走 `stepM`（**要归位就得闪多次**）。
  *
- * **方向 = 与我方的意图距离"反着来"**（**船长 2026-10-01 改判**，原话照抄）：
- * 「**不一定是拉开距离，如果距离过远也可能是拉进，根据我方的意图距离而定
- * （如果我方希望拉远，则闪现是拉进，如果我方希望拉进，闪现则是拉远）**」
- * ⇒ 判据 = `BattleState.myDesireM`（我方期望距离）与 `distanceM` 的大小关系：
- * - 我方想让距离**更近**（`distanceM > myDesireM`）⇒ 闪现**拉远** `+distanceM`；
- * - 我方想让距离**更远**（`distanceM < myDesireM`）⇒ 闪现**拉进** `−distanceM`；
- * - 两者相等（我方已到位）⇒ 取**拉远**（`sign` 取 +1，保证"总要有一下效果"）。
- * ⇒ 净效果 = **闪现永远破坏我方当前的走位意图**（这正是"风筝/扰乱"的味道）。
+ * 🔴 为什么必须有这个上限（船长原话）：「**闪现之前不是设定每次闪现最多2000米吗**」——
+ * 上一版我为了修「越闪越远被无伤」把落点改成了"闪到期望距离"，**却把件上那个 `distanceM`（2,000m）
+ * 当成无用字段丢在一边** ⇒ 实测出现过 **3,185m 的单次瞬移**（`corona-nexus` 第 4 波：换波时期望距离
+ * 突变 5,740 → 8,925）。船长报的正是这个。
  *
- * ⚠ 本仓战斗**不做二维坐标**（只有 `distanceM` 这一个标量）⇒「闪现」= 距离突变，不涉及位置/寻路。
+ * ⚠ **方向与步长是两件事，缺一不可**：方向（朝谁走）由调用方给的目标决定，步长（跳多远）由件决定
+ * ⇒ 两者都在，才既不会"越闪越远被无伤"、也不会"一键归位/瞬移一大截"。
+ * ⚠ 多闪几次才归位 = **闪烁过载的结构代价真的按次计**（每闪一次扣上限 5%）——这正是该件设计意图。
+ *
+ * @param curM 当前交战距离
+ * @param wantM 目标距离（敌 = 它自己的期望交战距离；我 = 朝远离侧拉开）
+ * @param stepM 单次位移上限（= 件上的 `blink.distanceM`）
+ * @param minM 交战距离下限、`maxM` 战场最大距离（两端都钳）
+ * @returns 跳完之后应该站在哪；**与 `curM` 相同 = 跳不动**（调用方据此不白盖冷却）
+ */
+function blinkStep(curM: number, wantM: number, stepM: number, minM: number, maxM: number): number {
+  const gap = wantM - curM
+  const moved = curM + Math.sign(gap) * Math.min(Math.abs(gap), stepM)
+  return Math.max(minM, Math.min(maxM, Math.round(moved)))
+}
+
+/**
+ * **敌方「瞬光跃迁仪」的闪现触发器**（**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」）——
+ * 由"**敌舰本体被我方命中**"驱动（打它的机群不算、未命中不算）；冷却期内静默。
+ *
  * 突变后双向钳制 `[bal.minDistanceM, 战场最大距离]` ⇒ 不会闪出战场。
  * 冷却态记在 `BattleState.foeBlinks[tag]`（`save.ts` 登记 `kind: 'runtime'`，**有意不入档** ——
  * 与 `foeCharges`（冲锋循环）同一口径：落在"重载即重置循环"内）。
@@ -8194,31 +8211,33 @@ function markFoeBlink(
 ): boolean {
   const bl = rt.foeBlink
   if (bl === undefined || bl.distanceM <= 0 || bl.cooldownMs <= 0) return false
-  // ⚠ `bl.distanceM` 自 2026-10-01 起**不再决定位移量**（改判为"闪到期望距离"）——
-  //   保留它在件定义里只为读档兼容与悬停展示（"一次 2,000m"那行），判据仍是"档位有效"。
+  // ⚠ `bl.distanceM` = **本跳的位移上限**（2,000m），交 `blinkStep` 执行；
+  //   它同时还是"件是否有效"的档位判据（≤0 视为没挂这件）。
   const nowMs = b.lastTickGameMs
   if (nowMs < (b.foeBlinks?.[tag] ?? 0)) return false // 冷却中 ⇒ 再挨打也不闪
   /**
-   * **方向 = 闪到「敌人自己的期望交战距离」**（**船长 2026-10-01 两次改判**）：
+   * **方向 = 朝「敌人自己的期望交战距离」走，步长 = 件上的 2,000m**（**船长 2026-10-01 三次改判**）：
    *
    * > 第一次：「**闪烁的方向问题反而导致敌人能被无伤，建议修改为，闪烁方向以期望距离为目标。**」
    * > 🔴 第二次（实测报障）：「**有些问题，当我攻击敌人后，敌人会瞬间闪现到我的期望距离**」
+   * > 🔴 第三次（复核口径）：「**闪现之前不是设定每次闪现最多2000米吗**」
    *
-   * 第一次我把它实现成了"闪到 `b.myDesireM`（**我方**的期望距离）"——那是**玩家的意图距离**，
-   * 于是出现船长实测的那个怪相：**我方一开火，敌人就瞬移到"我方想要的距离"上**（等于敌人替玩家走位）。
+   * 第一次我实现成了"闪到 `b.myDesireM`（**我方**的期望）"——那是**玩家的意图距离**，
+   * 于是出现船长实测的怪相：**我方一开火，敌人就瞬移到"我方想要的距离"上**（等于敌人替玩家走位）。
+   * 第二次我改成"闪到**它自己的**期望距离 `foeDesiredRange(...)`"（正解：那是它按自己的射程带
+   * 与战术算出来的位置，也**正好吃族格覆写**——R 族的 `foeDesireRangeM` 会被钉成"风筝位 / 钻盲区位"），
+   * **但把件上的 `distanceM`（2,000m）当成无用字段丢在一边** ⇒ 期望距离一突变（换波等）就出现
+   * **3,185m 的单次瞬移**（`corona-nexus` 实测）。第三次裁定把步长补回来。
    *
-   * 正解：闪到**它自己的**期望交战距离 `foeDesiredRange(...)` —— 那是它按自己的射程带
-   * 与战术（`foeTactic`）× `tacticDesireFactor` 算出来的位置，也**正好吃族格覆写**
-   * （R 族的 `rFamilyDesireOf` 会把 `foeDesireRangeM` 钉成"风筝位 / 钻盲区位"）。
-   * ⇒ 既解决了"越闪越远被无伤"，也不会再替玩家走位。
+   * ⇒ 现在 = `blinkStep(当前, 它自己的期望, 2,000, 下限, 战场上限)`：**朝对的方位走，但一次只走 2 公里**
+   * ——差得远就多闪几次（每次扣上限 5% 结构，代价照算）；已经在期望距离上 ⇒ **闪不动**（不白盖冷却）。
    *
-   * ⚠ 射程压制（我方电子舰）照常计入：与 `advanceBattleFor` 的走位口径同一把尺，
-   * 不传时按 0（旧读数不变）。已经在自己的期望距离上 ⇒ **闪不动**（不白盖冷却）。
+   * ⚠ 射程压制（我方电子舰）照常计入：与 `advanceBattleFor` 的走位口径同一把尺，不传时按 0。
    */
   const want = foeDesiredRange(rt, [rt], bal, foeRangeDebuffR)
-  const capped = Math.max(bal.minDistanceM, Math.min(maxDistanceM, want))
-  if (capped === b.distanceM) return false // 已被钳到边界 ⇒ 闪不动（不白盖冷却）
-  b.distanceM = capped
+  const landed = blinkStep(b.distanceM, want, bl.distanceM, bal.minDistanceM, maxDistanceM)
+  if (landed === b.distanceM) return false // 已在期望距离上／已被钳到边界 ⇒ 闪不动（不白盖冷却）
+  b.distanceM = landed
   if (!b.foeBlinks) b.foeBlinks = {}
   b.foeBlinks[tag] = nowMs + bl.cooldownMs
   return true
@@ -8295,8 +8314,11 @@ function meOverlayReloadOf(
  * 但是冷却时间延长到12秒。」）——只由"**敌方舰炮命中我方舰船本体**"调用
  * （打我方无人机不算、未命中不算；与敌方那件的受击钩子同口径）。
  *
- * **方向 = 纯粹的拉开**（与敌方那件**相反**：敌方是"破坏我方走位意图"、专挑我方的意图反着来；
- * 我方这件是玩家自己的保命件 ⇒ 一律朝**远离敌人**一侧拉开 `distanceM`）。
+ * **口径与敌方那件统一**（**船长 2026-10-01**：「**与敌舰统一口径**」）⇒ 两件都走同一条 `blinkStep`
+ * （**朝目标走一跳、单次不超过件上的 `distanceM`**）。两件**只差"目标"这一项**：
+ * - 敌方：目标是**它自己的期望交战距离**（它往它想站的位置闪）；
+ * - 我方：目标是**朝远离敌人一侧拉开**（本件是玩家自己的保命件 ⇒ "挨打换一口气"）。
+ *
  * 拉开后引擎的走位逻辑会按 `myDesireM` 逐拍把我方拉回去 ⇒ 净效果 = "挨打换一口气"。
  * 突变受既有钳制（`bal.minDistanceM` 与战场最大距离）；**闪不动时不白耗冷却**。
  *
@@ -8313,9 +8335,9 @@ function markMeBlink(
   if (bl === undefined || bl.distanceM <= 0 || bl.cooldownMs <= 0) return false
   const nowMs = b.lastTickGameMs
   if (nowMs < (b.meBlinks?.[tag] ?? 0)) return false // 冷却中 ⇒ 再挨打也不闪
-  const capped = Math.max(bal.minDistanceM, Math.min(maxDistanceM, b.distanceM + bl.distanceM))
-  if (capped === b.distanceM) return false // 已被钳到边界 ⇒ 闪不动（不白盖冷却）
-  b.distanceM = capped
+  const landed = blinkStep(b.distanceM, b.distanceM + bl.distanceM, bl.distanceM, bal.minDistanceM, maxDistanceM)
+  if (landed === b.distanceM) return false // 已被钳到边界 ⇒ 闪不动（不白盖冷却）
+  b.distanceM = landed
   if (!b.meBlinks) b.meBlinks = {}
   b.meBlinks[tag] = nowMs + bl.cooldownMs
   return true
