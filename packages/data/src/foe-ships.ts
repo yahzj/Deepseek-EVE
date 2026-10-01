@@ -322,21 +322,21 @@ export const G_FLAGSHIP_SHIP_IDS: readonly string[] = []
 export const H_FLAGSHIP_SHIP_IDS: readonly string[] = ['foe-h-ink-flagship']
 
 /**
- * **R 族（余晖）「T5 旗舰」白名单**（**2026-10-01 船长令**：「**是新势力：余晖**」）。
+ * **R 族（光环）「T5 旗舰」白名单**（**2026-10-01 船长令**：「**是新势力：余晖**」）。
  *
  * R 族是**新立的族字母**（参考远行星号 Remnants 的全无人 AI 舰队；**不是任何既有族的分支**），
  * 五档壳体一次铺齐；本白名单登记它的 T5 旗舰 —— 与 C/G/H 三族同一个模式（**T5 只有白名单那一条**）。
  *
  * ⚠ 与 `H_FLAGSHIP_SHIP_IDS` **不是同一张表**：H 那张同时兼作"旗舰速度破例白名单"，
  * R 族**不需要破例** —— 它的旗舰 209 m/s = **0.72× 基准船**，落在**本族自己的**速带
- * `AFT_SPEED_BAND`（0.70~1.50×）之内（见 `content-check.ts` 的族格契约）。
+ * `CORONA_SPEED_BAND`（0.70~1.50×）之内（见 `content-check.ts` 的族格契约）。
  */
-export const R_FLAGSHIP_SHIP_IDS: readonly string[] = ['foe-r-aft-nexus']
+export const R_FLAGSHIP_SHIP_IDS: readonly string[] = ['foe-r-corona-nexus']
 
 /**
- * **R 族（余晖）「族格速带」**（**2026-10-01 船长令**：族格「**新立**，不复制 A 族」）。
+ * **R 族（光环）「族格速带」**（**2026-10-01 船长令**：族格「**新立**，不复制 A 族」）。
  *
- * 口径与 H 族那条同构（`INK_SPEED_BAND`），但**带更宽、下限更低** —— 因为余晖的性格是
+ * 口径与 H 族那条同构（`INK_SPEED_BAND`），但**带更宽、下限更低** —— 因为光环的性格是
  * **"护卫快、主力慢"**（参考对象 Remnants 的主力 Radiant 是全游最慢的舰之一）：
  *
  * | 舰级 | 实速 | ÷ 基准船 292 | 在带内 |
@@ -345,12 +345,12 @@ export const R_FLAGSHIP_SHIP_IDS: readonly string[] = ['foe-r-aft-nexus']
  * | 回响级 T2 | 295 × 1.15 = **339** | 1.16× | ✓ |
  * | 棱镜级 T3 | 258 × 1.10 = **284** | 0.97× | ✓ |
  * | 垂暮级 T4 | 205 × 1.10 = **226** | 0.77× | ✓ |
- * | 余晖中枢 T5 | 155 × 1.35 = **209** | 0.72× | ✓（贴近下限） |
+ * | 光环中枢 T5 | 155 × 1.35 = **209** | 0.72× | ✓（贴近下限） |
  *
  * ⇒ **五档全在带内 ⇒ 本族不需要"速度破例白名单"**（对照 H 族要两条豁免）。
  * ⚠ 这条带**只对 R 族生效**，不碰 H 族那条（两族各一份，防一族调带误伤另一族）。
  */
-export const AFT_SPEED_BAND: readonly [number, number] = [0.7, 1.5]
+export const CORONA_SPEED_BAND: readonly [number, number] = [0.7, 1.5]
 
 /**
  * **H 族「速度族格破例」白名单**（船长 2026-09-24 第二轮令：「**突击舰速度过慢，按照1.6修正，
@@ -1399,7 +1399,7 @@ export const FOE_H_INK_FLAGSHIP: FoeShipDef = {
   elite: true, // 显示名挂「精锐」前缀
 }
 
-/* ═══════════ R 族 · 余晖（Afterglow）（2026-10-01 船长令 · 周末入侵第二族）═══════════
+/* ═══════════ R 族 · 光环（Corona Systems）（2026-10-01 船长令 · 周末入侵第二族）═══════════
  * 船长原话（照抄）：「**是新势力：余晖，你可以查阅下远行星号中的无人机敌对势力余晖，我们参考那个做。**」
  * 参考对象 = 远行星号（Starsector）的 **Remnants**：TriTachyon 那支**自主 AI 舰队**的残余，
  * 全无人、由 AI 核心驾驶、护盾特化、能量武器为主。
@@ -1417,13 +1417,13 @@ export const FOE_H_INK_FLAGSHIP: FoeShipDef = {
  */
 
 /**
- * R 族 · T1「**粼光级**」—— 余晖最小的一档，快而碎。
+ * R 族 · T1「**粼光级**」—— 光环最小的一档，快而碎。
  *
  * 血 260 × 0.85 = **221**（低于同档标准护卫，走"脆但多"）· 单发 39.5 × 1.00 = **40** ·
  * 实速 340 × 1.25 = **425 m/s** · 射程 1~4,000（能量线中距）· 自带 **1 架折光机**。
  */
-export const FOE_R_AFT_GLINT: FoeShipDef = {
-  id: 'foe-r-aft-glint',
+export const FOE_R_CORONA_GLINT: FoeShipDef = {
+  id: 'foe-r-corona-glint',
   name: '粼光级',
   family: 'R',
   evasion: 0.30, // 族内最高（无人舰灵巧；H 族同档 0.59 是"贴脸突击"路线，本族靠护盾）
@@ -1450,8 +1450,8 @@ export const FOE_R_AFT_GLINT: FoeShipDef = {
  * 血 480 × 0.85 = **408** · 单发 68 × 1.05 = **71** · 实速 295 × 1.15 = **339 m/s** ·
  * 射程 1~4,500 · 自带 **2 架折光机**。
  */
-export const FOE_R_AFT_ECHO: FoeShipDef = {
-  id: 'foe-r-aft-echo',
+export const FOE_R_CORONA_ECHO: FoeShipDef = {
+  id: 'foe-r-corona-echo',
   name: '回响级',
   family: 'R',
   evasion: 0.22,
@@ -1478,8 +1478,8 @@ export const FOE_R_AFT_ECHO: FoeShipDef = {
  * 血 900 × 0.90 = **810** · 单发 124 × 1.00 = **124** · 实速 258 × 1.10 = **284 m/s** ·
  * 射程 1~5,000 · 自带 **2 架折光机**。
  */
-export const FOE_R_AFT_PRISM: FoeShipDef = {
-  id: 'foe-r-aft-prism',
+export const FOE_R_CORONA_PRISM: FoeShipDef = {
+  id: 'foe-r-corona-prism',
   name: '棱镜级',
   family: 'R',
   evasion: 0.18,
@@ -1506,8 +1506,8 @@ export const FOE_R_AFT_PRISM: FoeShipDef = {
  * 血 1,600 × 0.95 = **1,520** · 单发 240 × 1.00 = **240** · 实速 205 × 1.10 = **226 m/s** ·
  * 射程 1~6,000 · 自带 **3 架折光机** ⇒ 打法 = **船体压住、机群咬**（`kite`）。
  */
-export const FOE_R_AFT_DUSK: FoeShipDef = {
-  id: 'foe-r-aft-dusk',
+export const FOE_R_CORONA_DUSK: FoeShipDef = {
+  id: 'foe-r-corona-dusk',
   name: '垂暮级',
   family: 'R',
   evasion: 0.12,
@@ -1529,7 +1529,7 @@ export const FOE_R_AFT_DUSK: FoeShipDef = {
 }
 
 /**
- * R 族 · **T5「余晖中枢」**—— 周末入侵的族旗舰（**本族唯一 T5，须登记在 R 族旗舰白名单**）。
+ * R 族 · **T5「光环中枢」**—— 周末入侵的族旗舰（**本族唯一 T5，须登记在 R 族旗舰白名单**）。
  *
  * 数值 = T5 档基线 2,800 / 420 × 旗舰角色 1.40 / 1.30，但**单发让给机群**（4 架折光机）⇒ 取 0.95；
  * 实速 155 × 1.35 = **209 m/s**；射程 1~7,000；自带 **4 架折光机**（全游带机最多的敌舰）。
@@ -1537,11 +1537,11 @@ export const FOE_R_AFT_DUSK: FoeShipDef = {
  * ⚠ **血 39,200 = 3,920 × 10**（与 H 族旗舰同口径）：它是 **BOSS 本体**——战斗里的血条由
  * **池子剩余**接管（`FoeOverride.bossHp`，池子 = 固定 150,000 起算，见 `WEEKEND_BOSS_POOL_HP`），
  * 这里的 39,200 是**卡面基准**（池子立起前的读数）。
- * ⚠ 余晖登记在 `WEEKEND_BOSS_FAMILIES` 里（本批），旗舰战走共享血池那套。
+ * ⚠ 光环登记在 `WEEKEND_BOSS_FAMILIES` 里（本批），旗舰战走共享血池那套。
  */
-export const FOE_R_AFT_NEXUS: FoeShipDef = {
-  id: 'foe-r-aft-nexus',
-  name: '余晖中枢',
+export const FOE_R_CORONA_NEXUS: FoeShipDef = {
+  id: 'foe-r-corona-nexus',
+  name: '光环中枢',
   family: 'R',
   evasion: 0.10,
   hullClassTier: 5, // 旗舰（本族唯一 T5）
@@ -1593,10 +1593,10 @@ export const FOE_R_AFT_NEXUS: FoeShipDef = {
   FOE_H_INK_TORPEDO,
   FOE_H_INK_BATTLECRUISER,
   FOE_H_INK_FLAGSHIP, // 本族唯一 T5（周末入侵旗舰战用）
-  // ═══ R 族 · 余晖（Afterglow）（2026-10-01 船长令 · 周末入侵第二族）：五档壳体，T5 = 族旗舰 ═══
-  FOE_R_AFT_GLINT,
-  FOE_R_AFT_ECHO,
-  FOE_R_AFT_PRISM,
-  FOE_R_AFT_DUSK,
-  FOE_R_AFT_NEXUS, // 本族唯一 T5（周末入侵旗舰战用）
+  // ═══ R 族 · 光环（Corona Systems）（2026-10-01 船长令 · 周末入侵第二族）：五档壳体，T5 = 族旗舰 ═══
+  FOE_R_CORONA_GLINT,
+  FOE_R_CORONA_ECHO,
+  FOE_R_CORONA_PRISM,
+  FOE_R_CORONA_DUSK,
+  FOE_R_CORONA_NEXUS, // 本族唯一 T5（周末入侵旗舰战用）
 ]

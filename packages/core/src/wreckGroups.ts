@@ -48,7 +48,7 @@ export const WRECK_FAMILY_NAMES: Readonly<Record<string, string>> = {
   E: '泰坦巨构',
   G: '鱿烬亡军',
   H: '墨潮帮',
-  R: '余晖',
+  R: '光环',
 }
 
 /** 组定义（一条 = 一种普通残骸 + 对应的稀有残骸） */
@@ -335,7 +335,7 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     theme: { modules: ['mod-shield-pla-2'] },
     members: ['ink-harass', 'ink-raid', 'ink-main', 'ink-flagship'],
   },
-  /* ── R 族（余晖 · Afterglow · 2026-10-01 船长令「是新势力：余晖」）：**第二个入侵族的独立残骸组** ──
+  /* ── R 族（光环 · Corona Systems · 2026-10-01 船长令「是新势力：余晖」）：**第二个入侵族的独立残骸组** ──
    * 与 H 族组（`h-hi`）同构，一次到位（不像 H 那样经过 `h-wh → h-hi` 两轮迁移）：
    * - **地区 `inv`**（入侵类）· **档位 `dire`**（危档）· 组名契约 `<族称>残骸（<地区标签>）`；
    * - **卡级池对标 D 族高安组**（钛钢 40 · 星髓晶 34 · 重钨合金 26 · 均价 109.90）——
@@ -348,14 +348,14 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     key: 'r-inv',
     family: 'R',
     region: 'inv',
-    name: '余晖残骸（入侵）',
-    rareName: '余晖稀有残骸（入侵）',
+    name: '光环残骸（入侵）',
+    rareName: '光环稀有残骸（入侵）',
     tier: 'dire',
     pool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
-    note: '余晖残骸（入侵）：星髓晶与重钨合金为主，夹结构料',
+    note: '光环残骸（入侵）：星髓晶与重钨合金为主，夹结构料',
     threat: 124,
     theme: { modules: ['mod-shield-pla-2'] },
-    members: ['glow-drift', 'glow-split', 'glow-converge', 'glow-nexus'],
+    members: ['corona-drift', 'corona-split', 'corona-converge', 'corona-nexus'],
   },
 ]
 

@@ -64,7 +64,7 @@ import {
   G_FLAGSHIP_SHIP_IDS,
   H_FLAGSHIP_SHIP_IDS,
   INK_SPEED_EXEMPT_SHIP_IDS,
-  AFT_SPEED_BAND,
+  CORONA_SPEED_BAND,
   ALIEN_CHARGE_MUL_BY_TIER,
   ALIEN_SLOW_SHIP_IDS,
   COMMS_MESSAGES,
@@ -3115,7 +3115,7 @@ for (const m of MODULES) {
     check(g.tier === majority, `残骸组契约：${g.key} 档位记 ${g.tier}，成员产残骸卡多数档是 ${majority}`)
     groupsChecked += 1
   }
-  check(WRECK_GROUPS.length === 15, `残骸组契约：组数应为 15（2026-09-24 起含 H 族墨潮帮那组 · 2026-10-01 起含 R 族余晖那组），实际 ${WRECK_GROUPS.length}`)
+  check(WRECK_GROUPS.length === 15, `残骸组契约：组数应为 15（2026-09-24 起含 H 族墨潮帮那组 · 2026-10-01 起含 R 族光环那组），实际 ${WRECK_GROUPS.length}`)
   // ⑥ 出量梯度：常 ≡ 1.00、常 ≤ 险 ≤ 危
   check(WRECK_YIELD_TIER_MUL.common === 1, `残骸组契约：常档出量乘数应为 1.00，实际 ${WRECK_YIELD_TIER_MUL.common}`)
   check(
@@ -3533,9 +3533,9 @@ for (const m of MODULES) {
     // H 族（墨潮帮 · 2026-09-24）：族级中速带的读数计数（与 A/B/C/D/E 同款）
     let inkReadings = 0
     const inkSample: string[] = []
-    // R 族（余晖 · 2026-10-01）：族级速带的读数计数（与 A/B/C/D/E/H 同款）
-    let aftReadings = 0
-    const aftSample: string[] = []
+    // R 族（光环 · 2026-10-01）：族级速带的读数计数（与 A/B/C/D/E/H 同款）
+    let coronaReadings = 0
+    const coronaSample: string[] = []
     for (const def of ANOMALIES_FLAVORED) {
       // 舰级路径（2026-09-11）：速度由**舰级登记值**决定，故不再要求逐卡 foeSpeedMps；
       // 改按"该卡实际会建出的单位速度"（非僚机编成条目）校验比率。
@@ -3607,26 +3607,26 @@ for (const m of MODULES) {
             continue
           }
           if (def.foeFamily === 'R') {
-            // **R 族（余晖 · Afterglow）口径**（**2026-10-01 船长令**：「**是新势力：余晖，你可以查阅下
+            // **R 族（光环 · Corona Systems）口径**（**2026-10-01 船长令**：「**是新势力：余晖，你可以查阅下
             // 远行星号中的无人机敌对势力余晖，我们参考那个做**」＋ 族格裁定「**甲：新立族格**」）
             // ⇒ 本分支是**另立的一份判据**（不是 A/H 那两条的副本，也不是任何既有族的分支）：
-            // ①**每档实速必须高于本档舰种基准**（`spd > base`）—— 与 A/H 同款（余晖也是主动压上来打的族）；
-            // ②比率落**本族速带** `AFT_SPEED_BAND`（**0.70~1.50×**，单点定义在 data 的 `foe-ships.ts`）——
-            //   带比 A/H 那条**更宽、下限更低**，因为余晖的性格是**"护卫快、主力慢"**
+            // ①**每档实速必须高于本档舰种基准**（`spd > base`）—— 与 A/H 同款（光环也是主动压上来打的族）；
+            // ②比率落**本族速带** `CORONA_SPEED_BAND`（**0.70~1.50×**，单点定义在 data 的 `foe-ships.ts`）——
+            //   带比 A/H 那条**更宽、下限更低**，因为光环的性格是**"护卫快、主力慢"**
             //   （参考对象 Remnants 的主力 Radiant 是全游最慢的舰之一）。
             // ⚠ **本族不需要任何破例白名单**（对照 H 族要两条豁免）：五档实速全在带内，
-            //   读数见 `AFT_SPEED_BAND` 头注那张表。
-            aftReadings++
-            aftSample.push(`${def.id}/${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
+            //   读数见 `CORONA_SPEED_BAND` 头注那张表。
+            coronaReadings++
+            coronaSample.push(`${def.id}/${slot.ship.name} ${spd}(${ratio.toFixed(2)})`)
             check(
               spd > base,
               `敌速口径契约：R 族 ${def.name} 的舰级「${slot.ship.name}」实速 ${spd} m/s **未高于本档舰种基准 ${base} m/s**——` +
                 `R 族族格另立（船长 2026-10-01 裁定「新立族格」）⇒ 每档都必须高于基准`,
             )
             check(
-              ratio >= AFT_SPEED_BAND[0] && ratio <= AFT_SPEED_BAND[1],
+              ratio >= CORONA_SPEED_BAND[0] && ratio <= CORONA_SPEED_BAND[1],
               `敌速口径契约：R 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出**本族速带** ` +
-                `${AFT_SPEED_BAND[0]}~${AFT_SPEED_BAND[1]}×（R 族族格另立；基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
+                `${CORONA_SPEED_BAND[0]}~${CORONA_SPEED_BAND[1]}×（R 族族格另立；基准船 ${refShip.name} 战斗机动 ${refCombat.toFixed(1)} m/s）`,
             )
             continue
           }
@@ -3807,7 +3807,7 @@ for (const m of MODULES) {
         `E 族 ${titanReadings} 条按**族格"巨构不讲机动"口径**（族速度倍率 0 = 静物残骸、靠机群作战，比率落 ${TITAN_SPEED_BAND[0]}~${TITAN_SPEED_BAND[1]}×）、` +
         `G 族 ${swarmReadings} 条按**族级速带口径**（船长「速度口径按照 1.05 算」＝残军按舰种走，比率落 ${G_SPEED_BAND[0]}~${G_SPEED_BAND[1]}×）、` +
         `H 族 ${inkReadings} 条按**族格中速带口径**（船长 2026-09-24「新族复制一份A族族格」＝独立副本，比率落 ${INK_SPEED_BAND[0]}~${INK_SPEED_BAND[1]}×）、` +
-        `R 族 ${aftReadings} 条按**另立族格速带口径**（船长 2026-10-01「新立族格」；"护卫快、主力慢"，比率落 ${AFT_SPEED_BAND[0]}~${AFT_SPEED_BAND[1]}×）`,
+        `R 族 ${coronaReadings} 条按**另立族格速带口径**（船长 2026-10-01「新立族格」；"护卫快、主力慢"，比率落 ${CORONA_SPEED_BAND[0]}~${CORONA_SPEED_BAND[1]}×）`,
     )
     if (pirateSample.length > 0)
       console.log(`  ↳ A 族实测读数（实速/比率）：${pirateSample.join("　")}`)
@@ -3822,8 +3822,8 @@ for (const m of MODULES) {
       console.log(`  ↳ E 族实测读数（实速/比率）：${titanSample.join("　")}`)
     if (inkSample.length > 0)
       console.log(`  ↳ H 族实测读数（实速/比率）：${inkSample.join("　")}`)
-    if (aftSample.length > 0)
-      console.log(`  ↳ R 族实测读数（实速/比率）：${aftSample.join("　")}`)
+    if (coronaSample.length > 0)
+      console.log(`  ↳ R 族实测读数（实速/比率）：${coronaSample.join("　")}`)
   }
 
   /* ── 机群与防空契约（2026-09-11 机群批 S4 加 · 船长「我记得巨构需要制作敌方无人机系统」+

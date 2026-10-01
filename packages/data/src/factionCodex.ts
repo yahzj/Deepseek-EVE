@@ -126,16 +126,16 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
     ships: [],
     blueprints: [],
   },
-  /* ── R 余晖（Afterglow）──
+  /* ── R 光环（Corona Systems）──
      依据：**2026-10-01 船长令建族**（「是新势力：余晖，你可以查阅下远行星号中的无人机敌对势力余晖，
      我们参考那个做」；族格裁定「甲：新立族格」· 舰名配色「甲：照提案」）。
      ⚠ **P0 阶段没有专属内容**：势力装备与专属无人机属 P1（`FOE_LAIR_GEAR.R` 先留空）
      ⇒ 三栏都为空，界面按 H 族同款在该栏明写「暂无专属…」。
      ⚠ **R 族没有专属舰船**（玩家侧无 `sh-wh-r-*`）—— 与 H 族一样，它是**入侵族**，
-     出场的是敌舰级（`foe-r-aft-*`），不是可拥有的船。 */
+     出场的是敌舰级（`foe-r-corona-*`），不是可拥有的船。 */
   R: {
     family: 'R',
-    nameId: 'ui.Handbook.381', // 余晖
+    nameId: 'ui.Handbook.381', // 光环
     glyph: 'fam-r',
     modules: [],
     ships: [],

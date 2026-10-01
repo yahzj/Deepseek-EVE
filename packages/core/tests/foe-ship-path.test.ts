@@ -450,11 +450,11 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       { id: 'foe-h-ink-battlecruiser', tier: 4, speed: 267 }, // 205 × 1.3（0.91× 低于族格带下限 ⇒ 白名单破例）
       { id: 'foe-h-ink-flagship', tier: 5, speed: 310 }, // 155 × 2.0
       // R 族（余晖 · 2026-10-01 船长令「是新势力：余晖」）：五档全在**本族速带 0.70~1.50×** 内（无需白名单）
-      { id: 'foe-r-aft-glint', tier: 1, speed: 425 }, // 340 × 1.25 ⇒ 1.46× 基准船（贴近上限）
-      { id: 'foe-r-aft-echo', tier: 2, speed: 339 }, // 295 × 1.15 ⇒ 1.16×
-      { id: 'foe-r-aft-prism', tier: 3, speed: 284 }, // 258 × 1.10 ⇒ 0.97×
-      { id: 'foe-r-aft-dusk', tier: 4, speed: 226 }, // 205 × 1.10 ⇒ 0.77×
-      { id: 'foe-r-aft-nexus', tier: 5, speed: 209 }, // 155 × 1.35 ⇒ 0.72×（贴近下限）
+      { id: 'foe-r-corona-glint', tier: 1, speed: 425 }, // 340 × 1.25 ⇒ 1.46× 基准船（贴近上限）
+      { id: 'foe-r-corona-echo', tier: 2, speed: 339 }, // 295 × 1.15 ⇒ 1.16×
+      { id: 'foe-r-corona-prism', tier: 3, speed: 284 }, // 258 × 1.10 ⇒ 0.97×
+      { id: 'foe-r-corona-dusk', tier: 4, speed: 226 }, // 205 × 1.10 ⇒ 0.77×
+      { id: 'foe-r-corona-nexus', tier: 5, speed: 209 }, // 155 × 1.35 ⇒ 0.72×（贴近下限）
     ])
     /**
      * **H 族五档必须齐备（T1~T5 一档不落）**——2026-09-24 船长追问「墨潮鱼雷舰原先不是T2吗？」抓到的洞：

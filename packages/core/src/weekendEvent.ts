@@ -226,8 +226,8 @@ export const WEEKEND_FLAGSHIP_DEADLINE_MS = 24 * 3_600_000
  * ⚠ **上线开关**：本机制**按族启用**——只有登记在 `WEEKEND_BOSS_FAMILIES` 里的族才走池子口径，
  * 其余族逐字走老口径（"核心满 + 打赢 ⇒ 直接击毁"＋ 到点直接被章鱼击败）。
  * 2026-09-24 第二轮：**H 族先上**（船长令就是针对墨潮入侵母舰下的）。
- * 2026-10-01：**加 R 族（余晖）**——船长令「新势力：余晖」，与新族同批进本表
- * （不进则余晖没有旗舰战，与 H 族体感不对等）。
+ * 2026-10-01：**加 R 族（光环）**——船长令「新势力：光环」，与新族同批进本表
+ * （不进则光环没有旗舰战，与 H 族体感不对等）。
  */
 export const WEEKEND_BOSS_FAMILIES: readonly string[] = ['H', 'R']
 /**
@@ -618,8 +618,8 @@ export const WEEKEND_WINDOW_END_HOLD_MS = 60_000
  * 它有**自家的独立入侵卡**（`ink-assault` / `ink-flagship`，见 `weekendFoeCardOf`），
  * 故**在此进池**；A/C/G 三族仍按 M1 口径用虫洞卡，等各自的旗舰卡设计好再逐族迁移。
  *
- * ⚠ **2026-10-01 第二族 = R 余晖**（船长令「**是新势力：余晖，你可以查阅下远行星号中的无人机敌对势力
- * 余晖，我们参考那个做**」）——同 H 族口径：**自家四张独立入侵卡**、自带定价、进 BOSS 表。
+ * ⚠ **2026-10-01 第二族 = R 光环**（船长令「**是新势力：余晖，你可以查阅下远行星号中的无人机敌对势力
+ * 光环，我们参考那个做**」）——同 H 族口径：**自家四张独立入侵卡**、自带定价、进 BOSS 表。
  * ⚠ 本期（到 2026-10-09 那期为止）**实际跑哪一族由 `WEEKEND_LOCKED_FAMILY` 决定**，
  * 本行只声明"允许进池的族"。
  */
@@ -645,11 +645,11 @@ const H_FOE_POOL_PERIPHERY: readonly string[] = ['ink-harass', 'ink-raid']
 const H_FOE_POOL_CORE: readonly string[] = ['ink-raid', 'ink-main']
 
 /**
- * **R 族（余晖）入侵敌卡池**（2026-10-01 船长令建族；**沿用 H 族那条口径**：外围 = {游弋, 分光} ·
+ * **R 族（光环）入侵敌卡池**（2026-10-01 船长令建族；**沿用 H 族那条口径**：外围 = {游弋, 分光} ·
  * 核心 = {分光, 汇聚}）——id 的唯一登记处同样是 `data/wormholeFoes.ts` 的 `WEEKEND_FOE_CARD_IDS`。
  */
-const R_FOE_POOL_PERIPHERY: readonly string[] = ['glow-drift', 'glow-split']
-const R_FOE_POOL_CORE: readonly string[] = ['glow-split', 'glow-converge']
+const R_FOE_POOL_PERIPHERY: readonly string[] = ['corona-drift', 'corona-split']
+const R_FOE_POOL_CORE: readonly string[] = ['corona-split', 'corona-converge']
 
 /**
  * **某族某区域的入侵敌卡池**：
@@ -743,7 +743,7 @@ export function weekendAmbushPickOf(
  */
 export function weekendFoeCardOf(family: string, kind: 'assault' | 'flagship'): string {
   if (family === 'H') return kind === 'flagship' ? 'ink-flagship' : H_FOE_POOL_PERIPHERY[0]!
-  if (family === 'R') return kind === 'flagship' ? 'glow-nexus' : R_FOE_POOL_PERIPHERY[0]!
+  if (family === 'R') return kind === 'flagship' ? 'corona-nexus' : R_FOE_POOL_PERIPHERY[0]!
   const fam = (WEEKEND_FAMILIES.includes(family) ? family : WEEKEND_FAMILIES[0]!) as WormholeFamily
   const pool = wormholeCardPoolAt(fam, kind === 'flagship' ? 9 : 5)
   return pool[0]!.id

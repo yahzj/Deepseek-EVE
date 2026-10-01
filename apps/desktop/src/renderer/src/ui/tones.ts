@@ -161,7 +161,7 @@ export const ICO_TONES: Record<string, string> = {
   'fam-e': toneVar('fam-e'),
   'fam-g': toneVar('fam-g'),
   'fam-h': toneVar('fam-h'),
-  // R 族（余晖 · 2026-10-01 建族）：族徽色 = 冷白银青（与 fam-g 的亮青拉开；呼应设定里的冷白舰体）
+  // R 族（光环 · 2026-10-01 建族）：族徽色 = 冷白银青（与 fam-g 的亮青拉开；呼应设定里的冷白舰体）
   'fam-r': toneVar('fam-r'),
   'ico-home': toneVar('ico-home'),
   'ico-lock': toneVar('ico-lock'),
@@ -196,7 +196,7 @@ export function toneOfAny(key: string | undefined): string {
 }
 
 /** FOE_ACCENT（9 条；H = 墨潮帮 · 2026-09-24 新增，**仍是红色系**（船长令）但比 A 族深/暗一档 ·
- *  R = 余晖 · 2026-10-01 新增，**青白冷冽**（船长选「甲：照提案」），与 H 族正对照） */
+ *  R = 光环 · 2026-10-01 新增，**青白冷冽**（船长选「甲：照提案」），与 H 族正对照） */
 export const FOE_ACCENT: Record<string, string> = {
   A: toneVar('A'),
   B: toneVar('B'),
@@ -207,7 +207,7 @@ export const FOE_ACCENT: Record<string, string> = {
   G: toneVar('G'),
   // H 族（墨潮帮）：与 A 同为红（船长「依旧红色色系最好」），靠**更深更沉**区分
   H: toneVar('H'),
-  // R 族（余晖）：青白冷冽（能量护盾的意象）—— 与 H 族的深红形成正对照
+  // R 族（光环）：青白冷冽（能量护盾的意象）—— 与 H 族的深红形成正对照
   R: toneVar('R'),
 }
 
