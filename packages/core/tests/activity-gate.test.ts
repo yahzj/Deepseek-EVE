@@ -135,7 +135,7 @@ describe('不可被打断的状态（船长：「处在战斗中的时候也设�
  * 真命令层面的关键交叉另有专测（`wormhole-activity-lock` / `wormhole-scan` / `manufacturing` /
  * `industry` / `expedition` / `wormhole-run` / `t9`（建站交付））。
  * ══════════════════════════════════════════════════════════════════════════════════════════════ */
-describe('10×10 矩阵：三档分类逐格钉死（船长 2026-09-21 ＋ 2026-09-22 建站交付）', () => {
+describe('矩阵：三档分类逐格钉死（船长 2026-09-21 ＋ 2026-09-22 建站交付 ＋ 2026-10-01 实验室）', () => {
   /** 十项现场（真命令之外的纯状态构造；每一项对应 `mainActivityOf` 的一个分支） */
   const SETUP: Record<MainActivityKind, (s: GameState) => void> = {
     mining: (s) => void (s.mining.active = true),
@@ -155,6 +155,8 @@ describe('10×10 矩阵：三档分类逐格钉死（船长 2026-09-21 ＋ 2026-
     },
     refine: (s) => void s.refineRuns.push({ id: 1, active: true, worker: 'pilot' } as never),
     manufacturing: (s) => void s.manufacturingRuns.push({ id: 1, active: true, worker: 'pilot' } as never),
+    /** 实验室（**2026-10-01 船长令补登记**）：判据 = `labRuns` 里有 `active && worker === 'pilot'` */
+    lab: (s) => void (s.labRuns ??= []).push({ id: 1, active: true, worker: 'pilot' } as never),
     /** 建站交付：占的是 `transit` 槽，靠 `delivery` 批次与"换港返航"区分（2026-09-22 船长令） */
     siteDeliver: (s) => {
       s.transit.active = true
@@ -176,6 +178,7 @@ describe('10×10 矩阵：三档分类逐格钉死（船长 2026-09-21 ＋ 2026-
     expedition: (s) => !s.expedition.active,
     refine: (s) => !s.refineRuns.some((r) => r.active && r.worker === 'pilot'),
     manufacturing: (s) => !s.manufacturingRuns.some((r) => r.active && r.worker === 'pilot'),
+    lab: (s) => !(s.labRuns ?? []).some((r) => r.active && r.worker === 'pilot'),
     siteDeliver: (s) => !s.transit.active && s.transit.delivery === null,
   }
 
@@ -250,7 +253,7 @@ describe('10×10 矩阵：三档分类逐格钉死（船长 2026-09-21 ＋ 2026-
     for (const kind of ALL_KINDS) {
       expect(HALT_COST_ID[kind], `${kind} 缺代价 id`).toMatch(/^core\.activity\.\d{3}$/)
     }
-    expect(new Set(Object.values(HALT_COST_ID)).size, '十条代价不许共用 id').toBe(ALL_KINDS.length)
+    expect(new Set(Object.values(HALT_COST_ID)).size, '各档代价不许共用 id').toBe(ALL_KINDS.length)
   })
 
   it('**活动名两表对齐**：`KIND_LABEL` 与 `ACTIVITY_LABEL_ID` 逐档同键', () => {
@@ -269,7 +272,7 @@ describe('10×10 矩阵：三档分类逐格钉死（船长 2026-09-21 ＋ 2026-
     }
   })
 
-  it('**三种锁定态**：战斗中 / 洞里 / 返航途中 ⇒ 十项一律拒（`core.activityGate.004~006`）', () => {
+  it('**三种锁定态**：战斗中 / 洞里 / 返航途中 ⇒ 各项一律拒（`core.activityGate.004~006`）', () => {
     const locks: Array<[string, string, (s: GameState) => void]> = [
       ['战斗中', 'core.activityGate.004', (s) => void (s.expedition.battle = {} as never)],
       ['洞里', 'core.activityGate.005', (s) => void (s.wormhole.run = { attending: true } as never)],

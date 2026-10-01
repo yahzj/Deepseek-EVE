@@ -191,3 +191,28 @@
 **闸门**：typecheck ✅ · 用例 **19 条**全绿 ✅（新增 5 条：留痕＋质问段／非高安无质问／默认路无质问／
 实况段承接口气／存档往返）· content:check ✅ · l10n:check ✅ · l10n:params ✅ · 全量 core 用例 ✅ ·
 save:roundtrip-audit ✅。**UI 未改**（数据驱动的段落数），故本批未跑 `ui:rot-check`。
+
+### 6.4 玩家点火的入侵：结算声望固定 5 点（2026-10-01 · 船长令）
+
+> **船长原话（照抄）**：「**玩家用信号发射器召唤的入侵，每次完成只给5声望。**」＋同日「**不发公告。**」
+
+- **判据单点** = `weekendEvent.weekendStandingGainOf(ev, share)`：`ev.beaconLit === true` ⇒ 固定
+  `WEEKEND_STANDING_BEACON = 5`；每周自己爆发的那场仍按贡献 `round(占比 × 15)`（0~15 点）。
+- **留痕**：`WeekendEventState.beaconLit?: boolean`，`useInvasionBeacon` 点火时写入（**两条路都记**：
+  仓库直用 / 星图指定）；`save.ts` 白名单跟一行（缺键 = 老档 / 每周场 ⇒ 零迁移）。
+- **发与写快照同源**：`weekendBattle` 的两处（写 `WeekendResultSnapshot.standing` / `noteStandingEarned`
+  实发）都改调该单点 ⇒ 结算面板与结算信上的数 = 真正到账的数（信里自动显示 **+5**）。
+- **闸门**：typecheck ✅ · 全量 core **2946 条全绿** ✅（新增用例：点火留痕 ＋ 固定 5 点 ＋ 每周场 15/8 点
+  ＋ 读档后仍在）· l10n:check ✅。
+- ⚠ **账已记、公告不发**（船长令）——本条的记账落在这里与代码注释，不进 `announcements.ts`。
+
+### 6.5 实验室纳入主控登记表（2026-10-01 · 船长令）
+
+> **船长原话（照抄）**：「**实验室的主控活动并不占用主控，是BUG。建议将这方面做一个规则，主控在做什么的
+> 时候天然排查其他主控可以做的活。**」→ 裁定「**按你推荐来**」（＝登记表派生 ＋ 两两互斥矩阵 ＋ 契约护栏，
+> 实验室走"先警告再切"档，AI 核心驱动的实验室线不占主控）。
+
+普查结论：**全仓只有实验室这一处漏登记**（其余 10 项与两个"有意不过门禁"的都自洽）。stage 1 已落
+（`activityGate.ts` 加 `'lab'` 档 ＋ `lab.ts` 门禁改传 `'lab'` ＋ 两个新文案 id ＋ 新用例 3 条 ＋ 既有矩阵
+自动扩到 11×11）；细节与"还差活动栏一格 / stage 2 契约护栏"见工作文档
+`docs/design/activity-gate-registry-20261001.md`。

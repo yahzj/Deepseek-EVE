@@ -60,3 +60,26 @@
 
 `typecheck` · core 全量用例 · `content:check`（新文案 id 的契约）· `l10n:check` / `l10n:params` ·
 `ui:rot-check`（活动栏改动）· `save:roundtrip-audit`（本条不新增存档字段 ⇒ 应无差异）。
+
+## 五、stage 1 落地记录（2026-10-01）
+
+**已落**（提交见 git 历史 · 闸门全绿：typecheck ✅ · core 全量 **2946 条全绿** ✅ · l10n:check ✅）：
+
+| 落点 | 内容 |
+|---|---|
+| `activityGate.ts` | `MainActivityKind` 加 **`'lab'`**（类型即登记表源头：加一项 ⇒ 五张 `Record<MainActivityKind, …>` ＋用例的 `SETUP`/`STOPPED` 全部**编译不过**，逼着补全 —— 这就是"天然纳入"的机器实现）· `WARN_KINDS` 加 `'lab'`（**先警告再切**）· `INTERRUPTIBLE.lab=true` · `HALT_COST.lab='停线——当前那一批的进度丢弃'` · `HALT_COST_ID.lab='core.activity.017'` · `KIND_LABEL.lab='实验室'` · `ACTIVITY_LABEL_ID.lab='core.activity.018'` · `mainActivityOf` 加 lab 分支（判据 = `labRuns` 里 `active && worker==='pilot'`） |
+| `lab.ts` | 起线门禁由借用的 `'refine'` 改成 **`'lab'`**（两档同为警告档 ⇒ 行为不变，占位与文案从此对得上） |
+| `table.ts` | 新增 `core.activity.017`（停线代价）· `core.activity.018`（活动名「实验室」）中英 |
+| 用例 | 新增 `tests/activity-lab-20261001.test.ts`（3 条：亲自运转占主控 · AI 驱动不占 · 分档/名称/代价齐备）**＋既有矩阵自动扩到 11×11**（`SETUP`/`STOPPED` 各加一行 `lab`，四条矩阵用例自动覆盖新档） |
+
+**stage 1 还没做的一格**：**活动栏**（`activity.ts`）仍不显示实验室产线 —— 门禁已认它、界面还看不见，
+下一轮补（要配活动名 id，已备 `core.activity.018`）。
+
+**stage 2 仍待做**：契约护栏（`start*` 主控入口必调 `applyActivityGate`；`state` 新增占主控字段必进登记表）
+＋ 接力入口（`startMiningFromExpedition` / `startExpeditionFromMining`）收口。
+
+## 六、顺带落地的同批项
+
+- **玩家点火的入侵结算声望固定 5 点**（船长 2026-10-01 令）：`weekendEvent.weekendStandingGainOf` 单点 ＋
+  `beaconLit` 留痕 ＋ `save.ts` 白名单一行（零迁移）；`weekendBattle` 两处（写快照 / 实发）同源。
+- 船长令「**不发公告**」⇒ 本条不进公告（实验室那条已推送，按"历史公告不回改"处理）。

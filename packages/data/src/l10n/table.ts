@@ -1540,6 +1540,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.activity.014": { zh: "远征无法中断", en: "an expedition cannot be interrupted" },
   "core.activity.015": { zh: "投送不可取消", en: "a delivery cannot be cancelled" },
   "core.activity.016": { zh: "交付循环停止、舰船返港，本趟建材留在船上", en: "the delivery loop stops, the ship returns to port and this run's materials stay aboard" },
+  /* 2026-10-01 船长令「实验室的主控活动并不占用主控，是BUG」⇒ 实验室纳入主控登记表（先警告再切档） */
+  "core.activity.017": { zh: "停线——当前那一批的进度丢弃", en: "the line stops — this batch's progress is lost" },
+  "core.activity.018": { zh: "实验室", en: "Laboratory" },
   /**
    * **推进器周期后缀的本地化版**（2026-09-22 · 手册本地化批）：
    * core `thrusterCycleFullText()` 是中文整句，被 `ui/shipInfo.tsx` 直接拼进模块说明里 ⇒

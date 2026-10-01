@@ -38,6 +38,13 @@ export type MainActivityKind =
   | 'deliver'
   /** **建站交付**（一键「前往工地交付」＝交付循环；**2026-09-22 船长令**纳入切换单点） */
   | 'siteDeliver'
+  /**
+   * **实验室产线**（**2026-10-01 船长令**：「**实验室的主控活动并不占用主控，是BUG**」⇒ 补登记）。
+   * 判据 = `state.labRuns` 里有 `active && worker === 'pilot'`（**AI 核心驱动的实验室线不占主控**，与开炉/开线同款）。
+   * ⚠ 本类型是全仓的**登记表源头**：往这里加一项 ⇒ 下面五张 `Record<MainActivityKind, …>` 全部编译不过，
+   * 逼着把活动名/代价/分档补齐（这就是"天然纳入"的机器实现）。
+   */
+  | 'lab'
 
 /**
  * **直接切**（自动停掉；船长 2026-09-21：「统一为能够直接切换（自动取消当前活动）」）。
@@ -64,7 +71,7 @@ export const AUTO_HALT_KINDS: readonly MainActivityKind[] = [
  * ⚠ **2026-09-27 起 `refine`（亲自开炉）/ `manufacturing`（亲自开线）也并入本档**——船长令
  * 「亲自开炉 · 亲自开线也添加警告」；两者在 `INTERRUPTIBLE` 里是 `true` ⇒ 走 `confirm`（警告后二击可切）。
  */
-export const WARN_KINDS: readonly MainActivityKind[] = ['hauling', 'expedition', 'deliver']
+export const WARN_KINDS: readonly MainActivityKind[] = ['hauling', 'expedition', 'deliver', 'lab']
 
 /**
  * 该活动**在途时能不能被中断**：`true` = 警告后可由玩家确认中断（长途运输：本段报酬拿不到）·
@@ -81,6 +88,7 @@ export const INTERRUPTIBLE: Readonly<Record<MainActivityKind, boolean>> = {
   expedition: false,
   deliver: false,
   siteDeliver: true,
+  lab: true,
 }
 
 /** 每项的取消代价（写进统一日志与警告；措辞按现行游戏语义，不写原因解释） */
@@ -95,6 +103,7 @@ export const HALT_COST: Readonly<Record<MainActivityKind, string>> = {
   expedition: '远征无法中断',
   deliver: '投送不可取消',
   siteDeliver: '交付循环停止、舰船返港，本趟建材留在船上',
+  lab: '停线——当前那一批的进度丢弃',
 }
 
 /**
@@ -118,6 +127,7 @@ export const HALT_COST_ID: Readonly<Record<MainActivityKind, string>> = {
   expedition: 'core.activity.014',
   deliver: 'core.activity.015',
   siteDeliver: 'core.activity.016',
+  lab: 'core.activity.017',
 }
 
 /** 活动名（统一文案里用；与活动栏的写法一致） */
@@ -132,6 +142,7 @@ export const KIND_LABEL: Readonly<Record<MainActivityKind, string>> = {
   expedition: '远征',
   deliver: '快递投送',
   siteDeliver: '建站交付',
+  lab: '实验室',
 }
 
 /**
@@ -155,6 +166,7 @@ export const ACTIVITY_LABEL_ID: Readonly<Record<MainActivityKind, string>> = {
   expedition: 'core.activity.004',
   deliver: 'core.activity.005',
   siteDeliver: 'core.activity.006',
+  lab: 'core.activity.018',
 }
 
 /**
@@ -178,6 +190,8 @@ export function mainActivityOf(state: GameState): MainActivityKind | null {
   if (state.expedition.active) return 'expedition'
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return 'refine'
   if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) return 'manufacturing'
+  /* **实验室产线**（2026-10-01 船长令补登记）：只有"主控亲自运转"那条占主控，AI 核心驱动的不占 */
+  if ((state.labRuns ?? []).some((r) => r.active && r.worker === 'pilot')) return 'lab'
   return null
 }
 
