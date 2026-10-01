@@ -1489,12 +1489,15 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     if (value === true && shipKey in fleet) shipLocks[shipKey] = true
   }
 
-  // --- 2026-09-10 玩家标记（收藏；v24 兼容字段，无版本号变化）：四类清单白名单重建 ---
+  // --- 2026-09-10 玩家标记（收藏；v24 兼容字段，无版本号变化）：五类清单白名单重建 ---
   // 逐类只收非空字符串；去重与"舰船必须在舰队里"的剪枝由末尾 pruneMarks(normalized) 统一做
-  // （那里 fleet 已建好）。老档缺 marks = 四类全空。
-  const marks: MarksState = { goods: [], recipes: [], blueprints: [], ships: [] }
+  // （那里 fleet 已建好）。老档缺 marks = 五类全空。
+  // ⚠ **2026-09-30 加 `labRecipes`**（实验室配方，船长令：实验室卡补 ⭐，与精炼炉卡同款）——
+  //   这一族与 `recipes` 不是一个 id 空间（那边是物品 id、这边是配方 id）⇒ 必须单开一类，
+  //   否则两处 key 混进同一张表。漏登记本行的症状 = 打过的星标每次读档就没了。
+  const marks: MarksState = { goods: [], recipes: [], blueprints: [], ships: [], labRecipes: [] }
   const marksRaw = asRaw(src.marks)
-  for (const kind of ['goods', 'recipes', 'blueprints', 'ships'] as const) {
+  for (const kind of ['goods', 'recipes', 'blueprints', 'ships', 'labRecipes'] as const) {
     for (const id of Object.values(asRaw(marksRaw[kind]))) {
       if (typeof id === 'string' && id.length > 0) marks[kind].push(id)
     }
@@ -3134,6 +3137,12 @@ for (const [key, value] of Object.entries(licensesRaw)) {
    */
   const skillBoostUntilMs = Math.max(0, Math.floor(num(src.skillBoostUntilMs) || 0))
   /**
+   * **技能加速「自动续用」开关**（**2026-10-01 船长令** · 兼容字段无版本号）：**只在 true 时写键**
+   * ⇒ 缺键/false 一律按"关"读，老档零迁移、往返逐字一致（与 `skillBoostUntilMs` 同款）。
+   * ⚠ 漏登记的后果与 `resupplyFromWarehouse` 同款：每读一次档开关就被清掉（玩家会发现"开了又自己关"）。
+   */
+  const boostAutoRenew = src.boostAutoRenew === true
+  /**
    * **实战胜利记录**（2026-09-24 船长令 · 兼容字段无版本号）：键 = 敌卡 id，值 = 那一次的距离与剩余比例。
    * 只收合法行（`desireM` 为正有限数 · `remainPct` 落在 0~1）；**空表不写键** ⇒ 老档零迁移、往返逐字一致。
    * ⚠ 与 `resupplyFromWarehouse` 同款：漏登记 = 每读一次档记录就被清空，胜率预估退回三点采样。
@@ -4212,6 +4221,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     ...(Object.keys(jumpFuel).length > 0 ? { jumpFuel } : {}),
     ...(labRuns.length > 0 ? { labRuns, labSeq } : {}),
     ...(skillBoostUntilMs > 0 ? { skillBoostUntilMs } : {}),
+    ...(boostAutoRenew ? { boostAutoRenew: true } : {}),
     // 模式选择已完成（2026-09-24 船长令）：只在 true 时落键；漏了这行 ⇒ 每次读档都重弹模式选择框
     ...(modeChosen !== undefined ? { modeChosen } : {}),
     // 实战胜利记录（2026-09-24 船长令）：**空表不写键**（老档/新档快照逐字一致 = 真零迁移）

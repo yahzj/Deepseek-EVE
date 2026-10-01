@@ -179,7 +179,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.comms.001": { zh: "[通讯] 收到 {p1} 的一条消息：《{p2}》——导航「通讯」可查看。", en: "[Comms] A message arrived from {p1}: “{p2}” — open Comms in the navigation to read it." },
   "core.comms.002": { zh: "没有这封通讯（可能已被撤销）。", en: "That message does not exist (it may have been withdrawn)." },
   "core.simulation.001": { zh: "离线归来：已离开 {p1}，开始结算……", en: "Back from offline: away for {p1}, settling now…" },
-  "core.simulation.002": { zh: "离线结算完成：推进 {p1}{p2}{p3}，期间发生 {p4} 条事件。", en: "Offline settlement done: advanced {p1}{p2}{p3}, with {p4} events along the way." },
+  "core.simulation.002": { zh: "离线结算完成：推进 {p1}{p2}{p5}{p3}，期间发生 {p4} 条事件。", en: "Offline settlement done: advanced {p1}{p2}{p5}{p3}, with {p4} events along the way." },
+  /* 2026-10-01（技能加速自动续用）：离线汇总的**新增那一槽**（`simulation.ts` 挂 `p5Id` + `p5p1`）
+     —— 槽译文自己带 `{p1}`，渲染层按 `p5p1` 取它（同 `core.state.023` 那条的范式）。 */
+  "core.simulation.003": { zh: "；自动续用突触加速剂 ×{p1}", en: "; {p1} Synaptic Accelerant(s) auto-renewed" },
   "core.wormholeAuto.001": { zh: "这一趟自动探索已经结束了。", en: "That automated exploration run is already over." },
   "core.wormholeAuto.003": { zh: "这份报告不在了。", en: "That report is gone." },
   "core.events.001": { zh: "✦ {p1}{p2}", en: "✦ {p1}{p2}" },
@@ -513,6 +516,22 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     zh: "⚠ 在「{p1}」启动信号发射器：协会扣了 {p2} 点声望。",
     en: "⚠ Signal Beacon lit at “{p1}”: the Association docked {p2} standing.",
   },
+  /* ── 技能加速「自动续用」（**2026-10-01 船长令**：「给技能加速页面添加一个循环使用的开关。当当前加速
+     效果过时时，自动使用相同效果的技能加速消耗品，离线期间也一样」）──
+     013 = 在线逐枚补用的日志 · 015 = 没料时自动关掉开关的提示 · 016 = 没料时想打开开关的当场拒绝
+     ⚠ **离线汇总那一槽不在这里** —— 它是 `core.simulation.003`（与离线那句同域，见该处注释）。 */
+  "core.consumable.013": {
+    zh: "✦ 突触加速剂自动续用：接下来 {p1} 小时训练时长继续减半。",
+    en: "✦ Synaptic Accelerant auto-renewed: skill training time stays halved for another {p1} hours.",
+  },
+  "core.consumable.015": {
+    zh: "⚠ 技能加速自动续用已关闭：突触加速剂用光了。",
+    en: "⚠ Skill-boost auto-renew switched off: no Synaptic Accelerant left.",
+  },
+  "core.consumable.016": {
+    zh: "仓库里没有突触加速剂：自动续用无从补起。",
+    en: "No Synaptic Accelerant in store, so auto-renew has nothing to draw on.",
+  },
   "ui.ItemsPage.057": { zh: "使用：主动诱发一次入侵（目标按入侵默认规则抽取 · 只能在没有入侵时使用 · 消耗 1 枚）", en: "Use: provoke an invasion (the target is drawn by the regular invasion trigger; only while no invasion is running; consumes one)" },
   "ui.ItemsPage.058": { zh: "信号发射器已启动：入侵舰队正在逼近。", en: "Signal Beacon lit: an invasion fleet is closing in." },
   /* 活动窗口的突触加速剂读数（2026-09-30 船长令：放进活动窗口 · 图标带倍率） */
@@ -680,6 +699,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.boost.005": { zh: "剩余 {p1}", en: "{p1} left" },
   /* 未生效时的效果说明（生效中那条用 `ui.ActivityBar.067`，两句不许混用——否则会读成"生效中·剩 0 秒"） */
   "ui.boost.007": { zh: "效果：使用后 24 小时内技能训练时长减半；同一时间只能生效一剂。", en: "Effect: for 24 hours after use, skill training time is halved; only one dose can be active at a time." },
+  /* 2026-10-01 船长令：技能加速「自动续用」开关（循环使用 · 离线期间同样生效） */
+  "ui.boost.008": { zh: "自动续用", en: "Auto-renew" },
+  "ui.boost.009": {
+    zh: "效果不足以练完当前这一级时，自动用掉一枚同效果的加速剂；道具用光时自动关闭。离线期间同样生效。",
+    en: "When the active dose can no longer cover the level being trained, another dose of the same boost is used automatically; it switches itself off when you run out. Works while offline too.",
+  },
   "ui.boost.006": { zh: "持有 ×{p1}", en: "×{p1} on hand" },
   "ui.boost.004": {
     zh: "当前没有技能加速类道具：可在工业页「实验室」按批生产。",

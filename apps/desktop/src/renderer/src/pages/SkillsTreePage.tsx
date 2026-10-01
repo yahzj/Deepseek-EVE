@@ -72,9 +72,17 @@ function SkillBoostBlock({ engine, onToast }: { engine: GameEngine; onToast: (m:
   const stock = consumableStockOf(state, SYNAPTIC_ACCELERANT_ITEM_ID)
   const def = engine.ctx.items.get(SYNAPTIC_ACCELERANT_ITEM_ID)
   const mul = Math.round(1 / SYNAPTIC_ACCELERANT_MUL)
+  /**
+   * **循环使用开关**（**2026-10-01 船长令**：「给技能加速页面添加一个循环使用的开关。当当前加速效果
+   * 过时时，自动使用相同效果的技能加速消耗品，离线期间也一样」）。
+   * ⚠ 开关的判定与扣料**全在 core**（`consumables.syncBoostRenew`）：这里只读状态、只写状态，
+   * 不自己判"该不该补"、也不自己扣道具。
+   */
+  const autoRenew = engine.boostAutoRenewOn()
   return (
     <div className="app-boost-block">
-      {/* 顶部：当前生效、剩余时间、效果口径 —— 一条原子状态（无 second live region） */}
+      {/* 顶部：当前生效、剩余时间、效果口径 —— 一条原子状态（无 second live region）
+          ＋ 右侧「自动续用」开关（2026-10-01 船长令） */}
       <div className={`app-boost-now${remainMs > 0 ? ' is-on' : ''}`} role="status">
         <span className="app-boost-now-head">
           <Glyph name={iconKeyOfBoost()} size={15} color="currentColor" />
@@ -88,6 +96,18 @@ function SkillBoostBlock({ engine, onToast }: { engine: GameEngine; onToast: (m:
             ? tr('ui.ActivityBar.067', { p1: fmtDuration(remainMs) })
             : tr('ui.boost.007')}
         </span>
+        {/* 开关本体：与「使用」按钮同一套 `.app-btn` 形态（`is-small` ＋ `is-on`），不自造控件 */}
+        <button
+          className={`app-btn is-small${autoRenew ? ' is-on' : ''}`}
+          aria-pressed={autoRenew}
+          title={tr('ui.boost.009')}
+          onClick={() => {
+            const r = engine.setBoostAutoRenewNow(!autoRenew)
+            if (!r.ok) onToast(cmdText(r) || tr('ui.boost.008'), true)
+          }}
+        >
+          {tr('ui.boost.008')}
+        </button>
       </div>
       {/* 下方：持有的加速类道具清单（今天只有突触加速剂；将来加同类道具就往这一支里塞行） */}
       <div className="app-boost-list-head">{tr('ui.boost.003')}</div>

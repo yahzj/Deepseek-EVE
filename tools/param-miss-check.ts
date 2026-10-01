@@ -222,7 +222,118 @@ for (const root of CORE_ROOTS) {
   }
 }
 
-console.log(`· 扫了 ${ROOTS.length} 个根：命中 **${findings.length}** 处（其中"参数是变量、静态判不出" **${soft.length}** 处）`)
+/* ═══════════ 第三段判据（2026-10-01 加 · 船长报障「通讯主题显示成 {p1} ×{p2}」）═══════════
+ *
+ * **病根**：一条**带参数的模板**被"**不会喂参数**的渲染点"用掉了 —— `interpolate()` 找不到键就
+ * **原样保留** `{pN}`，玩家直接读到占位符（静默失败）。上面的两段判据都看不见它：
+ * ① 第一段只扫 `t('字面量')`，而"映射表的值"（`tr(l10nId)`）不是字面量；
+ * ② 第二段只管 core 的"槽内参数"。
+ *
+ * 实测两处（都已修，本判据即它们的回归钉）：
+ * - `commsText.ts` 的 `COMMS_SUBJECT_ID['msg-blackbox-plug-unlock'] = 'ui.comms.072'`，
+ *   而 `ui.comms.072` 是奖励清单的模板（`{p1} ×{p2}`，由 `commsRewardText` 喂参）⇒ 主题行漏出占位符；
+ * - `plugs.ts` 的 `addLog(..., 'core.plug.001', { p1 })`，而该模板要 `p1/p2` ⇒ 日志漏出 `{p2}`。
+ *
+ * **A 判据（映射表）**：`const X: Record<string, string> = { '键': 'id' }` 的表，其值若命中
+ * 一条 `zh` 带 `{pN}` 的条目 ⇒ **红**（表的值多半在无参渲染点被 `tr(值)` 用掉）。
+ * **B 判据（core 日志调用）**：`addLog` / `logEvent` 的 id 是**字符串字面量**、且参数对象是**对象字面量**
+ * 时，若表里要的某个 `pN` 在该对象里**既没键、也不是靠展开补的** ⇒ **红**。
+ * ⚠ 参数是变量 / 含展开语法的写法**一律不报**（那些位置静态判不出，见本文件开头对误报的两条口径）。
+ */
+interface ThirdFinding {
+  at: string
+  what: string
+  detail: string
+}
+const thirdFindings: ThirdFinding[] = []
+
+/** A：映射表的值指向"带参数的模板" */
+const MAP_TABLE_ROOTS = [join(process.cwd(), 'apps', 'desktop', 'src'), join(process.cwd(), 'packages', 'ui', 'src')]
+for (const root of MAP_TABLE_ROOTS) {
+  for (const file of walk(root)) {
+    const text = readFileSync(file, 'utf8')
+    const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
+    const visit = (node: ts.Node): void => {
+      if (
+        ts.isVariableDeclaration(node) &&
+        node.initializer !== undefined &&
+        ts.isObjectLiteralExpression(node.initializer) &&
+        /Record<\s*string\s*,\s*string\s*>/.test(node.type?.getText(sf) ?? '')
+      ) {
+        for (const prop of node.initializer.properties) {
+          if (!ts.isPropertyAssignment(prop) || !ts.isStringLiteral(prop.initializer)) continue
+          const entry = L10N[prop.initializer.text]
+          if (entry === undefined) continue
+          const need = [...entry.zh.matchAll(/\{(\w+)\}/g)].map((m) => m[1]!)
+          if (need.length === 0) continue
+          const line = sf.getLineAndCharacterOfPosition(prop.getStart(sf)).line + 1
+          thirdFindings.push({
+            at: `${relative(process.cwd(), file).split('\\').join('/')}:${line}`,
+            what: `${node.name.getText(sf)} → ${prop.initializer.text}`,
+            detail: `目标模板带 ${need.join('/')}（zh「${entry.zh}」）—— 映射表是**无参**用法`,
+          })
+        }
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(sf)
+  }
+}
+
+/** B：core 侧 `addLog` / `logEvent` 的 id 与参数对账（只认"能静态判死"的那一种） */
+const LOG_CALL_ARGS: Record<string, { idArg: number; paramsArg: number }> = {
+  addLog: { idArg: 3, paramsArg: 4 },
+  logEvent: { idArg: 3, paramsArg: 4 },
+}
+for (const root of CORE_ROOTS) {
+  for (const file of walk(root)) {
+    const text = readFileSync(file, 'utf8')
+    const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+    const visit = (node: ts.Node): void => {
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+        const spec = LOG_CALL_ARGS[node.expression.text]
+        const idNode = spec !== undefined ? node.arguments[spec.idArg] : undefined
+        if (spec !== undefined && idNode !== undefined && ts.isStringLiteral(idNode)) {
+          const entry = L10N[idNode.text]
+          const need = entry === undefined ? [] : [...entry.zh.matchAll(/\{(\w+)\}/g)].map((m) => m[1]!)
+          const params = node.arguments[spec.paramsArg]
+          const isObject = params !== undefined && ts.isObjectLiteralExpression(params)
+          if (need.length > 0 && isObject) {
+            const keys = new Set<string>()
+            let spread = false
+            for (const prop of (params as ts.ObjectLiteralExpression).properties) {
+              if (ts.isPropertyAssignment(prop) || ts.isShorthandPropertyAssignment(prop)) keys.add(prop.name.getText(sf))
+              else if (ts.isSpreadAssignment(prop)) spread = true
+            }
+            const missing = need.filter((k) => !keys.has(k))
+            if (!spread && missing.length > 0) {
+              const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1
+              thirdFindings.push({
+                at: `${relative(process.cwd(), file).split('\\').join('/')}:${line}`,
+                what: `${node.expression.text}(${idNode.text}) 要 ${need.join('/')}`,
+                detail: `**缺 ${missing.join('/')}**（参数对象里只有 [${[...keys].join(' ')}]，且无展开兜底）`,
+              })
+            }
+          }
+        }
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(sf)
+  }
+}
+
+if (thirdFindings.length > 0) {
+  console.log(`\n■ 模板被"无参/漏参"使用（${thirdFindings.length} 处）——玩家会直接读到 {pN}，**必须改**：`)
+  for (const f of thirdFindings) {
+    console.log(`  ${f.at}  ${f.what}`)
+    console.log(`      ${f.detail}`)
+  }
+} else {
+  console.log('✅ 模板用法 0 处漏参（映射表的值必须是无参句；core 日志的 id 与参数对得上）。')
+}
+
+process.exitCode = hard.length === 0 && slotFindings.length === 0 && thirdFindings.length === 0 ? 0 : 1
 if (hard.length > 0) {
   console.log('\n■ 明确漏喂（没传第二参数，或对象里缺键）——**必须改**：')
   for (const f of hard) {
@@ -253,4 +364,4 @@ if (slotFindings.length > 0) {
   )
 }
 
-process.exitCode = hard.length === 0 && slotFindings.length === 0 ? 0 : 1
+process.exitCode = hard.length === 0 && slotFindings.length === 0 && thirdFindings.length === 0 ? 0 : 1

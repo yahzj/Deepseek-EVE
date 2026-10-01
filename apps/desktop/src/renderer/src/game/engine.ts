@@ -86,6 +86,9 @@ import {
   /* 2026-09-30 实验室后续内容：道具「使用」（突触加速剂 / 信号发射器） */
   useSynapticAccelerant,
   synapticAccelerantRemainMs,
+  /* 2026-10-01 船长令：技能加速「自动续用」开关（循环使用 · 离线期间同样生效） */
+  boostAutoRenewOn,
+  setBoostAutoRenew,
   useInvasionBeacon,
   retreatBattle,
   retreatEncounterBattle,
@@ -3949,6 +3952,27 @@ export class GameEngine {
   /** 突触加速剂剩余生效毫秒（0 = 未生效；技能页/物品页读数用） */
   synapticAccelerantRemainMs(): number {
     return synapticAccelerantRemainMs(this.state)
+  }
+
+  /**
+   * **技能加速「自动续用」开关**（**2026-10-01 船长令**：「给技能加速页面添加一个循环使用的开关。
+   * 当当前加速效果过时时，自动使用相同效果的技能加速消耗品，离线期间也一样」）。
+   *
+   * 界面只读这一把尺、只调这两个方法；**补用逻辑全在 core**（`consumables.syncBoostRenew`，由引擎每拍驱动）
+   * —— 界面不自己扣料、也不自己判"该不该补"。
+   */
+  boostAutoRenewOn(): boolean {
+    return boostAutoRenewOn(this.state)
+  }
+
+  /** 开/关自动续用（没料时打开会被 core 拒绝，原因原样交回界面弹提示） */
+  setBoostAutoRenewNow(on: boolean): CommandResult {
+    const result = setBoostAutoRenew(this.state, on)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
   }
 
   /**

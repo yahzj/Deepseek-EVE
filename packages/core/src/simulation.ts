@@ -23,6 +23,8 @@ import { formatDurationMs } from './time'
 import type { SettleStats } from './settleStats'
 import { advanceAutoLoopBounty, advanceAutoLoopInvasion, autoLoopInvasionGalaxy } from './expedition'
 import { ironmanOfflineCapBonusMs } from './ironman'
+/* 技能加速「自动续用」（2026-10-01 船长令）：离线期间逐枚不写日志，只记账 ⇒ 结算那句汇总交代 */
+import { offlineBoostRenewCount, setOfflineBoostTally } from './consumables'
 
 // 兼容历史引用：formatDurationMs 现定义在 time.ts（避免模块循环依赖）
 export { formatDurationMs } from './time'
@@ -87,6 +89,9 @@ export function simulateOffline(
 ): void {
   const rawGap = nowWallMs - lastSavedWallMs
   if (rawGap <= 0) return
+  /* 技能加速「自动续用」（**2026-10-01 船长令**）：整段离线**开始时**开记账 —— 离线期间逐枚不写日志，
+     只累计枚数，下面"离线结算完成"那一句汇总交代（与"离线采集 …"同款口径）。*/
+  setOfflineBoostTally(true)
   // 离线结算上限（双技能加算）——与"超出上限"读数同源，见 `offlineCapMsOf`
   const capEff = offlineCapMsOf(state, capMs)
   const { deltaMs, overflowMs } = offlineSplit(rawGap, capEff)
@@ -196,18 +201,27 @@ export function simulateOffline(
     if (unitsNow > unitsBefore) gained.push(`${ctx.items.get(id)?.name ?? id}×${unitsNow - unitsBefore}`)
   }
   const minedText = gained.length > 0 ? `；离线采集 ${gained.join('、')}` : ''
+  /**
+   * **技能加速自动续用的汇总**（**2026-10-01 船长令** 裁定④「在线逐枚写，离线只在汇总里写一句」）：
+   * 整段离线里补了几枚就在这句里交代几枚 —— 玩家上线时既知道"训练一直在加速"、也知道"料少了多少"。
+   */
+  const boostN = offlineBoostRenewCount()
+  setOfflineBoostTally(false)
+  const boostText = boostN > 0 ? `；自动续用突触加速剂 ×${boostN}` : ''
   const overflowTxt = formatDurationMs(overflowMs)
   const tail = overflowMs > 0 ? `；超出上限的 ${overflowTxt} 未结算` : ''
   addLog(
     state,
     'system',
-    `离线结算完成：推进 ${formatDurationMs(deltaMs)}${tail}${minedText}，期间发生 ${eventCount} 条事件。`,
+    `离线结算完成：推进 ${formatDurationMs(deltaMs)}${tail}${boostText}${minedText}，期间发生 ${eventCount} 条事件。`,
     'core.simulation.002',
     {
       p1: formatDurationMs(deltaMs),
       p2: tail,
       p3: minedText,
       p4: eventCount,
+      p5: boostText,
+      ...(boostN > 0 ? { p5Id: 'core.simulation.003', p5p1: boostN } : {}),
       /**
        * ⚠ **槽译文必须连"槽内参数"一起喂**（`p{n}p{k}`；**2026-09-29 实障修正**）：
        * 槽模板 `core.state.023`（「；超出上限的 {p1} 未结算」）自己带一个 `{p1}`，

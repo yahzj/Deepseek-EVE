@@ -2103,8 +2103,9 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
   rareWreckDryStreak?: number
 }
 
-/** 玩家标记（收藏）四类界面：market 市场商品行 / refine 精炼炉与残骸回收卡 /
- *  blueprint 组装机蓝图卡 / ship 舰队船卡（按船实例，同型多艘各自独立） */
+/** 玩家标记（收藏）五类界面：market 市场商品行 / refine 精炼炉与残骸回收卡 /
+ *  blueprint 组装机蓝图卡 / ship 舰队船卡（按船实例，同型多艘各自独立）/
+ *  lab 实验室配方卡（**2026-09-30 船长令**：实验室卡也要与精炼炉卡同款 ⭐） */
 export interface MarksState {
   /** 市场商品 key（ctx.marketGoods 键） */
   goods: string[]
@@ -2114,11 +2115,17 @@ export interface MarksState {
   blueprints: string[]
   /** 舰队船实例 id（state.fleet 键） */
   ships: string[]
+  /**
+   * **实验室配方 id**（`ctx.labRecipes` 键；**2026-09-30 加**）。
+   * ⚠ 与 `recipes` **不是一个 id 空间**：`recipes` 存的是**物品 id**（可精炼资源/残骸），
+   * 这里存的是**配方 id** ⇒ 当年没开这一族就是为了不混空间，本批按船长令补上。
+   */
+  labRecipes: string[]
 }
 
 /** 空标记表（每类一份空清单；注意取新对象，勿共享可变数组） */
 export function emptyMarks(): MarksState {
-  return { goods: [], recipes: [], blueprints: [], ships: [] }
+  return { goods: [], recipes: [], blueprints: [], ships: [], labRecipes: [] }
 }
 
 /** 长途运输状态（2026-09-09 船长定稿：任意两座已建成站点间真实航程往返循环；当日改：接单不要求停在端点，
@@ -2659,6 +2666,16 @@ export type GameState = GameStateV31 & {
    * ⚠ 时间基准 = `state.gameMs`（游戏时钟，与限时快递/限时倍率同源；离线补时也会照常走完 24 小时）。
    */
   skillBoostUntilMs?: number
+  /**
+   * **技能加速「自动续用」开关**（**2026-10-01 船长令**：「给技能加速页面添加一个循环使用的开关。
+   * 当当前加速效果过时时，自动使用相同效果的技能加速消耗品，离线期间也一样」）。
+   *
+   * - 口径：开关**默认关**（船长裁定＝推荐案）· **随档保存** · 缺省/非法一律按"关"读 ⇒ 老档零迁移；
+   * - 生效点 = 引擎每拍（`consumables.syncBoostRenew`，由 `advanceSkillQueue` 逐级驱动）⇒
+   *   在线、离线大推进、离线分片（重复清剿那条路）**同一条路径全覆盖**；
+   * - 补用判据与扣料口径见该函数的头注（不足"当前这一级"的训练时长才补 · 货仓优先）。
+   */
+  boostAutoRenew?: boolean
   /**
    * **实战胜利记录**（**2026-09-24 船长令**：「记录残血最多的一次，如果都是满血则不覆盖。夹回当前射程内。」
    * ＋「③按敌卡」）——键 = **敌卡 id**；值 = 那一次的期望距离与**剩余比例**（（装甲+结构）÷ 满值）。

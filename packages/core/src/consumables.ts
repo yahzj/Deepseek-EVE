@@ -14,7 +14,8 @@ import type { SimContext } from './types'
 import { countItem, countWare, removeItem, removeWare } from './inventory'
 import { HOME_GALAXY_ID, addLog } from './state'
 import { isAtHomeLike } from './location'
-import { SYNAPTIC_ACCELERANT_MS, synapticAccelerantActive } from './training'
+import { SYNAPTIC_ACCELERANT_MS, synapticAccelerantActive, skillLevelTimeMs, trainingTimeFactor } from './training'
+import { tuningMul } from './tuning'
 import { securityZoneOf } from './sideTasks'
 import { DSI_FACTION_ID, spendableStandingOf } from './expedition'
 import { weekendHasBuiltStation, weekendPeripheryOf, weekendRollOccupation } from './weekendEvent'
@@ -104,6 +105,117 @@ export function useSynapticAccelerant(state: GameState): CommandResult {
 /** 生效剩余毫秒（界面读数用；0 = 未生效） */
 export function synapticAccelerantRemainMs(state: GameState): number {
   return Math.max(0, (state.skillBoostUntilMs ?? 0) - state.gameMs)
+}
+
+/* ═══════════════════════ 技能加速「自动续用」（2026-10-01 船长令） ═══════════════════════ */
+
+/**
+ * **队列空着时的兜底判据**（毫秒）：没有正在练的技能时，"剩余 ≤ 这个数"才算到期。
+ * 取 60 秒 = 一拍的量级（在线心跳 1 秒、离线分片 30 秒都远小于它）⇒ 既不会空转烧料，
+ * 又能在玩家真去练技能那一拍立刻接上。
+ */
+export const SYNAPTIC_ACCELERANT_RENEW_TAIL_MS = 60_000
+
+/**
+ * **自动续用**（**2026-10-01 船长令**：「给技能加速页面添加一个循环使用的开关。当当前加速效果过时时，
+ * 自动使用相同效果的技能加速消耗品，离线期间也一样」）。
+ *
+ * 五条裁定（船长同日全取推荐案）：
+ * ① **默认关**（开关随档保存 · 老档缺字段按关读 ⇒ 零迁移）；
+ * ② **没料 ⇒ 自动关掉开关** ＋ 一条提示；
+ * ③ **无缝续用**：不是"过期后再补"，而是"剩余不足以练完当前这一级时补" ⇒ 玩家看不到掉速空窗；
+ * ④ 日志：**在线逐枚写**，离线**只在"离线结算完成"汇总里写一句**；
+ * ⑤ **离线期间同样生效**（本函数挂在引擎每拍上，离线大推进与离线分片走同一条路径）。
+ *
+ * 单点归属：本函数是"自动补用"的**唯一实现**（界面开关只改 `state.boostAutoRenew`，不自己扣料）。
+ */
+export function syncBoostRenew(state: GameState, ctx: SimContext): void {
+  if (state.boostAutoRenew !== true) return
+  /**
+   * ② **没料 ⇒ 自动关掉开关**（船长选案）。
+   *
+   * ⚠ 这一判据排在"是否还在生效"**之前**：走到这里＝开关开着，此时**没有库存**就注定补不出下一枚
+   * ——当场关掉并提示最直白（排在后面的话，最后一剂快用完时开关还会亮很久，玩家以为循环还在跑）。
+   * 因为开关已被置回 false，本分支天然只写一次提示（不需要额外的去重字段）。
+   */
+  if (consumableStockOf(state, SYNAPTIC_ACCELERANT_ITEM_ID) <= 0) {
+    state.boostAutoRenew = false
+    addLog(state, 'warn', '⚠ 技能加速自动续用已关闭：突触加速剂用光了。', 'core.consumable.015')
+    return
+  }
+  /**
+   * ③ **无缝续用**：判据 = "剩下的生效时间 **不足以练完当前这一级**" 才补 —— **不是**"有没有在生效"
+   * 那个二元判断（⚠ 2026-10-01 实现时在这里踩过一次：写成 `synapticAccelerantActive` 早退，
+   * 于是"快到期但还在生效"时永远不补，无缝语义直接失效，被本批用例当场逮住）。
+   */
+  const head = state.skills.queue[0]
+  let needMs = SYNAPTIC_ACCELERANT_RENEW_TAIL_MS
+  if (head !== undefined) {
+    const def = ctx.skills.get(head.skillId)
+    if (def !== undefined) {
+      const levelMs = Math.max(
+        1,
+        Math.round(skillLevelTimeMs(def, (state.skills.trained[head.skillId] ?? 0) + 1) * trainingTimeFactor(state) * tuningMul(state, 'skillTrainMs')),
+      )
+      needMs = Math.max(SYNAPTIC_ACCELERANT_RENEW_TAIL_MS, levelMs - Math.max(0, head.progressMs))
+    }
+  }
+  if (synapticAccelerantRemainMs(state) > needMs) return
+  /* 扣料并落效果：与手动「使用」**同一笔语义**（货仓优先）。
+     ⚠ "不可叠用"仍成立：走到这里时剩余时间**已经不足以练完当前这一级**，补的这一枚是**接续**，
+     不是叠加（还剩很久时上面那行就早退了）。 */
+  takeOne(state, SYNAPTIC_ACCELERANT_ITEM_ID)
+  state.skillBoostUntilMs = state.gameMs + SYNAPTIC_ACCELERANT_MS
+  if (offlineRenewTally !== null) {
+    /* ④ 离线期间**逐枚不写日志**（船长选案）：只记账，上线时由"离线结算完成"那一句汇总交代 */
+    offlineRenewTally += 1
+    return
+  }
+  addLog(
+    state,
+    'industry',
+    `✦ 突触加速剂自动续用：接下来 ${Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000)} 小时训练时长继续减半。`,
+    'core.consumable.013',
+    { p1: Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000) },
+  )
+}
+
+/**
+ * **离线期间的自动补用记账**（进程级、`null` = 不在离线结算中）：离线时段逐枚不写日志，
+ * 只在这里累计，由 `simulation.ts` 的离线汇总那一句取用。**不透传、不落盘**。
+ */
+let offlineRenewTally: number | null = null
+
+/** 进入 / 离开离线结算：`on = true` 开始记账，`false` 收口（收口后读数仍可取，直到下一次开始） */
+export function setOfflineBoostTally(on: boolean): void {
+  offlineRenewTally = on ? 0 : null
+}
+
+/** 本次离线期间自动补用的枚数（没在记账 ⇒ 0） */
+export function offlineBoostRenewCount(): number {
+  return offlineRenewTally ?? 0
+}
+
+/** 自动续用开关（读；缺省 = 关）——界面与引擎共用这一把尺 */
+export function boostAutoRenewOn(state: GameState): boolean {
+  return state.boostAutoRenew === true
+}
+
+/**
+ * 自动续用开关（写）。
+ * ⚠ **只在有库存时允许打开**：没料还打开的话，下一拍就会被 `syncBoostRenew` 立刻自动关掉并写一条警告
+ * —— 那对玩家是"开了又自己关"的怪手感，不如在这一刻就当场拒绝并说清原因。
+ */
+export function setBoostAutoRenew(state: GameState, on: boolean): CommandResult {
+  if (!on) {
+    state.boostAutoRenew = false
+    return { ok: true }
+  }
+  if (consumableStockOf(state, SYNAPTIC_ACCELERANT_ITEM_ID) <= 0) {
+    return { ok: false, error: '仓库里没有突触加速剂：自动续用无从补起。', errorId: 'core.consumable.016' }
+  }
+  state.boostAutoRenew = true
+  return { ok: true }
 }
 
 /* ═══════════════════════ 信号发射器（第 2 批） ═══════════════════════ */

@@ -37,6 +37,12 @@ import { advanceWormholeAuto } from './wormholeAuto'
 import { advanceHauling } from './hauling'
 import { advanceWreckDrift } from './salvage'
 import type { SettleStats } from './settleStats'
+/**
+ * **技能加速自动续用**（2026-10-01 船长令）：本函数在 `advanceSkillQueue` 的每一级调用。
+ * ⚠ **循环依赖是安全的**：`consumables.ts` 只 `import type { CommandResult } from './engine'`（类型侧，
+ * 编译后不留运行时引用）⇒ 运行时的边是**单向**的 engine → consumables，不会出现 TDZ。
+ */
+import { syncBoostRenew } from './consumables'
 import { advanceSalvageOp } from './salvaging'
 import { advanceFindHumans, publishFindHumansWhenReady } from './onboarding'
 import { advanceComms } from './comms'
@@ -190,7 +196,16 @@ export function advanceGame(
   if (opts?.nowWallMs !== undefined && Number.isFinite(opts.nowWallMs)) state.wallMs = opts.nowWallMs
   // V13 探索：在途作业的星系视为已探明（读档/迁移恢复兜底）
   ensureTransitExplored(state, ctx)
-  advanceSkillQueue(state, d, ctx.skills)
+  /**
+   * **技能加速自动续用 · 每拍第一件事**（**2026-10-01 船长令**）。
+   *
+   * ⚠ **为什么放在这里、而不是只放在 `advanceSkillQueue` 里**：那条函数**队列空着时一次都不进循环**
+   * （`while (remaining > 0 && queue.length > 0)`）⇒ 一旦队列被练空，"料尽 ⇒ 关掉开关"这一步就再也
+   * 没有执行机会，开关会一直亮着骗玩家（本批用例实测到的形态）。挂在这里 ⇒ **队列有没有都必查一次**。
+   * 函数内部自己早退（开关关着 / 还有料且不缺），零行为变化、零可感开销。
+   */
+  syncBoostRenew(state, ctx)
+  advanceSkillQueue(state, d, ctx)
   advanceMining(state, d, ctx)
   advanceSalvageOp(state, d, ctx)
   // B3 星系残骸密度：闲置漂移（正在打捞的星系挂起——打捞作业期不结算漂移）
@@ -390,10 +405,21 @@ function reconcileMilestoneStats(state: GameState, ctx: SimContext): void {
   if (settled !== undefined) peakFirst(state, 'whMaxDepth', settled)
 }
 
-/** 技能队列推进（内部函数，不对外） */
-function advanceSkillQueue(state: GameState, deltaMs: number, catalog: SkillCatalog): void {
+/** 技能队列推进（内部函数，不对外）
+ *
+ * ⚠ **2026-10-01（技能加速自动续用）**：第三参由 `SkillCatalog` 改成整个 `ctx` —— 因为"续用"判据要
+ * 与这里的训练时长**同一套乘区**（`skillLevelTimeMs × trainingTimeFactor × tuningMul`），
+ * 而那条判据住在 `consumables.syncBoostRenew`（自动补用的**唯一实现**）。改签名只影响本函数内部。 */
+function advanceSkillQueue(state: GameState, deltaMs: number, ctx: SimContext): void {
+  const catalog = ctx.skills
   let remaining = deltaMs
   while (remaining > 0 && state.skills.queue.length > 0) {
+    /**
+     * **技能加速自动续用**（**2026-10-01 船长令**）：逐级检查一次 —— 放在"取队首"之后、
+     * 算本级时长之前 ⇒ 补用的那一枚从**本级**就生效（无缝），在线每拍与离线大推进/分片同一条路径。
+     * 开关关着 / 没料 / 还在生效期内 ⇒ 函数内部一步返回（零行为变化、零开销）。
+     */
+    syncBoostRenew(state, ctx)
     const item = state.skills.queue[0]!
     const def = catalog.get(item.skillId)
     // 数据表里没有这个技能：不阻塞队列，直接丢弃并警告
@@ -457,7 +483,19 @@ function advanceSkillQueue(state: GameState, deltaMs: number, catalog: SkillCata
         })
       }
     }
+    /**
+     * **本级练完后再查一次**（2026-10-01）：队列可能刚刚被练空 —— 那样 `while` 条件会立刻跳出、
+     * 前面那次 `syncBoostRenew` 就成了本拍唯一一次机会。"料尽 ⇒ 关开关"的判定要能落在
+     * **队列清空的那一刻**（真档实测：离线一趟把队列练空后，开关会一直亮着）。
+     */
+    syncBoostRenew(state, ctx)
   }
+  /**
+   * **循环外的收尾检查**：本拍队列**本来就是空的**（或刚刚清空且上面那一拍没走到）时，
+   * `while` 一次都不进 ⇒ 仍需一次判定，否则"开着开关、没料了"会一直亮着。
+   * 队列空着且**还有料**时这里什么都不做（`syncBoostRenew` 内部只在"料尽"或"确实该补"时动手）。
+   */
+  syncBoostRenew(state, ctx)
 }
 
 /** 队列里已排入的"同技能条目数"（含队首；正在练的这一级也算已占位） */

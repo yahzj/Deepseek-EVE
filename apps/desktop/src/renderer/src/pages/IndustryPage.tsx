@@ -539,10 +539,17 @@ function LabPanel({
   engine,
   onToast,
   onGotoMarket,
+  onNeedMaterial,
 }: {
   engine: GameEngine
   onToast: PageProps['onToast']
   onGotoMarket?: (goodKey: string) => void
+  /**
+   * **「去弄料」**（**2026-09-30 船长令**：「实验室的卡牌没有参考其他工业页面的卡牌添加跳转吗」）——
+   * 与组装机卡那颗「缺料」按钮**同一条链**（页内 `handleNeedMineral`）：有精炼源 ⇒ 切精炼炉并高亮那张
+   * 矿石卡 · 造得出 ⇒ 切组装机 · 都不行 ⇒ 跳市场行情 · 再不行 ⇒ toast 说明。
+   */
+  onNeedMaterial?: (itemId: string) => void
 }): ReactNode {
   const state = engine.state
   const recipes = [...engine.ctx.labRecipes.values()]
@@ -569,6 +576,7 @@ function LabPanel({
               engine={engine}
               onToast={onToast}
               onGotoMarket={onGotoMarket}
+              onNeedMaterial={onNeedMaterial}
               runs={runs.filter((v) => v.recipeId === r.id)}
             />
           ))}
@@ -589,18 +597,26 @@ function LabCard({
   engine,
   onToast,
   onGotoMarket,
+  onNeedMaterial,
   runs,
 }: {
   recipe: LabRecipeDef
   engine: GameEngine
   onToast: PageProps['onToast']
   onGotoMarket?: (goodKey: string) => void
+  /** 「去弄料」（见 `LabPanel` 的同名 prop 注释）：入参 = 要弄的那味料的物品 id */
+  onNeedMaterial?: (itemId: string) => void
   runs: LabRunView[]
 }): ReactNode {
   const state = engine.state
   const rate = refineRate(state, engine.ctx)
   const out = engine.ctx.items.get(recipe.outputItemId)
   const affordable = labAffordableBatches(state, recipe)
+  /**
+   * 「去弄料」要弄的那味料 = **第一味齐备度不足的**（口径与开工门槛同一把尺：`labMaterialAvailable`
+   * 对单批 `units`）；都够 ⇒ `null`（按钮仍在，点了去看第一味料的来路——与精炼炉卡的「去矿带」常驻同款）。
+   */
+  const needShort = recipe.materials.find((m) => labMaterialAvailable(state, m.itemId) < m.units) ?? null
   const batchValue = recipe.outputUnits * (marketPriceOf(state, engine.ctx, recipe.outputItemId) ?? out?.baseSellPriceIsk ?? 0)
   const costIsk = recipe.materials.reduce(
     (s, m) =>
@@ -637,6 +653,24 @@ function LabCard({
           <RowGlyph glyph={itemGlyphName(recipe.outputItemId, out?.kind ?? 'consumable')} /> {recipe.name}
         </span>
         <span className="app-belt-head-right">
+          {/* ⭐ 标记（**2026-09-30 船长令**：实验室卡与精炼炉卡同款 ⇒ 走新开的 `labRecipes` 族，
+              存的是**配方 id**，与 `recipes` 的物品 id 分开） */}
+          <MarkStar engine={engine} kind="labRecipes" id={recipe.id} />
+          {/* 「去弄料」：与组装机卡那颗「缺料」同一条链（见 `LabPanel.onNeedMaterial`）——
+              默认挑**第一味齐备度不足的料**；都够就挑第一味（按钮常驻，与精炼炉卡的「去矿带」一致） */}
+          {onNeedMaterial !== undefined && recipe.materials.length > 0 ? (
+            <button
+              className="app-btn is-small"
+              title={
+                needShort
+                  ? tr('ui.lab.026', { p1: engine.ctx.items.get(needShort.itemId)?.name ?? needShort.itemId })
+                  : tr('ui.lab.027')
+              }
+              onClick={() => onNeedMaterial((needShort ?? recipe.materials[0]!).itemId)}
+            >
+              {tr('ui.lab.025')}
+            </button>
+          ) : null}
           <span className="app-dim">
             {tr('ui.lab.005')} {affordable}
           </span>
@@ -1030,17 +1064,10 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
           <span>⚓</span>
           <span>{tr("ui.IndustryPage.110")}</span>
         </button>
-        <button
-          role="tab"
-          aria-selected={sec === 'shelf'}
-          className={`app-subtab${sec === 'shelf' ? ' is-active' : ''}`}
-          onClick={() => setSec('shelf')}
-        >
-          <span>▦</span>
-          <span>{tr("ui.IndustryPage.060")}</span>
-        </button>
         {/* **实验室**（**2026-09-29 船长令**）：**门槛后才出现**（首座空间站建成 ⇒ `labUnlocked`）——
-            不是灰掉，是不渲染（船长口径：门槛前"看不到相关内容"）。 */}
+            不是灰掉，是不渲染（船长口径：门槛前"看不到相关内容"）。
+            ⚠ **2026-10-01 船长令**：「将实验室的子页面标签移动到蓝图书架前面」⇒ 本块整体上移到
+            蓝图书架之前（顺序：精炼炉 → 组装机 → 造船厂 → **实验室** → 蓝图书架）。 */}
         {engine.labUnlocked() ? (
           <button
             role="tab"
@@ -1052,6 +1079,15 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
             <span>{tr("ui.lab.001")}</span>
           </button>
         ) : null}
+        <button
+          role="tab"
+          aria-selected={sec === 'shelf'}
+          className={`app-subtab${sec === 'shelf' ? ' is-active' : ''}`}
+          onClick={() => setSec('shelf')}
+        >
+          <span>▦</span>
+          <span>{tr("ui.IndustryPage.060")}</span>
+        </button>
       </div>
 
       {/* ═══ 四个子页**保活**（2026-09-22 工业页卡顿修复第 2 步）═══
@@ -1238,7 +1274,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
       {/* 实验室（**2026-09-29 船长令**）：与其余四页同一套保活手法（`IndPane` + 会话滚动记忆） */}
       {engine.labUnlocked() && seenSec.has('lab') ? (
         <IndPane scrollKey="industry.lab.scroll" off={sec !== 'lab'}>
-          <LabPanel engine={engine} onToast={onToast} onGotoMarket={onGotoMarket} />
+          <LabPanel engine={engine} onToast={onToast} onGotoMarket={onGotoMarket} onNeedMaterial={handleNeedMineral} />
         </IndPane>
       ) : null}
     </div>

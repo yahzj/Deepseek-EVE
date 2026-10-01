@@ -194,6 +194,10 @@ export {
   consumableStockOf,
   useSynapticAccelerant,
   synapticAccelerantRemainMs,
+  /* 2026-10-01 船长令：技能加速「自动续用」开关（循环使用 · 离线期间同样生效） */
+  SYNAPTIC_ACCELERANT_RENEW_TAIL_MS,
+  boostAutoRenewOn,
+  setBoostAutoRenew,
   INVASION_BEACON_ITEM_ID,
   INVASION_BEACON_FAMILIES,
   useInvasionBeacon,
