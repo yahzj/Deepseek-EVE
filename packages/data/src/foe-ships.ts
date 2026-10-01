@@ -329,7 +329,7 @@ export const H_FLAGSHIP_SHIP_IDS: readonly string[] = ['foe-h-ink-flagship']
  *
  * ⚠ 与 `H_FLAGSHIP_SHIP_IDS` **不是同一张表**：H 那张同时兼作"旗舰速度破例白名单"，
  * R 族**不需要破例** —— 它的旗舰 209 m/s = **0.72× 基准船**，落在**本族自己的**速带
- * `CORONA_SPEED_BAND`（0.70~1.50×）之内（见 `content-check.ts` 的族格契约）。
+ * `CORONA_SPEED_BAND`（0.55~1.35×）之内（见 `content-check.ts` 的族格契约）。
  */
 export const R_FLAGSHIP_SHIP_IDS: readonly string[] = ['foe-r-corona-nexus']
 
@@ -350,7 +350,16 @@ export const R_FLAGSHIP_SHIP_IDS: readonly string[] = ['foe-r-corona-nexus']
  * ⇒ **五档全在带内 ⇒ 本族不需要"速度破例白名单"**（对照 H 族要两条豁免）。
  * ⚠ 这条带**只对 R 族生效**，不碰 H 族那条（两族各一份，防一族调带误伤另一族）。
  */
-export const CORONA_SPEED_BAND: readonly [number, number] = [0.7, 1.5]
+export const CORONA_SPEED_BAND: readonly [number, number] = [0.55, 1.35]
+/**
+ * 🔴 **2026-10-01 船长令「敌人速度按照标准同级舰 1.1 的速度定」⇒ 五档 `speedRatio` 一律 1.1**
+ * ⇒ 本族速带**随之放宽到 0.55~1.35×**（改前 0.70~1.50×）：
+ * 统一 1.1 之后，实速 = 档基准 × 1.1，而**重档的档基准本来就低**（T5 155 × 1.1 = 171）
+ * ⇒ 相对基准船（165.2 m/s）的比率掉到 **0.58×**，落在旧下限 0.70 之外。
+ * 新带按改后五档的实测比率取：T1 374（≈1.27×）· T2 ≈1.10× · T3 284（≈0.96×）·
+ * T4 226（≈0.77×）· T5 171（**0.58×**，贴近新下限）。
+ * ⚠ 与 H 族那条（`INK_SPEED_BAND` 1.00~1.60）**各是一份**，一族调速不误伤另一族。
+ */
 
 /**
  * **H 族「速度族格破例」白名单**（船长 2026-09-24 第二轮令：「**突击舰速度过慢，按照1.6修正，
@@ -1404,15 +1413,24 @@ export const FOE_H_INK_FLAGSHIP: FoeShipDef = {
  * 参考对象 = 远行星号（Starsector）的 **Remnants**：TriTachyon 那支**自主 AI 舰队**的残余，
  * 全无人、由 AI 核心驾驶、护盾特化、能量武器为主。
  *
- * **族格三条**（转化为本作的落点；与 H 族形成正对照）：
+ * **族格（转化为本作的落点；与 H 族形成正对照）**：
  * 1. **护盾特化** —— 护盾占比 **0.55~0.65**（H 族一律 0.5、旗舰 0.2）＋ 护盾三系抗性，
  *    装甲/结构相对薄 ⇒「**打得穿护盾才谈伤害**」；
  * 2. **偏等离子** —— `dmgMix` 以等离子为主（H 族是动能/爆炸=导弹线）；
- * 3. **每艘自带机巢** —— 无人机是这族的主体（`FOE_DRONE_R_PRISM`「折光机」· 多而灵），
- *    档位越高架数越多（T1 起就带、旗舰 T5 带 4 架）。
+ * 3. **激光 · 风筝 · 闪现**（**船长 2026-10-01 三条令**）：五档一律 `energyForm: 'beam'`
+ *    （能量·必中，「使用以激光为主的武器」）＋ `tactic: 'kite'`（「非常擅长风筝战术」）
+ *    ＋ 常挂「瞬光跃迁仪」（「激光武器+闪现效果的挂载件」）。
+ *    🔴 **2026-10-01 船长令「移除敌人的机巢」** ⇒ 原设计的"每艘自带机巢"（`FOE_DRONE_R_PRISM`「折光机」）
+ *    **整条撤下**：五档一律**不带 `drones`**。机型本身暂留目录（将来别处可用，`FOE_DRONES` 仍收录它）。
+ * 4. **速度与血量**（**船长 2026-10-01 两条令**）：
+ *    · **速度** = 「**敌人速度按照标准同级舰 1.1 的速度定**」⇒ 五档 `speedRatio` **一律 1.1**
+ *      （实速 = `HULL_CLASS_BASE_SPEED[档] × 1.1`）；
+ *    · **血量** = 「**拥有一个 0.9 倍血量的修正（这个修正不计入预算内）**」⇒ 五档在"档基线 × 角色"
+ *      之上再乘 **0.9**。⚠ **该折减不进威胁预算** —— 预算只由卡面 `threat` 决定
+ *      （`battle:calibrate --roster` 的「总血」列 = `foeHpOfThreat(威胁)`，与舰级血量无关）
+ *      ⇒ 净效果 = **卡面威胁不变、实际更脆**。
  *
- * ⚠ 数值口径 = **权威档基线 × 角色系数**（T1 260/39.5 · T2 480/68 · T3 900/124 · T4 1,600/240 ·
- * T5 2,800/420），速度 = `HULL_CLASS_BASE_SPEED[档] × speedRatio`。**无一脱离档基线**。
+ * ⚠ 数值口径 = **权威档基线 × 角色系数 × 0.9（船长血修正）**；速度 = 档基准 × 1.1。**无一脱离档基线**。
  * ⚠ 舰名一律**自创**（"光现象/残响"意象）—— Starsector 的舰名不照抄。
  */
 
@@ -1428,8 +1446,8 @@ export const FOE_R_CORONA_GLINT: FoeShipDef = {
   family: 'R',
   evasion: 0.30, // 族内最高（无人舰灵巧；H 族同档 0.59 是"贴脸突击"路线，本族靠护盾）
   hullClassTier: 1, // 护卫舰
-  speedRatio: 1.25, // 340 × 1.25 = 425 m/s
-  hp: 221, // T1 档基线 260 × 角色 0.85（脆而多）
+  speedRatio: 1.1, // **船长 2026-10-01 令「敌人速度按照标准同级舰 1.1 的速度定」**：340 × 1.1 = 374 m/s
+  hp: 199, // **船长 2026-10-01 令「拥有一个 0.9 倍血量的修正（这个修正不计入预算内）」**：原 221 × 0.9（⚠ 该折减**不进威胁预算** —— 预算只由卡面 threat 决定，见 roster 表的「总血」列）
   split: { s: 0.65, a: 0.2, h: 0.15 }, // **护盾特化**（船长的族格第一条）
   shotDmg: 40, // T1 档基线 39.5 × 角色 1.00
   hitRate: 1, // 光束必中（舰级路径下不消费本字段，写 1 表意；与 D 族同款写法）
@@ -1444,7 +1462,7 @@ export const FOE_R_CORONA_GLINT: FoeShipDef = {
   // 本体被命中时拉开交战距离 2,000 m、冷却 12 秒（参数选「甲」）—— 与「风筝」配套：被近身就闪开、重建射程优势。
   mounts: [FOE_MOUNT_IDS.coronaBlink],
   tactic: 'kite', // 船长令「非常擅长风筝战术」⇒ 全档 kite（改前 T1~T3 是 orbit）
-  drones: [{ drone: FOE_DRONE_R_PRISM, count: 1 }], // 族格第三条：每艘自带机巢
+
 }
 
 /**
@@ -1459,8 +1477,8 @@ export const FOE_R_CORONA_ECHO: FoeShipDef = {
   family: 'R',
   evasion: 0.22,
   hullClassTier: 2, // 驱逐舰
-  speedRatio: 1.15, // 295 × 1.15 = 339 m/s
-  hp: 408, // T2 档基线 480 × 角色 0.85
+  speedRatio: 1.1, // **船长 2026-10-01 令「敌人速度按照标准同级舰 1.1 的速度定」**：295 × 1.1 = 324.5 → **325** m/s
+  hp: 367, // **船长 2026-10-01 令「拥有一个 0.9 倍血量的修正（这个修正不计入预算内）」**：原 408 × 0.9（⚠ 该折减**不进威胁预算** —— 预算只由卡面 threat 决定，见 roster 表的「总血」列）
   split: { s: 0.65, a: 0.2, h: 0.15 },
   shotDmg: 71, // T2 档基线 68 × 角色 1.05
   hitRate: 1, // 光束必中（舰级路径下不消费本字段，写 1 表意；与 D 族同款写法）
@@ -1475,7 +1493,7 @@ export const FOE_R_CORONA_ECHO: FoeShipDef = {
   // 本体被命中时拉开交战距离 2,000 m、冷却 12 秒（参数选「甲」）—— 与「风筝」配套：被近身就闪开、重建射程优势。
   mounts: [FOE_MOUNT_IDS.coronaBlink],
   tactic: 'kite', // 船长令「非常擅长风筝战术」⇒ 全档 kite（改前 T1~T3 是 orbit）
-  drones: [{ drone: FOE_DRONE_R_PRISM, count: 2 }],
+
 }
 
 /**
@@ -1490,8 +1508,8 @@ export const FOE_R_CORONA_PRISM: FoeShipDef = {
   family: 'R',
   evasion: 0.18,
   hullClassTier: 3, // 巡洋舰
-  speedRatio: 1.10, // 258 × 1.10 = 284 m/s
-  hp: 810, // T3 档基线 900 × 角色 0.90
+  speedRatio: 1.1, // **船长 2026-10-01 令「敌人速度按照标准同级舰 1.1 的速度定」**：258 × 1.1 = 284 m/s
+  hp: 729, // **船长 2026-10-01 令「拥有一个 0.9 倍血量的修正（这个修正不计入预算内）」**：原 810 × 0.9（⚠ 该折减**不进威胁预算** —— 预算只由卡面 threat 决定，见 roster 表的「总血」列）
   split: { s: 0.6, a: 0.22, h: 0.18 },
   shotDmg: 124, // T3 档基线 124 × 角色 1.00
   hitRate: 1, // 光束必中（舰级路径下不消费本字段，写 1 表意；与 D 族同款写法）
@@ -1506,7 +1524,7 @@ export const FOE_R_CORONA_PRISM: FoeShipDef = {
   // 本体被命中时拉开交战距离 2,000 m、冷却 12 秒（参数选「甲」）—— 与「风筝」配套：被近身就闪开、重建射程优势。
   mounts: [FOE_MOUNT_IDS.coronaBlink],
   tactic: 'kite', // 船长令「非常擅长风筝战术」⇒ 全档 kite（改前 T1~T3 是 orbit）
-  drones: [{ drone: FOE_DRONE_R_PRISM, count: 2 }],
+
 }
 
 /**
@@ -1521,8 +1539,8 @@ export const FOE_R_CORONA_DUSK: FoeShipDef = {
   family: 'R',
   evasion: 0.12,
   hullClassTier: 4, // 战列舰
-  speedRatio: 1.10, // 205 × 1.10 = 226 m/s
-  hp: 1520, // T4 档基线 1,600 × 角色 0.95
+  speedRatio: 1.1, // **船长 2026-10-01 令「敌人速度按照标准同级舰 1.1 的速度定」**：205 × 1.1 = 226 m/s
+  hp: 1368, // **船长 2026-10-01 令「拥有一个 0.9 倍血量的修正（这个修正不计入预算内）」**：原 1520 × 0.9（⚠ 该折减**不进威胁预算** —— 预算只由卡面 threat 决定，见 roster 表的「总血」列）
   split: { s: 0.55, a: 0.25, h: 0.2 },
   shotDmg: 240, // T4 档基线 240 × 角色 1.00
   hitRate: 1, // 光束必中（舰级路径下不消费本字段，写 1 表意；与 D 族同款写法）
@@ -1537,7 +1555,7 @@ export const FOE_R_CORONA_DUSK: FoeShipDef = {
   // 本体被命中时拉开交战距离 2,000 m、冷却 12 秒（参数选「甲」）—— 与「风筝」配套：被近身就闪开、重建射程优势。
   mounts: [FOE_MOUNT_IDS.coronaBlink],
   tactic: 'kite', // 船长令「非常擅长风筝战术」⇒ 全档 kite（改前 T1~T3 是 orbit）
-  drones: [{ drone: FOE_DRONE_R_PRISM, count: 3 }],
+
 }
 
 /**
@@ -1557,8 +1575,8 @@ export const FOE_R_CORONA_NEXUS: FoeShipDef = {
   family: 'R',
   evasion: 0.10,
   hullClassTier: 5, // 旗舰（本族唯一 T5）
-  speedRatio: 1.35, // 155 × 1.35 = 209 m/s
-  hp: 39_200, // 3,920 × 10（与 H 族旗舰同口径；战斗血条由池子接管）
+  speedRatio: 1.1, // **船长 2026-10-01 令「敌人速度按照标准同级舰 1.1 的速度定」**：155 × 1.1 = 170.5 → **171** m/s
+  hp: 35_280, // **船长 2026-10-01 令「拥有一个 0.9 倍血量的修正（这个修正不计入预算内）」**：原 39200 × 0.9（⚠ 该折减**不进威胁预算** —— 预算只由卡面 threat 决定，见 roster 表的「总血」列）
   split: { s: 0.5, a: 0.3, h: 0.2 }, // 旗舰护盾占比回到 0.5（与 H 族旗舰同值，便于两族 BOSS 可比）
   shotDmg: 519, // T5 档基线 420 × 角色 1.30 × 0.95（机群让位）
   hitRate: 1, // 光束必中（舰级路径下不消费本字段，写 1 表意；与 D 族同款写法）
@@ -1573,7 +1591,7 @@ export const FOE_R_CORONA_NEXUS: FoeShipDef = {
   // 本体被命中时拉开交战距离 2,000 m、冷却 12 秒（参数选「甲」）—— 与「风筝」配套：被近身就闪开、重建射程优势。
   mounts: [FOE_MOUNT_IDS.coronaBlink],
   tactic: 'kite', // 船长令「非常擅长风筝战术」⇒ 全档 kite（改前 T1~T3 是 orbit）
-  drones: [{ drone: FOE_DRONE_R_PRISM, count: 4 }], // 全游带机最多的敌舰
+
   elite: true, // 显示名挂「精锐」前缀
 }
 /** 舰级表（按 id 索引；content-check 校验卡上引用的舰级必须在此） */export const FOE_SHIPS: readonly FoeShipDef[] = [

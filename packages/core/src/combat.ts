@@ -8889,6 +8889,22 @@ function stepBattle(
             if (markFoeGunRangeBuff(other, b)) {
               pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
             }
+            // **闪现跃迁**（2026-10-01）：与上面两条**同款**——"全体攻击"打到的副目标同样会触发。
+            // ⚠ 2026-10-01 补：初版只写在了主目标那处 ⇒ 用全体攻击武器（孢子导弹巢那类）打中带闪现的
+            // 敌舰时**不会闪**，与两条受击增程的行为不一致。
+            if (
+              markFoeBlink(other, other.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits))
+            ) {
+              pushBattleNotice(b, '跃迁规避：目标瞬时换位')
+              pushBattleFx(b, {
+                atMs: b.lastTickGameMs,
+                side: 'foe',
+                tag: other.tag,
+                type: 'kinetic',
+                hit: true,
+                blink: true,
+              })
+            }
           }
           pushBattleFx(b, {
             atMs: b.lastTickGameMs + dtMs,
