@@ -1305,6 +1305,17 @@ html[data-locale='en'] body {
   color: rgb(var(--wui-text));
 }
 
+/* ---------- 实验室卡（**2026-10-01 船长令**：「你漏了产物部分的样式（包括产物的title）」） ----------
+ * 产物行与组装机卡**同一口径**：**只有产物名金色**，其余（「产物：」标签、拥有数、每批工期、产出倍率）
+ * 回普通文字色——即上面那条 2026-09-13 的令。
+ * ⚠ **为什么不直接给实验室卡挂 `.is-assembler`**：那条还带 `content-visibility: auto` ＋
+ *   `contain-intrinsic-size: auto 523px`（组装机 151 张卡的屏外跳过与占位高度，见 `ui/LazyMount.tsx`）；
+ *   实验室只有几张卡，既不需要屏外跳过，也不该继承那个 523px 的占位高度。
+ * ⚠ 金色落在产物名上靠 JSX 里的 `.app-gold`（现成类，不新增色值）。 */
+.app-belt-card.is-lab .app-belt-ore {
+  color: rgb(var(--wui-text));
+}
+
 /* ---------- 星图显示模式切换（2026-09-11 船长：名称 / 安全等级 / 敌对派系 三态互斥） ---------- */
 
 .app-map-viewbar {
@@ -12368,22 +12379,35 @@ html[data-locale='en'] body {
 }
 /**
  * **闪现跃迁演出**（**船长 2026-10-01 令**：「**闪现时候要给舰船一个闪现的动画**」）——
- * R 族「光环科技」的挂载件「瞬光跃迁仪」触发时，界面给**那一艘敌舰**加 `is-blink`（420ms 后摘掉）。
+ * R 族「光环科技」的挂载件「瞬光跃迁仪」触发时，界面给**那一艘敌舰**加 `is-blink`/`is-blink-hidden`
+ * （**消失 200ms ＋ 出现 200ms** 两段；时刻表见 `BattleState.foeBlinkQueue`）。
  *
  * 口径三条：
  *  · **只动 `opacity`** —— 位置本身不用动画：战斗画面里敌舰横坐标由 `BattleState.distanceM` 映射，
  *    距离一突变舰位**自然跳**，本动画只负责"让人看出这是闪现、不是瞬移 bug"（§十四：状态表现优先改
  *    数据/透明度，**不优先改滤镜** —— 大 SVG 子树上 `filter` 会触发整份矢量重新栅格化）；
  *  · **不碰布局**：不写 `transform`、不改尺寸 ⇒ 血条锚点与距离尺一字不动（与 `is-arriving` 同一条纪律）；
- *  · **一次性**：类由渲染层按"触发时刻 + 420ms"自行摘除，不做无限循环（提示位是"正在发生的事"）。
+ *  · **一次性**：类由渲染层按"触发时刻 + 200ms×2"自行摘除，不做无限循环（提示位是"正在发生的事"）。
  */
 .app-bts-unit.is-blink {
-  animation: app-bts-blink 420ms ease-out both;
+  animation: app-bts-blink-in 200ms ease-out both;
 }
-@keyframes app-bts-blink {
+/* 🔴 **闪现期间整体消失**（船长 2026-10-01 令：「闪现开始-播放动画的同时舰船消失-等待发生时间-
+   在新位置播放动画同时舰船出现」）：`combat.foeBlinkQueue` 的 `vanishMs → appearMs` 这 200ms 里本舰
+   不可见（`visibility` 不参与布局 ⇒ 血条锚点与距离尺一字不动，与 `is-arriving` 同一纪律）。 */
+.app-bts-unit.is-blink-hidden {
+  pointer-events: none;
+  animation: app-bts-blink-out 200ms ease-in both;
+}
+@keyframes app-bts-blink-out {
   0% { opacity: 1; }
-  30% { opacity: 0.08; }
-  62% { opacity: 0.08; }
+  55% { opacity: 0.35; }
+  100% { opacity: 0; }
+}
+/* 闪现**出现**那一段（`is-blink`，在 `appearMs` 起播 200ms）：从全透明淡回来 */
+@keyframes app-bts-blink-in {
+  0% { opacity: 0; }
+  36% { opacity: 0.35; }
   100% { opacity: 1; }
 }
 /* 送达弹窗（2026-09-14 船长两次裁定）：①「除新手教程外的讯息也弹窗」；

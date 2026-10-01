@@ -1027,10 +1027,16 @@ const meSpeedRef = useRef(200)
      撤出只允许"淡出完成且该尸骸右侧（种子序更靠后）无仍在演出的尸骸"——整批尸骸演完才
      一起收拢一次，存活舰补位不再压着爆炸动画走。几何/弹道按视觉行序（含占位尸骸）计算。 */
   const WRECK_FADE_MS = 520 // 尸骸灰舰淡出时长（爆炸环演出期结束后的收尾段）
-  /** **闪现跃迁演出的时长**（**船长 2026-10-01 令**：「闪现时候要给舰船一个闪现的动画」）——
-   *  与 `styles.css` 的 `@keyframes app-bts-blink`（420ms）**必须逐字一致**：类的摘除由这里判，
-   *  对不上的话要么动画被腰斩、要么类留着导致下次闪现不重播。 */
-  const BLINK_ANIM_MS = 420
+  /**
+   * 🔴 **闪现演出时长**（**船长 2026-10-01 令**：「**闪现的发生时间大概200ms**」＋
+   * 「**发生过程需要搭配动画效果：闪现开始-播放动画的同时舰船消失-等待发生时间-在新位置播放动画
+   * 同时舰船出现**」）。
+   *
+   * ⚠ **与引擎逐字一致**：`combat.ts` 的 `FOE_BLINK_ANIM_MS = 200`
+   * 与 `styles*.css` 的 `app-bts-blink` / `app-bts-blink-in`（各 200ms）。
+   * 舰船在这 200ms 里**整体消失**（`visibility: hidden`），到点在新位置播"出现"动画。
+   */
+  const BLINK_ANIM_MS = 200
   const scanDroppable = (): Set<string> => {
     const drop = new Set<string>()
     let laterVisible = false
@@ -1098,10 +1104,12 @@ const meSpeedRef = useRef(200)
     for (const fx of arrivals) {
       fxSeqRef.current = fx.seq
       /**
-       * **闪现跃迁演出**（**船长 2026-10-01 令**：「闪现时候要给舰船一个闪现的动画」）——
-       * R 族「瞬光跃迁仪」触发时引擎推这一条（**不是开火**）。与下面 `droneDown` 同款：
-       * 必须**提前拦下并 continue**，否则会被当成一次开火（画弹道 + 打命中闪光）。
-       * 登记后由敌舰渲染按 `BLINK_ANIM_MS` 加 `is-blink` 播动画、每帧清理过期项。
+       * **闪现跃迁演出**（**船长 2026-10-01 两次令**）——R 族「瞬光跃迁仪」触发时引擎推这一条（**不是开火**）。
+       * 与下面 `droneDown` 同款：必须**提前拦下并 continue**，否则会被当成一次开火（画弹道 + 打命中闪光）。
+       *
+       * 登记后由敌舰渲染按 `BLINK_ANIM_MS` 分两段演（**船长要的"消失 → 等待 → 出现"**）：
+       * 前 200ms 加 `is-blink-hidden`（淡出到不可见）、后 200ms 加 `is-blink`（在新位置淡入）；
+       * 每帧清理两段都过期的项。
        */
       if (fx.blink) {
         blinkRef.current.set(fx.tag, now)
@@ -1486,10 +1494,10 @@ const meSpeedRef = useRef(200)
       (d) => now - d.born < DRONE_DOWN_FREEZE_MS + DRONE_DOWN_LIFE,
     )
   }
-  // **闪现跃迁演出**：同样"CSS 演完即清"（摘掉 is-blink 的那一刻动画已经结束）
+  // **闪现跃迁演出**：两段（消失 200ms ＋ 出现 200ms）都过完才清（清了才有下一次的重新触发）
   if (blinkRef.current.size > 0) {
     for (const [tag, at] of blinkRef.current) {
-      if (now - at >= BLINK_ANIM_MS) blinkRef.current.delete(tag)
+      if (now - at >= BLINK_ANIM_MS * 2) blinkRef.current.delete(tag)
     }
   }
 
@@ -2133,9 +2141,15 @@ const meSpeedRef = useRef(200)
     const sinceBoom = ba === undefined ? -1 : now - ba
     const corpseOn = sinceBoom >= 0 // 致死弹道着弹后才是真尸骸；着弹前原样停留
     const locked = !corpseOn && tag === combat.lockTag
-    /** 本舰是否正在播「闪现跃迁」演出（引擎推 `fx.blink` 后 `BLINK_ANIM_MS` 内为真） */
+    /**
+     * 🔴 **闪现跃迁演出**（**船长 2026-10-01 令**）：引擎推 `fx.blink` 后的 `BLINK_ANIM_MS`（200ms）里，
+     * 本舰**整体消失**（`blinkHide`）——这正是船长要的"播放动画的同时舰船消失 → 等待发生时间 →
+     * 在新位置播放动画同时舰船出现"。到点在新位置播 `is-blink`（出现动画）。
+     */
     const blinkAt = blinkRef.current.get(tag)
-    const blinkOn = blinkAt !== undefined && now - blinkAt < BLINK_ANIM_MS
+    const blinkElapsed = blinkAt === undefined ? Number.POSITIVE_INFINITY : now - blinkAt
+    const blinkHide = blinkElapsed < BLINK_ANIM_MS
+    const blinkOn = blinkElapsed >= BLINK_ANIM_MS && blinkElapsed < BLINK_ANIM_MS * 2
     const boomLive = corpseOn && sinceBoom < BOOM_LIFE
     const fadeT = sinceBoom >= BOOM_LIFE ? clamp01((sinceBoom - BOOM_LIFE) / WRECK_FADE_MS) : 0
     /** 本舰是否正在**飞入**（逐舰入场：首波按 `arrivalSide`，此后按引擎 `enteredAtMs`） */
@@ -2144,7 +2158,7 @@ const meSpeedRef = useRef(200)
       <div
         key={tag}
         data-tag={tag}
-        className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}${arriving ? ' is-arriving' : ''}${blinkOn ? ' is-blink' : ''}`}
+        className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}${arriving ? ' is-arriving' : ''}${blinkOn ? ' is-blink' : ''}${blinkHide ? ' is-blink-hidden' : ''}`}
         /* 列盒内的水平居中 + **舰位与锚点同源**（2026-09-25 修船长报障「第二排右舰血条压住左舰
            数字」）：本单位的宽度由外层**列盒**给定（= 本列列宽），舰在盒内居中 ⇒ 舰中心 ==
            `foeColLeft(列) + 列宽/2`（= `layout()` 的锚点）。旧写法（`marginLeft = (列宽−舰宽)/2`

@@ -23,12 +23,8 @@ import {
   canStartBlueprint,
   // 组装机卡片排序（2026-09-14 船长「一次性图纸应该和原图纸放在一起」）——口径单点在 core 纯函数
   sortManuRows,
-  /** 2026-09-22 船长令：缺料是"零件"时提示去组装机（而不是市场）⇒ 产物→蓝图反查（core 单点，含缓存） */
-  blueprintProducingItem,
   // 2026-09-14 舰船仓库批：船型"总持有"读口径（仓库＋在役舰队）
   shipOwnedCount,
-  // 2026-09-13：精炼源只列玩家可见的矿（未上线矿不进"由精炼炉炼出"提示）
-  visibleItemDefs,
   // 2026-09-14 船长：虫洞专属图纸改「去虫洞」跳转，门槛与扫描虫洞页同一本账
   WORMHOLE_SCAN_UNLOCK_STANDING,
   // 2026-09-26 船长令：取得第一个黑匣后才解锁组装机的「舰船插件」档（判据单点）
@@ -42,8 +38,6 @@ import {
    */
   materialDisplayIdOf,
   materialGroupIdsOf,
-  /** 通用黑匣 id（2026-09-29：材料行的"去哪弄"那一支要按它判 —— 它只有声望商店一条来路） */
-  UNIVERSAL_BLACKBOX_ITEM_ID,
 } from '@whale/core'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
@@ -65,6 +59,8 @@ import { RowGlyph } from '../ui/itemView'
 import { GoodsLine, marginPctOf, marketPriceOf, NetIncomeLine } from '../ui/yieldView'
 import { itemGlyphName, partToneKeyOf, toneOf } from '../ui/Glyphs'
 import { ASSEMBLER_CARD_MIN_H, LazyMount, useIdleChunk } from '../ui/LazyMount'
+/** 材料行尾「这一味料从哪来」的四支判定（2026-10-01：与实验室卡共用一份，见本件头注） */
+import { MatSourceLink } from '../ui/matSourceLink'
 import { useL10n, cmdText } from '../i18n/locale'
 import { MONEY_GLYPH } from '../pages/common'
 import {
@@ -104,18 +100,6 @@ export function productBaseOf(engine: GameEngine, kind: 'module' | 'ship' | 'ite
     if (good.kind === kind && good.refId === refId) return (good.basePrice ?? 0) * units
   }
   return 0
-}
-
-/** 精炼源矿石：精炼配方（def.refine）产出该矿物的矿石 id 列表；空 = 无精炼产出，只能市场购买。
- *  ⚠ 只列**玩家可见**的矿（`visibleItemDefs`）：未上线矿石不能作为"由精炼炉炼出"的提示来源
- *  （否则"虚空晶由虚空母矿炼出"会把未上线矿名念给玩家听）。 */
-function refineSourcesOf(engine: GameEngine, mineralId: string): string[] {
-  const out: string[] = []
-  for (const def of visibleItemDefs(engine.ctx)) {
-    if (def.kind === 'wreck') continue
-    if ((def.refine ?? []).some((r) => r.mineralId === mineralId)) out.push(def.id)
-  }
-  return out
 }
 
 /** 蓝图书市场价（组装机排序用：市场目录 basePrice；缺省 = 蓝图字段；再无 = 沉底） */
@@ -920,48 +904,26 @@ export const BlueprintCard = memo(function BlueprintCard({
                 {tr("ui.IndustryPage.029")} {have.toLocaleString('zh-CN')}
                 {split !== '' ? `（${split}）` : ''}）
               </span>
-              {onNeedMineral ? (
-                (() => {
-                  /* 2026-09-22 船长令：「组装机和造船厂需要零件时，提示不是去组装机，而是去市场」⇒
-                     「希望提示玩家去组装机生产零件，不要提示去市场」＋「高级零件依旧去相应的组装机」。
-                     四支（优先级从上到下）：**声望商店有 ⇒ 去声望商店** · 有精炼源 ⇒ 去精炼炉 ·
-                     **能在这台机器上造出来（如零件）⇒ 去组装机** · 既炼不出也造不出 ⇒ 去市场。
-                     文案按 §十三.5 不写原因解释（旧文案那句「无法经精炼炉产出」属解释，已随本次改写删掉）。
-                     ⚠ **新增第一支的由来**（**2026-09-29 船长报障**）：「通用黑匣」只有章鱼人声望商店
-                     一条来路（市场**只收不卖**、价格表里没有它的卖单）⇒ 原先落进第四支、显示
-                     「要到市场购买——点击跳转」是**指错路**（点过去只会看到一个空行情）。
-                     ⚠ 判据按**等价组**（`groupIds.includes(通用黑匣)`）而不是 `need.itemId === …`：
-                     配方里写的是 `blackbox-h`，直接比 id 永远不成立（实测踩到，读数照旧"去市场"）。 */
-                  const fromShop = groupIds.includes(UNIVERSAL_BLACKBOX_ITEM_ID)
-                  const srcs = refineSourcesOf(engine, need.itemId)
-                  const srcName = (id: string): string => engine.ctx.items.get(id)?.name ?? id
-                  const madeBy = fromShop ? undefined : blueprintProducingItem(engine.ctx, need.itemId)
-                  const title = fromShop
-                    ? tr('ui.Industry.158', { matName: matName })
-                    : srcs.length > 0
-                      ? tr('ui.Industry.109', { matName: matName, p2: srcs.map(srcName).join(tr('ui.MatterTechTab.017')) })
-                      : madeBy
-                        ? tr('ui.Industry.155', { matName: matName, p2: madeBy.name })
-                        : tr('ui.Industry.110', { matName: matName })
-                  return (
-                    <span
-                      className="app-bp-mat-act"
-                      role="button"
-                      tabIndex={0}
-                      title={title}
-                      onClick={() => (fromShop ? onGotoPlugExchange?.() : onNeedMineral?.(need.itemId))}
-                    >
-                      {fromShop
-                        ? tr('ui.Industry.159')
-                        : srcs.length > 0
-                          ? tr('ui.Industry.047')
-                          : madeBy
-                            ? tr('ui.Industry.154')
-                            : tr('ui.Industry.048')}
-                    </span>
-                  )
-                })()
-              ) : null}
+              {/* 2026-09-22 船长令：「组装机和造船厂需要零件时，提示不是去组装机，而是去市场」⇒
+                 「希望提示玩家去组装机生产零件，不要提示去市场」＋「高级零件依旧去相应的组装机」。
+                 四支（优先级从上到下）：**声望商店有 ⇒ 去声望商店** · 有精炼源 ⇒ 去精炼炉 ·
+                 **能在这台机器上造出来（如零件）⇒ 去组装机** · 既炼不出也造不出 ⇒ 去市场。
+                 文案按 §十三.5 不写原因解释（旧文案那句「无法经精炼炉产出」属解释，已随本次改写删掉）。
+                 ⚠ **新增第一支的由来**（**2026-09-29 船长报障**）：「通用黑匣」只有章鱼人声望商店
+                 一条来路（市场**只收不卖**、价格表里没有它的卖单）⇒ 原先落进第四支、显示
+                 「要到市场购买——点击跳转」是**指错路**（点过去只会看到一个空行情）。
+                 ⚠ 判据按**等价组**（`groupIds.includes(通用黑匣)`）而不是 `need.itemId === …`：
+                 配方里写的是 `blackbox-h`，直接比 id 永远不成立（实测踩到，读数照旧"去市场"）。
+                 **2026-10-01**：这四支连同 `refineSourcesOf` 已搬进公共件 `ui/matSourceLink.tsx`
+                 （实验室卡要对齐同一套 ⇒ 两处各写一份必然漂），本卡行为逐字不变。 */}
+              <MatSourceLink
+                engine={engine}
+                itemId={need.itemId}
+                matName={matName}
+                groupIds={groupIds}
+                onNeedMineral={onNeedMineral}
+                onGotoPlugExchange={onGotoPlugExchange}
+              />
             </li>
           )
         })}

@@ -40,6 +40,8 @@ import {
   labMaterialAvailable,
   labRecipeUnlocked,
   labTechRequirementOf,
+  /** 2026-10-01：材料行尾那枚「这一味料从哪来」链接的等价组判据（通用黑匣）走 core 单点 */
+  materialGroupIdsOf,
 } from '@whale/core'
 import type { LabRecipeDef, LabRunView } from '@whale/core'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
@@ -55,6 +57,10 @@ import type { GameEngine } from '../game/engine'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
+/** 产物行的**物品悬停**（2026-10-01 船长令：实验室卡的产物也要有组装机卡那层 title） */
+import { ItemHover } from '../ui/shipInfo'
+/** 材料行尾「这一味料从哪来」的四支判定（2026-10-01：与组装机卡共用一份，见本件头注） */
+import { MatSourceLink } from '../ui/matSourceLink'
 /* 图标一律走**物品 id 单点映射**（2026-09-30 船长报障：新道具在实验室卡上是通用「消耗品」图标） */
 import { itemGlyphName } from '../ui/Glyphs'
 import { WRECK_SUBS, SUB_ALL, presentSubs, wreckTierOf, subText } from '../ui/itemSubs'
@@ -540,16 +546,20 @@ function LabPanel({
   onToast,
   onGotoMarket,
   onNeedMaterial,
+  onGotoPlugExchange,
 }: {
   engine: GameEngine
   onToast: PageProps['onToast']
   onGotoMarket?: (goodKey: string) => void
   /**
-   * **「去弄料」**（**2026-09-30 船长令**：「实验室的卡牌没有参考其他工业页面的卡牌添加跳转吗」）——
-   * 与组装机卡那颗「缺料」按钮**同一条链**（页内 `handleNeedMineral`）：有精炼源 ⇒ 切精炼炉并高亮那张
-   * 矿石卡 · 造得出 ⇒ 切组装机 · 都不行 ⇒ 跳市场行情 · 再不行 ⇒ toast 说明。
+   * **材料行尾的「去哪弄」跳转**（**2026-10-01 船长令**：实验室卡的材料行要与组装机卡逐字同款）——
+   * 与组装机卡**同一个处理器**（页内 `handleNeedMineral`）：有精炼源 ⇒ 切精炼炉并高亮那张矿石卡 ·
+   * 造得出 ⇒ 切组装机 · 都不行 ⇒ 跳市场行情 · 再不行 ⇒ toast 说明。
+   * ⚠ 原先那颗**卡头「去弄料」按钮**已删（它只会挑"第一味缺料"，指路不如逐行准；见 `LabCard` 头注）。
    */
   onNeedMaterial?: (itemId: string) => void
+  /** 材料行尾第①支（声望商店：通用黑匣那条来路）的落点——与组装机卡同一支判定 */
+  onGotoPlugExchange?: () => void
 }): ReactNode {
   const state = engine.state
   const recipes = [...engine.ctx.labRecipes.values()]
@@ -577,6 +587,7 @@ function LabPanel({
               onToast={onToast}
               onGotoMarket={onGotoMarket}
               onNeedMaterial={onNeedMaterial}
+              onGotoPlugExchange={onGotoPlugExchange}
               runs={runs.filter((v) => v.recipeId === r.id)}
             />
           ))}
@@ -587,10 +598,15 @@ function LabPanel({
 }
 
 /**
- * **一张实验室配方卡**（骨架与类名逐件照 `FurnaceCard`）。
+ * **一张实验室配方卡**（骨架与类名逐件照 `FurnaceCard`；**材料行**照组装机卡 `BlueprintCard`）。
  *
- * 与精炼炉卡的**唯一差异**：材料是**多料 BOM**（逐行给"×需量 ＋ 仓库量 ＋ 行情价"），
- * 开工门槛从"够一批单料"变成"够一批全料"（`labAffordableBatches`）；产出与净收益/h 复用同一组件。
+ * 与精炼炉卡的差异：材料是**多料 BOM**，开工门槛从"够一批单料"变成"够一批全料"（`labAffordableBatches`）。
+ *
+ * **材料行与组装机卡逐字同款**（**2026-10-01 船长令**：「实验室的卡片还是使用自己的富文本规则，和组装机
+ * 不一样（比如卡片标题有个'去弄料'，下方的原材料没有'去精炼''去组装机'然后字体样式也不一致）」）：
+ * `.app-bp-mats` ＋ `.app-bp-mat`（普通文字色，不再是 `.app-belt-econ` 那套金色）＋ 缺料 `is-short` 红标
+ * ＋ 行尾公共件 `MatSourceLink` 四支跳转；跳转**下沉到每一味料**，卡头原先那颗「去弄料」按钮已删
+ * （它只能挑"第一味缺料"，指路不如逐行准）。
  */
 function LabCard({
   recipe,
@@ -598,25 +614,24 @@ function LabCard({
   onToast,
   onGotoMarket,
   onNeedMaterial,
+  onGotoPlugExchange,
   runs,
 }: {
   recipe: LabRecipeDef
   engine: GameEngine
   onToast: PageProps['onToast']
   onGotoMarket?: (goodKey: string) => void
-  /** 「去弄料」（见 `LabPanel` 的同名 prop 注释）：入参 = 要弄的那味料的物品 id */
+  /** 材料行尾「去精炼 / 去组装机 / 去市场」那条链（见 `LabPanel` 的同名 prop 注释）：入参 = 那一味料的物品 id */
   onNeedMaterial?: (itemId: string) => void
+  /** 材料行尾第①支的落点：声望商店（通用黑匣那条来路，与组装机卡同一处判定） */
+  onGotoPlugExchange?: () => void
   runs: LabRunView[]
 }): ReactNode {
   const state = engine.state
   const rate = refineRate(state, engine.ctx)
   const out = engine.ctx.items.get(recipe.outputItemId)
   const affordable = labAffordableBatches(state, recipe)
-  /**
-   * 「去弄料」要弄的那味料 = **第一味齐备度不足的**（口径与开工门槛同一把尺：`labMaterialAvailable`
-   * 对单批 `units`）；都够 ⇒ `null`（按钮仍在，点了去看第一味料的来路——与精炼炉卡的「去矿带」常驻同款）。
-   */
-  const needShort = recipe.materials.find((m) => labMaterialAvailable(state, m.itemId) < m.units) ?? null
+  const running = runs.length > 0
   const batchValue = recipe.outputUnits * (marketPriceOf(state, engine.ctx, recipe.outputItemId) ?? out?.baseSellPriceIsk ?? 0)
   const costIsk = recipe.materials.reduce(
     (s, m) =>
@@ -656,7 +671,9 @@ function LabCard({
     onToast(tr('ui.lab.019', { p1: recipe.name, p2: recipe.outputUnits, who }))
   }
   return (
-    <div className="app-belt-card" key={recipe.id}>
+    // `is-lab`：本卡唯一的专属样式钩子（`styles.css`：把产物行整行拉回普通文字色，**只有产物名金色**，
+    // 与组装机卡 `is-assembler` 同一口径；⚠ 不复用 `is-assembler`——它还带 content-visibility 与占位高度）
+    <div className="app-belt-card is-lab" key={recipe.id}>
       <div className="app-belt-head">
         <span className="app-belt-name">
           {/* ⚠ **2026-09-30 船长报障「新道具图标你还没定」**：这里原先把图标写死成 `consumable`
@@ -668,21 +685,6 @@ function LabCard({
           {/* ⭐ 标记（**2026-09-30 船长令**：实验室卡与精炼炉卡同款 ⇒ 走新开的 `labRecipes` 族，
               存的是**配方 id**，与 `recipes` 的物品 id 分开） */}
           <MarkStar engine={engine} kind="labRecipes" id={recipe.id} />
-          {/* 「去弄料」：与组装机卡那颗「缺料」同一条链（见 `LabPanel.onNeedMaterial`）——
-              默认挑**第一味齐备度不足的料**；都够就挑第一味（按钮常驻，与精炼炉卡的「去矿带」一致） */}
-          {onNeedMaterial !== undefined && recipe.materials.length > 0 ? (
-            <button
-              className="app-btn is-small"
-              title={
-                needShort
-                  ? tr('ui.lab.029', { p1: engine.ctx.items.get(needShort.itemId)?.name ?? needShort.itemId })
-                  : tr('ui.lab.030')
-              }
-              onClick={() => onNeedMaterial((needShort ?? recipe.materials[0]!).itemId)}
-            >
-              {tr('ui.lab.028')}
-            </button>
-          ) : null}
           <span className="app-dim">
             {tr('ui.lab.005')} {affordable}
           </span>
@@ -693,36 +695,132 @@ function LabCard({
           现改成**取产出物自己的 `description`**：一件产品一份说明（单一来源，不再每张配方各写一段）。 */}
       <div className="app-belt-desc">{out?.description ?? ''}</div>
       {lockTip !== null ? <div className="app-belt-desc app-bad">{lockTip}</div> : null}
-      {/* 数据行（与精炼炉同款位置）：每批产出 / 每批工期 / 精炼速率 */}
+      {/* 产物行（**2026-10-01 船长令**：「你漏了产物部分的样式（包括产物的title）」）——与组装机卡
+          **同一套口径**：`产物：` ＋ 产物名（**本行只有它金色**，2026-09-13 船长「只需要将产物染成金色
+          就够了…其他文字的金色取消」）＋ 拥有数（`.app-dim`，悬停 `ui.Industry.108` 说明其口径）。
+          ⚠ 金字靠本卡 `is-lab` 那条 CSS 把整行拉回普通文字色（复用不了 `.is-assembler`：那条还带
+          `content-visibility:auto` ＋ `contain-intrinsic-size`，是组装机 151 张卡的屏外跳过用的）。
+          ⚠ 产物名挂**物品悬停**（与组装机卡同一个 `ItemHover` —— 就是船长说的"产物的title"）。
+          实验室自己的两个读数（每批工期 / 产出倍率）留在行尾。 */}
       <div className="app-belt-ore">
-        {tr('ui.lab.003')} {out?.name ?? recipe.outputItemId} ×{recipe.outputUnits}
+        {tr('ui.Handbook.013')}
+        <span className="app-gold">
+          {out !== undefined ? (
+            <ItemHover item={out} nameOf={(id) => engine.ctx.items.get(id)?.name}>
+              {out.name}
+            </ItemHover>
+          ) : (
+            recipe.outputItemId
+          )}
+        </span>{' '}
+        ×{recipe.outputUnits}
+        <span
+          className="app-dim"
+          title={tr('ui.Industry.108', { ownedWhere: tr('ui.ItemsPage.001') })}
+        >
+          （{tr('ui.ItemsPage.001')} {countWare(state, recipe.outputItemId).toLocaleString('zh-CN')}）
+        </span>
         {' · '}
         {tr('ui.lab.004')} {Math.round(recipe.cycleMs / 60_000)} {tr('ui.lab.012')}
         {' · '}
         {tr('ui.IndustryPage.062')} {Math.round(rate * 100)}%
       </div>
-      {/* 材料行：与精炼炉「♨ 产出：」同款缩进行（这里是"投料"），行尾给仓库量与行情价 */}
-      <div className="app-belt-econ">
-        <div>{tr('ui.lab.009')}</div>
+      {/* 材料行：**与组装机卡逐字同款**（2026-10-01 船长令：实验室卡不许自成一套富文本规则）——
+          `.app-bp-mats` ＋ `.app-bp-mat`（普通文字色）＋ 缺料 `is-short` ＋ 行尾「去哪弄」四支跳转。
+          ⚠ 缺料标红口径同组装机：**只在未开工时**标（在跑的红字会被误读成故障）；
+          ⚠ 实验室配方**没有等价组、也不吃材料学折扣**（core 口径）⇒ 行里不出现组装机那句
+          「（原 ×N，材料学折扣后）」，`现有` 读数走 core 单点 `labMaterialAvailable`。 */}
+      <ul className="app-bp-mats">
         {recipe.materials.map((m) => {
           const def = engine.ctx.items.get(m.itemId)
           const have = labMaterialAvailable(state, m.itemId)
+          const enough = have >= m.units
+          const groupIds = materialGroupIdsOf(m.itemId)
           return (
-            <div key={m.itemId} className={`app-belt-out${have >= m.units ? '' : ' app-bad'}`} title={def?.description ?? ''}>
-              {def?.name ?? m.itemId} ×{m.units}
+            <li
+              key={m.itemId}
+              className={`app-bp-mat${!enough && !running ? ' is-short' : ''}`}
+            >
+              {def?.name ?? m.itemId} ×{m.units.toLocaleString('zh-CN')}
               <span className="app-dim">
-                {' '}
-                {tr('ui.Yield.004', {
-                  p1: Math.floor(have).toLocaleString('zh-CN'),
-                  p2: marketPriceOf(state, engine.ctx, m.itemId)?.toLocaleString('zh-CN') ?? '—',
-                })}
+                {tr('ui.IndustryPage.029')} {have.toLocaleString('zh-CN')}）
               </span>
-            </div>
+              <MatSourceLink
+                engine={engine}
+                itemId={m.itemId}
+                matName={def?.name ?? m.itemId}
+                groupIds={groupIds}
+                onNeedMineral={onNeedMaterial}
+                onGotoPlugExchange={onGotoPlugExchange}
+              />
+            </li>
           )
         })}
+      </ul>
+      <div className="app-belt-econ">
         <NetIncomeLine price={batchValue} costIsk={costIsk} buildMs={recipe.cycleMs} />
       </div>
       <div className="app-belt-actions">
+        {/**
+         * **循环实验**（**2026-10-01 船长令**：「实验室本质上也是一个组装机，建议按照组装机的来」＋
+         * 「**循环应该和组装机一样是放在顶部的**」）——
+         * **位置与组装机那张卡逐字同款**：循环行是**操作区的第一行**（在运转名册与开工键**之上**），
+         * 控件结构也照它（`.app-belt-loop` ＋ `.app-toggle` ＋ `.app-mf-goal`）。
+         * 文案用本机器自己那一组（`ui.lab.031~035`；通用词如「目标」「已产」「已停线：」直接复用）。
+         */}
+        <div className="app-belt-loop">
+          <label className="app-toggle" title={tr('ui.lab.032', { p1: loop.on ? tr('ui.Industry.055') : tr('ui.Industry.056') })}>
+            <input
+              type="checkbox"
+              className="app-toggle-input"
+              checked={loop.on}
+              onChange={(e) => commitLoop(e.target.checked, e.target.checked ? (goalDraft || (loop.goal > 0 ? String(loop.goal) : '')) : '')}
+            />
+            <span className="app-toggle-track" aria-hidden="true" />
+            <span className="app-toggle-label">{tr('ui.lab.031')}</span>
+          </label>
+          {loop.on ? (
+            <span className="app-mf-goal">
+              {tr('ui.Industry.058')}
+              <input
+                type="number"
+                min={1}
+                className="app-mf-goal-input"
+                placeholder="∞"
+                value={goalDraft !== '' ? goalDraft : loop.goal > 0 ? String(loop.goal) : ''}
+                onChange={(e) => setGoalDraft(e.target.value)}
+                onBlur={(e) => {
+                  setGoalDraft('')
+                  commitLoop(true, e.target.value)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setGoalDraft('')
+                    commitLoop(true, (e.target as HTMLInputElement).value)
+                  }
+                }}
+                title={tr('ui.lab.033')}
+              />
+              {tr('ui.lab.034')}
+              <em className="app-dim">{tr('ui.Industry.060')}</em>
+            </span>
+          ) : null}
+          {loop.produced > 0 ? (
+            <span className="app-mf-made">
+              {tr('ui.Industry.061')} {loop.produced.toLocaleString('zh-CN')} {tr('ui.lab.034')}
+            </span>
+          ) : null}
+          {loop.stopWhy.length > 0 ? (
+            <span className="app-mf-why">
+              {tr('ui.Industry.062')}
+              {loop.stopWhy}
+            </span>
+          ) : null}
+          <span className="app-dim app-mf-note">
+            {tr('ui.lab.035')}
+            {runs.length > 0 ? tr('ui.Industry.113', { p1: runs.length }) : ''}
+          </span>
+        </div>
         {/* 运转单位名册（每台一行：劳动者 + 当前批进度条 + 停）——与精炼炉逐字同款 */}
         {runs.length > 0 ? (
           <div className="app-belt-workers">
@@ -791,65 +889,6 @@ function LabCard({
             {tr('ui.lab.023')}
           </button>
         ) : null}
-        {/**
-         * **循环实验**（**2026-10-01 船长令**：「实验室本质上也是一个组装机，建议按照组装机的来」）——
-         * 一条线只出一批，连续生产靠这个卡片级开关：**结构照组装机那张卡的循环块**
-         * （`.app-belt-loop` ＋ `.app-toggle` ＋ `.app-mf-goal`，见 `panels/Industry.tsx`），
-         * 文案用本机器自己的那一组（`ui.lab.031~035`；通用词如「目标」「已产」「已停线：」直接复用）。
-         */}
-        <div className="app-belt-loop">
-          <label className="app-toggle" title={tr('ui.lab.032', { p1: loop.on ? tr('ui.Industry.055') : tr('ui.Industry.056') })}>
-            <input
-              type="checkbox"
-              className="app-toggle-input"
-              checked={loop.on}
-              onChange={(e) => commitLoop(e.target.checked, e.target.checked ? (goalDraft || (loop.goal > 0 ? String(loop.goal) : '')) : '')}
-            />
-            <span className="app-toggle-track" aria-hidden="true" />
-            <span className="app-toggle-label">{tr('ui.lab.031')}</span>
-          </label>
-          {loop.on ? (
-            <span className="app-mf-goal">
-              {tr('ui.Industry.058')}
-              <input
-                type="number"
-                min={1}
-                className="app-mf-goal-input"
-                placeholder="∞"
-                value={goalDraft !== '' ? goalDraft : loop.goal > 0 ? String(loop.goal) : ''}
-                onChange={(e) => setGoalDraft(e.target.value)}
-                onBlur={(e) => {
-                  setGoalDraft('')
-                  commitLoop(true, e.target.value)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    setGoalDraft('')
-                    commitLoop(true, (e.target as HTMLInputElement).value)
-                  }
-                }}
-                title={tr('ui.lab.033')}
-              />
-              {tr('ui.lab.034')}
-              <em className="app-dim">{tr('ui.Industry.060')}</em>
-            </span>
-          ) : null}
-          {loop.produced > 0 ? (
-            <span className="app-mf-made">
-              {tr('ui.Industry.061')} {loop.produced.toLocaleString('zh-CN')} {tr('ui.lab.034')}
-            </span>
-          ) : null}
-          {loop.stopWhy.length > 0 ? (
-            <span className="app-mf-why">
-              {tr('ui.Industry.062')}
-              {loop.stopWhy}
-            </span>
-          ) : null}
-          <span className="app-dim app-mf-note">
-            {tr('ui.lab.035')}
-            {runs.length > 0 ? tr('ui.Industry.113', { p1: runs.length }) : ''}
-          </span>
-        </div>
       </div>
     </div>
   )
@@ -1346,7 +1385,13 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
       {/* 实验室（**2026-09-29 船长令**）：与其余四页同一套保活手法（`IndPane` + 会话滚动记忆） */}
       {engine.labUnlocked() && seenSec.has('lab') ? (
         <IndPane scrollKey="industry.lab.scroll" off={sec !== 'lab'}>
-          <LabPanel engine={engine} onToast={onToast} onGotoMarket={onGotoMarket} onNeedMaterial={handleNeedMineral} />
+          <LabPanel
+            engine={engine}
+            onToast={onToast}
+            onGotoMarket={onGotoMarket}
+            onNeedMaterial={handleNeedMineral}
+            onGotoPlugExchange={onGotoPlugExchange}
+          />
         </IndPane>
       ) : null}
     </div>
