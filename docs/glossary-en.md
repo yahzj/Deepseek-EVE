@@ -123,10 +123,10 @@
 
 | id | 中文 | English |
 |---|---|---|
-| sandcat | 沙猫级采矿艇 | `Sandcat-class Mining Corvette` |
-| burrower | 掘洞级采矿艇 | `Burrower-class Mining Corvette` |
+| sandcat | 磷虾级采矿艇 | `Krill-class Mining Corvette` |
+| burrower | 沙鳗级采矿艇 | `Sandeel-class Mining Corvette` |
 | whale | 鲸吞级采矿艇 | `Whaleswallow-class Mining Corvette` |
-| pioneer | 开拓级采矿艇 | `Pioneer-class Mining Corvette` |
+| pioneer | 独角鲸级采矿艇 | `Narwhal-class Mining Corvette` |
 | whale-king | 鲸王级采矿艇 | `Whaleking-class Mining Corvette` |
 | sh-humpback | 座头鲸级矿舰 | `Humpback-class Mining Ship` |
 | sh-bowhead | 蝠鲼级重载货舰 | `Manta-class Heavy Freighter` |
@@ -220,6 +220,7 @@
 | ② | 谜质 / 谜质装置 | **`Enigma` / `Enigma Device`** |
 | ③ | 玄武级 | **用某类大型海龟的英文** ⇒ 定为 `Leatherback-class`（棱皮龟，海龟中最大的一型，配「重装战列舰」） |
 | ④ | 老陈一队 / 检索重启 | **`Chen's Crew No.1`** ✓ · `Recall & Restart` 沿用（船长认可；改名随时说） |
+| ⑥ | 磷虾级 / 沙鳗级 / 独角鲸级（三条采矿舰 · 2026-09-30 船长令改名） | **`Krill-class` / `Sandeel-class` / `Narwhal-class`**（海洋生物名，与鲸吞/鲸王/座头鲸同级）；原名 `Sandcat-class` / `Burrower-class` / `Pioneer-class` |
 | ⑤ | 鲸吞级 | **`Whaleswallow-class`**（直译保留意象） |
 
 ## 八、专名表 · 物品（86）
@@ -730,7 +731,7 @@ D 族与 E 族那两件**刻意不同名**（该件 note 明写"名字要不同"
 | 中文形态 | 英文规则 | 例 |
 |---|---|---|
 | `<装备名> 蓝图`（`bp-*`） | `<装备英文名> Blueprint` | 强化采集器 MK1 蓝图 → `Reinforced Mining Laser MK1 Blueprint` |
-| `<舰名>级舰船蓝图`（`sbp-*`） | 取舰船英文名的**舰级段** + `Blueprint` | 开拓级舰船蓝图 → `Pioneer-class Blueprint` · 皇带鱼级舰船蓝图 → `Oarfish-class Blueprint` |
+| `<舰名>级舰船蓝图`（`sbp-*`） | 取舰船英文名的**舰级段** + `Blueprint` | 独角鲸级舰船蓝图 → `Narwhal-class Blueprint` · 皇带鱼级舰船蓝图 → `Oarfish-class Blueprint` |
 
 > 一次性舰船图纸（`sbp-once-*`）与虫洞族图纸（`sbp-wh-*`）同规则；族图纸用 §四 的族舰名
 > （如 `Raider Heavy Assault Cruiser Blueprint`）。
