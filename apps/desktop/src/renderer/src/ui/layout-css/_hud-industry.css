@@ -323,6 +323,16 @@ body.no-fx .hud-fx-cell .app-inv-fx { animation: none; }
 .hud-card {
   display: block;
   width: 100%;
+  /**
+   * ⚠ **`box-sizing: border-box` 必须跟着 `width: 100%`**（**2026-10-01 船长报障**：
+   * 「制造队列内的卡片宽度超出了制造队列的窗口宽度」）。
+   *
+   * 仓库**没有全局盒模型复位**（`styles.css` 里那条 `*{box-sizing}` 是顶栏局部的）⇒ 默认
+   * `content-box` 下，这张卡的实际宽度 = 面板内容宽 **＋** 左右内边距 24px **＋** 左右边框 2px
+   * = 溢出 26px，正好顶出右列窗口。同一个坑仓库里记过两次（顶栏 `--app-max-w` 注释、
+   * 训练项那次「训练项右侧顶到窗口」），这是第三处。
+   */
+  box-sizing: border-box;
   text-align: left;
   font: inherit;
   color: inherit;
