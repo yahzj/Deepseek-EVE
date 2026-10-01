@@ -63,7 +63,7 @@ import { RowGlyph } from '../ui/itemView'
 import { HudHoverCard, IconBtn, Readout, type HudIoLine } from '../ui/hud'
 import { aiCoreText } from '../ui/labelsText'
 import { marketPriceOf } from '../ui/yieldView'
-import { ShipSprite } from '../ui/ShipSprite'
+import { DryDockFx } from '../ui/dryDockFx'
 import { SHIP_TIER_SUBS, SUB_ALL, WRECK_SUBS, bpFilterKeysOf, manuSubsOf, presentSubs, subText, wreckTierOf, type ManuTabKey } from '../ui/itemSubs'
 import { hoverTipProps } from '../ui/Tooltip'
 import { bookPriceOf } from '../panels/Industry'
@@ -1318,8 +1318,9 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                   const ready = readinessOf(engine, mats)
                   return (
                     <div className="hud-dock" key={v.id}>
-                      <div className="hud-dock-art" aria-hidden="true">
-                        {def !== undefined ? <ShipSprite shipId={def.id} role={def.role} size={132} /> : null}
+                      {/* **船坞场景**（**2026-10-01 船长令**：动画移到卡片上方、造一个更大的船坞、舰体放坞正中） */}
+                      <div className="hud-dock-art">
+                        <DryDockFx />
                       </div>
                       <div className="hud-dock-info">
                         <div className="hud-row between">

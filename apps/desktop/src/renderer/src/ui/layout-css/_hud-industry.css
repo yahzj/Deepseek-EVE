@@ -420,10 +420,30 @@ button.hud-chip:hover { border-color: var(--hud-accent); color: var(--hud-accent
 .hud-mat { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; margin-top: 6px; }
 .hud-mat .hud-bullet { margin-top: 0; }
 
-/* ── 干船坞：左线稿 ＋ 右读数（三格读数 ＋ 骨架进度 ＋ 取消）── */
-.hud-dock { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; }
-.hud-dock-art { display: grid; place-items: center; min-width: 132px; color: var(--hud-fg-dim); }
+/* ── 干船坞卡片（**2026-10-01 船长令**：「扩大队列卡片的高度，将动画移动到卡片内的上方…构建一个更大的
+   船坞，舰船的 SVG 放在船坞中间」）—— 从"左线稿 ＋ 右读数"改成**上下两段**：上方通栏船坞场景，
+   下方读数与操作。船坞高度固定 ⇒ 内容变化不引起卡片跳动（§6）。── */
+.hud-dock { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: stretch; }
+.hud-dock-art {
+  display: grid;
+  place-items: center;
+  height: 150px;
+  color: var(--hud-fg-dim);
+  /* 坞内氛围光：只用背景渐变（§6：CSS 只允许背景氛围，形状一律 SVG） */
+  background: radial-gradient(120% 90% at 50% 42%, rgba(78, 161, 255, 0.07), transparent 70%);
+}
+.hud-dock-art > svg { max-height: 100%; }
 .hud-dock-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+/* 坞内动效：只碰 transform / opacity（§十四）；reduced-motion 与「关特效」下全停 */
+.hud-dock-hook { animation: hud-dock-hook 3.6s ease-in-out infinite; }
+.hud-dock-spark { animation: hud-dock-spark 1.5s ease-in-out infinite; fill: currentColor; stroke: none; }
+.hud-dock-spark.is-late { animation-delay: 0.7s; }
+@keyframes hud-dock-hook { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes hud-dock-spark { 0%, 100% { opacity: 0.15; } 40% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .hud-dock-hook, .hud-dock-spark { animation: none; }
+}
+body.no-fx .hud-dock-hook, body.no-fx .hud-dock-spark { animation: none; }
 .hud-cells { display: flex; flex-wrap: wrap; gap: 14px; color: var(--hud-fg-dim); font-size: 12px; font-variant-numeric: tabular-nums; }
 .hud-cells > span { display: inline-flex; align-items: center; gap: 5px; }
 
