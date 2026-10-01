@@ -394,7 +394,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // 入侵族的**全称**（通讯正文用；族字母是简称；中文口径与残骸族名同源，英文同 WRECK_FAMILY_EN）
   "core.weekend.020": { zh: "海盗", en: "Pirate" },
   "core.weekend.021": { zh: "异形生物", en: "Alien" },
-  "core.weekend.022": { zh: "鱿烬亡军", en: "Deadarmy" },
+  "core.weekend.022": { zh: "鱿鱼亡军", en: "Deadarmy" },
   "core.weekend.023": { zh: "墨潮帮", en: "Ink Tide" },
   /* R 族（光环 · Corona Systems · 2026-10-01 船长令建族）—— 名字取自既有定名口径
      （`l10n.ts` 的 `WRECK_FAMILY_EN.r` ＋ `ui.Handbook.381`），**不另立新名**。 */
@@ -434,6 +434,15 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.lab.018": { zh: "{p1} 的仓库余量放不下下一批（{p2} / {p3} 单位）：先消耗或卖出再开工。", en: "The store cannot fit another batch of {p1} ({p2} / {p3} units) — spend or sell some first." },
   /* 2026-09-30 船长令（T5「解锁新的燃料配方」）：配方被谜质科技锁着时起线被拒 */
   "core.lab.019": { zh: "「{p1}」需要先在扫描虫洞的谜质科技里研究对应科技。", en: "\"{p1}\" requires the matching Matter Tech research under Wormhole Scanning first." },
+  /**
+   * **实验室改成"组装机型"后的日志与拒绝文案**（**2026-10-01 船长令**：「实验室本质上也是一个组装机，
+   * 建议按照组装机的来」⇒ 一线一批 · 开工整批扣料 · 只吃物品仓库 · 停机退料 · 卡片级循环开关）。
+   */
+  "core.lab.020": { zh: "没有找到这张配方卡（记录缺失）。", en: "That recipe card was not found (record missing)." },
+  "core.lab.021": { zh: "实验室停线：{p1} 本批的料已退回物品仓库。", en: "Laboratory line stopped: this batch's materials for {p1} went back to item storage." },
+  "core.lab.022": { zh: "实验室停线：{p1}（本批没有已扣的料）。", en: "Laboratory line stopped: {p1} (no materials were held for this batch)." },
+  "core.lab.023": { zh: "实验室出料：{p1} ×{p2} {p3} 已放入物品仓库。", en: "Laboratory output: {p1} ×{p2} {p3} went into item storage." },
+  "core.lab.024": { zh: "循环实验停止：{p1}——{p2}（本配方合计 {p3} 批）。", en: "Repeat runs stopped: {p1} — {p2} ({p3} batches on this recipe)." },
   "ui.labelsText.073": { zh: "道具", en: "Consumables" },
   // 2026-09-30 船长令（上限批）：技能书「实验室」——四条燃料技能的书名（`b-lab`）
   "ui.labelsText.074": { zh: "实验室", en: "Laboratory" },
@@ -470,6 +479,27 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.lab.028": { zh: "去弄料", en: "Go get materials" },
   "ui.lab.029": { zh: "去弄料：缺 {p1}——跳到能弄到它的地方", en: "Go get materials: {p1} is short — jump to where it comes from" },
   "ui.lab.030": { zh: "去弄料：看看第一味投料从哪来", en: "Go get materials: see where the first ingredient comes from" },
+  /**
+   * **实验室「循环实验」**（**2026-10-01 船长令**：「实验室本质上也是一个组装机，建议按照组装机的来」⇒
+   * 一线一批，连续生产靠卡片级循环开关）。
+   *
+   * ⚠ 与组装机那一套（`ui.Industry.055~063` / `.112` / `.113`）**结构照抄、名词按机器改**：
+   * 通用词（`目标` / `已产` / `已停线：` / `（当前 {p1} 条）` / `关闭后·打开后`）**直接复用**，
+   * 带机器名词的（「制造线」「蓝图」「件」）**另立本组 id**——实验室是配方、单位是**批**。
+   */
+  "ui.lab.031": { zh: "循环实验", en: "Repeat runs" },
+  "ui.lab.032": {
+    zh: "循环实验：本配方全部实验线完成一批后自动续做同一配方（含主控亲自那条；劳动者/核心保持占用）；{p1}本配方在跑的线完成当前批即止",
+    en: "Repeat runs: every line on this recipe starts the same recipe again as soon as it finishes a batch (the one you run by hand included; the worker or core stays occupied); {p1}lines already running on this recipe finish their current batch and stop",
+  },
+  "ui.lab.033": {
+    zh: "目标批数：本配方全部实验线合计做到这么多批就停（留空 = 直到材料不足自动停）；一批的产出见配方说明；回车、点空白处、或离开本页都会记住",
+    en: "Target batches: every line on this recipe stops once they add up to this many (blank means keep going until materials run out); the output per batch is in the recipe description; pressing Enter, clicking away or leaving the page all remember it",
+  },
+  "ui.lab.034": { zh: "批", en: "batches" },
+  "ui.lab.035": { zh: "作用于本配方全部实验线", en: "Applies to every laboratory line on this recipe" },
+  /** 运行行读数：这一批的产出单位数（**2026-10-01**：一线一批后不再显示"线内已完成批数"） */
+  "ui.lab.036": { zh: "每批 {p1} 单位", en: "{p1} units per batch" },
   /* 舰船页「跃迁燃料」子页（**2026-09-29 船长令**）：001~004 = 四个活动名（`JUMP_FUEL_ACTIVITY_TEXT_ID`） */
   "ui.jumpFuel.001": { zh: "采矿返航", en: "Mining returns" },
   "ui.jumpFuel.002": { zh: "打捞返航", en: "Salvage returns" },
@@ -2069,7 +2099,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.comms.033": { zh: "漂着的东西比你想象的多", en: "There is more drifting out there than you think" },
   "ui.comms.034": { zh: "并网致谢：前哨站已点亮", en: "Grid thanks: the outpost is online" },
   "ui.comms.035": { zh: "勘探提醒：奥罗荒环的巨构残骸", en: "Prospecting note: megastructure wrecks in the Auro Waste Ring" },
-  "ui.comms.036": { zh: "敌情通报：鱿烬亡军的蜂群", en: "Hostile report: the Deadarmy swarm" },
+  "ui.comms.036": { zh: "敌情通报：鱿鱼亡军的蜂群", en: "Hostile report: the Deadarmy swarm" },
   "ui.comms.037": { zh: "航线须知：低安空域", en: "Route advisory: Low-sec space" },
   "ui.comms.038": { zh: "建站征询：红环航道的泊位", en: "Station proposal: a berth in the Redring Corridor" },
   "ui.comms.039": { zh: "深空备忘：星云带里的信号遮蔽", en: "Deep-space memo: signal masking in the nebula belt" },
@@ -2354,6 +2384,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.engine.049": { zh: "读取备份失败。", en: "Could not read the backup." },
   "ui.engine.050": { zh: "写回存档失败。", en: "Could not write the save back." },
   "ui.engine.051": { zh: "这是铁人存档：它的版本号（第 {p1} 代）早于当前进度 —— 铁人档不能回退；若要救档，请选一份两天前或更早的备份。", en: "Iron Man save: its generation ({p1}) is older than your current progress — Iron Man saves cannot be rolled back. To rescue, load a backup from two days ago or earlier." },
+  /** 离线简报：实验室出料批数（**2026-10-01 补**：原先实验室完全不参与离线统计） */
+  "ui.engine.052": { zh: "实验室出料 {p1} 批", en: "Laboratory {p1} batches" },
   "ui.Expedition.003": { zh: "数量", en: "Qty" },
   "ui.Expedition.004": { zh: "奖励 ◆", en: "Reward ◆" },
   "ui.Expedition.005": { zh: "虫洞", en: "Wormhole" },
@@ -3416,7 +3448,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.359": { zh: "守住中距，用老化的重炮和机库里的第二套火力把仗拖长：一发十秒的巨构残骸炮、放出机群的深层机库、全游戏最厚的结构层。", en: "They hold mid range and drag the fight out with aging heavy guns and a second set of firepower from the hangar: wreck cannons that fire once every ten seconds, deep hangars that release drone groups, and the thickest structure of any hull." },
   "ui.Handbook.360": { zh: "活动星域", en: "Territory" },
   "ui.Handbook.361": { zh: "奥罗荒环的环状废墟带；残骸也散落在别的势力地盘上。", en: "The ring of ruins in the Auro Waste Ring; wrecks also lie scattered across other factions’ ground." },
-  "ui.Handbook.362": { zh: "鱿烬亡军", en: "Deadarmy" },
+  "ui.Handbook.362": { zh: "鱿鱼亡军", en: "Deadarmy" },
   "ui.Handbook.363": { zh: "档案摘要", en: "Summary" },
   "ui.Handbook.364": { zh: "乌贼人残兵与依附的流亡聚落：已经战败，却从未停战。", en: "Squidfolk survivors and the exile settlements attached to them: beaten already, never at peace." },
   "ui.Handbook.365": { zh: "舰体特征", en: "Hull profile" },
@@ -4496,7 +4528,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipArt.004": { zh: "守墓", en: "Gravekeeper" },
   "ui.shipArt.005": { zh: "巨构", en: "Titan" },
   "ui.shipArt.006": { zh: "巡逻", en: "Patrol" },
-  "ui.shipArt.007": { zh: "鱿烬", en: "Deadarmy" },
+  "ui.shipArt.007": { zh: "鱿鱼", en: "Deadarmy" },
   // H 族（墨潮帮 · 2026-09-24 船长定名「The Ink Tide」）：短名取两字「墨潮」（星图标签位窄）
   "ui.shipArt.008": { zh: "墨潮", en: "Ink Tide" },
   // R 族（光环 · Corona Systems · 2026-10-01 船长令「是新势力：余晖」）：短名取两字「光环」（与族名同形）

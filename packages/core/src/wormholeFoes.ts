@@ -627,7 +627,7 @@ export const WORMHOLE_BOSS_TARGETING_CHANCE = 0.4
  * | C 异形 | `smallest` | 捕食弱者 |
  * | D 守墓 | `top-output` | 残余程序压制火力 |
  * | E 巨构 | `random` | 平台随机投送机群（族格） |
- * | G 鱿烬 | `random` | 蜂群乱战 |
+ * | G 鱿鱼 | `random` | 蜂群乱战 |
  *
  * 派生端（`wormholeAnomalyOf`）以**本表**为准取模式 ⇒ 卡面字段写错也不会跑偏；
  * `content:check` 与用例另行断言"卡面 = 族定值"。层末守卫仍是 `largest`（既有裁定，不受族限）。

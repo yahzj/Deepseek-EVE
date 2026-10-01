@@ -4,7 +4,7 @@
  * 口径来源：`docs/design/wormhole-extraction-endgame-20260912.md`
  * §3（节点与层末 BOSS）· §8「层末 BOSS = 复用舰级表」· §10 F 批。
  *
- * **五族各三档 = 15 张**（A 海盗 / C 异形 / D 守墓 / E 巨构 / G 鱿烬，每族浅/中/深各一）：
+ * **五族各三档 = 15 张**（A 海盗 / C 异形 / D 守墓 / E 巨构 / G 鱿鱼，每族浅/中/深各一）：
  * **一处虫洞锁一族、整趟同族**（船长 2026-09-14 定案 · 丁），
  * **用哪一档**由该层层档位池决定（船长 2026-09-15：层 1 只浅 / 层 2~3 中 2 : 浅 1 /
  * 层 4+ 深 2 : 中 1 : 浅 1），取值点 = core 的 `wormholeCardIdForRun`。
@@ -177,7 +177,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     loot: [],
     combatSeconds: 40,
     hidden: true,
-    description: '虫洞内遭遇：鱿烬亡军的封锁小队（隐藏卡，只由虫洞生成）。',
+    description: '虫洞内遭遇：鱿鱼亡军的封锁小队（隐藏卡，只由虫洞生成）。',
   },
   {
     id: 'wh-titan-echo',

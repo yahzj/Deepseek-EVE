@@ -221,8 +221,8 @@ export function advanceGame(
   advanceStandby(state, ctx)
   advanceManufacturing(state, ctx, opts?.settleStats)
   advanceRefining(state, ctx, opts?.settleStats)
-  /** 实验室（2026-09-29 跃迁燃料批）：与精炼炉并列的一条工业产线（BOM 投料 · 料尽自停） */
-  advanceLab(state, ctx)
+  /** 实验室（2026-09-29 跃迁燃料批；**2026-10-01 起按组装机那套：一线一批 ＋ 循环开关**） */
+  advanceLab(state, ctx, opts?.settleStats)
   /** 谜质科技 T5「虚空母矿汲取」（2026-09-30 船长令）：每小时自动进账虚空母矿，未点该节点零开销 */
   advanceMatterOreDrip(state, ctx, d)
   advanceExpedition(state, ctx, opts?.freezeBattle)

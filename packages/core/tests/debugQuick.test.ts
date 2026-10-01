@@ -9,9 +9,12 @@ import { createInitialState, CURRENT_STATE_VERSION } from '../src/state'
 import { advanceGame, enqueueSkill } from '../src/engine'
 import { startMining, miningStatus } from '../src/mining'
 import { startManufacturing } from '../src/manufacturing'
+import { startRefineRun, startRecycleRun, startUnboxRun } from '../src/industry'
 import { startExpedition, resolveBattleOutcome } from '../src/expedition'
 import { startScan, isExplored, scanAwaitingView } from '../src/explore'
 import { makeTestCtx, skill, belt, anomaly } from './helpers'
+import { addWare } from '../src/inventory'
+import { buildSimContext } from '@whale/data'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { setStanding } from './helpers'
 
@@ -50,6 +53,39 @@ describe('V15 debugQuick：作业 1 秒化', () => {
     expect(miningStatus(s, ctx).phase).toBe('mining')
     advanceGame(s, 1000, ctx) // 一个循环 12s → 1s
     expect(miningStatus(s, ctx).tripUnits).toBeGreaterThan(0)
+  })
+
+  /**
+   * **精炼炉那一族（精炼 / 回收 / 拆解）也要吃 1 秒化**（**2026-10-01 补**）。
+   *
+   * 为什么单列一条：全仓 20 处 `state.debugQuick` 触点里 `industry.ts` 原先**零处** ——
+   * 调试面板自称「**所有作业**按 1 秒完成」、V15 文档的覆盖表里也没有炉子，
+   * 而制造线与实验室都吃（实验室还是船长 2026-09-30 专门下令补的）⇒ 属实现漏项。
+   * 这三条用**真内容目录**建现场（矿 / 残骸 / 货柜各取一个确定 id，口径同 `halt-material-refund.test.ts`）。
+   */
+  it('炉子产线（精炼 / 回收 / 拆解）：调试模式批次 1 秒完成（2026-10-01 补）', () => {
+    const rctx = buildSimContext()
+    const ORE = 'ore-veldspar'
+    const WRECK = 'wreck-a-hi'
+    const BOX = 'box-relic-a'
+    const s = freshState(true)
+    addWare(s, ORE, 1_000)
+    expect(startRefineRun(s, ORE, 'pilot', rctx).ok).toBe(true)
+    expect(s.refineRuns[0]!.cycleMs, '调试模式固定 1 秒（不吃技能乘区）').toBe(1000)
+    s.refineRuns.length = 0
+    addWare(s, WRECK, 1_000)
+    expect(startRecycleRun(s, WRECK, 'pilot', rctx).ok).toBe(true)
+    expect(s.refineRuns[0]!.cycleMs).toBe(1000)
+    s.refineRuns.length = 0
+    addWare(s, BOX, 5)
+    expect(startUnboxRun(s, rctx, BOX, 'pilot').ok).toBe(true)
+    expect(s.refineRuns[0]!.cycleMs).toBe(1000)
+
+    // 普通模式：同一台炉仍按配方周期（不受影响）
+    const n = freshState(false)
+    addWare(n, ORE, 1_000)
+    expect(startRefineRun(n, ORE, 'pilot', rctx).ok).toBe(true)
+    expect(n.refineRuns[0]!.cycleMs, '普通模式照配方周期').toBeGreaterThan(1000)
   })
 
   it('制造：批次 1 秒完成', () => {

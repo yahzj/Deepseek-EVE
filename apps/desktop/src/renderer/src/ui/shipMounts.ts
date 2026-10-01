@@ -296,7 +296,7 @@ export const FOE_MOUNTS: Record<string, ShipMounts> = {
     engines: [{ x: 62, y: 50.5 }, { x: 62, y: 67.5 }],
     muzzles: [{ x: 222, y: 54 }],
   },
-  // G 鱿烬亡军舰队（蜂窝舱+补丁帆）：单喷口 M62 46 h10 v14；舰艏炮楔(204..220)
+  // G 鱿鱼亡军舰队（蜂窝舱+补丁帆）：单喷口 M62 46 h10 v14；舰艏炮楔(204..220)
   G: { engines: [{ x: 62, y: 53 }], muzzles: [{ x: 220, y: 55 }] },
 }
 
@@ -438,7 +438,7 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
   },
   // 核心舱段：艉部方块(box 24,46,12,30) 左缘中点；正面大环形开口右缘(228,60)
   'foe-core-section': { engines: [{ x: 24, y: 61 }], muzzles: [{ x: 228, y: 60 }] },
-  // ── G 族 · 鱿烬亡军 ──
+  // ── G 族 · 鱿鱼亡军 ──
   // 围攻残兵舰：nozzle(50,58,8,14)；前部小炮 turret(140,58,10,6,14,61) 管口端(164,61)
   'foe-g-swarm-skiff': { engines: [{ x: 50, y: 65 }], muzzles: [{ x: 164, y: 61 }] },
   // 残响残舰：双 nozzle(42,58,8,12)/(42,44,8,10)；细长艏炮右端(170,58)

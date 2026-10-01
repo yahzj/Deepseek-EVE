@@ -169,7 +169,7 @@ export const FOE_LAIR_TIERS: Record<FoeFamily, readonly [string, string, string]
   D: ['守卫舰长', '残舰泊地', '隐秘陵寝'], // 守墓古舰
   E: ['警戒机群', '核心舱段', '深层机库'], // 泰坦巨构
   F: ['巡逻队长', '据点', '隐蔽据点'], // 制式巡逻【已废弃·留档：2026-09-11 船长「废弃F族，将F族融合进A族」，字母位保留为空位；本行不删，防旧内容表/旧导出带 'F' 时解析出错】
-  G: ['残兵头目', '聚落营地', '藏匿地'], // 鱿烬亡军
+  G: ['残兵头目', '聚落营地', '藏匿地'], // 鱿鱼亡军
   // H 族（墨潮帮 · 2026-09-24 船长定名）：海盗变种/叛出分支 ⇒ 词表沿用海盗腔（窝点=藏货/船坞那一套）
   H: ['堂口头目', '私货仓', '隐蔽坞'], // 墨潮帮
   // R 族（光环 · Corona Systems · 2026-10-01 船长令）：参考远行星号 Remnants 的**全无人 AI 舰队残余**
@@ -203,7 +203,7 @@ export const FOE_LAIR_GEAR: Record<FoeFamily, readonly string[]> = {
   D: ['mod-lair-shield-d', 'mod-lair-turret-d', 'mod-lair-armor-d'], // 陵墓护盾阵列 / 守墓者长炮 / 陵寝装甲层（最强敌族；2026-09-10 船长定削：强度略高于 MK3，靠必中远程炮与三系全能盾立身——原「对标异星档」口径作废）
   E: ['mod-lair-turret-e', 'mod-lair-hangar-e', 'mod-lair-frame-e'], // 巨构残骸炮 / 深层机库 / 巨构骨架（2026-09-10 船长逐件过审：档位「略高于 MK3」、仍低于 D）
   F: [],
-  // G 族（鱿烬亡军）：2026-09-10 船长——第一件由机库模块「鱿蜂群巢」改为**专属侦查无人机「鱿蜂无人机」**
+  // G 族（鱿鱼亡军）：2026-09-10 船长——第一件由机库模块「鱿蜂群巢」改为**专属侦查无人机「鱿蜂无人机」**
   // （一次掉 ×10 架；无人机是消耗品，打光后再刷可补），另两件为无人机导控 / 中继天线；
   // 2026-09-14 追加**鱿蜂无人机的一次性图纸**（`bp-lair-g-drone`：一次开工出 50 架）
   G: ['drone-exile-bee', 'mod-lair-drone-tac-g', 'mod-lair-drone-relay-g', 'bp-lair-g-drone'],
@@ -329,7 +329,7 @@ export const FOE_SUB_DMG: Record<FoeFamily, readonly DamageType[]> = {
   // 主系已由动能变**爆炸** ⇒ 副系取签名序里第一个 ≠ 主系者 = **动能**（旧序以爆炸打头，会让副系落到等离子）
   E: ['kinetic', 'explosive', 'plasma'], // 泰坦巨构：巨构能量核心 + 实弹残炮
   F: ['kinetic', 'explosive', 'plasma'], // 制式巡逻【已废弃·留档：2026-09-11 并入 A 族；与 A 表同序，故当年"缺族回落到 A"零差异】
-  G: ['explosive', 'kinetic', 'plasma'], // 鱿烬亡军：拼装火药与土制弹头
+  G: ['explosive', 'kinetic', 'plasma'], // 鱿鱼亡军：拼装火药与土制弹头
   // H 族（墨潮帮 · 2026-09-24）：与 A 族同序（缴获改装的实弹/破片弹头）——它是海盗的变种分支，
   // 弹药来源同一条链；主系仍是动能 ⇒ 副系落到爆炸
   H: ['kinetic', 'explosive', 'plasma'],

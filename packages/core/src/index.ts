@@ -702,6 +702,9 @@ export {
   startLabRun,
   stopLabRun,
   advanceLab,
+  /** 2026-10-01：实验室按组装机那套 ⇒ 一线一批 ＋ 卡片级循环开关 */
+  setLabLoop,
+  labLoopOf,
   /** 2026-09-30 上限批：技能乘区表（声明式）＋ 产物封顶判据 ＋ 在产速率读数 */
   LAB_CYCLE_SKILLS,
   LAB_YIELD_SKILLS,
@@ -709,7 +712,7 @@ export {
   labOutputStockOf,
   labOutputPerHourOf,
 } from './lab'
-export type { LabRunView, LabSkillRow } from './lab'
+export type { LabRunView, LabSkillRow, LabLoopView } from './lab'
 export {
   JUMP_FUEL_ITEM_ID,
   JUMP_FUEL_SPEED_MUL,

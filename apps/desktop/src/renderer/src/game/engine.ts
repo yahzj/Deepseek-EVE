@@ -70,6 +70,10 @@ import {
   labRunViews,
   startLabRun,
   stopLabRun,
+  /** 实验室循环实验（2026-10-01：一线一批 ＋ 卡片级循环开关） */
+  setLabLoop,
+  labLoopOf,
+  type LabLoopView,
   jumpFuelStockOf,
   jumpFuelEnabledOf,
   /* 2026-09-30 上限批：燃料补给读数（上限 / 在产速率 / 状态）＋ 货仓禁装的存量迁移 */
@@ -524,6 +528,8 @@ function buildOfflineReport(
       if (s.refineBatches > 0) acts.push(tr("ui.engine.003", { p1: s.refineBatches }))
       if (s.recycleBatches > 0) acts.push(tr("ui.engine.004", { p1: s.recycleBatches }))
       if (s.makeDone > 0) acts.push(tr("ui.engine.005", { p1: s.makeDone }))
+      // 实验室出料批数（2026-10-01 补：原先实验室完全不参与离线统计 ⇒ 简报上看不到它的产出）
+      if (s.labBatches > 0) acts.push(tr("ui.engine.052", { p1: s.labBatches }))
       // 2026-09-14 船长「补」：舰船产出入舰船仓库 ⇒ 单列一条，免得玩家以为船丢了
       if (s.shipsDone > 0) acts.push(tr("ui.engine.006", { p1: s.shipsDone }))
       if (acts.length === 0) continue
@@ -2103,6 +2109,24 @@ export class GameEngine {
   /** 实验室产线视图（工业页「实验室」卡片读它） */
   labRunViews(): LabRunView[] {
     return labRunViews(this.state, this.ctx)
+  }
+
+  /**
+   * 实验室「循环实验」开关（**2026-10-01 船长令**：实验室按组装机那套 ⇒ 一线一批，连续生产靠循环）。
+   * 与 `setManufacturingLoopAt` 同构，键 = 配方 id；卡片无需正在生产（先开开关、后开线同样生效）。
+   */
+  setLabLoopAt(recipeId: string, on: boolean, goal?: number | null): CommandResult {
+    const result = setLabLoop(this.state, recipeId, on, goal ?? null)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /** 某配方的循环配置读数（界面显示用；缺省 = 不循环、无目标、合计 0） */
+  labLoopOf(recipeId: string | null): LabLoopView {
+    return labLoopOf(this.state, recipeId)
   }
 
   /** 跃迁燃料库存（**只算物品仓库**；船长 2026-09-30 令「不算任何舰船库存」） */

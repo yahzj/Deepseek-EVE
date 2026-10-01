@@ -2,29 +2,27 @@
  * **实验室**（**2026-09-29 船长令**：「为工业新增子页面：'实验室'。玩家可以在实验室生产燃料。
  * 实验室的生产卡片和其他工业卡片类似」）。
  *
- * 与精炼炉（`industry.ts`）的分工：**精炼炉 = 单资源按批扣料**；**实验室 = 一张配方表的 BOM 一括投料**。
- * 相同的地方刻意做成同一口径，免得玩家学两套：
- * - **多工位并行**（`state.labRuns` 数组，台号 `state.labSeq` 稳定分配）；
- * - **劳动者**：`'pilot'`（主控亲自运转，全局限 1 台、与精炼炉共用"手动工作位"那一个名额）
- *   或 AI 核心类型（占核心、效率折算、停线归还）；
- * - **停靠门槛**：随协会基地网络运转（`stationIndustryBlocked`；AI 核心驱动不受此限）；
- * - **料尽自停**：每批到点若**任一**材料不足一批 ⇒ 停线并留日志（余料留在货仓/仓库）。
+ * ⚠ **2026-10-01 船长令：归「组装机型」**（原话：「**实验室本质上也是一个组装机，建议按照组装机的来。
+ * 之后所有的新的生产，优先采用组装机的。除非是将原矿/冰/云转化为原材料这种一转多的情况。**」）——
+ * 于是与 `manufacturing.ts`（组装机/造船厂）**同构**：
+ * - **一条线 = 一批**：开工整批扣料 → 到点出一批 → **线即结束**（要连续跑 ⇒ 开**循环**）；
+ * - **只吃物品仓库**（`removeWare`；**不碰货仓**——组装机同款；炉子那一族才「货仓优先」）；
+ * - **退料账 `spentMaterials`**：停机/换线/取消时**按实际扣的那种退**（与组装机同一本账的语义）；
+ * - **循环**：`state.labLoops[recipeId]`（卡片级：目标批数 / 缺料 / 产物封顶 ⇒ 自停并写停因）。
  *
- * 只在两处**刻意不同**：
- * 1. **技能**：吃**产线节拍学**（`industrial-automation`，每级 −5% 周期，与精炼炉同一条通用产线技能）；
- *    **不吃**「炉膛扩容学 / 炉膛倍增学 / 炉心熔炼学 / 炉温精调学」——那四条是**炉子**的技能，
- *    实验室不是炉子（要放开是另一条令）；
- * 2. **解锁门槛**：**已建成空间站 ≥ 1 座**（船长令：「需要玩家建设第一个空间站后才解锁相关内容」）
- *    —— 缺省（首座站未建成）时本页不渲染、动作也全部拒绝。
+ * 只在两处**刻意与炉子同款**（它们是"产线"的共性，不是组装机专有）：停靠门槛 `stationIndustryBlocked`、
+ * 单批周期吃「产线节拍学」等技能乘区（见 `LAB_CYCLE_SKILLS` / `LAB_YIELD_SKILLS` 两张登记表）；
+ * **解锁门槛**照旧 = **已建成空间站 ≥ 1 座**。
  *
- * 配方数据在 `packages/data/src/labRecipes.ts`（`ctx.labRecipes`）；第一版只有「超空间折跃燃料」一张。
+ * 配方数据在 `packages/data/src/labRecipes.ts`（`ctx.labRecipes`）。
  */
 import type { GameState, LabRunState } from './state'
 import type { SimContext, LabRecipeDef, AiCoreType } from './types'
 import type { CommandResult } from './engine'
-import { addLog, haltActivityForSwitch, MAX_SKILL_LEVEL } from './state'
-import { addWare, countItem, countWare, removeItem, removeWare } from './inventory'
+import { addLog, haltActivityForSwitch, refundMaterialsToWarehouse, MAX_SKILL_LEVEL } from './state'
+import { addWare, countWare, removeWare } from './inventory'
 import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
+import { addAiIncome, addAiLabBatch, type SettleStats } from './settleStats'
 import { stationIndustryBlocked } from './location'
 import { applyActivityGate, logAutoHalt } from './activityGate'
 /** 燃料产物的封顶判据（`LAB_OUTPUT_CAP` 登记表用；**单向依赖**：实验室 → 燃料，反向没有） */
@@ -163,20 +161,37 @@ export function labOutputStockOf(state: GameState, recipe: LabRecipeDef): { stoc
   return { stock: cap.stockOf(state), cap: cap.capOf(state) }
 }
 
-/** 某材料的可用量（货仓 ＋ 物品仓库；与精炼炉 `oreAvailable` 同一把尺） */
+/**
+ * 某材料的可用量（**物品仓库**；**2026-10-01 起与组装机同款：只吃物品仓库、不吃货仓**）。
+ *
+ * 为什么改：船长 2026-10-01 裁「实验室本质上也是一个组装机，建议按照组装机的来」——
+ * 组装机开工是 `removeWare`（只仓库），而实验室原先跟炉子那一套「货仓优先 → 仓库」
+ * ⇒ 玩家的**船上货舱**会被站内实验线悄悄吃掉（"材料被占用"那类报障最可能的来源）。
+ * 生产要用的料请先在物品页「全部卸入仓库」。
+ */
 export function labMaterialAvailable(state: GameState, itemId: string): number {
-  return countItem(state, itemId) + countWare(state, itemId)
+  return countWare(state, itemId)
 }
 
-/** 扣取某材料（**货仓优先**，与精炼炉的取料口径一致） */
-function takeMaterial(state: GameState, itemId: string, units: number): void {
-  let left = Math.max(0, Math.floor(units))
-  const inCargo = Math.min(left, countItem(state, itemId))
-  if (inCargo > 0) {
-    removeItem(state, itemId, inCargo)
-    left -= inCargo
+/**
+ * **扣本批的材料**（整批 BOM · 只吃物品仓库）：扣不动就**整体回滚**并返回 null（绝不留半扣）。
+ * 实验室配方**没有等价组、也不吃"材料学"折扣**（那两条是组装机的乘区，见 `manufacturing.ts`）
+ * ⇒ 退回时按账退（`spentMaterials`）与按配方现算**逐字等值**，两条路都可以。
+ */
+function spendBatchMaterials(
+  state: GameState,
+  recipe: LabRecipeDef,
+): { itemId: string; count: number }[] | null {
+  const taken: { itemId: string; count: number }[] = []
+  for (const m of recipe.materials) {
+    const units = Math.max(1, Math.floor(m.units))
+    if (!removeWare(state, m.itemId, units)) {
+      for (const t of taken) addWare(state, t.itemId, t.count)
+      return null
+    }
+    taken.push({ itemId: m.itemId, count: units })
   }
-  if (left > 0) removeWare(state, itemId, left)
+  return taken
 }
 
 /** 当前材料够跑几批（取各材料的下限；`Infinity` 不可能出现——空材料表 ⇒ 0） */
@@ -250,15 +265,20 @@ export interface LabRunView {
   worker: 'pilot' | AiCoreType
   batchUnits: number
   cycleMs: number
-  batchesDone: number
   /** 本批剩余毫秒 */
   remainingMs: number
   /** 本批进度 0~100 */
   percent: number
-  /** 按当前库存还能跑几批 */
+  /** 按当前库存还能跑几批（**下一批**用；本批的料已扣走） */
   affordable: number
   /** 料尽（下一批跑不动）⇒ 界面把卡片标成待停 */
   starving: boolean
+  /** 本卡「循环实验」开关（与组装机同款：同配方的线读到的是同一个开关） */
+  loopOn: boolean
+  /** 本卡循环目标批数（0/缺省 = 直到材料不足或产物封顶） */
+  loopGoal: number
+  /** 本卡本轮合计产出批数 */
+  loopProduced: number
 }
 
 export function labRunViews(state: GameState, ctx: SimContext): LabRunView[] {
@@ -268,6 +288,7 @@ export function labRunViews(state: GameState, ctx: SimContext): LabRunView[] {
     const recipe = ctx.labRecipes.get(r.recipeId)
     if (!recipe) continue
     const remainingMs = Math.max(0, r.finishAtGameMs - state.gameMs)
+    const loop = labLoopOf(state, r.recipeId)
     rows.push({
       id: r.id,
       recipeId: r.recipeId,
@@ -277,14 +298,67 @@ export function labRunViews(state: GameState, ctx: SimContext): LabRunView[] {
       worker: r.worker,
       batchUnits: r.batchUnits,
       cycleMs: r.cycleMs,
-      batchesDone: r.batchesDone,
       remainingMs,
       percent: r.cycleMs > 0 ? Math.min(100, Math.max(0, Math.round(((r.cycleMs - remainingMs) / r.cycleMs) * 100))) : 0,
       affordable: labAffordableBatches(state, recipe),
       starving: labAffordableBatches(state, recipe) <= 0,
+      loopOn: loop.on,
+      loopGoal: loop.goal,
+      loopProduced: loop.produced,
     })
   }
   return rows
+}
+
+/* ───────── 循环实验（**2026-10-01 船长令**：实验室按组装机那套 ⇒ 一线一批 ＋ 卡片级循环开关） ─────────
+ * 与 `manufacturing.setManufacturingLoop` / `manufacturingLoopOf` **同构**（键换成配方 id），
+ * 语义也照抄：从「关」到「开」= 开一轮新循环（合计与停因清零）；本来就开着时只改目标（不动已累计的合计）；
+ * 关闭 = 在跑那批做完即停（玩家主动收手，不写停因）；卡片无需正在生产（先开开关、后开线同样生效）。
+ */
+
+/** 玩家指令：开/关某个配方的「循环实验」（目标批数 = 该配方全部线的合计） */
+export function setLabLoop(state: GameState, recipeId: string, on: boolean, goal?: number | null): CommandResult {
+  if (typeof recipeId !== 'string' || recipeId.length === 0) {
+    return { ok: false, error: '没有找到这张配方卡（记录缺失）。', errorId: 'core.lab.020' }
+  }
+  const g = Number.isFinite(goal) ? Math.floor(goal ?? 0) : 0
+  const prev = (state.labLoops ??= {})[recipeId]
+  if (on) {
+    const already = prev?.on === true
+    state.labLoops[recipeId] = {
+      on: true,
+      goal: g > 0 ? g : undefined,
+      produced: already ? (prev?.produced ?? 0) : 0,
+      stopWhy: already ? prev?.stopWhy : undefined,
+    }
+  } else {
+    state.labLoops[recipeId] = {
+      on: false,
+      goal: g > 0 ? g : prev?.goal && prev.goal > 0 ? prev.goal : undefined,
+      produced: prev?.produced ?? 0,
+      stopWhy: undefined,
+    }
+  }
+  return { ok: true }
+}
+
+/** 卡片级循环配置的只读视图（界面显示用；缺省 = 未开启过 ⇒ 不循环、无目标、合计 0） */
+export interface LabLoopView {
+  on: boolean
+  goal: number
+  produced: number
+  stopWhy: string
+}
+
+/** 取某配方的循环配置视图（界面/文案统一走这里，不要各自读 state） */
+export function labLoopOf(state: GameState, recipeId: string | null): LabLoopView {
+  const l = recipeId ? state.labLoops?.[recipeId] : undefined
+  return {
+    on: l?.on === true,
+    goal: l?.goal && l.goal > 0 ? l.goal : 0,
+    produced: l?.produced ?? 0,
+    stopWhy: l?.stopWhy ?? '',
+  }
 }
 
 /**
@@ -390,6 +464,16 @@ export function startLabRun(
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。`, errorId: 'core.lab.014', errorParams: { p1: aiCoreName(worker) } }
   }
+  /**
+   * **开工整批扣料**（**2026-10-01 船长令**：实验室按组装机那套）——只吃物品仓库，扣不动就回滚并拒绝。
+   * 上面那道 `labAffordableBatches` 已按同一把尺预检过；走到这里失败 = 库存竞态 ⇒ 照实报，不留半扣。
+   */
+  const spentMaterials = spendBatchMaterials(state, recipe)
+  if (spentMaterials === null) {
+    const missing = labMissingMaterials(state, ctx, recipe)
+    const need = missing.map((m) => `${m.name} ${m.have}/${m.need}`).join('、')
+    return { ok: false, error: `材料不足一批：${need}。`, errorId: 'core.lab.012', errorParams: { p1: need } }
+  }
   const cycleMs = labCycleMsOf(state, ctx, recipe, worker)
   const runs = (state.labRuns ??= [])
   runs.push({
@@ -400,13 +484,17 @@ export function startLabRun(
     batchUnits: labBatchUnitsOf(state, recipe),
     cycleMs,
     finishAtGameMs: state.gameMs + cycleMs,
-    batchesDone: 0,
+    spentMaterials,
   })
   state.labSeq = (state.labSeq ?? 1) + 1
   return { ok: true }
 }
 
-/** **停一条实验线**（手动停；AI 核心归还）。`ctx` 只占位（与 `stopRefineRun` 同签名，便于界面统一调用） */
+/**
+ * **停一条实验线**（手动停）：**退回本批已扣的料** ＋ AI 核心归还。
+ * `ctx` 只占位（与 `stopRefineRun` 同签名，便于界面统一调用）——退料读的是线自己的账
+ * `LabRunState.spentMaterials`（与组装机同一本账的语义），**不需要 ctx**。
+ */
 export function stopLabRun(state: GameState, ctx: SimContext, runId: number): CommandResult {
   void ctx
   const runs = state.labRuns ?? []
@@ -414,81 +502,122 @@ export function stopLabRun(state: GameState, ctx: SimContext, runId: number): Co
   if (idx < 0) return { ok: false, error: '这条实验线已经停了。', errorId: 'core.lab.015' }
   const r = runs[idx]!
   if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
-  const done = r.batchesDone
+  refundMaterialsToWarehouse(state, r.spentMaterials ?? [])
   const recipe = r.recipeId
+  const refunded = (r.spentMaterials ?? []).length > 0
   runs.splice(idx, 1)
-  addLog(state, 'industry', `实验室停线（手动）：${recipe} 已完成 ${done} 批${r.worker === 'pilot' ? '' : '；AI 核心已归还核心库'}。`, 'core.lab.002', {
-    p1: recipe,
-    p2: done,
-  })
+  addLog(
+    state,
+    'industry',
+    refunded
+      ? `实验室停线：${recipe} 本批的料已退回物品仓库${r.worker === 'pilot' ? '。' : '；AI 核心已归还核心库。'}`
+      : `实验室停线：${recipe}（本批没有已扣的料）${r.worker === 'pilot' ? '。' : '；AI 核心已归还核心库。'}`,
+    refunded ? 'core.lab.021' : 'core.lab.022',
+    { p1: recipe },
+  )
   return { ok: true }
 }
 
 /**
- * **推进实验室**（引擎每拍调一次；与 `advanceRefining` 并列）。
+ * **推进实验室**（引擎每拍调一次；与 `advanceRefining` / `advanceManufacturing` 并列）。
  *
- * 每批到点：**一括扣齐 BOM** ⇒ 产物入物品仓库 ⇒ 批数 +1；**任一材料不足一批** ⇒ 停线
- * （余料留在货仓/仓库，日志写明已完成批数）。
+ * **一条线 = 一批**（2026-10-01 船长令：按组装机那套）：到点 ⇒ 产物入物品仓库 ⇒ **线即结束**；
+ * 只有**本配方的循环开关开着**时才续做下一批（续做那一刻**再扣下一批的料**，缺料/封顶/达标则自停并写停因）。
+ * 料在这条线开工时已整批扣走 ⇒ 停机退料读的是线自己的账（`stopLabRun` / `haltActivityForSwitch`）。
+ *
+ * `stats` = 离线结算统计器（AI 核心驱动的批数与估收入进离线简报；主控亲自那条不计——与另两条产线同口径）。
+ *
+ * ⚠ **大跨步要一口气推完**（离线结算 / 调试快进都是一次 `advanceGame` 跨几小时）⇒ `while` ＋ 保护上限，
+ * 与另两条产线同款。
  */
-export function advanceLab(state: GameState, ctx: SimContext): void {
+export function advanceLab(state: GameState, ctx: SimContext, stats?: SettleStats): void {
   const runs = state.labRuns
   if (!runs || runs.length === 0) return
   for (let i = runs.length - 1; i >= 0; i--) {
     const r = runs[i]!
     if (!r.active) {
+      releaseAiCoreIfCore(state, r)
+      refundMaterialsToWarehouse(state, r.spentMaterials ?? [])
       runs.splice(i, 1)
       continue
     }
     const recipe = ctx.labRecipes.get(r.recipeId)
     if (!recipe) {
-      if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
+      releaseAiCoreIfCore(state, r)
+      refundMaterialsToWarehouse(state, r.spentMaterials ?? [])
       runs.splice(i, 1)
-      addLog(state, 'industry', '实验室运转异常：配方记录缺失，该线已停（AI 核心已归还）。', 'core.lab.016')
+      addLog(state, 'industry', '实验室运转异常：配方记录缺失，该线已停（本批材料已退回，AI 核心已归还）。', 'core.lab.016')
       continue
     }
+    if (state.gameMs < r.finishAtGameMs) continue
     let guard = 0
     while (r.active && state.gameMs >= r.finishAtGameMs) {
       if (++guard > 100_000) break
-      /**
-       * **产物到上限 ⇒ 停线**（**2026-09-30 船长裁「甲」**：与"料尽自停"同款，留一条日志）。
-       * 判据来自 `LAB_OUTPUT_CAP` 登记表（燃料 = 物品仓库上限，见 `jumpFuel.ts`）。
-       */
-      if (labOutputCapped(state, recipe)) {
-        const capped = labOutputStockOf(state, recipe)
-        const done = r.batchesDone
-        if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
-        runs.splice(i, 1)
-        addLog(
-          state,
-          'industry',
-          `实验室停线：${recipe.outputItemId} 的仓库余量放不下下一批（${(capped?.stock ?? 0).toLocaleString('zh-CN')} / ${(capped?.cap ?? 0).toLocaleString('zh-CN')} 单位；${recipe.name} 已完成 ${done} 批）${r.worker === 'pilot' ? '。' : '；AI 核心已归还核心库。'}`,
-          'core.lab.017',
-          {
-            p1: recipe.name,
-            p2: (capped?.stock ?? 0).toLocaleString('zh-CN'),
-            p3: (capped?.cap ?? 0).toLocaleString('zh-CN'),
-            p4: done,
-          },
-        )
-        break
-      }
-      if (labAffordableBatches(state, recipe) <= 0) {
-        const done = r.batchesDone
-        if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
-        runs.splice(i, 1)
-        addLog(
-          state,
-          'industry',
-          `实验室停线：材料耗尽（${recipe.name} 已完成 ${done} 批，共 ${(done * r.batchUnits).toLocaleString('zh-CN')} 单位）${r.worker === 'pilot' ? '。' : '；AI 核心已归还核心库。'}`,
-          'core.lab.001',
-          { p1: recipe.name, p2: done, p3: (done * r.batchUnits).toLocaleString('zh-CN') },
-        )
-        break
-      }
-      for (const m of recipe.materials) takeMaterial(state, m.itemId, m.units)
+
+      /** ── ① 结算这一批 ── */
       addWare(state, recipe.outputItemId, r.batchUnits)
-      r.batchesDone += 1
-      r.finishAtGameMs += r.cycleMs
+      r.spentMaterials = []
+      const outName = ctx.items.get(recipe.outputItemId)?.name ?? recipe.outputItemId
+      addLog(
+        state,
+        'industry',
+        `实验室出料：${recipe.name} ×${r.batchUnits.toLocaleString('zh-CN')} ${outName} 已放入物品仓库。`,
+        'core.lab.023',
+        { p1: recipe.name, p2: r.batchUnits.toLocaleString('zh-CN'), p3: outName },
+      )
+      if (r.worker !== 'pilot') {
+        addAiLabBatch(stats, r.worker)
+        addAiIncome(stats, r.worker, r.batchUnits * (ctx.items.get(recipe.outputItemId)?.baseSellPriceIsk ?? 0))
+      }
+
+      /** ── ② 循环判定（开关关着 ⇒ 一批一线，到此结束） ── */
+      const loop = state.labLoops?.[r.recipeId]
+      if (loop?.on !== true) {
+        releaseAiCoreIfCore(state, r)
+        runs.splice(i, 1)
+        break
+      }
+      loop.produced = (loop.produced ?? 0) + 1
+      const goal = loop.goal && loop.goal > 0 ? loop.goal : null
+      let stopWhy = ''
+      if (goal !== null && loop.produced >= goal) stopWhy = `已达成目标 ${goal} 批`
+      else if (labOutputCapped(state, recipe)) {
+        const capped = labOutputStockOf(state, recipe)
+        stopWhy = `${outName} 的仓库余量放不下下一批（${(capped?.stock ?? 0).toLocaleString('zh-CN')} / ${(capped?.cap ?? 0).toLocaleString('zh-CN')} 单位）`
+      } else if (labAffordableBatches(state, recipe) <= 0) {
+        const missing = labMissingMaterials(state, ctx, recipe)
+        stopWhy = `材料不足（缺 ${missing.map((m) => m.name).join('、')}）`
+      }
+      if (stopWhy === '') {
+        /** ── ③ 续做下一批：**即时扣料 ＋ 按当前技能重算周期**（与组装机续做同款） ── */
+        const next = spendBatchMaterials(state, recipe)
+        if (next === null) stopWhy = '材料不足（扣料失败）'
+        else {
+          r.spentMaterials = next
+          r.batchUnits = labBatchUnitsOf(state, recipe)
+          r.cycleMs = labCycleMsOf(state, ctx, recipe, r.worker)
+          r.finishAtGameMs += r.cycleMs
+          continue
+        }
+      }
+      /** ── ④ 自停：关开关 ＋ 写停因 ＋ 一条日志（与组装机的"卡片级停线"同款） ── */
+      loop.on = false
+      loop.stopWhy = stopWhy
+      releaseAiCoreIfCore(state, r)
+      runs.splice(i, 1)
+      addLog(
+        state,
+        'industry',
+        `循环实验停止：${recipe.name}——${stopWhy}（本配方合计 ${loop.produced} 批）${r.worker === 'pilot' ? '。' : '；AI 核心已归还核心库。'}`,
+        'core.lab.024',
+        { p1: recipe.name, p2: stopWhy, p3: loop.produced },
+      )
+      break
     }
   }
+}
+
+/** AI 核心驱动的线 ⇒ 归还核心（主控那条不动；收成一处，免得每条出口各写一遍） */
+function releaseAiCoreIfCore(state: GameState, r: LabRunState): void {
+  if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
 }

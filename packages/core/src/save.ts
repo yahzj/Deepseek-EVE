@@ -3143,10 +3143,41 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       batchUnits: Math.max(1, Math.floor(num(r.batchUnits) || 0)),
       cycleMs: Math.max(1, Math.floor(num(r.cycleMs) || 0)),
       finishAtGameMs: Math.max(0, Math.floor(num(r.finishAtGameMs) || 0)),
-      batchesDone: Math.max(0, Math.floor(num(r.batchesDone) || 0)),
+      /**
+       * **退料账**（**2026-10-01**：实验室改成"开工整批扣料"后必须有这本账，停机靠它退料）。
+       * 老档没有这笔（旧语义 = 每批到点才扣、退无可退）⇒ 缺省空账；`batchesDone` 旧字段**不再收**
+       * （一线一批后不存在"线内批数"，批数改由 `state.labLoops[recipeId].produced` 承担）。
+       */
+      ...(Array.isArray(r.spentMaterials)
+        ? {
+            spentMaterials: (r.spentMaterials as unknown[])
+              .map((x) => {
+                const o = asRaw(x)
+                const itemId = typeof o.itemId === 'string' ? o.itemId : ''
+                return { itemId, count: Math.max(0, Math.floor(num(o.count) || 0)) }
+              })
+              .filter((x) => x.itemId.length > 0 && x.count > 0),
+          }
+        : {}),
     })
   }
   const labSeq = Math.max(1, Math.floor(num(src.labSeq) || 1))
+  /**
+   * **实验室「循环实验」卡片级配置**（**2026-10-01 船长令**：实验室按组装机那套 ⇒ 一线一批 ＋ 循环开关）。
+   * 与 `manufacturingLoops` 同款：兼容字段、无版本号变化、**空表不写键**（老档零迁移）。
+   * ⚠ 漏登记的后果与 `boostAutoRenew` 同款：每读一次档循环开关就被清掉（玩家会发现"开了又自己关"）。
+   */
+  const labLoops: NonNullable<GameState['labLoops']> = {}
+  for (const [rc, rawLoop] of Object.entries(asRaw(src.labLoops))) {
+    const o = asRaw(rawLoop)
+    const goal = Math.max(0, Math.floor(num(o.goal) || 0))
+    labLoops[rc] = {
+      on: o.on === true,
+      ...(goal > 0 ? { goal } : {}),
+      produced: Math.max(0, Math.floor(num(o.produced) || 0)),
+      ...(typeof o.stopWhy === 'string' && o.stopWhy.length > 0 ? { stopWhy: o.stopWhy } : {}),
+    }
+  }
   /**
    * **突触加速剂生效截止**（**2026-09-30 船长令**）：可选键 —— 0 / 非有限 / 已过期一律按"无加成"读，
    * **空值不写键** ⇒ 老档零迁移、往返逐字一致（与 `jumpFuel` / `labRuns` 同款）。
@@ -4176,6 +4207,9 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     manufacturingRuns,
     manufacturingSeq,
     manufacturingLoops,
+    /** 实验室「循环实验」（2026-10-01）：读档**恒给出这张表**（空表也给出）⇒ 与 `createInitialState` 同形；
+     *  写档那边空表不落键（老档不新增键）。 */
+    labLoops,
     standings,
     // 累计获得声望（2026-09-26 船长令：门槛读它、兑换只扣可支配那本）——回填后恒非空 ⇒ 恒落键
     standingsEarned,
@@ -4237,6 +4271,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     /** 跃迁燃料开关 ＋ 实验室产线（2026-09-29 跃迁燃料批；空 ⇒ 不写键，老档零迁移） */
     ...(Object.keys(jumpFuel).length > 0 ? { jumpFuel } : {}),
     ...(labRuns.length > 0 ? { labRuns, labSeq } : {}),
+    // 实验室「循环实验」卡片级配置（2026-10-01）：**空表不写键**（老档零迁移、往返逐字一致）
+    ...(Object.keys(labLoops).length > 0 ? { labLoops } : {}),
     ...(skillBoostUntilMs > 0 ? { skillBoostUntilMs } : {}),
     ...(boostAutoRenew ? { boostAutoRenew: true } : {}),
     // 模式选择已完成（2026-09-24 船长令）：只在 true 时落键；漏了这行 ⇒ 每次读档都重弹模式选择框

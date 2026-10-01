@@ -46,7 +46,7 @@ export const WRECK_FAMILY_NAMES: Readonly<Record<string, string>> = {
   C: '异形生物',
   D: '守墓者',
   E: '泰坦巨构',
-  G: '鱿烬亡军',
+  G: '鱿鱼亡军',
   H: '墨潮帮',
   R: '光环',
 }
@@ -196,14 +196,14 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     key: 'g-lo',
     family: 'G',
     region: 'lo',
-    name: '鱿烬亡军残骸（低安）',
-    rareName: '鱿烬亡军稀有残骸（低安）',
+    name: '鱿鱼亡军残骸（低安）',
+    rareName: '鱿鱼亡军稀有残骸（低安）',
     // 2026-09-26 船长令「**将G族和H族残骸价格提高到和D族差不多的位置**」⇒ 本组对标 **D 族低安组**
     // （`d-lo` 池 = 钛钢 40 · 冥铁合金 19 · 同位聚晶 41，池均价 173.95）；三张成员卡同步写
     // `wreckTier: 'dire'`（单点 `salvage.wreckCardTierOf`）⇒ 卡级价值 107.85 ISK/m³ = D 低安组同款。
     tier: 'dire',
     pool: [['min-tritanium', 40], ['min-darkiron', 19], ['min-isotope', 41]],
-    note: '鱿烬亡军残骸（低安）：冥铁合金与同位聚晶为主，夹结构与装甲料',
+    note: '鱿鱼亡军残骸（低安）：冥铁合金与同位聚晶为主，夹结构与装甲料',
     threat: 53,
     theme: { mk2: ['mod-armor-pla-2', 'mod-shield-ext-2', 'mod-rof-2', 'mod-track-2'] },
     members: ['ano-cinder-siege', 'ano-echo-haunt', 'ano-nadir-static'],
@@ -280,12 +280,12 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     key: 'g-wh',
     family: 'G',
     region: 'wh',
-    name: '鱿烬亡军残骸（虫洞）',
-    rareName: '鱿烬亡军稀有残骸（虫洞）',
+    name: '鱿鱼亡军残骸（虫洞）',
+    rareName: '鱿鱼亡军稀有残骸（虫洞）',
     // 2026-09-30 船长令：升危档 + 按族特色池（均价 93.80 · 偏差 +1.35%）
     tier: 'dire',
     pool: [['min-tritanium', 40], ['min-darkiron', 8], ['min-starcore', 2], ['min-isotope', 38], ['min-mexallon', 12]],
-    note: '鱿烬亡军残骸（虫洞）：冥铁合金与同位聚晶为主，夹晶态胶体',
+    note: '鱿鱼亡军残骸（虫洞）：冥铁合金与同位聚晶为主，夹晶态胶体',
     threat: 45,
     theme: {},
     members: ['wh-exile-blockade', 'wh-exile-swarm', 'wh-exile-line'],
