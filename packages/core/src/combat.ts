@@ -3742,14 +3742,12 @@ export function battleOpenM(me: UnitSpec, foes: UnitSpec[], bal: BattleBalance):
  * - **"玩家的射程盲区"= 我方武器的近程盲区**：距离低于某门武器的 `minRangeM` ⇒ **那门武器开不了火**。
  *   一艘船挂多门时，**最远的那条近界**才是全船的有效近界（主力武器够不着就是够不着）
  *   ⇒ `meBlindM = max(我方各武器 minRangeM)`、`meTop = max(我方各武器 maxRangeM)`；
- * - **R 族去找这个漏洞**（"射程漏洞"）：
- *   - `meBlindM <= 0`（我方没有近程盲区）⇒ **没有漏洞可钻** ⇒ R 族取 `foeTop × 0.8`
- *     （≈ 沿用"风筝"口径：站远、用射程优势磨），再钳在我方射程内；
- *   - `0 < meBlindM < meTop`（我方**射程长但有近盲区**，如导弹架 900~1400 或长炮 1300）
- *     ⇒ R 族**主动贴身**：站到**我方近界的下沿**（`max(距离下限, meBlindM − 100)`）——
- *     那里我方主力打不着、R 族却能打（它的 `rangeMinM` 都是 1，没有近界）；
- *   - `meBlindM >= meTop`（全船都在盲区内：只有近战武器）⇒ **风筝**：站到 `meTop + 500`
- *     （我方完全够不着的地方），再钳在 R 族自己的射程内；
+ * - **R 族的决策优先级**（船长四次令：**风筝 > 钻近盲区 > 默认**）：
+ *   - **① 风筝（最高优先）**：R 族**站得到我方射程之外**（`foeTop × 0.8 > meTop`）⇒ 站 `foeTop × 0.8`；
+ *   - **② 钻近盲区（次优先）**：我方**射程长但有近盲区**（`0 < meBlindM < meTop`）⇒ 贴到我方近界下沿
+ *     `meBlindM − 100`（那里我方主力打不着、它却能打；它的 `rangeMinM` 都是 1，没有近界）；
+ *     "全船都在盲区内"（`meBlindM ≥ meTop`）也走这一支，取 `meTop + 500`；
+ *   - **③ 都没有 ⇒ 默认期望距离**（返回 `null`，不覆写）；
  * - **只对 R 族生效**；调用方拿 `null` 就逐字走原口径（期望距离与开战距离都不动）。
  *
  * ⚠ 用途三层（都是"R 族想站在哪"）：① 建档时写进每个 R 族单位的 `foeDesireRangeM`
@@ -3779,12 +3777,29 @@ export function rFamilyDesireOf(
   if (!hasR || foeTop <= 0) return null
   const floor = bal.minDistanceM
   const clampTo = (v: number): number => Math.max(floor, Math.min(Math.round(v), foeTop))
-  // ① 我方没有近程盲区 ⇒ 无漏洞可钻 ⇒ 风筝（站远）
-  if (meBlindM <= 0) return clampTo(foeTop * 0.8)
-  // ② 我方射程长、但有近盲区 ⇒ R 族**主动贴身**到我方近界的下沿
-  if (meBlindM < meTop) return clampTo(Math.max(floor, meBlindM - 100))
-  // ③ 全船都在盲区内（纯近战装配）⇒ 风筝到我方射程之外
-  return clampTo(meTop + 500)
+  /**
+   * 🔴 **决策优先级**（**船长 2026-10-01 四次令**，原话照抄）：
+   * 「**你的优先级不对，最高优先级是你的射程外（风筝你），其次才考虑你的近盲区。都没有就按照默认期望距离。**」
+   *
+   * ① **风筝（最高优先）**：只要 R 族**站得到我方射程之外**——即 `foeTop × 0.8 > meTop`
+   *    （它自己要站的期望位就在我方够不着的地方）⇒ 站 `foeTop × 0.8`（并留 100m 余量、不超出自己射程）。
+   *    ⚠ 判据用**它自己的期望位**而不是它的射程上限：射程比我方远一点点、但期望位仍落在我方射程内时，
+   *    "站到我方射程外"这件事对它并不成立 ⇒ 落到 ② 去钻盲区。
+   * ② **钻近盲区（次优先）**：我方**射程长但有近盲区**（`0 < meBlindM < meTop`）⇒ 贴到我方近界的下沿
+   *    `meBlindM − 100`（那里我方主力打不着、它却能打）。"全船都在盲区内"（`meBlindM ≥ meTop`）也走这一支，
+   *    取 `meTop + 500`（等于站到我方完全够不着处，与本条同义）。
+   * ③ **都没有 ⇒ 默认期望距离**：不覆写（返回 `null`），由 `foeDesiredRange` 按它的射程带 ×战术系数算。
+   */
+  // ① 风筝：R 族的期望位在我方射程之外
+  if (foeTop * 0.8 > meTop) {
+    return clampTo(Math.min(foeTop - 100, foeTop * 0.8))
+  }
+  // ② 钻近盲区：贴到我方近界的下沿
+  if (meBlindM > 0) {
+    return clampTo(meBlindM < meTop ? Math.max(floor, meBlindM - 100) : meTop + 500)
+  }
+  // ③ 都没有 ⇒ 不覆写（走默认期望距离）
+  return null
 }
 
 /**
