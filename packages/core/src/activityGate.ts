@@ -196,6 +196,25 @@ export function mainActivityOf(state: GameState): MainActivityKind | null {
 }
 
 /**
+ * **手动工作位**（**精炼炉 / 回收炉 / 拆解台 / 制造线 / 实验室**共用的那**一个**名额）此刻被哪一条占着
+ * —— `null` = 空着。**AI 核心驱动的线不算**（它们走工位上限，与手动位无关）。
+ *
+ * 为什么要有这个单点（**2026-10-01 船长令**：「建议改成和旧的工业一样，主控正在活动时，禁止按钮」）：
+ * 界面要提示"手动位被占、先把手上那条停掉"，就得先问出"被谁占着"。这条判据原先在
+ * `lab.ts` / `industry.ts` / `manufacturing.ts` 里**各写一份**（`.some(r => r.active && r.worker === 'pilot')`），
+ * 界面再写第四份就是四处漂移 —— 收成这里一处（索引：`docs/single-source.md`）。
+ *
+ * ⚠ **不要拿 `mainActivityOf` 当这把尺**：那个函数答的是"主控此刻算在干哪一项"，有优先级
+ * （采矿/打捞排在炉线之前）⇒ 旧档里"采矿 ＋ 手上一台炉"并存时它答 `'mining'`，而手动位**确实被占着**。
+ */
+export function manualSlotOf(state: GameState): 'refine' | 'manufacturing' | 'lab' | null {
+  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return 'refine'
+  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) return 'manufacturing'
+  if ((state.labRuns ?? []).some((r) => r.active && r.worker === 'pilot')) return 'lab'
+  return null
+}
+
+/**
  * **不可被打断的状态**（与"哪个活动在跑"无关的那几种；船长 2026-09-21：「处在战斗中的时候也设置为不可取消」）。
  * 返回中文理由（给玩家看），没有 ⇒ null。
  */

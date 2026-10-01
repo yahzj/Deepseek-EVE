@@ -38,6 +38,7 @@ import {
   materialGroupIdsOf,
   manufacturingRunViews,
   missingMaterials,
+  manualSlotOf,
   oreAvailable,
   ownsBlueprint,
   plugCraftUnlockedOf,
@@ -415,6 +416,19 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
     if (!r.ok) onToast(cmdText(r) || tr('ui.hud.021'), true)
   }
   /**
+   * **手动工作位被占时的置灰理由**（**2026-10-01 船长令**：「建议改成和旧的工业一样，主控正在活动时，
+   * 禁止按钮」）。取数走 core 单点 `manualSlotOf`（页面不自算——§十五之二）；`null` = 可以亲自开。
+   *
+   * 为什么必须封这一格：手动工作位（炉/回收炉/拆解台/制造线/实验室）全仓只有 1 个名额，而起线指令
+   * 会走 core 的"换线"路径（`haltActivityForSwitch` ＋ 统一日志）⇒ **点一下就静默把手上那条换掉、
+   * 当前那一批进度丢弃**，且每点一次都能再换一次（船长看到的"无限打断"）。旧工业页是置灰，本页对齐。
+   *
+   * ⚠ **只封这一格**：主控在采矿/打捞/远征/巡逻时点开工，仍走 `activityGate` 的"直接切 / 先警告再切"
+   * （船长 2026-09-21 令「统一为能够直接切换」）——本判据不参与那件事。
+   * ⚠ **AI 核心驱动的开工不受此限**（`manualSlotOf` 只认 `worker === 'pilot'`）。
+   */
+  const manualNote = manualSlotOf(state) !== null ? tr('ui.hud.212') : null
+  /**
    * **组装机书架**（模块 ＋ 物品蓝图；舰船归造船厂页签）——
    * 排序沿用 core 单点 `sortManuRows`（类型 → 书价升序 → 同产物的一次性图纸紧随原图纸），
    * 书价走渲染层既有的 `bookPriceOf`（与现有工业页同一把尺）。
@@ -503,6 +517,11 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
     const r = engine.startManufacturingAt(blueprintId, worker)
     if (!r.ok) onToast(cmdText(r) || tr('ui.hud.021'), true)
   }
+  /**
+   * 组装机 / 造船厂的开工键是"**有可用核心就走核心、没有才主控**"（`worker = core ?? 'pilot'`）
+   * ⇒ 手动位那道置灰**只在这一下真的会落到主控上时**才生效（有核心时不该被手动位挡住）。
+   */
+  const manuManualNote = core === null ? manualNote : null
   const stopManu = (runId: number): void => {
     const r = engine.cancelManufacturingAt(runId)
     if (!r.ok) onToast(cmdText(r) || tr('ui.hud.021'), true)
@@ -1037,8 +1056,8 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                           <td className="act">
                             <IconBtn
                               glyph="ico-play"
-                              title={tr('ui.hud.057', { p1: def.name })}
-                              disabled={have <= 0}
+                              title={manualNote ?? tr('ui.hud.057', { p1: def.name })}
+                              disabled={have <= 0 || manualNote !== null}
                               onClick={() => startFeed(def, 'pilot')}
                             />
                           </td>
@@ -1284,8 +1303,8 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                           <td className="act">
                             <IconBtn
                               glyph="ico-play"
-                              title={tr('ui.hud.112', { p1: core !== null ? aiCoreText(core) : tr('ui.hud.082') })}
-                              disabled={!learned}
+                              title={manuManualNote ?? tr('ui.hud.112', { p1: core !== null ? aiCoreText(core) : tr('ui.hud.082') })}
+                              disabled={!learned || manuManualNote !== null}
                               onClick={() => startManu(r.id)}
                             />
                           </td>
@@ -1427,8 +1446,8 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                         <td className="act">
                           <IconBtn
                             glyph="ico-play"
-                            title={tr('ui.hud.112', { p1: core !== null ? aiCoreText(core) : tr('ui.hud.082') })}
-                            disabled={!learned}
+                            title={manuManualNote ?? tr('ui.hud.112', { p1: core !== null ? aiCoreText(core) : tr('ui.hud.082') })}
+                            disabled={!learned || manuManualNote !== null}
                             onClick={() => startManu(r.id)}
                           />
                         </td>
@@ -1573,9 +1592,9 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                       <IconBtn
                         glyph="ico-play"
                         label={tr('ui.hud.073')}
-                        title={lockTip ?? tr('ui.hud.074')}
+                        title={lockTip ?? manualNote ?? tr('ui.hud.074')}
                         primary
-                        disabled={lockTip !== null || labAffordableBatches(state, recipe) <= 0}
+                        disabled={lockTip !== null || labAffordableBatches(state, recipe) <= 0 || manualNote !== null}
                         onClick={() => {
                           const r = engine.startLabRunAt(recipe.id, 'pilot')
                           if (!r.ok) onToast(cmdText(r) || tr('ui.hud.075'), true)

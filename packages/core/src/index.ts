@@ -1054,6 +1054,7 @@ export {
   ACTIVITY_LABEL_ID,
   logAutoHalt,
   mainActivityOf,
+  manualSlotOf,
   WARN_KINDS,
 } from './activityGate'
 export type { ActivityGateSkip, GateVerdict, MainActivityKind } from './activityGate'

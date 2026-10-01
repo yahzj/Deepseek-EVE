@@ -21,6 +21,7 @@ import {
   KIND_LABEL,
   WARN_KINDS,
   mainActivityOf,
+  manualSlotOf,
 } from '../src/activityGate'
 
 type LabRun = NonNullable<ReturnType<typeof createInitialState>['labRuns']>[number]
@@ -119,5 +120,42 @@ describe('活动栏 · 实验室产线（2026-10-01 接入）', () => {
     expect(startLabRun(s, ctx, RECIPE, 'pilot').ok).toBe(true)
     expect(shipBusyLabel(s, ctx, s.shipId)?.errorId).toBe('core.busy.030')
     expect(shipBusyLabel(s, ctx, s.shipId)?.error).toBe('亲自运转实验室中')
+  })
+})
+
+/**
+ * **手动工作位判定**（**2026-10-01 船长令**：「建议改成和旧的工业一样，主控正在活动时，禁止按钮」）。
+ *
+ * 这一格是**界面置灰的取数口**（工业 HUD 页三个页签都读它）：手动工作位 = 精炼炉 / 回收炉 / 拆解台 /
+ * 制造线 / 实验室 **共用**的那 1 个名额；**AI 核心驱动的线不算**。
+ * 单点落 `activityGate.manualSlotOf`（原先三处 core 各写一份 `.some(worker === 'pilot')`）。
+ */
+describe('手动工作位判定（单点 manualSlotOf）', () => {
+  it('空着 ⇒ null；主控亲自开炉 / 开线 / 运转实验室 ⇒ 各自那一档', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 3 })
+    expect(manualSlotOf(s), '新档手动位空着').toBe(null)
+    s.refineRuns.push({ id: 1, active: true, worker: 'pilot', blueprintId: 'bp-titanium', count: 1 } as never)
+    expect(manualSlotOf(s)).toBe('refine')
+    s.refineRuns.length = 0
+    s.manufacturingRuns.push({ id: 2, active: true, worker: 'pilot', blueprintId: 'bp-titanium', count: 1 } as never)
+    expect(manualSlotOf(s)).toBe('manufacturing')
+    s.manufacturingRuns.length = 0
+    s.labRuns = [{ id: 3, active: true, worker: 'pilot' } as never]
+    expect(manualSlotOf(s)).toBe('lab')
+  })
+
+  it('**AI 核心驱动**的三条产线都不占手动位（界面据此不置灰，AI 开工不受此限）', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 4 })
+    s.refineRuns.push({ id: 1, active: true, worker: 'basic', blueprintId: 'bp-titanium', count: 1 } as never)
+    s.manufacturingRuns.push({ id: 2, active: true, worker: 'basic', blueprintId: 'bp-titanium', count: 1 } as never)
+    s.labRuns = [{ id: 3, active: true, worker: 'basic' } as never]
+    expect(manualSlotOf(s)).toBe(null)
+  })
+
+  it('**停掉的线不算**（`active === false` 的行不占位）', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 6 })
+    s.refineRuns.push({ id: 1, active: false, worker: 'pilot', blueprintId: 'bp-titanium', count: 1 } as never)
+    s.labRuns = [{ id: 2, active: false, worker: 'pilot' } as never]
+    expect(manualSlotOf(s)).toBe(null)
   })
 })

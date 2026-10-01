@@ -117,6 +117,12 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
     file: 'packages/core/src/mining.ts',
     exported: true,
   },
+  {
+    concept: '手动工作位被谁占着（炉/回收炉/拆解台/制造线/实验室共用那一个名额 · 2026-10-01 船长令「和旧的工业一样，主控正在活动时禁止按钮」）',
+    symbol: 'manualSlotOf',
+    file: 'packages/core/src/activityGate.ts',
+    exported: true,
+  },
 ]
 
 /** F4：渲染层一级页/面板不许自己建仿真上下文（那是 `engine.ts` 的活） */

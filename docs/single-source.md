@@ -24,6 +24,7 @@
 | 装备归属档（高/中/低/**舰船插件**四档） | `rackDimKeyOf()`（渲染层）＋ core `rackOf` | `content:check` 归属档契约 |
 | 回收/打捞产出与价值读数 | core `industry.ts` / `salvaging.ts` 的产出单点 | `npm run salvage:econ` · `recycle:compare` |
 | 矿带每小时产出与**行情产值**（排序档「行情产值最高」与矿带卡面共用） | `beltYieldRows()` / `beltValuePerHour()` · `mining.ts`（**2026-09-30 建**：原先渲染层写了两份，排序那份还停在基准价口径 ⇒ 船长报障「原矿价值最高的排序已经落后」） | core 用例 `belt-sort-value-20260930.test.ts` · `arch:guard` F2/F3 |
+| 手动工作位被谁占着（精炼炉/回收炉/拆解台/制造线/实验室共用的那一个名额；AI 核心驱动不算） | `manualSlotOf()` · `activityGate.ts`（**2026-10-01 建**：船长令「新的工业 UI 要改成和旧的工业一样，主控正在活动时禁止按钮」⇒ 界面得先问出"被谁占着"；原先这条判据在 `lab.ts`/`industry.ts`/`manufacturing.ts` 各写一份） | core 用例 `activity-lab-20261001.test.ts` 的「手动工作位判定」组 · `arch:guard` F2/F3 |
 
 ## 二、data 表面（`packages/data/src`）
 
