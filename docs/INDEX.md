@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **386** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6895** KB · **50365** 行
-- 状态分布：**未标注** 213 · **已确认/已实现** 117 · **进行中** 42 · **待裁定** 13 · **历史留档** 1
-- 孤儿文档（0 引用）**63** 份 · 状态未标注 **213** 份
+- 文档总数 **387** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6901** KB · **50432** 行
+- 状态分布：**未标注** 213 · **已确认/已实现** 117 · **进行中** 43 · **待裁定** 13 · **历史留档** 1
+- 孤儿文档（0 引用）**64** 份 · 状态未标注 **213** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**11** 份
-- 三、现行设计稿（design）：**261** 份
+- 三、现行设计稿（design）：**262** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**32** 份
 - 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -30,13 +30,13 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 16 KB / 105 行 | 200 / 9 |
-| `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 31 / 1 |
+| `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 32 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 59 行 | 34 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 285 KB / 299 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 78 KB / 806 行 | 92 / 4 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 502 KB / 1016 行 | 225 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 457 行 | 353 / 19 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 457 行 | 354 / 19 |
 
 ## 七、评审与体检（review） —— 11 份
 
@@ -54,7 +54,7 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 261 份
+## 三、现行设计稿（design） —— 262 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -64,6 +64,7 @@
 | `docs/design/comms-param-fix-20261001.md` | 文案占位符漏出两处（工作文档） | 进行中（进行中） | 2026-10-01 | 6 KB / 73 行 | 0 / 1 |
 | `docs/design/handover-20261001.md` | 交接卡 · 一号会话（2026-10-01 收尾） | 未标注 | 2026-10-01 | 7 KB / 71 行 | 0 / 0 |
 | `docs/design/hud-industry-filter-20261001.md` | 工业 HUD 页：组装机书架筛选收口 ＋ 卡片溢出修复（工作文档） | 进行中（进行中） | 2026-10-01 | 8 KB / 89 行 | 0 / 0 |
+| `docs/design/industry-line-parity-20261001.md` | 三条工业产线的逻辑对照（实验室 vs 炉子 vs 制造线）· 2026-10-01 | 进行中（进行中） | 2026-10-01 | 6 KB / 67 行 | 0 / 0 |
 | `docs/design/industry-manual-slot-guard-20261001.md` | 新工业 HUD 页：主控手动位守卫复原（工作文档） | 进行中（进行中） | 2026-10-01 | 6 KB / 75 行 | 0 / 0 |
 | `docs/design/lab-comms-rewrite-20261001.md` | 首访实验室 · 黑市通讯正文重写（工作文档） | 进行中（进行中） | 2026-10-01 | 5 KB / 57 行 | 0 / 0 |
 | `docs/design/voidcrystal-price-20261001.md` | 虚空晶一物一价（精炼面板修正）· 2026-10-01 | 未标注 | 2026-10-01 | 5 KB / 64 行 | 3 / 0 |
@@ -456,7 +457,7 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 55 / 13 |
 
-## 附：孤儿文档（0 引用，63 份）
+## 附：孤儿文档（0 引用，64 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
@@ -464,6 +465,7 @@
 - `docs/design/comms-export-20261001.md`（2026-10-01 · 5 KB）—— 通讯文案工作台（导出工具）· 2026-10-01
 - `docs/design/handover-20261001.md`（2026-10-01 · 7 KB）—— 交接卡 · 一号会话（2026-10-01 收尾）
 - `docs/design/hud-industry-filter-20261001.md`（2026-10-01 · 8 KB）—— 工业 HUD 页：组装机书架筛选收口 ＋ 卡片溢出修复（工作文档）
+- `docs/design/industry-line-parity-20261001.md`（2026-10-01 · 6 KB）—— 三条工业产线的逻辑对照（实验室 vs 炉子 vs 制造线）· 2026-10-01
 - `docs/design/industry-manual-slot-guard-20261001.md`（2026-10-01 · 6 KB）—— 新工业 HUD 页：主控手动位守卫复原（工作文档）
 - `docs/design/lab-comms-rewrite-20261001.md`（2026-10-01 · 5 KB）—— 首访实验室 · 黑市通讯正文重写（工作文档）
 - `docs/design/weekend-family-name-20261001.md`（2026-10-01 · 5 KB）—— 入侵族名用正式称呼（R 族 = 光环）· 2026-10-01
