@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **375** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6761** KB · **48691** 行
-- 状态分布：**未标注** 208 · **已确认/已实现** 117 · **进行中** 36 · **待裁定** 13 · **历史留档** 1
-- 孤儿文档（0 引用）**56** 份 · 状态未标注 **208** 份
+- 文档总数 **376** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6772** KB · **48788** 行
+- 状态分布：**未标注** 209 · **已确认/已实现** 117 · **进行中** 36 · **待裁定** 13 · **历史留档** 1
+- 孤儿文档（0 引用）**56** 份 · 状态未标注 **209** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**11** 份
-- 三、现行设计稿（design）：**250** 份
+- 三、现行设计稿（design）：**251** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**32** 份
 - 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -33,10 +33,10 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 31 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 59 行 | 33 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 283 KB / 298 行 | 17 / 3 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 76 KB / 785 行 | 91 / 4 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 285 KB / 299 行 | 17 / 3 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 78 KB / 806 行 | 91 / 4 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 502 KB / 1016 行 | 224 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 455 行 | 347 / 19 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 457 行 | 347 / 19 |
 
 ## 七、评审与体检（review） —— 11 份
 
@@ -54,11 +54,12 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 250 份
+## 三、现行设计稿（design） —— 251 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/announcement-draft-20260930.md` | 公告待审稿 · 2026-09-30 批次（实验室投产）（2026-09-30） | 未标注 | 2026-09-30 | 10 KB / 173 行 | 4 / 2 |
+| `docs/design/voidcrystal-price-20261001.md` | 虚空晶一物一价（精炼面板修正）· 2026-10-01 | 未标注 | 2026-10-01 | 5 KB / 64 行 | 1 / 0 |
+| `docs/design/announcement-draft-20260930.md` | 公告待审稿 · 2026-09-30 批次（实验室投产）（2026-09-30） | 未标注 | 2026-09-30 | 11 KB / 180 行 | 5 / 2 |
 | `docs/design/beacon-parts-20260930.md` | 信号发射器配方改用零件（2026-09-30） | 未标注 | 2026-09-30 | 3 KB / 49 行 | 1 / 2 |
 | `docs/design/copy-audit-20260930.md` | 文案审核批（全仓通讯与长文本 · 2026-09-30） | 进行中（进行中） | 2026-09-30 | 38 KB / 398 行 | 3 / 1 |
 | `docs/design/fuel-activity-efficiency-20260930.md` | 各活动跃迁燃料效率体检（2026-09-30） | 未标注 | 2026-09-30 | 12 KB / 152 行 | 3 / 0 |
@@ -344,7 +345,7 @@
 | `docs/archive/roadmap-2026-09-25-26.md` | 封存卷 · roadmap 批次条目 2026-09-25/26 | 未标注 | — | 9 KB / 10 行 | 0 / 0 |
 | `docs/archive/roadmap-2026-09-25.md` | 封存卷 · roadmap 批次条目 2026-09-25 | 未标注 | — | 39 KB / 34 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-26.md` | 封存卷 · roadmap 批次条目 2026-09-26 | 未标注 | — | 106 KB / 104 行 | 2 / 0 |
-| `docs/archive/roadmap-2026-09-27.md` | 封存卷 · roadmap 批次条目 2026-09-27 | 未标注 | — | 33 KB / 46 行 | 1 / 0 |
+| `docs/archive/roadmap-2026-09-27.md` | 封存卷 · roadmap 批次条目 2026-09-27 | 未标注 | — | 34 KB / 48 行 | 1 / 0 |
 
 ## 二、其它（docs 根目录） —— 3 份
 
@@ -506,8 +507,9 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（208 份，待补一行 `状态：…`）
+## 附：状态未标注（209 份，待补一行 `状态：…`）
 
+- `docs/design/voidcrystal-price-20261001.md`（2026-10-01）—— 虚空晶一物一价（精炼面板修正）· 2026-10-01
 - `docs/design/announcement-draft-20260930.md`（2026-09-30）—— 公告待审稿 · 2026-09-30 批次（实验室投产）（2026-09-30）
 - `docs/design/beacon-parts-20260930.md`（2026-09-30）—— 信号发射器配方改用零件（2026-09-30）
 - `docs/design/fuel-activity-efficiency-20260930.md`（2026-09-30）—— 各活动跃迁燃料效率体检（2026-09-30）
