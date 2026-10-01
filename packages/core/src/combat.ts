@@ -3739,7 +3739,7 @@ export function battleOpenM(me: UnitSpec, foes: UnitSpec[], bal: BattleBalance):
  * - **"玩家的射程盲区"= 我方武器的近程盲区**：距离低于某门武器的 `minRangeM` ⇒ **那门武器开不了火**。
  *   一艘船挂多门时，**最远的那条近界**才是全船的有效近界（主力武器够不着就是够不着）
  *   ⇒ `meBlindM = max(我方各武器 minRangeM)`、`meTop = max(我方各武器 maxRangeM)`；
- * - **R 族的决策优先级**（船长四次令：**风筝 > 钻近盲区 > 默认**）：
+ * - **R 族的决策优先级**（船长五次令：**风筝 > 钻近盲区 > 默认**）：
  *   - **① 风筝（最高优先）**：R 族**站得到我方射程之外**（`foeTop × 0.8 > meTop`）⇒ 站 `foeTop × 0.8`；
  *   - **② 钻近盲区（次优先）**：我方**射程长但有近盲区**（`0 < meBlindM < meTop`）⇒ 贴到我方近界下沿
  *     `meBlindM − 100`（那里我方主力打不着、它却能打；它的 `rangeMinM` 都是 1，没有近界）；
@@ -3775,7 +3775,7 @@ export function rFamilyDesireOf(
   const floor = bal.minDistanceM
   const clampTo = (v: number): number => Math.max(floor, Math.min(Math.round(v), foeTop))
   /**
-   * 🔴 **决策优先级**（**船长 2026-10-01 四次令**，原话照抄）：
+   * 🔴 **决策优先级**（**船长 2026-10-01 五次令**，原话照抄）：
    * 「**你的优先级不对，最高优先级是你的射程外（风筝你），其次才考虑你的近盲区。都没有就按照默认期望距离。**」
    *
    * ① **风筝（最高优先）**：只要 R 族**站得到我方射程之外**——即 `foeTop × 0.8 > meTop`
