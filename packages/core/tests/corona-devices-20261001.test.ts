@@ -10,7 +10,7 @@
  * - 伤害 ×0.3 = **该舰全部伤害**（选「甲」）⇒ 收口在 `combat.foeRepairDiscountedShot`，光束与实弹都过；
  * - 5% = **结构上限的 5%**（选「甲」，不是总血上限）；
  * - **可以扣死（自毁）**（选「乙」）⇒ 不设保底，反复闪现会把结构扣到 0、该舰当场自毁；
- * - 叠光步长 = **400ms**（船长先令「先计算叠满大概要打多久」，读数后选「丙」）。
+ * - 叠光步长 = **300ms**（船长先令「先计算叠满大概要打多久」，读数后选「丙：400ms」，**同日二次改判为 300ms**）。
  *
  * 本用例锁五层：① 两件的定义与解析 ② 挂载面（只挂各自主人）
  * ③ 建档落地（＋别的族零行为变化）④ 伤害折减真的落在单发上
@@ -55,11 +55,11 @@ function battleOf(card: string, ships: number, foeOverride?: { strengthMul?: num
 }
 
 describe('叠光装置 / 闪烁过载装置：件定义与解析', () => {
-  it('① 两件参数 = 船长定案（400ms 步长 · 500ms 下限 · 伤害 ×0.3 / 护盾全回 · 结构上限 5%）', () => {
+  it('① 两件参数 = 船长定案（300ms 步长 · 500ms 下限 · 伤害 ×0.3 / 护盾全回 · 结构上限 5%）', () => {
     const ov = resolveFoeMounts([FOE_MOUNT_IDS.coronaOverlayDrive])
     expect(ov.unknown, '件 id 必须已登记（否则体检判红）').toEqual([])
     expect(ov.foeOverlayDrive, '叠光参数应原样带给单位').toEqual({
-      stepMs: 400,
+      stepMs: 300,
       floorMs: 500,
       dmgMul: 0.3,
     })
@@ -131,7 +131,7 @@ describe('叠光装置 / 闪烁过载装置：挂载面（只挂各自主人）'
     expect(overlay.length, '本卡应有叠光级').toBeGreaterThan(0)
     for (const sp of overlay) {
       expect(sp.foeOverlayDrive, '叠光级应带叠光参数').toEqual({
-        stepMs: 400,
+        stepMs: 300,
         floorMs: 500,
         dmgMul: 0.3,
       })
@@ -165,23 +165,35 @@ describe('叠光装置：伤害 ×0.3 落在每一发单发上', () => {
 })
 
 describe('叠光装置：真实战斗里的装填自加速', () => {
-  it('⑥ 每开一火 −400ms（首访问 = 条目基准 4200），夹在下限 500ms 之上', () => {
-    const { b, tick } = battleOf(CARD_T3, 6)
-    /** 逐拍记录该舰的"当前装填间隔"（登记表里的 `r`） */
-    const seq: number[] = []
-    for (let t = 500; t <= 300_000 && b.ended === null; t += 500) {
+  it('⑥ 每开一火 −300ms（首访问 = 条目基准 4200），一路推进到下限 500ms', () => {
+    const { b, tick } = battleOf(CARD_T3, 8)
+    /** 逐拍记录该舰的「当前装填间隔」（登记表里的 `r`）＋ 首次出现时刻，用来读「叠满要多久」 */
+    const seq: Array<{ t: number; r: number }> = []
+    for (let t = 250; t <= 400_000 && b.ended === null; t += 250) {
       tick(t)
       const r = b.foeOverlayReload?.['w0-foe-4']?.r
-      if (r !== undefined && (seq.length === 0 || seq[seq.length - 1] !== r)) seq.push(r)
-      if (seq.length >= 6) break
+      if (r === undefined) continue
+      if (seq.length === 0 || seq[seq.length - 1]!.r !== r) seq.push({ t, r })
+      if (r <= 500) break // 叠满（夹到下限）⇒ 后面不再变化，停
     }
-    expect(seq.length, '应至少观察到 6 次开火推进（间隔变化 6 次）').toBeGreaterThanOrEqual(6)
-    expect(seq[0], '首访问 = 条目基准装填').toBe(4_200)
-    for (let i = 1; i < seq.length; i++) {
-      expect(seq[i - 1]! - seq[i]!, `第 ${i} 次推进的步长`).toBe(400)
+    const rs = seq.map((x) => x.r)
+    expect(rs.length, '应观察到多次开火推进').toBeGreaterThanOrEqual(6)
+    expect(rs[0], '首访问 = 条目基准装填').toBe(4_200)
+    // 逐格核步长：正常格恒 = 300ms；**最后一格**（夹到下限的那一格）允许 ≤300（夹取的正常表现）
+    for (let i = 1; i < rs.length; i++) {
+      const step = rs[i - 1]! - rs[i]!
+      if (i === rs.length - 1) {
+        expect(step, '最后一格的步长不得超过 300ms（夹取只许少、不许多）').toBeLessThanOrEqual(300)
+      } else {
+        expect(step, `第 ${i} 次推进的步长`).toBe(300)
+      }
     }
-    for (const r of seq) expect(r, '任何时刻都不得低于下限 500ms').toBeGreaterThanOrEqual(500)
-    console.log(`  [读数] 叠光级装填间隔轨迹：${seq.join(' → ')}（步长 400ms，下限 500ms）`)
+    for (const r of rs) expect(r, '任何时刻都不得低于下限 500ms').toBeGreaterThanOrEqual(500)
+    expect(rs[rs.length - 1], '（若本场够长）末尾应夹到下限 500ms').toBe(500)
+    console.log(
+      `  [读数] 叠光级装填间隔轨迹：${rs.join(' → ')}（步长 300ms，下限 500ms）` +
+        `；从 4200 叠到 500 共 ${rs.length - 1} 格，耗时 ${(seq[seq.length - 1]!.t / 1000).toFixed(2)} 秒`,
+    )
   })
 })
 

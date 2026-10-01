@@ -261,13 +261,14 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     name: '叠光装置',
     // 「叠光」按舰级译名 `Overlay`（l10n 的 `Corona Overlay`）⇒ 本件取 `Corona Overlay Drive`
     en: 'Corona Overlay Drive',
-    // 船长 2026-10-01 定案：步长 400ms（选「丙」）、下限 500ms、该舰全部伤害 ×0.3（选「甲」）
-    overlayDrive: { stepMs: 400, floorMs: 500, dmgMul: 0.3 },
+    // 船长 2026-10-01 定案：步长 **300ms**（同日二次改判，原 400ms）、下限 500ms、该舰全部伤害 ×0.3（选「甲」）
+    overlayDrive: { stepMs: 300, floorMs: 500, dmgMul: 0.3 },
     note:
       '船长 2026-10-01：「添加叠光装置：效果是每次攻击或者闪现后，攻击间隔缩短，最多缩短至0.5秒攻击间隔。' +
       '伤害给予一个0.3的倍率。」⇒ 只挂 R 族 T3 叠光级。三条追问的裁定：伤害 ×0.3 = 该舰全部伤害 ×0.3（甲）；' +
-      '缩短量步长 400ms（船长先令「先计算叠满大概要打多久」，读数后选丙）；「叠满」= 装填间隔降到下限 500ms。' +
-      '初始 4200ms ⇒ 纯攻击 24.0 秒叠满、含每 5 秒一次闪现 18.0 秒叠满。' +
+      '缩短量步长 300ms（船长先令「先计算叠满大概要打多久」，读数后选「丙：400ms」，同日二次改判为 300ms）；' +
+      '「叠满」= 装填间隔降到下限 500ms。' +
+      '初始 4200ms ⇒ 纯攻击 30.3 秒叠满、含每 5 秒一次闪现约 18 秒叠满。' +
       '当前间隔记在运行时的 foeOverlayReload（与 foeBlinks 同口径，有意不入档）。',
   },
   [FOE_MOUNT_IDS.coronaFlashOverload]: {
