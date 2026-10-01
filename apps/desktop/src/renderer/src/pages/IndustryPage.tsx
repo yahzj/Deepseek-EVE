@@ -39,6 +39,7 @@ import {
   labAffordableBatches,
   labMaterialAvailable,
   labBatchUnitsOf,
+  labCycleMsOf,
   labRecipeUnlocked,
   labTechRequirementOf,
   /** 2026-10-01：材料行尾那枚「这一味料从哪来」链接的等价组判据（通用黑匣）走 core 单点 */
@@ -66,6 +67,8 @@ import { MatSourceLink } from '../ui/matSourceLink'
 import { itemGlyphName } from '../ui/Glyphs'
 import { WRECK_SUBS, SUB_ALL, presentSubs, wreckTierOf, subText } from '../ui/itemSubs'
 import { isEn, useL10n, cmdText } from '../i18n/locale'
+/** 工期读数（2026-10-01：与组装机卡同款 ⇒ 同一个格式化件） */
+import { fmtDuration } from '../i18n/fmt'
 import { aiCoreText } from '../ui/labelsText'
 import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
@@ -638,6 +641,11 @@ function LabCard({
    * 原先 `×N` 读配方基础值、净收益也按基础值算 ⇒ 收率技能的效果在卡面完全看不见）。
    */
   const batchUnits = labBatchUnitsOf(state, recipe)
+  /**
+   * **主控亲自那一批的实际周期**（走 core 单点 `labCycleMsOf`：吃 `LAB_CYCLE_SKILLS`；AI 核心另按效率拉长）——
+   * 卡面「主控耗时」读数与净收益读数共用它（2026-10-01 船长令：工期也照组装机卡那套）。
+   */
+  const pilotCycleMs = labCycleMsOf(state, engine.ctx, recipe, 'pilot')
   const batchValue = batchUnits * (marketPriceOf(state, engine.ctx, recipe.outputItemId) ?? out?.baseSellPriceIsk ?? 0)
   const costIsk = recipe.materials.reduce(
     (s, m) =>
@@ -730,8 +738,20 @@ function LabCard({
         >
           （{tr('ui.ItemsPage.001')} {countWare(state, recipe.outputItemId).toLocaleString('zh-CN')}）
         </span>
-        {' · '}
-        {tr('ui.lab.004')} {Math.round(recipe.cycleMs / 60_000)} {tr('ui.lab.012')}
+        {/* 工期读数**与组装机卡逐字同款**（**2026-10-01 船长令**：「『每批工期 X 分钟』这个也和组装机卡同步」）：
+            空闲 ⇒ ` · 主控耗时 {技能修正后的周期}（技能修正后；AI 核心另按效率拉长）`；
+            在跑 ⇒ ` · 已开 N 条线，首条约 T 到点`。数值走 core 单点 `labCycleMsOf`（不许界面自己乘技能）。 */}
+        {running ? (
+          <>
+            {tr('ui.Industry.121', { n: runs.length })} {tr('ui.Industry.043')}{' '}
+            {fmtDuration(Math.min(...runs.map((v) => v.remainingMs)))} {tr('ui.Industry.044')}
+          </>
+        ) : (
+          <>
+            {tr('ui.Industry.122', { d: fmtDuration(labCycleMsOf(state, engine.ctx, recipe, 'pilot')) })}
+            {tr('ui.Industry.045')}
+          </>
+        )}
       </div>
       {/* 材料行：**与组装机卡逐字同款**（2026-10-01 船长令：实验室卡不许自成一套富文本规则）——
           `.app-bp-mats` ＋ `.app-bp-mat`（普通文字色）＋ 缺料 `is-short` ＋ 行尾「去哪弄」四支跳转。
@@ -766,7 +786,8 @@ function LabCard({
         })}
       </ul>
       <div className="app-belt-econ">
-        <NetIncomeLine price={batchValue} costIsk={costIsk} buildMs={recipe.cycleMs} />
+        {/* 净收益/h 的工期**与产物行同一把尺**（2026-10-01 船长令：工期读数同步组装机卡）——走 core 单点 */}
+        <NetIncomeLine price={batchValue} costIsk={costIsk} buildMs={pilotCycleMs} />
       </div>
       <div className="app-belt-actions">
         {/**

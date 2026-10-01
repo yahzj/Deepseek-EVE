@@ -22,7 +22,7 @@ import {
   jumpFuelStockOf,
   jumpFuelWareOf,
 } from '../src/jumpFuel'
-import { labBatchUnitsOf, labLoopOf, labOutputPerHourOf, setLabLoop, startLabRun } from '../src/lab'
+import { labBatchUnitsOf, labCycleMsOf, labLoopOf, labOutputPerHourOf, setLabLoop, startLabRun } from '../src/lab'
 import { jumpFuelSupplyOf } from '../src/fuelSupply'
 import {
   addWare,
@@ -226,6 +226,21 @@ describe('实验室技能的乘区与作用域', () => {
     expect(labBatchUnitsOf(s, recipe), '收率满级 +30%：600 → 780').toBe(780)
     expect(startLabRun(s, ctx, recipe.id, 'pilot').ok).toBe(true)
     expect(s.labRuns![0]!.batchUnits, '起线记录与卡面读数同一个数').toBe(labBatchUnitsOf(s, recipe))
+  })
+
+  /**
+   * **工期读数的单一来源**（**2026-10-01 船长令**：「『每批工期 X 分钟』这个也和组装机卡同步」）：
+   * 卡面那句「主控耗时 …（技能修正后；AI 核心另按效率拉长）」读的就是 `labCycleMsOf(…, 'pilot')`，
+   * 它必须与①起线写进运行记录的 `cycleMs`、②推进/续批用的是**同一个数**（界面不许自己乘技能）。
+   */
+  it('labCycleMsOf：卡面工期 ＝ 起线记录 ＝ 技能折算后的真值（同源）', () => {
+    const s = withMaterials(stationState())
+    expect(labCycleMsOf(s, ctx, recipe, 'pilot'), '无技能 ＝ 配方规格值 5 分').toBe(recipe.cycleMs)
+    trainAll(s, ['industrial-automation', 'fuel-catalytic-cracking'])
+    expect(labCycleMsOf(s, ctx, recipe, 'pilot'), '节拍 −25% × 裂解 −20% ⇒ 5 分 → 3 分').toBe(180_000)
+    expect(startLabRun(s, ctx, recipe.id, 'pilot').ok).toBe(true)
+    expect(s.labRuns![0]!.cycleMs, '起线记录与卡面读数同一个数').toBe(labCycleMsOf(s, ctx, recipe, 'pilot'))
+    expect(labCycleMsOf(s, ctx, recipe, 'gamma'), 'AI 核心效率 ≤ 1 ⇒ 只会更长，不会更快').toBeGreaterThanOrEqual(180_000)
   })
 })
 

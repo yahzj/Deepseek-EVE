@@ -699,6 +699,8 @@ export {
   labAffordableBatches,
   /** 2026-10-01 船长裁：卡面「×N」读**实际批产**（吃 `LAB_YIELD_SKILLS`），不再读配方基础值 */
   labBatchUnitsOf,
+  /** 2026-10-01 船长令：卡面工期读数与组装机卡同步 ⇒ 也走单点（吃 `LAB_CYCLE_SKILLS` 与核心效率） */
+  labCycleMsOf,
   labMissingMaterials,
   labRunViews,
   startLabRun,
