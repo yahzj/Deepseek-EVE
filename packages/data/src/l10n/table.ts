@@ -1181,6 +1181,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.industry.041": { zh: "{p1} 市场暂无现货——已自动挂收购单 @ {p2} 信用点，到货自动停入机库（可随时撤销）。", en: "{p1} is out of stock on the market — a buy order was placed automatically @ {p2} credits, and it docks into the hangar on arrival (cancel it at any time)." },
   "core.industry.042": { zh: "逆向研究完成：{p1} ×{p2} → 已解锁「{p3}」蓝图（{p4} 可自制备；无需市场购图）。", en: "Reverse engineering done: {p1} ×{p2} → the “{p3}” blueprint is unlocked ({p4} can be built in-house; no market purchase needed)." },
   "core.industry.044": { zh: "{p1}{p2}", en: "{p1}{p2}" },
+  // **R 族残骸回收的 AI 核心**（船长 2026-10-01 令「AI 核心为 R 族残骸回收的特色」）：
+  // 回收炉烧光环残骸每批追加 10% 掷核心，抽中即直接入核心库（不进仓库）并推这一条。
+  "core.industry.045": {
+    zh: "✦ 额外产出：{p1} ×{p2}。",
+    en: "✦ Bonus output: {p1} ×{p2}.",
+  },
   "core.industry.048": { zh: " 等{p1}种", en: " and {p1} kinds in all" },
   "core.industry.057": { zh: "额外掉落：", en: "Extra drops: " },
   "core.industry.058": { zh: "保底原材料 {p1}{p2}", en: "Guaranteed raw materials {p1}{p2}" },
@@ -4521,6 +4527,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 2026-09-30 截击舰特性（船长「给拦截舰添加效果，不会被网子选为目标」）——「船体特性」栏那一行，
      与 `ShipDef.interceptorImmuneToWeb`（数据开关）同源。 */
   "ui.shipInfo.245": { zh: "不会被网子选为目标", en: "Cannot be targeted by webs" },
+  // **R 族势力特色装备**（船长 2026-10-01 令）：叠光激光炮的"装填自加速"与跃迁规避装置的"挨打闪现"
+  "ui.shipInfo.246": { zh: "装填 {p1} 秒，每次开火缩短 {p2} 秒，最低 {p3} 秒", en: "Reload {p1}s; each shot cuts {p2}s, down to {p3}s" },
+  "ui.shipInfo.247": { zh: "被命中时拉开交战距离 {p1} km；冷却 {p2} 秒", en: "When hit, opens engagement range by {p1} km; {p2}s cooldown" },
 
   /* ── 沉船记录（2026-09-27 船长令：通讯内新增一个分类，记录玩家损失的舰船与当时的装配）── */  "ui.WreckLog.001": { zh: "沉船记录", en: "Ship Loss Log" },
   "ui.WreckLog.002": { zh: "收件箱", en: "Inbox" },

@@ -478,7 +478,14 @@ const BATTLE_FIELDS = {
     kind: 'runtime',
     why: '敌「闪现跃迁」冷却（2026-10-01 加：R 族「瞬光跃迁仪」——本体被命中时拉开交战距离，冷却 5 秒）：与 `foeCharges` 同一口径，落在"重载即重置循环"内 ⇒ 有意不入档',
   },
-  foeOverlayReload: {
+  meOverlayReload: {
+    kind: 'runtime',
+    why: '我方「叠光同款装填自加速」的当前装填间隔（2026-10-01 加：R 族势力特色激光炮 mod-lair-laser-r——每开一火 −300ms、下限 600ms）：与 `foeOverlayReload` 同一口径，落在"重载即重置循环"内 ⇒ 有意不入档',
+  },
+  meBlinks: {
+    kind: 'runtime',
+    why: '我方「跃迁规避装置」的闪现冷却（2026-10-01 加：R 族中槽件 mod-lair-blink-r——被命中时拉开 2,000m，冷却 12 秒）：与 `foeBlinks` 同一口径，落在"重载即重置循环"内 ⇒ 有意不入档',
+  },  foeOverlayReload: {
     kind: 'runtime',
     why: '敌「叠光装置」的当前装填间隔与已折算的闪现次数（2026-10-01 加：R 族 T3 叠光级——每次攻击/闪现后装填间隔 −400ms、下限 500ms，伤害 ×0.3）：与 `foeCharges` / `foeBlinks` 同一口径，落在"重载即重置循环"内 ⇒ 有意不入档',
   },

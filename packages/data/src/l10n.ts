@@ -383,6 +383,9 @@ export const EN_MODULES: EnTable = {
   // H 族（墨潮帮）势力装备（2026-09-26 船长定：射程压制 · 捕获网 · 重袭机）
   'mod-lair-ecm-h': { name: 'Ink Tide EW Pod', description: 'A captured, rebuilt electronic-warfare core: fitted to a deployed fleet it suppresses enemy weapon range by 15%, stacking multiplicatively with electronic-warfare ships. Enemy range can only be pushed down to 3,000 m, and weapons whose base range is under 3,000 m are unaffected. It costs 150 CPU — a hull that fits it serves nothing else.' },
   'mod-lair-web-h': { name: 'Ink Tide Capture Web', description: 'A cycling web: it pins one un-webbed enemy ship, dropping its speed, cutting its thrusters and nullifying its evasion; the web releases and goes on cooldown when the target is sunk or the range opens past the break distance, and sinking the webbing ship releases it.' },
+  // **R 族（光环）势力特色装备**（船长 2026-10-01 令）：叠光激光炮 + 跃迁规避装置 —— 两件同出「光环稀有残骸的高级箱专属池」（与 AI 核心同一个池子）。
+  'mod-lair-laser-r': { name: 'Overlay Laser Cannon', description: 'Energy beam, always hits; 7 km range. Reload 4.4s, cut by 0.3s per shot down to 0.6s; 250 rounds per engagement.' },
+  'mod-lair-blink-r': { name: 'Blink Evasion Drive', description: 'Mid slot. When hit, opens engagement range by 2 km; 12s cooldown.' },
   // 虫洞族专属（mod-wh-*）
   'mod-wh-a-frag': { name: 'Raider Fragment Cannon', description: 'Fragment rounds that burst on their own: inside 7.3 km they scatter a cloud of explosive shrapnel with extreme single-shot power. The fragments ignore armor seams and add 50% kinetic damage (independent of the explosive ammo spent). The cost: accuracy only 0.80 and a 5.6 s reload.' },
   'mod-wh-a-hangar': { name: 'Raider Hangar', description: 'A hangar mezzanine welded from stolen cargo bulkheads: drone bay +40 m³ and launched drones cycle 8% faster. It carries more and launches faster for only 25 CPU.' },

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * V10.5/V10.5b + V17 统一舰船/装备属性展示模块（装配页 / 舰船悬停 / 手册图鉴共用同一数据源与渲染）。
  *
  * 设计（中文说明）：
@@ -443,6 +443,19 @@ export function moduleShortEffect(mod: ModuleDef): string {
     case 'laser': {
       // V18B-2 激光炮：能量系武器形态（能量弹药 · 必中 · 威力随距离轻微衰减）
       body = tr("ui.shipInfo.101", { p1: rangeText(mod.minRangeM, mod.maxRangeM) })
+      /**
+       * **R 族「叠光激光炮」的短行**（**船长 2026-10-01 令**：「激光武器为叠光同款叠加攻速的，基础伤害偏低，
+       * 需要玩家叠满才威力较强」）——补「装填自加速」那一段（换装卡/装备库行上要看得见"会越打越快"）。
+       * 秒数取件自带字段（起步装填 / 每发缩短 / 下限），并**跟着武器加成缩放**口径无关 ⇒ 原值直读。
+       */
+      if (mod.overlayDrive) {
+        const bl = tr("ui.shipInfo.246", {
+          p1: ((mod.reloadMs ?? 0) / 1000).toFixed(1),
+          p2: (mod.overlayDrive.stepMs / 1000).toFixed(1),
+          p3: (mod.overlayDrive.floorMs / 1000).toFixed(1),
+        })
+        body = body ? `${body} · ${bl}` : bl
+      }
       break
     }
     case 'shield-field': {
@@ -494,6 +507,19 @@ export function moduleShortEffect(mod: ModuleDef): string {
       if (mod.speedBonusPct !== undefined)
         parts.push(tr("ui.shipInfo.107", { p1: pct(mod.speedBonusPct), p2: thrusterCycleShort(mod) }))
       if (mod.hitPenalty !== undefined && mod.hitPenalty > 0) parts.push(tr("ui.shipInfo.108", { p1: (1 - mod.hitPenalty).toFixed(2) }))
+      /**
+       * **R 族「跃迁规避装置」的短行**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
+       * 但是冷却时间延长到12秒」）——本件**没有速度加成**（不是提速推进器），所以上面那一段拼出来是空串；
+       * 这里补它自己那一段（拉开距离 + 冷却），否则短行一句话都没有（`content:check` 的短效说明契约会判红）。
+       */
+      if (mod.blink) {
+        parts.push(
+          tr("ui.shipInfo.247", {
+            p1: (mod.blink.distanceM / 1000).toFixed(mod.blink.distanceM % 1000 === 0 ? 0 : 1),
+            p2: Math.round(mod.blink.cooldownMs / 1000),
+          }),
+        )
+      }
       body = parts.join(' · ')
       break
     }

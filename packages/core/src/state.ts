@@ -1096,6 +1096,23 @@ export interface BattleState {
    */
   meVolleyDmg?: Record<string, number>;
   /**
+   * **我方「叠光同款装填自加速」的当前装填间隔**（**船长 2026-10-01 令**：「激光武器为叠光同款叠加攻速的」；
+   * R 族势力特色激光炮 `mod-lair-laser-r` 用）。
+   *
+   * 键 = `tag#炮位下标`（同一艘船可能装多门）；值 = `{ r, f }`：`r` = 当前装填间隔（毫秒）、
+   * `f` = 已推进的开火次数。语义与敌方的 `foeOverlayReload` **逐字同款**：每开一火 ⇒ `−stepMs`、夹下限。
+   * ⚠ 登记为 `save.ts` 清洗器的 `kind: 'runtime'`（**有意不入档**，与 `foeOverlayReload` 同口径）。
+   */
+  meOverlayReload?: Record<string, { r: number; f: number }>;
+  /**
+   * **我方「跃迁规避装置」的闪现冷却**（**船长 2026-10-01 令**：「挨打触发闪现。但是冷却时间延长到12秒」）。
+   *
+   * 键 = 我方舰 tag；值 = **冷却到什么时候**（`lastTickGameMs` 基准）。语义与敌方 `foeBlinks` 同款，
+   * 区别只在**方向**（我方是纯粹的"拉开"，敌方是"破坏我方走位意图"）。
+   * ⚠ 登记为 `save.ts` 清洗器的 `kind: 'runtime'`（**有意不入档**）。
+   */
+  meBlinks?: Record<string, number>;
+  /**
    * **损伤管制装置 · 免死状态**（**2026-09-25 船长令**：「当舰船第一次结构低于 1 时，将结构恢复到 1
    * （避免一次死亡）」＋「触发损管效果时需要消耗一份」＋改判「**1 秒内结构锁定 1**」）。
    *

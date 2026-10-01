@@ -2668,7 +2668,21 @@ for (const m of MODULES) {
     }
   } else if (m.slot === 'propulsion') {
     // 2026-09-08 船长：取消 speedBonusPct ≤0.9 上限护栏（推进器提速档位改由设计定；命中代价 hitPenalty 仍受检）
-    check(m.speedBonusPct !== undefined && m.speedBonusPct > 0, `推进器 ${m.id} speedBonusPct 非法（需为正）`)
+    /**
+     * ⚠ **2026-10-01 开一个口子：带 `blink` 的推进器豁免"必须有速度加成"** ——
+     * R 族「跃迁规避装置」（中槽）不是提速件：它给的是**挨打时拉开交战距离**（闪现），
+     * 没有 `speedBonusPct`。豁免只认 `blink` 这一个字段（别的推进器照旧必须有正的速度加成）。
+     */
+    if (m.blink === undefined) {
+      check(m.speedBonusPct !== undefined && m.speedBonusPct > 0, `推进器 ${m.id} speedBonusPct 非法（需为正）`)
+    }
+    // 闪现件自己的值域：距离 > 0、冷却 > 0（缺省/非正即红）
+    if (m.blink !== undefined) {
+      check(
+        m.blink.distanceM > 0 && m.blink.cooldownMs > 0,
+        `闪现件 ${m.id} blink 非法（距离与冷却都需为正）`,
+      )
+    }
     check(m.hitPenalty === undefined || (m.hitPenalty >= 0 && m.hitPenalty <= 0.5), `推进器 ${m.id} hitPenalty 非法（需 [0, 0.5]，V17.1 命中代价）`)
   } else if (m.slot === 'missile') {
     // V18B-1 导弹架：爆炸系武器形态——追踪命中（不随距离衰减）+ 近盲安全射距（防自爆）

@@ -1604,6 +1604,27 @@ export interface ModuleDef {
   thrusterBoostMs?: number
   thrusterCooldownMs?: number
   /**
+   * **【我方】叠光同款 · 装填自加速**（**船长 2026-10-01 令**：「**添加一件激光武器…为叠光同款叠加攻速的，
+   * 基础伤害偏低，需要玩家叠满才威力较强**」）—— R 族势力特色**激光炮**（`mod-lair-laser-r`）专属。
+   *
+   * 口径与敌方「叠光装置」（`FoeMountDef.overlayDrive`）**逐字同款**：本门武器每**开火**一次 ⇒
+   * 装填间隔 `−stepMs`、下限 `floorMs`（船长 2026-10-01 定：**−300ms / 下限 600ms**）。
+   * ⚠ 我方这版**不乘伤害倍率**（船长令只说了"基础伤害偏低、叠满才强" ⇒ 由 `dmgMult` 本身低来表达，
+   * 不再叠一层折减）。
+   *
+   * 当前间隔记在 `BattleState.meOverlayReload[tag + '#' + 炮位]`（`kind: 'runtime'`，与敌方同口径）。
+   */
+  overlayDrive?: { stepMs: number; floorMs: number }
+  /**
+   * **【我方】闪现跃迁**（**船长 2026-10-01 令**：「**和R族同款，挨打触发闪现。但是冷却时间延长到12秒**」）——
+   * R 族势力特色**中槽**件（`mod-lair-blink-r`）专属。
+   *
+   * 口径：**本舰被敌方舰炮命中**时（打我方无人机不算、未命中不算）把交战距离**拉开 `distanceM`**
+   * （朝远离敌人一侧），随后进入 `cooldownMs` 冷却（**船长定 12 秒**，比敌方的 5 秒更长）。
+   * 冷却态记在 `BattleState.meBlinks`（`kind: 'runtime'`）。
+   */
+  blink?: { distanceM: number; cooldownMs: number }
+  /**
    * **跃迁速度加成**（2026-09-14 船长新增「**跃迁计算机**」MK2/MK3：**+20% / +35%**，低槽支援件）。
    *
    * 语义 = **星系际航行**的有效跃迁速度 ×(1 + 本值)——生效处是 `travel.warpSpeedAus`

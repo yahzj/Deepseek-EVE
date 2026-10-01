@@ -21,7 +21,7 @@
 import { tuningMul } from './tuning'
 import type { GameState, WreckGalaxyRecord } from './state'
 import type { AnomalyDef, FoeFamily, ItemDef, SimContext } from './types'
-import { nextInt, nextRandom, pickOne, pickWeighted } from './rng'
+import { hashSeed, nextInt, nextRandom, pickOne, pickWeighted } from './rng'
 import { advanceShipWreckDecay } from './shipWrecks'
 import { addModule, ownedItemCount, ownedModuleCount } from './equipment'
 import { addWare, countWare } from './inventory'
@@ -982,6 +982,8 @@ export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleP
   if (!group) return null
   return {
     groupKey: group.key,
+    // **来源敌族**（2026-10-01）：只给"有族专属产出"的组用（现 = R 族核心掉落）
+    ...(group.family !== undefined ? { family: group.family } : {}),
     region: group.region,
     threat: group.threat,
     tier: group.tier,
@@ -1175,6 +1177,11 @@ export function rollRareBoxExtra(
 export interface RecycleProfile {
   /** 组 key（`a-hi` / `d-wh`…；2026-09-19 起取代旧的 `anomalyId`） */
   groupKey: string
+  /**
+   * **本组来源敌族**（**船长 2026-10-01 令**：「**AI 核心为 R 族残骸回收的特色**」）——
+   * 回收炉的族专属产出（现只有 R 族的核心掉落）靠它判；其余各族**不写该字段** ⇒ 零行为变化。
+   */
+  family?: FoeFamily
   /** 来源地区（高安 / 低安 / 虫洞 / 入侵）——洞内高级箱的"主题件回落池"按它判 */
   region: WreckRegion
   /** 组代表威胁（组内各产残骸卡威胁的平均；驱动蓝图碎片门槛与完好舰体彩头层） */
@@ -1437,6 +1444,64 @@ export function rollRecycleLoot(
   return { modules, fragments }
 }
 
+/* ═══════════ R 族残骸回收的 AI 核心（**船长 2026-10-01 令**）═══════════ */
+
+/**
+ * **AI 核心 = R 族残骸回收的特色**（**船长 2026-10-01 令**：「**AI 核心为 R 族残骸回收的特色**」＋
+ * 「核心结算方式…如果是〔回收时抽中〕，**直接入账**」）。
+ *
+ * 口径（同日四问的裁定，逐条记在案）：
+ * - **触发点 = 回收炉烧 R 族残骸时**（选「甲」）——残骸回收炉每处理**一批**（`RECYCLE_BATCH_M3` = 100 m³）
+ *   额外掷一次；其余各族**一次都不掷**（`rollRecycleCoreGain` 见到非 R 族直接返回 `undefined`）；
+ * - **产出率 10%**、命中后按 **60 / 30 / 10** 抽伽马 / 贝塔 / 阿尔法（选「甲」；与虫洞遗迹打捞那把尺逐字一致，
+ *   见 `wormholeSalvage.WORMHOLE_CORE_SHARE` / `WORMHOLE_CORE_WEIGHTS`）；
+ * - **只在回收炉出**（选「甲」）⇒ 打捞舰那条「完好舰体当场直发」的彩头链**一个字不动**；
+ * - **直接入核心账本**（`state.aiCores`），**不进仓库**——这是既有硬契约：核心是一本账，
+ *   三种实物物品一律 `unreleased: true`（见 `packages/data/src/marketCatalog.ts` 那条注释）；
+ * - **独立随机流**：种子 = `hashSeed(wreckItemId + ':' + 批序号)` ⇒ **不消耗 `state.rng`**
+ *   ⇒ 既有各族的回收产出（基础件 / MK2 / 碎片 / 高级箱）**逐字不变**（照「不挤占旧有出率」的既有契约）。
+ *
+ * ⚠ 批序号由调用方传入（`industry.ts` 的回收炉批次结算处）⇒ **同一批的结果可复现**、
+ * 不同批之间互不相关；同族不同残骸（普通 / 稀有）各自数十。
+ */
+export const RECYCLE_CORE_SHARE = 0.1
+
+/** 命中后三档的相对权重（船长 2026-10-01 选「甲」：沿用遗迹打捞的 60 / 30 / 10） */
+export const RECYCLE_CORE_WEIGHTS: Readonly<Record<'gamma' | 'beta' | 'alpha', number>> = {
+  gamma: 60,
+  beta: 30,
+  alpha: 10,
+}
+
+/**
+ * **掷一次回收炉的核心掉落**（纯函数：只读入参、不碰 `state.rng`）。
+ *
+ * @param wreckItemId 本批烧的残骸物品 id（`wreck-r-inv` / `wreck-rare-r-inv`…）
+ * @param batchSeq 本炉**第几批**（同一批重复调用结果一致）
+ * @returns 核心档位（`'gamma' | 'beta' | 'alpha'`）；非 R 族或没掷中 ⇒ `undefined`
+ */
+export function rollRecycleCoreGain(
+  wreckItemId: string,
+  batchSeq: number,
+): 'gamma' | 'beta' | 'alpha' | undefined {
+  const group = wreckGroupOfWreckItem(wreckItemId)
+  if (group?.family !== 'R') return undefined // **只有 R 族**（船长令：AI 核心是本族残骸回收的特色）
+  // **本函数自带一条独立流**（不复用 `state.rng`、也不借 `rng.ts` 的内部实现，只借它的 `hashSeed`）——
+  // 一个最小 LCG（Numerical Recipes 常数）就够：本处只要"确定性 + 分布均匀 + 与主序列无关"三条。
+  let s = hashSeed(`${wreckItemId}:${Math.max(1, Math.round(batchSeq))}`) >>> 0
+  const rng = (): number => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0
+    return s / 4294967296
+  }
+  if (rng() >= RECYCLE_CORE_SHARE) return undefined
+  const total = RECYCLE_CORE_WEIGHTS.gamma + RECYCLE_CORE_WEIGHTS.beta + RECYCLE_CORE_WEIGHTS.alpha
+  let pick = rng() * total
+  for (const type of ['gamma', 'beta', 'alpha'] as const) {
+    pick -= RECYCLE_CORE_WEIGHTS[type]
+    if (pick < 0) return type
+  }
+  return 'gamma' // 浮点兜底（理论到不了）
+}
 /* ═══════════ 完好舰体当场直发（卷B3⑨，2026-09-08 船长定稿：⑨-A） ═══════════ */
 
 /** 命中「完好舰体」后的蓝图碎片层概率/片数（威胁 ≥17 必掷 MK2 层、≥41 追加 MK3 层；

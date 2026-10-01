@@ -113,6 +113,11 @@ export interface WeaponSpec {
   shotDmg?: number
   /** gun：弹型 → 单发伤害（构建期含 dmgMult×(1+炮术×5%)×(1+powerBonus)×伤害稳定器） */
   shotsByType?: Partial<Record<DamageType, number>>
+  /**
+   * **【我方】叠光同款 · 装填自加速参数**（**船长 2026-10-01 令**）—— 由 R 族势力特色激光炮
+   * （`mod-lair-laser-r` 的 `ModuleDef.overlayDrive`）在建档时带来；缺省不写 ⇒ 既有各武器零行为变化。
+   */
+  overlayDrive?: { stepMs: number; floorMs: number }
   /** V18 同型合并条目代表的**武器门数**（同 id 同参炮台/激光合并为「×N 齐射」一条，缺省 1）。
    *  **2026-09-11 修复**：一轮齐射按**门数**扣弹（此前只扣 1 发 → 多门武器等于白嫖弹药；
    *  弹药预载同样按门数放大，见 `ammoLoadTotals`）。 */
@@ -346,6 +351,13 @@ export interface UnitSpec {
    * ⚠ 只豁免那四层减益，**普通炮火照旧会打**。缺省不写 ⇒ 旧口径（会被网钉住）。
    */
   interceptorImmuneToWeb?: boolean;
+  /**
+   * **【我方】闪现跃迁参数**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
+   * 但是冷却时间延长到12秒。」）—— 由 R 族势力特色中槽件 `mod-lair-blink-r` 带来。
+   * 消费点 = 敌方舰炮命中我方那两处（光束 / 实弹）；冷却态记在 `BattleState.meBlinks`。
+   * 缺省不写 ⇒ 既有各装配零行为变化。
+   */
+  meBlink?: { distanceM: number; cooldownMs: number }
   /** **本单位的挂载件展示名**（2026-09-16 船长「要：敌舰悬停/战报展示挂载件」）——建档时由 `mounts` 解析，
    *  视图与战报直接渲染；**不是 id**、也不参与任何判定。 */
   foeMountNames?: readonly string[]
@@ -2092,6 +2104,8 @@ export function createPlayerSpec(
         hitRate: 1,
         falloff: turret.falloff ?? 0.3,
         reloadMs: reload,
+        // **叠光同款 · 装填自加速**（船长 2026-10-01 令）：只有带该字段的件（R 族叠光激光炮）才写
+        ...(turret.overlayDrive !== undefined ? { overlayDrive: turret.overlayDrive } : {}),
       })
       continue
     }
@@ -2296,6 +2310,20 @@ export function createPlayerSpec(
     ...(speedEq > 1 ? { thrusterBoost: speedEq - 1 } : {}),
     // 本单位自己的点火周期（只在有覆盖件时写；没写 = 全局 60/60，见 `unitThrusterCycle`）
     ...(cycleOverridden ? { thrusterBoostMs: propCycle!.boostMs, thrusterCooldownMs: propCycle!.cooldownMs } : {}),
+    /**
+     * **跃迁规避装置**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
+     * 但是冷却时间延长到12秒。」）—— 中槽件里带 `blink` 的那件（R 族 `mod-lair-blink-r`）。
+     * 多件装 ⇒ 取**拉开距离最大、同距取冷却最短**那一件（与推进器周期同一把"挑最有利的一件"的尺）。
+     * 没装 ⇒ 不写字段 ⇒ 零行为变化。
+     */
+    ...(() => {
+      const blinks = allFittedModules(fitted, ctx).filter((m) => m.blink !== undefined)
+      if (blinks.length === 0) return {}
+      const pick = [...blinks].sort(
+        (a, b) => b.blink!.distanceM - a.blink!.distanceM || a.blink!.cooldownMs - b.blink!.cooldownMs,
+      )[0]!
+      return { meBlink: { ...pick.blink! } }
+    })(),
     agility: ship.agility,
     weapons,
     // 锁定装置（2026-09-09）：被锁目标受击加深等效比例（>0 同时开启集火模式）
@@ -8073,7 +8101,64 @@ function foeOverlayReloadOf(
   const next = Math.max(od.floorMs, baseReloadMs - (fired + blinkCount) * step)
   reg[tag] = { r: next, f: fired + 1, bs: blinkCount }
   return next
-}function countFoeBlinksAt(
+}/**
+ * **我方「叠光同款 · 装填自加速」的当前装填间隔**（**船长 2026-10-01 令**：「激光武器为叠光同款叠加攻速的，
+ * 基础伤害偏低，需要玩家叠满才威力较强」）——与敌方 `foeOverlayReloadOf` **逐字同款**的机制，
+ * 只有两处差别：① 键是 `tag#炮位`（一艘船可能装多门）；② **不乘伤害倍率**（船长令只说了"基础伤害偏低"，
+ * 那由 `dmgMult` 本身表达 ⇒ 本处不再叠一层折减）。
+ *
+ * @param baseReloadMs 本条目的**基准**装填间隔（建档时已是"过完技能/射速计算机"的有效值）
+ * @returns 本发要用的装填间隔（毫秒）；本门没挂该件 ⇒ 原样返回 `baseReloadMs`
+ */
+function meOverlayReloadOf(
+  spec: UnitSpec,
+  tag: string,
+  wi: number,
+  b: import('./state').BattleState,
+  baseReloadMs: number,
+): number {
+  const od = spec.weapons[wi]?.overlayDrive
+  if (od === undefined) return baseReloadMs
+  const step = Math.max(1, od.stepMs)
+  const key = `${tag}#${wi}`
+  const reg = b.meOverlayReload ?? (b.meOverlayReload = {})
+  const cur = reg[key] ?? (reg[key] = { r: baseReloadMs, f: 0 })
+  const next = Math.max(od.floorMs, baseReloadMs - (cur.f + 1) * step)
+  reg[key] = { r: next, f: cur.f + 1 }
+  return next
+}
+
+/**
+ * **我方「跃迁规避装置」的闪现触发器**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
+ * 但是冷却时间延长到12秒。」）——只由"**敌方舰炮命中我方舰船本体**"调用
+ * （打我方无人机不算、未命中不算；与敌方那件的受击钩子同口径）。
+ *
+ * **方向 = 纯粹的拉开**（与敌方那件**相反**：敌方是"破坏我方走位意图"、专挑我方的意图反着来；
+ * 我方这件是玩家自己的保命件 ⇒ 一律朝**远离敌人**一侧拉开 `distanceM`）。
+ * 拉开后引擎的走位逻辑会按 `myDesireM` 逐拍把我方拉回去 ⇒ 净效果 = "挨打换一口气"。
+ * 突变受既有钳制（`bal.minDistanceM` 与战场最大距离）；**闪不动时不白耗冷却**。
+ *
+ * @returns 本次是否真的闪了（供画面提示与闪现动画用）
+ */
+function markMeBlink(
+  spec: UnitSpec,
+  tag: string,
+  b: import('./state').BattleState,
+  bal: BattleBalance,
+  maxDistanceM: number,
+): boolean {
+  const bl = spec.meBlink
+  if (bl === undefined || bl.distanceM <= 0 || bl.cooldownMs <= 0) return false
+  const nowMs = b.lastTickGameMs
+  if (nowMs < (b.meBlinks?.[tag] ?? 0)) return false // 冷却中 ⇒ 再挨打也不闪
+  const capped = Math.max(bal.minDistanceM, Math.min(maxDistanceM, b.distanceM + bl.distanceM))
+  if (capped === b.distanceM) return false // 已被钳到边界 ⇒ 闪不动（不白盖冷却）
+  b.distanceM = capped
+  if (!b.meBlinks) b.meBlinks = {}
+  b.meBlinks[tag] = nowMs + bl.cooldownMs
+  return true
+}
+function countFoeBlinksAt(
   b: import('./state').BattleState,
   tag: string,
   cooldownMs: number,
@@ -8792,7 +8877,8 @@ function stepBattle(
         type = pick
         dmg = w.shotsByType?.[pick] ?? 0
         b.ammo[ammoKeyOf(pick)] -= roundsPerVolley
-        meRt.weapons[wi] = w.reloadMs
+        // **叠光同款 · 装填自加速**（船长 2026-10-01 令）：挂了该件的门每开一火就缩短装填（夹下限）
+        meRt.weapons[wi] = meOverlayReloadOf(me, me.tag, wi, b, w.reloadMs)
       } else if (w.kind === 'beam') {
         // V18B-2 激光：必中光束——逐发扣能量弹药（按门数）；威力随距离衰减（beamPowerFactor）
         if (b.ammo.pla < roundsPerVolley) {
@@ -8802,12 +8888,14 @@ function stepBattle(
         type = 'plasma'
         b.ammo.pla -= roundsPerVolley
         dmg = Math.max(1, Math.round((w.shotDmg ?? 0) * beamPowerFactor(b.distanceM, w)))
-        meRt.weapons[wi] = w.reloadMs
+        // **叠光同款 · 装填自加速**（船长 2026-10-01 令）：激光这一路同样推进
+        meRt.weapons[wi] = meOverlayReloadOf(me, me.tag, wi, b, w.reloadMs)
         autoHit = true
       } else {
         type = w.fixedType ?? 'kinetic'
         dmg = w.shotDmg ?? 0
-        meRt.weapons[wi] = w.reloadMs
+        // **叠光同款 · 装填自加速**（船长 2026-10-01 令）：固定值武器这一路同样推进
+        meRt.weapons[wi] = meOverlayReloadOf(me, me.tag, wi, b, w.reloadMs)
       }
       // **对无人机伤害加成**（船长 2026-09-12：「近防炮给予一个对无人机伤害加成」→「**那伤害倍率按2倍算**」）：
       // 只作用于**打机群**这一支（`droneHit` 非空 ⇔ 本发打的是敌机，见上方 `pickFoeDroneTarget`）；
@@ -9252,7 +9340,24 @@ function stepBattle(
       // 本发实收（2026-09-24 船长令：飘字读数；光束必中 ⇒ 恒有值）
       const beamDealt = Math.max(0, beamBefore - (gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h))
       pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: true, ...(beamDealt > 0 ? { dmg: beamDealt } : {}) })
-      continue
+      /**
+       * **我方「跃迁规避装置」触发点**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
+       * 但是冷却时间延长到12秒。」）—— **敌方舰炮命中我方舰船本体**这一支（打我方无人机不算、
+       * 未命中不算，与敌方那两件受击挂载件同一钩子口径）。
+       */
+      if (
+        markMeBlink(gtgt.spec, gtgt.spec.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits))
+      ) {
+        pushBattleNotice(b, '跃迁规避：本舰瞬时换位')
+        pushBattleFx(b, {
+          atMs: b.lastTickGameMs,
+          side: 'me',
+          tag: gtgt.spec.tag,
+          type: 'kinetic',
+          hit: true,
+          blink: true,
+        })
+      }      continue
     }
     const blindMul = b.distanceM < w.minRangeM ? (w.blindDmgMul ?? 0.3) : 1
     const shotDmgRaw = blindMul < 1 ? Math.max(1, Math.round((w.shotDmg ?? 0) * blindMul)) : (w.shotDmg ?? 0)
@@ -9289,7 +9394,24 @@ function stepBattle(
       releaseFoeChargeOnHit(b, f.tag, bal, f.foeChargeCooldownMs)
     }
     pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: fHit, ...(gunDealt > 0 ? { dmg: gunDealt } : {}) })
-  }
+      /**
+       * **我方「跃迁规避装置」触发点**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
+       * 但是冷却时间延长到12秒。」）—— **敌方舰炮命中我方舰船本体**这一支（打我方无人机不算、
+       * 未命中不算，与敌方那两件受击挂载件同一钩子口径）。
+       */
+      if (
+        markMeBlink(gtgt.spec, gtgt.spec.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits))
+      ) {
+        pushBattleNotice(b, '跃迁规避：本舰瞬时换位')
+        pushBattleFx(b, {
+          atMs: b.lastTickGameMs,
+          side: 'me',
+          tag: gtgt.spec.tag,
+          type: 'kinetic',
+          hit: true,
+          blink: true,
+        })
+      }  }
 
   // ── 敌方点防（2026-09-10 船长「无人机可被击落」）：对我方放飞机群逐架结算 ──
   // ⚠ 机群池自 2026-09-14「逐舰机群」起是**逐舰**建的（键 = `舰tag:武器下标`，见 4803 一带），
