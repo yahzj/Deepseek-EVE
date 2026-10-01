@@ -421,8 +421,14 @@ describe('谜质科技树 · 2026-09-30 新增四条（精炼提速 · 涓流 ·
     expect([plain.outputUnits, dense.outputUnits]).toEqual([600, 600])
     expect(voidOf(dense)).toBe(15)
     expect(voidOf(plain)).toBe(60)
-    expect(valueOf(dense)).toBe(280_000)
-    expect(valueOf(dense)).toBeGreaterThan(valueOf(plain))
+    expect(valueOf(dense)).toBe(307_000)
+    /**
+     * ⚠ **2026-10-01 船长裁「甲」的连带**（虚空晶基准价/行情价 3,600 → **5,400**）：
+     * 旧配方一批吃 60 枚虚空晶 ⇒ 料价 240,940 → **348,940**，新配方只吃 15 枚 ⇒ **307,000**，
+     * 于是"**新配方比旧配方更贵**"（2026-09-30 原令）**被价格调整翻了过来**（现在新配方更便宜）。
+     * 本条按**现状**钉住；关系要不要改回去（抬燃料行价 / 改新配方用料）等船长裁，见工作文档。
+     */
+    expect(valueOf(dense)).toBeLessThan(valueOf(plain))
     expect(dense.materials.some((m) => m.itemId === 'part-coolant')).toBe(true)
     expect(dense.materials.some((m) => m.itemId === 'min-isotope'), '同位聚晶已换掉').toBe(false)
   })

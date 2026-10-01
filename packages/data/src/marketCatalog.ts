@@ -131,7 +131,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   它是**24 张洞内蓝图 + 皇带鱼级**的通用主料，来源只有"虚空母矿精炼"与"回收彩头"
   //   ⇒ 只收不卖（NPC 不铺卖单、买入被拦），**收购照常**。`poolTarget/supplyFlow` 保留：
   //   池面仍参与均衡价与收购阶梯的计算，只是不再铺供应单。】
-  { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 1_800, poolTarget: 1_560, supplyFlow: 13, playerBuyable: false }, // 只收不卖（2026-09-14 船长）
+  { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 5_400, poolTarget: 1_560, supplyFlow: 13, playerBuyable: false }, // 只收不卖（2026-09-14 船长）；2026-10-01 船长裁「甲」：行情价 1,800 → **5,400**（与 items.ts 的基准价同步 ⇒ 修掉"精炼面板显示亏本"）
   // ── 跃迁燃料链（**2026-09-29 船长令**：3 种新精炼材料 ＋ 燃料）──
   // 【新矿物 = 玩家产出要拿去卖钱 ⇒ 照本文件既有口径走 **common 池**（船长 2026-09-29「4 是」：
   //   新矿物放普通池）。池宽按"单炉满技能精炼产能的 ~2 倍"标（同 2026-09-10 那批的算法）：
@@ -146,7 +146,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   `demandMultiplier: 0.6` 与弹药同档（消耗品，卖给协会不划算、留着自用）。
   //   ⚠ **2026-09-30 船长令「调整燃料价格」**：同日虚空晶用量 ×10 ⇒ 自产单价 77.57 → **401.57 ISK/单位**
   //   ⇒ 行价 120 → **420**（与自产同价：自产不再是"省钱路"，而是"用虚空晶换时间"；市场退为应急渠道）。】
-  { key: 'jump-fuel', kind: 'item', refId: 'jump-fuel', rarity: 'rare', basePrice: 420, demandMultiplier: 0.6, poolTarget: 28_800, supplyFlow: 240, rareQtyMul: 200, rareWeightMul: 3, absorbQtyPerWindow: 14_400 },
+  { key: 'jump-fuel', kind: 'item', refId: 'jump-fuel', rarity: 'rare', basePrice: 5_800, demandMultiplier: 0.6, poolTarget: 28_800, supplyFlow: 240, rareQtyMul: 200, rareWeightMul: 3, absorbQtyPerWindow: 14_400 }, // 2026-10-01 船长令「燃料打算抬价，燃料自己制作的成本价格控制在 10%（基础燃料配方）」：420 → **5,800**（基础配方料价 348,940/批 ⇒ 料/价 10.03%）
   /* 实验室后续内容（**2026-09-30 船长令**）：信号发射器与突触加速剂走**奇货档**
    * （船长 2026-09-29 Q8「燃料可买卖放入稀有（但是是池子）。**其他放入奇货**」）。
    * ⚠ 施工期 `unreleased`（效果/界面未接完）——玩家既看不到也买不到；行价 = 我按料价 ×2.4 的口径提的（待船长核）。 */
