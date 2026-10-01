@@ -17,8 +17,8 @@ import type { CommandResult } from './engine'
 import type { SimContext } from './types'
 import { emptyMarks } from './state'
 
-/** 四类可标记界面（与 MarksState 字段一一对应） */
-export type MarkKind = 'goods' | 'recipes' | 'blueprints' | 'ships'
+/** 五类可标记界面（与 MarksState 字段一一对应） */
+export type MarkKind = 'goods' | 'recipes' | 'blueprints' | 'ships' | 'labRecipes'
 
 /** 标记项的中文说法（报错文案与界面提示共用） */
 export const MARK_KIND_TEXT: Record<MarkKind, string> = {
@@ -26,6 +26,8 @@ export const MARK_KIND_TEXT: Record<MarkKind, string> = {
   recipes: '精炼资源',
   blueprints: '蓝图',
   ships: '舰船',
+  // 2026-09-30 船长令：实验室配方卡与精炼炉卡同款 ⭐（这一族存的是**配方 id**，与 `recipes` 的物品 id 分开）
+  labRecipes: '实验室配方',
 }
 
 /** 标记清单（老档/手工构造的档缺字段时返回空表，调用方无需判空） */
@@ -51,6 +53,8 @@ export function markTargetExists(state: GameState, ctx: SimContext, kind: MarkKi
   if (kind === 'blueprints') {
     return ctx.blueprints.has(id) || ctx.shipBlueprints.has(id)
   }
+  // 2026-09-30：实验室配方族——按配方目录校验（与 `recipes` 的物品目录分开）
+  if (kind === 'labRecipes') return ctx.labRecipes.has(id)
   const def = ctx.items.get(id)
   if (!def) return false
   return (def.refine !== undefined && def.refine.length > 0) || def.kind === 'wreck'
@@ -63,7 +67,7 @@ function ensureMarks(state: GameState): MarksState {
     state.marks = emptyMarks()
     return state.marks
   }
-  for (const kind of ['goods', 'recipes', 'blueprints', 'ships'] as const) {
+  for (const kind of ['goods', 'recipes', 'blueprints', 'ships', 'labRecipes'] as const) {
     if (!Array.isArray(marks[kind])) marks[kind] = []
   }
   return marks
@@ -113,7 +117,7 @@ export function pruneMarks(state: GameState): MarksState {
     seen.add(uid)
     return true
   })
-  for (const kind of ['goods', 'recipes', 'blueprints'] as const) {
+  for (const kind of ['goods', 'recipes', 'blueprints', 'labRecipes'] as const) {
     const uniq = new Set<string>()
     for (const id of marks[kind]) {
       if (typeof id === 'string' && id.length > 0) uniq.add(id)

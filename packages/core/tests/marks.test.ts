@@ -1,7 +1,8 @@
 /**
- * 玩家标记（收藏）测试（2026-09-10）：
- * - 切换指令：标记 / 取消 / 幂等往返；非法 id（查不到的商品、资源、蓝图、船）被拒绝；
- * - 存档：白名单往返保留、老档缺字段 = 四类全空、剪枝（不在舰队的船标记清除、重复项去重）。
+ * 玩家标记（收藏）测试（2026-09-10；**2026-09-30 扩到五类**——新增实验室配方族 `labRecipes`）：
+ * - 切换指令：标记 / 取消 / 幂等往返；非法 id（查不到的商品、资源、蓝图、船、实验室配方）被拒绝，
+ *   **且两个 id 空间不许互串**（物品 id ↔ 配方 id）；
+ * - 存档：白名单往返保留、老档缺字段 = 五类全空、剪枝（不在舰队的船标记清除、重复项去重）。
  */
 import { describe, expect, it } from 'vitest'
 import { createInitialState, emptyMarks } from '../src/state'
@@ -17,10 +18,10 @@ function world() {
 }
 
 describe('玩家标记 · 切换指令', () => {
-  it('新档四类全空；标记后写入、再切换取消', () => {
+  it('新档五类全空；标记后写入、再切换取消', () => {
     const { state, ctx } = world()
     expect(state.marks).toEqual(emptyMarks())
-    for (const kind of ['goods', 'recipes', 'blueprints', 'ships'] as const) {
+    for (const kind of ['goods', 'recipes', 'blueprints', 'ships', 'labRecipes'] as const) {
       expect(markedIds(state, kind)).toHaveLength(0)
     }
 
@@ -35,28 +36,36 @@ describe('玩家标记 · 切换指令', () => {
     expect(markedIds(state, 'goods')).toHaveLength(0)
   })
 
-  it('四类标记各自独立：互不串类、可同时存在', () => {
+  it('五类标记各自独立：互不串类、可同时存在', () => {
     const { state, ctx } = world()
     expect(toggleMark(state, ctx, 'goods', 'it-ore-a').ok).toBe(true)
     expect(toggleMark(state, ctx, 'recipes', 'ore-a').ok).toBe(true) // 可精炼资源
     expect(toggleMark(state, ctx, 'blueprints', 'bp-a').ok).toBe(true)
     expect(toggleMark(state, ctx, 'ships', state.shipId).ok).toBe(true)
+    // 2026-09-30：实验室配方族（存配方 id，与 recipes 的物品 id 分开）
+    const labId = [...ctx.labRecipes.keys()][0]!
+    expect(toggleMark(state, ctx, 'labRecipes', labId).ok).toBe(true)
 
     expect(markedIds(state, 'goods')).toEqual(['it-ore-a'])
     expect(markedIds(state, 'recipes')).toEqual(['ore-a'])
     expect(markedIds(state, 'blueprints')).toEqual(['bp-a'])
     expect(markedIds(state, 'ships')).toEqual([state.shipId])
+    expect(markedIds(state, 'labRecipes')).toEqual([labId])
   })
 
-  it('非法目标被拒绝且不写入：查不到的商品 / 不可精炼的矿物 / 不存在的蓝图 / 不在舰队的船', () => {
+  it('非法目标被拒绝且不写入：查不到的商品 / 不可精炼的矿物 / 不存在的蓝图 / 不在舰队的船 / 不存在的实验室配方', () => {
     const { state, ctx } = world()
     // min-a 是矿物（无精炼配方）、不是残骸 → 不能作为精炼卡标记
-    const bad: Array<['goods' | 'recipes' | 'blueprints' | 'ships', string]> = [
+    const bad: Array<['goods' | 'recipes' | 'blueprints' | 'ships' | 'labRecipes', string]> = [
       ['goods', 'it-不存在'],
       ['recipes', 'min-a'],
       ['recipes', '不存在'],
       ['blueprints', 'bp-不存在'],
       ['ships', '不存在的船'],
+      ['labRecipes', '不存在的配方'],
+      // ⚠ 两个 id 空间**不许互串**：物品 id 塞进实验室配方族要照样被拒（反之亦然）
+      ['labRecipes', 'ore-a'],
+      ['recipes', [...ctx.labRecipes.keys()][0]!],
     ]
     for (const [kind, id] of bad) {
       expect(markTargetExists(state, ctx, kind, id)).toBe(false)
@@ -78,12 +87,14 @@ describe('玩家标记 · 切换指令', () => {
 })
 
 describe('玩家标记 · 存档', () => {
-  it('往返保留：四类标记原样写回、读回一致', () => {
+  it('往返保留：五类标记原样写回、读回一致', () => {
     const { state, ctx } = world()
     toggleMark(state, ctx, 'goods', 'it-ore-a')
     toggleMark(state, ctx, 'recipes', 'ore-a')
     toggleMark(state, ctx, 'blueprints', 'bp-a')
     toggleMark(state, ctx, 'ships', state.shipId)
+    const labId = [...ctx.labRecipes.keys()][0]!
+    toggleMark(state, ctx, 'labRecipes', labId)
 
     const loaded = loadSaveFile(serializeSaveFile(state, 0))
     expect(loaded.state.marks).toEqual({
@@ -91,10 +102,11 @@ describe('玩家标记 · 存档', () => {
       recipes: ['ore-a'],
       blueprints: ['bp-a'],
       ships: [state.shipId],
+      labRecipes: [labId],
     })
   })
 
-  it('老档（无 marks 字段）：读入 = 四类全空，其余字段不受影响', () => {
+  it('老档（无 marks 字段）：读入 = 五类全空，其余字段不受影响', () => {
     const { state } = world()
     const file = JSON.parse(serializeSaveFile(state, 0)) as { state: Record<string, unknown> }
     delete file.state.marks
