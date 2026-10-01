@@ -663,12 +663,12 @@ function LabCard({
               className="app-btn is-small"
               title={
                 needShort
-                  ? tr('ui.lab.026', { p1: engine.ctx.items.get(needShort.itemId)?.name ?? needShort.itemId })
-                  : tr('ui.lab.027')
+                  ? tr('ui.lab.029', { p1: engine.ctx.items.get(needShort.itemId)?.name ?? needShort.itemId })
+                  : tr('ui.lab.030')
               }
               onClick={() => onNeedMaterial((needShort ?? recipe.materials[0]!).itemId)}
             >
-              {tr('ui.lab.025')}
+              {tr('ui.lab.028')}
             </button>
           ) : null}
           <span className="app-dim">

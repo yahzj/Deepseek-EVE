@@ -458,9 +458,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.lab.024": { zh: "实验室：按配方投入材料，到点产出成品（与精炼炉共用主控工作位）", en: "Laboratory: feed a recipe's materials and collect the finished product (shares the pilot work slot with the refinery)" },
   /* 「去弄料」跳转（**2026-09-30 船长令**：「实验室的卡牌没有参考其他工业页面的卡牌添加跳转吗」）——
      与组装机卡那颗「缺料」同一条链：有精炼源⇒切精炼炉并高亮矿石卡 · 造得出⇒切组装机 · 都不行⇒市场行情 */
-  "ui.lab.025": { zh: "去弄料", en: "Go get materials" },
-  "ui.lab.026": { zh: "去弄料：缺 {p1}——跳到能弄到它的地方", en: "Go get materials: {p1} is short — jump to where it comes from" },
-  "ui.lab.027": { zh: "去弄料：看看第一味投料从哪来", en: "Go get materials: see where the first ingredient comes from" },
+  "ui.lab.028": { zh: "去弄料", en: "Go get materials" },
+  "ui.lab.029": { zh: "去弄料：缺 {p1}——跳到能弄到它的地方", en: "Go get materials: {p1} is short — jump to where it comes from" },
+  "ui.lab.030": { zh: "去弄料：看看第一味投料从哪来", en: "Go get materials: see where the first ingredient comes from" },
   /* 舰船页「跃迁燃料」子页（**2026-09-29 船长令**）：001~004 = 四个活动名（`JUMP_FUEL_ACTIVITY_TEXT_ID`） */
   "ui.jumpFuel.001": { zh: "采矿返航", en: "Mining returns" },
   "ui.jumpFuel.002": { zh: "打捞返航", en: "Salvage returns" },
