@@ -64,18 +64,8 @@ function runBattle(
   state: GameState,
   anomalyId: string,
   c: SimContext = ctx,
-  /**
-   * **开场距离覆写**（2026-10-01 加，只为「远距离对射」那条用例；`undefined` = 走既有口径）。
-   *
-   * ⚠ 起因：**2026-10-01 船长令「开战先进敌方射程盲区」**（`combat.battleOpenBlindSpotM`）之后，
-   * `ano-vault-sentinel` 的开场距离由 13,200 m 压到 **1,862 m**（该卡带 2,062 m 近程盲区）
-   * ⇒ 哨戒机开场就落在近防炮 2,500 m 射程内，那条「远距离对射不损」用例的前提被打破
-   * （基线对照：改动前通过）。**只覆盖这一场的开场距离，不动引擎口径。**
-   */
-  openDistanceM?: number,
 ): BattleState | null {
   const battle = startBattleFor(state, c, state.shipId, anomalyId, 0)
-  if (battle && openDistanceM !== undefined) battle.distanceM = openDistanceM
   if (!battle) return null
   // 挂进远征态（battleArcsFor / 结算入口都从 expedition 读战斗）
   state.expedition.active = true
@@ -252,7 +242,7 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
     // 且"没有非哨戒机可打" ⇒ 近防炮无靶可打 ⇒ **一架都不会掉**。
     // （对照：两舰贴近到 2,500m 以内时，哨戒机就是**优先级最高**的靶——见 `tools/pd-tune.ts` 的噬口读数）
     const onlySentry = makeState(13, { 'drone-sentry': 6 })
-    const battle = runBattle(onlySentry, HIGH, ctx, 9_000)!
+    const battle = runBattle(onlySentry, HIGH)! // 开场距离走既有口径（盲区修正已限定 R 族 ⇒ 本卡不受影响）
     /** ⚠ 开场距离显式钉到远距（> PD_SENTRY_RANGE_M 2,500m）——本用例要测的是"哨戒机在射程外
      *  进不了候选池"，与"开场站在哪里"无关；若不钉，船长 2026-10-01 的"开战进盲区"会把这卡压到
      *  1,862 m 而让本用例的前提失效（详见 runBattle 的 `openDistanceM` 注释）。 */

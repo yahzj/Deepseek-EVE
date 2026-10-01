@@ -3744,9 +3744,15 @@ export function battleOpenM(me: UnitSpec, foes: UnitSpec[], bal: BattleBalance):
  *   把开战距离压到 **该边界往里 200m**，并钳在 `[bal.minDistanceM, 原开战距离]` 之内；
  * - **没有盲区 / 够不着** ⇒ 返回 `0`（调用方照旧用原开战距离）⇒ **既有各族读数逐字不变**。
  *
- * ⚠ 只有真正写了近程盲区的敌舰受影响（实测全仓 5 种：守墓长舰 1,062 · 静滞卫舰 2,062 ·
- * 导弹残段 3,000 · 残响残舰 502 · 墨潮入侵母舰 1,000）；R 族五档的 `rangeMinM` 都是 `1`
- * （激光风筝线不讲近程盲区）⇒ **本族战斗的开场距离一分不动**。
+ * 🔴 **本修正只用于 R 族（光环）敌群**（**船长 2026-10-01 二次令**，原话照抄）：
+ * 「**进场判断敌方射程盲区，把开场距离改到盲区边界附近。这个只应用在R族上。**」
+ * ⇒ 判据第一道就是 `f.family !== 'R'` **直接跳过**；其余各族的开场距离**逐字回到改动前**。
+ *
+ * ⚠ 现实后果（如实记）：**R 族五档的 `rangeMinM` 全是 `1`**（激光风筝线不讲近程盲区）
+ * ⇒ 本族目前**没有可用的盲区** ⇒ 这条修正在 R 族上暂时也是 `0`。
+ * 它的作用 = **把这条能力预先限定在 R 族**，将来给 R 族某档写近程盲区时立即生效，
+ * 而其它族（守墓长舰 1,062 / 静滞卫舰 2,062 / 导弹残段 3,000 / 残响残舰 502 / 墨潮入侵母舰 1,000）
+ * **一律不受影响**。
  */
 export const FOE_BLIND_SPOT_MIN_SHARE = 0.15
 
@@ -3762,6 +3768,7 @@ export function battleOpenBlindSpotM(
   const floor = bal.minDistanceM
   let best = 0
   for (const f of foes) {
+    if (f.family !== 'R') continue // 🔴 **只对 R 族生效**（船长 2026-10-01 二次令）
     for (const w of f.weapons) {
       if (w.src === 'drone') continue // 机群不是"敌舰的炮台盲区"（它有自己的射程门）
       const min = w.minRangeM ?? 0
