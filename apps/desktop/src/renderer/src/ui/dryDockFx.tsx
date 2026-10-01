@@ -1,39 +1,76 @@
 /**
  * **太空坞线稿**（**2026-10-01 船长令**：「造船厂的在建舰船，建议将扩大队列卡片的高度，将动画移动到卡片内的
  * 上方，并参考左上角 SVG 动画中的船坞，构建一个更大的船坞，舰船的 SVG 放在船坞中间（最好是建到一半的，
- * 少几根线条。）先照着这个做出一个效果」→ 同日复盘：「观感上，给人感觉像是一个房子的侧视图」→
- * 「你还要考虑到，这是太空坞，是无重力环境，不是放在地球上的。我们造的是飞船」）。
+ * 少几根线条。）先照着这个做出一个效果」→「观感上，给人感觉像是一个房子的侧视图」→
+ * 「你还要考虑到，这是太空坞，是无重力环境，不是放在地球上的。我们造的是飞船」→
+ * 「能否将动画旋转90度，两条主梁可以离中间更近一些，然后按进度逐段显影，使用各舰真实线稿」）。
  *
- * ## 三版演进（每版都被船长一句话推翻，留档免得再犯）
+ * ## 四版演进（每版都是被船长一句话推翻的，留档免得再犯）
  *
  * | 版本 | 船长判词 | 病根 |
  * |---|---|---|
  * | v1 | 像房子 | 两侧竖直矩形墙 ＋ 平屋顶跨梁 ⇒ 任何文化里都读作"房子" |
- * | v2 | （补正）**太空坞、无重力** | 抄了**地球干船坞**的形制：**坞墩托底**（那是托船重的）＋ **挖下去的地面线**（那是靠重力的船台）⇒ 在太空里两样都不成立 |
- * | v3（本版） | — | 改为**在轨建造坞**：开放式桁架**环绕**飞船 · 飞船**悬浮**在正中、由**系留臂**约束 · **无地面、无坞墩、无坞门槽** |
+ * | v2 | **太空坞、无重力** | 抄了地球干船坞的形制：**坞墩托底**（托船重的）＋ **挖下去的地面线**（靠重力的船台） |
+ * | v3 | **旋转 90° · 主梁靠近 · 按进度逐段显影** | 竖直停泊让"进度"只能自下而上读；主梁离得太开、笼子太散。本版：**水平停泊**（船头朝右）· 主梁各收到 ±48 · 坞内改用**各舰真实线稿**并按进度**从船尾向船头逐段显影** |
  *
- * ## 太空坞该长什么样（本版遵循的四条）
+ * ## 本版四条形态
  *
- * 1. **没有"下"**：不画地面线、不画坞槽、不画托架——坞体是**悬在空间里的框架**；
- * 2. **船不接触坞**：飞船**悬浮**在坞中央，靠 4 条**系留臂**（tether）与框架相连（端点留空隙，
- *    这是"无重力"最强的一条视觉线索）；
- * 3. **坞体 = 开放式桁架笼**：两条纵向主梁 ＋ 三道横向桁架拱（带下弦三角格）＋ 端部环，四面通透；
- * 4. **纵向停泊**：飞船沿**竖直轴**停在坞中央（船头朝上、引擎朝下）——太空坞不必迁就"水平面"。
+ * 1. **无重力**：不画地面线、坞槽、托架——坞体是悬在空间里的**开放式桁架笼**；飞船**不接触坞**，
+ *    靠 **4 条系留臂**（端点留空隙）拉住，并**极缓慢悬浮漂移**（CSS `hud-dock-float`）；
+ * 2. **水平停泊**（船长：旋转 90°）：船头朝右，沿坞的纵轴停泊；
+ * 3. **主梁靠近中心**（船长）：两条纵向主梁＝中线上下各 **48**，三道桁架拱跨接两梁；
+ * 4. **按进度逐段显影**（船长）：坞内画的是**该舰的真实线稿**（`ui/shipArt` 的 `SHIP_ART`，
+ *    经 `ShipSpriteShape` 嵌入 —— 240×110、船头朝右，与全仓同一份资产），用 `clipPath` 把显影宽度
+ *    从**船尾**推向**船头**：进度越高、线越多 —— 这才是"建到一半"的**真实**含义，
+ *    不再靠"故意少画几根线"来假装。
  *
- * ## 形状与动效纪律
+ * ## 纪律
  *
  * - 形状一律 SVG 线稿（`currentColor` ＋ 细描边；§6）；CSS 只负责氛围光与动效；
- * - 动效只碰 `transform` / `opacity`：飞船**极缓慢的垂直浮动**（无重力漂移感）＋ 焊点闪烁；
- *   `prefers-reduced-motion` 与玩家「关特效」（`body.no-fx`）下全停（§十四）；
- * - **"建到一半"**：主船体轮廓实线（已成形的部分）· 内部骨架与上层建筑虚线（正在装的）·
- *   **引擎段那几根纵向线故意缺席**、舰首合拢段只留两道短线（船长要的"少几根线条"）。
- *
- * ⚠ 纯展示件（`aria-hidden`），不参与交互；高度由外层 `.hud-dock-art` 定死 ⇒ 卡片不跳动。
+ * - 动效只碰 `transform` / `opacity`（飞船悬浮漂移 ＋ 焊点闪烁），`prefers-reduced-motion` 与玩家
+ *   「关特效」（`body.no-fx`）下全停（§十四）；
+ * - 纯展示件（`aria-hidden`），不参与交互；坞景高度由外层 `.hud-dock-art` 定死 ⇒ 卡片不跳动。
  */
-export function DryDockFx(): JSX.Element {
+import type { ShipRole } from '@whale/core'
+import { ShipSpriteShape } from './ShipSprite'
+
+/** 坞景画布（船长要的"更大的船坞"）：与 `.hud-dock-art` 的 190px 高同比例 */
+const VB_W = 380
+const VB_H = 190
+/** 坞体两条纵向主梁的**半间距**（船长：「两条主梁可以离中间更近一些」⇒ 收到 ±48） */
+const BEAM_Y = 48
+/** 梁的半纵长（坞的开口范围；两端再各留一段端环） */
+const BEAM_HALF = 150
+/** 三道桁架拱沿纵轴的 x 偏移（两端各一道 ＋ 正中一道） */
+const ARCH_X = [-96, 0, 96] as const
+/** 舰体显示宽度（占坞长 ~62%，两端留给端环与系留臂） */
+const SHIP_W = 230
+/** 真实线稿画布 240×110（船头朝右）；与 `ShipSpriteShape` 同一口径 */
+const SHIP_ASPECT = 110 / 240
+
+export function DryDockFx({
+  progress,
+  shipId,
+  role,
+}: {
+  /** 建造进度 0~1（`manufacturingRunViews` 的 `percent / 100`）—— **逐段显影的驱动量** */
+  progress: number
+  /** 该在建舰的舰级 id（真实线稿取 `SHIP_ART`；未命中则回退 role 剪影） */
+  shipId: string
+  /** 回退剪影用的舰种（资产表未命中时才有意义） */
+  role?: ShipRole
+}): JSX.Element {
+  const pct = Math.max(0, Math.min(1, progress))
+  /** 舰体半高（用于系留臂端点与裁剪窗） */
+  const shipH = Math.round(SHIP_W * SHIP_ASPECT)
+  /** 显影前沿的 x（从船尾即左端起算；两端各留 2px 余量，免得描边被切） */
+  const clipX = VB_W / 2 - SHIP_W / 2 - 1
+  const clipW = Math.max(1, SHIP_W * pct + 2)
+  const CLIP_ID = 'hud-dock-progress-clip'
+
   return (
     <svg
-      viewBox="0 0 380 190"
+      viewBox={`0 0 ${VB_W} ${VB_H}`}
       width="100%"
       height="100%"
       fill="none"
@@ -43,45 +80,85 @@ export function DryDockFx(): JSX.Element {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      {/* ── 坞体：两条纵向主梁 ＋ 三道横向桁架拱（开放式，四面通透）── */}
-      <path d="M78 16 V174 M302 16 V174" />
-      <path d="M78 22 L190 34 L302 22" opacity="0.55" />
-      <path d="M78 86 L190 98 L302 86" opacity="0.55" />
-      <path d="M78 150 L190 162 L302 150" opacity="0.55" />
-      {/* 桁架拱的下弦（把三道拱连成笼） */}
-      <path d="M134 28 V86 M246 28 V86" opacity="0.35" />
-      <path d="M134 92 V150 M246 92 V150" opacity="0.35" />
-      {/* 端部环（两头是**开口**，不是坞门） */}
-      <path d="M150 12 H230 M150 178 H230" opacity="0.6" />
-      <path d="M150 12 V178 M230 12 V178" opacity="0.28" />
+      <defs>
+        {/* 显影窗口：宽度跟着进度长 ⇒ 建造从**船尾（引擎段）**往**船头**推进 */}
+        <clipPath id={CLIP_ID}>
+          <rect x={clipX} y={0} width={clipW} height={VB_H} />
+        </clipPath>
+      </defs>
 
-      {/* ── 系留臂：坞体 → 飞船（4 条；端点留空隙 ⇒ 船是**被拉住**、不是被托住）── */}
-      <path d="M78 56 L140 62 M302 56 L240 62" opacity="0.7" />
-      <path d="M78 116 L140 110 M302 116 L240 110" opacity="0.7" />
-      <circle cx="142" cy="62" r="1.6" opacity="0.8" />
-      <circle cx="238" cy="62" r="1.6" opacity="0.8" />
-      <circle cx="142" cy="110" r="1.6" opacity="0.8" />
-      <circle cx="238" cy="110" r="1.6" opacity="0.8" />
+      {/* ── 坞体：两条纵向主梁（±48）＋ 三道桁架拱 ＋ 端环（两头开口，没有坞门）── */}
+      <path d={`M${VB_W / 2 - BEAM_HALF} ${VB_H / 2 - BEAM_Y} H${VB_W / 2 + BEAM_HALF}`} />
+      <path d={`M${VB_W / 2 - BEAM_HALF} ${VB_H / 2 + BEAM_Y} H${VB_W / 2 + BEAM_HALF}`} />
+      {ARCH_X.map((dx) => (
+        <path
+          key={dx}
+          d={
+            `M${VB_W / 2 + dx - 14} ${VB_H / 2} L${VB_W / 2 + dx} ${VB_H / 2 - BEAM_Y} ` +
+            `L${VB_W / 2 + dx + 14} ${VB_H / 2} L${VB_W / 2 + dx} ${VB_H / 2 + BEAM_Y} Z`
+          }
+          opacity="0.55"
+        />
+      ))}
+      {/* 端环（坞的两头是开口的桁架环；不画坞门） */}
+      <path
+        d={`M${VB_W / 2 - BEAM_HALF} ${VB_H / 2 - BEAM_Y} L${VB_W / 2 - BEAM_HALF - 16} ${VB_H / 2} L${VB_W / 2 - BEAM_HALF} ${VB_H / 2 + BEAM_Y}`}
+        opacity="0.6"
+      />
+      <path
+        d={`M${VB_W / 2 + BEAM_HALF} ${VB_H / 2 - BEAM_Y} L${VB_W / 2 + BEAM_HALF + 16} ${VB_H / 2} L${VB_W / 2 + BEAM_HALF} ${VB_H / 2 + BEAM_Y}`}
+        opacity="0.6"
+      />
+      {/* 梁间横向联系（每道拱两侧各一小段：把笼子编起来，但不遮住船） */}
+      {ARCH_X.map((dx) => (
+        <g key={`tie-${dx}`} opacity="0.3">
+          <path d={`M${VB_W / 2 + dx - 14} ${VB_H / 2 - BEAM_Y} V${VB_H / 2 - BEAM_Y + 10}`} />
+          <path d={`M${VB_W / 2 + dx - 14} ${VB_H / 2 + BEAM_Y} V${VB_H / 2 + BEAM_Y - 10}`} />
+        </g>
+      ))}
 
-      {/* ── 半成品飞船：悬浮在坞正中、沿竖直轴停泊（船头朝上、引擎朝下）── */}
+      {/* ── 系留臂：坞体 → 飞船（4 条；端点与船体留 6px 空隙 ⇒ 船是**被拉住**、不是被托住）── */}
+      {([
+        [-70, -1],
+        [70, -1],
+        [-70, 1],
+        [70, 1],
+      ] as const).map(([dx, sign]) => {
+        const x = VB_W / 2 + dx
+        const y1 = VB_H / 2 + sign * BEAM_Y
+        const y2 = VB_H / 2 + sign * (shipH / 2 + 6)
+        return (
+          <g key={`tether-${dx}-${sign}`} opacity="0.7">
+            <path d={`M${x} ${y1} L${x} ${y2}`} />
+            <circle cx={x} cy={y2} r="1.6" opacity="0.85" />
+          </g>
+        )
+      })}
+
+      {/* ── 坞内的在建舰：**真实线稿** ＋ 按进度逐段显影（船尾 → 船头）── */}
       <g className="hud-dock-craft" color="var(--hud-accent-soft)">
-        {/* 主船体：已成形的部分 —— 实线轮廓 */}
-        <path d="M190 34 L214 62 V142 L190 168 L166 142 V62 Z" />
-        {/* 内部骨架：正在铺 —— 虚线 ＋ 三道隔框 */}
-        <path d="M190 62 V142 M166 76 H214 M166 100 H214 M166 124 H214" strokeDasharray="4 5" opacity="0.75" />
-        {/* 上层建筑：正在装 —— 虚线；**引擎段那两根纵向线故意缺**（"少几根线条"） */}
-        <path d="M176 96 V64 M204 96 V64" strokeDasharray="5 6" opacity="0.85" />
-        {/* 舰首合拢段：还没焊上 ⇒ 只有两道短线 */}
-        <path d="M182 30 L190 26 L198 30" opacity="0.45" />
-        {/* 引擎段：只留一个喷口环（其余还没装） */}
-        <path d="M180 158 H200" opacity="0.6" />
+        {/* 未来段：整条淡淡描一遍（让玩家看出还差多少），再叠上已成形的这一段 */}
+        <g opacity="0.14">
+          <ShipSpriteShape shipId={shipId} role={role} size={SHIP_W} />
+        </g>
+        <g clipPath={`url(#${CLIP_ID})`}>
+          <ShipSpriteShape shipId={shipId} role={role} size={SHIP_W} />
+        </g>
       </g>
 
-      {/* 焊点（两处，错相位闪；只动 opacity） */}
-      <circle className="hud-dock-spark" cx="210" cy="70" r="2" />
-      <circle className="hud-dock-spark is-late" cx="172" cy="138" r="1.7" />
+      {/* 焊点（两处，错相位闪；只动 opacity）——跟着**显影前沿**走 */}
+      <circle className="hud-dock-spark" cx={clipX + clipW} cy={VB_H / 2 - 15} r="2" />
+      <circle className="hud-dock-spark is-late" cx={clipX + clipW * 0.7} cy={VB_H / 2 + 19} r="1.7" />
       {/* 坞体航行灯（静态细条；太空坞靠灯识别姿态） */}
-      <path d="M74 16 H82 M298 16 H306 M74 174 H82 M298 174 H306" opacity="0.6" />
+      <path
+        d={
+          `M${VB_W / 2 - BEAM_HALF - 6} ${VB_H / 2 - BEAM_Y - 3} h8 ` +
+          `M${VB_W / 2 + BEAM_HALF - 2} ${VB_H / 2 - BEAM_Y - 3} h8 ` +
+          `M${VB_W / 2 - BEAM_HALF - 6} ${VB_H / 2 + BEAM_Y + 3} h8 ` +
+          `M${VB_W / 2 + BEAM_HALF - 2} ${VB_H / 2 + BEAM_Y + 3} h8`
+        }
+        opacity="0.6"
+      />
     </svg>
   )
 }

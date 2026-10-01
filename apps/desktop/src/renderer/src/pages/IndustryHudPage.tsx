@@ -1320,7 +1320,12 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                     <div className="hud-dock" key={v.id}>
                       {/* **船坞场景**（**2026-10-01 船长令**：动画移到卡片上方、造一个更大的船坞、舰体放坞正中） */}
                       <div className="hud-dock-art">
-                        <DryDockFx />
+                        {/* 真实线稿 ＋ 按进度逐段显影（船长 2026-10-01：「按进度逐段显影，使用各舰真实线稿」） */}
+                        <DryDockFx
+                          progress={v.percent / 100}
+                          shipId={def?.id ?? ''}
+                          role={def?.role}
+                        />
                       </div>
                       <div className="hud-dock-info">
                         <div className="hud-row between">
