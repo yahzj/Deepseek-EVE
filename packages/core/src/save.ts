@@ -482,6 +482,10 @@ const BATTLE_FIELDS = {
     kind: 'runtime',
     why: '敌「闪现」旁路记账：最近一次跳了多远（2026-10-01 加，纯展示/读数用，不进任何算式）：与 `foeBlinks` 同一口径 ⇒ 有意不入档；缺省不写键 ⇒ 旧档零迁移',
   },
+  foeBlinkQueue: {
+    kind: 'runtime',
+    why: '敌「闪现」演出队列（2026-10-01 加，船长令：闪现要有发生时间 + 多个排队 + 消失/出现动画）：与 `foeBlinks` 同一口径 ⇒ 有意不入档；缺省不写键 ⇒ 旧档零迁移',
+  },
   meOverlayReload: {
     kind: 'runtime',
     why: '我方「叠光同款装填自加速」的当前装填间隔（2026-10-01 加：R 族势力特色激光炮 mod-lair-laser-r——每开一火 −300ms、下限 600ms）：与 `foeOverlayReload` 同一口径，落在"重载即重置循环"内 ⇒ 有意不入档',

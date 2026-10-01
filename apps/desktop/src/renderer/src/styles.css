@@ -12378,12 +12378,24 @@ html[data-locale='en'] body {
  *  · **一次性**：类由渲染层按"触发时刻 + 420ms"自行摘除，不做无限循环（提示位是"正在发生的事"）。
  */
 .app-bts-unit.is-blink {
-  animation: app-bts-blink 420ms ease-out both;
+  animation: app-bts-blink-in 200ms ease-out both;
 }
-@keyframes app-bts-blink {
+/* 🔴 **闪现期间整体消失**（船长 2026-10-01 令：「闪现开始-播放动画的同时舰船消失-等待发生时间-
+   在新位置播放动画同时舰船出现」）：`combat.foeBlinkQueue` 的 `vanishMs → appearMs` 这 200ms 里本舰
+   不可见（`visibility` 不参与布局 ⇒ 血条锚点与距离尺一字不动，与 `is-arriving` 同一纪律）。 */
+.app-bts-unit.is-blink-hidden {
+  pointer-events: none;
+  animation: app-bts-blink-out 200ms ease-in both;
+}
+@keyframes app-bts-blink-out {
   0% { opacity: 1; }
-  30% { opacity: 0.08; }
-  62% { opacity: 0.08; }
+  55% { opacity: 0.35; }
+  100% { opacity: 0; }
+}
+/* 闪现**出现**那一段（`is-blink`，在 `appearMs` 起播 200ms）：从全透明淡回来 */
+@keyframes app-bts-blink-in {
+  0% { opacity: 0; }
+  36% { opacity: 0.35; }
   100% { opacity: 1; }
 }
 /* 送达弹窗（2026-09-14 船长两次裁定）：①「除新手教程外的讯息也弹窗」；

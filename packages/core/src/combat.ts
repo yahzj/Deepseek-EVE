@@ -3767,6 +3767,17 @@ function pickTopType(mix: Partial<Record<DamageType, number>> | undefined): Dama
 const FOE_BEAM_USABLE_SHARE = 0.7
 
 /**
+ * 🔴 **闪现演出的时长**（**船长 2026-10-01 令**）：「**闪现的发生时间大概200ms**」＋
+ * 「**多个闪现需要有200ms的间隔**」⇒ **每段演出占 200ms 动画**（消失 → 空档 → 出现），
+ * 段与段之间**再留 100ms 间隔**（⇒ 队列里每段的排期间隔 = **300ms**，总时长 = 段数 × 300ms）。
+ *
+ * ⚠ 与界面侧必须一致：`apps/desktop` 的 `BLINK_ANIM_MS` 与 `styles*.css` 的 `app-bts-blink` 时长。
+ */
+const FOE_BLINK_ANIM_MS = 200
+/** 段与段的间隔（船长：「多个闪现需要有200ms的间隔」⇒ 视觉上"发生"之间至少隔这么多） */
+const FOE_BLINK_GAP_MS = 200
+
+/**
  * **该敌舰的「决策用最远射程」**——它心里那把尺（**只给站位/期望距离用**，`inRange` 门不吃它）。
  *
  * - **激光武器**（`kind === 'beam'`）：`0.7 ×` 有效射程（后 30% 是它自己认为的无效射程）；
@@ -8334,7 +8345,52 @@ function markFoeBlink(
    */
   if (!b.foeBlinkJumps) b.foeBlinkJumps = {}
   b.foeBlinkJumps[tag] = { from, moved, dir: landed > from ? 1 : landed < from ? -1 : 0 }
+  /**
+   * 🔴 **排进"闪现演出队列"**（**船长 2026-10-01 令**：「**闪现现在会有一个发生时间，同时触发的多个闪现
+   * 需要排队发生**」；口径与时刻表见 `BattleState.foeBlinkQueue`）——
+   * **多个闪现依次排定，每段占 200ms 动画 ＋ 100ms 间隔 = 300ms**，本舰那一段从现在开始。
+   * ⚠ **不停表**（船长裁定）：战斗时钟照走，只是这段窗口里**双方都不开火**
+   * （我方那一侧由 `blinkHoldFire` 门控）。
+   */
+  const queue = b.foeBlinkQueue ?? (b.foeBlinkQueue = {})
+  /**
+   * 排期：**从"已有各段里最晚的那个结束时刻"起、再加一个间隔**，本舰那一段才开始
+   * （船长：「**多个闪现需要有200ms的间隔**」⇒ 段与段之间空 200ms；
+   * ⚠ `.slice()` 是必需的：下面马上要往同一个 `queue` 里写本舰，先取快照免得跳过一段）。
+   */
+  let startMs = nowMs
+  for (const q of Object.values(queue).slice()) startMs = Math.max(startMs, q.appearMs + FOE_BLINK_GAP_MS)
+  const vanishMs = startMs
+  const appearMs = vanishMs + FOE_BLINK_ANIM_MS
+  queue[tag] = { queuedMs: nowMs, vanishMs, appearMs }
+  /** 演出事件：界面据此让本舰**消失**并播淡出（位置已经换好，出现动画在 `appearMs` 那一拍再播） */
+  pushBattleFx(b, {
+    atMs: vanishMs,
+    side: 'foe',
+    tag,
+    type: 'kinetic',
+    hit: true,
+    blink: true,
+  })
   return true
+}
+
+/**
+ * **闪现演出期间是否禁我方开火**（**船长 2026-10-01 令**：「**不停表，但是敌舰消失时，玩家的武器不会开火
+ * （哪怕武器转好了）**」）。
+ *
+ * **口径 = 严格窗口**：只要有**任一敌舰**处在「已消失、还没出现」那一段（`vanishMs → appearMs`，各 200ms），
+ * 我方**全部门**这一拍都不开火。多条闪现排队时，各段窗口之间自然留出可开火的间隙。
+ *
+ * ⚠ 判定阈是"离开"而不是"到达"：`appearMs` 那一拍**允许开火**（敌舰已经回来了）。
+ * ⚠ 与既有 `cd > 0` 同一口径：**冷却照推**，转好了就停在 0 等窗口，窗口一过立刻开火（不白扣一发）。
+ */
+function blinkHoldFire(b: import('./state').BattleState): boolean {
+  const q = b.foeBlinkQueue
+  if (!q) return false
+  const now = b.lastTickGameMs
+  for (const seg of Object.values(q)) if (now >= seg.vanishMs && now < seg.appearMs) return true
+  return false
 }
 
 /**
@@ -9117,6 +9173,18 @@ function stepBattle(
       }
       const cd = meRt.weapons[wi] ?? 0
       if (cd > 0) {
+        meRt.weapons[wi] = Math.max(0, cd - dtMs)
+        continue
+      }
+      /**
+       * 🔴 **闪现演出禁火**（**船长 2026-10-01 令**，原话照抄）：
+       * 「**不停表，但是敌舰消失时，玩家的武器不会开火（哪怕武器转好了）**」
+       *
+       * ⇒ 只要有**任一敌舰**正处在"消失 → 出现"这段演出窗口里（见 `BattleState.foeBlinkQueue`），
+       * 本门**这一拍不开火**（⚠ **冷却照推**：与上面 `cd > 0` 那支同一口径——转好了就停在 0 等窗口结束，
+       * 窗口一过立刻开火，不白扣一发）。敌舰都消失了还开火，看着像打空气；这也是船长要的效果。
+       */
+      if (blinkHoldFire(b)) {
         meRt.weapons[wi] = Math.max(0, cd - dtMs)
         continue
       }
