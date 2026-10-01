@@ -357,9 +357,21 @@ export function startLabRun(
      *  起线时按"实验室"这一项去判（两档同为"先警告再切"，行为不变；占位与文案从此对得上）。 */
     const gateSkip = applyActivityGate(state, 'lab')
     if (gateSkip) return gateSkip
-    if ((state.refineRuns ?? []).some((r) => r.active && r.worker === 'pilot') || (state.labRuns ?? []).some((r) => r.active && r.worker === 'pilot')) {
-      haltActivityForSwitch(state, 'lab')
-      logAutoHalt(state, 'refine')
+    /**
+     * **同一档再开一条 = 换线**（与 `startRefineRun` 的"换炉"同款）：门禁见到"同一项"一律放行
+     * （`current === next`）⇒ 这一档要自己收口，保证 **pilot 至多 1 条手动线**这条不变量。
+     *
+     * ⚠ **2026-10-01 修**（接入活动栏同批）：原先固定停 `'lab'` 那一档、日志却写 `'refine'`
+     * ——`'lab'` 档只摘实验线，日志于是报「已自动停止『亲自开炉』」（停的与报的不是同一条）。
+     * 现在**按实际在跑的手动线**指名停机、分别记日志；清空手动工作位仍走 `'refine'` 那一档
+     * （它同时摘精炼炉与实验线，含老档炉内预占料的退料）。
+     */
+    const pilotRefine = (state.refineRuns ?? []).some((r) => r.active && r.worker === 'pilot')
+    const pilotLab = (state.labRuns ?? []).some((r) => r.active && r.worker === 'pilot')
+    if (pilotRefine || pilotLab) {
+      haltActivityForSwitch(state, 'refine')
+      if (pilotRefine) logAutoHalt(state, 'refine')
+      if (pilotLab) logAutoHalt(state, 'lab')
     }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')

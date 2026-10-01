@@ -16,6 +16,7 @@ import { wormholeAutoRunsOf } from './wormholeAuto'
 import { manufacturingRunViews } from './manufacturing'
 import { oreAvailable } from './industry'
 import { refineRunViews } from './industry'
+import { labRunViews } from './lab'
 import { expeditionStatus, bountyCooldownRemainingMs, bountyCooldownMsFor, autoLoopWaitLabel } from './expedition'
 import { standbyStatus, transitStatus } from './location'
 import { aiTaskView } from './ai'
@@ -47,6 +48,12 @@ export type ActivityKind =
   | 'wormhole'
   | 'courier'
   | 'hauling'
+  /**
+   * **实验室产线**（**2026-10-01 接入活动栏**）：与 `refine` / `manufacture` 同一族（站内产线，
+   * 一行 = 一条在跑的线）。只出「主控亲自运转」那一条 —— AI 核心驱动的实验室线与"AI 开炉/开线"
+   * 同款（不占玩家活动位）。
+   */
+  | 'lab'
 
 /** 停止动作标识（UI → desktop engine 方法映射；停止参数如副船 id 放 param） */
 export type ActivityStopKind =
@@ -67,6 +74,8 @@ export type ActivityStopKind =
   | 'cancel-deliver-trip'
   | 'stop-loop'
   | 'stop-hauling'
+  /** 停一条实验线（2026-10-01 接入活动栏；`stopParam` = 线号 `LabRunView.id`） */
+  | 'stop-lab'
 
 /** 一条活动（只读视图；引擎/指令仍是唯一修改入口） */
 export interface ActivityView {
@@ -293,6 +302,32 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       stopable: true,
       stop: 'stop-refine',
       stopParam: String(rv.id),
+    })
+  }
+
+  /**
+   * ── 实验室运转（**2026-10-01 接入活动栏**）──
+   *
+   * 为什么补这一条：实验室**自己就是一项主控活动**（`activityGate.MainActivityKind` 的 `'lab'`，
+   * 判据 = `labRuns` 里 `active && worker === 'pilot'`），而活动栏此前只认精炼炉与制造线
+   * ⇒ 玩家在主控亲自运转实验室时，活动窗口里看不到这条活、也没有"停线"入口（门禁已认它、界面还看不见）。
+   *
+   * ⚠ 只列 `worker === 'pilot'` 那条：AI 核心驱动的实验线与"AI 开炉 / AI 开线"同款
+   * （不占玩家活动位、不逐条上玩家活动列表）。文案形态照同一族的精炼炉那条（线名 ＋ 批数读数），
+   * 因此**不新造样式**。
+   */
+  for (const lv of labRunViews(state, ctx)) {
+    if (lv.worker !== 'pilot') continue
+    out.push({
+      id: `lab:${lv.id}`,
+      kind: 'lab',
+      label: `实验室 · ${lv.recipeName}`,
+      sub: `主控亲自运转 · 已 ${lv.batchesDone} 批（每批 ${lv.batchUnits} 单位）`,
+      percent: lv.percent,
+      remainingMs: lv.remainingMs,
+      stopable: true,
+      stop: 'stop-lab',
+      stopParam: String(lv.id),
     })
   }
 
@@ -605,6 +640,12 @@ export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string)
     }
     if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return busyLabel('refine')
     if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) return busyLabel('manufacture')
+    /**
+     * **实验室**（**2026-10-01 接入**）：主控亲自运转的那条线占主控（AI 核心驱动的**不算**）。
+     * 与 `activityGate.mainActivityOf`、`wormhole.shipActivityBusy` **三处同源**（判据逐项、次序逐项对齐），
+     * 一致性由 `tests/wormhole-activity-lock.test.ts` 的忙态对照与 `tests/activity-lab-20261001.test.ts` 钉住。
+     */
+    if ((state.labRuns ?? []).some((r) => r.active && r.worker === 'pilot')) return busyLabel('lab')
     /**
      * **建站交付**（2026-09-22 船长令纳入主控活动表）：与 `wormhole.shipActivityBusy`、`activityGate.mainActivityOf`
      * **三处同源**（进洞门槛/货仓徽标/切换判据都读这一档）——判据含 `delivery` 批次，用来区分"换港返航"。

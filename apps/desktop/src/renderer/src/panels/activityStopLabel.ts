@@ -32,6 +32,12 @@ export function stopLabel(v: ActivityView): string {
       return tr('ui.ActivityBar.004')
     case 'stop-refine':
       return tr('ui.ActivityBar.010')
+    /**
+     * 停一条实验线（**2026-10-01 接入活动栏**）：**复用实验室卡片那颗停止键的字**
+     * （`ui.hud.084`「停线」）——同一件事在全仓只有一种说法，不在这里另写一份同义短词。
+     */
+    case 'stop-lab':
+      return tr('ui.hud.084')
     case 'recall-expedition':
       return tr('ui.ActivityBar.009')
     case 'recall-standby':

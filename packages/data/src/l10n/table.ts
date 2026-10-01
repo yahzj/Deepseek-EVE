@@ -933,6 +933,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.busy.027": { zh: "AI 远征·去程中", en: "AI · expedition, outbound" },
   "core.busy.028": { zh: "AI 远征·交火中", en: "AI · expedition, in combat" },
   "core.busy.029": { zh: "AI 远征·返航中", en: "AI · expedition, returning" },
+  /* 实验室（2026-10-01 接入活动栏）：主控亲自运转那一条线占主控 ⇒ 与"亲自开炉/亲自开线"同族 */
+  "core.busy.030": { zh: "亲自运转实验室中", en: "Running the laboratory in person" },
   "core.wormhole.001": { zh: "本层已清空：请选择「继续深入」或「撤离」。", en: "This layer is clear: choose Descend or Withdraw." },
   "core.wormhole.002": { zh: "回合不足：只能撤离。", en: "Not enough turns: withdrawal is the only option." },
   "core.wormhole.003": { zh: "当前不在虫洞里。", en: "You are not inside a wormhole right now." },
@@ -1368,6 +1370,15 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /** 副AI活动 迷你条目的悬浮提示（2026-09-25：条目本身只留动画/在干什么/进度条，详情走悬浮） */
   "ui.ActivityBar.064": { zh: "{p1}\n{p2}\n点击前往「舰船 · AI 指挥中心」", en: "{p1}\n{p2}\nClick to open Ship › AI Command" },
   "ui.ActivityBar.065": { zh: "计时中", en: "Timers" },
+
+  /**
+   * **实验室活动行**（**2026-10-01 接入活动栏**）：活动行「停止」按钮的**提示**与**点了之后的回执**。
+   * 按钮本身的字复用实验室卡片那颗停止键（`ui.hud.084`「停线」）⇒ 这里不另写一份同义短词。
+   * 停机口径 = `stopLabRun`：**已完成批保留**（产物早入库），**当前那一批的进度丢弃**
+   * （BOM 每批到点才扣 ⇒ 材料没被吃掉、仍在仓库/货舱里）。
+   */
+  "ui.ActivityBar.068": { zh: "已停线：已完成批保留，当前那一批的进度丢弃。", en: "The line stopped: finished batches are kept; the current batch's progress is lost." },
+  "ui.ActivityBar.069": { zh: "停线：已完成批保留，当前那一批的进度丢弃；材料未被扣取，仍在仓库。", en: "Stop the line: finished batches are kept and the current batch's progress is lost; no materials were consumed and they stay in storage." },
 
   /** 设置·开发者：调试模式开关（2026-09-25；船长报「已开启调试模式但按钮不可见」后加的免 DevTools 开关） */
   "ui.App.146": { zh: "界面布局", en: "Interface layout" },

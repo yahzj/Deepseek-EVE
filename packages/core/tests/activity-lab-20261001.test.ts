@@ -7,7 +7,12 @@
  * 都能同时开工（主控双占）。本批把它补进登记表（档 = **先警告再切**，与"亲自开炉/亲自开线"同档）。
  */
 import { describe, expect, it } from 'vitest'
+import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
+import type { GameState } from '../src/state'
+import { addWare } from '../src/inventory'
+import { startLabRun } from '../src/lab'
+import { activityOverview, shipBusyLabel } from '../src/activity'
 import {
   AUTO_HALT_KINDS,
   HALT_COST,
@@ -41,5 +46,58 @@ describe('主控活动登记表 · 实验室（2026-10-01 船长令）', () => {
     expect(INTERRUPTIBLE.lab).toBe(true)
     expect(KIND_LABEL.lab).toBe('实验室')
     expect(HALT_COST.lab).toContain('停线')
+  })
+})
+
+/**
+ * **活动栏接入**（2026-10-01 第二批 · 同一件工作的收尾）。
+ *
+ * 门禁认出 `'lab'` 之后还差"界面看得见"：`activityOverview` 原先完全不读 `state.labRuns`
+ * ⇒ 玩家主控亲自运转实验室时，活动窗口里既没有这条活、也没有「停线」入口。
+ * 本组用**真命令**（`startLabRun`）建现场，钉三件事：① 主控那条**出一行**且带停线入口
+ * ② AI 核心驱动的那条**不进玩家活动列表**（与"AI 开炉/开线"同款）③ 忙态文案认得这一档。
+ */
+describe('活动栏 · 实验室产线（2026-10-01 接入）', () => {
+  const ctx = buildSimContext()
+  const RECIPE = 'jump-fuel'
+
+  /** 造"实验室已解锁 ＋ 料够跑一批"的档（解锁判据 = 已建成空间站 ≥ 1 座，用 `stationSites` 直接写满） */
+  function labReady(): GameState {
+    const s = createInitialState({ nowWallMs: 0, seed: 5 })
+    for (const site of ctx.stations.values()) s.stationSites[site.id] = { stage: site.tiers.length, delivered: {} }
+    for (const m of ctx.labRecipes.get(RECIPE)!.materials) addWare(s, m.itemId, m.units)
+    return s
+  }
+
+  it('主控亲自运转 ⇒ 活动栏出一行（kind=lab · 停线入口 · stopParam = 线号）', () => {
+    const s = labReady()
+    expect(startLabRun(s, ctx, RECIPE, 'pilot').ok).toBe(true)
+    const runId = s.labRuns![0]!.id
+    const row = activityOverview(s, ctx).find((a) => a.kind === 'lab')
+    expect(row, '主控在跑实验线；活动栏却看不见它').toBeDefined()
+    expect(row!.id).toBe(`lab:${runId}`)
+    expect(row!.stopable).toBe(true)
+    expect(row!.stop).toBe('stop-lab')
+    expect(row!.stopParam).toBe(String(runId))
+    // 读数齐备：标签带配方名（玩家要知道在造什么）、进度条与剩余时间都给
+    expect(row!.label).toContain(ctx.labRecipes.get(RECIPE)!.name)
+    expect(row!.percent).toBe(0)
+    expect(row!.remainingMs).toBeGreaterThan(0)
+  })
+
+  it('AI 核心驱动 ⇒ 不进玩家活动列表；忙态也不认它（与 AI 开炉 / AI 开线同款）', () => {
+    const s = labReady()
+    s.skills.trained['ai-expert'] = 1 // AI 核心上限（= 核心操作学等级）
+    s.aiCores['basic'] = 1
+    expect(startLabRun(s, ctx, RECIPE, 'basic').ok).toBe(true)
+    expect(activityOverview(s, ctx).some((a) => a.kind === 'lab'), 'AI 驱动的线不该占玩家活动位').toBe(false)
+    expect(shipBusyLabel(s, ctx, s.shipId)).toBeNull()
+  })
+
+  it('船忙文案认得「主控亲自运转实验室」（core.busy.030）', () => {
+    const s = labReady()
+    expect(startLabRun(s, ctx, RECIPE, 'pilot').ok).toBe(true)
+    expect(shipBusyLabel(s, ctx, s.shipId)?.errorId).toBe('core.busy.030')
+    expect(shipBusyLabel(s, ctx, s.shipId)?.error).toBe('亲自运转实验室中')
   })
 })

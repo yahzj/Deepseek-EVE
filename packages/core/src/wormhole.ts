@@ -1554,6 +1554,12 @@ export function shipActivityBusy(state: GameState, shipId: string): BusyLabel | 
   if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) return busyLabel('refine')
   if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) return busyLabel('manufacture')
   /**
+   * **实验室**（**2026-10-01 接入**）：主控亲自运转的那条线同样算"手上有活"——漏了它，实验室在跑时
+   * 主控照样能进洞（进洞 = 主控的另一个活动 ⇒ 又是双占）。判据与 `activity.shipBusyLabel`、
+   * `activityGate.mainActivityOf` 三处同源。
+   */
+  if ((state.labRuns ?? []).some((r) => r.active && r.worker === 'pilot')) return busyLabel('lab')
+  /**
    * **建站交付**（2026-09-22 船长令纳入主控活动表）：占的是 `transit` 槽，靠 `delivery` 批次区分于
    * "换港返航"；用词与 `activity.shipBusyLabel` 对齐（两处必须成对，见 `activity-gate` / 本函数注释）。
    */
@@ -1633,7 +1639,7 @@ export function wormholeResume(state: GameState, ctx: SimContext): WormholeStart
  */
 export interface WormholeEntryAutoStop {
   /** 判据键（界面/日志用；与 `shipActivityBusy` 的忙态文案一一对应） */
-  kind: 'whscan' | 'mining' | 'salvage' | 'hauling' | 'standby' | 'refine' | 'manufacture' | 'siteDeliver'
+  kind: 'whscan' | 'mining' | 'salvage' | 'hauling' | 'standby' | 'refine' | 'manufacture' | 'siteDeliver' | 'lab'
   /** 统一单点里的活动名（`activityGate.MainActivityKind`）——停机与统一日志都按它走 */
   mainKind: MainActivityKind
   /** 忙态文案（`shipActivityBusy` 报的就是它） */
@@ -1646,7 +1652,8 @@ export interface WormholeEntryAutoStop {
   warn: boolean
 }
 
-/** 七项"进洞那一刻会被自动停掉"的主控活动 ⇒ 判据键 / 忙态文案 / 是否发警告（长途运输：船会被挪回出发站） */
+/** "进洞那一刻会被自动停掉"的主控活动 ⇒ 判据键 / 忙态文案 / 是否发警告（长途运输：船会被挪回出发站）
+ *  ⚠ 名单随时可增（2026-10-01 补 `lab`）⇒ 这里不写条数，条数以本表本身为准 */
 const ENTRY_STOP_META: Partial<
   Record<MainActivityKind, { kind: WormholeEntryAutoStop['kind']; label: string; warn: boolean }>
 > = {
@@ -1659,6 +1666,11 @@ const ENTRY_STOP_META: Partial<
   manufacturing: { kind: 'manufacture', label: '亲自开线中', warn: false },
   /** 建站交付（2026-09-22 船长令纳入）：停机无损（返港、本趟建材留在船上）⇒ 不发警告 */
   siteDeliver: { kind: 'siteDeliver', label: '建站交付中', warn: false },
+  /**
+   * **实验室**（**2026-10-01 接入**）：停机只丢当前那一批的进度（BOM 每批到点才扣、材料仍在仓库）
+   * ⇒ 与"亲自开炉/亲自开线"同档，**不发警告**。
+   */
+  lab: { kind: 'lab', label: '亲自运转实验室中', warn: false },
 }
 
 /**

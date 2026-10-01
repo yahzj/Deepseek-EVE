@@ -57,6 +57,16 @@ const ACTIVITIES: Array<[string, (s: GameState) => void]> = [
       s.manufacturingRuns.push({ id: 1, active: true, worker: 'pilot', blueprintId: 'bp-titanium', count: 1 } as never)
     },
   ],
+  /**
+   * **实验室**（**2026-10-01 接入**）：主控亲自运转那条线同样是"手上有活"，且进洞那一刻会被
+   * `ENTRY_STOP_META.lab` 自动停掉（只丢当前那一批的进度）。漏了它 ⇒ 实验室在跑时主控照样能进洞 = 双占。
+   */
+  [
+    '实验室（亲自运转）',
+    (s) => {
+      s.labRuns = [{ id: 1, active: true, worker: 'pilot', recipeId: 'jump-fuel' } as never]
+    },
+  ],
 ]
 
 /** **进洞时会自动停掉**的那一档（船长 2026-09-14「进洞自动停止」；2026-09-21 扩到七项） */
@@ -256,6 +266,7 @@ describe('虫洞 · 主控活动互斥（船长 2026-09-13 定案 · 2026-09-14 
       expect(state.standby.active).toBe(false)
       expect(state.refineRuns.some((r) => r.active && r.worker === 'pilot')).toBe(false)
       expect(state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')).toBe(false)
+      expect((state.labRuns ?? []).some((r) => r.active && r.worker === 'pilot')).toBe(false)
     }
     // ── 边界：**远征不在自动停名单里**（船长 2026-09-14：「远征无法自动停」）⇒ 照旧拦住 ──
     {

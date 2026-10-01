@@ -54,6 +54,8 @@ const KIND_ICON: Record<string, string> = {
   /** 主控活动「扫描虫洞」（2026-09-14）：与洞内活动同一个图标，色调用其自身色调 */
   whscan: 'nav-wormhole',
   whauto: 'nav-wormhole',
+  /** 实验室产线（2026-10-01 接入；本文件是冻结件，这里只跟随 core 新增的 kind 补一档） */
+  lab: 'ico-lab',
 }
 
 function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
@@ -87,6 +89,10 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       break
     case 'stop-refine':
       if (v.stopParam) run(engine.stopRefineRunAt(v.stopParam), tr("ui.ActivityBar.044"))
+      break
+    /** 停一条实验线（2026-10-01 接入）：与工业页实验室卡片的停止按钮同一个引擎方法 */
+    case 'stop-lab':
+      if (v.stopParam) run(engine.stopLabRunAt(v.stopParam), tr("ui.ActivityBar.068"))
       break
     case 'recall-expedition':
       run(engine.recallExpeditionNow(), tr("ui.ActivityBar.045"))
@@ -273,7 +279,9 @@ export function ActivityBarClassic({
               ? tr("ui.ActivityBar.017")
               : v.stop === 'stop-refine'
                 ? tr("ui.ActivityBar.018")
-                : v.stop === 'recall-expedition'
+                : v.stop === 'stop-lab'
+                  ? tr("ui.ActivityBar.069")
+                  : v.stop === 'recall-expedition'
                   ? tr("ui.ActivityBar.019")
                   : v.stop === 'cancel-deliver-trip'
                     ? tr("ui.ActivityBar.020")

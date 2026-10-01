@@ -54,6 +54,8 @@ export function goFor(kind: string): ActivityGoTarget {
       return { page: 'map', mapTab: 'bounty', labelId: 'ui.ActivityBar.016' }
     case 'manufacture':
     case 'refine':
+    /** 实验室产线（2026-10-01 接入）：与精炼炉/制造线同落「工业」页（实验室是它的一个页签） */
+    case 'lab':
       return { page: 'industry', labelId: 'ui.App.006' }
     case 'train':
       return { page: 'skills', labelId: 'ui.App.007' }

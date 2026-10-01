@@ -31,6 +31,8 @@ export type BusyLabelId =
   | 'expBack'
   | 'refine'
   | 'manufacture'
+  /** 实验室（2026-10-01 接入活动栏）：主控亲自运转那一条线占主控 */
+  | 'lab'
   | 'deliver'
   | 'unload'
   | 'aiMining'
@@ -63,6 +65,8 @@ export const BUSY_LABEL_ID: Readonly<Record<BusyLabelId, string>> = {
   expBack: 'core.busy.016',
   refine: 'core.busy.017',
   manufacture: 'core.busy.018',
+  /** ⚠ 序号排在表尾（30）：本档是 2026-10-01 补的，id **一经使用不复用、不改名**（见约定 §十一之三） */
+  lab: 'core.busy.030',
   deliver: 'core.busy.019',
   unload: 'core.busy.020',
   aiMining: 'core.busy.021',
@@ -96,6 +100,7 @@ export const BUSY_TEXT: Readonly<Record<BusyLabelId, string>> = {
   expBack: '远征·返航中',
   refine: '亲自开炉精炼中',
   manufacture: '亲自开线制造中',
+  lab: '亲自运转实验室中',
   deliver: '建站交付中',
   unload: '返航卸货中',
   aiMining: 'AI 采矿中',

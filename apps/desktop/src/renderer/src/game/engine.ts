@@ -2076,9 +2076,11 @@ export class GameEngine {
     return labUnlockedCore(this.state, this.ctx)
   }
 
-  /** 起一条实验线（worker：'pilot' 主控亲自运转 / AI 核心类型；与精炼炉共用"手动工作位"名额） */
+  /** 起一条实验线（worker：'pilot' 主控亲自运转 / AI 核心类型；与精炼炉共用"手动工作位"名额）
+   *  ⚠ 两段确认的 `key` 用 `'lab'`（**2026-10-01**）：它是**另一颗按钮**，与"起炉/起回收炉"那颗
+   *  各记各的确认窗口（原先共用 `'refine'` ⇒ 在起炉的警告窗口内点起线会被当成"二击"直接执行）。 */
   startLabRunAt(recipeId: string, worker: AiCoreType | 'pilot'): CommandResult {
-    return this.withActivitySwitch('refine', () => {
+    return this.withActivitySwitch('lab', () => {
       const result = startLabRun(this.state, this.ctx, recipeId, worker)
       if (result.ok) {
         void this.persist()
