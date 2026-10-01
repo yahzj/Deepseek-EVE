@@ -85,6 +85,19 @@ export function DryDockFx({
   const clipX = -shipVp.w / 2 - 1
   const clipW = Math.max(1, shipVp.w * pct + 2)
   const CLIP_ID = 'hud-dock-progress-clip'
+  /**
+   * **显影用 mask ＋ 硬边渐变**（**2026-10-01 船长报障**：「舰船的上半部分线条始终不亮，只有下半部分的亮」）。
+   *
+   * 原实现用 `clipPath` 的**矩形**裁剪进度；矩形与外层坞景各写一套坐标（外层 viewBox 380×190、
+   * 舰形在**嵌套 svg 的局部坐标系**里以原点为中心），两套坐标一旦对不齐就会**只切到一部分**——
+   * 典型表现就是"上下只亮一半"。现在改成：mask 与渐变**都定义在舰形那个嵌套 svg 内部**
+   * （同一坐标系，不再跨界），渐变用**硬边**（过渡区间仅 0.9%）标出"已成形 / 未成形"的分界。
+   */
+  const maskId = 'hud-dock-progress-mask'
+  const gradId = 'hud-dock-progress-grad'
+  /** 硬边位置（0~1 的渐变坐标）；`pct` 为 0 时整段透明（什么都不亮） */
+  const edge = Math.max(0.0001, Math.min(1, pct))
+  const gradFrom = Math.max(0, edge - 0.009)
 
   return (
     <svg
@@ -98,11 +111,6 @@ export function DryDockFx({
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <defs>
-        <clipPath id={CLIP_ID}>
-          <rect x={clipX} y={0} width={clipW} height={shipVp.h} />
-        </clipPath>
-      </defs>
 
       {/* ── 坞体：两条纵向主梁（±48）＋ 三道桁架拱 ＋ 端环（两头开口，没有坞门）── */}
       <path d={`M${VB_W / 2 - BEAM_HALF} ${VB_H / 2 - BEAM_Y} H${VB_W / 2 + BEAM_HALF}`} />
@@ -163,11 +171,23 @@ export function DryDockFx({
         color="var(--hud-accent-soft)"
         overflow="visible"
       >
+        <defs>
+          {/* 硬边渐变：从"已成形"到"未成形"只跨 0.9% ⇒ 分界线清楚，且**上下同一条线** */}
+          <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="0">
+            <stop offset={gradFrom} stopColor="#fff" stopOpacity="1" />
+            <stop offset={edge} stopColor="#fff" stopOpacity="0" />
+            <stop offset="1" stopColor="#fff" stopOpacity="0" />
+          </linearGradient>
+          {/* mask 的坐标口径与舰形一致（同在舰形画布内）⇒ 不会出现"只切到一半" */}
+          <mask id={maskId} maskUnits="userSpaceOnUse" x={-shipVp.w / 2} y={-shipVp.h / 2} width={shipVp.w} height={shipVp.h}>
+            <rect x={-shipVp.w / 2} y={-shipVp.h / 2} width={shipVp.w} height={shipVp.h} fill={`url(#${gradId})`} />
+          </mask>
+        </defs>
         {/* 未来段：整条淡淡描一遍（让玩家看出还差多少），再叠上已成形的这一段 */}
         <g opacity="0.14">
           <ShipSpriteShape shipId={shipId} role={role} size={SHIP_W} />
         </g>
-        <g clipPath={`url(#${CLIP_ID})`}>
+        <g mask={`url(#${maskId})`}>
           <ShipSpriteShape shipId={shipId} role={role} size={SHIP_W} />
         </g>
       </svg>
@@ -223,8 +243,8 @@ export function DryDockFx({
       ))}
 
       {/* 焊点（两处，错相位闪）——跟着显影前沿走 */}
-      <circle className="hud-dock-spark" cx={shipVp.x + clipW} cy={VB_H / 2 - 15} r="2" />
-      <circle className="hud-dock-spark is-late" cx={shipVp.x + clipW * 0.7} cy={VB_H / 2 + 19} r="1.7" />
+      <circle className="hud-dock-spark" cx={VB_W / 2 - shipVp.w / 2 + clipW} cy={VB_H / 2 - 15} r="2" />
+      <circle className="hud-dock-spark is-late" cx={VB_W / 2 - shipVp.w / 2 + clipW * 0.7} cy={VB_H / 2 + 19} r="1.7" />
       {/* 坞体航行灯（缓慢呼吸） */}
       <path
         className="hud-dock-beacon"
