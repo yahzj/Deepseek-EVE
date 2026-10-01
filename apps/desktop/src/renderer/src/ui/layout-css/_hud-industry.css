@@ -503,17 +503,7 @@ body.no-fx .hud-dock-craft, body.no-fx .hud-dock-spark { animation: none; }
   0%, 67.8% { transform: scale(1, 1); }
   67.9%, 100% { transform: scale(-1, 1); }
 }
-/* 机械臂**整条**在两端之间移动：两端各停 ~4.2s 焊接 */
-.hud-dock-armcar {
-  transform-box: view-box;
-  transform-origin: 0 0;
-  animation: hud-dock-armcar 14s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-}
-@keyframes hud-dock-armcar {
-  0%, 30% { transform: translateX(118px); }
-  50%, 80% { transform: translateX(-118px); }
-  100% { transform: translateX(118px); }
-}
+/* 机械臂**不移动**（**2026-10-01 船长令**：「机械臂不用让它移动」）：固定在一处、只做原地二段屈伸。 */
 /* **二段式**：肩段恒定微摆 ＋ 肘段反向屈伸（相位错开 ⇒ 两节在配合） */
 .hud-dock-arm2 {
   transform-box: view-box;
@@ -567,11 +557,11 @@ body.no-fx .hud-dock-craft, body.no-fx .hud-dock-spark { animation: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .hud-dock-drone, .hud-dock-drone-turn, .hud-dock-weld, .hud-dock-arm2,
-  .hud-dock-armseg, .hud-dock-armcar, .hud-dock-beacon, .hud-dock-spark-ray { animation: none; }
+  .hud-dock-armseg, .hud-dock-beacon, .hud-dock-spark-ray { animation: none; }
 }
 body.no-fx .hud-dock-drone, body.no-fx .hud-dock-drone-turn, body.no-fx .hud-dock-weld,
 body.no-fx .hud-dock-spark-ray, body.no-fx .hud-dock-arm2, body.no-fx .hud-dock-armseg,
-body.no-fx .hud-dock-armcar, body.no-fx .hud-dock-beacon { animation: none; }
+body.no-fx .hud-dock-beacon { animation: none; }
 .hud-cells { display: flex; flex-wrap: wrap; gap: 14px; color: var(--hud-fg-dim); font-size: 12px; font-variant-numeric: tabular-nums; }
 .hud-cells > span { display: inline-flex; align-items: center; gap: 5px; }
 

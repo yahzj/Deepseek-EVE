@@ -165,22 +165,21 @@ export function DryDockFx({
         </g>
       </svg>
 
-      {/* ── 二段式焊接机械臂：整条臂在两端之间移动、端点停下焊 ──
-          ⚠ **定位（外层）与动画（内层）分层**：CSS 动画会写 `transform`，写在同一元素上会覆盖定位。 */}
+      {/* ── 二段式焊接机械臂（**2026-10-01 船长令**：「机械臂不用让它移动」）──
+          **固定在一处、原地做二段屈伸焊接**（不再沿船体移动）；定位直接写在这一个 `<g>` 上
+          （没有 CSS 动画来写 transform ⇒ 不会被覆盖）。 */}
       <g transform={`translate(${VB_W / 2} ${VB_H / 2 + BEAM_Y - 6})`}>
-        <g className="hud-dock-armcar">
-          <g className="hud-dock-arm2">
-            <path d="M0 0 L-16 -12" opacity="0.85" />
-            <g className="hud-dock-armseg">
-              <path d="M-16 -12 L-30 -22" opacity="0.85" />
-            </g>
-            <g transform="translate(-30 -22)">
-              <g className="hud-dock-weldwrap">
-                <circle className="hud-dock-weld" cx="0" cy="0" r="2.1" />
-                <path className="hud-dock-spark-ray" d="M0 0 L-3.7 -2.1" />
-                <path className="hud-dock-spark-ray is-2" d="M0 0 L-4.2 0.4" />
-                <path className="hud-dock-spark-ray is-3" d="M0 0 L-3.2 2.3" />
-              </g>
+        <g className="hud-dock-arm2">
+          <path d="M0 0 L-16 -12" opacity="0.85" />
+          <g className="hud-dock-armseg">
+            <path d="M-16 -12 L-30 -22" opacity="0.85" />
+          </g>
+          <g transform="translate(-30 -22)">
+            <g className="hud-dock-weldwrap">
+              <circle className="hud-dock-weld" cx="0" cy="0" r="2.1" />
+              <path className="hud-dock-spark-ray" d="M0 0 L-3.7 -2.1" />
+              <path className="hud-dock-spark-ray is-2" d="M0 0 L-4.2 0.4" />
+              <path className="hud-dock-spark-ray is-3" d="M0 0 L-3.2 2.3" />
             </g>
           </g>
         </g>
