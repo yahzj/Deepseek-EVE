@@ -132,7 +132,12 @@ describe('倾销惩罚（每层 −10% · 收购量只吃补偿 · 挂卖单量�
     state.wallet.isk = 1e12
     ensureMarket(state, ctx)
     for (let i = 0; i < 3; i++) {
-      state.market.pools[KEY]!.netVol = 10_000
+      /**
+       * ⚠ **按当前池参数现算**（2026-09-30 换基准后修）：原写死 `10_000`，那是按当时 `ore-veldspar`
+       * 的 flow 9,818（阈值 9,818）卡的边；新基准 flow 40,800 ⇒ 阈值 40,800，写死的值再也越不过线、
+       * 这条断言就恒红。改成 `triggerThreshold() + 1` ⇒ 以后重标池不用再动用例。
+       */
+      state.market.pools[KEY]!.netVol = triggerThreshold() + 1
       advanceGame(state, bal.tickMs, ctx)
     }
     expect(state.market.pools[KEY]!.shock!).toBeGreaterThan(0)

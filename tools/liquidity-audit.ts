@@ -55,18 +55,40 @@ const HP = ((): ReturnType<typeof createInitialState> => {
   return s
 })()
 
+/**
+ * **新基准（2026-09-30 船长令：「基准上调为座头鲸0技能满装备」）**：
+ * 座头鲸级 · **0 技能** · **满装备**（高槽 3×强化采集器 MK3 ＋ 低槽货舱扩展 MK3 ＋ MK2 = CPU **175 用满**）。
+ * 只有高槽的采集器影响**件/时**，货舱件只影响单趟容量 ⇒ 中槽装不装推进器都不改这条基准。
+ * 现役池参数按旧基准（掘洞级 ＋ 满技能 ＋ 2×MK1）标定 ⇒ 本次按新基准重标。
+ */
+const HP0 = ((): ReturnType<typeof createInitialState> => {
+  const s = createInitialState({ nowWallMs: 0, seed: 1 })
+  const uid = addShipToFleet(s, 'sh-humpback')
+  s.shipId = uid
+  s.fleet[uid]!.fitted = {
+    high: ['mod-miner-3', 'mod-miner-3', 'mod-miner-3'],
+    mid: [null, null],
+    low: ['mod-cargo-3', 'mod-cargo-2', null, null],
+  }
+  return s // 0 技能
+})()
+
 const CONFIGS: Array<{ label: string; state: ReturnType<typeof createInitialState>; ship: string }> = [
   { label: '掘洞裸船', state: makeState(false, []), ship: SHIP },
   { label: '掘洞满技能', state: makeState(true, []), ship: SHIP },
   { label: '掘洞满技能+2×MK1', state: makeState(true, ['mod-miner-1', 'mod-miner-1']), ship: SHIP },
-  { label: '（参考）座头鲸满配', state: HP, ship: 'sh-humpback' },
+  { label: '（参考）座头鲸满配·满技能', state: HP, ship: 'sh-humpback' },
+  { label: '（基准）座头鲸·0 技能·满装备', state: HP0, ship: 'sh-humpback' },
 ]
+
+/** **基准档**（覆盖比与"建议池"都按它算） */
+const BASE = CONFIGS[4]!
 
 type Row = { belt: string; ore: string; price: number; perHour: number; perDay: number; absorbDay: number; cover: number }
 const rows: Row[] = []
 for (const belt of ctx.belts.values()) {
-  const best = CONFIGS[2]! // 基准 = 掘洞满技能 + 2×MK1
-  const p = getMiningParams(best.state, ctx, { shipId: SHIP, beltId: belt.id })
+  const best = BASE // 基准 = 座头鲸 · 0 技能 · 满装备（2026-09-30 船长令）
+  const p = getMiningParams(best.state, ctx, { shipId: best.ship, beltId: belt.id })
   if (!p) continue
   const perHour = (p.unitsPerCycle * 3_600_000) / p.cycleMs
   const good = ctx.marketGoods.get(belt.oreId)
@@ -85,7 +107,7 @@ for (const belt of ctx.belts.values()) {
 }
 
 console.log('')
-console.log('══ 掘洞级采矿艇产率（引擎 getMiningParams）══')
+console.log('══ 采矿艇产率对照（引擎 getMiningParams；**基准 = 座头鲸·0 技能·满装备**）══')
 for (const beltId of ['belt-kernite', 'belt-glowstone', 'belt-voidshard', 'belt-nebulite', 'belt-gas-aurora', 'belt-ice-darkstar']) {
   const line: string[] = []
   for (const c of CONFIGS) {
@@ -99,7 +121,7 @@ for (const beltId of ['belt-kernite', 'belt-glowstone', 'belt-voidshard', 'belt-
 
 rows.sort((a, b) => a.cover - b.cover)
 console.log('')
-console.log('══ 覆盖比 = 池日吸收 ÷ 座头鲸满配日产（<1 = 玩家一天就卖不动）══')
+console.log('══ 覆盖比 = 池日吸收 ÷ **基准日产**（座头鲸·0 技能·满装备；<1 = 玩家一天就卖不动）══')
 console.log('| 矿带 | 产物 | 单价 | 满配件/时 | 满配件/日 | 池日吸收 | **覆盖比** |')
 console.log('|---|---|---|---|---|---|---|')
 for (const r of rows) {
@@ -110,7 +132,7 @@ for (const r of rows) {
 const bad = rows.filter((r) => r.cover < 1)
 console.log('')
 console.log(`· 覆盖比 < 1 的品类：${bad.length} / ${rows.length}（这些就是"流通性差"的来源）`)
-console.log(`· 说明：基准 = 掘洞级 + 满采矿技能 + 2×强化采集器 MK1（高槽 2 / CPU 90）；池日吸收 = supplyFlow × 1440 窗（60 秒/窗）。`)
+console.log(`· 说明：**基准 = 座头鲸级 · 0 技能 · 满装备**（高槽 3×强化采集器 MK3 ＋ 低槽货舱扩展 MK3/MK2 = CPU 175 用满；2026-09-30 船长令「基准上调为座头鲸0技能满装备」，旧基准 = 掘洞级 ＋ 满技能 ＋ 2×MK1）；池日吸收 = supplyFlow × 1440 窗（60 秒/窗）。`)
 
 console.log('')
 console.log('══ 分层覆盖比方案（保留"低阶需求大、高阶需求小"，但保证最低档也卖得掉）══')

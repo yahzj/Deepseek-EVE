@@ -30,6 +30,11 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   `supplyFlow`（每 60 秒窗吸收/补单量）按 `目标日吸收 ÷ 1440` 定、`poolTarget = supplyFlow × 120`。
   //   效果：梯度保留（建议 flow 513~4,991/窗 = **9.7× 差距**，原 6~5,000 = 833×），最低档仍是基准产能的 2 倍 ⇒ 挖高阶矿也卖得掉；
   //   低阶几乎不动（橄榄 ×1.0、辉长 ×2.5）。价格、产率、弹药/修理件/无人机池**一律未动**。】
+  // 【**2026-09-30 船长令：「基准上调为座头鲸0技能满装备」** ⇒ 基准由"掘洞级 ＋ 满技能 ＋ 2×MK1"
+  //   换成 **座头鲸级 · 0 技能 · 满装备**（高槽 3×强化采集器 MK3 ＋ 低槽货舱扩展 MK3/MK2 = CPU 175 用满；
+  //   中槽装不装推进器不改件/时）。新基准日产 = 旧基准的 **4.1~6.2 倍**（橄榄 163,200 件/h vs 39,927 等），
+  //   分层规则（×15/×6/×3/×2）与"flow = 日吸收÷1440、池 = flow×120"**原样不动** ⇒ 下面 14 条
+  //   （7 矿 ＋ 4 气 ＋ 3 冰）的池按新基准重标；读数与对照见 `npm run liquidity:audit`。】
   // 【2026-09-11 船长定：**消耗品池按同一把尺重标**（弹药/修理组件玩家可自造 → 基准 = **单工位无技能日产**；
   //   无人机**无蓝图**（纯市场货源）→ 基准按 144 场/天战损折算）。
   //   实测改前产能覆盖比：动能弹药 0.21× / 动能弹药 MK2 0.03× / 民用修理组件 0.40× / 军用修理组件 0.33×
@@ -37,13 +42,13 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   弹药 MK1 150 → **10,800/窗**（池 4,000 → **1,296,000**）、弹药 MK2 20 → **4,320**（池 → **518,400**）、
   //   民用修理组件 4 → **20**（池 300 → **2,400**）、军用修理组件 1.5 → **9**（池 120 → **1,080**）、
   //   无人机池同步为 flow×120（4/2/1/1 → 池 480/240/120/120）。价格、产率、其它池一律未动。】
-  { key: 'ore-veldspar', kind: 'item', refId: 'ore-veldspar', rarity: 'common', basePrice: 7, poolTarget: 1_178_160, supplyFlow: 9_818 },
-  { key: 'ore-scorched', kind: 'item', refId: 'ore-scorched', rarity: 'common', basePrice: 7, poolTarget: 1_178_160, supplyFlow: 9_818 },
-  { key: 'ore-hemorphite', kind: 'item', refId: 'ore-hemorphite', rarity: 'common', basePrice: 15, poolTarget: 235_680, supplyFlow: 1_964 },
-  { key: 'ore-glowstone', kind: 'item', refId: 'ore-glowstone', rarity: 'common', basePrice: 32, poolTarget: 115_560, supplyFlow: 963 },
-  { key: 'ore-sunshard', kind: 'item', refId: 'ore-sunshard', rarity: 'common', basePrice: 32, poolTarget: 115_560, supplyFlow: 963 },
-  { key: 'ore-voidshard', kind: 'item', refId: 'ore-voidshard', rarity: 'common', basePrice: 68, poolTarget: 20_760, supplyFlow: 173 },
-  { key: 'ore-nebulite', kind: 'item', refId: 'ore-nebulite', rarity: 'common', basePrice: 145, poolTarget: 6_120, supplyFlow: 51 },
+  { key: 'ore-veldspar', kind: 'item', refId: 'ore-veldspar', rarity: 'common', basePrice: 7, poolTarget: 4_896_000, supplyFlow: 40_800 }, // 2026-09-30 换基准（座头鲸·0技能满装备）：flow 9,818→40,800 · 池 1,178,160→4,896,000（×15 层）
+  { key: 'ore-scorched', kind: 'item', refId: 'ore-scorched', rarity: 'common', basePrice: 7, poolTarget: 4_896_000, supplyFlow: 40_800 }, // 同上（辉长岩）
+  { key: 'ore-hemorphite', kind: 'item', refId: 'ore-hemorphite', rarity: 'common', basePrice: 15, poolTarget: 2_448_000, supplyFlow: 20_400 }, // 2026-09-30 换基准：flow 1,964→20,400 · 池 235,680→2,448,000（×15 层，×10.4）
+  { key: 'ore-glowstone', kind: 'item', refId: 'ore-glowstone', rarity: 'common', basePrice: 32, poolTarget: 489_600, supplyFlow: 4_080 }, // 2026-09-30 换基准：flow 963→4,080 · 池 115,560→489,600（×6 层）
+  { key: 'ore-sunshard', kind: 'item', refId: 'ore-sunshard', rarity: 'common', basePrice: 32, poolTarget: 489_600, supplyFlow: 4_080 }, // 同上（曦棱晶）
+  { key: 'ore-voidshard', kind: 'item', refId: 'ore-voidshard', rarity: 'common', basePrice: 68, poolTarget: 244_800, supplyFlow: 2_040 }, // 2026-09-30 换基准：flow 173→2,040 · 池 20,760→244,800（×6 层，×11.8）
+  { key: 'ore-nebulite', kind: 'item', refId: 'ore-nebulite', rarity: 'common', basePrice: 145, poolTarget: 122_400, supplyFlow: 1_020 }, // 2026-09-30 换基准：flow 51→1,020 · 池 6,120→122,400（×6 层，×20）
   // 【虚空母矿 —— 虫洞线的唯一原矿（2026-09-12 船长定）。**虫洞落地前不对玩家可见**：
   //   `unreleased: true` ⇒ 不进 `ctx.marketGoods`（市场页/图鉴/挂单/任务全看不到），
   //   但契约照核（"每种物品必须有市场卡"）。**上线时删掉这一个字段即可开卖。**
@@ -177,14 +182,14 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'box-valuables', kind: 'item', refId: 'box-valuables', rarity: 'common', basePrice: 3_828_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 贵重品货柜（2 格）· 期望 = 17.5 件 × 十款均价 87.5 万 = 1,531.25 万 ×**0.25**（2026-09-15 船长改判的专属折扣；其余三类柜仍是 ×0.6）
   { key: 'box-military', kind: 'item', refId: 'box-military', rarity: 'common', basePrice: 2_800_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 军用备货柜（4 格）· 期望 = 2 件 × MK3 均价 235.5 万 = 470.95 万 ×0.6（2026-09-15 批 B 复核：原估值 700 万 > 拆解期望，会诱导"只卖箱不拆箱"⇒ 按同一条 ×0.6 规则下调）
   // ── 气体（V10 池商品） ──
-  { key: 'gas-neon', kind: 'item', refId: 'gas-neon', rarity: 'common', basePrice: 32, poolTarget: 143_280, supplyFlow: 1_194 },
-  { key: 'gas-phosphor', kind: 'item', refId: 'gas-phosphor', rarity: 'common', basePrice: 144, poolTarget: 9_240, supplyFlow: 77 },
-  { key: 'gas-ionstorm', kind: 'item', refId: 'gas-ionstorm', rarity: 'common', basePrice: 68, poolTarget: 27_720, supplyFlow: 231 },
-  { key: 'gas-aurora', kind: 'item', refId: 'gas-aurora', rarity: 'common', basePrice: 144, poolTarget: 9_240, supplyFlow: 77 },
+  { key: 'gas-neon', kind: 'item', refId: 'gas-neon', rarity: 'common', basePrice: 32, poolTarget: 489_600, supplyFlow: 4_080 }, // 2026-09-30 换基准：flow 1,194→4,080 · 池 143,280→489,600（×6 层）
+  { key: 'gas-phosphor', kind: 'item', refId: 'gas-phosphor', rarity: 'common', basePrice: 144, poolTarget: 122_400, supplyFlow: 1_020 }, // 2026-09-30 换基准：flow 77→1,020 · 池 9,240→122,400（×6 层，×13.2）
+  { key: 'gas-ionstorm', kind: 'item', refId: 'gas-ionstorm', rarity: 'common', basePrice: 68, poolTarget: 244_800, supplyFlow: 2_040 }, // 2026-09-30 换基准：flow 231→2,040 · 池 27,720→244,800（×6 层，×8.8）
+  { key: 'gas-aurora', kind: 'item', refId: 'gas-aurora', rarity: 'common', basePrice: 144, poolTarget: 122_400, supplyFlow: 1_020 }, // 2026-09-30 换基准：flow 77→1,020 · 池 9,240→122,400（×6 层，×13.2）
   // ── 冰矿（V10 池商品） ──
-  { key: 'ice-frost', kind: 'item', refId: 'ice-frost', rarity: 'common', basePrice: 32, poolTarget: 143_280, supplyFlow: 1_194 },
-  { key: 'ice-marrow', kind: 'item', refId: 'ice-marrow', rarity: 'common', basePrice: 68, poolTarget: 27_720, supplyFlow: 231 },
-  { key: 'ice-darkstar', kind: 'item', refId: 'ice-darkstar', rarity: 'common', basePrice: 144, poolTarget: 9_240, supplyFlow: 77 },
+  { key: 'ice-frost', kind: 'item', refId: 'ice-frost', rarity: 'common', basePrice: 32, poolTarget: 489_600, supplyFlow: 4_080 }, // 2026-09-30 换基准：flow 1,194→4,080 · 池 143,280→489,600（×6 层）
+  { key: 'ice-marrow', kind: 'item', refId: 'ice-marrow', rarity: 'common', basePrice: 68, poolTarget: 244_800, supplyFlow: 2_040 }, // 2026-09-30 换基准：flow 231→2,040 · 池 27,720→244,800（×6 层，×8.8）
+  { key: 'ice-darkstar', kind: 'item', refId: 'ice-darkstar', rarity: 'common', basePrice: 144, poolTarget: 122_400, supplyFlow: 1_020 }, // 2026-09-30 换基准：flow 77→1,020 · 池 9,240→122,400（×6 层，×13.2）
   // ── 弹药（V10 占位消耗品：NPC 补给池，玩家可囤可回卖） ──
   { key: 'ammo-kinetic-l', kind: 'item', refId: 'ammo-kinetic-l', rarity: 'common', basePrice: 7, demandMultiplier: 0.6, poolTarget: 1_296_000, supplyFlow: 10_800 }, // 2026-09-11 消耗品池按产能标定（原 4,000/150）
   // 【基础零件 7 种（2026-09-20 零件体系）：常驻池商品——**池规则 = 幂律连续曲线**
