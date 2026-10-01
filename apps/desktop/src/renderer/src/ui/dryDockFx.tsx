@@ -3,109 +3,79 @@
  * 上方，并参考左上角 SVG 动画中的船坞，构建一个更大的船坞，舰船的 SVG 放在船坞中间（最好是建到一半的，
  * 少几根线条。）先照着这个做出一个效果」→「观感上，给人感觉像是一个房子的侧视图」→
  * 「你还要考虑到，这是太空坞，是无重力环境，不是放在地球上的。我们造的是飞船」→
- * 「能否将动画旋转90度，两条主梁可以离中间更近一些，然后按进度逐段显影，使用各舰真实线稿」）。
+ * 「能否将动画旋转90度，两条主梁可以离中间更近一些，然后按进度逐段显影，使用各舰真实线稿」→
+ * 「基本上可以了，希望添加更多动效（比如无人机来回飞行焊接）」→
+ * 「飞行速度太快了，停留也太多短暂，建议拉长整体周期，焊点光满希望更大，并且有蹦出火花，
+ *  机械臂采用二段式的，同样是移动到两端后停止，焊接的循环」→
+ * 「机械臂不见了。我希望无人机的节奏是：飞到左侧-开始焊接-停留好一会-飞到右侧-开始焊接-停留好一会，
+ *  并且希望无人机能够转向，每次焊接对着舰船。我同时还发现一个BUG，舰船建造进度的亮部，
+ *  在快要建造完成时也只有右下角1/4有显示」）。
  *
- * ## 四版演进（每版都是被船长一句话推翻的，留档免得再犯）
+ * ## 形态要点（太空坞 · 无重力）
  *
- * | 版本 | 船长判词 | 病根 |
- * |---|---|---|
- * | v1 | 像房子 | 两侧竖直矩形墙 ＋ 平屋顶跨梁 ⇒ 任何文化里都读作"房子" |
- * | v2 | **太空坞、无重力** | 抄了地球干船坞的形制：**坞墩托底**（托船重的）＋ **挖下去的地面线**（靠重力的船台） |
- * | v3 | **旋转 90° · 主梁靠近 · 按进度逐段显影** | 竖直停泊让"进度"只能自下而上读；主梁离得太开、笼子太散。本版：**水平停泊**（船头朝右）· 主梁各收到 ±48 · 坞内改用**各舰真实线稿**并按进度**从船尾向船头逐段显影** |
+ * 1. **没有"下"**：不画地面线、坞槽、托架——坞体是悬在空间里的**开放式桁架笼**；
+ * 2. **船不接触坞**：飞船**悬浮**在坞正中，4 条**系留臂**（端点留空隙）拉住；
+ * 3. **水平停泊**：飞船沿坞的纵轴停、**船头朝右**；
+ * 4. **主梁靠拢**：两条纵向主梁＝中线上下各 **48**；三道桁架拱跨接两梁；
+ * 5. **按进度逐段显影**：坞内画**该舰真实线稿**（`SHIP_ART`，经 `ShipSpriteShape`），用 `clipPath`
+ *    把显影宽度**从船尾推向船头**；未成形的部分以极淡透明度整条描出。
  *
- * ## 本版四条形态
+ * ## 动效清单（全部只动 `transform` / `opacity`；`prefers-reduced-motion` 与「关特效」下全停）
  *
- * 1. **无重力**：不画地面线、坞槽、托架——坞体是悬在空间里的**开放式桁架笼**；飞船**不接触坞**，
- *    靠 **4 条系留臂**（端点留空隙）拉住，并**极缓慢悬浮漂移**（CSS `hud-dock-float`）；
- * 2. **水平停泊**（船长：旋转 90°）：船头朝右，沿坞的纵轴停泊；
- * 3. **主梁靠近中心**（船长）：两条纵向主梁＝中线上下各 **48**，三道桁架拱跨接两梁；
- * 4. **按进度逐段显影**（船长）：坞内画的是**该舰的真实线稿**（`ui/shipArt` 的 `SHIP_ART`，
- *    经 `ShipSpriteShape` 嵌入 —— 240×110、船头朝右，与全仓同一份资产），用 `clipPath` 把显影宽度
- *    从**船尾**推向**船头**：进度越高、线越多 —— 这才是"建到一半"的**真实**含义，
+ * ① 飞船极缓慢悬浮漂移 · ② **两只焊接无人机**：飞到一端 → 停下焊 → 飞到另一端 → 停下焊（10s 一趟、
+ * 两端各停 ~2.2s），**到哪一端都转向把焊枪对着船体** · ③ **二段式机械臂**：肩＋前臂两节，
+ * 整条臂沿船体在两端之间移动、两端各停 ~4.2s 焊接 · ④ 坞体航行灯缓慢呼吸 · ⑤ 焊点闪烁 ＋ **迸火花**。
  *
- * **动效清单**（2026-10-01 船长令「希望添加更多动效（比如无人机来回飞行焊接）」）：
- * ① 飞船极缓慢悬浮漂移 · ② **两只焊接无人机沿船体上下往返**、机身焊光微闪（错相位）·
- * ③ **坞壁机械臂缓慢屈伸** · ④ 坞体航行灯缓慢呼吸 · ⑤ 两处焊点闪烁。
- * 全部**只动 `transform` / `opacity`**，且 `prefers-reduced-motion` 与「关特效」下全停（§十四）。
- *    不再靠"故意少画几根线"来假装。
+ * ## 三个踩过的坑（都写在代码里，免得后人再犯）
  *
- * ## 纪律
- *
- * - 形状一律 SVG 线稿（`currentColor` ＋ 细描边；§6）；CSS 只负责氛围光与动效；
- * - 动效只碰 `transform` / `opacity`（飞船悬浮漂移 ＋ 焊点闪烁），`prefers-reduced-motion` 与玩家
- *   「关特效」（`body.no-fx`）下全停（§十四）；
- * - 纯展示件（`aria-hidden`），不参与交互；坞景高度由外层 `.hud-dock-art` 定死 ⇒ 卡片不跳动。
-
-## 资产实情（2026-10-01 更正一次误报）
-
-数据层 **40 个舰级 100% 都有独立线稿**（`SHIP_ART` 的 `sh-*` 键 40/40），逐段显影对每一艘都成立；
-`ShipSpriteShape` 里那条 140×64 回退**在正式内容里走不到**（只对异常旧档/未录形生效）。
-我一度把"23/40"当事实报给船长 —— 那是**统计脚本只匹配单引号键**、而 `shipArtData.tsx` 用双引号键
-导致整文件被跳过所致。**教训**：统计资产先对齐"键的书写形态"，别拿一次正则的结果当结论。
+ * 1. **定位与动效必须分层**：CSS 动画会写 `transform` ⇒ 若把定位也写在同一元素的 `transform` 属性上，
+ *    属性会被动画覆盖（机械臂曾被搬到坞左上角外 ⇒ 船长报「机械臂不见了」）。
+ * 2. **显影窗口的坐标要用舰形画布宽 `art.w`**：按显示宽算会让右端永远差一截（船长报
+ *    「快要建造完成时也只有右下角 1/4 有显示」）。
+ * 3. **坞内舰形的位置靠"嵌套 svg 视口"给**（早期版本靠变换叠加，实测把船甩到 svg 左上角外）。
  */
 import type { ShipRole } from '@whale/core'
 import { ShipSpriteShape, shipArtSizeOf } from './ShipSprite'
 
-/** 坞景画布（船长要的"更大的船坞"）：与 `.hud-dock-art` 的 190px 高同比例 */
+/** 坞景画布：与 `.hud-dock-art` 的 190px 高同比例 */
 const VB_W = 380
 const VB_H = 190
-/** 坞体两条纵向主梁的**半间距**（船长：「两条主梁可以离中间更近一些」⇒ 收到 ±48） */
+/** 两条纵向主梁的半间距（船长：「两条主梁可以离中间更近一些」） */
 const BEAM_Y = 48
-/** 梁的半纵长（坞的开口范围；两端再各留一段端环） */
+/** 梁的半纵长 */
 const BEAM_HALF = 150
-/** 无人机的横向摆动幅度（用户单位；用 `--vx` 喂给 CSS 动画，避免写死两套 keyframes） */
-const DRONE_TRAVEL = 116
-/** 无人机轨道相对坞中线的纵向偏移（一上一下，贴着船体两侧飞） */
-const DRONE_Y = 28
-/** 三道桁架拱沿纵轴的 x 偏移（两端各一道 ＋ 正中一道） */
+/** 三道桁架拱沿纵轴的 x 偏移 */
 const ARCH_X = [-96, 0, 96] as const
-/** 舰体显示宽度（占坞长 ~62%，两端留给端环与系留臂） */
+/** 舰体显示宽度（占坞长 ~62%） */
 const SHIP_W = 230
+/** 无人机的横向摆动幅度（用户单位；用 `--vx` 喂给 CSS 动画） */
+const DRONE_TRAVEL = 116
 
 export function DryDockFx({
   progress,
   shipId,
   role,
 }: {
-  /** 建造进度 0~1（`manufacturingRunViews` 的 `percent / 100`）—— **逐段显影的驱动量** */
+  /** 建造进度 0~1 —— 逐段显影的驱动量 */
   progress: number
-  /** 该在建舰的舰级 id（真实线稿取 `SHIP_ART`；未命中则回退 role 剪影） */
+  /** 在建舰的舰级 id（真实线稿取 `SHIP_ART`） */
   shipId: string
-  /** 回退剪影用的舰种（资产表未命中时才有意义） */
+  /** 回退剪影用的舰种（资产表未命中时才有意义；正式内容里 40/40 都有独立线稿） */
   role?: ShipRole
 }): JSX.Element {
   const pct = Math.max(0, Math.min(1, progress))
-  /** 舰体显示高度：**走单点** `shipArtSizeOf`（命中资产 240×110 / 未命中回退剪影 140×64）
-      —— 系留臂端点与裁剪窗都按它算，绝不在这里再写死一个比例（坞景第一版就是栽在这） */
   const art = shipArtSizeOf(shipId)
   /**
-   * **让舰形以坞中线为中心**：`ShipSpriteShape` 自己带 `transform="scale(s) translate(-w/2,-h/2)"`，
-   * 而那句在坞景里**整条被当成了位移**（实机读数：`matrix(0.958,0,0,0.958,-115,-52.7)`，舰形中心
-   * 跑到 svg 左上角外、偏移 −176/−94 px）⇒ 坞景自己把变换显式写出来，摆到 (0,0)：
-   * 先 `translate(-w/2,-h/2)` 把舰形移到原点，再按目标宽度缩放。
-   */
-  /**
-   * **舰形用"嵌套 svg 视口"定位**（2026-10-01 实机实测后的方案）：
-   * 之前试过两条路都不成立 —— ① 只靠 `ShipSpriteShape` 自带的 `scale(s) translate(-w/2,-h/2)`：
-   * 实测把整条舰甩到 svg 左上角外（中心偏移 −176/−94 px，截图见工作文档）；
-   * ② 在外层 `<g>` 上写变换、再给子层加"反向抵消"：实测只收敛到 −57/−39，抵消不干净。
-   * 现在改成：**坞景里嵌一个 `<svg viewBox="0 0 w h">` 小视口**，把舰形画布坐标直接映射进坞的坐标系
-   * —— 不依赖任何外层 transform 的叠加，位置与缩放各由 `<svg>` 的几何属性一次定死。
+   * 舰形用**嵌套 svg 视口**定位（`x/y` 定位置、`viewBox` 定缩放），不依赖任何外层 transform 叠加。
+   * `ShipSpriteShape` 把画布中心摆到原点 ⇒ viewBox 取 `-w/2 -h/2 w h`。
    */
   const shipVp = { x: VB_W / 2 - art.w / 2, y: VB_H / 2 - art.h / 2, w: art.w, h: art.h }
-  /** 把 `ShipSpriteShape` **自己那句** `scale(s) translate(-w/2,-h/2)` 反向抵消（先反缩放、再反平移）
-      —— 实机实测那句话在坞景里会把整条舰甩到 svg 左上角外（读数 −176/−94 px，截图为证），
-      而坞景这一层的 transform 是生效的 ⇒ 由坞景独占定位，子组件只出"未变换的形状"。 */
-  const undoShip = `translate(${art.w / 2},${art.h / 2}) scale(${(SHIP_W / art.w).toFixed(5)})`
   /**
-   * ⚠ **2026-10-01 撤掉一次"内容中心补偿"**：上一笔我曾按"回退剪影的内容中心 y≈50、画布中心 32"
-   * 加过 30px 的垂直补偿 —— 那是**在错误前提下猜的**（当时真正的病是 `transform-box` 缺失、
-   * 舰形整条堆在原点，见下）。前提修好后这个补偿只会把船推离坞中线 ⇒ **删除**。
-   * 若日后真发现某些舰形在坞内不居中，**先用读数确认**（别再用坐标手算）。
+   * 显影窗口（嵌套 svg 的局部坐标，viewBox 以原点为中心）。
+   * ⚠ **必须按舰形画布宽 `art.w` 算**：早期按显示宽 `SHIP_W` 算 ⇒ 右端永远差 10 用户单位，
+   * 进度到 100% 也盖不满 ⇒ 船长看到的"快建完时只有右下角 1/4 亮着"。
    */
-  const shipH = Math.round(SHIP_W * (art.h / art.w))
-  /** 显影前沿的 x（从船尾即左端起算；两端各留 2px 余量，免得描边被切） */
-  const clipX = -1
+  const clipX = -shipVp.w / 2 - 1
   const clipW = Math.max(1, shipVp.w * pct + 2)
   const CLIP_ID = 'hud-dock-progress-clip'
 
@@ -122,7 +92,6 @@ export function DryDockFx({
       aria-hidden="true"
     >
       <defs>
-        {/* 显影窗口：宽度跟着进度长 ⇒ 建造从**船尾（引擎段）**往**船头**推进 */}
         <clipPath id={CLIP_ID}>
           <rect x={clipX} y={0} width={clipW} height={shipVp.h} />
         </clipPath>
@@ -141,7 +110,7 @@ export function DryDockFx({
           opacity="0.55"
         />
       ))}
-      {/* 端环（坞的两头是开口的桁架环；不画坞门） */}
+      {/* 端环（两头是开口的桁架环） */}
       <path
         d={`M${VB_W / 2 - BEAM_HALF} ${VB_H / 2 - BEAM_Y} L${VB_W / 2 - BEAM_HALF - 16} ${VB_H / 2} L${VB_W / 2 - BEAM_HALF} ${VB_H / 2 + BEAM_Y}`}
         opacity="0.6"
@@ -150,7 +119,7 @@ export function DryDockFx({
         d={`M${VB_W / 2 + BEAM_HALF} ${VB_H / 2 - BEAM_Y} L${VB_W / 2 + BEAM_HALF + 16} ${VB_H / 2} L${VB_W / 2 + BEAM_HALF} ${VB_H / 2 + BEAM_Y}`}
         opacity="0.6"
       />
-      {/* 梁间横向联系（每道拱两侧各一小段：把笼子编起来，但不遮住船） */}
+      {/* 梁间横向联系 */}
       {ARCH_X.map((dx) => (
         <g key={`tie-${dx}`} opacity="0.3">
           <path d={`M${VB_W / 2 + dx - 14} ${VB_H / 2 - BEAM_Y} V${VB_H / 2 - BEAM_Y + 10}`} />
@@ -158,7 +127,7 @@ export function DryDockFx({
         </g>
       ))}
 
-      {/* ── 系留臂：坞体 → 飞船（4 条；端点与船体留 6px 空隙 ⇒ 船是**被拉住**、不是被托住）── */}
+      {/* ── 系留臂（4 条；端点与船体留 6px 空隙 ⇒ 船是被"拉住"、不是被"托住"）── */}
       {([
         [-70, -1],
         [70, -1],
@@ -167,7 +136,7 @@ export function DryDockFx({
       ] as const).map(([dx, sign]) => {
         const x = VB_W / 2 + dx
         const y1 = VB_H / 2 + sign * BEAM_Y
-        const y2 = VB_H / 2 + sign * (shipH / 2 + 6)
+        const y2 = VB_H / 2 + sign * (shipVp.h / 2 + 6)
         return (
           <g key={`tether-${dx}-${sign}`} opacity="0.7">
             <path d={`M${x} ${y1} L${x} ${y2}`} />
@@ -176,7 +145,7 @@ export function DryDockFx({
         )
       })}
 
-      {/* ── 坞内的在建舰：**真实线稿** ＋ 按进度逐段显影（船尾 → 船头）── */}
+      {/* ── 坞内的在建舰：真实线稿 ＋ 按进度逐段显影（船尾 → 船头）── */}
       <svg
         className="hud-dock-craft"
         x={shipVp.x}
@@ -196,66 +165,61 @@ export function DryDockFx({
         </g>
       </svg>
 
-      {/* ── 焊接机械臂（**2026-10-01 船长令**：「机械臂采用二段式的，同样是移动到两端后停止，焊接的循环」）
-          —— **二段**（上臂 ＋ 前臂，肩/肘关节）＋ 整条臂沿船体在两端之间**移动、停住焊、再回程**；
-          端点停下时臂尖的焊点打火并迸火花（与无人机同一套 `hud-dock-weldwrap` 结构）。 ── */}
-      <g className="hud-dock-armcar" transform={`translate(${VB_W / 2} ${VB_H / 2 + BEAM_Y - 6})`}>
-        <g className="hud-dock-arm2">
-          <path d="M0 0 L-16 -12" opacity="0.85" />
-          <g className="hud-dock-armseg">
-            <path d="M-16 -12 L-30 -22" opacity="0.85" />
-          </g>
-          <g transform="translate(-30 -22)">
-            <g className="hud-dock-weldwrap">
-              <circle className="hud-dock-weld" cx="0" cy="0" r="2.1" />
-              <path className="hud-dock-spark-ray" d="M0 0 L-3.7 -2.1" />
-              <path className="hud-dock-spark-ray is-2" d="M0 0 L-4.2 0.4" />
-              <path className="hud-dock-spark-ray is-3" d="M0 0 L-3.2 2.3" />
+      {/* ── 二段式焊接机械臂：整条臂在两端之间移动、端点停下焊 ──
+          ⚠ **定位（外层）与动画（内层）分层**：CSS 动画会写 `transform`，写在同一元素上会覆盖定位。 */}
+      <g transform={`translate(${VB_W / 2} ${VB_H / 2 + BEAM_Y - 6})`}>
+        <g className="hud-dock-armcar">
+          <g className="hud-dock-arm2">
+            <path d="M0 0 L-16 -12" opacity="0.85" />
+            <g className="hud-dock-armseg">
+              <path d="M-16 -12 L-30 -22" opacity="0.85" />
+            </g>
+            <g transform="translate(-30 -22)">
+              <g className="hud-dock-weldwrap">
+                <circle className="hud-dock-weld" cx="0" cy="0" r="2.1" />
+                <path className="hud-dock-spark-ray" d="M0 0 L-3.7 -2.1" />
+                <path className="hud-dock-spark-ray is-2" d="M0 0 L-4.2 0.4" />
+                <path className="hud-dock-spark-ray is-3" d="M0 0 L-3.2 2.3" />
+              </g>
             </g>
           </g>
         </g>
       </g>
-      {/* ── 焊接无人机（船长令「无人机来回飞行焊接」）：两只一上一下沿船体往返，机身焊光微闪 ── */}
-      <g transform={`translate(${VB_W / 2} ${VB_H / 2 - 34})`}>
-        <g className="hud-dock-drone" style={{ ['--vx' as string]: `${DRONE_TRAVEL}px` }}>
-          <g className="hud-dock-drone-body">
-            <rect x="-7" y="-2.5" width="14" height="5" rx="1.5" />
-            <path d="M-9 -2.5 H9 M-9 2.5 H9" opacity="0.7" />
-            <path d="M-4 -4.5 V-6.5 M4 -4.5 V-6.5" opacity="0.6" />
-            <g className="hud-dock-weldwrap">
-              <circle className="hud-dock-weld" cx="9.5" cy="0" r="2.1" />
-              {/* 焊机迸火花（船长令：「有蹦出火花」）：5 条短线按角度错相位往外迸，只动 opacity/transform */}
-              <path className="hud-dock-spark-ray" d="M9.5 0 L13.2 -2.1" />
-              <path className="hud-dock-spark-ray is-2" d="M9.5 0 L14 0.4" />
-              <path className="hud-dock-spark-ray is-3" d="M9.5 0 L13 2.3" />
-              <path className="hud-dock-spark-ray is-4" d="M9.5 0 L11.6 -3.1" />
-              <path className="hud-dock-spark-ray is-5" d="M9.5 0 L11.4 3" />
+
+      {/* ── 焊接无人机 ×2：飞到一端 → 停下焊 → 飞到另一端 → 停下焊 ──
+          三层分工：外层**定位**（属性）· 中层 `--vx` **飞行位移**（CSS）· 内层 `scaleX(±1)` **转向**（CSS）。 */}
+      {[
+        { y: VB_H / 2 - 34, late: false, up: true },
+        { y: VB_H / 2 + 34, late: true, up: false },
+      ].map((d) => (
+        <g key={`drone-${d.late}`} transform={`translate(${VB_W / 2} ${d.y})`}>
+          <g
+            className={`hud-dock-drone${d.late ? ' is-late' : ''}`}
+            style={{ ['--vx' as string]: `${DRONE_TRAVEL}px` }}
+          >
+            <g className="hud-dock-drone-turn">
+              <g className="hud-dock-drone-body">
+                <rect x="-7" y="-2.5" width="14" height="5" rx="1.5" />
+                <path d="M-9 -2.5 H9 M-9 2.5 H9" opacity="0.7" />
+                <path d={d.up ? 'M-4 -4.5 V-6.5 M4 -4.5 V-6.5' : 'M-4 4.5 V6.5 M4 4.5 V6.5'} opacity="0.6" />
+                <g className="hud-dock-weldwrap">
+                  <circle className="hud-dock-weld" cx="9.5" cy="0" r="2.1" />
+                  <path className="hud-dock-spark-ray" d="M9.5 0 L13.2 -2.1" />
+                  <path className="hud-dock-spark-ray is-2" d="M9.5 0 L14 0.4" />
+                  <path className="hud-dock-spark-ray is-3" d="M9.5 0 L13 2.3" />
+                  <path className="hud-dock-spark-ray is-4" d="M9.5 0 L11.6 -3.1" />
+                  <path className="hud-dock-spark-ray is-5" d="M9.5 0 L11.4 3" />
+                </g>
+              </g>
             </g>
           </g>
         </g>
-      </g>
-      <g transform={`translate(${VB_W / 2} ${VB_H / 2 + 34})`}>
-        <g className="hud-dock-drone is-late" style={{ ['--vx' as string]: `${DRONE_TRAVEL}px` }}>
-          <g className="hud-dock-drone-body">
-            <rect x="-7" y="-2.5" width="14" height="5" rx="1.5" />
-            <path d="M-9 -2.5 H9 M-9 2.5 H9" opacity="0.7" />
-            <path d="M-4 4.5 V6.5 M4 4.5 V6.5" opacity="0.6" />
-            <g className="hud-dock-weldwrap">
-              <circle className="hud-dock-weld" cx="9.5" cy="0" r="2.1" />
-              {/* 焊机迸火花（船长令：「有蹦出火花」）：5 条短线按角度错相位往外迸，只动 opacity/transform */}
-              <path className="hud-dock-spark-ray" d="M9.5 0 L13.2 -2.1" />
-              <path className="hud-dock-spark-ray is-2" d="M9.5 0 L14 0.4" />
-              <path className="hud-dock-spark-ray is-3" d="M9.5 0 L13 2.3" />
-              <path className="hud-dock-spark-ray is-4" d="M9.5 0 L11.6 -3.1" />
-              <path className="hud-dock-spark-ray is-5" d="M9.5 0 L11.4 3" />
-            </g>
-          </g>
-        </g>
-      </g>
-      {/* 焊点（两处，错相位闪；只动 opacity）——跟着**显影前沿**走 */}
+      ))}
+
+      {/* 焊点（两处，错相位闪）——跟着显影前沿走 */}
       <circle className="hud-dock-spark" cx={shipVp.x + clipW} cy={VB_H / 2 - 15} r="2" />
       <circle className="hud-dock-spark is-late" cx={shipVp.x + clipW * 0.7} cy={VB_H / 2 + 19} r="1.7" />
-      {/* 坞体航行灯（静态细条；太空坞靠灯识别姿态） */}
+      {/* 坞体航行灯（缓慢呼吸） */}
       <path
         className="hud-dock-beacon"
         d={

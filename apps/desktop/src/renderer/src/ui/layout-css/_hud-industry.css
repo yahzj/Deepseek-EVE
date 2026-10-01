@@ -471,36 +471,50 @@ body.no-fx .hud-dock-craft, body.no-fx .hud-dock-spark { animation: none; }
    全部只动 `transform` / `opacity`；`--vx` 由坞景以行内变量喂进来（避免写死两套关键帧）。
    ⚠ 三个元素都显式给 `transform-box` / `transform-origin`：坞景里踩过 `fill-box` 导致变换基准
    错位的坑（见本文件坞内舰形那段），这里按"直角坐标"口径写死。 */
+/* ── 坞景动效 ──
+   **2026-10-01 船长令（第三轮）**：「我希望无人机的节奏是：飞到左侧-开始焊接-停留好一会-飞到右侧-开始焊接
+   -停留好一会，并且希望无人机能够转向，每次焊接对着舰船」＋「机械臂不见了」（已修：定位与动画分层）。
+   全部只动 `transform` / `opacity`；`--vx` 由坞景以行内变量喂进来。 */
 .hud-dock-drone {
   transform-box: view-box;
   transform-origin: 0 0;
-  /* **慢飞 · 长停**：一趟 10s —— 单程 1.2s、**两端各停 ~2.8s 干活**（船长要的"拉长周期、加长停留"）。
-     两只用 −5s 负延迟错开半周期（一只在左端焊时另一只在右端）。 */
-  animation: hud-dock-drone 10s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  /* 节奏：**飞到左 → 焊接停留 → 飞到右 → 焊接停留**（10s 一趟、两端各停 ~2.2s），船头方向永远朝舰船 */
+  animation: hud-dock-drone 10s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 .hud-dock-drone.is-late { animation-delay: -5s; }
 @keyframes hud-dock-drone {
-  0% { transform: translateX(calc(var(--vx, 110px) * -1)); }
-  6% { transform: translateX(var(--vx, 110px)); }    /* 飞到右端（1.2s） */
-  28% { transform: translateX(var(--vx, 110px)); }   /* 停住焊（2.2s） */
-  34% { transform: translateX(calc(var(--vx, 110px) * -1)); } /* 飞回左端（1.2s） */
-  56% { transform: translateX(calc(var(--vx, 110px) * -1)); } /* 停住焊（2.2s） */
-  62% { transform: translateX(var(--vx, 110px)); }   /* 再飞右端 */
-  84% { transform: translateX(var(--vx, 110px)); }   /* 停住焊（2.2s） */
-  100% { transform: translateX(calc(var(--vx, 110px) * -1)); }
+  0% { transform: translateX(calc(var(--vx, 110px) * -1)); }   /* 左端：焊接位置 */
+  22% { transform: translateX(calc(var(--vx, 110px) * -1)); }  /* 焊接停留（~2.2s） */
+  34% { transform: translateX(var(--vx, 110px)); }             /* 飞到右端 */
+  56% { transform: translateX(var(--vx, 110px)); }             /* 焊接停留（~2.2s） */
+  68% { transform: translateX(calc(var(--vx, 110px) * -1)); }  /* 飞回左端 */
+  90% { transform: translateX(calc(var(--vx, 110px) * -1)); }  /* 焊接停留（~2.2s） */
+  100% { transform: translateX(var(--vx, 110px)); }
 }
-/* 机械臂**整条**在两端之间移动：0＝右端、1＝左端（两端各停 ~4.2s 焊接） */
+/* **转向**：到端点时把焊枪对着船体（左端朝右 / 右端朝左），飞行途中不翻
+   ⚠ 用 `scale(±1)` 而不是 `rotate`：负 scale 会**连火花一起镜像**，正好也是想要的观感。 */
+.hud-dock-drone-turn {
+  transform-box: view-box;
+  transform-origin: 0 0;
+  animation: hud-dock-drone-turn 10s steps(1, end) infinite;
+}
+.hud-dock-drone-turn.is-late { animation-delay: -5s; }
+@keyframes hud-dock-drone-turn {
+  0%, 58% { transform: scale(1, 1); }
+  58.01%, 100% { transform: scale(-1, 1); }
+}
+/* 机械臂**整条**在两端之间移动：两端各停 ~4.2s 焊接 */
 .hud-dock-armcar {
   transform-box: view-box;
   transform-origin: 0 0;
   animation: hud-dock-armcar 14s cubic-bezier(0.5, 0, 0.5, 1) infinite;
 }
 @keyframes hud-dock-armcar {
-  0%, 30% { transform: translateX(118px); }   /* 右端焊接（4.2s） */
-  50%, 80% { transform: translateX(-118px); } /* 左端焊接（4.2s） */
+  0%, 30% { transform: translateX(118px); }
+  50%, 80% { transform: translateX(-118px); }
   100% { transform: translateX(118px); }
 }
-/* **二段式**机械臂：肩段恒定微摆 ＋ 肘段反向屈伸（相位错开 ⇒ 看着像两节在配合） */
+/* **二段式**：肩段恒定微摆 ＋ 肘段反向屈伸（相位错开 ⇒ 两节在配合） */
 .hud-dock-arm2 {
   transform-box: view-box;
   transform-origin: 0 0;
@@ -520,10 +534,9 @@ body.no-fx .hud-dock-craft, body.no-fx .hud-dock-spark { animation: none; }
   0%, 100% { transform: rotate(7deg); }
   50% { transform: rotate(-7deg); }
 }
-/* ⚠ 焊光**不能用 `steps()`**：第一次实机采样（两次比对 computed style）发现 `steps(2,end)` 的采样点
-   恰好都落在 `0%`/`100%` 两个关键帧上，`opacity` 恒为 1 —— 看着"设了动画却没在闪"。
-   现在是**焊机闪光**（船长要的"更大"）：opacity 0.15↔1 ＋ 尺寸 0.8↔1.6。
-   周期 0.9s 与"停住焊"的相位同拍（每个停点闪约 2~3 次）。 */
+/* 焊机闪光（大 ＋ 快脉冲）。
+   ⚠ 别用 `steps()`：第一次实机采样发现采样点恰好落在关键帧上、`opacity` 恒为 1，
+   看着"设了动画却没在闪"；改缓动脉冲后实测在动。 */
 .hud-dock-weld {
   fill: currentColor;
   stroke: none;
@@ -535,7 +548,7 @@ body.no-fx .hud-dock-craft, body.no-fx .hud-dock-spark { animation: none; }
   0%, 100% { opacity: 0.15; transform: scale(0.8); }
   45% { opacity: 1; transform: scale(1.6); }
 }
-/* **迸出的火花**（船长令「有蹦出火花」）：短线从焊点向外迸、随即消失；5 条错相位 ⇒ 看着是连续迸溅 */
+/* 迸出的火花：短线从焊点向外迸、随即消失，逐条错相位 ⇒ 连续迸溅 */
 .hud-dock-spark-ray {
   stroke: currentColor;
   stroke-width: 1.2;
@@ -553,11 +566,11 @@ body.no-fx .hud-dock-craft, body.no-fx .hud-dock-spark { animation: none; }
   100% { opacity: 0; transform: scale(1.5); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hud-dock-drone, .hud-dock-weld, .hud-dock-arm2, .hud-dock-armseg,
-  .hud-dock-armcar, .hud-dock-beacon, .hud-dock-spark-ray { animation: none; }
+  .hud-dock-drone, .hud-dock-drone-turn, .hud-dock-weld, .hud-dock-arm2,
+  .hud-dock-armseg, .hud-dock-armcar, .hud-dock-beacon, .hud-dock-spark-ray { animation: none; }
 }
-body.no-fx .hud-dock-drone, body.no-fx .hud-dock-weld, body.no-fx .hud-dock-spark-ray,
-body.no-fx .hud-dock-arm2, body.no-fx .hud-dock-armseg,
+body.no-fx .hud-dock-drone, body.no-fx .hud-dock-drone-turn, body.no-fx .hud-dock-weld,
+body.no-fx .hud-dock-spark-ray, body.no-fx .hud-dock-arm2, body.no-fx .hud-dock-armseg,
 body.no-fx .hud-dock-armcar, body.no-fx .hud-dock-beacon { animation: none; }
 .hud-cells { display: flex; flex-wrap: wrap; gap: 14px; color: var(--hud-fg-dim); font-size: 12px; font-variant-numeric: tabular-nums; }
 .hud-cells > span { display: inline-flex; align-items: center; gap: 5px; }
