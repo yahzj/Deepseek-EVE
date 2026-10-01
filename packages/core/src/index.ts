@@ -253,6 +253,9 @@ export {
   WEEKEND_DEBUG_WIN_GAIN,
   WEEKEND_GAIN_OFFLINE_REPEL,
   WEEKEND_LOCKED_FAMILY,
+  // **调试档锁定的入侵族**（2026-10-01 船长令「先让本地调试模式必定出新的R族入侵」）
+  WEEKEND_DEBUG_FAMILY,
+  weekendLockedFamilyOf,
   weekendWinGainOf,
   /** 2026-09-25 船长令：入侵触发前提 = 协会声望 ≥ 40（调试模式不受限） */
   WEEKEND_MIN_STANDING,

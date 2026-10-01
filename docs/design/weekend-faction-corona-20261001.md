@@ -333,6 +333,7 @@ H 族当年 `ae2970ac` 的提交信息自述「**落码 11 处**」，共 **23 �
 | 2026-10-01 | 叠光步长 400ms → **300ms**（船长令）· 叠满由 24.0 秒变 32.75 秒（实测） | 本文件 §14.7 | 船长令「叠光装置降低为每次300ms」 |
 | 2026-10-01 | **R 族残骸回收奖励池落码**：AI 核心（回收炉每批 10%）＋ 叠光激光炮 ＋ 跃迁规避装置 ＋ `FOE_LAIR_GEAR.R` 填池 · 新增 8 用例 | 本文件 §15 | 船长令（§15.1 照抄） |
 | 2026-10-01 | 船长追批两条：**激光按 MK3 的 30%**（维持 `dmgMult 1.26`）· **件名提案全部获批** | 本文件 §16 | 船长令（§16.1 照抄） |
+| 2026-10-01 | **本地调试模式必出 R 族入侵**（新增 `WEEKEND_DEBUG_FAMILY` ＋ `weekendLockedFamilyOf` 单点 · 玩家线仍 H）· 新增 3 用例 | 本文件 §17 | 船长令（§17.1 照抄） |
 | 2026-10-01 | 出设计案（本文件建立） | 本文件 | 船长令「之后给我一个设计案」 |
 | 2026-10-01 | 船长逐条裁定 10 问（Q1「正常做就是了」· Q2~Q6 全甲 · Q7~Q10 按建议） | 本文件 §10 | 船长 2026-10-01 答复 |
 | 2026-10-01 | **P0 落码 27 文件 · 六道闸门全绿**（typecheck · core 2927 用例 · content:check · l10n:check · l10n:params · ui:rot-check · ui:theme-check · arch:guard） | 本文件 §11 | 同上 |
@@ -596,3 +597,52 @@ H 族当年 `ae2970ac` 的提交信息自述「**落码 11 处**」，共 **23 �
 - ✅ 结清：§14.9 第 1 条（件名提案）· §14.9 第 3 条（§12.4 第 2 条 ＋ §7 的 AI 核心裁决点）· §15.8 第 1、2 条。
 - ⏳ **唯一残留**：**光环（R 族）本周末是否上线**（船长 2026-10-01 选「丙：等我把 AI 核心这条做完再定」——
   AI 核心这条已做完，等船长定）。开关 = `WEEKEND_LOCKED_FAMILY`（现仍为 `'H'`）。
+
+---
+
+## §17 本地调试模式必出 R 族入侵（**已落码** · 船长 2026-10-01 令）
+
+### 17.1 船长原话（照抄）
+
+> 「**感觉可以上线实时，先让本地调试模式必定出新的R族入侵，我进行本地测试**」
+
+### 17.2 口径
+
+| 档 | 判据 | 入侵族 | 影响 |
+|---|---|---|---|
+| **玩家线**（正常档） | `state.debugQuick !== true` | 仍走 `WEEKEND_LOCKED_FAMILY` = **`'H'`**（墨潮） | **逐字不变**（玩家看不到光环） |
+| **本地调试档** | `state.debugQuick === true` | **`WEEKEND_DEBUG_FAMILY` = `'R'`**（光环） | 开局面一律判 R；**调试档专属** |
+
+单点 = `weekendEvent.weekendLockedFamilyOf(state)`（新增），三处消费点全部改走它：
+① `weekendRollOccupation` 的家族选择；② `ensureWeekendEvent` 里"锁定族的自愈"（历史场就地改判）。
+想换调试族只改 `WEEKEND_DEBUG_FAMILY` 一个常量（`null` = 调试档也走玩家线锁定）。
+
+### 17.3 ⚠ 船长本地怎么进调试模式（查证结论）
+
+- **调试模式只在"本机 http(s)"下可用**（`core/debugGate.isLocalDebugOrigin`）：协议必须是 `http:` / `https:`，
+  且 host 是 `localhost` / `127.0.0.1` / `::1` / `*.local` / 内网 IPv4。
+  ⇒ **桌面打包版（`file:` 协议）下调试模式恒关闭，手写 localStorage 也不生效**（2026-09-25 船长令"发布版一律关闭且隐藏"）。
+- ⇒ **要用 `npm run dev` 起开发模式**（主进程按 `ELECTRON_RENDERER_URL` 加载 Vite 开发服务器 = http://localhost:5173
+  ⇒ 本机 http ⇒ 调试模式可用；且 renderer 走源码别名 ⇒ **改完代码热更新，不必先 build**）。
+- 开关两条路：**设置 →「调试模式」**，或 DevTools 里 `localStorage.setItem('whale-idle:debug','1')` 后刷新
+  ⇒ 顶栏出现 **⇄ 调试** 按钮（面板里的「1 秒化」开关就是 `state.debugQuick`）。
+- 开完调试模式后，入侵相关的调试便利一并生效：**两场夺回**（+50%/场）· **时间 ÷60** · **1 小时后可重开**。
+
+### 17.4 落码清单
+
+| # | 文件 | 改了什么 |
+|---|---|---|
+| 1 | `packages/core/src/weekendEvent.ts` | 新增 `WEEKEND_DEBUG_FAMILY = 'R'` 与 `weekendLockedFamilyOf(state)`；家族选择与"锁定族自愈"两处改走单点；两条头注同步 |
+| 2 | `packages/core/src/index.ts` | 导出 `WEEKEND_DEBUG_FAMILY` / `weekendLockedFamilyOf` |
+| 3 | `packages/core/tests/weekend-debug-family-20261001.test.ts` | **新增 3 个用例**：单点取值 · 真实开局面（调试档必 R、非调试档仍 H）· 多次抽签都判 R |
+| 4 | `packages/core/tests/weekend-event.test.ts` | 原「锁定族：开局面一律 H」用例改为「玩家线一律 H、**调试档判 R**」，历史场改判断言同步 |
+
+### 17.5 验证
+
+**core 280 文件 / 2952 用例全绿**（本批 +3）· typecheck 四包绿 · content:check · l10n:check · l10n:params ·
+ui:rot-check · arch:guard 全绿。
+
+### 17.6 ⚠ 仍等你定：**玩家线的族开关要不要翻**
+
+本批**只动了调试档**，`WEEKEND_LOCKED_FAMILY` **仍是 `'H'`** ⇒ 正常玩家线本周末还是墨潮。
+你那句「**感觉可以上线实时**」如果指的是**玩家线也上光环**，说一声我翻这一个常量（＋ 公告稿走你的审核）。

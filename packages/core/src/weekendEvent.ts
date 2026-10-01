@@ -170,6 +170,29 @@ export const WEEKEND_GAIN_OFFLINE_REPEL = 0.01
 export const WEEKEND_LOCKED_FAMILY: string | null = 'H'
 
 /**
+ * **调试模式下锁定的入侵族**（**船长 2026-10-01 令**：「**先让本地调试模式必定出新的R族入侵，我进行本地测试**」）。
+ *
+ * 口径：
+ * - **`debugQuick` 打开时**（本机调试档）⇒ 开局面一律判为 **R 族（光环）**，
+ *   与 `WEEKEND_DEBUG_WIN_GAIN`（两场夺回）· `WEEKEND_DEBUG_TIME_DIVISOR`（时间 ÷60）·
+ *   `WEEKEND_DEBUG_RESTART_MS`（1 小时后可重开）同属"调试便利"，只为让本机能反复实测新族；
+ * - **非调试档逐字不变** ⇒ 仍走 `WEEKEND_LOCKED_FAMILY`（现 `'H'`）⇒ **真实玩家线看不到 R 族**。
+ *
+ * ⚠ 想换调试族只改这一个常量（`null` = 调试档也走 `WEEKEND_LOCKED_FAMILY`）。
+ */
+export const WEEKEND_DEBUG_FAMILY: string | null = 'R'
+
+/**
+ * **本次开局面实际锁定的族**（单点）——调试档优先于玩家线锁定：
+ * `null` 表示"不锁"（恢复随机）。
+ */
+export function weekendLockedFamilyOf(state: Pick<GameState, 'debugQuick'>): string | null {
+  return state.debugQuick === true && WEEKEND_DEBUG_FAMILY !== null
+    ? WEEKEND_DEBUG_FAMILY
+    : WEEKEND_LOCKED_FAMILY
+}
+
+/**
  * **调试模式下的单场推进量**（2026-09-25 船长令：「**调试模式下，收复只需要玩家打 2 场**」）。
  *
  * 口径：`debugQuick` 时**主动胜利一律 +50%**（外围与核心同档）⇒ 任意一处占领区**两场夺回**；
@@ -620,7 +643,7 @@ export const WEEKEND_WINDOW_END_HOLD_MS = 60_000
  *
  * ⚠ **2026-10-01 第二族 = R 光环**（船长令「**是新势力：余晖，你可以查阅下远行星号中的无人机敌对势力
  * 光环，我们参考那个做**」）——同 H 族口径：**自家四张独立入侵卡**、自带定价、进 BOSS 表。
- * ⚠ 本期（到 2026-10-09 那期为止）**实际跑哪一族由 `WEEKEND_LOCKED_FAMILY` 决定**，
+ * ⚠ 本期（到 2026-10-09 那期为止）**实际跑哪一族由 `weekendLockedFamilyOf(state)` 决定**，
  * 本行只声明"允许进池的族"。
  */
 export const WEEKEND_FAMILIES: readonly string[] = ['A', 'C', 'G', 'H', 'R']
@@ -892,12 +915,12 @@ export function weekendRollOccupation(
   const rng = streamOf(state.rng.seed, seq)
   const coreId = candidates[Math.min(candidates.length - 1, Math.floor(rng() * candidates.length))]!
   /**
-   * 族：**照旧消费一次随机数**（保持子流形状不变），但若 `WEEKEND_LOCKED_FAMILY` 有值就判成它
+   * 族：**照旧消费一次随机数**（保持子流形状不变），但若 `weekendLockedFamilyOf(state)` 有值就判成它
    * —— 船长 2026-09-25「目前只做了H族，所以先锁定H族」；M2/M3 补齐三族后把该常量置回 `null` 即恢复随机。
    */
   const familyRoll = rng()
   const family =
-    WEEKEND_LOCKED_FAMILY ??
+    weekendLockedFamilyOf(state) ??
     WEEKEND_FAMILIES[Math.min(WEEKEND_FAMILIES.length - 1, Math.floor(familyRoll * WEEKEND_FAMILIES.length))]!
   return { coreId, peripheryIds: weekendPeripheryOf(ctx, coreId), family }
 }
@@ -1286,10 +1309,10 @@ export function ensureWeekendEvent(state: GameState, ctx: SimContext, nowWallMs:
     if (
       ev !== undefined &&
       ev.endedAtWallMs === undefined &&
-      WEEKEND_LOCKED_FAMILY !== null &&
-      ev.family !== WEEKEND_LOCKED_FAMILY
+      weekendLockedFamilyOf(state) !== null &&
+      ev.family !== weekendLockedFamilyOf(state)
     ) {
-      ev.family = WEEKEND_LOCKED_FAMILY
+      ev.family = weekendLockedFamilyOf(state)!
     }
     if (ev && ev.endedAtWallMs === undefined) return false
     if (ev && nowWallMs - ev.endedAtWallMs! < WEEKEND_DEBUG_RESTART_MS) return false
