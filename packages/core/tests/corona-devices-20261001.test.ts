@@ -200,44 +200,35 @@ describe('叠光装置：真实战斗里的装填自加速', () => {
 describe('闪烁过载装置：真实战斗里的护盾回满与结构代价', () => {
   it('⑦ 每次闪现 ⇒ 结构按上限 5% 递减（自毁的实现口径见用例内说明）', () => {
     /**
-     * ⚠ **编成在 2026-10-01 连改过两次**，两次都是"机制/战术变了 ⇒ 战斗节奏变了"的正当结果：
+     * ⚠ **编成在 2026-10-01 改过三次**，每次都是"机制/战术变了 ⇒ 战斗节奏变了"的正当结果：
      * - 第一次「闪烁改向（以期望距离为目标）」⇒ 交战更紧、战斗更短，原 12 舰·0.8 只够 5 次扣减；
      * - 第二次「**R 族以玩家射程盲区为期望距离**（主动贴身，船长正解）」⇒ R 族贴到 500~600m 打，
-     *   我方战败更快（实测 16~53 s 结束），扫了 5 档编成都再没能观察到 20 次扣减。
+     *   我方战败更快（实测 16~53 s 结束），扫了 5 档编成都再没能观察到 20 次扣减；
+     * - 第三次（本次）「**伤害公式改判为"整发只吃一个系数"（船长选乙）**」⇒ 我方 DPS 变了，
+     *   `foe-0` 的**穿透伤害**开始混进结构轨迹（12 舰·0.2 实测 20 条记录里 8 条不是 `cost` 的整数倍）。
      *
-     * ⇒ **本用例只钉"机制"这一层**：每次结构下降 = `hpMax.h × 5%` 的**整数倍**。
-     * 「**无保底、可扣死自毁**」这条规格的守卫改由**代码路径 + 引擎可达性**共同保证：
-     * ① `settleFoeBlinkExtras` 里**没有任何下限夹取**，扣到 `≤ 0` 就把三层一并清零；
-     * ② 结构上限 5% 的步长 ⇒ **第 20 次扣减必然归零**（数学上确定）；
-     * ③ 同一条路径在本文档 §15 的落地读数里**实测跑通过一次自毁**（改向之前那次 16 舰·0.5 的实测）。
+     * ⇒ 本次**把编成调到"纯净窗口"上**：24 舰·敌群强度 2.0 实测一条不混 —— 每艘敌舰的每一次结构
+     * 下降都恰好是 `cost` 的 **1 倍**（闪烁先把护盾回满、我方单发又打不穿护盾 ⇒ 结构只由闪烁驱动），
+     * 于是本用例能**同时**钉住两件事：
+     * ① 每次闪现恰好扣 `hpMax.h × 5%`（**整数倍**判据，含"同一拍多结算"的 1~8 倍档）；
+     * ② **无保底、可扣死自毁** —— 第 20 次扣到 0、三层一并清零（本编成实测真的跑到）。
+     * 另有代码路径上的保证：`settleFoeBlinkExtras` 里**没有任何下限夹取**。
      */
-    const { b, tick } = battleOf(CARD_T1, 12, { strengthMul: 0.2 })
+    const { b, tick } = battleOf(CARD_T1, 24, { strengthMul: 2 })
     const tag = 'foe-0'
     const maxH = b.units[tag]!.hpMax!.h
     const cost = maxH * 0.05
     console.log(`  [读数] 粼光级满结构 ${maxH.toFixed(4)} ⇒ 每次闪现应扣 ${cost.toFixed(4)}`)
     let prevH = b.units[tag]!.hp.h
-    const drops: number[] = []
+    /** 每次结构下降：记下时刻、落点、以及"相当于几次 5% 扣减" */
+    const drops: { t: number; h: number; times: number }[] = []
     let selfDestructAtMs = 0
     for (let t = 100; t <= 600_000 && b.ended === null; t += 100) {
       tick(t)
       const u = b.units[tag]
       if (!u) break
       if (u.hp.h < prevH - 1e-9) {
-        /**
-         * ⚠ **同一拍内可能结算多次**（`advanceBattleFor` 内部按 100ms 子步推进 ⇒ 一次 `tick(100)`
-         * 可能连过好几拍）⇒ 单次采样的减量是 `cost` 的**整数倍**（实测有 3 倍的情形）。
-         * 判据因此是「**减量 = cost 的整数倍**」——它一样能钉住"每次闪现恰好扣 5%"这条规格。
-         */
-        const delta = prevH - u.hp.h
-        const times = delta / cost
-        expect(
-          Math.abs(times - Math.round(times)),
-          `减量 ${delta.toFixed(4)} 应是满结构 5%（${cost.toFixed(4)}）的整数倍`,
-        ).toBeLessThan(1e-6)
-        expect(Math.round(times), '同一拍内的结算次数应在合理范围（1~8）').toBeGreaterThanOrEqual(1)
-        expect(Math.round(times), '同一拍内的结算次数应在合理范围（1~8）').toBeLessThanOrEqual(8)
-        drops.push(u.hp.h)
+        drops.push({ t, h: u.hp.h, times: (prevH - u.hp.h) / cost })
         if (u.hp.s + u.hp.a + u.hp.h <= 0) {
           selfDestructAtMs = t
           break
@@ -245,17 +236,26 @@ describe('闪烁过载装置：真实战斗里的护盾回满与结构代价', (
       }
       prevH = u.hp.h
     }
-    expect(drops.length, '应观察到多次结构扣减').toBeGreaterThanOrEqual(3)
-    // 若本场跑到了自毁（编成一变就可能），那三层的收场口径照旧要成立
-    if (selfDestructAtMs > 0) {
-      expect(b.units[tag]!.hp.h, '自毁后结构归零').toBe(0)
+    /**
+     * ⚠ **同一拍内可能结算多次**（`advanceBattleFor` 内部按 100ms 子步推进 ⇒ 一次 `tick(100)`
+     * 可能连过好几拍）⇒ 单次采样的减量应是 `cost` 的**整数倍**（实测本编成全是 1 倍）。
+     * 判据 =「**减量 = cost 的整数倍**」，它一样能钉住"每次闪现恰好扣 5%"这条规格。
+     */
+    for (const d of drops) {
       expect(
-        b.units[tag]!.hp.s + b.units[tag]!.hp.a,
-        '自毁 = 三层全空（按既有"阵亡"口径收场）',
-      ).toBe(0)
+        Math.abs(d.times - Math.round(d.times)),
+        `t=${d.t} 的减量应是满结构 5%（${cost.toFixed(4)}）的整数倍（实测 ${d.times.toFixed(3)} 倍）`,
+      ).toBeLessThan(1e-6)
+      expect(Math.round(d.times), '同一拍内的结算次数应在合理范围（1~8）').toBeGreaterThanOrEqual(1)
+      expect(Math.round(d.times), '同一拍内的结算次数应在合理范围（1~8）').toBeLessThanOrEqual(8)
     }
+    expect(drops.length, '应观察到多次结构扣减').toBeGreaterThanOrEqual(3)
+    /** **无保底 ⇒ 20 次扣到 0 自毁**：本编成实测第 20 次归零 ⇒ 这里下的是**强断言**（不设条件分支） */
+    expect(drops.length, '上限 5% 的步长 ⇒ 第 20 次扣减必然归零（本编成应真的跑到）').toBe(20)
+    expect(drops.at(-1)!.h, '第 20 次扣减后结构应精确归零').toBe(0)
+    expect(b.units[tag]!.hp.s + b.units[tag]!.hp.a, '自毁 = 三层全空（按既有"阵亡"口径收场）').toBe(0)
     console.log(
-      `  [读数] 结构轨迹：${maxH.toFixed(2)} → ${drops.map((x) => x.toFixed(2)).join(' → ')}` +
+      `  [读数] 结构轨迹：${maxH.toFixed(2)} → ${drops.map((x) => x.h.toFixed(2)).join(' → ')}` +
         `（共 ${drops.length} 次，每次 −${cost.toFixed(4)}）⇒ 第 ${drops.length} 次扣到 0 自毁（t=${selfDestructAtMs}ms）`,
     )
   })

@@ -19,7 +19,12 @@
 import { describe, expect, it } from 'vitest'
 import { FOE_SHIPS, buildSimContext } from '@whale/data'
 import { addShipToFleet, createInitialState, startFleetBattleFor } from '../src/index'
-import { advanceBattleFor, createFoeSpecs } from '../src/combat'
+import {
+  advanceBattleFor,
+  createFoeSpecs,
+  foeDesiredRange,
+  wormholeDerivedAnomaly,
+} from '../src/combat'
 import { FOE_MOUNT_IDS, resolveFoeMounts } from '../src/foeMounts'
 
 const ctx = buildSimContext()
@@ -133,13 +138,33 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
 
   it('⑦ 方向 = **以期望距离为目标**（船长 2026-10-01 二次改判）', () => {
     /**
-     * **船长 2026-10-01 改判**（原话照抄）：「**闪烁的方向问题反而导致敌人能被无伤，建议修改为，
-     * 闪烁方向以期望距离为目标。**」——旧口径是"与我方意图反着来"，会把敌舰一路推到**我方射程之外**
-     * （船长实测"敌人能被无伤"）。
+     * **船长 2026-10-01 两次改判**（原话照抄）：
+     * - 第一次：「**闪烁的方向问题反而导致敌人能被无伤，建议修改为，闪烁方向以期望距离为目标。**」
+     *   ——旧口径是"与我方意图反着来"，会把敌舰一路推到**我方射程之外**（船长实测"敌人能被无伤"）。
+     * - 🔴 第二次（实测报障）：「**有些问题，当我攻击敌人后，敌人会瞬间闪现到我的期望距离**」
+     *   ——第一次被我实现成了"闪到 `myDesireM`（**我方**的期望）"，于是敌舰**替玩家走位**。
      *
-     * 新判据：**闪现后，该舰与"目标交战距离"（`myDesireM`）的偏离必须变小**（一次闪到位）；
-     * 已经站在目标距离上 ⇒ 不闪（冷却不白盖）。
+     * 定案判据 = **闪到"它自己的"期望交战距离**（与 `markFoeBlink` 里同一把尺 `foeDesiredRange`）：
+     * ① 闪现后离**它自己的**期望距离更近（一次闪到位）；② 落点就压在它自己的期望距离上。
+     * ⚠ 判据**不能**再拿 `myDesireM` 当目标：R 族开场会把 `foeDesireRangeM` 钉成族格算出的期望距离
+     * （本卡实测 5,100m），而 `myDesireM` 是 5,840m —— 拿后者当目标正是船长报的那个 bug。
      */
+    const derived = wormholeDerivedAnomaly(ctx, ctx.anomalies.get(CARD)!, {
+      depth: 4,
+      kind: 'node',
+      waves: 1,
+    })!
+    const specs = createFoeSpecs(derived, bal, {})
+    /**
+     * 由运行态 tag 回查"建档案里的那一条"（`foeDesiredRange` 读的是建档案 spec 上的
+     * `foeTactic` / `foeRangeBand` / `foeDesireRangeM`，运行态单位不带这三样）。
+     * 本卡建档案 tag = `foe-0` + `w0-foe-1..4` ⇒ **首波**（`w0-` 前缀）取索引 1~4 那四条。
+     */
+    const specOf = (tag: string) => {
+      const n = Number(tag.slice(tag.lastIndexOf('-') + 1))
+      const band = tag.startsWith('w0-') ? specs.slice(1, 5) : specs
+      return Number.isFinite(n) ? band[n] : undefined
+    }
     const { b, tick } = coronaBattle()
     let checked = 0
     let prevBlinks = new Set(Object.keys(b.foeBlinks ?? {}))
@@ -149,18 +174,22 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
       const nowTags = Object.keys(b.foeBlinks ?? {})
       const fresh = nowTags.filter((tag) => !prevBlinks.has(tag))
       if (fresh.length > 0) {
-        const desire = b.myDesireM
+        const tag = fresh[0]!
+        const own = specOf(tag)
+        expect(own, `${tag} 应在建档案里找得到（否则判据无意义）`).toBeTruthy()
+        const desire = foeDesiredRange(own!, [own!], bal, b.meFoeRangeDebuff ?? 0)
         const gapBefore = Math.abs(before - desire)
         const gapAfter = Math.abs(b.distanceM - desire)
         // 容差 200m：闪现后同一拍里引擎的走位逻辑还会再挪一点
         expect(
           gapAfter,
-          `闪现后应更贴近目标距离（${before} → ${b.distanceM}，目标 ${desire}）`,
+          `闪现后应更贴近**它自己的**期望距离（${before} → ${b.distanceM}，目标 ${desire}）`,
         ).toBeLessThan(gapBefore + 200)
-        expect(gapAfter, `闪现后应真的落在目标距离附近（差距 ${gapAfter}）`).toBeLessThan(600)
+        expect(gapAfter, `闪现后应真的落在它自己的期望距离上（差距 ${gapAfter}）`).toBeLessThan(200)
         checked += 1
         console.log(
-          `  [读数] 闪现 #${checked}：距离 ${before} → ${b.distanceM}（目标 ${desire}）⇒ 偏离 ${gapBefore} → ${gapAfter}`,
+          `  [读数] 闪现 #${checked}（${tag}）：距离 ${before} → ${b.distanceM}（它自己的期望 ${desire}）` +
+            `⇒ 偏离 ${gapBefore} → ${gapAfter}；我方期望 ${b.myDesireM}（**不是**闪现目标）`,
         )
         prevBlinks = new Set(nowTags)
       }

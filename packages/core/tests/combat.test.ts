@@ -142,21 +142,29 @@ describe('命中与伤害公式', () => {
     expect(atkA).toBeCloseTo(atkB, 10)
   })
 
-  it('applyDamage：逐层消费（盾→甲→结构），破层溢出；未破层不外溢', () => {
+  /**
+   * **整发只吃一次克制**（**船长 2026-10-01 裁定「乙」**）—— 本条已按新口径重写：
+   * 系数由「**这一发伤害的落点层**」决定（用未乘系数的原始伤害判定落点），
+   * 之后整发都按那一个系数结算、**不再逐层换系数**；各层仍各吃**该层自己的抗性**。
+   * 旧口径（逐层各乘、且把乘过系数的值继续往下传）会让"无盾目标"与"破盾瞬间"的边际倍率漂移
+   * （动能 1.5 → 1.13），那是船长转述的玩家反馈来源。
+   */
+  it('applyDamage：整发只吃一次克制（落点层定系数）· 逐层扣血 · 各层各吃抗性', () => {
     const hp = { s: 10, a: 10, h: 10 }
-    // 未破盾：全部被盾吸收
-    const r1 = applyDamage(hp, {}, 5, 'kinetic') // 盾 ×1.5 → 7.5 伤害吸收 7.5（<10）
+    // 未破盾：落点 = 护盾 ⇒ 整发按 ×1.5 算 ⇒ 5×1.5 = 7.5（<10 盾）
+    const r1 = applyDamage(hp, {}, 5, 'kinetic')
     expect(r1.hp.s).toBeCloseTo(2.5, 5)
     expect(r1.hp.a).toBe(10)
     expect(r1.dealt).toBeCloseTo(7.5, 5)
-    // 击穿盾 → 溢出甲（动能对甲 ×0.75，船长 2026-09-13 由 0.5 抬到 0.75：溢出 5 ×0.75 = 3.75 扣在甲上）
+    // 打穿盾：落点 = **结构**（10 伤害在原始尺度上 10+10 都打穿了）⇒ 整发按结构 ×1 ⇒ 扣 15
     const r2 = applyDamage({ s: 10, a: 10, h: 10 }, {}, 10, 'kinetic')
     expect(r2.hp.s).toBe(0)
-    expect(r2.hp.a).toBeCloseTo(6.25, 5)
+    expect(r2.hp.a).toBe(5)
     expect(r2.hp.h).toBe(10)
-    // 抗性：盾动能抗 0.5 → 伤害减半
+    expect(r2.dealt).toBeCloseTo(15, 5)
+    // 抗性：盾动能抗 0.5 ⇒ 落点仍在护盾、整发 ×1.5×0.5 = 7.5（<10 盾）
     const r3 = applyDamage({ s: 10, a: 10, h: 10 }, { shield: { kinetic: 0.5 } }, 10, 'kinetic')
-    expect(r3.hp.s).toBeCloseTo(2.5, 5) // 10×1.5×0.5 = 7.5
+    expect(r3.hp.s).toBeCloseTo(2.5, 5)
   })
 })
 

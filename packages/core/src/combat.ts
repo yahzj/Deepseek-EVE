@@ -606,16 +606,58 @@ export function applyDamage(
   type: DamageType,
 ): { hp: Hp3; dealt: number } {
   const next = { s: hp.s, a: hp.a, h: hp.h }
-  let rest = Math.max(0, dmg)
+  const rest0 = Math.max(0, dmg)
   const layerKey: Array<keyof Hp3> = ['s', 'a', 'h']
   const layerName: Array<'shield' | 'armor' | 'hull'> = ['shield', 'armor', 'hull']
   const before = hp.s + hp.a + hp.h
+
+  /**
+   * 🔴 **整发只吃一次克制（船长 2026-10-01 裁定「乙」）** —— 与旧口径的差别全在这一段。
+   *
+   * **旧口径**（本函数改成这样之前）：逐层各自乘系数，而且**把"乘过系数的值"继续往下传**
+   * ⇒ 净倍率在层间**互相放大/抵消**：
+   *   · 打**没有护盾层**的目标时，护盾那层先按 ×1.5 放大、再进装甲按 ×0.75 收 ⇒ 动能实得 **×1.13**
+   *     （既不是该层的 0.75，也不是第一层的 1.5）；
+   *   · 护盾**刚破那一刻**，每一发伤害的"边际倍率"会换到下一层的系数（动能 1.5 → 1.13）
+   *     ⇒ 同一门炮同一种弹，**打护盾阶段与打装甲阶段的有效倍率不同**（船长转述玩家反馈的观感来源）。
+   *
+   * **新口径**：整发**只吃一个**克制系数，它由「**这一发伤害的落点层**」决定 ——
+   * 1. 先用**未乘任何系数**的原始伤害，按各层血量逐层推演"能打到哪一层"（这一步只用血量判"落点"）；
+   * 2. 取**落点那层**的 `typeLayerMult`，整发都按它结算（不再逐层换系数）；
+   * 3. 逐层结算时各层仍然各吃**该层自己的抗性**（抗性是目标每层的属性，与克制系数不是一回事）；
+   * 4. 每层的"够扣多少" = `该层血量 ÷ 该层系数 ÷ (1 − 抗性)`（把系数与抗性都折算回**原始伤害**的尺度）。
+   *
+   * 例（叠光级 437/160/131 · 无抗性 · 一发 600）：
+   *   · 旧口径：盾 600 全吃（×1.5），**灭**；
+   *   · 新口径：落点判到**结构层**（437 + 160 都被打穿）⇒ 整发按结构 ×1.0 ⇒ 扣 600（旧口径是 729）。
+   *
+   * ⚠ 连带的**设计后果**（船长已确认按「乙」执行）：动能在**破盾之后**不再吃 ×1.5、也不吃装甲的 ×0.75
+   *   ⇒ 它从"拆盾神器"回落成"通用"；这正是"整发只吃一次"的必然结果。
+   */
+  const mulAt = (i: number): number => typeLayerMult(type, layerName[i]!)
+  /** 判定落点：用**未乘系数**的原始伤害推进（只看能不能打穿该层） */
+  let probe = rest0
+  let land = 2
+  for (let i = 0; i < 3; i++) {
+    if (probe <= 0) {
+      land = i
+      break
+    }
+    probe -= next[layerKey[i]!]
+    if (probe <= 0) {
+      land = i
+      break
+    }
+  }
+  const coef = mulAt(land)
+  let rest = rest0
   for (let i = 0; i < 3 && rest > 0; i++) {
     const res = resists[layerName[i]!]?.[type] ?? 0
-    const layerDmg = rest * typeLayerMult(type, layerName[i]!) * (1 - clamp(RESIST_FLOOR, 0.9, res))
-    const absorbed = Math.min(next[layerKey[i]!], layerDmg)
-    next[layerKey[i]!] -= absorbed
-    rest = Math.max(0, layerDmg - absorbed) // 层破溢出进下一层
+    /** 本层"在原始伤害尺度上"能吃掉多少：层血量 ÷ 系数 ÷(1−抗性)（系数与抗性都折算回原始尺度） */
+    const layerDamage = next[layerKey[i]!] / Math.max(1e-9, coef * (1 - clamp(RESIST_FLOOR, 0.9, res)))
+    const absorbedRaw = Math.min(rest, layerDamage)
+    next[layerKey[i]!] -= Math.min(next[layerKey[i]!], absorbedRaw * coef * (1 - clamp(RESIST_FLOOR, 0.9, res)))
+    rest -= absorbedRaw
   }
   const after = next.s + next.a + next.h
   return { hp: next, dealt: Math.max(0, before - after) }
@@ -8147,6 +8189,8 @@ function markFoeBlink(
   b: import('./state').BattleState,
   bal: BattleBalance,
   maxDistanceM: number,
+  /** 我方电子舰对敌舰射程的削减率（缺省 0 = 旧口径）——只影响"它想站多远" */
+  foeRangeDebuffR = 0,
 ): boolean {
   const bl = rt.foeBlink
   if (bl === undefined || bl.distanceM <= 0 || bl.cooldownMs <= 0) return false
@@ -8155,15 +8199,23 @@ function markFoeBlink(
   const nowMs = b.lastTickGameMs
   if (nowMs < (b.foeBlinks?.[tag] ?? 0)) return false // 冷却中 ⇒ 再挨打也不闪
   /**
-   * **方向 = 以期望距离为目标**（**船长 2026-10-01 改判**，原话照抄）：
-   * 「**闪烁的方向问题反而导致敌人能被无伤，建议修改为，闪烁方向以期望距离为目标。**」
+   * **方向 = 闪到「敌人自己的期望交战距离」**（**船长 2026-10-01 两次改判**）：
    *
-   * 旧口径（"与我方意图反着来"）会把敌舰往**远离我方意图**的一侧推 ⇒ 敌舰越闪越远、
-   * 一路闪到我方射程之外（船长实测："敌人能被无伤"）。
-   * 新口径 = **闪到 `myDesireM`（本场的目标交战距离）上**——不管当时是远是近，一次闪到位；
-   * 已经站在目标距离上 ⇒ **闪不动**（不白盖冷却）。突变仍受双向钳制。
+   * > 第一次：「**闪烁的方向问题反而导致敌人能被无伤，建议修改为，闪烁方向以期望距离为目标。**」
+   * > 🔴 第二次（实测报障）：「**有些问题，当我攻击敌人后，敌人会瞬间闪现到我的期望距离**」
+   *
+   * 第一次我把它实现成了"闪到 `b.myDesireM`（**我方**的期望距离）"——那是**玩家的意图距离**，
+   * 于是出现船长实测的那个怪相：**我方一开火，敌人就瞬移到"我方想要的距离"上**（等于敌人替玩家走位）。
+   *
+   * 正解：闪到**它自己的**期望交战距离 `foeDesiredRange(...)` —— 那是它按自己的射程带
+   * 与战术（`foeTactic`）× `tacticDesireFactor` 算出来的位置，也**正好吃族格覆写**
+   * （R 族的 `rFamilyDesireOf` 会把 `foeDesireRangeM` 钉成"风筝位 / 钻盲区位"）。
+   * ⇒ 既解决了"越闪越远被无伤"，也不会再替玩家走位。
+   *
+   * ⚠ 射程压制（我方电子舰）照常计入：与 `advanceBattleFor` 的走位口径同一把尺，
+   * 不传时按 0（旧读数不变）。已经在自己的期望距离上 ⇒ **闪不动**（不白盖冷却）。
    */
-  const want = b.myDesireM
+  const want = foeDesiredRange(rt, [rt], bal, foeRangeDebuffR)
   const capped = Math.max(bal.minDistanceM, Math.min(maxDistanceM, want))
   if (capped === b.distanceM) return false // 已被钳到边界 ⇒ 闪不动（不白盖冷却）
   b.distanceM = capped
@@ -9161,6 +9213,9 @@ function stepBattle(
               b,
               bal,
               battleMaxDistanceM(b, me, foes, bal, myUnits),
+              // 它自己的期望距离要跟着"我方电子舰的射程压制"走 —— 直接读每拍写进运行态的那个值
+              // （pplyFoeRangeDebuff 每拍**先**写 attle.meFoeRangeDebuff，与走位口径同源）
+              b.meFoeRangeDebuff ?? 0,
             )
           ) {
             pushBattleNotice(b, '跃迁规避：目标瞬时换位')
@@ -9234,7 +9289,7 @@ function stepBattle(
             // ⚠ 2026-10-01 补：初版只写在了主目标那处 ⇒ 用全体攻击武器（孢子导弹巢那类）打中带闪现的
             // 敌舰时**不会闪**，与两条受击增程的行为不一致。
             if (
-              markFoeBlink(other, other.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits))
+              markFoeBlink(other, other.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits), b.meFoeRangeDebuff ?? 0)
             ) {
               pushBattleNotice(b, '跃迁规避：目标瞬时换位')
               pushBattleFx(b, {

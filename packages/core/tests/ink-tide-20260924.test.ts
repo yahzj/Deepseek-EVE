@@ -237,7 +237,13 @@ describe('H 族 · 墨潮干扰舰（射程压制 · 船长三例定死口径）
      * 这里用**真·强度倍率**（`FoeOverride.strengthMul`，同日新增）把这一场缩到 0.2 倍 ⇒ 打得完第 0 波、
      * 看得到干扰舰入场。**射程与倍率无关**（倍率只缩 `hpMul`/`dmgMul`）⇒ 本用例的射程断言逐字有效。
      */
-    const b = startBattleFor(ws, ctx, ew, 'ink-main', 0, undefined, { strengthMul: 0.2 })!
+    /**
+     * ⚠ **2026-10-01 由 0.2 改到 0.15**：伤害改成"整发只吃一次克制"（船长「乙」）后我方 DPS 略降
+     * ⇒ 第 0 波敌人活得更久、我方在这段里被打死（`waveIdx` 停在第 0 波 ⇒ 本用例白测）。
+     * 实测扫描：0.2 只到第 0 波 · **0.15 能推进到第 1 波（干扰舰入场）** · 0.1/0.05/0.02 同样能到第 1 波。
+     * ⚠ 倍率只缩 `hpMul`/`dmgMul`，**与射程无关** ⇒ 本用例的射程断言逐字有效。
+     */
+    const b = startBattleFor(ws, ctx, ew, 'ink-main', 0, undefined, { strengthMul: 0.15 })!
     /**
      * 视图入参 = **引擎用的同一份敌卡**（真实界面也这么传：见 `BattleScreen` 的 `whView.anomaly`）
      * ⚠ 不能直接塞 `card('ink-main')` 那张原卡——引擎逐拍走的是 `battleAnomalyOf(...)`（窝点/派系派生后的卡）。
