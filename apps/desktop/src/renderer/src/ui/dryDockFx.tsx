@@ -101,8 +101,17 @@ export function DryDockFx({
    * ⚠ **必须按舰形画布宽 `art.w` 算**：早期按显示宽 `SHIP_W` 算 ⇒ 右端永远差 10 用户单位，
    * 进度到 100% 也盖不满 ⇒ 船长看到的"快建完时只有右下角 1/4 亮着"。
    */
-  const clipX = -shipW / 2 - 1
-  const clipW = Math.max(1, shipW * pct + 2)
+  /**
+   * ⚠ **显影窗的两个量各属哪个坐标系，别混**（**2026-10-01 船长报障**：「舰船缩放后，实时进度的
+   * 起点位置就出现错误」）：
+   * - `x` 起于**舰形画布**左端 `-art.w / 2`（嵌套 svg 的 viewBox 是 `-w/2 -h/2 w h`，
+   *   与 T 级缩放**无关**——缩放只改外层 `<svg>` 的几何，不改局部坐标系）；
+   * - `width` 按**进度比例**在**同一画布**上铺开。
+   * 我先前把 `x` 也写成了 `-shipW / 2`（显示宽）⇒ 大船时起点落到画布之外、小船时又偏左，
+   * 于是"缩放到几档、起点就错几档"。
+   */
+  const clipX = -shipVp.w / 2 - 1
+  const clipW = Math.max(1, shipVp.w * pct + 2)
 
   /**
    * **显影用 mask ＋ 硬边渐变**（**2026-10-01 船长报障**：「舰船的上半部分线条始终不亮，只有下半部分的亮」）。
@@ -312,8 +321,8 @@ export function DryDockFx({
       ))}
 
       {/* 焊点（两处，错相位闪）——跟着显影前沿走 */}
-      <circle className="hud-dock-spark" cx={VB_W / 2 + clipX + clipW} cy={VB_H / 2 - 15} r="2" />
-      <circle className="hud-dock-spark is-late" cx={VB_W / 2 + clipX + clipW * 0.7} cy={VB_H / 2 + 19} r="1.7" />
+      <circle className="hud-dock-spark" cx={VB_W / 2 + (clipX + clipW) * (shipW / shipVp.w)} cy={VB_H / 2 - 15} r="2" />
+      <circle className="hud-dock-spark is-late" cx={VB_W / 2 + (clipX + clipW * 0.7) * (shipW / shipVp.w)} cy={VB_H / 2 + 19} r="1.7" />
       {/* 坞体航行灯（缓慢呼吸） */}
       <path
         className="hud-dock-beacon"
