@@ -302,8 +302,8 @@ export function DryDockFx({
       ))}
 
       {/* 焊点（两处，错相位闪）——跟着显影前沿走 */}
-      <circle className="hud-dock-spark" cx={VB_W / 2 - shipVp.w / 2 + clipW} cy={VB_H / 2 - 15} r="2" />
-      <circle className="hud-dock-spark is-late" cx={VB_W / 2 - shipVp.w / 2 + clipW * 0.7} cy={VB_H / 2 + 19} r="1.7" />
+      <circle className="hud-dock-spark" cx={VB_W / 2 + clipX + clipW} cy={VB_H / 2 - 15} r="2" />
+      <circle className="hud-dock-spark is-late" cx={VB_W / 2 + clipX + clipW * 0.7} cy={VB_H / 2 + 19} r="1.7" />
       {/* 坞体航行灯（缓慢呼吸） */}
       <path
         className="hud-dock-beacon"
