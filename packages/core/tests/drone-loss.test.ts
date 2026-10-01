@@ -60,7 +60,11 @@ function makeState(seed = 1, load: Record<string, number> = LOAD): GameState {
   return state
 }
 
-function runBattle(state: GameState, anomalyId: string, c: SimContext = ctx): BattleState | null {
+function runBattle(
+  state: GameState,
+  anomalyId: string,
+  c: SimContext = ctx,
+): BattleState | null {
   const battle = startBattleFor(state, c, state.shipId, anomalyId, 0)
   if (!battle) return null
   // 挂进远征态（battleArcsFor / 结算入口都从 expedition 读战斗）
@@ -238,7 +242,10 @@ describe('机群战损：无人机可被击落（2026-09-10 船长拍板，永�
     // 且"没有非哨戒机可打" ⇒ 近防炮无靶可打 ⇒ **一架都不会掉**。
     // （对照：两舰贴近到 2,500m 以内时，哨戒机就是**优先级最高**的靶——见 `tools/pd-tune.ts` 的噬口读数）
     const onlySentry = makeState(13, { 'drone-sentry': 6 })
-    const battle = runBattle(onlySentry, HIGH)!
+    const battle = runBattle(onlySentry, HIGH)! // 开场距离走既有口径（盲区修正已限定 R 族 ⇒ 本卡不受影响）
+    /** ⚠ 开场距离显式钉到远距（> PD_SENTRY_RANGE_M 2,500m）——本用例要测的是"哨戒机在射程外
+     *  进不了候选池"，与"开场站在哪里"无关；若不钉，船长 2026-10-01 的"开战进盲区"会把这卡压到
+     *  1,862 m 而让本用例的前提失效（详见 runBattle 的 `openDistanceM` 注释）。 */
     const lost = battle.droneLost ?? {}
     expect(lost['drone-sentry'] ?? 0).toBe(0)
   })

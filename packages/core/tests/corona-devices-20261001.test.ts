@@ -199,7 +199,13 @@ describe('叠光装置：真实战斗里的装填自加速', () => {
 
 describe('闪烁过载装置：真实战斗里的护盾回满与结构代价', () => {
   it('⑦ 每次闪现 ⇒ 结构按上限 5% 递减，扣到 0 当场自毁（无保底）', () => {
-    const { b, tick } = battleOf(CARD_T1, 12, { strengthMul: 0.8 })
+    /**
+     * ⚠ **编成随"闪烁改向"调整过**（2026-10-01）：闪烁从"反着我方意图"改成"**以期望距离为目标**"
+     * 之后，双方交战更紧、战斗普遍更短 ⇒ 原编成（12 舰 · 强度 0.8）只够观察到 **5 次**结构扣减
+     * （自毁要 20 次，见 `hpMax.h × 5%`）。实测扫了几档编成，取**能观察到自毁且不过慢**的这一档：
+     * **16 舰 · 强度 0.5** ⇒ 第 1 艘粼光级在第 **18** 次扣减时自毁（t ≈ 132.6 s，实测）。
+     */
+    const { b, tick } = battleOf(CARD_T1, 16, { strengthMul: 0.5 })
     const tag = 'foe-0'
     const maxH = b.units[tag]!.hpMax!.h
     const cost = maxH * 0.05
@@ -207,12 +213,24 @@ describe('闪烁过载装置：真实战斗里的护盾回满与结构代价', (
     let prevH = b.units[tag]!.hp.h
     const drops: number[] = []
     let selfDestructAtMs = 0
-    for (let t = 500; t <= 600_000 && b.ended === null; t += 500) {
+    for (let t = 100; t <= 600_000 && b.ended === null; t += 100) {
       tick(t)
       const u = b.units[tag]
       if (!u) break
       if (u.hp.h < prevH - 1e-9) {
-        expect(prevH - u.hp.h, '每次闪现的扣减 = 满结构的 5%').toBeCloseTo(cost, 6)
+        /**
+         * ⚠ **同一拍内可能结算多次**（`advanceBattleFor` 内部按 100ms 子步推进 ⇒ 一次 `tick(500)`
+         * 可能连过好几拍）⇒ 单次采样的减量是 `cost` 的**整数倍**（实测有 3 倍的情形）。
+         * 判据因此是「**减量 = cost 的整数倍**」——它一样能钉住"每次闪现恰好扣 5%"这条规格。
+         */
+        const delta = prevH - u.hp.h
+        const times = delta / cost
+        expect(
+          Math.abs(times - Math.round(times)),
+          `减量 ${delta.toFixed(4)} 应是满结构 5%（${cost.toFixed(4)}）的整数倍`,
+        ).toBeLessThan(1e-6)
+        expect(Math.round(times), '同一拍内的结算次数应在合理范围（1~8）').toBeGreaterThanOrEqual(1)
+        expect(Math.round(times), '同一拍内的结算次数应在合理范围（1~8）').toBeLessThanOrEqual(8)
         drops.push(u.hp.h)
         if (u.hp.s + u.hp.a + u.hp.h <= 0) {
           selfDestructAtMs = t
