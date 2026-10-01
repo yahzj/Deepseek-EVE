@@ -3733,71 +3733,58 @@ export function battleOpenM(me: UnitSpec, foes: UnitSpec[], bal: BattleBalance):
 }
 
 /**
- * **开战时的"射程盲区"修正**（**船长 2026-10-01 令**，原话照抄）：
+ * 🔴 **R 族族格：以「玩家的射程盲区」为期望距离**（**船长 2026-10-01 三次澄清 · 正解**，原话照抄）：
  *
- * > 「**同时进入战场时进行一次判断，自身的射程内有无敌人的射程盲区，如果有，修改本次战斗的
- * > 目标距离到该盲区边界更近一些/更远一些的位置。**」
+ * > 「**这个机制是给敌人用的，是R族以玩家的盲区为期望目标。并不是玩家使用的。等于R族敌人会寻找
+ * > 玩家的射程漏洞，玩家如果射程短，则R族采取风筝玩家，如果玩家射程长，有近盲区，则R族会主动贴身。**」
  *
  * 口径：
- * - **敌舰的射程盲区** = `[0, 敌舰最小射程)`（`minRangeM`）——低于它敌舰**开不了火**；
- * - **判据**：至少有一艘敌舰的盲区边界 `minRangeM`（a）**明显大于 1**（`1` 是"没有盲区"的占位写法）
- *   且大于 `bal.minDistanceM + 100`（否则够不着、等于没盲区），（b）**落在我方最远射程之内**
- *   （够得着才算"我方能利用的盲区"）；（c）该边界 ≤ 距离下限时无意义（`bal.minDistanceM` 已是最贴脸处）；
- * - **修正量**：取**所有命中判据的敌舰里最远的那个盲区边界**（口径统一 ⇒ 在这一场内对全队都成立），
- *   把开战距离压到 **该边界往里 200m**，并钳在 `[bal.minDistanceM, 原开战距离]` 之内；
- * - **没有盲区 / 够不着** ⇒ 返回 `0`（调用方照旧用原开战距离）⇒ **既有各族读数逐字不变**。
+ * - **"玩家的射程盲区"= 我方武器的近程盲区**：距离低于某门武器的 `minRangeM` ⇒ **那门武器开不了火**。
+ *   一艘船挂多门时，**最远的那条近界**才是全船的有效近界（主力武器够不着就是够不着）
+ *   ⇒ `meBlindM = max(我方各武器 minRangeM)`、`meTop = max(我方各武器 maxRangeM)`；
+ * - **R 族去找这个漏洞**（"射程漏洞"）：
+ *   - `meBlindM <= 0`（我方没有近程盲区）⇒ **没有漏洞可钻** ⇒ R 族取 `foeTop × 0.8`
+ *     （≈ 沿用"风筝"口径：站远、用射程优势磨），再钳在我方射程内；
+ *   - `0 < meBlindM < meTop`（我方**射程长但有近盲区**，如导弹架 900~1400 或长炮 1300）
+ *     ⇒ R 族**主动贴身**：站到**我方近界的下沿**（`max(距离下限, meBlindM − 100)`）——
+ *     那里我方主力打不着、R 族却能打（它的 `rangeMinM` 都是 1，没有近界）；
+ *   - `meBlindM >= meTop`（全船都在盲区内：只有近战武器）⇒ **风筝**：站到 `meTop + 500`
+ *     （我方完全够不着的地方），再钳在 R 族自己的射程内；
+ * - **只对 R 族生效**；调用方拿 `null` 就逐字走原口径（期望距离与开战距离都不动）。
  *
- * 🔴 **本修正只用于 R 族（光环）敌群**（**船长 2026-10-01 二次令**，原话照抄）：
- * 「**进场判断敌方射程盲区，把开场距离改到盲区边界附近。这个只应用在R族上。**」
- * ⇒ 判据第一道就是 `f.family !== 'R'` **直接跳过**；其余各族的开场距离**逐字回到改动前**。
- *
- * ⚠ 现实后果（如实记）：**R 族五档的 `rangeMinM` 全是 `1`**（激光风筝线不讲近程盲区）
- * ⇒ 本族目前**没有可用的盲区** ⇒ 这条修正在 R 族上暂时也是 `0`。
- * 它的作用 = **把这条能力预先限定在 R 族**，将来给 R 族某档写近程盲区时立即生效，
- * 而其它族（守墓长舰 1,062 / 静滞卫舰 2,062 / 导弹残段 3,000 / 残响残舰 502 / 墨潮入侵母舰 1,000）
- * **一律不受影响**。
+ * ⚠ 用途三层（都是"R 族想站在哪"）：① 建档时写进每个 R 族单位的 `foeDesireRangeM`
+ * （⇒ `foeDesiredRange` 会读它、逐拍的走位按它拉扯）；② 作为**开战距离**（R 族一入场就在它想站的位置）；
+ * ③ 我方 `myDesireM` **不动**（玩家仍是自己设的期望距离，被不被风筝取决于双方的走位拔河）。
  */
-export const FOE_BLIND_SPOT_MIN_SHARE = 0.15
-
-export function battleOpenBlindSpotM(
+export function rFamilyDesireOf(
   me: UnitSpec,
   foes: readonly UnitSpec[],
   bal: BattleBalance,
-  openM: number,
-): number {
+): number | null {
   let meTop = 0
-  for (const w of me.weapons) meTop = Math.max(meTop, w.maxRangeM)
-  if (meTop <= 0) return 0
-  const floor = bal.minDistanceM
-  let best = 0
-  for (const f of foes) {
-    if (f.family !== 'R') continue // 🔴 **只对 R 族生效**（船长 2026-10-01 二次令）
-    for (const w of f.weapons) {
-      if (w.src === 'drone') continue // 机群不是"敌舰的炮台盲区"（它有自己的射程门）
-      const min = w.minRangeM ?? 0
-      if (min <= 1) continue // 1 = 没有盲区（占位写法）
-      if (min > meTop) continue // 盲区边界在我方射程之外 ⇒ 够不着
-      if (min <= floor + 100) continue // 贴着距离下限 ⇒ 已是最贴脸处、无利用余地
-      /**
-       * ⚠ **"真近程盲区"才算**（**2026-10-01 实测后加的判据**）：
-       * 射程带近界 / 射程上限 ≥ `FOE_BLIND_SPOT_MIN_SHARE`。
-       *
-       * 为什么必须有这一条：**旧路径卡的近界是"射程带下界"而不是"盲区"**——
-       * 合成卡（威胁 8/20/30）的近界只有 350 / 377 / 404 m、上限 4,600~5,300 m（占比 ≈ 8%），
-       * 那是"炮能打到的最近处"，不是设计出来的盲区；若照单全收，**几乎所有旧卡的开场距离都会被
-       * 压到 200~400 m（贴脸）**，把既有各族的开场读数整片改掉（实测：5 个既有用例当场变红）。
-       * 真近程盲区的占比都很高：静滞卫舰 2,062/11,000 ≈ 19% · 守墓长舰 1,062/12,000 ≈ 9% …
-       * ⇒ 取 **15%** 这条线：静滞卫舰（19%）· 导弹残段（3,000/12,100 ≈ 25%）· 残响残舰（502/3,300 ≈ 15%）
-       * 等"设计出来的盲区"过线，旧路径那批 8%~12% 的射程带下界不过线（**零行为变化**）。
-       */
-      const max = w.maxRangeM ?? 0
-      if (max <= 0 || min / max < FOE_BLIND_SPOT_MIN_SHARE) continue
-      best = Math.max(best, min)
-    }
+  let meBlindM = 0
+  for (const w of me.weapons) {
+    meTop = Math.max(meTop, w.maxRangeM)
+    meBlindM = Math.max(meBlindM, w.minRangeM ?? 0)
   }
-  if (best <= 0) return 0
-  const want = Math.max(floor, best - 200)
-  return Math.min(openM, Math.round(want))
+  if (meTop <= 0) return null
+  // 只有 R 族在编成里时才判定（混编的旧卡不参与 ⇒ 零行为变化）
+  let foeTop = 0
+  let hasR = false
+  for (const f of foes) {
+    if (f.family !== 'R') continue
+    hasR = true
+    for (const w of f.weapons) foeTop = Math.max(foeTop, w.maxRangeM)
+  }
+  if (!hasR || foeTop <= 0) return null
+  const floor = bal.minDistanceM
+  const clampTo = (v: number): number => Math.max(floor, Math.min(Math.round(v), foeTop))
+  // ① 我方没有近程盲区 ⇒ 无漏洞可钻 ⇒ 风筝（站远）
+  if (meBlindM <= 0) return clampTo(foeTop * 0.8)
+  // ② 我方射程长、但有近盲区 ⇒ R 族**主动贴身**到我方近界的下沿
+  if (meBlindM < meTop) return clampTo(Math.max(floor, meBlindM - 100))
+  // ③ 全船都在盲区内（纯近战装配）⇒ 风筝到我方射程之外
+  return clampTo(meTop + 500)
 }
 
 /**
@@ -5551,6 +5538,16 @@ export function startBattleFor(
         ? Math.round(desireM)
         : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
   const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
+  /**
+   * 🔴 **R 族族格：以"玩家的射程盲区"为期望距离**（**船长 2026-10-01 三次澄清 · 正解**，原话照抄）：
+   *
+   * > 「**这个机制是给敌人用的，是R族以玩家的盲区为期望目标。并不是玩家使用的。等于R族敌人会寻找
+   * > 玩家的射程漏洞，玩家如果射程短，则R族采取风筝玩家，如果玩家射程长，有近盲区，则R族会主动贴身。**」
+   *
+   * 口径与落点见 `rFamilyDesireOf` 的头注；**非 R 族一律不动**（返回 `null`）。返回 `null` ⇒
+   * 期望距离与开战距离都逐字走原口径。
+   */
+  const rDesire = rFamilyDesireOf(me, foes, bal)
   const battle = createBattleState(me, foes, atGameMs, desire)
   /**
    * **把本场的敌群覆写照原样存下**（2026-09-25 修）：`advanceBattleFor` 每拍从 `ctx` 重建敌卡，
@@ -5571,15 +5568,15 @@ export function startBattleFor(
   // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：
   // 开局从射程外缓冲处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
   // 属于其战术身份（打远程怪就该先挨一段打/换远程武器应对），不视为需要消除的空窗。
-  /**
-   * **开战距离：先问一次"敌方射程盲区"**（**船长 2026-10-01 令**）——
-   * 有可利用的盲区就压到盲区边界内侧，没有就用原开战距离（`battleOpenBlindSpotM` 的头注写了判据）。
-   * ⚠ **只改"开场站在哪"**：`myDesireM`（目标交战距离）与每拍的走位拔河都不动 ⇒
-   * 开场进了盲区之后，双方仍照各自的期望距离重新拉开/贴上去。
-   */
-  const blindOpenM = battleOpenBlindSpotM(me, foes, bal, openM)
-  if (blindOpenM > 0) battle.distanceM = blindOpenM
-  else battle.distanceM = openM
+  // 开战距离：R 族按"它想站的期望距离"入场（族格），其余族照旧用原开战距离
+  battle.distanceM = rDesire ?? openM
+  // 🔴 **R 族族格（船长 2026-10-01 正解）**：它站的这个位置**就是本场的目标交战距离**
+  // （R 族来找"我方射程漏洞"⇒ 全场的走位都按这个距离拉扯）；非 R 族 `rDesire === null` ⇒ 不动
+  if (rDesire !== null) {
+    battle.myDesireM = rDesire
+    // 同时把 R 族自己那几艘的期望距离也钉到同一个位置（`foeDesiredRange` 读 `foeDesireRangeM`）
+    for (const f of foes) if (f.family === 'R') f.foeDesireRangeM = rDesire
+  }
   // V18B-2：per-gun 多键预载——动能/爆破导弹/能量弹药各按自身装填估量装载
   // （纯激光船也能带上能量弹药；混装各型互不挤占）
   // 2026-09-09 弹药 MK2：按船装配档位（ammoPref）装载；**取档口径 2026-09-16 船长改判**——
@@ -5936,6 +5933,11 @@ export function startFleetBattleFor(
   //   ② **近战敌人**：初始距离 = **玩家的中距离位置**（贴脸怪一开场就在你脸上）。
   //   动机：常规口径下长射程编队能把近程敌人**永远钉在射程外**（F1 校准实测「敌开火 0」），
   //   洞内要的是"进去就得挨打"的搜打撤张力。混合编成按"**卡内任一近战单位 ⇒ 走近战口径**"。
+  /**
+   * **R 族想站的期望距离**（以"玩家的射程盲区"为目标）——在开战距离的 if/else **之前**先算出来，
+   * 因为两条路径都要用它。非 R 族 ⇒ `null`。
+   */
+  const rDesire = rFamilyDesireOf(me, foes, bal)
   if (wormhole) {
     const anyBrawl = foes.some((f) => f.foeTactic === 'brawl')
     // ⚠ 近战怪的开局距离走**独立的洞内档** `wormholeBrawlOpenBand`（0.5 = 中段）——船长选定「乙」：
@@ -5947,14 +5949,23 @@ export function startFleetBattleFor(
     battle.distanceM = Math.max(bal.minDistanceM, Math.min(openM, Math.round(want)))
   } else {
     /**
-   * **开战距离：先问一次"敌方射程盲区"**（**船长 2026-10-01 令**）——
-   * 有可利用的盲区就压到盲区边界内侧，没有就用原开战距离（`battleOpenBlindSpotM` 的头注写了判据）。
-   * ⚠ **只改"开场站在哪"**：`myDesireM`（目标交战距离）与每拍的走位拔河都不动 ⇒
-   * 开场进了盲区之后，双方仍照各自的期望距离重新拉开/贴上去。
+     * **开战距离（非洞内）**：R 族按"它想站的期望距离"入场（族格，见 `rFamilyDesireOf` 头注）；
+     * 其余族照旧 = 原开战距离（`openM`）⇒ **既有各族零行为变化**。
+     */
+    battle.distanceM = rDesire ?? openM
+  // 🔴 **R 族族格（船长 2026-10-01 正解）**：它站的这个位置**就是本场的目标交战距离**
+  // （R 族来找"我方射程漏洞"⇒ 全场的走位都按这个距离拉扯）；非 R 族 `rDesire === null` ⇒ 不动
+  }
+  /**
+   * 🔴 **R 族族格：以「玩家的射程盲区」为期望距离**（**船长 2026-10-01 三次澄清 · 正解**）——
+   * 见 `rFamilyDesireOf` 的头注。**放在 `if (wormhole) / else` 之外**：洞内洞外都要生效
+   * （洞内的开场距离有自己的口径，但"R 族想站哪"这件事与洞口径无关）。
+   * ⚠ 非 R 族 `rDesire === null` ⇒ 这一段整体不执行，**既有各族零行为变化**。
    */
-    const blindOpenM = battleOpenBlindSpotM(me, foes, bal, openM)
-    if (blindOpenM > 0) battle.distanceM = blindOpenM
-    else battle.distanceM = openM
+  if (rDesire !== null) {
+    battle.myDesireM = rDesire
+    // 同时把 R 族自己那几艘的期望距离也钉到同一个位置（`foeDesiredRange` 读 `foeDesireRangeM`）
+    for (const f of foes) if (f.family === 'R') f.foeDesireRangeM = rDesire
   }
   battle.myFleet = fleet
   // 弹药：**逐船装载、汇入同一个池**（成本按各船各付；档口按主控优先）
