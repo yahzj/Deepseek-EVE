@@ -389,6 +389,16 @@ export function startRefineRun(
     if (voidCut > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - voidCut)))
   }
   /**
+   * **调试「1 秒化」**（**2026-10-01 补** · 普查发现炉子是唯一漏的一档）。
+   *
+   * 口径与另两条产线**逐字同款**（`calcBuildDurationMs` 的 `state.debugQuick ? 1000 : …`、
+   * `labCycleMsOf` 的 `if (state.debugQuick) return 1000`）：**固定 1 秒**、不吃技能乘区；
+   * 调试面板自称「**所有作业**按 1 秒完成」，而全仓 20 处 `state.debugQuick` 触点里 `industry.ts` 原先**零处**
+   * ⇒ 开着调试开炉仍要等满周期。放在技能乘区**之后**，与另两条一致（调试值不参与折算）。
+   * ⚠ 只影响**新起的炉/线**：在跑的那台周期在起炉那一刻已锁定（与制造线同款，不重算）。
+   */
+  if (state.debugQuick) cycleEff = 1000
+  /**
    * ⚠ 这里的 batch 门槛（够不够一批）与上面那个 gate 谁先谁后都行：**停机不改余量**
    * （采矿/打捞停下来的货留在船上，`oreAvailable` 读的就是"货仓 + 仓库"）⇒ 不构成"先停活再报开不了"。
    */
@@ -476,6 +486,8 @@ export function startUnboxRun(
   // 产线节拍学（与精炼 / 回收同款）：每级 −5% 周期（手动与 AI 核心驱动同享）
   const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
   if (autoLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.05 * autoLv)))
+  // 调试「1 秒化」（2026-10-01 补 · 全仓同款）：固定 1 秒、不吃技能乘区；只影响新起的线
+  if (state.debugQuick) cycleEff = 1000
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。`, errorId: 'core.industry.013', errorParams: { p1: aiCoreName(worker) } }
   }
@@ -567,6 +579,8 @@ export function startRecycleRun(
   // 2026-09-27 上位技能：残骸流水线学 −1.5%/级（与残骸回收学同乘区）
   const recUpLv = Math.min(5, state.skills.trained['salvage-recycling-integration'] ?? 0)
   if (recUpLv > 0) cycleEff = Math.max(1, Math.round(cycleEff * Math.max(0, 1 - 0.015 * recUpLv)))
+  // 调试「1 秒化」（2026-10-01 补 · 全仓同款）：固定 1 秒、不吃技能乘区；只影响新起的线
+  if (state.debugQuick) cycleEff = 1000
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
     return { ok: false, error: `${aiCoreName(worker)} 占用失败（库存异常）。`, errorId: 'core.industry.013', errorParams: { p1: aiCoreName(worker) } }
   }

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext, LAB_RECIPES, ITEMS } from '@whale/data'
 import { createInitialState, advanceGame } from '../src/index'
 import { beginJumpFuelLeg, jumpFuelLegMsOf, jumpFuelStockOf, JUMP_FUEL_ITEM_ID, JUMP_FUEL_SPEED_MUL } from '../src/jumpFuel'
-import { advanceLab, labAffordableBatches, labUnlocked, startLabRun } from '../src/lab'
+import { advanceLab, labAffordableBatches, labLoopOf, labUnlocked, setLabLoop, startLabRun } from '../src/lab'
 import { addWare } from '../src/inventory'
 
 const ctx = buildSimContext()
@@ -87,21 +87,32 @@ describe('实验室 · BOM 投料与自停', () => {
     return s
   }
 
-  it('够两批 ⇒ 每批扣齐 BOM、产出 600 单位燃料；料尽自停', () => {
+  /**
+   * ⚠ **2026-10-01 改口径**（船长令：「实验室本质上也是一个组装机，建议按照组装机的来」）：
+   * 实验室**一条线 = 一批**（开工整批扣料 · 完成即结束）；要连续跑就开**循环开关**
+   * ⇒ 下面这条同时钉住"一批一线"与"循环续做"两种形态。
+   */
+  it('够两批 ⇒ 一批一线（每批扣齐 BOM、产出 600 单位）；开循环后连出两批、缺料自停', () => {
     const s = readyState()
     expect(labAffordableBatches(s, recipe), '够 2 批').toBe(2)
     const r = startLabRun(s, ctx, recipe.id, 'pilot')
     expect(r.ok, r.ok ? '' : String(r.error)).toBe(true)
     expect(s.labRuns?.length).toBe(1)
+    /** 开工那一刻料已整批扣走（只吃物品仓库） */
+    expect(labAffordableBatches(s, recipe), '本批的料已扣 ⇒ 库存只剩一批').toBe(1)
     const before = jumpFuelStockOf(s)
     advanceGame(s, recipe.cycleMs + 1, ctx)
     expect(jumpFuelStockOf(s) - before, '第一批 600 单位入仓库').toBe(recipe.outputUnits)
-    expect(labAffordableBatches(s, recipe), '只剩一批的料').toBe(1)
-    advanceGame(s, recipe.cycleMs + 1, ctx)
+    expect(s.labRuns?.length ?? 0, '一线一批 ⇒ 出完这批线就结束').toBe(0)
+
+    /** 开循环：再起一批 ⇒ 到点续做下一批 ⇒ 料尽自停（关开关 ＋ 写停因） */
+    expect(setLabLoop(s, recipe.id, true, null).ok).toBe(true)
+    expect(startLabRun(s, ctx, recipe.id, 'pilot').ok).toBe(true)
+    advanceGame(s, recipe.cycleMs * 2 + 2, ctx)
     expect(jumpFuelStockOf(s) - before, '两批共 1,200 单位').toBe(recipe.outputUnits * 2)
-    /** 第三批无料 ⇒ 自停并摘线 */
-    advanceGame(s, recipe.cycleMs + 1, ctx)
-    expect(s.labRuns?.length ?? 0, '料尽自停（线被摘掉）').toBe(0)
+    expect(s.labRuns?.length ?? 0, '料尽 ⇒ 循环自停、线被摘掉').toBe(0)
+    expect(labLoopOf(s, recipe.id).on, '自停时开关自动关').toBe(false)
+    expect(labLoopOf(s, recipe.id).stopWhy, '停因写明缺料').toContain('材料不足')
   })
 
   it('材料不足一批 ⇒ 起线被拒', () => {

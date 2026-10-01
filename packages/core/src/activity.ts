@@ -324,7 +324,13 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       kind: aiProd ? 'ai' : 'lab',
       ...(aiProd ? { aiGroup: 'industry' as const, aiWorkKind: 'craft' as const } : {}),
       label: `实验室 · ${lv.recipeName}`,
-      sub: `${lv.worker === 'pilot' ? '主控亲自运转' : `${aiCoreName(lv.worker)}驱动`} · 已 ${lv.batchesDone} 批（每批 ${lv.batchUnits} 单位）`,
+      /**
+       * **一线一批**（2026-10-01 船长令：实验室按组装机那套）⇒ 副标题写"本批"，
+       * 累计批数改读**循环读数**（`loopProduced`；与组装机那张卡的"本轮合计"同源）。
+       */
+      sub:
+        `${lv.worker === 'pilot' ? '主控亲自运转' : `${aiCoreName(lv.worker)}驱动`} · 每批 ${lv.batchUnits} 单位` +
+        (lv.loopProduced > 0 ? ` · 本轮已出 ${lv.loopProduced} 批` : ''),
       percent: lv.percent,
       remainingMs: lv.remainingMs,
       stopable: true,

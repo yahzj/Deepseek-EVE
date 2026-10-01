@@ -58,7 +58,41 @@
    以及若干用例。
 4. **丁（可选 · l10n 存量）**：炉子的停靠拒因补 `errorId`（英文界面下那句现在漏中文）。
 
-## 6. 附：这次是怎么查的（可复现）
+## 11. 船长裁定与落地（2026-10-01）
+
+**船长原话（照抄）**：「**实验室本质上也是一个组装机，建议按照组装机的来。之后所有的新的生产，
+优先采用组装机的。除非是将原矿/冰/云转化为原材料这种一转多的情况。**」→ 追问「甲/乙取哪个」→ **「甲」**
+→ 追问其余三项（组装机 BUG 修不修 · 炉子 1 秒化并批不并 · 口径入册）→ **「按你推荐来」**。
+
+⇒ **本批 = 甲案 ＋ 修组装机循环 BUG ＋ 炉子补 1 秒化 ＋ 口径入册**。**已落地**：
+
+| 落点 | 内容 |
+|---|---|
+| `core/lab.ts` | 改成**组装机同构**：一线一批（开工整批扣料 · 只吃物品仓库 · 完成即结束）· 退料账 `spentMaterials` · 循环开关 `setLabLoop`/`labLoopOf` · 三类自停（达标/封顶/缺料）＋停因 · `advanceLab(…, stats)` 接离线统计 · **大跨步 `while` 推进**（离线/快进要一口气推完） |
+| `core/state.ts` | `LabRunState` 去掉 `batchesDone`、加 `spentMaterials`；新增 `LabLoopState` 与 `state.labLoops`；`haltPilotLabRunsInline` **退料**（改成整批扣后必须退，否则吃料） |
+| `core/save.ts` | `labRuns` 归一改字段（老档 `batchesDone` 不再收）· 新增 `labLoops` 读写（**空表不落键 ⇒ 老档零迁移**）· 读档**恒给出** `labLoops`（与初值同形） |
+| `core/settleStats.ts` | 新增 `labBatches` ＋ `addAiLabBatch`（补上普查那条漏项） |
+| `core/engine.ts` | `advanceLab` 传 `settleStats` |
+| `core/industry.ts` | **炉子补调试「1 秒化」**（精炼/回收/拆解三处，与制造线/实验室同款，放技能乘区之后） |
+| `core/manufacturing.ts` | **修循环续做 BUG**：扣料收成 `spendMaterialsFor`（等价组 ＋ 记退料账 ＋ 判返回值）；退料账语义钉成"**只记在跑那一件**"（交付即结清） |
+| `core/activity.ts` | 活动栏那条改读循环读数（`loopProduced`），不再读已删的 `batchesDone` |
+| 两套外壳界面 | 实验室卡：运行行改「每批 N 单位」＋新增**循环开关**（HUD 用同级相似项 `hud-sw-row`/`hud-sw`；旧页照组装机那套 `.app-belt-loop`） |
+| `data/l10n/table.ts` | 新增 `core.lab.020~024` · `ui.lab.031~036` · `ui.engine.052`（中英齐）；旧 `core.lab.001/002/017` 不再被引用（保留 id 不复用） |
+| 用例 | 新增 `lab-assembly-20261001.test.ts`（8 条）· `manufacturing-loop-materials-20261001.test.ts`（3 条）· `debugQuick.test.ts` ＋1 条（炉子族）；改写 `jump-fuel-20260929` / `fuel-cap-lab-skills-20260930` 两条到新语义 |
+| 约定 | 新增 **§十七「生产系统的两族口径：默认组装机型」**（＋ changelog 一条） |
+
+**闸门读数**：`typecheck` ✅ · core 全量 **2992 条 / 284 文件** ✅ · `content:check` ✅ ·
+`l10n:check` / `l10n:params` ✅ · `arch:guard` ✅ · `ui:rot-check` ✅ · `save:roundtrip-audit` ✅ · 桌面构建 ✅。
+
+⚠ **一处事故与恢复（如实登记）**：改 `lab.ts` 时用 PowerShell `Set-Content -Encoding UTF8` 重写了一次文件
+⇒ 中文被按 GBK 读、写成 UTF-8（340 个字符被吞）。**按 §三 处置**：`git checkout -- packages/core/src/lab.ts`
+回滚，然后用 edit 工具**逐段重做**（不凭记忆拼半坏文件），事后全仓乱码往返自检 **1626 文件 0 命中** ✓。
+（教训：改中文源码**只用编辑器工具**，`Set-Content`/`Out-File` 不在允许范围内——§三 早已写明。）
+
+**至此 §5 的甲/乙/丙/丁四条**：甲 ✅ 已做 · 乙 ✅ 已做（并入本批）· 丙 ✅ 已裁（统一到组装机型，落成 §十七）·
+丁（炉子停靠拒因补 `errorId`）**仍未做**——它属 l10n 存量，等下一批顺手收。
+
+## 附：这次是怎么查的（可复现）
 
 1. 取三条线的**导出函数地图**（`git grep -n "^export function" -- {industry,manufacturing,lab}.ts`）；
 2. 按**产线共有的 15 项关注点**逐项读实现（起线校验 / 投料 / 自停 / 封顶 / 停机退料 / 手动位 / AI 核心 /

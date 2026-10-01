@@ -259,6 +259,48 @@ export function matNeedCount(state: GameState, count: number): number {
 }
 
 /**
+ * **扣一件所需的材料**（**开工**与**循环续做**共用这一把尺 —— **2026-10-01 收口**）。
+ *
+ * 为什么必须收成一处：原先"续做下一件"那处自己写了一句
+ * `removeWare(state, need.itemId, matNeedCount(…))` ⇒ ① **不走等价组**（玩家手上是通用黑匣、
+ * 配方写墨潮黑匣时**扣不动**）② **不记退料账** ③ **忽略返回值**（扣不到也照做）
+ * —— 实测结果 = **循环续做的那几件白造**（2026-10-01 船长报障「玩家又反应了一些早就修好的BUG」后普查发现）。
+ *
+ * 语义（与开工处逐字同款）：**等价组按组序取够** · 逐笔记**实际扣的那种**进 `spent` ·
+ * **任一项凑不齐 ⇒ 整体回滚并返回 false**（绝不留半扣状态，也绝不"扣不到照做"）。
+ */
+function spendMaterialsFor(
+  state: GameState,
+  materials: readonly { itemId: string; count: number }[],
+  spent: { itemId: string; count: number }[],
+): boolean {
+  const taken: { itemId: string; count: number }[] = []
+  const rollback = (): void => {
+    for (const t of taken) addWare(state, t.itemId, t.count)
+  }
+  for (const need of materials) {
+    let left = matNeedCount(state, need.count)
+    for (const id of materialGroupIdsOf(need.itemId)) {
+      if (left <= 0) break
+      const take = Math.min(countWare(state, id), left)
+      if (take <= 0) continue
+      if (!removeWare(state, id, take)) {
+        rollback()
+        return false
+      }
+      taken.push({ itemId: id, count: take })
+      left -= take
+    }
+    if (left > 0) {
+      rollback()
+      return false
+    }
+  }
+  spent.push(...taken)
+  return true
+}
+
+/**
  * **材料等价组**（**2026-09-27 船长令**：「**在章鱼人声望商店加入购买通用黑匣的卡片，玩家可以用30声望换一个
  * 通用黑匣。（现有的舰船插件蓝图都只要使用任意类型黑匣就可以制作）**」）。
  *
@@ -461,23 +503,14 @@ export function startManufacturing(
   /**
    * **逐条记下这一线实际扣了多少料**（2026-09-24 船长令「自动停机材料一起退」）：
    * 停机那条路没有 ctx ⇒ 退料只能靠这本账；顺带保证"扣多少退多少"（不受中途升技能影响）。
+   *
+   * ⚠ **这本账只记"在跑那一件已扣的料"**（**2026-10-01 收口**）：一件交付时账结清（见 `advanceManufacturing`），
+   * 循环续做下一件时换记那一件的 ⇒ 取消/停机时退的**正好是在跑那件**，不会多退也不会少退。
    */
   const spentMaterials: { itemId: string; count: number }[] = []
-  for (const need of buildable.spec.materials) {
-    let left = matNeedCount(state, need.count)
-    /**
-     * **按等价组扣料**（2026-09-27 船长令）：组内**按序取够**（先通用黑匣、后旗舰黑匣），
-     * 逐笔记进 `spentMaterials`（**记实际扣的那一种** ⇒ 停机退料退得回去，不会退错种类）。
-     */
-    for (const id of materialGroupIdsOf(need.itemId)) {
-      if (left <= 0) break
-      const have = countWare(state, id)
-      const take = Math.min(have, left)
-      if (take <= 0) continue
-      removeWare(state, id, take)
-      spentMaterials.push({ itemId: id, count: take })
-      left -= take
-    }
+  if (!spendMaterialsFor(state, buildable.spec.materials, spentMaterials)) {
+    /** 上面已用 `missingMaterials` 挡过一次；走到这里 = 库存竞态（同批多个入口并发扣）⇒ 照实报，不留半扣 */
+    return { ok: false, error: '材料不足：物品仓库里的料凑不齐这一件。', errorId: 'core.manufacturing.010' }
   }
   // 一次性图纸：**开工那一刻吃掉这本书**（船长裁定「3甲」，与材料同源）；
   // ⚠ 2026-09-20 船长改判：「一次性蓝图的制造取消后返还玩家蓝图」
@@ -747,6 +780,11 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
         stopWhy = '产物记录缺失'
         break
       }
+      /**
+       * **交付了这一件 ⇒ 它那笔退料账结清**（**2026-10-01 收口**）：账只记"在跑那一件已扣的料"，
+       * 于是取消/停机时退的是**当前在跑那件**（原先只在开工记一笔 ⇒ 循环里越跑越对不上）。
+       */
+      mf.spentMaterials = []
       if (!auto) break
       const goal = loop && loop.goal && loop.goal > 0 ? loop.goal : null
       if (goal !== null && (loop?.produced ?? 0) >= goal) {
@@ -766,9 +804,17 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
       }
       const autoLv = Math.min(5, state.skills.trained['industrial-automation'] ?? 0)
       if (autoLv > 0) durationMs = Math.max(1, Math.round(durationMs * Math.max(0, 1 - 0.05 * autoLv)))
-      for (const need of buildable.spec.materials) {
-        removeWare(state, need.itemId, matNeedCount(state, need.count))
+      /**
+       * ⚠ **与开工同一把尺**（**2026-10-01 收口**）：等价组按组序取够 ＋ 逐笔记进退料账 ＋ **扣不动就停线**。
+       * 原先这里自己写了一句 `removeWare(need.itemId, …)`（不走等价组、不记账、不看返回值）
+       * ⇒ 玩家手上只有通用黑匣时**续做的那几件白造**。
+       */
+      const spent: { itemId: string; count: number }[] = []
+      if (!spendMaterialsFor(state, buildable.spec.materials, spent)) {
+        stopWhy = `材料不足（缺 ${missing.join('、')}）`
+        break
       }
+      mf.spentMaterials = spent
       mf.finishAtGameMs += durationMs
       mf.durationMs = durationMs
     }

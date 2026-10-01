@@ -22,7 +22,7 @@ import {
   jumpFuelStockOf,
   jumpFuelWareOf,
 } from '../src/jumpFuel'
-import { labOutputPerHourOf, startLabRun } from '../src/lab'
+import { labLoopOf, labOutputPerHourOf, setLabLoop, startLabRun } from '../src/lab'
 import { jumpFuelSupplyOf } from '../src/fuelSupply'
 import {
   addWare,
@@ -117,17 +117,23 @@ describe('燃料上限 · 生产受上限约束', () => {
     expect(r.errorId).toBe('core.lab.018')
   })
 
-  it('恰好装满：59,400 + 600 = 60,000 能跑满；跑满后停线且留 core.lab.017 日志', () => {
+  /**
+   * ⚠ **2026-10-01 改口径**（船长令「实验室本质上也是一个组装机，建议按照组装机的来」）：
+   * 封顶这条判据现在分两处咬人——**起线**（`core.lab.018`，见上一条）与**循环续做**（停下并写停因）。
+   * 本用例改成"开循环 ⇒ 第一批装满 ⇒ 续做时放不下 ⇒ 自停（`stopWhy` 写明封顶）"。
+   */
+  it('恰好装满：59,400 + 600 = 60,000 能跑满；**循环续做时**放不下 ⇒ 自停（写停因、关开关）', () => {
     const s = withMaterials(stationState())
     addWare(s, JUMP_FUEL_ITEM_ID, 59_400)
+    expect(setLabLoop(s, recipe.id, true, null).ok, '开循环').toBe(true)
     expect(startLabRun(s, ctx, recipe.id, 'pilot').ok, '放得下 ⇒ 能起线').toBe(true)
     advanceGame(s, recipe.cycleMs + 1, ctx)
     expect(countWare(s, JUMP_FUEL_ITEM_ID), '第一批刚好装满').toBe(60_000)
     expect(jumpFuelWareOf(s), '绝不越过上限').toBeLessThanOrEqual(jumpFuelCapOf(s))
-    advanceGame(s, recipe.cycleMs * 2 + 1, ctx)
-    expect(countWare(s, JUMP_FUEL_ITEM_ID), '不再生产').toBe(60_000)
-    expect(s.labRuns?.length ?? 0, '线被摘掉（满仓自停）').toBe(0)
-    expect(s.logs.some((l) => l.textId === 'core.lab.017'), '停线日志').toBe(true)
+    expect(s.labRuns?.length ?? 0, '续做时放不下 ⇒ 线被摘掉（封顶自停）').toBe(0)
+    expect(labLoopOf(s, recipe.id).on, '自停时开关自动关').toBe(false)
+    expect(labLoopOf(s, recipe.id).stopWhy, '停因写明封顶').toContain('放不下下一批')
+    expect(s.logs.some((l) => l.textId === 'core.lab.024'), '循环停止日志').toBe(true)
   })
 
   it('抬高上限后可以继续生产（技能同时决定"满"在哪）', () => {
