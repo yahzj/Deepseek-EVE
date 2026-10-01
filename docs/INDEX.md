@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **387** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6901** KB · **50432** 行
+- 文档总数 **387** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **6909** KB · **50544** 行
 - 状态分布：**未标注** 213 · **已确认/已实现** 117 · **进行中** 43 · **待裁定** 13 · **历史留档** 1
 - 孤儿文档（0 引用）**64** 份 · 状态未标注 **213** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -34,7 +34,7 @@
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 59 行 | 34 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 285 KB / 299 行 | 17 / 3 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 78 KB / 806 行 | 92 / 4 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 78 KB / 806 行 | 93 / 4 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 502 KB / 1016 行 | 225 / 16 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 457 行 | 354 / 19 |
 
@@ -64,11 +64,11 @@
 | `docs/design/comms-param-fix-20261001.md` | 文案占位符漏出两处（工作文档） | 进行中（进行中） | 2026-10-01 | 6 KB / 73 行 | 0 / 1 |
 | `docs/design/handover-20261001.md` | 交接卡 · 一号会话（2026-10-01 收尾） | 未标注 | 2026-10-01 | 7 KB / 71 行 | 0 / 0 |
 | `docs/design/hud-industry-filter-20261001.md` | 工业 HUD 页：组装机书架筛选收口 ＋ 卡片溢出修复（工作文档） | 进行中（进行中） | 2026-10-01 | 8 KB / 89 行 | 0 / 0 |
-| `docs/design/industry-line-parity-20261001.md` | 三条工业产线的逻辑对照（实验室 vs 炉子 vs 制造线）· 2026-10-01 | 进行中（进行中） | 2026-10-01 | 6 KB / 67 行 | 0 / 0 |
+| `docs/design/industry-line-parity-20261001.md` | 三条工业产线的逻辑对照（实验室 vs 炉子 vs 制造线）· 2026-10-01 | 进行中（进行中） | 2026-10-01 | 12 KB / 141 行 | 0 / 0 |
 | `docs/design/industry-manual-slot-guard-20261001.md` | 新工业 HUD 页：主控手动位守卫复原（工作文档） | 进行中（进行中） | 2026-10-01 | 6 KB / 75 行 | 0 / 0 |
 | `docs/design/lab-comms-rewrite-20261001.md` | 首访实验室 · 黑市通讯正文重写（工作文档） | 进行中（进行中） | 2026-10-01 | 5 KB / 57 行 | 0 / 0 |
 | `docs/design/voidcrystal-price-20261001.md` | 虚空晶一物一价（精炼面板修正）· 2026-10-01 | 未标注 | 2026-10-01 | 5 KB / 64 行 | 3 / 0 |
-| `docs/design/weekend-faction-corona-20261001.md` | 设计案：入侵新敌对势力「光环科技 / Corona Systems」（参考远行星号 Remnants）（2026-10-01 · 二号） | 未标注 | 2026-10-01 | 60 KB / 813 行 | 0 / 1 |
+| `docs/design/weekend-faction-corona-20261001.md` | 设计案：入侵新敌对势力「光环科技 / Corona Systems」（参考远行星号 Remnants）（2026-10-01 · 二号） | 未标注 | 2026-10-01 | 62 KB / 851 行 | 0 / 1 |
 | `docs/design/weekend-family-name-20261001.md` | 入侵族名用正式称呼（R 族 = 光环）· 2026-10-01 | 未标注 | 2026-10-01 | 5 KB / 74 行 | 0 / 0 |
 | `docs/design/announcement-draft-20260930.md` | 公告待审稿 · 2026-09-30 批次（实验室投产）（2026-09-30） | 未标注 | 2026-09-30 | 11 KB / 180 行 | 5 / 2 |
 | `docs/design/beacon-parts-20260930.md` | 信号发射器配方改用零件（2026-09-30） | 未标注 | 2026-09-30 | 3 KB / 49 行 | 1 / 2 |
@@ -465,7 +465,7 @@
 - `docs/design/comms-export-20261001.md`（2026-10-01 · 5 KB）—— 通讯文案工作台（导出工具）· 2026-10-01
 - `docs/design/handover-20261001.md`（2026-10-01 · 7 KB）—— 交接卡 · 一号会话（2026-10-01 收尾）
 - `docs/design/hud-industry-filter-20261001.md`（2026-10-01 · 8 KB）—— 工业 HUD 页：组装机书架筛选收口 ＋ 卡片溢出修复（工作文档）
-- `docs/design/industry-line-parity-20261001.md`（2026-10-01 · 6 KB）—— 三条工业产线的逻辑对照（实验室 vs 炉子 vs 制造线）· 2026-10-01
+- `docs/design/industry-line-parity-20261001.md`（2026-10-01 · 12 KB）—— 三条工业产线的逻辑对照（实验室 vs 炉子 vs 制造线）· 2026-10-01
 - `docs/design/industry-manual-slot-guard-20261001.md`（2026-10-01 · 6 KB）—— 新工业 HUD 页：主控手动位守卫复原（工作文档）
 - `docs/design/lab-comms-rewrite-20261001.md`（2026-10-01 · 5 KB）—— 首访实验室 · 黑市通讯正文重写（工作文档）
 - `docs/design/weekend-family-name-20261001.md`（2026-10-01 · 5 KB）—— 入侵族名用正式称呼（R 族 = 光环）· 2026-10-01
