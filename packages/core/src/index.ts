@@ -697,6 +697,8 @@ export {
   labTechRequirementOf,
   labMaterialAvailable,
   labAffordableBatches,
+  /** 2026-10-01 船长裁：卡面「×N」读**实际批产**（吃 `LAB_YIELD_SKILLS`），不再读配方基础值 */
+  labBatchUnitsOf,
   labMissingMaterials,
   labRunViews,
   startLabRun,

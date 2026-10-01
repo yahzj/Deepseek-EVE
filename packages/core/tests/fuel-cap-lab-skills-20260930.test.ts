@@ -22,7 +22,7 @@ import {
   jumpFuelStockOf,
   jumpFuelWareOf,
 } from '../src/jumpFuel'
-import { labLoopOf, labOutputPerHourOf, setLabLoop, startLabRun } from '../src/lab'
+import { labBatchUnitsOf, labLoopOf, labOutputPerHourOf, setLabLoop, startLabRun } from '../src/lab'
 import { jumpFuelSupplyOf } from '../src/fuelSupply'
 import {
   addWare,
@@ -211,6 +211,21 @@ describe('实验室技能的乘区与作用域', () => {
     expect(startLabRun(s, ctx, recipe.id, 'pilot').ok).toBe(true)
     expect(s.labRuns![0]!.cycleMs).toBe(recipe.cycleMs)
     expect(s.labRuns![0]!.batchUnits).toBe(600)
+  })
+
+  /**
+   * **卡面读数的单一来源**（**2026-10-01 船长裁**：「×N 改读实际批产」）：
+   * 界面那个 `×N` 必须走 `labBatchUnitsOf`，且它与①起线时写进运行记录的 `batchUnits`、
+   * ②封顶判据用的是**同一个数** —— 三处口径分叉过一次（界面读基础值 600、实际做 780），
+   * 所以这条用例把"同源"钉住。
+   */
+  it('labBatchUnitsOf：卡面读数 ＝ 起线记录 ＝ 收率技能后的真值（同源）', () => {
+    const s = withMaterials(stationState())
+    expect(labBatchUnitsOf(s, recipe), '无技能 ＝ 配方基础值').toBe(recipe.outputUnits)
+    trainAll(s, ['fuel-yield-engineering'])
+    expect(labBatchUnitsOf(s, recipe), '收率满级 +30%：600 → 780').toBe(780)
+    expect(startLabRun(s, ctx, recipe.id, 'pilot').ok).toBe(true)
+    expect(s.labRuns![0]!.batchUnits, '起线记录与卡面读数同一个数').toBe(labBatchUnitsOf(s, recipe))
   })
 })
 

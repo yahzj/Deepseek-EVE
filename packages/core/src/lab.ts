@@ -232,8 +232,14 @@ function labCycleMsOf(state: GameState, ctx: SimContext, recipe: LabRecipeDef, w
   return Math.max(1, Math.round(ms * labCycleMulOf(state, recipe)))
 }
 
-/** 单批产物单位（基准值 × `LAB_YIELD_SKILLS` 乘区；向下取整到 1 单位） */
-function labBatchUnitsOf(state: GameState, recipe: LabRecipeDef): number {
+/**
+ * **单批产物单位**（基准值 × `LAB_YIELD_SKILLS` 乘区；向下取整到 1 单位）。
+ *
+ * **对外公开的单点**（**2026-10-01 船长裁**：卡面那个「×N」必须读这里）——原先界面读的是
+ * `recipe.outputUnits`（**基础值**）⇒ 收率工艺学的效果在卡面看不见，同一张卡上"批产"与"速率"
+ * 两个口径。产出封顶（`labOutputCapped`）与实际交付（`advanceLab`）走的也都是它。
+ */
+export function labBatchUnitsOf(state: GameState, recipe: LabRecipeDef): number {
   return Math.max(1, Math.floor(recipe.outputUnits * labYieldMulOf(state, recipe)))
 }
 
