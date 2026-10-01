@@ -303,6 +303,15 @@ export interface UnitSpec {
    *  缺省不写 ⇒ 走全局 `BattleBalance.foeChargeCooldownMs`（10 秒）。 */
   foeChargeCooldownMs?: number;
   /**
+   * **本单位的「闪现跃迁」参数**（**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」）——
+   * 由 R 族那件「瞬光跃迁仪」（`FoeMountDef.blink`）解析而来。
+   *
+   * 消费点 = **本体被命中的那一处**（与 `foeDroneRangeMulOnHit` / `foeGunRangeMulOnHit` 同一个钩子）：
+   * 拉开 `BattleState.distanceM` 并盖冷却（冷却态记在 `BattleState.foeBlinks[tag]`，`kind: 'runtime'`）。
+   * 缺省不写 ⇒ 既有各族各件零行为变化。
+   */
+  foeBlink?: { distanceM: number; cooldownMs: number };
+  /**
    * **本条冲锋不吃网子的「关推进器」**（**2026-09-30 船长令**「给C族添加族设定，他们的冲锋不会被网子
    * 解除」；见 `FoeMountDef.charge.webImmune`）——C 族四件「虫群冲锋器」解析出来的旗标。
    *
@@ -3001,6 +3010,10 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       ...(mount.names.length > 0 ? { foeMountNames: mount.names } : {}),
       // **同序双语名对**（2026-09-24）：显示层按语言取一列（`mountPairsOf` 那条链）
       ...(mount.namePairs.length > 0 ? { foeMountNamePairs: mount.namePairs } : {}),
+      // **闪现跃迁**（**船长 2026-10-01 令**：「激光武器+闪现效果的挂载件」）——挂了件才写；
+      // 消费点 = 下面受击钩子旁那一处（本体被命中 ⇒ 拉开 `distanceM` 并盖冷却）。
+      // 缺省不写 ⇒ 既有各族各件**零行为变化**。
+      ...(mount.foeBlink !== undefined ? { foeBlink: mount.foeBlink } : {}),
       // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）——带本字段的单位**不进开战编队**
       ...(reinforceAt ? { foeReinforceAt: reinforceAt } : {}),
       // **支援呼叫分支**（2026-09-19）：纯标签、一律带上（派生侧的"互斥分支记账"要用它）
@@ -7944,6 +7957,48 @@ function markFoeGunRangeBuff(rt: UnitSpec, b: import('./state').BattleState): bo
   return true
 }
 
+/**
+ * **闪现跃迁触发器**（**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」）——
+ * 只由"我方武器**命中敌舰本体**"调用：**打机群不算、未命中不算**（与上面两条受击增程**同一个钩子**）。
+ *
+ * **方向 = 与我方的意图距离"反着来"**（**船长 2026-10-01 改判**，原话照抄）：
+ * 「**不一定是拉开距离，如果距离过远也可能是拉进，根据我方的意图距离而定
+ * （如果我方希望拉远，则闪现是拉进，如果我方希望拉进，闪现则是拉远）**」
+ * ⇒ 判据 = `BattleState.myDesireM`（我方期望距离）与 `distanceM` 的大小关系：
+ * - 我方想让距离**更近**（`distanceM > myDesireM`）⇒ 闪现**拉远** `+distanceM`；
+ * - 我方想让距离**更远**（`distanceM < myDesireM`）⇒ 闪现**拉进** `−distanceM`；
+ * - 两者相等（我方已到位）⇒ 取**拉远**（`sign` 取 +1，保证"总要有一下效果"）。
+ * ⇒ 净效果 = **闪现永远破坏我方当前的走位意图**（这正是"风筝/扰乱"的味道）。
+ *
+ * ⚠ 本仓战斗**不做二维坐标**（只有 `distanceM` 这一个标量）⇒「闪现」= 距离突变，不涉及位置/寻路。
+ * 突变后双向钳制 `[bal.minDistanceM, 战场最大距离]` ⇒ 不会闪出战场。
+ * 冷却态记在 `BattleState.foeBlinks[tag]`（`save.ts` 登记 `kind: 'runtime'`，**有意不入档** ——
+ * 与 `foeCharges`（冲锋循环）同一口径：落在"重载即重置循环"内）。
+ *
+ * @returns 本次是否真的闪了（供画面提示＋**闪现动画**用）
+ */
+function markFoeBlink(
+  rt: UnitSpec,
+  tag: string,
+  b: import('./state').BattleState,
+  bal: BattleBalance,
+  maxDistanceM: number,
+): boolean {
+  const bl = rt.foeBlink
+  if (bl === undefined || bl.distanceM <= 0 || bl.cooldownMs <= 0) return false
+  const nowMs = b.lastTickGameMs
+  if (nowMs < (b.foeBlinks?.[tag] ?? 0)) return false // 冷却中 ⇒ 再挨打也不闪
+  // **方向**：与我方意图距离反着来（见头注）。相等时取拉远。
+  const away = b.distanceM >= b.myDesireM
+  const want = away ? b.distanceM + bl.distanceM : b.distanceM - bl.distanceM
+  const capped = Math.max(bal.minDistanceM, Math.min(maxDistanceM, want))
+  if (capped === b.distanceM) return false // 已被钳到边界 ⇒ 闪不动（不白盖冷却）
+  b.distanceM = capped
+  if (!b.foeBlinks) b.foeBlinks = {}
+  b.foeBlinks[tag] = nowMs + bl.cooldownMs
+  return true
+}
+
 /** **战斗内提示条**（画面顶部提示位，与「敌方增援」同一处显示）——2026-09-11 船长二次裁定：
  *  「**日志内不用显示提示，将该提示放入战斗画面内显示**（和敌方增援统一下系统，**显示位置改为战斗
  *  窗口正上方**）」⇒ 机制提示**不写 `addLog`**，改推这里；UI 按 `atMs` 限时显示后自动消失。
@@ -8759,6 +8814,29 @@ function stepBattle(
           // ⚠ 打机群／未命中都进不到这里；状态该型舰共享 ⇒ 只推一条提示（文案不点单舰名）。
           if (markFoeGunRangeBuff(foeTarget!, b)) {
             pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
+          }
+          // **闪现跃迁触发点（唯一）**——**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」。
+          // 与上面两条**同一个钩子**（本体被命中；打机群／未命中都进不到这里）。冷却期内静默。
+          if (
+            markFoeBlink(
+              foeTarget!,
+              foeTarget!.tag,
+              b,
+              bal,
+              battleMaxDistanceM(b, me, foes, bal, myUnits),
+            )
+          ) {
+            pushBattleNotice(b, '跃迁规避：目标瞬时换位')
+            // **闪现演出**（**船长 2026-10-01 令**：「闪现时候要给舰船一个闪现的动画」）——
+            // 与捕获网同款承载（`: true` 旗标 + `type` 占位）；界面对该 tag 播"淡出→淡入"。
+            pushBattleFx(b, {
+              atMs: b.lastTickGameMs,
+              side: 'foe',
+              tag: foeTarget!.tag,
+              type: 'kinetic',
+              hit: true,
+              blink: true,
+            })
           }
         }
       }

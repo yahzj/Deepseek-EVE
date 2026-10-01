@@ -474,6 +474,10 @@ const BATTLE_FIELDS = {
     kind: 'runtime',
     why: '敌冲锋循环（2026-09-14 起逐单位：在冲 / 冷却到某时刻）：落在"重载即重置循环"口径内（2026-09-10 起即如此，登记备查）',
   },
+  foeBlinks: {
+    kind: 'runtime',
+    why: '敌「闪现跃迁」冷却（2026-10-01 加：R 族「瞬光跃迁仪」——本体被命中时拉开交战距离，冷却 12 秒）：与 `foeCharges` 同一口径，落在"重载即重置循环"内 ⇒ 有意不入档',
+  },
   foeChargeEnteredAtMs: { kind: 'runtime', why: '2026-09-11 已停用字段，只为不改存档形状而保留声明' },
   meSpeedMps: {
     kind: 'runtime',

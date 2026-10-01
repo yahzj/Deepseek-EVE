@@ -318,6 +318,13 @@ export type FoeMountId =
    * 与我方那件「墨潮电子舱」（`mod-lair-ecm-h`）是**敌我同源的一对**。见 `FoeMountDef.rangeDebuff`。
    */
   | 'foe-mount-ink-range-debuff'
+  /**
+   * **瞬光跃迁仪**（**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」）——
+   * R 族「光环科技 / Corona Systems」的族级件，**五档壳体逐档常挂**（船长选「乙：五档全带」）。
+   * 效果 = **本体被命中时拉开交战距离**（参数选「甲」：2,000 m / 冷却 12 秒）。见 `FoeMountDef.blink`。
+   * ⚠ 件名是**提案**（草稿待船长批）——批后若改名，只改 `foeMounts.ts` 那一处 `name` / `en`。
+   */
+  | 'foe-mount-corona-blink'
 
 /**
  * **敌方挂载件定义**（船长 2026-09-16 三句合一的落点）：
@@ -398,6 +405,23 @@ export interface FoeMountDef {
    * 解析后仍是**同一个运行时字段** `UnitSpec.foeRangeDebuffPct`（消费方 `meJammerNetOf` 一行不改）。
    */
   rangeDebuff?: { pct: number }
+  /**
+   * **闪现跃迁**（**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」）—— 给入侵第二族
+   * R「光环科技 / Corona Systems」建的族级挂载件；势力图鉴那句「**拥有未知折跃能力的无人舰船**」
+   * 由它兑现（文案与机制同源，见 `docs/design/weekend-faction-corona-20261001.md` §11.2）。
+   *
+   * 口径：**本舰本体被命中时**（与 `droneRangeOnHit` / `gunRangeOnHit` **同一个受击钩子**：
+   * 打机群不算、未命中不算）触发一次**交战距离突变** —— 把 `BattleState.distanceM` **拉开
+   * `distanceM` 米**，随后进入 `cooldownMs` 冷却（冷却期内再挨打也不闪）。
+   *
+   * ⚠ **本仓战斗不做二维坐标**：只有 `BattleState.distanceM` 这一个标量（＋ 我方 `myDesireM`）
+   * ⇒「闪现」= **距离突变**，不涉及位置/寻路/表现层几何。突变后仍受既有钳制
+   * （`bal.minDistanceM` 与 `battleMaxDistanceM()`）⇒ 不会闪出战场。
+   * ⚠ **冷却状态记在 `BattleState.foeBlinks[tag]`**，与 `foeCharges`（冲锋循环）**同一口径**：
+   * 登记为 `save.ts` 清洗器的 **`kind: 'runtime'`（有意不入档）**——落在既有的"重载即重置循环"口径内。
+   * 缺省不写 ⇒ **零行为变化**（既有各件与既有族一律不受影响）。
+   */
+  blink?: { distanceM: number; cooldownMs: number }
   /**
    * **支援呼叫装置**（船长 2026-09-19：「**战斗开始20秒后，增援2艘幽灵舰。如果对方在自己最远射程
    * 之外时，增援2艘静滞卫舰。**」＋「因为延迟到场，所以需要一定补偿。**卡计算的实际威胁要*1.1**」）。

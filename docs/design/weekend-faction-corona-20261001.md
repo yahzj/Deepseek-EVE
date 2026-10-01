@@ -286,17 +286,40 @@ H 族当年 `ae2970ac` 的提交信息自述「**落码 11 处**」，共 **23 �
 
 ---
 
-## §12 ⏳ 待设计：闪现挂载件（引擎级新机制）
+## §12 闪现挂载件「瞬光跃迁仪」（**已落码** · 船长令「激光武器+闪现效果的挂载件」）
 
-船长令「**激光武器+闪现效果的挂载件**」⇒ 要给 R 族建一个**带闪现（位移）效果的敌挂载件**。
+### 12.1 机制选型（查证结论：本仓战斗是**一维距离标量**）
 
-**现状缺口（已查证）**：`FoeMountDef` 现有字段为 `charge`（冲锋：自己机动 ×mul）· `web` · `droneRangeOnHit` ·
-`gunRangeOnHit` · 射程压制 · `repairPct` 等 —— **没有任何"位置/位移"字段**。
-⇒ 闪现要么**用既有 `charge` 近似**（但那是"加速冲上去"，与"闪一下换个位置"语义不同），
-要么**新增字段 ＋ 战斗引擎改动**（`combat.ts` 里加位移逻辑 + 表现 + 用例 + `content:check` 的挂载件接线护栏）。
+`BattleState` **不做二维坐标** —— 只有 `distanceM`（当前距离）＋ `myDesireM`（我方期望距离）。
+⇒ **「闪现」= `distanceM` 的瞬间突变**，不涉及位置/寻路/表现层几何 —— 这是本次最省的做法。
 
-**本条属 §一 四步闸门里的"新的大功能"** ⇒ 下一步是出**中文设计总结**（方案 + 取舍 + 涉及模块 + 边界）
-递船长确认后再落码。**本文件已把缺口与两条路线记清，供那份总结直接引用。**
+### 12.2 落码清单（7 处 · 含 1 处**待船长批**）
+
+| # | 文件 | 改动 |
+|---|---|---|
+| 1 | `packages/core/src/types.ts` | `FoeMountDef.blink` 字段 ＋ `FoeMountId` 加 `'foe-mount-corona-blink'` |
+| 2 | `packages/core/src/foeMounts.ts` | 新建件「**瞬光跃迁仪**」（`Corona Blink Drive`）＋ `resolveFoeMounts` 解析 ＋ `ResolvedFoeMounts.foeBlink` |
+| 3 | `packages/core/src/state.ts` | `BattleState.foeBlinks`（逐单位冷却 · 键 = 战斗 tag） |
+| 4 | `packages/core/src/combat.ts` | `UnitSpec.foeBlink` ＋ 建档落地 ＋ **`markFoeBlink()`** ＋ 受击钩子处调用（与两条受击增程**同一个钩子**） |
+| 5 | `packages/data/src/foe-ships.ts` | **五档壳体逐档常挂**（船长选「乙：五档全带」） |
+| 6 | `packages/core/tests/corona-blink-20261001.test.ts` | **新增 6 条用例**（件定义 / 五档挂载 / 建档落地 + 零行为变化对照 / 真实战斗触发 / 冷却单调） |
+| 7 | ⚠ `packages/core/src/save.ts` | `foeBlinks` 登记为 **`kind: 'runtime'`（有意不入档）** —— **命中预提交钩子的「需裁决」档**，见 §12.4 |
+
+### 12.3 参数与口径（船长选「甲」）
+
+- **触发**：本体被命中（打机群不算、未命中不算）—— 与 `droneRangeOnHit` / `gunRangeOnHit` 同一钩子；
+- **效果**：把 `distanceM` **拉开 2,000 m**，受既有钳制（`bal.minDistanceM` 与 `battleMaxDistanceM()`）⇒ 不会闪出战场；
+- **冷却**：**12 秒**，记在 `BattleState.foeBlinks[tag]`；冷却期内再挨打不闪；
+- **闪不动时不白盖冷却**（已在战场最大距离 ⇒ 直接返回，不写冷却戳）；
+- **画面提示**：`跃迁规避：目标拉开交战距离`（走既有 `pushBattleNotice`，与"敌方增援"同一提示位）。
+
+### 12.4 ⚠ 待船长批的两条
+
+1. **`save.ts` 那一处登记命中预提交钩子的「需裁决」档** ⇒ 按纪律**先报船长**：本次是**纯登记**
+   （`kind: 'runtime'` = **有意不入档**，与 `foeCharges` 冲锋循环同口径）——**不改变存档形状、
+   不动 `CURRENT_STATE_VERSION`、老档零迁移**。获批后用 `--no-verify` 提交并在提交信息里记账。
+2. **件名与提示文案是提案**（`瞬光跃迁仪` / `Corona Blink Drive` / `跃迁规避：目标拉开交战距离`）——
+   走 `whale-copy` 规程，**草稿已递船长审**，批后若改名只改 `foeMounts.ts` 一处 `name` / `en` 与那句提示。
 
 ---
 

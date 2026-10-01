@@ -831,6 +831,16 @@ export interface BattleFx {
    * `true` 时本条不是普通开火弹道，而是"发动者 → 被钉舰"的一条**蓝色连线**（持续到效果解除）。
    */
   web?: true
+  /**
+   * **闪现跃迁演出**（**船长 2026-10-01 令**：「**闪现时候要给舰船一个闪现的动画**」）——
+   * `true` 时本条不是开火弹道，而是"**该敌舰刚刚瞬移换位**"的一次演出事件：
+   * 界面据此给 `tag` 那艘敌舰播**闪现动画**（淡出→淡入）。
+   *
+   * ⚠ 位置本身**不用引擎另推坐标**：战斗画面里敌舰的横坐标由 `BattleState.distanceM` 映射
+   * ⇒ 距离一突变，舰船位置**本来就跟着跳**；本事件只负责"让人看出这是闪现、不是瞬移 bug"。
+   * 与 `web` 同款承载方式（`: true` 旗标 + `type` 给占位值）。
+   */
+  blink?: true
   /** 是否命中目标 */
   hit: boolean
   /**
@@ -1045,6 +1055,19 @@ export interface BattleState {
   foeMountNamePairs?: ReadonlyArray<readonly [string, string]>;
   /** 逐单位冲锋运行态（键 = 战斗 tag：`foe-0` / `w0-foe-2` / `w1-foe-0-e1`，同一场内唯一） */
   foeCharges?: Record<string, { on?: boolean; cdUntilMs?: number }>;
+  /**
+   * **逐单位「闪现跃迁」冷却运行态**（**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」；
+   * 给 R 族「光环科技 / Corona Systems」那件「瞬光跃迁仪」用）。
+   *
+   * 键 = 战斗 tag（与 `foeCharges` 同一把尺）；值 = **冷却到什么时候**（`lastTickGameMs` 基准）。
+   * 语义：本体被命中时，若已过冷却 ⇒ 把 `distanceM` 拉开 `FoeMountDef.blink.distanceM` 米、
+   * 并盖上下一次可用的时刻（详见 `FoeMountDef.blink` 头注）。
+   *
+   * ⚠ **与 `foeCharges` 同一口径：登记为 `save.ts` 清洗器的 `kind: 'runtime'`（有意不入档）** ——
+   * 落在既有的"重载即重置循环"口径内（冲锋循环 2026-09-14 起即如此，本条照办）。
+   * 字段可选 ⇒ **旧档零迁移、既有各件零行为变化**。
+   */
+  foeBlinks?: Record<string, number>;
   /**
    * **我方"不被一击带走"保险的运行态账本**（船长 2026-09-16：「血量 100%，单次齐射伤害最多只能造成
    * **总血量 80%** 的伤害（**只对我方生效**）」）。

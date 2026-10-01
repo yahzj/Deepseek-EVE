@@ -1440,6 +1440,9 @@ export const FOE_R_CORONA_GLINT: FoeShipDef = {
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, kinetic: 2 }, // 能量线为主（族格第二条）
   energyForm: 'beam', // 激光（能量·必中）—— 船长 2026-10-01「使用以激光为主的武器」；全仓另一族是 D 守墓古舰
+  // **闪现跃迁仪**（**船长 2026-10-01 令**：「激光武器+闪现效果的挂载件」，选「乙：五档全带」）：
+  // 本体被命中时拉开交战距离 2,000 m、冷却 12 秒（参数选「甲」）—— 与「风筝」配套：被近身就闪开、重建射程优势。
+  mounts: [FOE_MOUNT_IDS.coronaBlink],
   tactic: 'kite', // 船长令「非常擅长风筝战术」⇒ 全档 kite（改前 T1~T3 是 orbit）
   drones: [{ drone: FOE_DRONE_R_PRISM, count: 1 }], // 族格第三条：每艘自带机巢
 }
@@ -1468,6 +1471,9 @@ export const FOE_R_CORONA_ECHO: FoeShipDef = {
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, kinetic: 2 },
   energyForm: 'beam', // 激光（能量·必中）—— 船长 2026-10-01「使用以激光为主的武器」；全仓另一族是 D 守墓古舰
+  // **闪现跃迁仪**（**船长 2026-10-01 令**：「激光武器+闪现效果的挂载件」，选「乙：五档全带」）：
+  // 本体被命中时拉开交战距离 2,000 m、冷却 12 秒（参数选「甲」）—— 与「风筝」配套：被近身就闪开、重建射程优势。
+  mounts: [FOE_MOUNT_IDS.coronaBlink],
   tactic: 'kite', // 船长令「非常擅长风筝战术」⇒ 全档 kite（改前 T1~T3 是 orbit）
   drones: [{ drone: FOE_DRONE_R_PRISM, count: 2 }],
 }
@@ -1496,6 +1502,9 @@ export const FOE_R_CORONA_PRISM: FoeShipDef = {
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, kinetic: 2 },
   energyForm: 'beam', // 激光（能量·必中）—— 船长 2026-10-01「使用以激光为主的武器」；全仓另一族是 D 守墓古舰
+  // **闪现跃迁仪**（**船长 2026-10-01 令**：「激光武器+闪现效果的挂载件」，选「乙：五档全带」）：
+  // 本体被命中时拉开交战距离 2,000 m、冷却 12 秒（参数选「甲」）—— 与「风筝」配套：被近身就闪开、重建射程优势。
+  mounts: [FOE_MOUNT_IDS.coronaBlink],
   tactic: 'kite', // 船长令「非常擅长风筝战术」⇒ 全档 kite（改前 T1~T3 是 orbit）
   drones: [{ drone: FOE_DRONE_R_PRISM, count: 2 }],
 }
@@ -1524,6 +1533,9 @@ export const FOE_R_CORONA_DUSK: FoeShipDef = {
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, kinetic: 2 },
   energyForm: 'beam', // 激光（能量·必中）—— 船长 2026-10-01「使用以激光为主的武器」；全仓另一族是 D 守墓古舰
+  // **闪现跃迁仪**（**船长 2026-10-01 令**：「激光武器+闪现效果的挂载件」，选「乙：五档全带」）：
+  // 本体被命中时拉开交战距离 2,000 m、冷却 12 秒（参数选「甲」）—— 与「风筝」配套：被近身就闪开、重建射程优势。
+  mounts: [FOE_MOUNT_IDS.coronaBlink],
   tactic: 'kite', // 船长令「非常擅长风筝战术」⇒ 全档 kite（改前 T1~T3 是 orbit）
   drones: [{ drone: FOE_DRONE_R_PRISM, count: 3 }],
 }
@@ -1557,6 +1569,9 @@ export const FOE_R_CORONA_NEXUS: FoeShipDef = {
   blindDmgMul: 0.3,
   dmgMix: { plasma: 8, kinetic: 2 },
   energyForm: 'beam', // 激光（能量·必中）—— 船长 2026-10-01「使用以激光为主的武器」；全仓另一族是 D 守墓古舰
+  // **闪现跃迁仪**（**船长 2026-10-01 令**：「激光武器+闪现效果的挂载件」，选「乙：五档全带」）：
+  // 本体被命中时拉开交战距离 2,000 m、冷却 12 秒（参数选「甲」）—— 与「风筝」配套：被近身就闪开、重建射程优势。
+  mounts: [FOE_MOUNT_IDS.coronaBlink],
   tactic: 'kite', // 船长令「非常擅长风筝战术」⇒ 全档 kite（改前 T1~T3 是 orbit）
   drones: [{ drone: FOE_DRONE_R_PRISM, count: 4 }], // 全游带机最多的敌舰
   elite: true, // 显示名挂「精锐」前缀
