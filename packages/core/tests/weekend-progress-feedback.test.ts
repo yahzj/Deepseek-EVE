@@ -2,7 +2,7 @@
  * **每场入侵战斗的进度反馈**（**2026-09-25 船长批「甲」**）＋ **外围领先读数**（同日批「乙」）。
  *
  * 起因（船长转述玩家报障）：「**从常驻悬赏进行重复清缴，不会增加进度条**」。
- * 真档实测的真相：进度**每场照加**（外围 +10%），但主动出击胜利**原来一句日志都没有**
+ * 真档实测的真相：进度**每场照加**（外围 +5%；2026-10-01 由 +10% 降至 +5%），但主动出击胜利**原来一句日志都没有**
  * （`expedition.ts` 丢弃 `weekendApplyBattleOutcome` 的返回值），而活动栏那三块读数
  * 全是"满 100% 才 +1 的计数" ⇒ 玩家看不到任何反馈。
  *
@@ -15,7 +15,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
-import { weekendPeripheryAverageOf, weekendPeripheryLeadOf } from '../src/weekendEvent'
+import { WEEKEND_GAIN_PERIPHERY_WIN, weekendPeripheryAverageOf, weekendPeripheryLeadOf } from '../src/weekendEvent'
 import { weekendNoteContribution } from '../src/weekendEvent'
 import { weekendAssaultSpecOf, weekendResolveBattle } from '../src/weekendBattle'
 import type { WeekendBattleSpec } from '../src/weekendBattle'
@@ -30,7 +30,7 @@ const CORE = 'galaxy-abyss'
 
 function setup(): { s: GameState; ev: WeekendEventState } {
   const s = createInitialState({ nowWallMs: 0, seed: 11 })
-  // 关闭调试模式 ⇒ 主动胜利 = 外围 +10% / 核心 +5%（调试模式是 +50%）
+  // 关闭调试模式 ⇒ 主动胜利 = 外围 +5% / 核心 +5%（调试模式是 +50%）
   s.debugQuick = false
   const ev: WeekendEventState = {
     seq: 1,
@@ -59,12 +59,12 @@ function specOf(s: GameState, galaxyId: string): WeekendBattleSpec {
 }
 
 describe('入侵战斗的进度反馈（船长批甲）', () => {
-  it('外围打赢 ⇒ 写「夺回进度 a% → b%」，台账 +10%', () => {
+  it('外围打赢 ⇒ 写「夺回进度 a% → b%」，台账 +5%', () => {
     const { s, ev } = setup()
     const n = s.logs.length
     const r = weekendResolveBattle(s, ctx, specOf(s, PER), 'win', T)
-    expect(r.progressGain).toBeCloseTo(0.1, 10)
-    expect(ev.contributed[PER]).toBeCloseTo(0.1, 10)
+    expect(r.progressGain).toBeCloseTo(WEEKEND_GAIN_PERIPHERY_WIN, 10)
+    expect(ev.contributed[PER]).toBeCloseTo(WEEKEND_GAIN_PERIPHERY_WIN, 10)
     const logs = newLogs(s, n)
     const line = logs.find((l) => l.textId === 'core.weekend.035')
     expect(line, '应有进度反馈行').toBeDefined()

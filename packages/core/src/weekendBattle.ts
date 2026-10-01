@@ -263,7 +263,7 @@ export interface WeekendResolveResult {
 
 /**
  * 结算一场入侵相关战斗（**唯一入口**）：
- * - `assault` + `win` ⇒ 主动推进（外围 +10% / 核心 +5%）→ 若该星系进度满 ⇒ **夺回奖励**（稀有残骸 ×8 ＋ 2M；全部夺回再 +5M）；
+ * - `assault` + `win` ⇒ 主动推进（外围 +5% / 核心 +5%；外围 2026-10-01 由 10% 降至 5%）→ 若该星系进度满 ⇒ **夺回奖励**（稀有残骸 ×8 ＋ 2M；全部夺回再 +5M）；
  * - `assault`/`ambush` + `repel` ⇒ **击退也加进度**（+3%；离线自动结算 +1%）；
  * - `loss` ⇒ **只受损、不动进度**（第 5 条）；
  * - 目标是核心且**核心条满**时打赢 ⇒ **击毁旗舰**（黑匣 ＋ 稀有残骸 ×3）并结束本场。
@@ -306,7 +306,7 @@ export function weekendResolveBattle(
   let gatedThisBattle = false
   let gain = 0
   if (outcome === 'win') {
-    /** 主动胜利的推进量：**调试模式 = +50%（两场收复，船长令）**；正常 = 外围 10% / 核心 5% */
+    /** 主动胜利的推进量：**调试模式 = +50%（两场收复，船长令）**；正常 = 外围 5% / 核心 5%（外围 2026-10-01 由 10% 降至 5%） */
     gain = weekendWinGainOf(state, ev, spec.galaxyId)
     // 核心：门禁未解时**不给进度**（`weekendNoteContribution` 会记台账，但读数侧仍被门禁挡住 ⇒ 这里只在门禁已解时记）
     const gated = spec.galaxyId === ev.coreId && weekendProgressAt(state, ev, spec.galaxyId, nowWallMs) <= 0 && !peripheryCleared(state, ev, nowWallMs)
@@ -999,11 +999,11 @@ export function weekendApplyBattleOutcome(
   const bossDown =
     involved.kind === 'flagship' && weekendIsBossFamily(state.weekendEvent) && weekendFlagshipDefeated(state.weekendEvent)
   /**
-   * **胜负 → 进度档**（设计稿「玩家推进」：主动胜利 外围 +10% / 核心 +5% · **主动击退遇袭 +3%** ·
+   * **胜负 → 进度档**（设计稿「玩家推进」：主动胜利 外围 +5% / 核心 +5% · **主动击退遇袭 +3%** ·
    * **离线自动结算击退 +1%** · 战败只受损、进度不动）。
    *
    * ⚠ 2026-09-25 修（原式 `victory || bossDown ? 'win' : (ambush ? 'repel' : 'loss')` **两头都反了**）：
-   * 遇袭打赢被记成"主动胜利"（+10% 而不是 +3%），遇袭打输却被记成"击退"（+3% 而不是 0）。
+   * 遇袭打赢被记成"主动胜利"（+5% 而不是 +3%），遇袭打输却被记成"击退"（+3% 而不是 0）。
    * 现在按 `kind` 分流：**伏击**看 `victory`（赢 = 击退 · 输 = 战败），**主动出击**赢 = 胜利、输 = 战败；
    * 文字结算（`hint.source === 'text'`）的击退走 **+1%** 那一档。
    */

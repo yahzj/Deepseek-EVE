@@ -27,6 +27,7 @@ import {
 } from '../src/weekendBattle'
 import {
   WEEKEND_FLAGSHIP_POOL_HP,
+  WEEKEND_GAIN_PERIPHERY_WIN,
   weekendBlackBoxSettledOf,
   weekendFoeCardOf,
   weekendLastHitByPlayer,
@@ -93,7 +94,7 @@ describe('周末入侵 · 战斗规格（M1-b）', () => {
 })
 
 describe('周末入侵 · 结果结算（M1-b）', () => {
-  it('主动打赢外围：**调试 +50%（两场收复）** / 正常 +10% · 战败只受损不动进度', () => {
+  it('主动打赢外围：**调试 +50%（两场收复）** / 正常 +5% · 战败只受损不动进度', () => {
     const { s, ev } = setup()
     const per = ev.peripheryIds[0]!
     const spec = weekendAssaultSpecOf(s, ctx, per)!
@@ -104,11 +105,14 @@ describe('周末入侵 · 结果结算（M1-b）', () => {
     const win2 = weekendResolveBattle(s, ctx, spec, 'win', 0)
     expect(win2.progressGain, '第二场同样 +50%').toBeCloseTo(0.5, 6)
     expect(ev.contributed[per], '**两场累计 1.0 ⇒ 该处收复**（船长：只需打 2 场）').toBeCloseTo(1.0, 6)
-    /** 正常模式：外围 +10% 逐字不变 */
+    /** 正常模式：外围 +5% 逐字不变（2026-10-01 由 +10% 降至 +5%，船长 2026-09-26 挂账令） */
     s.debugQuick = false
     const ev2 = { ...ev, contributed: {} }
     s.weekendEvent = ev2
-    expect(weekendResolveBattle(s, ctx, spec, 'win', 0).progressGain, '正常：外围 +10%').toBeCloseTo(0.1, 6)
+    expect(weekendResolveBattle(s, ctx, spec, 'win', 0).progressGain, '正常：外围 +5%').toBeCloseTo(
+      WEEKEND_GAIN_PERIPHERY_WIN,
+      6,
+    )
     const before = ev.contributed[per]!
     const loss = weekendResolveBattle(s, ctx, spec, 'loss', 0)
     expect(loss.progressGain).toBe(0)

@@ -1324,7 +1324,7 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
         // ⚠ 倍速批（2026-09-19）：判据改走**战斗时钟**并把窗口按倍速放大（洞外战斗 `speedX` 缺省 = 1 ⇒ 逐字等价）。
         const bal = ctx.balance.battle
         if (battleClockNowMs(state, exp.battle) - exp.battle.lastTickGameMs < battleShowWindowMs(exp.battle, bal.killcamMs)) return
-        /** **周末入侵**：被占星系的悬赏战打完 ⇒ 走入侵结算（主动胜利 +10%（外围）/ +5%（核心）· 夺回发奖 · 旗舰击沉） */
+        /** **周末入侵**：被占星系的悬赏战打完 ⇒ 走入侵结算（主动胜利 +5%（外围）/ +5%（核心）· 夺回发奖 · 旗舰击沉） */
         weekendApplyBattleOutcome(
           state,
           ctx,

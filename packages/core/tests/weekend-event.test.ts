@@ -192,13 +192,13 @@ describe('周末入侵 · 时间轴', () => {
     expect(s.weekendEvent?.contributed['galaxy-kor'], '进度台账留着').toBeCloseTo(0.7, 6)
   })
 
-  it('调试模式：主动胜利 +50% ⇒ 两场收复（正常模式仍 外围 10% / 核心 5%）', () => {
+  it('调试模式：主动胜利 +50% ⇒ 两场收复（正常模式 外围 5% / 核心 5%）', () => {
     const s = fresh(true)
     const ev = evOf('galaxy-home', ['galaxy-kor'], 0)
     expect(weekendWinGainOf(s, ev, 'galaxy-kor'), '调试：外围 +50%').toBeCloseTo(WEEKEND_DEBUG_WIN_GAIN, 6)
     expect(weekendWinGainOf(s, ev, 'galaxy-home'), '调试：核心也 +50%').toBeCloseTo(WEEKEND_DEBUG_WIN_GAIN, 6)
     const s2 = fresh(false)
-    expect(weekendWinGainOf(s2, ev, 'galaxy-kor'), '正常：外围 +10%').toBeCloseTo(WEEKEND_GAIN_PERIPHERY_WIN, 6)
+    expect(weekendWinGainOf(s2, ev, 'galaxy-kor'), '正常：外围 +5%').toBeCloseTo(WEEKEND_GAIN_PERIPHERY_WIN, 6)
     expect(weekendWinGainOf(s2, ev, 'galaxy-home'), '正常：核心 +5%').toBeCloseTo(WEEKEND_GAIN_CORE_WIN, 6)
   })
 
@@ -692,27 +692,33 @@ describe('周末入侵 · 引擎 tick 与记账（M1-b）', () => {
   })
 
   /**
-   * 记账：进度台账**走单点 `weekendNoteContribution`**（+10%/+5%/+3%/+1% 都在调用方算好再传进来）·
+   * 记账：进度台账**走单点 `weekendNoteContribution`**（各档推进量都在调用方算好再传进来）·
    * 击毁旗舰要核心先满。
+   *
+   * ⚠ **2026-10-01**：期望值改为**从常量现算**（原先写死 `0.1 / 0.13 / 0.14 / 0.05`）——
+   * 外围那档当日由 **+10% 降至 +5%**（船长 2026-09-26 挂账令），写死的读数会随每次调数值陈旧。
    *
    * ⚠ **2026-09-27 清理**：原用例走的是 `weekendNotePlayerWin` / `weekendNoteRepel` 两个小助手 ——
    * 它们在生产代码里**没有任何调用点**（胜利/击退的同一套口径早已收口在 `weekendResolveBattle`），
    * 属于"同一口径的第二份实现"，已删。本用例改为直接钉**单点**与**结局门禁**。
    */
-  it('记账：进度按 +10%/+5%/+3%/+1% 写进台账 · 击毁旗舰要核心先满', () => {
+  it('记账：进度按 外围 5% / 核心 5% / 击退 3% / 离线 1% 写进台账 · 击毁旗舰要核心先满', () => {
     const s = fresh(true)
     const T = 5_000_000
     weekendTick(s, ctx, T, T)
     const ev = s.weekendEvent!
     const per = ev.peripheryIds[0]!
     weekendNoteContribution(ev, per, WEEKEND_GAIN_PERIPHERY_WIN)
-    expect(ev.contributed[per], '外围主动胜利 +10%').toBeCloseTo(0.1, 6)
+    expect(ev.contributed[per], '外围主动胜利 5%').toBeCloseTo(WEEKEND_GAIN_PERIPHERY_WIN, 6)
     weekendNoteContribution(ev, per, WEEKEND_GAIN_REPEL)
-    expect(ev.contributed[per], '击退再 +3%').toBeCloseTo(0.13, 6)
+    expect(ev.contributed[per], '击退再 +3%').toBeCloseTo(WEEKEND_GAIN_PERIPHERY_WIN + WEEKEND_GAIN_REPEL, 6)
     weekendNoteContribution(ev, per, WEEKEND_GAIN_OFFLINE_REPEL)
-    expect(ev.contributed[per], '离线击退 +1%').toBeCloseTo(0.14, 6)
+    expect(ev.contributed[per], '离线击退再 +1%').toBeCloseTo(
+      WEEKEND_GAIN_PERIPHERY_WIN + WEEKEND_GAIN_REPEL + WEEKEND_GAIN_OFFLINE_REPEL,
+      6,
+    )
     weekendNoteContribution(ev, ev.coreId, WEEKEND_GAIN_CORE_WIN)
-    expect(ev.contributed[ev.coreId], '核心主动胜利 +5%').toBeCloseTo(0.05, 6)
+    expect(ev.contributed[ev.coreId], '核心主动胜利 +5%').toBeCloseTo(WEEKEND_GAIN_CORE_WIN, 6)
     expect(weekendNoteFlagshipKilled(s, T), '核心没满 ⇒ 击毁无效').toBe(false)
     for (const id of ev.peripheryIds) ev.contributed[id] = 1 // 清外围解门禁
     ev.contributed[ev.coreId] = 1
