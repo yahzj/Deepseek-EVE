@@ -57,6 +57,8 @@ import type { GameEngine } from '../game/engine'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
+/** 产物行的**物品悬停**（2026-10-01 船长令：实验室卡的产物也要有组装机卡那层 title） */
+import { ItemHover } from '../ui/shipInfo'
 /** 材料行尾「这一味料从哪来」的四支判定（2026-10-01：与组装机卡共用一份，见本件头注） */
 import { MatSourceLink } from '../ui/matSourceLink'
 /* 图标一律走**物品 id 单点映射**（2026-09-30 船长报障：新道具在实验室卡上是通用「消耗品」图标） */
@@ -669,7 +671,9 @@ function LabCard({
     onToast(tr('ui.lab.019', { p1: recipe.name, p2: recipe.outputUnits, who }))
   }
   return (
-    <div className="app-belt-card" key={recipe.id}>
+    // `is-lab`：本卡唯一的专属样式钩子（`styles.css`：把产物行整行拉回普通文字色，**只有产物名金色**，
+    // 与组装机卡 `is-assembler` 同一口径；⚠ 不复用 `is-assembler`——它还带 content-visibility 与占位高度）
+    <div className="app-belt-card is-lab" key={recipe.id}>
       <div className="app-belt-head">
         <span className="app-belt-name">
           {/* ⚠ **2026-09-30 船长报障「新道具图标你还没定」**：这里原先把图标写死成 `consumable`
@@ -691,9 +695,31 @@ function LabCard({
           现改成**取产出物自己的 `description`**：一件产品一份说明（单一来源，不再每张配方各写一段）。 */}
       <div className="app-belt-desc">{out?.description ?? ''}</div>
       {lockTip !== null ? <div className="app-belt-desc app-bad">{lockTip}</div> : null}
-      {/* 数据行（与精炼炉同款位置）：每批产出 / 每批工期 / 精炼速率 */}
+      {/* 产物行（**2026-10-01 船长令**：「你漏了产物部分的样式（包括产物的title）」）——与组装机卡
+          **同一套口径**：`产物：` ＋ 产物名（**本行只有它金色**，2026-09-13 船长「只需要将产物染成金色
+          就够了…其他文字的金色取消」）＋ 拥有数（`.app-dim`，悬停 `ui.Industry.108` 说明其口径）。
+          ⚠ 金字靠本卡 `is-lab` 那条 CSS 把整行拉回普通文字色（复用不了 `.is-assembler`：那条还带
+          `content-visibility:auto` ＋ `contain-intrinsic-size`，是组装机 151 张卡的屏外跳过用的）。
+          ⚠ 产物名挂**物品悬停**（与组装机卡同一个 `ItemHover` —— 就是船长说的"产物的title"）。
+          实验室自己的两个读数（每批工期 / 产出倍率）留在行尾。 */}
       <div className="app-belt-ore">
-        {tr('ui.lab.003')} {out?.name ?? recipe.outputItemId} ×{recipe.outputUnits}
+        {tr('ui.Handbook.013')}
+        <span className="app-gold">
+          {out !== undefined ? (
+            <ItemHover item={out} nameOf={(id) => engine.ctx.items.get(id)?.name}>
+              {out.name}
+            </ItemHover>
+          ) : (
+            recipe.outputItemId
+          )}
+        </span>{' '}
+        ×{recipe.outputUnits}
+        <span
+          className="app-dim"
+          title={tr('ui.Industry.108', { ownedWhere: tr('ui.ItemsPage.001') })}
+        >
+          （{tr('ui.ItemsPage.001')} {countWare(state, recipe.outputItemId).toLocaleString('zh-CN')}）
+        </span>
         {' · '}
         {tr('ui.lab.004')} {Math.round(recipe.cycleMs / 60_000)} {tr('ui.lab.012')}
         {' · '}
@@ -714,7 +740,6 @@ function LabCard({
             <li
               key={m.itemId}
               className={`app-bp-mat${!enough && !running ? ' is-short' : ''}`}
-              title={def?.description ?? ''}
             >
               {def?.name ?? m.itemId} ×{m.units.toLocaleString('zh-CN')}
               <span className="app-dim">
