@@ -76,12 +76,22 @@ export function SaveManager({
     }
   }
 
-  /** 导入：系统文件选择（桌面/手机网页通用）→ 校验 → 覆盖当前档（⚠ **不备份**原档，2026-09-17 船长） */
+  /**
+   * 导入：系统文件选择（桌面/手机网页通用）→ 校验 → 覆盖当前档（⚠ **不备份**原档，2026-09-17 船长）。
+   *
+   * ⚠ **2026-09-30 不再静默**（船长转玩家报障「手机 UC 只能导出、不能导入」后定的处置）：判成"取消"时
+   * 原先直接 `return` ⇒ **"选择器压根没弹出来"与"玩家自己点了取消"在界面上完全一样**（都没动静），
+   * 玩家拿不到任何线索。现在给一条**可操作的**提示：把话说明白（没读到文件）＋给出路
+   * （换系统自带浏览器打开本页再导入）——真取消的玩家只是多看一条提示，比"没反应"强。
+   */
   async function handleImport(): Promise<void> {
     setBusy(true)
     const r = await engine.importSaveFromFile()
     setBusy(false)
-    if (r.canceled) return
+    if (r.canceled) {
+      onToast(tr('ui.SaveManager.031'))
+      return
+    }
     if (!r.ok) onToast(cmdText(r) || tr('ui.SaveManager.029'), true)
     else {
       onToast(tr("ui.SaveManager.003"))
