@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { createInitialState } from '../src/state'
+import { createInitialState, HOME_GALAXY_ID } from '../src/state'
 import { addWare, countWare } from '../src/inventory'
 import {
   HIGH_SEC_PENALTY,
@@ -17,7 +17,7 @@ import {
   consumableStockOf,
   useInvasionBeacon,
 } from '../src/consumables'
-import { weekendCoreCandidates } from '../src/weekendEvent'
+import { weekendCoreCandidates, weekendHasBuiltStation } from '../src/weekendEvent'
 import { securityZoneOf } from '../src/sideTasks'
 import { DSI_FACTION_ID, noteStandingEarned } from '../src/expedition'
 
@@ -159,26 +159,29 @@ describe('信号发射器 · 使用与拒绝', () => {
     expect(consumableStockOf(s, INVASION_BEACON_ITEM_ID), '扣掉一枚').toBe(0)
   })
 
-  it('指定不合格星系 ⇒ 拒绝 core.consumable.009 且不扣料（未探索 / 高安 / 已有已建副站）', () => {
-    /* ① 没探索过（**先离开基地**，否则先撞位置限制） */
-    const a = createInitialState({ nowWallMs: 0, seed: 41 })
-    a.awayGalaxy = nonHighSecId()
-    addWare(a, INVASION_BEACON_ITEM_ID, 1)
-    a.exploredGalaxies = [] // 全部标成未探索
-    const r1 = useInvasionBeacon(a, ctx, { galaxyId: [...ctx.galaxies.keys()][0]! })
+  it('**指定星系**的**唯一禁令**＝目标星系有空间站（母港 / 已建成副站）⇒ 拒 core.consumable.010、不扣料', () => {
+    /* ① 目标 = 母港（自带空间站） */
+    const a = readyState() // 自带 1 枚
+    const r1 = useInvasionBeacon(a, ctx, { galaxyId: HOME_GALAXY_ID })
     expect(r1.ok).toBe(false)
-    expect(r1.errorId).toBe('core.consumable.009')
+    expect(r1.errorId).toBe('core.consumable.010')
     expect(consumableStockOf(a, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
     expect(a.weekendEvent, '没建事件').toBeUndefined()
+  })
 
-    /* ② 高安星系（拿全探索档里第一个高安作目标） */
-    const b = readyState()
-    const highSec = [...ctx.galaxies.keys()].find((id) => !weekendCoreCandidates(b, ctx).includes(id) && ctx.galaxies.has(id))
-    if (highSec !== undefined) {
-      const r2 = useInvasionBeacon(b, ctx, { galaxyId: highSec })
-      expect(r2.ok, '高安或已建副站 ⇒ 拒').toBe(false)
-      expect(r2.errorId).toBe('core.consumable.009')
-      expect(consumableStockOf(b, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
+  it('**指定星系**时"未探索 / 高安 / 无副站"都**不再是**限制（只剩空间站那一条）', () => {
+    /* 高安但无空间站的星系 ⇒ 允许（2026-09-30 船长令：只有"有空间站"这一条禁令） */
+    const s = readyState()
+    s.awayGalaxy = highSecId()
+    noteStandingEarned(s, DSI_FACTION_ID, 50) // 高安点火要付声望
+    addWare(s, INVASION_BEACON_ITEM_ID, 1)
+    const hiTarget = [...ctx.galaxies.keys()].find(
+      (id) => securityZoneOf(ctx, id) === '高安' && id !== HOME_GALAXY_ID && !weekendHasBuiltStation(s, ctx, id),
+    )
+    if (hiTarget !== undefined) {
+      const r = useInvasionBeacon(s, ctx, { galaxyId: hiTarget })
+      expect(r.ok, r.ok ? '' : String(r.error)).toBe(true)
+      expect(s.weekendEvent!.coreId).toBe(hiTarget)
     }
   })
 

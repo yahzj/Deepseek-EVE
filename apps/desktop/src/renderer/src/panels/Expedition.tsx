@@ -22,7 +22,7 @@ import {
   calcPower,
   // 2026-09-25 入侵旗舰入口（星系详细里那一行）：族名全称走 core 的同一张表（别在本文件另写一份）
   weekendFamilyNameId,
-  weekendCoreCandidates,
+  beaconTargetBlocked,
   /* 信号发射器（2026-09-30 船长令）：持有量 + 指定星系的资格判据 + 位置限制（有空间站的地方不能启动） */
   INVASION_BEACON_ITEM_ID,
   HIGH_SEC_PENALTY,
@@ -2169,10 +2169,11 @@ function GalaxyActions({
   const [beaconAsk, setBeaconAsk] = useState<string | null>(null)
   /** 持有几枚信号发射器（**货仓优先 + 仓库**，core 单点）—— 0 枚时整个容器不渲染 */
   const beaconStock = consumableStockOf(state, INVASION_BEACON_ITEM_ID)
-  /** 本星系能不能当入侵目标（与随机那条路**同一套**候选：已探索 · 非高安 · 无已建副站） */
-  const beaconEligible = weekendCoreCandidates(state, ctx).includes(galaxy.id)
+  /** **指定星系那条路的唯一禁令**（船长 2026-09-30 令）：「该星系有空间站」⇒ 不能点火（信号被压制）。
+   *  ⚠ 不判"已探索/非高安/无副站"（那是**随机那条路**的候选集口径），也不判玩家在哪。 */
+  const beaconBlocked = beaconTargetBlocked(state, ctx, galaxy.id)
   /** 玩家位置**不判**（2026-09-30 船长报障：不该要求玩家先离开自己的空间站）；「不允许在空间站使用」
-   *  指的是**目标星系**不能有空间站 ⇒ 由 `beaconEligible`（候选资格）管，就地提示走 `ui.beacon.005`。 */
+   *  指的是**目标星系**不能有空间站 ⇒ 由 `!beaconBlocked`（候选资格）管，就地提示走 `ui.beacon.005`。 */
   /** 高安点火（**同日令**：二次警告 + 扣声望）——判据单点在 core */
   const beaconHighSec = beaconLaunchHighSecOf(state, ctx, galaxy.id)
   const [beaconWarn, setBeaconWarn] = useState(false)
@@ -2304,12 +2305,12 @@ function GalaxyActions({
           ) : (
             <button
               className="app-btn is-small is-warn"
-              aria-disabled={beaconEligible ? undefined : 'true'}
-              title={beaconEligible ? tr('ui.beacon.003', { p1: galaxy.name }) : tr('ui.beacon.005')}
+              aria-disabled={!beaconBlocked ? undefined : 'true'}
+              title={!beaconBlocked ? tr('ui.beacon.003', { p1: galaxy.name }) : tr('ui.beacon.005')}
               onClick={() => {
                 /* 目标不合格（含"该星系有空间站"）⇒ 就地说明；合格 ⇒ 高安给二次警告、否则就地确认。
                    ⚠ **不判玩家在哪**（船长 2026-09-30 报障：不该要求先离开自己的空间站）。 */
-                if (!beaconEligible) {
+                if (!!beaconBlocked) {
                   onToast(tr('ui.beacon.005'), true)
                   return
                 }

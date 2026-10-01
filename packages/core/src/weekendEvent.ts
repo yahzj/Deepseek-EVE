@@ -811,8 +811,11 @@ export function weekendCoreCandidates(state: GameState, ctx: SimContext): string
   return out.sort() // 排序 ⇒ 与探索顺序无关，选取可复现
 }
 
-/** 该星系是否已有**建成**的副站（在建/未开工不算 ⇒ 与 `builtStationCount` 同口径） */
-function weekendHasBuiltStation(state: GameState, ctx: SimContext, galaxyId: string): boolean {
+/** 该星系是否已有**建成**的副站（在建/未开工不算 ⇒ 与 `builtStationCount` 同口径）
+ *  ⚠ **2026-09-30 起对外导出**：信号发射器的"指定星系"那条禁令＝**目标星系不能有空间站**
+ *  （船长：「主动对某个星系使用，**只有不能对有空间站的星系使用这一条禁令**」）——那条判据除了
+ *  已建成副站，还要算上**母港所在星系**（母港自带空间站），两处共用本函数。 */
+export function weekendHasBuiltStation(state: GameState, ctx: SimContext, galaxyId: string): boolean {
   for (const site of ctx.stations.values()) {
     const anySite = site as unknown as { galaxyId?: string; tiers?: readonly unknown[] }
     if (anySite.galaxyId !== galaxyId) continue

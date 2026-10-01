@@ -201,6 +201,7 @@ export {
      界面与 core 共用同一批判据与常量 */
   HIGH_SEC_PENALTY,
   beaconLaunchHighSecOf,
+  beaconTargetBlocked,
   playerGalaxyIdOf,
 } from './consumables'
 export {
