@@ -3764,6 +3764,34 @@ function pickTopType(mix: Partial<Record<DamageType, number>> | undefined): Dama
   return best
 }
 
+const FOE_BEAM_USABLE_SHARE = 0.7
+
+/**
+ * **该敌舰的「决策用最远射程」**——它心里那把尺（**只给站位/期望距离用**，`inRange` 门不吃它）。
+ *
+ * - **激光武器**（`kind === 'beam'`）：`0.7 ×` 有效射程（后 30% 是它自己认为的无效射程）；
+ * - **其余武器**（实弹 `fixed` / 炮台 `gun` / 机群）：原样 = 有效射程（**零行为变化**）。
+ *
+ * ⚠ 逐武器取 `max`（不是"整船打七折"）：混装敌人只有激光那一条被折（裁定 1）。
+ * ⚠ `foeGunMaxRangeOf` 走的是**与开火门同一把尺**（含「受击增程 × 我方电子舰压制」）
+ *   —— 这正是裁定 2 要的"当前有效射程"口径。
+ */
+function foeDecideReachM(
+  b: import('./state').BattleState | undefined,
+  unit: UnitSpec,
+): number {
+  let top = 0
+  for (const w of unit.weapons) {
+    /**
+     * **当前有效射程**：传了战斗态 ⇒ 与开火门同一把尺（`foeGunMaxRangeOf`，含「受击增程 × 我方压制」）；
+     * 没传（纯函数场合，如 `foeDesiredRange`） ⇒ 按基础射程算 —— 那两道的折算由调用方自己套。
+     */
+    const reach = b !== undefined ? foeGunMaxRangeOf(b, unit, w) : w.maxRangeM
+    top = Math.max(top, w.kind === 'beam' ? Math.round(reach * FOE_BEAM_USABLE_SHARE) : reach)
+  }
+  return top
+}
+
 /** 开战距离 = 双方最大射程 ×factor + 缓冲；缓冲 = max(固定 100m, 最大射程×10%)（船长 2026-09-05：
  * 远程武器不再 100m 即接战，按射程比例拉开，保证开场有可见的接近窗口） */
 export function battleOpenM(me: UnitSpec, foes: UnitSpec[], bal: BattleBalance): number {
@@ -3806,6 +3834,11 @@ export function rFamilyDesireOf(
   me: UnitSpec,
   foes: readonly UnitSpec[],
   bal: BattleBalance,
+  /**
+   * **战斗态（可选）**——传了就吃「挨打增程」后的有效射程（与开火链同一把尺，船长 2026-10-01 裁定 2：
+   * 有效射程的基准 = **当前**有效射程）；不传 = 只按"基础射程 × 我方电子舰压制"算（老调用点零改动）。
+   */
+  b?: import('./state').BattleState,
 ): number | null {
   let meTop = 0
   let meBlindM = 0
@@ -3817,11 +3850,18 @@ export function rFamilyDesireOf(
   // **队长 = 本波编成里第一个 R 族单位**（跳过其它族；一族都没有 ⇒ 本函数不介入）
   const cap = foes.find((f) => f.family === 'R')
   if (!cap) return null
-  let capTop = 0
-  for (const w of cap.weapons) capTop = Math.max(capTop, w.maxRangeM)
+  /**
+   * 队长的射程：**决策用「有效射程」**（**船长 2026-10-01 令**，见 `FOE_BEAM_USABLE_SHARE`）——
+   * R 族五档全是激光（`energyForm: 'beam'`）⇒ 这里取的就是 `0.7 × 当前有效射程`。
+   * ⚠ 只影响 **①风筝的"够不够得着"判定**；风筝的**落点**仍是 `meTop + 100`（贴的是**我方**射程线，
+   *   与它自己射程多长无关）。⇒ 效果 = 它更不容易选择"站到你射程线外侧"，转而走 ②/③。
+   */
+  const capTop = foeDecideReachM(b, cap as UnitSpec)
   if (capTop <= 0) return null
   const floor = bal.minDistanceM
-  const clampTo = (v: number): number => Math.max(floor, Math.min(Math.round(v), capTop))
+  /** ⚠ 钳制上限用**原始射程带**（不是 `capTop`）：允许族格把它压进"它自己的无效射程"里 */
+  const capReachRaw = Math.max(cap.foeRangeBand?.max ?? 0, ...cap.weapons.map((w) => w.maxRangeM))
+  const clampTo = (v: number): number => Math.max(floor, Math.min(Math.round(v), capReachRaw))
   // ① 风筝（最高优先）：队长打得比我方远 ⇒ 贴到我方射程线外侧
   if (capTop > meTop) return clampTo(meTop + 100)
   // ② 钻近盲区：贴到我方近界的下沿（纯近战装配 ⇒ 站到我方射程之外）
@@ -3968,6 +4008,28 @@ export function desiredRangeFor(
  * 需要让头目站得与杂鱼一致（或不同）时，用条目 `rangeMinM`/`rangeMaxM` 覆写（"同卡同带"，
  * A 族四张 kite 卡已用此旋钮把 60% 的头目火力救回来）——**不引入加权平均**（避免"谁都不到位的中间值"）。
  */
+/**
+ * 🔴 **激光敌人的「有效射程」占比**（**船长 2026-10-01 令**，原话照抄）：
+ *
+ * > 「**添加新的敌人规则，所有使用激光的敌人，其射程的前70%视作有效射程，后30%视作无效射程，
+ * > 考虑各种情况时，忽略无效射程。比如在选择期望距离时，只根据有效射程来选择。
+ * > 但是开火战斗还是按照全射程来开火。**」
+ *
+ * ⇒ **只影响"它想站多远"（决策），不影响"它能不能打到你"（开火）**：
+ * 射程的**前 70% = 有效**、**后 30% = 无效**；凡是"考虑站位/期望距离"的场合按**有效**算，
+ * 而 `inRange` 门、远端衰减、命中与伤害结算**一律仍按全射程**。
+ *
+ * **同日四条裁定**（船长逐条答复）：
+ * 1. **按武器认**：只看**那条激光武器**（`kind === 'beam'`）⇒ 混装的实弹武器照旧按全射程；
+ * 2. **基准 = 当前有效射程**：先走完既有的「挨打增程」「我方电子舰射程压制」，**再 ×0.7**
+ *    （⇒ 静滞卫挨打增程 8,000→12,000 时，有效射程 5,600→8,400：**增程仍全额是收益**）；
+ * 3. **只改期望距离**（走位/站位）——开场距离、胜率预估、界面显示**都不动**；
+ * 4. **战场远界照最大射程**（`battleMaxDistanceM` 一行不改）。
+ *
+ * ⚠ 船长同日的纠正（记下来免得再想歪）：「**你说的副作用实际上不存在，因为开火射程没有变，
+ * 正常情况下只影响期望距离。**」——所以这不是"削弱激光敌人"，而是**改变它选位**。
+ */
+
 export function foeDesiredRange(
   _me: UnitSpec,
   foes: UnitSpec[],
@@ -3992,12 +4054,25 @@ export function foeDesiredRange(
   const band = head?.foeRangeBand ?? TACTIC_RANGE[head?.foeTactic ?? 'orbit']!
   // **削减后的有效上界**（只吃削减、不吃增程；基础 <3000m 或没有电子舰 ⇒ 等于原上界）
   const effMax = foeRangeDebuffR > 0 ? foeRangeWithDebuff(band.max, 1, foeRangeDebuffR) : band.max
+  /**
+   * 🔴 **激光敌人：选位只看「有效射程」（前 70%）**（**船长 2026-10-01 令**，见 `FOE_BEAM_USABLE_SHARE`）。
+   *
+   * 本函数是**纯函数**（不读战斗态）⇒ 只能按"**基础射程 × 削减**"折算 0.7，
+   * **不叠加**"挨打增程"（那条要读 `BattleState.foeGunRangeBuff`，而它只在**开火**链上生效）。
+   * 结果 = 没有增程的场合与 `foeDecideReachM` **完全一致**；有增程时这里略保守（不放大）。
+   *
+   * ⚠ 射程带的 **`min` 不动**：近界不是"打不着的远端"，把它折 0.7 反而凭空造出一个近盲区。
+   * ⚠ 返回值的**上限钳制仍是原始 `effMax`** ⇒ 允许它站到自己的"无效射程"里
+   *   （那是"族格/盲区把它压过去的位置"，不是"它自己想要的位置"）。
+   */
+  const isBeam = head !== undefined && head.weapons.some((w) => w.kind === 'beam')
+  const decideMax = isBeam ? Math.round(effMax * FOE_BEAM_USABLE_SHARE) : effMax
   if (pinned !== undefined && Number.isFinite(pinned)) {
-    const ratio = band.max > 0 ? effMax / band.max : 1
+    const ratio = band.max > 0 ? decideMax / band.max : 1
     return Math.max(bal.minDistanceM, Math.round(pinned * ratio))
   }
   const pos = clamp(0.05, 0.95, bal.tacticDesireFactor[head?.foeTactic ?? 'orbit'] ?? 0.5)
-  return Math.max(bal.minDistanceM, Math.round(band.min + pos * (effMax - band.min)))
+  return Math.max(bal.minDistanceM, Math.min(effMax, Math.round(band.min + pos * (decideMax - band.min))))
 }
 
 /* ═══════════ 弹药 ═══════════ */
@@ -8185,8 +8260,16 @@ function markFoeGunRangeBuff(rt: UnitSpec, b: import('./state').BattleState): bo
  * @returns 跳完之后应该站在哪；**与 `curM` 相同 = 跳不动**（调用方据此不白盖冷却）
  */
 function blinkStep(curM: number, wantM: number, stepM: number, minM: number, maxM: number): number {
-  const gap = wantM - curM
-  const moved = curM + Math.sign(gap) * Math.min(Math.abs(gap), stepM)
+  /**
+   * ⚠ **起点与目标都要先取整再算步长**（2026-10-01 修）：`distanceM` 是**逐拍走位累加出来的小数**
+   * （实测 3553.48416），若只在最后对落点取整，跳幅会变成 `|round(起点 ± 2000) − 起点|`
+   * = **2000.207**（超出件上限 0.2 米，实测踩到）。取整后两断点都是整数 ⇒ 跳幅恒 ≤ `stepM`，
+   * 与"距离以米为单位、件上写 2,000"的语义一致。
+   */
+  const cur = Math.round(curM)
+  const want = Math.round(wantM)
+  const gap = want - cur
+  const moved = cur + Math.sign(gap) * Math.min(Math.abs(gap), stepM)
   return Math.max(minM, Math.min(maxM, Math.round(moved)))
 }
 
@@ -8237,9 +8320,20 @@ function markFoeBlink(
   const want = foeDesiredRange(rt, [rt], bal, foeRangeDebuffR)
   const landed = blinkStep(b.distanceM, want, bl.distanceM, bal.minDistanceM, maxDistanceM)
   if (landed === b.distanceM) return false // 已在期望距离上／已被钳到边界 ⇒ 闪不动（不白盖冷却）
+  /** 记账起点 = **取整后的位置**（与 `blinkStep` 内部同一把尺）：`distanceM` 是逐拍累加的小数，
+   *  若记小数起点，跳幅会带上 0.2 米级尾巴（实测 2000.207）⇒ 与"件上写 2,000"的语义不符。 */
+  const from = Math.round(b.distanceM)
+  const moved = Math.abs(landed - from)
   b.distanceM = landed
   if (!b.foeBlinks) b.foeBlinks = {}
   b.foeBlinks[tag] = nowMs + bl.cooldownMs
+  /**
+   * **旁路记账：这一跳从哪起跳、走了多远、朝哪边**（2026-10-01 加，见 `BattleState.foeBlinkJumps` 头注）——
+   * 只写不进任何算式。存在的理由：落点是**全局标量**，多舰同拍各闪一次时，光看 `distanceM`
+   * 的变化**既分不出单舰跳幅、也分不出单舰方向**（实测踩过：聚合位移 2,678 m 被误读成"一跳超 2,000m"）。
+   */
+  if (!b.foeBlinkJumps) b.foeBlinkJumps = {}
+  b.foeBlinkJumps[tag] = { from, moved, dir: landed > from ? 1 : landed < from ? -1 : 0 }
   return true
 }
 

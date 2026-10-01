@@ -244,6 +244,12 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
     for (const [tag, until] of Object.entries(b.foeBlinks ?? {})) prevSeen.set(tag, until)
     let checked = 0
     let maxJump = 0
+    /**
+     * ⚠ **判据读「单舰这一跳」的旁路记账**（`BattleState.foeBlinkJumps`），**不读聚合的 `distanceM` 变化**：
+     * 落点是全局标量，**多舰可以同一拍各闪一次** ⇒ 聚合位移是多次跳变之和。
+     * 本仓实测踩过这个坑：`corona-nexus` 开场同拍 6 舰各闪一格 ⇒ 聚合位移 2,678 m，
+     * 用聚合值会误报"一跳超 2,000m"（实际每舰都合规）。
+     */
     for (let t = 100; t <= 400_000 && b.ended === null; t += 100) {
       const before = b.distanceM
       state.gameMs = t
@@ -254,17 +260,30 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
         const own = specOf(tag)
         expect(own, `${tag} 应在建档案里找得到（否则判据无意义）`).toBeTruthy()
         const want = foeDesiredRange(own!, [own!], bal, b.meFoeRangeDebuff ?? 0)
-        const moved = Math.abs(b.distanceM - before)
+        /** 本舰这一跳：起点 / 幅度 / 方向（引擎旁路记账那笔，**不是** `distanceM` 的整体变化） */
+        const rec = b.foeBlinkJumps?.[tag]
+        expect(rec, `${tag} 应有本跳的旁路记账`).toBeTruthy()
+        const moved = rec!.moved
         maxJump = Math.max(maxJump, moved)
-        expect(moved, `${tag} t=${t} 单次位移 ${Math.round(moved)} m 不得超过件上的 ${stepCap} m`).toBeLessThanOrEqual(stepCap)
         expect(
-          (b.distanceM - before) * (want - before),
-          `${tag} t=${t} 应朝它自己的期望（${want}）走，不得反向（${Math.round(before)} → ${Math.round(b.distanceM)}）`,
-        ).toBeGreaterThanOrEqual(0)
+          moved,
+          `${tag} t=${t} 单次位移 ${Math.round(moved)} m 不得超过件上的 ${stepCap} m`,
+        ).toBeLessThanOrEqual(stepCap)
+        /** 方向：从**它的起点**朝它自己的期望走（用记账的 `dir` 判，不受同拍其它舰的落点干扰） */
+        const sign = Math.sign(want - rec!.from)
+        expect(
+          rec!.dir * sign,
+          `${tag} t=${t} 应朝它自己的期望（${want}）走，不得反向（起点 ${Math.round(rec!.from)} ⇒ 本跳 ${rec!.dir}）`,
+        ).toBeGreaterThan(0)
+        /** 不过冲：跳完不越过自己的期望 */
+        expect(
+          Math.abs(want - (rec!.from + rec!.dir * rec!.moved)),
+          `${tag} t=${t} 一跳不得越过它自己的期望（起点 ${Math.round(rec!.from)} + ${rec!.dir * rec!.moved} vs 期望 ${want}）`,
+        ).toBeLessThanOrEqual(Math.abs(want - rec!.from) + 1e-9)
         checked += 1
         console.log(
-          `  [读数] 闪现（${tag} · t=${t}）：${Math.round(before)} → ${Math.round(b.distanceM)}` +
-            `（位移 ${Math.round(moved)} m · 上限 ${stepCap} · 它自己的期望 ${want}）`,
+          `  [读数] 闪现（${tag} · t=${t}）：从 ${Math.round(rec!.from)} ${rec!.dir > 0 ? '拉远' : '拉近'} ${Math.round(moved)} m` +
+            `（上限 ${stepCap} · 它自己的期望 ${want}）`,
         )
       }
     }
