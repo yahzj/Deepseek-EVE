@@ -462,6 +462,42 @@ export function moduleSubKeyOf(slot: string, moduleId?: string): string {
   return ''
 }
 
+/**
+ * **蓝图筛选三件套（门类 / 子类 / 是否一次性）——全仓单点**。
+ *
+ * 2026-10-01 由 `panels/Industry.tsx` **提升到这里**（原文的注释就写着"单点：组装机与蓝图书架都读它"，
+ * 但它此前只住在那个文件里 ⇒ **工业 HUD 页的书架用不上**，只能再抄一份）。现在旧工业页与 HUD 页
+ * 都从这里 import，**只有这一份实现**。
+ *
+ * 键与组装机的分组逐字同源：
+ * - 舰船 = `t<级别>`（`SHIP_TIER_SUBS`）· 装备 = 产物功能分组（`moduleSubKeyOf`）·
+ *   消耗品 = 产物大类（`itemDef.kind`）· 零件 = `part-basic` / `part-advanced`（`partTierOf`）；
+ * - **舰船插件**（`slot === 'plug'`，2026-09-26 船长令）单独成档，**不进**「装备」档的功能分组。
+ */
+export function bpFilterKeysOf(ctx: SimContext, bpId: string): { tab: ManuTabKey; subKey: string; singleUse: boolean } {
+  const sbp = ctx.shipBlueprints.get(bpId)
+  if (sbp) {
+    const def = ctx.ships.get(sbp.shipId)
+    return { tab: 'ship', subKey: def ? `t${def.tier}` : '', singleUse: sbp.singleUse === true }
+  }
+  const bp = ctx.blueprints.get(bpId)
+  if (bp?.itemId !== undefined) {
+    const item = ctx.items.get(bp.itemId)
+    /**
+     * ⚠ **2026-10-01 提升为单点时修正**：零件（`item.kind === 'part'`，蓝图带 `partTier`）原先落到
+     * **「消耗品」档**（旧实现只有 item ⇒ supply 一条路，漏了零件分支）⇒ 旧工业页的「零件」档在
+     * **蓝图书架**里是空的（组装机制造面板走另一把尺 `cardTabOf`，所以那边一直正常）。
+     * 判据取 `partTierOf`（零件档位的既有单点），不新造口径。
+     */
+    const tier = partTierOf(ctx, bpId)
+    if (tier !== null) return { tab: 'part', subKey: `part-${tier}`, singleUse: bp.singleUse === true }
+    return { tab: 'supply', subKey: item?.kind ?? '', singleUse: bp.singleUse === true }
+  }
+  const mod = bp?.moduleId ? ctx.modules.get(bp.moduleId) : undefined
+  if (mod?.slot === 'plug') return { tab: 'plug', subKey: '', singleUse: bp?.singleUse === true }
+  return { tab: 'equip', subKey: mod ? moduleSubKeyOf(mod.slot, mod.id) : '', singleUse: bp?.singleUse === true }
+}
+
 /* ═══════════ 零件「基础 / 高级」维度（2026-09-20 零件体系）═══════════
  * 判定单点 = `partTierOf`：蓝图按 `BlueprintDef.partTier`；零件物品按蓝图反查；
  * 键空间 = `part-basic` / `part-advanced`（`PART_SUBS`，组装机与市场共用）。 */

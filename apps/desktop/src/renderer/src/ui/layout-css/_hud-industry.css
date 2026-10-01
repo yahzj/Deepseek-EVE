@@ -220,6 +220,9 @@
    尺寸固定（40×26，等比缩自 56×36）⇒ 内容变化不引起行高跳动（§六）；行高由这一格决定，
    船长同日明确「动画不建议压缩，可以拉高行高」。 */
 .hud-fx-cell { width: 40px; padding-right: 0; }
+/* 组装机书架表（`.is-queue`）：首列同样是动画槽 —— 与工位表 `.is-station` 同一套做法，
+   只是书架的其余列本来就窄（工期/状态/动作），首列跟着收到 40px 即可。 */
+.hud-table.is-queue td.hud-fx-cell, .hud-table.is-queue th.hud-fx-cell { width: 40px; padding-right: 0; }
 .hud-fx-cell .app-inv-fx { width: 40px; height: 26px; }
 /* 缺料行（2026-09-30 船长令：「缺料的项目需换红色字体（或者其他方式标注出来）」）：
    **红字 ＋ 加粗**（与旧工业页 `.app-bp-mat.is-short` 同款语义），色取 `--hud-short`（六套主题都真的是红，

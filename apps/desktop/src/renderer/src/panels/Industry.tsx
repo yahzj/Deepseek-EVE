@@ -76,9 +76,10 @@ import {
   MODULE_SUBS,
   SHIP_TIER_SUBS,
   SUB_ALL,
+  bpFilterKeysOf,
   manuSubsOf,
-  presentSubs,
   moduleSubKeyOf,
+  presentSubs,
   type BlueprintLearnKey,
   type BlueprintUseKey,
   type ManuTabKey,
@@ -158,7 +159,7 @@ export function BlueprintShelfPanel({
   const [sub, setSub] = useState<string>(SUB_ALL)
   const [useKind, setUseKind] = useState<BlueprintUseKey>(SUB_ALL)
   /** 蓝图书卡（未筛选）：书架 = **手上还没学的书** */
-  const bookCards = entries.map(([id, n]) => ({ id, n, keys: bpFilterKeysOf(engine, id) }))
+  const bookCards = entries.map(([id, n]) => ({ id, n, keys: bpFilterKeysOf(engine.ctx, id) }))
   /**
    * **碎片逆向卡（2026-09-19 船长：「蓝图书架内确实没有显示可以合并的蓝图碎片。是否忘记添加到蓝图书架了？」）**：
    * 书架原先**只列"手上持有的蓝图书"**，而碎片是"还没有书"的那条路 ⇒ 玩家在这里看不到任何可合并的碎片。
@@ -168,7 +169,7 @@ export function BlueprintShelfPanel({
   const fragCards = engine
     .fragmentRedeemRows()
     .filter((r) => !r.learned && r.have > 0 && (state.blueprintStock?.[r.blueprintId] ?? 0) <= 0)
-    .map((r) => ({ r, keys: bpFilterKeysOf(engine, r.blueprintId) }))
+    .map((r) => ({ r, keys: bpFilterKeysOf(engine.ctx, r.blueprintId) }))
   const cards = [...bookCards, ...fragCards]
   /**
    * **筛选项按"书架上真有卡片"出**（2026-09-19 报障修复 · 船长：「如果选择舰船蓝图或者消耗品蓝图，
@@ -454,26 +455,10 @@ export function BlueprintShelfPanel({
 
 /* 三张筛选表（门类 / 子类 / 图纸 / 学会）**已按基线⑤收编到 `ui/itemSubs.ts`**（2026-09-19 丙组）：
  * `MANU_TABS` · `manuSubsOf` · `BLUEPRINT_USE_TABS` · `BLUEPRINT_LEARN_TABS`。
- * 「图纸」与「学会」两个下级维度的「全部」键统一为 `SUB_ALL`（基线②）。 */
-
-/** 蓝图筛选三件套（类别 / 子类 / 是否一次性）——**单点**：组装机与蓝图书架都读它，键与组装机的分组逐字同源
- * （舰船 = `t<级别>` · 装备 = 产物功能 `moduleSubKeyOf(slot)` · 消耗品 = 产物大类 `itemDef.kind`）。 */
-function bpFilterKeysOf(engine: GameEngine, bpId: string): { tab: ManuTabKey; subKey: string; singleUse: boolean } {
-  const sbp = engine.ctx.shipBlueprints.get(bpId)
-  if (sbp) {
-    const def = engine.ctx.ships.get(sbp.shipId)
-    return { tab: 'ship', subKey: def ? `t${def.tier}` : '', singleUse: sbp.singleUse === true }
-  }
-  const bp = engine.ctx.blueprints.get(bpId)
-  if (bp && bp.itemId !== undefined) {
-    const item = engine.ctx.items.get(bp.itemId)
-    return { tab: 'supply', subKey: item?.kind ?? '', singleUse: bp.singleUse === true }
-  }
-  const mod = bp?.moduleId ? engine.ctx.modules.get(bp.moduleId) : undefined
-  // 舰船插件（2026-09-26 船长令）：`slot === 'plug'` 单独成档，**不进**「装备」档的功能分组
-  if (mod?.slot === 'plug') return { tab: 'plug', subKey: '', singleUse: bp?.singleUse === true }
-  return { tab: 'equip', subKey: mod ? moduleSubKeyOf(mod.slot, mod.id) : '', singleUse: bp?.singleUse === true }
-}
+ * 「图纸」与「学会」两个下级维度的「全部」键统一为 `SUB_ALL`（基线②）。
+ *
+ * ⚠ **2026-10-01：`bpFilterKeysOf` 也搬进 `ui/itemSubs.ts` 了** —— 它原先只住在本文件（下面的注释
+ * 却写着"单点"），而工业 HUD 页的新书架也要同一把尺 ⇒ 提升为真单点（旧页与 HUD 页共用一份实现）。 */
 
 /**
  * **虫洞专属图纸**（`bp-wh-*` / `sbp-wh-*`）——船长 2026-09-14：「虫洞专属的蓝图市场上没有卖，建议改为跳转虫洞。

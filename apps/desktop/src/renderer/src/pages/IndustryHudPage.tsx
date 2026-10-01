@@ -40,6 +40,7 @@ import {
   missingMaterials,
   oreAvailable,
   ownsBlueprint,
+  plugCraftUnlockedOf,
   recipeCapability,
   recycleBatchM3Of,
   recycleMineralPoolOf,
@@ -63,13 +64,28 @@ import { HudHoverCard, IconBtn, Readout, type HudIoLine } from '../ui/hud'
 import { aiCoreText } from '../ui/labelsText'
 import { marketPriceOf } from '../ui/yieldView'
 import { ShipSprite } from '../ui/ShipSprite'
-import { SHIP_TIER_SUBS, SUB_ALL, WRECK_SUBS, wreckTierOf } from '../ui/itemSubs'
+import { SHIP_TIER_SUBS, SUB_ALL, WRECK_SUBS, bpFilterKeysOf, manuSubsOf, presentSubs, subText, wreckTierOf, type ManuTabKey } from '../ui/itemSubs'
 import { hoverTipProps } from '../ui/Tooltip'
 import { bookPriceOf } from '../panels/Industry'
 import { tr, cmdText, useL10n } from '../i18n/locale'
 import '../ui/layout-css/_hud-industry.css'
 
 type HudTab = 'refine' | 'craft' | 'shipyard' | 'lab'
+
+/**
+ * **书架一级门类五档**（**2026-10-01 船长令**：「建议参考旧版的组装机筛选」⇒ 按你确认的裁定补齐）——
+ * 键与顺序照旧版组装机的 `MANU_TABS_CRAFT`（插件档排末位），文案 id 复用既有条目、不新造同义串。
+ * `plug` 档在**取得第一个黑匣前不出现**（判据 = core `plugCraftUnlockedOf`，与旧页同一条令）。
+ */
+type HudShelfKind = ManuTabKey | typeof SUB_ALL
+
+const SHELF_KIND_TABS: ReadonlyArray<{ key: HudShelfKind; id: string }> = [
+  { key: SUB_ALL, id: 'ui.hud.106' },
+  { key: 'equip', id: 'ui.hud.102' },
+  { key: 'part', id: 'ui.itemSubs.036' },
+  { key: 'supply', id: 'ui.itemSubs.037' },
+  { key: 'plug', id: 'ui.itemSubs.042' },
+]
 
 /** 精炼炉投料的一级档（与现有工业页 `FURNACE_TABS` 同口径：全部 / 可精炼资源 / 残骸回收 / 货柜拆解） */
 type FeedTab = 'all' | 'ore' | 'wreck' | 'box'
@@ -156,7 +172,7 @@ function RefineShareRing({ segments, total }: { segments: readonly ShareSeg[]; t
   )
 }
 
-/** 组装机书架的一行（只留 HUD 表要用的字段；判据全部走 core 既有取数口） */
+/** 组装机书架的一行（只留 HUD 表要用的字段；判据全部走既有单点） */
 interface HudShelfRow {
   id: string
   /** 图纸名 */
@@ -165,15 +181,19 @@ interface HudShelfRow {
   product: string
   /** 产物图标用的类别键（交给 `RowGlyph`） */
   glyph: string
-  /** 一级分类：装备 / 消耗品（舰船归造船厂页签） */
-  kind: 'equip' | 'consumable'
+  /**
+   * 一级门类（**2026-10-01 船长令**：补齐为五档，与旧工业页 `MANU_TABS_CRAFT` 同一套键）·
+   * 二级子类键（装备=产物功能组 / 消耗品=产物大类 / 零件=基础·高级）·
+   * 学会与一次性 —— 三样都由**全仓单点** `bpFilterKeysOf` 现算（不再本页自算）。
+   */
+  keys: { tab: HudShelfKind; subKey: string; singleUse: boolean }
   /** core `sortManuRows` 认的口径键（内容层联合 key，渲染处不显示） */
   kindLabel: string
   /** core `sortManuRows` 认的产物唯一键（同产物的一次性图纸紧随原图纸） */
   productKey: string
   /** core `sortManuRows` 认的书价（市场目录基准价；0 = 沉底） */
   bookPrice: number
-  /** 一次性图纸（书架里用一枚 chip 标出来） */
+  /** 一次性图纸（sortManuRows 的排序口径要它：同产物的原图纸与一次性图纸相邻；分档判据另走 keys.singleUse） */
   singleUse: boolean
   materials: readonly MaterialNeed[]
   buildSeconds: number
@@ -321,8 +341,19 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
     if (tab === 'lab') engine.noteLabOpened()
   }, [tab, engine])
   const [recipeId, setRecipeId] = useState<string | null>(null)
-  /** 书架筛选（HUD 版只留两维：分类 ＋ 仅可造；完整三维筛选仍在现有工业页） */
-  const [shelfKind, setShelfKind] = useState<'equip' | 'consumable' | typeof SUB_ALL>(SUB_ALL)
+  /**
+   * **书架筛选**（**2026-10-01 船长令**：「新工业界面的组装机的蓝图书架筛选过于简陋，建议参考旧版的组装机
+   * 筛选和搜索」）—— 从"分类 ＋ 仅可造"两维扩到**旧版那套**：
+   * ① 一级门类五档（全部 / 装备 / 零件 / 消耗品 / 舰船插件，键与旧页 `MANU_TABS_CRAFT` 同一套）·
+   * ② 二级子类（走 `manuSubsOf` 单点：装备=产物功能组 · 消耗品=产物大类 · 零件=基础/高级）·
+   * ③ 搜索（匹配产物名/图纸名）· ④ 已学会/未学会 · ⑤ 仅可造（本页原有）。
+   * 分档判据一律走**单点** `bpFilterKeysOf`（2026-10-01 已提升到 `ui/itemSubs.ts`），本页不自算。
+   */
+  const [shelfKind, setShelfKind] = useState<HudShelfKind>(SUB_ALL)
+  const [shelfSub, setShelfSub] = useState<string>(SUB_ALL)
+  const [shelfLearned, setShelfLearned] = useState<string>(SUB_ALL)
+  const [shelfKwRaw, setShelfKwRaw] = useState('')
+  const shelfKw = shelfKwRaw.trim().toLowerCase()
   const [shelfReadyOnly, setShelfReadyOnly] = useState(false)
   const [tierFilter, setTierFilter] = useState<string>(SUB_ALL)
   /** 精炼炉投料的两级筛选 ＋ 搜索（**2026-09-30 船长报障**：「精炼炉没有筛选，也不显示残骸和货柜」） */
@@ -346,6 +377,15 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
   const runs = engine.refineRunViews()
   const labRuns = engine.labRunViews()
   const manuRuns = manufacturingRunViews(state, ctx)
+
+  /**
+   * **正在造的蓝图 id 集**（**2026-10-01 船长令**：「一并应用 AI 指挥中心的 SVG 动画」⇒ 书架里
+   * 「正在造的那一张」行首也挂同一枚动画）。取数 = 本页已有的 `manuRuns`（core 单点
+   * `manufacturingRunViews`），不另算一份口径。
+   */
+  const runningBlueprintIds = new Set(
+    manuRuns.map((v) => v.blueprintId).filter((id): id is string => id !== null),
+  )
   const recipes = [...ctx.labRecipes.values()]
   const recipe = recipes.find((r) => r.id === recipeId) ?? recipes[0] ?? null
   /**
@@ -390,9 +430,13 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
         name: bp.name,
         product: mod?.name ?? item?.name ?? bp.id,
         glyph: mod?.slot ?? item?.kind ?? 'blueprint',
-        kind: mod !== undefined ? 'equip' : 'consumable',
-        // l10n-keep：内容层联合 key（`sortManuRows` 的一级分类序认它，界面不显示这两个词）
+        /**
+         * ⚠ `kindLabel` **只服务 `sortManuRows` 的排序**（core 的 `MANU_KIND_ORDER` 只认
+         * 装备/舰船/消耗品三档，表外的值一律沉底）⇒ 这里保持它原有的两档口径不动；
+         * **门类筛选走 `keys.tab`**（五档，由单点 `bpFilterKeysOf` 现算）——两者各司其职。
+         */
         kindLabel: mod !== undefined ? '装备' : '消耗品',
+        keys: bpFilterKeysOf(ctx, bp.id),
         productKey: mod !== undefined ? `module:${mod.id}` : `item:${item?.id ?? bp.id}`,
         bookPrice: bookPriceOf(engine, bp.id, 0),
         singleUse: bp.singleUse === true,
@@ -400,7 +444,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
         buildSeconds: bp.buildSeconds,
       })
     }
-    return sortManuRows(rows)
+    return sortManuRows<HudShelfRow>(rows)
   }, [ctx, engine])
   /** 一份料的 BuildSpec（core 那几个纯函数认的形状；界面不自算口径） */
   const specOf = (materials: readonly MaterialNeed[], buildSeconds: number): {
@@ -411,9 +455,27 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
   /** 书架行"现在能不能开工"（与按钮/状态 chip 同一把尺：`canStartBlueprint` ＋ `missingMaterials`） */
   const shelfCanStart = (row: HudShelfRow): boolean =>
     canStartBlueprint(state, ctx, row.id) && missingMaterials(state, ctx, specOf(row.materials, row.buildSeconds)).length === 0
-  const shelfShown = shelfRows.filter(
-    (r) => (shelfKind === SUB_ALL || r.kind === shelfKind) && (!shelfReadyOnly || shelfCanStart(r)),
+  /** 学会判据（与状态 chip 同一把尺）：隐式蓝图（无需学习）也算"学会" */
+  const shelfLearnedOf = (row: HudShelfRow): boolean =>
+    ownsBlueprint(state, row.id) || ctx.blueprints.get(row.id)?.learnless === true
+  /**
+   * **二级子类候选：只列本门类下真有图纸的档**（与旧页同一套现算口径 `presentSubs`；「全部」常显）——
+   * 选进一个必然空的档是船长 2026-09-14 点名的坑，所以按本页真数据现算。
+   */
+  const shelfSubOptions = presentSubs(shelfKind === SUB_ALL ? [] : manuSubsOf(shelfKind), (key) =>
+    shelfRows.some((r) => r.keys.tab === shelfKind && r.keys.subKey === key),
   )
+  const shelfShown = shelfRows.filter((r) => {
+    if (shelfKind !== SUB_ALL && r.keys.tab !== shelfKind) return false
+    if (shelfSub !== SUB_ALL && r.keys.subKey !== shelfSub) return false
+    if (shelfLearned !== SUB_ALL && shelfLearnedOf(r) !== (shelfLearned === 'learned')) return false
+    if (shelfReadyOnly && !shelfCanStart(r)) return false
+    if (shelfKw !== '' && !`${r.product} ${r.name}`.toLowerCase().includes(shelfKw)) return false
+    return true
+  })
+  /** 筛选是否生效（读数行据此切"筛剩多少 / 书架共多少"两句话） */
+  const shelfFilterActive =
+    shelfKind !== SUB_ALL || shelfSub !== SUB_ALL || shelfLearned !== SUB_ALL || shelfReadyOnly || shelfKw !== ''
   /**
    * **造船厂可造舰船**（`SHIP_TIER_SUBS` 是舰级的单点表；舰级判据与旧页同一张表）。
    */
@@ -1062,7 +1124,9 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                   return (
                     <div className="hud-card" key={v.id}>
                       <div className="hud-row between">
-                        <span className="hud-row" style={{ gap: 7 }}>
+                        <span className="hud-row" style={{ gap: 7, minWidth: 0 }}>
+                          {/* **AI 指挥中心那套动画**（**2026-10-01 船长令**：动画一并应用）：组装机恒画 `craft`，与 AI 指挥中心那一行同一个组件 */}
+                          <AiWorkFx kind="craft" />
                           <RowGlyph glyph={v.kind ?? 'item'} />
                           <span className="nm">{v.productName}</span>
                         </span>
@@ -1102,31 +1166,71 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
               )}
             </div>
             <div className="hud-panel">
-              <h3>
-                <Glyph name="blueprint" size={13} color="currentColor" /> {tr('ui.hud.088')}
-                <span className="hud-tiny" style={{ marginLeft: 8 }}>{shelfShown.length}</span>
+              <h3 className="hud-panel-head">
+                <span className="hud-panel-title">
+                  <Glyph name="blueprint" size={13} color="currentColor" /> {tr('ui.hud.088')}
+                </span>
+                {/* 搜索（**2026-10-01 船长令**：参考旧版组装机的筛选和搜索）——与旧页/其它页同一实现 `.app-head-search` */}
+                <input
+                  className="app-head-search"
+                  type="text"
+                  placeholder={tr('ui.Industry.128')}
+                  value={shelfKwRaw}
+                  onChange={(e) => setShelfKwRaw(e.target.value)}
+                  spellCheck={false}
+                />
+                <span className="hud-tiny" title={shelfFilterActive ? tr('ui.hud.151', { p1: shelfShown.length }) : tr('ui.hud.089')}>
+                  {shelfFilterActive ? shelfShown.length : tr('ui.hud.152', { p1: shelfRows.length })}
+                </span>
               </h3>
+              {/* ① 一级门类（五档，顺序照旧版 `MANU_TABS_CRAFT`；插件档在取得第一个黑匣前不出现） */}
+              <div className="hud-chips">
+                {SHELF_KIND_TABS.filter(
+                  (tb) => tb.key !== 'plug' || (tb.id !== undefined && plugCraftUnlockedOf(state)),
+                ).map((tb) => (
+                  <button
+                    key={tb.key}
+                    className={`hud-chip${shelfKind === tb.key ? ' is-acc' : ''}`}
+                    aria-pressed={shelfKind === tb.key}
+                    onClick={() => {
+                      setShelfKind(tb.key)
+                      setShelfSub(SUB_ALL) // 换一级即回「全部子类」（与旧页同款）
+                    }}
+                  >
+                    {tr(tb.id!)}
+                  </button>
+                ))}
+              </div>
+              {/* ② 二级子类（按门类现算；「全部」门类与空档不出现 ⇒ 选中对应一级后才有这一行） */}
+              {shelfSubOptions.length > 0 ? (
+                <div className="hud-chips">
+                  {[{ key: SUB_ALL, label: '全部', id: 'ui.hud.106' }, ...shelfSubOptions].map((s) => (
+                    <button
+                      key={s.key}
+                      className={`hud-chip${shelfSub === s.key ? ' is-acc' : ''}`}
+                      aria-pressed={shelfSub === s.key}
+                      onClick={() => setShelfSub(s.key)}
+                    >
+                      {subText(s)}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {/* ③ 学会（已学会/未学会，键与旧页/市场共用 `BLUEPRINT_LEARN_SUBS`）＋ 仅可造 */}
               <div className="hud-chips">
                 <button
-                  className={`hud-chip${shelfKind === SUB_ALL ? ' is-acc' : ''}`}
-                  aria-pressed={shelfKind === SUB_ALL}
-                  onClick={() => setShelfKind(SUB_ALL)}
+                  className={`hud-chip${shelfLearned === 'learned' ? ' is-acc' : ''}`}
+                  aria-pressed={shelfLearned === 'learned'}
+                  onClick={() => setShelfLearned((v) => (v === 'learned' ? SUB_ALL : 'learned'))}
                 >
-                  {tr('ui.hud.106')}
+                  {tr('ui.itemSubs.031')}
                 </button>
                 <button
-                  className={`hud-chip${shelfKind === 'equip' ? ' is-acc' : ''}`}
-                  aria-pressed={shelfKind === 'equip'}
-                  onClick={() => setShelfKind('equip')}
+                  className={`hud-chip${shelfLearned === 'unlearned' ? ' is-acc' : ''}`}
+                  aria-pressed={shelfLearned === 'unlearned'}
+                  onClick={() => setShelfLearned((v) => (v === 'unlearned' ? SUB_ALL : 'unlearned'))}
                 >
-                  {tr('ui.hud.102')}
-                </button>
-                <button
-                  className={`hud-chip${shelfKind === 'consumable' ? ' is-acc' : ''}`}
-                  aria-pressed={shelfKind === 'consumable'}
-                  onClick={() => setShelfKind('consumable')}
-                >
-                  {tr('ui.hud.103')}
+                  {tr('ui.itemSubs.032')}
                 </button>
                 <button
                   className={`hud-chip${shelfReadyOnly ? ' is-ok' : ''}`}
@@ -1140,9 +1244,10 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
               {shelfShown.length === 0 ? (
                 <div className="hud-empty">{tr('ui.hud.096')}</div>
               ) : (
-                <table className="hud-table">
+                <table className="hud-table is-queue">
                   <thead>
                     <tr>
+                      <th className="hud-fx-cell" aria-label={tr('ui.hud.147')} />
                       <th>{tr('ui.hud.089')}</th>
                       <th className="n">{tr('ui.hud.090')}</th>
                       <th>{tr('ui.hud.091')}</th>
@@ -1155,11 +1260,15 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                       const learned = ownsBlueprint(state, r.id) || ctx.blueprints.get(r.id)?.learnless === true
                       return (
                         <tr key={r.id} {...hoverTipProps(shelfTip(r))}>
+                          {/* **正在造的那一张** ⇒ 行首挂同一枚 `craft` 动画（船长令：动画一并应用） */}
+                          <td className="hud-fx-cell">
+                            {runningBlueprintIds.has(r.id) ? <AiWorkFx kind="craft" /> : null}
+                          </td>
                           <td>
                             <span className="hud-row" style={{ gap: 6 }}>
                               <RowGlyph glyph={r.glyph} />
                               <span>{r.product}</span>
-                              {r.singleUse ? <span className="hud-chip is-warn">{tr('ui.hud.110')}</span> : null}
+                              {r.keys.singleUse ? <span className="hud-chip is-warn">{tr('ui.hud.110')}</span> : null}
                             </span>
                           </td>
                           <td className="n">{durText(calcBuildDurationMs(state, ctx, specOf(r.materials, r.buildSeconds)))}</td>

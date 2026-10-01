@@ -899,7 +899,11 @@ function partRank(it: { partTier?: 'basic' | 'advanced' }): number {
   return it.partTier === 'advanced' ? 1 : 0
 }
 
-/** 组装机卡片排序（见本段顶部口径；不改入参，返回新数组） */
+/** 组装机卡片排序（见本段顶部口径；不改入参，返回新数组）
+ *
+ * ⚠ **2026-10-01 修返回类型**：原来是 `ManuOrderRow[]`（**把泛型 T 丢了**）——调用方拿了排序结果
+ * 再放进自己的行类型数组时会被判成"类型不兼容"（工业 HUD 页的书架行加了一个 `keys` 字段就露出来了）。
+ * 语义上它本来就返回"同一批行、只换了顺序" ⇒ 正确签名是 `T[]`。 */
 export function sortManuRows<T extends ManuOrderRow>(rows: readonly T[]): T[] {
   // 组锚 = 同产物里那张**非一次性**图纸（=「原图纸」）；没有原图纸（洞内定制船/装备的一次性图纸）
   // 就锚自己 ⇒ 这类卡的位置与 09-08 口径完全一致。
