@@ -1247,8 +1247,8 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                 <table className="hud-table is-queue">
                   <thead>
                     <tr>
-                      <th className="hud-fx-cell" aria-label={tr('ui.hud.147')} />
-                      <th>{tr('ui.hud.089')}</th>
+                      <th className="hud-queue-led-cell" />
+                      <th className="hud-queue-main">{tr('ui.hud.089')}</th>
                       <th className="n">{tr('ui.hud.090')}</th>
                       <th>{tr('ui.hud.091')}</th>
                       <th className="act" />
@@ -1260,11 +1260,15 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                       const learned = ownsBlueprint(state, r.id) || ctx.blueprints.get(r.id)?.learnless === true
                       return (
                         <tr key={r.id} {...hoverTipProps(shelfTip(r))}>
-                          {/* **正在造的那一张** ⇒ 行首挂同一枚 `craft` 动画（船长令：动画一并应用） */}
-                          <td className="hud-fx-cell">
-                            {runningBlueprintIds.has(r.id) ? <AiWorkFx kind="craft" /> : null}
-                          </td>
+                          {/**
+                            * **状态灯**（**2026-10-01 船长令**：「组装机蓝图书架处就不要使用 SVG 动画了，
+                            * 替换为一个红灯，当运行时切换为绿灯」）：红 = 未运行 / 绿 = 正在造。
+                            * 判据 = 本页既有的 `runningBlueprintIds`（core 单点 `manufacturingRunViews`）。
+                            */} 
                           <td>
+                            <span className={'hud-queue-led' + (runningBlueprintIds.has(r.id) ? ' is-on' : '')} />
+                          </td>
+                          <td className="hud-queue-main">
                             <span className="hud-row" style={{ gap: 6 }}>
                               <RowGlyph glyph={r.glyph} />
                               <span>{r.product}</span>

@@ -220,9 +220,36 @@
    尺寸固定（40×26，等比缩自 56×36）⇒ 内容变化不引起行高跳动（§六）；行高由这一格决定，
    船长同日明确「动画不建议压缩，可以拉高行高」。 */
 .hud-fx-cell { width: 40px; padding-right: 0; }
-/* 组装机书架表（`.is-queue`）：首列同样是动画槽 —— 与工位表 `.is-station` 同一套做法，
-   只是书架的其余列本来就窄（工期/状态/动作），首列跟着收到 40px 即可。 */
-.hud-table.is-queue td.hud-fx-cell, .hud-table.is-queue th.hud-fx-cell { width: 40px; padding-right: 0; }
+/* ── 组装机书架表（`.is-queue`）：**状态灯 ＋ 产物名**两列的特殊口径 ──
+ *
+ * **2026-10-01 船长令**：「组装机蓝图书架处就不要使用 SVG 动画了，替换为一个红灯，当运行时切换为绿灯
+ * （现在蓝图数据的列表超出容器范围了）」。
+ *
+ * ⚠ **溢出根因（同一批报障）**：书架行首列此前放的是动画槽，而 `.hud-table td:first-child` 的
+ * `min-width: 72px`（为"产物名"调的那条）就落到了槽上 ⇒ **真正该有下限的产物名列一个下限都没有**，
+ * 长名字把整张表撑出面板；而动画槽自己只有 40px、里面装的 SVG 是 56px 宽 ⇒ 槽内再溢出一次。
+ * 现在：**首列（灯）窄而固定，第二列（产物名）接管那条 72px 下限**，名字在词内断行。
+ * （顺序依赖：必须写在上面的 `.hud-table td:first-child { min-width: 72px }` 之后。） */
+.hud-table.is-queue td:first-child, .hud-table.is-queue th:first-child { width: 26px; min-width: 26px; padding: 5px 2px 5px 0; }
+.hud-table.is-queue td.hud-queue-main, .hud-table.is-queue th.hud-queue-main { min-width: 72px; }
+.hud-table.is-queue td.hud-queue-main .hud-row { min-width: 0; align-items: flex-start; }
+.hud-table.is-queue td.hud-queue-main .hud-row > span:nth-child(2) { overflow-wrap: anywhere; }
+/* 状态灯：8px 圆点 —— **红 = 未运行 / 绿 = 正在造**（形状用 CSS 圆点，与全仓 `.hud-seg-dot` /
+   `.hud-led` 同一族做法；颜色走既有语义令牌，不新造色值）。 */
+.hud-queue-led {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hud-bad);
+  box-shadow: 0 0 6px rgba(248, 113, 113, 0.45);
+}
+.hud-queue-led.is-on {
+  background: var(--hud-ok);
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.5);
+}
+/* `body.no-fx`（玩家「关特效」）：去掉灯的辉光，只留颜色（口径同本文件其它动效） */
+body.no-fx .hud-queue-led { box-shadow: none; }
 .hud-fx-cell .app-inv-fx { width: 40px; height: 26px; }
 /* 缺料行（2026-09-30 船长令：「缺料的项目需换红色字体（或者其他方式标注出来）」）：
    **红字 ＋ 加粗**（与旧工业页 `.app-bp-mat.is-short` 同款语义），色取 `--hud-short`（六套主题都真的是红，
