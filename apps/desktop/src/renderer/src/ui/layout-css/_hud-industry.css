@@ -434,6 +434,16 @@ button.hud-chip:hover { border-color: var(--hud-accent); color: var(--hud-accent
   background: radial-gradient(120% 90% at 50% 46%, rgba(78, 161, 255, 0.07), transparent 70%);
 }
 .hud-dock-art > svg { max-width: 100%; max-height: 100%; }
+/* ⚠ **坞内舰形的变换前提**（**2026-10-01 船长报障**「我看到的所有船，图形都位于左上角的原点坐标」）：
+   `ShipSpriteShape` 内部是 `transform="scale(s) translate(-w/2,-h/2)"`——**按直角坐标原点**摆舰形；
+   它在外面的 `.app-sprite` 里能对齐，靠的是 `styles.css` 的 `.app-sprite svg g { transform-box: view-box }`。
+   而 `.app-wh-ship-shape` 自己写着 `transform-box: fill-box; transform-origin: center`（为虫洞地图的
+   居中使用）⇒ 单独把它搬进坞景时**丢了那个前提**，整套变换被平移/缩放错位，图形就堆到了左上角。
+   这里按"坞景内的舰形"把前提补回来（只作用在坞景这一层，不动地图那边的口径）。 */
+/* ⚠ **选择器必须比 `.app-wh-ship-shape` 更具体**（它自带 `transform-box: fill-box; transform-origin: center`），
+   而且**必须落在真正带 `transform` 属性的那个 `<g>` 上** —— `transform-origin` 是 CSS 属性、**不会继承**，
+   挂在父层无效。`.hud-dock-craft` 是坞内舰体那一层的类（两层后代选择器 ⇒ 特异性足够覆盖）。 */
+.hud-dock-craft .app-wh-ship-shape { transform-box: view-box; transform-origin: 0 0; }
 .hud-dock-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 /* 坞内动效：只碰 transform / opacity（§十四）；reduced-motion 与「关特效」下全停 */
 .hud-dock-craft { animation: hud-dock-float 7.5s ease-in-out infinite; }
