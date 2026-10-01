@@ -25,12 +25,12 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // ── 矿石（池模型：玩家售矿主渠道；收购平价，池淤积压价） ──
   // 2026-09-05 船长：低级矿石/矿物是海量消耗品，池量与流量按"越低级越大"放大（稀有矿保持小）
   // 【2026-09-10 船长定：**按玩家生产能力标定**（原值按感觉定，17 个矿带里 15 个覆盖比 <1 = 采了卖不掉）。
-  //   基准 = 沙鲛级 + 满采矿技能 + 2×强化采集器 MK1（引擎实测 15.4k~20.0k 件/h ⇒ 日产 37~48 万件）；
+  //   基准 = 沙鳗级 + 满采矿技能 + 2×强化采集器 MK1（引擎实测 15.4k~20.0k 件/h ⇒ 日产 37~48 万件）；
   //   规则 = **按单价分层覆盖比**：≤20 信用点 → ×15（大宗）／≤200 → ×6（中阶）／≤400 → ×3（高阶）／>400 → ×2（顶级）；
   //   `supplyFlow`（每 60 秒窗吸收/补单量）按 `目标日吸收 ÷ 1440` 定、`poolTarget = supplyFlow × 120`。
   //   效果：梯度保留（建议 flow 513~4,991/窗 = **9.7× 差距**，原 6~5,000 = 833×），最低档仍是基准产能的 2 倍 ⇒ 挖高阶矿也卖得掉；
   //   低阶几乎不动（橄榄 ×1.0、辉长 ×2.5）。价格、产率、弹药/修理件/无人机池**一律未动**。】
-  // 【**2026-09-30 船长令：「基准上调为座头鲸0技能满装备」** ⇒ 基准由"沙鲛级 ＋ 满技能 ＋ 2×MK1"
+  // 【**2026-09-30 船长令：「基准上调为座头鲸0技能满装备」** ⇒ 基准由"沙鳗级 ＋ 满技能 ＋ 2×MK1"
   //   换成 **座头鲸级 · 0 技能 · 满装备**（高槽 3×强化采集器 MK3 ＋ 低槽货舱扩展 MK3/MK2 = CPU 175 用满；
   //   中槽装不装推进器不改件/时）。新基准日产 = 旧基准的 **4.1~6.2 倍**（橄榄 163,200 件/h vs 39,927 等），
   //   分层规则（×15/×6/×3/×2）与"flow = 日吸收÷1440、池 = flow×120"**原样不动** ⇒ 下面 14 条
@@ -630,7 +630,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // ⚠ **2026-09-13 旧规则作废**：同一条注释里的「船价 ≤100 万 → 稀有、>100 万 → 奇货+声望 11」已作废——
   // 声望口径改为**按舰种档**（T1/T2 保持现状 · T3 现货 12 / 蓝图 15 · T4 20/25 · T5 35/40；
   // 装备与物品行不动）。见 `docs/design/price-ladder-20260913.md`。
-  { key: 'sbp-burrower', kind: 'blueprint', refId: 'sbp-burrower', rarity: 'rare', basePrice: 240000, demandMultiplier: 0.65 }, // 沙鲛级（蓝图=船价×2）
+  { key: 'sbp-burrower', kind: 'blueprint', refId: 'sbp-burrower', rarity: 'rare', basePrice: 240000, demandMultiplier: 0.65 }, // 沙鳗级（蓝图=船价×2）
   { key: 'sbp-whale', kind: 'blueprint', refId: 'sbp-whale', rarity: 'rare', basePrice: 2250000, demandMultiplier: 0.65 }, // 鲸吞级（蓝图=船价×2.5）
   { key: 'sbp-bowhead', kind: 'blueprint', refId: 'sbp-bowhead', rarity: 'exotic', basePrice: 270_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 蝠鲼级（2026-09-13：船价 67.5M ×4 + **渠道升奇货**）
   { key: 'sbp-falconet', kind: 'blueprint', refId: 'sbp-falconet', rarity: 'rare', basePrice: 80000, demandMultiplier: 0.65 }, // 鲣鱼级（蓝图=船价×2）

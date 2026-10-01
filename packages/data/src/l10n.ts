@@ -39,7 +39,7 @@ export const EN_SHIPS: EnTable = {
   },
   burrower: {
     // ⟪文案调整 2026-09-30⟫ 与 zh 同步改名（原名「Burrower-class」，中文原「掘洞级」）
-    name: 'Sandshark-class Mining Corvette',
+    name: 'Sandeel-class Mining Corvette',
     description: 'A larger hold and twin mining lasers — nearly double the output. The mark of graduating from the starter grounds.',
   },
   whale: {

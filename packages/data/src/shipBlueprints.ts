@@ -131,7 +131,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
      * 不许改，否则撞「舰船价格口径」警报）：
      * - 书价 = 价值 ×2（T1 档系数）= **20,000**；
      * - 材料 ≈ 价值 ×0.22 = 2,200 ISK ⇒ 钛钢合金 200×8 ＋ 银纹超金属 50×12 = 2,200（分文不差）；
-     * - 工期取 **T1 带下限 15 分钟**（沙鲛级/马鲛级同为 T1 带 15~25 分）。
+     * - 工期取 **T1 带下限 15 分钟**（沙鳗级/马鲛级同为 T1 带 15~25 分）。
      * ⚠ **不配市场行**（三处契约白名单已登记，理由见 `tools/content-check.ts` 的 `SHIP_BP_NO_ROW_OK`
      * 与「挂卖可达契约」的 `NO_ROW_OK`）⇒ 玩家只能靠这条任务拿到书，买到别处没有。
      * ⚠ 「蓝图价与档位系数」那条**预警**会点名本张（市场锚 = 0 ⇒ 规则值 0，而书价 20,000）——
@@ -153,7 +153,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
   {
     id: 'sbp-burrower',
     // ⟪文案调整 2026-09-30⟫ 船长令改名：原名「掘洞级舰船蓝图」（蓝图 id `sbp-burrower` 不变）
-    name: '沙鲛级舰船蓝图',
+    name: '沙鳗级舰船蓝图',
     shipId: 'burrower',
     materials: [
       { itemId: 'min-tritanium', count: 4_750 },
