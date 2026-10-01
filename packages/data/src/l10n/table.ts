@@ -634,18 +634,19 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
      ⚠ 落点两条路是船长同日裁定：「**直接使用是随机星系（这个要提醒玩家）。选择了星系后是固定。**」 */
   "ui.beacon.001": { zh: "启动信号发射器", en: "Light the Signal Beacon" },
   "ui.beacon.002": {
-    zh: "消耗 1 枚信号发射器：入侵舰队将锁定「{p1}」及其相邻星系，按入侵规则活满一个窗口。在物品页或货仓页直接使用，则按入侵默认规则在「已探索 · 非高安 · 尚未建成副站」的星系里抽取目标。",
-    en: "Consumes one Signal Beacon: the invasion fleet locks onto “{p1}” and its neighbouring systems and runs a full invasion window. Using it from the Items page or the cargo hold draws the target from the same range the regular invasion trigger uses: explored, non-high-sec systems without a completed outpost.",
+    zh: "消耗 1 枚信号发射器：随机的入侵舰队将锁定「{p1}」及其相邻星系。",
+    en: "Consumes one Signal Beacon: a randomly drawn invasion fleet locks onto “{p1}” and its neighbouring systems.",
   },
   "ui.beacon.003": { zh: "再点一下确认：发射器将消耗 1 枚，目标锁定「{p1}」", en: "Click again to confirm: one beacon is spent and the target is locked to “{p1}”" },
   "ui.beacon.004": {
     zh: "该星系暂不能作为入侵目标：需要已探索 · 非高安 · 且尚未建成副站",
     en: "This system cannot be an invasion target yet: it must be explored, not high-sec, and without a completed outpost",
   },
-  /* 位置限制的就地说明（**2026-09-30 船长令**：指定星系那条路「**不允许在空间站使用**」） */
+  /* 位置限制的就地说明（**2026-09-30 船长令**：指定星系那条路「**不允许在空间站使用**」，
+     提示语由船长逐字给定：「该星系信号被压制，无法使用信号发射器。」） */
   "ui.beacon.005": {
-    zh: "当前在空间站（母港或已建成副站）：把船开出去再启动",
-    en: "You are at a station (home port or a completed outpost): undock before lighting it",
+    zh: "该星系信号被压制，无法使用信号发射器。",
+    en: "Signals are jammed in this system — the Signal Beacon cannot be lit here.",
   },
   /* 高安点火的二次警告（**2026-09-30 船长令**：「且当玩家在高安使用时候，弹出二次警告，警告玩家这么做会被扣声望」） */
   "ui.beacon.006": { zh: "⚠ 在高安启动信号发射器：扣 {p1} 点声望", en: "⚠ Lighting a Signal Beacon in high-sec costs {p1} standing" },
