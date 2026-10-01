@@ -54,7 +54,10 @@ describe('光环科技 · 五档壳体（船长选「乙：五档全带」＋ �
       const s = FOE_SHIPS.find((x) => x.id === id)
       expect(s, `${id} 应在舰级表里`).toBeTruthy()
       expect(s!.family, `${id} 属 R 族`).toBe('R')
-      expect(s!.mounts, `${id} 应常挂闪现件`).toEqual([FOE_MOUNT_IDS.coronaBlink])
+      // ⚠ 2026-10-01 追加：T1 粼光级另挂「闪烁过载装置」、T3 叠光级另挂「叠光装置」
+      //（船长同日两句令）⇒ 本处只要求"闪现件在册"，两件专属装置的挂载面由
+      // `corona-devices-20261001` 逐档锁死。
+      expect(s!.mounts, `${id} 应常挂闪现件`).toContain(FOE_MOUNT_IDS.coronaBlink)
       expect(s!.energyForm, `${id} 是激光（能量·必中）`).toBe('beam')
       expect(s!.tactic, `${id} 是风筝战术`).toBe('kite')
     }
