@@ -41,7 +41,7 @@ function weaponModule(id: string, slot: 'turret' | 'missile' | 'laser', type: 'k
 
 describe('无人机战斗动画·武器来源字段（2026-09-10 船长批）', () => {
   it('武器条目携带来源：炮台 turret / 导弹 missile / 激光 laser / 无人机 drone+机型 / 基础舰炮 base', () => {
-    /** 单件装配取该件武器条目的来源（沙猫高槽有限：逐件单独造档装配） */
+    /** 单件装配取该件武器条目的来源（磷虾高槽有限：逐件单独造档装配） */
     const srcOf = (slot: 'turret' | 'missile' | 'laser'): string | undefined => {
       const def = weaponModule(`w-${slot}`, slot, slot === 'laser' ? 'plasma' : slot === 'missile' ? 'explosive' : 'kinetic')
       const state = createInitialState({ nowWallMs: 0, seed: 51 })

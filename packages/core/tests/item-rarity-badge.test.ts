@@ -12,7 +12,7 @@
  *    「两个稀有度表没有区别就合并，并删除多余的表」⇒ 原先拆出去的 `OFF_MARKET_RARITY_TIER` 已并入）。
  *
  * 另钉一条设计口径：**查不到档就不显示标签**（返回 `undefined`），不硬塞 R1——
- * 沙猫级、零件蓝图这类"船长明令不上市场"的东西本来就不该被标成"常驻档"。
+ * 磷虾级、零件蓝图这类"船长明令不上市场"的东西本来就不该被标成"常驻档"。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext, itemRarityTierOf, RARITY_TIER } from '@whale/data'
@@ -65,7 +65,7 @@ describe('稀有度查档单点（图标模式小标签用）', () => {
   })
 
   it('查不到档 ⇒ undefined（界面不显示标签，不硬塞 R1）', () => {
-    expect(itemRarityTierOf('sandcat')).toBeUndefined() // 沙猫级：船长定市场价 0、不上市场
+    expect(itemRarityTierOf('sandcat')).toBeUndefined() // 磷虾级：船长定市场价 0、不上市场
     expect(itemRarityTierOf('sbp-sandcat')).toBeUndefined()
     expect(itemRarityTierOf('不存在的东西')).toBeUndefined()
   })
@@ -75,12 +75,12 @@ describe('稀有度查档单点（图标模式小标签用）', () => {
     expect(missingItems, '物品应全部有档').toEqual([])
     const missingMods = [...ctx.modules.keys()].filter((id) => itemRarityTierOf(id) === undefined)
     expect(missingMods, '装备应全部有档').toEqual([])
-    // 舰船只剩"船长明令不上市场"的沙猫与邓氏鱼
+    // 舰船只剩"船长明令不上市场"的磷虾与邓氏鱼
     expect([...ctx.ships.keys()].filter((id) => itemRarityTierOf(id) === undefined).sort()).toEqual([
       'sandcat',
       'sh-dunkleosteus',
     ])
-    // 蓝图只剩零件蓝图（2026-09-20 一号的零件体系，明确不上市场）＋沙猫蓝图
+    // 蓝图只剩零件蓝图（2026-09-20 一号的零件体系，明确不上市场）＋磷虾蓝图
     const missingBp = [...ctx.blueprints.keys(), ...ctx.shipBlueprints.keys()].filter(
       (id) => itemRarityTierOf(id) === undefined,
     )

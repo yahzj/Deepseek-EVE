@@ -79,7 +79,7 @@ describe('虫洞 · 图纸货柜（2026-09-14 船长定）', () => {
     const once3 = wormholeDilutionPoolOf(ctx, 3)
     const once5 = wormholeDilutionPoolOf(ctx, 5)
     expect(once2).toHaveLength(10)
-    expect(once3).toHaveLength(17) // 2026-09-28：座头鲸升 T4（层 2 → 层 3）+ 开拓升 T3 补一次性图
+    expect(once3).toHaveLength(17) // 2026-09-28：座头鲸升 T4（层 2 → 层 3）+ 独角鲸升 T3 补一次性图
     expect(once5).toHaveLength(18)
     expect(once2.every((id) => tierOfBp(id) === 3), '浅层一次性池应全是 T3').toBe(true)
     expect(once5.some((id) => tierOfBp(id) === 5), '深层一次性池应含 T5').toBe(true)

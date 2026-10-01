@@ -137,7 +137,7 @@ describe('修理组件回血口径（2026-09-13 船长定）', () => {
 
     /* 同舰两台（型号不同）：**按位序各自取值**（第 2 台吃 EVE 曲线 87% 衰减）——
        卡上一台一行，两行不同值，且都与账本逐台对齐（界面靠"位序"把卡片对到 units 的第几份）。
-       ⚠ 沙猫（T1 采矿艇）中槽只有 1 个 ⇒ 这里换一艘中槽 ≥ 2 的真船。 */
+       ⚠ 磷虾（T1 采矿艇）中槽只有 1 个 ⇒ 这里换一艘中槽 ≥ 2 的真船。 */
     const two = world(5)
     const carrier = SHIPS.find((s) => (s.slots?.mid ?? 0) >= 2 && s.id !== two.state.fleet[two.uid]!.defId)
     expect(carrier, '真数据里应有中槽 ≥ 2 的船').toBeTruthy()

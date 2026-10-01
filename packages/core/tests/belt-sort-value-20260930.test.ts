@@ -21,7 +21,7 @@ import type { GameState } from '../src/state'
 
 const ctx = buildSimContext()
 
-/** 一艘沙猫、无技能、无矿枪的干净档（与 `ore-volume-mining.test.ts` 同款） */
+/** 一艘磷虾、无技能、无矿枪的干净档（与 `ore-volume-mining.test.ts` 同款） */
 function bareState(): GameState {
   const s = createInitialState({ nowWallMs: 0, seed: 1 })
   const uid = addShipToFleet(s, 'sandcat')
@@ -102,7 +102,7 @@ describe('矿带每小时产出与行情产值（2026-09-30 船长令：原矿�
   it('⑤ 船长报障的症状锁：基准价口径下极光云场在前，行情价口径下蓝霜冰环在前', () => {
     /**
      * 用陆龟级（每循环 24 m³）：气矿 `unitM3 = 8` ⇒ 3 单位/循环，冰矿 `unitM3 = 2` ⇒ 12 单位/循环
-     * （恰好 4×，不带 T1 沙猫那种 floor 取整带来的偏差；读数与测试档里 977/h : 3,910/h 同比例）。
+     * （恰好 4×，不带 T1 磷虾那种 floor 取整带来的偏差；读数与测试档里 977/h : 3,910/h 同比例）。
      */
     const s = createInitialState({ nowWallMs: 0, seed: 1 })
     s.shipId = addShipToFleet(s, 'sh-tortoise')

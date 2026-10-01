@@ -13,7 +13,7 @@
  *   虫洞解锁 = 协会声望（读 `standing`）——少一处计数就少一处漂移。
  * - **奖励**（现行表见各条的 `reward` 行注释；总口径 = 2026-09-18 船长定的六口袋表 ＋ **2026-09-20 前移**）：
  *   **采集器 MK1 ⇒「第一次扫描」** · **打捞器 MK1 ⇒「第一次采集原矿」** · 动能弹药生产线蓝图 ⇒「第一次操作精炼炉」·
- *   民用修理组件 ×20 ⇒「第一次维修舰船」· 一艘鲣鱼级 ⇒「第一次完成悬赏」· 沙猫级舰船蓝图 ⇒「第一次生产」·
+ *   民用修理组件 ×20 ⇒「第一次维修舰船」· 一艘鲣鱼级 ⇒「第一次完成悬赏」· 磷虾级舰船蓝图 ⇒「第一次生产」·
  *   民用船体维修装置 ×1 ⇒「第一条船」· 基础 AI 核心 ×1 ⇒「第一次学习技能」· 一艘飞鱼级快运舰 ⇒「第一次长途运输」·
  *   未探索虫洞 ×2 ⇒「第一次虫洞」；
  *   **「第一次打捞残骸」自 2026-09-20 起无实物奖励**（打捞器已前移到挖矿那条）；「第一次挂单销售」「第一次指派 AI 副船」
@@ -289,7 +289,7 @@ export function sequentialPrefixDone(state: GameState): boolean {
  *
  * **奖励改挂**（同一批）：采集器 MK1 从「扫描」的完成奖励挪到「采矿」的**起手**；打捞器 MK1 从「采矿」
  * 的完成奖励挪到「打捞」的**起手**；基础 AI 核心从「技能」的完成奖励挪到「AI 副船」的**起手**；
- * 沙猫级蓝图从「生产」的完成奖励挪到「造船」的**起手**；民用船体维修装置从「造船」挪到「维修」；
+ * 磷虾级蓝图从「生产」的完成奖励挪到「造船」的**起手**；民用船体维修装置从「造船」挪到「维修」；
  * 扫描 / 技能 / 生产 / 挂单 / 造船改为 10,000 信用点；采矿 100 → **1,000 单位橄榄岩**；
  * 打捞改为 **1,000 m³ 高安海盗残骸**；维修取消起手修理组件（船长在 Excel 里清空了那一格）。
  */
@@ -321,11 +321,12 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     titleEn: 'First Ore Haul',
     brief: '到矿带采一批原矿',
     // 2026-09-20 船长令：「任务文本添加建议玩家去舰船切换采矿船」——鲣鱼级是护卫舰（无矿枪），
-    //   采矿艇沙猫级开局就在舰船仓库里 ⇒ 文本第一句直接点明"先去舰船页换驾驶"。
+    //   采矿艇磷虾级开局就在舰船仓库里 ⇒ 文本第一句直接点明"先去舰船页换驾驶"。
+    // ⟪文案调整 2026-09-30⟫ 船长令改名：沙猫级 → 磷虾级（中英同步）
     detail:
-      '先到「舰船」页把驾驶换成采矿艇（沙猫级），再到矿带派出采矿。采掘、返航、卸货都会自动完成。原矿可以按市价卖出，也可以送进精炼炉炼成原材料——绝大多数情况下精炼会更加划算。',
+      '先到「舰船」页把驾驶换成采矿艇（磷虾级），再到矿带派出采矿。采掘、返航、卸货都会自动完成。原矿可以按市价卖出，也可以送进精炼炉炼成原材料——绝大多数情况下精炼会更加划算。',
     detailEn:
-      'First go to the Ships page and switch to a mining vessel (Sandcat-class), then send it to a belt. Digging, returning and unloading all happen automatically. Ore can be sold at market price, or fed into the refinery to make materials — refining pays better in almost every case.',
+      'First go to the Ships page and switch to a mining vessel (Krill-class), then send it to a belt. Digging, returning and unloading all happen automatically. Ore can be sold at market price, or fed into the refinery to make materials — refining pays better in almost every case.',
     judge: (state) => (state.firstStats?.mineUnits ?? 0),
     commsId: 'first-mine',
     /**
@@ -457,9 +458,9 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     titleEn: 'First AI Auxiliary Assigned',
     brief: '给一艘闲置舰船派个 AI 任务',
     detail:
-      '闲置舰船配上一枚 AI 核心就能自己出海：采矿、打捞、驻留待命都能接。初期建议让 AI 副手驾驶采矿艇（沙猫级）进行挖矿作业。因为战斗、运输、扫描虫洞较为复杂，所以无法通过 AI 副手完成。',
+      '闲置舰船配上一枚 AI 核心就能自己出海：采矿、打捞、驻留待命都能接。初期建议让 AI 副手驾驶采矿艇（磷虾级）进行挖矿作业。因为战斗、运输、扫描虫洞较为复杂，所以无法通过 AI 副手完成。',
     detailEn:
-      'An idle ship plus one AI core can head out on its own: mining, salvage or standing by on station. Early on, put an AI auxiliary in a mining vessel (Sandcat-class) to dig. Combat, hauling and wormhole scanning are too involved to hand to an AI auxiliary.',
+      'An idle ship plus one AI core can head out on its own: mining, salvage or standing by on station. Early on, put an AI auxiliary in a mining vessel (Krill-class) to dig. Combat, hauling and wormhole scanning are too involved to hand to an AI auxiliary.',
     // 船长 2026-09-17：「将安排 AI 核心的任务设置为需要玩家完成学习技能才出现」
     judge: (state) => (state.firstStats?.aiAssigns ?? 0),
     commsId: 'first-ai',
@@ -485,7 +486,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     commsId: 'first-produce',
     /**
      * 奖励（**2026-09-22 船长 Excel**）：**10,000 信用点**。
-     * 原先挂在这条上的 **沙猫级舰船蓝图** ⇒ 后移到「第一条船」的**起手道具**（造第一艘自造船时正好用上）。
+     * 原先挂在这条上的 **磷虾级舰船蓝图** ⇒ 后移到「第一条船」的**起手道具**（造第一艘自造船时正好用上）。
      *
      * 起手道具（**2026-09-21 船长令**、2026-09-22 Excel 复核不变）：钛钢合金 ×150 ＋ 银纹超金属 ×50
      * ——组装机要"蓝图 ＋ 材料 ＋ 时间"，材料来自精炼 ⇒ 先给一批，免得卡在"还得再跑一趟矿"。
@@ -532,7 +533,7 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     /**
      * 奖励（**2026-09-22 船长 Excel**）：**10,000 信用点**（原先发的民用船体维修装置 ⇒ 归口到「维修」）。
      *
-     * 起手道具（**2026-09-22 船长 Excel**）：**沙猫级舰船蓝图 ×1**——原挂在「第一次生产」的完成奖励上；
+     * 起手道具（**2026-09-22 船长 Excel**）：**磷虾级舰船蓝图 ×1**——原挂在「第一次生产」的完成奖励上；
      * 造自造船要"舰船蓝图 ＋ 材料 ＋ 工位"，蓝图得先到手（本条是**顺序段最后一条**）。
      */
     reward: { isk: 10_000 },

@@ -194,7 +194,7 @@ const vis0 = visibleFirstTasks(s).map((d) => d.title)
 ok('任务中心只显示当前那一条（顺序解锁）', vis0.length === 1 && vis0[0] === '第一次扫描', vis0.join(' / '))
 ok('开局零资金', s.wallet.isk === 0, `isk=${s.wallet.isk}`)
 ok('驾驶 = 鲣鱼（无矿枪、无炮台）', s.shipId === 'sh-falconet')
-// 鲣鱼开局带 80% 装甲/结构损伤（教学闭环：第一笔奖金 → 港内维修）；沙猫在机库待命
+// 鲣鱼开局带 80% 装甲/结构损伤（教学闭环：第一笔奖金 → 港内维修）；磷虾在机库待命
 ok(
   '鲣鱼开局带伤（维修教学的标的）',
   s.fleet['sh-falconet']!.durability === 0.8 && s.fleet['sh-falconet']!.armorPct === 0.8,
@@ -235,9 +235,9 @@ ok('工业页仍锁（它跟「第一次操作精炼炉」一起开）', !unlock
 mark('① → ③ 演出结束 + 扫描母港', s.gameMs)
 
 step('④ 第一次采集原矿（矿带）')
-// 照玩家路径：先把驾驶换成采矿艇沙猫（鲣鱼是护卫舰、货舱也不对口），并把③的采集器装上
+// 照玩家路径：先把驾驶换成采矿艇磷虾（鲣鱼是护卫舰、货舱也不对口），并把③的采集器装上
 const swap = changeShip(s, 'sandcat', ctx)
-ok('切换驾驶为沙猫级采矿艇', swap.ok, swap.ok ? '' : swap.error)
+ok('切换驾驶为磷虾级采矿艇', swap.ok, swap.ok ? '' : swap.error)
 const fitMiner = fitModule(s, 'mod-miner-1', ctx)
 ok('装上采集器 MK1（③ 的奖励：拿到就用）', fitMiner.ok, fitMiner.ok ? '' : fitMiner.error)
 ok('派出采矿被接受', startMining(s, BELT, ctx).ok)
@@ -249,7 +249,7 @@ ok('奖励：橄榄岩 ×1,000 进了仓库', (s.warehouse.items[ORE] ?? 0) >= 1
 ok('工业页解锁（与「第一次操作精炼炉」一起开）', unlocked(s, 'industry'))
 /**
  * 多采几趟：后面要炼 **3 批**（第 3 条自己 1 批 ＋ 造船料 2 批：200 三钛 / 50 类晶体胶矿），
- * 采一批（精炼每批 100 单位、沙猫一趟约 70）⇒ 目标仓库 ≥ 320。这就是真实的新手节奏。
+ * 采一批（精炼每批 100 单位、磷虾一趟约 70）⇒ 目标仓库 ≥ 320。这就是真实的新手节奏。
  * ⚠ 2026-09-22 起采矿完成奖励就是 1,000 橄榄岩 ⇒ 通常**一轮都不用再采**（循环会直接跳过）。
  */
 const ORE_TARGET = 320
@@ -315,7 +315,7 @@ mark('⑥⑦ 悬赏一场 + 港内维修', s.gameMs)
 
 step('⑧ 第一次打捞残骸（星图 · 母港残骸点）')
 okAtQueue(s, 'first-salvage', '维修判过')
-ok('换回沙猫驾驶（打捞要装在人开的那条船上）', changeShip(s, 'sandcat', ctx).ok)
+ok('换回磷虾驾驶（打捞要装在人开的那条船上）', changeShip(s, 'sandcat', ctx).ok)
 // **2026-09-22 船长 Excel**：打捞器 MK1 是**本条的起手道具**（轮到它就到手；原先挂在采矿的完成奖励上）
 /**
  * ⚠ **2026-09-22 全员补发（临时补丁 · 下次更新删除）**：引擎首拍会**无条件**给每个档发一台打捞器
@@ -345,9 +345,9 @@ ok(
 )
 // 下一条（第一次学习技能）无起手道具，只给 10,000 信用点
 ok('收工回港', stopSalvageOp(s, ctx) && !s.salvaging.active)
-// 打捞收工 ⇒ 换回鲣鱼（副船那一步要靠沙猫闲置：主控船不能派 AI）
+// 打捞收工 ⇒ 换回鲣鱼（副船那一步要靠磷虾闲置：主控船不能派 AI）
 const back = changeShip(s, 'sh-falconet', ctx)
-ok('换回鲣鱼驾驶（把沙猫空出来给 AI 副船）', back.ok, back.ok ? '' : back.error)
+ok('换回鲣鱼驾驶（把磷虾空出来给 AI 副船）', back.ok, back.ok ? '' : back.error)
 mark('⑧ 打捞一批', s.gameMs)
 
 /**
@@ -379,9 +379,9 @@ mark('⑨ 领奖 + 学技能', s.gameMs)
 
 step('⑩ 第一次指派 AI 副船')
 okAtQueue(s, 'first-ai', '技能判过')
-// 副船 = 闲置的沙猫（此刻驾驶的是鲣鱼）＋ ⑨ 结算时到手的基础 AI 核心
+// 副船 = 闲置的磷虾（此刻驾驶的是鲣鱼）＋ ⑨ 结算时到手的基础 AI 核心
 const assign = assignAiMining(s, 'sandcat', 'basic', BELT, ctx)
-ok('指派沙猫去采矿', assign.ok, assign.ok ? '' : assign.error)
+ok('指派磷虾去采矿', assign.ok, assign.ok ? '' : assign.error)
 const iskBeforeAi = s.wallet.isk
 advanceGame(s, 1000, ctx); claimAll(s) // 判定在引擎每拍，完成靠玩家点一次
 ok('「第一次指派 AI 副船」判定完成', s.importantTasks['first-ai']?.done === true, `aiAssigns=${firstStatOf(s, 'aiAssigns')}`)
@@ -433,8 +433,8 @@ if (good) {
   ok('挂出卖单', order !== null, order ? `${good.key} ×${qty}` : '（挂单被拒）')
   advanceGame(s, 1000, ctx); claimAll(s)
   ok('「第一次挂单销售」判定完成', s.importantTasks['first-order']?.done === true)
-  // 下一条（第一条船）的起手道具 = 沙猫级舰船蓝图（船长 2026-09-22 Excel：造自造船先得有蓝图）
-  ok('下一条的起手道具：沙猫级舰船蓝图 ×1', (s.blueprintStock['sbp-sandcat'] ?? 0) === 1, `sbp-sandcat=${s.blueprintStock['sbp-sandcat'] ?? 0}`)
+  // 下一条（第一条船）的起手道具 = 磷虾级舰船蓝图（船长 2026-09-22 Excel：造自造船先得有蓝图）
+  ok('下一条的起手道具：磷虾级舰船蓝图 ×1', (s.blueprintStock['sbp-sandcat'] ?? 0) === 1, `sbp-sandcat=${s.blueprintStock['sbp-sandcat'] ?? 0}`)
 } else {
   ok('找到可上市的物品', false, '仓库里没有可上市的物品')
 }
@@ -473,12 +473,12 @@ mark('⑫ 挂单 + 市价买卖', s.gameMs)
 step('⑬ 第一条船（造船：舰船蓝图 ＋ 材料 ＋ 机库工位）')
 okAtQueue(s, 'first-ship', '挂单判过')
 const sbpLearn = learnBlueprint(s, ctx, 'sbp-sandcat')
-ok('学会沙猫级舰船蓝图（⑫ 挂单结算时的起手道具）', sbpLearn.ok, sbpLearn.ok ? '' : sbpLearn.error)
+ok('学会磷虾级舰船蓝图（⑫ 挂单结算时的起手道具）', sbpLearn.ok, sbpLearn.ok ? '' : sbpLearn.error)
 // 备料（200 三钛 / 50 类晶体胶矿）：不够就"再跑矿 → 再炼"，最多补 3 轮
 const needMats = (): boolean => (s.warehouse.items['min-tritanium'] ?? 0) >= 200 && (s.warehouse.items['min-pyerite'] ?? 0) >= 50
 for (let extra = 1; extra <= 4 && !needMats(); extra++) {
   console.log(`   备料不足（${matsLine(s)}）⇒ 补第 ${extra} 轮矿料`)
-  ok('换回沙猫驾驶去补矿', changeShip(s, 'sandcat', ctx).ok)
+  ok('换回磷虾驾驶去补矿', changeShip(s, 'sandcat', ctx).ok)
   mineTrip(s, extra)
   refineAll(s)
   ok('补料后换回鲣鱼', changeShip(s, 'sh-falconet', ctx).ok)

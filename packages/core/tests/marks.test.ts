@@ -125,7 +125,7 @@ describe('玩家标记 · 存档', () => {
 
   it('卖船/丢船后：该船的标记随读档自动失效，其余标记保留', () => {
     const { state, ctx } = world()
-    // 经典开局舰队 = 沙猫（当前驾驶）+ 鲣鱼：两艘都打上标记
+    // 经典开局舰队 = 磷虾（当前驾驶）+ 鲣鱼：两艘都打上标记
     const other = Object.keys(state.fleet).find((uid) => uid !== state.shipId)!
     toggleMark(state, ctx, 'ships', state.shipId)
     toggleMark(state, ctx, 'ships', other)

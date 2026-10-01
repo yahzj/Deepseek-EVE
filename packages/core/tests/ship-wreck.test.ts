@@ -87,7 +87,7 @@ function wreckIn(
   return noteShipWreck(state, {
     galaxyId: opts?.galaxyId ?? GAL,
     shipId: opts?.shipId ?? 'sh-t-frigate',
-    shipName: opts?.shipName ?? '沙猫',
+    shipName: opts?.shipName ?? '磷虾',
     defId: opts?.defId ?? 'sh-t-frigate',
     durability: 0.8,
     armorPct: 0.6,
@@ -317,7 +317,7 @@ describe('加固结构插件接口（本批只留口子）', () => {
     console.log(`  [读数] 60% 整船回收第一次掷：${first.kind}`)
     expect(['ship', 'item', 'none']).toContain(first.kind)
     if (first.kind === 'ship') {
-      expect(first.wreckName).toBe('沙猫的残骸')
+      expect(first.wreckName).toBe('磷虾的残骸')
       expect(shipWreckFor(state, GAL), '整船回收 ⇒ 残骸消失').toBeUndefined()
       return
     }

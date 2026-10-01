@@ -12,7 +12,7 @@ import { unloadCargoOfShipToWarehouse, countWare, cargoOfShip } from '../src/inv
 import { startTransitHome } from '../src/location'
 import { anomaly, makeTestCtx, moduleDef } from './helpers'
 
-/** 可稳胜的武装沙猫 + 带缴获的本地目标 */
+/** 可稳胜的武装磷虾 + 带缴获的本地目标 */
 function armedHome(): { state: GameState; ctx: SimContext } {
   const tur = moduleDef('tur-b', 'turret', 0.5, {
     maxRangeM: 4000,

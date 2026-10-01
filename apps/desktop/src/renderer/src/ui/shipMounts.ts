@@ -118,13 +118,13 @@ export const SHIP_MOUNTS: Record<string, ShipMounts> = {
     muzzles: [],
   },
   // ── 鲸盟采矿族（钻头在舰艏，无炮 → 回退） ──
-  // 沙猫级（单钻）：单喷口 M64 46 h8 v13
+  // 磷虾级（单钻）：单喷口 M64 46 h8 v13
   sandcat: { engines: [{ x: 64, y: 52.5 }], muzzles: [] },
-  // 掘洞级（双钻）：单喷口 M60 44 h9 v16
+  // 沙鲛级（双钻）：单喷口 M60 44 h9 v16
   burrower: { engines: [{ x: 60, y: 52 }], muzzles: [] },
   // 鲸吞级（鲸口收集器）：双喷口 M62 44/62
   whale: { engines: [{ x: 62, y: 51 }, { x: 62, y: 69 }], muzzles: [] },
-  // 开拓级（三钻横梁）：双喷口 M64 44/61
+  // 独角鲸级（三钻横梁）：双喷口 M64 44/61
   pioneer: {
     engines: [{ x: 64, y: 50.5 }, { x: 64, y: 67.5 }],
     muzzles: [],

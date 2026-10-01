@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 市场系统（V9）单元测试：开盘簿、市价买卖、剩余转挂单、撤单退回、冲击动量、
  * 内部消化、池库存、声望加成、蓝图学习/回卖、舰船市场出售。
  */
@@ -430,7 +430,7 @@ describe('舰船市场：出售需满足条件，成交入账', () => {
   })
 
   it('驾驶中的船不能卖；停靠+空仓可市价卖出（税后入账）', () => {
-    addShipToFleet(state, 'big') // 停在机库（默认驾驶沙猫）
+    addShipToFleet(state, 'big') // 停在机库（默认驾驶磷虾）
     const res = sellShipAtMarket(state, ctx, 'big')
     expect(res.ok).toBe(true)
     const gross = 72_000 // 120k × 0.6（common 收购档位，2026-09-08 船长定）

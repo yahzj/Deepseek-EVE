@@ -13,7 +13,7 @@
  *    外加"按各条实测产率攒到 1e12 要多久"。
  * ④ **采矿收入曲线**：满配矿舰（鲸王级 + 3×精密采集器 MK3 + 相关技能 Lv5）逐矿带的
  *    单位/时 → ISK/时。**这是"玩家收入曲线"最上端那一档**，也是与 `liquidity:audit`
- *    覆盖比（**基准 = 座头鲸级 · 0 技能 · 满装备**；2026-09-30 船长令换基准，旧为掘洞级 + 2×MK1）对读的那一列。
+ *    覆盖比（**基准 = 座头鲸级 · 0 技能 · 满装备**；2026-09-30 船长令换基准，旧为沙鲛级 + 2×MK1）对读的那一列。
  * ⑤ **卖矿变现实收单价**：满技能满舱一轮卖货仓的实收 ÷ 现货 base 价（含收购档与税）。
  *
  * 用法：`npm run econ:audit`（挂 script）。
@@ -52,7 +52,7 @@ const H = 60 * 60 * 1000
 const STEP = 30_000
 /** 固定墙钟基准（免日历/限时倍率污染读数） */
 const BASE_WALL = 1_760_000_000_000
-/** 参照矿带：母港门口（沙猫级可直达，与开局一致） */
+/** 参照矿带：母港门口（磷虾级可直达，与开局一致） */
 const BELT = 'belt-fortune'
 const ORE = 'ore-veldspar'
 
@@ -96,7 +96,7 @@ say('════════ 一、在线 8 小时 vs 离线 8 小时（同起�
   }
   const rows: Array<[string, GameState, GameState]> = [
     ['① 纯随机事件（不开采矿）', runOnline(freshState(false)), runOffline(freshState(false))],
-    ['② 采矿自动循环（沙猫级 + 母港矿带）', runOnline(freshState(true)), runOffline(freshState(true))],
+    ['② 采矿自动循环（磷虾级 + 母港矿带）', runOnline(freshState(true)), runOffline(freshState(true))],
   ]
   for (const [label, on, off] of rows) {
     say(
@@ -191,7 +191,7 @@ say('\n════════ 三、货币量级与精度 ══════�
   const rates: Array<[string, number]> = [
     ['新档 24h 原矿流（npm run balance）', 58_000],
     ['打捞回收保底 EV（满技能 · npm run salvage:econ）', 1_450_000],
-    ['采矿 6 线（沙猫口径 · npm run balance:chains）', 7_020_000],
+    ['采矿 6 线（磷虾口径 · npm run balance:chains）', 7_020_000],
     ['舰船制造（巨齿鲨 · 现货 · npm run manufacture:econ）', 6_187_500],
     ['制造 MK3 护盾充能力场（变现口径）', 7_198_608],
     ['制造 MK3 护盾充能力场（现货口径）', 13_198_608],

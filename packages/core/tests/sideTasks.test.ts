@@ -501,7 +501,7 @@ describe('快递 · 虚拟货物（2026-09-18 船长改版）', () => {
     expect(state.warehouse.items['ore-a']).toBe(123) // 一件都不扣
     expect(sideTaskBoard(state, ctx).deliver?.taskId).toBe(small.id)
 
-    // ② 货舱不足被拒：默认船（沙猫 800 m³）装不下 L1 的 1,000 m³
+    // ② 货舱不足被拒：默认船（磷虾 800 m³）装不下 L1 的 1,000 m³
     const b = makeWorld({ stations: [stationSite('s1', 'galaxy-far', '远方站')], built: ['s1'] })
     marketQuote(b.state, b.ctx, 'it-ore-a')
     advanceGame(b.state, FIRST_OPEN_MS, b.ctx)

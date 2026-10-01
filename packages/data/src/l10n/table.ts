@@ -123,7 +123,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.shipyard.021": { zh: "主控在虫洞里战沉——已由同队的 {p1} 在洞内接任主控。", en: "The command ship was lost inside the wormhole — {p1} from the same team takes over as command." },
   "core.shipyard.022": { zh: "驾驶中的舰船正被 AI 执勤占用——已自动改派驾驶 {p1}。", en: "The piloted ship is tied up by an AI task — {p1} was assigned to pilot instead." },
   "core.shipyard.023": { zh: "舰队里找不到正在驾驶的舰船——已自动改派驾驶 {p1}。", en: "The piloted ship could not be found in the fleet — {p1} was assigned to pilot instead." },
-  "core.shipyard.024": { zh: "协会补助：一艘全新的沙猫级采矿艇已停靠机库（保底舰船；其余舰船正被 AI 执勤占用或已全损）。", en: "Association subsidy: a brand-new Sandcat-class mining corvette is in the hangar (a fallback ship; the rest are tied up by AI tasks or were lost)." },
+  // ⟪文案调整 2026-09-30⟫ 船长令改名：沙猫级 → 磷虾级（中英同步）
+  "core.shipyard.024": { zh: "协会补助：一艘全新的磷虾级采矿艇已停靠机库（保底舰船；其余舰船正被 AI 执勤占用或已全损）。", en: "Association subsidy: a brand-new Krill-class mining corvette is in the hangar (a fallback ship; the rest are tied up by AI tasks or were lost)." },
   "core.shipyard.025": { zh: "已完成 {p1} 的全面维修（{p2} 信用点），结构/装甲恢复至 100%。", en: "Full repairs on {p1} are done ({p2} credits); hull and armour are back to 100%." },
   "core.shipyard.026": { zh: "自动使用修理组件 ×{p1}（{p2}）：{p3} 结构恢复至 {p4}%、装甲 {p5}%。", en: "Repair kits used automatically ×{p1} ({p2}): {p3} hull restored to {p4}%, armour {p5}%." },
   "core.shipyard.027": { zh: "✚ 使用 {p1} ×1：{p2} 结构恢复至 {p3}%、装甲 {p4}%。", en: "✚ Used {p1} ×1: {p2} hull restored to {p3}%, armour {p4}%." },
@@ -298,9 +299,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* ── 第七批：state.ts（开局文案）+ wormholeScan.ts ── */
   "core.state.025": { zh: "舰载系统苏醒：隐秘泊位·母港。", en: "Ship systems come online: hidden berth, home port." },
   "core.state.026": { zh: "自检异常：船体装甲/结构受损（80%），乘员生命信号——无。记忆档案损坏。", en: "Self-check anomaly: hull armour and structure are damaged (80%), no crew life signs, and the memory archive is corrupted." },
-  "core.state.027": { zh: "初始资金 0 信用点：一切从采集第一舱原矿开始。鲣鱼级护卫舰（待修）与沙猫级采矿艇同在机库；装备库与弹药库为空——首门炮台与弹药将在完成协会试炼后解锁。", en: "Starting funds: 0 credits — everything begins with the first hold of ore. A Bonito-class frigate (awaiting repairs) and a Sandcat-class mining corvette share the hangar; module storage and the ammo store are empty — your first turret and ammunition unlock when the Association trial is done." },
+  // ⟪文案调整 2026-09-30⟫ 船长令改名：沙猫级 → 磷虾级（中英同步）
+  "core.state.027": { zh: "初始资金 0 信用点：一切从采集第一舱原矿开始。鲣鱼级护卫舰（待修）与磷虾级采矿艇同在机库；装备库与弹药库为空——首门炮台与弹药将在完成协会试炼后解锁。", en: "Starting funds: 0 credits — everything begins with the first hold of ore. A Bonito-class frigate (awaiting repairs) and a Krill-class mining corvette share the hangar; module storage and the ammo store are empty — your first turret and ammunition unlock when the Association trial is done." },
   "core.state.028": { zh: "欢迎加入「深空工业协会」。", en: "Welcome to the Deep Space Industry Association." },
-  "core.state.029": { zh: "初始资金 {p1} 信用点已到账；沙猫级采矿艇已停靠机库，另有鲣鱼级护卫舰待命（装备库含轻型炮台 MK1，仓库配三型通用弹各 60 发，可直接体验远征战斗）。", en: "Starting funds of {p1} credits have landed; a Sandcat-class mining corvette is in the hangar and a Bonito-class frigate stands by (module storage holds a Light Turret MK1 and the warehouse carries 60 rounds of each of the three general ammo types, so you can try expedition combat right away)." },
+  // ⟪文案调整 2026-09-30⟫ 船长令改名：沙猫级 → 磷虾级（中英同步）
+  "core.state.029": { zh: "初始资金 {p1} 信用点已到账；磷虾级采矿艇已停靠机库，另有鲣鱼级护卫舰待命（装备库含轻型炮台 MK1，仓库配三型通用弹各 60 发，可直接体验远征战斗）。", en: "Starting funds of {p1} credits have landed; a Krill-class mining corvette is in the hangar and a Bonito-class frigate stands by (module storage holds a Light Turret MK1 and the warehouse carries 60 rounds of each of the three general ammo types, so you can try expedition combat right away)." },
   "core.state.030": { zh: "星图迷雾已开启：母港已探明，周边星系等待扫描探索——去悬赏列表接任务，或对星图上的「未知信号」执行扫描。", en: "The star map fog has lifted: the home port is known and nearby systems await scanning — take a job from the bounty list, or scan an Unknown Signal on the star map." },
   "core.wormholeScan.001": { zh: "扫描已经在跑。", en: "A scan is already running." },
   "core.wormholeScan.002": { zh: "🛰 开始扫描虫洞：主控就地展开扫描阵列。", en: "🛰 Wormhole scan started: the command ship deploys its scanning array on the spot." },

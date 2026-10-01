@@ -8,7 +8,7 @@ import type { GameState } from '../src/state'
 import { CURRENT_STATE_VERSION } from '../src/state'
 
 describe('v23 序章·苏醒', () => {
-  it('prologue 新档：零资金、鲣鱼默认驾驶且带 80% 损伤、沙猫在库、无预置炮台弹药、onboarding step 0', () => {
+  it('prologue 新档：零资金、鲣鱼默认驾驶且带 80% 损伤、磷虾在库、无预置炮台弹药、onboarding step 0', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 1, prologue: true })
     expect(s.version).toBe(CURRENT_STATE_VERSION)
     expect(s.wallet.isk).toBe(0)
@@ -22,7 +22,7 @@ describe('v23 序章·苏醒', () => {
     expect(Object.keys(s.importantTasks).length).toBe(0)
   })
 
-  it('经典开局（默认）：历史行为不变（10k 资金/沙猫/预置炮台与弹药），序章按「已完成」计', () => {
+  it('经典开局（默认）：历史行为不变（10k 资金/磷虾/预置炮台与弹药），序章按「已完成」计', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 1 })
     expect(s.wallet.isk).toBe(DEFAULT_START_ISK)
     expect(s.shipId).toBe('sandcat')

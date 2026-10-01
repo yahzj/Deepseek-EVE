@@ -68,7 +68,7 @@ describe('远征 V12：两阶段', () => {
     expect(startExpedition(state, 'ano-a', ctx).ok).toBe(true)
     expect(state.expedition.phase).toBe('battle')
     expect(state.expedition.battle).not.toBeNull()
-    // 长推进把战斗打完（战斗上限 10 分钟；母港目标 vs 沙猫很快分出胜负）
+    // 长推进把战斗打完（战斗上限 10 分钟；母港目标 vs 磷虾很快分出胜负）
     advanceGame(state, 10 * 60_000, ctx)
     const exp = state.expedition
     if (exp.active && exp.phase === 'battle') {
@@ -129,7 +129,7 @@ describe('远征 V12：两阶段', () => {
     // 2026-09-11 船长：「船体修理装置不单独显示日志。只将消耗组件数量显示到战后总结」
     const rep = moduleDef('mod-hullrep-t', 'support', 0, { rack: 'mid', cpuUse: 1, repairArmorHp: 5, repairHullHp: 5, repairKit: 'repairkit-civ' })
     const ctxR = makeTestCtx({
-      ships: [ship('sandcat', { shieldHp: 3_000, armorHp: 5_000, hullHp: 5_000 })], // 同名覆盖默认沙猫：血厚到 5 秒内打不完
+      ships: [ship('sandcat', { shieldHp: 3_000, armorHp: 5_000, hullHp: 5_000 })], // 同名覆盖默认磷虾：血厚到 5 秒内打不完
       modules: [rep],
       items: [{ id: 'repairkit-civ', name: '民用修理组件', kind: 'kit', unitM3: 1, baseSellPriceIsk: 3_000, description: '测试民用修理组件' }],
       anomalies: [anomaly('ano-repair-t', 'galaxy-hub', { threat: 40, reward: 20_000 })],

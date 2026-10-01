@@ -31,7 +31,7 @@ function encTiers(): AnomalyDef[] {
 function lowWorld() {
   const ctx: SimContext = makeTestCtx({
     quietEvents: true,
-    // ⚠ 2026-09-13 层位克制改判（动能对甲 / 爆炸对盾 0.5 → 0.75）后，**开局沙猫级**（护盾仅 18 点，
+    // ⚠ 2026-09-13 层位克制改判（动能对甲 / 爆炸对盾 0.5 → 0.75）后，**开局磷虾级**（护盾仅 18 点，
     // 同属"一炮≈一层血"的极端颗粒度）在威胁 6 的遭遇里会被打沉 ⇒ 结算 durability = 0（实测）。
     // 夹具把船抬硬，保本用例被测的行为（应战 → 打完 → 遭遇关闭 → **船还在**）不变；
     // **只动夹具、不动内容数值**（船长 2026-09-13 裁定「① 最小调整夹具」）。
@@ -539,7 +539,7 @@ describe('B1 遇袭受损与撤退（2026-09-11 定；收场口径 2026-09-12 �
 
   it('副船遇袭后结构低于 50% 且**无组件**：中止 AI 任务召回回港待命（断料档）', () => {
     const { state, ctx } = lowWorld()
-    // 副船 = 鲣鱼（驾驶船是沙猫 = state.shipId，两条路径分开判）
+    // 副船 = 鲣鱼（驾驶船是磷虾 = state.shipId，两条路径分开判）
     const droneId = 'sh-falconet'
     state.aiAssignments[droneId] = {
       coreType: 'basic',
@@ -699,7 +699,7 @@ describe('B1 遇袭受损与撤退（2026-09-11 定；收场口径 2026-09-12 �
     const { state, ctx } = lowWorld()
     miningInField(state, ctx)
     state.fleet[state.shipId]!.durability = 0.9
-    inject(state, 6) // 一口 = 6 × 0.8 × 5 秒 = 24 HP（沙猫 15 甲吃满 + 9 进结构 ≈ 25%）⇒ 结构 ≈ 75%，远不到撤退线
+    inject(state, 6) // 一口 = 6 × 0.8 × 5 秒 = 24 HP（磷虾 15 甲吃满 + 9 进结构 ≈ 25%）⇒ 结构 ≈ 75%，远不到撤退线
     fleeEncounter(state, ctx)
     expect(state.mining.active).toBe(true)
     expect(state.awayGalaxy).toBe('galaxy-far')
@@ -727,7 +727,7 @@ describe('B1 遇袭受损与撤退（2026-09-11 定；收场口径 2026-09-12 �
   it('应战：遭遇战战后总结带修理组件消耗（2026-09-11 船长：装置不单独显示日志）', () => {
     const ctx = makeTestCtx({
       quietEvents: true,
-      // 同名覆盖默认沙猫：血厚，保证 5 秒内打不完（至少一跳修复脉冲落地）
+      // 同名覆盖默认磷虾：血厚，保证 5 秒内打不完（至少一跳修复脉冲落地）
       ships: [ship('sandcat', { shieldHp: 3_000, armorHp: 5_000, hullHp: 5_000 })],
       modules: [moduleDef('mod-hullrep-t', 'support', 0, { rack: 'mid', cpuUse: 1, repairArmorHp: 5, repairHullHp: 5, repairKit: 'repairkit-civ' })],
       items: [{ id: 'repairkit-civ', name: '民用修理组件', kind: 'kit', unitM3: 1, baseSellPriceIsk: 3_000, description: '测试民用修理组件' }],

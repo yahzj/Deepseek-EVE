@@ -224,7 +224,7 @@ describe('残骸：插件快照 → 整批换黑匣', () => {
     noteShipWreck(state, {
       galaxyId: GAL,
       shipId: 'wrecked-only-plugs',
-      shipName: '沙猫',
+      shipName: '磷虾',
       defId: T1,
       plugs: [PLUG_SHIELD],
       createdAtWallMs: 0,
@@ -254,7 +254,7 @@ describe('残骸：插件快照 → 整批换黑匣', () => {
     noteShipWreck(state, {
       galaxyId: GAL,
       shipId: 'wrecked-hull-back',
-      shipName: '沙猫',
+      shipName: '磷虾',
       defId: T1,
       plugs: [PLUG_SHIELD],
       createdAtWallMs: 0,
@@ -273,7 +273,7 @@ describe('残骸：插件快照 → 整批换黑匣', () => {
     const rec = noteShipWreck(state, {
       galaxyId: GAL,
       shipId: 'wrecked-reinforce',
-      shipName: '沙猫',
+      shipName: '磷虾',
       defId: T1,
       plugs: [PLUG_SHIELD],
       reinforceChance: 0.3,
@@ -360,7 +360,7 @@ describe('随档往返（两处清洗器都要登记）', () => {
     noteShipWreck(state, {
       galaxyId: GAL,
       shipId: 'wrecked-1-sandcat',
-      shipName: '沙猫',
+      shipName: '磷虾',
       defId: T1,
       plugs: [PLUG_ARMOR],
       createdAtWallMs: 0,

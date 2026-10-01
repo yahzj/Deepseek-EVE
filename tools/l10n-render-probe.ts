@@ -232,10 +232,10 @@ const FIXTURES: Fixture[] = [
      * 也带进去）——那是既有边界（多段拼接的段自带标点），已单列进 backlog，本夹具先把**实得**钉住。
      */
     name: '长途运输·开跑日志（`{p8}` 尾槽 ＋ 槽位映射）',
-    text: '长途运输开始：沙猫 承运「母港 ⇄ 新港」（货仓 320 m³ 满载虚拟货物）——单段航程约 45 分钟，单段报酬随行情浮动在 12,000 ~ 20,000 信用点（每趟一价，到站结算）；船上原有货物已卸入仓库（50 单位）。',
+    text: '长途运输开始：磷虾 承运「母港 ⇄ 新港」（货仓 320 m³ 满载虚拟货物）——单段航程约 45 分钟，单段报酬随行情浮动在 12,000 ~ 20,000 信用点（每趟一价，到站结算）；船上原有货物已卸入仓库（50 单位）。',
     textId: 'core.hauling.024',
     textParams: {
-      p1: '沙猫',
+      p1: '磷虾',
       p2: '母港',
       p3: '新港',
       p4: '320',
@@ -247,9 +247,9 @@ const FIXTURES: Fixture[] = [
       p8p1: 50,
     },
     expectZh:
-      '长途运输开始：沙猫 承运「母港 ⇄ 新港」（货仓 320 m³ 满载虚拟货物）——单段航程约 45 分钟，单段报酬随行情浮动在 12,000 ~ 20,000 信用点（每趟一价，到站结算）；船上原有货物已卸入仓库（50 单位）。',
+      '长途运输开始：磷虾 承运「母港 ⇄ 新港」（货仓 320 m³ 满载虚拟货物）——单段航程约 45 分钟，单段报酬随行情浮动在 12,000 ~ 20,000 信用点（每趟一价，到站结算）；船上原有货物已卸入仓库（50 单位）。',
     expectEn:
-      'Long-haul transport started: 沙猫 runs “母港 ⇄ 新港” (a hold of 320 m³ filled with virtual freight) — a single leg takes about 45 minutes; single-leg pay drifts with the market between 12,000 and 20,000 credits (one price per trip, settled on arrival); the cargo already aboard was unloaded into the warehouse (50 units).',
+      'Long-haul transport started: 磷虾 runs “母港 ⇄ 新港” (a hold of 320 m³ filled with virtual freight) — a single leg takes about 45 minutes; single-leg pay drifts with the market between 12,000 and 20,000 credits (one price per trip, settled on arrival); the cargo already aboard was unloaded into the warehouse (50 units).',
   },
   /**
    * **精炼停炉·段链三层**（**2026-09-29 加** · 船长报障「各种事件里的参数都有问题」的验收夹具）。

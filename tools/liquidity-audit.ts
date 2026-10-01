@@ -9,7 +9,7 @@
  * 运行：npx tsx tools/liquidity-audit.ts（等价 `npm run liquidity:audit`）
  *
  * 口径：
- * - **采矿侧基准 = 掘洞级采矿艇 + 满采矿技能 + 2×强化采集器 MK1**（船长 2026-09-10 指定：中期配置，
+ * - **采矿侧基准 = 沙鲛级采矿艇 + 满采矿技能 + 2×强化采集器 MK1**（船长 2026-09-10 指定：中期配置，
  *   不是座头鲸满配）；产率走引擎真函数 `getMiningParams`（循环时长 × 每循环产量），
  *   对照列另给裸船 / 满技能 / 座头鲸满配；
  * - 满技能 = 采矿技术 / 星质地质学 / 深井爆破学 / 深空采集学 / 采矿舰操作 各 5 级；
@@ -24,7 +24,7 @@ import { buildSimContext } from '@whale/data'
 import { advanceBattleFor, startBattleFor, waveGapTotalMs } from '../packages/core/src/combat'
 
 const ctx = buildSimContext()
-const SHIP = 'burrower' // 掘洞级采矿艇（船长指定基准：MK1 采集器 ×2，高槽 2 / CPU 90）
+const SHIP = 'burrower' // 沙鲛级采矿艇（船长指定基准：MK1 采集器 ×2，高槽 2 / CPU 90）
 const SKILLS = ['mining', 'astro-geology', 'deep-hole-blasting', 'deep-space-harvesting', 'industrial-ops']
 const fmt = (n: number): string => Math.round(n).toLocaleString('zh-CN')
 
@@ -59,7 +59,7 @@ const HP = ((): ReturnType<typeof createInitialState> => {
  * **新基准（2026-09-30 船长令：「基准上调为座头鲸0技能满装备」）**：
  * 座头鲸级 · **0 技能** · **满装备**（高槽 3×强化采集器 MK3 ＋ 低槽货舱扩展 MK3 ＋ MK2 = CPU **175 用满**）。
  * 只有高槽的采集器影响**件/时**，货舱件只影响单趟容量 ⇒ 中槽装不装推进器都不改这条基准。
- * 现役池参数按旧基准（掘洞级 ＋ 满技能 ＋ 2×MK1）标定 ⇒ 本次按新基准重标。
+ * 现役池参数按旧基准（沙鲛级 ＋ 满技能 ＋ 2×MK1）标定 ⇒ 本次按新基准重标。
  */
 const HP0 = ((): ReturnType<typeof createInitialState> => {
   const s = createInitialState({ nowWallMs: 0, seed: 1 })
@@ -74,9 +74,9 @@ const HP0 = ((): ReturnType<typeof createInitialState> => {
 })()
 
 const CONFIGS: Array<{ label: string; state: ReturnType<typeof createInitialState>; ship: string }> = [
-  { label: '掘洞裸船', state: makeState(false, []), ship: SHIP },
-  { label: '掘洞满技能', state: makeState(true, []), ship: SHIP },
-  { label: '掘洞满技能+2×MK1', state: makeState(true, ['mod-miner-1', 'mod-miner-1']), ship: SHIP },
+  { label: '沙鲛裸船', state: makeState(false, []), ship: SHIP },
+  { label: '沙鲛满技能', state: makeState(true, []), ship: SHIP },
+  { label: '沙鲛满技能+2×MK1', state: makeState(true, ['mod-miner-1', 'mod-miner-1']), ship: SHIP },
   { label: '（参考）座头鲸满配·满技能', state: HP, ship: 'sh-humpback' },
   { label: '（基准）座头鲸·0 技能·满装备', state: HP0, ship: 'sh-humpback' },
 ]
@@ -132,7 +132,7 @@ for (const r of rows) {
 const bad = rows.filter((r) => r.cover < 1)
 console.log('')
 console.log(`· 覆盖比 < 1 的品类：${bad.length} / ${rows.length}（这些就是"流通性差"的来源）`)
-console.log(`· 说明：**基准 = 座头鲸级 · 0 技能 · 满装备**（高槽 3×强化采集器 MK3 ＋ 低槽货舱扩展 MK3/MK2 = CPU 175 用满；2026-09-30 船长令「基准上调为座头鲸0技能满装备」，旧基准 = 掘洞级 ＋ 满技能 ＋ 2×MK1）；池日吸收 = supplyFlow × 1440 窗（60 秒/窗）。`)
+console.log(`· 说明：**基准 = 座头鲸级 · 0 技能 · 满装备**（高槽 3×强化采集器 MK3 ＋ 低槽货舱扩展 MK3/MK2 = CPU 175 用满；2026-09-30 船长令「基准上调为座头鲸0技能满装备」，旧基准 = 沙鲛级 ＋ 满技能 ＋ 2×MK1）；池日吸收 = supplyFlow × 1440 窗（60 秒/窗）。`)
 
 console.log('')
 console.log('══ 分层覆盖比方案（保留"低阶需求大、高阶需求小"，但保证最低档也卖得掉）══')

@@ -428,7 +428,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'sbp-once-humpback': 3,
   'sbp-once-megalodon': 4,
   'sbp-once-nautilus': 3,
-  'sbp-once-pioneer': 3, // 2026-09-28 新增（开拓级升 T3 后补的一次性图纸；市场行 rare ⇒ 档位 3）
+  'sbp-once-pioneer': 3, // 2026-09-28 新增（独角鲸级升 T3 后补的一次性图纸；市场行 rare ⇒ 档位 3）
   'sbp-once-sailfish': 3,
   'sbp-once-sentinel': 3,
   'sbp-once-swordfish': 3,

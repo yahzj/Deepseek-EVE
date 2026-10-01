@@ -23,7 +23,7 @@ describe('T5 船只锁定（防误售）', () => {
     expect(state.shipLocks).toEqual({})
     // 未拥有的船
     expect(lockShip(state, 'ghost-ship', true, ctx).ok).toBe(false)
-    // 锁定沙猫（驾驶中的船也可以锁：防的是误售，不影响驾驶/AI）
+    // 锁定磷虾（驾驶中的船也可以锁：防的是误售，不影响驾驶/AI）
     expect(lockShip(state, 'sandcat', true, ctx).ok).toBe(true)
     expect(isShipLocked(state, 'sandcat')).toBe(true)
     expect(state.shipLocks['sandcat']).toBe(true)

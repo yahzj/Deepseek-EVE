@@ -153,7 +153,7 @@ function runUntil(s: GameState, cond: () => boolean, budgetMs: number, stepMs = 
   if (!started.ok) say('② 派船失败', started.error ?? '', '')
   const r = runUntil(s, () => (s.firstStats?.mineUnits ?? 0) > 0, 30 * 60_000)
   const p = getMiningParams(s, ctx, { shipId: 'sandcat', beltId: 'belt-fortune' })
-  say('② 第一次采集原矿（采到 ≥1 单位）', min(r.ms), `沙猫级 ${p?.cycleMs ? p.cycleMs / 1000 : '?'} 秒/循环产 ${p?.unitsPerCycle ?? '?'} 单位（含出航）`)
+  say('② 第一次采集原矿（采到 ≥1 单位）', min(r.ms), `磷虾级 ${p?.cycleMs ? p.cycleMs / 1000 : '?'} 秒/循环产 ${p?.unitsPerCycle ?? '?'} 单位（含出航）`)
 }
 
 // ── ③ 打捞残骸：需先在邻星系找到残骸点（扫描 10 分钟 + 航程 + 一个打捞循环）──
@@ -209,7 +209,7 @@ say('④ 第一次维修舰船', '≈ 0（一次点击）', '港内付费维修�
 // ── ⑧ 挂单：一次点击 ──
 say('⑧ 第一次挂单销售', '≈ 0（一次点击）', '市场挂一张卖单即成')
 
-// ── ⑨ 第一条船：用 ⑦ 送的沙猫蓝图造沙猫（材料 200 钛钢 + 50 银纹 + 工期 15 分钟）──
+// ── ⑨ 第一条船：用 ⑦ 送的磷虾蓝图造磷虾（材料 200 钛钢 + 50 银纹 + 工期 15 分钟）──
 {
   const s = createInitialState({ nowWallMs: 0, seed: 1, prologue: true })
   s.onboarding.step = 99
@@ -220,7 +220,7 @@ say('⑧ 第一次挂单销售', '≈ 0（一次点击）', '市场挂一张卖�
   const started = startManufacturing(s, 'sbp-sandcat', 'pilot', ctx)
   const r = runUntil(s, () => (s.firstStats?.ships ?? 0) > 0, 90 * 60_000)
   say(
-    '⑨ 第一条船（沙猫级）',
+    '⑨ 第一条船（磷虾级）',
     r.ok ? min(r.ms) : `≥ ${min(r.ms)}（未完成）`,
     `学会蓝图 ${learned.ok ? 'OK' : learned.error} · 起线 ${started.ok ? 'OK' : started.error} · 工期 15 分钟；材料 200 钛钢合金 ＋ 50 银纹超金属（约两批精炼）`,
   )
@@ -247,7 +247,7 @@ say('⑪ 第一次指派 AI 副船', '≈ 0（一次点击）', '前置已由 �
     }
     tierRows.push(`${site.name}（${site.tiers.length} 档）`)
   }
-  say('⑫ 第一次长途运输', '数小时级（见备注）', `需先建成一座副站：${tierRows.join(' / ')}，各档合计需交付约 ${totalUnits.toLocaleString('zh-CN')} 单位物资（材料靠采矿＋精炼，按沙猫一趟 70 单位算 ≈ ${Math.ceil(totalUnits / 70)} 趟）；建成后一趟往返按真实航程结算`)
+  say('⑫ 第一次长途运输', '数小时级（见备注）', `需先建成一座副站：${tierRows.join(' / ')}，各档合计需交付约 ${totalUnits.toLocaleString('zh-CN')} 单位物资（材料靠采矿＋精炼，按磷虾一趟 70 单位算 ≈ ${Math.ceil(totalUnits / 70)} 趟）；建成后一趟往返按真实航程结算`)
 }
 
 // ── ⑬ 虫洞：协会声望 40 ──
@@ -578,7 +578,7 @@ const push = (stat: string, top: string, min: number, how: string): void => {
   }
   const lines = 6 // 驾驶 1 ＋ AI 核心上限 5（AI 核心操作学满级）
   push('ships', `${top} 艘`, (top * build) / lines,
-    `沙猫级工期 ${build} 分/艘 · ${lines} 条线并行（驾驶＋5 枚核心）⇒ ${top} 艘；` +
+    `磷虾级工期 ${build} 分/艘 · ${lines} 条线并行（驾驶＋5 枚核心）⇒ ${top} 艘；` +
     `材料另需无门槛矿带原矿约 ${Math.round(orePerShip * top).toLocaleString('zh-CN')} 单位（≈ ${h(orePerShip * top / 50)} 单船采矿）`)
 }
 

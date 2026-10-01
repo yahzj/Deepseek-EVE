@@ -28,7 +28,7 @@ describe('存档往返（v7）', () => {
   it('保存后再读回：内容完全一致（含舰队/仓库/采矿/队列/日志）', () => {
     const state = createInitialState({ name: '测试飞行员', nowWallMs: 12_345, seed: 7 })
     state.wallet.isk = 500
-    // 把掘洞级加入舰队并切换驾驶（合法状态：当前船必须在舰队里）
+    // 把沙鲛级加入舰队并切换驾驶（合法状态：当前船必须在舰队里）
     state.fleet['burrower'] = { defId: 'burrower', customName: null, durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     state.shipId = 'burrower'
     state.fleet['burrower'].cargo['ore-a'] = 100

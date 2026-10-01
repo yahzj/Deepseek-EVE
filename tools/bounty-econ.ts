@@ -15,7 +15,7 @@
  * 对照列：悬赏卡现行"估算 ISK/h"（交火 = 表内标称 combatSeconds，非真实交火时长）——
  * 两列之差即"卡面低估/高估"程度。
  *
- * 尾部附采矿对照行：沙猫级（裸船）在各矿带的每活性小时原矿估值（引擎 getMiningParams
+ * 尾部附采矿对照行：磷虾级（裸船）在各矿带的每活性小时原矿估值（引擎 getMiningParams
  * 口径，按物品基准价，同矿带卡效率行；不含往返与市场波动）。
  *
  * 运行：npm run bounty:econ （等价 npx tsx tools/bounty-econ.ts）
@@ -69,7 +69,7 @@ function fmt(n: number): string {
   return n >= 100_000 ? `${Math.round(n / 1000)}k` : Math.round(n).toLocaleString('zh-CN')
 }
 
-/** 采矿基准表：沙猫裸船每活性小时原矿估值（引擎 getMiningParams × 物品基准价，同矿带卡口径） */
+/** 采矿基准表：磷虾裸船每活性小时原矿估值（引擎 getMiningParams × 物品基准价，同矿带卡口径） */
 function miningBench(): Array<{ stand: number; id: string; galaxy: string; iskH: number }> {
   const st = createInitialState({ nowWallMs: 0, seed: 1 })
   st.wallet.isk = 100_000_000
@@ -185,15 +185,15 @@ function main(): void {
     )
   }
 
-  // ── 采矿对照行（沙猫级裸船；每活性小时原矿估值，按物品基准价） ──
-  console.log('\n══ 采矿对照（沙猫级·裸船 每活性小时原矿估值；本地带无往返；异地带另计返航）══')
+  // ── 采矿对照行（磷虾级裸船；每活性小时原矿估值，按物品基准价） ──
+  console.log('\n══ 采矿对照（磷虾级·裸船 每活性小时原矿估值；本地带无往返；异地带另计返航）══')
   for (const r of mineAll) {
     const oreDef = (() => {
       const b = [...ctx.belts.values()].find((x) => x.id === r.id)
       return b ? ctx.items.get(b.oreId)?.name ?? b.oreId : ''
     })()
     console.log(
-      `${r.id.padEnd(18)} ${r.galaxy.padEnd(10)} 声望${String(r.stand).padEnd(3)} ${oreDef.padEnd(10)} → 沙猫裸船 ≈${fmt(r.iskH)} ISK/h`,
+      `${r.id.padEnd(18)} ${r.galaxy.padEnd(10)} 声望${String(r.stand).padEnd(3)} ${oreDef.padEnd(10)} → 磷虾裸船 ≈${fmt(r.iskH)} ISK/h`,
     )
   }
   void BOUNTY_COOLDOWN_BASE_MS

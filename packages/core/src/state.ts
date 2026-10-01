@@ -43,7 +43,7 @@ export const DEFAULT_PILOT_NAME = '深空学徒'
 /** 初始资金（ISK）——经典开局（测试/模拟基准）：够买船但买不起第二艘。
  * 真实新游戏走序章 prologue 分支（零资金，见 createInitialState） */
 export const DEFAULT_START_ISK = 10_000
-/** 初始自带舰船 id（经典开局 = 沙猫矿艇；序章 prologue = 鲣鱼武装艇带伤） */
+/** 初始自带舰船 id（经典开局 = 磷虾矿艇；序章 prologue = 鲣鱼武装艇带伤） */
 export const DEFAULT_START_SHIP_ID = 'sandcat'
 /** AI 核心最高等级 */
 export const MAX_AI_CORE_LEVEL = 5
@@ -3331,10 +3331,10 @@ export function addLog(
 
 /**
  * 创建一份全新的初始存档。
- * - 默认（经典开局，测试/模拟基准）：10,000 ISK、沙猫矿艇默认驾驶、机库另有鲣鱼、
+ * - 默认（经典开局，测试/模拟基准）：10,000 ISK、磷虾矿艇默认驾驶、机库另有鲣鱼、
  *   装备库 1×轻型炮台 MK1、仓库三型弹各 60（历史行为，测试大量依赖）；
  * - prologue:true（序章·苏醒 2026-09-05 船长拍板，真实新游戏入口用）：
- *   零初始资金、默认驾驶=鲣鱼（装甲/耐久 80% 供维修教学）、沙猫同在机库、
+ *   零初始资金、默认驾驶=鲣鱼（装甲/耐久 80% 供维修教学）、磷虾同在机库、
  *   装备库/仓库无预置炮台弹药（改由教学战斗任务奖励）。
  */
 export function createInitialState(opts?: {
@@ -3378,7 +3378,7 @@ export function createInitialState(opts?: {
             cargo: {},
             fitted: emptyFitted(),
           },
-          // 沙猫级采矿艇同在机库（S1 教学：切换驾驶到矿船再出击采矿）
+          // 磷虾级采矿艇同在机库（S1 教学：切换驾驶到矿船再出击采矿）
           sandcat: {
             defId: 'sandcat',
             customName: null,
@@ -3577,7 +3577,7 @@ export function createInitialState(opts?: {
     addLog(
       state,
       'system',
-      '初始资金 0 信用点：一切从采集第一舱原矿开始。鲣鱼级护卫舰（待修）与沙猫级采矿艇同在机库；装备库与弹药库为空——首门炮台与弹药将在完成协会试炼后解锁。',
+      '初始资金 0 信用点：一切从采集第一舱原矿开始。鲣鱼级护卫舰（待修）与磷虾级采矿艇同在机库；装备库与弹药库为空——首门炮台与弹药将在完成协会试炼后解锁。',
       'core.state.027',
     )
   } else {
@@ -3587,7 +3587,7 @@ export function createInitialState(opts?: {
     addLog(
       state,
       'system',
-      `初始资金 ${DEFAULT_START_ISK} 信用点已到账；沙猫级采矿艇已停靠机库，另有鲣鱼级护卫舰待命（装备库含轻型炮台 MK1，仓库配三型通用弹各 60 发，可直接体验远征战斗）。`,
+      `初始资金 ${DEFAULT_START_ISK} 信用点已到账；磷虾级采矿艇已停靠机库，另有鲣鱼级护卫舰待命（装备库含轻型炮台 MK1，仓库配三型通用弹各 60 发，可直接体验远征战斗）。`,
       'core.state.029',
       { p1: DEFAULT_START_ISK },
     )

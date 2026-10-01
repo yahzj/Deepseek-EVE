@@ -310,7 +310,7 @@ export function retireMiningShip(state: GameState, ctx: SimContext): boolean {
 }
 
 /**
- * 弃船（损失舰船：连同货仓与装备）。自动补驾驶船：优先另一艘，否则补发初始沙猫。
+ * 弃船（损失舰船：连同货仓与装备）。自动补驾驶船：优先另一艘，否则补发初始磷虾。
  *
  * **2026-09-26 加 `wreckGalaxyId`（船长令：「玩家舰船被摧毁后，如果是在**非虫洞的正常星系**内，
  * 在该星系生成一个'<被摧毁的舰船名称>的残骸'」）**：**只有传了它才生成残骸**——
@@ -393,7 +393,7 @@ export function loseShip(
     p2: display,
   })
 
-  // 当前驾驶船被弃 → 自动补驾驶（2026-09-09 船长定：只选空闲船；全被 AI 占用或一艘不剩 → 保底沙猫，绝不占用 AI 执勤中的船）
+  // 当前驾驶船被弃 → 自动补驾驶（2026-09-09 船长定：只选空闲船；全被 AI 占用或一艘不剩 → 保底磷虾，绝不占用 AI 执勤中的船）
   if (wasCurrent) reconcilePilotShip(state, ctx)
 
   // 异常守卫：作业引用的船已经没了就强制停下
@@ -427,7 +427,7 @@ export function pilotUnavailableReason(state: GameState): string | null {
 /**
  * 2026-09-09（船长定）：保证存在可驾驶船（幂等自愈，弃船补驾驶与引擎逐 tick 共用）——
  * 驾驶船缺失或被 AI 执勤占用时：优先改派"空闲"（未 AI 占用）舰船；无空闲（全被 AI 占用
- * 或一艘不剩）→ 协会补发保底沙猫，绝不让 AI 执勤中的船兼任驾驶船。修正发生时记一条日志。
+ * 或一艘不剩）→ 协会补发保底磷虾，绝不让 AI 执勤中的船兼任驾驶船。修正发生时记一条日志。
  *
  * ⚠ **2026-09-15 船长追加「优先把主控交给洞内船」**：被弃的这艘若是**虫洞那趟的编队成员**
  * （= 它是在洞里战沉的），**先把主控交给同一趟里还活着的编队船**；没有才落回上面的既有口径。
@@ -439,7 +439,7 @@ export function reconcilePilotShip(state: GameState, ctx: SimContext): void {
   const wasBusy = state.fleet[state.shipId] !== undefined
   /**
    * **洞内优先（船长 2026-09-15：「3 优先把主控交给洞内船」）**：原来一律"站内第一艘空闲船"，
-   * 实测结果是**把主控交给开局那艘沙猫**——而洞里那趟还在继续、活动位也还占着（"人在洞里"），
+   * 实测结果是**把主控交给开局那艘磷虾**——而洞里那趟还在继续、活动位也还占着（"人在洞里"），
    * 于是出现"主控在洞外、却在跑虫洞"的别扭状态。交给洞内幸存船之后语义自洽（它本来就被洞内锁定）。
    *
    * 判据 = `run.fleet.includes(state.shipId)`：`loseShip` 里**先 delete 再调本函数**，而 `run.fleet`
@@ -478,7 +478,7 @@ export function reconcilePilotShip(state: GameState, ctx: SimContext): void {
   addLog(
     state,
     'fleet',
-    '协会补助：一艘全新的沙猫级采矿艇已停靠机库（保底舰船；其余舰船正被 AI 执勤占用或已全损）。',
+    '协会补助：一艘全新的磷虾级采矿艇已停靠机库（保底舰船；其余舰船正被 AI 执勤占用或已全损）。',
     'core.shipyard.024',
   )
 }

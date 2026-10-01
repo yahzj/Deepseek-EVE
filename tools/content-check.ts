@@ -762,7 +762,7 @@ for (const sbp of SHIP_BLUEPRINTS) {
    * 任务奖励发放的蓝图不进市场 ⇒ 不要求市场卡（与一次性图纸豁免同精神，但它是**可反复制造**的普通蓝图）。
    */
   const SHIP_BP_NO_ROW_OK: ReadonlyArray<readonly [string, string]> = [
-    ['sbp-sandcat', '沙猫级舰船蓝图：只作「第一次生产」的任务奖励发放，不进市场（船长 2026-09-18）'],
+    ['sbp-sandcat', '磷虾级舰船蓝图：只作「第一次生产」的任务奖励发放，不进市场（船长 2026-09-18）'],
   ]
   const shipBpNoRowOk = new Set(SHIP_BP_NO_ROW_OK.map(([id]) => id))
   check(
@@ -5831,7 +5831,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     const NO_ROW_OK: ReadonlyArray<readonly [string, string]> = [
       ['sandcat', '协会保底艇（开局船）：不给市场行，防"卖光起步资产"把新档卡死'],
       ['sh-dunkleosteus', '邓氏鱼级壳体：无蓝图、无掉落、无任何获取渠道（内容未做）⇒ 补行等于给拿不到的东西标价'],
-      ['sbp-sandcat', '沙猫级舰船蓝图：只作「第一次生产」的任务奖励发放，不进市场（船长 2026-09-18）'],
+      ['sbp-sandcat', '磷虾级舰船蓝图：只作「第一次生产」的任务奖励发放，不进市场（船长 2026-09-18）'],
       ['bp-part-circuit', '基础零件隐式蓝图：无需学习、无书（2026-09-20 零件体系）'],
       ['bp-part-armor-plate', '基础零件隐式蓝图：无需学习、无书（2026-09-20 零件体系）'],
       ['bp-part-frame', '基础零件隐式蓝图：无需学习、无书（2026-09-20 零件体系）'],
@@ -7441,7 +7441,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     const dil3 = wormholeDilutionPoolOf(poolCtx, 3)
     const dil5 = wormholeDilutionPoolOf(poolCtx, 5)
     // 件数是"防手滑"守卫：现内容 = T3 十艘 / T4 七艘 / T5 一艘（加船时这里与用例要一起改）
-    // ⚠ 2026-09-28：开拓级升 T3（+1 张一次性）、座头鲸升 T4（层 2 → 层 3）⇒ 层 3 16 → 17、层 5 17 → 18；层 2 仍 10。
+    // ⚠ 2026-09-28：独角鲸级升 T3（+1 张一次性）、座头鲸升 T4（层 2 → 层 3）⇒ 层 3 16 → 17、层 5 17 → 18；层 2 仍 10。
     check(dil2.length === 10, `稀释池契约：层 2 应为 T3 十张，实际 ${dil2.length} 张（${dil2.join('、')}）`)
     check(dil3.length === 17, `稀释池契约：层 3 应加 T4 七张（共 17；2026-09-28 座头鲸升 T4 后 16 → 17），实际 ${dil3.length} 张`)
     check(dil5.length === 18, `稀释池契约：层 5 应加 T5 一张（共 18；随 T4 同步 17 → 18），实际 ${dil5.length} 张`)

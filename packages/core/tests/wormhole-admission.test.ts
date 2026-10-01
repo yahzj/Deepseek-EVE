@@ -27,7 +27,7 @@ import {
 const ctx = buildSimContext()
 
 /** 真实船型取样（档位走 `ShipDef.tier`，与舰种契约同源） */
-const T1 = 'sandcat' // 沙猫级采矿艇（T1 护卫舰；船型 id 不带 sh- 前缀）
+const T1 = 'sandcat' // 磷虾级采矿艇（T1 护卫舰；船型 id 不带 sh- 前缀）
 const T2 = 'sh-mako' // 灰鲭鲨级护卫舰（T2 驱逐舰）
 const T3 = 'sh-thresher' // 长尾鲨级导弹巡洋舰（T3 巡洋舰）
 const T4 = 'sh-swordfish' // 剑鱼级大型货舰（T4 战列舰）

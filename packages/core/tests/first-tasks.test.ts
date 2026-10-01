@@ -129,7 +129,7 @@ describe('「第一次」任务：计数 → 完成 → 奖励（一次性）', 
     // 采矿完成奖励 = 1,000 单位橄榄岩（精炼每批 100 ⇒ 够开十炉）；打捞完成奖励 = 1,000 m³ 高安海盗残骸
     expect(wares('first-mine')).toEqual(['ore-veldspar×1000'])
     expect(wares('first-salvage')).toEqual(['wreck-a-hi×1000'])
-    // 基础 AI 核心 = 「第一次指派 AI 副船」的起手；沙猫级蓝图 = 「第一条船」的起手
+    // 基础 AI 核心 = 「第一次指派 AI 副船」的起手；磷虾级蓝图 = 「第一条船」的起手
     expect(def('first-ai').startReward).toEqual({ aiCores: [{ type: 'basic', units: 1 }] })
     expect(def('first-skill').reward).toEqual({ isk: 10_000 })
     expect(def('first-ship').startReward).toEqual({ blueprints: [{ blueprintId: 'sbp-sandcat', units: 1 }] })
@@ -274,7 +274,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(added.length).toBe(2) // 新档本来就有 1 艘鲣鱼 ⇒ 拿到第 2 艘
   })
 
-  it('奖励发的装备真能用：采集器 MK1 装上沙猫级 ⇒ 每循环产量提高', () => {
+  it('奖励发的装备真能用：采集器 MK1 装上磷虾级 ⇒ 每循环产量提高', () => {
     const state = testState()
     state.shipId = 'sandcat' // 采矿艇（2 高槽）
     const before = getMiningParams(state, ctx, { shipId: 'sandcat', beltId: BELT })!.unitsPerCycle
@@ -297,7 +297,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(b.ok, b.ok ? '' : b.error).toBe(true)
   })
 
-  it('「第一次生产」发 10,000 信用点；**沙猫级蓝图随「第一条船」的起手到手**（船长 2026-09-22 Excel）', () => {
+  it('「第一次生产」发 10,000 信用点；**磷虾级蓝图随「第一条船」的起手到手**（船长 2026-09-22 Excel）', () => {
     const state = testState()
     reachQueue(state, 'first-produce') // 顺序解锁：先推到它前面
     expect(state.blueprintStock['sbp-sandcat'] ?? 0).toBe(0)
@@ -310,7 +310,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
     expect(state.blueprintStock['sbp-sandcat'] ?? 0, '蓝图不再挂这条').toBe(0)
   })
 
-  it('沙猫级舰船蓝图由「第一条船」的起手发放（船长 2026-09-22 Excel：造自造船先得有蓝图）', () => {
+  it('磷虾级舰船蓝图由「第一条船」的起手发放（船长 2026-09-22 Excel：造自造船先得有蓝图）', () => {
     const state = testState()
     reachQueue(state, 'first-ship')
     // 轮到「第一条船」那一刻（上一条被点「完成」）发它的起手道具 ⇒ 这里直接调发放单点
@@ -369,7 +369,7 @@ describe('「第一次」任务：奖励（一次性）与计数落点回归', (
   it('「第一条船」的计数落在**造船交付**处：真造出一艘才算，从舰船仓库转入舰队不算（2026-09-18 修）', () => {
     const state = testState()
     reachQueue(state, 'first-ship') // 顺序解锁：先推到它前面
-    // 备料 + 学会沙猫级蓝图（正常路径里蓝图来自「第一次生产」的奖励）
+    // 备料 + 学会磷虾级蓝图（正常路径里蓝图来自「第一次生产」的奖励）
     state.blueprintStock['sbp-sandcat'] = 1
     expect(learnBlueprint(state, ctx, 'sbp-sandcat').ok).toBe(true)
     state.warehouse.items['min-tritanium'] = 400
@@ -566,7 +566,7 @@ describe('「第一次」顺序（2026-09-20 第三道令换悬赏/打捞；**20
   it('整船挂单（舰船仓库 → 挂卖单）也计一次「第一次挂单销售」', () => {
     const state = testState()
     reachQueue(state, 'first-order')
-    // 舰船市场行的 refId = 舰船 defId（`shipStore` 的键同源）；沙猫级是"协会保底艇"⇒ 市场没有它的行，
+    // 舰船市场行的 refId = 舰船 defId（`shipStore` 的键同源）；磷虾级是"协会保底艇"⇒ 市场没有它的行，
     // 故用开局那艘鲣鱼级（`sh-falconet`）当货源。
     state.shipStore = { ...(state.shipStore ?? {}), 'sh-falconet': 1 }
     const shipGood = [...ctx.marketGoods.values()].find(

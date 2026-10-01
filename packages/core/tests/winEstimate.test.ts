@@ -55,7 +55,7 @@ describe('winEstimate 蒙特卡洛预估（2026-09-24 重做：三点距离 + �
     expect(r.hullLoss).toBeLessThanOrEqual(1)
   })
 
-  it('必败局（沙猫 vs 高威胁）winRate = 0', () => {
+  it('必败局（磷虾 vs 高威胁）winRate = 0', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 1 }) // 默认驾驶 = sandcat
     const r = estimateBountyWinMC(state, ctx, hard, state.shipId, 3)
     expect(r).not.toBeNull()

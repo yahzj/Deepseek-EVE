@@ -32,7 +32,7 @@ function damage(state: GameState): void {
 
 function world(fittedMid: string[], cargo: Record<string, number>): GameState {
   const state = createInitialState({ nowWallMs: 0, seed: 7 })
-  const uid = addShipToFleet(state, 'sandcat') // ⚠ 真数据里"沙猫"= `sandcat`（无 sh- 前缀）
+  const uid = addShipToFleet(state, 'sandcat') // ⚠ 真数据里"磷虾"= `sandcat`（无 sh- 前缀）
   state.shipId = uid
   state.fleet[uid]!.fitted = { high: [], mid: [...fittedMid], low: [] }
   state.fleet[uid]!.cargo = { ...cargo }

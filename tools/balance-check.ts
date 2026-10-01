@@ -7,7 +7,7 @@
  * 看"新手 24 小时能走多远"是否符合预期。模拟为 30 秒步长推进，忽略离线与远征。
  *
  * 三种策略（控制变量：都先练采矿技术 5 级）：
- *   A 原矿流：挖橄榄岩直接卖原矿，攒钱买掘洞级 → 鲸吞级
+ *   A 原矿流：挖橄榄岩直接卖原矿，攒钱买沙鲛级 → 鲸吞级
  *   B 精炼流：多练精炼学 + 高级回收，满舱后精炼成矿物再卖
  *   C 装备流：在 B 基础上再练采集器入门学，并制造装配 采集器MK1 → 货舱MK1 → 采集器MK2
  */
@@ -331,7 +331,7 @@ const GEAR_PLAN: Array<{ bp: string; module: string; label: string }> = [
 
 const strategyC: Strategy = {
   name: 'C · 装备流（精炼 + 自造装备）',
-  desc: '练满采矿三技能 + 精炼双技能；满舱回港运转精炼炉；囤料自造强化采集器 MK1 并装配，再造掘洞级',
+  desc: '练满采矿三技能 + 精炼双技能；满舱回港运转精炼炉；囤料自造强化采集器 MK1 并装配，再造沙鲛级',
   refineAtHome: true,
   planSkills(state, ctx) {
     queueToMax(state, ctx, 'mining')
@@ -391,9 +391,9 @@ const strategyC: Strategy = {
 /* ───────── 买船辅助 ───────── */
 
 function maybeBuyNextShip(state: GameState, ctx: SimContext, result: StrategyResult): void {
-  // 只允许沿升级梯子向前买（防止买完鲸吞又买回掘洞）。
-  // 2026-09-09 修正：舰船尺寸分级后沙猫/掘洞同为 T1，原"目标 tier > 当前 tier"门槛
-  // 会永久卡死 12 万换掘洞的必经升级（A 流 24h 钱包卡在 89 万 < 鲸吞 90 万 → 伪影性崩盘），
+  // 只允许沿升级梯子向前买（防止买完鲸吞又买回沙鲛）。
+  // 2026-09-09 修正：舰船尺寸分级后磷虾/沙鲛同为 T1，原"目标 tier > 当前 tier"门槛
+  // 会永久卡死 12 万换沙鲛的必经升级（A 流 24h 钱包卡在 89 万 < 鲸吞 90 万 → 伪影性崩盘），
   // 改为按梯子内位置比较（梯子外的当前船视作位置 -1；等价于"当前价位 < 目标价位"，
   // 同 tier 高价位船可正常购买）。
   const order = ['burrower', 'whale']

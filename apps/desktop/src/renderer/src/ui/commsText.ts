@@ -201,8 +201,9 @@ export function commsHintText(text: string): string {
  * ⚠ **物品与技能名一律用游戏既有官方英文**（2026-09-22 用临时脚本从"内容 id → `packages/data/src/l10n.ts`
  * 英文表"导出对照后逐条核对）：Peridotite / Tritanium Alloy / Silvervein Supermetal /
  * Reinforced Mining Laser MK1 / Basic AI core / Skipjack-class Frigate / Flyingfish-class Courier /
- * Sandcat-class Mining Corvette / Civilian Hull Repair Unit / Civilian Repair Kit /
+ * Krill-class Mining Corvette / Civilian Hull Repair Unit / Civilian Repair Kit /
  * Accelerated Learning / AI Core Operation / Reprocessing / Refining。
+ * ⟪文案调整 2026-09-30⟫ 船长令改名：沙猫级 → 磷虾级（本表英文舰名同步）。
  * ⚠ **行数必须与中文逐行对齐**：`commsBodyText()` 在行数不符时**回落到中文**（宁可整段中文，也不许错行串位）。
  */
 const COMMS_BODY_EN: Record<string, readonly string[]> = {
@@ -254,7 +255,7 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
   'first-order': [
     'The market carries three kinds of orders: the standing buy and sell books, our own listings, and roaming buyers who snap up anything near the price line.',
     'The closer your ask sits to the buy line, the faster it fills. Pricing high is a bet on a roaming buyer turning up.',
-    'Enclosed: 10,000 credits, plus a Sandcat-class ship blueprint. Follow it and you can build your own mining ship.',
+    'Enclosed: 10,000 credits, plus a Krill-class ship blueprint. Follow it and you can build your own mining ship.',
   ],
   'first-ship': [
     'Your first home-built ship has rolled out. Shipbuilding and module building are one chain: blueprint, materials, hangar berth.',

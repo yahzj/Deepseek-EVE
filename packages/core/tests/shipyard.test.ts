@@ -72,7 +72,7 @@ describe('舰队', () => {
     expect(durabilityOf(state, 'sandcat')).toBe(1)
   })
 
-  it('弃船：货仓与装备随船丢失；自动切到其它船；一艘不剩时补发沙猫', () => {
+  it('弃船：货仓与装备随船丢失；自动切到其它船；一艘不剩时补发磷虾', () => {
     const ctxS = makeTestCtx({ ships: [ship('sandcat2')] })
     addShipToFleet(state, 'sandcat2')
     state.fleet['sandcat']!.cargo['ore-a'] = 50
@@ -87,7 +87,7 @@ describe('舰队', () => {
       const allBays = [...fs.fitted.high, ...fs.fitted.mid, ...fs.fitted.low]
       expect(allBays.every((v) => v === null)).toBe(true)
     }
-    // 全损：逐艘弃船直到一艘不剩 → 补发沙猫
+    // 全损：逐艘弃船直到一艘不剩 → 补发磷虾
     let guard = 0
     while (Object.keys(state.fleet).length > 0 && guard < 10) {
       const victim = Object.keys(state.fleet)[0]!
@@ -109,7 +109,7 @@ describe('舰队', () => {
     expect(state.shipId.length).toBeGreaterThan(0) // 档始终合法
   })
 
-  describe('2026-09-09 驾驶船可用性（船长定：弃船补驾驶绝不接管 AI 执勤船；无空闲 → 保底沙猫）', () => {
+  describe('2026-09-09 驾驶船可用性（船长定：弃船补驾驶绝不接管 AI 执勤船；无空闲 → 保底磷虾）', () => {
     /** AI 掩护巡逻驻留指派（仅作"占用"标记，推进时驻留态无副作用） */
     function busyFalconet() {
       state.aiAssignments['sh-falconet'] = {
@@ -128,7 +128,7 @@ describe('舰队', () => {
       expect(ownsShip(state, 'sh-falconet')).toBe(true)
     })
 
-    it('弃船时余船全被 AI 占用 → 补发保底沙猫，不抢 AI 船', () => {
+    it('弃船时余船全被 AI 占用 → 补发保底磷虾，不抢 AI 船', () => {
       busyFalconet()
       loseShip(state, 'sandcat', ctx, '测试弃船')
       expect(state.shipId).toBe('sandcat') // 原船已弃，新补一艘同型保底
@@ -146,7 +146,7 @@ describe('舰队', () => {
       expect(r.ok).toBe(false)
       expect(r.error ?? '').toContain('AI 执勤')
       advanceGame(state, 1_000, ctx)
-      expect(state.shipId).toBe('sandcat') // 自愈改派空闲船（舰队序第一艘空闲 = 沙猫，绝不留在 AI 船）
+      expect(state.shipId).toBe('sandcat') // 自愈改派空闲船（舰队序第一艘空闲 = 磷虾，绝不留在 AI 船）
       expect(state.aiAssignments[state.shipId]).toBeUndefined()
       expect(state.aiAssignments['sh-falconet']).toBeDefined() // AI 任务不受影响
     })

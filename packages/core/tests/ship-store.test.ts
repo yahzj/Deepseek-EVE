@@ -47,7 +47,7 @@ import {
 import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import { makeTestCtx, ship } from './helpers'
 
-/** 测试世界：沙猫（开局驾驶）+ 白鲨（开局闲置、空仓、满耐久）+ 一艘可入仓的「big」+ 它的市场行
+/** 测试世界：磷虾（开局驾驶）+ 白鲨（开局闲置、空仓、满耐久）+ 一艘可入仓的「big」+ 它的市场行
  *  ⚠ 必须把开局那艘 `sh-falconet` 也放进 `ctx.ships`——`unstoreShip` 要按船型查定义
  *  （缺定义时'未知舰船'会被拒，那是**测试替身缺失**而不是仓库逻辑问题）。 */
 function world(): { state: GameState; ctx: SimContext } {

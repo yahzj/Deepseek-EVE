@@ -37,7 +37,8 @@ import type { ShipBlueprintDef } from '@whale/core'
 export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
   {
     id: 'sbp-pioneer',
-    name: '开拓级舰船蓝图',
+    // ⟪文案调整 2026-09-30⟫ 船长令改名：原名「开拓级舰船蓝图」（蓝图 id `sbp-pioneer` 不变）
+    name: '独角鲸级舰船蓝图',
     shipId: 'pioneer',
     /*
      * **2026-09-28 船长令「调整舰船所需材料量，维持之前的 45%」**。
@@ -123,21 +124,22 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
   },
   {
     /**
-     * **沙猫级舰船蓝图**（2026-09-18 船长裁定：「新建一张沙猫级的蓝图，按照沙猫级价值 1W 来设定
+     * **磷虾级舰船蓝图**（2026-09-18 船长裁定：「新建一张沙猫级的蓝图，按照沙猫级价值 1W 来设定
      * （但是实际上沙猫市场价格是 0，也不会出现在市场内）」）——只作「第一次生产」的任务奖励发放。
      *
-     * 按既有惯例从"沙猫级价值 10,000"推导（沙猫本体 `ships.ts` 的 `priceIsk` 仍是 0：定制船口径，
+     * 按既有惯例从"磷虾级价值 10,000"推导（磷虾本体 `ships.ts` 的 `priceIsk` 仍是 0：定制船口径，
      * 不许改，否则撞「舰船价格口径」警报）：
      * - 书价 = 价值 ×2（T1 档系数）= **20,000**；
      * - 材料 ≈ 价值 ×0.22 = 2,200 ISK ⇒ 钛钢合金 200×8 ＋ 银纹超金属 50×12 = 2,200（分文不差）；
-     * - 工期取 **T1 带下限 15 分钟**（掘洞级/马鲛级同为 T1 带 15~25 分）。
+     * - 工期取 **T1 带下限 15 分钟**（沙鲛级/马鲛级同为 T1 带 15~25 分）。
      * ⚠ **不配市场行**（三处契约白名单已登记，理由见 `tools/content-check.ts` 的 `SHIP_BP_NO_ROW_OK`
      * 与「挂卖可达契约」的 `NO_ROW_OK`）⇒ 玩家只能靠这条任务拿到书，买到别处没有。
      * ⚠ 「蓝图价与档位系数」那条**预警**会点名本张（市场锚 = 0 ⇒ 规则值 0，而书价 20,000）——
      * 这是船长"市场价 0、按 1 万估值"的直接后果，**只预警不阻断**，已在工作文档登记。
      */
     id: 'sbp-sandcat',
-    name: '沙猫级舰船蓝图',
+    // ⟪文案调整 2026-09-30⟫ 船长令改名：原名「沙猫级舰船蓝图」（蓝图 id `sbp-sandcat` 不变）
+    name: '磷虾级舰船蓝图',
     shipId: 'sandcat',
     materials: [
       { itemId: 'min-tritanium', count: 200 },
@@ -150,7 +152,8 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
   },
   {
     id: 'sbp-burrower',
-    name: '掘洞级舰船蓝图',
+    // ⟪文案调整 2026-09-30⟫ 船长令改名：原名「掘洞级舰船蓝图」（蓝图 id `sbp-burrower` 不变）
+    name: '沙鲛级舰船蓝图',
     shipId: 'burrower',
     materials: [
       { itemId: 'min-tritanium', count: 4_750 },
@@ -1044,7 +1047,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
   },
   {
     id: 'sbp-once-pioneer',
-    name: '开拓级舰船蓝图（一次性）',
+    name: '独角鲸级舰船蓝图（一次性）',
     shipId: 'pioneer',
     singleUse: true,
     // 材料与常规图 sbp-pioneer 完全一致（2026-09-28 船长令拉回 45%：3,600,000 ÷ 8,000,000）
@@ -1058,7 +1061,7 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildCostIsk: 0,
     priceIsk: 4_000_000, // = 行价 ×50%（2026-09-14 船长改判口径；行价 = ship-pioneer 8,000,000）
     /*
-     * **2026-09-28 新增**：开拓级升 T3 后触发 `content:check` 的两条合同——
+     * **2026-09-28 新增**：独角鲸级升 T3 后触发 `content:check` 的两条合同——
      * ①「一次性舰船蓝图缺失」（船长 2026-09-13：「T3/T4/T5 各出一张」）；
      * ②「稀释池契约：层 2 应为 T3 十张」（原 9 张）⇒ 本张补进后为 10。
      * 逐值与常驻图 `sbp-pioneer` 一致（材料/工期/产物），只有价格与 `singleUse` 不同。

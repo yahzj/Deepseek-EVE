@@ -33,11 +33,13 @@ export type EnTable = Readonly<Record<string, EnText>>
 export const EN_SHIPS: EnTable = {
   // ── 采矿 / 工业 / 货运
   sandcat: {
-    name: 'Sandcat-class Mining Corvette',
+    // ⟪文案调整 2026-09-30⟫ 与 zh 同步改名（原名「Sandcat-class」，中文原「沙猫级」）
+    name: 'Krill-class Mining Corvette',
     description: 'The starter mining boat: basic hold and a single mining laser. Your first ship — and, for now, your only one.',
   },
   burrower: {
-    name: 'Burrower-class Mining Corvette',
+    // ⟪文案调整 2026-09-30⟫ 与 zh 同步改名（原名「Burrower-class」，中文原「掘洞级」）
+    name: 'Sandshark-class Mining Corvette',
     description: 'A larger hold and twin mining lasers — nearly double the output. The mark of graduating from the starter grounds.',
   },
   whale: {
@@ -45,7 +47,8 @@ export const EN_SHIPS: EnTable = {
     description: 'A deep-space industrial beast: four mining lasers strip half an asteroid in one pass. The name fits.',
   },
   pioneer: {
-    name: 'Pioneer-class Mining Corvette',
+    // ⟪文案调整 2026-09-30⟫ 与 zh 同步改名（原名「Pioneer-class」，中文原「开拓级」）
+    name: 'Narwhal-class Mining Corvette',
     description: "The Association shipyard's custom boat: not for sale — build it on your own pad from raw materials. A step faster than the Whaleswallow-class.",
   },
   'whale-king': {
@@ -1110,7 +1113,7 @@ export function overlayMap<T extends { name: string; description?: string }>(
 export const EN_ITEMS_ALL: EnTable = { ...EN_ITEMS, ...EN_WRECKS }
 
 /**
- * 从舰船英文名取**舰级段**：含 `-class` 时取到该词为止（`Pioneer-class Mining Corvette` → `Pioneer-class`）；
+ * 从舰船英文名取**舰级段**：含 `-class` 时取到该词为止（`Narwhal-class Mining Corvette` → `Narwhal-class`）；
  * 虫洞族舰名没有 `-class`（它们是敌舰模板名）⇒ 用整名。
  */
 function shipClassSegment(enName: string): string {

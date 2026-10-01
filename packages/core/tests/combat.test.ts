@@ -1,6 +1,6 @@
 /**
  * V12 战斗引擎单元测试：命中/伤害公式、弹药、距离与战术、敌方换算、战斗步进与结束判定。
- * 用 helpers 造的确定性世界（沙猫默认战斗数值见 helpers.ship）。
+ * 用 helpers 造的确定性世界（磷虾默认战斗数值见 helpers.ship）。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
@@ -772,7 +772,7 @@ describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人�
    *
    * 判据 = **类别**（`shipCategoryKeyOf`）而不是 `role`：武装舰里"装甲占比 > 护盾占比"的那些
    * （牛鲨级 + E 族三艘，船长同日要求互换盾/甲）归入**装甲舰** ⇒ 它们吃**装甲舰操作**、
-   * **不吃**武装舰操作。合成卡用沙猫改字段构造，避免依赖具体舰船的数值。
+   * **不吃**武装舰操作。合成卡用磷虾改字段构造，避免依赖具体舰船的数值。
    */
   it('两类「舰操作」按**类别**分流：装甲线武装舰吃装甲舰操作、不吃武装舰操作（反之亦然）', () => {
     /** 装甲线武装舰：role 仍 armed，但装甲占比 > 护盾占比 */
@@ -809,7 +809,7 @@ describe('批次五战斗技能（2026-09-05：护盾/装甲调谐学、无人�
     const ind5 = hpOf(ship('sandcat'), 5) // industrial 族：技能不生效
     expect(ind5.a).toBeCloseTo(10, 10)
     expect(ind5.h).toBeCloseTo(25, 10)
-    const ar5 = hpOf(armoredDef, 5) // 沙猫基甲 10 / 基结构 25 → ×1.2
+    const ar5 = hpOf(armoredDef, 5) // 磷虾基甲 10 / 基结构 25 → ×1.2
     expect(ar5.a).toBeCloseTo(12, 10)
     expect(ar5.h).toBeCloseTo(30, 10)
     expect(ar5.s).toBeCloseTo(ind5.s, 10) // 护盾层不受装甲舰操作影响
@@ -883,7 +883,7 @@ describe('舰船属性成长技能（2026-09-05 一号补：CPU/机动速度/回
 describe('V18B 敌人近盲带（2026-09-05 船长拍板：与玩家区分——近盲带内不停火、伤害 ×blindDmgMul 打折）', () => {
   /**
    * 同种子双跑对照：soft = 不配 blindDmgMul（走引擎默认 0.3）、full = 显式 1（全伤）。
-   * 场景：超慢风筝怪（foeSpeedMps 30，敌期望 8000m）× 高盾沙猫（我方期望 200m、
+   * 场景：超慢风筝怪（foeSpeedMps 30，敌期望 8000m）× 高盾磷虾（我方期望 200m、
    * 151m/s ≫ 敌 20m/s）→ 距离从 800m 被压向 200m 收敛、全程 < 敌 minRange（threat45
    * kite ≈1737m），即整场都在近盲带内——任何跑出带外的全伤弹都会破坏下方比例断言。
    */
@@ -951,7 +951,7 @@ describe('船体维修装置（2026-09-09 船长定：中槽自动修复装甲/�
     baseSellPriceIsk: 3_000,
     description: `测试${name}`,
   })
-  /** 默认世界：巨型血条沙猫（修复缺口恒大、敌 45 秒杀不死） + 弱维修装置 mod-rep（5/5/5 秒/民用组件） */
+  /** 默认世界：巨型血条磷虾（修复缺口恒大、敌 45 秒杀不死） + 弱维修装置 mod-rep（5/5/5 秒/民用组件） */
   function repWorld(opts?: { cargoKits?: number; wareKits?: number; seed?: number }) {
     const state = createInitialState({ nowWallMs: 0, seed: opts?.seed ?? 41 })
     state.wallet.isk = 100_000

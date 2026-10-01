@@ -83,7 +83,7 @@ describe('T3/T4/T5 一次性舰船蓝图（2026-09-13）', () => {
   it('③ 渠道与数字稀有度：T3 十一张 + 剑鱼/蝠鲼 = rare+3；玄武/巨齿鲨/皇带鱼 = exotic+4', () => {
     const rare = ONCE.filter((b) => goodOf('blueprint', b.id)?.rarity === 'rare').map((b) => b.id)
     const exotic = ONCE.filter((b) => goodOf('blueprint', b.id)?.rarity === 'exotic').map((b) => b.id)
-    expect(rare.length).toBe(13) // 2026-09-28：+sbp-once-pioneer（开拓级升 T3 后补）
+    expect(rare.length).toBe(13) // 2026-09-28：+sbp-once-pioneer（独角鲸级升 T3 后补）
     expect(exotic.length).toBe(5) // 2026-09-26：+sbp-once-orca / sbp-once-helicoprion
     for (const id of rare) {
       /**

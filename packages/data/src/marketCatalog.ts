@@ -25,12 +25,12 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // ── 矿石（池模型：玩家售矿主渠道；收购平价，池淤积压价） ──
   // 2026-09-05 船长：低级矿石/矿物是海量消耗品，池量与流量按"越低级越大"放大（稀有矿保持小）
   // 【2026-09-10 船长定：**按玩家生产能力标定**（原值按感觉定，17 个矿带里 15 个覆盖比 <1 = 采了卖不掉）。
-  //   基准 = 掘洞级 + 满采矿技能 + 2×强化采集器 MK1（引擎实测 15.4k~20.0k 件/h ⇒ 日产 37~48 万件）；
+  //   基准 = 沙鲛级 + 满采矿技能 + 2×强化采集器 MK1（引擎实测 15.4k~20.0k 件/h ⇒ 日产 37~48 万件）；
   //   规则 = **按单价分层覆盖比**：≤20 信用点 → ×15（大宗）／≤200 → ×6（中阶）／≤400 → ×3（高阶）／>400 → ×2（顶级）；
   //   `supplyFlow`（每 60 秒窗吸收/补单量）按 `目标日吸收 ÷ 1440` 定、`poolTarget = supplyFlow × 120`。
   //   效果：梯度保留（建议 flow 513~4,991/窗 = **9.7× 差距**，原 6~5,000 = 833×），最低档仍是基准产能的 2 倍 ⇒ 挖高阶矿也卖得掉；
   //   低阶几乎不动（橄榄 ×1.0、辉长 ×2.5）。价格、产率、弹药/修理件/无人机池**一律未动**。】
-  // 【**2026-09-30 船长令：「基准上调为座头鲸0技能满装备」** ⇒ 基准由"掘洞级 ＋ 满技能 ＋ 2×MK1"
+  // 【**2026-09-30 船长令：「基准上调为座头鲸0技能满装备」** ⇒ 基准由"沙鲛级 ＋ 满技能 ＋ 2×MK1"
   //   换成 **座头鲸级 · 0 技能 · 满装备**（高槽 3×强化采集器 MK3 ＋ 低槽货舱扩展 MK3/MK2 = CPU 175 用满；
   //   中槽装不装推进器不改件/时）。新基准日产 = 旧基准的 **4.1~6.2 倍**（橄榄 163,200 件/h vs 39,927 等），
   //   分层规则（×15/×6/×3/×2）与"flow = 日吸收÷1440、池 = flow×120"**原样不动** ⇒ 下面 14 条
@@ -541,13 +541,13 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'bp-stealth-2', kind: 'blueprint', refId: 'bp-stealth-2', rarity: 'rare', basePrice: 7500000, demandMultiplier: 0.65 },
   { key: 'bp-stealth-3', kind: 'blueprint', refId: 'bp-stealth-3', rarity: 'exotic', basePrice: 40000000, demandMultiplier: 0.75 },
   // 舰船蓝图（造船；稀有）
-  { key: 'sbp-pioneer', kind: 'blueprint', refId: 'sbp-pioneer', rarity: 'exotic', basePrice: 32_000_000, demandMultiplier: 1.0, standingReq: 11 }, // 开拓级（2026-09-28 随船价 1.2M→8M：书价 = 8M ×4；2026-09-09 升奇货档 + 声望 11）
+  { key: 'sbp-pioneer', kind: 'blueprint', refId: 'sbp-pioneer', rarity: 'exotic', basePrice: 32_000_000, demandMultiplier: 1.0, standingReq: 11 }, // 独角鲸级（2026-09-28 随船价 1.2M→8M：书价 = 8M ×4；2026-09-09 升奇货档 + 声望 11）
   { key: 'sbp-humpback', kind: 'blueprint', refId: 'sbp-humpback', rarity: 'exotic', basePrice: 360_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 座头鲸级（2026-09-28 升 T4：船价 90M ×4；蓝图门槛 15 不变）
   // 稀有舰船（V10 四条族线中坚）
   { key: 'ship-whale', kind: 'ship', refId: 'whale', rarity: 'rare', basePrice: 900_000, demandMultiplier: 0.65 },
-  // 蓝图船（2026-09-09 船长：成品无现货、只收不卖）——玩家已拥有的开拓级可二手挂售，NPC 收购，
+  // 蓝图船（2026-09-09 船长：成品无现货、只收不卖）——玩家已拥有的独角鲸级可二手挂售，NPC 收购，
   // 市场不出售成品（图鉴「仅可制造」标注自洽；供给抽取侧 playerBuyable=false 天然排除）
-  { key: 'ship-pioneer', kind: 'ship', refId: 'pioneer', rarity: 'rare', basePrice: 8_000_000, demandMultiplier: 0.65, playerBuyable: false }, // 2026-09-28 船长令「开拓市价上调」：升 T3 后按同档鲸王 12M × 产能比（17,600÷26,100 = 0.674）⇒ 8M（原 T2 价 1.2M）
+  { key: 'ship-pioneer', kind: 'ship', refId: 'pioneer', rarity: 'rare', basePrice: 8_000_000, demandMultiplier: 0.65, playerBuyable: false }, // 2026-09-28 船长令「独角鲸市价上调」：升 T3 后按同档鲸王 12M × 产能比（17,600÷26,100 = 0.674）⇒ 8M（原 T2 价 1.2M）
   { key: 'ship-humpback', kind: 'ship', refId: 'sh-humpback', rarity: 'rare', basePrice: 90_000_000, demandMultiplier: 0.65, standingReq: 12 }, // 2026-09-28 升 T4：T4 非战斗船 = T3 ×10（原 9M 是 T3 价）；声望 12 不变
   { key: 'ship-bowhead', kind: 'ship', refId: 'sh-bowhead', rarity: 'exotic', basePrice: 67_500_000, demandMultiplier: 1.0, standingReq: 20 }, // 2026-09-13：价位重排（T4 货舰，剑鱼 24M ×2.81）+ **渠道升奇货**（船长「蝠鲼现货和蓝图上调至奇货」）
   { key: 'ship-falconet', kind: 'ship', refId: 'sh-falconet', rarity: 'rare', basePrice: 42_000, demandMultiplier: 0.65 },
@@ -609,7 +609,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // ⚠ 2026-09-29 船长裁决「乙」：**225M 这条锚从"巨齿鲨专属"升为"全部 T4 战斗船"的口径** ⇒
   //   虎鲸 / 旋齿鲨 / 玄武三艘一并对齐本条（见下方两行与 2026-09-29 段注释）。
   { key: 'ship-megalodon', kind: 'ship', refId: 'sh-megalodon', rarity: 'exotic', basePrice: 225_000_000, demandMultiplier: 1.0, standingReq: 20, playerBuyable: false },
-  // 2026-09-11 船长裁决（甲）：皇带鱼与开拓/鲸王同口径——**蓝图船收起成品现货**（只收不卖，二手可卖）。
+  // 2026-09-11 船长裁决（甲）：皇带鱼与独角鲸/鲸王同口径——**蓝图船收起成品现货**（只收不卖，二手可卖）。
   // 此前它漏在 2026-09-09「蓝图船成品现货下架」那次清扫之外：图鉴写着「仅可制造」（ships.ts priceIsk=0），
   // 市场却挂着 550 万现货——同一条口径两处打架，由 content-check「舰船价格口径（预警）」抓出。
   { key: 'ship-colossal', kind: 'ship', refId: 'sh-colossal', rarity: 'exotic', basePrice: 640_000_000, demandMultiplier: 1.0, standingReq: 35, playerBuyable: false }, // 2026-09-13 价位重排：T5 旗舰（旗舰基准 8 亿 ×0.8 非战斗下浮）；T5 门槛 35
@@ -630,7 +630,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // ⚠ **2026-09-13 旧规则作废**：同一条注释里的「船价 ≤100 万 → 稀有、>100 万 → 奇货+声望 11」已作废——
   // 声望口径改为**按舰种档**（T1/T2 保持现状 · T3 现货 12 / 蓝图 15 · T4 20/25 · T5 35/40；
   // 装备与物品行不动）。见 `docs/design/price-ladder-20260913.md`。
-  { key: 'sbp-burrower', kind: 'blueprint', refId: 'sbp-burrower', rarity: 'rare', basePrice: 240000, demandMultiplier: 0.65 }, // 掘洞级（蓝图=船价×2）
+  { key: 'sbp-burrower', kind: 'blueprint', refId: 'sbp-burrower', rarity: 'rare', basePrice: 240000, demandMultiplier: 0.65 }, // 沙鲛级（蓝图=船价×2）
   { key: 'sbp-whale', kind: 'blueprint', refId: 'sbp-whale', rarity: 'rare', basePrice: 2250000, demandMultiplier: 0.65 }, // 鲸吞级（蓝图=船价×2.5）
   { key: 'sbp-bowhead', kind: 'blueprint', refId: 'sbp-bowhead', rarity: 'exotic', basePrice: 270_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 蝠鲼级（2026-09-13：船价 67.5M ×4 + **渠道升奇货**）
   { key: 'sbp-falconet', kind: 'blueprint', refId: 'sbp-falconet', rarity: 'rare', basePrice: 80000, demandMultiplier: 0.65 }, // 鲣鱼级（蓝图=船价×2）
@@ -667,7 +667,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //      ⑤ **权重**：引擎 `blueprintWeight` 对一次性舰船蓝图 = ×0.5（普通蓝图 ×0.05）；
   //      ⑥ **声望**（**2026-09-16 船长裁定「甲」**）：官方五艘巡洋舰（长尾鲨/电鳐/锤头鲨/牛鲨/鹦鹉螺）的
   //         一次性蓝图 **15 → 8**（原「2026-09-13：T3 蓝图门槛 15」对**这 5 张**作废；其余 T3 五张仍 15）。
-  { key: 'sbp-once-pioneer', kind: 'blueprint', refId: 'sbp-once-pioneer', rarity: 'rare', basePrice: 4_000_000, demandMultiplier: 0.65, standingReq: 15 }, // 2026-09-28 开拓升 T3 ⇒ 补一次性图（行价 8M ×50%）；层 2 稀释池 9 → 10 张
+  { key: 'sbp-once-pioneer', kind: 'blueprint', refId: 'sbp-once-pioneer', rarity: 'rare', basePrice: 4_000_000, demandMultiplier: 0.65, standingReq: 15 }, // 2026-09-28 独角鲸升 T3 ⇒ 补一次性图（行价 8M ×50%）；层 2 稀释池 9 → 10 张
   { key: 'sbp-once-sailfish', kind: 'blueprint', refId: 'sbp-once-sailfish', rarity: 'rare', basePrice: 1_200_000, demandMultiplier: 0.65, standingReq: 15 },
   { key: 'sbp-once-sentinel', kind: 'blueprint', refId: 'sbp-once-sentinel', rarity: 'rare', basePrice: 1_300_000, demandMultiplier: 0.65, standingReq: 15 },
   { key: 'sbp-once-hawksbill', kind: 'blueprint', refId: 'sbp-once-hawksbill', rarity: 'rare', basePrice: 3_000_000, demandMultiplier: 0.65, standingReq: 15 },
@@ -824,7 +824,7 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
    * 价 = **基准 × 4**（专属口径）：有材料单的走「材料 ÷ 0.45」当基准（全表"料/价 45%"锚）、
    *   窝点专属件走「同槽位最高档常规件」、专属无人机走**自带货值 `baseSellPriceIsk`**。
    * 不设声望门槛（门槛只挡买入，这些行不出售现货 ⇒ 设了没意义）；老档零迁移（纯内容表）。
-   * ⚠ 沙猫级（协会保底艇）与邓氏鱼级（无渠道壳体）**有意不补**（船长裁定）——见 roadmap 同日条目。 */
+   * ⚠ 磷虾级（协会保底艇）与邓氏鱼级（无渠道壳体）**有意不补**（船长裁定）——见 roadmap 同日条目。 */
   // ── 舰船图纸 15 张（`sbp-wh-*`：五族各 3，一次性）──
     { key: 'sbp-wh-a-frigate', kind: 'blueprint', refId: 'sbp-wh-a-frigate', rarity: 'exotic', basePrice: 1_153_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭电子舰图纸（一次性）（= 舰价 ×0.5）
     { key: 'sbp-wh-a-destroyer', kind: 'blueprint', refId: 'sbp-wh-a-destroyer', rarity: 'exotic', basePrice: 2_555_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭炮舰图纸（一次性）（= 舰价 ×0.5）

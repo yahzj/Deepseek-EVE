@@ -162,7 +162,7 @@ describe('英文覆盖层（P2）', () => {
     // 装备蓝图：<产物英文名> Blueprint
     expect(en.blueprints.get('bp-miner-1')?.name).toBe('Reinforced Mining Laser MK1 Blueprint')
     // 舰船蓝图：<舰级段> Blueprint
-    expect(en.shipBlueprints.get('sbp-pioneer')?.name).toBe('Pioneer-class Blueprint')
+    expect(en.shipBlueprints.get('sbp-pioneer')?.name).toBe('Narwhal-class Blueprint')
     // 派生覆盖率：能反查到产物的蓝图都必须有英文名（否则说明产物表缺名）
     const noEn = [...zh.blueprints.values()].filter((bp) => !en.blueprints.get(bp.id)?.name.includes('Blueprint'))
     expect(noEn.slice(0, 5).map((bp) => bp.id), '这些蓝图没派生到英文名').toEqual([])
