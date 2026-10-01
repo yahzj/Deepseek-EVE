@@ -803,6 +803,10 @@ export const WEEKEND_CORONA_DRIFT_CARD: AnomalyDef = {
   wreckTier: 'dire', // 与 H 族同口径：残骸价提到 D 族水平（卡级回收档覆写危档）
   threat: 90,
   foeTargeting: 'random',
+  // **卡级战术登记**（2026-10-01 加）：与五档舰级的 	actic: 'kite' 对齐 ——
+  // 引擎的实际口径是 slot.tactic ?? ship.tactic（本卡不覆写 ⇒ 取舰级），本行只让**卡级登记值**与之一致
+  // （attle:calibrate 的「敌方虚拟装配校验」段按卡级字段显示战术，缺省会显示成 orbit）。
+  tactic: 'kite',
   dmgMix: { plasma: 8, kinetic: 2 },
   ships: [{ ship: FOE_R_CORONA_GLINT, count: 5, hpMul: 3.0, dmgMul: 1.875 }],
   standingReq: 0,
@@ -828,6 +832,10 @@ export const WEEKEND_CORONA_SPLIT_CARD: AnomalyDef = {
   wreckTier: 'dire',
   threat: 108,
   foeTargeting: 'random',
+  // **卡级战术登记**（2026-10-01 加）：与五档舰级的 	actic: 'kite' 对齐 ——
+  // 引擎的实际口径是 slot.tactic ?? ship.tactic（本卡不覆写 ⇒ 取舰级），本行只让**卡级登记值**与之一致
+  // （attle:calibrate 的「敌方虚拟装配校验」段按卡级字段显示战术，缺省会显示成 orbit）。
+  tactic: 'kite',
   dmgMix: { plasma: 8, kinetic: 2 },
   waves: [
     { units: 3, hpShare: 0.5 },
@@ -867,6 +875,10 @@ export const WEEKEND_CORONA_CONVERGE_CARD: AnomalyDef = {
    */
   rareWreckDrop: 1,
   foeTargeting: 'random',
+  // **卡级战术登记**（2026-10-01 加）：与五档舰级的 	actic: 'kite' 对齐 ——
+  // 引擎的实际口径是 slot.tactic ?? ship.tactic（本卡不覆写 ⇒ 取舰级），本行只让**卡级登记值**与之一致
+  // （attle:calibrate 的「敌方虚拟装配校验」段按卡级字段显示战术，缺省会显示成 orbit）。
+  tactic: 'kite',
   dmgMix: { plasma: 8, kinetic: 2 },
   waves: [
     { units: 3, hpShare: 0.5 },
@@ -906,6 +918,10 @@ export const WEEKEND_CORONA_NEXUS_CARD: AnomalyDef = {
   wreckTier: 'dire',
   threat: 170,
   foeTargeting: 'random',
+  // **卡级战术登记**（2026-10-01 加）：与五档舰级的 	actic: 'kite' 对齐 ——
+  // 引擎的实际口径是 slot.tactic ?? ship.tactic（本卡不覆写 ⇒ 取舰级），本行只让**卡级登记值**与之一致
+  // （attle:calibrate 的「敌方虚拟装配校验」段按卡级字段显示战术，缺省会显示成 orbit）。
+  tactic: 'kite',
   dmgMix: { plasma: 8, kinetic: 2 },
   waves: [
     { units: 4, hpShare: 0.2 },
