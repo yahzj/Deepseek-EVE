@@ -453,6 +453,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* ⟪文案调整 2026-09-30⟫ 船长报障「两张新配方卡片的说明还是燃料那套」：实验室面板的**通用**说明
      （原来面板/卡片复用了燃料专用的 `ui.lab.010` / `ui.lab.017`；**每张配方卡片的说明改取产出物自己的 description**） */
   "ui.lab.024": { zh: "实验室：按配方投入材料，到点产出成品（与精炼炉共用主控工作位）", en: "Laboratory: feed a recipe's materials and collect the finished product (shares the pilot work slot with the refinery)" },
+  /* 「去弄料」跳转（**2026-09-30 船长令**：「实验室的卡牌没有参考其他工业页面的卡牌添加跳转吗」）——
+     与组装机卡那颗「缺料」同一条链：有精炼源⇒切精炼炉并高亮矿石卡 · 造得出⇒切组装机 · 都不行⇒市场行情 */
+  "ui.lab.025": { zh: "去弄料", en: "Go get materials" },
+  "ui.lab.026": { zh: "去弄料：缺 {p1}——跳到能弄到它的地方", en: "Go get materials: {p1} is short — jump to where it comes from" },
+  "ui.lab.027": { zh: "去弄料：看看第一味投料从哪来", en: "Go get materials: see where the first ingredient comes from" },
   /* 舰船页「跃迁燃料」子页（**2026-09-29 船长令**）：001~004 = 四个活动名（`JUMP_FUEL_ACTIVITY_TEXT_ID`） */
   "ui.jumpFuel.001": { zh: "采矿返航", en: "Mining returns" },
   "ui.jumpFuel.002": { zh: "打捞返航", en: "Salvage returns" },
@@ -2040,6 +2045,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.comms.076": { zh: "有门生意，你先看看货", en: "A line of business — take a look at the goods" },
   "ui.comms.077": { zh: "工业页的实验室能造这两样。", en: "The Lab on the Industry page builds both of these." },
   "ui.comms.078": { zh: "中立", en: "Neutral" },
+  /* 2026-10-01（三号 · ⟪文案调整 2026-10-01⟫ · 船长报障「本地存档显示的是 '{p1} ×{p2}'」）：
+     **首匣通讯（`msg-blackbox-plug-unlock`）的主题行**单开一条。原先它挂在 `ui.comms.072` 上，
+     而那一条是**奖励清单的模板**（`{p1} ×{p2}`，由 `commsRewardText()` 喂两个参数），
+     主题这头是**无参渲染**（`commsSubjectText()` 只做 `tr(id)`）⇒ 占位符原样漏给玩家。
+     台账见 `docs/design/comms-param-fix-20261001.md`。 */
+  "ui.comms.079": { zh: "工业通报：黑匣可以换舰船插件了", en: "Industry notice: the black box can be traded for ship plugs now" },
   // 2026-09-25 入侵结算面板（点结算通讯的跳转弹出；照虫洞撤离结算的骨相）
   "ui.weekend.030": { zh: "入侵结算", en: "Invasion summary" },
   "ui.weekend.031": { zh: "核心「{p1}」 · {p2} · 第 {p3} 场", en: "Core “{p1}” · {p2} · Run {p3}" },

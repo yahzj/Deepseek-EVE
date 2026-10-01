@@ -152,12 +152,19 @@ export function installPlug(
     if (!bays) continue
     while (bays.length < wantSlots[rack]) bays.push(null)
   }
+  /**
+   * ⟪文案调整 2026-10-01⟫（船长报障「部分随机事件里依旧看到 `{p1}`/`{p2}`」时全仓普查扫出）：
+   * 模板 `core.plug.001` 是 `已为 {p1} 装上插件：{p2}。` —— **两个槽**，而这里此前只喂了 `p1`
+   * ⇒ 玩家读到的日志是「已为「XX」装上插件：**{p2}**。插件装上后无法拆下。」。
+   * ⇒ 补喂 `p2`（插件名）；同时把正文里的插件名去掉 —— 否则补参后会重复印两遍。
+   */
+  const shipName = state.fleet[shipId]?.customName ?? ctx.ships.get(ship.defId ?? '')?.name ?? shipId
   addLog(
     state,
     'fleet',
-    `已为「${state.fleet[shipId]?.customName ?? ctx.ships.get(ship.defId ?? '')?.name ?? shipId}」装上插件：${def.name}（插件装上后无法拆下）。`,
+    `已为「${shipName}」装上插件：${def.name}。插件装上后无法拆下。`,
     'core.plug.001',
-    { p1: def.name },
+    { p1: shipName, p2: def.name },
   )
   return { ok: true }
 }

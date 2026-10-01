@@ -91,7 +91,11 @@ const COMMS_SUBJECT_ID: Record<string, string> = {
   'msg-first-ship': 'ui.comms.042',
   'msg-pirate-capture-web': 'ui.comms.043',
   'msg-wh-siege': 'ui.comms.067', // 围剿通报（2026-09-23 船长令：首次下到第 7 层）
-  'msg-blackbox-plug-unlock': 'ui.comms.072', // 首个黑匣解锁插件（2026-09-26 船长令）
+  /* ⟪文案调整 2026-10-01⟫（船长报障「本地存档显示的是 '{p1} ×{p2}'」）：原先挂的是
+     `ui.comms.072` —— 那是**奖励清单的模板**（`{p1} ×{p2}`，由 `commsRewardText()` 喂参），
+     而本表是**无参**渲染（`commsSubjectText()` 只做 `tr(id)`）⇒ 主题行原样印出占位符。
+     ⇒ 改用**专为此写的主题 id** `ui.comms.079`；`ui.comms.072` 回归本职、一字未动。 */
+  'msg-blackbox-plug-unlock': 'ui.comms.079', // 首个黑匣解锁插件（2026-09-26 船长令）
   'msg-lab-contraband': 'ui.comms.076', // 首访实验室：黑市的违禁货通讯（2026-09-30 船长令）
 }
 
@@ -405,7 +409,11 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
   /** 首匣 → 舰船插件（2026-09-26 船长亲笔三段的英文；**必须三段**，行数不符会整段回落中文） */
   'msg-blackbox-plug-unlock': [
     'Route Safety reports that you pulled a black box out of a wreck. That is a find: the data sealed inside can be used to build special ship plugs. In light of your contributions to the Association, we are opening a limited shop window for you — the blueprints for building ship plugs can be exchanged there for standing.',
-    'A ship plug is a device as remarkable as Enigma. Once fitted to a ship it grants a breakthrough gain in performance, but the catch is that it cannot be taken off again, nor swapped for another, so think over which one you want before you place the order. A ship carrying a plug cannot be put into the ship warehouse, nor listed for sale on the market.',
+    // ⟪文案调整 2026-10-01⟫ 中文原句由「和谜质一样」改「和装备一样」（船长报障）⇒ 英文同步：
+    //   原开头 "A ship plug is a device as remarkable as Enigma." 一并去掉 Enigma 比喻。
+    //   ⚠ 仍是**一段**（`COMMS_BODY_EN` 按行数对齐，拆成两段就会整段回落中文）。
+    //   台账：本次工作文档 `docs/design/blackbox-copy-fix-20261001.md`。
+    'A ship plug is equipment like any other: once fitted it cannot be taken off, nor swapped for another, so think over which one you want before you place the order. A ship carrying a plug cannot be put into the ship warehouse, nor listed for sale on the market.',
     'The Engineering Department has been notified, and they will open the assembly unit for building ship plugs to you. Go and take a look.',
   ],
   'msg-cinder-warning': [
