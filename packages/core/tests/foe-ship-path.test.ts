@@ -453,7 +453,7 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       // 五档全在**本族速带 0.55~1.35×** 内（船长改速度后速带随之放宽，仍无需破例白名单）
       { id: 'foe-r-corona-glint', tier: 1, speed: 374 }, // 340 × 1.1
       { id: 'foe-r-corona-echo', tier: 2, speed: 325 }, // 295 × 1.1（324.5 → 325）
-      { id: 'foe-r-corona-prism', tier: 3, speed: 284 }, // 258 × 1.1
+      { id: 'foe-r-corona-overlay', tier: 3, speed: 284 }, // 258 × 1.1
       { id: 'foe-r-corona-dusk', tier: 4, speed: 226 }, // 205 × 1.1（225.5 → 226）
       { id: 'foe-r-corona-nexus', tier: 5, speed: 171 }, // 155 × 1.1（170.5 → 171；0.58× 基准船，贴近速带下限）
     ])

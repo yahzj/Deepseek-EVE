@@ -61,7 +61,7 @@ import {
   FOE_H_INK_BATTLECRUISER,
   FOE_R_CORONA_GLINT, // 2026-10-01 船长：R 族（光环）五档壳体（周末入侵第二族）
   FOE_R_CORONA_ECHO,
-  FOE_R_CORONA_PRISM,
+  FOE_R_CORONA_OVERLAY,
   FOE_R_CORONA_DUSK,
   FOE_R_CORONA_NEXUS,
 } from './foe-ships'
@@ -781,7 +781,9 @@ export const WEEKEND_INK_FLAGSHIP_CARD: AnomalyDef = {
  *
  * 四张卡与 H 族**同构**（骚扰 / 袭击 / 汇聚 / 中枢卫队），威胁档沿用 **90 / 108 / 129 / 170**
  * （船长裁定「沿用 —— 同档可比、玩家已有手感基准」）。
- * 编成体现本族族格：**护盾特化 · 偏等离子 · 每艘自带机巢**（机型 = `FOE_DRONE_R_PRISM`「折光机」）。
+ * 编成体现本族族格：**护盾特化 · 偏等离子 · 激光必中 · 风筝 · 闪现**。
+ * 🔴 **2026-10-01 船长令「移除敌人的机巢」** ⇒ 原设计的"每艘自带机巢"（折光机）**整条撤下**，
+ * 四张卡的编成里**没有任何机群**（机型本身暂留 `FOE_DRONES` 目录，暂无引用）。
  *
  * ⚠ **定价口径与 H 族同一套**：`hpMul` = K · `dmgMul` = K ÷ 多舰补偿；威胁 = 卡面实测价，
  * 达成预算须 `≤ F(威胁)`。**R 族舰级值低于 H 族同档**（T1 221 vs 364，走"脆而多"）
@@ -857,7 +859,7 @@ export const WEEKEND_CORONA_SPLIT_CARD: AnomalyDef = {
 /**
  * **R 族 · 3「光环 · 汇聚集群」**（2 波 · 威胁 129）。
  *
- * 第 1 波 = 回响级 ×3 · 第 2 波 = **垂暮级 ×1 ＋ 棱镜级 ×1 ＋ 回响级 ×2**（共 7 艘）。
+ * 第 1 波 = 回响级 ×3 · 第 2 波 = **垂暮级 ×1 ＋ 叠光级 ×1 ＋ 回响级 ×2**（共 7 艘）。
  * ⚠ **条目顺序 = 本波"敌方期望距离"的取数依据**（`foeDesiredRange` 取 `foes[0]`）⇒
  * **主体（垂暮级，射程 1~6,000）排在第一**，与 H 族主力卡同一条纪律。
  */
@@ -887,7 +889,7 @@ export const WEEKEND_CORONA_CONVERGE_CARD: AnomalyDef = {
   ships: [
     { ship: FOE_R_CORONA_ECHO, count: 3, wave: 0, hpMul: 1.7, dmgMul: 0.9714 },
     { ship: FOE_R_CORONA_DUSK, count: 1, wave: 1, hpMul: 1.7, dmgMul: 0.9714 },
-    { ship: FOE_R_CORONA_PRISM, count: 1, wave: 1, hpMul: 1.7, dmgMul: 0.9714 },
+    { ship: FOE_R_CORONA_OVERLAY, count: 1, wave: 1, hpMul: 1.7, dmgMul: 0.9714 },
     { ship: FOE_R_CORONA_ECHO, count: 2, wave: 1, hpMul: 1.7, dmgMul: 0.9714 },
   ],
   standingReq: 0,
@@ -932,11 +934,11 @@ export const WEEKEND_CORONA_NEXUS_CARD: AnomalyDef = {
   ships: [
     { ship: FOE_R_CORONA_GLINT, count: 4, wave: 0, hpMul: 2.2, dmgMul: 1.1733 },
     { ship: FOE_R_CORONA_ECHO, count: 3, wave: 1, hpMul: 2.2, dmgMul: 1.1733 },
-    { ship: FOE_R_CORONA_PRISM, count: 1, wave: 1, hpMul: 2.2, dmgMul: 1.1733 },
+    { ship: FOE_R_CORONA_OVERLAY, count: 1, wave: 1, hpMul: 2.2, dmgMul: 1.1733 },
     { ship: FOE_R_CORONA_DUSK, count: 2, wave: 2, hpMul: 2.2, dmgMul: 1.1733 },
-    { ship: FOE_R_CORONA_PRISM, count: 1, wave: 2, hpMul: 2.2, dmgMul: 1.1733 },
+    { ship: FOE_R_CORONA_OVERLAY, count: 1, wave: 2, hpMul: 2.2, dmgMul: 1.1733 },
     { ship: FOE_R_CORONA_NEXUS, count: 1, wave: 3, hpMul: 2.2, dmgMul: 1.1733 },
-    { ship: FOE_R_CORONA_PRISM, count: 1, wave: 3, hpMul: 2.2, dmgMul: 1.1733 },
+    { ship: FOE_R_CORONA_OVERLAY, count: 1, wave: 3, hpMul: 2.2, dmgMul: 1.1733 },
     { ship: FOE_R_CORONA_DUSK, count: 1, wave: 3, hpMul: 2.2, dmgMul: 1.1733 },
     { ship: FOE_R_CORONA_ECHO, count: 1, wave: 3, hpMul: 2.2, dmgMul: 1.1733 },
   ],

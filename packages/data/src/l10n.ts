@@ -1456,7 +1456,7 @@ export const EN_FOE_SHIPS: EnTable = {
   // 舰名一律**自创**（"光现象/残响"意象）—— 参考对象的舰名不照抄；英文 = 族名 + 光现象词
   'foe-r-corona-glint': { name: 'Corona Glint' },
   'foe-r-corona-echo': { name: 'Corona Echo' },
-  'foe-r-corona-prism': { name: 'Corona Prism' },
+  'foe-r-corona-overlay': { name: 'Corona Overlay' },
   'foe-r-corona-dusk': { name: 'Corona Dusk' },
   'foe-r-corona-nexus': { name: 'Corona Nexus' },
 }

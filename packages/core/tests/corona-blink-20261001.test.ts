@@ -7,7 +7,8 @@
  *
  * 口径（船长同日逐条裁定）：
  * - **挂哪几档**：选「**乙：五档全带**」（T1~T5 每档都挂）；
- * - **参数与触发**：选「**甲**」= 一次拉开 **2,000 m** · 冷却 **12 秒** · **本体被命中时触发**。
+ * - **参数与触发**：距离与触发选「**甲**」= 一次拉开 **2,000 m** · **本体被命中时触发**；
+ *   🔴 **冷却 5 秒**（船长 2026-10-01 令「**全族闪现的间隔下调到5秒**」，原 12 秒）。
  *
  * 机制要点：本仓战斗**不做二维坐标**（只有 `BattleState.distanceM` 一个标量）⇒「闪现」= **距离突变**。
  * 冷却态记在 `BattleState.foeBlinks[tag]`（`save.ts` 登记 `kind: 'runtime'`，与 `foeCharges` 同口径）。
@@ -28,16 +29,16 @@ const CARD = 'corona-drift'
 const R_SHIP_IDS = [
   'foe-r-corona-glint',
   'foe-r-corona-echo',
-  'foe-r-corona-prism',
+  'foe-r-corona-overlay',
   'foe-r-corona-dusk',
   'foe-r-corona-nexus',
 ] as const
 
 describe('光环科技 · 闪现跃迁仪：件定义与解析', () => {
-  it('① 件参数 = 船长选「甲」：一次 2,000 m · 冷却 12 秒；解析出 foeBlink', () => {
+  it('① 件参数 = 船长选「甲」：一次 2,000 m · 冷却 5 秒；解析出 foeBlink', () => {
     const r = resolveFoeMounts([FOE_MOUNT_IDS.coronaBlink])
     expect(r.unknown, '件 id 必须已登记（否则体检判红）').toEqual([])
-    expect(r.foeBlink, '闪现参数应原样带给单位').toEqual({ distanceM: 2_000, cooldownMs: 12_000 })
+    expect(r.foeBlink, '闪现参数应原样带给单位').toEqual({ distanceM: 2_000, cooldownMs: 5_000 })
     console.log(`  [读数] 瞬光跃迁仪：拉开 ${r.foeBlink!.distanceM} m · 冷却 ${r.foeBlink!.cooldownMs / 1000} 秒`)
   })
 
@@ -65,7 +66,7 @@ describe('光环科技 · 五档壳体（船长选「乙：五档全带」＋ �
     const specs = createFoeSpecs(card, bal, {})
     expect(specs.length).toBeGreaterThan(0)
     for (const sp of specs) {
-      expect(sp.foeBlink, '本卡五艘都应带闪现参数').toEqual({ distanceM: 2_000, cooldownMs: 12_000 })
+      expect(sp.foeBlink, '本卡五艘都应带闪现参数').toEqual({ distanceM: 2_000, cooldownMs: 5_000 })
     }
     // 对照：H 族那四张卡一件都不带（零行为变化）
     const hCard = ctx.anomalies.get('ink-harass')!
@@ -105,7 +106,7 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
       if (stamps.length > 0) {
         sawBlink = true
         // 冷却戳必须是「某个 500ms 整数拍的 lastTickGameMs + 12,000」
-        for (const v of stamps) expect((v - 12_000) % 500, '冷却戳 = 触发时刻 + 12 秒').toBe(0)
+        for (const v of stamps) expect((v - 5_000) % 500, '冷却戳 = 触发时刻 + 5 秒').toBe(0)
         break
       }
     }

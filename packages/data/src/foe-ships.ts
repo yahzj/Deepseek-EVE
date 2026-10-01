@@ -343,7 +343,7 @@ export const R_FLAGSHIP_SHIP_IDS: readonly string[] = ['foe-r-corona-nexus']
  * |---|---|---|---|
  * | 粼光级 T1 | 340 × 1.25 = **425** | 1.46× | ✓（贴近上限） |
  * | 回响级 T2 | 295 × 1.15 = **339** | 1.16× | ✓ |
- * | 棱镜级 T3 | 258 × 1.10 = **284** | 0.97× | ✓ |
+ * | 叠光级 T3 | 258 × 1.10 = **284** | 0.97× | ✓ |
  * | 垂暮级 T4 | 205 × 1.10 = **226** | 0.77× | ✓ |
  * | 光环中枢 T5 | 155 × 1.35 = **209** | 0.72× | ✓（贴近下限） |
  *
@@ -1475,7 +1475,7 @@ export const FOE_R_CORONA_ECHO: FoeShipDef = {
   id: 'foe-r-corona-echo',
   name: '回响级',
   family: 'R',
-  evasion: 0.22,
+  evasion: 0.5, // 🔴 **船长 2026-10-01 令「回响级闪避上调到0.5」**（原 0.22；全族最高，比 H 族突击舰 0.59 略低）
   hullClassTier: 2, // 驱逐舰
   speedRatio: 1.1, // **船长 2026-10-01 令「敌人速度按照标准同级舰 1.1 的速度定」**：295 × 1.1 = 324.5 → **325** m/s
   hp: 367, // **船长 2026-10-01 令「拥有一个 0.9 倍血量的修正（这个修正不计入预算内）」**：原 408 × 0.9（⚠ 该折减**不进威胁预算** —— 预算只由卡面 threat 决定，见 roster 表的「总血」列）
@@ -1497,14 +1497,14 @@ export const FOE_R_CORONA_ECHO: FoeShipDef = {
 }
 
 /**
- * R 族 · T3「**棱镜级**」—— 巡洋档，族里的中坚。
+ * R 族 · T3「**叠光级**」—— 巡洋档，族里的中坚。
  *
  * 血 900 × 0.90 = **810** · 单发 124 × 1.00 = **124** · 实速 258 × 1.10 = **284 m/s** ·
  * 射程 1~5,000 · 自带 **2 架折光机**。
  */
-export const FOE_R_CORONA_PRISM: FoeShipDef = {
-  id: 'foe-r-corona-prism',
-  name: '棱镜级',
+export const FOE_R_CORONA_OVERLAY: FoeShipDef = {
+  id: 'foe-r-corona-overlay',
+  name: '叠光级',
   family: 'R',
   evasion: 0.18,
   hullClassTier: 3, // 巡洋舰
@@ -1629,7 +1629,7 @@ export const FOE_R_CORONA_NEXUS: FoeShipDef = {
   // ═══ R 族 · 光环（Corona Systems）（2026-10-01 船长令 · 周末入侵第二族）：五档壳体，T5 = 族旗舰 ═══
   FOE_R_CORONA_GLINT,
   FOE_R_CORONA_ECHO,
-  FOE_R_CORONA_PRISM,
+  FOE_R_CORONA_OVERLAY,
   FOE_R_CORONA_DUSK,
   FOE_R_CORONA_NEXUS, // 本族唯一 T5（周末入侵旗舰战用）
 ]
