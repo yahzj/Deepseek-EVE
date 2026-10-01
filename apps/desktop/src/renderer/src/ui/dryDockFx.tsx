@@ -196,11 +196,23 @@ export function DryDockFx({
         </g>
       </svg>
 
-      {/* ── 坞壁机械臂（船长令：从桁架伸向船体、缓慢屈伸）：只动 rotate，布局/动效分层 ── */}
-      <g transform={`translate(${VB_W / 2 + 118} ${VB_H / 2 + BEAM_Y - 2})`}>
-        <g className="hud-dock-arm">
-          <path d="M0 0 L-30 -16" opacity="0.8" />
-          <circle cx="-31" cy="-17" r="2" opacity="0.9" />
+      {/* ── 焊接机械臂（**2026-10-01 船长令**：「机械臂采用二段式的，同样是移动到两端后停止，焊接的循环」）
+          —— **二段**（上臂 ＋ 前臂，肩/肘关节）＋ 整条臂沿船体在两端之间**移动、停住焊、再回程**；
+          端点停下时臂尖的焊点打火并迸火花（与无人机同一套 `hud-dock-weldwrap` 结构）。 ── */}
+      <g className="hud-dock-armcar" transform={`translate(${VB_W / 2} ${VB_H / 2 + BEAM_Y - 6})`}>
+        <g className="hud-dock-arm2">
+          <path d="M0 0 L-16 -12" opacity="0.85" />
+          <g className="hud-dock-armseg">
+            <path d="M-16 -12 L-30 -22" opacity="0.85" />
+          </g>
+          <g transform="translate(-30 -22)">
+            <g className="hud-dock-weldwrap">
+              <circle className="hud-dock-weld" cx="0" cy="0" r="2.1" />
+              <path className="hud-dock-spark-ray" d="M0 0 L-3.7 -2.1" />
+              <path className="hud-dock-spark-ray is-2" d="M0 0 L-4.2 0.4" />
+              <path className="hud-dock-spark-ray is-3" d="M0 0 L-3.2 2.3" />
+            </g>
+          </g>
         </g>
       </g>
       {/* ── 焊接无人机（船长令「无人机来回飞行焊接」）：两只一上一下沿船体往返，机身焊光微闪 ── */}
@@ -210,7 +222,15 @@ export function DryDockFx({
             <rect x="-7" y="-2.5" width="14" height="5" rx="1.5" />
             <path d="M-9 -2.5 H9 M-9 2.5 H9" opacity="0.7" />
             <path d="M-4 -4.5 V-6.5 M4 -4.5 V-6.5" opacity="0.6" />
-            <circle className="hud-dock-weld" cx="9.5" cy="0" r="1.7" />
+            <g className="hud-dock-weldwrap">
+              <circle className="hud-dock-weld" cx="9.5" cy="0" r="2.1" />
+              {/* 焊机迸火花（船长令：「有蹦出火花」）：5 条短线按角度错相位往外迸，只动 opacity/transform */}
+              <path className="hud-dock-spark-ray" d="M9.5 0 L13.2 -2.1" />
+              <path className="hud-dock-spark-ray is-2" d="M9.5 0 L14 0.4" />
+              <path className="hud-dock-spark-ray is-3" d="M9.5 0 L13 2.3" />
+              <path className="hud-dock-spark-ray is-4" d="M9.5 0 L11.6 -3.1" />
+              <path className="hud-dock-spark-ray is-5" d="M9.5 0 L11.4 3" />
+            </g>
           </g>
         </g>
       </g>
@@ -220,7 +240,15 @@ export function DryDockFx({
             <rect x="-7" y="-2.5" width="14" height="5" rx="1.5" />
             <path d="M-9 -2.5 H9 M-9 2.5 H9" opacity="0.7" />
             <path d="M-4 4.5 V6.5 M4 4.5 V6.5" opacity="0.6" />
-            <circle className="hud-dock-weld" cx="9.5" cy="0" r="1.7" />
+            <g className="hud-dock-weldwrap">
+              <circle className="hud-dock-weld" cx="9.5" cy="0" r="2.1" />
+              {/* 焊机迸火花（船长令：「有蹦出火花」）：5 条短线按角度错相位往外迸，只动 opacity/transform */}
+              <path className="hud-dock-spark-ray" d="M9.5 0 L13.2 -2.1" />
+              <path className="hud-dock-spark-ray is-2" d="M9.5 0 L14 0.4" />
+              <path className="hud-dock-spark-ray is-3" d="M9.5 0 L13 2.3" />
+              <path className="hud-dock-spark-ray is-4" d="M9.5 0 L11.6 -3.1" />
+              <path className="hud-dock-spark-ray is-5" d="M9.5 0 L11.4 3" />
+            </g>
           </g>
         </g>
       </g>
