@@ -2960,6 +2960,11 @@ export type CommsTrigger =
   | { kind: 'skill'; skillId: string; level: number }
   | { kind: 'isk'; amount: number }
   | { kind: 'siteBuilt'; siteId: string }
+  /**
+   * **第一次进实验室页面**（**2026-09-30 船长令**：「当玩家第一次进入实验室页面时，给玩家发送一封通讯」）——
+   * 读随档标记 `state.labOpened`（置位点唯一 = `engine.noteLabOpened()`，两个实验室入口都调它）。
+   */
+  | { kind: 'labOpened' }
 
   /**
    * **低安空域**（2026-09-12 船长定：探索到带特殊机制的星系后，发一封通讯讲解对应机制）。

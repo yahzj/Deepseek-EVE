@@ -165,6 +165,16 @@ export function commsTriggerMet(state: GameState, ctx: SimContext, trigger: Comm
       // 开局信等**序章演出结束**再送（2026-09-17 教程重做后演出是唯一的开场遮挡）：
       // 演出期间屏幕被盖住，此刻弹信只会压在演出上；演出一结束（step 99）即送达。
       return state.onboarding.step >= ONB_DONE
+    /**
+     * **第一次进实验室页面**（**2026-09-30 船长令**：「当玩家第一次进入实验室页面时，给玩家发送一封通讯，
+     * 来源不能是官方…为玩家详细说明下信号发射器和突触加速剂」）。
+     *
+     * 判据 = 随档标记 `state.labOpened`（置位点唯一 = `engine.noteLabOpened()`，旧工业页实验室子页与
+     * HUD 实验室页签都调它）。**老档缺字段** ⇒ 按船长同日裁定「甲：老档也补发」⇒ 与 `false` 同判
+     * （都不是 `true`），读档后首次进实验室照常收到；**只发一次**由送达记账（`commsDelivered`）保证。
+     */
+    case 'labOpened':
+      return state.labOpened === true
     case 'day':
       return state.gameMs >= trigger.days * COMMS_DAY_MS
     case 'explored':

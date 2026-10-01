@@ -17,7 +17,7 @@ import { isAtHomeLike } from './location'
 import { SYNAPTIC_ACCELERANT_MS, synapticAccelerantActive } from './training'
 import { securityZoneOf } from './sideTasks'
 import { DSI_FACTION_ID, spendableStandingOf } from './expedition'
-import { weekendCoreCandidates, weekendPeripheryOf, weekendRollOccupation } from './weekendEvent'
+import { weekendHasBuiltStation, weekendPeripheryOf, weekendRollOccupation } from './weekendEvent'
 
 /**
  * **高安启动的声望代价**（**2026-09-30 船长令**：「且当玩家在高安使用时候，弹出二次警告，警告玩家
@@ -27,13 +27,29 @@ import { weekendCoreCandidates, weekendPeripheryOf, weekendRollOccupation } from
  */
 export const HIGH_SEC_PENALTY = 10
 
-/** 玩家**此刻所在星系**（不在基地时 = `awayGalaxy`；在母港 = 母港） */
+/** 玩家**此刻所在星系**（不在基地时 = `awayGalaxy`；在母港 = 母港）——「在高安点火要付声望」那条用 */
 export function playerGalaxyIdOf(state: GameState): string {
   return state.awayGalaxy ?? HOME_GALAXY_ID
 }
 
-/** 此刻是否"在高安点火"（＝要弹二次警告 + 扣声望的那种场合）——**单点**，界面与 core 共用 */
-export function beaconLaunchHighSecOf(state: GameState, ctx: SimContext): boolean {
+/**
+ * **指定星系那条路的唯一禁令**（**2026-09-30 船长令**：「**主动对某个星系使用，只有"不能对有空间站的
+ * 星系使用"这一条禁令**」）：目标星系**有空间站**（母港所在星系 或 任何**已建成**副站）⇒ 不能点火
+ * （提示语由船长逐字给定：「该星系信号被压制，无法使用信号发射器。」）。
+ * ⚠ **不再**要求"已探索 / 非高安 / 无副站"那一套（那是**随机那条路**的候选集口径）；
+ * ⚠ **不判玩家在哪**；默认那条路（不传 `galaxyId`）连这条也不判。
+ */
+export function beaconTargetBlocked(state: GameState, ctx: SimContext, galaxyId: string): boolean {
+  return galaxyId === HOME_GALAXY_ID || weekendHasBuiltStation(state, ctx, galaxyId)
+}
+
+/** 此刻是否"在高安点火"（＝要弹二次警告 + 扣声望的那种场合）——**单点**，界面与 core 共用
+ *
+ *  ⚠ **2026-09-30 船长令**：「在指定星系使用信号发射器时，**允许在高安使用**，但是**不允许在空间站使用**」
+ *  ⇒ 本判据**只管安等**（与是否在空间站无关，两条规则互不短路）；
+ *  `targetGalaxyId` 缺省（默认那条路）⇒ 一律 false：不警告、不扣声望。 */
+export function beaconLaunchHighSecOf(state: GameState, ctx: SimContext, targetGalaxyId?: string): boolean {
+  if (targetGalaxyId === undefined) return false
   return securityZoneOf(ctx, playerGalaxyIdOf(state)) === '高安'
 }
 
@@ -138,8 +154,9 @@ export function useInvasionBeacon(
    * 判据 = `location.isAtHomeLike`（母港 或 **已建成**副站；在建工地不算）⇒ 那时**拒绝启动**。
    * ⚠ 排在"已有入侵"之后：两者同时成立时，"等这场打完"是更贴切的那句。
    */
-  if (isAtHomeLike(state, ctx)) {
-    return { ok: false, error: '不能在空间站所在地使用信号发射器：先把船开到没有空间站的星系再启动。', errorId: 'core.consumable.010' }
+  /* 指定星系那条路：**唯一禁令 = 目标星系不能有空间站**（船长 2026-09-30 令） */
+  if (galaxyId !== undefined && beaconTargetBlocked(state, ctx, galaxyId)) {
+    return { ok: false, error: '该星系信号被压制，无法使用信号发射器。', errorId: 'core.consumable.010' }
   }
   const family = INVASION_BEACON_FAMILIES.find((f) => f.id === (familyId ?? INVASION_BEACON_FAMILIES[0]!.id))
   if (!family) {
@@ -156,7 +173,7 @@ export function useInvasionBeacon(
    * ⚠ 扣的是 `state.standings`（可支配那本，与章鱼人兑换同账），**不动累计** ⇒ 已达成的门槛不受影响。
    */
   const here = playerGalaxyIdOf(state)
-  const highSec = beaconLaunchHighSecOf(state, ctx)
+  const highSec = beaconLaunchHighSecOf(state, ctx, galaxyId)
   if (highSec && spendableStandingOf(state, DSI_FACTION_ID) < HIGH_SEC_PENALTY) {
     return {
       ok: false,
@@ -166,18 +183,13 @@ export function useInvasionBeacon(
     }
   }
   const seq = (ev?.seq ?? 0) + 1
-  /* 两条路各走各的：指定星系必须先过资格判据（与随机那条**同一套**候选，避免出现两套落点规则） */
+  /* 两条路各走各的：
+     · **指定星系** ⇒ 上面那道"目标不能有空间站"的禁令已经判过，这里**直接按玩家所选落点**
+       （**2026-09-30 船长令**：「主动对某个星系使用，**只有不能对有空间站的星系使用这一条禁令**」
+       ⇒ 已探索 / 非高安 / 无副站那一套**不再**适用于这条路）；
+     · **默认** ⇒ 与每周默认入侵同一套：`weekendRollOccupation`（候选集 = 已探索·非高安·无已建副站）。 */
   let rolled: { coreId: string; peripheryIds: string[]; family: string } | null = null
   if (galaxyId !== undefined) {
-    if (!weekendCoreCandidates(state, ctx).includes(galaxyId)) {
-      const name = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
-      return {
-        ok: false,
-        error: `「${name}」不能作为入侵目标：只有已探索、非高安、且尚未建成副站的星系可以作为目标。`,
-        errorId: 'core.consumable.009',
-        errorParams: { p1: name },
-      }
-    }
     rolled = { coreId: galaxyId, peripheryIds: weekendPeripheryOf(ctx, galaxyId), family: family.id }
   } else {
     rolled = weekendRollOccupation(state, ctx, seq)

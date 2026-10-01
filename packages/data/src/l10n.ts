@@ -477,7 +477,8 @@ export const EN_ITEMS: EnTable = {
   // 2026-09-30 船长令：体积 1 m³/单位 ＋ 普通舰船货仓无法装入（说明同步补规格）
   'jump-fuel': { name: 'Hyperspace Jump Fuel', description: 'A dense slurry that pushes jump engines into overload: it burns by the second of original return time and raises return speed tenfold. One unit takes 1 m³ and only the item warehouse can hold it.' },
   // 实验室后续内容（2026-09-30 船长令「信号发射器和技能加速剂」）：施工期 unreleased，英文先就位
-  'invasion-beacon': { name: 'Signal Beacon', description: 'A beacon that provokes an invasion: light it on a system in the star map’s system detail and the invasion locks onto that system, while using it from the Items page or the cargo hold picks the system at random. The invading faction is chosen from the factions that have already appeared. Usable only while no invasion is running; one beacon per use.' },
+  // ⟪文案调整 2026-09-30⟫ 与中文同步补两条真规则：母港/已建成副站点不着 · 高安启动付 10 点声望
+  'invasion-beacon': { name: 'Signal Beacon', description: 'A beacon that provokes an invasion: light it on a system in the star map’s system detail and the invasion locks onto that system; using it from the Items page or the cargo hold instead draws the target from the same range the regular invasion trigger uses (explored, non-high-sec systems without a completed outpost). It cannot be lit in a system holding your home port or a completed outpost, and lighting it in high-sec costs 10 standing (it cannot be lit at all if spendable standing is short). The invading faction is chosen from the factions that have already appeared. Usable only while no invasion is running; one beacon per use.' },
   'synaptic-accelerant': { name: 'Synaptic Accelerant', description: 'A firmware overclock pack built for an AI body: it pushes the neural emulation layer into overload, so the learning loop runs faster. For 24 hours after use, skill training time is halved. Only one dose can be active at a time. Use it from the Items page or the cargo hold.' },
   // 零件（2026-09-20 零件体系：基础 7 直接可造 / 高级 7 需蓝图）
   'part-circuit': { name: 'Circuit Board', description: 'Basic electronic component: a general-purpose board pressed from supermetal and gel — the base layer of advanced parts and exclusive gear.' },
@@ -1650,6 +1651,9 @@ export const EN_COMMS_FACTIONS: EnTable = {
   'dept-route-safety': { name: 'Route Safety' },
   'dept-recall': { name: 'Recall & Restart' },
   'dept-salvage-crew': { name: "Chen's Crew No.1" },
+  // 2026-09-30 船长令：实验室首访通讯的发件方（非官方 · 黑市）
+  'black-market': { name: 'Black Market' },
+  'dept-contraband': { name: 'Contraband Desk' },
 }
 
 /** 旅行事件（8 · 译名表 §十三；`ctx.travelEvents` 是**数组** ⇒ 用 overlayList） */

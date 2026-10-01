@@ -19,7 +19,7 @@
  * ⚠ **本版覆盖度（诚实标注）**：精炼炉与实验室是**本页自己画的 HUD 版**；组装机 / 造船厂
  * 暂时**内嵌既有面板**（功能完整、观感仍是旧卡片）——它们的 HUD 化按船长"一批一批来"的节奏排后续。
  */
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   aiCoreCap,
   aiEfficiency,
@@ -313,6 +313,13 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
   const ctx = engine.ctx
   const { locale } = useL10n()
   const [tab, setTab] = useState<HudTab>('refine')
+  /**
+   * **首访实验室**（**2026-09-30 船长令**：第一次进实验室给玩家发一封黑市通讯）——
+   * 与旧工业页的实验室子页同一处口径（`engine.noteLabOpened()` 内部幂等，通讯由 `advanceComms` 送达）。
+   */
+  useEffect(() => {
+    if (tab === 'lab') engine.noteLabOpened()
+  }, [tab, engine])
   const [recipeId, setRecipeId] = useState<string | null>(null)
   /** 书架筛选（HUD 版只留两维：分类 ＋ 仅可造；完整三维筛选仍在现有工业页） */
   const [shelfKind, setShelfKind] = useState<'equip' | 'consumable' | typeof SUB_ALL>(SUB_ALL)
@@ -951,10 +958,6 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                             <span className="hud-row" style={{ gap: 6 }}>
                               <RowGlyph glyph={def.kind} />
                               <span>{def.name}</span>
-                              {/* 缺料：**不靠悬停也看得见**（船长同日令；触屏没有 hover）——红字 ＋ 真值「缺 N」 */}
-                              {feedShortOf(def, have) !== null ? (
-                                <b className="hud-row-short">{feedShortOf(def, have)}</b>
-                              ) : null}
                               {def.kind === 'wreck' ? (
                                 <span className="hud-chip">{tr(`ui.IndustryPage.00${wreckTierOf(def.id) === 'rare' ? 9 : 8}`)}</span>
                               ) : null}
@@ -962,6 +965,11 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                                 <span className="hud-chip">{Math.round(UNBOX_CYCLE_MS / 1000)}s</span>
                               ) : null}
                             </span>
+                            {/* 缺料：**不靠悬停也看得见**（船长同日令；触屏没有 hover）——红字 ＋ 真值「缺 N」；
+                                **单独起一行**（船长同日追加：「缺料的文本也单独起一行」），不挤在资源名后面 */}
+                            {feedShortOf(def, have) !== null ? (
+                              <span className="hud-row-short">{feedShortOf(def, have)}</span>
+                            ) : null}
                           </td>
                           <td className="n hud-tiny">{Math.floor(have).toLocaleString('zh-CN')}</td>
                           <td className="act">

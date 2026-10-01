@@ -206,8 +206,12 @@ export function labMissingMaterials(
   return out
 }
 
-/** 单批周期（毫秒，已按 AI 核心效率与 `LAB_CYCLE_SKILLS` 的乘区折算） */
+/** 单批周期（毫秒，已按 AI 核心效率与 `LAB_CYCLE_SKILLS` 的乘区折算）
+ *  ⚠ **2026-09-30 船长令**：「实验室的生产能被调试开启缩短到 1 秒」——`debugQuick`（调试面板「1 秒化」）
+ *  的既有触点原本漏了实验室（mining/travel/ai/salvaging/expedition/manufacturing/explore/wormholeScan/
+ *  training 都有，lab 没有）⇒ 这里补上，口径与其它产线一致：调试下一批 1 秒。 */
 function labCycleMsOf(state: GameState, ctx: SimContext, recipe: LabRecipeDef, worker: 'pilot' | AiCoreType): number {
+  if (state.debugQuick) return 1000
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
   const ms = Math.max(1, Math.round(recipe.cycleMs / eff))
   return Math.max(1, Math.round(ms * labCycleMulOf(state, recipe)))

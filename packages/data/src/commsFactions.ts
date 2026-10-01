@@ -135,6 +135,34 @@ export const COMMS_FACTIONS: readonly CommsFactionDef[] = [
       },
     ],
   },
+  {
+    /**
+     * **黑市**（**2026-09-30 船长令**：「当玩家第一次进入实验室页面时，给玩家发送一封通讯，**来源不能是官方**
+     * （毕竟信号发射器是违法的）…口气是**黑市商人诱导你**」）。
+     *
+     * 世界观自洽（不是我新造的词）：仓里早有它——市场事件里有「黑市商贩愿意出价收购」「黑市商人挂出一件
+     * 『…』：开价…（行情价 ×1.8~2.0 的溢价现货）」，以及风味事件「捡到…黑市愿意收购」。
+     * 立场取 `中立`（非官方、也不站行会），色调取 `--wui-tone-nav-shop`（金）——与三家现有发件方都不同色
+     * （协会 = nav-mail 青白蓝 · 打捞队 = nav-salvage 青 · 信息库 = nav-ai 粉）。
+     * 头像按铁律沿用官方章鱼头（所有 NPC 势力共用一枚，只靠色调区分）。
+     */
+    id: 'black-market',
+    name: '黑市',
+    species: '章鱼人',
+    alignment: '中立',
+    tone: 'var(--wui-tone-nav-shop)',
+    glyph: FACTION_OCTOPUS_GLYPH,
+    brief: '不问来路的买卖人：违禁货、溢价现货、没人认领的东西，他们都要。',
+    kinds: ['剧情', '提示'],
+    departments: [
+      {
+        id: 'dept-contraband',
+        name: '违禁品柜',
+        brief: '黑市里经手违禁货的那一格：信标、超频包这类东西的用法与后果，他们最清楚。',
+        kinds: ['提示'],
+      },
+    ],
+  },
 ]
 
 /** 势力目录（core 解析发件人；按 id 稳定查表） */
@@ -153,6 +181,7 @@ export const FACTION_AVATARS: Record<string, string> = {
   archive: FACTION_CORE_GLYPH,
   dshi: FACTION_OCTOPUS_GLYPH,
   'salvage-guild': FACTION_OCTOPUS_GLYPH,
+  'black-market': FACTION_OCTOPUS_GLYPH,
 }
 
 /** 部门目录（键 = `势力 id/部门 id`，core 解析发件部门；省得逐层查找） */

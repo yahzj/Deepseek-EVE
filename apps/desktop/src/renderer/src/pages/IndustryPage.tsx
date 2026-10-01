@@ -789,6 +789,16 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
   useEffect(() => {
     setSeenSec((s) => (s.has(sec) ? s : new Set(s).add(sec)))
   }, [sec])
+  /**
+   * **首访实验室**（**2026-09-30 船长令**：「当玩家第一次进入实验室页面时，给玩家发送一封通讯，
+   * 来源不能是官方（毕竟信号发射器是违法的），为玩家详细说明下信号发射器和突触加速剂」）。
+   *
+   * 只置随档标记（`engine.noteLabOpened()`，内部幂等）——通讯由 `advanceComms` 按标记送达并弹窗；
+   * HUD 版实验室页签同一处口径（见 `IndustryHudPage.tsx`）。
+   */
+  useEffect(() => {
+    if (sec === 'lab') engine.noteLabOpened()
+  }, [sec, engine])
   const { t } = useL10n()
   /**
    * **精炼炉的两级筛选**（2026-09-14 船长：「精炼炉和组装机一样，添加筛选标签」）：

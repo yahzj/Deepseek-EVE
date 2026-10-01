@@ -502,7 +502,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     zh: "⚠ 在「{p1}」启动信号发射器：协会扣了 {p2} 点声望。",
     en: "⚠ Signal Beacon lit at “{p1}”: the Association docked {p2} standing.",
   },
-  "ui.ItemsPage.057": { zh: "使用：主动诱发一次入侵（随机星系 · 只能在没有入侵时使用 · 消耗 1 枚 · 不能在空间站所在地启动）", en: "Use: provoke an invasion (random system; only while no invasion is running; consumes one; cannot be lit where a station is)" },
+  "ui.ItemsPage.057": { zh: "使用：主动诱发一次入侵（目标按入侵默认规则抽取 · 只能在没有入侵时使用 · 消耗 1 枚）", en: "Use: provoke an invasion (the target is drawn by the regular invasion trigger; only while no invasion is running; consumes one)" },
   "ui.ItemsPage.058": { zh: "信号发射器已启动：入侵舰队正在逼近。", en: "Signal Beacon lit: an invasion fleet is closing in." },
   /* 活动窗口的突触加速剂读数（2026-09-30 船长令：放进活动窗口 · 图标带倍率） */
   "ui.ActivityBar.066": { zh: "技能加速 ×{p1}", en: "Skill boost ×{p1}" },
@@ -642,18 +642,16 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
      ⚠ 落点两条路是船长同日裁定：「**直接使用是随机星系（这个要提醒玩家）。选择了星系后是固定。**」 */
   "ui.beacon.001": { zh: "启动信号发射器", en: "Light the Signal Beacon" },
   "ui.beacon.002": {
-    zh: "消耗 1 枚信号发射器：入侵舰队将锁定「{p1}」及其相邻星系，按入侵规则活满一个窗口。在物品页或货仓页直接使用则落点随机。",
-    en: "Consumes one Signal Beacon: the invasion fleet locks onto “{p1}” and its neighbouring systems and runs a full invasion window. Using it from the Items page or the cargo hold picks the system at random instead.",
+    zh: "消耗 1 枚信号发射器：随机的入侵舰队将锁定「{p1}」及其相邻星系。",
+    en: "Consumes one Signal Beacon: a randomly drawn invasion fleet locks onto “{p1}” and its neighbouring systems.",
   },
   "ui.beacon.003": { zh: "再点一下确认：发射器将消耗 1 枚，目标锁定「{p1}」", en: "Click again to confirm: one beacon is spent and the target is locked to “{p1}”" },
-  "ui.beacon.004": {
-    zh: "该星系暂不能作为入侵目标：需要已探索 · 非高安 · 且尚未建成副站",
-    en: "This system cannot be an invasion target yet: it must be explored, not high-sec, and without a completed outpost",
-  },
-  /* 位置限制的就地说明（**2026-09-30 船长令**：不可以在有空间站的地方使用） */
+  /* 目标不合格（含"该星系有空间站"）的就地说明 —— **2026-09-30 船长令**：提示语由船长逐字给定
+     「该星系信号被压制，无法使用信号发射器。」；原先那条"需要已探索·非高安·尚未建成副站"的长说明
+     按船长「说明有些多余」一并删除（`ui.beacon.004` 作废，按纪律不留死键）。 */
   "ui.beacon.005": {
-    zh: "当前在空间站（母港或已建成副站）：把船开到没有空间站的星系再启动",
-    en: "You are at a station (home port or a completed outpost): fly to a system without one before lighting it",
+    zh: "该星系信号被压制，无法使用信号发射器。",
+    en: "Signals are jammed in this system — the Signal Beacon cannot be lit here.",
   },
   /* 高安点火的二次警告（**2026-09-30 船长令**：「且当玩家在高安使用时候，弹出二次警告，警告玩家这么做会被扣声望」） */
   "ui.beacon.006": { zh: "⚠ 在高安启动信号发射器：扣 {p1} 点声望", en: "⚠ Lighting a Signal Beacon in high-sec costs {p1} standing" },
@@ -2028,6 +2026,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.comms.071": { zh: "{p1} 信用点", en: "{p1} credits" },
   "ui.comms.072": { zh: "{p1} ×{p2}", en: "{p1} ×{p2}" },
   "ui.comms.073": { zh: "、", en: ", " },
+  /* ── 2026-09-30 首访实验室：黑市那封（船长令「来源不能是官方」「口气是黑市商人诱导你」）──
+     074/075 = 新发件方名与部门名（`ui/commsText.ts` 的 `COMMS_NAME_ID`）
+     076 = 主题行 · 077 = 跳转栏那句 · 078 = 立场片「中立」（枚举里本来就有，此前没势力用过） */
+  "ui.comms.074": { zh: "黑市", en: "Black Market" },
+  "ui.comms.075": { zh: "违禁品柜", en: "Contraband Desk" },
+  "ui.comms.076": { zh: "有门生意，你先看看货", en: "A line of business — take a look at the goods" },
+  "ui.comms.077": { zh: "工业页的实验室能造这两样。", en: "The Lab on the Industry page builds both of these." },
+  "ui.comms.078": { zh: "中立", en: "Neutral" },
   // 2026-09-25 入侵结算面板（点结算通讯的跳转弹出；照虫洞撤离结算的骨相）
   "ui.weekend.030": { zh: "入侵结算", en: "Invasion summary" },
   "ui.weekend.031": { zh: "核心「{p1}」 · {p2} · 第 {p3} 场", en: "Core “{p1}” · {p2} · Run {p3}" },

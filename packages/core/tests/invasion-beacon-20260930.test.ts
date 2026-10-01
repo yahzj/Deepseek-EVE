@@ -7,16 +7,17 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
-import { createInitialState } from '../src/state'
+import { createInitialState, HOME_GALAXY_ID } from '../src/state'
 import { addWare, countWare } from '../src/inventory'
 import {
   HIGH_SEC_PENALTY,
   INVASION_BEACON_FAMILIES,
   INVASION_BEACON_ITEM_ID,
+  beaconLaunchHighSecOf,
   consumableStockOf,
   useInvasionBeacon,
 } from '../src/consumables'
-import { weekendCoreCandidates } from '../src/weekendEvent'
+import { weekendCoreCandidates, weekendHasBuiltStation } from '../src/weekendEvent'
 import { securityZoneOf } from '../src/sideTasks'
 import { DSI_FACTION_ID, noteStandingEarned } from '../src/expedition'
 
@@ -105,15 +106,40 @@ describe('信号发射器 · 使用与拒绝', () => {
     expect(consumableStockOf(b, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
   })
 
-  it('在基地（母港 / 已建成副站）⇒ 拒绝 core.consumable.010，不扣料（**2026-09-30 船长令**：不可以在有空间站的地方使用）', () => {
+  it('**指定星系**时玩家在空间站（母港）也**允许**（2026-09-30 船长报障：别要求玩家先离开自己的空间站）', () => {
     const s = createInitialState({ nowWallMs: 0, seed: 41 })
     s.exploredGalaxies = [...ctx.galaxies.keys()]
+    noteStandingEarned(s, DSI_FACTION_ID, 50) // 母港在高安 ⇒ 指定那条要付声望（代价，非门槛）
     addWare(s, INVASION_BEACON_ITEM_ID, 1)
+    const target = weekendCoreCandidates(s, ctx)[0]!
+    const r = useInvasionBeacon(s, ctx, { galaxyId: target })
+    expect(r.ok, r.ok ? '' : String(r.error)).toBe(true)
+    expect(s.weekendEvent!.coreId, '落点 = 所选星系（玩家在不在空间站无关）').toBe(target)
+    expect(consumableStockOf(s, INVASION_BEACON_ITEM_ID), '扣掉一枚').toBe(0)
+  })
+
+  it('**指定星系** ＋ 开到高安（不在空间站）⇒ **允许**（但要付声望）', () => {
+    const s = readyState()
+    s.awayGalaxy = highSecId()
+    noteStandingEarned(s, DSI_FACTION_ID, 50)
+    addWare(s, INVASION_BEACON_ITEM_ID, 1)
+    const target = weekendCoreCandidates(s, ctx)[0]!
+    const r = useInvasionBeacon(s, ctx, { galaxyId: target })
+    expect(r.ok, r.ok ? '' : String(r.error)).toBe(true)
+    expect(s.weekendEvent!.coreId).toBe(target)
+  })
+
+  it('**默认使用**（不指定星系）⇒ **不看位置**：在母港也能开，且不扣声望（**2026-09-30 船长纠正**）', () => {
+    const s = createInitialState({ nowWallMs: 0, seed: 41 }) // 母港（高安）· dockedSite 空
+    s.exploredGalaxies = [...ctx.galaxies.keys()]
+    noteStandingEarned(s, DSI_FACTION_ID, 50)
+    addWare(s, INVASION_BEACON_ITEM_ID, 1)
+    const spendable = s.standings[DSI_FACTION_ID] ?? 0
     const r = useInvasionBeacon(s, ctx)
-    expect(r.ok).toBe(false)
-    expect(r.errorId).toBe('core.consumable.010')
-    expect(consumableStockOf(s, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
-    expect(s.weekendEvent, '没建事件').toBeUndefined()
+    expect(r.ok, r.ok ? '' : String(r.error)).toBe(true)
+    expect(consumableStockOf(s, INVASION_BEACON_ITEM_ID), '扣掉一枚').toBe(0)
+    expect(s.standings[DSI_FACTION_ID] ?? 0, '默认那条不扣声望').toBe(spendable)
+    expect(s.weekendEvent, '入侵照常起来').toBeTruthy()
   })
 
   /**
@@ -133,26 +159,29 @@ describe('信号发射器 · 使用与拒绝', () => {
     expect(consumableStockOf(s, INVASION_BEACON_ITEM_ID), '扣掉一枚').toBe(0)
   })
 
-  it('指定不合格星系 ⇒ 拒绝 core.consumable.009 且不扣料（未探索 / 高安 / 已有已建副站）', () => {
-    /* ① 没探索过（**先离开基地**，否则先撞位置限制） */
-    const a = createInitialState({ nowWallMs: 0, seed: 41 })
-    a.awayGalaxy = nonHighSecId()
-    addWare(a, INVASION_BEACON_ITEM_ID, 1)
-    a.exploredGalaxies = [] // 全部标成未探索
-    const r1 = useInvasionBeacon(a, ctx, { galaxyId: [...ctx.galaxies.keys()][0]! })
+  it('**指定星系**的**唯一禁令**＝目标星系有空间站（母港 / 已建成副站）⇒ 拒 core.consumable.010、不扣料', () => {
+    /* ① 目标 = 母港（自带空间站） */
+    const a = readyState() // 自带 1 枚
+    const r1 = useInvasionBeacon(a, ctx, { galaxyId: HOME_GALAXY_ID })
     expect(r1.ok).toBe(false)
-    expect(r1.errorId).toBe('core.consumable.009')
+    expect(r1.errorId).toBe('core.consumable.010')
     expect(consumableStockOf(a, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
     expect(a.weekendEvent, '没建事件').toBeUndefined()
+  })
 
-    /* ② 高安星系（拿全探索档里第一个高安作目标） */
-    const b = readyState()
-    const highSec = [...ctx.galaxies.keys()].find((id) => !weekendCoreCandidates(b, ctx).includes(id) && ctx.galaxies.has(id))
-    if (highSec !== undefined) {
-      const r2 = useInvasionBeacon(b, ctx, { galaxyId: highSec })
-      expect(r2.ok, '高安或已建副站 ⇒ 拒').toBe(false)
-      expect(r2.errorId).toBe('core.consumable.009')
-      expect(consumableStockOf(b, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
+  it('**指定星系**时"未探索 / 高安 / 无副站"都**不再是**限制（只剩空间站那一条）', () => {
+    /* 高安但无空间站的星系 ⇒ 允许（2026-09-30 船长令：只有"有空间站"这一条禁令） */
+    const s = readyState()
+    s.awayGalaxy = highSecId()
+    noteStandingEarned(s, DSI_FACTION_ID, 50) // 高安点火要付声望
+    addWare(s, INVASION_BEACON_ITEM_ID, 1)
+    const hiTarget = [...ctx.galaxies.keys()].find(
+      (id) => securityZoneOf(ctx, id) === '高安' && id !== HOME_GALAXY_ID && !weekendHasBuiltStation(s, ctx, id),
+    )
+    if (hiTarget !== undefined) {
+      const r = useInvasionBeacon(s, ctx, { galaxyId: hiTarget })
+      expect(r.ok, r.ok ? '' : String(r.error)).toBe(true)
+      expect(s.weekendEvent!.coreId).toBe(hiTarget)
     }
   })
 
@@ -160,12 +189,13 @@ describe('信号发射器 · 使用与拒绝', () => {
    * **高安点火的声望代价**（**2026-09-30 船长令**：「且当玩家在高安使用时候，弹出二次警告，警告玩家
    * 这么做会被扣声望」→ 船长「按你推荐来」＝扣**可支配声望 10 点**、不足则拒）。
    */
-  it('在高安（非基地）点火 ⇒ 允许，但**可支配声望 −10**，累计不动', () => {
+  it('**指定星系** ＋ 在高安（非基地）⇒ 允许，但**可支配声望 −10**，累计不动', () => {
     const s = readyState()
     s.awayGalaxy = highSecId()
     noteStandingEarned(s, DSI_FACTION_ID, 50)
+    const target = weekendCoreCandidates(s, ctx)[0]!
     const before = { spendable: s.standings[DSI_FACTION_ID] ?? 0, earned: s.standingsEarned?.[DSI_FACTION_ID] ?? 0 }
-    const r = useInvasionBeacon(s, ctx)
+    const r = useInvasionBeacon(s, ctx, { galaxyId: target })
     expect(r.ok, r.ok ? '' : String(r.error)).toBe(true)
     expect(s.standings[DSI_FACTION_ID] ?? 0, '可支配 −10').toBe(before.spendable - HIGH_SEC_PENALTY)
     expect(s.standingsEarned?.[DSI_FACTION_ID] ?? 0, '累计不动（已达成的门槛不受影响）').toBe(before.earned)
@@ -175,10 +205,11 @@ describe('信号发射器 · 使用与拒绝', () => {
     ).toBe(true)
   })
 
-  it('在高安但**可支配声望不足** ⇒ 拒绝 core.consumable.011，不扣料也不建事件', () => {
+  it('**指定星系** 且在高安但**可支配声望不足** ⇒ 拒绝 core.consumable.011，不扣料也不建事件', () => {
     const s = readyState()
     s.awayGalaxy = highSecId() // 新档声望为 0
-    const r = useInvasionBeacon(s, ctx)
+    const target = weekendCoreCandidates(s, ctx)[0]!
+    const r = useInvasionBeacon(s, ctx, { galaxyId: target })
     expect(r.ok).toBe(false)
     expect(r.errorId).toBe('core.consumable.011')
     expect(consumableStockOf(s, INVASION_BEACON_ITEM_ID), '不扣料').toBe(1)
@@ -186,6 +217,10 @@ describe('信号发射器 · 使用与拒绝', () => {
   })
 
   it('在**非高安**点火 ⇒ 不扣声望', () => {
+    /* ⚠ 另有一条：**在空间站（母港也是高安）时不该报"高安点火"** ——那是位置门的活
+       （船长 2026-09-30 报障：「提示我处于大鲸鱼，还有扣声望警告」）*/
+    const atHome = createInitialState({ nowWallMs: 0, seed: 41 })
+    expect(beaconLaunchHighSecOf(atHome, ctx), '在母港 ⇒ 不算高安点火（该由位置门拒）').toBe(false)
     const s = readyState()
     noteStandingEarned(s, DSI_FACTION_ID, 50)
     const before = s.standings[DSI_FACTION_ID] ?? 0

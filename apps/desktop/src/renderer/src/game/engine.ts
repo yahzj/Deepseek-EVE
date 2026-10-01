@@ -33,6 +33,7 @@ import {
   cancelStandby,
   changeShip,
   clearSkillQueue,
+  noteLabOpened as markLabOpened,
   createInitialState,
   buySkillLicense,
   enqueueSkill,
@@ -1931,6 +1932,19 @@ export class GameEngine {
       this.notify()
     }
     return count
+  }
+
+  /**
+   * **记下"第一次进实验室页面"**（**2026-09-30 船长令**：第一次进实验室给玩家发一封黑市通讯）。
+   *
+   * 两个实验室入口（旧工业页的实验室子页、工业 HUD 的实验室页签）都调它；
+   * core 那侧只在**真的第一次**返回 true ⇒ 只有那一次写盘＋通知，重复调用不落盘。
+   * 通讯本身由 `advanceComms` 的幂等记账送达（本函数只管随档标记）。
+   */
+  noteLabOpened(): void {
+    if (!markLabOpened(this.state)) return
+    void this.persist()
+    this.notify()
   }
 
   /** 开始在矿带开采（`withActivitySwitch`：会中断长途运输时首击只警告） */

@@ -280,6 +280,33 @@ content/l10n/l10n:render/l10n:params/rot/theme/layout-css:check/arch ✅ · desk
 闸门：typecheck ✅ · core 276 文件/2908 用例 ✅ · content/l10n/l10n:render/l10n:params/rot/theme/
 layout-css:check/arch ✅ · desktop＋web 构建 ✅。
 
+### 11.1 追加令：「缺料的文本也单独起一行」（同日 · 船长）
+
+**船长原话**：「如果缺料，缺料的文本也单独起一行」
+
+**落地**：两处都把「缺 N」从**行内**挪到**独立一行**——
+- 悬浮卡：`ui/hud.tsx` 的 `IoLine` 改成「材料行 ＋ 缺料行」两段（`.hud-io-short` 去掉 `margin-left:auto`、变块级）；
+  与书架卡既有的「每味料两行」（名/需要一行、（可用：M）另起一行）同一手法（§六 同级复刻）。
+- 投料表：`IndustryHudPage.tsx` 把标记从 `.hud-row` **里面**挪到该格**外面**（`.hud-row-short` 加
+  `display:block; margin-top:2px`）。
+
+**技能判定**（`ui-ux-pro-max` 现场检索）：`ux`·Content·**Compact Label Overflow**（High）
+「A badge chip or pill label should stay whole on one line…」/「Don't: Let one compact label wrap to a
+second line」——该条反对的是**同一个标签被动折行**；这里是**有意把第二个数据另起一行**（材料行因此更宽松），
+两者不冲突 ✅；`table cell content overflow` 命中的是 Responsive·Table Handling（讲窄屏横滚），与本处无关。
+
+**验收读数**（深空 ＋ 高对比两套主题复测，日志同上）：
+
+| 项 | 读数 |
+|---|---|
+| 投料**行** | 资源名那行底 `604` → 「缺 3」顶 `606` ⇒ **另起一行 = true**；行高 45→49（只长 4px）；颜色 `rgb(229, 57, 53)` ✅ |
+| 悬停该行 ⇒ **卡内** | 材料行底 `695` → 缺料行顶 `698` ⇒ **另起一行 = true**；缺料行数 1、红字同色 ✅ |
+| 对照（不缺的投料行） | 行上无标记 · 卡内 0 处 ✅ |
+| 在跑的工位卡 | 0 处（照旧页口径）✅ |
+
+截图：`tools/_ui-artifacts/shots/hud-short-mark.png`（缺料行与卡内缺料行同框）。
+
+
 
 
 

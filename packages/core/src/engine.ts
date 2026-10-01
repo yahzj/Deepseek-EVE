@@ -1068,6 +1068,21 @@ export function clearSkillQueue(state: GameState): number {
   return count
 }
 
+/**
+ * **记下"玩家第一次进实验室页面"**（**2026-09-30 船长令**：「当玩家第一次进入实验室页面时，给玩家发送一封通讯，
+ * 来源不能是官方…为玩家详细说明下信号发射器和突触加速剂」）。
+ *
+ * 为什么放在 core：这是**随档事实**（`state.labOpened`），通讯的触发种 `labOpened` 只认它；
+ * 置位点收成一个函数，两个入口（旧工业页的实验室子页、工业 HUD 的实验室页签）都调它 ⇒ 口径只有一份。
+ * 返回是否**这一次**真的置位（`false` = 早就进过）——调用方拿它决定要不要写盘，别让每帧都落一次盘。
+ * 送达本身仍由 `advanceComms` 的幂等记账（`commsDelivered`）保证只发一次。
+ */
+export function noteLabOpened(state: GameState): boolean {
+  if (state.labOpened === true) return false
+  state.labOpened = true
+  return true
+}
+
 /** 给界面用的当前训练状态 */
 export interface HeadTrainingInfo {
   skillId: string
