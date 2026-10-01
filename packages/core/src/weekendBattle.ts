@@ -49,7 +49,7 @@ import {
   weekendFlagshipOutcomeOf,
 } from './weekendEvent'
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
-import { WEEKEND_STANDING_MAX } from './weekendEvent'
+import { weekendStandingGainOf } from './weekendEvent'
 import { flagshipBattleLedger } from './combat'
 import { rareWreckItemIdOfCard, RARE_WRECK_VOLUME_M3 } from './salvage'
 /** 2026-09-27 船长令：主力舰队打赢 ⇒ 往该星系**入侵残骸场**里放箱子（稀有残骸） */
@@ -600,7 +600,7 @@ export function weekendResultSnapshotOf(
    * 需要提及玩家获得了多少声望」）——**与实发同源**：同一条公式 `round(占比 × 15)`，
    * 结算那一拍（`weekendSettleAndGrant`）用它发、快照用它写 ⇒ 面板与信件上的数 = 真正加进账的数。
    */
-  const standingGain = Math.round(plan.share * WEEKEND_STANDING_MAX)
+  const standingGain = weekendStandingGainOf(ev, plan.share)
   return {
     seq: ev.seq,
     family: ev.family,
@@ -726,7 +726,7 @@ export function weekendSettleAndGrant(
    * 走 `noteStandingEarned` 唯一入口 ⇒ **两条账同时加**（可支配 ＋ 累计）。
    * ⚠ 与"贡献四档奖"同在一处（`prizePaidAtWallMs` 保证只走一遍）⇒ 声望也跟着**只发一次**。
    */
-  const standing = Math.round(plan.share * WEEKEND_STANDING_MAX)
+  const standing = weekendStandingGainOf(ev, plan.share)
   if (standing > 0) noteStandingEarned(state, DSI_FACTION_ID, standing)  /** 贡献奖与进度收入入账 ⇒ 记进到手台账，并**写本场战果快照**（面板与结算通讯读它） */
   /**
    * ⚠ **残骸只记"贡献奖那一份"**（`granted.wreck − pending.wreck`）——

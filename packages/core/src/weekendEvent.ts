@@ -98,6 +98,21 @@ export const WEEKEND_MIN_STANDING = 40
  * ⚠ 走 `noteStandingEarned`（两条账同时加）；与贡献四档奖同一处发放、**只发一次**。
  */
 export const WEEKEND_STANDING_MAX = 15
+
+/**
+ * **玩家自己点火那一场的固定声望**（**2026-10-01 船长令**：「**玩家用信号发射器召唤的入侵，
+ * 每次完成只给 5 声望。**」）——与每周那场"按贡献 0~15 点"区分开（防用发射器刷声望）。
+ */
+export const WEEKEND_STANDING_BEACON = 5
+
+/**
+ * **这一场结算该发多少协会声望**（唯一判据 · 发与写快照同源）：
+ * - 玩家用信号发射器点起来的（`ev.beaconLit`）⇒ **固定 `WEEKEND_STANDING_BEACON`**；
+ * - 每周自己爆发的那场 ⇒ 按贡献占比 `round(占比 × WEEKEND_STANDING_MAX)`（单场 0~15 点）。
+ */
+export function weekendStandingGainOf(ev: Pick<WeekendEventState, 'beaconLit'>, share: number): number {
+  return ev.beaconLit === true ? WEEKEND_STANDING_BEACON : Math.round(share * WEEKEND_STANDING_MAX)
+}
 /**
  * 协会（DSI）声望取数。
  *
@@ -388,6 +403,13 @@ export interface WeekendEventState {
    * ⚠ 缺键 = 老档 / 每周那场自己爆发的入侵 / 默认路点火（不扣声望）⇒ **没有怀疑段**，行为与从前一致。
    */
   beaconHighSec?: boolean
+  /**
+   * **这一场是玩家用信号发射器点起来的**（**2026-10-01 船长令**：「**玩家用信号发射器召唤的入侵，
+   * 每次完成只给 5 声望。**」）——**任何**点火路径（仓库直用 / 星图指定）都记它；
+   * 结算时的声望按 `weekendStandingGainOf` 取（点火场固定 5 点）。
+   * ⚠ 缺键 = 每周那场自己爆发的入侵（不受影响）。
+   */
+  beaconLit?: boolean
   /** 核心条满（旗舰现身）的墙钟 */
   flagshipAtWallMs?: number
   /** 旗舰结局：玩家击毁 / 章鱼人摧毁 */

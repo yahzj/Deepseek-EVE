@@ -17,7 +17,13 @@ import {
   consumableStockOf,
   useInvasionBeacon,
 } from '../src/consumables'
-import { weekendCoreCandidates, weekendHasBuiltStation } from '../src/weekendEvent'
+import {
+  WEEKEND_STANDING_BEACON,
+  WEEKEND_STANDING_MAX,
+  weekendCoreCandidates,
+  weekendHasBuiltStation,
+  weekendStandingGainOf,
+} from '../src/weekendEvent'
 import { weekendWarnCommsOf } from '../src/weekendComms'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { securityZoneOf } from '../src/sideTasks'
@@ -294,5 +300,20 @@ describe('信号发射器 · 高安点火的通讯变体', () => {
     const back = loadSaveFile(serializeSaveFile(s, 0)).state
     expect(back.weekendEvent?.beaconHighSec).toBe(true)
     expect(weekendWarnCommsOf(back, ctx, back.weekendEvent!).bodyIds[0]).toBe('core.weekend.044')
+  })
+
+  /**
+   * **玩家自己点火的场次：结算声望固定 5 点**（**2026-10-01 船长令**：「**玩家用信号发射器召唤的入侵，
+   * 每次完成只给 5 声望。**」）——每周那场自己爆发的入侵仍按贡献 0~15 点，判据单点 = `weekendStandingGainOf`。
+   */
+  it('点火场次 ⇒ 事件留痕 `beaconLit`，结算声望**固定 5 点**（每周那场仍按贡献算）', () => {
+    const s = readyState()
+    expect(useInvasionBeacon(s, ctx).ok).toBe(true)
+    const ev = s.weekendEvent!
+    expect(ev.beaconLit, '点火来源留痕').toBe(true)
+    expect(weekendStandingGainOf(ev, 1), '点火场：满贡献也是固定 5 点').toBe(WEEKEND_STANDING_BEACON)
+    expect(weekendStandingGainOf({}, 1), '每周那场：满贡献 15 点').toBe(WEEKEND_STANDING_MAX)
+    expect(weekendStandingGainOf({}, 0.5), '每周那场：半贡献 8 点').toBe(8)
+    expect(loadSaveFile(serializeSaveFile(s, 0)).state.weekendEvent?.beaconLit, '读档后仍在').toBe(true)
   })
 })

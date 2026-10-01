@@ -327,8 +327,10 @@ export function useInvasionBeacon(
     ...rolled,
     family: family.id,
     contributed: {},
-    /* 高安点火留痕（2026-10-01 船长令）：这一场的预警信要在开头怀疑玩家并说清扣了声望 */
+    /* 点火来源留痕（2026-10-01 船长令）：① 高安那场预警信要怀疑玩家并说清扣了声望
+       ② 玩家自己点起来的入侵，结算协会声望固定 5 点（不再按贡献 0~15） */
     ...(highSec ? { beaconHighSec: true } : {}),
+    beaconLit: true,
   }
   const galaxyName = ctx.galaxies.get(rolled.coreId)?.name ?? rolled.coreId
   addLog(
