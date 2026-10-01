@@ -802,7 +802,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     rewardIsk: 350000,
     loot: [],
     combatSeconds: 100,
-    description: '天底是条死胡同，也是鱿烬亡军最后的据点。协会长年封锁此区，悬赏每一次突破防线的清剿。',
+    description: '天底是条死胡同，也是鱿鱼亡军最后的据点。协会长年封锁此区，悬赏每一次突破防线的清剿。',
   },
   {
     id: 'ano-maw-hunt',

@@ -691,7 +691,7 @@ export const WEEKEND_FAMILIES: readonly string[] = ['A', 'C', 'G', 'H', 'R']
 const WEEKEND_FAMILY_NAME_ZH: Readonly<Record<string, string>> = {
   A: '海盗',
   C: '异形生物',
-  G: '鱿烬亡军',
+  G: '鱿鱼亡军',
   H: '墨潮帮',
   R: '光环',
 }

@@ -98,13 +98,13 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
     blueprints: ['bp-wh-e-cpu', 'bp-wh-e-dc', 'bp-wh-e-pd', 'bp-wh-e-shield', 'bp-wh-e-tac', 'bp-wh-e-drone',
       'sbp-wh-e-frigate', 'sbp-wh-e-destroyer', 'sbp-wh-e-carrier'],
   },
-  /* ── G 鱿烬亡军（Deadarmy）──
+  /* ── G 鱿鱼亡军（Deadarmy）──
      依据：`modules.ts`「G 族」段六件（幽灵弹道校正器 / 亡军火控 / 亡军蜂巢坞 / 鱿蜂结构层 /
      亡军残炮 / 幽灵推进器）；窝点三件见 `FOE_LAIR_GEAR.G`（含**鱿蜂无人机** `drone-exile-bee`
      与其一次性图纸 `bp-lair-g-drone`——已登记在该表里，故此处不重列 `bp-lair-g-drone`） */
   G: {
     family: 'G',
-    nameId: 'ui.Handbook.362', // 鱿烬亡军
+    nameId: 'ui.Handbook.362', // 鱿鱼亡军
     glyph: 'fam-g',
     // `drone-exile-bee` = 鱿蜂无人机（G 族窝点链产物；一次性图纸 `bp-lair-g-drone` 在 core `FOE_LAIR_GEAR.G` 名下单列）
     modules: ['mod-wh-g-ballistic', 'mod-wh-g-fcs', 'mod-wh-g-hangar', 'mod-wh-g-hull', 'mod-wh-g-prop', 'mod-wh-g-turret', 'drone-exile-bee'],

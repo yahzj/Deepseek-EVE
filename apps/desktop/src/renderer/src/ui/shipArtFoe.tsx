@@ -451,7 +451,7 @@ const E_CORE = (
   </>
 )
 
-// ───────────────────────── G 族 · 鱿烬亡军（5 条）─────────────────────────
+// ───────────────────────── G 族 · 鱿鱼亡军（5 条）─────────────────────────
 // 语言：**蜂窝六边舱 + 补丁帆**（帆上有补丁方块）；残军杂械，多喷口。
 
 /** ㉑ 围攻残兵舰（T1 / orbit）：最小蜂窝艇 + 两侧补丁帆 + 单喷口 + 前部小炮（族内最简） */
@@ -647,7 +647,7 @@ export const FOE_SHIP_ART: Record<string, ReactNode> = {
   'foe-auro-hulk': E_AURO,
   'foe-titan-hulk': E_TITAN,
   'foe-core-section': E_CORE,
-  // G 族 · 鱿烬亡军
+  // G 族 · 鱿鱼亡军
   'foe-g-swarm-skiff': G_SKIFF,
   'foe-g-echo-remnant': G_ECHO,
   'foe-g-nadir-lock': G_NADIR,

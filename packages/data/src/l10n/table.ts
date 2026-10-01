@@ -394,7 +394,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // 入侵族的**全称**（通讯正文用；族字母是简称；中文口径与残骸族名同源，英文同 WRECK_FAMILY_EN）
   "core.weekend.020": { zh: "海盗", en: "Pirate" },
   "core.weekend.021": { zh: "异形生物", en: "Alien" },
-  "core.weekend.022": { zh: "鱿烬亡军", en: "Deadarmy" },
+  "core.weekend.022": { zh: "鱿鱼亡军", en: "Deadarmy" },
   "core.weekend.023": { zh: "墨潮帮", en: "Ink Tide" },
   /* R 族（光环 · Corona Systems · 2026-10-01 船长令建族）—— 名字取自既有定名口径
      （`l10n.ts` 的 `WRECK_FAMILY_EN.r` ＋ `ui.Handbook.381`），**不另立新名**。 */
@@ -2069,7 +2069,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.comms.033": { zh: "漂着的东西比你想象的多", en: "There is more drifting out there than you think" },
   "ui.comms.034": { zh: "并网致谢：前哨站已点亮", en: "Grid thanks: the outpost is online" },
   "ui.comms.035": { zh: "勘探提醒：奥罗荒环的巨构残骸", en: "Prospecting note: megastructure wrecks in the Auro Waste Ring" },
-  "ui.comms.036": { zh: "敌情通报：鱿烬亡军的蜂群", en: "Hostile report: the Deadarmy swarm" },
+  "ui.comms.036": { zh: "敌情通报：鱿鱼亡军的蜂群", en: "Hostile report: the Deadarmy swarm" },
   "ui.comms.037": { zh: "航线须知：低安空域", en: "Route advisory: Low-sec space" },
   "ui.comms.038": { zh: "建站征询：红环航道的泊位", en: "Station proposal: a berth in the Redring Corridor" },
   "ui.comms.039": { zh: "深空备忘：星云带里的信号遮蔽", en: "Deep-space memo: signal masking in the nebula belt" },
@@ -3416,7 +3416,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.359": { zh: "守住中距，用老化的重炮和机库里的第二套火力把仗拖长：一发十秒的巨构残骸炮、放出机群的深层机库、全游戏最厚的结构层。", en: "They hold mid range and drag the fight out with aging heavy guns and a second set of firepower from the hangar: wreck cannons that fire once every ten seconds, deep hangars that release drone groups, and the thickest structure of any hull." },
   "ui.Handbook.360": { zh: "活动星域", en: "Territory" },
   "ui.Handbook.361": { zh: "奥罗荒环的环状废墟带；残骸也散落在别的势力地盘上。", en: "The ring of ruins in the Auro Waste Ring; wrecks also lie scattered across other factions’ ground." },
-  "ui.Handbook.362": { zh: "鱿烬亡军", en: "Deadarmy" },
+  "ui.Handbook.362": { zh: "鱿鱼亡军", en: "Deadarmy" },
   "ui.Handbook.363": { zh: "档案摘要", en: "Summary" },
   "ui.Handbook.364": { zh: "乌贼人残兵与依附的流亡聚落：已经战败，却从未停战。", en: "Squidfolk survivors and the exile settlements attached to them: beaten already, never at peace." },
   "ui.Handbook.365": { zh: "舰体特征", en: "Hull profile" },
@@ -4496,7 +4496,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipArt.004": { zh: "守墓", en: "Gravekeeper" },
   "ui.shipArt.005": { zh: "巨构", en: "Titan" },
   "ui.shipArt.006": { zh: "巡逻", en: "Patrol" },
-  "ui.shipArt.007": { zh: "鱿烬", en: "Deadarmy" },
+  "ui.shipArt.007": { zh: "鱿鱼", en: "Deadarmy" },
   // H 族（墨潮帮 · 2026-09-24 船长定名「The Ink Tide」）：短名取两字「墨潮」（星图标签位窄）
   "ui.shipArt.008": { zh: "墨潮", en: "Ink Tide" },
   // R 族（光环 · Corona Systems · 2026-10-01 船长令「是新势力：余晖」）：短名取两字「光环」（与族名同形）

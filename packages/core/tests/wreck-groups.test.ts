@@ -64,7 +64,7 @@ describe('残骸组表（14 组 · 族 × 地区）', () => {
     expect(byKey.get('d-lo')!.name).toBe('守墓者残骸（低安）') // 船长给的样板
     expect(byKey.get('d-lo')!.rareName).toBe('守墓者稀有残骸（低安）')
     expect(byKey.get('a-hi')!.name).toBe('海盗残骸（高安）') // 船长 2026-09-19：「A族按海盗残骸来」
-    expect(byKey.get('g-wh')!.name).toBe('鱿烬亡军残骸（虫洞）')
+    expect(byKey.get('g-wh')!.name).toBe('鱿鱼亡军残骸（虫洞）')
     for (const g of WRECK_GROUPS) {
       expect(g.name.endsWith(`残骸（${WRECK_REGION_LABELS[g.region]}）`)).toBe(true)
       expect(g.rareName.endsWith(`稀有残骸（${WRECK_REGION_LABELS[g.region]}）`)).toBe(true)
