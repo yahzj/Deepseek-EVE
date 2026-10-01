@@ -411,7 +411,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
     if (recipe === null) return
     const n = Number.parseInt(goalText, 10)
     const r = engine.setLabLoopAt(recipe.id, on, on ? (Number.isFinite(n) && n > 0 ? n : null) : null)
-    if (!r.ok) onToast(cmdText(r) || tr('ui.lab.031'), true)
+    if (!r.ok) onToast(cmdText(r) || tr('ui.hud.021'), true)
   }
   const rate = refineRate(state, ctx)
   /** 可精炼资源（与工业页同一取数口：`visibleItemDefs` + 有 `refine` 配方） */
@@ -1565,6 +1565,65 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                 <h3>
                   <Glyph name="ico-feed" size={13} color="currentColor" /> {tr('ui.hud.067')}
                 </h3>
+                {/**
+                 * **循环实验**（**2026-10-01 船长令**：「实验室本质上也是一个组装机，建议按照组装机的来」
+                 * ＋「**循环应该和组装机一样是放在顶部的**」）—— 一条线只出一批，连续生产靠这个卡片级开关。
+                 *
+                 * 位置照**同级相似项**：组装机那张卡里，循环行是**操作区的第一行**（在原版工业页
+                 * `panels/Industry.tsx` 的 `.app-belt-actions` 顶部、开工键与运转名册之上）⇒ 本页把它放在
+                 * **配方卡（本面板）的顶部**、材料表与开工键之上（与"AI 选择器放配方顶部"那条令同一处）。
+                 * 控件形态也用同级相似项：HUD 家族的开关行（`hud-sw-row` ＋ `hud-sw` ＋ 状态 chip）。
+                 */}
+                {recipe !== null ? (
+                  <label className="hud-sw-row" title={tr('ui.lab.032', { p1: labLoop.on ? tr('ui.Industry.055') : tr('ui.Industry.056') })}>
+                    <span className="hud-row" style={{ gap: 8 }}>
+                      <span>{tr('ui.lab.031')}</span>
+                      <span className="hud-tiny app-dim">{tr('ui.lab.035')}{labRuns.length > 0 ? tr('ui.Industry.113', { p1: labRuns.length }) : ''}</span>
+                    </span>
+                    <span className="hud-row" style={{ gap: 8 }}>
+                      {labLoop.on ? (
+                        <span className="hud-row" style={{ gap: 6 }}>
+                          <span className="hud-tiny">{tr('ui.Industry.058')}</span>
+                          <input
+                            type="number"
+                            min={1}
+                            /** 样式复刻同级相似项：HUD 家族现有的输入类 `hud-search`（只加一个定宽，不自造新类） */
+                            className="hud-search"
+                            style={{ width: 64 }}
+                            placeholder="∞"
+                            value={labGoalDraft !== '' ? labGoalDraft : labLoop.goal > 0 ? String(labLoop.goal) : ''}
+                            title={tr('ui.lab.033')}
+                            onChange={(e) => setLabGoalDraft(e.target.value)}
+                            onBlur={(e) => {
+                              setLabGoalDraft('')
+                              commitLabLoop(true, e.target.value)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                setLabGoalDraft('')
+                                commitLabLoop(true, (e.target as HTMLInputElement).value)
+                              }
+                            }}
+                          />
+                        </span>
+                      ) : null}
+                      {labLoop.produced > 0 ? (
+                        <span className="hud-chip">
+                          {tr('ui.Industry.061')} {labLoop.produced.toLocaleString('zh-CN')} {tr('ui.lab.034')}
+                        </span>
+                      ) : null}
+                      {labLoop.stopWhy.length > 0 ? <span className="hud-chip is-warn">{tr('ui.Industry.062')}{labLoop.stopWhy}</span> : null}
+                      <input
+                        type="checkbox"
+                        className="hud-sw"
+                        checked={labLoop.on}
+                        onChange={(e) =>
+                          commitLabLoop(e.target.checked, e.target.checked ? (labGoalDraft || (labLoop.goal > 0 ? String(labLoop.goal) : '')) : '')
+                        }
+                      />
+                    </span>
+                  </label>
+                ) : null}
                 {/* 实验室：选择器放"配方"顶部（2026-09-30 船长令：「实验室放到配方顶部」） */}
                 <AiCorePick engine={engine} suffix="lab" core={core} usableCores={usableCores} onPick={setCoreSel} />
                 {recipe === null ? (
@@ -1651,62 +1710,6 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                 <h3>
                   <Glyph name="ico-loop" size={13} color="currentColor" /> {tr('ui.hud.080')}
                 </h3>
-                {/**
-                 * **循环实验**（**2026-10-01 船长令**：「实验室本质上也是一个组装机，建议按照组装机的来」）
-                 * —— 一条线只出一批，连续生产靠这个卡片级开关（与组装机那张卡的控件同构）。
-                 * 控件形态照**同级相似项**：HUD 家族的开关行（`hud-sw-row` ＋ `hud-sw` ＋ 状态 chip，
-                 * 见 `ShipPage` 的跃迁燃料活动开关）；文案见 `ui.lab.031~035`。
-                 */}
-                {recipe !== null ? (
-                  <label className="hud-sw-row" title={tr('ui.lab.032', { p1: labLoop.on ? tr('ui.Industry.055') : tr('ui.Industry.056') })}>
-                    <span className="hud-row" style={{ gap: 8 }}>
-                      <span>{tr('ui.lab.031')}</span>
-                      <span className="hud-tiny app-dim">{tr('ui.lab.035')}{labRuns.length > 0 ? tr('ui.Industry.113', { p1: labRuns.length }) : ''}</span>
-                    </span>
-                    <span className="hud-row" style={{ gap: 8 }}>
-                      {labLoop.on ? (
-                        <span className="hud-row" style={{ gap: 6 }}>
-                          <span className="hud-tiny">{tr('ui.Industry.058')}</span>
-                          <input
-                            type="number"
-                            min={1}
-                            /** 样式复刻同级相似项：HUD 家族现有的输入类 `hud-search`（只加一个定宽，不自造新类） */
-                            className="hud-search"
-                            style={{ width: 64 }}
-                            placeholder="∞"
-                            value={labGoalDraft !== '' ? labGoalDraft : labLoop.goal > 0 ? String(labLoop.goal) : ''}
-                            title={tr('ui.lab.033')}
-                            onChange={(e) => setLabGoalDraft(e.target.value)}
-                            onBlur={(e) => {
-                              setLabGoalDraft('')
-                              commitLabLoop(true, e.target.value)
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                setLabGoalDraft('')
-                                commitLabLoop(true, (e.target as HTMLInputElement).value)
-                              }
-                            }}
-                          />
-                        </span>
-                      ) : null}
-                      {labLoop.produced > 0 ? (
-                        <span className="hud-chip">
-                          {tr('ui.Industry.061')} {labLoop.produced.toLocaleString('zh-CN')} {tr('ui.lab.034')}
-                        </span>
-                      ) : null}
-                      {labLoop.stopWhy.length > 0 ? <span className="hud-chip is-warn">{tr('ui.Industry.062')}{labLoop.stopWhy}</span> : null}
-                      <input
-                        type="checkbox"
-                        className="hud-sw"
-                        checked={labLoop.on}
-                        onChange={(e) =>
-                          commitLabLoop(e.target.checked, e.target.checked ? (labGoalDraft || (labLoop.goal > 0 ? String(labLoop.goal) : '')) : '')
-                        }
-                      />
-                    </span>
-                  </label>
-                ) : null}
                 {labRuns.length === 0 ? <div className="hud-tiny">{tr('ui.hud.081')}</div> : null}
                 {labRuns.map((v) => (
                   <div key={v.id} className="hud-row" style={{ gap: 10, marginBottom: 8 }}>

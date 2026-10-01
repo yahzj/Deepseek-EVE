@@ -723,6 +723,66 @@ function LabCard({
         <NetIncomeLine price={batchValue} costIsk={costIsk} buildMs={recipe.cycleMs} />
       </div>
       <div className="app-belt-actions">
+        {/**
+         * **循环实验**（**2026-10-01 船长令**：「实验室本质上也是一个组装机，建议按照组装机的来」＋
+         * 「**循环应该和组装机一样是放在顶部的**」）——
+         * **位置与组装机那张卡逐字同款**：循环行是**操作区的第一行**（在运转名册与开工键**之上**），
+         * 控件结构也照它（`.app-belt-loop` ＋ `.app-toggle` ＋ `.app-mf-goal`）。
+         * 文案用本机器自己那一组（`ui.lab.031~035`；通用词如「目标」「已产」「已停线：」直接复用）。
+         */}
+        <div className="app-belt-loop">
+          <label className="app-toggle" title={tr('ui.lab.032', { p1: loop.on ? tr('ui.Industry.055') : tr('ui.Industry.056') })}>
+            <input
+              type="checkbox"
+              className="app-toggle-input"
+              checked={loop.on}
+              onChange={(e) => commitLoop(e.target.checked, e.target.checked ? (goalDraft || (loop.goal > 0 ? String(loop.goal) : '')) : '')}
+            />
+            <span className="app-toggle-track" aria-hidden="true" />
+            <span className="app-toggle-label">{tr('ui.lab.031')}</span>
+          </label>
+          {loop.on ? (
+            <span className="app-mf-goal">
+              {tr('ui.Industry.058')}
+              <input
+                type="number"
+                min={1}
+                className="app-mf-goal-input"
+                placeholder="∞"
+                value={goalDraft !== '' ? goalDraft : loop.goal > 0 ? String(loop.goal) : ''}
+                onChange={(e) => setGoalDraft(e.target.value)}
+                onBlur={(e) => {
+                  setGoalDraft('')
+                  commitLoop(true, e.target.value)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setGoalDraft('')
+                    commitLoop(true, (e.target as HTMLInputElement).value)
+                  }
+                }}
+                title={tr('ui.lab.033')}
+              />
+              {tr('ui.lab.034')}
+              <em className="app-dim">{tr('ui.Industry.060')}</em>
+            </span>
+          ) : null}
+          {loop.produced > 0 ? (
+            <span className="app-mf-made">
+              {tr('ui.Industry.061')} {loop.produced.toLocaleString('zh-CN')} {tr('ui.lab.034')}
+            </span>
+          ) : null}
+          {loop.stopWhy.length > 0 ? (
+            <span className="app-mf-why">
+              {tr('ui.Industry.062')}
+              {loop.stopWhy}
+            </span>
+          ) : null}
+          <span className="app-dim app-mf-note">
+            {tr('ui.lab.035')}
+            {runs.length > 0 ? tr('ui.Industry.113', { p1: runs.length }) : ''}
+          </span>
+        </div>
         {/* 运转单位名册（每台一行：劳动者 + 当前批进度条 + 停）——与精炼炉逐字同款 */}
         {runs.length > 0 ? (
           <div className="app-belt-workers">
@@ -791,65 +851,6 @@ function LabCard({
             {tr('ui.lab.023')}
           </button>
         ) : null}
-        {/**
-         * **循环实验**（**2026-10-01 船长令**：「实验室本质上也是一个组装机，建议按照组装机的来」）——
-         * 一条线只出一批，连续生产靠这个卡片级开关：**结构照组装机那张卡的循环块**
-         * （`.app-belt-loop` ＋ `.app-toggle` ＋ `.app-mf-goal`，见 `panels/Industry.tsx`），
-         * 文案用本机器自己的那一组（`ui.lab.031~035`；通用词如「目标」「已产」「已停线：」直接复用）。
-         */}
-        <div className="app-belt-loop">
-          <label className="app-toggle" title={tr('ui.lab.032', { p1: loop.on ? tr('ui.Industry.055') : tr('ui.Industry.056') })}>
-            <input
-              type="checkbox"
-              className="app-toggle-input"
-              checked={loop.on}
-              onChange={(e) => commitLoop(e.target.checked, e.target.checked ? (goalDraft || (loop.goal > 0 ? String(loop.goal) : '')) : '')}
-            />
-            <span className="app-toggle-track" aria-hidden="true" />
-            <span className="app-toggle-label">{tr('ui.lab.031')}</span>
-          </label>
-          {loop.on ? (
-            <span className="app-mf-goal">
-              {tr('ui.Industry.058')}
-              <input
-                type="number"
-                min={1}
-                className="app-mf-goal-input"
-                placeholder="∞"
-                value={goalDraft !== '' ? goalDraft : loop.goal > 0 ? String(loop.goal) : ''}
-                onChange={(e) => setGoalDraft(e.target.value)}
-                onBlur={(e) => {
-                  setGoalDraft('')
-                  commitLoop(true, e.target.value)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    setGoalDraft('')
-                    commitLoop(true, (e.target as HTMLInputElement).value)
-                  }
-                }}
-                title={tr('ui.lab.033')}
-              />
-              {tr('ui.lab.034')}
-              <em className="app-dim">{tr('ui.Industry.060')}</em>
-            </span>
-          ) : null}
-          {loop.produced > 0 ? (
-            <span className="app-mf-made">
-              {tr('ui.Industry.061')} {loop.produced.toLocaleString('zh-CN')} {tr('ui.lab.034')}
-            </span>
-          ) : null}
-          {loop.stopWhy.length > 0 ? (
-            <span className="app-mf-why">
-              {tr('ui.Industry.062')}
-              {loop.stopWhy}
-            </span>
-          ) : null}
-          <span className="app-dim app-mf-note">
-            {tr('ui.lab.035')}
-            {runs.length > 0 ? tr('ui.Industry.113', { p1: runs.length }) : ''}
-          </span>
-        </div>
       </div>
     </div>
   )
