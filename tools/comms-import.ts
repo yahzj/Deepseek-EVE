@@ -122,13 +122,49 @@ function parseCsv(text: string): string[][] {
   return rows
 }
 
-/** 只读列（改了不生效，回写时跳过；列名照 `comms-说明.csv` 的表头） */
-const READONLY_COLS = new Set([
-  '序号', 'id（只读）', '来源', '发件方', '类型', '段数', '英文覆盖', '前往页签 / 动作', '触发时机',
-])
-/** 本工具**已接线**的可写列（当前只有正文） */
-const WIRED_COLS = new Set(['正文（整篇 · 段与段之间空一行）'])
-/* 其余可写列（主题 / 前往提示 / 前往页）**尚未接线**：只报出差异、不动手（见文件头注"当前接线范围"） */
+/**
+ * **解析 Markdown 工作件**（**主路** —— 船长 2026-10-01：「**不方便用 excel 修改**」）。
+ * 与 `tools/comms-export.ts` 的 `mdWorkbenchOf` **是一对**：改一处必须改另一处。
+ *
+ * 结构：`## <id>` 开节；节内 `主题：` / `前往：` / `正文：` 各起一个字段；正文一直到下一节
+ * （尾部的 `<!-- 只读信息 -->` 注释剔掉）。空值语义与 CSV 一致：**空 = 不改**、`-` = 删字段。
+ */
+function parseMdWorkbench(text: string): Map<string, { subject: string; hintText: string; body: string }> {
+  const out = new Map<string, { subject: string; hintText: string; body: string }>()
+  const src = text.replace(/\r\n/g, '\n')
+  for (const part of src.split(/^## /m).slice(1)) {
+    const nl = part.indexOf('\n')
+    const id = (nl < 0 ? part : part.slice(0, nl)).trim()
+    if (id === '') continue
+    const rest = nl < 0 ? '' : part.slice(nl + 1)
+    const bi = rest.search(/^正文：\s*$/m)
+    const headPart = bi < 0 ? rest : rest.slice(0, bi)
+    let body = bi < 0 ? '' : rest.slice(bi).replace(/^正文：[ \t]*\n?/, '')
+    /**
+     * ⚠ **剔掉导出侧写进去的只读注释与节间分隔线**。
+     * 首版只剔"结尾那个注释"（`\s*$`）⇒ 注释与 `---` 位于"下一节之前"时**漏网**，
+     * 被当成正文写回了源码（段数 3→5）—— **2026-10-01 往返测试抓到的**，故改成不分位置地剔。
+     */
+    body = body
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/^[ \t]*-{3,}[ \t]*$/gm, '')
+      .replace(/^\n+|\n+$/g, '')
+    const pick = (label: string): string => {
+      const m = new RegExp(`^${label}：(.*)$`, 'm').exec(headPart)
+      return m === null ? '' : (m[1] ?? '').trim()
+    }
+    out.set(id, { subject: pick('主题'), hintText: pick('前往'), body })
+  }
+  return out
+}
+
+/**
+ * **接线范围**（口径说明，不参与逻辑）：
+ * - **已接线**：`正文` —— 本工具回写它；
+ * - **未接线**：`主题` / `前往提示` —— **报出差异、不动手**；
+ * - **不给改**：`前往页` / `前往页签 / 动作` —— 技术字段（改动要同时确认落点存在）；
+ * - **只读**：`序号` / `id` / `来源` / `发件方` / `类型` / `段数` / `英文覆盖` / `触发时机`。
+ */
 
 /* ───────────────────────── 数据侧：id → 源文件与当前正文 ───────────────────────── */
 
@@ -215,13 +251,29 @@ function replaceBody(src: string, id: string, segs: readonly string[]): { src: s
 
 /* ───────────────────────── 主流程 ───────────────────────── */
 
-const cap = parseCsv(readCsvSmart(capFile).text)
-const head = cap[0] ?? []
-const col = (name: string): number => head.findIndex((h) => h.startsWith(name))
-const COL = { id: col('id'), body: col('正文'), subject: col('主题') }
-if (COL.id < 0 || COL.body < 0) {
-  console.error(`❌ 表头缺列（id / 正文）：${head.slice(0, 4).join(' | ')}…`)
-  process.exit(1)
+/**
+ * **输入归一**：Markdown 工作件（**主路** —— `npm run comms:export` 出来的 `comms-通讯.md`）
+ * 与 CSV（老路，导出时加 `--csv` 才有）都汇成同一种形状：`id → { subject, hintText, body }`。
+ * 判据 = 文件扩展名 `.md`。
+ */
+const isMd = /\.md$/i.test(capFile)
+const incoming = new Map<string, { subject: string; hintText: string; body: string }>()
+if (isMd) {
+  for (const [id, v] of parseMdWorkbench(readCsvSmart(capFile).text)) incoming.set(id, v)
+} else {
+  const capRows = parseCsv(readCsvSmart(capFile).text)
+  const head = capRows[0] ?? []
+  const at = (name: string): number => head.findIndex((h) => h.startsWith(name))
+  const I = { id: at('id'), body: at('正文'), sub: at('主题'), hint: at('前往提示') }
+  if (I.id < 0 || I.body < 0) {
+    console.error(`❌ 表头缺列（id / 正文）：${head.slice(0, 4).join(' | ')}…`)
+    process.exit(1)
+  }
+  for (const r of capRows.slice(1)) {
+    const id = (r[I.id] ?? '').trim()
+    if (id === '') continue
+    incoming.set(id, { subject: r[I.sub] ?? '', hintText: r[I.hint] ?? '', body: r[I.body] ?? '' })
+  }
 }
 
 /** 原值侧（**从源码现读**）：id → 各可写列的当前值（正文 / 主题 / 前往提示 / 前往页） */
@@ -252,39 +304,35 @@ const skipped: string[] = []
 const problems: string[] = []
 let scanned = 0
 
-for (const r of cap.slice(1)) {
-  const id = (r[COL.id] ?? '').trim()
-  if (id === '') continue
+for (const [id, v] of incoming) {
   scanned++
   const oldText = baseline.get(id)
-  const newText = r[COL.body] ?? ''
+  const newText = v.body
   if (oldText === undefined) {
     problems.push(`⚠ [${id}] 原值里没有这条（新增？本工具不管新增）`)
     continue
   }
   /**
-   * 未接线列：**只在"你写的 ≠ 源码现值"时报**（不是"非空就报" —— 那些列本来就填着值）。
+   * **未接线列**（主题 / 前往提示）：**只在"你写的 ≠ 源码现值"时报**（不是"非空就报" —— 那些列本来就填着值）。
    * 约定同正文：**空 = 不改**；`-` = 删字段。
+   * ⚠ `前往页`（跳哪一页）**不在可改范围**：它是技术字段，改动要同时确认落点存在（`comms-说明.csv` 写明
+   * "要改说一声"）⇒ 导出侧把它放进只读注释，这里自然读不到。
    */
   const src0 = baselineSrc.get(id)
   if (src0 !== undefined) {
-    for (let i = 0; i < head.length; i++) {
-      const name = head[i]!
-      if (READONLY_COLS.has(name) || WIRED_COLS.has(name)) continue
-      const cur =
-        name.startsWith('主题') ? src0.subject
-        : name.startsWith('前往提示') ? src0.hintText
-        : name.startsWith('前往页') ? src0.hintPage
-        : undefined
-      if (cur === undefined) continue
-      const v = (r[i] ?? '').trim()
-      if (v === '' || v === cur.trim()) continue // 空 = 不改
+    const pairs: readonly (readonly [string, string, string])[] = [
+      ['主题', src0.subject, v.subject],
+      ['前往提示', src0.hintText, v.hintText],
+    ]
+    for (const [name, cur, raw] of pairs) {
+      const val = raw.trim()
+      if (val === '' || val === cur.trim()) continue // 空 = 不改
       /**
        * `-` = **删字段**（约定）；源码现值本来就是空 ⇒ 无动作、不报。
-       * ⚠ 船长实际可能写成 `—` / `–`（Excel 自动替换），这里三种破折号都认。
+       * ⚠ 船长实际可能写成 `—` / `–`（Excel 自动替换），三种破折号都认。
        */
-      if (/^[-—–]+$/.test(v) && cur.trim() === '') continue
-      reportOnly.push(`[${id}] ${name}：源码现值「${cur.trim().slice(0, 34)}」→ 你写的「${v.slice(0, 34)}」`)
+      if (/^[-—–]+$/.test(val) && cur.trim() === '') continue
+      reportOnly.push(`[${id}] ${name}：源码现值「${cur.trim().slice(0, 34)}」→ 你写的「${val.slice(0, 34)}」`)
     }
   }
   if (newText.trim() === '' || newText.trim() === oldText.trim()) continue // 空 = 不改
@@ -317,7 +365,7 @@ for (const [f, src] of byFile) writeFileSync(f, src, 'utf8')
 
 const enc = readCsvSmart(capFile).encoding
 console.log(`\n通讯回写（${capFile}）`)
-console.log(`  编码识别：${enc} · 扫描 ${scanned} 条 · 命中改动 ${edits.size} 条`)
+console.log(`  输入格式：${isMd ? 'Markdown 工作件' : 'CSV（老路）'} · 编码识别：${enc} · 扫描 ${scanned} 条 · 命中改动 ${edits.size} 条`)
 for (const [id, e] of edits) {
   console.log(
     `  ✅ [${id}] ${e.from} 段 → ${e.segs.length} 段${e.fixed.length > 0 ? ` ⚠ ${e.fixed.join('；')}` : ''}`,

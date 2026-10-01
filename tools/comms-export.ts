@@ -31,7 +31,14 @@ import { DIALOGUES } from '../packages/data/src/dialogues'
 import { FIRST_TASKS } from '../packages/core/src/firstTasks'
 import { weekendFamilyNameZh } from '../packages/core/src/weekendEvent'
 
-const outDir = process.argv[2] ?? 'content-csv'
+/** 输出目录 = 第一个位置参数（`--csv` 之类的开关不算） */
+const outDir = process.argv.slice(2).find((a) => !a.startsWith('--')) ?? 'content-csv'
+/**
+ * **CSV 默认不写了**（**2026-10-01 船长令**：「**能不能不要导出 CSV，我不方便用 excel 修改**」）；
+ * 现在主交付 = **Markdown 工作件**（纯文本，任何编辑器直接改）＋ xlsx（存档/只读视图）。
+ * 确实需要 CSV（老工作流）时加 `--csv`。
+ */
+const wantCsv = process.argv.includes('--csv')
 mkdirSync(outDir, { recursive: true })
 const ctx = buildSimContext()
 
@@ -270,6 +277,70 @@ function esc(v: unknown): string {
 }
 
 /**
+ * **Markdown 工作件**（**2026-10-01 船长令**：「**能不能不要导出 CSV，我不方便用 excel 修改**」）。
+ *
+ * 为什么加它：CSV/Excel 这条路上船长吃够了亏 —— 多行单元格难编辑、**Excel 另存还会把编码改成
+ * GB18030 并把 `m³` 这类字符写成 `?`**（当日实障）。Markdown **纯文本**：任何编辑器直接改、
+ * 没有编码坑、没有单元格换行问题。
+ *
+ * 格式（**与 `tools/comms-import.ts` 的 `parseMdWorkbench` 是一对，改一处必须改另一处**）：
+ * ```
+ * ## <id>              ← 锚，别动
+ * 主题：…               ← 可改（留空 = 不改；`-` = 删该字段）
+ * 前往：…               ← 可改（同上）
+ * 正文：                ← 标记行，别动
+ * （空行）
+ * 第一段…               ← 空行分段
+ * ```
+ * 只读信息（来源/触发/段数/英文覆盖）放在 `<!-- -->` 注释里：读得到、不会误改。
+ */
+function mdWorkbenchOf(sh: { head: readonly string[]; rows: readonly (readonly (string | number)[])[] }): string {
+  const at = (prefix: string): number => sh.head.findIndex((h) => h.startsWith(prefix))
+  const I = {
+    id: at('id'),
+    sub: at('主题'),
+    body: at('正文'),
+    hint: at('前往提示'),
+    src: at('来源'),
+    from: at('发件方'),
+    trig: at('触发时机'),
+    seg: at('段数'),
+    en: at('英文覆盖'),
+    /* ⚠ `前往页`（跳哪一页）是**技术字段**：船长的改动要同时确认落点存在（见 `comms-说明.csv`），
+       所以它只进只读注释、不给可改行 —— `at('前往页')` 命中的是「前往页」这列（它排在「前往页签 / 动作」前面） */
+    page: at('前往页'),
+  }
+  const cell = (r: readonly (string | number)[], i: number): string => (i < 0 ? '' : String(r[i] ?? '').trim())
+  const out: string[] = [
+    '# 通讯文案工作件（改完把这个文件发回，我按 id 回写）',
+    '',
+    '> **怎么改**：只改 `主题：` / `前往：` / `正文：` 后面**你自己的字**。',
+    '> · **别动** `## ` 开头那一行（那是回写的锚）；别删节、别加节。',
+    '> · 正文**空行分段**（一个空行 = 一段）。',
+    '> · **留空 = 不改**这一段；要删掉某个字段就把它写成 `-`。',
+    '> · `<!-- -->` 里是只读信息（来源/触发/段数），看看就好，不用管。',
+    '',
+  ]
+  for (const r of sh.rows) {
+    const body = cell(r, I.body)
+    out.push('---', '', `## ${cell(r, I.id)}`, '', `主题：${cell(r, I.sub)}`, '')
+    out.push(`前往：${cell(r, I.hint) || '-'}`, '')
+    out.push('正文：', '')
+    if (body !== '') out.push(body, '')
+    const notes = [
+      cell(r, I.src) !== '' ? `来源：${cell(r, I.src)}` : '',
+      cell(r, I.from) !== '' ? `发件方：${cell(r, I.from)}` : '',
+      cell(r, I.trig) !== '' ? `触发：${cell(r, I.trig)}` : '',
+      cell(r, I.page) !== '' ? `前往页：${cell(r, I.page)}` : '',
+      cell(r, I.seg) !== '' ? `段数 ${cell(r, I.seg)}` : '',
+      cell(r, I.en) !== '' ? `英文覆盖 ${cell(r, I.en)}` : '',
+    ].filter((x) => x !== '')
+    if (notes.length > 0) out.push(`<!-- ${notes.join(' ｜ ')} -->`, '')
+  }
+  return out.join('\n')
+}
+
+/**
  * 写盘 + 读回自检（`tsx` 下 tools 走 CJS ⇒ **不能用顶层 await**，故包一层 `main()`）。
  * 读回 = 真开一遍刚写的文件，防止"写了个打不开的 xlsx"。
  */
@@ -289,7 +360,11 @@ async function main(): Promise<void> {
       })
     }
     ws.views = [{ state: 'frozen', ySplit: 1 }]
-    /** CSV 是附带格式：Excel/WPS 开着某张 CSV 时会锁文件（EBUSY）——不该把整次导出弄挂（xlsx 才是主交付） */
+    /**
+     * CSV 是附带格式（**默认不写**，见 `wantCsv` 头注）：Excel/WPS 开着某张 CSV 时会锁文件（EBUSY）
+     * —— 不该把整次导出弄挂。船长改稿走 **Markdown**，不用再碰 CSV。
+     */
+    if (!wantCsv) continue
     try {
       writeFileSync(
         join(outDir, `comms-${sh.name}.csv`),
@@ -300,6 +375,13 @@ async function main(): Promise<void> {
       skipped.push(`comms-${sh.name}.csv`)
     }
   }
+  /** **Markdown 工作件 = 主交付**（船长改稿用；格式与 `tools/comms-import.ts` 的解析是一对） */
+  const sheetMain = SHEETS.find((s) => s.name === '通讯一览')
+  let mdPath = ''
+  if (sheetMain !== undefined) {
+    mdPath = join(outDir, 'comms-通讯.md')
+    writeFileSync(mdPath, mdWorkbenchOf(sheetMain), 'utf8')
+  }
   const xlsxPath = join(outDir, 'comms-workbench.xlsx')
   await wb.xlsx.writeFile(xlsxPath)
 
@@ -307,13 +389,17 @@ async function main(): Promise<void> {
   await back.xlsx.readFile(xlsxPath)
   console.log(`✅ 已写 ${xlsxPath}`)
   for (const ws of back.worksheets) console.log(`   · 表「${ws.name}」：${Math.max(0, ws.rowCount - 1)} 行 × ${ws.columnCount} 列`)
-  if (skipped.length === 0) {
-    console.log(`✅ 同时写了 CSV（UTF-8 + BOM，Excel/WPS 可直接开）：${SHEETS.map((s) => `comms-${s.name}.csv`).join(' · ')}`)
-  } else {
-    console.log(`⚠ 这几张 CSV 没写成（多半是正被 Excel/WPS 打开 ⇒ 关掉再跑一次即可）：${skipped.join(' · ')}`)
-    console.log('   （xlsx 已更新 ✓，不受影响）')
+  if (mdPath !== '') console.log(`✅ **改稿就用这个**（Markdown 纯文本，任何编辑器直接改、无编码坑）：${mdPath}`)
+  if (wantCsv) {
+    if (skipped.length === 0) {
+      console.log(`✅ 同时写了 CSV（--csv）：${SHEETS.map((s) => `comms-${s.name}.csv`).join(' · ')}`)
+    } else {
+      console.log(`⚠ 这几张 CSV 没写成（多半是正被 Excel/WPS 打开 ⇒ 关掉再跑一次即可）：${skipped.join(' · ')}`)
+      console.log('   （xlsx 已更新 ✓，不受影响）')
+    }
   }
-  console.log(`\n改完把 ${xlsxPath} 发回来即可（id 列只读；空单元格 = 不改；要删的字段填 -）。`)
+  console.log(`\n改完把 ${mdPath || xlsxPath} 发回来即可（只改「主题：/前往：/正文：」后面你自己的字；留空 = 不改；要删的字段填 -）。`)
+  console.log(`（${xlsxPath} 是只读存档视图，不用改。）`)
 }
 
 void main().catch((e: unknown) => {
