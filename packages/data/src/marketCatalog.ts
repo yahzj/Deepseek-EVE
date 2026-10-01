@@ -146,7 +146,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //   `demandMultiplier: 0.6` 与弹药同档（消耗品，卖给协会不划算、留着自用）。
   //   ⚠ **2026-09-30 船长令「调整燃料价格」**：同日虚空晶用量 ×10 ⇒ 自产单价 77.57 → **401.57 ISK/单位**
   //   ⇒ 行价 120 → **420**（与自产同价：自产不再是"省钱路"，而是"用虚空晶换时间"；市场退为应急渠道）。】
-  { key: 'jump-fuel', kind: 'item', refId: 'jump-fuel', rarity: 'rare', basePrice: 5_800, demandMultiplier: 0.6, poolTarget: 28_800, supplyFlow: 240, rareQtyMul: 200, rareWeightMul: 3, absorbQtyPerWindow: 14_400 }, // 2026-10-01 船长令「燃料打算抬价，燃料自己制作的成本价格控制在 10%（基础燃料配方）」：420 → **5,800**（基础配方料价 348,940/批 ⇒ 料/价 10.03%）
+  { key: 'jump-fuel', kind: 'item', refId: 'jump-fuel', rarity: 'rare', basePrice: 5_800, demandMultiplier: 0.6, poolTarget: 28_800, supplyFlow: 240, rareQtyMul: 200, rareWeightMul: 3, absorbQtyPerWindow: 14_400 }, // 2026-10-01 船长令「燃料打算抬价，燃料自己制作的成本价格控制在 10%（基础燃料配方）」：420 → **5,800**（定价口径 = 一批料价 ÷ 600 单位 ÷ 10% 取整；净额读数走工具现算，不写进注释）
   /* 实验室后续内容（**2026-09-30 船长令**）：信号发射器与突触加速剂走**奇货档**
    * （船长 2026-09-29 Q8「燃料可买卖放入稀有（但是是池子）。**其他放入奇货**」）。
    * ⚠ 施工期 `unreleased`（效果/界面未接完）——玩家既看不到也买不到；行价 = 我按料价 ×2.4 的口径提的（待船长核）。 */
