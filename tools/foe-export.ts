@@ -346,10 +346,10 @@ const nominalDpsOf = (spec: UnitSpec | undefined, drone: boolean): number => {
 }
 
 /** 逐卡 × 波 × 条目铺平成行（同时把"逐波读数"另存一份给第二张 sheet） */
-function hRows(): { entries: EntryRow[]; waves: EntryRow[] } {
+function familyRows(cards: readonly AnomalyDef[]): { entries: EntryRow[]; waves: EntryRow[] } {
   const entries: EntryRow[] = []
   const waves: EntryRow[] = []
-  for (const card of H_CARDS) {
+  for (const card of cards) {
     const decl = card.waves && card.waves.length > 0 ? card.waves : null
     const n = decl ? decl.length : 1
     for (let wi = 0; wi < n; wi++) {
@@ -475,10 +475,15 @@ const W_COLS: Col[] = [
   { head: '本波名义DPS(试算)', note: '**Excel 公式**：同上汇总「条目DPS(试算)」', width: 16, fmt: '#,##0.0' },
 ]
 
-/** 挂载件（只列 H 族 4 张卡实际用到的那些） */
-const H_MOUNTS = ((): Array<{ id: string; name: string; note: string; nums: string }> => {
+/**
+ * **一个族实际用到的挂载件**（2026-10-01 参数化：原先是 H 族专用，现 H/R 各调一次）。
+ * ⚠ R 族那三件（瞬光跃迁仪 / 叠光装置 / 闪烁过载装置）的字段这里要**逐个补**——
+ * 之前只列了 H 族用到的那几类（冲锋/机群增程/捕获网/修理/召唤），R 族的三件是
+ * `blink` / `overlayDrive` / `flashOverload`，不补就会在表里显示成"无数值"。
+ */
+function mountRows(cards: readonly AnomalyDef[]): Array<{ id: string; name: string; note: string; nums: string }> {
   const used = new Set<string>()
-  for (const c of H_CARDS) for (const s of c.ships ?? []) for (const m of s.mounts ?? s.ship.mounts ?? []) used.add(m)
+  for (const c of cards) for (const s of c.ships ?? []) for (const m of s.mounts ?? s.ship.mounts ?? []) used.add(m)
   return [...used].map((id) => {
     const def = FOE_MOUNTS[id as keyof typeof FOE_MOUNTS]
     const nums: string[] = []
@@ -489,9 +494,18 @@ const H_MOUNTS = ((): Array<{ id: string; name: string; note: string; nums: stri
     if (def?.repairPulse !== undefined) nums.push(`修理脉冲：每 ${Math.round(def.repairPulse.everyMs / 1000)} 秒 ＋${def.repairPulse.armor} 装甲 / ＋${def.repairPulse.hull} 结构`)
     if (def?.reviveEscort !== undefined) nums.push(`支援召唤：每 ${Math.round(def.reviveEscort.everyMs / 1000)} 秒复活一艘（满血 · 不超本波编成）`)
     if (def?.supportCall !== undefined) nums.push('支援呼叫：延迟入场（洞内专属）')
+    // 🔴 R 族三件（2026-10-01 加）
+    if (def?.blink !== undefined) nums.push(`闪现跃迁：被命中时把交战距离改到「本场期望距离」· 冷却 ${Math.round(def.blink.cooldownMs / 1000)} 秒（件上的 ${def.blink.distanceM}m 已不参与位移）`)
+    if (def?.overlayDrive !== undefined) nums.push(`叠光：每开一火 −${def.overlayDrive.stepMs}ms 装填 · 下限 ${def.overlayDrive.floorMs}ms · 伤害 ×${def.overlayDrive.dmgMul}`)
+    if (def?.flashOverload !== undefined) nums.push(`闪烁过载：闪现后护盾回满 · 结构 −上限 ${Math.round(def.flashOverload.hullCostPct * 100)}%（可扣死自毁）`)
+    if (def?.rangeDebuff !== undefined) nums.push(`射程压制：我方武器最远射程 ×${1 - def.rangeDebuff.pct}`)
+    if (def?.evasionBonus !== undefined) nums.push(`闪避 ＋${Math.round(def.evasionBonus.add * 100)} 个百分点`)
     return { id, name: def?.name ?? id, note: def?.note ?? '', nums: nums.join(' · ') }
   })
-})()
+}
+const H_MOUNTS = mountRows(H_CARDS)
+/** R 族（光环）实际用到的挂载件 */
+const R_MOUNTS = mountRows(WEEKEND_FOE_CARDS.filter((a) => a.foeFamily === 'R'))
 
 /** 「无人机（敌用机型）」列定义——2026-09-25 船长：「**我还打算调整敌人无人机属性**」 */
 const D_COLS: Col[] = [
@@ -624,9 +638,6 @@ ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: rows.length + 1, colum
 const xlsxPath = join(OUT_DIR, 'enemy-ships.xlsx')
 
 /* ── ①b H 族 · 入侵卡两张 sheet（同一本工作簿；口径见上方那段注释） ── */
-const { entries: hEntries, waves: hWaves } = hRows()
-const SHEET_E = 'H 族 · 卡条目'
-const SHEET_W = 'H 族 · 逐波'
 /** 表头样式（与舰级表同款） */
 const styleHead = (sheet: ExcelJS.Worksheet, cols: Col[]): void => {
   sheet.columns = cols.map((c) => ({ header: c.head, width: c.width }))
@@ -671,6 +682,22 @@ const assertCleanCsv = (file: string, lines: readonly string[]): void => {
   })
 }
 
+/**
+ * **写一个族的"入侵卡"工作表**（卡条目 ＋ 逐波 ＋ 挂载件）——2026-10-01 参数化：
+ * 原先是 H 族专用，现在 H 族与 R 族各调一次（口径、列、公式完全一致 ⇒ 两族可比）。
+ *
+ * ⚠ 列/公式里的 `SHEET_E` 必须在**本函数内**按 `famLabel` 重算 ⇒ 所以它们在函数体里定义。
+ */
+function writeFamilySheets(
+  famLabel: string,
+  cards: readonly AnomalyDef[],
+  mounts: Array<{ id: string; name: string; note: string; nums: string }>,
+): { entries: EntryRow[]; waves: EntryRow[] } {
+const SHEET_E = `${famLabel} · 卡条目`
+const SHEET_W = `${famLabel} · 逐波`
+const { entries: famEntries, waves: famWaves } = familyRows(cards)
+
+
 const wsE = wb.addWorksheet(SHEET_E, { views: [{ state: 'frozen', xSplit: 2, ySplit: 1 }] })
 styleHead(wsE, E_COLS)
 const E_IDX = (head: string): number => E_COLS.findIndex((c) => c.head === head)
@@ -686,7 +713,7 @@ const E_F_HP = E_IDX('有效总血(试算)')
 const E_F_SHOT = E_IDX('有效单发(试算)')
 const E_F_TOTHP = E_IDX('条目总血(试算)')
 const E_F_TOTDPS = E_IDX('条目DPS(试算)')
-hEntries.forEach((e, i) => {
+famEntries.forEach((e, i) => {
   const s = SHIP_BY_ID.get(e.slot.ship.id)
   const g = gunOf(e.spec)
   const cells: Array<string | number> = [
@@ -718,14 +745,14 @@ hEntries.forEach((e, i) => {
   }
   for (const ci of [E_SCALE, E_F_HP, E_F_SHOT, E_F_TOTHP, E_F_TOTDPS]) r.getCell(ci + 1).numFmt = E_COLS[ci]!.fmt!
 })
-wsE.autoFilter = { from: { row: 1, column: 1 }, to: { row: hEntries.length + 1, column: E_COLS.length } }
+wsE.autoFilter = { from: { row: 1, column: 1 }, to: { row: famEntries.length + 1, column: E_COLS.length } }
 
 const wsW = wb.addWorksheet(SHEET_W, { views: [{ state: 'frozen', xSplit: 2, ySplit: 1 }] })
 styleHead(wsW, W_COLS)
 const W_IDX = (head: string): number => W_COLS.findIndex((c) => c.head === head)
-hWaves.forEach((w, i) => {
+famWaves.forEach((w, i) => {
   const cells: Array<string | number> = [
-    w.cardId, w.cardName, w.threat, w.wave, w.waveUnits, w.waveHpShare, w.waveComp, w.spec !== undefined ? hEntries.filter((e) => e.cardId === w.cardId && e.wave === w.wave).length : 0,
+    w.cardId, w.cardName, w.threat, w.wave, w.waveUnits, w.waveHpShare, w.waveComp, w.spec !== undefined ? famEntries.filter((e) => e.cardId === w.cardId && e.wave === w.wave).length : 0,
     w.waveDesireFrom, w.waveDesire ?? '', w.waveHp ?? '', w.waveDps !== null ? round1(w.waveDps) : '', w.waveDroneDps !== null ? round1(w.waveDroneDps) : '',
     w.waveHp !== null && w.threat > 0 ? round1(w.waveHp / w.threat) : '', 0, 0,
   ]
@@ -745,10 +772,10 @@ hWaves.forEach((w, i) => {
   r.getCell(W_IDX(pHead) + 1).value = sumIf(E_F_TOTDPS)
   for (const h of [dHead, pHead]) r.getCell(W_IDX(h) + 1).numFmt = W_COLS[W_IDX(h)]!.fmt!
 })
-wsW.autoFilter = { from: { row: 1, column: 1 }, to: { row: hWaves.length + 1, column: W_COLS.length } }
+wsW.autoFilter = { from: { row: 1, column: 1 }, to: { row: famWaves.length + 1, column: W_COLS.length } }
 
 /* ── ①c 挂载件（H 族用到的那些）── */
-const wsM = wb.addWorksheet('H 族 · 挂载件', { views: [{ state: 'frozen', ySplit: 1 }] })
+const wsM = wb.addWorksheet(`${famLabel} · 挂载件`, { views: [{ state: 'frozen', ySplit: 1 }] })
 const M_COLS: Col[] = [
   { head: 'id', note: 'foeMounts.ts 的件 id', width: 30 },
   { head: '名称', note: '', width: 22 },
@@ -756,7 +783,29 @@ const M_COLS: Col[] = [
   { head: '说明', note: '', width: 60 },
 ]
 styleHead(wsM, M_COLS)
-H_MOUNTS.forEach((m, i) => writeRow(wsM, M_COLS, [m.id, m.name, m.nums, m.note], i + 2))
+mounts.forEach((m, i) => writeRow(wsM, M_COLS, [m.id, m.name, m.nums, m.note], i + 2))
+return { entries: famEntries, waves: famWaves }
+}
+
+/**
+ * **H 族两张表的名字**（模块级：函数外的 csv 汇总与末尾日志要用它）。
+ * ⚠ R 族那两张由 `writeFamilySheets` 内部按 `R_FAM.label` 现算（名字只在写表那一刻用得到）。
+ */
+const SHEET_E = 'H 族 · 卡条目'
+const SHEET_W = 'H 族 · 逐波'
+
+/**
+ * 🔴 **写"入侵族"工作表**（**船长 2026-10-01 令**：「**将R族相关内容同步到excel，我打算修改**」）——
+ * **H 族与 R 族各写一套**（列 / 公式 / 试算口径完全一致 ⇒ 两族可直接对比）。
+ * 写法与 H 族当年那批逐字同款：卡条目（逐条输入＋实算＋Excel 试算）、逐波（SUMIFS 汇总）、挂载件。
+ * ⚠ 两处**整场覆写**不在表里（要调得去 core）：遇袭 ×0.75 · 旗舰战波表覆写 ＋ 母舰血池。
+ */
+const H_FAM = { label: 'H 族', cards: H_CARDS, mounts: H_MOUNTS }
+const R_FAM = { label: 'R 族（光环）', cards: WEEKEND_FOE_CARDS.filter((a) => a.foeFamily === 'R'), mounts: R_MOUNTS }
+const hSheets = writeFamilySheets(H_FAM.label, H_FAM.cards, H_FAM.mounts)
+writeFamilySheets(R_FAM.label, R_FAM.cards, R_FAM.mounts)
+const hEntries = hSheets.entries
+const hWaves = hSheets.waves
 
 /* ── ①d 无人机（敌用机型）——2026-09-25 船长：「我还打算调整敌人无人机属性」 ── */
 const drones = droneRows()
@@ -892,6 +941,18 @@ for (const w of hWaves) {
   )
 }
 console.log('⚠ H 族敌人的实战值 = 舰级裸值 × 卡面条目倍率；另有整场覆写：遇袭 ×0.75 · 旗舰战波表 4×{units:4,hpShare:0.25} ＋ 母舰血条 = 池子剩余')
+/* ── R 族（光环）汇总读数（2026-10-01：应船长「将R族相关内容同步到excel，我打算修改」） ── */
+{
+  const { entries: rEntries, waves: rWaves } = familyRows(R_FAM.cards)
+  console.log(`\n🔴 R 族（光环）· 入侵卡已同步进同一本工作簿：「${R_FAM.label} · 卡条目」${rEntries.length} 行 · 「${R_FAM.label} · 逐波」${rWaves.length} 行 · 「${R_FAM.label} · 挂载件」${R_FAM.mounts.length} 件`)
+  for (const w of rWaves) {
+    const hp = w.waveHp !== null ? Math.round(w.waveHp) : 0
+    const dps = w.waveDps !== null ? round1(w.waveDps) : 0
+    const ddps = w.waveDroneDps !== null && w.waveDroneDps > 0 ? `+${round1(w.waveDroneDps)}(机群)` : ''
+    console.log(`   · ${w.cardId} 第 ${w.wave} 波：${w.waveComp} · 总血 ${hp.toLocaleString('zh-CN')} · 名义DPS ${dps}${ddps} · 期望交距 ${w.waveDesire ?? '—'}（按 ${w.waveDesireFrom}）`)
+  }
+  console.log(`   · ⚠ R 族另有族格（core/rFamilyDesireOf，2026-10-01）：以「玩家的射程盲区/射程线」为期望距离 —— 风筝＝我方射程上限+100 / 钻盲区＝我方近界−100；表里的「期望交距」列**不含**这条，改它要去 core`)
+}
 }
 
 void main().catch((err: unknown) => {
