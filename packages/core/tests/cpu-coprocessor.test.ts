@@ -139,7 +139,7 @@ describe('协处理器（低槽 CPU 预算扩容件）', () => {
     expect(fitModule(state, 'eat-45', ctx, { shipId: uid }).ok).toBe(true) // 占用 145 = 预算
     // 预演：卸下协处理器 ⇒ 预算回 100 < 占用 145 ⇒ 拒绝，并给出可读原因
     const cpuBay = bayOf(state, uid, 'mod-cpu-3')
-    expect(cpuOverloadText(state, ctx, uid, { remove: cpuBay })).toContain('CPU 超载')
+    expect(cpuOverloadText(state, ctx, uid, { remove: cpuBay })?.errorId).toBe('core.equipment.032')
     expect(unfitAt(state, cpuBay.rack, cpuBay.index, uid, ctx)).toBe(false)
     expect(cpuBudgetOf(state, ctx, uid)).toBe(145) // 拒绝后状态没变
     // 先卸 45 的件（占用回到 100 = 船体预算）⇒ 再卸协处理器（预算 100 = 占用 100）通过

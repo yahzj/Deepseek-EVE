@@ -73,6 +73,25 @@
 
 ---
 
+## 批⑥ 装配域（2026-10-02）
+
+**落码（4 个文件）**：
+
+| # | 文件 | 改动 |
+|---|---|---|
+| 1 | `packages/core/src/equipment.ts` | `cpuOverloadText` 由 `string \| null` 改 **`CoreBlockReason \| null`**（id **`core.equipment.032`** ＋ 参数 `p1` 合计需 / `p2` 预算）；中文原串一字不改；一处调用点（卸件闸）改透传三字段。⚠ 另一处调用点（装件闸 `equipment.ts:648`）**判空即可**——它自带更细的文案 `core.equipment.009`（本就合规） |
+| 2 | `apps/desktop/.../game/engine.ts` | `unfitAtAt` 的 `if (why !== null) return { ok:false, error: why }` 改透传三字段（装配页"为什么卸不掉"直接按语言渲染） |
+| 3 | `packages/core/tests/cpu-coprocessor.test.ts` | 一条断言由"断中文子串"改成**断 id** |
+| 4 | `packages/data/src/l10n/table.ts` | 补 1 条（`core.equipment.032`） |
+
+**读数**：`cpuOverloadText` 这条渲染路径已清；`equipment.ts` 余 4 条**不属本批** —— 2 条 `addLog` 缺 `textId`（批⑨ 日志行）· 1 条 `state.droneLossNotice` 赋值型（批⑩，见下）· 1 条工具误判。
+
+**验证**：`typecheck` 四包 0 错 · core **286 文件 / 3008 用例全绿**。
+
+**⚠ 批⑩（随档提示串）的性质补充（重要，供船长裁）**：`state.droneLossNotice` / `state.autoLoopStopNotice` 这两条**是存档字段**（`state.ts` 持久化）。要让它们按语言渲染，得**新增 `…Id` / `…Params` 字段**（或把字段本身改成结构化对象）⇒ **属改存档结构**，按约定要你先点头，所以本批**没动**，只在盘点稿里挂着。
+
+---
+
 ## 待做（按盘点稿顺序）
 
 批③ 远征/自动循环（9 条）· 批④ 市场（2 条）· 批⑤ 工业（3 条）· 批⑥ 装配（1 条）· 批⑦ 虫洞＋战斗读数（2 条）· 批⑧ B 类待核（9 条）· 批⑨ 日志行（97 处，建议单独立项）· 批⑪ 共享拒因（`shipLockedReason` / `cannotInterruptReason`，跨 6 域，需先申请）。

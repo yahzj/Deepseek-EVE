@@ -2017,6 +2017,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.equipment.030": { zh: "「{p1}」是舰船插件，只能装进插件槽（装上去拆不下来，也不会占高/中/低槽）。", en: "“{p1}” is a ship plug: it can only go into a plug slot (it cannot be removed once fitted, and it never takes a high/mid/low slot)." },
   /* 2026-09-27 同批：载入归正——把误装在高/中/低槽里的插件搬回插件槽或退回装备库 */
   "core.equipment.031": { zh: "舰船插件归正：装回插件槽 {p1} 件、退回装备库 {p2} 件（{p3}）——插件只占插件槽，不占高/中/低槽。", en: "Ship plug fix-up: {p1} refitted into plug slots and {p2} returned to the module bay ({p3}) — plugs only take plug slots, never high/mid/low ones." },
+  "core.equipment.032": { zh: "CPU 超载：合计需 {p1}，预算 {p2}（协处理器只扩容、卸下即收回——先卸下其它装备或无人机）。", en: "CPU overload: {p1} needed against a budget of {p2} — a coprocessor only raises the budget and takes that expansion back when removed, so unfit other modules or drones first." },
   /* 舰船插件（2026-09-26 船长令）：「是一种类似装备的东西，同样装备在舰船上，但是不可拆卸，不可替换」 */
   "core.plug.001": { zh: "已为 {p1} 装上插件：{p2}。插件装上后无法拆下。", en: "{p1} has been fitted with a plug: {p2}. A plug cannot be removed once fitted." },
   "core.plug.002": { zh: "{p1} 不是舰船插件。", en: "{p1} is not a ship plug." },

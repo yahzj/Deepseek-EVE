@@ -19,7 +19,7 @@
  * - 加成查询 = 按家族求和（复数矿枪/货舱扩展线性叠加；AI/采矿/货舱同源单点）。
  */
 import { addLog, shipLockedReason } from './state'
-import type { CommandResult } from './engine'
+import type { CommandResult, CoreBlockReason } from './engine'
 import type { GameState } from './state'
 import type { FittedModules, ModuleDef, ModuleSlot, RackSlot, SimContext, DamageResists, DamageType } from './types'
 import { allFittedIds, isRackModule, MODULE_SLOTS, rackBays, rackLabel, rackOf,  SLOT_LABELS, slotLabel as labelOf } from './labels'
@@ -91,7 +91,7 @@ export function cpuOverloadText(
   ctx: SimContext,
   shipId: string,
   plan?: { remove?: { rack: RackSlot; index: number }; addModuleId?: string },
-): string | null {
+): CoreBlockReason | null {
   const fleet = state.fleet[shipId]
   const shipDef = ctx.ships.get(fleet?.defId ?? shipId)
   if (!fleet || !shipDef || (shipDef.cpu ?? 0) <= 0) return null
@@ -118,7 +118,11 @@ export function cpuOverloadText(
   const budget = cpuBudgetOf(state, ctx, shipId, after)
   const used = fittedCpuUsed(after, ctx, shipDef) + droneCpuUsed(fleet.droneLoad, ctx)
   if (used > budget) {
-    return `CPU 超载：合计需 ${used}，预算 ${budget}（协处理器只扩容、卸下即收回——先卸下其它装备或无人机）。`
+    return {
+      error: `CPU 超载：合计需 ${used}，预算 ${budget}（协处理器只扩容、卸下即收回——先卸下其它装备或无人机）。`,
+      errorId: 'core.equipment.032',
+      errorParams: { p1: used, p2: budget },
+    }
   }
   return null
 }
@@ -799,7 +803,7 @@ export function swapModuleAt(
     ...(oldId !== null ? { remove: { rack: opts.rack, index: opts.index } } : {}),
     addModuleId: moduleId,
   })
-  if (overload !== null) return { ok: false, error: overload }
+  if (overload !== null) return { ok: false, error: overload.error, errorId: overload.errorId, errorParams: overload.errorParams }
   if (oldId !== null) addModule(state, oldId)
   removeModule(state, moduleId)
   bays[opts.index] = moduleId

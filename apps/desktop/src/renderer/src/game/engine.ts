@@ -2438,7 +2438,7 @@ export class GameEngine {
   unfitAtAt(rack: RackSlot, index: number, shipId?: string): CommandResult {
     const uid = shipId ?? this.state.shipId
     const why = cpuOverloadText(this.state, this.ctx, uid, { remove: { rack, index } })
-    if (why !== null) return { ok: false, error: why }
+    if (why !== null) return { ok: false, error: why.error, errorId: why.errorId, errorParams: why.errorParams }
     const ok = unfitAt(this.state, rack, index, shipId, this.ctx)
     if (ok) {
       void this.persist()
