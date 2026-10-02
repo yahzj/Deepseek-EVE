@@ -390,6 +390,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    * 本条改用当时空闲的 `core.combat.007`（只被 `labels.ts` 引用一处，无测试断言）。
    */
   "core.combat.007": { zh: "{p1} 秒点火 / {p2} 秒冷却，开场即点火", en: "{p1} s burn / {p2} s cooldown, ignites as the fight opens" },
+  "core.combat.008": { zh: "劫掠捕获网已失效：{p1} 摆脱了束缚（发动者已被击沉）。", en: "The raider snare net has failed: {p1} broke free (the caster was sunk)." },
+  "core.combat.009": { zh: "劫掠捕获网已失效：{p1} 摆脱了束缚（距离超过 {p2} 米）。", en: "The raider snare net has failed: {p1} broke free (the range opened past {p2} metres)." },
+  "core.combat.010": { zh: "墨潮捕获网已失效：{p1} 挣脱了束缚（网手已被击沉）。", en: "The ink capture web has failed: {p1} tore free (the caster was sunk)." },
+  "core.combat.011": { zh: "墨潮捕获网松开：{p1} 已被击沉，{p2} 的网开始冷却。", en: "The ink capture web released: {p1} was sunk, and {p2}’s web goes on cooldown." },
   // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
   // ⟪文案调整 2026-09-29⟫ 船长令「夺回奖按投入比例缩水」（乙案 · 全清乘平均参与度）：夺回那一刻算不出
   //   最终金额（= 全额 × 玩家在该处的最终投入比例）⇒ 两条日志去掉金额与 `p2/p3` 两个参数，只留规格

@@ -1091,12 +1091,12 @@ function expireFoeWebs(state: GameState, b: import('./state').BattleState, foes:
     const name = b.units[tag]?.name ?? tag
     if (!aliveTags.has(d.byTag)) {
       delete list[tag]
-      addLog(state, 'combat', `劫掠捕获网已失效：${name} 摆脱了束缚（发动者已被击沉）。`)
+      addLog(state, 'combat', `劫掠捕获网已失效：${name} 摆脱了束缚（发动者已被击沉）。`, 'core.combat.008', { p1: name })
       continue
     }
     if (b.distanceM > WEB_BREAK_DIST_M) {
       delete list[tag]
-      addLog(state, 'combat', `劫掠捕获网已失效：${name} 摆脱了束缚（距离超过 ${WEB_BREAK_DIST_M} 米）。`)
+      addLog(state, 'combat', `劫掠捕获网已失效：${name} 摆脱了束缚（距离超过 ${WEB_BREAK_DIST_M} 米）。`, 'core.combat.009', { p1: name, p2: WEB_BREAK_DIST_M })
     }
   }
 }
@@ -1175,7 +1175,7 @@ export function advanceMyCaptureWebs(
         for (const [to, d] of Object.entries(debuffs)) {
           if (d.byTag !== tag) continue
           delete debuffs[to]
-          addLog(state, 'combat', `墨潮捕获网已失效：${b.units[to]?.name ?? to} 挣脱了束缚（网手已被击沉）。`)
+          addLog(state, 'combat', `墨潮捕获网已失效：${b.units[to]?.name ?? to} 挣脱了束缚（网手已被击沉）。`, 'core.combat.010', { p1: b.units[to]?.name ?? to })
         }
       }
     }
@@ -1203,7 +1203,7 @@ export function advanceMyCaptureWebs(
       if (b.foeWebDebuffs) delete b.foeWebDebuffs[st.targetTag]
       delete st.targetTag
       st.cooldownUntilMs = now + cycleMs
-      addLog(state, 'combat', `墨潮捕获网松开：${gone} 已被击沉，${me.name} 的网开始冷却。`)
+      addLog(state, 'combat', `墨潮捕获网松开：${gone} 已被击沉，${me.name} 的网开始冷却。`, 'core.combat.011', { p1: gone, p2: me.name })
     }
     /**
      * ②b **距离超过断开距离 ⇒ 网断开**（**船长 2026-09-26**：「将断开距离提高到4500米，
