@@ -27,7 +27,19 @@
 | `addLog(state, kind, 文本)` 日志行 | **393** 处 | 279 处 | **92 处** |
 | `state.<字段> = 中文串`（随档提示） | —— | —— | **1 处**（＋1 处派生自 return 型） |
 
-⇒ 三类合起来，**会漏到英文界面的裸中文 ≈ 37（已证）＋ 9（待核）＋ 92 ＋ 1 ＝ 139 处**。
+⇒ 三类合起来，按**当时的探针**估 ≈ 139 处。
+
+**🔴 2026-10-02 按期更正（做批① 时发现）**：那个探针只认**行首** `return`，漏了 `if (…) return …` **行内形态**。
+转正后的工具（`npm run l10n:core-zh`，已修掉该漏判）全仓读数是 ——
+
+| 类别 | 更正后 |
+|---|---|
+| return 型（含行内） | **173** 处 |
+| addLog 型（core ＋ 渲染层 game/） | **97** 处 |
+| state 赋值型 | **1** 处 |
+| **合计** | **271** 处（其中渲染层引用了该函数的 **121** 处） |
+
+⇒ **以 271 为准**，本条上面那几张小表只作"当时那一版探针"的过程留档（`shipyard.ts` 就是被行内形态从 10 条补到 **19** 条的实例）。
 这比最初那句「core 里约 102 行未带 id 的中文 `return`」要大 —— 因为**日志行是另一条独立的漏口**：`addLog` 的第 4 参 `textId` 缺了，英文界面那一整行就是中文。
 
 **判据**：英文界面之所以会夹中文，是因为渲染层拿到 core 的中文串后**没有 id 可查**（甲案要求：中文原串照写 ＋ 另给 `errorId`/`textId`，界面走 `cmdText()` 按当前语言渲染；没 id 就只能显示中文原串）。
@@ -153,7 +165,7 @@
 
 | 批 | 域 | 条数 | 内容 | 建议 id 域 |
 |---|---|---|---|---|
-| ① | **舰船** | 10 | 换船 / 维修 / 入仓 的逐档拒因（`CommandResult` 三字段化） | `core.shipyard.*` |
+| ① | **舰船** | ~~10~~ → **19** | 换船 / 维修 / 入仓 的逐档拒因（`CommandResult` 三字段化）—— **✅ 2026-10-02 已做**（`core.shipyard.034~054`；`shipyard.ts` 工具读数 19 → **0**）；工作文档 `docs/design/ship-reject-i18n-20261002.md` | `core.shipyard.*` |
 | ② | **AI 副船** | 11 | 四种指派的拒因 ＋ `aiTaskView.label`（忙态标签）＋ `aiCoreName` 参数注入 | `core.ai.*` · `ui.aiTask.*` |
 | ③ | **远征 / 自动循环** | 9 | `autoLoop*` 的停止与重开原因 | `core.expedition.*` |
 | ④ | **市场** | 2 | 买单预扣不足 ＋ 买基础 AI 核心 | `core.market.*` |
@@ -163,6 +175,7 @@
 | ⑧ | **B 类待核** | 9 | 先把 §3 那两组追完再定 | 待定 |
 | ⑨ | **日志行补 id（定值型）** | **92** | `addLog` 缺 `textId` 的 92 处 —— **按模块分小批**（战斗 12 · 地点/搬运 12 · 虫洞残骸 11 · 远征 10 · 遭遇 7 · 虫洞战 6 …） | 沿用各域既有 id 段（`core.combat.*` · `core.wormhole*.*` · `core.expedition.*` …） |
 | ⑩ | **随档提示串** | 2 | `equipment.ts:863` 的 `droneLossNotice` ＋ `expedition.ts` 的 `stopAutoLoopReason` | `core.equipment.*` · `core.expedition.*` |
+| ⑪ | **共享拒因（跨域）** | 5 | `state.shipLockedReason`（2 条）＋ `activityGate.cannotInterruptReason`（3 条）——前者 **8 文件 15 处**在调，改返回类型要动 6 个域 ⇒ **按 §十八 需先申请** | `core.state.*` · `core.activityGate.*` |
 
 **做法（每批一致，与 2026-09-27 那批同款先例）**：把返回 `string | null` 的闸门改成返回**结构化拒因**（`{ error, errorId, errorParams }`，类型 `CoreBlockReason` 已在 `core/engine.ts`）／给 `CommandResult` 补 `errorId`；中文措辞**一字不改**照抄进 `table.ts` 的 `zh` 列，英文按 `docs/glossary-en.md` 出稿；渲染点改走 `cmdText(...)`。
 **每批闸门**：`typecheck` · core 全量 · `content:check` · `l10n:check` · `l10n:params` · `ui:rot-check`。

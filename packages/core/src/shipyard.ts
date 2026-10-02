@@ -73,14 +73,20 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
   const lock = shipLockedReason(state, shipId, '换驾驶到它')
   if (lock) return { ok: false, error: lock }
   if (shipId === state.shipId) {
-    return { ok: false, error: `正在驾驶的就是 ${shipDisplayName(state, ctx, shipId)}。` }
+    const alreadyName = shipDisplayName(state, ctx, shipId)
+    return { ok: false, error: `正在驾驶的就是 ${alreadyName}。`, errorId: 'core.shipyard.034', errorParams: { p1: alreadyName } }
   }
   if (!ownsShip(state, shipId)) {
     const defName = ctx.ships.get(uidDefId(shipId))?.name ?? shipId
-    return { ok: false, error: `机库里没有 ${defName}——先到商店购买，或用舰船蓝图制造一艘。` }
+    return {
+      ok: false,
+      error: `机库里没有 ${defName}——先到商店购买，或用舰船蓝图制造一艘。`,
+      errorId: 'core.shipyard.035',
+      errorParams: { p1: defName },
+    }
   }
   const def = fleetDefOf(state, ctx, shipId)
-  if (!def) return { ok: false, error: `未知舰船：${shipId}。` }
+  if (!def) return { ok: false, error: `未知舰船：${shipId}。`, errorId: 'core.shipyard.036', errorParams: { p1: shipId } }
   /**
    * **锁定态统一判据**（**2026-09-21 船长令**：「**处在战斗中的时候也设置为不可取消**」＋「3 纳入」
    * ＝ 换驾驶与进洞并入同一条单点）：**战斗中 / 人在洞里 / 换港返航途中** ⇒ 一律拒，措辞与各
@@ -127,14 +133,31 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
         ? '正在交付航线途中'
         : '正在返航空间站途中'
       : `停留在「${ctx.galaxies.get(state.awayGalaxy)?.name ?? state.awayGalaxy}」星系（野外）`
-    return { ok: false, error: `驾驶船${where}——请先「返航空间站」再换船。` }
+    /**
+     * **⟪文案调整 2026-10-02⟫ 拒因结构化（批① 舰船域）**：三种"在哪"各给一个 id ——
+     * 原先整句里夹着 `where` 这个**中文短语参数**，英文界面会中英混排；拆成三条模板后
+     * 中文输出**逐字不变**（模板渲染结果与原来的 `${where}` 拼接完全一致）。
+     */
+    const awayName = state.awayGalaxy === null ? '' : (ctx.galaxies.get(state.awayGalaxy)?.name ?? state.awayGalaxy)
+    const whereId = state.transit.active ? (state.transit.delivery ? 'core.shipyard.037' : 'core.shipyard.038') : 'core.shipyard.039'
+    return {
+      ok: false,
+      error: `驾驶船${where}——请先「返航空间站」再换船。`,
+      errorId: whereId,
+      errorParams: state.transit.active ? {} : { p1: awayName },
+    }
   }
   // 2026-09-08（船长定）：未建成建站点不视为站点——建成（并入基地网络）后才开放换驾驶
   if (state.dockedSite !== null) {
     const dockSite = ctx.stations.get(state.dockedSite)
     const prog = dockSite ? state.stationSites[dockSite.id] : null
     if (dockSite && (!prog || prog.stage < dockSite.tiers.length)) {
-      return { ok: false, error: `「${dockSite.name}」尚未建成：工地不提供停靠与服务，换驾驶需在母港或已建成的副站进行。` }
+      return {
+        ok: false,
+        error: `「${dockSite.name}」尚未建成：工地不提供停靠与服务，换驾驶需在母港或已建成的副站进行。`,
+        errorId: 'core.shipyard.040',
+        errorParams: { p1: dockSite.name },
+      }
     }
   }
   if (state.expedition.active && state.expedition.phase === 'back') {
@@ -438,25 +461,40 @@ export function repairShip(state: GameState, shipId: string, ctx: SimContext): C
   const fleetShip = state.fleet[shipId]
   const def = fleetDefOf(state, ctx, shipId)
   const name = shipDisplayName(state, ctx, shipId)
-  if (!fleetShip || !def) return { ok: false, error: `机库里没有 ${name}。` }
+  if (!fleetShip || !def) return { ok: false, error: `机库里没有 ${name}。`, errorId: 'core.shipyard.041', errorParams: { p1: name } }
   // T8：驾驶船在野外/返航途中时不能维修（维修服务在空间站）
   if (shipId === state.shipId && (state.awayGalaxy !== null || state.standby.active)) {
-    return { ok: false, error: `${name} 不在空间站（野外/掩护巡逻途中）——返航后才能维修。` }
+    return {
+      ok: false,
+      error: `${name} 不在空间站（野外/掩护巡逻途中）——返航后才能维修。`,
+      errorId: 'core.shipyard.042',
+      errorParams: { p1: name },
+    }
   }
   // 2026-09-08（船长定）：未建成建站点不视为站点——维修服务在副站建成（并入基地网络）后开放
   if (state.dockedSite !== null) {
     const dockSite = ctx.stations.get(state.dockedSite)
     const prog = dockSite ? state.stationSites[dockSite.id] : null
     if (dockSite && (!prog || prog.stage < dockSite.tiers.length)) {
-      return { ok: false, error: `「${dockSite.name}」尚未建成：工地不提供停靠与服务，维修需在母港或已建成的副站进行。` }
+      return {
+        ok: false,
+        error: `「${dockSite.name}」尚未建成：工地不提供停靠与服务，维修需在母港或已建成的副站进行。`,
+        errorId: 'core.shipyard.043',
+        errorParams: { p1: dockSite.name },
+      }
     }
   }
   if (fleetShip.durability >= 1 && (fleetShip.armorPct ?? 1) >= 1) {
-    return { ok: false, error: `${name} 状态完好，无需维修。` }
+    return { ok: false, error: `${name} 状态完好，无需维修。`, errorId: 'core.shipyard.044', errorParams: { p1: name } }
   }
   const cost = repairCostIsk(state, shipId, ctx)
   if (state.wallet.isk < cost) {
-    return { ok: false, error: `维修费不足：需要 ${cost.toLocaleString('zh-CN')} 信用点。` }
+    return {
+      ok: false,
+      error: `维修费不足：需要 ${cost.toLocaleString('zh-CN')} 信用点。`,
+      errorId: 'core.shipyard.045',
+      errorParams: { p1: cost.toLocaleString('zh-CN') },
+    }
   }
   state.wallet.isk -= cost
   fleetShip.durability = 1
@@ -743,24 +781,24 @@ export function shipStorable(
   named?: boolean
 } {
   const ship = state.fleet[uid]
-  if (!ship) return { ok: false, reason: '机库里没有这艘船。' }
-  if (state.shipId === uid) return { ok: false, reason: '正在驾驶的船不能入仓：先换到别的船上。' }
-  if (state.aiAssignments[uid]) return { ok: false, reason: 'AI 任务执行中的船不能入仓，先取消指派。' }
-  if (isShipLocked(state, uid)) return { ok: false, reason: '该船已锁定（防误操作）：先到舰船页解锁。' }
+  if (!ship) return { ok: false, reason: '机库里没有这艘船。', reasonId: 'core.shipyard.046' }
+  if (state.shipId === uid) return { ok: false, reason: '正在驾驶的船不能入仓：先换到别的船上。', reasonId: 'core.shipyard.047' }
+  if (state.aiAssignments[uid]) return { ok: false, reason: 'AI 任务执行中的船不能入仓，先取消指派。', reasonId: 'core.shipyard.048' }
+  if (isShipLocked(state, uid)) return { ok: false, reason: '该船已锁定（防误操作）：先到舰船页解锁。', reasonId: 'core.shipyard.049' }
   // ⚠ 判据与 `mining.shipInReturn` 同义；**这里直接读 state**（不 import mining：mining → shipyard 已有依赖边，
   // 反向 import 会成环——与 `state.shipLockedReason` 直读 `state.wormholeAuto` 同款处置）
-  if (uid in state.shipReturns) return { ok: false, reason: '该船正在返航卸货（换船善后），到港后才能入仓。' }
+  if (uid in state.shipReturns) return { ok: false, reason: '该船正在返航卸货（换船善后），到港后才能入仓。', reasonId: 'core.shipyard.050' }
   const cargoUnits = Object.values(ship.cargo).reduce((a, b) => a + b, 0)
-  if (cargoUnits > 0) return { ok: false, reason: '货仓里有物品，请先清空。' }
+  if (cargoUnits > 0) return { ok: false, reason: '货仓里有物品，请先清空。', reasonId: 'core.shipyard.051' }
   if (allFittedIds(ship.fitted).length > 0) return { ok: false, reason: '还装着模块，请先卸下。' }
   // 舰船插件（船长 2026-09-26：「装有插件的舰船无法放入舰船仓库」）——判据单点 `plugBlockReasonOf`
   // ⚠ 拒因是**结构化**的（`textId` ＋ 中文原文）：界面按 `textId` 取当前语言，引擎日志用 `text`
   const plugBlock = plugBlockReasonOf(state, uid)
   if (plugBlock) return { ok: false, reason: plugBlock.text, reasonId: plugBlock.textId, reasonParams: plugBlock.params }
   if ((ship.durability ?? 1) < 1 || (ship.armorPct ?? 1) < 1) {
-    return { ok: false, reason: '只有满耐久（结构与装甲都完好）的船才能入仓：先维修。' }
+    return { ok: false, reason: '只有满耐久（结构与装甲都完好）的船才能入仓：先维修。', reasonId: 'core.shipyard.052' }
   }
-  if (ship.customName) return { ok: false, reason: '该船有自定义名——入仓会清掉它。', named: true }
+  if (ship.customName) return { ok: false, reason: '该船有自定义名——入仓会清掉它。', reasonId: 'core.shipyard.053', named: true }
   return { ok: true }
 }
 
@@ -775,7 +813,7 @@ export function storeShip(
   if (lock) return { ok: false, error: lock }
   const check = shipStorable(state, uid)
   if (!check.ok && !(check.named === true && opts?.clearName === true)) {
-    return { ok: false, error: check.reason ?? '这艘船不能入仓。' }
+    return { ok: false, error: check.reason ?? '这艘船不能入仓。', errorId: check.reasonId ?? 'core.shipyard.054', errorParams: check.reasonParams }
   }
   const ship = state.fleet[uid]!
   const defId = ship.defId ?? uidDefId(uid)

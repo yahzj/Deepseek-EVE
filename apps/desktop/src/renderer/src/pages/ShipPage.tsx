@@ -960,7 +960,7 @@ export function ShipPage({
                             ? shipState.customName
                               ? tr("ui.ShipPage.167", { p1: shipState.customName })
                               : tr("ui.ShipPage.129")
-                            : storable.reason
+                            : cmdText({ error: storable.reason, errorId: storable.reasonId, errorParams: storable.reasonParams })
                         }
                         onClick={() => requestStore(uid, shipState.customName)}
                       >
