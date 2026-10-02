@@ -1879,13 +1879,30 @@ export function startBattleFor(
   // 开战距离 = 双方所有武器最远射程 + 缓冲（缓冲 = max(100m, 最远射程×10%)，船长 2026-09-05）：
   // 开局从射程外缓冲处开始、双方立即向各自期望交战位置接近——被更远程的敌人压制接近期
   // 属于其战术身份（打远程怪就该先挨一段打/换远程武器应对），不视为需要消除的空窗。
-  // 开战距离：R 族按"它想站的期望距离"入场（族格），其余族照旧用原开战距离
-  battle.distanceM = rDesire ?? openM
-  // 🔴 **R 族族格（船长 2026-10-01 正解）**：它站的这个位置**就是本场的目标交战距离**
-  // （R 族来找"我方射程漏洞"⇒ 全场的走位都按这个距离拉扯）；非 R 族 `rDesire === null` ⇒ 不动
+  /**
+   * 🔴 **开场距离 = `openM`，与族格/期望距离/按星系记忆一律无关**（**船长 2026-10-03 报障修**：
+   * 「**开场双方距离的规则已经很明确了，现在的情况是BUG**」）。
+   *
+   * 规则出处 = `docs/design/desire-band-20260915.md`（船长 2026-09-15 裁定）：
+   * ① 开场距离 = `battleOpenM` = 双方所有武器最远射程 ×1.0 ＋ 缓冲 `max(100m, 10%)`；
+   * ② 期望距离只决定**稳态**（"t=30s 起停在期望位"）；
+   * ③ 该文档 §二 的「**明确不动的**」清单第一条就是**开战距离公式**。
+   *
+   * ⚠ **旧写法**（2026-10-02 及以前）：`battle.distanceM = rDesire ?? openM` —— R 族场次**用族格值
+   * 当开场距离** ⇒ **一开场就贴脸**（船长实测：回音荒区 512 m），把上面规则 ① 顶掉了。
+   * R 族"主动贴身"应当是**它自己走过来**（`foeDesireRangeM` 那一支照旧钉着），不是"开局就站在脸上"。
+   */
+  battle.distanceM = openM
+  /**
+   * 🔴 **R 族族格：只钉"敌人自己"的期望距离**（**船长 2026-10-01 正解原话**：
+   * 「**这个机制是给敌人用的，是R族以玩家的盲区为期望目标。并不是玩家使用的。**」）。
+   *
+   * ⚠ **旧写法还多改了一行 `battle.myDesireM = rDesire`**（用**敌人**的偏好去改**我方**的期望距离）
+   * ——与船长的澄清**直接冲突**（等于 R 族场次里玩家拖距离条/按星系记忆全都不算数）⇒ **2026-10-03 删掉**。
+   * 我方期望距离照旧走既有的三级链：显式传入 → 按星系记忆 → 默认档 `desireBandMid`。
+   */
   if (rDesire !== null) {
-    battle.myDesireM = rDesire
-    // 同时把 R 族自己那几艘的期望距离也钉到同一个位置（`foeDesiredRange` 读 `foeDesireRangeM`）
+    // 把 R 族自己那几艘的期望距离钉到"我方射程盲区"位置（`foeDesiredRange` 读 `foeDesireRangeM`）
     for (const f of foes) if (f.family === 'R') f.foeDesireRangeM = rDesire
   }
   // V18B-2：per-gun 多键预载——动能/爆破导弹/能量弹药各按自身装填估量装载
@@ -2262,22 +2279,26 @@ export function startFleetBattleFor(
     battle.distanceM = Math.max(bal.minDistanceM, Math.min(openM, Math.round(want)))
   } else {
     /**
-     * **开战距离（非洞内）**：R 族按"它想站的期望距离"入场（族格，见 `rFamilyDesireOf` 头注）；
-     * 其余族照旧 = 原开战距离（`openM`）⇒ **既有各族零行为变化**。
+     * **开战距离（非洞内）= `openM`，与族格无关**（**船长 2026-10-03 报障修**：「**开场双方距离的规则
+     * 已经很明确了，现在的情况是BUG**」）——规则出处 `docs/design/desire-band-20260915.md`：
+     * 开场距离 = `battleOpenM`（双方最远射程 ×1.0 ＋ 缓冲 10%），且该文档 §二 的「**明确不动的**」
+     * 清单第一条就是**开战距离公式**。⚠ 旧写法 `rDesire ?? openM` 让 R 族场次**用族格值当开场距离**
+     * ⇒ **一开场就贴脸**（船长实测：回音荒区 512 m）。R 族"主动贴身"由它**自己走过来**
+     * （`foeDesireRangeM` 那一支照旧钉着），不是"开局就站在脸上"。
      */
-    battle.distanceM = rDesire ?? openM
-  // 🔴 **R 族族格（船长 2026-10-01 正解）**：它站的这个位置**就是本场的目标交战距离**
-  // （R 族来找"我方射程漏洞"⇒ 全场的走位都按这个距离拉扯）；非 R 族 `rDesire === null` ⇒ 不动
+    battle.distanceM = openM
   }
   /**
-   * 🔴 **R 族族格：以「玩家的射程盲区」为期望距离**（**船长 2026-10-01 三次澄清 · 正解**）——
-   * 见 `rFamilyDesireOf` 的头注。**放在 `if (wormhole) / else` 之外**：洞内洞外都要生效
-   * （洞内的开场距离有自己的口径，但"R 族想站哪"这件事与洞口径无关）。
+   * 🔴 **R 族族格：只钉"敌人自己"的期望距离**（**船长 2026-10-01 正解原话**：
+   * 「**这个机制是给敌人用的，是R族以玩家的盲区为期望目标。并不是玩家使用的。**」）——
+   * **放在 `if (wormhole) / else` 之外**：洞内洞外都要生效（洞内的开场距离有自己的口径，
+   * 但"R 族想站哪"这件事与洞口径无关）。
+   * ⚠ **旧写法还多改了一行 `battle.myDesireM = rDesire`**（用**敌人**的偏好改**我方**的期望距离）
+   * ——与船长的澄清**直接冲突** ⇒ **2026-10-03 删掉**；我方期望距离走既有三级链。
    * ⚠ 非 R 族 `rDesire === null` ⇒ 这一段整体不执行，**既有各族零行为变化**。
    */
   if (rDesire !== null) {
-    battle.myDesireM = rDesire
-    // 同时把 R 族自己那几艘的期望距离也钉到同一个位置（`foeDesiredRange` 读 `foeDesireRangeM`）
+    // 把 R 族自己那几艘的期望距离钉到"我方射程盲区"位置（`foeDesiredRange` 读 `foeDesireRangeM`）
     for (const f of foes) if (f.family === 'R') f.foeDesireRangeM = rDesire
   }
   battle.myFleet = fleet
