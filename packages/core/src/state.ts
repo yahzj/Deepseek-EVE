@@ -908,6 +908,25 @@ export interface BattleFx {
   pd?: boolean
 }
 
+/**
+ * **闪现演出的一段**（**敌我同构**；语义与时序见 `BattleState.foeBlinkQueue` 头注）。
+ *
+ * ⚠ 抽成共享类型是**2026-10-02 §35 决定的**：本批之前只有敌方一张表，我方复用同一套三段语义
+ * ⇒ 两张表必须逐字同形，抽出来才不会各自漂。
+ * - `queuedMs` 触发入队刻 · `vanishMs` 消失起点 · `moveAtMs` **位移兑现**刻 · `appearMs` 出现起点；
+ * - `from` / `to` = 这一跳的起终点（全局距离标量口径）；
+ * - `moved` = 位移是否已兑现（`settleBlinkQueue` 写；防同一拍重复写）。
+ */
+export interface BlinkSeg {
+  queuedMs: number
+  vanishMs: number
+  moveAtMs: number
+  appearMs: number
+  from: number
+  to: number
+  moved?: true
+}
+
 /** V12 实时战斗持久状态（确定性事件步进；只存动态量） */
 export interface BattleState {
   /** 战斗开始（到港）的游戏内时刻 */
@@ -1168,22 +1187,25 @@ export interface BattleState {
    *
    * **排队口径**：多个闪现依次排定，每段占 `过程 ＋ foeBlinkGapMs`（同刻触发 ⇒ 各自往后错开一段）。
    *
-   * ⚠ **不停表**（船长裁定）：战斗时钟照走，只是**演出期间我方不开火**（`blinkHoldFire` 门控）。
+   * ⚠ **不停表**（船长裁定）：战斗时钟照走，只是**演出期间对面那一侧不开火**（`blinkHoldSides` 门控；
+   *   2026-10-02 §35 起**双向**：本表在窗口 ⇒ **我方**停火；`meBlinkQueue` 在窗口 ⇒ **敌方**停火）。
    * ⚠ 与 `foeBlinks` / `foeCharges` 同一口径：`save.ts` 清洗器登记 `kind: 'runtime'`（**有意不入档**）。
    */
-  foeBlinkQueue?: Record<
-    string,
-    {
-      queuedMs: number
-      vanishMs: number
-      moveAtMs: number
-      appearMs: number
-      from: number
-      to: number
-      /** 位移是否已兑现（`settleBlinkQueue` 写；防同一拍重复写） */
-      moved?: true
-    }
-  >;
+  foeBlinkQueue?: Record<string, BlinkSeg>;
+  /**
+   * 🔴 **我方闪现演出的时刻表**（**船长 2026-10-02 §35 令**，原话照抄）：
+   * > 「**「全队舰船」是指触发了闪现的舰船所在的队伍。表现全部一致。时长公用一个旋钮。
+   * > 我方触发闪现时，闪现禁火对敌人也生效**」
+   *
+   * 与 `foeBlinkQueue` **逐字同形**（共用 `BlinkSeg`）：键 = **触发那艘我方舰的 tag**，三段语义同上。
+   * ⚠ **裁定「1甲」**：一次触发 = **一段**（时刻表按触发者记；其余舰只是"跟着演"，不各排一段）
+   *   ⇒ 窗口/禁火时长与队伍人数无关。
+   * ⚠ **必须与敌方表分开两张**：`blinkHoldSides` 按表分侧判（敌方表在窗口 ⇒ **我方**停火；
+   *   我方表在窗口 ⇒ **敌方**停火）。合成一张会让"我方自己闪"变成"我方自己停火"。
+   * ⚠ 排队口径与敌方一致：多个闪现依次排定，每段占「过程 ＋ `foeBlinkGapMs`」。
+   * ⚠ `save.ts` 清洗器登记 `kind: 'runtime'`（**有意不入档**，与 `foeBlinkQueue` / `meBlinks` 同款）。
+   */
+  meBlinkQueue?: Record<string, BlinkSeg>;
   /**
    * **我方"不被一击带走"保险的运行态账本**（船长 2026-09-16：「血量 100%，单次齐射伤害最多只能造成
    * **总血量 80%** 的伤害（**只对我方生效**）」）。

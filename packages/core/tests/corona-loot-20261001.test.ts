@@ -188,29 +188,28 @@ describe('R 族势力特色装备：真实战斗', () => {
   it('⑥ 跃迁规避装置：挨打即拉开，冷却戳 = 触发时刻 + 12 秒', () => {
     const { b, tick } = battleOf(8, { high: ['mod-turret-kin-2'], mid: [BLINK] })
     let sawBlink = false
-    let prevDistance = b.distanceM
     /**
-     * ⚠ **采样步长必须是 100ms（= 引擎基本子步），不能放大到 250**（**2026-10-02 修**）。
-     *
-     * 起因：闪现旋钮 `foeBlinkProcessMs` 由 2000 回调到 **400** 后，本用例一度变红
-     * （读数 `5355 → 5355`，**恰好相等**）。取数（100ms 采样）看清了真因，**机制没坏**：
-     *   ① `t≈100` **我方**挨打 → `markMeBlink` 立刻写 `distanceM`：**5355 → 9372**（闪现生效）；
-     *   ② `t≈133` **敌舰**的闪现到点（`moveAtMs = 旋钮 ÷ 3`）→ `settleBlinkQueue` 把**同一根**
-     *      `distanceM` 写回它自己的目标 **5355**。
-     * 本仓只有**一根距离标量**（空间是 1 维）⇒ 两条闪现同拍相继写它时**后写者胜**，与我方闪现
-     * 是否生效无关。250ms 采样会把 ①② **揉进同一拍**（2~3 个子步）⇒ 净变化 0 ⇒ 假红。
-     * ⚠ 之所以在 2000ms 下没暴露：那时 `moveAtMs = 667`，落在**下一拍**，撞不上。
-     * ⇒ 采样回到引擎子步粒度后，本拍里我方那次写就是**最后一个写者**，"本拍距离 > 上一拍"重新成立，
-     * 且**与旋钮取值无关**（每一步长恰一个子步，跨子步的覆写再也藏不进同一拍）。
+     * 🔴 **判据 2026-10-02 §35 换成"引擎权威记录"（`meBlinkQueue`）**——**裁定「2甲」**把
+     * 我方位移由"触发即写"改成"`moveAtMs` 才兑现"之后，**"本拍距离比上一拍更远"这条代理断言就没有
+     * 意义了**（位移要等 1/3 段之后才落，且本仓只有一根距离标量、敌我闪现同拍会互相覆写——§34 那条
+     * 假红正是这么来的）。⇒ 直接核引擎排出来的那一段：**起终点真的拉开了 ＋ 三段时刻 = 旋钮**。
      */
     for (let t = 100; t <= 200_000 && b.ended === null; t += 100) {
-      prevDistance = b.distanceM
       tick(t)
       const stamps = Object.values(b.meBlinks ?? {})
       if (stamps.length > 0) {
         sawBlink = true
-        // 闪现 = 距离突变（本仓只有一根距离标量）：本拍距离应比上一拍**更远**
-        expect(b.distanceM, '闪现应把我方与敌方的距离拉开').toBeGreaterThan(prevDistance)
+        const tag = Object.keys(b.meBlinks ?? {})[0]!
+        const seg = b.meBlinkQueue?.[tag]
+        expect(seg, '我方闪现应排进 `meBlinkQueue`（§35：三段演出与光柱都靠它）').toBeTruthy()
+        expect(seg!.to, '闪现应把我方与敌方的距离拉开（这一跳的终点 > 起点）').toBeGreaterThan(seg!.from)
+        expect(seg!.appearMs - seg!.vanishMs, '单段演出时长应等于旋钮').toBe(ctx.balance.battle.foeBlinkProcessMs)
+        /**
+         * ⚠ **裁定 2甲的守卫**：触发那一拍位移**还没兑现**（旧口径是"触发即写"）。
+         * `to > from = round(触发时的 distanceM)` ⇒ `distanceM` 必落在 `to` 之下 ⇒ 这两条一起钉住
+         * "位移推迟到 `moveAtMs`"。
+         */
+        expect(b.distanceM, '触发那一拍不应已经换位（位移推迟到 moveAtMs）').not.toBe(seg!.to)
         for (const v of stamps) expect((v - 12_000) % 100, '冷却戳 = 触发时刻 + 12 秒（引擎基本步长 100ms）').toBe(0)
         break
       }
@@ -235,6 +234,33 @@ describe('R 族势力特色装备：真实战斗', () => {
     const without = battleOf(8, { high: ['mod-turret-kin-2'] })
     for (let t = 250; t <= 60_000 && without.b.ended === null; t += 250) without.tick(t)
     expect(Object.keys(without.b.meBlinks ?? {}).length, '不装件 ⇒ 一次都不闪').toBe(0)
+  })
+
+  it('⑨ 我方闪现 ⇒ 敌方也停火（§35 禁火对称化）', () => {
+    /**
+     * 🔴 **船长 2026-10-02 §35 令**（原话照抄）：「**我方触发闪现时，闪现禁火对敌人也生效**」。
+     *
+     * 口径与我方那半**逐字对称**：`meBlinkQueue` 里有段处在 `vanishMs → appearMs` ⇒ **敌方**这一拍
+     * 全门不开火（主炮与敌机群两处增量都过同一道 `blinkHoldSides(...).foe` 门）。
+     * ⚠ 采样只认「**两端都在窗口内**的拍」：窗口若在某一拍**中途**开始/结束，那一拍里窗口外的几个引擎
+     *   子步本来就可以开火 ⇒ 拿它当反例是误判（闪现段都是 100ms 栅格上的，窗口内必有整拍）。
+     */
+    const { b, tick } = battleOf(8, { high: ['mod-turret-kin-2'], mid: [BLINK] })
+    const winAt = (ms: number): boolean =>
+      Object.values(b.meBlinkQueue ?? {}).some((s) => ms >= s.vanishMs && ms < s.appearMs)
+    let heldTicks = 0
+    let frozenTicks = 0
+    for (let t = 100; t <= 200_000 && b.ended === null && heldTicks < 6; t += 100) {
+      const wasHeld = winAt(t - 100)
+      const before = b.stats.foeShots
+      tick(t)
+      if (wasHeld && winAt(t)) {
+        heldTicks += 1
+        if (b.stats.foeShots === before) frozenTicks += 1
+      }
+    }
+    expect(heldTicks, '本场应出现"整拍都在我方闪现窗口内"的拍').toBeGreaterThan(0)
+    expect(frozenTicks, '我方闪现窗口内敌方一枪都不该开').toBe(heldTicks)
   })
 })
 

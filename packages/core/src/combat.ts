@@ -3823,7 +3823,7 @@ function markFoeBlink(
    * 🔴 **排进"闪现演出队列"**（**船长 2026-10-01 令**：「**闪现现在会有一个发生时间，同时触发的多个闪现
    * 需要排队发生**」；口径与时刻表见 `BattleState.foeBlinkQueue`）——
    * **多个闪现依次排定**，每段占「整个过程 ＋ 间隔」，本舰那一段从现在开始。
-   * ⚠ **不停表**（船长裁定）：战斗时钟照走，只是这段窗口里**我方不开火**（`blinkHoldFire` 门控）。
+   * ⚠ **不停表**（船长裁定）：战斗时钟照走，只是这段窗口里**我方不开火**（`blinkHoldSides` 门控）。
    */
   const queue = b.foeBlinkQueue ?? (b.foeBlinkQueue = {})
   /**
@@ -3872,38 +3872,51 @@ function markFoeBlink(
  * 「哪艘正处在消失→等待→出现」里、以及"出现"从哪一刻开始 ⇒ 提前删会让界面失去时间轴。
  * ⚠ 多条闪现**排队**时各自按自己的 `moveAtMs` 兑现；同一拍到点多个 ⇒ 按队列顺序依次写。
  * ⚠ 幂等：写过的段打 `moved` 标记 ⇒ 同一拍内重复调用不会写两次。
+ *
+ * 🔴 **2026-10-02 §35：敌我两张表一起结算**（**船长裁定「2甲」**：「**我方闪现的位移兑现点一并统一**」）
+ * —— 本批之前**只有敌方**走"到点才写"，我方是"触发即写"（旧 `markMeBlink` 里那一行）。
+ * 现在两侧同源：`foeBlinkQueue` 与 `meBlinkQueue` 共用本函数、同一把尺。
+ * ⚠ **本仓只有一根距离标量** ⇒ 两侧同拍到点兑现时**后写者胜**（与 §34 那条假红用例同一个事实，
+ *   不是新引入的问题；用例的采样粒度须细于引擎子步，见 `corona-loot` ⑥ 头注）。
  */
 function settleBlinkQueue(b: import('./state').BattleState): void {
-  const q = b.foeBlinkQueue
-  if (!q) return
   const now = b.lastTickGameMs
-  for (const [tag, seg] of Object.entries(q)) {
-    if (now >= seg.moveAtMs && seg.moved !== true) {
-      b.distanceM = seg.to
-      seg.moved = true
-      void tag
+  for (const q of [b.foeBlinkQueue, b.meBlinkQueue]) {
+    if (!q) continue
+    for (const [tag, seg] of Object.entries(q)) {
+      if (now >= seg.moveAtMs && seg.moved !== true) {
+        b.distanceM = seg.to
+        seg.moved = true
+        void tag
+      }
+      if (now >= seg.appearMs) delete q[tag]
     }
-    if (now >= seg.appearMs) delete q[tag]
   }
 }
 
 /**
- * **闪现演出期间是否禁我方开火**（**船长 2026-10-01 令**：「**不停表，但是敌舰消失时，玩家的武器不会开火
- * （哪怕武器转好了）**」）。
+ * **闪现演出期间"谁禁火"**（**船长 2026-10-01 令**：「**不停表，但是敌舰消失时，玩家的武器不会开火
+ * （哪怕武器转好了）**」；**2026-10-02 §35 扩为双向**：「**我方触发闪现时，闪现禁火对敌人也生效**」）。
  *
- * **口径 = 严格窗口**：只要有**任一敌舰**处在「已消失、还没出现」那一段（`vanishMs → appearMs`，
- * 长度 = `balance.battle.foeBlinkProcessMs`），我方**全部门**这一拍都不开火。
- * 多条闪现排队时，各段窗口之间自然留出可开火的间隙。
+ * **口径 = 严格窗口 ＋ 按表分侧**：某一段处在「已消失、还没出现」（`vanishMs → appearMs`，
+ * 长度 = `balance.battle.foeBlinkProcessMs`），**对面那一侧**这一拍就全门不开火。
+ * - `foeBlinkQueue` 在窗口 ⇒ **`me`**（我方不开火）—— 2026-10-01 的原始口径；
+ * - `meBlinkQueue` 在窗口 ⇒ **`foe`**（敌方不开火）—— 2026-10-02 §35 新增。
  *
- * ⚠ 判定阈是"离开"而不是"到达"：`appearMs` 那一拍**允许开火**（敌舰已经回来了）。
+ * ⚠ **两张表必须分开判**：合成一张会让"我方自己闪"变成"我方自己停火"（详见 `meBlinkQueue` 头注）。
+ * ⚠ 判定阈是"离开"而不是"到达"：`appearMs` 那一拍**允许开火**（那一侧已经回来了）。
  * ⚠ 与既有 `cd > 0` 同一口径：**冷却照推**，转好了就停在 0 等窗口，窗口一过立刻开火（不白扣一发）。
+ * ⚠ **全队一起演不改变本判据**（**裁定 1甲**）：一次触发只排**一段**，窗口按触发者那一段算
+ *   ⇒ 禁火时长与队伍人数无关。
  */
-function blinkHoldFire(b: import('./state').BattleState): boolean {
-  const q = b.foeBlinkQueue
-  if (!q) return false
+function blinkHoldSides(b: import('./state').BattleState): { me: boolean; foe: boolean } {
   const now = b.lastTickGameMs
-  for (const seg of Object.values(q)) if (now >= seg.vanishMs && now < seg.appearMs) return true
-  return false
+  const inWindow = (q: Record<string, import('./state').BlinkSeg> | undefined): boolean => {
+    if (!q) return false
+    for (const seg of Object.values(q)) if (now >= seg.vanishMs && now < seg.appearMs) return true
+    return false
+  }
+  return { me: inWindow(b.foeBlinkQueue), foe: inWindow(b.meBlinkQueue) }
 }
 
 /**
@@ -4000,9 +4013,39 @@ function markMeBlink(
   if (nowMs < (b.meBlinks?.[tag] ?? 0)) return false // 冷却中 ⇒ 再挨打也不闪
   const landed = blinkStep(b.distanceM, b.distanceM + bl.distanceM, bl.distanceM, bal.minDistanceM, maxDistanceM)
   if (landed === b.distanceM) return false // 已被钳到边界 ⇒ 闪不动（不白盖冷却）
-  b.distanceM = landed
+  /** 记账起点 = **取整后的位置**（与 `blinkStep` 内部同一把尺；理由同 `markFoeBlink` 那处） */
+  const from = Math.round(b.distanceM)
   if (!b.meBlinks) b.meBlinks = {}
   b.meBlinks[tag] = nowMs + bl.cooldownMs
+  /**
+   * 🔴 **入队 + 到点才换位**（**船长 2026-10-02 §35 裁定「2甲」**：「**我方闪现的位移兑现点一并统一**」）
+   * —— 旧实现在上面直接写 `b.distanceM = landed`（"触发即换位"）⇒ 我方的三段演出**没有"等待"**，
+   * 而且界面拿不到时刻表（`foeBlinkQueue` 里没有我方 tag）⇒ **演出与光柱一格都不播**（§35.4 的现状）。
+   * 现在与 `markFoeBlink` **逐字同构**：排进 `meBlinkQueue`，位移交 `settleBlinkQueue` 在 `moveAtMs` 兑现。
+   * ⚠ 排队口径与敌方一致：从"已有各段里最晚的结束时刻 ＋ 间隔"起排本段（`.slice()` 先取快照）。
+   */
+  const queue = b.meBlinkQueue ?? (b.meBlinkQueue = {})
+  let startMs = nowMs
+  for (const q of Object.values(queue).slice()) startMs = Math.max(startMs, q.appearMs + blinkGapMs(bal))
+  const vanishMs = startMs
+  /** 三段的边界（同 `foeBlinkQueue` 头注）：消失 → **等待（位移在这一瞬兑现）** → 出现 */
+  const moveAtMs = vanishMs + Math.round((blinkProcessMs(bal) * BLINK_VANISH_SHARE_NUM) / BLINK_SHARE_DEN)
+  const appearMs = vanishMs + blinkProcessMs(bal)
+  queue[tag] = { queuedMs: nowMs, vanishMs, moveAtMs, appearMs, from, to: landed }
+  /**
+   * **演出事件**（与敌方那条同款，含 `speedX`）——界面据此排"消失 / 等待 / 出现"三段与两根光柱。
+   * ⚠ `atMs` 取 **`vanishMs`**（排队之后真正的起点），**不是**触发刻 —— 界面的排队错开就靠它。
+   * ⚠ `speedX` 必须有：引擎给的是**游戏毫秒**、动画跑**真实毫秒**（敌方那条 2026-10-02 补过，此处对齐）。
+   */
+  pushBattleFx(b, {
+    atMs: vanishMs,
+    side: 'me',
+    tag,
+    type: 'kinetic',
+    hit: true,
+    blink: true,
+    speedX: b.speedX ?? 1,
+  })
   return true
 }
 function countFoeBlinksAt(
@@ -4200,10 +4243,14 @@ function stepBattle(
   // 开火失稳代价只在点火期生效（2026-09-10 船长：没点火就不失稳）——每次开火取当前有效乘子，
   // 冷却期 = 1（不改 me 本身，避免污染其它读法）；**逐舰各取自己的 `hitMul`**。
   /**
-   * **本拍是否因"闪现演出"全体禁火**（船长 2026-10-01 令）——**每拍只算一次**（循环外）：
-   * 原来放在"每门炮"里，那是 O(门数 × 队列段数) 的重复扫描，纯浪费。
+   * **本拍"谁因闪现演出禁火"**（船长 2026-10-01 令 ＋ **2026-10-02 §35 扩为双向**）——
+   * **每拍只算一次**（循环外）：原来放在"每门炮"里，那是 O(门数 × 队列段数) 的重复扫描，纯浪费。
+   * ⚠ **两侧各判各的表**：我方开火读 `blinkHold.me`（= 敌表在窗口）；敌方开火读 `blinkHold.foe`
+   * （= 我表在窗口）。判据与理由见 `blinkHoldSides` 头注。
    */
-  const blinkHold = blinkHoldFire(b)
+  const blinkHold = blinkHoldSides(b)
+  /** 敌方那一半（**2026-10-02 §35**）：我表在窗口 ⇒ **敌方**不开火。同拍只算一次，供下面敌方开火段读。 */
+  const foeBlinkHold = blinkHold.foe
   const meAtkOf = (u: UnitSpec): UnitSpec =>
     phaseOf(u) ? u : { ...u, hitMul: effectiveHitMul(u, false) }
   for (const unit of myUnits) {
@@ -4235,8 +4282,10 @@ function stepBattle(
        * ⇒ 只要有**任一敌舰**正处在"消失 → 出现"这段演出窗口里（见 `BattleState.foeBlinkQueue`），
        * 本门**这一拍不开火**（⚠ **冷却照推**：与上面 `cd > 0` 那支同一口径——转好了就停在 0 等窗口结束，
        * 窗口一过立刻开火，不白扣一发）。敌舰都消失了还开火，看着像打空气；这也是船长要的效果。
+       * ⚠ **2026-10-02 §35 起是双向机制的一半**：反方向（我表在窗口 ⇒ 敌方停火）在敌方开火段，
+       * 两处都走 `blinkHoldSides`。
        */
-      if (blinkHold) {
+      if (blinkHold.me) {
         meRt.weapons[wi] = Math.max(0, cd - dtMs)
         continue
       }
@@ -4633,6 +4682,16 @@ function stepBattle(
           rt.weapons[k] = Math.max(0, dcd - dtMs)
           continue
         }
+        /**
+         * 🔴 **闪现演出禁火 · 敌方那一半**（**船长 2026-10-02 §35 令**：「**我方触发闪现时，闪现禁火
+         * 对敌人也生效**」）——我方某段闪现正处在演出窗口里（见 `BattleState.meBlinkQueue`）⇒
+         * **本架敌机这一拍不开火**。口径与我方那处**逐字对称**：**冷却照推**、转好了停在 0 等窗口，
+         * 窗口一过立刻开火（不白扣一发）。
+         */
+        if (foeBlinkHold) {
+          rt.weapons[k] = Math.max(0, dcd - dtMs)
+          continue
+        }
         rt.weapons[k] = aloftReload(dw.reloadMs)
         // 射程门：**受击增程**生效时读 `foeDroneRangeOf`（机型射程 × 倍率），否则就是机型射程
         if (b.distanceM > foeDroneRangeOf(b, dw)) continue // 机群够不着（我方在它射程外）
@@ -4691,6 +4750,18 @@ function stepBattle(
     const w = f.weapons[0]!
     const cd = rt.weapons[0] ?? 0
     if (cd > 0) {
+      rt.weapons[0] = Math.max(0, cd - dtMs)
+      continue
+    }
+    /**
+     * 🔴 **闪现演出禁火 · 敌方那一半**（**船长 2026-10-02 §35 令**：「**我方触发闪现时，闪现禁火
+     * 对敌人也生效**」）——我方某段闪现正处在演出窗口里（见 `BattleState.meBlinkQueue`）⇒
+     * **本舰这一发不开火**。口径与我方那处**逐字对称**：**冷却照推**、转好了停在 0 等窗口，
+     * 窗口一过立刻开火（不白扣一发）。
+     * ⚠ 门槛放在 `foeOverlayReloadOf` **之前**：与"没到点"那支同一口径 ⇒ 停火期间**叠光格不推进**
+     *   （我方那处也是先过禁火门、再调 `meOverlayReloadOf`，两侧一致）。
+     */
+    if (foeBlinkHold) {
       rt.weapons[0] = Math.max(0, cd - dtMs)
       continue
     }
@@ -4758,15 +4829,12 @@ function stepBattle(
       if (
         markMeBlink(gtgt.spec, gtgt.spec.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits))
       ) {
+        /**
+         * ⚠ **演出事件不在这里推了**（**2026-10-02 §35 抽出**）：`markMeBlink` 内部已推一条带
+         * `atMs`（排队后的真实起点）与 `speedX` 的（与 `markFoeBlink` 同款）——在这里再推一条
+         * 会**排两根柱**、而且缺 `speedX`（倍速下时长会跑飞）。这里只留画面提示。
+         */
         pushBattleNotice(b, '跃迁规避：本舰瞬时换位')
-        pushBattleFx(b, {
-          atMs: b.lastTickGameMs,
-          side: 'me',
-          tag: gtgt.spec.tag,
-          type: 'kinetic',
-          hit: true,
-          blink: true,
-        })
       }      continue
     }
     const blindMul = b.distanceM < w.minRangeM ? (w.blindDmgMul ?? 0.3) : 1
@@ -4812,15 +4880,8 @@ function stepBattle(
       if (
         markMeBlink(gtgt.spec, gtgt.spec.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits))
       ) {
+        /** ⚠ 同上：演出事件由 `markMeBlink` 内部推（带 `atMs`/`speedX`），这里只留画面提示。 */
         pushBattleNotice(b, '跃迁规避：本舰瞬时换位')
-        pushBattleFx(b, {
-          atMs: b.lastTickGameMs,
-          side: 'me',
-          tag: gtgt.spec.tag,
-          type: 'kinetic',
-          hit: true,
-          blink: true,
-        })
       }  }
 
   // ── 敌方点防（2026-09-10 船长「无人机可被击落」）：对我方放飞机群逐架结算 ──

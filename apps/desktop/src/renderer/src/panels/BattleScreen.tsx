@@ -218,6 +218,15 @@ const meSpeedRef = useRef(200)
   useBattleFit({ screen: screenRef, stage: stageRef, fit: fitRef, lane: laneRef })
   const meColRef = useRef<HTMLDivElement>(null)
   const foeColRef = useRef<HTMLDivElement>(null)
+  /**
+   * 🔴 **我方闪现光柱的宿主**（**2026-10-02 §35**）——敌方有 `.app-bts-col.is-foe` 当公共列盒，
+   * 我方舰列是**逐舰绝对定位的兄弟节点**、没有公共盒 ⇒ 另起一层零尺寸、钉在舞台原点的宿主。
+   * ⚠ 光柱**不能挂进我方舰船那一列**：那一列在"等待段"挂着 `opacity: 0`，子元素会被一起压成
+   * 全透明（§32 敌方那次的同一个坑）。
+   * ⚠ 宿主自身必须在舞台原点、零尺寸 ⇒ 里面按 `host.offsetLeft/offsetTop`（相对**同一个**定位祖先）
+   * 定位出来的光柱，落点与我方舰位逐像素对齐。
+   */
+  const meFxRootRef = useRef<HTMLDivElement>(null)
   /** 舰首朝向：meFlip = 我方头朝左；foeFlip = 敌方头朝左（默认相向而行：我方朝右、敌方朝左） */
   const facingRef = useRef({ meFlip: false, foeFlip: true })
   /** 已消费的最新开火事件序号（引擎事件环超 48 条会丢最旧——按序号续播而非数组下标，
@@ -280,7 +289,7 @@ const meSpeedRef = useRef(200)
    * **三段**（消失 1/3 → 等待 1/3 → 出现在新位置 1/3）——旧版对半劈 ⇒ 中间那段"发生时间等待"没了。
    * ⚠ **不做逐帧 JS 动画**：只加/摘类，动画交给 CSS（与 `is-arriving`/坠落演出同一纪律）。
    */
-  const blinkRef = useRef<Map<string, { vanish: number; move: number; appear: number; segMs: number }>>(new Map());
+  const blinkRef = useRef<Map<string, { side: 'foe' | 'me'; vanish: number; move: number; appear: number; segMs: number }>>(new Map());
   /**
    * **闪现光柱的待播/在播表**（**船长 2026-10-02**：「**在对应的时间节点播放一个特效**」）——
    * `at` = 该柱的**真实毫秒**时刻、`until` = 播完即清理、`el` = 已建出来的 DOM（不查 DOM，省每帧 query）。
@@ -577,8 +586,15 @@ const meSpeedRef = useRef(200)
        * （敌舰刚闪到自己的期望距离、我方也在期望距离上 ⇒ 双方机动都归零）⇒ `setSmoothM` 不触发
        * 重渲染 ⇒ "推入 ref 等渲染"永远出不来。⚠ 用 `performance.now()` 口径（本表的 `at/until` 就是它）。
        */
-      planBlinkPillars(b, blinkSeenRef.current, blinkFxRef.current, now)
-      syncBlinkPillarDom(blinkFxRef.current, foeColRef.current, now)
+      planBlinkPillars(b, blinkSeenRef.current, blinkFxRef.current, now, {
+        /** ⚠ 传的是**查舰位那棵树**（敌方 = 敌列盒、我方 = 舞台），**不是**光柱宿主 ——
+         *  我方宿主 `meFxRootRef` 是空层、里面没有舰，拿它枚举会一艘都找不到。 */
+        foe: foeColRef.current,
+        me: stageRef.current,
+      })
+      /** ⚠ 两侧各建各删（`side` 过滤）；我方"查舰位"用舞台、"插光柱"用宿主（§35 拆开的那两个角色） */
+      syncBlinkPillarDom(blinkFxRef.current, foeColRef.current, now, 'foe')
+      syncBlinkPillarDom(blinkFxRef.current, stageRef.current, now, 'me', meFxRootRef.current)
 
       // ── 背景视差滚动（2026-09-05 船长规则）：玩家前进（船向右、朝敌接近）→ 星空向左流；
       // 后退（想拉开、船向左退）→ 星空向右流。速度与「驾驶船战斗速度」挂钩（技能已折算）——
@@ -983,12 +999,19 @@ const meSpeedRef = useRef(200)
        * （引擎的 `atMs` 是**游戏毫秒**，动画跑的是**真实毫秒**）。
        */
       if (fx.blink) {
-        const seg = battle.foeBlinkQueue?.[fx.tag]
+        /**
+         * 🔴 **两侧各查各的表**（**2026-10-02 §35**）：敌方段的时刻表在 `foeBlinkQueue`、
+         * 我方段在 `meBlinkQueue`。本批之前**只查敌方那张** ⇒ 我方闪现的事件查不到 ⇒ 演出与光柱
+         * **一格都不播**（§35.4 记的现状，船长据此提的需求）。
+         */
+        const side: 'foe' | 'me' = fx.side === 'me' ? 'me' : 'foe'
+        const seg = (side === 'me' ? battle.meBlinkQueue : battle.foeBlinkQueue)?.[fx.tag]
         if (seg) {
           const toReal = (gameMs: number): number =>
             (gameMs - (battle.lastTickGameMs ?? fx.atMs)) / Math.max(0.01, fx.speedX ?? 1)
           const segMs = (seg.appearMs - seg.vanishMs) / Math.max(0.01, fx.speedX ?? 1)
           blinkRef.current.set(fx.tag, {
+            side,
             vanish: now + toReal(seg.vanishMs),
             move: now + toReal(seg.moveAtMs),
             appear: now + toReal(seg.appearMs),
@@ -1388,6 +1411,42 @@ const meSpeedRef = useRef(200)
       if (now - b.appear >= b.segMs / 3) blinkRef.current.delete(tag)
     }
   }
+  /**
+   * 🔴 **该侧"此刻正在演的那一段"**（**2026-10-02 §35 · 全队一起演**）——船长裁定：
+   * 「**「全队舰船」是指触发了闪现的舰船所在的队伍。表现全部一致**」。
+   *
+   * ⇒ 渲染不再按 `tag` 逐舰取（那是"只有触发那艘演"的旧口径），而是取**该侧**在播的那一段，
+   * **该侧每一艘**挂同一套表现；"谁真的换了位"由引擎的距离标量决定，与表现无关。
+   * ⚠ 时刻仍**全部来自引擎时刻表**（界面不自己另排时间轴 —— §32/§33 两次踩坑的教训）。
+   * ⚠ **裁定「1甲」**：一次触发只排一段 ⇒ 这里最多命中一段，不会出现"几段同时演"。
+   */
+  const blinkSegOfSide = (
+    side: 'foe' | 'me',
+  ): { vanish: number; move: number; appear: number; segMs: number } | undefined => {
+    for (const s of blinkRef.current.values()) {
+      if (s.side !== side) continue
+      if (now >= s.vanish && now < s.appear) return s
+    }
+    return undefined
+  }
+  /**
+   * **我方某一艘此刻挂什么闪现表现**（**2026-10-02 §35**）——全队一起演 ⇒ 该侧每艘拿到**同一份**
+   * （与敌方那三态**逐字同口径**）：
+   * - 消失段（`vanish → move`）：`is-blink-out` ＋ 内联 `--blink-ms`（= 整段的 1/3）；
+   * - 等待段（`move → appear`）：`is-blink-hidden`（全透明、无动画）；
+   * - 出现段：**不挂类**（`is-blink` 走 `animation: none`，只为压掉挂载基线动画）——与敌方一致。
+   */
+  const meBlinkFx = (): { cls: string; style: CSSProperties } => {
+    const seg = blinkSegOfSide('me')
+    if (seg === undefined) return { cls: '', style: {} }
+    if (now >= seg.vanish && now < seg.move) {
+      return { cls: ' is-blink-out', style: { '--blink-ms': `${seg.segMs / 3}ms` } as CSSProperties }
+    }
+    if (now >= seg.move && now < seg.appear) return { cls: ' is-blink-hidden', style: {} }
+    return { cls: '', style: {} }
+  }
+  /** 我方全队此刻的闪现表现——§35 队内一致 ⇒ **算一次就够**（单船/多舰两条路径共用） */
+  const meFx = meBlinkFx()
   // ⚠ **闪现光柱的清理移到 RAF 里了**（`syncBlinkPillarDom`：它同时要摘 DOM，**不能只清表**）——
   //   这里若也 filter，会留下已经不该存在的表项（DOM 已摘、表还在 ⇒ 那根柱再也建不出来）。
 
@@ -2047,7 +2106,7 @@ const meSpeedRef = useRef(200)
      * - 中间段（`move → appear`）：**不可见**（不挂任何类 ⇒ 无动画 ⇒ 停在已换好的新位置且全透明）；
      * - `blinkOn`：**出现**段（`appear → appear + 1/3`）——在新位置淡入。
      */
-    const blinkSeg = blinkRef.current.get(tag)
+    const blinkSeg = blinkSegOfSide('foe')
     /** 消失段动画时长 = 整段的 1/3（出现段已按船长令取消动画） */
     const blinkAnimMs = blinkSeg === undefined ? 0 : blinkSeg.segMs / 3
     /** ① 消失段（`vanish → move`）：播淡出，**位置仍是旧位置** */
@@ -2580,10 +2639,14 @@ const meSpeedRef = useRef(200)
                 const anchor = lay.my[slot] ?? lay.me
                 const left = Math.round(anchor.x - spriteSize / 2)
                 const top = Math.round(anchor.y - (spriteSize * 0.46) / 2)
+                /** 本舰的闪现三态（§35 全队一起演：同侧同段 ⇒ 逐舰一致） */
+                const bk = meFx
                 return (
                   <div
                     key={u.tag}
-                    className={`app-bts-col is-me${defeat && u.leader ? ' is-crippled' : ''}${u.alive ? '' : ' is-down'}${arrivalSide === 'me' ? ' is-arriving' : ''}`}
+                    /** `data-tag` = 闪现光柱的落点锚（`planBlinkPillars` / `syncBlinkPillarDom` 靠它找舰位） */
+                    data-tag={u.tag}
+                    className={`app-bts-col is-me${defeat && u.leader ? ' is-crippled' : ''}${u.alive ? '' : ' is-down'}${arrivalSide === 'me' ? ' is-arriving' : ''}${bk.cls}`}
                     style={
                       arrivalSide === 'me'
                         ? ({
@@ -2592,8 +2655,9 @@ const meSpeedRef = useRef(200)
                             '--arrive-dx': `${arriveDxMe}px`,
                             '--arrive-ms': `${ARRIVAL_FLY_MS}ms`,
                             '--arrive-delay': `${(u.leader ? 0 : drawIdx + 1) * ARRIVAL_STAGGER_MS}ms`,
+                            ...bk.style,
                           } as CSSProperties)
-                        : { left, top }
+                        : { left, top, ...bk.style }
                     }
                   >
                     <span className="app-bts-name">
@@ -2631,12 +2695,14 @@ const meSpeedRef = useRef(200)
               })
             : (
               <div
-                className={`app-bts-col is-me${defeat ? " is-crippled" : ""}${arrivalSide === 'me' ? ' is-arriving' : ''}`}
+                /** 单船路径的战 tag 恒为 `player`（见 `combat.ts` 建 `myFleet` 那处）：光柱落点锚 */
+                data-tag="player"
+                className={`app-bts-col is-me${defeat ? " is-crippled" : ""}${arrivalSide === 'me' ? ' is-arriving' : ''}${meFx.cls}`}
                 ref={meColRef}
                 style={
                   arrivalSide === 'me'
-                    ? ({ left: lay.meLeft, '--arrive-dx': `${arriveDxMe}px`, '--arrive-ms': `${ARRIVAL_FLY_MS}ms` } as CSSProperties)
-                    : { left: lay.meLeft }
+                    ? ({ left: lay.meLeft, '--arrive-dx': `${arriveDxMe}px`, '--arrive-ms': `${ARRIVAL_FLY_MS}ms`, ...meFx.style } as CSSProperties)
+                    : { left: lay.meLeft, ...meFx.style }
                 }
               >
                 <span className="app-bts-name">{meShip?.name}</span>
@@ -2842,6 +2908,13 @@ const meSpeedRef = useRef(200)
               })}
             </div>
           ) : null}
+
+          {/* 🔴 **我方闪现光柱宿主**（**2026-10-02 §35**）：零尺寸、钉在舞台原点。
+              为什么另起一层：敌方有 `.app-bts-col.is-foe` 当公共列盒，**我方舰列是逐舰绝对定位的
+              兄弟节点、没有公共盒**；而光柱又**不能挂进我方舰船那一列**（那一列在等待段挂着
+              `opacity: 0`，子元素会被一起压成全透明 —— §32 敌方那次的同一个坑）。
+              ⚠ 本层自身零尺寸且在原点 ⇒ 里面按 `offsetLeft/offsetTop` 定位的光柱与我方舰位逐像素对齐。 */}
+          <div className="app-bts-fxhost" ref={meFxRootRef} aria-hidden="true" />
 
           {/* 敌方舰列（2026-09-11 船长③：血条跟着各舰走——已随各舰渲染，列底不再竖排血条；
               尸骸原位占槽演出见 foeUnitEls） */}

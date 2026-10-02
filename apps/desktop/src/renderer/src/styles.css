@@ -12502,6 +12502,35 @@ html[data-locale='en'] body {
 .app-bts-unit.is-blink-out {
   animation: app-bts-blink-out var(--blink-ms, 133ms) ease-in both;
 }
+/* 🔴 **我方舰列的三段演出**（**船长 2026-10-02 §35 令**：「**「全队舰船」是指触发了闪现的舰船所在的
+   队伍。表现全部一致**」）——**与上面敌方那三条逐字同口径**，只把选择器换成我方的 `.app-bts-col.is-me`
+   （我方没有 `.app-bts-unit` 那一层；列盒里同样是「舰名 ＋ 舰体 ＋ 血条」，与敌方 `is-unitBar` 同层级
+   ⇒ 敌人怎么演、我方就怎么演，正是船长要的"表现全部一致"）。
+   ⚠ 时长走 `--blink-ms`（渲染层按旋钮 ÷ 3 内联覆盖）⇒ **改旋钮不用改本文件**。
+   ⚠ 三份 `styles*.css` 必须逐字一致（生成件由 `npm run ui:layout-css` 重跑，禁手改生成件）。 */
+.app-bts-col.is-me.is-blink-out {
+  animation: app-bts-blink-out var(--blink-ms, 133ms) ease-in both;
+}
+.app-bts-col.is-me.is-blink-hidden {
+  pointer-events: none;
+  opacity: 0;
+  animation: none;
+}
+.app-bts-col.is-me.is-blink {
+  animation: none;
+}
+/* 🔴 **我方闪现光柱的宿主**（**2026-10-02 §35**）——零尺寸、钉在舞台原点。
+   为什么另起一层：敌方有 `.app-bts-col.is-foe` 当公共列盒，**我方舰列是逐舰绝对定位的兄弟节点、
+   没有公共盒**；而光柱**不能挂进我方舰船那一列**（等待段 `opacity: 0` 会把子元素一起压成全透明）。
+   本层自身零尺寸且在原点 ⇒ 里面按 `offsetLeft/offsetTop` 定位的光柱与舰位逐像素对齐。 */
+.app-bts-fxhost {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
 /* 闪现**特效**（船长 2026-10-02）：「更想的是在对应的时间节点播放一个特效」——
    两个时间点各一根**竖直光柱**（形状在 JSX/DOM 工厂里画）。 */
 /* 🔴 **闪现特效：竖直光柱**（船长 2026-10-02：「特效我更希望接近大鲸鱼根目录的『闪现效果参考.png』」）。
