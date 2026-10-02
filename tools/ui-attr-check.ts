@@ -70,6 +70,8 @@ function crestContract(): string[] {
   // ⚠ 先剥注释再扫：这段契约自己的说明里就写着那个反面写法（不然工具会被自己的注释判红）
   const strip = (s: string): string => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
   const hand = strip(readFileSync(new URL('../apps/desktop/src/renderer/src/panels/Handbook.tsx', import.meta.url), 'utf8'))
+  // 2026-10-02 批次 4s：卡片构造器与详情窗从 Handbook.tsx 拆到 handbookDetail.tsx ⇒ 反面写法要两个文件一起扫
+  const handDetail = strip(readFileSync(new URL('../apps/desktop/src/renderer/src/panels/handbookDetail.tsx', import.meta.url), 'utf8'))
   /**
    * **2026-09-27 迁出单点**：判据与可读名从 `Handbook.tsx` 搬到了 `ui/labelsText.ts`
    * （船长报障「物品仓库内的势力装备，左上角没有角标，能否将所有功能相同的同类型的图标规则进行统一下」
@@ -79,7 +81,7 @@ function crestContract(): string[] {
   const labels = strip(readFileSync(new URL('../apps/desktop/src/renderer/src/ui/labelsText.ts', import.meta.url), 'utf8'))
   const itemView = strip(readFileSync(new URL('../apps/desktop/src/renderer/src/ui/itemView.tsx', import.meta.url), 'utf8'))
   // ① 反面写法：判"有没有族"不许直接比 `!== undefined`（该函数"不是专属"返回 null）
-  for (const [name, src] of [['Handbook.tsx', hand], ['itemView.tsx', itemView], ['labelsText.ts', labels]] as const) {
+  for (const [name, src] of [['Handbook.tsx', hand], ['handbookDetail.tsx', handDetail], ['itemView.tsx', itemView], ['labelsText.ts', labels]] as const) {
     const badNarrow = [...src.matchAll(/factionOfExclusive\([^)]*\)\s*!==\s*undefined/g)]
     if (badNarrow.length > 0) {
       out.push(`${name} 有 ${badNarrow.length} 处 \`factionOfExclusive(...) !== undefined\` —— 该函数"不是专属"返回 null，这么判会把 null 放进卡片（判据请走 crestFamOf()）`)

@@ -522,6 +522,19 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ ·
   ui:rot-check ✅ · 构建 ✅。
 
+### 批次 4s：Handbook.tsx 首拆——`panels/handbookDetail.tsx` 详情窗与卡片构造（2026-10-02 · 零行为变化）
+
+- 手法：两段切接——① 宽类型标签助手整簇 12 行（`kindName`/`slotName`/`roleName` ＋ 头注）；
+  ② 「详情窗」整簇 459 行（`marketKeyOf` · 六个卡片构造器 `moduleCellOf`/`shipCellOf`/`itemCellOf`/
+  `blueprintCellOf`/`shipBlueprintCellOf` · `DetailBody` · `FoeBody` · `CellDetail` · `GroupSection`）——
+  搬入新文件 `panels/handbookDetail.tsx`（§三合规：LF 行尾、无 BOM）——Handbook.tsx **2261 → 1790 行（−471）**。
+- 零环保证：handbookDetail 只从 Handbook **纯类型**借入 `GridCell`/`RawData`（`import type` ⇒ F9 不记边）；
+  Handbook 借回 11 个符号；F9 实测仍 0 环。孤儿 import（`DmgChip`/`itemCombatLines` 等 15 个）随迁清理。
+- 护栏跟随：`tools/arch-guard.ts` SINGLE_SOURCE（`itemCellOf` → handbookDetail.tsx，exported: true）·
+  `docs/single-source.md` 同条 · `tools/ui-attr-check.ts` 族徽契约扫描范围加 handbookDetail.tsx。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ ·
+  ui:rot-check ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、

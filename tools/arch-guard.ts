@@ -114,7 +114,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '标签取词单点（槽类/槽位/舰级/地点/机型…）', symbol: 'kindText', file: 'apps/desktop/src/renderer/src/ui/labelsText.ts', exported: true },
   { concept: '族徽判据收窄（判"有没有族"只走它）＋族徽可读名', symbol: 'crestFamOf', file: 'apps/desktop/src/renderer/src/ui/labelsText.ts', exported: true },
   { concept: '取色跨表兜底（TONES → ICO_TONES → NAV_TONES）', symbol: 'toneOfAny', file: 'apps/desktop/src/renderer/src/ui/tones.ts', exported: true },
-  { concept: '图鉴卡片构造（模块/舰船/物品/蓝图同源）', symbol: 'itemCellOf', file: 'apps/desktop/src/renderer/src/panels/Handbook.tsx', exported: false },
+  { concept: '图鉴卡片构造（模块/舰船/物品/蓝图同源）', symbol: 'itemCellOf', file: 'apps/desktop/src/renderer/src/panels/handbookDetail.tsx', exported: true },
   { concept: '悬停提示接管层（全站唯一延迟与优先级）', symbol: 'TIP_DELAY_MS', file: 'apps/desktop/src/renderer/src/ui/Tooltip.tsx', exported: true },
   { concept: '视口懒挂载（大列表流式加载）', symbol: 'LazyMount', file: 'apps/desktop/src/renderer/src/ui/LazyMount.tsx', exported: true },
   { concept: '势力族色（星图族标签 / 战场敌舰 / 图鉴族徽同源）', symbol: 'FOE_ACCENT', file: 'apps/desktop/src/renderer/src/ui/tones.ts', exported: true },

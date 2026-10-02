@@ -44,7 +44,7 @@
 | 引擎与 `ctx` 的产地（页面取数都从它来） | `GameEngine` · `game/engine.ts` | `arch:guard` F1/F4 |
 | 标签取词（槽类/槽位/舰级/地点/机型/物品大类…） | `labelsText.ts`（`kindText` 一族） | `ui:subs-check` 的「本地化直读契约」 |
 | 族徽判据收窄（判"有没有族"只走它）＋ 族徽可读名（`aria-label` 取势力全称） | `crestFamOf()` / `crestLabelOf()` · `ui/labelsText.ts`（**2026-09-27 从 `panels/Handbook.tsx` 迁出**：图鉴 `IconGrid` 与物品页仓库/货仓的 `ItemGlyphGrid` 共用一份） | `ui:attr-check` 的「族徽判据契约」（改查单点文件 ＋ 两处网格的 `!= null` 兜底） |
-| 图鉴卡片构造（装备/舰船/物品/蓝图/势力同源） | `itemCellOf()` 等共用 builder · `panels/Handbook.tsx` | `ui:attr-check` ＋ `arch:guard` F2 |
+| 图鉴卡片构造（装备/舰船/物品/蓝图/势力同源） | `itemCellOf()` 等共用 builder · `panels/handbookDetail.tsx`（**2026-10-02 从 `panels/Handbook.tsx` 拆出**） | `ui:attr-check` ＋ `arch:guard` F2 |
 | 取色跨表兜底 | `toneOfAny()` · `ui/tones.ts` | 人工核（约定 §九） |
 | 悬停提示接管层（全站唯一延迟 500ms 与"内层优先"） | `ui/Tooltip.tsx`（`TIP_DELAY_MS`） | `ui:tip-check` ＋ `ui:rot-check` |
 | 悬停富卡皮肤（模块/物品/舰船参数表） | `ui/shipInfo.tsx`（`infoCardContent` 一族） | 约定 §九之七（人工核） |
