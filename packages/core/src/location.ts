@@ -250,12 +250,40 @@ export function advanceTransit(state: GameState, ctx: SimContext): void {
     }
   }
   if (d && d.phase === 'to-station') {
-    addLog(state, 'fleet', `交付任务收尾：舰船已返航停靠「${dockedName ?? toName}」${dockedName ? '（副空间站）' : ''}。${unloadNote.text}`)
+    addLog(
+      state,
+      'fleet',
+      `交付任务收尾：舰船已返航停靠「${dockedName ?? toName}」${dockedName ? '（副空间站）' : ''}。${unloadNote.text}`,
+      'core.location.046',
+      {
+        p1: dockedName ?? toName,
+        p2: dockedName ? '（副空间站）' : '',
+        ...(dockedName ? { p2Id: 'core.location.047' } : {}),
+      p3: unloadNote.text,
+      ...(unloadNote.id !== undefined && unloadNote.unit !== undefined
+        ? { p3Id: unloadNote.id, p3p1: unloadNote.unit }
+        : {}),
+      },
+    )
     // 2026-09-08 v2 自动循环：工地还有缺口且仓库有料 → 同一引擎推进内立即续趟出发
     continueDeliverLoop(state, ctx, d.siteId)
     return
   }
-  addLog(state, 'fleet', `返航完成：舰船已停靠「${dockedName ?? toName}」${dockedName ? '（副空间站）' : ''}。${unloadNote.text}`)
+  addLog(
+    state,
+    'fleet',
+    `返航完成：舰船已停靠「${dockedName ?? toName}」${dockedName ? '（副空间站）' : ''}。${unloadNote.text}`,
+    'core.location.048',
+    {
+      p1: dockedName ?? toName,
+      p2: dockedName ? '（副空间站）' : '',
+      ...(dockedName ? { p2Id: 'core.location.047' } : {}),
+      p3: unloadNote.text,
+      ...(unloadNote.id !== undefined && unloadNote.unit !== undefined
+        ? { p3Id: unloadNote.id, p3p1: unloadNote.unit }
+        : {}),
+    },
+  )
 }
 
 /* ─────────── 2026-09-08 建站交付航线 v2（船长定稿：物理载货模型 + 自动多趟循环） ─────────── */
@@ -401,6 +429,16 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
     state,
     'fleet',
     `⚑ 建站交付航线：舰船自「${fromName}」启程，驶往「${toGalaxyName}」的「${site.name}」工地（${durTxt}航程）——本趟装载建材 ${loadedTotal.toLocaleString('zh-CN')} 单位随船（货仓 ${usedV.toLocaleString('zh-CN')}/${capV.toLocaleString('zh-CN')} m³）；到点自动清仓交付，仓库还有建材就自动续趟，全部建完或建材耗尽自动终止。可随时取消（= 停止整个循环）。`,
+    'core.location.049',
+    {
+      p1: fromName,
+      p2: toGalaxyName,
+      p3: site.name,
+      p4: durTxt,
+      p5: loadedTotal.toLocaleString('zh-CN'),
+      p6: usedV.toLocaleString('zh-CN'),
+      p7: capV.toLocaleString('zh-CN'),
+    },
   )
   return { ok: true }
 }
@@ -436,6 +474,20 @@ export function cancelSiteDeliverTrip(state: GameState, ctx: SimContext): Comman
     state,
     'warn',
     `交付航线已取消（无惩罚）：已停止交付循环，舰船立即返航，已停靠「${dockedName ?? (ctx.galaxies.get(base)?.name ?? '母港')}」${dockedName ? '（副空间站）' : ''}${moved > 0 ? `；货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : '。'}`,
+    /* ⟪文案调整 2026-10-02⟫ 批⑨-②：两种收尾各一个 id（沿用同文件 044/045 的做法） */
+    moved > 0 ? 'core.location.051' : 'core.location.050',
+    moved > 0
+      ? {
+          p1: dockedName ?? (ctx.galaxies.get(base)?.name ?? '母港'),
+          p2: dockedName ? '（副空间站）' : '',
+          ...(dockedName ? { p2Id: 'core.location.047' } : {}),
+          p3: moved.toLocaleString('zh-CN'),
+        }
+      : {
+          p1: dockedName ?? (ctx.galaxies.get(base)?.name ?? '母港'),
+          p2: dockedName ? '（副空间站）' : '',
+          ...(dockedName ? { p2Id: 'core.location.047' } : {}),
+        },
   )
   return { ok: true }
 }
@@ -522,7 +574,19 @@ function arriveDeliverSite(
     state.awayGalaxy = null
     state.dockedSite = site.id
     const unloadNote = dockUnloadNote(state, ctx, state.shipId)
-    addLog(state, 'fleet', `本次交付达成「建成」档：舰船已停靠新落成的「${site.name}」（副空间站）。${unloadNote.text}`)
+    addLog(
+      state,
+      'fleet',
+      `本次交付达成「建成」档：舰船已停靠新落成的「${site.name}」（副空间站）。${unloadNote.text}`,
+      'core.location.052',
+      {
+        p1: site.name,
+      p2: unloadNote.text,
+      ...(unloadNote.id !== undefined && unloadNote.unit !== undefined
+        ? { p2Id: unloadNote.id, p2p1: unloadNote.unit }
+        : {}),
+      },
+    )
     return
   }
   const remain = tierRemaining(state, site)
@@ -555,7 +619,21 @@ function arriveDeliverSite(
       }
     }
     const unloadNote = dockUnloadNote(state, ctx, state.shipId)
-    addLog(state, 'fleet', `交付任务收尾：舰船已返航停靠「${dockedName ?? baseName}」${dockedName ? '（副空间站）' : ''}。${unloadNote.text}`)
+    addLog(
+      state,
+      'fleet',
+      `交付任务收尾：舰船已返航停靠「${dockedName ?? baseName}」${dockedName ? '（副空间站）' : ''}。${unloadNote.text}`,
+      'core.location.053',
+      {
+        p1: dockedName ?? baseName,
+        p2: dockedName ? '（副空间站）' : '',
+        ...(dockedName ? { p2Id: 'core.location.047' } : {}),
+      p3: unloadNote.text,
+      ...(unloadNote.id !== undefined && unloadNote.unit !== undefined
+        ? { p3Id: unloadNote.id, p3p1: unloadNote.unit }
+        : {}),
+      },
+    )
     if (site && progAfter.stage < site.tiers.length) continueDeliverLoop(state, ctx, site.id)
     return
   }
@@ -570,6 +648,8 @@ function arriveDeliverSite(
     state,
     'fleet',
     `交付任务收尾：自动返航「${baseName}」（约 ${Math.max(1, Math.round(legMs / 60_000))} 分钟航程）——到站后如仓库还有建材将自动续趟，可随时取消（= 停止整个循环）。`,
+    'core.location.054',
+    { p1: baseName, p2: Math.max(1, Math.round(legMs / 60_000)) },
   )
 }
 
@@ -592,6 +672,8 @@ export function reconcileDockSanity(state: GameState, ctx: SimContext): void {
     site
       ? `「${site.name}」尚未建成：工地不提供停靠——舰船已转为「${galaxyName}」工地现场停留（交付建材可现场提交）。`
       : '停靠的副站已不存在：舰船已返回母港。',
+    site ? 'core.location.055' : 'core.location.056',
+    site ? { p1: site.name, p2: galaxyName } : undefined,
   )
 }
 
