@@ -506,6 +506,8 @@ export interface UnitSpec {
  * （`now >= BattleState.foeBlinks[tag]`；**从未闪过也算可用** ⇒ **开场即生效**，船长原话的读法）。
  *
  * ⚠ 与闪现**共用那 5 秒冷却**是机制的一部分（闪完那 5 秒里没有这层抗性），不是缺陷。
+ * ⚠ **本函数只是那条纯判据**（"这一瞬是否就绪"）：**引擎里请走 `foeStandbyReadyOf`**
+ * （它按**每拍开头**取快照 ⇒ 同一拍整次齐射同命，船长 2026-10-03 裁定）。
  * 缺省（没带件）⇒ 恒 `false`；没带件的单位**一次都不会走到下面的并抗性**。
  */
 export function standbyShieldActiveOf(
@@ -534,12 +536,48 @@ export function withStandbyShield(
 }
 
 /**
- * **本拍打这一艘敌舰要用的层抗**（单点）——带「待机护盾阵列」且闪现不在冷却中时，
+ * **本拍该舰的「待机护盾阵列」是否就绪**（**船长 2026-10-03 裁定**：「**同一拍整次齐射都算**」）——
+ * 判据 = **本拍开头那一瞬**闪现是否在冷却中（`standbyShieldActiveOf` 是那条纯判据），
+ * **同一拍之内恒定不变**。
+ *
+ * 为什么必须按拍定死：闪现是**挨打触发**的（同一发里"伤害结算在前、盖冷却在后"）——
+ * 若现查冷却表，同一拍里只有**触发那一发**吃得到抗性，随后同拍的其余发全被刚盖上的冷却挡掉
+ * （2026-10-03 实测：出荷配置下这层抗性只挡下约 7%，几乎等于没挂）。船长第一句原话是
+ * 「**触发的那次齐射**受到的伤害减半」⇒ 本拍整次齐射同命。
+ *
+ * 取数次序：① 本拍开头由 `stepBattle` 盖好的快照（`BattleState.foeStandbyTick`）；
+ * ② 没有本拍快照（拍外调用 / 增援新 tag）⇒ **现算并补一份本拍快照** ⇒ 语义恒为"本拍开头"。
+ * 没带该件的单位**一次都不写这张表**（`foeStandbyShield` 缺省 ⇒ 直接 `false`，零行为变化）。
+ */
+export function foeStandbyReadyOf(
+  b: {
+    lastTickGameMs?: number
+    foeBlinks?: Record<string, number>
+    foeStandbyTick?: Record<string, { atMs: number; ready: boolean }>
+  },
+  foe: { tag: string; foeStandbyShield?: { resistPct: number } },
+): boolean {
+  if (foe.foeStandbyShield === undefined) return false
+  const now = b.lastTickGameMs ?? 0
+  const reg = b.foeStandbyTick ?? (b.foeStandbyTick = {})
+  const hit = reg[foe.tag]
+  if (hit !== undefined && hit.atMs === now) return hit.ready
+  const ready = standbyShieldActiveOf(foe, b.foeBlinks?.[foe.tag], now)
+  reg[foe.tag] = { atMs: now, ready }
+  return ready
+}
+
+/**
+ * **本拍打这一艘敌舰要用的层抗**（单点）——带「待机护盾阵列」且**本拍就绪**（见 `foeStandbyReadyOf`）时，
  * 把 50% 并进**护盾层**；否则**原样返回 `foe.resists` 那个引用**（零分配、零行为变化）。
  * 只被 `applyFoeUnitDamage`（唯一收口）与 `carryVolleyOverflow`（溢火结转的"打空它要多少"）调用。
  */
 function foeResistsNow(
-  b: { lastTickGameMs?: number; foeBlinks?: Record<string, number> },
+  b: {
+    lastTickGameMs?: number
+    foeBlinks?: Record<string, number>
+    foeStandbyTick?: Record<string, { atMs: number; ready: boolean }>
+  },
   foe: {
     tag: string
     resists?: UnitSpec['resists']
@@ -547,9 +585,23 @@ function foeResistsNow(
   },
 ): UnitSpec['resists'] {
   if (foe.foeStandbyShield === undefined) return foe.resists ?? {}
-  return standbyShieldActiveOf(foe, b.foeBlinks?.[foe.tag], b.lastTickGameMs ?? 0)
+  return foeStandbyReadyOf(b, foe)
     ? withStandbyShield(foe.resists ?? {}, foe.foeStandbyShield.resistPct)
     : (foe.resists ?? {})
+}
+
+/**
+ * **每拍开头：把敌阵里挂了「待机护盾阵列」的单位的就绪态定死**（船长 2026-10-03「同一拍整次齐射都算」）。
+ * 放在 `stepBattle` 最前面（任何伤害结算之前）⇒ 本拍之内无论谁开火、闪没闪，读到的都是**同一份答案**。
+ * 只扫"带该件"的单位（R 族那几档才有）⇒ 其余场次一次判断都不多做。
+ */
+function snapshotFoeStandby(b: import('./state').BattleState, foes: readonly UnitSpec[]): void {
+  const now = b.lastTickGameMs
+  const reg = b.foeStandbyTick ?? (b.foeStandbyTick = {})
+  for (const f of foes) {
+    if (f.foeStandbyShield === undefined) continue
+    reg[f.tag] = { atMs: now, ready: standbyShieldActiveOf(f, b.foeBlinks?.[f.tag], now) }
+  }
 }
 
 /**
@@ -578,6 +630,8 @@ function applyFoeUnitDamage(
     bossDownAtMs?: number
     /** **闪现冷却表**（敌方「瞬光跃迁仪」那一本）——「待机护盾阵列」按它判"闪现是否在冷却中" */
     foeBlinks?: Record<string, number>
+    /** **「待机护盾阵列」的本拍就绪快照**（船长 2026-10-03「同一拍整次齐射都算」） */
+    foeStandbyTick?: Record<string, { atMs: number; ready: boolean }>
   },
   /** 目标单位（认 tag；`resists` 取它自己的层抗，「待机护盾阵列」也取它自己的那份） */
   foe: {
@@ -656,6 +710,8 @@ export function carryVolleyOverflow(
     lastTickGameMs?: number
     /** **闪现冷却表**（供「待机护盾阵列」判据用；缺省 ⇒ 一律算"可用"） */
     foeBlinks?: Record<string, number>
+    /** **「待机护盾阵列」的本拍就绪快照**（船长 2026-10-03「同一拍整次齐射都算」；缺省 ⇒ 现算补一份） */
+    foeStandbyTick?: Record<string, { atMs: number; ready: boolean }>
   },
   foes: readonly UnitSpec[],
   killedTag: string,
@@ -4303,6 +4359,12 @@ function stepBattle(
   // **我方"不被一击带走"保险：本拍账本清零**（船长 2026-09-16；见 `cappedFoeDamage`。
   // 逐拍重置 ⇒ 运行态、不入档；洞外洞内共用这一处）
   b.meVolleyDmg = {}
+  /**
+   * **本拍开头：把「待机护盾阵列」的就绪态定死**（**船长 2026-10-03 裁定**「**同一拍整次齐射都算**」）——
+   * 必须在**任何伤害结算之前**盖这一份（伤害结算在前、闪现盖冷却在后 ⇒ 现查的话只有触发那一发吃得到）。
+   * 只扫带该件的单位 ⇒ 其余场次零成本、零行为变化。
+   */
+  snapshotFoeStandby(b, foes)
   // 主控 = 编队首条（距离/期望交距/胜率口径的锚；单船路径即唯一那条）
   const me = myUnits[0]!
 

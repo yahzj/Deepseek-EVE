@@ -147,8 +147,11 @@ const BATTLE_FIELDS = {
     kind: 'runtime',
     why: '敌「连发」本轮已发数（2026-10-02 加：R 族 T5 光环中枢那把三连发武器——每轮 3 发、发间隔 100ms、逐发随机选靶）：与 `foeBlinks` / `foeOverlayReload` 同一口径，落在"重载即重置循环"内（最多重来一轮）⇒ 有意不入档；缺省不写键 ⇒ 旧档零迁移',
   },
-  foeChargeEnteredAtMs: { kind: 'runtime', why: '2026-09-11 已停用字段，只为不改存档形状而保留声明' },
-  meSpeedMps: {
+  foeStandbyTick: {
+    kind: 'runtime',
+    why: '敌「待机护盾阵列」的本拍就绪快照（2026-10-03 加，船长裁定「同一拍整次齐射都算」）：每拍开头由 stepBattle 重盖一次，重载后按当时的 `foeBlinks` 重算本拍 ⇒ 与 `foeBlinks` 同一口径，有意不入档；缺省不写键 ⇒ 旧档零迁移',
+  },
+  foeChargeEnteredAtMs: { kind: 'runtime', why: '2026-09-11 已停用字段，只为不改存档形状而保留声明' },  meSpeedMps: {
     kind: 'runtime',
     why: '双方战斗机动速度（2026-09-16 加）：逐拍重算，只给距离条两端显示 ⇒ 不入档',
   },

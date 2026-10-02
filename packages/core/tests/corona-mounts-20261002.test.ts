@@ -24,6 +24,7 @@ import {
   applyDamage,
   coronaFocusFalloffOf,
   createFoeSpecs,
+  foeStandbyReadyOf,
   foeWaveStartMsOf,
   standbyShieldActiveOf,
   withStandbyShield,
@@ -284,14 +285,45 @@ describe('待机护盾阵列：护盾层 ×0.5（未冷却 ⇒ 生效 / 冷却�
     /** ① **件恒生效 ⇒ 恰好吃一半**（这条钉住"接线到了唯一收口"） */
     expect(Math.abs(shieldOnly * 2 - plain) / plain, '摘掉闪现时盾层累计掉幅应恰为对照的一半').toBeLessThan(0.03)
     /** ② **出荷配置（闪现 ＋ 待机护盾）⇒ 介于两者之间**：闪现一挨打就闪（5 秒冷却）⇒
-     *     冷却窗内没有这层抗性（船长口径的一部分），故只在冷却窗外生效。 */
-    expect(shipped, '带闪现时仍比裸对照吃得少').toBeLessThan(plain)
-    expect(shipped, '带闪现时不可能达到"恒生效"那种减半').toBeGreaterThan(shieldOnly * 1.5)
+     *     冷却窗内没有这层抗性（船长口径的一部分），故只在冷却窗外生效。
+     *     ⚠ **2026-10-03 船长裁定「同一拍整次齐射都算」后**：触发那一拍的整次齐射都算生效
+     *     ⇒ 出荷配置的减幅明显变大（读数随之变，见下方 `[读数]` 与 ⑪）。 */
+    expect(shipped, '带闪现时仍比裸对照吃得少').toBeLessThan(plain * 0.95)
+    expect(shipped, '带闪现时不可能达到"恒生效"那种减半').toBeGreaterThan(shieldOnly * 1.2)
     console.log(
       `  [读数] 垂暮级盾层累计掉幅（关回充 · 同一场同一随机序列）：` +
         `裸对照 ${plain.toFixed(0)} · 只挂件 ${shieldOnly.toFixed(0)}（恰一半）· ` +
         `出荷（闪现＋件）${shipped.toFixed(0)}（占对照 ${((shipped / plain) * 100).toFixed(1)}%）`,
     )
+  })
+
+  it('⑪ 同一拍整次齐射都算（船长 2026-10-03 裁定）：本拍中途盖了闪现冷却 ⇒ 本拍照旧生效、下一拍才失效', () => {
+    const dusk = specOf(CARD_DUSK, 1, 'foe-r-corona-dusk')!
+    const b = {
+      lastTickGameMs: 1_000,
+      foeBlinks: {} as Record<string, number>,
+      foeStandbyTick: {} as Record<string, { atMs: number; ready: boolean }>,
+    }
+    expect(foeStandbyReadyOf(b, dusk), '本拍开头闪现可用 ⇒ 就绪').toBe(true)
+    /**
+     * 本拍**中途**它挨打触发了闪现、盖上 5 秒冷却 —— 引擎的真实次序就是这个
+     * （同一发里"伤害结算在前、`markFoeBlink` 盖冷却在后"）。
+     */
+    b.foeBlinks[dusk.tag] = 1_000 + 5_000
+    expect(foeStandbyReadyOf(b, dusk), '同一拍内整次齐射同命 ⇒ 仍算就绪（这是船长裁定那一条）').toBe(true)
+    b.lastTickGameMs = 1_100
+    expect(foeStandbyReadyOf(b, dusk), '进了下一拍 ⇒ 冷却中，不生效').toBe(false)
+    b.lastTickGameMs = 6_100
+    expect(foeStandbyReadyOf(b, dusk), '冷却走完那一拍 ⇒ 恢复生效').toBe(true)
+    /** 没带该件的单位：恒 false，且**一次都不写这张快照表**（零行为变化的守卫） */
+    const b2 = {
+      lastTickGameMs: 0,
+      foeBlinks: {} as Record<string, number>,
+      foeStandbyTick: {} as Record<string, { atMs: number; ready: boolean }>,
+    }
+    expect(foeStandbyReadyOf(b2, { tag: 'nobody' })).toBe(false)
+    expect(Object.keys(b2.foeStandbyTick)).toEqual([])
+    console.log('  [读数] 同拍判据：t=1000 就绪 ⇒ 同拍中途盖冷却仍就绪 ⇒ t=1100 起失效 ⇒ t=6100 恢复（不带件者零写入）')
   })
 })
 
