@@ -27,7 +27,6 @@ import {
   FOE_RANGE_DEBUFF_FLOOR_M,
   MY_WEB_RANGE_M,
   WEB_BREAK_DIST_M,
-  activeFoeSpecsOf,
   advanceMyCaptureWebs,
   applyFoeWebDebuff,
   createFoeSpecs,

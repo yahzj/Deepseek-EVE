@@ -17,11 +17,11 @@ import {
   HOME_GALAXY_ID,
   MAX_SKILL_LEVEL,
 } from './state'
-import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
+import type { BattleFx, BattleState, GameState,     LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
 import type { AchievementEarned } from './state'
 import type { BattleShieldFieldLedger, BattleShieldFieldStream } from './state'
 import { CHAIN_TIERS, CHAIN_TIERS_LEGACY_ORDERS, FIRST_TASKS } from './firstTasks'
-import type { CommsInstanceEntry, CommsJumpPage, CommsKind, CommsRewardLine, FittedModules, ModuleSlot, RackSlot } from './types'
+import type { CommsInstanceEntry, CommsJumpPage, CommsKind, CommsRewardLine, FittedModules,  RackSlot } from './types'
 import type { ShipFitPreset } from './state'
 import type { WormholeGridState } from './wormholeGrid'
 import { WORMHOLE_HOLD_COLS, cleanHoldPlacement } from './wormholeHold'
@@ -369,11 +369,6 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
    */
   30: (raw) => ({ ...raw, firstTaskAutoClaim: true }),
 }
-/** 字符串或 null 归一（迁移辅助） */
-function asNullableString(v: unknown): string | null {
-  return typeof v === 'string' && v.length > 0 ? v : null
-}
-
 /** 把未知值安全转成普通对象（非对象一律当空对象） */
 function asRaw(value: unknown): RawState {
   return typeof value === 'object' && value !== null ? (value as RawState) : {}

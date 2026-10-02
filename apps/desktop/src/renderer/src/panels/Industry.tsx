@@ -17,6 +17,8 @@ import {
   ownsBlueprint,
   /** 2026-10-02 模块化：可用核心下拉的单点（core 导出） */
   usableAiCoresOf,
+  /** 2026-10-02 模块化：手动位置灰判据走 core 单点（原为本页手工枚举各家族） */
+  manualSlotOf,
   // 2026-09-22 第 3 步：收藏星标进"实时指纹"（星标子组件自己也读 state，漏了会停在旧值）
   isMarked,
   recipeCapability,
@@ -52,7 +54,7 @@ import { ItemHover, ModuleHover, ShipHover } from '../ui/shipInfo'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 /** AI 核心档位名按语言取（2026-09-30 批 5：core 的 `aiCoreName` 只出中文） */
-import { aiCoreText } from '../ui/labelsText'
+import { aiCoreText, kindLabelText, ownedWhereText } from '../ui/labelsText'
 import { HintIcon } from '../ui/Hint'
 import { RowGlyph } from '../ui/itemView'
 /** 活动卡「产出」读数（2026-09-23 船长令：收入预估换口径；装备/舰船只显示市场当前价格）——全仓唯一实现 */
@@ -65,6 +67,8 @@ import { MatSourceLink } from '../ui/matSourceLink'
 import { MATS_COLLAPSE_OVER, MatListToggle } from '../ui/matList'
 /** AI 核心下拉公共件（2026-10-02 模块化：与精炼炉卡/实验室卡/舰船指派同款，见本件头注） */
 import { AiCoreSelect } from '../ui/aiCoreSelect'
+/** 循环目标防丢草稿套件（2026-10-02 模块化：三处循环输入共用一份，见本件头注） */
+import { useLoopGoalDraft } from '../ui/useLoopGoalDraft'
 import { useL10n, cmdText } from '../i18n/locale'
 import { MONEY_GLYPH } from '../pages/common'
 import {
@@ -464,12 +468,14 @@ function isWormholeBlueprint(bpId: string): boolean {
  * 工作位"那两条：它们**不算切换活动**，停掉会丢掉手上那一批 ⇒ 照旧硬拒、由玩家自己决定。
  * 真正的把关单点在 core（`activityGate`）。 */
 function manualBuildNote(state: GameState): string | null {
-  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return tr("ui.Industry.025")
-  }
-  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return tr("ui.Industry.026")
-  }
+  /** 2026-10-02 模块化：判据改走 core 单点 `manualSlotOf`（返回值即"被哪一族的线占着"），
+   *  不再各写一份 `.some(active && pilot)`；行为与旧实现等价（名册条目都是 active、停线即删，无 inactive 残留）。
+   *  ⚠ 新增 `lab` 分支 = 行为口径对齐（经典页三张卡 + HUD 一致：主控开实验室时组装机手动键也置灰；
+   *  core 本来就拒绝，这里只是少一次无效点击）。 */
+  const slot = manualSlotOf(state)
+  if (slot === 'manufacturing') return tr("ui.Industry.025")
+  if (slot === 'refine') return tr("ui.Industry.026")
+  if (slot === 'lab') return tr('ui.hud.212')
   if (state.awayGalaxy !== null) return tr("ui.IndustryPage.010")
   return null
 }
@@ -519,33 +525,6 @@ export function cardLiveKeyOf(
   const bp = `${ownsBlueprint(state, blueprintId) ? 1 : 0}.${state.blueprintStock[blueprintId] ?? 0}.${recipeCapability(state, blueprintId, singleUse).kind}`
   const mark = isMarked(state, 'blueprints', blueprintId) ? 1 : 0
   return `${mats}#${needs}#${runSig}#${loop.on ? 1 : 0}.${loop.produced}.${loop.stopWhy}#${bp}#${mark}#${ownedCount}`
-}
-
-/**
- * **内容层联合 key → 界面文案**（2026-09-22 补：船长报障「筛选选项/标签页文案还有遗漏」）。
- *
- * `kindLabel` / `ownedWhere` 两张字段的**键**是内容层联合 key（'舰船' / '装备' / '零件' / '消耗品'、
- * '仓库' / '仓库＋机库'，判定用，见本文件 `inTab` 那几处 `l10n-keep`），但**有些卡片直接把 key 当文案渲染**
- * ⇒ 英文界面下会漏中文。这里做一次映射：**认得出的 key 走 `tr(id)`；认不出的一律原样返回**
- * （另有一批卡片的这两个字段本来就已经是 `tr(...)` 的产物 —— 例如市场/物品那两张，原样返回即可，别二次翻译）。
- * ⚠ 新增 key 时**同步在两张表里加一行**，否则又退回"英文露中文"。
- */
-function kindLabelText(key: string): string {
-  // l10n-keep：下面比较的是**内容层联合 key**（不是文案；译文由各分支的 tr(id) 给）
-  if (key === '舰船') return tr('ui.labelsText.019')
-  if (key === '装备') return tr('ui.MarketPage.178')
-  if (key === '零件') return tr('ui.labelsText.001')
-  if (key === '消耗品') return tr('ui.itemSubs.037')
-  // 2026-09-26：插件产物单独一个档（`ui.itemSubs.042` = 「舰船插件」；
-  // ⚠ 别用 `ui.itemSubs.041`——那是既有的「图纸」，我上一版误用过，界面会印成"图纸"）
-  if (key === '舰船插件') return tr('ui.itemSubs.042')
-  return key
-}
-function ownedWhereText(where: string): string {
-  // l10n-keep：同上（key 比较，非文案）
-  if (where === '仓库') return tr('ui.ItemsPage.001')
-  if (where === '仓库＋机库') return tr('ui.Shipyard.002')
-  return where
 }
 
 /**
@@ -772,18 +751,13 @@ export const BlueprintCard = memo(function BlueprintCard({
   // 一张卡一个开关，作用于该卡全部制造线（含主控亲自那条），打开后新开的线自动继承；
   // 目标批数 = 全卡合计；「关→开」= 开一批新循环（合计与停因清零）。判定/计数都在 core。
   const loop = manufacturingLoopOf(state, blueprintId)
-  const [goalDraft, setGoalDraft] = useState('')
   /**
-   * **草稿引用**（2026-09-17 报障修复）：「目标批数」原先**只在回车 / 失焦那一刻提交**，
-   * 而**程序化跳页**（通讯「前往」、教程跳转、任务卡跳转）**不产生失焦** ⇒ 玩家刚打的数字
-   * 从未提交，切回来输入框是空的、循环开关还开着 ⇒ **变成"无限生产"**（真浏览器复现：
-   * 打字→不回车→合成点击导航⇒落盘 goal=null；鼠标点导航则因 mousedown 先失焦而侥幸不丢）。
-   * 这里把最新草稿放进 ref，**卡片卸载时补一次提交**（切页/切标签都会卸载卡片）⇒ 打过就一定生效。
-   * 回车/失焦仍即时提交（口径不变，见输入框 title）；没打字（草稿为空）时**不做任何动作**，
-   * 故不会凭空清掉已有目标、也不会在 StrictMode 的"挂载即卸载"里误提交。
+   * **循环目标的防丢草稿套件**（2026-09-17 报障修复首创于此；**2026-10-02 模块化**：口径原样
+   * 搬进 `ui/useLoopGoalDraft.ts`，与实验室卡（经典）· 实验室（HUD）三处共用一份 —— 行为逐字不变）。
    */
-  const goalDraftRef = useRef('')
-  goalDraftRef.current = goalDraft
+  const { draft: goalDraft, typeDraft, clearDraft, clearTouched } = useLoopGoalDraft((n) =>
+    engine.setManufacturingLoopAt(blueprintId, true, n),
+  )
   /**
    * **原材料列表折叠**（**2026-10-01 船长令**：「**「原材料列表」折叠，超过2个材料就进行折叠**」）：
    * 味数 > `MATS_COLLAPSE_OVER` 时材料块只留一行开关，点开才拉开全部行（公共件 `ui/matList.tsx`）。
@@ -792,18 +766,8 @@ export const BlueprintCard = memo(function BlueprintCard({
   const matsListId = useId()
   const [matsOpen, setMatsOpen] = useState(false)
   const matsCollapsible = materials.length > MATS_COLLAPSE_OVER
-  /** 「这一版草稿是玩家打出来的」——只有它为真，卸载时才补提交；任何一次正式提交后即清账 */
-  const goalTouchedRef = useRef(false)
-  useEffect(
-    () => () => {
-      if (!goalTouchedRef.current) return
-      const n = Number.parseInt(goalDraftRef.current, 10)
-      engine.setManufacturingLoopAt(blueprintId, true, Number.isFinite(n) && n > 0 ? n : null)
-    },
-    [engine, blueprintId],
-  )
   function commitLoop(on: boolean, goalText: string): void {
-    goalTouchedRef.current = false
+    clearTouched()
     const n = Number.parseInt(goalText, 10)
     const goal = Number.isFinite(n) && n > 0 ? n : null
     const r = engine.setManufacturingLoopAt(blueprintId, on, on ? goal : null)
@@ -1021,17 +985,14 @@ export const BlueprintCard = memo(function BlueprintCard({
                   className="app-mf-goal-input"
                   placeholder="∞"
                   value={goalDraft !== '' ? goalDraft : loop.goal > 0 ? String(loop.goal) : ''}
-                  onChange={(e) => {
-                    goalTouchedRef.current = true
-                    setGoalDraft(e.target.value)
-                  }}
+                  onChange={(e) => typeDraft(e.target.value)}
                   onBlur={(e) => {
-                    setGoalDraft('')
+                    clearDraft()
                     commitLoop(true, e.target.value)
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                      setGoalDraft('')
+                      clearDraft()
                       commitLoop(true, (e.target as HTMLInputElement).value)
                     }
                   }}

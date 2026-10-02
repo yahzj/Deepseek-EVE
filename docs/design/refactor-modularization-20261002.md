@@ -71,7 +71,95 @@
   pages/IndustryHudPage.tsx · pages/MapPage.tsx · pages/ShipPage.tsx · panels/Expedition.tsx。
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · ui:rot-check ✅ · 构建 ✅。
 
+### 批次 1b：循环目标「防丢草稿」收成公共 hook（2026-10-02 · 模块化 · 零行为变化）
+
+- 背景（审查报告 §5 #5 ＋ §3 缺口）：三处循环目标输入各有一份 ref 对 ＋ 卸载 effect
+  （组装机卡 09-17 首创；实验室经典/HUD 两处是批 0 刚补的）⇒ 同一段逻辑三份。
+- 落地：新增 `ui/useLoopGoalDraft.ts`（`draft`/`typeDraft`/`clearDraft`/`clearTouched` ＋ 卸载补提交，
+  用 ref 转发最新 `submitOnUnmount` 闭包）；三处调用点全部换用（markup 各自保留——经典 `.app-belt-loop`、
+  HUD `hud-sw-row` 是两套观感，不能硬并）。
+- 文件：ui/useLoopGoalDraft.ts（新）· panels/Industry.tsx · pages/IndustryPage.tsx · pages/IndustryHudPage.tsx。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · ui:rot-check ✅ · 构建 ✅。
+
+### 批次 1d：`kindLabelText`/`ownedWhereText` 搬进 `ui/labelsText.ts`（2026-10-02 · 模块化 · 零行为变化）
+
+- 这两个"内容层联合 key → 文案"映射原先住在 `panels/Industry.tsx`（造船厂等兄弟面板为借文案
+  要去 import 工业面板）。搬进文案映射的家 `ui/labelsText.ts`（`aiCoreText` 已在那），两处调用点
+  （BlueprintCard 内部）改 import。
+- 文件：ui/labelsText.ts · panels/Industry.tsx。
+- 验证：typecheck 全仓 ✅ · ui:rot-check ✅ · 构建 ✅。
+
+### 批次 1e：手动位置灰统一走 core 单点 `manualSlotOf`（2026-10-02 · 模块化 ＋ 一处行为口径对齐）
+
+- 核证（决定动工的依据）：`manualSlotOf`（activityGate.ts:224）= 逐族 `.some(active && pilot)`；名册条目
+  **没有 inactive 残留**（全仓 0 处 `.active = false`，停线即 splice）⇒ 经典页原来漏写 `.active` 的那处
+  与 core 单点**逐字等价**，可安全替换。
+- 落地：
+  - 经典精炼炉卡 `manualNote`（原 refineRuns/manufacturingRuns 各查一遍）改按 `manualSlotOf` 返回值分族措辞；
+  - 组装机卡 `manualBuildNote` 同改，删掉手工枚举的 `.some`；
+  - **行为口径对齐（小行为变化，单独说明）**：补 `slot === 'lab'` 分支——主控开实验室时，经典页三张卡
+    的手动键现在也置灰（原只有 HUD 置灰；core 本来就拒绝，这是"少给一次无效点击"，与 HUD 一致，
+    文案复用通用句 `ui.hud.212`）。
+  - `manualBusyNote`（野外/返航途中）保留为本地 helper——那是"位置"，不是"手动位"，HUD 无此概念，
+    不再并。
+- 文件：pages/IndustryPage.tsx · panels/Industry.tsx。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · ui:rot-check ✅ · 构建 ✅。
+- 注：审查报告 §5 #7 原描述为"手动位忙态重复"——实为"位置/家族/全局"三种口径；本台账为如实修正版，
+  本批只收敛"家族/全局"这一层，"位置"层留待后续（如需也可进 core）。
+
+### 批次 2b：arch:guard 新增 F9「相对导入环自检」（2026-10-02 · 护栏）
+
+- 背景：审查报告 §6 实测 core 有 34 处运行期模块环（含一条 13 模块长环），`54cfc050` 已因模块环炸过
+  启动崩溃。护栏口径：只认相对导入的**运行期**边（`import type` 不算；**副作用导入 `import './x'` 也算边**，
+  反例实测抓到过漏判）；**新增环 = 红**，基线里已消失的环 = 提示收账。
+- 存量 34 条进 `F9_CYCLE_BASELINE`（JSON 形态、\u2192 转义防漂移）；破一条删一条，直到清零。
+- 反例实测：临时 `_f9a.ts`/`_f9b.ts` 互导 ⇒ F9 报红 1 处（已验证后删除）。
+- 配套：`docs/development-conventions.md` §15之二 护栏清单 F1~F7 → **F1~F9**（补 F8/F9 两行）＋ changelog 记一条。
+- 文件：tools/arch-guard.ts · docs/development-conventions.md · docs/development-conventions-changelog.md。
+- 验证：arch:guard 全绿（F1~F9）✅。
+
+### 批次 2a-①：core 未用导入清理（2026-10-02 · 护栏前置 · 零行为变化）
+
+- 背景：`tsconfig.base` 没开 `noUnusedLocals` ⇒ core 累计 192 处未用局部/导入。目标 = 清干净后把
+  `noUnusedLocals: true` 写进 `packages/core/tsconfig.json`。
+- 做法：临时修器 `tools/_probe-unusedfix.mts`（**只删单行 import 里的未用名**；行内注释先切走再拼回；
+  字节级替换。中途两次事故：① 行首偏移按 `len+1` 算 ⇒ CRLF 文件逐行漂 1 字节、把 `from` 砍成 `fom` ——
+  已 `git checkout` 全量回滚重来，改为逐 `\n` 扫描行首 ② 多行 import 一律不碰，交人工）——**用完即删**。
+- 本步：**61 个文件、86 处**单行未用导入已删（core/src 19 文件 + tests 41 + data 1）；typecheck ✅ ·
+  core 全量 **3004 条** ✅。
+- 剩余 **106 处**（多行 import 内的未用名 ＋ src/tests 里的未用局部）交后续人工步：src 59 · tests 105 · data 2
+  的原始人工清单里已消掉一部分，见后续批次；**在全部清零前，闸门不开**。
+
+### 批次 2a-②：core src/data 未用符号人工清理（2026-10-02 · 零行为变化）
+
+- **src 全部清零**（多行 import 未用名 逐块手删 ＋ 未用局部逐处核副作用后删）：
+  expedition / weekendBattle / wormhole / wormholeBattle / wormholeSalvage / wormholeAutoSim /
+  wormholeAuto / market（`p`/`pClamped`/`mk`）/ mining（`tripNoteId`）/ save（`asNullableString`）/
+  sideTasks（`taskGoodBasePool` 整函数）/ weekendEvent（`windowMs`）/ combat（**哨戒机开关
+  `PD_TARGET_SENTRIES`**：机制代码早已不在，留着只会误导，裁定记录在 git 历史 09-11 提交）。
+- **重复效果代码并一**：`packages/data/src/anomalies.ts` 的 `ALIEN_COMP`/`D_COMP`/`E_COMP` 三份逐字同式
+  （`2N/(N+1)`），E 族那份无人使用 ⇒ 并成一份 `COMP_MUL`，全部调用点改用它（11 处）。
+- 顺带修 wormholeAuto.ts 一处双空格 import。
+- 剩余 **65 处全在 tests/**（未用导入名 ＋ 未用测试局部；测试局部要逐处核初始化副作用，
+  如 `const run = advanceGame(s)` 这种**不能删声明**、只能改为裸调用）⇒ 下一批清完再开闸门。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅。
+
+### 批次 2a-③：tests 未用符号清零 ＋ **noUnusedLocals 闸门开启**（2026-10-02）
+
+- 65 处测试文件里的未用导入名/未用局部全部清完（逐处核：纯构造/纯读直接删；`enterRunWithLogi()`
+  这类返回多值的只摘掉没用的解构名，调用本身保留）。
+- **顺手修复一处既有损坏**：`v181.test.ts:172` 注释里嵌了字面 `\r\n`，把
+  `expect(drone.shotDmg).toBe(6)` 那行**吞进注释**（断言已静默失效多年）⇒ 拆回两行、断言恢复，
+  测试全绿（12 条）。
+- **闸门开启**：`packages/core/tsconfig.json` 加 `"noUnusedLocals": true`（先清后开；以后死导入/死局部
+  在 core 的 typecheck 里当场报红）。renderer 侧的清理后续另批（它的 tsconfig 未开）。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
+
 ## 待办/待裁
+
+- **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、
+  各行文案与 worker 口径各不相同，抽公共件要么塞满 props 要么观感并轨（违 §6）；收益 < 风险 ⇒ 维持现状，
+  等"两套工业页合流"（批次 4）时一并处理。
 
 - 大拆分的具体切分边界等动到批次 4 再逐文件出设计（§2 逐批确认）。
 - 破环顺序表（36 环清单）见审查报告 `docs/design/code-review-20261002.md` §6。

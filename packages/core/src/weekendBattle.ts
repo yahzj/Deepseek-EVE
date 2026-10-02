@@ -24,7 +24,6 @@ import {
   weekendFlagshipDefeated,
   weekendIsBossFamily,
   weekendIsFlagshipShipId,
-  WEEKEND_FLAGSHIP_POOL_HP,
   weekendNoteContribution,
   weekendNoteFlagshipDamage,
   weekendNoteFlagshipKilled,
@@ -35,9 +34,7 @@ import {
   weekendContributionShareAt,
   weekendContributionTier,
   weekendFoeCardOf,
-  WEEKEND_GAIN_CORE_WIN,
   WEEKEND_GAIN_OFFLINE_REPEL,
-  WEEKEND_GAIN_PERIPHERY_WIN,
   WEEKEND_GAIN_REPEL,
   weekendWinGainOf,
   /** 2026-09-28 船长令「击杀BOSS就能获得黑匣」：击杀判据（**留档优先**的单点）＋ 结清标记 */

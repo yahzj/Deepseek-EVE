@@ -40,7 +40,6 @@ import {
   wormholeAllCardIds,
   wormholeAnomalyOf,
   wormholeBagSlots,
-  wormholeBagUsage,
   wormholeCardIdForRun,
   wormholeCardIdOfFamily,
   wormholeCardOfTier,
@@ -60,7 +59,7 @@ import {
 import { advanceWormhole, battleFoeAnomaly, wormholeActivateAt, wormholeBattleViewOf, wormholeStartBattle, wormholeTravelTo } from '../src/wormholeBattle'
 import type { WormholeRunState } from '../src/wormhole'
 import type { WormholePlace } from '../src/wormholeGrid'
-import { gridContentIndex, hexDistance } from '../src/wormholeGrid'
+import {  hexDistance } from '../src/wormholeGrid'
 import { rareWreckItemIdOfCard, wreckItemIdOfCard } from '../src/salvage'
 import {
   WORMHOLE_ESSENCE_ITEM_ID,
@@ -68,10 +67,8 @@ import {
   wormholeHoldOverloaded,
   wormholeHoldStow,
   wormholeHoldUsage,
-  wormholeOverloadBlockReason,
   wormholeHoldSyncCargo,
   wormholeTempUsage,
-  wormholeRelicBoxIdOf,
 } from '../src/wormholeSalvage'
 import { holdTransferTo, makeHoldState } from '../src/wormholeHold'
 import { WORMHOLE_MATTER_DEVICE_IDS } from '../src/wormholeMatter'

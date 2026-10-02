@@ -10,7 +10,6 @@ import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import { createPlayerSpec, hitChance, inRange, loadAmmo, playerAmmoType } from '../src/combat'
 import { fitModule, repairDeprecatedModules } from '../src/equipment'
-import type { ShipDef } from '../src/types'
 import { makeTestCtx, moduleDef, ship } from './helpers'
 
 function makeBedCtx(mods: ReturnType<typeof moduleDef>[]) {
@@ -41,7 +40,7 @@ function missileDef(id: string, mk: number, reloadMs: number, dmgMult: number): 
 describe('V18B-1 导弹架', () => {
   it('装配合法：导弹架入高槽；spec 生成 gun 条目（爆破导弹 explosive 键）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 1 })
-    const { bed, ctx } = makeBedCtx([missileDef('mod-missile-1', 1, 2600, 1.25)])
+    const { ctx } = makeBedCtx([missileDef('mod-missile-1', 1, 2600, 1.25)])
     state.fleet[state.shipId]!.defId = 'bed'
     repairDeprecatedModules(state, ctx)
     state.moduleBay['mod-missile-1'] = 1
@@ -57,7 +56,7 @@ describe('V18B-1 导弹架', () => {
 
   it('同 id 两架 → ×N 合并齐射（标签 ×2、值 ×2）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 2 })
-    const { bed, ctx } = makeBedCtx([missileDef('mod-missile-2', 2, 4000, 3.66)])
+    const { ctx } = makeBedCtx([missileDef('mod-missile-2', 2, 4000, 3.66)])
     state.fleet[state.shipId]!.defId = 'bed'
     repairDeprecatedModules(state, ctx)
     state.moduleBay['mod-missile-2'] = 2
@@ -71,7 +70,7 @@ describe('V18B-1 导弹架', () => {
 
   it('性格：近盲安全射距（带内才可发射）+ 命中不随距离衰减（远端命中率 = 近端）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 3 })
-    const { bed, ctx } = makeBedCtx([missileDef('mod-missile-1', 1, 2600, 1.25)])
+    const { ctx } = makeBedCtx([missileDef('mod-missile-1', 1, 2600, 1.25)])
     state.fleet[state.shipId]!.defId = 'bed'
     repairDeprecatedModules(state, ctx)
     state.moduleBay['mod-missile-1'] = 1
@@ -109,7 +108,7 @@ describe('V18B-1 导弹架', () => {
 
   it('迁移：旧高爆炮（装配 + 装备库）1:1 → 同档导弹架', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 4 })
-    const { bed, ctx } = makeBedCtx([missileDef('mod-missile-1', 1, 2600, 1.25), missileDef('mod-missile-2', 2, 4000, 3.66)])
+    const { ctx } = makeBedCtx([missileDef('mod-missile-1', 1, 2600, 1.25), missileDef('mod-missile-2', 2, 4000, 3.66)])
     state.fleet[state.shipId]!.defId = 'bed'
     // 旧档现场：fitted 里装着高爆炮 MK1（目录外 id），装备库有 MK2 ×2
     state.fleet[state.shipId]!.fitted.high = ['mod-turret-exp-1', null, null, null, null, null]
@@ -125,7 +124,7 @@ describe('V18B-1 导弹架', () => {
 
   it('主弹装载：第一武器为导弹架 → explosive 键（爆破导弹）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 5 })
-    const { bed, ctx } = makeBedCtx([missileDef('mod-missile-1', 1, 2600, 1.25)])
+    const { ctx } = makeBedCtx([missileDef('mod-missile-1', 1, 2600, 1.25)])
     state.fleet[state.shipId]!.defId = 'bed'
     repairDeprecatedModules(state, ctx)
     state.moduleBay['mod-missile-1'] = 1
@@ -140,7 +139,7 @@ describe('V18B-1 导弹架', () => {
 
   it('爆炸系伤害稳定器按系加成导弹单发（与动能炮同池逻辑）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 6 })
-    const { bed, ctx } = makeBedCtx([
+    const { ctx } = makeBedCtx([
       missileDef('mod-missile-1', 1, 2600, 1.25),
       moduleDef('mod-stab-exp', 'support', 0, { rack: 'low', damageTypeBonusPct: { explosive: 0.1 }, cpuUse: 5 }),
     ])

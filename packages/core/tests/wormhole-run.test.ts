@@ -49,7 +49,7 @@ import {
 } from '../src/wormhole'
 import type { WormholeRunState } from '../src/wormhole'
 import type { WormholeGridCell, WormholePlace } from '../src/wormholeGrid'
-import { gridCellAt, hexDistance, hexNeighbors, wormholeGridRadiusFor } from '../src/wormholeGrid'
+import {  hexDistance, hexNeighbors, wormholeGridRadiusFor } from '../src/wormholeGrid'
 
 const ctx = buildSimContext()
 const T1 = 'sandcat'

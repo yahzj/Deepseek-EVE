@@ -18,14 +18,13 @@
  * - 施工期铁律：本模块不产生玩家可见文案里的"虫洞"以外新术语；入口只在调试模式下出现。
  */
 import { activePromoGifts, promoScanMul, tuningMul } from './tuning'
-import type { GameState, WormholeArchetype, WormholeFamily, WormholeScanState, WormholeStockItem } from './state'
+import type { GameState, WormholeArchetype, WormholeFamily,  WormholeStockItem } from './state'
 import { matterTechScanCut } from './matterTech'
 import { addLog, wormholeScanHalt } from './state'
 import { applyActivityGate } from './activityGate'
 import type { SimContext } from './types'
 import type { CommandResult, CoreBlockReason } from './engine'
 import { scanSkillFactor } from './explore'
-import { WORMHOLE_MAX_SHIPS } from './wormhole'
 import { DSI_FACTION_ID, standingOf } from './expedition'
 import { WORMHOLE_ARCHETYPE_LABELS, wormholeArchetypeOf } from './wormholeGrid'
 import { wormholeFamilyOfSeed } from './wormholeFoes'

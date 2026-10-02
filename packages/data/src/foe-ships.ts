@@ -83,7 +83,7 @@
 
 import { FOE_MOUNT_IDS } from '@whale/core'
 import type { FoeShipDef } from '@whale/core'
-import { FOE_DRONE_C_SPORE, FOE_DRONE_E_ALERT, FOE_DRONE_G_BEE_EXP, FOE_DRONE_G_BEE_KIN, FOE_DRONE_G_BEE_PLA, FOE_DRONE_H_HEAVY, FOE_DRONE_R_PRISM } from './foe-drones'
+import { FOE_DRONE_C_SPORE, FOE_DRONE_E_ALERT, FOE_DRONE_G_BEE_EXP, FOE_DRONE_G_BEE_KIN, FOE_DRONE_G_BEE_PLA, FOE_DRONE_H_HEAVY } from './foe-drones'
 
 /** A 族 · 一档「海盗快艇」——brawl 贴脸杂鱼。
  * 速度（2026-09-11 落地）= 1 护卫舰基准 340 × `1.15` = **391** m/s（高于本档基准 340，"快得起来才好突袭"）；

@@ -28,7 +28,6 @@ import { advanceBattleFor } from '../src/combat'
 import { rollRecycleCoreGain, RECYCLE_CORE_SHARE, RECYCLE_CORE_WEIGHTS } from '../src/salvage'
 
 const ctx = buildSimContext()
-const bal = ctx.balance.battle
 const LASER = 'mod-lair-laser-r'
 const BLINK = 'mod-lair-blink-r'
 /** 最小的一张入侵卡（外围常驻 · 5× 粼光级）——真实战斗用它起 */

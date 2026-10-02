@@ -44,7 +44,7 @@ describe('T4 去程取消：空船去程并入返航（指令即采掘）', () =
   })
 
   it('远处矿带：返航腿 = 航程 + 120s、去程减半（并入返航）；未点亮星系拒绝出发；出发即点亮', () => {
-    const { state, ctx } = world()
+    const { state } = world()
     const bal = makeTestCtx().balance
     const farCtx: SimContext = makeTestCtx({
       belts: [belt('belt-far', 'ore-a', '远带', { galaxyId: 'galaxy-far' })],

@@ -8,14 +8,13 @@
  * ④ 配方改造：专属装备/舰船材料总价 +50%（按基础收价口径）；皇带鱼等值替换总价不变；空间站各档等值替换总价不变。
  */
 import { describe, expect, it } from 'vitest'
-import { BLUEPRINTS, ITEMS, SHIP_BLUEPRINTS, STATION_SITES, buildSimContext } from '@whale/data'
+import { BLUEPRINTS,  SHIP_BLUEPRINTS, STATION_SITES, buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
 import { advanceGame } from '../src/engine'
 import { startManufacturing, canStartBlueprint, calcBuildDurationMs, sortManuRows } from '../src/manufacturing'
 import { addWare, countWare } from '../src/inventory'
-import { makeTestCtx } from './helpers'
 
 const ctx = buildSimContext() as SimContext
 /** 材料总价（按物品基础收价 baseSellPriceIsk 口径——与 content:check 的料/价同源） */

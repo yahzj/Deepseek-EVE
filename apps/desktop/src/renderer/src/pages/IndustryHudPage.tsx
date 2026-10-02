@@ -19,7 +19,7 @@
  * ⚠ **本版覆盖度（诚实标注）**：精炼炉与实验室是**本页自己画的 HUD 版**；组装机 / 造船厂
  * 暂时**内嵌既有面板**（功能完整、观感仍是旧卡片）——它们的 HUD 化按船长"一批一批来"的节奏排后续。
  */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   aiCoreCap,
   aiEfficiency,
@@ -65,6 +65,8 @@ import { Glyph, itemGlyphName } from '../ui/Glyphs'
 import { AiWorkFx, industryWorkKindOf } from '../ui/aiWorkFx'
 import { RowGlyph } from '../ui/itemView'
 import { HudHoverCard, IconBtn, Readout, type HudIoLine } from '../ui/hud'
+/** 循环目标防丢草稿套件（2026-10-02 模块化：三处循环输入共用一份，见本件头注） */
+import { useLoopGoalDraft } from '../ui/useLoopGoalDraft'
 import { aiCoreText } from '../ui/labelsText'
 import { marketPriceOf } from '../ui/yieldView'
 import { DryDockFx } from '../ui/dryDockFx'
@@ -342,16 +344,16 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
    * 与组装机那张卡的 `goalDraft` 同款：只在本页留住草稿，**回车/失焦时提交一次**；
    * 输入框没有"受控回写"⇒ 打到一半不会被引擎 tick 的刷新冲掉。
    */
-  const [labGoalDraft, setLabGoalDraft] = useState('')
   /**
-   * **草稿引用**（2026-09-17 报障修复，组装机卡同款——**2026-10-02 代码审查补上 HUD 实验室这一份**）：
-   * 程序化跳页不产生失焦 ⇒ 刚打的目标批数从未提交、循环开关还开着 ⇒ 变成"无限生产"。
-   * 卸载时（切页/整页销毁）补一次提交；没打字（草稿为空）不做任何动作。
-   * ⚠ 补提交的 effect 在 `recipe` 声明之后才挂（见 `commitLabLoop` 旁），ref 本身不依赖它。
+   * **循环目标的防丢草稿套件**（2026-09-17 组装机卡首创；**2026-10-02 模块化**：口径原样搬进
+   * `ui/useLoopGoalDraft.ts`，组装机卡 / 经典实验室卡 / 本页三处共用一份 —— 行为逐字不变）。
+   * ⚠ `submitOnUnmount` 的闭包在 `recipe` 声明之前创建：钩子只在**卸载时**才调用它（届时 `recipe`
+   * 早已初始化，且每次渲染的最新闭包经 ref 转发），无 TDZ 问题。
    */
-  const labGoalDraftRef = useRef('')
-  labGoalDraftRef.current = labGoalDraft
-  const labGoalTouchedRef = useRef(false)
+  const { draft: labGoalDraft, typeDraft, clearDraft, clearTouched } = useLoopGoalDraft((n) => {
+    if (recipe === null) return
+    engine.setLabLoopAt(recipe.id, true, n)
+  })
   /**
    * **首访实验室**（**2026-09-30 船长令**：第一次进实验室给玩家发一封黑市通讯）——
    * 与旧工业页的实验室子页同一处口径（`engine.noteLabOpened()` 内部幂等，通讯由 `advanceComms` 送达）。
@@ -417,22 +419,12 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
    */
   const labLoop = engine.labLoopOf(recipe !== null ? recipe.id : null)
   const commitLabLoop = (on: boolean, goalText: string): void => {
-    labGoalTouchedRef.current = false
+    clearTouched()
     if (recipe === null) return
     const n = Number.parseInt(goalText, 10)
     const r = engine.setLabLoopAt(recipe.id, on, on ? (Number.isFinite(n) && n > 0 ? n : null) : null)
     if (!r.ok) onToast(cmdText(r) || tr('ui.hud.021'), true)
   }
-  /** 草稿引用的**卸载补提交**（2026-09-17 那套；挂在 `recipe` 声明之后，见上方 `labGoalDraft` 注释） */
-  useEffect(
-    () => () => {
-      if (!labGoalTouchedRef.current) return
-      if (recipe === null) return
-      const n = Number.parseInt(labGoalDraftRef.current, 10)
-      engine.setLabLoopAt(recipe.id, true, Number.isFinite(n) && n > 0 ? n : null)
-    },
-    [engine, recipe],
-  )
   const rate = refineRate(state, ctx)
   /** 可精炼资源（与工业页同一取数口：`visibleItemDefs` + 有 `refine` 配方） */
   const refineDefs = visibleItemDefs(ctx)
@@ -1613,17 +1605,14 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                             placeholder="∞"
                             value={labGoalDraft !== '' ? labGoalDraft : labLoop.goal > 0 ? String(labLoop.goal) : ''}
                             title={tr('ui.lab.033')}
-                            onChange={(e) => {
-                              labGoalTouchedRef.current = true
-                              setLabGoalDraft(e.target.value)
-                            }}
+                            onChange={(e) => typeDraft(e.target.value)}
                             onBlur={(e) => {
-                              setLabGoalDraft('')
+                              clearDraft()
                               commitLabLoop(true, e.target.value)
                             }}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
-                                setLabGoalDraft('')
+                                clearDraft()
                                 commitLabLoop(true, (e.target as HTMLInputElement).value)
                               }
                             }}

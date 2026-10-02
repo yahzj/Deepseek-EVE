@@ -17,7 +17,7 @@ import {
 import { formatDurationShort } from '../src/time'
 import { FIRST_TASKS } from '../src/firstTasks'
 import { TASK_FIND_HUMANS } from '../src/onboarding'
-import { clearInitialStanding, makeTestCtx, ore, ship, skill } from './helpers'
+import { clearInitialStanding, makeTestCtx,   skill } from './helpers'
 
 describe('离线切分', () => {
   it('离开 10 小时，按默认上限 8 小时结算，超出的 2 小时被放弃', () => {

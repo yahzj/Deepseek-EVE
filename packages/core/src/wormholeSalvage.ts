@@ -45,13 +45,8 @@ import type { WreckRegion } from './wreckGroups'
 import {
   canPlace,
   cargoBlockArea,
-  cargoShapeFits,
-  cargoShapesFor,
-  bestCargoPlacement,
   findCargoSpot,
-  findFreeSpot,
   holdAdd,
-  holdCellsUsed,
   holdRemove,
   holdTransferTo,
   makeHoldState,
@@ -68,16 +63,12 @@ import { wormholeSpawnAfterTurns } from './wormholeSpawn'
 import { matterTechWhBuffs, matterTechWorkEffBonus } from './matterTech'
 import {
   WORMHOLE_TURN_PER_WORK,
-  WORMHOLE_TURN_PER_PICK,
   gridCellAt,
-  gridContentIndex,
-  wormholeRng,
   wormholeStream,
 } from './wormholeGrid'
 import type { WormholeCellPile, WormholeGridCell } from './wormholeGrid'
 import {
   wormholeBagSlotsOfFleet,
-  wormholeBagUsage,
   wormholeCardIdOfFamily,
   wormholeLayerRewardMul,
   wormholeNodePiles,
@@ -87,7 +78,7 @@ import {
   WORMHOLE_TEMP_CELLS,
   WORMHOLE_TEMP_COLS,
 } from './wormhole'
-import type { WormholeBagSlot, WormholePile, WormholeTempSlot } from './wormhole'
+import type { WormholeBagSlot, WormholePile } from './wormhole'
 import type { WormholeActivateEffect, WormholeRunState } from './wormhole'
 
 /* ═══════════ 一、口径常量（F3c 配平的旋钮都在这里） ═══════════ */

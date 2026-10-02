@@ -44,6 +44,8 @@ import {
   labTechRequirementOf,
   /** 2026-10-02 模块化：可用核心下拉的单点（core 导出） */
   usableAiCoresOf,
+  /** 2026-10-02 模块化：手动位置灰判据走 core 单点（原为本页 refineRuns/manufacturingRuns 各查一遍） */
+  manualSlotOf,
   /** 2026-10-01：材料行尾那枚「这一味料从哪来」链接的等价组判据（通用黑匣）走 core 单点 */
   materialGroupIdsOf,
 } from '@whale/core'
@@ -69,6 +71,8 @@ import { MatSourceLink } from '../ui/matSourceLink'
 import { MATS_COLLAPSE_OVER, MatListToggle } from '../ui/matList'
 /** AI 核心下拉公共件（2026-10-02 模块化：精炼炉卡/实验室卡/组装机卡/舰船指派同款） */
 import { AiCoreSelect } from '../ui/aiCoreSelect'
+/** 循环目标防丢草稿套件（2026-10-02 模块化：三处循环输入共用一份，见本件头注） */
+import { useLoopGoalDraft } from '../ui/useLoopGoalDraft'
 /* 图标一律走**物品 id 单点映射**（2026-09-30 船长报障：新道具在实验室卡上是通用「消耗品」图标） */
 import { itemGlyphName } from '../ui/Glyphs'
 import { WRECK_SUBS, SUB_ALL, presentSubs, wreckTierOf, subText } from '../ui/itemSubs'
@@ -168,11 +172,15 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
     claimHeld > 0
       ? tr("ui.IndustryPage.016")
       : tr("ui.IndustryPage.017")
-  const manualNote = state.refineRuns.some((r) => r.worker === 'pilot')
-    ? tr("ui.IndustryPage.018")
-    : state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')
-      ? tr("ui.IndustryPage.019")
-      : manualBusyNote(state)
+  const slot = manualSlotOf(state)
+  const manualNote =
+    slot === 'refine'
+      ? tr("ui.IndustryPage.018")
+      : slot === 'manufacturing'
+        ? tr("ui.IndustryPage.019")
+        : slot === 'lab'
+          ? tr("ui.hud.212")
+          : manualBusyNote(state)
 
   function runWith(worker: AiCoreType | 'pilot'): void {
     const r = isBox
@@ -655,7 +663,7 @@ function LabCard({
   const usableCores = usableAiCoresOf(state)
   const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
-  const manualBusy = manualBusyNote(state)
+  const manualBusy = manualSlotOf(state) !== null ? tr('ui.hud.212') : manualBusyNote(state)
   /**
    * **谜质科技门槛**（**2026-09-30 船长令**：T5「解锁新的燃料配方」）——判据与起线拒绝**同一把尺**
    * （`labRecipeUnlocked`）；锁着时卡片照列（玩家要看得见"有这么张配方、缺哪棵树"），
@@ -669,27 +677,15 @@ function LabCard({
    * 打到一半的草稿留在本页，回车/失焦各提交一次。
    */
   const loop = engine.labLoopOf(recipe.id)
-  const [goalDraft, setGoalDraft] = useState('')
   /**
-   * **草稿引用**（2026-09-17 报障修复，组装机卡同款——**2026-10-02 代码审查补上实验室这一份**）：
-   * 程序化跳页（通讯「前往」/教程/任务卡跳转）**不产生失焦** ⇒ 玩家刚打的目标批数从未提交、
-   * 循环开关还开着 ⇒ 变成"无限生产"。这里把最新草稿放进 ref，**卡片卸载时补一次提交**；
-   * 回车/失焦仍即时提交；没打字（草稿为空）时不做任何动作，故不会凭空清掉已有目标、
-   * 也不会在 StrictMode 的"挂载即卸载"里误提交。
+   * **循环目标的防丢草稿套件**（2026-09-17 组装机卡首创；**2026-10-02 模块化**：口径原样搬进
+   * `ui/useLoopGoalDraft.ts`，组装机卡 / 本卡 / HUD 实验室三处共用一份 —— 行为逐字不变）。
    */
-  const goalDraftRef = useRef('')
-  goalDraftRef.current = goalDraft
-  const goalTouchedRef = useRef(false)
-  useEffect(
-    () => () => {
-      if (!goalTouchedRef.current) return
-      const n = Number.parseInt(goalDraftRef.current, 10)
-      engine.setLabLoopAt(recipe.id, true, Number.isFinite(n) && n > 0 ? n : null)
-    },
-    [engine, recipe.id],
+  const { draft: goalDraft, typeDraft, clearDraft, clearTouched } = useLoopGoalDraft((n) =>
+    engine.setLabLoopAt(recipe.id, true, n),
   )
   function commitLoop(on: boolean, goalText: string): void {
-    goalTouchedRef.current = false
+    clearTouched()
     const n = Number.parseInt(goalText, 10)
     const r = engine.setLabLoopAt(recipe.id, on, on ? (Number.isFinite(n) && n > 0 ? n : null) : null)
     if (!r.ok) onToast(cmdText(r) || tr('ui.Industry.133'), true)
@@ -850,17 +846,14 @@ function LabCard({
                 className="app-mf-goal-input"
                 placeholder="∞"
                 value={goalDraft !== '' ? goalDraft : loop.goal > 0 ? String(loop.goal) : ''}
-                onChange={(e) => {
-                  goalTouchedRef.current = true
-                  setGoalDraft(e.target.value)
-                }}
+                onChange={(e) => typeDraft(e.target.value)}
                 onBlur={(e) => {
-                  setGoalDraft('')
+                  clearDraft()
                   commitLoop(true, e.target.value)
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    setGoalDraft('')
+                    clearDraft()
                     commitLoop(true, (e.target as HTMLInputElement).value)
                   }
                 }}

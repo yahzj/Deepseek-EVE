@@ -49,8 +49,7 @@ import { isExplored } from './explore'
 import { countWare, removeWare, cargoCapacityM3Of, unloadCargoOfShipToWarehouse } from './inventory'
 import { shortestTravelMinutes, travelLegMs, travelMinutesEff, warpSpeedAus } from './travel'
 import { isAtHome, originGalaxyOf } from './location'
-import { DSI_FACTION_ID, standingOf as factionStandingOf } from './expedition'
-import { factionBaseRewardIsk, hasLairCore, isLairCandidate, lairLevelOf, lairNameOf, lairTaskRewardIsk } from './lairs'
+import { factionBaseRewardIsk,  isLairCandidate, lairLevelOf, lairNameOf, lairTaskRewardIsk } from './lairs'
 import type { LairTier } from './lairs'
 import type { AnomalyDef } from './types'
 
@@ -214,15 +213,6 @@ export function courierDeadlineMs(windowMs: number): number {
   const P = COURIER_BOARD_PERIOD_MS
   if (!Number.isFinite(windowMs) || windowMs <= 0) return P
   return courierDueAtWindow(windowMs) ? windowMs + P : Math.ceil(windowMs / P) * P
-}
-
-/** 任务商品基池：市场常驻（common）且带 poolTarget>0 的 item 类商品（未做星图门槛过滤） */
-function taskGoodBasePool(ctx: SimContext): MarketGoodDef[] {
-  const out: MarketGoodDef[] = []
-  for (const def of ctx.marketGoods.values()) {
-    if (def.rarity === 'common' && def.kind === 'item' && (def.poolTarget ?? 0) > 0) out.push(def)
-  }
-  return out
 }
 
 /** 某矿带是否产出该资源（主产物 oreId 或复合产出池 outputs 命中） */

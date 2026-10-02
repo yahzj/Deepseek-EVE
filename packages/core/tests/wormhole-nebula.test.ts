@@ -22,9 +22,6 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {
   WORMHOLE_EMPTY_SHARE_FLOOR,
   WORMHOLE_NEBULA_MIN_DEPTH,
-  WORMHOLE_NEBULA_SHARE,
-  WORMHOLE_NEBULA_SHARE_STEP,
-  WORMHOLE_NEBULA_SHARE_CAP,
   wormholeNebulaShareFor,
   WORMHOLE_RUINS_SHARE,
   gridCellAt,

@@ -14,7 +14,6 @@ import { countWare } from '../src/inventory'
 import {
   aiCoreCap,
   aiCoreUsed,
-  aiCoreShipUsed,
   aiCoreIndustryUsed,
   aiCoreCapBlock,
   industryAiBonus,
@@ -30,7 +29,6 @@ import {
   idleAiShipIds,
 } from '../src/ai'
 import { anomaly, makeTestCtx, fittedOf, ship, skipFirstSkillReward } from './helpers'
-import { aiWinPreview } from '../src/combat'
 import { startRefineRun, stopRefineRun } from '../src/industry'
 import { startManufacturing, cancelManufacturing } from '../src/manufacturing'
 import { learnBlueprint } from '../src/market'

@@ -16,8 +16,6 @@ import {
   SYNAPTIC_ACCELERANT_ITEM_ID,
   SYNAPTIC_ACCELERANT_MS,
   boostAutoRenewOn,
-  consumableStockOf,
-  enqueueSkill,
   setBoostAutoRenew,
   skillLevelTimeMs,
   synapticAccelerantRemainMs,

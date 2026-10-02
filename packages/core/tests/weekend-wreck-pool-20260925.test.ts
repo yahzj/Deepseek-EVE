@@ -10,7 +10,6 @@
  * - 打捞：体积当量按**两池之和**、扣减**先扣入侵池**（会消失的先捞；星系池保底线 10 不动）。
  */
 import { describe, expect, it } from 'vitest'
-import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'

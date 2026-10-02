@@ -21,7 +21,7 @@ import { addShipToFleet, createInitialState, createPlayerSpec, effectiveHitMul, 
 import { DEFAULT_BALANCE } from '../src/balance'
 import { stackWeight } from '../src/equipment'
 import { FOE_MOUNT_IDS, resolveFoeMounts } from '../src/foeMounts'
-import { advanceBattleFor, battleOpenM, createFoeSpecs, foeDesiredRange, startBattleFor } from '../src/combat'
+import { advanceBattleFor,  createFoeSpecs, foeDesiredRange, startBattleFor } from '../src/combat'
 import { anomaly, galaxy, makeTestCtx, moduleDef, ship } from './helpers'
 
 function world(): { state: GameState; ctx: SimContext } {

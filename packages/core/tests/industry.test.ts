@@ -10,7 +10,7 @@ import { buyShip, refineRate, sellAll, sellWareItem, startRefineRun, stopRefineR
 import { advanceGame } from '../src/engine'
 import { countAiCore } from '../src/ai'
 import { L10N } from '@whale/data'
-import { makeTestCtx, ship, skill, skipFirstSkillReward } from './helpers'
+import { makeTestCtx, ship,  skipFirstSkillReward } from './helpers'
 import { clearInitialStanding, setStanding } from './helpers'
 
 describe('精炼与市场（M1 经济）', () => {

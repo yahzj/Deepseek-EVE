@@ -3,14 +3,11 @@
  * 自由改名规则、市场挂卖 escrow 原实例往返、v16 → v17 存档迁移与 normalize 兜底。
  */
 import { describe, expect, it } from 'vitest'
-import type { GameState } from '../src/state'
-import type { SimContext } from '../src/types'
-import { createInitialState, CURRENT_STATE_VERSION } from '../src/state'
+import { createInitialState } from '../src/state'
 import { addShipToFleet, allocateShipUid, changeShip, renameShip } from '../src/shipyard'
 import { fleetDefOf, shipDisplayName } from '../src/instances'
 import { cancelOrder, placeShipSellOrder } from '../src/market'
 import { buyShip } from '../src/industry'
-import { loadSaveFile, SAVE_FORMAT, serializeSaveFile } from '../src/save'
 import { makeTestCtx, ship } from './helpers'
 
 function world() {

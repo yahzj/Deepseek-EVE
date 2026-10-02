@@ -10,7 +10,6 @@ import { addItem, countItem, removeItem } from '../src/inventory'
 import { countWare } from '../src/inventory'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
-import type { GameState } from '../src/state'
 
 /** 造一个能开拆解线的档（母港、主控空闲、货舱里放 N 个安全货柜） */
 function world(boxes: number, boxId = 'box-relic-a') {

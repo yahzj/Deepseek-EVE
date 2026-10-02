@@ -21,7 +21,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import type { SimContext } from '../src/types'
-import { haulBaseReward, haulEffectiveMinutes, haulExposureAt, haulSecurityMulOf } from '../src/hauling'
+import { haulBaseReward, haulEffectiveMinutes, haulExposureAt } from '../src/hauling'
 import { securityZoneOf } from '../src/sideTasks'
 import { shortestTravelPath, shortestTravelMinutes } from '../src/travel'
 

@@ -243,7 +243,6 @@ describe('虫洞 · 两件互换位置（船长 2026-09-13：「物品之间无�
 describe('虫洞 · 货仓占用与超载（船长裁定 8）', () => {
   it('格数 = ⌊合计货仓 ÷ 500⌋（4×T3 = 20 格）；散货与形状件共用一本账', () => {
     const state = enterRun(4)
-    const run = state.wormhole.run!
     expect(wormholeHoldCapacityOf(state, ctx)).toBe(20)
     setBag(state, [{ itemId: 'ore-voidmother', units: 1500 }]) // 3 格
     expect(wormholeHoldUsage(state, ctx)).toMatchObject({ cargoCells: 3, shapeCells: 0, used: 3, capacity: 20 })

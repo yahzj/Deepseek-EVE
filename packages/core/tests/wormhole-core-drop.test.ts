@@ -27,7 +27,6 @@ import type { WormholeGridCell } from '../src/wormholeGrid'
 import {
   WORMHOLE_CORE_ALPHA,
   WORMHOLE_CORE_BETA,
-  WORMHOLE_CORE_GAMMA,
   WORMHOLE_CORE_ITEM_IDS,
   WORMHOLE_CORE_SHARE,
   WORMHOLE_CORE_WEIGHTS,

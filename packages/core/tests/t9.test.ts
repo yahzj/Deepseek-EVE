@@ -172,7 +172,7 @@ describe('T9 抵达挂点与通讯', () => {
 
 describe('T9 存档（v16.1 兼容字段）', () => {
   it('stationSites/dockedSite/dialogueSeen/pendingDialogue 往返一致且容错', () => {
-    const { state, ctx } = world()
+    const { state } = world()
     state.stationSites['site-test'] = { stage: 1, delivered: { 'ore-a': 40 } }
     state.dockedSite = 'site-test'
     state.dialogueSeen['dlg-intro'] = true

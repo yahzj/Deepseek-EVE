@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
 import { advanceBattleFor, battleWinPreview, createPlayerSpec, startBattleFor } from '../src/combat'
-import { addModule, countModule, fitModule, repairDeprecatedModules, unfitAt } from '../src/equipment'
+import {   fitModule, repairDeprecatedModules, unfitAt } from '../src/equipment'
 import type { ShipDef, SimContext } from '../src/types'
 import { anomaly, makeTestCtx, moduleDef, ship } from './helpers'
 

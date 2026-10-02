@@ -20,7 +20,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { addShipToFleet, addWare, advanceGame, createInitialState } from '../src/index'
-import { dronePoolKey, droneRecoveryRate, settleDroneLosses, startBattleFor } from '../src/combat'
+import {  droneRecoveryRate, settleDroneLosses, startBattleFor } from '../src/combat'
 import {
   droneReviveCyclesOf,
   droneReviveNoteLoss,

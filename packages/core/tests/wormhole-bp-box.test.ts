@@ -25,7 +25,6 @@ import {
   WORMHOLE_BP_BOX_MID,
   WORMHOLE_BP_BOX_SHALLOW,
   WORMHOLE_BPBOX_PERMANENT_CHANCE,
-  WORMHOLE_RELIC_BOX_CHANCE,
   wormholeBpBoxDepthOf,
   wormholeBpBoxIdOf,
   wormholeBpBoxIdsForDepth,
@@ -43,7 +42,6 @@ import {
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'
-const BP_BOX = WORMHOLE_BP_BOX_DEEP
 
 /** 起一趟洞（够简单：一艘巡洋舰 + 指定种子；层数由调用方设） */
 function enterRun(seed: number): GameState {

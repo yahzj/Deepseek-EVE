@@ -167,7 +167,6 @@ describe('虫洞 · 围剿者（第 7 层起逐回合刷怪 · 2026-09-23 船长
     }
     const spawnState = mk()
     const spawnRes = wormholeGrantShipSpoils(spawnState, ctx, 'spawn')
-    const spawnPiles = spawnState.wormhole.run!.grid!.cells[0]!.piles ?? []
     const rareUnits = (s: GameState): number =>
       [...(s.wormhole.run!.grid!.cells[0]!.piles ?? []), ...s.wormhole.run!.bag]
         .filter((p) => p.itemId.includes('rare'))

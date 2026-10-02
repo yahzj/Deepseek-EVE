@@ -13,7 +13,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
-import { endWeekendEvent, weekendNoteContribution } from '../src/weekendEvent'
+import { endWeekendEvent } from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
 import {
   WEEKEND_ALL_CLEAR_ISK,

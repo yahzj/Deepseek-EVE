@@ -249,6 +249,35 @@ export function aiCoreTextId(type: AiCoreType): string | undefined {
 }
 
 /**
+ * **内容层联合 key → 界面文案**（2026-09-22 补：船长报障「筛选选项/标签页文案还有遗漏」；
+ * **2026-10-02 模块化**：从 `panels/Industry.tsx` 搬进本件 —— 文案映射本就该住在 labelsText 家，
+ * 而不是让造船厂这类兄弟面板为借文案去 import 工业面板）。
+ *
+ * `kindLabel` / `ownedWhere` 两张字段的**键**是内容层联合 key（'舰船' / '装备' / '零件' / '消耗品'、
+ * '仓库' / '仓库＋机库'，判定用，见 `inTab` 那几处 `l10n-keep`），但**有些卡片直接把 key 当文案渲染**
+ * ⇒ 英文界面下会漏中文。这里做一次映射：**认得出的 key 走 `tr(id)`；认不出的一律原样返回**
+ * （另有一批卡片的这两个字段本来就已经是 `tr(...)` 的产物 —— 例如市场/物品那两张，原样返回即可，别二次翻译）。
+ * ⚠ 新增 key 时**同步在两张表里加一行**，否则又退回"英文露中文"。
+ */
+export function kindLabelText(key: string): string {
+  // l10n-keep：下面比较的是**内容层联合 key**（不是文案；译文由各分支的 tr(id) 给）
+  if (key === '舰船') return tr('ui.labelsText.019')
+  if (key === '装备') return tr('ui.MarketPage.178')
+  if (key === '零件') return tr('ui.labelsText.001')
+  if (key === '消耗品') return tr('ui.itemSubs.037')
+  // 2026-09-26：插件产物单独一个档（`ui.itemSubs.042` = 「舰船插件」；
+  // ⚠ 别用 `ui.itemSubs.041`——那是既有的「图纸」，我上一版误用过，界面会印成"图纸"）
+  if (key === '舰船插件') return tr('ui.itemSubs.042')
+  return key
+}
+export function ownedWhereText(where: string): string {
+  // l10n-keep：同上（key 比较，非文案）
+  if (where === '仓库') return tr('ui.ItemsPage.001')
+  if (where === '仓库＋机库') return tr('ui.Shipyard.002')
+  return where
+}
+
+/**
  * 技能分类名（= `SKILL_GROUPS` 的本地化版）。
  * ⚠ 入参是 core/data 侧的**中文分类名**（中文即键，见 `packages/data/src/skills.ts` 的 `SKILL_GROUPS`），
  * 故这里按中文名查表；查不到就原样返回（新分类漏登记时**看得见**，不会静默变空）。

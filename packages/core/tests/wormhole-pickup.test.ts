@@ -25,7 +25,6 @@ import {
   WORMHOLE_TEMP_CELLS,
   wormholeBagSlots,
   wormholeBagSlotsOfFleet,
-  wormholeBagUsage,
   wormholeDebugReset,
   wormholeEnter,
   wormholeFleetCargoM3,
@@ -33,7 +32,7 @@ import {
   wormholeMakeNode,
   wormholeNodePiles,
 } from '../src/wormhole'
-import { wormholeHoldSyncCargo, wormholeHoldUsage, wormholeTakePileAt, wormholeTempDiscardPiece, wormholeTempUsage } from '../src/wormholeSalvage'
+import { wormholeHoldSyncCargo, wormholeHoldUsage, wormholeTakePileAt,  wormholeTempUsage } from '../src/wormholeSalvage'
 
 const ctx = buildSimContext()
 const T3 = 'sh-thresher'

@@ -21,7 +21,6 @@ import { createInitialState } from '../src/index'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import {
   advanceWeekendWreckDecay,
-  injectWeekendRareWreck,
   injectWeekendWreck,
   pullRareWreck,
   rareStockForTargetOf,

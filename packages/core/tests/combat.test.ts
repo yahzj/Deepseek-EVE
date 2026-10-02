@@ -7,12 +7,10 @@ import { buildSimContext } from '@whale/data'
 import type { GameState } from '../src/state'
 import type { ItemDef } from '../src/types'
 import { createInitialState } from '../src/state'
-import { advanceGame } from '../src/engine'
 import {
   applyDamage,
   distFactor,
   hitChance,
-  inRange,
   nextAmmoType,
   typeLayerMult,
   createBattleState,
@@ -34,7 +32,6 @@ import {
   preloadRepairFor,
   refundRepairKits,
   repairUsageText,
-  REPAIR_PULSE_MS,
   beamPowerFactor,
 } from '../src/combat'
 import { addShipToFleet } from '../src/shipyard'
@@ -171,7 +168,6 @@ describe('命中与伤害公式', () => {
 describe('敌方换算与距离战术', () => {
   it('威胁卡面 = 编队总战力：主体份额与僚机换算正确', () => {
     const bal = BAL()
-    const a = anomaly('ano-multi', 'galaxy-hub', { threat: 90 })
     // 覆盖：带 2 僚机的装甲血型
     const withEscorts: Parameters<typeof createFoeSpecs>[0] = {
       id: 'ano-multi',

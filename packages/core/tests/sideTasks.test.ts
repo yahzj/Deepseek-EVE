@@ -29,7 +29,6 @@ import {
   acceptCourierTask,
   addShipToFleet,
   advanceGame,
-  advanceSideTasks,
   builtStationCount,
   changeShip,
   /** 快递板周期（120 分钟，2026-09-24 船长令）——倒计时/出发护栏的用例按它算 */
