@@ -12399,18 +12399,25 @@ html[data-locale='en'] body {
  *  · **不碰布局**：不写 `transform`、不改尺寸 ⇒ 血条锚点与距离尺一字不动（与 `is-arriving` 同一条纪律）；
  *  · **一次性**：类由渲染层按"触发时刻 + 200ms×2"自行摘除，不做无限循环（提示位是"正在发生的事"）。
  */
+/* 🔴 闪现**三段**（船长 2026-10-01 原话 ＋ 2026-10-02 实机修正「移动的时间节点应该放在发生时间的
+   等待处」）：① 消失（本类，淡出）→ ② 等待（`is-blink-hidden`，全透明、无动画）→ ③ 出现（`is-blink`，淡入）。
+   ⚠ 三类都 `animation: none` 覆盖掉 `.app-bts-unit` 的**挂载淡入基线**（`app-bts-foe-in` 带 `scale(.81)`）——
+   否则演出结束、类一摘，基线动画就重播一次，实机表现为「闪现后舰船又放大一下」（船长 2026-10-02 报障）。
+   ⚠ 时长走 `--blink-ms`（脚本按旋钮内联覆盖 ⇒ 改旋钮不用改本文件）。 */
+.app-bts-unit.is-blink-out {
+  animation: app-bts-blink-out var(--blink-ms, 667ms) ease-in both;
+}
+.app-bts-unit.is-blink-hidden {
+  pointer-events: none;
+  opacity: 0;
+  animation: none;
+}
 .app-bts-unit.is-blink {
-  /* ⚠ 时长走 `--blink-ms`（缺省 1000ms = 引擎 `foeBlinkProcessMs` 2000 的一半）：
-     脚本在演出期按平衡表内联覆盖 ⇒ 改旋钮不用改本文件（船长 2026-10-02 令）。 */
-  animation: app-bts-blink-in var(--blink-ms, 1000ms) ease-out both;
+  animation: app-bts-blink-in var(--blink-ms, 667ms) ease-out both;
 }
 /* 🔴 **闪现期间整体消失**（船长 2026-10-01 令：「闪现开始-播放动画的同时舰船消失-等待发生时间-
    在新位置播放动画同时舰船出现」）：`combat.foeBlinkQueue` 的 `vanishMs → appearMs` 这 200ms 里本舰
    不可见（`visibility` 不参与布局 ⇒ 血条锚点与距离尺一字不动，与 `is-arriving` 同一纪律）。 */
-.app-bts-unit.is-blink-hidden {
-  pointer-events: none;
-  animation: app-bts-blink-out var(--blink-ms, 1000ms) ease-in both;
-}
 @keyframes app-bts-blink-out {
   0% { opacity: 1; }
   55% { opacity: 0.35; }

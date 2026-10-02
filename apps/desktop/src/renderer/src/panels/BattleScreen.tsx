@@ -416,14 +416,19 @@ const meSpeedRef = useRef(200)
     }>
   >([]);
   /**
-   * **闪现跃迁演出登记**（**船长 2026-10-01 令**：「闪现时候要给舰船一个闪现的动画」）：
-   * 键 = 敌舰战斗 tag，值 = **触发时刻**（渲染层时钟）。
+   * **闪现跃迁演出登记**（**船长 2026-10-01/02 三次令**）：
+   * 键 = 敌舰战斗 tag，值 = 本段演出的三个**界面时钟**时刻（`vanish` 消失 / `move` 位移兑现 /
+   * `appear` 出现）＋ 段长。渲染层据此判"该隐了 / 该在新位置淡入了"。
    *
-   * 数据来源 = 引擎推的 `fx.blink` 事件（`combat.markFoeBlink` 成功时推一条，与捕获网同款承载）。
-   * 消费方式 = fx 循环里登记 → 敌舰渲染时按 `BLINK_ANIM_MS` 判 `is-blink` 类 → 每帧清理过期项。
-   * ⚠ **不做逐帧 JS 动画**：只加/摘一个类，动画本身交给 CSS（与 `is-arriving` / 坠落演出同一纪律）。
+   * 数据来源 = **引擎的 `battle.foeBlinkQueue` 时刻表**（游戏毫秒）＋ `fx.blink` 事件触发的换算：
+   * 每见到一条新事件（同上一次快照比对），就按 `(atMs − 当前战斗刻) / speedX` 换算成**真实毫秒延迟**
+   * 写进本表。⚠ 这条换算是必需的：引擎的 `atMs` 是**游戏时钟**、动画跑的是**真实时钟**（倍速下不同步）。
+   *
+   * 🔴 **2026-10-02 修（船长实机反馈）**：位移改为**引擎在 `moveAtMs` 才兑现**，界面这里同步改成
+   * **三段**（消失 1/3 → 等待 1/3 → 出现在新位置 1/3）——旧版对半劈 ⇒ 中间那段"发生时间等待"没了。
+   * ⚠ **不做逐帧 JS 动画**：只加/摘类，动画交给 CSS（与 `is-arriving`/坠落演出同一纪律）。
    */
-  const blinkRef = useRef<Map<string, number>>(new Map());
+  const blinkRef = useRef<Map<string, { vanish: number; move: number; appear: number; segMs: number }>>(new Map());
   /** 每个机型**上一帧**渲染的机体数（击落时用它定位"本帧即将消失的末位机体"） */
   const dronePrevShowRef = useRef<Map<string, number>>(new Map())
   const visDistRef = useRef(0)
@@ -1107,16 +1112,25 @@ const meSpeedRef = useRef(200)
        * **闪现跃迁演出**（**船长 2026-10-01/02 三次令**）——R 族「瞬光跃迁仪」触发时引擎推这一条
        * （**不是开火**）。与下面 `droneDown` 同款：必须**提前拦下并 continue**。
        *
-       * 🔴 **2026-10-02 修：消费引擎的 `atMs`（原先丢掉了）** ——
-       * 引擎按"同时触发的多个闪现**排队依次发生**"排好了每段的**消失时刻**（`fx.atMs`），
-       * 但界面以前一律按"事件到达时刻"登记 ⇒ **同一帧到达的几段会被抹平、一起闪**（排队白排）。
-       * 现在按 `(atMs − 当前战斗刻)` 换算出"还要等多久才开始播"，并**除以当时的倍速**
-       * （`speedX`：引擎的 `atMs` 是**游戏毫秒**，动画跑的是**真实毫秒**）。
+       * 🔴 **消费引擎的 `atMs` 与三段时刻表**（2026-10-02 修）：
+       * 引擎按"同时触发的多个闪现**排队依次发生**"排好每段的三段时刻（消失 / **位移兑现** / 出现），
+       * 界面以前一律按"事件到达时刻"登记 ⇒ **同一帧到达的几段会被抹平、一起闪**（排队白排）。
+       * 现在按 `(atMs − 当前战斗刻)` 算出"还要等多久才开始播"，并**除以当时的倍速**
+       * （引擎的 `atMs` 是**游戏毫秒**，动画跑的是**真实毫秒**）。
        */
       if (fx.blink) {
-        const delayGameMs = Math.max(0, fx.atMs - (battle.lastTickGameMs ?? fx.atMs))
-        const realDelayMs = delayGameMs / Math.max(0.01, fx.speedX ?? 1)
-        blinkRef.current.set(fx.tag, now + realDelayMs)
+        const seg = battle.foeBlinkQueue?.[fx.tag]
+        if (seg) {
+          const toReal = (gameMs: number): number =>
+            (gameMs - (battle.lastTickGameMs ?? fx.atMs)) / Math.max(0.01, fx.speedX ?? 1)
+          const segMs = (seg.appearMs - seg.vanishMs) / Math.max(0.01, fx.speedX ?? 1)
+          blinkRef.current.set(fx.tag, {
+            vanish: now + toReal(seg.vanishMs),
+            move: now + toReal(seg.moveAtMs),
+            appear: now + toReal(seg.appearMs),
+            segMs,
+          })
+        }
         continue
       }
       /**
@@ -1498,10 +1512,10 @@ const meSpeedRef = useRef(200)
       (d) => now - d.born < DRONE_DOWN_FREEZE_MS + DRONE_DOWN_LIFE,
     )
   }
-  // **闪现跃迁演出**：两段（消失 200ms ＋ 出现 200ms）都过完才清（清了才有下一次的重新触发）
+  // **闪现跃迁演出**：整段（消失 ＋ 等待 ＋ 出现）过完才清（清了才有下一次的重新触发）
   if (blinkRef.current.size > 0) {
-    for (const [tag, at] of blinkRef.current) {
-      if (now - at >= blinkProcessMs) blinkRef.current.delete(tag)
+    for (const [tag, b] of blinkRef.current) {
+      if (now - b.appear >= b.segMs / 3) blinkRef.current.delete(tag)
     }
   }
 
@@ -2146,19 +2160,27 @@ const meSpeedRef = useRef(200)
     const corpseOn = sinceBoom >= 0 // 致死弹道着弹后才是真尸骸；着弹前原样停留
     const locked = !corpseOn && tag === combat.lockTag
     /**
-     * 🔴 **闪现跃迁演出**（**船长 2026-10-01/02 令**）：整段 = `blinkProcessMs`（引擎旋钮，
-     * 现为 2000ms）**对半劈**——前半段本舰**整体消失**（`is-blink-hidden`，播淡出），
-     * 后半段在新位置出现（`is-blink`，播淡入）。这正是船长要的
-     * "播放动画的同时舰船消失 → 等待发生时间 → 在新位置播放动画同时舰船出现"。
-     * ⚠ `blinkAt` 是**该段开始的真实毫秒**（含引擎排队等待，见 fx 登记那处）。
+     * 🔴 **闪现跃迁演出 · 三段**（**船长 2026-10-01 原话 ＋ 2026-10-02 实机修正**）：
+     *
+     * > 「**发生过程需要搭配动画效果：闪现开始-播放动画的同时舰船消失-等待发生时间-在新位置播放动画
+     * > 同时舰船出现**」＋「**我原先中间插入的发生时间等待怎么被取消了？移动的时间节点应该放在
+     * > 发生时间的等待处**」
+     *
+     * 三段**各占整段的 1/3**（时刻由引擎给，见 fx 登记那处）：
+     * - `blinkHide`：**消失**段（`vanish → move`）——淡出，且**位置仍是旧位置**；
+     * - 中间段（`move → appear`）：**不可见**（不挂任何类 ⇒ 无动画 ⇒ 停在已换好的新位置且全透明）；
+     * - `blinkOn`：**出现**段（`appear → appear + 1/3`）——在新位置淡入。
      */
-    const blinkAt = blinkRef.current.get(tag)
-    const blinkElapsed = blinkAt === undefined ? Number.POSITIVE_INFINITY : now - blinkAt
-    const blinkHalfMs = blinkProcessMs / 2
-    const blinkHide = blinkElapsed >= 0 && blinkElapsed < blinkHalfMs
-    const blinkOn = blinkElapsed >= blinkHalfMs && blinkElapsed < blinkProcessMs
-    /** 演出时长（CSS 变量口径：一段动画的时长 = 半个过程） */
-    const blinkAnimMs = blinkHalfMs
+    const blinkSeg = blinkRef.current.get(tag)
+    const blinkThirdMs = blinkSeg === undefined ? 0 : blinkSeg.segMs / 3
+    /** ① 消失段（`vanish → move`）：播淡出，**位置仍是旧位置** */
+    const blinkOut = blinkSeg !== undefined && now >= blinkSeg.vanish && now < blinkSeg.move
+    /** ② 等待段（`move → appear`）：**不可见**（引擎已在这一瞬把位置换好） */
+    const blinkWait = blinkSeg !== undefined && now >= blinkSeg.move && now < blinkSeg.appear
+    /** ③ 出现段（`appear → appear + 1/3`）：在新位置播淡入 */
+    const blinkOn = blinkSeg !== undefined && now >= blinkSeg.appear && now < blinkSeg.appear + blinkThirdMs
+    /** CSS 变量口径：一段动画的时长 = 整段的 1/3（消失/出现各自） */
+    const blinkAnimMs = blinkThirdMs
     const boomLive = corpseOn && sinceBoom < BOOM_LIFE
     const fadeT = sinceBoom >= BOOM_LIFE ? clamp01((sinceBoom - BOOM_LIFE) / WRECK_FADE_MS) : 0
     /** 本舰是否正在**飞入**（逐舰入场：首波按 `arrivalSide`，此后按引擎 `enteredAtMs`） */
@@ -2167,7 +2189,7 @@ const meSpeedRef = useRef(200)
       <div
         key={tag}
         data-tag={tag}
-        className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}${arriving ? ' is-arriving' : ''}${blinkOn ? ' is-blink' : ''}${blinkHide ? ' is-blink-hidden' : ''}`}
+        className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}${arriving ? ' is-arriving' : ''}${blinkOn ? ' is-blink' : ''}${blinkOut ? ' is-blink-out' : ''}${blinkWait ? ' is-blink-hidden' : ''}`}
         /* 列盒内的水平居中 + **舰位与锚点同源**（2026-09-25 修船长报障「第二排右舰血条压住左舰
            数字」）：本单位的宽度由外层**列盒**给定（= 本列列宽），舰在盒内居中 ⇒ 舰中心 ==
            `foeColLeft(列) + 列宽/2`（= `layout()` 的锚点）。旧写法（`marginLeft = (列宽−舰宽)/2`
@@ -2191,7 +2213,7 @@ const meSpeedRef = useRef(200)
            * （= 半个过程，缺省 1000ms），三份 `styles*.css` 的 `app-bts-blink-out/in` 都读它
            * ⇒ **改 `balance.battle.foeBlinkProcessMs` 就够，界面零改动**。
            */
-          ...(blinkOn || blinkHide ? ({ '--blink-ms': `${blinkAnimMs}ms` } as CSSProperties) : {}),
+          ...(blinkOn || blinkOut ? ({ '--blink-ms': `${blinkAnimMs}ms` } as CSSProperties) : {}),
         }}
       >
         {/* 淡出作用于舰体容器（外层 .app-bts-unit 有入场动画 fill 占位，透明度须压在子层）；

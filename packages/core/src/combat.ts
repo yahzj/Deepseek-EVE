@@ -3786,6 +3786,22 @@ function blinkGapMs(bal: BattleBalance): number {
 }
 
 /**
+ * 🔴 **一段闪现的三等分**（**船长 2026-10-01 原话**：「**播放动画的同时舰船消失-等待发生时间-在新位置
+ * 播放动画同时舰船出现**」）——整个过程 `foeBlinkProcessMs` 平分成三份：
+ *
+ * | 段 | 占比 | 谁在动 |
+ * |---|---|---|
+ * | ① 消失 | **1/3** | 舰船淡出（旧位置） |
+ * | ② **等待（发生时间）** | **1/3** | 舰船不可见；**位移在这一段的起点兑现**（`moveAtMs`） |
+ * | ③ 出现 | **1/3** | 舰船在新位置淡入 |
+ *
+ * ⚠ **为什么是三等分而不是对半劈**（**2026-10-02 船长实机反馈**）：「**我原先中间插入的发生时间等待
+ * 怎么被取消了？**」——对半劈的版本只有"淡出 ＋ 淡入"，**没有中间那段等待**（且位置在触发那刻就换）。
+ */
+const BLINK_VANISH_SHARE_NUM = 1
+const BLINK_SHARE_DEN = 3
+
+/**
  * **该敌舰的「决策用最远射程」**——它心里那把尺（**只给站位/期望距离用**，`inRange` 门不吃它）。
  *
  * - **激光武器**（`kind === 'beam'`）：`0.7 ×` 有效射程（后 30% 是它自己认为的无效射程）；
@@ -8343,22 +8359,26 @@ function markFoeBlink(
    *  若记小数起点，跳幅会带上 0.2 米级尾巴（实测 2000.207）⇒ 与"件上写 2,000"的语义不符。 */
   const from = Math.round(b.distanceM)
   const moved = Math.abs(landed - from)
-  b.distanceM = landed
+  /**
+   * 🔴 **位置不在这里换**（**船长 2026-10-02 令**：「**移动的时间节点应该放在发生时间的等待处**」）——
+   * 旧实现在这一行就写了 `b.distanceM = landed`（"触发即换位"）⇒ 演出里**没有"等待"这一段**，
+   * 船长的实机反馈指的正是这个。现在改成：**入队 + 等到 `moveAtMs` 那一拍由 `settleBlinkQueue` 兑现**。
+   */
   if (!b.foeBlinks) b.foeBlinks = {}
   b.foeBlinks[tag] = nowMs + bl.cooldownMs
   /**
    * **旁路记账：这一跳从哪起跳、走了多远、朝哪边**（2026-10-01 加，见 `BattleState.foeBlinkJumps` 头注）——
    * 只写不进任何算式。存在的理由：落点是**全局标量**，多舰同拍各闪一次时，光看 `distanceM`
    * 的变化**既分不出单舰跳幅、也分不出单舰方向**（实测踩过：聚合位移 2,678 m 被误读成"一跳超 2,000m"）。
+   * ⚠ 记账在**触发当刻**就写好（跳幅与方向**与兑现时刻无关**）⇒ 用例读数不受"位移推迟"影响。
    */
   if (!b.foeBlinkJumps) b.foeBlinkJumps = {}
   b.foeBlinkJumps[tag] = { from, moved, dir: landed > from ? 1 : landed < from ? -1 : 0 }
   /**
    * 🔴 **排进"闪现演出队列"**（**船长 2026-10-01 令**：「**闪现现在会有一个发生时间，同时触发的多个闪现
    * 需要排队发生**」；口径与时刻表见 `BattleState.foeBlinkQueue`）——
-   * **多个闪现依次排定，每段占 200ms 动画 ＋ 100ms 间隔 = 300ms**，本舰那一段从现在开始。
-   * ⚠ **不停表**（船长裁定）：战斗时钟照走，只是这段窗口里**双方都不开火**
-   * （我方那一侧由 `blinkHoldFire` 门控）。
+   * **多个闪现依次排定**，每段占「整个过程 ＋ 间隔」，本舰那一段从现在开始。
+   * ⚠ **不停表**（船长裁定）：战斗时钟照走，只是这段窗口里**我方不开火**（`blinkHoldFire` 门控）。
    */
   const queue = b.foeBlinkQueue ?? (b.foeBlinkQueue = {})
   /**
@@ -8369,12 +8389,15 @@ function markFoeBlink(
   let startMs = nowMs
   for (const q of Object.values(queue).slice()) startMs = Math.max(startMs, q.appearMs + blinkGapMs(bal))
   const vanishMs = startMs
+  /** 三段的边界（见 `foeBlinkQueue` 头注）：消失 → **等待（位移在这一瞬兑现）** → 出现 */
+  const moveAtMs = vanishMs + Math.round((blinkProcessMs(bal) * BLINK_VANISH_SHARE_NUM) / BLINK_SHARE_DEN)
   const appearMs = vanishMs + blinkProcessMs(bal)
-  queue[tag] = { queuedMs: nowMs, vanishMs, appearMs }
+  queue[tag] = { queuedMs: nowMs, vanishMs, moveAtMs, appearMs, from, to: landed }
   /**
-   * 演出事件：界面据此让本舰**消失**并播淡出（位置已经换好，出现动画在 `appearMs` 那一拍再播）。
+   * 演出事件：界面据此让本舰**消失**并播淡出；位移在 `moveAtMs` 由引擎兑现，界面到 `appearMs`
+   * 在新位置播"出现"。
    *
-   * ⚠ **`atMs` 一并带动画时长与倍速**（**2026-10-02 修**）：界面原先**根本没消费 `atMs`**
+   * ⚠ **`atMs` 一并带动画时长与倍速**（2026-10-02 修）：界面原先**根本没消费 `atMs`**
    * （一律 `set(tag, performance.now())`）⇒ 引擎排好的"依次错开"在画面上被抹平、同一拍触发的
    * 多艘会**同时闪**。现在界面按 `atMs − nowMs` 换算出"该等多久才开始播"，并把游戏毫秒**除以倍速**
    * 折成真实毫秒（`speedX`）⇒ 排队错开与倍速缩放在画面上都能对上。
@@ -8389,6 +8412,34 @@ function markFoeBlink(
     speedX: b.speedX ?? 1,
   })
   return true
+}
+
+/**
+ * **把"到点的闪现位移"兑现**（**船长 2026-10-02 令**：「**移动的时间节点应该放在发生时间的等待处**」）——
+ * 每拍扫一遍队列：`moveAtMs` 到点的段**真正写进 `b.distanceM`**；`appearMs` 过完的段从队列删掉。
+ *
+ * ⚠ **为什么必须"到点才写"而不是"触发就写"**：船长的演出设计是
+ * 「**播放动画的同时舰船消失 → 等待发生时间 → 在新位置播放动画同时舰船出现**」——
+ * 位置若在触发当刻就换，"消失"这一段播的就是**新位置**（根本看不到旧位置消失），中间也不存在"等待"。
+ * ⇒ 位移落在**消失演完、等待开始**的那一瞬（`moveAtMs`）。
+ *
+ * ⚠ **队列项一直留到 `appearMs`**（不是兑现位移就删）：界面要读这张时刻表才知道
+ * 「哪艘正处在消失→等待→出现」里、以及"出现"从哪一刻开始 ⇒ 提前删会让界面失去时间轴。
+ * ⚠ 多条闪现**排队**时各自按自己的 `moveAtMs` 兑现；同一拍到点多个 ⇒ 按队列顺序依次写。
+ * ⚠ 幂等：写过的段打 `moved` 标记 ⇒ 同一拍内重复调用不会写两次。
+ */
+function settleBlinkQueue(b: import('./state').BattleState): void {
+  const q = b.foeBlinkQueue
+  if (!q) return
+  const now = b.lastTickGameMs
+  for (const [tag, seg] of Object.entries(q)) {
+    if (now >= seg.moveAtMs && seg.moved !== true) {
+      b.distanceM = seg.to
+      seg.moved = true
+      void tag
+    }
+    if (now >= seg.appearMs) delete q[tag]
+  }
 }
 
 /**
@@ -9165,6 +9216,13 @@ function stepBattle(
   // 增程与敌方受击增程），只增不减、无增程时逐字等于 `openM` ⇒ 见 `battleMaxDistanceM` 的头注。
   // **2026-09-22 船长令**：我队**全队**（`myUnits`）的最远射程一并计入 ⇒ 僚舰装远射武器也能拉开战场。
   b.distanceM = clamp(bal.minDistanceM, battleMaxDistanceM(b, me, foes, bal, myUnits), b.distanceM + rate)
+
+  /**
+   * 🔴 **兑现"到点的闪现位移"**（**船长 2026-10-02 令**：「**移动的时间节点应该放在发生时间的等待处**」）——
+   * 位置不再在"触发那一刻"就换，而是**推迟到本段演出演完「消失」、进入「等待」的那一瞬**（`moveAtMs`）。
+   * 放在走位之后、开火之前：本拍换好 ⇒ 后面的开火/命中判定与画面严格同拍。
+   */
+  settleBlinkQueue(b)
 
   // ── 我方开火（主炮 + 无人机条目）——**逐舰结算**（单船路径 = 只循环一次，逐字等价）──
   // 开火失稳代价只在点火期生效（2026-09-10 船长：没点火就不失稳）——每次开火取当前有效乘子，
