@@ -514,10 +514,12 @@ function BeltCard({
         </span>
         {aiCount > 0 ? (
           <span
-            className="app-belt-ai-badge"
+            className="app-belt-ai-badge is-work-mine"
             title={tr("ui.MapPage.089", { aiCount: aiCount })}
           >
-            {/* 图标不传色 ⇒ 继承徽标墨色（同「残骸打捞」那张卡的徽标；理由见 `WreckCard` 里那段注释） */}
+            {/* 图标不传色 ⇒ 继承徽标墨色（同「残骸打捞」那张卡的徽标；理由见 `WreckCard` 里那段注释）。
+                底色 = **采矿作业色**（`is-work-mine`，**2026-10-02 船长令「按你推荐来」**）：
+                徽标挂在矿带卡上 ⇒ 一眼看出这一枚 AI 在采矿。 */}
             <span className="app-ico"><Glyph name="nav-ai" size={12} /></span>×{aiCount}
           </span>
         ) : null}
@@ -1130,13 +1132,16 @@ function WreckCard({
           {lowSec ? <em className="app-belt-flag">{tr("ui.MapPage.061")}</em> : null}
         </span>
         {aiWorkers.length > 0 ? (
-          <span className="app-belt-ai-badge" title={tr("ui.MapPage.108", { p1: aiWorkers.length })}>
+          <span className="app-belt-ai-badge is-work-salvage" title={tr("ui.MapPage.108", { p1: aiWorkers.length })}>
             {/**
              * ⚠ **图标不传色**（**船长 2026-10-02 报障**：「**卡片内 AI 工作的图标（卡片右上角的那个）
-             * 颜色不对**」）：本徽标底色是**青**（`.app-belt-ai-badge` 的 `--wui-cyan`）、文字是**墨色**
-             * （`--wui-x222`），而图标原先传 `NAV_TONES['nav-ai']`（默认主题 = **品红 255 138 181**）
-             * ⇒ 浅色图标压在浅青底上，与徽标其余部分不是一个体系。`Glyph` 缺省走 `currentColor`
-             * ⇒ 不传即继承徽标自己的墨色，与右边那个「×N」同色。
+             * 颜色不对**」）：本徽标底色是**作业活动色**、文字是**墨色**（`--wui-x222`），而图标原先传
+             * `NAV_TONES['nav-ai']`（默认主题 = **品红 255 138 181**）⇒ 浅色图标压在浅底上，
+             * 与徽标其余部分不是一个体系。`Glyph` 缺省走 `currentColor` ⇒ 不传即继承徽标自己的墨色，
+             * 与右边那个「×N」同色。
+             *
+             * 底色 = **打捞作业色**（`is-work-salvage`，**2026-10-02 船长令「按你推荐来」**）：
+             * 徽标挂在残骸打捞卡上 ⇒ 与矿带卡那枚（`is-work-mine`）一眼分得开。
              */}
             <span className="app-ico"><Glyph name="nav-ai" size={12} /></span>×{aiWorkers.length}
           </span>
