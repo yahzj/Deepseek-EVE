@@ -6,6 +6,9 @@
  * > ＋ 四问裁「**按你推荐来**」＝采纳一号的推荐：**判定双判据** · **补场甲**（暗期只开一场、到下一期
  * > T0 自然收场、不设截止）· **发放甲**（读档入仓 ＋ 系统日志，新建的档也算"其余玩家"）·
  * > 公告用官方名「光环科技」与绝对日期、分类「修复」、本批做完＋验收后立即推送。
+ * > 🔴 **补场口径于同日改判「乙」**（一号摆出"判成受影响、但本期就把光环打到手"的那批读数后）：
+ * > **开补场之前回头看一次 —— 本期已经真出过光环 ⇒ 不开补场，改发 1 枚信号发射器**
+ * > （见 {@link weekendCompensationGotRThisPeriod} 与 {@link openWeekendMakeupIfDue}）。
  *
  * **成因**（一号 2026-10-02 核过）：本期该出哪一族按**窗口 T0**（最近一个周五 20:00）算 ——
  * 10-02 20:00 那一期 = **光环科技（R）**；但开新场有一条硬前提「**上一场还没结束 ⇒ 本期不开**」，
@@ -149,13 +152,36 @@ export function applyWeekendCompensation(state: GameState, nowWallMs: number): b
 }
 
 /**
+ * **该档"本期"是不是已经真出过光环了**（**船长 2026-10-02 令「乙」**的判据 · 唯一取数口）。
+ *
+ * 判据 = **留档快照**是**光环**，且它结束在 **本期 T0（2026-10-02 20:00）之后、补场首场
+ * （2026-10-07 20:00）之前** —— 上界把"本期"钉死在那一个窗口里，免得把**后面几期**的留档也算进来
+ * （⚠ 族循环锚点那个 8 小时偏差让 10-09 那期**也**是光环，见文件头与工作文档 §七）。
+ *
+ * 为什么用留档快照：调用点（补场服务）已经要求"手上没有未结束的场" ⇒ 那一刻他若打到过光环，
+ * 那一场必然**已结束并落进留档**。⚠ 已知边界（如实记账）：若他在本期打到光环、之后又打完了一期
+ * 别的入侵（留档被后者覆盖）⇒ 判据看不到那次光环 ⇒ **照旧会开补场**（偏差方向 = 多给一场）。
+ */
+export function weekendCompensationGotRThisPeriod(state: GameState): boolean {
+  const snap = state.weekendLastResult
+  if (snap === undefined) return false
+  return (
+    snap.family === WEEKEND_MAKEUP_FAMILY &&
+    snap.endedAtWallMs >= WEEKEND_COMPENSATION_T0_WALL_MS &&
+    snap.endedAtWallMs < WEEKEND_MAKEUP_FIRST_WALL_MS
+  )
+}
+
+/**
  * **开出补场**（每拍调用，**幂等**）——`makeup` 路：暗期里开**一场光环科技**。
  *
- * 四条前提（缺一不可）：
- * 1. 该档判成了 `makeup` 且**还没开过**（`makeupServedAtWallMs` 缺省）；
+ * 前提（缺一不可）：
+ * 1. 该档判成了 `makeup`，且**还没开过**（`makeupServedAtWallMs` 缺省）、**也没跳过**（`makeupSkippedAtWallMs` 缺省）；
  * 2. 现在落在**补场暗期**内（{@link weekendMakeupWindowOf}）；
  * 3. **手上没有未结束的场**（与 `ensureWeekendEvent` 那条硬前提同口径：绝不覆盖正在打的那场）；
- * 4. 过**声望前提** `weekendInvasionAllowedFor`（≥40 累计声望）——与排期入侵同一条门。
+ * 4. 🔴 **船长 2026-10-02 令「乙」**：**他本期已经真出过光环 ⇒ 不开补场** —— 按"其余玩家"口径
+ *    改发 1 枚信号发射器（{@link weekendCompensationGotRThisPeriod}）；这条**在声望门之前**判；
+ * 5. 过**声望前提** `weekendInvasionAllowedFor`（≥40 累计声望）——与排期入侵同一条门。
  *
  * 开出来的那一场**刻意不带 `beaconLit`**（不是点火场）：收场规则因此走**周排期**那条
  * （`weekendT0Of(now) > startedAtWallMs` ⇒ **到下一个周五 20:00 收场**），于是：
@@ -166,14 +192,44 @@ export function applyWeekendCompensation(state: GameState, nowWallMs: number): b
  * **玩家发起的主控活动入口**、要求它走 `applyActivityGate`；本函数是**到点自动开场的排期器**
  * （与 `ensureWeekendEvent` 同类，不是玩家活动）⇒ 按同一命名习惯叫 `open…IfDue`，不进那条契约。
  *
- * @returns 真开了才 `true`（调用方据此走与常规开局同一套日志/警报演出）
+ * @returns 真开了才 `true`（调用方据此走与常规开局同一套日志/警报演出；"跳过 ＋ 发道具"那条返回 `false`）
  */
 export function openWeekendMakeupIfDue(state: GameState, ctx: SimContext, nowWallMs: number): boolean {
   const comp = state.weekendCompensation
-  if (comp === undefined || comp.track !== 'makeup' || comp.makeupServedAtWallMs !== undefined) return false
+  if (
+    comp === undefined ||
+    comp.track !== 'makeup' ||
+    comp.makeupServedAtWallMs !== undefined ||
+    comp.makeupSkippedAtWallMs !== undefined
+  ) {
+    return false
+  }
   if (!weekendMakeupWindowOf(nowWallMs).open) return false
   const ev = state.weekendEvent
   if (ev !== undefined && ev.endedAtWallMs === undefined) return false
+  /**
+   * 🔴 **船长 2026-10-02 令「乙」**：**他本期已经真出过光环 ⇒ 不再叠加一场补场**。
+   *
+   * 起因（一号当日的读数）：判成受影响的档里，有一部分会在**本期窗口内**就把旧的墨潮帮交掉 ——
+   * 按今天的开局口径（只看"有没有正在进行" ＋ 取消周二关窗），**当拍就开新场**，而那一期的族就是
+   * **光环科技** ⇒ 他本期其实已经打到了光环；此时周三再开一场就是"连着两场光环"。
+   * 船长裁「乙」＝**按需发放**：到这一刻回头看一次，拿到过就不开。
+   *
+   * 配套（乙里那条建议，船长采纳）：**跳过补场时按"其余玩家"口径改发 1 枚信号发射器** ——
+   * 让这条路上的人也有个到手的东西（公告承诺的兑现感）。落 `makeupSkippedAtWallMs` 记"已结清"。
+   *
+   * ⚠ 位置刻意在**声望前提之前**：这条路上发的是"补偿道具"，不该因为此刻声望不足就落空。
+   */
+  if (weekendCompensationGotRThisPeriod(state)) {
+    addWare(state, INVASION_BEACON_ITEM_ID, 1)
+    state.weekendCompensation = {
+      ...comp,
+      makeupSkippedAtWallMs: nowWallMs,
+      beaconGrantedAtWallMs: nowWallMs,
+    }
+    addLog(state, 'system', '入侵补偿：信号发射器 ×1（已存入物品仓库）。', 'core.weekend.045')
+    return false
+  }
   if (!weekendInvasionAllowedFor(state)) return false
   const seq = (ev?.seq ?? 0) + 1
   const rolled = weekendRollOccupation(state, ctx, seq, WEEKEND_MAKEUP_FAMILY)

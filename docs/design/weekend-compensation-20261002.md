@@ -16,6 +16,7 @@
 | Q2 周三那场怎么开 | **甲**：周三 20:00 ~ 周五 20:00 这段**暗期**里，玩家手上没场就开**一场光环**（只一场、打完即止）；**到下一期 T0 自然收场**（不挡 10-09 的墨潮帮）；**不设截止**（晚登录的顺延到下一个周三） |
 | Q3 其余玩家那枚 | **甲**：**读档/运行期自动入仓 ＋ 一条系统日志**（不投通讯信）；**新建的档也算**「其余玩家」 |
 | Q4 公告与推送 | 族名用官方名「**光环科技**」·「下周三」写成绝对日期「**10 月 7 日（周三）20:00**」· 分类「**修复**」· **本批做完＋验收后立即推送** |
+| 🔴 Q2 补场**同日改判「乙」** | **开补场之前回头看一次**：该档**本期已经真出过光环**（留档是光环、且结束在 10-02 20:00 ~ 10-07 20:00 之间）⇒ **不开补场**，按"其余玩家"口径**改发 1 枚信号发射器**（`makeupSkippedAtWallMs` 记"已结清"）。起因 = 一号读数：判成受影响的档里有一部分会在**本期窗口内**就交掉旧墨潮帮 ⇒ 按今天的开局口径（只看"有没有正在进行" ＋ 取消周二关窗）**当拍就开新场**、而那一期正是**光环** ⇒ 他本期已经打到光环，周三再开就是"连着两场" |
 
 ## 二、成因（一号 2026-10-02 核过）
 
@@ -35,14 +36,17 @@
    - `weekendMakeupWindowOf(nowWallMs)`：**周三 20:00 ~ 周五 20:00** 那 48 小时暗期（首场不早于 2026-10-07 20:00）；
    - `applyWeekendCompensation(state, ctx, nowWallMs)`：**判定一次并落盘**（`track`）；判成 `beacon`
      ⇒ `addWare` 信号发射器 ×1 ＋ 一条系统日志（`core.weekend.045`）；幂等（判定过了就不再改）；
-   - `startWeekendMakeupIfDue(state, ctx, nowWallMs)`：暗期里、手上没场 ⇒ 开**一场光环**并记 `makeupServedAtWallMs`。
-2. `packages/core/src/state.ts` —— 新增可选字段 `GameState.weekendCompensation`（三格：`track` ·
-   `decidedAtWallMs` · `beaconGrantedAtWallMs` / `makeupServedAtWallMs`）。**可选 ⇒ 老档零迁移**。
-3. `packages/core/src/save.ts`（**需裁决文件 —— 本条即"先报告"，船长已按 Q3「甲」批准**）—— 读写白名单登记
-   该字段（`track` 只认 `'makeup' | 'beacon'`；缺省不落键 ⇒ 老档形状不变）。
-4. `packages/core/src/index.ts` —— 导出上述常量与三个函数。
+   - `openWeekendMakeupIfDue(state, ctx, nowWallMs)`：暗期里、手上没场 ⇒ 开**一场光环**并记 `makeupServedAtWallMs`；
+     🔴 **在此之前先回头看一眼**（船长同日改判「乙」）：`weekendCompensationGotRThisPeriod(state)`
+     （留档是光环且结束在本期窗口内）为真 ⇒ **不开补场**，改发 1 枚信号发射器并记 `makeupSkippedAtWallMs`。
+2. `packages/core/src/state.ts` —— 新增可选字段 `GameState.weekendCompensation`（四格：`track` ·
+   `decidedAtWallMs` · `beaconGrantedAtWallMs` / `makeupServedAtWallMs` / `makeupSkippedAtWallMs`）。
+   **可选 ⇒ 老档零迁移**。
+3. `packages/core/src/save.ts`（**需裁决文件 —— 本条即"先报告"，船长已按 Q3「甲」与 Q2「乙」批准**）—— 读写白名单登记
+   该字段（`track` 只认 `'makeup' | 'beacon'`；各"落地时刻"缺键必须是 `undefined`；缺省不落键 ⇒ 老档形状不变）。
+4. `packages/core/src/index.ts` —— 导出上述常量与四个函数（含 `weekendCompensationGotRThisPeriod`）。
 5. `apps/desktop/src/renderer/src/game/engine.ts` —— `pumpWeekendAt` 里两处接线：每拍先
-   `applyWeekendCompensation`（幂等）再 `weekendTick`，然后 `startWeekendMakeupIfDue`；补场开出时
+   `applyWeekendCompensation`（幂等）再 `weekendTick`，然后 `openWeekendMakeupIfDue`；补场开出时
    走与常规开局**同一条**演出与日志（`weekend.started || makeupStarted`）。
 
 **说明文案 / 公告**
@@ -51,11 +55,11 @@
 
 **工具 / 测试**
 8. `tools/weekend-compensation.ts`（新增 · 挂 `npm run weekend:compensation`）—— **船长要的"工具"**：
-   `--inspect <档>` 出判定读数（受影响/其余 · 标记 · 手上那场 · 留档快照 · 本期应出族）·
-   `--serve --now <ISO>` 演算补场会不会开、开在哪一刻 · `--grant <档> [--out <新档>]` **GM 手工**对
-   玩家导出的存档执行发放（**默认写新文件、不动原档**）；不带参数 = 扫 `docs/test-saves/*.json` 出读数。
-9. `packages/core/tests/weekend-compensation-20261002.test.ts`（新增）—— 判定两条路 · 发放与幂等 ·
-   补场只开一次 · 补场不挡下一期（10-09 照常出墨潮帮）。
+   `--inspect <档>` 出判定读数（受影响/其余 · 标记 · 手上那场 · 留档快照 · **乙判据** · 补场窗口此刻开不开）·
+   `--grant <档> [--out <新档> | --in-place]` **GM 手工**对玩家导出的存档执行同一条路（**默认写新文件、
+   不动原档**）· `--now <ISO|ms>` 演算；不带参数 = 扫 `docs/test-saves/*.json` 与默认真档出读数。
+9. `packages/core/tests/weekend-compensation-20261002.test.ts`（新增 **12 条**）—— 判定两条路 · 发放与幂等 ·
+   补场只开一次 · 补场不挡下一期 · **「乙」跳过补场改发道具＋幂等** · 乙判据只在本期内认账。
 
 ## 四、不做 / 边界
 
@@ -63,6 +67,8 @@
 - **不改**族循环（本批一字未动；⚠ **附带发现**：族循环锚点常量比它自己的注释晚 8 小时 ⇒ 「10-09 那期 = H」
   实测不成立，见 §七）；
 - 受影响玩家**不发**信号发射器（只开补场）；其余玩家**只发**信号发射器（不开补场）——**一人一条路**；
+  ⚠ **唯一例外（船长同日裁「乙」）**：判成受影响、但**本期已经真出过光环**的档 ⇒ **不开补场、改发 1 枚**
+  （即"回头看一眼"，见 §一表末行）；
 - 不动入侵其它收益（夺回奖 / 进度收入 / 声望 / 黑匣一律照旧）；
 - 补场**照常规场**结算（不进 `beaconLit` 那条：声望不按"点火场固定 5 点"算）。
 
@@ -79,7 +85,7 @@
 
 ## 六、验证与读数
 
-**用例**（`packages/core/tests/weekend-compensation-20261002.test.ts` · 10 条全绿）：
+**用例**（`packages/core/tests/weekend-compensation-20261002.test.ts` · **12 条**全绿）：
 
 - 判定：① 手上那场未结束 · T0 早于本期 · 族 = 墨潮帮 ⇒ `makeup`（三条必要条件各自单独破掉即回 `beacon`）；
   ② 留档 = 墨潮帮且结束于本期 T0 之后（含整点）⇒ `makeup`；③ 上一期按时收场 / 留档是光环 / 全新档 ⇒ `beacon`；
@@ -90,6 +96,9 @@
   一场**光环**（手上还有场时**不开**、开过**不再开**、`beacon` 档永不开）；⑨ 补场到 **10-09 20:00 收场**
   ⇒ 紧接那一拍照常开下一期（族 = 那一期的排期，本批一字未动）；⑩ 三个日期锚都是**本地 20:00**
   （10-02 周五 / 10-07 周三 / 10-09 周五）。
+- **「乙」**：⑪ 本期已真出过光环 ⇒ 周三**不开补场**、改发 1 枚信号发射器 ＋ 落 `makeupSkippedAtWallMs`，
+  且此后每个周三都不重复；⑫ 判据只在**本期**内认账（上一期结束的光环 / 10-09 之后结束的光环都不算）
+  ⇒ 这三种档照常开补场。
 
 **工具**（`npm run weekend:compensation`）实测：扫档模式出四行读数；`--inspect <档>` 只读查档；
 `--grant <档> --out <新档>` 端到端验过一次（旧档判成 `beacon` ⇒ 信号发射器 0 → 1、标记落盘，

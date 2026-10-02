@@ -38,6 +38,7 @@ import {
   WEEKEND_MAKEUP_FIRST_WALL_MS,
   applyWeekendCompensation,
   openWeekendMakeupIfDue,
+  weekendCompensationGotRThisPeriod,
   weekendCompensationTrackOf,
   weekendMakeupWindowOf,
 } from '../packages/core/src/weekendCompensation'
@@ -105,7 +106,10 @@ function inspectLine(path: string): void {
     `    留档快照：${snap === undefined ? '无' : `${snap.family} · 结束 ${at(snap.endedAtWallMs)}`} · 仓库信号发射器 ${state.warehouse.items[INVASION_BEACON_ITEM_ID] ?? 0} 枚`,
   )
   console.log(
-    `    判定：${trackText(track)} · 标记：${comp === undefined ? '未判定' : `${comp.track}（判于 ${at(comp.decidedAtWallMs)}${comp.beaconGrantedAtWallMs !== undefined ? ` · 已发 ${at(comp.beaconGrantedAtWallMs)}` : ''}${comp.makeupServedAtWallMs !== undefined ? ` · 补场已开 ${at(comp.makeupServedAtWallMs)}` : ''}）`}`,
+    `    判定：${trackText(track)} · 标记：${comp === undefined ? '未判定' : `${comp.track}（判于 ${at(comp.decidedAtWallMs)}${comp.beaconGrantedAtWallMs !== undefined ? ` · 已发 ${at(comp.beaconGrantedAtWallMs)}` : ''}${comp.makeupServedAtWallMs !== undefined ? ` · 补场已开 ${at(comp.makeupServedAtWallMs)}` : ''}${comp.makeupSkippedAtWallMs !== undefined ? ` · 已跳过补场（乙）${at(comp.makeupSkippedAtWallMs)}` : ''}）`}`,
+  )
+  console.log(
+    `    乙判据：本期（10-02 20:00 ~ 10-07 20:00）已出过光环 = ${weekendCompensationGotRThisPeriod(state) ? '**是**（有补场也不开、改发信号发射器）' : '否'}`,
   )
   console.log(
     `    补场窗口：现在（${at(nowWallMs)}）${win.open ? '**在暗期内**' : '不在暗期内'} · 本暗期 ${at(win.startWallMs)} ~ ${at(win.endWallMs)}`,

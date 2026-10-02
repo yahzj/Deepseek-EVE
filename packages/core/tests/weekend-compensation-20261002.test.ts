@@ -26,6 +26,7 @@ import {
   WEEKEND_MAKEUP_FIRST_END_WALL_MS,
   applyWeekendCompensation,
   openWeekendMakeupIfDue,
+  weekendCompensationGotRThisPeriod,
   weekendCompensationTrackOf,
   weekendMakeupWindowOf,
 } from '../src/weekendCompensation'
@@ -82,6 +83,8 @@ function settleSnapshot(s: GameState, family: string, endedAtWallMs: number): vo
 }
 
 const beaconCount = (s: GameState): number => s.warehouse.items[INVASION_BEACON_ITEM_ID] ?? 0
+/** 读"手上那场"（走函数取 ⇒ 不被 TS 的赋值收窄影响：用例里会先 `= undefined` 再让被测函数写回新场） */
+const evOf = (s: GameState): WeekendEventState | undefined => s.weekendEvent
 
 describe('入侵补偿批 · 判定（船长 2026-10-02 Q1：双判据）', () => {
   it('① 手上那场未结束 · T0 早于本期 · 族 = 墨潮帮 ⇒ makeup（这一期还是墨潮帮那批）', () => {
@@ -223,5 +226,62 @@ describe('入侵补偿批 · 补场（船长 Q2「甲」：暗期只开一场 ·
       `  [读数] 补偿批锚点：判据 T0 ${at(T0)} · 补场 ${at(WED)}（周三）~ ${at(FRI)}（周五）· ` +
         `补场族 = ${WEEKEND_MAKEUP_FAMILY}（光环科技）`,
     )
+  })
+
+  /**
+   * **「乙」**（**船长 2026-10-02 同日改判**）：判成受影响的档里，有一部分会在**本期窗口内**就把旧的
+   * 墨潮帮交掉 —— 按今天"开局只看有没有正在进行 ＋ 取消周二关窗"的口径，**当拍就开新场**，而那一期的
+   * 族就是**光环科技** ⇒ 他本期已经打到了光环；此时周三再开一场就是"连着两场光环"。
+   * 船长裁「乙」＝**按需发放**：开补场前回头看一次，拿到过 ⇒ **跳过补场**、改发 1 枚信号发射器。
+   */
+  it('⑪ 乙：本期已真出过光环 ⇒ **跳过补场**，改发 1 枚信号发射器（幂等）', () => {
+    const s = base()
+    stuckEvent(s)
+    applyWeekendCompensation(s, T0 + H)
+    expect(s.weekendCompensation?.track).toBe('makeup')
+    /** 本期（10-02 20:00 之后、10-07 20:00 之前）他打完了那场常规光环 ⇒ 留档里是光环 */
+    settleSnapshot(s, WEEKEND_MAKEUP_FAMILY, T0 + 2 * 24 * H + H)
+    s.weekendEvent = undefined
+    expect(weekendCompensationGotRThisPeriod(s), '判据应认出"本期出过光环"').toBe(true)
+    /** 周三那一拍：**不开补场**，改发道具 ＋ 落"跳过"标记 */
+    expect(openWeekendMakeupIfDue(s, ctx, WED), '不开补场').toBe(false)
+    expect(s.weekendEvent, '没有新场').toBeUndefined()
+    expect(beaconCount(s), '改发 1 枚信号发射器').toBe(1)
+    expect(s.weekendCompensation?.makeupSkippedAtWallMs).toBe(WED)
+    expect(s.weekendCompensation?.beaconGrantedAtWallMs).toBe(WED)
+    expect(s.weekendCompensation?.makeupServedAtWallMs, '没有开过补场').toBeUndefined()
+    expect(s.logs.filter((l) => l.textId === 'core.weekend.045').length, '一条日志').toBe(1)
+    /** 幂等：之后每个周三再来都不重复 */
+    expect(openWeekendMakeupIfDue(s, ctx, WED + 7 * 24 * H)).toBe(false)
+    expect(beaconCount(s)).toBe(1)
+    console.log('  [读数] 乙：本期已出过光环 ⇒ 跳过补场 ＋ 改发信号发射器 ×1（开补场前回头判一次）')
+  })
+
+  it('⑫ 乙的判据只在**本期**内认账：上一期的光环 / 下一期的光环都不算 ⇒ 照常开补场', () => {
+    /** 上一期（早于本期 T0）结束的光环 ⇒ 不是"本期拿到过" */
+    const a = base()
+    stuckEvent(a)
+    applyWeekendCompensation(a, T0 + H)
+    a.weekendEvent = undefined
+    settleSnapshot(a, WEEKEND_MAKEUP_FAMILY, T0 - H)
+    expect(weekendCompensationGotRThisPeriod(a)).toBe(false)
+    expect(openWeekendMakeupIfDue(a, ctx, WED), '照常开补场').toBe(true)
+    expect(evOf(a)?.family).toBe(WEEKEND_MAKEUP_FAMILY)
+    /** 留档是**墨潮帮**（本期没出过光环）⇒ 照常开补场 */
+    const b = base()
+    stuckEvent(b)
+    applyWeekendCompensation(b, T0 + H)
+    b.weekendEvent = undefined
+    settleSnapshot(b, 'H', T0 + 3 * 24 * H)
+    expect(weekendCompensationGotRThisPeriod(b)).toBe(false)
+    expect(openWeekendMakeupIfDue(b, ctx, WED)).toBe(true)
+    /** 留档是**补场首场之后**（10-09 那期）的光环 ⇒ 不算"本期"（上界钉死在本期窗口内）⇒ 照常开补场 */
+    const c = base()
+    stuckEvent(c)
+    applyWeekendCompensation(c, T0 + H)
+    c.weekendEvent = undefined
+    settleSnapshot(c, WEEKEND_MAKEUP_FAMILY, FRI + H)
+    expect(weekendCompensationGotRThisPeriod(c), '上界把"本期"钉在 10-07 20:00 之前').toBe(false)
+    expect(openWeekendMakeupIfDue(c, ctx, WED + 7 * 24 * H), '晚登录的档照常补上').toBe(true)
   })
 })

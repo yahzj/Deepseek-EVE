@@ -1236,11 +1236,13 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     if (decidedAtWallMs === undefined) return undefined
     const beaconGrantedAtWallMs = at(raw.beaconGrantedAtWallMs)
     const makeupServedAtWallMs = at(raw.makeupServedAtWallMs)
+    const makeupSkippedAtWallMs = at(raw.makeupSkippedAtWallMs)
     return {
       track,
       decidedAtWallMs,
       ...(beaconGrantedAtWallMs !== undefined ? { beaconGrantedAtWallMs } : {}),
       ...(makeupServedAtWallMs !== undefined ? { makeupServedAtWallMs } : {}),
+      ...(makeupSkippedAtWallMs !== undefined ? { makeupSkippedAtWallMs } : {}),
     }
   })()
 

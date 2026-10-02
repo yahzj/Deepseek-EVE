@@ -361,6 +361,8 @@ export {
   WEEKEND_MAKEUP_FIRST_END_WALL_MS,
   weekendMakeupWindowOf,
   weekendCompensationTrackOf,
+  /** 船长 2026-10-02 令「乙」：开补场前回头看的唯一判据（本期已真出过光环 ⇒ 跳过补场、改发 1 枚道具） */
+  weekendCompensationGotRThisPeriod,
   applyWeekendCompensation,
   openWeekendMakeupIfDue,
 } from './weekendCompensation'
