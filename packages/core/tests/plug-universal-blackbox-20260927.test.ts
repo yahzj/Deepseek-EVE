@@ -46,8 +46,12 @@ describe('通用黑匣（2026-09-27 船长令）', () => {
   })
 
   it('② 等价组：旗舰黑匣与通用黑匣互为替代，**组序 = 优先扣除序（先通用）**；组外物品只返回自己', () => {
-    expect(materialGroupIdsOf('blackbox-h')).toEqual([UNIVERSAL_BLACKBOX_ITEM_ID, 'blackbox-h'])
-    expect(materialGroupIdsOf(UNIVERSAL_BLACKBOX_ITEM_ID)).toEqual([UNIVERSAL_BLACKBOX_ITEM_ID, 'blackbox-h'])
+    // 2026-10-02 每族一件黑匣批（船长令「甲」）：R 族匣 `blackbox-r` 并入同一组（三件互为替代），
+    // 组序仍是"通用最先"⇒ 优先扣除序与报名字口径（下面②之补）一个字没变
+    const boxGroup = [UNIVERSAL_BLACKBOX_ITEM_ID, 'blackbox-h', 'blackbox-r']
+    expect(materialGroupIdsOf('blackbox-h')).toEqual(boxGroup)
+    expect(materialGroupIdsOf('blackbox-r'), '光环匣在同一组里').toEqual(boxGroup)
+    expect(materialGroupIdsOf(UNIVERSAL_BLACKBOX_ITEM_ID)).toEqual(boxGroup)
     expect(materialGroupIdsOf('min-voidcrystal'), '非组内 ⇒ 一对一').toEqual(['min-voidcrystal'])
   })
 
@@ -83,6 +87,12 @@ describe('通用黑匣（2026-09-27 船长令）', () => {
     addWare(s, UNIVERSAL_BLACKBOX_ITEM_ID, 1)
     expect(materialDisplayIdOf(s, 'blackbox-h'), '两种都有 ⇒ 仍报通用（优先扣除序）').toBe(UNIVERSAL_BLACKBOX_ITEM_ID)
     expect(materialDisplayIdOf(s, 'min-voidcrystal'), '组外 ⇒ 只返回自己').toBe('min-voidcrystal')
+  })
+
+  it('②之补二 光环匣（`blackbox-r`）同样顶料、同样按"有哪种报哪种"报名字（2026-10-02 船长令「甲」）', () => {
+    const s = world()
+    addWare(s, 'blackbox-r', 1)
+    expect(materialDisplayIdOf(s, 'blackbox-h'), '手上只有光环匣 ⇒ 报光环匣（不是配方里写的墨潮匣）').toBe('blackbox-r')
   })
 
   it('④ 开工真扣料：两种黑匣都有时**先扣通用黑匣**；取消退料退**实际扣的那一种**', () => {

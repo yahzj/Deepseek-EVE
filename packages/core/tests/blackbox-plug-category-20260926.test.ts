@@ -32,7 +32,12 @@ describe('黑匣独立成类（船长报障：入侵获得的黑匣在仓库内�
     const b = ITEMS.find((i) => i.id === 'blackbox-h')!
     expect(b.kind).toBe('blackbox')
     // 2026-09-27 通用黑匣批（船长令）：blackbox 档从 1 件变 2 件 —— 断言跟着扩，档位判据本身没变
-      expect(ITEMS.filter((i) => i.kind === 'blackbox').map((i) => i.id).sort()).toEqual(['blackbox-h', 'blackbox-universal'])
+    // 2026-10-02 每族一件黑匣批（船长令「甲」）：再加 R 族那件 ⇒ 三件
+    expect(ITEMS.filter((i) => i.kind === 'blackbox').map((i) => i.id).sort()).toEqual([
+      'blackbox-h',
+      'blackbox-r',
+      'blackbox-universal',
+    ])
     expect(isBlackboxItem('blackbox-h'), 'core 单点认它').toBe(true)
     expect(isBlackboxItem('repairkit-civ'), '修理组件不是黑匣').toBe(false)
   })

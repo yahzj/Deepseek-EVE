@@ -306,11 +306,18 @@ function spendMaterialsFor(
  *
  * 口径：
  * - **组内任意一种都能顶同一项料**（配方数据**一个字不用改**：插件图纸照旧写 `blackbox-h`）；
- * - **组序 = 优先扣除序** ⇒ 先扣**通用黑匣**（声望换来的），把能卖 8,000 万的墨潮旗舰黑匣留给市场；
+ * - **组序 = 优先扣除序** ⇒ 先扣**通用黑匣**（声望换来的），把能卖 8,000 万的族匣留给市场；
  * - **退料按实际扣的那种退**：`spentMaterials` 记的就是实际扣的 id（见开工处那段），天然成立；
  * - 不进任何组 = 一对一（既有全部配方零行为变化）。
+ *
+ * ⚠ **2026-10-02（船长令「甲」）加 R 族匣 `blackbox-r`**：黑匣按族各一件（H 墨潮 / R 光环），
+ * 而那 12 张插件图纸照旧**只认"任意黑匣"**（船长 2026-09-27 原话：「现有的舰船插件蓝图都只要
+ * 使用任意类型黑匣就可以制作」）⇒ 两件族匣与通用匣**三者互为替代**，图纸数据一个字不改。
+ * 同为 8,000 万的族匣之间按登记序（H → R）扣，谁先谁后不影响玩家手上的料值。
  */
-export const MATERIAL_GROUPS: readonly (readonly string[])[] = [['blackbox-universal', 'blackbox-h']]
+export const MATERIAL_GROUPS: readonly (readonly string[])[] = [
+  ['blackbox-universal', 'blackbox-h', 'blackbox-r'],
+]
 
 /** 该材料 id 所属的等价组（不在任何组里 ⇒ 只返回它自己） */
 export function materialGroupIdsOf(itemId: string): readonly string[] {

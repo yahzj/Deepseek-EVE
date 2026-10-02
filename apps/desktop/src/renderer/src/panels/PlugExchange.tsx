@@ -112,6 +112,8 @@ export function PlugExchangeBody({ engine, onToast }: { engine: GameEngine; onTo
                     </span>
                   </span>
                 </div>
+                {/* ⟪文案调整 2026-10-02⟫ 「与墨潮旗舰黑匣互为替代」→「与各族的旗舰黑匣互为替代」
+                    （依据 = 船长 2026-10-02 令「甲」：黑匣一件族一件，光环那件同样顶料） */}
                 <div className="app-belt-feat is-strong">{tr('ui.IndustryPage.142')}</div>
                 <div className="app-belt-ore">
                   {tr('ui.IndustryPage.143')}

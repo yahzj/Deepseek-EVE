@@ -351,6 +351,8 @@ export {
   weekendWindowOpen,
   /** 2026-10-02 船长令（100% 后仍可继续刷 · 掉落半量作惩罚）：已夺回的星系 ⇒ 出征残骸折扣 0.5 */
   weekendWreckPenaltyFracOf,
+  /** 2026-10-02（每族一件黑匣批）：有旗舰战的族名单（族 → 黑匣物品 id 的契约读它，内容体检同用） */
+  WEEKEND_BOSS_FAMILIES,
 } from './weekendEvent'
 export type { WeekendAmbushPick, WeekendBossPoolView, WeekendEventState, WeekendFlagshipView, WeekendTickResult } from './weekendEvent'
 
@@ -1040,7 +1042,9 @@ export { shipScrapPreviewOf, scrapShip, SHIP_SCRAP_MATERIAL_SHARE } from './scra
 export type { ShipScrapPreview } from './scrap'
 export type { ShipPlugBlock, PlugExchangeRow } from './plugs'
 /** **黑匣与插件解锁**（2026-09-26 船长令）：组装机插件档的解锁判据与拒因单点 */
-export { isBlackboxItem, noteBlackboxObtained, blackboxSeenOf, plugCraftUnlockedOf, plugCraftLockReasonOf, PLUG_BLACKBOX_ITEM_ID } from './blackbox'
+export { isBlackboxItem, noteBlackboxObtained, blackboxSeenOf, plugCraftUnlockedOf, plugCraftLockReasonOf, PLUG_BLACKBOX_ITEM_ID, BLACKBOX_ITEM_IDS } from './blackbox'
+/** 2026-10-02（每族一件黑匣批）：族 → 该族旗舰黑匣 id 的取数口（发放侧唯一 · 内容体检同用） */
+export { blackBoxItemIdOfFamily, blackBoxItemIdForFamily } from './blackbox'
 export type { PlugCraftLock } from './blackbox'
 /** 玩家舰船残骸的一具记录（2026-09-26）——界面读数卡与工具都要这个形状 */
 export type { ShipWreckRecord } from './state'

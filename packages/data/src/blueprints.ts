@@ -2871,12 +2871,20 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
    *
    * 口径：
    * - **永久蓝图**（不写 `singleUse`）：在「章鱼人兑换」窗口花声望换一本 → 学会 → 组装机随时造；
-   * - **每件材料固定**（同料、只产物不同）：墨潮旗舰黑匣 ×1 ＋ 虚空晶 ×60 ＋ 5 种基础零件 ＋ 2 种高级零件；
+   * - **每件材料固定**（同料、只产物不同）：**任意黑匣 ×1** ＋ 虚空晶 ×60 ＋ 5 种基础零件 ＋ 2 种高级零件；
+   *   ⚠ 配方里写的仍是 `blackbox-h`，**其余两件（光环旗舰黑匣 / 通用黑匣）由 core 的等价组顶料**
+   *   （`core/manufacturing.ts` 的 `MATERIAL_GROUPS`；船长 2026-09-27：「现有的舰船插件蓝图都只要
+   *   使用任意类型黑匣就可以制作」＋ 2026-10-02 令「甲」加 R 族匣 ⇒ 三件互为替代，**本文件零改动**）；
    * - **不上市场**：`priceIsk = 0`（它的入手途径是**兑换**而不是买；市场占位卡照做、挂 `unreleased`）；
    * - ⚠ **蓝图本身不标 `unreleased`**（2026-09-26 修）：那个字段是**施工期闸门**，
    *   `engine.blueprints` 会用 `itemReleased()` 把整批滤掉 ⇒ 组装机卡片流里一张都看不到。
    *   兑换来的书就该能在组装机造 —— 可见性由"手上有没有这本书"决定，不用施工闸门关。
    * - 工时 **3,600 秒 / 件**（与 MK3 装备同档；插件不上市场 ⇒ 没有售价可标定，工时只决定"造一件等多久"）。
+   *
+   * ⟪文案调整 2026-10-02⟫ 12 张图的说明句「须先取得墨潮旗舰黑匣」→「**须先取得任意黑匣**」
+   * （英文在同目录 `l10n.ts` 的 `BP_DESC_EN`，同批改）：依据 = **船长 2026-10-02 令「甲」**
+   * （黑匣一件族一件：H 墨潮 / R 光环）＋ 船长 2026-09-27 原话「现有的舰船插件蓝图都只要使用
+   * 任意类型黑匣就可以制作」。料单数据**一字未改**（仍是 `blackbox-h`，靠等价组顶料）。
    */
   {
     id: 'bp-plug-shield-plate',
@@ -2900,7 +2908,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 3_600,
     buildCostIsk: 0,
     priceIsk: 0, // 不上市场 ⇒ 无书价
-    description: '护盾强化插板的制造图纸：须先取得墨潮旗舰黑匣。',
+    description: '护盾强化插板的制造图纸：须先取得任意黑匣。',
   },
   {
     id: 'bp-plug-armor-plate',
@@ -2924,7 +2932,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 3_600,
     buildCostIsk: 0,
     priceIsk: 0, // 不上市场 ⇒ 无书价
-    description: '装甲强化插板的制造图纸：须先取得墨潮旗舰黑匣。',
+    description: '装甲强化插板的制造图纸：须先取得任意黑匣。',
   },
   {
     id: 'bp-plug-hull-plate',
@@ -2948,7 +2956,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 3_600,
     buildCostIsk: 0,
     priceIsk: 0, // 不上市场 ⇒ 无书价
-    description: '结构强化插板的制造图纸：须先取得墨潮旗舰黑匣。',
+    description: '结构强化插板的制造图纸：须先取得任意黑匣。',
   },
   {
     id: 'bp-plug-mid-bay',
@@ -2972,7 +2980,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 3_600,
     buildCostIsk: 0,
     priceIsk: 0, // 不上市场 ⇒ 无书价
-    description: '中层舱段插件的制造图纸：须先取得墨潮旗舰黑匣。',
+    description: '中层舱段插件的制造图纸：须先取得任意黑匣。',
   },
   {
     id: 'bp-plug-low-bay',
@@ -2996,7 +3004,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 3_600,
     buildCostIsk: 0,
     priceIsk: 0, // 不上市场 ⇒ 无书价
-    description: '下层舱段插件的制造图纸：须先取得墨潮旗舰黑匣。',
+    description: '下层舱段插件的制造图纸：须先取得任意黑匣。',
   },
   {
     id: 'bp-plug-cpu-core',
@@ -3020,7 +3028,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 3_600,
     buildCostIsk: 0,
     priceIsk: 0, // 不上市场 ⇒ 无书价
-    description: '协处理插件的制造图纸：须先取得墨潮旗舰黑匣。',
+    description: '协处理插件的制造图纸：须先取得任意黑匣。',
   },
   {
     id: 'bp-plug-firepower',
@@ -3044,7 +3052,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 3_600,
     buildCostIsk: 0,
     priceIsk: 0, // 不上市场 ⇒ 无书价
-    description: '火力强化插件的制造图纸：须先取得墨潮旗舰黑匣。',
+    description: '火力强化插件的制造图纸：须先取得任意黑匣。',
   },
   {
     id: 'bp-plug-sight',
@@ -3068,7 +3076,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 3_600,
     buildCostIsk: 0,
     priceIsk: 0, // 不上市场 ⇒ 无书价
-    description: '瞄具插件的制造图纸：须先取得墨潮旗舰黑匣。',
+    description: '瞄具插件的制造图纸：须先取得任意黑匣。',
   },
   {
     id: 'bp-plug-thruster',
@@ -3092,7 +3100,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 3_600,
     buildCostIsk: 0,
     priceIsk: 0, // 不上市场 ⇒ 无书价
-    description: '推进插件的制造图纸：须先取得墨潮旗舰黑匣。',
+    description: '推进插件的制造图纸：须先取得任意黑匣。',
   },
   {
     id: 'bp-plug-rangefinder',
@@ -3116,7 +3124,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 3_600,
     buildCostIsk: 0,
     priceIsk: 0, // 不上市场 ⇒ 无书价
-    description: '射程插件的制造图纸：须先取得墨潮旗舰黑匣。',
+    description: '射程插件的制造图纸：须先取得任意黑匣。',
   },
   {
     id: 'bp-plug-target-beacon',
@@ -3140,7 +3148,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 3_600,
     buildCostIsk: 0,
     priceIsk: 0, // 不上市场 ⇒ 无书价
-    description: '靶标插件的制造图纸：须先取得墨潮旗舰黑匣。',
+    description: '靶标插件的制造图纸：须先取得任意黑匣。',
   },
   {
     id: 'bp-plug-concealment',
@@ -3164,7 +3172,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 3_600,
     buildCostIsk: 0,
     priceIsk: 0, // 不上市场 ⇒ 无书价
-    description: '隐匿插件的制造图纸：须先取得墨潮旗舰黑匣。',
+    description: '隐匿插件的制造图纸：须先取得任意黑匣。',
   },
 ]
 

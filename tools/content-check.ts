@@ -151,6 +151,9 @@ securityZoneOf,
   fragmentItemIdOf,
   // 2026-09-26 黑匣独立成类：无配方豁免的钉子（判据 = 登记黑匣 id 前缀，单点在 core）
   isBlackboxItem,
+  // 2026-10-02（每族一件黑匣批）：族 → 匣 id 的取数口 ＋ 有旗舰战的族名单（契约不自己拼字符串）
+  blackBoxItemIdOfFamily,
+  WEEKEND_BOSS_FAMILIES,
   hasLairCore,
   isLairCandidate,
   lairGearOf,
@@ -346,7 +349,7 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 //   +4（折跃等离子 / 低温跃迁浆 / 曲率凝析物 / 超空间折跃燃料）→ 物品总数 104→**108**、原材料 8→**11**
 // 2026-09-30（实验室后续内容批 · 船长令「信号发射器和技能加速剂」）：+2（信号发射器 / 突触加速剂，
 //   走奇货档 · 施工期 `unreleased`）→ 物品总数 108→**110**
-check(itemDefs.length === 110, `物品总数应为 110（2026-09-30 起：实验室后续内容 +2），实际 ${itemDefs.length}`)
+check(itemDefs.length === 111, `物品总数应为 111（2026-10-02 起：每族一件黑匣 +1 ⇒ 光环旗舰黑匣），实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 11, `原材料应为 11 种（2026-09-29 跃迁燃料链 +3），实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
@@ -3011,6 +3014,30 @@ for (const m of MODULES) {
       check(!itemBucketPasses(ctx, b.id, 'consume'), `黑匣契约：${b.id} 又落回「消耗品」了（它不是修理组件）`)
     }
     check(ITEM_KIND_ORDER.includes('blackbox'), '黑匣契约：`ITEM_KIND_ORDER` 里没有 blackbox（仓库/货仓/图鉴的分类行会缺一档）')
+    /**
+     * ── **每族一件黑匣契约**（**2026-10-02 船长令「甲」**）──
+     * 起因 = 玩家报障「**光环入侵结束给的黑匣还是墨潮的**」：原先发放侧
+     * （`weekendBattle.weekendGrantRewards`）**写死** `blackbox-h` ⇒ R 族（光环科技）玩家
+     * 打完自家旗舰拿到的是墨潮那件。修法 = **按族发**（`blackBoxItemIdForFamily(族)`
+     * ＝约定 `blackbox-<族小写>`）。
+     *
+     * 本契约钉住**内容侧的那一半**：凡是有旗舰战的入侵族（`WEEKEND_BOSS_FAMILIES`），
+     * 内容表里**必须有**它自己那件匣、且 `kind === 'blackbox'`（缺了 ⇒ 该族发不出去，
+     * 或退回落款把墨潮匣发给光环期的玩家 —— 就是这次报障的样子）。
+     * 判据跑 core 的真函数（不是拼字符串），族名单也从 core 取 ⇒ 日后加族自动纳入。
+     */
+    for (const fam of WEEKEND_BOSS_FAMILIES) {
+      const boxId = blackBoxItemIdOfFamily(fam)
+      const box = items.get(boxId)
+      check(
+        box !== undefined,
+        `每族黑匣契约：入侵族 ${fam} 没有自己的黑匣物品 ${boxId}（旗舰结算会发不出去 / 退回落款发错族）`,
+      )
+      if (box !== undefined) {
+        check(box.kind === 'blackbox', `每族黑匣契约：${boxId} 的 kind 应为 blackbox，实际 ${box.kind}`)
+        check(isBlackboxItem(boxId), `每族黑匣契约：${boxId} 没被 core 单点 isBlackboxItem 认下（入库不会置位"见过黑匣"）`)
+      }
+    }
     // 市场页的类型下拉：本块自带读源码小工具（同名变量都在别的块作用域里，取不到）
     const mpRead = (rel: string): string => readFileSync(join(process.cwd(), rel), 'utf8')
     // 市场页的类型下拉读的是 `ui/itemSubs.ts` 的 `COMMODITY_TABS`（2026-10-01 起的一级类型单点）
@@ -3022,7 +3049,8 @@ for (const m of MODULES) {
     )
     console.log(
       `· 黑匣契约：${blackboxes.map((b) => b.id).join(' / ')} 独立成类（仓库/货仓/图鉴/市场四档一致）· ` +
-        '市场「货物」与「消耗品」都不再收它',
+        '市场「货物」与「消耗品」都不再收它 · ' +
+        `每族一件（${WEEKEND_BOSS_FAMILIES.map((f) => blackBoxItemIdOfFamily(f)).join(' / ')}）`,
     )
   }
 

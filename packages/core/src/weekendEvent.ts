@@ -713,6 +713,14 @@ export interface WeekendResultSnapshot {
   wreck: number
   blackBox: number
   wreckItemId?: string
+  /**
+   * **本场发的黑匣是哪一件**（**2026-10-02 船长令「甲」**：**一件族一件匣**，起因 = 玩家报障
+   * 「**光环入侵结束给的黑匣还是墨潮的**」）——取数口 `blackBoxItemIdOfFamily(族)`（`blackbox-<族小写>`）。
+   *
+   * 缺省 = **本批之前结束的场次**（那时只有 H 一件，`weekendGrantRewards` 写死发它）
+   * ⇒ 结算面板与结算信按缺省显示**墨潮旗舰黑匣**，与玩家当时真正到手的那件一致（**不回改历史读数**）。
+   */
+  blackBoxItemId?: string
 }
 
 /**
