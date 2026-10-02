@@ -1,7 +1,9 @@
-# R 族两件新挂载件：垂暮级「待机护盾阵列」· 旗舰「聚焦阵列」（2026-10-03 · 二号 · **进行中**）
+# R 族两件新挂载件：垂暮级「待机护盾阵列」· 旗舰「聚焦阵列」（2026-10-03 · 二号 · **已落码 · 待船长验收**）
 
 > **本文件是本次工作的临时文档**（§八）：工作期间只改它 ＋ 代码/数据/测试；船长验收并合入后按归档三步办。
-> **状态**：船长 2026-10-02 **已显式确认**（「**按你的提案，开始做**」）⇒ 口径定稿、**可以动码**。
+> **状态**：船长 2026-10-02 **已显式确认**（「**按你的提案，开始做**」）⇒ 口径定稿。
+> 🔴 **2026-10-03 二号落码完成**：三条机制（两件挂载件 ＋ 旗舰三连发）全部落码、闸门全绿、用例 10 条、
+> 实测读数见 §五/§六；**待船长校准两处数值/口径**（见 §七 待裁决点）。
 
 ## 一、船长原话（照抄 · 三轮）
 
@@ -33,20 +35,35 @@
 | 范围 | 只影响**它自己**的武器（不 buff 僚舰） |
 | 数值 | **120 秒写死在件上** |
 
-## 三、逐条改动（尚未落码 · 照此执行）
+## 三、逐条改动（✅ **2026-10-03 已落码**，逐文件）
 
-**新增**
-1. `packages/core/src/foeMounts.ts` —— 两个件 id（`FOE_MOUNT_IDS.*`）＋ `FOE_MOUNTS` 登记（名字 / 效果文案 id）
-2. `packages/core/src/types.ts` —— `FoeMountDef` 两个新字段（形如 `shieldResistWhileBlinkReady:{pct}` / `falloffRampTo1Ms:number`）
-3. `packages/core/src/combat.ts` —— ①**护盾层**伤害结算处按「带该件 ＋ 闪现未冷却」施加 ×(1−pct)；②**远端衰减**那一处按爬升后的值算（**按波内起点计时**）
-4. `packages/core/src/foeSpecs.ts` —— `resolveFoeMounts` 把两件折进 `UnitSpec`
-5. **手册**：`ui/foeBrief.ts` 的 `mountEffectText` **两支一起接** ＋ `l10n/table.ts` 两条 id（顺号 **112 / 113**，zh ＋ en）
-   ⚠ **这条不能漏**：R 族前两件就是没接 ⇒ 手册敌舰详情**整节"特殊装置"不显示**（2026-10-03 船长报障，`ac777119` 修）
+**新增／修改**
+1. `packages/core/src/types.ts` —— `FoeMountId` 加 `foe-mount-corona-standby-shield` / `-focus-array`；
+   `FoeMountDef` 加 `standbyShield: { resistPct }` 与 `focusArray: { rampMs }`；
+   `FoeShipDef` 加 `burst: { shots, gapMs }`（舰级主武器的连发，缺省不写 = 零行为变化）
+2. `packages/core/src/foeMounts.ts` —— 两个 id ＋ 两件登记（`待机护盾阵列 / Standby Shield Array`、
+   `聚焦阵列 / Focus Array`，各带船长原话 `note`）；`ResolvedFoeMounts` 加 `foeStandbyShield` / `foeFocusArray`
+   并在 `resolveFoeMounts` 里"后写覆盖先写"
+3. `packages/core/src/combat.ts` ——
+   - `UnitSpec` 加 `foeStandbyShield` / `foeFocusArray`；`WeaponSpec` 加 `burst`
+   - 新增导出 `standbyShieldActiveOf` / `withStandbyShield`（护盾层乘算并抗性）＋ 内部单点 `foeResistsNow`
+   - **唯一收口** `applyFoeUnitDamage` 改走 `foeResistsNow` ⇒ 主段 / 附伤段 / 全体攻击 / 齐射溢火**四路同源**；
+     `carryVolleyOverflow` 的"打空它要多少"也走同一把尺
+   - 新增导出 `foeWaveStartMsOf` / `coronaFocusFalloffOf`；敌方开火段按当拍爬升后的 `falloff` 算距离折减
+   - 敌方开火段加**连发排期**（`WeaponSpec.burst` ＋ `BattleState.foeBurstFired`）：前两发之后装填重置为
+     `max(0, gapMs − dtMs)`、**第三发之后才回 `reloadMs`**；每发各走一遍 `pickTarget()`（逐发随机选靶）
+   - 稳态承伤预估 `foeDpsPeak` 按 `burst.shots` 计入（不乘会把三连发低估到 1/3）
+4. `packages/core/src/foeSpecs.ts` —— 两件折进 `UnitSpec`；`burst` 带给主武器条目
+5. `packages/core/src/state.ts` ＋ `saveBattleClean.ts` ——
+   `foeWaveStartMs`（**persist**：丢了会让重载后衰减凭空跳满 = 白赚）、
+   `foeBurstFired`（**runtime**：与 `foeBlinks` 同一口径）；`advanceBattleFor` 换波那一拍写 `foeWaveStartMs`
+6. **手册**：`apps/desktop/.../ui/foeBrief.ts` 的 `mountEffectText` **两支一起接** ＋
+   `packages/data/src/l10n/table.ts` 两条 id（`ui.foeIntro.112` / `.113`，zh ＋ en）
+   ⚠ 这条没漏（R 族前两件就是没接 ⇒ 手册敌舰详情**整节"特殊装置"不显示**，2026-10-03 报障 `cd3b868d` 修）
+7. `packages/data/src/foe-ships.ts` —— 垂暮级 `mounts` 加待机护盾阵列；中枢 `mounts` 加聚焦阵列、
+   `shotDmg 519 → 156`、加 `burst: { shots: 3, gapMs: 100 }`
 
-**修改**
-6. `packages/data/src/foe-ships.ts` —— 垂暮级、旗舰的 `mounts` 各加一件
-
-**用例**：两条 —— 机制一（未冷却 ⇒ 护盾减半 / 冷却中 ⇒ 按原伤）· 机制二（波内 t=0 ⇒ 0.2 · t=60s ⇒ 0.6 · t≥120s ⇒ 1.0 · **换波后回到 0.2**）
+**用例**：新建 `packages/core/tests/corona-mounts-20261002.test.ts`（10 条，见 §五）
 
 ## 四、边界与自报
 
@@ -55,11 +72,40 @@
 - 两件都是**数值改动**（垂暮级护盾等效血量翻倍、旗舰后半场输出上升）⇒ 落码后出一场实测读数供船长校准。
 - ⚠ 文案按 §十三：**只写规格**（不写"为什么"，括号只放规格）。
 
-## 五、验证（落码后填）
+## 五、机制一/机制二 的验证与实测读数（✅ 2026-10-03 落码后填）
 
-typecheck 四包 · core 全量 · content:check · l10n:check / l10n:params · ui:rot-check · arch:guard · scope:check · 构建。
+**闸门**：`typecheck` 四包全绿 · `content:check` ✅ · `l10n:check` ✅ · `l10n:params` ✅ · `ui:rot-check` ✅ ·
+`arch:guard` ✅ · `scope:check` ✅ · core 全量（见 §八 收尾读数）· 构建 ✅。
 
-## 五、机制三 · 入侵旗舰的**武器侧面改判**（船长 2026-10-02 追加 · **口径已定**）
+**用例**（`packages/core/tests/corona-mounts-20261002.test.ts`，10 条）：
+
+| # | 钉住什么 | 实测读数 |
+|---|---|---|
+| ① | 两件参数 = 船长定案 | 护盾层 −50% · 120 秒爬满 |
+| ② | 不挂件的编成解析结果里没有对应字段 | 零行为变化 |
+| ③ | 挂载面（垂暮级 / 中枢各只加自己那件） | 另三档挂载面未动 |
+| ④ | 建档落地 ＋ **每发 −70% 穿过整条管线** | 基线/现在单发比 = 519 ÷ 156 |
+| ⑤ | **算术**：同一发 ⇒ 有效时**只有护盾层**少掉一半、甲/结不动 | 单发 320 ⇒ 未生效 −480 · 生效 −240（恰一半） |
+| ⑥ | **接线（真实战斗 A/B，关护盾回充）** | 裸对照 528 · **只挂件 264（恰一半）** · 出荷（闪现＋件）490 |
+| ⑦ | 聚焦阵列曲线 | 0s→0.2 · 30s→0.4 · 60s→**0.6** · 90s→0.8 · 120s→**1.0** |
+| ⑧ | **逐波重置 ＋ 输出爬升（真实战斗 A/B）** | 换波锚点 `[18300, 51400, 105000]`；中枢自身飘字伤害第 3 窗口 带件/对照 = **1.210**（第 1 窗口 1.065） |
+| ⑨ | 三连发数据 | 每发 156 × 3、间隔 100ms、一轮总伤 468 = 原单发 × 0.9 |
+| ⑩ | 三连发真实节拍 | 阶梯 `1 → 2 → 完` 各隔 **100ms**；轮周期 **5.30s** |
+
+**🔴 机制一的实战读数（如实登记，供船长判是否要改口径）**：出荷配置（闪现 ＋ 待机护盾阵列）下，
+垂暮级的盾层累计掉幅 = 裸对照的 **92.9%**（490 / 528）——即这层抗性**实际只挡掉约 7%**。
+原因不是实现，而是**闪现本身太勤**：垂暮级一挨打就闪（冷却 5 秒）⇒ "闪现未在冷却中"的窗口每个周期
+只剩**挨打的第一发**（引擎里伤害先结算、闪现随后盖冷却）。船长第一句原话是「**触发的那次齐射**
+受到的伤害减半」——若按"同一拍的整次齐射都算"，判据要从"实时查冷却"改成**每拍开头快照**。
+两条口径都合船长的话，**这一处请船长裁决**（§七）。
+
+**另两处如实登记**：
+- **连发的净 DPS**：船长口径「每发 −70%」= 一轮 ×0.9；另因一轮多占 200ms 相位
+  （三发 100ms 间隔的占位）⇒ 长期 DPS ≈ **×0.87**（读数来自 ⑩ 的轮周期 5.30s）。
+- **连发节拍要减一拍**：本仓开火环"冷却减到 0 的那一拍不开火、下一拍才开火"⇒ 直接写 `gapMs` 实得
+  **200ms**；已按 `max(0, gapMs − dtMs)` 补正为**真正的 100ms**（⑩ 已钉住）。
+
+## 六、机制三 · 入侵旗舰的**武器侧面改判**（船长 2026-10-02 追加 · ✅ **已落码**）
 
 > **船长原话（照抄）**：「**入侵旗舰的武器伤害降低60%，但是每次开火是三次间隔100ms的射击，目标选择随机。**」
 
@@ -74,9 +120,31 @@ typecheck 四包 · core 全量 · content:check · l10n:check / l10n:params · 
 **先定 −60%（每发 ×0.4）**，**同日二次改判为 −70% ⇒ 每发 ×0.3** ⇒
 **一轮三连总伤 = 原单发 × 0.9**。
 
-**落点**：旗舰武器条目（`foe-ships.ts` 的 `FOE_R_CORONA_NEXUS`：`shotDmg` / `reloadMs`）＋
-`combat.ts` 敌方开火段（三连发排期与逐发随机选靶）。**尚未落码。**
+**落点**：旗舰武器条目（`foe-ships.ts` 的 `FOE_R_CORONA_NEXUS`：`shotDmg` / `reloadMs` / `burst`）＋
+`combat.ts` 敌方开火段（三连发排期与逐发随机选靶；`BattleState.foeBurstFired` 记本轮已发数）。
+✅ **2026-10-03 已落码**：`shotDmg 519 → 156`、`burst: { shots: 3, gapMs: 100 }`；
+「目标选择随机」由本卡既有的 `foeTargeting: 'random'` 兑现（**每发各调一次 `pickTarget()`**）。
 
-## 六、验证（落码后填）
+## 七、待船长裁决点（两处 · 其余照已确认口径执行）
 
-typecheck 四包 · core 全量 · content:check · l10n:check / l10n:params · ui:rot-check · arch:guard · scope:check · 构建。
+1. 🔴 **机制一的生效窗口**（§五那条 92.9% 的读数）：出荷配置下这层抗性实际只挡约 **7%**，
+   因为垂暮级一挨打就闪、5 秒冷却把窗口压成"每周期只有挨打的第一发"。
+   船长第一句原话是「触发的那次齐射受到的伤害减半」——**要不要把判据改成"每拍开头快照"**
+   （同一拍内所有命中都算生效、整次齐射减半）？改法很小（一处快照），但会明显改变实战胜负。
+   ⇒ **默认按已确认口径（实时查冷却）落码**，等船长一句话。
+2. **三连发的净 DPS**：按船长口径一轮 ×0.9；另因一轮多占 200ms 相位 ⇒ 长期 DPS ≈ ×0.87。
+   若船长要的是"长期 DPS 恰好 ×0.9"，把 `shotDmg` 从 156 提到 **161**（468 → 483 = 519 × 0.93 摊到 5.3s 周期）
+   即可——**默认不动**，等船长校准。
+
+## 八、收尾（落码后填 · 闸门与读数）
+
+- `npm run typecheck` 四包 ✅ · `npm run test -w @whale/core` ✅（**290 文件 / 3034 用例**，含本次新增 10 条）
+- `npm run content:check` ✅ · `npm run l10n:check` ✅ · `npm run l10n:params` ✅
+- `npm run ui:rot-check` ✅ · `npm run arch:guard` ✅（F1~F9 全 0）· `npm run build` ✅
+- `npm run scope:check` 读数：**本次改动 11 个文件 · 落在 2 个域**（战斗 5 ＋「存档与元系统」1 ＋ 共享底层 5）。
+  ⚠ 那 1 个是 `saveBattleClean.ts`（`state.ts` 的**编译期强制伴随件**：`BattleState` 新字段不登记就过不了
+  typecheck）——**不是顺手改别处**，判定为共享底层同一件事，**未另开跨模块申请**；船长若认为要补申请请示下。
+
+**本批落在哪个模块**：**战斗域**（R 族 · 敌方挂载件与旗舰武器）；参照的同类子模块 =
+既有的 R 族四件挂载件（`foe-mount-corona-*`）与「叠光装置」那套装机口径（`foeMounts` → `foeSpecs` →
+`combat` 消费单点 → 手册 `mountEffectText`）；**无跨模块**。

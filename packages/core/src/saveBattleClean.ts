@@ -49,6 +49,10 @@ const BATTLE_FIELDS = {
   hullEscapeFrac: { kind: 'persist' },
   waveIdx: { kind: 'persist' },
   waveClearAt: { kind: 'persist' },
+  // **本波起点**（2026-10-02 加）：**必须随档** —— 「聚焦阵列」的远端衰减爬升按它计时，
+  // 丢了会让战中重载后的计时锚掉回 `startedAtGameMs` ⇒ BOSS 的衰减**凭空跳到满**（等于白赚）。
+  // 与 `waveIdx` / `waveClearAt` 同一口径（都是"本波循环"的锚点，重载必须原样续算）。
+  foeWaveStartMs: { kind: 'persist' },
   autoEscaped: { kind: 'persist' },
   escapeReason: { kind: 'persist' },
   // **损伤管制装置 · 免死状态**（2026-09-25 船长令）：**必须随档** —— 丢了会让"战中重载"后
@@ -138,6 +142,10 @@ const BATTLE_FIELDS = {
   foeOverlayReload: {
     kind: 'runtime',
     why: '敌「叠光装置」的当前装填间隔与已折算的闪现次数（2026-10-01 加：R 族 T3 叠光级——每次攻击/闪现后装填间隔 −400ms、下限 500ms，伤害 ×0.3）：与 `foeCharges` / `foeBlinks` 同一口径，落在"重载即重置循环"内 ⇒ 有意不入档',
+  },
+  foeBurstFired: {
+    kind: 'runtime',
+    why: '敌「连发」本轮已发数（2026-10-02 加：R 族 T5 光环中枢那把三连发武器——每轮 3 发、发间隔 100ms、逐发随机选靶）：与 `foeBlinks` / `foeOverlayReload` 同一口径，落在"重载即重置循环"内（最多重来一轮）⇒ 有意不入档；缺省不写键 ⇒ 旧档零迁移',
   },
   foeChargeEnteredAtMs: { kind: 'runtime', why: '2026-09-11 已停用字段，只为不改存档形状而保留声明' },
   meSpeedMps: {
@@ -514,6 +522,11 @@ export function cleanBattle(raw: unknown): BattleState | null {
     waveClearAt:
       typeof b.waveClearAt === 'number' && Number.isFinite(b.waveClearAt) && b.waveClearAt > 0
         ? b.waveClearAt
+        : undefined,
+    // 本波起点（2026-10-02）：随档（见 BATTLE_FIELDS 的登记理由）；坏值/未换波 ⇒ 不写（读端回落开战时刻）
+    foeWaveStartMs:
+      typeof b.foeWaveStartMs === 'number' && Number.isFinite(b.foeWaveStartMs) && b.foeWaveStartMs > 0
+        ? b.foeWaveStartMs
         : undefined,
     // 弹药 MK2（2026-09-09）：本场实装弹 id（键 = 伤害类型；坏值丢键，零迁移）
     ammoIds: cleanAmmoIdMap(b.ammoIds),

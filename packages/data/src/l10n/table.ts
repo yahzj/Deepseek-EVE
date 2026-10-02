@@ -2382,6 +2382,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     "ui.foeIntro.110": { zh: "本体被命中时朝期望交距位移，单跳不超过 {p1} m", en: "Displaces toward its desired range when hit; no more than {p1} m per jump" },
     /** R 族（光环）闪烁过载装置（同上，2026-10-03 补） */
     "ui.foeIntro.111": { zh: "每次闪现后护盾回满，结构 −上限的 {p1}%", en: "Shields refill after each blink; hull −{p1}% of max" },
+    /** R 族（光环）待机护盾阵列（2026-10-02 船长令：「闪现未处于冷却中的时候，护盾拥有全伤害50%的抗性。」） */
+    "ui.foeIntro.112": { zh: "闪现未在冷却中时，护盾层受到的伤害 −{p1}%", en: "While its blink is off cooldown, its shields take {p1}% less damage" },
+    /** R 族（光环）聚焦阵列（2026-10-02 船长令：「武器的远端衰减，随时间提高到1（就是无衰减）。」＋改判「旗舰挂载件的会随波重置」） */
+    "ui.foeIntro.113": { zh: "远端衰减随本波开战时间在 {p1} 秒内升到 1，随波重置", en: "Its falloff climbs to 1 over {p1} s of the current wave; resets each wave" },
   /* ── 入侵「重复出击」（2026-09-25 船长令：「入侵活动的悬赏，允许玩家开启自动重复，照常计算返回时间」）── */
   "ui.weekend.106": { zh: "重复出击", en: "Repeat assault" },
   "ui.weekend.107": { zh: "开启重复出击：每场从该星系的入侵舰队里重抽一支，胜利后自动返航（返航路程 = 单程）、随后自动再次出发；该星系被夺回或活动结束时自动停止", en: "Start repeat assault: each run draws a fresh invader fleet from that system; after a win the fleet flies home (return leg = one way) and sets out again automatically. It stops when the system is reclaimed or the event ends" },

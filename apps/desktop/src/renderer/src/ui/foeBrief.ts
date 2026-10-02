@@ -109,6 +109,17 @@ export function mountEffectText(id: string): string | null {
   if (def.flashOverload) {
     return tr('ui.foeIntro.111', { p1: pct(def.flashOverload.hullCostPct) })
   }
+  /**
+   * 🔴 **R 族（光环）再两件**（**2026-10-02 船长令**；口径见 `core/foeMounts.ts` 两个 note）——
+   * 与上面那两条同款：**加件必须同时接本函数**，否则手册敌舰详情那一节整节不显示
+   * （2026-10-03 报障的成因就是这个坑，别重犯）。文案只写规格（§十三：不写"为什么"、括号只放规格）。
+   */
+  if (def.standbyShield) {
+    return tr('ui.foeIntro.112', { p1: pct(def.standbyShield.resistPct) })
+  }
+  if (def.focusArray) {
+    return tr('ui.foeIntro.113', { p1: String(Math.round(def.focusArray.rampMs / 1000)) })
+  }
   /** 目录里只留了名字、没有任何效果字段 ⇒ 没有可解释的机制（**不返回名字**，避免复读） */
   return null
 }

@@ -433,6 +433,13 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       // 恢复所有护盾值。但是会损失最大结构值5%的结构。」）——挂了件才写；
       // 消费点 = 闪现成功后那一处（`settleFoeBlinkExtras`）。缺省不写 ⇒ 零行为变化。
       ...(mount.foeFlashOverload !== undefined ? { foeFlashOverload: mount.foeFlashOverload } : {}),
+      // **待机护盾阵列**（**船长 2026-10-02 令**：「闪现未处于冷却中的时候，护盾拥有全伤害50%的抗性。」）
+      // —— 挂了件才写；消费单点 = **敌舰伤害唯一收口** `applyFoeUnitDamage`（按闪现是否在冷却中
+      // 决定要不要把 50% 并进护盾层）。缺省不写 ⇒ 既有各族各件**零行为变化**。
+      ...(mount.foeStandbyShield !== undefined ? { foeStandbyShield: mount.foeStandbyShield } : {}),
+      // **聚焦阵列**（**船长 2026-10-02 令**：「武器的远端衰减，随时间提高到1（就是无衰减）。」
+      // ＋改判「旗舰挂载件的会随波重置」）—— 挂了件才写；消费单点 = 敌方开火段（按本波起点现算）。
+      ...(mount.foeFocusArray !== undefined ? { foeFocusArray: mount.foeFocusArray } : {}),
       // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）——带本字段的单位**不进开战编队**
       ...(reinforceAt ? { foeReinforceAt: reinforceAt } : {}),
       // **支援呼叫分支**（2026-09-19）：纯标签、一律带上（派生侧的"互斥分支记账"要用它）
@@ -460,6 +467,10 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
           // 远端威力衰减：条目覆写 ?? 舰级（2026-09-12 加，与 `hitRate` 同款；**缺省 = 舰级值 ⇒ 零行为变化**）
           falloff: u.slot.falloff ?? ship.falloff,
           reloadMs: ship.reloadMs,
+          // **连发**（**船长 2026-10-02 令**：「每次开火是三次间隔100ms的射击，目标选择随机」）——
+          // 舰级字段原样带给这条主武器（消费点 = 敌方开火段：前 `shots−1` 发之后装填重置为 `gapMs`）。
+          // 缺省不写 ⇒ 一门一次、既有全部敌舰**零行为变化**。
+          ...(ship.burst !== undefined ? { burst: ship.burst } : {}),
         },
         ...droneWeapons, // 机群：每架一条（同序 ⇒ 与 `foeDronePools[tag]` 逐架对齐）
       ],
