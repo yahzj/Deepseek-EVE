@@ -194,6 +194,30 @@ export function beamPowerFactor(dist: number, w: { minRangeM: number; maxRangeM:
   return distFactor(dist, w)
 }
 
+/**
+ * **光束件的"对目标"威力系数**（我方开火路径专用）—— **打机群恒 1**、打舰照旧 {@link beamPowerFactor}。
+ *
+ * 🔴 **船长 2026-10-02 令**（原话）：「**甲，并且对无人机无衰减**」——起因是一号当天的检查：
+ * `mod-lair-pd-r`（PD激光）是全仓**唯一一件"带防空属性的光束件"**（`antiDrone: 2` + `slot: 'laser'`），
+ * 而 beam 分支算 `dmg` 时**不看目标类型**、一律乘 `beamPowerFactor(两舰间距)` ⇒ 它打机群也被距离砍
+ * （3,000m 外锁 `falloff` = ×0.5），与本仓既有的三条口径**不一致**：
+ * · 2026-09-11 甲案「**打机群不看两舰间距**」（**选靶**：出击型不受射程限制、哨戒机才要进射程）；
+ * · 2026-09-12「**按丁修复**」（**命中**：`droneHitChance` 的 df 固定为 1）；
+ * · 三档**动能**近防炮打机群的单发是**定值**（`dmg = shotDmg`，本就不吃距离）。
+ * ⇒ 船长裁「甲」＝承认这条口径，并明确**打机群无衰减** ⇒ 本函数把"打机群那一支"的距离系数钉成 1。
+ *
+ * **只作用于打机群**：打舰（含我方无人机、僚舰的武器打舰）**一字未动**，仍走 `beamPowerFactor`；
+ * 非光束件（动能/爆炸/能量掷命中）本就不走威力衰减、也不经过本函数。
+ * ⚠ 抽成函数只为**单一取数口 + 可测**（用例直接断言两支；`beamPowerFactor` 本体与 `v18b2` 那批公式断言不变）。
+ */
+export function beamPowerVsTargetOf(
+  dist: number,
+  w: { minRangeM: number; maxRangeM: number; falloff: number },
+  vsDrone: boolean,
+): number {
+  return vsDrone ? 1 : beamPowerFactor(dist, w)
+}
+
 /** 静态单位卡（构建后不进存档） */
 export interface UnitSpec {
   tag: string
@@ -4599,13 +4623,15 @@ function stepBattle(
         meRt.weapons[wi] = meBurstReloadOf(unit, unit.tag, wi, b, dtMs, w.reloadMs)
       } else if (w.kind === 'beam') {
         // V18B-2 激光：必中光束——逐发扣能量弹药（按门数）；威力随距离衰减（beamPowerFactor）
+        // ⚠ **打机群不吃这个衰减**（船长 2026-10-02 令「对无人机无衰减」）⇒ 距离系数走单一取数口
+        //   `beamPowerVsTargetOf`（`droneHit` 非空 ⇔ 本发打的是敌机群）。
         if (b.ammo.pla < roundsPerVolley) {
           meRt.weapons[wi] = w.reloadMs
           continue
         }
         type = 'plasma'
         b.ammo.pla -= roundsPerVolley
-        dmg = Math.max(1, Math.round((w.shotDmg ?? 0) * beamPowerFactor(b.distanceM, w)))
+        dmg = Math.max(1, Math.round((w.shotDmg ?? 0) * beamPowerVsTargetOf(b.distanceM, w, droneHit !== null)))
         // **装填计时**：激光这一路同样走合并入口（三连射 / 叠光自加速 / 老路径三合一）
         meRt.weapons[wi] = meBurstReloadOf(unit, unit.tag, wi, b, dtMs, w.reloadMs)
         autoHit = true
