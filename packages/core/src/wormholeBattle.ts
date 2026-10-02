@@ -20,17 +20,13 @@ import { PLUG_BLACKBOX_ITEM_ID, plugsToBlackBoxesOf } from './plugs'
 import { advanceBattleFor, battleClockNowMs, battleShowWindowMs, persistFleetHullDamage, refundAmmo, refundRepairKitsAll, repairUsageText, settleDroneLosses, stampFoeArrivalFx, startFleetBattleFor, wormholeDerivedAnomaly, captureBattleReport, sunkShipIdsOfBattle } from './combat'
 import {
   wormholeAdvanceNode,
-  wormholeBagSlots,
-  wormholeFleetCargoM3,
-  wormholeUnitsPerSlot,
   wormholeGridActivate,
   wormholeGridTravel,
-  wormholeTrimBag,
   type WormholeActivateEffect,
   type WormholeRunState,
 } from './wormhole'
 import type { WormholeFoeKind } from './wormholeFoes'
-import {  wormholeCardIdForRun } from './wormholeFoes'
+import { wormholeCardIdForRun } from './wormholeFoes'
 import { gridCellAt, gridContentIndex, hasLiveFoe, isExitCell } from './wormholeGrid'
 // 「欠着一场战斗」的拒因单点（2026-09-20：打捞这一口也要过它，见 `wormholeActivateAt` 头注）
 import { wormholePendingBattleReason } from './wormhole'
@@ -46,10 +42,8 @@ import {
   wormholeHoldUsage,
   wormholeCollectOreAt,
   wormholeEnsureArrivalPiles,
-  wormholeLootTierOf,
   wormholeLootValueIsk,
   wormholeActionBlockReason,
-  wormholeOverloadBlockReason,
   wormholeSalvageAt,
   wormholeStowOrTemp,
   wormholeCoreTypeOfItemId,

@@ -83,7 +83,11 @@ const A_MULTI_SHIP_COMP = 1.6 // = 2N/(N+1)，N = 4
  * | 星髓虫群（星髓幼虫 ×7 + 星髓成虫 ×3） | 10 | `20/11` ≈ 1.818182 |
  * | 噬口猎杀令（畸变幼虫 ×10 + 噬口巨兽 ×1） | 11 | `22/12` ≈ 1.833333 |
  */
-const ALIEN_COMP = (n: number): number => (2 * n) / (n + 1)
+/**
+ * **多舰船补偿公式的唯一实现**（`2N/(N+1)`；2026-10-02 清理：原先 A/D/E 三族各抄一份同名式
+ * `COMP_MUL`/`COMP_MUL`/`E_COMP`，且 E 族那份无人使用 ⇒ 三份并成这一份，全部调用点改用它）。
+ */
+const COMP_MUL = (n: number): number => (2 * n) / (n + 1)
 
 /**
  * **C 族噬口猎杀令（T87）的总盘锚**——「**总血 / 总火力先守恒**」（船长第二批口径⑤：
@@ -115,9 +119,8 @@ const MAW_MINION_SHARE = (1 - MAW_BOSS_SHARE) / 10
  * | 坟场守墓者（守墓长舰 ×3） | 3 | `6/4` = 1.5 |
  * | 虚海守望者 / 穹顶守卫（×5） | 5 | `10/6` ≈ 1.6667 |
  */
-const D_COMP = (n: number): number => (2 * n) / (n + 1)
 
-/** E 族（泰坦巨构）多舰船补偿：与 `D_COMP` 同式（`2N/(N+1)`，N = **舰级编成单位数**）。
+/** E 族（泰坦巨构）多舰船补偿：与 `COMP_MUL` 同式（`2N/(N+1)`，N = **舰级编成单位数**）。
  * ⚠ **机群不计入 N**（船长 2026-09-11 裁定「不吃」）——机群单发按卡的 `dmgMul` 缩放，**不乘补偿**
  * （机群本来就是'多而小'的设计意图，再乘补偿等于双重放大）。
  * | 卡 | 单位总数 N | 补偿 |
@@ -125,7 +128,6 @@ const D_COMP = (n: number): number => (2 * n) / (n + 1)
  * | 泰坦残骸勘探（巨构残段 ×2） | 2 | `4/3` ≈ 1.3333 |
  * | 奥罗武装残骸群（奥罗残骸段 ×1 + 轻装 ×2） | 3 | `6/4` = 1.5 |
  */
-const E_COMP = (n: number): number => (2 * n) / (n + 1)
 
 /**
  * **2026-09-25 船长令（两批）**：
@@ -342,7 +344,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
         ship: FOE_D_LONGSHIP,
         count: 2,
         hpMul: 1980 / FOE_D_LONGSHIP.hp, // 每艘 1,980（与削减前同值）
-        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * D_COMP(2)), // 每艘单发 175
+        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * COMP_MUL(2)), // 每艘单发 175
       },
     ],
     waves: [{ units: 2, hpShare: 1 }], // 单波；⚠ `units` 之和 3 → **2** ⇒ 该星系残骸注入量的
@@ -379,12 +381,12 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
       {
         ship: FOE_D_GHOST,
         hpMul: 346.875 / FOE_D_GHOST.hp,
-        dmgMul: 64 / (FOE_D_GHOST.shotDmg * D_COMP(2)),
+        dmgMul: 64 / (FOE_D_GHOST.shotDmg * COMP_MUL(2)),
       },
       {
         ship: FOE_D_GHOST,
         hpMul: 208.125 / FOE_D_GHOST.hp,
-        dmgMul: 38 / (FOE_D_GHOST.shotDmg * D_COMP(2)),
+        dmgMul: 38 / (FOE_D_GHOST.shotDmg * COMP_MUL(2)),
       },
     ],
     galaxyId: 'galaxy-redring',
@@ -420,7 +422,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
         count: 3,
         wave: 0,
         hpMul: 1000 / (6 * FOE_ALIEN_STARCORE.hp), // = 166.667/208（总血 1,000 的六分之一）
-        dmgMul: 19 / (FOE_ALIEN_STARCORE.shotDmg * ALIEN_COMP(6)), // 每只单发 19
+        dmgMul: 19 / (FOE_ALIEN_STARCORE.shotDmg * COMP_MUL(6)), // 每只单发 19
         split: foeLayerSplit('shield'), // 血型随卡走（舰级缺省是装甲）
         hitRate: 0.9, // 掷命中（原光束必中；本卡的单卡特征，不升格为舰级）
         dmgMix: { plasma: 10 }, // 纯等离子（C 族唯一纯能量卡）
@@ -431,7 +433,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
         count: 3,
         wave: 1,
         hpMul: 1000 / (6 * FOE_ALIEN_STARCORE.hp),
-        dmgMul: 19 / (FOE_ALIEN_STARCORE.shotDmg * ALIEN_COMP(6)),
+        dmgMul: 19 / (FOE_ALIEN_STARCORE.shotDmg * COMP_MUL(6)),
         split: foeLayerSplit('shield'),
         hitRate: 0.9,
         dmgMix: { plasma: 10 },
@@ -637,7 +639,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
         wave: 0,
         hpMul:
           1530 / (7 * FOE_ALIEN_STARCORE.hp + 3 * FOE_ALIEN_STARCORE_ADULT.hp), // 幼虫 95.625
-        dmgMul: 23 / (FOE_ALIEN_STARCORE.shotDmg * ALIEN_COMP(10)), // 每只单发 23
+        dmgMul: 23 / (FOE_ALIEN_STARCORE.shotDmg * COMP_MUL(10)), // 每只单发 23
       },
       {
         ship: FOE_ALIEN_STARCORE,
@@ -645,7 +647,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
         wave: 1,
         hpMul:
           1530 / (7 * FOE_ALIEN_STARCORE.hp + 3 * FOE_ALIEN_STARCORE_ADULT.hp),
-        dmgMul: 23 / (FOE_ALIEN_STARCORE.shotDmg * ALIEN_COMP(10)),
+        dmgMul: 23 / (FOE_ALIEN_STARCORE.shotDmg * COMP_MUL(10)),
       },
       {
         ship: FOE_ALIEN_STARCORE_ADULT, // 末波：成虫 ×3（单个血量 = 幼虫 ×3）
@@ -653,7 +655,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
         wave: 2,
         hpMul:
           1530 / (7 * FOE_ALIEN_STARCORE.hp + 3 * FOE_ALIEN_STARCORE_ADULT.hp), // 成虫 286.875
-        dmgMul: 23 / (FOE_ALIEN_STARCORE_ADULT.shotDmg * ALIEN_COMP(10)),
+        dmgMul: 23 / (FOE_ALIEN_STARCORE_ADULT.shotDmg * COMP_MUL(10)),
       },
     ],
     waves: [
@@ -843,7 +845,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
         hpMul: (MAW_TOTAL_HP * MAW_MINION_SHARE) / FOE_ALIEN_RIFT.hp, // 每只小虫 96.81（3.5%）
         dmgMul:
           (MAW_TOTAL_DMG * MAW_MINION_SHARE) /
-          (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(11)), // 每只 17.5
+          (FOE_ALIEN_RIFT.shotDmg * COMP_MUL(11)), // 每只 17.5
         rangeMaxM: 2713, // 卡带（锚定期望交距 543 m 与开战距离；舰级缺省 2552）
       },
       {
@@ -853,7 +855,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
         hpMul: (MAW_TOTAL_HP * MAW_MINION_SHARE) / FOE_ALIEN_RIFT.hp,
         dmgMul:
           (MAW_TOTAL_DMG * MAW_MINION_SHARE) /
-          (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(11)),
+          (FOE_ALIEN_RIFT.shotDmg * COMP_MUL(11)),
         rangeMaxM: 2713,
       },
       {
@@ -863,7 +865,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
         hpMul: (MAW_TOTAL_HP * MAW_MINION_SHARE) / FOE_ALIEN_RIFT.hp,
         dmgMul:
           (MAW_TOTAL_DMG * MAW_MINION_SHARE) /
-          (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(11)),
+          (FOE_ALIEN_RIFT.shotDmg * COMP_MUL(11)),
         rangeMaxM: 2713,
       },
       {
@@ -872,7 +874,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
         hpMul: (MAW_TOTAL_HP * MAW_BOSS_SHARE) / FOE_ALIEN_MAW.hp, // 首领血 1,797.9（65%）
         dmgMul:
           (MAW_TOTAL_DMG * MAW_BOSS_SHARE) /
-          (FOE_ALIEN_MAW.shotDmg * ALIEN_COMP(11)), // 首领单发 325.7
+          (FOE_ALIEN_MAW.shotDmg * COMP_MUL(11)), // 首领单发 325.7
       },
     ],
     waves: [
@@ -920,14 +922,14 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
         ship: FOE_D_STASIS,
         count: 2,
         hpMul: 1960 / FOE_D_STASIS.hp, // 每艘 1,960（与削减前同值）
-        dmgMul: 190 / (FOE_D_STASIS.shotDmg * D_COMP(3)), // 每艘单发 190
+        dmgMul: 190 / (FOE_D_STASIS.shotDmg * COMP_MUL(3)), // 每艘单发 190
       },
       {
         ship: FOE_D_LONGSHIP,
         count: 1,
         // 同一条"卡片血量倍率" k = 1960/1170 ⇒ 1,080 × k = 1,809.23（各舰级按自己的档案锚成比例）
         hpMul: (1080 * (1960 / FOE_D_STASIS.hp)) / FOE_D_LONGSHIP.hp,
-        dmgMul: 161 / (FOE_D_LONGSHIP.shotDmg * D_COMP(3)), // 每艘单发 161（= 105 × 190/124）
+        dmgMul: 161 / (FOE_D_LONGSHIP.shotDmg * COMP_MUL(3)), // 每艘单发 161（= 105 × 190/124）
         split: foeLayerSplit('balanced'), // 血型随卡走（守墓长舰舰级缺省是装甲型）
         tactic: 'kite', // 随卡走（本卡是远程档；守墓长舰舰级缺省为 orbit）
       },
@@ -962,7 +964,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
         ship: FOE_D_LONGSHIP,
         count: 3,
         hpMul: 1505 / FOE_D_LONGSHIP.hp, // 每艘 1,505（与削减前同值）
-        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * D_COMP(3)), // 每艘单发 175
+        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * COMP_MUL(3)), // 每艘单发 175
         split: foeLayerSplit('balanced'), // 血型随卡走（舰级缺省是装甲型）
       },
     ],
@@ -1243,14 +1245,14 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
         count: 4,
         wave: 0,
         hpMul: 1815 / (8 * FOE_ALIEN_RIFT.hp), // = 226.875/260（总血 1,815 的八分之一）
-        dmgMul: 15 / (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(8)), // 每只单发 15
+        dmgMul: 15 / (FOE_ALIEN_RIFT.shotDmg * COMP_MUL(8)), // 每只单发 15
       },
       {
         ship: FOE_ALIEN_RIFT,
         count: 4,
         wave: 1,
         hpMul: 1815 / (8 * FOE_ALIEN_RIFT.hp),
-        dmgMul: 15 / (FOE_ALIEN_RIFT.shotDmg * ALIEN_COMP(8)),
+        dmgMul: 15 / (FOE_ALIEN_RIFT.shotDmg * COMP_MUL(8)),
       },
     ],
     waves: [

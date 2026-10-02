@@ -36,8 +36,8 @@ import {
 } from './wormhole'
 import { matterTechLevel, matterTechNodes, matterTechWhBuffs, matterTechWorkEffBonus } from './matterTech'
 import { RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, wreckGroupOfCard, wreckItemIdOf } from './salvage'
-import {   wormholeRollRelicBoxKind, WORMHOLE_CORE_WEIGHTS, WORMHOLE_ESSENCE_ITEM_ID } from './wormholeSalvage'
-import { wormholeCardIdOfFamily, wormholeFamilyOfSeed, wormholeLayerRewardMul, wormholeLayerThreat } from './wormholeFoes'
+import { wormholeRollRelicBoxKind, WORMHOLE_CORE_WEIGHTS, WORMHOLE_ESSENCE_ITEM_ID } from './wormholeSalvage'
+import { wormholeCardIdOfFamily, wormholeFamilyOfSeed, wormholeLayerThreat } from './wormholeFoes'
 import { WORMHOLE_ARCHETYPE_LABELS, wormholeArchetypeOf } from './wormholeGrid'
 import { wormholeStockOf, wormholeStockTake } from './wormholeScan'
 import { aiCoreCap, aiCoreIndustryUsed, aiCoreName, aiCoreShipUsed, gainAiCore, industryAiBonus } from './ai'
@@ -709,13 +709,11 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
   const rng = autoRng(run.seed, run.depth * 977)
   /** 损伤专用的独立流（同 seed 同序列；与走法消耗无关，见下面 `damage` 处的说明） */
   const damageRng = autoRng(run.seed, run.depth * 31 + 7)
-  const mul = wormholeLayerRewardMul(run.depth)
   /**
    * 丙/丁（2026-09-14）：敌卡 = **本处锁定的族**（整趟同族）；产出口味按**内容原型**在四条线上重分配
    * （`ARCHETYPE_MUL` 已归一化 ⇒ 总期望仍是那条 40% 线）。
    */
   const meta = wormholeRunMeta(run)
-  const taste = ARCHETYPE_MUL[meta.archetype]
   const cardId = wormholeCardIdOfFamily(meta.family, run.seed)
   const family = String(ctx.anomalies.get(cardId)?.foeFamily ?? meta.family)
   /**

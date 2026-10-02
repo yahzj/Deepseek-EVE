@@ -36,11 +36,8 @@ import {
 import { WORMHOLE_SPAWN_MIN_DEPTH, wormholeArchetypeOf } from './wormholeGrid'
 import {
   WORMHOLE_NEBULA_MIN_DEPTH,
-  WORMHOLE_TURN_PER_WORK,
   WORMHOLE_TURN_PER_MOVE,
   WORMHOLE_TURN_PER_SCAN,
-  wormholeRng,
-  wormholeStream,
   disperseNebulae,
   gridCellAt,
   gridNebulaDisperseTargets,

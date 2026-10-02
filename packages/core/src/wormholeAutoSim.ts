@@ -35,15 +35,9 @@ import {
   hexDistance,
   hexKey,
   isExitCell,
-  pickPlace,
-  pickSignal,
-  wormholeArchetypeOf,
   wormholeGridRadiusFor,
   wormholeMakeGrid,
-  wormholeRuinsShareFor,
-  wormholeSignalWeightsFor,
   type HexCell,
-  type WormholeGridState,
   type WormholePlace,
 } from './wormholeGrid'
 import { WORMHOLE_TURN_PER_MOVE, WORMHOLE_TURN_PER_SCAN } from './wormholeGrid'
@@ -118,8 +112,6 @@ export interface WormholeAutoPower {
   ehp: number
 }
 
-const round1 = (n: number) => Math.round(n * 10) / 10
-
 /**
  * **真跑一趟**（纯函数；同 `(seed, depth, mass, power, hold, techFactors)` ⇒ 同结果）。
  *
@@ -189,7 +181,6 @@ export function wormholeAutoDescend(opts: {
     turnsOnMove: 0,
   }
   let holdUsed = 0
-  const archetype = wormholeArchetypeOf(seed)
 
   for (let depth = Math.max(1, startDepth); depth <= 9; depth++) {
     const grid = wormholeMakeGrid(seed * 31 + depth * 7919, depth, 0, blankShareFactor)

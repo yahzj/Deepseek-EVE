@@ -928,8 +928,6 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
       // **铁人福利 B**（2026-09-23 船长令「常驻行情每窗刷单量 +200%」）⇒ 流量 ×3（买卖两侧阶梯同时放大；
       // 价格侧**不动** ⇒ 只影响"簿面有多厚"，不影响行情中枢）。非铁人 ×1 ⇒ 既有读数逐字不变。
       const flow = (def.supplyFlow ?? Math.max(1, Math.round(def.poolTarget / 120))) * ironmanCommonFlowMul(state)
-      const p = 1 - 0.5 * ((poolQ - def.poolTarget) / def.poolTarget)
-      const pClamped = Math.max(0.4, Math.min(1.6, p))
       const avail = Math.max(0.05, Math.min(1.5, poolQ / def.poolTarget))
       const buyBase = Math.round(buyPrice(def, L)) // 最佳收购价 = L
       const sellBase = Math.round(sellPrice(def, L)) // 最低供应价 ≈ L×1.06
@@ -1048,7 +1046,6 @@ function crossOnPlacement(state: GameState, ctx: SimContext, order: PlayerOrder)
 }
 
 function matchPlayerOrders(state: GameState, ctx: SimContext): void {
-  const mk = state.market
   const bal = ctx.balance.market
   // 窗口簿面成交计数归零（站内让利吸收按"本窗总吸收 ≥ 配额"补差，见 absorbViaStation）
   for (const o of state.orders) if (o.side === 'sell') o.windowFilled = 0

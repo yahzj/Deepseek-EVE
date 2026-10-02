@@ -130,6 +130,20 @@
 - 剩余 **106 处**（多行 import 内的未用名 ＋ src/tests 里的未用局部）交后续人工步：src 59 · tests 105 · data 2
   的原始人工清单里已消掉一部分，见后续批次；**在全部清零前，闸门不开**。
 
+### 批次 2a-②：core src/data 未用符号人工清理（2026-10-02 · 零行为变化）
+
+- **src 全部清零**（多行 import 未用名 逐块手删 ＋ 未用局部逐处核副作用后删）：
+  expedition / weekendBattle / wormhole / wormholeBattle / wormholeSalvage / wormholeAutoSim /
+  wormholeAuto / market（`p`/`pClamped`/`mk`）/ mining（`tripNoteId`）/ save（`asNullableString`）/
+  sideTasks（`taskGoodBasePool` 整函数）/ weekendEvent（`windowMs`）/ combat（**哨戒机开关
+  `PD_TARGET_SENTRIES`**：机制代码早已不在，留着只会误导，裁定记录在 git 历史 09-11 提交）。
+- **重复效果代码并一**：`packages/data/src/anomalies.ts` 的 `ALIEN_COMP`/`D_COMP`/`E_COMP` 三份逐字同式
+  （`2N/(N+1)`），E 族那份无人使用 ⇒ 并成一份 `COMP_MUL`，全部调用点改用它（11 处）。
+- 顺带修 wormholeAuto.ts 一处双空格 import。
+- 剩余 **65 处全在 tests/**（未用导入名 ＋ 未用测试局部；测试局部要逐处核初始化副作用，
+  如 `const run = advanceGame(s)` 这种**不能删声明**、只能改为裸调用）⇒ 下一批清完再开闸门。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅。
+
 ## 待办/待裁
 
 - 大拆分的具体切分边界等动到批次 4 再逐文件出设计（§2 逐批确认）。

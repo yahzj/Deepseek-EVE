@@ -391,7 +391,6 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   const tripNote = m.autoCycle
     ? ' 已启用自动循环：满舱自动返航空间站卸货，卸完自动开始下一趟。'
     : ' 自动循环已关闭：货舱满后将停在矿带。'
-  const tripNoteId = m.autoCycle ? 'core.mining.014' : 'core.mining.015'
   addLog(
     state,
     'industry',

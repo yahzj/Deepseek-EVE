@@ -39,14 +39,12 @@ import {
   advanceBattleFor,
   battleClockNowMs,
   battleMaxDistanceM,
-  battleOpenM,
   battleShowWindowMs,
   bountyWinPercentGuarded,
   createFoeSpecs,
   createPlayerSpec,
   desiredRangeFor,
   foeDesiredRange,
-  foeRangeDebuffOf,
   meFoeRangeDebuffOf,
   persistFleetHullDamage,
   refundAmmo,
@@ -64,7 +62,6 @@ import {
 import { actionBlockReason, markExplored } from './explore'
 import { familyModules, shipHasWeapon } from './equipment'
 import {
-  FACTION_RARE_DROP_CHANCE,
   FACTION_RARE_DROP_COUNT,
   FACTION_RARE_DROP_PITY_ROLLS,
   factionAnomalyOf,

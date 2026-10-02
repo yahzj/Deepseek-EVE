@@ -369,11 +369,6 @@ const MIGRATIONS: Record<number, (raw: RawState) => RawState> = {
    */
   30: (raw) => ({ ...raw, firstTaskAutoClaim: true }),
 }
-/** 字符串或 null 归一（迁移辅助） */
-function asNullableString(v: unknown): string | null {
-  return typeof v === 'string' && v.length > 0 ? v : null
-}
-
 /** 把未知值安全转成普通对象（非对象一律当空对象） */
 function asRaw(value: unknown): RawState {
   return typeof value === 'object' && value !== null ? (value as RawState) : {}

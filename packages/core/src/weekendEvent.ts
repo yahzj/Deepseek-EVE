@@ -1745,7 +1745,6 @@ export function weekendOctopusTick(
   if (hpMax === undefined || hpMax <= 0) return false
   // ⚠ 窗口按**本档的实际长度**取（`weekendFlagshipWindowMs`：正常 2h / 调试 10min，
   //   与 `weekendBossPoolView`、倒计时、收口四处同一把尺）
-  const windowMs = weekendFlagshipWindowMs(state)
   const d = Math.max(0, dtMs)
   if (d <= 0) return false
   /**

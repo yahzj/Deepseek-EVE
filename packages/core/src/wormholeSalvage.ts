@@ -45,13 +45,8 @@ import type { WreckRegion } from './wreckGroups'
 import {
   canPlace,
   cargoBlockArea,
-  cargoShapeFits,
-  cargoShapesFor,
-  bestCargoPlacement,
   findCargoSpot,
-  findFreeSpot,
   holdAdd,
-  holdCellsUsed,
   holdRemove,
   holdTransferTo,
   makeHoldState,
@@ -68,16 +63,12 @@ import { wormholeSpawnAfterTurns } from './wormholeSpawn'
 import { matterTechWhBuffs, matterTechWorkEffBonus } from './matterTech'
 import {
   WORMHOLE_TURN_PER_WORK,
-  WORMHOLE_TURN_PER_PICK,
   gridCellAt,
-  gridContentIndex,
-  wormholeRng,
   wormholeStream,
 } from './wormholeGrid'
 import type { WormholeCellPile, WormholeGridCell } from './wormholeGrid'
 import {
   wormholeBagSlotsOfFleet,
-  wormholeBagUsage,
   wormholeCardIdOfFamily,
   wormholeLayerRewardMul,
   wormholeNodePiles,
