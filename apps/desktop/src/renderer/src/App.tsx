@@ -658,6 +658,13 @@ async function applyLayoutAndReload(): Promise<void> {
 
   // ── 弹层：存档管理 / 手册图鉴 / 全屏战斗 ──
   const [showSaveManager, setShowSaveManager] = useState(false)
+  /**
+   * ⟪**2026-10-02 甲案**（船长令）⟫ **模式选择框的"导入收尾"保持位**：
+   * 在新游戏页导入一份**已选过模式**的档时，`modeChoiceNeeded()` 会当场翻假 —— 照旧挂载判据卸框，
+   * 玩家就**只看到悬浮窗无声消失**（没有成功确认，还会怀疑旧档是不是被覆盖了）。
+   * ⇒ 导入成功那一刻本位置真，**等玩家点「进入游戏」**再放行卸载（`ModeChoice` 里的 `finishing` 态）。
+   */
+  const [modeChoiceImportHold, setModeChoiceImportHold] = useState(false)
   const [showHandbook, setShowHandbook] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [battleOpen, setBattleOpen] = useState(false)
@@ -1810,8 +1817,8 @@ async function applyLayoutAndReload(): Promise<void> {
        * ⚠ 由 `onboarding.step !== 0` 守着 ⇒ **只在进游戏之后**弹（序章自己那张模式卡在前）；
        * 选完那一刻引擎 `notify()` ⇒ 整树重渲染 ⇒ 本层自动卸载，此后不再出现。
        */}
-      {engine.state.onboarding.step !== 0 && engine.modeChoiceNeeded() ? (
-        <ModeChoice engine={engine} onDone={force} />
+      {engine.state.onboarding.step !== 0 && (engine.modeChoiceNeeded() || modeChoiceImportHold) ? (
+        <ModeChoice engine={engine} onDone={force} onImportedChange={setModeChoiceImportHold} />
       ) : null}
 
       {/* 手机横屏：自绘下拉选项面板（值写回原生 select 并派发 change，保持各页 onChange 原样生效） */}

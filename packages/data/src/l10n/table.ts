@@ -4484,6 +4484,13 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 导入"没读到文件"的可见提示（2026-09-30：手机 UC 报障"点了没反应"⇒ 取消不再静默；
      ⚠ 真取消与"选择器没弹出来"无法区分，所以这句要**两种情况都说得通**并给一条出路） */
   "ui.SaveManager.031": { zh: "没有读到存档文件。若刚才没有弹出文件选择器（部分手机浏览器的内置内核不支持），请用系统自带浏览器打开本页再试一次。", en: "No save file was read. If no file picker appeared (some in-app mobile browsers do not support it), open this page in your phone's own browser and try again." },
+  /**
+   * ⟪文案调整 2026-10-02⟫ **甲案**（船长令）：新游戏页导入成功后**先给交代、玩家自己点「进入游戏」** ——
+   * 原先那一刻 `modeChoiceNeeded()` 翻假 ⇒ 整个悬浮窗**无声消失**，玩家看不到任何成功确认（`ui.SaveManager.003`
+   * 那句还写着「先点『备份当前档』」，而**新游戏页根本没有那个按钮**）⇒ 这两条专为该页写。
+   */
+  "ui.SaveManager.032": { zh: "已导入存档", en: "Save imported" },
+  "ui.SaveManager.033": { zh: "进入游戏", en: "Enter the game" },
   // 2026-09-25 船长定文案：「事件日志应出现「有入侵舰队出现！」」⇒ 开局那条日志改短句（其余三条待船长定）
   "ui.weekend.001": { zh: "有入侵舰队出现！", en: "Invader fleets have appeared!" },
   "ui.weekend.002": { zh: "入侵核心已被打通：旗舰现身。", en: "The invasion core has been broken through: the flagship has appeared." },

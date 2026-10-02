@@ -25,10 +25,25 @@ import { useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import { tr, cmdText } from '../i18n/locale'
 
-export function ModeChoice({ engine, onDone }: { engine: GameEngine; onDone: () => void }) {
+export function ModeChoice({
+  engine,
+  onDone,
+  onImportedChange,
+}: {
+  engine: GameEngine
+  onDone: () => void
+  /**
+   * ⟪**2026-10-02 甲案**（船长令）⟫ **导入收尾位**：导入成功那一刻 `modeChoiceNeeded()` 会翻假
+   * （导入的档已选过模式）⇒ 若照旧按它卸载，玩家**只看到悬浮窗无声消失**、拿不到任何成功确认。
+   * 本回调把"刚导入、等玩家点『进入游戏』"这件事告诉 `App`，由它多留这一拍不卸框。
+   */
+  onImportedChange?: (holding: boolean) => void
+}) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [ok, setOk] = useState('')
+  /** 刚导入成功（用于切到"导入完成态"：只给交代 ＋ 「进入游戏」） */
+  const [imported, setImported] = useState(false)
 
   /** 选普通：落一次"已选择"记账，然后放行 */
   const chooseStandard = async (): Promise<void> => {
@@ -72,13 +87,30 @@ export function ModeChoice({ engine, onDone }: { engine: GameEngine; onDone: () 
     setOk('')
     const r = await engine.importSaveFromFile()
     setBusy(false)
-    if (r.canceled) return
+    /**
+     * ⟪**2026-10-02**⟫ **取消/没弹出来不再静默**（与存档页 `SaveManager` 同一手，§2.1 同类优先补齐）：
+     * 原先这里直接 `return` ⇒ 手机端玩家**关掉文件选择器后界面一个字都不说**（"点了没反应/选了也没用"都长这样）
+     * ⇒ 复用存档页那条现成文案（**零新增**）：说明"没读到文件"并给出路（换系统自带浏览器）。
+     */
+    if (r.canceled) {
+      setErr(tr('ui.SaveManager.031'))
+      return
+    }
     if (!r.ok) {
       setErr(cmdText(r) || tr('ui.SaveManager.029'))
       return
     }
-    setOk(tr('ui.SaveManager.003'))
+    /** 成功后切"导入完成态"：`App` 那边同拍把本框留住（见 `onImportedChange` 的说明） */
+    setOk(tr('ui.SaveManager.032'))
+    setImported(true)
+    onImportedChange?.(true)
   }
+
+  /**
+   * **导入完成态**：导入进来的档已选过模式 ⇒ 本框只剩"报个平安 ＋ 请玩家进游戏"。
+   * （没选过模式的档 ⇒ `finishing` 为假，照旧请他选这一次 —— **"强制二选一"语义不变**。）
+   */
+  const finishing = imported && !engine.modeChoiceNeeded()
 
   return (
     /* 无 onClick ⇒ 点遮罩不关、无关闭键 ⇒ 强制二选一 */
@@ -89,42 +121,66 @@ export function ModeChoice({ engine, onDone }: { engine: GameEngine; onDone: () 
           <span className="app-report-title">{tr('ui.Ironman.042')}</span>
         </div>
         <div className="app-modal-body">
-          <div className="app-dim" style={{ marginBottom: 'var(--wui-sp-10)' }}>{tr('ui.Ironman.043')}</div>
-          <div className="app-pro-mode">
-            <button className="app-pro-mode-card" disabled={busy} onClick={() => void chooseStandard()}>
-              <span className="app-pro-mode-title">{tr('ui.Ironman.026')}</span>
-              <span className="app-pro-mode-li">{tr('ui.Ironman.027')}</span>
-              <span className="app-pro-mode-li">{tr('ui.Ironman.028')}</span>
-            </button>
-            <button className="app-pro-mode-card is-iron" disabled={busy} onClick={() => void chooseIronman()}>
-              <span className="app-pro-mode-title">{tr('ui.Ironman.029')}</span>
-              <span className="app-pro-mode-li">{tr('ui.Ironman.030')}</span>
-              <span className="app-pro-mode-li">{tr('ui.Ironman.031')}</span>
-              <span className="app-pro-mode-li">{tr('ui.Ironman.032')}</span>
-              <span className="app-pro-mode-li">{tr('ui.Ironman.033')}</span>
-              <span className="app-pro-mode-li">{tr('ui.Ironman.034')}</span>
-              <span className="app-pro-mode-li">{tr('ui.Ironman.035')}</span>
-              <span className="app-pro-mode-li">{tr('ui.Ironman.036')}</span>
-              <span className="app-pro-mode-li">{tr('ui.Ironman.037')}</span>
-              <span className="app-pro-mode-li">{tr('ui.Ironman.038')}</span>
-            </button>
-          </div>
-          {/* 导入入口：与存档页那颗同一套类名/文案 id（§6 同级复刻），见 `doImport` 的说明 */}
-          <div className="app-save-actions" style={{ marginTop: 'var(--wui-sp-10)' }}>
-            <button
-              className="app-btn is-small"
-              disabled={busy}
-              onClick={() => void doImport()}
-              title={tr('ui.SaveManager.013')}
-            >
-              {tr('ui.SaveManager.014')}
-            </button>
-            <span className="app-dim">{busy ? tr('ui.SaveManager.017') : tr('ui.Ironman.044')}</span>
-          </div>
+          {finishing ? (
+            /**
+             * ⟪⟪**2026-10-02 甲案**（船长令）⟫⟫ **导入完成态**：导入进来的档**已选过模式** ⇒ 本框没事可做了。
+             * 只给交代（`ui.SaveManager.032`「已导入存档」）＋ 一个「进入游戏」按钮，**玩家自己点了才关**。
+             * ⚠ **不再摆那两张模式卡**：导入的档已经选过模式，再点一次会把它**改写**（换成另一种模式）。
+             */
+            <>
+              <div className="app-dim" style={{ marginBottom: 'var(--wui-sp-10)' }}>{tr('ui.SaveManager.032')}</div>
+              <div className="app-save-actions">
+                <button
+                  className="app-btn is-primary"
+                  onClick={() => {
+                    onImportedChange?.(false)
+                    onDone()
+                  }}
+                >
+                  {tr('ui.SaveManager.033')}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="app-dim" style={{ marginBottom: 'var(--wui-sp-10)' }}>{tr('ui.Ironman.043')}</div>
+              <div className="app-pro-mode">
+                <button className="app-pro-mode-card" disabled={busy} onClick={() => void chooseStandard()}>
+                  <span className="app-pro-mode-title">{tr('ui.Ironman.026')}</span>
+                  <span className="app-pro-mode-li">{tr('ui.Ironman.027')}</span>
+                  <span className="app-pro-mode-li">{tr('ui.Ironman.028')}</span>
+                </button>
+                <button className="app-pro-mode-card is-iron" disabled={busy} onClick={() => void chooseIronman()}>
+                  <span className="app-pro-mode-title">{tr('ui.Ironman.029')}</span>
+                  <span className="app-pro-mode-li">{tr('ui.Ironman.030')}</span>
+                  <span className="app-pro-mode-li">{tr('ui.Ironman.031')}</span>
+                  <span className="app-pro-mode-li">{tr('ui.Ironman.032')}</span>
+                  <span className="app-pro-mode-li">{tr('ui.Ironman.033')}</span>
+                  <span className="app-pro-mode-li">{tr('ui.Ironman.034')}</span>
+                  <span className="app-pro-mode-li">{tr('ui.Ironman.035')}</span>
+                  <span className="app-pro-mode-li">{tr('ui.Ironman.036')}</span>
+                  <span className="app-pro-mode-li">{tr('ui.Ironman.037')}</span>
+                  <span className="app-pro-mode-li">{tr('ui.Ironman.038')}</span>
+                </button>
+              </div>
+              {/* 导入入口：与存档页那颗同一套类名/文案 id（§6 同级复刻），见 `doImport` 的说明 */}
+              <div className="app-save-actions" style={{ marginTop: 'var(--wui-sp-10)' }}>
+                <button
+                  className="app-btn is-small"
+                  disabled={busy}
+                  onClick={() => void doImport()}
+                  title={tr('ui.SaveManager.013')}
+                >
+                  {tr('ui.SaveManager.014')}
+                </button>
+                <span className="app-dim">{busy ? tr('ui.SaveManager.017') : tr('ui.Ironman.044')}</span>
+              </div>
+            </>
+          )}
           {err ? (
             <div className="app-dim" style={{ marginTop: 'var(--wui-sp-8)' }}>{err}</div>
           ) : null}
-          {ok ? (
+          {ok && !finishing ? (
             <div className="app-dim" style={{ marginTop: 'var(--wui-sp-8)' }}>{ok}</div>
           ) : null}
         </div>
