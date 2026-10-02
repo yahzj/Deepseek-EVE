@@ -518,6 +518,46 @@ html[data-locale='en'] body {
 .app-root.is-mobile-rot .app-wh-settle-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .app-root.is-mobile-rot .app-wh-tabs { flex-wrap: nowrap; }
 .app-root.is-mobile-rot .app-modal-head { flex-wrap: nowrap; }
+/* ═══════════ 手机旋转模式 · 虫洞探索界面「全屏 ＋ 左地图 / 右操作区」（**2026-10-02 船长令**）═══════════
+   船长原话：「手机模式下，虫洞探索的界面有问题，探索地图下方的操作界面过于狭窄，导致无法进行操作，
+   货仓背包无法对背包内的物品进行拖动等行为。建议操作手机模式下，虫洞探索界面放大到全屏，
+   操作界面挪到右侧。」口径（四问四答；工作文档 `docs/design/mobile-wormhole-20261002.md`）：
+   ① 只动旋转模式（桌面与窄屏竖屏一字不动）② 面板铺满逻辑空间、四周留 12px
+   ③ 左＝地图吃满高度、右＝操作区 ④ 货仓拖拽另补触摸指针路径（见 `panels/Wormhole.tsx`）。
+
+   为什么必须换轴：`.app-wh-modal` 自己那条 `width: min(1060px, calc(100vh - 40px))` 里的 `100vh`
+   量的是**手机竖屏高 ≈ 844**，而旋转后的逻辑空间是 **1200 宽** ⇒ 面板只有 804px、左右各白扔约 198px
+   （实测 33%），这正是"操作界面过于狭窄"的来源。本段一律按逻辑空间的 `--mob-w` / `--mob-h` 取，
+   与文件上方那几条旋转口径同一把尺（`ui:rot-check` 的物理单位契约也这么要求）。 */
+.app-root.is-mobile-rot .app-wh-modal {
+  width: calc(var(--mob-w, 1200px) - 24px);
+  max-width: calc(var(--mob-w, 1200px) - 12px);
+  height: calc(var(--mob-h, 100vw) - 24px);
+  max-height: calc(var(--mob-h, 100vw) - 12px);
+}
+/* 探索视图两栏：左＝地图（吃满左栏高度）· 右＝操作区（纵向排；内容多时**只滚右栏**） */
+.app-root.is-mobile-rot .app-wh-explore {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: var(--wui-sp-10);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.app-root.is-mobile-rot .app-wh-explore > .app-wh-maprow { flex: 1 1 auto; min-width: 0; min-height: 0; }
+.app-root.is-mobile-rot .app-wh-explore > .app-wh-ops {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wui-sp-8);
+  flex: 0 0 400px;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+/* 地图框：桌面上是**定高 300px**（船长 2026-09-13：窗口高度不随地图变大）⇒ 手机上改为吃满左栏高度 */
+.app-root.is-mobile-rot .app-wh-mapbox { height: auto; min-height: 0; }
+/* 货仓格板：手指按在物品上起手是**拖物品** ⇒ 不让这一次触摸去滚页面（按空格或格板外仍可滚） */
+.app-root.is-mobile-rot .app-wh-hold-fig { touch-action: none; }
 
 /* 手机：下拉选项自绘面板（2026-09-06 船长：原生弹层方向错位——面板位于横屏局部空间内随画面旋转，方向始终正确） */
 
@@ -11687,6 +11727,13 @@ html[data-locale='en'] body {
 /* ── 探索页版式（船长 2026-09-13 晚）──
    **窗口高度固定**：地图框定高 300px（不再随圈数长高）、信息窗的卡片列表自己滚 ⇒ 外层永不出滚动条。 */
 .app-wh-run { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+/* ── 虫洞**探索视图**的两个挂载点（2026-10-02）────────────────────────────────
+   `.app-wh-explore`（探索视图整段）与 `.app-wh-ops`（右栏：图例 / 移动确认 / 工作区 / 各提示行）
+   在桌面上都是 `display: contents` ⇒ **不产生盒子**，布局与改造前逐字相同
+   （本仓既有惯用法，同 `.app-win-host`）；手机旋转模式下才由文件上方 `is-mobile-rot` 那段
+   把它们变成「左＝地图 / 右＝操作区」两栏。 */
+.app-wh-explore,
+.app-wh-ops { display: contents; }
 /* ⚠ 2026-09-22：`.app-wh-run.is-battle` / `.app-wh-battle` 那一套（洞内战斗内嵌进本面板）已随
    「界面回滚」删除 —— 现行做法回到本批之前：**战斗中本面板整块不渲染**，战场全屏独占。
    封存版见分支 `archive/window-embed-20260922`（`docs/design/archived-window-embed-20260922.md`）。 */
@@ -12128,6 +12175,12 @@ html[data-locale='en'] body {
 }
 .app-wh-hold-cell.is-origin { cursor: grab; }
 .app-wh-hold-cell.is-dragging { opacity: 0.45; cursor: grabbing; }
+/* ── 指针拖拽（**触屏**；2026-10-02 船长令「货仓背包无法对背包内的物品进行拖动」）───────────────
+   桌面走的是 HTML5 拖放（`draggable` + onDragStart/onDrop），**触屏上那套根本不触发**；手机端补的
+   指针路径用这两条做反馈：手指下的落点格高亮 · 被拖的那一块不吃命中（否则它挡在手指底下，
+   `elementFromPoint` 命中的是自己而不是落点格）。桌面路径完全不走这两个类名 ⇒ 桌面零影响。 */
+.app-wh-hold-cell.is-touch-hover { border-color: rgb(var(--wui-accent) / 0.9); background: rgb(var(--wui-accent) / 0.18); }
+.app-wh-hold-fig.is-touch-drag { pointer-events: none; }
 .app-wh-hold-box-name { color: rgb(var(--wui-accent)); font-size: var(--wui-fs-2xsd); }
 /* **格内图标**（2026-09-13 船长：「货仓内物品采用图标而不是纯文字」）：图标吃物品色调
    （安全货柜按族、谜质按台），格内居中；行内清单里的图标与名字同排。 */
