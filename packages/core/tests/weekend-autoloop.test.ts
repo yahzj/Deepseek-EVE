@@ -110,6 +110,36 @@ describe('入侵重复出击 · 再出发', () => {
     expect(s.expedition.active, '等待期间不该出发').toBe(false)
     expect(autoLoopInvasionGalaxy(s), '也不该被停').toBe(TARGET)
   })
+
+  /**
+   * **船长 2026-10-02 报障**：「玩家反应一个问题，如果使用了燃料进行重复悬赏，有时候会因为速度太快
+   * 导致重复悬赏被取消。」——根因 = 冷却守卫判的是**板面驻留卡**，出发用的却是**当场重抽卡**
+   * （两张不同 id；冷却表按卡 id 记）⇒ 重抽卡仍在冷却时守卫放行、`startExpedition` 被 preflight 拒
+   * ⇒ 整条循环被 `stopAutoLoopInvasion` **取消**（开燃料后返航腿 120s → 12s，短于该卡冷却 12.3~13.4s）。
+   *
+   * 本用例钉住修后口径（**甲案**）：**冷却中只等，绝不取消**；冷却一过照常再出发。
+   */
+  it('重抽到仍在冷却的那张卡 ⇒ 只等，不取消循环（燃料太快那条报障的回归门）', () => {
+    const { s } = setup() // family 'A' ⇒ 该族池长 1 ⇒ 每场抽到的都是同一张卡（最容易撞上冷却）
+    expect(setAutoLoopInvasion(s, ctx, TARGET).ok).toBe(true)
+    expect(advanceAutoLoopInvasion(s, ctx), '首场应当能出发').toBeNull()
+    const card = s.expedition.anomalyId!
+    expect(card).toBeTruthy()
+    /**
+     * 照**结算口径**记一笔冷却（引擎在胜负结算里调 `setBountyCooldown(state, ctx, anomaly.id)`）；
+     * 这里直接写表，免得为了造一个冷却去真打一场。
+     */
+    s.bountyCooldowns[card] = s.gameMs + 60_000
+    s.expedition.active = false
+    s.expedition.battle = null
+    expect(advanceAutoLoopInvasion(s, ctx), '冷却中 ⇒ 等待（改前这里返回「冷却中…」并把循环停掉）').toBeNull()
+    expect(autoLoopInvasionGalaxy(s), '循环必须还活着').toBe(TARGET)
+    expect(s.expedition.active, '冷却中不出发').toBe(false)
+    s.gameMs += 61_000 // 冷却过点
+    expect(advanceAutoLoopInvasion(s, ctx), '冷却过后应能照常出发').toBeNull()
+    expect(s.expedition.active, '冷却过后真的出发了').toBe(true)
+    expect(autoLoopInvasionGalaxy(s)).toBe(TARGET)
+  })
 })
 
 describe('入侵重复出击 · 停止口径', () => {

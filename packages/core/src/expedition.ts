@@ -15,7 +15,7 @@ import { weekendApplyBattleOutcome, weekendBattleInvolvedOf } from './weekendBat
 import { weekendFoeCardOf } from './weekendEvent'
 import { weekendAssaultThreatOf, weekendFoeCardsSelfPriced } from './weekendEvent'
 /** 入侵「重复出击」（2026-09-25 船长令）：每场重抽一支 ＋ 目标星系覆写（去程/返航照常算） */
-import { weekendAssaultDrawOf, weekendBountyCardsOf, weekendNoteAssaultDispatch, weekendOccupiedLiveAt } from './weekendBounty'
+import { weekendAssaultDrawOf, weekendNoteAssaultDispatch, weekendOccupiedLiveAt } from './weekendBounty'
 import { rewardMulOf } from './tuning'
 import { bumpFirst } from './firstTasks'
 import { addLog, HOME_GALAXY_ID, shipLockedInWormhole } from './state'
@@ -1702,32 +1702,47 @@ export function advanceAutoLoopInvasion(state: GameState, ctx: SimContext): stri
   // 别的作业占着主控 ⇒ 等（判据单点与常驻悬赏那条同源）
   if (autoLoopWaitLabel(state) !== null) return null
   /**
-   * 冷却与缴获体积都按**该星系板面上那张卡**（`weekendBountyCardsOf` 换出来的那张）判 ——
-   * 与手动「出击」按钮的禁用口径同源（手动能点 ⇔ 循环能出发）。
+   * **冷却与缴获体积都按「这一场真正要打的那张卡」判**（**2026-10-02 甲案 · 船长报障修复**）。
+   *
+   * 出发用的是 `weekendAssaultDrawOf` 的**当场重抽卡**（抽签盐 = 10000 ＋ `assaultDraws`），
+   * 而 T8 冷却表是**按卡 id** 记的（结算处 `setBountyCooldown(anomaly.id)`）⇒ 判据必须与出发同源。
+   *
+   * ⚠ **改前判的是板面驻留卡**（`weekendBountyCardsOf` 换出来的那张，抽签盐 0）——与重抽卡是**两张
+   * 不同的 id** ⇒ 既**漏判**又**误等**：
+   * - 漏判（就是玩家报障）：重抽到的卡仍在冷却、板面卡不在 ⇒ 守卫放行 ⇒ `startExpedition` 被
+   *   `expeditionPreflight` 的冷却判据拒 ⇒ 走到 `stopAutoLoopInvasion` ⇒ **整条重复出击被取消**。
+   *   开跃迁燃料后本趟返航腿 120s → **12s**，比这张卡的冷却（`10000 × √(500 ÷ 扫描分辨率)`，
+   *   重舰 12.3~13.4s）还短 ⇒ 只要连续两场抽到同一张卡就撞上（**只差 1 秒也照杀**）。
+   * - 误等：板面卡在冷却、重抽卡不在 ⇒ 本来能出发却被拦着。
    */
-  const visible = [...ctx.anomalies.values()].filter((a) => a.galaxyId === galaxyId && a.hidden !== true)
-  const displayed = weekendBountyCardsOf(state, ctx, visible, galaxyId, Date.now())[0]
-  if (displayed && bountyCooldownRemainingMs(state, displayed.id) > 0) return null
-  const lootM3 = (displayed?.loot ?? []).reduce((sum, row) => {
-    const def = ctx.items.get(row.itemId)
-    return sum + row.units * (def ? cargoUnitM3(state, def) : 0)
-  }, 0)
-  const pre = autoLoopPreflight(state, ctx, displayed?.name ?? galaxyId, lootM3)
-  if (pre !== null) {
-    stopAutoLoopInvasion(state, pre.notice)
-    return pre.reason
-  }
-  // 出发：每场重抽一支 ＋ 星系覆写（与 `engine.startExpeditionAt` 同一条路）
   const dispatch = weekendAssaultDrawOf(state, ctx, galaxyId, Date.now())
   if (dispatch === null) {
     stopAutoLoopInvasion(state, '该星系已被夺回。')
     return '该星系已被夺回'
   }
+  const drawn = ctx.anomalies.get(dispatch.cardId)
+  /** **冷却中 ⇒ 等**（不是停环）：差的那点时间通常只有 1~2 秒（燃料把返航腿压到 12s） */
+  if (bountyCooldownRemainingMs(state, dispatch.cardId) > 0) return null
+  const lootM3 = (drawn?.loot ?? []).reduce((sum, row) => {
+    const def = ctx.items.get(row.itemId)
+    return sum + row.units * (def ? cargoUnitM3(state, def) : 0)
+  }, 0)
+  const pre = autoLoopPreflight(state, ctx, drawn?.name ?? galaxyId, lootM3)
+  if (pre !== null) {
+    stopAutoLoopInvasion(state, pre.notice)
+    return pre.reason
+  }
+  // 出发：星系覆写（与 `engine.startExpeditionAt` 同一条路；卡已在上面的 `dispatch` 抽定）
   const r = startExpedition(state, dispatch.cardId, ctx, {
     foeGalaxyId: galaxyId,
     ...(dispatch.rewardIsk > 0 ? { rewardIskOverride: dispatch.rewardIsk } : {}),
   })
   if (!r.ok) {
+    /**
+     * **冷却类失败也当「等」**（双保险，不引入新错误码）：`startExpedition` 内部那道冷却判据与这里
+     * 同源、只是取值时刻不同 ⇒ 失败时再查一次冷却：仍 >0 就等，**绝不因为"差几秒"把整条循环杀掉**。
+     */
+    if (bountyCooldownRemainingMs(state, dispatch.cardId) > 0) return null
     stopAutoLoopInvasion(state, r.error ?? '无法再出发。')
     return r.error ?? '无法再出发'
   }
