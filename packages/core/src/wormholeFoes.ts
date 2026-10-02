@@ -10,8 +10,36 @@
  */
 import type { AnomalyDef, DamageType, FoeShipSlot, FoeSupportBranch, FoeTargetingMode, SimContext } from './types'
 import type { WormholeFamily } from './state'
-import { foeDamageComposition } from './combat'
 import { resolveFoeMounts } from './foeMounts'
+
+/**
+ * **2026-10-02 破环搬家**（原住 combat.ts）：火力构成两件。
+ * 为什么搬到这里：本件是 `foeDamageComposition` 唯一的跨模块消费者，而 combat 又要 import 本件的
+ * 虫洞强度件 ⇒ `combat ↔ wormholeFoes` 互相依赖；这两件是**纯构成计算**（只依赖 types）⇒
+ * 搬来后 wormholeFoes 不再 import combat，环断（combat 侧原样再导出，既有引用不动）。
+ */
+
+/** 火力构成（按 **mix 对象**计算）——2026-09-11 舰级表试点抽出：舰级/编成条目的 mix 可能与
+ * 卡面声明不同（如"同一艘船缴获改装了不同弹药"），故把口径与"读哪份 mix"解耦。 */
+export function compositionOfMix(
+  mix: Partial<Record<DamageType, number>> | undefined,
+): Array<{ type: DamageType; share: number }> {
+  const rows = (['kinetic', 'explosive', 'plasma'] as const)
+    .map((t) => ({ type: t, w: mix?.[t] ?? 0 }))
+    .filter((r) => r.w > 0)
+  if (rows.length <= 1) return [{ type: rows[0]?.type ?? 'kinetic', share: 1 }]
+  const total = rows.reduce((s, r) => s + r.w, 0)
+  return rows
+    .map((r) => ({ type: r.type, share: r.w / total }))
+    .sort((a, b) => b.share - a.share || a.type.localeCompare(b.type))
+}
+
+/** 敌方火力构成（按卡读 `anomaly.dmgMix`）：返回按份额降序的 `[{ type, share }]`（份额归一化、和 = 1）。
+ *  - 写了两系及以上（常驻悬赏/低安遇袭 8:2、窝点派生 6:4）→ 逐系份额；
+ *  - 只写一系 / 未写（教学卡）→ 单条 `{ 主系, 1 }`（纯系）。 */
+export function foeDamageComposition(anomaly: AnomalyDef): Array<{ type: DamageType; share: number }> {
+  return compositionOfMix(anomaly.dmgMix)
+}
 
 /* ═══════════ 一、层曲线（威胁 / 收益） ═══════════ */
 

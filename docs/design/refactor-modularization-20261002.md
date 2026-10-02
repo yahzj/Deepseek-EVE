@@ -228,6 +228,14 @@
 - F9 基线 **22 → 21**。
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
 
+### 批次 3-⑧：破 `combat ↔ wormholeFoes`（火力构成两件归位）（2026-10-02）
+
+- 手法：`compositionOfMix` / `foeDamageComposition`（纯构成计算）从 combat.ts 搬到 wormholeFoes.ts——
+  那里是它们唯一的跨模块消费者；wormholeFoes 不再 import combat ⇒ 环断。combat 原样再导出
+  （先例：fitted.ts）⇒ 战斗/胜率预估/界面/用例的既有引用零改动。
+- F9 基线 **21 → 20**。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、

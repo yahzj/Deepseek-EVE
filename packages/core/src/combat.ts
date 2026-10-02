@@ -1634,27 +1634,13 @@ export function foeMainDamageType(anomaly: AnomalyDef): DamageType {
  * 返回按份额降序的 `[{ type, share }]`（份额归一化、和 = 1）。
  * - 写了两系及以上（常驻悬赏/低安遇袭 8:2、窝点派生 6:4）→ 逐系份额；
  * - 只写一系 / 未写（教学卡）→ 单条 `{ 主系, 1 }`（纯系）。
+ *
+ * **2026-10-02 破环搬家**：`compositionOfMix` / `foeDamageComposition` 两件搬到 `wormholeFoes.ts`
+ * （那里是它们唯一的跨模块消费者；combat↔wormholeFoes 的运行期环只剩 `foeDamageComposition` 这一条边，
+ * 搬走即断）。这里**原样再导出**保持既有 `from './combat'` 引用不变（先例：fitted.ts）。
  */
-/**
- * 火力构成（按 **mix 对象**计算）——2026-09-11 舰级表试点抽出：舰级/编成条目的 mix 可能与
- * 卡面声明不同（如"同一艘船缴获改装了不同弹药"），故把口径与"读哪份 mix"解耦。
- */
-export function compositionOfMix(
-  mix: Partial<Record<DamageType, number>> | undefined,
-): Array<{ type: DamageType; share: number }> {
-  const rows = (['kinetic', 'explosive', 'plasma'] as const)
-    .map((t) => ({ type: t, w: mix?.[t] ?? 0 }))
-    .filter((r) => r.w > 0)
-  if (rows.length <= 1) return [{ type: rows[0]?.type ?? 'kinetic', share: 1 }]
-  const total = rows.reduce((s, r) => s + r.w, 0)
-  return rows
-    .map((r) => ({ type: r.type, share: r.w / total }))
-    .sort((a, b) => b.share - a.share || a.type.localeCompare(b.type))
-}
-
-export function foeDamageComposition(anomaly: AnomalyDef): Array<{ type: DamageType; share: number }> {
-  return compositionOfMix(anomaly.dmgMix)
-}
+export { compositionOfMix, foeDamageComposition } from './wormholeFoes'
+import { compositionOfMix, foeDamageComposition } from './wormholeFoes'
 
 /**
  * 把一次开火的总伤害按火力构成**拆成逐系单发**（2026-09-10：窝点混伤）。
