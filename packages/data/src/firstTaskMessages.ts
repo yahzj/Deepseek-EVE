@@ -85,7 +85,9 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     subject: '档案补全 · 悬赏讨伐',
     body: [
       '各个星系都有常驻悬赏。完成悬赏是我们前期直接获得声望和信用点的唯一途径。',
-      '声望是章鱼人协会的通行证。只有积攒生物才能解锁更多市场物品和功能。',
+      // ⟪文案调整 2026-10-02⟫ 船长确认笔误：「只有积攒生物」→「只有积攒声望」
+      //   （依据：工作文档 docs/design/comms-en-backfill-20261002.md §5-①；英文同步）
+      '声望是章鱼人协会的通行证。只有积攒声望才能解锁更多市场物品和功能。',
       '检查发现了一艘仓库内积压的低级战舰，已将其编入舰队。',
     ],
     trigger: { kind: 'firstTask', taskId: 'first-bounty' },

@@ -1,11 +1,13 @@
 # 通讯英文回补（32 封 · 草稿待船长过目）（工作文档 · 2026-10-02）
 
-**状态：草稿阶段 —— 等船长过目后才写进代码**（`whale-copy` 规程 §4：玩家可见文案「未获批不写进代码」）
+**状态：进行中 · 已落码待验收**（2026-10-02 船长令「**进行落码吧**」；落码前的草稿阶段按 `whale-copy` 规程 §4 先过目后写码）
 **经办**：三号（`H:\大鲸鱼\Deepseek-EVE-verify`，分支 `verify`）
 
 ## 1. 船长原话（照抄）
 
 > 「**通讯英文回补放行。**」
+>
+> 过目后（同日）：「**等我的三句话，1是笔误，应该是声望。2没问题，3没问题。进行落码吧**」
 
 （上文是三号 2026-10-02 的请示：「B-1 通讯英文回补（23 条）—— 英文界面现在显示旧正文或回落中文，是玩家可见缺陷，中文你已定稿。⚠ 需要你放行：你 10-01 说过「先不做英文」，现在做等于改判」）
 
@@ -258,23 +260,56 @@
 2. 协会因此对你开放限定商店窗口，制作插件所需的蓝图在那里用声望兑换。制作舰船插件的组装机也对你开放。 → In light of that, the Association is opening a limited shop window for you: the blueprints for building ship plugs are exchanged there for standing. The assembly unit that builds ship plugs is open to you as well.
 3. 插件和装备不一样，装上就拆不下来、也换不了别的。它给这艘船一项大幅加成，下单之前想清楚要做哪一件。装了插件的舰船不能放进舰船仓库，也不能挂到市场上卖。 → A ship plug is not like ordinary equipment: once fitted it cannot be taken off, nor swapped for another. It gives the ship a large bonus, so think over which one you want before you place the order. A ship carrying a plug cannot be put into the ship warehouse, nor listed for sale on the market.
 
-## 5. 待船长定的三处（我不擅自改中文字）
+## 5. 三处裁定（2026-10-02 · 船长已定，逐条照抄）
 
 1. **`first-bounty` 第 2 段**：中文是「**只有积攒生物**才能解锁更多市场物品和功能」——按上下文应是「**积攒声望**」（整段在讲声望）⇒ 疑似笔误。
    处置建议：① 你确认是笔误，我改中文为「积攒声望」并按此出英文；② 若"生物"另有所指（比如声望的来源物），说一句我照译。
-   **现状**：草稿按 ② 的歧义最小写法译成「Banking it is what unlocks…」，**没有**把"生物"译成 creatures。
-2. **`msg-survey-memo` 第 2 段**：「扫描**越就**费时间」——按上下文应是「**越**费时间」⇒ 疑似笔误（我按"越费时间"译）。
+   **船长裁（照抄）**：「**1是笔误，应该是声望**」
+   ⇒ **中文已改**：`packages/data/src/firstTaskMessages.ts` 该句改为「声望是章鱼人协会的通行证。**只有积攒声望**才能解锁更多市场物品和功能。」
+   并挂 `⟪文案调整 2026-10-02⟫` 记账注释；英文按**修正后的中文**写：
+   「Standing is your pass with the Association: banking it is what unlocks more market goods and more functions.」
+2. **`msg-survey-memo` 第 2 段**：「扫描**越就**费时间」——按上下文应是「**越**费时间」⇒ 疑似笔误。
+   **船长裁（照抄）**：「**2没问题**」⇒ **中文原样保留**（仍是「越就费时间」，我未擅自改中文字），英文按"越费时间"的意思写：
+   「One reminder: the lower the security level, the longer an on-site scan takes, and that is the point to train your scanning skills.」
+   ⚠ 若日后要顺手把中文这两个字也改掉（一处、中英同批），说一声即可。
 3. **`first-ai` 第 2 段**：「战斗、运输与虫洞扫描太复杂，只能依赖**舰载 AI**」（10-01 你裁定把「主控AI」改成了「舰载 AI」）。
    英文里 `shipboard AI` 就是玩家自己 ⇒ 草稿写成 "those the shipboard AI flies itself"（= 这些活只有你自己飞）。若你想强调"暂时做不到"，可换成 "…are still beyond a core to run; those we fly ourselves." —— 挑一个。
+   **船长裁（照抄）**：「**3没问题**」⇒ 采用**草稿那版**："Combat, hauling and wormhole scanning are too complex to hand to a core; **those the shipboard AI flies itself.**"
 
-## 6. 落地方式（获批后执行）
+## 6. 落地（2026-10-02 已执行）
+
+**⚠ 一处自我更正**：草稿里写"中文含换行的 5 封"，实际是 **6 封**（`first-skill` · `first-order` · `first-wormhole` · `msg-refinery-note` · `msg-exile-swarm` · `msg-lowsec-rules`）——多行段在英文侧写成 `\n` 转义（**单引号字符串里不能放字面换行**；我第一版写成字面换行、`typecheck` 前自己发现并修回）。
 
 1. 逐条写进 `apps/desktop/src/renderer/src/ui/commsText.ts` 的 `COMMS_BODY_EN`（**段数与中文逐条相等**；中文含换行的那 5 条，英文同样保持"一段多行"）。
 2. 跑：`npm run l10n:check` · `content:check` · `l10n:params` · `ui:rot-check` · `typecheck` · core 全量。
 3. 探针复核：改后按"英文界面实际渲染"再跑一次对齐读数（段数 0 不符、0 回落）。
 4. 归档：关键结论并入 `docs/design/comms-import-20261001.md`（同一条工作流的第三半）＋ roadmap 一条，随后删本文件（§8）。
 
+### 6.1 落码读数（2026-10-02）
+
+| 项 | 改前 | 改后 |
+|---|---|---|
+| 段数不符（英文界面整封回落中文） | **14 条** | **0 条** |
+| 段数同但内容是改稿前的 | 18 条 | **0 条** |
+| 英文段合计 | —— | **106 段**（33 条通讯） |
+| 英文段与中文段逐字相同（漏译/回落痕迹） | —— | **0 处** |
+| 缺英文登记 | 0 条 | 0 条 |
+
+**改动台账**：
+
+| # | 文件 | 改动 |
+|---|---|---|
+| 1 | `apps/desktop/src/renderer/src/ui/commsText.ts` | `COMMS_BODY_EN` **32 条整体重写**（段数与中文逐条相等）＋ 表头补 `⟪文案调整 2026-10-02⟫` 记账 |
+| 2 | `packages/data/src/firstTaskMessages.ts` | `first-bounty` 第 2 段中文笔误修正（「积攒生物」→「积攒声望」）＋ `⟪文案调整 2026-10-02⟫` 记账注释 |
+| 3 | `docs/design/comms-en-backfill-20261002.md` | 本文件（草稿 → 台账） |
+
+**护栏缺口（如实登记）**：`COMMS_BODY_EN` **不在任何静态闸门的覆盖面内**（`l10n:check` 只扫源码字面量与 `table.ts`；该表由 `tools/comms-export.ts` 读取、不在体检里）⇒ 目前只有「运行时行数不符就回落中文」这一层兜底。
+建议（**未做，等你点头**）：给 `ui:rot-check` 或 `arch:guard` 加一条**通讯英文行数对齐**体检（同 `ui-attr-check` 的做法）——中文改段数时当场报红，不用等玩家看到回落。
+
 ## 7. 边界
 
-- 只动英文覆盖表；**中文正文一字不改**（除 §5 疑点①若你点头）；不动机制、数值、存档、跳转。
-- 本批落在**通讯/本地化**域；`commsText.ts` 是渲染层文案单点，不跨模块。
+- 只动英文覆盖表 ＋ **一处中文笔误**（§5-① 船长裁定「1是笔误，应该是声望」）；不动机制、数值、存档、跳转。
+- **模块自报（约定 §十八）**：本批主要落在**通讯与公告**域（`ui/commsText.ts`）；另有**一处**落在
+  **任务与教程**域（`packages/data/src/firstTaskMessages.ts` 的 `first-bounty` 中文笔误修正）⇒ 机器读数「**跨 2 个域**」。
+  该跨域**是船长当轮直接指示的**（原话照抄：「**1是笔误，应该是声望**」）⇒ 按 §十八 记：
+  **船长批准：跨 通讯与公告 → 任务与教程**（提交说明里同记）。
