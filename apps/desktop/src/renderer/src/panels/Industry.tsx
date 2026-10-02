@@ -65,6 +65,8 @@ import { MatSourceLink } from '../ui/matSourceLink'
 import { MATS_COLLAPSE_OVER, MatListToggle } from '../ui/matList'
 /** AI 核心下拉公共件（2026-10-02 模块化：与精炼炉卡/实验室卡/舰船指派同款，见本件头注） */
 import { AiCoreSelect } from '../ui/aiCoreSelect'
+/** 循环目标防丢草稿套件（2026-10-02 模块化：三处循环输入共用一份，见本件头注） */
+import { useLoopGoalDraft } from '../ui/useLoopGoalDraft'
 import { useL10n, cmdText } from '../i18n/locale'
 import { MONEY_GLYPH } from '../pages/common'
 import {
@@ -772,18 +774,13 @@ export const BlueprintCard = memo(function BlueprintCard({
   // 一张卡一个开关，作用于该卡全部制造线（含主控亲自那条），打开后新开的线自动继承；
   // 目标批数 = 全卡合计；「关→开」= 开一批新循环（合计与停因清零）。判定/计数都在 core。
   const loop = manufacturingLoopOf(state, blueprintId)
-  const [goalDraft, setGoalDraft] = useState('')
   /**
-   * **草稿引用**（2026-09-17 报障修复）：「目标批数」原先**只在回车 / 失焦那一刻提交**，
-   * 而**程序化跳页**（通讯「前往」、教程跳转、任务卡跳转）**不产生失焦** ⇒ 玩家刚打的数字
-   * 从未提交，切回来输入框是空的、循环开关还开着 ⇒ **变成"无限生产"**（真浏览器复现：
-   * 打字→不回车→合成点击导航⇒落盘 goal=null；鼠标点导航则因 mousedown 先失焦而侥幸不丢）。
-   * 这里把最新草稿放进 ref，**卡片卸载时补一次提交**（切页/切标签都会卸载卡片）⇒ 打过就一定生效。
-   * 回车/失焦仍即时提交（口径不变，见输入框 title）；没打字（草稿为空）时**不做任何动作**，
-   * 故不会凭空清掉已有目标、也不会在 StrictMode 的"挂载即卸载"里误提交。
+   * **循环目标的防丢草稿套件**（2026-09-17 报障修复首创于此；**2026-10-02 模块化**：口径原样
+   * 搬进 `ui/useLoopGoalDraft.ts`，与实验室卡（经典）· 实验室（HUD）三处共用一份 —— 行为逐字不变）。
    */
-  const goalDraftRef = useRef('')
-  goalDraftRef.current = goalDraft
+  const { draft: goalDraft, typeDraft, clearDraft, clearTouched } = useLoopGoalDraft((n) =>
+    engine.setManufacturingLoopAt(blueprintId, true, n),
+  )
   /**
    * **原材料列表折叠**（**2026-10-01 船长令**：「**「原材料列表」折叠，超过2个材料就进行折叠**」）：
    * 味数 > `MATS_COLLAPSE_OVER` 时材料块只留一行开关，点开才拉开全部行（公共件 `ui/matList.tsx`）。
@@ -792,18 +789,8 @@ export const BlueprintCard = memo(function BlueprintCard({
   const matsListId = useId()
   const [matsOpen, setMatsOpen] = useState(false)
   const matsCollapsible = materials.length > MATS_COLLAPSE_OVER
-  /** 「这一版草稿是玩家打出来的」——只有它为真，卸载时才补提交；任何一次正式提交后即清账 */
-  const goalTouchedRef = useRef(false)
-  useEffect(
-    () => () => {
-      if (!goalTouchedRef.current) return
-      const n = Number.parseInt(goalDraftRef.current, 10)
-      engine.setManufacturingLoopAt(blueprintId, true, Number.isFinite(n) && n > 0 ? n : null)
-    },
-    [engine, blueprintId],
-  )
   function commitLoop(on: boolean, goalText: string): void {
-    goalTouchedRef.current = false
+    clearTouched()
     const n = Number.parseInt(goalText, 10)
     const goal = Number.isFinite(n) && n > 0 ? n : null
     const r = engine.setManufacturingLoopAt(blueprintId, on, on ? goal : null)
@@ -1021,17 +1008,14 @@ export const BlueprintCard = memo(function BlueprintCard({
                   className="app-mf-goal-input"
                   placeholder="∞"
                   value={goalDraft !== '' ? goalDraft : loop.goal > 0 ? String(loop.goal) : ''}
-                  onChange={(e) => {
-                    goalTouchedRef.current = true
-                    setGoalDraft(e.target.value)
-                  }}
+                  onChange={(e) => typeDraft(e.target.value)}
                   onBlur={(e) => {
-                    setGoalDraft('')
+                    clearDraft()
                     commitLoop(true, e.target.value)
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                      setGoalDraft('')
+                      clearDraft()
                       commitLoop(true, (e.target as HTMLInputElement).value)
                     }
                   }}

@@ -71,6 +71,16 @@
   pages/IndustryHudPage.tsx · pages/MapPage.tsx · pages/ShipPage.tsx · panels/Expedition.tsx。
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · ui:rot-check ✅ · 构建 ✅。
 
+### 批次 1b：循环目标「防丢草稿」收成公共 hook（2026-10-02 · 模块化 · 零行为变化）
+
+- 背景（审查报告 §5 #5 ＋ §3 缺口）：三处循环目标输入各有一份 ref 对 ＋ 卸载 effect
+  （组装机卡 09-17 首创；实验室经典/HUD 两处是批 0 刚补的）⇒ 同一段逻辑三份。
+- 落地：新增 `ui/useLoopGoalDraft.ts`（`draft`/`typeDraft`/`clearDraft`/`clearTouched` ＋ 卸载补提交，
+  用 ref 转发最新 `submitOnUnmount` 闭包）；三处调用点全部换用（markup 各自保留——经典 `.app-belt-loop`、
+  HUD `hud-sw-row` 是两套观感，不能硬并）。
+- 文件：ui/useLoopGoalDraft.ts（新）· panels/Industry.tsx · pages/IndustryPage.tsx · pages/IndustryHudPage.tsx。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · ui:rot-check ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - 大拆分的具体切分边界等动到批次 4 再逐文件出设计（§2 逐批确认）。
