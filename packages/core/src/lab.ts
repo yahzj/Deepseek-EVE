@@ -456,7 +456,7 @@ export function startLabRun(
     const pilotRefine = (state.refineRuns ?? []).some((r) => r.active && r.worker === 'pilot')
     const pilotLab = (state.labRuns ?? []).some((r) => r.active && r.worker === 'pilot')
     if (pilotRefine || pilotLab) {
-      haltActivityForSwitch(state, 'refine', ctx)
+      haltActivityForSwitch(state, 'refine')
       if (pilotRefine) logAutoHalt(state, 'refine')
       if (pilotLab) logAutoHalt(state, 'lab')
     }

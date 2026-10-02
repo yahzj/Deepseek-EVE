@@ -304,7 +304,7 @@ export function startRefineRun(
      * 保证 **pilot 至多 1 台**这条不变量。
      */
     if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-      haltActivityForSwitch(state, 'refine', ctx)
+      haltActivityForSwitch(state, 'refine')
       logAutoHalt(state, 'refine')
     }
   } else {
@@ -466,7 +466,7 @@ export function startUnboxRun(
     const gateSkip = applyActivityGate(state, 'refine', ctx)
     if (gateSkip) return gateSkip
     if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-      haltActivityForSwitch(state, 'refine', ctx)
+      haltActivityForSwitch(state, 'refine')
       logAutoHalt(state, 'refine')
     }
   } else {
@@ -556,7 +556,7 @@ export function startRecycleRun(
     if (gateSkip) return gateSkip
     /** 同档换机器（见 `startRefineRun`）：停掉手上那台 + 统一日志 */
     if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-      haltActivityForSwitch(state, 'refine', ctx)
+      haltActivityForSwitch(state, 'refine')
       logAutoHalt(state, 'refine')
     }
   } else {

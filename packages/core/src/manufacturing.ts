@@ -454,7 +454,7 @@ export function startManufacturing(
      * （`current === next`），所以这里自己收口——停掉手上那条（当前那批进度丢弃）＋统一日志。
      */
     if (manufacturingManualActive(state)) {
-      haltActivityForSwitch(state, 'manufacturing', ctx)
+      haltActivityForSwitch(state, 'manufacturing')
       logAutoHalt(state, 'manufacturing')
     }
   } else {

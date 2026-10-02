@@ -452,8 +452,18 @@ export function haltCurrentActivity(state: GameState, ctx?: SimContext): MainAct
   return current
 }
 
-/** 停机 + 统一日志（两件事永远成对 ⇒ 收成一处，免得哪条路径漏写日志） */
+/**
+ * 停机 + 统一日志（两件事永远成对 ⇒ 收成一处，免得哪条路径漏写日志）
+ *
+ * 🔴 **本文件不许 import 作业模块**（**2026-10-02 两次踩到**）：为了"被活动挤掉时建返航账本"，
+ * 我曾在这里 import `mining`/`salvaging` ⇒ `activityGate ↔ mining`（`mining` 也 import 本文件）成环，
+ * 游戏启动即炸（`PLUG_BLACKBOX_ITEM_ID before initialization`；同族症状还有 `HOME_GALAXY_ID`）。
+ *
+ * 账本由 `state.haltActivityForSwitch` 用**纯数据**先建一份占位（它同样不能 import 作业模块），
+ * 再由 **`engine.advanceGame` 下一拍**用真值重算（那里可以安全 import 作业模块）。
+ */
 function haltAndLog(state: GameState, ctx: SimContext | undefined, kind: MainActivityKind): void {
-  haltActivityForSwitch(state, kind, ctx)
+  void ctx
+  haltActivityForSwitch(state, kind)
   logAutoHalt(state, kind)
 }

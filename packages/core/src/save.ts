@@ -2511,6 +2511,15 @@ for (const [key, value] of Object.entries(licensesRaw)) {
    * 它是一条**瞬态信号**（`haltActivityForSwitch` 抛给"紧接着那次开工"看的，活不过同一拍）
    * ⇒ **有意不入档**，读档一律清空（老档缺省也走这条）。字段可选、值恒为 `null` ⇒ 往返一致。
    */
+  const pendingActivityReturn: { kind: 'mining' | 'salvaging'; id: string } | null =
+    (asRaw(src.pendingActivityReturn).kind === 'mining' || asRaw(src.pendingActivityReturn).kind === 'salvaging') &&
+    typeof asRaw(src.pendingActivityReturn).id === 'string' &&
+    (asRaw(src.pendingActivityReturn).id as string).length > 0
+      ? {
+          kind: asRaw(src.pendingActivityReturn).kind as 'mining' | 'salvaging',
+          id: asRaw(src.pendingActivityReturn).id as string,
+        }
+      : null
   const haltedBySwitch: { kind: 'mining' | 'salvaging' } | null =
     asRaw(src.haltedBySwitch).kind === 'mining'
       ? { kind: 'mining' }
@@ -4280,6 +4289,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     /** 切活动停机标记：恒 `null`（有意不入档，见上面的归一说明）——写出来只为让"引擎写过的键"往返一致 */
     /** 切活动停机标记：**有意不入档**（瞬态信号）——但键**恒写出**（内容恒 null）⇒ 往返形状一致 */
     haltedBySwitch,
+    pendingActivityReturn,
     // 2026-09-11 稀有残骸保底计数（船长定的机制；2026-09-20 起阈值 = 每 10 次必掉）：
     // 非负整数，缺省 0（老档从零攒）
     rareWreckDryStreak: Math.max(0, Math.floor(num(src.rareWreckDryStreak))),

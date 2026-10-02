@@ -15,16 +15,16 @@ import { emptyFitted } from './labels'
 import { EMPTY_WORMHOLE_STATE } from './wormhole'
 import type { WormholeState } from './wormhole'
 /**
- * ⚠ **这一对 import 会与 `mining` / `salvaging` 形成模块环**（它们本来就 import 本文件）。
- * 之所以安全：两边都是**函数声明**（提升到位），且本文件只在 `haltActivityForSwitch` **被调用时**才读它们
- * ——那时两个模块都已加载完。为此**不要**把这里的用法挪到模块顶层（那会读到 `undefined`）。
+ * 🔴 **这里绝不能 import `mining` / `salvaging`**（**2026-10-02 实测踩到**）：
+ * 我曾为了"切活动自动停作业时建返航账本"在本文件 import 那两个模块 —— 立即形成
+ * `state → salvaging → expedition → hauling → state` 的环，入口模块的**顶层常量**会在
+ * `state.ts` 求值完成**之前**被读到，游戏一进去就炸：
+ * `hauling.ts:149 Uncaught ReferenceError: Cannot access 'HOME_GALAXY_ID' before initialization`。
  *
- * 为什么非要 import：船长 2026-10-02 报障「切活动自动停作业之后船不返航」——
- * 那条路要在**清状态之前**建返航账本（`retireXxxShip` 要读作业态里的 phase），
- * 而 `shipyard.ts`（原来的宿主）反过来 import 本文件 ⇒ 只能从作业模块自身取。
+ * 正解（**两段式**）：本文件用**纯数据**先建一份**占位返航账本**（`legMs` 按相位粗估，够撑到下一拍），
+ * 并记下 `pendingActivityReturn`；**引擎下一拍**（`engine.advanceGame` 在环外，可安全 import 作业模块）
+ * 调 `retireXxxShip(preserveExisting: true)` 用**真值腿长**覆盖占位，并补写带船名与真实秒数的日志。
  */
-import { retireMiningShip } from './mining'
-import { retireSalvageShip } from './salvaging'
 
 /**
  * **新档初始声望 = 0**（**2026-09-26 船长裁定**：「**1算，我从来没有说过"开局能换 5 张"，所以要清理，
@@ -2136,6 +2136,15 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * ⚠ 兼容字段（可选）：老档缺席 = 无标记。
    */
   haltedBySwitch?: { kind: 'mining' | 'salvaging' } | null
+  /**
+   * 🔴 **待建返航账本**（**2026-10-02 加**，与 `haltedBySwitch` 配成一对）：
+   * `haltActivityForSwitch` 停机时只**记下"哪条作业该返航、在哪作业"**，
+   * 建账本的动作交给 `activityGate.haltAndLog` 做（那里在模块环之外）。
+   *
+   * 为什么绕这一道：本文件**不能** import `mining` / `salvaging`（会成环 ⇒ 游戏启动即崩，
+   * 见文件顶部那条注释）；而 `retireXxxShip` 住在作业模块里，且要读**清状态之前**的 phase/矿带。
+   */
+  pendingActivityReturn?: { kind: 'mining' | 'salvaging'; id: string } | null
   /** T9 建站进度：站点 id -> 进度（档位 stage 从 0 起；delivered 已缴物品单位） */
   stationSites: Record<string, StationSiteProgress>
   /** T9 当前停靠的副站 id（null = 母港；awayGalaxy=null 且有值时表示停副站） */
@@ -3388,29 +3397,50 @@ function haltPilotLabRunsInline(state: GameState): void {
   }
 }
 
-export function haltActivityForSwitch(state: GameState, kind: string, ctx?: SimContext): void {
+export function haltActivityForSwitch(state: GameState, kind: string): void {
   switch (kind) {
     case 'mining':
       /**
        * 🔴 **两条停采路径同口径**（**船长 2026-10-02 报障**：「**玩家切换舰船的话，正在采矿的舰船会自动
        * 返航……但是打捞都没有**」）——手点「停止」会建返航账本，而"被别的活动挤掉"这条原先**只清状态**
-       * ⇒ 船不返航。现在改成先走 `retireMiningShip`（**在 `miningHalt` 之前**：它要读作业态里的 phase/矿带）。
+       * ⇒ 船不返航。
        *
-       * ⚠ `retireMiningShip` 住在 `mining.ts`（**2026-10-02 从 `shipyard.ts` 移过去**）：
-       *   本文件不能 import `shipyard`（`shipyard → state` 已成边 ⇒ 反向会成环）。
+       * ⚠ **本函数只记标记、不建账本**（建账本由 `activityGate.haltAndLog` 做）：
+       *   本文件不能 import `mining`/`salvaging` —— 会成环，游戏启动即崩
+       *   （`hauling.ts:149 Cannot access 'HOME_GALAXY_ID' before initialization`）。
        */
-      if (state.mining.active && ctx !== undefined && retireMiningShip(state, ctx, { beltId: state.mining.beltId ?? undefined })) {
-        /** 给"新活动开工"留个记号：那条"新指令取消返航"要**跳过**（见 `haltedBySwitch` 头注）。
-         *  ⚠ **只在真的建了账本时才置**：`retireMiningShip` 对"作业态不完整"（没有矿带）会返回 false，
-         *  那时没什么可保护，置了标记反而会让下次开工**漏清**一条本该清的账。 */
+      if (state.mining.active && state.mining.beltId && !(state.shipId in state.shipReturns)) {
+        /**
+         * **占位返航账本**（纯数据，不依赖 `ctx`）：`legMs` 先按状态里的相位估一个 ——
+         * 引擎**下一拍**会用 `retireMiningShip` 重算真值（见 `engine.advanceGame` 的消费段）。
+         * 为什么不在本文件直接调它：那要 import `mining`/`salvaging` ⇒ 成环 ⇒ 启动即崩（见文件顶部）。
+         */
+        state.shipReturns[state.shipId] = {
+          beltId: state.mining.beltId,
+          legMs: Math.max(30_000, Math.round(state.mining.phaseAccMs * 2) + 30_000),
+          phaseAccMs: 0,
+          reason: 'miningStop',
+        }
+        state.pendingActivityReturn = { kind: 'mining', id: state.mining.beltId }
         state.haltedBySwitch = { kind: 'mining' }
-      } else miningHalt(state)
+        /** 日志与真实腿长由**引擎下一拍**补（那里有 ctx，能读船名与真实秒数） */
+      }
+      miningHalt(state)
       return
     case 'salvaging':
-      /** 同 `mining` 那档：先建返航账本再清状态（`retireSalvageShip` 在 `salvaging.ts` 里） */
-      if (state.salvaging.active && state.salvaging.galaxyId && ctx !== undefined && retireSalvageShip(state, ctx, { galaxyId: state.salvaging.galaxyId })) {
+      /** 同上：建**占位**账本；真值腿长与日志由**引擎下一拍**的 `retireSalvageShip(preserveExisting)` 补 */
+      if (state.salvaging.active && state.salvaging.galaxyId && !(state.shipId in state.shipReturns)) {
+        state.shipReturns[state.shipId] = {
+          beltId: null,
+          legMs: Math.max(30_000, Math.round(state.salvaging.phaseAccMs * 2) + 30_000),
+          phaseAccMs: 0,
+          reason: 'salvageStop',
+        }
+        state.pendingActivityReturn = { kind: 'salvaging', id: state.salvaging.galaxyId }
         state.haltedBySwitch = { kind: 'salvaging' }
-      } else salvageHalt(state)
+        /** 日志与真实腿长由**引擎下一拍**补（同 mining 那档） */
+      }
+      salvageHalt(state)
       return
     case 'wormholeScan':
       wormholeScanHalt(state)
@@ -3744,6 +3774,8 @@ export function createInitialState(opts?: {
     autoLoopAnomalyId: null,
     /** 切活动停机标记（瞬态）：初值恒 `null`，但**键存在** ⇒ 与写档/读档形状一致（见 `haltedBySwitch` 头注） */
     haltedBySwitch: null,
+    /** 待建返航账本（瞬态）：初值恒 null，键存在 ⇒ 与写档/读档形状一致 */
+    pendingActivityReturn: null,
     autoLoopDroneFloor: null,
     stationSites: {},
     dockedSite: null,

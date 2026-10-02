@@ -907,13 +907,43 @@ export function retireMiningShip(
   /**
    * **重入/无状态调用**（**2026-10-02 加**，为 `haltActivityForSwitch` 那条路服务）：
    * - `beltId`：作业态**已被清掉**时的矿带（自动停机路径先清状态、再调本函数）——不传就读 `state.mining`；
-   * - `preserveExisting`：该船**已经在返航账本里** ⇒ 只结束作业、**不覆盖**（否则会抹掉已走的返航进度）。
+   * - `preserveExisting`：该船**已经在返航账本里** ⇒ 只**修正腿长与日志**、**保留已走相位**
+   *   （账本那份是 `state.haltActivityForSwitch` 建的**占位**：腿长按相位粗估、日志没船名没秒数）。
    */
-  opts?: { beltId?: string; preserveExisting?: boolean },
+  opts?: { beltId?: string; preserveExisting?: boolean; fallbackLegMs?: number },
 ): boolean {
   const m = state.mining
   const auto = opts?.beltId !== undefined
   if (opts?.preserveExisting === true && state.shipId in state.shipReturns) {
+    /**
+     * **占位账本 ⇒ 用真值修正**（**2026-10-02**）：`state.haltActivityForSwitch` 先建了一份
+     * "腿长靠相位估"的占位（它不能 import 本模块），这里用 `ctx` 算出真实腿长补上，
+     * 并写下**带船名与真实秒数**的那条日志（那一刻作业态已清，只有这里读得到 ctx）。
+     */
+    const legFullFix = miningReturnLegMs(state, ctx, opts.beltId!)
+    const legMsFix = scaledReturnMs(legFullFix, state, ctx, state.shipId)
+    const ret = state.shipReturns[state.shipId]!
+    const already = ret.phaseAccMs
+    ret.legMs = Math.max(1, legMsFix)
+    ret.phaseAccMs = Math.min(ret.legMs, already)
+    const beltFix = ctx.belts.get(opts.beltId!)
+    const beltNameFix = beltFix?.name ?? '矿井'
+    const shipNameFix = shipDisplayName(state, ctx, state.shipId)
+    const haveCargo = Object.keys(state.fleet[state.shipId]?.cargo ?? {}).some((k) => (state.fleet[state.shipId]!.cargo[k] ?? 0) > 0)
+    const remainSecFix = Math.max(0, Math.round((ret.legMs - ret.phaseAccMs) / 1000))
+    addLog(
+      state,
+      'industry',
+      `开采已停止：${shipNameFix} 从「${beltNameFix}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSecFix} 秒后到港。`,
+      'core.mining.042',
+      {
+        p1: shipNameFix,
+        p2: beltNameFix,
+        p3: haveCargo ? '（到港整仓卸货）' : '' ,
+        ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
+        p4: remainSecFix,
+      },
+    )
     m.active = false
     m.beltId = null
     return true
@@ -923,8 +953,10 @@ export function retireMiningShip(
   const belt = ctx.belts.get(beltId)
   const beltName = belt?.name ?? '矿带'
   // 善后返航腿按旧船货仓占比缩放（空仓快、满仓原时长，船长 2026-09-05）
+  /** ⚠ allbackLegMs：调用方（state.haltActivityForSwitch，**不能 import 本模块**）给的兜底腿长
+   *  ——它没有 ctx，先按状态里的相位估一个；引擎下一拍会用真值覆盖。*/
   const legFull = miningReturnLegMs(state, ctx, beltId)
-  const legMs = scaledReturnMs(legFull, state, ctx, state.shipId)
+  const legMs = opts?.fallbackLegMs !== undefined ? Math.max(1, Math.round(opts.fallbackLegMs)) : scaledReturnMs(legFull, state, ctx, state.shipId)
   const phaseAccMs =
     m.phase === 'outbound'
       ? Math.min(legMs, m.phaseAccMs * 2) // 空船出航腿为正常一半：折返按 2×折算已走

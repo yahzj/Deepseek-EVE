@@ -493,15 +493,44 @@ export function retireSalvageShip(
   /**
    * **重入/无状态调用**（**2026-10-02 加**，为 `haltActivityForSwitch` 那条路服务）：
    * - `galaxyId`：作业态**已被清掉**时的星系（自动停机路径先清状态、再调本函数）——不传就读 `state.salvaging`；
-   * - `preserveExisting`：该船**已经在返航账本里** ⇒ 只结束作业、**不覆盖**（否则会把已走的返航进度抹掉）。
+   * - `preserveExisting`：该船**已经在返航账本里** ⇒ 只**修正腿长与日志**、**保留已走相位**
+   *   （账本那份是 `state.haltActivityForSwitch` 建的**占位**：腿长按相位粗估、日志没船名没秒数）。
    */
-  opts?: { galaxyId?: string; preserveExisting?: boolean },
+  opts?: { galaxyId?: string; preserveExisting?: boolean; fallbackLegMs?: number },
 ): boolean {
   const s = state.salvaging
   const galaxyId = opts?.galaxyId ?? s.galaxyId
   if (!galaxyId) return false
   /** 已在返航中（换船善后/手动停止已建过账本）⇒ 只结束作业，别覆盖进度 */
   if (opts?.preserveExisting === true && state.shipId in state.shipReturns) {
+    /**
+     * **占位账本 ⇒ 用真值修正**（**2026-10-02**）：`state.haltActivityForSwitch` 先建了一份
+     * "腿长靠相位估"的占位（它不能 import 本模块），这里用 `ctx` 算出真实腿长补上，
+     * 并写下**带船名与真实秒数**的那条日志（这一刻作业态还在，ctx 也读得到名字）。
+     */
+    const fullLegFix = legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId)
+    const legMsFix = Math.max(1, scaledReturnMs(fullLegFix, state, ctx, state.shipId))
+    const retFix = state.shipReturns[state.shipId]!
+    retFix.legMs = legMsFix
+    retFix.phaseAccMs = Math.min(legMsFix, Math.max(0, retFix.phaseAccMs))
+    const galaxyNameFix = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
+    const shipNameFix = shipDisplayName(state, ctx, state.shipId)
+    const shipFix = state.fleet[state.shipId]
+    const haveCargoFix = shipFix ? Object.keys(shipFix.cargo).some((k) => (shipFix.cargo[k] ?? 0) > 0) : false
+    const remainSecFix = Math.max(0, Math.round((retFix.legMs - retFix.phaseAccMs) / 1000))
+    addLog(
+      state,
+      'salvage',
+      `打捞已停止：${shipNameFix} 从「${galaxyNameFix}」返航空间站${haveCargoFix ? '（到港整仓卸货）' : ''}——约 ${remainSecFix} 秒后到港。`,
+      'core.salvaging.029',
+      {
+        p1: shipNameFix,
+        p2: galaxyNameFix,
+        p3: haveCargoFix ? '（到港整仓卸货）' : '',
+        ...(haveCargoFix ? { p3Id: 'core.salvaging.018' } : {}),
+        p4: remainSecFix,
+      },
+    )
     resetOp(state)
     return true
   }
@@ -509,7 +538,8 @@ export function retireSalvageShip(
   const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
   // 打捞返航腿 = 满载返航 + 空船去程（去程并入返航，与 advanceSalvageOp 返航腿同口径）
   const fullLeg = legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId)
-  const legMs = scaledReturnMs(fullLeg, state, ctx, state.shipId)
+  /** ⚠ allbackLegMs：调用方（state.haltActivityForSwitch，不能 import 本模块）给的兜底腿长 */
+  const legMs = opts?.fallbackLegMs !== undefined ? Math.max(1, Math.round(opts.fallbackLegMs)) : scaledReturnMs(fullLeg, state, ctx, state.shipId)
   const phaseAccMs =
     s.phase === 'outbound'
       ? Math.min(legMs, s.phaseAccMs * 2) // 旧档遗留出航腿为空船半程：折返按 2×折算已走（同采矿）
