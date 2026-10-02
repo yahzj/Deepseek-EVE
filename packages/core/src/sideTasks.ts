@@ -1439,7 +1439,7 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
    * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（任务存在/到期/目标站/货舱/
    * 跃迁门槛/航路），免得"先停了玩家的活、再说这单发不了"。
    */
-  const gateSkip = applyActivityGate(state, 'deliver')
+  const gateSkip = applyActivityGate(state, 'deliver', ctx)
   if (gateSkip) return gateSkip
   // 虚拟货物：真实货物卸进仓库（不消耗任何物品；货舱被虚拟货物按体积占用）
   const unloaded = unloadCargoOfShipToWarehouse(state, ctx, state.shipId)

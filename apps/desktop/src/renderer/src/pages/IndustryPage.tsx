@@ -21,8 +21,6 @@ import {
   UNBOX_CYCLE_MS,
   recycleRefiningMultiplier,
   aiCoreName,
-  aiEfficiency,
-  countAiCore,
   countWare,
   oreAvailable,
   /** 2026-09-25 船长令：H 族残骸暂不开放回收 ⇒ 卡片也摘掉（与起炉那一层同一判据） */
@@ -35,11 +33,17 @@ import {
   ITEM_KIND_LABELS,
   /** 2026-09-22 船长令：缺料"零件"要指去组装机 ⇒ 用产物→蓝图反查（核心单点，含缓存） */
   blueprintProducingItem,
-  /** 2026-09-29 跃迁燃料批：实验室卡片的读数口（可跑批次 / 材料可用量）＋ 配方类型 */
+  /** 2026-09-29 跃迁燃料批：实验室卡片的读数口（可跑批次 / 材料可用量 / 实际批产）＋ 配方类型 */
   labAffordableBatches,
   labMaterialAvailable,
+  labBatchUnitsOf,
+  labCycleMsOf,
+  /** 2026-10-01：折叠态那枚「缺 N 味」的判据（本机器那把尺的单点） */
+  labMissingMaterials,
   labRecipeUnlocked,
   labTechRequirementOf,
+  /** 2026-10-02 模块化：可用核心下拉的单点（core 导出） */
+  usableAiCoresOf,
   /** 2026-10-01：材料行尾那枚「这一味料从哪来」链接的等价组判据（通用黑匣）走 core 单点 */
   materialGroupIdsOf,
 } from '@whale/core'
@@ -49,7 +53,7 @@ import { bestAiCoreOf } from '@whale/core'
 import type { AiCoreType, GameState, ItemDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { wreckGroupText } from '@whale/data'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { BlueprintShelfPanel, ManufacturingPanel } from '../panels/Industry'
 import { ShipyardPanel } from '../panels/Shipyard'
 import { setSessionPick, sessionPick, useSessionScrollFrom } from '../ui/sessionView'
@@ -61,10 +65,16 @@ import { RowGlyph } from '../ui/itemView'
 import { ItemHover } from '../ui/shipInfo'
 /** 材料行尾「这一味料从哪来」的四支判定（2026-10-01：与组装机卡共用一份，见本件头注） */
 import { MatSourceLink } from '../ui/matSourceLink'
+/** 原材料列表折叠（2026-10-01 船长令：味数 > 2 折叠成一行「原材料列表」，点开才拉开）——与组装机卡共用一份 */
+import { MATS_COLLAPSE_OVER, MatListToggle } from '../ui/matList'
+/** AI 核心下拉公共件（2026-10-02 模块化：精炼炉卡/实验室卡/组装机卡/舰船指派同款） */
+import { AiCoreSelect } from '../ui/aiCoreSelect'
 /* 图标一律走**物品 id 单点映射**（2026-09-30 船长报障：新道具在实验室卡上是通用「消耗品」图标） */
 import { itemGlyphName } from '../ui/Glyphs'
 import { WRECK_SUBS, SUB_ALL, presentSubs, wreckTierOf, subText } from '../ui/itemSubs'
 import { isEn, useL10n, cmdText } from '../i18n/locale'
+/** 工期读数（2026-10-01：与组装机卡同款 ⇒ 同一个格式化件） */
+import { fmtDuration } from '../i18n/fmt'
 import { aiCoreText } from '../ui/labelsText'
 import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
@@ -73,8 +83,6 @@ import { marketPriceOf, NetIncomeLine } from '../ui/yieldView'
 import type { PageProps } from './common'
 import { MONEY_GLYPH, m3, wreckSourceGalaxyIdsOf } from './common'
 import { tr } from '../i18n/locale'
-
-const CORE_ORDER: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
 
 /**
  * **精炼炉一级筛选标签**（2026-09-14 船长：「精炼炉和组装机一样，添加筛选标签」→
@@ -152,7 +160,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
   const claimHeld = runs.reduce((s, v) => s + (v.claimedUnits ?? 0), 0)
   // 每卡独立的 AI 核心选择（一枚核心驱动一台；核心库存被占用后自动回落可用类型）
   const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
-  const usableCores = CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
+  const usableCores = usableAiCoresOf(state)
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
   // 手动再开一台被拒的原因：主控已亲自开着一台炉 / 开着一条制造线 / 其它主控作业占用（三者共享手动工作位）
   // 无公共料时的提示（2026-09-11）：本卡若有炉子正抱着**炉内料账**，就不能写成"仓库里没有原料"（料在炉里）
@@ -460,29 +468,17 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         >
           {isBox ? tr("ui.IndustryPage.048") : isWreck ? tr("ui.IndustryPage.049") : tr("ui.IndustryPage.050")}
         </button>
-        {/* AI 工位：核心下拉常驻（无可用核心时置灰并在控件里写明，卡面不跳动；船长 2026-09-10） */}
+        {/* AI 工位：核心下拉常驻（无可用核心时置灰并在控件里写明，卡面不跳动；船长 2026-09-10）——
+            2026-10-02 起走公共件 `ui/aiCoreSelect.tsx`（行为与旧实现逐字一致） */}
         <div className="app-belt-ai">
-          <select
-            className="app-select"
-            value={usableCores.length === 0 ? '' : (core ?? '')}
-            onChange={(e) => setCoreSel(e.target.value as AiCoreType)}
-            disabled={usableCores.length === 0}
-            title={
-              usableCores.length === 0
-                ? tr("ui.IndustryPage.051")
-                : tr("ui.IndustryPage.052")
-            }
-          >
-            {usableCores.length === 0 ? (
-              <option value="">{tr("ui.ShipPage.070")}</option>
-            ) : (
-              usableCores.map((t) => (
-                <option key={t} value={t}>
-                  {aiCoreText(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
-                </option>
-              ))
-            )}
-          </select>
+          <AiCoreSelect
+            engine={engine}
+            value={core}
+            onPick={setCoreSel}
+            titleReady={tr("ui.IndustryPage.052")}
+            titleEmpty={tr("ui.IndustryPage.051")}
+            emptyLabel={tr("ui.ShipPage.070")}
+          />
           <button
             className="app-btn is-small"
             disabled={!core || total <= 0}
@@ -628,17 +624,35 @@ function LabCard({
   runs: LabRunView[]
 }): ReactNode {
   const state = engine.state
-  const rate = refineRate(state, engine.ctx)
   const out = engine.ctx.items.get(recipe.outputItemId)
   const affordable = labAffordableBatches(state, recipe)
   const running = runs.length > 0
-  const batchValue = recipe.outputUnits * (marketPriceOf(state, engine.ctx, recipe.outputItemId) ?? out?.baseSellPriceIsk ?? 0)
+  /**
+   * **本批实际产出单位**（走 core 单点 `labBatchUnitsOf`：基准 × `LAB_YIELD_SKILLS` 收率乘区）——
+   * 卡面那个 `×N` 与下面的净收益读数**共用这一个数**（2026-10-01 船长裁：卡上不许两个口径；
+   * 原先 `×N` 读配方基础值、净收益也按基础值算 ⇒ 收率技能的效果在卡面完全看不见）。
+   */
+  const batchUnits = labBatchUnitsOf(state, recipe)
+  /**
+   * **主控亲自那一批的实际周期**（走 core 单点 `labCycleMsOf`：吃 `LAB_CYCLE_SKILLS`；AI 核心另按效率拉长）——
+   * 卡面「主控耗时」读数与净收益读数共用它（2026-10-01 船长令：工期也照组装机卡那套）。
+   */
+  const pilotCycleMs = labCycleMsOf(state, engine.ctx, recipe, 'pilot')
+  /**
+   * **原材料列表折叠**（**2026-10-01 船长令**：「**「原材料列表」折叠，超过2个材料就进行折叠**」）：
+   * 味数 > `MATS_COLLAPSE_OVER` ⇒ 材料块只留一行开关，点开才拉开全部行（公共件 `ui/matList.tsx`，
+   * 与组装机／造船厂卡同一份）。状态不落盘：切页/重挂载即回到折叠。
+   */
+  const matsListId = useId()
+  const [matsOpen, setMatsOpen] = useState(false)
+  const matsCollapsible = recipe.materials.length > MATS_COLLAPSE_OVER
+  const batchValue = batchUnits * (marketPriceOf(state, engine.ctx, recipe.outputItemId) ?? out?.baseSellPriceIsk ?? 0)
   const costIsk = recipe.materials.reduce(
     (s, m) =>
       s + m.units * (marketPriceOf(state, engine.ctx, m.itemId) ?? engine.ctx.items.get(m.itemId)?.baseSellPriceIsk ?? 0),
     0,
   )
-  const usableCores = CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
+  const usableCores = usableAiCoresOf(state)
   const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
   const manualBusy = manualBusyNote(state)
@@ -656,7 +670,26 @@ function LabCard({
    */
   const loop = engine.labLoopOf(recipe.id)
   const [goalDraft, setGoalDraft] = useState('')
+  /**
+   * **草稿引用**（2026-09-17 报障修复，组装机卡同款——**2026-10-02 代码审查补上实验室这一份**）：
+   * 程序化跳页（通讯「前往」/教程/任务卡跳转）**不产生失焦** ⇒ 玩家刚打的目标批数从未提交、
+   * 循环开关还开着 ⇒ 变成"无限生产"。这里把最新草稿放进 ref，**卡片卸载时补一次提交**；
+   * 回车/失焦仍即时提交；没打字（草稿为空）时不做任何动作，故不会凭空清掉已有目标、
+   * 也不会在 StrictMode 的"挂载即卸载"里误提交。
+   */
+  const goalDraftRef = useRef('')
+  goalDraftRef.current = goalDraft
+  const goalTouchedRef = useRef(false)
+  useEffect(
+    () => () => {
+      if (!goalTouchedRef.current) return
+      const n = Number.parseInt(goalDraftRef.current, 10)
+      engine.setLabLoopAt(recipe.id, true, Number.isFinite(n) && n > 0 ? n : null)
+    },
+    [engine, recipe.id],
+  )
   function commitLoop(on: boolean, goalText: string): void {
+    goalTouchedRef.current = false
     const n = Number.parseInt(goalText, 10)
     const r = engine.setLabLoopAt(recipe.id, on, on ? (Number.isFinite(n) && n > 0 ? n : null) : null)
     if (!r.ok) onToast(cmdText(r) || tr('ui.Industry.133'), true)
@@ -701,7 +734,11 @@ function LabCard({
           ⚠ 金字靠本卡 `is-lab` 那条 CSS 把整行拉回普通文字色（复用不了 `.is-assembler`：那条还带
           `content-visibility:auto` ＋ `contain-intrinsic-size`，是组装机 151 张卡的屏外跳过用的）。
           ⚠ 产物名挂**物品悬停**（与组装机卡同一个 `ItemHover` —— 就是船长说的"产物的title"）。
-          实验室自己的两个读数（每批工期 / 产出倍率）留在行尾。 */}
+          ⚠ **`×N` 读 `labBatchUnitsOf`（实际批产）**，不再读 `recipe.outputUnits` 基础值（2026-10-01 船长裁：
+          收率工艺学的效果必须在卡面看得见、卡上不许两个口径）。
+          ⚠ 「产出倍率」那枚读数**已删**（2026-10-01 船长裁）：它读的是精炼族的 `refineRate`，而实验室
+          压根不吃那条倍率（`lab.ts` 只吃产线节拍学 ＋ 实验室族那两条）⇒ 是个假读数；产出侧的真数字
+          就是这个 `×N`。 */}
       <div className="app-belt-ore">
         {tr('ui.Handbook.013')}
         <span className="app-gold">
@@ -713,25 +750,49 @@ function LabCard({
             recipe.outputItemId
           )}
         </span>{' '}
-        ×{recipe.outputUnits}
+        ×{batchUnits.toLocaleString('zh-CN')}
         <span
           className="app-dim"
           title={tr('ui.Industry.108', { ownedWhere: tr('ui.ItemsPage.001') })}
         >
           （{tr('ui.ItemsPage.001')} {countWare(state, recipe.outputItemId).toLocaleString('zh-CN')}）
         </span>
-        {' · '}
-        {tr('ui.lab.004')} {Math.round(recipe.cycleMs / 60_000)} {tr('ui.lab.012')}
-        {' · '}
-        {tr('ui.IndustryPage.062')} {Math.round(rate * 100)}%
+        {/* 工期读数**与组装机卡逐字同款**（**2026-10-01 船长令**：「『每批工期 X 分钟』这个也和组装机卡同步」）：
+            空闲 ⇒ ` · 主控耗时 {技能修正后的周期}（技能修正后；AI 核心另按效率拉长）`；
+            在跑 ⇒ ` · 已开 N 条线，首条约 T 到点`。数值走 core 单点 `labCycleMsOf`（不许界面自己乘技能）。 */}
+        {running ? (
+          <>
+            {tr('ui.Industry.121', { n: runs.length })} {tr('ui.Industry.043')}{' '}
+            {fmtDuration(Math.min(...runs.map((v) => v.remainingMs)))} {tr('ui.Industry.044')}
+          </>
+        ) : (
+          <>
+            {tr('ui.Industry.122', { d: fmtDuration(labCycleMsOf(state, engine.ctx, recipe, 'pilot')) })}
+            {tr('ui.Industry.045')}
+          </>
+        )}
       </div>
       {/* 材料行：**与组装机卡逐字同款**（2026-10-01 船长令：实验室卡不许自成一套富文本规则）——
           `.app-bp-mats` ＋ `.app-bp-mat`（普通文字色）＋ 缺料 `is-short` ＋ 行尾「去哪弄」四支跳转。
           ⚠ 缺料标红口径同组装机：**只在未开工时**标（在跑的红字会被误读成故障）；
           ⚠ 实验室配方**没有等价组、也不吃材料学折扣**（core 口径）⇒ 行里不出现组装机那句
           「（原 ×N，材料学折扣后）」，`现有` 读数走 core 单点 `labMaterialAvailable`。 */}
-      <ul className="app-bp-mats">
-        {recipe.materials.map((m) => {
+      <ul className="app-bp-mats" id={matsListId}>
+        {/* 原材料列表折叠（2026-10-01 船长令：味数 > 2 ⇒ 只留这一行开关，点开才拉开全部）——
+            实验室 3~5 味料 ⇒ 三张配方卡现在默认都是折叠态；缺料味数走 core 单点 `labMissingMaterials` */}
+        {matsCollapsible ? (
+          <MatListToggle
+            count={recipe.materials.length}
+            open={matsOpen}
+            shortCount={labMissingMaterials(state, engine.ctx, recipe).length}
+            running={running}
+            listId={matsListId}
+            onToggle={() => setMatsOpen((v) => !v)}
+          />
+        ) : null}
+        {matsCollapsible && !matsOpen
+          ? null
+          : recipe.materials.map((m) => {
           const def = engine.ctx.items.get(m.itemId)
           const have = labMaterialAvailable(state, m.itemId)
           const enough = have >= m.units
@@ -758,7 +819,8 @@ function LabCard({
         })}
       </ul>
       <div className="app-belt-econ">
-        <NetIncomeLine price={batchValue} costIsk={costIsk} buildMs={recipe.cycleMs} />
+        {/* 净收益/h 的工期**与产物行同一把尺**（2026-10-01 船长令：工期读数同步组装机卡）——走 core 单点 */}
+        <NetIncomeLine price={batchValue} costIsk={costIsk} buildMs={pilotCycleMs} />
       </div>
       <div className="app-belt-actions">
         {/**
@@ -788,7 +850,10 @@ function LabCard({
                 className="app-mf-goal-input"
                 placeholder="∞"
                 value={goalDraft !== '' ? goalDraft : loop.goal > 0 ? String(loop.goal) : ''}
-                onChange={(e) => setGoalDraft(e.target.value)}
+                onChange={(e) => {
+                  goalTouchedRef.current = true
+                  setGoalDraft(e.target.value)
+                }}
                 onBlur={(e) => {
                   setGoalDraft('')
                   commitLoop(true, e.target.value)
@@ -856,25 +921,16 @@ function LabCard({
         >
           {tr('ui.lab.006')}
         </button>
-        {/* AI 工位：核心下拉常驻（与精炼炉同款：无核心时置灰，卡面不跳动） */}
+        {/* AI 工位：核心下拉常驻（与精炼炉同款：无核心时置灰，卡面不跳动）——2026-10-02 起走公共件 */}
         <div className="app-belt-ai">
-          <select
-            className="app-select"
-            value={usableCores.length === 0 ? '' : (core ?? '')}
-            onChange={(e) => setCoreSel(e.target.value as AiCoreType)}
-            disabled={usableCores.length === 0}
-            title={usableCores.length === 0 ? tr('ui.IndustryPage.051') : tr('ui.IndustryPage.052')}
-          >
-            {usableCores.length === 0 ? (
-              <option value="">{tr('ui.ShipPage.070')}</option>
-            ) : (
-              usableCores.map((t) => (
-                <option key={t} value={t}>
-                  {aiCoreText(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
-                </option>
-              ))
-            )}
-          </select>
+          <AiCoreSelect
+            engine={engine}
+            value={core}
+            onPick={setCoreSel}
+            titleReady={tr('ui.IndustryPage.052')}
+            titleEmpty={tr('ui.IndustryPage.051')}
+            emptyLabel={tr('ui.ShipPage.070')}
+          />
           <button
             className="app-btn is-small"
             disabled={locked || !core || affordable <= 0}

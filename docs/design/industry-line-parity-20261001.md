@@ -185,25 +185,96 @@
 是组装机 151 张卡的屏外跳过与占位高度，实验室几张卡既不需要也不该继承）；已 `npm run ui:layout-css` 重生成。
 ④ `ui.lab.003`（每批产出）随之不再被引用（留表不删）。
 
-**⚠ 待裁（本批只查未改）**：产物行行尾那枚 **`产出倍率 X%`（= core `refineRate`）与实验室的真实产出无关** ——
-`lab.ts` 的单批工期只吃 `aiEfficiency` ＋ `LAB_CYCLE_SKILLS`、单批件数只吃 `LAB_YIELD_SKILLS`
-（`labCycleMsOf` / `labBatchUnitsOf`，lab.ts:228~238），`refineRate`（精炼学 · 高级回收 · 熔炉精通学，
-industry.ts:67~75）在 `lab.ts` 里**一次都没被读**。⇒ 三选一：**删掉这枚读数**（我推荐，它在卡片上是误读）·
-改成实验室自己的乘区读数（需要 core 开一个单点）· 或让实验室真的吃这条倍率（属数值改动，要另批）。
-同源问题：行里的 `×N` 读的是 `recipe.outputUnits`（**基础值**），而实际每批产出是 `labBatchUnitsOf`
-（吃 `LAB_YIELD_SKILLS`，目前未导出单点）—— 是否要改读实际值，也一并等你定。
-
 **闸门读数（二次令）**：`typecheck`（core/data/ui/desktop）✅ · `content:check` ✅ · `l10n:check` ✅ ·
 `ui:rot-check` ✅ · `ui:layout-css:check` ✅（两份与源码一致）· `ui:tip-check` ✅（0 处两套提示并存）·
 桌面构建 ✅。**§九之八 技能判定**：本轮又跑一次 `ui-ux-pro-max`（「gold accent single element hierarchy readout」
 → 返回缓动函数/面包屑/拖拽三條，**与本次无关**）⇒ 依据仍是仓库 §6「同级相似项」＋ 2026-09-13 那条金色口径令。
 
+## 13.3 三次令：技能作用域口径 ＋ 删掉那枚假读数（2026-10-01）
+
+**船长原话**：「如果没有特意说明，实验室吃一些通用技能加成。」→ 我把它当"通用候选"报了 `refineRate`，
+船长追问「**为什么精炼的技能算通用加成？**」⇒ **我归类错了**：`refineRate`（精炼学 / 高级回收处理 /
+熔炉精通学）只在 `industry.ts` 读，只作用于**精炼炉那一台机器的三个活计**（原矿精炼 · 残骸回收 · 货柜拆解），
+是**精炼族专属**；拿"卡上正显示着它"当依据是错的（那是现状，不是设计依据）。
+
+**普查结论（实测 `skills.trained` 全部直读点）**：
+- **通用（跨机器共用）＝ 只有一条**：`industrial-automation` **产线节拍学**（精炼炉 industry.ts:379/487 ·
+  组装机＋造船厂 manufacturing.ts:491/805 · 实验室 lab.ts:86）。
+- **家族专属**：精炼族（精炼学 / 高级回收处理 / 熔炉精通学 / 熔炉压力学 / 核心熔炼学）· 制造族（工业理论 /
+  批量生产学 / 流水线统合学 / 材料学 / 组件标准化）· 实验室族（`LAB_CYCLE_SKILLS` / `LAB_YIELD_SKILLS`）。
+- ⇒ **实验室的技能接线本来就是对的**（通用吃、别族不吃、自己专属也吃），**错的只是那枚读数**。
+
+**船长裁定**：① 那枚「产出倍率 X%」**删掉** ② 产物行 `×N` **改读实际批产** ③ 口径**写进约定**。
+
+**落地**：
+| 落点 | 内容 |
+|---|---|
+| `packages/core/src/lab.ts` | `labBatchUnitsOf` **改为导出**（卡面读数的单一来源；封顶判据与交付本来就走它） |
+| `packages/core/src/index.ts` | 导出 `labBatchUnitsOf` |
+| `pages/IndustryPage.tsx`（实验室卡） | 删「产出倍率 X%」；`×N` 改读 `batchUnits = labBatchUnitsOf(...)`；**净收益读数同源同改**（原先按 `recipe.outputUnits` 基础值算，收率技能的效果在卡面完全看不见）；清掉本卡不再用的 `refineRate` |
+| `packages/core/tests/fuel-cap-lab-skills-20260930.test.ts` | **＋1 条**：`labBatchUnitsOf` 无技能 ＝ 基础值 600 · 收率满级 ＝ **780** · 起线记录与之**同一个数**（把"三处同源"钉住） |
+| `docs/development-conventions.md` §十七 | 补「技能作用域口径」三档（通用 / 家族 / 专属）＋ 两条硬线：**卡片只允许显示本产线真的吃到的读数** · 这类读数**一律走 core 导出单点** |
+| `docs/development-conventions-changelog.md` | 顶部记一条 |
+
+**闸门读数（三次令）**：`typecheck` 全仓 ✅ · core 全量 **2994 条 / 284 文件** ✅ · `content:check` ✅ ·
+`l10n:check` ✅ · `ui:rot-check` ✅ · 桌面构建 ✅。
+
+## 13.4 四次令：工期读数也照组装机卡（2026-10-01）
+
+**船长原话**：「『每批工期 X 分钟』这个也和组装机卡同步」。
+
+**组装机卡那把尺**（`panels/Industry.tsx` 产物行）：空闲 ⇒ ` · 主控耗时 {技能修正后的工期}（技能修正后；
+AI 核心另按效率拉长）`；在跑 ⇒ ` · 已开 N 条线，首条约 T 到点`。两处都用 `fmtDuration` 格式化。
+
+**落地**：
+
+| 落点 | 内容 |
+|---|---|
+| `packages/core/src/lab.ts` | `labCycleMsOf` **改为导出**（卡面工期与净收益读数的单一来源；起线与循环续批本来就走它） |
+| `packages/core/src/index.ts` | 导出 `labCycleMsOf` |
+| 实验室卡 | 删掉「每批工期 5 分钟」（那是配方规格值 `recipe.cycleMs`）；改组装机卡同款两支：空闲 ⇒ ` · 主控耗时 {fmtDuration(labCycleMsOf(…, 'pilot'))}` ＋ 同一句 `ui.Industry.045` 注解；在跑 ⇒ ` · 已开 N 条线，首条约 T 到点`。**复用 `ui.Industry.043/044/045/121/122`，不新增文案** |
+| 净收益读数 | `buildMs` 改读同一条单点（原先传配方规格值 ⇒ 与产物行两个口径） |
+| 用例 | ＋1（同文件）：无技能 ＝ 规格值 5 分 · 节拍满 −25% × 裂解满 −20% ＝ **3 分** · 起线记录与卡面读数**同一个数** · AI 核心只会更长（`aiEfficiency ≤ 1`） |
+| 文案 | `ui.lab.004`（每批工期）· `ui.lab.012`（分钟）随之不再被引用（按 id 不复用规则留表不删） |
+
+**闸门读数（四次令）**：`typecheck` 全仓 ✅ · core **2995 条 / 284 文件** ✅ · `content:check` ✅ · `l10n:check` ✅ ·
+`ui:rot-check` ✅ · 桌面构建 ✅。
+
+## 13.5 五次令：原材料列表折叠（2026-10-01）
+
+**船长原话**：「**「原材料列表」折叠，超过2个材料就进行折叠**」（承接同日更早那句：「经典页面的卡牌所需原料
+太多时能否压缩成一个'原材料列表'的按钮，点击后才会拉开显示全部原材料」）。
+
+**落地**：
+
+| 落点 | 内容 |
+|---|---|
+| 新增 `ui/matList.tsx` | `MATS_COLLAPSE_OVER = 2` ＋ `MatListToggle`（**两卡共用一份**：门槛/文案/无障碍一处改、两处生效） |
+| `panels/Industry.tsx`（组装机／造船厂卡） | 味数 > 2 ⇒ `.app-bp-mats` 里只留一行开关；缺料味数取本卡 `short.length`（＝ `missingMaterials`，含等价组与材料学折扣） |
+| `pages/IndustryPage.tsx`（实验室卡） | 同上；缺料味数取 core 单点 `labMissingMaterials(...).length`（实验室 3~5 味 ⇒ 三张配方卡默认全是折叠态） |
+| `data/l10n/table.ts` | 新增 `ui.Industry.160~164`（开关两态 ＋ 缺料提示 ＋ 两条悬停说明，中英齐） |
+| 样式 | **未加一行 CSS**：开关复用本块既有的可点样式 `.app-bp-mat-act`，缺料红字复用 `.app-bp-mat.is-short` |
+
+**形态判定（逐条列出，船长可否决）**：
+1. 折叠态 = 材料块里只剩一行「原材料列表 ×N」；点一下**在卡内拉开**全部 N 行（含每行的「去哪弄」跳转链），
+   再点一下收起（文案变「收起原材料列表」）。
+2. **缺料不许因为折叠而看不见**：折叠时行尾补红字「缺 N 味」（只在**未开工**时标，与材料行同口径）；
+   另外两张卡的开工键 tooltip 本来就带缺料明细（组装机 `feedTxt` / 实验室起线拒绝文本），这条路也还在。
+3. 门槛 = 味数 **> 2**（船长令）⇒ 实测 242 张卡里 **203 张折叠**，余下 39 张（1~2 味）照旧平铺。
+4. 状态**不落盘、也不跨挂载记忆**（每卡各自 `useState(false)`；切页回来仍是折叠态）。
+5. 无障碍：`role="button"` ＋ `tabIndex` ＋ Enter/Space ＋ `aria-expanded` ＋ `aria-controls`（指向那个 `<ul>` 的
+   `useId`）。技能依据：`ui-ux-pro-max` Accessibility「**ARIA Labels（High）：Interactive elements need
+   accessible names**」——可见文案即其名字，`aria-expanded` 补状态（与工业 HUD 页既有折叠件同款）。
+6. **没做二级浮层**：船长原话是"拉开"，且这是**玩家主动点击**才发生的高度变化（§6「防跳动」针对心跳里内容
+   自己变，不针对用户点的折叠件）——若要改成浮层，说一声即可（一处开关）。
+
+**闸门读数（五次令）**：`typecheck` 全仓 ✅ · core 全量 ✅ · `content:check` ✅ · `l10n:check` ✅ ·
+`ui:rot-check` ✅ · `ui:tip-check` ✅（0 处两套提示并存）· 桌面构建 ✅。
+
 ## 13.2 未做（下一批）
 
-- **HUD 页实验室卡的同类对齐**（船长本轮明确"只指经典页面"）。
-- **材料过多时折叠成「原材料列表」按钮**（味数分布实测：3味 50 / 4味 49 / 5味 28 / **6味 2 / 8味 12 /
-  9味 15 / 10味 3 / 11味 23 / 12味 21** ⇒ 6 味是天然分界，≥6 味 76 张卡；形态待定：二级浮层 vs 卡内拉开）。
-- §13.1 里那三条**产出读数口径**的裁决。
+- **HUD 页实验室卡的同类对齐**（船长本轮明确"只指经典页面"；HUD 页的材料表在悬浮卡与配方栏里，
+  折叠形态要另议——那一栏本来就窄）。
 
 ---
 

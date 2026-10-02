@@ -296,7 +296,7 @@ export function startRefineRun(
    * 「需停靠空间站」，而其实一键就能回来。
    */
   if (worker === 'pilot') {
-    const gateSkip = applyActivityGate(state, 'refine')
+    const gateSkip = applyActivityGate(state, 'refine', ctx)
     if (gateSkip) return gateSkip
     /**
      * **同一档再开一台 = 换炉**（**2026-09-21 船长答 1「允许切换」**）：判据见到"同一项"一律放行
@@ -463,7 +463,7 @@ export function startUnboxRun(
   }
   if (worker === 'pilot') {
     /** 顺序同 `startRefineRun`：判据 → **同档换机器收口（停手上那台 + 统一日志）** → 位置门槛 */
-    const gateSkip = applyActivityGate(state, 'refine')
+    const gateSkip = applyActivityGate(state, 'refine', ctx)
     if (gateSkip) return gateSkip
     if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
       haltActivityForSwitch(state, 'refine')
@@ -552,7 +552,7 @@ export function startRecycleRun(
    * （`oreAvailable` = 货仓 + 仓库，停下来的货留在船上）⇒ 谁先谁后都行。
    */
   if (worker === 'pilot') {
-    const gateSkip = applyActivityGate(state, 'refine')
+    const gateSkip = applyActivityGate(state, 'refine', ctx)
     if (gateSkip) return gateSkip
     /** 同档换机器（见 `startRefineRun`）：停掉手上那台 + 统一日志 */
     if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {

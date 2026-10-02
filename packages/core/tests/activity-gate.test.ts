@@ -14,6 +14,7 @@ import {
   AUTO_HALT_KINDS,
   HALT_COST,
   HALT_COST_ID,
+  INTERRUPTIBLE,
   KIND_LABEL,
   WARN_KINDS,
   cannotInterruptReason,
@@ -21,6 +22,9 @@ import {
   mainActivityOf,
 } from '../src/activityGate'
 import type { MainActivityKind } from '../src/activityGate'
+import { startMiningFromExpedition } from '../src/mining'
+import { startExpeditionFromMining } from '../src/expedition'
+import { makeTestCtx, ship } from './helpers'
 
 function state(): GameState {
   return createInitialState({ nowWallMs: 0, seed: 3 })
@@ -57,14 +61,29 @@ describe('主控活动切换：三档分类（船长 2026-09-21）', () => {
     expect(v1.interruptible).toBe(true)
     expect(v1.message).toContain('本段报酬拿不到')
 
+    /**
+     * ⚠ **2026-10-02 改**（stage 2 收口）：`WARN_KINDS` 现在是**六档**
+     * （补登记 `refine` / `manufacturing` —— 它们原先漏登记，见 `activityGate.WARN_KINDS` 头注）。
+     * 旧的循环写法把它俩错当成"远征/快递"那类**不可中断**的档 ⇒ 断言不成立。
+     * 正解：按 `INTERRUPTIBLE` 逐档分派 —— 可中断的走 `confirm`，不可中断的走 `reject`。
+     */
     for (const kind of WARN_KINDS.filter((k) => k !== 'hauling')) {
       const s = state()
       if (kind === 'expedition') s.expedition.active = true
-      else s.sideTasks.deliver = { taskId: 'x' } as unknown as GameState['sideTasks']['deliver']
+      else if (kind === 'deliver') s.sideTasks.deliver = { taskId: 'x' } as unknown as GameState['sideTasks']['deliver']
+      else if (kind === 'lab') s.labRuns = [{ id: 1, active: true, worker: 'pilot' } as NonNullable<GameState['labRuns']>[number]]
+      else if (kind === 'refine') s.refineRuns = [{ id: 1, active: true, worker: 'pilot' } as GameState['refineRuns'][number]]
+      else if (kind === 'manufacturing') s.manufacturingRuns = [{ id: 1, active: true, worker: 'pilot' } as GameState['manufacturingRuns'][number]]
+      expect(mainActivityOf(s), `${kind} 应能被探测到`).toBe(kind)
       const v = gateMainActivity(s, 'mining')
-      expect(v.action, `${kind} 应拒`).toBe('reject')
-      expect(v.interruptible).toBe(false)
-      expect(v.message).toContain('不能中断')
+      if (INTERRUPTIBLE[kind]) {
+        expect(v.action, `${kind} 应先警告（可中断）`).toBe('confirm')
+        expect(v.interruptible).toBe(true)
+      } else {
+        expect(v.action, `${kind} 应拒`).toBe('reject')
+        expect(v.interruptible).toBe(false)
+        expect(v.message).toContain('不能中断')
+      }
     }
   })
 
@@ -287,5 +306,61 @@ describe('矩阵：三档分类逐格钉死（船长 2026-09-21 ＋ 2026-09-22 �
         expect(skip?.errorId, `${name} 时开始=${next} 应当拒`).toBe(id)
       }
     }
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════════
+ * **stage 2 收口**（**2026-10-02 · 船长报障「实验室并不占用主控」那一批的收尾**）：
+ * ① **接力入口**（`startMiningFromExpedition` / `startExpeditionFromMining`）也走同一套门禁
+ *    ——它们自己不过门禁，而是**委托**给 `startMining` / `startExpedition`（那两条才调 `applyActivityGate`）。
+ *    静态那一半由 `arch:guard` 的 **F8** 钉（连委托链一起跟）；本用例钉**行为**那一半。
+ * ② **登记表两档互斥且覆盖全部档位**（`refine` / `manufacturing` 原先漏登记 ⇒ 由 F8 抓到，本批补上）。
+ * ══════════════════════════════════════════════════════════════════════════════════════════════════ */
+describe('主控活动切换 · stage 2 收口（2026-10-02）', () => {
+  function world(): { s: GameState; ctx: ReturnType<typeof makeTestCtx> } {
+    const ctx = makeTestCtx({ ships: [ship('sh-falconet', { cargo: 120 })], quietEvents: true })
+    const s = createInitialState({ nowWallMs: 0, seed: 1 })
+    return { s, ctx }
+  }
+
+  /**
+   * ⚠ **探针实测纠正过一版**（2026-10-02）：我原以为"运输占主控"会走**直接切**档 ⇒ 接力入口该静默停掉它。
+   * 实际回执是 `core.activityGate.002`——**运输属"先警告"档**（`WARN_KINDS`）⇒ 门禁给警告、**一格不动**。
+   * 这恰恰是最好的证据：接力入口**没有旁路**，它拿到的就是标准裁决。
+   */
+  it('接力入口 ①（→ 开采）：运输占主控 ⇒ 拿到"先警告"裁决、一格不动（证明不是旁路）', () => {
+    const { s, ctx } = world()
+    s.hauling.active = true
+    expect(mainActivityOf(s)).toBe('hauling')
+    const r = startMiningFromExpedition(s, 'belt-a', ctx)
+    expect(r.ok).toBe(false)
+    expect(r.errorId).toBe('core.activityGate.002')
+    expect(s.hauling.active, '先警告档：不动它').toBe(true)
+    expect(s.mining.active).toBe(false)
+  })
+
+  it('接力入口 ②（→ 远征）：驻留占主控（"直接切"档）⇒ 先停它再出击', () => {
+    const { s, ctx } = world()
+    s.standby.active = true
+    expect(mainActivityOf(s)).toBe('standby')
+    expect(startExpeditionFromMining(s, 'ano-a', ctx).ok).toBe(true)
+    expect(s.standby.active, '驻留应被「直接切」档停掉').toBe(false)
+    expect(s.expedition.active).toBe(true)
+    expect(
+      s.logs.some((l) => l.textId === 'core.activityGate.001'),
+      '应写统一停机日志（说明真的走了门禁）',
+    ).toBe(true)
+  })
+
+  it('登记表两档：互斥，且覆盖 `MainActivityKind` 的全部档位', () => {
+    const all = Object.keys(KIND_LABEL) as MainActivityKind[]
+    expect(all.length, '档位清单不该是空的（否则本判据失效）').toBeGreaterThan(0)
+    for (const k of all) {
+      expect(
+        AUTO_HALT_KINDS.includes(k) !== WARN_KINDS.includes(k),
+        `档位 \`${k}\` 应恰好在「直接切」「先警告」其中一档（互斥且不缺）`,
+      ).toBe(true)
+    }
+    expect(new Set([...AUTO_HALT_KINDS, ...WARN_KINDS]).size, '两档并集应等于全部档位').toBe(all.length)
   })
 })

@@ -3767,15 +3767,39 @@ function pickTopType(mix: Partial<Record<DamageType, number>> | undefined): Dama
 const FOE_BEAM_USABLE_SHARE = 0.7
 
 /**
- * 🔴 **闪现演出的时长**（**船长 2026-10-01 令**）：「**闪现的发生时间大概200ms**」＋
- * 「**多个闪现需要有200ms的间隔**」⇒ **每段演出占 200ms 动画**（消失 → 空档 → 出现），
- * 段与段之间**再留 100ms 间隔**（⇒ 队列里每段的排期间隔 = **300ms**，总时长 = 段数 × 300ms）。
+ * 🔴 **闪现演出的时长 = 平衡表旋钮**（**船长 2026-10-02 令**：「**给闪现发生速度做一个旋钮，
+ * 我感觉现在可能太短导致看不出来，先将整个过程延长到2000ms**」）。
  *
- * ⚠ 与界面侧必须一致：`apps/desktop` 的 `BLINK_ANIM_MS` 与 `styles*.css` 的 `app-bts-blink` 时长。
+ * 两个数都在 `balance.battle` 上（改一处、引擎与界面同时跟随）：
+ * - `foeBlinkProcessMs` = **单次闪现的整个动画过程**（消失 ＋ 出现；UI 对半劈：各一半）；
+ * - `foeBlinkGapMs` = **相邻两次闪现的间隔**（排队时一段播完空这么久，下一段才开始）。
+ *
+ * ⚠ 这两条同时定义**禁火窗口**（船长：「敌舰消失时，玩家的武器不会开火」）——过程调长 = 停火同步变长。
+ * ⚠ **演出时长已从 200ms 调到 2000ms**（2026-10-02 船长令），队列总时长 = 段数 × (过程 ＋ 间隔)。
  */
-const FOE_BLINK_ANIM_MS = 200
-/** 段与段的间隔（船长：「多个闪现需要有200ms的间隔」⇒ 视觉上"发生"之间至少隔这么多） */
-const FOE_BLINK_GAP_MS = 200
+function blinkProcessMs(bal: BattleBalance): number {
+  return Math.max(1, Math.round(bal.foeBlinkProcessMs ?? 200))
+}
+/** 段与段的间隔（同旋钮；缺省 200ms = 旧口径） */
+function blinkGapMs(bal: BattleBalance): number {
+  return Math.max(0, Math.round(bal.foeBlinkGapMs ?? 200))
+}
+
+/**
+ * 🔴 **一段闪现的三等分**（**船长 2026-10-01 原话**：「**播放动画的同时舰船消失-等待发生时间-在新位置
+ * 播放动画同时舰船出现**」）——整个过程 `foeBlinkProcessMs` 平分成三份：
+ *
+ * | 段 | 占比 | 谁在动 |
+ * |---|---|---|
+ * | ① 消失 | **1/3** | 舰船淡出（旧位置） |
+ * | ② **等待（发生时间）** | **1/3** | 舰船不可见；**位移在这一段的起点兑现**（`moveAtMs`） |
+ * | ③ 出现 | **1/3** | 舰船在新位置淡入 |
+ *
+ * ⚠ **为什么是三等分而不是对半劈**（**2026-10-02 船长实机反馈**）：「**我原先中间插入的发生时间等待
+ * 怎么被取消了？**」——对半劈的版本只有"淡出 ＋ 淡入"，**没有中间那段等待**（且位置在触发那刻就换）。
+ */
+const BLINK_VANISH_SHARE_NUM = 1
+const BLINK_SHARE_DEN = 3
 
 /**
  * **该敌舰的「决策用最远射程」**——它心里那把尺（**只给站位/期望距离用**，`inRange` 门不吃它）。
@@ -8335,35 +8359,49 @@ function markFoeBlink(
    *  若记小数起点，跳幅会带上 0.2 米级尾巴（实测 2000.207）⇒ 与"件上写 2,000"的语义不符。 */
   const from = Math.round(b.distanceM)
   const moved = Math.abs(landed - from)
-  b.distanceM = landed
+  /**
+   * 🔴 **位置不在这里换**（**船长 2026-10-02 令**：「**移动的时间节点应该放在发生时间的等待处**」）——
+   * 旧实现在这一行就写了 `b.distanceM = landed`（"触发即换位"）⇒ 演出里**没有"等待"这一段**，
+   * 船长的实机反馈指的正是这个。现在改成：**入队 + 等到 `moveAtMs` 那一拍由 `settleBlinkQueue` 兑现**。
+   */
   if (!b.foeBlinks) b.foeBlinks = {}
   b.foeBlinks[tag] = nowMs + bl.cooldownMs
   /**
    * **旁路记账：这一跳从哪起跳、走了多远、朝哪边**（2026-10-01 加，见 `BattleState.foeBlinkJumps` 头注）——
    * 只写不进任何算式。存在的理由：落点是**全局标量**，多舰同拍各闪一次时，光看 `distanceM`
    * 的变化**既分不出单舰跳幅、也分不出单舰方向**（实测踩过：聚合位移 2,678 m 被误读成"一跳超 2,000m"）。
+   * ⚠ 记账在**触发当刻**就写好（跳幅与方向**与兑现时刻无关**）⇒ 用例读数不受"位移推迟"影响。
    */
   if (!b.foeBlinkJumps) b.foeBlinkJumps = {}
   b.foeBlinkJumps[tag] = { from, moved, dir: landed > from ? 1 : landed < from ? -1 : 0 }
   /**
    * 🔴 **排进"闪现演出队列"**（**船长 2026-10-01 令**：「**闪现现在会有一个发生时间，同时触发的多个闪现
    * 需要排队发生**」；口径与时刻表见 `BattleState.foeBlinkQueue`）——
-   * **多个闪现依次排定，每段占 200ms 动画 ＋ 100ms 间隔 = 300ms**，本舰那一段从现在开始。
-   * ⚠ **不停表**（船长裁定）：战斗时钟照走，只是这段窗口里**双方都不开火**
-   * （我方那一侧由 `blinkHoldFire` 门控）。
+   * **多个闪现依次排定**，每段占「整个过程 ＋ 间隔」，本舰那一段从现在开始。
+   * ⚠ **不停表**（船长裁定）：战斗时钟照走，只是这段窗口里**我方不开火**（`blinkHoldFire` 门控）。
    */
   const queue = b.foeBlinkQueue ?? (b.foeBlinkQueue = {})
   /**
    * 排期：**从"已有各段里最晚的那个结束时刻"起、再加一个间隔**，本舰那一段才开始
-   * （船长：「**多个闪现需要有200ms的间隔**」⇒ 段与段之间空 200ms；
+   * （船长：「**多个闪现需要有200ms的间隔**」⇒ 段与段之间空一个 `foeBlinkGapMs`；
    * ⚠ `.slice()` 是必需的：下面马上要往同一个 `queue` 里写本舰，先取快照免得跳过一段）。
    */
   let startMs = nowMs
-  for (const q of Object.values(queue).slice()) startMs = Math.max(startMs, q.appearMs + FOE_BLINK_GAP_MS)
+  for (const q of Object.values(queue).slice()) startMs = Math.max(startMs, q.appearMs + blinkGapMs(bal))
   const vanishMs = startMs
-  const appearMs = vanishMs + FOE_BLINK_ANIM_MS
-  queue[tag] = { queuedMs: nowMs, vanishMs, appearMs }
-  /** 演出事件：界面据此让本舰**消失**并播淡出（位置已经换好，出现动画在 `appearMs` 那一拍再播） */
+  /** 三段的边界（见 `foeBlinkQueue` 头注）：消失 → **等待（位移在这一瞬兑现）** → 出现 */
+  const moveAtMs = vanishMs + Math.round((blinkProcessMs(bal) * BLINK_VANISH_SHARE_NUM) / BLINK_SHARE_DEN)
+  const appearMs = vanishMs + blinkProcessMs(bal)
+  queue[tag] = { queuedMs: nowMs, vanishMs, moveAtMs, appearMs, from, to: landed }
+  /**
+   * 演出事件：界面据此让本舰**消失**并播淡出；位移在 `moveAtMs` 由引擎兑现，界面到 `appearMs`
+   * 在新位置播"出现"。
+   *
+   * ⚠ **`atMs` 一并带动画时长与倍速**（2026-10-02 修）：界面原先**根本没消费 `atMs`**
+   * （一律 `set(tag, performance.now())`）⇒ 引擎排好的"依次错开"在画面上被抹平、同一拍触发的
+   * 多艘会**同时闪**。现在界面按 `atMs − nowMs` 换算出"该等多久才开始播"，并把游戏毫秒**除以倍速**
+   * 折成真实毫秒（`speedX`）⇒ 排队错开与倍速缩放在画面上都能对上。
+   */
   pushBattleFx(b, {
     atMs: vanishMs,
     side: 'foe',
@@ -8371,16 +8409,46 @@ function markFoeBlink(
     type: 'kinetic',
     hit: true,
     blink: true,
+    speedX: b.speedX ?? 1,
   })
   return true
+}
+
+/**
+ * **把"到点的闪现位移"兑现**（**船长 2026-10-02 令**：「**移动的时间节点应该放在发生时间的等待处**」）——
+ * 每拍扫一遍队列：`moveAtMs` 到点的段**真正写进 `b.distanceM`**；`appearMs` 过完的段从队列删掉。
+ *
+ * ⚠ **为什么必须"到点才写"而不是"触发就写"**：船长的演出设计是
+ * 「**播放动画的同时舰船消失 → 等待发生时间 → 在新位置播放动画同时舰船出现**」——
+ * 位置若在触发当刻就换，"消失"这一段播的就是**新位置**（根本看不到旧位置消失），中间也不存在"等待"。
+ * ⇒ 位移落在**消失演完、等待开始**的那一瞬（`moveAtMs`）。
+ *
+ * ⚠ **队列项一直留到 `appearMs`**（不是兑现位移就删）：界面要读这张时刻表才知道
+ * 「哪艘正处在消失→等待→出现」里、以及"出现"从哪一刻开始 ⇒ 提前删会让界面失去时间轴。
+ * ⚠ 多条闪现**排队**时各自按自己的 `moveAtMs` 兑现；同一拍到点多个 ⇒ 按队列顺序依次写。
+ * ⚠ 幂等：写过的段打 `moved` 标记 ⇒ 同一拍内重复调用不会写两次。
+ */
+function settleBlinkQueue(b: import('./state').BattleState): void {
+  const q = b.foeBlinkQueue
+  if (!q) return
+  const now = b.lastTickGameMs
+  for (const [tag, seg] of Object.entries(q)) {
+    if (now >= seg.moveAtMs && seg.moved !== true) {
+      b.distanceM = seg.to
+      seg.moved = true
+      void tag
+    }
+    if (now >= seg.appearMs) delete q[tag]
+  }
 }
 
 /**
  * **闪现演出期间是否禁我方开火**（**船长 2026-10-01 令**：「**不停表，但是敌舰消失时，玩家的武器不会开火
  * （哪怕武器转好了）**」）。
  *
- * **口径 = 严格窗口**：只要有**任一敌舰**处在「已消失、还没出现」那一段（`vanishMs → appearMs`，各 200ms），
- * 我方**全部门**这一拍都不开火。多条闪现排队时，各段窗口之间自然留出可开火的间隙。
+ * **口径 = 严格窗口**：只要有**任一敌舰**处在「已消失、还没出现」那一段（`vanishMs → appearMs`，
+ * 长度 = `balance.battle.foeBlinkProcessMs`），我方**全部门**这一拍都不开火。
+ * 多条闪现排队时，各段窗口之间自然留出可开火的间隙。
  *
  * ⚠ 判定阈是"离开"而不是"到达"：`appearMs` 那一拍**允许开火**（敌舰已经回来了）。
  * ⚠ 与既有 `cd > 0` 同一口径：**冷却照推**，转好了就停在 0 等窗口，窗口一过立刻开火（不白扣一发）。
@@ -9149,9 +9217,21 @@ function stepBattle(
   // **2026-09-22 船长令**：我队**全队**（`myUnits`）的最远射程一并计入 ⇒ 僚舰装远射武器也能拉开战场。
   b.distanceM = clamp(bal.minDistanceM, battleMaxDistanceM(b, me, foes, bal, myUnits), b.distanceM + rate)
 
+  /**
+   * 🔴 **兑现"到点的闪现位移"**（**船长 2026-10-02 令**：「**移动的时间节点应该放在发生时间的等待处**」）——
+   * 位置不再在"触发那一刻"就换，而是**推迟到本段演出演完「消失」、进入「等待」的那一瞬**（`moveAtMs`）。
+   * 放在走位之后、开火之前：本拍换好 ⇒ 后面的开火/命中判定与画面严格同拍。
+   */
+  settleBlinkQueue(b)
+
   // ── 我方开火（主炮 + 无人机条目）——**逐舰结算**（单船路径 = 只循环一次，逐字等价）──
   // 开火失稳代价只在点火期生效（2026-09-10 船长：没点火就不失稳）——每次开火取当前有效乘子，
   // 冷却期 = 1（不改 me 本身，避免污染其它读法）；**逐舰各取自己的 `hitMul`**。
+  /**
+   * **本拍是否因"闪现演出"全体禁火**（船长 2026-10-01 令）——**每拍只算一次**（循环外）：
+   * 原来放在"每门炮"里，那是 O(门数 × 队列段数) 的重复扫描，纯浪费。
+   */
+  const blinkHold = blinkHoldFire(b)
   const meAtkOf = (u: UnitSpec): UnitSpec =>
     phaseOf(u) ? u : { ...u, hitMul: effectiveHitMul(u, false) }
   for (const unit of myUnits) {
@@ -9184,7 +9264,7 @@ function stepBattle(
        * 本门**这一拍不开火**（⚠ **冷却照推**：与上面 `cd > 0` 那支同一口径——转好了就停在 0 等窗口结束，
        * 窗口一过立刻开火，不白扣一发）。敌舰都消失了还开火，看着像打空气；这也是船长要的效果。
        */
-      if (blinkHoldFire(b)) {
+      if (blinkHold) {
         meRt.weapons[wi] = Math.max(0, cd - dtMs)
         continue
       }
@@ -9402,7 +9482,12 @@ function stepBattle(
               b.meFoeRangeDebuff ?? 0,
             )
           ) {
-            pushBattleNotice(b, '跃迁规避：目标瞬时换位')
+            /**
+             * 🔴 **不推画面提示**（**船长 2026-10-02 令**，原话照抄）：
+             * 「**跳跃规避的提示同样过于频繁**」——本条原先推「跃迁规避：目标瞬时换位」。
+             * 现在演出本身就足够显眼（整段 2 秒的消失 → 出现 + 配套动画）⇒ 提示是多余的噪音。
+             * ⚠ 与"闪烁过载"那条同口径（那条更早就不再推提示）。
+             */
             // **闪现演出**（**船长 2026-10-01 令**：「闪现时候要给舰船一个闪现的动画」）——
             // 与捕获网同款承载（`: true` 旗标 + `type` 占位）；界面对该 tag 播"淡出→淡入"。
             pushBattleFx(b, {
@@ -9475,15 +9560,12 @@ function stepBattle(
             if (
               markFoeBlink(other, other.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits), b.meFoeRangeDebuff ?? 0)
             ) {
-              pushBattleNotice(b, '跃迁规避：目标瞬时换位')
-              pushBattleFx(b, {
-                atMs: b.lastTickGameMs,
-                side: 'foe',
-                tag: other.tag,
-                type: 'kinetic',
-                hit: true,
-                blink: true,
-              })
+              /**
+               * ⚠ **这里不再推演出事件**（**2026-10-02 修**）：`markFoeBlink` **内部已经推过**一条带
+               * 队列时刻（`atMs = vanishMs`）、`blink: true` 与倍速的事件；原先此处再推一条**没有 `blink`
+               * 旗标的 `pushBattleFx`** —— 界面会把它当**一次开火**处理（画弹道 + 打命中闪光）。
+               * 顺带也不推画面提示（船长：「跃迁规避的提示同样过于频繁」）。
+               */
               // **挂在闪现上的两个装置**（2026-10-01）：与主目标那处**同一函数** ⇒ 全体攻击
               // 打中带闪烁过载 / 叠光的敌舰同样结算（不因"它是副目标"而漏）。
               settleFoeBlinkExtras(other, other.tag, b, other.weapons[0]?.reloadMs)

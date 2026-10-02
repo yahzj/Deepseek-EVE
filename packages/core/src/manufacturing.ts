@@ -447,7 +447,7 @@ export function startManufacturing(
    * 「采矿时无法直接切换…手动运转」的同一处坑）。
    */
   if (worker === 'pilot') {
-    const gateSkip = applyActivityGate(state, 'manufacturing')
+    const gateSkip = applyActivityGate(state, 'manufacturing', ctx)
     if (gateSkip) return gateSkip
     /**
      * **同档再开一条 = 换线**（**2026-09-21 船长答 1「允许切换」**）：判据见"同一项"一律放行

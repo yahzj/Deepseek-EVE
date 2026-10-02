@@ -3725,6 +3725,19 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    */
   "ui.Industry.158": { zh: "「{matName}」在声望商店兑换——点击前往", en: "“{matName}” is exchanged at the standing store — click to go there" },
   "ui.Industry.159": { zh: "🛒 去声望商店", en: "🛒 To the standing store" },
+  /**
+   * **原材料列表折叠**（**2026-10-01 船长令**：「**「原材料列表」折叠，超过2个材料就进行折叠**」）。
+   *
+   * 材料味数 > 2 时，材料块只留一行开关，点开才列出全部 N 行（公共件 `ui/matList.tsx`，
+   * 组装机／造船厂卡与实验室卡共用一份）。`160/161` = 开与收的**可见文案**（也是它的无障碍名），
+   * `162` = 折叠态那枚**缺料提示**（红字，只在未开工时出现 —— 缺料不许因为折叠而看不见），
+   * `163/164` = 悬停说明（只写这一点会做什么，按 §十三 不写原因）。
+   */
+  "ui.Industry.160": { zh: "原材料列表 ×{n}", en: "Material list ×{n}" },
+  "ui.Industry.161": { zh: "收起原材料列表", en: "Hide material list" },
+  "ui.Industry.162": { zh: "缺 {n} 味", en: "{n} short" },
+  "ui.Industry.163": { zh: "展开全部 {n} 味原料", en: "Show all {n} ingredients" },
+  "ui.Industry.164": { zh: "收起到一行", en: "Collapse back to one line" },
   "ui.IndustryPage.001": { zh: "全部", en: "All" },
   "ui.IndustryPage.002": { zh: "可精炼资源", en: "Refinable resources" },
   "ui.IndustryPage.003": { zh: "残骸回收", en: "Wreck salvage" },
@@ -5668,6 +5681,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.activityGate.007": { zh: "已自动停止「{p1}」：{p2}。（{p4}）", en: "Stopped “{p1}” automatically: {p2}. ({p4})" },
   "core.mining.037": { zh: "已切换矿带：停掉「{p1}」的开采（本趟 {p3} 单位留在船上），改采「{p2}」。", en: "Switched belts: stopped mining “{p1}” ({p3} units stay aboard this run) and started on “{p2}”." },
   "core.salvaging.028": { zh: "已切换打捞点：停掉「{p1}」的打捞（本趟约 {p3} m³ 当量留在船上），改去「{p2}」。", en: "Switched salvage sites: stopped salvaging “{p1}” (about {p3} m³ aboard this run) and moved to “{p2}”." },
+  "core.salvaging.029": { zh: "打捞已停止：{p1} 从「{p2}」返航空间站{p3}——约 {p4} 秒后到港。", en: "Salvage stopped: {p1} is returning to the station from “{p2}”{p3} — docking in about {p4} seconds." },
+  "core.mining.042": { zh: "开采已停止：{p1} 从「{p2}」返航空间站{p3}——约 {p4} 秒后到港。", en: "Mining stopped: {p1} is returning to the station from “{p2}”{p3} — docking in about {p4} seconds." },
+  "core.mining.038": { zh: "{p1} 已随开采停止返航到港：原矿已卸入物品仓库（{p2} 单位）。", en: "{p1} has returned to port after mining stopped: the ore was unloaded into the item warehouse ({p2} units)." },
+  "core.mining.039": { zh: "{p1} 已随打捞停止返航到港：残骸已卸入物品仓库（{p2} m³ 当量）。", en: "{p1} has returned to port after salvage stopped: the wrecks were unloaded into the item warehouse ({p2} m³ equivalent)." },
+  "core.mining.040": { zh: "{p1} 已随打捞停止返航到港（货仓为空）。", en: "{p1} has returned to port after salvage stopped (empty hold)." },
+  "core.mining.041": { zh: "{p1} 已随开采停止返航到港（货仓为空）。", en: "{p1} has returned to port after mining stopped (empty hold)." },
   /**
    * **参数行的"行名"与"值"要分成两条**（**2026-09-27 船长报障**：「鱿蜂结构层出现了错误文本：
    * 机群结构层 +{p1}」）。

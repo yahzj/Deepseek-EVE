@@ -190,10 +190,10 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
     expect(state.salvaging.active).toBe(false) // 作业随换船结束（不再以新船"续捞"）
     expect(state.shipReturns[oldShip]).toBeDefined() // 旧船善后返航账本
     expect(state.salvaging.autoCycle).toBe(true) // 循环偏好跨趟保留
-    expect(state.logs.some((l) => l.text.includes('打捞已随换船结束'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('打捞已停止'))).toBe(true)
     advanceShipReturns(state, 60_000, ctx) // 覆盖善后返航腿（debugQuick 1 秒）
     expect(state.shipReturns[oldShip]).toBeUndefined() // 到港清账
-    expect(state.logs.some((l) => l.text.includes('打捞善后返航到港'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('已随打捞停止返航到港'))).toBe(true)
     expect(countWare(state, 'wreck-ano-far')).toBeGreaterThan(0) // 残骸已卸入物品仓库
   })
 
@@ -214,7 +214,8 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
     expect(state.salvaging.active).toBe(false)
     const ret = state.shipReturns[oldShip]
     expect(ret).toBeDefined()
-    expect(ret!.reason).toBe('salvage')
+    /** ⚠ 2026-10-02：与手动停止同 reason（到港日志才说「打捞停止返航到港」而不是笼统的「善后」） */
+    expect(ret!.reason).toBe('salvageStop')
     expect(ret!.legMs).toBeGreaterThan(0)
     advanceShipReturns(state, 60_000, ctx)
     expect(state.shipReturns[oldShip]).toBeUndefined()
@@ -434,5 +435,44 @@ describe('完好舰体当场直发（卷B3⑨：命中 = 敌群回收彩头，�
     advanceAi(state, 60_000, ctx) // 出航（debugQuick 腿 1s）→ 打捞（基础 1s ÷0.4 = 2.5s/轮）
     expect(moduleBayOf(state)).toBeGreaterThan(baseline)
     expect(state.logs.some((l) => l.text.includes('完好舰体'))).toBe(true)
+  })
+})
+
+describe('停止打捞后的返航（船长 2026-10-02 报障）', () => {
+  /**
+   * 🔴 **船长原话照抄**：「**我发现一个BUG，当玩家终止残骸打捞活动后，舰船并不会返港。**」
+   *
+   * 复现（修前）：`stopSalvageOp` 只调 `salvageHalt` 清了作业态 —— **没有任何返港动作**
+   * （舰船"位置"本由作业态承载 ⇒ 作业一停，船就凭空停在原地，既不飞回来也不卸货）。
+   * 船长四答：**真实返航航程** / **到港自动卸入仓库** / **采矿一起修** / **进洞前自动停保持瞬停**。
+   *
+   * 本条钉住修好后的形状（与"打捞中切换驾驶"的善后返航**同一条链**）：
+   * 停止 ⇒ 建返航账本 ⇒ 推进到港 ⇒ 残骸入物品仓库 ＋ 清账 ＋ 两条日志。
+   */
+  it('手动停止后舰船真的返港：建返航账本 → 到港自动卸入仓库 → 清账', () => {
+    const state = fittedState(31)
+    const ctx = ctxOf()
+    state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
+    state.galaxyWrecks['galaxy-scrap'] = { density: 30, rare: 0 }
+    expect(startSalvageOp(state, 'galaxy-scrap', ctx).ok).toBe(true)
+    advanceSalvageOp(state, 5_000, ctx)
+    const shipId = state.shipId
+    const tripM3 = state.salvaging.tripM3
+    expect(tripM3, '本趟应有收获').toBeGreaterThan(0)
+    expect(stopSalvageOp(state, ctx)).toBe(true)
+    /** ① 停止后**必须**留下返航账本（修前这里什么都没有 ⇒ 舰船不返港） */
+    expect(state.shipReturns[shipId], '停止打捞后应留下返航账本').toBeDefined()
+    expect(state.shipReturns[shipId]!.reason, '与"换船善后"区分开').toBe('salvageStop')
+    expect(state.salvaging.active).toBe(false)
+    expect(
+      state.logs.some((l) => l.text.includes('打捞已停止') && l.text.includes('返航空间站')),
+      '应写一条"返航空间站"日志',
+    ).toBe(true)
+    /** ② 推进到港：残骸整仓卸入物品仓库 ＋ 清账 */
+    advanceShipReturns(state, 10 * 60_000, ctx)
+    expect(state.shipReturns[shipId], '到港后应清账').toBeUndefined()
+    expect(countWare(state, 'wreck-ano-far'), '残骸已卸入物品仓库').toBeGreaterThan(0)
+    expect(countItem(state, 'wreck-ano-far'), '船上已清空').toBe(0)
+    expect(state.logs.some((l) => l.text.includes('已随打捞停止返航到港'))).toBe(true)
   })
 })

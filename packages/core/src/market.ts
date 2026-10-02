@@ -1810,12 +1810,17 @@ export function shipSellable(state: GameState, shipId: string): { ok: boolean; r
   if (state.shipId === shipId) return { ok: false, reason: '正在驾驶的船不能出售。' }
   if (state.aiAssignments[shipId]) return { ok: false, reason: 'AI 任务执行中的船不能出售，先取消指派。' }
   if (isShipLocked(state, shipId)) return { ok: false, reason: '该船已锁定（防误操作）：先到舰船页解锁。' }
-  if (shipInReturn(state, shipId)) return { ok: false, reason: '该船正在返航卸货（换船善后），到港后才能出售。' }
   const cargoUnits = Object.values(fleetShip.cargo).reduce((a, b) => a + b, 0)
   if (cargoUnits > 0) return { ok: false, reason: '货仓里有物品，请先清空。' }
   if (allFittedIds(fleetShip.fitted).length > 0) {
     return { ok: false, reason: '还装着模块，请先卸下。' }
   }
+  /**
+   * ⚠ **顺序说明**（**2026-10-02**）：「正在返航」这一条**移到"装备/货载"之后**——
+   * 先报玩家**自己就能立刻解决**的那一条（卸模块 / 清货仓），再报"得等它飞回来"那一条。
+   * 原顺序把返航拦在最前 ⇒ "装着模块 ＋ 正在返航"时只说返航，玩家卸完模块才发现还得等。
+   */
+  if (shipInReturn(state, shipId)) return { ok: false, reason: '该船正在返航卸货（换船善后），到港后才能出售。' }
   // 舰船插件（船长 2026-09-26：「装有插件的舰船……也不能挂卖」）——与入仓共用同一判据单点
   const plugBlock = plugBlockReasonOf(state, shipId)
   if (plugBlock) return { ok: false, reason: plugBlock.text }

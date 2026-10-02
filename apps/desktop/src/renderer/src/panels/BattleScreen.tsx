@@ -416,14 +416,29 @@ const meSpeedRef = useRef(200)
     }>
   >([]);
   /**
-   * **闪现跃迁演出登记**（**船长 2026-10-01 令**：「闪现时候要给舰船一个闪现的动画」）：
-   * 键 = 敌舰战斗 tag，值 = **触发时刻**（渲染层时钟）。
+   * **闪现跃迁演出登记**（**船长 2026-10-01/02 三次令**）：
+   * 键 = 敌舰战斗 tag，值 = 本段演出的三个**界面时钟**时刻（`vanish` 消失 / `move` 位移兑现 /
+   * `appear` 出现）＋ 段长。渲染层据此判"该隐了 / 该在新位置淡入了"。
    *
-   * 数据来源 = 引擎推的 `fx.blink` 事件（`combat.markFoeBlink` 成功时推一条，与捕获网同款承载）。
-   * 消费方式 = fx 循环里登记 → 敌舰渲染时按 `BLINK_ANIM_MS` 判 `is-blink` 类 → 每帧清理过期项。
-   * ⚠ **不做逐帧 JS 动画**：只加/摘一个类，动画本身交给 CSS（与 `is-arriving` / 坠落演出同一纪律）。
+   * 数据来源 = **引擎的 `battle.foeBlinkQueue` 时刻表**（游戏毫秒）＋ `fx.blink` 事件触发的换算：
+   * 每见到一条新事件（同上一次快照比对），就按 `(atMs − 当前战斗刻) / speedX` 换算成**真实毫秒延迟**
+   * 写进本表。⚠ 这条换算是必需的：引擎的 `atMs` 是**游戏时钟**、动画跑的是**真实时钟**（倍速下不同步）。
+   *
+   * 🔴 **2026-10-02 修（船长实机反馈）**：位移改为**引擎在 `moveAtMs` 才兑现**，界面这里同步改成
+   * **三段**（消失 1/3 → 等待 1/3 → 出现在新位置 1/3）——旧版对半劈 ⇒ 中间那段"发生时间等待"没了。
+   * ⚠ **不做逐帧 JS 动画**：只加/摘类，动画交给 CSS（与 `is-arriving`/坠落演出同一纪律）。
    */
-  const blinkRef = useRef<Map<string, number>>(new Map());
+  const blinkRef = useRef<Map<string, { vanish: number; move: number; appear: number; segMs: number }>>(new Map());
+  /**
+   * **闪现光柱的待播/在播表**（**船长 2026-10-02**：「**在对应的时间节点播放一个特效**」）——
+   * `at` = 该柱的**真实毫秒**时刻、`until` = 播完即清理、`el` = 已建出来的 DOM（不查 DOM，省每帧 query）。
+   *
+   * ⚠ 排期（`planBlinkPillars`）与建/删 DOM（`syncBlinkPillarDom`）**都在 RAF 循环里**，**不走 React**：
+   * 闪现期间距离常常不变 ⇒ 等不到重渲染（**船长 2026-10-02 第二次报障的根因**，见 `planBlinkPillars` 头注）。
+   */
+  const blinkFxRef = useRef<BlinkPillarFx[]>([]);
+  /** `planBlinkPillars` 的去重集合（键 `tag:queuedMs`；换战斗时清空）——每拍都会看见同一段几十次 */
+  const blinkSeenRef = useRef<Set<string>>(new Set())
   /** 每个机型**上一帧**渲染的机体数（击落时用它定位"本帧即将消失的末位机体"） */
   const dronePrevShowRef = useRef<Map<string, number>>(new Map())
   const visDistRef = useRef(0)
@@ -672,6 +687,10 @@ const meSpeedRef = useRef(200)
         corpseAtRef.current.clear()
         prevHpRef.current.clear()
         hpInitRef.current = false
+        /** ⚠ 闪现光柱的两本账也要清（`fxSeq` 与 `foeBlinkQueue` 都是**逐场**的） */
+        blinkSeenRef.current.clear()
+        for (const p of blinkFxRef.current) p.el?.remove()
+        blinkFxRef.current.length = 0
         const anchorId = b.myFleet?.[0]?.shipId ?? engine.state.shipId
         const spec = createPlayerSpec(engine.state, engine.ctx, anchorId)
         meSpeedRef.current = spec?.speedMps ?? 200
@@ -700,6 +719,14 @@ const meSpeedRef = useRef(200)
         }
       }
       setSmoothM((old) => (old === null || Math.abs(old - vis) >= 0.05 ? vis : old))
+      /**
+       * 🔴 **闪现光柱：排期 ＋ 建/删 DOM**（**船长 2026-10-02 两次实机报障**）——
+       * 两件事都必须在这里做（RAF、**不走 React**）：演出期间距离**可能整段不变**
+       * （敌舰刚闪到自己的期望距离、我方也在期望距离上 ⇒ 双方机动都归零）⇒ `setSmoothM` 不触发
+       * 重渲染 ⇒ "推入 ref 等渲染"永远出不来。⚠ 用 `performance.now()` 口径（本表的 `at/until` 就是它）。
+       */
+      planBlinkPillars(b, blinkSeenRef.current, blinkFxRef.current, now)
+      syncBlinkPillarDom(blinkFxRef.current, foeColRef.current, now)
 
       // ── 背景视差滚动（2026-09-05 船长规则）：玩家前进（船向右、朝敌接近）→ 星空向左流；
       // 后退（想拉开、船向左退）→ 星空向右流。速度与「驾驶船战斗速度」挂钩（技能已折算）——
@@ -1028,15 +1055,15 @@ const meSpeedRef = useRef(200)
      一起收拢一次，存活舰补位不再压着爆炸动画走。几何/弹道按视觉行序（含占位尸骸）计算。 */
   const WRECK_FADE_MS = 520 // 尸骸灰舰淡出时长（爆炸环演出期结束后的收尾段）
   /**
-   * 🔴 **闪现演出时长**（**船长 2026-10-01 令**：「**闪现的发生时间大概200ms**」＋
-   * 「**发生过程需要搭配动画效果：闪现开始-播放动画的同时舰船消失-等待发生时间-在新位置播放动画
-   * 同时舰船出现**」）。
+   * 🔴 **闪现演出时长 = 引擎旋钮**（**船长 2026-10-02 令**：「**给闪现发生速度做一个旋钮，
+   * 我感觉现在可能太短导致看不出来，先将整个过程延长到2000ms**」）。
    *
-   * ⚠ **与引擎逐字一致**：`combat.ts` 的 `FOE_BLINK_ANIM_MS = 200`
-   * 与 `styles*.css` 的 `app-bts-blink` / `app-bts-blink-in`（各 200ms）。
-   * 舰船在这 200ms 里**整体消失**（`visibility: hidden`），到点在新位置播"出现"动画。
+   * 数据源 = `balance.battle.foeBlinkProcessMs`（**单次闪现的整个动画过程**，游戏毫秒口径）——
+   * 界面把它**对半劈**：前半段播 `app-bts-blink-out`（消失）、后半段播 `app-bts-blink-in`（出现）。
+   * ⚠ 改这个数**不用改界面**：脚本内联 `--blink-ms` 覆盖三份 `styles*.css` 的基准值
+   * （基准 = 200ms，只作缺省与"三份一致"的锚点）。
    */
-  const BLINK_ANIM_MS = 200
+  const blinkProcessMs = Math.max(1, Math.round(engine.ctx.balance.battle.foeBlinkProcessMs ?? 200))
   const scanDroppable = (): Set<string> => {
     const drop = new Set<string>()
     let laterVisible = false
@@ -1104,15 +1131,34 @@ const meSpeedRef = useRef(200)
     for (const fx of arrivals) {
       fxSeqRef.current = fx.seq
       /**
-       * **闪现跃迁演出**（**船长 2026-10-01 两次令**）——R 族「瞬光跃迁仪」触发时引擎推这一条（**不是开火**）。
-       * 与下面 `droneDown` 同款：必须**提前拦下并 continue**，否则会被当成一次开火（画弹道 + 打命中闪光）。
+       * **闪现跃迁演出**（**船长 2026-10-01/02 三次令**）——R 族「瞬光跃迁仪」触发时引擎推这一条
+       * （**不是开火**）。与下面 `droneDown` 同款：必须**提前拦下并 continue**。
        *
-       * 登记后由敌舰渲染按 `BLINK_ANIM_MS` 分两段演（**船长要的"消失 → 等待 → 出现"**）：
-       * 前 200ms 加 `is-blink-hidden`（淡出到不可见）、后 200ms 加 `is-blink`（在新位置淡入）；
-       * 每帧清理两段都过期的项。
+       * 🔴 **消费引擎的 `atMs` 与三段时刻表**（2026-10-02 修）：
+       * 引擎按"同时触发的多个闪现**排队依次发生**"排好每段的三段时刻（消失 / **位移兑现** / 出现），
+       * 界面以前一律按"事件到达时刻"登记 ⇒ **同一帧到达的几段会被抹平、一起闪**（排队白排）。
+       * 现在按 `(atMs − 当前战斗刻)` 算出"还要等多久才开始播"，并**除以当时的倍速**
+       * （引擎的 `atMs` 是**游戏毫秒**，动画跑的是**真实毫秒**）。
        */
       if (fx.blink) {
-        blinkRef.current.set(fx.tag, now)
+        const seg = battle.foeBlinkQueue?.[fx.tag]
+        if (seg) {
+          const toReal = (gameMs: number): number =>
+            (gameMs - (battle.lastTickGameMs ?? fx.atMs)) / Math.max(0.01, fx.speedX ?? 1)
+          const segMs = (seg.appearMs - seg.vanishMs) / Math.max(0.01, fx.speedX ?? 1)
+          blinkRef.current.set(fx.tag, {
+            vanish: now + toReal(seg.vanishMs),
+            move: now + toReal(seg.moveAtMs),
+            appear: now + toReal(seg.appearMs),
+            segMs,
+          })
+        }
+        /**
+         * 🔴 **光柱不在这里排**（**船长 2026-10-02 第二次报障「闪现特效依旧不存在」的根因**）——
+         * 这一段是**渲染体**，而它要等 `setSmoothM` 变号才会跑；闪现期间双方机动常常都归零
+         * ⇒ 距离不变 ⇒ **整段演出一次都不重渲染** ⇒ 排期与建 DOM 一起落空。
+         * 现在统一由 **RAF 循环**的 `planBlinkPillars` 直接从引擎时刻表排（见那个函数头注）。
+         */
         continue
       }
       /**
@@ -1494,12 +1540,14 @@ const meSpeedRef = useRef(200)
       (d) => now - d.born < DRONE_DOWN_FREEZE_MS + DRONE_DOWN_LIFE,
     )
   }
-  // **闪现跃迁演出**：两段（消失 200ms ＋ 出现 200ms）都过完才清（清了才有下一次的重新触发）
+  // **闪现跃迁演出**：整段（消失 ＋ 等待 ＋ 出现）过完才清（清了才有下一次的重新触发）
   if (blinkRef.current.size > 0) {
-    for (const [tag, at] of blinkRef.current) {
-      if (now - at >= BLINK_ANIM_MS * 2) blinkRef.current.delete(tag)
+    for (const [tag, b] of blinkRef.current) {
+      if (now - b.appear >= b.segMs / 3) blinkRef.current.delete(tag)
     }
   }
+  // ⚠ **闪现光柱的清理移到 RAF 里了**（`syncBlinkPillarDom`：它同时要摘 DOM，**不能只清表**）——
+  //   这里若也 filter，会留下已经不该存在的表项（DOM 已摘、表还在 ⇒ 那根柱再也建不出来）。
 
   /* ── 敌方单位被击毁检测（hp 归零的瞬间登记尸骸 + 爆炸计划，演出与战斗是否结束无关）──
      ⚠ **2026-09-14 船长报障修复（甲案）**：「血条打空后，舰船形象和血条都不清理消除」——
@@ -2142,14 +2190,33 @@ const meSpeedRef = useRef(200)
     const corpseOn = sinceBoom >= 0 // 致死弹道着弹后才是真尸骸；着弹前原样停留
     const locked = !corpseOn && tag === combat.lockTag
     /**
-     * 🔴 **闪现跃迁演出**（**船长 2026-10-01 令**）：引擎推 `fx.blink` 后的 `BLINK_ANIM_MS`（200ms）里，
-     * 本舰**整体消失**（`blinkHide`）——这正是船长要的"播放动画的同时舰船消失 → 等待发生时间 →
-     * 在新位置播放动画同时舰船出现"。到点在新位置播 `is-blink`（出现动画）。
+     * 🔴 **闪现跃迁演出 · 三段**（**船长 2026-10-01 原话 ＋ 2026-10-02 实机修正**）：
+     *
+     * > 「**发生过程需要搭配动画效果：闪现开始-播放动画的同时舰船消失-等待发生时间-在新位置播放动画
+     * > 同时舰船出现**」＋「**我原先中间插入的发生时间等待怎么被取消了？移动的时间节点应该放在
+     * > 发生时间的等待处**」
+     *
+     * 三段**各占整段的 1/3**（时刻由引擎给，见 fx 登记那处）：
+     * - `blinkHide`：**消失**段（`vanish → move`）——淡出，且**位置仍是旧位置**；
+     * - 中间段（`move → appear`）：**不可见**（不挂任何类 ⇒ 无动画 ⇒ 停在已换好的新位置且全透明）；
+     * - `blinkOn`：**出现**段（`appear → appear + 1/3`）——在新位置淡入。
      */
-    const blinkAt = blinkRef.current.get(tag)
-    const blinkElapsed = blinkAt === undefined ? Number.POSITIVE_INFINITY : now - blinkAt
-    const blinkHide = blinkElapsed < BLINK_ANIM_MS
-    const blinkOn = blinkElapsed >= BLINK_ANIM_MS && blinkElapsed < BLINK_ANIM_MS * 2
+    const blinkSeg = blinkRef.current.get(tag)
+    /** 消失段动画时长 = 整段的 1/3（出现段已按船长令取消动画） */
+    const blinkAnimMs = blinkSeg === undefined ? 0 : blinkSeg.segMs / 3
+    /** ① 消失段（`vanish → move`）：播淡出，**位置仍是旧位置** */
+    const blinkOut = blinkSeg !== undefined && now >= blinkSeg.vanish && now < blinkSeg.move
+    /** ② 等待段（`move → appear`）：**不可见**（引擎已在这一瞬把位置换好） */
+    const blinkWait = blinkSeg !== undefined && now >= blinkSeg.move && now < blinkSeg.appear
+    /**
+     * ③ **出现：不再播任何动画**（**船长 2026-10-02 令**：「**既然基线动画重新生效会再播一遍，那么就取消
+     * ③ 出现部分的视觉表现**」）——到点**直接显示**在新位置，视觉交给两根光柱。
+     *
+     * ⚠ 光柱**不走这里**（**2026-10-02 两次实机报障后的定型**：船长「并没有看到特效」/「特效依旧不存在」）——
+     * 它由 **RAF 循环**的 `planBlinkPillars` ＋ `syncBlinkPillarDom` 排期并建 DOM，
+     * 而且**挂在列盒**上（不是本单位里：本单位在等待段 `opacity: 0`，子元素会被一起压成全透明）。
+     */
+    const blinkOn = false
     const boomLive = corpseOn && sinceBoom < BOOM_LIFE
     const fadeT = sinceBoom >= BOOM_LIFE ? clamp01((sinceBoom - BOOM_LIFE) / WRECK_FADE_MS) : 0
     /** 本舰是否正在**飞入**（逐舰入场：首波按 `arrivalSide`，此后按引擎 `enteredAtMs`） */
@@ -2158,7 +2225,7 @@ const meSpeedRef = useRef(200)
       <div
         key={tag}
         data-tag={tag}
-        className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}${arriving ? ' is-arriving' : ''}${blinkOn ? ' is-blink' : ''}${blinkHide ? ' is-blink-hidden' : ''}`}
+        className={`app-bts-unit${corpseOn ? ' is-corpse' : ''}${locked ? ' is-locked' : ''}${arriving ? ' is-arriving' : ''}${blinkOn ? ' is-blink' : ''}${blinkOut ? ' is-blink-out' : ''}${blinkWait ? ' is-blink-hidden' : ''}`}
         /* 列盒内的水平居中 + **舰位与锚点同源**（2026-09-25 修船长报障「第二排右舰血条压住左舰
            数字」）：本单位的宽度由外层**列盒**给定（= 本列列宽），舰在盒内居中 ⇒ 舰中心 ==
            `foeColLeft(列) + 列宽/2`（= `layout()` 的锚点）。旧写法（`marginLeft = (列宽−舰宽)/2`
@@ -2177,6 +2244,12 @@ const meSpeedRef = useRef(200)
                 '--arrive-delay': `${arrivalSide === 'foe' ? rowIdx * ARRIVAL_STAGGER_MS : 0}ms`,
               } as CSSProperties)
             : {}),
+          /**
+           * **闪现的"消失"淡出时长**（**船长 2026-10-02 旋钮**）：只在消失段给 `--blink-ms`
+           * （= 整段的 1/3），三份 `styles*.css` 的 `app-bts-blink-out` 读它
+           * ⇒ **改 `balance.battle.foeBlinkProcessMs` 就够，界面零改动**。
+           */
+          ...(blinkOut ? ({ '--blink-ms': `${blinkAnimMs}ms` } as CSSProperties) : {}),
         }}
       >
         {/* 淡出作用于舰体容器（外层 .app-bts-unit 有入场动画 fill 占位，透明度须压在子层）；
@@ -2190,6 +2263,13 @@ const meSpeedRef = useRef(200)
             size={size}
           />
         </span>
+        {/**
+         * 🔴 **闪现光柱不在 JSX 里**（**2026-10-02 两次实机报障「并没有看到特效」/「特效依旧不存在」后的定型**）——
+         * 它由 **RAF 循环**的 `planBlinkPillars`（按引擎 `foeBlinkQueue` 排期）＋ `syncBlinkPillarDom`
+         * （到点建/按时摘）直接操作 DOM：**排期不经过 React**（闪现时双方机动常常都归零 ⇒ 距离不变
+         * ⇒ 不重渲染），**DOM 也不挂在本单位里**（本单位在等待段 `opacity: 0`，子元素会被一起压成全透明
+         * ⇒ 挂列盒当兄弟节点）。形状（52 道竖线 / 渐变 / 上下渐隐）见模块级的 `buildBlinkPillarEl`。
+         */}
         {/* 舰名：**第一排**浮在舰体上方（与改动前一致）；**第二排**（其上方是第一排的舰体）改由该舰血条标签承载
             机库备用机（图标 ×N）跟在**各自的名字右边**（2026-09-12 船长） */}
         {!isRank2 ? (
@@ -3095,4 +3175,225 @@ const meSpeedRef = useRef(200)
 /** ammo 缩写键（与核心引擎一致） */
 function ammoKey(t: DamageType): 'kin' | 'exp' | 'pla' {
   return t === 'kinetic' ? 'kin' : t === 'explosive' ? 'exp' : 'pla'
+}
+
+/**
+ * **闪现光柱的时长**（真实毫秒）——**必须与三份 `styles*.css` 的 `@keyframes app-bts-blink-pillar` 同值**
+ * （420ms）。它同时是"这根柱什么时候从表里摘掉"的判据 ⇒ 界面与 CSS 只要一处改就得两处一起改。
+ */
+const BLINK_FX_MS = 420
+
+/** 一根待播/在播的闪现光柱（真实毫秒时刻；`el` = 已建出来的 DOM，避免每帧查 DOM） */
+type BlinkPillarFx = { key: string; tag: string; at: number; until: number; el?: SVGSVGElement }
+
+/**
+ * 🔴 **排"闪现光柱"**（**船长 2026-10-02 实机报障「闪现特效依旧不存在」后的第二修**）——
+ * **纯函数、由 RAF 循环每拍调用**，不经过 React。
+ *
+ * 数据源 = **引擎自己的时刻表 `battle.foeBlinkQueue`**（**不是** `fx` 事件环）：
+ * - `fx` 是**48 条环缓冲**（`pushBattleFx`：`fx.length > 48` 就丢最旧）⇒ 编队战时几十毫秒就能把一条
+ *   闪现事件挤出去，界面永远读不到它；而队列项从 `queuedMs` 一直留到 `appearMs`（= 整个 2000ms 过程），
+ *   又**本来就是权威时刻表**（`vanishMs` / `moveAtMs` / `appearMs` 三段）⇒ 直接读它最稳。
+ * - `seen` = "这段已经排过了"的去重集合（键 `tag:queuedMs`，换战斗时清空）——
+ *   本函数每 33ms 被调一次，同一段会连着看见几十次，不去重就会排几十根。
+ *
+ * ⚠ **两段都要"迟到也能补"**：换算出来的时刻若已过去 ⇒ 钳到 `now` 立刻播（否则会永远排在将来）；
+ *   但**①（消失柱）只在位移还没兑现时排**——晚了的话舰体已经在新位置，补一根"旧位置"的柱是**错的**。
+ * ⚠ `b.speedX` = 战斗倍速：引擎给的是**游戏毫秒**，动画跑的是**真实毫秒** ⇒ 必须除一下。
+ */
+function planBlinkPillars(
+  b:
+    | {
+        foeBlinkQueue?: Record<string, { queuedMs: number; vanishMs: number; moveAtMs: number; appearMs: number }>
+        lastTickGameMs?: number
+        speedX?: number
+      }
+    | null
+    | undefined,
+  seen: Set<string>,
+  out: BlinkPillarFx[],
+  now: number,
+): void {
+  const q = b?.foeBlinkQueue
+  if (!b || !q) return
+  const last = b.lastTickGameMs ?? 0
+  const speed = Math.max(0.01, b.speedX ?? 1)
+  /** 游戏毫秒 → "从现在起还要等多少真实毫秒"（负数 = 那个节点已经过去了） */
+  const toReal = (gameMs: number): number => (gameMs - last) / speed
+  for (const [tag, seg] of Object.entries(q)) {
+    const key = `${tag}:${seg.queuedMs}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    /**
+     * ⚠ **DOM id 与 `url(#…)` 只吃安全字符**：键里带 `:`（tag 与时刻的分隔）会被当成伪类/命名空间
+     * ⇒ 渐变与蒙版的 `url(#blink-pillar-line-${key})` 引用会失效（光柱画成纯黑或干脆不画）。
+     * 这里统一换成 `-`（tag 本身是 `w0-foe-1` 这类，只可能多出分隔符）。
+     */
+    const uniq = key.replace(/[^A-Za-z0-9_-]/g, '-')
+    /** ① 消失节点（**旧位置**）：只有"还没位移"才排 —— 晚了就跳过，宁可少一根也不画错位置 */
+    if (toReal(seg.moveAtMs) > 0) {
+      const vanishAt = now + Math.max(0, toReal(seg.vanishMs))
+      out.push({ key: `${uniq}-a`, tag, at: vanishAt, until: vanishAt + BLINK_FX_MS })
+    }
+    /** ② 出现节点（**新位置**）：船长那句「在新位置播放动画同时舰船出现」的"同时" ⇒ 与 `appearMs` 对齐 */
+    const appearDelay = toReal(seg.appearMs)
+    if (appearDelay > -BLINK_FX_MS) {
+      const appearAt = now + Math.max(0, appearDelay)
+      out.push({ key: `${uniq}-b`, tag, at: appearAt, until: appearAt + BLINK_FX_MS })
+    }
+  }
+}
+
+/**
+ * 🔴 **闪现特效：竖直光柱**（**船长 2026-10-02 令**：「**特效我更希望接近大鲸鱼根目录的『闪现效果参考.png』**」）
+ * ——做成一个**脱离 React 的 DOM 工厂**。
+ *
+ * ⚠ **为什么必须走 DOM 而不是 JSX**（**2026-10-02 实测踩到**：船长「**我进行了实机测试，并没有看到特效**」）：
+ * 本面板的逐帧动画**全部由 RAF 循环直接操作 DOM**（见 `drive`），React 只在"距离变化 ≥ 0.05"等少数时刻重渲染；
+ * 而闪现演出期间**双方机动常常都归零**（敌舰刚闪到自己的期望距离、我方也在期望距离上）⇒ 距离不变
+ * ⇒ `setSmoothM` 不触发重渲染 ⇒ 把特效"推入 ref 等重渲染"**根本等不到**。
+ *
+ * 形制（按参考图）：**多道竖直细光柱**——中心最亮（青白）→ 两侧渐深（青 → 深蓝），整根**上下渐隐**。
+ * 两个时间点各爆一根：① 消失（旧位置）② 出现（新位置）。
+ *
+ * ⚠ 竖向与舰体朝向**无关**（`.app-sprite` 的翻转只在它自己的 `svg g` 里，不影响兄弟节点）。
+ * ⚠ 渐变/蒙版 id 必须**逐元素唯一**，否则同页多根柱会互相抢 defs。
+ * @param size 舰体尺寸（px）——光柱宽高按它换算
+ */
+function buildBlinkPillarEl(uniq: string, size: number): SVGSVGElement {
+  const NS = 'http://www.w3.org/2000/svg'
+  const w = Math.max(24, Math.round(size * 0.85))
+  const h = Math.max(48, Math.round(size * 2))
+  const svg = document.createElementNS(NS, 'svg')
+  svg.setAttribute('class', 'app-bts-blink-pillar')
+  svg.setAttribute('viewBox', '-50 -95 100 190')
+  svg.setAttribute('preserveAspectRatio', 'none')
+  svg.setAttribute('aria-hidden', 'true')
+  svg.style.width = `${w}px`
+  svg.style.height = `${h}px`
+  svg.style.left = '50%'
+  svg.style.top = '50%'
+  svg.style.marginLeft = `${-Math.round(w / 2)}px`
+  svg.style.marginTop = `${-Math.round(h / 2)}px`
+  svg.style.overflow = 'visible'
+  const defs = document.createElementNS(NS, 'defs')
+  /**
+   * 🔴🔴 **两个渐变都必须用 `userSpaceOnUse`**（**2026-10-02 抓到真凶**）：
+   * 光柱的 52 道线都是**绝对竖直**的（`x1 === x2`）⇒ 它们的**包围盒宽度为 0**，而渐变缺省走
+   * `objectBoundingBox` —— 按 SVG 规范，**引用元素的包围盒只要有一边为 0，该渐变即"不成立"**，
+   * 于是**整根线一个像素都不画**（实测：元素在、`opacity 0.999965`、52 条 `<line>` 齐全、
+   * `stroke=url(#…)` 引用也对，**截图上柱位置全黑**）。
+   * ⇒ 坐标一律改成**用户空间**（`viewBox = -50 -95 100 190`，纵向从 -95 到 95），与线两端逐字对齐。
+   */
+  const lineGrad = document.createElementNS(NS, 'linearGradient')
+  lineGrad.setAttribute('id', `blink-pillar-line-${uniq}`)
+  lineGrad.setAttribute('gradientUnits', 'userSpaceOnUse')
+  lineGrad.setAttribute('x1', '0')
+  lineGrad.setAttribute('y1', '-95')
+  lineGrad.setAttribute('x2', '0')
+  lineGrad.setAttribute('y2', '95')
+  for (const [off, color] of [
+    ['0%', '#1a3f9e'],
+    ['42%', '#2ea8e0'],
+    ['58%', '#3fe0f0'],
+    ['100%', '#1a3f9e'],
+  ] as const) {
+    const st = document.createElementNS(NS, 'stop')
+    st.setAttribute('offset', off)
+    st.setAttribute('stop-color', color)
+    lineGrad.appendChild(st)
+  }
+  const fadeGrad = document.createElementNS(NS, 'linearGradient')
+  fadeGrad.setAttribute('id', `blink-pillar-fade-${uniq}`)
+  /** 同上：蒙版的明暗坡也走**用户空间**（与它铺的那块 `-95…95` 的矩形逐字对齐） */
+  fadeGrad.setAttribute('gradientUnits', 'userSpaceOnUse')
+  fadeGrad.setAttribute('x1', '0')
+  fadeGrad.setAttribute('y1', '-95')
+  fadeGrad.setAttribute('x2', '0')
+  fadeGrad.setAttribute('y2', '95')
+  for (const [off, color] of [
+    ['0%', '#000'],
+    ['25%', '#fff'],
+    ['75%', '#fff'],
+    ['100%', '#000'],
+  ] as const) {
+    const st = document.createElementNS(NS, 'stop')
+    st.setAttribute('offset', off)
+    st.setAttribute('stop-color', color)
+    fadeGrad.appendChild(st)
+  }
+  const mask = document.createElementNS(NS, 'mask')
+  mask.setAttribute('id', `blink-pillar-mask-${uniq}`)
+  mask.setAttribute('maskUnits', 'userSpaceOnUse')
+  mask.setAttribute('x', '-50')
+  mask.setAttribute('y', '-95')
+  mask.setAttribute('width', '100')
+  mask.setAttribute('height', '190')
+  const maskRect = document.createElementNS(NS, 'rect')
+  maskRect.setAttribute('x', '-50')
+  maskRect.setAttribute('y', '-95')
+  maskRect.setAttribute('width', '100')
+  maskRect.setAttribute('height', '190')
+  maskRect.setAttribute('fill', `url(#blink-pillar-fade-${uniq})`)
+  mask.appendChild(maskRect)
+  defs.append(lineGrad, fadeGrad, mask)
+  svg.appendChild(defs)
+  const g = document.createElementNS(NS, 'g')
+  g.setAttribute('mask', `url(#blink-pillar-mask-${uniq})`)
+  const N = 52
+  for (let i = 0; i < N; i++) {
+    /** 横向位置 -50 → 50；`d` = 离中心多远（0 = 中心最亮） */
+    const x = -50 + (i / (N - 1)) * 100
+    const d = Math.abs(x) / 50
+    const ln = document.createElementNS(NS, 'line')
+    ln.setAttribute('x1', String(x))
+    ln.setAttribute('y1', '-95')
+    ln.setAttribute('x2', String(x))
+    ln.setAttribute('y2', '95')
+    ln.setAttribute('stroke', `url(#blink-pillar-line-${uniq})`)
+    ln.setAttribute('stroke-width', String(0.45 + (1 - d) * 1.05))
+    ln.setAttribute('opacity', String(0.12 + Math.pow(1 - d, 1.6) * 0.85))
+    g.appendChild(ln)
+  }
+  svg.appendChild(g)
+  return svg
+}
+
+/**
+ * **把"到点的闪现光柱"建出来 / 把过期的删掉**（RAF 里每次调用；**不经过 React**）。
+ *
+ * - 建：按 `at` 到点的项，**按该舰此刻的几何**在列盒里插一根柱；
+ * - 删：`until` 过期的项，摘掉 DOM 并出表。
+ *
+ * 🔴 **为什么挂在列盒（`.app-bts-col`）而不是单位元素里**（**船长 2026-10-02 第二次报障的第二个根因**）：
+ * 单位在"等待段"挂着 `.is-blink-hidden { opacity: 0 }`（整段的 2/3，2000ms 旋钮下是 1333ms），
+ * 而**子元素的不透明度 = 父级 × 自身** ⇒ 挂在里面的光柱**恒为全透明**，怎么调都看不见。
+ * 挂到列盒当兄弟节点 ⇒ 不吃单位那层透明度，也顺带不再被单位的 `z-index`/动画上下文影响。
+ *
+ * ⚠ 位置用 `offsetLeft/offsetTop/offsetWidth/offsetHeight`（**布局像素**，与列盒同一坐标系），
+ * 不用 `getBoundingClientRect()`——后者带入场动画 `app-bts-foe-in` 的 `scale(.81)` 与舞台缩放，
+ * 拿它算会把光柱画小、画偏（实测踩到：`rectW=89 / offsetWidth=110`）。
+ * ⚠ 表里记 `el` 引用（不查 DOM），避免每帧 querySelector。
+ */
+function syncBlinkPillarDom(fxList: BlinkPillarFx[], root: HTMLElement | null, now: number): void {
+  for (let i = fxList.length - 1; i >= 0; i--) {
+    const fx = fxList[i]!
+    if (now >= fx.until) {
+      fx.el?.remove()
+      fxList.splice(i, 1)
+      continue
+    }
+    if (fx.el || now < fx.at || !root) continue
+    /** tag 里可能有 `w0-foe-1` 这类字符（连字符/数字都安全），但保险起见按属性值转义 */
+    const host = root.querySelector<HTMLElement>(`[data-tag="${CSS.escape(fx.tag)}"]`)
+    if (!host) continue
+    const w = host.offsetWidth || 96
+    const h = host.offsetHeight || 96
+    const el = buildBlinkPillarEl(fx.key, Math.max(w, h))
+    /** 居中到该舰此刻的位置（列盒 = 定位祖先；`buildBlinkPillarEl` 已给 `-w/2 / -h/2` 的外负边距） */
+    el.style.left = `${host.offsetLeft + w / 2}px`
+    el.style.top = `${host.offsetTop + h / 2}px`
+    root.appendChild(el)
+    fx.el = el
+  }
 }

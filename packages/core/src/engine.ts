@@ -19,7 +19,7 @@ import { addLog, MAX_SKILL_LEVEL } from './state'
 import type { CmdText, GameState, TrainingItem } from './state'
 import type { SimContext, SkillCatalog, SkillDef } from './types'
 import { skillLevelTimeMs, trainingTimeFactor } from './training'
-import { advanceMining, advanceShipReturns } from './mining'
+import { advanceMining, advanceShipReturns, retireMiningShip } from './mining'
 import { advanceStandby, advanceTransit, reconcileDockSanity } from './location'
 import { reconcilePilotShip } from './shipyard'
 import { advanceManufacturing } from './manufacturing'
@@ -43,7 +43,7 @@ import type { SettleStats } from './settleStats'
  * 编译后不留运行时引用）⇒ 运行时的边是**单向**的 engine → consumables，不会出现 TDZ。
  */
 import { syncBoostRenew } from './consumables'
-import { advanceSalvageOp } from './salvaging'
+import { advanceSalvageOp, retireSalvageShip } from './salvaging'
 import { advanceFindHumans, publishFindHumansWhenReady } from './onboarding'
 import { advanceComms } from './comms'
 import { FIRST_TASKS, advanceFirstChains, claimableFirstTasks, peakFirst } from './firstTasks'
@@ -206,6 +206,20 @@ export function advanceGame(
    */
   syncBoostRenew(state, ctx)
   advanceSkillQueue(state, d, ctx)
+  /**
+   * 🔴 **兑现"切活动自动停作业"的返航账本**（**船长 2026-10-02 报障**：「**正在采矿的舰船会自动
+   * 返航……但是打捞都没有**」）——`state.haltActivityForSwitch` 已经用**纯数据**建了一份占位账本
+   * （它不能 import 作业模块，否则成环、启动即崩），这里用**真值**重算腿长并写日志。
+   *
+   * ⚠ 必须在 `advanceMining` / `advanceSalvageOp` **之前**：那两支读 `active`，而本段只动 `shipReturns`。
+   * ⚠ 标记处理完即清（`pendingActivityReturn`）——它是瞬态信号。
+   */
+  if (state.pendingActivityReturn) {
+    const pending = state.pendingActivityReturn
+    state.pendingActivityReturn = null
+    if (pending.kind === 'mining') retireMiningShip(state, ctx, { beltId: pending.id, preserveExisting: true })
+    else retireSalvageShip(state, ctx, { galaxyId: pending.id, preserveExisting: true })
+  }
   advanceMining(state, d, ctx)
   advanceSalvageOp(state, d, ctx)
   // B3 星系残骸密度：闲置漂移（正在打捞的星系挂起——打捞作业期不结算漂移）

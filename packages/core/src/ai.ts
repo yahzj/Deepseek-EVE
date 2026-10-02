@@ -76,6 +76,15 @@ export function countAiCore(state: GameState, type: AiCoreType): number {
 }
 
 /**
+ * **当前持有 ≥1 枚的核心档位**，按 `AI_CORE_ORDER` 序（basic → gamma → beta → alpha）——
+ * 界面"可用核心下拉"的**单一来源**（**2026-10-02 代码审查**：渲染层原先把这行 filter 抄了 8 处、
+ * 顺序字面量另抄了 3 份 ⇒ 收成单点；顺序一旦两处漂移，"默认选最高级"（`bestAiCoreOf`）就会和下拉对不上）。
+ */
+export function usableAiCoresOf(state: GameState): AiCoreType[] {
+  return AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
+}
+
+/**
  * **当前拥有的最高级 AI 核心**（**2026-09-23 船长令**：「**使用AI核心时，默认选择当前拥有的最高级核心**」）。
  *
  * 口径 = `AI_CORE_ORDER`（`basic → gamma → beta → alpha`，越靠后越高级）里**最靠后且数量 > 0** 的那一档；

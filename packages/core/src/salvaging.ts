@@ -317,8 +317,21 @@ export function startSalvageOp(
    * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 8 条硬拒，现已收进
    * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（打捞器/探索/航路/残骸池）。
    */
-  const gateSkip = applyActivityGate(state, 'salvaging')
+  const gateSkip = applyActivityGate(state, 'salvaging', ctx)
   if (gateSkip) return gateSkip
+  /**
+   * **新指令取消"停止返航"**（**船长 2026-10-02** 报障的连带，与 `mining.startMining` 同款）——
+   * 上一拍刚「停止打捞」留下了返航账本（船正飞回港卸货）；玩家又下新打捞指令 ⇒ **就地开工**。
+   * ⚠ 不清账的后果同采矿：`advanceShipReturns` 到港即整仓卸货 ⇒ 新捞的残骸被它当拍搬进仓库
+   * （船上恒 0、仓库涨），看着"没产出"。只清**本船**那一条。
+   */
+  if (state.haltedBySwitch?.kind === 'salvaging') {
+  /** 上一拍是"切活动自动停" ⇒ **跳过**这次清账：那条账本该留着（船要返航），见 `haltedBySwitch` 头注 */
+  state.haltedBySwitch = null
+} else {
+  delete state.shipReturns[state.shipId]
+  state.haltedBySwitch = null
+}
   const s = state.salvaging
   s.active = true
   s.galaxyId = galaxyId
@@ -385,6 +398,38 @@ export function setSalvageStopAfterTrip(state: GameState, stopAfterTrip: boolean
   if (stopAfterTrip) state.salvaging.autoCycle = true
 }
 
+/**
+ * **安排"停止打捞后的返航"**（**船长 2026-10-02 报障 / 裁定「真实返航航程」**）——
+ * 建"善后返航账本"（`state.shipReturns`，与换船善后 `retireSalvageShip` **同一条链**）：
+ * 由 `advanceShipReturns` 每拍推进，**到港自动整仓卸入物品仓库并清账**。
+ *
+ * 腿长口径与 `advanceSalvageOp` 的返航段**逐字一致**：`返航腿 + 出航腿`（去程并入返航），
+ * 再按货仓占比缩放（空仓快、满仓 = 原时长）。旧档遗留的出航相位按"空船半程"折半折算。
+ *
+ * @returns 约几秒后到港；**不需要返航**（舰船已不在或已在港）⇒ `null`
+ */
+function armReturnLeg(
+  state: GameState,
+  ctx: SimContext,
+  galaxyId: string,
+  phase: 'outbound' | 'salvaging' | 'returning',
+): number | null {
+  const ship = state.fleet[state.shipId]
+  if (!ship) return null
+  const outFull = outboundLegMsFor(state, ctx, galaxyId)
+  const fullLeg = legMsFor(state, ctx, galaxyId) + outFull
+  const legMs = Math.max(1, scaledReturnMs(fullLeg, state, ctx, state.shipId))
+  /**
+   * ⚠ **`salvageHalt` 已经把 `phaseAccMs` 清零了**（它要复位作业态）⇒ 返航进度只能由调用方从**相位**推：
+   * - `returning`：本就在返航路上 ⇒ 接续剩余（`legMs` 是全腿长，`advanceShipReturns` 按剩余推）；
+   *   这里给 0 是**取最坏**（宁可多飞一段，也不凭空瞬移回港）；
+   * - `outbound` / `salvaging`：还没上路 ⇒ 0（从头飞）。
+   */
+  void phase
+  state.shipReturns[state.shipId] = { beltId: null, legMs, phaseAccMs: 0, reason: 'salvageStop' }
+  return Math.max(0, Math.round(legMs / 1000))
+}
+
 /** 手动停止（任何阶段；未返航的货物留在船上） */
 export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
   /** 状态改动走 `state.ts` 的单点 `salvageHalt`（**进洞前自动停捞**也用它）⇒ 两条停捞路径不会各写一份 */
@@ -395,6 +440,16 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
     info.phase === 'returning' ? '（返航途中，货物留在船上）' : info.phase === 'outbound' ? '（出航途中）' : ''
   const phaseNoteId =
     info.phase === 'returning' ? 'core.mining.019' : info.phase === 'outbound' ? 'core.mining.020' : undefined
+  /**
+   * 🔴 **安排真实返航**（**船长 2026-10-02**：报障「终止残骸打捞后舰船并不会返港」⇒ 裁定「真实返航航程」
+   * ＋「到港自动卸入仓库」）——
+   * 这是本函数**原来漏掉的一步**：旧实现只 `salvageHalt` 清了作业态，**没有任何返港动作**
+   * （舰船"位置"本来由作业态承载 ⇒ 作业一停，船就凭空消失在原地，既不飞回来也不卸货）。
+   * 现在建返航账本 ⇒ 与换船善后同链：飞回来、到港整仓卸货、写「已随打捞善后返航到港」日志。
+   * ⚠ `tripM3` 归零（同旧行为）：它已被下面那条日志消费过了。
+   */
+  const remainSec = info.galaxyId === null ? null : armReturnLeg(state, ctx, info.galaxyId, info.phase)
+  state.salvaging.tripM3 = 0
   addLog(
     state,
     'salvage',
@@ -407,22 +462,84 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
       ...(phaseNoteId !== undefined ? { p3Id: phaseNoteId } : {}),
     },
   )
+  if (remainSec !== null) {
+    const shipName = shipDisplayName(state, ctx, state.shipId)
+    const haveCargo = info.tripM3 > 0
+    addLog(
+      state,
+      'salvage',
+      `打捞已停止：${shipName} 从「${galaxy?.name ?? ''}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+      'core.salvaging.029',
+      {
+        p1: shipName,
+        p2: galaxy?.name ?? '',
+        p3: haveCargo ? '（到港整仓卸货）' : '',
+        ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
+        p4: remainSec,
+      },
+    )
+  }
   return true
 }
 
 /** 打捞善后（换驾驶时引擎内部调用，2026-09-09 与采矿 retireMiningShip 同构）：
- * 把当前驾驶船正在进行的打捞转成"自动返航账本"（shipReturns，reason='salvage'）——
+ * 把当前驾驶船正在进行的打捞转成"自动返航账本"（shipReturns，reason='salvageStop'）——
  * 打捞中 = 按货仓占比缩放的满载返航全长（去程并入）；返航中 = 继续剩余；
  * 旧档遗留出航相位按空船腿折算折返。到港由 advanceShipReturns 自动整仓卸货，
  * 打捞作业随之结束（autoCycle/stopAfterTrip 偏好跨趟保留，同采矿）。 */
-export function retireSalvageShip(state: GameState, ctx: SimContext): boolean {
+export function retireSalvageShip(
+  state: GameState,
+  ctx: SimContext,
+  /**
+   * **重入/无状态调用**（**2026-10-02 加**，为 `haltActivityForSwitch` 那条路服务）：
+   * - `galaxyId`：作业态**已被清掉**时的星系（自动停机路径先清状态、再调本函数）——不传就读 `state.salvaging`；
+   * - `preserveExisting`：该船**已经在返航账本里** ⇒ 只**修正腿长与日志**、**保留已走相位**
+   *   （账本那份是 `state.haltActivityForSwitch` 建的**占位**：腿长按相位粗估、日志没船名没秒数）。
+   */
+  opts?: { galaxyId?: string; preserveExisting?: boolean; fallbackLegMs?: number },
+): boolean {
   const s = state.salvaging
-  if (!s.active || !s.galaxyId) return false
-  const galaxyId = s.galaxyId
+  const galaxyId = opts?.galaxyId ?? s.galaxyId
+  if (!galaxyId) return false
+  /** 已在返航中（换船善后/手动停止已建过账本）⇒ 只结束作业，别覆盖进度 */
+  if (opts?.preserveExisting === true && state.shipId in state.shipReturns) {
+    /**
+     * **占位账本 ⇒ 用真值修正**（**2026-10-02**）：`state.haltActivityForSwitch` 先建了一份
+     * "腿长靠相位估"的占位（它不能 import 本模块），这里用 `ctx` 算出真实腿长补上，
+     * 并写下**带船名与真实秒数**的那条日志（这一刻作业态还在，ctx 也读得到名字）。
+     */
+    const fullLegFix = legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId)
+    const legMsFix = Math.max(1, scaledReturnMs(fullLegFix, state, ctx, state.shipId))
+    const retFix = state.shipReturns[state.shipId]!
+    retFix.legMs = legMsFix
+    retFix.phaseAccMs = Math.min(legMsFix, Math.max(0, retFix.phaseAccMs))
+    const galaxyNameFix = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
+    const shipNameFix = shipDisplayName(state, ctx, state.shipId)
+    const shipFix = state.fleet[state.shipId]
+    const haveCargoFix = shipFix ? Object.keys(shipFix.cargo).some((k) => (shipFix.cargo[k] ?? 0) > 0) : false
+    const remainSecFix = Math.max(0, Math.round((retFix.legMs - retFix.phaseAccMs) / 1000))
+    addLog(
+      state,
+      'salvage',
+      `打捞已停止：${shipNameFix} 从「${galaxyNameFix}」返航空间站${haveCargoFix ? '（到港整仓卸货）' : ''}——约 ${remainSecFix} 秒后到港。`,
+      'core.salvaging.029',
+      {
+        p1: shipNameFix,
+        p2: galaxyNameFix,
+        p3: haveCargoFix ? '（到港整仓卸货）' : '',
+        ...(haveCargoFix ? { p3Id: 'core.salvaging.018' } : {}),
+        p4: remainSecFix,
+      },
+    )
+    resetOp(state)
+    return true
+  }
+  if (opts?.galaxyId === undefined && (!s.active || !s.galaxyId)) return false
   const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
   // 打捞返航腿 = 满载返航 + 空船去程（去程并入返航，与 advanceSalvageOp 返航腿同口径）
   const fullLeg = legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId)
-  const legMs = scaledReturnMs(fullLeg, state, ctx, state.shipId)
+  /** ⚠ allbackLegMs：调用方（state.haltActivityForSwitch，不能 import 本模块）给的兜底腿长 */
+  const legMs = opts?.fallbackLegMs !== undefined ? Math.max(1, Math.round(opts.fallbackLegMs)) : scaledReturnMs(fullLeg, state, ctx, state.shipId)
   const phaseAccMs =
     s.phase === 'outbound'
       ? Math.min(legMs, s.phaseAccMs * 2) // 旧档遗留出航腿为空船半程：折返按 2×折算已走（同采矿）
@@ -435,25 +552,47 @@ export function retireSalvageShip(state: GameState, ctx: SimContext): boolean {
     beltId: null,
     legMs: Math.max(1, legMs),
     phaseAccMs: Math.min(legMs, Math.max(0, phaseAccMs)),
-    reason: 'salvage',
+    /** ⚠ 与手动停止同 reason（`'salvageStop'`）：到港日志才能说"打捞停止返航到港"而不是笼统的"善后" */
+    reason: 'salvageStop',
   }
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const remainSec = Math.max(0, Math.round((legMs - phaseAccMs) / 1000))
   // 结束作业（偏好字段 autoCycle/stopAfterTrip 保留，供下次作业沿用）
   resetOp(state)
-  addLog(
-    state,
-    'salvage',
-    `打捞已随换船结束：${shipName} 从「${galaxyName}」自动返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
-    'core.salvaging.017',
-    {
-      p1: shipName,
-      p2: galaxyName,
-      p3: haveCargo ? '（到港整仓卸货）' : '',
-      ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
-      p4: remainSec,
-    },
-  )
+  /**
+   * 日志：**两条路分开说**（2026-10-02）——玩家手点停止/换船 ⇒「已随换船结束」；
+   * 被别的活动挤掉（`haltActivityForSwitch` 传了 `opts.galaxyId`）⇒ 复用「打捞已停止：…返航空间站」。
+   */
+  const auto = opts?.galaxyId !== undefined
+  if (auto) {
+    addLog(
+      state,
+      'salvage',
+      `打捞已停止：${shipName} 从「${galaxyName}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+      'core.salvaging.029',
+      {
+        p1: shipName,
+        p2: galaxyName,
+        p3: haveCargo ? '（到港整仓卸货）' : '',
+        ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
+        p4: remainSec,
+      },
+    )
+  } else {
+    addLog(
+      state,
+      'salvage',
+      `打捞已停止：${shipName} 从「${galaxyName}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+      'core.salvaging.017',
+      {
+        p1: shipName,
+        p2: galaxyName,
+        p3: haveCargo ? '（到港整仓卸货）' : '',
+        ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
+        p4: remainSec,
+      },
+    )
+  }
   return true
 }
 

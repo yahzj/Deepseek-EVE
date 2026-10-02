@@ -23,6 +23,7 @@
  */
 import type { CoreBlockReason } from './engine'
 import type { GameState } from './state'
+import type { SimContext } from './types'
 import { addLog, haltActivityForSwitch } from './state'
 
 /** 主控活动（10 项；与活动栏、`pilotUnavailableReason`、各 `start*` 入口一一对应） */
@@ -70,8 +71,21 @@ export const AUTO_HALT_KINDS: readonly MainActivityKind[] = [
  * 先警告再执行（船长：「像长途运输这种高收益高周期的才加一个警告」＋「1 写进警告」＝远征/快递同档）。
  * ⚠ **2026-09-27 起 `refine`（亲自开炉）/ `manufacturing`（亲自开线）也并入本档**——船长令
  * 「亲自开炉 · 亲自开线也添加警告」；两者在 `INTERRUPTIBLE` 里是 `true` ⇒ 走 `confirm`（警告后二击可切）。
+ *
+ * 🔴 **2026-10-02 补登记 `refine` / `manufacturing`**（本表原先只有四条，与上面这句注释、
+ * 与船长 09-27 的令**对不上**）：本表是**登记表**（"哪些档属于先警告这一档"），
+ * 但全仓**没有任何消费点**（`verdictOf` 的判据是"不在 `AUTO_HALT_KINDS` 里 ⇒ 走 confirm/reject"，
+ * 与档位天然等价）⇒ 漏登记**不改行为**，却让"登记表"变成一句不实的声明。
+ * 由 `arch:guard` 的 **F8** 钉住：两档**互斥且必须覆盖 `MainActivityKind` 的全部档位**。
  */
-export const WARN_KINDS: readonly MainActivityKind[] = ['hauling', 'expedition', 'deliver', 'lab']
+export const WARN_KINDS: readonly MainActivityKind[] = [
+  'hauling',
+  'expedition',
+  'deliver',
+  'lab',
+  'refine',
+  'manufacturing',
+]
 
 /**
  * 该活动**在途时能不能被中断**：`true` = 警告后可由玩家确认中断（长途运输：本段报酬拿不到）·
@@ -414,11 +428,11 @@ function skipOf(v: GateVerdict): ActivityGateSkip {
  * 非 null = **原样返回给界面**（`confirm` 与 `reject` 都按"没开工"处理——`confirm` 那句 warning 由界面
  * 两段确认消化，见 `ACTIVITY_CONFIRM_ID`）。
  */
-export function applyActivityGate(state: GameState, next: MainActivityKind): ActivityGateSkip | null {
+export function applyActivityGate(state: GameState, next: MainActivityKind, ctx?: SimContext): ActivityGateSkip | null {
   const v = gateMainActivity(state, next)
   if (v.action === 'ok') return null
   if (v.action === 'halt') {
-    if (v.current !== undefined) haltAndLog(state, v.current)
+    if (v.current !== undefined) haltAndLog(state, ctx, v.current)
     return null
   }
   return skipOf(v)
@@ -429,11 +443,11 @@ export function applyActivityGate(state: GameState, next: MainActivityKind): Act
  * ⚠ 采矿/打捞在"换驾驶"那条路上有**自己的善后**（旧船按阶段自动返航卸货，见 `shipyard.changeShip`）
  * ⇒ 那条路只用本函数**判据**（`gateMainActivityHandoff`），不要用它替你停机。
  */
-export function applyActivityHandoff(state: GameState, warnConfirmed = true): ActivityGateSkip | null {
+export function applyActivityHandoff(state: GameState, ctx: SimContext | undefined, warnConfirmed = true): ActivityGateSkip | null {
   const v = gateMainActivityHandoff(state, warnConfirmed)
   if (v.action === 'ok') return null
   if (v.action === 'halt') {
-    if (v.current !== undefined) haltAndLog(state, v.current)
+    if (v.current !== undefined) haltAndLog(state, ctx, v.current)
     return null
   }
   return skipOf(v)
@@ -443,16 +457,26 @@ export function applyActivityHandoff(state: GameState, warnConfirmed = true): Ac
  * **玩家确认"中断当前活动"**（两段确认的第二下 / 界面通用收尾）：停掉它并按统一口径记一条日志。
  * 返回被停掉的那一项（没得停 ⇒ null）。不碰"本就不可中断"的远征/快递（那两项永远走拒绝）。
  */
-export function haltCurrentActivity(state: GameState): MainActivityKind | null {
+export function haltCurrentActivity(state: GameState, ctx?: SimContext): MainActivityKind | null {
   const current = mainActivityOf(state)
   if (current === null) return null
   if (!AUTO_HALT_KINDS.includes(current) && INTERRUPTIBLE[current] !== true) return null
-  haltAndLog(state, current)
+  haltAndLog(state, ctx, current)
   return current
 }
 
-/** 停机 + 统一日志（两件事永远成对 ⇒ 收成一处，免得哪条路径漏写日志） */
-function haltAndLog(state: GameState, kind: MainActivityKind): void {
+/**
+ * 停机 + 统一日志（两件事永远成对 ⇒ 收成一处，免得哪条路径漏写日志）
+ *
+ * 🔴 **本文件不许 import 作业模块**（**2026-10-02 两次踩到**）：为了"被活动挤掉时建返航账本"，
+ * 我曾在这里 import `mining`/`salvaging` ⇒ `activityGate ↔ mining`（`mining` 也 import 本文件）成环，
+ * 游戏启动即炸（`PLUG_BLACKBOX_ITEM_ID before initialization`；同族症状还有 `HOME_GALAXY_ID`）。
+ *
+ * 账本由 `state.haltActivityForSwitch` 用**纯数据**先建一份占位（它同样不能 import 作业模块），
+ * 再由 **`engine.advanceGame` 下一拍**用真值重算（那里可以安全 import 作业模块）。
+ */
+function haltAndLog(state: GameState, ctx: SimContext | undefined, kind: MainActivityKind): void {
+  void ctx
   haltActivityForSwitch(state, kind)
   logAutoHalt(state, kind)
 }

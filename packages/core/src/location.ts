@@ -346,7 +346,7 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
    * （`miningHalt` / `salvageHalt` / 掩护巡逻召回 / 建站交付停机全是即时归位）⇒ 下面那条
    * `awayGalaxy !== null`（"舰船在野外"）正是被这次停机**满足**的（与站内工业、长途运输同款处置）。
    */
-  const gateSkip = applyActivityGate(state, 'siteDeliver')
+  const gateSkip = applyActivityGate(state, 'siteDeliver', ctx)
   if (gateSkip) return gateSkip
   if (state.awayGalaxy !== null) {
     return { ok: false, error: '舰船在野外：请先「返航空间站」（母港或已建成副站），再从空间站下达「前往工地交付」。', errorId: 'core.location.012' }
@@ -654,7 +654,7 @@ export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext)
    * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 7 条硬拒，现已收进
    * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（目标/已探索/航路/同点）。
    */
-  const gateSkip = applyActivityGate(state, 'standby')
+  const gateSkip = applyActivityGate(state, 'standby', ctx)
   if (gateSkip) return gateSkip
   // 去程取消（定稿）：即时就位——到达时刻 = 当前，无去程等待；船即刻转场目标星系留守
   s.active = false

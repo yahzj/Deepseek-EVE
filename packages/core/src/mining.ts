@@ -30,7 +30,7 @@ import { addItem, cargoUnitM3, freeCargoM3, unloadCargoOfShipToWarehouse, unload
 import { DSI_FACTION_ID, HOME_GALAXY_ID, recallExpedition, shortestTravelMinutes, standingOf } from './expedition'
 import { travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
-import { nearestStationGalaxyId } from './location'
+import { miningReturnLegMs, nearestStationGalaxyId } from './location'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { familyModules } from './equipment'
 import { scaledReturnMs } from './trips'
@@ -343,8 +343,24 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
    * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**：免得"先停了玩家的活、再说开不了"。
    * （同一项在跑 = 上面的换矿带分支已处理；gate 见 `current === next` 一律放行，不会重复停机。）
    */
-  const gateSkip = applyActivityGate(state, 'mining')
+  const gateSkip = applyActivityGate(state, 'mining', ctx)
   if (gateSkip) return gateSkip
+  /**
+   * **新指令取消"停止返航"**（**船长 2026-10-02** 报障的连带）——
+   * 上一拍刚「停止开采」留下了返航账本（船正飞回港卸货）；玩家又下新开采指令 ⇒ **就地开工**
+   * （船已在矿带，不必先飞完那一趟）。
+   *
+   * ⚠ 不清账的后果（实测踩到）：`advanceShipReturns` 到港即整仓卸货 ⇒ 新采的矿会被它
+   * **当拍搬进仓库**（船上 `countItem` 恒为 0、仓库 `countWare` 涨），采矿看着"没产出"。
+   * ⚠ 只清**本船**那一条（别的船的换船善后账本照旧）。
+   */
+  if (state.haltedBySwitch?.kind === 'mining') {
+  /** 上一拍是"切活动自动停" ⇒ **跳过**这次清账：那条账本该留着（船要返航），见 `haltedBySwitch` 头注 */
+  state.haltedBySwitch = null
+} else {
+  delete state.shipReturns[state.shipId]
+  state.haltedBySwitch = null
+}
 
   // T8：从野外停留点出发 → 记录起点（首次到带后清空；自动循环以空间站为基准）；野外标记交作业表达
   const fromField = state.awayGalaxy !== null ? state.awayGalaxy : null
@@ -423,6 +439,25 @@ export function startMiningFromExpedition(state: GameState, beltId: string, ctx:
 }
 
 /** 停止开采（手动）：任何阶段都会停（若在返航/去程遗留相位中，货物留在船上） */
+/**
+ * **安排"停止开采后的返航"**（**船长 2026-10-02 报障 / 裁定「真实返航航程」**，与打捞侧 `armReturnLeg` 同构）——
+ * 建"善后返航账本"（`state.shipReturns`）：由 `advanceShipReturns` 每拍推进，**到港自动整仓卸入物品仓库并清账**。
+ *
+ * 腿长口径与 `advanceMining` 的返航段一致：`返航腿 + 出航腿`（去程并入返航），再按货仓占比缩放。
+ * ⚠ `miningHalt` 已把 `phaseAccMs` 清零 ⇒ 返航进度从 0 起（**取最坏**：宁可多飞一段，也不凭空瞬移回港）。
+ *
+ * @returns 约几秒后到港；**不需要返航**（舰船已不在）⇒ `null`
+ */
+function armMiningReturnLeg(state: GameState, ctx: SimContext, beltId: string): number | null {
+  const ship = state.fleet[state.shipId]
+  if (!ship) return null
+  const outFull = oneOutboundLegMs(state, ctx, beltId)
+  const fullLeg = oneLegMs(state, ctx, beltId) + outFull
+  const legMs = Math.max(1, scaledReturnMs(fullLeg, state, ctx, state.shipId))
+  state.shipReturns[state.shipId] = { beltId: null, legMs, phaseAccMs: 0, reason: 'miningStop' }
+  return Math.max(0, Math.round(legMs / 1000))
+}
+
 export function stopMining(state: GameState, ctx: SimContext): boolean {
   /** 状态改动走 `state.ts` 的单点 `miningHalt`（**进洞前自动停采**也用它）⇒ 两条停采路径不会各写一份 */
   const info = miningHalt(state)
@@ -445,6 +480,30 @@ export function stopMining(state: GameState, ctx: SimContext): boolean {
     'core.mining.021',
     { p1: beltName, p2: tripUnits, p3: oreName, p4: phaseNote },
   )
+  /**
+   * 🔴 **安排真实返航**（**船长 2026-10-02**：与打捞同一个 BUG —— 旧实现只清作业态、**没有返港动作**）
+   * ⇒ 建返航账本：飞回来、到港整仓卸货、写「已随打捞善后返航到港」那条日志。
+   */
+  if (info.beltId !== null) {
+    const remainSec = armMiningReturnLeg(state, ctx, info.beltId)
+    if (remainSec !== null) {
+      const shipName = shipDisplayName(state, ctx, state.shipId)
+      const haveCargo = tripUnits > 0
+      addLog(
+        state,
+        'industry',
+        `开采已停止：${shipName} 从「${beltName}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+        'core.mining.042',
+        {
+          p1: shipName,
+          p2: beltName,
+          p3: haveCargo ? '（到港整仓卸货）' : '',
+          ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
+          p4: remainSec,
+        },
+      )
+    }
+  }
   return true
 }
 
@@ -798,6 +857,30 @@ export function advanceShipReturns(state: GameState, deltaMs: number, ctx: SimCo
         )
         continue
       }
+      if (r.reason === 'salvageStop') {
+        addLog(
+          state,
+          'industry',
+          moved > 0
+            ? `${name} 已随打捞停止返航到港：残骸已卸入物品仓库（${moved.toLocaleString('zh-CN')} m³ 当量）。`
+            : `${name} 已随打捞停止返航到港（货仓为空）。`,
+          moved > 0 ? 'core.mining.039' : 'core.mining.040',
+          moved > 0 ? { p1: name, p2: moved.toLocaleString('zh-CN') } : { p1: name },
+        )
+        continue
+      }
+      if (r.reason === 'miningStop') {
+        addLog(
+          state,
+          'industry',
+          moved > 0
+            ? `${name} 已随开采停止返航到港：原矿已卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。`
+            : `${name} 已随开采停止返航到港（货仓为空）。`,
+          moved > 0 ? 'core.mining.038' : 'core.mining.041',
+          moved > 0 ? { p1: name, p2: moved.toLocaleString('zh-CN') } : { p1: name },
+        )
+        continue
+      }
       addLog(
         state,
         'industry',
@@ -809,4 +892,112 @@ export function advanceShipReturns(state: GameState, deltaMs: number, ctx: SimCo
       )
     }
   }
+}
+
+/**
+ * **采矿善后**（换驾驶时引擎内部调用 / **被别的活动挤掉时由 `state.haltActivityForSwitch` 调用**）：
+ * 把当前驾驶船正在进行的采矿转成"自动返航账本"（`shipReturns`，reason=`miningStop`）——
+ * 采掘中走全程、返航中继续剩余、出航中按空船速度折算折返；到港自动整仓卸货。
+ * ⚠ **2026-10-02 从 `shipyard.ts` 移到这里**：`haltActivityForSwitch` 需要它，而 `state.ts` 不能 import
+ *   `shipyard`（`shipyard → state` 已成边 ⇒ 反向会成环）。
+ */
+export function retireMiningShip(
+  state: GameState,
+  ctx: SimContext,
+  /**
+   * **重入/无状态调用**（**2026-10-02 加**，为 `haltActivityForSwitch` 那条路服务）：
+   * - `beltId`：作业态**已被清掉**时的矿带（自动停机路径先清状态、再调本函数）——不传就读 `state.mining`；
+   * - `preserveExisting`：该船**已经在返航账本里** ⇒ 只**修正腿长与日志**、**保留已走相位**
+   *   （账本那份是 `state.haltActivityForSwitch` 建的**占位**：腿长按相位粗估、日志没船名没秒数）。
+   */
+  opts?: { beltId?: string; preserveExisting?: boolean; fallbackLegMs?: number },
+): boolean {
+  const m = state.mining
+  const auto = opts?.beltId !== undefined
+  if (opts?.preserveExisting === true && state.shipId in state.shipReturns) {
+    /**
+     * **占位账本 ⇒ 用真值修正**（**2026-10-02**）：`state.haltActivityForSwitch` 先建了一份
+     * "腿长靠相位估"的占位（它不能 import 本模块），这里用 `ctx` 算出真实腿长补上，
+     * 并写下**带船名与真实秒数**的那条日志（那一刻作业态已清，只有这里读得到 ctx）。
+     */
+    const legFullFix = miningReturnLegMs(state, ctx, opts.beltId!)
+    const legMsFix = scaledReturnMs(legFullFix, state, ctx, state.shipId)
+    const ret = state.shipReturns[state.shipId]!
+    const already = ret.phaseAccMs
+    ret.legMs = Math.max(1, legMsFix)
+    ret.phaseAccMs = Math.min(ret.legMs, already)
+    const beltFix = ctx.belts.get(opts.beltId!)
+    const beltNameFix = beltFix?.name ?? '矿井'
+    const shipNameFix = shipDisplayName(state, ctx, state.shipId)
+    const haveCargo = Object.keys(state.fleet[state.shipId]?.cargo ?? {}).some((k) => (state.fleet[state.shipId]!.cargo[k] ?? 0) > 0)
+    const remainSecFix = Math.max(0, Math.round((ret.legMs - ret.phaseAccMs) / 1000))
+    addLog(
+      state,
+      'industry',
+      `开采已停止：${shipNameFix} 从「${beltNameFix}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSecFix} 秒后到港。`,
+      'core.mining.042',
+      {
+        p1: shipNameFix,
+        p2: beltNameFix,
+        p3: haveCargo ? '（到港整仓卸货）' : '' ,
+        ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
+        p4: remainSecFix,
+      },
+    )
+    m.active = false
+    m.beltId = null
+    return true
+  }
+  if (!auto && (!m.active || !m.beltId)) return false
+  const beltId = opts?.beltId ?? m.beltId!
+  const belt = ctx.belts.get(beltId)
+  const beltName = belt?.name ?? '矿带'
+  // 善后返航腿按旧船货仓占比缩放（空仓快、满仓原时长，船长 2026-09-05）
+  /** ⚠ allbackLegMs：调用方（state.haltActivityForSwitch，**不能 import 本模块**）给的兜底腿长
+   *  ——它没有 ctx，先按状态里的相位估一个；引擎下一拍会用真值覆盖。*/
+  const legFull = miningReturnLegMs(state, ctx, beltId)
+  const legMs = opts?.fallbackLegMs !== undefined ? Math.max(1, Math.round(opts.fallbackLegMs)) : scaledReturnMs(legFull, state, ctx, state.shipId)
+  const phaseAccMs =
+    m.phase === 'outbound'
+      ? Math.min(legMs, m.phaseAccMs * 2) // 空船出航腿为正常一半：折返按 2×折算已走
+      : m.phase === 'returning'
+        ? m.phaseAccMs
+        : 0
+  const oldShip = state.fleet[state.shipId]
+  const haveCargo = oldShip ? Object.keys(oldShip.cargo).some((k) => (oldShip.cargo[k] ?? 0) > 0) : false
+  state.shipReturns[state.shipId] = {
+    beltId,
+    legMs: Math.max(1, legMs),
+    phaseAccMs: Math.min(legMs, Math.max(0, phaseAccMs)),
+    /** ⚠ 与手动停止同 reason（`'miningStop'`）：到港日志才能说"开采停止返航到港"而不是笼统的"善后" */
+    reason: 'miningStop',
+  }
+  const shipName = shipDisplayName(state, ctx, state.shipId)
+  const remainSec = Math.max(0, Math.round((legMs - phaseAccMs) / 1000))
+  // 结束作业
+  m.active = false
+  m.beltId = null
+  m.phase = 'mining'
+  m.cycleAccMs = 0
+  m.phaseAccMs = 0
+  m.tripUnits = 0
+  m.originGalaxy = null
+  m.rvLeft = 0 // 换船即离开矿带作业：红利窗口清零
+  const logText = auto
+    ? `开采已停止：${shipName} 从「${beltName}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`
+    : `采矿已随换船结束：${shipName} 从「${beltName}」自动返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`
+  addLog(
+    state,
+    'industry',
+    logText,
+    auto ? 'core.mining.042' : 'core.shipyard.019',
+    {
+      p1: shipName,
+      p2: beltName,
+      p3: haveCargo ? '（到港整仓卸货）' : '',
+      ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
+      p4: remainSec,
+    },
+  )
+  return true
 }

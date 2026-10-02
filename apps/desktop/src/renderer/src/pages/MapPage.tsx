@@ -4,11 +4,11 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import {
-  AI_CORE_ORDER,
   aiCoreName,
   aiEfficiency,
   aiTaskView,
-  countAiCore,
+  /** 2026-10-02 模块化：可用核心列表走 core 单点（原为本页两处 filter） */
+  usableAiCoresOf,
   getMiningParams,
   // 2026-09-30 船长令（「原矿价值最高的排序已经落后」）：矿带每小时产出与行情产值的唯一实现在 core
   beltYieldRows,
@@ -469,7 +469,7 @@ function BeltCard({
   const [aiCoreSel, setAiCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   // 2026-09-08 紧急修复（玩家反馈"无法用伽马 AI 核心采矿"）：basic 用光只剩伽马时，
   // 下拉显示与提交类型脱节 → 归一为当前有库存的类型（同工业页炉卡写法）
-  const usableCores = AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
+  const usableCores = usableAiCoresOf(state)
   const effCore = usableCores.includes(aiCoreSel) ? aiCoreSel : (usableCores[usableCores.length - 1] ?? 'basic')
   // T4 延后项：远征中可「转开采」（两步确认）
   const [mineAsk, setMineAsk] = useState(false)
@@ -1072,7 +1072,7 @@ function WreckCard({
   const [aiShipId, setAiShipId] = useState('')
   const [aiCoreSel, setAiCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   // 2026-09-08 紧急修复：核心下拉与提交类型脱节（basic 无库存时仍按 basic 提交被拒）
-  const usableCores = AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
+  const usableCores = usableAiCoresOf(state)
   const effCore = usableCores.includes(aiCoreSel) ? aiCoreSel : (usableCores[usableCores.length - 1] ?? 'basic')
   const lowSec = typeof g.security === 'number' && g.security < 0
   // B3.1：星系卡「回收产出倾向 / 特色掉落」汇总（= 该星系各悬赏敌群**所属的残骸组**；回收卡同款行，去重合并）。

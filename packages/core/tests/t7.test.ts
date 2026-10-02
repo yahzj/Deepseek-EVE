@@ -73,6 +73,6 @@ describe('T7 换船守卫：在途移动不可直接切换驾驶', () => {
     expect(state.mining.active).toBe(false)
     // 旧船进入善后返航账本（本地带：返航基准 120s，按货仓占比缩放——空仓 ≈ 瞬回，船长 2026-09-05）
     const expLeg = scaledReturnMs(miningReturnLegMs(state, ctx, 'belt-a'), state, ctx, 'sandcat')
-    expect(state.shipReturns['sandcat']).toEqual({ beltId: 'belt-a', legMs: expLeg, phaseAccMs: 0 })
+    expect(state.shipReturns['sandcat']).toEqual({ beltId: 'belt-a', legMs: expLeg, phaseAccMs: 0, reason: 'miningStop' })
   })
 })

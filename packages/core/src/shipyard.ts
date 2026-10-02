@@ -15,8 +15,8 @@ import { allFittedIds, emptyFitted, uidDefId } from './labels'
 import { allFittedModules } from './equipment'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { createPlayerSpec } from './combat'
-import { miningReturnLegMs } from './location'
 import { retireSalvageShip } from './salvaging'
+import { retireMiningShip } from './mining'
 import { cancelHaulingOnSwitch } from './hauling'
 import { cancelAiTask } from './ai'
 import { scaledReturnMs } from './trips'
@@ -255,59 +255,6 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
   return { ok: true }
 }
 
-/**
- * 采矿善后（换驾驶时引擎内部调用）：把当前驾驶船正在进行的采矿转成"自动返航账本"
- * （shipReturns：采掘中走全程、返航中继续剩余、出航中按空船速度折算折返；到港自动整仓卸货），
- * 并结束采矿作业。旧船返航由引擎 advanceShipReturns 独立推进。
- */
-export function retireMiningShip(state: GameState, ctx: SimContext): boolean {
-  const m = state.mining
-  if (!m.active || !m.beltId) return false
-  const beltId = m.beltId
-  const belt = ctx.belts.get(beltId)
-  const beltName = belt?.name ?? '矿带'
-  // 善后返航腿按旧船货仓占比缩放（空仓快、满仓原时长，船长 2026-09-05）
-  const legFull = miningReturnLegMs(state, ctx, beltId)
-  const legMs = scaledReturnMs(legFull, state, ctx, state.shipId)
-  const phaseAccMs =
-    m.phase === 'outbound'
-      ? Math.min(legMs, m.phaseAccMs * 2) // 空船出航腿为正常一半：折返按 2×折算已走
-      : m.phase === 'returning'
-        ? m.phaseAccMs
-        : 0
-  const oldShip = state.fleet[state.shipId]
-  const haveCargo = oldShip ? Object.keys(oldShip.cargo).some((k) => (oldShip.cargo[k] ?? 0) > 0) : false
-  state.shipReturns[state.shipId] = {
-    beltId,
-    legMs: Math.max(1, legMs),
-    phaseAccMs: Math.min(legMs, Math.max(0, phaseAccMs)),
-  }
-  const shipName = shipDisplayName(state, ctx, state.shipId)
-  const remainSec = Math.max(0, Math.round((legMs - phaseAccMs) / 1000))
-  // 结束作业
-  m.active = false
-  m.beltId = null
-  m.phase = 'mining'
-  m.cycleAccMs = 0
-  m.phaseAccMs = 0
-  m.tripUnits = 0
-  m.originGalaxy = null
-  m.rvLeft = 0 // 换船即离开矿带作业：红利窗口清零
-  addLog(
-    state,
-    'industry',
-    `采矿已随换船结束：${shipName} 从「${beltName}」自动返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
-    'core.shipyard.019',
-    {
-      p1: shipName,
-      p2: beltName,
-      p3: haveCargo ? '（到港整仓卸货）' : '',
-      ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
-      p4: remainSec,
-    },
-  )
-  return true
-}
 
 /**
  * 弃船（损失舰船：连同货仓与装备）。自动补驾驶船：优先另一艘，否则补发初始磷虾。

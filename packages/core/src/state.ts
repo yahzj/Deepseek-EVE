@@ -9,11 +9,22 @@
  *    （无限容量、永不遗失）；采矿支持 AI 核心驱动的自动返航-卸货循环。
  */
 
-import type { AiCoreType, CommsInstanceEntry, DamageResists, DamageType, FittedModules, FoeFamily, ModuleSlot } from './types'
+import type { AiCoreType, CommsInstanceEntry, DamageResists, DamageType, FittedModules, FoeFamily, ModuleSlot, SimContext } from './types'
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { emptyFitted } from './labels'
 import { EMPTY_WORMHOLE_STATE } from './wormhole'
 import type { WormholeState } from './wormhole'
+/**
+ * 🔴 **这里绝不能 import `mining` / `salvaging`**（**2026-10-02 实测踩到**）：
+ * 我曾为了"切活动自动停作业时建返航账本"在本文件 import 那两个模块 —— 立即形成
+ * `state → salvaging → expedition → hauling → state` 的环，入口模块的**顶层常量**会在
+ * `state.ts` 求值完成**之前**被读到，游戏一进去就炸：
+ * `hauling.ts:149 Uncaught ReferenceError: Cannot access 'HOME_GALAXY_ID' before initialization`。
+ *
+ * 正解（**两段式**）：本文件用**纯数据**先建一份**占位返航账本**（`legMs` 按相位粗估，够撑到下一拍），
+ * 并记下 `pendingActivityReturn`；**引擎下一拍**（`engine.advanceGame` 在环外，可安全 import 作业模块）
+ * 调 `retireXxxShip(preserveExisting: true)` 用**真值腿长**覆盖占位，并补写带船名与真实秒数的日志。
+ */
 
 /**
  * **新档初始声望 = 0**（**2026-09-26 船长裁定**：「**1算，我从来没有说过"开局能换 5 张"，所以要清理，
@@ -268,8 +279,12 @@ export interface ShipReturnState {
   phaseAccMs: number
   /** 善后来源（2026-09-08 船长定）：'mining' = 采矿换船（缺省）/ 'expedition' = 返航中换船
    *  把远征返航转为旧船善后账本（到港自动卸货，无其余战果结算）/ 'salvage' = 打捞换船
-   *  （2026-09-09：与采矿同构——打捞作业中换船，旧船自动返航到港卸货） */
-  reason?: 'mining' | 'expedition' | 'salvage'
+   *  （2026-09-09：与采矿同构——打捞作业中换船，旧船自动返航到港卸货）
+   *
+   *  **2026-10-02 加两个值**（船长报障「终止残骸打捞活动后，舰船并不会返港」⇒ 裁定「真实返航航程」）：
+   *  `'salvageStop'` / `'miningStop'` = **玩家手动停止作业**后的返航——与"换船善后"走同一条账本链，
+   *  只是到港日志要分开说（"作业已停止"而不是"换船善后"）。 */
+  reason?: 'mining' | 'expedition' | 'salvage' | 'salvageStop' | 'miningStop'
 }
 
 /**
@@ -865,6 +880,14 @@ export interface BattleFx {
    * 与 `web` 同款承载方式（`: true` 旗标 + `type` 给占位值）。
    */
   blink?: true
+  /**
+   * **本条事件发生时的战斗倍速**（**2026-10-02 加**）——只给界面做**游戏毫秒 → 真实毫秒**的折算。
+   *
+   * 由来：闪现演出的时长在引擎里是**游戏时钟**口径（`balance.battle.foeBlinkProcessMs`），
+   * 而界面动画跑的是 `performance.now()` 的**真实时间**。开倍速时两者不同步 ⇒ 界面把
+   * `(atMs − 当前游戏刻)` 折成真实毫秒时必须除以当时的倍速。缺省（旧事件/测试构造）按 1 倍处理。
+   */
+  speedX?: number
   /** 是否命中目标 */
   hit: boolean
   /**
@@ -1123,27 +1146,45 @@ export interface BattleState {
    */
   foeOverlayReload?: Record<string, { r: number; f: number; bs: number }>;
   /**
-   * **闪现演出队列**（**船长 2026-10-01 令**，原话照抄）：
+   * **闪现演出队列**（**船长 2026-10-01 令 ＋ 2026-10-02 两次修正**，原话照抄）：
    *
-   * > 「**允许闪现出现小幅度误差，并且闪现现在会有一个发生时间，同时触发的多个闪现需要排队发生。
+   * > ①「**允许闪现出现小幅度误差，并且闪现现在会有一个发生时间，同时触发的多个闪现需要排队发生。
    * > 闪现的发生时间大概200ms，发生过程需要搭配动画效果：闪现开始-播放动画的同时舰船消失-等待发生时间
    * > -在新位置播放动画同时舰船出现。多个闪现需要有200ms的间隔。**」
-   * > 追问三答：「**不要误差——只是允许浮点尾巴**」「**不停表，但是敌舰消失时，玩家的武器不会开火
-   * > （哪怕武器转好了）**」「**现在并没有一次淡出淡入，我在战斗中根本没发现。按照你的拆分写吧**」
+   * > ②（旋钮）「**先将整个过程延长到2000ms**」
+   * > ③（实机反馈，🔴 本次修正的根据）「**在演出结束后舰船还会播放一个入场时才会有的放大效果，而且我原先
+   * > 中间插入的发生时间等待怎么被取消了？移动的时间节点应该放在发生时间的等待处**」
    *
-   * 键 = 战斗 tag；值 = 这一次闪现在**全局时钟**上的三段时刻（`atMs` 全部是 `state.gameMs` 口径）：
+   * 键 = 战斗 tag；值 = 这一次闪现在**全局时钟**上的四段时刻（都是 `state.gameMs` 口径）：
    * - `queuedMs`：触发入队的时刻；
-   * - `vanishMs`：**消失**时刻（＝本舰这一段演出的起点，UI 据此让舰船消失并播淡出）；
-   * - `appearMs`：**出现**时刻（＝ `vanishMs + 200ms`，UI 据此在新位置播出现、引擎在此刻真正换位）。
+   * - `vanishMs`：**消失**起点（本段的起点，UI 据此播淡出）；
+   * - `moveAtMs`：**位移兑现**时刻（＝"消失"演完的那一刻，🔴 **位置就在这一瞬才换**——
+   *   这正是船长要的"移动放在发生时间的等待处"：先消失、再换位、再在新位置出现）；
+   * - `appearMs`：**出现**起点（＝ `moveAtMs` ＋ 等待段；UI 据此在新位置播淡入）。
    *
-   * **排队口径**：多个闪现**依次排定**，每段占 **200ms 动画 ＋ 100ms 间隔 = 300ms**
-   * （一天里最先入队的那一段起点最早；同一刻多个闪现 ⇒ 各自往后错 300ms）⇒ 总时长 = 段数 × 300ms。
+   * **三段时长**（船长 2026-10-01 原话的"播放动画消失 → 等待发生时间 → 新位置播放出现"）：
+   * 把 `balance.battle.foeBlinkProcessMs` **三等分** ⇒ 消失 1/3、**等待 1/3**、出现 1/3。
+   * ⚠ 旧实现把过程**对半劈**（消失一半 ＋ 出现一半、且位置在触发那刻就换）⇒ **中间的等待被砍掉了**，
+   *   船长的实机反馈指的正是这个。
    *
-   * ⚠ **不停表**（船长裁定）：战斗时钟照走，只是**演出期间双方都不开火**
-   * （我方那一侧由 `blinkHoldFire` 门控——船长：「敌舰消失时，玩家的武器不会开火（哪怕武器转好了）」）。
+   * **排队口径**：多个闪现依次排定，每段占 `过程 ＋ foeBlinkGapMs`（同刻触发 ⇒ 各自往后错开一段）。
+   *
+   * ⚠ **不停表**（船长裁定）：战斗时钟照走，只是**演出期间我方不开火**（`blinkHoldFire` 门控）。
    * ⚠ 与 `foeBlinks` / `foeCharges` 同一口径：`save.ts` 清洗器登记 `kind: 'runtime'`（**有意不入档**）。
    */
-  foeBlinkQueue?: Record<string, { queuedMs: number; vanishMs: number; appearMs: number }>;
+  foeBlinkQueue?: Record<
+    string,
+    {
+      queuedMs: number
+      vanishMs: number
+      moveAtMs: number
+      appearMs: number
+      from: number
+      to: number
+      /** 位移是否已兑现（`settleBlinkQueue` 写；防同一拍重复写） */
+      moved?: true
+    }
+  >;
   /**
    * **我方"不被一击带走"保险的运行态账本**（船长 2026-09-16：「血量 100%，单次齐射伤害最多只能造成
    * **总血量 80%** 的伤害（**只对我方生效**）」）。
@@ -2083,6 +2124,27 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
   bountyCooldowns: Record<string, number>
   /** T8 重复清剿：当前自动循环的悬赏 id（null = 关闭） */
   autoLoopAnomalyId: string | null
+  /**
+   * 🔴 **上一次"自动停作业"是因为切活动**（**2026-10-02 加**，为船长那条报障服务）：
+   * 「**玩家切换舰船的话，正在采矿的舰船会自动返航……但是打捞都没有**」。
+   *
+   * `haltActivityForSwitch` 会：① 建**返航账本**（`shipReturns`）② 置本标记。
+   * 紧接着新活动开工时，`startMining` / `startSalvageOp` 里那条"新指令取消返航"要**跳过** ——
+   * 那条规则的本意是"玩家自己改主意、想让船就地开工"；而切活动是"旧作业被挤掉 ⇒ **船该返航**"。
+   *
+   * ⚠ 标记在**两处**都会清（跳过清账时 / 照常清账时）——都代表"这次开工已经处理过上一拍了"。
+   * ⚠ 兼容字段（可选）：老档缺席 = 无标记。
+   */
+  haltedBySwitch?: { kind: 'mining' | 'salvaging' } | null
+  /**
+   * 🔴 **待建返航账本**（**2026-10-02 加**，与 `haltedBySwitch` 配成一对）：
+   * `haltActivityForSwitch` 停机时只**记下"哪条作业该返航、在哪作业"**，
+   * 建账本的动作交给 `activityGate.haltAndLog` 做（那里在模块环之外）。
+   *
+   * 为什么绕这一道：本文件**不能** import `mining` / `salvaging`（会成环 ⇒ 游戏启动即崩，
+   * 见文件顶部那条注释）；而 `retireXxxShip` 住在作业模块里，且要读**清状态之前**的 phase/矿带。
+   */
+  pendingActivityReturn?: { kind: 'mining' | 'salvaging'; id: string } | null
   /** T9 建站进度：站点 id -> 进度（档位 stage 从 0 起；delivered 已缴物品单位） */
   stationSites: Record<string, StationSiteProgress>
   /** T9 当前停靠的副站 id（null = 母港；awayGalaxy=null 且有值时表示停副站） */
@@ -3338,9 +3400,46 @@ function haltPilotLabRunsInline(state: GameState): void {
 export function haltActivityForSwitch(state: GameState, kind: string): void {
   switch (kind) {
     case 'mining':
+      /**
+       * 🔴 **两条停采路径同口径**（**船长 2026-10-02 报障**：「**玩家切换舰船的话，正在采矿的舰船会自动
+       * 返航……但是打捞都没有**」）——手点「停止」会建返航账本，而"被别的活动挤掉"这条原先**只清状态**
+       * ⇒ 船不返航。
+       *
+       * ⚠ **本函数只记标记、不建账本**（建账本由 `activityGate.haltAndLog` 做）：
+       *   本文件不能 import `mining`/`salvaging` —— 会成环，游戏启动即崩
+       *   （`hauling.ts:149 Cannot access 'HOME_GALAXY_ID' before initialization`）。
+       */
+      if (state.mining.active && state.mining.beltId && !(state.shipId in state.shipReturns)) {
+        /**
+         * **占位返航账本**（纯数据，不依赖 `ctx`）：`legMs` 先按状态里的相位估一个 ——
+         * 引擎**下一拍**会用 `retireMiningShip` 重算真值（见 `engine.advanceGame` 的消费段）。
+         * 为什么不在本文件直接调它：那要 import `mining`/`salvaging` ⇒ 成环 ⇒ 启动即崩（见文件顶部）。
+         */
+        state.shipReturns[state.shipId] = {
+          beltId: state.mining.beltId,
+          legMs: Math.max(30_000, Math.round(state.mining.phaseAccMs * 2) + 30_000),
+          phaseAccMs: 0,
+          reason: 'miningStop',
+        }
+        state.pendingActivityReturn = { kind: 'mining', id: state.mining.beltId }
+        state.haltedBySwitch = { kind: 'mining' }
+        /** 日志与真实腿长由**引擎下一拍**补（那里有 ctx，能读船名与真实秒数） */
+      }
       miningHalt(state)
       return
     case 'salvaging':
+      /** 同上：建**占位**账本；真值腿长与日志由**引擎下一拍**的 `retireSalvageShip(preserveExisting)` 补 */
+      if (state.salvaging.active && state.salvaging.galaxyId && !(state.shipId in state.shipReturns)) {
+        state.shipReturns[state.shipId] = {
+          beltId: null,
+          legMs: Math.max(30_000, Math.round(state.salvaging.phaseAccMs * 2) + 30_000),
+          phaseAccMs: 0,
+          reason: 'salvageStop',
+        }
+        state.pendingActivityReturn = { kind: 'salvaging', id: state.salvaging.galaxyId }
+        state.haltedBySwitch = { kind: 'salvaging' }
+        /** 日志与真实腿长由**引擎下一拍**补（同 mining 那档） */
+      }
       salvageHalt(state)
       return
     case 'wormholeScan':
@@ -3673,6 +3772,10 @@ export function createInitialState(opts?: {
     transit: { active: false, fromGalaxy: null, toGalaxy: null, finishAtGameMs: 0, legMs: 0, delivery: null },
     bountyCooldowns: {},
     autoLoopAnomalyId: null,
+    /** 切活动停机标记（瞬态）：初值恒 `null`，但**键存在** ⇒ 与写档/读档形状一致（见 `haltedBySwitch` 头注） */
+    haltedBySwitch: null,
+    /** 待建返航账本（瞬态）：初值恒 null，键存在 ⇒ 与写档/读档形状一致 */
+    pendingActivityReturn: null,
     autoLoopDroneFloor: null,
     stationSites: {},
     dockedSite: null,

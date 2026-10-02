@@ -19,7 +19,7 @@
  * ⚠ **本版覆盖度（诚实标注）**：精炼炉与实验室是**本页自己画的 HUD 版**；组装机 / 造船厂
  * 暂时**内嵌既有面板**（功能完整、观感仍是旧卡片）——它们的 HUD 化按船长"一批一批来"的节奏排后续。
  */
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   aiCoreCap,
   aiEfficiency,
@@ -29,6 +29,9 @@ import {
   countWare,
   formatDurationShort,
   industryAiBonus,
+  /** 2026-10-02 模块化：默认选"最高级"与可用列表都走 core 单点（原为内联字面量×2） */
+  bestAiCoreOf,
+  usableAiCoresOf,
   labAffordableBatches,
   labRecipeUnlocked,
   labTechRequirementOf,
@@ -341,6 +344,15 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
    */
   const [labGoalDraft, setLabGoalDraft] = useState('')
   /**
+   * **草稿引用**（2026-09-17 报障修复，组装机卡同款——**2026-10-02 代码审查补上 HUD 实验室这一份**）：
+   * 程序化跳页不产生失焦 ⇒ 刚打的目标批数从未提交、循环开关还开着 ⇒ 变成"无限生产"。
+   * 卸载时（切页/整页销毁）补一次提交；没打字（草稿为空）不做任何动作。
+   * ⚠ 补提交的 effect 在 `recipe` 声明之后才挂（见 `commitLabLoop` 旁），ref 本身不依赖它。
+   */
+  const labGoalDraftRef = useRef('')
+  labGoalDraftRef.current = labGoalDraft
+  const labGoalTouchedRef = useRef(false)
+  /**
    * **首访实验室**（**2026-09-30 船长令**：第一次进实验室给玩家发一封黑市通讯）——
    * 与旧工业页的实验室子页同一处口径（`engine.noteLabOpened()` 内部幂等，通讯由 `advanceComms` 送达）。
    */
@@ -375,11 +387,8 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
    * 折叠一下就能跳过去；宽屏也能折（折叠是玩家自己的选择，不随窗口忽隐忽现）。
    */
   const [foldStation, setFoldStation] = useState(false)
-  const [coreSel, setCoreSel] = useState<AiCoreType>(() => {
-    const usable = (['alpha', 'beta', 'gamma', 'basic'] as AiCoreType[]).find((t) => countAiCore(state, t) > 0)
-    return usable ?? 'basic'
-  })
-  const usableCores = (['basic', 'gamma', 'beta', 'alpha'] as AiCoreType[]).filter((t) => countAiCore(state, t) > 0)
+  const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
+  const usableCores = usableAiCoresOf(state)
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
   const runs = engine.refineRunViews()
   const labRuns = engine.labRunViews()
@@ -408,11 +417,22 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
    */
   const labLoop = engine.labLoopOf(recipe !== null ? recipe.id : null)
   const commitLabLoop = (on: boolean, goalText: string): void => {
+    labGoalTouchedRef.current = false
     if (recipe === null) return
     const n = Number.parseInt(goalText, 10)
     const r = engine.setLabLoopAt(recipe.id, on, on ? (Number.isFinite(n) && n > 0 ? n : null) : null)
     if (!r.ok) onToast(cmdText(r) || tr('ui.hud.021'), true)
   }
+  /** 草稿引用的**卸载补提交**（2026-09-17 那套；挂在 `recipe` 声明之后，见上方 `labGoalDraft` 注释） */
+  useEffect(
+    () => () => {
+      if (!labGoalTouchedRef.current) return
+      if (recipe === null) return
+      const n = Number.parseInt(labGoalDraftRef.current, 10)
+      engine.setLabLoopAt(recipe.id, true, Number.isFinite(n) && n > 0 ? n : null)
+    },
+    [engine, recipe],
+  )
   const rate = refineRate(state, ctx)
   /** 可精炼资源（与工业页同一取数口：`visibleItemDefs` + 有 `refine` 配方） */
   const refineDefs = visibleItemDefs(ctx)
@@ -1593,7 +1613,10 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                             placeholder="∞"
                             value={labGoalDraft !== '' ? labGoalDraft : labLoop.goal > 0 ? String(labLoop.goal) : ''}
                             title={tr('ui.lab.033')}
-                            onChange={(e) => setLabGoalDraft(e.target.value)}
+                            onChange={(e) => {
+                              labGoalTouchedRef.current = true
+                              setLabGoalDraft(e.target.value)
+                            }}
                             onBlur={(e) => {
                               setLabGoalDraft('')
                               commitLabLoop(true, e.target.value)
