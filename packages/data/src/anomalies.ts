@@ -446,6 +446,8 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ],
     galaxyId: 'galaxy-abyss',
     threat: 81,
+    /* ⟪2026-10-02 判据回钉⟫（船长令「两个都同意」之乙）：09-25 重定标改了标签时翻了近防炮门槛 ⇒ PD/修理判据回钉到**重定标前**旧标签 */
+    threatJudged: 45, // 判据威胁（PD 门槛 ≥60 / 敌修理 k 读它；见 AnomalyDef.threatJudged）
     wreckThreat: 45, // 回收口径（冻结值，见本表头注）
     tactic: 'brawl', // 船长裁定①：**kite → brawl**（射程同时收进近战带）
     defProfile: 'shield',
@@ -559,6 +561,8 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ],
     galaxyId: 'galaxy-auro',
     threat: 59,
+    /* ⟪2026-10-02 判据回钉⟫（船长令「两个都同意」之乙）：09-25 重定标把标签 62 → 62 时翻了近防炮门槛 ⇒ PD/修理判据回钉到**重定标前**旧标签 */
+    threatJudged: 62, // 判据威胁（PD 门槛 ≥60 / 敌修理 k 读它；见 AnomalyDef.threatJudged）
     wreckThreat: 62, // 回收口径（冻结值，见本表头注）
     // **族规「中距为主」（P-12 对齐）**——⚠ 作战距离**不变**：舰级上写了 `desireRangeM` 钉住现状值
     tactic: 'orbit',
@@ -705,6 +709,8 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     // （单点 `salvage.wreckCardTierOf`）：本卡星系密度 403 会现算成常档 ⇒ G 低安组价上不去。
     wreckTier: 'dire',
     threat: 64,
+    /* ⟪2026-10-02 判据回钉⟫（船长令「两个都同意」之乙）：09-25 重定标把标签 42 → 42 时翻了近防炮门槛 ⇒ PD/修理判据回钉到**重定标前**旧标签 */
+    threatJudged: 42, // 判据威胁（PD 门槛 ≥60 / 敌修理 k 读它；见 AnomalyDef.threatJudged）
     wreckThreat: 42, // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 2026-09-11 显式化：原靠 `anomaly.tactic ?? 'orbit'` 缺省值生效——那是个静默陷阱（谁动默认值，这几张卡会集体静默变战术）
     standingReq: 6,
@@ -1215,6 +1221,8 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ],
     galaxyId: 'galaxy-mirage',
     threat: 68,
+    /* ⟪2026-10-02 判据回钉⟫（船长令「两个都同意」之乙）：09-25 重定标把标签 48 → 48 时翻了近防炮门槛 ⇒ PD/修理判据回钉到**重定标前**旧标签 */
+    threatJudged: 48, // 判据威胁（PD 门槛 ≥60 / 敌修理 k 读它；见 AnomalyDef.threatJudged）
     wreckThreat: 48, // 回收口径（冻结值，见本表头注）
     tactic: 'kite',
     defProfile: 'shield',
@@ -1261,6 +1269,8 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ],
     galaxyId: 'galaxy-chasm',
     threat: 77,
+    /* ⟪2026-10-02 判据回钉⟫（船长令「两个都同意」之乙）：09-25 重定标改了标签时翻了近防炮门槛 ⇒ PD/修理判据回钉到**重定标前**旧标签 */
+    threatJudged: 58, // 判据威胁（PD 门槛 ≥60 / 敌修理 k 读它；见 AnomalyDef.threatJudged）
     wreckThreat: 58, // 回收口径（冻结值，见本表头注）
     tactic: 'brawl',
     defProfile: 'balanced',

@@ -28,7 +28,7 @@ import type { GameState } from './state'
  */
 import { rareDropRateMulOf } from './tuning'
 /** 威胁标签的"相对重锚"要血曲线与它的反解（**2026-10-02 船长令取甲**：只重锚标签、战斗零变化） */
-import { foeHpOfThreat, foeThreatAtHpBudgetOf } from './foePower'
+import { foeHpOfThreat, foeJudgedThreatOf, foeThreatAtHpBudgetOf } from './foePower'
 import type { BattleBalance } from './types'
 
 /** 窝点档位：1 外围 / 2 核心 / 3 深层 */
@@ -164,7 +164,15 @@ export function factionRareDropRateOf(
 
 /** 派系活跃派生卡：只改威胁（×1.1），其余继承——名字沿用原悬赏名，界面另挂「派系活跃」徽标 */
 export function factionAnomalyOf(anomaly: AnomalyDef): AnomalyDef {
-  return { ...anomaly, threat: Math.round(anomaly.threat * FACTION_BOUNTY_THREAT_MUL) }
+  /**
+   * ⚠ **判据威胁要跟着这条倍率一起走**（2026-10-02 船长令取「乙」）：派系活跃是**真加成**
+   * （难度确实抬了 10%）⇒ PD 门槛与敌修理 k 都该按加成后的威胁判，故 `threatJudged` 同乘。
+   */
+  return {
+    ...anomaly,
+    threat: Math.round(anomaly.threat * FACTION_BOUNTY_THREAT_MUL),
+    threatJudged: Math.round(foeJudgedThreatOf(anomaly) * FACTION_BOUNTY_THREAT_MUL),
+  }
 }
 
 /** 派系活跃目标的基础奖金 = 主题悬赏奖金 ×1.1（胜利结算沿用既有浮动与技能系数） */
@@ -402,10 +410,16 @@ export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier, bal: BattleBa
    * 20 张主题卡都写了 `wreckThreat`（冻结值）⇒ 注入量与本标签无关；酬金不吃威胁、碎片门槛已脱钩。
    */
   const threat = isShipPath ? foeThreatAtHpBudgetOf(scale * foeHpOfThreat(anomaly.threat, bal), bal) : Math.round(anomaly.threat * LAIR_THREAT_MUL[tier])
+  /**
+   * **判据威胁**（**2026-10-02 船长令取「乙」**）：PD 门槛（≥60 装近防炮）与敌修理 `k` 读它 ⇒
+   * 本批"只重锚标签"不动这两处（写的就是**重锚前**那个线性标签 `round(判据威胁(主题卡) × 倍率)`）。
+   */
+  const threatJudged = Math.round(foeJudgedThreatOf(anomaly) * LAIR_THREAT_MUL[tier])
   return {
     ...anomaly,
     name: lairNameOf(anomaly, tier),
     threat,
+    threatJudged,
     // 僚机加成本就是**旧路径**的编队口径（舰级路径的编成由 `ships` 全权决定）⇒ 舰级路径不叠加
     escorts: isShipPath ? (anomaly.escorts ?? 0) : Math.min(2, (anomaly.escorts ?? 0) + LAIR_ESCORT_BONUS[tier]),
     ...(isShipPath

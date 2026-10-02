@@ -130,3 +130,16 @@ export function foeMultiShipCompMul(anomaly: AnomalyDef): number {
   const n = (anomaly.ships ?? []).reduce((s, x) => s + Math.max(1, Math.floor(x.count ?? 1)), 0)
   return n <= 1 ? 1 : (2 * n) / (n + 1)
 }
+
+/**
+ * **引擎内部判据用的威胁**（**2026-10-02 船长令取「乙」**）：`threatJudged ?? threat` —— **唯一入口**。
+ *
+ * 谁读它：① `pdEnabledFor`（威胁 ≥ 60 ⇒ 敌舰装近防炮）· ② 敌「船体修理装置」强度 `k = max(1, 威胁 ÷ 45)`。
+ * 字段的含义与两次定价批次的来路见 `AnomalyDef.threatJudged` 的注释。
+ *
+ * 一句话口径：**`threat` 是给玩家看的价目表，`threatJudged` 是引擎判据的输入**；
+ * "只重锚标签"的批次必须同时把 `threatJudged` 钉在重锚前的值上，否则那两个判据会跟着漂。
+ */
+export function foeJudgedThreatOf(a: { threat: number; threatJudged?: number }): number {
+  return a.threatJudged ?? a.threat
+}

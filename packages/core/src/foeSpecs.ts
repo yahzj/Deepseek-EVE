@@ -26,7 +26,7 @@ import type { Hp3 } from './combatMath'
 import { nextInt } from './rng'
 import { resolveFoeMounts } from './foeMounts'
 import { baseFoeTag, enumerateShipUnits, FOE_SUPPORT_TAG_RE, foeUnitNameOf, shipWaveIndexOf } from './foeCard'
-import { foeHpOfThreat, foeMultiShipCompMul, foeRefSpeedMps, foeSpeedBase, foeThreatRatingOf, TACTIC_RANGE } from './foePower'
+import { foeHpOfThreat, foeJudgedThreatOf, foeMultiShipCompMul, foeRefSpeedMps, foeSpeedBase, foeThreatRatingOf, TACTIC_RANGE } from './foePower'
 import { compositionOfMix, foeDamageComposition, pickTopType, PROFILE_SPLIT, WORMHOLE_THREAT_BASE } from './wormholeFoes'
 import { foeDroneRangeOf, foeGunMaxRangeOf, foeRangeWithDebuff } from './foeRange'
 import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, pushBattleNotice, WORMHOLE_FOE_VOLLEY_STAGGER_MS } from './combatFx'
@@ -245,7 +245,7 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
    * （普通节点 = 层威胁、层末守卫 ×1.2、遗迹收尾 ×1.3、支援呼叫卡的延迟补偿 ×1.1）⇒ 与显示同源；
    * 洞外卡（星图悬赏 / 低安遭遇）就是卡面威胁。见 `FOE_REPAIR_THREAT_REF`。
    */
-  const threatNow = anomaly.threat ?? FOE_REPAIR_THREAT_REF
+  const threatNow = foeJudgedThreatOf(anomaly)
   // **机群/炮台火力占比**（2026-09-11 船长：「允许调整敌舰的无人机/炮台火力比例。这个要根据每个
   // 悬赏卡制定」）——**条目级**旋钮，守恒拆分：先按旧口径算出该条目的实收总单发 T（含多舰补偿、
   // 逐条取整），再拆成「机群 D = round(T×s)」与「炮台 G = T−D」（两侧各保底 1/架、1/单位）。

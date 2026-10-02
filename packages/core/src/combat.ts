@@ -61,8 +61,8 @@ export { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, pushBattleFx, stampFo
 // 敌卡档案（2026-10-02 批次 4d 拆到 foeCard.ts）；本文件只再导出
 export { FOE_LIGHT_WORD, FOE_ELITE_WORD, FOE_SUPPORT_TAG_RE, baseFoeTag, foeCardShipIdOf, foeClassName, foeMainTagOf, foeShipEliteOf, foeShipIdOfTag, foeShipTierOf, foeUnitNameOf } from './foeCard'
 // 敌力曲线（2026-10-02 批次 4e 拆到 foePower.ts）；本文件借回使用并再导出
-import { foeHpOfThreat } from './foePower'
-export { foeHpOfThreat, foeRefSpeedMps, foeThreatRatingOf } from './foePower'
+import { foeHpOfThreat, foeJudgedThreatOf } from './foePower'
+export { foeHpOfThreat, foeJudgedThreatOf, foeRefSpeedMps, foeThreatRatingOf } from './foePower'
 // 火力构成/血型层（2026-10-02 批次 4f 迁到 wormholeFoes.ts）；本文件借回使用并再导出
 import { foeMainDamageType } from './wormholeFoes'
 export { foeLayerSplit, foeMainDamageType, splitShotByComposition } from './wormholeFoes'
@@ -2110,7 +2110,7 @@ export function startBattleFor(
   // **挂载件「船体修理装置」账本**（2026-09-24 船长）：只为挂了这件、且账本里还没有的单位建一条
   initFoeRepairPulses(battle, foes);
   // 近防炮调度（威胁 ≥ pdThreatFloor 的敌舰各装一台；与敌编队同序、独立冷却）
-  if (pdEnabledFor(anomaly.threat, bal) && Object.keys(pools).length > 0) {
+  if (pdEnabledFor(foeJudgedThreatOf(anomaly), bal) && Object.keys(pools).length > 0) {
     battle.pdCd = foes.map(() => Math.max(100, Math.round(bal.pdJudgementMs)))
   }
   // 船体维修装置（2026-09-09 船长定）：装配快照 + 修理组件预载（货舱优先、仓库兜底）；
@@ -2503,7 +2503,7 @@ export function startFleetBattleFor(
   initFoeDronePools(battle, foes);
   // 挂载件「船体修理装置」账本（2026-09-24 船长）：与多舰编队路径同一处（幂等，缺省不建）
   initFoeRepairPulses(battle, foes);
-  if (pdEnabledFor(anomaly.threat, bal) && Object.keys(pools).length > 0) {
+  if (pdEnabledFor(foeJudgedThreatOf(anomaly), bal) && Object.keys(pools).length > 0) {
     battle.pdCd = foes.map(() => Math.max(100, Math.round(bal.pdJudgementMs)))
   }
   /**
