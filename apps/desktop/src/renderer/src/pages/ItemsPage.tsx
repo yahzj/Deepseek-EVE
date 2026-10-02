@@ -111,6 +111,9 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const wareKindTabs = presentSubs(COMMODITY_TABS, (key) =>
     (key.startsWith('module-') ? modRows : rows).some(([id]) => itemBucketPasses(engine.ctx, id, key)),
   )
+  /** **道具逐件档的档名解析器**（2026-10-02 船长令：消耗品桶里每件道具自成一档）：档名 = 那件道具
+   *  自己的名字，从物品表单点取（`subText` 的第二个参数），不在分类表里再抄一份名字。 */
+  const itemNameOf = (id: string): string | undefined => engine.ctx.items.get(id)?.name
   const subDim: { options: SubOption[]; label: string } | null = (() => {
     // 2026-09-20 筛选清理（船长「明显不存在的子类筛选隐藏」）：各档**只列仓库里真有内容的档**
     //（`rows` = 仓库物品条目 · `modRows` = 装备库条目；判定一律走单点 `itemSubPasses`）。
@@ -374,7 +377,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                     setWareSub(s.key)
                   }}
                 >
-                  {subText(s)}
+                  {subText(s, itemNameOf)}
                 </button>
               ))}
             </div>

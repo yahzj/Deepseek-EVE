@@ -10,6 +10,8 @@
  * **2026-09-11 船长：「应该将消耗品独立出来」**——「物品」一类从三层变四层：
  * - **物品**（`item`）只留原料类：矿石 / 矿物 / 气体 / 冰矿（+ 动态蓝图碎片）；
  * - **消耗品**（`consume`，新一级类型）收**用一次就少一件**的三类：**弹药 / 修理组件 / 无人机**；
+ *   （**2026-10-02 船长令**起**道具 `consumable` 也归这里**：超空间折跃燃料 / 信号发射器 / 突触加速剂，
+ *   每件自成一档 —— 见 `CONSUMABLE_ITEM_SUBS`）
  * - **残骸**（`wreck`）自 2026-09-08 起就独立成类；
  * - 「物品」**不再包含**消耗品与残骸（剔除判定在 `subPasses` 与 `MarketPage.kindPasses` 两处，键集合单点 = `CONSUME_KIND_KEYS`）。
  * 注意：手册图鉴的物品分组走 core 的 `ITEM_KIND_ORDER`/`ITEM_KIND_LABELS`（按物品大类分），**不受本表拆分影响**。
@@ -69,6 +71,14 @@ export interface SubOption {
   id?: string
   /** 配 `id` 用的插值参数（该 id 是带 `{p1}` 的整句模板时才需要，如舰船级别的「T{n} 护卫舰」） */
   idParam?: string
+  /**
+   * **该档 = 某一件物品**（**2026-10-02 船长令**：「信号发射器和突触加速剂…**每个单独一个档位**」）。
+   *
+   * 这类档没有自己的文案 id —— 档名就是**那件物品自己的名字**，由渲染处按本字段从物品表取
+   * （见 `subText` 的第二个参数）⇒ 不在表里再抄一份名字，改物品名只改一处。
+   * ⚠ `label` 对这种档只是**兜底**（渲染处拿不到解析器时显示），不是文案来源。
+   */
+  itemId?: string
 }
 
 /**
@@ -88,6 +98,35 @@ export const CONSUME_SUBS: SubOption[] = [
 
 /** 消耗品子类键集合（市场类型判定与子分类判定共用一处） */
 export const CONSUME_KIND_KEYS: readonly string[] = CONSUME_SUBS.map((s) => s.key)
+
+/* ═══════════ 道具（`kind: 'consumable'`）归「消耗品」桶 ＋ 逐件一档（船长 2026-10-02）═══════════
+ * 船长报障：「这两天新加的这些消耗品，在手册中查看不到」⇒ 追问后令「**信号发射器和技能加速剂应该归类到
+ * 消耗品内。每个单独一个档位**」，同日取甲 ⇒ **第三件道具「超空间折跃燃料」一并**（三件同类同口径）。
+ *
+ * 改前的实况（临时探针量过）：三件 `kind: 'consumable'` 的道具全落**「货物」桶**、且消耗品那三档
+ * （弹药/修理组件/无人机）**一个都筛不到**它们 ⇒ 一级选「消耗品」永远找不到（市场/仓库/货仓/手册四处同病）。
+ * 根因 = 2026-10-01 那次分类收敛时**照现状**把它们留在了货物桶（当日注释原话「已记回报待船长定」）。
+ *
+ * 两条口径：
+ * ① **桶**：`consumable` 归「消耗品」（与弹药/修理组件/无人机同桶，判定见 `itemBucketPasses`）；
+ * ② **档**：**每件自成一档** —— 它们的 `kind` 相同、分不出彼此，所以按**物品 id** 登记
+ *   （键 = `consume-item-<物品 id>`，判定见 `itemSubPasses`；档名取该物品自己的名字，不另写文案）。
+ *
+ * ⚠ **完备性由 `content:check` 的「道具归档契约」守住**：数据里每件 `kind: 'consumable'` 都必须登记在
+ * 下表，**漏登记即红**——这次的报障形态就是"新加了一件道具、没人登记 ⇒ 玩家在任何筛选里都找不到它"。
+ * ⚠ 组装机/书架的「消耗品**蓝图**」二级筛选仍读 `CONSUME_SUBS`（按**产物大类**分，蓝图没有"哪一件道具"
+ * 这一维）⇒ 逐件档**只进桶表** `CONSUME_BUCKET_SUBS`，别并进 `CONSUME_SUBS`。 */
+export const CONSUMABLE_SUB_PREFIX = 'consume-item-'
+
+/** 道具逐件档（顺序 = 渲染顺序；新增道具时在**数据**与**本表**各加一行，契约会盯着） */
+export const CONSUMABLE_ITEM_SUBS: SubOption[] = [
+  { key: `${CONSUMABLE_SUB_PREFIX}jump-fuel`, itemId: 'jump-fuel', label: '超空间折跃燃料' },
+  { key: `${CONSUMABLE_SUB_PREFIX}invasion-beacon`, itemId: 'invasion-beacon', label: '信号发射器' },
+  { key: `${CONSUMABLE_SUB_PREFIX}synaptic-accelerant`, itemId: 'synaptic-accelerant', label: '突触加速剂' },
+]
+
+/** **「消耗品」桶的全部二级档** = 三个消耗品大类 ＋ 逐件道具档（市场/仓库/货仓/手册四处读它） */
+export const CONSUME_BUCKET_SUBS: SubOption[] = [...CONSUME_SUBS, ...CONSUMABLE_ITEM_SUBS]
 
 /**
  * **黑匣键集合**（**2026-09-26 船长**：「**入侵获得的黑匣在仓库内查看不到，需要新增分类**」＋
@@ -391,7 +430,8 @@ export const RACK_SUBS: SubOption[] = (['high', 'mid', 'low', 'plug'] as const).
 export const SUBS_OF_KIND: Record<string, SubOption[]> = {
   item: ITEM_SUBS,
   container: CONTAINER_SUBS,
-  consume: CONSUME_SUBS,
+  // 消耗品桶 = 三个消耗品大类 ＋ **道具逐件档**（`CONSUME_BUCKET_SUBS`；2026-10-02 船长令）
+  consume: CONSUME_BUCKET_SUBS,
   module: MODULE_SUBS,
   'module-high': MODULE_SUBS,
   'module-mid': MODULE_SUBS,
@@ -421,8 +461,9 @@ export const SUBS_OF_KIND: Record<string, SubOption[]> = {
  * 自然不出现。「同步」是**同类东西同口径**，不是硬凑档数。
  * ⚠ **`fragment`（蓝图碎片）归「货物」桶**（`itemBucketPasses` 的 `'item'` 只排除
  * 残骸/消耗品/货柜/黑匣）⇒ 它原有的"功能分组"二级随本批并入货物桶的子分类。
- * ⚠ **`consumable`（道具，2026-09-29 加）同样落「货物」桶**——它不在 `CONSUME_KIND_KEYS`
- * （＝弹药/修理组件/无人机）里。本批**照现状**（不擅自改口径），已记回报待船长定。
+ * ⚠ **`consumable`（道具）2026-10-02 起归「消耗品」桶**（船长令：「信号发射器和技能加速剂应该归类到
+ * 消耗品内。每个单独一个档位」）——此前它落「货物」桶（当日那条"照现状不擅自改口径"的待定项，
+ * 船长今回已定）；逐件档见 `CONSUMABLE_ITEM_SUBS`。
  * ⚠ **`module-plug`（舰船插件）是本批补的第 12 档**：2026-09-26 插件已独立成归属档，市场一级
  * 当时漏了这一档（插件三档皆筛不出、行内却显示「低槽装备」）⇒ 补档即修该缺陷，理由见 `RACK_KIND_KEYS`。
  */
@@ -445,7 +486,8 @@ export const COMMODITY_TABS: readonly SubOption[] = [
  * **物品大类 → 它归属的一级桶**（货仓页 / 手册图鉴**按桶分组**时用；装备域另走 `rackDimKeyOf`）。
  *
  * ⚠ 口径**与 `itemBucketPasses` 逐格对齐**（本表只是它的反查，不是第二套判据）：
- * 「货物」桶＝除 残骸/消耗品/货柜/黑匣 之外的一切（含 `fragment` 蓝图碎片、`consumable` 道具）。
+ * 「消耗品」桶 = 弹药/修理组件/无人机（`CONSUME_KIND_KEYS`）＋ **道具 `consumable`**（2026-10-02 船长令）；
+ * 「货物」桶＝除 残骸/消耗品（含道具）/货柜/黑匣 之外的一切（含 `fragment` 蓝图碎片）。
  */
 export const BUCKET_OF_ITEM_KIND: Readonly<Record<string, string>> = {
   ore: 'item',
@@ -457,7 +499,7 @@ export const BUCKET_OF_ITEM_KIND: Readonly<Record<string, string>> = {
   essence: 'item',
   luxury: 'item',
   fragment: 'item',
-  consumable: 'item',
+  consumable: 'consume',
   wreck: 'wreck',
   container: 'container',
   blackbox: 'blackbox',
@@ -617,7 +659,7 @@ export function partSubPasses(ctx: SimContext, refId: string, sub: string): bool
  * - **真实物品大类**：`ITEM_KIND_ORDER` 的 15 个（`ore/mineral/part/gas/ice/ammo/drone/wreck/container/matter/essence/luxury/fragment/blackbox/kit/aicore`）；
  * - **`'item'`** ＝「货物」：除**残骸 / 消耗品 / 货柜 / 黑匣**以外的物品（市场一级类型用它，2026-09-08/09-11/09-16/09-26 四次拆分的结果）；
  * - **`'module'`** ＝ 装备（任意槽类）· **`'module-<归属档>'`** ＝ 按归属档（`rackDimKeyOf`：高/中/低槽 ＋ 舰船插件；市场一级类型与手册主筛选）；
- * - **`'consume'`** ＝ 消耗品整体（弹药/修理组件/无人机）· **`'container'`** ＝ 货柜整体 · **`'blackbox'`** ＝ 黑匣整体（2026-09-26 独立）；
+ * - **`'consume'`** ＝ 消耗品整体（弹药/修理组件/无人机 ＋ **道具 `consumable`**，2026-10-02 船长令）· **`'container'`** ＝ 货柜整体 · **`'blackbox'`** ＝ 黑匣整体（2026-09-26 独立）；
  * - **`SUB_ALL`** ＝ 不筛（恒真）。
  */
 export function itemBucketPasses(ctx: SimContext, refId: string, bucket: string): boolean {
@@ -636,12 +678,14 @@ export function itemBucketPasses(ctx: SimContext, refId: string, bucket: string)
   if (bucket === 'item') {
     if (it.kind === 'wreck') return false
     if (CONSUME_KIND_KEYS.includes(it.kind)) return false
+    // 2026-10-02 船长令：**道具（`consumable`）也归「消耗品」**（原先落货物桶 ⇒ 一级选消耗品找不到它）
+    if (it.kind === 'consumable') return false
     if (CONTAINER_KIND_KEYS.includes(it.kind)) return false
     // 2026-09-26 船长令：「市场内黑匣单独一个分类，不要挪到「货物」」⇒ 黑匣也从「货物」里剔出
     if (BLACKBOX_KIND_KEYS.includes(it.kind)) return false
     return true
   }
-  if (bucket === 'consume') return CONSUME_KIND_KEYS.includes(it.kind)
+  if (bucket === 'consume') return CONSUME_KIND_KEYS.includes(it.kind) || it.kind === 'consumable'
   if (bucket === 'container') return CONTAINER_KIND_KEYS.includes(it.kind)
   if (bucket === 'blackbox') return BLACKBOX_KIND_KEYS.includes(it.kind)
   return it.kind === bucket // 真实大类（含 wreck / aicore / fragment …）
@@ -685,8 +729,19 @@ export function subLabelOf(kind: string, key: string): string {
  * （见本文件头注释），直接渲染在英文界面下就会漏出中文（本轮报障的正是这批）。
  * 适用范围不限于本文件的表：`Handbook` / `IndustryPage` / `Shipyard` / `Wormhole` 里那些
  * `{ id, label }` 形状的门类与筛选项同样适用。
+ *
+ * **`nameOf`（2026-10-02 加）**：档是"某一件物品"时（`SubOption.itemId`，如消耗品桶的
+ * 道具逐件档），档名取**那件物品自己的名字**——解析器由调用方给（`(id) => ctx.items.get(id)?.name`），
+ * 中英随物品表走、不在表里再抄一份。⚠ 只有**可能渲染道具档的那几处**需要传；其余档位不受影响。
  */
-export function subText(opt: { id?: string; label: string; idParam?: string }): string {
+export function subText(
+  opt: { id?: string; label: string; idParam?: string; itemId?: string },
+  nameOf?: (itemId: string) => string | undefined,
+): string {
+  if (opt.itemId !== undefined) {
+    const byItem = nameOf?.(opt.itemId)
+    if (byItem !== undefined && byItem !== '') return byItem
+  }
   if (opt.id === undefined) return opt.label
   return opt.idParam !== undefined ? tr(opt.id, { p1: opt.idParam }) : tr(opt.id)
 }
@@ -725,6 +780,7 @@ export function presentSubs<T extends { key: string }>(options: readonly T[], ha
  * | `fragment` | `MODULE_SUBS` | `frag-<模块 id>` 反解后取 `moduleSubKeyOf(slot, 模块 id)` |
  * | `module` / `module-high·mid·low·plug` | `MODULE_SUBS` | `moduleSubKeyOf(mod.slot, mod.id)` |
  * | `item`（货物）/ `consume` | 物品大类 | `item.kind === sub` |
+ * | `consume` | `consume-item-<物品 id>`（`CONSUMABLE_ITEM_SUBS`，2026-10-02 船长令） | `refId === <物品 id>` 且 `kind === 'consumable'` |
  * | 其余 | — | 只认 `SUB_ALL` |
  */
 export function itemSubPasses(ctx: SimContext, refId: string, bucket: string, sub: string): boolean {
@@ -754,6 +810,11 @@ export function itemSubPasses(ctx: SimContext, refId: string, bucket: string, su
   if (sub === 'part-basic' || sub === 'part-advanced') return partSubPasses(ctx, refId, sub)
   const it = ctx.items.get(refId)
   if (!it) return false
+  /* 道具逐件档（`consume-item-<物品 id>`，**2026-10-02 船长令**）：判据就是"是不是那一件"
+     —— 三件道具 `kind` 相同，只有按 id 才分得开（后缀 = 物品 id，前缀常量单点）。 */
+  if (sub.startsWith(CONSUMABLE_SUB_PREFIX)) {
+    return it.kind === 'consumable' && refId === sub.slice(CONSUMABLE_SUB_PREFIX.length)
+  }
   return it.kind === sub // item（货物）/ consume / 真实大类
 }
 

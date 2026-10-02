@@ -2100,6 +2100,48 @@ for (const m of MODULES) {
     )
   }
 
+  /* ── **道具归档契约**（**2026-10-02 船长令**）───────────────────────────────────────────────
+   * 船长报障：「这两天新加的这些消耗品，在手册中查看不到」⇒ 令「信号发射器和技能加速剂应该归类到
+   * 消耗品内。**每个单独一个档位**」（同日取甲：第三件道具「超空间折跃燃料」一并）。
+   *
+   * 报障的根因形态：**新加了一件 `kind: 'consumable'` 的道具、没人把它登记进消耗品的逐件档**
+   * ⇒ 一级选「消耗品」永远筛不到它（市场/仓库/货仓/手册四处共读一张表 ⇒ 四处同病）。
+   * 这条契约把那个形态钉死：**两个方向都查**——
+   *   ① 数据里每件道具都必须登记（漏登记即红，就是本次报障）；
+   *   ② 登记表里每一项都必须对应一件真道具（防 id 打错，打错即红）。
+   * 判据源：数据 = `ITEMS` 的 `kind`；登记表 = `ui/itemSubs.ts` 的 `CONSUMABLE_ITEM_SUBS`（单点）。 */
+  {
+    const subPath = 'apps/desktop/src/renderer/src/ui/itemSubs.ts'
+    const subSrc = stripComments(readSrc(subPath)).join('\n')
+    const at = subSrc.indexOf('export const CONSUMABLE_ITEM_SUBS')
+    const end = at < 0 ? -1 : subSrc.indexOf('\n]', at)
+    const seg = at < 0 || end < 0 ? '' : subSrc.slice(at, end + 2)
+    check(
+      at >= 0,
+      `道具归档契约：${subPath} 里没有 \`CONSUMABLE_ITEM_SUBS\`——消耗品的「道具逐件档」单点丢了` +
+        `（船长 2026-10-02 令：每件道具单独一个档位）`,
+    )
+    const registered = [...seg.matchAll(/itemId:\s*'([\w-]+)'/g)].map((m) => m[1]!)
+    const liveItems = ITEMS.filter((i) => i.kind === 'consumable').map((i) => i.id)
+    const missing = liveItems.filter((id) => !registered.includes(id))
+    const bogus = registered.filter((id) => !liveItems.includes(id))
+    check(
+      missing.length === 0,
+      `道具归档契约：${missing.join(' · ')} 是 \`kind: 'consumable'\` 的道具，但没登记进 ` +
+        `${subPath} 的 \`CONSUMABLE_ITEM_SUBS\` ⇒ 玩家在市场/仓库/货仓/手册的任何筛选里都找不到它` +
+        `（船长 2026-10-02 报障的正是这个形态）`,
+    )
+    check(
+      bogus.length === 0,
+      `道具归档契约：\`CONSUMABLE_ITEM_SUBS\` 登记了 ${bogus.join(' · ')}，但数据里没有这样的道具` +
+        `（id 打错 ⇒ 那一档恒空）`,
+    )
+    console.log(
+      `· 道具归档契约：数据里道具 ${liveItems.length} 件 · 逐件档登记 ${registered.length} 件` +
+        `（${registered.join(' · ')}）—— 两向逐个比对见上面 ✓/✗`,
+    )
+  }
+
 
   /* ── 存档「恢复 / 导入**不**自动备份」契约（船长 2026-09-17：「**导入或者恢复存档时，不要备份现有存档**」）──
    * 挡回潮：三条覆盖路径里任何一条又"好心"加回防误操作备份，或界面文案又开始承诺自动备份。
