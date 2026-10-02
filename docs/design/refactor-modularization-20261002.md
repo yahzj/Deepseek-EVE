@@ -36,7 +36,7 @@
 
 | 文件 | 现状 | 目标切法 | 错峰对象 |
 |---|---|---|---|
-| `core/combat.ts`（10193 行） | 敌群生成/伤害结算/特效/统计混居 | 按现有 24 个分区注释切：敌群与生成 → 特效演出 → 伤害与命中 → 统计与图鉴 | 二号（闪现演出批） |
+| `core/combat.ts`（10193 行） | 敌群生成/伤害结算/特效/统计混居 | 按现有 24 个分区注释切：敌群与生成 → 特效演出 → 伤害与命中 → 统计与图鉴。**4a 已拆：`combatMath.ts`（命中与伤害数学十件）** | 二号（闪现演出批） |
 | `core/engine.ts`（3828 行） | 大跨步主循环＋命令分发 | 命令分发按域拆（industry/manufacturing/lab…各自注册） | 三号（activity 护栏） |
 | `core/save.ts`（4338 行） | 序列化/归一/迁移一家 | **只允许**把纯函数（归一器）拆出，序列化主体暂不动（存档兼容） | — |
 | `renderer` 两套工业页（1476＋≈2300 行） | 同一域双写 | 先补 HUD 实验室对齐，再抽公共件合流 | 船长目视验收 |
@@ -304,6 +304,18 @@
   此后 F9 = 纯"不许新增运行期环"闸门。
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：本批零渲染层文件改动）。
+
+### 批次 4a：combat.ts 首拆——`combatMath.ts` 命中与伤害数学（2026-10-02 · 零行为变化）
+
+- 手法：`Hp3` / `clamp` / `RESIST_FLOOR` / `typeLayerMult` / `layerMultText` / `distFactor` /
+  `inRange` / `hitChance` / `droneHitChance` / `applyDamage` 十件**纯数学层**（无 state/随机/日志，
+  只依赖 types）从 combat.ts 拆到新文件 `combatMath.ts`；combat 借回使用并原样再导出
+  ⇒ wormholeBattle / encounters / hullDamage / UI / 用例等 12~13 个外部文件的既有引用零改动。
+- `applyDamage` 参数类型 `UnitSpec['resists']` 改为等价的结构类型（shield/armor/hull 各 DamageResists）
+  ——避免 combatMath 反向借 combat 的类型，保证零回边（F9 实测仍为 0 环）。
+- noUnusedLocals 闸门抓到 combat 不再内部使用的 `layerMultText`（只留再导出）——护栏生效实例。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：零渲染层改动）。
 
 ## 待办/待裁
 
