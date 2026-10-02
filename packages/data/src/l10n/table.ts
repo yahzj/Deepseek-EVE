@@ -1232,6 +1232,36 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.expedition.035": { zh: "机群尚未补充（现 {p1} 架 · 停环时 {p2} 架）：需补到 {p3} 架以上才可再开——先在装配页装入无人机。", en: "The drone wing is not resupplied yet ({p1} aboard, {p2} when the loop stopped): bring it above {p3} to restart — load drones on the Fitting page first." },
   "core.expedition.036": { zh: "需要「深空工业协会」声望 {p1}（累计 {p2}），多完成低级目标攒声望。", en: "Needs Deep Space Industry Association standing {p1} (accumulated {p2}) — clear lower-tier targets to build standing." },
   "core.expedition.037": { zh: "「{p1}」冷却中：重复出击需等待约 {p2} 秒。", en: "“{p1}” is cooling down: repeat sorties have to wait about {p2} seconds." },
+  /**
+   * ⟪2026-10-02 批⑨-⑤ · 远征日志⟫ **`expedition.ts` 的 addLog 家族挂 id**（船长「按你推荐」）。
+   * 中文原串一字未改；凡"可选片段"一律走**槽译文**（`p{n}Id` ＋ `p{n}p{k}`），
+   * 凡"两种情况各写一句"的一律**各立一个 id**（不合并成可选段——空段会被整段丢掉的硬规矩）。
+   * `.038`/`.039` 的 `{p1}` 是**途中事件正文**：它的英文由 `l10n.ts` 的 `EN_TRAVEL_EVENTS` 覆盖（`text` 字段）。
+   */
+  "core.expedition.038": { zh: "{p1}（+{p2} 信用点）", en: "{p1} (+{p2} credits)" },
+  "core.expedition.039": { zh: "{p1}（获得 {p2}×{p3}）", en: "{p1} (gained {p2}×{p3})" },
+  "core.expedition.040": { zh: "⚔ 远征开始（{p1}）：{p2} 自「{p3}」起航，立即抵达目标空域进入交火。胜利后自动返航最近空间站（母港或已建成副站，含去返全程，不可召回）；失利/撤退同样自动返航。", en: "⚔ Expedition begun ({p1}): {p2} departs “{p3}” and reaches the target volume at once, entering combat. On victory the fleet flies itself back to the nearest station (home port or a completed outpost, both legs included, no recall); defeat and retreat return the same way." },
+  "core.expedition.041": { zh: "采矿已结束（{p1} 转战悬赏「{p2}」）：离开「{p3}」——本趟采得的 {p4} 单位{p5}仍在船上，记得回港卸货。", en: "Mining ended ({p1} moves on to bounty “{p2}”): leaving “{p3}” — the {p4} units of {p5} mined this trip are still aboard, so remember to unload back at port." },
+  "core.expedition.042": { zh: "采矿已结束（{p1} 转战悬赏「{p2}」）：离开「{p3}」（本趟尚无收获），记得回港卸货。", en: "Mining ended ({p1} moves on to bounty “{p2}”): leaving “{p3}” (nothing mined this trip); remember to unload back at port." },
+  "core.expedition.043": { zh: "⚔ 抵达目标（{p1}）：进入交火。预载弹药 {p2} 发。{p3}", en: "⚔ Target reached ({p1}): entering combat. {p2} rounds pre-loaded.{p3}" },
+  "core.expedition.044": { zh: "⚔ 抵达目标（{p1}）：进入交火。警告：未携带弹药，武器无法开火（基础舰炮可还击）。{p3}", en: "⚔ Target reached ({p1}): entering combat. Warning: no ammunition aboard, so the guns cannot fire (the basic cannon can still answer).{p3}" },
+  "core.expedition.045": { zh: "⚔ 抵达目标（{p1}）：进入交火。未装配武器：仅基础舰炮还击。{p3}", en: "⚔ Target reached ({p1}): entering combat. No weapons fitted: only the basic cannon answers.{p3}" },
+  "core.expedition.046": { zh: "（赏金任务目标：窝点守备强于常驻悬赏，注意弹药与修理件。）", en: " (bounty objective: a lair is better guarded than a standing bounty, so watch ammunition and repair kits.)" },
+  "core.expedition.047": { zh: "◆ {p1}（+{p2} 信用点）", en: "◆ {p1} (+{p2} credits)" },
+  "core.expedition.048": { zh: "舰队返航时打捞到一枚漂流信标，协会收购了上面的航路情报", en: "On the way home the fleet salvaged a drifting beacon; the Association bought the route data aboard it" },
+  "core.expedition.049": { zh: "编队顺手清理了一块导航浮标，空间站维修部发来感谢金", en: "The formation cleared a navigation buoy in passing, and the station’s maintenance office sent a thank-you payment" },
+  "core.expedition.050": { zh: "舰载传感器捕获一段加密信号，协会情报处兑换了报酬", en: "Ship sensors caught an encrypted transmission, and Association intelligence paid out for it" },
+  "core.expedition.051": { zh: "✦ 敌对派系活跃战果：{p1} 的残骸里翻出稀有残骸 ×{p2}{p3}——可前往「{p4}」打捞（回站用回收炉解体可得额外战利品）。", en: "✦ Spoils against an active hostile faction: a rare wreck ×{p2} was pulled from the {p1} debris{p3} — salvage it at “{p4}” (breaking it down in a recycle furnace back at the station yields extra spoils)." },
+  "core.expedition.052": { zh: "（连刷 {p1} 次未出，本次保底）", en: " (nothing in the last {p1} runs, so this one is guaranteed)" },
+  "core.expedition.053": { zh: "战果已入账：舰队自动返航「{p1}」（去程并入返航 · 约 {p2} 分钟，胜利返航不可召回）——到站自动卸货入仓库，可维修或让重复清剿自动续打。", en: "Spoils banked: the fleet is flying itself back to “{p1}” (outbound leg folded into the return · about {p2} minutes, a victory return cannot be recalled) — cargo unloads into the warehouse on arrival, and you can repair or let the repeat sweep keep hitting." },
+  "core.expedition.054": { zh: "⚠ 超时撤退后船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。", en: "⚠ After the timed retreat the hull is close to collapse (5% durability left) — repair it fully as soon as you are back in port." },
+  "core.expedition.055": { zh: "⚠ 自动撤退后船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。", en: "⚠ After the automatic retreat the hull is close to collapse (5% durability left) — repair it fully as soon as you are back in port." },
+  "core.expedition.056": { zh: "⚠ 撤退时船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。", en: "⚠ The hull was close to collapse when you retreated (5% durability left) — repair it fully as soon as you are back in port." },
+  "core.expedition.057": { zh: "悬赏战果已携回「{p1}」并自动卸入物品仓库（{p2} 单位）——可维修或补给后再次出击。", en: "Bounty spoils were carried back to “{p1}” and unloaded into the warehouse ({p2} units) — repair or resupply, then sortie again." },
+  "core.expedition.058": { zh: "悬赏战果已携回母港并自动卸入物品仓库（{p1} 单位）——可维修或补给后再次出击。", en: "Bounty spoils were carried back to the home port and unloaded into the warehouse ({p1} units) — repair or resupply, then sortie again." },
+  "core.expedition.059": { zh: "远征结束，舰队已停靠「{p1}」（副空间站）。{p2}", en: "Expedition over; the fleet has docked at “{p1}” (outpost).{p2}" },
+  "core.expedition.060": { zh: "远征结束，舰队已停靠母港。{p1}", en: "Expedition over; the fleet has docked at the home port.{p1}" },
+  "core.expedition.061": { zh: "货仓已自动卸入物品仓库（{p1} 单位）。", en: " The hold unloaded into the warehouse automatically ({p1} units)." },
   /* ── 第二十批：location.ts（返航 / 建站交付 / 转场掩护巡逻）── */
   "core.location.001": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。请先到活动栏点「停止运输」。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first." },
   "core.location.002": { zh: "快递投送途中：舰船正在执行投送航行，到站后再返航。", en: "A courier delivery is under way: the ship is on its delivery voyage, so return once it docks." },

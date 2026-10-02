@@ -245,7 +245,7 @@ describe('英文覆盖层（P2）', () => {
     }
   })
 
-  it('旅行事件 + 谜质科技：全覆盖 + 英文名生效 + 数值深比一字不动', () => {
+  it('旅行事件 + 谜质科技：全覆盖 + 英文名/正文生效 + 数值深比一字不动', () => {
     const missEv = zh.travelEvents.filter((e) => !(e.id in EN_TRAVEL_EVENTS)).map((e) => e.id)
     expect(missEv, `这些旅行事件还没英文名：${missEv.join(', ')}`).toEqual([])
     const missMt = [...(zh.matterTech ?? new Map()).keys()].filter((id) => !(id in EN_MATTER_TECH))
@@ -257,6 +257,14 @@ describe('英文覆盖层（P2）', () => {
      */
     const missNote = [...(zh.matterTech ?? new Map()).keys()].filter((id) => !(id in EN_MATTER_TECH_NOTES))
     expect(missNote, `这些谜质科技还没英文说明：${missNote.join(', ')}`).toEqual([])
+    /**
+     * **事件正文（`text`）也必须全部有英文**（**2026-10-02 三号补 · 远征批**）：
+     * 与 `note` 同一个病根 —— 正文的字段名不是 `description`，`overlayList` 覆盖不到，
+     * 而它**会进日志**（`core.expedition.038/039` 的 `{p1}`）⇒ 英文界面下整句中文。
+     * 新增事件漏登记 ⇒ 这里当场红。
+     */
+    const missText = zh.travelEvents.filter((e) => !(e.id in EN_TRAVEL_EVENTS) || EN_TRAVEL_EVENTS[e.id]!.text === undefined).map((e) => e.id)
+    expect(missText, `这些旅行事件还没英文正文：${missText.join(', ')}`).toEqual([])
     expect(en.travelEvents.find((e) => e.id === 'ev-aurora')?.name).toBe('Warp Aurora')
     expect(en.matterTech?.get('mt-industry-unbox')?.name).toBe('Container Unboxing')
     expect(en.matterTech?.get('mt-battle-threat-boss')?.name).toBe('Guardian Analysis')
@@ -267,12 +275,21 @@ describe('英文覆盖层（P2）', () => {
       expect(other.note, `${id} 的英文说明应来自原文且有内容`).not.toBe(def.note)
       expect(cjkMt.test(other.note), `${id} 的英文说明残留中日韩字符：${other.note}`).toBe(false)
     }
+    /** 同上：英文**正文**要真来自译文（不是照抄中文）且不残留中日韩字符 */
+    for (const e of zh.travelEvents) {
+      const other = en.travelEvents.find((x) => x.id === e.id)!
+      expect(other.text, `${e.id} 的英文正文应来自原文且有内容`).not.toBe(e.text)
+      expect(other.text.length, `${e.id} 的英文正文不该是空串`).toBeGreaterThan(0)
+      expect(cjkMt.test(other.text), `${e.id} 的英文正文残留中日韩字符：${other.text}`).toBe(false)
+    }
     const strip = (d: object): string => {
       const rest: Record<string, unknown> = { ...(d as Record<string, unknown>) }
       delete rest.name
       delete rest.description
       // 2026-09-26：`note` 也进本地化范围（谜质节点走 `EN_MATTER_TECH_NOTES`）⇒ 深比时一并排除
       delete rest.note
+      // 2026-10-02：`text` 也进本地化范围（事件正文走 `EN_TRAVEL_EVENTS`）⇒ 深比时一并排除
+      delete rest.text
       return JSON.stringify(rest)
     }
     for (const e of zh.travelEvents) {

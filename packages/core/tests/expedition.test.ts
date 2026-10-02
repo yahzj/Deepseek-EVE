@@ -92,6 +92,48 @@ describe('远征 V12：两阶段', () => {
     expect(state.expedition.phase).toBe('battle')
   })
 
+  /**
+   * **甲案接线**（**2026-10-02 批⑨-⑤**）：远征的日志挂 `textId` ＋ 参数，英文侧由
+   * `table.ts` 的 `core.expedition.*` 渲染。挑三处最容易退化的接线钉住：
+   * ① **远征开始**（单模板 ＋ 三槽：目标 / 船名 / 出发地）；
+   * ② **途中事件**（带收益那两态：`{p1}` 是**事件正文**，英文走 `EN_TRAVEL_EVENTS` 的 `text`）；
+   * ③ **抵达目标**（三种挂载态各一条 id，窝点尾注走 `p3Id` 槽译文）。
+   * 中文原串一字未改（`text` 与改造前逐字相同）。
+   */
+  it('甲案接线：远征开始 / 途中事件 / 抵达目标 三类日志都带 textId 与参数', () => {
+    const farCtx = makeTestCtx({
+      anomalies: [anomaly('ano-far1', 'galaxy-far', { threat: 4, reward: 5_000 })],
+      balance: { ...makeTestCtx().balance, travelEventChance: 1 },
+    })
+    state.exploredGalaxies.push('galaxy-far')
+    expect(startExpedition(state, 'ano-far1', farCtx).ok).toBe(true)
+
+    // ① 远征开始
+    const started = state.logs.filter((l) => l.textId === 'core.expedition.040').at(-1)
+    expect(started, '远征开始日志必须挂 textId').toBeDefined()
+    const st = started!.textParams as Record<string, unknown>
+    expect(st.p2, 'p2 = 船名').toBeDefined()
+    expect(st.p3, 'p3 = 出发地').toBe('母港')
+    expect(started!.text).toMatch(/^⚔ 远征开始（.+）：.+ 自「.+」起航，/)
+
+    // ② 途中事件：本档 travelEventChance = 1 ⇒ 必触发；只有"带收益"的两态才有 id
+    const ev = state.logs.filter((l) => l.textId === 'core.expedition.038' || l.textId === 'core.expedition.039').at(-1)
+    if (ev !== undefined) {
+      const ep = ev.textParams as Record<string, unknown>
+      /** `{p1}` = 事件正文（与 core 侧那句中文同源；英文侧由数据层覆盖 `text`） */
+      expect(typeof ep.p1).toBe('string')
+      expect(String(ep.p1).length).toBeGreaterThan(0)
+    }
+
+    // ③ 抵达目标（本档未装武器 ⇒ 走 ".045" 那条"未装配武器"）
+    const arrive = state.logs.filter((l) => l.text.includes('抵达目标')).at(-1)
+    expect(arrive, '抵达目标日志必须挂 textId').toBeDefined()
+    expect(arrive!.textId).toBe('core.expedition.045')
+    const at = arrive!.textParams as Record<string, unknown>
+    expect(at.p1, 'p1 = 目标名').toBeDefined()
+    expect(at.p3, '非窝点 ⇒ 尾注为空串（硬槽恒传：缺键会原样漏 {p3}）').toBe('')
+  })
+
   it('失利路径：维修费按期望奖励×50% 扣款、耐久下降', () => {
     // 制造必然战败：威胁极高的母港目标
     const brutalCtx = makeTestCtx({

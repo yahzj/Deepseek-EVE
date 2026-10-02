@@ -13,7 +13,7 @@
  * P2 后续批次追加（`localizeCtx` 里没登记的目录 ⇒ 原样中文）。
  * ⚠ 覆盖表里的 id 必须真实存在于内容表 —— `packages/core/tests/l10n-overlay.test.ts` 钉住这条。
  */
-import type { FoeMountId, MatterTechNodeDef, SimContext, StationSiteDef } from '@whale/core'
+import type { FoeMountId, MatterTechNodeDef, SimContext, StationSiteDef, TravelEventDef } from '@whale/core'
 // 2026-09-26：残骸英文区名改读组表（`wreckGroupOfItemId` ⇒ `region`），不再按 id 后缀解
 import { WRECK_GROUPS, resolveFoeMounts, wreckGroupOfItemId } from '@whale/core'
 import { BLUEPRINTS } from './blueprints'
@@ -1696,16 +1696,45 @@ export const EN_COMMS_FACTIONS: EnTable = {
   'dept-contraband': { name: 'Contraband Desk' },
 }
 
-/** 旅行事件（8 · 译名表 §十三；`ctx.travelEvents` 是**数组** ⇒ 用 overlayList） */
-export const EN_TRAVEL_EVENTS: EnTable = {
-  'ev-derelict': { name: 'Drifting Container' },
-  'ev-mineral-cloud': { name: 'Raw Material Debris Cloud' },
-  'ev-aurora': { name: 'Warp Aurora' },
-  'ev-scout': { name: 'Pirate Scout' },
-  'ev-meteor': { name: 'Meteor Shower' },
-  'ev-big-cargo': { name: 'Lost Association Container' },
-  'ev-ore-patch': { name: 'Rich Ore Remnant' },
-  'ev-signal': { name: 'Ancient Signal' },
+/**
+ * 旅行事件（8 · 译名表 §十三；`ctx.travelEvents` 是**数组** ⇒ 用 `overlayTravelEvents`）。
+ *
+ * **2026-10-02 补 `text`**（远征批）：正文原先只有中文 ⇒ 英文界面下事件日志整句中文。
+ * 中文原串一字未改（`travelEvents.ts`），这里只补英文正文。
+ */
+export const EN_TRAVEL_EVENTS: Readonly<Record<string, { name: string; text: string }>> = {
+  'ev-derelict': {
+    name: 'Drifting Container',
+    text: 'The fleet found a drifting container on the route and towed it back to the station, where stripping it down earned a bounty',
+  },
+  'ev-mineral-cloud': {
+    name: 'Raw Material Debris Cloud',
+    text: 'A cloud of blast-scattered ore dust blocked the route; the fleet swept all of it into the hold on the way through',
+  },
+  'ev-aurora': {
+    name: 'Warp Aurora',
+    text: 'Auroras surged inside the warp corridor and every ship’s sensors logged the light show — the trip lost no time over it',
+  },
+  'ev-scout': {
+    name: 'Pirate Scout',
+    text: 'A pirate scout trailed the fleet at a distance: it never opened fire, but your route has been noted',
+  },
+  'ev-meteor': {
+    name: 'Meteor Shower',
+    text: 'A dense meteor shower skimmed the shields like a free fireworks show',
+  },
+  'ev-big-cargo': {
+    name: 'Lost Association Container',
+    text: 'A giant container marked “Association property — lost” drifted beside the route; hauling it back earns a recovery bounty',
+  },
+  'ev-ore-patch': {
+    name: 'Rich Ore Remnant',
+    text: 'A forgotten rich ore vein sat embedded in the rock, and the miners took a load of high-grade material off it',
+  },
+  'ev-signal': {
+    name: 'Ancient Signal',
+    text: 'The radar caught an ancient signal, and the Association archives will pay for a clean recording',
+  },
 }
 
 /** 谜质科技（23 · 译名表 §十四；沿用既有术语：拆解 = Unbox · 残骸 = Wreck · 谐振 = Resonant） */
@@ -1818,6 +1847,35 @@ function overlayMatterTech(
   return out ?? src
 }
 
+/**
+ * **途中事件（远征）的英文覆盖**（**2026-10-02 加** · 远征批）。
+ *
+ * 为什么不能用 `overlayList`：它只认 `name` / `description`，而事件的**正文**字段是 `text`
+ * （`TravelEventDef.text`，触发后写进日志的那句话）⇒ 直接调 `overlayList` 会让英文界面下的
+ * 事件日志整句仍是中文（实测：`core.expedition.038/039` 的 `{p1}` 就是它）。
+ * 与 `overlayMatterTech` 同款：按 id 查表，查不到的**保留原文**（漏登记时看得见中文，不会静默变空）。
+ */
+function overlayTravelEvents(
+  src: readonly TravelEventDef[],
+  en: Readonly<Record<string, { name?: string; text?: string }>>,
+  locale: Locale,
+): readonly TravelEventDef[] {
+  if (locale === 'zh') return src
+  let out: TravelEventDef[] | null = null
+  for (let i = 0; i < src.length; i++) {
+    const def = src[i]!
+    const row = en[def.id]
+    if (row === undefined || (row.name === undefined && row.text === undefined)) continue
+    out ??= [...src]
+    out[i] = {
+      ...def,
+      ...(row.name !== undefined ? { name: row.name } : {}),
+      ...(row.text !== undefined ? { text: row.text } : {}),
+    }
+  }
+  return out ?? src
+}
+
 export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
   if (locale === 'zh') return ctx
   return {
@@ -1836,6 +1894,7 @@ export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
     // matterTech 在 SimContext 里是可选字段（缺省 = 该档内容没装）⇒ 有才覆盖
     // ⚠ 不用 `overlayMap`：节点的说明字段是 `note`（不是 `description`）⇒ 走专用覆盖
     ...(ctx.matterTech ? { matterTech: overlayMatterTech(ctx.matterTech, EN_MATTER_TECH, EN_MATTER_TECH_NOTES, locale) } : {}),
-    travelEvents: overlayList(ctx.travelEvents, EN_TRAVEL_EVENTS, locale),
+    // ⚠ 不用 `overlayList`：事件的**正文**字段是 `text`（不是 `description`）⇒ 走专用覆盖
+    travelEvents: overlayTravelEvents(ctx.travelEvents, EN_TRAVEL_EVENTS, locale),
   }
 }

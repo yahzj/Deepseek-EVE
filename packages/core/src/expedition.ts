@@ -402,7 +402,10 @@ function applyTravelEvent(state: GameState, ctx: SimContext, eventDef: TravelEve
     const span = Math.max(0, effect.max - effect.min)
     const amount = effect.min + nextInt(state.rng, span + 1)
     state.wallet.isk += amount
-    addLog(state, 'trade', `${eventDef.text}（+${amount.toLocaleString('zh-CN')} 信用点）`)
+    addLog(state, 'trade', `${eventDef.text}（+${amount.toLocaleString('zh-CN')} 信用点）`, 'core.expedition.038', {
+      p1: eventDef.text,
+      p2: amount.toLocaleString('zh-CN'),
+    })
     return
   }
   if (effect.kind === 'mineral') {
@@ -412,7 +415,11 @@ function applyTravelEvent(state: GameState, ctx: SimContext, eventDef: TravelEve
       return
     }
     addItem(state, effect.itemId, effect.units)
-    addLog(state, 'event', `${eventDef.text}（获得 ${def.name}×${effect.units}）`)
+    addLog(state, 'event', `${eventDef.text}（获得 ${def.name}×${effect.units}）`, 'core.expedition.039', {
+      p1: eventDef.text,
+      p2: def.name,
+      p3: effect.units,
+    })
   }
 }
 
@@ -552,6 +559,8 @@ export function startExpedition(
     state,
     'combat',
     `⚔ 远征开始（${outName}）：${shipName} 自「${fromName}」起航，立即抵达目标空域进入交火。胜利后自动返航最近空间站（母港或已建成副站，含去返全程，不可召回）；失利/撤退同样自动返航。`,
+    'core.expedition.040',
+    { p1: outName, p2: shipName, p3: fromName },
   )
   // 途中事件（若有）在出发瞬间触发一次（不再有去程中段等待）
   if (exp.eventId) maybeFireTravelEvent(state, ctx)
@@ -609,10 +618,16 @@ export function startExpeditionFromMining(
   // 矿带在异星系：以"野外停泊"表达起点（startExpedition 会读取并清空）
   if (from !== null) state.awayGalaxy = from
   const shipName = shipDisplayName(state, ctx, state.shipId)
+  /** 转战目标名（日志模板与参数同源，避免两处各算一次） */
+  const bountyTargetName = opts?.lairTier ? lairNameOf(anomaly, opts.lairTier) : anomaly.name
   addLog(
     state,
     'industry',
-    `采矿已结束（${shipName} 转战悬赏「${opts?.lairTier ? lairNameOf(anomaly, opts.lairTier) : anomaly.name}」）：离开「${beltName}」${trip > 0 ? `——本趟采得的 ${trip} 单位${ore?.name ?? ''}仍在船上` : '（本趟尚无收获）'}，记得回港卸货。`,
+    `采矿已结束（${shipName} 转战悬赏「${bountyTargetName}」）：离开「${beltName}」${trip > 0 ? `——本趟采得的 ${trip} 单位${ore?.name ?? ''}仍在船上` : '（本趟尚无收获）'}，记得回港卸货。`,
+    trip > 0 ? 'core.expedition.041' : 'core.expedition.042',
+    trip > 0
+      ? { p1: shipName, p2: bountyTargetName, p3: beltName, p4: trip, p5: ore?.name ?? '' }
+      : { p1: shipName, p2: bountyTargetName, p3: beltName },
   )
   return startExpedition(state, anomalyId, ctx, opts)
 }
@@ -691,11 +706,20 @@ export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: stri
    */
   const armed = shipHasWeapon(state, ctx, shipId)
   const targetName = anomaly ? (exp.lairTier ? lairNameOf(anomaly, exp.lairTier) : anomaly.name) : ''
+  /** 窝点尾注（可选槽；有则挂 `p3Id` 走槽译文） */
+  const lairTail = exp.lairTier ? '（赏金任务目标：窝点守备强于常驻悬赏，注意弹药与修理件。）' : ''
   addLog(
     state,
     'combat',
     `⚔ 抵达目标（${targetName}）：进入交火。${armed ? (loaded > 0 ? `预载弹药 ${loaded} 发。` : '警告：未携带弹药，武器无法开火（基础舰炮可还击）。') : '未装配武器：仅基础舰炮还击。'}` +
       (exp.lairTier ? '（赏金任务目标：窝点守备强于常驻悬赏，注意弹药与修理件。）' : ''),
+    !armed ? 'core.expedition.045' : loaded > 0 ? 'core.expedition.043' : 'core.expedition.044',
+    {
+      p1: targetName,
+      ...(armed && loaded > 0 ? { p2: loaded } : {}),
+      p3: lairTail,
+      ...(lairTail !== '' ? { p3Id: 'core.expedition.046' } : {}),
+    },
   )
   return true
 }
@@ -805,15 +829,21 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     const roll = 1 - jitter + 2 * jitter * nextRandom(state.rng)
     let reward = Math.max(0, Math.round(baseRewardIsk * roll * bountyRewardFactor(state)))
     if (nextRandom(state.rng) < 0.15) {
+      /** 三句彩头各挂 id（中文原串照写；`p1Id` 让英文侧也按语言出词） */
       const texts = [
-        '舰队返航时打捞到一枚漂流信标，协会收购了上面的航路情报',
-        '编队顺手清理了一块导航浮标，空间站维修部发来感谢金',
-        '舰载传感器捕获一段加密信号，协会情报处兑换了报酬',
+        { text: '舰队返航时打捞到一枚漂流信标，协会收购了上面的航路情报', id: 'core.expedition.048' },
+        { text: '编队顺手清理了一块导航浮标，空间站维修部发来感谢金', id: 'core.expedition.049' },
+        { text: '舰载传感器捕获一段加密信号，协会情报处兑换了报酬', id: 'core.expedition.050' },
       ] as const
-      const text = pickOne(state.rng, texts)!
+      const picked = pickOne(state.rng, texts)!
+      const text = picked.text
       const bonus = Math.round(reward * 0.1)
       reward += bonus
-      addLog(state, 'trade', `◆ ${text}（+${bonus.toLocaleString('zh-CN')} 信用点）`)
+      addLog(state, 'trade', `◆ ${text}（+${bonus.toLocaleString('zh-CN')} 信用点）`, 'core.expedition.047', {
+        p1: text,
+        p1Id: picked.id,
+        p2: bonus.toLocaleString('zh-CN'),
+      })
     }
     const lootText: string[] = []
     const lootMul = lootFactor(state)
@@ -912,12 +942,22 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
       const pity = streak >= FACTION_RARE_DROP_PITY_ROLLS
       if (hit || pity) {
         injectRareWreck(state, anomaly.galaxyId, anomaly.id, FACTION_RARE_DROP_COUNT) // 内部清零空手计数
+        /** 保底尾注（可选槽） */
+        const pityTail = pity && !hit ? `（连刷 ${FACTION_RARE_DROP_PITY_ROLLS} 次未出，本次保底）` : ''
         addLog(
           state,
           'trade',
           `✦ 敌对派系活跃战果：${displayName} 的残骸里翻出稀有残骸 ×${FACTION_RARE_DROP_COUNT}` +
             `${pity && !hit ? `（连刷 ${FACTION_RARE_DROP_PITY_ROLLS} 次未出，本次保底）` : ''}` +
             `——可前往「${galaxy?.name ?? ''}」打捞（回站用回收炉解体可得额外战利品）。`,
+          'core.expedition.051',
+          {
+            p1: displayName,
+            p2: FACTION_RARE_DROP_COUNT,
+            p3: pityTail,
+            ...(pityTail !== '' ? { p3Id: 'core.expedition.052', p3p1: FACTION_RARE_DROP_PITY_ROLLS } : {}),
+            p4: galaxy?.name ?? '',
+          },
         )
       } else {
         state.rareWreckDryStreak = streak // 空手：累计（下次掷骰时判保底）
@@ -959,6 +999,8 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
         state,
         'combat',
         `战果已入账：舰队自动返航「${baseName}」（去程并入返航 · 约 ${Math.max(1, Math.round(backMs / 60_000))} 分钟，胜利返航不可召回）——到站自动卸货入仓库，可维修或让重复清剿自动续打。`,
+        'core.expedition.053',
+        { p1: baseName, p2: Math.max(1, Math.round(backMs / 60_000)) },
       )
     }
     return
@@ -1138,6 +1180,7 @@ function settleBattleRetreat(
           : mode === 'auto'
             ? '⚠ 自动撤退后船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。'
             : '⚠ 撤退时船体结构濒临崩溃（耐久仅剩 5%）——请返港后立即全面维修。',
+        mode === 'timeout' ? 'core.expedition.054' : mode === 'auto' ? 'core.expedition.055' : 'core.expedition.056',
       )
     }
   } else {
@@ -1359,6 +1402,31 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
         : siteName
           ? `远征结束，舰队已停靠「${siteName}」（副空间站）。${unloadedNote}`
           : `远征结束，舰队已停靠母港。${unloadedNote}`,
+      wasVictoryReturn
+        ? siteName
+          ? 'core.expedition.057'
+          : 'core.expedition.058'
+        : siteName
+          ? 'core.expedition.059'
+          : 'core.expedition.060',
+      wasVictoryReturn
+        ? siteName
+          ? { p1: siteName, p2: moved.toLocaleString('zh-CN') }
+          : { p1: moved.toLocaleString('zh-CN') }
+        : siteName
+          ? {
+              p1: siteName,
+              p2: unloadedNote,
+              ...(unloadedNote !== ''
+                ? { p2Id: 'core.expedition.061', p2p1: moved.toLocaleString('zh-CN') }
+                : {}),
+            }
+          : {
+              p1: unloadedNote,
+              ...(unloadedNote !== ''
+                ? { p1Id: 'core.expedition.061', p1p1: moved.toLocaleString('zh-CN') }
+                : {}),
+            },
     )
     return
   }

@@ -20,7 +20,8 @@
  *
  * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
  *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v31**（`CURRENT_STATE_VERSION`）
- *   - 本工具最后核对：**2026-10-02**（当日新增：**列表槽**两夹具——「自动探索队出发（名单）」
+ *   - 本工具最后核对：**2026-10-02**（当日新增：列表槽三夹具（自动探索队出发 / 返航全槽 / 返航空态）
+ *     ＋ **远征**两夹具（抵达目标·尾注槽译文 / 停靠收尾·卸货附注）
  *     与「自动探索队返航（战利品＋核心＋损伤＋谜质科技全槽齐）」，中英各一遍 ⇒
  *     这是船长「按你建议来修」那批机制的验收口）
  *   - 本工具最后跑过：**2026-10-02**
@@ -361,6 +362,39 @@ const FIXTURES: Fixture[] = [
       '🛰 自动探索队返航：带回 曦棱晶 ×24、虫洞谜质 ×2（已入仓库），并带回 基础 AI 核心 ×1（已直接接入核心库）；损伤：磷虾（结构 −35% / 装甲 −12%）。谜质科技：残骸线 ×1.20 · 母矿线 ×1.10 · 损伤 ×0.80。2 条舰全部安全返航，1 枚 AI 核心已释放（每次自动探索占 1 枚）——报告在「扫描虫洞」页等你确认。',
     expectEn:
       '🛰 Exploration team back: brought 曦棱晶 ×24, 虫洞谜质 ×2 (now in the warehouse), plus Basic AI core ×1 (routed straight to the core vault); damage: 磷虾 (hull −35% / armour −12%). Enigma tech: wreck line ×1.20 · mother-lode line ×1.10 · damage ×0.80. All 2 ships made it home safely and 1 AI core was released (each automated run takes 1) — the report is waiting for you on the Scan Wormholes page.',
+  },
+  /**
+   * **远征 · 抵达目标（窝点尾注走槽译文）**（**2026-10-02 批⑨-⑤**）：三种挂载态各一条 id，
+   * 尾注是**可选槽**（`p3Id` ＋ 无占位符模板 ⇒ 整段换成译文；非窝点时空串）。
+   */
+  {
+    name: '远征·抵达目标（未装配武器 ＋ 窝点尾注槽译文）',
+    text: '⚔ 抵达目标（矿脉窝点）：进入交火。未装配武器：仅基础舰炮还击。（赏金任务目标：窝点守备强于常驻悬赏，注意弹药与修理件。）',
+    textId: 'core.expedition.045',
+    textParams: {
+      p1: '矿脉窝点',
+      p3: '（赏金任务目标：窝点守备强于常驻悬赏，注意弹药与修理件。）',
+      p3Id: 'core.expedition.046',
+    },
+    expectZh: '⚔ 抵达目标（矿脉窝点）：进入交火。未装配武器：仅基础舰炮还击。（赏金任务目标：窝点守备强于常驻悬赏，注意弹药与修理件。）',
+    expectEn:
+      '⚔ Target reached (矿脉窝点): entering combat. No weapons fitted: only the basic cannon answers. (bounty objective: a lair is better guarded than a standing bounty, so watch ammunition and repair kits.)',
+  },
+  /**
+   * **远征 · 停靠收尾（卸货附注走槽译文）**：`{p1}` 是**可选附注**（有货才出现），
+   * 附注自己带一个数量 → `p1Id` ＋ `p1p1` 两层（本夹具钉这条链）。
+   */
+  {
+    name: '远征·停靠母港（卸货附注 p1Id ＋ p1p1）',
+    text: '远征结束，舰队已停靠母港。货仓已自动卸入物品仓库（1,234 单位）。',
+    textId: 'core.expedition.060',
+    textParams: {
+      p1: '货仓已自动卸入物品仓库（1,234 单位）。',
+      p1Id: 'core.expedition.061',
+      p1p1: '1,234',
+    },
+    expectZh: '远征结束，舰队已停靠母港。货仓已自动卸入物品仓库（1,234 单位）。',
+    expectEn: 'Expedition over; the fleet has docked at the home port. The hold unloaded into the warehouse automatically (1,234 units).',
   },
   /**
    * **列表槽 · 空态**（战利品为空 ⇒ core **不传 `List`**、改挂槽译文 `p1Id`「空手而归」）：
