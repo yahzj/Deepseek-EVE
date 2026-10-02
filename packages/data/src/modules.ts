@@ -1697,7 +1697,7 @@ export const MODULES: readonly ModuleDef[] = [
      *
      * 机制落点 = `ModuleDef.burst` → `WeaponSpec.burst` → `combat.meBurstReloadOf`（与敌方旗舰那把
      * `foeBurstFired` 那套**逐字同款**：一轮 3 发、发间隔 100 ms、**每发各扣弹各选靶**）。
-     * 产出面与另两件 R 势力件同款：**光环稀有残骸高级箱专属池**（`FOE_LAIR_GEAR.R`）＋ **市场只收不卖**。
+     * 产出面与另三件 R 势力件同款（`FOE_LAIR_GEAR.R` 现为四件）：**光环稀有残骸高级箱专属池** ＋ **市场只收不卖**。
      */
     id: 'mod-lair-beam-r',
     name: '三叉戟光束炮',

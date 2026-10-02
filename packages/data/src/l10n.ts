@@ -383,7 +383,7 @@ export const EN_MODULES: EnTable = {
   // H 族（墨潮帮）势力装备（2026-09-26 船长定：射程压制 · 捕获网 · 重袭机）
   'mod-lair-ecm-h': { name: 'Ink Tide EW Pod', description: 'A captured, rebuilt electronic-warfare core: fitted to a deployed fleet it suppresses enemy weapon range by 15%, stacking multiplicatively with electronic-warfare ships. Enemy range can only be pushed down to 3,000 m, and weapons whose base range is under 3,000 m are unaffected. It costs 150 CPU — a hull that fits it serves nothing else.' },
   'mod-lair-web-h': { name: 'Ink Tide Capture Web', description: 'A cycling web: it pins one un-webbed enemy ship, dropping its speed, cutting its thrusters and nullifying its evasion; the web releases and goes on cooldown when the target is sunk or the range opens past the break distance, and sinking the webbing ship releases it.' },
-  // **R 族（光环）势力特色装备**（船长 2026-10-01 令）：叠光激光炮 + 跃迁规避装置 —— 两件同出「光环稀有残骸的高级箱专属池」（与 AI 核心同一个池子）。
+  // **R 族（光环）势力特色装备**（船长 2026-10-01 令）：叠光激光炮 + 跃迁规避装置；⟪2026-10-02⟫ 再加 三叉戟光束炮（Trident Beam Cannon）+ PD激光（PD Laser）—— **四件**同出「光环稀有残骸的高级箱专属池」（与 AI 核心同一个池子）。
   'mod-lair-laser-r': { name: 'Overlay Laser Cannon', description: 'Energy beam, always hits; 7 km range. Reload 4.4s, cut by 0.3s per shot down to 0.6s; 250 rounds per engagement.' },
   'mod-lair-blink-r': { name: 'Blink Evasion Drive', description: 'Mid slot. When hit, opens engagement range by 2 km; 12s cooldown.' },
   'mod-lair-beam-r': { name: 'Trident Beam Cannon', description: 'Energy beam, always hits; 10.5 km range. Three shots per volley, 0.1s apart; reload 3s; 120 rounds per engagement.' },

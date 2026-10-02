@@ -131,7 +131,7 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
      我们参考那个做」；族格裁定「甲：新立族格」· 舰名配色「甲：照提案」）。
      ⚠ **2026-10-03 船长报障修**（「**我发现手册中的光环势力描述不正确。舰船也对不上。**」）：
      旧注释写「**P0 阶段没有专属内容**……三栏都为空」——那是**建族当时**的状态，**P0 落码后没回头同步**
-     ⇒ 手册里 R 族装备栏一直是空的，而实际早有**两件势力装备**（照 H 族同款填法，见其头注）。
+     ⇒ 手册里 R 族装备栏一直是空的，而实际早有**势力装备**（照 H 族同款填法，见其头注）。⟪2026-10-02 订正⟫ 当时是两件（叠光激光炮 / 跃迁规避装置）；后追加 三叉戟光束炮（mod-lair-beam-r）与 PD激光（mod-lair-pd-r）⇒ FOE_LAIR_GEAR.R 现为**四件**。
      ⚠ **R 族没有专属舰船**（玩家侧无 `sh-wh-r-*`）—— 与 H 族一样它是**入侵族**，
      出场的是敌舰级（`foe-r-corona-*` 五个：glint / echo / overlay / dusk / nexus），不是可拥有的船
      ⇒ `ships` 与 `blueprints` 两栏**保持为空**（界面按 H 族同款明写「暂无专属舰船」）。 */
@@ -139,7 +139,7 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
     family: 'R',
     nameId: 'ui.Handbook.381', // 光环
     glyph: 'fam-r',
-    /* 两件势力装备都是 R 族**残骸回收**链产物（2026-10-01 船长令那批：AI 核心 ＋ 叠光激光炮 ＋ 跃迁规避装置）
+    /* 四件势力装备都是 R 族**残骸回收**链产物（2026-10-01 船长令那批：AI 核心 ＋ 叠光激光炮 ＋ 跃迁规避装置；⟪2026-10-02⟫ 再加 三叉戟光束炮 ＋ PD激光）
        —— 与 H 族那两件同为窝点/残骸链产物、**无蓝图**（不上市场）⇒ 图纸一栏照旧为空。 */
     modules: ['mod-lair-laser-r', 'mod-lair-blink-r', 'mod-lair-beam-r', 'mod-lair-pd-r'],
     ships: [],
