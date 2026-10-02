@@ -9,7 +9,6 @@
   "packages/core/src/ai.ts → packages/core/src/shipyard.ts → packages/core/src/salvaging.ts → packages/core/src/expedition.ts → packages/core/src/weekendBattle.ts → packages/core/src/weekendEvent.ts → packages/core/src/sideTasks.ts → packages/core/src/market.ts",
   "packages/core/src/blackbox.ts → packages/core/src/plugs.ts → packages/core/src/inventory.ts",
   "packages/core/src/combat.ts → packages/core/src/wormholeFoes.ts",
-  "packages/core/src/equipment.ts → packages/core/src/plugs.ts → packages/core/src/inventory.ts",
   "packages/core/src/equipment.ts → packages/core/src/plugs.ts → packages/core/src/inventory.ts → packages/core/src/state.ts → packages/core/src/types.ts → packages/core/src/salvage.ts",
   "packages/core/src/equipment.ts → packages/core/src/plugs.ts → packages/core/src/inventory.ts → packages/core/src/types.ts → packages/core/src/salvage.ts",
   "packages/core/src/equipment.ts → packages/core/src/plugs.ts → packages/core/src/state.ts → packages/core/src/types.ts → packages/core/src/salvage.ts",

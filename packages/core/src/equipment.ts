@@ -177,22 +177,12 @@ export function removeModule(state: GameState, moduleId: string, count = 1): boo
 
 /* ═══════════ V18 fitted 位数组语义（多件查询/唯一键/占用） ═══════════ */
 
-/** 全位已装模块定义（顺序 = 高→中→低 位序；跳过空位） */
-export function allFittedModules(fitted: FittedModules, ctx: SimContext): ModuleDef[] {
-  const out: ModuleDef[] = []
-  for (const id of allFittedIds(fitted)) {
-    const def = ctx.modules.get(id)
-    if (def) out.push(def)
-  }
-  return out
-}
-
-/** 某家族（slot 六值）的全部已装件定义（按位序）——复数语义消费者用 */
-export function familyModules(state: GameState, ctx: SimContext, shipId: string, family: ModuleSlot): ModuleDef[] {
-  const fitted = state.fleet[shipId]?.fitted
-  if (!fitted) return []
-  return allFittedModules(fitted, ctx).filter((d) => d.slot === family)
-}
+/**
+ * **2026-10-02 破环搬家**：`allFittedModules` / `familyModules` 搬到 `fitted.ts`（断 inventory↔equipment
+ * 环），这里**原样再导出**保持既有 `from './equipment'` 引用不变（先例：wormhole.ts 再导出层曲线）。
+ */
+export { allFittedModules, familyModules } from './fitted'
+import { allFittedModules } from './fitted'
 /**
  * **算作"武器"的槽位家族**（炮台 / 导弹架 / 激光炮 / 无人机舱 / 战术导控）——**全仓唯一一份**。
  *

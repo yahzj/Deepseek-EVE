@@ -188,6 +188,16 @@
 - 约定 §15之二 与工具头注同步更新（F9 描述改"基线文件 + 递减"）。
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
 
+### 批次 3-④：破 `inventory ↔ equipment`（拆出 `fitted.ts`）（2026-10-02）
+
+- 手法：`allFittedModules` / `familyModules`（已装件读出两件套，只依赖 labels 的 `allFittedIds`）从
+  equipment.ts 拆到新文件 `fitted.ts`；inventory.ts 改从 fitted 读 ⇒ inventory→equipment 的运行期边断，
+  equipment→inventory（仓库操作）保留为正确方向。equipment.ts **原样再导出**（先例：wormhole 再导出
+  层曲线）⇒ 其余 7 个调用方零改动。
+- F9 基线 **26 → 25**。
+- 验证：typecheck 全仓 ✅（noUnusedLocals 闸门抓到并修掉一个多引入的再导出名）· core **3004 条** ✅ ·
+  arch:guard F1~F9 ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、

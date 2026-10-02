@@ -14,7 +14,7 @@ import type { FleetShipState, GameState } from './state'
 import type { ItemDef, SimContext } from './types'
 import { fleetDefOf } from './instances'
 import { shipLockedReason } from './state'
-import { familyModules } from './equipment'
+import { familyModules } from './fitted'
 // ⚠ 依赖方向：`blackbox.ts` 只依赖 `state` / `plugs`，**不引 inventory** ⇒ 这边引它不成环
 import { isBlackboxItem, noteBlackboxObtained } from './blackbox'
 
