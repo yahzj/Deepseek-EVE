@@ -558,7 +558,25 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ ·
   ui:rot-check ✅ · 构建 ✅。
 
+### 批次 4v：渲染层 noUnusedLocals 清理＋tsconfig 闸门（2026-10-02 · 零行为变化）
+
+- 手法：`apps/desktop/tsconfig.json` 开 `noUnusedLocals`（与 core 批次 2a 同口径）⇒ 存量 **226 处**未用符号
+  （死导入/死局部/死常量）全清：**31 个文件，50 增 / 316 删**。要点：死局部只删"纯表达式"；`perf.ts` 的
+  `fpsTimer`/`rafId` 只删**存句柄的赋值**、保住 `setInterval`/`requestAnimationFrame` 调用本身（帧循环照跑）；
+  BattleScreen 的 `blinkProcessMs` 经 git 对照确认 **4r 前即死变量**（实装口径在 `blinkAnimMs`）⇒ 删不改行为；
+  `Expedition.tsx` 为全仓唯一 CRLF-blob 文件 ⇒ 按 blob 行尾（CRLF＋文件尾孤 CR）落盘，diff 干净。
+- 顺带清掉的存量死代码（全部 tsc 证明零读）：App.tsx 5 个死 import（`ActivityBar`/`DebugButton`/
+  `AnnouncementHub`/`ShipStatusWin`/`MoneyFit`）· Handbook 的 `FACTION_INDEX`/`detailBlock` · Shipyard 的
+  `shipStockOf`/`canStartNow` · ActivityBar 限时加成徽标整段（`promos`/`tunings` 早已无消费）· StarMap 徽标栈
+  三个死常量 · modOrder 的 `WEAPON_SLOTS` 等。
+- 验证：typecheck 全仓 ✅（闸门开启后 0 处）· core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ ·
+  ui:rot-check ✅ · 构建 ✅（bundle 4830.75 → 4828.96 kB，死代码摘除顺带掉重）。
+
 ## 待办/待裁
+
+- **渲染层 `game/engine.ts`（4119 行单类）评估后不做**（2026-10-02 记）：不在蓝图拆分表内；`GameEngine` 是
+  单一大类（方法共享 `this` 状态、命令分发改写面大），拆方法 = 改语义或大搬参数，违背「只搬家不改行为」红线
+  ⇒ 维持现状，等未来"引擎接口按域注册"的专项再动。
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、
   各行文案与 worker 口径各不相同，抽公共件要么塞满 props 要么观感并轨（违 §6）；收益 < 风险 ⇒ 维持现状，

@@ -7,7 +7,6 @@
  * - **内层标签照搬**（重要任务 / 资源任务 / 快递任务 / 赏金任务），跳转定位仍走 `taskFocus`
  *   （通讯的「前往任务中心」与开场信都带内层标签 —— 见 core `CommsJumpPage` 的 `'task'`）。
  */
-import type { GameEngine } from '../game/engine'
 import type { PageProps } from './common'
 import { TaskPanel } from '../panels/Expedition'
 

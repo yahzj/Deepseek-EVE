@@ -5,7 +5,6 @@
  * 学会后的重复蓝图书只能放回市场出售。
  */
 import {
-  aiCoreName,
   calcBuildDurationMs,
   countWare,
   countModule,
@@ -25,8 +24,6 @@ import {
   canStartBlueprint,
   // 组装机卡片排序（2026-09-14 船长「一次性图纸应该和原图纸放在一起」）——口径单点在 core 纯函数
   sortManuRows,
-  // 2026-09-14 舰船仓库批：船型"总持有"读口径（仓库＋在役舰队）
-  shipOwnedCount,
   // 2026-09-14 船长：虫洞专属图纸改「去虫洞」跳转，门槛与扫描虫洞页同一本账
   WORMHOLE_SCAN_UNLOCK_STANDING,
   // 2026-09-26 船长令：取得第一个黑匣后才解锁组装机的「舰船插件」档（判据单点）
@@ -50,7 +47,7 @@ import { memo, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
-import { ItemHover, ModuleHover, ShipHover } from '../ui/shipInfo'
+import { ItemHover, ModuleHover } from '../ui/shipInfo'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 /** AI 核心档位名按语言取（2026-09-30 批 5：core 的 `aiCoreName` 只出中文） */
@@ -70,15 +67,11 @@ import { AiCoreSelect } from '../ui/aiCoreSelect'
 /** 循环目标防丢草稿套件（2026-10-02 模块化：三处循环输入共用一份，见本件头注） */
 import { useLoopGoalDraft } from '../ui/useLoopGoalDraft'
 import { useL10n, cmdText } from '../i18n/locale'
-import { MONEY_GLYPH } from '../pages/common'
 import {
   BLUEPRINT_LEARN_TABS,
   BLUEPRINT_USE_TABS,
-  CONSUME_SUBS,
   MANU_TABS,
   MANU_TABS_CRAFT,
-  MODULE_SUBS,
-  SHIP_TIER_SUBS,
   SUB_ALL,
   bpFilterKeysOf,
   manuSubsOf,
@@ -87,7 +80,6 @@ import {
   type BlueprintLearnKey,
   type BlueprintUseKey,
   type ManuTabKey,
-  type SubOption,
 } from '../ui/itemSubs'
 import { tr } from '../i18n/locale'
 import { fmtDuration } from '../i18n/fmt'
@@ -138,7 +130,7 @@ export function BlueprintShelfPanel({
   focusBookId?: string | null
 }) {
   const state = engine.state
-  const { t } = useL10n()
+  useL10n()
   const entries = Object.entries(state.blueprintStock).filter(([, n]) => n > 0)
   /**
    * **与组装机同样的筛选**（船长 2026-09-14：「蓝图书架也加入组装机同样的筛选」）：
@@ -1270,7 +1262,7 @@ export function ManufacturingPanel({
     const med = hs[Math.floor(hs.length / 2)] ?? ASSEMBLER_CARD_MIN_H
     setCardH((prev) => (Math.abs(prev - med) >= 8 ? med : prev))
   }, [idleChunk])
-  const { t } = useL10n()
+  useL10n()
   /**
    * **「蓝图」维度**（原「学会」行，**2026-09-26 船长令**：「**将造船的一次性蓝图筛选移动到学会的筛选内，
    * 并将学会的筛选改名为蓝图。删除原先的图纸筛选**」）。

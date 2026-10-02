@@ -49,7 +49,6 @@ import {
   wormholeFleetCargoM3,
   // 洞内**货仓容量**的单点（含谜质「舱段扩展器」+8 格/台）——背包页读数与页签行读数必须同源
   wormholeHoldCapacityOf,
-  wormholeFoeThreat,
   wormholeLayerThreat,
   /** 玩家可见威胁的显示口径（×2；船长 2026-09-15「面板威胁乘以2」）——**只乘给人看的数字** */
   wormholeDisplayThreat,
@@ -70,11 +69,9 @@ import {
   wormholeMatterThreatMul,
   /**
    * ⚠ **信息展示必须走 `revealOf`**（2026-09-13 星云批）：地图此前直接读 `c.place` 上色，
-   * 那是**真相**——星云遮蔽接进来后照旧上色，云就等于白罩了。
-   * `signalOfPlace` 仍保留（把真相换成信号用），但**上色判据取 `revealOf` 的 `kind`**。
+   * 那是**真相**——星云遮蔽接进来后照旧上色，云就等于白罩了 ⇒ **上色判据取 `revealOf` 的 `kind`**。
    */
   revealOf,
-  signalOfPlace,
   /**
    * **路径拦截**（船长 2026-09-16）：界面画路径/描红用的判据与引擎**同一个函数**
    * （`hexLine` 出连线、`wormholePathInterceptAt` 出"最近的未清敌人格"）——"界面记得拦"不是纪律，
@@ -108,11 +105,8 @@ import {
   wormholeAutoTechIsNeutral,
   wormholeShipMass,
   wormholeUnitsPerSlot,
-  wormholeShapeOf,
-  wormholeCargoSlotsOf,
-  placementCellsCount,
 } from '@whale/core'
-import type { GameState, WormholeGridState, WormholeHoldPlacement, WormholeHoldState, WormholePlace, WormholeSettleRecord, WormholeSignal } from '@whale/core'
+import type { WormholeGridState, WormholeHoldPlacement, WormholeHoldState, WormholePlace, WormholeSettleRecord, WormholeSignal } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { ShipSprite, ShipSpriteShape } from '../ui/ShipSprite'
 import type { ToastFn } from '../pages/common'

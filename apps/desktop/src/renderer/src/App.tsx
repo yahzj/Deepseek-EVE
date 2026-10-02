@@ -8,7 +8,6 @@
  *   （可向右滑出隐藏 + 按日志类型过滤，偏好存 localStorage）
  */
 import { useEffect, useReducer, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
 import { useL10n } from './i18n/locale'
 import {
   activePromos,
@@ -41,7 +40,6 @@ import { WeekendSummaryView } from './panels/WeekendSummary'
 import { PlugExchangeModal } from './panels/PlugExchange'
 import { InvasionAlarm, InvasionFireworks, ALARM_TOTAL_MS, FIREWORKS_MS } from './panels/InvasionFx'
 import { playSfx } from './game/sfx'
-import { AnnouncementHub } from './panels/Announcements'
 import { FitPage } from './pages/FitPage'
 import { ShipPage, type ShipTab } from './pages/ShipPage'
 import { ItemsPage } from './pages/ItemsPage'
@@ -61,13 +59,10 @@ import { SaveManager } from './panels/SaveManager'
 import { Handbook } from './panels/Handbook'
 import { BattleScreen } from './panels/BattleScreen'
 import { debugEnabled as readDebugEnabled } from './panels/DebugPanel'
-import { ActivityBar } from './panels/ActivityBar'
 import { WormholePanel } from './panels/Wormhole'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
-import { ShipStatusWin } from './ui/ShipStatusWin'
 import { ActivityScreen, activityKindOf } from './ui/ActivityScreen'
-import { MoneyFit } from './ui/MoneyFit'
 import { AppShell } from './ui/AppShell'
 import type { LayoutKind } from './ui/AppShell'
 import { setSessionPick, sessionPick } from './ui/sessionView'
@@ -149,7 +144,7 @@ export function App({ engine }: { engine: GameEngine }) {
 
   const [, force] = useReducer((n: number) => n + 1, 0)
   /** 语言（2026-09-19 船长令「英语本地化」）：界面文案走 `t(中文源串)`；缺词条回退中文 */
-  const { locale, t } = useL10n()
+  const { locale } = useL10n()
   /** 切语言 ⇒ 让引擎按语言重建 ctx 与目录表（只换文案，id/数值不动），引擎 `notify()` 后界面整体刷新 */
   useEffect(() => {
     engine.setLocale(locale)
@@ -463,7 +458,7 @@ function readLayoutPref(): LayoutKind {
     return 'classic'
   }
 }
-const [layoutKind, setLayoutKind] = useState<LayoutKind>(readLayoutPref)
+const [layoutKind] = useState<LayoutKind>(readLayoutPref)
 /** 玩家已点选、但**还没重启**的布局（null = 没有待应用项）—— 弹框问过之后才写盘并关游戏 */
 const [layoutPending, setLayoutPending] = useState<LayoutKind | null>(null)
 /**

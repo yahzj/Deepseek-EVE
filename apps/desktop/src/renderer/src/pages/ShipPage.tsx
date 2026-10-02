@@ -9,7 +9,6 @@ import {
   aiCoreUsed,
   aiCoreShipUsed,
   aiCoreIndustryUsed,
-  aiCoreName,
   aiTaskView,
   aiEfficiency,
   industryAiBonus,
@@ -38,7 +37,6 @@ import {
   standingOf,
   DSI_FACTION_ID,
   /** 2026-09-29 跃迁燃料批：活动清单与它们的文案 id（开关行的唯一出处） */
-  JUMP_FUEL_ACTIVITIES,
   JUMP_FUEL_ACTIVITY_TEXT_ID,
   type JumpFuelActivity,
 } from '@whale/core'

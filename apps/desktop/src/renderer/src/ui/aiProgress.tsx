@@ -3,7 +3,6 @@
  * 顶部活动栏维持现有 AI 小图标不受影响）。
  * 数据同源：core aiTaskView（与引擎推进同一套公式）。
  */
-import { formatDurationMs } from '@whale/core'
 import { tr } from '../i18n/locale'
 import type { AiTaskView } from '@whale/core'
 import { fmtDuration } from '../i18n/fmt'

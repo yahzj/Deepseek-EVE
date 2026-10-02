@@ -36,7 +36,6 @@ import {
   scrapShip,
   droneCpuUsed,
   droneLoadM3,
-  effectiveCpu, // 保留：船体预算（不含协处理器扩容）在别处仍可能用到；预算总额见 cpuBudgetOf
   fittedCpuUsed,
   fleetDefOf,
   rackOf,
@@ -50,11 +49,9 @@ import {
   FIT_PRESET_MAX,
   FIT_PRESET_NAME_MAX,
   shipDisplayName,
-  shipSlotsOf,
   shipSlotsWithPlugsOf,
   stackingOf,
   stackWeight,
-  thrusterCycleFullText,
   typeLayerMult,
   // 2026-09-26 无人机舱总容量（船体 + 甲板扩展）唯一单点——主表与舰队页悬停卡同一把尺
   droneBayTotalM3,

@@ -3,7 +3,9 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["node"]
+    "types": ["node"],
+    // 2026-10-02 重构工程批次 4v：存量未用符号清零后开启（防死导入/死局部回潮；与 core 批次 2a 同口径）
+    "noUnusedLocals": true
   },
   "include": ["electron.vite.config.ts", "src"]
 }

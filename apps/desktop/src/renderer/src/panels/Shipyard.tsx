@@ -11,20 +11,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Panel } from '@whale/ui'
-import type { GameState, MaterialNeed } from '@whale/core'
+import type { MaterialNeed } from '@whale/core'
 import {
   manufacturingRunViews,
   ownsBlueprint,
-  recipeCapability,
   shipOwnedCount,
   sortManuRows,
-  countWare,
 } from '@whale/core'
-import { missingMaterials } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { ShipHover } from '../ui/shipInfo'
-import { MarkStar, pinMarked } from '../ui/marks'
+import { pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { HintIcon } from '../ui/Hint'
 import { useL10n } from '../i18n/locale'
@@ -114,15 +111,6 @@ export function ShipyardPanel({
     setCat(SUB_ALL)
     setLearn(SUB_ALL)
   }, [focusBlueprintId])
-
-  /** 该船型的总持有（舰船仓库 + 在役舰队；与旧组装机口径同源） */
-  const shipStockOf = (shipId: string): number => shipOwnedCount(state, shipId)
-
-  function canStartNow(blueprintId: string, materials: readonly MaterialNeed[], buildSeconds: number): boolean {
-    const su = engine.ctx.shipBlueprints.get(blueprintId)?.singleUse === true
-    if (!ownsBlueprint(state, blueprintId) && recipeCapability(state, blueprintId, su).kind !== 'ok') return false
-    return missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk: 0 }).length === 0
-  }
 
   const items = useMemo<ShipItem[]>(() => {
     const out: ShipItem[] = []

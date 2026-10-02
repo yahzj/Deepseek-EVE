@@ -26,7 +26,7 @@
 import type { ReactNode } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ActivePromo, ActiveTuning, GameState } from '@whale/core'
-import { DSI_FACTION_ID, formatDurationShort, spendableStandingOf, standingOf } from '@whale/core'
+import { DSI_FACTION_ID, spendableStandingOf, standingOf } from '@whale/core'
 import type { ToastFn } from '../pages/common'
 import { ActivityBar } from '../panels/ActivityBar'
 // 旧版活动栏：从「昨天那版」原样拆出的冻结件（船长令「旧版建议你从昨天的版本中 git 下来进行拆解」）
@@ -92,9 +92,6 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
     state,
     engine,
     changePage,
-    handleSave,
-    handleReset,
-    setShowSaveManager,
     changeMapTab,
     focusTaskTab,
     changeShipTab,

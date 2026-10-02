@@ -2,98 +2,26 @@
  * M3 远征中心：势力声望、星图（SVG）、悬赏任务卡。
  * 中列面板：SkirmishStatus（远征中作业）→ StarMap（可点选）→ Standing → 任务列表。
  */
-import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { PointerEvent as ReactPointerEvent, ReactNode, RefObject } from 'react'
-import type { AnomalyDef, GalaxyDef, AiCoreType, SimContext, SideTask, SideTaskBoardView } from '@whale/core'
+import { useEffect, useRef, useState } from 'react'
+import type { AnomalyDef } from '@whale/core'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
-import { bestAiCoreOf } from '@whale/core'
 import {
   DSI_FACTION_ID,
-  HOME_GALAXY_ID,
-  LAIR_RARE_WRECK_GAIN,
-  lairLevelOf,
-  scanWindowMsFor,
-  aiCoreName,
-  bountyDamageForecast,
-  bountyWinPercentGuarded,
-  bountyCooldownRemainingMs,
-  bountyRewardFactor,
-  calcPower,
-  // 2026-09-25 入侵旗舰入口（星系详细里那一行）：族名全称走 core 的同一张表（别在本文件另写一份）
-  weekendFamilyNameId,
-  beaconTargetBlocked,
-  /* 信号发射器（2026-09-30 船长令）：持有量 + 指定星系的资格判据 + 位置限制（有空间站的地方不能启动） */
-  INVASION_BEACON_ITEM_ID,
-  HIGH_SEC_PENALTY,
-  beaconLaunchHighSecOf,
-  consumableStockOf,
-  isAtHomeLike,
-  playerGalaxyIdOf,
-  weekendProgressAt,
-  weekendCoreGateView,
-  /** 旗舰视图（2026-09-25：核心的"旗舰期红光"与旗舰准备入口读同一份判据，不许在本文件另判一遍） */
-  weekendFlagshipView,
-  weekendFoePoolOf,
-  /** 2026-09-26：旗舰入口的编成一览取本族**旗舰卡** id（与开战 `weekendFlagshipSpecOf` 同源） */
-  weekendFoeCardOf,
-  /** 2026-09-25 船长令：核心节点上方那根**母舰血量条**（读数与事件日志那条同源） */
-  weekendBossPoolView,
-  cargoCapacityM3Of,
-  cargoUsedM3Of,
-  /** 2026-10-02 模块化：可用核心列表走 core 单点（原为本页 AI_CORE_ORDER.filter 一处） */
-  usableAiCoresOf,
   expeditionStatus,
-  fleetDefOf,
-  foeLayerSplit,
-  frontierGalaxyIds,
-  idleAiShipIds,
   isExplored,
-  isFactionBounty,
-  isLairCandidate,
-  factionAnomalyOf,
-  factionBaseRewardIsk,
-  factionGalaxyId,
-  /** 2026-09-24：卡面掉落率**随档位现算**（含限时倍率与铁人 ×1.2）——不再印裸常量 */
-  factionRareDropChanceOf,
-  FACTION_RARE_DROP_COUNT,
-  lairAnomalyOf,
-  lairBaseRewardIsk,
-  nearestStationGalaxyId,
   originGalaxyOf,
   scanStatus,
-  shipDisplayName,
-  autoLoopReopenBlockReason,
-  wreckDensityOf,
-  weekendWreckDensityOf,
-  // 2026-09-26 玩家舰船残骸（船长令）：该星系残留的舰船残骸读数卡（船名 + 可回收件数 + 倒计时）
-  shipWrecksOf,
-  wreckLootRowsOf,
-  SHIP_WRECK_DECAY_MS,
   weekendOccupiedLiveAt,
   shortestTravelMinutes,
   standingOf,
   /** 声望**可支配**余额（＝累计 − 已花）——声望商店子页标题行那两本账走它（与弹层同一口径） */
   spendableStandingOf,
-  travelLegMs,
-  travelMinutesEff,
-  playerAtSite,
-  tierNeedOf,
-  billNeedOf,
-  stationBillView,
   transitStatus,
-  /** 主控活动判据（2026-09-22：建站交付的按钮门槛与 core 同源——见 `tripReadyDock` 那段注释） */
-  mainActivityOf,
-  RARE_WRECK_VOLUME_M3,
-  RETURN_LEG_MUL,
-  /** 快递板周期（120 分钟，2026-09-24 船长令）——快递页的倒计时与"每 N 分钟一轮"都按它算 */
-  COURIER_BOARD_PERIOD_MS,
 } from '@whale/core'
-import { Panel, ProgressBar } from '@whale/ui'
+import { Panel } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
-import { MONEY_GLYPH, rareWreckRefsOf } from '../pages/common'
-import { tr, useL10n, cmdText, isEn } from '../i18n/locale'
+import { tr, cmdText } from '../i18n/locale'
 import type { ToastFn } from '../pages/common'
-import { DmgChip, FoeDamageMix, ProfileChip } from '../ui/shipInfo'
 import { FirstTasks } from './FirstTasks'
 // 2026-09-26 船长令「入侵的悬赏卡片在常驻悬赏里置顶」：排序比较器抽成纯函数（可被工具/用例直接断言）
 import { bountyComparatorOf } from './bountySort'
@@ -104,24 +32,14 @@ import { ImportantTasks } from './ImportantTasks'
  * 与旧弹层 `PlugExchangeModal` **同一份实现**（兑换命令、卡面、确认层全在那边，这里只当容器）。
  */
 import { PlugExchangeBody } from './PlugExchange'
-import { Glyph, NAV_TONES, ICO_TONES, itemGlyphName } from '../ui/Glyphs'
-import { BeaconHighSecPrompt } from '../ui/beaconPrompt'
-import { UI_TONES } from '../ui/tones'
-import { WeekendFlagshipPrepModal } from './WeekendFlagshipPrep'
-import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
-import { briefsOfPool, briefShipsOf, mountLabelText } from '../ui/foeBrief'
-import type { FoeBriefLine } from '../ui/foeBrief'
-import { hoverTipProps } from '../ui/Tooltip'
+import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { sessionPick, setSessionPick, useSessionScroll } from '../ui/sessionView'
-import { foeCardShipIdOf as coreFoeCardShipIdOf } from '@whale/core'
-import { ShipSprite } from '../ui/ShipSprite'
 // ⚠ 舰船角色名走本地化单点（2026-09-26 船长报障「舰船类型文本漏中文」）——core 的 shipRoleLabel 是纯中文表
-import { aiCoreText, lairTierText, shipRoleText } from '../ui/labelsText'
-import { fmtDayClock, fmtDuration, fmtSideClock } from '../i18n/fmt'
+import { fmtDuration } from '../i18n/fmt'
 // 星图域（2026-10-02 批次 4p 拆到 StarMap.tsx；本文件借回使用）
-import { FoeArt, FOE_TACTIC_HINTS, FoeBriefTip, foeCardShipIdOf, secCls, secText, secTone, StarMap, useFoeArtFit } from './StarMap'
+import { StarMap, useFoeArtFit } from './StarMap'
 // 远征任务卡族（2026-10-02 批次 4q 拆到 ExpeditionCards.tsx；本文件借回使用）
-import { AnomalyCard, BountyTasksArea, CourierInFlightBanner, SideTasksArea, StationCard } from './ExpeditionCards'
+import { AnomalyCard, BountyTasksArea, SideTasksArea, StationCard } from './ExpeditionCards'
 // 通讯弹层（2026-10-02 批次 4o 拆到 ui/communicator；App 走本文件再导出）
 export { Communicator } from '../ui/communicator'
 

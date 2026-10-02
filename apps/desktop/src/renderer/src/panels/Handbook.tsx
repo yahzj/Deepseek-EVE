@@ -12,11 +12,10 @@
  */
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { ITEM_KIND_ORDER, rackOf, shipCategoryKeyOf, visibleItemDefs } from '@whale/core'
-import type { BlueprintDef, DamageType, DroneClass, FoeShipDef, ItemDef, ItemKind, ModuleDef, ShipBlueprintDef, ShipDef, ShipRole } from '@whale/core'
+import { ITEM_KIND_ORDER, shipCategoryKeyOf, visibleItemDefs } from '@whale/core'
+import type { FoeShipDef, ShipRole } from '@whale/core'
 // 稀有度小标签（2026-09-20 船长）：档位走单点 `itemRarityTierOf`（含 AI 核心与舰船的键映射）
-import { buildFactionCards, FACTION_CODEX_ORDER, FOE_SHIPS, itemRarityTierOf } from '@whale/data'
-import type { FactionCard } from '@whale/data'
+import { buildFactionCards, FACTION_CODEX_ORDER, FOE_SHIPS } from '@whale/data'
 import { Panel } from '@whale/ui'
 import type { GameEngine } from '../game/engine'
 import { Glyph } from '../ui/Glyphs'
@@ -56,11 +55,11 @@ import { kindTextOfItem, skillGroupText } from '../ui/labelsText'
  * 同款图标卡不止图鉴有（物品页仓库 / 货仓走 `ui/itemView.tsx` 的 `ItemGlyphGrid`）⇒ 一份实现两处共用。
  * 为什么必须收窄 `null`、`aria-label` 为什么取势力全称：见 `labelsText.ts` 两个函数的头注。
  */
-import { crestFamOf, crestLabelOf } from '../ui/labelsText'
+import { crestLabelOf } from '../ui/labelsText'
 // 2026-09-26 船长令：舰船图鉴的**图标模式改画舰船 SVG 形象**（与舰队页/装配页/星图同一张资产表）
 import { ShipSprite } from '../ui/ShipSprite'
 // 2026-10-02 批次 4s：详情域（卡片构造器/详情窗/GroupSection/宽类型标签助手）已拆到 ./handbookDetail，本文件借回使用
-import { kindName, slotName, roleName, DetailBody, CellDetail, GroupSection, moduleCellOf, shipCellOf, itemCellOf, blueprintCellOf, shipBlueprintCellOf } from './handbookDetail'
+import { kindName, slotName, roleName, CellDetail, GroupSection, moduleCellOf, shipCellOf, itemCellOf, blueprintCellOf, shipBlueprintCellOf } from './handbookDetail'
 
 type Tab = 'guide' | 'rules' | 'items' | 'modules' | 'ships' | 'blueprints' | 'skills' | 'factions'
 /**
@@ -74,20 +73,6 @@ type CodexTab = 'items' | 'modules' | 'ships' | 'blueprints' | 'skills' | 'facti
 type ViewMode = 'grid' | 'list'
 /** 详情行数据 */
 export type RawData = Record<string, unknown>
-
-/** 势力图鉴：族 → 序号（0..5）——五段文案的基准 id = 326 + 11×序号（见 `l10n/table.ts` 的块头注释） */
-const FACTION_INDEX: Record<string, number> = Object.fromEntries(FACTION_CODEX_ORDER.map((f, i) => [f, i]))
-
-/** 详情窗里插一个**小节块**（小标题一行 ＋ 逐条两列行；空块不插 —— 与详情窗既有 `rows` 同一套渲染） */
-function detailBlock(
-  rows: Array<[string, React.ReactNode]>,
-  title: string,
-  body: Array<[string, React.ReactNode]>,
-): void {
-  if (body.length === 0) return
-  rows.push([title, ''])
-  for (const [k, v] of body) rows.push([`　${k}`, v])
-}
 
 /**
  * **图鉴用的敌舰目录**（2026-09-26 势力图鉴批）：
@@ -118,14 +103,6 @@ function FactionDetailPanel({ engine, family }: { engine: GameEngine; family: st
   const card = buildFactionCards(FOE_SHIPS, engine.state.foeShipSeen).find((c) => c.family === family)
   if (!card) return null
   const base = FACTION_NAME_BASE[family] ?? 326
-  const num = (v: number): string => v.toLocaleString('zh-CN')
-  const itemName = (id: string): string =>
-    engine.ctx.modules.get(id)?.name ?? engine.ctx.ships.get(id)?.name ?? engine.ctx.items.get(id)?.name ?? id
-  const bpNameOf = (id: string): string => {
-    for (const bp of engine.blueprints) if (bp.id === id) return bp.moduleId ? itemName(bp.moduleId) : String(bp.itemId ?? bp.id)
-    for (const bp of engine.shipBlueprints) if (bp.id === id) return engine.ctx.ships.get(bp.shipId)?.name ?? bp.shipId
-    return id
-  }
   /** 本容器自己的详情窗（卡片可点开；与其它图鉴同一条 `CellDetail` 路） */
   const [detail, setDetail] = useState<GridCell | null>(null)
   /** ② 敌人卡：已遭遇 ⇒ 敌舰 SVG；未遭遇 ⇒ 通用「信号不良」图形 ＋「？？？」 */

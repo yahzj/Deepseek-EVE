@@ -45,7 +45,6 @@ import {
   oreAvailable,
   ownsBlueprint,
   plugCraftUnlockedOf,
-  recipeCapability,
   recycleBatchM3Of,
   recycleMineralPoolOf,
   recycleProfileOf,
@@ -426,12 +425,6 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
     if (!r.ok) onToast(cmdText(r) || tr('ui.hud.021'), true)
   }
   const rate = refineRate(state, ctx)
-  /** 可精炼资源（与工业页同一取数口：`visibleItemDefs` + 有 `refine` 配方） */
-  const refineDefs = visibleItemDefs(ctx)
-    .filter((d) => (d.refine?.length ?? 0) > 0)
-    .map((d) => ({ def: d, have: oreAvailable(state, d.id) }))
-    .sort((a, b) => b.have - a.have)
-    .slice(0, 8)
   const tabs: Array<{ k: HudTab; g: string; label: string; title: string }> = [
     { k: 'refine', g: 'ico-furnace', label: tr('ui.hud.001'), title: tr('ui.hud.011') },
     { k: 'craft', g: 'ico-assembler', label: tr('ui.hud.002'), title: tr('ui.hud.012') },
@@ -440,10 +433,6 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
       ? [{ k: 'lab' as HudTab, g: 'ico-lab', label: tr('ui.hud.004'), title: tr('ui.hud.014') }]
       : []),
   ]
-  const startRefine = (itemId: string, worker: AiCoreType | 'pilot'): void => {
-    const r = engine.startRefineRunAt(itemId, worker)
-    if (!r.ok) onToast(cmdText(r) || tr('ui.hud.021'), true)
-  }
   /**
    * **手动工作位被占时的置灰理由**（**2026-10-01 船长令**：「建议改成和旧的工业一样，主控正在活动时，
    * 禁止按钮」）。取数走 core 单点 `manualSlotOf`（页面不自算——§十五之二）；`null` = 可以亲自开。
@@ -1121,7 +1110,6 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                     </thead>
                     <tbody>
                       {ringSegments.map((seg, i) => {
-                        const row = production.rows.find((r) => r.itemId === seg.key)
                         const share = production.total > 0 ? (seg.isk / production.total) * 100 : 0
                         return (
                           <tr key={seg.key}>

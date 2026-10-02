@@ -407,7 +407,6 @@ function layout(
   if (foeLeft - (meLeft + d.meW) < minSpan) foeLeft = meLeft + d.meW + minSpan // 极小窗防御：不重叠
   const meH = meSize * 0.46
   const foeH = slots.map((w) => w * 0.46)
-  const rowH = Math.max(1, ...foeH) // 单排行高（最高舰定高，其余在排内沉底）
   const rowW = fm.rowW
   const rowLeft = foeLeft + (d.foeW - rowW) / 2
   const me: Anchor = { x: meLeft + d.meW / 2, y: LAY.TOP + meH / 2 }

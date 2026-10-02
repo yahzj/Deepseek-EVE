@@ -15,7 +15,6 @@ import {
   RARE_BOX_DRONE_UNITS,
   RECYCLE_BATCH_M3,
   RECYCLE_CYCLE_MS,
-  RECYCLE_POOL_AVG_ISK,
   RECYCLE_YIELD_PER_M3,
   /** F4d 货柜拆解：每件周期（90 秒）——卡面读数与开工提示同源，别再写死 */
   UNBOX_CYCLE_MS,
@@ -85,7 +84,7 @@ import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
 /** 活动卡「产出」读数（2026-09-23 船长令：残骸卡的信用点估价移除 ⇒ 改显示市场当前行情价） */
 import { marketPriceOf, NetIncomeLine } from '../ui/yieldView'
 import type { PageProps } from './common'
-import { MONEY_GLYPH, m3, wreckSourceGalaxyIdsOf } from './common'
+import { m3, wreckSourceGalaxyIdsOf } from './common'
 import { tr } from '../i18n/locale'
 
 /**
@@ -250,13 +249,8 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
   if (isWreck) {
     const profile = wreckProfile
     if (profile) {
-      const refLv = Math.min(5, state.skills.trained['salvage-refining'] ?? 0)
       const recLv = Math.min(5, state.skills.trained['salvage-recycling'] ?? 0)
       const cycleMs = Math.max(1, Math.round(RECYCLE_CYCLE_MS * Math.max(0.6, 1 - 0.04 * recLv))) // 手动炉基准（AI 核心另按效率拉长）
-      const m3h = (3_600_000 / cycleMs) * RECYCLE_BATCH_M3
-      const evH = Math.round(
-        m3h * RECYCLE_YIELD_PER_M3[profile.tier] * RECYCLE_POOL_AVG_ISK[profile.tier] * (1 + 0.08 * refLv),
-      )
       // 2026-09-10 船长：保底矿物仿精炼卡格式逐项列出（标题 + 每矿物缩进一行，行尾「（仓库 N）」同口径）；
       // 矿池取引擎单点 recycleMineralPoolOf（特色池优先、缺省回落档位池），界面不复写回落逻辑。
       const mineralRows = mineralRowsOf(
@@ -330,7 +324,6 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         return units > 0 ? { def: mineral, units } : null
       })
       .filter((x): x is { def: ItemDef; units: number } => x !== null)
-    const batchValue = outs.reduce((s, o) => s + o.units * (o.def.baseSellPriceIsk ?? 0), 0)
     /**
      * **产出读数换口径**（**2026-09-23 船长令**：「各个有收益的卡牌上写着的收入预估…会严重误导玩家…
      * 其他活动只显示每小时能收获多少资源以及产出的物资的市场当前价格」＋同日「行情采用市场详细中
@@ -993,7 +986,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
   useEffect(() => {
     if (sec === 'lab') engine.noteLabOpened()
   }, [sec, engine])
-  const { t } = useL10n()
+  useL10n()
   /**
    * **精炼炉的两级筛选**（2026-09-14 船长：「精炼炉和组装机一样，添加筛选标签」）：
    * `furnaceTab` = 一级（活计大类）· `sub` = 二级（资源大类 / 残骸档位；`''` = 全部子类）。

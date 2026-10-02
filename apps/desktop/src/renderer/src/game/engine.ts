@@ -11,7 +11,6 @@ import {
   MAX_SKILL_LEVEL,
   SaveError,
   addLog,
-  aiCoreName,
   advanceAutoLoopBounty,
   advanceGame,
   advanceWormhole, // 2026-09-27 船长令「立即弹结算界面」：撤离当拍结算（见本文件 wormholeExtract）
@@ -79,7 +78,6 @@ import {
   /* 2026-09-30 上限批：燃料补给读数（上限 / 在产速率 / 状态）＋ 货仓禁装的存量迁移 */
   jumpFuelSupplyOf,
   repairHoldForbiddenCargo,
-  cargoHoldForbidden,
   moveQueueItem,
   removeQueueAt,
   renameShip,
@@ -164,7 +162,6 @@ import {
   unfitSlot,
   unfitAt,
   // 2026-09-11 协处理器：CPU 预算总额（含扩容）/ 超载预演 / 原子换装
-  cpuBudgetOf,
   cpuOverloadText,
   swapModuleAt,
   // 装配方案（预设）：保存当前装配 / 套用 / 改名 / 删除 / 一键卸下（2026-09-14 船长）
@@ -188,13 +185,8 @@ import {
   // 2026-09-09 长途运输
   startHauling,
   stopHauling,
-  haulEndpoints,
-  haulEndpointName,
-  haulLegReward,
-  haulingOccupiedM3,
   cargoCapacityM3,
   warpSpeedAus,
-  HAUL_RATE_PER_M3_MIN,
   // 2026-09-10 玩家标记（收藏）
   toggleMark,
   // 终局玩法「虫洞」（E 批：入洞 / 拾取 / 推进 / 深入 / 撤离；✅ 2026-09-14 已上线，入口常驻）
@@ -241,7 +233,6 @@ import {
   wormholeDiscardCargo,
   wormholeActionBlockReason,
   wormholePendingBattleReason,
-  wormholeHoldStow,
   wormholeHoldCapacityOf,
   wormholeTempUsage,
   wormholeTempStowPiece,
@@ -289,7 +280,6 @@ import {
   wormholeStockMeta,
   WORMHOLE_FAMILY_CARD,
   wormholeFamilyIntel,
-  WORMHOLE_STOCK_MAX,
   holdTransferTo,
   makeHoldState,
   wormholeSyncMatterTurns,
@@ -298,7 +288,6 @@ import {
   holdDropWithGrab,
   holdSwap,
   holdMove,
-  wormholeGridActivate,
   wormholeGridScan,
   wormholeScanBonusOf,
   wormholeTravelTo,
@@ -312,11 +301,6 @@ import {
   acknowledgeScanView,
   // 谜质科技（2026-09-19）：研究入口 / 洞内倍速档位
   researchMatterTech,
-  matterTechCanResearch,
-  matterTechLevels,
-  matterTechEssenceHeld,
-  matterTechNodes,
-  matterTechCostAt,
   matterTechBattleSpeedTiers,
   matterTechScanCut,
   offlineCapMsOf,
@@ -363,10 +347,10 @@ import type {
   WormholeHoldPlacement,
   TrainingItem,
 } from '@whale/core'
-import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, EN_MODULES, EN_ITEMS_ALL, EN_SKILLS, EN_ANOMALIES, EN_BLUEPRINTS, EN_SHIP_BLUEPRINTS, EN_FOE_SHIPS, EN_GALAXIES, EN_BELTS, EN_STATIONS, EN_COMMS_FACTIONS, overlayCardFoes, overlayCardFoesList, type L10nLocale } from '@whale/data'
+import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, EN_MODULES, EN_ITEMS_ALL, EN_SKILLS, EN_ANOMALIES, EN_BLUEPRINTS, EN_SHIP_BLUEPRINTS, EN_FOE_SHIPS, EN_GALAXIES, EN_BELTS, overlayCardFoesList, type L10nLocale } from '@whale/data'
 import { saveBridge } from './storage'
 /** 存档存储体检与告警（2026-09-25 船长令：修「MacBook · Safari 关掉游戏后存档丢失」） */
-import { noteSaveWriteFailed, probeSaveStorage, requestPersistentStorage, saveStorageProbe } from './saveGuard'
+import { noteSaveWriteFailed, requestPersistentStorage, saveStorageProbe } from './saveGuard'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
 import { tr, cmdText, paramText } from '../i18n/locale'

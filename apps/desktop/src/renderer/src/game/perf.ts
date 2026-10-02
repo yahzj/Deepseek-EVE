@@ -58,8 +58,6 @@ class PerfHub {
   private totals = this.freshSeg(tr("ui.perf.001"), 0)
   private segments: PerfSegment[] = []
   private timeline: TimePoint[] = []
-  private fpsTimer: number | null = null
-  private rafId: number | null = null
   private frames = 0
   private fpsLast = 0
   private longObserver: PerformanceObserver | null = null
@@ -101,10 +99,10 @@ class PerfHub {
       const fpsLoop = (): void => {
         if (!this.recording) return
         this.frames += 1
-        this.rafId = requestAnimationFrame(fpsLoop)
+        requestAnimationFrame(fpsLoop)
       }
-      this.rafId = requestAnimationFrame(fpsLoop)
-      this.fpsTimer = window.setInterval(() => {
+      requestAnimationFrame(fpsLoop)
+      window.setInterval(() => {
         if (!this.recording) return
         const now = performance.now()
         const dt = Math.max(1, now - this.fpsLast)

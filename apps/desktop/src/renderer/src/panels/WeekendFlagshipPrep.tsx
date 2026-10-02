@@ -17,8 +17,6 @@ import { WEEKEND_FLAGSHIP_MAX_SHIPS, weekendBestFlagshipSquad, weekendFamilyName
 import type { GameEngine } from '../game/engine'
 import { tr } from '../i18n/locale'
 import { ShipSprite } from '../ui/ShipSprite'
-import { Glyph } from '../ui/Glyphs'
-import { ICO_TONES } from '../ui/tones'
 import { pinMarked } from '../ui/marks'
 
 /** 缺口标记 → 文案 id（与准备面板同源；加新缺口时两处一起加） */

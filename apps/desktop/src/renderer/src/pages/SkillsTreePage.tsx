@@ -35,7 +35,6 @@ import {
   skillLockMissing,
   skillQueueStatus,
   trainingTimeFactor,
-  synapticAccelerantRemainMs,
 } from '@whale/core'
 import type { SkillDef, SkillPrereqGap } from '@whale/core'
 import { Panel } from '@whale/ui'

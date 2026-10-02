@@ -18,14 +18,12 @@
 import { useEffect, useState } from 'react'
 import { Panel } from '@whale/ui'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
-import { formatDurationMs } from '@whale/core'
 import {
   WORMHOLE_AUTO_DURATION_MS,
   WORMHOLE_AUTO_MAX_SHIPS,
   WORMHOLE_SCAN_BASE_MS,
   WORMHOLE_SCAN_UNLOCK_STANDING,
   wormholeStockMaxOf,
-  aiCoreName,
   // 子页「谜质科技」的读数（标题行右侧 + 面板内都要用）
   matterTechEssenceHeld,
 } from '@whale/core'

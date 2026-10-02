@@ -4,7 +4,6 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import {
-  aiCoreName,
   aiEfficiency,
   aiTaskView,
   /** 2026-10-02 模块化：可用核心列表走 core 单点（原为本页两处 filter） */
@@ -19,20 +18,15 @@ import {
   marketGoodOf,
   marketQuote,
   miningStatus,
-  oneLegMs,
   salvagerCyclesOf,
   legMsFor,
   outboundLegMsFor,
   shipDisplayName,
-  recycleTierOf,
-  wreckBaseDensity,
   wreckDensityOf,
   WEEKEND_WRECK_TARGET,
   weekendWreckDensityOf,
   /** 2026-09-27 船长令：入侵残骸场里的箱子（主力舰队掉落）——卡名与置顶分级都要看它 */
   weekendRareWreckCountOf,
-  RECYCLE_YIELD_PER_M3,
-  RECYCLE_POOL_AVG_ISK,
   RARE_WRECK_VOLUME_M3,
   wreckGroupOfAnomaly,
   // 2026-09-26 玩家舰船残骸（船长令）：打捞页置顶卡 —— 船名 / 可回收件数 / 剩余小时
@@ -51,7 +45,7 @@ import type { ShipWreckRecord } from '@whale/core'
 import { unlocked, WORMHOLE_SCAN_UNLOCK_STANDING } from '@whale/core'
 /** 活动卡「产出」读数（2026-09-23 船长令：收入预估换口径）——全仓唯一实现 */
 import { NetIncomeLinePerHour, YieldLines, yieldLinesOf, marketPriceOf, type YieldRow } from '../ui/yieldView'
-import { Panel, ProgressBar } from '@whale/ui'
+import { Panel } from '@whale/ui'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 /** AI 核心档位名按语言取（2026-09-30 批 5：core 的 `aiCoreName` 只出中文） */
@@ -63,7 +57,7 @@ import { WormholeScanTab } from '../panels/WormholeScan'
 import { HaulingPanel } from '../panels/Hauling'
 import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
-import { isk, MONEY_GLYPH, rareWreckRefsOf } from './common'
+import { isk, rareWreckRefsOf } from './common'
 // 2026-09-26 船长报障：打捞页卡片序列（纯函数；单独成文件以便工具/用例直接断言这条顺序）
 import { wreckCardSequenceOf } from './wreckCards'
 import { isEn, tr, cmdText } from '../i18n/locale'
@@ -788,11 +782,6 @@ function SalvageTab({
     return byWreckName(x, y)
   })
   const idleShips = idleAiShipIds(state)
-  /**
-   * 驾驶船**一台打捞器都没装**（打捞门槛与 core 同一把尺：`salvagerCyclesOf` 空表 ⇔ 出发会被拒）
-   * ⇒ 面板上给一行"去装配"的提示（**2026-09-20 船长令**）。
-   */
-  const noSalvager = salvagerCyclesOf(state, engine.ctx, state.shipId).length === 0
   /**
    * ⚠ **旧的"作业星系打捞对象"变量已删**（2026-09-26 船长报障「残留的手动选择残骸的卡片」）：
    * 打捞对象自 2026-09-26 起由 core 自动判定，页面上**每张星图卡自己的只读存量**（下面渲染处的

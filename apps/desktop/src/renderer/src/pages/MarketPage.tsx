@@ -17,7 +17,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { askLineOf, buyLineOf, bmGateNote, marketLockNote, aiCoreGoodNameId, goodName, itemKindText, marketHistory, marketQuote, marketTrend, naturalHoldings, PRICE_SAMPLE_MS, rackOf, salesTaxRate, shipStoredCount } from '@whale/core'
+import { askLineOf, buyLineOf, bmGateNote, marketLockNote, aiCoreGoodNameId, goodName, marketHistory, marketQuote, marketTrend, naturalHoldings, PRICE_SAMPLE_MS, rackOf, salesTaxRate, shipStoredCount } from '@whale/core'
 import type { BlueprintDef, GameState, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'

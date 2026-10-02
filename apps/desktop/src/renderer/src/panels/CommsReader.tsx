@@ -20,7 +20,7 @@ import { COMMS_REPLIES_ENABLED } from '@whale/core'
 import type { CommsEntryView } from '@whale/core'
 import { Glyph } from '../ui/Glyphs'
 import { tr } from '../i18n/locale'
-import { commsAlignText, commsBodyText, commsBriefText, commsClockText, commsEntryBodyText, commsEntrySubjectText, commsHintText, commsKindText, commsSenderText, commsSubjectText } from '../ui/commsText'
+import { commsAlignText, commsBriefText, commsClockText, commsEntryBodyText, commsEntrySubjectText, commsHintText, commsKindText, commsSenderText } from '../ui/commsText'
 
 /** 物品名回落（调用方给了物品表就按语言取名，没给就原样显示 id —— 不会静默变空） */
 const idAsName = (id: string): string => id

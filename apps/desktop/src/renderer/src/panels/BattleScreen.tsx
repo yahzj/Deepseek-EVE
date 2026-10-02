@@ -12,11 +12,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleFoeAnomaly, battleShowWindowMs, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeChargeCount, foeMainTagOf, foeShipTierOf, foeUnitNameOf, repairKitAvailableOf, repairLedgersOf, thrusterPhase, weekendFlagshipBattleViewOf, wormholeBattleViewOf, foeShipIdOfTag } from '@whale/core'
-import type { AnomalyDef, BattleFx, BattleReportRecord, BattleVerdict, DamageType, DroneLossReport, ShipRole } from '@whale/core'
+import type { BattleReportRecord, BattleVerdict, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { ShipSprite } from '../ui/ShipSprite'
-import { ammoKey, buildBlinkPillarEl, planBlinkPillars, syncBlinkPillarDom } from '../ui/battleBlink'
+import { ammoKey, planBlinkPillars, syncBlinkPillarDom } from '../ui/battleBlink'
 import type { BlinkPillarFx } from '../ui/battleBlink'
 import { FOE_ACCENT, foeFamilyOf } from '../ui/shipArt'
 import { UI_TONES } from '../ui/tones'
@@ -30,7 +30,6 @@ import {
   DRONE_FLY_MUL,
   DRONE_STYLE,
   droneArcHeight,
-  droneModelOf,
   droneModelOrFallback,
   dronePathPos,
   droneRandomOffsets,
@@ -44,7 +43,7 @@ import {
   ROW2_BAR_DROP, foeRowBoxesOf,
   FLY_MS, BOLT_LIFE, FLASH_LIFE, BOOM_LIFE, DRONE_DOWN_LIFE, POPUP_LIFE,
   STAR_LAYERS, genStars, clamp01, approachOf, layout,
-  fanSegs, fanPath, ringPath, HpTri, boltGeom, resolveBoltAnchors, droneOwnerAnchor, residentDroneFrom,
+  fanPath, ringPath, HpTri, boltGeom, resolveBoltAnchors, droneOwnerAnchor, residentDroneFrom,
 } from './battleViewCore'
 import type { Dims, Anchor, BoltV, FlashV, Stage, OutroSnap } from './battleViewCore'
 import { tr, cmdText, mountNamesTextOf } from '../i18n/locale'
@@ -52,7 +51,7 @@ import { tr, cmdText, mountNamesTextOf } from '../i18n/locale'
 import { hoverTipProps } from '../ui/Tooltip'
 import { useBattleFit } from '../ui/battleFit'
 // 2026-10-02 批次 4u：无人机几何域（挂载件悬停明文/敌我机群姿态/击落爆炸点）已拆到 ./battleDrones，本文件借回使用
-import { foeMountsTipOf, droneHomeStation, dronePoseAt, oneThirdToward, foeDroneStation, foePoseAt, DRONE_DOWN_FREEZE_MS } from './battleDrones'
+import { foeMountsTipOf, dronePoseAt, oneThirdToward, foeDroneStation, foePoseAt, DRONE_DOWN_FREEZE_MS } from './battleDrones'
 
 /**
  * 33ms 平滑循环需要的**最小战斗句柄**（结构类型：远征与洞内两种 `BattleState` 都满足；
@@ -907,16 +906,6 @@ const meSpeedRef = useRef(200)
      撤出只允许"淡出完成且该尸骸右侧（种子序更靠后）无仍在演出的尸骸"——整批尸骸演完才
      一起收拢一次，存活舰补位不再压着爆炸动画走。几何/弹道按视觉行序（含占位尸骸）计算。 */
   const WRECK_FADE_MS = 520 // 尸骸灰舰淡出时长（爆炸环演出期结束后的收尾段）
-  /**
-   * 🔴 **闪现演出时长 = 引擎旋钮**（**船长 2026-10-02 令**：「**给闪现发生速度做一个旋钮，
-   * 我感觉现在可能太短导致看不出来，先将整个过程延长到2000ms**」）。
-   *
-   * 数据源 = `balance.battle.foeBlinkProcessMs`（**单次闪现的整个动画过程**，游戏毫秒口径）——
-   * 界面把它**对半劈**：前半段播 `app-bts-blink-out`（消失）、后半段播 `app-bts-blink-in`（出现）。
-   * ⚠ 改这个数**不用改界面**：脚本内联 `--blink-ms` 覆盖三份 `styles*.css` 的基准值
-   * （基准 = 200ms，只作缺省与"三份一致"的锚点）。
-   */
-  const blinkProcessMs = Math.max(1, Math.round(engine.ctx.balance.battle.foeBlinkProcessMs ?? 200))
   const scanDroppable = (): Set<string> => {
     const drop = new Set<string>()
     let laterVisible = false

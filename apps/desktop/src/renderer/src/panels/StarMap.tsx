@@ -24,7 +24,7 @@ import type { FoeBriefLine } from '../ui/foeBrief'
 import { hoverTipProps } from '../ui/Tooltip'
 import { ShipSprite } from '../ui/ShipSprite'
 import { aiCoreText, shipRoleText } from '../ui/labelsText'
-import { DmgChip, FoeDamageMix, ProfileChip } from '../ui/shipInfo'
+import { FoeDamageMix, ProfileChip } from '../ui/shipInfo'
 import { foeCardShipIdOf as coreFoeCardShipIdOf } from '@whale/core'
 import type { AiCoreType, AnomalyDef, GalaxyDef, SideTask } from '@whale/core'
 import {
@@ -638,9 +638,6 @@ export function StarMap({
    * 都不行就用 0（居中保底）。徽标与倒计时整体平移，保持两层对齐、信息不丢。
    */
   const STACK_DX_TRIES = [0, 15, -15, 26, -26, 36, -36] as const
-  const STACK_HALF_W = 14
-  const STACK_Y1 = -35
-  const STACK_Y2 = -11
   /** 与其它节点的圆点带（±9）/名称带（±labelHalfW × [中心+12, 中心+38]）是否相交——徽标避让的公共判定。
    *  2026-09-11：名称带半宽改为参数（「敌对派系」模式的族标签行比名称更宽，避让要按实际宽度算）。 */
   const bandClear = (g: GalaxyDef, ax1: number, ax2: number, ay1: number, ay2: number, labelHalfW = 23): boolean => {

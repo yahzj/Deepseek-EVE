@@ -8,14 +8,12 @@
  * 界面查看后才移除）」⇒ 扫描不再是"玩家活动"行，改为头部 AI 徽标右侧一条常驻进度条
  * （进行中 = 进度 + 剩余；完成待查看 = 满格金色高亮，进「星图」或点它即收）。
  */
-import { activityOverview, activePromos, activeTunings, aiCoreIndustryUsed, aiCoreShipUsed, scanAwaitingView, scanStatus, SYNAPTIC_ACCELERANT_MUL } from '@whale/core'
+import { activityOverview, scanAwaitingView, scanStatus, SYNAPTIC_ACCELERANT_MUL } from '@whale/core'
 import type { ActivityView } from '@whale/core'
-import { formatDurationShort } from '@whale/core'
 import { useEffect, useState } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
-import { aiIndustrySlots, aiSlotTip } from '../ui/aiSlots'
 import { AiWorkFx } from '../ui/aiWorkFx'
 import { tr, cmdText } from '../i18n/locale'
 // 活动行「点击去哪」的跳转单点（2026-09-27 建：原先两套外壳各一份，快递那档跳到了已删除的星图页签 ⇒ 空白页）
@@ -146,8 +144,6 @@ export function ActivityBar({
   // 2026-09-08：AI 徽标计数 = AI 副船 + AI 核心驱动的生产线/精炼炉（后者不再占用"玩家活动"行）
   // 2026-09-10 船长：徽标**拆成两枚**——「副船」与「工业」各一枚（图标与配色不同，便于辨识）；
   //   数字取 core 单点（与 AI 指挥中心标题行同源），不再从活动列表反推
-  const aiShips = aiCoreShipUsed(state)
-  const aiProd = aiCoreIndustryUsed(state)
   /**
    * **突触加速剂读数**（**2026-09-30 船长令**：「'生效中'倒计时读数放入活动窗口内，和 AI 核心一样，
    * 用一个图标表示。最好图标能展示技能加速的倍率」）—— 归到「计时中」那一组（与扫描条同组），
@@ -155,31 +151,8 @@ export function ActivityBar({
    */
   const boostRemainMs = engine.synapticAccelerantRemainMs()
   const boostMul = Math.round(1 / SYNAPTIC_ACCELERANT_MUL)
-  /** AI 核心占用说明（与 AI 指挥中心/工业页同源的单点文案，挂在两枚徽标的悬停里） */
-  const aiSlotsNote = aiSlotTip(aiIndustrySlots(state, engine.ctx))
   const playerItems = all.filter((i) => i.kind !== 'ai' && i.kind !== 'train')
   const trainItems = all.filter((i) => i.kind === 'train')
-  /**
-   * **AI 正在干哪些活动**（船长 2026-09-13：「活动界面AI图标的鼠标悬浮提示改为显示AI正在干哪些活动」）：
-   * 原先两枚徽标的悬停只写死一句"正在执行采矿 / 打捞 / 掩护巡逻"——玩家看不到**具体在干什么**。
-   * 现在直接取 `activityOverview` 里 `kind==='ai'` 的条目（core 已按 `aiGroup` 分好副船 / 工业两组）：
-   * 一条一行「· 谁 · 干什么——在哪/什么阶段（还剩多久）」，超过 8 条折成"另有 N 条"。
-   * ⚠ 只改悬停文案：**徽标计数、点击去处、渲染结构一律不动**。
-   */
-  const aiLinesOf = (items: ActivityView[]): string => {
-    if (items.length === 0) return tr("ui.ActivityBar.033")
-    const lines = items.slice(0, 8).map((v) => {
-      const tail =
-        v.remainingMs !== null && v.remainingMs > 0
-          ? ` · 剩 ${fmtDuration(v.remainingMs)}`
-          : v.percent !== null
-            ? ` · ${Math.round(v.percent)}%`
-            : ''
-      return `· ${v.label}——${v.sub}${tail}`
-    })
-    if (items.length > 8) lines.push(tr("ui.ActivityBar.051", { p1: items.length - 8 }))
-    return lines.join('\n')
-  }
   const aiShipItems = all.filter((i) => i.kind === 'ai' && i.aiGroup === 'ship')
   const aiProdItems = all.filter((i) => i.kind === 'ai' && i.aiGroup === 'industry')
   /**
@@ -195,26 +168,6 @@ export function ActivityBar({
       ? { done: true, galaxyId: scanAck.galaxyId, percent: 100, remainingMs: 0 }
       : null
   const scanName = (id: string | null): string => (id ? (engine.ctx.galaxies.get(id)?.name ?? id) : tr("ui.ActivityBar.015"))
-  /**
-   * **限时加成徽标**（2026-09-15 船长：「同时拥有限时加成时，还会在活动无人机的右侧
-   * （扫描进度条的右侧）显示当前加成项是什么和剩余时间」）。
-   *
-   * 口径：数据表 `TUNING_RULES`（`packages/core/src/tuning.ts`）× **现实墙钟**；到期自动消失。
-   * 剩余时间按**本地日界**算（规则以"当天整天生效"为准）⇒ 这里显示"还剩 N 天 N 小时"。
-   * 无加成时**不渲染**（不占位、防头部跳动）。
-   *
-   * **2026-09-16 促销合并**（船长：「5和虫洞限时缩短写在一起，但是要润色成虫洞大量生成之类的」）：
-   * `PROMOS` 里的一条促销（扫描倍率 ＋ 一次性赠送）在这里显示成**一枚**徽标（游戏内说法 + 剩余时间），
-   * 被它 `claims` 认领的倍率键（如 `wormholeScanMs`）**不再单列** —— 同一件事不显示两遍。
-   */
-  const [tuningTick, setTuningTick] = useState(() => Date.now())
-  useEffect(() => {
-    const t = window.setInterval(() => setTuningTick(Date.now()), 60_000) // 每分钟刷新剩余时间
-    return () => window.clearInterval(t)
-  }, [])
-  const promos = activePromos(tuningTick)
-  const promoClaimedKeys = new Set<string>(promos.flatMap((p) => [...p.claims]))
-  const tunings = activeTunings(tuningTick).filter((t) => !promoClaimedKeys.has(t.key))
   // 撤退需二次确认（轻损但有代价）。
   // 2026-09-11 修复（真 BUG：点「开始教程」后白屏，React #185「Maximum update depth exceeded」）：
   // 原先写成**渲染期派生状态**（`if (retreatAsk && !playerItems.some(...)) setRetreatAsk(false)`）——

@@ -16,8 +16,8 @@ import { MONEY_GLYPH } from '../pages/common'
 import type { ToastFn } from '../pages/common'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { FoeDamageMix, ProfileChip } from '../ui/shipInfo'
-import { aiCoreText, lairTierText, shipRoleText } from '../ui/labelsText'
-import { FOE_ACCENT, FOE_FAMILY_LABEL, foeFamilyOf } from '../ui/shipArt'
+import { lairTierText, shipRoleText } from '../ui/labelsText'
+import { foeFamilyOf } from '../ui/shipArt'
 import { FoeArt, FOE_TACTIC_HINTS, foeCardShipIdOf, secText, secTone, useFoeArtFit } from './StarMap'
 import type { AnomalyDef, SideTask, SideTaskBoardView, SimContext } from '@whale/core'
 import {
@@ -490,7 +490,7 @@ import { Communicator } from '../ui/communicator'
  *  （需建成一座副站解锁；两步：出发投送 → 到站自动结算） */
 export function SideTasksArea({ engine, onToast, kind }: { engine: GameEngine; onToast: ToastFn; kind: 'resource' | 'courier' }) {
   const state = engine.state
-  const { t } = useL10n()
+  useL10n()
   const view = engine.sideTasksView()
   const isCourier = kind === 'courier'
   /**
@@ -1262,8 +1262,6 @@ export function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; 
         const tier = !built ? site.tiers[prog.stage]! : null
         // 2026-09-09：逐档材料单视图（当前档每项需求/已缴/剩余）
         const billRows = !built ? stationBillView(state, engine.ctx, site) : []
-        const need = billRows.reduce((s, r) => s + r.need, 0)
-        const delTotal = billRows.reduce((s, r) => s + r.delivered, 0)
         const remain = billRows.reduce((s, r) => s + r.remaining, 0)
         const itemId = selItem[site.id] ?? billRows[0]?.itemId ?? ''
         // 工地现场 = 停靠该站，或野外停留于站点星系（2026-09-06 修复：现场交付无需"先停靠"）

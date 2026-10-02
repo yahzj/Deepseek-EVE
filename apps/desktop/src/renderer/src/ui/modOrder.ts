@@ -20,7 +20,7 @@
  * ⚠ 只决定**展示顺序**：不动任何数据/数值/存档；也不改变筛选（筛选仍在 `itemSubs.ts` 的单点里）。
  */
 import { MODULE_SLOTS } from '@whale/core'
-import type { DamageType, ModuleDef, ModuleSlot } from '@whale/core'
+import type { DamageType, ModuleDef } from '@whale/core'
 
 /** 攻击类别顺序（与战斗画面 `DMG_ORDER`、`DMG_LABEL` 同一套键） */
 export const MOD_DMG_ORDER: readonly DamageType[] = ['kinetic', 'explosive', 'plasma']
@@ -72,9 +72,6 @@ export function nominalDpsOf(def: ModuleDef): number {
 export function isWeaponModule(def: ModuleDef): boolean {
   return def.damageType !== undefined
 }
-
-/** 武器槽（三类武器的物理槽位）；非武器件没有位置 —— 它们排在武器之后 */
-const WEAPON_SLOTS: readonly ModuleSlot[] = ['turret', 'missile', 'laser']
 
 /** 排序键：`[武器段 0/1, 类别序, 档位, 火力, 槽位序, 名称, id]`（逐段比较，任意一段不同即定序） */
 export function modOrderKey(def: ModuleDef): [number, number, number, number, number, string, string] {
