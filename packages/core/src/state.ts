@@ -2356,7 +2356,7 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
   rareWreckDryStreak?: number
   /**
    * **入侵补偿批：判定与落地标记**（**船长 2026-10-02 令**，原话与四问口径见
-   * `docs/design/weekend-compensation-20261002.md`）。
+   * `docs/glossary.md`「入侵补偿批」词条 ＋ `docs/roadmap.md` 2026-10-02 条；工作文档已按 §八归档删除）。
    *
    * 只判一次（`weekendCompensation.ts` 是**唯一判定与落地处**）：
    * - `track: 'makeup'` ⇒ 该档"这一期还是墨潮帮"，在**周三 20:00~周五 20:00 的暗期**里开**一场光环**（

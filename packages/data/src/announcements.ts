@@ -28,7 +28,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
      * ① 「下周三」⇒「**10 月 7 日（周三）20:00**」（公告长期挂着，相对时间会失效）；
      * ② 族名用**官方名「光环科技」**（船长原话里的「光环」是简称）；
      * 并补一条**规格**：额外这次只开一场、且不影响 10 月 9 日的下一期 —— 这就是落地口径
-     * （`weekendCompensation.ts` 的暗期补场；工作文档 `docs/design/weekend-compensation-20261002.md`）。
+     * （`weekendCompensation.ts` 的暗期补场；归档见 `docs/glossary.md`「入侵补偿批」词条）。
      *
      * 口径（§7/§12）：第三人称「玩家」· 无开发/验收话语 · 3~5 条要点 · 括号内只放规格。
      */

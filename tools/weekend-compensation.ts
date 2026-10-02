@@ -1,8 +1,8 @@
 /**
  * **入侵补偿批：查档 · 演算 · 发放**（**船长 2026-10-02 令**：「**……并准备对应的工具。**」）
  *
- * 背景与口径（**同一批的唯一权威 = `packages/core/src/weekendCompensation.ts`**；工作文档
- * `docs/design/weekend-compensation-20261002.md`）：
+ * 背景与口径（**同一批的唯一权威 = `packages/core/src/weekendCompensation.ts`**；归档见
+ * `docs/glossary.md`「入侵补偿批」词条 ＋ `docs/roadmap.md` 2026-10-02 条）：
  * - **受影响档**（"这一期还是墨潮帮"）⇒ **下周三 20:00 起**开一场**光环科技**补场（只一场、打完即止、
  *   到下一期 T0 自然收场）；
  * - **其余档**（含新档）⇒ 入仓 **1 枚信号发射器** ＋ 一条系统日志。
