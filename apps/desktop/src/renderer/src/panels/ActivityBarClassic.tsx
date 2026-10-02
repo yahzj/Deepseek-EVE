@@ -220,6 +220,13 @@ export function ActivityBarClassic({
   // React 只允许"该组件自己触发的、立即收敛的"渲染期更新；撤退活动消失（如委派 AI 后）时这里每次渲染都会
   // 调一次 setState，生产版在同一提交里累积到阈值就把整棵树卸载（白屏）。搬到 effect：**提交后清理**，语义相同、不参与渲染。
   const [retreatAsk, setRetreatAsk] = useState(false)
+  /**
+   * **最小化**（**2026-10-02 船长令**：「给旧版界面的活动窗口添加个最小化的按钮，点击后活动窗口
+   * 高度缩小，只显示标题（写着活动的那一行）」）——收起后只渲染标题行那一行，
+   * 下面两组整块**不渲染**（能不给就不给，界面不藏内容）⇒ 盒子自然只剩一行高。
+   * ⚠ **状态不落盘**（船长取"不记"）：每次进游戏/重开都是展开的。
+   */
+  const [collapsed, setCollapsed] = useState(false)
   const hasRetreatActivity = playerItems.some((i) => i.stop === 'retreat-battle')
   useEffect(() => {
     if (retreatAsk && !hasRetreatActivity) setRetreatAsk(false)
@@ -338,8 +345,19 @@ export function ActivityBarClassic({
   }
 
   return (
-    <div className="app-activitybar">
+    <div className={`app-activitybar${collapsed ? ' is-collapsed' : ''}`}>
       <div className="app-activitybar-hd">
+        {/* 最小化 / 展开按钮：**标题行最左端**（船长 2026-10-02 补答："最小化按钮要放到最左侧"）。
+            收起后这一行整行保留（标题 ＋ 两枚 AI 徽标 ＋ 星系扫描条 ＋ 限时加成全在这一行里），
+            只是下面两组不再渲染。 */}
+        <button
+          className="app-activitybar-min"
+          aria-expanded={!collapsed}
+          title={collapsed ? tr('ui.ActivityBar.071') : tr('ui.ActivityBar.070')}
+          onClick={() => setCollapsed((v) => !v)}
+        >
+          {collapsed ? '▸' : '▾'}
+        </button>
         <span className="app-activitybar-title">{tr("ui.ActivityBar.025")}</span>
         {/* AI 徽标（2026-09-10 船长：拆成两枚，图标 / 配色 / 去处各不相同）——
             ① 副船：AI 核心图标（粉）+「副船 ×N」，点进「舰船」的 AI 指挥中心；
@@ -463,22 +481,26 @@ export function ActivityBarClassic({
           </button>
         ))}
       </div>
-      <div className="app-activitybar-group">
-        <div className="app-activitybar-gtitle">{tr("ui.ActivityBar.028")}</div>
-        {playerItems.length > 0 ? (
-          playerItems.map(renderItem)
-        ) : (
-          <span className="app-activitybar-idle">{tr("ui.ActivityBar.029")}</span>
-        )}
-      </div>
-      <div className="app-activitybar-group">
-        <div className="app-activitybar-gtitle">{tr("ui.ActivityBar.030")}</div>
-        {trainItems.length > 0 ? (
-          trainItems.map(renderItem)
-        ) : (
-          <span className="app-activitybar-idle">{tr("ui.ActivityBar.037")}</span>
-        )}
-      </div>
+      {collapsed ? null : (
+        <>
+          <div className="app-activitybar-group">
+            <div className="app-activitybar-gtitle">{tr("ui.ActivityBar.028")}</div>
+            {playerItems.length > 0 ? (
+              playerItems.map(renderItem)
+            ) : (
+              <span className="app-activitybar-idle">{tr("ui.ActivityBar.029")}</span>
+            )}
+          </div>
+          <div className="app-activitybar-group">
+            <div className="app-activitybar-gtitle">{tr("ui.ActivityBar.030")}</div>
+            {trainItems.length > 0 ? (
+              trainItems.map(renderItem)
+            ) : (
+              <span className="app-activitybar-idle">{tr("ui.ActivityBar.037")}</span>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }

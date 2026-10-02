@@ -2018,25 +2018,50 @@ for (const m of MODULES) {
      */
     const labelFrom = (raw: string | undefined, id: string | undefined): string | null =>
       id !== undefined ? (L10N[id]?.zh ?? null) : (raw ?? null)
-    const containerLabel = ((): string | null => {
-      const m = /container:\s*(?:tr\(\s*['"]([\w.]+)['"]\s*\)|'([^']*)')/.exec(mpSrc)
-      return m ? labelFrom(m[2], m[1]) : null
-    })()
-    check(
-      containerLabel === '货柜',
-      `市场类型契约：${mpPath} 里没有 \`container: '货柜'\`（或等价的 \`container: tr('ui.…')\`，其 zh 须为「货柜」）` +
-        `——货柜的一级类型名丢了或被改名（实取：${containerLabel ?? '取不到'}）`,
-    )
-    check(
-      mpSrc.includes("'item', 'container'"),
-      `市场类型契约：${mpPath} 的类型下拉里「货柜」没有紧跟「货物」（现应是 … 'all', 'item', 'container', 'consume' …）`,
-    )
-    check(
-      !mpSrc.includes("item: '物品'"),
-      `市场类型契约：${mpPath} 的一级类型名又变回「物品」了（船长 2026-09-16 定为「货物」）`,
-    )
+    /**
+     * ⚠ **2026-10-01 判据源迁移**（船长令「以市场为准，三处都改，层级按市场来」）：
+     * 一级类型单点从「MarketPage 里手写的 `KIND_TEXT` 字面量」收敛到 `ui/itemSubs.ts` 的
+     * `COMMODITY_TABS`（市场 / 仓库 / 货仓 / 手册图鉴**四处共读同一张表**）⇒ 契约的**判据源随单点一起搬**，
+     * 否则契约只会对着一个已不存在的手写表报红（本批实测：3 条误红）。
+     * **契约意图一字未改**：货柜与货物同级且紧跟其后 · 一级类型名叫「货物」不叫「物品」· 黑匣单独一档。
+     */
     const subPath = 'apps/desktop/src/renderer/src/ui/itemSubs.ts'
     const subSrc = stripComments(readSrc(subPath)).join('\n')
+    /** `COMMODITY_TABS` 的项：键 + 该项 `label:` 的原文（`tr('id')` 或 `RACK_LABELS.x` 这类引用） */
+    const tabsAt = subSrc.indexOf('export const COMMODITY_TABS')
+    const tabsEnd = tabsAt < 0 ? -1 : subSrc.indexOf('\n]', tabsAt)
+    const tabsSeg = tabsAt < 0 || tabsEnd < 0 ? '' : subSrc.slice(tabsAt, tabsEnd + 2)
+    const tabEntries = [...tabsSeg.matchAll(/key:\s*'([\w-]+)',\s*label:\s*([^\n]+?)\s*\}/g)].map((m) => ({
+      key: m[1],
+      raw: m[2],
+    }))
+    const tabKeys = tabEntries.map((e) => e.key)
+    /** 某一档的中文名：`tr('id')` 按唯一表的 zh 还原；`RACK_LABELS.x` 这类引用返回 null（另有归属档契约管） */
+    const tabLabelZh = (key: string): string | null => {
+      const e = tabEntries.find((x) => x.key === key)
+      if (e === undefined) return null
+      const m = /tr\(\s*['"]([\w.]+)['"]\s*\)/.exec(e.raw)
+      return m ? (L10N[m[1]]?.zh ?? null) : null
+    }
+    check(tabKeys.length > 0, `市场类型契约：${subPath} 的 \`COMMODITY_TABS\` 一项都读不出来（一级类型单点丢了）`)
+    check(
+      tabKeys[0] === 'item' && tabKeys[1] === 'container',
+      `市场类型契约：\`COMMODITY_TABS\` 里「货柜」没有紧跟「货物」（现应是 … 'item', 'container', 'consume' …；` +
+        `实取：${tabKeys.slice(0, 4).join(', ')}）`,
+    )
+    check(
+      tabLabelZh('container') === '货柜',
+      `市场类型契约：\`COMMODITY_TABS\` 的 \`container\` 项文案不是「货柜」（实取：${tabLabelZh('container') ?? '取不到'}）`,
+    )
+    check(
+      tabLabelZh('item') === '货物',
+      `市场类型契约：\`COMMODITY_TABS\` 的 \`item\` 项文案不是「货物」（船长 2026-09-16 定为「货物」；` +
+        `实取：${tabLabelZh('item') ?? '取不到'}）`,
+    )
+    check(
+      mpSrc.includes('COMMODITY_TABS'),
+      `市场类型契约：${mpPath} 的类型下拉没有读 \`COMMODITY_TABS\`（一级类型必须走那张单点表）`,
+    )
     check(
       subSrc.includes('CONTAINER_KIND_KEYS'),
       `市场类型契约：${subPath} 里没有 \`CONTAINER_KIND_KEYS\`——货柜的键集合单点丢了（剔除判定会失效）`,
@@ -2069,8 +2094,9 @@ for (const m of MODULES) {
       )
     }
     console.log(
-      '· 市场类型契约：一级类型 = 全部 / 货物 / 货柜 / 消耗品 / 残骸 / 高·中·低槽装备 / 舰船 / 蓝图 / 核心 · ' +
-        '「货柜」紧跟「货物」· 子分类 = 货物（原矿/原材料/气体/冰矿/基础零件/高级零件/奢侈品）· 货柜（遗迹安全/图纸/贵重品/军用）· 蓝图含「零件蓝图」',
+      '· 市场类型契约：一级类型 = 全部 / 货物 / 货柜 / 消耗品 / 残骸 / 黑匣 / 高·中·低槽装备 / 舰船插件 / 舰船 / 蓝图 / 核心' +
+        '（单点 = ui/itemSubs.ts 的 COMMODITY_TABS · 市场/仓库/货仓/图鉴四处共读）· 「货柜」紧跟「货物」· ' +
+        '子分类 = 货物（原矿/原材料/气体/冰矿/基础零件/高级零件/奢侈品）· 货柜（遗迹安全/图纸/贵重品/军用）· 蓝图含「零件蓝图」',
     )
   }
 
@@ -2945,10 +2971,12 @@ for (const m of MODULES) {
     check(ITEM_KIND_ORDER.includes('blackbox'), '黑匣契约：`ITEM_KIND_ORDER` 里没有 blackbox（仓库/货仓/图鉴的分类行会缺一档）')
     // 市场页的类型下拉：本块自带读源码小工具（同名变量都在别的块作用域里，取不到）
     const mpRead = (rel: string): string => readFileSync(join(process.cwd(), rel), 'utf8')
-    const mpSrc2 = mpRead('apps/desktop/src/renderer/src/pages/MarketPage.tsx')
+    // 市场页的类型下拉读的是 `ui/itemSubs.ts` 的 `COMMODITY_TABS`（2026-10-01 起的一级类型单点）
+    const subRead = (rel: string): string => readFileSync(join(process.cwd(), rel), 'utf8')
+    const subsSrc2 = subRead('apps/desktop/src/renderer/src/ui/itemSubs.ts')
     check(
-      mpSrc2.includes("'blackbox'"),
-      '黑匣契约：市场页的类型下拉里没有 blackbox 一档（船长令：市场内黑匣单独一个分类）',
+      subsSrc2.includes("key: 'blackbox'"),
+      '黑匣契约：`COMMODITY_TABS` 里没有 blackbox 一档（船长令：市场内黑匣单独一个分类）',
     )
     console.log(
       `· 黑匣契约：${blackboxes.map((b) => b.id).join(' / ')} 独立成类（仓库/货仓/图鉴/市场四档一致）· ` +

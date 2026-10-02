@@ -1848,258 +1848,265 @@ export function WormholePanel({
                 </span>
               </div>
               {grid && hereCell ? (
-                <>
-                  {/**
-                   * **撤离确认条**（船长 2026-09-13：「玩家撤离时会警告玩家并需要确认」）：
-                   * 待确认时摆在页体顶部，写清"这一撤会发生什么"。
-                   * ⚠ 2026-09-15 撤离战取消 ⇒ 文案改为"不消耗回合、不触发战斗"，不再分第 1 层 / 深层两档。
-                   */}
-                  {extractAsk ? (
-                    <div className="app-wh-extract-ask">
-                      <span>
-                        {tr("ui.Wormhole.033")} <b>{tr('ui.Wormhole.349', { p1: run.depth })}</b>
-                        {tr('ui.Wormhole.350')}<b>{tr("ui.Wormhole.143")}</b>{tr("ui.Wormhole.258")}
-                      </span>
-                      <span className="app-wh-actions">
-                        <button
-                          className="app-btn is-small is-danger"
-                          onClick={() => {
-                            setExtractAsk(false)
-                            doExtract()
-                          }}
-                        >
-                          {tr("ui.Wormhole.193")}
-                        </button>
-                        <button className="app-btn is-small" onClick={() => setExtractAsk(false)}>
-                          {tr("ui.ActivityBar.004")}
-                        </button>
-                      </span>
-                    </div>
-                  ) : null}
-                  {/**
-                   * **遗迹守备的迎战确认条**（船长 2026-09-13：「打捞遗迹触发战斗时……战斗突然发生没有任何提示，
-                   * 应该提示玩家惊扰守卫等，**玩家确认后跳转**」）：
-                   * 打捞已经结算（回合扣了、货进包了），这里只等玩家点「迎战」；点之前别的动作一律被 core 拦。
-                   * ⚠ **2026-09-14 修船长报障「虫洞的战斗胜利后，点击战报有时会退出虫洞界面」**：
-                   *   这里原先跟着一句 `onClose()`（"关掉面板，全屏战场接管"）——与上面那条
-                   *   「**战斗中不渲染本面板、`whOpen` 保持为真 ⇒ 打完面板自动回来**」的既有设计**直接冲突**：
-                   *   面板一旦关掉就再也回不来 ⇒ 打完战报一关，人落在星图上（= 退出了虫洞界面）。
-                   *   "有时"正是因为**只有这一条路**关面板：另外两条开战路径（`doActivate` 的舰船信号 /
-                   *   层末守卫）不关 ⇒ 那两条打完都能回到面板。
-                   *   现改为**不关面板**：战斗中本组件 `return null`（层级硬保证，见文件末那条注释），
-                   *   战斗收口后自动回来，与另两条路径一致。
-                   */}
-                  {run.pendingRuinsBattle === true ? (
-                    <div className="app-wh-extract-ask">
-                      <span>
-                        ⚠ <b>{tr("ui.Wormhole.099")}</b>{tr('ui.Wormhole.351')}
-                      </span>
-                      <span className="app-wh-actions">
-                        <button
-                          className="app-btn is-small is-danger"
-                          onClick={() => {
-                            const r = engine.wormholeFight('ruins')
-                            if (!r.ok) {
-                              onToast(cmdText(r) || tr('ui.Wormhole.341'), true)
-                              return
-                            }
-                            // 面板**保持打开**（战斗中自动不渲染）⇒ 战报一关就回到虫洞界面
-                          }}
-                        >
-                          {tr("ui.App.080")}
-                        </button>
-                      </span>
-                    </div>
-                  ) : null}
-                  {/**
-                   * **踩中埋伏**（船长 2026-09-16：「移动途中被敌方拦截或者**进入未扫描地点踩到怪**了，
-                   * 都要弹窗提示，玩家确认后进入战斗」）——与上面「遗迹守备」**同一套语言与形态**：
-                   * 到达那一刻已发事件提醒（日志 + 这条警告条），**玩家点「开战」才进战斗**；
-                   * 提醒里只写来由与坐标（船长选定：不写残血/回合）。
-                   */}
-                  {run.pendingNodeBattle === true ? (
-                    <div className="app-wh-extract-ask">
-                      <span>
-                        ⚠ <b>{tr("ui.Handbook.308")}</b>{tr('ui.Wormhole.352', { p1: `Q${grid?.pos.q ?? 0} · R${grid?.pos.r ?? 0}` })}
-                      </span>
-                      <span className="app-wh-actions">
-                        <button
-                          className="app-btn is-small is-danger"
-                          onClick={() => {
-                            const r = engine.wormholeFight('node')
-                            if (!r.ok) {
-                              onToast(cmdText(r) || tr('ui.Wormhole.341'), true)
-                              return
-                            }
-                          }}
-                        >
-                          {tr("ui.Wormhole.100")}
-                        </button>
-                      </span>
-                    </div>
-                  ) : null}
-                  {/**
-                   * **地图行 = 左侧缩放控件 + 地图**（船长 2026-09-13：「虫洞探索地图添加一个宇宙背景。
-                   * 且窗口高度固定（不会随着地图变大变高），在探索界面的左侧给玩家一个缩放按钮或者滚动条。
-                   * 让玩家能够调节探索地图的大小」）：地图框**定高** 300px（不再随圈数长高），
-                   * 缩放只放大图内内容（以玩家所在格为中心），超出部分由地图框裁掉 ⇒ 外层永不因此滚动。
-                   */}
-                  {/* 洞内战斗不在本面板里渲染（现行：战斗中整块不渲染本面板，战场全屏独占） */}
-                  <div className="app-wh-maprow">
-                    <div className="app-wh-zoom" role="group" aria-label={tr('ui.Wormhole.373')}>
+              /*
+               * **探索视图容器**（**2026-10-02 船长令**：「手机模式下虫洞探索界面放大到全屏，操作界面挪到右侧」）：
+               * 手机旋转模式下由本容器把这一段排成**左＝地图 / 右＝操作区**两栏（见 `styles.css` 的
+               * `is-mobile-rot` 段）；桌面上它 `display: contents` ⇒ **不产生盒子、布局与改造前逐字相同**
+               * （本仓既有惯用法，同 `.app-win-host`）。原先这里是个 `<>…</>` 片段，作用域与本容器完全一致。
+               */
+              <div className="app-wh-explore">
+                {/**
+                 * **撤离确认条**（船长 2026-09-13：「玩家撤离时会警告玩家并需要确认」）：
+                 * 待确认时摆在页体顶部，写清"这一撤会发生什么"。
+                 * ⚠ 2026-09-15 撤离战取消 ⇒ 文案改为"不消耗回合、不触发战斗"，不再分第 1 层 / 深层两档。
+                 */}
+                {extractAsk ? (
+                  <div className="app-wh-extract-ask">
+                    <span>
+                      {tr("ui.Wormhole.033")} <b>{tr('ui.Wormhole.349', { p1: run.depth })}</b>
+                      {tr('ui.Wormhole.350')}<b>{tr("ui.Wormhole.143")}</b>{tr("ui.Wormhole.258")}
+                    </span>
+                    <span className="app-wh-actions">
                       <button
-                        className="app-wh-zoom-btn"
-                        disabled={mapZoom >= WORMHOLE_MAP_ZOOM_MAX}
-                        onClick={() => setMapZoom((z) => Math.min(WORMHOLE_MAP_ZOOM_MAX, +(z + WORMHOLE_MAP_ZOOM_STEP).toFixed(2)))}
-                        title={tr("ui.Wormhole.144")}
-                      >
-                        ＋
-                      </button>
-                      <span className="app-wh-zoom-val">{Math.round(mapZoom * 100)}%</span>
-                      <button
-                        className="app-wh-zoom-btn"
-                        disabled={mapZoom <= WORMHOLE_MAP_ZOOM_FIT}
-                        onClick={() => setMapZoom((z) => Math.max(WORMHOLE_MAP_ZOOM_FIT, +(z - WORMHOLE_MAP_ZOOM_STEP).toFixed(2)))}
-                        title={tr("ui.Wormhole.209")}
-                      >
-                        －
-                      </button>
-                      <button
-                        className="app-wh-zoom-btn is-text"
-                        disabled={mapZoom === WORMHOLE_MAP_ZOOM_FIT && mapPan.x === 0 && mapPan.y === 0}
+                        className="app-btn is-small is-danger"
                         onClick={() => {
-                          setMapZoom(WORMHOLE_MAP_ZOOM_FIT)
-                          setMapPan({ x: 0, y: 0 })
+                          setExtractAsk(false)
+                          doExtract()
                         }}
-                        title={tr("ui.Wormhole.101")}
                       >
-                        {tr("ui.Wormhole.259")}
+                        {tr("ui.Wormhole.193")}
                       </button>
-                    </div>
-                    <div
-        className={`app-wh-mapbox${mapPanning ? ' is-panning' : ''}`}
-        ref={mapBoxRef}
-        style={{ ...(pinnedSpaceBg ? { '--wh-space-bg': `url("${pinnedSpaceBg}")` } : {}) } as React.CSSProperties}
-        /**
-         * **拖动地图**（船长 2026-09-20：「允许玩家拖动虫洞探索地图」）：三件事一起做 ——
-         * ① `pointerdown` 只**记起点与换算系数**（`viewBox ÷ 元素像素`）；
-         * ② `pointermove` 超阈值才算"拖"（低于阈值当点击，交给格子）——**指针捕获在这一刻才拿**
-         *    （见下方那条 2026-09-20 报障修复）；
-         * ③ `pointerup/cancel` 收尾，拖过就吃掉紧随的那次 click（见 `mapDragAteClickRef`）。
-         * `z = 1`（适应窗口）时没有可拖的余地 ⇒ 直接不接（指针行为与改造前一致）。
-         */
-        onPointerDown={(e) => {
-          mapDragAteClickRef.current = false
-          if (mapZoom <= WORMHOLE_MAP_ZOOM_FIT) return
-          const rect = e.currentTarget.getBoundingClientRect()
-          const box = wormholeMapBoxOf(run?.grid?.radius ?? grid.radius)
-          mapDragRef.current = {
-            id: e.pointerId,
-            sx: e.clientX,
-            sy: e.clientY,
-            panX: mapPan.x,
-            panY: mapPan.y,
-            kx: box.w / Math.max(1, rect.width),
-            ky: box.h / Math.max(1, rect.height),
-            moved: false,
-          }
-          /**
-           * ⚠ **2026-09-20 玩家报障修复：这里原先"按下即捕获指针"，把格子的点击整条路吃掉了。**
-           *
-           * 报障原话：「进层扫描以后会有卡住的 bug……要缩放到最大才能点击触发」（症状 = 缩放后点格子没反应）。
-           * 根因：`click` 由浏览器派发给 **pointerdown 与 pointerup 两个目标的最近公共祖先**，而
-           * `setPointerCapture` 会把后续指针事件（含 pointerup）**改派到捕获元素**（这里 = 地图框 div）
-           * ⇒ 公共祖先变成地图框 ⇒ 格子的 `onClick` 再也不触发。`z = 1` 时上面那行提前 return（不捕获）
-           * ⇒ **只有"缩放过的地图"点不动**；而换层自动缩放（半径 > 8）一进层就 > 1 ⇒
-           * 报障里"进层以后"与"跟缩放有关"两句都对上了；退出面板再进来会把手动缩放复位 ⇒ "到主界面再返回才好"。
-           *
-           * 现在改成：**只有真的拖起来（越过阈值）才捕获**——纯点击从不捕获，格子的点击在任意缩放下都正常；
-           * 拖动一旦开始，指针捕获照旧（拖出地图框也不断线），并在 `pointerup/cancel` 里释放。
-           */
-        }}
-        onPointerMove={(e) => {
-          const d = mapDragRef.current
-          if (!d || d.id !== e.pointerId) return
-          const dx = e.clientX - d.sx
-          const dy = e.clientY - d.sy
-          if (!d.moved && Math.hypot(dx, dy) < WORMHOLE_MAP_DRAG_THRESHOLD_PX) return
-          if (!d.moved) {
-            d.moved = true
-            // 拖起来了才捕获指针（此刻起"这一下"确定是拖动，不是点格子）
-            try {
-              e.currentTarget.setPointerCapture(e.pointerId)
-            } catch {
-              /* 指针已经抬起（极短拖）⇒ 不捕获也能拖完这一下 */
-            }
-          }
-          setMapPanning(true)
-          const box = wormholeMapBoxOf(run?.grid?.radius ?? grid.radius)
-          const anchor = wormholeMapAnchorOf(run?.grid ?? grid)
-          setMapPan(
-            wormholeMapPanClamp({ x: d.panX + dx * d.kx, y: d.panY + dy * d.ky }, mapZoom, box, anchor),
-          )
-        }}
-        onPointerUp={(e) => {
-          const d = mapDragRef.current
-          if (!d || d.id !== e.pointerId) return
-          mapDragRef.current = null
-          setMapPanning(false)
-          if (d.moved) mapDragAteClickRef.current = true
-          if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
-        }}
-        onPointerCancel={() => {
-          mapDragRef.current = null
-          setMapPanning(false)
-        }}
-        /**
-         * **捕获丢了也要收尾**（防"卡住"）：指针被系统/别的元素抢走时 `pointerup` 可能不来，
-         * 若此时还留着 `mapDragRef`/`mapPanning`，之后每一次移动都会被当成拖动（点击再也进不去格子）。
-         * 这条把状态清干净——与 `pointerup` 同一个收尾，只是不"吃掉"下一次 click。
-         */
-        onLostPointerCapture={() => {
-          mapDragRef.current = null
-          setMapPanning(false)
-        }}
-      >
-                      {/**
-                       * ⚠ **这里不许写 `title`**（**2026-09-17 船长报障**：「鼠标在地点上悬停时，会同时出现
-                       * **滚轮缩放的 title 提示**和格子信息，建议取消滚轮缩放的 title」）。
-                       * 机制：格子上的提示走 **SVG 的 `data-tip`**（由 `ui/Tooltip.tsx` 的自绘层接管），
-                       * 而**悬停元素自己没有 `title` 时，浏览器会沿祖先链找最近的 `title` 并照原生弹出**
-                       * ⇒ 地图框这一层的 `title` 会和格子提示**同屏出现**（自绘 + 原生两个）。
-                       * 滚轮那句话已搬进下方图例行的 ⓘ（常驻说明进 ⓘ 的既有口径），此处保持**无 title**。
-                       */}
-                      <WhGridMap
-                        grid={grid}
-                        onPickCell={pickCell}
-                        shipDefId={leadShipDefId}
-                        layerKey={`${run.seed ?? 0}-${run.depth}`}
-                        fx={fx}
-                        scanFx={scanFx}
-                        dissolveFx={dissolveFx}
-                        zoom={mapZoom}
-                        /* 拖动地图（船长 2026-09-20）：**已夹取**的平移量，与缩放同一层 transform
-                           （夹取按"锚点到两侧边缘的距离"分轴算 ⇒ 站在盘底也拖得到盘顶，见 `wormholeMapPanClamp`） */
-                        pan={wormholeMapPanClamp(mapPan, mapZoom, wormholeMapBoxOf(grid.radius), wormholeMapAnchorOf(grid))}
-                        panning={mapPanning}
-                        /* 待确认的这次移动：画出直线路径；已知的拦截格才描红指名（甲案） */
-                        pathPreview={
-                          pendingCell
-                            ? {
-                                q: pendingCell.q,
-                                r: pendingCell.r,
-                                ...(pendingCell.intercept && pendingCell.intercept.known
-                                  ? { interceptKey: `${pendingCell.intercept.q},${pendingCell.intercept.r}` }
-                                  : {}),
-                                ...(pendingCell.intercept && !pendingCell.intercept.known
-                                  ? { hush: true }
-                                  : {}),
-                              }
-                            : null
-                        }
-                      />
-                    </div>
+                      <button className="app-btn is-small" onClick={() => setExtractAsk(false)}>
+                        {tr("ui.ActivityBar.004")}
+                      </button>
+                    </span>
                   </div>
+                ) : null}
+                {/**
+                 * **遗迹守备的迎战确认条**（船长 2026-09-13：「打捞遗迹触发战斗时……战斗突然发生没有任何提示，
+                 * 应该提示玩家惊扰守卫等，**玩家确认后跳转**」）：
+                 * 打捞已经结算（回合扣了、货进包了），这里只等玩家点「迎战」；点之前别的动作一律被 core 拦。
+                 * ⚠ **2026-09-14 修船长报障「虫洞的战斗胜利后，点击战报有时会退出虫洞界面」**：
+                 *   这里原先跟着一句 `onClose()`（"关掉面板，全屏战场接管"）——与上面那条
+                 *   「**战斗中不渲染本面板、`whOpen` 保持为真 ⇒ 打完面板自动回来**」的既有设计**直接冲突**：
+                 *   面板一旦关掉就再也回不来 ⇒ 打完战报一关，人落在星图上（= 退出了虫洞界面）。
+                 *   "有时"正是因为**只有这一条路**关面板：另外两条开战路径（`doActivate` 的舰船信号 /
+                 *   层末守卫）不关 ⇒ 那两条打完都能回到面板。
+                 *   现改为**不关面板**：战斗中本组件 `return null`（层级硬保证，见文件末那条注释），
+                 *   战斗收口后自动回来，与另两条路径一致。
+                 */}
+                {run.pendingRuinsBattle === true ? (
+                  <div className="app-wh-extract-ask">
+                    <span>
+                      ⚠ <b>{tr("ui.Wormhole.099")}</b>{tr('ui.Wormhole.351')}
+                    </span>
+                    <span className="app-wh-actions">
+                      <button
+                        className="app-btn is-small is-danger"
+                        onClick={() => {
+                          const r = engine.wormholeFight('ruins')
+                          if (!r.ok) {
+                            onToast(cmdText(r) || tr('ui.Wormhole.341'), true)
+                            return
+                          }
+                          // 面板**保持打开**（战斗中自动不渲染）⇒ 战报一关就回到虫洞界面
+                        }}
+                      >
+                        {tr("ui.App.080")}
+                      </button>
+                    </span>
+                  </div>
+                ) : null}
+                {/**
+                 * **踩中埋伏**（船长 2026-09-16：「移动途中被敌方拦截或者**进入未扫描地点踩到怪**了，
+                 * 都要弹窗提示，玩家确认后进入战斗」）——与上面「遗迹守备」**同一套语言与形态**：
+                 * 到达那一刻已发事件提醒（日志 + 这条警告条），**玩家点「开战」才进战斗**；
+                 * 提醒里只写来由与坐标（船长选定：不写残血/回合）。
+                 */}
+                {run.pendingNodeBattle === true ? (
+                  <div className="app-wh-extract-ask">
+                    <span>
+                      ⚠ <b>{tr("ui.Handbook.308")}</b>{tr('ui.Wormhole.352', { p1: `Q${grid?.pos.q ?? 0} · R${grid?.pos.r ?? 0}` })}
+                    </span>
+                    <span className="app-wh-actions">
+                      <button
+                        className="app-btn is-small is-danger"
+                        onClick={() => {
+                          const r = engine.wormholeFight('node')
+                          if (!r.ok) {
+                            onToast(cmdText(r) || tr('ui.Wormhole.341'), true)
+                            return
+                          }
+                        }}
+                      >
+                        {tr("ui.Wormhole.100")}
+                      </button>
+                    </span>
+                  </div>
+                ) : null}
+                {/**
+                 * **地图行 = 左侧缩放控件 + 地图**（船长 2026-09-13：「虫洞探索地图添加一个宇宙背景。
+                 * 且窗口高度固定（不会随着地图变大变高），在探索界面的左侧给玩家一个缩放按钮或者滚动条。
+                 * 让玩家能够调节探索地图的大小」）：地图框**定高** 300px（不再随圈数长高），
+                 * 缩放只放大图内内容（以玩家所在格为中心），超出部分由地图框裁掉 ⇒ 外层永不因此滚动。
+                 */}
+                {/* 洞内战斗不在本面板里渲染（现行：战斗中整块不渲染本面板，战场全屏独占） */}
+                <div className="app-wh-maprow">
+                  <div className="app-wh-zoom" role="group" aria-label={tr('ui.Wormhole.373')}>
+                    <button
+                      className="app-wh-zoom-btn"
+                      disabled={mapZoom >= WORMHOLE_MAP_ZOOM_MAX}
+                      onClick={() => setMapZoom((z) => Math.min(WORMHOLE_MAP_ZOOM_MAX, +(z + WORMHOLE_MAP_ZOOM_STEP).toFixed(2)))}
+                      title={tr("ui.Wormhole.144")}
+                    >
+                      ＋
+                    </button>
+                    <span className="app-wh-zoom-val">{Math.round(mapZoom * 100)}%</span>
+                    <button
+                      className="app-wh-zoom-btn"
+                      disabled={mapZoom <= WORMHOLE_MAP_ZOOM_FIT}
+                      onClick={() => setMapZoom((z) => Math.max(WORMHOLE_MAP_ZOOM_FIT, +(z - WORMHOLE_MAP_ZOOM_STEP).toFixed(2)))}
+                      title={tr("ui.Wormhole.209")}
+                    >
+                      －
+                    </button>
+                    <button
+                      className="app-wh-zoom-btn is-text"
+                      disabled={mapZoom === WORMHOLE_MAP_ZOOM_FIT && mapPan.x === 0 && mapPan.y === 0}
+                      onClick={() => {
+                        setMapZoom(WORMHOLE_MAP_ZOOM_FIT)
+                        setMapPan({ x: 0, y: 0 })
+                      }}
+                      title={tr("ui.Wormhole.101")}
+                    >
+                      {tr("ui.Wormhole.259")}
+                    </button>
+                  </div>
+                  <div
+      className={`app-wh-mapbox${mapPanning ? ' is-panning' : ''}`}
+      ref={mapBoxRef}
+      style={{ ...(pinnedSpaceBg ? { '--wh-space-bg': `url("${pinnedSpaceBg}")` } : {}) } as React.CSSProperties}
+      /**
+       * **拖动地图**（船长 2026-09-20：「允许玩家拖动虫洞探索地图」）：三件事一起做 ——
+       * ① `pointerdown` 只**记起点与换算系数**（`viewBox ÷ 元素像素`）；
+       * ② `pointermove` 超阈值才算"拖"（低于阈值当点击，交给格子）——**指针捕获在这一刻才拿**
+       *    （见下方那条 2026-09-20 报障修复）；
+       * ③ `pointerup/cancel` 收尾，拖过就吃掉紧随的那次 click（见 `mapDragAteClickRef`）。
+       * `z = 1`（适应窗口）时没有可拖的余地 ⇒ 直接不接（指针行为与改造前一致）。
+       */
+      onPointerDown={(e) => {
+        mapDragAteClickRef.current = false
+        if (mapZoom <= WORMHOLE_MAP_ZOOM_FIT) return
+        const rect = e.currentTarget.getBoundingClientRect()
+        const box = wormholeMapBoxOf(run?.grid?.radius ?? grid.radius)
+        mapDragRef.current = {
+          id: e.pointerId,
+          sx: e.clientX,
+          sy: e.clientY,
+          panX: mapPan.x,
+          panY: mapPan.y,
+          kx: box.w / Math.max(1, rect.width),
+          ky: box.h / Math.max(1, rect.height),
+          moved: false,
+        }
+        /**
+         * ⚠ **2026-09-20 玩家报障修复：这里原先"按下即捕获指针"，把格子的点击整条路吃掉了。**
+         *
+         * 报障原话：「进层扫描以后会有卡住的 bug……要缩放到最大才能点击触发」（症状 = 缩放后点格子没反应）。
+         * 根因：`click` 由浏览器派发给 **pointerdown 与 pointerup 两个目标的最近公共祖先**，而
+         * `setPointerCapture` 会把后续指针事件（含 pointerup）**改派到捕获元素**（这里 = 地图框 div）
+         * ⇒ 公共祖先变成地图框 ⇒ 格子的 `onClick` 再也不触发。`z = 1` 时上面那行提前 return（不捕获）
+         * ⇒ **只有"缩放过的地图"点不动**；而换层自动缩放（半径 > 8）一进层就 > 1 ⇒
+         * 报障里"进层以后"与"跟缩放有关"两句都对上了；退出面板再进来会把手动缩放复位 ⇒ "到主界面再返回才好"。
+         *
+         * 现在改成：**只有真的拖起来（越过阈值）才捕获**——纯点击从不捕获，格子的点击在任意缩放下都正常；
+         * 拖动一旦开始，指针捕获照旧（拖出地图框也不断线），并在 `pointerup/cancel` 里释放。
+         */
+      }}
+      onPointerMove={(e) => {
+        const d = mapDragRef.current
+        if (!d || d.id !== e.pointerId) return
+        const dx = e.clientX - d.sx
+        const dy = e.clientY - d.sy
+        if (!d.moved && Math.hypot(dx, dy) < WORMHOLE_MAP_DRAG_THRESHOLD_PX) return
+        if (!d.moved) {
+          d.moved = true
+          // 拖起来了才捕获指针（此刻起"这一下"确定是拖动，不是点格子）
+          try {
+            e.currentTarget.setPointerCapture(e.pointerId)
+          } catch {
+            /* 指针已经抬起（极短拖）⇒ 不捕获也能拖完这一下 */
+          }
+        }
+        setMapPanning(true)
+        const box = wormholeMapBoxOf(run?.grid?.radius ?? grid.radius)
+        const anchor = wormholeMapAnchorOf(run?.grid ?? grid)
+        setMapPan(
+          wormholeMapPanClamp({ x: d.panX + dx * d.kx, y: d.panY + dy * d.ky }, mapZoom, box, anchor),
+        )
+      }}
+      onPointerUp={(e) => {
+        const d = mapDragRef.current
+        if (!d || d.id !== e.pointerId) return
+        mapDragRef.current = null
+        setMapPanning(false)
+        if (d.moved) mapDragAteClickRef.current = true
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
+      }}
+      onPointerCancel={() => {
+        mapDragRef.current = null
+        setMapPanning(false)
+      }}
+      /**
+       * **捕获丢了也要收尾**（防"卡住"）：指针被系统/别的元素抢走时 `pointerup` 可能不来，
+       * 若此时还留着 `mapDragRef`/`mapPanning`，之后每一次移动都会被当成拖动（点击再也进不去格子）。
+       * 这条把状态清干净——与 `pointerup` 同一个收尾，只是不"吃掉"下一次 click。
+       */
+      onLostPointerCapture={() => {
+        mapDragRef.current = null
+        setMapPanning(false)
+      }}
+    >
+                    {/**
+                     * ⚠ **这里不许写 `title`**（**2026-09-17 船长报障**：「鼠标在地点上悬停时，会同时出现
+                     * **滚轮缩放的 title 提示**和格子信息，建议取消滚轮缩放的 title」）。
+                     * 机制：格子上的提示走 **SVG 的 `data-tip`**（由 `ui/Tooltip.tsx` 的自绘层接管），
+                     * 而**悬停元素自己没有 `title` 时，浏览器会沿祖先链找最近的 `title` 并照原生弹出**
+                     * ⇒ 地图框这一层的 `title` 会和格子提示**同屏出现**（自绘 + 原生两个）。
+                     * 滚轮那句话已搬进下方图例行的 ⓘ（常驻说明进 ⓘ 的既有口径），此处保持**无 title**。
+                     */}
+                    <WhGridMap
+                      grid={grid}
+                      onPickCell={pickCell}
+                      shipDefId={leadShipDefId}
+                      layerKey={`${run.seed ?? 0}-${run.depth}`}
+                      fx={fx}
+                      scanFx={scanFx}
+                      dissolveFx={dissolveFx}
+                      zoom={mapZoom}
+                      /* 拖动地图（船长 2026-09-20）：**已夹取**的平移量，与缩放同一层 transform
+                         （夹取按"锚点到两侧边缘的距离"分轴算 ⇒ 站在盘底也拖得到盘顶，见 `wormholeMapPanClamp`） */
+                      pan={wormholeMapPanClamp(mapPan, mapZoom, wormholeMapBoxOf(grid.radius), wormholeMapAnchorOf(grid))}
+                      panning={mapPanning}
+                      /* 待确认的这次移动：画出直线路径；已知的拦截格才描红指名（甲案） */
+                      pathPreview={
+                        pendingCell
+                          ? {
+                              q: pendingCell.q,
+                              r: pendingCell.r,
+                              ...(pendingCell.intercept && pendingCell.intercept.known
+                                ? { interceptKey: `${pendingCell.intercept.q},${pendingCell.intercept.r}` }
+                                : {}),
+                              ...(pendingCell.intercept && !pendingCell.intercept.known
+                                ? { hush: true }
+                                : {}),
+                            }
+                          : null
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="app-wh-ops">
                   <div className="app-wh-legend">
                     {GRID_LEGEND.map((l) => (
                       <span key={l.key} className="app-wh-legend-item">
@@ -2291,7 +2298,8 @@ export function WormholePanel({
                   {outOfTurns ? (
                     <div className="app-wh-ask">{tr("ui.Wormhole.111")}</div>
                   ) : null}
-                </>
+                </div>
+              </div>
               ) : (
                 <div className="app-wh-node">
                   <div className="app-wh-node-title">{tr("ui.Wormhole.155")}</div>
@@ -2993,6 +3001,14 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
   const tempPending = tempInfo.placements
   /** 抓起时压住的是块内哪一格（见 `grabOffsetOf`）：落点要减掉它，抓哪一格拖都算数 */
   const grabRef = useRef({ dx: 0, dy: 0 })
+  /** 触屏指针拖拽的进行态（`null` = 当前没有指针拖拽）；见下方「触摸拖拽」那一段 */
+  const touchDragRef = useRef<{ id: number; itemId: string; from: BoardKind; sx: number; sy: number; moved: boolean } | null>(null)
+  /** 手指当前压着的落点格（只用于高亮；真正的落点由 `pointerup` 现算一次） */
+  const [touchHover, setTouchHover] = useState<{ kind: BoardKind; x: number; y: number } | null>(null)
+  /** 这一拖是不是**指针拖拽**（决定给被拖的那一块加 `is-touch-drag`：它要让开命中，否则挡在手指底下） */
+  const [touchDragging, setTouchDragging] = useState(false)
+  /** 刚用指针拖过一次 ⇒ 吃掉紧随的那次 click（与地图 `mapDragAteClickRef` 同一套做法） */
+  const holdDragAteClickRef = useRef(false)
   const cols = WORMHOLE_HOLD_COLS
   const holdBoard = run.hold ?? makeHoldState()
   const tempBoard = run.tempGrid ?? makeHoldState(WORMHOLE_TEMP_COLS)
@@ -3028,22 +3044,109 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
    * ⚠ **2026-09-14 新增跨板**（临时空间改成 4×8 的格子区）：`kind` = 落点所在的板 ——
    * 同一块板内 = 移动/换位；**跨板**（货仓 ↔ 临时空间）= `wormholeBoardTransfer`（形状/实占格原样带过去）。
    */
-  function dropAt(kind: BoardKind, x: number, y: number): void {
-    const id = dragId
+  function dropAt(kind: BoardKind, x: number, y: number, src?: { id: string; from: BoardKind }): void {
+    /** 触屏指针路径把「拖的是哪一件 / 从哪块板来」**显式传进来**（不读 state：`pointerup` 与
+     *  `pointermove` 里的 `setDragId` 之间隔着一次渲染，读 state 有落到旧值上的风险）。 */
+    const id = src?.id ?? dragId
     if (!id) return
+    const from = src?.from ?? dragFrom
     const target = ownerMap(kind).get(`${x},${y}`)
     if (target && target.id !== id) {
       const r = engine.wormholeHoldSwap(id, target.id)
       if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.326'), true)
       setDragId(null)
+      setTouchDragging(false)
       return
     }
     const r =
-      dragFrom === kind
+      from === kind
         ? engine.wormholeHoldDropAt(id, x, y, grabRef.current)
-        : engine.wormholeBoardTransfer(dragFrom, kind, id, x, y, grabRef.current)
+        : engine.wormholeBoardTransfer(from, kind, id, x, y, grabRef.current)
     if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.327'), true)
     setDragId(null)
+    setTouchDragging(false)
+  }
+
+  /* ── 触摸拖拽（**2026-10-02 船长令**：「货仓背包无法对背包内的物品进行拖动等行为」）────────────
+     病根：上面那套搬运只接了 **HTML5 拖放**（`draggable` + `onDragStart/onDragOver/onDrop`），
+     而它在**触屏上根本不触发** —— `onPointerDown` 此前只记了个抓取偏移，全仓没有任何
+     `pointermove/pointerup` 路径 ⇒ 手机上唯一能走的是「点一下选中、再点空格落位」。
+     这里补一条**指针事件**路径，判据 `pointerType !== 'mouse'` ⇒ **鼠标一律仍走原 HTML5 拖放**
+     （桌面手感与代码路径零变化，也不会两条路径抢同一次拖动）。
+     阈值与「吃掉尾巴 click」沿用地图拖动那一套（`WORMHOLE_MAP_DRAG_THRESHOLD_PX` 同一常量）。 */
+
+  /** 屏幕点 → 它下面的格（命中靠格板那层带的 `data-wh-cell` / `data-wh-fig`） */
+  function cellUnderPoint(clientX: number, clientY: number): { kind: BoardKind; x: number; y: number } | null {
+    const el = document.elementFromPoint(clientX, clientY)
+    if (el === null) return null
+    // 优先格子本体；压在**别件**身上时取那一件自己的原点格（core 按占用表判「两件互换」，与桌面同一条路）
+    const hit = (el.closest('[data-wh-cell]') ?? el.closest('[data-wh-fig]')) as HTMLElement | null
+    if (hit === null) return null
+    const kind = (hit.dataset.whCell ?? hit.dataset.whFig) as BoardKind | undefined
+    const x = Number(hit.dataset.whX)
+    const y = Number(hit.dataset.whY)
+    if (kind === undefined || !Number.isFinite(x) || !Number.isFinite(y)) return null
+    return { kind, x, y }
+  }
+
+  /** 这一格是不是手指当前压着的落点（触屏拖拽的高亮） */
+  function isTouchHover(kind: BoardKind, x: number, y: number): boolean {
+    return touchHover !== null && touchHover.kind === kind && touchHover.x === x && touchHover.y === y
+  }
+
+  /** 指针按下（**仅触屏 / 笔**）：记起点与抓取偏移；**不立刻进入拖动态**（没越过阈值仍算点击选择） */
+  function touchDragDown(kind: BoardKind, p: WormholeHoldPlacement, e: React.PointerEvent): void {
+    if (e.pointerType === 'mouse') return
+    grabRef.current = grabOffsetOf(e.currentTarget as HTMLElement, p.w, p.h, e.clientX, e.clientY)
+    touchDragRef.current = { id: e.pointerId, itemId: p.id, from: kind, sx: e.clientX, sy: e.clientY, moved: false }
+  }
+
+  function touchDragMove(e: React.PointerEvent): void {
+    const d = touchDragRef.current
+    if (d === null || d.id !== e.pointerId) return
+    if (!d.moved) {
+      if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < WORMHOLE_MAP_DRAG_THRESHOLD_PX) return
+      d.moved = true
+      // 越过阈值才认定「这一下是拖动」（此前一律留给 click 的选中语义）——此刻才捕获指针
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId)
+      } catch {
+        /* 指针已经抬起（极短拖）⇒ 不捕获也能拖完这一下 */
+      }
+      setDragId(d.itemId)
+      setDragFrom(d.from)
+      setTouchDragging(true)
+    }
+    const hit = cellUnderPoint(e.clientX, e.clientY)
+    setTouchHover((prev) => (prev?.kind === hit?.kind && prev?.x === hit?.x && prev?.y === hit?.y ? prev : hit))
+  }
+
+  function touchDragUp(e: React.PointerEvent): void {
+    const d = touchDragRef.current
+    if (d === null || d.id !== e.pointerId) return
+    touchDragRef.current = null
+    setTouchHover(null)
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
+    if (!d.moved) return // 没越过阈值 ⇒ 交给 click（选中 / 落位）
+    holdDragAteClickRef.current = true
+    const hit = cellUnderPoint(e.clientX, e.clientY)
+    if (hit !== null) dropAt(hit.kind, hit.x, hit.y, { id: d.itemId, from: d.from })
+    else {
+      setDragId(null)
+      setTouchDragging(false)
+    }
+  }
+
+  /** `pointercancel` 兜底：拖到一半被系统收走（来电 / 系统手势）⇒ 只清状态，
+   *  **不当成一次落点、也不吃 click**（与地图那套"防卡住"同一用意） */
+  function touchDragCancel(): void {
+    const d = touchDragRef.current
+    touchDragRef.current = null
+    setTouchHover(null)
+    if (d?.moved === true) {
+      setDragId(null)
+      setTouchDragging(false)
+    }
   }
 
   /** 某一板上「格 → 件」的占用表（画格子与判落点都用它） */
@@ -3105,7 +3208,10 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
           return (
             <div
               key={key}
-              className={cls}
+              className={`${cls}${isTouchHover(kind, x, y) ? ' is-touch-hover' : ''}`}
+              data-wh-cell={kind}
+              data-wh-x={x}
+              data-wh-y={y}
               title={
                 locked
                   ? lockedTitle
@@ -3119,10 +3225,15 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
               }
               draggable={isOrigin}
               onPointerDown={(e) => {
+                holdDragAteClickRef.current = false
                 if (isOrigin && p) {
                   grabRef.current = grabOffsetOf(e.currentTarget as HTMLElement, p.w, p.h, e.clientX, e.clientY)
+                  touchDragDown(kind, p, e)
                 }
               }}
+              onPointerMove={touchDragMove}
+              onPointerUp={touchDragUp}
+              onPointerCancel={touchDragCancel}
               onDragStart={() => {
                 if (isOrigin) {
                   setDragId(p!.id)
@@ -3138,6 +3249,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                 dropAt(kind, x, y)
               }}
               onClick={() => {
+                if (holdDragAteClickRef.current) return
                 if (isOrigin) {
                   // 点一下选中/取消（选中后再点空格也能落位，照顾不方便拖的场景）
                   setDragFrom(kind)
@@ -3173,7 +3285,9 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                 key={`fig-${kind}-${p.id}`}
                 className={`app-wh-hold-fig ${isCargo ? 'is-cargo' : 'is-box'}${
                   dragId === p.id ? ' is-dragging' : ''
-                }${kind === 'temp' && isMatter ? ' is-inert' : ''}`}
+                }${kind === 'temp' && isMatter ? ' is-inert' : ''}${
+                  touchDragging && dragId === p.id ? ' is-touch-drag' : ''
+                }`}
                 style={{
                   gridColumn: `${p.x + 1} / span ${p.w}`,
                   gridRow: `${p.y + 1} / span ${p.h}`,
@@ -3194,9 +3308,17 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                       : '')
                 }
                 draggable
+                data-wh-fig={kind}
+                data-wh-x={p.x}
+                data-wh-y={p.y}
                 onPointerDown={(e) => {
+                  holdDragAteClickRef.current = false
                   grabRef.current = grabOffsetOf(e.currentTarget as HTMLElement, p.w, p.h, e.clientX, e.clientY)
+                  touchDragDown(kind, p, e)
                 }}
+                onPointerMove={touchDragMove}
+                onPointerUp={touchDragUp}
+                onPointerCancel={touchDragCancel}
                 onDragStart={() => {
                   setDragId(p.id)
                   setDragFrom(kind)
@@ -3210,6 +3332,8 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                   dropAt(kind, p.x, p.y)
                 }}
                 onClick={(e) => {
+                  /** 刚用指针拖过（触屏）⇒ 这一次 click 是拖动的尾巴，吃掉（与地图拖动同一套做法） */
+                  if (holdDragAteClickRef.current) return
                   /**
                    * **Ctrl/⌘ + 点击 = 整件快捷搬运**（船长 2026-09-22；口径「①甲②甲③甲」）：
                    * ① 甲 = **整件搬**（一整堆散货条 / 一个货柜）· ② 甲 = 放不下 ⇒ **拒绝并提示**（沿用现有校验与 toast）

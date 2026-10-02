@@ -88,6 +88,23 @@ const FACTION_BOX_M = 34
 const MAP_VB_W = MAP_W + MAP_PAD_X * 2
 const MAP_VB_H = MAP_H + MAP_PAD_TOP
 /**
+ * **星图缩放**（**2026-10-02 船长令**，转玩家反馈：「手机端，星图界面各个星系判定范围过小（尤其是未探索的
+ * 星系），几乎点不中/点了没反应。建议星图和虫洞探索一样允许放大」）—— 手感与虫洞探索地图同一套：
+ * 适应 = 100% · 每档 25% · 上限 300%（比虫洞的 2.5 高：`galaxy-vault` 与 `galaxy-nadir` 只相距 10.2 单位，
+ * 圆点半径各 8、本来就压在一起，要把它俩分开得放到 3 倍上下）。
+ */
+const MAP_ZOOM_FIT = 1
+const MAP_ZOOM_STEP = 0.25
+const MAP_ZOOM_MAX = 3
+/** 起拖阈值（像素）：与虫洞地图 `WORMHOLE_MAP_DRAG_THRESHOLD_PX` 同一个手感值（都回答"多小算点击"） */
+const MAP_DRAG_THRESHOLD_PX = 4
+/**
+ * **节点判定圆半径**（viewBox 单位；见下面 `app-map-hit` 那条样式与节点里的用法）——
+ * 16 是**实测安全上限**：20 个星系里除 `galaxy-vault`/`galaxy-nadir`（相距 10.2）之外最近的是 33.5，
+ * 而 16+16 = 32 < 33.5 ⇒ 判定圆两两不重叠。
+ */
+const MAP_HIT_R = 16
+/**
  * 布局本地覆盖键（v2，2026-09-05）：船长本地排版坐标已合入内置默认（universe.ts，并整体左移 14），
  * 旧键 v1（whale-idle:starmap-layout，09-04 编辑器排版本）一律不再读取——
  * 旧本地覆盖会遮蔽新默认（此前改内置坐标看不到变化即此因）；今后编辑器排完版「保存并复制 JSON」合入默认即可。
@@ -455,6 +472,39 @@ export function StarMap({
   })
   const [override, setOverride] = useState<LayoutMap>(readLayoutOverride)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  /**
+   * **星图缩放与平移**（2026-10-02 船长令「建议星图和虫洞探索一样允许放大」）。
+   * 实现走**改 `viewBox`**（不是给内容套一层 transform）：坐标系整体缩放 ⇒ 节点 / 标签 / 连线 /
+   * 新增的**判定圆**全都跟着一起变大，而且**一行 DOM 结构都不用动**。
+   * ⚠ 编辑模式（开发工具的布局编辑器）下强制回到适应态：它按 `MAP_VB_W/H` 常量换算拖拽坐标
+   * （见 `toViewBox`），叠上缩放会算错。
+   */
+  const [mapZoom, setMapZoom] = useState(MAP_ZOOM_FIT)
+  const [mapPan, setMapPan] = useState({ x: 0, y: 0 })
+  const [mapPanning, setMapPanning] = useState(false)
+  /** 拖图状态（与虫洞地图同款：越过阈值才算拖、拖过就吃掉紧随的那次 click） */
+  const mapDragRef = useRef<{ id: number; sx: number; sy: number; panX: number; panY: number; inv: DOMMatrix; moved: boolean } | null>(null)
+  const mapAteClickRef = useRef(false)
+  const mapSvgRef = useRef<SVGSVGElement | null>(null)
+  /**
+   * **滚轮缩放**（桌面）：照虫洞地图的做法 —— React 把 `onWheel` 挂成**被动监听**（passive），
+   * 里面 `preventDefault()` 不生效（控制台还会警告）⇒ 自己 `addEventListener` 且 `{ passive: false }`。
+   * 锚点与按钮一致（选中星系 / 图心），不做"跟随光标"那套，免得两种缩放手感打架。
+   */
+  useEffect(() => {
+    const el = mapSvgRef.current
+    if (el === null) return
+    const onWheel = (e: WheelEvent): void => {
+      if (editing) return
+      e.preventDefault()
+      setMapZoom((z) => {
+        const next = e.deltaY < 0 ? z + MAP_ZOOM_STEP : z - MAP_ZOOM_STEP
+        return Math.min(MAP_ZOOM_MAX, Math.max(MAP_ZOOM_FIT, +next.toFixed(2)))
+      })
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [editing])
   /** 2026-09-08 船长：点星系行动改弹窗——星图不再被长详情纵向挤压 */
   const [modalId, setModalId] = useState<string | null>(null)
   /**
@@ -806,6 +856,20 @@ export function StarMap({
     window.addEventListener('pointerup', up)
   }
 
+  /* ── 缩放后的可视窗口（**改 viewBox**，不动 DOM）────────────────────────────────
+     锚点 = **当前选中星系**（没选中就取图心）——与虫洞地图「以玩家所在格为锚点」同一套口径：
+     放大时"我关心的那一颗"原地不动、四周围着它长开。平移量单位是 viewBox 单位。 */
+  const effZoom = editing ? MAP_ZOOM_FIT : mapZoom
+  const effPan = editing ? { x: 0, y: 0 } : mapPan
+  const vbW = MAP_VB_W / effZoom
+  const vbH = MAP_VB_H / effZoom
+  const anchorGal = selectedId !== null ? engine.ctx.galaxies.get(selectedId) : undefined
+  const anchorPt = anchorGal !== undefined ? posOf(anchorGal) : { x: -MAP_PAD_X + MAP_VB_W / 2, y: -MAP_PAD_TOP + MAP_VB_H / 2 }
+  /** 夹取：可视窗口不许跑出基准视图（适应态下夹取结果就是原来的 viewBox） */
+  const clampVb = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v))
+  const vbX = clampVb(anchorPt.x - vbW / 2 + effPan.x, -MAP_PAD_X, -MAP_PAD_X + MAP_VB_W - vbW)
+  const vbY = clampVb(anchorPt.y - vbH / 2 + effPan.y, -MAP_PAD_TOP, -MAP_PAD_TOP + MAP_VB_H - vbH)
+
   return (
     <div className="app-starmap-wrap">
       {/* 显示模式切换（2026-09-11 船长）：三态互斥、选择存本地；按钮复刻 .app-map-editbar 同族做法（同 wrapper / 同 .app-btn.is-small） */}
@@ -821,8 +885,116 @@ export function StarMap({
           </button>
         ))}
         <span className="app-dim">{tr("ui.Expedition.196")}{LABEL_MODES.find((m) => m.key === labelMode)?.label}</span>
+        {/**
+         * **缩放控件**（**2026-10-02 船长令**「建议星图和虫洞探索一样允许放大」）——
+         * 与虫洞探索地图那套同款：－ / 当前倍数 / ＋ / 复位，摆在工具栏**最右端**
+         * （`margin-left: auto` 推过去，不挤那三档显示模式）。
+         * 锚点 = 选中星系（没选中取图心）：放大时那一颗原地不动。
+         * ⚠ **编辑模式下整组不出现** —— 布局编辑器按基准 `viewBox` 换算坐标，缩着编辑会算错。
+         */}
+        {!editing ? (
+          <span className="app-map-zoom" role="group" aria-label={tr('ui.Expedition.451')}>
+            <button
+              className="app-map-zoom-btn"
+              disabled={mapZoom <= MAP_ZOOM_FIT}
+              onClick={() => setMapZoom((z) => Math.max(MAP_ZOOM_FIT, +(z - MAP_ZOOM_STEP).toFixed(2)))}
+              title={tr('ui.Expedition.449')}
+            >
+              －
+            </button>
+            <span className="app-map-zoom-val">{Math.round(mapZoom * 100)}%</span>
+            <button
+              className="app-map-zoom-btn"
+              disabled={mapZoom >= MAP_ZOOM_MAX}
+              onClick={() => setMapZoom((z) => Math.min(MAP_ZOOM_MAX, +(z + MAP_ZOOM_STEP).toFixed(2)))}
+              title={tr('ui.Expedition.448')}
+            >
+              ＋
+            </button>
+            <button
+              className="app-map-zoom-btn is-text"
+              disabled={mapZoom === MAP_ZOOM_FIT && mapPan.x === 0 && mapPan.y === 0}
+              onClick={() => {
+                setMapZoom(MAP_ZOOM_FIT)
+                setMapPan({ x: 0, y: 0 })
+              }}
+              title={tr('ui.Expedition.450')}
+            >
+              {tr('ui.Expedition.450')}
+            </button>
+          </span>
+        ) : null}
       </div>
-      <svg viewBox={`${-MAP_PAD_X} ${-MAP_PAD_TOP} ${MAP_VB_W} ${MAP_VB_H}`} className={`app-starmap${editing ? ' is-editing' : ''}`} role="img" aria-label={tr('ui.ActivityBar.006')}>
+      <svg
+        ref={mapSvgRef}
+        viewBox={`${vbX.toFixed(2)} ${vbY.toFixed(2)} ${vbW.toFixed(2)} ${vbH.toFixed(2)}`}
+        className={`app-starmap${editing ? ' is-editing' : ''}${!editing && effZoom > MAP_ZOOM_FIT ? ' is-zoomed' : ''}${mapPanning ? ' is-panning' : ''}`}
+        role="img"
+        aria-label={tr('ui.ActivityBar.006')}
+        /**
+         * **拖动平移**（2026-10-02 船长令「建议星图和虫洞探索一样允许放大」）——
+         * 与虫洞地图同一套做法：① 按下只记起点与换算系数（viewBox ÷ 元素像素）；
+         * ② 超过阈值（`MAP_DRAG_THRESHOLD_PX`）才算"拖"并把指针捕获下来（低于阈值当点击，交给节点）；
+         * ③ 抬起收尾，拖过就吃掉紧随的那次 click（见 `mapAteClickRef` 与节点 `onClick` 的闸门）。
+         * `z = 1`（适应）时没有可拖的余地 ⇒ 直接不接（指针行为与改造前一致）。
+         */
+        onPointerDown={(e) => {
+          mapAteClickRef.current = false
+          if (editing || effZoom <= MAP_ZOOM_FIT) return
+          /**
+           * 位移换算走**元素自身的 CTM 逆矩阵**（屏幕点 → viewBox 用户单位），
+           * 而不是"屏幕位移 ÷ 元素像素"。为什么（实测踩过）：手机旋转模式下整窗是
+           * `rotate(-90deg) scale(s)`，**屏幕的横轴对应逻辑的纵轴** —— 直接拿 `clientX` 差当 x 会
+           * **平移错轴**（横轴位移喂给了 y、纵轴喂给了 x，两边都被夹取吃掉 ⇒ 看着"拖了但纹丝不动"）。
+           * CTM 逆矩阵对任何 CSS 变换都成立 ⇒ 桌面与旋转模式共用同一份换算。
+           */
+          const ctm = e.currentTarget.getScreenCTM()
+          if (ctm === null) return
+          mapDragRef.current = {
+            id: e.pointerId,
+            sx: e.clientX,
+            sy: e.clientY,
+            panX: effPan.x,
+            panY: effPan.y,
+            inv: ctm.inverse(),
+            moved: false,
+          }
+        }}
+        onPointerMove={(e) => {
+          const d = mapDragRef.current
+          if (d === null || d.id !== e.pointerId) return
+          const dx = e.clientX - d.sx
+          const dy = e.clientY - d.sy
+          if (!d.moved && Math.hypot(dx, dy) < MAP_DRAG_THRESHOLD_PX) return
+          if (!d.moved) {
+            d.moved = true
+            // 拖起来了才捕获指针（此刻起"这一下"确定是拖动，不是点星系）
+            try {
+              e.currentTarget.setPointerCapture(e.pointerId)
+            } catch {
+              /* 指针已经抬起（极短拖）⇒ 不捕获也能拖完这一下 */
+            }
+            setMapPanning(true)
+          }
+          // 拖着图走：手指往哪走，图就往哪走 ⇒ 可视窗口反向平移（用按下那一刻的逆矩阵换算，
+          // 它在一次拖动内是常量：平移只改 viewBox 原点、不改缩放比）
+          const p0 = new DOMPoint(d.sx, d.sy).matrixTransform(d.inv)
+          const p1 = new DOMPoint(e.clientX, e.clientY).matrixTransform(d.inv)
+          setMapPan({ x: d.panX - (p1.x - p0.x), y: d.panY - (p1.y - p0.y) })
+        }}
+        onPointerUp={(e) => {
+          const d = mapDragRef.current
+          if (d === null || d.id !== e.pointerId) return
+          mapDragRef.current = null
+          setMapPanning(false)
+          if (d.moved) mapAteClickRef.current = true
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
+        }}
+        onPointerCancel={() => {
+          mapDragRef.current = null
+          setMapPanning(false)
+        }}
+      >
         {/* 敌对派系"势力范围"光晕的径向渐变（2026-09-11）：每个族一枚，静态光效、不用 filter（第十四章） */}
         <defs>
           {Object.entries(FOE_ACCENT).map(([fam, color]) => (
@@ -987,6 +1159,8 @@ export function StarMap({
               key={g.id}
               className="app-map-node"
               onClick={() => {
+                // 刚拖过星图 ⇒ 这一次 click 是拖动的尾巴，不吃（免得"拖完顺手选中一个星系"）
+                if (mapAteClickRef.current) return
                 // 刚点过「扫描探索」⇒ 这 420ms 内不吃点击（防连点顺手点开另一个星系）
                 if (Date.now() < nodeClickGuardUntilRef.current) return
                 setSelectedId(g.id)
@@ -1084,6 +1258,16 @@ export function StarMap({
                   })()}
                 </>
               ) : null}
+              {/**
+               * **判定圆**（**2026-10-02 船长令**，转玩家反馈：「星图界面各个星系判定范围过小（尤其是
+               * 未探索的星系），几乎点不中/点了没反应……并扩大判定范围」）——
+               * 原先可点范围**就是这个圆点本身**（未探索 r=7），手机旋转模式再 ×0.7033 ⇒ 只剩几个
+               * 物理像素。这里加一枚**不可见的大圆**专门吃点击：点击照旧冒泡给本组 `onClick`
+               * ⇒ **坐标换算与选中逻辑一行未改**。
+               * ⚠ 画在圆点**之前**（同组内靠后的元素在重叠处优先）⇒ 不挡圆点、徽标与标签自己的悬停。
+               * 半径取 16 的实测依据见 `MAP_HIT_R` 的注释。
+               */}
+              <circle cx={p.x} cy={p.y} r={MAP_HIT_R} className="app-map-hit" />
               <circle
                 cx={p.x}
                 cy={p.y}

@@ -18,16 +18,15 @@ import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type 
 import { SellQtyModal } from '../ui/SellQtyModal'
 import { RedeemFragmentButton } from '../ui/fragmentRedeem'
 import {
-  CONTAINER_SUBS,
-  CORE_SUBS,
-  MODULE_SUBS,
-  presentSubs,
-  RACK_SUBS,
+  BUCKET_OF_ITEM_KIND,
+  COMMODITY_TABS,
+  SUBS_OF_KIND,
   SUB_ALL,
-  WRECK_SUBS,
   itemBucketPasses,
   itemSubPasses,
-  rackPasses, subText } from '../ui/itemSubs'
+  presentSubs,
+  subText,
+  type SubOption } from '../ui/itemSubs'
 import { useL10n, cmdText } from '../i18n/locale'
 import { crestFamOf, kindText, slotText } from '../ui/labelsText'
 /** 装备库展示顺序（单点）：攻击类别 → 档位从低到高（2026-09-24 船长报障后立） */
@@ -53,19 +52,22 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const [wareQuery, setWareQuery] = useState('')
   /* 仓库筛选（2026-09-13 船长：「物品界面的仓库也添加筛选」；2026-09-19 甲组补丁按船长
      「涉及到特定分类的父分类时，将其子分类也放入」补齐）：
-     一级 = 各大类 + 「装备」；二级 = 该一级的天然子维度（装备→槽类 · 货柜/残骸/AI 核心→档位 ·
-     碎片→功能分组）；三级 = 仅「装备」有（槽类 → 功能分组）。表与判定**全部走 `ui/itemSubs.ts` 单点**。
-     与搜索取「与」；**不落盘**，切页/重开即重置（与市场、手册同一哲学）。 */
+     一级 = **市场那 12 档**（`COMMODITY_TABS`：「货物」聚合 ＋ 装备按归属档拆四档 ＋ 货柜/消耗品/残骸/
+     黑匣/AI 核心/舰船/蓝图）；二级 = `SUBS_OF_KIND` 的天然子维度（装备⇒**功能分组**、货柜/残骸⇒档位、
+     AI 核心⇒档位、货物⇒物品大类）。表与判定**全部走 `ui/itemSubs.ts` 单点**。
+     与搜索取「与」；**不落盘**，切页/重开即重置（与市场、手册同一哲学）。
+     ⚠ **2026-10-01 船长令**「以市场为准，三处都改，层级按市场来」⇒ 本页原**三级维度（槽类⇒功能分组）
+     已删**：归属档进了**一级**、二级直接是功能分组，与市场两个下拉的层级一致。 */
   const [wareKind, setWareKind] = useState<string>('all') // 一级「分类」：'all' = 全部（2026-09-19 基线②：一级选择器用 'all'，下级维度才用 SUB_ALL）
   const [wareSub, setWareSub] = useState<string>(SUB_ALL)
-  const [wareFunc, setWareFunc] = useState<string>(SUB_ALL)
   /**
    * 一级筛选中（分类 / 装备）。
    * ⚠ 键口径（2026-09-19 基线②）：**一级选择器的"全部" = `'all'`**，`SUB_ALL` 只留给下级维度。
    */
   const kindPicked = wareKind !== 'all'
   /** 装备是否在展示范围内（「全部」与「装备」都在范围内；选了某个物品大类时装备库整块不显示） */
-  const showMods = wareKind === 'all' || wareKind === 'module'
+  /** 装备是否在展示范围内（「全部」与四个装备档都在范围内；选了物品侧的档时装备库整块不显示） */
+  const showMods = wareKind === 'all' || wareKind.startsWith('module-')
   const wq = wareQuery.trim().toLowerCase()
   const rows = Object.entries(state.warehouse.items).filter(([, n]) => n > 0)
   /**
@@ -101,75 +103,58 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
    * **一级 → 二级维度**（只有"有天然子维度"的一级才有；表与标题前缀都取单点表）。
    * AI 核心：仓库里只有物品形态的 gamma/beta/alpha（`basic` 只有市场商品）⇒ 按目录存在性列档。
    */
-  const subDim: { options: typeof RACK_SUBS; label: string } | null = (() => {
+  /**
+   * 一级「分类」档 = **市场那 12 档**（`COMMODITY_TABS`）里**仓库真有内容的那些**（`presentSubs` 式；
+   * 判定走单点 `itemBucketPasses`——装备域查 `modRows`、物品域查 `rows`）。
+   * 「同步」= 同类东西同口径，不是硬凑档数：仓库里没有舰船与图纸实物 ⇒ `ship` / `blueprint` 两档自然不出现。
+   */
+  const wareKindTabs = presentSubs(COMMODITY_TABS, (key) =>
+    (key.startsWith('module-') ? modRows : rows).some(([id]) => itemBucketPasses(engine.ctx, id, key)),
+  )
+  const subDim: { options: SubOption[]; label: string } | null = (() => {
     // 2026-09-20 筛选清理（船长「明显不存在的子类筛选隐藏」）：各档**只列仓库里真有内容的档**
-    //（`rows` = 仓库物品条目 · `modRows` = 装备库条目；判定仍走单点 `rackPasses` / `itemSubPasses`）。
-    if (wareKind === 'module') {
-      return { options: presentSubs(RACK_SUBS, (key) => modRows.some(([id]) => rackPasses(engine.ctx, id, key))), label: tr('ui.ItemsPage.022') }
+    //（`rows` = 仓库物品条目 · `modRows` = 装备库条目；判定一律走单点 `itemSubPasses`）。
+    // **2026-10-01 同步市场层级**：二级表统一取 `SUBS_OF_KIND[wareKind]`（装备四档 ⇒ 功能分组）；
+    // 原「装备档二级 = 槽类（`RACK_SUBS` / `rackPasses`）」与整条**三级维度**已删（层级按市场来）。
+    const options = SUBS_OF_KIND[wareKind]
+    if (options === undefined) return null
+    const pool = wareKind.startsWith('module-') ? modRows : rows
+    return {
+      options: presentSubs(options, (key) => pool.some(([id]) => itemSubPasses(engine.ctx, id, wareKind, key))),
+      label: wareKind.startsWith('module-') ? tr('ui.ItemsPage.048') : wareKind === 'item' ? tr('ui.ItemsPage.059') : tr('ui.ItemsPage.023'),
     }
-    if (wareKind === 'container') {
-      return { options: presentSubs(CONTAINER_SUBS, (key) => rows.some(([id]) => itemSubPasses(engine.ctx, id, 'container', key))), label: tr('ui.ItemsPage.023') }
-    }
-    if (wareKind === 'wreck') {
-      return { options: presentSubs(WRECK_SUBS, (key) => rows.some(([id]) => itemSubPasses(engine.ctx, id, 'wreck', key))), label: tr('ui.ItemsPage.023') }
-    }
-    if (wareKind === 'aicore') {
-      return { options: CORE_SUBS.filter((s) => engine.ctx.items.has(`ai-core-${s.key}`)), label: tr("ui.ItemsPage.047") }
-    }
-    if (wareKind === 'fragment') {
-      return { options: presentSubs(MODULE_SUBS, (key) => rows.some(([id]) => itemSubPasses(engine.ctx, id, 'fragment', key))), label: tr('ui.ItemsPage.048') }
-    }
-    return null
   })()
-  /** **三级维度**：只有「装备」有（槽类 → 功能分组），且**选了槽位才出**（基线③级联）；同样只列真有内容的档 */
-  const funcDim =
-    wareKind === 'module' && wareSub !== SUB_ALL
-      ? presentSubs(MODULE_SUBS, (key) => modRows.some(([id]) => itemSubPasses(engine.ctx, id, 'module', key)))
-      : null
   /**
    * **仓库内容变了 ⇒ 原选择可能已经空档**：`rows` / `modRows` 是**动态**的（卖掉、装船、投炉都会让某档归零）——
    * 档位一旦从候选里消失，选择若还停在它上面就成了**看不见的筛选**（列表全空、没有任何选中项可点回去）。
    * 故与蓝图书架同一口径（2026-09-19）：选择不在候选里 ⇒ 回落「全部」；二级回落时三级一并回落。
    */
   const subMissing = subDim !== null && wareSub !== SUB_ALL && !subDim.options.some((s) => s.key === wareSub)
-  const funcMissing = funcDim !== null && wareFunc !== SUB_ALL && !funcDim.some((s) => s.key === wareFunc)
   useEffect(() => {
-    if (subMissing) {
-      setWareSub(SUB_ALL)
-      setWareFunc(SUB_ALL)
-      return
-    }
-    if (funcMissing) setWareFunc(SUB_ALL)
-  }, [subMissing, funcMissing])
+    if (subMissing) setWareSub(SUB_ALL)
+  }, [subMissing])
   /**
-   * 三个维度的判定一律走**唯一入口**（甲组·判定单点）：
-   * 一级 `itemBucketPasses` · 二级 `rackPasses`（装备槽类）/ `itemSubPasses`（其余）· 三级 `itemSubPasses`；
+   * 维度的判定一律走**唯一入口**（甲组·判定单点）：一级 `itemBucketPasses` · 二级 `itemSubPasses`；
    * 页面**不自写任何判定**。
    *
-   * ⚠ **2026-09-19 报障修**（船长「仓库内，部分筛选标签无效（比如装备-高槽装备）」）：
-   * 二级维度有两套**不同的键空间**——「装备」档的二级是**槽类**（`RACK_SUBS`：high/mid/low ⇒ 判据 `rackPasses`），
-   * 其余各档的二级是 `itemSubPasses` 的子键（货柜四档 / 残骸两档 / 核心档位 / 碎片功能分组）。
-   * 原先这里**一律**调 `itemSubPasses(ctx, id, 'module', wareSub)`，而那个入口对 `module` 桶认的是
-   * **功能分组键**（`moduleSubKeyOf`：prod/weapon/…）⇒ 拿槽类键 `high` 去比**永远为假**：
-   * 高/中/低三档一个都筛不出来（三级「功能」也跟着不可用，因为二级已经把一切筛空了）。
+   * ⚠ **2026-09-19 报障修**（船长「仓库内，部分筛选标签无效（比如装备-高槽装备）」）里那套
+   * 「装备档二级 = 槽类 ⇒ 判据 `rackPasses`」的特例，**2026-10-01 已随层级同步一并删除**：
+   * 归属档现在在**一级**（`module-high/mid/low/plug`），二级统一走 `itemSubPasses` 的子键。
    */
   const subHit = (id: string): boolean => {
     if (!subDim || wareSub === SUB_ALL) return true
-    return wareKind === 'module'
-      ? rackPasses(engine.ctx, id, wareSub)
-      : itemSubPasses(engine.ctx, id, wareKind, wareSub)
+    return itemSubPasses(engine.ctx, id, wareKind, wareSub)
   }
   const dimHit = (id: string): boolean => {
     if (!itemBucketPasses(engine.ctx, id, wareKind)) return false
     if (!subHit(id)) return false
-    if (funcDim && wareFunc !== SUB_ALL && !itemSubPasses(engine.ctx, id, 'module', wareFunc)) return false
     return true
   }
   const itemHits = rows.filter(([id]) => hitItem(id) && dimHit(id))
   const modHits = showMods ? modRows.filter(([id]) => hitMod(id) && dimHit(id)) : []
   const hitTotal = itemHits.length + modHits.length
   /** 搜索或筛选任一生效（标题计数与空态文案据此换措辞） */
-  const wareNarrowed = wq.length > 0 || kindPicked || wareSub !== SUB_ALL || wareFunc !== SUB_ALL
+  const wareNarrowed = wq.length > 0 || kindPicked || wareSub !== SUB_ALL
 
   // 2026-09-09（船长口径 A）：任何仓库物品都可装船携带（引擎按各自体积装；矿物/弹药/无人机亦同）；
   // 装备（模块）装船见 handleLoadMod（按 1 m³/件 计入货舱）
@@ -345,38 +330,24 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               onClick={() => {
                 setWareKind('all')
                 setWareSub(SUB_ALL)
-                setWareFunc(SUB_ALL)
               }}
             >
               {tr("ui.IndustryPage.001")}
             </button>
-            {ITEM_KIND_ORDER.map((kind) => (
+            {wareKindTabs.map((tab) => (
               <button
-                key={kind}
+                key={tab.key}
                 role="tab"
-                aria-selected={wareKind === kind}
-                className={`app-tasktab${wareKind === kind ? ' is-active' : ''}`}
+                aria-selected={wareKind === tab.key}
+                className={`app-tasktab${wareKind === tab.key ? ' is-active' : ''}`}
                 onClick={() => {
-                  setWareKind(kind)
+                  setWareKind(tab.key)
                   setWareSub(SUB_ALL)
-                  setWareFunc(SUB_ALL)
                 }}
               >
-                {kindText(kind)}
+                {subText(tab)}
               </button>
             ))}
-            <button
-              role="tab"
-              aria-selected={wareKind === 'module'}
-              className={`app-tasktab${wareKind === 'module' ? ' is-active' : ''}`}
-              onClick={() => {
-                setWareKind('module')
-                setWareSub(SUB_ALL)
-                setWareFunc(SUB_ALL)
-              }}
-            >
-              {tr("ui.MarketPage.003")}
-            </button>
           </div>
         </div>
         {subDim ? (
@@ -389,7 +360,6 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 className={`app-tasktab${wareSub === SUB_ALL ? ' is-active' : ''}`}
                 onClick={() => {
                   setWareSub(SUB_ALL)
-                  setWareFunc(SUB_ALL)
                 }}
               >
                 {tr("ui.IndustryPage.001")}
@@ -402,34 +372,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                   className={`app-tasktab${wareSub === s.key ? ' is-active' : ''}`}
                   onClick={() => {
                     setWareSub(s.key)
-                    setWareFunc(SUB_ALL)
                   }}
-                >
-                  {subText(s)}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-        {funcDim ? (
-          <div className="app-fleet-row">
-            <span className="app-dim">{tr("ui.ItemsPage.049")}</span>
-            <div className="app-task-tabs app-fleet-tabs" role="tablist">
-              <button
-                role="tab"
-                aria-selected={wareFunc === SUB_ALL}
-                className={`app-tasktab${wareFunc === SUB_ALL ? ' is-active' : ''}`}
-                onClick={() => setWareFunc(SUB_ALL)}
-              >
-                {tr("ui.IndustryPage.001")}
-              </button>
-              {funcDim.map((s) => (
-                <button
-                  key={s.key}
-                  role="tab"
-                  aria-selected={wareFunc === s.key}
-                  className={`app-tasktab${wareFunc === s.key ? ' is-active' : ''}`}
-                  onClick={() => setWareFunc(s.key)}
                 >
                   {subText(s)}
                 </button>
@@ -451,8 +394,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       {mode === 'list' ? (
         <>
       {ITEM_KIND_ORDER.map((kind) => {
-        // 一级筛选：选了某一类就只渲染那一类（2026-09-13 仓库筛选）
-        if (kindPicked && wareKind !== kind) return null
+        // 一级筛选：选了某一档就只渲染**属于该档**的大类（BUCKET_OF_ITEM_KIND 反查；装备四档走下面的装备库 Panel）
+        if (kindPicked && BUCKET_OF_ITEM_KIND[kind] !== wareKind) return null
         const kindRows = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind && hitItem(id))
         // 矿石/矿物面板常驻（引导文案有教学作用），其余分类空时不显示；搜索/筛选时任一空类都隐藏
         if (kindRows.length === 0 && (kind !== 'ore' && kind !== 'mineral' || wareNarrowed)) return null
@@ -654,8 +597,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       ) : (
         <>
           {ITEM_KIND_ORDER.map((kind) => {
-            // 一级筛选：选了某一类就只渲染那一类（2026-09-13 仓库筛选，与列表视图同一套判据）
-            if (kindPicked && wareKind !== kind) return null
+            // 一级筛选：选了某一档就只渲染**属于该档**的大类（BUCKET_OF_ITEM_KIND 反查；装备四档走下面的装备库 Panel）
+            if (kindPicked && BUCKET_OF_ITEM_KIND[kind] !== wareKind) return null
             const kindRows2 = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind && hitItem(id))
             if (kindRows2.length === 0 && (kind !== 'ore' && kind !== 'mineral' || wareNarrowed)) return null
             const cells: ItemGridCell[] = kindRows2.map(([id, units]) => {

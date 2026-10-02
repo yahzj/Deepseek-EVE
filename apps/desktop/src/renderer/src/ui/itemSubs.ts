@@ -344,10 +344,20 @@ export const CORE_SUBS: SubOption[] = [
 ]
 
 /**
- * 市场装备的三个**槽类类型**（2026-09-10 船长：移除「装备」类型，改为这三个新选项）——
- * 子分类沿用 MODULE_SUBS 的功能分组，两级筛选叠加（类型定槽类、子类定功能）。
+ * 装备的**归属档一级桶键**（`module-<归属档>` 形态）——子分类沿用 `MODULE_SUBS` 的功能分组，
+ * 两级筛选叠加（一级定归属档、二级定功能）。
+ *
+ * 沿革：2026-09-10 船长「移除「装备」类型，改为这三个新选项」⇒ 当时是**三档**（高/中/低槽）；
+ * **2026-10-01 补第四档 `module-plug`**——2026-09-26 船长令把舰船插件提成「与高/中/低槽同级」的
+ * 归属档（`rackDimKeyOf` ⇒ `'plug'`），但市场一级类型当时**漏了这一档**：
+ * `itemBucketPasses(…, 'module-low')` 比的是 `rackDimKeyOf !== rackOf` ⇒ 插件**三档都筛不出来**
+ * （12 件插件商品 + 12 张插件蓝图只能靠「全部」看到），而行内文案走 core `rackOf` 又把它显示成
+ * 「低槽装备」⇒ 显示与判定不一致。本批补档即修此缺陷（范围与理由已记汇报请船长裁决）。
+ *
+ * ⚠ 键空间 = `'module-' + rackDimKeyOf 取值域`，与二级的 `RACK_SUBS`（`high/mid/low/plug`，不带前缀）
+ * **是两个键空间**，同一档在两级各有一份键——这是市场「一级下拉 + 二级下拉」两级叠加的既有形态。
  */
-export const RACK_KIND_KEYS = ['module-high', 'module-mid', 'module-low'] as const
+export const RACK_KIND_KEYS = ['module-high', 'module-mid', 'module-low', 'module-plug'] as const
 export type RackKind = (typeof RACK_KIND_KEYS)[number]
 
 /** 装备槽类中文名（键 = core `rackOf` 的返回值 ＋ 2026-09-26 新增的 `plug`）——**全仓唯一一份**：
@@ -375,7 +385,9 @@ export const RACK_SUBS: SubOption[] = (['high', 'mid', 'low', 'plug'] as const).
 }))
 
 
-/** 主类型 → 可用子分类（装备四档桶共用装备的功能子分类；残骸按档位，2026-09-19 补） */
+/** 主类型 → 可用子分类（装备四档桶共用装备的功能子分类；残骸按档位，2026-09-19 补）
+ *  ⚠ 装备的四档（高/中/低槽 ＋ **舰船插件**）二级一律是 `MODULE_SUBS` 功能分组——
+ *  一级已经把归属档选掉了，二级不再重复「槽类」（这正是市场那套两级叠加的层级）。 */
 export const SUBS_OF_KIND: Record<string, SubOption[]> = {
   item: ITEM_SUBS,
   container: CONTAINER_SUBS,
@@ -384,12 +396,80 @@ export const SUBS_OF_KIND: Record<string, SubOption[]> = {
   'module-high': MODULE_SUBS,
   'module-mid': MODULE_SUBS,
   'module-low': MODULE_SUBS,
+  'module-plug': MODULE_SUBS,
   ship: SHIP_SUBS,
   // 市场「蓝图」用它（＝分组表 ＋ 末两档「学没学会」）；手册图鉴分组仍读 `BLUEPRINT_SUBS`（见上面注释）
   blueprint: MARKET_BLUEPRINT_SUBS,
   aicore: CORE_SUBS,
   // 残骸：普通 / 稀有（2026-09-19 甲组补丁——原先市场「残骸」类型没有任何子筛选）
   wreck: WRECK_SUBS,
+}
+
+/**
+ * **一级类型档 · 唯一登记处**（市场 / 物品仓库 / 货仓 / 手册图鉴**共用**）
+ *
+ * **2026-10-01 船长令**：「能否将仓库物品的筛选分类和市场的筛选分类同步」⇒ 追问后裁定
+ * 「**以市场为准，三处都改，层级按市场来**」。
+ *
+ * 收敛前是**两套**：市场页自制 `KIND_OPTIONS`（11 档 · 「货物」聚合 · 装备按槽拆开），
+ * 而仓库/货仓/手册直接铺 core 的 `ITEM_KIND_ORDER`（17 档 · 货物平铺 · 装备聚合成一档）
+ * ⇒ 同一件东西在两页落进不同档（例：原矿在市场是「货物 › 原矿」，在仓库却是**一级**「原矿」）。
+ *
+ * 现全部读本表；**判定不用另写**——一级一律走本文件的判定单点 `itemBucketPasses`。
+ *
+ * ⚠ **各页按自己的内容过滤本表**（`presentSubs` 式）：仓库里没有舰船与图纸实物 ⇒ 那两档
+ * 自然不出现。「同步」是**同类东西同口径**，不是硬凑档数。
+ * ⚠ **`fragment`（蓝图碎片）归「货物」桶**（`itemBucketPasses` 的 `'item'` 只排除
+ * 残骸/消耗品/货柜/黑匣）⇒ 它原有的"功能分组"二级随本批并入货物桶的子分类。
+ * ⚠ **`consumable`（道具，2026-09-29 加）同样落「货物」桶**——它不在 `CONSUME_KIND_KEYS`
+ * （＝弹药/修理组件/无人机）里。本批**照现状**（不擅自改口径），已记回报待船长定。
+ * ⚠ **`module-plug`（舰船插件）是本批补的第 12 档**：2026-09-26 插件已独立成归属档，市场一级
+ * 当时漏了这一档（插件三档皆筛不出、行内却显示「低槽装备」）⇒ 补档即修该缺陷，理由见 `RACK_KIND_KEYS`。
+ */
+export const COMMODITY_TABS: readonly SubOption[] = [
+  { key: 'item', label: tr('ui.MarketPage.005') }, // 货物
+  { key: 'container', label: tr('ui.MarketPage.006') }, // 货柜
+  { key: 'consume', label: tr('ui.MarketPage.007') }, // 消耗品
+  { key: 'wreck', label: tr('ui.MarketPage.009') }, // 残骸
+  { key: 'blackbox', label: tr('ui.labelsText.069') }, // 黑匣
+  { key: 'module-high', label: RACK_LABELS.high },
+  { key: 'module-mid', label: RACK_LABELS.mid },
+  { key: 'module-low', label: RACK_LABELS.low },
+  { key: 'module-plug', label: RACK_LABELS.plug }, // 舰船插件（紧跟三槽之后 · 与 `RACK_SUBS` 顺序一致）
+  { key: 'ship', label: tr('ui.App.002') }, // 舰船
+  { key: 'blueprint', label: tr('ui.MarketPage.004') }, // 蓝图
+  { key: 'aicore', label: tr('ui.MarketPage.008') }, // AI 核心
+]
+
+/**
+ * **物品大类 → 它归属的一级桶**（货仓页 / 手册图鉴**按桶分组**时用；装备域另走 `rackDimKeyOf`）。
+ *
+ * ⚠ 口径**与 `itemBucketPasses` 逐格对齐**（本表只是它的反查，不是第二套判据）：
+ * 「货物」桶＝除 残骸/消耗品/货柜/黑匣 之外的一切（含 `fragment` 蓝图碎片、`consumable` 道具）。
+ */
+export const BUCKET_OF_ITEM_KIND: Readonly<Record<string, string>> = {
+  ore: 'item',
+  mineral: 'item',
+  part: 'item',
+  gas: 'item',
+  ice: 'item',
+  matter: 'item',
+  essence: 'item',
+  luxury: 'item',
+  fragment: 'item',
+  consumable: 'item',
+  wreck: 'wreck',
+  container: 'container',
+  blackbox: 'blackbox',
+  aicore: 'aicore',
+  ammo: 'consume',
+  kit: 'consume',
+  drone: 'consume',
+}
+
+/** 一级档的中文名（按 `COMMODITY_TABS` 取；未登记的键原样回落，便于暴露新键） */
+export function commodityLabelOf(key: string): string {
+  return COMMODITY_TABS.find((t) => t.key === key)?.label ?? key
 }
 
 /**
@@ -643,7 +723,7 @@ export function presentSubs<T extends { key: string }>(options: readonly T[], ha
  * | `wreck` | `WRECK_SUBS` | `wreckTierOf(refId)` |
  * | `aicore` | `CORE_SUBS` | `refId === 'ai-core-<子键>'`（**物品空间**：洞内实物形态；市场那侧 refId 是类型键本身，故市场仍走自己的判定） |
  * | `fragment` | `MODULE_SUBS` | `frag-<模块 id>` 反解后取 `moduleSubKeyOf(slot, 模块 id)` |
- * | `module` / `module-high·mid·low` | `MODULE_SUBS` | `moduleSubKeyOf(mod.slot, mod.id)` |
+ * | `module` / `module-high·mid·low·plug` | `MODULE_SUBS` | `moduleSubKeyOf(mod.slot, mod.id)` |
  * | `item`（货物）/ `consume` | 物品大类 | `item.kind === sub` |
  * | 其余 | — | 只认 `SUB_ALL` |
  */
@@ -664,7 +744,9 @@ export function itemSubPasses(ctx: SimContext, refId: string, bucket: string, su
     const mod = modId ? ctx.modules.get(modId) : undefined
     return mod !== undefined && moduleSubKeyOf(mod.slot, mod.id) === sub
   }
-  if (bucket === 'module' || (RACK_KIND_KEYS as readonly string[]).includes(bucket)) {
+  // 装备域：`module` / `module-high·mid·low·plug`——判据形态与 `itemBucketPasses` 对齐（**前缀判定**，
+  // 日后新增归属档不必回来补登记；2026-10-01 补 `module-plug` 时改掉原先的 `RACK_KIND_KEYS.includes` 枚举式）
+  if (bucket === 'module' || bucket.startsWith('module-')) {
     const mod = ctx.modules.get(refId)
     return mod !== undefined && moduleSubKeyOf(mod.slot, mod.id) === sub
   }

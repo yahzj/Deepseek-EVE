@@ -17,7 +17,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { askLineOf, buyLineOf, bmGateNote, marketLockNote, aiCoreGoodNameId, goodName, marketHistory, marketQuote, marketTrend, naturalHoldings, PRICE_SAMPLE_MS, rackOf, salesTaxRate, shipStoredCount } from '@whale/core'
+import { askLineOf, buyLineOf, bmGateNote, marketLockNote, aiCoreGoodNameId, goodName, marketHistory, marketQuote, marketTrend, naturalHoldings, PRICE_SAMPLE_MS, salesTaxRate, shipStoredCount } from '@whale/core'
 import type { BlueprintDef, GameState, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { HoverTip } from '../ui/Tooltip'
@@ -29,49 +29,33 @@ import { fmtDuration, fmtInt } from '../i18n/fmt'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { MarkStar, pinMarked } from '../ui/marks'
-import { SUB_ALL, subPasses, SUBS_OF_KIND, RACK_KIND_KEYS, RACK_LABELS, itemBucketPasses, presentSubs, subText } from '../ui/itemSubs'
+import { SUB_ALL, subPasses, SUBS_OF_KIND, RACK_KIND_KEYS, itemBucketPasses, presentSubs, subText, COMMODITY_TABS, rackDimKeyOf } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 import { tr, cmdText } from '../i18n/locale'
-import { kindText, kindTextOfItem } from '../ui/labelsText'
+import { kindTextOfItem } from '../ui/labelsText'
 
-const KIND_TEXT: Record<string, string> = {
-  /**
-   * **2026-09-16 船长**：「给市场的添加奢侈品分类，放入物品下，**物品改名叫货物**」——
-   * 一级类型中文名由「物品」改为「**货物**」（子分类补「奢侈品」，见 `ui/itemSubs.ts` 的 `ITEM_SUBS`）。
-   * ⚠ 这**只是市场类型下拉的显示名**：导航页「物品」与手册「物品图鉴」走各自的单点，未随本改（等船长点名）。
-   */
-  item: tr("ui.MarketPage.005"),
-  /**
-   * **2026-09-16 船长**：「**将货柜添加到市场的分类里，和货物同级**」——货柜（`container`：五族遗迹安全货柜 ·
-   * 三档图纸货柜 · 贵重品货柜 · 军用备货柜）从「货物」里**剔出、独立成一级类型**，与「残骸」（2026-09-08）、
-   * 「消耗品」（2026-09-11）两次同类拆分同一套口径（键集合单点 = `ui/itemSubs.ts` 的 `CONTAINER_KIND_KEYS`）。
-   * ⚠ 无二级子分类（照「残骸」先例；要分"安全/图纸/贵重品/军用"再说一声）。
-   */
-  container: tr("ui.MarketPage.006"),
-  // 2026-09-11 船长：「应该将消耗品独立出来」——消耗品（弹药/修理组件/无人机）独立成一级类型，
-  // 并从「物品」里剔除（与当年「残骸」独立成类的口径一致；子分类见 ui/itemSubs.ts CONSUME_SUBS）
-  consume: tr("ui.MarketPage.007"),
-  // 2026-09-10 船长：类型筛选移除「装备」，改为高 / 中 / 低槽三个类型（子分类仍是装备的功能分组）
-  // ⚠ 中文名走 `ui/itemSubs.ts` 的 `RACK_LABELS` 单点（手册图鉴筛选与仓库筛选读同一份，2026-09-13）
-  'module-high': RACK_LABELS.high,
-  'module-mid': RACK_LABELS.mid,
-  'module-low': RACK_LABELS.low,
-  ship: tr("ui.App.002"),
-  blueprint: tr("ui.MarketPage.004"),
-  aicore: tr("ui.MarketPage.008"),
-  wreck: tr("ui.MarketPage.009"),
-  /**
-   * **黑匣**（**2026-09-26 船长**：「**市场内黑匣单独一个分类，不要挪到「货物」**」）。
-   *
-   * 由来：黑匣原先借 `kit` 档 ⇒ 市场把它算作「消耗品」；本批黑匣独立成物品种类
-   * （`ItemKind` 的 `blackbox`），若不做这一档它会掉进「货物」。现与「残骸」「货柜」同一套做法独立成一级类型，
-   * 剔除判定在 `ui/itemSubs.ts` 的 `BLACKBOX_KIND_KEYS`（单点）——「货物」里不再收黑匣。
-   * ⚠ 无二级子分类（照「残骸」先例）；文案与物品种类名共用一条 id（`ui.labelsText.069`）。
-   */
-  blackbox: kindText('blackbox'),
-}
-const KIND_OPTIONS = ['all', 'item', 'container', 'consume', 'wreck', 'blackbox', 'module-high', 'module-mid', 'module-low', 'ship', 'blueprint', 'aicore'] as const
-type KindFilter = (typeof KIND_OPTIONS)[number]
+/**
+ * 一级类型的中文名 —— **改读单点表 `COMMODITY_TABS`**。
+ *
+ * **2026-10-01 船长令**：「能否将仓库物品的筛选分类和市场的筛选分类同步」⇒ 追问后裁定
+ * 「**以市场为准，三处都改，层级按市场来**」⇒ 档位顺序与中文名一起搬进 `ui/itemSubs.ts` 的
+ * `COMMODITY_TABS`（市场 / 物品仓库 / 货仓 / 手册图鉴**四处共用**）。
+ *
+ * 沿革（今天的档位是下面这些裁定累积出来的；原表体随本批搬走，注释留档）：
+ * · 2026-09-16「给市场的添加奢侈品分类，放入物品下，**物品改名叫货物**」⇒ `item` 中文名由「物品」改「货物」；
+ * · 2026-09-16「**将货柜添加到市场的分类里，和货物同级**」⇒ 货柜从货物里剔出、独立成一级类型；
+ * · 2026-09-11「应该将消耗品独立出来」⇒ 消耗品独立成一级类型；
+ * · 2026-09-10「类型筛选移除装备，改为高 / 中 / 低槽三个类型」⇒ 装备按槽拆三档（中文名走 `RACK_LABELS` 单点）；
+ * · 2026-09-26「**市场内黑匣单独一个分类，不要挪到「货物」**」⇒ 黑匣独立成一级类型。
+ *
+ * ⚠ 原先那句「这只是市场下拉的显示名，导航页「物品」与手册「物品图鉴」走各自的单点，未随本改」
+ * **已随本批作废**——那三处现在读同一张表了。
+ */
+const KIND_TEXT: Record<string, string> = Object.fromEntries(COMMODITY_TABS.map((t) => [t.key, t.label]))
+/** 一级类型键（＝单点表 `COMMODITY_TABS` 的键；本页只负责渲染） */
+type KindFilter = (typeof COMMODITY_TABS)[number]['key'] | 'all'
+/** 一级类型档：`'all'` 由本页加在最前（2026-09-19 基线②：一级选择器的"全部"用 `'all'`，下级维度才用 `SUB_ALL`） */
+const KIND_OPTIONS: readonly KindFilter[] = ['all', ...COMMODITY_TABS.map((t) => t.key as KindFilter)]
 const RARITY_TEXT: Record<MarketRarity, string> = { common: tr("ui.MarketPage.010"), rare: tr("ui.IndustryPage.035"), exotic: tr("ui.MarketPage.011") }
 
 /* 类型子分类表已抽到 ui/itemSubs.ts（市场页与手册图鉴共用同一套口径） */
@@ -81,14 +65,18 @@ function itemDefOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef) {
 }
 
 /** 行/悬停的分类文案：残骸类物品单独显示「残骸」（2026-09-08 船长定），
- * 装备按**槽类**显示（高槽装备 / 中槽装备 / 低槽装备；2026-09-10 船长：类型按槽类拆分后行内同步），
- * 其余物品走 itemKindText 单点（2026-09-10：无人机 → 无人机 · 侦察机，子属性并入种类） */
+ * 装备按**归属档**显示（高槽装备 / 中槽装备 / 低槽装备 / **舰船插件**；2026-09-10 船长：类型按槽类拆分后行内同步），
+ * 其余物品走 itemKindText 单点（2026-09-10：无人机 → 无人机 · 侦察机，子属性并入种类）
+ *
+ * ⚠ **2026-10-01 修**：原先这里读 core `rackOf()`，而插件数据为过体检契约声明了 `rack: 'low'`
+ * ⇒ 插件行内显示成「低槽装备」，可点「低槽装备」筛选它**又不出现**（判定单点 `rackDimKeyOf` 认的是
+ * `'plug'`）——显示与筛选两套尺。现与判定同尺走 `rackDimKeyOf`。 */
 function kindTextOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef): string {
   const it = itemDefOf(ctx, good)
   if (it) return it.kind === 'wreck' ? tr("ui.MarketPage.009") : kindTextOfItem(it)
   if (good.kind === 'module') {
     const mod = ctx.modules.get(good.refId)
-    const rack = mod ? rackOf(mod) : undefined
+    const rack = mod ? rackDimKeyOf(mod) : undefined
     return rack !== undefined ? (KIND_TEXT[`module-${rack}`] ?? tr('ui.MarketPage.178')) : tr("ui.MarketPage.003")
   }
   return KIND_TEXT[good.kind] ?? good.kind

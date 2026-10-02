@@ -31,9 +31,10 @@ import { RedeemFragmentButton } from '../ui/fragmentRedeem'
 import type { ItemNavProps } from './ItemsPage'
 import type { PageProps } from './common'
 import { useL10n, cmdText } from '../i18n/locale'
-import { crestFamOf, kindText, slotText } from '../ui/labelsText'
+import { crestFamOf, slotText } from '../ui/labelsText'
 import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
+import { BUCKET_OF_ITEM_KIND, COMMODITY_TABS, itemBucketPasses, subText } from '../ui/itemSubs'
 import { tr } from '../i18n/locale'
 /* 「使用」按钮的判据 = core 的 id 常量（**单点**，不在页面里写死字面量） */
 import { INVASION_BEACON_ITEM_ID, HIGH_SEC_PENALTY, SYNAPTIC_ACCELERANT_ITEM_ID, beaconLaunchHighSecOf, playerGalaxyIdOf } from '@whale/core'
@@ -46,6 +47,31 @@ const KIND_EMPTY: Record<string, string> = {
   ice: 'ui.CargoPage.013',
   ammo: 'ui.CargoPage.014',
   drone: 'ui.CargoPage.015',
+}
+/** 桶 → 它收录的物品大类（`BUCKET_OF_ITEM_KIND` 反查；装备域不走本表，另走 `rackDimKeyOf`）。
+ *  **2026-10-01 分类同步市场**（船长令「以市场为准，三处都改，层级按市场来」）：货仓页与手册
+ *  图鉴的**分组键**由「物品大类」换成「市场那 12 档的桶」——同一件东西在两处的归类从此一致。 */
+function kindsOfBucket(bucket: string): string[] {
+  return ITEM_KIND_ORDER.filter((k) => BUCKET_OF_ITEM_KIND[k] === bucket)
+}
+
+/** 桶的空态文案 id：取桶内**第一条有专属文案**的大类 —— 换桶后仍保留原按大类写的引导语
+ *  （「货物」桶 ⇒ 原矿那条），并让 `KIND_EMPTY` 那六条文案都仍有引用。 */
+function bucketEmptyId(bucket: string): string | undefined {
+  for (const k of kindsOfBucket(bucket)) {
+    const id = KIND_EMPTY[k]
+    if (id !== undefined) return id
+  }
+  return undefined
+}
+
+/** 桶的引导提示：取桶内第一条有提示的大类（`kindExtraNote` 是单点；取舍同 `bucketEmptyId`） */
+function bucketExtraNote(bucket: string): string | undefined {
+  for (const k of kindsOfBucket(bucket)) {
+    const note = kindExtraNote(k)
+    if (note) return note
+  }
+  return undefined
 }
 
 export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNavProps) {
@@ -248,19 +274,19 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
       <ItemViewBar mode={view} onChange={setView} />
       {view === 'list' ? (
         <>
-      {ITEM_KIND_ORDER.map((kind) => {
-        const kindRows = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind)
-        // 矿石面板常驻（引导开采），其余分类空时不显示
-        if (kindRows.length === 0 && kind !== 'ore') return null
+      {COMMODITY_TABS.map((tab) => {
+        const kindRows = rows.filter(([id]) => itemBucketPasses(engine.ctx, id, tab.key))
+        // 「货物」面板常驻（引导开采），其余分类空时不显示
+        if (kindRows.length === 0 && tab.key !== 'item') return null
         const emptyText =
-          kind === 'ore' && !isPiloted
+          tab.key === 'item' && !isPiloted
             ? t('ui.CargoPage.017', { ship: targetName })
-            : (KIND_EMPTY[kind] !== undefined ? t(KIND_EMPTY[kind]!) : t('ui.CargoPage.016'))
-        const extra = kindExtraNote(kind)
+            : (bucketEmptyId(tab.key) !== undefined ? t(bucketEmptyId(tab.key)!) : t('ui.CargoPage.016'))
+        const extra = bucketExtraNote(tab.key)
         return (
           <Panel
-            key={kind}
-            title={`${kindText(kind)}（${isPiloted ? t('ui.CargoPage.005') : t('ui.CargoPage.006')}）`}
+            key={tab.key}
+            title={`${subText(tab)}（${isPiloted ? t('ui.CargoPage.005') : t('ui.CargoPage.006')}）`}
             hint={extra ? <HintIcon tip={extra} /> : undefined}
             right={<span className="app-dim">{t('ui.CargoPage.009', { n: kindRows.length })}</span>}
           >
@@ -419,8 +445,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
           {rows.length === 0 ? (
             <div className="app-dim app-inv-empty">{tr("ui.CargoPage.049")}</div>
           ) : (
-            ITEM_KIND_ORDER.map((kind) => {
-              const kindRows = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind)
+            COMMODITY_TABS.map((tab) => {
+              const kindRows = rows.filter(([id]) => itemBucketPasses(engine.ctx, id, tab.key))
               if (kindRows.length === 0) return null
               const cells: ItemGridCell[] = kindRows.map(([id, units]) => {
                 const def = engine.ctx.items.get(id)
@@ -429,24 +455,24 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 const crest = crestFamOf(id)
                 return {
                   key: id,
-                  glyph: itemGlyphName(def?.id ?? id, def?.kind ?? kind),
+                  glyph: itemGlyphName(def?.id ?? id, def?.kind ?? 'item'),
                   name: def?.name ?? id,
                   sub: `×${units.toLocaleString('zh-CN')} · ${m3(units * (def?.unitM3 ?? 1))}`,
                   title: def?.description,
                   // 富卡悬停（与列表模式的 ItemHover 同一内容；2026-09-19 与仓库同步）
                   hover: def ? itemHoverContent(def, (pid) => engine.ctx.items.get(pid)?.name) : undefined,
                   // 稀有残骸上稀有金（船长 2026-09-19）；其余物品照旧按大类取色
-                  tone: inventoryItemTone(id, def?.kind ?? kind),
+                  tone: inventoryItemTone(id, def?.kind ?? 'item'),
                   // 稀有度小标签（2026-09-20 船长）：物品按 id 查档（含市场外档表与 AI 核心的映射）
                   rarity: itemRarityTierOf(id),
                   ...(crest !== undefined ? { crest } : {}),
                 }
               })
-              const extra = kindExtraNote(kind)
+              const extra = bucketExtraNote(tab.key)
               return (
                 <Panel
-                  key={kind}
-                  title={`${kindText(kind)}（${isPiloted ? tr("ui.CargoPage.005") : tr("ui.CargoPage.006")}）`}
+                  key={tab.key}
+                  title={`${subText(tab)}（${isPiloted ? tr("ui.CargoPage.005") : tr("ui.CargoPage.006")}）`}
                   hint={extra ? <HintIcon tip={extra} /> : undefined}
                   right={<span className="app-dim">{tr('ui.CargoPage.009', { n: kindRows.length })}</span>}
                 >

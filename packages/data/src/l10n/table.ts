@@ -1441,7 +1441,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    * （BOM 每批到点才扣 ⇒ 材料没被吃掉、仍在仓库/货舱里）。
    */
   "ui.ActivityBar.068": { zh: "已停线：已完成批保留，当前那一批的进度丢弃。", en: "The line stopped: finished batches are kept; the current batch's progress is lost." },
-  "ui.ActivityBar.069": { zh: "停线：已完成批保留，当前那一批的进度丢弃；材料未被扣取，仍在仓库。", en: "Stop the line: finished batches are kept and the current batch's progress is lost; no materials were consumed and they stay in storage." },
+  "ui.ActivityBar.069": { zh: "停线：已完成批保留，当前那一批的进度丢弃；材料未被扣取，仍在仓库。", en: "Stop the line: finished batches are kept and the current batch's progress is lost; no materials were consumed and they stay in storage." },
+  /* 旧版活动栏「最小化」（**2026-10-02 船长令**：「给旧版界面的活动窗口添加个最小化的按钮，点击后活动窗口高度缩小，只显示标题（写着活动的那一行）」） */
+  "ui.ActivityBar.070": { zh: "收起活动栏（只留标题行）", en: "Collapse the activity bar (title row only)" },
+  "ui.ActivityBar.071": { zh: "展开活动栏", en: "Expand the activity bar" },
 
   /** 设置·开发者：调试模式开关（2026-09-25；船长报「已开启调试模式但按钮不可见」后加的免 DevTools 开关） */
   "ui.App.146": { zh: "界面布局", en: "Interface layout" },
@@ -3911,6 +3914,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ItemsPage.054": { zh: "使用：24 小时内技能训练时长减半（同一时间内只能生效一剂）", en: "Use: halves skill training time for 24 hours (only one dose can be active at a time)" },
   "ui.ItemsPage.055": { zh: "突触加速剂已生效：24 小时内技能训练时长减半。", en: "Synaptic Accelerant active: skill training time is halved for 24 hours." },
   "ui.ItemsPage.056": { zh: "使用", en: "Use" },
+  /* 仓库一级「货物」档的二级维度（物品大类）前缀（2026-10-01 层级同步市场后新增） */
+  "ui.ItemsPage.059": { zh: "分类", en: "Category" },
   "ui.itemSubs.001": { zh: "修理组件", en: "Repair Kit" },
   "ui.itemSubs.002": { zh: "遗迹安全货柜", en: "Ruins safe container" },
   "ui.itemSubs.003": { zh: "图纸货柜", en: "Blueprint container" },
@@ -3981,6 +3986,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    * （船长 2026-09-26 改口：「组装机这边不应该是前往章鱼人兑换，而是**前往声望商店**兑换」）。
    */
   "ui.Expedition.446": { zh: "声望商店", en: "Standing store" },
+  /* 星图缩放（**2026-10-02 船长令**：手机端星系判定范围过小，「建议星图和虫洞探索一样允许放大」） */
+  "ui.Expedition.448": { zh: "放大", en: "Zoom in" },
+  "ui.Expedition.449": { zh: "缩小", en: "Zoom out" },
+  "ui.Expedition.450": { zh: "复位", en: "Reset" },
+  "ui.Expedition.451": { zh: "缩放", en: "Zoom" },
   "ui.itemSubs.041": { zh: "图纸", en: "Blueprint" },
   "ui.itemSubs.042": { zh: "舰船插件", en: "Ship plugs" },
   "ui.itemSubs.005": { zh: "军用备货柜", en: "Military supply container" },
