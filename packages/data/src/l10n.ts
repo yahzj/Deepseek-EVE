@@ -387,6 +387,7 @@ export const EN_MODULES: EnTable = {
   'mod-lair-laser-r': { name: 'Overlay Laser Cannon', description: 'Energy beam, always hits; 7 km range. Reload 4.4s, cut by 0.3s per shot down to 0.6s; 250 rounds per engagement.' },
   'mod-lair-blink-r': { name: 'Blink Evasion Drive', description: 'Mid slot. When hit, opens engagement range by 2 km; 12s cooldown.' },
   'mod-lair-beam-r': { name: 'Trident Beam Cannon', description: 'Energy beam, always hits; 10.5 km range. Three shots per volley, 0.1s apart; reload 3s; 120 rounds per engagement.' },
+  'mod-lair-pd-r': { name: 'PD Laser', description: 'Energy point-defense beam, always hits; 3 km range, 1.8s reload, 40 rounds per engagement. Only weapons with the anti-air trait can screen out enemy drone swarms.' },
   // 虫洞族专属（mod-wh-*）
   'mod-wh-a-frag': { name: 'Raider Fragment Cannon', description: 'Fragment rounds that burst on their own: inside 7.3 km they scatter a cloud of explosive shrapnel with extreme single-shot power. The fragments ignore armor seams and add 50% kinetic damage (independent of the explosive ammo spent). The cost: accuracy only 0.80 and a 5.6 s reload.' },
   'mod-wh-a-hangar': { name: 'Raider Hangar', description: 'A hangar mezzanine welded from stolen cargo bulkheads: drone bay +40 m³ and launched drones cycle 8% faster. It carries more and launches faster for only 25 CPU.' },

@@ -539,6 +539,18 @@ export function createPlayerSpec(
         // **三连射**（船长 2026-10-03 令）：只有带该字段的件（R 族三叉戟光束炮）才写；
         // 消费点 = 我方开火环（`combat.meBurstReloadOf`，与敌方旗舰那把同款排期）。
         ...(turret.burst !== undefined ? { burst: turret.burst } : {}),
+        /**
+         * **防空（属性）也认激光件**（**船长 2026-10-02 令**：「**在添加一个激光的近防炮给R族…**」
+         * ⇒ R 族「PD激光」是**带防空属性的激光**）。
+         *
+         * ⚠ 此前只有**炮台分支**折这两个字段（`canHitDrones` / `antiDroneMul`）⇒ 激光件即便写了
+         * `antiDrone` 也**筛不到敌方机群**（"近防"本职直接失效，且静默无报错）。两处口径现一致：
+         * ①能筛到机群（`canHitDrones`）②打机群伤害 ×该值（`antiDroneMul`，对舰伤害不受影响）。
+         * 缺省不写 ⇒ **既有全部激光件零行为变化**（现役三档近防炮都是炮台、走下面那条分支）。
+         */
+        ...(turret.antiDrone !== undefined
+          ? { canHitDrones: true, antiDroneMul: turret.antiDrone }
+          : {}),
       })
       continue
     }

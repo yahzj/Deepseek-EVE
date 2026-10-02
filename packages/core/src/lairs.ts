@@ -244,7 +244,7 @@ export const FOE_LAIR_GEAR: Record<FoeFamily, readonly string[]> = {
   // ⚠ **AI 核心不走这里**：它按**回收炉每批**掷（10%／批，见 `salvage.rollRecycleCoreGain`）＋ 直接入核心账本
   //   （核心是一本账、不进仓库）——本池只装"装备/物品 id"，装不了核心。
   // ⚠ 与 H 族当年同一来路：H 在 2026-09-24 也先是空池，09-26 定下三件才填入。
-  R: ['mod-lair-laser-r', 'mod-lair-blink-r', 'mod-lair-beam-r'],
+  R: ['mod-lair-laser-r', 'mod-lair-blink-r', 'mod-lair-beam-r', 'mod-lair-pd-r'],
 }
 
 /** 该卡的专属装备池（卡级优先，其次按敌族；都没有 = 空池） */

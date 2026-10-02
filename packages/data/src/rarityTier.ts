@@ -566,6 +566,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mod-lair-laser-r': 4,
   'mod-lair-beam-r': 4,
   'mod-lair-blink-r': 4,
+  'mod-lair-pd-r': 4,
   'mod-lair-drone-relay-g': 4,
   'mod-lair-drone-tac-g': 4,
   'mod-lair-frame-e': 4,

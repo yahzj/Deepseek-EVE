@@ -964,6 +964,7 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
   { key: 'mod-lair-laser-r', kind: 'module', refId: 'mod-lair-laser-r', rarity: 'exotic', basePrice: 9_580_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 叠光激光炮（同槽位最高档 2,395,000×4）
   { key: 'mod-lair-blink-r', kind: 'module', refId: 'mod-lair-blink-r', rarity: 'exotic', basePrice: 10_400_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 跃迁规避装置（同槽位最高档 2,600,000×4）
   { key: 'mod-lair-beam-r', kind: 'module', refId: 'mod-lair-beam-r', rarity: 'exotic', basePrice: 9_580_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 三叉戟光束炮（**2026-10-03 船长令**第三件；同槽位最高档 2,395,000×4 ⇒ 与叠光激光炮同价）
+  { key: 'mod-lair-pd-r', kind: 'module', refId: 'mod-lair-pd-r', rarity: 'exotic', basePrice: 9_580_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · PD激光（**2026-10-02 船长令**第四件；同槽位最高档 2,395,000×4）
   // ── 专属无人机 3 型（自带货值 ×4；无人机线**无制式图纸**，这三型各有一张一次性图纸，见 blueprints.ts）──
     { key: 'drone-exile-bee', kind: 'item', refId: 'drone-exile-bee', rarity: 'exotic', basePrice: 24_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂无人机（自带货值 6000×4）
     { key: 'drone-wh-c-heavy', kind: 'item', refId: 'drone-wh-c-heavy', rarity: 'exotic', basePrice: 48_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巢卫攻坚无人机（自带货值 12000×4）

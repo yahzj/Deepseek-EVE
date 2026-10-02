@@ -96,7 +96,8 @@ describe('三叉戟光束炮：件参数与产出面', () => {
 
   it('② 产出面：R 族势力件池第三件 ＋ 市场只收不卖 ＋ 图鉴登记（每族不重复）', () => {
     expect(FOE_LAIR_GEAR.R, '稀有残骸高级箱专属池应含本件').toContain('mod-lair-beam-r')
-    expect(FOE_LAIR_GEAR.R!.length, 'R 族现在三件').toBe(3)
+    /** ⚠ 池子随船长令长大：2026-10-01 两件 → 2026-10-03 三件（本件）→ **同日再追加 PD激光 = 四件** */
+    expect(FOE_LAIR_GEAR.R!.length, 'R 族现在四件（含 2026-10-02 追加的 PD激光）').toBe(4)
     // 其余族的池子未被本次改动碰到（零行为变化）
     expect(FOE_LAIR_GEAR.H!.length).toBe(3)
     expect(FOE_LAIR_GEAR.A!.length).toBe(3)

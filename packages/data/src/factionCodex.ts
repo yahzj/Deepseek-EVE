@@ -141,7 +141,7 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
     glyph: 'fam-r',
     /* 两件势力装备都是 R 族**残骸回收**链产物（2026-10-01 船长令那批：AI 核心 ＋ 叠光激光炮 ＋ 跃迁规避装置）
        —— 与 H 族那两件同为窝点/残骸链产物、**无蓝图**（不上市场）⇒ 图纸一栏照旧为空。 */
-    modules: ['mod-lair-laser-r', 'mod-lair-blink-r', 'mod-lair-beam-r'],
+    modules: ['mod-lair-laser-r', 'mod-lair-blink-r', 'mod-lair-beam-r', 'mod-lair-pd-r'],
     ships: [],
     blueprints: [],
   },
