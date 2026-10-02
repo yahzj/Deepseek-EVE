@@ -104,6 +104,7 @@
     "art:ships": "tsx tools/shipart-preview.ts",
     "art:ships:check": "tsx tools/shipart-preview.ts --check",
     "art:family": "tsx tools/shipart-family.ts",
+    "ui:mob-zoom": "tsx tools/mobile-battle-zoom.ts",
     "wh:ui": "tsx tools/wh-ui-check.ts",
     "docs:index": "tsx tools/docs-index.ts",
     "copy:audit": "tsx tools/copy-corpus.ts",

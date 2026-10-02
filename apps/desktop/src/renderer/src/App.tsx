@@ -138,6 +138,32 @@ const MOB_SEL_MIN_OPEN_MS = 200
 /** 按下→抬起之间手指移动超过这个距离（px）视为"滑动/拖拽"，不弹面板（旋钮） */
 const MOB_SEL_MOVE_TOLERANCE_PX = 24
 
+/**
+ * **手机旋转层「尺寸滞回」三个常量**（**2026-10-02 船长令「按你的建议先修」**·
+ * 修玩家报障「手机端的战斗画面会忽大忽小（缩放）」）。
+ *
+ * 病根（读数见 `docs/design/mobile-battle-zoom-20261002.md`）：旋转层的 `--mob-scale / --mob-h` 与
+ * 战场层的 `k = min(1, 舞台可用高/内容自然高)` **都挂在手机浏览器的"可见视口高"上** ——
+ * 地址栏收起/展开这一件小事（实测 844↔760）就能让物理内容缩放摆动 **8.7%**，且战场 k 会在
+ * **0.83 ↔ 1.00** 之间跳（"缩了"↔"没缩"，是突变）；更糟的是地址栏**滑进滑出那 200~300ms 里
+ * 视口高逐帧在变**，旧实现逐帧照单重排 ⇒ 玩家看到的是**一段连续的缩放动画**（"忽大忽小"）。
+ *
+ * ⇒ 改成**只跟"稳定下来的可见区"走**：
+ * - **|Δ高| < `MOB_SIZE_DEAD_PX`** ⇒ 当噪声，一个字节都不改（只更新对齐偏移）；
+ * - **|Δ高| ≥ `MOB_BIG_CHANGE_PX`** ⇒ **立刻采纳**（转屏、键盘收起、换设备这类"真的换了一种视口"）；
+ * - **其余（小变化）** ⇒ 必须**连续 `MOB_RESIZE_SETTLE_MS` 保持同一个高**才采纳 ⇒
+ *   地址栏滑进滑出那段中间值全都过不了这道门，**只在滑完之后干净地重排一次**；
+ * - **宽度变化（>1px）** ⇒ 立刻采纳（宽变基本只可能是转屏/换设备）；
+ * - **捏合（`visualViewport.scale > 1`）进行中** ⇒ **尺寸冻结**（只跟对齐偏移），否则"边捏边重排"。
+ *
+ * ⚠ 口径边界（刻意保留 2026-09-06「可见区铺满、不被地址栏遮」那条诉求）：**最终仍以可见区为准**
+ * —— 稳定之后该缩就缩、该涨就涨，只是不再逐帧追动画。要"干脆不跟着涨"（把多出来的可见高留成
+ * 底部留白）是另一种口径，等船长看过观感再定。
+ */
+const MOB_SIZE_DEAD_PX = 8
+const MOB_BIG_CHANGE_PX = 96
+const MOB_RESIZE_SETTLE_MS = 300
+
 export function App({ engine }: { engine: GameEngine }) {
   // 兜底套用界面配色（任何入口都经过 App；桌面/网页版入口另在首帧前各调一次）
   useThemeBootstrap()
@@ -151,9 +177,17 @@ export function App({ engine }: { engine: GameEngine }) {
   }, [engine, locale])
 
   // ── 手机竖屏自动横屏（船长 2026-09-05；2026-09-06 改：按 visualViewport 真实可见区铺满对齐，
-  //    修复 Edge/Chrome 移动端地址栏悬浮导致左右/上下被遮——不再依赖"布局视口 50% 居中"） ──
+  //    修复 Edge/Chrome 移动端地址栏悬浮导致左右/上下被遮——不再依赖"布局视口 50% 居中"；
+  //    🔴 2026-10-02 船长令「按你的建议先修」：给**尺寸**加方向不对称的滞回（见 MOB_*_ADOPT_PX），
+  //    修玩家报障「手机端的战斗画面会忽大忽小（缩放）」——对齐偏移仍逐拍跟可见区走，只是尺寸不再抖） ──
   const [mobileRot, setMobileRot] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  /** 当前**已采纳**的旋转层尺寸（null = 还没量过 ⇒ 首次直接采纳） */
+  const mobSizeRef = useRef<{ w: number; h: number } | null>(null)
+  /** "待采纳"的候选：同一个高连续稳定到 `MOB_RESIZE_SETTLE_MS` 才采纳（地址栏滑进滑出被吃掉） */
+  const mobPendRef = useRef<{ h: number; since: number } | null>(null)
+  /** 稳定判定的定时器（进候选态时挂一次；收尾必清） */
+  const mobTimerRef = useRef(0)
   // 手机横屏下的自绘下拉面板（2026-09-06 船长：原生下拉弹层不受 CSS 旋转影响 → 方向错位）
   const [mobSel, setMobSel] = useState<{ el: HTMLSelectElement; opts: { value: string; label: string }[]; sel: string } | null>(null)
   useEffect(() => {
@@ -163,33 +197,85 @@ export function App({ engine }: { engine: GameEngine }) {
       const rot = coarse && portrait && window.innerWidth < 900
       setMobileRot(rot)
       const el = rootRef.current
-      if (el) {
-        if (rot) {
-          // 真实可见区（布局视口内可视区域）：移动端地址栏/工具栏悬浮时 ≠ innerWidth/innerHeight
-          const vv = window.visualViewport
-          const visW = vv ? vv.width : window.innerWidth
-          const visH = vv ? vv.height : window.innerHeight
-          const visX = vv ? vv.offsetLeft : 0
-          const visY = vv ? vv.offsetTop : 0
-          // 虚拟横屏设计宽度：越大画面整体越小、看到越多（船长 2026-09-05：横屏后偏大，改 1200 放宽）
-          const designW = 1200
-          const scale = visH / designW
-          const vh = designW * visW / visH
-          // 布局坐标对齐：旋转(绕原点 -90°)后，元素的"右下"恰好落在可见区右下
-          // 映射：物理 x = L + s·y，物理 y = T − s·x ⇒ 取 L=visX、T=visY+visH 即整区铺满
-          el.style.setProperty('--mob-w', `${designW}px`)
-          el.style.setProperty('--mob-h', `${vh}px`)
-          el.style.setProperty('--mob-scale', String(scale))
-          el.style.setProperty('--mob-x', `${visX}px`)
-          el.style.setProperty('--mob-y', `${visY + visH}px`)
+      if (!el) return
+      if (!rot) {
+        el.style.removeProperty('--mob-w')
+        el.style.removeProperty('--mob-h')
+        el.style.removeProperty('--mob-scale')
+        el.style.removeProperty('--mob-x')
+        el.style.removeProperty('--mob-y')
+        mobSizeRef.current = null
+        mobPendRef.current = null
+        return
+      }
+      // 真实可见区（布局视口内可视区域）：移动端地址栏/工具栏悬浮时 ≠ innerWidth/innerHeight
+      const vv = window.visualViewport
+      const visW = vv ? vv.width : window.innerWidth
+      const visH = vv ? vv.height : window.innerHeight
+      const visX = vv ? vv.offsetLeft : 0
+      const visY = vv ? vv.offsetTop : 0
+      /**
+       * **捏合（页面缩放）进行中不重排**：`visualViewport.scale > 1` 时宽高成比例变小，
+       * 若照单采纳就会"边捏边重排版式"（外观与本次要修的"忽大忽小"同款）。⇒ 捏合期间只更新
+       * 对齐偏移、**尺寸冻结**；等玩家捏回去（scale 回 1）尺寸自然又对上了。
+       * ⚠ 双击放大已由 CSS 的 `touch-action: manipulation` 关掉（甲案），这里是双指缩放的兜底。
+       */
+      const zoomed = (vv?.scale ?? 1) > 1.05
+      const cur = mobSizeRef.current
+      /** 本拍**要用的**尺寸：先取已采纳的那份（没量过 = 当前可见区，下面再按规则换） */
+      let size = cur ?? { w: visW, h: visH }
+      const widthChanged = cur !== null && Math.abs(cur.w - visW) > 1
+      if (cur === null || widthChanged) {
+        // 首次 / 宽度变了（转屏·换设备）⇒ 立刻采纳并清掉候选
+        size = { w: visW, h: visH }
+        mobPendRef.current = null
+      } else if (!zoomed) {
+        const dh = visH - cur.h
+        if (Math.abs(dh) >= MOB_BIG_CHANGE_PX) {
+          // 大变化（转屏/键盘/换设备）⇒ 立刻采纳，不等稳定门
+          size = { w: visW, h: visH }
+          mobPendRef.current = null
+        } else if (Math.abs(dh) >= MOB_SIZE_DEAD_PX) {
+          /**
+           * 小变化 ⇒ **等它稳定**：同一个高连续 `MOB_RESIZE_SETTLE_MS` 不变才采纳。
+           * 地址栏滑进滑出那 200~300ms 里视口高逐帧在变 ⇒ 候选时间戳每帧被重置 ⇒
+           * **期间一次都不重排**，滑完停住之后才干净地重排一次。
+           */
+          const p = mobPendRef.current
+          if (p === null || Math.abs(p.h - visH) > 0.5) mobPendRef.current = { h: visH, since: Date.now() }
+          else if (Date.now() - p.since >= MOB_RESIZE_SETTLE_MS) {
+            size = { w: visW, h: visH }
+            mobPendRef.current = null
+          }
+          /**
+           * ⚠ **无论如何都保证"还有一个定时器在等着复核"**：事件会在视口停住之后就不再来了，
+           * 光靠事件驱动的 `update()` 会让候选态**永远停在候选**（第一版就踩了这个坑：定时器只在
+           * 进候选那一刻挂一次，复核时若还差几毫秒没到点，就再也没人叫下一拍）。
+           */
+          if (mobPendRef.current !== null && mobTimerRef.current === 0) {
+            mobTimerRef.current = window.setTimeout(() => {
+              mobTimerRef.current = 0
+              update()
+            }, MOB_RESIZE_SETTLE_MS + 20)
+          }
         } else {
-          el.style.removeProperty('--mob-w')
-          el.style.removeProperty('--mob-h')
-          el.style.removeProperty('--mob-scale')
-          el.style.removeProperty('--mob-x')
-          el.style.removeProperty('--mob-y')
+          mobPendRef.current = null // 落在死区（<8px）⇒ 维持现状，只跟对齐偏移
         }
       }
+      mobSizeRef.current = size
+      // 虚拟横屏设计宽度：越大画面整体越小、看到越多（船长 2026-09-05：横屏后偏大，改 1200 放宽）
+      const designW = 1200
+      const scale = size.h / designW
+      const vh = designW * size.w / size.h
+      // 布局坐标对齐：旋转(绕原点 -90°)后，元素的"右下"恰好落在可见区右下
+      // 映射：物理 x = L + s·y，物理 y = T − s·x ⇒ 取 L=visX、T=visY+size.h 即铺满；
+      // ⚠ 用 `visY + size.h`（而不是 `visY + visH`）：尺寸与可见区不一致的那一小段里**顶部对齐**
+      //   ⇒ 已采纳的内容一个像素都不动，差量留在底部（不再"长大一下又缩回去"）。
+      el.style.setProperty('--mob-w', `${designW}px`)
+      el.style.setProperty('--mob-h', `${vh}px`)
+      el.style.setProperty('--mob-scale', String(scale))
+      el.style.setProperty('--mob-x', `${visX}px`)
+      el.style.setProperty('--mob-y', `${visY + size.h}px`)
     }
     update()
     window.addEventListener('resize', update)
@@ -207,6 +293,10 @@ export function App({ engine }: { engine: GameEngine }) {
       if (v2) {
         v2.removeEventListener('resize', update)
         v2.removeEventListener('scroll', update)
+      }
+      if (mobTimerRef.current !== 0) {
+        window.clearTimeout(mobTimerRef.current)
+        mobTimerRef.current = 0
       }
     }
   }, [])
