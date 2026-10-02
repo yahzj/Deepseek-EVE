@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { pullOneWreck } from '../src/salvaging'
-import { injectWeekendWreck, weekendWreckFamilyOf } from '../src/salvage'
+import { injectWeekendWreck, weekendWreckDensityOf, weekendWreckFamilyOf } from '../src/salvage'
 import type { GameState } from '../src/state'
 
 const ctx = buildSimContext()
@@ -81,7 +81,14 @@ describe('打捞池：入侵残骸场不在占领名单时也要并入侵卡（�
   it('写回残骸场（打捞扣减）**不丢来源族**', () => {
     const s = stateWithEvent()
     injectWeekendWreck(s, GAL, 600, 'H')
-    pulls(s, GAL) // 扣减会把记录写回
+    /**
+     * ⚠ **2026-10-02「甲」**：入侵池改成"按**实际出量**扣"（旧口径是每轮扣 2% 渐近、永不归零）
+     * ⇒ 这条不能再拿 40 轮（会把池子捞干、记录被删，`family` 自然读不到）。
+     * 本用例只关心"**扣减写回时三格不许丢**"，所以打**一轮**即可。
+     */
+    const one = pullOneWreck(s, ctx, GAL, 60_000)
+    expect(one?.itemId, '这一轮出的是入侵族残骸（H 组 = `h-hi`）').toBe('wreck-h-hi')
     expect(s.weekendWrecks?.[GAL]?.family, '扣减后仍记着族').toBe('H')
+    expect(weekendWreckDensityOf(s, GAL), '池子按实际出量减少').toBeLessThan(600)
   })
 })

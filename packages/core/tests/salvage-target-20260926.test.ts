@@ -151,7 +151,7 @@ describe('打捞对象 · 分组记账（船长 2026-09-26 令）', () => {
     expect(pullOneWreck(s, ctx, GAL, 60_000), '该组已空 ⇒ 不出').toBeNull()
   })
 
-  it('**自动判定①：有入侵残骸 ⇒ 只出入侵那一族的残骸**（船长改口口径）', () => {
+  it('**自动判定①：有入侵残骸 ⇒ 先只出入侵那一族的残骸**（🔴 2026-10-02「甲」：池子见底后回落到本星系卡）', () => {
     const s = fresh(31)
     injectWreckDensity(s, ctx, GAL, 900) // 星系自己也有货
     injectWeekendWreck(s, GAL, 500, 'H')
@@ -159,13 +159,26 @@ describe('打捞对象 · 分组记账（船长 2026-09-26 令）', () => {
     s.salvaging.galaxyId = GAL
     s.salvaging.phase = 'salvaging'
     s.salvaging.targetGroup = undefined // 不手选 ⇒ 走自动
-    const got = new Set<string>()
+    const seq: string[] = []
     for (let i = 0; i < 40; i++) {
       const r = pullOneWreck(s, ctx, GAL, 60_000)
-      if (r) got.add(r.itemId)
+      if (r) seq.push(r.itemId)
     }
-    const allInvasion = [...got].every((id) => id.startsWith("wreck-h-"))
-    expect(allInvasion, "有入侵残骸时只出入侵族（实际：" + [...got].join(" / ") + "）").toBe(true)
+    /**
+     * 🔴 **2026-10-02 船长令「甲」**：入侵池**按实际出量**扣（且被池子余额封顶）⇒ 500 m³ 的池子
+     * 捞若干轮就干，之后自动判定回落到"按各组数量比"那条（②）。
+     * 改前（旧口径：池子每轮只扣 2% 渐近、永不归零）这条会 40 轮全是入侵族 —— 那正是船长报障
+     * 「数量很少也能一次捞很多」的另一面。
+     */
+    const firstNonInv = seq.findIndex((id) => id !== 'wreck-h-hi')
+    expect(seq.includes('wreck-h-hi'), '前段出的是入侵族残骸（H 组 = `h-hi`）').toBe(true)
+    expect(firstNonInv, '确实见底并回落（不是 40 轮都出入侵族）').toBeGreaterThan(0)
+    expect(
+      seq.slice(0, firstNonInv).every((id) => id === 'wreck-h-hi'),
+      `见底之前只出入侵族（回落点 ${firstNonInv}）`,
+    ).toBe(true)
+    expect(new Set(seq.slice(firstNonInv)).size, '见底后按各组数量比出本星系卡').toBeGreaterThan(0)
+    console.log(`  [读数] 甲：入侵池 500 m³ ⇒ 前 ${firstNonInv} 轮全是入侵族，之后回落本星系卡（共 ${seq.length} 轮）`)
   })
 
   it('**自动判定②：没有入侵残骸 ⇒ 按各组存量的数量比同步捞**（不偏向任何一组）', () => {

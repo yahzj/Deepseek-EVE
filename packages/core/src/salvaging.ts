@@ -47,6 +47,9 @@ import {
   // 2026-09-26（玩家报障）：残骸场带来源族 ⇒ 有场就并入那一族的独立入侵卡
   weekendWreckDensityOf,
   weekendWreckFamilyOf,
+  /** **2026-10-02 船长令「甲」**：入侵池按**实际出量**扣（并由池子余额封顶出量）；
+   *  同一令下"从入侵池出的那一轮"改用上面的 `salvageRoundMulOf` 只读取数（不扣池）。 */
+  chargeWeekendWreckByVolume,
   // 2026-09-26（船长令）：打捞对象（选组 / 选入侵残骸）与分组存量
   WEEKEND_WRECK_TARGET,
   wreckGroupStockOf,
@@ -783,7 +786,20 @@ export function pullOneWreck(
   // 2026-09-19 合并：产出物 = 该卡**所属组**的残骸（`wreck-<组 key>`）；组查不到 = 未知卡 ⇒ 不产出
   const group = wreckGroupOfCard(chosen.anomalyId, ctx)
   if (!group) return null
-  const mul = salvageRoundPull(state, ctx, galaxyId, target)
+  /**
+   * 🔴 **本轮产出是不是"入侵残骸"（池账那本）**（**2026-10-02 船长令「甲」**）——
+   * 判据 = **这一抽抽中的那张卡是不是入侵独立卡**（`hidden` 的那批；`wreckPoolOf` 只从
+   * `weekendBountyCardsOf` 并入它们）。用它而不是"池里有没有存量"：三级序下的兜底路
+   * （`autoTargetPickOf` 抽不到时会回落到按组/加权抽）也就能被正确区分。
+   */
+  const fromWeekend = ctx.anomalies.get(chosen.anomalyId)?.hidden === true
+  /**
+   * mul：**从哪一池出就用哪一池的量算**（甲）。
+   * - 入侵轮 ⇒ `salvageRoundMulOf`（**只读**！池子扣减改由下面的 `chargeWeekendWreckByVolume`
+   *   按**本轮实际出量**做，星系池也一分不扣）；
+   * - 其余 ⇒ `salvageRoundPull`（照旧放干星系池）。
+   */
+  const mul = fromWeekend ? salvageRoundMulOf(state, ctx, galaxyId, target) : salvageRoundPull(state, ctx, galaxyId, target)
   const wreckId = wreckItemIdOf(group.key)
   // 乙案（2026-09-05）：残骸计数 = 体积（m³）——型号威胁决定单份体积量级（威胁×0.06），
   // 本轮入舱 m³ = 单份 × 密度系数；item unitM3 = 1，数量即体积。
@@ -802,7 +818,18 @@ export function pullOneWreck(
    * 危险度差异由"每轮捞多少 m³"承担（常量 `WRECK_YIELD_TIER_MUL`：常 1.00 / 险 1.15 / 危 1.20）。
    */
   const yieldMul = wreckYieldMultiplierOf(recycleTierOf(wreckBaseDensity(galaxyId, ctx)))
-  const volumeM3 = baseM3 * mul * (1 + 0.12 * diveLv) * yieldMul
+  let volumeM3 = baseM3 * mul * (1 + 0.12 * diveLv) * yieldMul
+  /**
+   * 🔴 **甲：入侵池的量封顶出量、并按实际出量扣池**（**2026-10-02 船长令**
+   * 「**我发现入侵残骸哪怕数量很少也能一次性捞出很多。**」⇒ 裁「甲」＝池子的量真正约束出量）。
+   *
+   * 改前：出量按（星系密度 ＋ 入侵池）合并算系数、而池子每轮只扣 2% 渐近（永不归零）
+   * ⇒ 富星系里**只有 10 m³** 的入侵池，40 轮能吐出 **2951 m³**（实测 295 倍，
+   * 见 `tools/_ui-artifacts/invasion-wreck-yield.log`）。
+   * 现口径：**实际入舱 = min(算出来的量, 池子余额)**，池子**扣掉的正是这一轮真出的量**
+   * ⇒ "池子标称多少，最多就捞多少"，捞几轮即见底。
+   */
+  if (fromWeekend) volumeM3 = chargeWeekendWreckByVolume(state, galaxyId, volumeM3)
   return { itemId: wreckId, mul, volumeM3 }
 }
 

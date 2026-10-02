@@ -758,66 +758,111 @@ export function advanceWeekendWreckDecay(
   }
 }
 
-/** 本轮的"体积当量系数"（纯算式；**不改任何状态**）：mul = max(0.5, (星系密度 ＋ 入侵残骸)/10)。
+/** 本轮的"体积当量系数"（纯算式；**不改任何状态**）：mul = max(0.5, 池子量/10)。
  *  分母不变（2026-09-10 船长定）——保底线抬到 10 后，稳态保底（密度 = 10）的实际系数 = 1.0。
- *  **扣减与取数分开**：`salvageRoundPull`（要扣）与 `salvageRoundMulOf`（只读）共用本算式。 */
-function roundMulOf(density: number, weekend: number): number {
+ *  **扣减与取数分开**：`salvageRoundPull`（要扣）与 `salvageRoundMulOf`（只读）共用本算式。
+ *  ⚠ **2026-10-02 船长令「甲」**：`density` 一律传**本轮真正在出的那一池**的量 ——
+ *  从入侵池出就传入侵池量（**不再**把星系密度与入侵残骸相加，见 `roundMulFor` 的长注）。 */
+function roundMulOf(density: number, weekend = 0): number {
   return Math.max(0.5, (density + weekend) / 10)
+}
+
+/**
+ * **本轮密度系数的唯一算式**（`salvageRoundPull` 与 `salvageRoundMulOf` 共用 ⇒ 取数与扣减永不脱节）：
+ *
+ * - **从入侵残骸池出**（选「入侵残骸」；或未指定对象而池里有存量 ⇒ 按 2026-09-26 的三级序"同池内入侵优先"）
+ *   ⇒ `mul = max(0.5, 入侵池/10)` —— **只看入侵池自己的量**；
+ * - 选了某一组 ⇒ 只看该组存量；
+ * - 其余（普通池）⇒ 按星系密度。
+ *
+ * 🔴 **2026-10-02 船长令「甲」**（原话：「**我发现入侵残骸哪怕数量很少也能一次性捞出很多。**」⇒ 裁「甲」＝
+ * **池子的量真正约束出量**）：**改判 2026-09-25 那条"计量合并"**（原文：mul 按（星系密度 ＋ 入侵残骸）算
+ * ⇒ 入侵留下的残骸场让每轮出量更大）。为什么必须改（探针实测，`tools/_ui-artifacts/invasion-wreck-yield.log`）：
+ * 合并计量下系数由**星系自己的密度**顶起来，与入侵池大小几乎无关 —— 富星系（密度 150）＋**只有 10 m³**
+ * 的入侵池，40 轮却能捞出 **2951 m³ 入侵残骸（295 倍）**；而池子每轮只按 2% 渐近放干、永远不归零。
+ */
+function roundMulFor(
+  state: GameState,
+  ctx: SimContext,
+  galaxyId: string,
+  target: string | undefined,
+  weekend: number,
+): number {
+  const fromWeekend = weekend > 0 && (target === undefined || target === WEEKEND_WRECK_TARGET)
+  if (fromWeekend) return roundMulOf(weekend)
+  if (target !== undefined) {
+    const shares = ensureWreckGroupShares(state, ctx, galaxyId, recordOf(state, galaxyId, ctx))
+    return roundMulOf(shares[target] ?? 0)
+  }
+  return roundMulOf(recordOf(state, galaxyId, ctx).density)
 }
 
 /**
  * **本轮密度系数（只读）**——与 `salvageRoundPull` 同一算式，但**一个字都不改**。
  *
- * 给"这一轮不产出普通残骸"的场合取读数用：**稀有残骸轮**（`pullOneWreck` 稀有分支）。
+ * 给"这一轮不产出普通残骸"的场合取读数用：**稀有残骸轮**（`pullOneWreck` 稀有分支）、
+ * 以及**甲令之后"从入侵池出"的那一轮**（那一轮的池子扣减由 `chargeWeekendWreckByVolume`
+ * 按**实际出量**做，不走 `salvageRoundPull`）。
  * 依据（2026-09-25 玩家报障修复）：放干扣减的契约是"**扣减 ↔ 本轮按 mul 出普通残骸**"，
  * 稀有轮出的是固定 30 m³ 的稀有残骸、不吃 mul ⇒ 不许再扣普通池（也不扣入侵池）。
  */
-export function salvageRoundMulOf(state: GameState, ctx: SimContext, galaxyId: string): number {
-  const rec = recordOf(state, galaxyId, ctx)
-  return roundMulOf(rec.density, weekendWreckDensityOf(state, galaxyId))
+export function salvageRoundMulOf(
+  state: GameState,
+  ctx: SimContext,
+  galaxyId: string,
+  /** **打捞对象**（2026-10-02 起参与系数判定：选组/选入侵各按自己那一池算） */
+  target?: string,
+): number {
+  return roundMulFor(state, ctx, galaxyId, target, weekendWreckDensityOf(state, galaxyId))
+}
+
+/**
+ * **按"实际出量"扣入侵残骸池**（**2026-10-02 船长令「甲」**）—— 返回**实际能给**的 m³。
+ *
+ * 与星系池的"每轮扣 2% 渐近"不同：入侵池**扣多少 = 这一轮真出了多少**，且**出量先被池子余额封顶**
+ * ⇒ "池子标称多少，最多就只能捞出多少"（池子 30 m³ ⇒ 捞几轮就见底），这正是"甲"要的语义。
+ * 扣减后以当前有效值为新锚点**重新起算 48h**（与旧口径同一意图：玩家正在这一片捞）。
+ */
+export function chargeWeekendWreckByVolume(state: GameState, galaxyId: string, wantM3: number): number {
+  const left = weekendWreckDensityOf(state, galaxyId)
+  if (!(wantM3 > 0) || left <= 0) return 0
+  const give = Math.min(wantM3, left)
+  writeWeekendWreck(state, galaxyId, left - give, 0)
+  return give
 }
 
 /**
  * 一轮打捞（每台每周期调用一次；引擎/作业层使用）：
- * 先按当前密度给出本轮"体积当量系数" mul = max(0.5, 密度/10)（分母不变——2026-09-10 船长定；
- * 保底线抬到 10 后，稳态保底（密度 = 10）的实际系数 = 1.0），再执行放干扣减
- * （>保底线 10：扣当前超出量 2%；超出量趋零进位；≤保底线：不扣）。
- * 调用方按 mul 计入该轮捞取量（基础体积 × mul 的货仓占用）。
+ * 先按**本轮真正在出的那一池**给出"体积当量系数" mul（`roundMulFor`），再执行**星系池**放干扣减
+ * （>保底线 10：扣当前超出量 2%；超出量趋零进位；≤保底线：不扣）。调用方按 mul 计入该轮捞取量。
  *
- * ⚠ **只有"确实按 mul 出普通残骸"的轮才调用本函数**——稀有残骸轮走 `salvageRoundMulOf`
- * （只读。2026-09-25 玩家报障：稀有轮扣了普通池却不给普通残骸 ⇒ 已按甲案修掉）。
+ * ⚠ **只有"确实按 mul 出普通残骸"的轮才调用本函数**——稀有残骸轮走 `salvageRoundMulOf`（只读）。
  *
- * **入侵残骸（独立池）参加本轮**（2026-09-25 船长令）：
- * - **计量合并**：mul 按（星系密度 ＋ 入侵残骸）算 ⇒ 入侵留下的残骸场让每轮出量更大；
- * - **扣减先扣入侵池**：先按同一 2% 放干扣入侵池（**无保底**，可以扣到 0），再照老口径扣星系池
- *   （保底线 10 不动）——"会消失的先捞"这个顺序对玩家最有利，也让两条读数各自降得清楚。
+ * 🔴 **2026-10-02 船长令「甲」改判两处**（其余逐字不变）：
+ * 1. **入侵池不再由本函数扣** —— 旧口径「先按同一 2% 放干扣入侵池」作废；改由
+ *    `chargeWeekendWreckByVolume` 在 `pullOneWreck` 里**按本轮实际出量**扣（出量还被池子余额封顶）；
+ * 2. **从入侵池出的那一轮不再扣星系池** —— 本轮产出记在入侵残骸名下，扣星系池就是"扣了不给"
+ *    （与 2026-09-25 那条"稀有轮不扣普通池"同一类错误）。
+ * 旧注（2026-09-25 船长令「入侵残骸（独立池）参加本轮」：计量合并 ＋ 扣减先扣入侵池）**已按甲作废**，
+ * 理由与实测见 `roundMulFor` 的长注。
  */
 export function salvageRoundPull(
   state: GameState,
   ctx: SimContext,
   galaxyId: string,
-  /** **打捞对象**（2026-09-26）：缺省 = 全部（两池一起放干，现状口径）·
-   *  组 key = 只扣该组 · `WEEKEND_WRECK_TARGET` = 只扣入侵池 */
+  /** **打捞对象**：缺省 = 全部（只有星系池放干）· 组 key = 只扣该组 · `WEEKEND_WRECK_TARGET` = 只扣入侵池 */
   target?: string,
 ): number {
   const rec = recordOf(state, galaxyId, ctx)
   const weekend = weekendWreckDensityOf(state, galaxyId)
-  const d = rec.density
+  const mul = roundMulFor(state, ctx, galaxyId, target, weekend)
   const wantsWeekend = target === WEEKEND_WRECK_TARGET
   const wantsGroup = target !== undefined && !wantsWeekend
-  /** 体积当量系数按**本轮真正参与的那一池/那一组**取（船长 2026-09-26：选什么捞什么） */
-  const groupStock = wantsGroup ? (ensureWreckGroupShares(state, ctx, galaxyId, rec)[target!] ?? 0) : 0
-  const mul = wantsWeekend ? roundMulOf(0, weekend) : wantsGroup ? roundMulOf(groupStock, 0) : roundMulOf(d, weekend)
-  // ① 入侵池：**全部**时先扣它（现状口径）· 选**入侵**时只扣它 · 选组时一个都不碰它
-  if (weekend > 0 && (target === undefined || wantsWeekend)) {
-    /**
-     * 入侵池按同一 2% 放干（**无保底** ⇒ 可以扣到 0）：
-     * 扣减后**以当前有效值为新锚点重新起算 48h**（玩家正在这一片捞 ⇒ 与"打捞中挂起衰减"同一意图）。
-     */
-    writeWeekendWreck(state, galaxyId, weekend - weekend * WRECK_DRAIN_SHARE, 0)
-  }
-  // ② 星系池：**全部**与**选组**都按老口径放干（保底线 10 不动）；选入侵时不碰星系池
-  if (!wantsWeekend && d > WRECK_FLOOR) {
+  /** 从入侵池出的那一轮：星系池一分不扣（甲·第 2 条） */
+  const fromWeekend = weekend > 0 && (target === undefined || wantsWeekend)
+  const d = rec.density
+  // 星系池：按老口径放干（保底线 10 不动）；选入侵时不碰它、从入侵池出时也不碰它
+  if (!wantsWeekend && !fromWeekend && d > WRECK_FLOOR) {
     const excess = d - WRECK_FLOOR
     const next = Math.max(WRECK_FLOOR, d - excess * WRECK_DRAIN_SHARE)
     rec.density = next - WRECK_FLOOR < WRECK_DRAIN_SNAP ? WRECK_FLOOR : next

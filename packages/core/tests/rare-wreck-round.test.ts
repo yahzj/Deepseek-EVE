@@ -63,8 +63,8 @@ describe('稀有残骸轮 vs 普通残骸池（放干口径）', () => {
     const densBefore = state.galaxyWrecks[GAL]!.density
     const invBefore = weekendWreckDensityOf(state, GAL)
     expect(densBefore).toBe(DENSITY0)
-    // 只读取数与 salvageRoundPull 同一算式
-    expect(salvageRoundMulOf(state, ctx, GAL)).toBeCloseTo((DENSITY0 + 50) / 10, 10)
+    // 只读取数与 salvageRoundPull 同一算式；🔴 **2026-10-02「甲」**：从入侵池出 ⇒ 系数**只看入侵池**（50/10）
+    expect(salvageRoundMulOf(state, ctx, GAL)).toBeCloseTo(50 / 10, 10)
 
     const pulled = pullOneWreck(state, ctx, GAL, 60_000)!
     expect(pulled.itemId, '稀有轮应产出稀有残骸').toBe(rareWreckItemIdOf(LAIR))
