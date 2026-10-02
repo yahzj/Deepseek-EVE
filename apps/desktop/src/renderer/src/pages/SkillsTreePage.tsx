@@ -95,7 +95,10 @@ function SkillBoostBlock({ engine, onToast }: { engine: GameEngine; onToast: (m:
             ? tr('ui.ActivityBar.067', { p1: fmtDuration(remainMs) })
             : tr('ui.boost.007')}
         </span>
-        {/* 开关本体：与「使用」按钮同一套 `.app-btn` 形态（`is-small` ＋ `is-on`），不自造控件 */}
+        {/* 开关本体：与「使用」按钮同一套 `.app-btn` 形态（`is-small` ＋ `is-on`），不自造控件。
+            ⚠ **2026-10-03 修（船长报障「自动续用不是开关」）**：文案**随状态显示开/关**
+            （`ui.boost.010`/`011`）——原先无论开关状态都只印「自动续用」四个字，
+            玩家看不出它到底开没开；`is-on` 高亮与 `aria-pressed` 照旧。 */}
         <button
           className={`app-btn is-small${autoRenew ? ' is-on' : ''}`}
           aria-pressed={autoRenew}
@@ -105,7 +108,7 @@ function SkillBoostBlock({ engine, onToast }: { engine: GameEngine; onToast: (m:
             if (!r.ok) onToast(cmdText(r) || tr('ui.boost.008'), true)
           }}
         >
-          {tr('ui.boost.008')}
+          {tr(autoRenew ? 'ui.boost.010' : 'ui.boost.011')}
         </button>
       </div>
       {/* 下方：持有的加速类道具清单（今天只有突触加速剂；将来加同类道具就往这一支里塞行） */}

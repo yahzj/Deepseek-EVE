@@ -118,8 +118,15 @@ describe('技能加速自动续用 · 无缝补用（在线）', () => {
     enqueueDirect(s)
     // 窗口 = 本级标称时长的一半 ⇒ "剩下的时间练不完这一级"
     s.skillBoostUntilMs = s.gameMs + Math.floor(levelMsNow(s) / 2)
+    const leftBefore = synapticAccelerantRemainMs(s)
     run(s, 1_000)
-    expect(synapticAccelerantRemainMs(s), '补用后重新是完整一剂').toBe(SYNAPTIC_ACCELERANT_MS)
+    /**
+     * **2026-10-03 修（船长报障「点自动续用的时候会无视当前剩余时间直接使用一个新的」）**：
+     * 补的那一枚**接在剩余之上**（累加），不再把手上那一段剩余丢掉 ⇒ 剩余 = 原剩余 ＋ 24 小时 − 这一拍。
+     */
+    expect(synapticAccelerantRemainMs(s), '补用是"接在剩余之上"，不丢剩余').toBe(
+      leftBefore + SYNAPTIC_ACCELERANT_MS - 1_000,
+    )
     expect(countWare(s, SYNAPTIC_ACCELERANT_ITEM_ID)).toBe(2)
   })
 
@@ -136,9 +143,12 @@ describe('技能加速自动续用 · 无缝补用（在线）', () => {
     const s = stateWithStock(3)
     setBoostAutoRenew(s, true)
     s.skillBoostUntilMs = s.gameMs + 30_000 // 只剩 30 秒（低于兜底阈值 60 秒）
+    const leftBefore = synapticAccelerantRemainMs(s)
     run(s, 1_000)
     expect(countWare(s, SYNAPTIC_ACCELERANT_ITEM_ID), '空队列 + 快过期 ⇒ 补一枚').toBe(2)
-    expect(synapticAccelerantRemainMs(s)).toBe(SYNAPTIC_ACCELERANT_MS)
+    expect(synapticAccelerantRemainMs(s), '同样是累加（30 秒 ＋ 24 小时 − 这一拍）').toBe(
+      leftBefore + SYNAPTIC_ACCELERANT_MS - 1_000,
+    )
   })
 
   it('队列被练空、且料也尽了 ⇒ 开关收口（离线一趟练空队列的真实形态）', () => {
@@ -170,6 +180,26 @@ describe('技能加速自动续用 · 无缝补用（在线）', () => {
     enqueueDirect(s)
     advanceGame(s, 1_000, ctx)
     expect(s.logs.some((l) => l.textId === 'core.consumable.013'), '补用要留一条日志').toBe(true)
+  })
+
+  /**
+   * **不丢剩余**（**2026-10-03 船长报障**：「**点自动续用的时候会无视当前剩余时间直接使用一个新的**」）。
+   * 场景 = 手上还剩一大段（本级练不完）⇒ 补一枚，窗口必须是 **剩余 ＋ 24 小时**
+   * （原先被重置成 24 小时，那一段剩余白白丢掉）。
+   * ⚠ 剩余要按**加速生效后**的本级时长算（乘区 ×0.5 会缩短本级）——先立一剂再量本级时长。
+   */
+  it('补用**不丢剩余**：手上还剩一大段时，窗口 = 剩余 ＋ 24 小时（修前会被重置成 24 小时）', () => {
+    const s = stateWithStock(3)
+    setBoostAutoRenew(s, true)
+    enqueueDirect(s)
+    s.skillBoostUntilMs = s.gameMs + 30 * 3_600_000 // 先让加速生效（乘区 ×0.5 才会算进"本级时长"）
+    const left = Math.floor(levelMsNow(s) * 0.6) // 手上剩余：盖不住本级（不到 100%）⇒ 判据③ 该补
+    s.skillBoostUntilMs = s.gameMs + left
+    run(s, 1_000)
+    expect(synapticAccelerantRemainMs(s), '剩余 ＋ 24 小时 − 这一拍（那一段剩余没被丢掉）').toBe(
+      left + SYNAPTIC_ACCELERANT_MS - 1_000,
+    )
+    expect(countWare(s, SYNAPTIC_ACCELERANT_ITEM_ID), '补了一枚').toBe(2)
   })
 })
 
@@ -225,8 +255,10 @@ describe('技能加速自动续用 · 离线', () => {
     enqueueDirect(s)
     // 窗口只够一小段 ⇒ 必须靠自动补用才能一路加速（只跑 10 分钟，离线上限不掺和）
     s.skillBoostUntilMs = s.gameMs + Math.floor(levelMsNow(s) / 2)
+    const leftBefore = synapticAccelerantRemainMs(s)
     run(s, 1_000) // 先让它补上一枚
-    expect(synapticAccelerantRemainMs(s)).toBe(SYNAPTIC_ACCELERANT_MS)
+    // 累加语义（2026-10-03）：补后 = 原剩余 ＋ 24 小时 − 这一拍
+    expect(synapticAccelerantRemainMs(s)).toBe(leftBefore + SYNAPTIC_ACCELERANT_MS - 1_000)
     const trainedBefore = skillsTrained(s, BOOST_SKILL)
     const progressBefore = s.skills.queue[0]!.progressMs
     run(s, 5 * 60_000)

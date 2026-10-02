@@ -750,6 +750,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     zh: "效果不足以练完当前这一级时，自动用掉一枚同效果的加速剂；道具用光时自动关闭。离线期间同样生效。",
     en: "When the active dose can no longer cover the level being trained, another dose of the same boost is used automatically; it switches itself off when you run out. Works while offline too.",
   },
+  /* 2026-10-03 船长报障「自动续用不是开关」：按钮文案随状态显示开/关（原先两态都只印「自动续用」） */
+  "ui.boost.010": { zh: "自动续用：开", en: "Auto-renew: on" },
+  "ui.boost.011": { zh: "自动续用：关", en: "Auto-renew: off" },
   "ui.boost.006": { zh: "持有 ×{p1}", en: "×{p1} on hand" },
   "ui.boost.004": {
     zh: "当前没有技能加速类道具：可在工业页「实验室」按批生产。",
@@ -1441,7 +1444,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    * （BOM 每批到点才扣 ⇒ 材料没被吃掉、仍在仓库/货舱里）。
    */
   "ui.ActivityBar.068": { zh: "已停线：已完成批保留，当前那一批的进度丢弃。", en: "The line stopped: finished batches are kept; the current batch's progress is lost." },
-  "ui.ActivityBar.069": { zh: "停线：已完成批保留，当前那一批的进度丢弃；材料未被扣取，仍在仓库。", en: "Stop the line: finished batches are kept and the current batch's progress is lost; no materials were consumed and they stay in storage." },
+  "ui.ActivityBar.069": { zh: "停线：已完成批保留，当前那一批的进度丢弃；材料未被扣取，仍在仓库。", en: "Stop the line: finished batches are kept and the current batch's progress is lost; no materials were consumed and they stay in storage." },
   /* 旧版活动栏「最小化」（**2026-10-02 船长令**：「给旧版界面的活动窗口添加个最小化的按钮，点击后活动窗口高度缩小，只显示标题（写着活动的那一行）」） */
   "ui.ActivityBar.070": { zh: "收起活动栏（只留标题行）", en: "Collapse the activity bar (title row only)" },
   "ui.ActivityBar.071": { zh: "展开活动栏", en: "Expand the activity bar" },

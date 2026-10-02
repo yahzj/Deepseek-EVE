@@ -127,6 +127,10 @@ export const SYNAPTIC_ACCELERANT_RENEW_TAIL_MS = 60_000
  * ⑤ **离线期间同样生效**（本函数挂在引擎每拍上，离线大推进与离线分片走同一条路径）。
  *
  * 单点归属：本函数是"自动补用"的**唯一实现**（界面开关只改 `state.boostAutoRenew`，不自己扣料）。
+ *
+ * ⚠ **2026-10-03 修订（船长报障「点自动续用的时候会无视当前剩余时间直接使用一个新的」⇒ 批复「按你建议改」）**：
+ * 补用的落法由"**重置**成完整一剂"改为"**累加**在剩余之上"（③ 的无缝判据不变）——
+ * 见下面 `skillBoostUntilMs` 那一行的说明。
  */
 export function syncBoostRenew(state: GameState, ctx: SimContext): void {
   if (state.boostAutoRenew !== true) return
@@ -164,7 +168,14 @@ export function syncBoostRenew(state: GameState, ctx: SimContext): void {
      ⚠ "不可叠用"仍成立：走到这里时剩余时间**已经不足以练完当前这一级**，补的这一枚是**接续**，
      不是叠加（还剩很久时上面那行就早退了）。 */
   takeOne(state, SYNAPTIC_ACCELERANT_ITEM_ID)
-  state.skillBoostUntilMs = state.gameMs + SYNAPTIC_ACCELERANT_MS
+  /**
+   * **累加，不重置**（**2026-10-03 修 · 船长报障「点自动续用的时候会无视当前剩余时间直接使用一个新的」**）：
+   * 补的这一枚**接在剩余之上**（还剩 2 小时 ⇒ 变 26 小时）。原先写的是 `state.gameMs + MS` ⇒
+   * **玩家手上那一段剩余被白白丢掉**（真档里剩十几小时又碰上长技能时最刺眼）。
+   * ⚠ 已经过期 / 本来就没生效时 `max(...)` 取 `gameMs` ⇒ 仍是"从此刻起 24 小时"，与旧行为**同值**；
+   * 触发判据（③ 剩余不足以练完当前这一级）也一字未动 ⇒ 只有"还剩着就补"的那一档变了。
+   */
+  state.skillBoostUntilMs = Math.max(state.gameMs, state.skillBoostUntilMs ?? 0) + SYNAPTIC_ACCELERANT_MS
   if (offlineRenewTally !== null) {
     /* ④ 离线期间**逐枚不写日志**（船长选案）：只记账，上线时由"离线结算完成"那一句汇总交代 */
     offlineRenewTally += 1
