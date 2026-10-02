@@ -1434,7 +1434,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.main.011": { zh: "非法的备份文件名。", en: "Invalid backup file name." },
   "ui.main.012": { zh: "选择要导入的存档文件", en: "Choose a save file to import" },
   "ui.main.013": { zh: "导入此存档", en: "Import this save" },
-  "ui.main.014": { zh: "存档 JSON", en: "Save JSON" },
+  /** ⟪文案调整 2026-10-02⟫ 船长令「**直接写成『加载存档文件』**」：本 id = 系统文件对话框里的**类型名**（导入/导出共用），
+   *  「JSON」是文件格式名、玩家不必懂（whale-copy §2 第 4 条）⇒ 改「存档文件」。 */
+  "ui.main.014": { zh: "存档文件", en: "Save file" },
   "ui.Achievements.001": { zh: "尚未获得", en: "Not earned yet" },
   "ui.Achievements.002": { zh: "已获得（时间未记录）", en: "Earned (time not recorded)" },
   "ui.Achievements.003": { zh: "获得于 {t}", en: "Earned {t} ago" },
@@ -2373,6 +2375,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
      = 网「关推进器」对 C 族无效）——接在 `ui.foeIntro.107`（冲锋那句）后面，只给四件虫群冲锋器用
      （`FoeMountDef.charge.webImmune`，A 族那件不带）。 */
   "ui.foeIntro.109": { zh: "；冲锋不会被网子解除", en: "; webs cannot cancel this charge" },
+    /** R 族（光环）瞬光跃迁仪（2026-10-03 补：此前没接进 `mountEffectText` ⇒ 手册敌舰详情整节"特殊装置"缺失） */
+    "ui.foeIntro.110": { zh: "本体被命中时朝期望交距位移，单跳不超过 {p1} m", en: "Displaces toward its desired range when hit; no more than {p1} m per jump" },
+    /** R 族（光环）闪烁过载装置（同上，2026-10-03 补） */
+    "ui.foeIntro.111": { zh: "每次闪现后护盾回满，结构 −上限的 {p1}%", en: "Shields refill after each blink; hull −{p1}% of max" },
   /* ── 入侵「重复出击」（2026-09-25 船长令：「入侵活动的悬赏，允许玩家开启自动重复，照常计算返回时间」）── */
   "ui.weekend.106": { zh: "重复出击", en: "Repeat assault" },
   "ui.weekend.107": { zh: "开启重复出击：每场从该星系的入侵舰队里重抽一支，胜利后自动返航（返航路程 = 单程）、随后自动再次出发；该星系被夺回或活动结束时自动停止", en: "Start repeat assault: each run draws a fresh invader fleet from that system; after a win the fleet flies home (return leg = one way) and sets out again automatically. It stops when the system is reclaimed or the event ends" },
@@ -2412,12 +2418,21 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormholeSalvage.041": { zh: "🕳 战果里翻出{p1}：已装进货仓。", en: "🕳 {p1} turned up in the spoils: stowed in the hold." },
   "core.wormholeSalvage.042": { zh: "🕳 战果里翻出{p1}：货仓腾不出地方 ⇒ 先放进临时空间（到「货仓」页整理进货仓）。", en: "🕳 {p1} turned up in the spoils: no room in the hold, so it went to temporary space (sort it into the hold from the Hold page)." },
   "core.wormholeSalvage.043": { zh: "🕳 战果里翻出{p1}：货仓与临时空间都放不下 ⇒ 先散落在该地点（腾出空间后回来拾取）。", en: "🕳 {p1} turned up in the spoils: neither the hold nor temporary space can take it, so it was left at the site (come back for it once you have room)." },
-  "core.wormholeSalvage.044": { zh: "🕳 放进临时空间：{p1}（占 {p2} 格）——到「货仓」页整理进货仓或丢弃（离开货仓页前必须处理）。", en: "🕳 Moved into temporary space: {p1} (takes {p2} slots) — sort it into the hold or discard it on the Cargo page; it has to be handled before you leave that page." },
-  "core.wormholeSalvage.045": { zh: "🕳 装舱：{p1}（占 {p2}×{p3} 格）· 货仓 {p4}/{p5} 格。", en: "🕳 Stowed: {p1} (takes {p2}×{p3} slots) · hold {p4}/{p5} slots." },
-  "core.wormholeSalvage.046": { zh: "🕳 抛弃：{p1} ×{p2}（货仓 {p3}/{p4} 格）。", en: "🕳 Discarded: {p1} ×{p2} (hold {p3}/{p4} slots)." },
-  "core.wormholeSalvage.047": { zh: "🕳 残骸堆里翻出{p1}：货仓腾不出 {p2}×{p3} ⇒ 先放进临时空间（到「货仓」页整理进货仓）。", en: "🕳 Pulled {p1} out of the wreck pile: {p2}×{p3} will not fit in the hold ⇒ it goes into temporary space first (sort it into the hold on the Cargo page)." },
-  "core.wormholeSalvage.048": { zh: "🕳 遗迹深处发现{p1}：货仓腾不出 {p2}×{p3} ⇒ 先放进临时空间（到「货仓」页整理进货仓）。", en: "🕳 Found {p1} deep in the ruins: {p2}×{p3} will not fit in the hold ⇒ it goes into temporary space first (sort it into the hold on the Cargo page)." },
-  "core.wormholeSalvage.049": { zh: "🕳 遗迹深处发现{p1}：货仓与临时空间都放不下 ⇒ 先散落在该地点（腾出空间后回来拾取）。", en: "🕳 Found {p1} deep in the ruins: neither the hold nor temporary space has room ⇒ it is left lying at that spot (come back for it once you free up space)." },
+  /**
+   * ⟪2026-10-02 船长令⟫「禁止打捞普通残骸」（开关在**货仓页**）：
+   * `.044` = **一条 id 两处用** —— ① core 的**拒绝原因**（本格只剩普通残骸时，拒绝动作且不扣回合）
+   * ② 货仓页开关打开时的**状态行**（界面 `tr` 渲染它）。中文为船长给的原文。
+   * `.045` = 打捞动作写了"留在原地的普通残骸堆数"（`{p1}` = 本格此刻还剩多少堆普通残骸）。
+   */
+  "core.wormholeSalvage.044": { zh: "当前禁止打捞普通残骸。", en: "Common-wreck salvage is currently blocked." },
+  "core.wormholeSalvage.045": { zh: "🕳 本次打捞跳过 {p1} 堆普通残骸。", en: "🕳 Skipped {p1} piles of common wrecks in this salvage." },
+  /* ⟪2026-10-02 合并让号⟫ 与一号「禁止打捞普通残骸」批（main）撞号：本侧 6 条打捞日志由 `.044~.049` 顺延为 `.046~.051`（后合并的一侧让号，他的 `.044/.045` 不动）。 */
+  "core.wormholeSalvage.046": { zh: "🕳 放进临时空间：{p1}（占 {p2} 格）——到「货仓」页整理进货仓或丢弃（离开货仓页前必须处理）。", en: "🕳 Moved into temporary space: {p1} (takes {p2} slots) — sort it into the hold or discard it on the Cargo page; it has to be handled before you leave that page." },
+  "core.wormholeSalvage.047": { zh: "🕳 装舱：{p1}（占 {p2}×{p3} 格）· 货仓 {p4}/{p5} 格。", en: "🕳 Stowed: {p1} (takes {p2}×{p3} slots) · hold {p4}/{p5} slots." },
+  "core.wormholeSalvage.048": { zh: "🕳 抛弃：{p1} ×{p2}（货仓 {p3}/{p4} 格）。", en: "🕳 Discarded: {p1} ×{p2} (hold {p3}/{p4} slots)." },
+  "core.wormholeSalvage.049": { zh: "🕳 残骸堆里翻出{p1}：货仓腾不出 {p2}×{p3} ⇒ 先放进临时空间（到「货仓」页整理进货仓）。", en: "🕳 Pulled {p1} out of the wreck pile: {p2}×{p3} will not fit in the hold ⇒ it goes into temporary space first (sort it into the hold on the Cargo page)." },
+  "core.wormholeSalvage.050": { zh: "🕳 遗迹深处发现{p1}：货仓腾不出 {p2}×{p3} ⇒ 先放进临时空间（到「货仓」页整理进货仓）。", en: "🕳 Found {p1} deep in the ruins: {p2}×{p3} will not fit in the hold ⇒ it goes into temporary space first (sort it into the hold on the Cargo page)." },
+  "core.wormholeSalvage.051": { zh: "🕳 遗迹深处发现{p1}：货仓与临时空间都放不下 ⇒ 先散落在该地点（腾出空间后回来拾取）。", en: "🕳 Found {p1} deep in the ruins: neither the hold nor temporary space has room ⇒ it is left lying at that spot (come back for it once you free up space)." },
   "ui.CommsReader.001": { zh: "来信方", en: "From" },
   "ui.CommsReader.002": { zh: "送达", en: "Delivered" },
   "ui.CommsReader.003": { zh: "这封通讯的性质：提示只是指个方向，委托才是协会派下来的活", en: "What kind of message this is: a hint only points you in a direction, while a contract is real work handed down by the Association" },
@@ -4517,8 +4532,13 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   //   开发侧日期（英文那列本来就没有这句）——「版本/日期/复核/待定/占位/口径等开发文本留在开发侧，发现残留即清理」（AGENTS.md §5）
   "ui.SaveManager.011": { zh: "备份 = 把当前进度复制成时间戳文件（保存在游戏数据目录），最多 30 份。⚠ 恢复 / 导入不会自动备份原档——想留退路请先点「备份当前档」；删除 = 移除所选备份文件，不影响当前档。导入 = 从任意存档文件恢复，导入时会按文件保存时刻与现在的时间差补齐离线进度；导出 = 把当前进度存成文件（手机网页会优先弹系统分享：选「存储到文件」或发给自己；浏览器不支持分享时才改为下载到下载目录——若内置浏览器拦了下载，请用系统浏览器打开本页）。", en: "Back up = copies the current progress into a timestamped file (kept in the game data folder), up to 30 of them. ⚠ Restoring or importing does not back up the old save automatically — click Back up current save first if you want a fallback. Delete = removes the selected backup file and leaves the current save alone. Import = restores from any save file, catching up offline progress from the gap between when the file was written and now. Export = saves the current progress to a file (mobile web opens the system share sheet first: choose Save to Files or send it to yourself; if the browser cannot share, it downloads to your downloads folder instead — and if an in-app browser blocks the download, open this page in your system browser)." },
   "ui.SaveManager.012": { zh: "备份当前档", en: "Back up current save" },
-  "ui.SaveManager.013": { zh: "选择一个 .json 存档文件导入（⚠ 不备份原档；按时间差补齐离线进度）", en: "Choose a .json save file to import (⚠ the old save is not backed up; offline progress is caught up from the time gap)" },
-  "ui.SaveManager.014": { zh: "导入存档…", en: "Import save…" },
+  /** ⟪文案调整 2026-10-02⟫ 同上：悬停说明里的 **`.json`** 去掉（⚠ 后半句一字未动）。 */
+  "ui.SaveManager.013": { zh: "选择一个存档文件导入（⚠ 不备份原档；按时间差补齐离线进度）", en: "Choose a save file to import (⚠ the old save is not backed up; offline progress is caught up from the time gap)" },
+  /**
+   * ⟪文案调整 2026-10-02⟫ 船长令「玩家表示，打开新游戏的『加载json格式文件』看不懂，**直接写成『加载存档文件』**」。
+   * 本 id = **新游戏页与存档页共用的那个按钮**（`panels/ModeChoice.tsx` ／ `panels/SaveManager.tsx`）⇒ 改表即两处同时生效。
+   */
+  "ui.SaveManager.014": { zh: "加载存档文件", en: "Load save file" },
   // 存档存储体检与告警（2026-09-25 船长令）：修「玩家 · MacBook · Safari 关掉游戏后存档丢失」——
   // 网页版的存档在浏览器里，浏览器不给写时必须让玩家看见，不许静默丢档。
   "ui.saveGuard.001": { zh: "存储状态", en: "Storage status" },
@@ -4568,6 +4588,13 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 导入"没读到文件"的可见提示（2026-09-30：手机 UC 报障"点了没反应"⇒ 取消不再静默；
      ⚠ 真取消与"选择器没弹出来"无法区分，所以这句要**两种情况都说得通**并给一条出路） */
   "ui.SaveManager.031": { zh: "没有读到存档文件。若刚才没有弹出文件选择器（部分手机浏览器的内置内核不支持），请用系统自带浏览器打开本页再试一次。", en: "No save file was read. If no file picker appeared (some in-app mobile browsers do not support it), open this page in your phone's own browser and try again." },
+  /**
+   * ⟪文案调整 2026-10-02⟫ **甲案**（船长令）：新游戏页导入成功后**先给交代、玩家自己点「进入游戏」** ——
+   * 原先那一刻 `modeChoiceNeeded()` 翻假 ⇒ 整个悬浮窗**无声消失**，玩家看不到任何成功确认（`ui.SaveManager.003`
+   * 那句还写着「先点『备份当前档』」，而**新游戏页根本没有那个按钮**）⇒ 这两条专为该页写。
+   */
+  "ui.SaveManager.032": { zh: "已导入存档", en: "Save imported" },
+  "ui.SaveManager.033": { zh: "进入游戏", en: "Enter the game" },
   // 2026-09-25 船长定文案：「事件日志应出现「有入侵舰队出现！」」⇒ 开局那条日志改短句（其余三条待船长定）
   "ui.weekend.001": { zh: "有入侵舰队出现！", en: "Invader fleets have appeared!" },
   "ui.weekend.002": { zh: "入侵核心已被打通：旗舰现身。", en: "The invasion core has been broken through: the flagship has appeared." },
@@ -5664,7 +5691,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     en: "Formation is {p1} ships: adding more raises total mass and cuts the turns available for this run, making it more dangerous.",
   },
   "ui.Wormhole.378": { zh: "围剿者 · {p1}：挡路，打掉才能通过；停在这一格即开战", en: "Sweeper · {p1}: blocks the route — destroy it to pass; stopping on this tile starts a fight" },
-  "ui.Wormhole.379": { zh: "丢掉「{p1}」会少 {p2} 回合：可能走不到想去的格子（撤离不受影响，任何回合数都能撤）。", en: "Discarding “{p1}” costs {p2} turns: you may not reach the tile you are aiming for — withdrawing is unaffected and works with any number of turns left." },
+  /**
+   * ⟪2026-10-02 船长令⟫ 洞内「禁止打捞普通残骸」开关（**座落在货仓页**，船长指定）。
+   * `.379` = 开关标签（中文为船长给的原文）；「当前禁止打捞普通残骸」= **一条 id 两处用**
+   * （core 拒绝原因 `core.wormholeSalvage.044` ＋ 界面状态行），按"同文并条"口径不另立第二条。
+   */
+  "ui.Wormhole.379": { zh: "禁止打捞普通残骸", en: "Block common-wreck salvage" },
+  /* ⟪2026-10-02 合并让号⟫ 同上批撞号：本侧「丢掉…会少回合」由 `ui.Wormhole.379` 顺延为 `.380`（`.379` 归一号的开关标签）。 */
+  "ui.Wormhole.380": { zh: "丢掉「{p1}」会少 {p2} 回合：可能走不到想去的格子（撤离不受影响，任何回合数都能撤）。", en: "Discarding “{p1}” costs {p2} turns: you may not reach the tile you are aiming for — withdrawing is unaffected and works with any number of turns left." },
   "ui.Wormhole.363": { zh: "。", en: "." },
   "ui.Wormhole.364": { zh: "」", en: "”" },
   "ui.WormholeScan.001": { zh: "枚 · 研究不消耗时间", en: "cores · research takes no time" },

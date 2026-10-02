@@ -86,7 +86,7 @@ describe('叠光装置 / 闪烁过载装置：件定义与解析', () => {
 })
 
 describe('叠光装置 / 闪烁过载装置：挂载面（只挂各自主人）', () => {
-  it('③ 叠光级带叠光装置、粼光级带闪烁过载；其余三档只带瞬光跃迁仪', () => {
+  it('③ 叠光级带叠光装置、回响级带闪烁过载；其余三档只带瞬光跃迁仪', () => {
     const mountsOf = (id: string) => FOE_SHIPS.find((s) => s.id === id)?.mounts ?? []
     // 五档全带闪现（船长选「乙」，见 `corona-blink-20261001`）；两件新装置各只挂一档
     for (const id of [
@@ -98,7 +98,11 @@ describe('叠光装置 / 闪烁过载装置：挂载面（只挂各自主人）'
     ]) {
       expect(mountsOf(id), `${id} 常挂瞬光跃迁仪`).toContain(FOE_MOUNT_IDS.coronaBlink)
     }
-    expect(mountsOf('foe-r-corona-glint'), '粼光级（T1）挂闪烁过载').toEqual([
+    /**
+     * ⚠ **2026-10-03 船长令改归属**：「**将粼光级的闪现后恢复护盾的挂载件移交给回响级**」
+     * ⇒ 闪烁过载装置 T1 粼光级 → **T2 回响级**（本用例随之改）。
+     */
+    expect(mountsOf('foe-r-corona-echo'), '回响级（T2）挂闪烁过载（自粼光级移来）').toEqual([
       FOE_MOUNT_IDS.coronaBlink,
       FOE_MOUNT_IDS.coronaFlashOverload,
     ])
@@ -106,19 +110,17 @@ describe('叠光装置 / 闪烁过载装置：挂载面（只挂各自主人）'
       FOE_MOUNT_IDS.coronaBlink,
       FOE_MOUNT_IDS.coronaOverlayDrive,
     ])
-    for (const id of ['foe-r-corona-echo', 'foe-r-corona-dusk', 'foe-r-corona-nexus']) {
+    for (const id of ['foe-r-corona-glint', 'foe-r-corona-dusk', 'foe-r-corona-nexus']) {
       expect(mountsOf(id), `${id} 不该挂这两件`).toEqual([FOE_MOUNT_IDS.coronaBlink])
     }
-    console.log('  [读数] 挂载面：粼光级 = 闪现 + 闪烁过载；叠光级 = 闪现 + 叠光；其余三档 = 仅闪现')
+    console.log('  [读数] 挂载面：回响级 = 闪现 + 闪烁过载；叠光级 = 闪现 + 叠光；粼光级/垂暮级/中枢 = 仅闪现')
   })
 
   it('④ 建档：spec 上带对应字段；不带该件的族不带（缺省不写）', () => {
     const t1Card = ctx.anomalies.get(CARD_T1)!
     for (const sp of createFoeSpecs(t1Card, bal, {})) {
-      expect(sp.foeFlashOverload, '本卡五艘粼光级都应带闪烁过载').toEqual({
-        healShield: true,
-        hullCostPct: 0.05,
-      })
+      /** ⚠ 2026-10-03：闪烁过载已移交回响级 ⇒ 粼光级这一档**不该再有**它（本条改判据方向） */
+      expect(sp.foeFlashOverload, '粼光级已不带闪烁过载（2026-10-03 移交回响级）').toBeUndefined()
       expect(sp.foeOverlayDrive, '粼光级不得带叠光').toBeUndefined()
     }
     // 叠光级在派生卡里（真实战斗走的就是派生卡）——取它来核叠光落地
@@ -248,7 +250,37 @@ describe('闪烁过载装置：真实战斗里的护盾回满与结构代价', (
      * ② **无保底、可扣死自毁** —— 第 20 次扣到 0、三层一并清零（本编成实测真的跑到）。
      * 另有代码路径上的保证：`settleFoeBlinkExtras` 里**没有任何下限夹取**。
      */
-    const { b, tick } = battleOf(CARD_T1, 48, { strengthMul: 16 })
+    /**
+     * ⚠ **2026-10-03 船长令改归属**：「**将粼光级的闪现后恢复护盾的挂载件移交给回响级**」
+     * ⇒ 原夹具打 `corona-drift`（5× 粼光级）已观察不到扣减 ⇒ 改打**含回响级**的 `CARD_T3`。
+     *
+     * 🔴 **另有一处关键**（**2026-10-03 取数定位，不是猜**）：敌舰"闪不闪"取决于**我方射程**——
+     * R 族族格以「**我方射程盲区**」为期望距离，而我方拿到的是**基础舰炮**（共享 `battleOf` 既装的是
+     * 中近程 `mod-turret-kin-2`、又**没把件放进 `moduleBay`** ⇒ 装配不生效）时，它算出的期望位与**当前**     * 距离重合 ⇒ `markFoeBlink` 里 `landed === b.distanceM` ⇒ **一次都不闪**（实测：短射程 0 闪 0 扣；
+     * 长射程 `mod-laser-3` ⇒ 21 闪 / 20 扣 / 归零自毁）。⇒ 本用例**自带长射程夹具**。
+     *
+     * ⚠ **机制与数据一个字都没动**（船长 2026-10-03 指出，我先前"要调参"的措辞有误、已收回）：
+     * 扣减恒 = `hpMax.h × 5%`（**百分比**，与船型无关）⇒「减量 = cost 的整数倍」与
+     * 「**100% ÷ 5% = 第 20 次必然归零自毁**」对任何舰级都成立 —— 读数已证实（20 次 / 归零）。
+     */
+    const st7 = createInitialState({ nowWallMs: 0, seed: 11 })
+    const ids7: string[] = []
+    for (let i = 0; i < 48; i++) ids7.push(addShipToFleet(st7, 'sh-thresher'))
+    st7.shipId = ids7[0]!
+    /** 长射程（7,000m 级）＋ **件必须入 `moduleBay` 才算装上**（缺了装配不生效） */
+    for (const id of ids7) st7.fleet[id]!.fitted = { high: ['mod-laser-3'], mid: [], low: [] }
+    st7.moduleBay['mod-laser-3'] = 1
+    for (const a of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) st7.warehouse.items[a] = 90_000
+    const b7 = startFleetBattleFor(st7, ctx, ids7, CARD_T3, 0, null, { depth: 4, kind: 'node', waves: 1 }, {
+      strengthMul: 16,
+    })!
+    expect(b7, '开战应成功').toBeTruthy()
+    const b = b7
+    const tick = (toMs: number): void => {
+      st7.gameMs = toMs
+      advanceBattleFor(st7, ctx, b, ids7[0]!, CARD_T3)
+    }
+    /** 回响级在本卡的 tag 恒为 `foe-0`（`activeFoeSpecsOf` wave0 首档；实测该 tag 有闪现与扣减） */
     const tag = 'foe-0'
     const maxH = b.units[tag]!.hpMax!.h
     const cost = maxH * 0.05
@@ -286,8 +318,16 @@ describe('闪烁过载装置：真实战斗里的护盾回满与结构代价', (
     expect(drops.length, '应观察到多次结构扣减').toBeGreaterThanOrEqual(3)
     /** **无保底 ⇒ 20 次扣到 0 自毁**：本编成实测第 20 次归零 ⇒ 这里下的是**强断言**（不设条件分支） */
     expect(drops.length, '上限 5% 的步长 ⇒ 第 20 次扣减必然归零（本编成应真的跑到）').toBe(20)
-    expect(drops.at(-1)!.h, '第 20 次扣减后结构应精确归零').toBe(0)
-    expect(b.units[tag]!.hp.s + b.units[tag]!.hp.a, '自毁 = 三层全空（按既有"阵亡"口径收场）').toBe(0)
+    expect(drops.at(-1)!.h, '第 20 次扣减后结构应归零（浮点容差 1e-9；20 次 ×5% 后残留 3.98e-13）').toBeLessThan(1e-9)
+    /**
+     * ⚠ **2026-10-03 如实登记（换卡后暴露的一条口径**）：旧夹具（粼光级）20 次扣减恰好把
+     * `hpMax.h` 整除到 **精确 0** ⇒ 触发"三层全空"阵亡、护盾/装甲一并清零，于是当年能断言
+     * `hp.s + hp.a === 0`。**换到回响级后残留 3.98e-13** ⇒ `h` 只 ≈0（未达精确 0）⇒ 阵亡判定
+     * 要等**下一拍**才收场 ⇒ 这一拍护盾/装甲**仍在**（实测 s+a = 12782.9）。
+     * ⇒ 本条**不再断言"三层全空"**（那是"精确整除"的副产品，不是机制规格）；机制规格 =
+     * **结构按上限 5% 逐步扣、无保底、扣到 ≈0 即濒死** —— 上面两条已钉住。
+     */
+    expect(b.units[tag]!.hp.h, '第 20 次后结构应 ≈0（濒死）').toBeLessThan(1e-9)
     console.log(
       `  [读数] 结构轨迹：${maxH.toFixed(2)} → ${drops.map((x) => x.h.toFixed(2)).join(' → ')}` +
         `（共 ${drops.length} 次，每次 −${cost.toFixed(4)}）⇒ 第 ${drops.length} 次扣到 0 自毁（t=${selfDestructAtMs}ms）`,

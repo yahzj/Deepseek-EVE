@@ -14,7 +14,7 @@ import { bumpFirst, peakFirst } from './firstTasks'
 import { busyLabel, type BusyLabel } from './busyLabels'
 import type { GameState, BattleState, WormholeArchetype, WormholeFamily } from './state'
 // 甲案（本地化批二 · 2026-09-27）：闸门拒因改走结构化（`{ error, errorId, errorParams }`）
-import type { CoreBlockReason } from './engine'
+import type { CommandResult, CoreBlockReason } from './engine'
 import { addLog, haltActivityForSwitch, haulingHalt, miningHalt, salvageHalt, wormholeScanHalt } from './state'
 import {
   gateMainActivityHandoff,
@@ -611,6 +611,19 @@ export interface WormholeState {
    * （触发器 `{ kind: 'wormholeSiege' }` 读它）。可选字段 ⇒ 老档零迁移（老档首次下到 7 层时补送）。
    */
   siegeHintShown?: boolean
+  /**
+   * **禁止打捞普通残骸**（**2026-10-02 船长令**：原话「**只做甲，坐在货仓背包处**」＋ 文案三条
+   * 「禁止打捞普通残骸／当前禁止打捞普通残骸／本次打捞跳过 N 堆普通残骸」）。
+   *
+   * 口径：**只作用于手动进洞的「打捞」动作**（`wormholeSalvage.wormholeSalvageAt`）——
+   * 打开后，一次打捞只收**稀有残骸**，普通残骸**留在原地**（不删、不入货仓、不占格）；
+   * 本格只剩普通残骸时**拒绝动作且不扣回合**；堆里的 5% 货柜掷骰只按"实际收走的堆"计（少拿就少掷）。
+   * ⚠ **不影响**：采集（虚空母矿）· 战果结算的随行战利品 · **自动探索**（那是收益模拟，不是逐堆打捞）·
+   * 掉落与堆生成（稀有权重/堆数/体积一律不变）· 背包格与"超格丢货"口径。
+   *
+   * 可选字段（老档没有 = 关，保持既有行为）⇒ **老档零迁移**；开关放在**货仓页**（船长指定落点）。
+   */
+  noCommonWreckSalvage?: boolean
 }
 
 /** ⚠ **已删除（2026-09-15）**：`WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH = 2`——撤离战整条退役，不再有"第几层起要打"。 */
@@ -1571,6 +1584,25 @@ export function wormholeLeave(state: GameState): void {
   if (!run) return
   run.attending = false
   run.leftAtGameMs = state.gameMs // 记下离开时刻：回来时按这段时长前移战斗时钟（不然会"补算"成战时间）
+}
+
+/**
+ * **「禁止打捞普通残骸」是否打开**（唯一读取点；语义与影响面见 `WormholeState.noCommonWreckSalvage`）。
+ * 界面（货仓页开关）与引擎（`wormholeSalvageAt` 的取材判据）**必须走这一把尺**。
+ */
+export function noCommonWreckSalvageOn(state: GameState): boolean {
+  return state.wormhole.noCommonWreckSalvage === true
+}
+
+/**
+ * **开关：禁止打捞普通残骸**（**2026-10-02 船长令**；UI 落点 = **货仓页**，船长指定）。
+ *
+ * 关闭时**删字段**（与读档归一里"只在为真时写"同形）⇒ 存档形态稳定、老档零迁移。
+ */
+export function setNoCommonWreckSalvage(state: GameState, on: boolean): CommandResult {
+  if (on) state.wormhole.noCommonWreckSalvage = true
+  else delete state.wormhole.noCommonWreckSalvage
+  return { ok: true }
 }
 
 /**

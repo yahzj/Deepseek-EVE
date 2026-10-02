@@ -274,16 +274,39 @@ const localStorageBridge: WhaleApi = {
       let polling = false
       /** 看门狗句柄（见下）：`finish` 里统一清掉，免得收尾后还留着计时器 */
       let watchdog = 0
+      /** ⟪2026-10-02⟫ "有没有离开前台"的状态轮询句柄（同上，收尾时清掉） */
+      let fgProbe = 0
       const finish = (r: { ok: boolean; text?: string; canceled?: boolean; error?: string }): void => {
         if (done) return
         done = true
         if (watchdog !== 0) window.clearTimeout(watchdog)
+        if (fgProbe !== 0) window.clearInterval(fgProbe)
         input.remove()
         window.removeEventListener('focus', onFocusBack)
         window.removeEventListener('blur', onBlur)
         document.removeEventListener('visibilitychange', onVisibleBack)
         document.removeEventListener('visibilitychange', onHiddenAny)
         resolve(r)
+      }
+      /**
+       * **读一个已选中的文件**（`change` 与"轮询接手"两条路共用）。
+       * `finish` 自身幂等（`done`）⇒ 两条路先后都到也不会重复读、不会重复 resolve。
+       */
+      const readPicked = (file: File): void => {
+        if (file.size > 10 * 1024 * 1024) {
+          finish({ ok: false, error: tr("ui.storage.006") })
+          return
+        }
+        const reader = new FileReader()
+        reader.onload = (): void => {
+          /**
+           * ⚠ 去掉 UTF-8 BOM（2026-09-22 同批加固）：玩家常把存档用记事本另存一次
+           * （Windows 记事本会加 BOM）⇒ `JSON.parse('\uFEFF{…}')` 直接抛错。剥一层更稳。
+           */
+          finish({ ok: true, text: String(reader.result ?? '').replace(/^\uFEFF/, '') })
+        }
+        reader.onerror = (): void => finish({ ok: false, error: tr("ui.storage.007") })
+        reader.readAsText(file, 'utf-8')
       }
       /**
        * 兼容兜底：部分浏览器不派发 `cancel` —— 对话框关闭后（焦点/可见性回来）且仍没选到文件时视为取消。
@@ -299,7 +322,17 @@ const localStorageBridge: WhaleApi = {
         let waited = 0
         const poll = (): void => {
           if (done) return
-          if ((input.files?.length ?? 0) > 0) return // 已经选到文件 ⇒ 等 change 接手
+          /**
+           * ⚠ ⟪**2026-10-02**⟫ **有文件就自己接手读**（不再"等 `change` 接手"）：
+           * 个别内核（**手机 Firefox** 等）选完文件后**不派发 `change`**，而原写法一见 `files` 非空就
+           * **停止轮询又不等结果** ⇒ 既不 resolve 也不再重试 ⇒ 界面**永久 busy**，玩家看到的就是
+           * 「选了文件、什么都没发生」（对应报障「小米手机 · 火狐浏览器无法导入存档」）。
+           */
+          const picked = input.files?.[0]
+          if (picked !== undefined) {
+            readPicked(picked)
+            return
+          }
           waited += 300
           if (waited >= graceMs) {
             finish({ ok: false, canceled: true })
@@ -321,9 +354,24 @@ const localStorageBridge: WhaleApi = {
        *
        * 判据：点下去之后 `WATCHDOG_MS` 内**页面既没失焦也没隐藏**（＝浏览器没为选择器让出前台；
        * 正常弹选择器时窗口必然 blur / 页面必然 hidden）⇒ 判"没弹出来"，按取消返回（界面会给可见提示）。
-       * ⚠ 取 3.5 秒是留余量：个别机器上 blur 来得慢一点，也不能被误判。
+       * ⚠ **判据取多长见下面的 `WATCHDOG_MS`** —— ⟪2026-10-02⟫ 触屏已由 3.5 秒放宽到 **12 秒**
+       * （手机 Firefox 这类内核"选择器确实弹了、页面却不 blur / 不报 hidden"，3.5 秒会被误判成"没弹出来"）。
        */
-      const WATCHDOG_MS = 3500
+      /**
+       * ⟪**2026-10-02 再收紧**⟫ **触屏兜底 3.5 s → 12 s → 60 s**。
+       *
+       * 现场读数（船长转述玩家）：「**有选择器，选择存档后无反应。**」⇒ 断点在**选完之后**，两条可能：
+       * ① 该内核**不派发 `change`**（原写法"等 change 接手"⇒ 永久 busy；已由下面的轮询接手修掉）；
+       * ② 该内核**打开选择器时页面不 `blur`、也不报 `hidden`** ⇒ 兜底计时器**在玩家翻文件的这段时间照跑**，
+       *    到点即判"没弹出来"并把 `done` **永久锁死** ⇒ 玩家随后选中的文件被**静默丢弃**（旧的界面表现＝
+       *    毫无反应）。
+       * ⇒ ②要靠"把兜底放长"解决：**玩家翻文件可能花几十秒**（云盘/文件 App），故触屏给到 **60 秒**
+       *   （桌面仍 3.5 秒）。代价＝"选择器压根没弹出来"的那种机器要多等一会儿才看到提示；换来的是
+       *   **不再把真在选文件的玩家误判掉**。
+       * ⚠ 常见路径不受影响：选择器正常弹（页面 hidden/blur）⇒ 兜底直接让位；选完回来（focus/可见性）
+       * 由 `startPoll` 的 8 秒宽限收尾 ⇒ 取消与成功都**当场**有结果。
+       */
+      const WATCHDOG_MS = touchLike() ? 60000 : 3500
       let leftForeground = false
       const onBlur = (): void => {
         leftForeground = true
@@ -335,6 +383,18 @@ const localStorageBridge: WhaleApi = {
         if (done || leftForeground) return
         finish({ ok: false, canceled: true })
       }, WATCHDOG_MS)
+      /**
+       * ⟪**2026-10-02**⟫ **触屏兜底放宽**（3.5 s → 60 s，桌面仍 3.5 s）：手机内核（**Firefox** 等）
+       * 打开选择器时**可能既不 `blur` 也不报 `hidden`**（或报得慢）⇒ 计时器会在玩家翻文件的**过程中**跑完，
+       * 把"正在选文件"误判成"没弹出来"；而 `finish` 一调用就**永久锁死 `done`** ⇒ 玩家选中的文件被
+       * **静默丢弃**（报障「有选择器，选择存档后无反应」）。
+       *
+       * 同时补一条**状态轮询**（只读 `document.hidden`，**不碰 `hasFocus()`**）：
+       * 有的内核**改了可见性却不派发 `visibilitychange`**，只靠事件会漏判"已经离开前台"。
+       */
+      fgProbe = window.setInterval(() => {
+        if (document.hidden) leftForeground = true
+      }, 300)
       window.addEventListener('blur', onBlur)
       document.addEventListener('visibilitychange', onHiddenAny)
       input.addEventListener('change', () => {
@@ -343,20 +403,7 @@ const localStorageBridge: WhaleApi = {
           finish({ ok: false, canceled: true })
           return
         }
-        if (file.size > 10 * 1024 * 1024) {
-          finish({ ok: false, error: tr("ui.storage.006") })
-          return
-        }
-        const reader = new FileReader()
-        reader.onload = (): void => {
-          /**
-           * ⚠ 去掉 UTF-8 BOM（2026-09-22 同批加固）：玩家常把存档用记事本另存一次
-           * （Windows 记事本会加 BOM）⇒ `JSON.parse('\uFEFF{…}')` 直接抛错。剥一层更稳。
-           */
-          finish({ ok: true, text: String(reader.result ?? '').replace(/^\uFEFF/, '') })
-        }
-        reader.onerror = (): void => finish({ ok: false, error: tr("ui.storage.007") })
-        reader.readAsText(file, 'utf-8')
+        readPicked(file)
       })
       input.addEventListener('cancel', () => finish({ ok: false, canceled: true }))
       window.addEventListener('focus', onFocusBack)

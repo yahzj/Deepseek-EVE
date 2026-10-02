@@ -1644,6 +1644,9 @@ export {
   // 议案 A（船长 2026-09-13 批准）：临时离开 = 活动停止（进度保存）/ 返回要主控空闲 / 忙态判据
   wormholeLeave,
   wormholeResume,
+  // ⟪2026-10-02 船长令⟫ 洞内「禁止打捞普通残骸」开关（UI 落点 = 货仓页；唯一读取点 + setter）
+  noCommonWreckSalvageOn,
+  setNoCommonWreckSalvage,
   shipActivityBusy,
   // 沉船扣格：背包超格时按每格价值从低到高丢货（船长 2026-09-13 裁定）
   wormholeTrimBag,

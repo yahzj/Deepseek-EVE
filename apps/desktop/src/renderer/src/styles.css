@@ -9391,12 +9391,23 @@ html[data-locale='en'] body {
    （写着活动的那一行）」，补答「最小化按钮要放到最左侧」。
    ⚠ **收起本身不需要任何布局规则**：收起 = 下面两组**整块不渲染** ⇒ 盒子按内容自然只剩标题行高
    （它本来就是 `flex: 0 1 auto` + `max-height: 100%`）。所以这里只有那枚按钮的样式。
-   形态照同族小图标按钮（`.app-activitybar-ai`）写：透明底 + 悬停才浮出边框。 */
+   形态照同族小图标按钮（`.app-activitybar-ai`）写：透明底 + 悬停才浮出边框。
+
+   **2026-10-02 船长报障**：「活动窗口左上角的收起活动栏的按钮太小了」⇒ 两处放大（字形改线稿）：
+   ① 方块 18px → 24px（`--wui-sp-24`，原 18px 是写死值）——这一行最高的同族件是两枚 AI 徽标
+      （`.app-activitybar-ai`：12px 字 × `normal` 行高 ≈ 1.32 ＋ 上下内边距 2×2 ＋ 上下边框 2
+      ≈ 22px，图标 13px 比这行字矮）⇒ 按样式算，标题行只长高约 2px，同排其它件位置不动；
+   ② 字形由 10.5px 的文本三角（`▾` / `▸`）换成 **14px 的 SVG 线稿 `ico-fold` / `ico-unfold`**
+      （`ui/Glyphs.tsx`，**2026-09-30 船长令**为「面板正文收进标题栏」造的同一对图标；
+      工业 HUD 工位窗口就是这么用的：折叠态显示"展开"）——文本三角在 10.5px 下只有几像素，
+      正是"看着小"的主因，且线稿符合 §九「视觉物件一律 SVG 线稿」。
+   ⇒ `font-*` / `line-height` 三条随文本三角一起撤掉（字形已改 SVG，按钮内无文字）。
+   圆角同步由 4px 提到 6px（`--wui-sp-6`，与 `.app-activitybar-ai` / `.app-activitybar-scan` 齐平）。 */
 .app-activitybar-min {
   flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
-  width: 18px; height: 18px; padding: 0; line-height: 1; font-family: inherit; font-size: var(--wui-fs-2xse);
+  width: var(--wui-sp-24); height: var(--wui-sp-24); padding: 0;
   color: rgb(var(--wui-dim)); background: transparent; border: 1px solid transparent;
-  border-radius: var(--wui-sp-4); cursor: pointer;
+  border-radius: var(--wui-sp-6); cursor: pointer;
 }
 .app-activitybar-min:hover { color: rgb(var(--wui-text)); border-color: rgb(var(--wui-border)); background: rgb(var(--wui-bg-hover) / 0.6); }
 .app-activitybar-ai {

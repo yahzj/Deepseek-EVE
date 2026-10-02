@@ -699,7 +699,7 @@ export function wormholeMatterDiscardHint(itemId: string): CoreBlockReason | nul
   const deviceName = wormholeMatterDeviceOf(itemId)?.name ?? itemId
   return {
     error: `丢掉「${deviceName}」会少 ${delta} 回合：可能走不到想去的格子（撤离不受影响，任何回合数都能撤）。`,
-    errorId: 'ui.Wormhole.379',
+    errorId: 'ui.Wormhole.380',
     errorParams: { p1: deviceName, p2: delta },
   }
 }

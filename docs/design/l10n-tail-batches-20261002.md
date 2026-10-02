@@ -59,12 +59,12 @@
 
 | # | 文件 | 改动 |
 |---|---|---|
-| 1 | `packages/core/src/wormholeMatter.ts` | `wormholeMatterDiscardHint` 由 `string \| null` 改 **`CoreBlockReason \| null`**（id **`ui.Wormhole.379`** ＋ 参数 `p1` 装置名 / `p2` 回合数）；中文原串一字不改 |
+| 1 | `packages/core/src/wormholeMatter.ts` | `wormholeMatterDiscardHint` 由 `string \| null` 改 **`CoreBlockReason \| null`**（id **`ui.Wormhole.380`**（合并让号前为 `.379`，与一号「禁止打捞」批撞号后顺延）＋ 参数 `p1` 装置名 / `p2` 回合数）；中文原串一字不改 |
 | 2 | `apps/desktop/.../panels/Wormhole.tsx` | **两处**渲染点改走 `cmdText(...)`（临时空间那一行的副注 ＋ 丢弃确认条） |
 | 3 | `packages/core/src/combatMath.ts` | **删掉 `layerMultText()`**（中文整句 `盾 ×1.5 · 甲 ×0.75 · 结构 ×1`）——它由伤害徽章悬停直接显示 ⇒ 英文界面必出中文 |
 | 4 | `packages/core/src/combat.ts` · `index.ts` | 同步去掉 `layerMultText` 的再导出（全仓 0 引用后才删） |
 | 5 | `apps/desktop/.../ui/shipInfo.tsx` | 伤害徽章悬停改由界面按语言组装（id **`ui.shipInfo.248`**，数字仍走 core 的 `typeLayerMult` 单一真相源）；顺手把中文全角冒号 `：` 收进模板（英文用 `:`） |
-| 6 | `packages/data/src/l10n/table.ts` | 补 2 条（`ui.Wormhole.379` · `ui.shipInfo.248`） |
+| 6 | `packages/data/src/l10n/table.ts` | 补 2 条（`ui.Wormhole.380` · `ui.shipInfo.248`） |
 
 **读数**：`l10n:core-zh` 复核 —— `wormholeMatter.ts` **0 处**；`combatMath.ts` 剩 1 处为**误判**（`typeLayerMult` 返回 number、中文只在行尾注释里，工具暂不剥行尾注释，已在报告里登记）。
 
@@ -240,12 +240,12 @@
 
 | # | 位置 | 新 id | 内容 |
 |---|---|---|---|
-| 1 | `wormholeSalvage.ts:1053` | `044` | 放进临时空间（`p1` 名 · `p2` 格数） |
-| 2 | `wormholeSalvage.ts:1243` | `045` | 装舱（`p1` 名 · `p2`×`p3` 占地 · `p4`/`p5` 货仓） |
-| 3 | `wormholeSalvage.ts:1333` | `046` | 抛弃（`p1` 名 · `p2` 数量 · `p3`/`p4` 货仓） |
-| 4 | `wormholeSalvage.ts:1788` | `047` | 残骸堆里翻出（货仓腾不出 `p2`×`p3`） |
-| 5 | `wormholeSalvage.ts:1851` | `048` | 遗迹深处发现（货仓腾不出 `p2`×`p3`） |
-| 6 | `wormholeSalvage.ts:1858` | `049` | 遗迹深处发现（货仓与临时空间都放不下） |
+| 1 | `wormholeSalvage.ts:1053` | `046`（合并让号前为 `044`）| 放进临时空间（`p1` 名 · `p2` 格数） |
+| 2 | `wormholeSalvage.ts:1243` | `047`（原 `045`）| 装舱（`p1` 名 · `p2`×`p3` 占地 · `p4`/`p5` 货仓） |
+| 3 | `wormholeSalvage.ts:1333` | `048`（原 `046`）| 抛弃（`p1` 名 · `p2` 数量 · `p3`/`p4` 货仓） |
+| 4 | `wormholeSalvage.ts:1788` | `049`（原 `047`）| 残骸堆里翻出（货仓腾不出 `p2`×`p3`） |
+| 5 | `wormholeSalvage.ts:1851` | `050`（原 `048`）| 遗迹深处发现（货仓腾不出 `p2`×`p3`） |
+| 6 | `wormholeSalvage.ts:1858` | `051`（原 `049`）| 遗迹深处发现（货仓与临时空间都放不下） |
 
 **读数**：`l10n:core-zh -- wormholeSalvage` **14 → 8**（余 5 条 `addLog` ＋ 3 条 return）。
 
