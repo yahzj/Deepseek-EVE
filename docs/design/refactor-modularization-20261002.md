@@ -36,7 +36,7 @@
 
 | 文件 | 现状 | 目标切法 | 错峰对象 |
 |---|---|---|---|
-| `core/combat.ts`（10193 行） | 敌群生成/伤害结算/特效/统计混居 | 按现有 24 个分区注释切：敌群与生成 → 特效演出 → 伤害与命中 → 统计与图鉴。**4a 已拆：`combatMath.ts`（命中与伤害数学十件）** | 二号（闪现演出批） |
+| `core/combat.ts`（10193 行） | 敌群生成/伤害结算/特效/统计混居 | 按现有 24 个分区注释切：敌群与生成 → 特效演出 → 伤害与命中 → 统计与图鉴。**4a 已拆：`combatMath.ts`（命中与伤害数学十件）· 4b 已拆：`combatReport.ts`（战报与四档判定五件）** | 二号（闪现演出批） |
 | `core/engine.ts`（3828 行） | 大跨步主循环＋命令分发 | 命令分发按域拆（industry/manufacturing/lab…各自注册） | 三号（activity 护栏） |
 | `core/save.ts`（4338 行） | 序列化/归一/迁移一家 | **只允许**把纯函数（归一器）拆出，序列化主体暂不动（存档兼容） | — |
 | `renderer` 两套工业页（1476＋≈2300 行） | 同一域双写 | 先补 HUD 实验室对齐，再抽公共件合流 | 船长目视验收 |
@@ -314,6 +314,18 @@
 - `applyDamage` 参数类型 `UnitSpec['resists']` 改为等价的结构类型（shield/armor/hull 各 DamageResists）
   ——避免 combatMath 反向借 combat 的类型，保证零回边（F9 实测仍为 0 环）。
 - noUnusedLocals 闸门抓到 combat 不再内部使用的 `layerMultText`（只留再导出）——护栏生效实例。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：零渲染层改动）。
+
+### 批次 4b：combat.ts 二拆——`combatReport.ts` 战报与四档判定（2026-10-02 · 零行为变化）
+
+- 手法：`spreadWinChance` / `BattleVerdict` / `battleVerdictOf` / `captureBattleReport` /
+  `sunkShipIdsOfBattle` 五件**统计与图鉴层**（纯 state 读数/写账，只依赖 combatMath.clamp 与
+  state 类型）从 combat.ts 拆到新文件 `combatReport.ts`；combat 借回使用并原样再导出。
+- 留下 `persistFleetHullDamage`（依赖 `createPlayerSpec` 内部件）与 `settleDroneLosses`（依赖
+  `droneRecoveryRateWithBonus` 内部件）——搬走会造 combat↔combatReport 回边，留待后续整簇再动。
+- 连带：`tools/content-check.ts` 的「结算口径契约」按源码扫描 `combat.ts` 找沉船判据单点
+  ⇒ 搬移后当场报红（护栏抓到"单点搬家没改指路"）；契约改指 `combatReport.ts`，判据不变。
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：零渲染层改动）。
 

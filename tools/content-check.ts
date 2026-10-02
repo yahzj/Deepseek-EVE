@@ -1559,8 +1559,8 @@ for (const m of MODULES) {
     return out.join('\n')
   }
   check(
-    bodyOf(readSource('packages/core/src/combat.ts'), 'export function sunkShipIdsOfBattle').includes('myFleet'),
-    '结算口径契约：`combat.sunkShipIdsOfBattle`（沉船判据单点）不见了或不再看编队 —— 三套宿主会各判各的',
+    bodyOf(readSource('packages/core/src/combatReport.ts'), 'export function sunkShipIdsOfBattle').includes('myFleet'),
+    '结算口径契约：`combatReport.sunkShipIdsOfBattle`（沉船判据单点）不见了或不再看编队 —— 三套宿主会各判各的',
   )
   /** 我方"船真会沉"的编队战收场路径：每条都必须判沉船（单点本身，或包着它的助手） */
   for (const [rel, head, why] of [
@@ -1587,7 +1587,7 @@ for (const m of MODULES) {
       '那是它那套损失模型（弃船骰）的底线，删了等于"输了也不丢船"',
   )
   console.log(
-    '· 结算口径契约：4 条编队战收场路径均判沉船（判据单点 `combat.sunkShipIdsOfBattle`）· ' +
+    '· 结算口径契约：4 条编队战收场路径均判沉船（判据单点 `combatReport.sunkShipIdsOfBattle`）· ' +
       '远征那条的「归零 ⇒ 必弃船」在',
   )
 }
