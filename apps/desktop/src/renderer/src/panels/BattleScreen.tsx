@@ -1636,8 +1636,12 @@ const meSpeedRef = useRef(200)
   const desireM = Math.min(farM, Math.max(nearM, combat.myDesireM))
   const sliderV = dragV ?? approachOf(desireM, farM, nearM) * 1000
   const sliderToDesire = (v: number): number => Math.round(farM - (v / 1000) * (farM - nearM))
-  const commitDesire = (v: number): void => {
-    const r = engine.battleSetDesireAt(sliderToDesire(v))
+  /**
+   * 提交一次期望距离：`persist = true` 的调用点 = **松手那一次**与**战术按钮那一次**
+   * （2026-10-03 修：拖动中的节流提交不写盘，收尾必须写——否则拖完立刻关游戏会把这次选择丢掉）。
+   */
+  const commitDesire = (v: number, persist = false): void => {
+    const r = engine.battleSetDesireAt(sliderToDesire(v), persist)
     if (!r.ok) onToast(cmdText(r) || tr('ui.FitPage.172'), true)
   }
   /**
@@ -1676,12 +1680,12 @@ const meSpeedRef = useRef(200)
       window.clearTimeout(flushTimerRef.current)
       flushTimerRef.current = null
     }
-    if (v !== null) commitDesire(v)
+    if (v !== null) commitDesire(v, true)
     setDragV(null)
   }
   const applyTactic = (t: 'assault' | 'mid' | 'kite'): void => {
     const m = battleTacticDesire(state, engine.ctx, t)
-    commitDesire(approachOf(m, farM, nearM) * 1000)
+    commitDesire(approachOf(m, farM, nearM) * 1000, true)
   }
 
   const meStats = battle.stats

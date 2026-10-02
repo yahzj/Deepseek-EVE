@@ -11,7 +11,7 @@
  * - back：finishAtGameMs = 到家时刻（去程并入返航），到点 active=false；
  *   胜利返航不可召回（召回入口拒绝），失利/撤退返航可召回（即时回港）
  */
-import { weekendApplyBattleOutcome, weekendBattleInvolvedOf, weekendFlagshipEncounterOf } from './weekendBattle'
+import { weekendApplyBattleOutcome, weekendBattleInvolvedOf } from './weekendBattle'
 import { weekendFoeCardOf } from './weekendEvent'
 import { weekendAssaultThreatOf, weekendFoeCardsSelfPriced } from './weekendEvent'
 /** 入侵「重复出击」（2026-09-25 船长令）：每场重抽一支 ＋ 目标星系覆写（去程/返航照常算） */
@@ -295,13 +295,19 @@ export function battleTacticDesire(
  * - 主视角 / 敌卡 = 遭遇槽那条（`enc.anomalyId` = 该族旗舰卡，**不做派生**）；
  * - 偏好写**该场战斗所在星系**（`enc.galaxyId` = 本场核心）——⚠ **不能**写 `anomaly.galaxyId`：
  *   旗舰卡是隐藏卡、它自带的母港是 `galaxy-hub`，照抄会把偏好写到母港去。
+ *
+ * ⚠ **普通遭遇战也认（2026-10-03 修 · 船长报障「入侵战斗中，我方选择的期望距离不会保存」）**：
+ * 原判据只认**旗舰战**（`weekendFlagshipEncounterOf`）⇒ **入侵伏击这类普通遭遇战**里拖距离条
+ * 一律被拒（`core.expedition.001`「当前不在交火中」）——**选择既不生效、也不落偏好**。
+ * 现放宽为「**遭遇槽里任意正在打的遭遇战**」；偏好仍写**该场所在星系**（`enc.galaxyId`，
+ * 旗舰战那条的写入口径不变）。遭遇战存的 `anomalyId` 是**去掉入侵派生前缀的原卡 id**
+ * （见 `encounters.ts` 收卡那处）⇒ `ctx.anomalies.get` 一定解析得到。
  */
 export function setBattleDesire(state: GameState, desireM: number, ctx: SimContext): CommandResult {
   const whRun = state.wormhole.run
   const whBattle = whRun?.battle ?? null
-  /** 第三宿主（入侵旗舰战）：遭遇槽里挂着旗舰卡 + 那场还在（判据单点，与界面/引擎各处同源） */
-  const wb = state.encounter.active && state.encounter.battle !== null && weekendFlagshipEncounterOf(state, state.encounter)
-  const wkBattle = wb ? state.encounter.battle : null
+  /** 第三宿主（遭遇槽 —— 旗舰战与普通伏击战都走这里）：只要那场还在打就认 */
+  const wkBattle = state.encounter.active && state.encounter.battle !== null ? state.encounter.battle : null
   const battle = state.expedition.battle ?? whBattle ?? wkBattle
   if (!battle) return { ok: false, error: '当前不在交火中。', errorId: 'core.expedition.001' }
   const anchorShipId = whBattle
@@ -337,7 +343,7 @@ export function setBattleDesire(state: GameState, desireM: number, ctx: SimConte
   const minD = ctx.balance.battle.minDistanceM
   const clamped = Math.round(Math.min(maxD, Math.max(minD, desireM)))
   battle.myDesireM = clamped
-  // 记忆：远征收口写"该星系的目标距离"（跨会话沿用）；**洞内写在本趟上**、**旗舰战写本场核心星系**（见函数头注释）
+  // 记忆：远征收口写"该星系的目标距离"（跨会话沿用）；**洞内写在本趟上**、**遭遇战写本场所在星系**（见函数头注释）
   if (whBattle) {
     if (whRun) whRun.desireM = clamped
   } else if (wkBattle) {

@@ -3431,16 +3431,23 @@ export class GameEngine {
     this.notify()
   }
 
-  /** 战斗中调整期望距离（距离条拖动/战术按钮；写入并记忆偏好） */
-  battleSetDesireAt(desireM: number): CommandResult {
+  /**
+   * 战斗中调整期望距离（距离条拖动/战术按钮；写入并记忆偏好）。
+   *
+   * `persist = true` ⇒ 这一次提交**同时落盘**（**2026-10-03 修 · 船长报障「入侵战斗中，我方选择的
+   * 期望距离不会保存」**）：由界面在**松手那一次**（拖拽收尾）与**战术按钮**那一次传，拖动过程中的
+   * 节流提交仍走默认 `false`（不写盘）。
+   */
+  battleSetDesireAt(desireM: number, persist = false): CommandResult {
     const result = setBattleDesire(this.state, desireM, this.ctx)
     if (result.ok) {
       /**
-       * **只重绘、不写盘**（2026-09-13 性能修）：拖距离条时每 160ms 提交一次，若每次都整档
+       * **拖动中的节流提交只重绘、不写盘**（2026-09-13 性能修）：每 160ms 提交一次，若每次都整档
        * `persist()`（大档 JSON + localStorage 写）会把主线程顶出顿挫——船长："依旧还是有顿挫感"。
-       * 偏好不是易失数据：**自动存盘心跳**（`SAVE_INTERVAL_MS`，现 60 秒）与其它任何动作
-       * 都会把它落盘（`ensureSaveInterval` 里的定时器）。
+       * ⚠ 但**收尾那一次必须落盘**（2026-10-03）：原先全靠 60 秒自动存盘心跳兜底 ⇒ **拖完立刻关游戏
+       * 就把这次选择丢了**（玩家侧表现正是"选择的期望距离不会保存"）。收尾只有一次，不伤性能。
        */
+      if (persist) void this.persist()
       this.notify()
     }
     return result
