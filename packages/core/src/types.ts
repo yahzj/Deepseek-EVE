@@ -1205,6 +1205,18 @@ export interface BattleBalance {
   /** 多波次演出间隔（2026-09-09 船长反馈）：一波全灭后空转等待该时长（爆炸/残骸演出播完）
    * 再刷下一波；0 = 立即续刷（旧行为） */
   waveEnterGapMs: number
+  /**
+   * 🔴 **闪现演出 · 旋钮**（**船长 2026-10-02 令**：「**给闪现发生速度做一个旋钮……先将整个过程
+   * 延长到2000ms**」）：
+   * - `foeBlinkProcessMs` = 单次闪现的**整个动画过程**（消失 ＋ 出现；界面对半劈）；
+   * - `foeBlinkGapMs` = **相邻两次闪现的间隔**（排队时一段播完空这么久，下一段才开始）。
+   *
+   * ⚠ 同时是**禁火窗口**（船长：「敌舰消失时，玩家的武器不会开火」）⇒ 过程调长 = 停火同步变长。
+   * ⚠ 界面基准时长在 `apps/desktop`（`BLINK_ANIM_MS` 与 `styles*.css` 的 `--blink-ms`），
+   *   运行时由脚本按本参数内联覆盖。
+   */
+  foeBlinkProcessMs: number
+  foeBlinkGapMs: number
   /** 炮术学每级单发伤害加成（0.05 = +5%/级） */
   gunneryDmgPerLevel: number
   /** V18B 武器族技能（2026-09-05 一号按交接底稿接入）：模块槽族 → 专精技能 id；

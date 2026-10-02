@@ -1028,15 +1028,15 @@ const meSpeedRef = useRef(200)
      一起收拢一次，存活舰补位不再压着爆炸动画走。几何/弹道按视觉行序（含占位尸骸）计算。 */
   const WRECK_FADE_MS = 520 // 尸骸灰舰淡出时长（爆炸环演出期结束后的收尾段）
   /**
-   * 🔴 **闪现演出时长**（**船长 2026-10-01 令**：「**闪现的发生时间大概200ms**」＋
-   * 「**发生过程需要搭配动画效果：闪现开始-播放动画的同时舰船消失-等待发生时间-在新位置播放动画
-   * 同时舰船出现**」）。
+   * 🔴 **闪现演出时长 = 引擎旋钮**（**船长 2026-10-02 令**：「**给闪现发生速度做一个旋钮，
+   * 我感觉现在可能太短导致看不出来，先将整个过程延长到2000ms**」）。
    *
-   * ⚠ **与引擎逐字一致**：`combat.ts` 的 `FOE_BLINK_ANIM_MS = 200`
-   * 与 `styles*.css` 的 `app-bts-blink` / `app-bts-blink-in`（各 200ms）。
-   * 舰船在这 200ms 里**整体消失**（`visibility: hidden`），到点在新位置播"出现"动画。
+   * 数据源 = `balance.battle.foeBlinkProcessMs`（**单次闪现的整个动画过程**，游戏毫秒口径）——
+   * 界面把它**对半劈**：前半段播 `app-bts-blink-out`（消失）、后半段播 `app-bts-blink-in`（出现）。
+   * ⚠ 改这个数**不用改界面**：脚本内联 `--blink-ms` 覆盖三份 `styles*.css` 的基准值
+   * （基准 = 200ms，只作缺省与"三份一致"的锚点）。
    */
-  const BLINK_ANIM_MS = 200
+  const blinkProcessMs = Math.max(1, Math.round(engine.ctx.balance.battle.foeBlinkProcessMs ?? 200))
   const scanDroppable = (): Set<string> => {
     const drop = new Set<string>()
     let laterVisible = false
@@ -1104,15 +1104,19 @@ const meSpeedRef = useRef(200)
     for (const fx of arrivals) {
       fxSeqRef.current = fx.seq
       /**
-       * **闪现跃迁演出**（**船长 2026-10-01 两次令**）——R 族「瞬光跃迁仪」触发时引擎推这一条（**不是开火**）。
-       * 与下面 `droneDown` 同款：必须**提前拦下并 continue**，否则会被当成一次开火（画弹道 + 打命中闪光）。
+       * **闪现跃迁演出**（**船长 2026-10-01/02 三次令**）——R 族「瞬光跃迁仪」触发时引擎推这一条
+       * （**不是开火**）。与下面 `droneDown` 同款：必须**提前拦下并 continue**。
        *
-       * 登记后由敌舰渲染按 `BLINK_ANIM_MS` 分两段演（**船长要的"消失 → 等待 → 出现"**）：
-       * 前 200ms 加 `is-blink-hidden`（淡出到不可见）、后 200ms 加 `is-blink`（在新位置淡入）；
-       * 每帧清理两段都过期的项。
+       * 🔴 **2026-10-02 修：消费引擎的 `atMs`（原先丢掉了）** ——
+       * 引擎按"同时触发的多个闪现**排队依次发生**"排好了每段的**消失时刻**（`fx.atMs`），
+       * 但界面以前一律按"事件到达时刻"登记 ⇒ **同一帧到达的几段会被抹平、一起闪**（排队白排）。
+       * 现在按 `(atMs − 当前战斗刻)` 换算出"还要等多久才开始播"，并**除以当时的倍速**
+       * （`speedX`：引擎的 `atMs` 是**游戏毫秒**，动画跑的是**真实毫秒**）。
        */
       if (fx.blink) {
-        blinkRef.current.set(fx.tag, now)
+        const delayGameMs = Math.max(0, fx.atMs - (battle.lastTickGameMs ?? fx.atMs))
+        const realDelayMs = delayGameMs / Math.max(0.01, fx.speedX ?? 1)
+        blinkRef.current.set(fx.tag, now + realDelayMs)
         continue
       }
       /**
@@ -1497,7 +1501,7 @@ const meSpeedRef = useRef(200)
   // **闪现跃迁演出**：两段（消失 200ms ＋ 出现 200ms）都过完才清（清了才有下一次的重新触发）
   if (blinkRef.current.size > 0) {
     for (const [tag, at] of blinkRef.current) {
-      if (now - at >= BLINK_ANIM_MS * 2) blinkRef.current.delete(tag)
+      if (now - at >= blinkProcessMs) blinkRef.current.delete(tag)
     }
   }
 
@@ -2142,14 +2146,19 @@ const meSpeedRef = useRef(200)
     const corpseOn = sinceBoom >= 0 // 致死弹道着弹后才是真尸骸；着弹前原样停留
     const locked = !corpseOn && tag === combat.lockTag
     /**
-     * 🔴 **闪现跃迁演出**（**船长 2026-10-01 令**）：引擎推 `fx.blink` 后的 `BLINK_ANIM_MS`（200ms）里，
-     * 本舰**整体消失**（`blinkHide`）——这正是船长要的"播放动画的同时舰船消失 → 等待发生时间 →
-     * 在新位置播放动画同时舰船出现"。到点在新位置播 `is-blink`（出现动画）。
+     * 🔴 **闪现跃迁演出**（**船长 2026-10-01/02 令**）：整段 = `blinkProcessMs`（引擎旋钮，
+     * 现为 2000ms）**对半劈**——前半段本舰**整体消失**（`is-blink-hidden`，播淡出），
+     * 后半段在新位置出现（`is-blink`，播淡入）。这正是船长要的
+     * "播放动画的同时舰船消失 → 等待发生时间 → 在新位置播放动画同时舰船出现"。
+     * ⚠ `blinkAt` 是**该段开始的真实毫秒**（含引擎排队等待，见 fx 登记那处）。
      */
     const blinkAt = blinkRef.current.get(tag)
     const blinkElapsed = blinkAt === undefined ? Number.POSITIVE_INFINITY : now - blinkAt
-    const blinkHide = blinkElapsed < BLINK_ANIM_MS
-    const blinkOn = blinkElapsed >= BLINK_ANIM_MS && blinkElapsed < BLINK_ANIM_MS * 2
+    const blinkHalfMs = blinkProcessMs / 2
+    const blinkHide = blinkElapsed >= 0 && blinkElapsed < blinkHalfMs
+    const blinkOn = blinkElapsed >= blinkHalfMs && blinkElapsed < blinkProcessMs
+    /** 演出时长（CSS 变量口径：一段动画的时长 = 半个过程） */
+    const blinkAnimMs = blinkHalfMs
     const boomLive = corpseOn && sinceBoom < BOOM_LIFE
     const fadeT = sinceBoom >= BOOM_LIFE ? clamp01((sinceBoom - BOOM_LIFE) / WRECK_FADE_MS) : 0
     /** 本舰是否正在**飞入**（逐舰入场：首波按 `arrivalSide`，此后按引擎 `enteredAtMs`） */
@@ -2177,6 +2186,12 @@ const meSpeedRef = useRef(200)
                 '--arrive-delay': `${arrivalSide === 'foe' ? rowIdx * ARRIVAL_STAGGER_MS : 0}ms`,
               } as CSSProperties)
             : {}),
+          /**
+           * **闪现两段动画的时长**（**船长 2026-10-02 旋钮**）：只在演出期间给 `--blink-ms`
+           * （= 半个过程，缺省 1000ms），三份 `styles*.css` 的 `app-bts-blink-out/in` 都读它
+           * ⇒ **改 `balance.battle.foeBlinkProcessMs` 就够，界面零改动**。
+           */
+          ...(blinkOn || blinkHide ? ({ '--blink-ms': `${blinkAnimMs}ms` } as CSSProperties) : {}),
         }}
       >
         {/* 淡出作用于舰体容器（外层 .app-bts-unit 有入场动画 fill 占位，透明度须压在子层）；

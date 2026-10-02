@@ -12400,14 +12400,16 @@ html[data-locale='en'] body {
  *  · **一次性**：类由渲染层按"触发时刻 + 200ms×2"自行摘除，不做无限循环（提示位是"正在发生的事"）。
  */
 .app-bts-unit.is-blink {
-  animation: app-bts-blink-in 200ms ease-out both;
+  /* ⚠ 时长走 `--blink-ms`（缺省 1000ms = 引擎 `foeBlinkProcessMs` 2000 的一半）：
+     脚本在演出期按平衡表内联覆盖 ⇒ 改旋钮不用改本文件（船长 2026-10-02 令）。 */
+  animation: app-bts-blink-in var(--blink-ms, 1000ms) ease-out both;
 }
 /* 🔴 **闪现期间整体消失**（船长 2026-10-01 令：「闪现开始-播放动画的同时舰船消失-等待发生时间-
    在新位置播放动画同时舰船出现」）：`combat.foeBlinkQueue` 的 `vanishMs → appearMs` 这 200ms 里本舰
    不可见（`visibility` 不参与布局 ⇒ 血条锚点与距离尺一字不动，与 `is-arriving` 同一纪律）。 */
 .app-bts-unit.is-blink-hidden {
   pointer-events: none;
-  animation: app-bts-blink-out 200ms ease-in both;
+  animation: app-bts-blink-out var(--blink-ms, 1000ms) ease-in both;
 }
 @keyframes app-bts-blink-out {
   0% { opacity: 1; }

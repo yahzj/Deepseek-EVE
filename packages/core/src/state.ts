@@ -869,6 +869,14 @@ export interface BattleFx {
    * 与 `web` 同款承载方式（`: true` 旗标 + `type` 给占位值）。
    */
   blink?: true
+  /**
+   * **本条事件发生时的战斗倍速**（**2026-10-02 加**）——只给界面做**游戏毫秒 → 真实毫秒**的折算。
+   *
+   * 由来：闪现演出的时长在引擎里是**游戏时钟**口径（`balance.battle.foeBlinkProcessMs`），
+   * 而界面动画跑的是 `performance.now()` 的**真实时间**。开倍速时两者不同步 ⇒ 界面把
+   * `(atMs − 当前游戏刻)` 折成真实毫秒时必须除以当时的倍速。缺省（旧事件/测试构造）按 1 倍处理。
+   */
+  speedX?: number
   /** 是否命中目标 */
   hit: boolean
   /**

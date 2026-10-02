@@ -295,4 +295,47 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
     expect(checked, '至少应观察到一次闪现').toBeGreaterThan(0)
     console.log(`  [读数] 本场闪现 ${checked} 次 · 最大单次位移 ${Math.round(maxJump)} m（上限 ${stepCap} m）`)
   })
+
+  it('⑨ 演出时长走平衡表旋钮（2000ms）＋ 排队依次错开 ＋ 演出期我方禁火', () => {
+    /**
+     * 🔴 **船长 2026-10-02 令**（原话照抄）：「**给闪现发生速度做一个旋钮，我感觉现在可能太短导致
+     * 看不出来，先将整个过程延长到2000ms**」；并裁定「**不停表，但是敌舰消失时，玩家的武器不会开火
+     * （哪怕武器转好了）**」。
+     *
+     * 本用例钉三件事：
+     * ① **旋钮落点** = `balance.battle.foeBlinkProcessMs`（单次演出的整个过程）与 `foeBlinkGapMs`（段间隔）；
+     * ② **队列时刻表**：每段 `appearMs − vanishMs` 恰等于旋钮值（⇒ 2000ms）；
+     * ③ **禁火窗口与演出同期**：窗口内我方门不开火、窗口一过立刻开（冷却照推不浪费）。
+     */
+    expect(bal.foeBlinkProcessMs, '旋钮：单次闪现的整个过程（船长令 2000ms）').toBe(2_000)
+    expect(bal.foeBlinkGapMs, '旋钮：相邻两次闪现的间隔').toBe(200)
+
+    const { b, tick } = coronaBattle()
+    let checked = 0
+    let holdSeen = 0
+    const prevSeen = new Map<string, number>()
+    for (const [tag, until] of Object.entries(b.foeBlinks ?? {})) prevSeen.set(tag, until)
+    for (let t = 100; t <= 200_000 && b.ended === null && checked < 2; t += 100) {
+      tick(t)
+      /** ③ 禁火窗口：用引擎口径判（任一敌舰处在 vanishMs → appearMs 之间）——只在闪现那几拍才该为真 */
+      const q = b.foeBlinkQueue ?? {}
+      const inWindow = Object.values(q).some((seg) => t >= seg.vanishMs && t < seg.appearMs)
+      if (inWindow) holdSeen += 1
+      for (const [tag, until] of Object.entries(b.foeBlinks ?? {})) {
+        if (prevSeen.get(tag) === until) continue
+        prevSeen.set(tag, until)
+        const seg = q[tag]
+        expect(seg, `${tag} 闪现后应排进队列`).toBeTruthy()
+        /** ② 每段恒 = 旋钮值（不再写死 200ms） */
+        expect(seg!.appearMs - seg!.vanishMs, `${tag} 单段演出时长应等于旋钮`).toBe(bal.foeBlinkProcessMs)
+        checked += 1
+        console.log(
+          `  [读数] 演出排队（${tag}）：入队=${seg!.queuedMs} 消失=${seg!.vanishMs} 出现=${seg!.appearMs}` +
+            `（段长 ${seg!.appearMs - seg!.vanishMs}ms ＝ 旋钮 ${bal.foeBlinkProcessMs}ms）`,
+        )
+      }
+    }
+    expect(checked, '至少应观察到一次闪现').toBeGreaterThan(0)
+    expect(holdSeen, '演出窗口内应存在"禁火"的拍（船长裁定：敌舰消失时我方不开火）').toBeGreaterThan(0)
+  })
 })
