@@ -1,6 +1,7 @@
 /**
  * **周末入侵 · 悬赏替换与遇袭判定用例**（M1-b 第三片）
- * 覆盖：派生卡只覆盖 id/名字/威胁/奖励 · 非占领区/夺回后/活动结束 ⇒ 原卡原样 ·
+ * 覆盖：派生卡只覆盖 id/名字/威胁/奖励 · 非占领区/活动结束 ⇒ 原卡原样 ·
+ * (**2026-10-02 起：夺回后也照旧换成入侵舰队卡** —— 船长令"100% 后仍可继续刷、掉落半量作惩罚") ·
  * 高安破例（占领区不看安全等级）· 遇袭掷骰边界与伏击 spec（单舰 39/60）。
  */
 import { describe, expect, it } from 'vitest'
@@ -58,17 +59,22 @@ describe('周末入侵 · 悬赏替换（M1-b）', () => {
     expect(d.standingReq).toBe(card.standingReq)
   })
 
-  it('核心的派生卡威胁 120；非占领区/夺回后原样返回原卡', () => {
+  it('核心的派生卡威胁 120；非占领区/活动结束 ⇒ 原卡；**夺回后仍换入侵卡**（2026-10-02 新口径）', () => {
     const { s, ev } = setup()
     const core = weekendBountyCardsOf(s, ctx, [card], ev.coreId, T)
     expect(core[0]!.threat).toBe(120)
     const other = weekendBountyCardsOf(s, ctx, [card], 'galaxy-redring', T)
     expect(other[0], '不在占领区 ⇒ 原卡').toBe(card)
-    // 夺回（推进到满）⇒ 恢复原卡（**用外围卡**：核心要等外围清完才可能满）
+    /**
+     * **夺回（推进到满）⇒ 照旧换入侵舰队卡**（**2026-10-02 船长令**：「我希望的是 100% 后能够继续刷，
+     * 但是掉落残骸数量需要减半作为惩罚」）——改前是"夺回 ⇒ 恢复原卡"，那条口径随本批作废。
+     */
     const perId = ev.peripheryIds[0]!
     const perCard = { ...card, galaxyId: perId }
     weekendNoteContribution(ev, perId, 1)
-    expect(weekendBountyCardsOf(s, ctx, [perCard], perId, T)[0], '夺回后 ⇒ 原卡').toBe(perCard)
+    const afterReclaim = weekendBountyCardsOf(s, ctx, [perCard], perId, T)[0]!
+    expect(afterReclaim.id !== perCard.id || afterReclaim.rewardIsk === 0, '夺回后 ⇒ 仍是入侵舰队卡').toBe(true)
+    expect(afterReclaim.rewardIsk, '入侵舰队卡不给赏金（2026-09-25 口径不变）').toBe(0)
     // 活动结束 ⇒ 原卡
     ev.contributed = {}
     ev.endedAtWallMs = T
@@ -152,7 +158,7 @@ describe('周末入侵 · 遇袭判定（M1-b）', () => {
    * ⚠ 与本条无关的两件事**照旧**（船长只说了"赏金任务照常发放"）：**仍被占**的星系照旧由入侵舰队卡
    * 替换（`weekendBountyCardsOf`）、入侵舰队卡**照样不给赏金**。本用例把这两层分别钉住。
    */
-  it('收复后照常列悬赏（押后判据已删）· 取数口照旧"被占 ⇒ 入侵舰队卡 / 夺回 ⇒ 原卡"', () => {
+  it('收复后照常列悬赏（押后判据已删）· 取数口"被占 ⇒ 入侵舰队卡 / **夺回 ⇒ 也是入侵舰队卡**"', () => {
     const { s, ev } = setup()
     const per = ev.peripheryIds[0]!
     const perCard = { ...card, galaxyId: per }
@@ -160,9 +166,13 @@ describe('周末入侵 · 遇袭判定（M1-b）', () => {
     const occupied = weekendBountyCardsOf(s, ctx, [perCard], per, T)[0]!
     expect(occupied.id !== perCard.id || occupied.rewardIsk === 0, '被占 ⇒ 换成入侵舰队卡').toBe(true)
     expect(occupied.rewardIsk, '入侵舰队卡不给赏金（2026-09-25 口径不变）').toBe(0)
-    /** ② 夺回 ⇒ 取数口回到原卡；**界面也照常列**（押后判据已删，不再有"隐藏到活动结束"这一档） */
+    /**
+     * ② **夺回 ⇒ 照旧是入侵舰队卡**（**2026-10-02 船长令**：100% 后仍可继续刷、掉落半量作惩罚）
+     * ——改前"夺回 ⇒ 回原卡"的口径随本批作废；**界面也照常列**（押后判据 2026-09-28 已删）。
+     */
     weekendNoteContribution(ev, per, 1)
-    expect(weekendBountyCardsOf(s, ctx, [perCard], per, T)[0], '夺回 ⇒ 原卡').toBe(perCard)
+    const reclaimed = weekendBountyCardsOf(s, ctx, [perCard], per, T)[0]!
+    expect(reclaimed.id !== perCard.id || reclaimed.rewardIsk === 0, '夺回 ⇒ 仍是入侵舰队卡').toBe(true)
     expect(
       (weekendBountyNS as Record<string, unknown>)['weekendStandingBountyHeldAt'],
       '押后判据已从模块导出面删除（别再复活）',

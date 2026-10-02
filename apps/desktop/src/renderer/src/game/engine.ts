@@ -205,7 +205,7 @@ import {
   weekendLaunchGalaxyOf,
   weekendAssaultDrawOf,
   weekendNoteAssaultDispatch,
-  weekendOccupiedLiveAt,
+  weekendZoneLiveAt,
   weekendFlagshipSpecOf,
   weekendFlagshipSquadOf,
   weekendStartFlagshipBattle,
@@ -675,7 +675,7 @@ export class GameEngine {
      * 同星系的多个悬赏槽位会换出**同一张卡**（真档实测：红环航道 2 个槽位 = 两条一模一样的入侵悬赏）。
      * 去重在 core 单点（`weekendBoardRowsOf`：只对被占星系生效、A/C/G 的派生卡不受影响）。
      */
-    this.anomalies = weekendBoardRowsOf(out, (gid) => weekendOccupiedLiveAt(this.state, gid, now))
+    this.anomalies = weekendBoardRowsOf(out, (gid) => weekendZoneLiveAt(this.state, gid, now))
     return
   }
   /** 全部异常目录（含 hidden 遭遇模板——星图/任务中心过滤展示用） */

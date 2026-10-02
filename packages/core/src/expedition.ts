@@ -16,7 +16,9 @@ import { weekendApplyBattleOutcome, weekendBattleInvolvedOf } from './weekendBat
 import { weekendFoeCardOf } from './weekendEvent'
 import { weekendAssaultThreatOf, weekendFoeCardsSelfPriced } from './weekendEvent'
 /** 入侵「重复出击」（2026-09-25 船长令）：每场重抽一支 ＋ 目标星系覆写（去程/返航照常算） */
-import { weekendAssaultDrawOf, weekendNoteAssaultDispatch, weekendOccupiedLiveAt } from './weekendBounty'
+import { weekendAssaultDrawOf, weekendNoteAssaultDispatch, weekendZoneLiveAt } from './weekendBounty'
+/** 已夺回的星系继续打 ⇒ 残骸半量（2026-10-02 船长令；折扣单点） */
+import { weekendWreckPenaltyFracOf } from './weekendEvent'
 import { rewardMulOf } from './tuning'
 import { bumpFirst } from './firstTasks'
 import { addLog, HOME_GALAXY_ID, shipLockedInWormhole } from './state'
@@ -870,7 +872,17 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
      * （`weekendWreckInjectionOf` = 悬赏那条唯一公式），只是**记到另一个池子**里去。
      */
     const wreckInjected = isInvasion
-      ? weekendWreckInjectionOf(battleCard)
+      ? /**
+         * **已夺回的星系 ⇒ 残骸半量**（**2026-10-02 船长令**：「我希望的是 100% 后能够继续刷，
+         * 但是掉落残骸数量需要减半作为惩罚」）——折扣走单点 `weekendWreckPenaltyFracOf`
+         * （进度满 ⇒ 0.5、否则 1）。⚠ 遇袭 / 旗舰挑战走遭遇结算、本来就是 0.5，不读这里。
+         */
+        weekendWreckInjectionOf(
+          battleCard,
+          state.weekendEvent !== undefined
+            ? weekendWreckPenaltyFracOf(state, state.weekendEvent, wreckGalaxyId, Date.now())
+            : 1,
+        )
       : bountyWreckInjection(wreckInjectThreatOf(battleCard), bountyEnemyCount(battleCard))
     // 来源族（2026-09-26 玩家报障）：击败的是哪一族就记哪一族 —— 打捞型号池据此在该星系
     // **即使已夺回 / 活动已结束**也并入那一族的独立入侵卡（残骸场比占领活得久）
@@ -1746,7 +1758,7 @@ export function setAutoLoopInvasion(state: GameState, ctx: SimContext, galaxyId:
   if (!ev || ev.endedAtWallMs !== undefined) {
     return { ok: false, error: '入侵活动已结束。', errorId: 'core.weekend.030' }
   }
-  if (!weekendOccupiedLiveAt(state, galaxyId, Date.now())) {
+  if (!weekendZoneLiveAt(state, galaxyId, Date.now())) {
     return { ok: false, error: '该星系当前没有被入侵。', errorId: 'core.weekend.031' }
   }
   if (state.autoLoopAnomalyId !== null) {
@@ -1778,7 +1790,7 @@ export function advanceAutoLoopInvasion(state: GameState, ctx: SimContext): stri
     stopAutoLoopInvasion(state, '入侵活动已结束。')
     return '入侵活动已结束'
   }
-  if (!weekendOccupiedLiveAt(state, galaxyId, Date.now())) {
+  if (!weekendZoneLiveAt(state, galaxyId, Date.now())) {
     stopAutoLoopInvasion(state, '该星系已被夺回。')
     return '该星系已被夺回'
   }

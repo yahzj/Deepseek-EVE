@@ -59,7 +59,9 @@ import {
   weekendCoreGateView,
   weekendFoeCardIdToFightOf,
   weekendFoePoolOf,
-  weekendOccupiedLiveAt,
+  /** 2026-10-02：夺回后照旧能刷（半量残骸）⇒ 这两处要判"已夺回"改显哪句说明 */
+  weekendProgressAt,
+  weekendZoneLiveAt,
 } from '@whale/core'
 
 /** 时效任务排序（2026-10-02 批次 4q 从 Expedition.tsx 迁来） */
@@ -152,7 +154,13 @@ export function AnomalyCard({
    * 被占星系的悬赏位由 `weekendBountyCardsOf` 换成了入侵舰队（`rewardIsk` 已是 0）⇒
    * 赏金那一栏改显「结算时按进度发放」，"估算奖励/小时"那一栏也整条不显示（没有即时收入可估）。
    */
-  const invadedHere = weekendOccupiedLiveAt(state, anomaly.galaxyId, Date.now())
+  const invadedHere = weekendZoneLiveAt(state, anomaly.galaxyId, Date.now())
+  /**
+   * **该星系是否已夺回**（进度满）——**2026-10-02 船长令**：夺回后照旧能刷（半量残骸作惩罚、
+   * 进度不再增长）⇒ 赏金那一栏与"星系详细"同口径换成 `ui.weekend.116`（见 `StarMap.tsx` 同处）。
+   */
+  const reclaimedHere =
+    invadedHere && state.weekendEvent !== undefined && weekendProgressAt(state, state.weekendEvent, anomaly.galaxyId, Date.now()) >= 1
   /**
    * **核心门禁读数**（船长批「丙」）：只在"这一行就是核心星的入侵卡"时取。
    * 与「星系详细」那张卡同一取数口（`weekendCoreGateView`）⇒ 两处不会各说各话。
@@ -365,7 +373,7 @@ export function AnomalyCard({
       </div>
       <div className="app-ano-reward">
         {invadedHere ? (
-          <>{tr('ui.weekend.096')}</>
+          <>{reclaimedHere ? tr('ui.weekend.116') : tr('ui.weekend.096')}</>
         ) : (
           <>
             {tr("ui.Expedition.099")} {Math.round((factionHit ? factionBaseRewardIsk(anomaly) : anomaly.rewardIsk) * bountyRewardFactor(state)).toLocaleString('zh-CN')} {tr("ui.FirstTasks.003")}

@@ -67,6 +67,8 @@ import {
   weekendFoePoolOf,
   weekendProgressAt,
   weekendWreckDensityOf,
+  /** 2026-10-02：这一格还算不算"可打的入侵占点"（含已夺回）——取代原先在这里自判 `progress < 1` */
+  weekendZoneLiveAt,
   wreckDensityOf,
   wreckLootRowsOf,
 } from '@whale/core'
@@ -1699,13 +1701,24 @@ export function GalaxyActions({
   /**
    * **这一格是否正被入侵占领**（2026-09-25 船长令）：占领中 ⇒ 星系详细里的悬赏整行换成「击退入侵舰队」
    * ＋威胁范围（不逐张列被替换的卡）。
+   *
+   * ⚠ **2026-10-02 起"夺回"不再关这扇门**（船长令：「我希望的是 100% 后能够继续刷，但是掉落残骸数量
+   * 需要减半作为惩罚」）⇒ 判据改走 core 单点 `weekendZoneLiveAt`（**不再自己判 `progress < 1`**——
+   * 原先这里与 core 各写一份，本批统一到一把尺）。已夺回的星系照旧显示这一行，直到活动结束；
+   * 那一行会给一句"只给半量残骸"的悬停说明（`ui.weekend.1xx`）。
    */
   const invadedHere = (() => {
     const ev = state.weekendEvent
     if (!ev || ev.endedAtWallMs !== undefined) return null
-    if (galaxy.id !== ev.coreId && !ev.peripheryIds.includes(galaxy.id)) return null
-    return weekendProgressAt(state, ev, galaxy.id, Date.now()) < 1 ? ev : null
+    return weekendZoneLiveAt(state, galaxy.id, Date.now()) ? ev : null
   })()
+  /**
+   * **该星系是否已夺回**（进度满）——**2026-10-02 船长令**：夺回后照旧能刷，但**只给半量残骸**、
+   * 进度不再增长 ⇒ 那一行的说明句从「赏金：结算时按进度发放」（对满档星系已经不涨了）
+   * 换成 `ui.weekend.116`（半量口径），免得玩家以为还有进度收入。
+   */
+  const reclaimedHere =
+    invadedHere !== null && weekendProgressAt(state, invadedHere, galaxy.id, Date.now()) >= 1
   /**
    * **「悬赏（N）」里的 N = 这一格实际列出的行数**（**船长 2026-09-25 报障**：「**被入侵的星系，
    * 星系详细界面，悬赏的标题显示"悬赏（2）"而实际上这时候只显示了"击退入侵舰队"这一个**」）。
@@ -2147,7 +2160,7 @@ export function GalaxyActions({
                 <span className="app-dim app-ga-desc">
                   {tr('ui.weekend.093', { p1: lo, p2: hi })}
                   {' · '}
-                  {tr('ui.weekend.096')}
+                  {reclaimedHere ? tr('ui.weekend.116') : tr('ui.weekend.096')}
                 </span>
                 {/**
                  * **敌火力类型 ＋ 敌血型**（2026-09-26 船长令：「像常驻悬赏那样，添加一个敌人火力类型、

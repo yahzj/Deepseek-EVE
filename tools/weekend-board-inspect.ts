@@ -35,7 +35,7 @@ import {
   weekendGarrisonFoeCardId,
   weekendLaunchGalaxyOf,
   weekendOccupiedIds,
-  weekendOccupiedLiveAt,
+  weekendZoneLiveAt,
   weekendPeripheryAverageOf,
   weekendPeripheryClearedAt,
   weekendPeripheryLeadOf,
@@ -73,7 +73,7 @@ for (const gid of systems) {
   slots += base.length
   console.log(
     `  ${name}（${gid}）进度 ${(weekendProgressAt(state, ev, gid, now) * 100).toFixed(1)}% · ` +
-      `活的占领区=${weekendOccupiedLiveAt(state, gid, now)} · 槽位 ${base.length} · 驻留抽签卡=${weekendGarrisonFoeCardId(state, ev, gid) ?? '（无）'}`,
+      `可打的占点（含已夺回）=${weekendZoneLiveAt(state, gid, now)} · 槽位 ${base.length} · 驻留抽签卡=${weekendGarrisonFoeCardId(state, ev, gid) ?? '（无）'}`,
   )
   base.forEach((a, i) => {
     const r = replaced[i] ?? a
@@ -89,7 +89,7 @@ for (const gid of systems) {
   const base = [...ctx.anomalies.values()].filter((a) => !a.hidden && a.galaxyId === gid)
   const rows = weekendBoardRowsOf(
     weekendBountyCardsOf(state, ctx, base, gid, now),
-    (g) => weekendOccupiedLiveAt(state, g, now),
+    (g) => weekendZoneLiveAt(state, g, now),
   )
   kept += rows.length
   console.log(
@@ -123,7 +123,7 @@ console.log('\n=== ④ 出发归属解析（引擎按卡 id 反查星系 ⇒ 同
    * （`this.anomalies.find(a => a.id === anomalyId)?.galaxyId`）⇒ 同 id 多星系时永远命中列表第一个。
    * 这里把两种口径并排打出来：**修后 = 采信界面那一行的星系**；旧口径若不同 ⇒ 说明那一行以前会串。
    */
-  const view = weekendBoardRowsOf(out, (gid) => weekendOccupiedLiveAt(state, gid, now))
+  const view = weekendBoardRowsOf(out, (gid) => weekendZoneLiveAt(state, gid, now))
   const legacyResolve = (id: string): string | undefined => view.find((a) => a.id === id)?.galaxyId
   for (const gid of systems) {
     const name = ctx.galaxies.get(gid)?.name ?? gid
@@ -135,7 +135,7 @@ console.log('\n=== ④ 出发归属解析（引擎按卡 id 反查星系 ⇒ 同
         gid,
         now,
       ),
-      (g) => weekendOccupiedLiveAt(state, g, now),
+      (g) => weekendZoneLiveAt(state, g, now),
     )[0]
     if (!row) continue
     const legacy = legacyResolve(row.id)
@@ -174,7 +174,7 @@ console.log('\n=== ④ 出发归属解析（引擎按卡 id 反查星系 ⇒ 同
         gid,
         now,
       ),
-      (g) => weekendOccupiedLiveAt(state, g, now),
+      (g) => weekendZoneLiveAt(state, g, now),
     )[0]
     const legacy = row ? legacyResolve(row.id) : undefined
     if (row && legacy !== undefined && legacy !== gid) {

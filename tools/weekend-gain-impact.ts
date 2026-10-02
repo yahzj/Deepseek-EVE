@@ -16,8 +16,9 @@
  * 模型（数一律从生产代码现取，不另抄一份）：
  * - 进度 = `clamp01(NPC 铺底 t/48h ＋ 台账 contributed)`（`weekendPeripheryProgressAt` 同款算式）；
  * - 玩家自 T0 起**集中打同一处**、单场周期固定；
- * - 进度满 100% ⇒ 夺回 ⇒ 该星系悬赏恢复常驻（`weekendOccupiedLiveAt` 返回 false）⇒ **打不下去了**
- *   ⇒ 玩家的 `contributed` 冻结在那一刻（这正是奖励比例下滑的机制）；
+ * - 进度满 100% ⇒ 夺回 ⇒ 该星系**照旧能打**（`weekendZoneLiveAt` 仍为真；**2026-10-02 船长令**：
+ *   「我希望的是 100% 后能够继续刷，但是掉落残骸数量需要减半作为惩罚」），但 `contributed` 被
+ *   `clamp01` 钉在 1 ⇒ **再多打也不涨进度、不再产生额外进度收入**（这正是奖励比例下滑的机制）；
  * - 夺回奖与进度收入都按那一刻的 `contributed` 算（`weekendReclaimAwardOf` 同款）。
  *
  * 用法：`npm run weekend:gain`

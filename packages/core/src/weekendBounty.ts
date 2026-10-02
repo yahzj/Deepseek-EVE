@@ -29,13 +29,13 @@ import { weekendAmbushSpecOf } from './weekendBattle'
 import type { WeekendBattleSpec } from './weekendBattle'
 
 /**
- * **2026-10-02 破环搬家**：`WEEKEND_CARD_PREFIX` / `weekendOccupiedLiveAt` 原定义搬进 `weekendEvent.ts`
+ * **2026-10-02 破环搬家**：`WEEKEND_CARD_PREFIX` / `weekendZoneLiveAt` 原定义搬进 `weekendEvent.ts`
  * （它们只读 `state.weekendEvent`，是活动态读数；weekendEvent 不 import 本件与 weekendBattle ⇒
  * weekendBattle 改从那边读后，`weekendBattle ↔ weekendBounty` 的运行期边清零）。这里**原样再导出**
  * 保持 encounters / expedition / index 的既有引用不动。
  */
-export { WEEKEND_CARD_PREFIX, weekendOccupiedLiveAt } from './weekendEvent'
-import { weekendOccupiedLiveAt } from './weekendEvent'
+export { WEEKEND_CARD_PREFIX, weekendZoneLiveAt } from './weekendEvent'
+import { weekendZoneLiveAt } from './weekendEvent'
 
 /** 外围入侵舰队的赏金倍率（数值表：奖励 = 该星系原卡 ×1.4） */
 export const WEEKEND_BOUNTY_REWARD_MUL = 1.4
@@ -59,7 +59,7 @@ export const WEEKEND_BOUNTY_REWARD_MUL = 1.4
  * ⇒ 判据只有"是不是活的占领区"，**不看安全等级**（与常驻遭遇系统的"只低安"是两套）。
  */
 export function weekendEncounterAllowedIn(state: GameState, galaxyId: string, nowWallMs: number): boolean {
-  return weekendOccupiedLiveAt(state, galaxyId, nowWallMs)
+  return weekendZoneLiveAt(state, galaxyId, nowWallMs)
 }
 
 /**
@@ -111,7 +111,7 @@ function weekendIndependentFoeOf(base: AnomalyDef, drawn: AnomalyDef, family: st
 /**
  * **某星系当前该显示的悬赏卡**（引擎/界面的唯一取数口）：
  * - 不在占领区（或已夺回 / 活动结束）⇒ **原卡原样**
- *   （⚠ 2026-09-28 船长令后"已夺回"这一支**界面也照常列**——那条押后判据已删，见 `weekendOccupiedLiveAt` 上方注。
+ *   （⚠ 2026-09-28 船长令后"已夺回"这一支**界面也照常列**——那条押后判据已删，见 `weekendZoneLiveAt` 上方注。
  *   本函数只管"取哪张卡"，遇袭敌群池与残骸打捞池都读它 ⇒ 不在这里清空）；
  * - 在占领区 ⇒ **换成入侵舰队**：H 族 = 抽到的那张**独立卡**（真实 id · 覆写星系/名字）；
  *   A/C/G 三族 = 该星系**原卡的派生版**（占位口径，只换族名/威胁 78·120）；
@@ -127,7 +127,7 @@ export function weekendBountyCardsOf(
 ): readonly AnomalyDef[] {
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) return cards
-  if (!weekendOccupiedLiveAt(state, galaxyId, nowWallMs)) return cards
+  if (!weekendZoneLiveAt(state, galaxyId, nowWallMs)) return cards
   const isCore = galaxyId === ev.coreId
   if (weekendFoeCardsSelfPriced(ev.family)) {
     const drawn = ctx.anomalies.get(weekendGarrisonFoeCardId(state, ev, galaxyId))
@@ -152,7 +152,7 @@ export function weekendBountyCardsOf(
  */
 export function weekendBoardRowsOf<T extends { id: string; galaxyId: string }>(
   rows: readonly T[],
-  /** 该星系此刻是否"活的占领区"（调用方传 `weekendOccupiedLiveAt` 绑定 now 的闭包） */
+  /** 该星系此刻是否"活的占领区"（调用方传 `weekendZoneLiveAt` 绑定 now 的闭包） */
   isOccupiedLive: (galaxyId: string) => boolean,
 ): T[] {
   const seen = new Set<string>()
@@ -189,7 +189,7 @@ export function weekendLaunchGalaxyOf(
   cardGalaxyId: string | undefined,
   nowWallMs: number,
 ): string | undefined {
-  if (hintGalaxyId !== undefined && hintGalaxyId.length > 0 && weekendOccupiedLiveAt(state, hintGalaxyId, nowWallMs)) {
+  if (hintGalaxyId !== undefined && hintGalaxyId.length > 0 && weekendZoneLiveAt(state, hintGalaxyId, nowWallMs)) {
     return hintGalaxyId
   }
   return cardGalaxyId
@@ -260,7 +260,7 @@ export function weekendFoeCardIdToFightOf(
   if (!ev || ev.endedAtWallMs !== undefined) return displayedCardId
   /** 星系解析口径与 `engine.startExpeditionAt` 的 `foeGalaxyOf` 同源（界面上那一行的星系优先） */
   const galaxyId = weekendLaunchGalaxyOf(state, displayedGalaxyId, displayedGalaxyId, nowWallMs)
-  if (galaxyId === undefined || !weekendOccupiedLiveAt(state, galaxyId, nowWallMs)) return displayedCardId
+  if (galaxyId === undefined || !weekendZoneLiveAt(state, galaxyId, nowWallMs)) return displayedCardId
   return weekendAssaultCardIdOfDrawnAt(state, galaxyId) ?? displayedCardId
 }
 
@@ -272,7 +272,7 @@ export function weekendAssaultDrawOf(
 ): WeekendAssaultDispatch | null {
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) return null
-  if (!weekendOccupiedLiveAt(state, galaxyId, nowWallMs)) return null
+  if (!weekendZoneLiveAt(state, galaxyId, nowWallMs)) return null
   /** 卡 id 走**单点**（与界面判"能不能点"用的是同一把尺） */
   const cardId = weekendAssaultCardIdOfDrawnAt(state, galaxyId)
   if (cardId === null) return null

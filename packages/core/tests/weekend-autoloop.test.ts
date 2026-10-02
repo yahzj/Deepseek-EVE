@@ -6,7 +6,9 @@
  *     非占领区 / 活动已结束 ⇒ 拒绝开启；
  * (b) **再出发走手动出击那条路**：`foeGalaxyId` = 被占星系（⇒ 去程/返航按目标星系照常计算）、
  *     **每场重抽**（`assaultDraws` 递增）、赏金按入侵口径为 0；
- * (c) **停止口径**：该星系被夺回 / 活动结束 ⇒ 自动停并清掉目标；
+ * (c) **停止口径**：~~该星系被夺回~~ / 活动结束 ⇒ 自动停并清掉目标
+ *     ⚠ **2026-10-02 船长令改写**（「我希望的是 **100% 后能够继续刷**，但是掉落残骸数量需要减半作为惩罚」）：
+ *     夺回**不再**停 —— 只有"活动结束"这一条停（`weekendZoneLiveAt` 不再看进度）。
  * (d) **等待表同源**：别的作业（采矿）占着主控时只等、不出发。
  */
 import { describe, expect, it } from 'vitest'
@@ -143,13 +145,13 @@ describe('入侵重复出击 · 再出发', () => {
 })
 
 describe('入侵重复出击 · 停止口径', () => {
-  it('该星系被夺回 ⇒ 自动停并清目标', () => {
+  it('该星系被夺回 ⇒ **照旧继续**（2026-10-02 船长令：100% 后仍可继续刷，掉落半量作惩罚）', () => {
     const { s, ev } = setup()
     expect(setAutoLoopInvasion(s, ctx, TARGET).ok).toBe(true)
     ev.contributed[TARGET] = 1 // 进度拉满 = 已夺回（`weekendProgressAt` = clamp01(npc + contributed)）
-    expect(advanceAutoLoopInvasion(s, ctx)).toBe('该星系已被夺回')
-    expect(autoLoopInvasionGalaxy(s)).toBeNull()
-    expect(s.autoLoopStopNotice ?? '').toContain('重复出击已暂停')
+    /** 不再返回"该星系已被夺回"这种停止原因；目标也不清（要么出发、要么在等冷却/等待表 ⇒ 返回 null） */
+    expect(advanceAutoLoopInvasion(s, ctx)).toBeNull()
+    expect(autoLoopInvasionGalaxy(s), '目标照旧挂在被夺回的星系上').toBe(TARGET)
   })
 
   it('活动结束 ⇒ 自动停并清目标', () => {

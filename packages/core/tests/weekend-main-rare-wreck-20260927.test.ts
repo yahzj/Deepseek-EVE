@@ -52,7 +52,7 @@ function invasion(gid = GID): { s: GameState; ev: WeekendEventState } {
     seq: 1,
     /**
      * ⚠ 必须用**当下**：NPC 铺底是 `(now − T0)/48h` 的时间函数，写成 1_000（1970 年）会让该星系
-     * "早就被铺底夺回" ⇒ `weekendOccupiedLiveAt` 为假 ⇒ 整场不结算（当年那条"打完什么都不结算"的翻版）。
+     * "早就被铺底夺回" ⇒ `weekendZoneLiveAt` 为假 ⇒ 整场不结算（当年那条"打完什么都不结算"的翻版）。
      */
     startedAtWallMs: Date.now(),
     coreId: CORE,

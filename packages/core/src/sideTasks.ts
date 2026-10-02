@@ -858,7 +858,7 @@ function advanceFactionActivity(state: GameState, ctx: SimContext, nowWallMs?: n
  * **入侵进行中 ⇒ 敌对派系活跃整体停摆**（**船长 2026-09-25 令：「建议当出现入侵时，关闭敌方势力活跃。」**）。
  *
  * 判据 = `state.weekendEvent` 存在且**尚未落定结束时刻**（`endedAtWallMs === undefined`）——
- * 与"占领区还算不算被占"同一把尺（`weekendOccupiedLiveAt` 用的也是这一条）；活动结束（结算那一刻起）
+ * 与"占领区还算不算被占"同一把尺（`weekendZoneLiveAt` 用的也是这一条）；活动结束（结算那一刻起）
  * **自动恢复**：当天那条派系活跃照旧在板（板上条目一直在滚，只是这期间不生效）。
  *
  * 停摆面（`factionGalaxyId` / 任务中心视图两处收口 ⇒ 全部下游一起静默）：

@@ -51,7 +51,7 @@ import { flagshipBattleLedger } from './combat'
 import { rareWreckItemIdOfCard, RARE_WRECK_VOLUME_M3 } from './salvage'
 /** 2026-09-27 船长令：主力舰队打赢 ⇒ 往该星系**入侵残骸场**里放箱子（稀有残骸） */
 import { injectWeekendRareWreck } from './salvage'
-import { WEEKEND_CARD_PREFIX, weekendOccupiedLiveAt } from './weekendEvent'
+import { WEEKEND_CARD_PREFIX, weekendZoneLiveAt } from './weekendEvent'
 /** 2026-10-02 破环搬家：声望账本从 expedition 拆到 standing.ts，这里改读 standing（断 expedition↔weekendBattle） */
 import { DSI_FACTION_ID, noteStandingEarned } from './standing'
 
@@ -857,6 +857,28 @@ export function weekendNoteFlagshipPlayerKill(
 }
 
 /**
+ * **"出击"这一场算哪一类场次**（＝结算走哪一套奖励）——**单点**，`weekendBattleInvolvedOf` 两条路读它。
+ *
+ * 🔴 **2026-10-02 本批改写**（船长令：「我希望的是 **100% 后能够继续刷**，但是掉落残骸数量需要减半作为惩罚」）：
+ * 改前判据是 `该星系 = 核心 && 核心进度满 ⇒ 'flagship'`。入口放开（`weekendZoneLiveAt` 不再看进度）之后，
+ * 那条会把"**已夺回的核心继续刷**"整批误判成**旗舰战** ⇒ 每场按旗舰掉落发（`WEEKEND_FLAGSHIP_WRECK = 3` 件
+ * 稀有残骸），而船长的另一半令是"**不给其他奖励**"（继续刷只有半量残骸）。
+ * ⇒ 现口径：
+ *  · **BOSS 族**（`weekendIsBossFamily`：母舰走共享血池那一族，现 H／将 R）⇒ 出击**一律 `'assault'`**
+ *    （旗舰战只认"遭遇槽里挂的正是该族旗舰卡"那一条，见 `weekendBattleInvolvedOf` 的 `enc` 分支）；
+ *  · **非 BOSS 族**（A/C/G 的占位口径）⇒ **老口径逐字保留**（核心满 ⇒ 旗舰战），不动未上线族的行为。
+ */
+function expeditionKindAt(
+  state: GameState,
+  ev: WeekendEventState,
+  galaxyId: string,
+  nowWallMs: number,
+): WeekendBattleKind {
+  if (weekendIsBossFamily(ev)) return 'assault'
+  return galaxyId === ev.coreId && weekendCoreProgressAt(state, ev, nowWallMs) >= 1 ? 'flagship' : 'assault'
+}
+
+/**
  * **这一场战斗属于入侵吗**（引擎战后调一次即可，不用自己判断占领区）：
  * - 卡 id 带 `wk-` 前缀（界面/悬赏侧拿到的派生卡）⇒ 还原成原卡再看星系；
  * - 否则按原卡的 `galaxyId` 看是不是**活的占领区**；
@@ -878,31 +900,32 @@ export function weekendBattleInvolvedOf(
    * 缺省/不合法（非活的占领区）⇒ 逐字回落老口径（卡的 `galaxyId` + 遭遇槽）。
    */
   const expGalaxy = state.expedition?.foeGalaxyId
-  if (expGalaxy !== undefined && weekendOccupiedLiveAt(state, expGalaxy, nowWallMs)) {
-    const flagship = expGalaxy === ev.coreId && weekendCoreProgressAt(state, ev, nowWallMs) >= 1
-    return { galaxyId: expGalaxy, kind: flagship ? 'flagship' : 'assault' }
+  if (expGalaxy !== undefined && weekendZoneLiveAt(state, expGalaxy, nowWallMs)) {
+    return { galaxyId: expGalaxy, kind: expeditionKindAt(state, ev, expGalaxy, nowWallMs) }
   }
   const rawId = typeof anomalyId === 'string' && anomalyId.length > 0 ? anomalyId : undefined
   if (rawId !== undefined) {
     const baseId = rawId.startsWith(WEEKEND_CARD_PREFIX) ? rawId.slice(WEEKEND_CARD_PREFIX.length) : rawId
     const card = ctx.anomalies.get(baseId)
     const galaxyId = card?.galaxyId
-    if (galaxyId !== undefined && weekendOccupiedLiveAt(state, galaxyId, nowWallMs)) {
-      const flagship = galaxyId === ev.coreId && weekendCoreProgressAt(state, ev, nowWallMs) >= 1
-      return { galaxyId, kind: flagship ? 'flagship' : 'assault' }
+    if (galaxyId !== undefined && weekendZoneLiveAt(state, galaxyId, nowWallMs)) {
+      return { galaxyId, kind: expeditionKindAt(state, ev, galaxyId, nowWallMs) }
     }
   }
   const enc = state.encounter
   if (enc.active && enc.galaxyId) {
     /**
-     * **旗舰战**（2026-09-25 修）：核心条满时核心星系**不再算"被占"**（`weekendOccupiedLiveAt` 要求进度 < 1）
-     * ⇒ 原先这条恒假、旗舰战打完全都不结算（探针实测：归属 undefined / 结算 null / 池子从未立起）。
-     * 判据改成"遭遇槽里挂的正是该族**旗舰卡** + 星系 = 本场核心"——旗舰战就是引擎「挑战旗舰」写进遭遇槽的那一场。
+     * **旗舰战**：判据 = "遭遇槽里挂的正是该族**旗舰卡** + 星系 = 本场核心"——旗舰战就是引擎
+     * 「挑战旗舰」写进遭遇槽的那一场。
+     * ⚠ 2026-09-25 修过一次：当时 `weekendZoneLiveAt`（旧名 `weekendOccupiedLiveAt`）要求进度 < 1，
+     * 而**核心条满正是旗舰现身的前提** ⇒ 这条恒假、旗舰战打完全都不结算。
+     * ⚠ 2026-10-02 起"看进度"那一句已从谓词里删掉（夺回不再关门）⇒ 本分支照旧成立，且与"已夺回
+     * 的核心去刷普通舰队算 assault"互不干扰（后者走上面两条远征/卡面路径）。
      */
     if (enc.anomalyId !== null && enc.anomalyId === weekendFoeCardOf(ev.family, 'flagship') && enc.galaxyId === ev.coreId) {
       return { galaxyId: ev.coreId, kind: 'flagship' }
     }
-    if (weekendOccupiedLiveAt(state, enc.galaxyId, nowWallMs)) {
+    if (weekendZoneLiveAt(state, enc.galaxyId, nowWallMs)) {
       return { galaxyId: enc.galaxyId, kind: 'ambush' }
     }
   }
@@ -956,13 +979,13 @@ export function weekendApplyBattleOutcome(
     }
     /**
      * 提示的**有效性闸门**：伏击要求该星系是活的占领区；旗舰要求"星系 = 本场核心"。
-     * ⚠ 旗舰**不能**套"活的占领区"这条 —— 核心条满正是旗舰现身的前提，那一刻 `weekendOccupiedLiveAt`
+     * ⚠ 旗舰**不能**套"活的占领区"这条 —— 核心条满正是旗舰现身的前提，那一刻 `weekendZoneLiveAt`
      * 已经为假（进度 = 1）⇒ 套上去会把旗舰战打回"什么都不结算"（2026-09-24 那个 bug 的翻版）。
      */
     if (hint.kind === 'flagship') {
       return hint.galaxyId === ev.coreId ? { galaxyId: hint.galaxyId, kind: 'flagship' } : undefined
     }
-    return weekendOccupiedLiveAt(state, hint.galaxyId, nowWallMs)
+    return weekendZoneLiveAt(state, hint.galaxyId, nowWallMs)
       ? { galaxyId: hint.galaxyId, kind: hint.kind }
       : undefined
   })()

@@ -111,9 +111,14 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
       expect(c.galaxyId, '星系覆写成被占星系').toBe(gid)
       expect(c.rewardIsk, '无赏金（船长 2026-09-25「入侵舰队不应该有赏金」）').toBe(0)
     }
-    // 夺回后自动回落原卡（同一取数口）
+    /**
+     * **夺回后仍换入侵舰队卡**（**2026-10-02 船长令**：「我希望的是 100% 后能够继续刷，但是掉落残骸数量
+     * 需要减半作为惩罚」）——改前这里断言"夺回 ⇒ 回落原卡"，那条口径随本批作废：夺回不再关门。
+     */
     s.weekendEvent!.contributed[gid] = 1
-    expect(weekendBountyCardsOf(s, ctx, base, gid, Date.now())[0]!.id).toBe(base[0]!.id)
+    const afterReclaim = weekendBountyCardsOf(s, ctx, base, gid, Date.now())[0]!
+    expect(['ink-harass', 'ink-raid'], '夺回后照旧是入侵舰队卡').toContain(afterReclaim.id)
+    expect(afterReclaim.rewardIsk, '夺回后同样是 0 赏金').toBe(0)
   })
 
   it('② 高安被占星系采矿 ⇒ 遇袭掷骰破例命中（H 池卡 · ×0.75 · 标签 76/91）；同条件未占领时高安不掷', () => {
@@ -379,7 +384,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
       kind: 'flagship',
       galaxyId: 'galaxy-kor',
     })
-    expect(r?.kind, '核心条满（weekendOccupiedLiveAt 已为假）仍认旗舰战').toBe('flagship')
+    expect(r?.kind, '核心条满（weekendZoneLiveAt 已为假）仍认旗舰战').toBe('flagship')
     expect(r?.galaxyId).toBe('galaxy-kor')
     expect(s.weekendEvent!.flagshipHpMax, '这一场已在池子上立账').toBeDefined()
   })

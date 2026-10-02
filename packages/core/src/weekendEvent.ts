@@ -839,7 +839,7 @@ export function weekendAmbushPickOf(
 ): WeekendAmbushPick | null {
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) return null
-  // ⚠ 等价于 `weekendBounty.weekendOccupiedLiveAt`（那边 import 本文件 ⇒ 这里不能反向引，避免循环）
+  // ⚠ 等价于 `weekendBounty.weekendZoneLiveAt`（那边 import 本文件 ⇒ 这里不能反向引，避免循环）
   if (galaxyId !== ev.coreId && !ev.peripheryIds.includes(galaxyId)) return null
   if (weekendProgressAt(state, ev, galaxyId, nowWallMs) >= 1) return null
   const isCore = galaxyId === ev.coreId
@@ -1082,7 +1082,7 @@ export function weekendProgressAt(
 }
 
 /**
- * **2026-10-02 破环搬家**（原住 weekendBounty.ts）：`WEEKEND_CARD_PREFIX` / `weekendOccupiedLiveAt`
+ * **2026-10-02 破环搬家**（原住 weekendBounty.ts）：`WEEKEND_CARD_PREFIX` / `weekendZoneLiveAt`
  * 这两件只读 `state.weekendEvent`，是**活动态读数**——搬来本件（活动态的家）后，
  * `weekendBattle ↔ weekendBounty` 的运行期边清零（weekendBattle 改从本件读；weekendBounty 原样再导出）。
  */
@@ -1090,12 +1090,42 @@ export function weekendProgressAt(
 /** 派生卡 id 前缀（与原卡区分；**永不写入首胜台账**） */
 export const WEEKEND_CARD_PREFIX = 'wk-'
 
-/** 该星系当前是否处于占领区（核心或外围）且**尚未夺回** */
-export function weekendOccupiedLiveAt(state: GameState, galaxyId: string, nowWallMs: number): boolean {
+/**
+ * **该星系此刻还能不能打入侵**（＝「活动未结束 且 它是本次入侵的核心或外围」）——**唯一判据**。
+ *
+ * 🔴 **2026-10-02 船长令改写**（原话：「我希望的是 **100% 后能够继续刷**，但是掉落残骸数量需要减半作为惩罚」）：
+ * **删掉了"进度必须 < 1"那一句**。改前叫 `weekendZoneLiveAt`（"仍被占"），夺回那一刻起
+ * 板面换卡 / 遇袭破例 / 主动出击 / 重复出击 / 星图那行**全部关闭** ⇒ 100% 之后只剩旗舰战可打。
+ * 新口径：**夺回不再关门**，占领区一直可打**到活动结束**；代价见 `weekendWreckPenaltyFracOf`
+ * （已夺回的星系继续打 ⇒ **残骸半量**，且不给任何其他奖励）。
+ * ⚠ **遇袭概率公式不动**（`weekendEncounterChanceAt` 仍是 `60%×(1−进度)`）⇒ 100% 的星系不会被动挨打，
+ * "继续刷"= 玩家**主动**去打（船长 2026-10-02 三答之甲）。
+ * ⚠ 观感随之：100% 的星系照旧发光、进度条满格挂着，直到活动结束（同日三答之甲）。
+ * ⚠ 名字一并改：语义已经不是"被占"（含已夺回）⇒ 叫 `weekendZoneLiveAt` 会撒谎。
+ */
+export function weekendZoneLiveAt(state: GameState, galaxyId: string, nowWallMs: number): boolean {
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) return false
-  if (galaxyId !== ev.coreId && !ev.peripheryIds.includes(galaxyId)) return false
-  return weekendProgressAt(state, ev, galaxyId, nowWallMs) < 1
+  return galaxyId === ev.coreId || ev.peripheryIds.includes(galaxyId)
+}
+
+/**
+ * **入侵战斗的残骸注入折扣**（＝船长说的"惩罚"）——**单点**，出征那条路读它。
+ *
+ * 口径（**2026-10-02 船长令**）：**该星系已夺回**（收复进度满）⇒ `0.5`（半量）；否则 `1.0`。
+ * ⚠ 另两条路本来就是半量、**不读本函数**（各自的口径照旧）：
+ *   · 遇袭 / 旗舰挑战走**遭遇**结算 ⇒ `salvage.WRECK_ENCOUNTER_INJECT_FRAC = 0.5`；
+ *   · 于是"100% 之后"三种入口一律半量 —— 这正是船长要的"掉落残骸数量减半作为惩罚"。
+ * ⚠ **不给任何其他奖励**（船长的另一半令）：不读本函数的地方也别顺手补钱 ——
+ *   入侵卡赏金恒 0、进度台账 `clamp01`（满档不再涨、结算没有额外进度收入）、夺回奖一次性、声望只首胜。
+ */
+export function weekendWreckPenaltyFracOf(
+  state: Pick<GameState, 'debugQuick'>,
+  ev: WeekendEventState,
+  galaxyId: string,
+  nowWallMs: number,
+): number {
+  return weekendProgressAt(state, ev, galaxyId, nowWallMs) >= 1 ? 0.5 : 1
 }
 
 /**

@@ -4673,6 +4673,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* ── 2026-09-27 船长令：旗舰战留档（玩家亲手击沉）──
      115 = 玩家击杀（**新规则下这一条就是"击杀必给"的落地语**）· 117 = 窗口到点但本场有旗舰（撤走、未判击沉） */
   "ui.weekend.115": { zh: "入侵结束：玩家亲手击沉了旗舰，旗舰黑匣已存入物品仓库。", en: "Invasion over: the player personally sank the flagship; the flagship black box is in your item warehouse." },
+  /* 2026-10-02 船长令（「我希望的是 100% 后能够继续刷，但是掉落残骸数量需要减半作为惩罚」）：
+     116 = **已夺回**的星系那行改显这句（替掉 `ui.weekend.096` 的"结算时按进度发放"——那一笔对满档
+     星系已经不涨了）。只写规格（半量残骸 / 进度不再增长），不写原因。 */
+  "ui.weekend.116": { zh: "该星系已夺回：继续出击只获得半量残骸，收复进度不再增长。", en: "System reclaimed: further sorties yield only half the wreckage, and reclaim progress no longer increases." },
   "ui.weekend.117": { zh: "入侵结束：占领区已恢复；旗舰在窗口结束前撤走，未判定击沉。", en: "Invasion over: the occupied systems have been restored; the flagship withdrew before the window closed, so it was not judged sunk." },
   "ui.weekend.005": { zh: "{p1}入侵", en: "{p1} invasion" },
   "ui.weekend.006": { zh: "核心：{p1}", en: "Core: {p1}" },

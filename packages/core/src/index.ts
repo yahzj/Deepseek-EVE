@@ -336,6 +336,8 @@ export {
   weekendT0Of,
   weekendWindowMsOf,
   weekendWindowOpen,
+  /** 2026-10-02 船长令（100% 后仍可继续刷 · 掉落半量作惩罚）：已夺回的星系 ⇒ 出征残骸折扣 0.5 */
+  weekendWreckPenaltyFracOf,
 } from './weekendEvent'
 export type { WeekendAmbushPick, WeekendBossPoolView, WeekendEventState, WeekendFlagshipView, WeekendTickResult } from './weekendEvent'
 
@@ -420,7 +422,7 @@ export {
   weekendDerivedCardOf,
   weekendEncounterAllowedIn,
   weekendEncounterRollOf,
-  weekendOccupiedLiveAt,
+  weekendZoneLiveAt,
   // ⚠ `weekendStandingBountyHeldAt`（收复星系的悬赏押后到活动结束）已随 2026-09-28 船长令
   //   「入侵期间，赏金任务照常发放（只有势力活跃关闭）」删除 —— 别再往这里加回来。
 } from './weekendBounty'

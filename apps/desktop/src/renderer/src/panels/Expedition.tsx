@@ -11,7 +11,7 @@ import {
   isExplored,
   originGalaxyOf,
   scanStatus,
-  weekendOccupiedLiveAt,
+  weekendZoneLiveAt,
   shortestTravelMinutes,
   standingOf,
   /** 声望**可支配**余额（＝累计 − 已花）——声望商店子页标题行那两本账走它（与弹层同一口径） */
@@ -442,13 +442,13 @@ export function BountyPanel({
   /**
    * **入侵的悬赏卡置顶**（**2026-09-26 船长令**：「**入侵的悬赏卡片在常驻悬赏里置顶。**」）。
    *
-   * 判据 = `weekendOccupiedLiveAt`（**仍被占**才算；与"赏金栏改显结算口径"、星系详细那行入侵框
+   * 判据 = `weekendZoneLiveAt`（**仍被占**才算；与"赏金栏改显结算口径"、星系详细那行入侵框
    * 同一把尺 ⇒ 三处不会各说各话）。已夺回的星系不算 —— 它的常驻悬赏本来就还在隐藏状态，
    * 不占板面、也无需置顶。
    *
    * 比较器本体抽到 `./bountySort`（纯函数 ⇒ 工具/用例可直接断言"置顶恒成立"）。
    */
-  const pinnedIds = new Set(listed.filter((a) => weekendOccupiedLiveAt(state, a.galaxyId, Date.now())).map((a) => a.id))
+  const pinnedIds = new Set(listed.filter((a) => weekendZoneLiveAt(state, a.galaxyId, Date.now())).map((a) => a.id))
   const sorted = [...items].sort(
     bountyComparatorOf(sort, pinnedIds),
   )
