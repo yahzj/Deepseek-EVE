@@ -52,7 +52,7 @@
 | 族名「光环」/ **Corona Systems** · 图鉴第 7 势力 | `packages/data/src/l10n/table.ts` `core.weekend.024` / `ui.Handbook.381` · `factionCodex.ts` `FACTION_CODEX_ORDER` |
 | 无人舰队 · 舰体冷白护盾过半 · 激光为主＋风筝＋折跃 · 不设据点 | `ui.Handbook.383` / `385` / **`387`（船长 2026-10-01 手改稿逐字）** / `389` |
 | 激光必中 · 射程 | 五舰 `energyForm: 'beam'`（必中）· `rangeMaxM` 逐舰 = **9,000 / 10,000 / 11,000 / 12,500 / 13,500**（T1~T5；2026-10-01 船长令「非中枢 +3,000、中枢 +5,000」）· **玩家那件**叠光激光炮 `maxRangeM: 7000`（勿与敌舰射程混用——本稿初版曾误写成 7 km，已更正） |
-| **折跃：被命中触发 · 朝自身期望距离一跳 · 单跳 ≤ 2,000 m · 冷却 5 秒** | `packages/core/src/foeMounts.ts` `coronaBlink`（件名「瞬光跃迁仪」/ Corona Blink Drive · 件名与效果句经船长 2026-10-01 批准）· `packages/core/tests/corona-blink-20261001.test.ts` 头注（船长令「全族闪现的间隔下调到5秒」）；五档全带 = 船长选「乙」 |
+| **折跃：被命中触发 · 朝自身期望距离一跳 · 单跳 ≤ 2,000 m** · 冷却 ~~5 秒~~ → **12 秒（现行）** | `packages/core/src/foeMounts.ts` `coronaBlink`（件名「瞬光跃迁仪」/ Corona Blink Drive · 件名与效果句经船长 2026-10-01 批准）· `packages/core/tests/corona-blink-20261001.test.ts` 头注（船长令「全族闪现的间隔下调到5秒」）；五档全带 = 船长选「乙」。⚠ **2026-10-03 船长令「将敌人的闪现冷却时间延长到12秒」**（`6bb04de2`）⇒ 本行按现行 12 秒读；**公告正文一字未写数字**（船长定稿已删全部数字细目）⇒ 对玩家文案无影响 |
 | **粼光级「闪烁过载装置」**：闪跃后护盾回满 · 结构上限 −5% | `foeMounts.ts` `coronaFlashOverload`（`flashOverload: { healShield: true, hullCostPct: 0.05 }`；船长原话「恢复所有护盾值…损失最大结构值5%的结构」，可扣死自毁 = 船长选「乙」；只挂 T1） |
 | **叠光级「叠光装置」**：开火/闪跃后攻速递进（步长 300ms · 下限 0.5s）· 该舰伤害 ×0.3 | `foeMounts.ts` `coronaOverlayDrive`（`overlayDrive: { stepMs: 300, floorMs: 500, dmgMul: 0.3 }`；只挂 T3） |
 | 闪跃期间我方不开火 | `packages/core/src/combat.ts` 的 `blinkHoldSides`（原 `blinkHoldFire`；冷却照推。⚠ 2026-10-02 的 §35 批已把禁火改成**双向** —— 我方闪现时敌方也停火，见 §四 待裁点 6） |
@@ -116,3 +116,15 @@ core **287 文件 / 3016 用例** ✅ · `l10n:check` ✅ · `copy:audit`：我�
 
 🔴 **仍未解（唯一发布前置）**：`WEEKEND_LOCKED_FAMILY` 仍是 `'H'` ⇒ 公告要与「**放开族锁成 `'R'`（或置 `null`）**」
 同一批推送才对玩家成立。**本次只落公告数据，族锁一字未动** —— 等船长一句话。
+
+## 六、船长裁决（2026-10-02 · 一号四问汇报后的答复）
+
+> 船长原话：「**3 没问题了，同样等二号**」（同批答复里的第 2 条：「2 等二号做完 R 族剩余内容」）
+
+- **公告稿：没问题**（✅ 定稿保持现状，`packages/data/src/announcements.ts` 里那三条**一字不再动**）。
+- **族锁放开 ＋ 推送：等二号做完 R 族剩余内容**后**同一批**办（与第 2 条同一条闸门）。
+- ⇒ **发布批的清单**（等二号收工即执行，届时请船长点头）：
+  ① `WEEKEND_LOCKED_FAMILY` `'H'` → `'R'`（或 `null`，按 §四 待裁点 1 的口径）一行；
+  ② 公告已在库（`ann-corona-incursion-20261002`，无需再写）；
+  ③ 届时把本地积压的提交与本批**一起推送一次**（§4 推送闸门：未完成时只本地 commit）。
+- ⚠ 在那之前：**不推送**、**不动族锁**、**不再改公告稿**（本会话照此冻结）。

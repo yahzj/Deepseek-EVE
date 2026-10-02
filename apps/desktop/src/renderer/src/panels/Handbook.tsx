@@ -1037,6 +1037,9 @@ export function Handbook({
    *  ⚠ 物品图鉴走**玩家可见目录**（`visibleItemDefs`）：未上线物品（标 `ItemDef.unreleased`）
    *  不进图鉴——首版直接遍历 `engine.items` 全目录，未上线矿会连名字带描述一起被搜出来（2026-09-13 实测）。 */
   const itemCells: GridCell[] = visibleItemDefs(engine.ctx).map((item) => itemCellOf(item))
+  /** **道具逐件档的档名解析器**（2026-10-02 船长令：消耗品桶里每件道具自成一档）：档名 = 那件道具
+   *  自己的名字，从物品表单点取（`subText` 的第二个参数），不在分类表里再抄一份名字。 */
+  const itemNameOf = (id: string): string | undefined => engine.ctx.items.get(id)?.name
   const moduleCells: GridCell[] = engine.modules.map((mod) => moduleCellOf(mod))
   const shipCells: GridCell[] = engine.ships.map((ship) => shipCellOf(ship))
   const bpCells: GridCell[] = [
@@ -1690,7 +1693,8 @@ export function Handbook({
                           className={`app-tasktab${subKey === o.key ? ' is-active' : ''}`}
                           onClick={() => setSubKey(o.key)}
                         >
-                          {subText(o)}
+                          {/* 消耗品桶含「道具逐件档」，档名 = 那件道具自己的名字（2026-10-02 船长令） */}
+                          {subText(o, itemNameOf)}
                         </button>
                       ))}
                     </div>

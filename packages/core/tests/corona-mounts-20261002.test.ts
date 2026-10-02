@@ -226,12 +226,14 @@ describe('待机护盾阵列：护盾层 ×0.5（未冷却 ⇒ 生效 / 冷却�
     /**
      * **开合判据**（船长原话「闪现**未处于冷却中**的时候」）：
      * - 从未闪过（冷却表没有本舰）⇒ **算可用**（开场即生效）；
-     * - 冷却到 `now + 5000`（闪现刚发生）⇒ **不生效**（那 5 秒里没有这层抗性 = 机制的一部分）。
+     * - 冷却到 `now + 12000`（闪现刚发生）⇒ **不生效**（那段冷却里没有这层抗性 = 机制的一部分）。
+     *   ⚠ 冷却长度**取自件上的 `blink.cooldownMs`**：**2026-10-03 船长令起 = 12 秒**
+     *   （该令由 5 秒延长到 12 秒 ⇒ 本判据随之改）。
      */
     const now = 10_000
     expect(standbyShieldActiveOf(dusk, undefined, now), '从未闪过 ⇒ 算可用').toBe(true)
-    expect(standbyShieldActiveOf(dusk, now + 5_000, now), '冷却中 ⇒ 不生效').toBe(false)
-    expect(standbyShieldActiveOf({}, now + 5_000, now), '没带该件的单位 ⇒ 恒不生效').toBe(false)
+    expect(standbyShieldActiveOf(dusk, now + 12_000, now), '冷却中 ⇒ 不生效').toBe(false)
+    expect(standbyShieldActiveOf({}, now + 12_000, now), '没带该件的单位 ⇒ 恒不生效').toBe(false)
     console.log(
       `  [读数] 单发 ${dmg}（盾层 ${dusk.hp.s.toFixed(0)}/甲 ${dusk.hp.a.toFixed(0)}/结 ${dusk.hp.h.toFixed(0)}）：` +
         `未生效盾层 −${shieldLossBase.toFixed(2)} · 生效盾层 −${shieldLossShielded.toFixed(2)}（恰一半）；甲/结两档皆 0`,
@@ -243,12 +245,21 @@ describe('待机护盾阵列：护盾层 ×0.5（未冷却 ⇒ 生效 / 冷却�
      * **为什么要关护盾回充**：不关的话"盾层掉幅"= 承伤 − 回充，读数被回充糊住；
      * 关掉之后 `hp.s` 的每一格下降就是**这一拍真吃进去的伤害**，A/B 才有可判的判据。
      * ⚠ 三场的**随机序列与编成完全一致**（同 seed、同卡、只差挂载件/回充）⇒ 差额只可能来自本件。
+     *
+     * 🔴 **判据取"头 20 秒窗口"而不是整场累计**（**2026-10-03 取数定位**）：护盾抗性只在
+     * **一发打不穿盾**时才按比例减伤；一发大到能把残盾一次打空时，盾层的掉幅**只等于它剩下的那点**
+     * （抗性帮不上忙）。整场跑下去盾越薄、这种"破盾发"越多 ⇒ 累计比值会从 0.50 一路漂到 0.62
+     * （实测：冷却 5 秒时窗口短、盾还厚 ⇒ 恰好 0.50；冷却延长到 12 秒后战斗更久 ⇒ 漂到 0.62）。
+     * ⇒ 钉"恰好吃一半"要用**盾还厚的那段窗口**（观测窗起点一致、两边同随机序列），整场累计另作读数。
      */
     const run = (useCtx: SimContext) => {
       const { b, tick } = battleOf(CARD_DUSK, 16, useCtx)
       let tag = ''
       let prevS = 0
       let total = 0
+      /** 头 20 秒（自垂暮级登场那一刻起算）窗口内的盾层掉幅 */
+      let head = 0
+      let bornAt = 0
       for (let t = 100; t <= 400_000; t += 100) {
         tick(t)
         if (!tag) {
@@ -256,17 +267,22 @@ describe('待机护盾阵列：护盾层 ×0.5（未冷却 ⇒ 生效 / 冷却�
           if (u) {
             tag = u.tag
             prevS = u.hp.s
+            bornAt = t
           }
           continue
         }
         const u = b.units[tag]
         if (!u) break
-        if (u.hp.s < prevS - 1e-9) total += prevS - u.hp.s
+        if (u.hp.s < prevS - 1e-9) {
+          const drop = prevS - u.hp.s
+          total += drop
+          if (t - bornAt <= 20_000) head += drop
+        }
         prevS = u.hp.s
         if (u.hp.s + u.hp.a + u.hp.h <= 0) break
         if (b.ended !== null) break
       }
-      return total
+      return { total, head }
     }
     const plain = run(ctxVariant(CARD_DUSK, 'foe-r-corona-dusk', '', { noRegen: true, mounts: [] }))
     const shieldOnly = run(
@@ -281,19 +297,22 @@ describe('待机护盾阵列：护盾层 ×0.5（未冷却 ⇒ 生效 / 冷却�
         mounts: [FOE_MOUNT_IDS.coronaBlink, FOE_MOUNT_IDS.coronaStandbyShield],
       }),
     )
-    expect(plain, '对照场应真的挨了打').toBeGreaterThan(0)
-    /** ① **件恒生效 ⇒ 恰好吃一半**（这条钉住"接线到了唯一收口"） */
-    expect(Math.abs(shieldOnly * 2 - plain) / plain, '摘掉闪现时盾层累计掉幅应恰为对照的一半').toBeLessThan(0.03)
-    /** ② **出荷配置（闪现 ＋ 待机护盾）⇒ 介于两者之间**：闪现一挨打就闪（5 秒冷却）⇒
-     *     冷却窗内没有这层抗性（船长口径的一部分），故只在冷却窗外生效。
-     *     ⚠ **2026-10-03 船长裁定「同一拍整次齐射都算」后**：触发那一拍的整次齐射都算生效
-     *     ⇒ 出荷配置的减幅明显变大（读数随之变，见下方 `[读数]` 与 ⑪）。 */
-    expect(shipped, '带闪现时仍比裸对照吃得少').toBeLessThan(plain * 0.95)
-    expect(shipped, '带闪现时不可能达到"恒生效"那种减半').toBeGreaterThan(shieldOnly * 1.2)
+    expect(plain.head, '对照场应真的挨了打').toBeGreaterThan(0)
+    /** ① **件恒生效 ⇒ 头 20 秒恰好吃一半**（这条钉住"接线到了唯一收口"） */
+    expect(
+      Math.abs(shieldOnly.head * 2 - plain.head) / plain.head,
+      `摘掉闪现时头 20 秒的盾层掉幅应恰为对照的一半（实测 ${shieldOnly.head.toFixed(1)} vs ${plain.head.toFixed(1)}）`,
+    ).toBeLessThan(0.03)
+    /** ② **出荷配置（闪现 ＋ 待机护盾）⇒ 介于两者之间**：闪现一挨打就闪 ⇒ 冷却窗内没有这层抗性（口径的一部分）。
+     *     ⚠ 冷却 **2026-10-03 起由 5 秒延长到 12 秒** ⇒ 这层抗性的"开门时间"更短 ⇒ `shipped` 读数回升
+     *     （同拍整次齐射都算那条裁定仍然生效，见 ⑪）。 */
+    expect(shipped.total, '带闪现时仍比裸对照吃得少').toBeLessThan(plain.total * 0.995)
+    expect(shipped.total, '带闪现时不可能达到"恒生效"那种减半').toBeGreaterThan(shieldOnly.total * 1.2)
     console.log(
-      `  [读数] 垂暮级盾层累计掉幅（关回充 · 同一场同一随机序列）：` +
-        `裸对照 ${plain.toFixed(0)} · 只挂件 ${shieldOnly.toFixed(0)}（恰一半）· ` +
-        `出荷（闪现＋件）${shipped.toFixed(0)}（占对照 ${((shipped / plain) * 100).toFixed(1)}%）`,
+      `  [读数] 垂暮级盾层掉幅（关回充 · 同一场同一随机序列）：` +
+        `头 20 秒窗 裸对照 ${plain.head.toFixed(1)} / 只挂件 ${shieldOnly.head.toFixed(1)}（恰一半）/ ` +
+        `出荷 ${shipped.head.toFixed(1)}；整场累计 裸对照 ${plain.total.toFixed(0)} · 只挂件 ${shieldOnly.total.toFixed(0)} · ` +
+        `出荷 ${shipped.total.toFixed(0)}（占对照 ${((shipped.total / plain.total) * 100).toFixed(1)}%）`,
     )
   })
 
@@ -306,14 +325,14 @@ describe('待机护盾阵列：护盾层 ×0.5（未冷却 ⇒ 生效 / 冷却�
     }
     expect(foeStandbyReadyOf(b, dusk), '本拍开头闪现可用 ⇒ 就绪').toBe(true)
     /**
-     * 本拍**中途**它挨打触发了闪现、盖上 5 秒冷却 —— 引擎的真实次序就是这个
-     * （同一发里"伤害结算在前、`markFoeBlink` 盖冷却在后"）。
+     * 本拍**中途**它挨打触发了闪现、盖上 12 秒冷却（**2026-10-03 船长令起冷却 = 12 秒**）——
+     * 引擎的真实次序就是这个（同一发里"伤害结算在前、`markFoeBlink` 盖冷却在后"）。
      */
-    b.foeBlinks[dusk.tag] = 1_000 + 5_000
+    b.foeBlinks[dusk.tag] = 1_000 + 12_000
     expect(foeStandbyReadyOf(b, dusk), '同一拍内整次齐射同命 ⇒ 仍算就绪（这是船长裁定那一条）').toBe(true)
     b.lastTickGameMs = 1_100
     expect(foeStandbyReadyOf(b, dusk), '进了下一拍 ⇒ 冷却中，不生效').toBe(false)
-    b.lastTickGameMs = 6_100
+    b.lastTickGameMs = 13_100
     expect(foeStandbyReadyOf(b, dusk), '冷却走完那一拍 ⇒ 恢复生效').toBe(true)
     /** 没带该件的单位：恒 false，且**一次都不写这张快照表**（零行为变化的守卫） */
     const b2 = {

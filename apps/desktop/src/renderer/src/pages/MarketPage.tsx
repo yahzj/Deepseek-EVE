@@ -1341,6 +1341,9 @@ export function MarketPage({
   const [sub, setSub] = useState<string>(SUB_ALL)
   const query = kw.trim().toLowerCase()
   const filterActive = query.length > 0 || kind !== 'all'
+  /** **道具逐件档的档名解析器**（2026-10-02 船长令）：档名 = 那件道具自己的名字，从物品表单点取，
+   *  中英随物品表走 ⇒ 不在 `ui/itemSubs.ts` 里再抄一份名字（`subText` 的第二个参数）。 */
+  const itemNameOf = (id: string): string | undefined => engine.ctx.items.get(id)?.name
   /**
    * **二级子分类：只列该类型下真有商品的档**（2026-09-20 船长「明显不存在的子类筛选隐藏」）——
    * 船长点名的例子：「市场-高槽装备-护盾」（护盾是中槽件，高槽下恒空）⇒ 该档不再出现；
@@ -1432,7 +1435,8 @@ export function MarketPage({
                 <option value={SUB_ALL}>{tr("ui.IndustryPage.001")}{KIND_TEXT[kind]}</option>
                 {kindSubs.map((s) => (
                   <option key={s.key} value={s.key}>
-                    {subText(s)}
+                    {/* 消耗品桶里有「道具逐件档」（档名 = 那件道具自己的名字）⇒ 第二参数给物品名解析器 */}
+                    {subText(s, itemNameOf)}
                   </option>
                 ))}
               </select>
@@ -1447,7 +1451,7 @@ export function MarketPage({
                 query.length > 0
                   ? tr("ui.MarketPage.170", { p1: kw.trim() })
                   : `全部 ${KIND_TEXT[kind] ?? kind}${
-                      sub !== SUB_ALL && kindSubs ? ` · ${subText(kindSubs.find((s) => s.key === sub) ?? { key: sub, label: sub })}` : ''
+                      sub !== SUB_ALL && kindSubs ? ` · ${subText(kindSubs.find((s) => s.key === sub) ?? { key: sub, label: sub }, itemNameOf)}` : ''
                     }`
               }
               hint={<HintIcon tip={MKT_MECH_TIP} />}

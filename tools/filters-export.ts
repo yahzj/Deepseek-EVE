@@ -227,6 +227,8 @@ function defTables(): Array<[string, string, Array<{ key: string; label: string;
   return [
     ['ITEM_SUBS', '货物（原矿/原材料/气体/冰矿/奢侈品…）二级子分类', subs.ITEM_SUBS],
     ['CONSUME_SUBS', '消耗品二级子分类（弹药/修理组件/无人机）', subs.CONSUME_SUBS],
+    // 2026-10-02 船长令：道具（`kind: 'consumable'`）归「消耗品」桶，且**每件自成一档**
+    ['CONSUMABLE_ITEM_SUBS', '消耗品·道具逐件档（超空间折跃燃料/信号发射器/突触加速剂；档名取物品名）', subs.CONSUMABLE_ITEM_SUBS],
     ['CONTAINER_SUBS', '货柜二级子分类', subs.CONTAINER_SUBS],
     ['WRECK_SUBS', '残骸二级子分类（普通/稀有）', subs.WRECK_SUBS],
     ['PART_SUBS', '零件二级子分类（基础/高级）', subs.PART_SUBS],
@@ -254,18 +256,24 @@ function textOf(id: string | undefined, fallback: string, idParam?: string): { z
   return { zh: sub(e.zh), en: sub(e.en) }
 }
 
+/** 一行档位的文案：**物品档**（`itemId`）的档名取该物品自己的名字 ⇒ 英文在物品表里，不在这里重复 */
+function rowText(o: { label: string; id?: string; idParam?: string; itemId?: string }): { zh: string; en: string } {
+  if (o.itemId !== undefined) return { zh: o.label, en: '(随物品名 · 见 items.ts 与 l10n.ts)' }
+  return textOf(o.id, o.label, o.idParam)
+}
+
 function defRows(): DefRow[] {
   const rows: DefRow[] = []
   for (const [name, use, table] of defTables()) {
     for (const o of table) {
-      const t = textOf(o.id, o.label, o.idParam)
+      const t = rowText(o)
       rows.push({ 表: name, 用途: use, 键: o.key, 中文: t.zh, English: t.en, id: o.id ?? '', id参数: o.idParam ?? '' })
     }
   }
   // 「类型 → 子分类」的挂接关系（哪张子表挂在哪个一级类型下）
   for (const [kind, table] of Object.entries(subs.SUBS_OF_KIND)) {
     for (const o of table) {
-      const t = textOf(o.id, o.label, o.idParam)
+      const t = rowText(o)
       rows.push({ 表: `SUBS_OF_KIND.${kind}`, 用途: `一级类型「${kind}」下挂的子分类`, 键: o.key, 中文: t.zh, English: t.en, id: o.id ?? '', id参数: o.idParam ?? '' })
     }
   }
