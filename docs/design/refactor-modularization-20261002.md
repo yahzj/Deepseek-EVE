@@ -375,6 +375,18 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：零渲染层改动）。
 
+### 批次 4g-1：combat.ts 七拆——`playerSpec.ts` 玩家规格乘数与抗性合成（2026-10-02 · 零行为变化）
+
+- 手法：`applyAdds` / `mergeResist`（EVE 式抗性合成）/ R4/R5 上位技能乘数五件（`damageUpgradeMult`
+  等）/ `playerAmmoType` 共九件从 combat.ts 拆到新文件 `playerSpec.ts`（纯读数/纯计算，只依赖
+  state 类型/types/combatMath/equipment）；combat 借回使用并原样再导出。
+- `applyAdds` 原模块私有，因 createPlayerSpec 仍要用而转公开（不进 combat 公开面）。
+- noUnusedLocals 抓到 `familyUpgradeSkillIdOf` 在 combat 内部无直接调用（只被 familyUpgradeMult
+  内部使用）——值导入改只留再导出。
+- 分两步的原因：`createPlayerSpec` 主件 668 行体量大，4g-2 续搬（届时从本文件借回这些件）。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：零渲染层改动）。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、
