@@ -179,7 +179,14 @@ describe('周末入侵 · 时间轴', () => {
     setStanding(s2, 'dsi', 60)
     s2.weekendEvent = { ...evOf('galaxy-home', ['galaxy-kor'], wed), family: 'R' }
     expect(ensureWeekendEvent(s2, ctx, fri + 1 * H), '旧场还活着 ⇒ 仍然不开').toBe(false)
-    expect(old.family, '（占位：新场对象在手上）').toBe('R')
+    /**
+     * 新场族 = **那一期的排期族**（`weekendFamilyForWindow(本期 T0)`）。
+     * ⟪2026-10-02 改⟫ **锚点归位后 10-09 那期 = 第 1 期 ⇒ H（墨潮帮）**；本行原写 `'R'` ——
+     * 那正是"锚点晚 8 小时 ⇒ 10-09 被夹成第 0 期"留下的痕迹（族循环整整错一期），
+     * 详见 `tests/rotation-anchor-20261002.test.ts` 与工作文档
+     * `docs/design/weekend-open-gate-and-rotation-anchor-20261002.md`。
+     */
+    expect(old.family, '新场族 = 那一期的排期族（10-09 = 第 1 期）').toBe(WEEKEND_FAMILY_ROTATION[1])
   })
 
   /**

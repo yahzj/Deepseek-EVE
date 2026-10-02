@@ -30,6 +30,8 @@ import { addLog } from './state'
 import { addWare } from './inventory'
 import { INVASION_BEACON_ITEM_ID } from './consumables'
 import { weekendInvasionAllowedFor, weekendRollOccupation } from './weekendEvent'
+/** 2026-10-02 补闸（船长令「按你推荐来」）：开局器也要过"还有没打完的旗舰战吗"这道闸（判据与战斗界面同源） */
+import { weekendFlagshipBattleActive } from './weekendLaunch'
 
 /**
  * **本地墙钟"某日 20:00"的绝对毫秒** —— 本模块的两个日期锚都走它，**与 `weekendT0Of` 同一把尺**
@@ -179,6 +181,10 @@ export function weekendCompensationGotRThisPeriod(state: GameState): boolean {
  * 1. 该档判成了 `makeup`，且**还没开过**（`makeupServedAtWallMs` 缺省）、**也没跳过**（`makeupSkippedAtWallMs` 缺省）；
  * 2. 现在落在**补场暗期**内（{@link weekendMakeupWindowOf}）；
  * 3. **手上没有未结束的场**（与 `ensureWeekendEvent` 那条硬前提同口径：绝不覆盖正在打的那场）；
+ * 3-bis. 🔴 **2026-10-02 补闸（船长令「按你推荐来」）**：**还有没打完的入侵旗舰战 ⇒ 本拍不开**
+ *    （判据 = `weekendLaunch.weekendFlagshipBattleActive`，与战斗界面/削血闸同源）——
+ *    与 3 互补：那一场可能是"玩家亲手击沉后已收场"的旧场（`endedAtWallMs` 已写 ⇒ 3 放行），
+ *    而玩家还停在它的战斗画面里；此刻开新场，旧战斗的结算会落到新场头上；
  * 4. 🔴 **船长 2026-10-02 令「乙」**：**他本期已经真出过光环 ⇒ 不开补场** —— 按"其余玩家"口径
  *    改发 1 枚信号发射器（{@link weekendCompensationGotRThisPeriod}）；这条**在声望门之前**判；
  * 5. 过**声望前提** `weekendInvasionAllowedFor`（≥40 累计声望）——与排期入侵同一条门。
@@ -207,6 +213,11 @@ export function openWeekendMakeupIfDue(state: GameState, ctx: SimContext, nowWal
   if (!weekendMakeupWindowOf(nowWallMs).open) return false
   const ev = state.weekendEvent
   if (ev !== undefined && ev.endedAtWallMs === undefined) return false
+  /**
+   * 🔴 **3-bis「还在打那一场 ⇒ 本拍不开」**（**2026-10-02 补闸**）：见函数头注 —— 判据与战斗界面、
+   * 章鱼削血闸同源（`weekendFlagshipBattleActive`），绝不新造第二份判据。
+   */
+  if (weekendFlagshipBattleActive(state)) return false
   /**
    * 🔴 **船长 2026-10-02 令「乙」**：**他本期已经真出过光环 ⇒ 不再叠加一场补场**。
    *

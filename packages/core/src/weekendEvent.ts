@@ -213,8 +213,21 @@ export const WEEKEND_FAMILY_ROTATION: readonly string[] = WEEKEND_FINISHED_FAMIL
  * **循环锚点 = 2026-10-02 20:00（本地墙钟）那一期**——**船长 2026-10-02 令**里"一会 8 点开启入侵、
  * 设置为 R 族"的**那一期**：本期 = `ROTATION[0]` = **R**（与船长指定一致，指定与循环不打架）；
  * 此后每期顺延 ⇒ **10-09 那期 = H**、10-16 那期 = R ……（无特意设置时一直转下去）。
+ *
+ * 🔴 **2026-10-02 修（一号 · 船长令「按你推荐来」）**：原值是**手抄的毫秒数** `1_790_971_200_000`，
+ * 实测 = **2026-10-03 04:00 本地**（＝`2026-10-02T20:00Z`）——比本注释写的锚点**晚 8 小时**。
+ * 后果（`weekendPeriodIndexOf` 里那句 `Math.max(0, …)` 把负数夹成 0）：
+ * - 本期（10-02 20:00）算出的期号 = `max(0, −1)` = **0** ⇒ 表面看"没坏"（还是 R）；
+ * - **下一期（10-09 20:00）算出来 = `floor(160h/168h)` = 仍是 0** ⇒ 又出 R（光环）——
+ *   本注释写的是 H（墨潮帮），玩家实际连着两期光环；
+ * - 且 `WEEKEND_FAMILY_OVERRIDE`（`periodIndex: 0`、只为本期设的 R）**跟着粘到了 10-09**；
+ * - 10-16 起才是 `floor(328h/168h) = 1` ⇒ 整个族循环**整整错一期**。
+ *
+ * 现在改成**按本地时间组件算**（与 `weekendT0Of` 的"本地周五 20:00"同一把尺；
+ * 也免了下次再手抄毫秒数抄错）：锚点 = 本期 T0 ⇒ 期号 0/1/2… 逐期 +1，10-09 = H、10-16 = R。
+ * 回归守卫见 `tests/rotation-anchor-20261002.test.ts`（旧值下 ③④⑤ 三条会红）。
  */
-export const WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS = 1_790_971_200_000
+export const WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS = new Date(2026, 9, 2, 20, 0, 0, 0).getTime()
 
 /**
  * **特意设置某一期的族**（`null` = 不设置 ⇒ 走循环）——船长原话里"**如果没有特意设置**"的那一行开关。
@@ -1756,6 +1769,13 @@ export interface WeekendTickResult {
  *      打完1分钟后」，见 `WEEKEND_WINDOW_END_HOLD_MS` —— 该令本次**只换触发点、不废**）；
  * 5. 交出"该掷遇袭骰的星系与概率"（**不在本函数里掷**：随机源归引擎）。
  *
+ * 🔴 **2026-10-02 补闸（一号 · 船长令「按你推荐来」）**：① 那一步（开新场）**也要过"还在打吗"这道闸** ——
+ * 手上那一场若是**玩家亲手击沉后刚结束**（`weekendNoteFlagshipKilled` 会当场收场），而玩家还停在那一场
+ * 旗舰战的战斗画面里，旧代码会在**同一拍**给他开一场新的：新场拿到的是**旧战斗的结算**
+ * （伤害 / 击沉 / 封盘全落到新场头上）——正是报障那类"打完了入侵却还在 / 旗舰血条不对"的温床。
+ * 现在：`flagshipBattleActive` 为真 ⇒ **本拍不开新场**；战斗一收场，下一拍照常开（延迟 ≤ 一拍）。
+ * 同一道闸也补进了补偿补场的开局器（`weekendCompensation.openWeekendMakeupIfDue`）。
+ *
  * ⚠ 纯函数（除改 `state.weekendEvent` 的落盘字段外不碰别处）⇒ 用例可对任意时刻断言。
  *
  * @param flagshipBattleActive 入侵旗舰战是否正在进行（**唯一会触发顺延的那一场**；缺省 = 否）
@@ -1767,7 +1787,8 @@ export function weekendTick(
   lastSeenWallMs: number,
   flagshipBattleActive = false,
 ): WeekendTickResult {
-  const started = ensureWeekendEvent(state, ctx, nowWallMs)
+  /** ⚠ **还有没打完的旗舰战 ⇒ 本拍不开新场**（2026-10-02 补闸；见上面 ① 那段） */
+  const started = flagshipBattleActive ? false : ensureWeekendEvent(state, ctx, nowWallMs)
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) {
     return { started, flagshipShown: false, flagshipAnchored: false, ended: false, encounterRolls: [] }

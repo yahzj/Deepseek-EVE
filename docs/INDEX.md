@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **424** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7380** KB · **56650** 行
-- 状态分布：**未标注** 237 · **已确认/已实现** 119 · **进行中** 50 · **待裁定** 17 · **历史留档** 1
-- 孤儿文档（0 引用）**79** 份 · 状态未标注 **237** 份
+- 文档总数 **426** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7389** KB · **56768** 行
+- 状态分布：**未标注** 239 · **已确认/已实现** 119 · **进行中** 50 · **待裁定** 17 · **历史留档** 1
+- 孤儿文档（0 引用）**80** 份 · 状态未标注 **239** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**295** 份
+- 三、现行设计稿（design）：**297** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -55,14 +55,15 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 295 份
+## 三、现行设计稿（design） —— 297 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/corona-ship-art-20261003.md` | 光环族（R 族）舰船图形 · 五档逐舰线稿（2026-10-03 · 二号 · 待船长观感审查） | 未标注 | 2026-10-03 | 8 KB / 96 行 | 0 / 0 |
 | `docs/design/trident-beam-cannon-20261003.md` | 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中） | 未标注 | 2026-10-03 | 9 KB / 101 行 | 0 / 0 |
+| `docs/design/ai-badge-work-color-20261002.md` | AI 徽标底色改「作业活动色」（矿带 / 打捞各一色） | 未标注 | 2026-10-02 | 3 KB / 45 行 | 0 / 0 |
 | `docs/design/announcement-draft-20261002-corona.md` | 公告待审稿 · 入侵第二势力「光环科技 / Corona Systems」（2026-10-02） | 未标注 | 2026-10-02 | 14 KB / 131 行 | 1 / 1 |
-| `docs/design/blackbox-per-family-20261002.md` | 每族一件黑匣（R 族「光环旗舰黑匣」） | 未标注 | 2026-10-02 | 8 KB / 95 行 | 0 / 0 |
+| `docs/design/blackbox-per-family-20261002.md` | 每族一件黑匣（R 族「光环旗舰黑匣」） | 未标注 | 2026-10-02 | 9 KB / 101 行 | 0 / 0 |
 | `docs/design/code-review-20261002.md` | 代码审查报告：多余代码 · 重复效果代码 · 重构与模块化 · 风险（工作文档 · 2026-10-02） | 已确认/已实现（已交付报告） | 2026-10-02 | 11 KB / 129 行 | 2 / 2 |
 | `docs/design/corona-invasion-recycle-check-20261002.md` | 核查：光环（R 族）入侵残骸 → 势力装备 / AI 核心 可回收（2026-10-02 · 二号 · 待船长验收） | 未标注 | 2026-10-02 | 5 KB / 53 行 | 0 / 0 |
 | `docs/design/corona-mounts-20261002.md` | R 族两件新挂载件：垂暮级「待机护盾阵列」· 旗舰「聚焦阵列」（2026-10-03 · 二号 · 已落码 · 待船长验收） | 未标注 | 2026-10-02 | 16 KB / 201 行 | 2 / 0 |
@@ -88,6 +89,7 @@
 | `docs/design/save-load-label-20261002.md` | 存档导入入口去术语：按钮改「加载存档文件」（工作文档 · 2026-10-02） | 进行中（进行中） | 2026-10-02 | 3 KB / 49 行 | 0 / 0 |
 | `docs/design/starmap-zoom-20261002.md` | 星图放大 ＋ 扩大星系判定范围（工作文档） | 进行中（进行中） | 2026-10-02 | 5 KB / 67 行 | 0 / 1 |
 | `docs/design/weekend-family-rotation-20261002.md` | 入侵族的选择：本期设为 R ＋ 下周起循环敌对势力（2026-10-02 · 二号 · 待验收） | 未标注 | 2026-10-02 | 4 KB / 59 行 | 0 / 0 |
+| `docs/design/weekend-open-gate-and-rotation-anchor-20261002.md` | 开局侧硬闸 ＋ 族循环锚点归位 | 未标注 | 2026-10-02 | 5 KB / 67 行 | 0 / 1 |
 | `docs/design/wh-block-common-wreck-20261002.md` | 洞内「禁止打捞普通残骸」（工作文档 · 2026-10-02） | 待裁定（已落码 · 待船长验收） | 2026-10-02 | 7 KB / 70 行 | 0 / 0 |
 | `docs/design/window-close-removal-20261002.md` | 入侵收场机制改革：取消「周二 20:00 关窗」（2026-10-02 · 二号 · 待船长验收） | 未标注 | 2026-10-02 | 5 KB / 70 行 | 0 / 3 |
 | `docs/design/activity-gate-registry-20261001.md` | 主控活动登记表（实验室漏登记）· 2026-10-01 | 未标注 | 2026-10-01 | 18 KB / 209 行 | 4 / 1 |
@@ -494,13 +496,14 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 57 / 14 |
 
-## 附：孤儿文档（0 引用，79 份）
+## 附：孤儿文档（0 引用，80 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/corona-ship-art-20261003.md`（2026-10-03 · 8 KB）—— 光环族（R 族）舰船图形 · 五档逐舰线稿（2026-10-03 · 二号 · 待船长观感审查）
 - `docs/design/trident-beam-cannon-20261003.md`（2026-10-03 · 9 KB）—— 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中）
-- `docs/design/blackbox-per-family-20261002.md`（2026-10-02 · 8 KB）—— 每族一件黑匣（R 族「光环旗舰黑匣」）
+- `docs/design/ai-badge-work-color-20261002.md`（2026-10-02 · 3 KB）—— AI 徽标底色改「作业活动色」（矿带 / 打捞各一色）
+- `docs/design/blackbox-per-family-20261002.md`（2026-10-02 · 9 KB）—— 每族一件黑匣（R 族「光环旗舰黑匣」）
 - `docs/design/corona-invasion-recycle-check-20261002.md`（2026-10-02 · 5 KB）—— 核查：光环（R 族）入侵残骸 → 势力装备 / AI 核心 可回收（2026-10-02 · 二号 · 待船长验收）
 - `docs/design/corona-pd-laser-20261002.md`（2026-10-02 · 10 KB）—— R 族势力件「PD激光」（激光近防炮）（2026-10-02 · 二号 · 待船长验收）
 - `docs/design/dock-log-copy-fix-20261002.md`（2026-10-02 · 5 KB）—— 进港/返航日志两处漏出修复（{p1} 与 [object Object]）（工作文档 · 2026-10-02）
@@ -578,11 +581,12 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（237 份，待补一行 `状态：…`）
+## 附：状态未标注（239 份，待补一行 `状态：…`）
 
 - `docs/design/corona-ship-art-20261003.md`（2026-10-03）—— 光环族（R 族）舰船图形 · 五档逐舰线稿（2026-10-03 · 二号 · 待船长观感审查）
 - `docs/design/trident-beam-cannon-20261003.md`（2026-10-03）—— 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中）
 - `docs/archive/roadmap-todo-done-20261002.md`（2026-10-02）—— 封存卷 · roadmap 待办单 E1~E9（2026-10-02 清档移出）
+- `docs/design/ai-badge-work-color-20261002.md`（2026-10-02）—— AI 徽标底色改「作业活动色」（矿带 / 打捞各一色）
 - `docs/design/announcement-draft-20261002-corona.md`（2026-10-02）—— 公告待审稿 · 入侵第二势力「光环科技 / Corona Systems」（2026-10-02）
 - `docs/design/blackbox-per-family-20261002.md`（2026-10-02）—— 每族一件黑匣（R 族「光环旗舰黑匣」）
 - `docs/design/corona-invasion-recycle-check-20261002.md`（2026-10-02）—— 核查：光环（R 族）入侵残骸 → 势力装备 / AI 核心 可回收（2026-10-02 · 二号 · 待船长验收）
@@ -599,6 +603,7 @@
 - `docs/design/mobile-battle-zoom-20261002.md`（2026-10-02）—— 手机端战斗画面「忽大忽小」修复（2026-10-02 · 二号 · 待船长看观感）
 - `docs/design/r-open-distance-20261002.md`（2026-10-02）—— 开场距离被 R 族族格顶掉（2026-10-03 · 二号 · 已落码 · 待验收）
 - `docs/design/weekend-family-rotation-20261002.md`（2026-10-02）—— 入侵族的选择：本期设为 R ＋ 下周起循环敌对势力（2026-10-02 · 二号 · 待验收）
+- `docs/design/weekend-open-gate-and-rotation-anchor-20261002.md`（2026-10-02）—— 开局侧硬闸 ＋ 族循环锚点归位
 - `docs/design/window-close-removal-20261002.md`（2026-10-02）—— 入侵收场机制改革：取消「周二 20:00 关窗」（2026-10-02 · 二号 · 待船长验收）
 - `docs/review/guoqing-audit-20261002.md`（2026-10-02）—— 国庆节审查
 - `docs/design/activity-gate-registry-20261001.md`（2026-10-01）—— 主控活动登记表（实验室漏登记）· 2026-10-01
