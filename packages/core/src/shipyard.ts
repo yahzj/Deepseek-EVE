@@ -361,14 +361,10 @@ export function loseShip(
   }
 }
 
-/** 2026-09-09（船长定）：驾驶船不可用原因——记录缺失 或 正被 AI 执勤占用（弃船补驾驶曾误选 AI 船，造成"驾驶船 = AI 执勤船"双驾驶重叠） */
-export function pilotUnavailableReason(state: GameState): string | null {
-  if (!state.fleet[state.shipId]) return '舰队里找不到当前驾驶的舰船——请到舰船页检查舰队。'
-  if (state.aiAssignments[state.shipId] !== undefined) {
-    return '当前驾驶的舰船正被 AI 执勤占用（采矿/打捞/掩护巡逻）——请先取消该船 AI 任务，或切换其它舰船。'
-  }
-  return null
-}
+/** 2026-09-09（船长定）：驾驶船不可用原因——记录缺失 或 正被 AI 执勤占用（弃船补驾驶曾误选 AI 船，造成"驾驶船 = AI 执勤船"双驾驶重叠）。
+ *  **2026-10-02 破环搬家**：本判据搬到 `activityGate.ts`（主控活动判据的家）；调用方一律改从
+ *  activityGate 读——**不在这里再导出**（再导出会让 mining/salvaging → shipyard 的运行期边原样保留）。 */
+import { pilotUnavailableReason } from './activityGate'
 
 /**
  * 2026-09-09（船长定）：保证存在可驾驶船（幂等自愈，弃船补驾驶与引擎逐 tick 共用）——

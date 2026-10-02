@@ -16,8 +16,7 @@
  */
 import { tuningMul } from './tuning'
 import { addLog, salvageHalt } from './state'
-import { applyActivityGate } from './activityGate'
-import { pilotUnavailableReason } from './shipyard'
+import { applyActivityGate, pilotUnavailableReason } from './activityGate'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
 import type { AnomalyDef, SimContext } from './types'

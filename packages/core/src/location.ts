@@ -13,7 +13,7 @@
  */
 import { addLog, HOME_GALAXY_ID } from './state'
 import { applyActivityGate } from './activityGate'
-import { pilotUnavailableReason } from './shipyard'
+import { pilotUnavailableReason } from './activityGate'
 import type { GameState } from './state'
 import type { CommandResult } from './engine'
 import type { AiCoreType, SimContext, StationSiteDef } from './types'

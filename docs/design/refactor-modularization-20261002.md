@@ -198,6 +198,15 @@
 - 验证：typecheck 全仓 ✅（noUnusedLocals 闸门抓到并修掉一个多引入的再导出名）· core **3004 条** ✅ ·
   arch:guard F1~F9 ✅ · 构建 ✅。
 
+### 批次 3-⑤：破 `mining ↔ shipyard`（`pilotUnavailableReason` 归位 activityGate）（2026-10-02）
+
+- 手法：`pilotUnavailableReason`（主控"驾驶船不可用"判据，纯 state 读数）从 shipyard.ts 搬到
+  activityGate.ts（主控活动判据的家）；mining / salvaging / expedition / location / tests/wormhole-battle
+  全部改从 activityGate 读——**不留在 shipyard 再导出**（再导出会让运行期边原样保留）。
+  ⇒ mining→shipyard 的运行期边清零（shipyard→mining 的 `retireMiningShip` 保留单向）。
+- 连带：12 条过它身的基线环消失、10 条重分解浮出 ⇒ F9 基线 **25 → 23**（重打快照）。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、

@@ -480,3 +480,19 @@ function haltAndLog(state: GameState, ctx: SimContext | undefined, kind: MainAct
   haltActivityForSwitch(state, kind)
   logAutoHalt(state, kind)
 }
+
+/**
+ * **2026-09-09（船长定）：驾驶船不可用原因**——记录缺失 或 正被 AI 执勤占用
+ * （弃船补驾驶曾误选 AI 船，造成"驾驶船 = AI 执勤船"双驾驶重叠）。
+ *
+ * **2026-10-02 破环搬家**：原住 `shipyard.ts`；这是**主控活动判据**，而 mining/salvaging/expedition/
+ * location 各 `start*` 入口都要读它 ⇒ 搬到本件（主控活动判据的家），断 `mining ↔ shipyard` /
+ * `salvaging ↔ shipyard` 的其中一条边（行为逐字不变）。
+ */
+export function pilotUnavailableReason(state: GameState): string | null {
+  if (!state.fleet[state.shipId]) return '舰队里找不到当前驾驶的舰船——请到舰船页检查舰队。'
+  if (state.aiAssignments[state.shipId] !== undefined) {
+    return '当前驾驶的舰船正被 AI 执勤占用（采矿/打捞/掩护巡逻）——请先取消该船 AI 任务，或切换其它舰船。'
+  }
+  return null
+}
