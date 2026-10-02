@@ -412,6 +412,19 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：零渲染层改动）。
 
+### 批次 4i：combat.ts 十拆——`combatAmmo.ts` 战斗弹药装载（2026-10-02 · 零行为变化）
+
+- 手法：`ammoLoadTotals`/`loadAmmo`/`loadAmmoOf`/`ammoTierFallbackLog`/`resolveAmmoTier`/
+  `loadAmmoTier`/`refundAmmo`/`nextAmmoType`/`AmmoKey`/`ammoKeyOf` 十件**弹药装载簇**（196 行）
+  切接搬入新文件 `combatAmmo.ts`（§三合规，BOM/行尾自检过）；combat 借回 + 原样再导出。
+- `ammoTierFallbackLog` 原模块私有，因 startBattleFor 仍要调用而转公开（不进 combat 公开面）。
+- 两处调用点 `n ?? 0` 纯类型微调：ammoLoadTotals 迁出后其 Partial 返回的 entries 值类型在模块边界
+  解析为 `number | undefined`（运行期只写数字键 ⇒ 零行为变化）。
+- 胜率预估簇探过：`steadyPreview` 依赖 `createFoeSpecs`/`battleOpenM`（仍留 combat）⇒ 继续被卡，
+  待敌群建档簇再拆。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：零渲染层改动）。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、
