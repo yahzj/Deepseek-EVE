@@ -1622,3 +1622,56 @@ typecheck 四包绿 · **core 285 文件 / 3001 用例全绿** · `content:check
 
 `save.ts` 只加一处：键 `pendingActivityReturn` **恒写 `null`**（与 `haltedBySwitch` 同属**瞬态信号、
 有意不入档**），读档按形状解析、老档缺省即 `null` ⇒ **玩家数据零影响**。船长 2026-10-02 明确放行。
+---
+
+## 32 · 闪现光柱「依旧不存在」的两个真根因（2026-10-02 第二次修 · 带浏览器读数）
+
+船长原话（照抄）：
+
+> 「**闪现特效依旧不存在。**」
+
+### 32.1 根因一：光柱挂在「等待段全透明」的单位里 ⇒ 恒不可见
+
+`.app-bts-blink-pillar` 原先 `host.appendChild(el)` 挂在 `.app-bts-unit` 内部；而该单位在
+`moveAtMs → appearMs`（整段的 **2/3**，2000ms 旋钮下 = 1333ms）挂着
+`.app-bts-unit.is-blink-hidden { opacity: 0 }`。
+**子元素的不透明度 = 父级 × 自身** ⇒ **第二根柱（出现节点）恒为 0**，怎么调参数都看不见。
+
+### 32.2 根因二：排期挂在 React 渲染体上 ⇒ 常常整段不发生
+
+`fx.blink` 的**排期**（写入 `blinkFxRef`）原先在**渲染体**里（那句 `arrivals = battle.fx.filter(...)`），
+而**建 DOM** 在 RAF 循环里。渲染体只在 `setSmoothM` 变号时跑，而
+**闪现之后敌舰正好站到自己的期望距离、我方也常在期望距离上 ⇒ 双方机动同时归零 ⇒ 距离不变 ⇒ 不重渲染**；
+就算晚一拍才跑到，`at/until` 已算到过去 ⇒ RAF 那一拍按"过期"直接删掉 ⇒ 什么都不剩。
+（另有一层：`fx` 是 **48 条环缓冲**，编队战时一条闪现事件几十毫秒就可能被挤出去。）
+
+### 32.3 修法（两处，都在 `BattleScreen.tsx`）
+
+| # | 改动 | 做法 |
+|---|---|---|
+| ① | **排期搬进 RAF** | 新增模块级纯函数 `planBlinkPillars(b, seen, out, now)`：**直接读引擎的 `battle.foeBlinkQueue`**（权威时刻表，段项从 `queuedMs` 一直留到 `appearMs`），按 `(节点游戏毫秒 − lastTickGameMs) ÷ speedX` 折成真实毫秒排两根柱；`seen`（键 `tag:queuedMs`）去重，换战斗清空。渲染体那边**只保留 `blinkRef`**（管舰体三段类名） |
+| ② | **DOM 改挂列盒** | `syncBlinkPillarDom` 把柱 `appendChild` 到 **`.app-bts-col.is-foe`**（单位的兄弟节点）⇒ 不吃单位那层 `opacity`；位置用 `offsetLeft/offsetTop/offsetWidth/offsetHeight`（**布局像素**）内联给 `left/top`，**不用 `getBoundingClientRect()`**（它带入场动画 `scale(.81)` 与舞台缩放 ⇒ 实测会把柱画小画偏） |
+
+两个时间节点 = ① **消失（旧位置）** ② **出现（新位置）**（船长「在新位置播放动画同时舰船出现」的"同时"）。
+⚠ ① 只在"位移还没兑现"时排（晚了就跳过——那时舰体已在新位置，补一根旧位置的柱是错的）。
+
+### 32.4 验证（**浏览器读数**，非观感结论）
+
+做法：把 `BattleScreen.tsx` 里 `planBlinkPillars` / `buildBlinkPillarEl` / `syncBlinkPillarDom`
+**三个函数原文抽出**（脚本按括号配对截取，不是我手抄），配**真实产物 CSS**
+（`apps/desktop/out/.../styles-classic-*.css`），在**真 Chrome 无头**里按合成时刻表
+（`queued=1000 / vanish=1000 / move=1667 / appear=3000`，33ms 一拍，**全程零重渲染**）跑一遍。
+DOM 骨架按真实层级复刻（`stage > stage-fit > col.is-foe > shipRow > unit[data-tag]`）。读数：
+
+| 读数 | 值 | 说明 |
+|---|---|---|
+| 柱挂在**单位里**时的祖先不透明度 | **0** | 根因一坐实（等待段父级全透明） |
+| 同一根柱挂在**列盒**里 | **1** | 修法① 有效 |
+| 第一根柱建出时刻 / 宿主 | 33ms / `col` | 消失节点当拍就建（**纯定时器驱动**） |
+| 第二根柱建出时刻 / 宿主 | **2013ms** / `col` | 正好落在出现节点（appear − queued = 2000）＝ 修法② 的核心回归项 |
+| 两根柱摘除时刻 | 462 / 2442ms | = 各自建出 + 420ms |
+| 柱与舰体包围盒中心差 | **dx 0 / dy 0** | 改挂列盒后**仍正落在那一艘舰上** |
+| 动画名 / 时长 / 峰值 / 收尾不透明度 | `app-bts-blink-pillar` / 0.42s / **1** / 0 | 真实产物 CSS 里这条动画在跑，峰值可见、收尾淡出 |
+
+⚠ 无头虚拟时钟会把 CSS 动画冻住（直接采样会读成全 0）⇒ 峰值那条是**手动把时间轴拨到 22% 关键帧**再读的。
+⚠ 探针为一次性，跑完即删（方法与读数留在本节）。
