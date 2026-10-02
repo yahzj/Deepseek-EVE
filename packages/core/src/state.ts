@@ -2354,6 +2354,37 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
    * 可选字段、零迁移：老档缺省 = 0（从零开始攒）。
    */
   rareWreckDryStreak?: number
+  /**
+   * **入侵补偿批：判定与落地标记**（**船长 2026-10-02 令**，原话与四问口径见
+   * `docs/glossary.md`「入侵补偿批」词条 ＋ `docs/roadmap.md` 2026-10-02 条；工作文档已按 §八归档删除）。
+   *
+   * 只判一次（`weekendCompensation.ts` 是**唯一判定与落地处**）：
+   * - `track: 'makeup'` ⇒ 该档"这一期还是墨潮帮"，在**周三 20:00~周五 20:00 的暗期**里开**一场光环**（
+   *   开出那一刻记 `makeupServedAtWallMs`）；
+   * - `track: 'beacon'` ⇒ 其余玩家，当场入仓 **1 枚信号发射器**（`beaconGrantedAtWallMs`）。
+   * **一人一条路**；可选字段 ⇒ **老档零迁移**（缺省 = 还没判过）。
+   */
+  weekendCompensation?: WeekendCompensationState
+}
+
+/**
+ * **入侵补偿批的标记**（**船长 2026-10-02 令**；读写白名单见 `save.ts`）——
+ * 判成哪条路 + 两条路各自的落地时刻（**"已落地"就是幂等钥匙**）。
+ */
+export interface WeekendCompensationState {
+  /** 判定结论：`'makeup'` = 开一场光环补场 · `'beacon'` = 发 1 枚信号发射器 */
+  track: 'makeup' | 'beacon'
+  /** 判定那一刻（墙钟） */
+  decidedAtWallMs: number
+  /** 信号发射器已入仓的那一刻（只有 `track === 'beacon'` 会写） */
+  beaconGrantedAtWallMs?: number
+  /** 补场已开出的那一刻（只有 `track === 'makeup'` 会写） */
+  makeupServedAtWallMs?: number
+  /**
+   * **跳过补场的那一刻**（**船长 2026-10-02 令「乙」**）：该档"本期已经真出过光环"⇒ 不再叠加一场，
+   * 按"其余玩家"口径**改发 1 枚信号发射器**（与 `beaconGrantedAtWallMs` 同时写）。
+   */
+  makeupSkippedAtWallMs?: number
 }
 
 /** 玩家标记（收藏）五类界面：market 市场商品行 / refine 精炼炉与残骸回收卡 /

@@ -1216,6 +1216,35 @@ for (const [key, value] of Object.entries(licensesRaw)) {
    * 缺省 / 非 `true` ⇒ 不落键（老档与"还没走过"等价）。
    */
   const standingClawbackDone = src.standingClawbackDone === true ? true : undefined
+  /**
+   * --- **入侵补偿批标记**（**船长 2026-10-02 令**，兼容字段无版本号）---
+   *
+   * 三格 = 判定结论（`track`）＋ 判定时刻 ＋ 两条路各自的落地时刻（幂等钥匙）。
+   * 判据与落地见 `weekendCompensation.ts`（唯一判定与落地处）。
+   *
+   * ⚠ **两个"落地时刻"缺键必须是 `undefined`，绝不能读成 0**（同 `prizePaidAtWallMs` 那次的教训）：
+   * 0 会被当成"已经发过/已经开过"⇒ 判成 `beacon` 的档永远不再发、判成 `makeup` 的档永远不开补场。
+   * `track` 非法（缺键 / 不是这两个值）⇒ **整块不落键**（老档零迁移）。
+   */
+  const weekendCompensation = ((): GameState['weekendCompensation'] => {
+    const raw = asRaw(src.weekendCompensation)
+    const track = raw.track === 'makeup' ? 'makeup' : raw.track === 'beacon' ? 'beacon' : undefined
+    if (track === undefined) return undefined
+    const at = (v: unknown): number | undefined =>
+      typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : undefined
+    const decidedAtWallMs = at(raw.decidedAtWallMs)
+    if (decidedAtWallMs === undefined) return undefined
+    const beaconGrantedAtWallMs = at(raw.beaconGrantedAtWallMs)
+    const makeupServedAtWallMs = at(raw.makeupServedAtWallMs)
+    const makeupSkippedAtWallMs = at(raw.makeupSkippedAtWallMs)
+    return {
+      track,
+      decidedAtWallMs,
+      ...(beaconGrantedAtWallMs !== undefined ? { beaconGrantedAtWallMs } : {}),
+      ...(makeupServedAtWallMs !== undefined ? { makeupServedAtWallMs } : {}),
+      ...(makeupSkippedAtWallMs !== undefined ? { makeupSkippedAtWallMs } : {}),
+    }
+  })()
 
   // --- 远征作业（V12 两阶段：out → battle → back；battle 状态只存动态量） ---
   const expRaw = asRaw(src.expedition)
@@ -3336,6 +3365,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     ...(blackboxSeen !== undefined ? { blackboxSeen } : {}),
     // 声望回正走过没有（单程标记；缺省不落键 ⇒ 与"还没走过"等价）
     ...(standingClawbackDone !== undefined ? { standingClawbackDone } : {}),
+    // 入侵补偿批标记（2026-10-02 船长令；缺省不落键 ⇒ 老档形状不变）
+    ...(weekendCompensation !== undefined ? { weekendCompensation } : {}),
     expedition,
     events,
     exploredGalaxies,

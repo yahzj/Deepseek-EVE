@@ -69,7 +69,7 @@ import { fmtDuration } from '../i18n/fmt'
  * 加速剂，所以**抬头需要在使用了加速剂才会出现**，下方的**持有的加速道具内也要说明不同的加速剂的效果**」。
  * 同日四答：① 自动续用开关**跟着抬头一起收**（没生效就看不到开关）② 行内效果说明**直接渲染该道具的
  * 物品说明全文**（三处同源）③ 本轮**不**泛化 core（多剂那批要动存档字段）④ 物品说明里的使用去处
- * **补成三处**。实现与取舍见工作文档 `docs/design/skill-boost-panel-20261002.md`。
+ * **补成三处**。实现与取舍见 `docs/roadmap.md` 2026-10-02「技能加速页」条（工作文档已按 §八归档删除）。
  */
 function SkillBoostBlock({ engine, onToast }: { engine: GameEngine; onToast: (m: string, bad?: boolean) => void }) {
   const state = engine.state

@@ -352,6 +352,21 @@ export {
 } from './weekendEvent'
 export type { WeekendAmbushPick, WeekendBossPoolView, WeekendEventState, WeekendFlagshipView, WeekendTickResult } from './weekendEvent'
 
+/* 2026-10-02 船长令：入侵补偿批（"这一期还是墨潮帮"的档开一场光环补场 · 其余玩家发 1 枚信号发射器）
+   —— 判定双判据 / 判一次落盘 / 暗期开一场，全部在 `weekendCompensation.ts`（工具与用例都读它） */
+export {
+  WEEKEND_COMPENSATION_T0_WALL_MS,
+  WEEKEND_MAKEUP_FAMILY,
+  WEEKEND_MAKEUP_FIRST_WALL_MS,
+  WEEKEND_MAKEUP_FIRST_END_WALL_MS,
+  weekendMakeupWindowOf,
+  weekendCompensationTrackOf,
+  /** 船长 2026-10-02 令「乙」：开补场前回头看的唯一判据（本期已真出过光环 ⇒ 跳过补场、改发 1 枚道具） */
+  weekendCompensationGotRThisPeriod,
+  applyWeekendCompensation,
+  openWeekendMakeupIfDue,
+} from './weekendCompensation'
+
 /* 2026-09-23 周末入侵 · 战斗与结算（M1-b） */
 export {
   WEEKEND_ALL_CLEAR_ISK,
