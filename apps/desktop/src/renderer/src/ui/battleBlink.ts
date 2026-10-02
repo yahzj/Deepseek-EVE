@@ -21,7 +21,15 @@ export function ammoKey(t: DamageType): 'kin' | 'exp' | 'pla' {
 const BLINK_FX_MS = 420
 
 /** 一根待播/在播的闪现光柱（真实毫秒时刻；`el` = 已建出来的 DOM，避免每帧查 DOM） */
-export type BlinkPillarFx = { key: string; tag: string; at: number; until: number; el?: SVGSVGElement }
+export type BlinkPillarFx = {
+  key: string
+  tag: string
+  /** **这根柱属于哪一侧**（2026-10-02 §35）——两侧各有自己的 DOM 宿主，建/删各走各的 */
+  side: 'foe' | 'me'
+  at: number
+  until: number
+  el?: SVGSVGElement
+}
 
 /**
  * 🔴 **排"闪现光柱"**（**船长 2026-10-02 实机报障「闪现特效依旧不存在」后的第二修**）——
@@ -42,6 +50,7 @@ export function planBlinkPillars(
   b:
     | {
         foeBlinkQueue?: Record<string, { queuedMs: number; vanishMs: number; moveAtMs: number; appearMs: number }>
+        meBlinkQueue?: Record<string, { queuedMs: number; vanishMs: number; moveAtMs: number; appearMs: number }>
         lastTickGameMs?: number
         speedX?: number
       }
@@ -50,35 +59,64 @@ export function planBlinkPillars(
   seen: Set<string>,
   out: BlinkPillarFx[],
   now: number,
+  /**
+   * 🔴 **两侧的 DOM 宿主**（**2026-10-02 §35**）——**"全队一起演"要靠它枚举"这一队有哪些舰"**：
+   * 船长裁定「**「全队舰船」是指触发了闪现的舰船所在的队伍。表现全部一致**」⇒ 一段触发要对该队
+   * **每一艘**各出一对柱（柱是按舰位定位的）。
+   * ⚠ 从 DOM 取而不是另传一份 tag 数组：宿主与 `syncBlinkPillarDom` 用的是同一个，**天然不会走岔**。
+   */
+  roots: { foe: HTMLElement | null; me: HTMLElement | null },
 ): void {
-  const q = b?.foeBlinkQueue
-  if (!b || !q) return
+  if (!b) return
   const last = b.lastTickGameMs ?? 0
   const speed = Math.max(0.01, b.speedX ?? 1)
   /** 游戏毫秒 → "从现在起还要等多少真实毫秒"（负数 = 那个节点已经过去了） */
   const toReal = (gameMs: number): number => (gameMs - last) / speed
-  for (const [tag, seg] of Object.entries(q)) {
-    const key = `${tag}:${seg.queuedMs}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    /**
-     * ⚠ **DOM id 与 `url(#…)` 只吃安全字符**：键里带 `:`（tag 与时刻的分隔）会被当成伪类/命名空间
-     * ⇒ 渐变与蒙版的 `url(#blink-pillar-line-${key})` 引用会失效（光柱画成纯黑或干脆不画）。
-     * 这里统一换成 `-`（tag 本身是 `w0-foe-1` 这类，只可能多出分隔符）。
-     */
-    const uniq = key.replace(/[^A-Za-z0-9_-]/g, '-')
-    /** ① 消失节点（**旧位置**）：只有"还没位移"才排 —— 晚了就跳过，宁可少一根也不画错位置 */
-    if (toReal(seg.moveAtMs) > 0) {
-      const vanishAt = now + Math.max(0, toReal(seg.vanishMs))
-      out.push({ key: `${uniq}-a`, tag, at: vanishAt, until: vanishAt + BLINK_FX_MS })
-    }
-    /** ② 出现节点（**新位置**）：船长那句「在新位置播放动画同时舰船出现」的"同时" ⇒ 与 `appearMs` 对齐 */
-    const appearDelay = toReal(seg.appearMs)
-    if (appearDelay > -BLINK_FX_MS) {
-      const appearAt = now + Math.max(0, appearDelay)
-      out.push({ key: `${uniq}-b`, tag, at: appearAt, until: appearAt + BLINK_FX_MS })
+
+  /** 该队此刻在场上的全部 `data-tag`（每拍枚举一次；编队变更时自动跟上） */
+  const membersOf = (side: 'foe' | 'me'): string[] => {
+    const root = roots[side]
+    if (!root) return []
+    return [...root.querySelectorAll<HTMLElement>('[data-tag]')]
+      .map((el) => el.dataset.tag)
+      .filter((t): t is string => typeof t === 'string' && t.length > 0)
+  }
+
+  const planSide = (
+    q: Record<string, { queuedMs: number; vanishMs: number; moveAtMs: number; appearMs: number }> | undefined,
+    side: 'foe' | 'me',
+  ): void => {
+    if (!q) return
+    const members = membersOf(side)
+    if (members.length === 0) return
+    for (const seg of Object.values(q)) {
+      /** **全队一起演**：这一段对该队**每一艘**各出一对柱（裁定 1甲：一次触发只有一段） */
+      for (const member of members) {
+        const key = `${side}:${member}:${seg.queuedMs}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        /**
+         * ⚠ **DOM id 与 `url(#…)` 只吃安全字符**：键里带 `:`（分隔符）会被当成伪类/命名空间
+         * ⇒ 渐变与蒙版的 `url(#blink-pillar-line-${key})` 引用会失效（光柱画成纯黑或干脆不画）。
+         * 这里统一换成 `-`（tag 本身是 `w0-foe-1` / `ally-4` 这类，只可能多出分隔符）。
+         */
+        const uniq = key.replace(/[^A-Za-z0-9_-]/g, '-')
+        /** ① 消失节点（**旧位置**）：只有"还没位移"才排 —— 晚了就跳过，宁可少一根也不画错位置 */
+        if (toReal(seg.moveAtMs) > 0) {
+          const vanishAt = now + Math.max(0, toReal(seg.vanishMs))
+          out.push({ key: `${uniq}-a`, tag: member, side, at: vanishAt, until: vanishAt + BLINK_FX_MS })
+        }
+        /** ② 出现节点（**新位置**）：船长那句「在新位置播放动画同时舰船出现」的"同时" ⇒ 与 `appearMs` 对齐 */
+        const appearDelay = toReal(seg.appearMs)
+        if (appearDelay > -BLINK_FX_MS) {
+          const appearAt = now + Math.max(0, appearDelay)
+          out.push({ key: `${uniq}-b`, tag: member, side, at: appearAt, until: appearAt + BLINK_FX_MS })
+        }
+      }
     }
   }
+  planSide(b.foeBlinkQueue, 'foe')
+  planSide(b.meBlinkQueue, 'me')
 }
 
 /**
@@ -203,7 +241,7 @@ export function buildBlinkPillarEl(uniq: string, size: number): SVGSVGElement {
  * - 删：`until` 过期的项，摘掉 DOM 并出表。
  *
  * 🔴 **为什么挂在列盒（`.app-bts-col`）而不是单位元素里**（**船长 2026-10-02 第二次报障的第二个根因**）：
- * 单位在"等待段"挂着 `.is-blink-hidden { opacity: 0 }`（整段的 2/3，2000ms 旋钮下是 1333ms），
+ * 单位在"等待段"挂着 `.is-blink-hidden { opacity: 0 }`（整段的 2/3，400ms 旋钮下是 267ms），
  * 而**子元素的不透明度 = 父级 × 自身** ⇒ 挂在里面的光柱**恒为全透明**，怎么调都看不见。
  * 挂到列盒当兄弟节点 ⇒ 不吃单位那层透明度，也顺带不再被单位的 `z-index`/动画上下文影响。
  *
@@ -212,25 +250,42 @@ export function buildBlinkPillarEl(uniq: string, size: number): SVGSVGElement {
  * 拿它算会把光柱画小、画偏（实测踩到：`rectW=89 / offsetWidth=110`）。
  * ⚠ 表里记 `el` 引用（不查 DOM），避免每帧 querySelector。
  */
-export function syncBlinkPillarDom(fxList: BlinkPillarFx[], root: HTMLElement | null, now: number): void {
+export function syncBlinkPillarDom(
+  fxList: BlinkPillarFx[],
+  /** **在哪棵子树里找舰位**（`[data-tag]`）——敌方 = 敌列盒；我方 = 舞台（我方舰列是舞台的直接子节点） */
+  lookupRoot: HTMLElement | null,
+  now: number,
+  /** **本次调用负责哪一侧**（2026-10-02 §35）——两侧各有一套建/删，互不越界 */
+  side: 'foe' | 'me',
+  /**
+   * **光柱插到哪个容器**（缺省 = `lookupRoot`）。
+   * 🔴 **2026-10-02 §35 拆成两个参数的原因（我自己踩到并修掉的坑）**：原实现是"在 `root` 里查舰位、
+   * 又插进 `root`"，两者同一个元素。我方那侧**不能这样**——光柱**必须挂在不吃单位透明度的地方**，
+   * 所以我方另起了一个**空的** `.app-bts-fxhost` 当宿主；而它里面**没有任何舰** ⇒ 拿它当 `lookupRoot`
+   * 会 `querySelector` 全落空 ⇒ **我方一根柱都建不出来**（静默失效，不是报错）。
+   * ⇒ 两个角色分开：**查舰位用舞台、插光柱用宿主**（两者同一 containing block ⇒ 坐标系一致）。
+   */
+  appendHost: HTMLElement | null = lookupRoot,
+): void {
   for (let i = fxList.length - 1; i >= 0; i--) {
     const fx = fxList[i]!
+    if (fx.side !== side) continue
     if (now >= fx.until) {
       fx.el?.remove()
       fxList.splice(i, 1)
       continue
     }
-    if (fx.el || now < fx.at || !root) continue
+    if (fx.el || now < fx.at || !lookupRoot || !appendHost) continue
     /** tag 里可能有 `w0-foe-1` 这类字符（连字符/数字都安全），但保险起见按属性值转义 */
-    const host = root.querySelector<HTMLElement>(`[data-tag="${CSS.escape(fx.tag)}"]`)
+    const host = lookupRoot.querySelector<HTMLElement>(`[data-tag="${CSS.escape(fx.tag)}"]`)
     if (!host) continue
     const w = host.offsetWidth || 96
     const h = host.offsetHeight || 96
     const el = buildBlinkPillarEl(fx.key, Math.max(w, h))
-    /** 居中到该舰此刻的位置（列盒 = 定位祖先；`buildBlinkPillarEl` 已给 `-w/2 / -h/2` 的外负边距） */
+    /** 居中到该舰此刻的位置（宿主 = 定位祖先；`buildBlinkPillarEl` 已给 `-w/2 / -h/2` 的外负边距） */
     el.style.left = `${host.offsetLeft + w / 2}px`
     el.style.top = `${host.offsetTop + h / 2}px`
-    root.appendChild(el)
+    appendHost.appendChild(el)
     fx.el = el
   }
 }

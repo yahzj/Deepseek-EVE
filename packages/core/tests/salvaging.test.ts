@@ -190,7 +190,7 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
     expect(state.salvaging.active).toBe(false) // 作业随换船结束（不再以新船"续捞"）
     expect(state.shipReturns[oldShip]).toBeDefined() // 旧船善后返航账本
     expect(state.salvaging.autoCycle).toBe(true) // 循环偏好跨趟保留
-    expect(state.logs.some((l) => l.text.includes('打捞已停止'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('打捞已随换船结束'))).toBe(true)
     advanceShipReturns(state, 60_000, ctx) // 覆盖善后返航腿（debugQuick 1 秒）
     expect(state.shipReturns[oldShip]).toBeUndefined() // 到港清账
     expect(state.logs.some((l) => l.text.includes('已随打捞停止返航到港'))).toBe(true)
@@ -474,5 +474,41 @@ describe('停止打捞后的返航（船长 2026-10-02 报障）', () => {
     expect(countWare(state, 'wreck-ano-far'), '残骸已卸入物品仓库').toBeGreaterThan(0)
     expect(countItem(state, 'wreck-ano-far'), '船上已清空').toBe(0)
     expect(state.logs.some((l) => l.text.includes('已随打捞停止返航到港'))).toBe(true)
+  })
+
+  /**
+   * **2026-10-02**（查「正文 ≠ id」同类问题时扫出）：换星系打捞那条日志原本挂
+   * `core.salvaging.020`（= **「找不到当前舰船，打捞作业已停止。」**）—— 与正文根本不是一句话，
+   * 而界面**按 id 优先渲染** ⇒ 玩家看到的是错的句子（实际发生的是"换打捞点"）。
+   * 本用例钉住：它必须挂 `.028`（表文与正文逐字对应）。
+   */
+  it('换星系打捞：日志挂「已切换打捞点」那条 id，不是「找不到当前舰船」', () => {
+    const ctx = makeTestCtx({
+      ships: [ship('sandcat', { cargo: 800 })],
+      galaxies: [
+        { ...galaxy('galaxy-hub', '母港'), security: 1.0 },
+        { ...galaxy('galaxy-scrap', '废场'), security: -0.6 },
+        { ...galaxy('galaxy-scrap2', '废场二'), security: -0.6 },
+      ],
+      edges: [
+        { from: 'galaxy-hub', to: 'galaxy-scrap', travelMinutes: 2 },
+        { from: 'galaxy-hub', to: 'galaxy-scrap2', travelMinutes: 3 },
+      ],
+      anomalies: [
+        anomaly('ano-far', 'galaxy-scrap', { threat: 40, tactic: 'brawl' }),
+        anomaly('ano-far2', 'galaxy-scrap2', { threat: 40, tactic: 'brawl' }),
+      ],
+      modules: [moduleDef('mod-salvager-1', 'salvager', 0, { salvageCycleMs: 1000 })],
+    })
+    const state = createInitialState({ nowWallMs: 0, seed: 41 })
+    state.debugQuick = true
+    state.exploredGalaxies.push('galaxy-scrap', 'galaxy-scrap2')
+    state.fleet[state.shipId]!.fitted = { high: ['mod-salvager-1'], mid: [], low: [] }
+    expect(startSalvageOp(state, 'galaxy-scrap', ctx).ok).toBe(true)
+    advanceSalvageOp(state, 5_000, ctx)
+    expect(startSalvageOp(state, 'galaxy-scrap2', ctx).ok, '换星系 = 允许直接切').toBe(true)
+    const log = state.logs.filter((l) => l.text.startsWith('已切换打捞点')).at(-1)
+    expect(log, '应写下「已切换打捞点」这条日志').toBeDefined()
+    expect(log!.textId, '挂错 id ⇒ 玩家看到「找不到当前舰船，打捞作业已停止。」').toBe('core.salvaging.028')
   })
 })

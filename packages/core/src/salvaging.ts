@@ -272,7 +272,13 @@ export function startSalvageOp(
       state,
       'warn',
       `已切换打捞点：停掉「${prevName}」的打捞（本趟约 ${Math.round((info?.tripM3 ?? 0) * 100) / 100} m³ 当量留在船上），改去「${galaxy.name}」。`,
-      'core.salvaging.020',
+      /**
+       * ⟪文案调整 2026-10-02⟫ 本行原挂 `core.salvaging.020`（= **「找不到当前舰船，打捞作业已停止。」**）
+       * ——与正文**根本不是一句话**，而界面按 id 优先渲染 ⇒ **玩家看到的是错的句子**（实际发生的是换点）。
+       * 正文与表里的 `core.salvaging.028` 逐字对应（`p1/p2/p3` 也正好对上）⇒ 改挂 `.028`。
+       * 台账 = `docs/design/return-log-copy-20261002.md` §3 ④。
+       */
+      'core.salvaging.028',
       { p1: prevName, p2: galaxy.name, p3: Math.round((info?.tripM3 ?? 0) * 100) / 100 },
     )
   }
@@ -463,15 +469,17 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
   if (remainSec !== null) {
     const shipName = shipDisplayName(state, ctx, state.shipId)
     const haveCargo = info.tripM3 > 0
+    // ⟪文案调整 2026-10-02⟫ p3 片段「（到港整仓卸货）」→「（卸空货仓）」——原句与句尾「约 N 秒后到港」
+    // 把「到港」说了两遍；该片段是四条返航日志共用的尾巴（见 `table.ts` 的 `core.salvaging.018`）。
     addLog(
       state,
       'salvage',
-      `打捞已停止：${shipName} 从「${galaxy?.name ?? ''}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+      `打捞已停止：${shipName} 从「${galaxy?.name ?? ''}」返航空间站${haveCargo ? '（卸空货仓）' : ''}——约 ${remainSec} 秒后到港。`,
       'core.salvaging.029',
       {
         p1: shipName,
         p2: galaxy?.name ?? '',
-        p3: haveCargo ? '（到港整仓卸货）' : '',
+        p3: haveCargo ? '（卸空货仓）' : '',
         ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
         p4: remainSec,
       },
@@ -516,15 +524,16 @@ export function retireSalvageShip(
     const shipFix = state.fleet[state.shipId]
     const haveCargoFix = shipFix ? Object.keys(shipFix.cargo).some((k) => (shipFix.cargo[k] ?? 0) > 0) : false
     const remainSecFix = Math.max(0, Math.round((retFix.legMs - retFix.phaseAccMs) / 1000))
+    // ⟪文案调整 2026-10-02⟫ p3 片段「（到港整仓卸货）」→「（卸空货仓）」（同上，见 `core.salvaging.018`）。
     addLog(
       state,
       'salvage',
-      `打捞已停止：${shipNameFix} 从「${galaxyNameFix}」返航空间站${haveCargoFix ? '（到港整仓卸货）' : ''}——约 ${remainSecFix} 秒后到港。`,
+      `打捞已停止：${shipNameFix} 从「${galaxyNameFix}」返航空间站${haveCargoFix ? '（卸空货仓）' : ''}——约 ${remainSecFix} 秒后到港。`,
       'core.salvaging.029',
       {
         p1: shipNameFix,
         p2: galaxyNameFix,
-        p3: haveCargoFix ? '（到港整仓卸货）' : '',
+        p3: haveCargoFix ? '（卸空货仓）' : '',
         ...(haveCargoFix ? { p3Id: 'core.salvaging.018' } : {}),
         p4: remainSecFix,
       },
@@ -560,18 +569,26 @@ export function retireSalvageShip(
   /**
    * 日志：**两条路分开说**（2026-10-02）——玩家手点停止/换船 ⇒「已随换船结束」；
    * 被别的活动挤掉（`haltActivityForSwitch` 传了 `opts.galaxyId`）⇒ 复用「打捞已停止：…返航空间站」。
+   * ⟪文案调整 2026-10-02⟫ ① `p3` 片段「（到港整仓卸货）」→「（卸空货仓）」（见 `core.salvaging.018`）。
+   * ② **`else`（换船）分支的内联正文与 id 口径统一**（船长令「按你推荐」⇒ **甲案**）：该分支原正文写
+   * 「打捞已**停止**：…返航空间站…」，却挂 id `core.salvaging.017`（表文 = **打捞已随换船结束**）
+   * ⇒ 存档正文与界面显示的句子不是同一句（界面按 id 渲染）。三处凭据（017 表文 · 本注释 ·
+   * 采矿同族 `core.shipyard.019`）支持换船口径，故正文改回「已随换船结束：…**自动**返航空间站…」，
+   * 用例 `tests/salvaging.test.ts` 的断言随之改回。**玩家可见零变化**（界面一直显示这句）。
+   * 台账 = `docs/design/return-log-copy-20261002.md` §5。
    */
   const auto = opts?.galaxyId !== undefined
   if (auto) {
+    // ⟪文案调整 2026-10-02⟫ p3 片段「（到港整仓卸货）」→「（卸空货仓）」（同上）。
     addLog(
       state,
       'salvage',
-      `打捞已停止：${shipName} 从「${galaxyName}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+      `打捞已停止：${shipName} 从「${galaxyName}」返航空间站${haveCargo ? '（卸空货仓）' : ''}——约 ${remainSec} 秒后到港。`,
       'core.salvaging.029',
       {
         p1: shipName,
         p2: galaxyName,
-        p3: haveCargo ? '（到港整仓卸货）' : '',
+        p3: haveCargo ? '（卸空货仓）' : '',
         ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
         p4: remainSec,
       },
@@ -580,12 +597,12 @@ export function retireSalvageShip(
     addLog(
       state,
       'salvage',
-      `打捞已停止：${shipName} 从「${galaxyName}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+      `打捞已随换船结束：${shipName} 从「${galaxyName}」自动返航空间站${haveCargo ? '（卸空货仓）' : ''}——约 ${remainSec} 秒后到港。`,
       'core.salvaging.017',
       {
         p1: shipName,
         p2: galaxyName,
-        p3: haveCargo ? '（到港整仓卸货）' : '',
+        p3: haveCargo ? '（卸空货仓）' : '',
         ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
         p4: remainSec,
       },

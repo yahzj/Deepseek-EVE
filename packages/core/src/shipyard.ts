@@ -280,7 +280,12 @@ export function loseShip(
        * 一并遗失」（`core.shipyard.020`）是同一件事的两句，「事件日志重新分类」那批把**舰船事件统一归
        * `fleet`** ⇒ 本条跟着归 `fleet`，不让同一件事的两句落进两个页签。
        */
-      addLog(state, 'fleet', `${display} 的残骸留在 ${ctx.galaxies.get(wreckGalaxyId)?.name ?? wreckGalaxyId}（48 小时内可打捞）。`, 'core.shipyard.033', {
+      /**
+       * ⟪文案调整 2026-10-02⟫ 正文与表文（`core.shipyard.033`）对齐：界面按 id 渲染 ⇒ 玩家看到的
+       * 一直是表文那句（带「」与「——…回收部分装备」），而正文此前写成括号＋少半句 ⇒ 按表文改写，
+       * **玩家可见零变化**。见 `docs/design/return-log-copy-20261002.md` §6 的同类普查。
+       */
+      addLog(state, 'fleet', `${display} 的残骸留在「${ctx.galaxies.get(wreckGalaxyId)?.name ?? wreckGalaxyId}」——48 小时内可打捞回收部分装备。`, 'core.shipyard.033', {
         p1: display,
         p2: ctx.galaxies.get(wreckGalaxyId)?.name ?? wreckGalaxyId,
       })

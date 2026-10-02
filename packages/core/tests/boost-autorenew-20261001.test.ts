@@ -121,7 +121,7 @@ describe('技能加速自动续用 · 无缝补用（在线）', () => {
     const leftBefore = synapticAccelerantRemainMs(s)
     run(s, 1_000)
     /**
-     * **2026-10-03 修（船长报障「点自动续用的时候会无视当前剩余时间直接使用一个新的」）**：
+     * **2026-10-02 修（船长报障「点自动续用的时候会无视当前剩余时间直接使用一个新的」）**：
      * 补的那一枚**接在剩余之上**（累加），不再把手上那一段剩余丢掉 ⇒ 剩余 = 原剩余 ＋ 24 小时 − 这一拍。
      */
     expect(synapticAccelerantRemainMs(s), '补用是"接在剩余之上"，不丢剩余').toBe(
@@ -183,7 +183,7 @@ describe('技能加速自动续用 · 无缝补用（在线）', () => {
   })
 
   /**
-   * **不丢剩余**（**2026-10-03 船长报障**：「**点自动续用的时候会无视当前剩余时间直接使用一个新的**」）。
+   * **不丢剩余**（**2026-10-02 船长报障**：「**点自动续用的时候会无视当前剩余时间直接使用一个新的**」）。
    * 场景 = 手上还剩一大段（本级练不完）⇒ 补一枚，窗口必须是 **剩余 ＋ 24 小时**
    * （原先被重置成 24 小时，那一段剩余白白丢掉）。
    * ⚠ 剩余要按**加速生效后**的本级时长算（乘区 ×0.5 会缩短本级）——先立一剂再量本级时长。
@@ -257,7 +257,7 @@ describe('技能加速自动续用 · 离线', () => {
     s.skillBoostUntilMs = s.gameMs + Math.floor(levelMsNow(s) / 2)
     const leftBefore = synapticAccelerantRemainMs(s)
     run(s, 1_000) // 先让它补上一枚
-    // 累加语义（2026-10-03）：补后 = 原剩余 ＋ 24 小时 − 这一拍
+    // 累加语义（2026-10-02）：补后 = 原剩余 ＋ 24 小时 − 这一拍
     expect(synapticAccelerantRemainMs(s)).toBe(leftBefore + SYNAPTIC_ACCELERANT_MS - 1_000)
     const trainedBefore = skillsTrained(s, BOOST_SKILL)
     const progressBefore = s.skills.queue[0]!.progressMs

@@ -94,7 +94,13 @@ export function useSynapticAccelerant(state: GameState): CommandResult {
   addLog(
     state,
     'industry',
-    `✦ 突触加速剂生效：未来 24 小时内技能训练时长减半（至 ${Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000)} 小时后失效）。`,
+    /**
+     * ⟪文案调整 2026-10-02⟫ 正文与表文（`core.consumable.003`）对齐：原正文多写一句
+     * 「（至 24 小时后失效）」——与前半句的 24 小时**同一件事**（都是 `SYNAPTIC_ACCELERANT_MS`），
+     * 属重复；界面按 id 渲染，玩家本来也看不到它 ⇒ 去掉，正文与表文逐字一致。
+     * 查证方式见工作文档 `docs/design/return-log-copy-20261002.md` §6 的同类普查。
+     */
+    `✦ 突触加速剂生效：未来 ${Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000)} 小时内技能训练时长减半。`,
     'core.consumable.003',
     { p1: Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000) },
   )
@@ -128,7 +134,7 @@ export const SYNAPTIC_ACCELERANT_RENEW_TAIL_MS = 60_000
  *
  * 单点归属：本函数是"自动补用"的**唯一实现**（界面开关只改 `state.boostAutoRenew`，不自己扣料）。
  *
- * ⚠ **2026-10-03 修订（船长报障「点自动续用的时候会无视当前剩余时间直接使用一个新的」⇒ 批复「按你建议改」）**：
+ * ⚠ **2026-10-02 修订（船长报障「点自动续用的时候会无视当前剩余时间直接使用一个新的」⇒ 批复「按你建议改」）**：
  * 补用的落法由"**重置**成完整一剂"改为"**累加**在剩余之上"（③ 的无缝判据不变）——
  * 见下面 `skillBoostUntilMs` 那一行的说明。
  */
@@ -169,7 +175,7 @@ export function syncBoostRenew(state: GameState, ctx: SimContext): void {
      不是叠加（还剩很久时上面那行就早退了）。 */
   takeOne(state, SYNAPTIC_ACCELERANT_ITEM_ID)
   /**
-   * **累加，不重置**（**2026-10-03 修 · 船长报障「点自动续用的时候会无视当前剩余时间直接使用一个新的」**）：
+   * **累加，不重置**（**2026-10-02 修 · 船长报障「点自动续用的时候会无视当前剩余时间直接使用一个新的」**）：
    * 补的这一枚**接在剩余之上**（还剩 2 小时 ⇒ 变 26 小时）。原先写的是 `state.gameMs + MS` ⇒
    * **玩家手上那一段剩余被白白丢掉**（真档里剩十几小时又碰上长技能时最刺眼）。
    * ⚠ 已经过期 / 本来就没生效时 `max(...)` 取 `gameMs` ⇒ 仍是"从此刻起 24 小时"，与旧行为**同值**；

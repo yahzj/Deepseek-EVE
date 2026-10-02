@@ -16,7 +16,7 @@ import { weekendApplyBattleOutcome, weekendBattleInvolvedOf } from './weekendBat
 import { weekendFoeCardOf } from './weekendEvent'
 import { weekendAssaultThreatOf, weekendFoeCardsSelfPriced } from './weekendEvent'
 /** 入侵「重复出击」（2026-09-25 船长令）：每场重抽一支 ＋ 目标星系覆写（去程/返航照常算） */
-import { weekendAssaultDrawOf, weekendBountyCardsOf, weekendNoteAssaultDispatch, weekendOccupiedLiveAt } from './weekendBounty'
+import { weekendAssaultDrawOf, weekendNoteAssaultDispatch, weekendOccupiedLiveAt } from './weekendBounty'
 import { rewardMulOf } from './tuning'
 import { bumpFirst } from './firstTasks'
 import { addLog, HOME_GALAXY_ID, shipLockedInWormhole } from './state'
@@ -54,6 +54,7 @@ import {
   repairUsageText,
   dcUsageText,
   setDesirePrefOf,
+  desirePrefOf,
   settleDroneLosses,
   startBattleFor,
   // 战报改造（2026-09-14 船长定）：结构化战报的唯一构造点
@@ -297,7 +298,7 @@ export function battleTacticDesire(
  * - 偏好写**该场战斗所在星系**（`enc.galaxyId` = 本场核心）——⚠ **不能**写 `anomaly.galaxyId`：
  *   旗舰卡是隐藏卡、它自带的母港是 `galaxy-hub`，照抄会把偏好写到母港去。
  *
- * ⚠ **普通遭遇战也认（2026-10-03 修 · 船长报障「入侵战斗中，我方选择的期望距离不会保存」）**：
+ * ⚠ **普通遭遇战也认（2026-10-02 修 · 船长报障「入侵战斗中，我方选择的期望距离不会保存」）**：
  * 原判据只认**旗舰战**（`weekendFlagshipEncounterOf`）⇒ **入侵伏击这类普通遭遇战**里拖距离条
  * 一律被拒（`core.expedition.001`「当前不在交火中」）——**选择既不生效、也不落偏好**。
  * 现放宽为「**遭遇槽里任意正在打的遭遇战**」；偏好仍写**该场所在星系**（`enc.galaxyId`，
@@ -351,7 +352,17 @@ export function setBattleDesire(state: GameState, desireM: number, ctx: SimConte
     const gid = state.encounter.galaxyId
     if (gid !== null && gid.length > 0) setDesirePrefOf(state, gid, clamped)
   } else {
-    setDesirePrefOf(state, anomaly.galaxyId, clamped)
+    /**
+     * 🔴 **写入键 = 本场实际作战星系**（**2026-10-02 船长报障修**：「**在打入侵时，玩家设置的目标距离
+     * 并不会保存**」）——`exp.foeGalaxyId` 由出征时落（2026-09-25 加，正是为"卡自带星系 ≠ 实际作战
+     * 星系"这件事）；没有它时回落卡自带星系 ⇒ **普通远征逐字不变**。
+     *
+     * ⚠ **为什么不能再用 `anomaly.galaxyId` 当键**（探针实测，2026-10-02）：入侵池卡在数据里写死
+     * `galaxyId: 'galaxy-hub'`（`ink-harass` / `ink-raid` …，它们本就不属于任何被占星系）⇒ 旧写法把
+     * 玩家的设定**记到母港头上**：① 被占星系一份都没记（= 船长报的"不保存"）② **母港那份设定被入侵
+     * 悄悄改掉**（更严重，报障里没提到）。
+     */
+    setDesirePrefOf(state, state.expedition.foeGalaxyId ?? anomaly.galaxyId, clamped)
   }
   return { ok: true }
 }
@@ -620,22 +631,34 @@ export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: stri
     weekendAssault && weekendEv && !weekendFoeCardsSelfPriced(weekendEv.family)
       ? weekendAssaultThreatOf(weekendEv, weekendAssault.galaxyId)
       : undefined
+  /**
+   * 🔴 **开战读哪把键 —— 必须与写入端同源**（**2026-10-02 船长报障修**：「**在打入侵时，玩家设置的
+   * 目标距离并不会保存**」）。
+   *
+   * 旧写法在这里传 `undefined`，指望 `startBattleFor` 自己回落 `desirePrefOf(state, anomaly.galaxyId)`；
+   * **而入侵池卡在数据里写死 `galaxyId: 'galaxy-hub'`**（`ink-harass` / `ink-raid` …，见 `packages/data`）
+   * ⇒ 那条回落读的是**母港**那把键。⚠ 旧注释那句「远征/入侵主动出击的目标卡**自带被占星系**」
+   * **与数据不符、是错的**（旗舰战那条注释反倒说对了：隐藏卡的 `galaxyId` 就是母港）。
+   *
+   * ⇒ 现在**显式**按**本场实际作战星系**读：`exp.foeGalaxyId`（出征时落的那个，2026-09-25 加），
+   * 与 `setBattleDesire` 的写入键**逐字同源**；没有 `foeGalaxyId` 时回落卡自带星系
+   * ⇒ **普通远征/普通悬赏逐字不变**。
+   *
+   * ⚠ 没设过时传下来的是 **`null`**（= 引擎的"强制默认档"出口）而**不是 `undefined`**：
+   * `undefined` 会掉回上面那个"按卡星系读"的回落、又读回母港。`desirePrefOf` 未命中本来就返回 `null`
+   * ⇒ 直传即可。⚠ 旗舰战那条同理（`weekendLaunch.weekendStartFlagshipBattle` 显式传核心星系那一份）。
+   */
+  const desirePref = desirePrefOf(
+    state,
+    state.expedition.foeGalaxyId ?? ctx.anomalies.get(anomalyId)?.galaxyId,
+  )
   const battle = startBattleFor(
     state,
     ctx,
     shipId,
     anomalyId,
     arrivalGameMs,
-    /**
-     * ⚠ **这里保持 `undefined` 是对的，别"顺手补一个 desirePrefOf"**（**2026-09-28 查证**）：
-     * `startBattleFor` 在 `desireM === undefined` 时**自己就会**回落 `desirePrefOf(state, anomaly.galaxyId)`
-     * （`combat.ts` 的"`null` = 强制默认档；显式值优先；否则该星系偏好 → 默认档"）。
-     * 远征/入侵主动出击的目标卡**自带被占星系** ⇒ 引擎那一读与写入端（`setBattleDesire` 也写
-     * `anomaly.galaxyId`）**逐字同源** ⇒ 记忆本来就是通的。
-     * （真正漏读的是**旗舰战**那条：它的卡是隐藏卡、`galaxyId` 是母港 `galaxy-hub` ⇒ 引擎回落会读错星系，
-     *  故 `weekendLaunch.weekendStartFlagshipBattle` 必须**显式**传核心星系那一份。）
-     */
-    undefined,
+    desirePref,
     weekendThreat !== undefined ? { threat: weekendThreat } : undefined,
   )
   if (!battle) return false
@@ -1694,32 +1717,47 @@ export function advanceAutoLoopInvasion(state: GameState, ctx: SimContext): stri
   // 别的作业占着主控 ⇒ 等（判据单点与常驻悬赏那条同源）
   if (autoLoopWaitLabel(state) !== null) return null
   /**
-   * 冷却与缴获体积都按**该星系板面上那张卡**（`weekendBountyCardsOf` 换出来的那张）判 ——
-   * 与手动「出击」按钮的禁用口径同源（手动能点 ⇔ 循环能出发）。
+   * **冷却与缴获体积都按「这一场真正要打的那张卡」判**（**2026-10-02 甲案 · 船长报障修复**）。
+   *
+   * 出发用的是 `weekendAssaultDrawOf` 的**当场重抽卡**（抽签盐 = 10000 ＋ `assaultDraws`），
+   * 而 T8 冷却表是**按卡 id** 记的（结算处 `setBountyCooldown(anomaly.id)`）⇒ 判据必须与出发同源。
+   *
+   * ⚠ **改前判的是板面驻留卡**（`weekendBountyCardsOf` 换出来的那张，抽签盐 0）——与重抽卡是**两张
+   * 不同的 id** ⇒ 既**漏判**又**误等**：
+   * - 漏判（就是玩家报障）：重抽到的卡仍在冷却、板面卡不在 ⇒ 守卫放行 ⇒ `startExpedition` 被
+   *   `expeditionPreflight` 的冷却判据拒 ⇒ 走到 `stopAutoLoopInvasion` ⇒ **整条重复出击被取消**。
+   *   开跃迁燃料后本趟返航腿 120s → **12s**，比这张卡的冷却（`10000 × √(500 ÷ 扫描分辨率)`，
+   *   重舰 12.3~13.4s）还短 ⇒ 只要连续两场抽到同一张卡就撞上（**只差 1 秒也照杀**）。
+   * - 误等：板面卡在冷却、重抽卡不在 ⇒ 本来能出发却被拦着。
    */
-  const visible = [...ctx.anomalies.values()].filter((a) => a.galaxyId === galaxyId && a.hidden !== true)
-  const displayed = weekendBountyCardsOf(state, ctx, visible, galaxyId, Date.now())[0]
-  if (displayed && bountyCooldownRemainingMs(state, displayed.id) > 0) return null
-  const lootM3 = (displayed?.loot ?? []).reduce((sum, row) => {
-    const def = ctx.items.get(row.itemId)
-    return sum + row.units * (def ? cargoUnitM3(state, def) : 0)
-  }, 0)
-  const pre = autoLoopPreflight(state, ctx, displayed?.name ?? galaxyId, lootM3)
-  if (pre !== null) {
-    stopAutoLoopInvasion(state, pre.notice)
-    return pre.reason
-  }
-  // 出发：每场重抽一支 ＋ 星系覆写（与 `engine.startExpeditionAt` 同一条路）
   const dispatch = weekendAssaultDrawOf(state, ctx, galaxyId, Date.now())
   if (dispatch === null) {
     stopAutoLoopInvasion(state, '该星系已被夺回。')
     return '该星系已被夺回'
   }
+  const drawn = ctx.anomalies.get(dispatch.cardId)
+  /** **冷却中 ⇒ 等**（不是停环）：差的那点时间通常只有 1~2 秒（燃料把返航腿压到 12s） */
+  if (bountyCooldownRemainingMs(state, dispatch.cardId) > 0) return null
+  const lootM3 = (drawn?.loot ?? []).reduce((sum, row) => {
+    const def = ctx.items.get(row.itemId)
+    return sum + row.units * (def ? cargoUnitM3(state, def) : 0)
+  }, 0)
+  const pre = autoLoopPreflight(state, ctx, drawn?.name ?? galaxyId, lootM3)
+  if (pre !== null) {
+    stopAutoLoopInvasion(state, pre.notice)
+    return pre.reason
+  }
+  // 出发：星系覆写（与 `engine.startExpeditionAt` 同一条路；卡已在上面的 `dispatch` 抽定）
   const r = startExpedition(state, dispatch.cardId, ctx, {
     foeGalaxyId: galaxyId,
     ...(dispatch.rewardIsk > 0 ? { rewardIskOverride: dispatch.rewardIsk } : {}),
   })
   if (!r.ok) {
+    /**
+     * **冷却类失败也当「等」**（双保险，不引入新错误码）：`startExpedition` 内部那道冷却判据与这里
+     * 同源、只是取值时刻不同 ⇒ 失败时再查一次冷却：仍 >0 就等，**绝不因为"差几秒"把整条循环杀掉**。
+     */
+    if (bountyCooldownRemainingMs(state, dispatch.cardId) > 0) return null
     stopAutoLoopInvasion(state, r.error ?? '无法再出发。')
     return r.error ?? '无法再出发'
   }

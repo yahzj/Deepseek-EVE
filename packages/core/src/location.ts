@@ -190,7 +190,15 @@ export function startTransitHome(state: GameState, ctx: SimContext): CommandResu
       addLog(state, 'fleet', `返航完成：舰船已即时停靠「${site.name}」（副空间站）。${unloadNote.text}`, 'core.location.039', {
         p1: site.name,
         p2: unloadNote.text,
-        ...(unloadNote.id !== undefined ? { p2Id: unloadNote.id } : {}),
+        /**
+         * ⚠ **槽内参数必须一起喂**（**2026-10-02 船长转玩家报障**：日志里漏出 `（{p1} 单位）`）：
+         * `core.location.037` 自己带 `{p1}`，而渲染层按「槽号 ＋ 占位符名」取槽内值 ⇒ 本槽是 `p2`
+         * ⇒ 要喂 **`p2p1`**（同族写法见 `events.ts` 的 `p2Id` + `p2p1`）。只喂槽译文不喂槽内参数，
+         * 渲染层取不全时**宁可漏也不改中文** ⇒ 玩家就看到原样的 `{p1}`。
+         */
+        ...(unloadNote.id !== undefined && unloadNote.unit !== undefined
+          ? { p2Id: unloadNote.id, p2p1: unloadNote.unit }
+          : {}),
       })
       return { ok: true }
     }
@@ -199,7 +207,10 @@ export function startTransitHome(state: GameState, ctx: SimContext): CommandResu
       p1: toName,
       p2: fromName,
       p3: unloadNote.text,
-      ...(unloadNote.id !== undefined ? { p3Id: unloadNote.id } : {}),
+      // 同上：`p3` 槽的槽译文 `core.location.037` 自带 `{p1}` ⇒ 槽内参数 = `p3p1`（2026-10-02 修）
+      ...(unloadNote.id !== undefined && unloadNote.unit !== undefined
+        ? { p3Id: unloadNote.id, p3p1: unloadNote.unit }
+        : {}),
     })
   return { ok: true }
 }
@@ -239,12 +250,12 @@ export function advanceTransit(state: GameState, ctx: SimContext): void {
     }
   }
   if (d && d.phase === 'to-station') {
-    addLog(state, 'fleet', `交付任务收尾：舰船已返航停靠「${dockedName ?? toName}」${dockedName ? '（副空间站）' : ''}。${unloadNote}`)
+    addLog(state, 'fleet', `交付任务收尾：舰船已返航停靠「${dockedName ?? toName}」${dockedName ? '（副空间站）' : ''}。${unloadNote.text}`)
     // 2026-09-08 v2 自动循环：工地还有缺口且仓库有料 → 同一引擎推进内立即续趟出发
     continueDeliverLoop(state, ctx, d.siteId)
     return
   }
-  addLog(state, 'fleet', `返航完成：舰船已停靠「${dockedName ?? toName}」${dockedName ? '（副空间站）' : ''}。${unloadNote}`)
+  addLog(state, 'fleet', `返航完成：舰船已停靠「${dockedName ?? toName}」${dockedName ? '（副空间站）' : ''}。${unloadNote.text}`)
 }
 
 /* ─────────── 2026-09-08 建站交付航线 v2（船长定稿：物理载货模型 + 自动多趟循环） ─────────── */
@@ -511,7 +522,7 @@ function arriveDeliverSite(
     state.awayGalaxy = null
     state.dockedSite = site.id
     const unloadNote = dockUnloadNote(state, ctx, state.shipId)
-    addLog(state, 'fleet', `本次交付达成「建成」档：舰船已停靠新落成的「${site.name}」（副空间站）。${unloadNote}`)
+    addLog(state, 'fleet', `本次交付达成「建成」档：舰船已停靠新落成的「${site.name}」（副空间站）。${unloadNote.text}`)
     return
   }
   const remain = tierRemaining(state, site)
@@ -542,7 +553,7 @@ function arriveDeliverSite(
       }
     }
     const unloadNote = dockUnloadNote(state, ctx, state.shipId)
-    addLog(state, 'fleet', `交付任务收尾：舰船已返航停靠「${dockedName ?? baseName}」${dockedName ? '（副空间站）' : ''}。${unloadNote}`)
+    addLog(state, 'fleet', `交付任务收尾：舰船已返航停靠「${dockedName ?? baseName}」${dockedName ? '（副空间站）' : ''}。${unloadNote.text}`)
     if (site && progAfter.stage < site.tiers.length) continueDeliverLoop(state, ctx, site.id)
     return
   }
