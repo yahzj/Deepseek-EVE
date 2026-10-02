@@ -219,6 +219,51 @@ export interface WeekendAssaultDispatch {
 /** 主动出击抽签盐的基数（与"驻留卡"的 0、遇袭的"时间档"错开，纯为可读性） */
 export const WEEKEND_ASSAULT_SALT_BASE = 10_000
 
+/**
+ * **该星系"这一场"会抽到哪张卡** —— 主动出击抽签的**唯一落点**（纯函数；**不做占领校验**，调用方各自校验）。
+ *
+ * 盐 = `WEEKEND_ASSAULT_SALT_BASE + assaultDraws`（每出击一次换一支、随档、不消费主随机序列）。
+ * 单独抽出来是因为**界面也要用同一把尺**：`weekendAssaultDrawOf`（出发那一刻）与
+ * `weekendFoeCardIdToFightOf`（界面判"能不能点"）必须得到**同一张卡**，否则冷却判据会不同源。
+ */
+export function weekendAssaultCardIdOfDrawnAt(state: GameState, galaxyId: string): string | null {
+  const ev = state.weekendEvent
+  if (!ev) return null
+  const isCore = galaxyId === ev.coreId
+  const idx = Math.max(0, weekendOccupiedIds(ev).indexOf(galaxyId))
+  const salt = WEEKEND_ASSAULT_SALT_BASE + Math.max(0, Math.floor(ev.assaultDraws ?? 0))
+  return weekendDrawFoeCardId(ev.family, isCore, ev.seq, idx, salt)
+}
+
+/**
+ * **界面上那一行「点下去会打哪张卡」**（**判据单点 · 2026-10-02 甲案 · 船长令「按你推荐」**）。
+ *
+ * 为什么必须有它：界面上那一行显示的是**驻留卡**（`weekendBountyCardsOf` 换出来的，抽签盐 0、
+ * 一场入侵内固定），而**出发那一刻**引擎会 `weekendAssaultDrawOf` **当场重抽**（盐 10000 ＋ 次数）
+ * ⇒ 两张 id 不同；而 T8 冷却（`state.bountyCooldowns`）是**按卡 id** 记的。
+ * 若界面拿**板面卡**去判冷却 ⇒ 出现两种错：**该拒没拒**（按钮亮着、点下去才被告知"重抽到的那张冷却中"）
+ * 与**该放没放**（按钮灰着、其实这一场会抽到另一张没冷却的卡）。本函数把界面拉到与引擎同源。
+ *
+ * ⚠ 非占领区 / 活动已结束 / 星系解析不出（常驻悬赏那类**没有重抽**的行）⇒ **原样返回**
+ * `displayedCardId`（老路径逐字零变化）。
+ *
+ * @param displayedCardId 界面上那一行的卡 id（= 驻留卡/原卡 id）
+ * @param displayedGalaxyId 那一行的星系（→ `foeGalaxyId`；被占且活的才采信）
+ */
+export function weekendFoeCardIdToFightOf(
+  state: GameState,
+  displayedCardId: string,
+  displayedGalaxyId: string | undefined,
+  nowWallMs: number = Date.now(),
+): string {
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs !== undefined) return displayedCardId
+  /** 星系解析口径与 `engine.startExpeditionAt` 的 `foeGalaxyOf` 同源（界面上那一行的星系优先） */
+  const galaxyId = weekendLaunchGalaxyOf(state, displayedGalaxyId, displayedGalaxyId, nowWallMs)
+  if (galaxyId === undefined || !weekendOccupiedLiveAt(state, galaxyId, nowWallMs)) return displayedCardId
+  return weekendAssaultCardIdOfDrawnAt(state, galaxyId) ?? displayedCardId
+}
+
 export function weekendAssaultDrawOf(
   state: GameState,
   ctx: SimContext,
@@ -228,10 +273,9 @@ export function weekendAssaultDrawOf(
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) return null
   if (!weekendOccupiedLiveAt(state, galaxyId, nowWallMs)) return null
-  const isCore = galaxyId === ev.coreId
-  const idx = Math.max(0, weekendOccupiedIds(ev).indexOf(galaxyId))
-  const salt = WEEKEND_ASSAULT_SALT_BASE + Math.max(0, Math.floor(ev.assaultDraws ?? 0))
-  const cardId = weekendDrawFoeCardId(ev.family, isCore, ev.seq, idx, salt)
+  /** 卡 id 走**单点**（与界面判"能不能点"用的是同一把尺） */
+  const cardId = weekendAssaultCardIdOfDrawnAt(state, galaxyId)
+  if (cardId === null) return null
   const drawn = ctx.anomalies.get(cardId)
   /** 该星系**原卡**（用于钉住奖励；非 H 族时抽签结果就是它的 id ⇒ 奖励口径与老路径一致） */
   const base = [...ctx.anomalies.values()].find((a) => !a.hidden && a.galaxyId === galaxyId)
