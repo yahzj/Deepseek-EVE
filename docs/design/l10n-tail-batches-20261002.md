@@ -111,6 +111,34 @@
 
 ---
 
+## 批③ 远征 / 自动循环（2026-10-02）—— **可做部分已做，两条链挂账**
+
+`expedition.ts` 是最大的一域（盘点稿 37 处）。逐条查**去向**后拆成两半：
+
+### ✅ 本批已做（6 条 · 有界面入口且不涉存档）
+
+| 项 | 条数 | 渲染点 |
+|---|---|---|
+| `autoLoopReopenBlockReason`（重开重复清剿的逐档拒因） | **4**（`core.expedition.032~035`：机队无此船 / 装甲结构 <50% / 机群全灭 / 机群尚未补充 p1·p2·p3） | **3 处**：`ExpeditionCards.tsx:405` · `StarMap.tsx:2218` · `StarMap.tsx:2276` ⇒ 一律改走 `cmdText(...)`（原先直接把对象/字符串塞进 `title`） |
+| `expeditionPreflight`（远征前置闸：声望 / 冷却） | **2**（`core.expedition.036` p1·p2 / `037` p1·p2） | 经 `CommandResult.error` → 界面 `cmdText` |
+
+另：`setAutoLoopBounty` 一处转发改透传三字段（否则重开被拒时只回中文）。
+
+### ⛔ 挂账两条（各有前置，需船长裁或另立批）
+
+| 链 | 条数 | 卡在哪 |
+|---|---|---|
+| **停环提示**：`advanceAutoLoopBounty`(3) · `advanceAutoLoopInvasion`(4) 的返回串 | 7 | 它们的**唯一玩家可见出口**是 `stopAutoLoopReason()` 组合出的那句「重复清剿已暂停：…（当前 装甲 X% / 结构 Y%）」，而它被写进 **存档字段 `state.autoLoopStopNotice`** ⇒ 要按语言渲染得**给存档加 `…Id`/`…Params` 字段**（同批⑩ 的 `droneLossNotice`）—— **属改存档结构，等你点头**。（日志那一半可以单独给 `textId`，不留档，可随批⑨ 一起做。） |
+| **等待标签**：`autoLoopWaitLabel`(6：本次出击/采矿/残骸打捞/航行/亲自开炉/亲自开线) | 6 | 它由 `activity.ts:422` 消费，拼进活动栏「重复清剿」那一行的 `sub`（`主控正在等待：…` 之类）⇒ 要做需连**活动栏那一行的组合句**一起改成 id 参数（属**主控活动**域），另立一批更干净。 |
+
+### 验证
+
+`typecheck` 四包 0 错 · core **286 文件 / 3008 用例全绿** · `l10n:check` ✅ · `l10n:params` 0 漏喂 · `content:check` ✅。
+**用例同步 2 处**（`tests/drone-loss.test.ts`）：由"断言中文子串"改成**断 id**（`core.expedition.034`）与**断 id ＋ 参数**（`035` → `{p1:1,p2:1,p3:2}`）。
+**过程中的一次自纠**：我第一版补类型 import 的判据写成 `if (!源码.includes('CoreBlockReason'))` —— 而签名行**已经包含**这个词 ⇒ import 被跳过、typecheck 报 `Cannot find name`。已改成按 `import type {...CoreBlockReason...}` 正则判据（留痕：判据别拿"文件里有没有这个词"当"有没有 import"）。
+
+---
+
 ## 待做（按盘点稿顺序）
 
 批③ 远征/自动循环（9 条）· 批④ 市场（2 条）· 批⑤ 工业（3 条）· 批⑥ 装配（1 条）· 批⑦ 虫洞＋战斗读数（2 条）· 批⑧ B 类待核（9 条）· 批⑨ 日志行（97 处，建议单独立项）· 批⑪ 共享拒因（`shipLockedReason` / `cannotInterruptReason`，跨 6 域，需先申请）。

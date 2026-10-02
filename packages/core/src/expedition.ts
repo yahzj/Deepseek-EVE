@@ -11,6 +11,7 @@
  * - back：finishAtGameMs = 到家时刻（去程并入返航），到点 active=false；
  *   胜利返航不可召回（召回入口拒绝），失利/撤退返航可召回（即时回港）
  */
+import type { CoreBlockReason } from './engine'
 import { weekendApplyBattleOutcome, weekendBattleInvolvedOf } from './weekendBattle'
 import { weekendFoeCardOf } from './weekendEvent'
 import { weekendAssaultThreatOf, weekendFoeCardsSelfPriced } from './weekendEvent'
@@ -429,7 +430,12 @@ function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: strin
   if (pilotBlock) return { ok: false, error: pilotBlock }
   const standing = standingOf(state, DSI_FACTION_ID)
   if (standing < anomaly.standingReq) {
-    return { ok: false, error: `需要「深空工业协会」声望 ${anomaly.standingReq}（累计 ${standing}），多完成低级目标攒声望。` }
+    return {
+      ok: false,
+      error: `需要「深空工业协会」声望 ${anomaly.standingReq}（累计 ${standing}），多完成低级目标攒声望。`,
+      errorId: 'core.expedition.036',
+      errorParams: { p1: anomaly.standingReq, p2: standing },
+    }
   }
   // V13 探索封锁：目标星系未点亮（且非母港）→ 拒绝出发
   const block = actionBlockReason(state, anomaly.galaxyId)
@@ -437,7 +443,12 @@ function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: strin
   // T8 重复冷却：同悬赏连续完成需要间隔（受该船扫描属性影响）
   const cd = bountyCooldownRemainingMs(state, anomalyId)
   if (cd > 0) {
-    return { ok: false, error: `「${anomaly.name}」冷却中：重复出击需等待约 ${Math.max(1, Math.round(cd / 1000))} 秒。` }
+    return {
+      ok: false,
+      error: `「${anomaly.name}」冷却中：重复出击需等待约 ${Math.max(1, Math.round(cd / 1000))} 秒。`,
+      errorId: 'core.expedition.037',
+      errorParams: { p1: anomaly.name, p2: Math.max(1, Math.round(cd / 1000)) },
+    }
   }
   return { ok: true }
 }
@@ -1412,17 +1423,21 @@ export function autoLoopDroneShortfall(
  * ⚠ 2026-09-20 起战斗结束会**立刻按本场出发编制自动补足机群**（货仓 → 仓库）⇒ 第②条实际只在
  * **货仓与物品仓库都没货**时才拦人；文案据此改写（说清缺多少、要补到几架），不再写"请手动补装"。
  */
-export function autoLoopReopenBlockReason(state: GameState): string | null {
+export function autoLoopReopenBlockReason(state: GameState): CoreBlockReason | null {
   const fs = state.fleet[state.shipId]
-  if (!fs) return '舰队里找不到当前驾驶舰船。'
+  if (!fs) return { error: '舰队里找不到当前驾驶舰船。', errorId: 'core.expedition.032' }
   if ((fs.armorPct ?? 1) < 0.5 || fs.durability < 0.5) {
-    return '装甲或结构低于 50%：先修回 50% 以上，或装上船体维修装置并带够组件。'
+    return { error: '装甲或结构低于 50%：先修回 50% 以上，或装上船体维修装置并带够组件。', errorId: 'core.expedition.033' }
   }
   const short = autoLoopDroneShortfall(state)
   if (short) {
     return short.floor <= 0
-      ? '机群已全灭：货仓与物品仓库都没有可补充的无人机——先在装配页装入（购买或制造）再开启重复清剿。'
-      : `机群尚未补充（现 ${short.now} 架 · 停环时 ${short.floor} 架）：需补到 ${short.need} 架以上才可再开——先在装配页装入无人机。`
+      ? { error: '机群已全灭：货仓与物品仓库都没有可补充的无人机——先在装配页装入（购买或制造）再开启重复清剿。', errorId: 'core.expedition.034' }
+      : {
+          error: `机群尚未补充（现 ${short.now} 架 · 停环时 ${short.floor} 架）：需补到 ${short.need} 架以上才可再开——先在装配页装入无人机。`,
+          errorId: 'core.expedition.035',
+          errorParams: { p1: short.now, p2: short.floor, p3: short.need },
+        }
   }
   return null
 }
@@ -1431,7 +1446,7 @@ export function autoLoopReopenBlockReason(state: GameState): string | null {
 export function setAutoLoopBounty(state: GameState, ctx: SimContext, anomalyId: string | null): CommandResult {
   if (anomalyId !== null) {
     const block = autoLoopReopenBlockReason(state)
-    if (block !== null) return { ok: false, error: block }
+    if (block !== null) return { ok: false, error: block.error, errorId: block.errorId, errorParams: block.errorParams }
   }
   state.autoLoopAnomalyId = anomalyId
   if (anomalyId === null) {

@@ -1179,6 +1179,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.expedition.029": { zh: "舰队脱离战场，自动返航（去程时间并入返航）。", en: "The fleet left the battle and is heading home automatically (the outbound leg is folded into the return)." },
   "core.expedition.030": { zh: "远征目标已不存在，舰队无功而返（异常）。", en: "The expedition target no longer exists, so the fleet returns empty-handed (an anomaly)." },
   "core.expedition.031": { zh: "重复清剿已开启：「{p1}」完成后冷却结束会自动再次出发（货仓/耐久不满足时自动暂停）。", en: "Repeat sweeps are on: once “{p1}” finishes, the fleet sets out again when the cooldown ends (it pauses automatically if the hold or durability falls short)." },
+  "core.expedition.032": { zh: "舰队里找不到当前驾驶舰船。", en: "No ship under your control in the fleet." },
+  "core.expedition.033": { zh: "装甲或结构低于 50%：先修回 50% 以上，或装上船体维修装置并带够组件。", en: "Armor or hull is below 50%: repair above 50% first, or fit a hull repair unit and carry enough kits." },
+  "core.expedition.034": { zh: "机群已全灭：货仓与物品仓库都没有可补充的无人机——先在装配页装入（购买或制造）再开启重复清剿。", en: "The drone wing is wiped out and neither the cargo hold nor the warehouse holds a spare — load drones on the Fitting page, bought or built, before starting the repeat purge." },
+  "core.expedition.035": { zh: "机群尚未补充（现 {p1} 架 · 停环时 {p2} 架）：需补到 {p3} 架以上才可再开——先在装配页装入无人机。", en: "The drone wing is not resupplied yet ({p1} aboard, {p2} when the loop stopped): bring it above {p3} to restart — load drones on the Fitting page first." },
+  "core.expedition.036": { zh: "需要「深空工业协会」声望 {p1}（累计 {p2}），多完成低级目标攒声望。", en: "Needs Deep Space Industry Association standing {p1} (accumulated {p2}) — clear lower-tier targets to build standing." },
+  "core.expedition.037": { zh: "「{p1}」冷却中：重复出击需等待约 {p2} 秒。", en: "“{p1}” is cooling down: repeat sorties have to wait about {p2} seconds." },
   /* ── 第二十批：location.ts（返航 / 建站交付 / 转场掩护巡逻）── */
   "core.location.001": { zh: "长途运输进行中：中断本趟就拿不到本趟报酬（报酬到站才结）。请先到活动栏点「停止运输」。", en: "Long-haul transport is running: interrupting this trip forfeits its pay (the fee settles on arrival); stop it from the activity bar first." },
   "core.location.002": { zh: "快递投送途中：舰船正在执行投送航行，到站后再返航。", en: "A courier delivery is under way: the ship is on its delivery voyage, so return once it docks." },

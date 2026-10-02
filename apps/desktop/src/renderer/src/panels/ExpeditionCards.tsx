@@ -402,7 +402,7 @@ export function AnomalyCard({
                 : busyOther
                   ? tr("ui.Expedition.154")
                   : reopenBlock !== null
-                    ? reopenBlock
+                    ? cmdText(reopenBlock)
                     : loopOn
                       ? tr("ui.Expedition.043")
                       : invadedHere

@@ -2215,7 +2215,7 @@ export function GalaxyActions({
                     invasionLoopOn
                       ? tr('ui.Expedition.043')
                       : reopenBlock !== null
-                        ? reopenBlock
+                        ? cmdText(reopenBlock)
                         : loopBusy
                           ? tr('ui.Expedition.154')
                           : tr('ui.weekend.107')
@@ -2273,7 +2273,7 @@ export function GalaxyActions({
                 <button
                   className={`app-btn is-small${looping ? ' is-warn' : ''}`}
                   disabled={loopBlocked || loopAskAno === a.id}
-                  title={looping ? tr("ui.Expedition.043") : reopenBlock !== null ? reopenBlock : busyOther ? tr("ui.Expedition.154") : tr("ui.Expedition.155")}
+                  title={looping ? tr("ui.Expedition.043") : reopenBlock !== null ? cmdText(reopenBlock) : busyOther ? tr("ui.Expedition.154") : tr("ui.Expedition.155")}
                   onClick={() => {
                     if (looping) runLoop(null)
                     else if (loopId !== null) setLoopAskAno(a.id)

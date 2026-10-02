@@ -342,11 +342,12 @@ describe('战斗结束立刻补足机群（2026-09-20 船长）', () => {
     expect(autoLoopDroneShortfall(state)).toBeNull() // 现 2 架 > 停环时 1 架 ⇒ 放行
     state.fleet[state.shipId]!.droneLoad = { 'drone-heavy': 1 }
     expect(autoLoopDroneShortfall(state)).toEqual({ now: 1, floor: 1, need: 2 })
-    expect(autoLoopReopenBlockReason(state) ?? '').toContain('需补到 2 架以上')
+    expect(autoLoopReopenBlockReason(state)?.errorId).toBe('core.expedition.035')
+    expect(autoLoopReopenBlockReason(state)?.errorParams).toEqual({ p1: 1, p2: 1, p3: 2 })
     // 全灭且一架都补不上 ⇒ 走"机群已全灭"那一句（不再写"现 0 架 / 停环时 0 架"那种自相矛盾的话）
     state.autoLoopDroneFloor = 0
     state.fleet[state.shipId]!.droneLoad = undefined
-    expect(autoLoopReopenBlockReason(state) ?? '').toContain('机群已全灭')
+    expect(autoLoopReopenBlockReason(state)?.errorId).toBe('core.expedition.034')
   })
 
   it('补足受**舱容**钳制（`refillDroneLoadTo` 单点）：王鲭机巢放不下就不硬塞', () => {
