@@ -29,6 +29,9 @@ import {
   countWare,
   formatDurationShort,
   industryAiBonus,
+  /** 2026-10-02 模块化：默认选"最高级"与可用列表都走 core 单点（原为内联字面量×2） */
+  bestAiCoreOf,
+  usableAiCoresOf,
   labAffordableBatches,
   labRecipeUnlocked,
   labTechRequirementOf,
@@ -384,11 +387,8 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
    * 折叠一下就能跳过去；宽屏也能折（折叠是玩家自己的选择，不随窗口忽隐忽现）。
    */
   const [foldStation, setFoldStation] = useState(false)
-  const [coreSel, setCoreSel] = useState<AiCoreType>(() => {
-    const usable = (['alpha', 'beta', 'gamma', 'basic'] as AiCoreType[]).find((t) => countAiCore(state, t) > 0)
-    return usable ?? 'basic'
-  })
-  const usableCores = (['basic', 'gamma', 'beta', 'alpha'] as AiCoreType[]).filter((t) => countAiCore(state, t) > 0)
+  const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
+  const usableCores = usableAiCoresOf(state)
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
   const runs = engine.refineRunViews()
   const labRuns = engine.labRunViews()

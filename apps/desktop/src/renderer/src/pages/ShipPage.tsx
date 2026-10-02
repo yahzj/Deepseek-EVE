@@ -14,6 +14,8 @@ import {
   aiEfficiency,
   industryAiBonus,
   countAiCore,
+  /** 2026-10-02 模块化：可用核心列表走 core 单点 */
+  usableAiCoresOf,
   goodLockedReason,
   idleAiShipIds,
   isExplored,
@@ -43,6 +45,8 @@ import {
 /** 2026-09-30 船长令「跃迁燃料页先用 skill 优化」：HUD 语汇（图标按钮/图标读数）＋ 深空样式层 */
 import { RowGlyph } from '../ui/itemView'
 import { IconBtn } from '../ui/hud'
+/** AI 核心下拉公共件（2026-10-02 模块化） */
+import { AiCoreSelect } from '../ui/aiCoreSelect'
 /** 2026-09-30 船长令：竖直燃料罐（玻璃外壳 ＋ 液面波动，形状全在 SVG 里画） */
 import { FuelTank } from '../ui/FuelTank'
 import '../ui/layout-css/_hud-industry.css'
@@ -1237,8 +1241,8 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
   // 2026-09-08 紧急修复（玩家反馈"无法用伽马 AI 核心采矿"）：核心下拉只列有库存类型，
   // 但 state 初值/记忆可能已无库存（如 basic 用光、只剩伽马）→ 提交与实际显示脱节，
   // 引擎仍按旧类型(basic)指派被拒。归一为"当前有库存的类型"再用于显示与提交
-  // （与工业页炉卡 usableCores 同款写法）。
-  const usableCores = AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
+  // （与工业页炉卡 usableCores 同款写法——2026-10-02 起都走 core 单点 `usableAiCoresOf`）。
+  const usableCores = usableAiCoresOf(state)
   const effCore = usableCores.includes(coreType) ? coreType : (usableCores[usableCores.length - 1] ?? 'basic')
   /** 副船任务须有共用上限（「AI 核心操作学」）；站内工业另可用「工业自动化」扩容工位——
    *  共用上限为 0 而工业扩容 > 0 时，只允许指派站内工业任务（回落显示制造）。 */
@@ -1453,28 +1457,16 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
               </option>
             ))}
           </select>
-          {/* 核心下拉常驻：无可用核心时置灰并直接显示原因（船长 2026-09-10：无核心必须提示玩家） */}
-          <select
-            className="app-select"
-            value={usableCores.length === 0 ? '' : effCore}
-            onChange={(e) => setCoreType(e.target.value as AiCoreType)}
-            disabled={usableCores.length === 0}
-            title={
-              usableCores.length === 0
-                ? tr("ui.ShipPage.068")
-                : tr("ui.ShipPage.069")
-            }
-          >
-            {usableCores.length === 0 ? (
-              <option value="">{tr("ui.ShipPage.070")}</option>
-            ) : (
-              usableCores.map((t) => (
-                <option key={t} value={t}>
-                  {aiCoreText(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
-                </option>
-              ))
-            )}
-          </select>
+          {/* 核心下拉常驻：无可用核心时置灰并直接显示原因（船长 2026-09-10：无核心必须提示玩家）——
+              2026-10-02 起走公共件 `ui/aiCoreSelect.tsx`（行为与旧实现逐字一致） */}
+          <AiCoreSelect
+            engine={engine}
+            value={effCore}
+            onPick={setCoreType}
+            titleReady={tr("ui.ShipPage.069")}
+            titleEmpty={tr("ui.ShipPage.068")}
+            emptyLabel={tr("ui.ShipPage.070")}
+          />
           <select
             className="app-select"
             value={effMode}

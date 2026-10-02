@@ -6,9 +6,7 @@
  */
 import {
   aiCoreName,
-  aiEfficiency,
   calcBuildDurationMs,
-  countAiCore,
   countWare,
   countModule,
   manufacturingLoopOf,
@@ -17,6 +15,8 @@ import {
   matNeedCount,
   missingMaterials,
   ownsBlueprint,
+  /** 2026-10-02 模块化：可用核心下拉的单点（core 导出） */
+  usableAiCoresOf,
   // 2026-09-22 第 3 步：收藏星标进"实时指纹"（星标子组件自己也读 state，漏了会停在旧值）
   isMarked,
   recipeCapability,
@@ -63,6 +63,8 @@ import { ASSEMBLER_CARD_MIN_H, LazyMount, useIdleChunk } from '../ui/LazyMount'
 import { MatSourceLink } from '../ui/matSourceLink'
 /** 原材料列表折叠（2026-10-01 船长令：味数 > 2 折叠成一行「原材料列表」，点开才拉开）——与实验室卡共用一份 */
 import { MATS_COLLAPSE_OVER, MatListToggle } from '../ui/matList'
+/** AI 核心下拉公共件（2026-10-02 模块化：与精炼炉卡/实验室卡/舰船指派同款，见本件头注） */
+import { AiCoreSelect } from '../ui/aiCoreSelect'
 import { useL10n, cmdText } from '../i18n/locale'
 import { MONEY_GLYPH } from '../pages/common'
 import {
@@ -85,8 +87,6 @@ import {
 } from '../ui/itemSubs'
 import { tr } from '../i18n/locale'
 import { fmtDuration } from '../i18n/fmt'
-
-const CORE_ORDER: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
 
 /** 在市场目录里找某蓝图的市场商品（key）；找不到返回 null */
 function bpGoodKey(engine: GameEngine, blueprintId: string): string | null {
@@ -702,7 +702,7 @@ export const BlueprintCard = memo(function BlueprintCard({
   const whUnlocked = whStanding >= WORMHOLE_SCAN_UNLOCK_STANDING
   // 每卡独立的 AI 核心选择（一枚核心驱动一条线；核心库存被占用后自动回落可用类型）
   const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
-  const usableCores = CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
+  const usableCores = usableAiCoresOf(state)
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
   const manualNote = manualBuildNote(state)
 
@@ -1086,29 +1086,17 @@ export const BlueprintCard = memo(function BlueprintCard({
             >
               {tr("ui.Industry.071")}
             </button>
-            {/* AI 工位：核心下拉常驻（无可用核心时置灰并在控件里写明，卡面不跳动；船长 2026-09-10） */}
+            {/* AI 工位：核心下拉常驻（无可用核心时置灰并在控件里写明，卡面不跳动；船长 2026-09-10）——
+                2026-10-02 起走公共件 `ui/aiCoreSelect.tsx`（行为与旧实现逐字一致） */}
             <div className="app-belt-ai">
-              <select
-                className="app-select"
-                value={usableCores.length === 0 ? '' : (core ?? '')}
-                onChange={(e) => setCoreSel(e.target.value as AiCoreType)}
-                disabled={usableCores.length === 0}
-                title={
-                  usableCores.length === 0
-                    ? tr("ui.IndustryPage.051")
-                    : tr("ui.Industry.072")
-                }
-              >
-                {usableCores.length === 0 ? (
-                  <option value="">{tr("ui.ShipPage.070")}</option>
-                ) : (
-                  usableCores.map((t) => (
-                    <option key={t} value={t}>
-                      {aiCoreText(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
-                    </option>
-                  ))
-                )}
-              </select>
+              <AiCoreSelect
+                engine={engine}
+                value={core}
+                onPick={setCoreSel}
+                titleReady={tr("ui.Industry.072")}
+                titleEmpty={tr("ui.IndustryPage.051")}
+                emptyLabel={tr("ui.ShipPage.070")}
+              />
               <button
                 className="app-btn is-small"
                 disabled={!core || short.length > 0}

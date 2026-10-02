@@ -52,6 +52,24 @@
   `onChange` 置 touched 标记；`commitLoop`/`commitLabLoop` 提交即清标记；没打字不做任何动作。
 - 文件：`apps/desktop/src/renderer/src/pages/IndustryPage.tsx` · `IndustryHudPage.tsx`（+`useRef` import）。
 - 验证：typecheck 全仓 ✅ · core 全量 ✅ · content/l10n/ui:rot/ui:tip ✅ · 构建 ✅（批次落账时补齐读数）。
+- 提交：`9a737602`。
+
+### 批次 1a：AI 核心顺序/可用列表/下拉收敛（2026-10-02 · 模块化 · 零行为变化）
+
+- 背景（审查报告 §5 表 #1~#3）：渲染层把核心顺序字面量抄了 3 份（＋HUD 内联 2 处）、
+  `usableCores` 判据抄了 8 处、下拉 markup 抄了 4+ 份。
+- 落地：
+  - `core/ai.ts`：新增单点 `usableAiCoresOf(state)`；`index.ts` 导出。
+  - 新增 `ui/aiCoreSelect.tsx`：精炼炉卡/实验室卡/组装机卡/舰船指派四处的核心下拉公共件
+    （无核心置灰＋空档写明原因，口径与旧实现逐字一致；选项渲染 `aiCoreText＋效率%` 也只此一份）。
+  - 替换调用点：panels/Industry.tsx · IndustryPage.tsx（炉/实验室）· ShipPage.tsx 四处走公共件；
+    MapPage×2 · Expedition · IndustryHudPage 的 `usableCores` 改走单点。
+  - 消掉的重复：`CORE_ORDER` 字面量 ×2（IndustryPage/panels/Industry）· HUD 内联顺序 ×2
+    （含一处 `['alpha','beta','gamma','basic'].find` ⇒ 改走 core `bestAiCoreOf`，等价）· filter ×8。
+- 行为核对：`bestAiCoreOf`（core 序、取最高持有）≡ 原 HUD 倒序 find；其余逐字等价。
+- 文件：core/ai.ts · core/index.ts · ui/aiCoreSelect.tsx（新）· panels/Industry.tsx · pages/IndustryPage.tsx ·
+  pages/IndustryHudPage.tsx · pages/MapPage.tsx · pages/ShipPage.tsx · panels/Expedition.tsx。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · ui:rot-check ✅ · 构建 ✅。
 
 ## 待办/待裁
 

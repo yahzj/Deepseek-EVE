@@ -8,7 +8,6 @@ import type { AnomalyDef, GalaxyDef, AiCoreType, SimContext, SideTask, SideTaskB
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
 import {
-  AI_CORE_ORDER,
   DSI_FACTION_ID,
   HOME_GALAXY_ID,
   LAIR_RARE_WRECK_GAIN,
@@ -41,7 +40,8 @@ import {
   weekendBossPoolView,
   cargoCapacityM3Of,
   cargoUsedM3Of,
-  countAiCore,
+  /** 2026-10-02 模块化：可用核心列表走 core 单点（原为本页 AI_CORE_ORDER.filter 一处） */
+  usableAiCoresOf,
   expeditionStatus,
   fleetDefOf,
   foeLayerSplit,
@@ -2117,7 +2117,7 @@ function GalaxyActions({
   const [aiShip, setAiShip] = useState('')
   const [aiCore, setAiCore] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   // 2026-09-08 紧急修复：核心下拉与提交类型脱节（basic 无库存时仍按 basic 提交被拒）
-  const usableCores = AI_CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
+  const usableCores = usableAiCoresOf(state)
   const effCore = usableCores.includes(aiCore) ? aiCore : (usableCores[usableCores.length - 1] ?? 'basic')
   const aiCoreAvailable = usableCores.length > 0
   function handleAiStandby(): void {

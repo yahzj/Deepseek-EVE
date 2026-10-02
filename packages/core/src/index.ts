@@ -1298,6 +1298,8 @@ export {
   aiCoreName,
   aiEfficiency,
   countAiCore,
+  /** 2026-10-02 代码审查：可用核心下拉的单点（渲染层原抄 8 处 filter ＋ 3 份顺序字面量） */
+  usableAiCoresOf,
   gainAiCore,
   aiCoreCap,
   aiCoreUsed,

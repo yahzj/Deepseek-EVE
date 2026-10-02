@@ -21,8 +21,6 @@ import {
   UNBOX_CYCLE_MS,
   recycleRefiningMultiplier,
   aiCoreName,
-  aiEfficiency,
-  countAiCore,
   countWare,
   oreAvailable,
   /** 2026-09-25 船长令：H 族残骸暂不开放回收 ⇒ 卡片也摘掉（与起炉那一层同一判据） */
@@ -44,6 +42,8 @@ import {
   labMissingMaterials,
   labRecipeUnlocked,
   labTechRequirementOf,
+  /** 2026-10-02 模块化：可用核心下拉的单点（core 导出） */
+  usableAiCoresOf,
   /** 2026-10-01：材料行尾那枚「这一味料从哪来」链接的等价组判据（通用黑匣）走 core 单点 */
   materialGroupIdsOf,
 } from '@whale/core'
@@ -67,6 +67,8 @@ import { ItemHover } from '../ui/shipInfo'
 import { MatSourceLink } from '../ui/matSourceLink'
 /** 原材料列表折叠（2026-10-01 船长令：味数 > 2 折叠成一行「原材料列表」，点开才拉开）——与组装机卡共用一份 */
 import { MATS_COLLAPSE_OVER, MatListToggle } from '../ui/matList'
+/** AI 核心下拉公共件（2026-10-02 模块化：精炼炉卡/实验室卡/组装机卡/舰船指派同款） */
+import { AiCoreSelect } from '../ui/aiCoreSelect'
 /* 图标一律走**物品 id 单点映射**（2026-09-30 船长报障：新道具在实验室卡上是通用「消耗品」图标） */
 import { itemGlyphName } from '../ui/Glyphs'
 import { WRECK_SUBS, SUB_ALL, presentSubs, wreckTierOf, subText } from '../ui/itemSubs'
@@ -81,8 +83,6 @@ import { marketPriceOf, NetIncomeLine } from '../ui/yieldView'
 import type { PageProps } from './common'
 import { MONEY_GLYPH, m3, wreckSourceGalaxyIdsOf } from './common'
 import { tr } from '../i18n/locale'
-
-const CORE_ORDER: AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
 
 /**
  * **精炼炉一级筛选标签**（2026-09-14 船长：「精炼炉和组装机一样，添加筛选标签」→
@@ -160,7 +160,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
   const claimHeld = runs.reduce((s, v) => s + (v.claimedUnits ?? 0), 0)
   // 每卡独立的 AI 核心选择（一枚核心驱动一台；核心库存被占用后自动回落可用类型）
   const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
-  const usableCores = CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
+  const usableCores = usableAiCoresOf(state)
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
   // 手动再开一台被拒的原因：主控已亲自开着一台炉 / 开着一条制造线 / 其它主控作业占用（三者共享手动工作位）
   // 无公共料时的提示（2026-09-11）：本卡若有炉子正抱着**炉内料账**，就不能写成"仓库里没有原料"（料在炉里）
@@ -468,29 +468,17 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         >
           {isBox ? tr("ui.IndustryPage.048") : isWreck ? tr("ui.IndustryPage.049") : tr("ui.IndustryPage.050")}
         </button>
-        {/* AI 工位：核心下拉常驻（无可用核心时置灰并在控件里写明，卡面不跳动；船长 2026-09-10） */}
+        {/* AI 工位：核心下拉常驻（无可用核心时置灰并在控件里写明，卡面不跳动；船长 2026-09-10）——
+            2026-10-02 起走公共件 `ui/aiCoreSelect.tsx`（行为与旧实现逐字一致） */}
         <div className="app-belt-ai">
-          <select
-            className="app-select"
-            value={usableCores.length === 0 ? '' : (core ?? '')}
-            onChange={(e) => setCoreSel(e.target.value as AiCoreType)}
-            disabled={usableCores.length === 0}
-            title={
-              usableCores.length === 0
-                ? tr("ui.IndustryPage.051")
-                : tr("ui.IndustryPage.052")
-            }
-          >
-            {usableCores.length === 0 ? (
-              <option value="">{tr("ui.ShipPage.070")}</option>
-            ) : (
-              usableCores.map((t) => (
-                <option key={t} value={t}>
-                  {aiCoreText(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
-                </option>
-              ))
-            )}
-          </select>
+          <AiCoreSelect
+            engine={engine}
+            value={core}
+            onPick={setCoreSel}
+            titleReady={tr("ui.IndustryPage.052")}
+            titleEmpty={tr("ui.IndustryPage.051")}
+            emptyLabel={tr("ui.ShipPage.070")}
+          />
           <button
             className="app-btn is-small"
             disabled={!core || total <= 0}
@@ -664,7 +652,7 @@ function LabCard({
       s + m.units * (marketPriceOf(state, engine.ctx, m.itemId) ?? engine.ctx.items.get(m.itemId)?.baseSellPriceIsk ?? 0),
     0,
   )
-  const usableCores = CORE_ORDER.filter((t) => countAiCore(state, t) > 0)
+  const usableCores = usableAiCoresOf(state)
   const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
   const manualBusy = manualBusyNote(state)
@@ -933,25 +921,16 @@ function LabCard({
         >
           {tr('ui.lab.006')}
         </button>
-        {/* AI 工位：核心下拉常驻（与精炼炉同款：无核心时置灰，卡面不跳动） */}
+        {/* AI 工位：核心下拉常驻（与精炼炉同款：无核心时置灰，卡面不跳动）——2026-10-02 起走公共件 */}
         <div className="app-belt-ai">
-          <select
-            className="app-select"
-            value={usableCores.length === 0 ? '' : (core ?? '')}
-            onChange={(e) => setCoreSel(e.target.value as AiCoreType)}
-            disabled={usableCores.length === 0}
-            title={usableCores.length === 0 ? tr('ui.IndustryPage.051') : tr('ui.IndustryPage.052')}
-          >
-            {usableCores.length === 0 ? (
-              <option value="">{tr('ui.ShipPage.070')}</option>
-            ) : (
-              usableCores.map((t) => (
-                <option key={t} value={t}>
-                  {aiCoreText(t)}（{Math.round(aiEfficiency(state, engine.ctx, t) * 100)}%）
-                </option>
-              ))
-            )}
-          </select>
+          <AiCoreSelect
+            engine={engine}
+            value={core}
+            onPick={setCoreSel}
+            titleReady={tr('ui.IndustryPage.052')}
+            titleEmpty={tr('ui.IndustryPage.051')}
+            emptyLabel={tr('ui.ShipPage.070')}
+          />
           <button
             className="app-btn is-small"
             disabled={locked || !core || affordable <= 0}
