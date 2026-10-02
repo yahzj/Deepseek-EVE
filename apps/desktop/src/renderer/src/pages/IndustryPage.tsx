@@ -37,7 +37,7 @@ import {
   labMaterialAvailable,
   labBatchUnitsOf,
   labCycleMsOf,
-  /** 2026-10-01：折叠态那枚「缺 N 味」的判据（本机器那把尺的单点） */
+  /** 2026-10-01：折叠态那枚「缺 N 项」的判据（本机器那把尺的单点 · ⟪2026-10-02 船长令⟫ 改词前叫「缺 N 味」） */
   labMissingMaterials,
   labRecipeUnlocked,
   labTechRequirementOf,

@@ -3926,7 +3926,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    */
   "ui.Industry.160": { zh: "原材料列表 ×{n}", en: "Material list ×{n}" },
   "ui.Industry.161": { zh: "收起原材料列表", en: "Hide material list" },
-  "ui.Industry.162": { zh: "缺 {n} 味", en: "{n} short" },
+  /**
+   * ⟪文案调整 2026-10-02⟫ **船长令**：「工业的卡片内的原材料列表缩略显示的『差X味』改为『缺X项』」
+   * —— 分类量词「味」→「项」（只改缩略那枚红字；旁边的「展开全部 {n} 味原料」是另一条 id，
+   * **本次未动**，是否一并改口径等船长示下）。英文 `{n} short` 不变（占位符集合不变）。
+   */
+  "ui.Industry.162": { zh: "缺 {n} 项", en: "{n} short" },
   "ui.Industry.163": { zh: "展开全部 {n} 味原料", en: "Show all {n} ingredients" },
   "ui.Industry.164": { zh: "收起到一行", en: "Collapse back to one line" },
   "ui.IndustryPage.001": { zh: "全部", en: "All" },
