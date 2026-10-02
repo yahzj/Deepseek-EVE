@@ -439,6 +439,8 @@ const meSpeedRef = useRef(200)
   const blinkFxRef = useRef<BlinkPillarFx[]>([]);
   /** `planBlinkPillars` 的去重集合（键 `tag:queuedMs`；换战斗时清空）——每拍都会看见同一段几十次 */
   const blinkSeenRef = useRef<Set<string>>(new Set())
+  /** 🔴🔴 **临时诊断条**（2026-10-02 排查用 · **定位完即删**，见 `syncBlinkDiagDom`） */
+  const blinkDiagRef = useRef<BlinkDiag>({ fxSeq: -1, blinkFxN: 0, planned: 0, made: 0, gone: 0, hostHit: false, err: '' })
   /** 每个机型**上一帧**渲染的机体数（击落时用它定位"本帧即将消失的末位机体"） */
   const dronePrevShowRef = useRef<Map<string, number>>(new Map())
   const visDistRef = useRef(0)
@@ -725,8 +727,22 @@ const meSpeedRef = useRef(200)
        * （敌舰刚闪到自己的期望距离、我方也在期望距离上 ⇒ 双方机动都归零）⇒ `setSmoothM` 不触发
        * 重渲染 ⇒ "推入 ref 等渲染"永远出不来。⚠ 用 `performance.now()` 口径（本表的 `at/until` 就是它）。
        */
-      planBlinkPillars(b, blinkSeenRef.current, blinkFxRef.current, now)
-      syncBlinkPillarDom(blinkFxRef.current, foeColRef.current, now)
+      /* 🔴 临时：整段包 try/catch 并把异常摊在诊断条上（**定位完连同诊断条一起删**） */
+      try {
+        planBlinkPillars(b, blinkSeenRef.current, blinkFxRef.current, now)
+        syncBlinkPillarDom(blinkFxRef.current, foeColRef.current, now, blinkDiagRef.current)
+      } catch (e) {
+        blinkDiagRef.current.err = String((e as Error)?.message ?? e).slice(0, 90)
+      }
+      {
+        const d = blinkDiagRef.current
+        d.planned = blinkFxRef.current.length + d.gone
+        try {
+          syncBlinkDiagDom(d, b, foeColRef.current, blinkFxRef.current.length, now)
+        } catch {
+          /* 诊断条自己不许把主循环带崩 */
+        }
+      }
 
       // ── 背景视差滚动（2026-09-05 船长规则）：玩家前进（船向右、朝敌接近）→ 星空向左流；
       // 后退（想拉开、船向左退）→ 星空向右流。速度与「驾驶船战斗速度」挂钩（技能已折算）——
@@ -3187,6 +3203,65 @@ const BLINK_FX_MS = 420
 type BlinkPillarFx = { key: string; tag: string; at: number; until: number; el?: SVGSVGElement }
 
 /**
+ * 🔴🔴 **临时诊断条（2026-10-02 排查「闪现特效依旧不存在」用 · 定位完即删）** 🔴🔴
+ *
+ * 船长两次实机都看不到柱，而离线探针（同三个函数 + 真实 CSS）明明能建出来 ⇒ 必须看**真机**这条链
+ * 走到哪一步断的。本函数把每一步摊成屏幕上的一行字（**只用 DOM，不走 React**）：
+ * `队列` 引擎时刻表几条 · `闪事件` 引擎推过几条 `fx.blink` · `排/建/删` 本场累计 ·
+ * `柱` 当前 DOM 数 · `root` 列盒引用有没有 · `舰` 最后一次查 `[data-tag]` 命中没有 ·
+ * `速` 倍速 · `刻` 引擎战斗刻 · `Δ` 最新一段三段相对"当前刻"的毫秒 · `错` 最近一次异常。
+ */
+type BlinkDiag = {
+  el?: HTMLPreElement
+  fxSeq: number
+  blinkFxN: number
+  planned: number
+  made: number
+  gone: number
+  hostHit: boolean
+  err: string
+}
+
+function syncBlinkDiagDom(
+  d: BlinkDiag,
+  b: {
+    fx?: ReadonlyArray<{ seq: number; blink?: boolean }>
+    foeBlinkQueue?: Record<string, { vanishMs: number; moveAtMs: number; appearMs: number }>
+    lastTickGameMs?: number
+    speedX?: number
+  } | null,
+  root: HTMLElement | null,
+  live: number,
+  now: number,
+): void {
+  if (!d.el) {
+    const el = document.createElement('pre')
+    el.id = '__blink_diag'
+    el.style.cssText =
+      'position:fixed;left:6px;bottom:6px;z-index:99999;margin:0;padding:3px 6px;pointer-events:none;' +
+      'font:11px/1.4 monospace;color:#8fe;background:rgba(0,0,0,.66);border:1px solid #2a4;border-radius:4px;white-space:pre'
+    document.body.appendChild(el)
+    d.el = el
+  }
+  /* 引擎推过几条闪现事件（`fx` 是 48 条环缓冲 ⇒ 必须逐拍扫、只看"新序号"） */
+  for (const e of b?.fx ?? []) {
+    if (e.seq <= d.fxSeq) continue
+    d.fxSeq = e.seq
+    if (e.blink === true) d.blinkFxN++
+  }
+  const q = b?.foeBlinkQueue ?? {}
+  const segs = Object.values(q)
+  const newest = segs.length > 0 ? segs[segs.length - 1]! : undefined
+  const last = b?.lastTickGameMs ?? 0
+  const rel = (v: number | undefined): string => (v === undefined ? '-' : String(Math.round(v - last)))
+  d.el.textContent =
+    `闪诊 队列${segs.length} 闪事件${d.blinkFxN} 排${d.planned} 建${d.made} 删${d.gone} 柱${live}` +
+    ` root:${root ? 'y' : 'n'} 舰:${d.hostHit ? 'y' : 'n'} 速${b?.speedX ?? '-'} 刻${Math.round(last)}` +
+    ` Δ${rel(newest?.vanishMs)}/${rel(newest?.moveAtMs)}/${rel(newest?.appearMs)} t${Math.round(now) % 100000}` +
+    (d.err ? ` 错:${d.err}` : '')
+}
+
+/**
  * 🔴 **排"闪现光柱"**（**船长 2026-10-02 实机报障「闪现特效依旧不存在」后的第二修**）——
  * **纯函数、由 RAF 循环每拍调用**，不经过 React。
  *
@@ -3364,17 +3439,19 @@ function buildBlinkPillarEl(uniq: string, size: number): SVGSVGElement {
  * 拿它算会把光柱画小、画偏（实测踩到：`rectW=89 / offsetWidth=110`）。
  * ⚠ 表里记 `el` 引用（不查 DOM），避免每帧 querySelector。
  */
-function syncBlinkPillarDom(fxList: BlinkPillarFx[], root: HTMLElement | null, now: number): void {
+function syncBlinkPillarDom(fxList: BlinkPillarFx[], root: HTMLElement | null, now: number, diag?: BlinkDiag): void {
   for (let i = fxList.length - 1; i >= 0; i--) {
     const fx = fxList[i]!
     if (now >= fx.until) {
       fx.el?.remove()
       fxList.splice(i, 1)
+      if (diag) diag.gone++
       continue
     }
     if (fx.el || now < fx.at || !root) continue
     /** tag 里可能有 `w0-foe-1` 这类字符（连字符/数字都安全），但保险起见按属性值转义 */
     const host = root.querySelector<HTMLElement>(`[data-tag="${CSS.escape(fx.tag)}"]`)
+    if (diag) diag.hostHit = host !== null
     if (!host) continue
     const w = host.offsetWidth || 96
     const h = host.offsetHeight || 96
@@ -3384,5 +3461,6 @@ function syncBlinkPillarDom(fxList: BlinkPillarFx[], root: HTMLElement | null, n
     el.style.top = `${host.offsetTop + h / 2}px`
     root.appendChild(el)
     fx.el = el
+    if (diag) diag.made++
   }
 }
