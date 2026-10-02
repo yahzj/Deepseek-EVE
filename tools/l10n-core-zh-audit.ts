@@ -30,6 +30,8 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+// 2026-10-02：剥注释与 id 抠取改用共用件（与 `l10n:check` 同一份实现）
+import { stripComments } from './text-scan'
 
 const args = process.argv.slice(2)
 const quiet = args.includes('--quiet')
@@ -53,73 +55,6 @@ const cjkInLiteral = (s: string): boolean => {
 /** 该行是否有 id（`core.x.y` / `ui.x.y` 形态，或 errorId/textId 字段） */
 const hasId = (win: string): boolean => /errorId|textId/.test(win) || /['"`](core|ui)\.[A-Za-z0-9_.]+['"`]/.test(win)
 
-/**
- * **剥注释**（**2026-10-02 加**）：把注释整段换成等长空白，**行号与字符串内容一字不动**。
- *
- * 为什么需要它（本工具转正当天就踩到）：`addLog` 那条判据是**在原始源码里 indexOf('addLog(')**
- * 找的 —— 于是**注释里写的示例**（JSDoc 里的 `addLog(…, 中文原串, …)`）会被当成真漏口报出来。
- * 另两条判据（`return` / `state` 赋值）此前靠"跳过以 `//`、`*` 开头的行"糊住，遇到
- * "块注释收尾那两个字符落在正文行里"仍会漏判 ⇒ 现在三条判据统一在**剥注释后的源码**上跑。
- * 字符串里的注释起始符不会被误剥（扫描器认得引号与转义）。
- */
-const stripComments = (s: string): string => {
-  let out = ''
-  let i = 0
-  let mode: 'code' | 'line' | 'block' | 'sq' | 'dq' | 'tpl' = 'code'
-  while (i < s.length) {
-    const c = s[i]!
-    const n = s[i + 1]
-    if (mode === 'code') {
-      if (c === '/' && n === '/') {
-        mode = 'line'
-        i += 2
-        out += '  '
-        continue
-      }
-      if (c === '/' && n === '*') {
-        mode = 'block'
-        i += 2
-        out += '  '
-        continue
-      }
-      if (c === "'") mode = 'sq'
-      else if (c === '"') mode = 'dq'
-      else if (c === '`') mode = 'tpl'
-      out += c
-      i += 1
-      continue
-    }
-    if (mode === 'line') {
-      if (c === '\n') {
-        mode = 'code'
-        out += c
-      } else out += ' '
-      i += 1
-      continue
-    }
-    if (mode === 'block') {
-      if (c === '*' && n === '/') {
-        mode = 'code'
-        i += 2
-        out += '  '
-        continue
-      }
-      out += c === '\n' ? '\n' : ' '
-      i += 1
-      continue
-    }
-    /* 字符串里：原样保留（中文就在这里），只处理转义与收尾引号 */
-    out += c
-    if (c === '\\') {
-      out += n ?? ''
-      i += 2
-      continue
-    }
-    if ((mode === 'sq' && c === "'") || (mode === 'dq' && c === '"') || (mode === 'tpl' && c === '`')) mode = 'code'
-    i += 1
-  }
-  return out
-}
 
 const coreFiles = walk('packages/core/src').filter((f) => f.includes(filter))
 const rendererFiles = walk('apps/desktop/src/renderer/src')

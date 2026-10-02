@@ -32,6 +32,8 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import ts from 'typescript'
 import { L10N } from '../packages/data/src/l10n/table'
+// 2026-10-02：剥注释 + 抠 id 字面量（与 `l10n:core-zh` 共用一份实现，见 `tools/text-scan.ts`）
+import { idLiteralsIn, stripComments } from './text-scan'
 
 /**
  * **扫描根**（2026-09-20 扩容）：原来只有渲染层，导致 `main/` 与 `preload/` 是**盲区**——
@@ -288,14 +290,29 @@ check(badShape.length === 0, `条目值为空或含首尾空白 ${badShape.lengt
  * （id 只会来自本表，源码里不存在"值恰好长这样"的业务字符串 ⇒ 该判据无误伤。）
  *
  * ⚠ 本段**不做**"未译读数"：core 还在按文件迁移中，中文原串是过渡期的正常状态。
+ *
+ * **2026-10-02 加强（三号 · 船长「按你推荐来」）**，三处：
+ * ① **先剥注释**（`tools/text-scan.ts` 的 `stripComments`）—— 此前会把文档注释里的示例
+ *    （`'core.x.010'` 这种教学串）当成死引用报出来（实测一次误报 4 处）；
+ * ② 认 **单/双/反引号**三种引法（原先只认单引号），且 `core.*` 与 **`ui.*` 一并查**
+ *    —— core 里也持有 `ui.*` id（例：`busyLabels.ts` 的忙态标签、`aiCores.ts` 的 `AI_CORE_IDS`），
+ *    打错一个字同样是"界面直接显示 id"；
+ * ③ 渲染层那份"死引用"扫描的根从 `apps/desktop/src` **扩到 `packages/ui/src` 与 `packages/data/src`**
+ *    —— 这两处也写 id（标签单点、内容覆盖表），此前是覆盖空洞。表文件自身也在扫到的范围里：
+ *    它的键就是 id ⇒ 必然命中、不会误报。
  */
-const CORE_ROOT = join(process.cwd(), 'packages', 'core', 'src')
+const REF_ROOTS = [
+  join(process.cwd(), 'packages', 'core', 'src'),
+  join(process.cwd(), 'packages', 'data', 'src'),
+  join(process.cwd(), 'packages', 'ui', 'src'),
+]
 const coreRefs: Array<{ id: string; at: string }> = []
-for (const file of walk(CORE_ROOT)) {
-  const text = readFileSync(file, 'utf8')
-  for (const m of text.matchAll(/'(core\.[A-Za-z][A-Za-z0-9]*\.\d{3})'/g)) {
-    const line = text.slice(0, m.index).split('\n').length
-    coreRefs.push({ id: m[1]!, at: `${relative(process.cwd(), file)}:${line}` })
+for (const root of REF_ROOTS) {
+  for (const file of walk(root)) {
+    const text = stripComments(readFileSync(file, 'utf8'))
+    for (const lit of idLiteralsIn(text)) {
+      coreRefs.push({ id: lit.id, at: `${relative(process.cwd(), file)}:${lit.line}` })
+    }
   }
 }
 const coreBad: string[] = []
@@ -304,7 +321,7 @@ for (const r of coreRefs) {
   if (!ID_RE.test(r.id)) coreBad.push(`${r.at} → 「${r.id}」形态不合规`)
   else if (!ids.has(r.id)) coreBad.push(`${r.at} → 「${r.id}」表里没有（界面会显示 id）`)
 }
-check(coreBad.length === 0, `core 侧文案 id 有问题 ${coreBad.length} 处：${coreBad.slice(0, 8).join(' · ')}${coreBad.length > 8 ? ' …' : ''}`)
+check(coreBad.length === 0, `源码引用的文案 id 有问题 ${coreBad.length} 处（core ＋ data ＋ ui 三处源码都查）：${coreBad.slice(0, 8).join(' · ')}${coreBad.length > 8 ? ' …' : ''}`)
 
 // 报告读数（不红）
 const unused = entries.map(([id]) => id).filter((id) => !used.has(id))
