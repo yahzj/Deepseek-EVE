@@ -42,19 +42,24 @@
  *      ② 登记在册的入口改名/删除（逼一次人工复核）；
  *      ③ `MainActivityKind` 每个档位必须"能被 `mainActivityOf` 探测到 · 在两张档位表里恰好占一档 ·
  *      可中断的必须有 `haltActivityForSwitch` 分支"（实验室那次就是这三处对不上）。
+ *   F9 **相对导入环自检**（**2026-10-02 加** · 代码审查的"破环"护栏）：起因 = 全库代码审查
+ *      （`docs/design/code-review-20261002.md` §6）实测 `packages/core/src` 有 34 处**运行期**模块环
+ *      （最大 13 个模块），且 `54cfc050` 已因此炸过一次"模块环启动崩溃"。只认相对导入的**运行期**边
+ *      （`import type` 不算）；**新增环 = 红**，基线里已不存在的环 = 提示（破一条、从 `F9_CYCLE_BASELINE`
+ *      删一条，直到基线清零）。基线是存量快照，不是"允许作恶"的白名单。
  *
  * 用法：`npm run arch:guard`（或 `npx tsx tools/arch-guard.ts`，加 `--list` 打印全部读数）。
  * **反例实测**（每条判据都要证明它真能报红，见头注末的「自检记录」）。
  *
  * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
  *   - 游戏版本：**v0.1.0**（`package.json`）
- *   - 本工具最后核对：**2026-09-29**（当日读数：F1 越层 0 处 · F2 重复 0 处 · F3 悬空 0 处 · F4 旁路 0 处
- *     · F5 跳转 0 处 · **F6 日期本地化 0 处**（F6 同日新增）· **F7 落盘心跳 0 处**（F7 同日新增））
+ *   - 本工具最后核对：**2026-10-02**（当日读数：F1~F7 各 0 处 · **F8 0 处**（同日新增）·
+ *     **F9 新增环 0 处 / 基线 34 条**（同日新增））
  *   - 判据：新增"游戏数据表"时**同步登记进 `DATA_TABLES`**，否则它照样能被页面直读而无人拦；
  *     新增单点时**同步登记进 `SINGLE_SOURCE` 与 `docs/single-source.md`**（两处一起，F3 会核对）。
  */
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { dirname, join, relative, resolve } from 'node:path'
 // F5 用：直接跑真实的跳转表（纯函数、只依赖 MapTab 类型）⇒ 契约与实现同源，不抄一份
 import { goFor } from '../apps/desktop/src/renderer/src/ui/activityGo'
 
@@ -62,6 +67,8 @@ const ROOT = process.cwd()
 const RENDERER = join(ROOT, 'apps', 'desktop', 'src', 'renderer', 'src')
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'out', '.git'])
 const LIST = process.argv.includes('--list')
+/** F9 用：破环成功的提示（不报红） */
+const f9Notes: string[] = []
 
 /** 允许直接读「游戏数据表」的文件（逐条写理由；其余渲染层文件一律不许） */
 const ALLOW_TABLE_READERS: Record<string, string> = {
@@ -611,6 +618,87 @@ for (const file of rendererFiles) {
   }
 }
 
+/* ═══════════ F9 · 相对导入环自检（2026-10-02 加 · 代码审查的"破环"护栏） ═══════════
+ * 起因：2026-10-02 全库代码审查（`docs/design/code-review-20261002.md` §6）实测 `packages/core/src`
+ * 有 30+ 处**运行期**模块环（最大一条 13 个模块），且 `54cfc050` 已因此炸过一次"模块环启动崩溃"；
+ * 渲染层实测 0 处。破环是渐进工程（工作文档 `docs/design/refactor-modularization-20261002.md` 批次 3 的计划），
+ * 本检查保证**只会变少、不许变多**。
+ *
+ * 判据：只认**相对导入**的运行期边（`import type` / `export type` 不算——不产生运行期环）；
+ * 注释已由 `stripComments` 清掉。环 = DFS 回边，规范化（旋转到字典序最小）后与 `F9_CYCLE_BASELINE`
+ * 比对：**新增环 = 红**；基线里已不存在的环 = 控制台提示（破环成功，请从基线删掉那条，不报红）。
+ * ⚠ 每破一条环就从基线删一条，直到基线清零。基线是**存量快照**，不是"允许作恶"的白名单。
+ */
+{
+  const trees = [RENDERER, join(ROOT, 'packages', 'core', 'src'), join(ROOT, 'packages', 'data', 'src')]
+  const n = (p: string): string => p.replace(/\\/g, '/')
+  const files: string[] = []
+  for (const t of trees) walk(t, files)
+  const byPath = new Set(files.map((f) => n(f)))
+  const EXTS = ['', '.ts', '.tsx', '.mts', '/index.ts', '/index.tsx', '/index.mts']
+  const treeOf = (p: string): string => trees.find((t) => n(p).startsWith(n(t) + '/')) ?? ''
+  const graph = new Map<string, string[]>()
+  const stmtRe = /(?:import|export)\s+(?:type\s+)?[^'"]*?from\s*['"]([^'"]+)['"]|import\s+['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)/g
+  for (const f of files) {
+    const src = stripComments(readFileSync(f, 'utf8'))
+    const deps: string[] = []
+    let m: RegExpExecArray | null
+    while ((m = stmtRe.exec(src)) !== null) {
+      if (m[0].startsWith('import type') || m[0].startsWith('export type')) continue
+      const spec = m[1] ?? m[2] ?? m[3]
+      if (spec === undefined || !spec.startsWith('.')) continue
+      const base = n(resolve(dirname(f), spec))
+      const hit = EXTS.map((x) => base + x).find((p) => byPath.has(p))
+      if (hit !== undefined) deps.push(hit)
+    }
+    graph.set(n(f), deps)
+  }
+  const color = new Map<string, number>()
+  const stack: string[] = []
+  const found = new Set<string>()
+  function dfs(u: string): void {
+    color.set(u, 1)
+    stack.push(u)
+    for (const v of graph.get(u) ?? []) {
+      if (treeOf(v) !== treeOf(u)) continue
+      const c = color.get(v) ?? 0
+      if (c === 1) {
+        const i = stack.indexOf(v)
+        const body = [...stack.slice(i), v].slice(0, -1).map((x) => relative(ROOT, x).replace(/\\/g, '/'))
+        if (body.length === 0) continue // 自导入（残影，正常写法里不存在）
+        let best = 0
+        for (let k = 1; k < body.length; k++) if (body[k]! < body[best]!) best = k
+        found.add([...body.slice(best), ...body.slice(0, best)].join(' → '))
+      } else if (c === 0) dfs(v)
+    }
+    stack.pop()
+    color.set(u, 2)
+  }
+  for (const f of files) if ((color.get(n(f)) ?? 0) === 0) dfs(n(f))
+
+  /**
+   * **存量基线**（2026-10-02 实测快照，34 条；破一条删一条）。JSON 形态存储：
+   * 环串里的箭头是 `\u2192`（UTF-8 源码直接写 JSON 转义，避免跨编辑器箭头字符漂移）。
+   */
+  const F9_CYCLE_BASELINE: readonly string[] = JSON.parse(
+    '["packages/core/src/activity.ts \u2192 packages/core/src/engine.ts \u2192 packages/core/src/wormholeAuto.ts","packages/core/src/activityGate.ts \u2192 packages/core/src/state.ts \u2192 packages/core/src/wormhole.ts","packages/core/src/ai.ts \u2192 packages/core/src/expedition.ts \u2192 packages/core/src/weekendBattle.ts \u2192 packages/core/src/weekendEvent.ts \u2192 packages/core/src/sideTasks.ts \u2192 packages/core/src/market.ts","packages/core/src/ai.ts \u2192 packages/core/src/location.ts \u2192 packages/core/src/shipyard.ts \u2192 packages/core/src/salvaging.ts \u2192 packages/core/src/expedition.ts \u2192 packages/core/src/weekendBattle.ts \u2192 packages/core/src/weekendEvent.ts \u2192 packages/core/src/sideTasks.ts \u2192 packages/core/src/market.ts","packages/core/src/ai.ts \u2192 packages/core/src/location.ts \u2192 packages/core/src/station.ts \u2192 packages/core/src/comms.ts \u2192 packages/core/src/onboarding.ts \u2192 packages/core/src/firstRewards.ts \u2192 packages/core/src/shipyard.ts \u2192 packages/core/src/salvaging.ts \u2192 packages/core/src/expedition.ts \u2192 packages/core/src/weekendBattle.ts \u2192 packages/core/src/weekendEvent.ts \u2192 packages/core/src/sideTasks.ts \u2192 packages/core/src/market.ts","packages/core/src/ai.ts \u2192 packages/core/src/location.ts \u2192 packages/core/src/station.ts \u2192 packages/core/src/comms.ts \u2192 packages/core/src/onboarding.ts \u2192 packages/core/src/firstRewards.ts \u2192 packages/core/src/wormholeScan.ts \u2192 packages/core/src/expedition.ts \u2192 packages/core/src/weekendBattle.ts \u2192 packages/core/src/weekendEvent.ts \u2192 packages/core/src/sideTasks.ts \u2192 packages/core/src/market.ts","packages/core/src/ai.ts \u2192 packages/core/src/market.ts","packages/core/src/ai.ts \u2192 packages/core/src/mining.ts \u2192 packages/core/src/shipyard.ts \u2192 packages/core/src/salvaging.ts \u2192 packages/core/src/expedition.ts \u2192 packages/core/src/weekendBattle.ts \u2192 packages/core/src/weekendEvent.ts \u2192 packages/core/src/sideTasks.ts \u2192 packages/core/src/market.ts","packages/core/src/ai.ts \u2192 packages/core/src/salvaging.ts \u2192 packages/core/src/expedition.ts \u2192 packages/core/src/weekendBattle.ts \u2192 packages/core/src/weekendEvent.ts \u2192 packages/core/src/sideTasks.ts \u2192 packages/core/src/market.ts","packages/core/src/ai.ts \u2192 packages/core/src/shipyard.ts \u2192 packages/core/src/salvaging.ts \u2192 packages/core/src/expedition.ts \u2192 packages/core/src/weekendBattle.ts \u2192 packages/core/src/weekendEvent.ts \u2192 packages/core/src/sideTasks.ts \u2192 packages/core/src/market.ts","packages/core/src/combat.ts \u2192 packages/core/src/matterTech.ts \u2192 packages/core/src/state.ts \u2192 packages/core/src/wormhole.ts \u2192 packages/core/src/wormholeFoes.ts","packages/core/src/combat.ts \u2192 packages/core/src/state.ts \u2192 packages/core/src/wormhole.ts \u2192 packages/core/src/wormholeFoes.ts","packages/core/src/combat.ts \u2192 packages/core/src/wormholeFoes.ts","packages/core/src/comms.ts \u2192 packages/core/src/station.ts","packages/core/src/equipment.ts \u2192 packages/core/src/inventory.ts","packages/core/src/equipment.ts \u2192 packages/core/src/plugs.ts \u2192 packages/core/src/inventory.ts","packages/core/src/equipment.ts \u2192 packages/core/src/plugs.ts \u2192 packages/core/src/state.ts \u2192 packages/core/src/wormhole.ts \u2192 packages/core/src/inventory.ts","packages/core/src/equipment.ts \u2192 packages/core/src/state.ts \u2192 packages/core/src/wormhole.ts \u2192 packages/core/src/inventory.ts","packages/core/src/expedition.ts \u2192 packages/core/src/hullDamage.ts \u2192 packages/core/src/shipyard.ts \u2192 packages/core/src/salvaging.ts","packages/core/src/expedition.ts \u2192 packages/core/src/shipyard.ts \u2192 packages/core/src/salvaging.ts","packages/core/src/expedition.ts \u2192 packages/core/src/weekendBattle.ts","packages/core/src/expedition.ts \u2192 packages/core/src/weekendBattle.ts \u2192 packages/core/src/weekendEvent.ts \u2192 packages/core/src/sideTasks.ts","packages/core/src/expedition.ts \u2192 packages/core/src/weekendBattle.ts \u2192 packages/core/src/weekendEvent.ts \u2192 packages/core/src/sideTasks.ts \u2192 packages/core/src/market.ts","packages/core/src/expedition.ts \u2192 packages/core/src/weekendBattle.ts \u2192 packages/core/src/weekendEvent.ts \u2192 packages/core/src/sideTasks.ts \u2192 packages/core/src/market.ts \u2192 packages/core/src/mining.ts \u2192 packages/core/src/shipyard.ts \u2192 packages/core/src/salvaging.ts","packages/core/src/expedition.ts \u2192 packages/core/src/weekendBattle.ts \u2192 packages/core/src/weekendEvent.ts \u2192 packages/core/src/sideTasks.ts \u2192 packages/core/src/market.ts \u2192 packages/core/src/shipyard.ts \u2192 packages/core/src/salvaging.ts","packages/core/src/inventory.ts \u2192 packages/core/src/state.ts \u2192 packages/core/src/wormhole.ts","packages/core/src/inventory.ts \u2192 packages/core/src/types.ts \u2192 packages/core/src/salvage.ts","packages/core/src/inventory.ts \u2192 packages/core/src/types.ts \u2192 packages/core/src/salvage.ts \u2192 packages/core/src/state.ts \u2192 packages/core/src/wormhole.ts","packages/core/src/inventory.ts \u2192 packages/core/src/types.ts \u2192 packages/core/src/salvage.ts \u2192 packages/core/src/tuning.ts \u2192 packages/core/src/ironman.ts \u2192 packages/core/src/state.ts \u2192 packages/core/src/wormhole.ts","packages/core/src/mining.ts \u2192 packages/core/src/shipyard.ts","packages/core/src/salvaging.ts \u2192 packages/core/src/shipyard.ts","packages/core/src/state.ts \u2192 packages/core/src/wormhole.ts","packages/core/src/state.ts \u2192 packages/core/src/wormhole.ts \u2192 packages/core/src/wormholeSpawn.ts","packages/core/src/weekendBattle.ts \u2192 packages/core/src/weekendBounty.ts"]',
+  ) as string[]
+  for (const c of [...found].sort()) {
+    if (F9_CYCLE_BASELINE.includes(c)) continue
+    hits.push({
+      check: 'F9',
+      file: c.split(' → ')[0] ?? '',
+      line: 0,
+      detail: `新增运行期模块环：${c}`,
+      fix: '断开环上任一条运行期 import（优先把被借函数挪到依赖更低的模块，或降为 import type）；确属有意 ⇒ 登记进 F9 基线并写理由',
+    })
+  }
+  for (const b of F9_CYCLE_BASELINE) {
+    if (found.has(b)) continue
+    f9Notes.push(`破环成功（基线里的环已不存在，请把它从 F9_CYCLE_BASELINE 删掉）：${b}`)
+  }
+}
+
 /* ═══════════ 输出 ═══════════ */
 const byCheck = new Map<string, Hit[]>()
 for (const h of hits) {
@@ -637,8 +725,9 @@ const LABEL: Record<string, string> = {
   F6: 'F6 日期格式化本地化（把语言焊死）',
   F7: 'F7 落盘心跳单点（间隔散落 / 被人改短）',
   F8: 'F8 主控活动切换契约（入口漏调门禁 / 登记表与实现不一致）',
+  F9: 'F9 相对导入环自检（新增运行期模块环）',
 }
-for (const key of ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8']) {
+for (const key of ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9']) {
   const list = byCheck.get(key) ?? []
   if (list.length === 0) {
     console.log(`✅ ${LABEL[key]}：0 处`)
@@ -654,4 +743,5 @@ for (const key of ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8']) {
 if (hits.length > 0) {
   console.log(`\n共 ${hits.length} 处。规范见 docs/development-conventions.md「取数与派生纪律」；单点索引见 docs/single-source.md。`)
 }
+for (const note of f9Notes) console.log(`ℹ ${note}`)
 process.exit(hits.length === 0 ? 0 : 1)
