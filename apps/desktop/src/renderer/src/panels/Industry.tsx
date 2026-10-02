@@ -52,7 +52,7 @@ import { ItemHover, ModuleHover, ShipHover } from '../ui/shipInfo'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 /** AI 核心档位名按语言取（2026-09-30 批 5：core 的 `aiCoreName` 只出中文） */
-import { aiCoreText } from '../ui/labelsText'
+import { aiCoreText, kindLabelText, ownedWhereText } from '../ui/labelsText'
 import { HintIcon } from '../ui/Hint'
 import { RowGlyph } from '../ui/itemView'
 /** 活动卡「产出」读数（2026-09-23 船长令：收入预估换口径；装备/舰船只显示市场当前价格）——全仓唯一实现 */
@@ -521,33 +521,6 @@ export function cardLiveKeyOf(
   const bp = `${ownsBlueprint(state, blueprintId) ? 1 : 0}.${state.blueprintStock[blueprintId] ?? 0}.${recipeCapability(state, blueprintId, singleUse).kind}`
   const mark = isMarked(state, 'blueprints', blueprintId) ? 1 : 0
   return `${mats}#${needs}#${runSig}#${loop.on ? 1 : 0}.${loop.produced}.${loop.stopWhy}#${bp}#${mark}#${ownedCount}`
-}
-
-/**
- * **内容层联合 key → 界面文案**（2026-09-22 补：船长报障「筛选选项/标签页文案还有遗漏」）。
- *
- * `kindLabel` / `ownedWhere` 两张字段的**键**是内容层联合 key（'舰船' / '装备' / '零件' / '消耗品'、
- * '仓库' / '仓库＋机库'，判定用，见本文件 `inTab` 那几处 `l10n-keep`），但**有些卡片直接把 key 当文案渲染**
- * ⇒ 英文界面下会漏中文。这里做一次映射：**认得出的 key 走 `tr(id)`；认不出的一律原样返回**
- * （另有一批卡片的这两个字段本来就已经是 `tr(...)` 的产物 —— 例如市场/物品那两张，原样返回即可，别二次翻译）。
- * ⚠ 新增 key 时**同步在两张表里加一行**，否则又退回"英文露中文"。
- */
-function kindLabelText(key: string): string {
-  // l10n-keep：下面比较的是**内容层联合 key**（不是文案；译文由各分支的 tr(id) 给）
-  if (key === '舰船') return tr('ui.labelsText.019')
-  if (key === '装备') return tr('ui.MarketPage.178')
-  if (key === '零件') return tr('ui.labelsText.001')
-  if (key === '消耗品') return tr('ui.itemSubs.037')
-  // 2026-09-26：插件产物单独一个档（`ui.itemSubs.042` = 「舰船插件」；
-  // ⚠ 别用 `ui.itemSubs.041`——那是既有的「图纸」，我上一版误用过，界面会印成"图纸"）
-  if (key === '舰船插件') return tr('ui.itemSubs.042')
-  return key
-}
-function ownedWhereText(where: string): string {
-  // l10n-keep：同上（key 比较，非文案）
-  if (where === '仓库') return tr('ui.ItemsPage.001')
-  if (where === '仓库＋机库') return tr('ui.Shipyard.002')
-  return where
 }
 
 /**

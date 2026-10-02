@@ -81,6 +81,30 @@
 - 文件：ui/useLoopGoalDraft.ts（新）· panels/Industry.tsx · pages/IndustryPage.tsx · pages/IndustryHudPage.tsx。
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · ui:rot-check ✅ · 构建 ✅。
 
+### 批次 1d：`kindLabelText`/`ownedWhereText` 搬进 `ui/labelsText.ts`（2026-10-02 · 模块化 · 零行为变化）
+
+- 这两个"内容层联合 key → 文案"映射原先住在 `panels/Industry.tsx`（造船厂等兄弟面板为借文案
+  要去 import 工业面板）。搬进文案映射的家 `ui/labelsText.ts`（`aiCoreText` 已在那），两处调用点
+  （BlueprintCard 内部）改 import。
+- 文件：ui/labelsText.ts · panels/Industry.tsx。
+- 验证：typecheck 全仓 ✅ · ui:rot-check ✅ · 构建 ✅。
+
+### ⚠ 待核（下一批）：手动位"置灰"三处口径不一致（如实修正审查报告 §5 #7）
+
+- 事实（逐处 grep 核实）：
+  ① 经典页精炼炉卡 `manualNote = state.refineRuns.some(r => r.worker==='pilot') ? … : manualBusyNote(state)`
+     （IndustryPage.tsx:173；`manualBusyNote` = 野外/航行途中，IndustryPage.tsx:121）；
+  ② 经典页实验室卡只有 `manualBusyNote`（**不看**全局手动位占用——与 HUD 的置灰不一致）；
+  ③ 组装机卡 `manualBuildNote`（panels/Industry.tsx:468）：制造线有主控 ⇒ 一句、精炼炉有主控 ⇒ 另一句、
+     野外/途中各一句（**手工枚举**各家族，而 core 单点 `manualSlotOf`（activityGate.ts:211）返回的正是
+     `'refine'|'manufacturing'|'lab'|null`）；
+  ④ HUD 整页直接 `manualSlotOf(state) !== null`（全局一刀切）。
+- 合并方案（待核后再动，**不许猜**）：先核 `manualSlotOf` 与 `refineRuns.some` 的 `active` 口径是否逐字等价
+  （173 行没写 `.active`、468 行写了），再决定三处能不能统一改成"按 `manualSlotOf` 的返回值分家族措辞"；
+  若等价 ⇒ 删两个本地 helper、全走 core 单点（属行为**等价**重写，允许）；不等价 ⇒ 摆给船长。
+- 注：审查报告 §5 #7 原把它描述成"手动位忙态"重复——**实际是"位置/家族/全局"三种不同口径**，
+  本台账为如实修正版。
+
 ## 待办/待裁
 
 - 大拆分的具体切分边界等动到批次 4 再逐文件出设计（§2 逐批确认）。
