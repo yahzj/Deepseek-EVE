@@ -272,6 +272,26 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：本批零渲染层文件改动）。
 
+### 批次 3-⑫：七刀连破——core 运行期环 10 → 3（2026-10-02）
+
+- ① `recallExpedition` 从 expedition.ts 原样搬到 mining.ts（唯一跨模块调用方；index 改从 mining 导出，
+  t1/t8 用例改 import）⇒ mining→expedition 边清零。
+- ② `skillQueueStatus` 从 engine.ts 搬到 activity.ts（唯一调用方；类型 QueueView/HeadTrainingInfo 仍
+  从 engine 借 `import type`）⇒ activity→engine 边清零（engine.test/queue-reorder 用例改 import）。
+- ③ `wormholeAutoRunsOf` 搬到 state.ts（纯读数、类型 WormholeAutoRun 本就住 state；wormholeAuto
+  借回 + 再导出）⇒ activity→wormholeAuto 边清零。
+- ④ `PLUG_BLACKBOX_ITEM_ID` 从 plugs.ts 搬到 blackbox.ts（权威副本移居；salvaging/wormholeBattle/
+  index/两用例改 import；shipWrecks 注释同步）⇒ blackbox→plugs 边清零。
+- ⑤ salvaging 的 HOME_GALAXY_ID/shortestTravelMinutes 改从 state/travel 读 ⇒ salvaging→expedition 边清零。
+- ⑥ market 的 DSI_FACTION_ID/standingOf 改从 standing 读 ⇒ market→expedition 边清零。
+- ⑦ 新文件 `commsDelivery.ts`：`deliverDialogueToComms` + `resolveCommsSender` + `commsDialogueKey`
+  + `deliver` + `CommsSenderView` 五件从 comms.ts 拆出；station 改从 commsDelivery 读（中途先只拆
+  入口函数，环改经 commsDelivery→comms 借道闭合 ⇒ 再把帮手整簇搬走才真断）⇒ station→comms 边清零。
+- 注：DFS 回边枚举随破环重排，多批隐藏环浮出（weekend 簇）；全部为存量环、无一新增。
+- F9 基线 **10 → 3**（余：hauling 4 环、market→shipyard→salvaging→weekendBounty 簇 2 环）。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：本批零渲染层文件改动）。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、

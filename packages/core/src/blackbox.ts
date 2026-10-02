@@ -17,14 +17,16 @@
  * 3. **判定单点** `plugCraftUnlockedOf(state)`：组装机 UI 与用例都读它，别各写一份。
  */
 import type { GameState } from './state'
-import { PLUG_BLACKBOX_ITEM_ID } from './plugs'
+
+/** 黑匣插件物品 id（2026-10-02 从 plugs.ts 原样搬来：设计口径的权威副本移居本文件，破 blackbox→plugs 环） */
+export const PLUG_BLACKBOX_ITEM_ID = 'blackbox-h'
 
 /** 该物品算不算黑匣（判据 = id 前缀；目前只有 `blackbox-h`，日后加族只改这一处） */
 export function isBlackboxItem(itemId: string): boolean {
   return itemId.startsWith('blackbox-')
 }
 
-/** 黑匣物品 id 列表（回填与展示用；与 `plugs.PLUG_BLACKBOX_ITEM_ID` 同一件） */
+/** 黑匣物品 id 列表（回填与展示用；与 `PLUG_BLACKBOX_ITEM_ID` 同一件） */
 export const BLACKBOX_ITEM_IDS: readonly string[] = [PLUG_BLACKBOX_ITEM_ID]
 
 /**

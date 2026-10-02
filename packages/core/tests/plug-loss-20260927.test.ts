@@ -24,7 +24,8 @@ import type { GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { addWare, countWare } from '../src/inventory'
 import { fitModule, repairDeprecatedModules, swapModuleAt } from '../src/equipment'
-import { installPlug, PLUG_BLACKBOX_ITEM_ID, plugSlotsOf, plugsToBlackBoxesOf } from '../src/plugs'
+import { installPlug, plugSlotsOf, plugsToBlackBoxesOf } from '../src/plugs'
+import { PLUG_BLACKBOX_ITEM_ID } from '../src/blackbox'
 import { salvagePlugsOnSink } from '../src/wormholeBattle'
 
 const ctx = buildSimContext()

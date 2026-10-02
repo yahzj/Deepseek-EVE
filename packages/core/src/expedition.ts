@@ -1324,47 +1324,6 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
   }
 }
 
-/** 玩家指令：召回远征（T1 活动窗口统一停止）。仅去程/返航可召回——召回即直接回港、无战果；交火中禁止（避免绕过战斗结算）。
- * 2026-09-06：胜利自动返航（returnReason='victory'）不可召回——路程成本必付，防止"打完立即召回免费回家"。 */
-export function recallExpedition(state: GameState, ctx: SimContext): CommandResult {
-  const exp = state.expedition
-  if (!exp.active) return { ok: false, error: '当前没有进行中的远征。', errorId: 'core.expedition.018' }
-  if (exp.phase === 'battle') {
-    return { ok: false, error: '交火中无法撤离——请先让战斗分出胜负。', errorId: 'core.expedition.019' }
-  }
-  if (exp.phase === 'back' && exp.returnReason === 'victory') {
-    return {
-      ok: false,
-      error: '胜利返航中不可召回——战果已结算，返航（去程并入返航）是本次悬赏的必付航程。',
-      errorId: 'core.expedition.020',
-    }
-  }
-  const anomaly = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId) : undefined
-  const name = anomaly
-    ? exp.lairTier
-      ? lairNameOf(anomaly, exp.lairTier)
-      : anomaly.name
-    : exp.anomalyId ?? '目标'
-  exp.active = false
-  exp.anomalyId = null
-  exp.battle = null
-  exp.lairTier = undefined
-    exp.factionActive = undefined
-  exp.phase = 'out'
-  exp.finishAtGameMs = 0
-  exp.eventId = null
-  exp.eventFired = false
-  state.awayGalaxy = null
-  // 2026-09-08：召回 = 立即回到母港停靠——进港自动整仓卸货
-  const moved = unloadCargoOfShipToWarehouse(state, ctx, state.shipId)
-  addLog(
-    state,
-    'fleet',
-    `远征已召回：舰队中止前往「${name}」并返回母港（无战果）${moved > 0 ? `；货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : '。'}`,
-  )
-  return { ok: true }
-}
-
 /* ───────── T8 悬赏重复冷却与重复清剿 ───────── */
 
 /** 冷却基础 10 秒（船长定稿：较原方案大幅缩减）；分辨率越高冷却越短 */

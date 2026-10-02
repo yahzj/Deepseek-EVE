@@ -10,7 +10,7 @@ import type { CommandResult } from './engine'
 import type { SimContext, StationSiteDef } from './types'
 import { cargoOfShip } from './inventory'
 import { peakFirst } from './firstTasks'
-import { deliverDialogueToComms } from './comms'
+import { deliverDialogueToComms } from './commsDelivery'
 
 /** 该星系的建站点（一个星系至多一个；缺省 = 无建站点） */
 export function stationSiteAtGalaxy(ctx: SimContext, galaxyId: string): StationSiteDef | undefined {

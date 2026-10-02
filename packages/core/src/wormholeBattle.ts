@@ -16,7 +16,8 @@ import { uidDefId } from './labels'
 import { gainAiCore, aiCoreName } from './ai'
 import { addWare } from './inventory'
 import { loseShip } from './shipyard'
-import { PLUG_BLACKBOX_ITEM_ID, plugsToBlackBoxesOf } from './plugs'
+import { PLUG_BLACKBOX_ITEM_ID } from './blackbox'
+import { plugsToBlackBoxesOf } from './plugs'
 import { advanceBattleFor, battleClockNowMs, battleShowWindowMs, persistFleetHullDamage, refundAmmo, refundRepairKitsAll, repairUsageText, settleDroneLosses, stampFoeArrivalFx, startFleetBattleFor, wormholeDerivedAnomaly, captureBattleReport, sunkShipIdsOfBattle } from './combat'
 import {
   wormholeAdvanceNode,

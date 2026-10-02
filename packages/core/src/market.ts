@@ -39,7 +39,7 @@ import { addShipToFleet,  isShipLocked, shipDisplayName, shipStoredCount } from 
 import { emptyFitted, uidDefId, allFittedIds } from './labels'
 import { aiCoreName, countAiCore, gainAiCore, spendAiCores } from './aiCores'
 import { shipInReturn } from './mining'
-import { DSI_FACTION_ID, standingOf } from './expedition'
+import { DSI_FACTION_ID, standingOf } from './standing'
 import { ironmanCommonFlowMul, ironmanExoticCapBonus, ironmanExoticWeightMul, ironmanRareWeightMul } from './ironman'
 import { plugBlockReasonOf } from './plugs'
 
@@ -129,7 +129,7 @@ export function blueprintWeight(def: MarketGoodDef, ctx: SimContext): number {
  * 协会声望卖出加成：物品类（矿石/矿物）成交价 ×(1 + 声望×1%)，上限 +15%（v4 规则延续）。
  *
  * ⚠ **2026-09-26 船长令**：「**修改原先的所有声望门槛，改为根据玩家的累计声望**」⇒ 读**累计获得**
- * 那一本（`expedition.standingOf`）。理由：这是"声望练到多少"的收益，属**成长读数**；
+ * 那一本（`standing.standingOf`）。理由：这是"声望练到多少"的收益，属**成长读数**；
  * 若读可支配那本，去章鱼人那里换几张图纸就会把卖出加成打回去（换图纸是消费，不是退步）。
  */
 function sellStandingMult(state: GameState, def: MarketGoodDef | undefined): number {

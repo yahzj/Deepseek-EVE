@@ -98,9 +98,9 @@ export function markWreckRecovered(state: GameState, shipId: string): void {
 /**
  * **插件换回的黑匣物品 id**（船长：「**玩家回收按插件数量直接回收成黑匣**」）。
  *
- * ⚠ 本文件**刻意不 import `plugs.ts`**（见文件头注的依赖方向：本文件只依赖 `state` / `types` / `rng`）⇒
- * 这条**纯常数**就地复制一份；设计口径的权威副本在 `plugs.ts`（`PLUG_BLACKBOX_ITEM_ID` /
- * `plugsToBlackBoxesOf`），两处由用例钉住同值。
+ * ⚠ 本文件**刻意不 import 作业模块**（依赖方向：本文件只依赖 `state` / `types` / `rng`）⇒
+ * 这条**纯常数**就地复制一份；设计口径的权威副本在 `blackbox.ts`（`PLUG_BLACKBOX_ITEM_ID`；
+ * 2026-10-02 起从 `plugs.ts` 移居，破 blackbox→plugs 环），两处由用例钉住同值。
  */
 export const WRECK_PLUG_BLACKBOX_ITEM_ID = 'blackbox-h'
 /** 衰减尾数收口（有效值小于此值直接清记录 ⇒ 残骸条消失） */

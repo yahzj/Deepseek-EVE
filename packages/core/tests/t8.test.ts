@@ -11,10 +11,10 @@ import { loadSaveFile, MIN_MIGRATABLE_VERSION, SAVE_FORMAT, serializeSaveFile } 
 import {
   advanceAutoLoopBounty,
   bountyCooldownRemainingMs,
-  recallExpedition,
   setAutoLoopBounty,
   startExpedition,
 } from '../src/expedition'
+import { recallExpedition } from '../src/mining'
 import { isExplored, scanAwaitingView, startScan } from '../src/explore'
 import { startMining } from '../src/mining'
 import { changeShip, repairWithKits, repairShip } from '../src/shipyard'

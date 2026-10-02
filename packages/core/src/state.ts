@@ -3198,6 +3198,12 @@ export function shipLockedInWormhole(state: GameState, shipId: string): boolean 
   return (state.wormhole.run?.fleet ?? []).includes(shipId)
 }
 
+/** 在跑的自动探索（老档没有 ⇒ 空数组）（2026-10-02 从 wormholeAuto.ts 原样搬来：纯 state 读数、
+ * 类型 `WormholeAutoRun` 本来就定义在本文件，activity 改从本文件读 ⇒ activity↔wormholeAuto 环断） */
+export function wormholeAutoRunsOf(state: GameState): WormholeAutoRun[] {
+  return state.wormholeAuto ?? []
+}
+
 
 
 /**
@@ -3862,9 +3868,11 @@ export function createInitialState(opts?: {
 
 /* ───────── 副空间站进度（**2026-10-02 破环搬家**：原住 `station.ts`） ─────────
  * 为什么搬：`comms.ts`（通讯触发 `siteBuilt` 档）要读"站点是否建成"，而 `station.ts` 又要调
- * `comms.ts` 的 `deliverDialogueToComms` ⇒ 两个模块互相 import。这两个函数是**纯 `state` 读数**
+ * 通讯的 `deliverDialogueToComms` ⇒ 两个模块互相 import。这两个函数是**纯 `state` 读数**
  * （类型 `StationSiteProgress` 本来就定义在本文件）⇒ 搬到本文件，comms/station/location/hauling/
- * sideTasks 都从 state 读，环断（行为逐字不变）。 */
+ * sideTasks 都从 state 读，环断（行为逐字不变）。
+ * 同日另一半：`deliverDialogueToComms` 拆到 `commsDelivery.ts`，station 改从那里读 ⇒
+ * `station → comms` 的运行期边也清零。 */
 
 /** 读取站点进度（容错默认档 0） */
 export function siteProgress(state: GameState, siteId: string): StationSiteProgress {

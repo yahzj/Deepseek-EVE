@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest'
 import type { SimContext } from '../src/types'
 import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
-import { enqueueSkill, moveQueueItem, queueMovePlan, skillQueueStatus } from '../src/engine'
+import { enqueueSkill, moveQueueItem, queueMovePlan } from '../src/engine'
+import { skillQueueStatus } from '../src/activity'
 import { makeTestCtx, skill } from './helpers'
 
 function world() {

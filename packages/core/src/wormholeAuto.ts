@@ -24,7 +24,9 @@
  */
 import { tuningMul } from './tuning'
 import type { GameState, WormholeArchetype, WormholeAutoReport, WormholeAutoRun, WormholeFamily, WormholeStockItem } from './state'
-import { addLog, shipLockedInWormhole } from './state'
+import { addLog, shipLockedInWormhole, wormholeAutoRunsOf } from './state'
+// 再导出：index 与既有引用照旧从本模块读（单向边，不成环）
+export { wormholeAutoRunsOf } from './state'
 import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import {
@@ -359,11 +361,6 @@ export function wormholeAutoTechIsNeutral(f: WormholeAutoTechFactors): boolean {
  */
 export function wormholeAutoHoldM3Of(f: WormholeAutoTechFactors): number {
   return Math.max(1, Math.round(f.baseHold * f.holdMul)) * WORMHOLE_AUTO_HOLD_M3_PER_CELL
-}
-
-/** 在跑的自动探索（老档没有 ⇒ 空数组） */
-export function wormholeAutoRunsOf(state: GameState): WormholeAutoRun[] {
-  return state.wormholeAuto ?? []
 }
 
 /** 报告队列（新的在前） */

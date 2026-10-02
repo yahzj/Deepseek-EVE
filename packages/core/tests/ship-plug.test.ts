@@ -38,7 +38,6 @@ import {
   exchangePlugBlueprint,
   installPlug,
   isPlugOf,
-  PLUG_BLACKBOX_ITEM_ID,
   PLUG_BLUEPRINT_COST,
   plugBlockReasonOf,
   plugBlueprintIdOf,
@@ -48,6 +47,7 @@ import {
   plugsOf,
   plugsToBlackBoxesOf,
 } from '../src/plugs'
+import { PLUG_BLACKBOX_ITEM_ID } from '../src/blackbox'
 // 2026-09-26 船长令（兑换即学会）：协会声望那一本账的 id（与 `plugs` 内部同值）
 import { DSI_FACTION_ID } from '../src/expedition'
 import { HULL_RECOVERY_MAX, hullRecoveryChanceOf, noteShipWreck, reinforceChanceOfFitted, shipWreckFor, trySalvagePlayerWreckOf } from '../src/shipWrecks'

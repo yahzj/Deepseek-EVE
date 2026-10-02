@@ -15,21 +15,20 @@
  * - 出发要求：船上装有 ≥1 台打捞器（slot='salvager'）。
  */
 import { tuningMul } from './tuning'
-import { addLog, salvageHalt } from './state'
+import { addLog, HOME_GALAXY_ID, salvageHalt } from './state'
 import { applyActivityGate, pilotUnavailableReason } from './activityGate'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
 import type { AnomalyDef, SimContext } from './types'
 import { addItem, addWare, freeCargoM3, unloadCargoToWarehouse } from './inventory'
-import { HOME_GALAXY_ID, shortestTravelMinutes } from './expedition'
-import { travelLegMs } from './travel'
+import { shortestTravelMinutes, travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
 import { bumpFirst } from './firstTasks'
 import {  shipDisplayName } from './instances'
 import { addModule, allFittedModules } from './equipment'
 import { restoreShipFromWreck } from './fleetBook'
 import { hasSalvageableShipWreck, trySalvagePlayerWreckOf } from './shipWrecks'
-import { PLUG_BLACKBOX_ITEM_ID } from './plugs'
+import { PLUG_BLACKBOX_ITEM_ID } from './blackbox'
 import { nextRandom, pickWeighted } from './rng'
 import {
   pullRareWreck,

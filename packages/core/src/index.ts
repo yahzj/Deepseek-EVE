@@ -462,7 +462,6 @@ export {
   /** 挪不挪得动（2026-09-30：让队列 ⇈/↑/↓ 说实话，别再"点了没反应"）——与 `moveQueueItem` 同一套判据 */
   queueMovePlan,
   clearSkillQueue,
-  skillQueueStatus,
   /** 首次进实验室（2026-09-30 船长令：首访发一封黑市通讯）——随档标记的唯一置位点 */
   noteLabOpened,
   HIDDEN_SKILL_IDS,
@@ -867,7 +866,7 @@ export {
 } from './expedition'
 export type { ExpeditionView, BattleTacticChoice } from './expedition'
 
-export { recallExpedition } from './expedition'
+export { recallExpedition } from './mining'
 export {
   WRECK_FLOOR,
   WRECK_INJECT_PER_THREAT,
@@ -992,7 +991,6 @@ export {
   installPlug,
   plugBlockReasonOf,
   plugsToBlackBoxesOf,
-  PLUG_BLACKBOX_ITEM_ID,
   PLUG_BLUEPRINT_COST,
   plugBlueprintIdOf,
   exchangePlugBlueprint,
@@ -1006,7 +1004,7 @@ export { shipScrapPreviewOf, scrapShip, SHIP_SCRAP_MATERIAL_SHARE } from './scra
 export type { ShipScrapPreview } from './scrap'
 export type { ShipPlugBlock, PlugExchangeRow } from './plugs'
 /** **黑匣与插件解锁**（2026-09-26 船长令）：组装机插件档的解锁判据与拒因单点 */
-export { isBlackboxItem, noteBlackboxObtained, blackboxSeenOf, plugCraftUnlockedOf, plugCraftLockReasonOf } from './blackbox'
+export { isBlackboxItem, noteBlackboxObtained, blackboxSeenOf, plugCraftUnlockedOf, plugCraftLockReasonOf, PLUG_BLACKBOX_ITEM_ID } from './blackbox'
 export type { PlugCraftLock } from './blackbox'
 /** 玩家舰船残骸的一具记录（2026-09-26）——界面读数卡与工具都要这个形状 */
 export type { ShipWreckRecord } from './state'
@@ -1047,7 +1045,7 @@ export {
   BOUNTY_COOLDOWN_BASE_MS,
 } from './expedition'
 export { cancelManufacturing } from './manufacturing'
-export { activityOverview, shipBusyLabel } from './activity'
+export { activityOverview, shipBusyLabel, skillQueueStatus } from './activity'
 // 舰船忙态标签单点（2026-09-27）：档位 → 文案 + id；两处忙态函数与渲染层共用
 export { busyLabel, BUSY_LABEL_ID, BUSY_TEXT } from './busyLabels'
 export type { BusyLabel, BusyLabelId } from './busyLabels'
@@ -1127,10 +1125,10 @@ export {
   dismissCommsPopup,
   commsTriggerMet,
   commsUnreadCount,
-  deliverDialogueToComms,
   markAllCommsRead,
   markCommsRead,
 } from './comms'
+export { deliverDialogueToComms } from './commsDelivery'
 export type { StationSiteProgress } from './state'
 
 export {

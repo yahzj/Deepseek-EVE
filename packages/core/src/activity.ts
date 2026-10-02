@@ -5,14 +5,16 @@
  * 1) 扩展 ActivityKind 联合类型；2) 在本文件末尾按 kind 追加视图生成；
  * 3) UI 侧登记该 kind 的图标与停止动作。停止动作一律由"分发函数"承接，框架零改动。
  */
-import type { GameState } from './state'
+import type { GameState, TrainingItem } from './state'
 import { busyLabel, type BusyLabel } from './busyLabels'
-import type { SimContext } from './types'
-import { skillQueueStatus } from './engine'
+import type { SimContext, SkillCatalog } from './types'
+import { skillLevelTimeMs, trainingTimeFactor } from './training'
+import { tuningMul } from './tuning'
+import type { HeadTrainingInfo, QueueView } from './engine'
 import { miningStatus, shipInReturn } from './mining'
 import { wormholeScanWindowMs, wormholeStockFull, wormholeStockMaxOf, wormholeStockOf } from './wormholeScan'
 import { matterTechScanCut } from './matterTech'
-import { wormholeAutoRunsOf } from './wormholeAuto'
+import { wormholeAutoRunsOf } from './state'
 import { manufacturingRunViews } from './manufacturing'
 import { oreAvailable } from './industry'
 import { refineRunViews } from './industry'
@@ -674,4 +676,51 @@ export function shipBusyLabel(state: GameState, ctx: SimContext, shipId: string)
   if (task.phase === 'out') return busyLabel('aiExpOut')
   if (task.phase === 'battle') return busyLabel('aiExpCombat')
   return busyLabel('aiExpBack')
+}
+
+/** 只读查询：把队列翻译成界面容易直接显示的结构
+ * （2026-10-02 从 engine.ts 原样搬来：唯一调用方就是本模块，破 activity→engine 环；
+ * 类型 QueueView/HeadTrainingInfo 仍从 engine 借，`import type` 不构成运行期边。） */
+export function skillQueueStatus(state: GameState, catalog: SkillCatalog): QueueView {
+  const queue = state.skills.queue
+  if (queue.length === 0) return { head: null, pending: [], totalRemainingMs: 0 }
+  const item = queue[0]!
+  const def = catalog.get(item.skillId)
+  const currentLevel = state.skills.trained[item.skillId] ?? 0
+  const intoLevel = currentLevel + 1
+  const levelTimeMs = def ? Math.max(1, Math.round(skillLevelTimeMs(def, intoLevel) * trainingTimeFactor(state) * tuningMul(state, 'skillTrainMs'))) : 0
+  const remainingMs = Math.max(0, levelTimeMs - item.progressMs)
+  const percent = levelTimeMs > 0 ? Math.min(100, Math.max(0, (item.progressMs / levelTimeMs) * 100)) : 0
+  const head: HeadTrainingInfo = {
+    skillId: item.skillId,
+    skillName: def ? def.name : `未知技能「${item.skillId}」`,
+    targetLevel: item.targetLevel,
+    currentLevel,
+    intoLevel,
+    levelTimeMs,
+    progressMs: item.progressMs,
+    remainingMs,
+    percent,
+  }
+  /** 前缀和游标：进 pending 循环前 = 队首本级剩余 ⇒ 每一项的 `etaMs` 都从它身上取，末项即全队列合计 */
+  let cursorMs = remainingMs
+  const pending = queue.slice(1).map((p: TrainingItem, i) => {
+    const pDef = catalog.get(p.skillId)
+    const levelMs = pDef ? Math.max(1, Math.round(skillLevelTimeMs(pDef, p.targetLevel) * trainingTimeFactor(state) * tuningMul(state, 'skillTrainMs'))) : 0
+    const progressMs = Math.min(Math.max(0, p.progressMs), Math.max(0, levelMs - 1))
+    /** 前缀和：累到这一条之前的所有剩余 ⇒ 这条的"轮到还需" */
+    const etaMs = cursorMs
+    cursorMs += levelMs - progressMs
+    return {
+      queueIndex: i + 1,
+      skillId: p.skillId,
+      skillName: pDef?.name ?? `未知技能「${p.skillId}」`,
+      targetLevel: p.targetLevel,
+      levelMs,
+      progressMs,
+      remainingMs: levelMs - progressMs,
+      etaMs,
+    }
+  })
+  return { head, pending, totalRemainingMs: cursorMs }
 }

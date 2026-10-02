@@ -201,9 +201,6 @@ export function plugBlockReasonOf(state: GameState, shipId: string): ShipPlugBlo
   }
 }
 
-/** 打捞自己的舰船残骸时：**插件按数量换算成黑匣**（船长：「**玩家回收按插件数量直接回收成黑匣**」） */
-export const PLUG_BLACKBOX_ITEM_ID = 'blackbox-h'
-
 /**
  * 一具玩家残骸里的插件 → 黑匣件数。
  *
