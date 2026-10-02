@@ -407,6 +407,10 @@ export {
   WEEKEND_CARD_PREFIX,
   WEEKEND_ASSAULT_SALT_BASE,
   weekendAssaultDrawOf,
+  // 2026-10-02 甲案（船长令「按你推荐」）：界面判"能不能点"与引擎判"准不准打"必须同源 ——
+  // 打着的是**当场重抽的那张卡**（不是板面驻留卡），而冷却按卡 id 记 ⇒ 界面要按前者算。
+  weekendAssaultCardIdOfDrawnAt,
+  weekendFoeCardIdToFightOf,
   weekendBountyCardsOf,
   // 2026-09-25 船长裁决「甲」：同一被占星系只出一条入侵悬赏（板面/星图这一层去重）
   weekendBoardRowsOf,

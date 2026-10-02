@@ -57,6 +57,7 @@ import {
   travelLegMs,
   travelMinutesEff,
   weekendCoreGateView,
+  weekendFoeCardIdToFightOf,
   weekendFoePoolOf,
   weekendOccupiedLiveAt,
 } from '@whale/core'
@@ -182,7 +183,15 @@ export function AnomalyCard({
   const bountyCleared = state.completedBounties.includes(anomaly.id)
   // T8：重复冷却 + 重复清剿状态；优化：其它作业（采矿/返航/非本目标的远征）中不可开启
   // （2026-09-15：星系扫描不再算"别的作业"——无人扫描艇不占主控）
-  const cdRemain = bountyCooldownRemainingMs(state, anomaly.id)
+  /**
+   * T8 重复冷却 —— ⟪甲案 2026-10-02（船长令「按你推荐」）⟫ **按"这一场实际会打的那张卡"判**（与引擎同源）。
+   *
+   * 被占星系的入侵行显示的是**驻留卡**（抽签盐 0），而出发那一刻引擎会 `weekendAssaultDrawOf` **当场重抽**
+   * （盐 = 10000 ＋ `assaultDraws`）；T8 冷却又是**按卡 id** 记的 ⇒ 直接拿板面卡去判会出现两种错：
+   * **该拒没拒**（按钮亮着、点下去才被告知"重抽到的那张冷却中"）与**该放没放**（按钮灰着、其实能打）。
+   * ⚠ 非占领区 / 常驻悬赏那些**没有重抽**的行 ⇒ 单点原样返回 `anomaly.id`（老路径逐字零变化）。
+   */
+  const cdRemain = bountyCooldownRemainingMs(state, weekendFoeCardIdToFightOf(state, anomaly.id, anomaly.galaxyId))
   /** 常驻悬赏那条环（入侵卡上不算：那条环有自己的目标语义，见 `invasionLoopOn`） */
   const looping = !invadedHere && state.autoLoopAnomalyId === anomaly.id
   /** 本卡按钮要显示"开/停"哪一态 */

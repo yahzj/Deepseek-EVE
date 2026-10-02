@@ -62,6 +62,7 @@ import {
   weekendCoreGateView,
   weekendFamilyNameId,
   weekendFlagshipView,
+  weekendFoeCardIdToFightOf,
   weekendFoeCardOf,
   weekendFoePoolOf,
   weekendProgressAt,
@@ -2248,7 +2249,11 @@ export function GalaxyActions({
         return list.map((a) => {
           const looping = loopId === a.id
           const inFlightSelf = state.expedition.active && state.expedition.anomalyId === a.id
-          const cdRemain = bountyCooldownRemainingMs(state, a.id)
+          /**
+           * T8 重复冷却 —— ⟪甲案 2026-10-02⟫ **按"这一场实际会打的那张卡"判**（与引擎/悬赏页同源；
+           * 被占星系的入侵行显示的是驻留卡、实际打的是当场重抽卡，冷却按卡 id 记 ⇒ 直接拿板面卡判会不同源）。
+           */
+          const cdRemain = bountyCooldownRemainingMs(state, weekendFoeCardIdToFightOf(state, a.id, a.galaxyId))
           const busyOther =
             state.mining.active || state.transit.active || (state.expedition.active && state.expedition.anomalyId !== a.id)
           const loopBlocked = !looping && (busyOther || reopenBlock !== null)

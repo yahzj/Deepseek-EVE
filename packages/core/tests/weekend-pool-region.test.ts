@@ -20,7 +20,7 @@ import {
   weekendGarrisonFoeCardId,
   weekendDrawFoeCardId,
 } from '../src/weekendEvent'
-import { weekendAssaultDrawOf } from '../src/weekendBounty'
+import { weekendAssaultDrawOf, weekendFoeCardIdToFightOf } from '../src/weekendBounty'
 import { weekendAssaultSpecOf, weekendAmbushSpecOf } from '../src/weekendBattle'
 import type { WeekendEventState } from '../src/weekendEvent'
 import type { GameState } from '../src/state'
@@ -96,5 +96,44 @@ describe('入侵敌卡区域池：外围不出主力舰队', () => {
     }
     expect([...coreSeen], '核心 12 场重抽里没出现主力 ⇒ 对照不成立').toContain(MAIN)
     console.log(`  [读数] ${CORE}（核心）12 场重抽 = ${[...coreSeen].join('/')}`)
+  })
+})
+
+/**
+ * **甲案（2026-10-02 · 船长令「按你推荐」）**：界面判"能不能点"的那张卡，必须与**出发那一刻实际会打**的
+ * 卡是同一张 —— 界面上那一行显示的是**驻留卡**（抽签盐 0、一场入侵内固定），而打着的是**当场重抽卡**
+ * （盐 = 10000 ＋ `assaultDraws`）；T8 冷却（`state.bountyCooldowns`）又是**按卡 id** 记的。
+ * 两者不同源就会出现两种错：**该拒没拒**（按钮亮着、点下去才被告知"重抽到的那张冷却中"）与
+ * **该放没放**（按钮灰着、其实这一场会抽到另一张没冷却的卡）。
+ * 本用例把这条同源契约钉死（界面与引擎都走 `weekendFoeCardIdToFightOf` / `weekendAssaultDrawOf`）。
+ */
+describe('界面冷却判据与出发判据同源（甲案 2026-10-02）', () => {
+  it('weekendFoeCardIdToFightOf ≡ 出发那一刻 weekendAssaultDrawOf 抽到的那张卡', () => {
+    const s = world()
+    const ev = s.weekendEvent!
+    let differed = 0
+    for (const gid of [PERIPHERY[0]!, CORE]) {
+      for (let draws = 0; draws < 8; draws += 1) {
+        ev.assaultDraws = draws
+        /** 界面上那一行显示的 = 驻留卡（与真实界面同源：`weekendBountyCardsOf` 里就是它） */
+        const displayed = weekendGarrisonFoeCardId(s, ev, gid)
+        const fight = weekendFoeCardIdToFightOf(s, displayed, gid, T)
+        expect(fight, `${gid} · assaultDraws=${draws}：界面判据必须等于出发判据`).toBe(
+          weekendAssaultDrawOf(s, ctx, gid, T)!.cardId,
+        )
+        if (fight !== displayed) differed += 1
+      }
+    }
+    /** 反向证明不是空转：板面卡与实打卡**确实**会不同（这正是本契约存在的理由） */
+    expect(differed, '板面卡与实打卡从未不同 ⇒ 本用例空转、契约没被真正验证').toBeGreaterThan(0)
+    console.log(`  [读数] 16 组（外围＋核心 × 8 场）里，板面卡 ≠ 实打卡的有 ${differed} 组`)
+  })
+
+  it('三条老路径逐字零变化：非占领区 · 活动已结束 · 星系未给 ⇒ 原样返回界面卡', () => {
+    const s = world()
+    expect(weekendFoeCardIdToFightOf(s, 'ano-plain', 'galaxy-hub', T), '非占领区').toBe('ano-plain')
+    expect(weekendFoeCardIdToFightOf(s, 'ano-plain', undefined, T), '界面没给星系（老路径）').toBe('ano-plain')
+    s.weekendEvent!.endedAtWallMs = 1
+    expect(weekendFoeCardIdToFightOf(s, 'ano-plain', PERIPHERY[0]!, T), '活动已结束').toBe('ano-plain')
   })
 })
