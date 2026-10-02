@@ -531,15 +531,17 @@ export function stopMining(state: GameState, ctx: SimContext): boolean {
     if (remainSec !== null) {
       const shipName = shipDisplayName(state, ctx, state.shipId)
       const haveCargo = tripUnits > 0
+      // ⟪文案调整 2026-10-02⟫ p3 片段「（到港整仓卸货）」→「（卸空货仓）」——原句与句尾「约 N 秒后到港」
+      // 把「到港」说了两遍；该片段是四条返航日志共用的尾巴（见 `table.ts` 的 `core.salvaging.018`）。
       addLog(
         state,
         'industry',
-        `开采已停止：${shipName} 从「${beltName}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+        `开采已停止：${shipName} 从「${beltName}」返航空间站${haveCargo ? '（卸空货仓）' : ''}——约 ${remainSec} 秒后到港。`,
         'core.mining.042',
         {
           p1: shipName,
           p2: beltName,
-          p3: haveCargo ? '（到港整仓卸货）' : '',
+          p3: haveCargo ? '（卸空货仓）' : '',
           ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
           p4: remainSec,
         },
@@ -973,15 +975,16 @@ export function retireMiningShip(
     const shipNameFix = shipDisplayName(state, ctx, state.shipId)
     const haveCargo = Object.keys(state.fleet[state.shipId]?.cargo ?? {}).some((k) => (state.fleet[state.shipId]!.cargo[k] ?? 0) > 0)
     const remainSecFix = Math.max(0, Math.round((ret.legMs - ret.phaseAccMs) / 1000))
+    // ⟪文案调整 2026-10-02⟫ p3 片段「（到港整仓卸货）」→「（卸空货仓）」（同上，见 `core.salvaging.018`）。
     addLog(
       state,
       'industry',
-      `开采已停止：${shipNameFix} 从「${beltNameFix}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSecFix} 秒后到港。`,
+      `开采已停止：${shipNameFix} 从「${beltNameFix}」返航空间站${haveCargo ? '（卸空货仓）' : ''}——约 ${remainSecFix} 秒后到港。`,
       'core.mining.042',
       {
         p1: shipNameFix,
         p2: beltNameFix,
-        p3: haveCargo ? '（到港整仓卸货）' : '' ,
+        p3: haveCargo ? '（卸空货仓）' : '' ,
         ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
         p4: remainSecFix,
       },
@@ -1025,9 +1028,10 @@ export function retireMiningShip(
   m.tripUnits = 0
   m.originGalaxy = null
   m.rvLeft = 0 // 换船即离开矿带作业：红利窗口清零
+  // ⟪文案调整 2026-10-02⟫ p3 片段「（到港整仓卸货）」→「（卸空货仓）」（同上，见 `core.salvaging.018`）。
   const logText = auto
-    ? `开采已停止：${shipName} 从「${beltName}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`
-    : `采矿已随换船结束：${shipName} 从「${beltName}」自动返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`
+    ? `开采已停止：${shipName} 从「${beltName}」返航空间站${haveCargo ? '（卸空货仓）' : ''}——约 ${remainSec} 秒后到港。`
+    : `采矿已随换船结束：${shipName} 从「${beltName}」自动返航空间站${haveCargo ? '（卸空货仓）' : ''}——约 ${remainSec} 秒后到港。`
   addLog(
     state,
     'industry',
@@ -1036,7 +1040,7 @@ export function retireMiningShip(
     {
       p1: shipName,
       p2: beltName,
-      p3: haveCargo ? '（到港整仓卸货）' : '',
+      p3: haveCargo ? '（卸空货仓）' : '',
       ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
       p4: remainSec,
     },

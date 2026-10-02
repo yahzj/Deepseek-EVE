@@ -72,7 +72,13 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.salvaging.015": { zh: "开始打捞：{p1}（残骸密度 {p2}）。{p3} 已抵达目标空域，立即开始持续打捞（{p4} 台打捞器；满载返航约 {p5} 秒，去程时间已并入返航）。{p6}", en: "Salvaging started: {p1} (wreck density {p2}). {p3} has reached the target area and begins salvaging at once ({p4} salvagers; a full-load return takes about {p5} seconds with the outbound leg folded in).{p6}" },
   "core.salvaging.016": { zh: "已停止打捞（{p1}）。本趟共捞约 {p2} m³ 当量{p3}。", en: "Salvaging stopped ({p1}). This trip recovered about {p2} m³ equivalent{p3}." },
   "core.salvaging.017": { zh: "打捞已随换船结束：{p1} 从「{p2}」自动返航空间站{p3}——约 {p4} 秒后到港。", en: "Salvaging ended with the ship change: {p1} is returning from “{p2}” to the station automatically{p3} — docking in about {p4} seconds." },
-  "core.salvaging.018": { zh: "（到港整仓卸货）", en: " (it unloads the whole hold on arrival)" },
+  /* ⟪文案调整 2026-10-02⟫（船长令「**允许你对文案进行调整**」）：本片段是**共享尾巴**，被 `.017`
+   * `.019` `.029` `.042` 四条返航日志当 `p3` 用；原文「（到港整仓卸货）」插进去后与句尾的
+   * 「——约 {p4} 秒后到港」**把「到港」说了两遍** ⇒ 去掉重复的半句，只留"这一趟的货会卸下来"。
+   * 「整仓」在玩家可见文案里只有这一处用，改用本族既有用词（`.014` 满仓…卸货 · `.027` 自动返航卸货 ·
+   * `.035` 已返港并卸货）⇒「卸空货仓」。调用点内联的 `text` 字面量同步改（`mining.ts` ×7 ·
+   * `salvaging.ts` ×8）；台账 = 工作文档 `docs/design/return-log-copy-20261002.md`。 */
+  "core.salvaging.018": { zh: "（卸空货仓）", en: " (the hold is emptied)" },
   "core.salvaging.019": { zh: "完好舰体！{p1}。", en: "Intact hull! {p1}." },
   "core.salvaging.020": { zh: "找不到当前舰船，打捞作业已停止。", en: "The piloted ship was not found; the salvage run has stopped." },
   "core.salvaging.021": { zh: "找不到打捞目标星系，作业已停止。", en: "The salvage target system was not found; the run has stopped." },

@@ -463,15 +463,17 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
   if (remainSec !== null) {
     const shipName = shipDisplayName(state, ctx, state.shipId)
     const haveCargo = info.tripM3 > 0
+    // ⟪文案调整 2026-10-02⟫ p3 片段「（到港整仓卸货）」→「（卸空货仓）」——原句与句尾「约 N 秒后到港」
+    // 把「到港」说了两遍；该片段是四条返航日志共用的尾巴（见 `table.ts` 的 `core.salvaging.018`）。
     addLog(
       state,
       'salvage',
-      `打捞已停止：${shipName} 从「${galaxy?.name ?? ''}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+      `打捞已停止：${shipName} 从「${galaxy?.name ?? ''}」返航空间站${haveCargo ? '（卸空货仓）' : ''}——约 ${remainSec} 秒后到港。`,
       'core.salvaging.029',
       {
         p1: shipName,
         p2: galaxy?.name ?? '',
-        p3: haveCargo ? '（到港整仓卸货）' : '',
+        p3: haveCargo ? '（卸空货仓）' : '',
         ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
         p4: remainSec,
       },
@@ -516,15 +518,16 @@ export function retireSalvageShip(
     const shipFix = state.fleet[state.shipId]
     const haveCargoFix = shipFix ? Object.keys(shipFix.cargo).some((k) => (shipFix.cargo[k] ?? 0) > 0) : false
     const remainSecFix = Math.max(0, Math.round((retFix.legMs - retFix.phaseAccMs) / 1000))
+    // ⟪文案调整 2026-10-02⟫ p3 片段「（到港整仓卸货）」→「（卸空货仓）」（同上，见 `core.salvaging.018`）。
     addLog(
       state,
       'salvage',
-      `打捞已停止：${shipNameFix} 从「${galaxyNameFix}」返航空间站${haveCargoFix ? '（到港整仓卸货）' : ''}——约 ${remainSecFix} 秒后到港。`,
+      `打捞已停止：${shipNameFix} 从「${galaxyNameFix}」返航空间站${haveCargoFix ? '（卸空货仓）' : ''}——约 ${remainSecFix} 秒后到港。`,
       'core.salvaging.029',
       {
         p1: shipNameFix,
         p2: galaxyNameFix,
-        p3: haveCargoFix ? '（到港整仓卸货）' : '',
+        p3: haveCargoFix ? '（卸空货仓）' : '',
         ...(haveCargoFix ? { p3Id: 'core.salvaging.018' } : {}),
         p4: remainSecFix,
       },
@@ -560,18 +563,26 @@ export function retireSalvageShip(
   /**
    * 日志：**两条路分开说**（2026-10-02）——玩家手点停止/换船 ⇒「已随换船结束」；
    * 被别的活动挤掉（`haltActivityForSwitch` 传了 `opts.galaxyId`）⇒ 复用「打捞已停止：…返航空间站」。
+   * ⟪文案调整 2026-10-02⟫ 只改 `p3` 片段（「（到港整仓卸货）」→「（卸空货仓）」，见 `core.salvaging.018`）。
+   * ⚠ **另有一处本批未动的口径冲突，已挂待裁**：本函数 **`else` 分支（换船）** 的内联正文写
+   * 「打捞已停止：…返航空间站…」，但它挂的 id 是 `core.salvaging.017`（表里 = **打捞已随换船结束**）——
+   * 即**存档正文与界面显示的句子不是同一句**。三处支持"已随换船结束"（本注释 · id 017 的表文 ·
+   * 采矿同族 `core.shipyard.019`），两处支持"打捞已停止"（本分支正文 · 用例
+   * `tests/salvaging.test.ts:193`，该断言是 `ae8d3d10` 随本分支一起改的）。**已报船长裁决**，
+   * 定下后一并改正文/表文/用例（详情见工作文档 `docs/design/return-log-copy-20261002.md` §5）。
    */
   const auto = opts?.galaxyId !== undefined
   if (auto) {
+    // ⟪文案调整 2026-10-02⟫ p3 片段「（到港整仓卸货）」→「（卸空货仓）」（同上）。
     addLog(
       state,
       'salvage',
-      `打捞已停止：${shipName} 从「${galaxyName}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+      `打捞已停止：${shipName} 从「${galaxyName}」返航空间站${haveCargo ? '（卸空货仓）' : ''}——约 ${remainSec} 秒后到港。`,
       'core.salvaging.029',
       {
         p1: shipName,
         p2: galaxyName,
-        p3: haveCargo ? '（到港整仓卸货）' : '',
+        p3: haveCargo ? '（卸空货仓）' : '',
         ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
         p4: remainSec,
       },
@@ -580,12 +591,12 @@ export function retireSalvageShip(
     addLog(
       state,
       'salvage',
-      `打捞已停止：${shipName} 从「${galaxyName}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+      `打捞已停止：${shipName} 从「${galaxyName}」返航空间站${haveCargo ? '（卸空货仓）' : ''}——约 ${remainSec} 秒后到港。`,
       'core.salvaging.017',
       {
         p1: shipName,
         p2: galaxyName,
-        p3: haveCargo ? '（到港整仓卸货）' : '',
+        p3: haveCargo ? '（卸空货仓）' : '',
         ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
         p4: remainSec,
       },
