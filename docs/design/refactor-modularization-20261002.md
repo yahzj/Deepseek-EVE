@@ -547,6 +547,17 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ ·
   ui:rot-check ✅ · 构建 ✅。
 
+### 批次 4u：BattleScreen.tsx 二拆——`panels/battleDrones.ts` 无人机几何域（2026-10-02 · 零行为变化）
+
+- 手法：`foeMountsTipOf`～`foePoseAt` **整簇 149 行**（挂载件悬停明文 · 我方机群姿态
+  droneHomeStation/dronePoseAt · 击落爆炸点 oneThirdToward/DRONE_DOWN_FREEZE_MS · 敌方机群镜像
+  foeDroneStation/foePoseAt 含受击增程外推）切接搬入新文件 `panels/battleDrones.ts`（§三合规：
+  LF 行尾、无 BOM）——BattleScreen.tsx **3175 → 3026 行（−149）**。
+- 零环保证：battleDrones 只依赖 droneArt/foeBrief/i18n 与 battleViewCore（纯类型边）⇒ BattleScreen
+  单边借回 7 个符号，F9 实测仍 0 环。孤儿 import（mountEffectTextByName）随迁清理。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ ·
+  ui:rot-check ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、
