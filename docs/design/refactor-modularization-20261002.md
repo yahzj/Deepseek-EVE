@@ -245,6 +245,19 @@
   跨件依赖也拆干净（环数不变，图更瘦）。基线仍 **20**。
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
 
+### 批次 3-⑩：F9 判据修正——剔除 6 条幻影环（2026-10-02）
+
+- 起因：复查 `salvage → state → types` 环，三对互引全是 `import type`、环却存在 ⇒ 追到 F9 边收集两处误判：
+  ① `[^'"]*?from` 惰性扫描跨语句偷梁换柱——`export const INITIAL_STANDING = 0`（state.ts:39）连到 41 行的
+  `from './types'`、`export function residentWreckGroupsOf`（salvage.ts:407）连到 596 行的 `from './state'`，各造一条幻影边；
+  ② 类型位动态导入 `import('./x').类型名` 被当运行期边（实测全库 135 处全是类型位）。
+- 手法（只动工具与类型标注，零游戏行为变化）：F9 边收集收紧为三形态——花括号 from（含跨行）／裸副作用导入／
+  **值位**动态导入（`.then(`、`await import` 等算，类型位 `.类型名` 不算）；已核全库无默认导入、`import * as`、
+  `export * from` ⇒ 收紧不丢真边。另把 `types.ts` 唯一一处类型位动态导入改成顶层 `import type { RecycleTier }`。
+- F9 基线 **20 → 14**：6 条幻影环剔除（equipment 族 4 条 · ironman 环 · salvage→state→types），无重分解。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：本批零渲染层文件改动）。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、

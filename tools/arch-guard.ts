@@ -54,7 +54,7 @@
  * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
  *   - 游戏版本：**v0.1.0**（`package.json`）
  *   - 本工具最后核对：**2026-10-02**（当日读数：F1~F7 各 0 处 · **F8 0 处**（同日新增）·
- *     **F9 新增环 0 处 / 基线 26 条**（同日新增，随破环工程逐条收账））
+ *     **F9 新增环 0 处 / 基线 14 条**（同日新增，随破环工程逐条收账））
  *   - 判据：新增"游戏数据表"时**同步登记进 `DATA_TABLES`**，否则它照样能被页面直读而无人拦；
  *     新增单点时**同步登记进 `SINGLE_SOURCE` 与 `docs/single-source.md`**（两处一起，F3 会核对）。
  */
@@ -624,7 +624,9 @@ for (const file of rendererFiles) {
  * 渲染层实测 0 处。破环是渐进工程（工作文档 `docs/design/refactor-modularization-20261002.md` 批次 3 的计划），
  * 本检查保证**只会变少、不许变多**。
  *
- * 判据：只认**相对导入**的运行期边（`import type` / `export type` 不算——不产生运行期环）；
+ * 判据：只认**相对导入**的运行期边——① `import {…} from` / `export {…} from` 花括号形态
+ * （`import type` / `export type` 不算——不产生运行期环）；② 裸副作用导入 `import './x'`；
+ * ③ **值位**动态导入（`import('./x').类型名` 是纯类型位、编译期擦除，不算）。
  * 注释已由 `stripComments` 清掉。环 = DFS 回边，规范化（旋转到字典序最小）后与 `F9_CYCLE_BASELINE`
  * 比对：**新增环 = 红**；基线里已不存在的环 = 控制台提示（破环成功，请从基线删掉那条，不报红）。
  * ⚠ 每破一条环就从基线删一条，直到基线清零。基线是**存量快照**，不是"允许作恶"的白名单。
@@ -638,13 +640,24 @@ for (const file of rendererFiles) {
   const EXTS = ['', '.ts', '.tsx', '.mts', '/index.ts', '/index.tsx', '/index.mts']
   const treeOf = (p: string): string => trees.find((t) => n(p).startsWith(n(t) + '/')) ?? ''
   const graph = new Map<string, string[]>()
-  const stmtRe = /(?:import|export)\s+(?:type\s+)?[^'"]*?from\s*['"]([^'"]+)['"]|import\s+['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)/g
+  // 只认花括号形态的 from 子句（`import {…} from` / `export {…} from`，含跨行与 `import type {}`）：
+  // 旧正则 `[^'"]*?from` 会跨语句偷梁换柱——`export const X = 0` 一路扫到文件后面另一条语句的
+  // `from './y'`，造出幻影边（2026-10-02 实测 `salvage→state`、`state→types` 两条幻影边喂出一个假环）。
+  // 全库无默认导入 / `import * as` / `export * from` 形态（已核），此收紧不丢真边。
+  const stmtRe = /(?:import|export)\s+(?:type\s+)?\{[^}]*\}\s*from\s*['"]([^'"]+)['"]|import\s+['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)/g
   for (const f of files) {
     const src = stripComments(readFileSync(f, 'utf8'))
     const deps: string[] = []
     let m: RegExpExecArray | null
     while ((m = stmtRe.exec(src)) !== null) {
       if (m[0].startsWith('import type') || m[0].startsWith('export type')) continue
+      if (m[3] !== undefined) {
+        // 动态导入只认"值位"：`import('./x').类型名` 是纯类型位（编译期擦除，不产生运行期边）；
+        // `import('./x').then(` / `await import('./x')` / `import('./x')()` 等值位形态才计数。
+        // 实测全库 135 处动态导入全是类型位，此判据不改变现有读数。
+        const tail = src.slice((m.index ?? 0) + m[0].length)
+        if (/^\s*\.\s*[A-Za-z_$][\w$]*\s*(?!\()/.test(tail)) continue
+      }
       const spec = m[1] ?? m[2] ?? m[3]
       if (spec === undefined || !spec.startsWith('.')) continue
       const base = n(resolve(dirname(f), spec))
@@ -685,6 +698,8 @@ for (const file of rendererFiles) {
   /**
    * **存量基线**（独立数据文件 `tools/arch-guard-baseline-cycles.json`；破一条删一条）。
    * 初始快照 2026-10-02 实测 34 条；破环工程（工作文档 refactor-modularization-20261002.md）逐条收账。
+   * 同日判据修正：旧正则把「跨语句 from」与「类型位动态导入」误算成运行期边，喂出 6 条幻影环
+   * （salvage→state→types 等）；收紧判据后 20 → 14 条，剩余全部为实测运行期环。
    * ⚠ 环串里的箭头与 `--f9-dump` 输出**逐字一致**（空格-箭头-空格），手工编辑时别改分隔符。
    */
   const F9_CYCLE_BASELINE: readonly string[] = JSON.parse(

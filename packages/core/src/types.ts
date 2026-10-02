@@ -7,6 +7,8 @@
 
 // 只借类型（`wreckGroups.ts` 反向也只借 `FoeFamily` / `RecycleTier` 类型）⇒ 运行期零循环
 import type { WreckGroupDef } from './wreckGroups'
+// 只借类型（`salvage.ts` 反向也只借 `AnomalyDef` 等类型）⇒ 运行期零循环
+import type { RecycleTier } from './salvage'
 
 /** 一条技能的定义（数据表里每条记录的格式） */
 export interface SkillDef {
@@ -2687,7 +2689,7 @@ export interface AnomalyDef {
    * ⇒ 若只改组池，B3.1 的「保值」与「组档 = 成员卡多数档」两条契约会判红。
    * 单点出口 = `salvage.wreckCardTierOf`（引擎侧与 `content:check` 同源）。
    */
-  wreckTier?: import('./salvage').RecycleTier
+  wreckTier?: RecycleTier
   /** 敌族（A~G；与美术层 FOE_ART 族字母同源）——决定窝点三档称呼与专属装备分配。
    *  **每张敌军卡必须显式登记**（2026-09-11 船长：F 族废弃后取消缺省兜底，改强制显式登记）；
    *  `'F'` 是已废弃的空位，不得再写。 */
