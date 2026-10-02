@@ -682,7 +682,26 @@ function LabCard({
    */
   const loop = engine.labLoopOf(recipe.id)
   const [goalDraft, setGoalDraft] = useState('')
+  /**
+   * **草稿引用**（2026-09-17 报障修复，组装机卡同款——**2026-10-02 代码审查补上实验室这一份**）：
+   * 程序化跳页（通讯「前往」/教程/任务卡跳转）**不产生失焦** ⇒ 玩家刚打的目标批数从未提交、
+   * 循环开关还开着 ⇒ 变成"无限生产"。这里把最新草稿放进 ref，**卡片卸载时补一次提交**；
+   * 回车/失焦仍即时提交；没打字（草稿为空）时不做任何动作，故不会凭空清掉已有目标、
+   * 也不会在 StrictMode 的"挂载即卸载"里误提交。
+   */
+  const goalDraftRef = useRef('')
+  goalDraftRef.current = goalDraft
+  const goalTouchedRef = useRef(false)
+  useEffect(
+    () => () => {
+      if (!goalTouchedRef.current) return
+      const n = Number.parseInt(goalDraftRef.current, 10)
+      engine.setLabLoopAt(recipe.id, true, Number.isFinite(n) && n > 0 ? n : null)
+    },
+    [engine, recipe.id],
+  )
   function commitLoop(on: boolean, goalText: string): void {
+    goalTouchedRef.current = false
     const n = Number.parseInt(goalText, 10)
     const r = engine.setLabLoopAt(recipe.id, on, on ? (Number.isFinite(n) && n > 0 ? n : null) : null)
     if (!r.ok) onToast(cmdText(r) || tr('ui.Industry.133'), true)
@@ -843,7 +862,10 @@ function LabCard({
                 className="app-mf-goal-input"
                 placeholder="∞"
                 value={goalDraft !== '' ? goalDraft : loop.goal > 0 ? String(loop.goal) : ''}
-                onChange={(e) => setGoalDraft(e.target.value)}
+                onChange={(e) => {
+                  goalTouchedRef.current = true
+                  setGoalDraft(e.target.value)
+                }}
                 onBlur={(e) => {
                   setGoalDraft('')
                   commitLoop(true, e.target.value)
