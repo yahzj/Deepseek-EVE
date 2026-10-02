@@ -115,6 +115,7 @@
     "ui:hud-geom": "tsx tools/hud-geom.ts",
     "filters:export": "tsx tools/filters-export.ts",
     "l10n:scan": "tsx tools/l10n-en-scan.ts",
+    "l10n:core-zh": "tsx tools/l10n-core-zh-audit.ts",
     "l10n:params": "tsx tools/param-miss-check.ts"
   },
   "devDependencies": {
