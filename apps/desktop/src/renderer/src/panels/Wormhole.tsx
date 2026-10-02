@@ -322,7 +322,11 @@ export function WormholePanel({
     ? engine.wormholeAutoMainHandover(autoMainPicked ? picked : [...picked, state.shipId])
     : null
   /** 主控船为什么编不进来 / 编进来会换给谁（null = 没有障碍） */
-  const autoMainReason = auto ? (autoHandover?.reason ?? null) : null
+  /** 主控交接拒因（结构化：`{ error, errorId, errorParams }`，与 `autoBlock` 同款，便于 `autoGate` 合并） */
+  const autoMainReason =
+    auto && autoHandover?.reason !== undefined
+      ? { error: autoHandover.reason, errorId: autoHandover.reasonId, errorParams: autoHandover.reasonParams }
+      : null
   const autoCores = auto ? engine.wormholeAutoCores() : null
   /**
    * 整队能不能派（core 同一把尺）。主控在队里时按"允许随队"校验（`mainMayJoin`）——
@@ -756,7 +760,7 @@ export function WormholePanel({
       tier: def?.tier ?? 0,
       ok,
       // 忙态文案在**建表时**就按当前语言取好（`cmdText`：有 id 按语言渲染、没有回落中文原串）
-      busy: auto ? autoBlocked : busy === null ? null : cmdText(busy),
+      busy: auto ? (autoBlocked !== null ? cmdText(autoBlocked) : null) : busy === null ? null : cmdText(busy),
       on: picked.includes(uid),
       // **损伤**（与舰队页「待维修」同一把尺）：装甲/结构未满 = 带伤；护盾每场满值重建、不持久、不计
       armor: state.fleet[uid]!.armorPct ?? 1,
@@ -1548,7 +1552,7 @@ export function WormholePanel({
                       !auto && enterHaulAsk
                         ? tr('ui.Hauling.035')
                         : auto
-                          ? (autoGate ?? (picked.length === 0 ? tr("ui.Wormhole.023") : undefined))
+                          ? (autoGate !== null ? cmdText(autoGate) : picked.length === 0 ? tr("ui.Wormhole.023") : undefined)
                           : (entryGate ??
                             (autoStopText ? tr("ui.Wormhole.248", { autoStopText: autoStopText }) : undefined))
                     }
@@ -1731,7 +1735,7 @@ export function WormholePanel({
                   {tr("ui.Wormhole.253")}<b>{tr("ui.Wormhole.030")}{autoHandover.toName}{tr('ui.Wormhole.364')}</b>{tr("ui.Wormhole.254")}
                 </div>
               ) : null}
-              {auto && autoGate !== null ? <div className="app-warn app-wh-gate">{autoGate}</div> : null}
+              {auto && autoGate !== null ? <div className="app-warn app-wh-gate">{cmdText(autoGate)}</div> : null}
               {!auto && !admission.ok ? (
                 <div className="app-warn app-wh-gate">{WORMHOLE_ADMISSION_TEXT[admission.code]}</div>
               ) : null}
@@ -2360,7 +2364,7 @@ export function WormholePanel({
                 {Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} {tr("ui.Wormhole.115")}{' '}
                 {tr('ui.Wormhole.358')}
               </div>
-              {autoGate !== null ? <div className="app-warn app-wh-gate">{autoGate}</div> : null}
+              {autoGate !== null ? <div className="app-warn app-wh-gate">{cmdText(autoGate)}</div> : null}
               <div className="app-wh-scanbar-actions" style={{ marginTop: 'var(--wui-sp-10)' }}>
                 <button className="app-btn is-primary is-small" onClick={startAuto} disabled={autoGate !== null}>
                   {tr("ui.Wormhole.214")}

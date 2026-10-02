@@ -80,7 +80,7 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     const rows = wormholeAutoCandidates(state, ctx)
     // 主控船不可派（它要在站内）
     const main = rows.find((r) => r.shipId === state.shipId)!
-    expect(main.blocked).toContain('主控船')
+    expect(main.blocked?.errorId).toBe('core.wormholeAuto.005')
     // 默认选中 = 最多 4 条
     const picked = wormholeAutoDefaultShips(state, ctx)
     expect(picked).toHaveLength(WORMHOLE_AUTO_MAX_SHIPS)
@@ -93,7 +93,7 @@ describe('虫洞 · 自动探索（批次 3）', () => {
       task: { kind: 'standby', phase: 'outbound', galaxyId: null, finishAtGameMs: 0, legMs: 0 } as never,
     }
     const after = wormholeAutoCandidates(state, ctx).find((r) => r.shipId === target)!
-    expect(after.blocked).toContain('AI 副船任务')
+    expect(after.blocked?.errorId).toBe('core.wormholeAuto.007')
   })
 
   it('**每次自动探索占 1 枚 AI 核心**（同一本账：占用计入、名额不足拒绝、锁定期不能再接 AI 任务）', () => {
@@ -125,7 +125,7 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     // 已占满（2/2）⇒ 第三趟拒，理由里点明"每次占用 1 枚"
     const third = wormholeAutoStart(state, ctx, stockOne(state), wormholeAutoDefaultShips(state, ctx))
     expect(third.ok).toBe(false)
-    expect(String(third.error)).toContain('每次占用 1 枚')
+    expect(third.errorId).toBe('core.wormholeAuto.010')
   })
 
   it('**时长 5 分钟**：不到点不结算；到点结算并释放 AI 与舰船（离线大步长同样适用）', () => {
@@ -303,9 +303,9 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     expect(wormholeAutoStart(state, ctx, stockId, picked).ok).toBe(true)
     // 同一处再来一趟 ⇒ 拒绝
     const second = wormholeStockPush(state, ctx)!
-    expect(wormholeAutoBlockReason(state, ctx, stockId)).toContain('已经在自动探索中')
+    expect(wormholeAutoBlockReason(state, ctx, stockId)?.errorId).toBe('core.wormholeAuto.011')
     // 参与舰不可派（已在这趟里）⇒ 拒绝并给原因
-    expect(wormholeAutoBlockReason(state, ctx, second.id, picked)).toContain('自动探索')
+    expect(wormholeAutoBlockReason(state, ctx, second.id, picked)?.errorId).toBe('core.wormholeAuto.015')
   })
 
   /**
@@ -330,7 +330,7 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     const run = wormholeAutoRunsOf(state)[0]!
     expect(run.shipIds).toEqual([oldMain])
     // 换船之后这条老主控不再是主控 ⇒ 它现在只因为"正在这趟自动探索里"被挡（不再吃"主控不参与"那条）
-    const blockedAfter = wormholeAutoShipBlockReason(state, oldMain) ?? ''
+    const blockedAfter = wormholeAutoShipBlockReason(state, oldMain)?.error ?? ''
     expect(blockedAfter).not.toContain('主控')
     expect(blockedAfter).toContain('自动探索')
   })

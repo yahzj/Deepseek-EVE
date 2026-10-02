@@ -267,6 +267,64 @@
 
 ---
 
+## 批⑫ 虫洞自动探索面板整批：`wormholeAuto`（2026-10-02）
+
+**范围**：把 `wormholeAuto.ts` 这条链**整条面板**清完（core 拒因 ＋ 面板三处渲染点 ＋ 包装层签名 ＋ 用例）。
+
+**读数**：`npm run l10n:core-zh -- wormholeAuto` **17 → 2**（剩下 2 条是**复合句日志**，见下"仍挂账"）；
+渲染层引用型 **1 处**（出发日志）。
+
+**落码（5 个文件）**：
+
+| # | 文件 | 改动 |
+|---|---|---|
+| 1 | `packages/core/src/wormholeAuto.ts` | ① `wormholeAutoShipBlockReason` 由 `string \| null` 改 **`CoreBlockReason \| null`**（5 条：`004` 无此船 · `005` 主控船不参与 · `006` 该舰在虫洞里 · `007` 已在别的 AI 副船任务 · `008` 已在本域另一趟自动探索里）② `wormholeAutoCoreBlock` 改结构化（`009` 上限为 0 · `010` 核心不够，带 `p1`~`p5`）③ `wormholeAutoBlockReason` 改结构化（`011`~`014`），其中"船名 ＋ 拒因"那条**合成句**（`015`，`{p1}：{p2}`）把内层拒因按**三键挂法**转发（`p2` 原串 · `p2Id` 内层 id · `p2p{k}` 内层参数）④ `WormholeAutoHandover` 增 `reasonId`/`reasonParams`（`016` 主控忙（槽译文挂 `BusyLabel`）· `017` 主控在虫洞里 · `018` 没有别的空闲船）⑤ `wormholeAutoStart` 两处 `return` 改**透传三字段** ⑥ 召回日志补 `textId`（`019`）⑦ 候选行 `blocked` 类型随之内收 |
+| 2 | `apps/desktop/.../game/engine.ts` | 包装层 `wormholeAutoBlockReason` 返回类型同步改 `CoreBlockReason \| null` |
+| 3 | `apps/desktop/.../panels/Wormhole.tsx` | ① `autoMainReason` 由中文串改**结构化对象**（与 `autoBlock` 同款 ⇒ `autoGate` 直接合并）② 候选行 `busy:` 改走 `cmdText(autoBlocked)` ③ **三处** `{autoGate}` 直出改 `cmdText(autoGate)`（进入按钮 `title` · 准备页警示条 · 扫描页警示条） |
+| 4 | `packages/core/tests/wormhole-auto.test.ts` | 5 条断言由"断中文子串"改**断 id**（`005` · `007` · `010` · `011` · `015`）＋ 1 条对象断言改取 `.error` |
+| 5 | `packages/data/src/l10n/table.ts` | 补 16 条（`core.wormholeAuto.004~019`） |
+
+**验证**：`typecheck` 四包 0 错 · core **287 文件 / 3018 用例全绿** · `l10n:check` ✅ · `l10n:params` 0 漏喂 ·
+`content:check` ✅ · `ui:rot-check` ✅ · `arch:guard` ✅。
+另做了一次"**引用的 id 是否都在表里**"的一次性核对：本批 4 个文件共引用 **572** 个 `core.*`/`ui.*` id ⇒ **缺表 0**
+（3 处命中全是注释里"已作废 id"的记录）。
+
+**过程中的一次自纠（留痕）**：改 `Wormhole.tsx` 那段 `title` 三元时，落码脚本在行尾多留了一个 `)`
+⇒ 桌面包 `typecheck` 一次报 **14 个** JSX 语法错（含"JSX 表达式必须有唯一父元素"这类下游误报）。
+按报错首条定位、删掉那个括号即全绿 —— 教训：**JSX 里的三元/括号改动，落码后立刻过 typecheck**（语法错会级联，别逐条追下游）。
+
+### ⛔ 仍挂账（本文件剩 2 条 · 都是复合句日志）
+
+| 位置 | 内容 | 卡在哪 |
+|---|---|---|
+| `wormholeAuto.ts:679`（出发日志） | `🛰 自动探索队出发：{原型名} · {N} 条舰（{名单}）——约 5 分钟后返航（…）` | 原型名要 `p1Id`（表里已有 `core.wormholeArch.001~005`，缺的是 **core 侧的原型→id 映射**，属小改）；**名单**是"顿号连接的动态列表" ⇒ core 不知道该用哪种语言的分隔符 |
+| `wormholeAuto.ts:940`（返航日志） | `🛰 自动探索队返航：带回 {战利品}（已入仓库）{核心}；损伤：{明细}。{谜质科技}…` | 同上（战利品/损伤都是列表）；且**损伤明细每一项自己还有模板**（`{船名}（结构 −{x}% / 装甲 −{y}%）`）⇒ 正是 `logParts.ts` 头注那个"参数那层再挂模板"的缺口 |
+
+### 🆕 本批新发现的缺口（比上面两条更大 · 供船长裁）
+
+**core 侧"列表参数"没有语言感知的拼装机制**。现象：core 里到处是 `${names.join('、')}`
+（`git grep "join('、')"` 读数：core **46 处**），把中文顿号**焊进参数值**；而参数值不会再被翻译
+⇒ **英文界面里这些列表用中文顿号连接**（例：`Ship A、Ship B`）。
+名单里的**名字**没问题（`ctx` 在渲染层已按语言覆盖，见 `data/src/l10n.ts` 的 `localizeCtx`）——**分隔符**才是漏的。
+
+渲染层已有先例可照搬：`ui/foeBrief.ts:294` 写的是 `join(en ? ', ' : '、')`，但那是**渲染层自己拼**；core 拼的串拿不到这条信息。
+两条路（**请船长裁**）：
+
+- **甲（推荐）**：给"列表槽"立个机制 —— core 传 `p{n}List: string[]` ＋（可选）`p{n}ItemId` 逐项模板 id；
+  渲染层按当前语言的分隔符（zh `、` / en `, `）拼接、逐项套模板。改一处渲染层收口，全仓 46 处 core 列表都能受益。
+- **乙**：暂不做，接受"英文界面里名单用中文顿号连接"，带名单的日志先按单模板补 id。
+  ⚠ 不推荐：等于明知半中半英还落码（船长 2026-09-29 报障的正是这一类）。
+
+⚠ 与**既有待裁项**的关系：这条与 `logParts` 三层缺口**是同一类问题**（都是"参数里再套模板/列表"）。
+建议**一起裁、一起修**（先修机制、再批量做 70 余条复合句日志），否则复合句做完仍要回头返工。
+
 ## 待做（按盘点稿顺序）
 
-批③ 远征/自动循环（9 条）· 批④ 市场（2 条）· 批⑤ 工业（3 条）· 批⑥ 装配（1 条）· 批⑦ 虫洞＋战斗读数（2 条）· 批⑧ B 类待核（9 条）· 批⑨ 日志行（97 处，建议单独立项）· 批⑪ 共享拒因（`shipLockedReason` / `cannotInterruptReason`，跨 6 域，需先申请）。
+**已完成**：批① 舰船（提交 `7bb830e4`）· 批② AI · 批⑤ 工业 · 批⑥ 装配 · 批⑦ 虫洞＋战斗读数 · 批④ 市场（`shipSellable`/`sellShipAtMarket` 无界面入口 ⇒ C 类登记不动）·
+批③ 远征（可做 6 条已做，两条链挂账）· 批⑨-①~④ 日志行（`location.ts` 清零 · `combat.ts` 余 8 条复合句 · `wormholeSalvage.ts` 余 5 条复合句）· 批⑫ 虫洞自动探索面板（`wormholeAuto.ts` 17 → 2）。
+
+**待做**：
+- **等船长裁（三条，按优先级）**：① 列表槽机制（本页批⑫ 一节末 · 甲/乙）② `logParts` 三层缺口先修不修 ③ 批⑩ 随档提示串走甲（并列 `…Id`/`…Params` 字段，零迁移）还是乙（字段改结构化对象，需存档迁移）。
+- **等船长批准**：批⑪ 共享守卫 `state.shipLockedReason`（8 文件 / 15 处调用点）＋ `activityGate.cannotInterruptReason`——跨域，需先申请。
+- **可直接接着做（不涉跨域/不涉存档）**：批⑨-⑤ `expedition.ts` 10 条 · ⑨-⑥ `encounters.ts`＋`wormholeBattle.ts` 13 条 · ⑨-⑦ 零散 23 条（`market` 5 · `sideTasks` 5 · `manufacturing` 5 · `station`/`explore` 各 2 …）· 批⑧ B 类待核 9 条（其中 4 条已在批⑤ 顺手核清）。
+- **建议一并立护栏（等船长点头）**：把"源码里引用的 `core.*`/`ui.*` id 必须都在唯一表里"做进 `l10n:check`——本批一次性核对花了几秒、全仓可复用，能永久堵住"少补零/拼错 ⇒ `tr()` 静默回落"这类闸门看不见的漏。

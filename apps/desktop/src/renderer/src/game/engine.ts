@@ -2901,7 +2901,7 @@ export class GameEngine {
    * `mainMayJoin`（2026-09-14 船长「选主控就把主控换到别的船上」）⇒ 校验时**放行主控船**
    * （调用方须已确认交接可行，见 `wormholeAutoMainHandover`）。
    */
-  wormholeAutoBlockReason(stockId: string, shipIds?: readonly string[], mainMayJoin = false): string | null {
+  wormholeAutoBlockReason(stockId: string, shipIds?: readonly string[], mainMayJoin = false): CoreBlockReason | null {
     return wormholeAutoBlockReason(this.state, this.ctx, stockId, shipIds, { mainMayJoin })
   }
 

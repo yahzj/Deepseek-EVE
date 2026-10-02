@@ -22,6 +22,7 @@
  * ⚠ 本模块**不碰** `wormholeEnter` 的副本状态机：自动探索是"抽象的一趟"（不建网格、不打战斗），
  * 产出按手动期望折算 —— 这是船长对"收益不确定 + 绝不丢船"的取舍，实现上必须与真副本解耦。
  */
+import type { CoreBlockReason } from './engine'
 import { tuningMul } from './tuning'
 import type { GameState, WormholeArchetype, WormholeAutoReport, WormholeAutoRun, WormholeFamily, WormholeStockItem } from './state'
 import { addLog, shipLockedInWormhole, wormholeAutoRunsOf } from './state'
@@ -397,13 +398,14 @@ export function wormholeAutoShipBlockReason(
   state: GameState,
   shipId: string,
   opts?: { mainMayJoin?: boolean },
-): string | null {
+): CoreBlockReason | null {
   const ship = state.fleet[shipId]
-  if (!ship) return '舰队里没有这艘船。'
-  if (shipId === state.shipId && !opts?.mainMayJoin) return '主控船不参与自动探索（主控要留在站内）。'
-  if (shipLockedInWormhole(state, shipId)) return '该舰在虫洞里：等它出洞再派。'
-  if (state.aiAssignments[shipId]) return '该舰已在别的 AI 副船任务里：先撤回它。'
-  if (shipInWormholeAuto(state, shipId)) return '该舰已在另一处虫洞的自动探索里。'
+  if (!ship) return { error: '舰队里没有这艘船。', errorId: 'core.wormholeAuto.004' }
+  if (shipId === state.shipId && !opts?.mainMayJoin)
+    return { error: '主控船不参与自动探索（主控要留在站内）。', errorId: 'core.wormholeAuto.005' }
+  if (shipLockedInWormhole(state, shipId)) return { error: '该舰在虫洞里：等它出洞再派。', errorId: 'core.wormholeAuto.006' }
+  if (state.aiAssignments[shipId]) return { error: '该舰已在别的 AI 副船任务里：先撤回它。', errorId: 'core.wormholeAuto.007' }
+  if (shipInWormholeAuto(state, shipId)) return { error: '该舰已在另一处虫洞的自动探索里。', errorId: 'core.wormholeAuto.008' }
   return null
 }
 
@@ -414,8 +416,8 @@ export interface WormholeAutoCandidate {
   name: string
   /** 自动配置是否默认选它 */
   picked: boolean
-  /** 不可派的原因（null = 可派） */
-  blocked: string | null
+  /** 不可派的原因（null = 可派；**2026-10-02 批⑫ 由 string 改结构化**，界面走 `cmdText` 按语言渲染） */
+  blocked: CoreBlockReason | null
 }
 
 /**
@@ -445,7 +447,7 @@ function wormholeAutoScore(state: GameState, ctx: SimContext, shipId: string): n
 
 export function wormholeAutoCandidates(state: GameState, ctx: SimContext, exclude?: readonly string[]): WormholeAutoCandidate[] {
   const skip = new Set(exclude ?? [])
-  const rows: Array<{ shipId: string; name: string; score: number; blocked: string | null }> = []
+  const rows: Array<{ shipId: string; name: string; score: number; blocked: CoreBlockReason | null }> = []
   for (const shipId of Object.keys(state.fleet)) {
     if (skip.has(shipId)) continue
     const blocked = wormholeAutoShipBlockReason(state, shipId)
@@ -502,16 +504,23 @@ export function shipNameOf(state: GameState, ctx: SimContext, shipId: string): s
  * 与派几条船无关。改前 `need = 队伍条数`，于是"核心剩 2 枚"会拒绝 4 条编队。
  * 站内工业先抵「工业自动化」扩容、超出的部分才挤共同名额 —— 这一段与 `ai.ts` 同源，未变。
  */
-export function wormholeAutoCoreBlock(state: GameState, ctx: SimContext, need: number): string | null {
+export function wormholeAutoCoreBlock(state: GameState, ctx: SimContext, need: number): CoreBlockReason | null {
   const cap = aiCoreCap(state, ctx)
   if (cap <= 0) {
-    return 'AI 核心上限为 0：先训练提升 AI 核心上限的技能（如「AI 核心操作学」）——自动探索每次占用 1 枚核心。'
+    return {
+      error: 'AI 核心上限为 0：先训练提升 AI 核心上限的技能（如「AI 核心操作学」）——自动探索每次占用 1 枚核心。',
+      errorId: 'core.wormholeAuto.009',
+    }
   }
   const indOnShared = Math.max(0, aiCoreIndustryUsed(state) - industryAiBonus(state, ctx))
   const shipUsed = aiCoreShipUsed(state)
   const free = cap - shipUsed - indOnShared
   if (free < need) {
-    return `AI 核心不够：自动探索每次占用 ${need} 枚，当前只剩 ${Math.max(0, free)} 枚可派（上限 ${cap}：副船与自动探索 ${shipUsed} 枚 + 站内工业超出扩容 ${indOnShared} 枚）。先撤回一些副船任务、自动探索或站内炉线。`
+    return {
+      error: `AI 核心不够：自动探索每次占用 ${need} 枚，当前只剩 ${Math.max(0, free)} 枚可派（上限 ${cap}：副船与自动探索 ${shipUsed} 枚 + 站内工业超出扩容 ${indOnShared} 枚）。先撤回一些副船任务、自动探索或站内炉线。`,
+      errorId: 'core.wormholeAuto.010',
+      errorParams: { p1: need, p2: Math.max(0, free), p3: cap, p4: shipUsed, p5: indOnShared },
+    }
   }
   return null
 }
@@ -529,17 +538,34 @@ export function wormholeAutoBlockReason(
   stockId: string,
   shipIds?: readonly string[],
   opts?: { mainMayJoin?: boolean },
-): string | null {
+): CoreBlockReason | null {
   // 先看"是不是已经派出去了"：开始时库存项即被消耗 ⇒ 先查在跑的趟，理由才说得清
-  if (wormholeAutoRunOfStock(state, stockId)) return '这一处已经在自动探索中。'
+  if (wormholeAutoRunOfStock(state, stockId)) return { error: '这一处已经在自动探索中。', errorId: 'core.wormholeAuto.011' }
   const item = wormholeStockOf(state).find((x) => x.id === stockId)
-  if (!item) return '这处虫洞不在了（可能已经探索过）。'
+  if (!item) return { error: '这处虫洞不在了（可能已经探索过）。', errorId: 'core.wormholeAuto.012' }
   const pool = shipIds ?? wormholeAutoDefaultShips(state, ctx)
-  if (pool.length === 0) return '没有可派出的副船：自动探索不派主控船，先备至少 1 条空闲副船。'
-  if (pool.length > WORMHOLE_AUTO_MAX_SHIPS) return `参与舰最多 ${WORMHOLE_AUTO_MAX_SHIPS} 条。`
+  if (pool.length === 0)
+    return { error: '没有可派出的副船：自动探索不派主控船，先备至少 1 条空闲副船。', errorId: 'core.wormholeAuto.013' }
+  if (pool.length > WORMHOLE_AUTO_MAX_SHIPS)
+    return { error: `参与舰最多 ${WORMHOLE_AUTO_MAX_SHIPS} 条。`, errorId: 'core.wormholeAuto.014', errorParams: { p1: WORMHOLE_AUTO_MAX_SHIPS } }
   for (const shipId of pool) {
     const blocked = wormholeAutoShipBlockReason(state, shipId, opts)
-    if (blocked) return `${shipNameOf(state, ctx, shipId)}：${blocked}`
+    if (blocked) {
+      /* ⟪文案调整 2026-10-02⟫ 批⑫：把「哪条船 + 拒因」合成为一条 —— 内层拒因走 p2Id 三键挂法 */
+      const shipName = shipNameOf(state, ctx, shipId)
+      return {
+        error: `${shipName}：${blocked.error}`,
+        errorId: 'core.wormholeAuto.015',
+        errorParams: {
+          p1: shipName,
+          p2: blocked.error,
+          ...(blocked.errorId !== undefined ? { p2Id: blocked.errorId } : {}),
+          ...(blocked.errorParams !== undefined
+            ? Object.fromEntries(Object.entries(blocked.errorParams).map(([k, v]) => [`p2${k}`, v]))
+            : {}),
+        },
+      }
+    }
   }
   return wormholeAutoCoreBlock(state, ctx, 1)
 }
@@ -564,6 +590,9 @@ export interface WormholeAutoHandover {
   toName?: string
   /** 不能交接的原因（`needed` 时才有值） */
   reason?: string
+  /** 本地化 id / 参数（界面优先用它取当前语言，缺省回退 `reason` 原文） */
+  reasonId?: string
+  reasonParams?: Record<string, string | number>
 }
 
 export function wormholeAutoMainHandover(
@@ -574,15 +603,39 @@ export function wormholeAutoMainHandover(
   const team = new Set(teamShipIds)
   if (!team.has(state.shipId)) return { needed: false }
   const busy = shipBusyLabel(state, ctx, state.shipId)
-  if (busy) return { needed: true, reason: `主控正在${busy}：先把手上的活收工，才能把它编进自动探索队。` }
-  if (shipLockedInWormhole(state, state.shipId)) return { needed: true, reason: '主控正在虫洞里：先出洞。' }
+  if (busy) {
+    /**
+     * ⟪文案调整 2026-10-02⟫ 批⑫：忙态本身已是结构化标签（`busyLabels.ts` 的 `BusyLabel`）⇒
+     * 走**槽译文三键挂法**（`p1` 中文原串 · `p1Id` 忙态 id · `p1p{k}` 忙态自己的参数）——
+     * 界面按当前语言把「主控正在…」那句话整句渲染出来。
+     */
+    return {
+      needed: true,
+      reason: `主控正在${busy.error}：先把手上的活收工，才能把它编进自动探索队。`,
+      reasonId: 'core.wormholeAuto.016',
+      reasonParams: {
+        p1: busy.error,
+        p1Id: busy.errorId,
+        ...(busy.errorParams !== undefined
+          ? Object.fromEntries(Object.entries(busy.errorParams).map(([k, v]) => [`p1${k}`, v]))
+          : {}),
+      },
+    }
+  }
+  if (shipLockedInWormhole(state, state.shipId))
+    return { needed: true, reason: '主控正在虫洞里：先出洞。', reasonId: 'core.wormholeAuto.017' }
   const pool = Object.keys(state.fleet)
     .filter((id) => id !== state.shipId && !team.has(id))
     .filter((id) => shipBusyLabel(state, ctx, id) === null)
     .filter((id) => wormholeAutoShipBlockReason(state, id) === null)
     .sort((a, b) => wormholeAutoScore(state, ctx, b) - wormholeAutoScore(state, ctx, a) || a.localeCompare(b))
   const toId = pool[0]
-  if (!toId) return { needed: true, reason: '舰队里没有别的空闲船可以接任主控：先收工或添一条船，再把它编进来。' }
+  if (!toId)
+    return {
+      needed: true,
+      reason: '舰队里没有别的空闲船可以接任主控：先收工或添一条船，再把它编进来。',
+      reasonId: 'core.wormholeAuto.018',
+    }
   return { needed: true, toId, toName: shipNameOf(state, ctx, toId) }
 }
 
@@ -599,9 +652,10 @@ export function wormholeAutoMainHandover(
 export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: string, shipIds?: readonly string[]): CommandResult {
   const pool = shipIds ?? wormholeAutoDefaultShips(state, ctx)
   const handover = wormholeAutoMainHandover(state, ctx, pool)
-  if (handover.needed && handover.reason) return { ok: false, error: handover.reason }
+  if (handover.needed && handover.reason)
+    return { ok: false, error: handover.reason, errorId: handover.reasonId, errorParams: handover.reasonParams }
   const blocked = wormholeAutoBlockReason(state, ctx, stockId, shipIds, { mainMayJoin: handover.needed })
-  if (blocked) return { ok: false, error: blocked }
+  if (blocked) return { ok: false, error: blocked.error, errorId: blocked.errorId, errorParams: blocked.errorParams }
   /** 交接：换船在**校验之后**才落（校验不过就一行状态都不动） */
   if (handover.needed && handover.toId) {
     const sw = changeShip(state, handover.toId, ctx)
@@ -655,7 +709,7 @@ export function wormholeAutoStop(state: GameState, runId: string): CommandResult
   const run = runs.find((r) => r.id === runId)
   if (!run) return { ok: false, error: '这一趟自动探索已经结束了。', errorId: 'core.wormholeAuto.001' }
   state.wormholeAuto = runs.filter((r) => r.id !== runId)
-  addLog(state, 'fleet', '🛰 自动探索队已召回：没有收益、也没有损伤；那条通道就此关闭。')
+  addLog(state, 'fleet', '🛰 自动探索队已召回：没有收益、也没有损伤；那条通道就此关闭。', 'core.wormholeAuto.019')
   return { ok: true }
 }
 
