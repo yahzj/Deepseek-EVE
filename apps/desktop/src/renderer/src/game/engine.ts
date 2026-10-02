@@ -2288,7 +2288,7 @@ export class GameEngine {
   }
 
   /** 挂买单能不能挂（不能则给玩家可读原因）——界面门控与回执共用 core 单点口径 */
-  buyOrderBlocked(goodKey: string, price: number, qty: number): string | null {
+  buyOrderBlocked(goodKey: string, price: number, qty: number): CoreBlockReason | null {
     return buyOrderBlockedReason(this.state, this.ctx, goodKey, price, qty)
   }
 
@@ -2385,7 +2385,9 @@ export class GameEngine {
       void this.persist()
       this.notify()
     }
-    return res.ok ? { ok: true } : { ok: false, error: res.reason ?? tr('core.market.007') }
+    return res.ok
+      ? { ok: true }
+      : { ok: false, error: res.reason ?? tr('core.market.007'), errorId: res.reasonId, errorParams: res.reasonParams }
   }
 
   /** 开始制造（2026-09-08 劳动者制与精炼炉同款：worker='pilot' 主控亲自（全局限 1 条、占主控）/ AI 核心类型 = 一枚核心驱动一条线；

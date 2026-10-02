@@ -65,8 +65,8 @@ describe('挂买单预扣冻结（挂单即扣钱，撤单/价差退回）', () 
     // 连一件都挂不起 → 拒绝 + 原因
     state.wallet.isk = 10
     expect(placeBuyOrder(state, ctx, KEY, 100, 5)).toBeNull()
-    expect(buyOrderBlockedReason(state, ctx, KEY, 100, 5)).toContain('信用点不足')
-    expect(buyOrderBlockedReason(state, ctx, KEY, 100, 5)).toContain('撤单即退回')
+    expect(buyOrderBlockedReason(state, ctx, KEY, 100, 5)?.errorId).toBe('core.market.044')
+    expect(buyOrderBlockedReason(state, ctx, KEY, 100, 5)?.errorParams).toEqual({ p1: '100', p2: '10' })
   })
 
   it('成交按实际成交价核销预扣：挂价高于成交价时**价差退回钱包**', () => {

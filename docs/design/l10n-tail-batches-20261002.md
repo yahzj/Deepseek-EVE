@@ -92,6 +92,25 @@
 
 ---
 
+## 批④ 市场域（2026-10-02）
+
+**范围判定（先查界面入口，再决定做不做）**：盘点稿把本域写成"2 条"，实际逐条查完是 ——
+
+| 函数 | 条数 | 有没有界面入口 | 处置 |
+|---|---|---|---|
+| `buyOrderBlockedReason` | 4 | **有**（`MarketPage.tsx:848` 挂单闸） | 本批做 |
+| `sellStoredShipAtMarket` | 2 | **有**（`engine.sellStoredShipAt` → 舰船仓库「出售」） | 本批做 |
+| `buyBasicAiCore` | 1 | **有**（`engine` → toast） | 本批做 |
+| `shipSellable` | 7 | **没有**（`market.ts:2080` 头注明写：舰队实例版出售**自 2026-09-22 起没有界面入口**） | 归 C 类，**登记不动**（日后若加界面入口需补 id） |
+| `sellShipAtMarket` | 3 | 同上 | 归 C 类，登记不动 |
+
+**落码（4 个文件）**：`market.ts`（`buyOrderBlockedReason` → `CoreBlockReason`，含把**锁标**改走既有结构化孪生 `marketLockNote`（同一条文案同一个 id，2026-09-30 的先例）· `sellStoredShipAtMarket` 补 `reasonId/reasonParams` · `buyBasicAiCore` 补 `errorId`）· `engine.ts`（买单闸返回类型 ＋ 卖船结果透传）· `MarketPage.tsx`（提示走 `cmdText`）· `table.ts`（`core.market.041~047` 七条）。
+
+**验证**：`typecheck` 四包 0 错 · core **286 文件 / 3008 用例全绿** · `l10n:check` ✅ · `l10n:params` 0 漏喂 · `content:check` ✅。
+**用例同步 2 处**：`wormhole-core-drop.test.ts`（只收不卖 → 断 `core.market.043`）· `market-buy-escrow.test.ts`（信用点不足 → 断 `core.market.044` ＋ 参数 `{p1:'100',p2:'10'}`）。
+
+---
+
 ## 待做（按盘点稿顺序）
 
 批③ 远征/自动循环（9 条）· 批④ 市场（2 条）· 批⑤ 工业（3 条）· 批⑥ 装配（1 条）· 批⑦ 虫洞＋战斗读数（2 条）· 批⑧ B 类待核（9 条）· 批⑨ 日志行（97 处，建议单独立项）· 批⑪ 共享拒因（`shipLockedReason` / `cannotInterruptReason`，跨 6 域，需先申请）。

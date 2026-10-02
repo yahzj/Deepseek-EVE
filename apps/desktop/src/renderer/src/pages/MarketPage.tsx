@@ -847,7 +847,7 @@ function MarketDetail({ engine, onToast, good }: { engine: PageProps['engine']; 
       // 2026-09-11（预扣冻结）：余额不足同样明示（core 单点口径：挂 1 件需预扣多少、钱包多少）
       const gate = engine.buyOrderBlocked(good.key, p, n)
       if (gate) {
-        onToast(tr("ui.MarketPage.154", { gate: gate }), true)
+        onToast(tr("ui.MarketPage.154", { gate: cmdText(gate) }), true)
         return
       }
       const res = engine.placeBuyOrderAt(good.key, p, n)

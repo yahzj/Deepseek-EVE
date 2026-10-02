@@ -27,6 +27,7 @@
  *   双满合计减免 80% → 1%）；挂单/自动转挂单/买入一律免费——税是唯一的市场费用
  *   （参考 EVE 的销售税；取消经纪人费/挂单费）。
  */
+import type { CoreBlockReason } from './engine'
 import { bumpFirst } from './firstTasks'
 import { addLog, shipLockedReason } from './state'
 import type { GameState, NpcMarketOrder, PlayerOrder } from './state'
@@ -1516,16 +1517,25 @@ export function buyOrderBlockedReason(
   goodKey: string,
   price: number,
   qty: number,
-): string | null {
+): CoreBlockReason | null {
   const def = ctx.marketGoods.get(goodKey)
-  if (!def || qty <= 0 || price <= 0) return '价格或数量无效。'
-  const lock = goodLockedReason(state, def)
-  if (lock !== null) return lock
-  if (bmGateLocked(state, def)) return bmGateReason(state, def) ?? '声望未达'
-  if (def.playerBuyable === false) return '该商品只收不卖，市场不出售现货。'
+  if (!def || qty <= 0 || price <= 0) return { error: '价格或数量无效。', errorId: 'core.market.041' }
+  /* 锁标走**结构化孪生**（2026-09-30 加的那条先例）：同一条文案同一个 id ⇒ 界面按语言渲染 */
+  const lockNote = marketLockNote(state, def)
+  if (lockNote !== null) return { error: lockNote.text, errorId: lockNote.textId, errorParams: lockNote.params }
+  if (bmGateLocked(state, def)) {
+      const note = bmGateNote(state, def)
+      return note ? { error: note.text, errorId: note.textId, errorParams: note.params } : { error: '声望未达', errorId: 'core.market.042' }
+    }
+  if (def.playerBuyable === false)
+      return { error: '该商品只收不卖，市场不出售现货。', errorId: 'core.market.043' }
   const unit = Math.round(price)
   if (state.wallet.isk < unit) {
-    return `信用点不足：挂 1 件需预扣 ${unit.toLocaleString('zh-CN')} 信用点，钱包 ${Math.floor(state.wallet.isk).toLocaleString('zh-CN')} 信用点（预扣部分撤单即退回）。`
+    return {
+      error: `信用点不足：挂 1 件需预扣 ${unit.toLocaleString('zh-CN')} 信用点，钱包 ${Math.floor(state.wallet.isk).toLocaleString('zh-CN')} 信用点（预扣部分撤单即退回）。`,
+      errorId: 'core.market.044',
+      errorParams: { p1: unit.toLocaleString('zh-CN'), p2: Math.floor(state.wallet.isk).toLocaleString('zh-CN') },
+    }
   }
   return null
 }
@@ -1976,11 +1986,21 @@ export function sellStoredShipAtMarket(
   ctx: SimContext,
   defId: string,
   qty = 1,
-): { ok: boolean; total?: number; reason?: string; filled?: number; resting?: number } {
+): {
+  ok: boolean
+  total?: number
+  reason?: string
+  /** 本地化 id（界面优先用它取当前语言，缺省回退 `reason` 原文） */
+  reasonId?: string
+  reasonParams?: Record<string, string | number>
+  filled?: number
+  resting?: number
+} {
   const have = shipStoredCount(state, defId)
-  if (have <= 0) return { ok: false, reason: '舰船仓库里没有这一型：先在舰船页把船移入舰船仓库。' }
+  if (have <= 0)
+    return { ok: false, reason: '舰船仓库里没有这一型：先在舰船页把船移入舰船仓库。', reasonId: 'core.market.045' }
   const def = [...ctx.marketGoods.values()].find((g) => g.kind === 'ship' && g.refId === defId)
-  if (!def) return { ok: false, reason: '该舰船不在市场流通目录中。' }
+  if (!def) return { ok: false, reason: '该舰船不在市场流通目录中。', reasonId: 'core.market.046' }
   const display = ctx.ships.get(defId)?.name ?? defId
   const n = Math.min(Math.max(1, Math.floor(qty)), have)
   const quote = marketQuote(state, ctx, def.key)
@@ -2281,7 +2301,12 @@ export function buyBasicAiCore(state: GameState, ctx: SimContext): CommandResult
   const quote = marketQuote(state, ctx, good.key)
   const ask = quote.sell ?? Math.round(levelOf(state, ctx, good.key) * 1.06)
   if (state.wallet.isk < ask) {
-    return { ok: false, error: `信用点不足：基础 AI 核心约 ${ask.toLocaleString('zh-CN')} 信用点（现有 ${state.wallet.isk.toLocaleString('zh-CN')}）。` }
+    return {
+      ok: false,
+      error: `信用点不足：基础 AI 核心约 ${ask.toLocaleString('zh-CN')} 信用点（现有 ${state.wallet.isk.toLocaleString('zh-CN')}）。`,
+      errorId: 'core.market.047',
+      errorParams: { p1: ask.toLocaleString('zh-CN'), p2: state.wallet.isk.toLocaleString('zh-CN') },
+    }
   }
   if (quote.sell !== undefined) {
     const res = buyAtMarket(state, ctx, good.key, 1)

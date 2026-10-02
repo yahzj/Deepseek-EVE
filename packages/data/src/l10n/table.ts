@@ -1143,6 +1143,13 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     en: "Requires Deep Space Industry Association reputation {p1} (total earned {p2})",
   },
   "core.market.040": { zh: "市价售出 {p1}×{p2}（税后入账 {p3} 信用点，{p4} 笔）{p5}。", en: "Sold {p1}×{p2} at market ({p3} credits after tax, {p4} fills){p5}." },  /* ── 第十九批：expedition.ts（远征 / 悬赏：出击前置 / 撤退 / 召回）── */
+  "core.market.041": { zh: "价格或数量无效。", en: "The price or quantity is not valid." },
+  "core.market.042": { zh: "声望未达", en: "Standing too low" },
+  "core.market.043": { zh: "该商品只收不卖，市场不出售现货。", en: "That good is buy-only: the market never sells it as stock." },
+  "core.market.044": { zh: "信用点不足：挂 1 件需预扣 {p1} 信用点，钱包 {p2} 信用点（预扣部分撤单即退回）。", en: "Not enough credits: one unit on the book needs {p1} credits held in escrow and your wallet holds {p2} — anything held comes back when you cancel." },
+  "core.market.045": { zh: "舰船仓库里没有这一型：先在舰船页把船移入舰船仓库。", en: "No ship of that class in storage — move one into ship storage on the Ships page first." },
+  "core.market.046": { zh: "该舰船不在市场流通目录中。", en: "That ship is not in the market catalogue." },
+  "core.market.047": { zh: "信用点不足：基础 AI 核心约 {p1} 信用点（现有 {p2}）。", en: "Not enough credits: a Basic AI Core costs about {p1} (you hold {p2})." },
   "core.expedition.001": { zh: "当前不在交火中。", en: "You are not in combat right now." },
   "core.expedition.002": { zh: "战斗记录缺失。", en: "The battle record is missing." },
   "core.expedition.003": { zh: "未知目标：{p1}。", en: "Unknown target: {p1}." },

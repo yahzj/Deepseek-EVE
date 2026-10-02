@@ -172,7 +172,7 @@ describe('虫洞 · 遗迹掉落 AI 核心（2026-09-14 船长定）', () => {
     state.wallet.isk = 1_000_000_000
     setStanding(state, 'dsi', 100)
     // 只收不卖：买入被明确拒绝（不是"余额不足"这种误导文案）
-    expect(buyOrderBlockedReason(state, ctx, 'core-alpha', 10_000_000, 1)).toContain('只收不卖')
+    expect(buyOrderBlockedReason(state, ctx, 'core-alpha', 10_000_000, 1)?.errorId).toBe('core.market.043')
     expect(buyAtMarket(state, ctx, 'core-alpha', 1).blocked).toBe('not-buyable')
     expect(state.aiCores.alpha ?? 0).toBe(0) // 没买进来
     // 伽马仍可买（船长只点了贝塔与阿尔法）
