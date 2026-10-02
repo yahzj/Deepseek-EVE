@@ -480,6 +480,15 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：零渲染层改动）。
 
+### 批次 4o：渲染层试点——`ui/communicator.tsx` 通讯弹层（2026-10-02 · 零行为变化）
+
+- 手法：`Communicator`（通讯剧本弹层，仅依赖 i18n 的 `tr`）从 panels/Expedition.tsx 拆到
+  `ui/communicator.tsx`；Expedition 借回使用并原样再导出 ⇒ App.tsx 等既有引用零改动。
+- 渲染层拆分的试点批：验证「抽出组件 → 原文件借回 + 再导出」在 JSX 侧同样零环（F9 扫渲染层，
+  实测仍 0 环）。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ ·
+  ui:rot-check ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、

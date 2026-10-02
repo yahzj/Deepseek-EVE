@@ -3265,34 +3265,8 @@ function AnomalyCard({
 /* ═══════════════ T9：建站族任务卡 + 通讯器 ═══════════════ */
 
 /** 通讯器浮层（D2：一次性完整呈现；逐句镜像日志由 engine.openDialogue 负责） */
-export function Communicator({
-  script,
-  onClose,
-}: {
-  script: { title: string; lines: readonly { speaker: string; text: string }[] }
-  onClose: () => void
-}) {
-  return (
-    <div className="app-comm-mask" onClick={onClose}>
-      <div className="app-comm" onClick={(e) => e.stopPropagation()}>
-        <div className="app-comm-title">{script.title}</div>
-        <div className="app-comm-body">
-          {script.lines.map((l, i) => (
-            <div key={i} className="app-comm-line">
-              <span className="app-comm-speaker">{l.speaker}</span>
-              <span className="app-comm-text">{l.text}</span>
-            </div>
-          ))}
-        </div>
-        <div className="app-comm-foot">
-          <button className="app-btn is-small is-primary" onClick={onClose}>
-            {tr("ui.Expedition.048")}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
+import { Communicator } from '../ui/communicator'
+export { Communicator } from '../ui/communicator'
 
 /* ─────────── v24 任务中心·时效任务（资源 / 快递：随 20 分钟补给周期整板刷新，限时有效；
    2026-09-10 追加：赏金任务 = 独立日板，24 小时一轮、每天本地 0 点整板替换） ─────────── */
