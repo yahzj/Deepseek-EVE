@@ -1051,6 +1051,8 @@ export function wormholeTempAddShape(
     state,
     'salvage',
     `🕳 放进临时空间：${name}（占 ${need} 格）——到「货仓」页整理进货仓或丢弃（离开货仓页前必须处理）。`,
+    'core.wormholeSalvage.044',
+    { p1: name, p2: need },
   )
   return { ok: true, cells: need }
 }
@@ -1241,6 +1243,14 @@ export function wormholeHoldStow(
     state,
     'salvage',
     `🕳 装舱：${name}（占 ${r.placement!.w}×${r.placement!.h} 格）· 货仓 ${wormholeHoldUsage(state, ctx).used}/${capacity} 格。`,
+    'core.wormholeSalvage.045',
+    {
+      p1: name,
+      p2: r.placement!.w,
+      p3: r.placement!.h,
+      p4: wormholeHoldUsage(state, ctx).used,
+      p5: capacity,
+    },
   )
   return { ok: true, placementId: r.placement!.id }
 }
@@ -1331,6 +1341,13 @@ export function wormholeDiscardCargo(
     state,
     'warn',
     `🕳 抛弃：${name} ×${cut}（货仓 ${wormholeHoldUsage(state, ctx).used}/${wormholeHoldCapacityOf(state, ctx)} 格）。`,
+    'core.wormholeSalvage.046',
+    {
+      p1: name,
+      p2: cut,
+      p3: wormholeHoldUsage(state, ctx).used,
+      p4: wormholeHoldCapacityOf(state, ctx),
+    },
   )
   return { ok: true, dropped: cut }
 }
@@ -1786,6 +1803,8 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
             state,
             'salvage',
             `🕳 残骸堆里翻出${name}：货仓腾不出 ${shp.w}×${shp.h} ⇒ 先放进临时空间（到「货仓」页整理进货仓）。`,
+            'core.wormholeSalvage.047',
+            { p1: name, p2: shp.w, p3: shp.h },
           )
         } else {
           cell.piles = [...(cell.piles ?? []), { itemId: boxId, units: 1 }]
@@ -1849,6 +1868,8 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
           state,
           'salvage',
           `🕳 遗迹深处发现${name}：货仓腾不出 ${shp.w}×${shp.h} ⇒ 先放进临时空间（到「货仓」页整理进货仓）。`,
+          'core.wormholeSalvage.048',
+          { p1: name, p2: shp.w, p3: shp.h },
         )
       } else {
         cell.piles = [...(cell.piles ?? []), { itemId: ruinsBoxId, units: 1 }]
@@ -1856,6 +1877,8 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
           state,
           'warn',
           `🕳 遗迹深处发现${name}：货仓与临时空间都放不下 ⇒ 先散落在该地点（腾出空间后回来拾取）。`,
+          'core.wormholeSalvage.049',
+          { p1: name },
         )
       }
       ruinsBoxes.push(ruinsBoxId)
