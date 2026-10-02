@@ -1505,6 +1505,43 @@ function clamp01(v: number): number {
 /* ─────────────── 开局 / 结束（幂等；下一步接引擎 tick 与派生卡） ─────────────── */
 
 /**
+ * 🔴 **本期是不是已经"封盘"了**（**船长 2026-10-02 令「甲」**）—— **本期击杀过旗舰 ⇒ 本期不再开新场**。
+ *
+ * ## 为什么要有这条（一号当日的玩家报障取证）
+ *
+ * 玩家报障：「**击败旗舰打空血量后，被弹出战斗，且旗舰血量全满**」。一号用真实函数跑了一整条链路，
+ * 结论不是"同一场血量被重置"（全仓只有 `weekendNoteFlagshipDamage` 一个写入点、只做加法；换场即全新对象），
+ * 而是：**击杀旗舰 ⇒ 本场入侵结束 ⇒ 下一拍立刻又开了一场新的入侵**（＝ 2026-10-02「甲」令
+ * 「只看当前有没有正在进行」那条的**已知后果**：窗口内可连开）⇒ 新一场的旗舰在**首次接战**那一刻
+ * 锁成满血 150,000 ⇒ 玩家看到的就是「**旗舰血量全满**」。
+ * 战利品**没丢**（探针读数：`flagshipKilled = { blackBox: true, wreck: 90 }` ✓），丢的是观感：
+ * 「刚把入侵打穿，立刻又冒出一场满血旗舰」。
+ *
+ * ## 口径（船长 2026-10-02 令「甲」）
+ *
+ * - **只有"玩家击杀旗舰"这一种结束方式封盘**：章鱼人得手（`'octopus'`）与到点收场（`'window'`）
+ *   **照旧可连开**（那两种不是"玩家打赢了"）；
+ * - **封盘只封本期**：下一期 T0 一到，照常开新场（判据拿"本期 T0"比）；
+ * - ⚠ **不封玩家召唤场**：信号发射器点火走的是 `useInvasionBeacon`（不经本函数）——玩家自己花道具
+ *   点的入侵是**主动选择**，不在"自动连开"的治理范围内；
+ * - ⚠ **不封补偿补场**：`weekendCompensation.openWeekendMakeupIfDue` 是另一条路（承诺给受影响档的
+ *   一场光环），与本期封盘互不干涉。
+ *
+ * ## 判据（**不新增存档字段**）
+ *
+ * 读**最近一场留档**（`state.weekendLastResult`，结算时写）：`flagshipOutcome === 'player'`
+ * （= `weekendFlagshipOutcomeOf` 的"留档优先"口径：玩家亲手击沉）**且**它**结束在本期 T0 之后**。
+ * 换期后 `endedAtWallMs < 新的本期 T0` ⇒ 自动解封（无需回收/迁移）。
+ */
+export function weekendPeriodSealedByKill(
+  state: Pick<GameState, 'weekendLastResult'>,
+  t0WallMs: number,
+): boolean {
+  const snap = state.weekendLastResult
+  return snap !== undefined && snap.flagshipOutcome === 'player' && snap.endedAtWallMs >= t0WallMs
+}
+
+/**
  * **确保当前时刻有一场该有的入侵**（幂等）：
  * - 正常模式：窗口（周五 20:00 ~ +96h）内若 `startedAtWallMs` 不是本周 T0 ⇒ 开新一场（编号 +1）；
  * - 调试模式：上一场结束 + 1h 后刷新（无历史 ⇒ 首次调用即开）；
@@ -1611,6 +1648,13 @@ export function ensureWeekendEvent(state: GameState, ctx: SimContext, nowWallMs:
    * 旧的这一场照旧活着、照旧由玩家打完 —— 打完收场后只要还落在某一周的窗口内，当周照常补开。
    */
   if (ev && ev.endedAtWallMs === undefined) return false
+  /**
+   * 🔴 **本期封盘**（**船长 2026-10-02 令「甲」**）：**本期已经击杀过旗舰 ⇒ 本期不再开新场**。
+   * 起因与口径见 {@link weekendPeriodSealedByKill} 头注（玩家报障「击败旗舰打空血量后……旗舰血量全满」）。
+   * 位置：放在"上一场未结束"那道门**之后**（那条必须先判：绝不用新场覆盖未结算的旧场），
+   * 在**抽核心 / 定族之前**（封盘了就一步都不做，连随机子流都不消费）。
+   */
+  if (weekendPeriodSealedByKill(state, t0)) return false
   const seq = (ev?.seq ?? 0) + 1
   /**
    * **本期族**（**船长 2026-10-02 令**：「一会8点开启入侵，设置为R族，下周如果没有特意设置，

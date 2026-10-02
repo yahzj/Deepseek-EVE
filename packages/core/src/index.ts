@@ -345,6 +345,8 @@ export {
   weekendReclaimedAt,
   weekendRollOccupation,
   weekendT0Of,
+  /** 2026-10-02 船长令「甲」：**本期击杀过旗舰 ⇒ 本期不再开新场**（判据 = 留档 `flagshipOutcome === 'player'` 且结束在本期 T0 之后） */
+  weekendPeriodSealedByKill,
   weekendWindowMsOf,
   weekendWindowOpen,
   /** 2026-10-02 船长令（100% 后仍可继续刷 · 掉落半量作惩罚）：已夺回的星系 ⇒ 出征残骸折扣 0.5 */
