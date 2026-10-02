@@ -22,7 +22,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import type { SimContext } from '../src/types'
 import { haulBaseReward, haulEffectiveMinutes, haulExposureAt } from '../src/hauling'
-import { securityZoneOf } from '../src/sideTasks'
+import { securityZoneOf } from '../src/securityZone'
 import { shortestTravelPath, shortestTravelMinutes } from '../src/travel'
 
 const ctx = buildSimContext() as SimContext

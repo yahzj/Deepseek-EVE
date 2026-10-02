@@ -13,7 +13,7 @@
  */
 import type { SimContext } from './types'
 import type { GameState, WormholeFamily } from './state'
-import { securityZoneOf } from './sideTasks'
+import { securityZoneOf } from './securityZone'
 import { FOE_DESIGN_STRENGTH_MUL, wormholeCardPoolAt } from './wormholeFoes'
 // ⚠ 依赖方向：`combat` 不 import 入侵模块（那条由 `weekendLaunch` 走）⇒ 这里单向引 combat 是安全的
 import { applyFoeOverride, foeThreatOfAnomaly } from './combat'

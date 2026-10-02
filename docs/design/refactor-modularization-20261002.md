@@ -292,6 +292,19 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：本批零渲染层文件改动）。
 
+### 批次 3-⑬：最后两刀——F9 基线清零，破环工程收官（2026-10-02）
+
+- ① 新文件 `securityZone.ts`：`SecurityZone` 类型 + `securityZoneOf`（纯 ctx 读数）从 sideTasks.ts
+  拆出 ⇒ hauling / consumables / weekendEvent 改从 securityZone 读（hauling→sideTasks 边清零）。
+  连带 5 处 import 改道（含 4 个用例）；index 的导出行同步。
+- ② `isShipLocked` / `shipStoredCount`（纯 state 读数）从 shipyard.ts 搬到 fleetBook.ts（舰队账本的家）；
+  market 的四件（含 `addShipToFleet`/`shipDisplayName` 改道 fleetBook/instances）全部离开 shipyard
+  ⇒ market→shipyard 边清零。manufacturing / comms 用例改道；shipyard 借回 + 再导出（先例）。
+- F9 基线 **3 → 0**：core 运行期模块环**全部清零**（初始 34 条 → 判据修正收 6 条幻影 → 破 28 条实测环）。
+  此后 F9 = 纯"不许新增运行期环"闸门。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：本批零渲染层文件改动）。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、

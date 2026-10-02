@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
-import { securityZoneOf } from '../src/sideTasks'
+import { securityZoneOf } from '../src/securityZone'
 import {
   weekendBountyCardsOf,
   weekendDerivedCardOf,

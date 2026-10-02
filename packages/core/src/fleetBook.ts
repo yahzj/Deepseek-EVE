@@ -85,3 +85,14 @@ export function restoreShipFromWreck(
   if (plugs.length > 0) ship.plugs = [...plugs]
   return uid
 }
+
+/** 该船是否已锁定（锁定后不可出售，其它操作不受影响）（2026-10-02 从 shipyard.ts 原样搬来，破 market→shipyard 环） */
+export function isShipLocked(state: GameState, shipId: string): boolean {
+  return state.shipLocks[shipId] === true
+}
+
+/** 仓库里该船型的艘数（读口径单点；负数/非法值一律当 0）（2026-10-02 从 shipyard.ts 原样搬来，破 market→shipyard 环） */
+export function shipStoredCount(state: GameState, defId: string): number {
+  const n = state.shipStore?.[defId] ?? 0
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
+}

@@ -1,5 +1,1 @@
-[
-  "packages/core/src/hauling.ts → packages/core/src/sideTasks.ts → packages/core/src/market.ts → packages/core/src/shipyard.ts",
-  "packages/core/src/market.ts → packages/core/src/shipyard.ts → packages/core/src/salvaging.ts → packages/core/src/weekendBounty.ts → packages/core/src/weekendBattle.ts → packages/core/src/weekendEvent.ts → packages/core/src/sideTasks.ts",
-  "packages/core/src/market.ts → packages/core/src/shipyard.ts → packages/core/src/salvaging.ts → packages/core/src/weekendBounty.ts → packages/core/src/weekendEvent.ts → packages/core/src/sideTasks.ts"
-]
+[]

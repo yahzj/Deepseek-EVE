@@ -1400,7 +1400,6 @@ export {
   startCourierDelivery,
   settleBountyTaskVictory,
   BOUNTY_ZONE_PLAN,
-  securityZoneOf,
   factionGalaxyId,
   isFactionBounty,
   factionPoolOf,
@@ -1509,7 +1508,9 @@ export type { AchievementDef, AchievementSource, AchievementCategory } from './t
 export type { AchievementState } from './state'
 export { HOME_SCAN_WINDOW_MS } from './explore'
 export type { FirstTaskDef, FirstStatKey, MilestoneChainRow } from './firstTasks'
-export type { SideTaskBoardView, SideTaskDeliveryView, SecurityZone } from './sideTasks'
+export type { SideTaskBoardView, SideTaskDeliveryView } from './sideTasks'
+export { securityZoneOf } from './securityZone'
+export type { SecurityZone } from './securityZone'
 
 export type { SideTask, SideTasksState, CourierDeliveryState, GameStateV24, MarksState } from './state'
 export { emptyMarks } from './state'

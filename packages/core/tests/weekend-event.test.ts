@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
-import { securityZoneOf } from '../src/sideTasks'
+import { securityZoneOf } from '../src/securityZone'
 import {
   WEEKEND_AMBUSH_STRENGTH_MUL,
   WEEKEND_CORE_THREAT,

@@ -32,7 +32,7 @@ import type { AiCoreType, BlueprintDef, ShipBlueprintDef, SimContext } from './t
 import { addWare, countWare, removeWare } from './inventory'
 import { bumpFirst } from './firstTasks'
 import { addModule } from './equipment'
-import { shipStoredCount } from './shipyard'
+import { shipStoredCount } from './fleetBook'
 import { formatDurationMs } from './time'
 import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
 import { stationIndustryBlocked } from './location'

@@ -53,6 +53,9 @@ import { isAtHome, originGalaxyOf } from './location'
 import { factionBaseRewardIsk,  isLairCandidate, lairLevelOf, lairNameOf, lairTaskRewardIsk } from './lairs'
 import type { LairTier } from './lairs'
 import type { AnomalyDef } from './types'
+// 安全分区（2026-10-02 拆到 securityZone.ts，破 hauling→sideTasks 边）；本文件借回使用
+import { securityZoneOf } from './securityZone'
+import type { SecurityZone } from './securityZone'
 
 /**
  * **任务级别 1~5**（船长 2026-09-18：「任务将划分级别，级别越高的任务收购的数量/所需的货仓容量越多。
@@ -626,21 +629,6 @@ function rollLevels(state: GameState, count: number): SideTaskLevel[] {
 }
 
 /* ═══════════ 赏金日板席位（2026-09-10 船长定：按安全等级抽地点、三档必现） ═══════════ */
-
-/** 安全等级分区（沿用全仓口径：sec ≥ 0.5 高安 / 0 < sec < 0.5 中安 / **sec ≤ 0 低安（含 0）**）。
- *  ⚠ 2026-09-12 船长裁定「**0也算低安**」⇒ 边界由 `sec < 0` 移到 `sec ≤ 0`，与伏击掷骰同源
- *  （`balance.encounter.lowSecMax`）。烬火星区与回音荒区（均为 0.0）因此由中安池进低安池。 */
-export type SecurityZone = '高安' | '中安' | '低安'
-
-/** 该星系的安全分区（security 缺省按 0.5 视作高安，与残骸基础密度兜底同口径） */
-export function securityZoneOf(ctx: SimContext, galaxyId: string): SecurityZone {
-  const sec = ctx.galaxies.get(galaxyId)?.security
-  const v = typeof sec === 'number' && Number.isFinite(sec) ? sec : 0.5
-  if (v >= 0.5) return '高安'
-  // 2026-09-12 船长「0也算低安」：中安是**开区间** (0, 0.5)，安全等级 0 归低安
-  if (v > 0) return '中安'
-  return '低安'
-}
 
 /**
  * 每日席位表（船长 2026-09-10 定）：

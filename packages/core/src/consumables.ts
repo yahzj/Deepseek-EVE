@@ -15,7 +15,7 @@ import { countItem, countWare, removeItem, removeWare } from './inventory'
 import { HOME_GALAXY_ID, addLog } from './state'
 import { SYNAPTIC_ACCELERANT_MS, synapticAccelerantActive, skillLevelTimeMs, trainingTimeFactor } from './training'
 import { tuningMul } from './tuning'
-import { securityZoneOf } from './sideTasks'
+import { securityZoneOf } from './securityZone'
 import { DSI_FACTION_ID, spendableStandingOf } from './expedition'
 import { weekendHasBuiltStation, weekendPeripheryOf, weekendRollOccupation } from './weekendEvent'
 

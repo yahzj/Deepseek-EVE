@@ -32,8 +32,8 @@ import {
  * `restoreShipFromWreck` 这四件舰队账本操作搬到 `fleetBook.ts`（断 salvaging↔shipyard 环），
  * 这里**原样再导出**保持既有 `from './shipyard'` 引用不变（先例：fitted.ts / wormhole 层曲线）。
  */
-export { addShipToFleet, allocateShipUid, restoreShipFromWreck } from './fleetBook'
-import { addShipToFleet } from './fleetBook'
+export { addShipToFleet, allocateShipUid, restoreShipFromWreck, isShipLocked, shipStoredCount } from './fleetBook'
+import { addShipToFleet, isShipLocked, shipStoredCount } from './fleetBook'
 
 /** 该实例的船型数据（uid → fleet 条目 → def；fleet 外/记录缺失返回 undefined） */
 export { fleetDefOf } from './instances'
@@ -474,10 +474,6 @@ export function repairShip(state: GameState, shipId: string, ctx: SimContext): C
 }
 
 /* ───────── T5 船只锁定（防误售，跨会话持久） ───────── */
-/** 该船是否已锁定（锁定后不可出售，其它操作不受影响） */
-export function isShipLocked(state: GameState, shipId: string): boolean {
-  return state.shipLocks[shipId] === true
-}
 
 /** 一次自动修理的结果（供"组件是否够"的判定用） */
 export interface RepairWithKitsResult {
@@ -720,12 +716,6 @@ export function lockShip(state: GameState, shipId: string, locked: boolean, ctx:
  * ④ 出售走市场挂单（`market.sellStoredShipAtMarket`）：先吃收购簿即时成交，未成交留在簿上，
  *    **撤单退回舰船仓库**（escrow 记 `from: 'store'`）；
  * ⑤ 老档缺省空 ⇒ **零迁移**（`save.ts` 只收正整数）。 */
-
-/** 仓库里该船型的艘数（读口径单点；负数/非法值一律当 0） */
-export function shipStoredCount(state: GameState, defId: string): number {
-  const n = state.shipStore?.[defId] ?? 0
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
-}
 
 /** 该船型的**总持有** = 仓库 ＋ 在役舰队（问"我有没有这型船"一律走这里；筛选口径另见设计稿） */
 export function shipOwnedCount(state: GameState, defId: string): number {

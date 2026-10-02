@@ -26,7 +26,7 @@ import {
 } from '../src/weekendEvent'
 import { weekendWarnCommsOf } from '../src/weekendComms'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
-import { securityZoneOf } from '../src/sideTasks'
+import { securityZoneOf } from '../src/securityZone'
 import { DSI_FACTION_ID, noteStandingEarned } from '../src/expedition'
 
 const ctx = buildSimContext()
