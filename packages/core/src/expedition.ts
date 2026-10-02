@@ -53,6 +53,7 @@ import {
   repairUsageText,
   dcUsageText,
   setDesirePrefOf,
+  desirePrefOf,
   settleDroneLosses,
   startBattleFor,
   // 战报改造（2026-09-14 船长定）：结构化战报的唯一构造点
@@ -350,7 +351,17 @@ export function setBattleDesire(state: GameState, desireM: number, ctx: SimConte
     const gid = state.encounter.galaxyId
     if (gid !== null && gid.length > 0) setDesirePrefOf(state, gid, clamped)
   } else {
-    setDesirePrefOf(state, anomaly.galaxyId, clamped)
+    /**
+     * 🔴 **写入键 = 本场实际作战星系**（**2026-10-02 船长报障修**：「**在打入侵时，玩家设置的目标距离
+     * 并不会保存**」）——`exp.foeGalaxyId` 由出征时落（2026-09-25 加，正是为"卡自带星系 ≠ 实际作战
+     * 星系"这件事）；没有它时回落卡自带星系 ⇒ **普通远征逐字不变**。
+     *
+     * ⚠ **为什么不能再用 `anomaly.galaxyId` 当键**（探针实测，2026-10-02）：入侵池卡在数据里写死
+     * `galaxyId: 'galaxy-hub'`（`ink-harass` / `ink-raid` …，它们本就不属于任何被占星系）⇒ 旧写法把
+     * 玩家的设定**记到母港头上**：① 被占星系一份都没记（= 船长报的"不保存"）② **母港那份设定被入侵
+     * 悄悄改掉**（更严重，报障里没提到）。
+     */
+    setDesirePrefOf(state, state.expedition.foeGalaxyId ?? anomaly.galaxyId, clamped)
   }
   return { ok: true }
 }
@@ -609,22 +620,34 @@ export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: stri
     weekendAssault && weekendEv && !weekendFoeCardsSelfPriced(weekendEv.family)
       ? weekendAssaultThreatOf(weekendEv, weekendAssault.galaxyId)
       : undefined
+  /**
+   * 🔴 **开战读哪把键 —— 必须与写入端同源**（**2026-10-02 船长报障修**：「**在打入侵时，玩家设置的
+   * 目标距离并不会保存**」）。
+   *
+   * 旧写法在这里传 `undefined`，指望 `startBattleFor` 自己回落 `desirePrefOf(state, anomaly.galaxyId)`；
+   * **而入侵池卡在数据里写死 `galaxyId: 'galaxy-hub'`**（`ink-harass` / `ink-raid` …，见 `packages/data`）
+   * ⇒ 那条回落读的是**母港**那把键。⚠ 旧注释那句「远征/入侵主动出击的目标卡**自带被占星系**」
+   * **与数据不符、是错的**（旗舰战那条注释反倒说对了：隐藏卡的 `galaxyId` 就是母港）。
+   *
+   * ⇒ 现在**显式**按**本场实际作战星系**读：`exp.foeGalaxyId`（出征时落的那个，2026-09-25 加），
+   * 与 `setBattleDesire` 的写入键**逐字同源**；没有 `foeGalaxyId` 时回落卡自带星系
+   * ⇒ **普通远征/普通悬赏逐字不变**。
+   *
+   * ⚠ 没设过时传下来的是 **`null`**（= 引擎的"强制默认档"出口）而**不是 `undefined`**：
+   * `undefined` 会掉回上面那个"按卡星系读"的回落、又读回母港。`desirePrefOf` 未命中本来就返回 `null`
+   * ⇒ 直传即可。⚠ 旗舰战那条同理（`weekendLaunch.weekendStartFlagshipBattle` 显式传核心星系那一份）。
+   */
+  const desirePref = desirePrefOf(
+    state,
+    state.expedition.foeGalaxyId ?? ctx.anomalies.get(anomalyId)?.galaxyId,
+  )
   const battle = startBattleFor(
     state,
     ctx,
     shipId,
     anomalyId,
     arrivalGameMs,
-    /**
-     * ⚠ **这里保持 `undefined` 是对的，别"顺手补一个 desirePrefOf"**（**2026-09-28 查证**）：
-     * `startBattleFor` 在 `desireM === undefined` 时**自己就会**回落 `desirePrefOf(state, anomaly.galaxyId)`
-     * （`combat.ts` 的"`null` = 强制默认档；显式值优先；否则该星系偏好 → 默认档"）。
-     * 远征/入侵主动出击的目标卡**自带被占星系** ⇒ 引擎那一读与写入端（`setBattleDesire` 也写
-     * `anomaly.galaxyId`）**逐字同源** ⇒ 记忆本来就是通的。
-     * （真正漏读的是**旗舰战**那条：它的卡是隐藏卡、`galaxyId` 是母港 `galaxy-hub` ⇒ 引擎回落会读错星系，
-     *  故 `weekendLaunch.weekendStartFlagshipBattle` 必须**显式**传核心星系那一份。）
-     */
-    undefined,
+    desirePref,
     weekendThreat !== undefined ? { threat: weekendThreat } : undefined,
   )
   if (!battle) return false
