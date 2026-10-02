@@ -430,13 +430,11 @@ const meSpeedRef = useRef(200)
    */
   const blinkRef = useRef<Map<string, { vanish: number; move: number; appear: number; segMs: number }>>(new Map());
   /**
-   * **闪现特效环**（**船长 2026-10-02 令**）：「**我之前的动画，更想的是在对应的时间节点播放一个特效**」
-   * ⇒ 删掉"出现"那一段的淡入动画，改成**在「消失」与「位移兑现」两个时间点各爆一个扩散环**。
-   *
-   * 本表 = 待播/在播的环（`at` = 该环的**真实毫秒**时刻，`until` = 播完即清理）。
-   * ⚠ 用绝对时刻而不是"随舰船 DOM 播动画"：环挂在**换位前**的位置上，换位后那一段由第二个环标出来。
+   * **闪现光柱的待播/在播表**（**船长 2026-10-02**：「**在对应的时间节点播放一个特效**」）——
+   * `at` = 该柱的**真实毫秒**时刻、`until` = 播完即清理、`el` = 已建出来的 DOM（不查 DOM，省每帧 query）。
+   * ⚠ 由 RAF 循环里的 `syncBlinkPillarDom` 建/删（**不走 React**——演出期间距离不变 ⇒ 等不到重渲染）。
    */
-  const blinkFxRef = useRef<Array<{ key: string; tag: string; at: number; until: number }>>([]);
+  const blinkFxRef = useRef<Array<{ key: string; tag: string; at: number; until: number; el?: SVGSVGElement }>>([]);
   /** 每个机型**上一帧**渲染的机体数（击落时用它定位"本帧即将消失的末位机体"） */
   const dronePrevShowRef = useRef<Map<string, number>>(new Map())
   const visDistRef = useRef(0)
@@ -713,6 +711,12 @@ const meSpeedRef = useRef(200)
         }
       }
       setSmoothM((old) => (old === null || Math.abs(old - vis) >= 0.05 ? vis : old))
+      /**
+       * 🔴 **闪现光柱：建/删 DOM**（**2026-10-02 修**：船长实机「**并没有看到特效**」）——
+       * 必须在这里做（RAF、**不走 React**）：演出期间距离刻意不变 ⇒ `setSmoothM` 不会触发重渲染
+       * ⇒ "推入 ref 等渲染"永远出不来。⚠ 用 `performance.now()` 口径（本表的 `at/until` 就是它）。
+       */
+      syncBlinkPillarDom(blinkFxRef.current, foeColRef.current, performance.now())
 
       // ── 背景视差滚动（2026-09-05 船长规则）：玩家前进（船向右、朝敌接近）→ 星空向左流；
       // 后退（想拉开、船向左退）→ 星空向右流。速度与「驾驶船战斗速度」挂钩（技能已折算）——
@@ -1143,14 +1147,15 @@ const meSpeedRef = useRef(200)
             segMs,
           })
           /**
-           * **两个特效环**（船长 2026-10-02）：「**在对应的时间节点播放一个特效**」——
+           * **两根光柱**（船长 2026-10-02 参考图）：「**在对应的时间节点播放一个特效**」——
            * ① 消失时刻（旧位置）② 位移兑现时刻（新位置）。
-           * ⚠ 环建在**当时的位置**上（单位 DOM 的几何），所以第一个环留在旧位置、第二个环出现在新位置。
+           * ⚠ 由 RAF 的 `syncBlinkPillarDom` **到点才建 DOM**（不走 React，原因见那个函数头注）：
+           * 第一根插在"当时还是旧位置"的单位里；位移兑现后单位已在新位置，第二根自然落在那儿。
            */
           const id = fx.seq
           blinkFxRef.current.push(
-            { key: `blink-fx-${id}-a`, tag: fx.tag, at: vanishAt, until: vanishAt + BLINK_FX_MS },
-            { key: `blink-fx-${id}-b`, tag: fx.tag, at: moveAt, until: moveAt + BLINK_FX_MS },
+            { key: `blink-pillar-${id}-a`, tag: fx.tag, at: vanishAt, until: vanishAt + BLINK_FX_MS },
+            { key: `blink-pillar-${id}-b`, tag: fx.tag, at: moveAt, until: moveAt + BLINK_FX_MS },
           )
         }
         continue
@@ -1540,10 +1545,8 @@ const meSpeedRef = useRef(200)
       if (now - b.appear >= b.segMs / 3) blinkRef.current.delete(tag)
     }
   }
-  // **闪现特效环**：播完即清（表里只留"在播/待播"的，清掉才有下一次的重新建环）
-  if (blinkFxRef.current.length > 0) {
-    blinkFxRef.current = blinkFxRef.current.filter((x) => now < x.until)
-  }
+  // ⚠ **闪现光柱的清理移到 RAF 里了**（`syncBlinkPillarDom`：它同时要摘 DOM，**不能只清表**）——
+  //   这里若也 filter，会留下已经不该存在的表项（DOM 已摘、表还在 ⇒ 那根柱再也建不出来）。
 
   /* ── 敌方单位被击毁检测（hp 归零的瞬间登记尸骸 + 爆炸计划，演出与战斗是否结束无关）──
      ⚠ **2026-09-14 船长报障修复（甲案）**：「血条打空后，舰船形象和血条都不清理消除」——
@@ -2206,19 +2209,12 @@ const meSpeedRef = useRef(200)
     const blinkWait = blinkSeg !== undefined && now >= blinkSeg.move && now < blinkSeg.appear
     /**
      * ③ **出现：不再播任何动画**（**船长 2026-10-02 令**：「**既然基线动画重新生效会再播一遍，那么就取消
-     * ③ 出现部分的视觉表现**」）——到点**直接显示**在新位置，视觉交给下面那两个特效环。
+     * ③ 出现部分的视觉表现**」）——到点**直接显示**在新位置，视觉交给两根光柱。
+     *
+     * ⚠ 光柱**不走这里**（**2026-10-02 修**：船长实机「**并没有看到特效**」）——
+     * 它由 RAF 的 `syncBlinkPillarDom` 到点建 DOM（演出期间距离不变 ⇒ 等不到 React 重渲染）。
      */
     const blinkOn = false
-    /**
-     * 两个特效环（**船长 2026-10-02**：「**在对应的时间节点播放一个特效**」）——
-     * 环由 `blinkFxRef` 登记、渲染时按"在播/待播"建 DOM（判定走登记表而不是重算时间，免得过期项又冒出来）。
-     * `--fx-delay`：① 消失时刻（旧位置）② 位移兑现时刻（新位置）。⚠ **可正可负**：负值 = 该时刻已过去一点、
-     * 环已播到中途（正是正确表现）。
-     */
-    const fxOf = (suffix: 'a' | 'b'): { at: number; until: number } | undefined =>
-      blinkFxRef.current.find((x) => x.tag === tag && x.key.endsWith(suffix))
-    const blinkFxA = fxOf('a')
-    const blinkFxB = fxOf('b')
     const boomLive = corpseOn && sinceBoom < BOOM_LIFE
     const fadeT = sinceBoom >= BOOM_LIFE ? clamp01((sinceBoom - BOOM_LIFE) / WRECK_FADE_MS) : 0
     /** 本舰是否正在**飞入**（逐舰入场：首波按 `arrivalSide`，此后按引擎 `enteredAtMs`） */
@@ -2273,86 +2269,9 @@ const meSpeedRef = useRef(200)
          * ⚠ 用 `animation-delay` 精确对齐时刻（`--fx-delay`，可正可负）；负延迟时环**已播到一半**，
          *   正是"该时刻已经过去一点"的正确表现。
          */}
-        {/**
-         * 🔴 **闪现特效：竖直光柱**（**船长 2026-10-02 令**：「**特效我更希望接近大鲸鱼根目录的
-         * 『闪现效果参考.png』**」）——参考图的形制 = **多道竖直细光柱**：
-         * 中心最亮（青白）→ 两侧渐深（青 → 深蓝）→ **上下两端渐隐**。
-         *
-         * ⚠ 与"扩散环"那版的差别（如实记）：参考图**不是环**，是**立柱状的光带**。
-         * ⚠ **竖向与舰体朝向无关**（`.app-sprite` 的翻转只在它自己的 `svg g` 里，不影响兄弟节点）
-         *   ⇒ 光柱恒为屏幕竖直、并以舰体中心为轴。
-         * ⚠ 两个时间点各一根：① 消失（旧位置）② 位移兑现（新位置）。
-         */}
-        {[
-          { key: 'a', fx: blinkFxA },
-          { key: 'b', fx: blinkFxB },
-        ].map(({ key, fx }) =>
-          fx ? (
-            <svg
-              key={`blink-fx-${key}`}
-              className="app-bts-blink-pillar"
-              viewBox="-50 -95 100 190"
-              preserveAspectRatio="none"
-              style={
-                {
-                  '--fx-delay': `${fx.at - now}ms`,
-                  width: `${Math.round(size * 0.85)}px`,
-                  height: `${Math.round(size * 2)}px`,
-                  left: '50%',
-                  top: '50%',
-                  marginLeft: `-${Math.round(size * 0.425)}px`,
-                  marginTop: `-${Math.round(size)}px`,
-                  /** ⚠ 舰体单位若被裁切（overflow 继承）也不许切掉光柱两端 */
-                  overflow: 'visible',
-                } as CSSProperties
-              }
-              aria-hidden="true"
-            >
-              <defs>
-                {/* ① 单条竖线的纵向配色（深蓝 → 青 → 亮青 → 青 → 深蓝） */}
-                <linearGradient id={`blink-pillar-line-${key}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#1a3f9e" />
-                  <stop offset="42%" stopColor="#2ea8e0" />
-                  <stop offset="58%" stopColor="#3fe0f0" />
-                  <stop offset="100%" stopColor="#1a3f9e" />
-                </linearGradient>
-                {/* ② 整根光柱的**上下渐隐**（参考图里两端化开得较宽） */}
-                <linearGradient id={`blink-pillar-fade-${key}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#000" />
-                  <stop offset="25%" stopColor="#fff" />
-                  <stop offset="75%" stopColor="#fff" />
-                  <stop offset="100%" stopColor="#000" />
-                </linearGradient>
-                <mask id={`blink-pillar-mask-${key}`} maskUnits="userSpaceOnUse" x="-50" y="-95" width="100" height="190">
-                  <rect x="-50" y="-95" width="100" height="190" fill={`url(#blink-pillar-fade-${key})`} />
-                </mask>
-              </defs>
-              <g mask={`url(#blink-pillar-mask-${key})`}>
-                {Array.from({ length: 52 }, (_, i) => {
-                  /** 横向位置 -50 → 50；`d` = 离中心多远（0 = 中心最亮） */
-                  const x = -50 + (i / 51) * 100
-                  const d = Math.abs(x) / 50
-                  return {
-                    x,
-                    sw: 0.45 + (1 - d) * 1.05,
-                    op: 0.12 + Math.pow(1 - d, 1.6) * 0.85,
-                  }
-                }).map((l, i) => (
-                  <line
-                    key={i}
-                    x1={l.x}
-                    y1={-95}
-                    x2={l.x}
-                    y2={95}
-                    stroke={`url(#blink-pillar-line-${key})`}
-                    strokeWidth={l.sw}
-                    opacity={l.op}
-                  />
-                ))}
-              </g>
-            </svg>
-          ) : null,
-        )}
+        {/* 🔴 **闪现光柱不在 JSX 里**（**2026-10-02 修**：船长实机「并没有看到特效」）——
+            它由 RAF 的 `syncBlinkPillarDom` 到点建 DOM（演出期间距离不变 ⇒ 等不到 React 重渲染），
+            形状（52 道竖线 / 渐变 / 上下渐隐）见模块级的 `buildBlinkPillarEl`。 */}
         {/* 舰名：**第一排**浮在舰体上方（与改动前一致）；**第二排**（其上方是第一排的舰体）改由该舰血条标签承载
             机库备用机（图标 ×N）跟在**各自的名字右边**（2026-09-12 船长） */}
         {!isRank2 ? (
@@ -3258,4 +3177,137 @@ const meSpeedRef = useRef(200)
 /** ammo 缩写键（与核心引擎一致） */
 function ammoKey(t: DamageType): 'kin' | 'exp' | 'pla' {
   return t === 'kinetic' ? 'kin' : t === 'explosive' ? 'exp' : 'pla'
+}
+
+/**
+ * 🔴 **闪现特效：竖直光柱**（**船长 2026-10-02 令**：「**特效我更希望接近大鲸鱼根目录的『闪现效果参考.png』**」）
+ * ——做成一个**脱离 React 的 DOM 工厂**。
+ *
+ * ⚠ **为什么必须走 DOM 而不是 JSX**（**2026-10-02 实测踩到**：船长「**我进行了实机测试，并没有看到特效**」）：
+ * 本面板的逐帧动画**全部由 RAF 循环直接操作 DOM**（见 `drive`），React 只在"距离变化 ≥ 0.05"等少数时刻重渲染；
+ * 而闪现演出期间距离**刻意不变**（位移推迟到 `moveAtMs`）⇒ 把特效"推入 ref 等重渲染"**永远不会渲染出来**。
+ *
+ * 形制（按参考图）：**多道竖直细光柱**——中心最亮（青白）→ 两侧渐深（青 → 深蓝），整根**上下渐隐**。
+ * 两个时间点各爆一根：① 消失（旧位置）② 位移兑现（新位置）。
+ *
+ * ⚠ 竖向与舰体朝向**无关**（`.app-sprite` 的翻转只在它自己的 `svg g` 里，不影响兄弟节点）。
+ * ⚠ 渐变/蒙版 id 必须**逐元素唯一**，否则同页多根柱会互相抢 defs。
+ * @param size 舰体尺寸（px）——光柱宽高按它换算
+ */
+function buildBlinkPillarEl(uniq: string, size: number): SVGSVGElement {
+  const NS = 'http://www.w3.org/2000/svg'
+  const w = Math.max(24, Math.round(size * 0.85))
+  const h = Math.max(48, Math.round(size * 2))
+  const svg = document.createElementNS(NS, 'svg')
+  svg.setAttribute('class', 'app-bts-blink-pillar')
+  svg.setAttribute('viewBox', '-50 -95 100 190')
+  svg.setAttribute('preserveAspectRatio', 'none')
+  svg.setAttribute('aria-hidden', 'true')
+  svg.style.width = `${w}px`
+  svg.style.height = `${h}px`
+  svg.style.left = '50%'
+  svg.style.top = '50%'
+  svg.style.marginLeft = `${-Math.round(w / 2)}px`
+  svg.style.marginTop = `${-Math.round(h / 2)}px`
+  svg.style.overflow = 'visible'
+  const defs = document.createElementNS(NS, 'defs')
+  const lineGrad = document.createElementNS(NS, 'linearGradient')
+  lineGrad.setAttribute('id', `blink-pillar-line-${uniq}`)
+  lineGrad.setAttribute('x1', '0')
+  lineGrad.setAttribute('y1', '0')
+  lineGrad.setAttribute('x2', '0')
+  lineGrad.setAttribute('y2', '1')
+  for (const [off, color] of [
+    ['0%', '#1a3f9e'],
+    ['42%', '#2ea8e0'],
+    ['58%', '#3fe0f0'],
+    ['100%', '#1a3f9e'],
+  ] as const) {
+    const st = document.createElementNS(NS, 'stop')
+    st.setAttribute('offset', off)
+    st.setAttribute('stop-color', color)
+    lineGrad.appendChild(st)
+  }
+  const fadeGrad = document.createElementNS(NS, 'linearGradient')
+  fadeGrad.setAttribute('id', `blink-pillar-fade-${uniq}`)
+  fadeGrad.setAttribute('x1', '0')
+  fadeGrad.setAttribute('y1', '0')
+  fadeGrad.setAttribute('x2', '0')
+  fadeGrad.setAttribute('y2', '1')
+  for (const [off, color] of [
+    ['0%', '#000'],
+    ['25%', '#fff'],
+    ['75%', '#fff'],
+    ['100%', '#000'],
+  ] as const) {
+    const st = document.createElementNS(NS, 'stop')
+    st.setAttribute('offset', off)
+    st.setAttribute('stop-color', color)
+    fadeGrad.appendChild(st)
+  }
+  const mask = document.createElementNS(NS, 'mask')
+  mask.setAttribute('id', `blink-pillar-mask-${uniq}`)
+  mask.setAttribute('maskUnits', 'userSpaceOnUse')
+  mask.setAttribute('x', '-50')
+  mask.setAttribute('y', '-95')
+  mask.setAttribute('width', '100')
+  mask.setAttribute('height', '190')
+  const maskRect = document.createElementNS(NS, 'rect')
+  maskRect.setAttribute('x', '-50')
+  maskRect.setAttribute('y', '-95')
+  maskRect.setAttribute('width', '100')
+  maskRect.setAttribute('height', '190')
+  maskRect.setAttribute('fill', `url(#blink-pillar-fade-${uniq})`)
+  mask.appendChild(maskRect)
+  defs.append(lineGrad, fadeGrad, mask)
+  svg.appendChild(defs)
+  const g = document.createElementNS(NS, 'g')
+  g.setAttribute('mask', `url(#blink-pillar-mask-${uniq})`)
+  const N = 52
+  for (let i = 0; i < N; i++) {
+    /** 横向位置 -50 → 50；`d` = 离中心多远（0 = 中心最亮） */
+    const x = -50 + (i / (N - 1)) * 100
+    const d = Math.abs(x) / 50
+    const ln = document.createElementNS(NS, 'line')
+    ln.setAttribute('x1', String(x))
+    ln.setAttribute('y1', '-95')
+    ln.setAttribute('x2', String(x))
+    ln.setAttribute('y2', '95')
+    ln.setAttribute('stroke', `url(#blink-pillar-line-${uniq})`)
+    ln.setAttribute('stroke-width', String(0.45 + (1 - d) * 1.05))
+    ln.setAttribute('opacity', String(0.12 + Math.pow(1 - d, 1.6) * 0.85))
+    g.appendChild(ln)
+  }
+  svg.appendChild(g)
+  return svg
+}
+
+/**
+ * **把"到点的闪现光柱"建出来 / 把过期的删掉**（RAF 里每次调用；**不经过 React**）。
+ *
+ * - 建：按 `at` 到点的项，往**该舰单位元素**里插一根柱（位置自动跟随舰体，换位后自然落在新位置）；
+ * - 删：`until` 过期的项，摘掉 DOM 并出表。
+ *
+ * ⚠ 表里记 `el` 引用（不查 DOM），避免每帧 querySelector。
+ */
+function syncBlinkPillarDom(
+  fxList: Array<{ key: string; tag: string; at: number; until: number; el?: SVGSVGElement }>,
+  root: HTMLElement | null,
+  now: number,
+): void {
+  for (let i = fxList.length - 1; i >= 0; i--) {
+    const fx = fxList[i]!
+    if (now >= fx.until) {
+      fx.el?.remove()
+      fxList.splice(i, 1)
+      continue
+    }
+    if (fx.el || now < fx.at || !root) continue
+    const host = root.querySelector<HTMLElement>(`[data-tag="${fx.tag}"]`)
+    if (!host) continue
+    const size = host.getBoundingClientRect().width || 96
+    const el = buildBlinkPillarEl(fx.key, size)
+    host.appendChild(el)
+    fx.el = el
+  }
 }

@@ -12416,19 +12416,20 @@ html[data-locale='en'] body {
 .app-bts-unit.is-blink-out {
   animation: app-bts-blink-out var(--blink-ms, 667ms) ease-in both;
 }
-/* 闪现**特效环**（船长 2026-10-02：「更想的是在对应的时间节点播放一个特效」）：
-   绝对定位盖在舰体上、不参与布局；`--fx-delay` 把环对齐到「消失」与「位移兑现」两个时间点。 */
+/* 闪现**特效**（船长 2026-10-02）：「更想的是在对应的时间节点播放一个特效」——
+   两个时间点各一根**竖直光柱**（形状在 JSX/DOM 工厂里画）。 */
 /* 🔴 **闪现特效：竖直光柱**（船长 2026-10-02：「特效我更希望接近大鲸鱼根目录的『闪现效果参考.png』」）。
    形制 = 多道竖直细光柱：中心亮青 → 两侧深蓝、上下渐隐（线条与渐变都在 JSX 里画）。
    容器尺寸/位置由 JSX 内联给（按舰体尺寸算），本规则只管"绝对定位 + 不挡点击 + 动画"。
-   ⚠ `--fx-delay` 把光柱对齐到「消失」与「位移兑现」两个时间点；⚠ 可正可负
-   （负值 = 该时刻已过去一点、光柱已播到中途）。 */
+   ⚠ 光柱由 RAF 到点建 DOM（插入即播），不用 `animation-delay`
+   */
 .app-bts-blink-pillar {
   position: absolute;
   z-index: 4;
   pointer-events: none;
   overflow: visible;
-  animation: app-bts-blink-pillar 420ms ease-out var(--fx-delay, 0ms) 1 both;
+  /* ⚠ 不用 `animation-delay`：DOM 是**到点才建**的（见 `syncBlinkPillarDom`），插入即播 */
+  animation: app-bts-blink-pillar 420ms ease-out 1 both;
 }
 @keyframes app-bts-blink-pillar {
   0% { opacity: 0; transform: scaleX(0.5); }
