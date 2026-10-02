@@ -78,6 +78,19 @@ export const FOE_MOUNT_IDS = {
    * ✅ **件名已获船长批准**（**2026-10-01 船长令**：「**「瞬光跃迁仪」等件名提案可用**」）——
    */
   coronaBlink: 'foe-mount-corona-blink',
+  /**
+   * **待机护盾阵列**（**船长 2026-10-02 令**：「**或者换个说法，闪现未处于冷却中的时候，
+   * 护盾拥有全伤害50%的抗性。**」）—— R 族 T4 **垂暮级**专属。
+   * 效果 = 闪现**不在冷却中**时（从未闪过也算可用）**护盾层**对全伤害类型 **50% 抗性**
+   * （只护盾层；与闪现共用那 5 秒冷却）。
+   */
+  coronaStandbyShield: 'foe-mount-corona-standby-shield',
+  /**
+   * **聚焦阵列**（**船长 2026-10-02 令**：「**武器的远端衰减，随时间提高到1（就是无衰减）。**」
+   * ＋改判「**旗舰挂载件的会随波重置**」）—— R 族 T5 **光环中枢**专属。
+   * 效果 = 它自己武器的远端衰减从面板值线性爬到 1.0（无衰减），**120 秒**到满、**随波重置**。
+   */
+  coronaFocusArray: 'foe-mount-corona-focus-array',
 } as const
 
 /** 全部挂载件（键 = id；`FoeMountId` 联合类型保证穷尽） */
@@ -283,7 +296,34 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     note:
       '船长 2026-10-01：「粼光添加闪烁过载装置，效果是每次触发闪现后，恢复所有护盾值。但是会损失最大结构值5%的结构。」' +
       '⇒ 只挂 R 族 T1 粼光级。两条追问的裁定：5% = 结构上限的 5%（甲，粼光级结构上限 29.85 ⇒ 每次扣 1.49）；' +
-      '可以扣死自毁（乙，不设保底）⇒ 反复闪现会把结构扣到 0、该舰当场自毁。',
+      '可以扣死自毁（乙，不设保底）⇒ 反复闪现会把结构扣到 0、该舰当场自毁。' +
+      '⚠ 2026-10-03 船长令已把本件移交「回响级」（自粼光级移来，见 `foe-ships.ts` 的 `FOE_R_CORONA_ECHO`）。',
+  },
+  [FOE_MOUNT_IDS.coronaStandbyShield]: {
+    id: FOE_MOUNT_IDS.coronaStandbyShield,
+    name: '待机护盾阵列',
+    // 命名规则第 4 条（族系前缀照译）：R 族五件一律 `Corona …`；本件取直译 `Standby Shield Array`
+    en: 'Standby Shield Array',
+    // 船长 2026-10-02 定案：50% 写死在件上（与闪烁过载的 hullCostPct 同款）、只护盾层、与闪现共用 5 秒冷却
+    standbyShield: { resistPct: 0.5 },
+    note:
+      '船长 2026-10-02：「垂暮级添加挂载件，触发闪现时，触发的那次齐射受到的伤害减半。」' +
+      '⇒ 我追问时点后船长改口径：「或者换个说法，闪现未处于冷却中的时候，护盾拥有全伤害50%的抗性。」' +
+      '⇒ 只挂 R 族 T4 垂暮级。口径 = 闪现不在冷却中（`now >= BattleState.foeBlinks[tag]`，从未闪过也算可用' +
+      '⇒ 开场即生效）时，护盾层对全部伤害类型 ×0.5；装甲/结构照常；闪完那 5 秒里没有这层抗性（机制的一部分）。',
+  },
+  [FOE_MOUNT_IDS.coronaFocusArray]: {
+    id: FOE_MOUNT_IDS.coronaFocusArray,
+    name: '聚焦阵列',
+    en: 'Focus Array',
+    // 船长 2026-10-02 定案：120 秒爬到 1.0、随波重置（同日改判"整场计时"）
+    focusArray: { rampMs: 120_000 },
+    note:
+      '船长 2026-10-02：「然后给R族的入侵旗舰添加一个挂载件，武器的远端衰减，随时间提高到1（就是无衰减）。」' +
+      '⇒ 只挂 R 族 T5 光环中枢（周末入侵旗舰战的 BOSS 本体）。' +
+      '我提"整场计时"时船长改判：「旗舰挂载件的会随波重置」⇒ 计时锚 = 本波起点' +
+      '（`BattleState.foeWaveStartMs`，缺省回落 `startedAtGameMs`），每波从头爬。' +
+      '曲线 = min(1, falloff + (1 − falloff) × t ÷ 120000)（面板 0.2 ⇒ 第 60 秒 0.6）；只影响它自己的武器。',
   },
 }
 
@@ -338,6 +378,17 @@ export interface ResolvedFoeMounts {
    * 消费单点 = `combat` 的闪现触发处（与 `markFoeBlink` 同点，闪现成功才结算）。
    */
   foeFlashOverload?: { healShield: true; hullCostPct: number }
+  /**
+   * **待机护盾阵列的参数**（原样带给单位；条件/作用层口径见 `FoeMountDef.standbyShield`）。
+   * 消费单点 = `combat.applyFoeUnitDamage`（打敌舰本体的唯一收口：按"闪现是否在冷却中"决定
+   * 是否给护盾层并进那层抗性）。
+   */
+  foeStandbyShield?: { resistPct: number }
+  /**
+   * **聚焦阵列的参数**（原样带给单位；曲线/计时锚口径见 `FoeMountDef.focusArray`）。
+   * 消费单点 = `combat` 敌方开火段（按**本波起点**现算当拍的远端衰减系数）。
+   */
+  foeFocusArray?: { rampMs: number }
   /** 展示名（保持挂载顺序；`foeMountNames` 直接用它） */
   names: string[]
   /**
@@ -387,6 +438,9 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
     // 叠光 / 闪烁过载（2026-10-01）：同款"后写覆盖先写"
     if (def.overlayDrive) out.foeOverlayDrive = { ...def.overlayDrive }
     if (def.flashOverload) out.foeFlashOverload = { ...def.flashOverload }
+    // 待机护盾阵列 / 聚焦阵列（2026-10-02）：同款"后写覆盖先写"
+    if (def.standbyShield) out.foeStandbyShield = { ...def.standbyShield }
+    if (def.focusArray) out.foeFocusArray = { ...def.focusArray }
   }
   return out
 }

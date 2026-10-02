@@ -64,6 +64,12 @@ import { fmtDuration } from '../i18n/fmt'
  *
  * 取数一律走 core 单点：`synapticAccelerantRemainMs`（剩余）· `consumableStockOf`（**货仓优先 + 仓库**）·
  * `SYNAPTIC_ACCELERANT_MUL`（倍率，界面不写死 ×2）。
+ *
+ * ⚠ **2026-10-02 船长令（抬头条件化 ＋ 行内效果说明）**：「技能加速页面，因为之后还会获得 3 倍和 4 倍的
+ * 加速剂，所以**抬头需要在使用了加速剂才会出现**，下方的**持有的加速道具内也要说明不同的加速剂的效果**」。
+ * 同日四答：① 自动续用开关**跟着抬头一起收**（没生效就看不到开关）② 行内效果说明**直接渲染该道具的
+ * 物品说明全文**（三处同源）③ 本轮**不**泛化 core（多剂那批要动存档字段）④ 物品说明里的使用去处
+ * **补成三处**。实现与取舍见工作文档 `docs/design/skill-boost-panel-20261002.md`。
  */
 function SkillBoostBlock({ engine, onToast }: { engine: GameEngine; onToast: (m: string, bad?: boolean) => void }) {
   const state = engine.state
@@ -80,20 +86,24 @@ function SkillBoostBlock({ engine, onToast }: { engine: GameEngine; onToast: (m:
   const autoRenew = engine.boostAutoRenewOn()
   return (
     <div className="app-boost-block">
-      {/* 顶部：当前生效、剩余时间、效果口径 —— 一条原子状态（无 second live region）
-          ＋ 右侧「自动续用」开关（2026-10-01 船长令） */}
-      <div className={`app-boost-now${remainMs > 0 ? ' is-on' : ''}`} role="status">
+      {/* 顶部＝当前生效与剩余时间 —— **只在加速剂生效时整条出现**
+          （**2026-10-02 船长令**：「因为之后还会获得 3 倍和 4 倍的加速剂，所以抬头需要在使用了加速剂
+          才会出现」）⇒ 本条只剩"生效中"这一态，原先的"未生效"态（倍率 ＋ `ui.boost.002`「未生效」
+          ＋ `ui.boost.007` 效果说明）连同那两条 id 一起撤掉。
+          ⚠ 口径与**活动栏那枚加速读数**一致 —— 它本来就是 `remainMs > 0` 才出现（同族先例）。
+          ⚠ 「自动续用」开关挂在这一条里，**跟着一起收**（船长同日四答取乙）：没生效就看不到开关
+          ⇒ 用法是"先手动用一枚 ⇒ 抬头出现 ⇒ 这时才开得了自动续用"。
+          core 侧没有卡死态：开关开着时 `syncBoostRenew` 会在剩余不足以练完当前这一级之前就补上
+          （`remainMs` 不会掉到 0）；真没料了由它自己关掉开关并写一条 `core.consumable.015`。 */}
+      {remainMs > 0 ? (
+      <div className="app-boost-now is-on" role="status">
         <span className="app-boost-now-head">
           <Glyph name={iconKeyOfBoost()} size={15} color="currentColor" />
           <b>{tr('ui.ActivityBar.066', { p1: mul })}</b>
-          <span className="app-dim">
-            {remainMs > 0 ? tr('ui.boost.005', { p1: fmtDuration(remainMs) }) : tr('ui.boost.002')}
-          </span>
+          <span className="app-dim">{tr('ui.boost.005', { p1: fmtDuration(remainMs) })}</span>
         </span>
         <span className="app-dim app-boost-now-note">
-          {remainMs > 0
-            ? tr('ui.ActivityBar.067', { p1: fmtDuration(remainMs) })
-            : tr('ui.boost.007')}
+          {tr('ui.ActivityBar.067', { p1: fmtDuration(remainMs) })}
         </span>
         {/* 开关本体：与「使用」按钮同一套 `.app-btn` 形态（`is-small` ＋ `is-on`），不自造控件。
             ⚠ **2026-10-02 修（船长报障「自动续用不是开关」）**：文案**随状态显示开/关**
@@ -111,7 +121,11 @@ function SkillBoostBlock({ engine, onToast }: { engine: GameEngine; onToast: (m:
           {tr(autoRenew ? 'ui.boost.010' : 'ui.boost.011')}
         </button>
       </div>
-      {/* 下方：持有的加速类道具清单（今天只有突触加速剂；将来加同类道具就往这一支里塞行） */}
+      ) : null}
+      {/* 下方：持有的加速类道具清单（今天只有突触加速剂；将来加同类道具就往这一支里塞行 ——
+          **2026-10-02 船长令**：「之后还会获得 3 倍和 4 倍的加速剂」，届时在 `<ul>` 里按同一格
+          再加一条 `<li>`，并把 core 的「使用 / 倍率 / 自动续用」泛化成按道具 id 取（那批要动存档
+          字段，属四步闸门，船长同日四答取甲：本轮不做）） */}
       <div className="app-boost-list-head">{tr('ui.boost.003')}</div>
       {stock <= 0 ? (
         <div className="app-dim app-inv-empty">{tr('ui.boost.004')}</div>
@@ -123,6 +137,13 @@ function SkillBoostBlock({ engine, onToast }: { engine: GameEngine; onToast: (m:
                 {def !== undefined ? <RowGlyph glyph={itemGlyphName(def.id, def.kind)} /> : null} {def?.name ?? SYNAPTIC_ACCELERANT_ITEM_ID}
               </span>
               <span className="app-inv-count">{tr('ui.boost.006', { p1: stock.toLocaleString('zh-CN') })}</span>
+              {/* **行内效果说明**（**2026-10-02 船长令**：「下方的持有的加速道具内也要说明不同的加速剂
+                  的效果」；同日四答取**乙：直接渲染该道具的物品说明全文**）——一份文案三处同源
+                  （物品页悬停卡 / 货仓页 / 本页都读 `def.description`，中英随 `overlayMap` 自动跟随），
+                  将来 ×3/×4 各自带自己的说明 ⇒ 这一行一个字都不用改。 */}
+              {def?.description !== undefined ? (
+                <span className="app-dim app-inv-note">{def.description}</span>
+              ) : null}
             </div>
             <div className="app-inv-btns">
               <button

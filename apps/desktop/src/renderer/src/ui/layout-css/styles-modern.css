@@ -1838,6 +1838,11 @@ html[data-locale='en'] body {
 
 }
 
+/* 行内说明（**2026-10-02 船长令**：技能页「技能加速」的「持有的加速道具」每行要说明该道具的效果，
+   取该道具的物品说明原文）：配色/字号沿用 `.app-dim`（与本行计数同号），这里只补行距 ——
+   整句说明会折成两三行，`normal` 行距太挤。 */
+.app-inv-note { line-height: 1.5; }
+
 .app-inv-btns {
 
   display: flex;

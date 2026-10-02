@@ -119,6 +119,15 @@ export interface WeaponSpec {
    * （`mod-lair-laser-r` 的 `ModuleDef.overlayDrive`）在建档时带来；缺省不写 ⇒ 既有各武器零行为变化。
    */
   overlayDrive?: { stepMs: number; floorMs: number }
+  /**
+   * **【敌方】连发**（**船长 2026-10-02 令**：「**每次开火是三次间隔100ms的射击，目标选择随机**」）——
+   * 由舰级字段 `FoeShipDef.burst` 原样带来（目前只有 R 族 T5「光环中枢」写）。
+   *
+   * 口径 = **一轮装填**打 `shots` 发、发间隔 `gapMs`：前 `shots − 1` 发之后装填计时**重置为
+   * `gapMs`**（不是 `reloadMs`），最后一发之后才回到 `reloadMs` ⇒ 复用既有"一次装填一发"的开火环，
+   * 每发都会各自 `pickTarget()`（**逐发独立选靶**）。缺省不写 ⇒ 一门一次、既有武器零行为变化。
+   */
+  burst?: { shots: number; gapMs: number }
   /** V18 同型合并条目代表的**武器门数**（同 id 同参炮台/激光合并为「×N 齐射」一条，缺省 1）。
    *  **2026-09-11 修复**：一轮齐射按**门数**扣弹（此前只扣 1 发 → 多门武器等于白嫖弹药；
    *  弹药预载同样按门数放大，见 `ammoLoadTotals`）。 */
@@ -336,6 +345,25 @@ export interface UnitSpec {
    */
   foeFlashOverload?: { healShield: true; hullCostPct: number };
   /**
+   * **本单位的「待机护盾阵列」参数**（**船长 2026-10-02 令**：「**闪现未处于冷却中的时候，
+   * 护盾拥有全伤害50%的抗性。**」）—— 由 R 族 T4 垂暮级那件「待机护盾阵列」
+   * （`FoeMountDef.standbyShield`）解析而来。
+   *
+   * 消费单点 = `applyFoeUnitDamage`（打敌舰本体的唯一收口）：闪现**不在冷却中**
+   * （`now >= b.foeBlinks[tag]`，从未闪过也算可用）⇒ 把 `resistPct` 并进**护盾层**抗性
+   * （与既有层抗**乘算**：`1 − (1−a)(1−b)`；装甲/结构不并）。缺省不写 ⇒ 零行为变化。
+   */
+  foeStandbyShield?: { resistPct: number };
+  /**
+   * **本单位的「聚焦阵列」参数**（**船长 2026-10-02 令**：「**武器的远端衰减，随时间提高到1
+   * （就是无衰减）。**」＋改判「**旗舰挂载件的会随波重置**」）—— 由 R 族 T5 光环中枢那件
+   * 「聚焦阵列」（`FoeMountDef.focusArray`）解析而来。
+   *
+   * 消费单点 = 敌方开火段（本单位的**当拍**远端衰减系数按本波起点现算，见 `coronaFocusFalloffOf`）；
+   * **只影响它自己**的武器。缺省不写 ⇒ 零行为变化。
+   */
+  foeFocusArray?: { rampMs: number };
+  /**
    * **本条冲锋不吃网子的「关推进器」**（**2026-09-30 船长令**「给C族添加族设定，他们的冲锋不会被网子
    * 解除」；见 `FoeMountDef.charge.webImmune`）——C 族四件「虫群冲锋器」解析出来的旗标。
    *
@@ -473,6 +501,110 @@ export interface UnitSpec {
 }
 
 /**
+ * **待机护盾阵列：本拍是否生效**（**船长 2026-10-02 令**：「**闪现未处于冷却中的时候，护盾拥有
+ * 全伤害50%的抗性。**」）—— 判据 = 带该件 **且** 该舰的闪现**不在冷却中**
+ * （`now >= BattleState.foeBlinks[tag]`；**从未闪过也算可用** ⇒ **开场即生效**，船长原话的读法）。
+ *
+ * ⚠ 与闪现**共用那 5 秒冷却**是机制的一部分（闪完那 5 秒里没有这层抗性），不是缺陷。
+ * ⚠ **本函数只是那条纯判据**（"这一瞬是否就绪"）：**引擎里请走 `foeStandbyReadyOf`**
+ * （它按**每拍开头**取快照 ⇒ 同一拍整次齐射同命，船长 2026-10-03 裁定）。
+ * 缺省（没带件）⇒ 恒 `false`；没带件的单位**一次都不会走到下面的并抗性**。
+ */
+export function standbyShieldActiveOf(
+  unit: Pick<UnitSpec, 'foeStandbyShield'>,
+  blinkReadyAtMs: number | undefined,
+  nowMs: number,
+): boolean {
+  if (unit.foeStandbyShield === undefined) return false
+  return nowMs >= (blinkReadyAtMs ?? 0)
+}
+
+/**
+ * **把「待机护盾阵列」的抗性并进层抗**——**只并护盾层**（装甲/结构两列原样返回，船长口径）。
+ * 并入方式 = **乘算**：`1 − (1 − 既有) × (1 − 新增)`（与 `applyDamage` 那把"抗性夹 −0.9~0.9"的尺同域；
+ * 既有为负（易伤）时同样成立）。R 族本身不带层抗 ⇒ 实况就是护盾层 50%。
+ */
+export function withStandbyShield(
+  resists: UnitSpec['resists'],
+  resistPct: number,
+): UnitSpec['resists'] {
+  const merge = (t: DamageType): number => 1 - (1 - (resists.shield?.[t] ?? 0)) * (1 - resistPct)
+  return {
+    ...resists,
+    shield: { kinetic: merge('kinetic'), explosive: merge('explosive'), plasma: merge('plasma') },
+  }
+}
+
+/**
+ * **本拍该舰的「待机护盾阵列」是否就绪**（**船长 2026-10-03 裁定**：「**同一拍整次齐射都算**」）——
+ * 判据 = **本拍开头那一瞬**闪现是否在冷却中（`standbyShieldActiveOf` 是那条纯判据），
+ * **同一拍之内恒定不变**。
+ *
+ * 为什么必须按拍定死：闪现是**挨打触发**的（同一发里"伤害结算在前、盖冷却在后"）——
+ * 若现查冷却表，同一拍里只有**触发那一发**吃得到抗性，随后同拍的其余发全被刚盖上的冷却挡掉
+ * （2026-10-03 实测：出荷配置下这层抗性只挡下约 7%，几乎等于没挂）。船长第一句原话是
+ * 「**触发的那次齐射**受到的伤害减半」⇒ 本拍整次齐射同命。
+ *
+ * 取数次序：① 本拍开头由 `stepBattle` 盖好的快照（`BattleState.foeStandbyTick`）；
+ * ② 没有本拍快照（拍外调用 / 增援新 tag）⇒ **现算并补一份本拍快照** ⇒ 语义恒为"本拍开头"。
+ * 没带该件的单位**一次都不写这张表**（`foeStandbyShield` 缺省 ⇒ 直接 `false`，零行为变化）。
+ */
+export function foeStandbyReadyOf(
+  b: {
+    lastTickGameMs?: number
+    foeBlinks?: Record<string, number>
+    foeStandbyTick?: Record<string, { atMs: number; ready: boolean }>
+  },
+  foe: { tag: string; foeStandbyShield?: { resistPct: number } },
+): boolean {
+  if (foe.foeStandbyShield === undefined) return false
+  const now = b.lastTickGameMs ?? 0
+  const reg = b.foeStandbyTick ?? (b.foeStandbyTick = {})
+  const hit = reg[foe.tag]
+  if (hit !== undefined && hit.atMs === now) return hit.ready
+  const ready = standbyShieldActiveOf(foe, b.foeBlinks?.[foe.tag], now)
+  reg[foe.tag] = { atMs: now, ready }
+  return ready
+}
+
+/**
+ * **本拍打这一艘敌舰要用的层抗**（单点）——带「待机护盾阵列」且**本拍就绪**（见 `foeStandbyReadyOf`）时，
+ * 把 50% 并进**护盾层**；否则**原样返回 `foe.resists` 那个引用**（零分配、零行为变化）。
+ * 只被 `applyFoeUnitDamage`（唯一收口）与 `carryVolleyOverflow`（溢火结转的"打空它要多少"）调用。
+ */
+function foeResistsNow(
+  b: {
+    lastTickGameMs?: number
+    foeBlinks?: Record<string, number>
+    foeStandbyTick?: Record<string, { atMs: number; ready: boolean }>
+  },
+  foe: {
+    tag: string
+    resists?: UnitSpec['resists']
+    foeStandbyShield?: { resistPct: number }
+  },
+): UnitSpec['resists'] {
+  if (foe.foeStandbyShield === undefined) return foe.resists ?? {}
+  return foeStandbyReadyOf(b, foe)
+    ? withStandbyShield(foe.resists ?? {}, foe.foeStandbyShield.resistPct)
+    : (foe.resists ?? {})
+}
+
+/**
+ * **每拍开头：把敌阵里挂了「待机护盾阵列」的单位的就绪态定死**（船长 2026-10-03「同一拍整次齐射都算」）。
+ * 放在 `stepBattle` 最前面（任何伤害结算之前）⇒ 本拍之内无论谁开火、闪没闪，读到的都是**同一份答案**。
+ * 只扫"带该件"的单位（R 族那几档才有）⇒ 其余场次一次判断都不多做。
+ */
+function snapshotFoeStandby(b: import('./state').BattleState, foes: readonly UnitSpec[]): void {
+  const now = b.lastTickGameMs
+  const reg = b.foeStandbyTick ?? (b.foeStandbyTick = {})
+  for (const f of foes) {
+    if (f.foeStandbyShield === undefined) continue
+    reg[f.tag] = { atMs: now, ready: standbyShieldActiveOf(f, b.foeBlinks?.[f.tag], now) }
+  }
+}
+
+/**
  * **打敌舰本体的唯一收口**（**2026-09-27 船长令**：「**不能使用触发制吗？因为肯定已经有一个用于判断舰船
  * 是否死亡的点了，假设给死亡加个触发挂载点，这样之后有什么死亡效果也能添加。**」）。
  *
@@ -496,9 +628,18 @@ function applyFoeUnitDamage(
     foeOverride?: { bossShipId?: string }
     lastTickGameMs?: number
     bossDownAtMs?: number
+    /** **闪现冷却表**（敌方「瞬光跃迁仪」那一本）——「待机护盾阵列」按它判"闪现是否在冷却中" */
+    foeBlinks?: Record<string, number>
+    /** **「待机护盾阵列」的本拍就绪快照**（船长 2026-10-03「同一拍整次齐射都算」） */
+    foeStandbyTick?: Record<string, { atMs: number; ready: boolean }>
   },
-  /** 目标单位（认 tag；`resists` 取它自己的层抗） */
-  foe: { tag: string; resists?: UnitSpec['resists'] },
+  /** 目标单位（认 tag；`resists` 取它自己的层抗，「待机护盾阵列」也取它自己的那份） */
+  foe: {
+    tag: string
+    resists?: UnitSpec['resists']
+    /** **待机护盾阵列参数**（带该件的单位才有；判据见 `standbyShieldActiveOf`） */
+    foeStandbyShield?: { resistPct: number }
+  },
   dmg: number,
   type: DamageType,
   /** 这一发的时刻（缺省 = 本拍起点）；诊断用，不参与结算 */
@@ -507,7 +648,13 @@ function applyFoeUnitDamage(
   const rt = b.units[foe.tag]
   if (!rt) return { dealt: 0, killedNow: false }
   const wasAlive = rt.hp.s + rt.hp.a + rt.hp.h > 0
-  const r = applyDamage(rt.hp, foe.resists ?? {}, dmg, type)
+  /**
+   * **待机护盾阵列**（**船长 2026-10-02 令**：「**闪现未处于冷却中的时候，护盾拥有全伤害50%的抗性。**」）
+   * —— 挂在 R 族 T4 垂暮级上的那件：闪现**不在冷却中**（从未闪过也算可用）⇒ **只有护盾层**吃这层抗性。
+   * ⚠ 放在**唯一收口**里 ⇒ 主段 / 附加段 / 全体攻击 / 齐射溢火**四条伤害路径同源**吃到它。
+   * 没带该件的单位 ⇒ `foeResistsNow` 直接返回原引用 ⇒ **既有各族逐字不变**。
+   */
+  const r = applyDamage(rt.hp, foeResistsNow(b, foe), dmg, type)
   rt.hp = r.hp
   let killedNow = false
   if (rt.hp.s + rt.hp.a + rt.hp.h <= 0) {
@@ -561,6 +708,10 @@ export function carryVolleyOverflow(
     stats: { meDmg: number }
     foeOverride?: { bossShipId?: string }
     lastTickGameMs?: number
+    /** **闪现冷却表**（供「待机护盾阵列」判据用；缺省 ⇒ 一律算"可用"） */
+    foeBlinks?: Record<string, number>
+    /** **「待机护盾阵列」的本拍就绪快照**（船长 2026-10-03「同一拍整次齐射都算」；缺省 ⇒ 现算补一份） */
+    foeStandbyTick?: Record<string, { atMs: number; ready: boolean }>
   },
   foes: readonly UnitSpec[],
   killedTag: string,
@@ -577,7 +728,9 @@ export function carryVolleyOverflow(
   let lastTag: string | null = null
   for (let n = 0; n < maxChain; n++) {
     // ⚠ 2026-09-15 修：转移伤害与"打空它需要多少"都要按**目标自己的层抗**算（此前传 `{}` ⇒ 敌抗性不生效）
-    const prevRes = foes.find((f) => f.tag === prevTag)?.resists ?? {}
+    // 🔴 2026-10-02：层抗改走 `foeResistsNow` ⇒ **「待机护盾阵列」也吃进"打空它要多少"这把尺**（口径同源）
+    const prevFoe = foes.find((f) => f.tag === prevTag)
+    const prevRes = prevFoe ? foeResistsNow(b, prevFoe) : {}
     const excess = raw - rawDamageToKill(prevHp, prevRes, type)
     if (excess <= 0.5) break
     const next = foes.find((f) => {
@@ -3391,6 +3544,13 @@ export function advanceBattleFor(
       battle.waveClearAt = undefined
       waveIdx += 1
       battle.waveIdx = waveIdx
+      /**
+       * **换波 ⇒ 记下本波起点**（**船长 2026-10-02 改判**：「**旗舰挂载件的会随波重置**」）——
+       * 「聚焦阵列」的远端衰减爬升以它为计时锚（`foeWaveStartMsOf`）；取 `nowMs()`（= 全局时钟，
+       * 即新一波**真正入场**的那一刻）而不是 `battle.lastTickGameMs`：转场窗口里战斗时钟是**冻住**的
+       * （上面那条"停表等待"），拿冻住的值当"现在"会把起点算到过去（与 `arrivedAtMs` 同一处坑）。
+       */
+      battle.foeWaveStartMs = nowMs()
       curFoes = specsOf(waveIdx)
       /**
        * **换波 ⇒ 期望距离与钳制上界随新一波刷新**（船长 2026-09-25 报障；口径详见上面 `foeDesire` 的注释）。
@@ -3979,6 +4139,43 @@ function foeOverlayReloadOf(
   const next = Math.max(od.floorMs, baseReloadMs - (fired + blinkCount) * step)
   reg[tag] = { r: next, f: fired + 1, bs: blinkCount }
   return next
+}
+
+/**
+ * **本波起点**（战斗时钟 ms）——「聚焦阵列」**逐波重置**的计时锚
+ * （**船长 2026-10-02 改判**：「**旗舰挂载件的会随波重置**」）。
+ *
+ * - 第 1 波（以及一切没换过波的场次）⇒ 缺省回落到 `startedAtGameMs`（**老档 / 单波卡零迁移**）；
+ * - 每次**波次转场**由 `advanceBattleFor` 写一次 ⇒ 新一波从 0 起算。
+ * ⚠ 用**战斗时钟**而不是全局时钟：转场窗口里战斗时钟是冻住的，窗口那一段不该计入爬升时间。
+ */
+export function foeWaveStartMsOf(
+  b: Pick<import('./state').BattleState, 'foeWaveStartMs' | 'startedAtGameMs'>,
+): number {
+  return b.foeWaveStartMs ?? b.startedAtGameMs
+}
+
+/**
+ * **聚焦阵列：本拍该舰武器的远端衰减系数**（**船长 2026-10-02 令**：「**武器的远端衰减，随时间提高到1
+ * （就是无衰减）。**」＋改判「**旗舰挂载件的会随波重置**」）。
+ *
+ * 曲线 = `min(1, falloff + (1 − falloff) × t ÷ rampMs)`（`t` = **本波**已开战时长，夹 ≥ 0）——
+ * 面板 0.2、`rampMs = 120,000` ⇒ 第 0 秒 **0.2** · 第 60 秒 **0.6** · 第 120 秒及以后 **1.0**（无衰减）。
+ *
+ * ⚠ 纯函数（不读状态）⇒ 用例可逐点核；调用点只在**敌方开火段**、且只在挂了件的单位上
+ * （`f.foeFocusArray` 缺省 ⇒ 连这一次调用都不发生，`w` 对象也不复制 ⇒ **既有各族逐字不变**）。
+ */
+export function coronaFocusFalloffOf(
+  /** 面板远端衰减（舰级 / 条目 `falloff`） */
+  baseFalloff: number,
+  /** 爬满所需毫秒（件上写死 **120,000**） */
+  rampMs: number,
+  /** 本波已开战时长（毫秒；负值按 0 处理） */
+  elapsedMs: number,
+): number {
+  if (!(rampMs > 0)) return 1
+  const t = Math.max(0, elapsedMs)
+  return Math.min(1, Math.max(0, baseFalloff) + (1 - Math.max(0, baseFalloff)) * (t / rampMs))
 }/**
  * **我方「叠光同款 · 装填自加速」的当前装填间隔**（**船长 2026-10-01 令**：「激光武器为叠光同款叠加攻速的，
  * 基础伤害偏低，需要玩家叠满才威力较强」）——与敌方 `foeOverlayReloadOf` **逐字同款**的机制，
@@ -4162,6 +4359,12 @@ function stepBattle(
   // **我方"不被一击带走"保险：本拍账本清零**（船长 2026-09-16；见 `cappedFoeDamage`。
   // 逐拍重置 ⇒ 运行态、不入档；洞外洞内共用这一处）
   b.meVolleyDmg = {}
+  /**
+   * **本拍开头：把「待机护盾阵列」的就绪态定死**（**船长 2026-10-03 裁定**「**同一拍整次齐射都算**」）——
+   * 必须在**任何伤害结算之前**盖这一份（伤害结算在前、闪现盖冷却在后 ⇒ 现查的话只有触发那一发吃得到）。
+   * 只扫带该件的单位 ⇒ 其余场次零成本、零行为变化。
+   */
+  snapshotFoeStandby(b, foes)
   // 主控 = 编队首条（距离/期望交距/胜率口径的锚；单船路径即唯一那条）
   const me = myUnits[0]!
 
@@ -4792,8 +4995,53 @@ function stepBattle(
      * 挂了「叠光装置」的舰（R 族 T3 叠光级）用**当前间隔**重置计时（首访问 = 条目的固定 `reloadMs`，
      * 此后每开一火 −400ms、夹下限 500ms、闪现另算一格）；没挂的舰走缺省 ⇒ **返回 `w.reloadMs`，
      * 读数与行为逐字不变**。⚠ 间隔的递减状态记在 `BattleState.foeOverlayReload[tag]`（运行态、不入档）。
+     *
+     * 🔴 **连发优先**（**船长 2026-10-02 令**：「**每次开火是三次间隔100ms的射击，目标选择随机。**」）
+     * —— 挂了连发的舰（R 族 T5 光环中枢）：本轮**前 `shots − 1` 发之后装填重置为 `gapMs`**（100ms），
+     * 打完**最后一发才回到 `reloadMs`** ⇒ 三连发天然按 100ms 摊在既有"一次装填一发"的开火环上，
+     * 每发各走一遍下面的选靶（**逐发独立随机选靶**）。⚠ 连发期间**不调 `foeOverlayReloadOf`**
+     * （本仓两件互斥：挂了连发的舰不挂叠光；写成"每发都调"会让两条机制互相污染）。
+     * 没挂连发的舰 ⇒ `burst` 缺省 ⇒ 与改动前**逐字一致**（连一次判断都不多做）。
      */
-    rt.weapons[0] = foeOverlayReloadOf(f, f.tag, b, w.reloadMs)
+    const burst = w.burst
+    const burstFired = burst !== undefined ? (b.foeBurstFired?.[f.tag] ?? 0) : 0
+    const burstMore = burst !== undefined && burstFired + 1 < Math.max(1, Math.floor(burst.shots))
+    /**
+     * ⚠ **连发的"发间隔"要减掉一拍**（`− dtMs`）：本仓开火环的固有节拍是"**冷却减到 0 的那一拍不
+     * 开火、下一拍才开火**"（`cd > 0 ⇒ 递减并 continue`）⇒ 直接写 `gapMs` 会实得 **200ms** 而不是
+     * 船长要的 **100ms**（2026-10-02 探针实测：三连阶梯 1.80s → 2.00s → 2.20s）。减掉本拍 `dtMs`
+     * 后：`gapMs = 100 · dt = 100 ⇒ 置 0 ⇒ 下一拍即开火` = 真正的 100ms；`gapMs` 更大时同样成立
+     * （实得格数 = `⌈gapMs ÷ dt⌉`）。⚠ 只在连发期间生效，最后一发照旧回到 `reloadMs`（那一拍不算）。
+     */
+    rt.weapons[0] = burstMore
+      ? Math.max(0, Math.round(burst!.gapMs) - dtMs)
+      : foeOverlayReloadOf(f, f.tag, b, w.reloadMs)
+    if (burst !== undefined) {
+      const reg = b.foeBurstFired ?? (b.foeBurstFired = {})
+      // 打完这一发：本轮还有剩余 ⇒ 记已发数；本轮打完 ⇒ 删键（下一发重新从第 1 发起算）
+      if (burstMore) reg[f.tag] = burstFired + 1
+      else delete reg[f.tag]
+    }
+    /**
+     * **聚焦阵列：当拍的远端衰减**（**船长 2026-10-02 令**：「**武器的远端衰减，随时间提高到1
+     * （就是无衰减）。**」＋改判「**旗舰挂载件的会随波重置**」）——挂了件的舰（R 族 T5 光环中枢）
+     * 按**本波起点**（`foeWaveStartMsOf`）现算爬升后的 `falloff`，只替这一个字段、其余原样；
+     * 面板 0.2 + 120 秒 ⇒ 第 60 秒 0.6、第 120 秒起 1.0（**无衰减**）。
+     *
+     * ⚠ **没挂件的舰 ⇒ `wShot === w`（同一个对象引用）** ⇒ 下游两条折减调用与改动前逐字一致
+     * （连一次对象复制都不发生）；挂了件也只多一次浅拷贝。
+     */
+    const wShot =
+      f.foeFocusArray !== undefined
+        ? {
+            ...w,
+            falloff: coronaFocusFalloffOf(
+              w.falloff,
+              f.foeFocusArray.rampMs,
+              b.lastTickGameMs - foeWaveStartMsOf(b),
+            ),
+          }
+        : w
     // V18B（2026-09-05 船长拍板）：敌人近盲带（dist < minRange）内**不停火**——放行到
     // maxRange 内即可开火；伤害按 blindDmgMul 打折（玩家贴脸钻近盲不再零风险）。
     // 玩家武器无此待遇（近盲带内仍不开火）——双方在近盲带上行为区分。
@@ -4815,7 +5063,7 @@ function stepBattle(
     // （近盲带保留），带内至远端按 beamPowerFactor 距离衰减（与玩家激光同源语义）
     if (w.kind === 'beam') {
       // **炮台受击增程感知的折减**（船长选乙：原射程内读数一字不变，延长段同斜率外推）
-      const pow = b.distanceM < w.minRangeM ? w.blindDmgMul ?? 0.3 : foeGunPowerFactorOf(b, f, w, b.distanceM)
+      const pow = b.distanceM < w.minRangeM ? w.blindDmgMul ?? 0.3 : foeGunPowerFactorOf(b, f, wShot, b.distanceM)
       const dmg = foeRepairDiscountedShot(f, Math.max(1, Math.round((w.shotDmg ?? 0) * pow)))
       // 冲锋解除（船长 2026-09-14）：光束必中 ⇒ 本发即"自身炮台命中我方"
       releaseFoeChargeOnHit(b, f.tag, bal, f.foeChargeCooldownMs)
@@ -4863,7 +5111,7 @@ function stepBattle(
     const shotDmg = foeRepairDiscountedShot(f, shotDmgRaw)
     // AI favor：敌方命中被优势压制，且始终保留 97% 命中上限（3% miss 底线不变）
     // ⚠ 距离折减传**增程感知**的 `foeGunPowerFactorOf`（原射程内与原公式逐字一致；延长段同斜率外推）
-    const foeHit = hitChance(w, f, gtgt.spec, b.distanceM, bal, foeGunPowerFactorOf(b, f, w, b.distanceM))
+    const foeHit = hitChance(w, f, gtgt.spec, b.distanceM, bal, foeGunPowerFactorOf(b, f, wShot, b.distanceM))
     const foeHitEff = favor ? clamp(0, 0.97, foeHit * favor.foeMul) : foeHit
     const fHit = nextRandom(state.rng) < foeHitEff
     /** 本发对**被打的那艘我方舰**的实收伤害（2026-09-24 船长令：飘字读数；未命中保持 0） */
@@ -5355,7 +5603,14 @@ function steadyPreview(
     const power = isBeam ? (steady < w.minRangeM ? w.blindDmgMul ?? 0.3 : beamPowerFactor(steady, w)) : steady < w.minRangeM ? w.blindDmgMul ?? 0.3 : 1
     const shot = Math.max(1, Math.round((w.shotDmg ?? 0) * power))
     const mult = foeCompWeighted(w.fixedType ?? 'kinetic')
-    foeDpsPeak += (shot * mult * hit * 1000) / w.reloadMs
+    /**
+     * ⚠ **连发按"一轮 `shots` 发 ÷ 同一个装填周期"计入**（**2026-10-02 加**）：
+     * `w.burst` 缺省 ⇒ `shotsPerCycle = 1` ⇒ 本行与改动前**逐字一致**（既有全部敌舰）。
+     * 不乘 `shots` 会把三连发武器的期望承伤**低估到 1/3**（发间隔 100ms 相对 5 秒装填可忽略，
+     * 故周期仍按 `reloadMs` 计）。
+     */
+    const shotsPerCycle = Math.max(1, Math.floor(w.burst?.shots ?? 1))
+    foeDpsPeak += (shot * shotsPerCycle * mult * hit * 1000) / w.reloadMs
   }
   // 2026-09-09 减员修正（稳态把"敌人满员全程输出"当真相，多单位/多波严重高估承伤）：
   // 我方逐个击毁敌方单位 → 敌方在场火力近似线性衰减，全程平均 ≈ 峰值 × (N+1)/(2N)

@@ -86,7 +86,7 @@ describe('叠光装置 / 闪烁过载装置：件定义与解析', () => {
 })
 
 describe('叠光装置 / 闪烁过载装置：挂载面（只挂各自主人）', () => {
-  it('③ 叠光级带叠光装置、回响级带闪烁过载；其余三档只带瞬光跃迁仪', () => {
+  it('③ 叠光级带叠光装置、回响级带闪烁过载；其余各档只带自己那件', () => {
     const mountsOf = (id: string) => FOE_SHIPS.find((s) => s.id === id)?.mounts ?? []
     // 五档全带闪现（船长选「乙」，见 `corona-blink-20261001`）；两件新装置各只挂一档
     for (const id of [
@@ -110,10 +110,17 @@ describe('叠光装置 / 闪烁过载装置：挂载面（只挂各自主人）'
       FOE_MOUNT_IDS.coronaBlink,
       FOE_MOUNT_IDS.coronaOverlayDrive,
     ])
-    for (const id of ['foe-r-corona-glint', 'foe-r-corona-dusk', 'foe-r-corona-nexus']) {
-      expect(mountsOf(id), `${id} 不该挂这两件`).toEqual([FOE_MOUNT_IDS.coronaBlink])
+    /**
+     * ⚠ **2026-10-02 船长令加件后本段收窄**：垂暮级 / 中枢各自新挂了「待机护盾阵列」/「聚焦阵列」
+     * （见 `corona-mounts-20261002` 用例）⇒ 这里只再钉**两件新件没串到别的档**，
+     * 以及"只该有瞬光跃迁仪"的那一档（粼光级）。
+     */
+    expect(mountsOf('foe-r-corona-glint'), '粼光级只该有瞬光跃迁仪').toEqual([FOE_MOUNT_IDS.coronaBlink])
+    for (const id of ['foe-r-corona-glint', 'foe-r-corona-echo', 'foe-r-corona-overlay']) {
+      expect(mountsOf(id), `${id} 不该带待机护盾阵列`).not.toContain(FOE_MOUNT_IDS.coronaStandbyShield)
+      expect(mountsOf(id), `${id} 不该带聚焦阵列`).not.toContain(FOE_MOUNT_IDS.coronaFocusArray)
     }
-    console.log('  [读数] 挂载面：回响级 = 闪现 + 闪烁过载；叠光级 = 闪现 + 叠光；粼光级/垂暮级/中枢 = 仅闪现')
+    console.log('  [读数] 挂载面：回响级 = 闪现 + 闪烁过载；叠光级 = 闪现 + 叠光；粼光级 = 仅闪现')
   })
 
   it('④ 建档：spec 上带对应字段；不带该件的族不带（缺省不写）', () => {

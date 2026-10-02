@@ -802,13 +802,16 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.beacon.008": { zh: "取消", en: "Cancel" },
   "ui.beacon.009": { zh: "仍然启动", en: "Light it anyway" },
   /* ── 技能页「技能加速」子窗口（**2026-09-30 船长令**：「在技能页面内新增一个子窗口『技能加速』…」）──
-     顶部＝当前生效与剩余时间（与活动栏 `ui.ActivityBar.066/067` 同一套措辞），下方＝持有的加速道具清单 */
+     顶部＝当前生效与剩余时间（**2026-10-02 船长令**起：**只在加速剂生效时整条出现** —— 原话
+     「因为之后还会获得 3 倍和 4 倍的加速剂，所以抬头需要在使用了加速剂才会出现」），
+     下方＝持有的加速道具清单＋**每行一条该道具的效果说明**（同日船长令，取该道具的物品说明原文） */
   "ui.boost.001": { zh: "技能加速", en: "Skill Boost" },
-  "ui.boost.002": { zh: "未生效", en: "Not active" },
+  /* ⟪文案调整 2026-10-02⟫ 删 `ui.boost.002`（「未生效」）与 `ui.boost.007`（「效果：使用后 24 小时内
+     技能训练时长减半；同一时间只能生效一剂。」）——两条都只服务"抬头常驻"时的那个"未生效"态：
+     抬头改条件出现后它们**没有落点**了；效果说明改由道具行渲染物品说明原文（**多剂时每剂自带自己的
+     说明**，一条写死突触加速剂的效果句反而会串味）。 */
   "ui.boost.003": { zh: "持有的加速道具", en: "Boost items on hand" },
   "ui.boost.005": { zh: "剩余 {p1}", en: "{p1} left" },
-  /* 未生效时的效果说明（生效中那条用 `ui.ActivityBar.067`，两句不许混用——否则会读成"生效中·剩 0 秒"） */
-  "ui.boost.007": { zh: "效果：使用后 24 小时内技能训练时长减半；同一时间只能生效一剂。", en: "Effect: for 24 hours after use, skill training time is halved; only one dose can be active at a time." },
   /* 2026-10-01 船长令：技能加速「自动续用」开关（循环使用 · 离线期间同样生效） */
   "ui.boost.008": { zh: "自动续用", en: "Auto-renew" },
   "ui.boost.009": {
@@ -2403,6 +2406,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     "ui.foeIntro.110": { zh: "本体被命中时朝期望交距位移，单跳不超过 {p1} m", en: "Displaces toward its desired range when hit; no more than {p1} m per jump" },
     /** R 族（光环）闪烁过载装置（同上，2026-10-03 补） */
     "ui.foeIntro.111": { zh: "每次闪现后护盾回满，结构 −上限的 {p1}%", en: "Shields refill after each blink; hull −{p1}% of max" },
+    /** R 族（光环）待机护盾阵列（2026-10-02 船长令：「闪现未处于冷却中的时候，护盾拥有全伤害50%的抗性。」） */
+    "ui.foeIntro.112": { zh: "闪现未在冷却中时，护盾层受到的伤害 −{p1}%", en: "While its blink is off cooldown, its shields take {p1}% less damage" },
+    /** R 族（光环）聚焦阵列（2026-10-02 船长令：「武器的远端衰减，随时间提高到1（就是无衰减）。」＋改判「旗舰挂载件的会随波重置」） */
+    "ui.foeIntro.113": { zh: "远端衰减随本波开战时间在 {p1} 秒内升到 1，随波重置", en: "Its falloff climbs to 1 over {p1} s of the current wave; resets each wave" },
   /* ── 入侵「重复出击」（2026-09-25 船长令：「入侵活动的悬赏，允许玩家开启自动重复，照常计算返回时间」）── */
   "ui.weekend.106": { zh: "重复出击", en: "Repeat assault" },
   "ui.weekend.107": { zh: "开启重复出击：每场从该星系的入侵舰队里重抽一支，胜利后自动返航（返航路程 = 单程）、随后自动再次出发；该星系被夺回或活动结束时自动停止", en: "Start repeat assault: each run draws a fresh invader fleet from that system; after a win the fleet flies home (return leg = one way) and sets out again automatically. It stops when the system is reclaimed or the event ends" },
