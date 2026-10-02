@@ -20,8 +20,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
-import { addModule, countModule } from '../src/equipment'
-import { addWare, countWare } from '../src/inventory'
+import {  countModule } from '../src/equipment'
+import {  countWare } from '../src/inventory'
 import { injectRareWreck, rareWreckCountOf } from '../src/salvage'
 import { pullOneWreck } from '../src/salvaging'
 import { loseShip } from '../src/shipyard'

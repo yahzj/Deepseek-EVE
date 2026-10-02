@@ -22,7 +22,6 @@
 import { describe, expect, it } from 'vitest'
 import { BLUEPRINTS, ITEMS, MARKET_GOODS, MODULES, SHIP_BLUEPRINTS, buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
-import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
 import { advanceGame } from '../src/engine'
 import { addWare, countWare, itemReleased } from '../src/inventory'
@@ -32,7 +31,6 @@ import { cancelOrder, listSellHolding } from '../src/market'
 import { FOE_LAIR_GEAR } from '../src/lairs'
 import { rollRareBoxExtra } from '../src/salvage'
 import { wormholeFamilyPoolOf } from '../src/wormholeSalvage'
-import { makeTestCtx } from './helpers'
 
 const ctx = buildSimContext() as SimContext
 /** 本次补行的专属内容（id 判据：洞内 `-wh-` + 窝点专属池成员 + 专属无人机与其图纸） */

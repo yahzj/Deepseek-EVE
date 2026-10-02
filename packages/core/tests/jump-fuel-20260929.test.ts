@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext, LAB_RECIPES, ITEMS } from '@whale/data'
 import { createInitialState, advanceGame } from '../src/index'
 import { beginJumpFuelLeg, jumpFuelLegMsOf, jumpFuelStockOf, JUMP_FUEL_ITEM_ID, JUMP_FUEL_SPEED_MUL } from '../src/jumpFuel'
-import { advanceLab, labAffordableBatches, labLoopOf, labUnlocked, setLabLoop, startLabRun } from '../src/lab'
+import {  labAffordableBatches, labLoopOf, labUnlocked, setLabLoop, startLabRun } from '../src/lab'
 import { addWare } from '../src/inventory'
 
 const ctx = buildSimContext()

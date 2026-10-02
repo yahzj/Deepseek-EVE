@@ -3,8 +3,7 @@
  * 与 v22→v23 迁移（补 onboarding/importantTasks）回归测试。
  */
 import { describe, expect, it } from 'vitest'
-import { createInitialState, DEFAULT_START_ISK, serializeSaveFile, loadSaveFile } from '../src/index'
-import type { GameState } from '../src/state'
+import { createInitialState, DEFAULT_START_ISK } from '../src/index'
 import { CURRENT_STATE_VERSION } from '../src/state'
 
 describe('v23 序章·苏醒', () => {

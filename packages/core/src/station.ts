@@ -7,7 +7,7 @@
 import { addLog, HOME_GALAXY_ID } from './state'
 import type { GameState, StationSiteProgress } from './state'
 import type { CommandResult } from './engine'
-import type { SimContext, StationSiteDef, StationTierDef } from './types'
+import type { SimContext, StationSiteDef } from './types'
 import { cargoOfShip } from './inventory'
 import { peakFirst } from './firstTasks'
 import { deliverDialogueToComms } from './comms'

@@ -34,7 +34,7 @@ import type { AiCoreType, MarketBalance, MarketGoodDef, MarketGoodKind, MarketRa
 import { nextInt, nextRandom, pickWeighted } from './rng'
 import { addWare, countWare, removeWare } from './inventory'
 import { addModule, countModule, removeModule } from './equipment'
-import { addShipToFleet, fleetDefOf, isShipLocked, shipDisplayName, shipStoredCount } from './shipyard'
+import { addShipToFleet,  isShipLocked, shipDisplayName, shipStoredCount } from './shipyard'
 import { emptyFitted, uidDefId, allFittedIds } from './labels'
 import { aiCoreName, countAiCore, gainAiCore, spendAiCores } from './ai'
 import { shipInReturn } from './mining'

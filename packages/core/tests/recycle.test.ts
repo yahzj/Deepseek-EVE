@@ -12,7 +12,7 @@ import { addItem, addWare, countWare, removeWare } from '../src/inventory'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import type { ItemDef, SimContext } from '../src/types'
 import { anomaly, blueprint, galaxy, makeTestCtx, moduleDef } from './helpers'
-import { FRAGMENT_RECIPES, fragmentPoolOf, rareBoxThemePoolOf, rareWreckItemDefOf, rareWreckItemIdOf, recycleBatchValueIsk, recycleRefiningMultiplier, recycleMineralPoolOf, recyclePoolMeanIsk, recycleProfileOf, rollRecycleGuarantee, wreckItemIdOf } from '../src/salvage'
+import { FRAGMENT_RECIPES, fragmentPoolOf,  rareWreckItemDefOf, rareWreckItemIdOf, recycleBatchValueIsk, recycleRefiningMultiplier, recycleMineralPoolOf, recyclePoolMeanIsk, recycleProfileOf, rollRecycleGuarantee, wreckItemIdOf } from '../src/salvage'
 import { wormholeMk3PoolOf, wormholeRareBoxThemeGroupsOf, wormholeRareBoxThemePoolOf } from '../src/wormholeSalvage'
 
 /** 测试矿物（id = 真实矿物 id，价格占位） */

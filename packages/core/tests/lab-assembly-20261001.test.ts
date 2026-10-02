@@ -13,7 +13,7 @@ import { buildSimContext, LAB_RECIPES } from '@whale/data'
 import type { GameState } from '../src/state'
 import { createInitialState, haltActivityForSwitch } from '../src/state'
 import { addItem, addWare, countItem, countWare } from '../src/inventory'
-import { advanceLab, labAffordableBatches, labLoopOf, setLabLoop, startLabRun, stopLabRun } from '../src/lab'
+import {  labAffordableBatches, labLoopOf, setLabLoop, startLabRun, stopLabRun } from '../src/lab'
 import { gainAiCore } from '../src/ai'
 import { advanceGame } from '../src/engine'
 

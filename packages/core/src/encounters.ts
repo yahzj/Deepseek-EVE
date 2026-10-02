@@ -80,7 +80,7 @@ import { applyArmorFirstDamage, firepowerHitHp, pctOf as pct, type HullHit } fro
 import { sunkShipIdsOfBattle } from './combat'
 import { repairWithKitsFor, loseShip } from './shipyard'
 // 2026-09-23 周末入侵：占领区破例遇袭（中安/高安一样掷）· 概率走入侵口径 · 悬赏池整池换成入侵舰队
-import { weekendAmbushPickOf, weekendEncounterChanceAt, weekendFoeCardOf } from './weekendEvent'
+import { weekendAmbushPickOf, weekendEncounterChanceAt } from './weekendEvent'
 import { WEEKEND_CARD_PREFIX, weekendBountyCardsOf, weekendEncounterAllowedIn } from './weekendBounty'
 import {
   weekendApplyBattleOutcome,

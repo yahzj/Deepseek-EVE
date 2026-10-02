@@ -3,7 +3,6 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { SimContext } from '../src/types'
-import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
 import { advanceGame, clearSkillQueue, enqueueSkill, removeQueueAt, skillQueueStatus } from '../src/engine'
 import { DEFAULT_TRAIN_BASE_MS } from '../src/training'

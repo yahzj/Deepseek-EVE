@@ -7,7 +7,6 @@ import { buildSimContext } from '@whale/data'
 import type { GameState } from '../src/state'
 import type { ItemDef } from '../src/types'
 import { createInitialState } from '../src/state'
-import { advanceGame } from '../src/engine'
 import {
   applyDamage,
   distFactor,

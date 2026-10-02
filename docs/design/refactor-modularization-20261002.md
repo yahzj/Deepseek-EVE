@@ -118,6 +118,18 @@
 - 文件：tools/arch-guard.ts · docs/development-conventions.md · docs/development-conventions-changelog.md。
 - 验证：arch:guard 全绿（F1~F9）✅。
 
+### 批次 2a-①：core 未用导入清理（2026-10-02 · 护栏前置 · 零行为变化）
+
+- 背景：`tsconfig.base` 没开 `noUnusedLocals` ⇒ core 累计 192 处未用局部/导入。目标 = 清干净后把
+  `noUnusedLocals: true` 写进 `packages/core/tsconfig.json`。
+- 做法：临时修器 `tools/_probe-unusedfix.mts`（**只删单行 import 里的未用名**；行内注释先切走再拼回；
+  字节级替换。中途两次事故：① 行首偏移按 `len+1` 算 ⇒ CRLF 文件逐行漂 1 字节、把 `from` 砍成 `fom` ——
+  已 `git checkout` 全量回滚重来，改为逐 `\n` 扫描行首 ② 多行 import 一律不碰，交人工）——**用完即删**。
+- 本步：**61 个文件、86 处**单行未用导入已删（core/src 19 文件 + tests 41 + data 1）；typecheck ✅ ·
+  core 全量 **3004 条** ✅。
+- 剩余 **106 处**（多行 import 内的未用名 ＋ src/tests 里的未用局部）交后续人工步：src 59 · tests 105 · data 2
+  的原始人工清单里已消掉一部分，见后续批次；**在全部清零前，闸门不开**。
+
 ## 待办/待裁
 
 - 大拆分的具体切分边界等动到批次 4 再逐文件出设计（§2 逐批确认）。

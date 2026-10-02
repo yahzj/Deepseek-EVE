@@ -7,7 +7,7 @@
  * ③ **覆盖表的 id 必须真实存在**（写错的 id 悄悄无效 ⇒ 英文界面里冒中文，本用例点名）。
  */
 import { buildSimContext } from '@whale/data'
-import { EN_ANOMALIES, EN_BELTS, EN_COMMS_FACTIONS, EN_FOE_SHIPS, EN_GALAXIES, EN_ITEMS, EN_MATTER_TECH, EN_MATTER_TECH_NOTES, EN_MODULES, EN_SHIPS, EN_SKILLS, EN_STATIONS, EN_STATION_TIERS, EN_TRAVEL_EVENTS, EN_WRECKS, ITEMS, MODULES, SHIPS, SKILLS, overlayList } from '@whale/data'
+import { EN_ANOMALIES, EN_BELTS, EN_COMMS_FACTIONS, EN_FOE_SHIPS, EN_GALAXIES, EN_ITEMS, EN_MATTER_TECH, EN_MATTER_TECH_NOTES, EN_MODULES, EN_SHIPS, EN_SKILLS, EN_STATIONS, EN_STATION_TIERS, EN_TRAVEL_EVENTS,  ITEMS,  SHIPS, SKILLS, overlayList } from '@whale/data'
 import { describe, expect, it } from 'vitest'
 
 const zh = buildSimContext()

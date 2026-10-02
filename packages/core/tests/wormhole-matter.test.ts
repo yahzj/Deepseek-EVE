@@ -40,7 +40,7 @@ import {
   wormholeSyncMatterTurns,
   wormholeTempBoard,
 } from '../src/wormholeSalvage'
-import { wormholeActivateAt, wormholeStartBattle, wormholeTravelTo } from '../src/wormholeBattle'
+import { wormholeActivateAt,  wormholeTravelTo } from '../src/wormholeBattle'
 import { applyMatterPlayerBuffs, carryVolleyOverflow, droneRecoveryRateWithBonus, rawDamageToKill, wormholeMatterBattleModsOf } from '../src/combat'
 import { applyDamage } from '../src/combat'
 import { wormholeFoeThreat } from '../src/wormholeFoes'

@@ -10,7 +10,6 @@ import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import { createPlayerSpec, hitChance, inRange, loadAmmo, playerAmmoType } from '../src/combat'
 import { fitModule, repairDeprecatedModules } from '../src/equipment'
-import type { ShipDef } from '../src/types'
 import { makeTestCtx, moduleDef, ship } from './helpers'
 
 function makeBedCtx(mods: ReturnType<typeof moduleDef>[]) {

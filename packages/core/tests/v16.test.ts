@@ -4,14 +4,12 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { BeltDef, SimContext } from '../src/types'
-import type { GameState } from '../src/state'
-import { createInitialState, CURRENT_STATE_VERSION } from '../src/state'
+import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { countItem, countWare } from '../src/inventory'
-import { miningStatus, rollBeltOutput, startMining } from '../src/mining'
+import {  rollBeltOutput, startMining } from '../src/mining'
 import { assignAiMining, gainAiCore } from '../src/ai'
 import { belt, makeTestCtx, ore , fittedOf } from './helpers'
-import { loadSaveFile, serializeSaveFile } from '../src/save'
 
 function mixedBelt(): BeltDef {
   return {

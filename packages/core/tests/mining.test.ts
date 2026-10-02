@@ -8,7 +8,7 @@ import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { countItem } from '../src/inventory'
 import { beltTravelMinutes, miningStatus, oneLegMs, richVeinP, setMiningAutoCycle, setMiningStopAfterTrip, startMining, stopMining, advanceShipReturns } from '../src/mining'
-import { makeTestCtx, belt, ship, skill , fittedOf } from './helpers'
+import { makeTestCtx, belt, ship , fittedOf } from './helpers'
 
 describe('采矿作业', () => {
   let state: GameState

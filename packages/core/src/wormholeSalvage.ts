@@ -87,7 +87,7 @@ import {
   WORMHOLE_TEMP_CELLS,
   WORMHOLE_TEMP_COLS,
 } from './wormhole'
-import type { WormholeBagSlot, WormholePile, WormholeTempSlot } from './wormhole'
+import type { WormholeBagSlot, WormholePile } from './wormhole'
 import type { WormholeActivateEffect, WormholeRunState } from './wormhole'
 
 /* ═══════════ 一、口径常量（F3c 配平的旋钮都在这里） ═══════════ */

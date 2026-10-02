@@ -5,7 +5,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { SimContext, MarketGoodDef, StationSiteDef } from '../src/types'
 import type { GameState } from '../src/state'
-import { createInitialState, CURRENT_STATE_VERSION } from '../src/state'
+import { createInitialState } from '../src/state'
 import { advanceGame } from '../src/engine'
 import { countWare } from '../src/inventory'
 import { sellAll, sellWareItem } from '../src/industry'

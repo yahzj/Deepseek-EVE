@@ -11,7 +11,6 @@ import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/state'
 import { advanceBattleFor, ammoLoadTotals, beamPowerFactor, createPlayerSpec, startBattleFor } from '../src/combat'
 import { fitModule, repairDeprecatedModules } from '../src/equipment'
-import type { ShipDef } from '../src/types'
 import { anomaly, makeTestCtx, moduleDef, ship } from './helpers'
 
 function makeBedCtx(mods: ReturnType<typeof moduleDef>[], opts: { evasion?: number } = {}) {

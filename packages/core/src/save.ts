@@ -17,11 +17,11 @@ import {
   HOME_GALAXY_ID,
   MAX_SKILL_LEVEL,
 } from './state'
-import type { BattleFx, BattleState, GameState, GameStateV21, GameStateV22, GameStateV23, GameStateV24, LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
+import type { BattleFx, BattleState, GameState,     LogEntry, LogKind, MarksState, SideTask, WormholeArchetype, WormholeFamily } from './state'
 import type { AchievementEarned } from './state'
 import type { BattleShieldFieldLedger, BattleShieldFieldStream } from './state'
 import { CHAIN_TIERS, CHAIN_TIERS_LEGACY_ORDERS, FIRST_TASKS } from './firstTasks'
-import type { CommsInstanceEntry, CommsJumpPage, CommsKind, CommsRewardLine, FittedModules, ModuleSlot, RackSlot } from './types'
+import type { CommsInstanceEntry, CommsJumpPage, CommsKind, CommsRewardLine, FittedModules,  RackSlot } from './types'
 import type { ShipFitPreset } from './state'
 import type { WormholeGridState } from './wormholeGrid'
 import { WORMHOLE_HOLD_COLS, cleanHoldPlacement } from './wormholeHold'

@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { GameState } from '../src/state'
 import { createInitialState } from '../src/state'
 import { createPlayerSpec, foeMainDamageType, hitChance, mergeResist } from '../src/combat'
-import { addModule, fitModule, repairDeprecatedModules, unfitSlot } from '../src/equipment'
+import {  fitModule, repairDeprecatedModules, unfitSlot } from '../src/equipment'
 import { calcPower } from '../src/expedition'
 import { anomaly, makeTestCtx, moduleDef, ship } from './helpers'
 

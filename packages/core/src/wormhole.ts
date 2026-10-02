@@ -24,7 +24,7 @@ import {
   mainActivityOf,
   type MainActivityKind,
 } from './activityGate'
-import type { AnomalyDef, ShipDef, SimContext } from './types'
+import type {  ShipDef, SimContext } from './types'
 import { uidDefId } from './labels'
 import { cargoCapacityM3Of } from './inventory'
 import { shipDisplayName } from './instances'
@@ -33,7 +33,6 @@ import {
   wormholeNodesPerLayer,
   wormholeFamilyOfSeed,
 } from './wormholeFoes'
-import type { WormholeFoeKind } from './wormholeFoes'
 import { WORMHOLE_SPAWN_MIN_DEPTH, wormholeArchetypeOf } from './wormholeGrid'
 import {
   WORMHOLE_NEBULA_MIN_DEPTH,
