@@ -59,7 +59,7 @@ import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
 import { isk, rareWreckRefsOf } from './common'
 // 2026-09-26 船长报障：打捞页卡片序列（纯函数；单独成文件以便工具/用例直接断言这条顺序）
-import { wreckCardSequenceOf } from './wreckCards'
+import { wreckAiHostOf, wreckCardSequenceOf } from './wreckCards'
 import { isEn, tr, cmdText } from '../i18n/locale'
 import { wreckGroupText } from '@whale/data'
 import { fmtDuration } from '../i18n/fmt'
@@ -517,7 +517,8 @@ function BeltCard({
             className="app-belt-ai-badge"
             title={tr("ui.MapPage.089", { aiCount: aiCount })}
           >
-            <span className="app-ico"><Glyph name="nav-ai" size={12} color={NAV_TONES["nav-ai"]} /></span>×{aiCount}
+            {/* 图标不传色 ⇒ 继承徽标墨色（同「残骸打捞」那张卡的徽标；理由见 `WreckCard` 里那段注释） */}
+            <span className="app-ico"><Glyph name="nav-ai" size={12} /></span>×{aiCount}
           </span>
         ) : null}
       </div>
@@ -898,7 +899,8 @@ function SalvageTab({
              *
              * 1. **玩家舰船残骸卡**（有才出）——四级序最高优先，卡上直接给「开始打捞」；
              * 2. **入侵残骸卡**（有才出）——独立残骸场，48h 衰减、先捞它最划算；
-             * 3. **星系残骸（全部）卡**——常规密度，带 AI 指派条。
+             * 3. **星系残骸（全部）卡**——常规密度，带**各组存量读数**；**AI 那一套（指派条 ＋ 徽标 ＋
+             *    副船名册）挂"置顶那张卡"**（`wreckAiHostOf`，见其头注）。
              *
              * ⚠ **每组的"手动选择"卡已撤**：打捞对象自 2026-09-26 起由 core 自动判定
              * （「分组后不要再让玩家手动选择打捞对象了……优先打捞入侵残骸，没有入侵残骸则是根据两种残骸的
@@ -922,7 +924,7 @@ function SalvageTab({
                 invasionWreckM3: invWreck,
                 invasionRareCount: invRare,
               })
-              const mk = (opts: { key: string; label: string; cardDensity: number; showAi?: boolean; showInvasionBar?: boolean }) => (
+              const mk = (opts: { key: string; label: string; cardDensity: number; showAi?: boolean; showGroupRows?: boolean; showInvasionBar?: boolean }) => (
                 <WreckCard
                   key={`${g.id}|${opts.key}`}
                   galaxy={g}
@@ -943,14 +945,26 @@ function SalvageTab({
                   onAiCancel={cancelAi}
                   onToast={onToast}
                   showAi={opts.showAi === true}
+                  showGroupRows={opts.showGroupRows === true}
                 />
               )
+              /**
+               * **AI 那一套（指派条 ＋ 徽标 ＋ 副船名册）挂"置顶那张卡"**（船长 2026-10-02 报障
+               * 「入侵残骸的打捞片无法指派AI」）：原先是只挂「全部」卡 ⇒ 有入侵残骸时玩家看的是
+               * 上面那张、指派条却压在下面那张。规则见 `wreckAiHostOf` 头注（一处入口、不重复名册）。
+               * **各组存量读数仍只归「全部」卡**（那行与 AI 无关）⇒ 两个开关分开传。
+               */
+              const aiHost = wreckAiHostOf(cardSeq)
               return cardSeq.map((kind) => {
+                const aiHere = kind === aiHost
+                const rowsHere = kind === 'all'
                 if (kind === 'ship-wrecks') {
                   return mk({
                     key: 'ship-wrecks',
                     label: tr('ui.weekend.110', { p1: String(wrecks.length) }),
                     cardDensity: 0,
+                    showAi: aiHere,
+                    showGroupRows: rowsHere,
                   })
                 }
                 if (kind === 'invasion') {
@@ -962,10 +976,12 @@ function SalvageTab({
                      */
                     label: invRare > 0 ? tr('ui.MapPage.122', { p1: String(invRare) }) : tr('ui.MapPage.121'),
                     cardDensity: invWreck,
+                    showAi: aiHere,
+                    showGroupRows: rowsHere,
                     showInvasionBar: true,
                   })
                 }
-                return mk({ key: '', label: tr('ui.MapPage.120'), cardDensity: density, showAi: true })
+                return mk({ key: '', label: tr('ui.MapPage.120'), cardDensity: density, showAi: aiHere, showGroupRows: rowsHere })
               })
             })}
           </div>
@@ -1005,6 +1021,7 @@ function WreckCard({
   density,
   densityLabel,
   showAi = false,
+  showGroupRows = false,
   aiWorkers,
   isActive,
   focus = false,
@@ -1024,8 +1041,10 @@ function WreckCard({
   density: number
   /** **这一张卡是谁的读数**（玩家舰船残骸卡 / 入侵残骸卡 / 星系残骸（全部）卡） */
   densityLabel?: string
-  /** 是否显示 AI 指派条（只挂「全部」那张：AI 任务按"全部"口径、不带打捞对象） */
+  /** 是否显示 **AI 指派条**（挂"该星系置顶那张卡"：玩家舰船残骸 > 入侵残骸 > 全部；规则见 `wreckAiHostOf`） */
   showAi?: boolean
+  /** 是否显示**各组存量读数**（只归「全部」那张卡：那行说的是"这个星系各组还剩多少"，与 AI 无关） */
+  showGroupRows?: boolean
   /** **各组存量读数**（只读；打捞对象由 core 自动判定 ⇒ 这里只展示，不再提供选择） */
   groupRows?: Array<{ groupKey: string; stockM3: number }>
   /**
@@ -1112,7 +1131,14 @@ function WreckCard({
         </span>
         {aiWorkers.length > 0 ? (
           <span className="app-belt-ai-badge" title={tr("ui.MapPage.108", { p1: aiWorkers.length })}>
-            <span className="app-ico"><Glyph name="nav-ai" size={12} color={NAV_TONES["nav-ai"]} /></span>×{aiWorkers.length}
+            {/**
+             * ⚠ **图标不传色**（**船长 2026-10-02 报障**：「**卡片内 AI 工作的图标（卡片右上角的那个）
+             * 颜色不对**」）：本徽标底色是**青**（`.app-belt-ai-badge` 的 `--wui-cyan`）、文字是**墨色**
+             * （`--wui-x222`），而图标原先传 `NAV_TONES['nav-ai']`（默认主题 = **品红 255 138 181**）
+             * ⇒ 浅色图标压在浅青底上，与徽标其余部分不是一个体系。`Glyph` 缺省走 `currentColor`
+             * ⇒ 不传即继承徽标自己的墨色，与右边那个「×N」同色。
+             */}
+            <span className="app-ico"><Glyph name="nav-ai" size={12} /></span>×{aiWorkers.length}
           </span>
         ) : null}
       </div>
@@ -1187,7 +1213,7 @@ function WreckCard({
        * 那是"手动选择"时代的残留（目标自 2026-09-26 起由 core 自动判定）。
        * 现在只把存量并成**本卡的一行读数**：信息不丢、也不再假装可选。
        */}
-      {groupRows.length > 0 && showAi ? (
+      {groupRows.length > 0 && showGroupRows ? (
         <div className="app-belt-ore">
           {groupRows.map((t) => (
             <em key={t.groupKey} className="app-chip" title={engine.ctx.items.get(`wreck-${t.groupKey}`)?.name ?? t.groupKey}>
@@ -1248,7 +1274,11 @@ function WreckCard({
             <span className="app-ico"><Glyph name="nav-salvage" size={13} color={NAV_TONES["nav-salvage"]} /></span>{tr("ui.MapPage.071")}
           </button>
         )}
-        {/* **AI 指派条只挂「全部」那张卡**：AI 任务不带打捞对象（= 自动口径），挂组卡会误导 */}
+        {/**
+         * **AI 指派条挂"该星系置顶那张卡"**（**船长 2026-10-02 报障**「**入侵残骸的打捞片无法指派AI**」；
+         * 规则与理由见 `wreckAiHostOf` 头注）：不再是"只挂「全部」卡"——有入侵残骸时玩家看的是上面那张，
+         * 指派条却压在下面那张。**名册与徽标同挂这一张**（同一份名册画两遍＝他 2026-09-26 报过的"重复卡"观感）。
+         */}
         {showAi ? (
         <div className="app-belt-ai">
           <select className="app-select" value={aiShipId} onChange={(e) => setAiShipId(e.target.value)} title={tr("ui.MapPage.072")}>
