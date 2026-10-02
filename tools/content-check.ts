@@ -8454,6 +8454,57 @@ function checkFactionExclusive(): void {
 
 checkFactionExclusive()
 
+/**
+ * **势力图鉴档案契约**（**2026-10-02 船长报障修**）。
+ *
+ * 起因：船长报障「**在玩家没有遭遇过 R 族势力前，R 族的手册势力图鉴描述是错误的**」。
+ * 真因 = `panels/Handbook.tsx` 的 `FACTION_NAME_BASE`（各族"势力档案"四要素的**文案基准格**）
+ * **漏了 R**，而读法是 `FACTION_NAME_BASE[family] ?? 326` ⇒ R 族**静默回落到 A 族（海盗）**的四段文案，
+ * 它自己的 `ui.Handbook.382~389` 八条因此长期是**孤儿 id**（`l10n:check` 只把它列进「未接线条目」，不报红）。
+ * 未遭遇时最显眼：敌人段与装备段那时都写「？？？」/「遭遇后解锁」，整页只有这四段"言之有物"。
+ *
+ * 三个方向都查：
+ *   ① `FACTION_CODEX_ORDER` 的**每一个族**都必须在基准表里登记（漏登记即红 —— 就是本次报障的形态）；
+ *   ② 每族八条（基准 +1 … +8：四段标题 ＋ 四段正文）**都必须在唯一表里存在**（缺号即红）；
+ *   ③ 基准格**彼此至少隔 9 格**（挨近了八条会跨族撞号）。
+ *
+ * 判据源：族清单 = data 的 `FACTION_CODEX_ORDER`；基准表 = **渲染层源码**——`apps/desktop` **没有测试
+ * 运行器**（与「装备卡片说明契约」同款理由），这类跨层口径只能由体检兜住。
+ */
+function checkFactionCodexArchive(): void {
+  const hbPath = 'apps/desktop/src/renderer/src/panels/Handbook.tsx'
+  /** 自己读盘（`readSrc`/`stripComments` 是别的块内的局部件、本块作用域看不到）；只取声明那一行 */
+  const hbSrc = readFileSync(join(process.cwd(), hbPath), 'utf8')
+  const seg = /const FACTION_NAME_BASE[^\n]*/.exec(hbSrc)?.[0] ?? ''
+  const entries = [...seg.matchAll(/([A-Z]):\s*(\d+)/g)].map((m) => ({ family: m[1]!, base: Number(m[2]) }))
+  check(entries.length > 0, `势力图鉴档案契约：${hbPath} 里读不出 \`FACTION_NAME_BASE\`（四要素的文案基准格单点丢了）`)
+  const missing = FACTION_CODEX_ORDER.filter((f) => !entries.some((e) => e.family === f))
+  check(
+    missing.length === 0,
+    `势力图鉴档案契约：族 ${missing.join(' · ')} 没在 ${hbPath} 的 \`FACTION_NAME_BASE\` 里登记 —— ` +
+      `读法是 \`[family] ?? 326\` ⇒ 会**静默回落到 A 族（海盗）**的档案文案（2026-10-02 R 族报障正是这个形态）`,
+  )
+  const bases = entries.map((e) => e.base).sort((a, b) => a - b)
+  let collide = ''
+  for (let i = 1; i < bases.length; i++) if (bases[i]! - bases[i - 1]! < 9) collide = `${bases[i - 1]} 与 ${bases[i]}`
+  check(collide === '', `势力图鉴档案契约：基准格挨得太近（${collide}）—— 八条档案会跨族撞号`)
+  let absent = 0
+  let checked = 0
+  for (const e of entries) {
+    for (let n = 1; n <= 8; n++) {
+      if (L10N[`ui.Handbook.${e.base + n}`] === undefined) absent += 1
+      checked += 1
+    }
+  }
+  check(absent === 0, `势力图鉴档案契约：${absent} 条档案文案在唯一表里缺号（每族应有 8 条：四段标题 ＋ 四段正文）`)
+  console.log(
+    `· 势力图鉴档案契约：${entries.length} 个族各有基准格（${entries.map((e) => `${e.family}=${e.base}`).join(' · ')}）· ` +
+      `核过 ${checked} 条档案文案全部在表里 · 基准格互不撞号`,
+  )
+}
+
+checkFactionCodexArchive()
+
 /* ─────────── 插件效果字段接线护栏（2026-09-27 船长令「做」）─────────── */
 
 /**
