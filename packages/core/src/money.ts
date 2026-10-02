@@ -181,6 +181,25 @@ export function moneyFitCandidates(amount: number, lang: MoneyLang = 'zh'): stri
   return [...new Set(out)] // 去重：金额小时两档可能完全重合
 }
 
+/**
+ * **"只要全额"的候选序列**（**2026-10-02 船长插入令**：「因为钱包移动到了屏幕顶端，所以钱包内的数额
+ * 不用进行缩写了，因为宽度不受限」）。
+ *
+ * 与 {@link moneyFitCandidates} 的唯一差别：**不含任何缩写档**（没有 `万`/`亿`/`M`/`B`）——
+ * 宽度够就永远显示 `1,234,567,890 信用点` 这种一位不省的全额。
+ * 仍然给两档：**带单位 → 去掉单位**（去掉单位不是缩写，数字一位不少，单位由 `title` 兜住）。
+ *
+ * ⚠ **窄到连"全额不带单位"都装不下时不再退缩写** ⇒ 由容器的 `text-overflow: ellipsis` 截断
+ * （与 `moneyFormatCandidates` 头注同一条纪律：**宁可截断，也不显示一个错的/缩过的数**）。
+ * 只给**宽度确实不受限**的位置用（当前 = 顶栏钱包；其余位置照旧走 `moneyFitCandidates`）。
+ */
+export function moneyFullCandidates(amount: number, lang: MoneyLang = 'zh'): string[] {
+  const safe = Number.isFinite(amount) ? amount : 0
+  const withUnit = `${moneyExact(safe)} ${unitWordOf(lang, safe)}`
+  const noUnit = moneyExact(safe)
+  return withUnit === noUnit ? [withUnit] : [withUnit, noUnit]
+}
+
 /** **金额 + 单位**（玩家可见文案的统一写法；例：`1.2 万 信用点` / `1.2M credits`） */
 export function moneyText(amount: number, lang: MoneyLang = 'zh'): string {
   return `${moneyAmount(amount, lang)} ${unitWordOf(lang, amount)}`

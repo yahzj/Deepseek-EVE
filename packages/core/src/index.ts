@@ -1356,6 +1356,8 @@ export {
   moneyExact,
   moneyExactText,
   moneyFitCandidates,
+  // 2026-10-02 船长插入令：钱包移到屏幕顶端 ⇒ 宽度不受限 ⇒ 钱包只用"全额档"（不缩写）
+  moneyFullCandidates,
   moneyFormatCandidates,
   moneyText,
   type MoneyLang,

@@ -18,9 +18,14 @@
  *
  * 为什么不用纯 CSS（`text-overflow: ellipsis`）：那会把数字**从中间截断**（`1,234,5…`），
  * 船长要的是"**够长且完整可读**"——宁可换成 `1.23 亿`，也不要 `1,234,5…`（`ellipsis` 只当最后一道保险）。
+ *
+ * ⚠ **`full` 口子**（**2026-10-02 船长插入令**：「因为钱包移动到了屏幕顶端，所以钱包内的数额
+ * **不用进行缩写**了，因为宽度不受限」）：传 `full` ⇒ 候选只取**全额档**（{@link moneyFullCandidates}），
+ * 宽度再紧也不退缩写；真要装不下就交给容器的 `ellipsis`（**宁可截断，也不显示缩过的数**）。
+ * 只给宽度确实不受限的位置用（当前 = 顶栏钱包两处）；其余位置照旧走 `moneyFitCandidates`。
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { moneyExactText, moneyFitCandidates, type MoneyLang } from '@whale/core'
+import { moneyExactText, moneyFitCandidates, moneyFullCandidates, type MoneyLang } from '@whale/core'
 import { tr, useL10n } from '../i18n/locale'
 
 /** 测量用的样式：与正文完全同源（字体/字号/字距/字重都由 `inherit` 从容器继承） */
@@ -51,6 +56,7 @@ export function MoneyFit({
   className,
   unit,
   exact,
+  full,
 }: {
   amount: number
   className?: string
@@ -58,6 +64,8 @@ export function MoneyFit({
   unit?: string
   /** `title` 文案（给 ⇒ 用它；不给 ⇒ 钱包那句） */
   exact?: string
+  /** **只用全额档**（不缩写；宽度不受限的位置用 —— 见文件头注，2026-10-02 船长插入令） */
+  full?: boolean
 }) {
   const boxRef = useRef<HTMLSpanElement | null>(null)
   const probeRef = useRef<HTMLSpanElement | null>(null)
@@ -89,7 +97,7 @@ export function MoneyFit({
      * ⚠ 剥的是**当前语言的**单位词（`MONEY_UNIT` ＝ core 单点的中文那个；英文那份由 `unitWordOf` 出）。
      */
     const strip = (c: string): string => c.replace(/\s?(信用点|credits?|ISK)$/, '').trim()
-    const raw = moneyFitCandidates(amount, lang)
+    const raw = full === true ? moneyFullCandidates(amount, lang) : moneyFitCandidates(amount, lang)
     const cands = unit === undefined ? raw : raw.map(strip)
     /**
      * **带单位的档优先**（**2026-09-29 改** · 船长词典 §三「信用点数额 = `476,945,470 credits`」）。
@@ -126,7 +134,7 @@ export function MoneyFit({
      * 一页里有多枚 MoneyFit，写 title 只会剩最后一个，查不出是哪一格出的问题）。
      */
     if (localStorage.getItem('whale-idle:debug') === '1') {
-      box.dataset.mfDebug = `avail=${Math.round(avail)} lang=${lang} unit=${unit ?? '-'} raw=[${raw.join(' | ')}] ordered=[${ordered.join(' | ')}] chosen=${chosen}`
+      box.dataset.mfDebug = `avail=${Math.round(avail)} lang=${lang} unit=${unit ?? '-'} full=${full === true ? 1 : 0} raw=[${raw.join(' | ')}] ordered=[${ordered.join(' | ')}] chosen=${chosen}`
     }
   }
 
@@ -135,7 +143,7 @@ export function MoneyFit({
    * ⚠ **`lang` 必须在依赖里**：语言一换，候选串（单位词与量级词都变了）也就变了，
    * 不重挑就会留着上一种语言的写法（`1,234 信用点` 停在英文界面上）。
    */
-  useLayoutEffect(pick, [amount, lang])
+  useLayoutEffect(pick, [amount, lang, full])
   // 依赖：数值变化 + 语言变化 + 容器宽度变化（ResizeObserver）
   useLayoutEffect(() => {
     const box = boxRef.current
@@ -143,12 +151,12 @@ export function MoneyFit({
     const ro = new ResizeObserver(() => pick())
     ro.observe(box)
     return () => ro.disconnect()
-  }, [amount, lang])
+  }, [amount, lang, full])
   // 字体加载完成后字宽会变（网页版首屏），补量一次
   useEffect(() => {
     const fonts = (document as unknown as { fonts?: { ready?: Promise<unknown> } }).fonts
     if (fonts?.ready) void fonts.ready.then(() => pick())
-  }, [amount, lang])
+  }, [amount, lang, full])
 
   return (
     <span

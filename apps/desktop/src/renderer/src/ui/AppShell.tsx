@@ -188,7 +188,8 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
   
             {/* **钱包**（2026-09-25 船长令：「钱包显示移动到顶部玩家名字的右侧」）
                 —— 原在左侧栏「出港上方」（2026-09-13 令），本轮随外壳重排移到顶栏。 */}
-            <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
+            {/* **钱包**：宽度不受限（已在顶栏）⇒ 船长 2026-10-02 令「不用进行缩写」⇒ `full` */}
+            <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" full />
             {/* **声望**（**2026-09-29 船长令**）：放在钱包右侧；与旧版同一枚容器（见 `standingChip`） */}
             {standingChip()}
             {/*
@@ -434,7 +435,8 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
              * - 钱包原先在左侧栏「出港上方」（2026-09-13 令）——该位置**随本令撤回**；
              * - 声望容器与新版**共用 `standingChip`**（口径见该函数头注）。
              */}
-            <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" />
+            {/* **钱包**：宽度不受限（已在顶栏）⇒ 船长 2026-10-02 令「不用进行缩写」⇒ `full` */}
+            <MoneyFit amount={state.wallet.isk} className="app-isk app-wallet" full />
             {standingChip()}
           </div>
           <div className="app-header-right">

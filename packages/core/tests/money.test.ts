@@ -16,8 +16,10 @@ import {
   MONEY_YI_THRESHOLD,
   moneyAmount,
   moneyDelta,
+  moneyExact,
   moneyExactText,
   moneyFitCandidates,
+  moneyFullCandidates,
   moneyFormatCandidates,
   moneyText,
 } from '../src/money'
@@ -147,6 +149,30 @@ describe('金额显示（信用点 · 位数分级）', () => {
    * 船长要的是「能显全额就显全额」，所以**全额档整体排在缩写档之前**，
    * 且**"单位"是第一个可以让位的东西**（`1,234,567,890` 优于 `12.35 亿 信用点`）。
    */
+  /**
+   * **只要全额档**（**2026-10-02 船长插入令**：「因为钱包移动到了屏幕顶端，所以钱包内的数额
+   * 不用进行缩写了，因为宽度不受限」）：`moneyFullCandidates` 用来给**宽度不受限**的位置
+   * （当前 = 顶栏钱包）出候选 —— **任何金额都不许出现缩写档**。
+   */
+  it('**全额档候选**：永远只有"全额带单位 → 全额不带单位"，任何档位都不出现缩写', () => {
+    for (const amount of [0, 1, 999, 9_999, 10_000, 12_345, 582_902, 99_999_999, 100_000_000, 476_945_470, 1_234_567_890]) {
+      const zh = moneyFullCandidates(amount)
+      expect(zh.length, `${amount} 的候选数`).toBeGreaterThanOrEqual(1)
+      expect(zh.length).toBeLessThanOrEqual(2)
+      for (const c of zh) {
+        expect(c, `${amount} 的候选 ${c} 不该带缩写单位`).not.toMatch(/[万亿]|[0-9]\s*[MB](\s|$)/)
+      }
+      // 第一档 = 全额（带单位），末档 = 去掉单位后**数字一字不差**
+      expect(zh[0]).toBe(`${moneyExact(amount)} 信用点`)
+      if (zh.length === 2) expect(zh[1]).toBe(moneyExact(amount))
+    }
+    // 英文侧同口径（单位 credits，同样不出现 M/B）
+    const en = moneyFullCandidates(476_945_470, 'en')
+    expect(en[0]).toBe('476,945,470 credits')
+    expect(en.join(' ')).not.toMatch(/\b[MB]\b/)
+    expect(moneyFullCandidates(1, 'en')[0]).toBe('1 credit') // 单数
+  })
+
   it('**档序：全额（带单位 → 去单位）→ 缩写（带单位 → 去单位）**', () => {
     const c = moneyFitCandidates(1_234_567_890)
     expect(c[0]).toBe('1,234,567,890 信用点')

@@ -436,6 +436,31 @@ AI 侧只有 2 个文件、各加一张「档名 → id」表（`AI_CORE_IDS` �
 **过程中的一次自纠**：落码脚本第一版把多行锚点写成 `\n`，而本仓源文件是 **CRLF** ⇒ 锚点全不命中
 （脚本在写盘前抛错，没有半成品落盘）；第二版统一把锚点与替换文本做 CRLF 归一化。留痕：**动多行文本先确认行尾**。
 
+---
+
+## 插入令：**钱包里的金额不再缩写**（船长 2026-10-02 原话）
+
+> 「插入一条修改，因为钱包移动到了屏幕顶端，所以钱包内的数额不用进行缩写了，因为宽度不受限。」
+
+**改了什么（4 个文件）**：
+
+| # | 文件 | 改动 |
+|---|---|---|
+| 1 | `packages/core/src/money.ts` | 新增 **`moneyFullCandidates(amount, lang)`**：只出**全额档**（全额带单位 → 全额去单位），**永不含** `万`/`亿`/`M`/`B` 缩写档；窄到连"全额去单位"都装不下时**不再退缩写**，交给容器 `ellipsis`（同 `moneyFormatCandidates` 的"宁可截断，也不显示缩过的数"纪律） |
+| 2 | `apps/desktop/.../ui/MoneyFit.tsx` | 新增 **`full`** 口子：走全额档；依赖数组（首帧 / ResizeObserver / 字体就绪）与调试读数钩子同步带上 `full` |
+| 3 | `apps/desktop/.../ui/AppShell.tsx` | **钱包两处**（现代布局 ＋ 经典布局）传 `full`；**声望 chip 不动**（船长只点了钱包） |
+| 4 | `packages/core/tests/money.test.ts` | 新增一条用例：11 档金额下候选**只可能是 1~2 条且都不含缩写**，首档 = `moneyExact + 单位`、次档 = 去单位后数字**一字不差**；英文侧 `476,945,470 credits` / 单数 `1 credit` 同口径 |
+
+**为什么钱包现在装得下**（读现场得到的依据，不是猜）：`.app-wallet` 处顶栏时是 **`flex-shrink: 0`**
+（`styles.css` / `styles-modern.css` / `styles-classic.css` 三份同款）⇒ 它按内容撑开、由左侧的标题与玩家名
+（二者 `min-width: 0` ＋ `ellipsis`）让位；钱包自身仍留 `overflow: hidden; text-overflow: ellipsis` 当最后一道保险。
+
+**中文文案一字未改**（只改"显示哪一档"）；`title` 仍恒挂全精度 `钱包余额：… 信用点`。
+
+**验证**：`typecheck` 四包 0 错 · core **290 文件 / 3038 用例全绿**（含新增那条）· `l10n:check` ✅ · `ui:rot-check` ✅。
+**读数边界**：本次没有起浏览器量钱包格宽（属"观感/版式"范畴 ⇒ 审查权在船长）；若要**读数**（可用宽度 vs 全额串宽
+度、是否触发 `ellipsis`），说一声我用测试档跑 `ui:overflow` / `ui:geom` 出一张表。
+
 ## 待做（按盘点稿顺序）
 
 **已完成**：批① 舰船（提交 `7bb830e4`）· 批② AI · 批⑤ 工业 · 批⑥ 装配 · 批⑦ 虫洞＋战斗读数 · 批④ 市场（`shipSellable`/`sellShipAtMarket` 无界面入口 ⇒ C 类登记不动）·
