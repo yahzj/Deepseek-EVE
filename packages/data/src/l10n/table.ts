@@ -2276,6 +2276,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
      = 网「关推进器」对 C 族无效）——接在 `ui.foeIntro.107`（冲锋那句）后面，只给四件虫群冲锋器用
      （`FoeMountDef.charge.webImmune`，A 族那件不带）。 */
   "ui.foeIntro.109": { zh: "；冲锋不会被网子解除", en: "; webs cannot cancel this charge" },
+    /** R 族（光环）瞬光跃迁仪（2026-10-03 补：此前没接进 `mountEffectText` ⇒ 手册敌舰详情整节"特殊装置"缺失） */
+    "ui.foeIntro.110": { zh: "本体被命中时朝期望交距位移，单跳不超过 {p1} m", en: "Displaces toward its desired range when hit; no more than {p1} m per jump" },
+    /** R 族（光环）闪烁过载装置（同上，2026-10-03 补） */
+    "ui.foeIntro.111": { zh: "每次闪现后护盾回满，结构 −上限的 {p1}%", en: "Shields refill after each blink; hull −{p1}% of max" },
   /* ── 入侵「重复出击」（2026-09-25 船长令：「入侵活动的悬赏，允许玩家开启自动重复，照常计算返回时间」）── */
   "ui.weekend.106": { zh: "重复出击", en: "Repeat assault" },
   "ui.weekend.107": { zh: "开启重复出击：每场从该星系的入侵舰队里重抽一支，胜利后自动返航（返航路程 = 单程）、随后自动再次出发；该星系被夺回或活动结束时自动停止", en: "Start repeat assault: each run draws a fresh invader fleet from that system; after a win the fleet flies home (return leg = one way) and sets out again automatically. It stops when the system is reclaimed or the event ends" },

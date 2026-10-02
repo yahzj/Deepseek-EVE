@@ -94,6 +94,21 @@ export function mountEffectText(id: string): string | null {
   if (def.rangeDebuff) {
     return tr('ui.foeIntro.108', { p1: pct(def.rangeDebuff.pct) })
   }
+  /**
+   * 🔴 **R 族（光环）两件**（**2026-10-03 船长报障修**：「**我本地手册看不到 R 族特殊装置**」）
+   * —— 这两件是 2026-10-01 才加的，**没接进本函数的字段清单** ⇒ 一律走到下面 `return null`
+   * ⇒ `bitsOf` 把那两件 `continue` 掉 ⇒ `out.mounts` 不写 ⇒ **手册敌舰详情整节"特殊装置"都没有**。
+   *
+   * ⚠ 本条与 §「三处显示同源」同口径：战斗悬停（`mountEffectTextByName`）· 悬赏卡悬停 ·
+   * **势力图鉴 / 手册敌舰详情（`bitsOf`）** 都从这里取，不另写一份文案。
+   * ⚠ 文案只写规格（§十三：不写"为什么"、括号只放规格）。
+   */
+  if (def.blink) {
+    return tr('ui.foeIntro.110', { p1: String(def.blink.distanceM) })
+  }
+  if (def.flashOverload) {
+    return tr('ui.foeIntro.111', { p1: pct(def.flashOverload.hullCostPct) })
+  }
   /** 目录里只留了名字、没有任何效果字段 ⇒ 没有可解释的机制（**不返回名字**，避免复读） */
   return null
 }
