@@ -36,7 +36,7 @@
 
 | 文件 | 现状 | 目标切法 | 错峰对象 |
 |---|---|---|---|
-| `core/combat.ts`（10193 行） | 敌群生成/伤害结算/特效/统计混居 | 按现有 24 个分区注释切：敌群与生成 → 特效演出 → 伤害与命中 → 统计与图鉴。**4a `combatMath.ts` · 4b `combatReport.ts` · 4c `combatFx.ts` · 4d `foeCard.ts` · 4e `foePower.ts`（敌力曲线六件）** | 二号（闪现演出批） |
+| `core/combat.ts`（10193 行） | 敌群生成/伤害结算/特效/统计混居 | 按现有 24 个分区注释切：敌群与生成 → 特效演出 → 伤害与命中 → 统计与图鉴。**4a `combatMath.ts` · 4b `combatReport.ts` · 4c `combatFx.ts` · 4d `foeCard.ts` · 4e `foePower.ts` · 4f 火力构成并入 `wormholeFoes.ts`** | 二号（闪现演出批） |
 | `core/engine.ts`（3828 行） | 大跨步主循环＋命令分发 | 命令分发按域拆（industry/manufacturing/lab…各自注册） | 三号（activity 护栏） |
 | `core/save.ts`（4338 行） | 序列化/归一/迁移一家 | **只允许**把纯函数（归一器）拆出，序列化主体暂不动（存档兼容） | — |
 | `renderer` 两套工业页（1476＋≈2300 行） | 同一域双写 | 先补 HUD 实验室对齐，再抽公共件合流 | 船长目视验收 |
@@ -361,6 +361,17 @@
 - `TACTIC_RANGE`/`foeSpeedBase`/`foeMultiShipCompMul` 原模块私有，因 createFoeSpecs 仍要用而转公开
   （不进 combat 公开面）。`foeStrengthOf`/`foeThreatOfAnomaly` 依赖 `createFoeSpecs` ⇒ 留下，
   反解所需的 `foeHpOfThreat`/`foeThreatRatingOf` 从 foePower 借回。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：零渲染层改动）。
+
+### 批次 4f：combat.ts 六拆——火力构成与血型层并入 `wormholeFoes.ts`（2026-10-02 · 零行为变化）
+
+- 手法：`pickTopType` / `foeMainDamageType` / `splitShotByComposition` / `PROFILE_SPLIT` /
+  `foeLayerSplit` 五件**纯构成计算**搬进 `wormholeFoes.ts`（3-⑧ 已有 `compositionOfMix`/
+  `foeDamageComposition` 同族件，不建新文件）；combat 借回使用并原样再导出。
+- `pickTopType`/`PROFILE_SPLIT` 原模块私有，因 createFoeSpecs 仍要用而转公开（不进 combat 公开面）。
+- 探过但未动的两块（记台账）：① 玩家规格簇（createPlayerSpec 668 行）依赖面已探清为零内部调用、
+  可整块外迁，但体量大留待 4g 专项；② 胜率预估簇依赖 `steadyPreview`（内连规格大件）⇒ 被规格簇卡住。
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：零渲染层改动）。
 

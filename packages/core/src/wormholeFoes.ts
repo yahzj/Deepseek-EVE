@@ -8,9 +8,10 @@
  * 口径：设计稿 `docs/design/wormhole-extraction-endgame-20260912.md`
  * §3（节点/层末 BOSS 表）· §4（威胁与收益曲线）· §九 Q11（收益涨得比难度快）。
  */
-import type { AnomalyDef, DamageType, FoeShipSlot, FoeSupportBranch, FoeTargetingMode, SimContext } from './types'
+import type { AnomalyDef, DamageType, DefProfile, FoeShipSlot, FoeSupportBranch, FoeTargetingMode, SimContext } from './types'
 import type { WormholeFamily } from './state'
 import { resolveFoeMounts } from './foeMounts'
+import type { Hp3 } from './combatMath'
 
 /**
  * **2026-10-02 破环搬家**（原住 combat.ts）：火力构成两件。
@@ -779,4 +780,63 @@ export function wormholeAnomalyOf(
           ? 1
           : WORMHOLE_FAMILY_TARGETING_CHANCE,
   }
+}
+
+/* ═══════════ 火力构成与血型层（2026-10-02 批次 4f 破环搬家 · 原住 combat.ts）═══════════
+ * 与上面的 `compositionOfMix` / `foeDamageComposition` 同族：全部**纯构成计算**（只依赖 types），
+ * 搬来后 combat 侧原样再导出、既有引用不动；`pickTopType` / `PROFILE_SPLIT` 原模块私有、
+ * 因 createFoeSpecs 仍要用而转公开（不进 combat 公开面）。 */
+
+/** 主系（权重最高；未写/空 = 动能）——**正权重键才参战**（2026-09-10 语义变更：旧"缺省键权重 1"作废） */
+export function pickTopType(mix: Partial<Record<DamageType, number>> | undefined): DamageType {
+  let best: DamageType = 'kinetic'
+  let bestW = 0
+  for (const t of ['kinetic', 'explosive', 'plasma'] as const) {
+    const w = mix?.[t] ?? 0
+    if (w > bestW) {
+      bestW = w
+      best = t
+    }
+  }
+  return best
+}
+
+/** 敌方编队主伤害类型（V17 导出；卡面 dmgMix 取最高权重，缺省 = 动能）——悬赏卡展示/玩家配抗参考 */
+export function foeMainDamageType(anomaly: AnomalyDef): DamageType {
+  return pickTopType(anomaly.dmgMix)
+}
+
+/**
+ * 把一次开火的总伤害按火力构成**拆成逐系单发**（2026-09-10：窝点混伤）。
+ * 取整口径：先按份额分配、**最后一条吃余数**，保证 Σ = 总单发（敌总伤不变，只改构成）。
+ * 返回空数组 = 总伤为 0（调用方跳过）。
+ */
+export function splitShotByComposition(
+  shotDmg: number,
+  comp: ReadonlyArray<{ type: DamageType; share: number }>,
+): Array<{ type: DamageType; dmg: number }> {
+  if (shotDmg <= 0) return []
+  if (comp.length <= 1) return [{ type: comp[0]?.type ?? 'kinetic', dmg: shotDmg }]
+  const out: Array<{ type: DamageType; dmg: number }> = []
+  let left = shotDmg
+  comp.forEach((c, i) => {
+    const dmg = i === comp.length - 1 ? left : Math.max(1, Math.round(shotDmg * c.share))
+    const take = Math.min(left, dmg)
+    out.push({ type: c.type, dmg: take })
+    left -= take
+  })
+  return out.filter((r) => r.dmg > 0)
+}
+
+/** 血型层占比表（盾型 50/25/25 · 甲型 20/55/25 · 均衡 33/33/33；createFoeSpecs 与 foeLayerSplit 同源） */
+export const PROFILE_SPLIT: Record<string, Hp3> = {
+  shield: { s: 0.5, a: 0.25, h: 0.25 },
+  armor: { s: 0.2, a: 0.55, h: 0.25 },
+  balanced: { s: 0.34, a: 0.33, h: 0.33 },
+}
+
+/** 敌方血型层占比（V17.2 导出；悬赏卡"敌型"展示——与 createFoeSpecs 同源）：
+ * 盾型 50/25/25 · 甲型 20/55/25 · 均衡 33/33/33（盾/甲/结构） */
+export function foeLayerSplit(profile: DefProfile | undefined): { s: number; a: number; h: number } {
+  return PROFILE_SPLIT[profile ?? 'balanced'] ?? PROFILE_SPLIT.balanced!
 }

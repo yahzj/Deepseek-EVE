@@ -20,7 +20,6 @@ import type {
   BattleBalance,
   DamageResists,
   DamageType,
-  DefProfile,
   FoeDroneSlot,
   FoeFamily,
   FoeReinforceTrigger,
@@ -74,6 +73,9 @@ export { FOE_LIGHT_WORD, FOE_ELITE_WORD, FOE_SUPPORT_TAG_RE, baseFoeTag, foeCard
 // 敌力曲线（2026-10-02 批次 4e 拆到 foePower.ts）；foeStrengthOf 反解与 createFoeSpecs 建档仍要用
 import { foeHpOfThreat, foeMultiShipCompMul, foeRefSpeedMps, foeSpeedBase, foeThreatRatingOf, TACTIC_RANGE } from './foePower'
 export { foeHpOfThreat, foeRefSpeedMps, foeThreatRatingOf } from './foePower'
+// 火力构成/血型层（2026-10-02 批次 4f 迁到 wormholeFoes.ts）；createFoeSpecs 仍要用这三件
+import { foeMainDamageType, pickTopType, PROFILE_SPLIT, splitShotByComposition } from './wormholeFoes'
+export { foeLayerSplit, foeMainDamageType, splitShotByComposition } from './wormholeFoes'
 
 /** 战斗基本步长（毫秒） */
 export const BATTLE_STEP_MS = 100
@@ -1444,10 +1446,8 @@ export function mergeResist(base: DamageResists | undefined, add: DamageResists 
   return out
 }
 
-/** 敌方编队主伤害类型（V17 导出；卡面 dmgMix 取最高权重，缺省 = 动能）——悬赏卡展示/玩家配抗参考 */
-export function foeMainDamageType(anomaly: AnomalyDef): DamageType {
-  return pickTopType(anomaly.dmgMix)
-}
+/** 敌方编队主伤害类型（V17 导出；卡面 dmgMix 取最高权重，缺省 = 动能）——悬赏卡展示/玩家配抗参考
+ * （2026-10-02 批次 4f 迁到 wormholeFoes.ts，本文件再导出） */
 
 /**
  * 敌方**火力构成**（2026-09-10 船长：混伤）——战斗、胜率预估与界面**同源单点**：
@@ -1466,29 +1466,11 @@ import { compositionOfMix, foeDamageComposition } from './wormholeFoes'
  * 把一次开火的总伤害按火力构成**拆成逐系单发**（2026-09-10：窝点混伤）。
  * 取整口径：先按份额分配、**最后一条吃余数**，保证 Σ = 总单发（敌总伤不变，只改构成）。
  * 返回空数组 = 总伤为 0（调用方跳过）。
- */
-export function splitShotByComposition(
-  shotDmg: number,
-  comp: ReadonlyArray<{ type: DamageType; share: number }>,
-): Array<{ type: DamageType; dmg: number }> {
-  if (shotDmg <= 0) return []
-  if (comp.length <= 1) return [{ type: comp[0]?.type ?? 'kinetic', dmg: shotDmg }]
-  const out: Array<{ type: DamageType; dmg: number }> = []
-  let left = shotDmg
-  comp.forEach((c, i) => {
-    const dmg = i === comp.length - 1 ? left : Math.max(1, Math.round(shotDmg * c.share))
-    const take = Math.min(left, dmg)
-    out.push({ type: c.type, dmg: take })
-    left -= take
-  })
-  return out.filter((r) => r.dmg > 0)
-}
+ * （2026-10-02 批次 4f 迁到 wormholeFoes.ts，本文件再导出） */
 
 /** 敌方血型层占比（V17.2 导出；悬赏卡"敌型"展示——与 createFoeSpecs 同源）：
- * 盾型 50/25/25 · 甲型 20/55/25 · 均衡 33/33/33（盾/甲/结构） */
-export function foeLayerSplit(profile: DefProfile | undefined): { s: number; a: number; h: number } {
-  return PROFILE_SPLIT[profile ?? 'balanced'] ?? PROFILE_SPLIT.balanced!
-}
+ * 盾型 50/25/25 · 甲型 20/55/25 · 均衡 33/33/33（盾/甲/结构）
+ * （2026-10-02 批次 4f 迁到 wormholeFoes.ts，本文件再导出） */
 
 /** 构建我方单位静态卡（V18 多件语义：全位装配生效——多炮/多矿枪/盾甲多件/无人机装置；null = 船记录缺失） */
 /** 我方规格快照（手动/AI/MC/预估同源）。
@@ -2208,12 +2190,6 @@ export function playerAmmoType(state: GameState, ctx: SimContext, shipId: string
 }
 
 /* ═══════════ 敌方编队 ═══════════ */
-
-const PROFILE_SPLIT: Record<string, Hp3> = {
-  shield: { s: 0.5, a: 0.25, h: 0.25 },
-  armor: { s: 0.2, a: 0.55, h: 0.25 },
-  balanced: { s: 0.34, a: 0.33, h: 0.33 },
-}
 
 /**
  * **敌卡战力实测**（定价式的左半边 · 2026-09-25）：`X = √(全波总血 × 峰值波火力DPS)`。
@@ -3242,19 +3218,8 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
   return specs
 }
 
-/** 主系（权重最高；未写/空 = 动能）——**正权重键才参战**（2026-09-10 语义变更：旧"缺省键权重 1"作废） */
-function pickTopType(mix: Partial<Record<DamageType, number>> | undefined): DamageType {
-  let best: DamageType = 'kinetic'
-  let bestW = 0
-  for (const t of ['kinetic', 'explosive', 'plasma'] as const) {
-    const w = mix?.[t] ?? 0
-    if (w > bestW) {
-      bestW = w
-      best = t
-    }
-  }
-  return best
-}
+/** 主系（权重最高；未写/空 = 动能）——**正权重键才参战**（2026-09-10 语义变更：旧"缺省键权重 1"作废）
+ * （2026-10-02 批次 4f 迁到 wormholeFoes.ts） */
 
 const FOE_BEAM_USABLE_SHARE = 0.7
 
