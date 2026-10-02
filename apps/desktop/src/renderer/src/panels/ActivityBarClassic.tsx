@@ -356,7 +356,11 @@ export function ActivityBarClassic({
           title={collapsed ? tr('ui.ActivityBar.071') : tr('ui.ActivityBar.070')}
           onClick={() => setCollapsed((v) => !v)}
         >
-          {collapsed ? '▸' : '▾'}
+          {/* 字形 = **SVG 线稿折叠/展开对**（`ui/Glyphs.tsx` 的 `ico-fold` / `ico-unfold`，
+              2026-09-30 船长令为「面板正文收进标题栏」造的一对；工业 HUD 工位窗口同款用法 =
+              **画动作**：折叠态显示"展开"）。2026-10-02 船长报障「按钮太小了」前这里是
+              10.5px 的文本三角 `▾` / `▸`，几像素大 ⇒ 换成 14px 线稿（方块同批 18→24px，见样式）。 */}
+          <Glyph name={collapsed ? 'ico-unfold' : 'ico-fold'} size={14} color="currentColor" />
         </button>
         <span className="app-activitybar-title">{tr("ui.ActivityBar.025")}</span>
         {/* AI 徽标（2026-09-10 船长：拆成两枚，图标 / 配色 / 去处各不相同）——
