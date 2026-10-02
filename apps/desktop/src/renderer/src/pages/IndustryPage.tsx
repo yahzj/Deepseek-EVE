@@ -40,6 +40,8 @@ import {
   labMaterialAvailable,
   labBatchUnitsOf,
   labCycleMsOf,
+  /** 2026-10-01：折叠态那枚「缺 N 味」的判据（本机器那把尺的单点） */
+  labMissingMaterials,
   labRecipeUnlocked,
   labTechRequirementOf,
   /** 2026-10-01：材料行尾那枚「这一味料从哪来」链接的等价组判据（通用黑匣）走 core 单点 */
@@ -51,7 +53,7 @@ import { bestAiCoreOf } from '@whale/core'
 import type { AiCoreType, GameState, ItemDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { wreckGroupText } from '@whale/data'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { BlueprintShelfPanel, ManufacturingPanel } from '../panels/Industry'
 import { ShipyardPanel } from '../panels/Shipyard'
 import { setSessionPick, sessionPick, useSessionScrollFrom } from '../ui/sessionView'
@@ -63,6 +65,8 @@ import { RowGlyph } from '../ui/itemView'
 import { ItemHover } from '../ui/shipInfo'
 /** 材料行尾「这一味料从哪来」的四支判定（2026-10-01：与组装机卡共用一份，见本件头注） */
 import { MatSourceLink } from '../ui/matSourceLink'
+/** 原材料列表折叠（2026-10-01 船长令：味数 > 2 折叠成一行「原材料列表」，点开才拉开）——与组装机卡共用一份 */
+import { MATS_COLLAPSE_OVER, MatListToggle } from '../ui/matList'
 /* 图标一律走**物品 id 单点映射**（2026-09-30 船长报障：新道具在实验室卡上是通用「消耗品」图标） */
 import { itemGlyphName } from '../ui/Glyphs'
 import { WRECK_SUBS, SUB_ALL, presentSubs, wreckTierOf, subText } from '../ui/itemSubs'
@@ -646,6 +650,14 @@ function LabCard({
    * 卡面「主控耗时」读数与净收益读数共用它（2026-10-01 船长令：工期也照组装机卡那套）。
    */
   const pilotCycleMs = labCycleMsOf(state, engine.ctx, recipe, 'pilot')
+  /**
+   * **原材料列表折叠**（**2026-10-01 船长令**：「**「原材料列表」折叠，超过2个材料就进行折叠**」）：
+   * 味数 > `MATS_COLLAPSE_OVER` ⇒ 材料块只留一行开关，点开才拉开全部行（公共件 `ui/matList.tsx`，
+   * 与组装机／造船厂卡同一份）。状态不落盘：切页/重挂载即回到折叠。
+   */
+  const matsListId = useId()
+  const [matsOpen, setMatsOpen] = useState(false)
+  const matsCollapsible = recipe.materials.length > MATS_COLLAPSE_OVER
   const batchValue = batchUnits * (marketPriceOf(state, engine.ctx, recipe.outputItemId) ?? out?.baseSellPriceIsk ?? 0)
   const costIsk = recipe.materials.reduce(
     (s, m) =>
@@ -758,8 +770,22 @@ function LabCard({
           ⚠ 缺料标红口径同组装机：**只在未开工时**标（在跑的红字会被误读成故障）；
           ⚠ 实验室配方**没有等价组、也不吃材料学折扣**（core 口径）⇒ 行里不出现组装机那句
           「（原 ×N，材料学折扣后）」，`现有` 读数走 core 单点 `labMaterialAvailable`。 */}
-      <ul className="app-bp-mats">
-        {recipe.materials.map((m) => {
+      <ul className="app-bp-mats" id={matsListId}>
+        {/* 原材料列表折叠（2026-10-01 船长令：味数 > 2 ⇒ 只留这一行开关，点开才拉开全部）——
+            实验室 3~5 味料 ⇒ 三张配方卡现在默认都是折叠态；缺料味数走 core 单点 `labMissingMaterials` */}
+        {matsCollapsible ? (
+          <MatListToggle
+            count={recipe.materials.length}
+            open={matsOpen}
+            shortCount={labMissingMaterials(state, engine.ctx, recipe).length}
+            running={running}
+            listId={matsListId}
+            onToggle={() => setMatsOpen((v) => !v)}
+          />
+        ) : null}
+        {matsCollapsible && !matsOpen
+          ? null
+          : recipe.materials.map((m) => {
           const def = engine.ctx.items.get(m.itemId)
           const have = labMaterialAvailable(state, m.itemId)
           const enough = have >= m.units
