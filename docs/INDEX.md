@@ -12,13 +12,13 @@
 
 ## 统计
 
-- 文档总数 **397** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7108** KB · **53031** 行
-- 状态分布：**未标注** 215 · **已确认/已实现** 119 · **进行中** 49 · **待裁定** 13 · **历史留档** 1
-- 孤儿文档（0 引用）**64** 份 · 状态未标注 **215** 份
+- 文档总数 **397** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7083** KB · **52683** 行
+- 状态分布：**未标注** 216 · **已确认/已实现** 119 · **进行中** 48 · **待裁定** 13 · **历史留档** 1
+- 孤儿文档（0 引用）**63** 份 · 状态未标注 **216** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**11** 份
-- 三、现行设计稿（design）：**272** 份
-- 九、封存卷（archive · 冻结件，只读不改）：**32** 份
+- 三、现行设计稿（design）：**271** 份
+- 九、封存卷（archive · 冻结件，只读不改）：**33** 份
 - 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**1** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 293 KB / 302 行 | 19 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 87 KB / 902 行 | 97 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 503 KB / 1016 行 | 226 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 457 行 | 362 / 19 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 90 KB / 437 行 | 364 / 19 |
 
 ## 七、评审与体检（review） —— 11 份
 
@@ -54,7 +54,7 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 272 份
+## 三、现行设计稿（design） —— 271 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -122,7 +122,6 @@
 | `docs/design/l10n-core-zh-20260927.md` | 本地化批二：core 返回的裸中文 → id 制（虫洞链，2026-09-27 · 三号 verify） | 进行中（进行中） | 2026-09-27 | 7 KB / 93 行 | 0 / 0 |
 | `docs/design/plug-blackbox-20260927.md` | 舰船插件进 Excel ＋ 章鱼人商店卖通用黑匣（2026-09-27 · 二号 · d2） | 进行中（进行中 —— A 部分） | 2026-09-27 | 13 KB / 187 行 | 0 / 1 |
 | `docs/design/plug-loss-20260927.md` | 插件两条缺陷（虫洞丢船的回收 · 装进低槽）— 工作文档 | 未标注 | 2026-09-27 | 4 KB / 63 行 | 0 / 0 |
-| `docs/design/skill-fill-20260927.md` | 技能扩充批（2026-09-27） | 进行中（进行中 · 等船长定方向） | 2026-09-27 | 30 KB / 369 行 | 0 / 0 |
 | `docs/design/steam-packaging-20260927.md` | Steam 打包与上传（2026-09-27 · 一号 · main） | 未标注（第一步已落码并本机验证通过） | 2026-09-27 | 6 KB / 84 行 | 1 / 0 |
 | `docs/design/wh-auto-loot-20260927.md` | 虫洞自动探索：产出种类不对（货柜只有安全柜 ＋ 不给谜质）— 工作文档 | 未标注 | 2026-09-27 | 9 KB / 152 行 | 0 / 0 |
 | `docs/design/window-end-hold-20260927.md` | 窗口到点顺延：玩家打完再满 60 秒才收场（2026-09-27 · 二号 · d2） | 进行中（进行中） | 2026-09-27 | 12 KB / 151 行 | 0 / 0 |
@@ -331,14 +330,15 @@
 | `docs/design/weekend-invasion.md` | 周末入侵活动（设计定稿 · 2026-09-25 22:00 已对玩家开放 · M2 余下三族 / M3 未开工） | 未标注（M1 机制骨架 ＋ M2 的 H 族） | — | 31 KB / 259 行 | 14 / 7 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 5 KB / 56 行 | 5 / 0 |
 
-## 九、封存卷（archive · 冻结件，只读不改） —— 32 份
+## 九、封存卷（archive · 冻结件，只读不改） —— 33 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/archive/roadmap-todo-done-20261002.md` | 封存卷 · roadmap 待办单 E1~E9（2026-10-02 清档移出） | 未标注 | 2026-10-02 | 7 KB / 38 行 | 2 / 0 |
 | `docs/archive/glossary-detail-03-econ-20260915.md` | 封存卷 · 词典「三、装备 / 制造 / 经济」词条详解（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 11 KB / 26 行 | 6 / 0 |
 | `docs/archive/glossary-retired-20260915.md` | 封存卷 · 词典的作废词条与沿革（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 3 KB / 16 行 | 3 / 0 |
 | `docs/archive/roadmap-todo-done-20260915.md` | 封存卷 · roadmap 待办活面的已办结项（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 92 KB / 75 行 | 3 / 0 |
-| `docs/archive/README.md` | 封存区（docs/archive/）—— 冻结的历史件 | 未标注 | — | 2 KB / 30 行 | 56 / 14 |
+| `docs/archive/README.md` | 封存区（docs/archive/）—— 冻结的历史件 | 未标注 | — | 3 KB / 31 行 | 57 / 14 |
 | `docs/archive/roadmap-2026-09-04.md` | 封存卷 · roadmap 批次条目 2026-09-04 | 未标注 | — | 13 KB / 68 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-05.md` | 封存卷 · roadmap 批次条目 2026-09-05 | 未标注 | — | 12 KB / 32 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-06.md` | 封存卷 · roadmap 批次条目 2026-09-06 | 未标注 | — | 2 KB / 10 行 | 1 / 0 |
@@ -366,7 +366,7 @@
 | `docs/archive/roadmap-2026-09-25-26.md` | 封存卷 · roadmap 批次条目 2026-09-25/26 | 未标注 | — | 9 KB / 10 行 | 0 / 0 |
 | `docs/archive/roadmap-2026-09-25.md` | 封存卷 · roadmap 批次条目 2026-09-25 | 未标注 | — | 39 KB / 34 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-26.md` | 封存卷 · roadmap 批次条目 2026-09-26 | 未标注 | — | 106 KB / 104 行 | 2 / 0 |
-| `docs/archive/roadmap-2026-09-27.md` | 封存卷 · roadmap 批次条目 2026-09-27 | 未标注 | — | 34 KB / 48 行 | 1 / 0 |
+| `docs/archive/roadmap-2026-09-27.md` | 封存卷 · roadmap 批次条目 2026-09-27 | 未标注 | — | 37 KB / 50 行 | 1 / 0 |
 
 ## 二、其它（docs 根目录） —— 3 份
 
@@ -386,7 +386,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 72 KB / 721 行 | 56 / 14 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 72 KB / 721 行 | 57 / 14 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -398,7 +398,7 @@
 | `docs/design/ship-battle-art/battle-sprite-tier-20260911.md` | 战斗画面「舰种体积」（舰身大小随舰种档，2026-09-11 船长定；状态：已实现，但按船长裁决暂时关闭 —— 显示还原、系统保留） | 已确认/已实现（已实现） | 2026-09-11 | 14 KB / 177 行 | 8 / 0 |
 | `docs/design/ship-battle-art/mounts-20260910.md` | 舰船战斗图形·挂点对齐（引擎喷口 + 真实炮口）2026-09-10 | 已确认/已实现（已确认） | 2026-09-10 | 6 KB / 94 行 | 2 / 1 |
 | `docs/design/ship-battle-art/acceptance-visual-20260909.md` | 舰船战斗图形 · 真机目测与细节验收清单（2026-09-09 三号，给船长） | 未标注 | 2026-09-09 | 4 KB / 54 行 | 2 / 0 |
-| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 56 / 14 |
+| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 57 / 14 |
 
 ## 四、已归档设计稿（design/archive） —— 62 份
 
@@ -465,9 +465,9 @@
 | `docs/design/archive/handoff-20260909-dsh-reinstall.md` | 二号会话续接卡(2026-09-09 DSH 重装;交给新继承人) | 未标注 | 2026-09-09 | 5 KB / 48 行 | 5 / 0 |
 | `docs/design/archive/handoff-b3-skills.md` | B3 技能挂接（2026-09-05 船长拍板：打捞相关技能一并完成 → 已实施） | 未标注（打捞对标技能组已实施 ✅） | — | 4 KB / 52 行 | 4 / 0 |
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
-| `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 56 / 14 |
+| `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 57 / 14 |
 
-## 附：孤儿文档（0 引用，64 份）
+## 附：孤儿文档（0 引用，63 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
@@ -497,7 +497,6 @@
 - `docs/design/inventory-20260927.md`（2026-09-27 · 9 KB）—— 工作盘点：要做的 / 做一半的 / 没做完的（2026-09-27 · 三号 verify）
 - `docs/design/l10n-core-zh-20260927.md`（2026-09-27 · 7 KB）—— 本地化批二：core 返回的裸中文 → id 制（虫洞链，2026-09-27 · 三号 verify）
 - `docs/design/plug-loss-20260927.md`（2026-09-27 · 4 KB）—— 插件两条缺陷（虫洞丢船的回收 · 装进低槽）— 工作文档
-- `docs/design/skill-fill-20260927.md`（2026-09-27 · 30 KB）—— 技能扩充批（2026-09-27）
 - `docs/design/wh-auto-loot-20260927.md`（2026-09-27 · 9 KB）—— 虫洞自动探索：产出种类不对（货柜只有安全柜 ＋ 不给谜质）— 工作文档
 - `docs/design/window-end-hold-20260927.md`（2026-09-27 · 12 KB）—— 窗口到点顺延：玩家打完再满 60 秒才收场（2026-09-27 · 二号 · d2）
 - `docs/design/wreck-log-20260927.md`（2026-09-27 · 3 KB）—— 通讯「沉船记录」（2026-09-27）
@@ -536,8 +535,9 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（215 份，待补一行 `状态：…`）
+## 附：状态未标注（216 份，待补一行 `状态：…`）
 
+- `docs/archive/roadmap-todo-done-20261002.md`（2026-10-02）—— 封存卷 · roadmap 待办单 E1~E9（2026-10-02 清档移出）
 - `docs/design/handover-20261002.md`（2026-10-02）—— 交接卡 · 二号会话（2026-10-02 收尾）
 - `docs/design/activity-gate-registry-20261001.md`（2026-10-01）—— 主控活动登记表（实验室漏登记）· 2026-10-01
 - `docs/design/comms-import-20261001.md`（2026-10-01）—— 通讯文案工作台 · 回写（船长改稿落地）· 2026-10-01
