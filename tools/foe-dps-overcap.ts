@@ -31,7 +31,7 @@
 import { ANOMALIES, buildSimContext } from '@whale/data'
 import type { AnomalyDef, BattleBalance } from '@whale/core'
 import { createFoeSpecs, wormholeDerivedAnomaly } from '../packages/core/src/combat'
-import { lairAnomalyOf, lairLevelOf } from '../packages/core/src/lairs'
+import { lairAnomalyOf, lairLevelOf, type LairTier } from '../packages/core/src/lairs'
 import { WORMHOLE_TIER_UNLOCK_DEPTH, wormholeTierOfCard } from '../packages/core/src/wormholeFoes'
 
 const ctx = buildSimContext()
@@ -87,7 +87,7 @@ for (const a of ANOMALIES) {
   const lv = lairLevelOf(a)
   if (!lv || lv < 1) continue
   for (let t = 1; t <= lv; t++) {
-    const der = lairAnomalyOf(a, t)
+    const der = lairAnomalyOf(a, t as LairTier, live)
     const u = maxWaveDps(der, off)
     const c = maxWaveDps(der, on)
     const mark = u > CAP && CAP > 0 ? `  ✗ 越线（−${(100 * (1 - c / u)).toFixed(1)}%）` : ''

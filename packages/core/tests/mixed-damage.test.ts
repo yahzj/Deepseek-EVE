@@ -43,7 +43,7 @@ describe('敌方混伤：构成（2026-09-10 船长）', () => {
   it('窝点派生卡 = 同一主系 + 60% / 40%（副系按族签名）', () => {
     expect(LAIR_SUB_DMG_SHARE).toBe(0.4)
     const card = ctx.anomalies.get('ano-vault-sentinel')! // D 族：**主能量 → 副动能**（2026-09-11 火力对齐后）
-    const lair = lairAnomalyOf(card, 3)
+    const lair = lairAnomalyOf(card, 3, ctx.balance.battle)
     expect(foeMainDamageType(lair)).toBe(foeMainDamageType(card))
     const comp = foeDamageComposition(lair)
     expect(comp[0]).toEqual({ type: 'plasma', share: 0.6 })
@@ -60,7 +60,7 @@ describe('敌方混伤：构成（2026-09-10 船长）', () => {
       expect(subDamageTypeOf(card)).toBe('kinetic') // 副系 = 族签名序里第一个 ≠ 主系者
       for (const [label, target] of [
         ['常驻卡', card],
-        ['窝点派生卡', lairAnomalyOf(card, 3)],
+        ['窝点派生卡', lairAnomalyOf(card, 3, ctx.balance.battle)],
       ] as const) {
         const comp = foeDamageComposition(target)
         expect(comp, label).toHaveLength(2)
@@ -72,7 +72,7 @@ describe('敌方混伤：构成（2026-09-10 船长）', () => {
     const missile = ctx.anomalies.get('wh-titan-missile')!
     expect(foeDamageComposition(missile)).toEqual([{ type: 'explosive', share: 1 }])
     // 其余族不受影响：D 族窝点仍是 6:4（同一函数、同一常量链）
-    const dLair = lairAnomalyOf(ctx.anomalies.get('ano-vault-sentinel')!, 3)
+    const dLair = lairAnomalyOf(ctx.anomalies.get('ano-vault-sentinel')!, 3, ctx.balance.battle)
     expect(foeDamageComposition(dLair).map((r) => r.share)).toEqual([0.6, 0.4])
   })
 
@@ -82,7 +82,7 @@ describe('敌方混伤：构成（2026-09-10 船长）', () => {
       const main = foeMainDamageType(card)
       const sub = subDamageTypeOf(card, main)
       expect(sub).not.toBe(main)
-      const lair = lairAnomalyOf(card, 1)
+      const lair = lairAnomalyOf(card, 1, ctx.balance.battle)
       const mix = lair.dmgMix!
       expect(Object.values(mix).filter((v) => (v ?? 0) > 0)).toHaveLength(2)
       checked += 1

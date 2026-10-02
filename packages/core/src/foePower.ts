@@ -87,6 +87,24 @@ export function foeHpOfThreat(threat: number, bal: BattleBalance): number {
  */
 export function foeThreatRatingOf(x: number, designMul: number, bal: BattleBalance): number {
   const need = (5 * Math.max(0, x)) / Math.max(1e-6, designMul)
+  return foeThreatAtHpBudgetOf(need, bal)
+}
+
+/**
+ * **`foeHpOfThreat` 的反解**（**2026-10-02 加**）：取"最小的使曲线值 ≥ `needHp`"的整数威胁。
+ *
+ * 为什么要有它（本批的来路）：**窝点（每日赏金任务）威胁的"相对重锚"**——窝点 = 主题悬赏的强化版
+ * （属性按 `LAIR_THREAT_MUL` 的比例同乘），于是它的**威胁标签**该按**同一把尺**上推：
+ * `窝点威胁 = 反解( 派生倍率 × 曲线(主题卡威胁) )`。
+ * 起因 = 船长 2026-10-02：「让窝点威胁按其**实际强度**重新定价，与入侵/常驻悬赏同尺（只改数字，
+ * 战斗零变化）」——旧口径是 `round(主题威胁 × 倍率)` 的**线性**乘积，而血曲线是**非线性**的，
+ * 于是深层窝点印出 230（比入侵旗舰 170 还高），实际强度却没到那儿。
+ *
+ * ⚠ 曲线带取整台阶 ⇒ 低威胁段是**平台**（威胁 1~5 的曲线值都落在 11~14），反解会落平台起点；
+ * 返回上界 1024（远高于现表最大威胁，只为防死循环）。
+ */
+export function foeThreatAtHpBudgetOf(needHp: number, bal: BattleBalance): number {
+  const need = Math.max(0, needHp)
   let lo = 1
   let hi = 1024
   while (lo < hi) {

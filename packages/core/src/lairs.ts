@@ -27,13 +27,26 @@ import type { GameState } from './state'
  * 另：本文件的两个新函数都在**函数体内**调用它（不是模块顶层常量）⇒ 即便将来出现环也不会顶层求值。
  */
 import { rareDropRateMulOf } from './tuning'
+/** 威胁标签的"相对重锚"要血曲线与它的反解（**2026-10-02 船长令取甲**：只重锚标签、战斗零变化） */
+import { foeHpOfThreat, foeThreatAtHpBudgetOf } from './foePower'
+import type { BattleBalance } from './types'
 
 /** 窝点档位：1 外围 / 2 核心 / 3 深层 */
 export type LairTier = 1 | 2 | 3
 
 /* ═══════════ 可调常量（待船长定数值；改动只动这里） ═══════════ */
 
-/** 档位威胁系数：主题悬赏威胁 × 本值 = 窝点威胁 */
+/**
+ * **档位强度系数**：主题悬赏属性 × 本值 = 窝点属性（血 / 火力 / 火力锚点同乘）。
+ *
+ * 🔴 **2026-10-02 船长令（取「甲」）**：本值现在**只是强度倍率** —— **威胁标签不再等于
+ * `round(主题威胁 × 本值)`**（见 `lairAnomalyOf`：改为按血曲线**相对重锚**）。
+ * 起因 = 船长问「每日赏金任务的威胁还是采用旧版吗」⇒ 查明：本表 2026-09-10 定在**旧刻度**上，
+ * 而主题卡在 2026-09-25 按「单舰 ×3」定价式**重定标**（属性零改动、只重锚标签）时**没同步本表**
+ * （它是比例，看着"没受影响"）⇒ 线性乘积叠在新刻度上，深层窝点印出 **230**，比入侵旗舰（170）还高，
+ * 实际强度却没到那儿。船长裁定：「让窝点威胁按其**实际强度**重新定价，与入侵/常驻悬赏同尺
+ * （只改数字，战斗零变化）」。
+ */
 export const LAIR_THREAT_MUL: Record<LairTier, number> = { 1: 1.3, 2: 1.6, 3: 2.0 }
 /**
  * 赏金倍率（2026-09-10 船长定：2/4/8）：窝点奖金 = 主题悬赏奖金 × 本值。
@@ -359,7 +372,7 @@ export const FOE_SUB_DMG: Record<FoeFamily, readonly DamageType[]> = {
  * `wave: 0/1` 两波**，其余舰级路径卡仍在 `wave: 0`）⇒ 直接套用会让第 2/3 波
  * **刷出 0 个单位**（探针实测）。故舰级路径的窝点**不套旧波表**（每波 ≥ 1 单位、波次按 `slot.wave` 表达）。
  */
-export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier): AnomalyDef {
+export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier, bal: BattleBalance): AnomalyDef {
   const waves = LAIR_WAVES[tier]
   const main = foeMainDamageTypeOf(anomaly)
   const sub = subDamageTypeOf(anomaly, main)
@@ -374,10 +387,25 @@ export function lairAnomalyOf(anomaly: AnomalyDef, tier: LairTier): AnomalyDef {
   /** 派生缩放比例 = 派生威胁 ÷ 原威胁（与 `threat` 字段同源，故口径天然一致） */
   const tierMul = Math.max(1, anomaly.threat)
   const scale = Math.round(anomaly.threat * LAIR_THREAT_MUL[tier]) / tierMul
+  /**
+   * **威胁标签 = 相对重锚**（**2026-10-02 船长令取「甲」**：「让窝点威胁按其**实际强度**重新定价，
+   * 与入侵/常驻悬赏同尺（**只改数字，战斗零变化**）」）。
+   *
+   * 口径：`窝点威胁 = 血曲线反解( 派生倍率 × 血曲线(主题卡威胁) )` —— **以主题卡自己的标签为锚**。
+   * 为什么不用"对派生属性直接跑定价式"那条（船长没取的那条）：20 张里**有 6 张的主题卡标签本身
+   * 没跟着 09-25 定价式走**（现标签 30/36/67/77/81/109 vs 公式 23/29/50/62/66/100）⇒ 绝对定价会让
+   * 那 6 张的**窝点标签低于主题卡**（"强化版反而更弱"）；相对锚天然保证 `窝点 ≥ 主题卡`。
+   *
+   * ⚠ **战斗零变化**（逐条核过，落码时按此对拍）：`scale` 一个字不动（属性 = 主题属性 × scale）；
+   * 候选卡**全走舰级路径**（都写了 `ships`）⇒ `createFoeSpecs` 在建档最前面就返回绝对属性分支、
+   * **不吃血曲线**（`foeSpecs.ts` 的 `anomaly.ships` 早退）；残骸线读 `wreckThreat ?? threat` 而
+   * 20 张主题卡都写了 `wreckThreat`（冻结值）⇒ 注入量与本标签无关；酬金不吃威胁、碎片门槛已脱钩。
+   */
+  const threat = isShipPath ? foeThreatAtHpBudgetOf(scale * foeHpOfThreat(anomaly.threat, bal), bal) : Math.round(anomaly.threat * LAIR_THREAT_MUL[tier])
   return {
     ...anomaly,
     name: lairNameOf(anomaly, tier),
-    threat: Math.round(anomaly.threat * LAIR_THREAT_MUL[tier]),
+    threat,
     // 僚机加成本就是**旧路径**的编队口径（舰级路径的编成由 `ships` 全权决定）⇒ 舰级路径不叠加
     escorts: isShipPath ? (anomaly.escorts ?? 0) : Math.min(2, (anomaly.escorts ?? 0) + LAIR_ESCORT_BONUS[tier]),
     ...(isShipPath

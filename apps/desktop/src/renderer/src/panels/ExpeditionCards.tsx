@@ -1056,7 +1056,7 @@ export function BountyTasksArea({ engine, onToast }: { engine: GameEngine; onToa
           {tasks.map((t) => {
           const base = t.anomalyId ? engine.ctx.anomalies.get(t.anomalyId) : undefined
           const tier = (t.lairTier ?? 1) as 1 | 2 | 3
-          const card = base ? lairAnomalyOf(base, tier) : undefined
+          const card = base ? lairAnomalyOf(base, tier, engine.ctx.balance.battle) : undefined
           const galaxy = engine.ctx.galaxies.get(t.galaxyId ?? '')
           const galaxyName = galaxy?.name ?? t.galaxyId ?? '？'
           const waves = card?.waves?.length ?? 0

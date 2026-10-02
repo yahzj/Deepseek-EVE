@@ -747,7 +747,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   // 敌对派系活跃（2026-09-10 船长定）：本场打的是当日选中星系的常驻悬赏 → 威胁已 ×1.1（battleAnomalyOf），
   // 这里把奖金也 ×1.1（展示=到账口径），并在胜利后按概率掉稀有残骸。
   const factionActive = exp.factionActive === true
-  const card0 = lairTier ? lairAnomalyOf(anomaly, lairTier) : anomaly
+  const card0 = lairTier ? lairAnomalyOf(anomaly, lairTier, ctx.balance.battle) : anomaly
   const battleCard = factionActive ? factionAnomalyOf(card0) : card0
   const displayName = battleCard.name
   /**
@@ -1129,7 +1129,7 @@ function settleBattleRetreat(
    * ⚠ **奖赏与命名那条链仍走基础卡 + `exp.lairTier`**（`lairBaseRewardIsk` / `lairNameOf`），
    * 换成派生卡会把档位倍率二次乘上 ⇒ 奖金虚高，务必别顺手改。
    */
-  const threatCard = anomaly && exp.lairTier ? lairAnomalyOf(anomaly, exp.lairTier) : anomaly
+  const threatCard = anomaly && exp.lairTier ? lairAnomalyOf(anomaly, exp.lairTier, ctx.balance.battle) : anomaly
   const battle = exp.battle
   if (!battle) return
   /**
@@ -1902,7 +1902,7 @@ export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionV
   if (!exp.active || exp.anomalyId === null) return base
 
   // 窝点（赏金任务目标）：展示名/威胁/胜率估算一律按档位强化后的卡（与战斗、结算同口径）
-  const card = anomaly && exp.lairTier ? lairAnomalyOf(anomaly, exp.lairTier) : anomaly
+  const card = anomaly && exp.lairTier ? lairAnomalyOf(anomaly, exp.lairTier, ctx.balance.battle) : anomaly
   const threat = card?.threat ?? 0
   const power = exp.power
   const phase: 'out' | 'combat' | 'back' = exp.phase === 'battle' ? 'combat' : exp.phase

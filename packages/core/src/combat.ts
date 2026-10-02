@@ -1823,7 +1823,7 @@ export function battleAnomalyOf(
 ): AnomalyDef | undefined {
   const base = anomalyId ? ctx.anomalies.get(anomalyId) : undefined
   if (!base) return undefined
-  const card = lairTier ? lairAnomalyOf(base, lairTier) : base
+  const card = lairTier ? lairAnomalyOf(base, lairTier, ctx.balance.battle) : base
   return factionActive ? factionAnomalyOf(card) : card
 }
 /**

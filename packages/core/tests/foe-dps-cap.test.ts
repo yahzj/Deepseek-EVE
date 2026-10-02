@@ -301,28 +301,28 @@ describe('敌舰体火力越线折扣（2026-09-12「DPS 上限 150」→ 2026-0
     // 越线：派生档实测（2026-09-15 探针）穹顶 L1 ≈ 164.8 ⇒ 折扣后 > 150 且 < 原值
     // ⚠ 判线用 `maxWaveDps`（逐波建档口径）：穹顶/虚海是单波卡（与 hullDps 同值），
     //   噬口是 3 波卡且**头目在第 3 波**——只看波 0（4 只小虫 ≈ 20 DPS）会得出"未越线"的错结论。
-    const vaultUncapped = maxWaveDps(lairAnomalyOf(vault, 1), OFF_BOTH)
+    const vaultUncapped = maxWaveDps(lairAnomalyOf(vault, 1, bal), OFF_BOTH)
     expect(vaultUncapped).toBeGreaterThan(150)
-    const vaultLive = maxWaveDps(lairAnomalyOf(vault, 1), bal)
+    const vaultLive = maxWaveDps(lairAnomalyOf(vault, 1, bal), bal)
     expect(vaultLive).toBeGreaterThan(150) // 不封顶
     expect(vaultLive).toBeLessThan(vaultUncapped)
     expect(Math.abs(vaultLive - overCapTarget(vaultUncapped))).toBeLessThan(1)
     // 虚海 lairLevel = 2 ⇒ 只有 1~2 档；2 档派生 ≈ 210 同样越线
     expect(lairLevelOf(voidedge)).toBe(2)
-    const voidUncapped2 = maxWaveDps(lairAnomalyOf(voidedge, 2), OFF_BOTH)
+    const voidUncapped2 = maxWaveDps(lairAnomalyOf(voidedge, 2, bal), OFF_BOTH)
     expect(voidUncapped2).toBeGreaterThan(150)
-    expect(maxWaveDps(lairAnomalyOf(voidedge, 2), bal)).toBeLessThan(voidUncapped2)
-    expect(maxWaveDps(lairAnomalyOf(voidedge, 2), bal)).toBeGreaterThan(150)
+    expect(maxWaveDps(lairAnomalyOf(voidedge, 2, bal), bal)).toBeLessThan(voidUncapped2)
+    expect(maxWaveDps(lairAnomalyOf(voidedge, 2, bal), bal)).toBeGreaterThan(150)
     // 噬口 L3（2026-09-11 虫群编成改造后新越线，旧注释未登记）：末波（头目 401 单发）≈ 215.5 ⇒ 只打 85 折
-    const mawL3 = lairAnomalyOf(maw, 3)
+    const mawL3 = lairAnomalyOf(maw, 3, bal)
     const mawUncapped = maxWaveDps(mawL3, OFF_BOTH)
     expect(mawUncapped).toBeGreaterThan(150)
     expect(maxWaveDps(mawL3, bal)).toBeLessThan(mawUncapped)
     expect(maxWaveDps(mawL3, bal)).toBeGreaterThan(150)
     // 未越线的档不受影响：坟场守墓者 1 档 ≈ 113.5（逐字相同）
-    const grave1 = maxWaveDps(lairAnomalyOf(grave, 1), OFF_BOTH)
+    const grave1 = maxWaveDps(lairAnomalyOf(grave, 1, bal), OFF_BOTH)
     expect(grave1).toBeLessThan(150)
-    expect(maxWaveDps(lairAnomalyOf(grave, 1), bal)).toBeCloseTo(grave1, 9)
+    expect(maxWaveDps(lairAnomalyOf(grave, 1, bal), bal)).toBeCloseTo(grave1, 9)
     void LAIR_THREAT_MUL // 派生比例由 lairAnomalyOf 内部按表取，这里只需保证表被引用到
   })
 })

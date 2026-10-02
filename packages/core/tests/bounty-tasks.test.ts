@@ -90,6 +90,8 @@ import { anomaly, clearInitialStanding, galaxy, makeTestCtx } from './helpers'
 
 /** 20 分钟板周期（资源/快递仍在用） */
 const PERIOD = DEFAULT_BALANCE.market.orderLifeMs.common
+/** 窝点派生要的 `bal`（2026-10-02 起 `lairAnomalyOf` 的第三参：标签要用血曲线反解） */
+const BAL = makeTestCtx().balance.battle
 /**
  * 赏金日板的基准墙钟 = 某个"**本地正午**"：先取任意时刻的本地日界再 +12h。
  * 这样任何时区下它都落在该自然日的中段——"当天稍晚（+6h）不换板 / 次日（+24h）换板"两断言都不受时区影响
@@ -225,14 +227,14 @@ function openBountyBoard(state: GameState, ctx: SimContext, wallMs: number = T0)
 describe('赏金任务 · 窝点派生（档位 / 名称 / 卡面口径）', () => {
   it('派生卡：威胁 ×档位系数、加僚机、二三档套波次（威胁大头后置）、其余字段继承主题悬赏', () => {
     const base = anomaly('ano-x', 'galaxy-hub', { threat: 10, reward: 1_000, escorts: 1, lairCore: '测试海盗', foeFamily: 'A' })
-    const t1 = lairAnomalyOf(base, 1)
+    const t1 = lairAnomalyOf(base, 1, BAL)
     expect(t1.threat).toBe(Math.round(10 * LAIR_THREAT_MUL[1]))
     expect(t1.escorts).toBe(1) // 一档不加僚机
     expect(t1.waves).toBeUndefined() // 一档沿用主题悬赏原波次
-    const t2 = lairAnomalyOf(base, 2)
+    const t2 = lairAnomalyOf(base, 2, BAL)
     expect(t2.escorts).toBe(2) // +1（上限 2）
     expect(t2.waves?.map((w) => w.hpShare)).toEqual([0.35, 0.65]) // 首波试探、末波硬骨头
-    const t3 = lairAnomalyOf(base, 3)
+    const t3 = lairAnomalyOf(base, 3, BAL)
     expect(t3.threat).toBe(Math.round(10 * LAIR_THREAT_MUL[3]))
     expect(t3.escorts).toBe(2)
     expect(t3.waves?.map((w) => w.hpShare)).toEqual([0.2, 0.3, 0.5])
@@ -255,7 +257,7 @@ describe('赏金任务 · 窝点派生（档位 / 名称 / 卡面口径）', () 
       // 奖金：×赏金倍率
       expect(lairBaseRewardIsk(LAIR_HUB, t)).toBe(20_000 * LAIR_REWARD_MUL[t])
       // 威胁：仍走原档位系数（与倍率解耦）
-      expect(lairAnomalyOf(LAIR_HUB, t).threat).toBe(Math.round(LAIR_HUB.threat * LAIR_THREAT_MUL[t]))
+      expect(lairAnomalyOf(LAIR_HUB, t, BAL).threat).toBe(Math.round(LAIR_HUB.threat * LAIR_THREAT_MUL[t]))
       // 酬金：窝点奖金 ×档位比例（跟强度递增）
       expect(lairTaskRewardIsk(LAIR_HUB, t)).toBe(Math.round(lairBaseRewardIsk(LAIR_HUB, t) * LAIR_TASK_REWARD_MUL[t]))
     }
@@ -277,16 +279,16 @@ describe('赏金任务 · 窝点派生（档位 / 名称 / 卡面口径）', () 
   it('胜率预估按**强化后的窝点卡**算（2026-09-10：赏金卡也要胜率）：档位越高损耗越高、胜率不升', () => {
     const { state, ctx } = makeWorld(5)
     const fcBase = bountyDamageForecast(state, ctx, LAIR_HUB)
-    const fc1 = bountyDamageForecast(state, ctx, lairAnomalyOf(LAIR_HUB, 1))
-    const fc3 = bountyDamageForecast(state, ctx, lairAnomalyOf(LAIR_HUB, 3))
+    const fc1 = bountyDamageForecast(state, ctx, lairAnomalyOf(LAIR_HUB, 1, BAL))
+    const fc3 = bountyDamageForecast(state, ctx, lairAnomalyOf(LAIR_HUB, 3, BAL))
     // 窝点比主题悬赏更硬 → 预计承伤不降；三档 ≥ 一档 ≥ 原卡；解析胜率（未钳制）反向单调
     expect(fc1.armorLoss + fc1.hullLoss).toBeGreaterThanOrEqual(fcBase.armorLoss + fcBase.hullLoss)
     expect(fc3.armorLoss + fc3.hullLoss).toBeGreaterThanOrEqual(fc1.armorLoss + fc1.hullLoss)
     expect(fcBase.rawWin).toBeGreaterThanOrEqual(fc1.rawWin)
     expect(fc1.rawWin).toBeGreaterThanOrEqual(fc3.rawWin)
     // 展示口径同源：档位越高，预估胜率不升（强化卡走的是同一套推演）
-    const w1 = bountyWinPercentGuarded(state, ctx, lairAnomalyOf(LAIR_HUB, 1), state.shipId)
-    const w3 = bountyWinPercentGuarded(state, ctx, lairAnomalyOf(LAIR_HUB, 3), state.shipId)
+    const w1 = bountyWinPercentGuarded(state, ctx, lairAnomalyOf(LAIR_HUB, 1, BAL), state.shipId)
+    const w3 = bountyWinPercentGuarded(state, ctx, lairAnomalyOf(LAIR_HUB, 3, BAL), state.shipId)
     expect(w3).toBeLessThanOrEqual(w1)
     expect(w1).toBeLessThanOrEqual(bountyWinPercentGuarded(state, ctx, LAIR_HUB, state.shipId))
   })

@@ -3478,7 +3478,7 @@ for (const m of MODULES) {
         }
         // **派生窝点同样校验**（2026-09-19 补：E 族 5:5 特例作废后，白名单卡也要走"同主副 + 6:4"，
         // 否则这条路径会因 `continue` 而失去覆盖）
-        const lair = lairAnomalyOf(def, 3)
+        const lair = lairAnomalyOf(def, 3, DEFAULT_BALANCE.battle)
         const lRows = positive(lair.dmgMix)
         const lSorted = [...lRows].sort((a, b) => b[1] - a[1])
         const main = (Object.entries(def.dmgMix ?? {}) as Array<[string, number]>)
@@ -3509,7 +3509,7 @@ for (const m of MODULES) {
       `混伤契约：${def.name} 副系 ${sub} 与族签名序列不符（应为 ${subDamageTypeOf(def, main)}）`,
     )
     // 窝点派生：同主系 + 6:4
-    const lair = lairAnomalyOf(def, 3)
+    const lair = lairAnomalyOf(def, 3, DEFAULT_BALANCE.battle)
     const lRows = positive(lair.dmgMix)
     const lSorted = [...lRows].sort((a, b) => b[1] - a[1])
     check(
@@ -5821,7 +5821,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       let prevHp = isShipPath ? hpOf(def) : 0
       let prevPower = isShipPath ? powerOf(def) : 0
       for (const tier of [1, 2, 3] as const) {
-        const lair = lairAnomalyOf(def, tier)
+        const lair = lairAnomalyOf(def, tier, DEFAULT_BALANCE.battle)
         // ① 每波 ≥ 1 单位（波表没写 = 单波）
         const waveCount = Math.max(1, lair.waves?.length ?? 1)
         for (let w = 0; w < waveCount; w++) {

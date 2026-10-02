@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **417** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7318** KB · **55386** 行
-- 状态分布：**未标注** 223 · **已确认/已实现** 119 · **进行中** 57 · **待裁定** 17 · **历史留档** 1
-- 孤儿文档（0 引用）**71** 份 · 状态未标注 **223** 份
+- 文档总数 **420** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7339** KB · **55634** 行
+- 状态分布：**未标注** 225 · **已确认/已实现** 119 · **进行中** 58 · **待裁定** 17 · **历史留档** 1
+- 孤儿文档（0 引用）**74** 份 · 状态未标注 **225** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**11** 份
-- 三、现行设计稿（design）：**291** 份
+- 三、现行设计稿（design）：**294** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**33** 份
 - 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 295 KB / 303 行 | 19 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 87 KB / 902 行 | 99 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 503 KB / 1016 行 | 226 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 90 KB / 437 行 | 372 / 19 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 90 KB / 437 行 | 373 / 19 |
 
 ## 七、评审与体检（review） —— 11 份
 
@@ -54,10 +54,12 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 291 份
+## 三、现行设计稿（design） —— 294 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/corona-ship-art-20261003.md` | 光环族（R 族）舰船图形 · 五档逐舰线稿（2026-10-03 · 二号 · 待船长观感审查） | 未标注 | 2026-10-03 | 6 KB / 65 行 | 0 / 0 |
+| `docs/design/trident-beam-cannon-20261003.md` | 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中） | 未标注 | 2026-10-03 | 9 KB / 101 行 | 0 / 0 |
 | `docs/design/activitybar-min-20261002.md` | 旧版活动栏「最小化」（只留标题行）（工作文档） | 进行中（进行中） | 2026-10-02 | 6 KB / 82 行 | 0 / 1 |
 | `docs/design/announcement-draft-20261002-corona.md` | 公告待审稿 · 入侵第二势力「光环科技 / Corona Systems」（2026-10-02） | 未标注 | 2026-10-02 | 14 KB / 131 行 | 2 / 1 |
 | `docs/design/blueprint-price-register-20261002.md` | 蓝图价格口径：11 条 ⚠ 登记为有意偏离（工作文档 · 2026-10-02） | 进行中（进行中） | 2026-10-02 | 6 KB / 73 行 | 0 / 2 |
@@ -73,6 +75,7 @@
 | `docs/design/handover-erhao-20261002.md` | 交接卡 · 二号会话（2026-10-02 收尾） | 未标注 | 2026-10-02 | 8 KB / 91 行 | 0 / 0 |
 | `docs/design/handover-yihao-20261002.md` | 交接卡 · 一号会话（2026-10-02 收尾） | 未标注 | 2026-10-02 | 7 KB / 68 行 | 0 / 0 |
 | `docs/design/l10n-tail-batches-20261002.md` | 本地化尾巴清场 · 批②~⑦ 台账（工作文档 · 2026-10-02） | 进行中（进行中） | 2026-10-02 | 41 KB / 474 行 | 0 / 0 |
+| `docs/design/lair-threat-anchor-20261002.md` | 每日赏金任务（窝点）威胁「相对重锚」（工作文档） | 进行中（进行中） | 2026-10-02 | 6 KB / 82 行 | 0 / 0 |
 | `docs/design/mobile-wormhole-20261002.md` | 手机模式 · 虫洞探索界面全屏两栏 ＋ 货仓触摸拖拽（工作文档） | 进行中（进行中） | 2026-10-02 | 5 KB / 73 行 | 0 / 4 |
 | `docs/design/player-bugfix-20261002.md` | 玩家报障三修（期望距离 · 技能加速自动续用）（工作文档） | 进行中（进行中） | 2026-10-02 | 5 KB / 60 行 | 3 / 0 |
 | `docs/design/postreclaim-farm-20261002.md` | 入侵「100% 后仍可继续刷 ＋ 残骸减半」（工作文档） | 进行中（进行中） | 2026-10-02 | 7 KB / 108 行 | 0 / 0 |
@@ -487,10 +490,12 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 57 / 14 |
 
-## 附：孤儿文档（0 引用，71 份）
+## 附：孤儿文档（0 引用，74 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/corona-ship-art-20261003.md`（2026-10-03 · 6 KB）—— 光环族（R 族）舰船图形 · 五档逐舰线稿（2026-10-03 · 二号 · 待船长观感审查）
+- `docs/design/trident-beam-cannon-20261003.md`（2026-10-03 · 9 KB）—— 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中）
 - `docs/design/consumable-bucket-20261002.md`（2026-10-02 · 7 KB）—— 道具（consumable）归「消耗品」桶 ＋ 逐件一档（工作文档）
 - `docs/design/dock-log-copy-fix-20261002.md`（2026-10-02 · 5 KB）—— 进港/返航日志两处漏出修复（{p1} 与 [object Object]）（工作文档 · 2026-10-02）
 - `docs/design/fuel-repeat-cancel-20261002.md`（2026-10-02 · 7 KB）—— 玩家报障：用跃迁燃料跑「重复出击」会被取消（工作文档 · 2026-10-02）
@@ -498,6 +503,7 @@
 - `docs/design/handover-erhao-20261002.md`（2026-10-02 · 8 KB）—— 交接卡 · 二号会话（2026-10-02 收尾）
 - `docs/design/handover-yihao-20261002.md`（2026-10-02 · 7 KB）—— 交接卡 · 一号会话（2026-10-02 收尾）
 - `docs/design/l10n-tail-batches-20261002.md`（2026-10-02 · 41 KB）—— 本地化尾巴清场 · 批②~⑦ 台账（工作文档 · 2026-10-02）
+- `docs/design/lair-threat-anchor-20261002.md`（2026-10-02 · 6 KB）—— 每日赏金任务（窝点）威胁「相对重锚」（工作文档）
 - `docs/design/postreclaim-farm-20261002.md`（2026-10-02 · 7 KB）—— 入侵「100% 后仍可继续刷 ＋ 残骸减半」（工作文档）
 - `docs/design/save-import-finish-20261002.md`（2026-10-02 · 7 KB）—— 存档导入收尾（甲案）＋ 手机 Firefox 导入加固（工作文档 · 2026-10-02）
 - `docs/design/save-load-label-20261002.md`（2026-10-02 · 3 KB）—— 存档导入入口去术语：按钮改「加载存档文件」（工作文档 · 2026-10-02）
@@ -563,8 +569,10 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（223 份，待补一行 `状态：…`）
+## 附：状态未标注（225 份，待补一行 `状态：…`）
 
+- `docs/design/corona-ship-art-20261003.md`（2026-10-03）—— 光环族（R 族）舰船图形 · 五档逐舰线稿（2026-10-03 · 二号 · 待船长观感审查）
+- `docs/design/trident-beam-cannon-20261003.md`（2026-10-03）—— 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中）
 - `docs/archive/roadmap-todo-done-20261002.md`（2026-10-02）—— 封存卷 · roadmap 待办单 E1~E9（2026-10-02 清档移出）
 - `docs/design/announcement-draft-20261002-corona.md`（2026-10-02）—— 公告待审稿 · 入侵第二势力「光环科技 / Corona Systems」（2026-10-02）
 - `docs/design/core-zh-leak-audit-20261002.md`（2026-10-02）—— core 侧裸中文上屏盘点（本地化尾巴 · 盘点稿 · 2026-10-02）
