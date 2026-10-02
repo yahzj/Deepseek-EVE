@@ -500,6 +500,17 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ ·
   ui:rot-check ✅ · 构建 ✅。
 
+### 批次 4q：Expedition.tsx 二拆——`panels/ExpeditionCards.tsx` 任务卡族（2026-10-02 · 零行为变化）
+
+- 手法：`AnomalyCard`～`StationCard` **任务卡族整簇 1405 行**（常驻悬赏卡/时效任务区/赏金任务区/
+  快递在途横幅/建站卡）切接搬入新文件 `panels/ExpeditionCards.tsx`——Expedition **4299 → 596 行
+  （−86%）**，只剩三个面板壳（ExpeditionPanel/TaskPanel/BountyPanel）。
+- `SideTaskSort`/`SIDE_TASK_SORT_KEY`（时效任务排序偏好）随迁；`Communicator` 再导出被 4q 切接
+  顺走、当场搬回 Expedition（App 的既有引用恢复）。
+- 零环保证：卡族对 StarMap 域（FoeArt/secText 等）的引用全部跨模块单向；F9 实测仍 0 环。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ ·
+  ui:rot-check ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、
