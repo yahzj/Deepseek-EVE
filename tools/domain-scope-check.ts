@@ -29,7 +29,12 @@
  *   ② 它只答"**碰了几个域**"，不答"该不该跨"（那要我申请、船长点头）；
  *   ③ 同一文件里的**多域混居**（如 `industry.ts` 兼有精炼与舰船购买）机器分不出来 ⇒ 归它最强的那个域。
  *
- * **版本自检**：游戏版本 v0.1.0 · 存档结构 v31 · 最后核对 2026-10-02 · 最后跑过 2026-10-02
+ * **2026-10-03 一号补（域表随重构补 · 交接卡 §三.4）**：按一号重构收官后的全仓布局把域表补齐，
+ * 全仓普查（`--rev <空树>`）**未归类清零**：1323 个文件 = **20 个功能域（218 个）＋ 共享底层 1105 个**。
+ * 同时修两处读数缺陷：① `git` 加 `-c core.quotepath=false`（中文路径不再被引号转义 ⇒ 不再假"未归类"）；
+ * ② 「未归类」**全部打印**（原只印前 12 个，而它正是补域表的入口）。
+ *
+ * **版本自检**：游戏版本 v0.1.0 · 存档结构 v31 · 最后核对 2026-10-03 · 最后跑过 2026-10-03
  */
 import { execFileSync } from 'node:child_process'
 
@@ -54,11 +59,11 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '市场与经济',
-    globs: ['packages/core/src/market.ts', 'packages/core/src/money.ts', 'packages/data/src/marketCatalog.ts', 'apps/desktop/src/renderer/src/pages/MarketPage*', 'apps/desktop/src/renderer/src/ui/SellQtyModal.tsx', 'apps/desktop/src/renderer/src/ui/marketJump.ts', 'apps/desktop/src/renderer/src/ui/MoneyFit.tsx'],
+    globs: ['packages/core/src/market.ts', 'packages/core/src/money.ts', 'packages/data/src/marketCatalog.ts', 'apps/desktop/src/renderer/src/pages/MarketPage*', 'apps/desktop/src/renderer/src/ui/SellQtyModal.tsx', 'apps/desktop/src/renderer/src/ui/marketJump.ts', 'apps/desktop/src/renderer/src/ui/MoneyFit.tsx', 'apps/desktop/src/renderer/src/ui/yieldView.tsx'],
   },
   {
     name: '工业（炉/组装机/造船/实验室）',
-    globs: ['packages/core/src/industry.ts', 'packages/core/src/manufacturing.ts', 'packages/core/src/lab.ts', 'packages/core/src/plugs.ts', 'packages/core/src/scrap.ts', 'packages/core/src/consumables.ts', 'packages/core/src/blackbox.ts', 'packages/data/src/labRecipes.ts', 'packages/data/src/blueprints.ts', 'apps/desktop/src/renderer/src/pages/IndustryPage*', 'apps/desktop/src/renderer/src/pages/IndustryHudPage*', 'apps/desktop/src/renderer/src/panels/Industry.tsx', 'apps/desktop/src/renderer/src/ui/hud.tsx', 'apps/desktop/src/renderer/src/ui/aiSlots.tsx', 'apps/desktop/src/renderer/src/ui/aiWorkFx.tsx', 'apps/desktop/src/renderer/src/ui/aiCoreSelect.tsx', 'apps/desktop/src/renderer/src/ui/aiProgress.tsx', 'apps/desktop/src/renderer/src/ui/useLoopGoalDraft.ts'],
+    globs: ['packages/core/src/industry.ts', 'packages/core/src/manufacturing.ts', 'packages/core/src/lab.ts', 'packages/core/src/plugs.ts', 'packages/core/src/scrap.ts', 'packages/core/src/consumables.ts', 'packages/core/src/blackbox.ts', 'packages/data/src/labRecipes.ts', 'packages/data/src/blueprints.ts', 'packages/data/src/plugs.ts', 'apps/desktop/src/renderer/src/pages/IndustryPage*', 'apps/desktop/src/renderer/src/pages/IndustryHudPage*', 'apps/desktop/src/renderer/src/panels/Industry.tsx', 'apps/desktop/src/renderer/src/panels/PlugExchange.tsx', 'apps/desktop/src/renderer/src/ui/fragmentRedeem.tsx', 'apps/desktop/src/renderer/src/ui/hud.tsx', 'apps/desktop/src/renderer/src/ui/aiSlots.tsx', 'apps/desktop/src/renderer/src/ui/aiWorkFx.tsx', 'apps/desktop/src/renderer/src/ui/aiCoreSelect.tsx', 'apps/desktop/src/renderer/src/ui/aiProgress.tsx', 'apps/desktop/src/renderer/src/ui/useLoopGoalDraft.ts'],
   },
   {
     name: '技能',
@@ -66,7 +71,7 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '虫洞',
-    globs: ['packages/core/src/wormhole*.ts', 'packages/core/src/matterTech.ts', 'packages/data/src/wormholeFoes.ts', 'packages/data/src/matterTech.ts', 'apps/desktop/src/renderer/src/panels/Wormhole*.tsx', 'apps/desktop/src/renderer/src/panels/MatterTechTab.tsx', 'apps/desktop/src/renderer/src/ui/wormholeIntel.ts', 'apps/desktop/src/renderer/src/ui/wormholeMapGeom.ts'],
+    globs: ['packages/core/src/wormhole*.ts', 'packages/core/src/matterTech.ts', 'packages/data/src/wormholeFoes.ts', 'packages/data/src/matterTech.ts', 'apps/desktop/src/renderer/src/panels/Wormhole*.tsx', 'apps/desktop/src/renderer/src/panels/MatterTechTab.tsx', 'apps/desktop/src/renderer/src/panels/wormholeMapGeom.ts', 'apps/desktop/src/renderer/src/ui/wormholeIntel.ts'],
   },
   {
     name: '战斗',
@@ -78,7 +83,7 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '远征与赏金',
-    globs: ['packages/core/src/expedition.ts', 'packages/core/src/lairs.ts', 'packages/data/src/retiredLairCards.ts'],
+    globs: ['packages/core/src/expedition.ts', 'packages/core/src/lairs.ts', 'packages/data/src/retiredLairCards.ts', 'apps/desktop/src/renderer/src/panels/bountySort.ts'],
   },
   {
     name: '运输与时效任务',
@@ -110,7 +115,7 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '主控活动与活动栏',
-    globs: ['packages/core/src/activity.ts', 'packages/core/src/activityGate.ts', 'packages/core/src/busyLabels.ts', 'apps/desktop/src/renderer/src/panels/ActivityBar*', 'apps/desktop/src/renderer/src/panels/ActivityScreen.tsx', 'apps/desktop/src/renderer/src/panels/activityStopLabel.ts', 'apps/desktop/src/renderer/src/ui/activityGo.ts', 'apps/desktop/src/renderer/src/ui/activityArt.tsx'],
+    globs: ['packages/core/src/activity.ts', 'packages/core/src/activityGate.ts', 'packages/core/src/busyLabels.ts', 'apps/desktop/src/renderer/src/panels/ActivityBar*', 'apps/desktop/src/renderer/src/panels/ActivityScreen.tsx', 'apps/desktop/src/renderer/src/ui/ActivityScreen.tsx', 'apps/desktop/src/renderer/src/panels/activityStopLabel.ts', 'apps/desktop/src/renderer/src/ui/activityGo.ts', 'apps/desktop/src/renderer/src/ui/activityArt.tsx'],
   },
   {
     name: '存档与元系统',
@@ -157,6 +162,42 @@ const SHARED: readonly string[] = [
   '**/*.css',
   '**/tests/**',
   '**/*.test.ts',
+  /**
+   * ── 2026-10-03 一号补（§十八 域表随重构补：全仓普查把「未归类」清零）────────────────
+   * 判据照旧 = §十八 第 3 条「被两个以上域依赖、且自身不表达任何玩法」；以下几族是
+   * **外壳 / 基础设施 / 资源 / 跨域单点**，任何域都得读它们，但不属于任何功能域。
+   */
+  // 仓库根与 CI / 打包
+  'README.md',
+  'package-lock.json',
+  'postcss.config.js',
+  '.gitattributes',
+  '.gitignore',
+  '.npmrc',
+  '.github/**',
+  'steam/**',
+  'review/**',
+  'web/**',
+  'apps/desktop/build/**',
+  'apps/desktop/electron-builder*.yml',
+  'apps/desktop/electron.vite.config.ts',
+  // 桌面外壳（主进程 / 预加载 / 渲染入口）
+  'apps/desktop/src/main/**',
+  'apps/desktop/src/preload/**',
+  'apps/desktop/src/renderer/index.html',
+  'apps/desktop/src/renderer/src/env.d.ts',
+  'apps/desktop/src/renderer/src/main.tsx',
+  'apps/desktop/src/renderer/src/assets/**',
+  // 跨域单点（被两个以上域依赖、自身不表达玩法）
+  'packages/ui/src/**',
+  'apps/desktop/src/renderer/src/i18n/**',
+  'packages/data/src/l10n.ts',
+  'apps/desktop/src/renderer/src/ui/labelsText.ts',
+  'apps/desktop/src/renderer/src/ui/Tooltip.tsx',
+  'apps/desktop/src/renderer/src/ui/marks.tsx',
+  'apps/desktop/src/renderer/src/ui/sessionView.ts',
+  'apps/desktop/src/renderer/src/ui/layoutStyles.ts',
+  'apps/desktop/src/renderer/src/pages/common.ts',
 ]
 
 /** glob → 正则（支持 `**` / `*` / `?` / `{a,b}`；够用即可，不引依赖） */
@@ -206,8 +247,13 @@ const argv = process.argv.slice(2)
 const stagedOnly = argv.includes('--staged')
 const revIdx = argv.indexOf('--rev')
 const rev = revIdx >= 0 ? argv[revIdx + 1] : undefined
+/**
+ * ⚠ **`-c core.quotepath=false` 是必需的**（2026-10-03 一号补）：默认配置下 git 会把含中文的路径
+ * 用 C 风格转义并**加引号**（`"docs/exports/\347\255\233..."`）⇒ 那些路径永远匹配不上域表，
+ * 会以"未归类"的假象挂在读数里（本仓 `docs/exports/*` 就有中文名文件）。
+ */
 const git = (args: string[]): string[] =>
-  execFileSync('git', args, { encoding: 'utf8' })
+  execFileSync('git', ['-c', 'core.quotepath=false', ...args], { encoding: 'utf8' })
     .split('\n')
     .map((s) => s.trim())
     .filter((s) => s.length > 0)
@@ -252,9 +298,12 @@ if (shared.length > 0) {
   console.log(`    （共享底层 ${shared.length} 个，按 §十八 不计入域）`)
 }
 if (unknown.length > 0) {
+  /**
+   * ⚠ **全部打印，不截断**（2026-10-03 一号补域表时改）：本行原本只印前 12 个 ＋ 一句"…共 N 个"，
+   * 但「未归类」正是**补域表的入口**（见约定 §十八 第 4 条与交接卡 §三.4）⇒ 截断会把入口挡掉一半。
+   */
   console.log(`    ⚠ 未归类 ${unknown.length} 个（域表要补，别把它藏起来）：`)
-  for (const f of unknown.slice(0, 12)) console.log(`        ${f}`)
-  if (unknown.length > 12) console.log(`        …共 ${unknown.length} 个`)
+  for (const f of unknown) console.log(`        ${f}`)
 }
 if (byDomain.size >= 2) {
   console.log('    ⚠ 跨 %d 个域 ⇒ 按 §十八 需**先向船长申请**；获批后在提交说明里记「船长批准：跨 A→B」', byDomain.size)

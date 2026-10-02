@@ -572,6 +572,24 @@
 - 验证：typecheck 全仓 ✅（闸门开启后 0 处）· core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ ·
   ui:rot-check ✅ · 构建 ✅（bundle 4830.75 → 4828.96 kB，死代码摘除顺带掉重）。
 
+### 批次 4w：§十八 域表随重构补全（2026-10-03 · 只动工具与文档 · 零行为变化）
+
+- 背景：二号 2026-10-02 落 **§十八「改动范围：模块内优先」**＋读数护栏 `npm run scope:check`
+  （`tools/domain-scope-check.ts`，域表按**一号重构后的布局**建）；交接卡 §三.4 记「域表随重构补，
+  `-- 未归类` 清单就是入口」——本批把它收口（船长令：「二号提交了新规则，你阅读后按照推荐进行修改」）。
+- 做法（全在 `tools/**` ＋ `docs/**` ＝ §十八 的**共享底层**，不算跨模块）：按全仓普查（`--rev <空树>`）
+  **未归类清零** —— 1323 个文件 = **20 个功能域（218 个）＋ 共享底层 1105 个**。逐条落点：
+  ① 共享底层补 45 条 glob（仓库根/CI/打包/桌面外壳 main·preload·渲染入口/太空图资源/`packages/ui`/
+  `i18n`/`labelsText`/`Tooltip`/`marks`/`sessionView`/`layoutStyles`/`pages/common`）；
+  ② 归域 7 个：`panels/bountySort.ts`→远征与赏金 · `panels/PlugExchange.tsx`＋`data/plugs.ts`＋
+  `ui/fragmentRedeem.tsx`→工业（与 core `industry.ts` 的碎片兑换同源）· `ui/yieldView.tsx`→市场与经济 ·
+  `ui/ActivityScreen.tsx`→主控活动与活动栏；③ 修错址 1 处：`ui/wormholeMapGeom.ts` → `panels/wormholeMapGeom.ts`；
+  ④ 修读数两处缺陷：`git` 加 `-c core.quotepath=false`（中文路径被引号转义 ⇒ 假"未归类"）、
+  「未归类」改为**全部打印**（原只印前 12 个，而它正是补域表的入口）。
+- 影响面：只有**读数**（约定 §十八 第 4 条：只提示不阻断）。域表本身仍在同一张表里维护（单点，不新造第二套）。
+- 验证：`scope:check` 全仓普查未归类 ✅ 0 个 · typecheck 全仓 ✅ · content/l10n ✅ · ui:rot-check ✅ ·
+  docs:index 已重跑。
+
 ## 待办/待裁
 
 - **渲染层 `game/engine.ts`（4119 行单类）评估后不做**（2026-10-02 记）：不在蓝图拆分表内；`GameEngine` 是
