@@ -12,7 +12,7 @@
  */
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { ITEM_KIND_ORDER, itemKindText, rackOf, shipCategoryKeyOf, visibleItemDefs } from '@whale/core'
+import { itemKindText, rackOf, shipCategoryKeyOf, visibleItemDefs } from '@whale/core'
 import type { BlueprintDef, DamageType, DroneClass, FoeShipDef, ItemDef, ItemKind, ModuleDef, ShipBlueprintDef, ShipDef, ShipRole } from '@whale/core'
 // 稀有度小标签（2026-09-20 船长）：档位走单点 `itemRarityTierOf`（含 AI 核心与舰船的键映射）
 import { buildFactionCards, FACTION_CODEX_ORDER, FOE_SHIPS, itemRarityTierOf } from '@whale/data'
@@ -26,15 +26,15 @@ import { Glyph, partToneKeyOf } from '../ui/Glyphs'
 import { FOE_ACCENT, toneOfAny } from '../ui/tones'
 import {
   BLUEPRINT_SUBS,
-  CONTAINER_SUBS,
+  BUCKET_OF_ITEM_KIND,
+  COMMODITY_TABS,
   CONSUME_SUBS,
-  CORE_SUBS,
   MODULE_SUBS,
   RACK_SUBS,
   SHIP_SUBS,
   SHIP_TIER_SUBS,
   SUB_ALL,
-  WRECK_SUBS,
+  SUBS_OF_KIND,
   itemBucketPasses,
   itemSubPasses,
   moduleSubKeyOf,
@@ -1555,7 +1555,7 @@ export function Handbook({
   const showCells = (cells: GridCell[], t: Tab): CellGroup[] => groupCells(cells, groupKeyOf, orderOf(t))
   /** 分组键：物品按大类 / 装备按槽类 / 舰船按舰族 / 蓝图按产物门类（装备蓝图再按产物槽类） / 技能按技能组 */
   function groupKeyOf(c: GridCell): string {
-    if (c.tab === 'items') return String(c.raw.kind ?? '')
+    if (c.tab === 'items') return BUCKET_OF_ITEM_KIND[String(c.raw.kind ?? '')] ?? String(c.raw.kind ?? '')
     if (c.tab === 'modules') return moduleSubKeyOf(String(c.raw.slot ?? ''), String(c.raw.id ?? ''))
     if (c.tab === 'ships') return String(c.glyph) // 舰船类别键（`shipCategoryKeyOf` 的产物；见 shipCells）
     if (c.tab === 'blueprints') {
@@ -1586,7 +1586,7 @@ export function Handbook({
    * 走 `skillGroupText` 单点映射（无 id 时 `subText` 回落到 `label`，故这里给已译好的 `label`）。
    */
   function orderOf(t: Tab): Array<{ key: string; label: string; id?: string; idParam?: string }> {
-    if (t === 'items') return ITEM_KIND_ORDER.map((k) => ({ key: k, label: kindName(k) }))
+    if (t === 'items') return COMMODITY_TABS.map((tab2) => ({ key: tab2.key, label: tab2.label }))
     if (t === 'modules')
       return MODULE_SUBS.map(
         (s): { key: string; label: string; id?: string; idParam?: string } => ({
@@ -1669,7 +1669,7 @@ export function Handbook({
 
   /** 主筛选（一级）**候选表**——与各页的**分组键同一套判据**：装备＝槽类、舰船＝角色、蓝图＝门类 */
   function mainCandidatesOf(t: CodexTab): SubOption[] {
-    if (t === 'items') return ITEM_KIND_ORDER.map((k) => ({ key: k, label: kindName(k) }))
+    if (t === 'items') return COMMODITY_TABS.map((tab2) => ({ key: tab2.key, label: tab2.label }))
     if (t === 'modules') return RACK_SUBS
     if (t === 'ships') return SHIP_SUBS
     if (t === 'blueprints') return BP_MAIN
@@ -1693,13 +1693,7 @@ export function Handbook({
   function subCandidatesOf(t: CodexTab, main: string): SubOption[] {
     if (t === 'modules') return MODULE_SUBS
     if (t === 'ships') return SHIP_TIER_SUBS
-    if (t === 'items') {
-      if (main === 'container') return CONTAINER_SUBS
-      if (main === 'wreck') return WRECK_SUBS
-      if (main === 'aicore') return CORE_SUBS.filter((s) => engine.ctx.items.has(`ai-core-${s.key}`))
-      if (main === 'fragment') return MODULE_SUBS
-      return []
-    }
+    if (t === 'items') return SUBS_OF_KIND[main] ?? []
     if (t === 'blueprints') {
       if (main === 'equip') return RACK_SUBS
       if (main === 'ship') return SHIP_TIER_SUBS
@@ -1751,7 +1745,7 @@ export function Handbook({
   /** 子筛选判定（技能页无二级，恒真）——物品 / 装备两页走**唯一入口** `itemSubPasses`（甲组补丁） */
   function subPassesCell(c: GridCell, t: Tab, sub: string): boolean {
     if (sub === SUB_ALL) return true
-    if (t === 'items') return itemSubPasses(engine.ctx, c.key, String(c.raw.kind ?? ''), sub)
+    if (t === 'items') return itemSubPasses(engine.ctx, c.key, BUCKET_OF_ITEM_KIND[String(c.raw.kind ?? '')] ?? String(c.raw.kind ?? ''), sub)
     // 装备图鉴：走**唯一入口** `itemSubPasses`（bucket = `module`）——2026-09-26 收敛：
     // 原先这里自己写 `moduleSubKeyOf(slot) === sub`，与市场/碎片那条单点**各写一份**；
     // 支援件拆三档后两份判定必须有同一把尺，故统一（两者对装备的行为逐字等价）。

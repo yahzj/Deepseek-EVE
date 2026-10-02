@@ -3898,6 +3898,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.ItemsPage.054": { zh: "使用：24 小时内技能训练时长减半（同一时间内只能生效一剂）", en: "Use: halves skill training time for 24 hours (only one dose can be active at a time)" },
   "ui.ItemsPage.055": { zh: "突触加速剂已生效：24 小时内技能训练时长减半。", en: "Synaptic Accelerant active: skill training time is halved for 24 hours." },
   "ui.ItemsPage.056": { zh: "使用", en: "Use" },
+  /* 仓库一级「货物」档的二级维度（物品大类）前缀（2026-10-01 层级同步市场后新增） */
+  "ui.ItemsPage.059": { zh: "分类", en: "Category" },
   "ui.itemSubs.001": { zh: "修理组件", en: "Repair Kit" },
   "ui.itemSubs.002": { zh: "遗迹安全货柜", en: "Ruins safe container" },
   "ui.itemSubs.003": { zh: "图纸货柜", en: "Blueprint container" },
