@@ -26,6 +26,7 @@
  * 入参一律取**货仓**（`WormholeHoldState`）或普通字段，不取整趟状态。
  */
 import type { WormholeHoldState } from './wormholeHold'
+import type { CoreBlockReason } from './engine'
 
 /** 装置的效果类别 */
 export type WormholeMatterEffectKind =
@@ -692,8 +693,13 @@ export function wormholeMatterApplyTurnDelta(
  * **丢弃前的提醒**（船长：「如果玩家丢弃回合相关谜质导致回合数不够，需要提醒玩家」）：
  * 只对回合类装置返回一句话（其余装置返回 null ⇒ 界面照旧直接抛）。
  */
-export function wormholeMatterDiscardHint(itemId: string): string | null {
+export function wormholeMatterDiscardHint(itemId: string): CoreBlockReason | null {
   const delta = wormholeMatterTurnDeltaOf(itemId)
   if (delta === 0) return null
-  return `丢掉「${wormholeMatterDeviceOf(itemId)?.name ?? itemId}」会少 ${delta} 回合：可能走不到想去的格子（撤离不受影响，任何回合数都能撤）。`
+  const deviceName = wormholeMatterDeviceOf(itemId)?.name ?? itemId
+  return {
+    error: `丢掉「${deviceName}」会少 ${delta} 回合：可能走不到想去的格子（撤离不受影响，任何回合数都能撤）。`,
+    errorId: 'ui.Wormhole.379',
+    errorParams: { p1: deviceName, p2: delta },
+  }
 }

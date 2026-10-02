@@ -177,7 +177,8 @@ describe('虫洞 · 谜质装置（F3c A 批）', () => {
     // 花掉一些回合（模拟探索），再丢掉它 ⇒ 上限回到 base、剩余夹到上限、永不为负
     run.turnsLeft = base + 3
     const box = run.hold!.placements.find((p) => p.itemId === 'mat-chrono')!
-    expect(wormholeMatterDiscardHint('mat-chrono')).toContain('少 10 回合')
+    expect(wormholeMatterDiscardHint('mat-chrono')?.errorId).toBe('ui.Wormhole.379')
+    expect(wormholeMatterDiscardHint('mat-chrono')?.errorParams).toEqual({ p1: '时序核心', p2: 10 })
     const dropped = wormholeHoldDiscard(state, ctx, box.id)
     expect(dropped.ok).toBe(true)
     expect(run.turnsTotal).toBe(base)

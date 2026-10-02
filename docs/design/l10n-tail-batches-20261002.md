@@ -53,6 +53,26 @@
 
 ---
 
+## 批⑦ 虫洞丢弃提醒 ＋ 战斗克制读数（2026-10-02）
+
+**落码（5 个文件）**：
+
+| # | 文件 | 改动 |
+|---|---|---|
+| 1 | `packages/core/src/wormholeMatter.ts` | `wormholeMatterDiscardHint` 由 `string \| null` 改 **`CoreBlockReason \| null`**（id **`ui.Wormhole.379`** ＋ 参数 `p1` 装置名 / `p2` 回合数）；中文原串一字不改 |
+| 2 | `apps/desktop/.../panels/Wormhole.tsx` | **两处**渲染点改走 `cmdText(...)`（临时空间那一行的副注 ＋ 丢弃确认条） |
+| 3 | `packages/core/src/combatMath.ts` | **删掉 `layerMultText()`**（中文整句 `盾 ×1.5 · 甲 ×0.75 · 结构 ×1`）——它由伤害徽章悬停直接显示 ⇒ 英文界面必出中文 |
+| 4 | `packages/core/src/combat.ts` · `index.ts` | 同步去掉 `layerMultText` 的再导出（全仓 0 引用后才删） |
+| 5 | `apps/desktop/.../ui/shipInfo.tsx` | 伤害徽章悬停改由界面按语言组装（id **`ui.shipInfo.248`**，数字仍走 core 的 `typeLayerMult` 单一真相源）；顺手把中文全角冒号 `：` 收进模板（英文用 `:`） |
+| 6 | `packages/data/src/l10n/table.ts` | 补 2 条（`ui.Wormhole.379` · `ui.shipInfo.248`） |
+
+**读数**：`l10n:core-zh` 复核 —— `wormholeMatter.ts` **0 处**；`combatMath.ts` 剩 1 处为**误判**（`typeLayerMult` 返回 number、中文只在行尾注释里，工具暂不剥行尾注释，已在报告里登记）。
+
+**验证**：`typecheck` 四包 0 错 · core **286 文件 / 3008 用例全绿** · `l10n:check` ✅ · `l10n:params` 0 漏喂 · `content:check` ✅。
+**用例同步 1 处**：`tests/wormhole-matter.test.ts` 由"断言中文子串"改成**断 id 与参数**（`?.errorId` / `?.errorParams`）——第一次我把参数猜成 `{p1:'时间晶体',p2:-10}`，被用例当场纠正为实测值 `{p1:'时序核心',p2:10}`（留痕：断言要**取实测值**，别照中文语序推）。
+
+---
+
 ## 待做（按盘点稿顺序）
 
 批③ 远征/自动循环（9 条）· 批④ 市场（2 条）· 批⑤ 工业（3 条）· 批⑥ 装配（1 条）· 批⑦ 虫洞＋战斗读数（2 条）· 批⑧ B 类待核（9 条）· 批⑨ 日志行（97 处，建议单独立项）· 批⑪ 共享拒因（`shipLockedReason` / `cannotInterruptReason`，跨 6 域，需先申请）。

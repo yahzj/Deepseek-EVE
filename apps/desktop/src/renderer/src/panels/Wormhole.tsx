@@ -3389,7 +3389,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
               const def = ctx.items.get(p.itemId)
               const device = wormholeMatterDeviceOf(p.itemId)
               /** 已失效装置的副注（"放在这里不生效"的原因）——null 表示这台装置没有额外说明 */
-              const hintText = wormholeMatterDiscardHint(p.itemId)
+              const discardHint = wormholeMatterDiscardHint(p.itemId)
               return (
                 <li key={`ask-${p.id}`}>
                   <span className="app-wh-hold-row-ico" style={{ color: holdTone(p.itemId, itemIconOf(p.itemId, def?.kind)) }}>
@@ -3400,7 +3400,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                   <span className="app-dim">
                     {' '}
                     {tr('ui.Wormhole.281', { n: p.w * p.h })}
-                    {device ? tr('ui.Wormhole.331', { p1: hintText ? tr('ui.Wormhole.339', { p1: hintText }) : '' }) : ''}
+                    {device ? tr('ui.Wormhole.331', { p1: discardHint ? tr('ui.Wormhole.339', { p1: cmdText(discardHint) }) : '' }) : ''}
                   </span>
                 </li>
               )
@@ -3565,7 +3565,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
        */}
       {askDiscard && placements.some((p) => p.id === askDiscard) ? (
         <div className="app-wh-ask">
-          <span>⚠ {wormholeMatterDiscardHint(placements.find((p) => p.id === askDiscard)!.itemId)}</span>
+          <span>⚠ {cmdText(wormholeMatterDiscardHint(placements.find((p) => p.id === askDiscard)!.itemId) ?? {})}</span>
           <span className="app-wh-actions">
             <button
               className="app-btn is-small is-danger"

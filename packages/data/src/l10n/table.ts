@@ -4712,6 +4712,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // **R 族势力特色装备**（船长 2026-10-01 令）：叠光激光炮的"装填自加速"与跃迁规避装置的"挨打闪现"
   "ui.shipInfo.246": { zh: "装填 {p1} 秒，每次开火缩短 {p2} 秒，最低 {p3} 秒", en: "Reload {p1}s; each shot cuts {p2}s, down to {p3}s" },
   "ui.shipInfo.247": { zh: "被命中时拉开交战距离 {p1} km；冷却 {p2} 秒", en: "When hit, opens engagement range by {p1} km; {p2}s cooldown" },
+  "ui.shipInfo.248": { zh: "{p1}：盾 {p2} · 甲 {p3} · 结构 {p4}", en: "{p1}: shield {p2} · armor {p3} · hull {p4}" },
 
   /* ── 沉船记录（2026-09-27 船长令：通讯内新增一个分类，记录玩家损失的舰船与当时的装配）── */  "ui.WreckLog.001": { zh: "沉船记录", en: "Ship Loss Log" },
   "ui.WreckLog.002": { zh: "收件箱", en: "Inbox" },
@@ -5601,6 +5602,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     en: "Formation is {p1} ships: adding more raises total mass and cuts the turns available for this run, making it more dangerous.",
   },
   "ui.Wormhole.378": { zh: "围剿者 · {p1}：挡路，打掉才能通过；停在这一格即开战", en: "Sweeper · {p1}: blocks the route — destroy it to pass; stopping on this tile starts a fight" },
+  "ui.Wormhole.379": { zh: "丢掉「{p1}」会少 {p2} 回合：可能走不到想去的格子（撤离不受影响，任何回合数都能撤）。", en: "Discarding “{p1}” costs {p2} turns: you may not reach the tile you are aiming for — withdrawing is unaffected and works with any number of turns left." },
   "ui.Wormhole.363": { zh: "。", en: "." },
   "ui.Wormhole.364": { zh: "」", en: "”" },
   "ui.WormholeScan.001": { zh: "枚 · 研究不消耗时间", en: "cores · research takes no time" },

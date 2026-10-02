@@ -1203,7 +1203,7 @@ export {
   myUnitOutputScore,
   isNonCombatShipRole,
   typeLayerMult,
-  layerMultText,
+  
   BATTLE_STEP_MS,
   BATTLE_MAX_STEPS,
   // **入场窗口**（船长 2026-09-14「动画没结束不开火」）：界面飞入动画与引擎"不可选中窗口"的

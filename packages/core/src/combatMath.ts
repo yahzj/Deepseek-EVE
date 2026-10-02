@@ -48,14 +48,10 @@ export function typeLayerMult(t: DamageType, layer: 'shield' | 'armor' | 'hull')
   return layer === 'shield' ? 1.25 : 1 // plasma（能量）：拆盾 1.25，对甲/结构无劣化
 }
 
-/** 三层克制一句话（UI 悬停/手册速查用；数值与 typeLayerMult 同源） */
-export function layerMultText(type: DamageType): string {
-  const fmt = (layer: 'shield' | 'armor' | 'hull'): string => {
-    const v = typeLayerMult(type, layer)
-    return v === 1 ? '×1' : `×${v}`
-  }
-  return `盾 ${fmt('shield')} · 甲 ${fmt('armor')} · 结构 ${fmt('hull')}`
-}
+/* ⟪文案调整 2026-10-02⟫ 批⑦：原先这里有一句中文整句 `layerMultText()`（`盾 ×1.5 · 甲 ×0.75 · 结构 ×1`），
+ * 由 `ui/shipInfo.tsx` 的伤害徽章悬停直接显示 ⇒ 英文界面必然出中文。
+ * 现改为**界面按当前语言组装**（id `ui.shipInfo.248`，数字仍走本文件的 `typeLayerMult` 单一真相源），
+ * 故该中文整句函数已删除（全仓 0 引用）。 */
 
 /** 距离衰减：minRange 端 1.0 → maxRange 端 falloff（线性）。
  *  ⚠ **这是全仓唯一一处"远端衰减"实现**（2026-09-12 审计 B1 合并）：`beamPowerFactor`（能量**威力**衰减）、

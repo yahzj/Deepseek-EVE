@@ -15,10 +15,11 @@
  */
 import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
-import { DEFAULT_BALANCE, DC_LOCK_MS, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, layerMultText, beamPowerFactor, thrusterCycleNote, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules, fittedEffectParamsOf, WEB_BREAK_DIST_M } from '@whale/core'
+import { DEFAULT_BALANCE, DC_LOCK_MS, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, beamPowerFactor, thrusterCycleNote, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules, fittedEffectParamsOf, WEB_BREAK_DIST_M } from '@whale/core'
 /** 引擎类型（"装上船之后的实修值"那一行要现算 —— 2026-09-29 船长令） */
 import type { GameEngine } from '../game/engine'
 import { hoverTipProps } from './Tooltip'
+import { typeLayerMult } from '@whale/core'
 import { tr } from '../i18n/locale'
 // ⚠ 槽类名（高/中/低槽）与舰船类别/舰级名**一律走这三个本地化单点**（2026-09-26 船长报障
 // 「部分遗漏未本地化的文本（舰船类型，高中低槽位数量的文本）」）：core 的同名表/函数是纯中文
@@ -188,8 +189,24 @@ export function shipCurrentRowKeys(ship: ShipDef, hasDroneBayTotal: boolean): st
  * 悬停显示与 combat.typeLayerMult 同源的克制矩阵（2026-09-05 船长）。
  */
 export function DmgChip({ t, label }: { t: DamageType; label?: ReactNode }): ReactNode {
+  /**
+   * **⟪文案调整 2026-10-02⟫ 批⑦**：三层克制那一句改由界面按语言组装（id `ui.shipInfo.248`）——
+   * 原先直接显示 core 的 `layerMultText()`（中文整句）⇒ 英文界面出中文；数字仍走 core 的 `typeLayerMult`。
+   */
+  const layerMulText = (layer: 'shield' | 'armor' | 'hull'): string => {
+    const v = typeLayerMult(t, layer)
+    return v === 1 ? '×1' : `×${v}`
+  }
   return (
-    <span className={`app-d-chip app-d-${t}`} title={`${DMG_LABEL[t]}：${layerMultText(t)}`}>
+    <span
+      className={`app-d-chip app-d-${t}`}
+      title={tr('ui.shipInfo.248', {
+        p1: DMG_LABEL[t],
+        p2: layerMulText('shield'),
+        p3: layerMulText('armor'),
+        p4: layerMulText('hull'),
+      })}
+    >
       {label ?? DMG_LABEL[t]}
     </span>
   )

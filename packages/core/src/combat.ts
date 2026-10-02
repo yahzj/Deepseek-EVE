@@ -49,7 +49,7 @@ import { droneRevivedCount, droneRevivedOf, initDroneRevive, initDroneReviveStoc
 // 命中与伤害数学（2026-10-02 批次 4a 拆到 combatMath.ts）；本文件借回使用并再导出，既有引用零改动
 import { applyDamage, battleClockNowMs, clamp, distFactor, droneHitChance, hitChance, inRange, isAlive, typeLayerMult } from './combatMath'
 import type { Hp3 } from './combatMath'
-export { applyDamage, battleClockNowMs, battleShowWindowMs, battleSpeedOf, distFactor, droneHitChance, hitChance, inRange, layerMultText, typeLayerMult, waveGapTotalMs } from './combatMath'
+export { applyDamage, battleClockNowMs, battleShowWindowMs, battleSpeedOf, distFactor, droneHitChance, hitChance, inRange, typeLayerMult, waveGapTotalMs } from './combatMath'
 export type { Hp3 } from './combatMath'
 // 战报与四档判定（2026-10-02 批次 4b 拆到 combatReport.ts）；本文件借回使用并再导出
 import { spreadWinChance } from './combatReport'
