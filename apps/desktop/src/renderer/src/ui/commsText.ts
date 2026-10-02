@@ -220,7 +220,7 @@ export function commsHintText(text: string): string {
  * **⟪文案调整 2026-10-02⟫ 32 条英文整体重写**（船长令「进行落码」）：中文侧在 10-01 两批里改过
  * （船长改稿落地 22 条 ＋ 9 封从零重写），英文没跟上 ⇒ 14 条段数不符（英文界面整封回落中文）、
  * 18 条段数同但内容是改稿前的。本批按**中文现行稿逐段重写**，段数与中文逐条相等。
- *   台账：工作文档 `docs/design/comms-en-backfill-20261002.md`（含三处船长裁定）。
+ *   台账：`docs/roadmap.md` 2026-10-02「本地化尾巴清场」那条（含三处船长裁定）。
  * ⚠ **行数必须与中文逐行对齐**：`commsBodyText()` 在行数不符时**回落到中文**（宁可整段中文，也不许错行串位）。
  */
 const COMMS_BODY_EN: Record<string, readonly string[]> = {

@@ -516,6 +516,20 @@
   术语与专名仍以 `docs/glossary-en.md` 为权威；`content:check` 的禁用词契约按语言分叉。
 - **不进存档**：语言选择仍存 localStorage；老档历史日志保持中文（`state.logs[].text` 存的是渲染好的文本）；
   开发侧文档 / 注释 / 汇报一律中文不变。
+- **列表槽（2026-10-02 加 · 船长「按你建议来修」）**：core 里**不许再把分隔符拼进参数值**
+  （旧写法 `${names.join('、')}` 会让英文界面出现中文顿号）。契约：
+  `p{n}List` ＝ 逐项值（`readonly string[]`）· `p{n}ItemId` ＝ 逐项模板 id（可选，模板里 `{p1}` 缺省 = 该项值）·
+  `p{n}ItemParams` ＝ 逐项参数（可选、与 `List` 索引对齐，填模板的 `{p2}`…）；**分隔符由渲染层按当前语言取**
+  （词条 `core.state.043`：zh「、」/ en「, 」）。core 侧写 `logParams({ … })` / `logParamsOf(composed, { … })` 收口
+  （单点断言只在 `core/src/logParts.ts`）。⚠ **空列表别传 `List`**（会把该槽渲成空串）⇒ 空态改挂槽译文 `p{n}Id`。
+- **硬槽恒传（2026-10-02 加）**：基础模板里的 `{pN}` 是**硬槽** —— 该片段可能没有时**也要传空串**
+  （缺键会原样漏 `{pN}` 给玩家；渲染层的既定行为是"宁可漏出来也不悄悄改中文"）。
+- **体检三件（互不替代）**：`npm run l10n:check`（表 ↔ 引用一致性，**含剥注释 ＋ 覆盖 core/data/ui 三处源码**）·
+  `npm run l10n:params`（**五段判据**：显式漏喂 / 槽内参数 / 模板被无参使用 / 内联正文与表文对账 / **列表槽契约**）·
+  `npm run l10n:core-zh`（core 侧裸中文上屏体检，**只报不改**：`return` · `addLog` 缺 `textId` · `state.<字段> = 中文串` 三类）。
+  ⚠ 三者都**看不见**两类漏口（2026-10-02 实测）：**写死在数组/常量里的文案**与**先拼进变量、再整句 `addLog`** —— 改那类地方要靠 `l10n:render` 夹具 ＋ 人眼。
+- **渲染层改动的验收口**：动 `apps/desktop/src/renderer/src/i18n/locale.tsx` 的 `composeParts` / `paramsFor` ⇒ **必须重跑**
+  `npm run l10n:render`（它是把**渲染层真身**打包后直调 `logText()` 的逐字核对，中英各一遍，夹具表在工具文件里）。
 
 ---
 

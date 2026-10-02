@@ -18,6 +18,8 @@
 - `docs/INDEX.md` — 全仓文档清册（机器生成，禁手改）；`docs/archive/` — 封存卷（冻结件，只读不改）。
 - `docs/design/*` — 各系统设计稿（以 `docs/INDEX.md` 为准）＋ 公告待审稿 `announcement-draft-*.md` ＋ 交接件 `handoff-*.md` / `handover-*.md`。
 - `docs/test-saves/` — 可复现测试档说明；`packages/data/src/announcements.ts` — 公告数据（仅经船长批准后写入）。
+- `docs/review/` — **第三方独立审查报告**与复核/事实核查件（如 `guoqing-audit-20261002.md`：全项目风险审查 ＋ 分批交接指南，
+  基线 `3c5624ee`；**报告结论是工作依据、不是修复授权**，动手前必须在新基线上复跑它给的最小复现）。
 
 ## 二、按任务类型指路
 
@@ -34,6 +36,7 @@
 | 新建 / 收尾工具 | §十（工具纪律：正式入库 / `_` 临时探针收尾处置） |
 | 多 agent 并行 / 合入 / 推送 | §三（工作区与合入纪律、推送闸门） |
 | 交接 / 续接 / 被压缩后 | `docs/roadmap.md`（最近批次与状态）＋ 本文件 §三 |
+| **接手第三方审查报告 / 按报告分批修复** | `docs/review/`（报告原文）＋ 入库工作文档（`docs/design/*-intake-*.md`：复核读数/冲突/待裁）→ 逐条在新基线上复现 → 再按 §2 四步闸门动工 |
 | 查历史决策与旧口径 | `docs/roadmap.md` 底部封存卷索引 → `docs/archive/roadmap-<日期>.md` → `git log -S "<关键词>"` |
 | 交付可测存档 | §八 ＋ `docs/test-saves/` ＋ `tools/make-test-save.ts` |
 

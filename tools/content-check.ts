@@ -6935,7 +6935,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
  * 的**装备/物品**蓝图对齐口径；**高级零件线**另有自己的口径 ——「**产物价 = 材料成本 ×1.50**」
  * （`packages/data/src/items.ts` 各行注释逐条写明）⇒ 料/价恒 ≈ 66.7%，不是漂移而是**另一把尺**。
  * 登记后不再出 ⚠，改为在汇总行计数「已登记 N 处」；检修据前先看本表与工作文档
- * `docs/design/blueprint-price-register-20261002.md`（逐条来路）。
+ * `docs/roadmap.md` 2026-10-02「本地化尾巴清场」那条（逐条来路见下面的登记表）。
  */
 const MATERIAL_RATIO_REGISTERED: Readonly<Record<string, string>> = {
   'bp-part-drone-neural': '高级零件线口径：产物价 = 材料成本 ×1.5（items.ts 行内注释）⇒ 料/价 ≈ 66.7%',

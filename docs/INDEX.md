@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **427** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7455** KB · **57727** 行
-- 状态分布：**未标注** 230 · **已确认/已实现** 119 · **进行中** 60 · **待裁定** 17 · **历史留档** 1
-- 孤儿文档（0 引用）**77** 份 · 状态未标注 **230** 份
+- 文档总数 **424** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7365** KB · **56758** 行
+- 状态分布：**未标注** 231 · **已确认/已实现** 119 · **进行中** 56 · **待裁定** 17 · **历史留档** 1
+- 孤儿文档（0 引用）**79** 份 · 状态未标注 **231** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**300** 份
+- 三、现行设计稿（design）：**297** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**33** 份
 - 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -31,18 +31,18 @@
 |---|---|---|---|---|---|
 | `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 17 KB / 113 行 | 217 / 10 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 32 / 1 |
-| `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 59 行 | 34 / 3 |
+| `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 6 KB / 62 行 | 34 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 295 KB / 303 行 | 19 / 3 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 87 KB / 902 行 | 100 / 5 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 296 KB / 304 行 | 19 / 3 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 89 KB / 916 行 | 100 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 503 KB / 1016 行 | 226 / 16 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 90 KB / 437 行 | 374 / 19 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 94 KB / 460 行 | 374 / 23 |
 
 ## 七、评审与体检（review） —— 12 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/review/guoqing-audit-20261002.md` | 国庆节审查 | 未标注 | 2026-10-02 | 75 KB / 1549 行 | 1 / 0 |
+| `docs/review/guoqing-audit-20261002.md` | 国庆节审查 | 未标注 | 2026-10-02 | 75 KB / 1549 行 | 2 / 0 |
 | `docs/review/arch-guard-baseline-20260927.md` | 架构护栏首轮基线：存量重复实现与越层直读清单（2026-09-27 · 三号 verify） | 待裁定（待船长裁决） | 2026-09-27 | 16 KB / 133 行 | 4 / 4 |
 | `docs/review/first-tasks-review-20260917.md` | 核验件：「第一次」任务系列全表（2026-09-18 版 · 供船长逐条审核） | 未标注 | 2026-09-17 | 12 KB / 148 行 | 0 / 0 |
 | `docs/review/announcement-factcheck-20260914.md` | 公告待审稿 · 核验件（2026-09-14 一号 · 虫洞上线稿 + 第二批稿） | 未标注 | 2026-09-14 | 18 KB / 150 行 | 5 / 1 |
@@ -55,7 +55,7 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 300 份
+## 三、现行设计稿（design） —— 297 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -63,11 +63,9 @@
 | `docs/design/trident-beam-cannon-20261003.md` | 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中） | 未标注 | 2026-10-03 | 9 KB / 101 行 | 0 / 0 |
 | `docs/design/activitybar-min-20261002.md` | 旧版活动栏「最小化」（只留标题行）（工作文档） | 进行中（进行中） | 2026-10-02 | 6 KB / 82 行 | 0 / 1 |
 | `docs/design/announcement-draft-20261002-corona.md` | 公告待审稿 · 入侵第二势力「光环科技 / Corona Systems」（2026-10-02） | 未标注 | 2026-10-02 | 14 KB / 131 行 | 2 / 1 |
-| `docs/design/blueprint-price-register-20261002.md` | 蓝图价格口径：11 条 ⚠ 登记为有意偏离（工作文档 · 2026-10-02） | 进行中（进行中） | 2026-10-02 | 6 KB / 73 行 | 0 / 2 |
+| `docs/design/beacon-random-family-20261002.md` | 信号发射器：召唤的势力改为随机（2026-10-02 · 二号 · 已合入 main） | 未标注 | 2026-10-02 | 4 KB / 49 行 | 0 / 0 |
 | `docs/design/code-review-20261002.md` | 代码审查报告：多余代码 · 重复效果代码 · 重构与模块化 · 风险（工作文档 · 2026-10-02） | 已确认/已实现（已交付报告） | 2026-10-02 | 11 KB / 129 行 | 2 / 2 |
-| `docs/design/comms-en-backfill-20261002.md` | 通讯英文回补（32 封 · 草稿待船长过目）（工作文档 · 2026-10-02） | 进行中（进行中 · 已落码待验收） | 2026-10-02 | 38 KB / 316 行 | 0 / 2 |
 | `docs/design/consumable-bucket-20261002.md` | 道具（consumable）归「消耗品」桶 ＋ 逐件一档（工作文档） | 进行中（进行中） | 2026-10-02 | 7 KB / 99 行 | 0 / 0 |
-| `docs/design/core-zh-leak-audit-20261002.md` | core 侧裸中文上屏盘点（本地化尾巴 · 盘点稿 · 2026-10-02） | 未标注（盘点稿 —— 只出清单） | 2026-10-02 | 16 KB / 199 行 | 2 / 0 |
 | `docs/design/corona-mounts-20261002.md` | R 族两件新挂载件：垂暮级「待机护盾阵列」· 旗舰「聚焦阵列」（2026-10-03 · 二号 · 已落码 · 待船长验收） | 未标注 | 2026-10-02 | 16 KB / 201 行 | 2 / 0 |
 | `docs/design/corona-pd-laser-20261002.md` | R 族势力件「PD激光」（激光近防炮）（2026-10-02 · 二号 · 待船长验收） | 未标注 | 2026-10-02 | 10 KB / 120 行 | 0 / 0 |
 | `docs/design/desire-invasion-20261002.md` | 入侵的期望距离记错星系（2026-10-02 · 二号 · 已落码 · 待验收） | 未标注 | 2026-10-02 | 4 KB / 65 行 | 1 / 0 |
@@ -78,9 +76,9 @@
 | `docs/design/handover-erhao-20261002.md` | 交接卡 · 二号会话（2026-10-02 收尾） | 未标注 | 2026-10-02 | 8 KB / 91 行 | 0 / 0 |
 | `docs/design/handover-yihao-20261002.md` | 交接卡 · 一号会话（2026-10-02 收尾） | 未标注 | 2026-10-02 | 7 KB / 68 行 | 0 / 0 |
 | `docs/design/invasion-open-gate-20261002.md` | 入侵开局判据：改「一窗一场」为「无进行中的场」（2026-10-02 · 二号 · 待船长验收） | 未标注 | 2026-10-02 | 7 KB / 91 行 | 0 / 1 |
-| `docs/design/l10n-tail-batches-20261002.md` | 本地化尾巴清场 · 批②~⑦ 台账（工作文档 · 2026-10-02） | 进行中（进行中） | 2026-10-02 | 41 KB / 474 行 | 0 / 0 |
 | `docs/design/lair-threat-anchor-20261002.md` | 每日赏金任务（窝点）威胁「相对重锚」（工作文档） | 进行中（进行中） | 2026-10-02 | 7 KB / 90 行 | 0 / 0 |
 | `docs/design/mobile-wormhole-20261002.md` | 手机模式 · 虫洞探索界面全屏两栏 ＋ 货仓触摸拖拽（工作文档） | 进行中（进行中） | 2026-10-02 | 5 KB / 73 行 | 0 / 4 |
+| `docs/design/pd-drone-no-falloff-20261002.md` | 打机群不吃光束威力衰减（PD激光 口径订正 · 2026-10-02 · 一号 · 进行中） | 未标注 | 2026-10-02 | 5 KB / 78 行 | 0 / 0 |
 | `docs/design/player-bugfix-20261002.md` | 玩家报障三修（期望距离 · 技能加速自动续用）（工作文档） | 进行中（进行中） | 2026-10-02 | 5 KB / 60 行 | 3 / 0 |
 | `docs/design/postreclaim-farm-20261002.md` | 入侵「100% 后仍可继续刷 ＋ 残骸减半」（工作文档） | 进行中（进行中） | 2026-10-02 | 7 KB / 108 行 | 0 / 0 |
 | `docs/design/r-open-distance-20261002.md` | 开场距离被 R 族族格顶掉（2026-10-03 · 二号 · 已落码 · 待验收） | 未标注 | 2026-10-02 | 4 KB / 60 行 | 1 / 0 |
@@ -88,7 +86,6 @@
 | `docs/design/return-log-copy-20261002.md` | 返航/停机日志文案调整 ＋「正文 ≠ id」收口（工作文档 · 2026-10-02） | 待裁定（已落码 · 待船长验收） | 2026-10-02 | 10 KB / 105 行 | 2 / 8 |
 | `docs/design/save-import-finish-20261002.md` | 存档导入收尾（甲案）＋ 手机 Firefox 导入加固（工作文档 · 2026-10-02） | 待裁定（已落码 · 待船长验收） | 2026-10-02 | 7 KB / 69 行 | 0 / 0 |
 | `docs/design/save-load-label-20261002.md` | 存档导入入口去术语：按钮改「加载存档文件」（工作文档 · 2026-10-02） | 进行中（进行中） | 2026-10-02 | 3 KB / 49 行 | 0 / 0 |
-| `docs/design/ship-reject-i18n-20261002.md` | 舰船域拒因结构化 · 本地化批①（工作文档 · 2026-10-02） | 进行中（进行中 · 已落码待验收） | 2026-10-02 | 6 KB / 75 行 | 2 / 0 |
 | `docs/design/skill-boost-panel-20261002.md` | 技能页「技能加速」：抬头条件化 ＋ 道具行效果说明（工作文档） | 进行中（进行中） | 2026-10-02 | 6 KB / 81 行 | 1 / 1 |
 | `docs/design/starmap-zoom-20261002.md` | 星图放大 ＋ 扩大星系判定范围（工作文档） | 进行中（进行中） | 2026-10-02 | 5 KB / 67 行 | 0 / 1 |
 | `docs/design/threat-judged-20261002.md` | 威胁的「价目表 ↔ 判据」分离（判据威胁 threatJudged）（工作文档） | 进行中（进行中） | 2026-10-02 | 6 KB / 82 行 | 0 / 0 |
@@ -99,7 +96,7 @@
 | `docs/design/blackbox-copy-fix-20261001.md` | 首发黑匣通讯「谜质 → 装备」用词修正（工作文档） | 进行中（进行中） | 2026-10-01 | 5 KB / 61 行 | 0 / 1 |
 | `docs/design/boost-autorenew-20261001.md` | 技能加速「自动续用」开关 ＋ 工业页标签顺序（工作文档） | 进行中（进行中） | 2026-10-01 | 6 KB / 84 行 | 0 / 0 |
 | `docs/design/comms-export-20261001.md` | 通讯文案工作台（导出工具）· 2026-10-01 | 进行中（进行中） | 2026-10-01 | 5 KB / 67 行 | 1 / 0 |
-| `docs/design/comms-import-20261001.md` | 通讯文案工作台 · 回写（船长改稿落地）· 2026-10-01 | 未标注 | 2026-10-01 | 5 KB / 83 行 | 1 / 0 |
+| `docs/design/comms-import-20261001.md` | 通讯文案工作台 · 回写（船长改稿落地）· 2026-10-01 | 未标注 | 2026-10-01 | 5 KB / 83 行 | 0 / 0 |
 | `docs/design/comms-param-fix-20261001.md` | 文案占位符漏出两处（工作文档） | 进行中（进行中） | 2026-10-01 | 6 KB / 73 行 | 0 / 1 |
 | `docs/design/handover-20261001.md` | 交接卡 · 一号会话（2026-10-01 收尾） | 未标注 | 2026-10-01 | 7 KB / 71 行 | 0 / 0 |
 | `docs/design/hud-industry-filter-20261001.md` | 工业 HUD 页：组装机书架筛选收口 ＋ 卡片溢出修复（工作文档） | 进行中（进行中） | 2026-10-01 | 8 KB / 89 行 | 0 / 0 |
@@ -403,7 +400,7 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 5 KB / 82 行 | 5 / 0 |
-| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 46 KB / 799 行 | 30 / 20 |
+| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 46 KB / 799 行 | 27 / 20 |
 | `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 7 KB / 76 行 | 15 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
@@ -497,12 +494,13 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 57 / 14 |
 
-## 附：孤儿文档（0 引用，77 份）
+## 附：孤儿文档（0 引用，79 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/corona-ship-art-20261003.md`（2026-10-03 · 8 KB）—— 光环族（R 族）舰船图形 · 五档逐舰线稿（2026-10-03 · 二号 · 待船长观感审查）
 - `docs/design/trident-beam-cannon-20261003.md`（2026-10-03 · 9 KB）—— 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中）
+- `docs/design/beacon-random-family-20261002.md`（2026-10-02 · 4 KB）—— 信号发射器：召唤的势力改为随机（2026-10-02 · 二号 · 已合入 main）
 - `docs/design/consumable-bucket-20261002.md`（2026-10-02 · 7 KB）—— 道具（consumable）归「消耗品」桶 ＋ 逐件一档（工作文档）
 - `docs/design/corona-pd-laser-20261002.md`（2026-10-02 · 10 KB）—— R 族势力件「PD激光」（激光近防炮）（2026-10-02 · 二号 · 待船长验收）
 - `docs/design/dock-log-copy-fix-20261002.md`（2026-10-02 · 5 KB）—— 进港/返航日志两处漏出修复（{p1} 与 [object Object]）（工作文档 · 2026-10-02）
@@ -511,8 +509,8 @@
 - `docs/design/handover-20261002.md`（2026-10-02 · 9 KB）—— 交接卡 · 二号会话（2026-10-02 收尾）
 - `docs/design/handover-erhao-20261002.md`（2026-10-02 · 8 KB）—— 交接卡 · 二号会话（2026-10-02 收尾）
 - `docs/design/handover-yihao-20261002.md`（2026-10-02 · 7 KB）—— 交接卡 · 一号会话（2026-10-02 收尾）
-- `docs/design/l10n-tail-batches-20261002.md`（2026-10-02 · 41 KB）—— 本地化尾巴清场 · 批②~⑦ 台账（工作文档 · 2026-10-02）
 - `docs/design/lair-threat-anchor-20261002.md`（2026-10-02 · 7 KB）—— 每日赏金任务（窝点）威胁「相对重锚」（工作文档）
+- `docs/design/pd-drone-no-falloff-20261002.md`（2026-10-02 · 5 KB）—— 打机群不吃光束威力衰减（PD激光 口径订正 · 2026-10-02 · 一号 · 进行中）
 - `docs/design/postreclaim-farm-20261002.md`（2026-10-02 · 7 KB）—— 入侵「100% 后仍可继续刷 ＋ 残骸减半」（工作文档）
 - `docs/design/save-import-finish-20261002.md`（2026-10-02 · 7 KB）—— 存档导入收尾（甲案）＋ 手机 Firefox 导入加固（工作文档 · 2026-10-02）
 - `docs/design/save-load-label-20261002.md`（2026-10-02 · 3 KB）—— 存档导入入口去术语：按钮改「加载存档文件」（工作文档 · 2026-10-02）
@@ -520,6 +518,7 @@
 - `docs/design/weekend-family-rotation-20261002.md`（2026-10-02 · 4 KB）—— 入侵族的选择：本期设为 R ＋ 下周起循环敌对势力（2026-10-02 · 二号 · 待验收）
 - `docs/design/wh-block-common-wreck-20261002.md`（2026-10-02 · 7 KB）—— 洞内「禁止打捞普通残骸」（工作文档 · 2026-10-02）
 - `docs/design/boost-autorenew-20261001.md`（2026-10-01 · 6 KB）—— 技能加速「自动续用」开关 ＋ 工业页标签顺序（工作文档）
+- `docs/design/comms-import-20261001.md`（2026-10-01 · 5 KB）—— 通讯文案工作台 · 回写（船长改稿落地）· 2026-10-01
 - `docs/design/handover-20261001.md`（2026-10-01 · 7 KB）—— 交接卡 · 一号会话（2026-10-01 收尾）
 - `docs/design/hud-industry-filter-20261001.md`（2026-10-01 · 8 KB）—— 工业 HUD 页：组装机书架筛选收口 ＋ 卡片溢出修复（工作文档）
 - `docs/design/industry-manual-slot-guard-20261001.md`（2026-10-01 · 6 KB）—— 新工业 HUD 页：主控手动位守卫复原（工作文档）
@@ -579,13 +578,13 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（230 份，待补一行 `状态：…`）
+## 附：状态未标注（231 份，待补一行 `状态：…`）
 
 - `docs/design/corona-ship-art-20261003.md`（2026-10-03）—— 光环族（R 族）舰船图形 · 五档逐舰线稿（2026-10-03 · 二号 · 待船长观感审查）
 - `docs/design/trident-beam-cannon-20261003.md`（2026-10-03）—— 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中）
 - `docs/archive/roadmap-todo-done-20261002.md`（2026-10-02）—— 封存卷 · roadmap 待办单 E1~E9（2026-10-02 清档移出）
 - `docs/design/announcement-draft-20261002-corona.md`（2026-10-02）—— 公告待审稿 · 入侵第二势力「光环科技 / Corona Systems」（2026-10-02）
-- `docs/design/core-zh-leak-audit-20261002.md`（2026-10-02）—— core 侧裸中文上屏盘点（本地化尾巴 · 盘点稿 · 2026-10-02）
+- `docs/design/beacon-random-family-20261002.md`（2026-10-02）—— 信号发射器：召唤的势力改为随机（2026-10-02 · 二号 · 已合入 main）
 - `docs/design/corona-mounts-20261002.md`（2026-10-02）—— R 族两件新挂载件：垂暮级「待机护盾阵列」· 旗舰「聚焦阵列」（2026-10-03 · 二号 · 已落码 · 待船长验收）
 - `docs/design/corona-pd-laser-20261002.md`（2026-10-02）—— R 族势力件「PD激光」（激光近防炮）（2026-10-02 · 二号 · 待船长验收）
 - `docs/design/desire-invasion-20261002.md`（2026-10-02）—— 入侵的期望距离记错星系（2026-10-02 · 二号 · 已落码 · 待验收）
@@ -593,6 +592,7 @@
 - `docs/design/handover-erhao-20261002.md`（2026-10-02）—— 交接卡 · 二号会话（2026-10-02 收尾）
 - `docs/design/handover-yihao-20261002.md`（2026-10-02）—— 交接卡 · 一号会话（2026-10-02 收尾）
 - `docs/design/invasion-open-gate-20261002.md`（2026-10-02）—— 入侵开局判据：改「一窗一场」为「无进行中的场」（2026-10-02 · 二号 · 待船长验收）
+- `docs/design/pd-drone-no-falloff-20261002.md`（2026-10-02）—— 打机群不吃光束威力衰减（PD激光 口径订正 · 2026-10-02 · 一号 · 进行中）
 - `docs/design/r-open-distance-20261002.md`（2026-10-02）—— 开场距离被 R 族族格顶掉（2026-10-03 · 二号 · 已落码 · 待验收）
 - `docs/design/weekend-family-rotation-20261002.md`（2026-10-02）—— 入侵族的选择：本期设为 R ＋ 下周起循环敌对势力（2026-10-02 · 二号 · 待验收）
 - `docs/design/window-close-removal-20261002.md`（2026-10-02）—— 入侵收场机制改革：取消「周二 20:00 关窗」（2026-10-02 · 二号 · 待船长验收）

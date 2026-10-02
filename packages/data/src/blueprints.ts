@@ -72,7 +72,7 @@ export const BLUEPRINT_PRICE_OVERRIDES: Readonly<Record<string, { price: number;
   'bp-repairkit-dc': { price: 1_000_000, reason: '2026-09-26 船长定：损管修理组件蓝图基础 100 万（不套组件旧式 ×2.2）' },
   // ⚠ **2026-10-02 船长令「其余登记」**：以下四条是"进场时未套档位系数"的既成书价 ——
   // 新件批直接落的自定值，**记为有意偏离、维持现值**（一个字节都没改价）。逐条来路见
-  // `docs/design/blueprint-price-register-20261002.md`；体检依据 = `content-check` 的「蓝图价格口径契约」。
+  // `docs/roadmap.md` 2026-10-02「本地化尾巴清场」那条（逐条登记表 = `tools/content-check.ts` 的 `MATERIAL_RATIO_REGISTERED`）；体检依据 = `content-check` 的「蓝图价格口径契约」。
   'bp-shieldchg-2': { price: 936_000, reason: '2026-09-14 新件批（护盾充能装置 MK2）：书价按民用档 ×2.0 落（未套 MK2 ×2.5）；2026-10-02 船长令登记为有意偏离' },
   'bp-shieldchg-3': { price: 5_725_000, reason: '2026-09-14 新件批（护盾充能装置 MK3）：书价按 MK2 档 ×2.5 落（未套 MK3 ×3）；2026-10-02 船长令登记为有意偏离' },
   'bp-shieldfield-2': { price: 4_000_000, reason: '2026-09-21 一次性图纸（护盾充能力场装置 MK2）：船长给的装备均价 400 万 ⇒ 书价 = 产物价（一次性图既有口径）；2026-10-02 船长令登记为有意偏离' },
