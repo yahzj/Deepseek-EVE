@@ -204,14 +204,14 @@ export function wormholeScanBlockReason(state: GameState): CoreBlockReason | nul
 }
 
 /** 开始扫描（**只能在扫描界面里点**；船长：「玩家需要在扫描虫洞界面内开始」） */
-export function wormholeScanStart(state: GameState, _ctx: SimContext): CommandResult {
+export function wormholeScanStart(state: GameState, ctx: SimContext): CommandResult {
   const blocked = wormholeScanBlockReason(state)
   if (blocked) return { ok: false, error: blocked.error, errorId: blocked.errorId, errorParams: blocked.errorParams }
   if ((state.wormholeScan ?? { active: false, progressMs: 0 }).active) {
     return { ok: false, error: '扫描已经在跑。', errorId: 'core.wormholeScan.001' }
   }
   /** 其余主控活动 ⇒ 统一判据（2026-09-21 船长令；见 `wormholeScanBlockReason` 的说明） */
-  const gateSkip = applyActivityGate(state, 'wormholeScan')
+  const gateSkip = applyActivityGate(state, 'wormholeScan', ctx)
   if (gateSkip) return gateSkip
   /**
    * ⚠ **续扫不清零**（船长：「停扫保留进度」）：只置回 active，`progressMs` 原样接着累计。

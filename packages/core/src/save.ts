@@ -1681,7 +1681,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   }
 
   // --- T4 换船善后返航（v16.1 兼容字段）：字段非法则整条丢弃；已走时间封顶单程 ---
-  const shipReturns: Record<string, { beltId: string | null; legMs: number; phaseAccMs: number; reason?: 'mining' | 'expedition' }> = {}
+  const shipReturns: Record<string, { beltId: string | null; legMs: number; phaseAccMs: number; reason?: 'mining' | 'expedition' | 'salvage' | 'salvageStop' | 'miningStop' }> = {}
   const shipReturnsRaw = asRaw(src.shipReturns)
   for (const [shipKey, retRaw] of Object.entries(shipReturnsRaw)) {
     if (shipKey.length === 0) continue
@@ -1694,7 +1694,24 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       typeof r.phaseAccMs === 'number' && Number.isFinite(r.phaseAccMs)
         ? Math.min(legMs, Math.max(0, Math.floor(r.phaseAccMs)))
         : 0
-    const reason = r.reason === 'expedition' ? ('expedition' as const) : r.reason === 'mining' ? ('mining' as const) : undefined
+    /**
+     * ⚠ **五个 reason 一个都不能漏**（**2026-10-02 补** `salvage`/`salvageStop`/`miningStop`）：
+     * 旧名单只认 `expedition`/`mining` ⇒ 另外三种在往返时**丢掉 reason 字段**
+     * （被 save 的"引擎写过的键一个不少"护栏抓到：`shipReturns.<船>.reason`）。
+     * 丢掉它不影响游戏（只关系到港日志措辞），但**往返形状必须一致**。
+     */
+    const reason =
+      r.reason === 'expedition'
+        ? ('expedition' as const)
+        : r.reason === 'mining'
+          ? ('mining' as const)
+          : r.reason === 'salvage'
+            ? ('salvage' as const)
+            : r.reason === 'salvageStop'
+              ? ('salvageStop' as const)
+              : r.reason === 'miningStop'
+                ? ('miningStop' as const)
+                : undefined
     shipReturns[shipKey] = reason ? { beltId, legMs, phaseAccMs, reason } : { beltId, legMs, phaseAccMs }
   }
 
@@ -2489,6 +2506,17 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     typeof src.autoLoopAnomalyId === 'string' && src.autoLoopAnomalyId.length > 0
       ? src.autoLoopAnomalyId
       : null
+  /**
+   * **切活动停机标记**（**2026-10-02 加**，见 `GameState.haltedBySwitch` 头注）——
+   * 它是一条**瞬态信号**（`haltActivityForSwitch` 抛给"紧接着那次开工"看的，活不过同一拍）
+   * ⇒ **有意不入档**，读档一律清空（老档缺省也走这条）。字段可选、值恒为 `null` ⇒ 往返一致。
+   */
+  const haltedBySwitch: { kind: 'mining' | 'salvaging' } | null =
+    asRaw(src.haltedBySwitch).kind === 'mining'
+      ? { kind: 'mining' }
+      : asRaw(src.haltedBySwitch).kind === 'salvaging'
+        ? { kind: 'salvaging' }
+        : null
   /** 再开机群前置（2026-09-18）：非负整数才算；缺省/坏值 ⇒ null（= 不套这条判定） */
   const autoLoopDroneFloor =
     typeof src.autoLoopDroneFloor === 'number' &&
@@ -4249,6 +4277,9 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     bountyCooldowns,
     autoLoopAnomalyId,
     autoLoopDroneFloor,
+    /** 切活动停机标记：恒 `null`（有意不入档，见上面的归一说明）——写出来只为让"引擎写过的键"往返一致 */
+    /** 切活动停机标记：**有意不入档**（瞬态信号）——但键**恒写出**（内容恒 null）⇒ 往返形状一致 */
+    haltedBySwitch,
     // 2026-09-11 稀有残骸保底计数（船长定的机制；2026-09-20 起阈值 = 每 10 次必掉）：
     // 非负整数，缺省 0（老档从零攒）
     rareWreckDryStreak: Math.max(0, Math.floor(num(src.rareWreckDryStreak))),

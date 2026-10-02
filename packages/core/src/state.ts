@@ -9,11 +9,22 @@
  *    （无限容量、永不遗失）；采矿支持 AI 核心驱动的自动返航-卸货循环。
  */
 
-import type { AiCoreType, CommsInstanceEntry, DamageResists, DamageType, FittedModules, FoeFamily, ModuleSlot } from './types'
+import type { AiCoreType, CommsInstanceEntry, DamageResists, DamageType, FittedModules, FoeFamily, ModuleSlot, SimContext } from './types'
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { emptyFitted } from './labels'
 import { EMPTY_WORMHOLE_STATE } from './wormhole'
 import type { WormholeState } from './wormhole'
+/**
+ * ⚠ **这一对 import 会与 `mining` / `salvaging` 形成模块环**（它们本来就 import 本文件）。
+ * 之所以安全：两边都是**函数声明**（提升到位），且本文件只在 `haltActivityForSwitch` **被调用时**才读它们
+ * ——那时两个模块都已加载完。为此**不要**把这里的用法挪到模块顶层（那会读到 `undefined`）。
+ *
+ * 为什么非要 import：船长 2026-10-02 报障「切活动自动停作业之后船不返航」——
+ * 那条路要在**清状态之前**建返航账本（`retireXxxShip` 要读作业态里的 phase），
+ * 而 `shipyard.ts`（原来的宿主）反过来 import 本文件 ⇒ 只能从作业模块自身取。
+ */
+import { retireMiningShip } from './mining'
+import { retireSalvageShip } from './salvaging'
 
 /**
  * **新档初始声望 = 0**（**2026-09-26 船长裁定**：「**1算，我从来没有说过"开局能换 5 张"，所以要清理，
@@ -2113,6 +2124,18 @@ export type GameStateV16 = Omit<GameStateV15, 'version'> & {
   bountyCooldowns: Record<string, number>
   /** T8 重复清剿：当前自动循环的悬赏 id（null = 关闭） */
   autoLoopAnomalyId: string | null
+  /**
+   * 🔴 **上一次"自动停作业"是因为切活动**（**2026-10-02 加**，为船长那条报障服务）：
+   * 「**玩家切换舰船的话，正在采矿的舰船会自动返航……但是打捞都没有**」。
+   *
+   * `haltActivityForSwitch` 会：① 建**返航账本**（`shipReturns`）② 置本标记。
+   * 紧接着新活动开工时，`startMining` / `startSalvageOp` 里那条"新指令取消返航"要**跳过** ——
+   * 那条规则的本意是"玩家自己改主意、想让船就地开工"；而切活动是"旧作业被挤掉 ⇒ **船该返航**"。
+   *
+   * ⚠ 标记在**两处**都会清（跳过清账时 / 照常清账时）——都代表"这次开工已经处理过上一拍了"。
+   * ⚠ 兼容字段（可选）：老档缺席 = 无标记。
+   */
+  haltedBySwitch?: { kind: 'mining' | 'salvaging' } | null
   /** T9 建站进度：站点 id -> 进度（档位 stage 从 0 起；delivered 已缴物品单位） */
   stationSites: Record<string, StationSiteProgress>
   /** T9 当前停靠的副站 id（null = 母港；awayGalaxy=null 且有值时表示停副站） */
@@ -3365,13 +3388,29 @@ function haltPilotLabRunsInline(state: GameState): void {
   }
 }
 
-export function haltActivityForSwitch(state: GameState, kind: string): void {
+export function haltActivityForSwitch(state: GameState, kind: string, ctx?: SimContext): void {
   switch (kind) {
     case 'mining':
-      miningHalt(state)
+      /**
+       * 🔴 **两条停采路径同口径**（**船长 2026-10-02 报障**：「**玩家切换舰船的话，正在采矿的舰船会自动
+       * 返航……但是打捞都没有**」）——手点「停止」会建返航账本，而"被别的活动挤掉"这条原先**只清状态**
+       * ⇒ 船不返航。现在改成先走 `retireMiningShip`（**在 `miningHalt` 之前**：它要读作业态里的 phase/矿带）。
+       *
+       * ⚠ `retireMiningShip` 住在 `mining.ts`（**2026-10-02 从 `shipyard.ts` 移过去**）：
+       *   本文件不能 import `shipyard`（`shipyard → state` 已成边 ⇒ 反向会成环）。
+       */
+      if (state.mining.active && ctx !== undefined && retireMiningShip(state, ctx, { beltId: state.mining.beltId ?? undefined })) {
+        /** 给"新活动开工"留个记号：那条"新指令取消返航"要**跳过**（见 `haltedBySwitch` 头注）。
+         *  ⚠ **只在真的建了账本时才置**：`retireMiningShip` 对"作业态不完整"（没有矿带）会返回 false，
+         *  那时没什么可保护，置了标记反而会让下次开工**漏清**一条本该清的账。 */
+        state.haltedBySwitch = { kind: 'mining' }
+      } else miningHalt(state)
       return
     case 'salvaging':
-      salvageHalt(state)
+      /** 同 `mining` 那档：先建返航账本再清状态（`retireSalvageShip` 在 `salvaging.ts` 里） */
+      if (state.salvaging.active && state.salvaging.galaxyId && ctx !== undefined && retireSalvageShip(state, ctx, { galaxyId: state.salvaging.galaxyId })) {
+        state.haltedBySwitch = { kind: 'salvaging' }
+      } else salvageHalt(state)
       return
     case 'wormholeScan':
       wormholeScanHalt(state)
@@ -3703,6 +3742,8 @@ export function createInitialState(opts?: {
     transit: { active: false, fromGalaxy: null, toGalaxy: null, finishAtGameMs: 0, legMs: 0, delivery: null },
     bountyCooldowns: {},
     autoLoopAnomalyId: null,
+    /** 切活动停机标记（瞬态）：初值恒 `null`，但**键存在** ⇒ 与写档/读档形状一致（见 `haltedBySwitch` 头注） */
+    haltedBySwitch: null,
     autoLoopDroneFloor: null,
     stationSites: {},
     dockedSite: null,

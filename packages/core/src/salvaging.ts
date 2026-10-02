@@ -317,7 +317,7 @@ export function startSalvageOp(
    * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 8 条硬拒，现已收进
    * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（打捞器/探索/航路/残骸池）。
    */
-  const gateSkip = applyActivityGate(state, 'salvaging')
+  const gateSkip = applyActivityGate(state, 'salvaging', ctx)
   if (gateSkip) return gateSkip
   /**
    * **新指令取消"停止返航"**（**船长 2026-10-02** 报障的连带，与 `mining.startMining` 同款）——
@@ -325,7 +325,13 @@ export function startSalvageOp(
    * ⚠ 不清账的后果同采矿：`advanceShipReturns` 到港即整仓卸货 ⇒ 新捞的残骸被它当拍搬进仓库
    * （船上恒 0、仓库涨），看着"没产出"。只清**本船**那一条。
    */
+  if (state.haltedBySwitch?.kind === 'salvaging') {
+  /** 上一拍是"切活动自动停" ⇒ **跳过**这次清账：那条账本该留着（船要返航），见 `haltedBySwitch` 头注 */
+  state.haltedBySwitch = null
+} else {
   delete state.shipReturns[state.shipId]
+  state.haltedBySwitch = null
+}
   const s = state.salvaging
   s.active = true
   s.galaxyId = galaxyId
@@ -477,14 +483,29 @@ export function stopSalvageOp(state: GameState, ctx: SimContext): boolean {
 }
 
 /** 打捞善后（换驾驶时引擎内部调用，2026-09-09 与采矿 retireMiningShip 同构）：
- * 把当前驾驶船正在进行的打捞转成"自动返航账本"（shipReturns，reason='salvage'）——
+ * 把当前驾驶船正在进行的打捞转成"自动返航账本"（shipReturns，reason='salvageStop'）——
  * 打捞中 = 按货仓占比缩放的满载返航全长（去程并入）；返航中 = 继续剩余；
  * 旧档遗留出航相位按空船腿折算折返。到港由 advanceShipReturns 自动整仓卸货，
  * 打捞作业随之结束（autoCycle/stopAfterTrip 偏好跨趟保留，同采矿）。 */
-export function retireSalvageShip(state: GameState, ctx: SimContext): boolean {
+export function retireSalvageShip(
+  state: GameState,
+  ctx: SimContext,
+  /**
+   * **重入/无状态调用**（**2026-10-02 加**，为 `haltActivityForSwitch` 那条路服务）：
+   * - `galaxyId`：作业态**已被清掉**时的星系（自动停机路径先清状态、再调本函数）——不传就读 `state.salvaging`；
+   * - `preserveExisting`：该船**已经在返航账本里** ⇒ 只结束作业、**不覆盖**（否则会把已走的返航进度抹掉）。
+   */
+  opts?: { galaxyId?: string; preserveExisting?: boolean },
+): boolean {
   const s = state.salvaging
-  if (!s.active || !s.galaxyId) return false
-  const galaxyId = s.galaxyId
+  const galaxyId = opts?.galaxyId ?? s.galaxyId
+  if (!galaxyId) return false
+  /** 已在返航中（换船善后/手动停止已建过账本）⇒ 只结束作业，别覆盖进度 */
+  if (opts?.preserveExisting === true && state.shipId in state.shipReturns) {
+    resetOp(state)
+    return true
+  }
+  if (opts?.galaxyId === undefined && (!s.active || !s.galaxyId)) return false
   const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
   // 打捞返航腿 = 满载返航 + 空船去程（去程并入返航，与 advanceSalvageOp 返航腿同口径）
   const fullLeg = legMsFor(state, ctx, galaxyId) + outboundLegMsFor(state, ctx, galaxyId)
@@ -501,25 +522,47 @@ export function retireSalvageShip(state: GameState, ctx: SimContext): boolean {
     beltId: null,
     legMs: Math.max(1, legMs),
     phaseAccMs: Math.min(legMs, Math.max(0, phaseAccMs)),
-    reason: 'salvage',
+    /** ⚠ 与手动停止同 reason（`'salvageStop'`）：到港日志才能说"打捞停止返航到港"而不是笼统的"善后" */
+    reason: 'salvageStop',
   }
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const remainSec = Math.max(0, Math.round((legMs - phaseAccMs) / 1000))
   // 结束作业（偏好字段 autoCycle/stopAfterTrip 保留，供下次作业沿用）
   resetOp(state)
-  addLog(
-    state,
-    'salvage',
-    `打捞已随换船结束：${shipName} 从「${galaxyName}」自动返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
-    'core.salvaging.017',
-    {
-      p1: shipName,
-      p2: galaxyName,
-      p3: haveCargo ? '（到港整仓卸货）' : '',
-      ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
-      p4: remainSec,
-    },
-  )
+  /**
+   * 日志：**两条路分开说**（2026-10-02）——玩家手点停止/换船 ⇒「已随换船结束」；
+   * 被别的活动挤掉（`haltActivityForSwitch` 传了 `opts.galaxyId`）⇒ 复用「打捞已停止：…返航空间站」。
+   */
+  const auto = opts?.galaxyId !== undefined
+  if (auto) {
+    addLog(
+      state,
+      'salvage',
+      `打捞已停止：${shipName} 从「${galaxyName}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+      'core.salvaging.029',
+      {
+        p1: shipName,
+        p2: galaxyName,
+        p3: haveCargo ? '（到港整仓卸货）' : '',
+        ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
+        p4: remainSec,
+      },
+    )
+  } else {
+    addLog(
+      state,
+      'salvage',
+      `打捞已停止：${shipName} 从「${galaxyName}」返航空间站${haveCargo ? '（到港整仓卸货）' : ''}——约 ${remainSec} 秒后到港。`,
+      'core.salvaging.017',
+      {
+        p1: shipName,
+        p2: galaxyName,
+        p3: haveCargo ? '（到港整仓卸货）' : '',
+        ...(haveCargo ? { p3Id: 'core.salvaging.018' } : {}),
+        p4: remainSec,
+      },
+    )
+  }
   return true
 }
 

@@ -1511,3 +1511,54 @@ typecheck 四包绿 · **core 284 文件 / 2999 用例全绿** · `ui:rot-check`
 #### 验证
 
 typecheck 四包绿 · **core 284 文件 / 2999 用例全绿** · `ui:rot-check` 绿 · 三份 CSS 逐字一致已核 · 构建通过。
+---
+
+## §30 🔴 BUG 修复（另一半）：**切活动自动停作业后，船也必须返航**（2026-10-02 · 船长报障）
+
+### 30.1 船长原话（照抄）
+
+> 「**关于前几轮修改了玩家主控活动的舰船返航情况，虽然你修了，但是只修了一半，之前有设定过，
+> 玩家切换舰船的话，正在采矿的舰船会自动返航，并且返航图中可以切换其他舰船。但是打捞都没有**」
+
+### 30.2 我上次修的是哪一半 / 漏的是哪一半
+
+| 路径 | 上次状态 | 本次 |
+|---|---|---|
+| **玩家手动点「停止」**（`stopMining` / `stopSalvageOp`） | ✅ 上次已修（建返航账本） | 不变 |
+| **被别的活动挤掉**（`state.haltActivityForSwitch` ← `applyActivityGate` 的 `AUTO_HALT` 档） | ❌ **只调纯状态的 `miningHalt` / `salvageHalt`，不建返航账本** ⇒ 船留在原地 | ✅ 本次修 |
+
+### 30.3 修法与三处必须的连带
+
+| # | 落点 | 做法 |
+|---|---|---|
+| ① | `retireSalvageShip`（`salvaging.ts`）/ `retireMiningShip`（**从 `shipyard.ts` 移到 `mining.ts`**） | 各加可选 `opts`：`galaxyId`/`beltId`（作业态已被清掉时也能建账本）＋ `preserveExisting`（船已在返航账本里 ⇒ 只结束作业、**不覆盖进度**） |
+| ② | `state.haltActivityForSwitch` | **在 `*Halt` 之前**先调 `retireXxxShip`（它要读作业态里的 phase/矿带）；`ctx` 改可选（缺口调用只在"清状态"这一层降级） |
+| ③ | `applyActivityGate` / `applyActivityHandoff` / `haltCurrentActivity` / `haltAndLog` | 全部加 `ctx`（`applyActivityGate` 的 `ctx` 放在**第三参**，15 个调用点逐个补） |
+| ④ | **`state.haltedBySwitch`（新瞬态标记）** | ⚠ 不加它就会被我自己上次那条"**新指令取消返航**"删掉刚建好的账本（实测踩到）：开工时**看见这个标记就跳过清账** |
+
+⚠ `retireMiningShip` **从 `shipyard.ts` 移到 `mining.ts`** 的原因：`state.ts` 要调它，而 `shipyard → state` 已成边 ⇒ 反向 import 会成环；移到作业模块自身最干净。
+
+### 30.4 顺带修掉一处被护栏抓到的存档缺口
+
+`save.ts` 的 `shipReturns` 读取归一**只认两个 reason**（`expedition`/`mining`）⇒ 上一轮新加的
+`salvage` / `salvageStop` / `miningStop` 在**往返时丢掉 `reason` 字段**（`save.test.ts` 的
+「引擎写过的键一个不少」护栏抓到：`shipReturns.<船>.reason`）。已补齐五个值；`haltedBySwitch` 也
+做成"写读形状一致"。
+
+### 30.5 新增用例（`activity-switch-return-20261002.test.ts` · 2 条）
+
+| 用例 | 钉什么 |
+|---|---|
+| 打捞中下开采指令 | 打捞被自动停 ⇒ 写"返航空间站"日志 ＋ **推进到港后残骸真的卸进物品仓库**（修前永远是 0） |
+| 采矿中下打捞指令 | 同构：原矿随返航卸入仓库 |
+
+### 30.6 连带改的既有用例（都是"新增字段/改文案"的正当结果）
+
+| 用例 | 改法 |
+|---|---|
+| `t4.test.ts` ×2 · `t7.test.ts` ×1 | 返航账本期望对象补 `reason: 'miningStop'` |
+| `salvaging.test.ts` ×2 | `reason` 断言改 `'salvageStop'`；日志断言随文案统一（换船善后与手动停止**用同一条**「打捞已停止：…返航空间站…」） |
+
+### 30.7 验证
+
+typecheck 四包绿 · **core 285 文件 / 3001 用例全绿** · `content:check` · `l10n:check` 绿。

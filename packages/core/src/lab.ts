@@ -442,7 +442,7 @@ export function startLabRun(
     /** 主控 = 手动工作位：与精炼炉/回收炉/拆解台/制造线共用**同一个名额**（统一判据 + 统一日志）
      *  ⚠ **2026-10-01**：门禁的档改成 `'lab'`（原先借 `'refine'`）——实验室自己也进了主控登记表，
      *  起线时按"实验室"这一项去判（两档同为"先警告再切"，行为不变；占位与文案从此对得上）。 */
-    const gateSkip = applyActivityGate(state, 'lab')
+    const gateSkip = applyActivityGate(state, 'lab', ctx)
     if (gateSkip) return gateSkip
     /**
      * **同一档再开一条 = 换线**（与 `startRefineRun` 的"换炉"同款）：门禁见到"同一项"一律放行
@@ -456,7 +456,7 @@ export function startLabRun(
     const pilotRefine = (state.refineRuns ?? []).some((r) => r.active && r.worker === 'pilot')
     const pilotLab = (state.labRuns ?? []).some((r) => r.active && r.worker === 'pilot')
     if (pilotRefine || pilotLab) {
-      haltActivityForSwitch(state, 'refine')
+      haltActivityForSwitch(state, 'refine', ctx)
       if (pilotRefine) logAutoHalt(state, 'refine')
       if (pilotLab) logAutoHalt(state, 'lab')
     }

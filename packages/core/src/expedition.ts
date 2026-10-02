@@ -515,7 +515,7 @@ export function startExpedition(
    * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 6 条硬拒，现已收进
    * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（目标/声望/探索/冷却）。
    */
-  const gateSkip = applyActivityGate(state, 'expedition')
+  const gateSkip = applyActivityGate(state, 'expedition', ctx)
   if (gateSkip) return gateSkip
   /**
    * T8：出发地 = 当前位置（野外停留点或空间站）——⚠ **算在判据之后**：掩护巡逻那类可自动停的活动

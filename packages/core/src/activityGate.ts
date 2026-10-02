@@ -23,6 +23,7 @@
  */
 import type { CoreBlockReason } from './engine'
 import type { GameState } from './state'
+import type { SimContext } from './types'
 import { addLog, haltActivityForSwitch } from './state'
 
 /** 主控活动（10 项；与活动栏、`pilotUnavailableReason`、各 `start*` 入口一一对应） */
@@ -414,11 +415,11 @@ function skipOf(v: GateVerdict): ActivityGateSkip {
  * 非 null = **原样返回给界面**（`confirm` 与 `reject` 都按"没开工"处理——`confirm` 那句 warning 由界面
  * 两段确认消化，见 `ACTIVITY_CONFIRM_ID`）。
  */
-export function applyActivityGate(state: GameState, next: MainActivityKind): ActivityGateSkip | null {
+export function applyActivityGate(state: GameState, next: MainActivityKind, ctx?: SimContext): ActivityGateSkip | null {
   const v = gateMainActivity(state, next)
   if (v.action === 'ok') return null
   if (v.action === 'halt') {
-    if (v.current !== undefined) haltAndLog(state, v.current)
+    if (v.current !== undefined) haltAndLog(state, ctx, v.current)
     return null
   }
   return skipOf(v)
@@ -429,11 +430,11 @@ export function applyActivityGate(state: GameState, next: MainActivityKind): Act
  * ⚠ 采矿/打捞在"换驾驶"那条路上有**自己的善后**（旧船按阶段自动返航卸货，见 `shipyard.changeShip`）
  * ⇒ 那条路只用本函数**判据**（`gateMainActivityHandoff`），不要用它替你停机。
  */
-export function applyActivityHandoff(state: GameState, warnConfirmed = true): ActivityGateSkip | null {
+export function applyActivityHandoff(state: GameState, ctx: SimContext | undefined, warnConfirmed = true): ActivityGateSkip | null {
   const v = gateMainActivityHandoff(state, warnConfirmed)
   if (v.action === 'ok') return null
   if (v.action === 'halt') {
-    if (v.current !== undefined) haltAndLog(state, v.current)
+    if (v.current !== undefined) haltAndLog(state, ctx, v.current)
     return null
   }
   return skipOf(v)
@@ -443,16 +444,16 @@ export function applyActivityHandoff(state: GameState, warnConfirmed = true): Ac
  * **玩家确认"中断当前活动"**（两段确认的第二下 / 界面通用收尾）：停掉它并按统一口径记一条日志。
  * 返回被停掉的那一项（没得停 ⇒ null）。不碰"本就不可中断"的远征/快递（那两项永远走拒绝）。
  */
-export function haltCurrentActivity(state: GameState): MainActivityKind | null {
+export function haltCurrentActivity(state: GameState, ctx?: SimContext): MainActivityKind | null {
   const current = mainActivityOf(state)
   if (current === null) return null
   if (!AUTO_HALT_KINDS.includes(current) && INTERRUPTIBLE[current] !== true) return null
-  haltAndLog(state, current)
+  haltAndLog(state, ctx, current)
   return current
 }
 
 /** 停机 + 统一日志（两件事永远成对 ⇒ 收成一处，免得哪条路径漏写日志） */
-function haltAndLog(state: GameState, kind: MainActivityKind): void {
-  haltActivityForSwitch(state, kind)
+function haltAndLog(state: GameState, ctx: SimContext | undefined, kind: MainActivityKind): void {
+  haltActivityForSwitch(state, kind, ctx)
   logAutoHalt(state, kind)
 }

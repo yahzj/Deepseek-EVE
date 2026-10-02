@@ -263,7 +263,7 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
   if (cap <= 0) {
     return { ok: false, error: '当前舰船没有可用货仓，无法承运。', errorId: 'core.hauling.015' }
   }
-  const gateSkip = applyActivityGate(state, 'hauling')
+  const gateSkip = applyActivityGate(state, 'hauling', ctx)
   if (gateSkip) return gateSkip
   /**
    * **位置门槛：停靠在空间站（母港或已建成副站）才能接单**——放在判据**之后**：

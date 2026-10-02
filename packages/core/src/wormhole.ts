@@ -1857,7 +1857,7 @@ function haltEntryActivityOf(
       },
     }
   }
-  haltActivityForSwitch(state, kind)
+  haltActivityForSwitch(state, kind, ctx)
   return undefined
 }
 

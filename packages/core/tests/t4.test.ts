@@ -74,7 +74,7 @@ describe('T4 换驾驶善后（原"换船重采"取消）', () => {
     expect(state.mining.active).toBe(false)
     // 善后返航腿按旧船货仓占比缩放（30/800 m³ → ≈4.5s，船长 2026-09-05）
     const expLeg1 = scaledReturnMs(miningReturnLegMs(state, ctx, 'belt-a'), state, ctx, 'sandcat')
-    expect(state.shipReturns['sandcat']).toEqual({ beltId: 'belt-a', legMs: expLeg1, phaseAccMs: 0 })
+    expect(state.shipReturns['sandcat']).toEqual({ beltId: 'belt-a', legMs: expLeg1, phaseAccMs: 0, reason: 'miningStop' })
     expect(state.fleet.sandcat.cargo['ore-a']).toBe(30) // 货随旧船
     expect(state.logs.some((l) => l.text.includes('自动返航'))).toBe(true)
 
@@ -103,7 +103,7 @@ describe('T4 换驾驶善后（原"换船重采"取消）', () => {
     expect(changeShip(state, 'sh-falconet', ctx).ok).toBe(true)
     // 返航腿按货仓占比缩放（70/800 m³ → ≈10.5s），已走 15s 折算后封顶=腿长
     const expLeg2 = scaledReturnMs(miningReturnLegMs(state, ctx, 'belt-a'), state, ctx, 'sandcat')
-    expect(state.shipReturns['sandcat']).toEqual({ beltId: 'belt-a', legMs: expLeg2, phaseAccMs: Math.min(15_000, expLeg2) })
+    expect(state.shipReturns['sandcat']).toEqual({ beltId: 'belt-a', legMs: expLeg2, phaseAccMs: Math.min(15_000, expLeg2), reason: 'miningStop' })
     advanceGame(state, 105_000, ctx)
     expect(countWare(state, 'ore-a')).toBe(70)
     expect(state.shipReturns['sandcat']).toBeUndefined()
@@ -114,7 +114,7 @@ describe('T4 换驾驶善后（原"换船重采"取消）', () => {
     advanceGame(state2, 12_000, ctx)
     expect(changeShip(state2, 'sh-falconet', ctx).ok).toBe(true)
     const expLeg3 = scaledReturnMs(miningReturnLegMs(state2, ctx, 'belt-a'), state2, ctx, 'sandcat')
-    expect(state2.shipReturns['sandcat']).toEqual({ beltId: 'belt-a', legMs: expLeg3, phaseAccMs: 0 })
+    expect(state2.shipReturns['sandcat']).toEqual({ beltId: 'belt-a', legMs: expLeg3, phaseAccMs: 0, reason: 'miningStop' })
     advanceGame(state2, 120_000, ctx)
     expect(state2.shipReturns['sandcat']).toBeUndefined()
     expect(countWare(state2, 'ore-a')).toBe(10) // 满舱前的货随旧船卸入仓库

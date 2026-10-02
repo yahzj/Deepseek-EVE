@@ -190,10 +190,10 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
     expect(state.salvaging.active).toBe(false) // 作业随换船结束（不再以新船"续捞"）
     expect(state.shipReturns[oldShip]).toBeDefined() // 旧船善后返航账本
     expect(state.salvaging.autoCycle).toBe(true) // 循环偏好跨趟保留
-    expect(state.logs.some((l) => l.text.includes('打捞已随换船结束'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('打捞已停止'))).toBe(true)
     advanceShipReturns(state, 60_000, ctx) // 覆盖善后返航腿（debugQuick 1 秒）
     expect(state.shipReturns[oldShip]).toBeUndefined() // 到港清账
-    expect(state.logs.some((l) => l.text.includes('打捞善后返航到港'))).toBe(true)
+    expect(state.logs.some((l) => l.text.includes('已随打捞停止返航到港'))).toBe(true)
     expect(countWare(state, 'wreck-ano-far')).toBeGreaterThan(0) // 残骸已卸入物品仓库
   })
 
@@ -214,7 +214,8 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
     expect(state.salvaging.active).toBe(false)
     const ret = state.shipReturns[oldShip]
     expect(ret).toBeDefined()
-    expect(ret!.reason).toBe('salvage')
+    /** ⚠ 2026-10-02：与手动停止同 reason（到港日志才说「打捞停止返航到港」而不是笼统的「善后」） */
+    expect(ret!.reason).toBe('salvageStop')
     expect(ret!.legMs).toBeGreaterThan(0)
     advanceShipReturns(state, 60_000, ctx)
     expect(state.shipReturns[oldShip]).toBeUndefined()
