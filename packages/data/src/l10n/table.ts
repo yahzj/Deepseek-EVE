@@ -1346,7 +1346,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.main.011": { zh: "非法的备份文件名。", en: "Invalid backup file name." },
   "ui.main.012": { zh: "选择要导入的存档文件", en: "Choose a save file to import" },
   "ui.main.013": { zh: "导入此存档", en: "Import this save" },
-  "ui.main.014": { zh: "存档 JSON", en: "Save JSON" },
+  /** ⟪文案调整 2026-10-02⟫ 船长令「**直接写成『加载存档文件』**」：本 id = 系统文件对话框里的**类型名**（导入/导出共用），
+   *  「JSON」是文件格式名、玩家不必懂（whale-copy §2 第 4 条）⇒ 改「存档文件」。 */
+  "ui.main.014": { zh: "存档文件", en: "Save file" },
   "ui.Achievements.001": { zh: "尚未获得", en: "Not earned yet" },
   "ui.Achievements.002": { zh: "已获得（时间未记录）", en: "Earned (time not recorded)" },
   "ui.Achievements.003": { zh: "获得于 {t}", en: "Earned {t} ago" },
@@ -4426,8 +4428,13 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   //   开发侧日期（英文那列本来就没有这句）——「版本/日期/复核/待定/占位/口径等开发文本留在开发侧，发现残留即清理」（AGENTS.md §5）
   "ui.SaveManager.011": { zh: "备份 = 把当前进度复制成时间戳文件（保存在游戏数据目录），最多 30 份。⚠ 恢复 / 导入不会自动备份原档——想留退路请先点「备份当前档」；删除 = 移除所选备份文件，不影响当前档。导入 = 从任意存档文件恢复，导入时会按文件保存时刻与现在的时间差补齐离线进度；导出 = 把当前进度存成文件（手机网页会优先弹系统分享：选「存储到文件」或发给自己；浏览器不支持分享时才改为下载到下载目录——若内置浏览器拦了下载，请用系统浏览器打开本页）。", en: "Back up = copies the current progress into a timestamped file (kept in the game data folder), up to 30 of them. ⚠ Restoring or importing does not back up the old save automatically — click Back up current save first if you want a fallback. Delete = removes the selected backup file and leaves the current save alone. Import = restores from any save file, catching up offline progress from the gap between when the file was written and now. Export = saves the current progress to a file (mobile web opens the system share sheet first: choose Save to Files or send it to yourself; if the browser cannot share, it downloads to your downloads folder instead — and if an in-app browser blocks the download, open this page in your system browser)." },
   "ui.SaveManager.012": { zh: "备份当前档", en: "Back up current save" },
-  "ui.SaveManager.013": { zh: "选择一个 .json 存档文件导入（⚠ 不备份原档；按时间差补齐离线进度）", en: "Choose a .json save file to import (⚠ the old save is not backed up; offline progress is caught up from the time gap)" },
-  "ui.SaveManager.014": { zh: "导入存档…", en: "Import save…" },
+  /** ⟪文案调整 2026-10-02⟫ 同上：悬停说明里的 **`.json`** 去掉（⚠ 后半句一字未动）。 */
+  "ui.SaveManager.013": { zh: "选择一个存档文件导入（⚠ 不备份原档；按时间差补齐离线进度）", en: "Choose a save file to import (⚠ the old save is not backed up; offline progress is caught up from the time gap)" },
+  /**
+   * ⟪文案调整 2026-10-02⟫ 船长令「玩家表示，打开新游戏的『加载json格式文件』看不懂，**直接写成『加载存档文件』**」。
+   * 本 id = **新游戏页与存档页共用的那个按钮**（`panels/ModeChoice.tsx` ／ `panels/SaveManager.tsx`）⇒ 改表即两处同时生效。
+   */
+  "ui.SaveManager.014": { zh: "加载存档文件", en: "Load save file" },
   // 存档存储体检与告警（2026-09-25 船长令）：修「玩家 · MacBook · Safari 关掉游戏后存档丢失」——
   // 网页版的存档在浏览器里，浏览器不给写时必须让玩家看见，不许静默丢档。
   "ui.saveGuard.001": { zh: "存储状态", en: "Storage status" },
