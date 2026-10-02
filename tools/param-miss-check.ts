@@ -20,6 +20,17 @@
  * 病根就是这条判据此前没人查：id 有、译有，**只有槽内那一个参数没人喂**。
  * 实证修正见 `core` 的 `market.ts`（`p4p1`）与 `simulation.ts`（`p2p1`）。
  *
+ * **第四段判据（2026-10-02 加 · 内联正文 ↔ 表文对账）**：core 的日志调用点既要写**落盘正文**
+ * （`text`，中文字面量）又要挂 **id**（`textId`）——而界面**按 id 优先渲染**（`locale.tsx` 的 `composeParts`）。
+ * 两者若不是同一句：玩家看到的是表文那句、存档里存的是另一句；更麻烦的是**改这处时极易无声改掉玩家可见文案**
+ * （用例钉的是正文、界面信的是 id，两边各说各话）。
+ * 判据：`addLog(state, kind, text, id, …)` / `logEvent(state, text, amount, id, …)` 的 `text` 与 `id` 是
+ * **同一次调用的两个实参**；把 `text` 模板的**静态片段**逐段在表文里按序查找，有段落找不到 ⇒ 命中。
+ * 来历：船长 2026-10-02 报障「事件日志里出现 `{p1}`」修完后顺着全仓扫，扫出「换船日志正文 ≠ id」
+ * 与「换星系打捞**挂错了整句 id**（玩家一直看到『找不到当前舰船，打捞作业已停止』）」——
+ * 船长令「**修，可以转**」⇒ 五处正文按表文对齐 ＋ 本判据转正。
+ * 局限：正文是**变量**、或模板里**嵌套反引号** ⇒ 静态判不出（跳过、不报）。
+ *
  * 用法：`npx tsx tools/param-miss-check.ts`（等价 `npm run l10n:params`）· **只读**，不写文件。
  * 退出码：命中 > 0 ⇒ 1（可挂进合入前闸门）；0 ⇒ 0。
  *
@@ -32,8 +43,9 @@
  *
  * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
  *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v31**（`CURRENT_STATE_VERSION`）
- *   - 本工具最后核对：**2026-09-29**（当日：渲染层 0 处明确漏喂；core 槽内参数 2 处实障已修）
- *   - 本工具最后跑过：**2026-09-29**
+ *   - 本工具最后核对：**2026-10-02**（当日：渲染层 0 处明确漏喂；core 槽内参数 2 处实障已修完毕；
+ *     新增第四段判据「内联正文 ↔ 表文对账」并把它扫出的 5 处正文对齐到表文 ⇒ 全段 0 命中）
+ *   - 本工具最后跑过：**2026-10-02**
  *   - 判据：`interpolate()`（`apps/desktop/src/renderer/src/i18n/locale.tsx`）的"缺键行为"
  *     若从"原样留 `{pN}`"改成别的（例如留空），必须回来重定判据。
  */
@@ -339,7 +351,86 @@ if (thirdFindings.length > 0) {
   console.log('✅ 模板用法 0 处漏参（映射表的值必须是无参句；core 日志的 id 与参数对得上）。')
 }
 
-process.exitCode = hard.length === 0 && slotFindings.length === 0 && thirdFindings.length === 0 ? 0 : 1
+/* ═══════════ 第四段判据：内联正文 ↔ 它挂的 id 表文对账（2026-10-02 加 · 船长令「可以转」） ═══════════ */
+interface TextIdFinding {
+  at: string
+  id: string
+  zh: string
+  inline: string
+  missing: string[]
+}
+const textIdFindings: TextIdFinding[] = []
+/** 日志函数的实参位（0 基）：`addLog(state, kind, text, id, params)` · `logEvent(state, text, amount, id, params)` */
+const TEXT_ID_ARGS: Record<string, { textArg: number; idArg: number }> = {
+  addLog: { textArg: 2, idArg: 3 },
+  logEvent: { textArg: 1, idArg: 3 },
+}
+let textIdPairs = 0
+for (const root of CORE_ROOTS) {
+  for (const file of walk(root)) {
+    const src = readFileSync(file, 'utf8')
+    const sf = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+    const visit = (node: ts.Node): void => {
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+        const spec = TEXT_ID_ARGS[node.expression.text]
+        const idNode = spec !== undefined ? node.arguments[spec.idArg] : undefined
+        const textNode = spec !== undefined ? node.arguments[spec.textArg] : undefined
+        if (spec !== undefined && idNode !== undefined && ts.isStringLiteral(idNode) && textNode !== undefined) {
+          const zh = L10N[idNode.text]?.zh
+          if (typeof zh === 'string') {
+            /** 取模板的**静态片段**（`${…}` 之间那几段）；嵌套模板里的表达式各自成节点 ⇒ 不会串味 */
+            const segs: string[] = []
+            if (ts.isNoSubstitutionTemplateLiteral(textNode)) segs.push(textNode.text)
+            else if (ts.isTemplateExpression(textNode)) {
+              segs.push(textNode.head.text)
+              for (const span of textNode.templateSpans) segs.push(span.literal.text)
+            }
+            const stat = segs.map((s) => s.trim()).filter((s) => s.length >= 4)
+            if (stat.length > 0) {
+              textIdPairs++
+              let cursor = 0
+              const missing: string[] = []
+              for (const s of stat) {
+                const k = zh.indexOf(s, cursor)
+                if (k < 0) missing.push(s)
+                else cursor = k + s.length
+              }
+              if (missing.length > 0) {
+                const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1
+                textIdFindings.push({
+                  at: `${relative(process.cwd(), file).split('\\').join('/')}:${line}`,
+                  id: idNode.text,
+                  zh,
+                  inline: textNode.getText(sf).replace(/\s+/g, ' ').slice(0, 120),
+                  missing,
+                })
+              }
+            }
+          }
+        }
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(sf)
+  }
+}
+
+if (textIdFindings.length > 0) {
+  console.log(
+    `\n■ 内联**正文**与 id **表文**对不上（${textIdFindings.length} 处）——界面按 id 渲染 ⇒ 玩家看到的是表文那句、` +
+      `存档正文却是另一句（改这处时极易无声改掉玩家可见文案）：`,
+  )
+  for (const f of textIdFindings) {
+    console.log(`  ${f.at}  ${f.id}`)
+    console.log(`      表文（玩家看到的）：${f.zh}`)
+    console.log(`      正文（落盘）：${f.inline}`)
+    console.log(`      对不上的片段：${f.missing.map((m) => JSON.stringify(m)).join(' / ')}`)
+  }
+} else {
+  console.log(`✅ core 日志的内联正文与 id 表文逐段一致（${textIdPairs} 处配对）。`)
+}
+
+process.exitCode = hard.length === 0 && slotFindings.length === 0 && thirdFindings.length === 0 && textIdFindings.length === 0 ? 0 : 1
 if (hard.length > 0) {
   console.log('\n■ 明确漏喂（没传第二参数，或对象里缺键）——**必须改**：')
   for (const f of hard) {
@@ -370,4 +461,5 @@ if (slotFindings.length > 0) {
   )
 }
 
-process.exitCode = hard.length === 0 && slotFindings.length === 0 && thirdFindings.length === 0 ? 0 : 1
+process.exitCode =
+  hard.length === 0 && slotFindings.length === 0 && thirdFindings.length === 0 && textIdFindings.length === 0 ? 0 : 1

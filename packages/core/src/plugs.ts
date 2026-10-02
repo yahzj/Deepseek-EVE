@@ -157,12 +157,14 @@ export function installPlug(
    * 模板 `core.plug.001` 是 `已为 {p1} 装上插件：{p2}。` —— **两个槽**，而这里此前只喂了 `p1`
    * ⇒ 玩家读到的日志是「已为「XX」装上插件：**{p2}**。插件装上后无法拆下。」。
    * ⇒ 补喂 `p2`（插件名）；同时把正文里的插件名去掉 —— 否则补参后会重复印两遍。
+   * ⟪文案调整 2026-10-02⟫ 正文再去掉船名外的「」——表文（玩家看到的那句）与英文都没有引号
+   * ⇒ 正文与表文逐字一致（见工作文档 `docs/design/return-log-copy-20261002.md` §6 同类普查）。
    */
   const shipName = state.fleet[shipId]?.customName ?? ctx.ships.get(ship.defId ?? '')?.name ?? shipId
   addLog(
     state,
     'fleet',
-    `已为「${shipName}」装上插件：${def.name}。插件装上后无法拆下。`,
+    `已为 ${shipName} 装上插件：${def.name}。插件装上后无法拆下。`,
     'core.plug.001',
     { p1: shipName, p2: def.name },
   )
@@ -256,7 +258,9 @@ export function exchangeUniversalBlackBox(
   addLog(
     state,
     'trade',
-    `章鱼人兑换：花 ${price} 点协会声望换到通用黑匣 ×${n}（已存入物品仓库）。`,
+    /** ⟪文案调整 2026-10-02⟫ 正文与表文（`core.plug.012`）对齐：原正文「花…点协会声望换到…（已存入物品仓库）。」
+     * 与表文（玩家看到的那句）措辞不同 ⇒ 按表文改写，**玩家可见零变化**。见 `docs/design/return-log-copy-20261002.md` §6。 */
+    `章鱼人兑换：花掉 ${price} 点协会声望，换到通用黑匣 ×${n}，已存入物品仓库。`,
     'core.plug.012',
     { p1: price, p2: n },
   )
@@ -316,7 +320,9 @@ export function exchangePlugBlueprint(
   addLog(
     state,
     'trade',
-    `章鱼人兑换：花 ${PLUG_BLUEPRINT_COST} 点协会声望换到并学会「${bp.name}」（可在组装机无限次制造）。`,
+    /** ⟪文案调整 2026-10-02⟫ 正文与表文（`core.plug.011`）对齐：按表文改写（花掉 / 逗号 / 去掉书名号），
+     * **玩家可见零变化**。见 `docs/design/return-log-copy-20261002.md` §6。 */
+    `章鱼人兑换：花掉 ${PLUG_BLUEPRINT_COST} 点协会声望，换到并学会 ${bp.name}，可直接在组装机无限次制造。`,
     'core.plug.011',
     { p1: PLUG_BLUEPRINT_COST, p2: bp.name },
   )
