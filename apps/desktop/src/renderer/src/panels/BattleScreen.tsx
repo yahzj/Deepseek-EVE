@@ -429,6 +429,14 @@ const meSpeedRef = useRef(200)
    * ⚠ **不做逐帧 JS 动画**：只加/摘类，动画交给 CSS（与 `is-arriving`/坠落演出同一纪律）。
    */
   const blinkRef = useRef<Map<string, { vanish: number; move: number; appear: number; segMs: number }>>(new Map());
+  /**
+   * **闪现特效环**（**船长 2026-10-02 令**）：「**我之前的动画，更想的是在对应的时间节点播放一个特效**」
+   * ⇒ 删掉"出现"那一段的淡入动画，改成**在「消失」与「位移兑现」两个时间点各爆一个扩散环**。
+   *
+   * 本表 = 待播/在播的环（`at` = 该环的**真实毫秒**时刻，`until` = 播完即清理）。
+   * ⚠ 用绝对时刻而不是"随舰船 DOM 播动画"：环挂在**换位前**的位置上，换位后那一段由第二个环标出来。
+   */
+  const blinkFxRef = useRef<Array<{ key: string; tag: string; at: number; until: number }>>([]);
   /** 每个机型**上一帧**渲染的机体数（击落时用它定位"本帧即将消失的末位机体"） */
   const dronePrevShowRef = useRef<Map<string, number>>(new Map())
   const visDistRef = useRef(0)
@@ -1042,6 +1050,8 @@ const meSpeedRef = useRef(200)
    * （基准 = 200ms，只作缺省与"三份一致"的锚点）。
    */
   const blinkProcessMs = Math.max(1, Math.round(engine.ctx.balance.battle.foeBlinkProcessMs ?? 200))
+  /** **闪现特效环的时长**（**船长 2026-10-02 令**）：环从舰体处扩散淡出所需时间（与 CSS 逐字一致）。 */
+  const BLINK_FX_MS = 420
   const scanDroppable = (): Set<string> => {
     const drop = new Set<string>()
     let laterVisible = false
@@ -1124,12 +1134,24 @@ const meSpeedRef = useRef(200)
           const toReal = (gameMs: number): number =>
             (gameMs - (battle.lastTickGameMs ?? fx.atMs)) / Math.max(0.01, fx.speedX ?? 1)
           const segMs = (seg.appearMs - seg.vanishMs) / Math.max(0.01, fx.speedX ?? 1)
+          const vanishAt = now + toReal(seg.vanishMs)
+          const moveAt = now + toReal(seg.moveAtMs)
           blinkRef.current.set(fx.tag, {
-            vanish: now + toReal(seg.vanishMs),
-            move: now + toReal(seg.moveAtMs),
+            vanish: vanishAt,
+            move: moveAt,
             appear: now + toReal(seg.appearMs),
             segMs,
           })
+          /**
+           * **两个特效环**（船长 2026-10-02）：「**在对应的时间节点播放一个特效**」——
+           * ① 消失时刻（旧位置）② 位移兑现时刻（新位置）。
+           * ⚠ 环建在**当时的位置**上（单位 DOM 的几何），所以第一个环留在旧位置、第二个环出现在新位置。
+           */
+          const id = fx.seq
+          blinkFxRef.current.push(
+            { key: `blink-fx-${id}-a`, tag: fx.tag, at: vanishAt, until: vanishAt + BLINK_FX_MS },
+            { key: `blink-fx-${id}-b`, tag: fx.tag, at: moveAt, until: moveAt + BLINK_FX_MS },
+          )
         }
         continue
       }
@@ -1517,6 +1539,10 @@ const meSpeedRef = useRef(200)
     for (const [tag, b] of blinkRef.current) {
       if (now - b.appear >= b.segMs / 3) blinkRef.current.delete(tag)
     }
+  }
+  // **闪现特效环**：播完即清（表里只留"在播/待播"的，清掉才有下一次的重新建环）
+  if (blinkFxRef.current.length > 0) {
+    blinkFxRef.current = blinkFxRef.current.filter((x) => now < x.until)
   }
 
   /* ── 敌方单位被击毁检测（hp 归零的瞬间登记尸骸 + 爆炸计划，演出与战斗是否结束无关）──
@@ -2172,15 +2198,27 @@ const meSpeedRef = useRef(200)
      * - `blinkOn`：**出现**段（`appear → appear + 1/3`）——在新位置淡入。
      */
     const blinkSeg = blinkRef.current.get(tag)
-    const blinkThirdMs = blinkSeg === undefined ? 0 : blinkSeg.segMs / 3
+    /** 消失段动画时长 = 整段的 1/3（出现段已按船长令取消动画） */
+    const blinkAnimMs = blinkSeg === undefined ? 0 : blinkSeg.segMs / 3
     /** ① 消失段（`vanish → move`）：播淡出，**位置仍是旧位置** */
     const blinkOut = blinkSeg !== undefined && now >= blinkSeg.vanish && now < blinkSeg.move
     /** ② 等待段（`move → appear`）：**不可见**（引擎已在这一瞬把位置换好） */
     const blinkWait = blinkSeg !== undefined && now >= blinkSeg.move && now < blinkSeg.appear
-    /** ③ 出现段（`appear → appear + 1/3`）：在新位置播淡入 */
-    const blinkOn = blinkSeg !== undefined && now >= blinkSeg.appear && now < blinkSeg.appear + blinkThirdMs
-    /** CSS 变量口径：一段动画的时长 = 整段的 1/3（消失/出现各自） */
-    const blinkAnimMs = blinkThirdMs
+    /**
+     * ③ **出现：不再播任何动画**（**船长 2026-10-02 令**：「**既然基线动画重新生效会再播一遍，那么就取消
+     * ③ 出现部分的视觉表现**」）——到点**直接显示**在新位置，视觉交给下面那两个特效环。
+     */
+    const blinkOn = false
+    /**
+     * 两个特效环（**船长 2026-10-02**：「**在对应的时间节点播放一个特效**」）——
+     * 环由 `blinkFxRef` 登记、渲染时按"在播/待播"建 DOM（判定走登记表而不是重算时间，免得过期项又冒出来）。
+     * `--fx-delay`：① 消失时刻（旧位置）② 位移兑现时刻（新位置）。⚠ **可正可负**：负值 = 该时刻已过去一点、
+     * 环已播到中途（正是正确表现）。
+     */
+    const fxOf = (suffix: 'a' | 'b'): { at: number; until: number } | undefined =>
+      blinkFxRef.current.find((x) => x.tag === tag && x.key.endsWith(suffix))
+    const blinkFxA = fxOf('a')
+    const blinkFxB = fxOf('b')
     const boomLive = corpseOn && sinceBoom < BOOM_LIFE
     const fadeT = sinceBoom >= BOOM_LIFE ? clamp01((sinceBoom - BOOM_LIFE) / WRECK_FADE_MS) : 0
     /** 本舰是否正在**飞入**（逐舰入场：首波按 `arrivalSide`，此后按引擎 `enteredAtMs`） */
@@ -2209,11 +2247,11 @@ const meSpeedRef = useRef(200)
               } as CSSProperties)
             : {}),
           /**
-           * **闪现两段动画的时长**（**船长 2026-10-02 旋钮**）：只在演出期间给 `--blink-ms`
-           * （= 半个过程，缺省 1000ms），三份 `styles*.css` 的 `app-bts-blink-out/in` 都读它
+           * **闪现的"消失"淡出时长**（**船长 2026-10-02 旋钮**）：只在消失段给 `--blink-ms`
+           * （= 整段的 1/3），三份 `styles*.css` 的 `app-bts-blink-out` 读它
            * ⇒ **改 `balance.battle.foeBlinkProcessMs` 就够，界面零改动**。
            */
-          ...(blinkOn || blinkOut ? ({ '--blink-ms': `${blinkAnimMs}ms` } as CSSProperties) : {}),
+          ...(blinkOut ? ({ '--blink-ms': `${blinkAnimMs}ms` } as CSSProperties) : {}),
         }}
       >
         {/* 淡出作用于舰体容器（外层 .app-bts-unit 有入场动画 fill 占位，透明度须压在子层）；
@@ -2227,6 +2265,94 @@ const meSpeedRef = useRef(200)
             size={size}
           />
         </span>
+        {/**
+         * **闪现特效环**（**船长 2026-10-02 令**：「**我之前的动画，更想的是在对应的时间节点播放一个特效**」）——
+         * 两个时间点各爆一个向外扩散的环：① 消失时刻（旧位置）② 位移兑现时刻（新位置）。
+         * ⚠ 环建在**本舰单位内**（绝对定位居中）⇒ 第一个环留在旧位置；位移兑现后单位移到新位置，
+         * 这时才建的第二个环自然落在新位置。
+         * ⚠ 用 `animation-delay` 精确对齐时刻（`--fx-delay`，可正可负）；负延迟时环**已播到一半**，
+         *   正是"该时刻已经过去一点"的正确表现。
+         */}
+        {/**
+         * 🔴 **闪现特效：竖直光柱**（**船长 2026-10-02 令**：「**特效我更希望接近大鲸鱼根目录的
+         * 『闪现效果参考.png』**」）——参考图的形制 = **多道竖直细光柱**：
+         * 中心最亮（青白）→ 两侧渐深（青 → 深蓝）→ **上下两端渐隐**。
+         *
+         * ⚠ 与"扩散环"那版的差别（如实记）：参考图**不是环**，是**立柱状的光带**。
+         * ⚠ **竖向与舰体朝向无关**（`.app-sprite` 的翻转只在它自己的 `svg g` 里，不影响兄弟节点）
+         *   ⇒ 光柱恒为屏幕竖直、并以舰体中心为轴。
+         * ⚠ 两个时间点各一根：① 消失（旧位置）② 位移兑现（新位置）。
+         */}
+        {[
+          { key: 'a', fx: blinkFxA },
+          { key: 'b', fx: blinkFxB },
+        ].map(({ key, fx }) =>
+          fx ? (
+            <svg
+              key={`blink-fx-${key}`}
+              className="app-bts-blink-pillar"
+              viewBox="-50 -95 100 190"
+              preserveAspectRatio="none"
+              style={
+                {
+                  '--fx-delay': `${fx.at - now}ms`,
+                  width: `${Math.round(size * 0.85)}px`,
+                  height: `${Math.round(size * 2)}px`,
+                  left: '50%',
+                  top: '50%',
+                  marginLeft: `-${Math.round(size * 0.425)}px`,
+                  marginTop: `-${Math.round(size)}px`,
+                  /** ⚠ 舰体单位若被裁切（overflow 继承）也不许切掉光柱两端 */
+                  overflow: 'visible',
+                } as CSSProperties
+              }
+              aria-hidden="true"
+            >
+              <defs>
+                {/* ① 单条竖线的纵向配色（深蓝 → 青 → 亮青 → 青 → 深蓝） */}
+                <linearGradient id={`blink-pillar-line-${key}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#1a3f9e" />
+                  <stop offset="42%" stopColor="#2ea8e0" />
+                  <stop offset="58%" stopColor="#3fe0f0" />
+                  <stop offset="100%" stopColor="#1a3f9e" />
+                </linearGradient>
+                {/* ② 整根光柱的**上下渐隐**（参考图里两端化开得较宽） */}
+                <linearGradient id={`blink-pillar-fade-${key}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#000" />
+                  <stop offset="25%" stopColor="#fff" />
+                  <stop offset="75%" stopColor="#fff" />
+                  <stop offset="100%" stopColor="#000" />
+                </linearGradient>
+                <mask id={`blink-pillar-mask-${key}`} maskUnits="userSpaceOnUse" x="-50" y="-95" width="100" height="190">
+                  <rect x="-50" y="-95" width="100" height="190" fill={`url(#blink-pillar-fade-${key})`} />
+                </mask>
+              </defs>
+              <g mask={`url(#blink-pillar-mask-${key})`}>
+                {Array.from({ length: 52 }, (_, i) => {
+                  /** 横向位置 -50 → 50；`d` = 离中心多远（0 = 中心最亮） */
+                  const x = -50 + (i / 51) * 100
+                  const d = Math.abs(x) / 50
+                  return {
+                    x,
+                    sw: 0.45 + (1 - d) * 1.05,
+                    op: 0.12 + Math.pow(1 - d, 1.6) * 0.85,
+                  }
+                }).map((l, i) => (
+                  <line
+                    key={i}
+                    x1={l.x}
+                    y1={-95}
+                    x2={l.x}
+                    y2={95}
+                    stroke={`url(#blink-pillar-line-${key})`}
+                    strokeWidth={l.sw}
+                    opacity={l.op}
+                  />
+                ))}
+              </g>
+            </svg>
+          ) : null,
+        )}
         {/* 舰名：**第一排**浮在舰体上方（与改动前一致）；**第二排**（其上方是第一排的舰体）改由该舰血条标签承载
             机库备用机（图标 ×N）跟在**各自的名字右边**（2026-09-12 船长） */}
         {!isRank2 ? (

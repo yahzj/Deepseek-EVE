@@ -12406,8 +12406,34 @@ html[data-locale='en'] body {
   opacity: 0;
   animation: none;
 }
+/* ③ 出现：**不播任何动画**（船长 2026-10-02：「既然基线动画重新生效会再播一遍，那么就取消③ 出现部分的
+   视觉表现」）——到点直接在新位置显示，视觉交给下面两个特效环。
+   ⚠ 仍要 `animation: none`：否则 `.app-bts-unit` 的挂载淡入基线（`app-bts-foe-in`，带 `scale(.81)`）
+   会在演出结束、类一摘时重播一次（实机表现为「闪现后舰船又放大一下」）。 */
 .app-bts-unit.is-blink {
-  animation: app-bts-blink-in var(--blink-ms, 667ms) ease-out both;
+  animation: none;
+}
+.app-bts-unit.is-blink-out {
+  animation: app-bts-blink-out var(--blink-ms, 667ms) ease-in both;
+}
+/* 闪现**特效环**（船长 2026-10-02：「更想的是在对应的时间节点播放一个特效」）：
+   绝对定位盖在舰体上、不参与布局；`--fx-delay` 把环对齐到「消失」与「位移兑现」两个时间点。 */
+/* 🔴 **闪现特效：竖直光柱**（船长 2026-10-02：「特效我更希望接近大鲸鱼根目录的『闪现效果参考.png』」）。
+   形制 = 多道竖直细光柱：中心亮青 → 两侧深蓝、上下渐隐（线条与渐变都在 JSX 里画）。
+   容器尺寸/位置由 JSX 内联给（按舰体尺寸算），本规则只管"绝对定位 + 不挡点击 + 动画"。
+   ⚠ `--fx-delay` 把光柱对齐到「消失」与「位移兑现」两个时间点；⚠ 可正可负
+   （负值 = 该时刻已过去一点、光柱已播到中途）。 */
+.app-bts-blink-pillar {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  overflow: visible;
+  animation: app-bts-blink-pillar 420ms ease-out var(--fx-delay, 0ms) 1 both;
+}
+@keyframes app-bts-blink-pillar {
+  0% { opacity: 0; transform: scaleX(0.5); }
+  22% { opacity: 1; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(1.15); }
 }
 /* 🔴 **闪现期间整体消失**（船长 2026-10-01 令：「闪现开始-播放动画的同时舰船消失-等待发生时间-
    在新位置播放动画同时舰船出现」）：`combat.foeBlinkQueue` 的 `vanishMs → appearMs` 这 200ms 里本舰
