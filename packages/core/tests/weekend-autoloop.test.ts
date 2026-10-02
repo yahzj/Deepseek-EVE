@@ -46,7 +46,7 @@ function setup(family = 'A'): { s: ReturnType<typeof createInitialState>; ev: We
 
 describe('入侵重复出击 · 开关与互斥', () => {
   it('开启后目标落档在 weekendEvent.autoLoopGalaxyId；关闭即清', () => {
-    const { s, ev } = setup()
+    const { s } = setup()
     expect(autoLoopInvasionGalaxy(s)).toBeNull()
     expect(setAutoLoopInvasion(s, ctx, TARGET).ok).toBe(true)
     expect(autoLoopInvasionGalaxy(s)).toBe(TARGET)
@@ -55,7 +55,7 @@ describe('入侵重复出击 · 开关与互斥', () => {
   })
 
   it('与常驻悬赏的重复清剿互斥（开一边顶掉另一边）', () => {
-    const { s, ev } = setup()
+    const { s } = setup()
     const card = [...ctx.anomalies.values()].find((a) => a.hidden !== true)!
     expect(setAutoLoopBounty(s, ctx, card.id).ok).toBe(true)
     expect(s.autoLoopAnomalyId).toBe(card.id)
@@ -103,7 +103,7 @@ describe('入侵重复出击 · 再出发', () => {
   })
 
   it('别的作业占着主控（采矿）⇒ 只等、不出发', () => {
-    const { s, ev } = setup()
+    const { s } = setup()
     expect(setAutoLoopInvasion(s, ctx, TARGET).ok).toBe(true)
     s.mining.active = true
     expect(advanceAutoLoopInvasion(s, ctx)).toBeNull()

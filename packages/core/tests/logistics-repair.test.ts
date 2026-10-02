@@ -95,7 +95,7 @@ function tickSeconds(state: GameState, seconds: number): void {
 
 describe('后勤舰 · 我方（维修装置修最缺血的队友）', () => {
   it('后勤舰把维修脉冲指向**三层剩余比例最低的僚舰**（而非自己）', () => {
-    const { state, run, logi, wingA } = enterRunWithLogi()
+    const { state, run } = enterRunWithLogi()
     const battle = startBattle(state, run)
     // 敌舰不开火（隔离测量）：只改运行态冷却
     for (const rt of Object.values(battle.units)) {
@@ -120,7 +120,7 @@ describe('后勤舰 · 我方（维修装置修最缺血的队友）', () => {
   })
 
   it('对照：**非后勤舰**装了维修装置仍只修自己（旧口径零变化）', () => {
-    const { state, run, wingB, wingA, logi } = enterRunWithLogi()
+    const { state, run, logi } = enterRunWithLogi()
     // 把后勤舰的维修装置摘掉 ⇒ 本场只有 wingB 那一台装置（对照组隔离干净）
     state.fleet[logi]!.fitted = { ...(state.fleet[logi]!.fitted ?? {}), mid: [] }
     const battle = startBattle(state, run)
@@ -140,7 +140,7 @@ describe('后勤舰 · 我方（维修装置修最缺血的队友）', () => {
   })
 
   it('**全场都修不动（甲/结构均满）⇒ 空转**：不耗组件、不动账本', () => {
-    const { state, run, logi } = enterRunWithLogi()
+    const { state, run } = enterRunWithLogi()
     const battle = startBattle(state, run)
     for (const rt of Object.values(battle.units)) {
       if (rt.side !== 'foe') continue

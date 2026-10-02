@@ -18,7 +18,6 @@ import { startRefineRun } from '../src/industry'
 import { calcPower } from '../src/expedition'
 import { learnBlueprint } from '../src/market'
 import {
-  calcBuildDurationMs,
   cancelManufacturing,
   manufacturingLoopOf,
   manufacturingManualActive,

@@ -31,7 +31,6 @@ describe('战斗中离线：返航在离线期内结算（2026-09-09）', () => 
     const { state, ctx } = world()
     enterBattle(state, ctx)
     const b = state.expedition.battle!
-    const endedAt = b.lastTickGameMs // 停表时刻（≈ 1000ms）
     b.ended = 'me' // 模拟胜负已分、等待结算窗口（killcam）
     const logs0 = state.logs.length
     simulateOffline(state, 0, 10 * 60_000, ctx) // 离线 10 分钟 ≫ 本地返航 120s

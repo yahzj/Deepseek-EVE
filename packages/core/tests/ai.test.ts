@@ -14,7 +14,6 @@ import { countWare } from '../src/inventory'
 import {
   aiCoreCap,
   aiCoreUsed,
-  aiCoreShipUsed,
   aiCoreIndustryUsed,
   aiCoreCapBlock,
   industryAiBonus,

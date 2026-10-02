@@ -58,7 +58,6 @@ import { weekendBountyCardsOf } from '../src/weekendBounty'
 import { weekendSettleCommsOf } from '../src/weekendComms'
 import {
   WEEKEND_FLAGSHIP_POOL_HP,
-  WEEKEND_GAIN_CORE_WIN,
   WEEKEND_GAIN_OFFLINE_REPEL,
   WEEKEND_GAIN_REPEL,
   WEEKEND_PROGRESS_ISK_PER_PCT,
@@ -581,7 +580,6 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const gid = GID
     const core = 'galaxy-kor'
     const s = invaded(gid)
-    const now = Date.now()
     weekendNoteContribution(s.weekendEvent!, gid, 1) // 外围夺回 ⇒ 门禁解开
     weekendNoteContribution(s.weekendEvent!, core, 1) // 核心条满 ⇒ 旗舰现身
     const putBefore = s.weekendEvent!.contributed[core] ?? 0

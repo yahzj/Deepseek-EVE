@@ -8,8 +8,6 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { securityZoneOf } from '../src/sideTasks'
 import {
-  WEEKEND_BOUNTY_REWARD_MUL,
-  WEEKEND_CARD_PREFIX,
   weekendBountyCardsOf,
   weekendDerivedCardOf,
   weekendEncounterAllowedIn,

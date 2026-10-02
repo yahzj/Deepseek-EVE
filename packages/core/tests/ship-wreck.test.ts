@@ -50,7 +50,6 @@ const DRONE = 'drone-t-scout'
 /** 一张窝点卡：`lairCore` 非空 ⇒ 该星系能产生稀有残骸（用来验"压过稀有池"） */
 const LAIR = 'ano-lair-t'
 const GAL = 'galaxy-hub'
-const OTHER_GAL = 'galaxy-kor'
 
 const mods: ModuleDef[] = [
   moduleDef(GUN, 'turret', 0, { damageType: 'kinetic', maxRangeM: 3000, minRangeM: 0, hitRate: 0.8, reloadMs: 1000, dmgMult: 1 }),

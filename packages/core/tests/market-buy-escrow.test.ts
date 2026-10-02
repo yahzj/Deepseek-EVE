@@ -20,7 +20,6 @@ import {
   countWare,
   createInitialState,
   ensureMarket,
-  marketQuote,
   placeBuyOrder,
 } from '../src/index'
 import { makeTestCtx } from './helpers'

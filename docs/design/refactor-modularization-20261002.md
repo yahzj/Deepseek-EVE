@@ -144,6 +144,17 @@
   如 `const run = advanceGame(s)` 这种**不能删声明**、只能改为裸调用）⇒ 下一批清完再开闸门。
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅。
 
+### 批次 2a-③：tests 未用符号清零 ＋ **noUnusedLocals 闸门开启**（2026-10-02）
+
+- 65 处测试文件里的未用导入名/未用局部全部清完（逐处核：纯构造/纯读直接删；`enterRunWithLogi()`
+  这类返回多值的只摘掉没用的解构名，调用本身保留）。
+- **顺手修复一处既有损坏**：`v181.test.ts:172` 注释里嵌了字面 `\r\n`，把
+  `expect(drone.shotDmg).toBe(6)` 那行**吞进注释**（断言已静默失效多年）⇒ 拆回两行、断言恢复，
+  测试全绿（12 条）。
+- **闸门开启**：`packages/core/tsconfig.json` 加 `"noUnusedLocals": true`（先清后开；以后死导入/死局部
+  在 core 的 typecheck 里当场报红）。renderer 侧的清理后续另批（它的 tsconfig 未开）。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - 大拆分的具体切分边界等动到批次 4 再逐文件出设计（§2 逐批确认）。

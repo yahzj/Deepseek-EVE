@@ -43,8 +43,6 @@ function gun(id: string, minRangeM: number, maxRangeM: number): ModuleDef {
 const SHORT_GUN = gun('mod-short-gun', 2000, 3000)
 /** 远程炮（0~20 km）：够得着 ⇒ 我方必然开火 */
 const LONG_GUN = gun('mod-long-gun', 0, 20000)
-/** 超远程炮（20~25 km）：**太近反而打不到** ⇒ 用于构造"双方都够不着" */
-const FAR_GUN = gun('mod-far-gun', 20000, 25000)
 
 /** 敌舰级：远程狙击（自身带 10~12 km，kite 站位 0.85 ⇒ 约 11.7 km） */
 const SNIPER: FoeShipDef = {
@@ -63,25 +61,6 @@ const SNIPER: FoeShipDef = {
   falloff: 0.3,
   dmgMix: { kinetic: 8, explosive: 2 },
   tactic: 'kite',
-}
-
-/** 敌舰级：贴脸小炮 + **极慢**（"双方都够不着"的构造：玩家跑得开、它追不上、两边都打不着） */
-const SLUG: FoeShipDef = {
-  id: 't-cannot-slug',
-  name: '测试慢船',
-  family: 'A',
-  hullClassTier: 1,
-  speedRatio: 0.05,
-  hp: 400,
-  split: { s: 0.2, a: 0.55, h: 0.25 },
-  shotDmg: 10,
-  hitRate: 0.9,
-  reloadMs: 4000,
-  rangeMinM: 1,
-  rangeMaxM: 500,
-  falloff: 0.3,
-  dmgMix: { kinetic: 8, explosive: 2 },
-  tactic: 'brawl',
 }
 
 type World = { state: GameState; ctx: SimContext }

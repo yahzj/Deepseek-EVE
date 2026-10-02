@@ -33,7 +33,6 @@ import {
   WORMHOLE_LOOT_BOX_CHANCE,
   WORMHOLE_SALVAGE_BOX_CHANCE,
   WORMHOLE_SALVAGE_BOX_MAX,
-  WORMHOLE_BP_BOX_IDS,
   WORMHOLE_BP_BOX_SHALLOW,
   WORMHOLE_BP_BOX_MID,
   WORMHOLE_BP_BOX_DEEP,
@@ -714,7 +713,6 @@ describe('虫洞 · 临时空间（船长 2026-09-13：「大件货先进临时�
 
   it('**临时空间随档往返**（可选字段 `tempGrid`，零迁移）', () => {
     const state = enterRun(1, 4242, 0, 2)
-    const run = state.wormhole.run!
     const cell = ruinsWithBoxIn(state, 'A')
     expect(wormholeTakePileAt(state, ctx, 0).ok).toBe(true)
     cell.piles = [{ itemId: BOX_FOR_TEST, units: 1 }]

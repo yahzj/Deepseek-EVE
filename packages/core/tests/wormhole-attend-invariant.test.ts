@@ -114,7 +114,7 @@ describe('虫洞存档不变量：在途战斗 ⇔ 人在洞里', () => {
   })
 
   it('③ 真离开过（显式 false）且战斗中 ⇒ 同样修回 true（那种组合 UI 上产生不出来，只可能来自坏档）', () => {
-    const { state, text } = battleInFlightSave()
+    const { state } = battleInFlightSave()
     // 先造出"玩家真离开过"的现场（`leftAtGameMs` 要为正数才会落档，见 `cleanWormhole`）
     state.gameMs += 5000
     state.wormhole.run!.leftAtGameMs = state.gameMs

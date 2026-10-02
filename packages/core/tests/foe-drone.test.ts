@@ -14,7 +14,6 @@ import { buildSimContext, FOE_DRONE_E_ALERT } from "@whale/data";
 import { addShipToFleet, addWare, createInitialState } from "../src/index";
 import {
   advanceBattleFor,
-  battleArcsFor,
   createFoeSpecs,
   foeDroneRangeOf,
   pickFoeDroneTarget,
@@ -459,10 +458,6 @@ describe("敌方机群：受击增程（母舰挨打 ⇒ 全机群射程 ×4）"
     droneRangeMulOnHit: 4,
   });
   const AA = "mod-pd-e-2"; // 近防炮（唯一带防空属性的家族）
-  const droneWeaponOf = (card: AnomalyDef, tag: string) =>
-    createFoeSpecs(card, bal)
-      .find((u) => u.tag === tag)!
-      .weapons.find((w) => w.src === "drone")!;
 
   it("母舰本体被命中 ⇒ **全敌队**机群射程 ×4（5,000 → 20,000m），且**只推一条**画面提示", () => {
     const card = testCard(buffShip([{ drone: FOE_DRONE_E_ALERT, count: 3 }]));

@@ -151,8 +151,6 @@ describe('巨构导控塔 = 对方对机群的命中收窄（2026-09-29 船长�
   const bal = () => world({ load: {} }).ctx.balance.battle as BattleBalance
   const specOf = (w: ReturnType<typeof world>) =>
     createPlayerSpec(w.state, w.ctx as never, w.state.shipId)! as unknown as UnitSpec
-  /** 单发打机群的命中（df 固定 1）；`UNIT` = 无命中加成、无失稳的裸攻方 */
-  const UNIT = { hitBonus: 0 } as UnitSpec
   const HIT = { hitRate: 1, minRangeM: 0, maxRangeM: 5_000, falloff: 1 }
 
   it('① 引擎真的收：收窄只吃"闪避"那一截（1.00 + 舰船命中 − 闪避×0.95）', () => {

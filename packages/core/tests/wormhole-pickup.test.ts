@@ -25,7 +25,6 @@ import {
   WORMHOLE_TEMP_CELLS,
   wormholeBagSlots,
   wormholeBagSlotsOfFleet,
-  wormholeBagUsage,
   wormholeDebugReset,
   wormholeEnter,
   wormholeFleetCargoM3,

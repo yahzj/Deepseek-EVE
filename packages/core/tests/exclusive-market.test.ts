@@ -48,13 +48,6 @@ const exclusiveIds = (): string[] => {
 const rowOf = (refId: string) => MARKET_GOODS.find((g) => g.refId === refId)
 const priceOf = (refId: string): number => rowOf(refId)?.basePrice ?? 0
 const round500 = (v: number): number => Math.max(500, Math.round(v / 500) * 500)
-const matValue = (bpId: string): number => {
-  const bp = BLUEPRINTS.find((b) => b.id === bpId) ?? SHIP_BLUEPRINTS.find((b) => b.id === bpId)
-  return (bp?.materials ?? []).reduce((a, m) => {
-    const g = MARKET_GOODS.find((x) => x.kind === 'item' && x.refId === m.itemId)
-    return a + (g?.basePrice ?? 0) * m.count
-  }, 0)
-}
 
 describe('专属内容上市场（2026-09-14 船长「允许玩家挂卖」批）', () => {
   it('① 专属内容补行后**全部只收不卖**（playerBuyable: false）· 奇货档 · 价 > 0', () => {

@@ -1,4 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // 2026-10-02 重构工程批次 2a：存量未用符号清零后开启（防死导入/死局部回潮）
+    "noUnusedLocals": true
+  },
   "include": ["src", "tests"]
 }

@@ -251,7 +251,6 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
      * 用聚合值会误报"一跳超 2,000m"（实际每舰都合规）。
      */
     for (let t = 100; t <= 400_000 && b.ended === null; t += 100) {
-      const before = b.distanceM
       state.gameMs = t
       advanceBattleFor(state, ctx, b, ids[0]!, 'corona-nexus')
       for (const [tag, until] of Object.entries(b.foeBlinks ?? {})) {

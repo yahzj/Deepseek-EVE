@@ -55,7 +55,7 @@ describe('V18B-2 激光炮', () => {
 
   it('beam 条目：shotDmg = 能量弹药 9 × dmgMult（合并 ×N 计数乘入）；不携带 eqHitMul', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 1 })
-    const { bed, ctx } = makeBedCtx([laserDef('mod-laser-1', 1, 1.1)])
+    const { ctx } = makeBedCtx([laserDef('mod-laser-1', 1, 1.1)])
     state.fleet[state.shipId]!.defId = 'bed'
     repairDeprecatedModules(state, ctx)
     state.moduleBay['mod-laser-1'] = 2
@@ -72,7 +72,7 @@ describe('V18B-2 激光炮', () => {
 
   it('实战必中 + 扣能量弹药：纯激光船 meHits === meShots，battle.ammo.pla 被消耗', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 2 })
-    const { bed, ctx } = makeBedCtx([laserDef('mod-laser-1', 1, 1.1)])
+    const { ctx } = makeBedCtx([laserDef('mod-laser-1', 1, 1.1)])
     state.fleet[state.shipId]!.defId = 'bed'
     repairDeprecatedModules(state, ctx)
     state.moduleBay['mod-laser-1'] = 1
@@ -104,7 +104,7 @@ describe('V18B-2 激光炮', () => {
       dmgMult: 1.25,
       cpuUse: 10,
     })
-    const { bed, ctx } = makeBedCtx([kin, laserDef('mod-laser-1', 1, 1.1)])
+    const { ctx } = makeBedCtx([kin, laserDef('mod-laser-1', 1, 1.1)])
     state.fleet[state.shipId]!.defId = 'bed'
     repairDeprecatedModules(state, ctx)
     state.moduleBay['mod-gun-kin'] = 1
@@ -136,7 +136,7 @@ describe('V18B-2 激光炮', () => {
 describe('V18B-2 迁移与支援件', () => {
   it('旧能量炮/异星原型 → 同档激光（装配原位 + 装备库 1:1 幂等）', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 4 })
-    const { bed, ctx } = makeBedCtx([
+    const { ctx } = makeBedCtx([
       laserDef('mod-laser-1', 1, 1.1),
       laserDef('mod-laser-2', 2, 3.0),
       laserDef('mod-laser-proto', 4, 5.1),
@@ -155,7 +155,7 @@ describe('V18B-2 迁移与支援件', () => {
 
   it('能量稳定器（plasma 键）加成 beam 单发；射速计算机缩短装填', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 5 })
-    const { bed, ctx } = makeBedCtx([
+    const { ctx } = makeBedCtx([
       laserDef('mod-laser-1', 1, 1.1),
       moduleDef('mod-stab-pla', 'support', 0, { rack: 'low', damageTypeBonusPct: { plasma: 0.1 }, cpuUse: 5 }),
       moduleDef('mod-rof', 'support', 0, { rack: 'low', reloadCutPct: 0.05, cpuUse: 5 }),

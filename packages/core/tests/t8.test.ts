@@ -170,7 +170,6 @@ describe('T8 重复清剿（2026-09-06 重复清剿：自动返航到港后自�
   })
 
   it('修理组件优先：货仓有组件时自动连用修复到阈值后再继续，组件不足才停', () => {
-    const ctx = makeTestCtx({ quietEvents: true })
     const state: GameState = createInitialState({ nowWallMs: 0, seed: 1 })
     // 测试修理组件（P2 固定 HP 语义：repairRestore=基础回复 HP；用超大值保证单件修满，专测"先修再出发"流程）
     const kit = { ...mineral('kit-a', 15), name: '纳米修理组件', description: '测试修理组件', repairRestore: 1_000_000 }
@@ -242,7 +241,7 @@ describe('T8 位置模型：返航空间站与守卫', () => {
 
 describe('T8 存档（v16.1 兼容字段）', () => {
   it('awayGalaxy/transit/bountyCooldowns/autoLoop 往返一致；非法条目被清', () => {
-    const { state, ctx } = worldWithFarBounty()
+    const { state } = worldWithFarBounty()
     state.awayGalaxy = 'galaxy-far'
     // 旧档样式在途行程：手动构造（新指令即时到站不留行程；字段仍可序列化往返）
     state.transit = { active: true, fromGalaxy: 'galaxy-far', toGalaxy: 'galaxy-hub', finishAtGameMs: 120_000, legMs: 120_000, delivery: null }

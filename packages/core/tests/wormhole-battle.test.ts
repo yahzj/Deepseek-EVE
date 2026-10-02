@@ -40,7 +40,6 @@ import {
   wormholeAllCardIds,
   wormholeAnomalyOf,
   wormholeBagSlots,
-  wormholeBagUsage,
   wormholeCardIdForRun,
   wormholeCardIdOfFamily,
   wormholeCardOfTier,
@@ -68,10 +67,8 @@ import {
   wormholeHoldOverloaded,
   wormholeHoldStow,
   wormholeHoldUsage,
-  wormholeOverloadBlockReason,
   wormholeHoldSyncCargo,
   wormholeTempUsage,
-  wormholeRelicBoxIdOf,
 } from '../src/wormholeSalvage'
 import { holdTransferTo, makeHoldState } from '../src/wormholeHold'
 import { WORMHOLE_MATTER_DEVICE_IDS } from '../src/wormholeMatter'
