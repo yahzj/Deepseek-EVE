@@ -105,7 +105,7 @@ describe('周末入侵 · 时间轴', () => {
     setStanding(s, 'dsi', 60)
     expect(ensureWeekendEvent(s, ctx, fri + 1 * H), '正常模式 ⇒ 开（窗口内 ＋ 声望达标）').toBe(true)
     expect(s.weekendEvent?.startedAtWallMs, '正常模式 T0 = 本周五 20:00（不是调用时刻）').toBe(fri)
-    expect(ensureWeekendEvent(s, ctx, fri + 2 * H), '同一窗口只开一场 ⇒ 幂等').toBe(false)
+    expect(ensureWeekendEvent(s, ctx, fri + 2 * H), '场还活着 ⇒ 幂等（唯一挡住开新场的就是它）').toBe(false)
     /** 窗口外（周三）⇒ 不开 */
     const outside = fresh()
     outside.exploredGalaxies = [...ctx.galaxies.keys()]
@@ -118,29 +118,75 @@ describe('周末入侵 · 时间轴', () => {
   })
 
   /**
-   * **一个窗口只开一场**（2026-09-25 修）：原判据要求"未结束" ⇒ 旗舰被击沉、窗口还没到点时，
-   * 下一拍会**立刻又开一场**（与定稿「每周末一次」＋「只有调试模式才是结束后 1 小时刷新」冲突）。
-   * 现按窗口判：上一场开始至今不足一个窗口（96h）⇒ 不再开新场。
+   * **🔴 开局判据 = "当前有没有进行中的场"**（**船长 2026-10-02 令「甲」**，原话照抄：
+   * 「**一个窗口只开一场：距上一场开始不足 96h ⇒ 不开。进行修改。不应该看间隔，而应该看当前有没有入侵
+   * 正在进行。**」）。
+   *
+   * 沿革：2026-09-25 曾按"窗口（96h）间隔"判（专治"旗舰被打死后下一拍立刻又开一场"）；
+   * **2026-10-02 该判据作废**（`startedAtWallMs` 不一定是某期 T0 —— 调试档写 `nowWallMs`、首场写 22:00
+   * ⇒ 间隔判据会误挡下一期开局）。现口径：**窗口内 ＋ 上一场已结束 ⇒ 下一拍就开新的一场**。
    */
-  it('同一窗口内：上一场已结束也不再开新场（下一个 T0 才开）', () => {
+  it('同一窗口内：上一场**已结束** ⇒ 下一拍立刻再开一场（甲）；跨窗口照旧', () => {
     const fri = new Date(2026, 9, 2, 20, 0, 0, 0).getTime()  // 2026-10-02（首场时段之外，走纯周排期）
     const s = fresh()
     s.exploredGalaxies = [...ctx.galaxies.keys()]
     setStanding(s, 'dsi', 60)
     expect(ensureWeekendEvent(s, ctx, fri + 1 * H)).toBe(true)
     const ev = s.weekendEvent!
-    ev.endedAtWallMs = fri + 3 * H // 打完了，但窗口还开着（到下周一 22:00）
-    expect(ensureWeekendEvent(s, ctx, fri + 4 * H), '同窗口内 ⇒ 不再开第二场').toBe(false)
-    expect(s.weekendEvent, '还是那场（没被换掉）').toBe(ev)
-    /** 跨过一个窗口（下周同一 T0 之后）⇒ 该开下一场 */
-    expect(ensureWeekendEvent(s, ctx, fri + 7 * 24 * H + 1 * H), '下一个 T0 ⇒ 开新场').toBe(true)
+    /** **场还活着 ⇒ 不开**（这就是"看有没有正在进行"那一句的实现，2026-09-27 船长令也在这一条上） */
+    expect(ensureWeekendEvent(s, ctx, fri + 2 * H), '进行中 ⇒ 不开').toBe(false)
+    expect(s.weekendEvent, '还是那场').toBe(ev)
+    /** **打完了（窗口还开着）⇒ 下一拍立刻再开一场**（甲的核心行为；2026-09-25 那条已作废） */
+    ev.endedAtWallMs = fri + 3 * H
+    expect(ensureWeekendEvent(s, ctx, fri + 4 * H), '已结束 ＋ 窗口内 ⇒ 立刻再开').toBe(true)
     expect(s.weekendEvent!.seq, '场次号 +1').toBe(ev.seq + 1)
+    expect(s.weekendEvent!.startedAtWallMs, '新场 T0 仍是本期 T0').toBe(fri)
+    expect(s.weekendEvent!.contributed, '台账归零（新的一场）').toEqual({})
+    expect(s.weekendEvent, '换成了新对象（旧场已结算，不在手上）').not.toBe(ev)
+    /** 连开的每一场**同族**（族只按本期 T0 定） */
+    expect(s.weekendEvent!.family, '同族（甲：族不随场次变）').toBe(ev.family)
+    /** 窗口外 ⇒ 不开（窗口那道判据没动） */
+    const outside = fresh()
+    outside.exploredGalaxies = [...ctx.galaxies.keys()]
+    setStanding(outside, 'dsi', 60)
+    expect(ensureWeekendEvent(outside, ctx, fri + 4 * 24 * H), '窗口外 ⇒ 不开').toBe(false)
+  })
+
+  /**
+   * **甲 修掉的真问题（回归锁）**：`startedAtWallMs` **不是某期 T0** 时（调试档分支写 `nowWallMs`），
+   * 旧的"96h 间隔"判据会**误挡下一期的开局** —— 船长裁甲的动机就是这一条。
+   *
+   * 反例：调试档在**周三 20:00** 开一场、21:00 打完并关掉调试 ⇒ 旧判据下**本周五 20:00 那期被挡住**
+   * （只隔 48h ＜ 96h），整个周末不开入侵。现口径：上一场已结束 ＋ 窗口内 ⇒ 照常开局。
+   */
+  it('非 T0 起点的旧场（调试档写的 nowWallMs）不再挡住本期开局（甲修掉的误挡）', () => {
+    const wed = new Date(2026, 9, 7, 20, 0, 0, 0).getTime()   // 2026-10-07（周三）
+    const fri = new Date(2026, 9, 9, 20, 0, 0, 0).getTime()   // 紧随其后的周五 20:00（下一期 T0）
+    const s = fresh()
+    s.exploredGalaxies = [...ctx.galaxies.keys()]
+    setStanding(s, 'dsi', 60)
+    /** 调试档开出来的那种场：起点 = 任意时刻（周三 20:00），且打完收场 */
+    s.weekendEvent = { ...evOf('galaxy-home', ['galaxy-kor'], wed), endedAtWallMs: wed + 1 * H, family: 'R' }
+    expect(fri - wed, '旧起点距新 T0 只有 48h（＜ 96h ⇒ 旧判据必误挡）').toBe(48 * H)
+    expect(ensureWeekendEvent(s, ctx, fri + 1 * H), '甲：周五 20:00 照常开局').toBe(true)
+    expect(s.weekendEvent!.startedAtWallMs, '新场 T0 = 本期周排期 T0').toBe(fri)
+    const old = s.weekendEvent!
+    /** 交叉验证"看间隔"确实会误挡：同一时刻下，若旧场起点距现在不足 96h，旧判据会 return false */
+    expect(fri + 1 * H - wed, '距"上一场开始"不足 96h ⇒ 旧判据必挡').toBeLessThan(WEEKEND_WINDOW_MS)
+    /** 旧场没结束那一档照旧不开（④ 未被削弱） */
+    const s2 = fresh()
+    s2.exploredGalaxies = [...ctx.galaxies.keys()]
+    setStanding(s2, 'dsi', 60)
+    s2.weekendEvent = { ...evOf('galaxy-home', ['galaxy-kor'], wed), family: 'R' }
+    expect(ensureWeekendEvent(s2, ctx, fri + 1 * H), '旧场还活着 ⇒ 仍然不开').toBe(false)
+    expect(old.family, '（占位：新场对象在手上）').toBe('R')
   })
 
   /**
    * **首场一次性 T0**（船长 2026-09-25 令：「在一会 22 点开始第一次入侵活动」＋二答「只今晚这一次 22:00」）：
-   * 到点即开场（T0 = 22:00，不是本周排期的 20:00）；此后回落周排期 —— 且**不会在同一窗口里
-   * 按 20:00 补开一场**（靠"一个窗口只开一场"那条判据兜住）。
+   * 到点即开场（T0 = 22:00，不是本周排期的 20:00）；此后回落周排期。
+   * ⚠ **2026-10-02 改口径（甲）**：首场结束后**会**在同一窗口里按周排期的 20:00 补开一场
+   * （旧口径靠"一个窗口只开一场"那条判据兜住，该判据已作废）—— 补开的新场起点 = 周排期 T0（09-25 20:00）。
    */
   it('首场一次性 T0 = 2026-09-25 22:00；首场过后回落每周五 20:00', () => {
     const first = WEEKEND_FIRST_T0_WALL_MS
@@ -153,7 +199,13 @@ describe('周末入侵 · 时间轴', () => {
     expect(ensureWeekendEvent(s, ctx, first!), '到点 ⇒ 开首场').toBe(true)
     expect(s.weekendEvent?.startedAtWallMs, 'T0 = 22:00（不是排期的 20:00）').toBe(first)
     s.weekendEvent!.endedAtWallMs = first! + 5 * H
-    expect(ensureWeekendEvent(s, ctx, first! + 6 * H), '首场结束后同窗口内 ⇒ 不补开').toBe(false)
+    /** 甲：首场已结束 ＋ 窗口内 ⇒ 补开；起点回落到**周排期 T0**（那天周五 20:00，早于首场的 22:00） */
+    expect(ensureWeekendEvent(s, ctx, first! + 6 * H), '首场结束后同窗口内 ⇒ 补开（甲）').toBe(true)
+    const weeklyT0 = s.weekendEvent!.startedAtWallMs
+    expect(new Date(weeklyT0).getHours(), '补开那场按周排期 20:00 起算').toBe(20)
+    expect(weeklyT0, '周排期 T0 早于首场 22:00（甲下首场偏移不再挡住补开）').toBeLessThan(first!)
+    expect(weeklyT0, '仍是同一天').toBeGreaterThan(first! - 24 * H)
+    expect(s.weekendEvent!.seq, '场次号 +1').toBe(2)
   })
 
   /**

@@ -37,9 +37,11 @@ const ctx = buildSimContext()
 const GID = 'galaxy-alkali'
 const CORE = 'galaxy-kor'
 /**
- * ⚠ **必须用真 T0 当开场的开始时刻**：`weekendTick` 每拍先走 `ensureWeekendEvent`，而"一个窗口只开一场"
- * 的判据是"上一场开始至今不足一个窗口"⇒ 顺手编一个开始时刻会让它**在窗口到点那一拍另开一场**（把被测
- * 对象整个换掉）。
+ * ⚠ **必须用真 T0 当开场的开始时刻**：`weekendTick` 每拍先走 `ensureWeekendEvent`，而开新场的判据是
+ * "**窗口内 ＋ 上一场已结束**"⇒ 顺手编一个开始时刻会让它**在窗口到点那一拍先收场、再另开一场**
+ * （把被测对象整个换掉）。
+ * （2026-10-02 船长令「甲」之前，这里还多一层"上一场开始至今不足一个窗口（96h）"的兜底；该判据已作废，
+ *  见 `docs/design/invasion-open-gate-20261002.md` —— 本文件三条断言在甲下逐字不变。）
  * ⚠ 还要**避开首场特例那一周**（`WEEKEND_FIRST_T0_WALL_MS` = 2026-09-25 22:00：那一周里
  * `ensureWeekendEvent` 会按"首场"再开一场）⇒ 取 10 月中旬反推的周五 20:00，与跑步日期无关、可复现。
  */
