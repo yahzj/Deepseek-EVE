@@ -189,7 +189,21 @@ describe('R 族势力特色装备：真实战斗', () => {
     const { b, tick } = battleOf(8, { high: ['mod-turret-kin-2'], mid: [BLINK] })
     let sawBlink = false
     let prevDistance = b.distanceM
-    for (let t = 250; t <= 200_000 && b.ended === null; t += 250) {
+    /**
+     * ⚠ **采样步长必须是 100ms（= 引擎基本子步），不能放大到 250**（**2026-10-02 修**）。
+     *
+     * 起因：闪现旋钮 `foeBlinkProcessMs` 由 2000 回调到 **400** 后，本用例一度变红
+     * （读数 `5355 → 5355`，**恰好相等**）。取数（100ms 采样）看清了真因，**机制没坏**：
+     *   ① `t≈100` **我方**挨打 → `markMeBlink` 立刻写 `distanceM`：**5355 → 9372**（闪现生效）；
+     *   ② `t≈133` **敌舰**的闪现到点（`moveAtMs = 旋钮 ÷ 3`）→ `settleBlinkQueue` 把**同一根**
+     *      `distanceM` 写回它自己的目标 **5355**。
+     * 本仓只有**一根距离标量**（空间是 1 维）⇒ 两条闪现同拍相继写它时**后写者胜**，与我方闪现
+     * 是否生效无关。250ms 采样会把 ①② **揉进同一拍**（2~3 个子步）⇒ 净变化 0 ⇒ 假红。
+     * ⚠ 之所以在 2000ms 下没暴露：那时 `moveAtMs = 667`，落在**下一拍**，撞不上。
+     * ⇒ 采样回到引擎子步粒度后，本拍里我方那次写就是**最后一个写者**，"本拍距离 > 上一拍"重新成立，
+     * 且**与旋钮取值无关**（每一步长恰一个子步，跨子步的覆写再也藏不进同一拍）。
+     */
+    for (let t = 100; t <= 200_000 && b.ended === null; t += 100) {
       prevDistance = b.distanceM
       tick(t)
       const stamps = Object.values(b.meBlinks ?? {})

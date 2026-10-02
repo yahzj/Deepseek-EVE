@@ -203,7 +203,7 @@ export function buildBlinkPillarEl(uniq: string, size: number): SVGSVGElement {
  * - 删：`until` 过期的项，摘掉 DOM 并出表。
  *
  * 🔴 **为什么挂在列盒（`.app-bts-col`）而不是单位元素里**（**船长 2026-10-02 第二次报障的第二个根因**）：
- * 单位在"等待段"挂着 `.is-blink-hidden { opacity: 0 }`（整段的 2/3，2000ms 旋钮下是 1333ms），
+ * 单位在"等待段"挂着 `.is-blink-hidden { opacity: 0 }`（整段的 2/3，400ms 旋钮下是 267ms），
  * 而**子元素的不透明度 = 父级 × 自身** ⇒ 挂在里面的光柱**恒为全透明**，怎么调都看不见。
  * 挂到列盒当兄弟节点 ⇒ 不吃单位那层透明度，也顺带不再被单位的 `z-index`/动画上下文影响。
  *
