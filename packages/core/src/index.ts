@@ -269,6 +269,10 @@ export {
   WEEKEND_FAMILY_OVERRIDE,
   weekendFamilyForWindow,
   weekendPeriodIndexOf,
+  /** 2026-10-02 船长令「信号发射器召唤的敌人是随机的（目前只有R和H）」——"做完了的族"唯一登记处
+   *  ＋ 随机抽族（发射器用；`weekendRollOccupation` 的随机兜底同池） */
+  WEEKEND_FINISHED_FAMILIES,
+  weekendRandomFamilyOf,
   // **调试档锁定的入侵族**（2026-10-01 船长令「先让本地调试模式必定出新的R族入侵」）
   WEEKEND_DEBUG_FAMILY,
   weekendLockedFamilyOf,

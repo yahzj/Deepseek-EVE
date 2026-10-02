@@ -4,6 +4,10 @@
  * 船长 2026-09-29 六答：Q2「做个列表之类的，之后有新增入侵就添加选项」·
  * Q3a「和现有规则一样（**随机星系**入侵）」· Q3b「**只能在没有入侵时候使用**」·
  * Q3c「**消耗一个**，不做限制」· Q3d「能获得虚空晶必然声望达标。**不做限制**」。
+ *
+ * 🔴 **2026-10-02 船长令改判**：「**信号发射器召唤的敌人是随机的（目前只有R和H）**」⇒
+ * **势力随机**（池 = `WEEKEND_FINISHED_FAMILIES`，占位族 A/C/G 永不出现）；Q2 那张"选项列表"
+ * 降为**显式覆盖**用（界面仍不提供选择器）⇒ 本文件里"势力 = 列表第一支"那条已按新令改写。
  */
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
@@ -18,10 +22,13 @@ import {
   useInvasionBeacon,
 } from '../src/consumables'
 import {
+  WEEKEND_FAMILIES,
+  WEEKEND_FINISHED_FAMILIES,
   WEEKEND_STANDING_BEACON,
   WEEKEND_STANDING_MAX,
   weekendCoreCandidates,
   weekendHasBuiltStation,
+  weekendRandomFamilyOf,
   weekendStandingGainOf,
 } from '../src/weekendEvent'
 import { weekendWarnCommsOf } from '../src/weekendComms'
@@ -61,7 +68,7 @@ describe('信号发射器 · 使用与拒绝', () => {
     expect(s.weekendEvent).toBeUndefined()
   })
 
-  it('用掉一枚 ⇒ 按现有规则抽一场入侵（随机星系 ＋ 指定势力），并留日志', () => {
+  it('用掉一枚 ⇒ 按现有规则抽一场入侵（随机星系 ＋ **随机势力**），并留日志', () => {
     const s = readyState()
     const r = useInvasionBeacon(s, ctx)
     expect(r.ok, r.ok ? '' : String(r.error)).toBe(true)
@@ -70,10 +77,53 @@ describe('信号发射器 · 使用与拒绝', () => {
     expect(ev, '事件已建立').toBeTruthy()
     expect(ctx.galaxies.has(ev.coreId), '核心星系是真的').toBe(true)
     expect(ev.peripheryIds.length, '外围星系非空').toBeGreaterThan(0)
-    expect(ev.family, '势力 = 列表里选的那一支').toBe(INVASION_BEACON_FAMILIES[0]!.id)
+    /** 🔴 **势力随机**（船长 2026-10-02 令）：落在"做完了的族"里，**且绝不是占位族** */
+    expect(WEEKEND_FINISHED_FAMILIES, '先决：随机池非空').toContain(ev.family)
+    for (const placeholder of ['A', 'C', 'G']) {
+      expect(ev.family, `占位族 ${placeholder} 不该被召唤出来`).not.toBe(placeholder)
+      expect(WEEKEND_FINISHED_FAMILIES, `占位族 ${placeholder} 不该在随机池里`).not.toContain(placeholder)
+    }
+    expect(ev.family, '与"纯函数抽族"同源（同一 (种子, 场次)）').toBe(weekendRandomFamilyOf(s, ev.seq))
     expect(ev.startedAtWallMs, '起点 = 现在（不是本周排期的 T0）').toBe(s.wallMs ?? ev.startedAtWallMs)
     expect(ev.endedAtWallMs, '新场未结束').toBeUndefined()
     expect(s.logs.some((l) => l.textId === 'core.consumable.008'), '启动日志').toBe(true)
+  })
+
+  it('势力是**随机**的：跨场次能同时抽到 R 与 H；同一 (种子, 场次) 可复现', () => {
+    /** 连开多场（每场结束再点一枚），把抽到的族收齐 */
+    const seen = new Set<string>()
+    const s = readyState()
+    for (let i = 0; i < 12; i++) {
+      addWare(s, INVASION_BEACON_ITEM_ID, 1)
+      const r = useInvasionBeacon(s, ctx)
+      expect(r.ok, `第 ${i + 1} 次召唤应成功`).toBe(true)
+      seen.add(s.weekendEvent!.family)
+      /** 收场 ⇒ 下一枚才能用（Q3b：只能在没有入侵时使用） */
+      s.weekendEvent!.endedAtWallMs = (s.weekendEvent!.startedAtWallMs ?? 0) + 1
+    }
+    expect([...seen].sort(), '12 场里 R 与 H 都该出现过（随机而非恒定）').toEqual(['H', 'R'])
+    /** 纯函数：同一个 (种子, 场次) 恒得同一族 */
+    const probe = readyState()
+    expect(weekendRandomFamilyOf(probe, 7)).toBe(weekendRandomFamilyOf(probe, 7))
+    expect(WEEKEND_FAMILIES.length, '族池（含占位族）仍是五支 —— 随机池只是它的子集').toBeGreaterThan(
+      WEEKEND_FINISHED_FAMILIES.length,
+    )
+    console.log(
+      `  [读数] 发射器随机池 = ${WEEKEND_FINISHED_FAMILIES.join('/')}（族池共 ${WEEKEND_FAMILIES.length} 支，占位族不进随机）·` +
+        ` 12 场实测出现：${[...seen].sort().join('/')}`,
+    )
+  })
+
+  it('显式指定仍可用（覆盖随机）：清单 = "做完了的族"逐字一致；表外 id 照旧拒', () => {
+    /** 清单由"做完了的族"派生 ⇒ 两张表不可能漂移（R 族 10-01 做完了却漏登记就是这类漏） */
+    expect(INVASION_BEACON_FAMILIES.map((f) => f.id), '清单与随机池同一份').toEqual([...WEEKEND_FINISHED_FAMILIES])
+    const s = readyState()
+    expect(useInvasionBeacon(s, ctx, { familyId: 'R' }).ok).toBe(true)
+    expect(s.weekendEvent!.family, '显式指定 R ⇒ 就是 R（不吃随机）').toBe('R')
+    s.weekendEvent!.endedAtWallMs = (s.weekendEvent!.startedAtWallMs ?? 0) + 1
+    addWare(s, INVASION_BEACON_ITEM_ID, 1)
+    expect(useInvasionBeacon(s, ctx, { familyId: 'H' }).ok).toBe(true)
+    expect(s.weekendEvent!.family, '显式指定 H ⇒ 就是 H').toBe('H')
   })
 
   it('已经有一场在进行 ⇒ 拒绝且**不消耗**（core.consumable.005）', () => {

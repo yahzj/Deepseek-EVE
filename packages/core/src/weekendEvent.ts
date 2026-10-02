@@ -185,15 +185,29 @@ export const WEEKEND_GAIN_OFFLINE_REPEL = 0.01
 export const WEEKEND_LOCKED_FAMILY: string | null = null
 
 /**
+ * **"做完了的族"**（**唯一登记处**）—— **船长 2026-10-02 令**：「**信号发射器召唤的敌人是随机的
+ * （目前只有R和H）**」里那个"目前只有"的池子，同时也是族循环队列（`WEEKEND_FAMILY_ROTATION`）的来源。
+ *
+ * **口径 = 有自家独立入侵卡的族**（H 墨潮帮 2026-09-24 落地 · R 光环 2026-10-01 落地）；
+ * A/C/G 三族仍是**占位口径**（派生卡只换名字/威胁/奖励，敌人编成还是虫洞那批）⇒ **不进本表**，
+ * 免得玩家抽到打不到真正入侵舰队的场。做一族就加一行（加完记得看族名表 `WEEKEND_FAMILY_NAME_ID`）。
+ *
+ * 两个消费方：
+ * - **族循环**（`weekendFamilyForWindow`：无特意设置时按期顺延）；
+ * - **随机抽族**（`weekendRandomFamilyOf`：信号发射器召唤用；`weekendRollOccupation` 的随机兜底同池）。
+ */
+export const WEEKEND_FINISHED_FAMILIES: readonly string[] = ['R', 'H']
+
+/**
  * **循环敌对势力**（**船长 2026-10-02 令**：「**一会8点开启入侵，设置为R族，下周如果没有特意设置，
  * 就采用循环敌对势力。**」）—— 玩家线**默认**按这条队**逐期顺延**，不必每周手动改。
  *
- * - **只有"做完了的族"进这条队**（H 墨潮帮 · R 光环科技）——A/C/G 仍是占位口径（派生卡只换名字/威胁，
- *   敌人编成还是原来那批），**不进循环**，免得玩家抽到打不到真舰队的场；
+ * - **只有"做完了的族"进这条队**（= `WEEKEND_FINISHED_FAMILIES`）——A/C/G 三族是占位口径，
+ *   **不进循环**，免得玩家抽到打不到真舰队的场；
  * - 顺序 = 数组顺序，第 N 期取 `ROTATION[N % ROTATION.length]`（N 见 `weekendPeriodIndexOf`）；
  * - 想**特意设置某一期** ⇒ 见下面的 `WEEKEND_FAMILY_OVERRIDE`（也支持 `WEEKEND_LOCKED_FAMILY` 全线硬锁）。
  */
-export const WEEKEND_FAMILY_ROTATION: readonly string[] = ['R', 'H']
+export const WEEKEND_FAMILY_ROTATION: readonly string[] = WEEKEND_FINISHED_FAMILIES
 
 /**
  * **循环锚点 = 2026-10-02 20:00（本地墙钟）那一期**——**船长 2026-10-02 令**里"一会 8 点开启入侵、
@@ -1078,13 +1092,35 @@ export function weekendRollOccupation(
   /**
    * 族：**照旧消费一次随机数**（保持子流形状不变），但若"本期族"有值就判成它
    * —— 优先序：**本期族（循环/特意设置）** → **调试族/全线硬锁**（`weekendLockedFamilyOf`）→ 随机。
+   *
+   * ⚠ **随机兜底池 = "做完了的族"**（`WEEKEND_FINISHED_FAMILIES`，**2026-10-02 改**）——原为
+   * `WEEKEND_FAMILIES`（含 A/C/G 三个**占位族**）⇒ 那时随机兜底会把玩家送进"打不到真舰队"的场。
+   * 现口径与船长 2026-10-02 令「**信号发射器召唤的敌人是随机的（目前只有R和H）**」同一把尺。
    */
   const familyRoll = rng()
   const family =
     familyOfWindow ??
     weekendLockedFamilyOf(state) ??
-    WEEKEND_FAMILIES[Math.min(WEEKEND_FAMILIES.length - 1, Math.floor(familyRoll * WEEKEND_FAMILIES.length))]!
+    WEEKEND_FINISHED_FAMILIES[
+      Math.min(WEEKEND_FINISHED_FAMILIES.length - 1, Math.floor(familyRoll * WEEKEND_FINISHED_FAMILIES.length))
+    ]!
   return { coreId, peripheryIds: weekendPeripheryOf(ctx, coreId), family }
+}
+
+/**
+ * **随机抽一支"做完了的族"**（**船长 2026-10-02 令**：「**信号发射器召唤的敌人是随机的
+ * （目前只有R和H）**」）—— 信号发射器专用：**星系**照旧（随机 / 玩家指定），**势力随机**。
+ *
+ * - 池 = `WEEKEND_FINISHED_FAMILIES`（现 R/H）⇒ **绝不吐占位族 A/C/G**；
+ * - **纯函数**：只读 `state.rng.seed`（同一 (种子, 场次) 恒得同一族，可复现），不写档 ⇒
+ *   在"料不够 / 已有入侵"这类拒绝路径上提前调用也**无副作用**；
+ * - 与 `weekendRollOccupation` **各自独立抽**（那条路是"第 2 次抽签"，这里是"第 1 次"）——
+ *   两条路的产物都只依赖 (种子, 场次)，不共享流位置。
+ */
+export function weekendRandomFamilyOf(state: Pick<GameState, 'rng'>, seq: number): string {
+  const pool = WEEKEND_FINISHED_FAMILIES
+  const rng = streamOf(state.rng.seed, seq)
+  return pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))]!
 }
 
 /* ─────────────── 进度（纯函数：给 now 就出结果） ─────────────── */

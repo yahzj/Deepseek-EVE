@@ -17,7 +17,14 @@ import { SYNAPTIC_ACCELERANT_MS, synapticAccelerantActive, skillLevelTimeMs, tra
 import { tuningMul } from './tuning'
 import { securityZoneOf } from './securityZone'
 import { DSI_FACTION_ID, spendableStandingOf } from './expedition'
-import { weekendHasBuiltStation, weekendPeripheryOf, weekendRollOccupation } from './weekendEvent'
+import {
+  WEEKEND_FINISHED_FAMILIES,
+  weekendFamilyNameId,
+  weekendHasBuiltStation,
+  weekendPeripheryOf,
+  weekendRandomFamilyOf,
+  weekendRollOccupation,
+} from './weekendEvent'
 
 /**
  * **高安启动的声望代价**（**2026-09-30 船长令**：「且当玩家在高安使用时候，弹出二次警告，警告玩家
@@ -240,15 +247,16 @@ export function setBoostAutoRenew(state: GameState, on: boolean): CommandResult 
 export const INVASION_BEACON_ITEM_ID = 'invasion-beacon'
 
 /**
- * **可选入侵势力清单**（**船长 2026-09-29 Q2**：「**做个列表之类的，之后有新增入侵就添加选项**」）。
+ * **可指定的入侵势力清单**（**船长 2026-09-29 Q2**：「**做个列表之类的，之后有新增入侵就添加选项**」）
+ * ——**默认用不到**：船长 2026-10-02 令「**信号发射器召唤的敌人是随机的（目前只有R和H）**」⇒
+ * 不传 `familyId` 时**随机抽**（见 `weekendRandomFamilyOf`），本表只服务**显式覆盖**那条路
+ * （界面**不提供选择器**，将来要做再按本表渲染）。
  *
- * ⚠ **这里是唯一登记处**：将来做了第二个入侵族（如 A/C/G），**在表里加一行**，界面与校验自动跟上
- * （界面按这张表渲染列表；`useInvasionBeacon` 用它校验 id）。今天只有 **H 族（墨潮帮）**
- * —— 入侵卡表 `WEEKEND_FOE_CARD_IDS` 目前也只登记了 H 族。
+ * ⚠ **由"做完了的族"派生**（唯一出处 = `WEEKEND_FINISHED_FAMILIES`，族名取既有 `weekendFamilyNameId`）
+ * —— 不再手写一份：R 族 2026-10-01 做完了却漏登记在本表（当时召唤出来永远是 H），正是这类漏。
  */
-export const INVASION_BEACON_FAMILIES: readonly { readonly id: string; readonly nameId: string }[] = [
-  { id: 'H', nameId: 'ui.consumable.002' },
-]
+export const INVASION_BEACON_FAMILIES: readonly { readonly id: string; readonly nameId: string }[] =
+  WEEKEND_FINISHED_FAMILIES.map((id) => ({ id, nameId: weekendFamilyNameId(id) ?? 'core.weekend.025' }))
 
 /**
  * **使用一枚信号发射器**：主动诱发一次入侵。
@@ -286,13 +294,17 @@ export function useInvasionBeacon(
   if (galaxyId !== undefined && beaconTargetBlocked(state, ctx, galaxyId)) {
     return { ok: false, error: '该星系信号被压制，无法使用信号发射器。', errorId: 'core.consumable.010' }
   }
-  const family = INVASION_BEACON_FAMILIES.find((f) => f.id === (familyId ?? INVASION_BEACON_FAMILIES[0]!.id))
-  if (!family) {
+  /**
+   * **显式指定的族**（只有传了 `familyId` 才查表；**不传 = 走随机**，见下面的 `familyIdOfEvent`）。
+   * 传了一个表外的 id（含空串）⇒ 照旧拒 `core.consumable.006`。
+   */
+  const family = familyId !== undefined ? INVASION_BEACON_FAMILIES.find((f) => f.id === familyId) : undefined
+  if (familyId !== undefined && !family) {
     return {
       ok: false,
-      error: `未知的入侵势力：${familyId ?? '(空)'}。`,
+      error: `未知的入侵势力：${familyId === '' ? '(空)' : familyId}。`,
       errorId: 'core.consumable.006',
-      errorParams: { p1: familyId ?? '(空)' },
+      errorParams: { p1: familyId === '' ? '(空)' : familyId },
     }
   }
   /**
@@ -311,6 +323,13 @@ export function useInvasionBeacon(
     }
   }
   const seq = (ev?.seq ?? 0) + 1
+  /**
+   * **势力**（**船长 2026-10-02 令**：「**信号发射器召唤的敌人是随机的（目前只有R和H）**」）：
+   * 不传 `familyId` ⇒ **随机**抽一支"做完了的族"（`weekendRandomFamilyOf`，纯函数、不吃料）；
+   * 传了 ⇒ 显式覆盖（必须在清单内，否则照旧拒 `core.consumable.006`）。
+   * ⚠ 两条落点路**共用**这一个势力：**星系**由落点那条路决定（随机 / 玩家所选），**势力随机**。
+   */
+  const familyIdOfEvent = family?.id ?? weekendRandomFamilyOf(state, seq)
   /* 两条路各走各的：
      · **指定星系** ⇒ 上面那道"目标不能有空间站"的禁令已经判过，这里**直接按玩家所选落点**
        （**2026-09-30 船长令**：「主动对某个星系使用，**只有不能对有空间站的星系使用这一条禁令**」
@@ -318,9 +337,9 @@ export function useInvasionBeacon(
      · **默认** ⇒ 与每周默认入侵同一套：`weekendRollOccupation`（候选集 = 已探索·非高安·无已建副站）。 */
   let rolled: { coreId: string; peripheryIds: string[]; family: string } | null = null
   if (galaxyId !== undefined) {
-    rolled = { coreId: galaxyId, peripheryIds: weekendPeripheryOf(ctx, galaxyId), family: family.id }
+    rolled = { coreId: galaxyId, peripheryIds: weekendPeripheryOf(ctx, galaxyId), family: familyIdOfEvent }
   } else {
-    rolled = weekendRollOccupation(state, ctx, seq)
+    rolled = weekendRollOccupation(state, ctx, seq, familyIdOfEvent)
     if (!rolled) {
       return { ok: false, error: '当前没有可入侵的目标星系。', errorId: 'core.consumable.007' }
     }
@@ -341,7 +360,7 @@ export function useInvasionBeacon(
     seq,
     startedAtWallMs: state.wallMs ?? Date.now(),
     ...rolled,
-    family: family.id,
+    family: familyIdOfEvent,
     contributed: {},
     /* 点火来源留痕（2026-10-01 船长令）：① 高安那场预警信要怀疑玩家并说清扣了声望
        ② 玩家自己点起来的入侵，结算协会声望固定 5 点（不再按贡献 0~15） */
