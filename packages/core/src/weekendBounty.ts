@@ -24,13 +24,19 @@ import {
   weekendDrawFoeCardId,
   weekendGarrisonFoeCardId,
   weekendOccupiedIds,
-  weekendProgressAt,
 } from './weekendEvent'
 import { weekendAmbushSpecOf } from './weekendBattle'
 import type { WeekendBattleSpec } from './weekendBattle'
 
-/** 派生卡 id 前缀（与原卡区分；**永不写入首胜台账**） */
-export const WEEKEND_CARD_PREFIX = 'wk-'
+/**
+ * **2026-10-02 破环搬家**：`WEEKEND_CARD_PREFIX` / `weekendOccupiedLiveAt` 原定义搬进 `weekendEvent.ts`
+ * （它们只读 `state.weekendEvent`，是活动态读数；weekendEvent 不 import 本件与 weekendBattle ⇒
+ * weekendBattle 改从那边读后，`weekendBattle ↔ weekendBounty` 的运行期边清零）。这里**原样再导出**
+ * 保持 encounters / expedition / index 的既有引用不动。
+ */
+export { WEEKEND_CARD_PREFIX, weekendOccupiedLiveAt } from './weekendEvent'
+import { weekendOccupiedLiveAt } from './weekendEvent'
+
 /** 外围入侵舰队的赏金倍率（数值表：奖励 = 该星系原卡 ×1.4） */
 export const WEEKEND_BOUNTY_REWARD_MUL = 1.4
 
@@ -47,14 +53,6 @@ export const WEEKEND_BOUNTY_REWARD_MUL = 1.4
  * - **仍被占**的星系照旧由**入侵舰队卡**替换（`weekendBountyCardsOf`，2026-09-23 设计口径）；
  * - 入侵舰队卡**不给赏金**（收入按进度在结算时发，2026-09-25 口径）。
  */
-
-/** 该星系当前是否处于占领区（核心或外围）且**尚未夺回** */
-export function weekendOccupiedLiveAt(state: GameState, galaxyId: string, nowWallMs: number): boolean {
-  const ev = state.weekendEvent
-  if (!ev || ev.endedAtWallMs !== undefined) return false
-  if (galaxyId !== ev.coreId && !ev.peripheryIds.includes(galaxyId)) return false
-  return weekendProgressAt(state, ev, galaxyId, nowWallMs) < 1
-}
 
 /**
  * **遇袭是否允许**（设计稿口径定稿 #4：被占星系**一律高频遇袭**，**中安、高安都破例**）。

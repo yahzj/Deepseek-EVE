@@ -1082,6 +1082,23 @@ export function weekendProgressAt(
 }
 
 /**
+ * **2026-10-02 破环搬家**（原住 weekendBounty.ts）：`WEEKEND_CARD_PREFIX` / `weekendOccupiedLiveAt`
+ * 这两件只读 `state.weekendEvent`，是**活动态读数**——搬来本件（活动态的家）后，
+ * `weekendBattle ↔ weekendBounty` 的运行期边清零（weekendBattle 改从本件读；weekendBounty 原样再导出）。
+ */
+
+/** 派生卡 id 前缀（与原卡区分；**永不写入首胜台账**） */
+export const WEEKEND_CARD_PREFIX = 'wk-'
+
+/** 该星系当前是否处于占领区（核心或外围）且**尚未夺回** */
+export function weekendOccupiedLiveAt(state: GameState, galaxyId: string, nowWallMs: number): boolean {
+  const ev = state.weekendEvent
+  if (!ev || ev.endedAtWallMs !== undefined) return false
+  if (galaxyId !== ev.coreId && !ev.peripheryIds.includes(galaxyId)) return false
+  return weekendProgressAt(state, ev, galaxyId, nowWallMs) < 1
+}
+
+/**
  * **核心进度读数**（给界面：进度值 ＋ 是否正被门禁卡住 ＋ 还差几个外围）。
  *
  * 2026-09-26 船长令：「入侵活动中，被入侵的星系的星系详细内，在'击退入侵舰队'卡片处显示该星系的

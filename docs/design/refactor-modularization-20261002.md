@@ -236,6 +236,15 @@
 - F9 基线 **21 → 20**。
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
 
+### 批次 3-⑨：weekendBattle 不再依赖 weekendBounty（活动态读数归位 weekendEvent）（2026-10-02）
+
+- `WEEKEND_CARD_PREFIX` / `weekendOccupiedLiveAt`（只读 `state.weekendEvent` 的活动态读数）从
+  weekendBounty.ts 搬到 weekendEvent.ts；weekendBattle 改从 weekendEvent 读 ⇒ 它不再 import
+  weekendBounty。weekendBounty 原样再导出（encounters / expedition / index 引用不动）。
+- 注：这条 2 节点环在批次 3-⑤ 的连带重分解中**已先行消失**；本批是把"battle→bounty"这条仍存在的
+  跨件依赖也拆干净（环数不变，图更瘦）。基线仍 **20**。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、
