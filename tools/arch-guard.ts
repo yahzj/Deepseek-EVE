@@ -120,7 +120,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '势力族色（星图族标签 / 战场敌舰 / 图鉴族徽同源）', symbol: 'FOE_ACCENT', file: 'apps/desktop/src/renderer/src/ui/tones.ts', exported: true },
   { concept: '物品稀有度分档', symbol: 'itemRarityTierOf', file: 'packages/data/src/rarityTier.ts', exported: true },
   { concept: '装备归属档（高/中/低/舰船插件）', symbol: 'rackDimKeyOf', file: 'apps/desktop/src/renderer/src/ui/itemSubs.ts', exported: true },
-  { concept: '技能取消级联基线（只报"因本次取消才失效"的项）', symbol: 'preexistingUnmet', file: 'packages/core/src/engine.ts', exported: false },
+  { concept: '技能取消级联基线（只报"因本次取消才失效"的项）', symbol: 'preexistingUnmet', file: 'packages/core/src/skillQueue.ts', exported: false },
   { concept: '存档清洗白名单（新增随档字段必须两处落笔）', symbol: 'normalizeState', file: 'packages/core/src/save.ts', exported: false },
   { concept: '活动栏「停止/取消」按钮文案（两套外壳共用）', symbol: 'stopLabel', file: 'apps/desktop/src/renderer/src/panels/activityStopLabel.ts', exported: true },
   { concept: '活动栏行「点击去哪」的跳转表（两套外壳共用）', symbol: 'goFor', file: 'apps/desktop/src/renderer/src/ui/activityGo.ts', exported: true },

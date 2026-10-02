@@ -470,6 +470,16 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：零渲染层改动）。
 
+### 批次 4n：engine.ts 首拆——`skillQueue.ts` 技能训练队列域（2026-10-02 · 零行为变化）
+
+- 手法：`advanceSkillQueue`～文件尾 **技能队列整簇 761 行**（队列推进含技能加速自动续用、前置/封锁
+  判定、一键补齐计划、入队/移队/清队、队列视图类型）切接搬入新文件 `skillQueue.ts`（§三合规，
+  BOM/行尾自检过）——engine.ts 蓝图时 3828 → **422 行（−89%）**，只剩主循环与里程碑对账。
+- `HIDDEN_SKILL_IDS` 随迁（留在 engine 会造 engine↔skillQueue 回边）；`advanceSkillQueue` 因主循环
+  仍要调用而转公开；engine 借回 + 原样再导出（含 QueueMovePlan/SkillPrereqGap 等类型）。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：零渲染层改动）。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、
