@@ -1,5 +1,5 @@
 /**
- * **遭遇战（含入侵伏击）里选的目标距离也要记住**（**2026-10-03 船长报障**：
+ * **遭遇战（含入侵伏击）里选的目标距离也要记住**（**2026-10-02 船长报障**：
  * 「**入侵战斗中，我方选择的期望距离不会保存**」）。
  *
  * ## 病根（探针实测）
@@ -54,7 +54,7 @@ function world(desirePref?: number): GameState {
   return s
 }
 
-describe('遭遇战 · 期望距离的写入与记忆（2026-10-03 报障）', () => {
+describe('遭遇战 · 期望距离的写入与记忆（2026-10-02 报障）', () => {
   it('① 普通遭遇战里能改期望距离（修前被拒 `core.expedition.001`）', () => {
     const s = world()
     const r = setBattleDesire(s, PLAYER_DESIRE, ctx)

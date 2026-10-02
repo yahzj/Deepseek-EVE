@@ -1638,7 +1638,7 @@ const meSpeedRef = useRef(200)
   const sliderToDesire = (v: number): number => Math.round(farM - (v / 1000) * (farM - nearM))
   /**
    * 提交一次期望距离：`persist = true` 的调用点 = **松手那一次**与**战术按钮那一次**
-   * （2026-10-03 修：拖动中的节流提交不写盘，收尾必须写——否则拖完立刻关游戏会把这次选择丢掉）。
+   * （2026-10-02 修：拖动中的节流提交不写盘，收尾必须写——否则拖完立刻关游戏会把这次选择丢掉）。
    */
   const commitDesire = (v: number, persist = false): void => {
     const r = engine.battleSetDesireAt(sliderToDesire(v), persist)

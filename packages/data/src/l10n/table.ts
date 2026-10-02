@@ -750,7 +750,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     zh: "效果不足以练完当前这一级时，自动用掉一枚同效果的加速剂；道具用光时自动关闭。离线期间同样生效。",
     en: "When the active dose can no longer cover the level being trained, another dose of the same boost is used automatically; it switches itself off when you run out. Works while offline too.",
   },
-  /* 2026-10-03 船长报障「自动续用不是开关」：按钮文案随状态显示开/关（原先两态都只印「自动续用」） */
+  /* 2026-10-02 船长报障「自动续用不是开关」：按钮文案随状态显示开/关（原先两态都只印「自动续用」） */
   "ui.boost.010": { zh: "自动续用：开", en: "Auto-renew: on" },
   "ui.boost.011": { zh: "自动续用：关", en: "Auto-renew: off" },
   "ui.boost.006": { zh: "持有 ×{p1}", en: "×{p1} on hand" },
