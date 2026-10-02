@@ -36,7 +36,7 @@
 
 | 文件 | 现状 | 目标切法 | 错峰对象 |
 |---|---|---|---|
-| `core/combat.ts`（10193 行） | 敌群生成/伤害结算/特效/统计混居 | 按现有 24 个分区注释切：敌群与生成 → 特效演出 → 伤害与命中 → 统计与图鉴。**4a 已拆：`combatMath.ts`（命中与伤害数学十件）· 4b 已拆：`combatReport.ts`（战报与四档判定五件）** | 二号（闪现演出批） |
+| `core/combat.ts`（10193 行） | 敌群生成/伤害结算/特效/统计混居 | 按现有 24 个分区注释切：敌群与生成 → 特效演出 → 伤害与命中 → 统计与图鉴。**4a 已拆：`combatMath.ts`（命中与伤害数学十件）· 4b 已拆：`combatReport.ts`（战报与四档判定五件）· 4c 已拆：`combatFx.ts`（战斗演出层六件）** | 二号（闪现演出批） |
 | `core/engine.ts`（3828 行） | 大跨步主循环＋命令分发 | 命令分发按域拆（industry/manufacturing/lab…各自注册） | 三号（activity 护栏） |
 | `core/save.ts`（4338 行） | 序列化/归一/迁移一家 | **只允许**把纯函数（归一器）拆出，序列化主体暂不动（存档兼容） | — |
 | `renderer` 两套工业页（1476＋≈2300 行） | 同一域双写 | 先补 HUD 实验室对齐，再抽公共件合流 | 船长目视验收 |
@@ -326,6 +326,17 @@
   `droneRecoveryRateWithBonus` 内部件）——搬走会造 combat↔combatReport 回边，留待后续整簇再动。
 - 连带：`tools/content-check.ts` 的「结算口径契约」按源码扫描 `combat.ts` 找沉船判据单点
   ⇒ 搬移后当场报红（护栏抓到"单点搬家没改指路"）；契约改指 `combatReport.ts`，判据不变。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：零渲染层改动）。
+
+### 批次 4c：combat.ts 三拆——`combatFx.ts` 战斗演出层（2026-10-02 · 零行为变化）
+
+- 手法：`BATTLE_ARRIVAL_FLY_MS` / `BATTLE_ARRIVAL_STAGGER_MS` / `WORMHOLE_FOE_VOLLEY_STAGGER_MS`
+  / `stampFoeArrivalFx` / `pushBattleFx` / `pushBattleNotice` 六件**特效演出层**（纯 BattleState
+  写账，只依赖 state 类型）从 combat.ts 拆到新文件 `combatFx.ts`；combat 借回使用并原样再导出。
+- `pushBattleNotice`（战斗内提示条）原为模块私有——从 combatFx 导出供 combat 值导入，不进入
+  combat 的公开面。noUnusedLocals 闸门抓到 `stampFoeArrivalFx` 在 combat 内部无调用（grep 命中的
+  是注释），值导入改只留再导出。
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：零渲染层改动）。
 
