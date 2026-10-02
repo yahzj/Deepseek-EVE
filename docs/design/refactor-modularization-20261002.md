@@ -387,6 +387,18 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：零渲染层改动）。
 
+### 批次 4g-2：combat.ts 八拆——`createPlayerSpec` 主件搬入 playerSpec.ts（2026-10-02 · 零行为变化）
+
+- 手法：`createPlayerSpec` 整块（含双注文，665 行）用 .NET 显式 UTF-8 行级切接搬入 playerSpec.ts
+  （§三合规；搬后 BOM/行尾/乱码三自检全过）；连带搬入它独用的 `AMMO_IDS`/`ammoIdFor` 与两边共用的
+  `DRONE_SKILL`/`droneSkillLv`/`MY_WEB_RANGE_M`/`WEB_BREAK_DIST_M`（后者留在 combat 会造
+  combat↔playerSpec 回边）。
+- 类型 `UnitSpec`/`WeaponSpec` 仍从 combat 借（`import type`，不构成运行期环，F9 实测 0 环）。
+- combat 侧清理 8 个因搬家而闲置的 import（shipCategoryKeyOf/plugModulesOf/cpuBudgetOf/curveMult/
+  familyModules/fittedCpuUsed/gapCombine/weightedSum/RESIST_FLOOR），noUnusedLocals 全数抓出。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：零渲染层改动）。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、

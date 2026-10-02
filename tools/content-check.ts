@@ -1844,6 +1844,8 @@ for (const m of MODULES) {
   {
     const combatPath = 'packages/core/src/combat.ts'
     const combatSrc = readSrc(combatPath)
+    // 2026-10-02 批次 4g：createPlayerSpec 迁到 playerSpec.ts ⇒ 基准账入账点随它搬家，契约改扫新家
+    const playerSpecSrc = readSrc('packages/core/src/playerSpec.ts')
     const debuffLines = combatSrc.split('\n').filter((l) => l.includes('const foesForDebuff ='))
     check(
       debuffLines.length === 1 && debuffLines[0]!.includes('activeFoeSpecsOf(anomaly, bal, battle.waveIdx)'),
@@ -1875,11 +1877,11 @@ for (const m of MODULES) {
         `带射程加成的武器被多压（船长例③的加法口径失效）`,
     )
     {
-      const ledgerPushes = (combatSrc.match(/refs\?\.weaponRanges\?\.push\(/g) ?? []).length
-      const weaponPushes = (combatSrc.match(/^\s*weapons\.push\(\{/gm) ?? []).length
+      const ledgerPushes = (playerSpecSrc.match(/refs\?\.weaponRanges\?\.push\(/g) ?? []).length
+      const weaponPushes = (playerSpecSrc.match(/^\s*weapons\.push\(\{/gm) ?? []).length
       check(
         ledgerPushes === weaponPushes && ledgerPushes >= 4,
-        `干扰压制口径契约：${combatPath} 的基准账入账点（\`refs.weaponRanges.push\`）必须与武器条目 push ` +
+        `干扰压制口径契约：playerSpec.ts 的基准账入账点（\`refs.weaponRanges.push\`）必须与武器条目 push ` +
           `**逐条对齐**（基础舰炮 / 炮台·导弹 / 激光 / 每架无人机）——` +
           `实际 账 ${ledgerPushes} 处 · 武器 ${weaponPushes} 处（少一条 ⇒ 后面所有武器的加成反解整体错位）`,
       )
