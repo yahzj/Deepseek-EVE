@@ -196,6 +196,9 @@ import {
   bumpIronmanSeq,
   // 2026-09-23 周末入侵（M1-b：引擎每拍推进入侵时间轴）
   weekendTick,
+  // 2026-10-02 船长令「入侵补偿批」：判一次（makeup/beacon）＋ 暗期开一场光环补场（幂等，每拍调）
+  applyWeekendCompensation,
+  openWeekendMakeupIfDue,
   // 2026-09-25 修「快进不刷新入侵」：入侵时钟 = 真实墙钟与游戏模拟墙钟取大者（见周末模块的 weekendClockOf）
   weekendClockOf,
   weekendBountyCardsOf,
@@ -1206,13 +1209,26 @@ export class GameEngine {
      */
     this.settleWeekendPrize(wallNow)
     /**
+     * **入侵补偿批 · 判定与发放**（**船长 2026-10-02 令**）：每拍一次、**幂等** ——
+     * 第一次判成哪条路就落盘（`weekendCompensation.track`）；`beacon` 那条当场入仓 1 枚信号发射器
+     * ＋ 一条系统日志。位置放在 `weekendTick` **之前**：这样同一拍里补场（`makeup` 那条，
+     * 见下面 `openWeekendMakeupIfDue`）读到的一定是"已判定"的状态。
+     */
+    applyWeekendCompensation(this.state, wallNow)
+    /**
      * ⚠ **第 5 参 = 旗舰战是否正在进行**（**船长 2026-09-27 令**：「**到点的延期到玩家打完1分钟后**」）：
      * 窗口到点那一刻还有没打完的旗舰战 ⇒ `weekendTick` ④ 不结束本场、改为顺延到"打完 + 60 秒"
      * （判据与战斗界面、章鱼停工同源：`weekendFlagshipBattleActive`），顺延期间章鱼人也不判得手。
      */
     const weekend = weekendTick(this.state, this.ctx, wallNow, lastSeenWallMs, weekendFlagshipBattleActive(this.state))
+    /**
+     * **入侵补偿批 · 补场**（**船长 2026-10-02 令**「**下周三增设一次光环的入侵**」）：放在 `weekendTick`
+     * **之后** —— 本拍刚收场的那一场（`endedAtWallMs` 已写）不该挡住补场；开出时走与常规开局
+     * **同一套**日志与警报演出（下面的 `weekend.started || makeupStarted`）。幂等：开过一次就不再开。
+     */
+    const makeupStarted = openWeekendMakeupIfDue(this.state, this.ctx, wallNow)
     this.refreshAnomaliesView() // 被占星系在界面侧换成入侵舰队（每拍刷新，开销极小）
-    if (weekend.started) {
+    if (weekend.started || makeupStarted) {
       addLog(this.state, 'system', tr('ui.weekend.001'), 'ui.weekend.001')
       /** **入侵警报演出**（船长 2026-09-25 令）：开局立一次性待办 ⇒ 界面放红灯闪烁，演完再弹通讯 */
       this.invasionAlarmPending = 'start'

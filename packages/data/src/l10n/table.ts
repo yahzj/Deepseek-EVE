@@ -2472,6 +2472,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.weekend.042": { zh: "你在本期的旗舰战中亲手击沉了入侵旗舰。", en: "You personally sank the invasion flagship in this invasion's flagship battle." },
   /* 2026-09-27 船长令：主力舰队打赢 ⇒ 往该星系入侵残骸场里放一件稀有残骸（打捞时稀有池优先） */
   "core.weekend.043": { zh: "✦ 击退「{p1}」的入侵舰队：残骸场里留下 {p2} 具稀有残骸 —— 可前往该星系打捞（回站用回收炉解体可得额外战利品）。", en: "✦ Invasion fleet repelled at “{p1}”: {p2} rare wreck(s) left in the debris field — salvage there (recycle back at the station for extra spoils)." },
+  /* 2026-10-02 船长令「其余玩家发放一个信号发射器」——补偿批的发放日志（`weekendCompensation.ts`） */
+  "core.weekend.045": { zh: "入侵补偿：信号发射器 ×1（已存入物品仓库）。", en: "Invasion compensation: 1 Signal Beacon issued (stored in item storage)." },
   /* ── 2026-09-23 围剿批（第 7 层起逐回合刷怪）：core 侧新增的日志与拒因 ── */
   "core.wormholeSpawn.001": { zh: "🕳 围剿者扑到你所在的位置：先确认，再迎战。", en: "🕳 A sweep ship has pounced on your position: confirm, then engage." },
   "core.wormholeBattle.032": { zh: "围剿战只在网格层成立。", en: "Sweep battles only happen on the grid." },
