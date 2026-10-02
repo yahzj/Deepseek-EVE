@@ -449,6 +449,17 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：零渲染层改动）。
 
+### 批次 4l：combat.ts 十三拆——`foeSpecs.ts` 敌群建档与增援整簇（2026-10-02 · 零行为变化）
+
+- 手法：`敌方编队头注`～`seedUnit` **敌群建档/增援/距离机动整簇 1549 行**切接搬入新文件
+  `foeSpecs.ts`（§三合规，BOM/行尾自检过）——combat.ts 至此 10485 → **5457 行（−48%）**。
+- 连带小搬：`initFoeDronePools`/`initFoeRepairPulses`（combat 的 advanceBattleFor 与建档簇共用）、
+  `FOE_REPAIR_THREAT_REF`（含编译期一致性校验）随之迁入；11 件原模块私有件因 combat 各结算点
+  仍要调用而转公开（不进 combat 公开面）。
+- combat 借回 + 原样再导出；14 个因搬家而闲置的 import/类型清理（noUnusedLocals 全数抓出）。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：零渲染层改动）。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、
