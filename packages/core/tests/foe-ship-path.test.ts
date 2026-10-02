@@ -451,7 +451,7 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       { id: 'foe-h-ink-flagship', tier: 5, speed: 310 }, // 155 × 2.0
       // R 族（光环 · 2026-10-01 船长令）：**速度按「标准同级舰 ×1.1」统一** ⇒ 实速 = 档基准 × 1.1；
       // 五档全在**本族速带 0.55~1.35×** 内（船长改速度后速带随之放宽，仍无需破例白名单）
-      { id: 'foe-r-corona-glint', tier: 1, speed: 374 }, // 340 × 1.1
+      { id: 'foe-r-corona-glint', tier: 1, speed: 422 }, // 340 × 1.24（2026-10-03 船长令提速：374 → 422；本族速带同日放宽到 0.55~1.45×）
       { id: 'foe-r-corona-echo', tier: 2, speed: 325 }, // 295 × 1.1（324.5 → 325）
       { id: 'foe-r-corona-overlay', tier: 3, speed: 284 }, // 258 × 1.1
       { id: 'foe-r-corona-dusk', tier: 4, speed: 226 }, // 205 × 1.1（225.5 → 226）
