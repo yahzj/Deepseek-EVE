@@ -269,15 +269,21 @@ describe('闪烁过载装置：真实战斗里的护盾回满与结构代价', (
      * ⚠ **机制与数据一个字都没动**（船长 2026-10-03 指出，我先前"要调参"的措辞有误、已收回）：
      * 扣减恒 = `hpMax.h × 5%`（**百分比**，与船型无关）⇒「减量 = cost 的整数倍」与
      * 「**100% ÷ 5% = 第 20 次必然归零自毁**」对任何舰级都成立 —— 读数已证实（20 次 / 归零）。
+     *
+     * 🔴 **2026-10-03 第六次调编成（船长令「将敌人的闪现冷却时间延长到12秒」）**：冷却 5 → 12 秒
+     * ⇒ 同一场里回响级**能闪的次数少了**（闪一次要等 12 秒）⇒ 原 **48 舰**编成只跑到 **14 次扣减**
+     * （战斗 173.5 s 就结束，够不到第 20 次）。取数扫了 4 档编成 × 2 档强度（探针实测）：
+     * 48 舰=14 次 · **64 舰=20 次（自毁，战斗 246.8 s）** · 96/128 舰同样 20 次但战斗更久。
+     * ⇒ 取最小够用档 **64 舰**（与"取最小够用档"的旧口径一致），**判据一个字不改**（仍是 20 次归零）。
      */
     const st7 = createInitialState({ nowWallMs: 0, seed: 11 })
     const ids7: string[] = []
-    for (let i = 0; i < 48; i++) ids7.push(addShipToFleet(st7, 'sh-thresher'))
+    for (let i = 0; i < 64; i++) ids7.push(addShipToFleet(st7, 'sh-thresher'))
     st7.shipId = ids7[0]!
     /** 长射程（7,000m 级）＋ **件必须入 `moduleBay` 才算装上**（缺了装配不生效） */
     for (const id of ids7) st7.fleet[id]!.fitted = { high: ['mod-laser-3'], mid: [], low: [] }
     st7.moduleBay['mod-laser-3'] = 1
-    for (const a of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) st7.warehouse.items[a] = 90_000
+    for (const a of ['ammo-kinetic-l', 'ammo-explosive-l', 'ammo-plasma-l']) st7.warehouse.items[a] = 180_000
     const b7 = startFleetBattleFor(st7, ctx, ids7, CARD_T3, 0, null, { depth: 4, kind: 'node', waves: 1 }, {
       strengthMul: 16,
     })!

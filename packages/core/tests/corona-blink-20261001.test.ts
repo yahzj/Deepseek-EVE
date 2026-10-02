@@ -8,7 +8,8 @@
  * 口径（船长同日逐条裁定）：
  * - **挂哪几档**：选「**乙：五档全带**」（T1~T5 每档都挂）；
  * - **参数与触发**：距离与触发选「**甲**」= 一次拉开 **2,000 m** · **本体被命中时触发**；
- *   🔴 **冷却 5 秒**（船长 2026-10-01 令「**全族闪现的间隔下调到5秒**」，原 12 秒）。
+ *   🔴 **冷却 12 秒**（**2026-10-03 船长令**「**将敌人的闪现冷却时间延长到12秒**」；
+ *   区间沿革 = 12 秒 → 2026-10-01「全族闪现的间隔下调到5秒」→ **本令回到 12 秒**）。
  *
  * 机制要点：本仓战斗**不做二维坐标**（只有 `BattleState.distanceM` 一个标量）⇒「闪现」= **距离突变**。
  * 冷却态记在 `BattleState.foeBlinks[tag]`（`save.ts` 登记 `kind: 'runtime'`，与 `foeCharges` 同口径）。
@@ -40,10 +41,10 @@ const R_SHIP_IDS = [
 ] as const
 
 describe('光环科技 · 闪现跃迁仪：件定义与解析', () => {
-  it('① 件参数 = 船长选「甲」：一次 2,000 m · 冷却 5 秒；解析出 foeBlink', () => {
+  it('① 件参数 = 船长选「甲」：一次 2,000 m · 冷却 12 秒；解析出 foeBlink', () => {
     const r = resolveFoeMounts([FOE_MOUNT_IDS.coronaBlink])
     expect(r.unknown, '件 id 必须已登记（否则体检判红）').toEqual([])
-    expect(r.foeBlink, '闪现参数应原样带给单位').toEqual({ distanceM: 2_000, cooldownMs: 5_000 })
+    expect(r.foeBlink, '闪现参数应原样带给单位').toEqual({ distanceM: 2_000, cooldownMs: 12_000 })
     console.log(`  [读数] 瞬光跃迁仪：拉开 ${r.foeBlink!.distanceM} m · 冷却 ${r.foeBlink!.cooldownMs / 1000} 秒`)
   })
 
@@ -74,7 +75,7 @@ describe('光环科技 · 五档壳体（船长选「乙：五档全带」＋ �
     const specs = createFoeSpecs(card, bal, {})
     expect(specs.length).toBeGreaterThan(0)
     for (const sp of specs) {
-      expect(sp.foeBlink, '本卡五艘都应带闪现参数').toEqual({ distanceM: 2_000, cooldownMs: 5_000 })
+      expect(sp.foeBlink, '本卡五艘都应带闪现参数').toEqual({ distanceM: 2_000, cooldownMs: 12_000 })
     }
     // 对照：H 族那四张卡一件都不带（零行为变化）
     const hCard = ctx.anomalies.get('ink-harass')!
@@ -105,7 +106,7 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
     }
   }
 
-  it('⑤ 跑满一场：真的闪过（foeBlinks 里出现冷却戳），且冷却戳 = 触发时刻 + 5 秒', () => {
+  it('⑤ 跑满一场：真的闪过（foeBlinks 里出现冷却戳），且冷却戳 = 触发时刻 + 12 秒', () => {
     const { b, tick } = coronaBattle()
     let sawBlink = false
     for (let t = 500; t <= 120_000 && b.ended === null; t += 500) {
@@ -113,10 +114,10 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
       const stamps = Object.values(b.foeBlinks ?? {})
       if (stamps.length > 0) {
         sawBlink = true
-        // 冷却戳必须是「某个 500ms 整数拍的 lastTickGameMs + 5,000」
-        // ⚠ 2026-10-01 船长令把全族闪现间隔由 12 秒下调到 **5 秒**（件定义 `cooldownMs: 5000`）——
-        //   本行判据与注释原写 12 秒，随该令改正（判据本身当时就是 5,000，只是文字没跟上）。
-        for (const v of stamps) expect((v - 5_000) % 500, '冷却戳 = 触发时刻 + 5 秒').toBe(0)
+        // 冷却戳必须是「某个 500ms 整数拍的 lastTickGameMs + 12,000」
+        // ⚠ 沿革：2026-10-01 令把间隔由 12 秒下调到 5 秒（本行当时随之改成 5,000）；
+        //   🔴 **2026-10-03 船长令「将敌人的闪现冷却时间延长到12秒」⇒ 判据随令改回 12,000**。
+        for (const v of stamps) expect((v - 12_000) % 500, '冷却戳 = 触发时刻 + 12 秒').toBe(0)
         break
       }
     }
