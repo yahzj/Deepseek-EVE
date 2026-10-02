@@ -1376,6 +1376,36 @@ html[data-locale='en'] body {
 
 }
 
+/* ═══════════ 星图缩放 ＋ 星系判定范围（**2026-10-02 船长令**）═══════════════════
+   船长原话：「玩家还反应，手机端，星图界面各个星系判定范围过小（尤其是未探索的星系），几乎点不中/
+   点了没反应。建议星图和虫洞探索一样允许放大。并扩大判定范围。」
+   **两件要一起做才够**：判定圆 16 单位在手机下约 14 物理像素，仍低于「手指可点」的 44px 经验线；
+   再叠 2～3 倍放大才够得着。缩放本身走**改 viewBox**（见 `panels/Expedition.tsx`），
+   ⇒ 节点/标签/连线/判定圆一起变大，DOM 结构一行未动。 */
+
+/* **判定圆**：不可见、只吃点击 —— 原先可点范围就是圆点本身（未探索 r=7），手机旋转模式再 ×0.7033
+   ⇒ 只剩几个物理像素。半径 16 的安全上限依据见 `panels/Expedition.tsx` 的 `MAP_HIT_R` 注释。 */
+.app-map-hit { fill: transparent; pointer-events: all; }
+
+/* 缩放控件：形态**复刻虫洞探索地图那一套**（`.app-wh-zoom-btn`），只是改成横排；
+   摆在本工具栏最右端（`margin-left: auto` 推过去，不挤那三档显示模式按钮）。 */
+.app-map-zoom { display: inline-flex; align-items: center; gap: var(--wui-sp-4); margin-left: auto; }
+.app-map-zoom-btn {
+  width: 30px; height: 26px; padding: 0; font-family: inherit; font-size: var(--wui-fs-base); font-weight: 600;
+  color: rgb(var(--wui-text)); background: rgb(var(--wui-bg-hover) / 0.6);
+  border: 1px solid rgb(var(--wui-map-minor) / 0.35); border-radius: var(--wui-sp-5); cursor: pointer;
+}
+.app-map-zoom-btn:hover:not(:disabled) { border-color: rgb(var(--wui-accent) / 0.55); background: rgb(var(--wui-slot) / 0.7); }
+.app-map-zoom-btn:disabled { opacity: 0.4; cursor: default; }
+.app-map-zoom-btn.is-text { width: auto; min-width: 30px; height: 24px; padding: 0 var(--wui-sp-6); font-size: var(--wui-fs-2xse); font-weight: 400; }
+.app-map-zoom-val { min-width: 34px; text-align: center; font-size: var(--wui-fs-2xse); color: rgb(var(--wui-dim)); }
+
+/* 拖图（与虫洞地图同款）：**只在放大之后**才给"可拖"语义 —— 适应态没有可拖的余地，给了会误导。
+   ⚠ `touch-action: none` **必须有**（虫洞地图那边也有）：触屏上若留着 `auto`，浏览器会把这一次触摸
+   当成滚动手势、在越过起拖阈值之前就把指针流 `pointercancel` 掉 —— 实测表现为"拖了但地图纹丝不动"。
+   只在放大后加：适应态本来就没得拖，不必抢走正常滚动。 */
+.app-starmap.is-zoomed { cursor: grab; touch-action: none; }
+.app-starmap.is-zoomed.is-panning { cursor: grabbing; }
 /* 敌族标签（2026-09-11 船长：按敌族划分颜色、标签化展示，与安全等级色阶明显区分）——
    颜色由各族修饰类给出，rect/text 一律 currentColor，遵守「视觉物件走 SVG」纪律 */
 
@@ -9366,6 +9396,19 @@ html[data-locale='en'] body {
 
 /* AI 活动图标数徽标（船长 2026-09-05：AI 不逐条显示，用 🤖×N 表示在活动数；点击跳 AI 指挥中心） */
 
+/* ── 活动栏「最小化」（**2026-10-02 船长令**）────────────────────────────────────
+   船长原话：「给旧版界面的活动窗口添加个最小化的按钮，点击后活动窗口高度缩小，只显示标题
+   （写着活动的那一行）」，补答「最小化按钮要放到最左侧」。
+   ⚠ **收起本身不需要任何布局规则**：收起 = 下面两组**整块不渲染** ⇒ 盒子按内容自然只剩标题行高
+   （它本来就是 `flex: 0 1 auto` + `max-height: 100%`）。所以这里只有那枚按钮的样式。
+   形态照同族小图标按钮（`.app-activitybar-ai`）写：透明底 + 悬停才浮出边框。 */
+.app-activitybar-min {
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; padding: 0; line-height: 1; font-family: inherit; font-size: var(--wui-fs-2xse);
+  color: rgb(var(--wui-dim)); background: transparent; border: 1px solid transparent;
+  border-radius: var(--wui-sp-4); cursor: pointer;
+}
+.app-activitybar-min:hover { color: rgb(var(--wui-text)); border-color: rgb(var(--wui-border)); background: rgb(var(--wui-bg-hover) / 0.6); }
 .app-activitybar-ai {
 
   flex-shrink: 0;
