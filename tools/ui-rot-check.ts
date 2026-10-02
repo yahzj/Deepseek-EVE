@@ -40,7 +40,7 @@ type Rule = { sel: string; decl: string; media: string; line: number }
  * （负责人一旦丢了旋转规则，这里立刻变红，不是白名单黑洞）。
  */
 const COMPANION: Record<string, string> = {
-  // App.tsx: `<div className="app-modal app-settings-modal">` —— 尺寸归 .app-modal 管
+  // panels/appSettings.tsx（2026-10-02 批次 4t 从 App.tsx 拆出）：`<div className="app-modal app-settings-modal">` —— 尺寸归 .app-modal 管
   'app-settings-modal': 'app-modal',
 }
 

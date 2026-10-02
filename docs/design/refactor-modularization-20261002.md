@@ -535,6 +535,18 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ ·
   ui:rot-check ✅ · 构建 ✅。
 
+### 批次 4t：App.tsx 首拆——`panels/appSettings.tsx` 设置与日志/性能浮层域（2026-10-02 · 零行为变化）
+
+- 手法：`gameClock`～`PerfHud` **整簇 616 行**（事件日志偏好域：时钟/LOG_KINDS 四表/单选过滤/localStorage
+  落盘 · 设置面板：缩放/字号/背景/配色/存档/调试/布局 · 性能浮层 PerfListener/PerfHud）切接搬入新文件
+  `panels/appSettings.tsx`（§三合规：LF 行尾、无 BOM）——App.tsx **2469 → 1853 行（−616）**。
+- 零环保证：appSettings 不 import App（类型 `LayoutKind` 走 ui/AppShell）⇒ App 单边借回 13 个符号，
+  F9 实测仍 0 环。孤儿 import（spaceBg 全件/THEME 四件/RefObject/LogKind 等）随迁清理。
+- 护栏跟随：`tools/ui-subs-check.ts` 直读豁免 `App.tsx` → `panels/appSettings.tsx`（KIND_LABEL 自定义表随迁）；
+  `tools/ui-rot-check.ts` COMPANION 注释改指新文件（app-settings-modal 尺寸归 .app-modal，规则未动）。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ ·
+  ui:rot-check ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、

@@ -200,7 +200,7 @@ const RAW_LABEL_SYMBOLS: Record<string, string> = {
 /** 豁免：这些文件里出现上面的符号是**对的**（逐条写理由；渲染层其它文件一律不许） */
 const ALLOW_RAW_LABEL: Record<string, string> = {
   'ui/labelsText.ts': '本地化单点实现本身 —— 它就是要读 core 的中文表/键，再映射到 l10n id',
-  'App.tsx': '`KIND_LABEL` 是本文件**自定义**的日志分类名表（不是 core 导出的那张），与本地化无关',
+  'panels/appSettings.tsx': '`KIND_LABEL` 是本文件**自定义**的日志分类名表（不是 core 导出的那张；2026-10-02 批次 4t 随设置域从 App.tsx 迁来），与本地化无关',
   'ui/itemSubs.ts': '本文件自己定义 `RACK_LABELS`（键→l10n id，**已本地化**）；' +
     '`SHIP_TIER_SUBS.label` 里的 core `shipSizeLabel` 只是**中文兜底**（渲染一律走 `subText(id)` → `shipTierText`）',
 }
