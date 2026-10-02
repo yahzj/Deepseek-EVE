@@ -156,15 +156,18 @@
 既有的 R 族四件挂载件（`foe-mount-corona-*`）与「叠光装置」那套装机口径（`foeMounts` → `foeSpecs` →
 `combat` 消费单点 → 手册 `mountEffectText`）；**无跨模块**。
 
-## 九、合入状态（2026-10-03 · ⚠ **待协调**）
+## 九、合入状态（2026-10-03 · ✅ **已合入 main**）
 
-- 本批已提交在 **`d2/workspace`**（rebased 到当时的 main `30806945` 之上，5 笔：三笔文档 ＋ 一笔落码）；
-  **rebase 后已重跑全量闸门**（typecheck / core 290·3034 / content:check / l10n:check / l10n:params /
-  ui:rot-check / arch:guard / build）⇒ 全绿（§八 的读数就是 rebase 后的）。
-- 🔴 **未能合入 main**：`git -C 主树 status` 显示主树有**在途未提交改动**（5 个文件：
-  `pages/SkillsTreePage.tsx` · `styles.css` · `data/items.ts` · `data/l10n.ts` · `data/l10n/table.ts`，
-  内容是"技能加速面板抬头条件化＋行内效果说明"那一批）。按 **§4「确认主树干净才 merge」**：
-  **停手不并**，只读观察。⚠ 其中 `l10n/table.ts` 与本批改的是**同一个文件** ⇒ 机械上也并不进去
-  （git 会以"本地改动会被覆盖"拒绝）。
-- **建议**：等主树那批提交后，由二号/三号 `git merge --ff-only d2/workspace`（本分支已基于当前 main，
-  届时只需再 rebase 一次并重跑闸门），随后在主树 `npm run build` ⇒ 船长本地即可实测。
+- 本批落在 **`d2/workspace`**，已 **rebase 到 main 的 `ed4277bf`**（一号那批"技能加速"提交后）并重跑全量闸门
+  （typecheck / core **290·3035** / content:check / l10n:check / l10n:params / ui:rot-check / arch:guard / build）⇒ 全绿。
+- ✅ **`git merge --ff-only d2/workspace` 已执行** ⇒ **main = `e84d1871`**（含本批 8 笔：文档 ＋ 落码 ＋ 按拍快照裁定），
+  主树工作区仍干净；**未推送 origin**（推送闸门：等船长验收）。
+- ✅ **主树已重建**：`npm run build` ⇒ `out/renderer/assets/index-DrgwZ-sj.js` ⇒ **船长本地即含本批**。
+- **合入受阻的历史（留档）**：首次尝试时主树有在途未提交改动（技能加速那批 7 个文件、含同文件
+  `l10n/table.ts`）⇒ 按 §4「确认主树干净才 merge」**停手不并**、只读观察；一号提交后（`ed4277bf`）
+  再走一遍 rebase ＋ 闸门 ＋ ff 合入 ⇒ 顺利完成。
+
+## 十、仍待船长校准（唯一一条）
+
+- **三连发的净 DPS**：按船长口径一轮 ×0.9；另因一轮多占 200ms 相位 ⇒ 长期 DPS ≈ **×0.87**。
+  要"长期恰好 ×0.9"就把 `shotDmg` **156 → 161**（一句令、一行数据）。**默认不动**。
