@@ -7,6 +7,7 @@
  * 等既有引用零改动。
  */
 import type { BattleBalance, DamageResists, DamageType } from './types'
+import type { BattleState } from './state'
 
 /** 三层血量形状 */
 export interface Hp3 {
@@ -205,4 +206,10 @@ export function applyDamage(
   }
   const after = next.s + next.a + next.h
   return { hp: next, dealt: Math.max(0, before - after) }
+}
+
+/** 单位存活判据（三层血任一 > 0）（2026-10-02 批次 4h 从 combat.ts 迁来：combat 与 combatRepair 共用） */
+export function isAlive(b: BattleState, tag: string): boolean {
+  const u = b.units[tag]
+  return !!u && (u.hp.s > 0 || u.hp.a > 0 || u.hp.h > 0)
 }

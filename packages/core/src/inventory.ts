@@ -356,3 +356,17 @@ export function loadWarehouseToCargoFit(state: GameState, itemId: string, ctx: S
   addItem(state, itemId, amount)
   return amount
 }
+
+/** 从**指定船**的货舱扣件（返回实际扣到的数量；船不存在/冻结货舱/数量不足 ⇒ 按现有扣，可能为 0）
+ * （2026-10-02 批次 4h 从 combat.ts 迁来：combat 与 combatRepair 共用，货舱操作回货舱的家） */
+export function removeCargoOfShip(state: GameState, shipId: string, itemId: string, units: number): number {
+  const cargo = cargoOfShip(state, shipId)
+  if (!cargo || Object.isFrozen(cargo)) return 0
+  const have = Math.floor(cargo[itemId] ?? 0)
+  const take = Math.min(have, Math.max(0, Math.floor(units)))
+  if (take <= 0) return 0
+  const left = have - take
+  if (left > 0) cargo[itemId] = left
+  else delete cargo[itemId]
+  return take
+}

@@ -399,6 +399,19 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：零渲染层改动）。
 
+### 批次 4h：combat.ts 九拆——`combatRepair.ts` 维修与护盾脉冲整簇（2026-10-02 · 零行为变化）
+
+- 手法：layerAmpOf ~ pulseRepairsFor **整簇 713 行**（维修装置/护盾场/充能脉冲全族＋私有助手）
+  用 .NET 显式 UTF-8 行级切接搬入新文件 `combatRepair.ts`（§三合规，BOM/行尾自检过）；
+  `REPAIR_PULSE_MS` 随之迁入。combat 借回使用并原样再导出（UI/用例引用零改动）。
+- 连带三件小搬：`isAlive`（存活判据）→ combatMath（combat/combatRepair 共用）；`removeCargoOfShip`
+  → inventory（货舱操作回货舱的家）；`pulseRepairsFor` 因 advanceBattleFor 仍要调用而转公开
+  （不进 combat 公开面）。
+- 解锁前提：4g-2 把 `createPlayerSpec` 搬走后，簇内 `layerAmpOf` 对它的依赖变跨模块单向
+  ⇒ 不再有 combat↔新模块回边（F9 实测仍 0 环）。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：零渲染层改动）。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、
