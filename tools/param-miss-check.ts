@@ -31,9 +31,12 @@
  * 船长令「**修，可以转**」⇒ 五处正文按表文对齐 ＋ 本判据转正。
  * 局限：正文是**变量**、或模板里**嵌套反引号** ⇒ 静态判不出（跳过、不报）。
  *
- * 用法：`npx tsx tools/param-miss-check.ts`（等价 `npm run l10n:params`）· **只读**，不写文件。
- * 退出码：命中 > 0 ⇒ 1（可挂进合入前闸门）；0 ⇒ 0。
+ * **第五段判据（2026-10-02 加 · 列表槽契约）**：见文件内"第五段判据"一节的头注 ——
+ * 中文顿号不再焊进参数值（`${names.join('、')}`），改由渲染层按语言拼；本段静态守它的四条契约
+ * （分隔符词条在表里 · 外层模板真有那一槽 · 逐项模板在表里且逐项参数给齐 · 不许只有 ItemId 没有 List）。
  *
+ * 用法：`npx tsx tools/param-miss-check.ts`（等价 `npm run l10n:params`）· **只读**，不写文件。
+ * 退出码：命中 > 0 ⇒ 1（可挂进合入前闸门）；0 ⇒ 0。 *
  * ⚠ **误报的两种情形**（工具会点名，需人工看一眼）：
  *   ① 参数对象是**变量**（如 `tr('ui.weekend.022', params)`）——静态判不出里面有什么键；
  *   ② 参数由**包装函数**补（如 `bookProgress(...)` 返回的对象）。
@@ -430,6 +433,156 @@ if (textIdFindings.length > 0) {
   console.log(`✅ core 日志的内联正文与 id 表文逐段一致（${textIdPairs} 处配对）。`)
 }
 
+/* ═══════════ 第五段判据：列表槽契约（2026-10-02 加 · 船长「按你建议来修」）═══════════
+ *
+ * **背景**：core 原先用 `${names.join('、')}` 把中文顿号焊进参数值 ⇒ 英文界面里列表也是「A、B」。
+ * 新机制 = **列表槽**：core 只给逐项值与逐项模板，**分隔符由渲染层按语言取** `core.state.043`。
+ * 契约详见 `packages/core/src/logParts.ts` 的 `logParamsOf` 头注；渲染层实现在 `locale.tsx`。
+ *
+ * 本判据只看"**静态能判死**"的四件事（渲染结果的真身核对在 `tools/l10n-render-probe.ts`）：
+ *   A. **分隔符词条必须在表里**（改名/漏登记 ⇒ 列表会被拼成 `core.state.043` 这个字面量）；
+ *   B. 外层模板（`addLog` 的 id）**必须真有** `{pN}` 那一槽 —— 否则列表传了没人用；
+ *   C. `p{n}ItemId` 必须是**表里存在的 id**，且该模板除 `{p1}` 外还要参数时**必须给** `p{n}ItemParams`；
+ *   D. 只给了 `p{n}ItemId` / `p{n}ItemParams` 却没给 `p{n}List` ⇒ 逐项值没有来源。
+ *
+ * ⚠ 与既有判据同款：**只在"能静态判死"时红**（id 是字面量、参数是对象字面量）；
+ * 变量/展开一律不报（宁可漏报，不误报）。
+ */
+interface ListFinding {
+  at: string
+  what: string
+  detail: string
+}
+const listFindings: ListFinding[] = []
+
+const SEP_ID = 'core.state.043'
+if (L10N[SEP_ID] === undefined || L10N[SEP_ID]!.zh.trim() === '' || L10N[SEP_ID]!.en.trim() === '') {
+  listFindings.push({
+    at: 'packages/data/src/l10n/table.ts',
+    what: `列表分隔符词条 \`${SEP_ID}\` 不在表里（或有一列为空）`,
+    detail: '渲染层 `locale.tsx` 的 `LIST_SEP_ID` 与 core `logParts.ts` 的 `LIST_SEP_ID` 都指向它 ⇒ 列表会拼成 id 字面量',
+  })
+}
+
+for (const root of CORE_ROOTS) {
+  for (const file of walk(root)) {
+    const text = readFileSync(file, 'utf8')
+    const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+    const rel = relative(process.cwd(), file).split('\\').join('/')
+    const visit = (node: ts.Node): void => {
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+        const spec = LOG_CALL_ARGS[node.expression.text]
+        const idNode = spec !== undefined ? node.arguments[spec.idArg] : undefined
+        const paramsArg = spec !== undefined ? node.arguments[spec.paramsArg] : undefined
+        /**
+         * ⚠ **参数位可能是包装函数**（2026-10-02 负向自测发现的漏口）：本批推荐的写法是
+         * `logParams({ p3List: … })` / `logParamsOf(composed, { p3List: … })` —— 直接只看"对象字面量实参"
+         * 会把**推荐写法整条漏掉**（负向自测时改了 `p1ItemId` 变成不存在的 id，判据居然不报）。
+         * ⇒ 这里把包装函数**拆开**：取它那个"额外参数"实参（`logParams` 第 1 个 / `logParamsOf` 第 2 个），
+         * 是对象字面量就一并当成参数对象来查。
+         */
+        const literals: ts.ObjectLiteralExpression[] = []
+        if (paramsArg !== undefined) {
+          if (ts.isObjectLiteralExpression(paramsArg)) literals.push(paramsArg)
+          else if (ts.isCallExpression(paramsArg) && ts.isIdentifier(paramsArg.expression)) {
+            const fn = paramsArg.expression.text
+            const idx = fn === 'logParams' ? 0 : fn === 'logParamsOf' ? 1 : -1
+            const inner = idx >= 0 ? paramsArg.arguments[idx] : undefined
+            if (inner !== undefined && ts.isObjectLiteralExpression(inner)) literals.push(inner)
+            if (fn === 'logParamsOf') {
+              const base = paramsArg.arguments[0]
+              if (base !== undefined && ts.isObjectLiteralExpression(base)) literals.push(base)
+            }
+          }
+        }
+        if (spec !== undefined && idNode !== undefined && ts.isStringLiteral(idNode) && literals.length > 0) {
+          const keys = new Set<string>()
+          const literalOf = new Map<string, string>()
+          /**
+           * ⚠ **键要"递归收集"**（2026-10-02 二次负向自测发现）：推荐写法里可选的键常挂在
+           * **条件展开**里（`...(x ? { p1ItemId: '…' } : { p1Id: '…' })`）——它们**不是**外层字面量的
+           * 直接属性 ⇒ 只收直接属性会整条漏掉（实测：把 `p1ItemId` 改成不存在的 id，判据不报）。
+           */
+          const collect = (node: ts.Node): void => {
+            if (ts.isPropertyAssignment(node)) {
+              const n = node.name
+              if (ts.isIdentifier(n) || ts.isStringLiteral(n)) {
+                keys.add(n.text)
+                if (ts.isStringLiteral(node.initializer)) literalOf.set(n.text, node.initializer.text)
+              }
+            } else if (ts.isShorthandPropertyAssignment(node)) {
+              keys.add(node.name.text)
+            }
+            ts.forEachChild(node, collect)
+          }
+          for (const lit of literals) collect(lit)
+          const outerNeed = new Set([...(L10N[idNode.text]?.zh ?? '').matchAll(/\{(\w+)\}/g)].map((m) => m[1]!))
+          const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1
+          const at = `${rel}:${line}`
+          for (const key of keys) {
+            const m = /^(p\d+)List$/.exec(key)
+            if (m === null) continue
+            const slot = m[1]!
+            /* B：外层模板有这一槽吗 */
+            if (!outerNeed.has(slot)) {
+              listFindings.push({
+                at,
+                what: `${node.expression.text}(${idNode.text}) 传了 \`${key}\`，但表文没有 \`{${slot}}\` 这一槽`,
+                detail: `表文：${L10N[idNode.text]?.zh ?? '（缺 id）'}`,
+              })
+            }
+            /* C：逐项模板存在 + 逐项参数够不够 */
+            const itemId = literalOf.get(`${slot}ItemId`)
+            if (itemId !== undefined) {
+              const tpl = L10N[itemId]
+              if (tpl === undefined) {
+                listFindings.push({
+                  at,
+                  what: `\`${slot}ItemId\` = ${itemId} 不在表里`,
+                  detail: '逐项模板取不到 ⇒ 每一项都回落成裸值（分隔符与逐项句式全失效）',
+                })
+              } else {
+                const inner = [...tpl.zh.matchAll(/\{(\w+)\}/g)].map((x) => x[1]!).filter((k) => k !== 'p1')
+                if (inner.length > 0 && !keys.has(`${slot}ItemParams`)) {
+                  listFindings.push({
+                    at,
+                    what: `\`${slot}ItemId\`(${itemId}) 要 ${inner.join('/')}，但没给 \`${slot}ItemParams\``,
+                    detail: '逐项参数缺席 ⇒ 每一项的 `{p2}…` 原样漏给玩家',
+                  })
+                }
+              }
+            }
+          }
+          /* D：只有 ItemId / ItemParams 没有 List */
+          for (const key of keys) {
+            const m = /^(p\d+)(ItemId|ItemParams)$/.exec(key)
+            if (m === null) continue
+            if (!keys.has(`${m[1]}List`)) {
+              listFindings.push({
+                at,
+                what: `给了 \`${key}\` 却没有 \`${m[1]}List\``,
+                detail: '列表槽的逐项值没有来源 ⇒ 那一槽只会用中文兜底（或整槽空着）',
+              })
+            }
+          }
+        }
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(sf)
+  }
+}
+
+if (listFindings.length > 0) {
+  console.log(`\n■ 列表槽契约（${listFindings.length} 处）——英文界面里列表会拼错或漏参数：`)
+  for (const f of listFindings) {
+    console.log(`  ${f.at}  ${f.what}`)
+    console.log(`      ${f.detail}`)
+  }
+} else {
+  console.log('✅ 列表槽契约 0 处问题（分隔符词条在表里；`p{n}List` 与逐项模板/参数配得齐）。')
+}
+
 process.exitCode = hard.length === 0 && slotFindings.length === 0 && thirdFindings.length === 0 && textIdFindings.length === 0 ? 0 : 1
 if (hard.length > 0) {
   console.log('\n■ 明确漏喂（没传第二参数，或对象里缺键）——**必须改**：')
@@ -462,4 +615,10 @@ if (slotFindings.length > 0) {
 }
 
 process.exitCode =
-  hard.length === 0 && slotFindings.length === 0 && thirdFindings.length === 0 && textIdFindings.length === 0 ? 0 : 1
+  hard.length === 0 &&
+  slotFindings.length === 0 &&
+  thirdFindings.length === 0 &&
+  textIdFindings.length === 0 &&
+  listFindings.length === 0
+    ? 0
+    : 1

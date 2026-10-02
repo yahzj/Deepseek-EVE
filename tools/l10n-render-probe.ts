@@ -19,10 +19,11 @@
  *   - 输出：stdout 逐条列出"实得 / 期望"，末尾 ✅/❌；不进产物目录、不写文件。
  *
  * ⚠ **版本自检**（口径同「旧数据不可靠」：超过一个大版本必须核对是否与现状偏差过大）
- *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v30**（`CURRENT_STATE_VERSION`）
- *   - 本工具最后核对：**2026-09-27**（当日新增：进洞停机读数段三形态——`p4Id` 槽译文 /
- *     段内 `p4p1Id` 取词 / 出发站名与"母港"两态，中英各一遍）
- *   - 本工具最后跑过：**2026-09-27**
+ *   - 游戏版本：**v0.1.0**（`package.json`）· 存档结构：**v31**（`CURRENT_STATE_VERSION`）
+ *   - 本工具最后核对：**2026-10-02**（当日新增：**列表槽**两夹具——「自动探索队出发（名单）」
+ *     与「自动探索队返航（战利品＋核心＋损伤＋谜质科技全槽齐）」，中英各一遍 ⇒
+ *     这是船长「按你建议来修」那批机制的验收口）
+ *   - 本工具最后跑过：**2026-10-02**
  *   - 判据：`CURRENT_STATE_VERSION − v30 ≥ 2` ⇒ **必须重跑核对**；此外 `locale.tsx` 的
  *     `composeParts` / `paramsFor` 一旦改动 ⇒ **必须重跑**（本工具就是它的验收口）。
  */
@@ -108,7 +109,7 @@ interface Fixture {
   name: string
   text: string
   textId: string
-  textParams: Record<string, string | number>
+  textParams: Record<string, unknown>
   expectZh: string
   expectEn: string
 }
@@ -302,11 +303,89 @@ const FIXTURES: Fixture[] = [
     expectZh: '精炼炉停：矿甲 原料耗尽（共 1 批）；精炼所得：矿粉min-a×24、矿粉min-b×6。',
     expectEn: 'Refinery stopped: 矿甲 ran out of feedstock (1 batches); refined: 矿粉min-a×24、矿粉min-b×6.',
   },
+  /**
+   * **列表槽 · 出发名单**（**2026-10-02 加** · 船长「按你建议来修」那批机制的验收口）。
+   *
+   * 病根：core 原先写 `${names.join('、')}` —— 中文顿号**焊进参数值**，而参数值不会再被翻译
+   * ⇒ 英文界面里名单是「A、B」。现在 core 只给 `p3List`（逐项值），分隔符由渲染层按
+   * `core.state.043`（zh `、` / en `, `）取。
+   * ⚠ 名字是**内容专名**（走 `EN_SHIPS` 等 ctx 覆盖，不在 `L10N` 里）⇒ 中英两列都照旧中文（既有边界）。
+   */
+  {
+    name: '列表槽·自动探索队出发（原型名走 p1Id · 名单走 p3List）',
+    text: '🛰 自动探索队出发：均衡深区 · 2 条舰（磷虾、长尾鲨）——约 5 分钟后返航（每次自动探索占 1 枚 AI 核心）。',
+    textId: 'core.wormholeAuto.020',
+    textParams: {
+      p1: '均衡深区',
+      p1Id: 'core.wormholeArch.001',
+      p2: 2,
+      p3: '磷虾、长尾鲨',
+      p3List: ['磷虾', '长尾鲨'],
+      p4: 5,
+    },
+    expectZh: '🛰 自动探索队出发：均衡深区 · 2 条舰（磷虾、长尾鲨）——约 5 分钟后返航（每次自动探索占 1 枚 AI 核心）。',
+    expectEn:
+      '🛰 Exploration team away: Balanced deep zone · 2 ships (磷虾, 长尾鲨) — it returns in about 5 minutes (each automated run takes 1 AI core).',
+  },
+  /**
+   * **列表槽 · 返航全槽齐**（战利品列表＋逐项模板 / 核心附注槽（内层再取词）/ 损伤列表 / 谜质科技段）。
+   * 一条夹具把四类槽全走一遍：`p1List`＋`p1ItemId`＋`p1ItemParams` · `p2Id`＋`p2p1`＋`p2p1Id` ·
+   * `p3List`＋`p3ItemId` · `p4Id`＋`p4p1..3`。
+   */
+  {
+    name: '列表槽·自动探索队返航（战利品/核心/损伤/谜质科技 四类槽齐）',
+    text: '🛰 自动探索队返航：带回 曦棱晶 ×24、虫洞谜质 ×2（已入仓库），并带回 基础 AI 核心 ×1（已直接接入核心库）；损伤：磷虾（结构 −35% / 装甲 −12%）。谜质科技：残骸线 ×1.20 · 母矿线 ×1.10 · 损伤 ×0.80。2 条舰全部安全返航，1 枚 AI 核心已释放（每次自动探索占 1 枚）——报告在「扫描虫洞」页等你确认。',
+    textId: 'core.wormholeAuto.021',
+    textParams: {
+      p1: '曦棱晶 ×24、虫洞谜质 ×2',
+      p1List: ['曦棱晶', '虫洞谜质'],
+      p1ItemId: 'core.wormholeAuto.022',
+      p1ItemParams: [{ p2: 24 }, { p2: 2 }],
+      p2: '，并带回 基础 AI 核心 ×1（已直接接入核心库）',
+      p2Id: 'core.wormholeAuto.024',
+      p2p1: '基础 AI 核心',
+      p2p1Id: 'ui.labelsText.009',
+      p2p2: 1,
+      p3: '磷虾（结构 −35% / 装甲 −12%）',
+      p3List: ['磷虾'],
+      p3ItemId: 'core.wormholeAuto.025',
+      p3ItemParams: [{ p2: 35, p3: 12 }],
+      p4: '谜质科技：残骸线 ×1.20 · 母矿线 ×1.10 · 损伤 ×0.80。',
+      p4Id: 'core.wormholeAuto.026',
+      p4p1: '1.20',
+      p4p2: '1.10',
+      p4p3: '0.80',
+      p5: 2,
+    },
+    expectZh:
+      '🛰 自动探索队返航：带回 曦棱晶 ×24、虫洞谜质 ×2（已入仓库），并带回 基础 AI 核心 ×1（已直接接入核心库）；损伤：磷虾（结构 −35% / 装甲 −12%）。谜质科技：残骸线 ×1.20 · 母矿线 ×1.10 · 损伤 ×0.80。2 条舰全部安全返航，1 枚 AI 核心已释放（每次自动探索占 1 枚）——报告在「扫描虫洞」页等你确认。',
+    expectEn:
+      '🛰 Exploration team back: brought 曦棱晶 ×24, 虫洞谜质 ×2 (now in the warehouse), plus Basic AI core ×1 (routed straight to the core vault); damage: 磷虾 (hull −35% / armour −12%). Enigma tech: wreck line ×1.20 · mother-lode line ×1.10 · damage ×0.80. All 2 ships made it home safely and 1 AI core was released (each automated run takes 1) — the report is waiting for you on the Scan Wormholes page.',
+  },
+  /**
+   * **列表槽 · 空态**（战利品为空 ⇒ core **不传 `List`**、改挂槽译文 `p1Id`「空手而归」）：
+   * 传空数组会把该槽渲成空串 ⇒ 这条夹具钉住"空态走 `p1Id`"这个写法。
+   */
+  {
+    name: '列表槽·自动探索队返航（空手而归 · 无损伤 · 无核心 · 未点谜质科技）',
+    text: '🛰 自动探索队返航：带回 空手而归（已入仓库）；损伤：。2 条舰全部安全返航，1 枚 AI 核心已释放（每次自动探索占 1 枚）——报告在「扫描虫洞」页等你确认。',
+    textId: 'core.wormholeAuto.021',
+    /** ⚠ `p2`/`p3`/`p4` 三个"可选槽"core 侧**恒传空串**（硬槽缺键会原样漏 `{pN}`）——夹具照真实落码写 */
+    textParams: { p1: '空手而归', p1Id: 'core.wormholeAuto.023', p2: '', p3: '', p4: '', p5: 2 },
+    expectZh:
+      '🛰 自动探索队返航：带回 空手而归（已入仓库）；损伤：。2 条舰全部安全返航，1 枚 AI 核心已释放（每次自动探索占 1 枚）——报告在「扫描虫洞」页等你确认。',
+    expectEn:
+      '🛰 Exploration team back: brought nothing but empty hands (now in the warehouse); damage: . All 2 ships made it home safely and 1 AI core was released (each automated run takes 1) — the report is waiting for you on the Scan Wormholes page.',
+  },
 ]
 
 async function main(): Promise<void> {
   const mod = await loadRenderer()
-  const logText = mod.logText as (e: { text: string; textId?: string; textParams?: Record<string, string | number> }) => string
+  const logText = mod.logText as (e: {
+    text: string
+    textId?: string
+    textParams?: Record<string, unknown>
+  }) => string
   // 调一次真 Provider（替身会真的执行它的 useEffect）⇒ 挂上 window.__setLocale
   ;(mod.L10nProvider as (p: { children: unknown }) => unknown)({ children: null })
   const setLocale = (globalThis as unknown as { __setLocale?: (l: 'zh' | 'en') => void }).__setLocale

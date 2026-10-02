@@ -52,7 +52,7 @@ import { fleetDefOf, shipDisplayName } from './instances'
 import { addAiIncome, addAiMiningTrip, addAiSalvageDone, type SettleStats } from './settleStats'
 // 核心账本四件从 aiCores 借入（2026-10-02 拆出：破 ai↔shipyard 环）；再导出让存量引用零改动
 import { AI_CORE_ORDER, aiCoreName, countAiCore, gainAiCore, spendAiCore } from './aiCores'
-export { AI_CORE_ORDER, aiCoreName, countAiCore, gainAiCore, cancelAiTask } from './aiCores'
+export { AI_CORE_IDS, AI_CORE_ORDER, aiCoreName, countAiCore, gainAiCore, cancelAiTask } from './aiCores'
 
 /** 效率（速度系数：1 = 玩家手操速度；只影响速度不影响奖励）。
  *  卷B3⑩（2026-09-08 船长定）：「AI 核心调度学」在核心档位之上每级 +2 个百分点累加

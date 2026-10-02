@@ -22,6 +22,15 @@ export type Locale = 'zh' | 'en'
 /** 语言偏好键（与既有 `whale-idle:ui-zoom` / `:ui-fs` 同族） */
 const LOCALE_KEY = 'whale-idle:locale'
 
+/**
+ * **列表分隔符的词条 id**（zh `、` / en `, `）—— `composeParts` 拼列表槽时按当前语言取它。
+ *
+ * ⚠ 与 core `logParts.ts` 的 `LIST_SEP_ID` **同一个值**（渲染层刻意**不 import core**：
+ * `locale.tsx` 是全渲染层最先加载的模块之一，拉整个 core 包进来不划算）。改这个 id 时两处一起改；
+ * `tools/l10n-render-probe.ts` 会核对它在中英两列各是什么（防"改名后静默回落成 id 字面量"）。
+ */
+const LIST_SEP_ID = 'core.state.043'
+
 /** 系统语言 → 本作语言：首选语言是 zh* ⇒ 中文；其余（含 ja/ru 等本作没有的语言）⇒ 英文 */
 export function detectSystemLocale(): Locale {
   try {
@@ -148,7 +157,10 @@ function resolveParamIds(
 export interface LogEntryText {
   text: string
   textId?: string
-  textParams?: Readonly<Record<string, string | number | readonly string[]>>
+  /** ⚠ 值域比 core 的 `LogParams` 宽：段链 `parts`（字符串数组）＋ **列表槽**（`p{n}List` / `p{n}ItemParams`） */
+  textParams?: Readonly<
+    Record<string, string | number | readonly string[] | ReadonlyArray<Readonly<Record<string, string | number>>>>
+  >
 }
 
 /**
@@ -170,6 +182,34 @@ function composeParts(
   const all: Record<string, string | number> = {}
   for (const [k, v] of Object.entries(entry.textParams ?? {})) {
     if (typeof v === 'string' || typeof v === 'number') all[k] = v
+  }
+  /**
+   * **列表槽**（**2026-10-02 加 · 船长「按你建议来修」**）—— core 侧的契约见 `core/logParts.ts`
+   * 的 `logParamsOf` 头注：
+   * - `p{n}List` ＝ 逐项值（数组）· `p{n}ItemId` ＝ 逐项模板（可选）· `p{n}ItemParams` ＝ 逐项参数（可选）；
+   * - **分隔符按当前语言取**（`LIST_SEP_ID`：zh `、` / en `, `）⇒ core 不再把中文顿号焊进参数值，
+   *   英文界面里的名单/明细不再是「A、B」。
+   * - 逐项模板的 `{p1}` 缺省 = 该项的值；`{p2}`… 由该项的 `ItemParams[i]` 供（索引对齐）。
+   *
+   * ⚠ 数组值不会进 `all`（上面只收字符串/数值）⇒ 这里读**原始入参** `entry.textParams`。
+   */
+  const rawParams = entry.textParams
+  const listTextOf = (keyBase: string): string | undefined => {
+    const values = rawParams?.[`${keyBase}List`]
+    if (!Array.isArray(values)) return undefined
+    const itemId = rawParams?.[`${keyBase}ItemId`]
+    const tpl = typeof itemId === 'string' ? L10N[itemId] : undefined
+    const itemParams = rawParams?.[`${keyBase}ItemParams`]
+    const items = values.filter((v): v is string => typeof v === 'string')
+    return items
+      .map((v, i) => {
+        if (tpl === undefined) return v
+        const extra = Array.isArray(itemParams) ? (itemParams[i] as Record<string, string | number> | undefined) : undefined
+        const inner: Record<string, string | number> = { ...(extra ?? {}) }
+        if (inner.p1 === undefined) inner.p1 = v
+        return interpolate(tpl[activeLocale], inner)
+      })
+      .join(textOf(LIST_SEP_ID, activeLocale))
   }
   /**
    * **参数命名空间（两套，前缀分流 · 2026-09-29 定）**：
@@ -254,6 +294,15 @@ function composeParts(
         delete out[slot]
         out[slot] = interpolate(tpl[activeLocale], deep)
       }
+      /** **列表槽**（`p{n}List` ⇒ 按语言分隔符拼接；见上面 `listTextOf` 头注）—— 放在槽译文之后，后写者胜 */
+      for (const k of Object.keys(rawParams ?? {})) {
+        const m = /^p(\d+)List$/.exec(k)
+        if (m === null) continue
+        const rendered = listTextOf(`p${m[1]}`)
+        if (rendered === undefined) continue
+        delete out[`p${m[1]}`]
+        out[`p${m[1]}`] = rendered
+      }
       return out
     }
     /**
@@ -267,6 +316,15 @@ function composeParts(
       if (!k.startsWith(prefix) || k.length <= prefix.length) continue
       if (k.endsWith('Id')) continue
       out[k.slice(prefix.length)] = v
+    }
+    /** **段内也能挂列表槽**（`seg{n}p{k}List` ＋ `…ItemId` / `…ItemParams`）——同一套规则，键面多一层段前缀 */
+    for (const k of Object.keys(rawParams ?? {})) {
+      if (!k.startsWith(prefix)) continue
+      const m = /^(p\d+)List$/.exec(k.slice(prefix.length))
+      if (m === null) continue
+      const rendered = listTextOf(`${prefix}${m[1]}`)
+      if (rendered === undefined) continue
+      out[m[1]] = rendered
     }
     return out
   }

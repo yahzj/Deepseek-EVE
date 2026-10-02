@@ -228,6 +228,24 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormholeAuto.017": { zh: "主控正在虫洞里：先出洞。", en: "The ship you fly is inside a wormhole: leave first." },
   "core.wormholeAuto.018": { zh: "舰队里没有别的空闲船可以接任主控：先收工或添一条船，再把它编进来。", en: "No other idle ship in the fleet can take over as the main pilot: finish the current job or add a ship, then include it." },
   "core.wormholeAuto.019": { zh: "🛰 自动探索队已召回：没有收益、也没有损伤；那条通道就此关闭。", en: "🛰 The exploration team has been recalled: no gains and no damage; that passage closes." },
+  /**
+   * ⟪2026-10-02 批⑫-补 · 列表槽⟫ **自动探索队的出发/返航两条日志**（本文件原先只剩这两条裸中文）。
+   * 中文原串一字未改；`{p3}`（出发名单）与 `{p1}`/`{p3}`（返航战利品/损伤明细）走**列表槽**：
+   * core 传 `p{n}List`（逐项值）＋ `p{n}ItemId`（逐项模板）＋ `p{n}ItemParams`（逐项参数），
+   * 分隔符由渲染层按语言取 `core.state.043` ⇒ 英文侧不再出现中文顿号。
+   */
+  "core.wormholeAuto.020": { zh: "🛰 自动探索队出发：{p1} · {p2} 条舰（{p3}）——约 {p4} 分钟后返航（每次自动探索占 1 枚 AI 核心）。", en: "🛰 Exploration team away: {p1} · {p2} ships ({p3}) — it returns in about {p4} minutes (each automated run takes 1 AI core)." },
+  "core.wormholeAuto.021": { zh: "🛰 自动探索队返航：带回 {p1}（已入仓库）{p2}；损伤：{p3}。{p4}{p5} 条舰全部安全返航，1 枚 AI 核心已释放（每次自动探索占 1 枚）——报告在「扫描虫洞」页等你确认。", en: "🛰 Exploration team back: brought {p1} (now in the warehouse){p2}; damage: {p3}.{p4} All {p5} ships made it home safely and 1 AI core was released (each automated run takes 1) — the report is waiting for you on the Scan Wormholes page." },
+  /** 逐项模板（战利品）：`{p1}` = 物品名 · `{p2}` = 数量 */
+  "core.wormholeAuto.022": { zh: "{p1} ×{p2}", en: "{p1} ×{p2}" },
+  /** 空态：战利品为空时挂 `p1Id`（**不传 `List`** —— 空数组会把该槽渲成空串） */
+  "core.wormholeAuto.023": { zh: "空手而归", en: "nothing but empty hands" },
+  /** AI 核心附注（可选槽 `{p2}`）：`{p1}` = 核心档名（另挂 `p2p1Id` ⇒ 按语言出词）· `{p2}` = 数量 */
+  "core.wormholeAuto.024": { zh: "，并带回 {p1} ×{p2}（已直接接入核心库）", en: ", plus {p1} ×{p2} (routed straight to the core vault)" },
+  /** 逐项模板（损伤明细）：`{p1}` = 船名 · `{p2}` = 结构损耗% · `{p3}` = 装甲损耗% */
+  "core.wormholeAuto.025": { zh: "{p1}（结构 −{p2}% / 装甲 −{p3}%）", en: "{p1} (hull −{p2}% / armour −{p3}%)" },
+  /** 谜质科技段（可选槽 `{p4}`）：三个系数照实报 */
+  "core.wormholeAuto.026": { zh: "谜质科技：残骸线 ×{p1} · 母矿线 ×{p2} · 损伤 ×{p3}。", en: " Enigma tech: wreck line ×{p1} · mother-lode line ×{p2} · damage ×{p3}." },
   "core.events.001": { zh: "✦ {p1}{p2}", en: "✦ {p1}{p2}" },
   "core.events.002": { zh: "（+{p1} 信用点）", en: " (+{p1} credits)" },
   "core.events.003": { zh: "深空漂流货柜被你的牵引光捕获，里面有一箱完好的电路板。", en: "A drifting deep-space container caught in your tractor beam: one crate of intact circuit boards inside." },
@@ -1413,6 +1431,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.state.040": { zh: "；AI 核心已归还核心库。", en: "; the AI core went back to the core library." },
   "core.state.041": { zh: "；AI 核心已归还核心库", en: "; the AI core went back to the core library" },
   "core.state.042": { zh: "。", en: "." },
+  /**
+   * ⟪2026-10-02 船长「按你建议来修」⟫ **列表分隔符**：core 不再把中文顿号焊进参数值，
+   * 而是把"逐项值"交给渲染层的列表槽（`p{n}List`），由它按当前语言取本词条拼起来。
+   * 用法与契约见 `packages/core/src/logParts.ts` 的 `logParamsOf` 头注。
+   */
+  "core.state.043": { zh: "、", en: ", " },
   /**
    * ⚠ **2026-09-27 修复（船长报障「打开游戏显示非法的备份文件名，然后正常进入游戏」）**：
    * `ui.main.001~004` 是**渲染层启动序列**（`renderer/src/main.tsx`）用的四条，P1b（`004764f7`）引入时的原文见下；

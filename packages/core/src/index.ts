@@ -1303,6 +1303,8 @@ export {
   // 2026-09-23 船长令「使用AI核心时，默认选择当前拥有的最高级核心」——四处选择入口共用这一把尺
   bestAiCoreOf,
   aiCoreName,
+  // 2026-10-02 三号：核心档位名 → 本地化 id（当参数喂模板时挂 `p{n}p{k}Id`；渲染层 labelsText 已改从这里 import）
+  AI_CORE_IDS,
   aiEfficiency,
   countAiCore,
   /** 2026-10-02 代码审查：可用核心下拉的单点（渲染层原抄 8 处 filter ＋ 3 份顺序字面量） */
@@ -1737,6 +1739,8 @@ export {
   WORMHOLE_ARCHETYPES,
   WORMHOLE_ARCHETYPE_WEIGHTS,
   WORMHOLE_ARCHETYPE_LABELS,
+  // 2026-10-02 三号：原型名 → 本地化 id（日志/界面按语言出词；渲染层 labelsText 已改从这里 import）
+  WORMHOLE_ARCHETYPE_IDS,
   wormholeArchetypeOf,
   wormholeSignalWeightsFor,
   wormholeRuinsShareFor,

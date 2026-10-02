@@ -13,7 +13,9 @@
  *   ③ `state.<字段> = 中文串` 型：随档提示串（界面弹窗会读）
  *
  * 判据与读数口径（与 2026-10-02 那次盘点一致）：
- *   - 只认**字符串字面量里的中文**（剔除"中文只在注释/比较里"的假阳性）；
+ *   - 只认**字符串字面量里的中文**（剔除"中文只在注释/比较里"的假阳性）——
+ *     **2026-10-02 补**：三条判据现在统一在**剥注释后的源码**上跑（`stripComments`），
+ *     此前 `addLog` 那条会把 JSDoc 里的示例也报出来（本工具转正当天就踩到）；
  *   - 同处三行内出现 `errorId`/`textId` 的算**合规**（甲案），不计入缺口；
  *   - 对每条再查**渲染层是否引用该函数**（`[渲染层引用]` / `[仅core/测试]`）——
  *     只有前者才"可能上屏"，后者多半是工具/测试/内部账本。
@@ -51,6 +53,74 @@ const cjkInLiteral = (s: string): boolean => {
 /** 该行是否有 id（`core.x.y` / `ui.x.y` 形态，或 errorId/textId 字段） */
 const hasId = (win: string): boolean => /errorId|textId/.test(win) || /['"`](core|ui)\.[A-Za-z0-9_.]+['"`]/.test(win)
 
+/**
+ * **剥注释**（**2026-10-02 加**）：把注释整段换成等长空白，**行号与字符串内容一字不动**。
+ *
+ * 为什么需要它（本工具转正当天就踩到）：`addLog` 那条判据是**在原始源码里 indexOf('addLog(')**
+ * 找的 —— 于是**注释里写的示例**（JSDoc 里的 `addLog(…, 中文原串, …)`）会被当成真漏口报出来。
+ * 另两条判据（`return` / `state` 赋值）此前靠"跳过以 `//`、`*` 开头的行"糊住，遇到
+ * "块注释收尾那两个字符落在正文行里"仍会漏判 ⇒ 现在三条判据统一在**剥注释后的源码**上跑。
+ * 字符串里的注释起始符不会被误剥（扫描器认得引号与转义）。
+ */
+const stripComments = (s: string): string => {
+  let out = ''
+  let i = 0
+  let mode: 'code' | 'line' | 'block' | 'sq' | 'dq' | 'tpl' = 'code'
+  while (i < s.length) {
+    const c = s[i]!
+    const n = s[i + 1]
+    if (mode === 'code') {
+      if (c === '/' && n === '/') {
+        mode = 'line'
+        i += 2
+        out += '  '
+        continue
+      }
+      if (c === '/' && n === '*') {
+        mode = 'block'
+        i += 2
+        out += '  '
+        continue
+      }
+      if (c === "'") mode = 'sq'
+      else if (c === '"') mode = 'dq'
+      else if (c === '`') mode = 'tpl'
+      out += c
+      i += 1
+      continue
+    }
+    if (mode === 'line') {
+      if (c === '\n') {
+        mode = 'code'
+        out += c
+      } else out += ' '
+      i += 1
+      continue
+    }
+    if (mode === 'block') {
+      if (c === '*' && n === '/') {
+        mode = 'code'
+        i += 2
+        out += '  '
+        continue
+      }
+      out += c === '\n' ? '\n' : ' '
+      i += 1
+      continue
+    }
+    /* 字符串里：原样保留（中文就在这里），只处理转义与收尾引号 */
+    out += c
+    if (c === '\\') {
+      out += n ?? ''
+      i += 2
+      continue
+    }
+    if ((mode === 'sq' && c === "'") || (mode === 'dq' && c === '"') || (mode === 'tpl' && c === '`')) mode = 'code'
+    i += 1
+  }
+  return out
+}
+
 const coreFiles = walk('packages/core/src').filter((f) => f.includes(filter))
 const rendererFiles = walk('apps/desktop/src/renderer/src')
 const rendererSrc = rendererFiles.map((f) => readFileSync(f, 'utf8')).join('\n')
@@ -79,13 +149,14 @@ const isUsedInRenderer = (fn: string): boolean =>
   fn !== '（模块级/匿名）' && new RegExp(`\\b${fn.replace(/\$/g, '\\$')}\\b`).test(rendererSrc)
 
 for (const f of [...coreFiles, ...rendererGame]) {
-  const src = readFileSync(f, 'utf8')
+  const raw = readFileSync(f, 'utf8')
+  /** 三条判据统一在**剥注释后**的源码上跑（行号与字符串内容保持不变，见 `stripComments` 头注） */
+  const src = stripComments(raw)
   const lines = src.split(/\r?\n/)
 
   /* ① return 型（含行内 `if (…) return …`） */
   for (let i = 0; i < lines.length; i++) {
-    const t = lines[i]
-    if (/^\s*(\/\/|\*|\/\*)/.test(t)) continue
+    const t = lines[i]!
     if (!/\breturn\b/.test(t)) continue
     if (!cjkInLiteral(t)) continue
     if (hasId(lines.slice(i, i + 3).join(' '))) continue
@@ -117,8 +188,7 @@ for (const f of [...coreFiles, ...rendererGame]) {
 
   /* ③ state 赋值型 */
   for (let i = 0; i < lines.length; i++) {
-    const t = lines[i]
-    if (/^\s*(\/\/|\*|\/\*)/.test(t)) continue
+    const t = lines[i]!
     if (!/state\.\w+\s*=\s*[`'"]/.test(t)) continue
     if (/==|!=|===|!==/.test(t)) continue
     if (!cjkInLiteral(t)) continue

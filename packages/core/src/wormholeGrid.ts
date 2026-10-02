@@ -189,6 +189,21 @@ export const WORMHOLE_ARCHETYPE_LABELS: Readonly<Record<WormholeArchetype, strin
   combat: '交火密集',
 }
 
+/**
+ * **原型名 → 本地化 id**（**2026-10-02 加** · 船长「按你建议来修」的「列表槽」批）。
+ *
+ * 为什么放在 core：原型名是**内容概念**，日志与界面都要按语言出词 —— core 只给"中文原串 ＋ id"，
+ * 渲染层按 id 取当前语言（与 `busyLabels.ts` 的 `BUSY_LABEL_ID` 同款：core 自己持有 id 表）。
+ * ⚠ 与渲染层 `ui/labelsText.ts` 的 `archetypeText()` **同一张表**（那边已改为 import 本表 ⇒ 不再各写一份）。
+ */
+export const WORMHOLE_ARCHETYPE_IDS: Readonly<Record<WormholeArchetype, string>> = {
+  balanced: 'core.wormholeArch.001',
+  wreck: 'core.wormholeArch.002',
+  ruins: 'core.wormholeArch.003',
+  vein: 'core.wormholeArch.004',
+  combat: 'core.wormholeArch.005',
+}
+
 /** 原型抽取顺序（与权重表同序；抽签与遍历共用，防两处漂移） */
 const ARCHETYPE_ORDER: readonly WormholeArchetype[] = ['balanced', 'wreck', 'ruins', 'vein', 'combat']
 

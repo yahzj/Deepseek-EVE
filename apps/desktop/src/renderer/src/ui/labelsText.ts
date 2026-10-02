@@ -15,6 +15,8 @@
  * 只有 core 独有的少数几个（零件 / 蓝图碎片 / 无人机机型 / AI 核心四档 / 键值连接符）才新登记。
  */
 import type { AiCoreType, DroneClass, ItemKind, ModuleSlot, ShipRole, WormholeArchetype, WormholePlace } from '@whale/core'
+// 两张「名字 → id」表挪进了 core（2026-10-02：日志也要按语言出词 ⇒ core 与界面共用一份，避免各写一份漂掉）
+import { AI_CORE_IDS, WORMHOLE_ARCHETYPE_IDS } from '@whale/core'
 import { FACTION_CODEX, factionOfExclusive } from '@whale/data'
 import { tr } from '../i18n/locale'
 // 槽类名复用市场/手册那份**已本地化**的槽位表（`RACK_SUBS` · `subText`）——**不另存第二份文案**
@@ -59,13 +61,11 @@ const ROLE_ID: Record<ShipRole, string> = {
   hauler: 'ui.labelsText.008', // 航运 / Hauling
 }
 
-/** AI 核心四档 → id */
-const AICORE_ID: Record<AiCoreType, string> = {
-  basic: 'ui.labelsText.009', // 基础 AI 核心 / Basic AI core
-  gamma: 'ui.labelsText.010', // 伽马 AI 核心 / Gamma AI core
-  beta: 'ui.labelsText.011', // 贝塔 AI 核心 / Beta AI core
-  alpha: 'ui.labelsText.012', // 阿尔法 AI 核心 / Alpha AI core
-}
+/**
+ * AI 核心四档 → id（**2026-10-02 起 = core 的 `AI_CORE_IDS`**，不再本文件各写一份：
+ * 日志把核心名当参数喂模板时同样要这个 id ⇒ 两处共用一张表，加档只改 core 一处）。
+ */
+const AICORE_ID: Record<AiCoreType, string> = AI_CORE_IDS
 
 /** 物品大类名（= core `itemKindLabel` 的本地化版） */
 export function kindText(kind: ItemKind): string {
@@ -205,14 +205,9 @@ export function placeText(place: WormholePlace): string {
  * **虫洞内容原型名**（均衡深区 / 残骸富集 / 遗迹密集 / 母矿脉 / 交火密集）（= core `WORMHOLE_ARCHETYPE_LABELS`
  * 的本地化版）。五条**全部新登记**（`core.wormholeArch.*`）。
  * ⚠ 表类型同样收紧为 `Record<WormholeArchetype, string>`（同一类漏登记在 typecheck 就红）。
+ * **2026-10-02 起 = core 的 `WORMHOLE_ARCHETYPE_IDS`**（同 AI 核心那张：日志也要按语言出词 ⇒ 共用一份）。
  */
-const ARCHETYPE_ID: Readonly<Record<WormholeArchetype, string>> = {
-  balanced: 'core.wormholeArch.001', // 均衡深区 / Balanced deep zone
-  wreck: 'core.wormholeArch.002', // 残骸富集 / Wreck-rich
-  ruins: 'core.wormholeArch.003', // 遗迹密集 / Ruin-dense
-  vein: 'core.wormholeArch.004', // 母矿脉 / Mother lode
-  combat: 'core.wormholeArch.005', // 交火密集 / Combat-heavy
-}
+const ARCHETYPE_ID: Readonly<Record<WormholeArchetype, string>> = WORMHOLE_ARCHETYPE_IDS
 export function archetypeText(archetype: WormholeArchetype): string {
   return tr(ARCHETYPE_ID[archetype])
 }

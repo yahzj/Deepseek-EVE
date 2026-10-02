@@ -51,6 +51,8 @@ import {
   wormholeAutoTechFactors,
   wormholeAutoTechIsNeutral,
   wormholeAutoUnconfirmedCount,
+  shipNameOf,
+  itemNameOf,
 } from '../src/wormholeAuto'
 
 const ctx = buildSimContext()
@@ -407,6 +409,53 @@ describe('虫洞 · 自动探索吃谜质科技（船长 2026-09-19 甲案）', 
     state.gameMs = WORMHOLE_AUTO_DURATION_MS + 1
     advanceWormholeAuto(state, ctx)
     expect(state.logs.some((l) => l.text.includes('谜质科技'))).toBe(false)
+  })
+
+  /**
+   * **出发 / 返航两条日志的 id 与槽位**（**2026-10-02 批⑫-补** · 「列表槽」机制的**第一批用户**）。
+   *
+   * 钉四件事（本批把这两条从"裸中文日志"变成甲案日志）：
+   * ① 两条都挂 `textId`（英文界面才按语言渲染）；
+   * ② 名单/战利品/损伤走 **列表槽**：`p{n}List`（逐项值）＋ `p{n}ItemId`（逐项模板）＋ `p{n}ItemParams`（逐项参数）
+   *    —— **中文顿号不进参数值**，分隔符由渲染层按语言取 `core.state.043`（zh `、` / en `, `）；
+   * ③ 原型名与核心档名走**槽译文**（`p1Id` / `p2p1Id`），英文侧不夹中文；
+   * ④ **落盘正文逐字未改**（中文原串照写；`p{n}` 只是另外挂的 id 参数）。
+   * 渲染层那一半（真身 `logText()` 的中英逐字结果）由 `tools/l10n-render-probe.ts` 的三条列表槽夹具守着。
+   */
+  it('**出发/返航日志挂 id ＋ 列表槽**（分隔符交给渲染层 · 中文原串逐字未改）', () => {
+    const state = rich({ ships: 4 })
+    const ships = wormholeAutoDefaultShips(state, ctx)
+    expect(wormholeAutoStart(state, ctx, stockOne(state), ships).ok).toBe(true)
+
+    const dep = state.logs.filter((l) => l.textId === 'core.wormholeAuto.020').at(-1)
+    expect(dep, '出发日志必须挂 textId').toBeDefined()
+    // ④ 正文与改造前同款（原型名 · 条数 · 顿号连接的名单 · 分钟数）
+    expect(dep!.text).toMatch(/^🛰 自动探索队出发：.+ · \d+ 条舰（.+）——约 \d+ 分钟后返航（每次自动探索占 1 枚 AI 核心）。$/)
+    const dtp = dep!.textParams as Record<string, unknown>
+    expect(String(dtp.p1Id)).toMatch(/^core\.wormholeArch\.\d{3}$/) // ③ 原型名 = 槽译文
+    expect(dtp.p3List).toEqual(ships.map((id) => shipNameOf(state, ctx, id))) // ② 名单 = 列表槽
+    expect(dtp.p4).toBe(Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000))
+
+    state.gameMs = WORMHOLE_AUTO_DURATION_MS + 1
+    advanceWormholeAuto(state, ctx)
+    const back = state.logs.filter((l) => l.textId === 'core.wormholeAuto.021').at(-1)
+    expect(back, '返航日志必须挂 textId').toBeDefined()
+    const tp = back!.textParams as Record<string, unknown>
+    const report = wormholeAutoReportsOf(state)[0]!
+    /** ② 战利品：非空 ⇒ 列表槽；空 ⇒ **只挂槽译文**（传空数组会把该槽渲成空串） */
+    if (report.gains.length > 0) {
+      expect(tp.p1List).toEqual(report.gains.map((g) => itemNameOf(ctx, g.itemId)))
+      expect(tp.p1ItemId).toBe('core.wormholeAuto.022')
+      expect((tp.p1ItemParams as Array<Record<string, unknown>>).map((x) => x.p2)).toEqual(report.gains.map((g) => g.units))
+      expect(tp.p1Id).toBeUndefined()
+    } else {
+      expect(tp.p1Id).toBe('core.wormholeAuto.023')
+      expect(tp.p1List).toBeUndefined()
+    }
+    expect(tp.p3List).toEqual(report.damage.map((d) => d.name)) // 损伤明细
+    expect(tp.p3ItemId).toBe('core.wormholeAuto.025')
+    /** 可选的三个槽**恒传**（硬槽缺键会原样漏 `{pN}` —— 渲染层"宁可漏出来也不悄悄改中文"） */
+    for (const k of ['p2', 'p3', 'p4']) expect(tp[k], `可选槽 ${k} 必须恒传（空串也要传）`).toBeDefined()
   })
 
   it('满树 ⇒ 回合（按本队实际基础回合）/ 货仓 / 打捞与采集效率 / 战斗线完成度 逐项对上', () => {

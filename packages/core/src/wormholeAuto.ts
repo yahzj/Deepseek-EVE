@@ -23,6 +23,7 @@
  * 产出按手动期望折算 —— 这是船长对"收益不确定 + 绝不丢船"的取舍，实现上必须与真副本解耦。
  */
 import type { CoreBlockReason } from './engine'
+import { AI_CORE_IDS } from './aiCores'
 import { tuningMul } from './tuning'
 import type { GameState, WormholeArchetype, WormholeAutoReport, WormholeAutoRun, WormholeFamily, WormholeStockItem } from './state'
 import { addLog, shipLockedInWormhole, wormholeAutoRunsOf } from './state'
@@ -41,9 +42,10 @@ import { matterTechLevel, matterTechNodes, matterTechWhBuffs, matterTechWorkEffB
 import { RARE_WRECK_VOLUME_M3, rareWreckItemIdOf, wreckGroupOfCard, wreckItemIdOf } from './salvage'
 import { wormholeRollRelicBoxKind, WORMHOLE_CORE_WEIGHTS, WORMHOLE_ESSENCE_ITEM_ID } from './wormholeSalvage'
 import { wormholeCardIdOfFamily, wormholeFamilyOfSeed, wormholeLayerThreat } from './wormholeFoes'
-import { WORMHOLE_ARCHETYPE_LABELS, wormholeArchetypeOf } from './wormholeGrid'
+import { WORMHOLE_ARCHETYPE_IDS, WORMHOLE_ARCHETYPE_LABELS, wormholeArchetypeOf } from './wormholeGrid'
 import { wormholeStockOf, wormholeStockTake } from './wormholeScan'
 import { aiCoreCap, aiCoreIndustryUsed, aiCoreName, aiCoreShipUsed, gainAiCore, industryAiBonus } from './ai'
+import { logParams } from './logParts'
 import { changeShip } from './shipyard'
 import { shipBusyLabel } from './activity'
 import { wormholeAutoDescend, type WormholeAutoPower } from './wormholeAutoSim'
@@ -680,11 +682,29 @@ export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: st
     finishAtGameMs: state.gameMs + WORMHOLE_AUTO_DURATION_MS,
   }
   state.wormholeAuto = [...wormholeAutoRunsOf(state), run]
+  /**
+   * **出发日志**（**2026-10-02 批⑫-补 · 走新落地的「列表槽」机制**）：
+   * 中文原串一字未改；槽位与 id 的对应见 `table.ts` 的 `core.wormholeAuto.020`。
+   * - `{p1}` 原型名（内容概念 ⇒ 挂 `p1Id`，英文按语言出词；表 = core 的 `WORMHOLE_ARCHETYPE_IDS`）
+   * - `{p2}` 条数 · `{p4}` 分钟数
+   * - `{p3}` **名单**：走列表槽（`p3List` ＋ 分隔符由渲染层按语言取）⇒ 英文侧不再出中文顿号
+   */
+  const arch = wormholeRunMeta(run).archetype
+  const roster = picked.map((id) => shipNameOf(state, ctx, id))
   addLog(
     state,
     'fleet',
-    `🛰 自动探索队出发：${WORMHOLE_ARCHETYPE_LABELS[wormholeRunMeta(run).archetype]} · ${picked.length} 条舰（${picked.map((id) => shipNameOf(state, ctx, id)).join('、')}）` +
+    `🛰 自动探索队出发：${WORMHOLE_ARCHETYPE_LABELS[arch]} · ${picked.length} 条舰（${roster.join('、')}）` +
       `——约 ${Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000)} 分钟后返航（每次自动探索占 1 枚 AI 核心）。`,
+    'core.wormholeAuto.020',
+    logParams({
+      p1: WORMHOLE_ARCHETYPE_LABELS[arch],
+      p1Id: WORMHOLE_ARCHETYPE_IDS[arch],
+      p2: picked.length,
+      p3: roster.join('、'),
+      p3List: roster,
+      p4: Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000),
+    }),
   )
   return { ok: true }
 }
@@ -941,11 +961,57 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
   const techText = wormholeAutoTechIsNeutral(tf)
     ? ''
     : `谜质科技：残骸线 ×${tf.wreck.toFixed(2)} · 母矿线 ×${tf.ore.toFixed(2)} · 损伤 ×${tf.damage.toFixed(2)}。`
+  /**
+   * **返航日志**（**2026-10-02 批⑫-补 · 列表槽**）：中文原串一字未改；id 对应见 `core.wormholeAuto.021`。
+   * 三个列表槽（战利品／损伤明细）都走 `p{n}List` ⇒ 英文侧的分隔符与逐项句式都由表决定；
+   * **空战利品**不传 `List`（传空数组会把该槽渲成空串）⇒ 改挂槽译文 `p1Id`「空手而归」。
+   */
   addLog(
     state,
     'fleet',
     `🛰 自动探索队返航：带回 ${gainText}（已入仓库）${coreText}；损伤：${dmgText}。${techText}` +
       `${run.shipIds.length} 条舰全部安全返航，1 枚 AI 核心已释放（每次自动探索占 1 枚）——报告在「扫描虫洞」页等你确认。`,
+    'core.wormholeAuto.021',
+    logParams({
+      p1: gainText,
+      ...(gains.length > 0
+        ? {
+            p1List: gains.map((g) => itemNameOf(ctx, g.itemId)),
+            p1ItemId: 'core.wormholeAuto.022',
+            p1ItemParams: gains.map((g) => ({ p2: g.units })),
+          }
+        : { p1Id: 'core.wormholeAuto.023' }),
+      ...(coresGained
+        ? {
+            p2: coreText,
+            p2Id: 'core.wormholeAuto.024',
+            p2p1: aiCoreName(coresGained.type),
+            p2p1Id: AI_CORE_IDS[coresGained.type],
+            p2p2: coresGained.n,
+          }
+        : { p2: '' }),
+      p3: dmgText,
+      ...(damage.length > 0
+        ? {
+            p3List: damage.map((d) => d.name),
+            p3ItemId: 'core.wormholeAuto.025',
+            p3ItemParams: damage.map((d) => ({ p2: d.durabilityLossPct, p3: d.armorLossPct })),
+          }
+        : {}),
+      /**
+       * ⚠ 谜质科技那槽**恒传**（空串也要传）：基础模板里 `{p4}` 是硬槽，缺键会**原样漏 `{p4}`**
+       * （渲染层的既定行为：宁可漏出来让人看见，也不悄悄改中文）——这条与 `p2: ''` 同一个道理。
+       */
+      p4: techText,
+      ...(techText !== ''
+        ? {
+            p4Id: 'core.wormholeAuto.026',
+            p4p1: tf.wreck.toFixed(2),
+            p4p2: tf.ore.toFixed(2),
+            p4p3: tf.damage.toFixed(2),
+          }
+        : {}),
+    }),
   )
 }
 

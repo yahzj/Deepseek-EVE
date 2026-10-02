@@ -21,6 +21,19 @@ export function aiCoreName(type: AiCoreType): string {
   return type === 'basic' ? '基础 AI 核心' : type === 'gamma' ? '伽马 AI 核心' : type === 'beta' ? '贝塔 AI 核心' : '阿尔法 AI 核心'
 }
 
+/**
+ * **核心档位名 → 本地化 id**（**2026-10-02 加** · 船长「按你建议来修」的「列表槽」批）：
+ * `aiCoreName` 是纯中文名表，一旦当**参数**喂进模板（日志/附注），参数值不会再被翻译 ⇒
+ * 英文界面会夹中文。这里给出 id，调用点按 `p{n}p{k}Id` 挂上（渲染层先翻再用）。
+ * ⚠ 与渲染层 `ui/labelsText.ts` 的 `aiCoreText()` **同一张表**（那边已改为 import 本表）。
+ */
+export const AI_CORE_IDS: Readonly<Record<AiCoreType, string>> = {
+  basic: 'ui.labelsText.009',
+  gamma: 'ui.labelsText.010',
+  beta: 'ui.labelsText.011',
+  alpha: 'ui.labelsText.012',
+}
+
 /** 核心库数量 */
 export function countAiCore(state: GameState, type: AiCoreType): number {
   return state.aiCores[type] ?? 0
