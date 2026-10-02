@@ -19,7 +19,7 @@
 import { addLog } from './state'
 import type { AiAssignment, GameState } from './state'
 import type { AiCoreType, SimContext } from './types'
-import type { CommandResult } from './engine'
+import type { CommandResult, CoreBlockReason } from './engine'
 import { nextRandom } from './rng'
 import { addWare, cargoUnitM3, freeCargoM3Of } from './inventory'
 import { pullOneWreck, salvagerCyclesOf } from './salvaging'
@@ -187,12 +187,16 @@ export function industryAiBonus(state: GameState, ctx: SimContext): number {
  * scope = 'industry'：站内精炼炉/回收炉/制造线/实验室线，上限 = 共用上限 + 工业专用扩容（industryAiBonus）。
  * 船长 2026-09-08 定：存量超限（读档/技能变化）不中断运行，但同样计入各池占用——
  * 想再启用新的必须先把占用降到上限以内。 */
-export function aiCoreCapBlock(state: GameState, ctx: SimContext, scope: 'ship' | 'industry' = 'ship'): string | null {
+export function aiCoreCapBlock(state: GameState, ctx: SimContext, scope: 'ship' | 'industry' = 'ship'): CoreBlockReason | null {
   const cap = aiCoreCap(state, ctx)
   const bonus = industryAiBonus(state, ctx)
   const eff = cap + bonus
   if (eff <= 0 || (scope === 'ship' && cap <= 0)) {
-    return 'AI 核心上限为 0：训练提升 AI 核心上限的技能（如「AI 核心操作学」）后才能启用 AI 核心（AI 副船任务与站内精炼炉/回收炉/制造线/实验室共用上限）。'
+    return {
+      error:
+        'AI 核心上限为 0：训练提升 AI 核心上限的技能（如「AI 核心操作学」）后才能启用 AI 核心（AI 副船任务与站内精炼炉/回收炉/制造线/实验室共用上限）。',
+      errorId: 'core.ai.041',
+    }
   }
   const shipUsed = aiCoreShipUsed(state)
   const indUsed = aiCoreIndustryUsed(state)
@@ -202,9 +206,17 @@ export function aiCoreCapBlock(state: GameState, ctx: SimContext, scope: 'ship' 
     const used = shipUsed + indOnShared
     if (used >= cap) {
       if (indOnShared > 0) {
-        return `AI 核心启用已满（${used}/${cap}：副船 ${shipUsed} 枚 + 站内工业超出「工业自动化」扩容 ${indOnShared} 枚）：先停用部分站内工业 AI 或 AI 副船任务再启用新的。`
+        return {
+          error: `AI 核心启用已满（${used}/${cap}：副船 ${shipUsed} 枚 + 站内工业超出「工业自动化」扩容 ${indOnShared} 枚）：先停用部分站内工业 AI 或 AI 副船任务再启用新的。`,
+          errorId: 'core.ai.042',
+          errorParams: { p1: used, p2: cap, p3: shipUsed, p4: indOnShared },
+        }
       }
-      return `AI 核心启用已满（${used}/${cap}）：先停用其它 AI 核心（AI 副船任务或站内精炼炉/回收炉/制造线）再启用新的。`
+      return {
+        error: `AI 核心启用已满（${used}/${cap}）：先停用其它 AI 核心（AI 副船任务或站内精炼炉/回收炉/制造线）再启用新的。`,
+        errorId: 'core.ai.043',
+        errorParams: { p1: used, p2: cap },
+      }
     }
     return null
   }
@@ -212,9 +224,17 @@ export function aiCoreCapBlock(state: GameState, ctx: SimContext, scope: 'ship' 
   const used = shipUsed + indUsed
   if (used >= eff) {
     if (bonus > 0) {
-      return `AI 核心启用已满（${used}/${eff}：共用上限 ${cap} + 工业扩容 ${bonus}）：先停用其它 AI 核心（AI 副船任务或站内炉/线/实验室），或训练「工业自动化」再扩工业工位。`
+      return {
+        error: `AI 核心启用已满（${used}/${eff}：共用上限 ${cap} + 工业扩容 ${bonus}）：先停用其它 AI 核心（AI 副船任务或站内炉/线/实验室），或训练「工业自动化」再扩工业工位。`,
+        errorId: 'core.ai.044',
+        errorParams: { p1: used, p2: eff, p3: cap, p4: bonus },
+      }
     }
-    return `AI 核心启用已满（${used}/${cap}）：先停用其它 AI 核心（AI 副船任务或站内精炼炉/回收炉/制造线/实验室）再启用新的。`
+    return {
+      error: `AI 核心启用已满（${used}/${cap}）：先停用其它 AI 核心（AI 副船任务或站内精炼炉/回收炉/制造线/实验室）再启用新的。`,
+      errorId: 'core.ai.045',
+      errorParams: { p1: used, p2: cap },
+    }
   }
   return null
 }
@@ -246,9 +266,14 @@ function checkAssignable(state: GameState, shipId: string, coreType: AiCoreType,
     }
   }
   const capBlock = aiCoreCapBlock(state, ctx)
-  if (capBlock) return { ok: false, error: capBlock }
+  if (capBlock) return { ok: false, error: capBlock.error, errorId: capBlock.errorId, errorParams: capBlock.errorParams }
   if (countAiCore(state, coreType) <= 0) {
-    return { ok: false, error: `${aiCoreName(coreType)} 库存不足（效率 ${Math.round(aiEfficiency(state, ctx, coreType) * 100)}%）。` }
+    return {
+      ok: false,
+      error: `${aiCoreName(coreType)} 库存不足（效率 ${Math.round(aiEfficiency(state, ctx, coreType) * 100)}%）。`,
+      errorId: 'core.ai.046',
+      errorParams: { p1: aiCoreName(coreType), p2: Math.round(aiEfficiency(state, ctx, coreType) * 100) },
+    }
   }
   if (state.mining.active || state.expedition.active) {
     // 主控作业不影响 AI 副船；无冲突，不拦截
@@ -267,14 +292,25 @@ export function assignAiMining(
   const pre = checkAssignable(state, shipId, coreType, ctx)
   if (!pre.ok) return pre
   const belt = ctx.belts.get(beltId)
-  if (!belt) return { ok: false, error: `未知采集点：${beltId}。` }
+  if (!belt) return { ok: false, error: `未知采集点：${beltId}。`, errorId: 'core.ai.047', errorParams: { p1: beltId } }
   const ore = ctx.items.get(belt.oreId)
-  if (!isMineableItem(ore)) return { ok: false, error: `采集点「${belt.name}」没有对应的可采集资源数据。` }
+  if (!isMineableItem(ore))
+      return {
+        ok: false,
+        error: `采集点「${belt.name}」没有对应的可采集资源数据。`,
+        errorId: 'core.ai.048',
+        errorParams: { p1: belt.name },
+      }
   const needStanding = belt.standingReq ?? 0
   if (needStanding > 0) {
     const have = standingOf(state, DSI_FACTION_ID)
     if (have < needStanding) {
-      return { ok: false, error: `采集点「${belt.name}」需要「深空工业协会」声望 ${needStanding}（累计 ${have}）。` }
+      return {
+        ok: false,
+        error: `采集点「${belt.name}」需要「深空工业协会」声望 ${needStanding}（累计 ${have}）。`,
+        errorId: 'core.ai.049',
+        errorParams: { p1: belt.name, p2: needStanding, p3: have },
+      }
     }
   }
   // V13 探索封锁：所在星系未点亮 → 拒绝派发（母港与已点亮星系不受限）
@@ -329,16 +365,26 @@ export function assignAiExpedition(
   const pre = checkAssignable(state, shipId, coreType, ctx)
   if (!pre.ok) return pre
   const anomaly = ctx.anomalies.get(anomalyId)
-  if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。` }
+  if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。`, errorId: 'core.ai.050', errorParams: { p1: anomalyId } }
   // 手动首胜解锁：AI 只代劳玩家亲手清剿过的悬赏（completedBounties = 主控首胜记录）
   if (!state.completedBounties.includes(anomalyId)) {
-    return { ok: false, error: `AI 暂不能接单：「${anomaly.name}」需要你先亲手完成一次（首胜后解锁自动远征）。` }
+    return {
+        ok: false,
+        error: `AI 暂不能接单：「${anomaly.name}」需要你先亲手完成一次（首胜后解锁自动远征）。`,
+        errorId: 'core.ai.051',
+        errorParams: { p1: anomaly.name },
+      }
   }
   // AI 门槛 = "最终成功率"口径（favor 修正 + logit 扩散，与 AI 指挥中心展示/结算 favor 同源）：
   // 已过门槛的目标在 favor 下接近必胜（简单局必成，杜绝"必胜还翻车"）
   const chance = aiWinPreview(state, ctx, anomaly, shipId)
   if (chance < 0.8) {
-    return { ok: false, error: `AI 只接高胜率任务：该目标最终成功率 ${Math.round(chance * 100)}%（需 ≥80%）。` }
+    return {
+        ok: false,
+        error: `AI 只接高胜率任务：该目标最终成功率 ${Math.round(chance * 100)}%（需 ≥80%）。`,
+        errorId: 'core.ai.052',
+        errorParams: { p1: Math.round(chance * 100) },
+      }
   }
   if (durabilityOf(state, shipId) < 0.5) {
     return { ok: false, error: '该船耐久低于 50%，先维修再出任务。', errorId: 'core.ai.007' }
@@ -401,9 +447,14 @@ export function assignAiSalvage(
   const pre = checkAssignable(state, shipId, coreType, ctx)
   if (!pre.ok) return pre
   const galaxy = ctx.galaxies.get(galaxyId)
-  if (!galaxy) return { ok: false, error: `未知星系：${galaxyId}。` }
+  if (!galaxy) return { ok: false, error: `未知星系：${galaxyId}。`, errorId: 'core.ai.053', errorParams: { p1: galaxyId } }
   if (!state.exploredGalaxies.includes(galaxyId)) {
-    return { ok: false, error: `「${galaxy.name}」尚未探明——先对其执行扫描探索。` }
+    return {
+        ok: false,
+        error: `「${galaxy.name}」尚未探明——先对其执行扫描探索。`,
+        errorId: 'core.ai.054',
+        errorParams: { p1: galaxy.name },
+      }
   }
   const block = actionBlockReason(state, galaxyId)
   if (block) return { ok: false, error: block }
@@ -423,7 +474,12 @@ export function assignAiSalvage(
     }
   }
   if (!hasPool) {
-    return { ok: false, error: `「${galaxy.name}」没有可打捞的敌群残骸（该星系无悬赏目标）。` }
+    return {
+        ok: false,
+        error: `「${galaxy.name}」没有可打捞的敌群残骸（该星系无悬赏目标）。`,
+        errorId: 'core.ai.055',
+        errorParams: { p1: galaxy.name },
+      }
   }
   const eff = aiEfficiency(state, ctx, coreType)
   spendAiCore(state, coreType)
@@ -463,9 +519,14 @@ export function assignAiStandby(
   const pre = checkAssignable(state, shipId, coreType, ctx)
   if (!pre.ok) return pre
   const galaxy = ctx.galaxies.get(galaxyId)
-  if (!galaxy) return { ok: false, error: `未知星系：${galaxyId}。` }
+  if (!galaxy) return { ok: false, error: `未知星系：${galaxyId}。`, errorId: 'core.ai.053', errorParams: { p1: galaxyId } }
   if (!state.exploredGalaxies.includes(galaxyId)) {
-    return { ok: false, error: `「${galaxy.name}」尚未探明——先对其执行扫描探索。` }
+    return {
+        ok: false,
+        error: `「${galaxy.name}」尚未探明——先对其执行扫描探索。`,
+        errorId: 'core.ai.054',
+        errorParams: { p1: galaxy.name },
+      }
   }
   const eff = aiEfficiency(state, ctx, coreType)
   const outMinutes = shortestTravelMinutes(ctx, HOME_GALAXY_ID, galaxyId)
@@ -505,8 +566,11 @@ export function assignAiStandby(
 export interface AiTaskView {
   kind: 'mining' | 'salvage' | 'standby' | string
   phase: string
-  /** 阶段文案（与主控行同款：返航卸货/出航/采掘中/打捞中/前往 X 掩护巡逻/驻留中…） */
+  /** 阶段文案（与主控行同款：返航卸货/出航/采掘中/打捞中/前往 X 掩护巡逻/驻留中…）
+   *  ⚠ **⟪文案调整 2026-10-02⟫ 批②**：界面**只许读 `labelId`**（按当前语言渲染）；`label` 是中文原串（甲案照写，供工具与回落用）。 */
   label: string
+  /** 阶段文案的 l10n id（`packages/data/src/l10n/table.ts`；界面走 `tr(labelId)`） */
+  labelId?: string
   percent: number | null
   remainingMs: number | null
 }
@@ -533,10 +597,18 @@ export function aiTaskView(state: GameState, ctx: SimContext, shipId: string): A
           ? oneOutboundLegMs(state, ctx, task.beltId, shipId, stGal)
           : scaledReturnMs(oneLegMs(state, ctx, task.beltId, shipId, stGal), state, ctx, shipId, task.fuelMul)
       const v = leg(base, task.phase === 'outbound')
-      return { kind: 'mining', phase: task.phase, label: task.phase === 'returning' ? '返航卸货中' : '出航中', percent: v.percent, remainingMs: v.remain }
+      return {
+        kind: 'mining',
+        phase: task.phase,
+        label: task.phase === 'returning' ? '返航卸货中' : '出航中',
+        labelId: task.phase === 'returning' ? 'ui.aiProgress.002' : 'ui.aiProgress.003',
+        percent: v.percent,
+        remainingMs: v.remain,
+      }
     }
     const params = getMiningParams(state, ctx, { shipId, beltId: task.beltId })
-    if (!params) return { kind: 'mining', phase: task.phase, label: '采掘中', percent: null, remainingMs: null }
+    if (!params)
+      return { kind: 'mining', phase: task.phase, label: '采掘中', labelId: 'ui.aiProgress.004', percent: null, remainingMs: null }
     const servLv = Math.min(5, state.skills.trained['ai-servicing'] ?? 0)
     // 2026-09-27 船长令（R4/R5 上位技能批）：副船统合整备学走单点 aiServicingUpgradeMult（与副船整备学乘算）
     const cycleReal = Math.max(1, Math.ceil((params.cycleMs * (1 - 0.03 * servLv) * aiServicingUpgradeMult(state)) / eff))
@@ -545,6 +617,7 @@ export function aiTaskView(state: GameState, ctx: SimContext, shipId: string): A
       kind: 'mining',
       phase: task.phase,
       label: '采掘中',
+      labelId: 'ui.aiProgress.004',
       percent: Math.min(100, Math.max(0, Math.round((acc / cycleReal) * 100))),
       remainingMs: Math.max(0, cycleReal - acc),
     }
@@ -558,7 +631,14 @@ export function aiTaskView(state: GameState, ctx: SimContext, shipId: string): A
     if (task.phase === 'outbound' || task.phase === 'returning') {
       const base = task.phase === 'outbound' ? Math.round(legBase() / 2) : scaledReturnMs(legBase(), state, ctx, shipId, task.fuelMul)
       const v = leg(base, task.phase === 'outbound')
-      return { kind: 'salvage', phase: task.phase, label: task.phase === 'returning' ? '返航卸货' : '出航', percent: v.percent, remainingMs: v.remain }
+      return {
+        kind: 'salvage',
+        phase: task.phase,
+        label: task.phase === 'returning' ? '返航卸货' : '出航',
+        labelId: task.phase === 'returning' ? 'ui.aiProgress.005' : 'ui.aiProgress.006',
+        percent: v.percent,
+        remainingMs: v.remain,
+      }
     }
     const reals = salvagerCyclesOf(state, ctx, shipId).map((c) => Math.max(1, Math.ceil(c / eff)))
     const stepMs = reals.length > 0 ? Math.min(...reals) : 1
@@ -567,6 +647,7 @@ export function aiTaskView(state: GameState, ctx: SimContext, shipId: string): A
       kind: 'salvage',
       phase: task.phase,
       label: '打捞中',
+      labelId: 'ui.aiProgress.007',
       percent: Math.min(100, Math.max(0, Math.round((acc / stepMs) * 100))),
       remainingMs: Math.max(0, stepMs - acc),
     }
@@ -575,9 +656,16 @@ export function aiTaskView(state: GameState, ctx: SimContext, shipId: string): A
     if (task.phase === 'out') {
       const remain = Math.max(0, task.finishAtGameMs - state.gameMs)
       const outMs = Math.max(1, task.outMs)
-      return { kind: 'standby', phase: task.phase, label: '前往掩护巡逻中', percent: Math.min(100, Math.max(0, Math.round(((outMs - remain) / outMs) * 100))), remainingMs: remain }
+      return {
+        kind: 'standby',
+        phase: task.phase,
+        label: '前往掩护巡逻中',
+        labelId: 'ui.aiProgress.008',
+        percent: Math.min(100, Math.max(0, Math.round(((outMs - remain) / outMs) * 100))),
+        remainingMs: remain,
+      }
     }
-    return { kind: 'standby', phase: task.phase, label: '驻留中', percent: null, remainingMs: null }
+    return { kind: 'standby', phase: task.phase, label: '驻留中', labelId: 'ui.aiProgress.009', percent: null, remainingMs: null }
   }
   return null
 }

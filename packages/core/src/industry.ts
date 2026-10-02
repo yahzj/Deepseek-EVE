@@ -308,7 +308,7 @@ export function startRefineRun(
     }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
-    if (capBlock) return { ok: false, error: capBlock }
+    if (capBlock) return { ok: false, error: capBlock.error, errorId: capBlock.errorId, errorParams: capBlock.errorParams }
     if (countAiCore(state, worker) <= 0) {
       return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入精炼炉。`, errorId: 'core.industry.005', errorParams: { p1: aiCoreName(worker) } }
     }
@@ -470,7 +470,7 @@ export function startUnboxRun(
     }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
-    if (capBlock) return { ok: false, error: capBlock }
+    if (capBlock) return { ok: false, error: capBlock.error, errorId: capBlock.errorId, errorParams: capBlock.errorParams }
     if (countAiCore(state, worker) <= 0) {
       return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入「货柜拆解」。`, errorId: 'core.industry.007', errorParams: { p1: aiCoreName(worker) } }
     }
@@ -560,7 +560,7 @@ export function startRecycleRun(
     }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
-    if (capBlock) return { ok: false, error: capBlock }
+    if (capBlock) return { ok: false, error: capBlock.error, errorId: capBlock.errorId, errorParams: capBlock.errorParams }
     if (countAiCore(state, worker) <= 0) {
       return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入回收炉。`, errorId: 'core.industry.012', errorParams: { p1: aiCoreName(worker) } }
     }

@@ -19,7 +19,7 @@ import {
   /** F4d 货柜拆解：每件周期（90 秒）——卡面读数与开工提示同源，别再写死 */
   UNBOX_CYCLE_MS,
   recycleRefiningMultiplier,
-  aiCoreName,
+  
   countWare,
   oreAvailable,
   /** 2026-09-25 船长令：H 族残骸暂不开放回收 ⇒ 卡片也摘掉（与起炉那一层同一判据） */
@@ -191,7 +191,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       onToast(cmdText(r) || tr('ui.IndustryPage.112'), true)
       return
     }
-    const who = worker === 'pilot' ? tr("ui.IndustryPage.020") : tr("ui.IndustryPage.068", { p1: aiCoreName(worker) })
+    const who = worker === 'pilot' ? tr("ui.IndustryPage.020") : tr("ui.IndustryPage.068", { p1: aiCoreText(worker) })
     onToast(
       isBox
         ? tr("ui.IndustryPage.069", { p1: def.name, total: total, who: who, p4: Math.max(1, Math.round(UNBOX_CYCLE_MS / 1000)) })
@@ -689,7 +689,7 @@ function LabCard({
       onToast(cmdText(r) || tr('ui.lab.013'), true)
       return
     }
-    const who = worker === 'pilot' ? tr('ui.IndustryPage.020') : tr('ui.IndustryPage.068', { p1: aiCoreName(worker) })
+    const who = worker === 'pilot' ? tr('ui.IndustryPage.020') : tr('ui.IndustryPage.068', { p1: aiCoreText(worker) })
     onToast(tr('ui.lab.019', { p1: recipe.name, p2: recipe.outputUnits, who }))
   }
   return (

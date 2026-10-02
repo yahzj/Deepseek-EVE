@@ -108,7 +108,7 @@ describe('AI 核心库与名额', () => {
     // ai-expert = 0：AI 副船（默认 ship scope）仍被共用上限为 0 拦截；
     // 站内产业（industry scope）可先用工业扩容工位（used 0 < 0+15）
     expect(aiCoreCapBlock(state, ctx)).not.toBeNull()
-    expect(aiCoreCapBlock(state, ctx) ?? '').toContain('AI 核心上限为 0')
+    expect(aiCoreCapBlock(state, ctx)?.errorId).toBe('core.ai.041')
     expect(aiCoreCapBlock(state, ctx, 'industry')).toBeNull()
     // 共用上限满、扩容还有空余：产业照常放行（副船仍拦截）
     state.skills.trained['ai-expert'] = 1
@@ -147,7 +147,7 @@ describe('AI 核心库与名额', () => {
     s.skills.trained['industrial-ai-cap-basic'] = 0
     s.skills.trained['industrial-ai-cap'] = 0
     expect(industryAiBonus(s, realCtx)).toBe(5)
-    expect(aiCoreCapBlock(s, realCtx) ?? '').toContain('AI 核心上限为 0')
+    expect(aiCoreCapBlock(s, realCtx)?.errorId).toBe('core.ai.041')
     expect(aiCoreCapBlock(s, realCtx, 'industry')).toBeNull()
   })
 })

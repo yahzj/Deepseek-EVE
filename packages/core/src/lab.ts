@@ -462,7 +462,7 @@ export function startLabRun(
     }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
-    if (capBlock) return { ok: false, error: capBlock }
+    if (capBlock) return { ok: false, error: capBlock.error, errorId: capBlock.errorId, errorParams: capBlock.errorParams }
     if (countAiCore(state, worker) <= 0) {
       return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入实验室。`, errorId: 'core.lab.014', errorParams: { p1: aiCoreName(worker) } }
     }
