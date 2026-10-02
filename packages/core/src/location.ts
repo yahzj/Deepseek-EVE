@@ -18,7 +18,8 @@ import type { GameState } from './state'
 import type { CommandResult } from './engine'
 import type { AiCoreType, SimContext, StationSiteDef } from './types'
 import { shortestTravelMinutes, travelLegMs } from './travel'
-import { deliverStationResources, noteStationSiteAt, siteProgress, tierRemaining, stationBillView, stationBillText, billNeedOf } from './station'
+import { deliverStationResources, noteStationSiteAt, tierRemaining, stationBillView, stationBillText, billNeedOf } from './station'
+import { siteProgress } from './state'
 import { cargoCapacityM3Of, cargoOfShip, cargoUsedM3Of, unloadCargoOfShipToWarehouse } from './inventory'
 
 /** 进港卸货附注（2026-09-08 船长定：任何进港时刻自动整仓卸货；返回 >0 单位的附注文本） */

@@ -93,6 +93,9 @@ export {
   miningHalt,
   salvageHalt,
   haulingHalt,
+  /** 2026-10-02 破环搬家：站点进度两枚读数从 station.ts 搬到 state.ts（纯 state 谓词） */
+  siteProgress,
+  isSiteBuilt,
 } from './state'
 export type {
   LogKind,
@@ -1092,8 +1095,6 @@ export {
 } from './location'
 export type { TransitView, StandbyView } from './location'
 export {
-  siteProgress,
-  isSiteBuilt,
   stationSiteAtGalaxy,
   isGalaxyStationBuilt,
   tierNeedOf,

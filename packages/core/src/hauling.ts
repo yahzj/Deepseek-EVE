@@ -36,7 +36,7 @@ import { shortestTravelPath, shortestTravelMinutes, travelLegMs, travelMinutesEf
 import { bumpFirst } from './firstTasks'
 import { securityZoneOf } from './sideTasks'
 import { cargoCapacityM3Of, unloadCargoOfShipToWarehouse } from './inventory'
-import { siteProgress } from './station'
+import { siteProgress } from './state'
 import { shipDisplayName } from './instances'
 import { nextRandom } from './rng'
 

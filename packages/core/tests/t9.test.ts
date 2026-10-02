@@ -5,14 +5,12 @@
 import { describe, expect, it } from 'vitest'
 import type { GameState } from '../src/state'
 import type { SimContext, StationSiteDef } from '../src/types'
-import { createInitialState } from '../src/state'
+import { createInitialState, isSiteBuilt, siteProgress } from '../src/state'
 import { serializeSaveFile, loadSaveFile, SAVE_FORMAT, MIN_MIGRATABLE_VERSION} from '../src/save'
 import {
   deliverStationResources,
-  isSiteBuilt,
   onArriveAtGalaxy,
   playDialogue,
-  siteProgress,
   tierRemaining,
 } from '../src/station'
 import { nearestStationGalaxyId, stationGalaxyIds, isAtHomeLike, startSiteDeliverTrip, cancelSiteDeliverTrip } from '../src/location'

@@ -9,7 +9,7 @@
  *    （无限容量、永不遗失）；采矿支持 AI 核心驱动的自动返航-卸货循环。
  */
 
-import type { AiCoreType, CommsInstanceEntry, DamageResists, DamageType, FittedModules, FoeFamily } from './types'
+import type { AiCoreType, CommsInstanceEntry, DamageResists, DamageType, FittedModules, FoeFamily, StationSiteDef } from './types'
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { emptyFitted } from './labels'
 import { EMPTY_WORMHOLE_STATE } from './wormhole'
@@ -3859,4 +3859,22 @@ export function createInitialState(opts?: {
     'core.state.030',
   )
   return state
+}
+
+/* ───────── 副空间站进度（**2026-10-02 破环搬家**：原住 `station.ts`） ─────────
+ * 为什么搬：`comms.ts`（通讯触发 `siteBuilt` 档）要读"站点是否建成"，而 `station.ts` 又要调
+ * `comms.ts` 的 `deliverDialogueToComms` ⇒ 两个模块互相 import。这两个函数是**纯 `state` 读数**
+ * （类型 `StationSiteProgress` 本来就定义在本文件）⇒ 搬到本文件，comms/station/location/hauling/
+ * sideTasks 都从 state 读，环断（行为逐字不变）。 */
+
+/** 读取站点进度（容错默认档 0） */
+export function siteProgress(state: GameState, siteId: string): StationSiteProgress {
+  const p = state.stationSites[siteId]
+  if (p) return p
+  return { stage: 0, delivered: {} }
+}
+
+/** 是否已建成（= 全部档位完成） */
+export function isSiteBuilt(state: GameState, site: StationSiteDef): boolean {
+  return siteProgress(state, site.id).stage >= site.tiers.length
 }

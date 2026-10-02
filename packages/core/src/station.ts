@@ -4,25 +4,13 @@
  * 2026-09-09（船长定）：各档改为**逐档材料单**（tier.bill = 物品×数量，逐项交齐才升档；
  * 建材仅精炼矿物，不含原矿）。
  */
-import { addLog, HOME_GALAXY_ID } from './state'
+import { addLog, HOME_GALAXY_ID, isSiteBuilt, siteProgress } from './state'
 import type { GameState, StationSiteProgress } from './state'
 import type { CommandResult } from './engine'
 import type { SimContext, StationSiteDef } from './types'
 import { cargoOfShip } from './inventory'
 import { peakFirst } from './firstTasks'
 import { deliverDialogueToComms } from './comms'
-
-/** 读取站点进度（容错默认档 0） */
-export function siteProgress(state: GameState, siteId: string): StationSiteProgress {
-  const p = state.stationSites[siteId]
-  if (p) return p
-  return { stage: 0, delivered: {} }
-}
-
-/** 是否已建成（= 全部档位完成） */
-export function isSiteBuilt(state: GameState, site: StationSiteDef): boolean {
-  return siteProgress(state, site.id).stage >= site.tiers.length
-}
 
 /** 该星系的建站点（一个星系至多一个；缺省 = 无建站点） */
 export function stationSiteAtGalaxy(ctx: SimContext, galaxyId: string): StationSiteDef | undefined {

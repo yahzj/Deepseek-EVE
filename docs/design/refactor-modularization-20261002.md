@@ -169,6 +169,14 @@
   消失）⇒ 也删（破环成功收账）。
 - 验证：typecheck 全仓 ✅（含 noUnusedLocals 闸门）· core 全量 **3004 条** ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
 
+### 批次 3-②：破第二条环 `comms ↔ station`（2026-10-02）
+
+- 手法 = **把纯 `state` 读数搬到 state 家**：`siteProgress` / `isSiteBuilt`（类型 `StationSiteProgress`
+  本来就定义在 state.ts）从 station.ts 搬到 state.ts；comms / station / location / hauling / sideTasks /
+  tests/t9 全部改从 state 读 ⇒ station→comms 的边只剩单向的 `deliverDialogueToComms`，环断。
+- index.ts 导出随迁；F9 基线 **32 → 31**。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、

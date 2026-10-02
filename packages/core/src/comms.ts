@@ -10,7 +10,7 @@
  * - **回复接口预留但不启用**：见 `COMMS_REPLIES_ENABLED`（玩家侧不出现任何回复控件）。
  */
 import { ONB_DONE } from './onboarding'
-import { isSiteBuilt } from './station'
+import { isSiteBuilt } from './state'
 import { blackboxSeenOf } from './blackbox'
 import { addLog } from './state'
 import type { GameState } from './state'
