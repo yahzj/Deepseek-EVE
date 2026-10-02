@@ -52,7 +52,8 @@ import { rareWreckItemIdOfCard, RARE_WRECK_VOLUME_M3 } from './salvage'
 /** 2026-09-27 船长令：主力舰队打赢 ⇒ 往该星系**入侵残骸场**里放箱子（稀有残骸） */
 import { injectWeekendRareWreck } from './salvage'
 import { WEEKEND_CARD_PREFIX, weekendOccupiedLiveAt } from './weekendBounty'
-import { DSI_FACTION_ID, noteStandingEarned } from './expedition'
+/** 2026-10-02 破环搬家：声望账本从 expedition 拆到 standing.ts，这里改读 standing（断 expedition↔weekendBattle） */
+import { DSI_FACTION_ID, noteStandingEarned } from './standing'
 
 /* ─────────────── 战斗规格 ─────────────── */
 

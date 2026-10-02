@@ -219,6 +219,15 @@
 - 验证：typecheck 全仓 ✅（闸门抓到 7 处搬家后未用 import，已清）· core **3004 条** ✅ · content/l10n ✅ ·
   arch:guard F1~F9 ✅ · 构建 ✅。
 
+### 批次 3-⑦：破 `expedition ↔ weekendBattle`（拆出 `standing.ts` 声望账本）（2026-10-02）
+
+- 手法：`DSI_FACTION_ID` ＋ 声望账本四件（`standingOf`/`spendableStandingOf`/`noteStandingEarned`/
+  `spendStanding`，纯 state 读数）从 expedition.ts 拆到新文件 `standing.ts`；weekendBattle 改从 standing 读
+  ⇒ expedition↔weekendBattle 的运行期边清零。expedition 原样再导出（其余 40 余处门槛的既有引用零改动；
+  expedition 内部三处调用经本地 import 补齐）。
+- F9 基线 **22 → 21**。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、
