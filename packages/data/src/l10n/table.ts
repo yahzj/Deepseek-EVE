@@ -1232,6 +1232,11 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.location.037": { zh: "货仓已自动卸入物品仓库（{p1} 单位）。", en: "The hold was unloaded into item storage automatically ({p1} units)." },
   "core.location.039": { zh: "返航完成：舰船已即时停靠「{p1}」（副空间站）。{p2}", en: "Return complete: the ship docked at “{p1}” at once (outpost).{p2}" },
   "core.location.040": { zh: "返航完成：舰船已即时停靠「{p1}」（自「{p2}」归来）。{p3}", en: "Return complete: the ship docked at “{p1}” at once (coming back from “{p2}”).{p3}" },
+  "core.location.041": { zh: "本次清仓交付建材 {p1} 单位，当前档还差 {p2} 单位（仓库有料将自动续趟）。", en: "Clearing the hold delivered {p1} units of construction material; the current tier is still {p2} units short (the dock keeps repeating while the warehouse has stock)." },
+  "core.location.042": { zh: "⚐ 掩护巡逻：舰船已抵达「{p1}」并留守该星系（低安星系可能遭遇巡逻/伏击；可随时返航空间站，或从该处继续采矿/出击）。", en: "⚐ Escort patrol: the ship has reached “{p1}” and holds station in that system (low-sec systems can throw patrols or ambushes at it; return to a station at any time, or keep mining and fighting from there)." },
+  "core.location.043": { zh: "⚐ 已抵达「{p1}」，掩护巡逻就位：留守该星系（可采矿/出击/返航空间站；低安星系留意巡逻与伏击）。", en: "⚐ Arrived at “{p1}”; escort patrol on station: hold this system (mine, sortie or return to a station; in low-sec watch for patrols and ambushes)." },
+  "core.location.044": { zh: "掩护巡逻行程已取消：舰船返回母港（未抵达「{p1}」）；货仓已自动卸入物品仓库（{p2} 单位）。", en: "The escort patrol run was cancelled: the ship returns to the home port (it never reached “{p1}”); the hold was unloaded into the item warehouse automatically ({p2} units)." },
+  "core.location.045": { zh: "掩护巡逻行程已取消：舰船返回母港（未抵达「{p1}」）。", en: "The escort patrol run was cancelled: the ship returns to the home port (it never reached “{p1}”)." },
   /* ── 第二十一批：wormholeSalvage.ts（洞内货仓整理 / 拾取 / 抛货 / 采集 / 打捞 / 战果）── */
   "core.wormholeSalvage.001": { zh: "这件东西不是形状件。", en: "That item is not a shaped item." },
   "core.wormholeSalvage.002": { zh: "临时空间也放不下（{p1}/{p2} 格，这件要 {p3} 格）。", en: "Temporary space cannot take it either ({p1}/{p2} slots, and this needs {p3})." },

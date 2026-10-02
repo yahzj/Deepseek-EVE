@@ -531,6 +531,8 @@ function arriveDeliverSite(
       state,
       'fleet',
       `本次清仓交付建材 ${delivered.toLocaleString('zh-CN')} 单位，当前档还差 ${remain.toLocaleString('zh-CN')} 单位（仓库有料将自动续趟）。`,
+      'core.location.041',
+      { p1: delivered.toLocaleString('zh-CN'), p2: remain.toLocaleString('zh-CN') },
     )
   } else {
     addLog(state, 'fleet', `本趟未交付任何建材（工地当前需求与货仓装载不匹配）——自动返航。`, 'core.location.036')
@@ -680,6 +682,8 @@ export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext)
     state,
     'fleet',
     `⚐ 掩护巡逻：舰船已抵达「${target.name}」并留守该星系（低安星系可能遭遇巡逻/伏击；可随时返航空间站，或从该处继续采矿/出击）。`,
+    'core.location.042',
+    { p1: target.name },
   )
   return { ok: true }
 }
@@ -704,6 +708,8 @@ export function advanceStandby(state: GameState, ctx: SimContext): void {
     state,
     'fleet',
     `⚐ 已抵达「${name}」，掩护巡逻就位：留守该星系（可采矿/出击/返航空间站；低安星系留意巡逻与伏击）。`,
+    'core.location.043',
+    { p1: name },
   )
 }
 
@@ -723,6 +729,9 @@ export function cancelStandby(state: GameState, ctx: SimContext): CommandResult 
     state,
     'warn',
     `掩护巡逻行程已取消：舰船返回母港（未抵达「${name}」）${moved > 0 ? `；货仓已自动卸入物品仓库（${moved.toLocaleString('zh-CN')} 单位）。` : '。'}`,
+    /* ⟪文案调整 2026-10-02⟫ 批⑨-①：两种收尾各一个 id（空段会被整段丢掉，所以不合并成一条带可选段） */
+    moved > 0 ? 'core.location.044' : 'core.location.045',
+    moved > 0 ? { p1: name, p2: moved.toLocaleString('zh-CN') } : { p1: name },
   )
   return { ok: true }
 }

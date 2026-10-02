@@ -139,6 +139,40 @@
 
 ---
 
+## 批⑨-① 日志行补 id：`location.ts` 四条（2026-10-02 · 同步一号 10 笔之后）
+
+**背景**：一号 2026-10-02 那批把「落盘正文 ≠ id 表文」的扫描转正成常设护栏；本批是**同一条链的另一半** ——
+把「有正文、**没有** `textId`」的日志补上 id（英文界面那一整行才会按语言渲染）。
+
+**范围判定**：`location.ts` 共 12 条缺 id 的 `addLog`；本批先做**结构规整的 4 条**（纯模板 ＋ 简单参数），
+带 `unloadNote.text` 之类**拼接段**的复合句（253/258/525/556/567 等）留第二批走 `composeLog()`（`logParts.ts` 的既有 API）。
+
+**落码（2 个文件）**：
+
+| # | 位置 | 新 id | 内容 |
+|---|---|---|---|
+| 1 | `location.ts:530` | `core.location.041` | 清仓交付建材（`p1` 已交 / `p2` 还差） |
+| 2 | `location.ts:679` | `core.location.042` | ⚐ 掩护巡逻抵达（`p1` 星系名） |
+| 3 | `location.ts:703` | `core.location.043` | ⚐ 掩护巡逻就位（`p1` 星系名） |
+| 4 | `location.ts:722` | `core.location.044` / `045` | 取消掩护巡逻的**两种收尾各一个 id**（带卸货数 / 不带）——⚠ **不合并成"可选段"**：`composeLog` 的硬规矩①写着"空段会被整段丢掉、段链跟着断"，这里用两个基础模板最稳 |
+
+**读数**：`l10n:core-zh -- location` **12 → 8**（余 8 条 `addLog` ＋ 1 条 return 误判）。
+
+**验证**：`typecheck` 四包 0 错 · core **287 文件 / 3016 用例全绿** · `l10n:params`（**一号加强版**）**0 漏喂** · `content:check` ✅。
+
+### 批⑨ 的后续计划（按模块拆小批）
+
+| 小批 | 模块 | 条数 | 备注 |
+|---|---|---|---|
+| ⑨-② | `location.ts` 余下 8 条 | 8 | 多为拼接句（`unloadNote.text` / 嵌套三元）⇒ 走 `composeLog()`；含一条 `reconcileDockSanity` 的"两种情况"三元（拆两个 id） |
+| ⑨-③ | `combat.ts` | 12 | 战斗日志（网/捕获/损管） |
+| ⑨-④ | `wormholeSalvage.ts` | 11 | 虫洞打捞 |
+| ⑨-⑤ | `expedition.ts` | 10 | 远征 |
+| ⑨-⑥ | `encounters.ts` · `wormholeBattle.ts` | 13 | 遭遇战 / 虫洞战 |
+| ⑨-⑦ | 其余零散（`market` 5 · `sideTasks` 5 · `manufacturing` 4 · `station` 2 · `explore` 2 · `hauling`/`mining`/`matterTech`/`onboarding`/`foeSpecs` 各 1） | 23 | 按域合并成一两批 |
+
+---
+
 ## 待做（按盘点稿顺序）
 
 批③ 远征/自动循环（9 条）· 批④ 市场（2 条）· 批⑤ 工业（3 条）· 批⑥ 装配（1 条）· 批⑦ 虫洞＋战斗读数（2 条）· 批⑧ B 类待核（9 条）· 批⑨ 日志行（97 处，建议单独立项）· 批⑪ 共享拒因（`shipLockedReason` / `cannotInterruptReason`，跨 6 域，需先申请）。
