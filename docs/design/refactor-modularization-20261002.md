@@ -207,6 +207,18 @@
 - 连带：12 条过它身的基线环消失、10 条重分解浮出 ⇒ F9 基线 **25 → 23**（重打快照）。
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
 
+### 批次 3-⑥：破 `salvaging ↔ shipyard`（拆出 `fleetBook.ts`）（2026-10-02）
+
+- 手法：`addShipToFleet` / `allocateShipUid` / `emptyShipState` / `restoreShipFromWreck` 四件**纯舰队账本
+  操作**从 shipyard.ts 拆到新文件 `fleetBook.ts`（只依赖 labels 的 `emptyFitted` 与 shipWrecks 的回收比例
+  常量）；salvaging 改从 fleetBook 读 ⇒ salvaging→shipyard 的运行期边清零，shipyard→salvaging 的
+  `retireSalvageShip` 保留单向。shipyard 原样再导出四件（先例：fitted.ts）。
+- 先试过"move restore 到 shipWrecks"（会造出 shipWrecks↔shipyard 新环）与"shipyard 改调 salvageHalt"
+  （会丢返航账本、改行为）⇒ 都不行，最终走本手法。
+- F9 基线 **23 → 22**。
+- 验证：typecheck 全仓 ✅（闸门抓到 7 处搬家后未用 import，已清）· core **3004 条** ✅ · content/l10n ✅ ·
+  arch:guard F1~F9 ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、
