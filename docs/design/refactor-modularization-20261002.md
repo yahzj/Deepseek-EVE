@@ -438,6 +438,17 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：零渲染层改动）。
 
+### 批次 4k：combat.ts 十二拆——`foeRange.ts` 敌武器射程与电子舰压制（2026-10-02 · 零行为变化）
+
+- 手法：`foeDroneRangeOf`～`markFoeGunRangeBuff` **射程/压制整簇 404 行**（敌机有效射程单一真相源、
+  受击增程、电子舰削减加法口径、干扰舰净削减、基准账）切接搬入新文件 `foeRange.ts`（§三合规，
+  BOM/行尾自检过）；combat 借回 + 原样再导出。
+- 四件原模块私有（`applyFoeRangeDebuff`/`foeRangeWithDebuff`/`markFoeDroneRangeBuff`/
+  `markFoeGunRangeBuff`）因 combat 各结算点仍要调用而转公开（不进 combat 公开面）。
+- 连带解锁：敌群建档簇对 `foeGunMaxRangeOf`/`foeDroneRangeOf` 的区外依赖已变跨模块单向 ⇒ 4l 可整簇搬。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：零渲染层改动）。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、

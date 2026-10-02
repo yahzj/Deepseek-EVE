@@ -1846,6 +1846,8 @@ for (const m of MODULES) {
     const combatSrc = readSrc(combatPath)
     // 2026-10-02 批次 4g：createPlayerSpec 迁到 playerSpec.ts ⇒ 基准账入账点随它搬家，契约改扫新家
     const playerSpecSrc = readSrc('packages/core/src/playerSpec.ts')
+    // 2026-10-02 批次 4k：meJammerNetOf / applyMeJammerDebuff 迁到 foeRange.ts ⇒ 这两条契约改扫新家
+    const foeRangeSrc = readSrc('packages/core/src/foeRange.ts')
     const debuffLines = combatSrc.split('\n').filter((l) => l.includes('const foesForDebuff ='))
     check(
       debuffLines.length === 1 && debuffLines[0]!.includes('activeFoeSpecsOf(anomaly, bal, battle.waveIdx)'),
@@ -1854,8 +1856,8 @@ for (const m of MODULES) {
         `实际 ${debuffLines.length} 处${debuffLines.length > 0 ? `：${debuffLines.map((l) => l.trim().slice(0, 70)).join(' / ')}` : ''}`,
     )
     check(
-      combatSrc.includes('foes.filter((f) => !foeUnitDeadOf(battle, f.tag))'),
-      `干扰压制取数契约：${combatPath} 的 \`meJammerNetOf\` 必须**滤掉已阵亡的干扰舰**` +
+      foeRangeSrc.includes('foes.filter((f) => !foeUnitDeadOf(battle, f.tag))'),
+      `干扰压制取数契约：foeRange.ts 的 \`meJammerNetOf\` 必须**滤掉已阵亡的干扰舰**` +
         `（\`!foeUnitDeadOf(battle, f.tag)\`）——不滤的话打死了也照压，射程永不恢复`,
     )
     /**
@@ -1871,8 +1873,8 @@ for (const m of MODULES) {
      *   ⇒ 入账点必须与武器 push **逐条对齐**（4 处：基础舰炮 / 炮台·导弹 / 激光 / 每架无人机）。
      */
     check(
-      !/applyMeJammerDebuff\([^)]*meRangeMulOf\(/.test(combatSrc),
-      `干扰压制口径契约：${combatPath} 的 \`applyMeJammerDebuff\` 第二参必须是**净削减率**` +
+      !/applyMeJammerDebuff\([^)]*meRangeMulOf\(/.test(foeRangeSrc),
+      `干扰压制口径契约：foeRange.ts 的 \`applyMeJammerDebuff\` 第二参必须是**净削减率**` +
         `（\`meJammerNetOf(...)\`），不能传射程系数 \`meRangeMulOf(...)\`——传系数会退化成"整件无加成"地压，` +
         `带射程加成的武器被多压（船长例③的加法口径失效）`,
     )
