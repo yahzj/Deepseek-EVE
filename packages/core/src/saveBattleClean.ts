@@ -135,6 +135,10 @@ const BATTLE_FIELDS = {
     kind: 'runtime',
     why: '我方「跃迁规避装置」的闪现冷却（2026-10-01 加：R 族中槽件 mod-lair-blink-r——被命中时拉开 2,000m，冷却 12 秒）：与 `foeBlinks` 同一口径，落在"重载即重置循环"内 ⇒ 有意不入档',
   },
+  meBurstFired: {
+    kind: 'runtime',
+    why: '我方「三连射」本轮已发数（2026-10-03 加：R 族势力特色激光炮 mod-lair-beam-r「三叉戟光束炮」——一轮 3 发、发间隔 100ms、每发各扣弹）：与 `meOverlayReload` / `foeBurstFired` 同一口径，落在"重载即重置循环"内（最多重来一轮）⇒ 有意不入档；缺省不写键 ⇒ 旧档零迁移',
+  },
   meBlinkQueue: {
     kind: 'runtime',
     why: '我方「闪现」演出队列（2026-10-02 §35 加，船长令：闪现演出扩到触发者所在全队 + 禁火对称化）：与 `foeBlinkQueue` / `meBlinks` 同一口径 ⇒ 有意不入档；缺省不写键 ⇒ 旧档零迁移',

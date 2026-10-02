@@ -1269,6 +1269,18 @@ export interface BattleState {
    */
   meOverlayReload?: Record<string, { r: number; f: number }>;
   /**
+   * **逐门「三连射」本轮已发数（我方）**（**船长 2026-10-03 令**：「**添加一个旗舰同款的势力能量武器
+   * （三连射）…射速为3000MS**」；给 R 族那件「三叉戟光束炮 / Trident Beam Cannon」用）。
+   *
+   * 键 = `舰tag#炮位下标`（与 `meOverlayReload` 同一把尺：一艘船可能装多门）；值 = **本轮已发几发**：
+   * 缺省（或 0）= 本发是本轮第 1 发；打完 `shots` 发就删键。**发间隔靠"装填计时重置为
+   * `max(0, gapMs − dtMs)`"实现**（最后一发才回 `reloadMs`），每发各走一遍选靶 / 扣弹 / 命中 / 飘字。
+   *
+   * ⚠ 登记为 `save.ts` 清洗器的 `kind: 'runtime'`（**有意不入档**，与 `meOverlayReload` / `foeBurstFired`
+   * 同一口径：重载即重置本轮）。字段可选 ⇒ **旧档零迁移、既有全部装备零行为变化**。
+   */
+  meBurstFired?: Record<string, number>;
+  /**
    * **我方「跃迁规避装置」的闪现冷却**（**船长 2026-10-01 令**：「挨打触发闪现。但是冷却时间延长到12秒」）。
    *
    * 键 = 我方舰 tag；值 = **冷却到什么时候**（`lastTickGameMs` 基准）。语义与敌方 `foeBlinks` 同款，

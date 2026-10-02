@@ -564,6 +564,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'mod-lair-dc-c': 4,
   // R 族（光环）势力特色装备（2026-10-01 船长令）：与既有 12 件窝点专属同档 = 4（exotic）
   'mod-lair-laser-r': 4,
+  'mod-lair-beam-r': 4,
   'mod-lair-blink-r': 4,
   'mod-lair-drone-relay-g': 4,
   'mod-lair-drone-tac-g': 4,

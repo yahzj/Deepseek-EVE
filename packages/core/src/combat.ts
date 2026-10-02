@@ -4205,6 +4205,42 @@ function meOverlayReloadOf(
 }
 
 /**
+ * **我方「三连射」的装填计时 ＋ 本轮记账**（**船长 2026-10-03 令**：「**添加一个旗舰同款的势力能量武器
+ * （三连射）…射速为3000MS**」＋定名「三叉戟光束炮」）—— R 族势力激光炮（`mod-lair-beam-r`）专属。
+ *
+ * 口径与**敌方旗舰那把**（`foeBurstFired` 那一套）**逐字同款**：一轮装填打 `shots` 发、发间隔 `gapMs`；
+ * **每发都各自**走一遍选靶 / 扣弹 / 命中 / 飘字（它们在外层循环里，本函数只管计时与记账）。
+ * - 本轮**还有下一发** ⇒ 装填计时重置为 `max(0, gapMs − dtMs)`。
+ *   ⚠ **减去本拍 `dtMs`** 是必需的：本仓开火环的节拍是"冷却减到 0 的那一拍不开火、下一拍才开火"
+ *   ⇒ 直接写 `gapMs` 实得 **200ms**（敌方那张表 2026-10-02 实测踩过同一个坑）。
+ * - 本轮**已打完** ⇒ 删除键，并交回 `meOverlayReloadOf`（既有那件装填自加速的出口，本仓两件互斥）。
+ *
+ * 缺省（本门没挂连发件）⇒ 与改动前**逐字一致**（走 `meOverlayReloadOf`，连一次多余判断都不多做）。
+ */
+function meBurstReloadOf(
+  spec: UnitSpec,
+  tag: string,
+  wi: number,
+  b: import('./state').BattleState,
+  dtMs: number,
+  baseReloadMs: number,
+): number {
+  const burst = spec.weapons[wi]?.burst
+  if (burst === undefined) return meOverlayReloadOf(spec, tag, wi, b, baseReloadMs)
+  const shots = Math.max(1, Math.floor(burst.shots))
+  const key = `${tag}#${wi}`
+  const reg = b.meBurstFired ?? (b.meBurstFired = {})
+  const fired = reg[key] ?? 0
+  const more = fired + 1 < shots
+  if (more) {
+    reg[key] = fired + 1
+    return Math.max(0, Math.round(burst.gapMs) - dtMs)
+  }
+  delete reg[key]
+  return meOverlayReloadOf(spec, tag, wi, b, baseReloadMs)
+}
+
+/**
  * **我方「跃迁规避装置」的闪现触发器**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
  * 但是冷却时间延长到12秒。」）——只由"**敌方舰炮命中我方舰船本体**"调用
  * （打我方无人机不算、未命中不算；与敌方那件的受击钩子同口径）。
@@ -4556,8 +4592,11 @@ function stepBattle(
         type = pick
         dmg = w.shotsByType?.[pick] ?? 0
         b.ammo[ammoKeyOf(pick)] -= roundsPerVolley
-        // **叠光同款 · 装填自加速**（船长 2026-10-01 令）：挂了该件的门每开一火就缩短装填（夹下限）
-        meRt.weapons[wi] = meOverlayReloadOf(me, me.tag, wi, b, w.reloadMs)
+        // **装填计时**（合并入口）：挂了「三连射」（本轮还没打完 ⇒ 100ms 后再来一发）或
+        // 「叠光同款 · 装填自加速」的门走 `meBurstReloadOf`；两者都不挂 ⇒ 逐字回到老路径（零行为变化）
+        // ⚠ 传 **`unit`**（正在开火那一艘）而不是主控 `me`：登记表的键按设计是 `舰tag#炮位`
+        //   （2026-10-03 修——此前传 `me`，僚舰的这门会跟主控共用同一个键/读主控的件）。
+        meRt.weapons[wi] = meBurstReloadOf(unit, unit.tag, wi, b, dtMs, w.reloadMs)
       } else if (w.kind === 'beam') {
         // V18B-2 激光：必中光束——逐发扣能量弹药（按门数）；威力随距离衰减（beamPowerFactor）
         if (b.ammo.pla < roundsPerVolley) {
@@ -4567,14 +4606,14 @@ function stepBattle(
         type = 'plasma'
         b.ammo.pla -= roundsPerVolley
         dmg = Math.max(1, Math.round((w.shotDmg ?? 0) * beamPowerFactor(b.distanceM, w)))
-        // **叠光同款 · 装填自加速**（船长 2026-10-01 令）：激光这一路同样推进
-        meRt.weapons[wi] = meOverlayReloadOf(me, me.tag, wi, b, w.reloadMs)
+        // **装填计时**：激光这一路同样走合并入口（三连射 / 叠光自加速 / 老路径三合一）
+        meRt.weapons[wi] = meBurstReloadOf(unit, unit.tag, wi, b, dtMs, w.reloadMs)
         autoHit = true
       } else {
         type = w.fixedType ?? 'kinetic'
         dmg = w.shotDmg ?? 0
-        // **叠光同款 · 装填自加速**（船长 2026-10-01 令）：固定值武器这一路同样推进
-        meRt.weapons[wi] = meOverlayReloadOf(me, me.tag, wi, b, w.reloadMs)
+        // **装填计时**：固定值武器这一路同样走合并入口（三连射 / 叠光自加速 / 老路径三合一）
+        meRt.weapons[wi] = meBurstReloadOf(unit, unit.tag, wi, b, dtMs, w.reloadMs)
       }
       // **对无人机伤害加成**（船长 2026-09-12：「近防炮给予一个对无人机伤害加成」→「**那伤害倍率按2倍算**」）：
       // 只作用于**打机群**这一支（`droneHit` 非空 ⇔ 本发打的是敌机，见上方 `pickFoeDroneTarget`）；

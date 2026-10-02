@@ -536,6 +536,9 @@ export function createPlayerSpec(
         reloadMs: reload,
         // **叠光同款 · 装填自加速**（船长 2026-10-01 令）：只有带该字段的件（R 族叠光激光炮）才写
         ...(turret.overlayDrive !== undefined ? { overlayDrive: turret.overlayDrive } : {}),
+        // **三连射**（船长 2026-10-03 令）：只有带该字段的件（R 族三叉戟光束炮）才写；
+        // 消费点 = 我方开火环（`combat.meBurstReloadOf`，与敌方旗舰那把同款排期）。
+        ...(turret.burst !== undefined ? { burst: turret.burst } : {}),
       })
       continue
     }

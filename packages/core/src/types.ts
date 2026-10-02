@@ -1676,6 +1676,21 @@ export interface ModuleDef {
    */
   overlayDrive?: { stepMs: number; floorMs: number }
   /**
+   * **【我方】三连射**（**船长 2026-10-03 令**：「**添加一个旗舰同款的势力能量武器（三连射），DPS比MK3要高一些，
+   * 射速为3000MS，CPU占用根据DPS的比例同等提高。**」＋定名「**三叉戟光束炮**」＋「**单发伤害再上调20%**」）——
+   * R 族势力特色**激光炮**（`mod-lair-beam-r`）专属，**高槽**。
+   *
+   * 口径与**敌方旗舰那把**（`FoeShipDef.burst` → `WeaponSpec.burst`）**逐字同款**：
+   * 一轮装填打 `shots` 发、**发间隔 `gapMs`**（本件 = **3 发 × 100ms**）——前两发之后装填计时重置为
+   * `gapMs`、**最后一发打完才回到 `reloadMs`**；每发各走一遍选靶 / 扣弹（`ammoPerShot` 逐发扣）/
+   * 命中与演出。⚠ 与「叠光同款装填自加速」（`overlayDrive`）**互斥**：挂了连发的门只在**本轮最后一发**
+   * 推进那一格（本仓两件不会同装一件上，写成"每发都推"会让两条机制互相污染）。
+   *
+   * 连发状态记在 `BattleState.meBurstFired[tag + '#' + 炮位]`（`kind: 'runtime'`，与 `meOverlayReload` 同口径）。
+   * 缺省不写 ⇒ **全部既有装备零行为变化**（一门一次）。
+   */
+  burst?: { shots: number; gapMs: number }
+  /**
    * **【我方】闪现跃迁**（**船长 2026-10-01 令**：「**和R族同款，挨打触发闪现。但是冷却时间延长到12秒**」）——
    * R 族势力特色**中槽**件（`mod-lair-blink-r`）专属。
    *

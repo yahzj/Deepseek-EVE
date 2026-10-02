@@ -386,6 +386,7 @@ export const EN_MODULES: EnTable = {
   // **R 族（光环）势力特色装备**（船长 2026-10-01 令）：叠光激光炮 + 跃迁规避装置 —— 两件同出「光环稀有残骸的高级箱专属池」（与 AI 核心同一个池子）。
   'mod-lair-laser-r': { name: 'Overlay Laser Cannon', description: 'Energy beam, always hits; 7 km range. Reload 4.4s, cut by 0.3s per shot down to 0.6s; 250 rounds per engagement.' },
   'mod-lair-blink-r': { name: 'Blink Evasion Drive', description: 'Mid slot. When hit, opens engagement range by 2 km; 12s cooldown.' },
+  'mod-lair-beam-r': { name: 'Trident Beam Cannon', description: 'Energy beam, always hits; 10.5 km range. Three shots per volley, 0.1s apart; reload 3s; 120 rounds per engagement.' },
   // 虫洞族专属（mod-wh-*）
   'mod-wh-a-frag': { name: 'Raider Fragment Cannon', description: 'Fragment rounds that burst on their own: inside 7.3 km they scatter a cloud of explosive shrapnel with extreme single-shot power. The fragments ignore armor seams and add 50% kinetic damage (independent of the explosive ammo spent). The cost: accuracy only 0.80 and a 5.6 s reload.' },
   'mod-wh-a-hangar': { name: 'Raider Hangar', description: 'A hangar mezzanine welded from stolen cargo bulkheads: drone bay +40 m³ and launched drones cycle 8% faster. It carries more and launches faster for only 25 CPU.' },
