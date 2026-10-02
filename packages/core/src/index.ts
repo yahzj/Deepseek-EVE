@@ -262,6 +262,13 @@ export {
   WEEKEND_DEBUG_WIN_GAIN,
   WEEKEND_GAIN_OFFLINE_REPEL,
   WEEKEND_LOCKED_FAMILY,
+  /** 2026-10-02 船长令「一会8点开启入侵，设置为R族，下周如果没有特意设置，就采用循环敌对势力」——
+   *  循环队 / 循环锚（第 0 期 = 锚点那期）/ 某一期的特意设置 / 本期取族 */
+  WEEKEND_FAMILY_ROTATION,
+  WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS,
+  WEEKEND_FAMILY_OVERRIDE,
+  weekendFamilyForWindow,
+  weekendPeriodIndexOf,
   // **调试档锁定的入侵族**（2026-10-01 船长令「先让本地调试模式必定出新的R族入侵」）
   WEEKEND_DEBUG_FAMILY,
   weekendLockedFamilyOf,

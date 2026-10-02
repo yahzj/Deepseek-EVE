@@ -34,6 +34,10 @@ import {
   WEEKEND_GAIN_CORE_WIN,
   WEEKEND_GAIN_PERIPHERY_WIN,
   WEEKEND_LOCKED_FAMILY,
+  /** 2026-10-02 船长令：循环敌对势力（第 0 期 = 锚点那期） */
+  WEEKEND_FAMILY_ROTATION,
+  WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS,
+  weekendFamilyForWindow,
   weekendWinGainOf,
   ensureWeekendEvent,
   weekendAssaultThreatOf,
@@ -174,14 +178,28 @@ describe('周末入侵 · 时间轴', () => {
   })
 
   /**
-   * **锁定族**（2026-09-25 船长令：「**目前只做了H族，所以先锁定H族**」＋
-   * 🔴 **2026-10-01 船长令**：「**先让本地调试模式必定出新的R族入侵，我进行本地测试**」）：
-   * **玩家线**一律判成 H（R 族未上线）；**调试档判 R**（本地实测新族），
-   * 且调试模式下手上的**历史场**（别的族）**就地改判**，进度台账与场次号都留着（只换族）。
-   * M2/M3 补齐后把 `WEEKEND_LOCKED_FAMILY` 置回 `null` 即恢复随机。
+   * **族的选择**（沿革：2026-09-25 船长令「**目前只做了H族，所以先锁定H族**」⇒
+   * 🔴 **2026-10-01 船长令**「**先让本地调试模式必定出新的R族入侵，我进行本地测试**」⇒
+   * 🔴 **2026-10-02 船长令**「**一会8点开启入侵，设置为R族，下周如果没有特意设置，就采用循环敌对势力。**」）：
+   * **玩家线 = 循环**（锚点 2026-10-02 20:00 那期起：R → H → R …，`WEEKEND_LOCKED_FAMILY` 平时 `null`）；
+   * **调试档判 R**（本地实测新族），且调试档下手上的**历史场**（别的族）**就地改判**，
+   * 进度台账与场次号都留着（只换族）。
    */
-  it('锁定族：玩家线一律 H、调试档判 R；调试档把历史场就地改判为 R（进度台账不动）', () => {
-    expect(WEEKEND_LOCKED_FAMILY, '玩家线仍锁定 H（船长令）').toBe('H')
+  it('族的选择：玩家线走循环（本期 = R）、调试档判 R；调试档把历史场就地改判为 R（进度台账不动）', () => {
+    expect(WEEKEND_LOCKED_FAMILY, '全线硬锁平时不启用（改由循环决定）').toBeNull()
+    const s0 = fresh(true)
+    expect(weekendFamilyForWindow(WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS), '锚点那期 = 循环第 0 位').toBe(
+      WEEKEND_FAMILY_ROTATION[0],
+    )
+    expect(
+      weekendFamilyForWindow(WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS + 7 * 24 * 3_600_000),
+      '下一期顺延到第 1 位',
+    ).toBe(WEEKEND_FAMILY_ROTATION[1])
+    expect(
+      weekendFamilyForWindow(WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS + 14 * 24 * 3_600_000),
+      '再下一期转回第 0 位',
+    ).toBe(WEEKEND_FAMILY_ROTATION[0])
+    expect(s0.weekendEvent, '（该档只是拿来占位，未开局）').toBeUndefined()
     const t = 1_700_000_000_000
     const s = fresh(true)
     s.exploredGalaxies = [...ctx.galaxies.keys()]

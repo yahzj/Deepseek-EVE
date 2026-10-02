@@ -182,7 +182,61 @@ export const WEEKEND_GAIN_OFFLINE_REPEL = 0.01
  * 入侵舰队。置 `'H'` ⇒ **开局面一律判为 H 族**（独立卡 · 170 旗舰 · 黑匣一整套）；M2/M3 把三族补齐后
  * **置回 `null`** 即恢复"四族等概率随机"（`weekendRollOccupation` 里那一行就是唯一开关）。
  */
-export const WEEKEND_LOCKED_FAMILY: string | null = 'H'
+export const WEEKEND_LOCKED_FAMILY: string | null = null
+
+/**
+ * **循环敌对势力**（**船长 2026-10-02 令**：「**一会8点开启入侵，设置为R族，下周如果没有特意设置，
+ * 就采用循环敌对势力。**」）—— 玩家线**默认**按这条队**逐期顺延**，不必每周手动改。
+ *
+ * - **只有"做完了的族"进这条队**（H 墨潮帮 · R 光环科技）——A/C/G 仍是占位口径（派生卡只换名字/威胁，
+ *   敌人编成还是原来那批），**不进循环**，免得玩家抽到打不到真舰队的场；
+ * - 顺序 = 数组顺序，第 N 期取 `ROTATION[N % ROTATION.length]`（N 见 `weekendPeriodIndexOf`）；
+ * - 想**特意设置某一期** ⇒ 见下面的 `WEEKEND_FAMILY_OVERRIDE`（也支持 `WEEKEND_LOCKED_FAMILY` 全线硬锁）。
+ */
+export const WEEKEND_FAMILY_ROTATION: readonly string[] = ['R', 'H']
+
+/**
+ * **循环锚点 = 2026-10-02 20:00（本地墙钟）那一期**——**船长 2026-10-02 令**里"一会 8 点开启入侵、
+ * 设置为 R 族"的**那一期**：本期 = `ROTATION[0]` = **R**（与船长指定一致，指定与循环不打架）；
+ * 此后每期顺延 ⇒ **10-09 那期 = H**、10-16 那期 = R ……（无特意设置时一直转下去）。
+ */
+export const WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS = 1_790_971_200_000
+
+/**
+ * **特意设置某一期的族**（`null` = 不设置 ⇒ 走循环）——船长原话里"**如果没有特意设置**"的那一行开关。
+ *
+ * `periodIndex` = **第几期**（`weekendPeriodIndexOf(该期窗口 T0)`；锚点那一期 = 0）；
+ * 只对**那一期**生效 ⇒ 过完自动回落到循环，不会像全线硬锁那样一直粘着。
+ *
+ * ⚠ 本期（index 0）本就 = 循环的 `'R'`；这里写出来是**把船长令显式记账在代码里**，
+ * 也示范"以后要特意指定某一期"怎么写（例如 `{ family: 'H', periodIndex: 3 }`）。
+ */
+export const WEEKEND_FAMILY_OVERRIDE: { readonly family: string; readonly periodIndex: number } | null = {
+  family: 'R',
+  periodIndex: 0,
+}
+
+/** **某一期窗口的期号**（锚点那期 = 0；按**周**顺延 —— 排期是每周五 20:00 一期，窗口长 96h） */
+export function weekendPeriodIndexOf(windowT0WallMs: number): number {
+  const week = 7 * 24 * 3_600_000
+  return Math.max(0, Math.floor((windowT0WallMs - WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS) / week))
+}
+
+/**
+ * **本期该跑哪一族**（玩家线**默认**入口；`null` = 不指定、交给随机）——优先级从高到低：
+ *
+ * 1. `WEEKEND_LOCKED_FAMILY`（**全线硬锁**，平时 `null`；要"所有档一律某族"才填它）；
+ * 2. `WEEKEND_FAMILY_OVERRIDE`（**只对指定那一期**生效的特意设置）；
+ * 3. **循环**（`WEEKEND_FAMILY_ROTATION` 按 `weekendPeriodIndexOf` 顺延）。
+ */
+export function weekendFamilyForWindow(windowT0WallMs: number): string | null {
+  if (WEEKEND_LOCKED_FAMILY !== null) return WEEKEND_LOCKED_FAMILY
+  const period = weekendPeriodIndexOf(windowT0WallMs)
+  if (WEEKEND_FAMILY_OVERRIDE !== null && WEEKEND_FAMILY_OVERRIDE.periodIndex === period) {
+    return WEEKEND_FAMILY_OVERRIDE.family
+  }
+  return WEEKEND_FAMILY_ROTATION.length > 0 ? WEEKEND_FAMILY_ROTATION[period % WEEKEND_FAMILY_ROTATION.length]! : null
+}
 
 /**
  * **调试模式下锁定的入侵族**（**船长 2026-10-01 令**：「**先让本地调试模式必定出新的R族入侵，我进行本地测试**」）。
@@ -1004,17 +1058,23 @@ export function weekendRollOccupation(
   state: GameState,
   ctx: SimContext,
   seq: number,
+  /**
+   * **本期该跑哪一族**（**船长 2026-10-02 令**的循环/特意设置；缺省 = 走旧口径 `weekendLockedFamilyOf`）
+   * —— 由调用方按**本期窗口 T0** 算好传进来（`weekendFamilyForWindow(t0)`）。
+   */
+  familyOfWindow?: string | null,
 ): { coreId: string; peripheryIds: string[]; family: string } | null {
   const candidates = weekendCoreCandidates(state, ctx)
   if (candidates.length === 0) return null
   const rng = streamOf(state.rng.seed, seq)
   const coreId = candidates[Math.min(candidates.length - 1, Math.floor(rng() * candidates.length))]!
   /**
-   * 族：**照旧消费一次随机数**（保持子流形状不变），但若 `weekendLockedFamilyOf(state)` 有值就判成它
-   * —— 船长 2026-09-25「目前只做了H族，所以先锁定H族」；M2/M3 补齐三族后把该常量置回 `null` 即恢复随机。
+   * 族：**照旧消费一次随机数**（保持子流形状不变），但若"本期族"有值就判成它
+   * —— 优先序：**本期族（循环/特意设置）** → **调试族/全线硬锁**（`weekendLockedFamilyOf`）→ 随机。
    */
   const familyRoll = rng()
   const family =
+    familyOfWindow ??
     weekendLockedFamilyOf(state) ??
     WEEKEND_FAMILIES[Math.min(WEEKEND_FAMILIES.length - 1, Math.floor(familyRoll * WEEKEND_FAMILIES.length))]!
   return { coreId, peripheryIds: weekendPeripheryOf(ctx, coreId), family }
@@ -1494,7 +1554,11 @@ export function ensureWeekendEvent(state: GameState, ctx: SimContext, nowWallMs:
    */
   if (ev && ev.endedAtWallMs === undefined) return false
   const seq = (ev?.seq ?? 0) + 1
-  const rolled = weekendRollOccupation(state, ctx, seq)
+  /**
+   * **本期族**（**船长 2026-10-02 令**：「一会8点开启入侵，设置为R族，下周如果没有特意设置，
+   * 就采用循环敌对势力。」）——按**本期窗口 T0** 算：特意设置优先，否则按循环顺延。
+   */
+  const rolled = weekendRollOccupation(state, ctx, seq, weekendFamilyForWindow(t0))
   if (!rolled) return false
   state.weekendEvent = { seq, startedAtWallMs: t0, ...rolled, contributed: {} }
   return true
