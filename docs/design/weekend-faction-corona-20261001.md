@@ -1562,3 +1562,63 @@ typecheck 四包绿 · **core 284 文件 / 2999 用例全绿** · `ui:rot-check`
 ### 30.7 验证
 
 typecheck 四包绿 · **core 285 文件 / 3001 用例全绿** · `content:check` · `l10n:check` 绿。
+
+---
+
+## 31 · 切活动返航：两段式架构定型（2026-10-02 第二修 · 含修我自己的启动崩溃）
+
+### 31.1 起因：上一修（§30）引入了模块环 ⇒ 游戏启动即崩
+
+船长报障（原话照抄）：
+
+> 「`hauling.ts:149 Uncaught ReferenceError: Cannot access 'HOME_GALAXY_ID' before initialization`」（游戏一进去就炸）
+
+**根因**：§30 让 `state.ts` **import `mining` / `salvaging`** 去建返航账本 ⇒ 形成
+`state → salvaging → expedition → hauling → state` 的环 ⇒ 入口模块的**顶层常量**在 `state.ts`
+求值完成之前被读到。⚠ **中间还踩了第二个环**：改成"把建账本挪进 `activityGate`"后又炸
+`PLUG_BLACKBOX_ITEM_ID before initialization`（`activityGate` 也 import `state`，反向同样是环）。
+
+### 31.2 定型架构：两段式（占位 → 真值）
+
+| 段 | 在哪 | 做什么 |
+|---|---|---|
+| ① 占位 | `state.haltActivityForSwitch`（**纯数据，零 import**） | 建**占位返航账本**：`legMs = max(30_000, phaseAccMs*2+30_000)`（**恒 ≥30s ⇒ 撑到下一拍不会提前到港**）、`phaseAccMs = 0`、`reason = 'miningStop' / 'salvageStop'`；再记 `state.pendingActivityReturn = {kind, id}` |
+| ② 真值 | `engine.advanceGame`（环外，可安全 import 作业模块） | 消费 `pendingActivityReturn`（消费完即清），调 `retireMiningShip / retireSalvageShip(..., {preserveExisting: true})`：用 `scaledReturnMs` **按货仓占比重算真值腿长**覆盖占位、`phaseAccMs` 取 `min`（不倒退）、补写**带船名与真实秒数**的日志 |
+
+**🔴 硬规矩（两处文件头都写死了原因）**：`state.ts` 与 `activityGate.ts` **一律不许 import
+`mining` / `salvaging`**。只有 `engine.ts` / `shipyard.ts` 可以。
+
+### 31.3 日志时序（为什么晚一拍可接受）
+
+停机本身**当拍就报**（`activityGate.logAutoHalt` 写「已自动停止「打捞」：…」），
+返航明细（「打捞已停止：<船名> 从「<星系>」返航空间站（到港整仓卸货）——约 N 秒后到港。」）
+由引擎下一拍补 ⇒ **玩家看不到时序倒挂**（一拍 ≈ 一帧）。§30 里那两条"没船名没秒数"的临时日志已删。
+
+### 31.4 `preserveExisting` 语义修正
+
+由「只结束作业、**不覆盖**」改为「**修正腿长与日志、保留已走相位**」——
+§30 的写法会把占位的粗估腿长留在账本上（真值 40s 的航程被记成 ≥30s 的随机数）。
+
+### 31.5 用例加严（`activity-switch-return-20261002.test.ts` 仍 2 条）
+
+| 新断言 | 钉什么 |
+|---|---|
+| 明细日志含**船名** | 不许再是内部 id |
+| 明细日志匹配 `约 \d+ 秒后到港` | 必须是真实秒数 |
+| 不含「引擎下一拍」字样 | 占位措辞不许残留 |
+| `shipReturns[船].legMs ≤ 1000`（`debugQuick`） | 腿长必须是**真值**（占位那份恒 ≥30000）⇒ 这条最能分辨两段式有没有跑通 |
+
+⚠ 断言前**推一拍**（`advanceGame(state, 1, ctx)`）——占位→真值跨拍是**设计如此**，不是缺陷。
+
+### 31.6 验证
+
+- `typecheck` 四包全绿 · `test -w @whale/core` **285 文件 / 3001 用例全绿**；
+- **静态 import 顺序探针**（`import * as core from '../src/index'` ＋ 空档推 60 拍）无初始化错误
+  ——`index.ts` 覆盖 `mining`/`salvaging`/`expedition`/`hauling` 全链，正是崩溃路径；跑完即删；
+- `content:check` · `l10n:check` · `l10n:params` · `arch:guard` · `ui:tdz`（启动期先用后声明）全绿；
+- 改动文件行尾复检 CRLF 一致、无 BOM；`apps/desktop/out` 重建，产物内已含 `pendingActivityReturn`。
+
+### 31.7 存档面（已请船长裁决 · 放行）
+
+`save.ts` 只加一处：键 `pendingActivityReturn` **恒写 `null`**（与 `haltedBySwitch` 同属**瞬态信号、
+有意不入档**），读档按形状解析、老档缺省即 `null` ⇒ **玩家数据零影响**。船长 2026-10-02 明确放行。
