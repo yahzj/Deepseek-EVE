@@ -460,6 +460,16 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：零渲染层改动）。
 
+### 批次 4m：save.ts 首拆——`saveBattleClean.ts` 战斗档清洗器（2026-10-02 · 零行为变化）
+
+- 手法：`asRaw`～`cleanFx` **战斗状态清洗整簇 930 行**（asRaw 安全转对象、BATTLE_FIELDS 持久化分类表
+  ＋编译期键集完整契约、cleanBattle 与全部 clean* 字段清洗件）切接搬入新文件 `saveBattleClean.ts`
+  （§三合规，BOM/行尾自检过）——save.ts 4433 → **3504 行**。序列化/归一/迁移主体按蓝图不动。
+- `RawState` 类型随借出转导出；`asRaw`/`cleanBattle`/`cleanPlugIds`/`cleanAmmoIdMap`/`RACK_MAX`
+  因 save 其余部分仍要调用而转公开；save 借回 + 原样再导出 `BATTLE_PERSIST_KEYS`。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：零渲染层改动）。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、
