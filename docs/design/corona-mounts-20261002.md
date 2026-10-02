@@ -148,3 +148,16 @@
 **本批落在哪个模块**：**战斗域**（R 族 · 敌方挂载件与旗舰武器）；参照的同类子模块 =
 既有的 R 族四件挂载件（`foe-mount-corona-*`）与「叠光装置」那套装机口径（`foeMounts` → `foeSpecs` →
 `combat` 消费单点 → 手册 `mountEffectText`）；**无跨模块**。
+
+## 九、合入状态（2026-10-03 · ⚠ **待协调**）
+
+- 本批已提交在 **`d2/workspace`**（rebased 到当时的 main `30806945` 之上，5 笔：三笔文档 ＋ 一笔落码）；
+  **rebase 后已重跑全量闸门**（typecheck / core 290·3034 / content:check / l10n:check / l10n:params /
+  ui:rot-check / arch:guard / build）⇒ 全绿（§八 的读数就是 rebase 后的）。
+- 🔴 **未能合入 main**：`git -C 主树 status` 显示主树有**在途未提交改动**（5 个文件：
+  `pages/SkillsTreePage.tsx` · `styles.css` · `data/items.ts` · `data/l10n.ts` · `data/l10n/table.ts`，
+  内容是"技能加速面板抬头条件化＋行内效果说明"那一批）。按 **§4「确认主树干净才 merge」**：
+  **停手不并**，只读观察。⚠ 其中 `l10n/table.ts` 与本批改的是**同一个文件** ⇒ 机械上也并不进去
+  （git 会以"本地改动会被覆盖"拒绝）。
+- **建议**：等主树那批提交后，由二号/三号 `git merge --ff-only d2/workspace`（本分支已基于当前 main，
+  届时只需再 rebase 一次并重跑闸门），随后在主树 `npm run build` ⇒ 船长本地即可实测。
