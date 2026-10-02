@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **395** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7088** KB · **52849** 行
+- 文档总数 **395** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7092** KB · **52859** 行
 - 状态分布：**未标注** 214 · **已确认/已实现** 119 · **进行中** 48 · **待裁定** 13 · **历史留档** 1
 - 孤儿文档（0 引用）**62** 份 · 状态未标注 **214** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -29,12 +29,12 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 17 KB / 113 行 | 204 / 9 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 17 KB / 113 行 | 204 / 10 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 32 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 5 KB / 59 行 | 34 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 291 KB / 302 行 | 19 / 3 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 85 KB / 889 行 | 96 / 4 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 293 KB / 302 行 | 19 / 3 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 87 KB / 899 行 | 96 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 503 KB / 1016 行 | 226 / 16 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 457 行 | 361 / 19 |
 
@@ -61,7 +61,7 @@
 | `docs/design/activitybar-min-20261002.md` | 旧版活动栏「最小化」（只留标题行）（工作文档） | 进行中（进行中） | 2026-10-02 | 4 KB / 54 行 | 0 / 1 |
 | `docs/design/code-review-20261002.md` | 代码审查报告：多余代码 · 重复效果代码 · 重构与模块化 · 风险（工作文档 · 2026-10-02） | 已确认/已实现（已交付报告） | 2026-10-02 | 11 KB / 129 行 | 2 / 2 |
 | `docs/design/mobile-wormhole-20261002.md` | 手机模式 · 虫洞探索界面全屏两栏 ＋ 货仓触摸拖拽（工作文档） | 进行中（进行中） | 2026-10-02 | 5 KB / 73 行 | 0 / 4 |
-| `docs/design/refactor-modularization-20261002.md` | 按功能模块拆分（重构蓝图与批次台账 · 工作文档 · 2026-10-02） | 进行中（进行中） | 2026-10-02 | 49 KB / 587 行 | 1 / 2 |
+| `docs/design/refactor-modularization-20261002.md` | 按功能模块拆分（重构蓝图与批次台账 · 工作文档 · 2026-10-02） | 进行中（进行中） | 2026-10-02 | 49 KB / 587 行 | 3 / 3 |
 | `docs/design/starmap-zoom-20261002.md` | 星图放大 ＋ 扩大星系判定范围（工作文档） | 进行中（进行中） | 2026-10-02 | 5 KB / 67 行 | 0 / 1 |
 | `docs/design/activity-gate-registry-20261001.md` | 主控活动登记表（实验室漏登记）· 2026-10-01 | 未标注 | 2026-10-01 | 18 KB / 209 行 | 3 / 1 |
 | `docs/design/blackbox-copy-fix-20261001.md` | 首发黑匣通讯「谜质 → 装备」用词修正（工作文档） | 进行中（进行中） | 2026-10-01 | 5 KB / 61 行 | 0 / 1 |
