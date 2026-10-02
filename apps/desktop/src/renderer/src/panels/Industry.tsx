@@ -17,6 +17,8 @@ import {
   ownsBlueprint,
   /** 2026-10-02 模块化：可用核心下拉的单点（core 导出） */
   usableAiCoresOf,
+  /** 2026-10-02 模块化：手动位置灰判据走 core 单点（原为本页手工枚举各家族） */
+  manualSlotOf,
   // 2026-09-22 第 3 步：收藏星标进"实时指纹"（星标子组件自己也读 state，漏了会停在旧值）
   isMarked,
   recipeCapability,
@@ -466,12 +468,14 @@ function isWormholeBlueprint(bpId: string): boolean {
  * 工作位"那两条：它们**不算切换活动**，停掉会丢掉手上那一批 ⇒ 照旧硬拒、由玩家自己决定。
  * 真正的把关单点在 core（`activityGate`）。 */
 function manualBuildNote(state: GameState): string | null {
-  if (state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return tr("ui.Industry.025")
-  }
-  if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-    return tr("ui.Industry.026")
-  }
+  /** 2026-10-02 模块化：判据改走 core 单点 `manualSlotOf`（返回值即"被哪一族的线占着"），
+   *  不再各写一份 `.some(active && pilot)`；行为与旧实现等价（名册条目都是 active、停线即删，无 inactive 残留）。
+   *  ⚠ 新增 `lab` 分支 = 行为口径对齐（经典页三张卡 + HUD 一致：主控开实验室时组装机手动键也置灰；
+   *  core 本来就拒绝，这里只是少一次无效点击）。 */
+  const slot = manualSlotOf(state)
+  if (slot === 'manufacturing') return tr("ui.Industry.025")
+  if (slot === 'refine') return tr("ui.Industry.026")
+  if (slot === 'lab') return tr('ui.hud.212')
   if (state.awayGalaxy !== null) return tr("ui.IndustryPage.010")
   return null
 }

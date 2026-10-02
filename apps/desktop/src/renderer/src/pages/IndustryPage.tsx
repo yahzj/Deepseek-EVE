@@ -44,6 +44,8 @@ import {
   labTechRequirementOf,
   /** 2026-10-02 模块化：可用核心下拉的单点（core 导出） */
   usableAiCoresOf,
+  /** 2026-10-02 模块化：手动位置灰判据走 core 单点（原为本页 refineRuns/manufacturingRuns 各查一遍） */
+  manualSlotOf,
   /** 2026-10-01：材料行尾那枚「这一味料从哪来」链接的等价组判据（通用黑匣）走 core 单点 */
   materialGroupIdsOf,
 } from '@whale/core'
@@ -170,11 +172,15 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
     claimHeld > 0
       ? tr("ui.IndustryPage.016")
       : tr("ui.IndustryPage.017")
-  const manualNote = state.refineRuns.some((r) => r.worker === 'pilot')
-    ? tr("ui.IndustryPage.018")
-    : state.manufacturingRuns.some((r) => r.active && r.worker === 'pilot')
-      ? tr("ui.IndustryPage.019")
-      : manualBusyNote(state)
+  const slot = manualSlotOf(state)
+  const manualNote =
+    slot === 'refine'
+      ? tr("ui.IndustryPage.018")
+      : slot === 'manufacturing'
+        ? tr("ui.IndustryPage.019")
+        : slot === 'lab'
+          ? tr("ui.hud.212")
+          : manualBusyNote(state)
 
   function runWith(worker: AiCoreType | 'pilot'): void {
     const r = isBox
@@ -657,7 +663,7 @@ function LabCard({
   const usableCores = usableAiCoresOf(state)
   const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
-  const manualBusy = manualBusyNote(state)
+  const manualBusy = manualSlotOf(state) !== null ? tr('ui.hud.212') : manualBusyNote(state)
   /**
    * **谜质科技门槛**（**2026-09-30 船长令**：T5「解锁新的燃料配方」）——判据与起线拒绝**同一把尺**
    * （`labRecipeUnlocked`）；锁着时卡片照列（玩家要看得见"有这么张配方、缺哪棵树"），

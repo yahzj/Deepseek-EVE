@@ -89,21 +89,23 @@
 - 文件：ui/labelsText.ts · panels/Industry.tsx。
 - 验证：typecheck 全仓 ✅ · ui:rot-check ✅ · 构建 ✅。
 
-### ⚠ 待核（下一批）：手动位"置灰"三处口径不一致（如实修正审查报告 §5 #7）
+### 批次 1e：手动位置灰统一走 core 单点 `manualSlotOf`（2026-10-02 · 模块化 ＋ 一处行为口径对齐）
 
-- 事实（逐处 grep 核实）：
-  ① 经典页精炼炉卡 `manualNote = state.refineRuns.some(r => r.worker==='pilot') ? … : manualBusyNote(state)`
-     （IndustryPage.tsx:173；`manualBusyNote` = 野外/航行途中，IndustryPage.tsx:121）；
-  ② 经典页实验室卡只有 `manualBusyNote`（**不看**全局手动位占用——与 HUD 的置灰不一致）；
-  ③ 组装机卡 `manualBuildNote`（panels/Industry.tsx:468）：制造线有主控 ⇒ 一句、精炼炉有主控 ⇒ 另一句、
-     野外/途中各一句（**手工枚举**各家族，而 core 单点 `manualSlotOf`（activityGate.ts:211）返回的正是
-     `'refine'|'manufacturing'|'lab'|null`）；
-  ④ HUD 整页直接 `manualSlotOf(state) !== null`（全局一刀切）。
-- 合并方案（待核后再动，**不许猜**）：先核 `manualSlotOf` 与 `refineRuns.some` 的 `active` 口径是否逐字等价
-  （173 行没写 `.active`、468 行写了），再决定三处能不能统一改成"按 `manualSlotOf` 的返回值分家族措辞"；
-  若等价 ⇒ 删两个本地 helper、全走 core 单点（属行为**等价**重写，允许）；不等价 ⇒ 摆给船长。
-- 注：审查报告 §5 #7 原把它描述成"手动位忙态"重复——**实际是"位置/家族/全局"三种不同口径**，
-  本台账为如实修正版。
+- 核证（决定动工的依据）：`manualSlotOf`（activityGate.ts:224）= 逐族 `.some(active && pilot)`；名册条目
+  **没有 inactive 残留**（全仓 0 处 `.active = false`，停线即 splice）⇒ 经典页原来漏写 `.active` 的那处
+  与 core 单点**逐字等价**，可安全替换。
+- 落地：
+  - 经典精炼炉卡 `manualNote`（原 refineRuns/manufacturingRuns 各查一遍）改按 `manualSlotOf` 返回值分族措辞；
+  - 组装机卡 `manualBuildNote` 同改，删掉手工枚举的 `.some`；
+  - **行为口径对齐（小行为变化，单独说明）**：补 `slot === 'lab'` 分支——主控开实验室时，经典页三张卡
+    的手动键现在也置灰（原只有 HUD 置灰；core 本来就拒绝，这是"少给一次无效点击"，与 HUD 一致，
+    文案复用通用句 `ui.hud.212`）。
+  - `manualBusyNote`（野外/返航途中）保留为本地 helper——那是"位置"，不是"手动位"，HUD 无此概念，
+    不再并。
+- 文件：pages/IndustryPage.tsx · panels/Industry.tsx。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · ui:rot-check ✅ · 构建 ✅。
+- 注：审查报告 §5 #7 原描述为"手动位忙态重复"——实为"位置/家族/全局"三种口径；本台账为如实修正版，
+  本批只收敛"家族/全局"这一层，"位置"层留待后续（如需也可进 core）。
 
 ## 待办/待裁
 
