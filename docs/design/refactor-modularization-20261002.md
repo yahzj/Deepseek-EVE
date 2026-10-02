@@ -489,6 +489,17 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ ·
   ui:rot-check ✅ · 构建 ✅。
 
+### 批次 4p：Expedition.tsx 大拆——`panels/StarMap.tsx` 星图域（2026-10-02 · 零行为变化）
+
+- 手法：**星图域整簇 2230 行**（MAP 常量/布局持久化/模拟退火避线/星系标签族徽章 `StarMap`＋
+  敌舰影列 `FoeArt` 族＋`GalaxyActions` 星系操作卡＋`FieldKitRepair` 野外应急修理）从
+  panels/Expedition.tsx 切接搬入新文件 `panels/StarMap.tsx`——Expedition **4299 → 2020 行（−53%）**。
+- 连带小搬：`fmtSideClock`/`fmtDayClock` → `i18n/fmt`（StarMap 与 Expedition 共用，留原地会造回环）。
+- 零环保证：`GalaxyActions`/`FieldKitRepair`/`FOE_TACTIC_HINTS` 等回环节点全部同迁；Expedition 借回
+  + 再导出（F9 扫渲染层，实测仍 0 环）。途中一次多行块注释切点错位（首行落下）当场修掉。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ ·
+  ui:rot-check ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、

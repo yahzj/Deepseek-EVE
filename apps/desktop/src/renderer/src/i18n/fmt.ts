@@ -65,3 +65,20 @@ export function fmtDate(wallMs: number): string {
 export function fmtDateTime(wallMs: number): string {
   return new Date(wallMs).toLocaleString(localeTag())
 }
+
+/** mm:ss（向上取整到秒；与市场页下次补给同口径）
+ * （2026-10-02 批次 4p 从 panels/Expedition.tsx 迁来：StarMap 与 Expedition 共用） */
+export function fmtSideClock(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000))
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+}
+
+/** h:mm:ss（日板倒计时：赏金一轮 24 小时，mm:ss 不够看）
+ * （2026-10-02 批次 4p 从 panels/Expedition.tsx 迁来） */
+export function fmtDayClock(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000))
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}

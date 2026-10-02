@@ -1660,7 +1660,7 @@ for (const m of MODULES) {
    * 免得日后重构把红框悄悄弄丢（样式本身在 `styles.css`，改了要跑 `ui:layout-css`）。
    */
   {
-    const expPath = 'apps/desktop/src/renderer/src/panels/Expedition.tsx'
+    const expPath = 'apps/desktop/src/renderer/src/panels/StarMap.tsx'
     const expSrc = readSrc(expPath)
     const invasionRows = expSrc.split('\n').filter((l) => l.includes('app-ga-row app-ga-invasion')).length
     check(
@@ -1777,7 +1777,7 @@ for (const m of MODULES) {
    * ③ **光晕（r=46）必须保持 `none`** —— 它可命中就会把邻近星系的点击/悬停一起吃掉。
    */
   {
-    const expPath = 'apps/desktop/src/renderer/src/panels/Expedition.tsx'
+    const expPath = 'apps/desktop/src/renderer/src/panels/StarMap.tsx'
     const expSrc = readSrc(expPath)
     const cssSrc = readSrc('apps/desktop/src/renderer/src/styles.css')
     check(
