@@ -49,7 +49,6 @@ import {
 } from './combat'
 import { durabilityOf, loseShip, repairShip } from './shipyard'
 import { fleetDefOf, shipDisplayName } from './instances'
-import { buyAtMarket, levelOf, marketGoodOf, marketQuote, placeBuyOrder } from './market'
 import { addAiIncome, addAiMiningTrip, addAiSalvageDone, type SettleStats } from './settleStats'
 
 /** 核心类型展示顺序 */
@@ -270,41 +269,6 @@ export function idleAiShipIds(state: GameState): string[] {
     (id) =>
       id !== state.shipId && !inHole.includes(id) && !(id in state.aiAssignments) && !shipInReturn(state, id),
   )
-}
-
-/** 玩家指令：购买基础 AI 核心（V9：市场供应簿按市价买入；无现货自动挂收购单） */
-export function buyBasicAiCore(state: GameState, ctx: SimContext): CommandResult {
-  const good = marketGoodOf(ctx, 'aicore', 'basic')
-  if (!good) return { ok: false, error: '基础 AI 核心暂未在市场流通。', errorId: 'core.ai.001' }
-  const quote = marketQuote(state, ctx, good.key)
-  const ask = quote.sell ?? Math.round(levelOf(state, ctx, good.key) * 1.06)
-  if (state.wallet.isk < ask) {
-    return { ok: false, error: `信用点不足：基础 AI 核心约 ${ask.toLocaleString('zh-CN')} 信用点（现有 ${state.wallet.isk.toLocaleString('zh-CN')}）。` }
-  }
-  if (quote.sell !== undefined) {
-    const res = buyAtMarket(state, ctx, good.key, 1)
-    if (res.bought > 0) {
-      addLog(
-        state,
-        'trade',
-        `已购入 基础 AI 核心（市场价 ${res.total.toLocaleString('zh-CN')} 信用点）。AI 核心 = 你的分身，可指派给闲置舰船。`,
-        'core.ai.009',
-        { p1: res.total.toLocaleString('zh-CN') },
-      )
-      return { ok: true }
-    }
-  }
-  // 供应簿瞬时吃穿：挂收购单（到货自动入核心库）
-  const order = placeBuyOrder(state, ctx, good.key, ask, 1)
-  if (!order) return { ok: false, error: '挂收购单失败（钱包余额不足或订单无法成立）。', errorId: 'core.ai.002' }
-  addLog(
-    state,
-    'trade',
-    `基础 AI 核心供应簿暂时被买空——已自动挂收购单 @ ${order.price.toLocaleString('zh-CN')} 信用点，到货自动入核心库（可随时撤销）。`,
-    'core.ai.010',
-    { p1: order.price.toLocaleString('zh-CN') },
-  )
-  return { ok: true }
 }
 
 /* ───────── 任务指派 ───────── */

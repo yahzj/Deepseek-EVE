@@ -22,12 +22,13 @@ import {
   assignAiExpedition,
   assignAiMining,
   advanceAi,
-  buyBasicAiCore,
   cancelAiTask,
   countAiCore,
   gainAiCore,
   idleAiShipIds,
 } from '../src/ai'
+/** 2026-10-02 破环搬家：`buyBasicAiCore` 已搬到 market.ts */
+import { buyBasicAiCore } from '../src/market'
 import { anomaly, makeTestCtx, fittedOf, ship, skipFirstSkillReward } from './helpers'
 import { startRefineRun, stopRefineRun } from '../src/industry'
 import { startManufacturing, cancelManufacturing } from '../src/manufacturing'

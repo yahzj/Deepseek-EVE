@@ -155,6 +155,20 @@
   在 core 的 typecheck 里当场报红）。renderer 侧的清理后续另批（它的 tsconfig 未开）。
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
 
+### 批次 3-①：破第一条环 `ai ↔ market` ＋ 环境兜底（2026-10-02）
+
+- **环境事故（已定位、已兜底、未删现场）**：vitest 与 electron-vite 突然全挂——`postcss-load-config`
+  从项目 root 向上找配置，命中 `H:\大鲸鱼\package.json`（**外部进程留下的 0 字节空文件**）⇒
+  `JSON.parse('')` 炸。修法 = 仓库根加一份**空 postcss 配置**（`postcss.config.js`，零插件 = 与无配置等价），
+  让查找器命中最近这份、不再走到坏文件；**那份空文件不是本仓产物，没动它**（已报船长）。
+- **破环**：`ai.ts ↔ market.ts` —— ai→market 只有一条边（`buyBasicAiCore` 买核心借 market 五个交易函数）⇒
+  把这个函数**原样搬到 market.ts**（它本质是市场交易；错误 id 与文案逐字不动），ai.ts 删掉对 market 的
+  运行时依赖 ⇒ 环断。`index.ts` 导出源随之改、`tests/ai.test.ts` 导入路径改。
+- F9 基线 **34 → 32**：删掉本条；另发现"未用导入清理"已顺手断掉
+  `expedition→weekendBattle→weekendEvent→sideTasks`（sideTasks/weekendEvent 对 expedition 的导入已随清理
+  消失）⇒ 也删（破环成功收账）。
+- 验证：typecheck 全仓 ✅（含 noUnusedLocals 闸门）· core 全量 **3004 条** ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、

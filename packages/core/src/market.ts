@@ -31,6 +31,7 @@ import { bumpFirst } from './firstTasks'
 import { addLog, shipLockedReason } from './state'
 import type { GameState, NpcMarketOrder, PlayerOrder } from './state'
 import type { AiCoreType, MarketBalance, MarketGoodDef, MarketGoodKind, MarketRarity, SimContext } from './types'
+import type { CommandResult } from './engine'
 import { nextInt, nextRandom, pickWeighted } from './rng'
 import { addWare, countWare, removeWare } from './inventory'
 import { addModule, countModule, removeModule } from './equipment'
@@ -2264,6 +2265,47 @@ export function listSellHolding(
   bumpFirstMarketTrade(state)
   addLog(state, 'trade', placeOrderLogText(ctx, 'sell', goodKey, order.price, n, r))
   return { ok: true, orderId: order.id, price: order.price, filled: r.filled, resting: r.resting }
+}
+
+/**
+ * **玩家指令：购买基础 AI 核心**（V9：市场供应簿按市价买入；无现货自动挂收购单）。
+ *
+ * **2026-10-02 破环搬家**：本函数原住 `ai.ts`，是 ai→market 那条运行期环的唯一一条边
+ * （ai.ts 为"买核心"借 market 的五个交易函数）；它本质是一笔**市场交易**，搬到 market 侧后
+ * ai.ts 不再依赖 market ⇒ 环断开（行为逐字不变，错误 id `core.ai.001/002/009/010` 原样保留）。
+ */
+export function buyBasicAiCore(state: GameState, ctx: SimContext): CommandResult {
+  const good = marketGoodOf(ctx, 'aicore', 'basic')
+  if (!good) return { ok: false, error: '基础 AI 核心暂未在市场流通。', errorId: 'core.ai.001' }
+  const quote = marketQuote(state, ctx, good.key)
+  const ask = quote.sell ?? Math.round(levelOf(state, ctx, good.key) * 1.06)
+  if (state.wallet.isk < ask) {
+    return { ok: false, error: `信用点不足：基础 AI 核心约 ${ask.toLocaleString('zh-CN')} 信用点（现有 ${state.wallet.isk.toLocaleString('zh-CN')}）。` }
+  }
+  if (quote.sell !== undefined) {
+    const res = buyAtMarket(state, ctx, good.key, 1)
+    if (res.bought > 0) {
+      addLog(
+        state,
+        'trade',
+        `已购入 基础 AI 核心（市场价 ${res.total.toLocaleString('zh-CN')} 信用点）。AI 核心 = 你的分身，可指派给闲置舰船。`,
+        'core.ai.009',
+        { p1: res.total.toLocaleString('zh-CN') },
+      )
+      return { ok: true }
+    }
+  }
+  // 供应簿瞬时吃穿：挂收购单（到货自动入核心库）
+  const order = placeBuyOrder(state, ctx, good.key, ask, 1)
+  if (!order) return { ok: false, error: '挂收购单失败（钱包余额不足或订单无法成立）。', errorId: 'core.ai.002' }
+  addLog(
+    state,
+    'trade',
+    `基础 AI 核心供应簿暂时被买空——已自动挂收购单 @ ${order.price.toLocaleString('zh-CN')} 信用点，到货自动入核心库（可随时撤销）。`,
+    'core.ai.010',
+    { p1: order.price.toLocaleString('zh-CN') },
+  )
+  return { ok: true }
 }
 
 

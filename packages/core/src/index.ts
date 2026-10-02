@@ -807,6 +807,8 @@ export {
   cancelOrder,
   sellAtMarket,
   buyAtMarket,
+  /** 2026-10-02 破环搬家：`buyBasicAiCore` 从 ai.ts 搬到 market.ts（它是市场交易，不是 AI 指派） */
+  buyBasicAiCore,
   shipSellable,
   sellShipAtMarket,
   placeShipSellOrder,
@@ -1308,7 +1310,6 @@ export {
   aiCoreCapBlock,
   industryAiBonus,
   idleAiShipIds,
-  buyBasicAiCore,
   assignAiMining,
   assignAiExpedition,
   assignAiSalvage,
