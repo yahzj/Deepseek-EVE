@@ -316,7 +316,11 @@ export function startRefineRun(
   // AI 核心驱动不看位置（判据单点 = `stationIndustryBlocked`）：出海时照常开工，亲自运转仍要求在基地网络内。
   // ⚠ 这一道放在**统一判据之后**：停机已把舰船即时带回空间站（见上面的顺序说明）。
   if (stationIndustryBlocked(worker, state, ctx)) {
-    return { ok: false, error: '精炼炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
+    return {
+        ok: false,
+        error: '精炼炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。',
+        errorId: 'core.industry.084',
+      }
   }
   const { batchUnits, cycleMs } = refineBaseParamsOf(def)
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
@@ -476,7 +480,11 @@ export function startUnboxRun(
     }
   }
   if (stationIndustryBlocked(worker, state, ctx)) {
-    return { ok: false, error: '精炼炉的「货柜拆解」随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
+    return {
+        ok: false,
+        error: '精炼炉的「货柜拆解」随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。',
+        errorId: 'core.industry.085',
+      }
   }
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
   // 谜质科技「货柜拆解技术」：每级 −25%（加法口径 ⇒ 满级 −75%；船长 2026-09-19）
@@ -567,7 +575,11 @@ export function startRecycleRun(
   }
   // AI 核心驱动不看位置（判据单点 = `stationIndustryBlocked`）：出海时照常开工，亲自运转仍要求在基地网络内。
   if (stationIndustryBlocked(worker, state, ctx)) {
-    return { ok: false, error: '残骸回收炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。' }
+    return {
+        ok: false,
+        error: '残骸回收炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。',
+        errorId: 'core.industry.086',
+      }
   }
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
   let cycleEff = Math.max(1, Math.round(RECYCLE_CYCLE_MS / eff))
@@ -1197,12 +1209,12 @@ export interface SellResult {
 
 /** 从当前船货仓按市价卖出（矿石主要在此；吃穿簿的剩余自动转限价卖单） */
 export function sellCargoItem(state: GameState, itemId: string, ctx: SimContext): SellResult {
-  return sellItemFrom(state, itemId, countItem(state, itemId), (units) => removeItem(state, itemId, units), ctx, '货仓')
+  return sellItemFrom(state, itemId, countItem(state, itemId), (units) => removeItem(state, itemId, units), ctx, '货仓', 'ui.CargoPage.004')
 }
 
 /** 从物品仓库按市价卖出（矿物/存仓矿石在此） */
 export function sellWareItem(state: GameState, itemId: string, ctx: SimContext): SellResult {
-  return sellItemFrom(state, itemId, countWare(state, itemId), (units) => removeWare(state, itemId, units), ctx, '仓库')
+  return sellItemFrom(state, itemId, countWare(state, itemId), (units) => removeWare(state, itemId, units), ctx, '仓库', 'ui.ItemsPage.001')
 }
 
 /**
@@ -1252,7 +1264,7 @@ export function sellCargoItemQty(state: GameState, itemId: string, qty: number, 
       gainedIsk: 0,
     }
   }
-  return sellItemFrom(state, itemId, want, (units) => removeItem(state, itemId, units), ctx, '货仓')
+  return sellItemFrom(state, itemId, want, (units) => removeItem(state, itemId, units), ctx, '货仓', 'ui.CargoPage.004')
 }
 
 /** 从物品仓库按市价**卖出指定数量**（同 sellWareItem 其余语义） */
@@ -1271,7 +1283,7 @@ export function sellWareItemQty(state: GameState, itemId: string, qty: number, c
       gainedIsk: 0,
     }
   }
-  return sellItemFrom(state, itemId, want, (units) => removeWare(state, itemId, units), ctx, '仓库')
+  return sellItemFrom(state, itemId, want, (units) => removeWare(state, itemId, units), ctx, '仓库', 'ui.ItemsPage.001')
 }
 
 function sellItemFrom(
@@ -1281,11 +1293,13 @@ function sellItemFrom(
   remove: (units: number) => boolean,
   ctx: SimContext,
   sourceName: string,
+  /** 来源标签的 l10n id（`ui.CargoPage.004` 货仓 / `ui.ItemsPage.001` 仓库）—— 中文原串仍照写，此处只给界面按语言取词用 */
+  sourceId: string,
 ): SellResult {
   const def = ctx.items.get(itemId)
   if (!def) return { ok: false, error: `未知物品：${itemId}`, errorId: 'core.industry.002', errorParams: { p1: itemId }, soldUnits: 0, gainedIsk: 0 }
   if (available <= 0) {
-    return { ok: false, error: `${sourceName}里没有 ${def.name}。`, errorId: 'core.industry.016', errorParams: { p1: sourceName, p2: def.name }, soldUnits: 0, gainedIsk: 0 }
+    return { ok: false, error: `${sourceName}里没有 ${def.name}。`, errorId: 'core.industry.016', errorParams: { p1: sourceName, p1Id: sourceId, p2: def.name }, soldUnits: 0, gainedIsk: 0 }
   }
   const good = marketGoodOf(ctx, 'item', itemId)
   if (!good) return { ok: false, error: `${def.name} 不在市场流通目录中，无法出售。`, errorId: 'core.industry.017', errorParams: { p1: def.name }, soldUnits: 0, gainedIsk: 0 }

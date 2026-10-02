@@ -1322,6 +1322,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.industry.078": { zh: "，已停工、余料保留在货仓/仓库（凑够一批可再开）", en: ", so it halted and kept the leftovers in the hold or warehouse (gather another batch to restart)" },
   "core.industry.079": { zh: "，已停工、余料保留在货仓/仓库（凑够一批可再开）。", en: ", so it halted and kept the leftovers in the hold or warehouse (gather another batch to restart)." },
   "core.industry.083": { zh: "精炼炉停：{p1} 余量不足一批（每批 {p2}{p3}，余 {p4}）——已完成 {p5} 批", en: "Refinery stopped: {p1} has less than one batch left ({p2}{p3} per batch, {p4} left) — {p5} batches done" },
+  "core.industry.084": { zh: "精炼炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。", en: "The refinery runs on the Association base network: dock at a station, the home port or a completed outpost, to start it — AI-core-driven runs are not affected." },
+  "core.industry.085": { zh: "精炼炉的「货柜拆解」随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。", en: "Container breaking at the refinery runs on the Association base network: dock at a station, the home port or a completed outpost, to start it — AI-core-driven runs are not affected." },
+  "core.industry.086": { zh: "残骸回收炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。", en: "The wreck recycler runs on the Association base network: dock at a station, the home port or a completed outpost, to start it — AI-core-driven runs are not affected." },
   /* ── 多段文案（甲案配套）：链式 id + 每段参数命名空间 `p{n}p{k}` ── */
   "core.ai.034": { zh: "[AI·{p1}] ⚔ 战报：{p2}·{p3} 大捷（交火 {p4}，开火 {p5} 命中 {p6}）！", en: "[AI·{p1}] ⚔ Battle report: a rout at {p2}·{p3}! (exchange {p4}, {p5} shots fired, {p6} hits)" },
   "core.ai.035": { zh: "船体维修装置{p1}。", en: "Hull repair units {p1}." },

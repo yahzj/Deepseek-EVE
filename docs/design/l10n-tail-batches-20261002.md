@@ -36,6 +36,23 @@
 
 ---
 
+## 批⑤ 工业域（2026-10-02）
+
+**读数**：`npm run l10n:core-zh -- industry` —— `industry.ts` **7 → 0 处**。
+
+**落码（2 个文件）**：
+
+| # | 文件 | 改动 |
+|---|---|---|
+| 1 | `packages/core/src/industry.ts` | ① 三台机器的「需停靠空间站」闸补 id（`core.industry.084` 精炼炉 · `085` 货柜拆解 · `086` 残骸回收炉）② **`sellItemFrom` 的来源标签改走 `p1Id`**：原先把 `'货仓'` / `'仓库'` 当**中文参数**喂进 `core.industry.016`（`{p1}里没有 {p2}。`）⇒ 英文界面中英混排；现在多收一个 `sourceId`，`errorParams` 补 `p1Id`（复用既有标签 id **`ui.CargoPage.004`** 货仓 / **`ui.ItemsPage.001`** 仓库，不新造词条） |
+| 2 | `packages/data/src/l10n/table.ts` | 补 3 条（`core.industry.084~086`） |
+
+**✅ 顺带收口盘点稿的 B 类待核 4 条**（"出售来源标签会不会上屏"）：答案是**会**——`sellItemFrom` 本来就把它们当参数喂模板；本批已按 `p1Id` 修好（B 类 9 条里清掉 4 条，剩 `aiCoreCapBlock` 那 5 条已在批② 一并转正）。
+
+**验证**：`typecheck` 四包 0 错 · core **286 文件 / 3008 用例全绿** · `l10n:params` 0 漏喂 · `content:check` ✅ · 工具复核该域 **0 处**。
+
+---
+
 ## 待做（按盘点稿顺序）
 
 批③ 远征/自动循环（9 条）· 批④ 市场（2 条）· 批⑤ 工业（3 条）· 批⑥ 装配（1 条）· 批⑦ 虫洞＋战斗读数（2 条）· 批⑧ B 类待核（9 条）· 批⑨ 日志行（97 处，建议单独立项）· 批⑪ 共享拒因（`shipLockedReason` / `cannotInterruptReason`，跨 6 域，需先申请）。
