@@ -7,6 +7,22 @@
 
 > 报障（玩家反馈）：「**击败旗舰打空血量后，被弹出战斗，且旗舰血量全满**」
 > 一号摆出真因与三档（甲：击杀旗舰 ⇒ 本期封盘／乙：恢复"一期一场"／丙：只改呈现）⇒ 船长裁「**甲**」。
+> **第二报障**（同日后续）：「**旗舰战斗后仍然无法结束入侵**」⇒ 一号查出**同一批的第二处漏门**（见 §七），
+> 已一并修掉（**不是**新裁定，属本批"结束即该关门"的补漏）。
+
+## 一之二、第二报障的真因（一号取证）
+
+玩家原话：「**旗舰战斗后仍然无法结束入侵**」——真因＝**"活动已结束"没在所有读数上关门**：
+
+| 读数 | 改前行为 | 谁会看到 |
+|---|---|---|
+| `weekendFlagshipView` | **只判 `flagshipDown` 与核心条** —— 而**"到点收场"那条路不写 `flagshipDown`**（结局是 `'window'`）⇒ 已结束的活动只要核心条满过就仍报 `shown: true` | 星系详细里的「**发现敌方旗舰 → 战前准备**」入口 ＋ 核心节点红光/★（点进去只会被 `weekendFlagshipSpecOf` 的结束门弹回一个错误提示） |
+| `weekendBossPoolView` | 同样不判结束 ⇒ 已结束的活动照旧吐池子读数 | 星系详细那张卡上的**母舰血条**（"还剩 0% / 25%"一直挂着）＝ 玩家眼中的"入侵还没结束" |
+| `StarMap` 的节点读数（进度表 / 核心点亮 / 母舰血条那条） | **各自都查了 `endedAtWallMs`** ✓ | ——（所以问题只在上面两处单点） |
+
+**为什么改前没暴露**：结束的活动对象改前**当拍就被新一场替换**（今天"可连开"）⇒ 这两处漏门最多显一秒；
+本批"击杀 ⇒ 本期封盘"让已结束的对象**在本期一直留着** ⇒ 漏门显形。⇒ 修法＝在这两个**单点**上补结束门
+（`StarMap` 一个字未动：它读的就是这两处 ✓）。
 
 ## 二、真因（一号当日取证 · 用真实函数跑完整链路）
 
@@ -36,11 +52,22 @@
 2. `packages/core/src/index.ts` —— 导出 `weekendPeriodSealedByKill`。
 
 **测试**
-3. `packages/core/tests/flagship-kill-seals-period-20261002.test.ts`（新增 **6 条**）：① 真实击杀链
+3. `packages/core/tests/flagship-kill-seals-period-20261002.test.ts`（新增 **8 条**）：① 真实击杀链
    （`weekendFlagshipSpecOf` → `weekendResolveBattle` → `weekendSettleAndGrant` 写留档）⇒ 封盘不开新场；
    ② 本期内反复调都不开（幂等）；③ 下一期 T0 到 ⇒ 解封、照常开新场（新池"待接战"）；
    ④ 章鱼人得手（`'octopus'`）⇒ **不封盘**；⑤ 到点收场（`'window'`）⇒ 不封盘；
-   ⑥ 封盘期间**信号发射器照旧能点火**（主动选择）· **补偿补场照旧能开**（承诺）。
+   ⑥ 封盘期间**信号发射器照旧能点火**（主动选择）· **补偿补场照旧能开**（承诺）；
+   **⑦⑧ 第二报障的补漏**（见 §一之二）：活动结束后 `weekendFlagshipView.shown = false` ·
+   `weekendBossPoolView = null` · `weekendFlagshipPrepView = null`（击杀那一种 ＋ **到点收场那一种**）。
+
+**第二报障的补漏（同一批 · 见 §一之二）**
+4. `packages/core/src/weekendEvent.ts` 两处**单点**补"结束门"：
+   - `weekendFlagshipView`：**活动已结束 ⇒ 一律报"没现身"**（原先只判 `flagshipDown` 与核心条）；
+   - `weekendBossPoolView`：**活动已结束 ⇒ 没有血条**（结束时池子还剩多少是历史读数）。
+   ⚠ `StarMap.tsx` **一个字未动**（它读的就是这两处 ✓；结算面板与结算通讯读的是战果快照 ✓ 不受影响）。
+5. `packages/core/tests/weekend-event.test.ts` —— 既有那条「削血真实推进」原先在**事件已结束之后**读
+   视图的 `down` 当判据（正是被本条关掉的那个行为）⇒ 改读**状态那一格** `ev.flagshipDown`（结局的唯一真相）
+   ＋ 顺手断言"活动已结束 ⇒ 视图报没现身"把新口径钉住。
 
 ## 四、不做 / 边界（按「甲」的口径）
 
@@ -81,15 +108,19 @@
 
 ## 六、验证与读数
 
-**用例**（`packages/core/tests/flagship-kill-seals-period-20261002.test.ts` · **6 条**全绿）：① 真实击杀链
+**用例**（`packages/core/tests/flagship-kill-seals-period-20261002.test.ts` · **8 条**全绿）：① 真实击杀链
 （旗舰 spec → `weekendResolveBattle` → `weekendSettleAndGrant` 写留档）⇒ `flagshipOutcome = 'player'`
 ⇒ 下一拍 `started = false`（改前当拍就开一场）；② 本期内 T0+2h/24h/窗口末都**不开**（幂等）；
 ③ 下一期 T0 到 ⇒ `started = true`、新场 `startedAtWallMs = 新 T0`、池子"待接战"；
 ④ 留档 `'octopus'` ⇒ 不封盘、照旧开；⑤ 留档 `'window'` ⇒ 不封盘、照旧开；
-⑥ 封盘期间：信号发射器点火**成功**（族 ∈ {R,H}）· 补偿补场**照旧开**（族 = 光环）。
+⑥ 封盘期间：信号发射器点火**成功**（族 ∈ {R,H}）· 补偿补场**照旧开**（族 = 光环）；
+⑦ 击杀结束后：`weekendFlagshipView.shown = false` · `weekendBossPoolView = null` ·
+`weekendFlagshipPrepView = null` · `weekendFlagshipSpecOf = null`（四把尺一起关）；
+⑧ **到点收场那一种**（**不写 `flagshipDown`** —— 那处漏门的正主）同样四把尺全关。
 
-**闸门（全绿）**：typecheck 0 · core **296 文件 / 3099 用例**（+6 = 本批）· content:check 0 · l10n:check 0 ·
-l10n:params 0 · ui:rot-check 0 · ui:layout-css:check 0 · arch:guard F1~F9 全 0 · scope:check 0 ·
-docs:index 0 · 桌面构建 ✓。§四 编码自检：改动文件纯 CRLF、无 BOM。
+**闸门（全绿 · 复跑于本批末）**：typecheck 0 · core **299 文件 / 3101 用例**（本批 +8：新增 8 条，
+其中既有那条"削血真实推进"按新口径改写）· content:check 0 · l10n:check 0 · l10n:params 0 ·
+ui:rot-check 0 · ui:layout-css:check 0 · arch:guard F1~F9 全 0 · scope:check 0 · 桌面构建 ✓。
+§四 编码自检：改动文件纯 CRLF、无 BOM。
 
-**§十八 自报**：`scope:check` 读数 = **1 个功能域**（入侵与活动）⇒ **无跨域**；共享底层 1 个（`index.ts` 导出）。
+**§十八 自报**：`scope:check` 读数 = **1 个功能域**（入侵与活动；`StarMap.tsx` 一个字未动）⇒ **无跨域**。

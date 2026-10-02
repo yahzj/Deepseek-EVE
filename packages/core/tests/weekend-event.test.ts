@@ -594,9 +594,16 @@ describe('周末入侵 · 旗舰与倒计时（含离线保护 / Q3 / Q7）', ()
       weekendTickBoss(s, 200_000 + i * 5_000, false)
     }
     expect(ev.octopusHpDone).toBe(150_000)
-    expect(weekendFlagshipView(s, ev, 200_000 + 201 * 5_000, 200_000 + 201 * 5_000).down, '削空 ⇒ 章鱼人得手').toBe(
-      'octopus',
-    )
+    /**
+     * 🔴 **2026-10-02 改判（玩家报障「旗舰战斗后仍然无法结束入侵」的连带）**：得手那一刻
+     * `weekendClaimOctopus` **已经把本场结束了**（写 `flagshipDown` ＋ `endedAtWallMs`），
+     * 而 `weekendFlagshipView` 现在**对已结束的活动一律报"没现身"**（原先只判 `flagshipDown` 与核心条
+     * ⇒ "到点收场"那条不写 `flagshipDown` 的路会让入口与血条一直挂着）。
+     * ⇒ 本断言改读**状态那一格**（结局的唯一真相），并顺手把新口径钉住。
+     */
+    expect(ev.flagshipDown, '削空 ⇒ 章鱼人得手（读状态，不读视图）').toBe('octopus')
+    const afterEnd = 200_000 + 201 * 5_000
+    expect(weekendFlagshipView(s, ev, afterEnd, afterEnd).shown, '活动已结束 ⇒ 视图报"没现身"').toBe(false)
   })
 
   /**

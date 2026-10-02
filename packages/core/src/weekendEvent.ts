@@ -1360,6 +1360,19 @@ export function weekendFlagshipView(
   nowWallMs: number,
   lastSeenWallMs: number,
 ): WeekendFlagshipView {
+  /**
+   * 🔴 **活动已结束 ⇒ 一律"没现身"**（**2026-10-02 修 · 玩家报障「旗舰战斗后仍然无法结束入侵」**）。
+   *
+   * 真因：本函数原先只判 `flagshipDown` 与核心条，而**"到点收场"那条路不写 `flagshipDown`**
+   * （结局是 `'window'`）⇒ 已结束的活动只要核心条满过，就仍然报 `shown: true` ⇒ 星系详细里的
+   * 「发现敌方旗舰 → 战前准备」入口与母舰血条**一直挂着**（点进去只会被 `weekendFlagshipSpecOf`
+   * 的结束门弹回一个错误提示）⇒ 玩家看到的就是"入侵打完了却还在、还结束不了"。
+   * ⚠ 与 `StarMap` 那句既有注释对齐（「母舰被摧毁 ⇒ 活动收场（`endedAtWallMs`）⇒ 红光与 ★ 一起消失
+   * （上面两道判据都先查它）」）—— 那句**本来就得靠本条才成立**（那两处自己查了，本视图没查）。
+   * ⚠ 本批（"击杀 ⇒ 本期封盘"）让"已结束的活动对象"在本期**一直留着**（改前当拍就被新场替换）
+   * ⇒ 这处漏门才显形；顺手把同一类的 `weekendBossPoolView` 也补上（下面那段）。
+   */
+  if (ev.endedAtWallMs !== undefined) return { shown: false }
   if (ev.flagshipDown) return { shown: true, atWallMs: ev.flagshipAtWallMs, down: ev.flagshipDown }
   const full = weekendCoreProgressAt(state, ev, nowWallMs) >= 1
   if (!full) return { shown: false }
@@ -1892,7 +1905,13 @@ export function weekendBossPoolView(
   state: Pick<GameState, 'debugQuick'>,
   ev: WeekendEventState | undefined,
 ): WeekendBossPoolView | null {
-  if (!ev || !weekendIsBossFamily(ev)) return null
+  /**
+   * ⚠ **活动已结束 ⇒ 没有血条**（**2026-10-02 修**，与 `weekendFlagshipView` 同一处漏门、同一个报障）：
+   * 结束时池子还剩多少是**历史读数** ⇒ 已经结束的活动不该再在星系详细/核心节点上挂着血条
+   * （玩家看到的是"0% / 40% 的血条还在"＝"入侵还没结束"）。结算面板与结算通讯读的是**战果快照**
+   * （`weekendLastResult`），不读本函数 ⇒ 关掉它不影响任何结算呈现。
+   */
+  if (!ev || ev.endedAtWallMs !== undefined || !weekendIsBossFamily(ev)) return null
   const hpMax = ev.flagshipHpMax
   if (hpMax === undefined || hpMax <= 0) return null
   const hpDone = Math.max(0, ev.flagshipHpDone ?? 0)

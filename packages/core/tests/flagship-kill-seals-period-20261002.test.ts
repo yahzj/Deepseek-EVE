@@ -30,13 +30,16 @@ import { INVASION_BEACON_ITEM_ID, useInvasionBeacon } from '../src/consumables'
 import {
   WEEKEND_FLAGSHIP_POOL_HP,
   WEEKEND_WINDOW_MS,
+  weekendBossPoolView,
   weekendCoreCandidates,
+  weekendFlagshipView,
   weekendPeriodSealedByKill,
   weekendT0Of,
   weekendTick,
 } from '../src/weekendEvent'
 import type { WeekendEventState } from '../src/weekendEvent'
 import { weekendFlagshipSpecOf, weekendResolveBattle, weekendSettleAndGrant } from '../src/weekendBattle'
+import { weekendFlagshipPrepView } from '../src/weekendLaunch'
 import { openWeekendMakeupIfDue } from '../src/weekendCompensation'
 
 const ctx = buildSimContext()
@@ -161,5 +164,40 @@ describe('本期击杀旗舰 ⇒ 本期封盘（船长 2026-10-02 令「甲」�
     expect(weekendPeriodSealedByKill(c, T0), '这一档本期确实封盘').toBe(true)
     expect(openWeekendMakeupIfDue(c, ctx, WED), '补场照旧开（不受封盘影响）').toBe(true)
     expect(c.weekendEvent?.family, '补场族 = 光环科技').toBe('R')
+  })
+
+  /**
+   * **玩家报障之二**：「**旗舰战斗后仍然无法结束入侵**」——真因 = **"活动已结束"没在所有读数上关门**：
+   * `weekendFlagshipView` 原先只判 `flagshipDown` 与核心条，而**"到点收场"那条路不写 `flagshipDown`**
+   * ⇒ 已结束的活动只要核心条满过就仍报 `shown: true` ⇒ 星系详细里的「发现敌方旗舰 → 战前准备」入口
+   * 与母舰血条**一直挂着**（点进去被 `weekendFlagshipSpecOf` 的结束门弹回错误提示）⇒ 玩家看到的
+   * 就是"打完了却还在、还结束不了"。本批"击杀 ⇒ 封盘"让已结束的事件对象在本期**一直留着**
+   * （改前当拍就被新场替换）⇒ 这处漏门才显形。
+   */
+  it('⑦ 活动结束后：**旗舰视图 / 血条读数 / 战前准备入口**一律关门（击杀那一种）', () => {
+    const s = base()
+    bossEvent(s)
+    killFlagship(s)
+    const ev = s.weekendEvent!
+    const at = NOW + 2 * H
+    expect(weekendFlagshipView(s, ev, at, at).shown, '`shown` 必须为假（入口与红光的那把尺）').toBe(false)
+    expect(weekendBossPoolView(s, ev), '血条读数必须为 null（星系详细/核心节点的那根条）').toBeNull()
+    expect(weekendFlagshipPrepView(s, ctx, at), '战前准备入口必须为 null').toBeNull()
+    /** 战前准备入口的**同一份**判据（`weekendFlagshipSpecOf`）本来就带结束门 ⇒ 双保险 */
+    expect(weekendFlagshipSpecOf(s, ctx, at), '开战 spec 也必须为 null').toBeNull()
+  })
+
+  it('⑧ 到点收场（**不写 `flagshipDown`** 的那一种）同样关门 —— 这才是那处漏门的正主', () => {
+    const s = base()
+    /** 核心条已满 + 池子打过一半，但结局是"到点收场"（`flagshipDown` 缺省） */
+    bossEvent(s, { flagshipHpDone: 75_000, endedAtWallMs: NOW })
+    const ev = s.weekendEvent!
+    expect(ev.flagshipDown, '先决：这一种结局**不写** `flagshipDown`').toBeUndefined()
+    const at = NOW + 2 * H
+    expect(weekendFlagshipView(s, ev, at, at).shown, '改前这里会报 shown: true ⇒ 入口挂一整天').toBe(false)
+    expect(weekendBossPoolView(s, ev), '血条也不再挂着').toBeNull()
+    expect(weekendFlagshipPrepView(s, ctx, at), '入口消失').toBeNull()
+    expect(weekendFlagshipSpecOf(s, ctx, at)).toBeNull()
+    console.log('  [读数] 到点收场（无 flagshipDown）：旗舰视图/血条/入口三处全关（改前 `shown: true` ⇒ 入口与 25% 血条一直挂着）')
   })
 })
