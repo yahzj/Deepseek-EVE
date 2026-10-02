@@ -36,6 +36,12 @@
  *      而且**改小了没人拦**（存档写得越频越不易察觉，只在低端机上表现为卡顿）。
  *      ⇒ 报红两种情形：① `SAVE_INTERVAL_MS` 不是 60_000（改回更短的值要显式改本检查并写理由）；
  *      ② 落盘 `setInterval` 里写了**裸数字**（绕过常量的第二出处）。
+ *   F8 **主控活动切换契约**（**2026-10-02 加** · stage 2 的契约护栏）：起因 = 船长报障
+ *      「**实验室的主控活动并不占用主控，是BUG**」＋ 裁定乙案。报红三类：
+ *      ① core 的 `start*` 主控入口漏调 `applyActivityGate`/`gateMainActivity*`（接力入口按委托链算过）；
+ *      ② 登记在册的入口改名/删除（逼一次人工复核）；
+ *      ③ `MainActivityKind` 每个档位必须"能被 `mainActivityOf` 探测到 · 在两张档位表里恰好占一档 ·
+ *      可中断的必须有 `haltActivityForSwitch` 分支"（实验室那次就是这三处对不上）。
  *
  * 用法：`npm run arch:guard`（或 `npx tsx tools/arch-guard.ts`，加 `--list` 打印全部读数）。
  * **反例实测**（每条判据都要证明它真能报红，见头注末的「自检记录」）。
@@ -169,6 +175,64 @@ function localDeclarations(src: string): { name: string; line: number }[] {
   for (const m of src.matchAll(re)) {
     out.push({ name: m[1], line: src.slice(0, m.index ?? 0).split('\n').length })
   }
+  return out
+}
+
+/**
+ * 从一个 `function NAME(` 声明处取出**函数体文本**（先按圆括号配对接掉参数表，再按大括号配对接体）。
+ *
+ * ⚠ 参数表里可能有**对象类型字面量**（`opts?: { a: string }`）⇒ 一见到 `{` 就当函数体是错的
+ * （2026-10-02 写 F8 普查原型时实测踩到：抽出来的"体"只有类型那一截）。
+ */
+function fnBodyOf(text: string, declIndex: number): string | null {
+  let par = 0
+  let i = text.indexOf('(', declIndex)
+  if (i < 0) return null
+  for (; i < text.length; i++) {
+    if (text[i] === '(') par++
+    else if (text[i] === ')') {
+      par--
+      if (par === 0) break
+    }
+  }
+  const open = text.indexOf('{', i)
+  if (open < 0) return null
+  let depth = 0
+  for (let k = open; k < text.length; k++) {
+    if (text[k] === '{') depth++
+    else if (text[k] === '}') {
+      depth--
+      if (depth === 0) return text.slice(open, k + 1)
+    }
+  }
+  return null
+}
+
+/** 数组字面量里的单引号字符串项（`export const X: T[] = ['a', 'b']`；注释已被 `stripComments` 清掉）
+ *  ⚠ 必须从 **`=` 之后**再找 `[`：类型注解里就有方括号（`readonly MainActivityKind[]`）
+ *  ⇒ 从声明处直接找 `[` 会命中类型那一对，切出来是空串（2026-10-02 实测踩到：11 个档位全报"没登记"）。 */
+function stringItemsOf(text: string, decl: string): string[] {
+  const i = text.indexOf(decl)
+  if (i < 0) return []
+  const eq = text.indexOf('=', i)
+  if (eq < 0) return []
+  const open = text.indexOf('[', eq)
+  const close = text.indexOf(']', open)
+  if (open < 0 || close < 0) return []
+  return [...text.slice(open, close).matchAll(/'([A-Za-z0-9_]+)'/g)].map((m) => m[1]!)
+}
+
+/** 对象字面量里的 `键: 值`（`export const X: T = { a: true }`；同样从 `=` 之后找 `{`） */
+function objectItemsOf(text: string, decl: string): Record<string, string> {
+  const i = text.indexOf(decl)
+  if (i < 0) return {}
+  const eq = text.indexOf('=', i)
+  if (eq < 0) return {}
+  const open = text.indexOf('{', eq)
+  const close = text.indexOf('}', open)
+  if (open < 0 || close < 0) return {}
+  const out: Record<string, string> = {}
+  for (const m of text.slice(open, close).matchAll(/([A-Za-z0-9_]+)\s*:\s*([A-Za-z0-9_]+)/g)) out[m[1]!] = m[2]!
   return out
 }
 
@@ -393,6 +457,160 @@ for (const file of rendererFiles) {
   }
 }
 
+/* ═══════════ F8 · 主控活动切换契约：入口必过门禁 ＋ 登记表与实现一致 ═══════════
+ * 起因（**船长 2026-10-01 报障 ＋ 裁定**）：「**实验室的主控活动并不占用主控，是BUG。建议将这方面
+ * 做一个规则，主控在做什么的时候天然排除其他主控可以做的活**」→ 裁定**乙案** ＝ 登记表 ＋ 两两互斥矩阵
+ * ＋ **契约护栏**（工作文档 `docs/design/activity-gate-registry-20261001.md`）。
+ * stage 1（登记表 + 活动栏接入）已落；**本检查 = stage 2 的契约护栏**，钉住两类漂移：
+ *
+ *   ① **入口漏调门禁**：core 导出的 `start*` 主控入口（＋登记在册的少数非 `start` 命名入口）
+ *      必须**直接**调 `applyActivityGate` / `applyActivityHandoff` / `gateMainActivity*`，
+ *      或**经委托链（≤4 层）**走到一个调了的入口（接力入口 `startMiningFromExpedition` /
+ *      `startExpeditionFromMining` 就是靠委托：它们自己不过门禁，落到 `startMining` / `startExpedition`）。
+ *   ② **登记表与实现脱节**：`MainActivityKind` 的每个档位必须
+ *      ⑴ 在 `mainActivityOf` 里能被**探测到**（实验室那次的病根就是"停机有档、探测没档"）
+ *      ⑵ 在 `AUTO_HALT_KINDS` / `WARN_KINDS` 两档登记里**恰好占一档**（互斥且覆盖）
+ *      ⑶ 可中断（`INTERRUPTIBLE === true`）的档位必须在 `state.haltActivityForSwitch` 里有 `case`。
+ *
+ * ⚠ **白名单逐条写明理由**（船长条文：「白名单要写明理由」）；名单里的入口**改名/删除会报红**
+ * ——逼一次人工复核，避免"改了名就悄悄脱离护栏"。
+ * ⚠ **刻度说明**：本检查按**源码文本**判（零依赖、与其它 F 同构），不做真正的 AST 解析
+ * ⇒ 判据是"够用的近似"：它抓的是"新入口忘了过门禁"这类**整条缺失**，不抓"调了但参数写错"。
+ */
+{
+  const CORE_DIR = join(ROOT, 'packages', 'core', 'src')
+  const coreSrc = new Map<string, string>()
+  for (const name of readdirSync(CORE_DIR)) {
+    if (name.endsWith('.ts')) coreSrc.set(name, stripComments(readFileSync(join(CORE_DIR, name), 'utf8')))
+  }
+
+  const GATE_CALL = /(applyActivityGate|applyActivityHandoff|gateMainActivity|gateMainActivityHandoff)\s*\(/
+  const fns = new Map<string, { file: string; gate: boolean; calls: string[] }>()
+  for (const [file, text] of coreSrc) {
+    for (const m of text.matchAll(/export (?:async )?function ([A-Za-z0-9_]+)\s*\(/g)) {
+      const body = fnBodyOf(text, m.index ?? 0)
+      if (body === null) continue
+      fns.set(m[1]!, {
+        file,
+        gate: GATE_CALL.test(body),
+        calls: [...body.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\s*\(/g)].map((x) => x[1]!),
+      })
+    }
+  }
+  /** 这一条入口最终会不会走到门禁（直接调，或沿委托链 ≤4 层走到一个调了的） */
+  const reachesGate = (name: string, depth = 0, seen = new Set<string>()): boolean => {
+    const f = fns.get(name)
+    if (f === undefined) return false
+    if (f.gate) return true
+    if (depth >= 4 || seen.has(name)) return false
+    seen.add(name)
+    return f.calls.some((c) => reachesGate(c, depth + 1, seen))
+  }
+  const lineOfFn = (file: string, name: string): number => {
+    const t = coreSrc.get(file) ?? ''
+    const i = t.indexOf('function ' + name + '(')
+    return i < 0 ? 0 : t.slice(0, i).split('\n').length
+  }
+  const push = (file: string, line: number, detail: string, fix: string): void => {
+    hits.push({ check: 'F8', file: `packages/core/src/${file}`, line, detail, fix })
+  }
+
+  /** **登记在册的主控入口**：名字不以 `start` 开头的那几个（普查 2026-10-01 / 10-02 两轮） */
+  const REGISTRY: readonly { fn: string; note: string }[] = [
+    { fn: 'goStandbyAt', note: '前往星系（驻留）· 档位 standby' },
+    { fn: 'wormholeScanStart', note: '扫描虫洞 · 档位 wormholeScan' },
+    { fn: 'wormholeEntryAutoStops', note: '进虫洞那一刻的自动停机（handoff 判据）' },
+    { fn: 'wormholeEntryBlockReason', note: '进虫洞的拦截判据（handoff 判据）' },
+    { fn: 'startMiningFromExpedition', note: '接力入口：委托 startMining' },
+    { fn: 'startExpeditionFromMining', note: '接力入口：委托 startExpedition' },
+  ]
+  /** **有意不过门禁的入口**（白名单 · 逐条理由） */
+  const EXEMPT: readonly { fn: string; reason: string }[] = [
+    { fn: 'startScan', reason: '星图扫描：船长 2026-09-15 令「不占主控活动」' },
+    { fn: 'startTransitHome', reason: '换港返航：属 LOCKED 档（锁定态由 cannotInterruptReason 统一挡）' },
+    { fn: 'startBattleFor', reason: '开战：非主控活动入口（战斗中由 cannotInterruptReason 的锁定态挡）' },
+    { fn: 'startFleetBattleFor', reason: '编队开战：同上' },
+  ]
+
+  const entries = new Set<string>(REGISTRY.map((r) => r.fn))
+  for (const name of fns.keys()) if (name.startsWith('start')) entries.add(name)
+
+  for (const name of entries) {
+    if (reachesGate(name)) continue
+    if (EXEMPT.some((e) => e.fn === name)) continue
+    const f = fns.get(name)
+    if (f === undefined) continue
+    push(
+      f.file,
+      lineOfFn(f.file, name),
+      `主控活动入口 \`${name}\` 没走活动门禁（直接调、委托链都没有，也不在豁免名单里）`,
+      '在入口里调 `applyActivityGate(state, \'<档位>\', ctx)`（或委托给一个调了的入口）；确属非主控活动 ⇒ 加进本检查的 `EXEMPT` 并写明理由',
+    )
+  }
+  for (const r of [...REGISTRY, ...EXEMPT]) {
+    if (fns.has(r.fn)) continue
+    push(
+      'activityGate.ts',
+      0,
+      `登记在册的入口 \`${r.fn}\` 在 core 里找不到了（${'note' in r ? (r as { note: string }).note : (r as { reason: string }).reason}）`,
+      '入口改名/删除 ⇒ 同步本检查的 REGISTRY/EXEMPT 与工作文档（这是逼一次人工复核，不是误报）',
+    )
+  }
+
+  /* ── 登记表 ↔ 实现一致性（档位三分） ── */
+  const gateText = coreSrc.get('activityGate.ts') ?? ''
+  const stateText = coreSrc.get('state.ts') ?? ''
+  const kinds = ((): string[] => {
+    const i = gateText.indexOf('export type MainActivityKind')
+    if (i < 0) return []
+    const end = gateText.indexOf('\nexport ', i + 10)
+    const seg = gateText.slice(i, end < 0 ? undefined : end)
+    return [...seg.matchAll(/'([A-Za-z0-9_]+)'/g)].map((m) => m[1]!)
+  })()
+  const autoHalt = stringItemsOf(gateText, 'AUTO_HALT_KINDS')
+  const warn = stringItemsOf(gateText, 'WARN_KINDS')
+  const interruptible = objectItemsOf(gateText, 'INTERRUPTIBLE')
+  const mainOfIdx = gateText.indexOf('export function mainActivityOf')
+  const mainBody = mainOfIdx < 0 ? null : fnBodyOf(gateText, mainOfIdx)
+  const haltIdx = stateText.indexOf('export function haltActivityForSwitch')
+  const haltBody = haltIdx < 0 ? null : fnBodyOf(stateText, haltIdx)
+
+  if (kinds.length === 0) {
+    push('activityGate.ts', 0, '读不到 `MainActivityKind` 的档位清单（本检查失效，需同步更新）', '确认 `export type MainActivityKind = | \'a\' | ...` 的写法没变')
+  }
+  for (const k of kinds) {
+    if (mainBody !== null && !mainBody.includes(`'${k}'`)) {
+      push(
+        'activityGate.ts',
+        lineOfFn('activityGate.ts', 'mainActivityOf'),
+        `档位 \`${k}\` 在 \`mainActivityOf\` 里探测不到（登记了却没人认领 ⇒ 该活动跑着时门禁会以为"主控空着"）`,
+        `在 \`mainActivityOf\` 里补这一档的判据（实验室那次漏登记就是这条）`,
+      )
+    }
+    if (!autoHalt.includes(k) && !warn.includes(k)) {
+      push(
+        'activityGate.ts',
+        0,
+        `档位 \`${k}\` 既不在 \`AUTO_HALT_KINDS\` 也不在 \`WARN_KINDS\`（它的切换档位没有登记）`,
+        `按船长口径归入"直接切"或"先警告"其一（两档互斥且必须覆盖全部档位）`,
+      )
+    }
+    if (interruptible[k] === 'true' && haltBody !== null && !haltBody.includes(`'${k}'`)) {
+      push(
+        'state.ts',
+        lineOfFn('state.ts', 'haltActivityForSwitch'),
+        `档位 \`${k}\` 是可中断的，但 \`haltActivityForSwitch\` 里没有它的 \`case\`（判据说能停、停机路径不会停）`,
+        `在 \`haltActivityForSwitch\` 里补这一档的停机分支`,
+      )
+    }
+  }
+  for (const k of autoHalt) {
+    if (warn.includes(k)) {
+      push('activityGate.ts', 0, `档位 \`${k}\` 同时在 \`AUTO_HALT_KINDS\` 与 \`WARN_KINDS\` 里（两档互斥）`, '从其中一张表里删掉它')
+    }
+  }
+}
+
 /* ═══════════ 输出 ═══════════ */
 const byCheck = new Map<string, Hit[]>()
 for (const h of hits) {
@@ -418,8 +636,9 @@ const LABEL: Record<string, string> = {
   F5: 'F5 跳转目标契约（活动栏点击落在不存在的页/页签）',
   F6: 'F6 日期格式化本地化（把语言焊死）',
   F7: 'F7 落盘心跳单点（间隔散落 / 被人改短）',
+  F8: 'F8 主控活动切换契约（入口漏调门禁 / 登记表与实现不一致）',
 }
-for (const key of ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7']) {
+for (const key of ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8']) {
   const list = byCheck.get(key) ?? []
   if (list.length === 0) {
     console.log(`✅ ${LABEL[key]}：0 处`)

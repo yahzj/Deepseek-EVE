@@ -71,8 +71,21 @@ export const AUTO_HALT_KINDS: readonly MainActivityKind[] = [
  * 先警告再执行（船长：「像长途运输这种高收益高周期的才加一个警告」＋「1 写进警告」＝远征/快递同档）。
  * ⚠ **2026-09-27 起 `refine`（亲自开炉）/ `manufacturing`（亲自开线）也并入本档**——船长令
  * 「亲自开炉 · 亲自开线也添加警告」；两者在 `INTERRUPTIBLE` 里是 `true` ⇒ 走 `confirm`（警告后二击可切）。
+ *
+ * 🔴 **2026-10-02 补登记 `refine` / `manufacturing`**（本表原先只有四条，与上面这句注释、
+ * 与船长 09-27 的令**对不上**）：本表是**登记表**（"哪些档属于先警告这一档"），
+ * 但全仓**没有任何消费点**（`verdictOf` 的判据是"不在 `AUTO_HALT_KINDS` 里 ⇒ 走 confirm/reject"，
+ * 与档位天然等价）⇒ 漏登记**不改行为**，却让"登记表"变成一句不实的声明。
+ * 由 `arch:guard` 的 **F8** 钉住：两档**互斥且必须覆盖 `MainActivityKind` 的全部档位**。
  */
-export const WARN_KINDS: readonly MainActivityKind[] = ['hauling', 'expedition', 'deliver', 'lab']
+export const WARN_KINDS: readonly MainActivityKind[] = [
+  'hauling',
+  'expedition',
+  'deliver',
+  'lab',
+  'refine',
+  'manufacturing',
+]
 
 /**
  * 该活动**在途时能不能被中断**：`true` = 警告后可由玩家确认中断（长途运输：本段报酬拿不到）·
