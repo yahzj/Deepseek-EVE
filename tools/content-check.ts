@@ -6882,6 +6882,25 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
   )
 }
 
+/**
+ * **料/价出带的登记件**（船长 2026-10-02 令「其余登记」）—— 键 = 蓝图 id，值 = 理由。
+ *
+ * 为什么需要它：料/价那条判据（材料成本 ÷ 产物现货价，带 30%~60%、同族锚 45%）来自 2026-09-11
+ * 的**装备/物品**蓝图对齐口径；**高级零件线**另有自己的口径 ——「**产物价 = 材料成本 ×1.50**」
+ * （`packages/data/src/items.ts` 各行注释逐条写明）⇒ 料/价恒 ≈ 66.7%，不是漂移而是**另一把尺**。
+ * 登记后不再出 ⚠，改为在汇总行计数「已登记 N 处」；检修据前先看本表与工作文档
+ * `docs/design/blueprint-price-register-20261002.md`（逐条来路）。
+ */
+const MATERIAL_RATIO_REGISTERED: Readonly<Record<string, string>> = {
+  'bp-part-drone-neural': '高级零件线口径：产物价 = 材料成本 ×1.5（items.ts 行内注释）⇒ 料/价 ≈ 66.7%',
+  'bp-part-shield-gen': '高级零件线口径：产物价 = 材料成本 ×1.5 ⇒ 料/价 ≈ 66.7%',
+  'bp-part-jet-array': '高级零件线口径：产物价 = 材料成本 ×1.5 ⇒ 料/价 ≈ 66.7%',
+  'bp-part-qchip': '高级零件线口径：产物价 = 材料成本 ×1.5 ⇒ 料/价 ≈ 66.7%',
+  'bp-part-keel': '高级零件线口径：产物价 = 材料成本 ×1.5 ⇒ 料/价 ≈ 66.7%',
+  'bp-part-fire-control': '高级零件线口径：产物价 = 材料成本 ×1.5 ⇒ 料/价 ≈ 66.7%',
+  'bp-part-grav-comp': '高级零件线口径：产物价 = 材料成本 ×1.5 ⇒ 料/价 ≈ 66.7%',
+}
+
 /* ── 蓝图价格口径契约（2026-09-11 船长：「调整所有蓝图到合适价格」→ 裁决「甲」）────────────
    规则（单点 = `packages/data/src/blueprints.ts` 的 `blueprintTierCoefOf` / `blueprintBookPriceOf`）：
    **装备/物品蓝图书价 = 产物现货价 × 档位系数**——`奇货 ×4 · 民用/基础/MK1 ×2 · MK2 ×2.5 · MK3 ×3`
@@ -6909,6 +6928,8 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
   let unpriceableReleases = 0
   let driftCoef = 0
   let driftMatRatio = 0
+  /** 料/价出带但**已登记**的件数（登记表见本段上方；不算预警） */
+  let registeredMatRatio = 0
   let okCoef = 0
   let overridden = 0
   /** 一次性图纸（不上市场 ⇒ 无市场行）的豁免计数——不参与书价与料/价比对，单独留痕 */
@@ -6920,6 +6941,12 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     if (!BLUEPRINTS.some((b) => b.id === bpId)) {
       errors.push(`蓝图价格口径：覆盖表里的 ${bpId} 不是真实蓝图 id——删掉它或修正拼写`)
       mismatchPrice += 1
+    }
+  }
+  /* 料/价登记表的键同样必须是真实蓝图（防改名/拼写漂移后登记静默失效） */
+  for (const bpId of Object.keys(MATERIAL_RATIO_REGISTERED)) {
+    if (!BLUEPRINTS.some((b) => b.id === bpId)) {
+      errors.push(`蓝图价格口径：料/价登记表里的 ${bpId} 不是真实蓝图 id——删掉它或修正拼写`)
     }
   }
   /* ── 【未上线商品闸门】契约（2026-09-12 加 · 船长：「所有虫洞相关的内容需要等虫洞落地后才统一对玩家可见」）──
@@ -7726,16 +7753,21 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     for (const m of bp.materials) mat += Math.max(1, Math.floor(m.count)) * (itemSell.get(m.itemId) ?? 0)
     const ratio = product > 0 ? mat / product : 0
     if (ratio < 0.3 || ratio > 0.6) {
-      warn.push(
-        `蓝图价格口径：${bp.id}（${label}）料/价 = ${(ratio * 100).toFixed(1)}%（材料 ${mat.toLocaleString('zh-CN')} ÷ 产物 ${product.toLocaleString('zh-CN')}）落在 30%~60% 之外（同族锚 45%）`,
-      )
-      driftMatRatio += 1
+      if (MATERIAL_RATIO_REGISTERED[bp.id]) {
+        /* 已登记（船长 2026-10-02 令「其余登记」）：本件走的是它自己那条线的料/价口径，不再刷预警 */
+        registeredMatRatio += 1
+      } else {
+        warn.push(
+          `蓝图价格口径：${bp.id}（${label}）料/价 = ${(ratio * 100).toFixed(1)}%（材料 ${mat.toLocaleString('zh-CN')} ÷ 产物 ${product.toLocaleString('zh-CN')}）落在 30%~60% 之外（同族锚 45%；若是有意偏离，请在 tools/content-check.ts 的 MATERIAL_RATIO_REGISTERED 登记）`,
+        )
+        driftMatRatio += 1
+      }
     }
   }
   console.log(
     `· 蓝图价格口径：${BLUEPRINTS.length} 张装备/物品蓝图中，书价与规则值一致 ${okCoef} 张（${Object.entries(tiers)
       .map(([k, v]) => `${k} ${v}`)
-      .join(' / ')}；单独覆盖 ${overridden} 张；**无市场行的一次性图纸豁免 ${exemptSingleUse} 张**；**专属一次性图纸（只收不卖）${exclusiveOnceBp} 张**（书价 = 产物价，不套档位系数、不比料/价带——2026-09-14 船长「允许玩家挂卖」批）；**施工期未上线、不做价格核算 ${unpriceableReleases} 张**（图纸走兑换、书价 = 0——2026-09-26 插件批））；书价与市场行不符 ${mismatchPrice} 处（硬契约）、与档位系数不符 ${driftCoef} 处（预警）、料/价出带 ${driftMatRatio} 处（预警）`,
+      .join(' / ')}；单独覆盖 ${overridden} 张；**无市场行的一次性图纸豁免 ${exemptSingleUse} 张**；**专属一次性图纸（只收不卖）${exclusiveOnceBp} 张**（书价 = 产物价，不套档位系数、不比料/价带——2026-09-14 船长「允许玩家挂卖」批）；**施工期未上线、不做价格核算 ${unpriceableReleases} 张**（图纸走兑换、书价 = 0——2026-09-26 插件批））；书价与市场行不符 ${mismatchPrice} 处（硬契约）、与档位系数不符 ${driftCoef} 处（预警）、料/价出带 ${driftMatRatio} 处（预警）、**已登记料/价口径 ${registeredMatRatio} 处**（船长 2026-10-02 令「其余登记」）`,
   )
 }
 
