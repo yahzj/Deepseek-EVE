@@ -11,7 +11,7 @@
  * 2. **随机全走独立子流**（`hash32(存档种子, 入侵编号)`）⇒ **不消费主随机序列**，老档读数一字不动；
  * 3. **一切判据纯函数**（给 `nowWallMs` 就出结果）⇒ 用例可对任意时刻断言，不依赖 tick。
  */
-import type { SimContext } from './types'
+import type { AnomalyDef, FoeShipSlot, SimContext } from './types'
 import type { GameState, WormholeFamily } from './state'
 import { securityZoneOf } from './securityZone'
 import { FOE_DESIGN_STRENGTH_MUL, wormholeCardPoolAt } from './wormholeFoes'
@@ -345,13 +345,37 @@ export const WEEKEND_BOSS_FAMILIES: readonly string[] = ['H', 'R']
  * 战斗里的母舰血条 = **池子剩余**（船长同日选「甲」）= `weekendFlagshipHpRemaining`。
  */
 export const WEEKEND_FLAGSHIP_POOL_HP = 150_000
-/** H 族旗舰的**舰级 id**（挑母舰单位 / 血条覆写 / 伤害台账同源；`weekendIsFlagshipShipId` 是唯一判据） */
+/**
+ * ⚠ **H 族旗舰的舰级 id**（**遗留常量**：只作"认不出 T5 时"的兜底）。
+ *
+ * 🔴 **2026-10-02 起不要再用它当"母舰唯一判据"**——玩家报障「**哪怕母舰剩余1%血，进入战斗后母舰都是满血**」
+ * 的真因就是这条写死：R 族（**本期入侵族**）的母舰是 `foe-r-corona-nexus`，与它**一条都对不上**
+ * ⇒ 池子覆写（血条分母 / 分层 / `hpMul`）与**伤害台账**全都失效：
+ * 母舰血量退回卡面值、战斗内血条按自身满值画（＝**满血**）、打进池子的伤害记不上
+ * （R 族的"单场不死 / 跨场累计"整条失灵）。**改用 {@link weekendFlagshipSlotOf}**（从卡自身认）。
+ */
 export const WEEKEND_FLAGSHIP_SHIP_ID = 'foe-h-ink-flagship'
 
 /**
- * **"这条舰级算不算'旗舰'（BOSS 本体）"**——按**族旗舰卡里 T5 那一档**认：
- * H 族 = `foe-h-ink-flagship`（`hullClassTier === 5`）。用于伤害台账挑出母舰单位、以及**战斗内的血条覆写**。
- * ⚠ 只认"旗舰卡里 tier 5 的那一条" ⇒ 同卡的干扰舰/战巡/鱼雷舰不算。
+ * **这张旗舰卡里的"母舰"是哪一条舰级**（**唯一取数口** · **族无关** · **从卡自身认**）。
+ *
+ * 判据 = **卡里唯一那艘 `hullClassTier === 5`**（旗舰；两族的旗舰卡都满足：母舰 T5、僚舰 T3/T4）
+ * ⇒ 加新族**不用改 core**（旧的写死常量正是"加族忘改"的典型）。认不出时回落遗留常量
+ * `WEEKEND_FLAGSHIP_SHIP_ID`（老档 / 构造卡兜底）。
+ *
+ * 三个消费方（都是同一条链）：伤害台账挑母舰（`weekendBattle` 的 `flagshipBattleLedger` 入参）·
+ * 开战时 `FoeOverride.bossShipId`（决定 `hpMul` 与血条分母认哪一条）· 三层容量用的 `split`。
+ */
+export function weekendFlagshipSlotOf(card: AnomalyDef | undefined): FoeShipSlot | undefined {
+  const slots = card?.ships ?? []
+  return slots.find((s) => s.ship.hullClassTier === 5) ?? slots.find((s) => s.ship.id === WEEKEND_FLAGSHIP_SHIP_ID)
+}
+
+/**
+ * **"这条舰级算不算'旗舰'（BOSS 本体）"**——**遗留判据**（只认 H 族那一艘）。
+ *
+ * ⚠ 2026-10-02 起**生产路径不再用它**（改用 {@link weekendFlagshipSlotOf} 从卡自身认，见其头注的报障）；
+ * 保留导出只为兼容既有调用方 / 老测试。新代码请用 `weekendFlagshipSlotOf(card)`。
  */
 export function weekendIsFlagshipShipId(shipId: string): boolean {
   return shipId === WEEKEND_FLAGSHIP_SHIP_ID

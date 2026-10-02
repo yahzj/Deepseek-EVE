@@ -23,7 +23,7 @@ import {
   weekendCoreProgressAt,
   weekendFlagshipDefeated,
   weekendIsBossFamily,
-  weekendIsFlagshipShipId,
+  weekendFlagshipSlotOf,
   weekendNoteContribution,
   weekendNoteFlagshipDamage,
   weekendNoteFlagshipKilled,
@@ -1005,9 +1005,13 @@ export function weekendApplyBattleOutcome(
   let flagshipDmg = 0
   if (involved.kind === 'flagship' && weekendIsBossFamily(state.weekendEvent)) {
     const card = ctx.anomalies.get(spec.cardId)
-    const flagshipIds = (card?.ships ?? [])
-      .map((s) => s.ship.id)
-      .filter((id) => weekendIsFlagshipShipId(id))
+    /**
+     * 🔴 **认母舰走 `weekendFlagshipSlotOf`（族无关 · 从卡自身认 T5）** —— **2026-10-02 修**：
+     * 原先这里用写死 H 族的 `weekendIsFlagshipShipId` 过滤 ⇒ **R 族（本期入侵族）一条都对不上**
+     * ⇒ 台账恒 0 ⇒ 打进池子的伤害记不上（"单场不死 / 跨场累计"整条失灵，母舰血条退回自身满值）。
+     */
+    const flagship = weekendFlagshipSlotOf(card)
+    const flagshipIds = flagship !== undefined ? [flagship.ship.id] : []
     if (battle) {
       const led = flagshipBattleLedger(battle, flagshipIds)
       flagshipDmg = led.rawDmg

@@ -17,6 +17,7 @@ import {
   WEEKEND_FLAGSHIP_SHIP_ID,
   weekendBossPoolView,
   weekendFlagshipHpRemaining,
+  weekendFlagshipSlotOf,
   weekendFlagshipLayerCaps,
   weekendFlagshipLayersOf,
   weekendFlagshipView,
@@ -244,7 +245,14 @@ export function weekendStartFlagshipBattle(
    */
   const poolTotal = state.weekendEvent?.flagshipHpMax ?? WEEKEND_FLAGSHIP_POOL_HP
   const bossHp = weekendFlagshipHpRemaining(state.weekendEvent)
-  const cap = weekendFlagshipLayerCaps(poolTotal, ctx.anomalies.get(spec.cardId)?.ships?.find((s) => s.ship.id === WEEKEND_FLAGSHIP_SHIP_ID)?.ship.split ?? { s: 0.2, a: 0.55, h: 0.25 })
+  /**
+   * 🔴 **认母舰 = `weekendFlagshipSlotOf`（族无关 · 从本卡自身认 T5）** —— **2026-10-02 修**：
+   * 原先把 `bossShipId` 与"取 `split` 的舰级"都写死成 H 族那艘 ⇒ **R 族（本期入侵族）**
+   * 母舰 `foe-r-corona-nexus` 对不上 ⇒ ① `hpMul` 覆写不生效（母舰血量退回卡面值）② 三层容量回落
+   * 成 H 族的 `split` ③ 战斗内血条分母回落成"单位自身满值"＝**满血**（玩家报障原话）。
+   */
+  const bossSlot = weekendFlagshipSlotOf(ctx.anomalies.get(spec.cardId))
+  const cap = weekendFlagshipLayerCaps(poolTotal, bossSlot?.ship.split ?? { s: 0.2, a: 0.55, h: 0.25 })
   const override: FoeOverride = {
     threat: spec.threat,
     waves: weekendFlagshipWavesOf(),
@@ -252,7 +260,7 @@ export function weekendStartFlagshipBattle(
     bossHpMax: poolTotal,
     bossHpLayers: weekendFlagshipLayersOf(bossHp, cap),
     bossMaxLayers: cap,
-    bossShipId: WEEKEND_FLAGSHIP_SHIP_ID,
+    bossShipId: bossSlot?.ship.id ?? WEEKEND_FLAGSHIP_SHIP_ID,
   }
   /**
    * **该星系记住的期望距离**（**2026-09-28 玩家报障**：「**入侵和旗舰战，并不会记忆玩家选择的
