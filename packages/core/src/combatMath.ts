@@ -6,8 +6,8 @@
  * 原样再导出（先例：fitted.ts），wormholeBattle / encounters / hullDamage / UI / 用例
  * 等既有引用零改动。
  */
-import type { BattleBalance, DamageResists, DamageType } from './types'
-import type { BattleState } from './state'
+import type { AnomalyDef, BattleBalance, DamageResists, DamageType } from './types'
+import type { BattleState, GameState } from './state'
 
 /** 三层血量形状 */
 export interface Hp3 {
@@ -212,4 +212,48 @@ export function applyDamage(
 export function isAlive(b: BattleState, tag: string): boolean {
   const u = b.units[tag]
   return !!u && (u.hp.s > 0 || u.hp.a > 0 || u.hp.h > 0)
+}
+
+/** 多波演出窗口总时长（2026-09-09）：单次大预算推进（胜率 MC/校准工具）把 state.gameMs * 一次设到 maxBattleMs+余量——若波次间隙（waveEnterGapMs，战斗时钟冻结）吃掉余量，末段
+ * 跨窗口会提前耗尽预算判负。调用方应在预算外加本值（无 waves = 0）。
+ * （2026-10-02 批次 4j 从 combat.ts 迁来：纯平衡读数，combat/combatDrones 共用） */
+export function waveGapTotalMs(anomaly: Pick<AnomalyDef, 'waves'> | undefined, bal: BattleBalance): number {
+  const n = anomaly?.waves?.length ?? 1
+  return Math.max(0, n - 1) * Math.max(0, bal.waveEnterGapMs ?? 0)
+}
+
+/**
+ * **本场生效倍速**（读 `battle.speedX`；缺省/非法 ⇒ 1）。
+ * ⚠ 这是**只读**入口：写值是 `advanceBattleFor` 每拍的职责（夹在科技已解锁档位内）。
+ */
+export function battleSpeedOf(battle: BattleState): number {
+  const v = battle.speedX
+  return typeof v === 'number' && Number.isFinite(v) && v > 1 ? v : 1
+}
+
+/**
+ * **演出保护窗口按倍速等比放大**（船长 2026-09-19：「演出照原速，只把**动画没结束不开火**的保护窗口
+ * 按倍速等比放大」）。窗口本身写在**战斗时钟**上 ⇒ 倍速下必须乘回去，真实时长才不变。
+ */
+export function battleShowWindowMs(battle: BattleState, ms: number): number {
+  return ms * battleSpeedOf(battle)
+}
+
+/**
+ * **战斗时钟的"现在"**（2026-09-19 倍速时间轴 · **唯一折算点**）：
+ * `锚点战斗时钟 + (state.gameMs − 锚点全局时钟) × 倍速`，并夹一个**下限 = `state.gameMs`**。
+ *
+ * - **1× 时恒等于 `state.gameMs`**（倍速之前的老口径）⇒ 未解锁 / 洞外战斗 / 离线结算 / 老档
+ *   一律走原路径、行为逐字不变；
+ * - **中途切档不跳变**：只折算"从锚点起的增量"，已过去的时长不会被重新按新倍速计价；
+ * - 主循环（推进目标）与击杀慢镜（延迟结算）**共用这一个函数** ⇒ 两者不会各算一套。
+ */
+export function battleClockNowMs(
+  state: GameState,
+  battle: BattleState,
+): number {
+  const axis = battle.speedAxis
+  if (!axis) return state.gameMs // 老档 / 尚未推进过：老口径
+  const x = battleSpeedOf(battle)
+  return Math.max(axis.clock + (state.gameMs - axis.anchor) * x, state.gameMs)
 }
