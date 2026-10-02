@@ -25,7 +25,7 @@ import { addWare, cargoUnitM3, freeCargoM3Of } from './inventory'
 import { pullOneWreck, salvagerCyclesOf } from './salvaging'
 import { isMineableItem } from './labels'
 import { getMiningParams, oneLegMs, oneOutboundLegMs, richVeinP, rollBeltOutput, shipInReturn } from './mining'
-import { bumpFirst, peakFirst } from './firstTasks'
+import { bumpFirst } from './firstTasks'
 import { matterTechSum } from './matterTech'
 import { bountyRewardFactor, DSI_FACTION_ID, HOME_GALAXY_ID, calcPower, lootFactor, shortestTravelMinutes, standingOf } from './expedition'
 import { bountyEnemyCount, bountyWreckInjection, injectWreckDensity, wreckDensityOf, wreckInjectThreatOf } from './salvage'
@@ -50,14 +50,9 @@ import {
 import { durabilityOf, loseShip, repairShip } from './shipyard'
 import { fleetDefOf, shipDisplayName } from './instances'
 import { addAiIncome, addAiMiningTrip, addAiSalvageDone, type SettleStats } from './settleStats'
-
-/** 核心类型展示顺序 */
-export const AI_CORE_ORDER: readonly AiCoreType[] = ['basic', 'gamma', 'beta', 'alpha']
-
-/** 核心中文名 */
-export function aiCoreName(type: AiCoreType): string {
-  return type === 'basic' ? '基础 AI 核心' : type === 'gamma' ? '伽马 AI 核心' : type === 'beta' ? '贝塔 AI 核心' : '阿尔法 AI 核心'
-}
+// 核心账本四件从 aiCores 借入（2026-10-02 拆出：破 ai↔shipyard 环）；再导出让存量引用零改动
+import { AI_CORE_ORDER, aiCoreName, countAiCore, gainAiCore, spendAiCore } from './aiCores'
+export { AI_CORE_ORDER, aiCoreName, countAiCore, gainAiCore, cancelAiTask } from './aiCores'
 
 /** 效率（速度系数：1 = 玩家手操速度；只影响速度不影响奖励）。
  *  卷B3⑩（2026-09-08 船长定）：「AI 核心调度学」在核心档位之上每级 +2 个百分点累加
@@ -67,11 +62,6 @@ export function aiEfficiency(state: GameState, ctx: SimContext, type: AiCoreType
   const base = ctx.balance.aiCore.efficiency[type] ?? 1
   const dLv = Math.min(5, state.skills.trained[ctx.balance.aiCore.dispatchSkillId] ?? 0)
   return Math.min(1, base + ctx.balance.aiCore.dispatchPerLevel * dLv)
-}
-
-/** 核心库数量 */
-export function countAiCore(state: GameState, type: AiCoreType): number {
-  return state.aiCores[type] ?? 0
 }
 
 /**
@@ -98,37 +88,6 @@ export function bestAiCoreOf(state: GameState): AiCoreType | null {
     if (countAiCore(state, t) > 0) return t
   }
   return null
-}
-
-/** 入库 */
-export function gainAiCore(state: GameState, type: AiCoreType, count = 1): void {
-  state.aiCores[type] = (state.aiCores[type] ?? 0) + count
-  /**
-   * **里程碑「AI 核心」的计数点**（成就系统第二批 · 船长 2026-09-20）。
-   *
-   * 记的是**库存里拥有过的类数**（本函数是全仓唯一的入库点 ⇒ 天然覆盖所有获得途径：
-   * 遗迹核心、虫洞战果、掉落…），并按**峰值**记（`peakFirst`）——
-   * 这样"曾集齐四类、后来花掉一枚"**不会把纪录改小**（记录的是"见过/拿过"，不是"此刻持有"）。
-   */
-  let kinds = 0
-  for (const t of AI_CORE_ORDER) if ((state.aiCores[t] ?? 0) > 0) kinds += 1
-  peakFirst(state, 'aiCoreKinds', kinds)
-}
-
-/** 出库 */
-function spendAiCore(state: GameState, type: AiCoreType): boolean {
-  const current = state.aiCores[type] ?? 0
-  if (current <= 0) return false
-  state.aiCores[type] = current - 1
-  return true
-}
-
-/** 批量出库 N 枚（市场挂卖/出售锁定用；库存不足整批不动并返回 false） */
-export function spendAiCores(state: GameState, type: AiCoreType, count: number): boolean {
-  const current = state.aiCores[type] ?? 0
-  if (count <= 0 || current < count) return false
-  state.aiCores[type] = current - count
-  return true
 }
 
 /**
@@ -537,20 +496,6 @@ export function assignAiStandby(
     { p1: shipName, p2: galaxy.name, p3: aiCoreName(coreType), p4: Math.round(eff * 100) },
   )
   return { ok: true }
-}
-
-/** 玩家指令：取消 AI 任务（核心归还）；掩护巡逻/远征/采矿通用 */
-export function cancelAiTask(state: GameState, shipId: string, ctx: SimContext): boolean {
-  const assignment = state.aiAssignments[shipId]
-  if (!assignment) return false
-  delete state.aiAssignments[shipId]
-  gainAiCore(state, assignment.coreType)
-  const shipName = shipDisplayName(state, ctx, shipId)
-  addLog(state, 'fleet', `[AI] 已召回 ${shipName}（${aiCoreName(assignment.coreType)} 归还核心库）。`, 'core.ai.015', {
-    p1: shipName,
-    p2: aiCoreName(assignment.coreType),
-  })
-  return true
 }
 
 /* ───────── 引擎推进 ───────── */

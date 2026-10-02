@@ -74,7 +74,7 @@ import { shipDisplayName } from './instances'
 import { stopMining } from './mining'
 import { stopSalvageOp } from './salvaging'
 import { startTransitHome } from './location'
-import { cancelAiTask } from './ai'
+import { cancelAiTask } from './aiCores'
 import { applyArmorFirstDamage, firepowerHitHp, pctOf as pct, type HullHit } from './hullDamage'
 /** 沉船判据单点（2026-09-28 玩家报障：旗舰战沉船被撤退复活）＋ 弃船入口 */
 import { sunkShipIdsOfBattle } from './combat'

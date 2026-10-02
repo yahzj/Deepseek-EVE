@@ -258,6 +258,20 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：本批零渲染层文件改动）。
 
+### 批次 3-⑪：拆出 `aiCores.ts` 核心账本——破 `ai ↔ shipyard` 与 `market → ai`（2026-10-02）
+
+- 手法：`AI_CORE_ORDER` / `aiCoreName` / `countAiCore` / `gainAiCore` / `spendAiCore` / `spendAiCores` /
+  `cancelAiTask` 七件核心账本操作从 ai.ts 拆到新文件 `aiCores.ts`（只依赖 firstTasks / instances / state /
+  types，均不回引 ai）⇒ shipyard / encounters 改从 aiCores 读 `cancelAiTask`、market 改从 aiCores 读核心账本
+  ⇒ `shipyard→ai` 与 `market→ai` 两条运行期边清零。ai.ts 原样再导出（先例：fitted.ts；`spendAiCore`
+  保持模块私有不外漏），industry / wormholeAuto / wormholeBattle / index / 测试存量引用零改动。
+- 途中教训：`cancelAiTask` 里调 `aiCoreName`、`gainAiCore` 里调 `AI_CORE_ORDER`/`peakFirst` ⇒ 新模块
+  若回引 ai 会造新环，故这四件一并搬走；一次编辑误加重复 `countAiCore` 定义（当场读档修掉）。
+- F9 基线 **14 → 10**：破 ai↔shipyard、ai→expedition→…→market、ai→mining→…→market 三条；
+  一条此前被遮住的 9 节点环（comms→…→station）浮出（DFS 回边重排，环一直存在、非新增）。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：本批零渲染层文件改动）。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、
