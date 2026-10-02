@@ -36,7 +36,7 @@
 
 | 文件 | 现状 | 目标切法 | 错峰对象 |
 |---|---|---|---|
-| `core/combat.ts`（10193 行） | 敌群生成/伤害结算/特效/统计混居 | 按现有 24 个分区注释切：敌群与生成 → 特效演出 → 伤害与命中 → 统计与图鉴。**4a 已拆：`combatMath.ts`（命中与伤害数学十件）· 4b 已拆：`combatReport.ts`（战报与四档判定五件）· 4c 已拆：`combatFx.ts`（战斗演出层六件）** | 二号（闪现演出批） |
+| `core/combat.ts`（10193 行） | 敌群生成/伤害结算/特效/统计混居 | 按现有 24 个分区注释切：敌群与生成 → 特效演出 → 伤害与命中 → 统计与图鉴。**4a `combatMath.ts`（命中与伤害数学十件）· 4b `combatReport.ts`（战报五件）· 4c `combatFx.ts`（演出层六件）· 4d `foeCard.ts`（敌卡档案十五件）** | 二号（闪现演出批） |
 | `core/engine.ts`（3828 行） | 大跨步主循环＋命令分发 | 命令分发按域拆（industry/manufacturing/lab…各自注册） | 三号（activity 护栏） |
 | `core/save.ts`（4338 行） | 序列化/归一/迁移一家 | **只允许**把纯函数（归一器）拆出，序列化主体暂不动（存档兼容） | — |
 | `renderer` 两套工业页（1476＋≈2300 行） | 同一域双写 | 先补 HUD 实验室对齐，再抽公共件合流 | 船长目视验收 |
@@ -337,6 +337,19 @@
 - `pushBattleNotice`（战斗内提示条）原为模块私有——从 combatFx 导出供 combat 值导入，不进入
   combat 的公开面。noUnusedLocals 闸门抓到 `stampFoeArrivalFx` 在 combat 内部无调用（grep 命中的
   是注释），值导入改只留再导出。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
+  （ui:rot-check 不适用：零渲染层改动）。
+
+### 批次 4d：combat.ts 四拆——`foeCard.ts` 敌卡档案（2026-10-02 · 零行为变化）
+
+- 手法：敌舰显示名与舰级反查整块（`FOE_CLASS`/词缀常量/`foeClassName`/`foeMainTagOf`/
+  `waveHpShareOf`/`shipWaveIndexOf`/`enumerateShipUnits`/`FOE_SUPPORT_TAG_RE`/`baseFoeTag`/
+  `foeShipAtTag`/`foeShipIdOfTag`/`foeCardShipIdOf`/`foeUnitNameOf`/`foeShipTierOf`/
+  `foeShipEliteOf` 十五件）从 combat.ts 拆到新文件 `foeCard.ts`（纯 AnomalyDef 读数，只依赖 types）。
+- `enumerateShipUnits`/`shipWaveIndexOf`/`baseFoeTag`/`FOE_SUPPORT_TAG_RE`/`foeUnitNameOf`
+  因 createFoeSpecs/seedUnit 仍要用而转公开；combat 借回使用并原样再导出（foeBrief 等引用零改动）。
+- 维修/护盾簇探过：`layerAmpOf` 依赖 `createPlayerSpec`（1500 行规格大件）⇒ 搬走必造回边，
+  留待敌群规格簇先拆。
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ · 构建 ✅
   （ui:rot-check 不适用：零渲染层改动）。
 
