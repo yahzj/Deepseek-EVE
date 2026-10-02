@@ -96,6 +96,8 @@ export {
   /** 2026-10-02 破环搬家：站点进度两枚读数从 station.ts 搬到 state.ts（纯 state 谓词） */
   siteProgress,
   isSiteBuilt,
+  /** 2026-10-02 破环搬家：虫洞空初值从 wormhole.ts 搬到 state.ts（断 state↔wormhole 环） */
+  EMPTY_WORMHOLE_STATE,
 } from './state'
 export type {
   LogKind,
@@ -1586,7 +1588,6 @@ export {
   wormholeTurnBudget,
   wormholeUnitsPerSlot,
   // C 批：副本状态机（层/节点/回合/撤离）与层曲线
-  EMPTY_WORMHOLE_STATE,
   WORMHOLE_THREAT_BASE,
   WORMHOLE_THREAT_PER_LAYER,
   WORMHOLE_REWARD_GROWTH,

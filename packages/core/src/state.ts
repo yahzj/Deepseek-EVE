@@ -12,7 +12,6 @@
 import type { AiCoreType, CommsInstanceEntry, DamageResists, DamageType, FittedModules, FoeFamily, StationSiteDef } from './types'
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { emptyFitted } from './labels'
-import { EMPTY_WORMHOLE_STATE } from './wormhole'
 import type { WormholeState } from './wormhole'
 /**
  * 🔴 **这里绝不能 import `mining` / `salvaging`**（**2026-10-02 实测踩到**）：
@@ -3878,3 +3877,7 @@ export function siteProgress(state: GameState, siteId: string): StationSiteProgr
 export function isSiteBuilt(state: GameState, site: StationSiteDef): boolean {
   return siteProgress(state, site.id).stage >= site.tiers.length
 }
+
+/** 虫洞副本的**空初值**（**2026-10-02 破环搬家**：原住 `wormhole.ts`；state↔wormhole 的运行期环只剩
+ * 它这一条边 ⇒ 搬到 state 侧后环断。类型仍从 wormhole 借（`import type` 不构成运行期环）。 */
+export const EMPTY_WORMHOLE_STATE: WormholeState = { run: null, lastFleetLost: 0 }

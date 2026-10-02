@@ -177,6 +177,17 @@
 - index.ts 导出随迁；F9 基线 **32 → 31**。
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
 
+### 批次 3-③：破 `state ↔ wormhole`（一条边断掉 13 条环）＋ 基线改独立数据文件（2026-10-02）
+
+- **手法**：state→wormhole 的运行期边只有一条（`EMPTY_WORMHOLE_STATE`，虫洞空初值）⇒ 搬到 state.ts
+  （类型仍 `import type` 借 wormhole，不算运行期边）⇒ 该边断 ⇒ **13 条过它身的基线环一次性消失**；
+  原图里另 7 条被大环包含的小环浮出（同一张图换了最短环分解，不是新增代码）。
+- **基线机制升级**：内联在 arch-guard.ts 里的巨型 JSON 行 → 独立数据文件
+  `tools/arch-guard-baseline-cycles.json`（`--f9-dump` 保留为**维护模式**：破环后重新 dump 覆盖即可）。
+  基线 **31 → 26**（重打快照：−13 旧环 ＋7 浮出）。
+- 约定 §15之二 与工具头注同步更新（F9 描述改"基线文件 + 递减"）。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · arch:guard F1~F9 ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、

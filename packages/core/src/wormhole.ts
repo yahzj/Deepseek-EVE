@@ -615,8 +615,6 @@ export interface WormholeState {
 
 /** ⚠ **已删除（2026-09-15）**：`WORMHOLE_EXTRACT_BATTLE_MIN_DEPTH = 2`——撤离战整条退役，不再有"第几层起要打"。 */
 
-export const EMPTY_WORMHOLE_STATE: WormholeState = { run: null, lastFleetLost: 0 }
-
 /* ── 层曲线（船长 2026-09-13：「深层收益应该比难度曲线要更高」） ──
  * ⚠ 实现已挪到 `wormholeFoes.ts`（引擎侧 `combat.ts` 也要用它做按层派生，不能反向依赖本文件）；
  * 这里**原样再导出**，保持既有的 `from './wormhole'` 引用与用例不变。 */
