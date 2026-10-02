@@ -102,6 +102,7 @@
     "l10n:render": "tsx tools/l10n-render-probe.ts",
     "art:ships": "tsx tools/shipart-preview.ts",
     "art:ships:check": "tsx tools/shipart-preview.ts --check",
+    "art:family": "tsx tools/shipart-family.ts",
     "wh:ui": "tsx tools/wh-ui-check.ts",
     "docs:index": "tsx tools/docs-index.ts",
     "copy:audit": "tsx tools/copy-corpus.ts",
