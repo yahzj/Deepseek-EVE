@@ -3012,6 +3012,11 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
   const cols = WORMHOLE_HOLD_COLS
   const holdBoard = run.hold ?? makeHoldState()
   const tempBoard = run.tempGrid ?? makeHoldState(WORMHOLE_TEMP_COLS)
+  /**
+   * **禁止打捞普通残骸**（**2026-10-02 船长令**；开关座落在**货仓页** —— 船长原话「只做甲，坐在货仓背包处」）。
+   * 只读这一把尺（core `wormhole.noCommonWreckSalvageOn` 是唯一读取点）；点击走 `engine.setNoCommonWreckSalvageNow`。
+   */
+  const noCommonWreck = engine.noCommonWreckSalvageOn()
   const placements = run.hold?.placements ?? []
   /**
    * **行数要够到"实际摆放件"**（不能只按容量算）：整理时**放不下的件会被排到可用区之外**
@@ -3473,6 +3478,27 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
             <span className="app-dim">
               {boxes} {tr("ui.Wormhole.057")} {cargoPieces.length} {tr("ui.Wormhole.058")}
             </span>
+          </div>
+          {/**
+           * ⟪**2026-10-02 船长令**⟫ **禁止打捞普通残骸**（开关坐在**货仓页**，船长指定）。
+           *
+           * 打开后洞内「打捞」**只收稀有残骸**、普通残骸**留在原地**；本格只剩普通残骸时**拒绝动作且不扣回合**。
+           * 文案三条都是**船长原文**：标签 = `ui.Wormhole.379` · 打开时的状态 = `core.wormholeSalvage.044`
+           * （**与 core 的拒绝原因同一条 id**，按"同文并条"）· 打捞日志 = `core.wormholeSalvage.045`。
+           * 开关状态必须看得见 —— 沿用技能页「自动续用」那一手（`.app-btn is-small` ＋ `is-on` 高亮 ＋
+           * `aria-pressed` ＋ **文案随状态变**，先例见 `SkillsTreePage.tsx`）。
+           */}
+          <div className="app-wh-actions">
+            <button
+              className={`app-btn is-small${noCommonWreck ? ' is-on' : ''}`}
+              aria-pressed={noCommonWreck}
+              onClick={() => {
+                const r = engine.setNoCommonWreckSalvageNow(!noCommonWreck)
+                if (!r.ok) onToast(cmdText(r) || tr('core.wormholeSalvage.044'), true)
+              }}
+            >
+              {tr(noCommonWreck ? 'core.wormholeSalvage.044' : 'ui.Wormhole.379')}
+            </button>
           </div>
         </div>
         {/**

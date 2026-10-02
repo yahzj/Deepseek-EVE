@@ -77,6 +77,8 @@ import {
   wormholeUnitsPerSlot,
   WORMHOLE_TEMP_CELLS,
   WORMHOLE_TEMP_COLS,
+  // ⟪2026-10-02 船长令⟫ 洞内「禁止打捞普通残骸」开关（唯一读取点）
+  noCommonWreckSalvageOn,
 } from './wormhole'
 import type { WormholeBagSlot, WormholePile } from './wormhole'
 import type { WormholeActivateEffect, WormholeRunState } from './wormhole'
@@ -1738,6 +1740,17 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
   if (run.turnsLeft < WORMHOLE_TURN_PER_WORK) {
     return { ok: false, error: '回合不足：只能撤离。', errorId: 'core.wormhole.002', mustExtract: true }
   }
+  /**
+   * ⟪**2026-10-02 船长令**⟫ **禁止打捞普通残骸**（开关在货仓页）：
+   * 打开后若本格**一堆稀有残骸都没有、只剩普通残骸** ⇒ **直接拒绝这次动作且不扣回合**
+   * （玩家没让打捞器开工）。⚠ 只影响"非形状件"的残骸堆：本格**只剩货柜**时走原路（不拦）。
+   */
+  const rareOnly = noCommonWreckSalvageOn(state)
+  const rareLeft = piles.some((p) => !wormholeIsShapedItem(p.itemId) && isRareWreck(p.itemId))
+  const commonLeft = piles.some((p) => !wormholeIsShapedItem(p.itemId) && !isRareWreck(p.itemId))
+  if (rareOnly && !rareLeft && commonLeft) {
+    return { ok: false, error: '当前禁止打捞普通残骸。', errorId: 'core.wormholeSalvage.044' }
+  }
   run.turnsLeft -= WORMHOLE_TURN_PER_WORK
   // 围剿者（2026-09-23 新机制）：作业的 1 回合也掷一次（采集 / 打捞两个入口共用这一句）
   wormholeSpawnAfterTurns(state, WORMHOLE_TURN_PER_WORK)
@@ -1748,7 +1761,14 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
   const foundBoxes: string[] = []
   let boxFound = 0
   for (let i = 0; i < rigsWant && piles.length > 0; i++) {
-    const pile = piles[0]!
+    /**
+     * ⟪**2026-10-02 船长令**⟫ **禁止打捞普通残骸**打开时：**只取稀有堆**，普通堆原地不动
+     * （从数组里挑第一个稀有堆；取走后其余顺序不变）。关着时 `idx = 0` ⇒ 与旧写法
+     * `piles.shift()` **逐字等价**（老行为零变化）。
+     */
+    const idx = rareOnly ? piles.findIndex((p) => !wormholeIsShapedItem(p.itemId) && isRareWreck(p.itemId)) : 0
+    if (idx < 0) break
+    const pile = piles[idx]!
     /**
      * ⚠ **形状件（遗迹安全货柜）不参与"打捞回收"**（2026-09-13 修的真 BUG）：
      * 它必须由玩家**拾取装舱**（占 2×2 = 4 格、放不下整件拒收 —— 船长 F4 裁定）；
@@ -1764,7 +1784,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
       full = true
       break
     }
-    piles.shift()
+    piles.splice(idx, 1) // ⟪开关⟫ 关着时 idx 恒为 0 ⇒ 等价于原来的 `piles.shift()`
     taken.push(pile)
     /**
      * **残骸堆里的货柜**（船长 2026-09-15 定 ③：「在残骸打捞点，设定有极低概率出各种货柜」）：
@@ -1804,6 +1824,16 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
       ` · 剩 ${piles.length} 堆 · 剩 ${run.turnsLeft} 回合。`,
   )
   if (full) addLog(state, 'warn', `🕳 货仓放不下：这一批只回收了 ${taken.length} 堆，剩下的仍留在原处。`, 'core.wormholeSalvage.027', { p1: taken.length })
+  /**
+   * ⟪**2026-10-02 船长令**⟫ 开关打开时**点名"留在原地的普通残骸"**——不写的话玩家会当成 BUG
+   * （今天那轮"燃料"报障就是"看不见的机制"引起的）。`{p1}` = 本格此刻**还剩多少堆普通残骸**。
+   */
+  if (rareOnly) {
+    const commonLeftNow = piles.filter((p) => !wormholeIsShapedItem(p.itemId) && !isRareWreck(p.itemId)).length
+    if (commonLeftNow > 0) {
+      addLog(state, 'salvage', `🕳 本次打捞跳过 ${commonLeftNow} 堆普通残骸。`, 'core.wormholeSalvage.045', { p1: commonLeftNow })
+    }
+  }
   // 形状件留在原地时点明"要自己拾取"（不然玩家会以为漏拿了）
   if (boxLeft > 0) {
     addLog(

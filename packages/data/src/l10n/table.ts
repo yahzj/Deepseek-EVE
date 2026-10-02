@@ -2315,6 +2315,14 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.wormholeSalvage.041": { zh: "🕳 战果里翻出{p1}：已装进货仓。", en: "🕳 {p1} turned up in the spoils: stowed in the hold." },
   "core.wormholeSalvage.042": { zh: "🕳 战果里翻出{p1}：货仓腾不出地方 ⇒ 先放进临时空间（到「货仓」页整理进货仓）。", en: "🕳 {p1} turned up in the spoils: no room in the hold, so it went to temporary space (sort it into the hold from the Hold page)." },
   "core.wormholeSalvage.043": { zh: "🕳 战果里翻出{p1}：货仓与临时空间都放不下 ⇒ 先散落在该地点（腾出空间后回来拾取）。", en: "🕳 {p1} turned up in the spoils: neither the hold nor temporary space can take it, so it was left at the site (come back for it once you have room)." },
+  /**
+   * ⟪2026-10-02 船长令⟫「禁止打捞普通残骸」（开关在**货仓页**）：
+   * `.044` = **一条 id 两处用** —— ① core 的**拒绝原因**（本格只剩普通残骸时，拒绝动作且不扣回合）
+   * ② 货仓页开关打开时的**状态行**（界面 `tr` 渲染它）。中文为船长给的原文。
+   * `.045` = 打捞动作写了"留在原地的普通残骸堆数"（`{p1}` = 本格此刻还剩多少堆普通残骸）。
+   */
+  "core.wormholeSalvage.044": { zh: "当前禁止打捞普通残骸。", en: "Common-wreck salvage is currently blocked." },
+  "core.wormholeSalvage.045": { zh: "🕳 本次打捞跳过 {p1} 堆普通残骸。", en: "🕳 Skipped {p1} piles of common wrecks in this salvage." },
   "ui.CommsReader.001": { zh: "来信方", en: "From" },
   "ui.CommsReader.002": { zh: "送达", en: "Delivered" },
   "ui.CommsReader.003": { zh: "这封通讯的性质：提示只是指个方向，委托才是协会派下来的活", en: "What kind of message this is: a hint only points you in a direction, while a contract is real work handed down by the Association" },
@@ -5560,6 +5568,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     en: "Formation is {p1} ships: adding more raises total mass and cuts the turns available for this run, making it more dangerous.",
   },
   "ui.Wormhole.378": { zh: "围剿者 · {p1}：挡路，打掉才能通过；停在这一格即开战", en: "Sweeper · {p1}: blocks the route — destroy it to pass; stopping on this tile starts a fight" },
+  /**
+   * ⟪2026-10-02 船长令⟫ 洞内「禁止打捞普通残骸」开关（**座落在货仓页**，船长指定）。
+   * `.379` = 开关标签（中文为船长给的原文）；「当前禁止打捞普通残骸」= **一条 id 两处用**
+   * （core 拒绝原因 `core.wormholeSalvage.044` ＋ 界面状态行），按"同文并条"口径不另立第二条。
+   */
+  "ui.Wormhole.379": { zh: "禁止打捞普通残骸", en: "Block common-wreck salvage" },
   "ui.Wormhole.363": { zh: "。", en: "." },
   "ui.Wormhole.364": { zh: "」", en: "”" },
   "ui.WormholeScan.001": { zh: "枚 · 研究不消耗时间", en: "cores · research takes no time" },

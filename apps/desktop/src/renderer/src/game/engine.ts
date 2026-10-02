@@ -91,6 +91,9 @@ import {
   /* 2026-10-01 船长令：技能加速「自动续用」开关（循环使用 · 离线期间同样生效） */
   boostAutoRenewOn,
   setBoostAutoRenew,
+  // ⟪2026-10-02 船长令⟫ 洞内「禁止打捞普通残骸」（开关在货仓页）
+  noCommonWreckSalvageOn,
+  setNoCommonWreckSalvage,
   useInvasionBeacon,
   retreatBattle,
   retreatEncounterBattle,
@@ -3985,6 +3988,25 @@ export class GameEngine {
   /** 开/关自动续用（没料时打开会被 core 拒绝，原因原样交回界面弹提示） */
   setBoostAutoRenewNow(on: boolean): CommandResult {
     const result = setBoostAutoRenew(this.state, on)
+    if (result.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return result
+  }
+
+  /**
+   * **洞内「禁止打捞普通残骸」开关**（**2026-10-02 船长令**；座落在**货仓页**，船长指定）。
+   *
+   * 界面只读/只调这两个方法；判据与取材全在 core（`wormhole.noCommonWreckSalvageOn` 唯一读取点
+   * ＋ `wormholeSalvage.wormholeSalvageAt` 的筛选）—— 界面不自己判"该不该捞"。
+   */
+  noCommonWreckSalvageOn(): boolean {
+    return noCommonWreckSalvageOn(this.state)
+  }
+
+  setNoCommonWreckSalvageNow(on: boolean): CommandResult {
+    const result = setNoCommonWreckSalvage(this.state, on)
     if (result.ok) {
       void this.persist()
       this.notify()

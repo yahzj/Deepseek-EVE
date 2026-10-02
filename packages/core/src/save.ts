@@ -3242,6 +3242,12 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       ...(wRaw.nebulaHintShown === true ? { nebulaHintShown: true } : {}),
       // 围剿机制的一次性标记（2026-09-23 船长令：首次下到第 7 层发一封通讯）——漏登记 = 每读档补送一次
       ...(wRaw.siegeHintShown === true ? { siegeHintShown: true } : {}),
+      /**
+       * **洞内「禁止打捞普通残骸」开关**（**2026-10-02 船长令**；UI 落点 = 货仓页）。
+       * 与上面两条同形：**只在为真时写** ⇒ 老档不写该字段 = 关（保持既有行为）⇒ **老档零迁移**。
+       * ⚠ 漏登记 = 每次读档把玩家的开关**静默重置**（写盘侧是整份 `state` 序列化，不登记就丢）。
+       */
+      ...(wRaw.noCommonWreckSalvage === true ? { noCommonWreckSalvage: true } : {}),
     }
   }
   const wormhole = cleanWormhole()
