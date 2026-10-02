@@ -511,6 +511,17 @@
 - 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ ·
   ui:rot-check ✅ · 构建 ✅。
 
+### 批次 4r：BattleScreen.tsx 首拆——`ui/battleBlink.ts` 闪现光柱演出件（2026-10-02 · 零行为变化）
+
+- 手法：`ammoKey`～`syncBlinkPillarDom` **闪现光柱整簇 226 行**（弹种键、光柱排期
+  `planBlinkPillars`、SVG 柱体构建 `buildBlinkPillarEl`、DOM 同步 `syncBlinkPillarDom`、
+  `BlinkPillarFx` 类型；含簇前一行的分隔空行）切接搬入新文件 `ui/battleBlink.ts`（§三合规：
+  LF 行尾、无 BOM，与旧 blob 字节级自检过）——BattleScreen.tsx **3399 → 3175 行**（−226 搬出、＋借回引用）。
+- 零环保证：battleBlink 只依赖 @whale/core（`DamageType` 为纯类型边）；BattleScreen 借回使用；
+  F9 扫渲染层实测仍 0 环。
+- 验证：typecheck 全仓 ✅ · core 全量 **3004 条** ✅ · content/l10n ✅ · arch:guard F1~F9 ✅ ·
+  ui:rot-check ✅ · 构建 ✅。
+
 ## 待办/待裁
 
 - **1c（运转名册行）评估后不做**（2026-10-02 记）：5 处 `.app-belt-workers` markup 分属经典/HUD 两族观感、
