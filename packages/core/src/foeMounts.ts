@@ -281,14 +281,14 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     name: '叠光装置',
     // 「叠光」按舰级译名 `Overlay`（l10n 的 `Corona Overlay`）⇒ 本件取 `Corona Overlay Drive`
     en: 'Corona Overlay Drive',
-    // 船长 2026-10-01 定案：步长 **300ms**（同日二次改判，原 400ms）、下限 500ms、该舰全部伤害 ×0.3（选「甲」）
-    overlayDrive: { stepMs: 300, floorMs: 500, dmgMul: 0.3 },
+    // 船长 2026-10-03 改判：步长 400ms、初始装填 4500ms（舰级定义）、下限 500ms、伤害 ×0.3。
+    overlayDrive: { stepMs: 400, floorMs: 500, dmgMul: 0.3 },
     note:
       '船长 2026-10-01：「添加叠光装置：效果是每次攻击或者闪现后，攻击间隔缩短，最多缩短至0.5秒攻击间隔。' +
       '伤害给予一个0.3的倍率。」⇒ 只挂 R 族 T3 叠光级。三条追问的裁定：伤害 ×0.3 = 该舰全部伤害 ×0.3（甲）；' +
-      '缩短量步长 300ms（船长先令「先计算叠满大概要打多久」，读数后选「丙：400ms」，同日二次改判为 300ms）；' +
+      '缩短量步长 400ms，初始装填 4500ms（船长 2026-10-03 改判）；' +
       '「叠满」= 装填间隔降到下限 500ms。' +
-      '初始 4200ms ⇒ 纯攻击 30.3 秒叠满、含每 5 秒一次闪现约 18 秒叠满。' +
+      '具体叠满时长由真实攻击与闪现次数决定。' +
       '当前间隔记在运行时的 foeOverlayReload（与 foeBlinks 同口径，有意不入档）。',
   },
   [FOE_MOUNT_IDS.coronaFlashOverload]: {
@@ -309,25 +309,25 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     // 命名规则第 4 条（族系前缀照译）：R 族五件一律 `Corona …`；本件取直译 `Standby Shield Array`
     en: 'Standby Shield Array',
     // 船长 2026-10-02 定案：50% 写死在件上（与闪烁过载的 hullCostPct 同款）、只护盾层、与闪现共用冷却
-    standbyShield: { resistPct: 0.5 },
+    standbyShield: { resistPct: 0.5, lingerMs: 2_000 },
     note:
       '船长 2026-10-02：「垂暮级添加挂载件，触发闪现时，触发的那次齐射受到的伤害减半。」' +
       '⇒ 我追问时点后船长改口径：「或者换个说法，闪现未处于冷却中的时候，护盾拥有全伤害50%的抗性。」' +
       '⇒ 只挂 R 族 T4 垂暮级。口径 = 闪现不在冷却中（`now >= BattleState.foeBlinks[tag]`，从未闪过也算可用' +
-      '⇒ 开场即生效）时，护盾层对全部伤害类型 ×0.5；装甲/结构照常；闪完那条冷却（2026-10-03 起 12 秒）里没有这层抗性（机制的一部分）。',
+      '⇒ 开场即生效）时，护盾层对全部伤害类型 ×0.5；装甲/结构照常；2026-10-03 改判：闪现触发后延续 2 秒，之后失效，冷却结束恢复。',
   },
   [FOE_MOUNT_IDS.coronaFocusArray]: {
     id: FOE_MOUNT_IDS.coronaFocusArray,
     name: '聚焦阵列',
     en: 'Focus Array',
     // 船长 2026-10-02 定案：120 秒爬到 1.0、随波重置（同日改判"整场计时"）
-    focusArray: { rampMs: 120_000 },
+    focusArray: { rampMs: 120_000, rangeBonusPct: 2, antiDroneBonusPct: 2 },
     note:
       '船长 2026-10-02：「然后给R族的入侵旗舰添加一个挂载件，武器的远端衰减，随时间提高到1（就是无衰减）。」' +
       '⇒ 只挂 R 族 T5 光环中枢（周末入侵旗舰战的 BOSS 本体）。' +
       '我提"整场计时"时船长改判：「旗舰挂载件的会随波重置」⇒ 计时锚 = 本波起点' +
       '（`BattleState.foeWaveStartMs`，缺省回落 `startedAtGameMs`），每波从头爬。' +
-      '曲线 = min(1, falloff + (1 − falloff) × t ÷ 120000)（面板 0.2 ⇒ 第 60 秒 0.6）；只影响它自己的武器。',
+      '曲线 = min(1, falloff + (1 − falloff) × t ÷ 120000)；只影响它自己。2026-10-03 改判：同进度增加射程与对无人机近防伤害，满层修正率各 +200%，加算抵消负修正。',
   },
 }
 
@@ -387,12 +387,12 @@ export interface ResolvedFoeMounts {
    * 消费单点 = `combat.applyFoeUnitDamage`（打敌舰本体的唯一收口：按"闪现是否在冷却中"决定
    * 是否给护盾层并进那层抗性）。
    */
-  foeStandbyShield?: { resistPct: number }
+  foeStandbyShield?: FoeMountDef['standbyShield']
   /**
    * **聚焦阵列的参数**（原样带给单位；曲线/计时锚口径见 `FoeMountDef.focusArray`）。
    * 消费单点 = `combat` 敌方开火段（按**本波起点**现算当拍的远端衰减系数）。
    */
-  foeFocusArray?: { rampMs: number }
+  foeFocusArray?: FoeMountDef['focusArray']
   /** 展示名（保持挂载顺序；`foeMountNames` 直接用它） */
   names: string[]
   /**

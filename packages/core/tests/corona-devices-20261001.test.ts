@@ -55,11 +55,11 @@ function battleOf(card: string, ships: number, foeOverride?: { strengthMul?: num
 }
 
 describe('叠光装置 / 闪烁过载装置：件定义与解析', () => {
-  it('① 两件参数 = 船长定案（300ms 步长 · 500ms 下限 · 伤害 ×0.3 / 护盾全回 · 结构上限 5%）', () => {
+  it('① 两件参数 = 船长定案（400ms 步长 · 500ms 下限 · 伤害 ×0.3 / 护盾全回 · 结构上限 5%）', () => {
     const ov = resolveFoeMounts([FOE_MOUNT_IDS.coronaOverlayDrive])
     expect(ov.unknown, '件 id 必须已登记（否则体检判红）').toEqual([])
     expect(ov.foeOverlayDrive, '叠光参数应原样带给单位').toEqual({
-      stepMs: 300,
+      stepMs: 400,
       floorMs: 500,
       dmgMul: 0.3,
     })
@@ -140,7 +140,7 @@ describe('叠光装置 / 闪烁过载装置：挂载面（只挂各自主人）'
     expect(overlay.length, '本卡应有叠光级').toBeGreaterThan(0)
     for (const sp of overlay) {
       expect(sp.foeOverlayDrive, '叠光级应带叠光参数').toEqual({
-        stepMs: 300,
+        stepMs: 400,
         floorMs: 500,
         dmgMul: 0.3,
       })
@@ -174,7 +174,7 @@ describe('叠光装置：伤害 ×0.3 落在每一发单发上', () => {
 })
 
 describe('叠光装置：真实战斗里的装填自加速', () => {
-  it('⑥ 每开一火 −300ms（首访问 = 条目基准 4200），一路推进到下限 500ms', () => {
+  it('⑥ 每开一火 −400ms（首访问 = 条目基准 4500），一路推进到下限 500ms', () => {
     /**
      * ⚠ **2026-10-01 编成 8 舰 → 16 舰**（船长同日令「给非中枢的 R 族船添加 3,000 的基础射程」）：
      * R 族射程涨了 ⇒ 它按期望距离入场的**开场距离更远**（`corona-converge` 实测更远）⇒ 同样时长里
@@ -189,7 +189,7 @@ describe('叠光装置：真实战斗里的装填自加速', () => {
      * ⚠ **2026-10-01 改判据**（新「激光有效射程」规则上线后）：开场距离由 R 族格的期望距离压到 **3,570m**
      * ⇒ 敌舰**进圈更早**，本用例从 t=250ms 起采样时它**已经开过火**（旧写法断言"首个读到的 `r` 必须是
      * 4,200 基准值"因此失效——那不是机制变了，是采样起点晚于首发）。
-     * 新写法**用登记表的 `f` 反推**：第 `f` 发的 `r` = `max(500, 4200 − (f − 1 + bs) × 300)`
+     * 用登记表的 `f` 核对当前规格：第 `f` 发的 `r` = `max(500, 4500 − (f − 1 + bs) × 400)`
      * （`f` = 已开火发数（**含本发**）、`bs` = 已折算的闪现次数）⇒ 无论从第几发开始采样都成立。
      */
     const seq: Array<{ t: number; r: number; f: number; bs: number }> = []
@@ -206,32 +206,31 @@ describe('叠光装置：真实战斗里的装填自加速', () => {
     for (const s of seq) {
       expect(
         s.r,
-        `t=${s.t}：第 ${s.f} 发的 r 应 = max(500, 4200 − (${s.f} − 1 开火 + ${s.bs} 闪现) × 300)`,
-      ).toBe(Math.max(500, 4_200 - (s.f - 1 + s.bs) * 300))
+        `t=${s.t}：第 ${s.f} 发的 r 应 = max(500, 4500 − (${s.f} − 1 开火 + ${s.bs} 闪现) × 400)`,
+      ).toBe(Math.max(500, 4_500 - (s.f - 1 + s.bs) * 400))
       expect(s.r, '任何时刻都不得低于下限 500ms').toBeGreaterThanOrEqual(500)
-      expect(s.r, '任何时刻都不得超过条目基准 4,200ms').toBeLessThanOrEqual(4_200)
+      expect(s.r, '任何时刻都不得超过条目基准 4,500ms').toBeLessThanOrEqual(4_500)
     }
-    /** **首发（`f` = 1）的 `r` 必须正是条目基准 4,200** —— 由登记表反查（不依赖采样起点） */
+    /** 首发的 r 等于当前条目基准，不依赖采样起点。 */
     const firstFired = seq.find((s) => s.f === 1)
-    if (firstFired) expect(firstFired.r, '第 1 发 = 条目基准装填 4,200').toBe(4_200)
+    if (firstFired) expect(firstFired.r, '第 1 发 = 条目基准装填 4,500').toBe(4_500)
     /**
-     * 逐格核步长：**正常格 = 300ms**；⚠ **同一拍里"既开火又闪现"的那一格 = 600ms**
+     * 逐格核步长：正常格 = 400ms；同一拍里攻击与闪现各推进一格 = 800ms。
      * （船长令：闪现也推进一格装填 ⇒ `corona-devices` 这条机制本身允许叠加）——
-     * 2026-10-01 实测本场第 8 格就是 600（原来"每格恒 300"的判据只在没有闪现的场次成立）。
-     * **夹到下限的那一格**允许 ≤300（夹取的正常表现）。
+     * 夹到下限的最后一格可小于实际推进步长。
      */
     for (let i = 1; i < rs.length; i++) {
       const step = rs[i - 1]! - rs[i]!
       if (i === rs.length - 1) {
-        expect(step, '最后一格的步长不得超过 300ms（夹取只许少、不许多）').toBeLessThanOrEqual(300)
+        expect(step, '最后一格的步长不得超过 800ms（攻击与闪现同拍各推进一格）').toBeLessThanOrEqual(800)
       } else {
-        expect([300, 600], `第 ${i} 次推进的步长应是 300（本拍只开火）或 600（本拍开火＋闪现）`).toContain(step)
+        expect([400, 800], `第 ${i} 次推进的步长应是 400（本拍只开火）或 800（本拍开火＋闪现）`).toContain(step)
       }
     }
     expect(rs[rs.length - 1], '（若本场够长）末尾应夹到下限 500ms').toBe(500)
     console.log(
-      `  [读数] 叠光级装填间隔轨迹：${rs.join(' → ')}（步长 300ms，下限 500ms）` +
-        `；采样起点 t=${seq[0]!.t}ms 时已开火 ${seq[0]!.f} 发（故首个读数为 ${seq[0]!.r}，反推基准 = 4,200）` +
+      `  [读数] 叠光级装填间隔轨迹：${rs.join(' → ')}（步长 400ms，下限 500ms）` +
+        `；采样起点 t=${seq[0]!.t}ms 时已开火 ${seq[0]!.f} 发（故首个读数为 ${seq[0]!.r}，反推基准 = 4,500）` +
         `；叠到下限共 ${rs.length - 1} 格，耗时 ${(seq[seq.length - 1]!.t / 1000).toFixed(2)} 秒`,
     )
   })
@@ -278,7 +277,8 @@ describe('闪烁过载装置：真实战斗里的护盾回满与结构代价', (
      */
     const st7 = createInitialState({ nowWallMs: 0, seed: 11 })
     const ids7: string[] = []
-    for (let i = 0; i < 64; i++) ids7.push(addShipToFleet(st7, 'sh-thresher'))
+    // 本批 T3 提速后 64 舰在 225.6s 战败，只够 19 次闪现；96 舰提供第 20 次的观察窗。
+    for (let i = 0; i < 96; i++) ids7.push(addShipToFleet(st7, 'sh-thresher'))
     st7.shipId = ids7[0]!
     /** 长射程（7,000m 级）＋ **件必须入 `moduleBay` 才算装上**（缺了装配不生效） */
     for (const id of ids7) st7.fleet[id]!.fitted = { high: ['mod-laser-3'], mid: [], low: [] }
@@ -297,7 +297,7 @@ describe('闪烁过载装置：真实战斗里的护盾回满与结构代价', (
     const tag = 'foe-0'
     const maxH = b.units[tag]!.hpMax!.h
     const cost = maxH * 0.05
-    console.log(`  [读数] 粼光级满结构 ${maxH.toFixed(4)} ⇒ 每次闪现应扣 ${cost.toFixed(4)}`)
+    console.log(`  [读数] 回响级满结构 ${maxH.toFixed(4)} ⇒ 每次闪现应扣 ${cost.toFixed(4)}`)
     let prevH = b.units[tag]!.hp.h
     /** 每次结构下降：记下时刻、落点、以及"相当于几次 5% 扣减" */
     const drops: { t: number; h: number; times: number }[] = []
@@ -330,7 +330,8 @@ describe('闪烁过载装置：真实战斗里的护盾回满与结构代价', (
     }
     expect(drops.length, '应观察到多次结构扣减').toBeGreaterThanOrEqual(3)
     /** **无保底 ⇒ 20 次扣到 0 自毁**：本编成实测第 20 次归零 ⇒ 这里下的是**强断言**（不设条件分支） */
-    expect(drops.length, '上限 5% 的步长 ⇒ 第 20 次扣减必然归零（本编成应真的跑到）').toBe(20)
+    const blinkCount = drops.reduce((n, d) => n + Math.round(d.times), 0)
+    expect(blinkCount, '上限 5% 的步长 ⇒ 合计 20 次扣减必然归零（采样可合并多次）').toBe(20)
     expect(drops.at(-1)!.h, '第 20 次扣减后结构应归零（浮点容差 1e-9；20 次 ×5% 后残留 3.98e-13）').toBeLessThan(1e-9)
     /**
      * ⚠ **2026-10-03 如实登记（换卡后暴露的一条口径**）：旧夹具（粼光级）20 次扣减恰好把

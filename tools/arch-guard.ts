@@ -108,6 +108,7 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '聚焦阵列波内修正率（射程与防空同源）', symbol: 'coronaFocusBonusOf', file: 'packages/core/src/coronaFocus.ts', exported: true },
   { concept: '仿真上下文（页面取数的唯一入口）', symbol: 'buildSimContext', file: 'packages/data/src/context.ts', exported: true },
   { concept: '渲染层引擎（ctx 的产地，页面取数都从它来）', symbol: 'GameEngine', file: 'apps/desktop/src/renderer/src/game/engine.ts', exported: true },
   { concept: '玩家可见文案唯一表（id → 各语言）', symbol: 'L10N', file: 'packages/data/src/l10n/table.ts', exported: true },

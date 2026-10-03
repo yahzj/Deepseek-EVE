@@ -13,6 +13,7 @@ import type { UnitSpec, WeaponSpec } from './combat'
 import { createPlayerSpec } from './playerSpec'
 import { allFittedModules, stackingOf, stackWeight, WEIGHTED_GAP_FLEET_CAP, weightedGap } from './equipment'
 import { distFactor } from './combatMath'
+import { coronaFocusBonusOf } from './coronaFocus'
 
 /** **敌机有效射程**（单一真相源）＝机型绝对射程 × **全敌队的受击增程倍率**（未触发 = ×1）－ **我方电子舰削减**。
  *
@@ -381,19 +382,23 @@ export function foeGunRangeMulOf(
  *  净倍率 = **增程倍率 − 削减率**（做加法，见 `foeRangeDebuffOf`）；**基础 <3000m 不削**、削后**下限 3000m**。 */
 export function foeGunMaxRangeOf(
   b: import('./state').BattleState,
-  unit: { foeGunRangeMulOnHit?: number },
+  unit: Pick<UnitSpec, 'foeGunRangeMulOnHit' | 'foeFocusArray'>,
   w: { maxRangeM: number },
 ): number {
-  return effectiveFoeRangeM(b, w.maxRangeM, foeGunRangeMulOf(b, unit))
+  const bonus = coronaFocusBonusOf(b, unit.foeFocusArray, 'rangeBonusPct')
+  return effectiveFoeRangeM(b, w.maxRangeM, foeGunRangeMulOf(b, unit) + bonus)
 }
 
-/** 该敌舰武器的**距离折减**（船长选乙：原区间内 = 原公式，逐字一致；延长段同斜率外推、下限 0） */
+/** 聚焦按当前有效射程计算衰减；既有受击增程仍沿原斜率外推。 */
 export function foeGunPowerFactorOf(
   b: import('./state').BattleState,
-  unit: { foeGunRangeMulOnHit?: number },
+  unit: Pick<UnitSpec, 'foeGunRangeMulOnHit' | 'foeFocusArray'>,
   w: { minRangeM: number; maxRangeM: number; falloff: number },
   dist: number,
 ): number {
+  if (unit.foeFocusArray !== undefined) {
+    return distFactor(dist, { ...w, maxRangeM: foeGunMaxRangeOf(b, unit, w) })
+  }
   const base = distFactor(dist, w) // 原区间内 = 原读数（一字不变）
   if (foeGunRangeMulOf(b, unit) <= 1 || dist <= w.maxRangeM) return base
   const span = Math.max(1, w.maxRangeM - w.minRangeM)

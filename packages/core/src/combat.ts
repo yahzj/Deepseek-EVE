@@ -80,6 +80,8 @@ export type { AmmoKey } from './combatAmmo'
 import { buildDronePoolsFor, dronePoolKey, dronePoolOwner, isFoeEngageable, pickFoeDroneTarget, resolvePointDefense } from './combatDrones'
 export { droneLostCount, dronePoolKey, dronePoolOwner, pdPriorityOf, pdShotOf, pickFoeDroneTarget } from './combatDrones'
 import { applyFoeRangeDebuff, applyMeJammerDebuff, foeDroneRangeOf, foeGunMaxRangeOf, foeGunPowerFactorOf, markFoeDroneRangeBuff, markFoeGunRangeBuff, meFoeRangeDebuffOf, meJammerNetOf } from './foeRange'
+import { coronaFocusFalloffOf } from './coronaFocus'
+export { coronaFocusFalloffOf } from './coronaFocus'
 export { FOE_RANGE_DEBUFF_FLOOR_M, applyMeJammerDebuff, fittedEffectParamsOf, foeDroneRangeOf, foeGunMaxRangeOf, foeGunPowerFactorOf, foeGunRangeMulOf, foeJammerCountOf, foeRangeDebuffOf, foeUnitDeadOf, meFoeRangeDebuffOf, meJammerNetOf, meRangeMulForBonus, meRangeMulOf } from './foeRange'
 // 敌群建档与增援（2026-10-02 批次 4l 拆到 foeSpecs.ts）；本文件借回使用并再导出
 export { FOE_REPAIR_THREAT_REF, activeFoeSpecsOf, battleMaxDistanceM, battleOpenM, createBattleState, createFoeSpecs, desiredRangeFor, flagshipBattleLedger, foeDesiredRange, foeStrengthOf, foeThreatOfAnomaly, mainWeaponOf, rFamilyDesireOf } from './foeSpecs'
@@ -377,7 +379,7 @@ export interface UnitSpec {
    * （`now >= b.foeBlinks[tag]`，从未闪过也算可用）⇒ 把 `resistPct` 并进**护盾层**抗性
    * （与既有层抗**乘算**：`1 − (1−a)(1−b)`；装甲/结构不并）。缺省不写 ⇒ 零行为变化。
    */
-  foeStandbyShield?: { resistPct: number };
+  foeStandbyShield?: { resistPct: number; lingerMs?: number };
   /**
    * **本单位的「聚焦阵列」参数**（**船长 2026-10-02 令**：「**武器的远端衰减，随时间提高到1
    * （就是无衰减）。**」＋改判「**旗舰挂载件的会随波重置**」）—— 由 R 族 T5 光环中枢那件
@@ -386,7 +388,7 @@ export interface UnitSpec {
    * 消费单点 = 敌方开火段（本单位的**当拍**远端衰减系数按本波起点现算，见 `coronaFocusFalloffOf`）；
    * **只影响它自己**的武器。缺省不写 ⇒ 零行为变化。
    */
-  foeFocusArray?: { rampMs: number };
+  foeFocusArray?: { rampMs: number; rangeBonusPct?: number; antiDroneBonusPct?: number };
   /**
    * **本条冲锋不吃网子的「关推进器」**（**2026-09-30 船长令**「给C族添加族设定，他们的冲锋不会被网子
    * 解除」；见 `FoeMountDef.charge.webImmune`）——C 族四件「虫群冲锋器」解析出来的旗标。
@@ -526,22 +528,28 @@ export interface UnitSpec {
 
 /**
  * **待机护盾阵列：本拍是否生效**（**船长 2026-10-02 令**：「**闪现未处于冷却中的时候，护盾拥有
- * 全伤害50%的抗性。**」）—— 判据 = 带该件 **且** 该舰的闪现**不在冷却中**
+ * 全伤害50%的抗性。**」）—— 判据 = 带该件，且闪现不在冷却中或仍在触发后的宽限内
  * （`now >= BattleState.foeBlinks[tag]`；**从未闪过也算可用** ⇒ **开场即生效**，船长原话的读法）。
  *
- * ⚠ 与闪现**共用那条冷却**是机制的一部分（那段里没有这层抗性；**冷却 = 件的 `blink.cooldownMs`，
+ * 闪现触发后仍保留 `lingerMs` 的抗性宽限；用冷却截止戳减去件的冷却时长还原触发时刻。
+ * ⚠ 与闪现**共用那条冷却**是机制的一部分（宽限之外没有这层抗性；**冷却 = 件的 `blink.cooldownMs`，
  * 2026-10-03 起 12 秒**），不是缺陷。
  * ⚠ **本函数只是那条纯判据**（"这一瞬是否就绪"）：**引擎里请走 `foeStandbyReadyOf`**
  * （它按**每拍开头**取快照 ⇒ 同一拍整次齐射同命，船长 2026-10-03 裁定）。
  * 缺省（没带件）⇒ 恒 `false`；没带件的单位**一次都不会走到下面的并抗性**。
  */
 export function standbyShieldActiveOf(
-  unit: Pick<UnitSpec, 'foeStandbyShield'>,
+  unit: Pick<UnitSpec, 'foeStandbyShield' | 'foeBlink'>,
   blinkReadyAtMs: number | undefined,
   nowMs: number,
 ): boolean {
   if (unit.foeStandbyShield === undefined) return false
-  return nowMs >= (blinkReadyAtMs ?? 0)
+  if (blinkReadyAtMs === undefined || nowMs >= blinkReadyAtMs) return true
+  const cooldown = unit.foeBlink?.cooldownMs
+  const linger = unit.foeStandbyShield.lingerMs ?? 0
+  if (cooldown === undefined || linger <= 0) return false
+  const triggeredAt = blinkReadyAtMs - cooldown
+  return nowMs >= triggeredAt && nowMs < triggeredAt + linger
 }
 
 /**
@@ -580,7 +588,7 @@ export function foeStandbyReadyOf(
     foeBlinks?: Record<string, number>
     foeStandbyTick?: Record<string, { atMs: number; ready: boolean }>
   },
-  foe: { tag: string; foeStandbyShield?: { resistPct: number } },
+  foe: Pick<UnitSpec, 'tag' | 'foeStandbyShield' | 'foeBlink'>,
 ): boolean {
   if (foe.foeStandbyShield === undefined) return false
   const now = b.lastTickGameMs ?? 0
@@ -606,7 +614,8 @@ function foeResistsNow(
   foe: {
     tag: string
     resists?: UnitSpec['resists']
-    foeStandbyShield?: { resistPct: number }
+    foeStandbyShield?: UnitSpec['foeStandbyShield']
+    foeBlink?: UnitSpec['foeBlink']
   },
 ): UnitSpec['resists'] {
   if (foe.foeStandbyShield === undefined) return foe.resists ?? {}
@@ -663,7 +672,8 @@ function applyFoeUnitDamage(
     tag: string
     resists?: UnitSpec['resists']
     /** **待机护盾阵列参数**（带该件的单位才有；判据见 `standbyShieldActiveOf`） */
-    foeStandbyShield?: { resistPct: number }
+    foeStandbyShield?: UnitSpec['foeStandbyShield']
+    foeBlink?: UnitSpec['foeBlink']
   },
   dmg: number,
   type: DamageType,
@@ -4181,27 +4191,6 @@ export function foeWaveStartMsOf(
 }
 
 /**
- * **聚焦阵列：本拍该舰武器的远端衰减系数**（**船长 2026-10-02 令**：「**武器的远端衰减，随时间提高到1
- * （就是无衰减）。**」＋改判「**旗舰挂载件的会随波重置**」）。
- *
- * 曲线 = `min(1, falloff + (1 − falloff) × t ÷ rampMs)`（`t` = **本波**已开战时长，夹 ≥ 0）——
- * 面板 0.2、`rampMs = 120,000` ⇒ 第 0 秒 **0.2** · 第 60 秒 **0.6** · 第 120 秒及以后 **1.0**（无衰减）。
- *
- * ⚠ 纯函数（不读状态）⇒ 用例可逐点核；调用点只在**敌方开火段**、且只在挂了件的单位上
- * （`f.foeFocusArray` 缺省 ⇒ 连这一次调用都不发生，`w` 对象也不复制 ⇒ **既有各族逐字不变**）。
- */
-export function coronaFocusFalloffOf(
-  /** 面板远端衰减（舰级 / 条目 `falloff`） */
-  baseFalloff: number,
-  /** 爬满所需毫秒（件上写死 **120,000**） */
-  rampMs: number,
-  /** 本波已开战时长（毫秒；负值按 0 处理） */
-  elapsedMs: number,
-): number {
-  if (!(rampMs > 0)) return 1
-  const t = Math.max(0, elapsedMs)
-  return Math.min(1, Math.max(0, baseFalloff) + (1 - Math.max(0, baseFalloff)) * (t / rampMs))
-}/**
  * **我方「叠光同款 · 装填自加速」的当前装填间隔**（**船长 2026-10-01 令**：「激光武器为叠光同款叠加攻速的，
  * 基础伤害偏低，需要玩家叠满才威力较强」）——与敌方 `foeOverlayReloadOf` **逐字同款**的机制，
  * 只有两处差别：① 键是 `tag#炮位`（一艘船可能装多门）；② **不乘伤害倍率**（船长令只说了"基础伤害偏低"，
@@ -5091,7 +5080,7 @@ function stepBattle(
     /**
      * **聚焦阵列：当拍的远端衰减**（**船长 2026-10-02 令**：「**武器的远端衰减，随时间提高到1
      * （就是无衰减）。**」＋改判「**旗舰挂载件的会随波重置**」）——挂了件的舰（R 族 T5 光环中枢）
-     * 按**本波起点**（`foeWaveStartMsOf`）现算爬升后的 `falloff`，只替这一个字段、其余原样；
+     * 按本波起点现算爬升后的 falloff；动态射程由 foeGunMaxRangeOf 同源计算。
      * 面板 0.2 + 120 秒 ⇒ 第 60 秒 0.6、第 120 秒起 1.0（**无衰减**）。
      *
      * ⚠ **没挂件的舰 ⇒ `wShot === w`（同一个对象引用）** ⇒ 下游两条折减调用与改动前逐字一致

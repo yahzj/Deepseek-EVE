@@ -100,10 +100,10 @@ describe('两件新挂载件：件定义与解析', () => {
   it('① 参数 = 船长定案（护盾层 50% 抗性 · 120 秒爬到 1.0）', () => {
     const sb = resolveFoeMounts([FOE_MOUNT_IDS.coronaStandbyShield])
     expect(sb.unknown, '件 id 必须已登记（否则体检判红）').toEqual([])
-    expect(sb.foeStandbyShield, '待机护盾：护盾层 50% 抗性，写死在件上').toEqual({ resistPct: 0.5 })
+    expect(sb.foeStandbyShield, '待机护盾：50% 抗性，闪现后延续 2 秒').toEqual({ resistPct: 0.5, lingerMs: 2_000 })
     const fa = resolveFoeMounts([FOE_MOUNT_IDS.coronaFocusArray])
     expect(fa.unknown).toEqual([])
-    expect(fa.foeFocusArray, '聚焦阵列：120 秒爬到 1.0').toEqual({ rampMs: 120_000 })
+    expect(fa.foeFocusArray, '聚焦阵列：120 秒爬满，射程/防空修正 +200%').toEqual({ rampMs: 120_000, rangeBonusPct: 2, antiDroneBonusPct: 2 })
     console.log(
       `  [读数] 待机护盾阵列：护盾层 −${sb.foeStandbyShield!.resistPct * 100}%` +
         `；聚焦阵列：${fa.foeFocusArray!.rampMs / 1000} 秒爬满（远端衰减 → 1）`,
@@ -150,12 +150,12 @@ describe('挂载面（只挂各自主人）', () => {
     // 垂暮级在 `corona-converge` 的第 2 波（waveIdx = 1）
     const dusk = specOf(CARD_DUSK, 1, 'foe-r-corona-dusk')
     expect(dusk, '该波应有垂暮级').toBeTruthy()
-    expect(dusk!.foeStandbyShield, '垂暮级应带待机护盾参数').toEqual({ resistPct: 0.5 })
+    expect(dusk!.foeStandbyShield, '垂暮级应带待机护盾参数').toEqual({ resistPct: 0.5, lingerMs: 2_000 })
     expect(dusk!.foeFocusArray, '垂暮级不得带聚焦阵列').toBeUndefined()
     // 中枢在 `corona-nexus` 的第 4 波（waveIdx = 3）
     const nexus = specOf(CARD_NEXUS, 3, 'foe-r-corona-nexus')
     expect(nexus, '第 4 波应有光环中枢').toBeTruthy()
-    expect(nexus!.foeFocusArray, '中枢应带聚焦阵列参数').toEqual({ rampMs: 120_000 })
+    expect(nexus!.foeFocusArray, '中枢应带聚焦阵列参数').toEqual({ rampMs: 120_000, rangeBonusPct: 2, antiDroneBonusPct: 2 })
     expect(nexus!.foeStandbyShield, '中枢不得带待机护盾').toBeUndefined()
     expect(nexus!.weapons[0]!.burst, '中枢主武器应带三连发').toEqual({ shots: 3, gapMs: 100 })
     /**
@@ -232,7 +232,8 @@ describe('待机护盾阵列：护盾层 ×0.5（未冷却 ⇒ 生效 / 冷却�
      */
     const now = 10_000
     expect(standbyShieldActiveOf(dusk, undefined, now), '从未闪过 ⇒ 算可用').toBe(true)
-    expect(standbyShieldActiveOf(dusk, now + 12_000, now), '冷却中 ⇒ 不生效').toBe(false)
+    expect(standbyShieldActiveOf(dusk, now + 12_000, now), '刚触发 ⇒ 延续 2 秒').toBe(true)
+    expect(standbyShieldActiveOf(dusk, now + 12_000, now + 2_000), '2 秒边界 ⇒ 失效').toBe(false)
     expect(standbyShieldActiveOf({}, now + 12_000, now), '没带该件的单位 ⇒ 恒不生效').toBe(false)
     console.log(
       `  [读数] 单发 ${dmg}（盾层 ${dusk.hp.s.toFixed(0)}/甲 ${dusk.hp.a.toFixed(0)}/结 ${dusk.hp.h.toFixed(0)}）：` +
@@ -340,7 +341,9 @@ describe('待机护盾阵列：护盾层 ×0.5（未冷却 ⇒ 生效 / 冷却�
     b.foeBlinks[dusk.tag] = 1_000 + 12_000
     expect(foeStandbyReadyOf(b, dusk), '同一拍内整次齐射同命 ⇒ 仍算就绪（这是船长裁定那一条）').toBe(true)
     b.lastTickGameMs = 1_100
-    expect(foeStandbyReadyOf(b, dusk), '进了下一拍 ⇒ 冷却中，不生效').toBe(false)
+    expect(foeStandbyReadyOf(b, dusk), '进了下一拍 ⇒ 仍在 2 秒宽限内').toBe(true)
+    b.lastTickGameMs = 3_000
+    expect(foeStandbyReadyOf(b, dusk), '2 秒边界 ⇒ 失效').toBe(false)
     b.lastTickGameMs = 13_100
     expect(foeStandbyReadyOf(b, dusk), '冷却走完那一拍 ⇒ 恢复生效').toBe(true)
     /** 没带该件的单位：恒 false，且**一次都不写这张快照表**（零行为变化的守卫） */
@@ -351,7 +354,7 @@ describe('待机护盾阵列：护盾层 ×0.5（未冷却 ⇒ 生效 / 冷却�
     }
     expect(foeStandbyReadyOf(b2, { tag: 'nobody' })).toBe(false)
     expect(Object.keys(b2.foeStandbyTick)).toEqual([])
-    console.log('  [读数] 同拍判据：t=1000 就绪 ⇒ 同拍中途盖冷却仍就绪 ⇒ t=1100 起失效 ⇒ t=6100 恢复（不带件者零写入）')
+    console.log('  [读数] 同拍判据：t=1000 触发 ⇒ t=1100 宽限 ⇒ t=3000 失效 ⇒ t=13100 恢复（不带件者零写入）')
   })
 })
 
@@ -435,10 +438,7 @@ describe('聚焦阵列：远端衰减爬到 1.0（随波重置）', () => {
     expect(withFocus.nexusTag, '中枢应真的登场并开火').toBeTruthy()
     expect(withFocus.win[0], '中枢在第一个窗口应有输出').toBeGreaterThan(0)
     expect(without.win[0]).toBeGreaterThan(0)
-    expect(
-      Math.abs(withFocus.win[0]! - without.win[0]!) / without.win[0]!,
-      '第一个窗口（衰减刚爬到 0.27）⇒ 两个 A/B 基本同量（实测差 6.5%）',
-    ).toBeLessThan(0.1)
+    expect(withFocus.win[0]!, '聚焦现在同步增程，前 20 秒输出不应低于无挂载对照').toBeGreaterThanOrEqual(without.win[0]!)
     expect(
       withFocus.win[2]! / without.win[2]!,
       `第三个窗口（衰减已爬到 0.8）：带件那场应明显更高（实测 ${(withFocus.win[2]! / without.win[2]!).toFixed(2)}×）`,

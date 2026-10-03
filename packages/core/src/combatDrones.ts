@@ -12,6 +12,7 @@ import { applyDamage, battleShowWindowMs, clamp, isAlive } from './combatMath'
 import { nextInt, nextRandom, pickOne } from './rng'
 import { BATTLE_ARRIVAL_FLY_MS, pushBattleFx } from './combatFx'
 import { droneReviveNoteLoss } from './droneRevive'
+import { coronaFocusBonusOf } from './coronaFocus'
 
 /* 以下为 2026-10-02 批次 4j 从 combat.ts 切接过来的整簇（aliveDroneKeys ~ pickFoeDroneTarget）。 */
 
@@ -183,12 +184,14 @@ export function pdShotOf(
   bal: BattleBalance,
   family: FoeFamily | undefined,
   hullClassTier: number | undefined,
+  /** 有符号修正率：聚焦正修正与玩家负修正先求和再传入，不连乘。 */
+  damageBonusPct = 0,
 ): { acc: number; dmg: number } {
   const ov = family !== undefined ? bal.pdFamilyOverride?.[family] : undefined
   const tierMul = bal.pdTierMul?.[Math.min(4, Math.max(0, (hullClassTier ?? 1) - 1))] ?? 1
   return {
     acc: bal.pdAcc + (ov?.accAdd ?? 0),
-    dmg: bal.pdDmg * tierMul * (ov?.dmgMul ?? 1),
+    dmg: bal.pdDmg * tierMul * Math.max(0, (ov?.dmgMul ?? 1) + damageBonusPct),
   }
 }
 
@@ -290,7 +293,9 @@ export function resolvePointDefense(
        * ⇒ `balance.pdFamilyOverride.H = { dmgMul: 1.5, accAdd: 0.05 }`）。
        * 取数收口在 `pdShotOf`（缺省族/旧路径 ⇒ 逐字走全局值，零行为变化）。
        */
-      const shot = pdShotOf(bal, foes[fi]!.family, foes[fi]!.hullClassTier)
+      const defender = foes[fi]!
+      const focusBonus = coronaFocusBonusOf(b, defender.foeFocusArray, 'antiDroneBonusPct')
+      const shot = pdShotOf(bal, defender.family, defender.hullClassTier, focusBonus)
       // 命中 = clamp(**下限 10%**, 1, pdAcc ＋ 族覆写 − 闪避)（船长 2026-09-12 定式；覆写为 2026-09-25 加）
       const pHit = clamp(bal.pdHitFloor ?? 0, 1, shot.acc - pool.evasion)
       if (nextRandom(state.rng) >= pHit) continue // 未命中（闪避生效）
