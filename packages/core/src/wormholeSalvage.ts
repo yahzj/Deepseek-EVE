@@ -2228,7 +2228,17 @@ export function wormholeGrantShipSpoils(
   const rng = wormholeStream(runSeedOf(state) * 7 + run.depth * 331 + (cell.q * 61 + cell.r * 67) * 3 + 11)
   const row = WORMHOLE_SPOILS_TABLE[shape]
   const spoils: WormholeCellPile[] = []
-  for (let i = 0; i < row.commons; i++) {
+  /**
+   * ⟪**2026-10-03 船长令**⟫ **开关也管战果**：原话「**我希望那个开关同时能关闭战斗后获取的普通残骸**」。
+   *
+   * 起因（同日玩家报障 · 探针复现）：战果装不下时散落在该格，而散落的普通残骸与"打捞铺出来的"共用
+   * 同一个 `cell.piles` ⇒ 开关一开，**战果那几堆普通残骸就再也拿不走**（走人即丢）—— 游戏还先写了句
+   * 「可以照打捞规则回收」，等于自食其言。船长裁定：**开关打开 ⇒ 战果里的普通残骸根本不产生**
+   * （不发、不入包、不落格），**稀有残骸与货柜照旧** ⇒ 从源头对齐"洞里不要普通残骸"这个意图。
+   * （2026-10-02 那版注释里那句「⚠ 不影响：战果结算的随行战利品」按本令改写。）
+   */
+  const commons = noCommonWreckSalvageOn(state) ? 0 : row.commons
+  for (let i = 0; i < commons; i++) {
     spoils.push({ itemId: wreckItemIdOf(group.key), units: Math.max(1, Math.round(WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4))) })
   }
   for (let i = 0; i < row.rares; i++) spoils.push({ itemId: rareWreckItemIdOf(group.key), units: RARE_WRECK_VOLUME_M3 })

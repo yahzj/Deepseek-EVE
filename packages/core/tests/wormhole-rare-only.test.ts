@@ -18,7 +18,7 @@ import { addShipToFleet } from '../src/shipyard'
 import { noCommonWreckSalvageOn, setNoCommonWreckSalvage, wormholeEnter } from '../src/wormhole'
 import type { WormholeGridCell } from '../src/wormholeGrid'
 import { gridCellAt } from '../src/wormholeGrid'
-import { wormholeEnsureSalvagePiles, wormholeSalvageAt } from '../src/wormholeSalvage'
+import { wormholeEnsureSalvagePiles, wormholeGrantShipSpoils, wormholeSalvageAt, WORMHOLE_SPOILS_TABLE } from '../src/wormholeSalvage'
 import { isRareWreck } from '../src/salvage'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 
@@ -107,8 +107,7 @@ describe('洞内「禁止打捞普通残骸」（开关在货仓页）', () => {
     expect(commonCount(cell), '普通残骸一动不动').toBe(commonBefore)
   })
 
-  it('关着时逐字老行为：稀有拿完就接着拿普通残骸', () => {
-    const { state, cell } = worldWithBoth()
+  it('关着时逐字老行为：稀有拿完就接着拿普通残骸', () => {    const { state, cell } = worldWithBoth()
     expect(noCommonWreckSalvageOn(state), '缺省 = 关').toBe(false)
     const commonBefore = commonCount(cell)
     let guard = 0
@@ -117,6 +116,42 @@ describe('洞内「禁止打捞普通残骸」（开关在货仓页）', () => {
       if (!r.ok) break
     }
     expect(commonCount(cell), '关着时普通残骸会被照常收走').toBeLessThan(commonBefore)
+  })
+
+  /**
+   * 🔴 **2026-10-03 船长令扩到战果**（原话照抄）：「**我希望那个开关同时能关闭战斗后获取的普通残骸**」。
+   *
+   * 起因（同日玩家报障 ＋ 探针复现）：战果装不下时散落在该格，而散落的普通堆与打捞堆**共用同一个
+   * `cell.piles`** ⇒ 开关一开那几堆就**再也拿不走**（走人即丢），可游戏自己还写了句
+   * 「可以照打捞规则回收」—— 自食其言。现口径：开关打开 ⇒ **战果里的普通残骸根本不产生**，
+   * **稀有残骸照给**（形状表里的 `rares` 一字不变）。
+   */
+  it('**开关也管战果**：打开 ⇒ 战果只给稀有、普通残骸一堆都不产生（稀有件数照旧）', () => {
+    for (const seed of [3, 5, 9]) {
+      const state = enterRun(1, seed)
+      const cell = standOn(state, 'graveyard')
+      cell.piles = []
+      expect(setNoCommonWreckSalvage(state, true).ok).toBe(true)
+      const r = wormholeGrantShipSpoils(state, ctx, 'boss')
+      const all = [...(state.wormhole.run!.bag ?? []), ...(cell.piles ?? [])]
+      expect(all.filter((p) => !isRareWreck(p.itemId)).length, `seed ${seed}：战果里普通残骸一堆都不产生`).toBe(0)
+      expect(r.bagged + r.leftOnCell, `seed ${seed}：稀有照给（${WORMHOLE_SPOILS_TABLE.boss.rares} 件）`).toBe(
+        WORMHOLE_SPOILS_TABLE.boss.rares,
+      )
+    }
+  })
+
+  it('**对照**：关着时战果照旧"普通 ＋ 稀有"全给（老行为逐字不变）', () => {
+    const state = enterRun(1, 5)
+    const cell = standOn(state, 'graveyard')
+    cell.piles = []
+    expect(noCommonWreckSalvageOn(state)).toBe(false)
+    const r = wormholeGrantShipSpoils(state, ctx, 'boss')
+    const all = [...(state.wormhole.run!.bag ?? []), ...(cell.piles ?? [])]
+    /** ⚠ 计数看**形状表的总堆数**：同 id 的普通堆会被 `tryMergeIntoBag` 并成一格 ⇒ 数"格"会少 */
+    expect(r.bagged + r.leftOnCell).toBe(WORMHOLE_SPOILS_TABLE.boss.commons + WORMHOLE_SPOILS_TABLE.boss.rares)
+    expect(all.some((p) => !isRareWreck(p.itemId)), '普通残骸照给').toBe(true)
+    expect(all.some((p) => isRareWreck(p.itemId)), '稀有残骸照给').toBe(true)
   })
 
   it('开关随档往返：写档读档后仍为开；关掉后字段不落档（老档缺字段 = 关）', () => {
