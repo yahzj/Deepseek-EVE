@@ -616,6 +616,37 @@ export function weekendWreckDensityOf(state: GameState, galaxyId: string): numbe
 }
 
 /**
+ * **某星系"按族分账"的读数**（**2026-10-03 船长令「按族分账 ＋ 每族一张独立卡」**：
+ * 原话「**所以，现在不同入侵的残骸是会记忆并且分开算的吗**」→「**确认，并且我希望所有入侵的残骸，
+ * 在残骸打捞界面都使用独立的卡片，现有的常驻卡片回滚成之前的样式（不会显示入侵残骸条）**」）。
+ *
+ * 这是**界面每族一张卡**与**打捞自动判定**共用的**唯一读数口**：
+ * - `key`   = 账本里的桶键（分账结构落码后 = 族码；`'?'` = 老档"没记过族"的桶）；
+ * - `family`= 收窄后的族码（`null` = 未知族桶 ⇒ 打捞池并入**全部**隐藏入侵卡）；
+ * - `density` = 该族**当前有效**存量（m³，48h 线性衰减后）；`rare` = 该族箱子件数。
+ *
+ * ⚠ **分期落码**：第 ① 期（本函数）先把读数口立起来（当前账本仍是"每星系一条 ＋ 一个族标签"
+ * ⇒ 恒返回 0 或 1 条）；第 ② 期把账本换成 `byFamily` 分桶（`state.ts` 的 `WeekendWreckRecord`）
+ * 后，本函数自然返回多族。设计与落点见 `docs/design/wreck-ledger-by-family-20261003.md`。
+ */
+export interface WeekendWreckPool {
+  key: string
+  family: FoeFamily | null
+  density: number
+  rare: number
+}
+
+export function weekendWreckPoolsOf(state: GameState, galaxyId: string): WeekendWreckPool[] {
+  const rec = state.weekendWrecks?.[galaxyId]
+  if (!rec) return []
+  const density = weekendWreckDensityOf(state, galaxyId)
+  const rare = Math.max(0, Math.floor(rec.rare ?? 0))
+  if (density <= 0 && rare <= 0) return []
+  const family = asFoeFamily(rec.family) ?? null
+  return [{ key: family ?? '?', family, density, rare }]
+}
+
+/**
  * **击败入侵舰队的残骸注入量**（船长：「按照击败卡的威胁注入」）——沿用悬赏那条唯一公式
  * （`bountyWreckInjection`：威胁 ×0.4 ×(1+0.2×敌人数)，体量走 `wreckInjectThreatOf`），
  * 只是**记到独立池**。`frac`：主动出击 / 旗舰战 = 1；遇袭沿用既有"遇袭半量"口径（0.5）。

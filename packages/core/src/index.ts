@@ -963,6 +963,8 @@ export {
   // 2026-09-25 入侵残骸 · 独立池（船长令）：按击败卡威胁注入 · 48h 线性衰减到 0 · 不算当地密度
   WEEKEND_WRECK_DECAY_MS,
   weekendWreckDensityOf,
+  /** 2026-10-03 船长令「按族分账 ＋ 每族一张独立卡」：**每族读数口**（界面卡片与自动判定共用） */
+  weekendWreckPoolsOf,
   weekendWreckInjectionOf,
   injectWeekendWreck,
   advanceWeekendWreckDecay,
