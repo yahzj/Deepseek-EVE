@@ -100,31 +100,39 @@ describe('入侵残骸 · 独立池（船长 2026-09-25）', () => {
     expect(weekendWreckDensityOf(state, GID), '正在打捞 ⇒ 不衰减').toBe(100)
   })
 
-  it('甲：系数只看**本轮在出的那一池** · 从入侵池出时不白扣星系池 · 入侵池改由 chargeWeekendWreckByVolume 按实际出量扣', () => {
+  it('系数只看**本轮在出的那一池** · 从入侵池出时不白扣星系池 · 入侵池 = 渐近缓释 ＋ 出量按余额封顶 ＋ ≤基础值一轮捞光', () => {
     const { state, ctx } = world()
     injectWeekendWreck(state, GID, 100)
     const galBefore = wreckDensityOf(state, GID, ctx)
     /**
      * 🔴 **2026-10-02 船长令「甲」**（「**我发现入侵残骸哪怕数量很少也能一次性捞出很多。**」⇒ 裁甲
      * ＝池子的量真正约束出量）：**2026-09-25 那条"体积当量按两池之和 · 先扣入侵池"已作废**。
+     * 🔴 **2026-10-03 船长令三条**（「给所有打捞设定一个基础值，然后恢复渐近缓释」＋「所有的基础值
+     * 上调到25立方米」＋「余额封顶也保留」）⇒ 池子**扣减改回渐近**（每轮放干"超出基础值部分"的 2%）、
+     * **出量仍按余额封顶**、**池量 ≤ 基础值（25）时一轮把剩余全部捞光**。
      * 本节用**合成 ctx**（没有真入侵卡）⇒ 只测口径分工：`salvageRoundPull` 不再碰入侵池，
-     * 扣减统一由 `chargeWeekendWreckByVolume` 按**实际出量**做（真链路的端到端另见
+     * 扣减统一由 `chargeWeekendWreckByVolume` 结算（真链路的端到端另见
      * `salvage-invasion-amount-20261002.test.ts`）。
      */
     // ① 有入侵残骸 ⇒ 系数只看入侵池（不再与星系密度相加）；星系池一分不扣
     expect(salvageRoundPull(state, ctx, GID), '系数 = 入侵池 100/10').toBeCloseTo(10, 6)
     expect(weekendWreckDensityOf(state, GID), 'salvageRoundPull 不再扣入侵池').toBeCloseTo(100, 6)
     expect(wreckDensityOf(state, GID, ctx), '从入侵池出的那一轮：星系池不白扣').toBeCloseTo(galBefore, 6)
-    // ② 真正的扣减：按**实际出量**、并被池子余额封顶
+    // ② 池子扣减 = **渐近**（(100−25)×2% = 1.5）；出量按**余额封顶**（要 30 ⇒ 给 30）
     expect(chargeWeekendWreckByVolume(state, GID, 30), '池子够 ⇒ 给足 30').toBeCloseTo(30, 6)
-    expect(weekendWreckDensityOf(state, GID)).toBeCloseTo(70, 6)
-    expect(chargeWeekendWreckByVolume(state, GID, 500), '要 500 ⇒ 只能给剩下的 70').toBeCloseTo(70, 6)
-    expect(state.weekendWrecks?.[GID], '见底 ⇒ 记录被删').toBeUndefined()
-    // ③ 池子空了之后：系数回落到星系池、放干照旧（保底线 10 不动）
+    expect(weekendWreckDensityOf(state, GID), '池子只降 2%×超出量（不再按实际出量扣）').toBeCloseTo(100 - 75 * 0.02, 6)
+    const afterDrain = weekendWreckDensityOf(state, GID)
+    expect(chargeWeekendWreckByVolume(state, GID, 500), '要 500 ⇒ 封顶到本轮余额').toBeCloseTo(afterDrain, 6)
+    expect(weekendWreckDensityOf(state, GID), '渐近 ⇒ 一轮捞不干（不再"几轮见底"）').toBeGreaterThan(25)
+    // ③ **池量 ≤ 基础值（25）⇒ 一轮把剩余全部捞光**（船长令「低于25立方时直接捞光剩余的」）
+    state.weekendWrecks![GID] = { density: 20, decayAccMs: 0 }
+    expect(chargeWeekendWreckByVolume(state, GID, 500), '捞光剩余 20 m³').toBeCloseTo(20, 6)
+    expect(state.weekendWrecks?.[GID], '捞光 ⇒ 记录被删').toBeUndefined()
+    // ④ 池子空了之后：系数回落到星系池、放干照旧（基础值 25 不动）
     expect(salvageRoundPull(state, ctx, GID), '系数回落到星系密度/10').toBeCloseTo(Math.max(0.5, galBefore / 10), 6)
     expect(wreckDensityOf(state, GID, ctx), '星系池开始按老口径放干').toBeLessThan(galBefore)
     console.log(
-      `  [读数] 甲：系数 ${10}（只看入侵池）· 按实际扣 30 → 70 → 见底删记录 · 星系池 ${galBefore} 在白扣上零变化`,
+      `  [读数] 系数 ${10}（只看入侵池）· 渐近扣 1.5（100 → ${afterDrain.toFixed(1)}，一轮捞不干）· 池 ≤25 ⇒ 一轮捞光删记录 · 星系池 ${galBefore} 在白扣上零变化`,
     )
   })
 

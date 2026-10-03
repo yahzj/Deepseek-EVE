@@ -844,14 +844,17 @@ export function pullOneWreck(
   const yieldMul = wreckYieldMultiplierOf(recycleTierOf(wreckBaseDensity(galaxyId, ctx)))
   let volumeM3 = baseM3 * mul * (1 + 0.12 * diveLv) * yieldMul
   /**
-   * 🔴 **甲：入侵池的量封顶出量、并按实际出量扣池**（**2026-10-02 船长令**
-   * 「**我发现入侵残骸哪怕数量很少也能一次性捞出很多。**」⇒ 裁「甲」＝池子的量真正约束出量）。
+   * 🔴 **从入侵池出的那一轮：池子结算走单点 `chargeWeekendWreckByVolume`**。
    *
-   * 改前：出量按（星系密度 ＋ 入侵池）合并算系数、而池子每轮只扣 2% 渐近（永不归零）
-   * ⇒ 富星系里**只有 10 m³** 的入侵池，40 轮能吐出 **2951 m³**（实测 295 倍，
-   * 见 `tools/_ui-artifacts/invasion-wreck-yield.log`）。
-   * 现口径：**实际入舱 = min(算出来的量, 池子余额)**，池子**扣掉的正是这一轮真出的量**
-   * ⇒ "池子标称多少，最多就捞多少"，捞几轮即见底。
+   * **2026-10-02 船长令「甲」**（原话「**我发现入侵残骸哪怕数量很少也能一次性捞出很多。**」）：
+   * 出量系数**只看入侵池自己**（`roundMulFor`，不再被星系密度顶起来——改前富星系里**只有 10 m³**
+   * 的入侵池 40 轮能吐 **2951 m³**，实测见 `tools/_ui-artifacts/invasion-wreck-yield.log`），
+   * 且**出量按余额封顶**。
+   *
+   * **2026-10-03 船长令三条**（「给所有打捞设定一个基础值，然后恢复渐近缓释」＋「所有的基础值上调到
+   * 25立方米」＋「**余额封顶也保留**」）：池子扣减改回**渐近缓释**（每轮放干"超出基础值部分"的 2%），
+   * **池量 ≤ 基础值（25 m³）时一轮把剩余全部捞光**；**出量照旧按余额封顶** ⇒ 入舱 =
+   * `min(算出来的量, 池子余额)`（清底那一轮 = 剩余全部）。
    */
   if (fromWeekend) volumeM3 = chargeWeekendWreckByVolume(state, galaxyId, volumeM3)
   return { itemId: wreckId, mul, volumeM3 }
