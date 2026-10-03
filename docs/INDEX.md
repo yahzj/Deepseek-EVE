@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **437** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7446** KB · **57546** 行
+- 文档总数 **437** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7440** KB · **57533** 行
 - 状态分布：**未标注** 249 · **已确认/已实现** 119 · **进行中** 51 · **待裁定** 17 · **历史留档** 1
 - 孤儿文档（0 引用）**88** 份 · 状态未标注 **249** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -29,12 +29,12 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读) | 未标注 | — | 17 KB / 111 行 | 219 / 10 |
-| `docs/architecture.md` | 架构文档 | 未标注 | — | 22 KB / 223 行 | 32 / 1 |
-| `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 6 KB / 62 行 | 34 / 3 |
+| `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 8 KB / 97 行 | 220 / 10 |
+| `docs/architecture.md` | 架构文档 | 未标注 | — | 23 KB / 223 行 | 32 / 1 |
+| `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 6 KB / 62 行 | 33 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 297 KB / 305 行 | 19 / 3 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 89 KB / 909 行 | 100 / 5 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 299 KB / 307 行 | 17 / 3 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 89 KB / 906 行 | 95 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 508 KB / 1019 行 | 226 / 20 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 93 KB / 460 行 | 377 / 27 |
 
@@ -68,7 +68,7 @@
 | `docs/design/salvage-asymptotic-unified-20261003.md` | 打捞统一口径：基础值 25 ＋ 渐近缓释 ＋ 余额封顶 → 同日回滚到 2026-10-02「甲」 | 未标注 | 2026-10-03 | 6 KB / 79 行 | 0 / 2 |
 | `docs/design/trident-beam-cannon-20261003.md` | 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中） | 未标注 | 2026-10-03 | 9 KB / 101 行 | 0 / 0 |
 | `docs/design/wh-block-common-spoils-20261003.md` | 洞内「禁止打捞普通残骸」开关：扩到「战斗战果」 | 未标注 | 2026-10-03 | 4 KB / 59 行 | 0 / 0 |
-| `docs/design/wreck-ledger-by-family-20261003.md` | 入侵残骸账改「按族分账」＋ 打捞界面每族一张独立卡（船长令） | 未标注 | 2026-10-03 | 5 KB / 62 行 | 0 / 1 |
+| `docs/design/wreck-ledger-by-family-20261003.md` | 入侵残骸账改「按族分账」＋ 打捞界面每族一张独立卡（船长令） | 未标注 | 2026-10-03 | 5 KB / 64 行 | 0 / 2 |
 | `docs/design/ai-badge-work-color-20261002.md` | AI 徽标底色改「作业活动色」（矿带 / 打捞各一色） | 未标注 | 2026-10-02 | 3 KB / 45 行 | 0 / 0 |
 | `docs/design/announcement-draft-20261002-corona.md` | 公告待审稿 · 入侵第二势力「光环科技 / Corona Systems」（2026-10-02） | 未标注 | 2026-10-02 | 14 KB / 131 行 | 1 / 1 |
 | `docs/design/blackbox-per-family-20261002.md` | 每族一件黑匣（R 族「光环旗舰黑匣」） | 未标注 | 2026-10-02 | 9 KB / 101 行 | 0 / 0 |
@@ -412,9 +412,9 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 5 KB / 82 行 | 5 / 0 |
+| `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 5 KB / 82 行 | 6 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 46 KB / 799 行 | 27 / 20 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 7 KB / 76 行 | 15 / 7 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 7 KB / 76 行 | 16 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -782,7 +782,7 @@
 - `docs/design/bounty-audit-20260909.md`（2026-09-09）—— 全悬赏数据审核表（2026-09-09 复跑批）
 - `docs/design/ship-battle-art/acceptance-visual-20260909.md`（2026-09-09）—— 舰船战斗图形 · 真机目测与细节验收清单（2026-09-09 三号，给船长）
 - `docs/design/wave-battles-20260909.md`（2026-09-09）—— 多波次敌人设定(低安顶段悬赏)设计稿(2026-09-09;已确认并实现·待验收/待发布)
-- `AGENTS.md`（无日期）—— AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定(开工必读)
+- `AGENTS.md`（无日期）—— AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定
 - `docs/architecture.md`（无日期）—— 架构文档
 - `docs/archive/README.md`（无日期）—— 封存区（docs/archive/）—— 冻结的历史件
 - `docs/archive/roadmap-2026-09-04.md`（无日期）—— 封存卷 · roadmap 批次条目 2026-09-04
