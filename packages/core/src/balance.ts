@@ -3,7 +3,7 @@
  * 说明：系数/概率集中在 balance.ts；"加成作用于哪个技能"通过技能 id 与数据表约定，
  * 若日后给技能改名，需同步 data 与这里。
  */
-import type { BalanceConfig, FoeFamily } from './types'
+import type { BalanceConfig, DamageType, FoeFamily } from './types'
 
 /**
  * **返航倍率**（船长 2026-09-14：「**修正倍率回1倍**」）：自动返航时长 = 出发点↔落点**单程 × 本值**。
@@ -541,14 +541,25 @@ export const DEFAULT_BALANCE: BalanceConfig = {
      * - `dmgMul`：命中单发伤害再乘本值（与 `pdTierMul` 连乘 ⇒ 队形/档位那套口径不变）；
      * - `accAdd`：判定命中率**加**本值（**百分点**：0.7 → 0.75），仍走 `pdHitFloor` 下限与机型闪避那套
      *   `clamp(pdHitFloor, 1, acc − 闪避)`；
+     * - `dmgType`（**2026-10-03 加**）：本族近防炮的伤害类型（缺省 `kinetic`）；
+     * - `autoHit`（**2026-10-03 加**）：**必中** —— 完全不掷命中、也不吃机型闪避；
      * - 缺省（没写这族）= 全族共用的全局值 ⇒ **零行为变化**。
      *
      * ⚠ 只看**舰级所属族**（`UnitSpec.family`，由 `createFoeSpecs` 按 `FoeShipDef.family` 写）；
      * 旧威胁推导路径与合成 spec 不带该字段 ⇒ 走全局值。
+     * 🔴 **R 族 = 能量光束近防炮（2026-10-03 船长令）**：「**给光环势力的近防炮换成能量伤害的光束近防炮，
+     * 特点是和光束武器一样，必中**」＋两个值当场裁定（选「甲」）：**单发伤害仍 5**（× `pdTierMul`）、
+     * **弹种改能量**、**完全不吃闪避**。
+     * 为什么这样理解"必中"：引擎里光束件走的是 `autoHit ⇒ meHit = 1`（连骰子都不掷，见 `combat` 的
+     * 我方开火段）⇒ 近防炮这边同款处理，`pdHitFloor` 与机型闪避一起绕过。
+     * **量级（实读）**：R 族四张卡的威胁 90/108/129/170 全 ≥ `pdThreatFloor` 60 ⇒ 四档都装；
+     * 打闪避最高的 `drone-lattice-…`（0.55）时，命中从 `clamp(0.1, 1, 0.7 − 0.55) = 0.15` 提到 **1.0**；
+     * 打族内常见的 0.41 档从 0.29 提到 **1.0**（≈×3.4 防空火力）。R 族无专属无人机 ⇒ 只作用于我方机群。
      */
     pdFamilyOverride: {
       H: { dmgMul: 1.5, accAdd: 0.05 },
-    } as Partial<Record<FoeFamily, { dmgMul?: number; accAdd?: number }>>,
+      R: { dmgType: 'plasma', autoHit: true },
+    } as Partial<Record<FoeFamily, { dmgMul?: number; accAdd?: number; dmgType?: DamageType; autoHit?: boolean }>>,
     // 2026-09-10 船长：**取消单场击落上限**——战斗内可 100% 损坏机群；
     // 战后按回收率找回一部分（基础 20%，无人机回收学满级 50%，见 combat.droneRecoveryRate）
   },
