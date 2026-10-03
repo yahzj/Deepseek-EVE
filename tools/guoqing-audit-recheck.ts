@@ -152,12 +152,17 @@ async function main(): Promise<void> {
   const reconnectNode = nodeOf(fileSource, (node) => ts.isFunctionDeclaration(node) && node.name?.text === 'reconnectSaveFile')
   let reads = 0
   let permissionRequests = 0
-  const reconnect = execute<() => Promise<unknown>>(`${reconnectNode.getText(fileSource)}\nconst result = reconnectSaveFile`, {
-    loadHandle: async () => ({ name: 'synthetic.json', requestPermission: async () => { permissionRequests++; return 'granted' },
-      getFile: async () => { reads++; return { text: async () => 'NEWER' } } }), tr: (id: string) => id,
+  const readHandleNode = nodeOf(fileSource, (node) => ts.isFunctionDeclaration(node) && node.name?.text === 'readHandle')
+  const h = { name: 'synthetic.json', requestPermission: async () => { permissionRequests++; return 'granted' },
+    getFile: async () => { reads++; return { size: 5, text: async () => 'NEWER' } } }
+  const reconnect = execute<() => Promise<{ ok: boolean; text?: string }>>(
+    `let generation = 0; const handle = h;\n${readHandleNode.getText(fileSource)}\n${reconnectNode.getText(fileSource)}\nconst result = reconnectSaveFile`, {
+    h, loadHandle: async () => h, pauseFile: () => {}, fileOperations: createSaveQueue(), tr: (id: string) => id,
   })
   const reconnectResult = await bounded(reconnect(), '绑定文件重连')
-  report('C02', { reconnectResult, permissionRequests, fileReads: reads, evidence: '真实函数 + 模拟句柄，未实测浏览器授权界面' })
+  assert.equal(reads, 1)
+  assert.equal(reconnectResult.text, 'NEWER')
+  report('C02', { fixedRead: true, reconnectResult, permissionRequests, fileReads: reads, evidence: '真实函数 + 模拟句柄；完整选择和写入保护由专属测试验证' })
 
   const long = fresh()
   long.skills.trained['cruiser-ops'] = 4

@@ -15,6 +15,7 @@ interface Probe {
 function engineProbe(save: (text: string) => Promise<boolean>, backup: (text?: string) => Promise<{ ok: boolean }>) {
   const probe = gameSaveMethods(['persistSnapshot', 'persist', 'backupNow'], {
     bumpIronmanSeq, serializeSaveFile, saveBridge: { save, backup },
+    canWriteSave: () => true,
     requestPersistentStorage: async () => {}, noteSaveWriteFailed: vi.fn(), tr: (id: string) => id,
   }) as unknown as Probe
   probe.state = createInitialState({ nowWallMs: 0, seed: 7 })
@@ -84,7 +85,8 @@ function webShell(write: (text: string) => Promise<boolean | null>) {
   }
   const { saveBridge } = runSaveModule<{ saveBridge: WebBridge }>('apps/desktop/src/renderer/src/game/storage.ts', {
     '../i18n/locale': { tr: (id: string) => id }, './saveGuard': { noteSaveWriteFailed: vi.fn() },
-    './saveFileHandle': { writeToBoundFile: write },
+    './saveFileHandle': { writeToBoundFile: write, saveFileWriteToken: () => 0 },
+    './saveWriter': { canWriteSave: () => true },
   }, { window: { localStorage: storage }, TextEncoder })
   return { entries, saveBridge, storage }
 }

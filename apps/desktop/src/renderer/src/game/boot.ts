@@ -14,6 +14,7 @@ import { applySpaceBg } from '../ui/spaceBg'
 import { bootstrapTheme } from '../ui/theme'
 import { probeSaveStorage } from './saveGuard'
 import type { GameEngine } from './engine'
+import { acquireSaveWriter } from './saveWriter'
 
 /**
  * **首帧渲染之前**必须跑完的动作（两入口共用）：
@@ -34,11 +35,13 @@ export function prebootRenderer(): void {
  * （后者不挂起写入、也不劝玩家去点"允许写入"）。体检本身不碰真档
  * （网页版写-读-删一个探针键；桌面端只读）。体检自己出错按"量不到"处理，绝不拦住启动。
  */
-export async function startGameEngine(engine: GameEngine): Promise<void> {
+export async function startGameEngine(engine: GameEngine): Promise<boolean> {
+  if (await acquireSaveWriter() !== 'writer') return false
   try {
     await probeSaveStorage()
   } catch {
     /* 体检失败不拦启动：引擎在读档时自会兜底 */
   }
   await engine.start()
+  return true
 }

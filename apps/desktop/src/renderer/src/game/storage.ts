@@ -7,8 +7,10 @@
  */
 import { tr } from '../i18n/locale'
 import { noteSaveWriteFailed } from './saveGuard'
-import { bindSaveFile, readFromBoundFile, reconnectSaveFile, saveFileStatus, unbindSaveFile, writeToBoundFile } from './saveFileHandle'
+import { bindSaveFile, readFromBoundFile, reconnectSaveFile, saveFileStatus, unbindSaveFile, writeToBoundFile,
+  saveFileWriteToken, checkReconnectFile, resumeEquivalentFile, pauseBoundFile } from './saveFileHandle'
 import { createSaveQueue } from '../../../shared/saveQueue'
+import { canWriteSave } from './saveWriter'
 
 /** 备份文件名（与桌面主进程同构：save-YYYYMMDD-HHmmss(.json)，可选 -n 去重后缀） */
 const BP_NAME_RE = /^save-\d{8}-\d{6}(-\d+)?\.json$/
@@ -91,6 +93,8 @@ const webOperations = createSaveQueue()
 function ls(): Storage {
   return window.localStorage
 }
+/** 非写入者只看浏览器中已提交的文本，不走绑定文件状态与降级写入路径。 */
+export function readStoredWebSave(): string | null { return ls().getItem(SAVE_KEY) }
 
 function backupKeyOf(name: string): string | null {
   if (!BP_NAME_RE.test(name)) return null
@@ -179,9 +183,11 @@ const localStorageBridge: WhaleApi = {
     })
   },
   async save(data: string): Promise<boolean> {
+    const token = saveFileWriteToken()
     return webOperations(async () => {
+      if (!canWriteSave()) return false
       // ① 优先写绑定的本地文件（未绑定/权限被收回 ⇒ 返回 null，不算失败）
-      const fileRes = await writeToBoundFile(data).catch(() => false)
+      const fileRes = await writeToBoundFile(data, token).catch(() => false)
       if (fileRes === false) noteSaveWriteFailed() // 已绑上却写不进去：让玩家看见（浏览器那份仍会写）
       // ② 浏览器存储（保底）
       if (!setWithBudget(SAVE_KEY, data)) return false
@@ -192,6 +198,7 @@ const localStorageBridge: WhaleApi = {
   },
   async backup(snapshot?: string): Promise<{ ok: boolean; name?: string; error?: string }> {
     return webOperations(async () => {
+      if (!canWriteSave()) return { ok: false }
       const text = snapshot ?? ls().getItem(SAVE_KEY)
       if (text === null) return { ok: false, error: tr("ui.storage.001") }
       const now = new Date()
@@ -224,6 +231,7 @@ const localStorageBridge: WhaleApi = {
   },
   async restore(name: string): Promise<{ ok: boolean; error?: string }> {
     return webOperations(async () => {
+      if (!canWriteSave()) return { ok: false }
       const key = backupKeyOf(name)
       const text = key === null ? null : ls().getItem(key)
       if (text === null) return { ok: false, error: tr("ui.storage.003") }
@@ -238,6 +246,7 @@ const localStorageBridge: WhaleApi = {
   /** 删除某份浏览器内备份（只删备份键，不影响主档键） */
   async deleteBackup(name: string): Promise<{ ok: boolean; error?: string }> {
     return webOperations(async () => {
+      if (!canWriteSave()) return { ok: false }
       const key = backupKeyOf(name)
       if (key === null) return { ok: false, error: tr("ui.storage.005") }
       if (ls().getItem(key) === null) return { ok: false, error: tr("ui.storage.003") }
@@ -255,6 +264,7 @@ const localStorageBridge: WhaleApi = {
   /** 救援装载记账（网页分支：只累加计数；**玩家侧不显示**） */
   async ironmanNoteRescue(): Promise<{ ok: boolean; error?: string }> {
     return webOperations(async () => {
+      if (!canWriteSave()) return { ok: false }
       try {
         const cur = readWebLedger()
         ls().setItem(LEDGER_KEY, JSON.stringify({ seq: cur.seq, rescues: cur.rescues + 1 }))
@@ -484,9 +494,29 @@ const localStorageBridge: WhaleApi = {
   saveFile: {
     status: () => saveFileStatus(),
     /** 绑定：选/建文件后**立刻把当前存档写进去**（否则玩家会以为绑了个空文件） */
-    bind: async () => await bindSaveFile(ls().getItem(SAVE_KEY)),
-    reconnect: () => reconnectSaveFile(),
-    unbind: () => unbindSaveFile(),
+    bind: async () => canWriteSave() ? await bindSaveFile(ls().getItem(SAVE_KEY)) : { ok: false },
+    reconnect: () => canWriteSave() ? reconnectSaveFile() : Promise.resolve({ ok: false }),
+    resume: (token, expected) => webOperations(async () => canWriteSave()
+      ? resumeEquivalentFile(token, expected) : { ok: false }),
+    resolve: (token, expected, text, choice) => webOperations(async () => {
+      if (!canWriteSave()) return { ok: false }
+      const checked = await checkReconnectFile(token, expected)
+      if (!checked.ok) return checked
+      if (choice === 'file') {
+        if (!setWithBudget(SAVE_KEY, text)) return { ok: false, browserSaved: false, fileSaved: false, error: tr('ui.engine.027') }
+        webBumpLedgerFromSave(text)
+        const file = await checkReconnectFile(token, expected, text)
+        return { ...file, browserSaved: true, fileSaved: file.ok }
+      }
+      const file = await checkReconnectFile(token, expected, text)
+      if (!file.ok) return file
+      const browserSaved = setWithBudget(SAVE_KEY, text)
+      if (browserSaved) webBumpLedgerFromSave(text)
+      else pauseBoundFile()
+      return { ...file, ok: browserSaved, browserSaved, fileSaved: true,
+        error: browserSaved ? undefined : tr('ui.engine.027') }
+    }),
+    unbind: () => canWriteSave() ? unbindSaveFile() : Promise.resolve({ ok: false }),
   },
 }
 

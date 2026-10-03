@@ -51,9 +51,24 @@ declare global {
     /** 绑定：弹系统保存框选/建一个文件，并把当前存档立刻写进去；玩家取消 ⇒ canceled */
     bind(): Promise<{ ok: boolean; canceled?: boolean; name?: string; error?: string }>
     /** 重新连接：对已存句柄再要一次读写权限（**必须在玩家手势里调**） */
-    reconnect(): Promise<{ ok: boolean; name?: string; error?: string }>
+    reconnect(): Promise<SaveFileReconnectResult>
+    resume(token: number, expected: string): Promise<SaveFileReconnectResult>
+    resolve(token: number, expected: string, text: string, choice: 'file' | 'current'): Promise<SaveFileResolveResult>
     /** 解绑：删掉句柄（浏览器存储那份照旧） */
     unbind(): Promise<{ ok: boolean; error?: string }>
+  }
+
+  interface SaveFileReconnectResult {
+    ok: boolean
+    text?: string
+    token?: number
+    name?: string
+    changed?: boolean
+    error?: string
+  }
+  interface SaveFileResolveResult extends SaveFileReconnectResult {
+    browserSaved?: boolean
+    fileSaved?: boolean
   }
 
   interface WhaleApi {

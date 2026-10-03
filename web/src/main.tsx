@@ -11,6 +11,7 @@ import { App } from '../../apps/desktop/src/renderer/src/App'
 import { GameEngine } from '../../apps/desktop/src/renderer/src/game/engine'
 import { prebootRenderer, startGameEngine } from '../../apps/desktop/src/renderer/src/game/boot'
 import { L10nProvider, tr } from '../../apps/desktop/src/renderer/src/i18n/locale'
+import { SaveWriterGate } from '../../apps/desktop/src/renderer/src/panels/SaveWriterGate'
 
 // 首帧渲染之前的固定动作（布局样式 / 宇宙背景 / 配色）
 prebootRenderer()
@@ -22,10 +23,10 @@ root.render(<div className="app-loading">{tr('ui.main.001')}</div>)
 
 // 启动引擎（含存档存储体检）
 startGameEngine(engine)
-  .then(() => {
+  .then((started) => {
     root.render(
       <L10nProvider>
-        <App engine={engine} />
+        <SaveWriterGate>{started ? <App engine={engine} /> : null}</SaveWriterGate>
       </L10nProvider>,
     )
   })

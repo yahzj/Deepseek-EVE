@@ -165,6 +165,7 @@ export function SettingsPanel({
   storageProbe,
   onAllowSave,
   saveFileStatus,
+  saveFileBusy,
   onBindSaveFile,
   onReconnectSaveFile,
   onUnbindSaveFile,
@@ -196,6 +197,7 @@ export function SettingsPanel({
   onAllowSave: () => void
   /** 网页版「本地存档文件」绑定状态（桌面端 ⇒ null；2026-09-25 船长令） */
   saveFileStatus: SaveFileStatus | null
+  saveFileBusy: boolean
   onBindSaveFile: () => void
   onReconnectSaveFile: () => void
   onUnbindSaveFile: () => void
@@ -474,17 +476,17 @@ export function SettingsPanel({
                       {tr('ui.saveGuard.015')}
                     </button>
                   ) : !saveFileStatus.bound ? (
-                    <button className="app-btn is-small" onClick={onBindSaveFile} title={tr('ui.saveGuard.027')}>
+                    <button className="app-btn is-small" disabled={saveFileBusy} onClick={onBindSaveFile} title={tr('ui.saveGuard.027')}>
                       {tr('ui.saveGuard.015')}
                     </button>
                   ) : (
                     <>
                       {!saveFileStatus.connected ? (
-                        <button className="app-btn is-small is-warn" onClick={onReconnectSaveFile}>
+                        <button className="app-btn is-small is-warn" disabled={saveFileBusy} onClick={onReconnectSaveFile}>
                           {tr('ui.saveGuard.016')}
                         </button>
                       ) : null}
-                      <button className="app-btn is-small" onClick={onUnbindSaveFile}>
+                      <button className="app-btn is-small" disabled={saveFileBusy} onClick={onUnbindSaveFile}>
                         {tr('ui.saveGuard.017')}
                       </button>
                     </>

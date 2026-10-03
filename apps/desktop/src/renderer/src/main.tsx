@@ -11,6 +11,7 @@ import { GameEngine } from './game/engine'
 import { prebootRenderer, startGameEngine } from './game/boot'
 import { runAutoPerf } from './game/autoPerf'
 import { L10nProvider, tr } from './i18n/locale'
+import { SaveWriterGate } from './panels/SaveWriterGate'
 
 // 首帧渲染之前的固定动作（布局样式 / 宇宙背景 / 配色）
 prebootRenderer()
@@ -24,7 +25,8 @@ root.render(
 
 // 启动引擎（含存档存储体检）
 startGameEngine(engine)
-  .then(() => {
+  .then((started) => {
+    if (!started) { root.render(<L10nProvider><SaveWriterGate /></L10nProvider>); return }
     // 性能自动采集模式（仅 Electron 环境变量注入时运行；玩家路径无感）：
     // 必须在 App 首帧渲染前激活 Hub，让 Profiler/埋点从第一个 commit 就记录
     const perfJson = window.__autoperf
@@ -35,7 +37,7 @@ startGameEngine(engine)
           perfHub.activate()
           root.render(
             <L10nProvider>
-              <App engine={engine} />
+              <SaveWriterGate><App engine={engine} /></SaveWriterGate>
             </L10nProvider>,
           )
           void runAutoPerf(engine, spec)
@@ -47,7 +49,7 @@ startGameEngine(engine)
     }
     root.render(
       <L10nProvider>
-        <App engine={engine} />
+        <SaveWriterGate><App engine={engine} /></SaveWriterGate>
       </L10nProvider>,
     )
   })

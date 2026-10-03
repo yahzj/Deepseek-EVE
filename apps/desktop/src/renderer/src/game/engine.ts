@@ -355,6 +355,9 @@ import type {
 } from '@whale/core'
 import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, EN_MODULES, EN_ITEMS_ALL, EN_SKILLS, EN_ANOMALIES, EN_BLUEPRINTS, EN_SHIP_BLUEPRINTS, EN_FOE_SHIPS, EN_GALAXIES, EN_BELTS, overlayCardFoesList, type L10nLocale } from '@whale/data'
 import { saveBridge } from './storage'
+import { canWriteSave } from './saveWriter'
+import { reconnectProgress, sameReconnectProgress } from './saveReconnect'
+import type { ReconnectChoice } from './saveReconnect'
 /** 存档存储体检与告警（2026-09-25 船长令：修「MacBook · Safari 关掉游戏后存档丢失」） */
 import { noteSaveWriteFailed, requestPersistentStorage, saveStorageProbe } from './saveGuard'
 /** **2026-10-03 船长令**（「调试模式允许载入铁人存档」）：本机调试门禁（发布版恒 false）⇒ 铁人闸门放行 */
@@ -714,6 +717,8 @@ export class GameEngine {
   private saveUnavailable = false
   /** 丁：旧档读取失败 ⇒ 挂起写入，等玩家放行；防"把读不出来的旧档盖掉" */
   private savePaused = false
+  private reconnectChoice: ReconnectChoice | null = null
+  private reconnectResolving = false
   /** 非战斗期推进余额（累计满 1s 才推进一次，保持旧节奏；战斗中改 100ms 切片实时推进） */
   private pendingMs = 0
   /** 心跳周期毫秒（2026-09-08 降频优化：挂机 500ms；战斗/教学加速/远征去程边界保持 100ms） */
@@ -1160,6 +1165,7 @@ export class GameEngine {
    * - `ok` = 正常。
    */
   saveWriteState(): 'ok' | 'paused' | 'unavailable' {
+    if (!canWriteSave() || this.reconnectResolving) return 'paused'
     if (this.saveUnavailable) return 'unavailable'
     if (this.savePaused) return 'paused'
     return 'ok'
@@ -1289,6 +1295,7 @@ export class GameEngine {
   }
 
   private tick(): void {
+    if (!canWriteSave() || this.reconnectResolving) { this.lastRealMs = Date.now(); return }
     const now = Date.now()
     const dt = Math.max(1, now - this.lastRealMs)
     this.lastRealMs = now
@@ -1548,6 +1555,7 @@ export class GameEngine {
   private async ironmanLoadCheck(
     text: string,
     incomingSavedAtWallMs: number,
+    recordRescue = true,
   ): Promise<{ ok: true; rescue: boolean } | { ok: false; error: string }> {
     /**
      * 🔴 **本机调试模式 ⇒ 铁人闸门一律放行**（**2026-10-03 船长令**，原话照抄：
@@ -1607,7 +1615,7 @@ export class GameEngine {
       if (!verdict.ok) {
         return { ok: false, error: tr('ui.engine.051', { p1: String(verdict.threshold) }) }
       }
-      if (verdict.rescue) void saveBridge.ironmanNoteRescue()
+      if (verdict.rescue && recordRescue) void saveBridge.ironmanNoteRescue()
       return { ok: true, rescue: verdict.rescue }
     } catch (err) {
       // 待装载档解析不了 ⇒ **不拦人**（宁可放行，也不要把玩家锁在自己的档外面；真正的解析错误后面会照常报）
@@ -1793,6 +1801,116 @@ export class GameEngine {
     return serializeSaveFile(out)
   }
 
+  /** 用户手势内先申请文件权限，授权本身不允许写入；不同内容一律交给玩家选择。 */
+  async reconnectLocalSave(): Promise<{ ok: boolean; choice?: ReconnectChoice; error?: string }> {
+    const api = saveBridge.saveFile
+    if (!api || this.reconnectResolving) return { ok: false }
+    const file = await api.reconnect()
+    if (!file.ok || file.text === undefined || file.token === undefined) return { ok: false, error: file.error }
+    try {
+      const parsed = loadSaveFile(file.text)
+      const browser = await saveBridge.load()
+      const current = this.currentSaveText()
+      if (sameReconnectProgress(current, file.text) && browser !== null && sameReconnectProgress(browser, file.text)) {
+        const resumed = await api.resume(file.token, file.text)
+        if (resumed.ok) { this.reconnectChoice = null; return { ok: true } }
+        if (!resumed.changed || resumed.text === undefined) return { ok: false, error: resumed.error }
+        return this.reconnectChanged(resumed)
+      }
+      const choice: ReconnectChoice = { token: file.token, text: file.text, fileName: file.name ?? '',
+        current: reconnectProgress(this.state, Date.now()), file: reconnectProgress(parsed.state, parsed.savedAtWallMs) }
+      this.reconnectChoice = choice
+      return { ok: true, choice }
+    } catch (err) { return { ok: false, error: tr('ui.engine.028', { p1: String(err) }) } }
+  }
+
+  private reconnectChanged(file: SaveFileReconnectResult): { ok: boolean; choice?: ReconnectChoice; error?: string } {
+    try {
+      if (file.text === undefined || file.token === undefined) return { ok: false }
+      const parsed = loadSaveFile(file.text)
+      const choice: ReconnectChoice = { token: file.token, text: file.text, fileName: file.name ?? '',
+        current: reconnectProgress(this.state, Date.now()), file: reconnectProgress(parsed.state, parsed.savedAtWallMs) }
+      this.reconnectChoice = choice
+      return { ok: false, choice, error: tr('ui.saveReconnect.009') }
+    } catch (err) { return { ok: false, error: tr('ui.engine.028', { p1: String(err) }) } }
+  }
+
+  cancelReconnectLocalSave(): void { this.reconnectChoice = null }
+
+  async resolveReconnectLocalSave(choice: 'file' | 'current'): Promise<{
+    ok: boolean; choice?: ReconnectChoice; error?: string; loaded?: boolean; filePaused?: boolean
+  }> {
+    const api = saveBridge.saveFile
+    const selected = this.reconnectChoice
+    if (!api || !selected || this.reconnectResolving || !canWriteSave()) return { ok: false }
+    this.reconnectResolving = true
+    try {
+      let candidate: GameState
+      let report: OfflineReport | null = null
+      let rescue = false
+      if (choice === 'file') {
+        const parsed = loadSaveFile(selected.text)
+        const gate = await this.ironmanLoadCheck(selected.text, parsed.savedAtWallMs, false)
+        if (!gate.ok) return { ok: false, error: gate.error }
+        rescue = gate.rescue
+        candidate = parsed.state
+        await this.syncIronmanHead(candidate)
+        report = this.prepareImportedState(candidate, parsed.savedAtWallMs)
+      } else {
+        candidate = structuredClone(this.state)
+      }
+      bumpIronmanSeq(candidate)
+      const text = serializeSaveFile({ ...candidate, logs: [] })
+      const result = await api.resolve(selected.token, selected.text, text, choice)
+      if (choice === 'file' && result.browserSaved) {
+        this.state = candidate
+        this.offlineReport = report
+        this.lastRealMs = Date.now()
+        this.pendingMs = 0
+        this.savePaused = false
+        this.ensureSaveInterval()
+        if (rescue) await saveBridge.ironmanNoteRescue().catch(() => {})
+        this.notify()
+      } else if (choice === 'current' && result.fileSaved) {
+        this.state.ironman = candidate.ironman
+      }
+      if (result.changed) {
+        const changed = this.reconnectChanged(result)
+        if (choice === 'file' && result.browserSaved) changed.error = `${tr('ui.SaveManager.032')} ${changed.error ?? ''}`
+        return changed
+      }
+      if (!result.ok) {
+        if (choice === 'file' && result.browserSaved) {
+          this.reconnectChoice = null
+          return { ok: true, loaded: true, filePaused: true }
+        }
+        return { ok: false, error: result.fileSaved
+          ? `${tr('ui.App.054')} ${result.error ?? tr('ui.engine.027')}`
+          : result.error ?? tr('ui.engine.027') }
+      }
+      this.reconnectChoice = null
+      return { ok: true, loaded: choice === 'file' }
+    } catch (err) { return { ok: false, error: String(err) } }
+    finally { this.reconnectResolving = false }
+  }
+
+  /** 沿现有导入链准备候选，返回简报；不提前修改当前内存。 */
+  private prepareImportedState(imported: GameState, wallFrom: number): OfflineReport | null {
+    repairDeprecatedModules(imported, this.ctx)
+    migrateDeprecatedAmmo(imported)
+    imported.logs = []
+    this.applyLoadLedgerRepairs(imported)
+    const now = Date.now()
+    if (wallFrom <= 0 || now <= wallFrom) return null
+    const before = snapshotBasics(imported)
+    const stats = newSettleStats()
+    const { overflowMs } = offlineSplit(now - wallFrom, offlineCapMsOf(imported))
+    simulateOffline(imported, wallFrom, now, this.ctx, undefined, { stats })
+    const report = buildOfflineReport(before, imported, this.ctx, now - wallFrom, overflowMs, stats)
+    if (report !== null) addLog(imported, 'system', offlineReportLogText(report))
+    return report
+  }
+
   /** 导出当前进度：桌面 = 系统保存对话框选位置；手机网页 = 优先系统分享、回落浏览器下载。
    *  ⚠ **顺序要紧：先调桥、后落盘**——网页端的分享/下载必须在**用户手势内**发起，
    *  若先 `await persist()` 再调桥，iOS Safari 会因"已不是用户手势"静默拦掉（表现为点了没反应）。 */
@@ -1836,36 +1954,11 @@ export class GameEngine {
        * `persist()` ＋ `saveBridge.backup()` 给当前档留一份"防误操作"备份，现已删除（与恢复那条同口径）。
        * 要留退路请在导入前点「备份当前档」——手动备份与备份列表功能照旧。
        */
-      // 与正常启动同口径的载入修复链（须在离线结算前完成，让离线按新参数结算）
-      repairDeprecatedModules(imported, this.ctx)
-      migrateDeprecatedAmmo(imported)
-      /**
-       * ⚠ **2026-09-20（三号，船长「先修复」）**：**导入外部档一律不带入它的会话日志**。
-       * 为什么：2026-09-08 那条口径「载入不做强制清空」是为**同会话的"恢复备份"**设计的
-       * （本局日志接续显示，见下面 `restoreBackupFromFile` 那条注释）；导入是**换了一整份档**，
-       * 旧档里的日志（实存于 2026-09-08 之前的真档与 `docs/test-saves` 的造档）会混进当前面板。
-       * 与本地化也相关：那些旧日志只有中文正文、没有文案 id ⇒ 英文界面下会半中半英。
-       */
-      imported.logs = []
-      // 声望削减 ＋ 黑匣补发：**放在清日志之后**（补发要留一条系统日志给玩家看，别被上面清掉）
-      this.applyLoadLedgerRepairs(imported)
       // 铁人档：装载闸门（见 `ironmanLoadCheck`）
       const gate = await this.ironmanLoadCheck(text, parsed.savedAtWallMs)
       if (!gate.ok) return { ok: false, error: gate.error }
       await this.syncIronmanHead(imported)
-      // 按时间差补齐离线进度：档内墙钟 → 现在（上限与正常离线一致；墙钟在未来则跳过）
-      const now = Date.now()
-      const wallFrom = parsed.savedAtWallMs
-      if (wallFrom > 0 && now > wallFrom) {
-        const before = snapshotBasics(imported)
-        const stats = newSettleStats()
-        const { overflowMs } = offlineSplit(now - wallFrom, offlineCapMsOf(imported))
-        simulateOffline(imported, wallFrom, now, this.ctx, undefined, { stats })
-        this.offlineReport = buildOfflineReport(before, imported, this.ctx, now - wallFrom, overflowMs, stats)
-        if (this.offlineReport !== null) {
-          addLog(imported, 'system', offlineReportLogText(this.offlineReport))
-        }
-      }
+      this.offlineReport = this.prepareImportedState(imported, parsed.savedAtWallMs)
       this.state = imported
       const saved = await this.persist() // 落盘（写盘剥离日志；墙钟锚 = 现在 → 下次启动不会重复结算）
       if (!saved) return { ok: false, error: tr("ui.engine.027") }

@@ -33,6 +33,7 @@
 | 工具 | npm script | 挂牌状态 |
 |---|---|---|
 | `guoqing-audit-recheck.ts` | 直接 `tsx tools/guoqing-audit-recheck.ts` | 国庆节审查 C01～C10 合成续接复核；v31，核对/运行 2026-10-03；诊断不是修复门禁，不读个人档 |
+| `save-reconnect-browser-check.ts` | `npm run save:reconnect-check`（先构建 web） | C02 真实 Web Locks/OPFS/IndexedDB/UI 回归；自建服务与隔离 Edge，模拟权限/选择器，无个人档，端口占用则失败；v31，2026-10-04 |
 | `balance-check.ts` | `balance` | 未登记版本自检 |
 | `battle-calibrate.ts` | `battle:calibrate` | 未登记版本自检 |
 | `bounty-econ.ts` | `bounty:econ` | 未登记版本自检 |

@@ -56,6 +56,8 @@ import type { MapGotoTarget, MapTab, TaskFocusTarget } from './pages/MapPage'
 import type { ToastFn } from './pages/common'
 import type { GameEngine } from './game/engine'
 import { SaveManager } from './panels/SaveManager'
+import { SaveReconnect } from './panels/SaveReconnect'
+import type { ReconnectChoice } from './game/saveReconnect'
 import { Handbook } from './panels/Handbook'
 import { BattleScreen } from './panels/BattleScreen'
 import { debugEnabled as readDebugEnabled } from './panels/DebugPanel'
@@ -701,6 +703,8 @@ async function applyLayoutAndReload(): Promise<void> {
   /** 绑定状态（桌面端 ⇒ null，界面走"本机文件"那支）。取 `saveBridge` 而不是 `window.whale`：
    *  网页版根本没有 `window.whale`，桥就是 `storage.ts` 里选出来的那个。 */
   const [saveFile, setSaveFile] = useState<SaveFileStatus | null>(null)
+  const [reconnectChoice, setReconnectChoice] = useState<ReconnectChoice | null>(null)
+  const [fileBusy, setFileBusy] = useState(false)
   const refreshSaveFile = (): void => {
     const api = saveBridge.saveFile
     if (!api) {
@@ -718,7 +722,8 @@ async function applyLayoutAndReload(): Promise<void> {
   /** 绑定（必须由玩家手势触发）：成功 ⇒ 立刻再落一次盘，把当前进度写进新文件 */
   const bindSaveFileNow = (): void => {
     const api = saveBridge.saveFile
-    if (!api) return
+    if (!api || fileBusy || reconnectChoice) return
+    setFileBusy(true)
     void api.bind().then((r) => {
       refreshSaveFile()
       if (r.ok) {
@@ -727,23 +732,25 @@ async function applyLayoutAndReload(): Promise<void> {
       } else if (!r.canceled) {
         showToast(tr('ui.saveGuard.023', { p1: r.error ?? '' }), true)
       }
-    })
+    }).catch((err) => showToast(String(err), true)).finally(() => setFileBusy(false))
   }
   const reconnectSaveFileNow = (): void => {
-    const api = saveBridge.saveFile
-    if (!api) return
-    void api.reconnect().then((r) => {
+    if (fileBusy) return
+    setFileBusy(true)
+    void engine.reconnectLocalSave().then((r) => {
       refreshSaveFile()
-      showToast(r.ok ? tr('ui.saveGuard.025', { p1: r.name ?? '' }) : tr('ui.saveGuard.023', { p1: r.error ?? '' }), !r.ok)
-    })
+      if (r.choice) setReconnectChoice(r.choice)
+      else showToast(r.ok ? tr('ui.saveGuard.025', { p1: saveFile?.name ?? '' }) : r.error ?? tr('ui.saveReconnect.008'), !r.ok)
+    }).catch((err) => showToast(String(err), true)).finally(() => setFileBusy(false))
   }
   const unbindSaveFileNow = (): void => {
     const api = saveBridge.saveFile
-    if (!api) return
+    if (!api || fileBusy || reconnectChoice) return
+    setFileBusy(true)
     void api.unbind().then((r) => {
       refreshSaveFile()
       showToast(r.ok ? tr('ui.saveGuard.022') : tr('ui.saveGuard.023', { p1: r.error ?? '' }), !r.ok)
-    })
+    }).catch((err) => showToast(String(err), true)).finally(() => setFileBusy(false))
   }
 
   // ── 弹层：存档管理 / 手册图鉴 / 全屏战斗 ──
@@ -1883,12 +1890,26 @@ async function applyLayoutAndReload(): Promise<void> {
           storageProbe={storageProbe}
           onAllowSave={allowSaveNow}
           saveFileStatus={saveFile}
+          saveFileBusy={fileBusy || reconnectChoice !== null}
           onBindSaveFile={bindSaveFileNow}
           onReconnectSaveFile={reconnectSaveFileNow}
           onUnbindSaveFile={unbindSaveFileNow}
           onRefreshSaveFileStatus={refreshSaveFile}
         />
       ) : null}
+      {reconnectChoice ? <SaveReconnect engine={engine} choice={reconnectChoice} onChoice={setReconnectChoice}
+        onClose={() => {
+          engine.cancelReconnectLocalSave()
+          setReconnectChoice(null)
+          refreshSaveFile()
+          showToast(tr('ui.saveReconnect.008'))
+        }} onDone={(loaded, paused) => {
+          setReconnectChoice(null)
+          refreshSaveFile()
+          setSaveState(engine.saveWriteState())
+          const done = loaded ? tr('ui.SaveManager.032') : tr('ui.saveGuard.025', { p1: saveFile?.name ?? '' })
+          showToast(paused ? `${done} ${tr('ui.saveReconnect.008')}` : done, paused)
+        }} /> : null}
       {/**
        * ⚠ **这一层为什么没有窗口**（两次改动叠加的结果，别再把窗口挪回来）：
        * - 2026-09-20：原先那枚独立的「⚔ 战斗中」浮动按钮撤掉，最小化与还原统一走 `ui/WinBox.tsx`；

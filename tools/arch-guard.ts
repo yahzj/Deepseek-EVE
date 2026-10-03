@@ -108,6 +108,8 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '网页重连存档进度摘要', symbol: 'reconnectProgress', file: 'apps/desktop/src/renderer/src/game/saveReconnect.ts', exported: true },
+  { concept: '网页重连有效状态内容比较', symbol: 'sameReconnectProgress', file: 'apps/desktop/src/renderer/src/game/saveReconnect.ts', exported: true },
   { concept: '入侵残骸每族余额与箱子读数', symbol: 'weekendWreckPoolsOf', file: 'packages/core/src/salvage.ts', exported: true },
   { concept: '入侵残骸旧账迁移与新桶归一', symbol: 'normalizeWeekendWreckRecord', file: 'packages/core/src/weekendWreckLedger.ts', exported: true },
   { concept: '聚焦阵列波内修正率（射程与防空同源）', symbol: 'coronaFocusBonusOf', file: 'packages/core/src/coronaFocus.ts', exported: true },

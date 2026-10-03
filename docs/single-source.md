@@ -43,6 +43,7 @@
 
 | 关注点 | 唯一实现 | 护栏 |
 |---|---|---|
+| 网页重连存档摘要与有效状态内容比较 | `reconnectProgress()` / `sameReconnectProgress()` · `game/saveReconnect.ts` | `save-reconnect-engine-20261004.test.ts` · `arch:guard` F2/F3 |
 | 引擎与 `ctx` 的产地（页面取数都从它来） | `GameEngine` · `game/engine.ts` | `arch:guard` F1/F4 |
 | 标签取词（槽类/槽位/舰级/地点/机型/物品大类…） | `labelsText.ts`（`kindText` 一族） | `ui:subs-check` 的「本地化直读契约」 |
 | 族徽判据收窄（判"有没有族"只走它）＋ 族徽可读名（`aria-label` 取势力全称） | `crestFamOf()` / `crestLabelOf()` · `ui/labelsText.ts`（**2026-09-27 从 `panels/Handbook.tsx` 迁出**：图鉴 `IconGrid` 与物品页仓库/货仓的 `ItemGlyphGrid` 共用一份） | `ui:attr-check` 的「族徽判据契约」（改查单点文件 ＋ 两处网格的 `!= null` 兜底） |
