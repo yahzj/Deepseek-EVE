@@ -12925,3 +12925,36 @@ html[data-locale='en'] body {
     transition: none;
   }
 }
+
+/* 触屏窄窗：操作行不挤出面板；内容过高时只在二级面板内滚动。 */
+@media (pointer: coarse) {
+  .app-root .page-fill > .app-subtabs { flex-wrap: nowrap; overflow-x: auto; flex: 0 0 auto; }
+  .app-root .page-fill > .app-subtabs > * { flex: 0 0 auto; }
+  .app-root .wui-panel-head { flex-wrap: wrap; }
+  .app-root .wui-panel.is-fill > .wui-panel-head { max-height: min(120px, 50%); overflow: auto; box-sizing: border-box; }
+  .app-root .wui-panel-right,
+  .app-root .app-head-search-wrap { min-width: 0; max-width: 100%; flex-wrap: wrap; }
+  .app-root .app-head-search { max-width: 100%; box-sizing: border-box; }
+  .app-root .app-fleet-panel > .wui-panel-body { overflow-y: auto; }
+  .app-root .app-fleet-scroll { flex: 1 0 140px; }
+  .app-root .wui-panel.win-fixed-body > .wui-panel-body { overflow-y: auto; }
+  .app-root .wui-panel.win-fixed-body > .wui-panel-body > .app-filter-block { flex: 0 0 auto; }
+  .app-root .wui-panel.win-fixed-body .app-win-body.app-comms-body { overflow-y: auto; }
+  .app-root .app-comms-grid { flex: 1 0 220px; }
+  .app-root .app-comms-list { min-width: 0; }
+  .app-root .app-comms-device,
+  .app-root .app-comms-body-col { min-width: 0; box-sizing: border-box; }
+  .app-root .app-comms-goto { box-sizing: border-box; overflow-wrap: anywhere; }
+  .app-root .app-modal-head,
+  .app-root .app-save-actions,
+  .app-root .app-settings-btns,
+  .app-root .app-hand-topbar { flex-wrap: wrap; }
+  .app-root .app-modal-head > *,
+  .app-root .app-hand-topbar > * { min-width: 0; }
+  /* iOS 输入框不足 16 CSS px 会在聚焦时自动放大视口，反复输入会触发整窗缩放。 */
+  .app-root input[type="text"],
+  .app-root input[type="search"],
+  .app-root input[type="number"],
+  .app-root textarea,
+  .app-root select { font-size: max(16px, var(--wui-fs-base)); }
+}

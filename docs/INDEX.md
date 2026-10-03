@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **443** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7480** KB · **57950** 行
-- 状态分布：**未标注** 245 · **已确认/已实现** 128 · **进行中** 53 · **待裁定** 16 · **历史留档** 1
-- 孤儿文档（0 引用）**78** 份 · 状态未标注 **245** 份
+- 文档总数 **444** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7488** KB · **58027** 行
+- 状态分布：**未标注** 246 · **已确认/已实现** 128 · **进行中** 53 · **待裁定** 16 · **历史留档** 1
+- 孤儿文档（0 引用）**79** 份 · 状态未标注 **246** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**293** 份
+- 三、现行设计稿（design）：**294** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -55,10 +55,11 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 293 份
+## 三、现行设计稿（design） —— 294 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/activity-mobile-audit-20261004.md` | 主控活动切换、显示与手机适配核查 | 未标注（第一轮实现与验证完成） | 2026-10-04 | 8 KB / 77 行 | 0 / 0 |
 | `docs/design/beacon-target-highsec-20261003.md` | 信号发射器：高安判据改看「玩家选定的目标星系」 | 未标注 | 2026-10-03 | 5 KB / 64 行 | 0 / 0 |
 | `docs/design/corona-balance-20261003.md` | 光环敌舰强度调整 | 待裁定（待船长审字） | 2026-10-03 | 4 KB / 48 行 | 0 / 0 |
 | `docs/design/corona-enemy-pd-beam-20261003.md` | 光环势力敌人的近防炮 = 能量光束近防炮 · 必中（2026-10-03 · 二号 · d2） | 未标注 | 2026-10-03 | 5 KB / 75 行 | 0 / 0 |
@@ -361,7 +362,7 @@
 | `docs/archive/glossary-detail-03-econ-20260915.md` | 封存卷 · 词典「三、装备 / 制造 / 经济」词条详解（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 11 KB / 26 行 | 6 / 0 |
 | `docs/archive/glossary-retired-20260915.md` | 封存卷 · 词典的作废词条与沿革（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 3 KB / 16 行 | 3 / 0 |
 | `docs/archive/roadmap-todo-done-20260915.md` | 封存卷 · roadmap 待办活面的已办结项（2026-09-15 改版时移出） | 未标注 | 2026-09-15 | 92 KB / 75 行 | 3 / 0 |
-| `docs/archive/README.md` | 封存区（docs/archive/）—— 冻结的历史件 | 未标注 | — | 3 KB / 31 行 | 58 / 14 |
+| `docs/archive/README.md` | 封存区（docs/archive/）—— 冻结的历史件 | 未标注 | — | 3 KB / 31 行 | 59 / 14 |
 | `docs/archive/roadmap-2026-09-04.md` | 封存卷 · roadmap 批次条目 2026-09-04 | 未标注 | — | 13 KB / 68 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-05.md` | 封存卷 · roadmap 批次条目 2026-09-05 | 未标注 | — | 12 KB / 32 行 | 1 / 0 |
 | `docs/archive/roadmap-2026-09-06.md` | 封存卷 · roadmap 批次条目 2026-09-06 | 未标注 | — | 2 KB / 10 行 | 1 / 0 |
@@ -411,7 +412,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 72 KB / 721 行 | 58 / 14 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 72 KB / 721 行 | 59 / 14 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -423,7 +424,7 @@
 | `docs/design/ship-battle-art/battle-sprite-tier-20260911.md` | 战斗画面「舰种体积」（舰身大小随舰种档，2026-09-11 船长定；状态：已实现，但按船长裁决暂时关闭 —— 显示还原、系统保留） | 已确认/已实现（已实现） | 2026-09-11 | 14 KB / 177 行 | 8 / 0 |
 | `docs/design/ship-battle-art/mounts-20260910.md` | 舰船战斗图形·挂点对齐（引擎喷口 + 真实炮口）2026-09-10 | 已确认/已实现（已确认） | 2026-09-10 | 6 KB / 94 行 | 2 / 1 |
 | `docs/design/ship-battle-art/acceptance-visual-20260909.md` | 舰船战斗图形 · 真机目测与细节验收清单（2026-09-09 三号，给船长） | 未标注 | 2026-09-09 | 4 KB / 54 行 | 2 / 0 |
-| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 58 / 14 |
+| `docs/design/ship-battle-art/README.md` | 舰船战斗图形重设计(三号 · 样稿阶段,2026-09-09) | 未标注 | — | 8 KB / 87 行 | 59 / 14 |
 
 ## 四、已归档设计稿（design/archive） —— 83 份
 
@@ -511,12 +512,13 @@
 | `docs/design/archive/handoff-20260909-dsh-reinstall.md` | 二号会话续接卡(2026-09-09 DSH 重装;交给新继承人) | 未标注 | 2026-09-09 | 5 KB / 48 行 | 5 / 0 |
 | `docs/design/archive/handoff-b3-skills.md` | B3 技能挂接（2026-09-05 船长拍板：打捞相关技能一并完成 → 已实施） | 未标注（打捞对标技能组已实施 ✅） | — | 4 KB / 52 行 | 4 / 0 |
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
-| `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 58 / 14 |
+| `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，78 份）
+## 附：孤儿文档（0 引用，79 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/activity-mobile-audit-20261004.md`（2026-10-04 · 8 KB）—— 主控活动切换、显示与手机适配核查
 - `docs/design/beacon-target-highsec-20261003.md`（2026-10-03 · 5 KB）—— 信号发射器：高安判据改看「玩家选定的目标星系」
 - `docs/design/corona-balance-20261003.md`（2026-10-03 · 4 KB）—— 光环敌舰强度调整
 - `docs/design/corona-enemy-pd-beam-20261003.md`（2026-10-03 · 5 KB）—— 光环势力敌人的近防炮 = 能量光束近防炮 · 必中（2026-10-03 · 二号 · d2）
@@ -596,8 +598,9 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（245 份，待补一行 `状态：…`）
+## 附：状态未标注（246 份，待补一行 `状态：…`）
 
+- `docs/design/activity-mobile-audit-20261004.md`（2026-10-04）—— 主控活动切换、显示与手机适配核查
 - `docs/design/beacon-target-highsec-20261003.md`（2026-10-03）—— 信号发射器：高安判据改看「玩家选定的目标星系」
 - `docs/design/corona-enemy-pd-beam-20261003.md`（2026-10-03）—— 光环势力敌人的近防炮 = 能量光束近防炮 · 必中（2026-10-03 · 二号 · d2）
 - `docs/design/guoqing-audit-resume-20261003.md`（2026-10-03）—— 国庆节审查续接核验

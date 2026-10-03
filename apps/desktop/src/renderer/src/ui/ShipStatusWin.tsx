@@ -75,6 +75,7 @@ export function sceneOfShipwin(state: GameState): ShipwinScene {
    * 与洞内那次（2026-09-14）同一个病根。判据走 core 单点。
    */
   if (weekendFlagshipBattleActive(state)) return 'combat'
+  if (state.encounter.active && state.encounter.battle !== null && state.encounter.shipId === state.shipId) return 'combat'
   if (state.expedition.active && b) return 'combat'
   if (state.hauling.active) return 'work-haul'
   if (state.mining.active) return state.mining.phase === 'returning' ? 'travel' : 'work-mine'

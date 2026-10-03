@@ -195,7 +195,9 @@ export function App({ engine }: { engine: GameEngine }) {
   useEffect(() => {
     const update = (): void => {
       const coarse = window.matchMedia('(pointer: coarse)').matches
-      const portrait = window.innerHeight > window.innerWidth
+      // 屏幕方向不随软键盘改变；缺少方向 API 时才退回布局视口。
+      const orientation = window.screen.orientation?.type
+      const portrait = orientation ? orientation.startsWith('portrait') : window.innerHeight > window.innerWidth
       const rot = coarse && portrait && window.innerWidth < 900
       setMobileRot(rot)
       const el = rootRef.current
@@ -227,7 +229,7 @@ export function App({ engine }: { engine: GameEngine }) {
       /** 本拍**要用的**尺寸：先取已采纳的那份（没量过 = 当前可见区，下面再按规则换） */
       let size = cur ?? { w: visW, h: visH }
       const widthChanged = cur !== null && Math.abs(cur.w - visW) > 1
-      if (cur === null || widthChanged) {
+      if (cur === null || (widthChanged && !zoomed)) {
         // 首次 / 宽度变了（转屏·换设备）⇒ 立刻采纳并清掉候选
         size = { w: visW, h: visH }
         mobPendRef.current = null
