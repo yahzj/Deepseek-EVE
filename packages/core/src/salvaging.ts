@@ -19,7 +19,7 @@ import { addLog, HOME_GALAXY_ID, salvageHalt } from './state'
 import { applyActivityGate, pilotUnavailableReason } from './activityGate'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
-import type { AnomalyDef, SimContext } from './types'
+import type { SimContext } from './types'
 import { addItem, addWare, freeCargoM3, unloadCargoToWarehouse } from './inventory'
 import { shortestTravelMinutes, travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
@@ -46,7 +46,7 @@ import {
   wreckYieldMultiplierOf,
   // 2026-09-26（玩家报障）：残骸场带来源族 ⇒ 有场就并入那一族的独立入侵卡
   weekendWreckDensityOf,
-  weekendWreckFamilyOf,
+  weekendWreckPoolsOf,
   /** **2026-10-02 船长令「甲」**：入侵池按**实际出量**扣（并由池子余额封顶出量）；
    *  同一令下"从入侵池出的那一轮"改用上面的 `salvageRoundMulOf` 只读取数（不扣池）。 */
   chargeWeekendWreckByVolume,
@@ -55,7 +55,6 @@ import {
   wreckGroupStockOf,
   wreckGroupStocksOf,
 } from './salvage'
-import { weekendBountyCardsOf } from './weekendBounty'
 import { scaledReturnMs } from './trips'
 import { beginJumpFuelLeg, jumpFuelLegMsOf } from './jumpFuel'
 
@@ -96,11 +95,7 @@ export function salvagerCyclesOf(state: GameState, ctx: SimContext, shipId: stri
  * 按注入路径成立；抽池与悬赏目录/打捞列表同口径（此前把 enc-pirate 模板算进母港池，
  * 导致在母港能捞出从未在母港出现的「狂徒巡逻编队/深空屠夫舰队」残骸）。
  *
- * ⚠ **2026-09-25 追加：被占星系要连"驻留的那支入侵舰队"一起入池**（船长令「修，②」）。
- * 入侵独立卡（H 族四张）是 `hidden` ⇒ 只按静态表遍历永远进不了池，于是"入侵敌人不产自己的残骸"。
- * 现按 `weekendBountyCardsOf`（= 悬赏替换的同一取法：外围 {骚扰, 袭击} · 核心 {袭击, 主力} 抽一支、
- * 威胁 = 卡面自身）把它们并进来 ⇒ 在该星系打捞就能出「墨潮帮残骸（入侵）」（地区名 2026-09-26 起自成一类）。
- * 传 `state`/`nowWallMs` 才生效（缺省 = 老口径，纯函数区与既有用例逐字不变）；夺回/活动结束后自动回落。
+ * 入侵型号由真实残骸桶供给，活动占领本身不产残骸；已收场的残留桶也能供给自己的型号。
  */
 function wreckPoolOf(
   ctx: SimContext,
@@ -118,16 +113,6 @@ function wreckPoolOf(
     pool.push({ anomalyId: a.id, threat: Math.max(1, a.threat) })
     seen.add(a.id)
   }
-  if (state && nowWallMs !== undefined && pool.length > 0) {
-    const base = pool.map((p) => ctx.anomalies.get(p.anomalyId)).filter((a): a is AnomalyDef => a !== undefined)
-    for (const c of weekendBountyCardsOf(state, ctx, base, galaxyId, nowWallMs)) {
-      if (seen.has(c.id)) continue
-      // 只并"独立入侵卡"（它们在静态表里是 hidden）；A/C/G 的占位派生卡 id 与原卡相同 ⇒ 上面已收
-      if (ctx.anomalies.get(c.id)?.hidden !== true) continue
-      seen.add(c.id)
-      pool.push({ anomalyId: c.id, threat: Math.max(1, c.threat) })
-    }
-  }
   /**
    * 🔴 **2026-09-26 补的第二刀（玩家报障：「打捞残骸捞不到 H 族残骸，只能捞到该星系默认的」）**。
    *
@@ -137,15 +122,14 @@ function wreckPoolOf(
    * ② **夺回后的外围**（打赢即夺回，残骸留在那儿慢慢衰减）；③ **上一场的遗留场**。
    *
    * 修法：**只要该星系还有入侵残骸场（有效密度 > 0），就把来源族的独立入侵卡并进池** ——
-   * 族取 `weekendWreckFamilyOf`（记录里的来源族；老档没记 ⇒ 回落当前事件族）。
+   * 来源取 `weekendWreckPoolsOf`；未知桶并入已登记入侵卡，不借用新活动族。
    * 池子只决定"能捞出什么型号"，**不额外造残骸**：能捞的总量仍是残骸场那一份（扣减口径一字未改）。
    */
   if (state && nowWallMs !== undefined) {
-    const family = weekendWreckFamilyOf(state, galaxyId)
-    if (family !== undefined && weekendWreckDensityOf(state, galaxyId) > 0) {
+    for (const bucket of weekendWreckPoolsOf(state, galaxyId).filter((p) => p.density > 0)) {
       for (const a of ctx.anomalies.values()) {
-        if (a.hidden !== true) continue
-        if (a.foeFamily !== family) continue
+        if (a.hidden !== true || a.region !== 'inv') continue
+        if (bucket.family !== null && a.foeFamily !== bucket.family) continue
         if (seen.has(a.id)) continue
         seen.add(a.id)
         pool.push({ anomalyId: a.id, threat: Math.max(1, a.threat) })
@@ -183,7 +167,7 @@ function autoTargetPickOf(
   ctx: SimContext,
   galaxyId: string,
   pool: ReadonlyArray<{ anomalyId: string; threat: number }>,
-): { anomalyId: string; threat: number } | null {
+): { anomalyId: string; threat: number; bucketKey?: string } | null {
   /**
    * ⓪ **玩家舰船残骸（四级序第 ①★ 档）**：**2026-09-26 船长令**「**玩家如果在该星系打捞，优先打捞该残骸
    * （比稀有残骸优先级还高）**」⇒ 它比下面三条**都**高：本函数直接返回 `null`，
@@ -192,8 +176,18 @@ function autoTargetPickOf(
   if (hasSalvageableShipWreck(state, galaxyId)) return null
   // ① 入侵残骸优先
   if (weekendWreckDensityOf(state, galaxyId) > 0) {
-    const hidden = pool.filter((p) => ctx.anomalies.get(p.anomalyId)?.hidden === true)
-    if (hidden.length > 0) return pickWeighted(state.rng, hidden, (p) => p.threat, { bound: 'lte' }) ?? hidden[0]!
+    const candidates = weekendWreckPoolsOf(state, galaxyId).filter((bucket) => bucket.density > 0).map((bucket) => ({
+      ...bucket,
+      cards: pool.filter((p) => {
+        const card = ctx.anomalies.get(p.anomalyId)
+        return card?.hidden === true && card.region === 'inv' && (bucket.family === null || card.foeFamily === bucket.family)
+      }),
+    })).filter((bucket) => bucket.cards.length > 0)
+    const bucket = candidates.length === 1 ? candidates[0] : pickWeighted(state.rng, candidates, (p) => p.density, { bound: 'lte' })
+    if (bucket) {
+      const chosen = pickWeighted(state.rng, bucket.cards, (p) => p.threat, { bound: 'lte' }) ?? bucket.cards[0]!
+      return { ...chosen, bucketKey: bucket.key }
+    }
   }
   // ② 按各组存量的数量比抽组
   const shares = wreckGroupStocksOf(state, ctx, galaxyId).filter(
@@ -677,6 +671,7 @@ export function pullOneWreck(
   ctx: SimContext,
   galaxyId: string,
   cycleMsReal: number,
+  cargoFreeM3?: number,
 ): { itemId: string; mul: number; volumeM3: number } | null {
   /**
    * **打捞对象**（**2026-09-26 船长令**）：作业上带着它（`SalvageOpState.targetGroup`）。
@@ -782,7 +777,9 @@ export function pullOneWreck(
   //    「优先捞稀有池，稀有池捞完后开始普通池」）：稀有池有存量 ⇒ 本轮必出稀有，**捞干后**才轮到普通池。
   //    ⚠ **打捞对象只管普通池内部**（手选组 / 手选入侵都不影响稀有池——稀有残骸是窝点与派系活跃的战利品，
   //    与所选组无关；该分支里的 `target` 只为"按组归族"取像，不改变"稀有必出"）。
-  const rareId = pullRareWreck(state, galaxyId, ctx, target)
+  const rareVolumeM3 = RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume')
+  const rareId = pullRareWreck(state, galaxyId, ctx, target,
+    cargoFreeM3 === undefined || wreckUnitsOf(rareVolumeM3) <= cargoFreeM3)
   if (rareId) {
     /**
      * **稀有轮不吃普通池放干**（**2026-09-25 玩家报障修复**）。
@@ -796,15 +793,15 @@ export function pullOneWreck(
      * 稀有捞完、回常规池的那一轮起，放干照旧（口径见 `salvage.salvageRoundPull`）。
      */
     const mulRare = salvageRoundMulOf(state, ctx, galaxyId)
-    return { itemId: rareId, mul: mulRare, volumeM3: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') }
+    return { itemId: rareId, mul: mulRare, volumeM3: rareVolumeM3 }
   }
   const pool = wreckPoolOf(ctx, galaxyId, state, Date.now(), target) // 同源池 ＋ **按打捞对象过滤**（2026-09-26）
   if (pool.length === 0) return null
   // 2026-09-12 审计 B3：改走单点 `pickWeighted`（按威胁加权；原累加循环 `roll <= acc` 即 `lte` 口径）；
   // 无中选兜底 = 池首（与改前 `chosen = pool[0]` 初值一致）
   /** **自动判定对象**（2026-09-26 船长令）：手选入口已撤，缺省这一支就是主路径 */
-  const chosen =
-    (target === undefined ? autoTargetPickOf(state, ctx, galaxyId, pool) : null) ??
+  const chosen: { anomalyId: string; threat: number; bucketKey?: string } =
+    (target === undefined || target === WEEKEND_WRECK_TARGET ? autoTargetPickOf(state, ctx, galaxyId, pool) : null) ??
     pickWeighted(state.rng, pool, (p) => p.threat, { bound: 'lte' }) ??
     pool[0]!
   // 2026-09-19 合并：产出物 = 该卡**所属组**的残骸（`wreck-<组 key>`）；组查不到 = 未知卡 ⇒ 不产出
@@ -817,23 +814,22 @@ export function pullOneWreck(
    * （`autoTargetPickOf` 抽不到时会回落到按组/加权抽）也就能被正确区分。
    */
   const fromWeekend = ctx.anomalies.get(chosen.anomalyId)?.hidden === true
+  const bucketKey = chosen.bucketKey ?? (fromWeekend ? weekendWreckPoolsOf(state, galaxyId)
+    .find((p) => p.density > 0 && (p.family === null || p.family === group.family))?.key : undefined)
   /**
    * mul：**从哪一池出就用哪一池的量算**（甲）。
    * - 入侵轮 ⇒ `salvageRoundMulOf`（**只读**！池子扣减改由下面的 `chargeWeekendWreckByVolume`
    *   按**本轮实际出量**做，星系池也一分不扣）；
    * - 其余 ⇒ `salvageRoundPull`（照旧放干星系池）。
    */
-  const mul = fromWeekend ? salvageRoundMulOf(state, ctx, galaxyId, target) : salvageRoundPull(state, ctx, galaxyId, target)
+  if (fromWeekend && bucketKey === undefined) return null
+  const mul = salvageRoundMulOf(state, ctx, galaxyId, target, fromWeekend ? bucketKey : undefined)
   const wreckId = wreckItemIdOf(group.key)
   // 乙案（2026-09-05）：残骸计数 = 体积（m³）——型号威胁决定单份体积量级（威胁×0.06），
   // 本轮入舱 m³ = 单份 × 密度系数；item unitM3 = 1，数量即体积。
   const baseM3 = Math.max(0.1, Math.round(Math.max(1, chosen.threat) * WRECK_VOLUME_PER_THREAT * 100) / 100)
   // 残骸富集识别学（wreck-assaying，卷B3⑨）：完好舰体命中 → 当场直发该**组**回收彩头
   // （不再折算体积）；判定恒消耗一次随机数保 rng 时序（rate=0 时也掷）
-  if (nextRandom(state.rng) < assayChanceOf(state, ctx, cycleMsReal)) {
-    const gains = rollIntactHullLoot(state, ctx, chosen.anomalyId)
-    if (gains) addLog(state, 'salvage', `完好舰体！${gains}。`, 'core.salvaging.019', { p1: gains })
-  }
   // 漂流物打捞学（salvage-diving，2026-09-05）：残骸打捞量每级 +12%（主控与 AI 同享）
   const diveLv = Math.min(5, state.skills.trained['salvage-diving'] ?? 0)
   /**
@@ -843,6 +839,19 @@ export function pullOneWreck(
    */
   const yieldMul = wreckYieldMultiplierOf(recycleTierOf(wreckBaseDensity(galaxyId, ctx)))
   let volumeM3 = baseM3 * mul * (1 + 0.12 * diveLv) * yieldMul
+  if (fromWeekend) {
+    const left = weekendWreckPoolsOf(state, galaxyId).find((p) => p.key === bucketKey)?.density ?? 0
+    volumeM3 = Math.min(volumeM3, left)
+  }
+  if (cargoFreeM3 !== undefined && wreckUnitsOf(volumeM3) > cargoFreeM3) {
+    const room = Math.floor(Math.max(0, cargoFreeM3))
+    if (room === 0) return { itemId: wreckId, mul, volumeM3 }
+    volumeM3 = Math.min(volumeM3, room)
+  }
+  if (nextRandom(state.rng) < assayChanceOf(state, ctx, cycleMsReal)) {
+    const gains = rollIntactHullLoot(state, ctx, chosen.anomalyId)
+    if (gains) addLog(state, 'salvage', `完好舰体！${gains}。`, 'core.salvaging.019', { p1: gains })
+  }
   /**
    * 🔴 **从入侵池出的那一轮：池子结算走单点 `chargeWeekendWreckByVolume`**。
    *
@@ -857,7 +866,8 @@ export function pullOneWreck(
    * （它与"出量按池量算系数"相乘会把总获取量放大 54~157 倍；读数见
    * `docs/design/salvage-asymptotic-unified-20261003.md` §三）。
    */
-  if (fromWeekend) volumeM3 = chargeWeekendWreckByVolume(state, galaxyId, volumeM3)
+  if (fromWeekend) volumeM3 = chargeWeekendWreckByVolume(state, galaxyId, volumeM3, bucketKey)
+  else salvageRoundPull(state, ctx, galaxyId, target)
   return { itemId: wreckId, mul, volumeM3 }
 }
 
@@ -937,6 +947,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
     if (wreckPoolOf(ctx, galaxyId, state, Date.now()).length === 0) {
       resetOp(state)
       addLog(state, 'warn', '该星系的敌群情报缺失，打捞作业已停止。', 'core.salvaging.025')
+      return
     }
     const cycles = salvagerCyclesOf(state, ctx, state.shipId)
     if (cycles.length === 0) {
@@ -959,7 +970,8 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
       s.deviceAccMs[key] = (s.deviceAccMs[key] ?? 0) + stepMs
       while ((s.deviceAccMs[key] ?? 0) >= cycleMs) {
         s.deviceAccMs[key] = (s.deviceAccMs[key] ?? 0) - cycleMs
-        const pulled = pullOneWreck(state, ctx, galaxyId, cycleMs)
+        const freeM3 = freeCargoM3(state, ctx)
+        const pulled = pullOneWreck(state, ctx, galaxyId, cycleMs, freeM3)
         if (pulled) bumpFirst(state, 'salvageRuns') // 第一次任务/链：打捞次数
         if (!pulled) {
           resetOp(state)
@@ -972,8 +984,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
          * ⚠ 与 `kind: 'none'` 同款早退：那一轮**什么都不落**（残骸还立着，下次接着捞）。
          */
         if (pulled.volumeM3 <= 0) continue
-        const freeM3 = freeCargoM3(state, ctx)
-        if (pulled.volumeM3 > freeM3) {
+        if (wreckUnitsOf(pulled.volumeM3) > freeM3) {
           // 满仓（下一轮放不下）：自动返航（去程并入返航，总行程时间不变）
           s.phase = 'returning'
           s.phaseAccMs = 0

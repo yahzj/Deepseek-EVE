@@ -1022,7 +1022,8 @@ function advanceAiSalvage(
       task.deviceAccMs[key] = (task.deviceAccMs[key] ?? 0) + stepMs
       while ((task.deviceAccMs[key] ?? 0) >= real) {
         task.deviceAccMs[key] = (task.deviceAccMs[key] ?? 0) - real
-        const pulled = pullOneWreck(state, ctx, task.galaxyId, real)
+        const freeM3 = freeCargoM3Of(state, ctx, shipId)
+        const pulled = pullOneWreck(state, ctx, task.galaxyId, real, freeM3)
         if (!pulled) {
           abort('该星系敌群记录缺失，打捞任务终止')
           return
@@ -1035,9 +1036,9 @@ function advanceAiSalvage(
          * 这里也放在"确实捞上来一批"之后 ⇒ **成功才算一次**，下面的"货仓装不下"是
          * 捞上来了但没装下，也照记（与主控的口径一致：捞取动作发生了）。
          */
-bumpFirst(state, 'salvageRuns')
-        const freeM3 = freeCargoM3Of(state, ctx, shipId)
-        if (pulled.volumeM3 > freeM3) {
+        bumpFirst(state, 'salvageRuns')
+        if (pulled.volumeM3 <= 0) continue
+        if (wreckUnitsOf(pulled.volumeM3) > freeM3) {
           task.phase = 'returning'
           task.phaseAccMs = 0
           /** 跃迁燃料（同采矿那一支；`'ai'` 一个开关管全部副船）。AI 打捞的去程并入返航。 */

@@ -239,6 +239,7 @@ describe('打捞作业（采矿式自动循环：去程取消，指令即打捞�
     // 大推进：出航（效率 40% 拉长）→ 打捞（基础周期 1s ÷40% = 2.5s/轮）→ 满仓（100 m³）→ 返航 →
     // 卸货 → 自动循环再出航（多趟）；核心持续占用直到取消
     injectWreckDensity(state, ctx, 'galaxy-scrap', 40)
+    state.galaxyWrecks['galaxy-scrap'] = { density: 40, rare: 0 }
     state.gameMs = 0
     advanceAi(state, 300_000, ctx)
     expect(state.aiAssignments['sandcat2']).toBeDefined() // 循环中：任务未结束

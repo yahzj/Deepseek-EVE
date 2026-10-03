@@ -84,7 +84,7 @@ describe('主力舰队掉落稀有残骸 · 进残骸场（2026-09-27 船长令�
     const logs0 = s.logs.length
     winMain(s)
     expect(weekendRareWreckCountOf(s, GID), '场里多了一具箱子').toBe(1)
-    expect(s.weekendWrecks?.[GID]?.rareBy?.[MAIN], '按打它的那张卡记账').toBe(1)
+    expect(s.weekendWrecks?.[GID]?.byFamily.H?.rareBy?.[MAIN], '按打它的那张卡记账').toBe(1)
     const log = s.logs.slice(logs0).find((l) => l.textId === 'core.weekend.043')
     expect(log, '有一条说明箱子落在哪的日志').not.toBeUndefined()
     expect(log!.text, '日志点名星系').toContain(ctx.galaxies.get(GID)?.name ?? GID)
@@ -97,7 +97,7 @@ describe('主力舰队掉落稀有残骸 · 进残骸场（2026-09-27 船长令�
     s.debugQuick = false // 正常档 +10%/场 ⇒ 5 场仍在该星系的占领期内
     for (let i = 0; i < 5; i += 1) winMain(s)
     expect(weekendRareWreckCountOf(s, GID)).toBe(5)
-    expect(s.weekendWrecks?.[GID]?.rareBy?.[MAIN]).toBe(5)
+    expect(s.weekendWrecks?.[GID]?.byFamily.H?.rareBy?.[MAIN]).toBe(5)
   })
 
   /** ③ **文字结算不算**（离线 / 无人应答自动结算）；失利也不算；战斗里击退遇袭算 */
@@ -133,7 +133,7 @@ describe('主力舰队掉落稀有残骸 · 进残骸场（2026-09-27 船长令�
     advanceWeekendWreckDecay(s, WEEKEND_WRECK_DECAY_MS + 1_000)
     expect(weekendWreckDensityOf(s, GID), '矿物归零').toBe(0)
     expect(weekendRareWreckCountOf(s, GID), '箱子还在场里').toBe(1)
-    expect(s.weekendWrecks?.[GID]?.family, '来源族也还在（打捞池要用）').toBe('H')
+    expect(s.weekendWrecks?.[GID]?.byFamily.H, '来源桶还在').toBeDefined()
     expect(pullRareWreck(s, GID, ctx, WEEKEND_WRECK_TARGET), '到点之后照样捞得到').toBe(RARE_H)
   })
 
@@ -153,9 +153,9 @@ describe('主力舰队掉落稀有残骸 · 进残骸场（2026-09-27 船长令�
     winMain(s)
     injectWeekendWreck(s, GID, 20, 'H')
     const back = loadSaveFile(serializeSaveFile(s, 0)).state
-    expect(back.weekendWrecks?.[GID]?.rare, '读档后箱子还在').toBe(1)
-    expect(back.weekendWrecks?.[GID]?.rareBy?.[MAIN]).toBe(1)
-    expect(back.weekendWrecks?.[GID]?.family, '来源族也在（这条曾经被漂移推进洗掉）').toBe('H')
+    expect(back.weekendWrecks?.[GID]?.byFamily.H?.rare, '读档后箱子还在').toBe(1)
+    expect(back.weekendWrecks?.[GID]?.byFamily.H?.rareBy?.[MAIN]).toBe(1)
+    expect(back.weekendWrecks?.[GID]?.byFamily.H, '来源桶也在').toBeDefined()
     /** 再注入一批普通残骸（同星系）⇒ 箱子不许被冲掉 */
     injectWeekendWreck(back, GID, 15, 'H')
     expect(weekendRareWreckCountOf(back, GID), '普通注入不冲箱子').toBe(1)

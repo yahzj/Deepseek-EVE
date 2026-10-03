@@ -45,6 +45,7 @@ import type { AiCoreType } from './types'
 import { weekendFlagshipWindowMs } from './weekendEvent'
 /** 2026-10-02（每族一件黑匣批）：结算快照的 `blackBoxItemId` 白名单判据（core 单点，按 id 前缀） */
 import { isBlackboxItem } from './blackbox'
+import { normalizeWeekendWreckRecord } from './weekendWreckLedger'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
 export const SAVE_FORMAT = 'whale-idle-save'
@@ -1713,38 +1714,8 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   const weekendWrecks: NonNullable<GameState['weekendWrecks']> = {}
   for (const [galaxyId, w] of Object.entries(asRaw(src.weekendWrecks))) {
     if (galaxyId.length === 0) continue
-    const r = asRaw(w)
-    const density = num(r.density)
-    const accRaw = r.decayAccMs
-    /**
-     * ⚠ **2026-09-27 放宽**（船长令「主力舰队添加一个稀有残骸掉落」＋「进残骸场」）：
-     * 原先要求 `density > 0`（两个字段缺一不可）⇒ 但**场里可能只剩箱子**（矿物被捞干、稀有还在）
-     * ⇒ 那种记录必须留得住。现口径 = **密度 > 0 或 稀有 > 0** 之一成立即收（两者皆无才整条丢）。
-     */
-    const rare = Math.max(0, Math.floor(num(r.rare)))
-    const rareBy = ((): Record<string, number> | undefined => {
-      const out: Record<string, number> = {}
-      for (const [cardId, v] of Object.entries(asRaw(r.rareBy))) {
-        const n = Math.floor(num(v))
-        if (cardId.length > 0 && Number.isFinite(n) && n > 0) out[cardId] = n
-      }
-      return Object.keys(out).length > 0 ? out : undefined
-    })()
-    const hasRare = rare > 0 || rareBy !== undefined
-    if (typeof accRaw !== 'number' || !Number.isFinite(accRaw) || accRaw < 0) continue
-    if ((!Number.isFinite(density) || density <= 0) && !hasRare) continue
-    /** 来源族（2026-09-26 加 · 兼容字段）：只认单字母族码 A~H，其余不写 */
-    const fam =
-      typeof r.family === 'string' && /^[A-H]$/.test(r.family)
-        ? (r.family as NonNullable<GameState['weekendWrecks']>[string]['family'])
-        : undefined
-    weekendWrecks[galaxyId] = {
-      density: Number.isFinite(density) && density > 0 ? density : 0,
-      decayAccMs: accRaw,
-      ...(fam !== undefined ? { family: fam } : {}),
-      ...(rare > 0 ? { rare } : {}),
-      ...(rareBy !== undefined ? { rareBy } : {}),
-    }
+    const record = normalizeWeekendWreckRecord(w)
+    if (Object.keys(record.byFamily).length > 0) weekendWrecks[galaxyId] = record
   }
 
   /**

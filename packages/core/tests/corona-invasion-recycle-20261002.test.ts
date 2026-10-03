@@ -95,14 +95,14 @@ describe('② 打赢入侵 ⇒ 残骸落入侵残骸场（带来源族）', () =
     /** 普通残骸的注入口 = `encounters.dropWrecks`（打赢遭遇那一拍调），传的是"打的那张卡的 foeFamily" */
     injectWeekendWreck(s, GID, 40, 'R')
     expect(weekendWreckDensityOf(s, GID), '普通残骸注入').toBeCloseTo(40, 6)
-    expect(s.weekendWrecks?.[GID]?.family, '来源族 = R（打捞型号池据此并入本族独立卡）').toBe('R')
+    expect(s.weekendWrecks?.[GID]?.byFamily.R?.density, '来源族 = R 独立桶').toBe(40)
     winCard(s, 'corona-converge')
     expect(weekendRareWreckCountOf(s, GID), '主力舰队掉 1 具稀有残骸').toBe(1)
     /** 卡片自带族（`foeFamily: 'R'`）——遭遇结算据此记族，不依赖事件族 */
     expect(ctx.anomalies.get('corona-converge')?.foeFamily).toBe('R')
     expect(ctx.anomalies.get('corona-drift')?.foeFamily).toBe('R')
     console.log(
-      `  [读数] 打赢 R 族入侵：普通残骸 ${weekendWreckDensityOf(s, GID).toFixed(1)} · 稀有箱 ${weekendRareWreckCountOf(s, GID)} 具 · family=${s.weekendWrecks?.[GID]?.family}`,
+      `  [读数] 打赢 R 族入侵：普通残骸 ${weekendWreckDensityOf(s, GID).toFixed(1)} · 稀有箱 ${weekendRareWreckCountOf(s, GID)} 具 · 来源桶 R`,
     )
   })
 })

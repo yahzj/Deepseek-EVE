@@ -9,7 +9,7 @@
  *    （无限容量、永不遗失）；采矿支持 AI 核心驱动的自动返航-卸货循环。
  */
 
-import type { AiCoreType, CommsInstanceEntry, DamageResists, DamageType, FittedModules, FoeFamily, StationSiteDef } from './types'
+import type { AiCoreType, CommsInstanceEntry, DamageResists, DamageType, FittedModules, StationSiteDef } from './types'
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { emptyFitted } from './labels'
 import type { WormholeState } from './wormhole'
@@ -2519,21 +2519,11 @@ export interface WreckGalaxyRecord {
  * ⚠ **2026-10-03 船长令「按族分账」**（原话：「**所以，现在不同入侵的残骸是会记忆并且分开算的吗**」→
  * 读数说明改前是"每星系一条 ＋ 一个族标签、换族注入会覆盖老族的型号归属" ⇒ 裁「**甲：改成按族分账**」）
  * ⇒ **改法见工作文档 `docs/design/wreck-ledger-by-family-20261003.md`**（结构改为按族分桶、老档迁移、
- * 打捞池按桶、界面每族一张独立卡）。本条结构在**该批落码时**一并替换 —— 落码前保持现状。
+ * 打捞池按桶、界面每族一张独立卡）。每个桶独立保留普通量、衰减时钟和按卡稀有账。
  */
-export interface WeekendWreckRecord {
+export interface WeekendWreckBucket {
   density: number
   decayAccMs: number
-  /**
-   * **这批残骸的来源势力**（**2026-09-26 加 · 玩家报障**：「**打捞残骸捞不到H族残骸，只能捞到该星系默认的**」）。
-   *
-   * 为什么必须有：残骸场**比"占领"活得久**（48 小时自然衰减、活动结束也不清），而打捞型号池原先只在
-   * 「此刻仍被占」时才并入入侵舰队 ⇒ 残留场所在星系（夺回后的外围 / **旗舰期的核心** / 上一场的遗留）
-   * 会「残骸条写着入侵残骸、捞出来全是默认残骸」。池子改成"**有场就并入入侵卡**"后，得知道并**哪一族**。
-   * 兼容字段（可选、零迁移）：老档没记 ⇒ 打捞侧回落**当前事件族**（⚠ 该回落正是"换族后旧场认错族"的根，
-   * 按族分账那批会以"`?` 桶 ⇒ 并入全部隐藏入侵卡"取代它）。
-   */
-  family?: FoeFamily
   /**
    * **场里的稀有残骸存量（件数）**（**2026-09-27 船长令**：「**主力舰队添加一个稀有残骸掉落**」＋
    * 追问落点答「**进残骸场**」）。
@@ -2548,6 +2538,11 @@ export interface WeekendWreckRecord {
    * （与 `galaxyWrecks.rareBy` 同一套做法：`pullRareWreck` 认 `rareWreckItemIdOfCard`，取不到就跳过）。
    */
   rareBy?: Record<string, number>
+}
+
+/** 按来源族分账；? 桶保留无法确认来源的旧档残骸。 */
+export interface WeekendWreckRecord {
+  byFamily: Record<string, WeekendWreckBucket>
 }
 
 /**
@@ -2701,11 +2696,11 @@ export type GameStateV18 = Omit<GameStateV16, 'version'> & {
    * **入侵残骸（独立池）**（船长 2026-09-25：「**入侵残骸不算当地星系密度，因为是独立的。48 小时线性衰减**」
    * ＋「按照击败卡的威胁注入」）。
    *
-   * 与 `galaxyWrecks` **完全独立**的一本账：星系 id → `{ density, decayAccMs }`（口径与密度同尺）。
+   * 与 `galaxyWrecks` 完全独立的一本账：星系 id → 按来源族分桶，未知旧账使用 ? 桶。
    * 三条与星系池**不同**的规则（详见 `salvage.ts` 的 `WEEKEND_WRECK_DECAY_MS` 一段）：
    * ① **没有基础密度（保底 = 0）**、只减不增 ⇒ **48 小时线性衰减到 0 即消失**（不留痕、不回升）；
    * ② **不算进当地星系的残骸密度读数**（界面另起一行「入侵残骸」，见星图打捞列表/星系详细）；
-   * ③ 打捞时与星系池**合并计量**（体积当量按两池之和），扣减**先扣这一池**（会消失的先捞）。
+   * ③ 普通打捞优先入侵桶，多族按余额比抽桶，只按实际产出扣对应桶，不影响常驻池。
    *
    * 兼容字段（可选，**零迁移**）：老档缺席 = 一张空表。
    */

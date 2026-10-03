@@ -1223,6 +1223,9 @@ export class GameEngine {
      * （判据与战斗界面、章鱼停工同源：`weekendFlagshipBattleActive`），顺延期间章鱼人也不判得手。
      */
     const weekend = weekendTick(this.state, this.ctx, wallNow, lastSeenWallMs, weekendFlagshipBattleActive(this.state))
+    const endedEvent = weekend.ended ? this.state.weekendEvent : undefined
+    // 本拍刚收场的旧场也要先结清，随后补场开局才能替换事件对象。
+    this.settleWeekendPrize(wallNow)
     /**
      * **入侵补偿批 · 补场**（**船长 2026-10-02 令**「**下周三增设一次光环的入侵**」）：放在 `weekendTick`
      * **之后** —— 本拍刚收场的那一场（`endedAtWallMs` 已写）不该挡住补场；开出时走与常规开局
@@ -1249,7 +1252,7 @@ export class GameEngine {
       void this.persist()
     }
     if (weekend.ended) {
-      const ev = this.state.weekendEvent
+      const ev = endedEvent
       /**
        * **归属只读一处判据**：`weekendFlagshipOutcomeOf`（core，**留档优先**）——结算快照、结算信
        * 与黑匣发放读的都是同一个它（`weekendLastHitByPlayer` 与它同条件 ⇒ `player` 就是"击杀"）。
@@ -4061,7 +4064,7 @@ export class GameEngine {
    * ⚠ **落点两条路**（船长 2026-09-30 裁定：「直接使用是随机星系（这个要提醒玩家）。选择了星系后是固定。」）：
    * **不传 `galaxyId`**（物品页/货仓页那颗「使用」）＝**随机星系**；
    * **传 `galaxyId`**（星图 · 星系详细那颗「启动信号发射器」）＝**就用玩家选的那个星系**
-   * （资格判据在 core：已探索 · 非高安 · 无已建副站）。
+   * （资格判据在 core：目标存在且没有空间站，高安目标支付声望）。
    */
   useInvasionBeaconNow(opts: { familyId?: string; galaxyId?: string } = {}): CommandResult {
     const result = useInvasionBeacon(this.state, this.ctx, opts)

@@ -17,6 +17,9 @@
  * （船长原话「分组后不要再让玩家手动选择打捞对象了……优先打捞入侵残骸」）⇒
  * 那些卡上的「开始打捞」本来就是同一个动作、纯属残留；各组存量改成"全部"卡上的一行**只读读数**。
  */
+import { weekendWreckPoolsOf, wreckGroupOfCard } from '@whale/core'
+import type { GameState, SimContext } from '@whale/core'
+
 export type WreckCardKind = 'ship-wrecks' | 'invasion' | 'all'
 
 /** 该星系要出哪几张卡、按什么顺序（纯函数；渲染处只消费它的返回值） */
@@ -54,4 +57,14 @@ export function wreckCardSequenceOf(input: {
  */
 export function wreckAiHostOf(sequence: readonly WreckCardKind[]): WreckCardKind | undefined {
   return sequence[0]
+}
+
+/** 两个打捞界面共用的族卡读数；不按当前入侵活动猜来源。 */
+export function invasionWreckRowsOf(state: GameState, ctx: SimContext, galaxyId: string) {
+  return weekendWreckPoolsOf(state, galaxyId).map((pool) => {
+    const card = pool.family === null ? undefined : [...ctx.anomalies.values()]
+      .find((a) => a.hidden === true && a.region === 'inv' && a.foeFamily === pool.family)
+    const group = card ? wreckGroupOfCard(card.id, ctx) : null
+    return { ...pool, name: group ? ctx.items.get(`wreck-${group.key}`)?.name ?? null : null }
+  })
 }

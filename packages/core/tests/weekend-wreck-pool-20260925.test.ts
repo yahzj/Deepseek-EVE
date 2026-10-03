@@ -133,7 +133,7 @@ describe('入侵残骸 · 独立池（船长 2026-09-25）', () => {
     injectWeekendWreck(state, GID, 12.5)
     const raw = JSON.parse(serializeSaveFile(state, 0)) as { state: Record<string, unknown> }
     const back = loadSaveFile(JSON.stringify(raw)).state
-    expect(back.weekendWrecks?.[GID], '锚点值与漂移时长原样').toEqual({ density: 12.5, decayAccMs: 0 })
+    expect(back.weekendWrecks?.[GID], '锚点值与漂移时长原样').toEqual({ byFamily: { '?': { density: 12.5, decayAccMs: 0 } } })
     // 脏档：负数/缺字段/非数一律清掉（清洗器白名单）
     raw.state.weekendWrecks = {
       [GID]: { density: -5, decayAccMs: 0 },
@@ -143,7 +143,7 @@ describe('入侵残骸 · 独立池（船长 2026-09-25）', () => {
       'g-y': { density: 3, decayAccMs: 60_000 },
     }
     const dirty = loadSaveFile(JSON.stringify(raw)).state
-    expect(dirty.weekendWrecks, '只留合法的两条字段').toEqual({ 'g-y': { density: 3, decayAccMs: 60_000 } })
+    expect(dirty.weekendWrecks, '只留合法桶').toEqual({ 'g-y': { byFamily: { '?': { density: 3, decayAccMs: 60_000 } } } })
     expect(weekendWreckDensityOf(dirty, 'g-y'), '读档后按漂移时长折算有效值').toBeCloseTo(
       3 * (1 - 60_000 / WEEKEND_WRECK_DECAY_MS),
       6,

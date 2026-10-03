@@ -59,7 +59,7 @@ import type { GameEngine } from '../game/engine'
 import type { PageProps, ToastFn } from './common'
 import { isk, rareWreckRefsOf } from './common'
 // 2026-09-26 船长报障：打捞页卡片序列（纯函数；单独成文件以便工具/用例直接断言这条顺序）
-import { wreckAiHostOf, wreckCardSequenceOf } from './wreckCards'
+import { invasionWreckRowsOf, wreckAiHostOf, wreckCardSequenceOf } from './wreckCards'
 import { isEn, tr, cmdText } from '../i18n/locale'
 import { wreckGroupText } from '@whale/data'
 import { fmtDuration } from '../i18n/fmt'
@@ -685,7 +685,7 @@ function salvageEstimate(
 ): { eff: string | null } {
   const ctx = engine.ctx
   const cycles = salvagerCyclesOf(state, ctx, state.shipId)
-  const anomalies = engine.anomalies.filter((a) => a.galaxyId === galaxyId)
+  const anomalies = [...engine.ctx.anomalies.values()].filter((a) => !a.hidden && a.galaxyId === galaxyId)
   if (cycles.length === 0 || anomalies.length === 0) {
     return { eff: cycles.length === 0 ? tr("ui.MapPage.049") : null }
   }
@@ -919,6 +919,7 @@ function SalvageTab({
               const invWreck = weekendWreckDensityOf(state, g.id)
               /** **入侵残骸场里的箱子**（2026-09-27 船长令）：矿物可能被捞干、箱子还在 ⇒ 读数与卡序都要看它 */
               const invRare = weekendRareWreckCountOf(state, g.id)
+              const invasionRows = invasionWreckRowsOf(state, engine.ctx, g.id)
               const groupRows = targets.filter((t) => t.groupKey !== WEEKEND_WRECK_TARGET)
               /** 卡片序列 = 纯函数（同一个星系最多三张；顺序即优先级，见 `wreckCardSequenceOf` 头注） */
               const cardSeq = wreckCardSequenceOf({
@@ -926,15 +927,15 @@ function SalvageTab({
                 invasionWreckM3: invWreck,
                 invasionRareCount: invRare,
               })
-              const mk = (opts: { key: string; label: string; cardDensity: number; showAi?: boolean; showGroupRows?: boolean; showInvasionBar?: boolean }) => (
+              const mk = (opts: { key: string; label: string; cardDensity: number; showAi?: boolean; showGroupRows?: boolean; invasionPool?: typeof invasionRows[number] }) => (
                 <WreckCard
                   key={`${g.id}|${opts.key}`}
                   galaxy={g}
                   density={opts.cardDensity}
                   densityLabel={opts.label}
                   groupRows={groupRows}
-                  shipWrecks={wrecks}
-                  showInvasionBar={opts.showInvasionBar === true}
+                  shipWrecks={opts.key === 'ship-wrecks' ? wrecks : []}
+                  invasionPool={opts.invasionPool}
                   aiWorkers={opts.showAi ? workers : []}
                   isActive={me.active && me.galaxyId === g.id}
                   focus={focusIds.includes(g.id)}
@@ -957,7 +958,7 @@ function SalvageTab({
                * **各组存量读数仍只归「全部」卡**（那行与 AI 无关）⇒ 两个开关分开传。
                */
               const aiHost = wreckAiHostOf(cardSeq)
-              return cardSeq.map((kind) => {
+              return cardSeq.flatMap((kind) => {
                 const aiHere = kind === aiHost
                 const rowsHere = kind === 'all'
                 if (kind === 'ship-wrecks') {
@@ -970,18 +971,13 @@ function SalvageTab({
                   })
                 }
                 if (kind === 'invasion') {
-                  return mk({
-                    key: WEEKEND_WRECK_TARGET,
-                    /**
-                     * **有箱子就把稀有件数写在卡名上**（**2026-09-27 船长令**：主力舰队打赢留下的箱子进残骸场
-                     * ⇒ 玩家得看得见它）：`ui.MapPage.121` = 「入侵残骸」· `ui.MapPage.122` = 「入侵残骸 · 稀有 ×N」。
-                     */
-                    label: invRare > 0 ? tr('ui.MapPage.122', { p1: String(invRare) }) : tr('ui.MapPage.121'),
-                    cardDensity: invWreck,
-                    showAi: aiHere,
-                    showGroupRows: rowsHere,
-                    showInvasionBar: true,
-                  })
+                  return invasionRows.map((row, i) => mk({
+                    key: `${WEEKEND_WRECK_TARGET}:${row.key}`,
+                    label: row.name ?? tr('ui.MapPage.121'),
+                    cardDensity: row.density,
+                    showAi: aiHere && i === 0,
+                    invasionPool: row,
+                  }))
                 }
                 return mk({ key: '', label: tr('ui.MapPage.120'), cardDensity: density, showAi: aiHere, showGroupRows: rowsHere })
               })
@@ -1037,7 +1033,7 @@ function WreckCard({
   onToast,
   groupRows = [],
   shipWrecks = [],
-  showInvasionBar = false,
+  invasionPool,
 }: {
   galaxy: GalaxyDef
   density: number
@@ -1049,11 +1045,8 @@ function WreckCard({
   showGroupRows?: boolean
   /** **各组存量读数**（只读；打捞对象由 core 自动判定 ⇒ 这里只展示，不再提供选择） */
   groupRows?: Array<{ groupKey: string; stockM3: number }>
-  /**
-   * **这一张卡要不要画入侵残骸条**——**只有"入侵残骸卡"为 true**（2026-09-26 船长报障：
-   * 「发现了2张烬火星区的卡片，其中一张是入侵残骸」⇒ 一根条被两张卡各画一次，看起来是两张重复卡）。
-   */
-  showInvasionBar?: boolean
+  /** 该族独立存量与稀有读数；常驻卡不接入侵池。 */
+  invasionPool?: ReturnType<typeof invasionWreckRowsOf>[number]
   /** **该星系的玩家舰船残骸**（2026-09-26 船长令）：置顶读数 —— 船名 ＋ 可回收件数 ＋ 剩余小时 */
   shipWrecks?: ShipWreckRecord[]
   aiWorkers: Array<{ sid: string; coreType: AiCoreType }>
@@ -1069,16 +1062,9 @@ function WreckCard({
   onToast: ToastFn
 }) {
   const state = engine.state
-  const anomalies = engine.anomalies.filter((a) => a.galaxyId === g.id)
+  const anomalies = [...engine.ctx.anomalies.values()].filter((a) => !a.hidden && a.galaxyId === g.id)
   const est = salvageEstimate(state, engine, g.id, density)
   const prog = isActive ? salvageProgressOf(engine) : null
-  /**
-   * **入侵残骸（独立池）**（2026-09-25 船长令：「添加的残骸……**需要独立的残骸条**」＋
-   * 「打捞界面置顶」）：读数与星系密度**分开**（船长：「入侵残骸不算当地星系密度，因为是独立的」），
-   * 只有 >0 时才出这一条；条长 = 入侵残骸占（星系密度 ＋ 入侵残骸）的比例。
-   */
-  const invWreck = weekendWreckDensityOf(state, g.id)
-  const invWreckPct = invWreck > 0 ? Math.round((invWreck / (invWreck + density)) * 100) : 0
   const [aiShipId, setAiShipId] = useState('')
   const [aiCoreSel, setAiCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   // 2026-09-08 紧急修复：核心下拉与提交类型脱节（basic 无库存时仍按 basic 提交被拒）
@@ -1119,7 +1105,9 @@ function WreckCard({
   const flavorLabel = namedList.length > 0 ? tr("ui.MapPage.058") : tr("ui.MapPage.059")
   // 赏金任务·窝点战果（2026-09-10 船长定）：该星系留下的稀有残骸（打捞必得；回站回收炉开高级箱）
   // 2026-09-11：口径抽到 `pages/common.rareWreckRefsOf`，与星图「星系行动」弹窗共用一份
-  const { count: rareCount, text: rareText } = rareWreckRefsOf(engine, g.id)
+  const refs = rareWreckRefsOf(engine, g.id)
+  const rareCount = invasionPool ? invasionPool.rare : refs.count
+  const rareText = invasionPool ? invasionPool.name ?? tr('ui.MapPage.121') : refs.text
 
   return (
     <div
@@ -1148,13 +1136,13 @@ function WreckCard({
           </span>
         ) : null}
       </div>
-      <div className="app-belt-desc">{tr("ui.MapPage.062")} {anomalies.length} {tr("ui.MapPage.063")}</div>
-      <FlavorTip
+      {!invasionPool ? <div className="app-belt-desc">{tr("ui.MapPage.062")} {anomalies.length} {tr("ui.MapPage.063")}</div> : null}
+      {!invasionPool ? <FlavorTip
         note={flavorNote}
         featureLabel={flavorLabel}
         named={cap(namedList)}
         generic={cap(genericList)}
-      />
+      /> : null}
       {prog ? (
         <div
           className={`app-card-progress${prog.travel ? ' is-travel' : ''}`}
@@ -1184,26 +1172,10 @@ function WreckCard({
             </div>
           ))
         : null}
-      {/**
-       * **入侵残骸条**（船长 2026-09-25：「需要独立的残骸条」＋「打捞界面置顶」）：
-       * 排在玩家舰船残骸**之后**、常规密度**之前**。
-       *
-       * ⚠ **2026-09-26 船长报障修**：「**我发现了2张烬火星区的卡片，其中一张是入侵残骸**」——
-       * 真因 = 同一个入侵残骸被**两张卡各画了一次**（该星系有入侵残骸时，序列是「入侵残骸卡 ＋
-       * 星系残骸（全部）卡」，而两卡原先都无条件渲染这根条 ⇒ 两张卡看起来一模一样）。
-       * 现在**只有"入侵残骸卡"画这根条**（`showInvasionBar`）；「全部」卡不再重复，
-       * 它的读数由下面的 `.app-belt-ore` 一行承担。
-       */}
-      {invWreck > 0 && showInvasionBar ? (
-        <div className="app-belt-invwreck" title={tr('ui.weekend.095', { p1: String(invWreckPct) })}>
-          <span className="app-belt-invwreck-label">{tr('ui.weekend.094', { p1: invWreck.toFixed(1) })}</span>
-          <div className="app-card-progress is-invasion">
-            <i style={{ width: `${invWreckPct}%` }} />
-          </div>
-        </div>
-      ) : null}
+      {/* 每族存量以 m3 独立显示，不与常驻密度混算百分比。 */}
       <div className="app-belt-ore">
-        {densityLabel ? <em className="app-chip">{densityLabel}</em> : null}{tr("ui.MapPage.064")} <b>{density.toFixed(1)}</b>
+        {densityLabel ? <em className="app-chip">{densityLabel}</em> : null}
+        {invasionPool ? tr('ui.hud.144', { p1: density.toFixed(1) }) : <>{tr("ui.MapPage.064")} <b>{density.toFixed(1)}</b></>}
         {lowSec ? tr("ui.MapPage.065") : ''}{tr('ui.MapPage.116', { v: g.security?.toFixed(1) ?? '—' })}
         {rareCount > 0 ? (
           <>
@@ -1228,7 +1200,7 @@ function WreckCard({
           ))}
         </div>
       ) : null}
-      {est.eff ? (
+      {!invasionPool && est.eff ? (
         <div className="app-belt-econ" title={tr("ui.MapPage.067")}>
           {est.eff ? <div><span className="app-ico"><Glyph name="nav-salvage" size={12} color={NAV_TONES["nav-salvage"]} /></span>{est.eff}</div> : null}
           {/* 「≈N 信用点/h 拆解估价」已删（2026-09-23 船长令：残骸的信用点收入估价移除） */}

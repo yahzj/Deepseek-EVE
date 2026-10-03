@@ -32,6 +32,7 @@ import { INVASION_BEACON_ITEM_ID } from './consumables'
 import { weekendInvasionAllowedFor, weekendRollOccupation } from './weekendEvent'
 /** 2026-10-02 补闸（船长令「按你推荐来」）：开局器也要过"还有没打完的旗舰战吗"这道闸（判据与战斗界面同源） */
 import { weekendFlagshipBattleActive } from './weekendLaunch'
+import { weekendSettleAndGrant } from './weekendBattle'
 
 /**
  * **本地墙钟"某日 20:00"的绝对毫秒** —— 本模块的两个日期锚都走它，**与 `weekendT0Of` 同一把尺**
@@ -245,6 +246,7 @@ export function openWeekendMakeupIfDue(state: GameState, ctx: SimContext, nowWal
   const seq = (ev?.seq ?? 0) + 1
   const rolled = weekendRollOccupation(state, ctx, seq, WEEKEND_MAKEUP_FAMILY)
   if (!rolled) return false
+  weekendSettleAndGrant(state, ctx, nowWallMs)
   state.weekendEvent = { seq, startedAtWallMs: nowWallMs, ...rolled, contributed: {} }
   state.weekendCompensation = { ...comp, makeupServedAtWallMs: nowWallMs }
   return true

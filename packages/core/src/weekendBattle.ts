@@ -48,7 +48,7 @@ import {
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { weekendFoeFleetNameOf, weekendStandingGainOf } from './weekendEvent'
 import { flagshipBattleLedger } from './combat'
-import { rareWreckItemIdOfCard, RARE_WRECK_VOLUME_M3 } from './salvage'
+import { asFoeFamily, rareWreckItemIdOfCard, RARE_WRECK_VOLUME_M3 } from './salvage'
 /** 2026-09-27 船长令：主力舰队打赢 ⇒ 往该星系**入侵残骸场**里放箱子（稀有残骸） */
 import { injectWeekendRareWreck } from './salvage'
 import { WEEKEND_CARD_PREFIX, weekendZoneLiveAt } from './weekendEvent'
@@ -1103,7 +1103,7 @@ export function weekendApplyBattleOutcome(
         : ''
   const rareDrop = foughtCardId.length > 0 ? (ctx.anomalies.get(foughtCardId)?.rareWreckDrop ?? 0) : 0
   if (rareDrop > 0 && (outcome === 'win' || outcome === 'repel')) {
-    injectWeekendRareWreck(state, involved.galaxyId, foughtCardId, rareDrop)
+    injectWeekendRareWreck(state, involved.galaxyId, foughtCardId, rareDrop, asFoeFamily(ctx.anomalies.get(foughtCardId)?.foeFamily))
     const gnameDrop = ctx.galaxies.get(involved.galaxyId)?.name ?? involved.galaxyId
     addLog(
       state,

@@ -35,7 +35,8 @@ export function BeaconHighSecPrompt({
             {tr('ui.beacon.008')}
           </button>
         </div>
-        <div className="app-dim app-beacon-warn">{tr('ui.beacon.007', { p1: galaxyName, p2: penalty })}</div>
+        {/* ⟪文案调整 2026-10-03⟫ 复用已批准的目标效果句，移除与指定高安落点相反的旧说明。 */}
+        <div className="app-dim app-beacon-warn">{tr('ui.beacon.002', { p1: galaxyName })}</div>
         <div className="app-row-actions">
           <button className="app-btn is-small is-danger" onClick={onConfirm}>
             {tr('ui.beacon.009')}

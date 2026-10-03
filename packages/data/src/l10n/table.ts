@@ -795,10 +795,6 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   },
   /* 高安点火的二次警告（**2026-09-30 船长令**：「且当玩家在高安使用时候，弹出二次警告，警告玩家这么做会被扣声望」） */
   "ui.beacon.006": { zh: "⚠ 在高安启动信号发射器：扣 {p1} 点声望", en: "⚠ Lighting a Signal Beacon in high-sec costs {p1} standing" },
-  "ui.beacon.007": {
-    zh: "「{p1}」属高安：现在启动，入侵照样只能落到非高安星系，但协会会扣你 {p2} 点可支配声望。确定要继续吗？",
-    en: "“{p1}” is high-sec: lighting it here still sends the invasion to a non-high-sec system, but the Association docks {p2} spendable standing. Continue?",
-  },
   "ui.beacon.008": { zh: "取消", en: "Cancel" },
   "ui.beacon.009": { zh: "仍然启动", en: "Light it anyway" },
   /* ── 技能页「技能加速」子窗口（**2026-09-30 船长令**：「在技能页面内新增一个子窗口『技能加速』…」）──

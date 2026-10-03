@@ -28,6 +28,8 @@ import { hashSeed, nextInt, nextRandom, pickOne, pickWeighted } from './rng'
 import { advanceShipWreckDecay } from './shipWrecks'
 import { addModule, ownedItemCount, ownedModuleCount } from './equipment'
 import { addWare, countWare } from './inventory'
+import { asFoeFamily, normalizeWeekendWreckRecord } from './weekendWreckLedger'
+export { asFoeFamily, FOE_FAMILY_CODES } from './weekendWreckLedger'
 import { FOE_LAIR_GEAR } from './lairs'
 import {
   wreckGroupOfAnomaly,
@@ -222,6 +224,7 @@ export function pullRareWreck(
   ctx?: SimContext,
   /** **打捞对象**（2026-09-26）：`undefined` = 全部 */
   target?: string,
+  consume = true,
 ): string | null {
   /**
    * **两本账都要看**（**2026-09-27 船长令**：「**主力舰队添加一个稀有残骸掉落**」＋「**进残骸场**」）：
@@ -230,7 +233,7 @@ export function pullRareWreck(
    * 两本账的"稀有池优先、本轮必出一件"口径完全一致，只是落账对象不同。
    */
   const galaxyRec = state.galaxyWrecks[galaxyId]
-  const weekRec = state.weekendWrecks?.[galaxyId]
+  const weekRec = weekendWreckRecordOf(state, galaxyId)
   /** **打捞对象过滤**（2026-09-26 船长令 Q6 甲 ＋ **2026-09-27 改一条**）：
    *  选组 ⇒ 只在**该组**的卡里抽稀有；**选入侵 ⇒ 只抽入侵残骸场里的稀有**（改前是"稀有不参与"——
    *  船长 2026-09-27 令"主力舰队的箱子进残骸场"后，若仍不参与，玩家选"只捞入侵残骸"就永远拿不到它）。 */
@@ -239,36 +242,38 @@ export function pullRareWreck(
     if (target === WEEKEND_WRECK_TARGET) return fromWeekend
     return wreckGroupOfCard(cardId, ctx)?.key === target
   }
-  const cand: Array<{ cardId: string; fromWeekend: boolean }> = []
+  const cand: Array<{ cardId: string; fromWeekend: boolean; bucketKey?: string }> = []
   for (const [cardId, n] of Object.entries(galaxyRec?.rareBy ?? {})) {
     if ((n ?? 0) > 0 && inTarget(cardId, false)) cand.push({ cardId, fromWeekend: false })
   }
-  for (const [cardId, n] of Object.entries(weekRec?.rareBy ?? {})) {
-    if ((n ?? 0) > 0 && inTarget(cardId, true)) cand.push({ cardId, fromWeekend: true })
+  for (const [bucketKey, bucket] of Object.entries(weekRec.byFamily)) {
+    for (const [cardId, n] of Object.entries(bucket.rareBy ?? {})) {
+      if (n > 0 && inTarget(cardId, true)) cand.push({ cardId, fromWeekend: true, bucketKey })
+    }
+    // 极老档只记了箱子总数：未知来源仍从已登记入侵卡中取物品，不能永久卡住箱子。
+    const attributed = Object.values(bucket.rareBy ?? {}).reduce((sum, n) => sum + n, 0)
+    if ((bucket.rare ?? 0) > attributed && ctx) {
+      const card = [...ctx.anomalies.values()].find((a) => a.hidden === true && a.region === 'inv'
+        && (bucketKey === '?' || a.foeFamily === bucketKey) && inTarget(a.id, true)
+        && rareWreckItemIdOfCard(a.id, ctx) !== null)
+      if (card) cand.push({ cardId: card.id, fromWeekend: true, bucketKey })
+    }
   }
   const pick = cand.find((c) => rareWreckItemIdOfCard(c.cardId, ctx) !== null)
   if (pick === undefined) {
     // 旧口径兜底（只有 rare 计数、无归族记账）+ 未知卡兜底：不产出（避免张冠李戴）
     return null
   }
+  if (!consume) return rareWreckItemIdOfCard(pick.cardId, ctx)
   if (pick.fromWeekend) {
-    const by = { ...(weekRec?.rareBy ?? {}) }
-    by[pick.cardId] = (by[pick.cardId] ?? 0) - 1
+    const bucket = weekRec.byFamily[pick.bucketKey!]!
+    const by = { ...(bucket.rareBy ?? {}) }
+    by[pick.cardId] = Math.max(0, (by[pick.cardId] ?? 0) - 1)
     if (by[pick.cardId]! <= 0) delete by[pick.cardId]
-    const rare = Math.max(0, (weekRec?.rare ?? 0) - 1)
-    /** 场里矿物与箱子都空了 ⇒ 记录才删（矿物捞干 ≠ 箱子没了；与 `writeWeekendWreck` 同一判据） */
-    const density = weekRec?.density ?? 0
-    if (rare <= 0 && !(density > WEEKEND_WRECK_SNAP)) {
-      if (state.weekendWrecks) delete state.weekendWrecks[galaxyId]
-    } else if (weekRec !== undefined && state.weekendWrecks) {
-      state.weekendWrecks[galaxyId] = {
-        density,
-        decayAccMs: weekRec.decayAccMs,
-        ...(weekRec.family !== undefined ? { family: weekRec.family } : {}),
-        ...(rare > 0 ? { rare } : {}),
-        ...(Object.keys(by).length > 0 ? { rareBy: by } : {}),
-      }
-    }
+    const rare = Math.max(0, (bucket.rare ?? 0) - 1)
+    const next: WeekendWreckBucket = { density: bucket.density, decayAccMs: bucket.decayAccMs,
+      ...(rare > 0 ? { rare } : {}), ...(Object.keys(by).length > 0 ? { rareBy: by } : {}) }
+    writeWeekendWreckBucket(state, galaxyId, pick.bucketKey!, next)
     return rareWreckItemIdOfCard(pick.cardId, ctx)
   }
   const rec = galaxyRec!
@@ -303,8 +308,10 @@ export function rareStockForTargetOf(
   for (const [cardId, c] of Object.entries(state.galaxyWrecks[galaxyId]?.rareBy ?? {})) {
     if ((c ?? 0) > 0 && inTarget(cardId, false)) n += c ?? 0
   }
-  for (const [cardId, c] of Object.entries(state.weekendWrecks?.[galaxyId]?.rareBy ?? {})) {
-    if ((c ?? 0) > 0 && inTarget(cardId, true)) n += c ?? 0
+  for (const bucket of Object.values(weekendWreckRecordOf(state, galaxyId).byFamily)) {
+    for (const [cardId, c] of Object.entries(bucket.rareBy ?? {})) {
+      if (c > 0 && inTarget(cardId, true)) n += c
+    }
   }
   return n
 }
@@ -589,7 +596,7 @@ export function advanceWreckDrift(
  * `density × max(0, 1 − decayAccMs/48h)` —— **与推进粒度无关、48h 到点必为 0**（记录随即删除）。
  * 再注入一笔 ⇒ 以"当前有效值 ＋ 新注入量"重新起算 48h（打了新的仗，残骸场重新变新鲜）。
  *
- * 存档：`state.weekendWrecks`（星系 id → `{ density, decayAccMs }`；兼容字段，无版本号）。
+ * 存档：`state.weekendWrecks`（星系 id → byFamily 分桶；旧单桶由共用归一口迁移）。
  */
 
 /** 入侵残骸的闲置衰减时长（48h 线性到 0；与星系池同一把尺，单列常量便于日后单独调） */
@@ -599,20 +606,22 @@ const WEEKEND_WRECK_SNAP = 0.05
 
 /** 入侵残骸一条记录（类型本体在 `state.ts`，与 `WreckGalaxyRecord` 同处；此处转发便于同域引用） */
 export type { WeekendWreckRecord } from './state'
-import type { WeekendWreckRecord } from './state'
+import type { WeekendWreckBucket, WeekendWreckRecord } from './state'
+
+function weekendWreckRecordOf(state: GameState, galaxyId: string): WeekendWreckRecord {
+  const rec = state.weekendWrecks?.[galaxyId]
+  return rec?.byFamily !== undefined ? rec : normalizeWeekendWreckRecord(rec)
+}
 
 /** 由记录算**当前有效残骸量**（线性衰减：锚点值 × max(0, 1 − 已漂移/48h)） */
-export function weekendWreckValueOf(rec: WeekendWreckRecord): number {
+export function weekendWreckValueOf(rec: WeekendWreckBucket): number {
   const left = 1 - Math.max(0, rec.decayAccMs) / WEEKEND_WRECK_DECAY_MS
   return left <= 0 ? 0 : Math.max(0, rec.density) * left
 }
 
 /** 某星系的入侵残骸存量（无记录 / 已衰减到 0 = 0） */
 export function weekendWreckDensityOf(state: GameState, galaxyId: string): number {
-  const rec = state.weekendWrecks?.[galaxyId]
-  if (!rec) return 0
-  const v = weekendWreckValueOf(rec)
-  return Number.isFinite(v) && v > 0 ? v : 0
+  return weekendWreckPoolsOf(state, galaxyId).reduce((sum, pool) => sum + pool.density, 0)
 }
 
 /**
@@ -625,9 +634,7 @@ export function weekendWreckDensityOf(state: GameState, galaxyId: string): numbe
  * - `family`= 收窄后的族码（`null` = 未知族桶 ⇒ 打捞池并入**全部**隐藏入侵卡）；
  * - `density` = 该族**当前有效**存量（m³，48h 线性衰减后）；`rare` = 该族箱子件数。
  *
- * ⚠ **分期落码**：第 ① 期（本函数）先把读数口立起来（当前账本仍是"每星系一条 ＋ 一个族标签"
- * ⇒ 恒返回 0 或 1 条）；第 ② 期把账本换成 `byFamily` 分桶（`state.ts` 的 `WeekendWreckRecord`）
- * 后，本函数自然返回多族。设计与落点见 `docs/design/wreck-ledger-by-family-20261003.md`。
+ * 每族独立读数，按普通残骸余额降序；设计见 `docs/design/wreck-ledger-by-family-20261003.md`。
  */
 export interface WeekendWreckPool {
   key: string
@@ -637,13 +644,11 @@ export interface WeekendWreckPool {
 }
 
 export function weekendWreckPoolsOf(state: GameState, galaxyId: string): WeekendWreckPool[] {
-  const rec = state.weekendWrecks?.[galaxyId]
-  if (!rec) return []
-  const density = weekendWreckDensityOf(state, galaxyId)
-  const rare = Math.max(0, Math.floor(rec.rare ?? 0))
-  if (density <= 0 && rare <= 0) return []
-  const family = asFoeFamily(rec.family) ?? null
-  return [{ key: family ?? '?', family, density, rare }]
+  return Object.entries(weekendWreckRecordOf(state, galaxyId).byFamily)
+    .map(([key, bucket]) => ({ key, family: asFoeFamily(key) ?? null,
+      density: weekendWreckValueOf(bucket), rare: Math.max(0, Math.floor(bucket.rare ?? 0)) }))
+    .filter((pool) => pool.density > 0 || pool.rare > 0)
+    .sort((a, b) => b.density - a.density || a.key.localeCompare(b.key))
 }
 
 /**
@@ -662,26 +667,19 @@ export function weekendWreckInjectionOf(
  *
  * ⚠ **2026-09-26 加 `family`**（玩家报障「打捞残骸捞不到 H 族残骸，只能捞到该星系默认的」）：
  * 记下**这批残骸的来源势力**，打捞型号池据此并入对应族的独立入侵卡——哪怕星系**已夺回 / 活动已结束**
- * （残骸场比占领活得久）。同族再注入 ⇒ 家族保持；换族注入 ⇒ 以新注入为准。 */
+ * （残骸场比占领活得久）。同族再注入仅刷新本族时钟，换族注入不改变其他桶。 */
 export function injectWeekendWreck(
   state: GameState,
   galaxyId: string,
   amount: number,
   family?: FoeFamily,
 ): void {
-  if (!(amount > 0) || galaxyId.length === 0) return
-  const map = (state.weekendWrecks ??= {})
-  const cur = map[galaxyId]
-  const kept = family ?? cur?.family
-  const rareLeft = Math.max(0, Math.floor(cur?.rare ?? 0))
-  map[galaxyId] = {
-    density: weekendWreckDensityOf(state, galaxyId) + amount,
-    decayAccMs: 0,
-    ...(kept !== undefined ? { family: kept } : {}),
-    // ⚠ **2026-09-27**：普通注入**不许把场里的箱子冲掉**（`rare`/`rareBy` 原样带过）
-    ...(rareLeft > 0 ? { rare: rareLeft } : {}),
-    ...(cur?.rareBy !== undefined ? { rareBy: { ...cur.rareBy } } : {}),
-  }
+  if (!Number.isFinite(amount) || !(amount > 0) || galaxyId.length === 0) return
+  const key = family ?? '?'
+  const cur = weekendWreckRecordOf(state, galaxyId).byFamily[key]
+  writeWeekendWreckBucket(state, galaxyId, key, {
+    ...cur, density: (cur ? weekendWreckValueOf(cur) : 0) + amount, decayAccMs: 0,
+  })
 }
 
 /**
@@ -698,32 +696,31 @@ export function injectWeekendRareWreck(
   galaxyId: string,
   cardId: string,
   count: number,
+  family?: FoeFamily,
 ): void {
   const n = Math.max(0, Math.floor(count))
-  if (n <= 0 || galaxyId.length === 0 || cardId.length === 0) return
-  const map = (state.weekendWrecks ??= {})
-  const cur = map[galaxyId]
+  if (!Number.isFinite(n) || n <= 0 || galaxyId.length === 0 || cardId.length === 0) return
+  const key = family ?? wreckGroupOfCard(cardId)?.family ?? '?'
+  const cur = weekendWreckRecordOf(state, galaxyId).byFamily[key]
   const rare = Math.max(0, Math.floor(cur?.rare ?? 0)) + n
   const by = { ...(cur?.rareBy ?? {}) }
   by[cardId] = Math.max(0, Math.floor(by[cardId] ?? 0)) + n
-  map[galaxyId] = {
+  writeWeekendWreckBucket(state, galaxyId, key, {
     density: cur?.density ?? 0,
     decayAccMs: cur?.decayAccMs ?? 0,
-    ...(cur?.family !== undefined ? { family: cur.family } : {}),
     rare,
     rareBy: by,
-  }
+  })
   state.rareWreckDryStreak = 0 // 出货即清零（与 `injectRareWreck` 同一条口径）
 }
 
 /** 该星系**入侵残骸场里的稀有残骸存量**（件数；界面读数与打捞判据共用） */
 export function weekendRareWreckCountOf(state: GameState, galaxyId: string): number {
-  return Math.max(0, Math.floor(state.weekendWrecks?.[galaxyId]?.rare ?? 0))
+  return weekendWreckPoolsOf(state, galaxyId).reduce((sum, pool) => sum + pool.rare, 0)
 }
 
 /**
- * **这批入侵残骸的来源势力**（打捞型号池用）：记录里有就用它，老档没记 ⇒ 回落**当前事件族**；
- * 事件也结束了又没记（极老档）⇒ `undefined`（池子按"没有入侵残骸"处理）。
+ * 兼容单族读数：只有一个已知来源桶时返回该族；多族或未知桶不借用当前事件族。
  *
  * 🔴 **2026-10-03 真因修复（船长转述玩家报障：「打完入侵旗舰，结束入侵后，去有入侵残骸的星系进行打捞，
  * 捞不到入侵残骸」）**：`asFoeFamily` 原先用**手写区间** `/^[A-H]$/` 收窄，而 `FoeFamily` 的联合是
@@ -735,39 +732,19 @@ export function weekendRareWreckCountOf(state: GameState, galaxyId: string): num
  * 逐格捞上来的全是该星系自己的 `wreck-a-hi`、**入侵池 272 m³ 四格纹丝不动**（玩家看到的就是"捞不到"）。
  * 现改为**唯一登记表** `FOE_FAMILY_CODES`（与联合逐字一致，含 R）⇒ 不再有"手写区间漏一族"这种事。
  */
-export const FOE_FAMILY_CODES: readonly FoeFamily[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'R']
-
-/** `string` → `FoeFamily` 的收窄小工具（数据侧族码是 `string`，core 侧是字面量联合） */
-export function asFoeFamily(v: string | undefined): FoeFamily | undefined {
-  return v !== undefined && (FOE_FAMILY_CODES as readonly string[]).includes(v) ? (v as FoeFamily) : undefined
-}
-
 export function weekendWreckFamilyOf(state: GameState, galaxyId: string): FoeFamily | undefined {
-  return asFoeFamily(state.weekendWrecks?.[galaxyId]?.family) ?? asFoeFamily(state.weekendEvent?.family)
+  const pools = weekendWreckPoolsOf(state, galaxyId)
+  return pools.length === 1 ? pools[0]!.family ?? undefined : undefined
 }
 
-/** 直接写一条记录（打捞扣减用；`decayAccMs` 一并给定）。
- *
- * ⚠ **2026-09-27**：写回必须**带全** `family` / `rare` / `rareBy` 三格 —— 少任何一格都等于静默丢数据：
- * `family` 丢了打捞池就认不出这批残骸属于哪一族（玩家报障「捞不到 H 族残骸」的那条修复会失效）；
- * `rare`/`rareBy` 丢了玩家打主力舰队挣来的箱子就没了。
- * 且**场里有箱子时不删记录**（矿物捞干 ≠ 箱子没了）。 */
-function writeWeekendWreck(state: GameState, galaxyId: string, density: number, decayAccMs: number): void {
-  const map = state.weekendWrecks
-  if (!map) return
-  const cur = map[galaxyId]
-  const rareLeft = Math.max(0, Math.floor(cur?.rare ?? 0))
-  if ((!(density > WEEKEND_WRECK_SNAP) && rareLeft === 0) || (decayAccMs >= WEEKEND_WRECK_DECAY_MS && rareLeft === 0)) {
-    delete map[galaxyId]
-    return
-  }
-  map[galaxyId] = {
-    density,
-    decayAccMs,
-    ...(cur?.family !== undefined ? { family: cur.family } : {}),
-    ...(rareLeft > 0 ? { rare: rareLeft } : {}),
-    ...(cur?.rareBy !== undefined ? { rareBy: { ...cur.rareBy } } : {}),
-  }
+/** 只写本桶；其他族原样保留，普通量与箱子都空了才删桶。 */
+function writeWeekendWreckBucket(state: GameState, galaxyId: string, key: string, bucket: WeekendWreckBucket): void {
+  const map = (state.weekendWrecks ??= {})
+  const byFamily = { ...weekendWreckRecordOf(state, galaxyId).byFamily }
+  if (weekendWreckValueOf(bucket) <= WEEKEND_WRECK_SNAP && (bucket.rare ?? 0) <= 0) delete byFamily[key]
+  else byFamily[key] = bucket
+  if (Object.keys(byFamily).length === 0) delete map[galaxyId]
+  else map[galaxyId] = { byFamily }
 }
 
 /**
@@ -780,29 +757,12 @@ export function advanceWeekendWreckDecay(
   salvagingGalaxyId: string | null = null,
 ): void {
   const map = state.weekendWrecks
-  if (!map) return
-  for (const [galaxyId, rec] of Object.entries(map)) {
+  if (!map || !Number.isFinite(dtMs) || dtMs <= 0) return
+  for (const galaxyId of Object.keys(map)) {
     if (galaxyId === salvagingGalaxyId) continue
-    const acc = Math.max(0, rec.decayAccMs) + dtMs
-    const rareLeft = Math.max(0, Math.floor(rec.rare ?? 0))
-    const dried = acc >= WEEKEND_WRECK_DECAY_MS || weekendWreckValueOf({ density: rec.density, decayAccMs: acc }) <= WEEKEND_WRECK_SNAP
-    /**
-     * ⚠ **2026-09-27 船长令**（「主力舰队添加一个稀有残骸掉落」＋「进残骸场」）：
-     * **矿物到点即消、箱子（稀有残骸）不随场消失** —— 场里还有没捞走的稀有残骸时**不删记录**
-     * （漂移时长钉在满窗、有效值恒 0 ⇒ 星图上那一条只报箱子）。与常驻残骸场同款口径
-     * （`advanceWreckDrift`：`rec.rare > 0` 时不删）。
-     */
-    if (dried && rareLeft === 0) {
-      delete map[galaxyId]
-      continue
-    }
-    map[galaxyId] = {
-      density: rec.density,
-      decayAccMs: dried ? WEEKEND_WRECK_DECAY_MS : acc,
-      // ⚠ 三格都要带全（`family` 丢了打捞池认不出族；`rare`/`rareBy` 丢了箱子就没了）
-      ...(rec.family !== undefined ? { family: rec.family } : {}),
-      ...(rareLeft > 0 ? { rare: rareLeft } : {}),
-      ...(rec.rareBy !== undefined ? { rareBy: { ...rec.rareBy } } : {}),
+    for (const [key, bucket] of Object.entries(weekendWreckRecordOf(state, galaxyId).byFamily)) {
+      const decayAccMs = Math.min(WEEKEND_WRECK_DECAY_MS, bucket.decayAccMs + dtMs)
+      writeWeekendWreckBucket(state, galaxyId, key, { ...bucket, decayAccMs })
     }
   }
 }
@@ -867,7 +827,12 @@ export function salvageRoundMulOf(
   galaxyId: string,
   /** **打捞对象**（2026-10-02 起参与系数判定：选组/选入侵各按自己那一池算） */
   target?: string,
+  bucketKey?: string,
 ): number {
+  if (bucketKey !== undefined) {
+    const bucket = weekendWreckRecordOf(state, galaxyId).byFamily[bucketKey]
+    return roundMulOf(bucket ? weekendWreckValueOf(bucket) : 0)
+  }
   return roundMulFor(state, ctx, galaxyId, target, weekendWreckDensityOf(state, galaxyId))
 }
 
@@ -886,12 +851,19 @@ export function salvageRoundMulOf(
  * ⚠ **「池量 ≤ 基础值 ⇒ 一轮捞光剩余」由封顶天然满足**（池子 ≤ 本轮出量时，`give = 池量` ⇒ 一次拿完、
  * 池子归零、记录按既有判据清理）——2026-10-03 那条追补令不需要额外分支。
  */
-export function chargeWeekendWreckByVolume(state: GameState, galaxyId: string, wantM3: number): number {
-  const left = weekendWreckDensityOf(state, galaxyId)
-  if (!(wantM3 > 0) || left <= 0) return 0
-  const give = Math.min(wantM3, left)
-  writeWeekendWreck(state, galaxyId, left - give, 0)
-  return give
+export function chargeWeekendWreckByVolume(state: GameState, galaxyId: string, wantM3: number, bucketKey?: string): number {
+  if (!Number.isFinite(wantM3) || !(wantM3 > 0)) return 0
+  let given = 0
+  for (const pool of weekendWreckPoolsOf(state, galaxyId)) {
+    if (bucketKey !== undefined && pool.key !== bucketKey) continue
+    const bucket = weekendWreckRecordOf(state, galaxyId).byFamily[pool.key]!
+    const give = Math.min(wantM3 - given, pool.density)
+    if (give <= 0) continue
+    writeWeekendWreckBucket(state, galaxyId, pool.key, { ...bucket, density: pool.density - give, decayAccMs: 0 })
+    given += give
+    if (given >= wantM3) break
+  }
+  return given
 }
 
 /**

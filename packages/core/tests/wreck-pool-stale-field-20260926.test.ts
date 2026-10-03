@@ -56,12 +56,12 @@ describe('打捞池：入侵残骸场不在占领名单时也要并入侵卡（�
     expect(got.has('wreck-h-hi'), `40 次没出 H 残骸（出的是 ${[...got].join(' / ')}）`).toBe(true)
   })
 
-  it('**老档没记族**（兼容字段缺席）⇒ 回落当前事件族，照样出 H', () => {
+  it('老档没记族 ⇒ 保留未知桶，不借用当前事件族', () => {
     const s = stateWithEvent()
     // 模拟老档：只写 density/decayAccMs（不经 `injectWeekendWreck` 的族参数）
-    s.weekendWrecks = { [GAL]: { density: 600, decayAccMs: 0 } }
-    expect(weekendWreckFamilyOf(s, GAL), '回落当前事件族').toBe('H')
-    expect(pulls(s, GAL).has('wreck-h-hi')).toBe(true)
+    s.weekendWrecks = { [GAL]: { byFamily: { '?': { density: 600, decayAccMs: 0 } } } }
+    expect(weekendWreckFamilyOf(s, GAL), '未知桶不会认成当前族').toBeUndefined()
+    expect([...pulls(s, GAL)].some((id) => id === 'wreck-h-hi' || id === 'wreck-r-inv')).toBe(true)
   })
 
   it('**活动已结束、残骸场还在**（48h 自然衰减）⇒ 仍出 H（场里的族说话）', () => {
@@ -88,7 +88,7 @@ describe('打捞池：入侵残骸场不在占领名单时也要并入侵卡（�
      */
     const one = pullOneWreck(s, ctx, GAL, 60_000)
     expect(one?.itemId, '这一轮出的是入侵族残骸（H 组 = `h-hi`）').toBe('wreck-h-hi')
-    expect(s.weekendWrecks?.[GAL]?.family, '扣减后仍记着族').toBe('H')
+    expect(s.weekendWrecks?.[GAL]?.byFamily.H, '扣减后仍记着族桶').toBeDefined()
     expect(weekendWreckDensityOf(s, GAL), '池子按实际出量减少').toBeLessThan(600)
   })
 
@@ -125,7 +125,7 @@ describe('打捞池：入侵残骸场不在占领名单时也要并入侵卡（�
     const s = stateWithEvent({ ended: true, family: 'R' })
     /** 真实调用形状：族码先过 `asFoeFamily`（修复前这里传进去的是 `undefined`） */
     injectWeekendWreck(s, GAL, 600, asFoeFamily('R'))
-    expect(s.weekendWrecks?.[GAL]?.family, 'R 族要能记进残骸场').toBe('R')
+    expect(s.weekendWrecks?.[GAL]?.byFamily.R, 'R 族要能记进残骸场').toBeDefined()
     expect(weekendWreckFamilyOf(s, GAL), '判据也要读得出 R').toBe('R')
     const got = pulls(s, GAL)
     expect(got.has('wreck-r-inv'), `收场后 40 轮没出 R 族入侵残骸（出的是 ${[...got].join(' / ')}）`).toBe(true)

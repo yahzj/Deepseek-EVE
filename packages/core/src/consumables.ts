@@ -25,6 +25,9 @@ import {
   weekendRandomFamilyOf,
   weekendRollOccupation,
 } from './weekendEvent'
+import { gateMainActivity } from './activityGate'
+import { weekendSettleAndGrant } from './weekendBattle'
+import { weekendFlagshipBattleActive } from './weekendLaunch'
 
 /**
  * **高安启动的声望代价**（**2026-09-30 船长令**：「且当玩家在高安使用时候，弹出二次警告，警告玩家
@@ -275,8 +278,7 @@ export const INVASION_BEACON_FAMILIES: readonly { readonly id: string; readonly 
  * - **不传 `galaxyId`**（物品页 / 货仓页那颗「使用」）⇒ **随机星系**：复用现有那一抽
  *   `weekendRollOccupation(state, ctx, seq)`（随机核心星系 ＋ 外围 ＋ 势力）；
  * - **传 `galaxyId`**（星图 · 星系详细里那颗「启动信号发射器」）⇒ **就用玩家选的那个星系**：
- *   资格判据**与随机那条路同一套** `weekendCoreCandidates`（已探索 · 非高安 · 无已建副站），
- *   不合格当场拒（界面按同一条判据预先置灰 ＋ 就地说明原因），外围走 `weekendPeripheryOf`。
+ *   目标必须存在且没有空间站；高安目标按既有规则支付声望，外围走 `weekendPeripheryOf`。
  *
  * 其余口径照 2026-09-29 六答：`startedAtWallMs` 设为**现在**（这一场按既有规则活满 96 小时窗口）·
  * **不判声望、不判窗口、不判周排期**；只在**已有一场未结束的入侵**时拒绝。
@@ -294,6 +296,17 @@ export function useInvasionBeacon(
   const ev = state.weekendEvent
   if (ev !== undefined && ev.endedAtWallMs === undefined) {
     return { ok: false, error: '已经有一场入侵在进行中：等它结束再用信号发射器。', errorId: 'core.consumable.005' }
+  }
+  if (galaxyId !== undefined && !ctx.galaxies.has(galaxyId)) {
+    return { ok: false, error: '当前没有可入侵的目标星系。', errorId: 'core.consumable.007' }
+  }
+  if (weekendFlagshipBattleActive(state)) {
+    return { ok: false, error: '战斗中：这一场打完才能切换主控活动。', errorId: 'core.activityGate.004' }
+  }
+  // 点火不是切换主控作业：沿用锁定判据，但不自动停止采矿或打捞。
+  const gate = gateMainActivity(state, 'standby')
+  if (gate.action === 'reject') {
+    return { ok: false, error: gate.message, errorId: gate.messageId, errorParams: gate.messageParams }
   }
   /**
    * **新的限制**（**2026-09-30 船长令**：「**新的限制，信号发射器不可以在有空间站的地方使用。**」）：
@@ -355,6 +368,8 @@ export function useInvasionBeacon(
       return { ok: false, error: '当前没有可入侵的目标星系。', errorId: 'core.consumable.007' }
     }
   }
+  // 旧场未结算时先兑现台账，再替换事件；失败的点火不能改变旧账。
+  weekendSettleAndGrant(state, ctx, state.wallMs ?? Date.now())
   takeOne(state, INVASION_BEACON_ITEM_ID)
   /* 目标属高安：扣可支配声望（**在扣料之后**，与"发射器确实用掉了"同一笔成交；不足时上面已拒）
      ⚠ 文案里的星系 = **玩家选定的目标星系**（2026-10-03 改判后不再是"玩家所在地"） */

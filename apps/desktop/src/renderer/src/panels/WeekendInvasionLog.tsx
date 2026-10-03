@@ -19,6 +19,7 @@ import {
   weekendPeripheryAverageOf,
   weekendPeripheryLeadOf,
   weekendProgressAt,
+  weekendFamilyNameId,
   weekendReclaimedAt,
 } from '@whale/core'
 import { tr } from '../i18n/locale'
@@ -86,7 +87,7 @@ export function WeekendInvasionLogRow({ engine, onGoto }: { engine: GameEngine; 
       onClick={onGoto}
     >
       <div className="app-weekend-box-row">
-        <span className="app-weekend-box-tag">{tr('ui.weekend.005', { p1: ev.family })}</span>
+        <span className="app-weekend-box-tag">{tr('ui.weekend.005', { p1: tr(weekendFamilyNameId(ev.family) ?? 'core.weekend.025') })}</span>
         <span className="app-weekend-box-dim">{tr('ui.weekend.006', { p1: coreName })}</span>
       </div>
       <div className="app-weekend-box-row app-weekend-box-dim">

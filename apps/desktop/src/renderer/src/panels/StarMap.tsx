@@ -14,6 +14,7 @@ import { fmtDayClock, fmtDuration } from '../i18n/fmt'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { rareWreckRefsOf } from '../pages/common'
+import { invasionWreckRowsOf } from '../pages/wreckCards'
 import { Glyph, NAV_TONES, ICO_TONES, itemGlyphName } from '../ui/Glyphs'
 import { BeaconHighSecPrompt } from '../ui/beaconPrompt'
 import { UI_TONES } from '../ui/tones'
@@ -65,7 +66,6 @@ import {
   weekendFoeCardOf,
   weekendFoePoolOf,
   weekendProgressAt,
-  weekendWreckDensityOf,
   /** 2026-10-02：这一格还算不算"可打的入侵占点"（含已夺回）——取代原先在这里自判 `progress < 1` */
   weekendZoneLiveAt,
   wreckDensityOf,
@@ -1916,8 +1916,7 @@ export function GalaxyActions({
        * 口径（船长同日裁定）：「**直接使用是随机星系（这个要提醒玩家）。选择了星系后是固定。**」
        * ⇒ 这颗按钮**锁定本星系**；物品页/货仓页那颗仍是随机（两边提示各自写明）。
        *
-       * 护栏：① 资格判据**与随机那条路同一套**（`weekendCoreCandidates`：已探索 · 非高安 · 无已建副站）
-       * ⇒ 不合格时按钮**置灰但仍可点**（点了由 core / 本地提示说清原因，与"装不进货仓"同一套语言）；
+       * 护栏：① 指定目标存在且没有空间站；高安目标弹声望警告，随机路线另走核心候选集。
        * ② 消耗一件 10,000 虚空晶的道具 ⇒ **二次确认**（技能口径 UX「Confirmation Dialogs（High）：
        * Confirm before delete/irreversible actions」），确认态照抄页内既有的"再点一下"写法。
        */}
@@ -2381,20 +2380,13 @@ export function GalaxyActions({
        * "这个星系能捞多少"，放在容器的第一位最贴合语义；读数与判据一字未动
        * （仍与星系密度分开读：船长「入侵残骸不算当地星系密度」，仍只在 >0 时出这一条）。
        */}
-      {(() => {
-        const invWreck = weekendWreckDensityOf(state, galaxy.id)
-        if (invWreck <= 0) return null
-        const densityHere = wreckDensityOf(state, galaxy.id, engine.ctx)
-        const pct = Math.round((invWreck / (invWreck + densityHere)) * 100)
-        return (
-          <div className="app-belt-invwreck" title={tr('ui.weekend.095', { p1: String(pct) })}>
-            <span className="app-belt-invwreck-label">{tr('ui.weekend.094', { p1: invWreck.toFixed(1) })}</span>
-            <div className="app-card-progress is-invasion">
-              <i style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-        )
-      })()}
+      {invasionWreckRowsOf(state, engine.ctx, galaxy.id).map((row) => (
+        <div key={row.key} className="app-belt-invwreck">
+          <span className="app-belt-invwreck-label">{row.name ?? tr('ui.MapPage.121')}</span>
+          <span className="app-dim">{tr('ui.hud.144', { p1: row.density.toFixed(1) })}</span>
+          {row.rare > 0 ? <em className="app-chip is-rare">{tr('ui.MapPage.066')}{row.rare}</em> : null}
+        </div>
+      ))}
       {state.salvaging.active && state.salvaging.galaxyId === galaxy.id ? (
         <div className="app-ga-row">
           <span className="app-ga-main">

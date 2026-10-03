@@ -42,7 +42,7 @@ import {
 import type { WeekendEventState } from '../src/weekendEvent'
 import { weekendBattleInvolvedOf, weekendRareWreckIdFor } from '../src/weekendBattle'
 // 残骸侧口径：组代表威胁跟的是 `wreckThreat ?? threat`（与 content-check 的残骸组契约同一处）
-import { wreckInjectThreatOf } from '../src/salvage'
+import { injectWeekendWreck, wreckInjectThreatOf } from '../src/salvage'
 import { WRECK_GROUP_BY_KEY } from '../src/wreckGroups'
 import { recycleProfileOf } from '../src/salvage'
 import { pullOneWreck } from '../src/salvaging'
@@ -298,7 +298,7 @@ describe('残骸侧：**冻结残骸经济**（船长令）＋ 组改洞外高�
     expect(ctx.items.has('wreck-rare'), '旧写死的假 id 不该存在').toBe(false)
   })
 
-  it('**被占星系的打捞池并入驻留的那支入侵舰队** ⇒ 那里能打捞出「墨潮帮残骸（入侵）」', () => {
+  it('被占星系的真实 H 族残骸桶供卡；只有占领态而无存量时不产入侵残骸', () => {
     /** 挑一个"本来就有可见悬赏"的星系当被占星系（池底 = 它的原卡） */
     const home = [...ctx.anomalies.values()].find((a) => !a.hidden && a.galaxyId !== 'galaxy-hub')!.galaxyId
     /**
@@ -315,6 +315,7 @@ describe('残骸侧：**冻结残骸经济**（船长令）＋ 组改洞外高�
       family: 'H',
       contributed: {},
     }
+    injectWeekendWreck(s, home, 600, 'H')
     const underInvasion = new Set<string>()
     for (let i = 0; i < 40; i++) {
       const got = pullOneWreck(s, ctx, home, 60_000)
@@ -323,6 +324,7 @@ describe('残骸侧：**冻结残骸经济**（船长令）＋ 组改洞外高�
     expect(underInvasion.has('wreck-h-hi'), `40 次打捞没出 H 族残骸（出的是 ${[...underInvasion].join(' / ')}）`).toBe(true)
     // **反证**：同一星系不处于占领区时抽不到它（池底只有原卡 ⇒ 老口径逐字不变）
     const s2 = createInitialState({ nowWallMs: 0, seed: 9 })
+    s2.weekendEvent = structuredClone(s.weekendEvent)
     const normal = new Set<string>()
     for (let i = 0; i < 40; i++) {
       const got = pullOneWreck(s2, ctx, home, 60_000)
