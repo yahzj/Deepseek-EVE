@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **435** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7435** KB · **57397** 行
-- 状态分布：**未标注** 247 · **已确认/已实现** 119 · **进行中** 51 · **待裁定** 17 · **历史留档** 1
-- 孤儿文档（0 引用）**88** 份 · 状态未标注 **247** 份
+- 文档总数 **436** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7441** KB · **57471** 行
+- 状态分布：**未标注** 248 · **已确认/已实现** 119 · **进行中** 51 · **待裁定** 17 · **历史留档** 1
+- 孤儿文档（0 引用）**87** 份 · 状态未标注 **248** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**306** 份
+- 三、现行设计稿（design）：**307** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -55,7 +55,7 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 306 份
+## 三、现行设计稿（design） —— 307 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -64,9 +64,10 @@
 | `docs/design/invasion-wreck-theme-20261003.md` | 入侵残骸「特色掉落」= 族专属件 ＋ 家族 MK2 混池（2026-10-03 · 二号 · d2） | 未标注 | 2026-10-03 | 7 KB / 96 行 | 0 / 0 |
 | `docs/design/ironman-load-in-debug-20261003.md` | 调试模式允许载入铁人存档 | 未标注 | 2026-10-03 | 5 KB / 64 行 | 0 / 1 |
 | `docs/design/r-family-family-code-narrowing-20261003.md` | R 族（光环科技）的入侵残骸场认不出族 —— 「入侵结束后捞不到入侵残骸」真因 | 未标注 | 2026-10-03 | 4 KB / 66 行 | 0 / 0 |
-| `docs/design/salvage-asymptotic-unified-20261003.md` | 打捞统一口径：基础值 25 ＋ 渐近缓释 ＋ 余额封顶 | 未标注 | 2026-10-03 | 5 KB / 67 行 | 0 / 0 |
+| `docs/design/salvage-asymptotic-unified-20261003.md` | 打捞统一口径：基础值 25 ＋ 渐近缓释 ＋ 余额封顶 → 同日回滚到 2026-10-02「甲」 | 未标注 | 2026-10-03 | 6 KB / 79 行 | 0 / 2 |
 | `docs/design/trident-beam-cannon-20261003.md` | 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中） | 未标注 | 2026-10-03 | 9 KB / 101 行 | 0 / 0 |
 | `docs/design/wh-block-common-spoils-20261003.md` | 洞内「禁止打捞普通残骸」开关：扩到「战斗战果」 | 未标注 | 2026-10-03 | 4 KB / 59 行 | 0 / 0 |
+| `docs/design/wreck-ledger-by-family-20261003.md` | 入侵残骸账改「按族分账」＋ 打捞界面每族一张独立卡（船长令） | 未标注 | 2026-10-03 | 5 KB / 62 行 | 0 / 1 |
 | `docs/design/ai-badge-work-color-20261002.md` | AI 徽标底色改「作业活动色」（矿带 / 打捞各一色） | 未标注 | 2026-10-02 | 3 KB / 45 行 | 0 / 0 |
 | `docs/design/announcement-draft-20261002-corona.md` | 公告待审稿 · 入侵第二势力「光环科技 / Corona Systems」（2026-10-02） | 未标注 | 2026-10-02 | 14 KB / 131 行 | 1 / 1 |
 | `docs/design/blackbox-per-family-20261002.md` | 每族一件黑匣（R 族「光环旗舰黑匣」） | 未标注 | 2026-10-02 | 9 KB / 101 行 | 0 / 0 |
@@ -505,7 +506,7 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 14 KB / 159 行 | 57 / 14 |
 
-## 附：孤儿文档（0 引用，88 份）
+## 附：孤儿文档（0 引用，87 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
@@ -513,7 +514,6 @@
 - `docs/design/corona-ship-art-20261003.md`（2026-10-03 · 8 KB）—— 光环族（R 族）舰船图形 · 五档逐舰线稿（2026-10-03 · 二号 · 待船长观感审查）
 - `docs/design/invasion-wreck-theme-20261003.md`（2026-10-03 · 7 KB）—— 入侵残骸「特色掉落」= 族专属件 ＋ 家族 MK2 混池（2026-10-03 · 二号 · d2）
 - `docs/design/r-family-family-code-narrowing-20261003.md`（2026-10-03 · 4 KB）—— R 族（光环科技）的入侵残骸场认不出族 —— 「入侵结束后捞不到入侵残骸」真因
-- `docs/design/salvage-asymptotic-unified-20261003.md`（2026-10-03 · 5 KB）—— 打捞统一口径：基础值 25 ＋ 渐近缓释 ＋ 余额封顶
 - `docs/design/trident-beam-cannon-20261003.md`（2026-10-03 · 9 KB）—— 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中）
 - `docs/design/wh-block-common-spoils-20261003.md`（2026-10-03 · 4 KB）—— 洞内「禁止打捞普通残骸」开关：扩到「战斗战果」
 - `docs/design/ai-badge-work-color-20261002.md`（2026-10-02 · 3 KB）—— AI 徽标底色改「作业活动色」（矿带 / 打捞各一色）
@@ -598,16 +598,17 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（247 份，待补一行 `状态：…`）
+## 附：状态未标注（248 份，待补一行 `状态：…`）
 
 - `docs/design/beacon-target-highsec-20261003.md`（2026-10-03）—— 信号发射器：高安判据改看「玩家选定的目标星系」
 - `docs/design/corona-ship-art-20261003.md`（2026-10-03）—— 光环族（R 族）舰船图形 · 五档逐舰线稿（2026-10-03 · 二号 · 待船长观感审查）
 - `docs/design/invasion-wreck-theme-20261003.md`（2026-10-03）—— 入侵残骸「特色掉落」= 族专属件 ＋ 家族 MK2 混池（2026-10-03 · 二号 · d2）
 - `docs/design/ironman-load-in-debug-20261003.md`（2026-10-03）—— 调试模式允许载入铁人存档
 - `docs/design/r-family-family-code-narrowing-20261003.md`（2026-10-03）—— R 族（光环科技）的入侵残骸场认不出族 —— 「入侵结束后捞不到入侵残骸」真因
-- `docs/design/salvage-asymptotic-unified-20261003.md`（2026-10-03）—— 打捞统一口径：基础值 25 ＋ 渐近缓释 ＋ 余额封顶
+- `docs/design/salvage-asymptotic-unified-20261003.md`（2026-10-03）—— 打捞统一口径：基础值 25 ＋ 渐近缓释 ＋ 余额封顶 → 同日回滚到 2026-10-02「甲」
 - `docs/design/trident-beam-cannon-20261003.md`（2026-10-03）—— 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中）
 - `docs/design/wh-block-common-spoils-20261003.md`（2026-10-03）—— 洞内「禁止打捞普通残骸」开关：扩到「战斗战果」
+- `docs/design/wreck-ledger-by-family-20261003.md`（2026-10-03）—— 入侵残骸账改「按族分账」＋ 打捞界面每族一张独立卡（船长令）
 - `docs/archive/roadmap-todo-done-20261002.md`（2026-10-02）—— 封存卷 · roadmap 待办单 E1~E9（2026-10-02 清档移出）
 - `docs/design/ai-badge-work-color-20261002.md`（2026-10-02）—— AI 徽标底色改「作业活动色」（矿带 / 打捞各一色）
 - `docs/design/announcement-draft-20261002-corona.md`（2026-10-02）—— 公告待审稿 · 入侵第二势力「光环科技 / Corona Systems」（2026-10-02）
