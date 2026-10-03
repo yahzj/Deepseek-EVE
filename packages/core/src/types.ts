@@ -1467,8 +1467,16 @@ export interface BattleBalance {
    * 命中提高5%」）——`dmgMul` 与 `pdDmg × pdTierMul` **连乘**；`accAdd` 是**百分点**加在 `pdAcc` 上
    * （仍走 `pdHitFloor` 下限与机型闪避那套 clamp）。
    * 缺省/该族没登记 ⇒ 逐字走全局值（零行为变化）。族从 `UnitSpec.family` 取。
+   *
+   * **2026-10-03 加两个字段**（**船长令**：「**给光环势力的近防炮换成能量伤害的光束近防炮，
+   * 特点是和光束武器一样，必中**」）：
+   * - `dmgType`：本族近防炮的**伤害类型**（缺省 `kinetic` —— 三档动能近防炮那条线；R 族 = `plasma` 能量）；
+   * - `autoHit`：**必中** = **完全不掷命中、也不吃机型闪避**（与光束武器同一句语义：
+   *   引擎里 `autoHit ⇒ meHit = 1`、连骰子都不掷）⇒ 连 `pdHitFloor` 与闪避一起绕过。
    */
-  pdFamilyOverride?: Partial<Record<FoeFamily, { dmgMul?: number; accAdd?: number }>>
+  pdFamilyOverride?: Partial<
+    Record<FoeFamily, { dmgMul?: number; accAdd?: number; dmgType?: DamageType; autoHit?: boolean }>
+  >
 }
 
 /**
