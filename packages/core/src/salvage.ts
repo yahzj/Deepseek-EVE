@@ -1040,6 +1040,12 @@ export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleP
     pool: group.pool,
     note: group.note.length > 0 ? group.note : undefined,
     theme: group.theme,
+    // 入侵族特色池（2026-10-03）：非空 ⇒ 回收开箱走"10% 出特色"那条替换支
+    // ⚠ **`themeGear` 不带给稀有残骸**：`themeGear` 是"普通残骸直出"这条支路的池子；稀有箱的具名件
+    //   走 `lairGear`（专属支）、兜底走 `rareTheme`（见下），三条支路互不重叠。
+    ...(!isRareWreck(wreckItemId) && group.themeGear !== undefined ? { themeGear: group.themeGear } : {}),
+    ...(!isRareWreck(wreckItemId) && group.themeGearMk2 !== undefined ? { themeGearMk2: group.themeGearMk2 } : {}),
+    ...(group.rareTheme !== undefined ? { rareTheme: group.rareTheme } : {}),
     // 稀有残骸（2026-09-10）：保底照常，另走"必定额外掉落"的高级箱；专属装备池按**族**取（与合并前同源）
     ...(isRareWreck(wreckItemId)
       ? (() => {
@@ -1169,6 +1175,13 @@ export function rollRareBoxExtra(
     const theme = rareBoxThemePoolOf(profile, [])
     const pick = ((): string | undefined => {
       if (theme.length > 0) return pickOne(state.rng, theme)
+      /**
+       * ⚠ **2026-10-03 新增 `rareTheme` 这一档**（在带权重组之前）：入侵两组的 `theme` 必须为空
+       * （组主题件 = 成员卡并集契约），兜底件另配在 `rareTheme`（家族 MK2 一件）——没有它，
+       * 入侵稀有箱未命中专属支时就只剩"高阶矿物"（船长令「**稀有残骸必定出特色掉落**」会落空）。
+       */
+      const own = profile.rareTheme ?? []
+      if (own.length > 0) return pickOne(state.rng, own)
       const groups = weightedFallback.filter((g) => g.ids.length > 0 && g.weight > 0)
       if (groups.length > 0) {
         // 先把"哪一组池"按权重抽出来，再在组内均匀抽 1 件（`pickWeighted` 是 rng 里的既有单点）
@@ -1241,6 +1254,19 @@ export interface RecycleProfile {
   note?: string
   /** 组主题追加件并集（2026-09-08"追加"语义：默认池 + 该组主题件；缺省 = 无追加） */
   theme: { modules?: readonly string[]; mk2?: readonly string[] }
+  /**
+   * **入侵族特色池**（**2026-10-03 船长定**；只有 `region: 'inv'` 的两组配了它）。
+   * 非空 ⇒ {@link rollRecycleLoot} 的 ①★ 支**取代**基础直出：每批 10% 掷中，从
+   * `themeGear ×1 ＋ themeGearMk2 ×20` 里抽一件；未掷中则该批无物品。见 `INVASION_FEATURE_CHANCE`。
+   */
+  themeGear?: readonly string[]
+  /** 见 `themeGear`：特色池的家族 MK2 部分（权重 20，可重复获得） */
+  themeGearMk2?: readonly string[]
+  /**
+   * **稀有箱"未命中专属支"时的主题件池**（**2026-10-03**）：入侵两组的 `theme` 按契约保持为空
+   * ⇒ 兜底支另配这一格（船长令「**稀有残骸必定出特色掉落**」）。非入侵组不带它，
+   * `rollRareBoxExtra` 照旧走 `rareBoxThemePoolOf(profile)`（= `theme`）。 */
+  rareTheme?: readonly string[]
   /** 是否稀有残骸（2026-09-10：赏金任务窝点战利品）——开箱走"高级箱"：保底照常 + **必定**额外掉落 */
   rare?: boolean
   /** 该**族**的专属装备池（稀有残骸额外掉落优先在此掷；缺省 = 未配置） */
@@ -1363,6 +1389,41 @@ export const RECYCLE_MK2_MODULES: readonly string[] = [
  * 碎片路线整档从"约买书工时的 28 倍"降到约 7 倍（见 tools/salvage-econ.ts 两条路线对比表）。 */
 export const RECYCLE_CHANCE = { base: 0.00008, mk2: 0.000003, fragT2: 0.00045, fragT3: 0.0007 }
 /**
+ * **入侵族「特色掉落」三个常量**（**2026-10-03 船长定**）。
+ *
+ * 船长原话（照抄）：「**不能使用和星系内残骸同样的设置吗？普通残骸有10%概率出特色掉落，特色掉落里，
+ * MK2和势力装备混在一起。稀有残骸必定出特色掉落**」＋两条选择（掷点 = **回收炉每批**；
+ * 掷中后在「专属件 : MK2」间按 **1 : 20** 分、**可重复获得**）。
+ *
+ * 掷法（{@link rollRecycleLoot} 的 ① 支）：每批先掷 {@link INVASION_FEATURE_CHANCE}；掷中 ⇒ **替换**那一次
+ * 基础直出、从特色池（族专属件权重 1 ＋ 家族 MK2 权重 20）里抽一件；未掷中 ⇒ 本批无物品。
+ * 池内容按组配在 `wreckGroups.WreckGroupDef.themeGear` / `themeGearMk2`。
+ *
+ * ⚠ **为什么"替换"而不是"追加"**：旧的"主题追加件"机制（`theme.modules`）为了保值会按
+ * `默认池均价 ÷ 总池均价` **反比压低**整条直出链的概率 —— 塞进 960 万级的族专属件后实测出件率
+ * **×0.031**（每 269 批一件 → 每 4,900 批一件），普通掉落被一起关掉。改成"换池"后概率只由本常量决定。
+ *
+ * ⚠ **这一支有意不接受"每批 EV 守恒"**（本批立下的口径 · 与船长的 10% 不可兼得，实测见下）：
+ * 旧的"按均价反比缩放"等价于给每次命中套一个**价值上限** = 原来那一次基础直出的期望
+ * （`0.00008 × 默认池均价 33,800` ≈ **2.7 ISK/批**）。特色池均价 1.27M ⇒ 守恒要求的概率只有
+ * **0.00021%**（≈ 1,900 h 一件），与船长要的 10% 差 4.7 万倍。
+ * ⇒ 取船长的 10%，代价**精确记账**：特色掉落 EV **2.7 ISK/批 → 127,000 ISK/批**（刻意提高）。
+ *
+ * **尺度对照（一场入侵 ≈ 42 场战斗 ≈ 4,000 m³ 残骸）**：
+ * - 族专属件 **0.19 件/场**（≈ 2.0M ISK）· 家族 MK2 **3.8 件/场**（≈ 1.7M ISK）⇒ 物品合计 ≈ 3.7M ISK/场；
+ * - 同一批残骸的**保底矿物 ≈ 0.41M ISK**（101.88 ISK/m³）、**基础直出件**（旧机制）≈ 0.017M ISK
+ *   ⇒ 本支把**物品**收入抬到主位，但**总收益仍以保底矿物为地板**（36.5k ISK/m³，其中矿物占 0.3%）。
+ */
+export const INVASION_FEATURE_CHANCE = 0.1
+/** 特色池里**族专属件**的权重（家族 MK2 的总权重见下） */
+export const INVASION_FEATURE_GEAR_WEIGHT = 1
+/**
+ * 特色池里**家族 MK2 一侧的总权重**（⇒ 族专属件占总命中的 `1 / (1 + 20)` ≈ **4.76%**）。
+ * ⚠ 这是**整组的总权重**、不是"每件 20"：实现按 `20 ÷ 该组件数` 摊到每一件
+ * （若误写成"每件 20"，三件 MK2 时实际比例会变成 1 : 60）。
+ */
+export const INVASION_FEATURE_MK2_WEIGHT = 20
+/**
  * 蓝图碎片配方：模块 → 蓝图 id + **档位** + 集齐片数。
  * `tier` 是显式字段：池拆分、威胁门槛、界面提示一律读它——2026-09-10 船长把门槛从 100/1000
  * 降到 25/250，若仍沿用"片数 == 100"当档位判据，改门槛会把两个池一起打成空数组（碎片全不出）。
@@ -1452,8 +1513,46 @@ export function rollRecycleLoot(
       .filter((p): p is number => typeof p === 'number' && p > 0)
     return ps.length > 0 ? ps.reduce((a, b) => a + b, 0) / ps.length : 0
   }
-  // ① 基础件直出线：默认池（8 件，2026-09-08 起含三系 MK1 武器）+ 中安主题追加件
   const defBase = RECYCLE_BASE_MODULES.filter((id) => ctx.modules.has(id))
+  /**
+   * ①★ **入侵族「特色池」**（**2026-10-03 船长定**，见 `INVASION_FEATURE_CHANCE` 的头注）：
+   * 按组配了 `themeGear`（族专属件）⇒ **本支取代** 原来那一次"基础直出"，
+   * 掷中 `INVASION_FEATURE_CHANCE`（10%）从 `族专属件(权重 1) : 家族 MK2(权重 20)` 里抽一件，
+   * 未掷中则这一批没有物品。
+   * ⚠ 正是"取代"（不是追加）才躲开了旧机制"按均价反比缩放把整条链压低"的坑（实测 ×0.031）。
+   * ⚠ 本支**有意不套"每批 EV 守恒"**（那是旧机制的语义；套上去概率只有 0.00021%，与船长要的 10%
+   * 差 4.7 万倍）——理由与代价逐条记在 `INVASION_FEATURE_CHANCE` 的注释里。
+   */
+  const featureGear = (profile.themeGear ?? []).filter((id) => ctx.modules.has(id))
+  if (featureGear.length > 0) {
+    const featureMk2 = (profile.themeGearMk2 ?? []).filter((id) => ctx.modules.has(id))
+    /**
+     * 权重展开成抽取池——用现成的 `pickOne`，不另造加权抽取。
+     * ⚠ **按"两组的总权重"配比，不是"单件对单件"**：船长要的是 **族专属件组 : 家族 MK2 组 = 1 : 20**
+     * ⇒ MK2 侧的总权重 = 20（摊到该组每件 = `20 ÷ 件数`）。若写成"每件各 20"，
+     * 三件 MK2 时实际比例会变成 1 : 60（实测族专属件占比 1.63% 而非 4.76%）。
+     */
+    const mk2PerItem = Math.max(1, Math.round(INVASION_FEATURE_MK2_WEIGHT / Math.max(1, featureMk2.length)))
+    const pool = [
+      ...featureGear.flatMap((id) => Array.from({ length: INVASION_FEATURE_GEAR_WEIGHT }, () => id)),
+      ...featureMk2.flatMap((id) => Array.from({ length: mk2PerItem }, () => id)),
+    ]
+    const t2PoolF = fragmentPoolOf(state, ctx, 2)
+    const t3PoolF = fragmentPoolOf(state, ctx, 3)
+    for (let i = 0; i < batchUnits; i++) {
+      if (pool.length > 0 && nextRandom(state.rng) < INVASION_FEATURE_CHANCE) {
+        modules.push(pickOne(state.rng, pool)!)
+      }
+      if (profile.threat >= 17 && t2PoolF.length > 0 && nextRandom(state.rng) < RECYCLE_CHANCE.fragT2) {
+        fragments.push(pickOne(state.rng, t2PoolF)!)
+      }
+      if (profile.threat >= 41 && t3PoolF.length > 0 && nextRandom(state.rng) < RECYCLE_CHANCE.fragT3) {
+        fragments.push(pickOne(state.rng, t3PoolF)!)
+      }
+    }
+    return { modules, fragments }
+  }
+  // ① 基础件直出线：默认池（8 件，2026-09-08 起含三系 MK1 武器）+ 中安主题追加件
   const appendBase = (profile.theme?.modules ?? []).filter((id) => ctx.modules.has(id) && !defBase.includes(id))
   const defBaseAvg = avgPriceOf(defBase)
   const basePool = [...defBase, ...appendBase]

@@ -514,6 +514,9 @@ function WreckFlavorRow({ def, engine }: { def: ItemDef; engine: GameEngine }) {
       lowSec: profile.lowSec,
       threat: profile.threat,
       loot: profile.theme,
+      // 入侵族特色池（2026-10-03）：族专属件 ＋ 家族 MK2 —— 与引擎同一份取数（`recycleProfileOf`）
+      themeGear: profile.themeGear,
+      themeGearMk2: profile.themeGearMk2,
       lairGear: profile.lairGear,
     },
     { mods: ctx.modules, items: ctx.items, droneUnits: RARE_BOX_DRONE_UNITS },

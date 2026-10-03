@@ -13,6 +13,9 @@ import { buildSimContext } from '@whale/data'
 import { WRECK_GROUPS } from '../packages/core/src/wreckGroups'
 import { FOE_LAIR_GEAR } from '../packages/core/src/lairs'
 import {
+  INVASION_FEATURE_CHANCE,
+  INVASION_FEATURE_GEAR_WEIGHT,
+  INVASION_FEATURE_MK2_WEIGHT,
   RECYCLE_BATCH_M3,
   RECYCLE_CYCLE_MS,
   RECYCLE_YIELD_PER_M3,
@@ -28,7 +31,7 @@ import type { RecycleTier } from '../packages/core/src/salvage'
 const ctx = buildSimContext()
 const price = (id: string): number => ctx.items.get(id)?.baseSellPriceIsk ?? 0
 const name = (id: string): string => ctx.items.get(id)?.name ?? id
-const FAM: Record<string, string> = { A: 'A 海盗', B: 'B 拾荒者', C: 'C 异形', D: 'D 守墓', E: 'E 巨构', G: 'G 鱿烬亡军', H: 'H 墨潮帮' }
+const FAM: Record<string, string> = { A: 'A 海盗', B: 'B 拾荒者', C: 'C 异形', D: 'D 守墓', E: 'E 巨构', G: 'G 鱿烬亡军', H: 'H 墨潮帮', R: 'R 光环' }
 
 type Row = {
   fam: string
@@ -111,6 +114,10 @@ for (const g of WRECK_GROUPS) {
     `${g.key.padEnd(8)} ${g.family} ${region} ${g.tier.padEnd(6)} 池均价 ${mean.toFixed(2).padStart(7)}` +
       ` · 保底 ${(RECYCLE_YIELD_PER_M3[g.tier] * mean).toFixed(1).padStart(6)} ISK/m³` +
       ` · 主题件 ${(g.theme.modules?.length ?? 0) + (g.theme.mk2?.length ?? 0)}` +
+      // 入侵两组的特色掉落走 `themeGear` 特色池（2026-10-03），不在 `theme` 里 ⇒ 单独标出来
+      (g.themeGear !== undefined
+        ? ` · 特色池 10%/批（专属件 ${(g.themeGear ?? []).map(name).join('、')} : 家族 MK2 ×${g.themeGearMk2?.length ?? 0} = 1:20）`
+        : '') +
       ` · 池：${pool.map(([id, w]) => `${name(id)}(${w})`).join(' + ')}`,
   )
 }
@@ -132,5 +139,25 @@ for (const k of h.groups) {
 console.log(
   `\n高级箱专属件命中率：common ${RARE_BOX_GEAR_CHANCE.common * 100}% · risky ${RARE_BOX_GEAR_CHANCE.risky * 100}% · dire ${RARE_BOX_GEAR_CHANCE.dire * 100}%` +
     `（未命中必给主题件）· 稀有单件 ${RARE_WRECK_VOLUME_M3} m³ · 批 ${RECYCLE_BATCH_M3} m³ / ${RECYCLE_CYCLE_MS / 1000} 秒` +
-    `\nH 专属池来源 FOE_LAIR_GEAR.H = ${FOE_LAIR_GEAR.H.length} 件：${FOE_LAIR_GEAR.H.map((x) => ctx.modules.get(x)?.name ?? ctx.items.get(x)?.name ?? x).join('、')}`,
+    // ⚠ 本行原写「H 专属池来源 FOE_LAIR_GEAR.H」——**2026-10-03 起两族都要看全**：
+    //   专属池只装"武器/无人机类专属件"，非武器专属件（H 捕获网 / R 跃迁规避装置）已改走**特色池**
+    //   （`themeGear`；每批 10% 掷中、族专属件 : 家族 MK2 = 1 : 20）⇒ 这里把两条面一起列出来。
+    `\n族专属件全集（稀有箱专属池 ＋ 普通残骸特色池）：` +
+    '\n  H 墨潮帮 = ' +
+    [
+      ...FOE_LAIR_GEAR.H.map((id) => `${gearName(id)}（专属池）`),
+      ...(WRECK_GROUPS.find((g) => g.key === 'h-hi')?.themeGear ?? []).map((id) => `${gearName(id)}（特色池 10%/批）`),
+    ].join('、') +
+    '\n  R 光环   = ' +
+    [
+      ...FOE_LAIR_GEAR.R.map((id) => `${gearName(id)}（专属池）`),
+      ...(WRECK_GROUPS.find((g) => g.key === 'r-inv')?.themeGear ?? []).map((id) => `${gearName(id)}（特色池 10%/批）`),
+    ].join('、') +
+    `\n入侵族特色池（2026-10-03 船长定）：每批 ${(INVASION_FEATURE_CHANCE * 100).toFixed(0)}% 掷中 ⇒ 族专属件 : 家族 MK2 = ` +
+    `${INVASION_FEATURE_GEAR_WEIGHT} : ${INVASION_FEATURE_MK2_WEIGHT}（按两组总权重 · 可重复获得）；未掷中 = 该批无物品。` +
+    `\n⚠ 本支**有意不套"每批 EV 守恒"**（套上去概率只有 0.00021%/批，与船长要的 10% 差 4.7 万倍）——代价记账见 salvage.ts 的常量注释。`,
 )
+
+function gearName(id: string): string {
+  return ctx.modules.get(id)?.name ?? ctx.items.get(id)?.name ?? id
+}

@@ -113,8 +113,11 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
       'sbp-wh-g-frigate', 'sbp-wh-g-destroyer', 'sbp-wh-g-cruiser'],
   },
   /* ── H 墨潮帮（Ink Tide）──
-     依据：2026-09-26 势力装备批 —— **两件模块**（墨潮电子舱 `mod-lair-ecm-h` / 墨潮捕获网 `mod-lair-web-h`，
-     均在 core `FOE_LAIR_GEAR.H`）＋ **专属无人机**（墨潮重袭无人机 `drone-ink-heavy`，`exclusive: true`）。
+     依据：2026-09-26 势力装备批 —— **两件模块**（墨潮电子舱 `mod-lair-ecm-h` ／ 墨潮捕获网 `mod-lair-web-h`）
+     ＋ **专属无人机**（墨潮重袭无人机 `drone-ink-heavy`，`exclusive: true`）。
+     ⟪**2026-10-03 口径变化（本表不受影响）**⟫：捕获网已从 core `FOE_LAIR_GEAR.H` 移出、改走 `h-hi` 组的
+     **主题件**（普通残骸直出）——即"本表列它、`FOE_LAIR_GEAR` 不列它"是**有意**的：本表 = "族专属件全集"，
+     `FOE_LAIR_GEAR` = "稀有箱专属支的池"。`factionOfModuleId` 先查本表、再查 core 表 ⇒ 手册装备栏照旧列全三件。
      ⚠ **H 没有专属舰船**（数据侧无 `sh-wh-h-*`）⇒ 界面按船长 2026-09-26 选定（甲案）在该栏明写「暂无专属舰船」。
      ⚠ 两件模块与无人机都是窝点/残骸链产物、**无蓝图**（`exclusive`：无图纸、不上市场）⇒ 图纸一栏为空。 */
   H: {
@@ -131,7 +134,9 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
      我们参考那个做」；族格裁定「甲：新立族格」· 舰名配色「甲：照提案」）。
      ⚠ **2026-10-03 船长报障修**（「**我发现手册中的光环势力描述不正确。舰船也对不上。**」）：
      旧注释写「**P0 阶段没有专属内容**……三栏都为空」——那是**建族当时**的状态，**P0 落码后没回头同步**
-     ⇒ 手册里 R 族装备栏一直是空的，而实际早有**势力装备**（照 H 族同款填法，见其头注）。⟪2026-10-02 订正⟫ 当时是两件（叠光激光炮 / 跃迁规避装置）；后追加 三叉戟光束炮（mod-lair-beam-r）与 PD激光（mod-lair-pd-r）⇒ FOE_LAIR_GEAR.R 现为**四件**。
+     ⇒ 手册里 R 族装备栏一直是空的，而实际早有**势力装备**（照 H 族同款填法，见其头注）。⟪2026-10-02 订正⟫ 当时是两件（叠光激光炮 / 跃迁规避装置）；后追加 三叉戟光束炮（mod-lair-beam-r）与 PD激光（mod-lair-pd-r）⇒ R 族共**四件**。
+     ⟪**2026-10-03 口径变化（本表不受影响）**⟫：跃迁规避装置已从 core `FOE_LAIR_GEAR.R` 移出、改走 `r-inv` 组的
+     **主题件**（普通残骸直出）——本表仍列它（口径同上：本表 = 族专属件全集、`FOE_LAIR_GEAR` = 稀有箱专属支的池）。
      ⚠ **R 族没有专属舰船**（玩家侧无 `sh-wh-r-*`）—— 与 H 族一样它是**入侵族**，
      出场的是敌舰级（`foe-r-corona-*` 五个：glint / echo / overlay / dusk / nexus），不是可拥有的船
      ⇒ `ships` 与 `blueprints` 两栏**保持为空**（界面按 H 族同款明写「暂无专属舰船」）。 */
@@ -140,7 +145,8 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
     nameId: 'ui.Handbook.381', // 光环
     glyph: 'fam-r',
     /* 四件势力装备都是 R 族**残骸回收**链产物（2026-10-01 船长令那批：AI 核心 ＋ 叠光激光炮 ＋ 跃迁规避装置；⟪2026-10-02⟫ 再加 三叉戟光束炮 ＋ PD激光）
-       —— 与 H 族那两件同为窝点/残骸链产物、**无蓝图**（不上市场）⇒ 图纸一栏照旧为空。 */
+       —— 与 H 族那两件同为窝点/残骸链产物、**无蓝图**（不上市场）⇒ 图纸一栏照旧为空。
+       ⟪2026-10-03⟫ 其中**跃迁规避装置**改由 `r-inv` 组的主题件产出（普通残骸直出），仍在本栏。 */
     modules: ['mod-lair-laser-r', 'mod-lair-blink-r', 'mod-lair-beam-r', 'mod-lair-pd-r'],
     ships: [],
     blueprints: [],
