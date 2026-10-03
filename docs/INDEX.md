@@ -12,9 +12,9 @@
 
 ## 统计
 
-- 文档总数 **443** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7479** KB · **57948** 行
-- 状态分布：**未标注** 244 · **已确认/已实现** 129 · **进行中** 53 · **待裁定** 16 · **历史留档** 1
-- 孤儿文档（0 引用）**78** 份 · 状态未标注 **244** 份
+- 文档总数 **443** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7480** KB · **57950** 行
+- 状态分布：**未标注** 245 · **已确认/已实现** 128 · **进行中** 53 · **待裁定** 16 · **历史留档** 1
+- 孤儿文档（0 引用）**78** 份 · 状态未标注 **245** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
 - 三、现行设计稿（design）：**293** 份
@@ -71,7 +71,7 @@
 | `docs/design/r-family-family-code-narrowing-20261003.md` | R 族（光环科技）的入侵残骸场认不出族 —— 「入侵结束后捞不到入侵残骸」真因 | 未标注 | 2026-10-03 | 4 KB / 66 行 | 0 / 0 |
 | `docs/design/salvage-asymptotic-unified-20261003.md` | 打捞统一口径：基础值 25 ＋ 渐近缓释 ＋ 余额封顶 → 同日回滚到 2026-10-02「甲」 | 未标注 | 2026-10-03 | 6 KB / 79 行 | 0 / 2 |
 | `docs/design/trident-beam-cannon-20261003.md` | 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中） | 未标注 | 2026-10-03 | 9 KB / 101 行 | 0 / 0 |
-| `docs/design/web-save-reconnect-20261003.md` | 国庆节审查第二批：网页存档重连与来源冲突 | 已确认/已实现（已确认） | 2026-10-03 | 12 KB / 117 行 | 0 / 0 |
+| `docs/design/web-save-reconnect-20261003.md` | 国庆节审查第二批：网页存档重连与来源冲突 | 未标注（实现与验证完成） | 2026-10-03 | 13 KB / 119 行 | 0 / 0 |
 | `docs/design/wh-block-common-spoils-20261003.md` | 洞内「禁止打捞普通残骸」开关：扩到「战斗战果」 | 未标注 | 2026-10-03 | 4 KB / 59 行 | 0 / 0 |
 | `docs/design/wreck-ledger-by-family-20261003.md` | 入侵残骸账改「按族分账」＋ 打捞界面每族一张独立卡（船长令） | 未标注 | 2026-10-03 | 5 KB / 63 行 | 1 / 2 |
 | `docs/design/announcement-draft-20261002-corona.md` | 公告待审稿 · 入侵第二势力「光环科技 / Corona Systems」（2026-10-02） | 未标注 | 2026-10-02 | 14 KB / 131 行 | 2 / 1 |
@@ -526,7 +526,7 @@
 - `docs/design/invasion-wreck-theme-20261003.md`（2026-10-03 · 7 KB）—— 入侵残骸「特色掉落」= 族专属件 ＋ 家族 MK2 混池（2026-10-03 · 二号 · d2）
 - `docs/design/r-family-family-code-narrowing-20261003.md`（2026-10-03 · 4 KB）—— R 族（光环科技）的入侵残骸场认不出族 —— 「入侵结束后捞不到入侵残骸」真因
 - `docs/design/trident-beam-cannon-20261003.md`（2026-10-03 · 9 KB）—— 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中）
-- `docs/design/web-save-reconnect-20261003.md`（2026-10-03 · 12 KB）—— 国庆节审查第二批：网页存档重连与来源冲突
+- `docs/design/web-save-reconnect-20261003.md`（2026-10-03 · 13 KB）—— 国庆节审查第二批：网页存档重连与来源冲突
 - `docs/design/wh-block-common-spoils-20261003.md`（2026-10-03 · 4 KB）—— 洞内「禁止打捞普通残骸」开关：扩到「战斗战果」
 - `docs/design/blackbox-per-family-20261002.md`（2026-10-02 · 9 KB）—— 每族一件黑匣（R 族「光环旗舰黑匣」）
 - `docs/design/corona-invasion-recycle-check-20261002.md`（2026-10-02 · 5 KB）—— 核查：光环（R 族）入侵残骸 → 势力装备 / AI 核心 可回收（2026-10-02 · 二号 · 待船长验收）
@@ -596,7 +596,7 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（244 份，待补一行 `状态：…`）
+## 附：状态未标注（245 份，待补一行 `状态：…`）
 
 - `docs/design/beacon-target-highsec-20261003.md`（2026-10-03）—— 信号发射器：高安判据改看「玩家选定的目标星系」
 - `docs/design/corona-enemy-pd-beam-20261003.md`（2026-10-03）—— 光环势力敌人的近防炮 = 能量光束近防炮 · 必中（2026-10-03 · 二号 · d2）
@@ -607,6 +607,7 @@
 - `docs/design/r-family-family-code-narrowing-20261003.md`（2026-10-03）—— R 族（光环科技）的入侵残骸场认不出族 —— 「入侵结束后捞不到入侵残骸」真因
 - `docs/design/salvage-asymptotic-unified-20261003.md`（2026-10-03）—— 打捞统一口径：基础值 25 ＋ 渐近缓释 ＋ 余额封顶 → 同日回滚到 2026-10-02「甲」
 - `docs/design/trident-beam-cannon-20261003.md`（2026-10-03）—— 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中）
+- `docs/design/web-save-reconnect-20261003.md`（2026-10-03）—— 国庆节审查第二批：网页存档重连与来源冲突
 - `docs/design/wh-block-common-spoils-20261003.md`（2026-10-03）—— 洞内「禁止打捞普通残骸」开关：扩到「战斗战果」
 - `docs/design/wreck-ledger-by-family-20261003.md`（2026-10-03）—— 入侵残骸账改「按族分账」＋ 打捞界面每族一张独立卡（船长令）
 - `docs/archive/roadmap-todo-done-20261002.md`（2026-10-02）—— 封存卷 · roadmap 待办单 E1~E9（2026-10-02 清档移出）

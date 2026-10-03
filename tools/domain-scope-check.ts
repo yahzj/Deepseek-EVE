@@ -119,7 +119,7 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '存档与元系统',
-    globs: ['packages/core/src/save.ts', 'packages/core/src/saveBattleClean.ts', 'packages/core/src/ironman.ts', 'packages/core/src/debugGate.ts', 'packages/core/src/tuning.ts', 'packages/core/src/settleStats.ts', 'apps/desktop/src/renderer/src/panels/SaveManager.tsx', 'apps/desktop/src/renderer/src/panels/DebugPanel.tsx', 'apps/desktop/src/renderer/src/panels/appSettings.tsx', 'apps/desktop/src/renderer/src/panels/Handbook.tsx', 'apps/desktop/src/renderer/src/panels/handbookDetail.tsx', 'apps/desktop/src/renderer/src/ui/theme.ts', 'apps/desktop/src/renderer/src/ui/tones.ts', 'apps/desktop/src/renderer/src/ui/Glyphs.tsx', 'apps/desktop/src/renderer/src/ui/Hint.tsx', 'apps/desktop/src/renderer/src/ui/WinBox.tsx', 'apps/desktop/src/renderer/src/ui/LazyMount.tsx'],
+    globs: ['packages/core/src/save.ts', 'packages/core/src/saveBattleClean.ts', 'packages/core/src/ironman.ts', 'packages/core/src/debugGate.ts', 'packages/core/src/tuning.ts', 'packages/core/src/settleStats.ts', 'apps/desktop/src/renderer/src/panels/SaveManager.tsx', 'apps/desktop/src/renderer/src/panels/SaveReconnect.tsx', 'apps/desktop/src/renderer/src/panels/SaveWriterGate.tsx', 'apps/desktop/src/renderer/src/panels/DebugPanel.tsx', 'apps/desktop/src/renderer/src/panels/appSettings.tsx', 'apps/desktop/src/renderer/src/panels/Handbook.tsx', 'apps/desktop/src/renderer/src/panels/handbookDetail.tsx', 'apps/desktop/src/renderer/src/ui/theme.ts', 'apps/desktop/src/renderer/src/ui/tones.ts', 'apps/desktop/src/renderer/src/ui/Glyphs.tsx', 'apps/desktop/src/renderer/src/ui/Hint.tsx', 'apps/desktop/src/renderer/src/ui/WinBox.tsx', 'apps/desktop/src/renderer/src/ui/LazyMount.tsx'],
   },
   {
     name: '任务中心页与总览',
