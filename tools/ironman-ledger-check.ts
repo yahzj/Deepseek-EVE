@@ -101,6 +101,21 @@ async function main(): Promise<void> {
     check('账本缺失（ledgerSeq=0）⇒ 仍按档内代次拦下更早的档', !noLedger.ok && noLedger.threshold === 7, JSON.stringify(noLedger))
     const noLedgerNormal = ironmanLoadVerdict({ ironman: false, incomingSeq: 0, currentSeq: 0, ledgerSeq: 0, incomingSavedAtWallMs: NOW, nowWallMs: NOW })
     check('账本缺失 + 普通档 ⇄ 普通档 ⇒ 照旧放行', noLedgerNormal.ok && !noLedgerNormal.rescue)
+    /**
+     * **本机调试模式旁路**（**2026-10-03 船长令**：「**新增，调试模式允许载入铁人存档**」）：
+     * `bypass: true` ⇒ 铁人旧档**一律放行**且**不记救援**（船长三答：两条路都放行 · 判据只用本机
+     * 调试门禁 · 不记救援）。旁路缺省时上面那几条判定**逐字不变**（同一条档这里就是被拒的）。
+     */
+    const bypassed = ironmanLoadVerdict({
+      ironman: true,
+      incomingSeq: 5,
+      currentSeq: 7,
+      ledgerSeq: 7,
+      incomingSavedAtWallMs: NOW,
+      nowWallMs: NOW,
+      bypass: true,
+    })
+    check('本机调试旁路 ⇒ 铁人旧档放行（默认那条是被拒的）', bypassed.ok && !bypassed.rescue, JSON.stringify(bypassed))
 
     /* 6 · 备份档内保存时刻（只读头 4KB） */
     const bname = 'save-20260921-120000.json'
