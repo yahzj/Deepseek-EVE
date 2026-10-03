@@ -20,9 +20,9 @@
    > 另**在一线目录没有"生效待审稿"这一说**——公告的唯一权威是 `packages/data/src/announcements.ts`。
 2. **交接卡**：仅保留**最新一份**（一号与二号各一）；被它取代的历史交接卡一律归档。
 
-## 三、归档清单（35 份）
+## 三、归档清单（具体数量以 `docs/INDEX.md` 为准）
 
-### 3.1 公告待审稿（12 份 · 全部已结案）
+### 3.1 公告待审稿（全部已结案）
 
 | 文件 | 日期 | 结案口径（各件顶部原文摘要） |
 |---|---|---|
@@ -66,7 +66,7 @@
 > | `announcement-draft-20260915-wormhole-loot.md` | 2026-09-15 | roadmap W1 挂账「公告待一号发布」⇒ 09-20 裁定**不发**（W1 已销账） |
 > | `announcement-draft-20260916-repair-needs-device.md` | 2026-09-16 | 待审 ⇒ 09-20 裁定**不发** |
 
-### 3.2 历史交接卡（19 份 · 均已被后续交接件取代）
+### 3.2 历史交接卡（均已被后续交接件取代）
 
 | 文件 | 归属 | 说明 |
 |---|---|---|
@@ -95,7 +95,7 @@
 > | 文件 | 归属 | 说明 |
 > |---|---|---|
 > | `handoff-20260912-bounty-wave-split.md` | 一号 | 赏金回退交接 —— 其顶部早已是"船长裁定作废"的收口件，使命完成 |
-> | `handoff-20260912-to-new-pilot1.md` | 一号 | 2026-09-12 一号交接 —— **被 `docs/design/handoff-20260914-to-new-pilot1.md` 取代**（判据 ②：一号只留最新一份） |
+> | `handoff-20260912-to-new-pilot1.md` | 一号 | 2026-09-12 一号交接 —— **被 `docs/design/archive/handoff-20260914-to-new-pilot1.md` 取代**（判据 ②：一号只留最新一份） |
 > | `handoff-20260913-wormhole-4ship-stage.md` | 一号 → 二号 | 虫洞「4 舰同屏」阶段交接 —— 该功能随虫洞上线一并交付，卡使命完成 |
 >
 > 引用同步：`wormhole-extraction-endgame-20260912.md`（2 处）· 本目录 `wrapup-20260912-night-pilot1.md`（2 处）·
@@ -107,11 +107,24 @@
 > |---|---|---|
 > | `handoff-20260913-to-new-pilot2.md` | 二号 | 2026-09-13 二号交接（虫洞专属内容批的会话卡）——批已结案，本卡使命完成 |
 > | `handoff-20260913-wormhole-content-d2.md` | 二号 | 虫洞专属内容批收尾归档/续接卡——批已结案，本卡使命完成 |
-> | `handoff-20260915-to-new-pilot1.md` | 一号 | 2026-09-15 一号交接——**被 `docs/design/handoff-20260920-to-new-pilot1.md` 取代**（判据 ②：一号只留最新一份） |
+> | `handoff-20260915-to-new-pilot1.md` | 一号 | 2026-09-15 一号交接——**被 `docs/design/archive/handoff-20260920-to-new-pilot1.md` 取代**（判据 ②：一号只留最新一份） |
 > | `handoff-20260915-verify.md` | 三号 | 2026-09-15 三号交接——三号现役卡在 `verify40` 分支（`docs/design/l10n-en-handover-20260919.md`），本卡使命完成 |
 >
-> 引用同步：`handoff-20260920-to-new-pilot1.md` 头部指针 · `handoff-20260915-to-new-pilot1.md` 与
+> 引用同步：`docs/design/archive/handoff-20260920-to-new-pilot1.md` 头部指针 · `handoff-20260915-to-new-pilot1.md` 与
 > `handoff-20260913-to-new-pilot2.md` 的卡间互指——均改写成 `docs/design/archive/…` 全路径（按 §四 口径）。
+
+> **2026-10-03 追加归档（8 份 · 零号文档整理）**：以下交接卡均已被后续交接件替代，且不再承担当前接手入口；正文保留，路径以本目录为准。
+>
+> | 文件 | 替代入口 |
+> |---|---|
+> | `handoff-20260914-to-new-pilot1.md` | `docs/design/handover-yihao-20261002.md` |
+> | `handoff-20260920-to-new-pilot1.md` | `docs/design/handover-yihao-20261002.md` |
+> | `handoff-20260926-to-pilot2.md` | `docs/design/handover-erhao-20261002.md` |
+> | `handoff-20260927-main.md` | `docs/design/handover-yihao-20261002.md` |
+> | `handoff-20260927-verify.md` | `docs/design/handover-20261002.md` |
+> | `handoff-20260930-d2.md` | `docs/design/handover-erhao-20261002.md` |
+> | `handoff-20260930-verify.md` | `docs/design/handover-20261002.md` |
+> | `handover-20261001.md` | `docs/design/handover-yihao-20261002.md` |
 
 ### 3.3 会话收尾归档件（5 份 · 生成即归档）
 

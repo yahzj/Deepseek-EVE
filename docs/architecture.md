@@ -157,7 +157,7 @@
   玩家侧门槛只有协会声望 ≥ 40。当年"入口走调试开关 + 数据走 `unreleased` + 文案不得提及虫洞"的施工期铁律**已作废**。
 - **权威文档**：`docs/design/wormhole-extraction-endgame-20260912.md`（总稿）·
   `wormhole-discovery-scan-20260914.md`（扫描/库存/自动探索）· `wormhole-exclusive-20260913.md`（专属掉落）·
-  `wormhole-ai-core-drop-20260914.md`（AI 核心掉落）· 词典八之二～八之八 · 交接卡 `handoff-20260914-to-new-pilot1.md`。
+  `wormhole-ai-core-drop-20260914.md`（AI 核心掉落）· 词典八之二～八之八 · 交接卡 `docs/design/archive/handoff-20260914-to-new-pilot1.md`。
 
 ## 离线规则（M0）
 

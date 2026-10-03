@@ -62,7 +62,7 @@
 
 `docs/design/` 下这些工作文档**不是你的**，只读、不要动：
 
-- 二号：`assembler-lazy-mount-20260927.md` · `steam-shots-20260927.md` · `industry-ui-opt-20260926.md` · `ship-plug-20260926.md` · `ship-wreck-20260926.md` · `invasion-kill-roll-20260926.md` · `flagship-kill-record-20260927.md` · `weekend-window-96h-20260927.md` · `standing-clawback-blackbox-20260926.md` · `plug-cargo-and-fit-slot-20260926.md` · `ecm-stacking-copy-20260926.md` · `announcement-draft-20260926-battleships.md` · `handoff-20260926-to-pilot2.md`（旧二号的交接卡）
+- 二号：`assembler-lazy-mount-20260927.md` · `steam-shots-20260927.md` · `industry-ui-opt-20260926.md` · `ship-plug-20260926.md` · `ship-wreck-20260926.md` · `invasion-kill-roll-20260926.md` · `flagship-kill-record-20260927.md` · `weekend-window-96h-20260927.md` · `standing-clawback-blackbox-20260926.md` · `plug-cargo-and-fit-slot-20260926.md` · `ecm-stacking-copy-20260926.md` · `announcement-draft-20260926-battleships.md` · `docs/design/archive/handoff-20260926-to-pilot2.md`（旧二号的交接卡）
 - 三号：`verify` 分支上的核验与收尾（其条目多在 roadmap 的「三号交接开放项」里）
 - 一号（本卡之前那批）：`steam-packaging-20260927.md`（**仍在飞**，见 §6-1）
 
