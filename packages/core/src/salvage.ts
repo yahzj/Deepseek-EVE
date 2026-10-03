@@ -687,10 +687,22 @@ export function weekendRareWreckCountOf(state: GameState, galaxyId: string): num
 /**
  * **这批入侵残骸的来源势力**（打捞型号池用）：记录里有就用它，老档没记 ⇒ 回落**当前事件族**；
  * 事件也结束了又没记（极老档）⇒ `undefined`（池子按"没有入侵残骸"处理）。
+ *
+ * 🔴 **2026-10-03 真因修复（船长转述玩家报障：「打完入侵旗舰，结束入侵后，去有入侵残骸的星系进行打捞，
+ * 捞不到入侵残骸」）**：`asFoeFamily` 原先用**手写区间** `/^[A-H]$/` 收窄，而 `FoeFamily` 的联合是
+ * `'A'…'H' | 'R'`（`types.ts`）——**R 族（光环科技）落在区间外**，于是：
+ * ① **注入时**记不上族（`injectWeekendWreck(..., asFoeFamily(card.foeFamily))` 传进去的是 `undefined`）；
+ * ② **判据时**连记录里明写的 `'R'` 也读不出来。
+ * 后果（探针读数）：R 族的残骸场在**活动进行中、星系还在被占名单里**时还能靠第一路（占领供卡）捞出
+ * `wreck-r-inv`；**一旦收场/夺回**，就只剩第二路"残骸场比占领活得久"——而它靠族认卡 ⇒ R 族整条失效：
+ * 逐格捞上来的全是该星系自己的 `wreck-a-hi`、**入侵池 272 m³ 四格纹丝不动**（玩家看到的就是"捞不到"）。
+ * 现改为**唯一登记表** `FOE_FAMILY_CODES`（与联合逐字一致，含 R）⇒ 不再有"手写区间漏一族"这种事。
  */
+export const FOE_FAMILY_CODES: readonly FoeFamily[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'R']
+
 /** `string` → `FoeFamily` 的收窄小工具（数据侧族码是 `string`，core 侧是字面量联合） */
 export function asFoeFamily(v: string | undefined): FoeFamily | undefined {
-  return v !== undefined && /^[A-H]$/.test(v) ? (v as FoeFamily) : undefined
+  return v !== undefined && (FOE_FAMILY_CODES as readonly string[]).includes(v) ? (v as FoeFamily) : undefined
 }
 
 export function weekendWreckFamilyOf(state: GameState, galaxyId: string): FoeFamily | undefined {

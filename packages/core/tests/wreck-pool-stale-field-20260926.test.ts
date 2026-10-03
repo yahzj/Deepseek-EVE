@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { pullOneWreck } from '../src/salvaging'
-import { injectWeekendWreck, weekendWreckDensityOf, weekendWreckFamilyOf } from '../src/salvage'
+import { injectWeekendWreck, weekendWreckDensityOf, weekendWreckFamilyOf, asFoeFamily, FOE_FAMILY_CODES } from '../src/salvage'
 import type { GameState } from '../src/state'
 
 const ctx = buildSimContext()
@@ -33,14 +33,14 @@ function pulls(s: GameState, galaxyId: string): Set<string> {
 }
 
 /** 事件：**以此刻为起点**、占领的是"别的星系"（本实验场**不在占领名单**里） */
-function stateWithEvent(opts: { ended?: boolean } = {}): GameState {
+function stateWithEvent(opts: { ended?: boolean; family?: 'H' | 'R' } = {}): GameState {
   const s = createInitialState({ nowWallMs: 0, seed: 9 })
   s.weekendEvent = {
     seq: 3,
     startedAtWallMs: Date.now(),
     coreId: OTHER[0]!,
     peripheryIds: [OTHER[1]!],
-    family: 'H',
+    family: opts.family ?? 'H',
     contributed: {},
     ...(opts.ended === true ? { endedAtWallMs: Date.now() } : {}),
   }
@@ -90,5 +90,45 @@ describe('打捞池：入侵残骸场不在占领名单时也要并入侵卡（�
     expect(one?.itemId, '这一轮出的是入侵族残骸（H 组 = `h-hi`）').toBe('wreck-h-hi')
     expect(s.weekendWrecks?.[GAL]?.family, '扣减后仍记着族').toBe('H')
     expect(weekendWreckDensityOf(s, GAL), '池子按实际出量减少').toBeLessThan(600)
+  })
+
+  /**
+   * 🔴 **2026-10-03 修复 + 回归**（**船长转述玩家报障**：「**打完入侵旗舰，结束入侵后，去有入侵残骸的
+   * 星系进行打捞，捞不到入侵残骸**」；船长本机用玩家档复现成功）。
+   *
+   * 真因：`asFoeFamily` 用**手写区间** `/^[A-H]$/` 收窄，而 `FoeFamily = 'A'…'H' | 'R'`
+   * ⇒ **R 族（光环科技）落在区间外**：注入时记不上族、判据时读不出族 ⇒ 第二路
+   * （"残骸场比占领活得久"，靠族认卡）对 **R 族整条失效**：活动结束后逐格捞上来的全是该星系自己的
+   * 普通残骸、**入侵池一点不减**（探针读数：`wreck-a-hi×27` ×4 格 · 池 272 m³ 纹丝不动）。
+   * 活动进行中还能捞到，是因为**第一路**（星系仍在被占名单 ⇒ 占领供卡）替它供了卡。
+   */
+  it('`asFoeFamily` 认**全部族码**（含 R）：数据里出现过的族码一个都不能被收窄挡掉', () => {
+    expect(FOE_FAMILY_CODES, '唯一登记表含 R').toContain('R')
+    expect(asFoeFamily('R'), 'R 族不再被挡').toBe('R')
+    expect(asFoeFamily('A')).toBe('A')
+    expect(asFoeFamily('H')).toBe('H')
+    expect(asFoeFamily('r'), '小写不接受（族码大写）').toBeUndefined()
+    expect(asFoeFamily('Z'), '表外码不接受').toBeUndefined()
+    /** **数据驱动契约**：卡面上出现过的每一个族码都必须被接受（将来加新族时这条会先红） */
+    const codes = new Set<string>()
+    for (const a of ctx.anomalies.values()) {
+      const f = a.foeFamily
+      if (typeof f === 'string' && f.length > 0) codes.add(f)
+    }
+    for (const code of codes) {
+      expect(asFoeFamily(code), `卡面族码 ${code} 必须能被 asFoeFamily 接受`).toBeDefined()
+    }
+    console.log(`  [读数] 卡面用到的族码 ${[...codes].sort().join('/')} —— 全部能被收窄接受（登记表 ${FOE_FAMILY_CODES.join('')}）`)
+  })
+
+  it('**R 族的残骸场**：注入时记上族 ⇒ **收场之后**照样捞出 `wreck-r-inv`（报障回归）', () => {
+    const s = stateWithEvent({ ended: true, family: 'R' })
+    /** 真实调用形状：族码先过 `asFoeFamily`（修复前这里传进去的是 `undefined`） */
+    injectWeekendWreck(s, GAL, 600, asFoeFamily('R'))
+    expect(s.weekendWrecks?.[GAL]?.family, 'R 族要能记进残骸场').toBe('R')
+    expect(weekendWreckFamilyOf(s, GAL), '判据也要读得出 R').toBe('R')
+    const got = pulls(s, GAL)
+    expect(got.has('wreck-r-inv'), `收场后 40 轮没出 R 族入侵残骸（出的是 ${[...got].join(' / ')}）`).toBe(true)
+    console.log(`  [读数] 收场后打捞 R 族残骸场：出过 ${[...got].join(' / ')}`)
   })
 })
