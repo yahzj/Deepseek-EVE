@@ -34,9 +34,29 @@ import {
  */
 export const HIGH_SEC_PENALTY = 10
 
-/** 玩家**此刻所在星系**（不在基地时 = `awayGalaxy`；在母港 = 母港）——「在高安点火要付声望」那条用 */
-export function playerGalaxyIdOf(state: GameState): string {
-  return state.awayGalaxy ?? HOME_GALAXY_ID
+/**
+ * **"这一发要弹二次警告 ＋ 扣声望"吗** —— **判据 = 玩家选定的目标星系属高安**（**单点**：界面与 core 共用）。
+ *
+ * 🔴 **2026-10-03 船长裁「乙」改判**（起因 = 玩家报障：「**玩家在穹顶墓园使用信号发射器，但是跳出了
+ * 高安警告，警告内写的星系是大鲸鱼IV**」；船长随后追述口径：「**不是在玩家所在地点使用，而是玩家选择
+ * 在哪个星系使用信号发射器**」）：
+ *
+ * 原口径看的是**玩家此刻所在星系**（`state.awayGalaxy ?? 母港`）—— 而**采矿/打捞期间 `awayGalaxy` 是
+ * 被有意清空的**（那批"站内工业门槛"报障的修法，见 `location.ts`）⇒ 在穹顶墓园（security −1.0，
+ * **低安**）采矿的玩家被判成"**人在母港大鲸鱼Ⅳ（+1.0，高安）**"：**误弹高安警告**、警告里的星系名
+ * 也写成母港；声望够就**白扣 10 点**、不够则**直接点不着火**。
+ * （探针实测：采矿中 `awayGalaxy=null` ⇒ 判据取到 `galaxy-hub` ⇒ 警告 `true`；而在穹顶墓园"野驻"时
+ * `awayGalaxy=galaxy-vault` ⇒ 警告 `false` —— 同一个地点两种结果，说明错的是取数口，不是规则。）
+ *
+ * 现口径：**只看目标**（`targetGalaxyId`）—— 与警告文案第一句「「{p1}」属高安」本来就是一致的。
+ * `state` 不再参与判据（**顺带删掉那个把"玩家在哪"简化成 `awayGalaxy ?? 母港` 的取数口**，
+ * 它正是这次误判的根）。
+ *
+ * `targetGalaxyId` 缺省 = **默认那条路**（不指定星系、由候选集随机抽；候选集本身排除高安）
+ * ⇒ 一律 false：不警告、不扣声望。
+ */
+export function beaconLaunchHighSecOf(ctx: SimContext, targetGalaxyId?: string): boolean {
+  return targetGalaxyId !== undefined && securityZoneOf(ctx, targetGalaxyId) === '高安'
 }
 
 /**
@@ -48,16 +68,6 @@ export function playerGalaxyIdOf(state: GameState): string {
  */
 export function beaconTargetBlocked(state: GameState, ctx: SimContext, galaxyId: string): boolean {
   return galaxyId === HOME_GALAXY_ID || weekendHasBuiltStation(state, ctx, galaxyId)
-}
-
-/** 此刻是否"在高安点火"（＝要弹二次警告 + 扣声望的那种场合）——**单点**，界面与 core 共用
- *
- *  ⚠ **2026-09-30 船长令**：「在指定星系使用信号发射器时，**允许在高安使用**，但是**不允许在空间站使用**」
- *  ⇒ 本判据**只管安等**（与是否在空间站无关，两条规则互不短路）；
- *  `targetGalaxyId` 缺省（默认那条路）⇒ 一律 false：不警告、不扣声望。 */
-export function beaconLaunchHighSecOf(state: GameState, ctx: SimContext, targetGalaxyId?: string): boolean {
-  if (targetGalaxyId === undefined) return false
-  return securityZoneOf(ctx, playerGalaxyIdOf(state)) === '高安'
 }
 
 /** 突触加速剂物品 id（与 `data/items.ts` 的 `CONSUMABLES` 同源） */
@@ -308,12 +318,13 @@ export function useInvasionBeacon(
     }
   }
   /**
-   * **高安启动的声望代价**（**2026-09-30 船长令**：「**且当玩家在高安使用时候，弹出二次警告，警告玩家
+   * **高安的声望代价**（**2026-09-30 船长令**：「**且当玩家在高安使用时候，弹出二次警告，警告玩家
    * 这么做会被扣声望。**」→ 船长「按你推荐来」= 扣**可支配声望 10 点**、**不足则拒绝**）。
+   * 🔴 **2026-10-03 船长裁「乙」**：判据从"玩家所在地"改判为「**玩家选定的目标星系**属高安」
+   * （见 `beaconLaunchHighSecOf` 的头注）。
    * ⚠ 扣的是 `state.standings`（可支配那本，与章鱼人兑换同账），**不动累计** ⇒ 已达成的门槛不受影响。
    */
-  const here = playerGalaxyIdOf(state)
-  const highSec = beaconLaunchHighSecOf(state, ctx, galaxyId)
+  const highSec = beaconLaunchHighSecOf(ctx, galaxyId)
   if (highSec && spendableStandingOf(state, DSI_FACTION_ID) < HIGH_SEC_PENALTY) {
     return {
       ok: false,
@@ -345,15 +356,17 @@ export function useInvasionBeacon(
     }
   }
   takeOne(state, INVASION_BEACON_ITEM_ID)
-  /* 高安启动：扣可支配声望（**在扣料之后**，与"发射器确实用掉了"同一笔成交；不足时上面已拒） */
+  /* 目标属高安：扣可支配声望（**在扣料之后**，与"发射器确实用掉了"同一笔成交；不足时上面已拒）
+     ⚠ 文案里的星系 = **玩家选定的目标星系**（2026-10-03 改判后不再是"玩家所在地"） */
   if (highSec) {
+    const penalized = galaxyId ?? rolled.coreId
     state.standings[DSI_FACTION_ID] = Math.max(0, spendableStandingOf(state, DSI_FACTION_ID) - HIGH_SEC_PENALTY)
     addLog(
       state,
       'fleet',
-      `⚠ 在「${ctx.galaxies.get(here)?.name ?? here}」启动信号发射器：协会扣了 ${HIGH_SEC_PENALTY} 点声望。`,
+      `⚠ 在「${ctx.galaxies.get(penalized)?.name ?? penalized}」启动信号发射器：协会扣了 ${HIGH_SEC_PENALTY} 点声望。`,
       'core.consumable.012',
-      { p1: ctx.galaxies.get(here)?.name ?? here, p2: HIGH_SEC_PENALTY },
+      { p1: ctx.galaxies.get(penalized)?.name ?? penalized, p2: HIGH_SEC_PENALTY },
     )
   }
   state.weekendEvent = {

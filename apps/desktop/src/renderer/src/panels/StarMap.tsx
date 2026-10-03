@@ -49,7 +49,6 @@ import {
   frontierGalaxyIds,
   idleAiShipIds,
   isExplored,
-  playerGalaxyIdOf,
   scanStatus,
   scanWindowMsFor,
   shipDisplayName,
@@ -1817,8 +1816,9 @@ export function GalaxyActions({
   const beaconBlocked = beaconTargetBlocked(state, ctx, galaxy.id)
   /** 玩家位置**不判**（2026-09-30 船长报障：不该要求玩家先离开自己的空间站）；「不允许在空间站使用」
    *  指的是**目标星系**不能有空间站 ⇒ 由 `!beaconBlocked`（候选资格）管，就地提示走 `ui.beacon.005`。 */
-  /** 高安点火（**同日令**：二次警告 + 扣声望）——判据单点在 core */
-  const beaconHighSec = beaconLaunchHighSecOf(state, ctx, galaxy.id)
+  /** **玩家选定的目标星系属高安 ⇒ 二次警告 + 扣声望**（**2026-10-03 船长裁「乙」**：判据 = **目标星系**，
+   *  不再看玩家所在地）——判据单点在 core（`beaconLaunchHighSecOf(ctx, 目标 id)`） */
+  const beaconHighSec = beaconLaunchHighSecOf(ctx, galaxy.id)
   const [beaconWarn, setBeaconWarn] = useState(false)
   /** 统一的"点火"动作（指定星系那条；成功/失败都给回执） */
   const launchBeaconHere = (): void => {
@@ -1851,10 +1851,11 @@ export function GalaxyActions({
 
   return (
     <div className="app-galaxy-actions">
-      {/* 高安点火前的**二次警告**（船长 2026-09-30 令：在高安使用要警告会扣声望） */}
+      {/* **玩家选定的目标星系**属高安 ⇒ 点火前的二次警告（船长 2026-09-30 令 ＋ 2026-10-03 裁「乙」改判：
+          警告里那个星系名 = **这一页正在看的星系**（= 选定的目标），不再是"玩家所在地"） */}
       {beaconWarn ? (
         <BeaconHighSecPrompt
-          galaxyName={ctx.galaxies.get(playerGalaxyIdOf(state))?.name ?? ''}
+          galaxyName={galaxy.name}
           penalty={HIGH_SEC_PENALTY}
           onCancel={() => setBeaconWarn(false)}
           onConfirm={() => {

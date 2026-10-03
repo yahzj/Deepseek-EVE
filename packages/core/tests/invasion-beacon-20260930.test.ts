@@ -35,6 +35,7 @@ import { weekendWarnCommsOf } from '../src/weekendComms'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { securityZoneOf } from '../src/securityZone'
 import { DSI_FACTION_ID, noteStandingEarned } from '../src/expedition'
+import { startMining } from '../src/mining'
 
 const ctx = buildSimContext()
 
@@ -45,6 +46,15 @@ function nonHighSecId(): string {
 /** 一个**高安**星系（专测"高安点火要扣声望"） */
 function highSecId(): string {
   return [...ctx.galaxies.keys()].find((id) => securityZoneOf(ctx, id) === '高安')!
+}
+/**
+ * 一个**"属高安但没有空间站"**的星系 —— **2026-10-03 船长裁「乙」后，"要警告 + 扣声望"看的是
+ * 玩家选定的目标星系属高安**（不再看玩家所在地）；母港自带空间站（会被 `core.consumable.010` 拦）⇒ 排除。
+ */
+function highSecTargetId(s: ReturnType<typeof createInitialState>): string | undefined {
+  return [...ctx.galaxies.keys()].find(
+    (id) => securityZoneOf(ctx, id) === '高安' && id !== HOME_GALAXY_ID && !weekendHasBuiltStation(s, ctx, id),
+  )
 }
 
 /** 造一个"有可入侵目标"的档：把全图都标成已探索（`weekendCoreCandidates` = 已探索 且 非高安 且 无已建成副站）
@@ -244,14 +254,19 @@ describe('信号发射器 · 使用与拒绝', () => {
   })
 
   /**
-   * **高安点火的声望代价**（**2026-09-30 船长令**：「且当玩家在高安使用时候，弹出二次警告，警告玩家
+   * **目标属高安的声望代价**（**2026-09-30 船长令**：「且当玩家在高安使用时候，弹出二次警告，警告玩家
    * 这么做会被扣声望」→ 船长「按你推荐来」＝扣**可支配声望 10 点**、不足则拒）。
+   *
+   * 🔴 **2026-10-03 船长裁「乙」改判**（玩家报障：「**在穹顶墓园使用信号发射器，却跳出高安警告，
+   * 警告内写的星系是大鲸鱼IV**」＋ 船长追述「**不是在玩家所在地点使用，而是玩家选择在哪个星系使用
+   * 信号发射器**」）⇒ 判据从"玩家所在地"改为「**玩家选定的目标星系**属高安」。本组用例随之改写：
+   * 触发条件是**目标属高安**，与玩家在哪无关（旧写法是"把 awayGalaxy 挪到高安"）。
    */
-  it('**指定星系** ＋ 在高安（非基地）⇒ 允许，但**可支配声望 −10**，累计不动', () => {
+  it('**指定目标属高安** ⇒ 允许，但**可支配声望 −10**，累计不动', () => {
     const s = readyState()
-    s.awayGalaxy = highSecId()
     noteStandingEarned(s, DSI_FACTION_ID, 50)
-    const target = weekendCoreCandidates(s, ctx)[0]!
+    const target = highSecTargetId(s)!
+    expect(target, '该内容包里要有"属高安且无空间站"的星系').toBeTruthy()
     const before = { spendable: s.standings[DSI_FACTION_ID] ?? 0, earned: s.standingsEarned?.[DSI_FACTION_ID] ?? 0 }
     const r = useInvasionBeacon(s, ctx, { galaxyId: target })
     expect(r.ok, r.ok ? '' : String(r.error)).toBe(true)
@@ -263,10 +278,9 @@ describe('信号发射器 · 使用与拒绝', () => {
     ).toBe(true)
   })
 
-  it('**指定星系** 且在高安但**可支配声望不足** ⇒ 拒绝 core.consumable.011，不扣料也不建事件', () => {
+  it('**目标属高安**但**可支配声望不足** ⇒ 拒绝 core.consumable.011，不扣料也不建事件', () => {
     const s = readyState()
-    s.awayGalaxy = highSecId() // 新档声望为 0
-    const target = weekendCoreCandidates(s, ctx)[0]!
+    const target = highSecTargetId(s)! // 新档声望为 0
     const r = useInvasionBeacon(s, ctx, { galaxyId: target })
     expect(r.ok).toBe(false)
     expect(r.errorId).toBe('core.consumable.011')
@@ -274,16 +288,43 @@ describe('信号发射器 · 使用与拒绝', () => {
     expect(s.weekendEvent, '没建事件').toBeUndefined()
   })
 
-  it('在**非高安**点火 ⇒ 不扣声望', () => {
-    /* ⚠ 另有一条：**在空间站（母港也是高安）时不该报"高安点火"** ——那是位置门的活
-       （船长 2026-09-30 报障：「提示我处于大鲸鱼，还有扣声望警告」）*/
-    const atHome = createInitialState({ nowWallMs: 0, seed: 41 })
-    expect(beaconLaunchHighSecOf(atHome, ctx), '在母港 ⇒ 不算高安点火（该由位置门拒）').toBe(false)
+  it('**非高安目标** ⇒ 不扣声望（含"默认那条路"一律不警告）', () => {
+    /**
+     * ⚠ **2026-10-03 裁「乙」后的判据**：`beaconLaunchHighSecOf(ctx)`（**不传目标** = 默认那条路，
+     * 由候选集随机抽、候选集本身排除高安）恒 false ⇒ 从物品页/货仓页用发射器**不会**弹高安警告
+     * （旧口径看玩家所在地，正是那次误报的来源）。
+     */
+    expect(beaconLaunchHighSecOf(ctx), '不指定目标 ⇒ 一律不警告').toBe(false)
     const s = readyState()
     noteStandingEarned(s, DSI_FACTION_ID, 50)
     const before = s.standings[DSI_FACTION_ID] ?? 0
     expect(useInvasionBeacon(s, ctx).ok).toBe(true)
     expect(s.standings[DSI_FACTION_ID] ?? 0, '非高安不扣').toBe(before)
+  })
+
+  /**
+   * 🔴 **本条的回归**（**2026-10-03 玩家报障**）：「**玩家在穹顶墓园使用信号发射器，但是跳出了高安警告，
+   * 警告内写的星系是大鲸鱼IV**」。
+   *
+   * 真因：旧判据取的是 `state.awayGalaxy ?? 母港`，而**采矿/打捞期间 `awayGalaxy` 被有意清空**
+   * （见 `location.ts` 站内工业门槛那段）⇒ 在穹顶墓园（security −1.0，低安）采矿的玩家被判成
+   * "人在母港大鲸鱼Ⅳ（+1.0，高安）"⇒ 误弹警告、名字也写成母港。现口径看**目标**⇒ 不警告 ✓。
+   */
+  it('在**穹顶墓园采矿**时选定穹顶墓园 ⇒ **不弹高安警告**、不扣声望（报障回归）', () => {
+    const s = readyState()
+    noteStandingEarned(s, DSI_FACTION_ID, 50)
+    const VAULT = 'galaxy-vault' // 穹顶墓园（低安）
+    const belt = [...ctx.belts.values()].find((b) => b.galaxyId === VAULT)!
+    expect(startMining(s, belt.id, ctx).ok, '脚手架自检：在穹顶墓园采上矿').toBe(true)
+    expect(s.awayGalaxy, '采矿期间 awayGalaxy 是 null（这正是旧判据踩的坑）').toBeNull()
+    expect(securityZoneOf(ctx, VAULT), '穹顶墓园是低安').toBe('低安')
+    expect(beaconLaunchHighSecOf(ctx, VAULT), '**目标低安 ⇒ 不警告**（旧口径这里是 true）').toBe(false)
+    const before = s.standings[DSI_FACTION_ID] ?? 0
+    const r = useInvasionBeacon(s, ctx, { galaxyId: VAULT })
+    expect(r.ok, r.ok ? '' : String(r.error)).toBe(true)
+    expect(s.standings[DSI_FACTION_ID] ?? 0, '不扣声望').toBe(before)
+    expect(s.weekendEvent?.beaconHighSec, '不写"高安那场"的留痕').toBeUndefined()
+    console.log(`  [读数] 在穹顶墓园采矿（awayGalaxy=null）＋ 目标穹顶墓园：警告=${beaconLaunchHighSecOf(ctx, VAULT)} · 声望 ${before} → ${s.standings[DSI_FACTION_ID]}`)
   })
 })
 
@@ -292,19 +333,18 @@ describe('信号发射器 · 使用与拒绝', () => {
  * 会在开头怀疑玩家，并在文本中说扣玩家的声望。」）＋ 船长对措辞的两条口径：只写"怀疑"（"只发现了你的
  * 舰船信号"式，不写"登记在你名下"这种确凿证据）；实况段改成能接住质问的承接口气（裁定「按 B」）。
  */
-describe('信号发射器 · 高安点火的通讯变体', () => {
-  /** 高安点火那一场（⚠ `beaconLaunchHighSecOf` 判的是**玩家所在地**是高安 ⇒ 把 `awayGalaxy` 挪到高安；
-   *  目标星系仍取合法的候选（非高安、无副站），两条规则互不短路） */
+describe('信号发射器 · 目标属高安那一场的通讯变体', () => {
+  /** 目标属高安那一场（⚠ **2026-10-03 裁「乙」后判据 = 目标星系属高安**；
+   *  玩家在哪无关，`awayGalaxy` 不再影响判定） */
   function highSecLitState() {
     const s = readyState()
-    s.awayGalaxy = highSecId()
     noteStandingEarned(s, DSI_FACTION_ID, 50)
-    const target = weekendCoreCandidates(s, ctx)[0]!
-    expect(useInvasionBeacon(s, ctx, { galaxyId: target }).ok, '高安点火应当成功').toBe(true)
+    const target = highSecTargetId(s)!
+    expect(useInvasionBeacon(s, ctx, { galaxyId: target }).ok, '目标属高安 ⇒ 允许点火（扣声望）').toBe(true)
     return s
   }
 
-  it('高安点火 ⇒ 事件留痕 `beaconHighSec`，预警信**首段**换成质问（`core.weekend.044`）并喂上扣分槽 p4', () => {
+  it('目标属高安 ⇒ 事件留痕 `beaconHighSec`，预警信**首段**换成质问（`core.weekend.044`）并喂上扣分槽 p4', () => {
     const s = highSecLitState()
     expect(s.weekendEvent?.beaconHighSec, '点火来源写进这一场事件').toBe(true)
     const mail = weekendWarnCommsOf(s, ctx, s.weekendEvent!)
@@ -315,7 +355,7 @@ describe('信号发射器 · 高安点火的通讯变体', () => {
     expect(mail.paragraphs[0], '只写怀疑，不写确凿证据').not.toContain('登记在你名下')
   })
 
-  it('非高安点火 ⇒ 不留痕，预警信仍是原两段（无质问、不喂 p4）', () => {
+  it('非高安目标 ⇒ 不留痕，预警信仍是原两段（无质问、不喂 p4）', () => {
     const s = readyState()
     noteStandingEarned(s, DSI_FACTION_ID, 50)
     expect(useInvasionBeacon(s, ctx, { galaxyId: nonHighSecId() }).ok).toBe(true)

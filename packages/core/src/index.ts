@@ -207,11 +207,13 @@ export {
   INVASION_BEACON_FAMILIES,
   useInvasionBeacon,
   /* 2026-09-30 船长令（高安点火二次警告 + 扣声望 / 有空间站的地方不能用）：
-     界面与 core 共用同一批判据与常量 */
+     界面与 core 共用同一批判据与常量。
+     🔴 **2026-10-03 船长裁「乙」**：高安判据改看「**玩家选定的目标星系**」⇒ 顺带删掉
+     `playerGalaxyIdOf`（它把"玩家在哪"简化成 `awayGalaxy ?? 母港`，采矿/打捞期间必然错
+     —— 正是"穹顶墓园弹出高安警告、警告里还写着大鲸鱼Ⅳ"那次的根） */
   HIGH_SEC_PENALTY,
   beaconLaunchHighSecOf,
   beaconTargetBlocked,
-  playerGalaxyIdOf,
 } from './consumables'
 export {
   IRONMAN_COMMON_FLOW_MUL,

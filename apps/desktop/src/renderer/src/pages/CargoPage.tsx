@@ -37,8 +37,7 @@ import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type 
 import { BUCKET_OF_ITEM_KIND, COMMODITY_TABS, itemBucketPasses, subText } from '../ui/itemSubs'
 import { tr } from '../i18n/locale'
 /* 「使用」按钮的判据 = core 的 id 常量（**单点**，不在页面里写死字面量） */
-import { INVASION_BEACON_ITEM_ID, HIGH_SEC_PENALTY, SYNAPTIC_ACCELERANT_ITEM_ID, beaconLaunchHighSecOf, playerGalaxyIdOf } from '@whale/core'
-import { BeaconHighSecPrompt } from '../ui/beaconPrompt'
+import { INVASION_BEACON_ITEM_ID, SYNAPTIC_ACCELERANT_ITEM_ID } from '@whale/core'
 
 const KIND_EMPTY: Record<string, string> = {
   ore: 'ui.CargoPage.010',
@@ -75,8 +74,6 @@ function bucketExtraNote(bucket: string): string | undefined {
 }
 
 export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNavProps) {
-  /** 高安点火的二次警告（船长 2026-09-30 令）——货仓页那颗「使用」也走同一道门 */
-  const [beaconWarn, setBeaconWarn] = useState(false)
   const state = engine.state
   /** 语言（2026-09-19 船长令「英语本地化」）：界面串走 `t(中文源串)`；缺词条回退中文 */
   const { t } = useL10n()
@@ -348,13 +345,13 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                             className="app-btn is-small is-warn"
                             title={tr('ui.ItemsPage.057')}
                             onClick={() => {
-                              /* 高安点火 ⇒ 先弹二次警告（船长 2026-09-30 令），确认后才调 core */
-                              if (beaconLaunchHighSecOf(state, engine.ctx)) setBeaconWarn(true)
-                              else {
-                                const r = engine.useInvasionBeaconNow()
-                                if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.057'), true)
-                                else onToast(tr('ui.ItemsPage.058'))
-                              }
+                              /* ⚠ **2026-10-03 船长裁「乙」后这里不再有二次警告**：警告的判据是「**玩家选定的
+                                 目标星系**属高安」，而货仓页这条是**默认那条路**（不指定星系、候选集随机、
+                                 候选集本身排除高安）⇒ 判据恒 false（原先那道"看玩家所在地"的门已按船长
+                                 口径删掉，起因 = 玩家报障「在穹顶墓园使用却弹高安警告、警告里写大鲸鱼Ⅳ」） */
+                              const r = engine.useInvasionBeaconNow()
+                              if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.057'), true)
+                              else onToast(tr('ui.ItemsPage.058'))
                             }}
                           >
                             {tr('ui.ItemsPage.056')}
@@ -609,20 +606,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
               onConfirm={(qty) => handleSell(sellId, qty)}
             />
           ) : null}
-          {/* 高安点火前的**二次警告**（船长 2026-09-30 令） */}
-          {beaconWarn ? (
-            <BeaconHighSecPrompt
-              galaxyName={engine.ctx.galaxies.get(playerGalaxyIdOf(state))?.name ?? ''}
-              penalty={HIGH_SEC_PENALTY}
-              onCancel={() => setBeaconWarn(false)}
-              onConfirm={() => {
-                setBeaconWarn(false)
-                const r = engine.useInvasionBeaconNow()
-                if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.057'), true)
-                else onToast(tr('ui.ItemsPage.058'))
-              }}
-            />
-          ) : null}
+          {/* （原「高安点火前的二次警告」弹层已按 2026-10-03 船长裁「乙」删除：货仓页这条路没有
+              "选定的目标星系" ⇒ 判据恒 false，弹层永远不可能出现） */}
         </>
       )}
     </div>

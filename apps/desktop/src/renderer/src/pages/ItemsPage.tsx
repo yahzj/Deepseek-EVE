@@ -6,14 +6,13 @@
  * - 货仓 tab：原货仓页（T3 船选择条 / 驾驶船可装卸出售，副船只读）整体并入。
  */
 import { useEffect, useState } from 'react'
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, HIGH_SEC_PENALTY, beaconLaunchHighSecOf, marketGoodOf, playerGalaxyIdOf, SYNAPTIC_ACCELERANT_ITEM_ID, INVASION_BEACON_ITEM_ID } from '@whale/core'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, marketGoodOf, SYNAPTIC_ACCELERANT_ITEM_ID, INVASION_BEACON_ITEM_ID } from '@whale/core'
 import { itemRarityTierOf } from '@whale/data'
 import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemHoverContent, itemInfoLines, moduleHoverContent, ModuleHover, moduleInfoLines } from '../ui/shipInfo'
 import { Glyph, inventoryItemTone, toneOf, itemGlyphName } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { ItemActionModal } from '../ui/ItemActionModal'
-import { BeaconHighSecPrompt } from '../ui/beaconPrompt'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
 import { SellQtyModal } from '../ui/SellQtyModal'
 import { RedeemFragmentButton } from '../ui/fragmentRedeem'
@@ -242,19 +241,15 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   // 图标模式点选操作（船长 2026-09-05：网格也要能操作）
   const [pickItem, setPickItem] = useState<string | null>(null)
   /**
-   * **高安点火的二次警告**（**2026-09-30 船长令**：「且当玩家在高安使用时候，弹出二次警告，警告玩家
-   * 这么做会被扣声望」）——物品页这两颗「使用」（列表行 ＋ 图标模式详情卡）共用同一道门：
-   * 高安 ⇒ 先弹 `BeaconHighSecPrompt`，确认后才真的调 core（core 那边照样会扣声望）。
+   * **点火**（从物品页用发射器 = **默认那条路**：不指定星系、由候选集随机抽 ⇒ 候选集本身排除高安）。
+   * ⚠ **2026-10-03 船长裁「乙」后这里不再有二次警告**：警告的判据是「**玩家选定的目标星系**属高安」，
+   * 而这条路根本没有可选的目标 ⇒ 判据恒 false（原先那道"看玩家所在地"的门已按船长口径删掉，
+   * 起因 = 玩家报障「在穹顶墓园使用却弹高安警告、警告里写大鲸鱼Ⅳ」）。
    */
-  const [beaconWarn, setBeaconWarn] = useState(false)
   const fireBeacon = (): void => {
     const r = engine.useInvasionBeaconNow()
     if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.057'), true)
     else onToast(tr('ui.ItemsPage.058'))
-  }
-  const askBeaconOrFire = (): void => {
-    if (beaconLaunchHighSecOf(engine.state, engine.ctx)) setBeaconWarn(true)
-    else fireBeacon()
   }
   const [pickMod, setPickMod] = useState<string | null>(null)
   const pickItemDef = pickItem ? engine.ctx.items.get(pickItem) : undefined
@@ -467,7 +462,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                           <button
                             className="app-btn is-small is-warn"
                             title={tr('ui.ItemsPage.057')}
-                            onClick={askBeaconOrFire}
+                            onClick={fireBeacon}
                           >
                             {tr('ui.ItemsPage.056')}
                           </button>
@@ -704,7 +699,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                     title={tr('ui.ItemsPage.057')}
                     onClick={() => {
                       setPickItem(null)
-                      askBeaconOrFire()
+                      fireBeacon()
                     }}
                   >
                     {tr('ui.ItemsPage.056')}
@@ -821,18 +816,6 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
 
       {/* 出售数量选择（部分出售；船长 2026-09-05）——列表/图标两模式共用（2026-09-08 修复：
          原误置于图标模式分支内，列表模式点「市价卖出」设了状态却无弹层渲染 = 点击无反应） */}
-      {/* 高安点火前的**二次警告**（船长 2026-09-30 令）——列表行与图标模式详情卡共用 */}
-      {beaconWarn ? (
-        <BeaconHighSecPrompt
-          galaxyName={engine.ctx.galaxies.get(playerGalaxyIdOf(engine.state))?.name ?? ''}
-          penalty={HIGH_SEC_PENALTY}
-          onCancel={() => setBeaconWarn(false)}
-          onConfirm={() => {
-            setBeaconWarn(false)
-            fireBeacon()
-          }}
-        />
-      ) : null}
       {sellItem ? (() => {
         const def = engine.ctx.items.get(sellItem)
         if (!def) return null
