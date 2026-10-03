@@ -533,6 +533,8 @@ export const EN_ITEMS: EnTable = {
   // 入侵旗舰黑匣（2026-09-25 船长「先做壳」）：只做壳 ⇒ 可存/可回收/可售，用途留待改装件那批
   'blackbox-universal': { name: 'Universal Black Box', description: 'A blank recorder core handled by the octopi: it can stand in for any kind of black box when manufacturing ship plugs. Can be stored or sold to recyclers.' },
   'blackbox-h': { name: 'Ink Tide Flagship Black Box', description: 'The core recorder of an Ink Tide invasion carrier: a pressure-proof ink-crystal shell holding undeciphered military codes and flight logs. Can be stored or sold to recyclers.' },
+  // 光环旗舰黑匣（2026-10-02 船长令「甲」：一件族一件匣）——与墨潮那件同构，只换族名与外壳
+  'blackbox-r': { name: 'Corona Flagship Black Box', description: 'The core recorder of a Corona invasion carrier: a pressure-proof pale-crystal shell holding undeciphered military codes and flight logs. Can be stored or sold to recyclers.' },
   // 货柜
   'box-relic-a': { name: 'Ruins Safe Container (Pirate)', description: 'A whole container dragged out of the ruins: a locked shell with its markings ground off. Only unboxing back at the station reveals what is inside. Takes 2×2 cargo slots.' },
   'box-relic-c': { name: 'Ruins Safe Container (Alien)', description: 'A container dragged out of the ruins: dried biological film clings to its shell. Only unboxing back at the station reveals what is inside. Takes 2×2 cargo slots.' },
@@ -1166,6 +1168,10 @@ function shipClassSegment(enName: string): string {
 /**
  * **蓝图说明**（135 条 · 中文侧逐条手写、无模板 ⇒ 逐条译；名称仍按产物派生）。
  * 与中文同一条口径：说明只讲"这张图造什么、吃什么料/什么特性"，不写原因解释。
+ *
+ * ⟪文案调整 2026-10-02⟫ 12 张 `bp-plug-*`（舰船插件图纸）：`requires an Ink Tide flagship black box.`
+ * → `requires any black box.` —— 依据 = **船长 2026-10-02 令「甲」**（一件族一件匣）＋ 2026-09-27 原话
+ * 「现有的舰船插件蓝图都只要使用任意类型黑匣就可以制作」。中文侧同批改（`blueprints.ts`）。
  */
 const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-miner-1': 'A starter blueprint: assemble your first mining laser from Tritanium Alloy and Silvervein Supermetal.',
@@ -1335,18 +1341,18 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-part-grav-comp': 'Advanced part: learn this blueprint first, then build it at the assembly unit.',
   'bp-wh-e-drone': 'One batch yields 50 Construct sentry drones: kinetic needles break shields, with longer reach and better accuracy than a standard sentry.',
   /* 舰船插件图纸 12 张（2026-09-26 船长令）：说明同款，只差产物名（名称由 `EN_MODULES` 派生） */
-  'bp-plug-shield-plate': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
-  'bp-plug-armor-plate': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
-  'bp-plug-hull-plate': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
-  'bp-plug-mid-bay': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
-  'bp-plug-low-bay': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
-  'bp-plug-cpu-core': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
-  'bp-plug-firepower': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
-  'bp-plug-sight': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
-  'bp-plug-thruster': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
-  'bp-plug-rangefinder': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
-  'bp-plug-target-beacon': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
-  'bp-plug-concealment': 'Ship plug blueprint: requires an Ink Tide flagship black box.',
+  'bp-plug-shield-plate': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-armor-plate': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-hull-plate': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-mid-bay': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-low-bay': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-cpu-core': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-firepower': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-sight': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-thruster': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-rangefinder': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-target-beacon': 'Ship plug blueprint: requires any black box.',
+  'bp-plug-concealment': 'Ship plug blueprint: requires any black box.',
 }
 
 export const EN_BLUEPRINTS: EnTable = (() => {

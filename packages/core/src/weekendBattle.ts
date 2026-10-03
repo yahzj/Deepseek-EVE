@@ -54,6 +54,8 @@ import { injectWeekendRareWreck } from './salvage'
 import { WEEKEND_CARD_PREFIX, weekendZoneLiveAt } from './weekendEvent'
 /** 2026-10-02 破环搬家：声望账本从 expedition 拆到 standing.ts，这里改读 standing（断 expedition↔weekendBattle） */
 import { DSI_FACTION_ID, noteStandingEarned } from './standing'
+/** 2026-10-02 船长令「甲」（玩家报障「光环入侵结束给的黑匣还是墨潮的」）：**按族取黑匣 id** 的唯一取数口 */
+import { blackBoxItemIdForFamily } from './blackbox'
 
 /* ─────────────── 战斗规格 ─────────────── */
 
@@ -546,6 +548,12 @@ export function weekendResultSnapshotOf(
   atWallMs: number,
   plan: WeekendSettlePlan,
   wreckItemId?: string,
+  /**
+   * **本场那一枚黑匣的物品 id**（**2026-10-02 船长令「甲」**，按族给）——
+   * 写进快照 ⇒ 结算面板与结算信（`weekendRewardLinesOf`）显示的是**玩家真到手的那一件**
+   * （光环期显示「光环旗舰黑匣」而非墨潮）。缺省 = 本批之前结束的场次（那时只有墨潮一件）。
+   */
+  blackBoxItemId?: string,
 ): WeekendResultSnapshot {
   const led = ev.rewardLedger ?? { isk: 0, wreck: 0, blackBox: 0, byGalaxy: {} }
   const galaxies = weekendOccupiedIds(ev).map((galaxyId) => {
@@ -621,6 +629,8 @@ export function weekendResultSnapshotOf(
     wreck: led.wreck,
     blackBox: led.blackBox,
     ...(wreckItemId !== undefined ? { wreckItemId } : {}),
+    /** 本场那一枚匣是哪一件（按族；缺省 = 老快照 ⇒ 面板/信件按落款墨潮匣显示，与史实一致） */
+    ...(blackBoxItemId !== undefined ? { blackBoxItemId } : {}),
   }
 }
 
@@ -680,6 +690,7 @@ export function weekendSettleAndGrant(
         ev.endedAtWallMs,
         weekendSettlePlanOf(state, ev, ev.endedAtWallMs),
         wreckItemId,
+        weekendBlackBoxItemIdOf(ev, ctx),
       )
     }
     return null
@@ -702,8 +713,12 @@ export function weekendSettleAndGrant(
    * 新判据只看**击杀 ＋ 未结清**，不再依赖台账，也就没有了"读档双发"那条老账。
    */
   const boxAtSettle = weekendLastHitByPlayer(ev) && !weekendBlackBoxSettledOf(ev)
+  /** **这一场该发哪一件匣**（按族 · 2026-10-02 船长令「甲」）：补发与快照共用同一个 id */
+  const boxItemId = weekendBlackBoxItemIdOf(ev, ctx)
   /** 补发也取**实际入账**结果（契约破损没落地 ⇒ 0，见 `weekendGrantRewards` 的 ⚠） */
-  const boxGranted = boxAtSettle ? weekendGrantRewards(state, { blackBox: true }).blackBox : 0
+  const boxGranted = boxAtSettle
+    ? weekendGrantRewards(state, { blackBox: true, blackBoxItemId: boxItemId }).blackBox
+    : 0
   /** 真发出去了才写"已结清"（`flagshipBlackBox` 的新语义，见 `weekendBlackBoxSettledOf`） */
   if (boxGranted > 0) ev.flagshipBlackBox = true
   /**
@@ -738,18 +753,35 @@ export function weekendSettleAndGrant(
     wreck: Math.max(0, granted.wreck - pending.wreck),
     ...(boxGranted > 0 ? { blackBox: boxGranted } : {}),
   })
-  state.weekendLastResult = weekendResultSnapshotOf(state, ctx, ev, ev.endedAtWallMs, plan, wreckItemId)
+  state.weekendLastResult = weekendResultSnapshotOf(state, ctx, ev, ev.endedAtWallMs, plan, wreckItemId, boxItemId)
   return { share: plan.share, tier: plan.tier, isk: granted.isk, wreck: granted.wreck, progressIsk: plan.progressIsk }
 }
 
 /* ─────────────── 奖励入账（M1-b 第五片） ─────────────── */
 
 /**
- * **入侵旗舰黑匣的物品 id**（船长 2026-09-25：「**黑匣先做壳**」）——
+ * **入侵旗舰黑匣的落款物品 id**（船长 2026-09-25：「**黑匣先做壳**」）——
  * 先做成一件**真实物品**（可存、可回收、可售予回收商），**用途留待"改装/特殊装备"那批**。
  * 定义在 `data/items.ts` 的 `WEEKEND_TROPHIES`（与残骸同一条注册链路）。
+ *
+ * ⚠ **2026-10-02 起这是"落款/兜底"，不是唯一发的那一件**：黑匣**按族各一件**
+ * （H 墨潮 `blackbox-h` · R 光环 `blackbox-r`），取数走 `blackBoxItemIdForFamily(族)`
+ * —— 起因 = 玩家报障「**光环入侵结束给的黑匣还是墨潮的**」（船长令「甲」）。
+ * 本常量仍是：① 老快照/老配方没写族时的取数口；② 某族匣缺失时的回落（见 `blackbox.ts`）。
  */
 export const WEEKEND_BLACKBOX_ITEM_ID = 'blackbox-h'
+
+/**
+ * **本场入侵该发哪一件黑匣**（族 → `blackbox-<族小写>`；**2026-10-02 船长令「甲」**）。
+ *
+ * 三个发放点（击沉那一拍 · 结算补发 · 对账补发）都从这里取，**不再各自写死 id**。
+ * `ev` 缺省（没有入侵事件）⇒ 落款黑匣 —— 这条路的调用方本来就只在入侵里发匣。
+ */
+function weekendBlackBoxItemIdOf(ev: WeekendEventState | undefined, ctx: SimContext): string {
+  const family = ev?.family
+  if (family === undefined || family.length === 0) return WEEKEND_BLACKBOX_ITEM_ID
+  return blackBoxItemIdForFamily(family, (id) => ctx.items.has(id))
+}
 
 /**
  * **这一场该发的稀有残骸物品 id**（2026-09-25 修）：按**"打的那张卡"所属残骸组**取
@@ -782,7 +814,7 @@ export function weekendRareWreckIdFor(cardId: string, ctx: SimContext): string |
  */
 export function weekendGrantRewards(
   state: GameState,
-  reward: { isk?: number; wreck?: number; blackBox?: boolean; wreckItemId?: string },
+  reward: { isk?: number; wreck?: number; blackBox?: boolean; wreckItemId?: string; blackBoxItemId?: string },
 ): { isk: number; wreck: number; blackBox: number } {
   const isk = Math.max(0, Math.round(reward.isk ?? 0))
   const wreckWant = Math.max(0, Math.round(reward.wreck ?? 0))
@@ -796,9 +828,13 @@ export function weekendGrantRewards(
       addLog(state, 'warn', '⚠ 入侵战利品未能入库：本场奖励未发放。', 'core.weekend.038')
     }
   }
-  /** **黑匣**（2026-09-25「先做壳」）：真物品入库（船长 2026-09-24 口径 = 击毁旗舰必掉 ×1） */
+  /**
+   * **黑匣**（2026-09-25「先做壳」）：真物品入库（船长 2026-09-24 口径 = 击毁旗舰必掉 ×1）。
+   * ⚠ **哪一件由调用方按族给**（`blackBoxItemId`；缺省 = 落款墨潮匣，见 `weekendBlackBoxItemIdOf`）——
+   * 2026-10-02 前这里写死 `blackbox-h` ⇒ R 族（光环）玩家打完自家旗舰拿到的是墨潮匣（玩家报障）。
+   */
   let blackBox = 0
-  if (reward.blackBox && addWare(state, WEEKEND_BLACKBOX_ITEM_ID, 1)) blackBox = 1
+  if (reward.blackBox && addWare(state, reward.blackBoxItemId ?? WEEKEND_BLACKBOX_ITEM_ID, 1)) blackBox = 1
   return { isk, wreck, blackBox }
 }
 
@@ -1092,6 +1128,12 @@ export function weekendApplyBattleOutcome(
     wreck,
     /** 黑匣：**这一场是"击沉旗舰"那一支 ⇒ 必给 1 枚**（2026-09-28 船长令「击杀BOSS就能获得黑匣」） */
     blackBox: r.flagshipKilled !== undefined,
+    /**
+     * **这一枚按族取**（**2026-10-02 船长令「甲」**）：R 族（光环）期发「光环旗舰黑匣」，
+     * H 族（墨潮）期发「墨潮旗舰黑匣」——此前这里写死流到 `weekendGrantRewards` 的墨潮匣
+     * ⇒ 玩家报障「光环入侵结束给的黑匣还是墨潮的」。
+     */
+    blackBoxItemId: weekendBlackBoxItemIdOf(state.weekendEvent, ctx),
     ...(wreckItemId !== undefined ? { wreckItemId } : {}),
   })
   /**

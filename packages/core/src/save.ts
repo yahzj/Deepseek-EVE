@@ -43,6 +43,8 @@ import type { AiCoreType } from './types'
 // ⚠ 窗口必须走**同一个单源** `weekendFlagshipWindowMs`（正常 **24h**（2026-09-26 船长令起）/ 调试 10min），
 //   不许在存档层再写一遍开关
 import { weekendFlagshipWindowMs } from './weekendEvent'
+/** 2026-10-02（每族一件黑匣批）：结算快照的 `blackBoxItemId` 白名单判据（core 单点，按 id 前缀） */
+import { isBlackboxItem } from './blackbox'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
 export const SAVE_FORMAT = 'whale-idle-save'
@@ -2715,6 +2717,14 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       tierRaw === 'A' || tierRaw === 'B' || tierRaw === 'C' || tierRaw === 'D' ? tierRaw : 'none'
     const wreckItemId = typeof w.wreckItemId === 'string' && w.wreckItemId.length > 0 ? w.wreckItemId : undefined
     /**
+     * **本场那一枚黑匣是哪一件**（**2026-10-02 船长令「甲」**，按族：`blackbox-h` / `blackbox-r`）——
+     * 结算面板与结算信读它点物品名。判据 = core 单点 `isBlackboxItem`（**按 id 前缀**）：
+     * 只收登记在册的黑匣 id，手改档塞进来的字符串一律丢弃（否则面板会把原文当物品名印出来）；
+     * 缺省（老快照 / 判据不过）= 本批之前的场次 ⇒ 界面按落款墨潮匣显示，与玩家当时到手的一致。
+     */
+    const blackBoxItemId =
+      typeof w.blackBoxItemId === 'string' && isBlackboxItem(w.blackBoxItemId) ? w.blackBoxItemId : undefined
+    /**
      * **进度收入那一栏**（2026-09-25 船长令「按进度获取收入」）：
      * `progressPct` = 玩家投入进度合计（可 >1，多星系求和 ⇒ 不 clamp01）；
      * `progressIsk` = 该笔收入（≥0 的有限数）。两个都缺 = 老快照（本批之前结束的活动）⇒ 界面不显示该行。
@@ -2744,6 +2754,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       wreck: count(w.wreck),
       blackBox: count(w.blackBox),
       ...(wreckItemId !== undefined ? { wreckItemId } : {}),
+      ...(blackBoxItemId !== undefined ? { blackBoxItemId } : {}),
     }
   })()
   // --- 任务中心·时效任务板（v24 字段；老档/异常缺省 = 空板，首个市场窗口边界后引擎开刷） ---

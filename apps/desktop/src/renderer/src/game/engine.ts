@@ -357,6 +357,8 @@ import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, M
 import { saveBridge } from './storage'
 /** 存档存储体检与告警（2026-09-25 船长令：修「MacBook · Safari 关掉游戏后存档丢失」） */
 import { noteSaveWriteFailed, requestPersistentStorage, saveStorageProbe } from './saveGuard'
+/** **2026-10-03 船长令**（「调试模式允许载入铁人存档」）：本机调试门禁（发布版恒 false）⇒ 铁人闸门放行 */
+import { debugEnabled } from './debugFlag'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
 import { tr, cmdText, paramText } from '../i18n/locale'
@@ -1538,6 +1540,25 @@ export class GameEngine {
     incomingSavedAtWallMs: number,
   ): Promise<{ ok: true; rescue: boolean } | { ok: false; error: string }> {
     /**
+     * 🔴 **本机调试模式 ⇒ 铁人闸门一律放行**（**2026-10-03 船长令**，原话照抄：
+     * 「**新增，调试模式允许载入铁人存档**」）。
+     *
+     * 三问裁定（船长）：① **备份恢复 ＋ 导入 两条路都放行**（本条在两条路的共用入口 ⇒ 一处改动全覆盖）；
+     * ② 判据**只用本机调试门禁** `debugEnabled()`；③ **不记救援**（不写救援账）。
+     *
+     * **为什么这条口子安全**：`debugEnabled()` = **本机门禁**（协议 http(s) 且宿主是本机/内网）
+     * ∧ 本机 `localStorage['whale-idle:debug']` ⇒ **发布版恒 false**（公网域名 / 打包版 `file:` 都
+     * 进不来）⇒ 玩家侧**不可达**，等于一个只在开发机上生效的开关。
+     *
+     * ⚠ **取舍（如实记账）**：旁路开着时"关掉铁人 ⇒ 导回关闭前的旧铁人档"也会放行 —— 那本是闸门
+     * 要挡的一条；船长已知情并选「甲」。判据本体在 core（`ironmanLoadVerdict` 的 `bypass`），
+     * 本方法只负责把"本机调试是否开着"这一事实传过去。
+     */
+    if (debugEnabled()) {
+      console.warn('[debug] 铁人装载闸门已放行（本机调试模式）；来档保存时刻 =', incomingSavedAtWallMs)
+      return { ok: true, rescue: false }
+    }
+    /**
      * ⚠ **账本拿不到 ⇒ 只少一层高度，判据照走**（**2026-09-23 船长实测报障**：「实机测试，铁人模式
      * 并没有拦截备份存档和导入存档」）。原实现把"读账本"与"判闸门"写在同一个 try 里 ⇒ 旧主进程
      * 没有 `ironman:ledger` 这个 IPC 时 `invoke` reject，被下面的 catch 当成"闸门自身出错"**静默放行**，
@@ -1570,6 +1591,8 @@ export class GameEngine {
         ledgerSeq,
         incomingSavedAtWallMs,
         nowWallMs: now,
+        /** 🔴 **本机调试模式的旁路**（**2026-10-03 船长令**）——见本方法开头那一段长注 */
+        bypass: debugEnabled(),
       })
       if (!verdict.ok) {
         return { ok: false, error: tr('ui.engine.051', { p1: String(verdict.threshold) }) }

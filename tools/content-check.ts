@@ -151,6 +151,9 @@ securityZoneOf,
   fragmentItemIdOf,
   // 2026-09-26 黑匣独立成类：无配方豁免的钉子（判据 = 登记黑匣 id 前缀，单点在 core）
   isBlackboxItem,
+  // 2026-10-02（每族一件黑匣批）：族 → 匣 id 的取数口 ＋ 有旗舰战的族名单（契约不自己拼字符串）
+  blackBoxItemIdOfFamily,
+  WEEKEND_BOSS_FAMILIES,
   hasLairCore,
   isLairCandidate,
   lairGearOf,
@@ -346,7 +349,7 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 //   +4（折跃等离子 / 低温跃迁浆 / 曲率凝析物 / 超空间折跃燃料）→ 物品总数 104→**108**、原材料 8→**11**
 // 2026-09-30（实验室后续内容批 · 船长令「信号发射器和技能加速剂」）：+2（信号发射器 / 突触加速剂，
 //   走奇货档 · 施工期 `unreleased`）→ 物品总数 108→**110**
-check(itemDefs.length === 110, `物品总数应为 110（2026-09-30 起：实验室后续内容 +2），实际 ${itemDefs.length}`)
+check(itemDefs.length === 111, `物品总数应为 111（2026-10-02 起：每族一件黑匣 +1 ⇒ 光环旗舰黑匣），实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 11, `原材料应为 11 种（2026-09-29 跃迁燃料链 +3），实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
@@ -3011,6 +3014,30 @@ for (const m of MODULES) {
       check(!itemBucketPasses(ctx, b.id, 'consume'), `黑匣契约：${b.id} 又落回「消耗品」了（它不是修理组件）`)
     }
     check(ITEM_KIND_ORDER.includes('blackbox'), '黑匣契约：`ITEM_KIND_ORDER` 里没有 blackbox（仓库/货仓/图鉴的分类行会缺一档）')
+    /**
+     * ── **每族一件黑匣契约**（**2026-10-02 船长令「甲」**）──
+     * 起因 = 玩家报障「**光环入侵结束给的黑匣还是墨潮的**」：原先发放侧
+     * （`weekendBattle.weekendGrantRewards`）**写死** `blackbox-h` ⇒ R 族（光环科技）玩家
+     * 打完自家旗舰拿到的是墨潮那件。修法 = **按族发**（`blackBoxItemIdForFamily(族)`
+     * ＝约定 `blackbox-<族小写>`）。
+     *
+     * 本契约钉住**内容侧的那一半**：凡是有旗舰战的入侵族（`WEEKEND_BOSS_FAMILIES`），
+     * 内容表里**必须有**它自己那件匣、且 `kind === 'blackbox'`（缺了 ⇒ 该族发不出去，
+     * 或退回落款把墨潮匣发给光环期的玩家 —— 就是这次报障的样子）。
+     * 判据跑 core 的真函数（不是拼字符串），族名单也从 core 取 ⇒ 日后加族自动纳入。
+     */
+    for (const fam of WEEKEND_BOSS_FAMILIES) {
+      const boxId = blackBoxItemIdOfFamily(fam)
+      const box = items.get(boxId)
+      check(
+        box !== undefined,
+        `每族黑匣契约：入侵族 ${fam} 没有自己的黑匣物品 ${boxId}（旗舰结算会发不出去 / 退回落款发错族）`,
+      )
+      if (box !== undefined) {
+        check(box.kind === 'blackbox', `每族黑匣契约：${boxId} 的 kind 应为 blackbox，实际 ${box.kind}`)
+        check(isBlackboxItem(boxId), `每族黑匣契约：${boxId} 没被 core 单点 isBlackboxItem 认下（入库不会置位"见过黑匣"）`)
+      }
+    }
     // 市场页的类型下拉：本块自带读源码小工具（同名变量都在别的块作用域里，取不到）
     const mpRead = (rel: string): string => readFileSync(join(process.cwd(), rel), 'utf8')
     // 市场页的类型下拉读的是 `ui/itemSubs.ts` 的 `COMMODITY_TABS`（2026-10-01 起的一级类型单点）
@@ -3022,7 +3049,8 @@ for (const m of MODULES) {
     )
     console.log(
       `· 黑匣契约：${blackboxes.map((b) => b.id).join(' / ')} 独立成类（仓库/货仓/图鉴/市场四档一致）· ` +
-        '市场「货物」与「消耗品」都不再收它',
+        '市场「货物」与「消耗品」都不再收它 · ' +
+        `每族一件（${WEEKEND_BOSS_FAMILIES.map((f) => blackBoxItemIdOfFamily(f)).join(' / ')}）`,
     )
   }
 
@@ -3189,6 +3217,50 @@ for (const m of MODULES) {
       const bad = [...union].filter((id) => !own.has(id)).concat([...own].filter((id) => !union.has(id)))
       check(bad.length === 0, `残骸组契约：${g.key} 的 theme.${key} 与成员卡并集不一致（差异：${bad.join(' / ')}）`)
     }
+    /**
+     * ⑤★ **入侵族特色池契约**（**2026-10-03 船长定**「普通残骸有10%概率出特色掉落，特色掉落里，
+     * MK2和势力装备混在一起。稀有残骸必定出特色掉落」）——四条：
+     * ① `region: 'inv'` 的两组必须配 `themeGear`（族专属件）＋ `themeGearMk2`（家族 MK2）；其余组不许配；
+     * ② 两组件的 `theme` 必须为空（走 `themeGear` 那条替换支，而不是会把整条直出链压垮的"主题追加件"）；
+     * ③ 特色池的族专属件**必须是模块**（抽取池按 `ctx.modules` 过滤）且**不得是武器**（B3.1「武器移出主题」）；
+     * ④ 族专属件与"稀有箱专属池"（`FOE_LAIR_GEAR[族]`）**不得重叠** ⇒ 两条支路各自独立；
+     *    且入侵组必须配 `rareTheme`（稀有箱未命中专属支时的兜底件 —— 船长令"稀有残骸必定出特色掉落"）。
+     */
+    const gearIds = new Set<string>(FOE_LAIR_GEAR[g.family] ?? [])
+    const isInv = g.region === 'inv'
+    check(
+      isInv === (g.themeGear !== undefined && g.themeGear.length > 0),
+      `残骸组契约：${g.key} 的 themeGear 只在入侵组（region='inv'）配 —— 现 region=${g.region}、themeGear=${JSON.stringify(g.themeGear)}`,
+    )
+    if (isInv) {
+      check(
+        (g.theme.modules?.length ?? 0) === 0 && (g.theme.mk2?.length ?? 0) === 0,
+        `残骸组契约：${g.key}（入侵组）的 theme 必须为空（走 themeGear 特色池；旧"主题追加件"会把整条直出链压低）`,
+      )
+      check(
+        (g.themeGearMk2?.length ?? 0) > 0,
+        `残骸组契约：${g.key}（入侵组）须配 themeGearMk2（家族 MK2；船长：「MK2和势力装备混在一起」）`,
+      )
+      check(
+        (g.rareTheme?.length ?? 0) > 0,
+        `残骸组契约：${g.key}（入侵组）须配 rareTheme（稀有箱未命中专属支时的兜底件；船长：「稀有残骸必定出特色掉落」）`,
+      )
+      for (const id of g.themeGear ?? []) {
+        const mod = MODULES.find((m) => m.id === id)
+        check(mod !== undefined, `残骸组契约：${g.key} 的特色池族专属件 ${id} 不是模块（直出支只收模块）`)
+        check(
+          mod === undefined || !['turret', 'laser', 'missile'].includes(mod.slot),
+          `残骸组契约：${g.key} 的特色池族专属件 ${id} 是武器（B3.1：武器不入主题；唯一例外 = 穹顶守卫三把 MK3）`,
+        )
+        check(!gearIds.has(id), `残骸组契约：${g.key} 的 ${id} 同时挂在"特色池"与"稀有箱专属池"⇒ 两条支路重叠`)
+      }
+      for (const id of g.themeGearMk2 ?? []) {
+        check(
+          !id.endsWith('-3'),
+          `残骸组契约：${g.key} 的特色池家族件 ${id} 不该是 MK3（MK3 一律走碎片）`,
+        )
+      }
+    }
     // 组威胁 = 组内产残骸卡**回收口径体量**的算术平均（取整）——2026-09-25「冻结残骸经济」起与 `threat` 脱钩
     const avgThreat = Math.round(producing.reduce((s, a) => s + wreckInjectThreatOf(a), 0) / producing.length)
     check(g.threat === avgThreat, `残骸组契约：${g.key} 的 threat 记 ${g.threat}，成员产残骸卡平均威胁是 ${avgThreat}`)
@@ -3212,7 +3284,8 @@ for (const m of MODULES) {
   )
   console.log(
     `· 残骸组契约：${groupsChecked} 组（成员覆盖 ${memberOf.size} 张卡 · 保值 ±3% · 组池矿物 ⊆ 卡池并集 · 钛钢 ≥40% · 主题件 = 并集 · 组威胁/档位与卡一致）` +
-      ` · 出量梯度 常 ${WRECK_YIELD_TIER_MUL.common} / 险 ${WRECK_YIELD_TIER_MUL.risky} / 危 ${WRECK_YIELD_TIER_MUL.dire}`,
+      ` · 出量梯度 常 ${WRECK_YIELD_TIER_MUL.common} / 险 ${WRECK_YIELD_TIER_MUL.risky} / 危 ${WRECK_YIELD_TIER_MUL.dire}` +
+      ` · 入侵族特色池：2 组（族专属件非武器 · 与稀有箱专属池不重叠 · themeMk2/rareTheme 齐备）`,
   )
 
   /* ── B3.2 档位基础池（2026-09-14 船长「所有残骸回收都加钛钢」）：

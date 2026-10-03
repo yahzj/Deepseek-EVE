@@ -14,7 +14,7 @@
  */
 import { deliverCommsInstance } from './comms'
 import { HIGH_SEC_PENALTY } from './consumables'
-import { blackboxSeenOf } from './blackbox'
+import { BLACKBOX_ITEM_IDS, blackBoxItemIdForFamily, blackboxSeenOf } from './blackbox'
 import { addWare } from './inventory'
 import { isPlugOf } from './plugs'
 import { addLog } from './state'
@@ -27,6 +27,7 @@ import {
   noteReward,
 } from './weekendBattle'
 import {
+  WEEKEND_BOSS_FAMILIES,
   weekendBlackBoxSettledOf,
   weekendFamilyNameId,
   weekendFamilyNameZh,
@@ -72,7 +73,14 @@ export function weekendRewardLinesOf(snapshot: WeekendResultSnapshot): CommsRewa
     out.push({ itemId: snapshot.wreckItemId, qty: snapshot.wreck })
   }
   if (snapshot.isk > 0) out.push({ isk: snapshot.isk })
-  if (snapshot.blackBox > 0) out.push({ itemId: WEEKEND_BLACKBOX_ITEM_ID, qty: snapshot.blackBox })
+  /**
+   * **黑匣按快照里记的那一件报名字**（**2026-10-02 船长令「甲」**）：光环期显示「光环旗舰黑匣」、
+   * 墨潮期显示「墨潮旗舰黑匣」。缺省（本批之前结束的老场次）⇒ 落款墨潮匣 ——
+   * 那正是玩家当时真正到手的那一件（**不回改历史读数**）。
+   */
+  if (snapshot.blackBox > 0) {
+    out.push({ itemId: snapshot.blackBoxItemId ?? WEEKEND_BLACKBOX_ITEM_ID, qty: snapshot.blackBox })
+  }
   return out
 }
 
@@ -310,6 +318,12 @@ export function compensateMissingWeekendBlackBox(state: GameState, ctx: SimConte
   if ((snap.blackBox ?? 0) > 0) return false
   if (blackboxSeenOf(state) || hasAnyBlackBox(state)) return false
   if (hasAnyPlug(state, ctx)) return false
+  /**
+   * ⚠ **补的固定是墨潮匣**（**2026-10-02 复核后有意保留**）：这条入口只服务**推送前**那批历史场次
+   * （`WEEKEND_BOX_COMPENSATION_CUTOFF_WALL_MS` 之前的留档），那时**只有 H 一族**在跑
+   * （R 光环 2026-10-01 才建族）⇒ 当时该拿到的就是墨潮旗舰黑匣。
+   * 按族取匣的是另外两条入口（击沉那一拍 / `reconcileWeekendBlackBox` 对账）。
+   */
   addWare(state, WEEKEND_BLACKBOX_ITEM_ID, 1)
   /**
    * **把"已结清"写在共用钥匙上**（`ev.flagshipBlackBox`）：逐 tick 对账那条入口
@@ -327,11 +341,19 @@ export function compensateMissingWeekendBlackBox(state: GameState, ctx: SimConte
   return true
 }
 
-/** 黑匣实物在不在手上（仓库 ＋ 各船货舱；补发黑匣的第 4 条判据之一） */
+/**
+ * 黑匣实物在不在手上（仓库 ＋ 各船货舱；补发黑匣的第 4 条判据之一）。
+ *
+ * ⚠ **2026-10-02 泛化**：原先只认墨潮那一件 —— 有了 R 族匣（光环旗舰黑匣）与通用黑匣之后，
+ * 判"他手上到底有没有黑匣实物"必须**逐件全看**（`BLACKBOX_ITEM_IDS`）。本判据只服务那次
+ * **一次性补发**（补的是墨潮匣，判据在它之前已先过 `blackboxSeenOf`）⇒ 放宽方向 = 少补，不会多发。
+ */
 function hasAnyBlackBox(state: GameState): boolean {
-  if ((state.warehouse.items[WEEKEND_BLACKBOX_ITEM_ID] ?? 0) > 0) return true
-  for (const ship of Object.values(state.fleet)) {
-    if ((ship?.cargo?.[WEEKEND_BLACKBOX_ITEM_ID] ?? 0) > 0) return true
+  for (const id of BLACKBOX_ITEM_IDS) {
+    if ((state.warehouse.items[id] ?? 0) > 0) return true
+    for (const ship of Object.values(state.fleet)) {
+      if ((ship?.cargo?.[id] ?? 0) > 0) return true
+    }
   }
   return false
 }
@@ -374,6 +396,9 @@ function hasAnyPlug(state: GameState, ctx: SimContext): boolean {
  * 幂等靠**动作本身**：补了就写死 `flagshipBlackBox = true` ⇒ 第 3 条即不成立，第二次调用直接返回。
  * 落点 = 物品仓库 ＋ 一条系统日志（**不投递通讯**，与那次补偿同口径）。
  *
+ * ⚠ **2026-10-02（船长令「甲」）**：补的那一枚**按本场族取**（`blackBoxItemIdForFamily(ev.family)`）——
+ * 补的是"他当时该拿到的那一件"，光环期补光环匣、墨潮期补墨潮匣。
+ *
  * @returns 真补了才 `true`
  */
 export function reconcileWeekendBlackBox(state: GameState): boolean {
@@ -387,7 +412,20 @@ export function reconcileWeekendBlackBox(state: GameState): boolean {
   /** ③④ 没结清：结清标记与台账都要空 */
   if (weekendBlackBoxSettledOf(ev)) return false
   if ((ev.rewardLedger?.blackBox ?? 0) > 0) return false
-  const granted = weekendGrantRewards(state, { blackBox: true })
+  /**
+   * **补的是"这一族那一件"**（**2026-10-02 船长令「甲」**）：R 族（光环）期补「光环旗舰黑匣」，
+   * H 族补「墨潮旗舰黑匣」——此前这条入口同样写死墨潮匣（玩家报障的另一半）。
+   *
+   * ⚠ 本函数**没有 `ctx`**（签名与调用点 `engine.ts` 的逐 tick 调用一起冻结在源码契约用例里）
+   * ⇒ 这里**不做存在性探测**：族匣必存在由 `content:check` 的「每族黑匣契约」保证；
+   * 真破损时 `addWare` 会拒收 ⇒ `granted.blackBox <= 0` ⇒ 不记账、下一拍再试（不会发错族）。
+   * ⚠ 只对**有旗舰战的族**（`WEEKEND_BOSS_FAMILIES`）取族匣：占位族那套老口径（A/C/G）**没有**
+   * 自己的匣 ⇒ 按落款墨潮匣发（与本批改动之前逐字一致，不会退化成"永远补不出去"）。
+   */
+  const boxItemId = WEEKEND_BOSS_FAMILIES.includes(ev.family)
+    ? blackBoxItemIdForFamily(ev.family)
+    : WEEKEND_BLACKBOX_ITEM_ID
+  const granted = weekendGrantRewards(state, { blackBox: true, blackBoxItemId: boxItemId })
   /** 物品契约破损（`addWare` 拒收）⇒ 一枚也没落地：不记账、不打标记，下一拍再试 */
   if (granted.blackBox <= 0) return false
   ev.flagshipBlackBox = true
@@ -396,10 +434,13 @@ export function reconcileWeekendBlackBox(state: GameState): boolean {
    * **战果快照只补"变了的那一栏"**（`blackBox`）：结算面板与结算信读的就是它 —— 不补，玩家会看到
    * "仓库里多了一枚、面板还写 0"。⚠ 这里**不整张重建**快照：重建会把贡献占比、进度收入那些
    * 与本次补发无关的数按"现在的 state"重算一遍，凭空改写历史读数（补发只该动它补的那一件）。
+   * ⚠ 2026-10-02：**连"补的是哪一件"一起补**（`blackBoxItemId`）—— 老快照没有这一栏，
+   * 不写就会让结算信把那件光环匣显示成墨潮匣。
    */
   const snap = state.weekendLastResult
   if (snap !== undefined && snap.endedAtWallMs === endedAtWallMs) {
     snap.blackBox += granted.blackBox
+    snap.blackBoxItemId = boxItemId
   }
   addLog(
     state,

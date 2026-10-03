@@ -48,26 +48,33 @@ export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = 
   'ano-vault-sentinel': { mk2: ['mod-turret-kin-3', 'mod-laser-3', 'mod-missile-3'] },
   /* ── H 族（墨潮帮）四张入侵卡 ──
    * 2026-09-26 第一批（船长令「**H族已经添加势力装备，可以放入残骸内**」+「甲2」）：三件 H 势力装备挂成主题件；
-   * 🔴 2026-09-26 第二批（船长令「**将H族稀有残骸按照其他族那样混池**」）：主题件改**通用 MK2 一件**
+   * 🔴 2026-09-26 第二批（船长令「**将H族稀有残骸按照其他族那样混池**」）：主题件改通用 MK2 一件
    *    （照 D 高安组同款 `mod-shield-pla-2`）⇒ 高级箱回到"专属支 10% ＋ 通用主题件兜底"的两段式。
-   *    ⚠ 三件 H 势力装备仍由 `core/lairs.ts` 的 `FOE_LAIR_GEAR.H` 提供（只走稀有箱专属支）。
+   * 🔴 **2026-10-03（船长改口径）**：船长原话「**光环残骸的普通残骸卡牌的特色掉落只有基础的MK2系列，
+   *    包括墨潮帮的普通残骸也一样**」→ 追问后定「**普通残骸有10%概率出特色掉落，特色掉落里，
+   *    MK2和势力装备混在一起。稀有残骸必定出特色掉落**」⇒ 本行 = **卡面/契约用的具名件**
+   *    （墨潮捕获网 `mod-lair-web-h`），**运行时不再读它**（引擎走 `wreckGroups` 的 `themeGear` 特色池）；
+   *    残骸组契约要求"组主题件 = 成员卡并集"⇒ 组表的 `theme` 与本表**同步为空**，
+   *    具名改由 `WreckGroupDef.themeGear` 提供（两组都配了）。
    *    ⚠ 契约特别处：它们锚在展示用的 `galaxy-hub`（sec 1.0，高安）⇒ 读 `content:check` 的
    *    「主题彩头仅限 sec<0.5 星系」得走**入侵卡例外**（判据 = 卡级 `region` 覆写为 `inv`），
    *    与洞内/中安/低安卡的 `modules`（中安档）/`mk2`（低安档）分区检查是两条独立的线。 ── */
-  'ink-harass': { modules: ['mod-shield-pla-2'] },
-  'ink-raid': { modules: ['mod-shield-pla-2'] },
-  'ink-main': { modules: ['mod-shield-pla-2'] },
-  'ink-flagship': { modules: ['mod-shield-pla-2'] },
+  'ink-harass': {},
+  'ink-raid': {},
+  'ink-main': {},
+  'ink-flagship': {},
   /* ── R 族（光环 · Corona Systems · 2026-10-01 船长令「是新势力：余晖」）四张入侵卡 ──
-   * 与 H 族同款：主题件 = **通用 MK2 一件**（照 D 高安组同款 `mod-shield-pla-2`）。
-   * ⚠ R 族**P0 阶段没有势力装备**（`FOE_LAIR_GEAR.R` 恒空）⇒ 高级箱只有第 ② 支（主题件）有货；
-   *    P1 定下三件势力装备后，把件名加进 `core/lairs.ts` 的 `FOE_LAIR_GEAR.R` 即可，本行不用动。
+   * 与 H 族同款：**运行时走 `wreckGroups` 的 `themeGear` 特色池**（族专属件 = 跃迁规避装置
+   * `mod-lair-blink-r`，中槽 propulsion · 非武器；⟪2026-10-03⟫ 已从 `FOE_LAIR_GEAR.R` 移出）
+   * ⇒ 本表与组表的 `theme` 都为空（残骸组契约要求两者逐项相等）。
+   * ⚠ 建族当时本行写「R 族 P0 阶段没有势力装备（`FOE_LAIR_GEAR.R` 恒空）⇒ 高级箱只有第 ② 支有货」
+   *   —— 那句**当天即过时**（同日就落了两件、10-02 又落两件），2026-10-03 随本批一并订正。
    * ⚠ 契约特别处与 H 族同：它们锚在展示用的 `galaxy-hub`（sec 1.0，高安）⇒ 读 `content:check` 的
    *   「主题彩头仅限 sec<0.5 星系」得走**入侵卡例外**（判据 = 卡级 `region` 覆写为 `inv`）。 ── */
-  'corona-drift': { modules: ['mod-shield-pla-2'] },
-  'corona-split': { modules: ['mod-shield-pla-2'] },
-  'corona-converge': { modules: ['mod-shield-pla-2'] },
-  'corona-nexus': { modules: ['mod-shield-pla-2'] },
+  'corona-drift': {},
+  'corona-split': {},
+  'corona-converge': {},
+  'corona-nexus': {},
 }
 
 /** 卡级特色池与产出倾向（**构建依据 · 体检输入**；运行时见 `@whale/core` 的 `WRECK_GROUPS`） */

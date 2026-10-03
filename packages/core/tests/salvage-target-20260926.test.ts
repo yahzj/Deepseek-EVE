@@ -80,7 +80,7 @@ describe('打捞对象 · 分组记账（船长 2026-09-26 令）', () => {
     expect(sumAfter, 'Σ份额 == 总密度').toBeCloseTo(s.galaxyWrecks[GAL]!.density, 6)
   })
 
-  it('**选组 ⇒ 只出该组的残骸**（同一星系、多个组之间不串）', () => {
+  it('**选组 ⇒ 只出该组的残骸**（同一星系、多个组之间不串；捞干后按新口径回落「全部」）', () => {
     const s = fresh(11)
     injectWreckDensity(s, ctx, GAL, 900) // 均分给各组
     const pick = GROUPS[0]!
@@ -88,13 +88,26 @@ describe('打捞对象 · 分组记账（船长 2026-09-26 令）', () => {
     s.salvaging.galaxyId = GAL
     s.salvaging.targetGroup = pick
     s.salvaging.phase = 'salvaging'
-    const got = new Set<string>()
+    const want = `wreck-${pick}`
+    const seq: string[] = []
     for (let i = 0; i < 40; i++) {
       const r = pullOneWreck(s, ctx, GAL, 60_000)
-      if (r) got.add(r.itemId)
+      if (r) seq.push(r.itemId)
     }
-    expect(got.size, '只出该组的残骸物品').toBe(1)
-    expect([...got][0], '正是选中组的物品').toBe(`wreck-${pick}`)
+    const firstOther = seq.findIndex((id) => id !== want)
+    expect(seq.includes(want), '选中组的残骸照出').toBe(true)
+    /**
+     * ⟪2026-10-02 改⟫ **船长令「按你推荐」**：旧口径"手选组已干 ⇒ 本轮不出（`null`）"随"手选入口被撤"
+     * 一起作废 ⇒ 现在**捞干即回落「全部」**（与 `startSalvageOp` 那句同口径）。
+     * 「不串组」这条契约仍然成立，但**只在选中组还有存量期间**：
+     */
+    expect(firstOther, '确实捞干并回落（不是 40 轮都出该组）').toBeGreaterThan(0)
+    expect(
+      seq.slice(0, firstOther).every((id) => id === want),
+      `捞干之前只出该组（回落点 ${firstOther}）`,
+    ).toBe(true)
+    expect(new Set(seq.slice(firstOther)).size, '捞干后回落「全部」⇒ 会出现别的组').toBeGreaterThan(0)
+    console.log(`  [读数] 选组 ${pick}：前 ${firstOther} 轮只出该组，之后回落「全部」`)
   })
 
   it('**选入侵残骸 ⇒ 只扣入侵池、不碰星系池**；反之选组不碰入侵池', () => {
@@ -148,7 +161,17 @@ describe('打捞对象 · 分组记账（船长 2026-09-26 令）', () => {
     s.galaxyWrecks[GAL]!.byGroup![pick] = 0
     s.salvaging.targetGroup = pick
     expect(wreckGroupStockOf(s, ctx, GAL, pick)).toBe(0)
-    expect(pullOneWreck(s, ctx, GAL, 60_000), '该组已空 ⇒ 不出').toBeNull()
+    /**
+     * ⟪2026-10-02 改⟫ **船长令「按你推荐」**：旧口径是「手选组已捞干 ⇒ **本轮不出**（`null`）」，
+     * 那是"手选"时代的语义 —— 手选入口当天就被船长撤掉了（同日令「不要再让玩家手动选择打捞对象了
+     * …改为自动判断」）⇒ 该字段只剩**老档残留**。残留值一旦是上一族那套键（如 H 族 `h-hi`），
+     * 遇上新一族的残骸就会**每轮 `null`**、把主控作业与 AI 打捞**整条堵死**（玩家报障
+     * 「入侵的残骸打捞后数字不变也打捞不到」）。
+     * 现口径与 `startSalvageOp` 那句「给的对象不可用 ⇒ 回落全部」**完全一致**：
+     * **就地清掉陈旧对象、本轮按「全部」出**（回归守卫见 `salvage-wreck-units-20261002.test.ts` ②）。
+     */
+    expect(pullOneWreck(s, ctx, GAL, 60_000), '该组已空 ⇒ 回落「全部」，照出（不再是 null）').not.toBeNull()
+    expect(s.salvaging.targetGroup, '陈旧对象被就地清掉').toBeUndefined()
   })
 
   it('**自动判定①：有入侵残骸 ⇒ 先只出入侵那一族的残骸**（🔴 2026-10-02「甲」：池子见底后回落到本星系卡）', () => {

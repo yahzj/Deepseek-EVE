@@ -194,6 +194,17 @@ export function closeIronman(state: { ironman?: IronmanLike }, atWallMs: number)
  *                    ⚠ 后者是 2026-09-23 补的一道闸：**关闭铁人之后再导入一份"当年开着铁人"的旧档**，
  *                    若不判 incoming，就等于用回滚把铁人模式**偷偷开回来**（且绕开代次纪律）。
  *                    普通档载入普通档 ⇒ 传 false，一切照旧放行。
+ * @param bypass       🔴 **本机调试模式的旁路**（**2026-10-03 船长令**，原话照抄：
+ *                    「**新增，调试模式允许载入铁人存档**」；三问裁定＝**备份恢复与导入都放行** ·
+ *                    **判据只用本机调试门禁** `debugEnabled()` · **不记救援**）：
+ *                    `true` ⇒ **一律放行**（含"铁人旧档代次落后"与"关掉铁人后导回旧铁人档"这两种）。
+ *
+ *                    **安全根据**：调用方传进来的是渲染层的 `debugEnabled()` —— 它 = **本机门禁**
+ *                    （协议 http(s) 且宿主是本机/内网）∧ 本机 `localStorage['whale-idle:debug']`
+ *                    ⇒ **发布版恒 false**（公网域名、桌面打包版的 `file:` 都进不来）⇒ 玩家侧不可达。
+ *                    ⚠ **取舍（如实记账）**：旁路开着时，闸门原本要挡的"关掉铁人 ⇒ 导回关闭前的
+ *                    旧铁人档"也会放行；这是"允许载入铁人存档"的必然含义，船长已知情并选「甲」
+ *                    （若要留痕可改成按"救援"记账，见工作文档 `docs/design/ironman-load-in-debug-20261003.md`）。
  */
 export function ironmanLoadVerdict(args: {
   ironman: boolean
@@ -202,7 +213,10 @@ export function ironmanLoadVerdict(args: {
   ledgerSeq: number
   incomingSavedAtWallMs: number
   nowWallMs: number
+  bypass?: boolean
 }): { ok: true; rescue: boolean } | { ok: false; reason: 'rolled-back'; threshold: number } {
+  /** 本机调试模式：一律放行（**不写救援语义** —— 船长三答之"不记救援"） */
+  if (args.bypass === true) return { ok: true, rescue: false }
   if (!args.ironman) return { ok: true, rescue: false }
   const threshold = Math.max(
     0,

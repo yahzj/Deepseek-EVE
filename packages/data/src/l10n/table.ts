@@ -4129,8 +4129,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.itemSubs.038": { zh: "战斗支援件", en: "Combat support" },
   "ui.itemSubs.039": { zh: "辅助支援件", en: "Auxiliary support" },
   "ui.itemSubs.040": { zh: "修理装置", en: "Repair units" },
-  /* 舰船插件与章鱼人兑换（2026-09-26 船长令）：「玩家获取第一个黑匣后，才解锁组装机的插件选项，并且弹出相关通讯」 */
-  "ui.IndustryPage.116": { zh: "取得第一个墨潮旗舰黑匣后解锁", en: "Unlocks after you obtain your first Ink Tide flagship black box" },
+  /* 舰船插件与章鱼人兑换（2026-09-26 船长令）：「玩家获取第一个黑匣后，才解锁组装机的插件选项，并且弹出相关通讯」
+     ⟪文案调整 2026-10-02⟫ 116 / 142 两条去掉「墨潮旗舰」这个族名（改为「黑匣」/「各族的旗舰黑匣」）：
+     依据 = 船长 2026-10-02 令「甲」（黑匣一件族一件：H 墨潮 / R 光环，光环那件同样解锁、同样顶料）。 */
+  "ui.IndustryPage.116": { zh: "取得第一个黑匣后解锁", en: "Unlocks after you obtain your first black box" },
   "ui.IndustryPage.117": { zh: "插件图纸找章鱼人用声望兑换", en: "Trade standing with the octopus folk for plug blueprints" },
   "ui.IndustryPage.119": { zh: "可支配 {p1} · 累计获得 {p2}", en: "Spendable {p1} · Total earned {p2}" },
   "ui.IndustryPage.120": { zh: "兑换图纸", en: "Exchange blueprint" },
@@ -4155,7 +4157,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.IndustryPage.139": { zh: "将扣除「深空工业协会」声望 {p1} 点，扣除后剩余 {p2}。", en: "This spends {p1} Deepspace Industry Association standing, leaving {p2}." },
   "ui.IndustryPage.140": { zh: "兑换即学会；声望一旦扣除不会退还。", en: "Exchanging learns the blueprint at once; spent standing is not refunded." },
   "ui.IndustryPage.141": { zh: "通用黑匣", en: "Universal Black Box" },
-  "ui.IndustryPage.142": { zh: "制造任何舰船插件都能顶一枚黑匣，与墨潮旗舰黑匣互为替代（先扣这一种）。", en: "Stands in for a black box in any ship-plug build; interchangeable with the Ink Tide flagship black box and consumed first." },
+  "ui.IndustryPage.142": { zh: "制造任何舰船插件都能顶一枚黑匣，与各族的旗舰黑匣互为替代（先扣这一种）。", en: "Stands in for a black box in any ship-plug build; interchangeable with any flagship black box and consumed first." },
   "ui.IndustryPage.143": { zh: "已持有", en: "Owned" },
   "ui.IndustryPage.144": { zh: "已换到通用黑匣 ×1，存入物品仓库。", en: "Exchanged: 1 Universal Black Box stored in the item warehouse." },
   "ui.IndustryPage.145": { zh: "兑换", en: "Exchange" },
@@ -5988,6 +5990,19 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.167": {
     zh: "当前环境无法自动刷新，请手动刷新页面（或重启游戏）。",
     en: "This environment cannot reload automatically — refresh the page (or restart the game) manually."
-  }
+  },
+  /* **客户端版本行**（**2026-10-02 船长令**：「建议在设置里给游戏添加版本号，否则无法判断玩家当前版本」）
+     —— 三问裁定：值 = 版本号 · 构建 sha · 构建日期 · 运行形态（只显示版本号分辨不出"网页版被浏览器
+     缓存住旧产物"）；命名避开游戏内已有的「版本号」（那是**铁人档世代号**）；放**设置页最上方**；
+     复制成功的提示**复用现成的 `ui.App.044`**（不新造同义串）。注入点见 `tools/build-info.ts`。 */
+  "ui.App.168": { zh: "客户端版本", en: "Client version" },
+  "ui.App.169": { zh: "{p1} · 构建 {p2} · {p3} · {p4}", en: "{p1} · built {p2} · {p3} · {p4}" },
+  "ui.App.170": {
+    zh: "这一行标明当前运行的版本；反馈问题时请一并提供。",
+    en: "This line shows the version currently running; include it when reporting a problem.",
+  },
+  "ui.App.171": { zh: "复制", en: "Copy" },
+  "ui.App.172": { zh: "网页版", en: "Web" },
+  "ui.App.173": { zh: "桌面版", en: "Desktop" },
 }
 

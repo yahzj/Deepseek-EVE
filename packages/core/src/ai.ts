@@ -22,7 +22,7 @@ import type { AiCoreType, SimContext } from './types'
 import type { CommandResult, CoreBlockReason } from './engine'
 import { nextRandom } from './rng'
 import { addWare, cargoUnitM3, freeCargoM3Of } from './inventory'
-import { pullOneWreck, salvagerCyclesOf } from './salvaging'
+import { pullOneWreck, salvagerCyclesOf, wreckUnitsOf } from './salvaging'
 import { isMineableItem } from './labels'
 import { getMiningParams, oneLegMs, oneOutboundLegMs, richVeinP, rollBeltOutput, shipInReturn } from './mining'
 import { bumpFirst } from './firstTasks'
@@ -1065,7 +1065,13 @@ bumpFirst(state, 'salvageRuns')
           break
         }
         const cargo = state.fleet[shipId]!.cargo
-        cargo[pulled.itemId] = (cargo[pulled.itemId] ?? 0) + pulled.volumeM3 // 计数 = 体积（m³）
+        /**
+         * **入舱件数走单点 `wreckUnitsOf`**（**2026-10-02 船长令「按你推荐」**）：与主控作业同一把尺
+         * —— 计数 = 体积（m³）、不足 1 m³ 的那一轮至少 1 件。改前这里**直接累加小数**
+         * （`cargo[id] += 0.51`）⇒ AI 打捞的货舱里会攒出"0.51 件残骸"这种读数，且不足 1 件时
+         * 玩家在货舱里也看不见东西。
+         */
+        cargo[pulled.itemId] = (cargo[pulled.itemId] ?? 0) + wreckUnitsOf(pulled.volumeM3)
         task.tripM3 += pulled.volumeM3
       }
       if (task.phase === 'returning') break

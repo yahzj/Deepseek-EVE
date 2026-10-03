@@ -17,6 +17,8 @@ import { currentSpaceBg, rerollSpaceBg } from '../ui/spaceBg'
 import type { SpaceBgInfo } from '../ui/spaceBg'
 import type { LayoutKind } from '../ui/AppShell'
 import { tr, useL10n } from '../i18n/locale'
+/** 客户端版本三件套与运行形态（**2026-10-02 船长令**；构建时注入，见 `game/buildInfo.ts`） */
+import { BUILD, BUILD_FORM } from '../game/buildInfo'
 import type { GameEngine } from '../game/engine'
 
 /** 游戏内时钟（HH:MM，日志前缀用） */
@@ -224,6 +226,35 @@ export function SettingsPanel({
   }, [])
   /** 当前宇宙底图（模块级状态：关闭设置再打开仍是同一张） */
   const [bg, setBg] = useState<SpaceBgInfo | null>(() => currentSpaceBg())
+  /**
+   * **客户端版本行**（**2026-10-02 船长令**「版本号可以落码」）：值与形态由构建时注入，
+   * 这里只负责拼那一行 + 一键复制（复制成功的提示复用 `ui.App.044`，1.8 秒后自己变回来）。
+   */
+  const [copiedVersion, setCopiedVersion] = useState(false)
+  function clientVersionLine(): string {
+    return tr('ui.App.169', {
+      p1: BUILD.version,
+      p2: BUILD.time,
+      p3: BUILD.sha,
+      p4: BUILD_FORM === 'web' ? tr('ui.App.172') : tr('ui.App.173'),
+    })
+  }
+  async function copyClientVersion(): Promise<void> {
+    const text = clientVersionLine()
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      /** 兜底（与性能 HUD 的「复制报告」同一套：剪贴板 API 不可用时走 execCommand） */
+      const ta = document.createElement('textarea')
+      ta.value = text
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      ta.remove()
+    }
+    setCopiedVersion(true)
+    window.setTimeout(() => setCopiedVersion(false), 1800)
+  }
   useEffect(() => {
     const el = root.current
     if (!el) return
@@ -246,6 +277,26 @@ export function SettingsPanel({
           {t('ui.App.011')}
         </div>
         <div className="app-settings-list">
+          {/**
+           * **客户端版本**（**2026-10-02 船长令**：「**建议在设置里给游戏添加版本号，否则无法判断玩家
+           * 当前版本**」）—— 船长三问裁定：值 = 版本号 · 构建 sha · 构建日期 · 运行形态；本批只做显示；
+           * 命名用「客户端版本」（避开游戏内已有的「版本号」＝铁人档世代号）；**放最上方**（第一眼就能读到）。
+           * 值由构建时注入（`game/buildInfo.ts` 读、`tools/build-info.ts` 注入）；
+           * 「复制」走与性能 HUD 同一套写法（`navigator.clipboard` ＋ execCommand 兜底），
+           * 复制成功的提示**复用 `ui.App.044`「✓ 已复制」**（不新造同义串）。
+           */}
+          <div className="app-settings-row">
+            <div className="app-settings-head">
+              <span className="app-settings-label">{t('ui.App.168')}</span>
+              <span className="app-settings-val">{clientVersionLine()}</span>
+            </div>
+            <div className="app-settings-btns">
+              <button className="app-btn is-small" onClick={() => void copyClientVersion()}>
+                {copiedVersion ? tr('ui.App.044') : tr('ui.App.171')}
+              </button>
+            </div>
+            <div className="app-settings-desc">{t('ui.App.170')}</div>
+          </div>
           {/* 语言（2026-09-19 船长令「英语本地化」）：默认跟随系统，这里可随时覆盖；语言不进存档 */}
           <div className="app-settings-row">
             <div className="app-settings-head">

@@ -1632,6 +1632,22 @@ html[data-locale='en'] body {
 
 }
 
+/* 徽标底色跟随**该卡的作业活动色**（**2026-10-02 船长令「按你推荐来」**）：
+   矿带卡 = 采矿色、残骸打捞卡 = 打捞色 —— 形状与文字照旧（墨色 ＋ currentColor 图标），
+   只把"这一枚 AI 在干什么"用既有的活动色说出来；缺省（不挂修饰类）仍是原来的青。
+   色值全部来自既有 `--wui-work-*`（七个主题块各有一份，不新增任何变量）。 */
+.app-belt-ai-badge.is-work-mine {
+
+  background: rgb(var(--wui-work-mine));
+
+}
+
+.app-belt-ai-badge.is-work-salvage {
+
+  background: rgb(var(--wui-work-salvage));
+
+}
+
 .app-belt-flag.is-run {
 
   background: rgb(var(--wui-gold));

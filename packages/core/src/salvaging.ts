@@ -207,6 +207,23 @@ function autoTargetPickOf(
 }
 
 /**
+ * **这一轮打捞"入舱几件"**（残骸计数 = 体积 m³；主控作业与 AI 副船**共用同一个取整口**）。
+ *
+ * 🔴 **2026-10-02 船长令「按你推荐」**（起因 = 玩家报障「**入侵的残骸打捞后数字不变也打捞不到**」）：
+ * 同日更早那批「甲」（入侵池按余额封顶出量）之后，**"一轮不足 1 m³"成了常态** —— 而入库那一步是
+ * **向下取整**（`inventory.addItem` 的 `Math.floor`）⇒ 0.6 m³ 的那一轮：**池子扣光了、货舱一件没多**
+ * （探针读数：`池 0.60 → 0.00 · 到手 0 → 0`）⇒ 玩家体感就是「打捞照跑、数字一动不动、什么都捞不上来」。
+ *
+ * 口径（船长选「甲」）：**这一轮真出了量（`volumeM3 > 0`）⇒ 至少入舱 1 件**，否则按 `floor` 取整。
+ * **池子仍按实际出的 m³ 扣**（"标称多少最多就捞多少"一字未改）——代价只有"不足 1 m³ 的那一轮多给
+ * 不到 1 件"，换来**永远不再出现"捞了等于没捞"**。
+ */
+export function wreckUnitsOf(volumeM3: number): number {
+  if (!(volumeM3 > 0)) return 0
+  return Math.max(1, Math.floor(volumeM3))
+}
+
+/**
  * **该对象在这个星系是否可用**（有存量才算）：`undefined`（全部）恒真；`WEEKEND_WRECK_TARGET` 看入侵残骸；
  * 组 key 看该组份额。给的对象不可用 ⇒ 回落"全部"（不拒开工）。
  */
@@ -663,10 +680,26 @@ export function pullOneWreck(
 ): { itemId: string; mul: number; volumeM3: number } | null {
   /**
    * **打捞对象**（**2026-09-26 船长令**）：作业上带着它（`SalvageOpState.targetGroup`）。
-   * - 选了某一组而**该组已捞干** ⇒ **本轮不出**（不自动换组——手动选的语义就是"只捞它"）；
-   * - 缺省 = 全部（现状：按威胁加权抽、先扣入侵池）。
+   *
+   * 🔴 **2026-10-02 船长令「按你推荐」改口径**（起因 = 玩家报障「**入侵的残骸打捞后数字不变也捞不到**」）：
+   * 原口径是「选了某一组而该组已捞干 ⇒ **本轮不出**（不自动换组）」——那是"手选"时代的语义，而
+   * **手选入口当天就被船长撤掉了**（同日令「不要再让玩家手动选择打捞对象了…改为自动判断」）⇒
+   * 这个字段如今只剩**老档残留**与 AI/用例在用。残留值一旦是**上一族那套键**（例如 H 族的 `h-hi`），
+   * 遇上新一族的残骸就会**每轮返回"什么都不产出"**（探针读数：`对象=h-hi · 池 120.00 → 120.00 · pick=null`）
+   * —— 主控作业与 AI 副船拿到 `null` 都会**直接终止任务**（日志还会说成"敌群情报缺失"，误导）。
+   *
+   * 现口径（与 `startSalvageOp` / `setSalvageTarget` 那句「给的对象不可用 ⇒ 回落全部」**完全一致**）：
+   * **对象已捞干 / 只剩箱子也没有 ⇒ 就地清掉它、本轮按「全部」出**（自愈，不再空转）。
    */
-  const target = state.salvaging.targetGroup
+  let target = state.salvaging.targetGroup
+  if (
+    target !== undefined &&
+    wreckGroupStockOf(state, ctx, galaxyId, target) <= 0.05 &&
+    rareStockForTargetOf(state, ctx, galaxyId, target) <= 0
+  ) {
+    state.salvaging.targetGroup = undefined
+    target = undefined
+  }
   /**
    * ⓪★ **玩家舰船残骸独占最高优先**（**2026-09-26 船长令**：「**玩家如果在该星系打捞，优先打捞该残骸
    * （比稀有残骸优先级还高）。打捞后玩家按照一定概率和比例回收被摧毁舰船的部分装备。除此以外没有其他资源。**」）。
@@ -740,20 +773,11 @@ export function pullOneWreck(
     return { itemId: '', mul: 1, volumeM3: 0 }
   }
   /**
-   * **打捞对象**（**2026-09-26 船长令**）：作业上带着它（`SalvageOpState.targetGroup`）。
-   * - 选了某一组而**该组已捞干** ⇒ **本轮不出**（不自动换组——手动选的语义就是"只捞它"）；
-   * - 缺省 = 全部（现状：按威胁加权抽、先扣入侵池）。
-   * ⚠ 本闸**必须排在玩家残骸那一支之后**（见上）：残骸里的件与任何池的存量无关。
-   * ⚠ **2026-09-27 补一格**（船长令「主力舰队添加一个稀有残骸掉落」＋「进残骸场」）：**场里只剩箱子**
-   * （矿物被捞干、稀有还在）时**不许把这一轮挡掉** —— 否则玩家选「只捞入侵残骸」就永远拿不到那个箱子。
+   * **打捞对象**（**2026-09-26 船长令**）——**存量闸已在函数开头判过**（对象不可用就地清掉、回落「全部」，
+   * 见那里那段长注）：原先是"到这里判、不可用就 `return null`"，2026-10-02 起改为自愈式回落。
+   * ⚠ 那条闸的**位置**仍在玩家残骸那一支**之前**（自愈只清字段、不跳支）⇒ 船长 2026-09-26 定的
+   * 「玩家残骸最高优先、与任何池的存量无关」一字未改。
    */
-  if (
-    target !== undefined &&
-    wreckGroupStockOf(state, ctx, galaxyId, target) <= 0.05 &&
-    rareStockForTargetOf(state, ctx, galaxyId, target) <= 0
-  ) {
-    return null
-  }
   // ① **稀有池优先**（三级序第 1 档；2026-09-10 船长定"窝点战利品必捞"· 2026-09-26 复述
   //    「优先捞稀有池，稀有池捞完后开始普通池」）：稀有池有存量 ⇒ 本轮必出稀有，**捞干后**才轮到普通池。
   //    ⚠ **打捞对象只管普通池内部**（手选组 / 手选入侵都不影响稀有池——稀有残骸是窝点与派系活跃的战利品，
@@ -972,7 +996,13 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
           )
           break
         }
-        addItem(state, pulled.itemId, pulled.volumeM3) // 计数 = 体积（m³）
+        /**
+         * **入舱件数走单点 `wreckUnitsOf`**（**2026-10-02 船长令「按你推荐」**）：
+         * 计数 = 体积（m³），但**不足 1 m³ 的那一轮至少给 1 件** —— 改前直接 `addItem(…, volumeM3)`
+         * 会被 `Math.floor` 抹成 0 ⇒ 池子扣光、货舱一件没多（玩家报障「数字不变也打捞不到」）。
+         * ⚠ `s.tripM3` 记的仍是**实际出的 m³**（池子与行程账不吃这个保底）。
+         */
+        addItem(state, pulled.itemId, wreckUnitsOf(pulled.volumeM3))
         s.tripM3 += pulled.volumeM3
       }
       if (s.phase === 'returning') break

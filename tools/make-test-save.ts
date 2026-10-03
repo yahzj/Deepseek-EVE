@@ -3093,23 +3093,48 @@ function stripPreviousBattleshipTestShips(state: GameState): number {
   return removed
 }
 
+/**
+ * **`--keep-ironman`：造档时保留铁人标记**（**2026-10-03 船长令**：「**新增，调试模式允许载入铁人存档**」
+ * ＋ 三问裁定之"给造档工具加一个开关"）。
+ *
+ * 历史口径是**一律剥掉**（2026-09-24 船长报障「你存档搞的是铁人模式，我无法导入」）：生成器基于真档复制，
+ * 而船长的真档是铁人档 ⇒ 造出来的档带铁人标记 ⇒ 被铁人闸门拦下（来档是铁人档 + 代次落后 ⇒ 拒绝）。
+ * 有了调试模式放行之后，**本机调试模式下这份档也导得进来** ⇒ 保留标记正好用来实测那条口子；
+ * **正常模式下它仍然会被闸门拦下**（那正是闸门该做的事）。默认行为**逐字不变**（不加开关照样剥掉）。
+ */
+const KEEP_IRONMAN = process.argv.includes('--keep-ironman')
+
+/** 铁人标记处理（**唯一入口**，两处注入点共用；见上面 `KEEP_IRONMAN` 那段） */
+function handleIronmanForTestSave(state: GameState, notes: string[]): void {
+  const im = state.ironman
+  if (im === undefined) return
+  if (KEEP_IRONMAN) {
+    notes.push(
+      `**保留了铁人标记**（\`--keep-ironman\`：on=${String(im.on)} · 代次 ${im.seq}）` +
+        '——本机调试模式下可导入；正常模式仍会被铁人闸门拦下；导入后铁人状态以"来档"为准',
+    )
+    return
+  }
+  delete state.ironman
+  notes.push('**已把本档转为普通档**（剥掉铁人标记 `ironman`）——否则铁人闸门会拒绝导入；导入它会离开铁人状态，测完用备份恢复')
+}
+
 function injectBattleship(state: GameState): string[] {
   const notes: string[] = []
   genericPrep(state)
   /** ⚠ **先清上一轮的测试船**（在注入之前；否则会越注越多——2026-09-24 实测踩到） */
   const stripped = stripPreviousBattleshipTestShips(state)
   /**
-   * ⚠ **必须剥掉铁人标记**（2026-09-24 船长报障：「你存档搞的是铁人模式，我无法导入」）：
+   * **铁人标记：默认剥掉、`--keep-ironman` 时保留**（2026-09-24 船长报障：「你存档搞的是铁人模式，我无法导入」）：
    * 生成器是**基于真档复制注入**的，而船长的真档是**铁人档**（`ironman.on = true`）⇒ 造出来的档
-   * 也带铁人标记；导入时被铁人闸门拦下（`ironmanLoadVerdict`：**来档是铁人档 + 代次落后 ⇒ 拒绝**，
-   * 见 `engine.ironmanLoadCheck`）—— 船长根本导不进来。
-   * ⇒ 测试档一律**转成普通档**（`ironman` 缺省 = 普通档、代次 0、导入放行）。
-   * 代价：导入它会**离开铁人状态**（引擎既有语义：铁人标记以"来档"为准）——测完用游戏内备份恢复即可。
+   * 也带铁人标记；正常模式下导入会被铁人闸门拦下（`ironmanLoadVerdict`：**来档是铁人档 + 代次落后
+   * ⇒ 拒绝**，见 `engine.ironmanLoadCheck`）—— 船长根本导不进来。
+   * ⇒ 默认**转成普通档**（`ironman` 缺省 = 普通档、代次 0、导入放行）；
+   * **2026-10-03 起**加 `--keep-ironman` 可保留标记：本机调试模式下闸门放行（船长令
+   * 「调试模式允许载入铁人存档」）⇒ 正好用来实测那条口子。
+   * 代价：导入它会**离开/进入铁人状态以"来档"为准**（引擎既有语义）——测完用游戏内备份恢复即可。
    */
-  if (state.ironman !== undefined) {
-    delete state.ironman
-    notes.push('**已把本档转为普通档**（剥掉铁人标记 `ironman`）——否则铁人闸门会拒绝导入；导入它会离开铁人状态，测完用备份恢复')
-  }
+  handleIronmanForTestSave(state, notes)
   state.wallet.isk += 80_000_000
   notes.push('钱包 +80,000,000 ISK')
   bumpStanding(state, 40)
@@ -3254,10 +3279,8 @@ function injectWeekend(state: GameState, opts: { hurt?: boolean } = {}): string[
   delete state.weekendLastResult
   const stripped = stripPreviousWeekendTestShips(state)
   /** ⚠ 必须剥掉铁人标记：否则铁人闸门拒绝导入（同 `injectBattleship` 那一处的长注释） */
-  if (state.ironman !== undefined) {
-    delete state.ironman
-    notes.push('**已把本档转为普通档**（剥掉铁人标记 `ironman`）——否则铁人闸门会拒绝导入')
-  }
+  /** 铁人标记：默认剥掉；加 `--keep-ironman` 则保留（唯一入口，见 `handleIronmanForTestSave` 头注） */
+  handleIronmanForTestSave(state, notes)
   state.wallet.isk += 80_000_000
   notes.push('钱包 +80,000,000 ISK')
   bumpStanding(state, 40)
@@ -3746,9 +3769,10 @@ const INJECTORS: Record<string, (state: GameState) => string[]> = {
   shipwreck: injectShipWreck,
 }
 function main(): void {
-  const feature = process.argv[2]
+  /** 功能名 = 第一个**不以 `--` 开头**的参数（这样 `--keep-ironman` 放前面也不影响） */
+  const feature = process.argv.slice(2).find((a) => !a.startsWith('--'))
   if (!feature || feature === 'help' || !(feature in INJECTORS)) {
-    console.log(`用法：npx tsx tools/make-test-save.ts <feature>\n已注册功能：${Object.keys(INJECTORS).join(' / ')}`)
+    console.log(`用法：npx tsx tools/make-test-save.ts <feature> [--keep-ironman]\n已注册功能：${Object.keys(INJECTORS).join(' / ')}`)
     process.exit(feature ? 1 : 0)
   }
   if (!existsSync(SAVE_PATH)) {

@@ -14,9 +14,14 @@
  * 4. **卡级回收档覆写**（新机制 · 单点 `salvage.wreckCardTierOf`）：卡级 `wreckTier` 优先，缺省仍按
  *    星系基础密度现算 ⇒ **没写覆写的卡行为零变化**（本文件用 D 族卡反证缺省路径）。
  * 5. **H 势力装备进残骸**（船长「H族已经添加势力装备，可以放入残骸内」＋「甲2」，**同日第二批改混池**）：
- *    三件（`FOE_LAIR_GEAR.H`）走**高级箱专属支**（绝境档 10%）；🔴 船长后续令「**将H族稀有残骸按照其他族
- *    那样混池**」⇒ 组主题件由"H 三件"改为**通用 MK2 一件**（照 D 高安组同款 `mod-shield-pla-2`）
+ *    三件走**高级箱专属支**（绝境档 10%）；🔴 船长后续令「**将H族稀有残骸按照其他族
+ *    那样混池**」⇒ 组主题件由"H 三件"改为通用 MK2 一件（照 D 高安组同款 `mod-shield-pla-2`）
  *    ⇒ 未命中那 90% 出通用件（改前两支同池 ⇒ 稀有箱必出 H 件）。
+ *    🔴 ⟪**2026-10-03（船长改口径）**⟫：船长原话「**光环残骸的普通残骸卡牌的特色掉落只有基础的MK2系列，
+ *    包括墨潮帮的普通残骸也一样**」→ 追问后定「**普通残骸有10%概率出特色掉落，特色掉落里，MK2和势力装备
+ *    混在一起。稀有残骸必定出特色掉落**」⇒ **捕获网 `mod-lair-web-h` 从专属池移出、改挂 `themeGear`
+ *    特色池**（每批 10% 掷中 · 族专属件 : 家族 MK2 = 1 : 20）⇒ 专属池 3 → **2 件**、
+ *    本组 `theme` 保持为空（不再走会把整条直出链压垮的老机制）。
  * 6. **联动读数**：高级箱专属件命中率随组档位升到危档 10%（H 5% → 10% · G 8% → 10%）；
  *    残骸收购价随组档位 30/40 → 50（该行的价格契约在 `content:check`，本文件只锁档位来源）。
  */
@@ -48,7 +53,7 @@ const perM3Of = (groupId: string): number => {
 
 const H_CARDS = ['ink-harass', 'ink-raid', 'ink-main', 'ink-flagship']
 const G_LO_CARDS = ['ano-cinder-siege', 'ano-echo-haunt', 'ano-nadir-static']
-const H_GEAR = ['mod-lair-ecm-h', 'mod-lair-web-h', 'drone-ink-heavy']
+const H_GEAR = ['mod-lair-ecm-h', 'drone-ink-heavy']
 
 describe('残骸新类别「入侵」（2026-09-26 船长令）', () => {
   it('地区标签表多一档 `inv`，其余三档逐字不变', () => {
@@ -122,34 +127,42 @@ describe('G/H 提价：两轴同时齐平 D 族（船长令「按你推荐来」
   })
 })
 
-describe('H 势力装备进残骸（船长「可以放入残骸内」＋「甲2」，2026-09-26 第二批改混池）', () => {
-  it('`h-hi` 组主题件 = 通用 MK2 一件（照 D 高安组同款）——**与专属池不是同一批**', () => {
+describe('H 势力装备进残骸（2026-09-26 两批 ＋ 2026-10-03 改「特色池」）', () => {
+  it('`h-hi` 组 `theme` 为空、族专属件挂在 `themeGear` —— **与专属池不是同一批**', () => {
     const h = WRECK_GROUP_BY_KEY.get('h-hi')!
-    expect(h.theme.modules).toEqual(['mod-shield-pla-2'])
+    // ⟪2026-10-03⟫ 走 `themeGear` 特色池（每批 10% 掷中、族专属件 : 家族 MK2 = 1 : 20）；
+    // `theme` 保持为空（那条老机制会把整条直出链的出件率压低 ×0.031）
+    expect(h.theme.modules ?? []).toEqual([])
     expect(h.theme.mk2 ?? []).toEqual([])
-    // 专属三件**不再**出现在主题件里（否则又变成"两支同池 ⇒ 必出 H 件"）
-    for (const id of H_GEAR) expect(h.theme.modules ?? [], `${id} 不该在主题件里`).not.toContain(id)
-    // 对照：D 高安组也是这一件 ⇒ "照其他族那样"
+    expect(h.themeGear).toEqual(['mod-lair-web-h'])
+    // ⟪2026-10-03⟫ 捕获网**已从专属池移出** ⇒ 它只该在特色池里；专属池剩两件
+    expect(H_GEAR).not.toContain('mod-lair-web-h')
+    for (const id of H_GEAR) expect(h.themeGear ?? [], `${id} 不该在特色池里`).not.toContain(id)
+    // 对照：守墓者仍是"通用 MK2 主题追加件"那条老机制（本批没碰它）
     expect(WRECK_GROUP_BY_KEY.get('d-hi')!.theme.modules).toEqual(['mod-shield-pla-2'])
+    expect(WRECK_GROUP_BY_KEY.get('d-hi')!.themeGear).toBeUndefined()
   })
 
-  it('普通 H 残骸的直出池追加的是通用主题件（H 件不再直出）', () => {
+  it('普通 H 残骸的特色池 = 族内具名件 ＋ 家族 MK2（不再是默认池那 8 件）', () => {
     const p = recycleProfileOf(ctx, 'wreck-h-hi')!
-    expect(p.theme?.modules).toEqual(['mod-shield-pla-2'])
-    // 「追加」语义：默认直出池一件不少，只是把主题件并进池子
-    // ⚠ 直出池（`rollRecycleLoot` 的 base 支）只收**模块**（`ctx.modules`）
-    expect(ctx.modules.has('mod-shield-pla-2')).toBe(true)
-    // ⚠ 两件 H 模块 + 那架无人机（`drone-ink-heavy`，物品类）**都不在主题件里** ⇒ 普通残骸不出 H 件
-    for (const id of H_GEAR) expect(p.theme?.modules ?? [], `${id} 不该直出`).not.toContain(id)
+    expect(p.themeGear).toEqual(['mod-lair-web-h'])
+    expect(p.themeGearMk2?.length ?? 0).toBeGreaterThan(0)
+    // ⚠ 特色池只收**模块**（`rollRecycleLoot` 的 ①★ 支按 `ctx.modules` 过滤）⇒ 两件都必须是模块
+    expect(ctx.modules.has('mod-lair-web-h')).toBe(true)
+    expect(ctx.modules.get('mod-lair-web-h')!.slot).toBe('support') // 非武器（B3.1「武器移出主题」契约）
+    for (const id of p.themeGearMk2 ?? []) expect(ctx.modules.has(id), `${id} 是模块`).toBe(true)
+    // 仍在专属池的那两件**不在特色池里** ⇒ 普通残骸不出它们
+    for (const id of H_GEAR) expect(p.themeGear ?? [], `${id} 不该出`).not.toContain(id)
     expect(ctx.items.get('drone-ink-heavy')?.kind).toBe('drone')
   })
 
-  it('稀有 H 残骸高级箱 = **混池**：专属支 10% 出 H 三件 · 未命中 90% 出通用主题件', () => {
+  it('稀有 H 残骸高级箱 = **两段式**：专属支 10% 出 H 两件 · 未命中出主题件（通用 MK2 兜底）', () => {
     const rare = recycleProfileOf(ctx, 'wreck-rare-h-hi')!
     expect(rare.rare).toBe(true)
-    expect(rare.lairGear).toEqual(H_GEAR) // ① 专属支（绝境档 10%）
-    expect(rareBoxThemePoolOf(rare)).toEqual(['mod-shield-pla-2']) // ② 未命中的兜底支（通用件）
-    // 两条支路**不重叠** ⇒ 正是"按照其他族那样混池"
+    expect(rare.lairGear).toEqual(H_GEAR) // ① 专属支（绝境档 10%）：电子舱 ＋ 重袭无人机
+    // ② 未命中的兜底支：本组 `theme` 为空 ⇒ `rareBoxThemePoolOf` 返回回落池（洞外 = 空 ⇒ 跳过）
+    expect(rareBoxThemePoolOf(rare)).toEqual([])
+    // 两条支路**不重叠**
     for (const id of H_GEAR) expect(rareBoxThemePoolOf(rare), `${id} 不该在兜底支里`).not.toContain(id)
   })
 })
