@@ -6,7 +6,7 @@
  * 既有引用零改动。
  */
 import type { GameState } from './state'
-import type { BattleBalance, FoeFamily, SimContext } from './types'
+import type { BattleBalance, DamageType, FoeFamily, SimContext } from './types'
 import type { UnitSpec } from './combat'
 import { applyDamage, battleShowWindowMs, clamp, isAlive } from './combatMath'
 import { nextInt, nextRandom, pickOne } from './rng'
@@ -172,23 +172,28 @@ export function pdPriorityOf(artId: string | undefined | null, role?: string): n
 }
 
 /**
- * **一发的近防炮读数**（命中率与伤害的**唯一取数口**）：全局值 ＋ **舰种档系数** ＋ **按族覆写**。
+ * **一发的近防炮读数**（命中率、伤害与弹种的**唯一取数口**）：全局值 ＋ **舰种档系数** ＋ **按族覆写**。
  *
  * - `acc` = `bal.pdAcc` ＋ 族覆写 `accAdd`（**百分点**）—— 调用方再与机型闪避相乘减、并走 `pdHitFloor` 下限；
- * - `dmg` = `bal.pdDmg` × `pdTierMul[档]` × 族覆写 `dmgMul`。
+ * - `dmg` = `bal.pdDmg` × `pdTierMul[档]` × 族覆写 `dmgMul`；
+ * - `dmgType`（**2026-10-03 加**）= 族覆写 `dmgType` ?? `'kinetic'`（三档动能近防炮那条线）；
+ * - `autoHit`（**2026-10-03 加**）= 族覆写 `autoHit === true` ⇒ **必中**：调用方**不掷命中、也不吃闪避**。
  *
- * ⚠ 抽成函数只为**单一取数口 + 可测**（用例直接断言"H 族 = 0.75 / ×1.5"）；行为与内联逐字一致。
+ * ⚠ 抽成函数只为**单一取数口 + 可测**（用例直接断言"H 族 = 0.75 / ×1.5"、"R 族 = 能量 ＋ 必中"）；
+ * 行为与内联逐字一致。
  */
 export function pdShotOf(
   bal: BattleBalance,
   family: FoeFamily | undefined,
   hullClassTier: number | undefined,
-): { acc: number; dmg: number } {
+): { acc: number; dmg: number; dmgType: DamageType; autoHit: boolean } {
   const ov = family !== undefined ? bal.pdFamilyOverride?.[family] : undefined
   const tierMul = bal.pdTierMul?.[Math.min(4, Math.max(0, (hullClassTier ?? 1) - 1))] ?? 1
   return {
     acc: bal.pdAcc + (ov?.accAdd ?? 0),
     dmg: bal.pdDmg * tierMul * (ov?.dmgMul ?? 1),
+    dmgType: ov?.dmgType ?? 'kinetic',
+    autoHit: ov?.autoHit === true,
   }
 }
 
@@ -291,15 +296,22 @@ export function resolvePointDefense(
        * 取数收口在 `pdShotOf`（缺省族/旧路径 ⇒ 逐字走全局值，零行为变化）。
        */
       const shot = pdShotOf(bal, foes[fi]!.family, foes[fi]!.hullClassTier)
-      // 命中 = clamp(**下限 10%**, 1, pdAcc ＋ 族覆写 − 闪避)（船长 2026-09-12 定式；覆写为 2026-09-25 加）
+      /**
+       * 命中判定（**2026-10-03 起分两支**）：
+       * - **必中族（`shot.autoHit`，现 = R 族能量光束近防炮）**：**不掷骰、也不吃闪避**——
+       *   与光束武器同一句语义（引擎里 `autoHit ⇒ meHit = 1`，见 `combat` 我方开火段）
+       *   ⇒ 连 `pdHitFloor` 与机型闪避一起绕过；
+       * - 其余族（三档动能近防炮那条线）：命中 = clamp(**下限 10%**, 1, pdAcc ＋ 族覆写 − 闪避)
+       *   （船长 2026-09-12 定式；覆写为 2026-09-25 加）。
+       */
       const pHit = clamp(bal.pdHitFloor ?? 0, 1, shot.acc - pool.evasion)
-      if (nextRandom(state.rng) >= pHit) continue // 未命中（闪避生效）
-      // 伤害 = pdDmg × **舰种档系数**（越大的船防空越强）× **族覆写**
+      if (!shot.autoHit && nextRandom(state.rng) >= pHit) continue // 未命中（闪避生效）
+      // 伤害 = pdDmg × **舰种档系数**（越大的船防空越强）× **族覆写**，弹种走 `shot.dmgType`
       const res = applyDamage(
         { s: pool.s, a: pool.a, h: pool.h },
         pool.resists ?? {},
         shot.dmg,
-        'kinetic',
+        shot.dmgType,
       )
       pool.s = res.hp.s
       pool.a = res.hp.a
@@ -324,11 +336,12 @@ export function resolvePointDefense(
          */
         droneReviveNoteLoss(state, b, key, b.lastTickGameMs + dtMs)
         // 击落演出事件（side='me' + src='drone' + droneDown：UI 出小爆炸/坠落）——**tag = 该架所属舰**
+        // ⚠ 弹种随本族近防炮走（2026-10-03 起 R 族 = 能量）⇒ 演出/飘字配色与实收伤害同一口径
         pushBattleFx(b, {
           atMs: b.lastTickGameMs + dtMs,
           side: 'me',
           tag: ownerTag,
-          type: 'kinetic',
+          type: shot.dmgType,
           src: 'drone',
           artId,
           hit: true,
