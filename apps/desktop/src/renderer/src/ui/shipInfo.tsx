@@ -101,6 +101,39 @@ export function fittedDroneBayLine(totalM3: number): InfoLine {
 }
 
 /**
+ * **装后货舱容量行**（**2026-10-02 船长报障**：「发现遗漏，装配界面的属性中无法查看舰船当前货仓大小」）。
+ *
+ * 为什么需要它：装配页主表把「货舱容量」这条**基础行**过滤掉了（登记在 `fitHiddenBaseKeys()`），
+ * 却一直**没给装后口径的替代行** ⇒ 整张属性表里查不到货舱大小。标签**复用**船卡那一行
+ * （`ui.Handbook.010`「货舱容量 / Cargo capacity」），值口径也与船卡一致（`N m³`）。
+ *
+ * 口径 = core 单点 `cargoCapacityM3Of`：船体基础 ×（1 + 货舱扩展件加成）× 深空物流学 × 货舱管理学
+ * ×（货舰另乘）货舰操作 —— 即"**装后**"的当前容量（船体基础值见船卡 / 图鉴那条路）。
+ */
+export function fittedHoldLine(capM3: number): InfoLine {
+  return { k: tr("ui.Handbook.010"), v: `${fmt(capM3)} m³` }
+}
+
+/**
+ * **装配页"原地过滤掉"的基础行**（这些行的数字在本页另有出处，或已被装后行取代）。
+ * 供 `pages/FitPage.tsx` 与 `npm run ui:attr-check` **共用一份**（口径不许在两处各写一遍）。
+ *
+ * ⚠ **必须是函数、不能是模块级常量**，也**不许**写成中文字面量比对 —— 2026-10-02 实测的病根：
+ * 装配页原先写 `l.k !== 槽位 / 采集性能 / 货舱容量`（以为 `shipInfoLines` 给的是中文 key），
+ * 而这三条其实早已走 `tr(ui.Handbook.00x)` **按语言出词** ⇒ **英文界面下一律不命中**：
+ * 那三条基础行照常显示（与装后行重复，且报的是船体基础值）。本函数按 **id 取当前语言的 label**，
+ * 与 `shipInfoLines()` 在同一时刻求值 ⇒ 两种语言同口径。
+ */
+export function fitHiddenBaseKeys(): readonly string[] {
+  return [
+    tr('ui.Handbook.008'), // 槽位：本页右栏按槽位分组逐格列出（`slotListText` 那行是船表口径）
+    tr('ui.Handbook.011'), // 采集性能：本页没有采集上下文（周期 / 每次产量在矿带与采矿页）
+    tr('ui.Handbook.010'), // 货舱容量：由装后行 `fittedHoldLine()` 取代
+    'CPU', // CPU 上限：本页右栏「CPU 剩余」条（含技能与协处理器扩容）—— 这个 key 本来就是语言无关字面量
+  ]
+}
+
+/**
  * **装后属性行**（船长 2026-09-26：「我的舰队页面中，玩家鼠标悬停舰船时，应该显示舰船的当前
  * 属性，而不是基础属性」）——舰队悬停卡专用，把下列基础值换成 `createPlayerSpec` 的合成值：
  *

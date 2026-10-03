@@ -25,7 +25,7 @@
 
 import { readFileSync } from 'node:fs'
 
-import { COMBAT_BASE_KEYS, FIT_MAIN_HIDDEN_KEYS, shipCodexBaseLines, shipCurrentLayout, shipIndirectLines, shipInfoLines } from '../apps/desktop/src/renderer/src/ui/shipInfo'
+import { COMBAT_BASE_KEYS, FIT_MAIN_HIDDEN_KEYS, fitHiddenBaseKeys, shipCodexBaseLines, shipCurrentLayout, shipIndirectLines, shipInfoLines } from '../apps/desktop/src/renderer/src/ui/shipInfo'
 import { tr } from '../apps/desktop/src/renderer/src/i18n/locale'
 import { SHIPS } from '@whale/data'
 
@@ -33,6 +33,7 @@ import { SHIPS } from '@whale/data'
 const FIT_APPENDED_KEYS: readonly string[] = [
   tr('ui.FitPage.049'), // 机动速度（装后口径：航行技能 / 重甲机动代价）
   tr('ui.FitPage.035'), // 无人机舱（含甲板扩展）合计
+  tr('ui.Handbook.010'), // 货舱容量（装后口径）——2026-10-02 船长报障「属性里看不到舰船当前货仓大小」补
   tr('ui.FitPage.039'), // 船体维修装置·运转消耗
   tr('ui.FitPage.042'), // 无消耗自愈件
   tr('ui.FitPage.045'), // 护盾抗性（装后）
@@ -100,12 +101,35 @@ function crestContract(): string[] {
   }
   return out
 }
+/**
+ * **装配页"标签比对"契约**（**2026-10-02 立** · 船长报障「装配界面的属性中无法查看舰船当前货仓大小」查出来的）。
+ *
+ * 病根：装配页主表用**中文字面量**比对 `shipInfoLines` 的 label 来隐藏基础行
+ * （`l.k !== '货舱容量'` 这类），但那些 label 早已走 `tr(ui.Handbook.00x)` **按语言出词** ⇒
+ * zh 下恰好命中、**en 下一律不命中**（英文界面里基础行照常显示，与装后行重复）。
+ * 契约：`FitPage.tsx` 里**不许**再出现 `l.k !== '中文…'` 这种比对，必须走单点 `fitHiddenBaseKeys()`。
+ */
+function fitLabelContract(): string[] {
+  const out: string[] = []
+  const strip = (x: string): string => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+  const fit = strip(readFileSync(new URL('../apps/desktop/src/renderer/src/pages/FitPage.tsx', import.meta.url), 'utf8'))
+  const bad = [...fit.matchAll(/l\.k\s*!==\s*'[^']*[\u4e00-\u9fff][^']*'/g)].map((m) => m[0])
+  if (bad.length > 0) {
+    out.push(`FitPage.tsx 有 ${bad.length} 处**中文字面量比对 label**（${bad.slice(0, 3).join(' / ')}）—— 英文界面下不命中，请改走 \`fitHiddenBaseKeys()\``)
+  }
+  if (!/fitHiddenBaseKeys\(\)\.includes\(l\.k\)/.test(fit)) {
+    out.push('FitPage.tsx 的主表过滤没走单点 `fitHiddenBaseKeys()`（口径要与 ui/shipInfo.tsx 同源）')
+  }
+  return out
+}
 problems.push(...crestContract())
+problems.push(...fitLabelContract())
 for (const ship of SHIPS) {
   // ① 装配页主表：基础行过滤两张隐藏表 ⇒ 再接追加行（顺序与 FitPage 一致）
   const fitMain = [
     ...shipInfoLines(ship)
-      .filter((l) => !FIT_MAIN_HIDDEN_KEYS.includes(l.k) && !COMBAT_BASE_KEYS.has(l.k))
+      // ⚠ 装配页**原地**过滤的那几条基础行走它自己的单点（2026-10-02 起；此前本工具与页面各按各的判据）
+      .filter((l) => !fitHiddenBaseKeys().includes(l.k) && !FIT_MAIN_HIDDEN_KEYS.includes(l.k) && !COMBAT_BASE_KEYS.has(l.k))
       .map((l) => l.k),
     ...FIT_APPENDED_KEYS,
   ]
@@ -178,4 +202,6 @@ if (problems.length > 0) {
   process.exit(1)
 }
 console.log('✅ 属性表同名体检通过：四处拼装口径均无同名两行')
+// 新增契约的绿字（2026-10-02）：与族徽契约一样，判据通过也要看得见"它跑过了"
+console.log('✅ 装配页标签比对契约通过：主表过滤走单点 fitHiddenBaseKeys()（无中文字面量比对 ⇒ 中英同口径）')
 console.log('✅ 族徽判据契约通过：判"有没有族"只走 crestFamOf()（单点 = ui/labelsText.ts），IconGrid 与 ItemGlyphGrid 都用 `!= null` 兜底（null 不再能打崩图标卡）')

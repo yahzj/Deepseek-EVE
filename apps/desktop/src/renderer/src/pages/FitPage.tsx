@@ -54,6 +54,7 @@ import {
   stackWeight,
   typeLayerMult,
   // 2026-09-26 无人机舱总容量（船体 + 甲板扩展）唯一单点——主表与舰队页悬停卡同一把尺
+  cargoCapacityM3Of,
   droneBayTotalM3,
   // 2026-09-14 跃迁计算机：装配页显示**有效跃迁速度**（含装备加成）与航行时间因子（与引擎同源）
   travelTimeFactor,
@@ -63,7 +64,7 @@ import {
 import { Panel } from '@whale/ui'
 // 装备稀有度档位（换装浮层默认"稀有度高的排前面"；2026-09-11 船长定）
 import { rarityTierOf } from '@whale/data'
-import { combatBadges, COMBAT_BASE_KEYS, DmgChip, DMG_LABEL, FIT_MAIN_HIDDEN_KEYS, fittedDroneBayLine, fittedSpeedLine, InfoTable, itemHoverContent, moduleHoverContent, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
+import { combatBadges, COMBAT_BASE_KEYS, DmgChip, DMG_LABEL, FIT_MAIN_HIDDEN_KEYS, fitHiddenBaseKeys, fittedDroneBayLine, fittedHoldLine, fittedSpeedLine, InfoTable, itemHoverContent, moduleHoverContent, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
 import { hoverTipProps } from '../ui/Tooltip'
 import { Glyph, toneOf } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
@@ -672,6 +673,12 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   // 2026-09-26：求和改用 core 单点 `droneBayTotalM3`（舰队页悬停卡同源，防两处口径漂移）
   const droneBayTotal = droneBayTotalM3(shipDef, fitted, engine.ctx)
 
+  /**
+   * **当前（装后）货舱容量**（m³）——core 单点：船体 ×（1 + 货舱扩展件）× 深空物流学 × 货舱管理学 ×（货舰）货舰操作。
+   * 与「货仓」页同源（那边也是逐船调 `cargoCapacityM3Of`）⇒ 装配页读到就是实装后那个数。
+   */
+  const holdCapM3 = cargoCapacityM3Of(state, engine.ctx, effectiveTarget)
+
   // 船体维修装置·运转消耗提示（2026-09-10 船长：消耗的修理组件常被忽略）——
   // 装了维修装置就列出"每跳吃什么组件、现在有多少"，0 枚直接红字告警；
   // 无消耗自愈件（异形生体件 repairFree）单列一行：不吃组件、永不停机
@@ -769,10 +776,10 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               lines={[
                 ...shipInfoLines(shipDef).filter(
                   (l) =>
-                    l.k !== '槽位' && // l10n-keep：这几条是 core shipInfoLines 的中文标签 key（比较用，非文案）
-                    l.k !== '采集性能' &&
-                    l.k !== '货舱容量' &&
-                    l.k !== 'CPU' && // 上限已由右栏「CPU 剩余」条显示（含技能加成），表格不重复
+                    // ⚠ 本页**原地**过滤掉的基础行走单点 `fitHiddenBaseKeys()`（按 id 取当前语言的 label）——
+                    // 旧写法是四条**中文字面量**比对（`l.k !== '货舱容量'` 之类）：zh 下恰好命中、
+                    // **en 下一律不命中** ⇒ 英文界面里那几条基础行会照常显示（2026-10-02 修）。
+                    !fitHiddenBaseKeys().includes(l.k) &&
                     // 2026-09-26 船长：「无人机舱有2个重复的」＋「用机动速度替换所有动力的位置」
                     // ⇒ 这两条基础行让位给下面的合计行 / 装后口径行（登记表见 `shipInfo.tsx`
                     // `FIT_MAIN_HIDDEN_KEYS`，`npm run ui:attr-check` 按「不重名」体检）
@@ -790,6 +797,10 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                 ...(spec ? [fittedSpeedLine(spec, engine.ctx.balance.battle)] : []),
                 // 无人机舱（上限 = 船体 + 甲板扩展；战斗只放飞下方「无人机舱」清单——2026-09-08 大改）
                 ...(droneBayTotal > 0 ? [fittedDroneBayLine(droneBayTotal)] : []),
+                // **货舱容量（装后口径）**——2026-10-02 船长报障「装配界面的属性中无法查看舰船当前货仓大小」：
+                // 基础行被本页过滤掉、又没有替代行 ⇒ 补上装后行（core 单点 `cargoCapacityM3Of`：
+                // 船体 × 货舱扩展件 × 深空物流学 × 货舱管理学 ×[货舰]货舰操作）。与无人机舱合计同属"容量"读数，紧跟其后。
+                ...(holdCapM3 > 0 ? [fittedHoldLine(holdCapM3)] : []),
                 // 船体维修装置·运转消耗（2026-09-10 船长：消耗组件需高亮；0 枚红字告警）
                 ...repairKitRows.map((r) => {
                   const cls = r.stock <= 0 ? 'is-bad' : r.stock < 10 ? 'is-warn' : 'is-ok'
