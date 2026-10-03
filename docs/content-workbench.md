@@ -69,8 +69,8 @@ npm run content:import items content-csv/content-workbench.xlsx [--dry-run]
   defProfile、role、damageType（kinetic/explosive/plasma）等，表头括号内有中文对照；
 - 嵌套结构 = 紧凑串、`|` 分隔：精炼配方 `min-tritanium×2|min-pyerite×0.6`、
   复合产出 `ore-veldspar×55|ore-scorched×30`、战利品同格式（`物品id×单位数`）；
-- **空单元格 = 该字段未填**（引擎缺省生效）——不要把"0"和"空"混用，二者语义不同；
-- 布尔列：是 / 否 / 空（空 = 未填 = 引擎默认，例如市场卡"可否卖出"空 = 默认可）。
+- **导出时空单元格表示源字段未设置；导入时空单元格表示保留源字段，不修改**。要删除可选字段须填 `-`；`0` 是显式数值，不能与空混用。
+- 布尔列：是 / 否 / 空；导入空格不改原值，仅源字段本身未设置时才由引擎采用默认值（例如市场卡"可否卖出"默认可）。
 
 ## 四、编辑红线（导入时会拦，先知道少返工）
 
