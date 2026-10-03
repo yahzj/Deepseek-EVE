@@ -3496,6 +3496,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
             <button
               className={`app-btn is-small${noCommonWreck ? ' is-on' : ''}`}
               aria-pressed={noCommonWreck}
+              title={tr('ui.Wormhole.381')}
               onClick={() => {
                 const r = engine.setNoCommonWreckSalvageNow(!noCommonWreck)
                 if (!r.ok) onToast(cmdText(r) || tr('core.wormholeSalvage.044'), true)

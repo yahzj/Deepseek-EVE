@@ -2489,6 +2489,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    */
   "core.wormholeSalvage.044": { zh: "当前禁止打捞普通残骸。", en: "Common-wreck salvage is currently blocked." },
   "core.wormholeSalvage.045": { zh: "🕳 本次打捞跳过 {p1} 堆普通残骸。", en: "🕳 Skipped {p1} piles of common wrecks in this salvage." },
+  /* ⟪2026-10-03 船长令（开关扩到战果）⟫：战果里的普通残骸被开关跳过时的日志（`.052` 是当批新号） */
+  "core.wormholeSalvage.052": { zh: "🕳 战果里的普通残骸按开关跳过（{p1} 堆）——只收稀有残骸。", en: "🕳 Skipped {p1} piles of common wrecks in the spoils (the switch is on) — rare wrecks only." },
   /* ⟪2026-10-02 合并让号⟫ 与一号「禁止打捞普通残骸」批（main）撞号：本侧 6 条打捞日志由 `.044~.049` 顺延为 `.046~.051`（后合并的一侧让号，他的 `.044/.045` 不动）。 */
   "core.wormholeSalvage.046": { zh: "🕳 放进临时空间：{p1}（占 {p2} 格）——到「货仓」页整理进货仓或丢弃（离开货仓页前必须处理）。", en: "🕳 Moved into temporary space: {p1} (takes {p2} slots) — sort it into the hold or discard it on the Cargo page; it has to be handled before you leave that page." },
   "core.wormholeSalvage.047": { zh: "🕳 装舱：{p1}（占 {p2}×{p3} 格）· 货仓 {p4}/{p5} 格。", en: "🕳 Stowed: {p1} (takes {p2}×{p3} slots) · hold {p4}/{p5} slots." },
@@ -5771,6 +5773,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    * （core 拒绝原因 `core.wormholeSalvage.044` ＋ 界面状态行），按"同文并条"口径不另立第二条。
    */
   "ui.Wormhole.379": { zh: "禁止打捞普通残骸", en: "Block common-wreck salvage" },
+  /* ⟪2026-10-03 船长令（开关扩到战果 · 船长审字通过）⟫ 开关的**悬停说明**：
+     口径 = 打捞动作 ＋ 战斗战果两个来源都管（见 `core/wormhole.ts` 的 `noCommonWreckSalvage` 注释）。 */
+  "ui.Wormhole.381": { zh: "打开后洞里不再获得普通残骸：打捞只收稀有残骸，战斗战果里的普通残骸也不再产生；稀有残骸、货柜与虚空母矿不受影响。", en: "With this on, common wrecks are no longer gained in the wormhole: salvage takes rare wrecks only, and combat spoils no longer produce common wrecks. Rare wrecks, containers and Voidmother Ore are unaffected." },
   /* ⟪2026-10-02 合并让号⟫ 同上批撞号：本侧「丢掉…会少回合」由 `ui.Wormhole.379` 顺延为 `.380`（`.379` 归一号的开关标签）。 */
   "ui.Wormhole.380": { zh: "丢掉「{p1}」会少 {p2} 回合：可能走不到想去的格子（撤离不受影响，任何回合数都能撤）。", en: "Discarding “{p1}” costs {p2} turns: you may not reach the tile you are aiming for — withdrawing is unaffected and works with any number of turns left." },
   "ui.Wormhole.363": { zh: "。", en: "." },

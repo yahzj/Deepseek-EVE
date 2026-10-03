@@ -138,6 +138,13 @@ describe('洞内「禁止打捞普通残骸」（开关在货仓页）', () => {
       expect(r.bagged + r.leftOnCell, `seed ${seed}：稀有照给（${WORMHOLE_SPOILS_TABLE.boss.rares} 件）`).toBe(
         WORMHOLE_SPOILS_TABLE.boss.rares,
       )
+      /**
+       * **留一条日志**（别让机制隐形）：`core.wormholeSalvage.052`「战果里的普通残骸按开关跳过（{p1} 堆）」，
+       * `{p1}` = 按形状表本该给几堆（2026-10-03 船长审字通过）。
+       */
+      const log = state.logs.filter((l) => l.textId === 'core.wormholeSalvage.052').at(-1)
+      expect(log, `seed ${seed}：应写"跳过战果里的普通残骸"`).toBeDefined()
+      expect(log!.textParams?.p1, `seed ${seed}：{p1} = 形状表本该给的堆数`).toBe(WORMHOLE_SPOILS_TABLE.boss.commons)
     }
   })
 

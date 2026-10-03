@@ -2238,6 +2238,16 @@ export function wormholeGrantShipSpoils(
    * （2026-10-02 那版注释里那句「⚠ 不影响：战果结算的随行战利品」按本令改写。）
    */
   const commons = noCommonWreckSalvageOn(state) ? 0 : row.commons
+  if (row.commons > 0 && commons === 0) {
+    /** 开关跳过战果里的普通残骸 ⇒ **留一条日志**（别让机制隐形：`core.wormholeSalvage.052`） */
+    addLog(
+      state,
+      'salvage',
+      `🕳 战果里的普通残骸按开关跳过（${row.commons} 堆）——只收稀有残骸。`,
+      'core.wormholeSalvage.052',
+      { p1: row.commons },
+    )
+  }
   for (let i = 0; i < commons; i++) {
     spoils.push({ itemId: wreckItemIdOf(group.key), units: Math.max(1, Math.round(WORMHOLE_WRECK_PILE_M3_BASE * mul * (0.8 + rng() * 0.4))) })
   }
