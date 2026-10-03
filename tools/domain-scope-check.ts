@@ -184,6 +184,7 @@ const SHARED: readonly string[] = [
   // 桌面外壳（主进程 / 预加载 / 渲染入口）
   'apps/desktop/src/main/**',
   'apps/desktop/src/preload/**',
+  'apps/desktop/src/shared/**',
   'apps/desktop/src/renderer/index.html',
   'apps/desktop/src/renderer/src/env.d.ts',
   'apps/desktop/src/renderer/src/main.tsx',

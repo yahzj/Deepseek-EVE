@@ -61,8 +61,8 @@ declare global {
     load(): Promise<string | null>
     /** 写入存档文本，成功返回 true */
     save(data: string): Promise<boolean>
-    /** 把当前存档复制成时间戳备份；返回备份文件名 */
-    backup(): Promise<{ ok: boolean; name?: string; error?: string }>
+    /** 备份已保存的确切快照；无参数兼容复制当前档 */
+    backup(snapshot?: string): Promise<{ ok: boolean; name?: string; error?: string }>
     /** 列出备份文件（时间倒序，最多 30 份） */
     listBackups(): Promise<{ ok: boolean; backups: SaveBackupInfo[]; error?: string }>
     /** 读取某份备份的文本（恢复前校验用） */

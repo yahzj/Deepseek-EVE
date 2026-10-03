@@ -9,8 +9,8 @@ contextBridge.exposeInMainWorld('whale', {
   load: (): Promise<string | null> => ipcRenderer.invoke('save:load'),
   /** 写入存档文本，成功返回 true */
   save: (data: string): Promise<boolean> => ipcRenderer.invoke('save:save', data),
-  /** 把当前存档复制成时间戳备份（先确保已保存最新）；返回备份文件名 */
-  backup: (): Promise<{ ok: boolean; name?: string; error?: string }> => ipcRenderer.invoke('save:backup'),
+  /** 备份已保存的确切快照；无参数兼容复制当前档 */
+  backup: (snapshot?: string): Promise<{ ok: boolean; name?: string; error?: string }> => ipcRenderer.invoke('save:backup', snapshot),
   /** 列出备份文件（时间倒序） */
   listBackups: (): Promise<{ ok: boolean; backups: Array<{ name: string; size: number; wallMs: number }>; error?: string }> =>
     ipcRenderer.invoke('save:list-backups'),

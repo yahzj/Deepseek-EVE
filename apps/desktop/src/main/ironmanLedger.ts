@@ -12,6 +12,8 @@
  */
 import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
+import { createSaveQueue } from '../shared/saveQueue'
+import { atomicSaveWrite } from './atomicSaveWrite'
 
 export const LEDGER_FILE_NAME = 'ironman-ledger.json'
 export const LEDGER_SHADOW_NAME = 'ironman-ledger.bak.json'
@@ -67,8 +69,9 @@ export interface IronmanLedgerStore {
 
 /** 造一份账本读写器；`dirOf()` 每次调用都重新取目录（Electron 的 userData 就绪前不可缓存） */
 export function ironmanLedgerStore(dirOf: () => string): IronmanLedgerStore {
+  const enqueue = createSaveQueue()
   /** 读账本：主 + 影子各读一次，取 **seq 最大**的那份（影子补"主文件被删/被改"） */
-  async function readLedger(): Promise<IronmanLedger> {
+  async function readCurrent(): Promise<IronmanLedger> {
     const dir = dirOf()
     const out = { ...EMPTY_LEDGER }
     for (const name of [LEDGER_FILE_NAME, LEDGER_SHADOW_NAME]) {
@@ -86,20 +89,18 @@ export function ironmanLedgerStore(dirOf: () => string): IronmanLedgerStore {
   }
 
   /** 写账本（**原子写 + 双写**） */
-  async function writeLedger(next: IronmanLedger): Promise<void> {
+  async function writeCurrent(next: IronmanLedger): Promise<void> {
     const dir = dirOf()
     const text = JSON.stringify(next)
     for (const name of [LEDGER_FILE_NAME, LEDGER_SHADOW_NAME]) {
       const file = join(dir, name)
-      const tmp = `${file}.tmp`
-      await fs.writeFile(tmp, text, 'utf8')
-      await fs.rename(tmp, file)
+      await atomicSaveWrite(file, text)
     }
   }
 
   /** 把账本推到"至少 seq"（只在"更高代次/更高计数"时才落盘） */
-  async function bumpLedger(seq: number, rescue = false): Promise<IronmanLedger> {
-    const cur = await readLedger()
+  async function bumpCurrent(seq: number, rescue: boolean): Promise<IronmanLedger> {
+    const cur = await readCurrent()
     const next: IronmanLedger = {
       seq: Math.max(cur.seq, Math.max(0, Math.floor(seq || 0))),
       updatedAtWallMs: Date.now(),
@@ -107,9 +108,10 @@ export function ironmanLedgerStore(dirOf: () => string): IronmanLedgerStore {
     }
     if (next.seq !== cur.seq || rescue) {
       try {
-        await writeLedger(next)
-      } catch {
+        await writeCurrent(next)
+      } catch (err) {
         // 账本写失败不阻断游戏（闸门退化为"只看当前档代次"）
+        console.warn('铁人账本写入失败，主档保存不回滚，账本保护降级。', err)
       }
     }
     return next
@@ -132,5 +134,13 @@ export function ironmanLedgerStore(dirOf: () => string): IronmanLedgerStore {
     }
   }
 
-  return { readLedger, writeLedger, bumpLedger, savedAtOfBackup }
+  return {
+    readLedger: () => enqueue(readCurrent),
+    writeLedger: (next) => {
+      const snapshot = { ...next }
+      return enqueue(() => writeCurrent(snapshot))
+    },
+    bumpLedger: (seq, rescue = false) => enqueue(() => bumpCurrent(seq, rescue)),
+    savedAtOfBackup,
+  }
 }

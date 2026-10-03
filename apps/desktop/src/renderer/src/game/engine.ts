@@ -1391,28 +1391,35 @@ export class GameEngine {
    * 2026-09-25 加（船长令 · 甲/乙）：写失败**不再只是控制台一行** —— 交给 `game/saveGuard` 每局提醒一次；
    * 落盘成功后顺手再申请一次持久化存储（乙）。挂起/不可写时直接返回 false（丁）。 */
   async persist(): Promise<boolean> {
-    if (this.saveWriteState() !== 'ok') return false
+    return (await this.persistSnapshot()) !== null
+  }
+
+  /** 只序列化一次；成功后把本次确切文本交给备份，避免后一次保存偷换快照。 */
+  private async persistSnapshot(): Promise<string | null> {
+    if (this.saveWriteState() !== 'ok') return null
     try {
       bumpIronmanSeq(this.state) // 铁人档：每次落盘代次 +1（普通档/已关闭 ⇒ 冻结）
       const out: GameState = this.state.logs.length > 0 ? { ...this.state, logs: [] } : this.state
-      const ok = await saveBridge.save(serializeSaveFile(out))
+      const text = serializeSaveFile(out)
+      const ok = await saveBridge.save(text)
       if (ok) void requestPersistentStorage()
       else noteSaveWriteFailed()
-      return ok
+      return ok ? text : null
     } catch (err) {
       console.error(tr("ui.engine.025"), err)
       noteSaveWriteFailed()
-      return false
+      return null
     }
   }
 
   /* ─────────────── 存档备份 / 恢复（B5） ─────────────── */
 
-  /** 先落盘最新进度，再把存档复制成时间戳备份 */
+  /** 先落盘点击时进度，再备份同一份文本；写入失败不备份旧档。 */
   async backupNow(): Promise<{ ok: boolean; name?: string; error?: string }> {
-    await this.persist()
     try {
-      return await saveBridge.backup()
+      const snapshot = await this.persistSnapshot()
+      if (snapshot === null) return { ok: false, error: tr('ui.engine.027') }
+      return await saveBridge.backup(snapshot)
     } catch (err) {
       return { ok: false, error: String(err) }
     }

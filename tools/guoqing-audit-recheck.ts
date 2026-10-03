@@ -1,11 +1,12 @@
 /**
  * 国庆节审查续接复核：只建立合成状态和隔离夹具，不修业务、不碰个人存档。
  * 运行：tsx tools/guoqing-audit-recheck.ts
- * 已知问题是诊断输出；复现器本身失败才退出非零。结果不能当作修复通过。
+ * C01/C08 已修行为加确定性断言；其余已知问题只诊断。退出 0 不能当全报告修复通过。
  * 版本自检：游戏 v0.1.0、存档结构 v31；核对/运行日期 2026-10-03。
  */
 import assert from 'node:assert/strict'
-import { readFileSync, mkdirSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs'
+import { constants, readFileSync, mkdirSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import { execFileSync, spawnSync } from 'node:child_process'
@@ -17,6 +18,7 @@ import { addItem } from '../packages/core/src/inventory'
 import { advanceLab, labOutputStockOf, startLabRun } from '../packages/core/src/lab'
 import { syncBoostRenew } from '../packages/core/src/consumables'
 import { wreckUnitsOf } from '../packages/core/src/salvaging'
+import { createSaveQueue } from '../apps/desktop/src/shared/saveQueue'
 
 const ROOT = resolve(process.cwd())
 const ctx = buildSimContext()
@@ -52,7 +54,14 @@ function saveHandler(bindings: Record<string, unknown>): (event: unknown, text: 
   const source = sourceOf('apps/desktop/src/main/index.ts')
   const call = nodeOf(source, (node) => ts.isCallExpression(node) && node.expression.getText(source) === 'ipcMain.handle'
     && ts.isStringLiteral(node.arguments[0]!) && node.arguments[0]!.text === 'save:save') as ts.CallExpression
-  return execute(`const result = ${call.arguments[1]!.getText(source)}`, bindings)
+  const atomicSource = sourceOf('apps/desktop/src/main/atomicSaveWrite.ts')
+  const atomicNode = nodeOf(atomicSource, (node) => ts.isFunctionDeclaration(node) && node.name?.text === 'atomicSaveWrite')
+  const atomicSaveWrite = execute(`${atomicNode.getText(atomicSource)}\nconst result = atomicSaveWrite`, {
+    fs: bindings.fs, constants, randomUUID,
+  })
+  return execute(`const result = ${call.arguments[1]!.getText(source)}`, {
+    ...bindings, saveOperations: createSaveQueue(), atomicSaveWrite,
+  })
 }
 
 function gameMethods(names: string[]): string {
@@ -78,11 +87,11 @@ async function bounded<T>(promise: Promise<T>, label: string): Promise<T> {
 }
 
 async function main(): Promise<void> {
-  // C01：人为固定两个请求的交错，模拟共享临时路径；调用的是当前 IPC 处理器。
+  // C01：阻塞 A 后立即提交 B；修复后 B 必须等待 A，不再等旧的并发交错入口。
   const aWritten = deferred()
-  const bWritten = deferred()
   const releaseA = deferred()
   const releaseB = deferred()
+  let bStarted = false
   const files = new Map<string, string>()
   const save = saveHandler({
     savePath: () => '/isolated/save.json',
@@ -92,37 +101,51 @@ async function main(): Promise<void> {
       writeFile: async (path: string, text: string) => {
         files.set(path, text)
         if (text === 'A') { aWritten.release(); await releaseA.promise }
-        else { bWritten.release(); await releaseB.promise }
+        else { bStarted = true; await releaseB.promise }
       },
       rename: async (from: string, to: string) => {
         if (!files.has(from)) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
         files.set(to, files.get(from)!)
         files.delete(from)
       },
+      unlink: async (path: string) => { files.delete(path) },
     },
   })
   const a = save(null, 'A')
   await bounded(aWritten.promise, '保存 A 写入')
   const b = save(null, 'B').then((ok) => ({ ok, error: null }), (err: Error) => ({ ok: false, error: err.message }))
-  // 如果生产处理器已改为串行，第二次写入会等 A；超时明确报告，不能永久卡住续接。
-  await bounded(bWritten.promise, '保存 B 并发写入')
+  for (let i = 0; i < 20; i++) await Promise.resolve()
+  const bStartedBeforeA = bStarted
   releaseA.release()
   const aReceipt = await bounded(a, '保存 A 回执')
+  const textAtAReceipt = files.get('/isolated/save.json')
   releaseB.release()
   const bReceipt = await bounded(b, '保存 B 回执')
-  report('C01', { aReceipt, bReceipt, finalText: files.get('/isolated/save.json'), evidence: '真实处理器 + 模拟文件系统，非真实玩家坏档证据' })
+  assert.equal(bStartedBeforeA, false)
+  assert.equal(aReceipt, true)
+  assert.equal(textAtAReceipt, 'A')
+  assert.equal(bReceipt.ok, true)
+  assert.equal(files.get('/isolated/save.json'), 'B')
+  report('C01', { fixed: true, bStartedBeforeA, aReceipt, textAtAReceipt, bReceipt, finalText: files.get('/isolated/save.json'), evidence: '真实处理器 + 模拟文件系统，非真实玩家坏档证据' })
 
   const ledgerGate = deferred()
+  const ledgerEntered = deferred()
   let ledgerFinished = false
+  let receiptReceived = false
   const ironSave = saveHandler({ savePath: () => '/isolated/save.json',
-    fs: { writeFile: async () => {}, rename: async () => {} },
+    fs: { writeFile: async () => {}, rename: async () => {}, unlink: async () => {} },
     ironmanInfoOfSaveText: () => ({ seq: 7 }),
-    ledger: { bumpLedger: async () => { await ledgerGate.promise; ledgerFinished = true } },
+    ledger: { bumpLedger: async () => { ledgerEntered.release(); await ledgerGate.promise; ledgerFinished = true } },
   })
-  const receipt = await bounded(ironSave(null, '{}'), '铁人保存回执')
-  report('C01账本回执', { receipt, ledgerFinishedAtReceipt: ledgerFinished })
+  const ironReceipt = ironSave(null, '{}').then((ok) => { receiptReceived = true; return ok })
+  await bounded(ledgerEntered.promise, '账本事务开始')
+  for (let i = 0; i < 20; i++) await Promise.resolve()
+  const receiptBeforeLedger = receiptReceived
   ledgerGate.release()
-  await ledgerGate.promise
+  const receipt = await bounded(ironReceipt, '铁人保存回执')
+  assert.equal(receiptBeforeLedger, false)
+  assert.equal(ledgerFinished, true)
+  report('C01账本回执', { fixed: true, receipt, receiptBeforeLedger, ledgerFinishedAtReceipt: ledgerFinished })
 
   // C02：运行当前重连函数，统计权限之后是否触达读取/冲突入口。
   const fileSource = sourceOf('apps/desktop/src/renderer/src/game/saveFileHandle.ts')
@@ -184,7 +207,7 @@ async function main(): Promise<void> {
   const exported: string[] = []
   const saves: string[] = []
   const exportProbe = execute<{ state: ReturnType<typeof fresh>; exportSaveToFile(): Promise<unknown> }>(
-    `class Probe { ${gameMethods(['persist', 'currentSaveText', 'exportSaveToFile'])}\n saveWriteState() { return 'ok' } }\nconst result = new Probe`, {
+    `class Probe { ${gameMethods(['persistSnapshot', 'persist', 'currentSaveText', 'exportSaveToFile'])}\n saveWriteState() { return 'ok' } }\nconst result = new Probe`, {
       bumpIronmanSeq, serializeSaveFile, saveBridge: { save: async (text: string) => { saves.push(text); return true },
         exportSaveToFile: async (text: string) => { exported.push(text); return { ok: true } } },
       requestPersistentStorage: async () => {}, noteSaveWriteFailed: () => {}, tr: (id: string) => id,
@@ -198,12 +221,16 @@ async function main(): Promise<void> {
     incomingSavedAtWallMs: 1000, nowWallMs: 1001 }), evidence: '真实导出方法 + 模拟桥；用户手势/真实对话框未验证' })
 
   let backups = 0
-  const backupProbe = execute<{ persist(): Promise<boolean>; backupNow(): Promise<unknown> }>(
+  const backupProbe = execute<{ persistSnapshot(): Promise<string | null>; backupNow(): Promise<{ ok: boolean }> }>(
     `class Probe { ${gameMethods(['backupNow'])} }\nconst result = new Probe`, {
       saveBridge: { backup: async () => { backups++; return { ok: true, name: 'synthetic-old.json' } } },
+      tr: (id: string) => id,
     })
-  backupProbe.persist = async () => false
-  report('C08', { persistResult: false, backupResult: await backupProbe.backupNow(), backupCalls: backups })
+  backupProbe.persistSnapshot = async () => null
+  const backupResult = await backupProbe.backupNow()
+  assert.equal(backupResult.ok, false)
+  assert.equal(backups, 0)
+  report('C08', { fixed: true, persistResult: false, backupResult, backupCalls: backups })
 
   const hist = fresh()
   hist.market.priceHistory = { 'ore-olivine': Array.from({ length: 48 }, (_, i) => 100 + i) }

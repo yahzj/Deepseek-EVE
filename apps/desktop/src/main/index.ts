@@ -5,9 +5,13 @@
  * 原档也完好无损，最多丢一次保存间隔的内容。
  */
 import { app, BrowserWindow, dialog, ipcMain, screen } from 'electron'
-import { promises as fs } from 'node:fs'
+import { constants, promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import { L10N } from '@whale/data'
+import { createSaveQueue } from '../shared/saveQueue'
+import { atomicSaveWrite } from './atomicSaveWrite'
+
+const saveOperations = createSaveQueue()
 
 /* ───────── 主进程本地化（2026-09-20 三号：补上工具扫描盲区） ─────────
  * 口径与渲染层同源：**文案一律从唯一表 `@whale/data` 的 `L10N` 取 id**。
@@ -52,77 +56,82 @@ function backupStamp(): string {
 /** 合法备份文件名（同时天然防路径穿越：只允许这个模式） */
 const BACKUP_FILE_RE = /^save-\d{8}-\d{6}(-\d+)?\.json$/
 
-/** 把当前存档复制成一份带时间戳的备份；没有存档或失败返回 null */
-async function backupCurrentSave(): Promise<string | null> {
+/** 有快照则备份确切文本，不倒写主档；无参数仍兼容复制当前档。仅在保存队列内调用。 */
+async function backupCurrentSave(snapshot?: string): Promise<string | null> {
   const src = savePath()
-  try {
-    await fs.access(src)
-  } catch {
-    return null
-  }
-  const dir = app.getPath('userData')
-  let name = `${backupStamp()}.json`
-  for (let i = 1; ; i++) {
+  if (snapshot === undefined) {
     try {
-      await fs.access(join(dir, name))
-      name = `${backupStamp()}-${i}.json`
-    } catch {
-      break
+      await fs.access(src)
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null
+      throw err
     }
   }
-  await fs.copyFile(src, join(dir, name))
-  return name
+  const dir = app.getPath('userData')
+  const stamp = backupStamp()
+  for (let i = 0; ; i++) {
+    const name = `${stamp}${i === 0 ? '' : `-${i}`}.json`
+    try {
+      if (snapshot === undefined) await fs.copyFile(src, join(dir, name), constants.COPYFILE_EXCL)
+      else await atomicSaveWrite(join(dir, name), snapshot, true)
+      return name
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err
+    }
+  }
 }
 
 /** 注册"读档 / 存档 / 备份 / 恢复"界面可调用的能力 */
 function registerSaveHandlers(): void {
   // 读档：文件不存在返回 null（表示"没有存档"），其余错误照常抛出
-  ipcMain.handle('save:load', async () => {
+  ipcMain.handle('save:load', () => saveOperations(async () => {
     try {
       return await fs.readFile(savePath(), 'utf8')
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null
       throw err
     }
-  })
+  }))
 
   // 存档：只接受字符串文本且限制大小（防界面被攻破时写入奇怪数据）
   ipcMain.handle('save:save', async (_event, data: unknown) => {
     if (typeof data !== 'string' || data.length > 10 * 1024 * 1024) return false
-    const file = savePath()
-    const tmp = `${file}.tmp`
-    await fs.writeFile(tmp, data, 'utf8')
-    await fs.rename(tmp, file)
-    // 铁人模式：把这份档的代次推到**账本**（只增不减；普通档代次恒 0 ⇒ 账本不动）
-    const info = ironmanInfoOfSaveText(data)
-    if (info && info.seq > 0) void ledger.bumpLedger(info.seq)
-    return true
+    return saveOperations(async () => {
+      await atomicSaveWrite(savePath(), data)
+      // 回执包含账本处理；账本自身保留写失败降级政策，不回滚已提交的主档。
+      const info = ironmanInfoOfSaveText(data)
+      if (info && info.seq > 0) await ledger.bumpLedger(info.seq)
+      return true
+    })
   })
 
   // 铁人账本只读（渲染层装载前判闸门用；写一律由 save:save 顺带完成）
-  ipcMain.handle('ironman:ledger', async () => {
+  ipcMain.handle('ironman:ledger', () => saveOperations(async () => {
     try {
       const l = await ledger.readLedger()
       return { ok: true, seq: l.seq, rescues: l.rescues }
     } catch (err) {
       return { ok: false, seq: 0, rescues: 0, error: String(err) }
     }
-  })
+  }))
 
   // 救援记账：渲染层判定为"救援装载"后回报一次（只累加计数；**玩家侧不显示**——船长令）
-  ipcMain.handle('ironman:note-rescue', async () => {
+  ipcMain.handle('ironman:note-rescue', () => saveOperations(async () => {
     try {
       await ledger.bumpLedger(0, true)
       return { ok: true }
     } catch (err) {
       return { ok: false, error: String(err) }
     }
-  })
+  }))
 
   // 备份：把当前存档复制成带时间戳的文件
-  ipcMain.handle('save:backup', async () => {
+  ipcMain.handle('save:backup', async (_event, snapshot: unknown) => {
+    if (snapshot !== undefined && (typeof snapshot !== 'string' || snapshot.length > 10 * 1024 * 1024)) {
+      return { ok: false, error: t('ui.main.007') }
+    }
     try {
-      const name = await backupCurrentSave()
+      const name = await saveOperations(() => backupCurrentSave(snapshot))
       return { ok: name !== null, name }
     } catch (err) {
       return { ok: false, error: String(err) }
@@ -130,7 +139,7 @@ function registerSaveHandlers(): void {
   })
 
   // 列出所有备份（按时间倒序）
-  ipcMain.handle('save:list-backups', async () => {
+  ipcMain.handle('save:list-backups', () => saveOperations(async () => {
     try {
       const dir = app.getPath('userData')
       const names = await fs.readdir(dir)
@@ -149,45 +158,47 @@ function registerSaveHandlers(): void {
     } catch (err) {
       return { ok: false, error: String(err), backups: [] }
     }
-  })
+  }))
 
   // 读取某份备份的内容（界面先校验"能解析"再决定恢复）
   ipcMain.handle('save:read-backup', async (_event, name: unknown) => {
     if (typeof name !== 'string' || !BACKUP_FILE_RE.test(name)) return { ok: false, error: t('ui.main.011') }
-    try {
-      const text = await fs.readFile(join(app.getPath('userData'), name), 'utf8')
-      return { ok: true, text }
-    } catch (err) {
-      return { ok: false, error: String(err) }
-    }
+    return saveOperations(async () => {
+      try {
+        const text = await fs.readFile(join(app.getPath('userData'), name), 'utf8')
+        return { ok: true, text }
+      } catch (err) {
+        return { ok: false, error: String(err) }
+      }
+    })
   })
 
   // 恢复：用目标备份原子覆盖当前档（⚠ 2026-09-17 船长：「导入或者恢复存档时，不要备份现有存档」
   // ⇒ 这里**不再**自动 `backupCurrentSave()`；要留退路请先手动点「备份当前档」）
   ipcMain.handle('save:restore', async (_event, name: unknown) => {
     if (typeof name !== 'string' || !BACKUP_FILE_RE.test(name)) return { ok: false, error: t('ui.main.011') }
-    try {
-      const dir = app.getPath('userData')
-      const text = await fs.readFile(join(dir, name), 'utf8')
-      const file = savePath()
-      const tmp = `${file}.tmp`
-      await fs.writeFile(tmp, text, 'utf8')
-      await fs.rename(tmp, file)
-      return { ok: true }
-    } catch (err) {
-      return { ok: false, error: String(err) }
-    }
+    return saveOperations(async () => {
+      try {
+        const text = await fs.readFile(join(app.getPath('userData'), name), 'utf8')
+        await atomicSaveWrite(savePath(), text)
+        return { ok: true }
+      } catch (err) {
+        return { ok: false, error: String(err) }
+      }
+    })
   })
 
   // 删除某份备份（2026-09-08 船长定：玩家可清理备份；只删备份文件，不影响当前档）
   ipcMain.handle('save:delete-backup', async (_event, name: unknown) => {
     if (typeof name !== 'string' || !BACKUP_FILE_RE.test(name)) return { ok: false, error: t('ui.main.011') }
-    try {
-      await fs.unlink(join(app.getPath('userData'), name))
-      return { ok: true }
-    } catch (err) {
-      return { ok: false, error: String(err) }
-    }
+    return saveOperations(async () => {
+      try {
+        await fs.unlink(join(app.getPath('userData'), name))
+        return { ok: true }
+      } catch (err) {
+        return { ok: false, error: String(err) }
+      }
+    })
   })
 
   /* ───────── 导入 / 导出（外部文件；2026-09-08 船长定：桌面系统对话框） ───────── */
@@ -227,9 +238,8 @@ function registerSaveHandlers(): void {
     const r = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts)
     if (r.canceled || !r.filePath) return { ok: false, canceled: true }
     try {
-      const tmp = `${r.filePath}.tmp`
-      await fs.writeFile(tmp, data, 'utf8')
-      await fs.rename(tmp, r.filePath)
+      const file = r.filePath
+      await saveOperations(() => atomicSaveWrite(file, data))
       return { ok: true, path: r.filePath }
     } catch (err) {
       return { ok: false, error: t('ui.main.010', { p1: String(err) }) }

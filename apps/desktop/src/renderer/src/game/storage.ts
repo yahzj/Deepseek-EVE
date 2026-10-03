@@ -8,6 +8,7 @@
 import { tr } from '../i18n/locale'
 import { noteSaveWriteFailed } from './saveGuard'
 import { bindSaveFile, readFromBoundFile, reconnectSaveFile, saveFileStatus, unbindSaveFile, writeToBoundFile } from './saveFileHandle'
+import { createSaveQueue } from '../../../shared/saveQueue'
 
 /** 备份文件名（与桌面主进程同构：save-YYYYMMDD-HHmmss(.json)，可选 -n 去重后缀） */
 const BP_NAME_RE = /^save-\d{8}-\d{6}(-\d+)?\.json$/
@@ -67,7 +68,7 @@ function newerSaveText(fileText: string | null, lsText: string | null): string |
 const electronBridge: WhaleApi = {
   load: () => window.whale.load(),
   save: (data) => window.whale.save(data),
-  backup: () => window.whale.backup(),
+  backup: (snapshot) => window.whale.backup(snapshot),
   listBackups: () => window.whale.listBackups(),
   readBackup: (name) => window.whale.readBackup(name),
   restore: (name) => window.whale.restore(name),
@@ -85,6 +86,7 @@ const BP_PREFIX = 'whale:idle:backup:'
 /** 铁人账本键（**与存档分开**；重置档案不清它） */
 const LEDGER_KEY = 'whale:idle:ironman-ledger'
 const BP_CAP = 30 // 与桌面一致：最多保留 30 份备份（超出删最旧）
+const webOperations = createSaveQueue()
 
 function ls(): Storage {
   return window.localStorage
@@ -144,99 +146,123 @@ function webBumpLedgerFromSave(data: string): void {
     if (seq <= curSeq) return
     const curRescues = typeof cur.rescues === 'number' && Number.isFinite(cur.rescues) ? Math.max(0, Math.floor(cur.rescues)) : 0
     ls().setItem(LEDGER_KEY, JSON.stringify({ seq, rescues: curRescues }))
-  } catch {
+  } catch (err) {
     // 账本更新失败不阻断游戏（闸门退化为"只看当前档代次"）
+    // l10n-keep: 开发诊断，不进入玩家界面。
+    console.warn('铁人账本写入失败，浏览器主档保留，账本保护降级。', err)
   }
 }
+
+/** 队列内部读账本，不重新入队，避免救援读改写嵌套等待自身。 */
+function readWebLedger(): { ok: boolean; seq: number; rescues: number; error?: string } {
+  try {
+    const raw = ls().getItem(LEDGER_KEY)
+    if (!raw) return { ok: true, seq: 0, rescues: 0 }
+    const o = JSON.parse(raw) as { seq?: unknown; rescues?: unknown }
+    const seq = typeof o.seq === 'number' && Number.isFinite(o.seq) ? Math.max(0, Math.floor(o.seq)) : 0
+    const rescues = typeof o.rescues === 'number' && Number.isFinite(o.rescues) ? Math.max(0, Math.floor(o.rescues)) : 0
+    return { ok: true, seq, rescues }
+  } catch (err) {
+    return { ok: false, seq: 0, rescues: 0, error: String(err) }
+  }
+}
+
 const localStorageBridge: WhaleApi = {
   /* ───────── 存档「本地文件」优先（2026-09-25 船长令：像本地运行一样） ─────────
    * 只影响**网页分支**：桌面端本来就是文件（`window.whale` 走 IPC）。
    * 取舍口径（船长裁定）：文件与浏览器存储都读，**按档内 `savedAtWallMs` 取较新**。 */
   async load(): Promise<string | null> {
-    const fileText = await readFromBoundFile().catch(() => null)
-    const lsText = ls().getItem(SAVE_KEY)
-    return newerSaveText(fileText, lsText)
+    return webOperations(async () => {
+      const fileText = await readFromBoundFile().catch(() => null)
+      const lsText = ls().getItem(SAVE_KEY)
+      return newerSaveText(fileText, lsText)
+    })
   },
   async save(data: string): Promise<boolean> {
-    // ① 优先写绑定的本地文件（未绑定/权限被收回 ⇒ 返回 null，不算失败）
-    const fileRes = await writeToBoundFile(data).catch(() => false)
-    if (fileRes === false) noteSaveWriteFailed() // 已绑上却写不进去：让玩家看见（浏览器那份仍会写）
-    // ② 浏览器存储（保底）
-    if (!setWithBudget(SAVE_KEY, data)) return false
-    // 与桌面端同口径：落盘后把这份档的代次推到账本（只增不减；普通档代次恒 0 ⇒ 不动）
-    webBumpLedgerFromSave(data)
-    return true
+    return webOperations(async () => {
+      // ① 优先写绑定的本地文件（未绑定/权限被收回 ⇒ 返回 null，不算失败）
+      const fileRes = await writeToBoundFile(data).catch(() => false)
+      if (fileRes === false) noteSaveWriteFailed() // 已绑上却写不进去：让玩家看见（浏览器那份仍会写）
+      // ② 浏览器存储（保底）
+      if (!setWithBudget(SAVE_KEY, data)) return false
+      // 与桌面端同口径：落盘后把这份档的代次推到账本（只增不减；普通档代次恒 0 ⇒ 不动）
+      webBumpLedgerFromSave(data)
+      return true
+    })
   },
-  async backup(): Promise<{ ok: boolean; name?: string; error?: string }> {
-    const text = ls().getItem(SAVE_KEY)
-    if (text === null) return { ok: false, error: tr("ui.storage.001") }
-    const now = new Date()
-    let name = stampOf(now)
-    for (let n = 1; ls().getItem(BP_PREFIX + name) !== null; n += 1) {
-      name = stampOf(new Date(now.getTime() + n))
-    }
-    if (!setWithBudget(BP_PREFIX + name, text)) return { ok: false, error: tr("ui.storage.002") }
-    // 超出上限删最旧（保留最近的）
-    const backups = collectBackups().sort((a, b) => b.wall - a.wall)
-    for (const b of backups.slice(BP_CAP)) ls().removeItem(BP_PREFIX + b.name)
-    return { ok: true, name }
+  async backup(snapshot?: string): Promise<{ ok: boolean; name?: string; error?: string }> {
+    return webOperations(async () => {
+      const text = snapshot ?? ls().getItem(SAVE_KEY)
+      if (text === null) return { ok: false, error: tr("ui.storage.001") }
+      const now = new Date()
+      let name = stampOf(now)
+      for (let n = 1; ls().getItem(BP_PREFIX + name) !== null; n += 1) {
+        name = stampOf(new Date(now.getTime() + n))
+      }
+      if (!setWithBudget(BP_PREFIX + name, text)) return { ok: false, error: tr("ui.storage.002") }
+      // 超出上限删最旧（保留最近的）
+      const backups = collectBackups().sort((a, b) => b.wall - a.wall)
+      for (const b of backups.slice(BP_CAP)) ls().removeItem(BP_PREFIX + b.name)
+      return { ok: true, name }
+    })
   },
   async listBackups(): Promise<{ ok: boolean; backups: SaveBackupInfo[]; error?: string }> {
-    const list = collectBackups()
-      .sort((a, b) => b.wall - a.wall)
-      .map((b) => ({ name: b.name, size: new TextEncoder().encode(b.text).length, wallMs: b.wall || Date.now() }))
-    return { ok: true, backups: list.slice(0, BP_CAP) }
+    return webOperations(async () => {
+      const list = collectBackups()
+        .sort((a, b) => b.wall - a.wall)
+        .map((b) => ({ name: b.name, size: new TextEncoder().encode(b.text).length, wallMs: b.wall || Date.now() }))
+      return { ok: true, backups: list.slice(0, BP_CAP) }
+    })
   },
   async readBackup(name: string): Promise<{ ok: boolean; text?: string; error?: string }> {
-    const key = backupKeyOf(name)
-    const text = key === null ? null : ls().getItem(key)
-    if (text === null) return { ok: false, error: tr("ui.storage.003") }
-    return { ok: true, text }
+    return webOperations(async () => {
+      const key = backupKeyOf(name)
+      const text = key === null ? null : ls().getItem(key)
+      if (text === null) return { ok: false, error: tr("ui.storage.003") }
+      return { ok: true, text }
+    })
   },
   async restore(name: string): Promise<{ ok: boolean; error?: string }> {
-    const key = backupKeyOf(name)
-    const text = key === null ? null : ls().getItem(key)
-    if (text === null) return { ok: false, error: tr("ui.storage.003") }
-    /**
-     * ⚠ **2026-09-17 船长**：「**导入或者恢复存档时，不要备份现有存档**」⇒ 这里**不再**为当前档补一份备份
-     * （桌面主进程那条同款，一起删）。要留退路请先点「备份当前档」——手动备份与备份列表照旧。
-     */
-    if (!setWithBudget(SAVE_KEY, text)) return { ok: false, error: tr("ui.storage.004") }
-    return { ok: true }
+    return webOperations(async () => {
+      const key = backupKeyOf(name)
+      const text = key === null ? null : ls().getItem(key)
+      if (text === null) return { ok: false, error: tr("ui.storage.003") }
+      /**
+       * ⚠ **2026-09-17 船长**：「**导入或者恢复存档时，不要备份现有存档**」⇒ 这里**不再**为当前档补一份备份
+       * （桌面主进程那条同款，一起删）。要留退路请先点「备份当前档」——手动备份与备份列表照旧。
+       */
+      if (!setWithBudget(SAVE_KEY, text)) return { ok: false, error: tr("ui.storage.004") }
+      return { ok: true }
+    })
   },
   /** 删除某份浏览器内备份（只删备份键，不影响主档键） */
   async deleteBackup(name: string): Promise<{ ok: boolean; error?: string }> {
-    const key = backupKeyOf(name)
-    if (key === null) return { ok: false, error: tr("ui.storage.005") }
-    if (ls().getItem(key) === null) return { ok: false, error: tr("ui.storage.003") }
-    ls().removeItem(key)
-    return { ok: true }
+    return webOperations(async () => {
+      const key = backupKeyOf(name)
+      if (key === null) return { ok: false, error: tr("ui.storage.005") }
+      if (ls().getItem(key) === null) return { ok: false, error: tr("ui.storage.003") }
+      ls().removeItem(key)
+      return { ok: true }
+    })
   },
   /**
    * **铁人账本（网页分支）**：桌面端账本落在 `%APPDATA%` 的独立文件里；网页版没有文件系统，
    * 用 localStorage 的一个独立键作等价物（口径一致：**与存档分开存**、只增不减、重置档案不清）。
    */
   async ironmanLedger(): Promise<{ ok: boolean; seq: number; rescues: number; error?: string }> {
-    try {
-      const raw = ls().getItem(LEDGER_KEY)
-      if (!raw) return { ok: true, seq: 0, rescues: 0 }
-      const o = JSON.parse(raw) as { seq?: unknown; rescues?: unknown }
-      const seq = typeof o.seq === 'number' && Number.isFinite(o.seq) ? Math.max(0, Math.floor(o.seq)) : 0
-      const rescues = typeof o.rescues === 'number' && Number.isFinite(o.rescues) ? Math.max(0, Math.floor(o.rescues)) : 0
-      return { ok: true, seq, rescues }
-    } catch (err) {
-      return { ok: false, seq: 0, rescues: 0, error: String(err) }
-    }
+    return webOperations(async () => readWebLedger())
   },
   /** 救援装载记账（网页分支：只累加计数；**玩家侧不显示**） */
   async ironmanNoteRescue(): Promise<{ ok: boolean; error?: string }> {
-    try {
-      const cur = await localStorageBridge.ironmanLedger()
-      ls().setItem(LEDGER_KEY, JSON.stringify({ seq: cur.seq, rescues: cur.rescues + 1 }))
-      return { ok: true }
-    } catch (err) {
-      return { ok: false, error: String(err) }
-    }
+    return webOperations(async () => {
+      try {
+        const cur = readWebLedger()
+        ls().setItem(LEDGER_KEY, JSON.stringify({ seq: cur.seq, rescues: cur.rescues + 1 }))
+        return { ok: true }
+      } catch (err) {
+        return { ok: false, error: String(err) }
+      }
+    })
   },
   /**
    * 导入 = 系统文件选择器（桌面浏览器/手机网页都可用），读取 .json 文本返回。
