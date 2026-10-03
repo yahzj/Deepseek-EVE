@@ -6,7 +6,7 @@
  * 本模块只管**判定 / 发放 / 去重**；图案与配色是数据侧字段，界面读它。
  *
  * 三条口径（设计稿 `docs/design/achievements-20260920.md` §3 ＋ 展示改版
- * `docs/design/achievement-display-20260920.md`）：
+ * `docs/design/archive/achievement-display-20260920.md`）：
  * 1. **纯展示**（船长 2026-09-20 裁定）：徽章**不发任何 ISK / 物品 / 数值加成** ⇒ 本模块
  *    **不碰钱包/仓库/货舱**，只写 `state.achievements.earned[id]`。这也是它敢"每拍判定"的原因。
  * 2. **达成即自动发**（船长裁定）：任务徽章在任务 `done` 那一刻发；链徽章在链进度**达到档位**时发；

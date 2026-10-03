@@ -2964,7 +2964,7 @@ export type AchievementSource =
  * - `first-task`：13 条「第一次」任务的纪念徽章；
  * - `chain`：次数链的档位徽章（船长：1/4/7/10 级各一枚 · 同图案用颜色区分）；
  * - `milestone`：**里程碑成就**（第二批，2026-09-20 落码 —— 内容与阈值见
- *   `data/src/achievements.ts`，展示改版见工作文档 `docs/design/achievement-display-20260920.md`）。
+ *   `data/src/achievements.ts`，展示改版见归档设计稿 `docs/design/archive/achievement-display-20260920.md`）。
  */
 export type AchievementCategory = 'first-task' | 'chain' | 'milestone' | 'ironman'
 

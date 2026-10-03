@@ -75,7 +75,7 @@
 
 1. 稀有池 `poolTarget 28,800 / absorbQtyPerWindow 14,400` 是按旧上限（6,000~13,500）定的；
    新上限 60,000~135,000 ⇒ 要不要一并抬高？
-2. 一号两份工作文档（`docs/design/fuel-cap-lab-skills-20260930.md`、`docs/design/jump-fuel-20260929.md`）
+2. 一号两份工作文档（`docs/design/archive/fuel-cap-lab-skills-20260930.md`、`docs/design/jump-fuel-20260929.md`）
    里仍是旧数（6,000 / 13,500 / 0.01 虚空晶）——不属本批，未动，已在本报告点名。
 3. 公告稿 `docs/design/announcement-draft-20260930.md` 的数已按本批更新（第 29/30/46 行 ＋ 新一行）。
 

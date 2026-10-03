@@ -4,7 +4,7 @@
 > 合计 **81 枚**：任务 13 ＋ 链 50 ＋ 里程碑 18。**不挂任何 `⟪未完成⟫` 记号**
 > （按约定 §十一之二：完成即删记号，残留会让本地化永远跳过它）。
 > - 第二批的落码与阈值 ⇒ `data/src/achievements.ts` 的 `milestoneAchievements()` 与 §3.4；
-> - 展示改版（单网格 · 卡名称号 · 悬停三行）⇒ `docs/design/achievement-display-20260920.md`。
+> - 展示改版（单网格 · 卡名称号 · 悬停三行）⇒ `docs/design/archive/achievement-display-20260920.md`。
 > 规则见 `docs/development-conventions.md` §十一之二。
 
 ## 落码记录（2026-09-20 · 第一批）

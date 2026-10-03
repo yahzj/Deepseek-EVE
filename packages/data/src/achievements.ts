@@ -13,7 +13,7 @@
  * - **链徽章** = **档位词 ＋ 行当**（`chainBadgeName`）⇒ `见习探索家` / `传奇赏金猎人`；
  *   ⚠ **不带级别数字**——档位词已表达进阶；「链名 · N 级」那句旧写法只留在**说明**里。
  * - **任务徽章** = 任务标题（船长裁定：不改名）。
- * - 展示改版的完整口径见工作文档 `docs/design/achievement-display-20260920.md`。
+ * - 展示改版的完整口径见归档设计稿 `docs/design/archive/achievement-display-20260920.md`。
  *
  * **图案与配色**（船长：「**图案相同，用颜色区分**」）：
  * - `pattern` = SVG 线稿的图案键（渲染层 `ui/AchievementsGlyph.tsx` 一根线稿一枚底纹）；

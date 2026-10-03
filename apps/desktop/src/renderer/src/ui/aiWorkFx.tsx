@@ -9,7 +9,7 @@
  * - 不新建 rAF 逐帧循环：动画全交给 CSS，与引擎 10Hz tick 解耦（战斗画面那条 rAF 与本处无关）；
  * - 本组件走 memo：引擎每 tick 触发整树重渲染（App 层订阅），kind 不变即整棵 SVG 子树跳过 diff；
  * - 行数量级 = AI 核心上限（「AI 核心操作学」等级，常见 1~4 艘副船 + 站内工业 1~3 条），个位数；
- *   切走标签页即卸载。整体开销远小于战斗画面，实测复核见 docs/design/ai-work-fx-20260910.md。
+ *   切走标签页即卸载。整体开销远小于战斗画面，实测复核见 docs/design/archive/ai-work-fx-20260910.md。
  *
  * 检索入口：`AiWorkFx`（唯一实现；判定「哪一行画哪一种」在 ShipPage 的 aiWorkKindOf）。
  */

@@ -18,7 +18,7 @@
  *   标题用 `.app-ship-hover-title`、正文用块级元素；`.app-tip` 是 `white-space: pre-line` ⇒ 可多行）。
  *
  * 文案：界面文案一律走**唯一表的 id**（`useL10n().t('ui.…')` / 模块级 `tr('ui.…')`）；徽章名与说明来自内容表 `ctx.achievements`
- * （**卡名口径**见工作文档 `docs/design/achievement-display-20260920.md`：链徽章 = 档位词 ＋ 行当，
+ * （**卡名口径**见归档设计稿 `docs/design/archive/achievement-display-20260920.md`：链徽章 = 档位词 ＋ 行当，
  * 例「见习探索家」；英文覆盖层在本地化批接入——本批**未排入本地化排队**，见约定 §十一之二）。
  */
 import { Glyph } from '../ui/Glyphs'
