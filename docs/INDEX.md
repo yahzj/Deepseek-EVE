@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **443** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7473** KB · **57894** 行
-- 状态分布：**未标注** 244 · **已确认/已实现** 128 · **进行中** 54 · **待裁定** 16 · **历史留档** 1
+- 文档总数 **442** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7467** KB · **57830** 行
+- 状态分布：**未标注** 244 · **已确认/已实现** 128 · **进行中** 53 · **待裁定** 16 · **历史留档** 1
 - 孤儿文档（0 引用）**77** 份 · 状态未标注 **244** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**293** 份
+- 三、现行设计稿（design）：**292** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -30,13 +30,13 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 8 KB / 97 行 | 220 / 10 |
-| `docs/architecture.md` | 架构文档 | 未标注 | — | 23 KB / 223 行 | 32 / 1 |
+| `docs/architecture.md` | 架构文档 | 未标注 | — | 23 KB / 227 行 | 32 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 6 KB / 62 行 | 33 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 299 KB / 307 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 89 KB / 906 行 | 95 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 508 KB / 1019 行 | 227 / 20 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 93 KB / 460 行 | 376 / 27 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 94 KB / 462 行 | 376 / 27 |
 
 ## 七、评审与体检（review） —— 12 份
 
@@ -55,7 +55,7 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 293 份
+## 三、现行设计稿（design） —— 292 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -64,13 +64,12 @@
 | `docs/design/corona-enemy-pd-beam-20261003.md` | 光环势力敌人的近防炮 = 能量光束近防炮 · 必中（2026-10-03 · 二号 · d2） | 未标注 | 2026-10-03 | 5 KB / 75 行 | 0 / 0 |
 | `docs/design/docs-cleanup-20261003.md` | 文档整理第一批 | 进行中（进行中） | 2026-10-03 | 2 KB / 41 行 | 0 / 0 |
 | `docs/design/docs-status-audit-20261003.md` | 设计稿状态核验第一批 | 进行中（进行中） | 2026-10-03 | 3 KB / 42 行 | 0 / 0 |
-| `docs/design/guoqing-audit-resume-20261003.md` | 国庆节审查续接核验 | 未标注（检查完成） | 2026-10-03 | 7 KB / 62 行 | 1 / 0 |
+| `docs/design/guoqing-audit-resume-20261003.md` | 国庆节审查续接核验 | 未标注（检查完成） | 2026-10-03 | 7 KB / 62 行 | 0 / 0 |
 | `docs/design/invasion-audit-fixes-20261003.md` | 入侵链路审查修复（零号接管） | 未标注（实现与自检完成） | 2026-10-03 | 6 KB / 55 行 | 1 / 0 |
 | `docs/design/invasion-wreck-theme-20261003.md` | 入侵残骸「特色掉落」= 族专属件 ＋ 家族 MK2 混池（2026-10-03 · 二号 · d2） | 未标注 | 2026-10-03 | 7 KB / 96 行 | 0 / 0 |
 | `docs/design/ironman-load-in-debug-20261003.md` | 调试模式允许载入铁人存档 | 未标注 | 2026-10-03 | 5 KB / 64 行 | 0 / 1 |
 | `docs/design/r-family-family-code-narrowing-20261003.md` | R 族（光环科技）的入侵残骸场认不出族 —— 「入侵结束后捞不到入侵残骸」真因 | 未标注 | 2026-10-03 | 4 KB / 66 行 | 0 / 0 |
 | `docs/design/salvage-asymptotic-unified-20261003.md` | 打捞统一口径：基础值 25 ＋ 渐近缓释 ＋ 余额封顶 → 同日回滚到 2026-10-02「甲」 | 未标注 | 2026-10-03 | 6 KB / 79 行 | 0 / 2 |
-| `docs/design/save-transaction-20261003.md` | 国庆节审查第一批：保存事务与备份回执 | 进行中（进行中） | 2026-10-03 | 7 KB / 70 行 | 0 / 0 |
 | `docs/design/trident-beam-cannon-20261003.md` | 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中） | 未标注 | 2026-10-03 | 9 KB / 101 行 | 0 / 0 |
 | `docs/design/wh-block-common-spoils-20261003.md` | 洞内「禁止打捞普通残骸」开关：扩到「战斗战果」 | 未标注 | 2026-10-03 | 4 KB / 59 行 | 0 / 0 |
 | `docs/design/wreck-ledger-by-family-20261003.md` | 入侵残骸账改「按族分账」＋ 打捞界面每族一张独立卡（船长令） | 未标注 | 2026-10-03 | 5 KB / 63 行 | 1 / 2 |
@@ -522,9 +521,9 @@
 - `docs/design/corona-enemy-pd-beam-20261003.md`（2026-10-03 · 5 KB）—— 光环势力敌人的近防炮 = 能量光束近防炮 · 必中（2026-10-03 · 二号 · d2）
 - `docs/design/docs-cleanup-20261003.md`（2026-10-03 · 2 KB）—— 文档整理第一批
 - `docs/design/docs-status-audit-20261003.md`（2026-10-03 · 3 KB）—— 设计稿状态核验第一批
+- `docs/design/guoqing-audit-resume-20261003.md`（2026-10-03 · 7 KB）—— 国庆节审查续接核验
 - `docs/design/invasion-wreck-theme-20261003.md`（2026-10-03 · 7 KB）—— 入侵残骸「特色掉落」= 族专属件 ＋ 家族 MK2 混池（2026-10-03 · 二号 · d2）
 - `docs/design/r-family-family-code-narrowing-20261003.md`（2026-10-03 · 4 KB）—— R 族（光环科技）的入侵残骸场认不出族 —— 「入侵结束后捞不到入侵残骸」真因
-- `docs/design/save-transaction-20261003.md`（2026-10-03 · 7 KB）—— 国庆节审查第一批：保存事务与备份回执
 - `docs/design/trident-beam-cannon-20261003.md`（2026-10-03 · 9 KB）—— 三叉戟光束炮（R 族势力能量武器 · 三连射）（2026-10-03 · 二号 · 进行中）
 - `docs/design/wh-block-common-spoils-20261003.md`（2026-10-03 · 4 KB）—— 洞内「禁止打捞普通残骸」开关：扩到「战斗战果」
 - `docs/design/blackbox-per-family-20261002.md`（2026-10-02 · 9 KB）—— 每族一件黑匣（R 族「光环旗舰黑匣」）

@@ -384,6 +384,8 @@
 
 > 越窗即封存（`npm run docs:seal`）；窗口大小 = 20 条，需要临时调大用 `--window=N`。
 
+- 2026-10-03：**国庆节审查 C01＋C08：保存事务串行化与备份快照绑定（船长批准 · 零号 `dsh/c01-save-transaction` → main）**——桌面主档/恢复/备份与网页保存桥统一按进程内 FIFO 执行，原子写改为请求唯一临时文件，失败不毒化后续操作；铁人账本读改写串行，主档回执等待账本处理，账本失败仍保留既有降级政策并记录诊断。`backupNow()` 保存失败停止，成功备份本次确切快照；公开 API、存档字段、救援条件和奖励不变。新增保存/账本/备份双端回归与隔离 Electron IPC 验证；实现入口见 `apps/desktop/src/shared/saveQueue.ts`、`apps/desktop/src/main/atomicSaveWrite.ts`、`apps/desktop/src/renderer/src/game/engine.ts`，提交 `3c9f4d02`。
+
 - 2026-10-02：**本地化尾巴清场（批①~⑬ ＋ 机制批 ＋ 两件护栏 ＋ 钱包全额令 · 船长逐条「继续 / 按你推荐」· 三号 · verify → main）**——
 **①读数**：core 侧裸中文上屏 **271 → 151**（`return` 97 · `addLog` 74 → 62 · `state` 1）；其中"渲染层引用了该函数"的 46 处。
 **①bis 同批另两件**：**通讯英文回补 32 封**（通讯正文整篇重写，按文案规程先出草稿后落码；顺带改正 first-bounty 的中文笔误「只有积攒生物」→「只有积攒声望」）·
