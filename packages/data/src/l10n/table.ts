@@ -5990,6 +5990,19 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.167": {
     zh: "当前环境无法自动刷新，请手动刷新页面（或重启游戏）。",
     en: "This environment cannot reload automatically — refresh the page (or restart the game) manually."
-  }
+  },
+  /* **客户端版本行**（**2026-10-02 船长令**：「建议在设置里给游戏添加版本号，否则无法判断玩家当前版本」）
+     —— 三问裁定：值 = 版本号 · 构建 sha · 构建日期 · 运行形态（只显示版本号分辨不出"网页版被浏览器
+     缓存住旧产物"）；命名避开游戏内已有的「版本号」（那是**铁人档世代号**）；放**设置页最上方**；
+     复制成功的提示**复用现成的 `ui.App.044`**（不新造同义串）。注入点见 `tools/build-info.ts`。 */
+  "ui.App.168": { zh: "客户端版本", en: "Client version" },
+  "ui.App.169": { zh: "{p1} · 构建 {p2} · {p3} · {p4}", en: "{p1} · built {p2} · {p3} · {p4}" },
+  "ui.App.170": {
+    zh: "这一行标明当前运行的版本；反馈问题时请一并提供。",
+    en: "This line shows the version currently running; include it when reporting a problem.",
+  },
+  "ui.App.171": { zh: "复制", en: "Copy" },
+  "ui.App.172": { zh: "网页版", en: "Web" },
+  "ui.App.173": { zh: "桌面版", en: "Desktop" },
 }
 

@@ -10,6 +10,15 @@ declare module '*.css?url' {
 }
 
 declare global {
+  /**
+   * **构建时注入的客户端版本三件套**（**2026-10-02 船长令**：「否则无法判断玩家当前版本」）。
+   * 注入点 = `tools/build-info.ts`（单点；网页与桌面两套构建各写一句 `define`）；
+   * 读法 = `game/buildInfo.ts`（带 `typeof` 兜底 ⇒ 构建器没注入也不炸）。
+   */
+  const __APP_VERSION__: string
+  const __BUILD_SHA__: string
+  const __BUILD_TIME__: string
+
   /** 一份存档备份的元信息 */
   interface SaveBackupInfo {
     name: string
