@@ -610,6 +610,20 @@ export function ShipPage({
     if (!shipTierPasses(def, storeTier)) return false
     return true
   })
+  const fleetRoles = SHIP_DOMAIN_SUBS.filter((s) => fleetEntries.some((e) => shipRolePasses(e.def, s.key)))
+  const fleetTiers = SHIP_TIER_SUBS.filter((s) => fleetEntries.some((e) => shipRolePasses(e.def, fleetRole) && shipTierPasses(e.def, s.key)))
+  const storeRoles = SHIP_DOMAIN_SUBS.filter((s) => storeAll.some((def) => shipRolePasses(def, s.key)))
+  const storeTiers = SHIP_TIER_SUBS.filter((s) => storeAll.some((def) => shipRolePasses(def, storeRole) && shipTierPasses(def, s.key)))
+  const fleetRoleMissing = fleetRole !== SUB_ALL && !fleetRoles.some((s) => s.key === fleetRole)
+  const fleetTierMissing = fleetTier !== SUB_ALL && !fleetTiers.some((s) => s.key === fleetTier)
+  const storeRoleMissing = storeRole !== SUB_ALL && !storeRoles.some((s) => s.key === storeRole)
+  const storeTierMissing = storeTier !== SUB_ALL && !storeTiers.some((s) => s.key === storeTier)
+  useEffect(() => {
+    if (fleetRoleMissing) { setFleetRole(SUB_ALL); setFleetTier(SUB_ALL) }
+    if (fleetTierMissing) setFleetTier(SUB_ALL)
+    if (storeRoleMissing) { setStoreRole(SUB_ALL); setStoreTier(SUB_ALL) }
+    if (storeTierMissing) setStoreTier(SUB_ALL)
+  }, [fleetRoleMissing, fleetTierMissing, storeRoleMissing, storeTierMissing])
   /** 舰队（机库）里同型艘数——仓库卡上的参考读数（不是筛选判据） */
   function fleetCountOf(defId: string): number {
     return Object.entries(state.fleet).filter(([uid, s]) => (s.defId ?? uid) === defId).length
@@ -719,13 +733,13 @@ export function ShipPage({
               >
                 {tr("ui.IndustryPage.001")}
               </button>
-              {SHIP_DOMAIN_SUBS.map((s) => (
+              {fleetRoles.map((s) => (
                 <button
                   key={s.key}
                   role="tab"
                   aria-selected={fleetRole === s.key}
                   className={`app-tasktab${fleetRole === s.key ? ' is-active' : ''}`}
-                  onClick={() => setFleetRole(s.key)}
+                  onClick={() => { setFleetRole(s.key); setFleetTier(SUB_ALL) }}
                 >
                   {subText(s)}
                 </button>
@@ -743,7 +757,7 @@ export function ShipPage({
               >
                 {tr("ui.IndustryPage.001")}
               </button>
-              {SHIP_TIER_SUBS.map((s) => (
+              {fleetTiers.map((s) => (
                 <button
                   key={s.key}
                   role="tab"
@@ -1046,13 +1060,13 @@ export function ShipPage({
                 >
                   {tr("ui.IndustryPage.001")}
                 </button>
-                {SHIP_DOMAIN_SUBS.map((s) => (
+                {storeRoles.map((s) => (
                   <button
                     key={s.key}
                     role="tab"
                     aria-selected={storeRole === s.key}
                     className={`app-tasktab${storeRole === s.key ? ' is-active' : ''}`}
-                    onClick={() => setStoreRole(s.key)}
+                    onClick={() => { setStoreRole(s.key); setStoreTier(SUB_ALL) }}
                   >
                     {subText(s)}
                   </button>
@@ -1070,7 +1084,7 @@ export function ShipPage({
                 >
                   {tr("ui.IndustryPage.001")}
                 </button>
-                {SHIP_TIER_SUBS.map((s) => (
+                {storeTiers.map((s) => (
                   <button
                     key={s.key}
                     role="tab"

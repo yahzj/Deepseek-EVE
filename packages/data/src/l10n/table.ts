@@ -4503,6 +4503,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 仓库一级「货物」档的二级维度（物品大类）前缀（2026-10-01 层级同步市场后新增） */
   "ui.ItemsPage.059": { zh: "分类", en: "Category" },
   "ui.itemSubs.001": { zh: "修理组件", en: "Repair Kit" },
+  "ui.itemFilters.001": { zh: "物品", en: "Items" },
   "ui.itemSubs.002": { zh: "遗迹安全货柜", en: "Ruins safe container" },
   "ui.itemSubs.003": { zh: "图纸货柜", en: "Blueprint container" },
   "ui.itemSubs.004": { zh: "贵重品货柜", en: "Valuables container" },

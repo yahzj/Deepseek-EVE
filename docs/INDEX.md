@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **448** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7513** KB · **58215** 行
+- 文档总数 **448** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7516** KB · **58232** 行
 - 状态分布：**未标注** 247 · **已确认/已实现** 131 · **进行中** 53 · **待裁定** 16 · **历史留档** 1
 - 孤儿文档（0 引用）**81** 份 · 状态未标注 **247** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -62,7 +62,7 @@
 | `docs/design/activity-mobile-audit-20261004.md` | 主控活动切换、显示与手机适配核查 | 未标注（第一轮实现与验证完成） | 2026-10-04 | 9 KB / 78 行 | 1 / 0 |
 | `docs/design/classic-nav-footer-20261004.md` | 旧版导航底部开关与矮窗口布局 | 已确认/已实现（已确认） | 2026-10-04 | 5 KB / 37 行 | 0 / 0 |
 | `docs/design/classic-sidebar-collapse-20261004.md` | 旧版导航收窄与事件日志收起 | 已确认/已实现（已确认） | 2026-10-04 | 6 KB / 47 行 | 0 / 0 |
-| `docs/design/item-ship-filter-taxonomy-20261004.md` | 物品与舰船筛选归类统一 | 未标注（实施完成） | 2026-10-04 | 4 KB / 38 行 | 0 / 0 |
+| `docs/design/item-ship-filter-taxonomy-20261004.md` | 物品与舰船筛选归类统一 | 未标注（实施完成） | 2026-10-04 | 7 KB / 53 行 | 0 / 0 |
 | `docs/design/mobile-shell-layout-20261004.md` | 手机布局第二轮：日志抽屉与主区优先 | 已确认/已实现（已确认） | 2026-10-04 | 8 KB / 59 行 | 0 / 0 |
 | `docs/design/beacon-target-highsec-20261003.md` | 信号发射器：高安判据改看「玩家选定的目标星系」 | 未标注 | 2026-10-03 | 5 KB / 64 行 | 0 / 0 |
 | `docs/design/corona-balance-20261003.md` | 光环敌舰强度调整 | 待裁定（待船长审字） | 2026-10-03 | 4 KB / 48 行 | 0 / 0 |
@@ -404,7 +404,7 @@
 |---|---|---|---|---|---|
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 5 KB / 82 行 | 6 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 46 KB / 799 行 | 27 / 19 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 8 KB / 79 行 | 18 / 7 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 8 KB / 81 行 | 18 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -524,7 +524,7 @@
 
 - `docs/design/classic-nav-footer-20261004.md`（2026-10-04 · 5 KB）—— 旧版导航底部开关与矮窗口布局
 - `docs/design/classic-sidebar-collapse-20261004.md`（2026-10-04 · 6 KB）—— 旧版导航收窄与事件日志收起
-- `docs/design/item-ship-filter-taxonomy-20261004.md`（2026-10-04 · 4 KB）—— 物品与舰船筛选归类统一
+- `docs/design/item-ship-filter-taxonomy-20261004.md`（2026-10-04 · 7 KB）—— 物品与舰船筛选归类统一
 - `docs/design/mobile-shell-layout-20261004.md`（2026-10-04 · 8 KB）—— 手机布局第二轮：日志抽屉与主区优先
 - `docs/design/beacon-target-highsec-20261003.md`（2026-10-03 · 5 KB）—— 信号发射器：高安判据改看「玩家选定的目标星系」
 - `docs/design/corona-balance-20261003.md`（2026-10-03 · 4 KB）—— 光环敌舰强度调整

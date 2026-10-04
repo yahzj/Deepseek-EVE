@@ -223,8 +223,11 @@ interface DefRow {
 }
 
 /** 表名 → [用途, 表本体]（用途一列是给重排看的：这张表管哪一处筛选） */
-function defTables(): Array<[string, string, Array<{ key: string; label: string; id?: string; idParam?: string }>]> {
+function defTables(): Array<[string, string, ReadonlyArray<{ key: string; label: string; id?: string; idParam?: string }>]> {
   return [
+    ['MARKET_DOMAIN_TABS', '市场领域（物品/舰船）', subs.MARKET_DOMAIN_TABS],
+    ['ITEM_DOMAIN_SUBS', '物品领域分类（市场/仓库/货仓/图鉴同源）', subs.ITEM_DOMAIN_SUBS],
+    ['SHIP_DOMAIN_SUBS', '舰船领域分类与其他兜底', subs.SHIP_DOMAIN_SUBS],
     ['ITEM_SUBS', '货物（原矿/原材料/气体/冰矿/奢侈品…）二级子分类', subs.ITEM_SUBS],
     ['CONSUME_SUBS', '消耗品二级子分类（弹药/修理组件/无人机）', subs.CONSUME_SUBS],
     // 2026-10-02 船长令：道具（`kind: 'consumable'`）归「消耗品」桶，且**每件自成一档**

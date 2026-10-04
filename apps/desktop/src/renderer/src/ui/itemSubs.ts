@@ -100,9 +100,9 @@ export interface SubOption {
 // ⚠ **2026-09-22 补上这个起点标记**：此前只有收尾标记（本文件最后一行）、区间没生效，
 // `l10n:check` 把下面已接线的 `label`（各有 `id`）误报成"未译中文串"。
 export const CONSUME_SUBS: SubOption[] = [
-  { key: 'ammo', label: tr("ui.BattleScreen.003") },
-  { key: 'kit', label: tr("ui.itemSubs.001") },
-  { key: 'drone', label: tr("ui.Handbook.004") },
+  { key: 'ammo', label: '弹药', id: 'ui.BattleScreen.003' },
+  { key: 'kit', label: '修理组件', id: 'ui.itemSubs.001' },
+  { key: 'drone', label: '无人机', id: 'ui.Handbook.004' },
 ]
 
 /** 消耗品子类键集合（市场类型判定与子分类判定共用一处） */
@@ -160,10 +160,10 @@ export const CONTAINER_KIND_KEYS: readonly string[] = ['container']
 
 /** 货柜的四个二级子类（顺序 = 渲染顺序；"安全柜"五族在前，"贵重品/军用"两个新柜在后） */
 export const CONTAINER_SUBS: SubOption[] = [
-  { key: 'safe', label: tr("ui.itemSubs.002") },
-  { key: 'bp', label: tr("ui.itemSubs.003") },
-  { key: 'valuables', label: tr("ui.itemSubs.004") },
-  { key: 'military', label: tr("ui.itemSubs.005") },
+  { key: 'safe', label: '遗迹安全货柜', id: 'ui.itemSubs.002' },
+  { key: 'bp', label: '图纸货柜', id: 'ui.itemSubs.003' },
+  { key: 'valuables', label: '贵重品货柜', id: 'ui.itemSubs.004' },
+  { key: 'military', label: '军用备货柜', id: 'ui.itemSubs.005' },
 ]
 
 /**
@@ -182,8 +182,8 @@ export function containerSubKeyOf(refId: string): string {
 /** **残骸档位**（普通 / 稀有）——物品页仓库 · 手册物品图鉴 · 市场 · 工业页回收炉**共用同一张表**
  *  （原写死在 `pages/IndustryPage.tsx`，2026-09-19 按基线⑤收编到本文件）。 */
 export const WRECK_SUBS: SubOption[] = [
-  { key: 'common', label: tr("ui.IndustryPage.008") },
-  { key: 'rare', label: tr("ui.IndustryPage.009") },
+  { key: 'common', label: '普通残骸', id: 'ui.IndustryPage.008' },
+  { key: 'rare', label: '稀有残骸', id: 'ui.IndustryPage.009' },
 ]
 
 /** 残骸档位判据（**单点**）：直接委托 core 的 `isRareWreck`（`wreck-rare-*` 前缀，13 组同源），
@@ -206,6 +206,9 @@ export const ITEM_SUBS: SubOption[] = [
   { key: 'part-basic', label: '基础零件', id: 'ui.itemSubs.033' },
   { key: 'part-advanced', label: '高级零件', id: 'ui.itemSubs.034' },
   { key: 'luxury', label: '奢侈品', id: 'ui.itemSubs.007' },
+  { key: 'matter', label: '谜质储存器', id: 'ui.Handbook.314' },
+  { key: 'essence', label: '虫洞谜质', id: 'ui.MatterTechTab.005' },
+  { key: 'fragment', label: '蓝图碎片', id: 'ui.labelsText.002' },
 ]
 
 /** 零件「基础 / 高级」维度（2026-09-20 零件体系：组装机「零件」门类二级筛选与市场「货物」子分类共用）。
@@ -217,19 +220,19 @@ export const PART_SUBS: SubOption[] = [
 
 /** 装备子类 = 模块槽位聚合（文案玩家向；含异星原型等特殊件按槽归位） */
 export const MODULE_SUBS: SubOption[] = [
-  { key: 'prod', label: tr("ui.itemSubs.008") },
-  { key: 'weapon', label: tr("ui.itemSubs.009") },
-  { key: 'shield', label: tr("ui.FitPage.001") },
-  { key: 'armor', label: tr("ui.FitPage.003") },
-  { key: 'prop', label: tr("ui.BattleScreen.004") },
-  { key: 'drone', label: tr("ui.itemSubs.010") },
+  { key: 'prod', label: '采集与货舱', id: 'ui.itemSubs.008' },
+  { key: 'weapon', label: '武器', id: 'ui.itemSubs.009' },
+  { key: 'shield', label: '护盾', id: 'ui.FitPage.001' },
+  { key: 'armor', label: '装甲', id: 'ui.FitPage.003' },
+  { key: 'prop', label: '推进', id: 'ui.BattleScreen.004' },
+  { key: 'drone', label: '无人机装置', id: 'ui.itemSubs.010' },
   // 支援件三档（2026-09-26 船长令，见 SUPPORT_MODULE_KEYS 的说明）——原「支援件（辅助与维修）」一档拆成同级三档
-  { key: 'support-combat', label: tr("ui.itemSubs.038") },
-  { key: 'support-aux', label: tr("ui.itemSubs.039") },
-  { key: 'support-repair', label: tr("ui.itemSubs.040") },
-  { key: 'cpu', label: tr("ui.itemSubs.012") },
-  { key: 'salvager', label: tr("ui.Wormhole.001") },
-  { key: 'lock', label: tr("ui.itemSubs.013") },
+  { key: 'support-combat', label: '战斗支援件', id: 'ui.itemSubs.038' },
+  { key: 'support-aux', label: '辅助支援件', id: 'ui.itemSubs.039' },
+  { key: 'support-repair', label: '修理装置', id: 'ui.itemSubs.040' },
+  { key: 'cpu', label: '协处理器', id: 'ui.itemSubs.012' },
+  { key: 'salvager', label: '打捞', id: 'ui.Wormhole.001' },
+  { key: 'lock', label: '目标锁定', id: 'ui.itemSubs.013' },
   /**
    * 舰船插件（2026-09-26 船长令）：装备功能族里的一档。
    *
@@ -239,8 +242,8 @@ export const MODULE_SUBS: SubOption[] = [
    * ⇒ 改挂 `ui.itemSubs.042`（**舰船插件**／Ship plugs；组装机的插件档用的就是它）。
    * 单点口径：**舰船插件的标签全仓只有这一条 id**（本处与 `RACK_LABELS.plug` 都读它）。
    */
-  { key: 'plug', label: tr("ui.itemSubs.042") },
-  { key: 'other', label: tr('ui.hud.137') },
+  { key: 'plug', label: '舰船插件', id: 'ui.itemSubs.042' },
+  { key: 'other', label: '其他', id: 'ui.hud.137' },
 ]
 
 /**
@@ -292,10 +295,10 @@ export const SUPPORT_MODULE_KEYS: Record<string, readonly string[]> = {
 export const MODULE_SUB_SLOTS: Record<string, readonly string[]> = {
   prod: ['miner', 'cargo'],
   weapon: ['turret', 'laser', 'missile'],
-  shield: ['shield'],
+  shield: ['shield', 'shield-field'],
   armor: ['armor'],
   prop: ['propulsion'],
-  drone: ['drone-rack', 'drone-tac', 'drone-relay'], // 2026-09-10 + 无人机中继天线
+  drone: ['drone-rack', 'drone-tac', 'drone-relay', 'drone-shield', 'drone-deck'],
   // 三档支援件**都来自同一个槽**（`support`）——逐件归属见 `SUPPORT_MODULE_KEYS`
   'support-combat': ['support'],
   'support-aux': ['support'],
@@ -308,11 +311,11 @@ export const MODULE_SUB_SLOTS: Record<string, readonly string[]> = {
 }
 
 export const SHIP_SUBS: SubOption[] = [
-  { key: 'industrial', label: tr("ui.itemSubs.014") },
-  { key: 'hauler', label: tr("ui.itemSubs.015") },
-  { key: 'armed', label: tr("ui.itemSubs.016") },
+  { key: 'industrial', label: '采矿舰', id: 'ui.itemSubs.014' },
+  { key: 'hauler', label: '货运舰', id: 'ui.itemSubs.015' },
+  { key: 'armed', label: '武装舰', id: 'ui.itemSubs.016' },
   // 2026-09-16 船长：「将重装舰类的名称改为装甲舰」（键仍 = role id，机制零迁移）
-  { key: 'armored', label: tr("ui.itemSubs.017") },
+  { key: 'armored', label: '装甲舰', id: 'ui.itemSubs.017' },
 ]
 
 /** 舰船级别（T1~T5；顺序即渲染顺序，分组判定与子分类判定共用一处） */
@@ -355,6 +358,7 @@ export const BLUEPRINT_SUBS: SubOption[] = [
   { key: 'high', label: '高槽装备蓝图', id: 'ui.itemSubs.018' },
   { key: 'mid', label: '中槽装备蓝图', id: 'ui.itemSubs.019' },
   { key: 'low', label: '低槽装备蓝图', id: 'ui.itemSubs.020' },
+  { key: 'plug', label: '舰船插件', id: 'ui.itemSubs.042' },
   /**
    * 舰船档接在舰级档后面（`SHIP_TIER_SUBS`）
    * ⚠ **2026-09-22 补 id**：这一排原先是**拼接标签**（``label: `${s.label}蓝图```、没有 id）
@@ -386,10 +390,10 @@ export const BLUEPRINT_SUBS: SubOption[] = [
 export const MARKET_BLUEPRINT_SUBS: SubOption[] = [...BLUEPRINT_SUBS, ...BLUEPRINT_LEARN_SUBS]
 
 export const CORE_SUBS: SubOption[] = [
-  { key: 'basic', label: tr("ui.MarketPage.020") },
-  { key: 'gamma', label: tr("ui.itemSubs.022") },
-  { key: 'beta', label: tr("ui.itemSubs.023") },
-  { key: 'alpha', label: tr("ui.itemSubs.024") },
+  { key: 'basic', label: '基础核心', id: 'ui.MarketPage.020' },
+  { key: 'gamma', label: '伽马核心', id: 'ui.itemSubs.022' },
+  { key: 'beta', label: '贝塔核心', id: 'ui.itemSubs.023' },
+  { key: 'alpha', label: '阿尔法核心', id: 'ui.itemSubs.024' },
 ]
 
 /**
@@ -431,6 +435,7 @@ export const RACK_LABELS: Record<string, string> = {
 export const RACK_SUBS: SubOption[] = (['high', 'mid', 'low', 'plug'] as const).map((k) => ({
   key: k,
   label: RACK_LABELS[k],
+  id: k === 'plug' ? 'ui.itemSubs.042' : `ui.itemSubs.${k === 'high' ? '025' : k === 'mid' ? '026' : '027'}`,
 }))
 
 
@@ -457,21 +462,21 @@ export const SUBS_OF_KIND: Record<string, SubOption[]> = {
 
 /** 市场同时展示多个领域时使用的一级领域标签。 */
 export const MARKET_DOMAIN_TABS: readonly SubOption[] = [
-  { key: 'domain-item', label: tr('ui.MarketPage.005') },
-  { key: 'domain-ship', label: tr('ui.App.002') },
+  { key: 'domain-item', label: '物品', id: 'ui.itemFilters.001' },
+  { key: 'domain-ship', label: '舰船', id: 'ui.App.002' },
 ]
 
 /** 物品领域的二级分类（物品页/物品图鉴/市场物品域共用）。 */
 export const ITEM_DOMAIN_SUBS: readonly SubOption[] = [
-  { key: 'item', label: tr('ui.MarketPage.005') },
-  { key: 'module', label: tr('ui.MarketPage.178') },
-  { key: 'consume', label: tr('ui.MarketPage.007') },
-  { key: 'container', label: tr('ui.MarketPage.006') },
-  { key: 'wreck', label: tr('ui.MarketPage.009') },
-  { key: 'blackbox', label: tr('ui.labelsText.069') },
-  { key: 'blueprint', label: tr('ui.MarketPage.004') },
-  { key: 'aicore', label: tr('ui.MarketPage.008') },
-  { key: 'other', label: tr('ui.hud.137') },
+  { key: 'item', label: '货物', id: 'ui.MarketPage.005' },
+  { key: 'module', label: '装备', id: 'ui.MarketPage.178' },
+  { key: 'consume', label: '消耗品', id: 'ui.MarketPage.007' },
+  { key: 'container', label: '货柜', id: 'ui.MarketPage.006' },
+  { key: 'wreck', label: '残骸', id: 'ui.MarketPage.009' },
+  { key: 'blackbox', label: '黑匣', id: 'ui.labelsText.069' },
+  { key: 'blueprint', label: '蓝图', id: 'ui.MarketPage.004' },
+  { key: 'aicore', label: 'AI 核心', id: 'ui.MarketPage.008' },
+  { key: 'other', label: '其他', id: 'ui.hud.137' },
 ]
 
 /** 物品仓库/物品图鉴只展示实物分类；蓝图图鉴与装备图鉴各自有独立页面。 */
@@ -485,7 +490,7 @@ export const ITEM_CARGO_SUBS: readonly SubOption[] = ITEM_CODEX_SUBS
 /** 舰船领域的二级分类（舰队/舰船仓库/舰船图鉴/市场舰船域共用）。 */
 export const SHIP_DOMAIN_SUBS: readonly SubOption[] = [
   ...SHIP_SUBS,
-  { key: 'other', label: tr('ui.hud.137') },
+  { key: 'other', label: '其他', id: 'ui.hud.137' },
 ]
 
 /**
@@ -527,7 +532,7 @@ export function subPasses(ctx: SimContext, good: MarketGoodDef, kind: string, su
       // 物品蓝图（弹药/修理组件）归消耗品档；模块蓝图按**产物模块的槽类**归高/中/低档
       if (eq.moduleId === undefined) return sub === 'supply'
       const mod = ctx.modules.get(eq.moduleId)
-      return mod ? rackOf(mod) === sub : false
+      return mod ? rackDimKeyOf(mod) === sub : false
     }
     // 舰船蓝图按**舰船级别**（2026-09-11 船长：「舰船部分按舰船级别划分」）——键 = t<级别>
     const shipBp = ctx.shipBlueprints.get(good.refId)
@@ -546,18 +551,19 @@ export function marketDomainPasses(
   domain: string,
   sub: string,
   state?: GameState,
+  detail: string = SUB_ALL,
+  rack: string = SUB_ALL,
 ): boolean {
   if (domain === DOMAIN_ALL) return true
   if (domain === DOMAIN_SHIP) {
-    return good.kind === 'ship' && (sub === SUB_ALL || shipRolePasses(ctx.ships.get(good.refId), sub))
+    return good.kind === 'ship' && shipRolePasses(ctx.ships.get(good.refId), sub) && shipTierPasses(ctx.ships.get(good.refId), detail)
   }
   if (domain !== DOMAIN_ITEM) return false
   if (sub === SUB_ALL) return good.kind !== 'ship'
-  if (good.kind === 'item') return itemCategoryOf(ctx.items.get(good.refId)) === sub
-  if (good.kind === 'module') return sub === 'module'
-  if (good.kind === 'blueprint') return sub === 'blueprint'
-  if (good.kind === 'aicore') return sub === 'aicore'
-  return false
+  const category = good.kind === 'item' ? itemCategoryOf(ctx.items.get(good.refId)) : good.kind
+  if (category !== sub) return false
+  if (good.kind === 'module' && !rackPasses(ctx, good.refId, rack)) return false
+  return subPasses(ctx, good, sub, detail, state)
 }
 
 /**
@@ -572,6 +578,7 @@ export function moduleSubKeyOf(slot: string, moduleId?: string): string {
     for (const [key, ids] of Object.entries(SUPPORT_MODULE_KEYS)) {
       if (ids.includes(moduleId)) return key
     }
+    if (slot === 'support') return 'other'
   }
   for (const [key, slots] of Object.entries(MODULE_SUB_SLOTS)) {
     if (slots.includes(slot)) return key
@@ -853,6 +860,7 @@ type ShipCategoryInput = Parameters<typeof shipCategoryKeyOf>[0]
  *  不借收敛之名改这个边界行为。 */
 export function shipRolePasses(def: ShipCategoryInput | undefined, role: string): boolean {
   if (role === SUB_ALL) return true
+  if (!def?.role || !(SHIP_ROLE_KEYS as readonly string[]).includes(def.role)) return role === 'other'
   const actual = shipCategoryKeyOf(def ?? {})
   if (role === 'other') return !(SHIP_ROLE_KEYS as readonly string[]).includes(actual)
   return actual === role

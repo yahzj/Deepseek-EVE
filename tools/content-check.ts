@@ -95,6 +95,7 @@ import { moduleShortEffect } from '../apps/desktop/src/renderer/src/ui/shipInfo'
 //   正是这类体检该盯的漏洞（同 `moduleShortEffect` 的理由：`apps/desktop` 没有测试运行器）。
 import {
   MODULE_SUBS,
+  MARKET_DOMAIN_TABS,
   RACK_SUBS,
   SUPPORT_MODULE_KEYS,
   itemBucketPasses,
@@ -2031,30 +2032,21 @@ for (const m of MODULES) {
     const subPath = 'apps/desktop/src/renderer/src/ui/itemSubs.ts'
     const subSrc = stripComments(readSrc(subPath)).join('\n')
     /** `MARKET_DOMAIN_TABS` 的项：键 + 该项 `label:` 的原文 */
-    const tabsAt = subSrc.indexOf('export const MARKET_DOMAIN_TABS')
-    const tabsEnd = tabsAt < 0 ? -1 : subSrc.indexOf('\n]', tabsAt)
-    const tabsSeg = tabsAt < 0 || tabsEnd < 0 ? '' : subSrc.slice(tabsAt, tabsEnd + 2)
-    const tabEntries = [...tabsSeg.matchAll(/key:\s*'([\w-]+)',\s*label:\s*([^\n]+?)\s*\}/g)].map((m) => ({
-      key: m[1],
-      raw: m[2],
-    }))
-    const tabKeys = tabEntries.map((e) => e.key)
+    const tabKeys = MARKET_DOMAIN_TABS.map((e) => e.key)
     /** 某一档的中文名：`tr('id')` 按唯一表的 zh 还原；`RACK_LABELS.x` 这类引用返回 null（另有归属档契约管） */
     const tabLabelZh = (key: string): string | null => {
-      const e = tabEntries.find((x) => x.key === key)
+      const e = MARKET_DOMAIN_TABS.find((x) => x.key === key)
       if (e === undefined) return null
-      const m = /tr\(\s*['"]([\w.]+)['"]\s*\)/.exec(e.raw)
-      return m ? (L10N[m[1]]?.zh ?? null) : null
+      return e.id ? (L10N[e.id]?.zh ?? null) : e.label
     }
     check(tabKeys.length > 0, `市场类型契约：${subPath} 的 \`MARKET_DOMAIN_TABS\` 一项都读不出来（一级领域单点丢了）`)
     check(
       tabKeys[0] === 'domain-item' && tabKeys[1] === 'domain-ship',
-      `市场类型契约：领域顺序不是「物品 / 舰船」（实取：` +
-        `实取：${tabKeys.slice(0, 4).join(', ')}）`,
+      `市场类型契约：领域顺序不是「物品 / 舰船」（实取：${tabKeys.slice(0, 4).join(', ')}）`,
     )
     check(
-      tabLabelZh('domain-item') === '货物',
-      `市场类型契约：\`MARKET_DOMAIN_TABS\` 的物品领域文案不是「货物」（实取：${tabLabelZh('domain-item') ?? '取不到'}）`,
+      tabLabelZh('domain-item') === '物品',
+      `市场类型契约：物品领域文案不是「物品」（实取：${tabLabelZh('domain-item') ?? '取不到'}）`,
     )
     check(
       tabLabelZh('domain-ship') === '舰船',

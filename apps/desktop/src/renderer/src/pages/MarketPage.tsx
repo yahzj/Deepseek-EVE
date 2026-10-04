@@ -29,10 +29,10 @@ import { fmtDuration, fmtInt } from '../i18n/fmt'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { MarkStar, pinMarked } from '../ui/marks'
-import { SUB_ALL, DOMAIN_ALL, DOMAIN_ITEM, DOMAIN_SHIP, ITEM_DOMAIN_SUBS, SHIP_DOMAIN_SUBS, MARKET_DOMAIN_TABS, marketDomainPasses, subText, rackDimKeyOf } from '../ui/itemSubs'
+import { SUB_ALL, DOMAIN_ALL, DOMAIN_ITEM, DOMAIN_SHIP, ITEM_DOMAIN_SUBS, SHIP_DOMAIN_SUBS, MARKET_DOMAIN_TABS, SUBS_OF_KIND, SHIP_TIER_SUBS, RACK_SUBS, rackDimKeyOf, rackPasses, marketDomainPasses, subText } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 import { tr, cmdText } from '../i18n/locale'
-import { kindTextOfItem } from '../ui/labelsText'
+import { kindTextOfItem, rackText } from '../ui/labelsText'
 
 /**
  * 一级领域的中文名 —— **改读单点表 `MARKET_DOMAIN_TABS`**。
@@ -51,7 +51,6 @@ import { kindTextOfItem } from '../ui/labelsText'
  * ⚠ 原先那句「这只是市场下拉的显示名，导航页「物品」与手册「物品图鉴」走各自的单点，未随本改」
  * **已随本批作废**——那三处现在读同一张表了。
  */
-const DOMAIN_TEXT: Record<string, string> = Object.fromEntries(MARKET_DOMAIN_TABS.map((t) => [t.key, t.label]))
 type KindFilter = typeof DOMAIN_ALL | typeof DOMAIN_ITEM | typeof DOMAIN_SHIP
 const KIND_OPTIONS: readonly KindFilter[] = [DOMAIN_ALL, ...MARKET_DOMAIN_TABS.map((t) => t.key as KindFilter)]
 const RARITY_TEXT: Record<MarketRarity, string> = { common: tr("ui.MarketPage.010"), rare: tr("ui.IndustryPage.035"), exotic: tr("ui.MarketPage.011") }
@@ -74,10 +73,9 @@ function kindTextOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef): strin
   if (it) return it.kind === 'wreck' ? tr("ui.MarketPage.009") : kindTextOfItem(it)
   if (good.kind === 'module') {
     const mod = ctx.modules.get(good.refId)
-    const rack = mod ? rackDimKeyOf(mod) : undefined
-    return rack === 'high' ? tr('ui.itemSubs.025') : rack === 'mid' ? tr('ui.itemSubs.026') : rack === 'low' ? tr('ui.itemSubs.027') : rack === 'plug' ? tr('ui.itemSubs.042') : tr('ui.MarketPage.178')
+    return mod ? rackText(rackDimKeyOf(mod)) : tr('ui.MarketPage.178')
   }
-  if (good.kind === 'ship') return DOMAIN_TEXT[DOMAIN_SHIP]
+  if (good.kind === 'ship') return tr('ui.App.002')
   if (good.kind === 'blueprint') return tr('ui.MarketPage.004')
   if (good.kind === 'aicore') return tr('ui.MarketPage.008')
   return good.kind
@@ -1326,6 +1324,10 @@ export function MarketPage({
       lastFocusSeq.current = focusSeq
       setKw(focusKey)
       setSelKey(focusKey)
+      setKind(DOMAIN_ALL)
+      setSub(SUB_ALL)
+      setDetail(SUB_ALL)
+      setRack(SUB_ALL)
       // 一次性聚焦（2026-09-08 修复）：应用后通知 App 清空，避免每次进市场都默认带出上次查看的物品
       onFocusUsed?.()
     }
@@ -1336,6 +1338,9 @@ export function MarketPage({
   // （三档商品集互不重叠——rarity 单值归属，跨档合并不会重复条目）。
   const [kind, setKind] = useState<KindFilter>(DOMAIN_ALL)
   const [sub, setSub] = useState<string>(SUB_ALL)
+  const [detail, setDetail] = useState(SUB_ALL)
+  const [rack, setRack] = useState(SUB_ALL)
+  const domainText = Object.fromEntries(MARKET_DOMAIN_TABS.map((tab) => [tab.key, subText(tab)]))
   const query = kw.trim().toLowerCase()
   const filterActive = query.length > 0 || kind !== DOMAIN_ALL
   /** **道具逐件档的档名解析器**（2026-10-02 船长令）：档名 = 那件道具自己的名字，从物品表单点取，
@@ -1356,7 +1361,28 @@ export function MarketPage({
   const changeKind = (v: KindFilter): void => {
     setKind(v)
     setSub(SUB_ALL)
+    setDetail(SUB_ALL)
+    setRack(SUB_ALL)
   }
+  const changeCategory = (v: string): void => {
+    setSub(v)
+    setDetail(SUB_ALL)
+    setRack(SUB_ALL)
+  }
+  const rackOptions = kind === DOMAIN_ITEM && sub === 'module'
+    ? RACK_SUBS.filter((s) => goods.some((g) => marketDomainPasses(engine.ctx, g, kind, sub) && rackPasses(engine.ctx, g.refId, s.key)))
+    : []
+  const details = sub !== SUB_ALL ? (kind === DOMAIN_SHIP ? SHIP_TIER_SUBS : SUBS_OF_KIND[sub] ?? []) : []
+  const detailOptions = details.filter((s) => s.key === 'learned' || s.key === 'unlearned' ||
+    goods.some((g) => marketDomainPasses(engine.ctx, g, kind, sub, engine.state, s.key, rack)))
+  const detailMissing = detail !== SUB_ALL && !detailOptions.some((s) => s.key === detail)
+  const subMissing = sub !== SUB_ALL && !kindSubs?.some((s) => s.key === sub)
+  const rackMissing = rack !== SUB_ALL && !rackOptions.some((s) => s.key === rack)
+  useEffect(() => {
+    if (subMissing) { setSub(SUB_ALL); setDetail(SUB_ALL); setRack(SUB_ALL) }
+    if (detailMissing) setDetail(SUB_ALL)
+    if (rackMissing) { setRack(SUB_ALL); setDetail(SUB_ALL) }
+  }, [subMissing, detailMissing, rackMissing])
   /** 「我的挂单」行内跳转：按该商品搜索（跨栏合并显示）并打开行情详情（2026-09-08 船长定） */
   const jumpToOrder = (goodKey: string): void => {
     setKw(goodKey)
@@ -1382,7 +1408,7 @@ export function MarketPage({
       stockedFirst(
         engine,
         goods.filter((good) => {
-          if (kind !== DOMAIN_ALL && !domainPasses(engine.ctx, good, kind, sub)) return false
+          if (!marketDomainPasses(engine.ctx, good, kind, sub, engine.state, detail, rack)) return false
           if (query.length > 0) {
             const name = goodDisplayName(engine.ctx, good.key).toLowerCase()
             if (!name.includes(query) && !good.key.toLowerCase().includes(query)) return false
@@ -1390,7 +1416,7 @@ export function MarketPage({
           return true
         }),
       ),
-    [goods, engine, kind, sub, query, engine.state.gameMs],
+    [goods, engine, kind, sub, detail, rack, query, engine.state.gameMs],
   )
 
   return (
@@ -1401,7 +1427,7 @@ export function MarketPage({
       <div className="app-mkt-split">
         <div className="app-mkt-left">
           {/* 页面级全局搜索栏：同时检索常驻 + 稀有 + 限定奇货（三档商品不重叠） */}
-          <div className="app-mkt-search">
+          <div className="app-mkt-search app-fleet-row">
             <input
               className="app-mkt-search-input"
               type="search"
@@ -1413,7 +1439,7 @@ export function MarketPage({
               <option value={DOMAIN_ALL}>{tr("ui.MarketPage.099")}</option>
               {KIND_OPTIONS.filter((k) => k !== DOMAIN_ALL).map((k) => (
                 <option key={k} value={k}>
-                  {DOMAIN_TEXT[k]}
+                  {domainText[k]}
                 </option>
               ))}
             </select>
@@ -1421,10 +1447,10 @@ export function MarketPage({
               <select
                 className="app-mkt-kind"
                 value={sub}
-                onChange={(e) => setSub(e.target.value)}
-                title={tr("ui.MarketPage.169", { p1: DOMAIN_TEXT[kind] })}
+                onChange={(e) => changeCategory(e.target.value)}
+                title={tr("ui.MarketPage.169", { p1: domainText[kind] })}
               >
-                <option value={SUB_ALL}>{tr("ui.IndustryPage.001")}{DOMAIN_TEXT[kind]}</option>
+                <option value={SUB_ALL}>{tr("ui.IndustryPage.001")}{domainText[kind]}</option>
                 {kindSubs.map((s) => (
                   <option key={s.key} value={s.key}>
                     {/* 消耗品桶里有「道具逐件档」（档名 = 那件道具自己的名字）⇒ 第二参数给物品名解析器 */}
@@ -1434,6 +1460,16 @@ export function MarketPage({
               </select>
             ) : null}
           </div>
+          {rackOptions.length > 0 || detailOptions.length > 0 ? <div className="app-fleet-row">
+            {rackOptions.length > 0 ? <select className="app-mkt-kind" value={rack} title={tr('ui.ItemsPage.021')} onChange={(e) => { setRack(e.target.value); setDetail(SUB_ALL) }}>
+              <option value={SUB_ALL}>{tr('ui.IndustryPage.001')}</option>
+              {rackOptions.map((s) => <option key={s.key} value={s.key}>{subText(s)}</option>)}
+            </select> : null}
+            {detailOptions.length > 0 ? <select className="app-mkt-kind" value={detail} title={tr('ui.Handbook.252')} onChange={(e) => setDetail(e.target.value)}>
+              <option value={SUB_ALL}>{tr('ui.IndustryPage.001')}</option>
+              {detailOptions.map((s) => <option key={s.key} value={s.key}>{subText(s, itemNameOf)}</option>)}
+            </select> : null}
+          </div> : null}
 
           {filterActive ? (
             /* ── 搜索/过滤激活：跨档合并结果（常驻 + 稀有 + 限定奇货一次搜全；GoodRow 自带稀有度徽标区分） ── */
@@ -1442,7 +1478,7 @@ export function MarketPage({
               title={
                 query.length > 0
                   ? tr("ui.MarketPage.170", { p1: kw.trim() })
-                  : `全部 ${DOMAIN_TEXT[kind] ?? kind}${
+                  : `${tr('ui.IndustryPage.001')} ${domainText[kind] ?? ''}${
                       sub !== SUB_ALL && kindSubs ? ` · ${subText(kindSubs.find((s) => s.key === sub) ?? { key: sub, label: sub }, itemNameOf)}` : ''
                     }`
               }

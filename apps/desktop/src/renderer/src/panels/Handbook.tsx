@@ -1075,7 +1075,7 @@ export function Handbook({
   function groupKeyOf(c: GridCell): string {
     if (c.tab === 'items') return itemCategoryOf({ kind: String(c.raw.kind ?? '') })
     if (c.tab === 'modules') return moduleSubKeyOf(String(c.raw.slot ?? ''), String(c.raw.id ?? ''))
-    if (c.tab === 'ships') return String(c.glyph) // 舰船类别键（`shipCategoryKeyOf` 的产物；见 shipCells）
+    if (c.tab === 'ships') return SHIP_DOMAIN_SUBS.find((s) => shipRolePasses(engine.ctx.ships.get(c.key), s.key))?.key ?? 'other'
     if (c.tab === 'blueprints') {
       // 2026-09-10 船长：装备蓝图按**产物模块的槽类**分高/中/低档（与市场页子分类同源单点）
       // 2026-09-11 船长：「舰船部分按舰船级别划分」——舰船蓝图由 1 组拆成 T1~T5 五组（键 t<级别>，同表）

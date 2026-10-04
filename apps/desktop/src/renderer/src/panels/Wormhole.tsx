@@ -1502,7 +1502,7 @@ export function WormholePanel({
                     >
                       {tr("ui.IndustryPage.001")}
                     </button>
-                    {SHIP_DOMAIN_SUBS.map((s) => (
+                    {SHIP_DOMAIN_SUBS.filter((s) => whEntries.some((e) => shipRolePasses(e.def, s.key))).map((s) => (
                       <button
                         key={s.key}
                         role="tab"

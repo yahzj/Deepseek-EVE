@@ -19,6 +19,8 @@ import { RedeemFragmentButton } from '../ui/fragmentRedeem'
 import {
   ITEM_DOMAIN_SUBS,
   MODULE_SUBS,
+  RACK_SUBS,
+  rackPasses,
   itemCategoryOf,
   SUBS_OF_KIND,
   SUB_ALL,
@@ -59,6 +61,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
      已删**：归属档进了**一级**、二级直接是功能分组，与市场两个下拉的层级一致。 */
   const [wareKind, setWareKind] = useState<string>('all') // 一级「分类」：'all' = 全部（2026-09-19 基线②：一级选择器用 'all'，下级维度才用 SUB_ALL）
   const [wareSub, setWareSub] = useState<string>(SUB_ALL)
+  const [wareRack, setWareRack] = useState(SUB_ALL)
   /**
    * 一级筛选中（分类 / 装备）。
    * ⚠ 键口径（2026-09-19 基线②）：**一级选择器的"全部" = `'all'`**，`SUB_ALL` 只留给下级维度。
@@ -123,7 +126,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
     if (options === undefined) return null
     const pool = wareKind === 'module' ? modRows : rows
     return {
-      options: presentSubs(options, (key) => pool.some(([id]) => itemSubPasses(engine.ctx, id, wareKind, key))),
+      options: presentSubs(options, (key) => pool.some(([id]) => itemBucketPasses(engine.ctx, id, wareKind) &&
+        (wareKind !== 'module' || rackPasses(engine.ctx, id, wareRack)) && itemSubPasses(engine.ctx, id, wareKind, key))),
       label: wareKind === 'module' ? tr('ui.ItemsPage.048') : wareKind === 'item' ? tr('ui.ItemsPage.059') : tr('ui.ItemsPage.023'),
     }
   })()
@@ -133,9 +137,14 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
    * 故与蓝图书架同一口径（2026-09-19）：选择不在候选里 ⇒ 回落「全部」；二级回落时三级一并回落。
    */
   const subMissing = subDim !== null && wareSub !== SUB_ALL && !subDim.options.some((s) => s.key === wareSub)
+  const kindMissing = kindPicked && !wareKindTabs.some((s) => s.key === wareKind)
   useEffect(() => {
+    if (kindMissing) { setWareKind('all'); setWareSub(SUB_ALL); setWareRack(SUB_ALL) }
     if (subMissing) setWareSub(SUB_ALL)
-  }, [subMissing])
+  }, [kindMissing, subMissing])
+  const rackOptions = wareKind === 'module' ? presentSubs(RACK_SUBS, (key) => modRows.some(([id]) => rackPasses(engine.ctx, id, key))) : []
+  const rackMissing = wareRack !== SUB_ALL && !rackOptions.some((s) => s.key === wareRack)
+  useEffect(() => { if (rackMissing) { setWareRack(SUB_ALL); setWareSub(SUB_ALL) } }, [rackMissing])
   /**
    * 维度的判定一律走**唯一入口**（甲组·判定单点）：一级 `itemBucketPasses` · 二级 `itemSubPasses`；
    * 页面**不自写任何判定**。
@@ -150,12 +159,13 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   }
   const dimHit = (id: string): boolean => {
     if (!itemBucketPasses(engine.ctx, id, wareKind)) return false
+    if (wareKind === 'module' && !rackPasses(engine.ctx, id, wareRack)) return false
     if (!subHit(id)) return false
     return true
   }
   const itemHits = rows.filter(([id]) => hitItem(id) && dimHit(id))
   const modHits = showMods ? modRows.filter(([id]) => hitMod(id) && dimHit(id)) : []
-  const otherRows = rows.filter(([id]) => itemCategoryOf(engine.ctx.items.get(id)) === 'other' && hitItem(id) && dimHit(id))
+  const itemKinds = [...ITEM_KIND_ORDER, 'other']
   const hitTotal = itemHits.length + modHits.length
   /** 搜索或筛选任一生效（标题计数与空态文案据此换措辞） */
   const wareNarrowed = wq.length > 0 || kindPicked || wareSub !== SUB_ALL
@@ -330,6 +340,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               onClick={() => {
                 setWareKind('all')
                 setWareSub(SUB_ALL)
+                setWareRack(SUB_ALL)
               }}
             >
               {tr("ui.IndustryPage.001")}
@@ -343,6 +354,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 onClick={() => {
                   setWareKind(tab.key)
                   setWareSub(SUB_ALL)
+                  setWareRack(SUB_ALL)
                 }}
               >
                 {subText(tab)}
@@ -350,6 +362,13 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             ))}
           </div>
         </div>
+        {rackOptions.length > 0 ? <div className="app-fleet-row">
+          <span className="app-dim">{tr('ui.ItemsPage.021')}</span>
+          <select className="app-mkt-kind" value={wareRack} onChange={(e) => { setWareRack(e.target.value); setWareSub(SUB_ALL) }}>
+            <option value={SUB_ALL}>{tr('ui.IndustryPage.001')}</option>
+            {rackOptions.map((s) => <option key={s.key} value={s.key}>{subText(s)}</option>)}
+          </select>
+        </div> : null}
         {subDim ? (
           <div className="app-fleet-row">
             <span className="app-dim">{subDim.label}{tr('ui.ItemsPage.046')}</span>
@@ -393,16 +412,16 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       ) : null}
       {mode === 'list' ? (
         <>
-      {ITEM_KIND_ORDER.map((kind) => {
+      {itemKinds.map((kind) => {
         // 一级筛选：选了某一档就只渲染属于该物品领域分类的大类；装备库单独渲染。
-        const kindRows = rows.filter(([id]) => (wareKind === 'all' || itemCategoryOf(engine.ctx.items.get(id)) === wareKind) && engine.ctx.items.get(id)?.kind === kind && hitItem(id) && dimHit(id))
+        const kindRows = itemHits.filter(([id]) => kind === 'other' ? itemCategoryOf(engine.ctx.items.get(id)) === 'other' : engine.ctx.items.get(id)?.kind === kind)
         // 矿石/矿物面板常驻（引导文案有教学作用），其余分类空时不显示；搜索/筛选时任一空类都隐藏
         if (kindRows.length === 0 && (kind !== 'ore' && kind !== 'mineral' || wareNarrowed)) return null
         const extra = kindExtraNote(kind)
         return (
           <Panel
             key={kind}
-            title={`${kindText(kind)}`}
+            title={kind === 'other' ? tr('ui.hud.137') : kindText(kind as Parameters<typeof kindText>[0])}
             hint={extra ? <HintIcon tip={extra} /> : undefined}
             right={<span className="app-dim">{tr('ui.CargoPage.009', { n: kindRows.length })}</span>}
           >
@@ -526,18 +545,6 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
         )
       })}
 
-      {otherRows.length > 0 ? (
-        <Panel key="other" title={subText(ITEM_DOMAIN_SUBS.find((s) => s.key === 'other')!)} right={<span className="app-dim">{tr('ui.CargoPage.009', { n: otherRows.length })}</span>}>
-          <ul className="app-inv-list">
-            {otherRows.map(([id, units]) => {
-              const def = engine.ctx.items.get(id)
-              if (!def) return null
-              return <ItemHover key={id} as="li" item={def} nameOf={(pid) => engine.ctx.items.get(pid)?.name} className="app-inv-row"><div className="app-inv-main"><span className="app-inv-name"><RowGlyph glyph={itemGlyphName(id, def.kind)} tone={inventoryItemTone(id, def.kind)} /> {def.name}</span><span className="app-inv-count">×{units.toLocaleString('zh-CN')}</span></div></ItemHover>
-            })}
-          </ul>
-        </Panel>
-      ) : null}
-
       {/* 装备库（2026-09-13 筛选：选了某个物品大类时整块不显示；计数随槽类二级筛选收窄） */}
       {showMods ? (
       <Panel
@@ -607,9 +614,9 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
         </>
       ) : (
         <>
-          {ITEM_KIND_ORDER.map((kind) => {
+          {itemKinds.map((kind) => {
             // 一级筛选：选了某一档就只渲染属于该物品领域分类的大类；装备库单独渲染。
-            const kindRows2 = rows.filter(([id]) => (wareKind === 'all' || itemCategoryOf(engine.ctx.items.get(id)) === wareKind) && engine.ctx.items.get(id)?.kind === kind && hitItem(id) && dimHit(id))
+            const kindRows2 = itemHits.filter(([id]) => kind === 'other' ? itemCategoryOf(engine.ctx.items.get(id)) === 'other' : engine.ctx.items.get(id)?.kind === kind)
             if (kindRows2.length === 0 && (kind !== 'ore' && kind !== 'mineral' || wareNarrowed)) return null
             const cells: ItemGridCell[] = kindRows2.map(([id, units]) => {
               const def = engine.ctx.items.get(id)
@@ -634,7 +641,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
             return (
               <Panel
                 key={kind}
-                title={`${kindText(kind)}`}
+                title={kind === 'other' ? tr('ui.hud.137') : kindText(kind as Parameters<typeof kindText>[0])}
                 hint={extra2 ? <HintIcon tip={extra2} /> : undefined}
                 right={<span className="app-dim">{tr('ui.CargoPage.009', { n: kindRows2.length })}</span>}
               >
@@ -646,26 +653,6 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               </Panel>
             )
           })}
-          {otherRows.length > 0 ? (
-            <Panel key="other" title={subText(ITEM_DOMAIN_SUBS.find((s) => s.key === 'other')!)} right={<span className="app-dim">{tr('ui.CargoPage.009', { n: otherRows.length })}</span>}>
-              <ItemGlyphGrid
-                cells={otherRows.map(([id, units]) => {
-                  const def = engine.ctx.items.get(id)
-                  return {
-                    key: id,
-                    glyph: itemGlyphName(def?.id ?? id, def?.kind ?? 'item'),
-                    name: def?.name ?? id,
-                    sub: `×${units.toLocaleString('zh-CN')} · ${m3(units * (def?.unitM3 ?? 1))}`,
-                    title: def?.description,
-                    hover: def ? itemHoverContent(def, (pid) => engine.ctx.items.get(pid)?.name) : undefined,
-                    tone: inventoryItemTone(id, def?.kind ?? 'item'),
-                    rarity: itemRarityTierOf(id),
-                  }
-                })}
-                onPick={(key) => setPickItem(key)}
-              />
-            </Panel>
-          ) : null}
           {showMods ? (
           <Panel
             title={tr("ui.ItemsPage.028")}

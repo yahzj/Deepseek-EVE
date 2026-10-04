@@ -34,7 +34,7 @@ import { useL10n, cmdText } from '../i18n/locale'
 import { crestFamOf, slotText } from '../ui/labelsText'
 import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
-import { ITEM_CARGO_SUBS, itemCategoryOf, subText } from '../ui/itemSubs'
+import { ITEM_DOMAIN_SUBS, ITEM_CARGO_SUBS, SUBS_OF_KIND, SUB_ALL, itemBucketPasses, itemSubPasses, itemCategoryOf, subText, presentSubs } from '../ui/itemSubs'
 import { tr } from '../i18n/locale'
 /* 「使用」按钮的判据 = core 的 id 常量（**单点**，不在页面里写死字面量） */
 import { INVASION_BEACON_ITEM_ID, SYNAPTIC_ACCELERANT_ITEM_ID } from '@whale/core'
@@ -96,7 +96,19 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
   const haulOcc = isPiloted && state.hauling.active ? haulingOccupiedM3(state, engine.ctx) : 0
   // 2026-09-18 快递改虚拟货物：在途快递按体积占用货舱（与长途运输同款语义）
   const courierOcc = isPiloted ? courierOccupiedM3(state) : 0
-  const rows = Object.entries(cargo).filter(([, n]) => n > 0)
+  const allRows = Object.entries(cargo).filter(([, n]) => n > 0)
+  const [category, setCategory] = useState('all')
+  const [sub, setSub] = useState(SUB_ALL)
+  const categories = presentSubs(ITEM_DOMAIN_SUBS, (key) => allRows.some(([id]) => itemBucketPasses(engine.ctx, id, key)))
+  const subs = presentSubs(SUBS_OF_KIND[category] ?? [], (key) => allRows.some(([id]) =>
+    itemBucketPasses(engine.ctx, id, category) && itemSubPasses(engine.ctx, id, category, key)))
+  const categoryMissing = category !== 'all' && !categories.some((s) => s.key === category)
+  const subMissing = sub !== SUB_ALL && !subs.some((s) => s.key === sub)
+  useEffect(() => {
+    if (categoryMissing) { setCategory('all'); setSub(SUB_ALL) }
+    if (subMissing) setSub(SUB_ALL)
+  }, [categoryMissing, subMissing])
+  const rows = allRows.filter(([id]) => itemBucketPasses(engine.ctx, id, category) && itemSubPasses(engine.ctx, id, category, sub))
   // 2026-09-09（船长口径 A）：装备（模块）也可入货仓携带——单列「船载」组；按 1 m³/件 计入货舱
   const modRows = rows.filter(([id]) => engine.ctx.modules.get(id) !== undefined)
 
@@ -251,7 +263,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
             </div>
           ) : null}
           {isPiloted ? (
-            <button className="app-btn is-primary is-small" onClick={handleUnloadAll} disabled={rows.length === 0}>
+            <button className="app-btn is-primary is-small" onClick={handleUnloadAll} disabled={allRows.length === 0}>
               {tr("ui.CargoPage.037")}
             </button>
           ) : busy === null ? (
@@ -259,7 +271,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
             <button
               className="app-btn is-small"
               onClick={() => handleUnloadShip(targetId)}
-              disabled={rows.length === 0}
+              disabled={allRows.length === 0}
               title={t('ui.CargoPage.018')}
             >
               {t('ui.CargoPage.037')}
@@ -269,12 +281,25 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
       </Panel>
 
       <ItemViewBar mode={view} onChange={setView} />
+      <div className="app-fleet-toolbar">
+        <div className="app-fleet-row">
+          <span className="app-dim">{tr('ui.ItemsPage.021')}</span>
+          <select className="app-mkt-kind" value={category} onChange={(e) => { setCategory(e.target.value); setSub(SUB_ALL) }}>
+            <option value="all">{tr('ui.IndustryPage.001')}</option>
+            {categories.map((s) => <option key={s.key} value={s.key}>{subText(s)}</option>)}
+          </select>
+          {subs.length > 0 ? <select className="app-mkt-kind" value={sub} title={tr('ui.Handbook.252')} onChange={(e) => setSub(e.target.value)}>
+            <option value={SUB_ALL}>{tr('ui.IndustryPage.001')}</option>
+            {subs.map((s) => <option key={s.key} value={s.key}>{subText(s, (id) => engine.ctx.items.get(id)?.name)}</option>)}
+          </select> : null}
+        </div>
+      </div>
       {view === 'list' ? (
         <>
       {ITEM_CARGO_SUBS.map((tab) => {
-        const kindRows = rows.filter(([id]) => itemCategoryOf(engine.ctx.items.get(id)) === tab.key)
+        const kindRows = rows.filter(([id]) => !engine.ctx.modules.has(id) && itemCategoryOf(engine.ctx.items.get(id)) === tab.key)
         // 「货物」面板常驻（引导开采），其余分类空时不显示
-        if (kindRows.length === 0 && tab.key !== 'item') return null
+        if (kindRows.length === 0 && (tab.key !== 'item' || category !== 'all')) return null
         const emptyText =
           tab.key === 'item' && !isPiloted
             ? t('ui.CargoPage.017', { ship: targetName })
@@ -443,7 +468,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
             <div className="app-dim app-inv-empty">{tr("ui.CargoPage.049")}</div>
           ) : (
             ITEM_CARGO_SUBS.map((tab) => {
-              const kindRows = rows.filter(([id]) => itemCategoryOf(engine.ctx.items.get(id)) === tab.key)
+              const kindRows = rows.filter(([id]) => !engine.ctx.modules.has(id) && itemCategoryOf(engine.ctx.items.get(id)) === tab.key)
               if (kindRows.length === 0) return null
               const cells: ItemGridCell[] = kindRows.map(([id, units]) => {
                 const def = engine.ctx.items.get(id)
