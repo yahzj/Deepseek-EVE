@@ -271,8 +271,7 @@ export function advanceGame(
   advanceEvents(state, d, ctx, opts?.offline === true)
   // 市场按窗口推进（离线大推进同样覆盖：订单过期/池回归/内部消化/补单/挂单撮合）
   advanceMarket(state, d, ctx)
-  // 任务中心·时效任务（v24）：资源/快递 = 与市场「补给刷新」周期（orderLifeMs.common，20 分钟）
-  // 同节奏整板刷新（须在市场窗口推进后执行，让市场影响作用于刷新后的现行簿面）；
+  // 任务中心：资源20分钟、快递120分钟分批刷新；在市场推进后执行，让资源影响作用于当前簿面。
   // 赏金 = 独立日板，24 小时一轮、每天本地 0 点整板替换（按 nowWallMs 墙钟对齐）；
   // **派系活跃 = 每天本地 12:00 换新**（2026-09-29 船长令：切换时间 24 时 → 12 时，只挪活跃）。
   // 离线大步长只按末窗结算一次（见 sideTasks.advanceSideTasks）

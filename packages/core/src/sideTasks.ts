@@ -189,12 +189,12 @@ function boardPeriodMs(ctx: SimContext): number {
  *
  * 口径：**资源任务**继续跟市场「补给刷新」节奏（`boardPeriodMs`，20 分钟、按市场整点对齐）；
  * **快递任务**每 **120 分钟**重掷一批、且**存活恰好 120 分钟**（到点即换下一批 ⇒ 整齐一批）。
- * 因为 120 = 20 × 6 ⇒ "要不要在这一窗重掷快递"只需看**窗界是不是 120 分钟的整数倍**（`courierDueAtWindow`）。
+ * 2026-10-04：换板按独立courierWindow截止判断跨界，末资源窗不必恰好命中120分钟整点。
  */
 export const COURIER_BOARD_PERIOD_MS = 120 * 60_000
 
 /**
- * 这一窗要不要**重掷快递任务**（纯函数：既给 `refreshBoard` 调用，也让单测直接把口径钉住）。
+ * 该时刻是否120分钟整点（截止计算用；换板另判是否跨过截止）。
  *
  * 判据：窗界 `windowMs`（= 上一个市场整点）是 `COURIER_BOARD_PERIOD_MS` 的整数倍 ⇒ 到点。
  * ⚠ 窗界 0（未开盘）不算到点 —— 首个快递批次由"开盘后的第一个 120 分钟整点"给出
@@ -509,20 +509,11 @@ export function refundSpawnShock(state: GameState, goodKey: string): void {
  * boundaryMs = 本次刷出的 20 分钟整点（= 该轮任务起点；下一 20 分钟整点 boundaryMs + 周期
  * 到点时整板替换）。在途投送（deliver）与已接单（accepted）都不被整板清掉。
  */
-function refreshBoard(state: GameState, ctx: SimContext, boundaryMs: number): void {
+function refreshBoard(state: GameState, ctx: SimContext, boundaryMs: number, courierDue: boolean, courierBoundaryMs: number): void {
   const board = state.sideTasks
   board.window = boundaryMs
-  /**
-   * **快递任务：只有到 120 分钟的整点窗才重掷**（**2026-09-24 船长令**：「快递任务的周期和持续时间都为
-   * 120 分钟，资源任务不变」）。于是：资源族每 20 分钟整板换；快递族**原样保留**到下一个 120 分钟整点
-   * （= 存活恰好 120 分钟，到点与下一批同时换 ⇒ 整齐一批）。
-   * ⚠ 板子还没开过（快递族为空）时即使未到点也要生成，否则玩家开局要等满两小时才见到第一张快递。
-   */
-  const courierDue = courierDueAtWindow(boundaryMs) || (board.courier ?? []).length === 0
   board.resource = []
-  if (courierDue) board.courier = []
   const pool = sideTaskCandidateGoods(state, ctx)
-  if (pool.length <= 0) return
 
   const counts = taskCountsFor(state, ctx)
   const levels = rollLevels(state, Math.max(counts.resource, counts.courier))
@@ -540,12 +531,25 @@ function refreshBoard(state: GameState, ctx: SimContext, boundaryMs: number): vo
     board.resource.push({ id: board.seq, kind: 'resource', goodKey: def.key, refId: def.refId, need, rewardIsk, level })
   }
 
-  // ── 快递任务：虚拟货物（只有体积），每单独立掷「普通 / 限时」──
-  // ⚠ 只在**到 120 分钟整点**（或板子还没开过）时重掷：其余窗保留上一批（存活 120 分钟）
-  const courierTargets = courierDue ? builtStationTargets(state, ctx) : []
+  if (courierDue) refreshCourierBoard(state, ctx, courierBoundaryMs, levels)
+
+  for (const key of affected) {
+    const def = ctx.marketGoods.get(key)
+    if (def) applySpawnMarketImpact(state, def)
+  }
+}
+
+/** 快递是虚拟货物，不依赖资源候选池；换板不清已接单或在途挂账。 */
+function refreshCourierBoard(state: GameState, ctx: SimContext, boundaryMs: number, levels?: SideTaskLevel[]): void {
+  const board = state.sideTasks
+  board.courier = []
+  board.courierWindow = boundaryMs
+  const courierTargets = builtStationTargets(state, ctx)
   if (courierTargets.length > 0) {
-    for (let i = 0; i < counts.courier; i += 1) {
-      const level = levels[i % levels.length]!
+    const count = taskCountsFor(state, ctx).courier
+    const choices = levels ?? rollLevels(state, count)
+    for (let i = 0; i < count; i += 1) {
+      const level = choices[i % choices.length]!
       const picked = courierTargets[nextInt(state.rng, courierTargets.length)]!
       const timed = nextRandom(state.rng) < COURIER_TIMED_CHANCE
       const volumeM3 = courierVolumeFor(level, timed)
@@ -574,11 +578,6 @@ function refreshBoard(state: GameState, ctx: SimContext, boundaryMs: number): vo
         ...(warpReqAus === null ? {} : { timed: true, warpReqAus, timeLimitMs }),
       })
     }
-  }
-
-  for (const key of affected) {
-    const def = ctx.marketGoods.get(key)
-    if (def) applySpawnMarketImpact(state, def)
   }
 }
 
@@ -734,7 +733,7 @@ function advanceCourierDeliveries(state: GameState, ctx: SimContext): void {
 /**
  * 任务板推进（引擎在 gameMs 前移、市场窗口已推进后调用）：
  * 1) 先结算已到站的快递投送（跨过整板刷新边界的投送先结算，原任务仍在板则顺带下板）；
- * 2) 本板周期 = orderLifeMs.common（20 分钟）。仅当市场已越过下一个 20 分钟整点
+ * 2) 资源板周期 = orderLifeMs.common（20 分钟）。仅当市场已越过下一个 20 分钟整点
  *    （state.market.lastTickGameMs ≥ board.window + 周期）才执行一次刷新。
  * 离线大步长只结算一次：跨过 N 个周期时 window 一次性推进到"最后一个已越过的整点"、
  * 只在那一点刷一次（中间周期只推进窗口号、不重复扣量/抬价；船长 2026-09-05 拍板取
@@ -742,7 +741,7 @@ function advanceCourierDeliveries(state: GameState, ctx: SimContext): void {
  */
 /**
  * 引擎推进：时效任务板。
- * - 资源/快递：市场「补给刷新」20 分钟一轮（`orderLifeMs.common`，按 gameMs 对齐）；
+ * - 资源20分钟、快递120分钟：各自记录批次，离线跨界只生成最后一批，不逐批补刷；
  * - 赏金：**独立日板**（2026-09-10 船长定）——24 小时一轮、**每天本地 0 点整板替换**，
  *   按**现实墙钟**对齐（`nowWallMs`），与 20 分钟板互不影响；
  * - 派系活跃：**每天本地 12:00 换新**（**2026-09-29 船长令**：切换时间 24 时 → **12 时（中午 12 点）**；
@@ -755,10 +754,18 @@ export function advanceSideTasks(state: GameState, ctx: SimContext, nowWallMs?: 
   const board = state.sideTasks
   const period = boardPeriodMs(ctx)
   const nowBoundary = state.market.lastTickGameMs
-  if (nowBoundary < board.window + period) return
+  const resourceDue = nowBoundary >= board.window + period
   // 末个已越过的 20 分钟整点（board.window 为 0 = 未开盘，首个整点 = 开盘后第一个 20 分钟点）
-  const targetBoundary = board.window + Math.floor((nowBoundary - board.window) / period) * period
-  refreshBoard(state, ctx, targetBoundary)
+  const targetBoundary = resourceDue
+    ? board.window + Math.floor((nowBoundary - board.window) / period) * period
+    : Math.floor(nowBoundary / period) * period
+  const courierBoundary = Math.floor(nowBoundary / period) * period
+  // 2026-10-04：判断是否越过快递批次截止，而不是末窗是否恰好命中120分钟整数倍。
+  const courierDue = (resourceDue || board.window > 0) && courierBoundary > 0 &&
+    (board.courierWindow === undefined || nowBoundary >= courierDeadlineMs(board.courierWindow) ||
+      (resourceDue && board.courier.length === 0))
+  if (resourceDue) refreshBoard(state, ctx, targetBoundary, courierDue, courierBoundary)
+  else if (courierDue) refreshCourierBoard(state, ctx, courierBoundary)
 }
 
 /* ═══════════ 赏金日板（2026-09-10 船长定：24 小时一轮、每天本地 0 点整板替换） ═══════════ */
@@ -1091,7 +1098,7 @@ export function sideTaskBoard(state: GameState, ctx: SimContext, nowWallMs?: num
      * **快递本批的剩余**（到下一个 120 分钟整点）——与 `remainingMs`（资源 20 分钟）**分开报**：
      * 两族节奏不同（2026-09-24 船长令），界面各按各的倒计时显示，别再拿 20 分钟的数字套在快递头上。
      */
-    courierRemainingMs: Math.max(0, courierDeadlineMs(board.window) - state.gameMs),
+    courierRemainingMs: Math.max(0, courierDeadlineMs(board.courierWindow ?? board.window) - state.gameMs),
     bountyOpened,
     bountyRemainingMs: bountyOpened ? bountyBoardRemainingMs(now) : 0,
     /** 派系活跃的换新倒计时（本地 12:00；与上一条各报各的，2026-09-29 船长令「只挪活跃」） */
@@ -1275,6 +1282,9 @@ export function acceptCourierTask(state: GameState, id: number): CommandResult {
   if (idx < 0) {
     return { ok: false, error: '该任务已不存在——可能已完成，或已随整板刷新被替换。', errorId: 'core.sideTasks.002' }
   }
+  if (state.gameMs >= courierDeadlineMs(board.courierWindow ?? board.window)) {
+    return { ok: false, error: '该任务已到期——新一批任务即将刷新。', errorId: 'core.sideTasks.003' }
+  }
   const accepted = (board.accepted ??= [])
   if (accepted.length >= COURIER_ACCEPT_MAX) {
     return {
@@ -1343,7 +1353,7 @@ export function startCourierDelivery(state: GameState, ctx: SimContext, id: numb
    * 任务共用 `boardPeriodMs`（20 分钟）——快递批次实际存活 120 分钟，于是**抽到手超过 20 分钟的单子
    * 会被判"已到期"拒发**（板上明明还挂着）。现按快递自己的到期时刻 `courierDeadlineMs` 判。
    */
-  if (!found.accepted && state.gameMs >= courierDeadlineMs(board.window)) {
+  if (!found.accepted && state.gameMs >= courierDeadlineMs(board.courierWindow ?? board.window)) {
     return {
       ok: false,
       error: '该任务已到期——新一批任务即将刷新（可先「接单」保住它）。',

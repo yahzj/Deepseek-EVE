@@ -3204,13 +3204,15 @@ export interface CourierDeliveryState {
 export interface SideTasksState {
   /** 任务 id 自增分配器（新任务取用后 +1；读档兜底 ≥ 现存任务最大 id +1） */
   seq: number
-  /** 本板任务所属轮次的起点整点（游戏内毫秒 = 20 分钟格点；0 = 未开盘）；
+  /** 资源板任务所属轮次的起点整点（游戏内毫秒 = 20 分钟格点；0 = 未开盘）；
    *  下一 20 分钟整点 window + orderLifeMs.common 到点时整板过期替换 */
   window: number
   /** 资源任务（当前轮；条数 = 4 ＋ 每建成一座副站 +2，见 `sideTasks.ts`） */
   resource: SideTask[]
   /** 快递任务（当前轮；副站建成解锁后才刷，条数 = 4 ＋ 每建成一座副站 +2） */
   courier: SideTask[]
+  /** 快递当前批次起点（游戏毫秒）；独立于资源window，缺失时首次推进重建未接单板。 */
+  courierWindow?: number
   /**
    * **已接单的快递任务**（船长 2026-09-18：「接取的快递任务不会被刷掉」）——整板刷新**不清**本列表；
    * 上限 `COURIER_ACCEPT_MAX`（4 单）；出发投送后才离场。**老档缺省 = 无（空）**，零迁移。

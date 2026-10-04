@@ -2880,6 +2880,9 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   // 分配器兜底：不能低于现存任务最大 id（防未来刷新撞号；正常档 seq ≥ 现存最大 id，天然不动）
   for (const t of [...sideTaskResource, ...sideTaskCourier, ...sideTaskBounty]) sideTaskSeq = Math.max(sideTaskSeq, t.id)
   const sideTaskWindow = Math.max(0, Math.floor(num(stRaw.window)))
+  const courierWindowRaw = Math.floor(num(stRaw.courierWindow))
+  const courierWindow = Number.isFinite(courierWindowRaw) && courierWindowRaw > 0 && courierWindowRaw <= Math.max(0, num(src.gameMs))
+    ? courierWindowRaw : undefined
   // 赏金日界（本地 0 点墙钟毫秒；v24 兼容字段：老档缺省 0 = 未开板，首次拿到有效墙钟即开板）
   const bountyWindowRaw = Math.floor(num(stRaw.bountyWindow))
   const sideTaskBountyWindow = Number.isFinite(bountyWindowRaw) && bountyWindowRaw > 0 ? bountyWindowRaw : 0
@@ -2901,6 +2904,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     window: sideTaskWindow,
     resource: sideTaskResource,
     courier: sideTaskCourier,
+    ...(courierWindow === undefined ? {} : { courierWindow }),
     bounty: sideTaskBounty,
     faction: sideTaskFaction,
     bountyWindow: sideTaskBountyWindow,
