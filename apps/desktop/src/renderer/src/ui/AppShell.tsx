@@ -23,7 +23,7 @@
  * ⚠ 例外 = **船长点名要两版同步的读数**：顶栏「钱包 ＋ 声望」（2026-09-29 令）走共用件
  * （`standingChip()` 与 `MoneyFit`），两套布局各调一次 —— 别再往单边加。
  */
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import type { GameEngine } from '../game/engine'
 import type { ActivePromo, ActiveTuning, GameState } from '@whale/core'
 import { DSI_FACTION_ID, spendableStandingOf, standingOf } from '@whale/core'
@@ -141,6 +141,21 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
   // 导航项文案：外壳块里用的是 `t(...)`（App 里来自 useL10n）⇒ 外壳自取一份，不追加 props
   const { t } = useL10n()
   const classicNav = useClassicNavCollapse(layoutKind === 'classic', mobileLog !== null)
+  const classicNavRef = useRef<HTMLElement>(null)
+  const classicNavScrollRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const nav = classicNavRef.current, scroll = classicNavScrollRef.current
+    if (layoutKind !== 'classic' || !nav || !scroll) return
+    // 两个区域共用实际滚动条留位，避免底部开关比上方列表宽一截。
+    const update = () => {
+      const gutter = `${scroll.offsetWidth - scroll.clientWidth}px`
+      if (nav.style.getPropertyValue('--classic-nav-scrollbar') !== gutter) nav.style.setProperty('--classic-nav-scrollbar', gutter)
+    }
+    const observer = new ResizeObserver(update)
+    observer.observe(scroll)
+    update()
+    return () => observer.disconnect()
+  }, [layoutKind])
 
   return layoutKind === 'classic' ? renderClassic() : renderModern()
 
@@ -506,13 +521,8 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
           </div>
         </header>
         <div className="app-workspace">
-          <nav id="classic-navigation" className={`app-nav-side${classicNav.collapsed ? ' is-compact' : ''}`}>
-            <button className="app-btn app-classic-nav-toggle" onClick={classicNav.toggle}
-              aria-expanded={!classicNav.collapsed} aria-controls="classic-navigation"
-              aria-label={tr(classicNav.collapsed ? 'ui.App.175' : 'ui.App.174')}
-              title={tr(classicNav.collapsed ? 'ui.App.175' : 'ui.App.174')}>
-              <Glyph name={classicNav.collapsed ? 'ico-unfold' : 'ico-fold'} size={20} />
-            </button>
+          <nav ref={classicNavRef} id="classic-navigation" className={`app-nav-side${classicNav.collapsed ? ' is-compact' : ''}`}>
+            <div ref={classicNavScrollRef} className="app-classic-nav-scroll">
             {/* 舰船状态小窗：2026-09-21 起同时是**窗口最小化后的还原按钮**（见 `windowRestore`） */}
             <ShipStatusWin engine={engine} restore={windowRestore} />
             {classicNav.collapsed && windowRestore ? (
@@ -573,6 +583,15 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
                 </button>
               )
             })}
+            </div>
+            <div className="app-classic-nav-footer">
+              <button className="app-btn app-classic-nav-toggle" onClick={classicNav.toggle}
+                aria-expanded={!classicNav.collapsed} aria-controls="classic-navigation"
+                aria-label={tr(classicNav.collapsed ? 'ui.App.175' : 'ui.App.174')}
+                title={tr(classicNav.collapsed ? 'ui.App.175' : 'ui.App.174')}>
+                <Glyph name={classicNav.collapsed ? 'ico-unfold' : 'ico-fold'} size={20} />
+              </button>
+            </div>
           </nav>
           {/**
            * **主列**（`<main class="app-page-main">` 由外壳自己组合，App 只传里面的内容）：

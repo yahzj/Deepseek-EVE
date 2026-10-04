@@ -11,6 +11,7 @@
  * --actions-only 仅调试操作弹层，不能替代完整页面、桌面与活动回归。
  * 单独操作报告输出 mobile-actions-audit-20261004.json，快速报告为 mobile-quick-audit-20261004.json，不覆盖完整页面报告。
  * --sidebars-only 测旧版图标栏、桌面日志逐帧宽度与焦点、偏好隔离和活动还原，输出 classic-sidebars-audit-20261004.json。
+ * --nav-footer-only 测底部开关与上方内滚的短窗口/大字号几何，输出 classic-nav-footer-audit-20261004.json。
  * 版本自检：游戏版本 v0.1.0 · 存档结构 v31 · 最后核对 2026-10-04 · 最后跑过 2026-10-04。
  */
 import { createServer } from 'node:http'
@@ -154,7 +155,8 @@ async function main() {
   const rows=[]
   const quick = process.argv.includes('--quick')
   const actionsOnly = process.argv.includes('--actions-only')
-  const sidebarsOnly = process.argv.includes('--sidebars-only')
+  const navFooterOnly = process.argv.includes('--nav-footer-only')
+  const sidebarsOnly = process.argv.includes('--sidebars-only') || navFooterOnly
   const drawerChecks: object[] = []
   for(const locale of (actionsOnly || sidebarsOnly ? [] : quick ? ['zh'] : ['zh','en']))for(const layout of ['classic','modern'])for(const [width,height] of (quick ? [[390,844],[568,320]] : [[390,844],[844,390],[320,568],[568,320]])){
    await page.send('Emulation.setDeviceMetricsOverride',{width,height,screenWidth:width,screenHeight:height,deviceScaleFactor:1,mobile:true,screenOrientation:{type:width<height?'portraitPrimary':'landscapePrimary',angle:width<height?0:90}})
@@ -385,7 +387,7 @@ async function main() {
     await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:seed.result.identifier});
   }
   const sidebarChecks: object[]=[];
-  if(sidebarsOnly)for(const locale of ['zh','en'])for(const [width,height,mobile] of [[1280,800,false],[1024,768,false],[390,844,true],[568,320,true]] as const){
+  if(sidebarsOnly&&!navFooterOnly)for(const locale of ['zh','en'])for(const [width,height,mobile] of [[1280,800,false],[1024,768,false],[390,844,true],[568,320,true]] as const){
     await page.send('Emulation.setTouchEmulationEnabled',{enabled:mobile,maxTouchPoints:5});
     await page.send('Emulation.setDeviceMetricsOverride',{width,height,screenWidth:width,screenHeight:height,deviceScaleFactor:1,mobile,screenOrientation:{type:width<height?'portraitPrimary':'landscapePrimary',angle:width<height?0:90}});
     const s=structuredClone(state);s.fleet[s.shipId]!.fitted.high=['mod-miner-1'];
@@ -456,14 +458,77 @@ async function main() {
     await fs.mkdir(join(root,'tools/_ui-artifacts'),{recursive:true});await fs.writeFile(join(root,'tools/_ui-artifacts',`classic-sidebar-${locale}-${width}.png`),Buffer.from(shot.result.data,'base64'));
     console.log('旧版侧栏完成：'+JSON.stringify({locale,width,height,mobile}));
   }
-  const out=join(root,sidebarsOnly?'tools/_ui-artifacts/classic-sidebars-audit-20261004.json':`tools/_ui-artifacts/mobile-${actionsOnly?'actions':quick?'quick':'page'}-audit-20261004.json`);await fs.mkdir(join(root,'tools/_ui-artifacts'),{recursive:true});await fs.writeFile(out,JSON.stringify({rows,windows,drawerChecks,desktopChecks,viewportChecks,modalChecks,wormholeChecks,fitExtras,sidebarChecks},null,2),'utf8')
+  const footerChecks: object[]=[];
+  if(navFooterOnly)for(const locale of ['zh','en'])for(const [width,height,mobile,fontScale] of [[390,844,true,1],[320,568,true,1.25],[568,320,true,1.25],[1280,800,false,1],[1024,600,false,1],[1024,400,false,1],[800,300,false,1],[1024,400,false,1.25]] as const){
+    await page.send('Emulation.setTouchEmulationEnabled',{enabled:mobile,maxTouchPoints:5});
+    await page.send('Emulation.setDeviceMetricsOverride',{width,height,screenWidth:width,screenHeight:height,deviceScaleFactor:1,mobile,screenOrientation:{type:width<height?'portraitPrimary':'landscapePrimary',angle:width<height?0:90}});
+    const seed=await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('whale:idle:save',${JSON.stringify(serializeSaveFile(state,Date.now()))});localStorage.setItem('whale-idle:layout','classic');localStorage.setItem('whale-idle:locale',${JSON.stringify(locale)});localStorage.removeItem('whale-idle:classic-nav-prefs');localStorage.setItem('whale-idle:ui-fs',${JSON.stringify(String(fontScale))});`}) as {result:{identifier:string}};
+    await page.send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});await page.wait(`!!document.querySelector('.app-classic-nav-scroll')`);await sleep(300);
+    await page.js(`document.documentElement.style.setProperty('--ui-fs',${JSON.stringify(String(fontScale))})`);
+    if(fontScale>1)await page.js(`(()=>{for(const b of document.querySelectorAll('#classic-navigation .app-nav-item'))b.style.fontSize=(parseFloat(getComputedStyle(b).fontSize)*${fontScale})+'px'})()`);
+    if(height===800){
+      const before=await page.js<{height:number;padding:number;ship:number}>(`(()=>{const n=document.querySelector('#classic-navigation');return {height:n.clientHeight,padding:parseFloat(getComputedStyle(n.querySelector('[data-nav-page="ship"]')).paddingTop),ship:n.querySelector('.app-shipwin').clientHeight}})()`);
+      await page.js(`document.querySelector('.app-header').style.minHeight='280px'`);await sleep(100);
+      const squeezed=await page.js<{height:number;padding:number;ship:number}>(`(()=>{const n=document.querySelector('#classic-navigation');return {height:n.clientHeight,padding:parseFloat(getComputedStyle(n.querySelector('[data-nav-page="ship"]')).paddingTop),ship:n.querySelector('.app-shipwin').clientHeight}})()`);
+      assert(squeezed.height<before.height&&squeezed.padding<before.padding,'导航没有按实际剩余高度收紧留白');assert.equal(squeezed.ship,before.ship,'顶部占高变化压扁了舰船预览');
+      await page.js(`document.querySelector('.app-header').style.removeProperty('min-height')`);await sleep(100);
+    }
+    const checks=[];
+    for(const compact of [false,true]){
+      if(compact)await page.tap('.app-classic-nav-toggle',mobile);
+      await page.js(`(()=>{const s=document.querySelector('.app-classic-nav-scroll');s.scrollTop=0;document.querySelector('.app-nav-item[data-nav-page="ship"]').scrollIntoView({block:'nearest',behavior:'instant'})})()`);await sleep(100);
+      const initial=await page.js<{footer:number[];toggle:number[];item:number[];scroll:number[];shipH:number;navH:number;itemH:number;font:number;iconH:number}>(`(()=>{
+        const box=e=>{const r=e.getBoundingClientRect();return [r.x,r.y,r.width,r.height]};
+        const n=document.querySelector('#classic-navigation'),s=n.querySelector('.app-classic-nav-scroll'),b=n.querySelector('[data-nav-page="ship"]');
+        return {footer:box(n.querySelector('.app-classic-nav-footer')),toggle:box(n.querySelector('.app-classic-nav-toggle')),item:box(b),scroll:box(s),navH:n.clientHeight,shipH:n.querySelector('.app-shipwin').clientHeight,itemH:b.offsetHeight,font:parseFloat(getComputedStyle(b).fontSize),iconH:b.querySelector('.app-nav-icon').offsetHeight};
+      })()`);
+      // 几何以屏幕矩形验证等宽；旋转后宽对应物理高度，逻辑按钮仍以offsetHeight判不变形。
+      const axis=width<height?1:0,extent=axis+2;
+      assert(Math.abs(initial.toggle[axis]!-initial.item[axis]!)<2&&Math.abs(initial.toggle[extent]!-initial.item[extent]!)<2,'开关与导航项未对齐：'+JSON.stringify({locale,width,height,compact,initial}));
+      assert(initial.itemH>=44||(!mobile&&!compact&&initial.itemH>=initial.iconH+10),'导航项被压扁');
+      if(fontScale>1&&!compact)assert(initial.font>=(mobile?15:18),'导航字体放大未实际生效');
+      if(compact)assert.equal(initial.itemH,44);
+      if(!compact)assert(initial.shipH>0,'展开舰船预览消失');
+      if(!compact){
+        const cropped=await page.js(`(()=>{return [...document.querySelectorAll('#classic-navigation .app-nav-item')].flatMap(b=>{const e=b.querySelector('.app-nav-label'),r=e.getBoundingClientRect(),q=b.getBoundingClientRect();return e.offsetHeight<=b.clientHeight&&e.scrollWidth<=e.clientWidth+1&&r.left>=q.left-1&&r.right<=q.right+1&&r.top>=q.top-1&&r.bottom<=q.bottom+1?[]:[{label:e.textContent,rect:r.toJSON(),button:q.toJSON(),scrollWidth:e.scrollWidth,clientWidth:e.clientWidth}]})})()`);
+        assert.deepEqual(cropped,[],'展开导航有名称被裁切：'+JSON.stringify({locale,width,height,fontScale,cropped}));
+      }
+      await page.js(`(()=>{const s=document.querySelector('.app-classic-nav-scroll');s.scrollTop=s.scrollHeight})()`);await sleep(100);
+      const after=await page.js<{footer:number[];navScroll:number;scrollTop:number;scrollable:boolean;lastVisible:boolean;footerFits:boolean;toggleH:number;heldFocus:boolean}>(`(()=>{
+        const n=document.querySelector('#classic-navigation'),s=n.querySelector('.app-classic-nav-scroll'),footer=n.querySelector('.app-classic-nav-footer'),button=n.querySelector('.app-classic-nav-toggle'),last=n.querySelector('[data-nav-page="comms"]');
+        last.focus();const f=footer.getBoundingClientRect(),r=last.getBoundingClientRect(),q=s.getBoundingClientRect(),b=button.getBoundingClientRect(),v=n.getBoundingClientRect();
+        return {footer:[f.x,f.y,f.width,f.height],navScroll:n.scrollTop,scrollTop:s.scrollTop,scrollable:s.scrollHeight>s.clientHeight,lastVisible:r.left>=q.left-1&&r.right<=q.right+1&&r.top>=q.top-1&&r.bottom<=q.bottom+1,footerFits:b.left>=v.left&&b.right<=v.right+1&&b.top>=v.top&&b.bottom<=v.bottom+1,toggleH:button.offsetHeight,heldFocus:document.activeElement===last};
+      })()`);
+      assert.deepEqual(after.footer,initial.footer,'滚动移动了底部控制区');assert.equal(after.navScroll,0,'外层导航仍在滚动');assert(after.lastVisible&&after.heldFocus,'末项焦点被底栏遮挡：'+JSON.stringify({locale,width,height,compact,after}));
+      assert(after.footerFits);assert.equal(after.toggleH,44);
+      if(height<=400&&!mobile)assert(after.scrollable&&after.scrollTop>0,'短窗口必须内滚，不能压扁按钮');
+      if(!compact)assert(await page.js(`(()=>{const e=document.querySelector('[data-nav-page="comms"] .app-nav-label'),b=e.closest('button');return e.offsetHeight<=b.clientHeight&&e.scrollWidth<=e.clientWidth+1})()`),'放大后的导航文字被裁切');
+      await page.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Tab',code:'Tab',windowsVirtualKeyCode:9});
+      await page.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Tab',code:'Tab',windowsVirtualKeyCode:9});
+      assert(await page.js(`document.activeElement===document.querySelector('.app-classic-nav-toggle')`),'末项Tab没有到达底部开关');
+      await page.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Tab',code:'Tab',windowsVirtualKeyCode:9,modifiers:8});
+      await page.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Tab',code:'Tab',windowsVirtualKeyCode:9,modifiers:8});
+      assert(await page.js(`document.activeElement===document.querySelector('[data-nav-page="comms"]')`),'反向Tab没有回到末项');
+      await page.tap('.app-nav-item[data-nav-page="comms"]',mobile);await page.wait(`document.querySelector('.app-page-content')?.dataset.page==='comms'`);
+      checks.push({compact,initial,after});
+      if(!compact){
+        const shot=await page.send('Page.captureScreenshot',{format:'png'}) as {result:{data:string}};await fs.mkdir(join(root,'tools/_ui-artifacts'),{recursive:true});await fs.writeFile(join(root,'tools/_ui-artifacts',`classic-nav-footer-expanded-${locale}-${width}-${height}-${fontScale}.png`),Buffer.from(shot.result.data,'base64'));
+      }
+    }
+    // 底部开关本身不随内部滚动丢失，连续两次切换后状态应稳定。
+    await page.tap('.app-classic-nav-toggle',mobile);await page.tap('.app-classic-nav-toggle',mobile);assert(await page.js(`!!document.querySelector('#classic-navigation.is-compact')`));
+    const shot=await page.send('Page.captureScreenshot',{format:'png'}) as {result:{data:string}};await fs.mkdir(join(root,'tools/_ui-artifacts'),{recursive:true});await fs.writeFile(join(root,'tools/_ui-artifacts',`classic-nav-footer-${locale}-${width}-${height}-${fontScale}.png`),Buffer.from(shot.result.data,'base64'));
+    footerChecks.push({locale,width,height,mobile,fontScale,checks});await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:seed.result.identifier});
+    console.log('底部开关完成：'+JSON.stringify({locale,width,height,mobile,fontScale}));
+  }
+  const out=join(root,navFooterOnly?'tools/_ui-artifacts/classic-nav-footer-audit-20261004.json':sidebarsOnly?'tools/_ui-artifacts/classic-sidebars-audit-20261004.json':`tools/_ui-artifacts/mobile-${actionsOnly?'actions':quick?'quick':'page'}-audit-20261004.json`);await fs.mkdir(join(root,'tools/_ui-artifacts'),{recursive:true});await fs.writeFile(out,JSON.stringify({rows,windows,drawerChecks,desktopChecks,viewportChecks,modalChecks,wormholeChecks,fitExtras,sidebarChecks,footerChecks},null,2),'utf8')
   const narrow=rows.filter(r=>r.width===568 && r.layout==='classic' && r.view==='舰船');
   for (const row of narrow) {
     const reading = row.reading as {usableMain?:{cw:number}; count:number}
     assert((reading.usableMain?.cw??0)>=350, '手机主区仍被挤占：'+JSON.stringify(row));
     assert.equal(reading.count,0,'舰船页仍有不可滚动裁切');
   }
-  console.log(JSON.stringify({edgePid:child.pid,output:out,samples:rows.length,windows,drawerChecks,desktopChecks,viewportChecks,modalChecks,wormholeChecks,fitExtras,sidebarChecks},null,2))
+  console.log(JSON.stringify({edgePid:child.pid,output:out,samples:rows.length,windows,drawerChecks,desktopChecks,viewportChecks,modalChecks,wormholeChecks,fitExtras,sidebarChecks,footerChecks},null,2))
  }finally{ws?.close();child.kill();await new Promise<void>(r=>server.close(()=>r()));assert(resolve(profile).startsWith(resolve(tmpdir())+sep) && profile.includes('whale-mobile-audit-'));await sleep(200);await fs.rm(profile,{recursive:true,force:true}).catch(()=>console.log('隔离配置待清理：'+profile))}
 }
 main().catch(e=>{console.error(e);process.exitCode=1})
