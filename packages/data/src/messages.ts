@@ -13,6 +13,7 @@
  */
 import type { CommsMessageDef } from '@whale/core'
 import { FIRST_TASK_MESSAGES } from './firstTaskMessages'
+import { L10N } from './l10n/table'
 
 /**
  * **信息库重启（开场信）**——睁眼演出结束后送达，把「第一次」清单交代清楚。
@@ -59,11 +60,11 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'dshi',
     deptId: 'dept-nav-control',
     kind: '剧情',
-    subject: '终端接入确认：呼号已登记',
+    // ⟪文案调整 2026-10-04⟫ 船长批准试稿：管制部门只交代登记、来信与起步建议。
+    subject: L10N['ui.comms.028']!.zh,
     body: [
-      '飞行员，协会的通讯终端已经接到你这条船上。往后协会各部门的公告都会直接发到这里。',
-      '导航栏「通讯」上有未读时图标会闪，记得及时查看。',
-      '作为新人如果不知道做什么可以考虑从常驻悬赏开始接起。',
+      L10N['ui.commsWelcome.001']!.zh,
+      L10N['ui.commsWelcome.002']!.zh,
     ],
     trigger: { kind: 'start' },
     hint: { text: '想先看看这片星域长什么样？去星图认认路。', page: 'map' },
@@ -124,12 +125,13 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'salvage-guild',
     deptId: 'dept-salvage-crew',
     kind: '提示',
-    subject: '漂着的东西比你想象的多',
+    // ⟪文案调整 2026-10-04⟫ 船长批准试稿：老陈以打捞同行口吻介绍回收与货舱。
+    subject: L10N['ui.comms.033']!.zh,
     body: [
-      '飞行员，老陈一队给你留个话。',
-      '我们这帮人常年各星系转，残骸场里的东西从来不缺，缺的是愿意停船捡的人。普通残骸拆开有保底原材料，另外看运气能出装备和蓝图碎片；窝点打下来的那种稀罕货更值钱，交给回收炉能解体出整件装备。',
-      '记着一件事：残骸按体积记账。货舱塞满就自动返航，想多捡就先把货舱换大。',
-      '星图的残骸打捞页去看一眼，我们标了几处好场子。',
+      L10N['ui.commsSalvage.001']!.zh,
+      L10N['ui.commsSalvage.002']!.zh,
+      L10N['ui.commsSalvage.003']!.zh,
+      L10N['ui.commsSalvage.004']!.zh,
     ],
     trigger: { kind: 'explored', count: 6 },
     hint: { text: '星图 · 残骸打捞页有各星系的残骸存量。', page: 'map', tab: 'salvage' },
@@ -418,31 +420,25 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
    *   **门槛本身（黑市溢价现货加累计声望门槛）仍挂账不做**——船长判断当下没人达标，先不落机制。
    *   落地门槛那批时**只需实现机制**，本封文案不再动。
    *
-   * ⟪文案调整 2026-10-01⟫ **正文整篇照船长原话重写**（船长原话：「黑市发的那则通讯录，内容改为
-   * 『嘿哥们，恭喜啊，我发现你似乎获得了使用实验室的权限……回见。期待你有更好的表现。』」）。
-   * 改后与旧稿的三处差别（均照原话，未另行发挥）：① 不再点「信标 / 超频包」这两个内部绰号，改按用途描述
-   * （官方名 = 信号发射器 / 突触加速剂，见 `items.ts`）；② 不再写「细则在物品说明里」那句指向
-   * （去处交给 `hint` 的「工业页的实验室能造这两样」）；③ 段落 5 段 → **6 段** ⇒
-   * **`ui/commsText.ts` 的 `COMMS_BODY_EN` 必须同步成 6 行**（行数不符会整段回落中文）。
-   * `highlight` 两段随之换成新正文里的「违法」段与「累计声望 100」段。
+   * ⟪文案调整 2026-10-04⟫ 船长已审新稿；正文与强调段共用唯一表，英文覆盖逐段对齐。
    */
   {
     id: 'msg-lab-contraband',
     factionId: 'black-market',
     deptId: 'dept-contraband',
     kind: '提示',
-    subject: '有门生意，你先看看货',
+    // ⟪文案调整 2026-10-04⟫ 船长批准试稿，并明确违法后由协会查处、处罚玩家。
+    subject: L10N['ui.comms.076']!.zh,
     body: [
-      '嘿哥们，恭喜啊，我发现你似乎获得了使用实验室的权限。我这里有点好东西的蓝图要不要？',
-      '当然，不收钱。纯粹是我觉得你可以进行一波投资。',
-      '这两样东西一个可以加速你的技能训练，使用一次能持续一整天。',
-      '另外一个就更不得了了，是能够吸引入侵的信号发射器。不过这玩意可是违法的，你使用的时候小心点。',
-      '当你累计声望满 100 后，我这边还会给你开一些特殊服务——不过在那之前，你是找不到我的。',
-      '回见。期待你有更好的表现。',
+      L10N['ui.commsContraband.001']!.zh,
+      L10N['ui.commsContraband.002']!.zh,
+      L10N['ui.commsContraband.003']!.zh,
+      L10N['ui.commsContraband.004']!.zh,
+      L10N['ui.commsContraband.005']!.zh,
     ],
     highlight: [
-      '另外一个就更不得了了，是能够吸引入侵的信号发射器。不过这玩意可是违法的，你使用的时候小心点。',
-      '当你累计声望满 100 后，我这边还会给你开一些特殊服务——不过在那之前，你是找不到我的。',
+      L10N['ui.commsContraband.004']!.zh,
+      L10N['ui.commsContraband.005']!.zh,
     ],
     trigger: { kind: 'labOpened' },
     hint: { text: '工业页的实验室能造这两样。', page: 'industry' },

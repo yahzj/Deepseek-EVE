@@ -43,7 +43,7 @@ import { startManufacturing } from '../packages/core/src/manufacturing'
 import { buyAtMarket, learnBlueprint, placeSellOrder } from '../packages/core/src/market'
 import { startExpedition } from '../packages/core/src/expedition'
 import { enqueueSkill } from '../packages/core/src/engine'
-import { assignAiMining, buyBasicAiCore } from '../packages/core/src/ai'
+import { assignAiMining } from '../packages/core/src/ai'
 import { claimFirstTask } from '../packages/core/src/firstRewards'
 import {
   FIRST_TASKS,
@@ -317,13 +317,8 @@ step('⑧ 第一次打捞残骸（星图 · 母港残骸点）')
 okAtQueue(s, 'first-salvage', '维修判过')
 ok('换回磷虾驾驶（打捞要装在人开的那条船上）', changeShip(s, 'sandcat', ctx).ok)
 // **2026-09-22 船长 Excel**：打捞器 MK1 是**本条的起手道具**（轮到它就到手；原先挂在采矿的完成奖励上）
-/**
- * ⚠ **2026-09-22 全员补发（临时补丁 · 下次更新删除）**：引擎首拍会**无条件**给每个档发一台打捞器
- * ⇒ 走到这一步时装备库里本来就已经有 1 台，`=== 1` 的老断言不再成立。这里按**增量**判：轮到本条时
- * **再多一台**（起手道具照发），补发的口径由 `first-tasks.test.ts` 的专例负责。
- */
 const salvBefore = s.moduleBay['mod-salvager-1'] ?? 0
-ok('起手道具：打捞器 MK1 进装备库', salvBefore >= 2, `装备库 ${salvBefore} 台（含全员补发 1 台 ＋ 起手道具 1 台）`)
+ok('起手道具：打捞器 MK1 进装备库', salvBefore === 1, `装备库 ${salvBefore} 台`)
 const fitSalv = fitModule(s, 'mod-salvager-1', ctx)
 ok('装上打捞器 MK1', fitSalv.ok, fitSalv.ok ? '' : fitSalv.error)
 const density = wreckDensityOf(s, HOME, ctx)
@@ -393,9 +388,7 @@ ok(
   matsLine(s),
 )
 mark('⑩ 指派副船', s.gameMs)
-// 买一枚是**可选**的（第二艘副船才需要）：只核一下价格读数，不作断言
-const coreBuy = buyBasicAiCore(s, ctx)
-console.log(`   市场上再买一枚基础 AI 核心：${coreBuy.ok ? '成功' : `未买（${coreBuy.error}）`}`)
+// 市场此时尚未解锁，不从 core 旁路买核心；否则会提前满足下一条交易任务。
 
 step('⑪ 第一次生产（组装机）')
 okAtQueue(s, 'first-produce', 'AI 副船判过')
@@ -407,7 +400,7 @@ ok('起制造线被接受', prod.ok, prod.ok ? '' : prod.error)
 const iskBeforeProduce = s.wallet.isk // 同上：读数要在 `until` 之前取（它内部会 claimAll）
 ok('产出成品', until(s, () => firstStatOf(s, 'produceUnits') > 0, 30 * 60_000, '生产'), `units=${firstStatOf(s, 'produceUnits')}`)
 ok('「第一次生产」判定完成', s.importantTasks['first-produce']?.done === true)
-ok('奖励：10,000 信用点（船长 2026-09-22 Excel）', s.wallet.isk - iskBeforeProduce >= 10_000, `+${(s.wallet.isk - iskBeforeProduce).toLocaleString('zh-CN')}`)
+ok('奖励：10,000 信用点（船长 2026-09-22 Excel）', s.wallet.isk - iskBeforeProduce === 10_000, `+${(s.wallet.isk - iskBeforeProduce).toLocaleString('zh-CN')}`)
 ok('市场页解锁', unlocked(s, 'market'))
 // 等这条线跑完：造船要用同一台组装机
 ok(
@@ -417,6 +410,7 @@ ok(
 mark('⑪ 生产一批', s.gameMs)
 
 step('⑫ 第一次挂单销售（市场）')
+okAtQueue(s, 'first-order', '第一次生产完成后')
 // 找一条"我手上有的、可上市"的商品行（市场行 key = goodKey）
 const good = [...ctx.marketGoods.values()].find(
   (g) => g.playerSellable !== false && (s.warehouse.items[g.refId] ?? 0) > 0,
@@ -562,5 +556,5 @@ ok('列表里剩末段两条', visibleFirstTasks(s).map((d) => d.id).join() === 
 // 工业页/市场页解锁的快照（第 3 条与第 7 条早做完了；这里只作收尾读数，防中途被锁回去）
 ok('工业页与市场页均为解锁态', unlocked(s, 'industry') && unlocked(s, 'market'))
 console.log(`   钱包 ${s.wallet.isk.toLocaleString('zh-CN')} · 游戏内时间 ${(s.gameMs / 3_600_000).toFixed(1)} 小时 · 日志 ${s.logs.length} 条`)
-console.log(`\n${failures === 0 ? '✅ 流程全部通过' : `❌ 有 ${failures} 项未通过`}`)
+console.log(`\n${failures === 0 ? '✅ 顺序段 11 项与末段揭示检查通过（长途运输与虫洞未执行）' : `❌ 有 ${failures} 项未通过`}`)
 process.exit(failures === 0 ? 0 : 1)

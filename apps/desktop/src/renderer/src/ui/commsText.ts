@@ -18,6 +18,7 @@
  * 2026-09-26 新增 `msg-blackbox-plug-unlock` 时就是按这条办的（船长亲笔三段，英文也落三段）。
  */
 import { COMMS_DAY_MS } from '@whale/core'
+import { L10N } from '@whale/data'
 import type { CommsEntryView, CommsRewardLine } from '@whale/core'
 import { isEn, paramText, tr } from '../i18n/locale'
 
@@ -285,9 +286,8 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
   ],
   // ── 协会侧短札（2026-09-22 第四批；长设定的几封见文件末的挂账注释）──
   'msg-welcome': [
-    'Pilot, the Association comms terminal is now wired into this ship. From here on, notices from every Association department arrive right here.',
-    'The “Comms” item in the nav flashes while anything is unread — check it when it does.',
-    'If you are new and unsure where to start, the standing bounties are a good first stop.',
+    L10N['ui.commsWelcome.001']!.en,
+    L10N['ui.commsWelcome.002']!.en,
   ],
   'msg-survey-memo': [
     'You have mapped a good number of systems by now, so you have probably worked out what those unlit “unknown signals” are worth: scanning one settles the route and the supply in the same pass — plenty of belts and wreck fields sit in systems nobody has visited.',
@@ -300,10 +300,10 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
     'People keep asking whether refining is worth it, so the Smelting Group will give it to you straight.\nRefining pays, always — the only question is how much. Veterans with the processing skills trained up make a fortune at it.\nAnd newcomers should not be discouraged: nobody starts out a veteran. Train the skills, starting now.',
   ],
   'msg-salvage-crew': [
-    'Pilot, Old Chen’s crew left you a word.',
-    'Our lot drifts from system to system, and wreck fields never run short of things — what runs short is people willing to stop and pick them up. Common wreckage breaks down into guaranteed raw materials, and with luck it gives up modules and blueprint fragments too. The rare stuff left behind by a lair is worth more: the recycling unit strips whole modules out of it.',
-    'One thing to remember: wreckage is booked by volume, and a full hold sends the ship home on its own. Want to carry more? Fit a bigger hold first.',
-    'Take a look at the wreck salvage page on the star map — we marked a few good fields.',
+    L10N['ui.commsSalvage.001']!.en,
+    L10N['ui.commsSalvage.002']!.en,
+    L10N['ui.commsSalvage.003']!.en,
+    L10N['ui.commsSalvage.004']!.en,
   ],
   'msg-site-thanks': [
     'On the first shift of the Redring Outpost running on the grid, the whole Infrastructure Dept salutes you.',
@@ -326,18 +326,13 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
     'Every turn brings enemy reinforcements, and they take tiles as they come. Only by driving the enemy off a tile can you work there in peace.',
     'On rare occasions they will even jump straight onto your position to catch you.',
   ],
-  // 2026-09-30 首访实验室：黑市那封（非官方来源，诱导口径；与中文逐行对齐）
-  // ⟪文案调整 2026-10-01⟫ 中文正文照船长原话整篇重写（5 段 → **6 段**）⇒ 本表同步改成 6 行：
-  //   ① 不再点旧稿的内部绰号（the beacon / the overclock pack），改为官方英文名
-  //      （**Signal Beacon** / 加速剂那件按用途描述，与中文一致）
-  //   ② 门槛句仍在第 5 段（船长二次裁定「门槛句 ＋ 染色照做」）——中文改动时这里必须同步、行数不变
+  // ⟪文案调整 2026-10-04⟫ 已审三封正文中英同源，沿用现有逐段覆盖与强调索引。
   'msg-lab-contraband': [
-    'Hey buddy. Congratulations — I hear you have laboratory access now. I have blueprints for a couple of good things here. Want them?',
-    'Free of charge, of course. I just figure you are worth an investment.',
-    'One of the two speeds up your skill training: a single use lasts a whole day.',
-    'The other one is something else entirely: a Signal Beacon that pulls an invasion onto a system. That thing is contraband, though — be careful when you use it.',
-    'Once your accumulated standing reaches 100, I will open some special services for you — before that, you will not find me.',
-    'See you around. I expect better things from you.',
+    L10N['ui.commsContraband.001']!.en,
+    L10N['ui.commsContraband.002']!.en,
+    L10N['ui.commsContraband.003']!.en,
+    L10N['ui.commsContraband.004']!.en,
+    L10N['ui.commsContraband.005']!.en,
   ],
   // ── 长设定文 9 封（2026-09-26 三号补齐 · roadmap L3 尾巴；逐段与中文行数对齐）──
   /**
