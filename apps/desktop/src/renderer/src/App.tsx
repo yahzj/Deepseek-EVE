@@ -183,6 +183,8 @@ export function App({ engine }: { engine: GameEngine }) {
   //    🔴 2026-10-02 船长令「按你的建议先修」：给**尺寸**加方向不对称的滞回（见 MOB_*_ADOPT_PX），
   //    修玩家报障「手机端的战斗画面会忽大忽小（缩放）」——对齐偏移仍逐拍跟可见区走，只是尺寸不再抖） ──
   const [mobileRot, setMobileRot] = useState(false)
+  const [mobileLayout, setMobileLayout] = useState(false)
+  const [mobileLogOpen, setMobileLogOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   /** 当前**已采纳**的旋转层尺寸（null = 还没量过 ⇒ 首次直接采纳） */
   const mobSizeRef = useRef<{ w: number; h: number } | null>(null)
@@ -195,6 +197,7 @@ export function App({ engine }: { engine: GameEngine }) {
   useEffect(() => {
     const update = (): void => {
       const coarse = window.matchMedia('(pointer: coarse)').matches
+      setMobileLayout(coarse && Math.min(window.screen.width || window.innerWidth, window.screen.height || window.innerHeight) < 900)
       // 屏幕方向不随软键盘改变；缺少方向 API 时才退回布局视口。
       const orientation = window.screen.orientation?.type
       const portrait = orientation ? orientation.startsWith('portrait') : window.innerHeight > window.innerWidth
@@ -863,6 +866,7 @@ async function applyLayoutAndReload(): Promise<void> {
    */
   const hideActivityWin = (): void => {
     setActivityOpen(false)
+    setMobileLogOpen(false)
   }
 
   /**
@@ -902,6 +906,32 @@ async function applyLayoutAndReload(): Promise<void> {
   // ── 日志偏好：折叠状态 + **单选筛选**（本地持久化；2026-09-26 船长令由"多开关"改单选） ──
   const [logCollapsed, setLogCollapsed] = useState<boolean>(() => readLogPrefs().collapsed)
   const [logFilter, setLogFilter] = useState<LogFilter>(() => readLogPrefs().filter)
+  const logDrawerRef = useRef<HTMLElement>(null)
+  const logClosed = mobileLayout ? !mobileLogOpen : logCollapsed
+  const closeLog = (): void => {
+    if (mobileLayout) setMobileLogOpen(false)
+    else setLogCollapsed(true)
+  }
+  useEffect(() => {
+    if (!mobileLayout) { setMobileLogOpen(false); return }
+    if (!mobileLogOpen) return
+    const previous = document.activeElement as HTMLElement | null
+    logDrawerRef.current?.focus()
+    const key = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') { event.preventDefault(); setMobileLogOpen(false) }
+      if (event.key !== 'Tab') return
+      const controls = Array.from(logDrawerRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),[tabindex="0"]') ?? [])
+      if (!controls.length) { event.preventDefault(); logDrawerRef.current?.focus(); return }
+      const index = controls.indexOf(document.activeElement as HTMLElement)
+      if (event.shiftKey && index <= 0) { event.preventDefault(); controls.at(-1)?.focus() }
+      else if (!event.shiftKey && (index < 0 || index === controls.length - 1)) { event.preventDefault(); controls[0]?.focus() }
+    }
+    document.addEventListener('keydown', key)
+    return () => {
+      document.removeEventListener('keydown', key)
+      if (previous?.isConnected) previous.focus()
+    }
+  }, [mobileLayout, mobileLogOpen])
   useEffect(() => {
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify({ collapsed: logCollapsed, filter: logFilter }))
@@ -1254,7 +1284,7 @@ async function applyLayoutAndReload(): Promise<void> {
   }, [tutStep])
 
   return (
-    <div ref={rootRef} className={`app-root${mobileRot ? ' is-mobile-rot' : ''} is-layout-${layoutKind}`}>
+    <div ref={rootRef} className={`app-root${mobileRot ? ' is-mobile-rot' : ''}${mobileLayout ? ' is-mobile-layout' : ''} is-layout-${layoutKind}`}>
       {/* 引擎订阅：正常异步渲染；性能监测激活时改 flushSync 同步刷新并实测整树提交耗时 */}
       <PerfListener engine={engine} force={force} />
       {/* ───── 顶栏 ───── */}
@@ -1281,6 +1311,7 @@ async function applyLayoutAndReload(): Promise<void> {
         navBeat={navBeat}
         page={page}
         setShowSettings={setShowSettings}
+        mobileLog={mobileLayout ? { open: mobileLogOpen, onToggle: () => setMobileLogOpen((open) => !open) } : null}
         setShowHandbook={setShowHandbook}
         copyQqGroup={copyQqGroup}
         qqCopied={qqCopied}
@@ -1479,8 +1510,11 @@ async function applyLayoutAndReload(): Promise<void> {
           </>
         )}
         logDock={(
-            <div className="app-log-dock">
-            <aside className={`app-log-side${logCollapsed ? ' is-collapsed' : ''}`}>
+            <div className={`app-log-dock${mobileLayout ? ' is-mobile-drawer' : ''}${mobileLayout && mobileLogOpen ? ' is-open' : ''}`}>
+            {mobileLayout && mobileLogOpen ? <button className="app-mobile-log-mask" onClick={closeLog} aria-label={tr('ui.App.086')} /> : null}
+            <aside ref={logDrawerRef} className={`app-log-side${logClosed ? ' is-collapsed' : ''}`}
+              role={mobileLayout && mobileLogOpen ? 'dialog' : undefined} aria-modal={mobileLayout && mobileLogOpen ? true : undefined}
+              aria-label={mobileLayout ? tr('ui.App.067') : undefined} id="mobile-log-drawer" tabIndex={mobileLayout ? -1 : undefined}>
             <Panel
             title={tr("ui.App.067")}
             /* 周末入侵：**日志面板底部的活动框**（2026-09-24 船长按截图指定位置），点击跳星图 */
@@ -1496,7 +1530,7 @@ async function applyLayoutAndReload(): Promise<void> {
             right={
             <div className="app-log-head-right">
             <span className="app-dim">{tr("ui.App.068")}</span>
-            <button className="app-btn is-small" onClick={() => setLogCollapsed(true)} title={tr("ui.App.069")}>
+            <button className="app-btn is-small" onClick={closeLog} title={tr("ui.App.069")}>
             {tr("ui.App.070")}
             </button>
             </div>
@@ -1536,7 +1570,7 @@ async function applyLayoutAndReload(): Promise<void> {
             )}
             </Panel>
             </aside>
-            {logCollapsed ? (
+            {!mobileLayout && logCollapsed ? (
             <button className="app-log-handle" onClick={() => setLogCollapsed(false)} title={tr("ui.App.073")}>
             «
             </button>

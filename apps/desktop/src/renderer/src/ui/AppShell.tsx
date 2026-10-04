@@ -68,6 +68,7 @@ export interface ShellCtx {
   navBeat: { key: string } | null
   page: string
   setShowSettings: (v: boolean) => void
+  mobileLog: { open: boolean; onToggle: () => void } | null
   setShowHandbook: (v: boolean) => void
   copyQqGroup: () => void
   qqCopied: boolean
@@ -106,6 +107,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
     navBeat,
     page,
     setShowSettings,
+    mobileLog,
     setShowHandbook,
     copyQqGroup,
     qqCopied,
@@ -173,6 +175,13 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
         />
       </span>
     )
+  }
+
+  function mobileLogButton(): ReactNode {
+    return mobileLog ? <button className="app-btn app-mobile-log-toggle" onClick={mobileLog.onToggle}
+      aria-expanded={mobileLog.open} aria-controls="mobile-log-drawer" title={tr('ui.App.073')}>
+      <Glyph name="ico-unfold" size={18} />{tr('ui.App.067')}
+    </button> : null
   }
 
   /* ─────────────────── 新版（modern）─────────────────── */
@@ -245,6 +254,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
             ))}
           </div>
           <div className="app-header-right">
+            {mobileLogButton()}
             {/* V15 调试模式入口（开发工具：DevTools 置 whale-idle:debug=1 后出现） */}
             {debugOn ? (
               <>
@@ -440,6 +450,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
             {standingChip()}
           </div>
           <div className="app-header-right">
+            {mobileLogButton()}
             {/* V15 调试模式入口（开发工具：DevTools 置 whale-idle:debug=1 后出现） */}
             {debugOn ? (
               <>

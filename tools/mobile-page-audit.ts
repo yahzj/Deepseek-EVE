@@ -4,8 +4,12 @@
  * 自建只读服务 4294 / 独占 CDP 9438，隔离 Edge；端口占用则停止，不连接用户浏览器。
  * 测 10 个一级页与设置/存档管理/手册，2 语言 × 2 布局 × 4 尺寸 = 208 组。
  * 另测 4 种真实开工作业 × 2 布局的最小化/还原/切导航，不把无新动画视作缺陷。
+ * 日志长内容/焦点/偏好、桌面对照、页面放大/方向、出售守账与装配/技能/虫洞操作分别断言。
  * 输出 tools/_ui-artifacts/mobile-page-audit-20261004.json；几何是诊断，失败入口/协议/窗口契约非零。
  * 有裁切不等于已完全不可达，需要核查内滚与旋转轴；诊断不是观感或全弹层验收。
+ * --quick 仅跑中文双布局 390竖屏/568横屏，完整验收不使用该选项。
+ * --actions-only 仅调试操作弹层，不能替代完整页面、桌面与活动回归。
+ * 单独操作报告输出 mobile-actions-audit-20261004.json，不覆盖完整页面报告。
  * 版本自检：游戏版本 v0.1.0 · 存档结构 v31 · 最后核对 2026-10-04 · 最后跑过 2026-10-04。
  */
 import { createServer } from 'node:http'
@@ -14,8 +18,8 @@ import { resolve, join, sep, extname } from 'node:path'
 import { tmpdir } from 'node:os'
 import { spawn } from 'node:child_process'
 import assert from 'node:assert/strict'
-import { createInitialState, serializeSaveFile, FIRST_TASKS, startMining, startSalvageOp, startHauling, wormholeScanStart } from '@whale/core'
-import { buildSimContext, ANNOUNCEMENTS, L10N } from '@whale/data'
+import { createInitialState, serializeSaveFile, FIRST_TASKS, startMining, startSalvageOp, startHauling, wormholeScanStart, wormholeEnter, addLog } from '@whale/core'
+import { buildSimContext, ANNOUNCEMENTS, L10N, localizeCtx } from '@whale/data'
 const root = resolve(process.cwd()), port = 4294, cdp = 'http://127.0.0.1:9438'
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 class Page {
@@ -35,6 +39,63 @@ class Page {
     })
   }
   async js<T>(expression: string): Promise<T> { const v=await this.send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true}) as { error?:unknown;result?:{exceptionDetails?:unknown;result?:{value?:T}} };if(v.error||v.result?.exceptionDetails)throw new Error(JSON.stringify(v));return v.result?.result?.value as T }
+  async tap(selector: string): Promise<void> {
+    await this.js(`(() => {const e=document.querySelector(${JSON.stringify(selector)});if(!e||e.disabled)throw new Error('触控目标不存在或禁用：'+${JSON.stringify(selector)}+' '+document.querySelector('.app-fit-modal')?.textContent.slice(0,500));e.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});return new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))})()`)
+    await sleep(150)
+    const point = await this.js<{ x: number; y: number; label: string }>(`(() => {
+      const element = document.querySelector(${JSON.stringify(selector)});
+      if (!element || element.disabled) throw new Error('触控目标不存在或禁用：' + ${JSON.stringify(selector)});
+      const r = element.getBoundingClientRect();
+      const left=Math.max(0,r.left),right=Math.min(innerWidth,r.right),top=Math.max(0,r.top),bottom=Math.min(innerHeight,r.bottom);
+      for(const fy of [0.5,0.25,0.75,0.1,0.9])for(const fx of [0.5,0.25,0.75,0.1,0.9]){
+        const x=left+(right-left)*fx,y=top+(bottom-top)*fy,hit=document.elementFromPoint(x,y);
+        if(right>left&&bottom>top&&hit&&(hit===element||element.contains(hit)))return {x,y,label:element.textContent.trim()};
+      }
+      throw new Error('触控目标无可见区域：'+${JSON.stringify(selector)}+' '+JSON.stringify({rect:r.toJSON(),ancestors:(()=>{const rows=[];let p=element.parentElement;while(p){const q=p.getBoundingClientRect(),s=getComputedStyle(p);rows.push({name:p.className,rect:q.toJSON(),overflow:s.overflow});p=p.parentElement}return rows})()}));
+    })()`)
+    const hitResult = await this.js<{ok:boolean;hit:string;root:string;size:number[]}>(`(() => {
+      const element = document.querySelector(${JSON.stringify(selector)});
+      const hit = document.elementFromPoint(${point.x}, ${point.y});
+      return {ok:!!hit && (hit === element || element.contains(hit)),hit:hit?.outerHTML.slice(0,250)??'none',
+        root:document.querySelector('.app-root')?.className,size:[innerWidth,innerHeight],
+        navBox:(()=>{const n=element.closest('.app-nav-side');const r=n?.getBoundingClientRect();return {top:r?.top,bottom:r?.bottom,scrollTop:n?.scrollTop}})(),
+        ancestors:(()=>{const rows=[];let p=element;while(p){const r=p.getBoundingClientRect(),s=getComputedStyle(p);rows.push({name:p.className,y:r.y,h:r.height,ch:p.clientHeight,sh:p.scrollHeight,top:p.scrollTop,overflow:s.overflow});p=p.parentElement}return rows})()};
+    })()`)
+    assert(hitResult.ok, '触控目标被遮挡：' + selector + ' ' + JSON.stringify({point,...hitResult}))
+    await this.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: point.x, y: point.y }] })
+    await sleep(60)
+    await this.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await sleep(200)
+  }
+  async wait(expression: string): Promise<void> {
+    for (let i=0;i<100;i++) { if (await this.js<boolean>(expression)) return; await sleep(100) }
+    throw new Error('页面等待超时：'+expression+' '+JSON.stringify(await this.js(`({page:document.querySelector('.app-page-content')?.dataset.page,root:document.querySelector('.app-root')?.className,modals:[...document.querySelectorAll('.app-modal-mask,.app-fit-overlay,.app-mkt-confirm-mask')].map(e=>e.textContent.slice(0,160)),text:document.querySelector('.app-page-content')?.textContent.slice(0,350)})`)))
+  }
+  async tapText(parent: string, text: string): Promise<void> {
+    await this.js(`(()=>{
+      document.querySelector('[data-audit-action]')?.removeAttribute('data-audit-action');
+      const element=[...document.querySelectorAll(${JSON.stringify(parent+' button')})].find(b=>b.textContent.trim()===${JSON.stringify(text)});
+      if(!element)throw new Error('操作按钮不存在：'+${JSON.stringify(text)});
+      element.setAttribute('data-audit-action','target');
+    })()`)
+    await this.tap('[data-audit-action="target"]')
+    if(parent==='.app-nav-side'){
+      const ids=['ui.App.001','ui.App.002','ui.App.003','ui.App.004','ui.App.005','ui.App.006','ui.App.007','ui.App.008','ui.App.119','ui.App.009'];
+      const keys=['map','ship','fit','items','market','industry','skills','task','achieve','comms'];
+      const index=ids.findIndex(id=>L10N[id]!.zh===text||L10N[id]!.en===text);assert(index>=0);
+      await this.wait(`document.querySelector('.app-page-content')?.dataset.page===${JSON.stringify(keys[index])}`);
+    }
+  }
+  async checkModal(selector: string): Promise<object> {
+    const result=await this.js<{within:boolean;w:number;h:number;scroll:boolean}>(`(()=>{
+      const element=document.querySelector(${JSON.stringify(selector)}), r=element.getBoundingClientRect();
+      const root=document.querySelector('.app-root').getBoundingClientRect();
+      return {within:r.left>=root.left-2&&r.top>=root.top-2&&r.right<=root.right+2&&r.bottom<=root.bottom+2,
+        w:element.clientWidth,h:element.clientHeight,scroll:element.scrollHeight>element.clientHeight};
+    })()`)
+    assert(result.within,'操作弹层超出可见范围：'+selector+' '+JSON.stringify(result))
+    return result
+  }
 }
 const measure = `(()=>{
  const root=document.querySelector('.app-root'), main=document.querySelector('.app-page-main');
@@ -42,6 +103,7 @@ const measure = `(()=>{
  const cropped=[],rotated=root?.classList.contains('is-mobile-rot');
  const modalMask=[...document.querySelectorAll('.app-modal-mask,.app-ann-mask')].filter(e=>e.getBoundingClientRect().width>0).at(-1);
  for(const b of (modalMask||document).querySelectorAll('button,input,select')){
+  if(b.closest('.app-log-side.is-collapsed'))continue;
   const r=b.getBoundingClientRect();if(r.width<1||r.height<1||getComputedStyle(b).visibility==='hidden')continue;
   let p=b.parentElement;
   while(p&&p!==root){const s=getComputedStyle(p),q=p.getBoundingClientRect();
@@ -53,6 +115,7 @@ const measure = `(()=>{
    p=p.parentElement}
  }
  return {viewport:[innerWidth,innerHeight],rotated:root?.classList.contains('is-mobile-rot'),root:box(root),main:box(main),
+   usableMain:box(document.querySelector('.app-workspace-body')||main),
    page:box(document.querySelector('.app-page-content')),modal:box(document.querySelector('.app-modal,.app-hand-modal')),
    scale:root?.style.getPropertyValue('--mob-scale'),height:root?.style.getPropertyValue('--mob-h'),cropped:cropped.slice(0,30),count:cropped.length}
 })()`
@@ -73,38 +136,130 @@ async function main() {
   ws=new WebSocket(target.webSocketDebuggerUrl);await new Promise<void>((r,j)=>{ws!.addEventListener('open',()=>r(),{once:true});ws!.addEventListener('error',()=>j(new Error('cdp')),{once:true})})
   const page=new Page(ws);await page.send('Page.enable');await page.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5})
   const state=createInitialState({nowWallMs:Date.now(),seed:7}),ctx=buildSimContext();state.modeChosen=true;
+  for(let i=0;i<240;i++)addLog(state,'system',L10N['core.state.025']!.zh,'core.state.025');
+  await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('whale-idle:layout-set','1');localStorage.setItem('whale-idle:announce-seen',${JSON.stringify(ANNOUNCEMENTS[0]!.id)});localStorage.setItem('whale-idle:log-prefs',JSON.stringify({collapsed:false,filter:'all'}));`});
   for(const task of FIRST_TASKS)state.importantTasks[task.id]={done:true};
   for(const [id] of ctx.galaxies)state.exploredGalaxies.push(id)
   for(const [id] of ctx.commsMessages){(state.commsDelivered??={})[id]=1;(state.commsRead??={})[id]=true}
   state.commsPopups=[];state.wallet.isk=1000000000;
+  const saleItemId='ore-veldspar';assert(ctx.items.has(saleItemId),'测试原矿须存在于真实目录');
+  state.warehouse.items[saleItemId]=10000;
+  for(const [id,mod] of ctx.modules) if(!mod.unreleased) state.moduleBay[id]=2;
   const rows=[]
-  for(const locale of ['zh','en'])for(const layout of ['classic','modern'])for(const [width,height] of [[390,844],[844,390],[320,568],[568,320]]){
-   await page.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:true,screenOrientation:{type:width<height?'portraitPrimary':'landscapePrimary',angle:width<height?0:90}})
-   const injection=await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('whale:idle:save',${JSON.stringify(serializeSaveFile(state,Date.now()))});localStorage.setItem('whale-idle:layout-set','1');localStorage.setItem('whale-idle:layout',${JSON.stringify(layout)});localStorage.setItem('whale-idle:announce-seen',${JSON.stringify(ANNOUNCEMENTS[0]!.id)});localStorage.setItem('whale-idle:locale',${JSON.stringify(locale)})`}) as {result:{identifier:string}}
+  const quick = process.argv.includes('--quick')
+  const actionsOnly = process.argv.includes('--actions-only')
+  const drawerChecks: object[] = []
+  for(const locale of (actionsOnly ? [] : quick ? ['zh'] : ['zh','en']))for(const layout of ['classic','modern'])for(const [width,height] of (quick ? [[390,844],[568,320]] : [[390,844],[844,390],[320,568],[568,320]])){
+   await page.send('Emulation.setDeviceMetricsOverride',{width,height,screenWidth:width,screenHeight:height,deviceScaleFactor:1,mobile:true,screenOrientation:{type:width<height?'portraitPrimary':'landscapePrimary',angle:width<height?0:90}})
+   const injection=await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('whale:idle:save',${JSON.stringify(serializeSaveFile(state,Date.now()))});localStorage.setItem('whale-idle:layout-set','1');localStorage.setItem('whale-idle:layout',${JSON.stringify(layout)});localStorage.setItem('whale-idle:announce-seen',${JSON.stringify(ANNOUNCEMENTS[0]!.id)});localStorage.setItem('whale-idle:locale',${JSON.stringify(locale)});localStorage.setItem('whale-idle:log-prefs',JSON.stringify({collapsed:false,filter:'all'}))`}) as {result:{identifier:string}}
    await page.send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'})
    for(let i=0;i<100;i++){if(await page.js<boolean>(`!!document.querySelector('.app-root')`))break;await sleep(100)}
    await sleep(700)
    const navNames=['出港','舰船','装配','物品','市场','工业','技能','任务','成就','通讯'];
    const navIds=['ui.App.001','ui.App.002','ui.App.003','ui.App.004','ui.App.005','ui.App.006','ui.App.007','ui.App.008','ui.App.119','ui.App.009'];
+   const pageKeys=['map','ship','fit','items','market','industry','skills','task','achieve','comms'];
    for(let index=0;index<navNames.length;index++){
    const label=L10N[navIds[index]!]![locale as 'zh'|'en'];
-   assert(await page.js(`(()=>{const b=[...document.querySelectorAll('.app-nav-item')].find(b=>[...b.children].some(x=>x.textContent.trim()===${JSON.stringify(label)}));if(b)b.click();return !!b})()`), '导航不存在：'+label)
+   const selector = await page.js<string>(`(()=>{const buttons=[...document.querySelectorAll('.app-nav-item')];const index=buttons.findIndex(b=>[...b.children].some(x=>x.textContent.trim()===${JSON.stringify(label)}));if(index<0)throw new Error('导航不存在');buttons[index].setAttribute('data-mobile-audit-nav','target');return '[data-mobile-audit-nav="target"]'})()`)
+   await page.tap(selector)
+   await page.js(`document.querySelector(${JSON.stringify(selector)})?.removeAttribute('data-mobile-audit-nav')`)
+   assert.equal(await page.js(`document.querySelector('.app-page-content')?.dataset.page`), pageKeys[index], '真实触控未切到目标页')
     await sleep(250);rows.push({locale,layout,width,height,view:navNames[index],reading:await page.js(measure)})
+    if(locale==='zh'&&width===568&&pageKeys[index]==='ship'){
+      const shot=await page.send('Page.captureScreenshot',{format:'png'}) as {result:{data:string}};
+      await fs.mkdir(join(root,'tools/_ui-artifacts'),{recursive:true});
+      await fs.writeFile(join(root,'tools/_ui-artifacts',`mobile-shell-${layout}-568-ship.png`),Buffer.from(shot.result.data,'base64'));
+    }
    }
+   const pref = await page.js<string>(`localStorage.getItem('whale-idle:log-prefs')`)
+   const before = await page.js<{w:number;h:number}>(`(()=>{const r=(document.querySelector('.app-workspace-body')||document.querySelector('.app-page-main')).getBoundingClientRect();return {w:r.width,h:r.height}})()`)
+   assert.equal(await page.js(`!!document.querySelector('.app-log-dock.is-open')`), false, '手机日志不应默认展开')
+   await page.tap('.app-mobile-log-toggle')
+   assert.equal(await page.js(`!!document.querySelector('.app-log-dock.is-open')`), true, '日志按钮未打开抽屉')
+   const after = await page.js<{w:number;h:number}>(`(()=>{const r=(document.querySelector('.app-workspace-body')||document.querySelector('.app-page-main')).getBoundingClientRect();return {w:r.width,h:r.height}})()`)
+   assert(Math.abs(before.w-after.w)<1 && Math.abs(before.h-after.h)<1, '抽屉挤压主区')
+   await page.tap('.app-log-head-right button')
+   assert.equal(await page.js(`!!document.querySelector('.app-log-dock.is-open')`), false, '抽屉关闭失败')
+   assert(await page.js(`document.activeElement===document.querySelector('.app-mobile-log-toggle')`),'关闭抽屉未返回入口焦点')
+   await page.tap('.app-mobile-log-toggle')
+   assert(await page.js(`document.activeElement===document.querySelector('.app-log-side')`),'抽屉打开未获得焦点')
+   await page.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Tab',code:'Tab',windowsVirtualKeyCode:9})
+   await page.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Tab',code:'Tab',windowsVirtualKeyCode:9})
+   assert(await page.js(`document.querySelector('.app-log-side').contains(document.activeElement)`),'Tab 焦点逃出抽屉')
+   await page.tap('.app-log-filter:nth-child(2)')
+   assert(await page.js(`!document.querySelector('.app-log-filter:nth-child(2)').classList.contains('is-off')`),'日志筛选未激活')
+   await page.tap('.app-log-filter:first-child')
+   await page.js(`(()=>{const body=document.querySelector('.app-log-side .wui-panel-body');body.scrollTop=body.scrollHeight})()`)
+   assert(await page.js(`document.querySelector('.app-log-side .wui-panel-body').scrollTop>0`),'长日志不能内部滚动')
+   await page.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27})
+   await page.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27})
+   await page.wait(`!document.querySelector('.app-log-dock.is-open')`)
+   await page.tap('.app-mobile-log-toggle');await page.tap('.app-mobile-log-mask')
+   assert(!await page.js(`!!document.querySelector('.app-log-dock.is-open')`),'遮罩未关闭抽屉')
+   assert.equal(await page.js(`localStorage.getItem('whale-idle:log-prefs')`), pref, '手机抽屉污染桌面偏好')
+   drawerChecks.push({ locale,layout,width,height,defaultClosed:true,noLayoutShift:true,touchToggle:true,focusReturn:true,tabContained:true,filter:true,escape:true,backdrop:true,desktopPreferenceUnchanged:true })
    for(const nav of (locale==='zh'?['设置','存档管理','手册']:['Settings','Save management','Handbook'])){
-    assert(await page.js(`(()=>{const label=${JSON.stringify(nav)};const b=[...document.querySelectorAll('button')].find(b=>b.textContent.trim()===label);if(b)b.click();return !!b})()`), '弹层按钮不存在：'+nav)
+    await page.tapText(nav==='存档管理'||nav==='Save management'?'.app-settings-modal':'.app-header-right',nav)
     await sleep(250);rows.push({locale,layout,width,height,view:nav,reading:await page.js(measure)})
-    if(nav==='设置'||nav==='Settings')await page.js(`document.querySelector('.app-settings-foot button.is-primary')?.click()`)
-    else await page.js(`document.querySelector('.app-modal-mask')?.click()`)
-    if(nav==='设置'||nav==='Settings') { await page.js(`(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.textContent.trim()===${JSON.stringify(nav)});b?.click()})()`);await sleep(100) }
+    if(nav==='设置'||nav==='Settings')await page.tap('.app-settings-foot button.is-primary')
+    else if(nav==='手册'||nav==='Handbook')await page.tapText('.app-hand-modal .app-modal-head',L10N['ui.App.086']![locale as 'zh'|'en'])
+    else await page.tapText('.app-modal .app-modal-head',L10N['ui.App.086']![locale as 'zh'|'en'])
+    if(nav==='设置'||nav==='Settings') { await page.tapText('.app-header-right',nav);await sleep(100) }
    }
    // 同一静止视口下不能持续改变旋转层缩放。
    const scales:string[]=[];for(let i=0;i<4;i++){scales.push(await page.js<string>(`document.querySelector('.app-root').style.getPropertyValue('--mob-scale')`));await sleep(50)}
    assert(scales.every(v=>v===scales[0]), '静止视口缩放不稳定')
    await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:injection.result.identifier})
+   console.log('页面与日志完成：'+JSON.stringify({locale,layout,width,height}));
+  }
+  const desktopChecks: object[]=[];
+  for(const layout of (actionsOnly?[]:['classic','modern']))for(const collapsed of [false,true]){
+    await page.send('Emulation.setTouchEmulationEnabled',{enabled:false});
+    await page.send('Emulation.setDeviceMetricsOverride',{width:1280,height:800,screenWidth:1280,screenHeight:800,deviceScaleFactor:1,mobile:false,screenOrientation:{type:'landscapePrimary',angle:90}});
+    const seed=await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('whale:idle:save',${JSON.stringify(serializeSaveFile(state,Date.now()))});localStorage.setItem('whale-idle:layout',${JSON.stringify(layout)});localStorage.setItem('whale-idle:locale','zh');localStorage.setItem('whale-idle:log-prefs',${JSON.stringify(JSON.stringify({collapsed,filter:'all'}))});`}) as {result:{identifier:string}};
+    await page.send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});await page.wait(`!!document.querySelector('.app-root')`);await sleep(300);
+    const desktop=await page.js(measure);
+    assert(!await page.js(`document.querySelector('.app-root').classList.contains('is-mobile-layout')`),'桌面误用手机外壳');
+    assert(!await page.js(`!!document.querySelector('.app-mobile-log-toggle')`),'桌面多出手机日志入口');
+    assert.equal(await page.js(`document.querySelector('.app-log-side').classList.contains('is-collapsed')`),collapsed);
+    await page.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
+    await page.send('Emulation.setDeviceMetricsOverride',{width:568,height:320,screenWidth:568,screenHeight:320,deviceScaleFactor:1,mobile:true,screenOrientation:{type:'landscapePrimary',angle:90}});
+    await page.wait(`!!document.querySelector('.app-mobile-log-toggle')`);await page.tap('.app-mobile-log-toggle');
+    await page.send('Emulation.setTouchEmulationEnabled',{enabled:false});
+    await page.send('Emulation.setDeviceMetricsOverride',{width:1280,height:800,screenWidth:1280,screenHeight:800,deviceScaleFactor:1,mobile:false,screenOrientation:{type:'landscapePrimary',angle:90}});
+    await page.wait(`!document.querySelector('.app-mobile-log-toggle')`);
+    assert.equal(await page.js(`document.querySelector('.app-log-side').classList.contains('is-collapsed')`),collapsed,'手机打开日志覆盖了桌面偏好');
+    await sleep(350);
+    const returned=await page.js<{usableMain:{cw:number;ch:number}}>(measure),before=desktop as {usableMain:{cw:number;ch:number}};
+    assert(Math.abs(returned.usableMain.cw-before.usableMain.cw)<1&&Math.abs(returned.usableMain.ch-before.usableMain.ch)<1,'切回桌面后主区尺寸未还原：'+JSON.stringify({layout,collapsed,before,returned}));
+    desktopChecks.push({layout,collapsed,desktop,mobileToDesktop:true});
+    await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:seed.result.identifier});
+    console.log('桌面对照完成：'+JSON.stringify({layout,collapsed}));
+  }
+  await page.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
+  const viewportChecks: object[]=[];
+  for(const layout of (actionsOnly?[]:['classic','modern'])){
+    const seed=await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('whale:idle:save',${JSON.stringify(serializeSaveFile(state,Date.now()))});localStorage.setItem('whale-idle:layout',${JSON.stringify(layout)});localStorage.setItem('whale-idle:locale','zh');`}) as {result:{identifier:string}};
+    const metrics={width:390,height:844,screenWidth:390,screenHeight:844,deviceScaleFactor:1,mobile:true,screenOrientation:{type:'portraitPrimary',angle:0}};
+    await page.send('Emulation.setDeviceMetricsOverride',metrics);
+    await page.send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});await page.wait(`document.querySelector('.app-root')?.classList.contains('is-mobile-rot')`);await sleep(300);
+    const readScale=`(()=>{const r=document.querySelector('.app-root');return [r.style.getPropertyValue('--mob-scale'),r.style.getPropertyValue('--mob-h')]})()`;
+    const before=await page.js(readScale);
+    await page.send('Emulation.setPageScaleFactor',{pageScaleFactor:1.5});await sleep(350);
+    assert((await page.js<number>('visualViewport.scale'))>1.05,'浏览器未进入页面放大态');
+    assert.deepEqual(await page.js(readScale),before,'页面放大导致旋转层二次缩小');
+    await page.send('Emulation.setPageScaleFactor',{pageScaleFactor:1});await sleep(350);
+    await page.send('Emulation.setDeviceMetricsOverride',{...metrics,height:300});await sleep(350);
+    assert(await page.js(`document.querySelector('.app-root').classList.contains('is-mobile-rot')`),'模拟键盘缩高改变物理方向判据');
+    await page.send('Emulation.setDeviceMetricsOverride',{...metrics,width:844,height:390,screenWidth:844,screenHeight:390,screenOrientation:{type:'landscapePrimary',angle:90}});await sleep(350);
+    assert(await page.js(`document.querySelector('.app-root').classList.contains('is-mobile-layout')&&!document.querySelector('.app-root').classList.contains('is-mobile-rot')`),'转横屏外壳状态错误');
+    await page.send('Emulation.setDeviceMetricsOverride',metrics);await sleep(350);
+    assert.deepEqual(await page.js(readScale),before,'转回竖屏尺寸未恢复');
+    viewportChecks.push({layout,pageZoomFrozen:true,simulatedKeyboardKeepsOrientation:true,rotationRestored:true});
+    await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:seed.result.identifier});
   }
   const windows=[];
-  for(const layout of ['classic','modern'])for(const kind of ['mine','salvage','haul','scan']){
+  for(const layout of (actionsOnly?[]:['classic','modern']))for(const kind of ['mine','salvage','haul','scan']){
    const s=structuredClone(state);s.debugQuick=false;
    s.skills.trained['ai-expert']=5;s.standings.dsi=100;(s.standingsEarned??={}).dsi=100;
    for(const [id,site] of ctx.stations)s.stationSites[id]={stage:site.tiers.length,delivered:{}};
@@ -118,23 +273,118 @@ async function main() {
    else if(kind==='haul')command=startHauling(s,[...ctx.stations.keys()][0]!,[...ctx.stations.keys()][1]!,ctx);
    else command=wormholeScanStart(s,ctx);
    assert(command.ok, '合成活动开工失败：'+kind+' '+JSON.stringify(command));
-   await page.send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true,screenOrientation:{type:'portraitPrimary',angle:0}});
+   await page.send('Emulation.setDeviceMetricsOverride',{width:390,height:844,screenWidth:390,screenHeight:844,deviceScaleFactor:1,mobile:true,screenOrientation:{type:'portraitPrimary',angle:0}});
    const injection=await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('whale:idle:save',${JSON.stringify(serializeSaveFile(s,Date.now()))});localStorage.setItem('whale-idle:layout',${JSON.stringify(layout)});localStorage.setItem('whale-idle:locale','zh');`}) as {result:{identifier:string}};
    await page.send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});
    for(let i=0;i<100;i++){if(await page.js(`!!document.querySelector('.app-winbox.is-activity')`))break;await sleep(100)}
    assert(await page.js(`!!document.querySelector('.app-winbox.is-activity')`),'活动窗口未打开：'+kind);
-   assert(await page.js(`(()=>{document.querySelector('.app-winbox-head button').click();return true})()`));await sleep(150);
+   await page.tap('.app-winbox-head button');
    assert(!await page.js(`!!document.querySelector('.app-winbox.is-activity')`));
-   assert(await page.js(`(()=>{const b=document.querySelector('.app-shipwin-wrap.is-restore');if(!b)return false;b.click();return true})()`),'还原入口不存在');
+   await page.tap('.app-shipwin-wrap.is-restore');
    await sleep(150);assert(await page.js(`!!document.querySelector('.app-winbox.is-activity')`));
-   await page.js(`document.querySelectorAll('.app-nav-item')[1]?.click()`);await sleep(150);
+   await page.tapText('.app-nav-side',L10N['ui.App.002']!.zh);
    assert(!await page.js(`!!document.querySelector('.app-winbox.is-activity')`));
    assert(!await page.js(`document.querySelector('.app-page-content')?.classList.contains('is-win-hidden')`));
    windows.push({layout,kind,minimize:true,restore:true,navigationHides:true});
    await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:injection.result.identifier});
   }
-  const out=join(root,'tools/_ui-artifacts/mobile-page-audit-20261004.json');await fs.mkdir(join(root,'tools/_ui-artifacts'),{recursive:true});await fs.writeFile(out,JSON.stringify(rows,null,2),'utf8')
-  console.log(JSON.stringify({edgePid:child.pid,output:out,samples:rows.length,windows},null,2))
+  const modalChecks: object[]=[];
+  for(const locale of (quick?['zh']:['zh','en']))for(const layout of ['classic','modern'])for(const [width,height] of (quick?[[568,320]]:[[320,568],[568,320]])){
+    await page.send('Emulation.setDeviceMetricsOverride',{width,height,screenWidth:width,screenHeight:height,deviceScaleFactor:1,mobile:true,screenOrientation:{type:width<height?'portraitPrimary':'landscapePrimary',angle:width<height?0:90}});
+    const seed=await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('whale:idle:save',${JSON.stringify(serializeSaveFile(state,Date.now()))});localStorage.setItem('whale-idle:layout',${JSON.stringify(layout)});localStorage.setItem('whale-idle:locale',${JSON.stringify(locale)});localStorage.setItem('whale-idle:view:items','grid');`}) as {result:{identifier:string}};
+    await page.send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});await page.wait(`!!document.querySelector('.app-root')`);await sleep(250);
+    const t=(id:string)=>L10N[id]![locale as 'zh'|'en'];
+    // 装配换装：关闭键和候选滚动区必须真实可达。
+    await page.tapText('.app-nav-side',t('ui.App.003'));
+    await page.wait(`!!document.querySelector('.app-fit-slot-icon.is-empty')`);
+    await page.tap('.app-fit-slot-icon.is-empty');await page.wait(`!!document.querySelector('.app-fit-modal')`);
+    const fitting=await page.checkModal('.app-fit-modal');
+    assert(await page.js(`(()=>{const grid=document.querySelector('.app-fit-pickgrid');return grid.scrollHeight>grid.clientHeight})()`),'合成候选不足以验证滚动');
+    await page.js(`(()=>{const grid=document.querySelector('.app-fit-pickgrid');grid.scrollTop=grid.scrollHeight})()`);
+    assert(await page.js(`document.querySelector('.app-fit-pickgrid').scrollTop>0`),'装配候选滚动失效');
+    await page.tap('.app-fit-modal-head button');assert(!await page.js(`!!document.querySelector('.app-fit-modal')`));
+    // 物品图标详情 → 数量出售：触摸输入与确认，真实引擎库存应减少。
+    await page.tapText('.app-nav-side',t('ui.App.004'));
+    await page.wait(`!!document.querySelector('.app-hand-cell')`);
+    const saleItemName=localizeCtx(ctx,locale as 'zh'|'en').items.get(saleItemId)!.name;
+    await page.js(`(()=>{const cell=[...document.querySelectorAll('.app-hand-cell')].find(c=>c.querySelector('.app-hand-cell-name')?.textContent===${JSON.stringify(saleItemName)});if(!cell)throw new Error('测试物品不存在');cell.setAttribute('data-audit-item','ore')})()`);
+    await page.tap('[data-audit-item="ore"]');await page.wait(`!!document.querySelector('.app-fit-modal.is-narrow')`);
+    const item=await page.checkModal('.app-fit-modal');
+    await page.tapText('.app-itempick-actions',t('ui.CargoPage.038'));
+    await page.wait(`!!document.querySelector('.app-sellqty-row input')`);
+    const quantity=await page.checkModal('.app-fit-modal');await page.tap('.app-sellqty-row input');
+    await page.send('Input.insertText',{text:'1'});
+    assert.equal(await page.js(`document.querySelector('.app-sellqty-row input').value`),'1','触控输入数量未更新');
+    await page.tap('.app-itempick-actions button.is-primary');await page.wait(`!document.querySelector('.app-sellqty-row')`);
+    await page.wait(`JSON.parse(localStorage.getItem('whale:idle:save')).state.warehouse.items[${JSON.stringify(saleItemId)}]===9999`);
+    const afterSale=await page.js(`(()=>{const s=JSON.parse(localStorage.getItem('whale:idle:save')).state;return {qty:s.warehouse.items[${JSON.stringify(saleItemId)}],isk:s.wallet.isk}})()`);
+    // 市场搜索定位同一货物，出售全部先取消，不应改账。
+    await page.tapText('.app-nav-side',t('ui.App.005'));
+    await page.wait(`!!document.querySelector('.app-mkt-search-input')`);await page.tap('.app-mkt-search-input');
+    await page.send('Input.insertText',{text:saleItemName});await page.wait(`!!document.querySelector('.app-mkt-row-click')`);
+    await page.tap('.app-mkt-row-click .app-inv-name');await page.wait(`!!document.querySelector('.app-mkt-detail-modal')`);
+    const market=await page.checkModal('.app-mkt-detail-modal');
+    await page.tap('.app-mkt-side.is-sell');await page.tap('.app-mkt-actions .is-sellall');await page.wait(`!!document.querySelector('.app-mkt-confirm')`);
+    const confirmation=await page.checkModal('.app-mkt-confirm');await page.tap('.app-mkt-confirm-btns button');
+    assert(!await page.js(`!!document.querySelector('.app-mkt-confirm')`));
+    assert.deepEqual(await page.js(`(()=>{const s=JSON.parse(localStorage.getItem('whale:idle:save')).state;return {qty:s.warehouse.items[${JSON.stringify(saleItemId)}],isk:s.wallet.isk}})()`),afterSale,'取消交易改动账目');
+    await page.tap('.app-mkt-detail-modal .app-modal-head button');
+    // 技能列表详情。
+    await page.tapText('.app-nav-side',t('ui.App.007'));
+    await page.wait(`!!document.querySelector('.app-hand-viewbtn')`);
+    await page.tapText('.app-hand-viewbar',locale==='zh'?'列表':'List');
+    await page.wait(`!!document.querySelector('.app-skill-row .app-linklike')`);await page.tap('.app-skill-row .app-linklike');
+    await page.wait(`!!document.querySelector('.app-skilltree-modal')`);const skill=await page.checkModal('.app-skilltree-modal');
+    await page.tap('.app-skilltree-modal .app-modal-head button');
+    modalChecks.push({locale,layout,width,height,fitting,item,quantity,market,confirmation,skill,touchConfirmed:true});
+    await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:seed.result.identifier});
+    console.log('操作弹层完成：'+JSON.stringify({locale,layout,width,height}));
+  }
+  const wormholeChecks: object[]=[];
+  for(const layout of ['classic','modern'])for(const [width,height] of [[320,568],[568,320]]){
+    const s=structuredClone(state);s.standings.dsi=100;(s.standingsEarned??={}).dsi=100;
+    const entered=wormholeEnter(s,ctx,[s.shipId,'sh-falconet'],20261004);assert(entered.ok,JSON.stringify(entered));
+    await page.send('Emulation.setDeviceMetricsOverride',{width,height,screenWidth:width,screenHeight:height,deviceScaleFactor:1,mobile:true,screenOrientation:{type:width<height?'portraitPrimary':'landscapePrimary',angle:width<height?0:90}});
+    const seed=await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('whale:idle:save',${JSON.stringify(serializeSaveFile(s,Date.now()))});localStorage.setItem('whale-idle:layout',${JSON.stringify(layout)});localStorage.setItem('whale-idle:locale','zh');`}) as {result:{identifier:string}};
+    await page.send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});await page.wait(`!!document.querySelector('.app-root')`);await sleep(250);
+    await page.js(`(()=>{const row=[...document.querySelectorAll('.app-activitybar-item')].find(r=>r.classList.contains('is-wormhole')||r.textContent.includes('虫洞探索'));if(!row)throw new Error('虫洞活动入口不存在');row.setAttribute('data-audit-wh','entry')})()`);
+    await page.tap('[data-audit-wh="entry"]');await page.wait(`!!document.querySelector('.app-wh-modal')`);
+    const wh=await page.checkModal('.app-wh-modal');
+    await page.tap('.app-wh-tabbar button:nth-child(2)');
+    await page.tapText('.app-wh-modal > .app-modal-head',L10N['ui.Wormhole.015']!.zh);
+    wormholeChecks.push({layout,width,height,...wh,closeReachable:true});
+    await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:seed.result.identifier});
+  }
+  const fitExtras: object[]=[];
+  for(const layout of ['classic','modern'])for(const [width,height] of [[320,568],[568,320]]){
+    const s=structuredClone(state);s.shipId='sh-falconet';assert(s.fleet[s.shipId]);
+    const droneHull=[...ctx.ships.values()].find(ship=>!ship.unreleased&&(ship.droneBayM3??0)>0)!;assert(droneHull);
+    s.fleet[s.shipId]!.defId=droneHull.id;
+    for(const [id,item] of ctx.items)if(item.kind==='drone'&&!item.unreleased)s.warehouse.items[id]=10;
+    s.fitPresets={[s.fleet[s.shipId]!.defId??s.shipId]:Array.from({length:10},(_,i)=>({name:'audit-'+i,fitted:{high:['mod-turret-kin-1'],mid:[],low:[]}}))};
+    await page.send('Emulation.setDeviceMetricsOverride',{width,height,screenWidth:width,screenHeight:height,deviceScaleFactor:1,mobile:true,screenOrientation:{type:width<height?'portraitPrimary':'landscapePrimary',angle:width<height?0:90}});
+    const seed=await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('whale:idle:save',${JSON.stringify(serializeSaveFile(s,Date.now()))});localStorage.setItem('whale-idle:layout',${JSON.stringify(layout)});localStorage.setItem('whale-idle:locale','zh');`}) as {result:{identifier:string}};
+    await page.send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});await page.wait(`!!document.querySelector('.app-root')`);await sleep(250);
+    await page.tapText('.app-nav-side',L10N['ui.App.003']!.zh);
+    await page.tap('.app-fit-preset-bar button.is-primary');await page.wait(`!!document.querySelector('.app-fit-preset-modal')`);
+    const preset=await page.checkModal('.app-fit-preset-modal');
+    await page.tap('.app-fit-preset-item:last-child .app-fit-preset-row button');
+    await page.tap('.app-fit-preset-modal .app-fit-modal-head button');
+    await page.tap('.app-fit-drone-add');await page.wait(`!!document.querySelector('.app-fit-drone-modal')`);
+    const drone=await page.checkModal('.app-fit-drone-modal');
+    await page.tap('.app-fit-drone-qty .app-btn');await page.wait(`!document.querySelector('.app-fit-drone-modal')`);
+    await page.wait(`Object.values(JSON.parse(localStorage.getItem('whale:idle:save')).state.fleet['sh-falconet'].droneLoad??{}).some(n=>n>0)`);
+    fitExtras.push({layout,width,height,preset,drone,closeAndLoadReachable:true});
+    await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:seed.result.identifier});
+  }
+  const out=join(root,`tools/_ui-artifacts/mobile-${actionsOnly?'actions':'page'}-audit-20261004.json`);await fs.mkdir(join(root,'tools/_ui-artifacts'),{recursive:true});await fs.writeFile(out,JSON.stringify({rows,windows,drawerChecks,desktopChecks,viewportChecks,modalChecks,wormholeChecks,fitExtras},null,2),'utf8')
+  const narrow=rows.filter(r=>r.width===568 && r.layout==='classic' && r.view==='舰船');
+  for (const row of narrow) {
+    const reading = row.reading as {usableMain?:{cw:number}; count:number}
+    assert((reading.usableMain?.cw??0)>=350, '手机主区仍被挤占：'+JSON.stringify(row));
+    assert.equal(reading.count,0,'舰船页仍有不可滚动裁切');
+  }
+  console.log(JSON.stringify({edgePid:child.pid,output:out,samples:rows.length,windows,drawerChecks,desktopChecks,viewportChecks,modalChecks,wormholeChecks,fitExtras},null,2))
  }finally{ws?.close();child.kill();await new Promise<void>(r=>server.close(()=>r()));assert(resolve(profile).startsWith(resolve(tmpdir())+sep) && profile.includes('whale-mobile-audit-'));await sleep(200);await fs.rm(profile,{recursive:true,force:true}).catch(()=>console.log('隔离配置待清理：'+profile))}
 }
 main().catch(e=>{console.error(e);process.exitCode=1})
