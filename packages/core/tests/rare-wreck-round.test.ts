@@ -12,7 +12,7 @@
  * 本用例断言的四个点：
  * 1. 稀有轮：拿到的确实是稀有残骸（按卡归族，见 `rareWreckItemIdOfCard`），数量 −1、体积 30 m³；
  * 2. 稀有轮：**星系密度与入侵池一字不动**（甲案的核心）；
- * 3. 只读取数仍准确：`salvageRoundMulOf` = max(0.5, (密度 ＋ 入侵残骸)/10)；
+ * 3. 只读取数仍准确：入侵轮读当地基础密度，普通轮读星系密度；不影响稀有件的固定体积；
  * 4. 对照组（稀有池捞干后的那一轮起）：走普通池，**照扣**放干 —— 保证修复没把放干整体关掉。
  *
  * ⚠ 术语（**2026-09-26 船长裁定原话**：「**优先捞稀有池，稀有池捞完后开始普通池。同池内，
@@ -33,6 +33,7 @@ import {
   WRECK_DRAIN_SHARE,
   weekendWreckDensityOf,
   wreckItemIdOf,
+  wreckBaseDensity,
 } from '../src/salvage'
 import { pullOneWreck } from '../src/salvaging'
 import { anomaly, makeTestCtx } from './helpers'
@@ -63,8 +64,8 @@ describe('稀有残骸轮 vs 普通残骸池（放干口径）', () => {
     const densBefore = state.galaxyWrecks[GAL]!.density
     const invBefore = weekendWreckDensityOf(state, GAL)
     expect(densBefore).toBe(DENSITY0)
-    // 只读取数与 salvageRoundPull 同一算式；🔴 **2026-10-02「甲」**：从入侵池出 ⇒ 系数**只看入侵池**（50/10）
-    expect(salvageRoundMulOf(state, ctx, GAL)).toBeCloseTo(50 / 10, 10)
+    // 只读取数与 salvageRoundPull 同一算式；2026-10-04入侵倍率取当地基础密度。
+    expect(salvageRoundMulOf(state, ctx, GAL)).toBeCloseTo(Math.max(0.5, wreckBaseDensity(GAL, ctx) / 10), 10)
 
     const pulled = pullOneWreck(state, ctx, GAL, 60_000)!
     expect(pulled.itemId, '稀有轮应产出稀有残骸').toBe(rareWreckItemIdOf(LAIR))

@@ -149,6 +149,29 @@ function wreckPoolOf(
   })
 }
 
+/** 基础状态的普通打捞：等量组先抽组，再在组内按威胁抽型号，与自动取池同源。 */
+function ordinaryBaseVolumeM3Of(ctx: SimContext, galaxyId: string): number {
+  const groups = new Map<string, Array<{ anomalyId: string; threat: number }>>()
+  const pool = wreckPoolOf(ctx, galaxyId)
+  for (const card of pool) {
+    const key = wreckGroupOfCard(card.anomalyId, ctx)?.key
+    if (key === undefined) continue
+    const rows = groups.get(key) ?? []
+    rows.push(card)
+    groups.set(key, rows)
+  }
+  const meanOf = (rows: typeof pool): number => {
+    const weight = rows.reduce((sum, card) => sum + card.threat, 0)
+    return weight > 0 ? rows.reduce((sum, card) => sum + ordinaryCardVolumeM3Of(card.threat) * card.threat, 0) / weight : 0
+  }
+  if (groups.size === 0) return meanOf(pool)
+  return [...groups.values()].reduce((sum, rows) => sum + meanOf(rows), 0) / groups.size
+}
+
+function ordinaryCardVolumeM3Of(threat: number): number {
+  return Math.max(0.1, Math.round(Math.max(1, threat) * WRECK_VOLUME_PER_THREAT * 100) / 100)
+}
+
 /**
  * **自动判定本轮打捞对象**（**2026-09-26 船长令**：「**分组后不要再让玩家手动选择打捞对象了，
  * 这有些太过繁琐。改为自动判断：优先打捞入侵残骸，没有入侵残骸则是根据两种残骸的数量比同步打捞。**」）。
@@ -817,7 +840,7 @@ export function pullOneWreck(
   const bucketKey = chosen.bucketKey ?? (fromWeekend ? weekendWreckPoolsOf(state, galaxyId)
     .find((p) => p.density > 0 && (p.family === null || p.family === group.family))?.key : undefined)
   /**
-   * mul：**从哪一池出就用哪一池的量算**（甲）。
+   * 2026-10-04：入侵mul取当地基础密度、普通mul仍取当前池量；扣账与取数分离。
    * - 入侵轮 ⇒ `salvageRoundMulOf`（**只读**！池子扣减改由下面的 `chargeWeekendWreckByVolume`
    *   按**本轮实际出量**做，星系池也一分不扣）；
    * - 其余 ⇒ `salvageRoundPull`（照旧放干星系池）。
@@ -827,7 +850,8 @@ export function pullOneWreck(
   const wreckId = wreckItemIdOf(group.key)
   // 乙案（2026-09-05）：残骸计数 = 体积（m³）——型号威胁决定单份体积量级（威胁×0.06），
   // 本轮入舱 m³ = 单份 × 密度系数；item unitM3 = 1，数量即体积。
-  const baseM3 = Math.max(0.1, Math.round(Math.max(1, chosen.threat) * WRECK_VOLUME_PER_THREAT * 100) / 100)
+  // 2026-10-04：入侵型号仅决定来源，单轮体量取当地普通基线，不受入侵敌卡强度影响。
+  const baseM3 = fromWeekend ? ordinaryBaseVolumeM3Of(ctx, galaxyId) : ordinaryCardVolumeM3Of(chosen.threat)
   // 残骸富集识别学（wreck-assaying，卷B3⑨）：完好舰体命中 → 当场直发该**组**回收彩头
   // （不再折算体积）；判定恒消耗一次随机数保 rng 时序（rate=0 时也掷）
   // 漂流物打捞学（salvage-diving，2026-09-05）：残骸打捞量每级 +12%（主控与 AI 同享）
@@ -841,7 +865,8 @@ export function pullOneWreck(
   let volumeM3 = baseM3 * mul * (1 + 0.12 * diveLv) * yieldMul
   if (fromWeekend) {
     const left = weekendWreckPoolsOf(state, galaxyId).find((p) => p.key === bucketKey)?.density ?? 0
-    volumeM3 = Math.min(volumeM3, left)
+    // 入舱和池扣量共用整数数量；不足一件的尾轮保留原有兜底。
+    volumeM3 = Math.min(wreckUnitsOf(volumeM3), left)
   }
   if (cargoFreeM3 !== undefined && wreckUnitsOf(volumeM3) > cargoFreeM3) {
     const room = Math.floor(Math.max(0, cargoFreeM3))
@@ -856,7 +881,7 @@ export function pullOneWreck(
    * 🔴 **从入侵池出的那一轮：池子结算走单点 `chargeWeekendWreckByVolume`**。
    *
    * **2026-10-02 船长令「甲」**（原话「**我发现入侵残骸哪怕数量很少也能一次性捞出很多。**」）：
-   * 出量系数**只看入侵池自己**（`roundMulFor`，不再被星系密度顶起来——改前富星系里**只有 10 m³**
+   * 历史取数现已改为当地基础吞吐；当时出量系数只看入侵池自己（改前富星系里只有10 m³
    * 的入侵池 40 轮能吐 **2951 m³**，实测见 `tools/_ui-artifacts/invasion-wreck-yield.log`），
    * 池子**按本轮实际出量等量扣**、**出量按余额封顶** ⇒ 入舱 = `min(算出来的量, 池子余额)`，
    * 「池子标称多少，最多就只能捞多少」。

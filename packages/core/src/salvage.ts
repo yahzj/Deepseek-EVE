@@ -770,8 +770,7 @@ export function advanceWeekendWreckDecay(
 /** 本轮的"体积当量系数"（纯算式；**不改任何状态**）：mul = max(0.5, 池子量/10)。
  *  分母不变（2026-09-10 船长定）——保底线抬到 10 后，稳态保底（密度 = 10）的实际系数 = 1.0。
  *  **扣减与取数分开**：`salvageRoundPull`（要扣）与 `salvageRoundMulOf`（只读）共用本算式。
- *  ⚠ **2026-10-02 船长令「甲」**：`density` 一律传**本轮真正在出的那一池**的量 ——
- *  从入侵池出就传入侵池量（**不再**把星系密度与入侵残骸相加，见 `roundMulFor` 的长注）。 */
+ *  2026-10-04：普通轮仍传当前密度，入侵轮传当地基础密度；库存不再决定速度。 */
 function roundMulOf(density: number, weekend = 0): number {
   return Math.max(0.5, (density + weekend) / 10)
 }
@@ -780,10 +779,11 @@ function roundMulOf(density: number, weekend = 0): number {
  * **本轮密度系数的唯一算式**（`salvageRoundPull` 与 `salvageRoundMulOf` 共用 ⇒ 取数与扣减永不脱节）：
  *
  * - **从入侵残骸池出**（选「入侵残骸」；或未指定对象而池里有存量 ⇒ 按 2026-09-26 的三级序"同池内入侵优先"）
- *   ⇒ `mul = max(0.5, 入侵池/10)` —— **只看入侵池自己的量**；
+ *   ⇒ `mul = max(0.5, 当地基础密度/10)`，不随临时星系密度或入侵存量变化；
  * - 选了某一组 ⇒ 只看该组存量；
  * - 其余（普通池）⇒ 按星系密度。
  *
+ * 以下为历史：2026-10-04已确认速度/库存分离；保留实际扣量，替代旧的池量倍率。
  * 🔴 **2026-10-02 船长令「甲」**（原话：「**我发现入侵残骸哪怕数量很少也能一次性捞出很多。**」⇒ 裁「甲」＝
  * **池子的量真正约束出量**）：**改判 2026-09-25 那条"计量合并"**（原文：mul 按（星系密度 ＋ 入侵残骸）算
  * ⇒ 入侵留下的残骸场让每轮出量更大）。为什么必须改（探针实测，`tools/_ui-artifacts/invasion-wreck-yield.log`）：
@@ -804,7 +804,8 @@ function roundMulFor(
   weekend: number,
 ): number {
   const fromWeekend = weekend > 0 && (target === undefined || target === WEEKEND_WRECK_TARGET)
-  if (fromWeekend) return roundMulOf(weekend)
+  // 2026-10-04：入侵库存只限总量，速度对标当地基础密度，临时堆积不加速。
+  if (fromWeekend) return roundMulOf(wreckBaseDensity(galaxyId, ctx))
   if (target !== undefined) {
     const shares = ensureWreckGroupShares(state, ctx, galaxyId, recordOf(state, galaxyId, ctx))
     return roundMulOf(shares[target] ?? 0)
@@ -830,15 +831,14 @@ export function salvageRoundMulOf(
   bucketKey?: string,
 ): number {
   if (bucketKey !== undefined) {
-    const bucket = weekendWreckRecordOf(state, galaxyId).byFamily[bucketKey]
-    return roundMulOf(bucket ? weekendWreckValueOf(bucket) : 0)
+    return roundMulOf(wreckBaseDensity(galaxyId, ctx))
   }
   return roundMulFor(state, ctx, galaxyId, target, weekendWreckDensityOf(state, galaxyId))
 }
 
 /**
  * **入侵残骸池的每轮结算**（扣减 ＋ 出量裁决）—— **2026-10-02 船长令「甲」**（**2026-10-03 回滚令**）：
- * 池子**按本轮真出的量等量扣**、**出量按余额封顶** ⇒ 「池子标称多少，最多就只能捞多少」，捞几轮即见底。
+ * 池子按本轮真出的量等量扣、出量按余额封顶；2026-10-04速度独立，耗时随库存线性增长。
  *
  * 🔴 **2026-10-03 船长令（原话照抄）**：「**将打捞获取量进行回滚，回滚到 2026-10-02 那条「甲」**」。
  * 回滚理由（同日探针读数，见 `docs/design/salvage-asymptotic-unified-20261003.md` §三）：
