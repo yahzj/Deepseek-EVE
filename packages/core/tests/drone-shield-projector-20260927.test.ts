@@ -85,11 +85,11 @@ describe('无人机护盾投射仪 · 数据与槽位', () => {
     expect(bp3.buildSeconds).toBe(2000)
   })
 
-  it('中英说明齐：中文含 +70% / +100%，英文含 ⟦70%⟧ / ⟦100%⟧', () => {
-    expect(MODULES.find((m) => m.id === 'mod-drone-shield-2')!.description).toContain('+⟦70%⟧')
-    expect(MODULES.find((m) => m.id === 'mod-drone-shield-3')!.description).toContain('+⟦100%⟧')
-    expect(EN_MODULES['mod-drone-shield-2']?.description).toContain('⟦70%⟧')
-    expect(EN_MODULES['mod-drone-shield-3']?.description).toContain('⟦100%⟧')
+  it('中英说明讲清作用层，数值由字段与参数行提供', () => {
+    for (const id of ['mod-drone-shield-2', 'mod-drone-shield-3']) {
+      expect(MODULES.find((m) => m.id === id)!.description).toContain('无人机的护盾容量')
+      expect(EN_MODULES[id]?.description).toContain('drone shield capacity')
+    }
     expect(EN_BLUEPRINTS['bp-drone-shield-3']).toBeTruthy()
   })
 })

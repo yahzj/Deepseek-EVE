@@ -43,8 +43,8 @@ describe('无人机扩舱件改归低槽（2026-09-27）', () => {
   it('掠袭机库：扩舱 30 → 40，说明中英同步', () => {
     const def = MODULES.find((m) => m.id === 'mod-wh-a-hangar')!
     expect(def.droneBayBonusM3).toBe(40)
-    expect(def.description).toContain('+40 m³')
-    expect(EN_MODULES['mod-wh-a-hangar']?.description).toContain('+40 m³')
+    expect(def.description).toContain('扩展无人机舱')
+    expect(EN_MODULES['mod-wh-a-hangar']?.description).toContain('drone bay capacity')
   })
 
   it('两艘无人机专用舰：各挪一个中槽到低槽，槽位总数不变', () => {

@@ -322,8 +322,9 @@ describe('英文覆盖层（P2）', () => {
       expect(cjk.test(other.description), `${it.id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
     }
     expect(noDesc, `这些物品还没有英文说明：${noDesc.slice(0, 8).join(', ')}`).toEqual([])
-    expect(en.items.get('min-tritanium')?.description).toBe('The basic material of ship armor: plentiful and price-stable.')
-    expect(en.items.get('box-relic-a')?.description).toContain('Takes 2×2 cargo slots')
+    expect(en.items.get('min-tritanium')?.description).toBe('Refined material used in hulls, armor and industrial parts.')
+    expect(en.items.get('box-relic-a')?.description).toContain('dismantling bench')
+    expect(en.items.get('box-relic-a')?.unitM3).toBe(3000)
   })
 
   it('装备说明：142 条全部有英文说明，且不残留中日韩字符', () => {
@@ -338,8 +339,8 @@ describe('英文覆盖层（P2）', () => {
       expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
     }
     expect(noDesc, `这些装备还没有英文说明：${noDesc.slice(0, 8).join(', ')}`).toEqual([])
-    expect(en.modules.get('mod-turret-kin-1')?.description).toBe('Light rapid-fire kinetic gun: ×1.5 vs shields, ×0.75 vs armor.')
-    expect(en.modules.get('mod-shield-kin-1')?.description).toContain('cap 90%')
+    expect(en.modules.get('mod-turret-kin-1')?.description).toContain('rapid kinetic cannon')
+    expect(en.modules.get('mod-shield-kin-1')?.description).toContain('shield resistance to kinetic')
   })
 
   it('技能说明：79 条全部有英文说明，且不残留中日韩字符、`⟦⟧` 高亮标记保留', () => {

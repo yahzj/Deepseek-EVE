@@ -12,6 +12,8 @@
  */
 
 import type { ItemDef } from '@whale/core'
+import { L10N } from './l10n/table'
+// ⟪文案调整 2026-10-04⟫ 船长授权整批说明重写，数值与功能不变。
 
 /**
  * **矿石（可精炼）· 2026-09-28 船长令：按体积平衡**
@@ -37,7 +39,7 @@ export const ORES: readonly ItemDef[] = [
     kind: 'ore',
     unitM3: 0.5, // R1：最轻的矿，一舱装得最多
     baseSellPriceIsk: 7,
-    description: '最常见的低品位原矿，遍布新手星域，是起步的第一桶金。',
+    description: L10N['item.copy.001']!.zh,
     refine: [
       { mineralId: 'min-tritanium', perOre: 1.02 },
       { mineralId: 'min-pyerite', perOre: 0.295 },
@@ -51,7 +53,7 @@ export const ORES: readonly ItemDef[] = [
     kind: 'ore',
     unitM3: 0.5, // R1
     baseSellPriceIsk: 7,
-    description: '熔岩包裹的致密原矿，银纹超金属与晶态胶体的重要来源。',
+    description: L10N['item.copy.002']!.zh,
     refine: [
       { mineralId: 'min-pyerite', perOre: 0.612 },
       { mineralId: 'min-mexallon', perOre: 0.217 },
@@ -65,7 +67,7 @@ export const ORES: readonly ItemDef[] = [
     kind: 'ore',
     unitM3: 1, // R2
     baseSellPriceIsk: 15,
-    description: '红色星环内的高价值原矿，航线更长，回报也更丰厚。',
+    description: L10N['item.copy.003']!.zh,
     refine: [
       { mineralId: 'min-nocxium', perOre: 0.224 },
       { mineralId: 'min-tritanium', perOre: 0.611 },
@@ -79,7 +81,7 @@ export const ORES: readonly ItemDef[] = [
     kind: 'ore',
     unitM3: 2, // R3
     baseSellPriceIsk: 32,
-    description: '泛着幽光的致密岩层，同位聚晶的主要载体——环心矿区的高纯产出。',
+    description: L10N['item.copy.004']!.zh,
     refine: [
       { mineralId: 'min-isotope', perOre: 0.869 },
       { mineralId: 'min-tritanium', perOre: 0.708 },
@@ -93,7 +95,7 @@ export const ORES: readonly ItemDef[] = [
     kind: 'ore',
     unitM3: 2, // R3
     baseSellPriceIsk: 32,
-    description: '棱面折射晨光的晶体原矿，高纯度同位聚晶的富矿层。',
+    description: L10N['item.copy.005']!.zh,
     refine: [
       { mineralId: 'min-isotope', perOre: 0.899 },
       { mineralId: 'min-pyerite', perOre: 0.334 },
@@ -107,7 +109,7 @@ export const ORES: readonly ItemDef[] = [
     kind: 'ore',
     unitM3: 4, // R4
     baseSellPriceIsk: 68,
-    description: '深空裂隙中凝结的黑色晶体，孕育冥铁合金的母矿。',
+    description: L10N['item.copy.006']!.zh,
     refine: [
       { mineralId: 'min-starcore', perOre: 0.349 },
       { mineralId: 'min-darkiron', perOre: 0.028 },
@@ -122,7 +124,7 @@ export const ORES: readonly ItemDef[] = [
     kind: 'ore',
     unitM3: 8, // R5：最占地方，一舱装得最少
     baseSellPriceIsk: 145,
-    description: '只有星云深处的矿脉才出产的传说级原矿，一舱就能换一艘船。',
+    description: L10N['item.copy.007']!.zh,
     refine: [
       { mineralId: 'min-darkiron', perOre: 0.217 },
       { mineralId: 'min-starcore', perOre: 0.297 },
@@ -165,7 +167,7 @@ export const ORES: readonly ItemDef[] = [
     kind: 'ore',
     unitM3: 1, // **排除在体积平衡之外**（2026-09-28 船长令：「把虚空母矿排除在体积平衡」）
     baseSellPriceIsk: 915,
-    description: '深空裂隙里结出的黑色母岩，炼得出虚空晶。',
+    description: L10N['item.copy.008']!.zh,
     refine: [
       { mineralId: 'min-voidcrystal', perOre: 0.25 }, // 2026-09-14 船长：产出量下调到一半（原 0.5）
       { mineralId: 'min-isotope', perOre: 1.0 },
@@ -198,7 +200,7 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     unitM3: 3000, // 2026-09-15 船长「将安全货柜大小增加到6格」：2000（2×2=4 格）→ **3000（3×2=6 格）**
     baseSellPriceIsk: 3_232_500, // 2026-09-15 船长「安全货柜价格允许提升」：体积 ×1.5 同比例提价（原 2_155_000）
     description:
-      '从遗迹里拖出来的整箱货柜：外壳带锁、标记已被磨掉，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
+      L10N['item.copy.058']!.zh,
   },
   {
     id: 'box-relic-c',
@@ -207,7 +209,7 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     unitM3: 3000, // 2026-09-15 船长「将安全货柜大小增加到6格」：2000（2×2=4 格）→ **3000（3×2=6 格）**
     baseSellPriceIsk: 3_352_500, // 2026-09-15 船长「安全货柜价格允许提升」：体积 ×1.5 同比例提价（原 2_235_000）
     description:
-      '从遗迹里拖出来的整箱货柜：外壁挂着干涸的生物膜，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
+      L10N['item.copy.059']!.zh,
   },
   {
     id: 'box-relic-d',
@@ -216,7 +218,7 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     unitM3: 3000, // 2026-09-15 船长「将安全货柜大小增加到6格」：2000（2×2=4 格）→ **3000（3×2=6 格）**
     baseSellPriceIsk: 6_112_500, // 2026-09-15 船长「安全货柜价格允许提升」：体积 ×1.5 同比例提价（原 4_075_000）
     description:
-      '从遗迹里拖出来的整箱货柜：封条上还留着守墓者的印记，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
+      L10N['item.copy.060']!.zh,
   },
   {
     id: 'box-relic-e',
@@ -225,7 +227,7 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     unitM3: 3000, // 2026-09-15 船长「将安全货柜大小增加到6格」：2000（2×2=4 格）→ **3000（3×2=6 格）**
     baseSellPriceIsk: 4_927_500, // 2026-09-15 船长「安全货柜价格允许提升」：体积 ×1.5 同比例提价（原 3_285_000）
     description:
-      '从遗迹里拖出来的整箱货柜：外壳是巨构自己的合金，接口仍在待机，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
+      L10N['item.copy.061']!.zh,
   },
   {
     id: 'box-relic-g',
@@ -234,7 +236,7 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
     unitM3: 3000, // 2026-09-15 船长「将安全货柜大小增加到6格」：2000（2×2=4 格）→ **3000（3×2=6 格）**
     baseSellPriceIsk: 4_815_000, // 2026-09-15 船长「安全货柜价格允许提升」：体积 ×1.5 同比例提价（原 3_210_000）
     description:
-      '从遗迹里拖出来的整箱货柜：箱体被蜂群啃过又焊上，只有回站拆开才知道里面是什么。占货仓 2×2 格。',
+      L10N['item.copy.062']!.zh,
   },
 ]
 
@@ -260,7 +262,7 @@ export const BLUEPRINT_CONTAINERS: readonly ItemDef[] = [
     unitM3: 1000,
     baseSellPriceIsk: 3_595_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
     description:
-      '从遗迹里拖出来的长条货柜：外壳印着制式编号，接口还是热的，只有回站拆开才知道里面压着哪张图纸。占货仓 2×1 格。',
+      L10N['item.copy.063']!.zh,
   },
   {
     id: 'box-bp-mid',
@@ -269,7 +271,7 @@ export const BLUEPRINT_CONTAINERS: readonly ItemDef[] = [
     unitM3: 1000,
     baseSellPriceIsk: 14_045_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
     description:
-      '从遗迹里拖出来的长条货柜：编号被人为磨去一半，比浅层那种压手得多。占货仓 2×1 格，层 5 起可获取。',
+      L10N['item.copy.064']!.zh,
   },
   {
     id: 'box-bp-deep',
@@ -278,7 +280,7 @@ export const BLUEPRINT_CONTAINERS: readonly ItemDef[] = [
     unitM3: 1000,
     baseSellPriceIsk: 25_840_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
     description:
-      '从遗迹里拖出来的长条货柜：铭牌上还留着旧主人的舰徽，封条完好无损。占货仓 2×1 格，层 7 起可获取。',
+      L10N['item.copy.065']!.zh,
   },
 ]
 
@@ -290,7 +292,7 @@ export const MINERALS: readonly ItemDef[] = [
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 8,
-    description: '舰船装甲的基本原料，量大价稳。',
+    description: L10N['item.copy.009']!.zh,
   },
   {
     id: 'min-pyerite',
@@ -298,7 +300,7 @@ export const MINERALS: readonly ItemDef[] = [
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 12,
-    description: '结构与电子组件的常用材料。',
+    description: L10N['item.copy.010']!.zh,
   },
   {
     id: 'min-mexallon',
@@ -306,7 +308,7 @@ export const MINERALS: readonly ItemDef[] = [
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 20,
-    description: '高端设备与护盾模组的原料。',
+    description: L10N['item.copy.011']!.zh,
   },
   {
     id: 'min-nocxium',
@@ -314,7 +316,7 @@ export const MINERALS: readonly ItemDef[] = [
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 90,
-    description: '稀有原材料，制造旗舰级部件的核心。',
+    description: L10N['item.copy.012']!.zh,
   },
   {
     id: 'min-isotope',
@@ -322,7 +324,7 @@ export const MINERALS: readonly ItemDef[] = [
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 55,
-    description: '辉云/曦棱层系的精炼核心，高端工业的入门级新材料。',
+    description: L10N['item.copy.013']!.zh,
   },
   {
     id: 'min-starcore',
@@ -330,7 +332,7 @@ export const MINERALS: readonly ItemDef[] = [
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 245,
-    description: '星髓凝晶，MK3 级装备与旗舰舰船骨架的必需材料。',
+    description: L10N['item.copy.014']!.zh,
   },
   {
     id: 'min-darkiron',
@@ -338,7 +340,7 @@ export const MINERALS: readonly ItemDef[] = [
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 780,
-    description: '玄晶与暗星冰才炼得出的重合金，顶级工业的象征。',
+    description: L10N['item.copy.015']!.zh,
   },
   {
     id: 'min-voidcrystal',
@@ -351,7 +353,7 @@ export const MINERALS: readonly ItemDef[] = [
     //  平衡点按母矿 1,300 口径反算 = (130,000 − 11,625) ÷ 25 = 4,735，取 5,400 留约 13% 余量。
     //  ⚠ 本条按 §十五之二之 5（船长 2026-10-01 令）**不写净额结论**：读数由 `void-chain.test.ts` 的
     //  「精炼面板口径」用例盯住（数据一变就报红）。
-    description: '全宇宙最稀有的原材料，只有传说级制造项目才用得起。',
+    description: L10N['item.copy.016']!.zh,
   },
   /**
    * **跃迁燃料三件套**（**2026-09-29 船长令**：「为星云和冰添加新的精炼分解的主要材料，大概 2~3 种
@@ -370,7 +372,7 @@ export const MINERALS: readonly ItemDef[] = [
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 120,
-    description: '星云气里分离出的高能等离子，跃迁燃料的主要成分。',
+    description: L10N['item.copy.017']!.zh,
   },
   {
     id: 'min-cryoslurry',
@@ -378,7 +380,7 @@ export const MINERALS: readonly ItemDef[] = [
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 120,
-    description: '冰矿深冷分离出的稠浆，与折跃等离子配对才点得着。',
+    description: L10N['item.copy.018']!.zh,
   },
   {
     id: 'min-curvature',
@@ -386,7 +388,7 @@ export const MINERALS: readonly ItemDef[] = [
     kind: 'mineral',
     unitM3: 0.01,
     baseSellPriceIsk: 420,
-    description: '高阶气藏与深冰里才凝得出的引子，极少量即可让燃料成倍加速。',
+    description: L10N['item.copy.019']!.zh,
   },
 ]
 
@@ -398,7 +400,7 @@ export const GASES: readonly ItemDef[] = [
     kind: 'gas',
     unitM3: 2,
     baseSellPriceIsk: 32,
-    description: '低重力气田的氖氦混合云，采集容易，同位聚晶的重要来源。',
+    description: L10N['item.copy.034']!.zh,
     // ⟪2026-09-29 船长令（跃迁燃料链）⟫ 重配比：折跃等离子切走 40% 价值（0.178×120 = 21.36），
     // 老产出等比 ×0.6（同位聚晶 0.533×55 = 29.315 · 钛钢 0.343×8 = 2.744）⇒ 合计 53.419（改前 53.416）
     refine: [
@@ -415,7 +417,7 @@ export const GASES: readonly ItemDef[] = [
     kind: 'gas',
     unitM3: 8,
     baseSellPriceIsk: 144,
-    description: '坟场深处沉淀的腐蚀性磷光霾云——提炼价值极高的稀有气藏。',
+    description: L10N['item.copy.035']!.zh,
     // ⟪2026-09-29 船长令⟫ 重配比（高阶气：主料 30% ＋ 曲率凝析物 10%，老产出等比 ×0.6）：
     // 折跃等离子 72.12 · 曲率凝析物 23.94 · 同位聚晶 53.90 · 星髓晶 85.015 · 晶态胶体 5.40
     // ⇒ 合计 240.375（改前 240.48）
@@ -435,7 +437,7 @@ export const GASES: readonly ItemDef[] = [
     kind: 'gas',
     unitM3: 4,
     baseSellPriceIsk: 68,
-    description: '狂暴离子流内部反而凝集着纯净的星髓晶——敢进去的人才拿得到。',
+    description: L10N['item.copy.036']!.zh,
     // ⟪2026-09-29 船长令⟫ 重配比（高阶气）：折跃等离子 34.20 · 曲率凝析物 11.34 ·
     // 星髓晶 50.225 · 冥铁合金 13.26 · 同位聚晶 4.565 ⇒ 合计 113.59（改前 113.81）
     refine: [
@@ -454,7 +456,7 @@ export const GASES: readonly ItemDef[] = [
     kind: 'gas',
     unitM3: 8,
     baseSellPriceIsk: 144,
-    description: '极光粒子云团，传说其中沉淀着冥铁与星髓的混合物。',
+    description: L10N['item.copy.037']!.zh,
     // ⟪2026-09-29 船长令⟫ 重配比（高阶气）：折跃等离子 72.12 · 曲率凝析物 23.94 ·
     // 星髓晶 69.335 · 冥铁合金 74.88 ⇒ 合计 240.275（改前 240.195）
     refine: [
@@ -476,7 +478,7 @@ export const ICES: readonly ItemDef[] = [
     kind: 'ice',
     unitM3: 2,
     baseSellPriceIsk: 32,
-    description: '蓝白色寒冰星环的碎块，冰层里封存着高纯度同位聚晶。',
+    description: L10N['item.copy.038']!.zh,
     // ⟪2026-09-29 船长令⟫ 重配比：低温跃迁浆切走 40%（0.178×120 = 21.36），老产出等比 ×0.6
     // （同位聚晶 0.526×55 = 28.93 · 晶态胶体 0.155×20 = 3.10）⇒ 合计 53.39（改前 53.415）
     refine: [
@@ -493,7 +495,7 @@ export const ICES: readonly ItemDef[] = [
     kind: 'ice',
     unitM3: 4,
     baseSellPriceIsk: 68,
-    description: '冰核深处呈现髓质纹理的古老冰层，星髓晶藏量可观。',
+    description: L10N['item.copy.039']!.zh,
     // ⟪2026-09-29 船长令⟫ 重配比（高阶冰）：低温跃迁浆 34.08 · 曲率凝析物 11.34 ·
     // 星髓晶 46.55 · 同位聚晶 19.14 · 晶态胶体 2.54 ⇒ 合计 113.65（改前 113.54）
     refine: [
@@ -512,7 +514,7 @@ export const ICES: readonly ItemDef[] = [
     kind: 'ice',
     unitM3: 8,
     baseSellPriceIsk: 144,
-    description: '吸收光线的黑色冰晶，暗星冰环深处才有的珍品。',
+    description: L10N['item.copy.040']!.zh,
     // ⟪2026-09-29 船长令⟫ 重配比（高阶冰）：低温跃迁浆 72.24 · 曲率凝析物 23.94 ·
     // 冥铁合金 80.34 · 星髓晶 46.795 · 同位聚晶 17.49 ⇒ 合计 240.805（改前 240.685）
     refine: [
@@ -542,7 +544,7 @@ export const AMMO: readonly ItemDef[] = [
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 6,
-    description: '动能弹药：实心高速弹，破盾专精（对护盾 ×1.5、对装甲 ×0.75）。',
+    description: L10N['item.copy.041']!.zh,
     damageType: 'kinetic',
     dmg: 6,
   },
@@ -552,7 +554,7 @@ export const AMMO: readonly ItemDef[] = [
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 7,
-    description: '爆破弹药：导弹架专用弹药，拆甲专精（对装甲 ×1.5、对护盾 ×0.75）。导弹无视近盲、命中不随距离衰减。',
+    description: L10N['item.copy.042']!.zh,
     damageType: 'explosive',
     dmg: 7,
   },
@@ -562,7 +564,7 @@ export const AMMO: readonly ItemDef[] = [
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 8,
-    description: '能量弹药：激光炮专用高能电池弹——光束必中、对护盾 ×1.25、对甲/结构 ×1。',
+    description: L10N['item.copy.043']!.zh,
     damageType: 'plasma',
     dmg: 9,
   },
@@ -574,7 +576,7 @@ export const AMMO: readonly ItemDef[] = [
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 45,
-    description: '动能弹药 MK2：高密度穿甲弹芯的实心高速弹，破盾专精（对护盾 ×1.5、对装甲 ×0.75）。攻坚用高级弹药。',
+    description: L10N['item.copy.044']!.zh,
     damageType: 'kinetic',
     dmg: 8,
   },
@@ -584,7 +586,7 @@ export const AMMO: readonly ItemDef[] = [
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 60,
-    description: '爆破弹药 MK2：双级聚能装药的导弹架专用弹，拆甲专精（对装甲 ×1.5、对护盾 ×0.75）。导弹无视近盲、命中不随距离衰减。',
+    description: L10N['item.copy.045']!.zh,
     damageType: 'explosive',
     dmg: 9,
   },
@@ -594,7 +596,7 @@ export const AMMO: readonly ItemDef[] = [
     kind: 'ammo',
     unitM3: 0.02,
     baseSellPriceIsk: 80,
-    description: '能量弹药 MK2：高密度充能电池弹——光束必中、对护盾 ×1.25、对甲/结构 ×1。激光炮攻坚专用。',
+    description: L10N['item.copy.046']!.zh,
     damageType: 'plasma',
     dmg: 12,
   },
@@ -612,7 +614,7 @@ export const DRONES: readonly ItemDef[] = [
     kind: 'drone',
     unitM3: 5, // 体积档 1/4：轻型侦察机（2026-09-09 船长：体积 5/10/20/40 四档，机巢架数由体积主导）
     baseSellPriceIsk: 900,
-    description: '轻型侦察无人机：动能点射（破盾）。机体轻快——闪避最高、装甲最薄。',
+    description: L10N['item.copy.047']!.zh,
     damageType: 'kinetic',
     dmg: 3,
     cpuUse: 4,
@@ -628,7 +630,7 @@ export const DRONES: readonly ItemDef[] = [
     kind: 'drone',
     unitM3: 10, // 体积档 2/4：轻型战斗（2026-09-09 船长：体积 5/10/20/40 四档）
     baseSellPriceIsk: 2200,
-    description: '轻型战斗无人机：高爆打击（拆甲）。属性均衡——机群的主力机型。',
+    description: L10N['item.copy.048']!.zh,
     damageType: 'explosive',
     dmg: 6,
     cpuUse: 7,
@@ -645,7 +647,7 @@ export const DRONES: readonly ItemDef[] = [
     kind: 'drone',
     unitM3: 20, // 体积档 3/4：重型攻坚（2026-09-09 船长：体积 5/10/20/40 四档）
     baseSellPriceIsk: 5000,
-    description: '重型攻坚无人机：能量脉冲（通用）。厚甲重击——血量最厚、闪避最低。',
+    description: L10N['item.copy.049']!.zh,
     damageType: 'plasma',
     dmg: 12,
     cpuUse: 11,
@@ -672,7 +674,7 @@ export const DRONES: readonly ItemDef[] = [
     kind: 'drone',
     unitM3: 40, // 体积档 4/4：重型哨戒（2026-09-09 船长：体积 5/10/20/40 四档）
     baseSellPriceIsk: 9500,
-    description: '哨戒无人机：重型能量炮组，航程极远——但距离越远越难命中；机体轻薄，生存与侦察机相仿。',
+    description: L10N['item.copy.050']!.zh,
     damageType: 'plasma',
     dmg: 20,
     cpuUse: 16,
@@ -694,7 +696,7 @@ export const DRONES: readonly ItemDef[] = [
     unitM3: 5, // 轻型侦察机档（与蜂鸟同体积）
     baseSellPriceIsk: 24_000, // 2026-09-14 船长「专属 ×4」：6,000 → 24,000（与市场行同值）
     description:
-      '流亡者从残舰机库里拼出来的侦查无人机：单发比制式侦察机重一倍、机体更飘，放飞更省电。代价是三层血最薄——挨一下就没了。',
+      L10N['item.copy.051']!.zh,
     damageType: 'kinetic', // 侦察机档：动能点射（破盾）
     dmg: 6, // 2026-09-10 船长裁决：A 档基础上「输出提高到 6 点」（专属强化型，契约登记豁免）
     cpuUse: 5, // 船长裁决：随单发上调（仍低于制式战斗机赤鸢的 7）
@@ -714,7 +716,7 @@ export const DRONES: readonly ItemDef[] = [
     unitM3: 20, // 体积档 3/4：重型攻坚（与制式攻坚机同档）
     baseSellPriceIsk: 48_000, // 2026-09-14 专属 ×4：12,000 → 48,000
     description:
-      '巢群的活体攻坚机：孢子爆裂弹头拆甲，三层血比制式攻坚机更厚且偏甲壳，装甲与结构的抗性也更硬——代价是更笨重。',
+      L10N['item.copy.052']!.zh,
     damageType: 'explosive', // 族弹型权威：C 族 = 等离子 8 / 爆炸 2 ⇒ 爆炸在族内（且呼应本族「孢子导弹巢」）
     dmg: 15, // 制式攻坚机 12 ⇒ +25%（专属强化型，豁免区间校验、只受硬边界约束）
     cpuUse: 12,
@@ -741,7 +743,7 @@ export const DRONES: readonly ItemDef[] = [
     unitM3: 40, // 体积档 4/4：重型哨戒（与制式哨戒机同档）
     baseSellPriceIsk: 88_000, // 2026-09-14 专属 ×4：22,000 → 88,000
     description:
-      '巨构自组装的长针哨戒机：动能长针拆盾，航程比制式哨戒机更远，命中更高、远端衰减更缓，机体也略厚——它是机群里射得最远的一型。',
+      L10N['item.copy.053']!.zh,
     damageType: 'kinetic', // 族弹型权威：E 族 = 动能 5 / 爆炸 5 ⇒ 动能在族内（呼应本族「巨构导控塔/近防阵列」）
     dmg: 24, // 制式哨戒机 20 ⇒ +20%（专属强化型）
     cpuUse: 18,
@@ -771,7 +773,7 @@ export const DRONES: readonly ItemDef[] = [
     unitM3: 20, // 体积档 3/4：重型攻坚（与制式攻坚机同档）
     baseSellPriceIsk: 48_000, // 专属 ×4 口径（与巢卫攻坚机同价）
     description:
-      '墨潮帮的攻坚机：动能重弹近距压制。单发比制式攻坚机重、三层血也更厚实，代价是闪避全机型最低——被咬住就躲不掉。',
+      L10N['item.copy.054']!.zh,
     damageType: 'kinetic', // 船长 2026-09-26：「重袭机单发16的动能伤害」（H 族格 = 爆炸 8 : 动能 2，动能在族内）
     dmg: 16, // 船长 2026-09-26 给定
     cpuUse: 13,
@@ -805,7 +807,7 @@ export const REPAIR_KITS: readonly ItemDef[] = [
     repairRestore: 5,
     // ⟪文案调整 2026-09-30⟫ 文案审核批 E12（船长批「按你推荐来」）：括号里原来套着破折号且偏口语
     //   ⇒ 拆成两句（说明只写规格；"越厚回得越多"改成陈述句写进规格）。
-    description: '纳米修理组件：基础回复 5 HP（结构/装甲各按此值 × 容量增幅 × 舰体快修学）。甲板越厚、技能越高，回得越多。野外/回港前应急可用。',
+    description: L10N['item.copy.055']!.zh,
   },
   {
     id: 'repairkit-mil',
@@ -814,7 +816,7 @@ export const REPAIR_KITS: readonly ItemDef[] = [
     unitM3: 1,
     baseSellPriceIsk: 21_000,
     repairRestore: 10,
-    description: '军用级纳米修理组件：基础回复 10 HP×容量增幅×舰体快修学。远征深空长线作战的标准补给。',
+    description: L10N['item.copy.056']!.zh,
   },
   /* ═══ 损管修理组件（2026-09-25 船长令：「维修组件新增新的消耗品，损管修理组件，触发损管效果时需要消耗一份」）═══
      唯一用途 = 「损伤管制装置」启动那一下（结构锁定 1 点 · 持续 1 秒）时消耗 1 枚；不参与常规修复。 */
@@ -824,7 +826,7 @@ export const REPAIR_KITS: readonly ItemDef[] = [
     kind: 'kit',
     unitM3: 1,
     baseSellPriceIsk: 500_000,
-    description: '损伤管制装置专用补给：装置启动时消耗 1 枚，结构锁定在 1 点、持续 1 秒。市场可买、工业页可自制。',
+    description: L10N['item.copy.057']!.zh,
   },
 ]
 
@@ -848,7 +850,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质凝成的测绘阵列：只要它躺在货仓里，扫描就能多看一圈。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.066']!.zh,
   },
   {
     id: 'mat-chrono',
@@ -856,7 +858,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质里剥出的一小段时间：带在货仓里，本趟可用的回合凭空多出一截。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.067']!.zh,
   },
   {
     id: 'mat-crane',
@@ -864,7 +866,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质驱动的起重臂：每轮打捞都能多拖一堆上来。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.068']!.zh,
   },
   {
     id: 'mat-drill',
@@ -872,7 +874,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质磨出的钻头：每轮采集都能多挖一堆母矿。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.069']!.zh,
   },
   {
     id: 'mat-nebula',
@@ -880,7 +882,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质吹出的一阵风：每次扫描都会额外吹散附近的星云。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.070']!.zh,
   },
   {
     id: 'mat-enricher',
@@ -888,7 +890,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质做的富集槽：矿脉里采出的虚空母矿会更多。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.071']!.zh,
   },
   {
     id: 'mat-expander',
@@ -896,7 +898,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质撑开的折叠舱段：货仓能多塞几格货（它自己仍占 2×2 格）。离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.072']!.zh,
   },
   /* ── B1 批：威胁类（三档合计最多把威胁压到一半）── */
   {
@@ -905,7 +907,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质铺开的一层压制场：本层的节点战与守卫战都会更轻。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.073']!.zh,
   },
   {
     id: 'mat-boss-analyzer',
@@ -913,7 +915,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质里读出的守卫编成：层末守卫的威胁明显下降。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.074']!.zh,
   },
   {
     /**
@@ -927,7 +929,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质凝成的一层薄壳：如今只剩形态，不再提供增益。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.075']!.zh,
   },
   /* ── B1 批：战斗类（一律只在本趟虫洞的战斗里生效）── */
   {
@@ -936,7 +938,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质调谐出的护盾谐振：护盾对敌方主用伤害类型的抗性提高（只作用护盾这一层）。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.076']!.zh,
   },
   {
     id: 'mat-armor-res',
@@ -944,7 +946,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质重排的装甲层：装甲对敌方主用伤害类型的抗性提高（只作用装甲这一层）。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.077']!.zh,
   },
   {
     id: 'mat-hull-res',
@@ -952,7 +954,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质织进船体骨架：结构对敌方主用伤害类型的抗性提高（只作用结构这一层）。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.078']!.zh,
   },
   {
     id: 'mat-tracker',
@@ -960,7 +962,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质校准的追踪阵列：编队命中更准。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.079']!.zh,
   },
   {
     id: 'mat-gyro',
@@ -968,7 +970,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质陀螺让船身更难被咬住：编队回避提高。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.080']!.zh,
   },
   {
     id: 'mat-jammer',
@@ -976,7 +978,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质噪声盖住你的信号：敌方打得更不准。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.081']!.zh,
   },
   {
     id: 'mat-rangefinder',
@@ -984,7 +986,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质拉伸的测距阵列：全武器射程更远。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.082']!.zh,
   },
   {
     id: 'mat-blindspot',
@@ -992,7 +994,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质在贴身距离上搅乱敌方火控：敌人贴脸开火的伤害比例下降。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.083']!.zh,
   },
   {
     id: 'mat-ammo-dmg',
@@ -1000,7 +1002,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质给每一发弹丸加了一层：编队单发伤害提高。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.084']!.zh,
   },
   {
     id: 'mat-reload',
@@ -1008,7 +1010,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质替装填机构抢时间：武器装填周期缩短。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.085']!.zh,
   },
   /* ── B2 批：战后收口与新机制 ── */
   {
@@ -1017,7 +1019,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质接管了齐射分配：一轮齐射打死一艘后，多余的火力立刻转打下一艘。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.086']!.zh,
   },
   {
     id: 'mat-ammo-back',
@@ -1025,7 +1027,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质在战后把打出去的弹壳与残料捞回来：本场消耗的弹药能回收一部分。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.087']!.zh,
   },
   {
     id: 'mat-drone-net',
@@ -1033,7 +1035,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '谜质织成的回收网：被点防打下来的无人机有更多能被捞回机库。占货仓 2×2 格，离开虫洞即失效（撤离成功则析出虫洞谜质）。',
+    description: L10N['item.copy.088']!.zh,
   },
   {
     id: 'mat-field-repair',
@@ -1041,7 +1043,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: '交火后自动修补装甲与结构；离开虫洞即失效（析出虫洞谜质）。',
+    description: L10N['item.copy.089']!.zh,
   },
 ]
 
@@ -1084,7 +1086,7 @@ export const WORMHOLE_ESSENCES: readonly ItemDef[] = [
     kind: 'essence',
     unitM3: 0.5,
     baseSellPriceIsk: 700_000,
-    description: '虫洞内存在的奇幻物资：在「扫描虫洞 · 谜质科技」里作为研究材料消耗，也可按枚售予回收商。装在密封匣里的冷辉结晶。',
+    description: L10N['item.copy.090']!.zh,
   },
 ]
 
@@ -1108,7 +1110,7 @@ export const LUXURIES: readonly ItemDef[] = [
     kind: 'luxury',
     unitM3: 2,
     baseSellPriceIsk: 100_000,
-    description: '停泊区酒廊里翻倍加价的陈年酿造：产自哪一站不重要，年份与封蜡才是价钱。',
+    description: L10N['item.copy.091']!.zh,
   },
   {
     id: 'lux-2',
@@ -1116,7 +1118,7 @@ export const LUXURIES: readonly ItemDef[] = [
     kind: 'luxury',
     unitM3: 2,
     baseSellPriceIsk: 400_000,
-    description: '只在少数星域能长的香材，贵族厨房的硬通货——按克计价，防潮封罐。',
+    description: L10N['item.copy.092']!.zh,
   },
   {
     id: 'lux-3',
@@ -1124,7 +1126,7 @@ export const LUXURIES: readonly ItemDef[] = [
     kind: 'luxury',
     unitM3: 2,
     baseSellPriceIsk: 2_000_000,
-    description: '战乱里流散的旧时代原作：真伪由拍卖行说了算，价钱由愿意出价的人说了算。',
+    description: L10N['item.copy.093']!.zh,
   },
   {
     id: 'lux-4',
@@ -1132,7 +1134,7 @@ export const LUXURIES: readonly ItemDef[] = [
     kind: 'luxury',
     unitM3: 2,
     baseSellPriceIsk: 60_000,
-    description: '封在加湿木盒里的手工卷烟：真正值钱的是盒底那张手工编号，不是烟叶。',
+    description: L10N['item.copy.094']!.zh,
   },
   {
     id: 'lux-5',
@@ -1140,7 +1142,7 @@ export const LUXURIES: readonly ItemDef[] = [
     kind: 'luxury',
     unitM3: 2,
     baseSellPriceIsk: 140_000,
-    description: '只在零重力织机上织得出的整幅料子：花纹随光角变化，裁坏了就再也接不上。',
+    description: L10N['item.copy.095']!.zh,
   },
   {
     id: 'lux-6',
@@ -1148,7 +1150,7 @@ export const LUXURIES: readonly ItemDef[] = [
     kind: 'luxury',
     unitM3: 2,
     baseSellPriceIsk: 250_000,
-    description: '整块香木雕出的摆件，落刀只有一次机会——拍卖行看的是刀口，不是木头。',
+    description: L10N['item.copy.096']!.zh,
   },
   {
     id: 'lux-7',
@@ -1156,7 +1158,7 @@ export const LUXURIES: readonly ItemDef[] = [
     kind: 'luxury',
     unitM3: 2,
     baseSellPriceIsk: 600_000,
-    description: '手抄总谱，谱页边角留着当年的批注：收藏家出价买的正是那几行铅笔字。',
+    description: L10N['item.copy.097']!.zh,
   },
   {
     id: 'lux-8',
@@ -1164,7 +1166,7 @@ export const LUXURIES: readonly ItemDef[] = [
     kind: 'luxury',
     unitM3: 2,
     baseSellPriceIsk: 800_000,
-    description: '按早已失传的配方调制的香膏，一罐只够用三次——配方比成品贵得多。',
+    description: L10N['item.copy.098']!.zh,
   },
   {
     id: 'lux-9',
@@ -1172,7 +1174,7 @@ export const LUXURIES: readonly ItemDef[] = [
     kind: 'luxury',
     unitM3: 2,
     baseSellPriceIsk: 1_200_000,
-    description: '手绘星图原稿，墨迹里标着几条如今已不通航的旧线：航史学者按张出价。',
+    description: L10N['item.copy.099']!.zh,
   },
   {
     id: 'lux-10',
@@ -1180,7 +1182,7 @@ export const LUXURIES: readonly ItemDef[] = [
     kind: 'luxury',
     unitM3: 2,
     baseSellPriceIsk: 3_200_000,
-    description: '从崩解的王室宝库里流出的主钻，附完整来历文书——有文书与没文书，价钱差一半。',
+    description: L10N['item.copy.100']!.zh,
   },
 ]
 
@@ -1200,7 +1202,7 @@ export const VALUABLES_CONTAINERS: readonly ItemDef[] = [
     kind: 'container',
     unitM3: 2000, // 2026-09-16 船长「奢侈品货柜调整为2*2」⇒ 2×2 = 4 格（500 m³/格）；旧值 1000（2×1）
     baseSellPriceIsk: 3_828_000, // 2026-09-16 重算：内容期望（5~30 件 · 十款等权 · 均价 87.5 万 ≈ 1,531.25 万）× 0.25
-    description: '贴满封条与防拆标记的软包箱：里面是拍卖行里的奢侈品，拆开才知道这一箱值多少。',
+    description: L10N['item.copy.101']!.zh,
   },
 ]
 
@@ -1216,7 +1218,7 @@ export const MILITARY_CONTAINERS: readonly ItemDef[] = [
     kind: 'container',
     unitM3: 2000,
     baseSellPriceIsk: 2_800_000, // 2026-09-15 批 B 复核：MK3 池 30 件、行价均 235.5 万 × 期望 2 件 = 470.95 万 × **0.6** ⇒ 280 万（原估值 700 万高于拆解期望，会诱导"只卖箱不拆箱"）
-    description: '制式军械箱：封条上还留着番号。拆开能得到成套的顶配装备——武器与部件混装。',
+    description: L10N['item.copy.102']!.zh,
   },
 ]
 export const AI_CORE_ITEMS: readonly ItemDef[] = [
@@ -1226,7 +1228,7 @@ export const AI_CORE_ITEMS: readonly ItemDef[] = [
     kind: 'aicore',
     unitM3: 500,
     baseSellPriceIsk: 1,
-    description: '从遗迹控制台里拔出来的运算核心：外壳烧灼过，内核还在低鸣。占货仓 1 格；撤离成功后自动接入核心库。',
+    description: L10N['item.copy.103']!.zh,
   },
   {
     id: 'ai-core-beta',
@@ -1234,7 +1236,7 @@ export const AI_CORE_ITEMS: readonly ItemDef[] = [
     kind: 'aicore',
     unitM3: 500,
     baseSellPriceIsk: 1,
-    description: '遗迹主控柜里的运算核心：散热鳍片完好，出厂编号被刻意磨掉。占货仓 1 格；撤离成功后自动接入核心库。',
+    description: L10N['item.copy.104']!.zh,
   },
   {
     id: 'ai-core-alpha',
@@ -1242,7 +1244,7 @@ export const AI_CORE_ITEMS: readonly ItemDef[] = [
     kind: 'aicore',
     unitM3: 500,
     baseSellPriceIsk: 1,
-    description: '遗迹最深处供着的那一枚：整块冷铸合金外壳，摸上去冰凉。占货仓 1 格；撤离成功后自动接入核心库。',
+    description: L10N['item.copy.105']!.zh,
   },
 ]
 
@@ -1259,7 +1261,7 @@ export const PARTS: readonly ItemDef[] = [
     kind: 'part',
     unitM3: 0.1,
     baseSellPriceIsk: 95, // 材料 68（银纹 4×12＋晶态 20）×1.40
-    description: '基础电子中间件：银纹超金属与晶态胶体压制的通用基板，高级零件与专属装备的底层材料。',
+    description: L10N['item.copy.020']!.zh,
   },
   {
     id: 'part-armor-plate',
@@ -1267,7 +1269,7 @@ export const PARTS: readonly ItemDef[] = [
     kind: 'part',
     unitM3: 0.1,
     baseSellPriceIsk: 250, // 材料 180（钛钢 15×8＋银纹 5×12）×1.39
-    description: '基础结构中间件：钛钢合金锻压成板，舰船与重装备的标准披挂。',
+    description: L10N['item.copy.021']!.zh,
   },
   {
     id: 'part-frame',
@@ -1275,7 +1277,7 @@ export const PARTS: readonly ItemDef[] = [
     kind: 'part',
     unitM3: 0.1,
     baseSellPriceIsk: 145, // 材料 104（钛钢 10×8＋银纹 2×12）×1.39
-    description: '基础结构中间件：标准化承力框架，舰体与空间站施工的通用构件。',
+    description: L10N['item.copy.022']!.zh,
   },
   {
     id: 'part-cable',
@@ -1283,7 +1285,7 @@ export const PARTS: readonly ItemDef[] = [
     kind: 'part',
     unitM3: 0.1,
     baseSellPriceIsk: 155, // 材料 112（银纹 6×12＋晶态 2×20）×1.38
-    description: '基础电子中间件：低损耗超导走线，护盾与能量系统的血管。',
+    description: L10N['item.copy.023']!.zh,
   },
   {
     id: 'part-coolant',
@@ -1291,7 +1293,7 @@ export const PARTS: readonly ItemDef[] = [
     kind: 'part',
     unitM3: 0.1,
     baseSellPriceIsk: 115, // 材料 84（钛钢 8×8＋晶态 20）×1.37
-    description: '基础散热中间件：钛钢包晶态的循环管路，高热设备的标配。',
+    description: L10N['item.copy.024']!.zh,
   },
   {
     id: 'part-gyro',
@@ -1299,7 +1301,7 @@ export const PARTS: readonly ItemDef[] = [
     kind: 'part',
     unitM3: 0.1,
     baseSellPriceIsk: 420, // 材料 300（重钨 2×90＋银纹 10×12）×1.40
-    description: '基础机动中间件：重钨压阵的稳定基座，舰船姿态系统的骨架。',
+    description: L10N['item.copy.025']!.zh,
   },
   {
     id: 'part-lens',
@@ -1307,7 +1309,7 @@ export const PARTS: readonly ItemDef[] = [
     kind: 'part',
     unitM3: 0.1,
     baseSellPriceIsk: 190, // 材料 135（晶态 4×20＋同位聚晶 55）×1.41
-    description: '基础光学中间件：晶态胶体研磨成镜，能量武器与扫描设备的准星。',
+    description: L10N['item.copy.026']!.zh,
   },
   {
     id: 'part-drone-neural',
@@ -1315,7 +1317,7 @@ export const PARTS: readonly ItemDef[] = [
     kind: 'part',
     unitM3: 0.1,
     baseSellPriceIsk: 930, // 材料 620（电路基板 2×95＋晶态 8×20＋重钨 3×90）×1.50
-    description: '高级零件：仿生神经束封装的机群指挥单元，无人机与智能设备的思考中枢。',
+    description: L10N['item.copy.027']!.zh,
   },
   {
     id: 'part-shield-gen',
@@ -1323,7 +1325,7 @@ export const PARTS: readonly ItemDef[] = [
     kind: 'part',
     unitM3: 0.1,
     baseSellPriceIsk: 1_010, // 材料 675（超导电缆 2×155＋晶态 10×20＋同位聚晶 3×55）×1.50
-    description: '高级零件：场强发生器成品，护盾模组与旗舰防御阵列的核心。',
+    description: L10N['item.copy.028']!.zh,
   },
   {
     id: 'part-jet-array',
@@ -1331,7 +1333,7 @@ export const PARTS: readonly ItemDef[] = [
     kind: 'part',
     unitM3: 0.1,
     baseSellPriceIsk: 1_550, // 材料 1,030（透镜组 2×190＋重钨 6×90＋同位聚晶 2×55）×1.50
-    description: '高级零件：聚焦喷口阵列，能量武器线的高能终端。',
+    description: L10N['item.copy.029']!.zh,
   },
   {
     id: 'part-qchip',
@@ -1339,7 +1341,7 @@ export const PARTS: readonly ItemDef[] = [
     kind: 'part',
     unitM3: 0.1,
     baseSellPriceIsk: 700, // 材料 470（电路基板 2×95＋晶态 5×20＋重钨 2×90）×1.49
-    description: '高级零件：量子态运算芯体，火控与锁定设备的算力来源。',
+    description: L10N['item.copy.030']!.zh,
   },
   {
     id: 'part-keel',
@@ -1347,7 +1349,7 @@ export const PARTS: readonly ItemDef[] = [
     kind: 'part',
     unitM3: 0.1,
     baseSellPriceIsk: 3_120, // 材料 2,080（结构框架 6×145＋重钨 8×90＋星髓晶 2×245）×1.50
-    description: '高级零件：星髓晶强化的大尺寸承力构件，专属舰船与旗舰的脊梁。',
+    description: L10N['item.copy.031']!.zh,
   },
   {
     id: 'part-fire-control',
@@ -1355,7 +1357,7 @@ export const PARTS: readonly ItemDef[] = [
     kind: 'part',
     unitM3: 0.1,
     baseSellPriceIsk: 1_670, // 材料 1,110（协处理器芯 700＋电路基板 2×95＋同位聚晶 4×55）×1.50
-    description: '高级零件：军用弹道解算整机，专属武器的眼睛与手指。',
+    description: L10N['item.copy.032']!.zh,
   },
   {
     id: 'part-grav-comp',
@@ -1363,7 +1365,7 @@ export const PARTS: readonly ItemDef[] = [
     kind: 'part',
     unitM3: 0.1,
     baseSellPriceIsk: 7_500, // 材料 5,000（龙骨组件 3,120＋重钨 10×90＋星髓晶 4×245）×1.50
-    description: '高级零件：引力场畸变补偿装置，旗舰级结构的终极构件。',
+    description: L10N['item.copy.033']!.zh,
   },
 ]
 
@@ -1390,7 +1392,7 @@ export const WEEKEND_TROPHIES: readonly ItemDef[] = [
     kind: 'blackbox',
     unitM3: 5,
     baseSellPriceIsk: 80_000_000,
-    description: '墨潮入侵母舰的核心记录匣：外壳是耐压墨晶，内里封着未破译的军用编码与航迹记录。可存入库房或售予回收商。',
+    description: L10N['item.copy.106']!.zh,
   },
   /**
    * **光环旗舰黑匣**（**船长 2026-10-02 令「甲」**）：R 族（光环科技 · 2026-10-01 建族）旗舰战的战利品，
@@ -1409,7 +1411,7 @@ export const WEEKEND_TROPHIES: readonly ItemDef[] = [
     unitM3: 5,
     baseSellPriceIsk: 80_000_000,
     description:
-      '光环入侵母舰的核心记录匣：外壳是冷白银青的耐压晶体，内里封着未破译的军用编码与航迹记录。可存入库房或售予回收商。',
+      L10N['item.copy.107']!.zh,
   },
   /**
    * **通用黑匣**（**2026-09-27 船长令**：「**在章鱼人声望商店加入购买通用黑匣的卡片，玩家可以用30声望换一个
@@ -1428,7 +1430,7 @@ export const WEEKEND_TROPHIES: readonly ItemDef[] = [
     kind: 'blackbox',
     unitM3: 5,
     baseSellPriceIsk: 5_000_000,
-    description: '章鱼人经手的空白记录匣：制造舰船插件时可替代任意类型的黑匣。可存入库房或售予回收商。',
+    description: L10N['item.copy.108']!.zh,
   },
 ]
 
@@ -1459,7 +1461,7 @@ export const CONSUMABLES: readonly ItemDef[] = [
      *  ⇒ 定价口径 = **一批料价 ÷ 600 单位 ÷ 10%** 取整 ⇒ **5,800/单位**（料价随配方/虚空晶价浮动，
      *  按 §十五之二之 5 **不写死净额**：读数走 `npm run manufacture:econ` 现算）。 */
     baseSellPriceIsk: 5_800,
-    description: '把跃迁引擎推到过载的稠浆：按返航秒数消耗，返航速度提升至十倍。单件 1 m³，仅存于物品仓库。',
+    description: L10N['item.copy.109']!.zh,
   },
   /* ═══ 实验室后续内容（**2026-09-30 船长令**「你先继续制作后续实验室内容」＋「信号发射器和技能加速剂」·
    *   口径见工作文档 `docs/design/lab-consumables-20260930.md`：第 2 批信号发射器 10,000 虚空晶 ·
@@ -1477,10 +1479,7 @@ export const CONSUMABLES: readonly ItemDef[] = [
     // ⟪文案调整 2026-09-30⟫ 补两条真规则（船长令：首访通讯说"细则在物品说明里"⇒ 说明必须写全）：
     //   ① 母港 / 已建成副站所在星系点不着（`isAtHomeLike` 判据）② 高安启动付 10 点可支配声望（不足则拒绝）
     description:
-      '主动诱发一次入侵的信标：在星图的星系详细里对着某个星系启动，入侵就锁定该星系；' +
-      '在物品页或货仓页直接使用，则按入侵默认规则在已探索、非高安、尚未建成副站的星系里抽取目标。' +
-      '母港或已建成副站所在的星系里点不着；在高安启动要付 10 点声望（可支配声望不足时点不着）。' +
-      '被入侵势力从已出现的入侵势力中指定。只在当前没有入侵时可用，每次消耗 1 枚。',
+      L10N['item.copy.110']!.zh,
   },
   {
     id: 'synaptic-accelerant',
@@ -1492,8 +1491,7 @@ export const CONSUMABLES: readonly ItemDef[] = [
     // ⟪文案调整 2026-10-02⟫ 使用去处由两处补成**三处**（船长令）：技能页「技能加速」子窗口里也有同一颗
     //   「使用」按钮（`SkillsTreePage.tsx` 的 `SkillBoostBlock`），原句只写了物品页与货仓页 ⇒ 说明漏了一处。
     description:
-      '为 AI 本体装载的固件超频包：把神经仿真层推到过载，学习回路因此跑得更快。' +
-      '使用后 24 小时内技能训练时长减半。同一时间内只能生效一剂。在物品页、货仓页或技能页「技能加速」里点「使用」。',
+      L10N['item.copy.111']!.zh,
   },
 ]
 

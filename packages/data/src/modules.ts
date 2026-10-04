@@ -49,6 +49,8 @@
 import type { ModuleDef } from '@whale/core'
 // 2026-09-26 船长令：舰船插件单独一份表（见 ./plugs.ts），在本表末尾**展开并进同一个目录**
 import { SHIP_PLUGS } from './plugs'
+import { L10N } from './l10n/table'
+// ⟪文案调整 2026-10-04⟫ 船长授权整批说明重写，数值与功能不变。
 
 /**
  * 全部装备（含**舰船插件**：2026-09-26 舰船插件批在文末展开 `SHIP_PLUGS`）。
@@ -64,7 +66,7 @@ export const MODULES: readonly ModuleDef[] = [
     workEfficiency: 0, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 0.1,
-    description: '产量 +10%。空间站平价货，新手第一件看得起的强化。',
+    description: L10N['mod.copy.001']!.zh,
     cpuUse: 3,
   },
   {
@@ -74,7 +76,7 @@ export const MODULES: readonly ModuleDef[] = [
     workEfficiency: 0.2, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 0.2,
-    description: '提升 20% 循环产量。工业入门的第一件自制装备。',
+    description: L10N['mod.copy.001']!.zh,
     cpuUse: 5,
   },
   {
@@ -84,7 +86,7 @@ export const MODULES: readonly ModuleDef[] = [
     workEfficiency: 0.4, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 0.5,
-    description: '提升 50% 循环产量。双管谐振钻头，深空工业的标杆装备。',
+    description: L10N['mod.copy.001']!.zh,
     cpuUse: 15,
   },
   {
@@ -94,7 +96,7 @@ export const MODULES: readonly ModuleDef[] = [
     workEfficiency: 0.6, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 0.8,
-    description: '产量 +80%。协会精密工业的结晶（蓝图可造，见组装机）；40 CPU 已接近小型船满载。',
+    description: L10N['mod.copy.001']!.zh,
     cpuUse: 40,
   },
   {
@@ -104,7 +106,7 @@ export const MODULES: readonly ModuleDef[] = [
     workEfficiency: 0.8, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 1.1,
-    description: '产量 +110%。来源不明的异星技术，无法复制——不可制造。',
+    description: L10N['mod.copy.002']!.zh,
     cpuUse: 60,
   },
 
@@ -115,7 +117,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'cargo',
     rack: 'low',
     bonus: 0.15,
-    description: '货舱容量 +15%。廉价的续航改装。',
+    description: L10N['mod.copy.003']!.zh,
     cpuUse: 3,
   },
   {
@@ -124,7 +126,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'cargo',
     rack: 'low',
     bonus: 0.3,
-    description: '货舱容量 +30%，减少返港卸货次数。',
+    description: L10N['mod.copy.003']!.zh,
     cpuUse: 5,
   },
   {
@@ -133,7 +135,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'cargo',
     rack: 'low',
     bonus: 0.8,
-    description: '货舱容量 +80%。离线长时间作业的必备扩展。',
+    description: L10N['mod.copy.003']!.zh,
     cpuUse: 15,
   },
   {
@@ -142,7 +144,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'cargo',
     rack: 'low',
     bonus: 1.4,
-    description: '货舱容量 +140%。空间折叠衬层，协会制式蓝图可造（组装机）。',
+    description: L10N['mod.copy.003']!.zh,
     cpuUse: 40,
   },
   {
@@ -151,7 +153,7 @@ export const MODULES: readonly ModuleDef[] = [
     slot: 'cargo',
     rack: 'low',
     bonus: 1.8,
-    description: '货舱容量 +180%。异星空间技术，无法复制——不可制造。',
+    description: L10N['mod.copy.004']!.zh,
     cpuUse: 60,
   },
 
@@ -167,7 +169,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 24,
-    description: '协会自警队制式轻型动能炮：吃动能弹药，4.2 km 有效射程。入门即动能——默认悬赏都能打。',
+    description: L10N['mod.copy.005']!.zh,
     cpuUse: 6,
     maxRangeM: 4200,
     minRangeM: 250,
@@ -184,7 +186,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 24,
-    description: '轻型动能速射炮：对护盾 ×1.5、对装甲 ×0.75。',
+    description: L10N['mod.copy.006']!.zh,
     cpuUse: 10,
     maxRangeM: 3220, // 2026-09-08 船长定：动能炮射程 −30%（4600→3220），装填等价缩短（2200→1540）
     // 2026-09-17 船长：「将动能炮MK1~MK3的最小射程修改为500/600/700」⇒ 本件 250 → **500**
@@ -202,7 +204,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 12,
-    description: '重型动能炮：5.7 km 中远程。协会重型制式（蓝图可造）——中程压制的正解。',
+    description: L10N['mod.copy.007']!.zh,
     cpuUse: 28,
     maxRangeM: 5740, // 2026-09-08 船长定：动能炮射程 −30%（8200→5740），装填等价缩短（3400→2380）
     // 2026-09-17 船长：「将动能炮MK1~MK3的最小射程修改为500/600/700」⇒ 本件 700 → **600**
@@ -220,7 +222,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 12,
-    description: '攻城级动能巨炮：7.3 km，攻坚炮里的协会制式（蓝图可造，52 CPU 顶级重炮）。',
+    description: L10N['mod.copy.008']!.zh,
     cpuUse: 52,
     maxRangeM: 7350, // 2026-09-08 船长定：动能炮射程 −30%（10500→7350），装填等价缩短（4200→2940）
     // 2026-09-17 船长：「将动能炮MK1~MK3的最小射程修改为500/600/700」⇒ 本件 1200 → **700**（攻坚炮近盲带大幅收窄）
@@ -245,7 +247,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 40,
-    description: '动能点防炮：射程短、射速快。贴到近处威力很足，对舰不吃亏；带防空属性的武器才筛得到敌方机群。',
+    description: L10N['mod.copy.009']!.zh,
     cpuUse: 12,
     maxRangeM: 2500, // 2026-09-11 船长裁定「**近防炮射程按照 2500m 算**」（原 1400）；打机群**不看两舰间距**（甲案）
     minRangeM: 1, // 无近盲带：贴到脸上也开火
@@ -272,7 +274,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 48,
-    description: '动能点防炮的强化型：射速更快、单发更重，射程依旧偏短——近身对舰与打机群都更利落。',
+    description: L10N['mod.copy.009']!.zh,
     cpuUse: 26,
     maxRangeM: 2500, // 三档同射程（船长「按照 2500m 算」）——MK2/MK3 的差异只在单发与射速
     minRangeM: 1,
@@ -290,7 +292,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'kinetic',
     ammoPerEngagement: 56,
-    description: '动能点防炮的顶档：射速与单发都拉到极限，射程仍是贴身的那一小段——贴上去打，它是全场最凶的一门。',
+    description: L10N['mod.copy.009']!.zh,
     cpuUse: 44,
     maxRangeM: 2500,
     minRangeM: 1,
@@ -318,7 +320,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'plasma',
     ammoPerEngagement: 24,
-    description: '轻型激光炮：光束必中、无视近盲，威力随距离衰减，吃能量弹药。',
+    description: L10N['mod.copy.010']!.zh,
     cpuUse: 10,
     maxRangeM: 4600,
     minRangeM: 0,
@@ -335,7 +337,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'plasma',
     ammoPerEngagement: 12,
-    description: '重型激光炮：8.2 km 远程光束，必中但威力随距离明显衰减——中程稳定输出的正解。',
+    description: L10N['mod.copy.011']!.zh,
     cpuUse: 28,
     maxRangeM: 8200,
     minRangeM: 0,
@@ -352,7 +354,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'plasma',
     ammoPerEngagement: 12,
-    description: '攻城级激光炮：10.5 km 光束炮塔——编队攻坚的稳定火力。',
+    description: L10N['mod.copy.012']!.zh,
     cpuUse: 52,
     maxRangeM: 10500,
     minRangeM: 0,
@@ -369,7 +371,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'plasma',
     ammoPerEngagement: 12,
-    description: '无法逆向工程的异星能量武器：13 km 光束——不可制造。',
+    description: L10N['mod.copy.013']!.zh,
     cpuUse: 70,
     maxRangeM: 13000,
     minRangeM: 0,
@@ -393,7 +395,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'explosive',
     ammoPerEngagement: 24,
-    description: '轻型导弹巢：发射爆破弹药（对装甲 ×1.5、对护盾 ×0.75）；近盲 500 m。',
+    description: L10N['mod.copy.014']!.zh,
     cpuUse: 10,
     maxRangeM: 7440, // 2026-09-08 船长定：导弹射程/装填/伤害倍率同步 +20%（6200/2600/1.25 → 7440/3120/1.5）
     minRangeM: 500,
@@ -410,7 +412,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'explosive',
     ammoPerEngagement: 12,
-    description: '重型导弹巢：11.8 km 远程爆破轰炸——装甲舰编队的噩梦。',
+    description: L10N['mod.copy.015']!.zh,
     cpuUse: 28,
     maxRangeM: 11760, // 2026-09-08 船长定：导弹射程/装填/伤害倍率同步 +20%（9800/4000/3.66 → 11760/4800/4.39）
     minRangeM: 900,
@@ -427,7 +429,7 @@ export const MODULES: readonly ModuleDef[] = [
 
     damageType: 'explosive',
     ammoPerEngagement: 12,
-    description: '巡航导弹巢：14.9 km 远程毁灭——大编队交火前先发制人的火力。',
+    description: L10N['mod.copy.016']!.zh,
     cpuUse: 52,
     maxRangeM: 14880, // 2026-09-08 船长定：导弹射程/装填/伤害倍率同步 +20%（12400/5000/5.03 → 14880/6000/6.04）
     minRangeM: 1400,
@@ -447,7 +449,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low', // 2026-09-27 船长令：扩舱件从高槽移到低槽
     droneBayBonusM3: 15,
     cpuUse: 5,
-    description: '外挂无人机甲板：加装机库段。无人机流的起点。',
+    description: L10N['mod.copy.017']!.zh,
   },
   {
     id: 'mod-drone-rack-2',
@@ -456,7 +458,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low', // 2026-09-27 船长令：扩舱件从高槽移到低槽
     droneBayBonusM3: 35,
     cpuUse: 15,
-    description: '外挂无人机甲板：无人机舱 +35 m³。中型无人机编队的扩容方案。',
+    description: L10N['mod.copy.017']!.zh,
   },
   {
     id: 'mod-drone-rack-3',
@@ -465,7 +467,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low', // 2026-09-27 船长令：扩舱件从高槽移到低槽
     droneBayBonusM3: 70,
     cpuUse: 40,
-    description: '整队级外挂甲板：无人机舱 +70 m³。',
+    description: L10N['mod.copy.017']!.zh,
   },
   {
     id: 'mod-drone-tac-1',
@@ -474,7 +476,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     droneDmgBonus: 0.12,
     cpuUse: 8,
-    description: '放飞无人机单发伤害 +12%。无人机流派的火力核心。',
+    description: L10N['mod.copy.018']!.zh,
   },
   {
     id: 'mod-drone-tac-2',
@@ -483,7 +485,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     droneDmgBonus: 0.25,
     cpuUse: 20,
-    description: '放飞无人机单发伤害 +25%。电子战终端加持下的无人机更致命。',
+    description: L10N['mod.copy.018']!.zh,
   },
   {
     id: 'mod-drone-tac-3',
@@ -492,7 +494,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     droneDmgBonus: 0.4,
     cpuUse: 45,
-    description: '放飞无人机单发伤害 +40%。无人机甲板舰的指挥核心。',
+    description: L10N['mod.copy.018']!.zh,
   },
 
   // ══════════ 无人机中继天线（2026-09-10 船长拍板：高槽装置——延长无人机作战半径；百分比
@@ -504,7 +506,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     droneRangeBonusPct: 0.2,
     cpuUse: 6,
-    description: '制导中继天线：放飞无人机射程 +20%。给近战机群补一点交战距离。',
+    description: L10N['mod.copy.019']!.zh,
   },
   {
     id: 'mod-drone-relay-2',
@@ -513,7 +515,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     droneRangeBonusPct: 0.45,
     cpuUse: 16,
-    description: '制导中继天线：放飞无人机射程 +45%。中远程无人机的扩容方案。',
+    description: L10N['mod.copy.019']!.zh,
   },
   {
     id: 'mod-drone-relay-3',
@@ -522,7 +524,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     droneRangeBonusPct: 0.8,
     cpuUse: 46, // 2026-09-10 船长：MK3 CPU 38 → 46（顶配装置高占用）
-    description: '制导中继天线：放飞无人机射程 +80%。哨戒无人机可深入激光炮带。',
+    description: L10N['mod.copy.019']!.zh,
   },
   /* ── 2026-09-27 船长令：中槽装备「无人机护盾投射仪」（第四支无人机装置家族）──
    * 只加**放飞无人机的护盾层**（DronePoolEntry.s）；多件线性相加、不设上限；MK2/MK3 两档。 */
@@ -533,7 +535,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     droneShieldHpBonusPct: 0.7,
     cpuUse: 20,
-    description: '放飞无人机的护盾值 +⟦70%⟧（只作用于护盾层；与无人机耐久学、无人机强化学乘算）。',
+    description: L10N['mod.copy.020']!.zh,
   },
   {
     id: 'mod-drone-shield-3',
@@ -542,7 +544,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     droneShieldHpBonusPct: 1.0,
     cpuUse: 45,
-    description: '放飞无人机的护盾值 +⟦100%⟧（只作用于护盾层；与无人机耐久学、无人机强化学乘算）。',
+    description: L10N['mod.copy.020']!.zh,
   },
 
   // ══════════ 无人机储备甲板（**2026-09-27 船长令**：新需求原话「添加无人机**高槽**装备，无人机储备甲板，
@@ -558,7 +560,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     droneReviveCycleMs: 14000,
     cpuUse: 35,
-    description: '外挂储备机库段：有机组被击落后自动开始复位周期，到点自库存补回一架并立刻归队。',
+    description: L10N['mod.copy.021']!.zh,
   },
   {
     id: 'mod-drone-deck-2',
@@ -567,7 +569,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     droneReviveCycleMs: 12000,
     cpuUse: 45,
-    description: '加大储备机库段：复位周期更短，机群补回来的节奏更紧。',
+    description: L10N['mod.copy.021']!.zh,
   },
   {
     id: 'mod-drone-deck-3',
@@ -576,7 +578,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     droneReviveCycleMs: 9000,
     cpuUse: 55,
-    description: '整队级储备机库段：复位周期最短，长时间交火下机群编制掉不下去。',
+    description: L10N['mod.copy.021']!.zh,
   },
 
   // ══════════ 护盾增强器（shield 抗性件：纯抗性，分系缺口乘入） ══════════
@@ -587,7 +589,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { kinetic: 0.2 },
     cpuUse: 5,
-    description: '动能抗 +20%（上限 90%）。动能是协会武装最常用弹种——默认悬赏都吃这口。',
+    description: L10N['mod.copy.022']!.zh,
   },
   {
     id: 'mod-shield-exp-1',
@@ -596,7 +598,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { explosive: 0.2 },
     cpuUse: 5,
-    description: '高爆抗 +20%（上限 90%）。克制爆破弹与鱼雷型敌人。',
+    description: L10N['mod.copy.023']!.zh,
   },
   {
     id: 'mod-shield-pla-1',
@@ -605,7 +607,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { plasma: 0.2 },
     cpuUse: 5,
-    description: '能量抗 +20%（上限 90%）。对能量武器的调谐方案。',
+    description: L10N['mod.copy.024']!.zh,
   },
   {
     id: 'mod-shield-kin-2',
@@ -614,7 +616,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { kinetic: 0.35 },
     cpuUse: 15,
-    description: '动能抗 +35%（上限 90%）。带弹道预测算法的第二代调谐器。',
+    description: L10N['mod.copy.022']!.zh,
   },
   {
     id: 'mod-shield-exp-2',
@@ -623,7 +625,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { explosive: 0.35 },
     cpuUse: 15,
-    description: '高爆抗 +35%（上限 90%）。专为爆破弹道优化的护盾频段。',
+    description: L10N['mod.copy.023']!.zh,
   },
   {
     id: 'mod-shield-pla-2',
@@ -632,7 +634,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { plasma: 0.35 },
     cpuUse: 15,
-    description: '能量抗 +35%（上限 90%）。高频能量护盾的稳定方案。',
+    description: L10N['mod.copy.024']!.zh,
   },
   {
     id: 'mod-shield-kin-3',
@@ -641,7 +643,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { kinetic: 0.5 },
     cpuUse: 40,
-    description: '动能抗 +50%（上限 90%）。旗舰级弹道拦截阵列。',
+    description: L10N['mod.copy.022']!.zh,
   },
   {
     id: 'mod-shield-exp-3',
@@ -650,7 +652,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { explosive: 0.5 },
     cpuUse: 40,
-    description: '高爆抗 +50%（上限 90%）。可以正面接下爆破弹雨的强化护盾。',
+    description: L10N['mod.copy.023']!.zh,
   },
   {
     id: 'mod-shield-pla-3',
@@ -659,7 +661,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldResistAdd: { plasma: 0.5 },
     cpuUse: 40,
-    description: '能量抗 +50%（上限 90%）。能量武器时代的盾构解。',
+    description: L10N['mod.copy.024']!.zh,
   },
 
   // ══════════ 护盾扩展器（shield 容量件：纯容量，与抗性件同槽二选一） ══════════
@@ -670,7 +672,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldHpBonus: 0.15,
     cpuUse: 5,
-    description: '护盾容量 +15%。只堆盾量、不选抗性系时的朴素方案。',
+    description: L10N['mod.copy.025']!.zh,
   },
   {
     id: 'mod-shield-ext-2',
@@ -679,7 +681,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldHpBonus: 0.35,
     cpuUse: 15,
-    description: '护盾容量 +35%。扩容器阵列，吃下更多爆发伤害。',
+    description: L10N['mod.copy.025']!.zh,
   },
   {
     id: 'mod-shield-ext-3',
@@ -688,7 +690,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     shieldHpBonus: 0.6,
     cpuUse: 40,
-    description: '护盾容量 +60%。全站功率输送的巨型护盾发生器。',
+    description: L10N['mod.copy.025']!.zh,
   },
 
   /* ══════════ 护盾充能装置（2026-09-14 船长：「护盾充能装置，和船体修理装置类似。
@@ -703,7 +705,7 @@ export const MODULES: readonly ModuleDef[] = [
     shieldPulsePct: 0.12,
     cpuUse: 25,
     description:
-      '每 15 秒脉冲充能，恢复护盾上限的 12%。',
+      L10N['mod.copy.026']!.zh,
   },
   {
     id: 'mod-shieldchg-2',
@@ -713,7 +715,7 @@ export const MODULES: readonly ModuleDef[] = [
     shieldPulsePct: 0.2,
     cpuUse: 45,
     description:
-      '每 15 秒脉冲充能，恢复护盾上限的 20%。',
+      L10N['mod.copy.026']!.zh,
   },
   {
     id: 'mod-shieldchg-3',
@@ -723,7 +725,7 @@ export const MODULES: readonly ModuleDef[] = [
     shieldPulsePct: 0.32,
     cpuUse: 70,
     description:
-      '每 15 秒脉冲充能，恢复护盾上限的 32%。',
+      L10N['mod.copy.026']!.zh,
   },
 
   /* ══════════ 护盾充能力场装置（2026-09-20 船长：「新增高槽装备，护盾充能力场装置 MK2，
@@ -746,7 +748,7 @@ export const MODULES: readonly ModuleDef[] = [
     shieldFieldMs: 10_000,
     // ⟪2026-09-24 船长令⟫ CPU 占用 55 → 63（原话：「护盾充能力场装置 MK2和MK3的CPU占用提高到63/91」）
     cpuUse: 63,
-    description: '每 10 秒展开力场，为队内所有舰船恢复护盾，恢复量为本舰护盾量的 10%。',
+    description: L10N['mod.copy.027']!.zh,
   },
   {
     id: 'mod-shieldfield-3',
@@ -757,7 +759,7 @@ export const MODULES: readonly ModuleDef[] = [
     shieldFieldMs: 8_000,
     // ⟪2026-09-24 船长令⟫ CPU 占用 80 → 91（同上一条令）
     cpuUse: 91,
-    description: '每 8 秒展开力场，为队内所有舰船恢复护盾，恢复量为本舰护盾量的 10%。',
+    description: L10N['mod.copy.027']!.zh,
   },
 
   // ══════════ 装甲镀层（armor 抗性件：纯抗性，分系缺口乘入）
@@ -769,7 +771,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { kinetic: 0.25 },
     cpuUse: 4,
-    description: '动能抗 +25%（上限 90%）。动能弹药的克制镀层。',
+    description: L10N['mod.copy.028']!.zh,
   },
   {
     id: 'mod-armor-exp-1',
@@ -778,7 +780,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { explosive: 0.25 },
     cpuUse: 4,
-    description: '高爆抗 +25%（上限 90%）。专为硬抗爆破弹道的装甲层。',
+    description: L10N['mod.copy.029']!.zh,
   },
   {
     id: 'mod-armor-pla-1',
@@ -787,7 +789,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { plasma: 0.25 },
     cpuUse: 4,
-    description: '能量抗 +25%（上限 90%）。隔热镀层方案。',
+    description: L10N['mod.copy.030']!.zh,
   },
   {
     id: 'mod-armor-kin-2',
@@ -796,7 +798,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { kinetic: 0.4 },
     cpuUse: 12,
-    description: '动能抗 +40%（上限 90%）。复合夹层结构，动能弹药的噩梦。',
+    description: L10N['mod.copy.028']!.zh,
   },
   {
     id: 'mod-armor-exp-2',
@@ -805,7 +807,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { explosive: 0.4 },
     cpuUse: 12,
-    description: '高爆抗 +40%（上限 90%）。爆震格栅装甲，重炮手眼中最硬的骨头。',
+    description: L10N['mod.copy.029']!.zh,
   },
   {
     id: 'mod-armor-pla-2',
@@ -814,7 +816,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { plasma: 0.4 },
     cpuUse: 12,
-    description: '能量抗 +40%（上限 90%）。陶瓷隔热层叠技术。',
+    description: L10N['mod.copy.030']!.zh,
   },
   {
     id: 'mod-armor-kin-3',
@@ -823,7 +825,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { kinetic: 0.55 },
     cpuUse: 32,
-    description: '动能抗 +55%（上限 90%）。要塞级复合装甲。',
+    description: L10N['mod.copy.028']!.zh,
   },
   {
     id: 'mod-armor-exp-3',
@@ -832,7 +834,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { explosive: 0.55 },
     cpuUse: 32,
-    description: '高爆抗 +55%（上限 90%）。顶住高爆齐射的移动堡垒。',
+    description: L10N['mod.copy.029']!.zh,
   },
   {
     id: 'mod-armor-pla-3',
@@ -841,7 +843,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorResistAdd: { plasma: 0.55 },
     cpuUse: 32,
-    description: '能量抗 +55%（上限 90%）。能硬抗能量炮的烧蚀装甲。',
+    description: L10N['mod.copy.030']!.zh,
   },
 
   /* ══════════ 损伤管制装置（2026-09-25 船长令）══════════
@@ -863,7 +865,7 @@ export const MODULES: readonly ModuleDef[] = [
     hullSaveKit: 'repairkit-dc',
     unique: true,
     cpuUse: 30,
-    description: '结构层三系减伤各 +30%；结构首次被打空时自动启动。',
+    description: L10N['mod.copy.031']!.zh,
   },
   {
     id: 'mod-dc-2',
@@ -874,7 +876,7 @@ export const MODULES: readonly ModuleDef[] = [
     hullSaveKit: 'repairkit-dc',
     unique: true,
     cpuUse: 38,
-    description: '结构层三系减伤各 +40%；结构首次被打空时自动启动。',
+    description: L10N['mod.copy.031']!.zh,
   },
   {
     id: 'mod-dc-3',
@@ -885,7 +887,7 @@ export const MODULES: readonly ModuleDef[] = [
     hullSaveKit: 'repairkit-dc',
     unique: true,
     cpuUse: 46,
-    description: '结构层三系减伤各 +50%；结构首次被打空时自动启动。',
+    description: L10N['mod.copy.031']!.zh,
   },
   // ══════════ 装甲增厚板（armor 容量件：纯容量，与抗性件同槽二选一） ══════════
   {
@@ -895,7 +897,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorHpBonus: 0.2,
     cpuUse: 4,
-    description: '装甲容量 +20%。经典堆甲方案，只加厚度、不挑弹种。',
+    description: L10N['mod.copy.032']!.zh,
   },
   {
     id: 'mod-armor-plate-2',
@@ -904,7 +906,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorHpBonus: 0.45,
     cpuUse: 12,
-    description: '装甲容量 +45%。加厚夹层，装甲舰的中坚配置。',
+    description: L10N['mod.copy.032']!.zh,
   },
   {
     id: 'mod-armor-plate-3',
@@ -913,7 +915,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     armorHpBonus: 0.8,
     cpuUse: 32,
-    description: '装甲容量 +80%。全站重工浇铸的复合装甲层。',
+    description: L10N['mod.copy.032']!.zh,
   },
 
   // ══════════ 矢量推进器（propulsion：**周期点火式**加力 + 点火期命中代价） ══════════
@@ -928,7 +930,7 @@ export const MODULES: readonly ModuleDef[] = [
     speedBonusPct: 0.3,
     hitPenalty: 0.05,
     cpuUse: 5,
-    description: '加力推进：点火期间战斗速度 +30%，持续 60 秒后进入 60 秒冷却（开场即点火）。点火代价 = 开火命中 ×0.95。逼近/脱离更快，输出略失稳。',
+    description: L10N['mod.copy.033']!.zh,
   },
   {
     id: 'mod-prop-2',
@@ -938,7 +940,7 @@ export const MODULES: readonly ModuleDef[] = [
     speedBonusPct: 0.6,
     hitPenalty: 0.12,
     cpuUse: 15,
-    description: '加力推进：点火期间战斗速度 +60%，持续 60 秒后进入 60 秒冷却（开场即点火）。点火代价 = 开火命中 ×0.88。高机动舰标配，风筝战术的引擎。',
+    description: L10N['mod.copy.033']!.zh,
   },
   {
     id: 'mod-prop-3',
@@ -948,7 +950,7 @@ export const MODULES: readonly ModuleDef[] = [
     speedBonusPct: 1,
     hitPenalty: 0.2,
     cpuUse: 40,
-    description: '加力推进：点火期间战斗速度 +100%，持续 60 秒后进入 60 秒冷却（开场即点火）。点火代价 = 开火命中 ×0.80。短距冲刺压燃引擎——快，但不稳。',
+    description: L10N['mod.copy.033']!.zh,
   },
 
   // ══════════ 微型跃迁引擎（propulsion：**短爆发**加力——点火 10 秒 / 冷却 60 秒） ══════════
@@ -969,7 +971,7 @@ export const MODULES: readonly ModuleDef[] = [
     thrusterBoostMs: 10_000,
     thrusterCooldownMs: 60_000,
     cpuUse: 10,
-    description: '短爆发跃迁推进：点火期间战斗速度 +80%，只持续 10 秒，随后进入 60 秒冷却（开场即点火）。点火代价 = 开火命中 ×0.80。十秒的位移够抢一个阵位——但别指望它一直快。',
+    description: L10N['mod.copy.034']!.zh,
   },
   {
     id: 'mod-mwd-2',
@@ -981,7 +983,7 @@ export const MODULES: readonly ModuleDef[] = [
     thrusterBoostMs: 10_000,
     thrusterCooldownMs: 60_000,
     cpuUse: 25,
-    description: '短爆发跃迁推进：点火期间战斗速度 +150%，只持续 10 秒，随后进入 60 秒冷却（开场即点火）。点火代价 = 开火命中 ×0.75。十秒内把自己甩到对方够不着的地方，剩下的时间靠船体扛。',
+    description: L10N['mod.copy.034']!.zh,
   },
   {
     id: 'mod-mwd-3',
@@ -993,7 +995,7 @@ export const MODULES: readonly ModuleDef[] = [
     thrusterBoostMs: 10_000,
     thrusterCooldownMs: 60_000,
     cpuUse: 50,
-    description: '短爆发跃迁推进：点火期间战斗速度 +250%，只持续 10 秒，随后进入 60 秒冷却（开场即点火）。点火代价 = 开火命中 ×0.60——这是全场最暴烈的十秒，也是最打不准的十秒。',
+    description: L10N['mod.copy.034']!.zh,
   },
 
   // ══════════ V18.1 支援件（support：低槽 = 伤害稳定器/射速计算机/**跃迁计算机**；中槽 = 索敌阵列/姿态陀螺） ══════════
@@ -1007,7 +1009,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { kinetic: 0.06 },
     cpuUse: 5,
-    description: '动能武器支援：动能系武器单发伤害 +6%。',
+    description: L10N['mod.copy.035']!.zh,
   },
   {
     id: 'mod-stab-kin-2',
@@ -1016,7 +1018,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { kinetic: 0.1 },
     cpuUse: 15,
-    description: '动能武器支援：动能系武器单发伤害 +10%。',
+    description: L10N['mod.copy.035']!.zh,
   },
   {
     id: 'mod-stab-kin-3',
@@ -1025,7 +1027,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { kinetic: 0.15 },
     cpuUse: 40,
-    description: '动能武器支援：动能系武器单发伤害 +15%。',
+    description: L10N['mod.copy.035']!.zh,
   },
   {
     id: 'mod-stab-exp-1',
@@ -1034,7 +1036,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { explosive: 0.06 },
     cpuUse: 5,
-    description: '高爆武器支援：高爆系武器单发伤害 +6%。',
+    description: L10N['mod.copy.036']!.zh,
   },
   {
     id: 'mod-stab-exp-2',
@@ -1043,7 +1045,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { explosive: 0.1 },
     cpuUse: 15,
-    description: '高爆武器支援：高爆系武器单发伤害 +10%。',
+    description: L10N['mod.copy.036']!.zh,
   },
   {
     id: 'mod-stab-exp-3',
@@ -1052,7 +1054,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { explosive: 0.15 },
     cpuUse: 40,
-    description: '高爆武器支援：高爆系武器单发伤害 +15%。',
+    description: L10N['mod.copy.036']!.zh,
   },
   {
     id: 'mod-stab-pla-1',
@@ -1061,7 +1063,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { plasma: 0.06 },
     cpuUse: 5,
-    description: '等离子武器支援：能量系武器单发伤害 +6%。',
+    description: L10N['mod.copy.037']!.zh,
   },
   {
     id: 'mod-stab-pla-2',
@@ -1070,7 +1072,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { plasma: 0.1 },
     cpuUse: 15,
-    description: '等离子武器支援：能量系武器单发伤害 +10%。',
+    description: L10N['mod.copy.037']!.zh,
   },
   {
     id: 'mod-stab-pla-3',
@@ -1079,7 +1081,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     damageTypeBonusPct: { plasma: 0.15 },
     cpuUse: 40,
-    description: '等离子武器支援：能量系武器单发伤害 +15%。',
+    description: L10N['mod.copy.037']!.zh,
   },
   {
     id: 'mod-rof-1',
@@ -1088,7 +1090,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     reloadCutPct: 0.05,
     cpuUse: 5,
-    description: '炮台射速支援：装填间隔 −5%。',
+    description: L10N['mod.copy.038']!.zh,
   },
   {
     id: 'mod-rof-2',
@@ -1097,7 +1099,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     reloadCutPct: 0.08,
     cpuUse: 15,
-    description: '炮台射速支援：装填间隔 −8%。',
+    description: L10N['mod.copy.038']!.zh,
   },
   {
     id: 'mod-rof-3',
@@ -1106,7 +1108,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     reloadCutPct: 0.12,
     cpuUse: 40,
-    description: '炮台射速支援：装填间隔 −12%。',
+    description: L10N['mod.copy.038']!.zh,
   },
   /* ══════════ 跃迁计算机（2026-09-14 船长：「添加低槽装备…效果是提高玩家舰船的跃迁速度，
    * 分别提高20%和35%，多件叠加惩罚。基础价格可以按照同级装备价格的四倍，有蓝图。」
@@ -1121,7 +1123,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     warpSpeedBonusPct: 0.2,
     cpuUse: 15,
-    description: '航行支援：跃迁速度 +20%——只缩短星系际航行时间，不改变战斗机动。多装递减。',
+    description: L10N['mod.copy.039']!.zh,
   },
   {
     id: 'mod-warpcomp-3',
@@ -1130,7 +1132,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     warpSpeedBonusPct: 0.35,
     cpuUse: 40,
-    description: '航行支援：跃迁速度 +35%——只缩短星系际航行时间，不改变战斗机动。多装递减。',
+    description: L10N['mod.copy.039']!.zh,
   },
   {
     id: 'mod-track-1',
@@ -1139,7 +1141,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     hitBonusPct: 0.08,
     cpuUse: 5,
-    description: '索敌支援：炮台命中整体提升 8%。',
+    description: L10N['mod.copy.040']!.zh,
   },
   {
     id: 'mod-track-2',
@@ -1148,7 +1150,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     hitBonusPct: 0.12,
     cpuUse: 15,
-    description: '索敌支援：炮台命中整体提升 12%。',
+    description: L10N['mod.copy.040']!.zh,
   },
   {
     id: 'mod-track-3',
@@ -1157,7 +1159,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     hitBonusPct: 0.16,
     cpuUse: 40,
-    description: '索敌支援：炮台命中整体提升 16%。',
+    description: L10N['mod.copy.040']!.zh,
   },
   {
     id: 'mod-gyro-1',
@@ -1166,7 +1168,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     evasionGapPct: 0.1,
     cpuUse: 5,
-    description: '机动支援：被命中缺口削减 10%。',
+    description: L10N['mod.copy.041']!.zh,
   },
   {
     id: 'mod-gyro-2',
@@ -1175,7 +1177,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     evasionGapPct: 0.15,
     cpuUse: 15,
-    description: '机动支援：被命中缺口削减 15%。',
+    description: L10N['mod.copy.041']!.zh,
   },
   {
     id: 'mod-gyro-3',
@@ -1184,7 +1186,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     evasionGapPct: 0.2,
     cpuUse: 40,
-    description: '机动支援：被命中缺口削减 20%。',
+    description: L10N['mod.copy.041']!.zh,
   },
 
   // ══════════ 协处理器（cpu：低槽，**装配 CPU 预算扩容**） ══════════
@@ -1203,7 +1205,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     cpuUse: 0, // 船长定：自身不占用（零占用只允许"加预算"件，见 content-check 契约）
     cpuBonus: 25,
-    description: '算力扩展卡：装配 CPU 上限 +25。本件自身不占 CPU。',
+    description: L10N['mod.copy.042']!.zh,
   },
   {
     id: 'mod-cpu-2',
@@ -1212,7 +1214,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     cpuUse: 0,
     cpuBonus: 35,
-    description: '双路算力扩展卡：装配 CPU 上限 +35。本件自身不占 CPU，中后期的通用解锁件。',
+    description: L10N['mod.copy.042']!.zh,
   },
   {
     id: 'mod-cpu-3',
@@ -1221,7 +1223,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'low',
     cpuUse: 0,
     cpuBonus: 45,
-    description: '军用算力堆叠模块：装配 CPU 上限 +45（不可制造）。本件自身不占 CPU。',
+    description: L10N['mod.copy.043']!.zh,
   },
 
   // ══════════ B3 打捞器（salvager：**高槽**无伤害件 —— 2026-09-05 定稿高槽、2026-09-13 一度改判低槽、**2026-09-14 船长「改回高槽」**） ══════════
@@ -1235,7 +1237,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 2,
     salvageCycleMs: 10_000,
-    description: '残骸打捞：每 10 秒捞取 1 具残骸；密度越高捞到的残骸越肥。',
+    description: L10N['mod.copy.044']!.zh,
   },
   {
     id: 'mod-salvager-2',
@@ -1245,7 +1247,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 6,
     salvageCycleMs: 8_000,
-    description: '残骸打捞：周期缩短至 8 秒/轮。',
+    description: L10N['mod.copy.044']!.zh,
   },
   {
     id: 'mod-salvager-3',
@@ -1255,7 +1257,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 15,
     salvageCycleMs: 6_000,
-    description: '残骸打捞：周期缩短至 6 秒/轮。',
+    description: L10N['mod.copy.044']!.zh,
   },
   /* ═══ 2026-09-09 船体维修装置（船长定：中槽；战斗中每 5 秒自动修复装甲+结构，
       每脉冲消耗 1 枚修理组件（民用级吃民用组件 / MK1·MK2 吃军用组件）；组件耗尽自动停机；
@@ -1270,7 +1272,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairArmorHp: 5,
     repairHullHp: 5,
     repairKit: 'repairkit-civ',
-    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 5 点，每跳消耗民用修理组件——保命件，修不过敌方火力。每跳修复量随装甲/结构容量加成与舰体快修学放大。',
+    description: L10N['mod.copy.045']!.zh,
   },
   {
     id: 'mod-hullrep-1',
@@ -1281,7 +1283,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairArmorHp: 10,
     repairHullHp: 10,
     repairKit: 'repairkit-mil',
-    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 10 点，每跳消耗军用修理组件——显著延寿，修不过敌方火力。每跳修复量随装甲/结构容量加成与舰体快修学放大。',
+    description: L10N['mod.copy.046']!.zh,
   },
   {
     id: 'mod-hullrep-2',
@@ -1292,7 +1294,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairArmorHp: 18,
     repairHullHp: 18,
     repairKit: 'repairkit-mil',
-    description: '中槽维修装置：战斗中每 5 秒修复装甲与结构各 18 点，每跳消耗军用修理组件——高配巡洋/战列舰的持久战底牌。每跳修复量随装甲/结构容量加成与舰体快修学放大。',
+    description: L10N['mod.copy.046']!.zh,
   },
 
   /* ═══ 2026-09-09 目标锁定阵列（target-lock 家族·高槽；船长拍板：集火 + 被锁目标受击加深；
@@ -1307,7 +1309,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 6,
     lockDmgBonus: 0.08,
-    description: '全队集火编队首位，全队伤害 +8%',
+    description: L10N['mod.copy.047']!.zh,
   },
   {
     id: 'mod-lock-2',
@@ -1316,7 +1318,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 14,
     lockDmgBonus: 0.12,
-    description: '全队集火编队首位，全队伤害 +12%',
+    description: L10N['mod.copy.047']!.zh,
   },
   {
     id: 'mod-lock-3',
@@ -1325,7 +1327,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 26,
     lockDmgBonus: 0.2,
-    description: '全队集火编队首位，全队伤害 +20%',
+    description: L10N['mod.copy.047']!.zh,
   },
 
   /* ═══ 2026-09-15 隐秘行动装置（船长原话：「添加隐秘行动装置，高槽，效果是自身武器开火前，
@@ -1340,7 +1342,7 @@ export const MODULES: readonly ModuleDef[] = [
     cpuUse: 55,
     stealthMs: 20_000,
     description:
-      '开火前隐身 20 秒；与任何类型推进器一起使用时失效。',  },
+      L10N['mod.copy.048']!.zh,  },
   {
     id: 'mod-stealth-3',
     name: '隐秘行动装置 MK3',
@@ -1349,7 +1351,7 @@ export const MODULES: readonly ModuleDef[] = [
     cpuUse: 80,
     stealthMs: 30_000,
     description:
-      '开火前隐身 30 秒；与任何类型推进器一起使用时失效。',  },
+      L10N['mod.copy.048']!.zh,  },
 
   /* ═══ 2026-09-10 赏金任务·窝点专属装备（船长认可草案；**数值为占位初值，等船长定数后改这里**） ═══
      获取渠道：只在精炼炉「残骸回收」开**稀有残骸（高级箱）**时掉落——打赢赏金任务的敌人窝点、
@@ -1375,7 +1377,7 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 1.8,
     cpuUse: 34,
     description:
-      '海盗窝点专属：缴获改装的多管动能炮——转管泼弹、射速极快，火力密度接近重型炮台，但射程只有攻坚炮台的一半、耗弹量是它的数倍；贴身缠斗最凶。',
+      L10N['mod.copy.049']!.zh,
   },
   {
     id: 'mod-lair-missile-a',
@@ -1392,7 +1394,7 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 2.6,
     cpuUse: 36,
     description:
-      '海盗窝点专属：掠袭艇拆下来的近程导弹巢——贴到脸上齐射爆破弹，追踪命中不随距离衰减、近盲安全射距仅 200 m；射程短到只能近身用，靠的是"贴上去就有量"。',
+      L10N['mod.copy.050']!.zh,
   },
   {
     id: 'mod-lair-cargo-a',
@@ -1403,7 +1405,7 @@ export const MODULES: readonly ModuleDef[] = [
     armorHpBonus: 0.15,
     cpuUse: 36,
     description:
-      '海盗窝点专属：缴获改装的分隔舱——货舱容量 +100%，并在舱壁内侧加挂捕获来的装甲板（装甲容量 +15%）。搬赃与跑商特化，战斗收益有限。',
+      L10N['mod.copy.051']!.zh,
   },
   {
     id: 'mod-lair-armor-c',
@@ -1421,7 +1423,7 @@ export const MODULES: readonly ModuleDef[] = [
     repairIgnoresCapacityAmp: true,
     cpuUse: 30,
     description:
-      '装甲层三系减伤各 +10%；交火中每 5 秒自修 6 点装甲（不吃组件）。',
+      L10N['mod.copy.052']!.zh,
   },
   {
     id: 'mod-lair-dc-c',
@@ -1440,7 +1442,7 @@ export const MODULES: readonly ModuleDef[] = [
     // ⇒ 去掉「修复量随结构容量加成放大」（该机制已作废）与风味句；**句式对齐三号重写后的生体甲壳板**
     //   （「装甲层三系减伤各 +10%；交火中每 5 秒自修 6 点装甲（不吃组件）。」，同样不带"窝点专属"前缀）
     // 括号里只放规格。
-    description: '结构层三系减伤各 +25%；交火中每 5 秒自修 4 点结构（不吃组件）。',
+    description: L10N['mod.copy.053']!.zh,
   },
   {
     id: 'mod-lair-laser-c',
@@ -1457,7 +1459,7 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 4.4,
     cpuUse: 34,
     description:
-      '异形生物窝点专属：腺体加压的酸液喷吐——光束级必中、无近盲；走"以射速换单发"的路子：装填偏慢，每一发都重。射程只有 2.8 km，必须贴上去喷。',
+      L10N['mod.copy.054']!.zh,
   },
   {
     id: 'mod-lair-shield-d',
@@ -1469,7 +1471,7 @@ export const MODULES: readonly ModuleDef[] = [
     // ⟪文案（2026-09-27 船长令「按你推荐来」）⟫ 删尾句「不用猜对手弹种。」——风味句，非规格
     //   （同批清掉的三处之一；另两处 = 甲壳棱镜层的开发口径、几丁质骨架层的解释句）。
     description:
-      '三系减伤各 +30%。',
+      L10N['mod.copy.055']!.zh,
   },
   {
     id: 'mod-lair-turret-d',
@@ -1486,7 +1488,7 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 13.35, // ⟪2026-09-22 船长令⟫ 10.35 → 13.35（单发倍率上调）
     cpuUse: 62,
     description:
-      '命中 100%、12 km 超远程（射程尽头六成）；射速极慢、单发极重。',
+      L10N['mod.copy.056']!.zh,
   },
   {
     id: 'mod-lair-armor-d',
@@ -1497,7 +1499,7 @@ export const MODULES: readonly ModuleDef[] = [
     speedPenaltyPct: 0.25,
     cpuUse: 42,
     description:
-      '守墓古舰窝点专属：陵寝级复合重甲——装甲容量 +110%，代价是战斗机动速度 −25%（多件不叠加）与 42 点 CPU：装它等于少一门重炮、也跑不快。守墓者从来不需要追人。',
+      L10N['mod.copy.057']!.zh,
   },
   {
     id: 'mod-lair-turret-e',
@@ -1516,7 +1518,7 @@ export const MODULES: readonly ModuleDef[] = [
     // ⟪文案调整 2026-09-30⟫ 文案审核批：原文「（射程带尽头几近失的）」是坏句（错字/漏字，读不通），
     //   改「（射程带尽头几乎打不中）」——与英文列 "nearly wasted at the band's end" 同义
     description:
-      '泰坦巨构窝点专属：拆自巨构核心舱段的主炮——十秒一发的重锤，单发威力极重，代价是弹道笨重、越远越打不中（射程带尽头几乎打不中），基础命中也只有七成。爆炸弹头破甲极强、拆盾乏力，是"贴到中距离换血"的巨构思路；结构简单得出奇，CPU 占用只有 22。',
+      L10N['mod.copy.058']!.zh,
   },
   {
     id: 'mod-lair-hangar-e',
@@ -1526,7 +1528,7 @@ export const MODULES: readonly ModuleDef[] = [
     droneBayBonusM3: 95,
     cpuUse: 50,
     description:
-      '泰坦巨构窝点专属：巨构舰体深处的整层机库——囤得起、放得出；真正卡放飞数量的仍是 CPU 带宽，机库只保证你带得够多。',
+      L10N['mod.copy.059']!.zh,
   },
   {
     id: 'mod-lair-frame-e',
@@ -1537,7 +1539,7 @@ export const MODULES: readonly ModuleDef[] = [
     hullHpBonus: 0.6,
     cpuUse: 50,
     description:
-      '泰坦巨构窝点专属：整段拆下的巨构龙骨——结构层容量 +60% ＋ 装甲容量 +30%——护盾与装甲被打穿之后，最后那段血就靠它。巨构造物不讲机动，只讲撑到最后。',
+      L10N['mod.copy.060']!.zh,
   },
   {
     id: 'mod-lair-drone-tac-g',
@@ -1549,7 +1551,7 @@ export const MODULES: readonly ModuleDef[] = [
     // ⟪文案调整 2026-09-30⟫ 文案审核批：原文末尾多出一个没有配对的「）」（"…只有好手艺）。"），
     //   改成与同族条目一致的破折号收尾（对照 `mod-lair-drone-relay-g` 的"——省下的算力留给别处"）。
     description:
-      '鱿鱼亡军窝点专属：从残舰上拆回来的蜂群控制台——放飞无人机单发伤害 +45%，CPU 只吃 32——流亡者没有新零件，只有好手艺。',
+      L10N['mod.copy.061']!.zh,
   },
   {
     id: 'mod-lair-drone-relay-g',
@@ -1567,7 +1569,7 @@ export const MODULES: readonly ModuleDef[] = [
     //   说明就陈旧；09-27 那轮已经被「产物说明契约」抓红过一次（见 `docs/design/drone-range-20260927.md`）。
     //   现在只写本件的规格：**射程 +65%**（消费者自己看机型的射程）。
     description:
-      '鱿鱼亡军窝点专属：用废桅杆拼起来的中继阵——放飞无人机射程 +65%。CPU 只吃 34——省下的算力留给别处。',
+      L10N['mod.copy.062']!.zh,
   },
 
   /* ══════════════ H 族（墨潮帮）势力装备：**2026-09-26 船长定**（三件 ＝ 射程压制 · 捕获网 · 重袭机）══════════════
@@ -1593,7 +1595,7 @@ export const MODULES: readonly ModuleDef[] = [
      * （同舰多件加和到 90% 封顶、跨舰乘法合成）；③ **机制一字未动**。
      */
     description:
-      '缴获改装的对舰电子战核心：装在参战编队里就持续压制敌方武器射程 15%，与电子舰的削弱乘法叠加。敌舰射程最短只能压到 3,000 m，基础射程不足 3,000 m 的武器不受影响。占用 150 点 CPU——装得下它的船，只为它服务。',
+      L10N['mod.copy.063']!.zh,
   },
   {
     id: 'mod-lair-web-h',
@@ -1625,7 +1627,7 @@ export const MODULES: readonly ModuleDef[] = [
      * 三项读数（射程 / 减速 / 断开距离）已进属性栏，正文里再写一遍就是船长点名的"重复文本"。
      */
     description:
-      '周期张网：钉住一艘未被钉住的敌舰，使其机动骤降、推进器熄火、闪避归零；目标被击沉或超出断开距离即松网冷却，本舰被击沉则解除。',
+      L10N['mod.copy.064']!.zh,
   },
 
   /* ══════════════ R 族（光环）势力特色装备（**船长 2026-10-01 令**）══════════════
@@ -1666,7 +1668,7 @@ export const MODULES: readonly ModuleDef[] = [
     overlayDrive: { stepMs: 300, floorMs: 600 }, // 船长令：「叠光同款叠加攻速的」
     cpuUse: 40, // 船长 2026-10-01：「CPU按照正常势力武器的量给」
     description:
-      '能量光束，必中；射程 7 km。装填 4.4 秒，每次开火缩短 0.3 秒，最低 0.6 秒；单场弹药 250 发。',
+      L10N['mod.copy.065']!.zh,
   },
   {
     /**
@@ -1689,7 +1691,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'mid',
     blink: { distanceM: 2000, cooldownMs: 12_000 }, // 船长令：「挨打触发闪现…冷却时间延长到12秒」
     cpuUse: 40, // 与同批的叠光激光炮同档（船长：「CPU按照正常势力武器的量给」）
-    description: '中槽。本舰被命中时拉开交战距离 2 km；冷却 12 秒。',
+    description: L10N['mod.copy.066']!.zh,
   },
   {
     /**
@@ -1731,7 +1733,7 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 1.512, // 名义 DPS = MK3 的 1.44 倍（单发对 MK3 = 36%）—— 船长令「单发伤害再上调20%」后的值
     burst: { shots: 3, gapMs: 100 }, // 船长令：「旗舰同款（三连射）」—— 一轮 3 发、间隔 100ms
     cpuUse: 75, // 船长令：「CPU占用根据DPS的比例同等提高」⇒ 52 × 1.44 = 74.88 → 75
-    description: '能量光束，必中；射程 10.5 km。每次开火 3 连射（间隔 0.1 秒）；装填 3 秒；单场弹药 120 发。',
+    description: L10N['mod.copy.067']!.zh,
   },
   {
     /**
@@ -1787,7 +1789,7 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 2.75, // 第 ⑦ 句「丙」：齐平 MK3 的解 2.42 ＋ 第 ⑥ 句的 +3（3 ÷ 9 = 0.33）；真实单发 = 能量弹 9 × 2.75 = 24.75
     antiDrone: 2, // 防空（属性）：能打敌机群 + 对无人机伤害 ×2（契约基准值）
     cpuUse: 63, // 船长令：基线 44 ×1.2（多20%）×1.2（必中再加20%）= 63.36 → 63
-    description: '能量点防光束，必中：射程 3 km、装填 1.8 秒；单场弹药 40 发。带防空属性的武器才筛得到敌方机群。',
+    description: L10N['mod.copy.068']!.zh,
   },
 
   /* ══════════════ 虫洞专属装备（2026-09-13 船长「开工，装备就全部做进来」；设计稿 `docs/design/wormhole-exclusive-20260913.md`）
@@ -1821,7 +1823,7 @@ export const MODULES: readonly ModuleDef[] = [
     //   （`ModuleDef.damageType` 单值），需新增字段（建议 `secondaryDamagePct` + 副弹种）与战斗侧
     //   第二段伤害，见设计稿 §3.6「待落机制」。
         description:
-      '会自己炸开的破片弹：7.3 km 内撒出一片高爆碎片，单发威力极重；碎片不看装甲缝隙——额外造成 50% 的动能伤害（与所耗的爆破弹药无关）。代价：命中只有 0.8，装填 5.6 秒。',
+      L10N['mod.copy.069']!.zh,
   },
   {
     id: 'mod-wh-a-hangar',
@@ -1835,7 +1837,7 @@ export const MODULES: readonly ModuleDef[] = [
     //   （只有 bay/dmg/range 三件），需新增字段（建议 `droneIntervalCutPct`）+ 战斗侧接入，见设计稿 §3.6。
         // ⟪文案调整 2026-09-27⟫ 船长令：无人机舱扩展 30 → 40 m³
     description:
-      '把抢来的货舱隔板焊成的机库夹层：无人机舱 +40 m³，且放飞无人机的出击周期 −8%。装得下又放得快，代价只有 25 点 CPU。',
+      L10N['mod.copy.070']!.zh,
   },
   {
     id: 'mod-wh-a-prop',
@@ -1846,7 +1848,7 @@ export const MODULES: readonly ModuleDef[] = [
     hitPenalty: 0.35, // 船长审核：0.05 → 0.35（开火命中 ×0.65）
     cpuUse: 18, // 船长审核：38 → 18
     description:
-      '过载到发红的推进段：战斗机动 +120%，CPU 只吃 18。代价是开火失稳到极点——命中 ×0.65。抢完就跑才是它的正经用法。',
+      L10N['mod.copy.071']!.zh,
   },
   {
     id: 'mod-wh-a-coat',
@@ -1857,7 +1859,7 @@ export const MODULES: readonly ModuleDef[] = [
     allResistPenaltyPct: 0.15, // 船长：负面 = **全抗性 −15**（盾/甲/结构三层各减 15 个百分点）
     cpuUse: 34,
         description:
-      '一层会骗测距的涂层：被命中缺口再削 28%，代价是全抗性 −15——盾、甲、结构三层一起变脆。保命也保货，但别指望它扛。',
+      L10N['mod.copy.072']!.zh,
   },
   {
     id: 'mod-wh-a-scan',
@@ -1868,7 +1870,7 @@ export const MODULES: readonly ModuleDef[] = [
     rangeCutPct: 0.15, // 船长：负面 = 武器射程 −15%
     cpuUse: 36,
         description:
-      '拼装起来的火控阵列：炮台命中整体 ×1.24，代价是武器射程 −15%——看得更准，但得让对方更靠近。',
+      L10N['mod.copy.073']!.zh,
   },
   {
     id: 'mod-wh-a-shield',
@@ -1881,7 +1883,7 @@ export const MODULES: readonly ModuleDef[] = [
     // ⚠ **待落**：船长要求「射程削减 25%」——引擎当前没有"武器射程百分比"模块字段，
     //   需新增（建议 `rangeCutPct`，多件取最重一件）+ 战斗侧接入，见设计稿 §3.6。
         description:
-      '把三块抢来的护盾发生器串成一个笼：护盾容量 +80%。代价是武器射程 −25%：护盾笼挤占了炮座的位置。',
+      L10N['mod.copy.074']!.zh,
   },
   {
     id: 'mod-wh-c-laser',
@@ -1900,7 +1902,7 @@ export const MODULES: readonly ModuleDef[] = [
     // ⟪文案调整 2026-09-24⟫ 原「…射程在族内够长——贴脸的活交给同族酸液喷吐器…」："族内/同族"指
     //   内容套系（虫洞 C 族专属装备），玩家侧「族」另指敌方势力 ⇒ 正字「这一族里 / 同族的」
     description:
-      '生体棱镜阵列射出的酸蚀光束：8.6 km 必中、单发很重，射程在这一族里够长——贴脸的活交给同族的酸液喷吐器，这件管的是"它想拉开距离"的时候。代价是装填 5.6 秒。',
+      L10N['mod.copy.075']!.zh,
   },
   /* ── C 族（异形 · 生体：结构/装甲高、护盾薄、近程高伤）──
    * 窝点套已占：生体甲壳板（甲自修）・生体损管腔（结构抗+结构自修）・酸液喷吐器（近程必中） */
@@ -1917,7 +1919,7 @@ export const MODULES: readonly ModuleDef[] = [
     //   ⇒ 按**甲案**（新改的说明不手写数字）改成定性一句，数字全交卡面参数行。姊妹件口径可对照
     //   `mod-lair-armor-c`（生体甲壳板）与 `mod-lair-shield-d`（陵墓护盾阵列）。
     description:
-      '装甲层三系减伤。',
+      L10N['mod.copy.076']!.zh,
   },
   {
     id: 'mod-wh-c-pulse',
@@ -1928,7 +1930,7 @@ export const MODULES: readonly ModuleDef[] = [
     speedBonusPct: 0.1, // 船长：舰船速度 +10%（跨族：支援槽携速度，已登记）
     cpuUse: 42, // 船长审核：32 → 42（CPU +10）
         description:
-      '以生体脉搏驱动装填链：炮台装填间隔 ÷1.06，并让舰船速度 +10%。占用 42 点 CPU——打得快，也跑得快。',
+      L10N['mod.copy.077']!.zh,
   },
   {
     id: 'mod-wh-c-missile',
@@ -1947,7 +1949,7 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 9.68, // 船长审核：12.1 ×0.8（降低 20%）；≈ 导弹架 MK3 的 1.6 倍
     cpuUse: 58,
     description:
-      '会自己散开的孢子囊：13.5 km 爆破覆盖、单发极重，一次罩住全部敌舰（逐舰各结算一次）。散布较大（命中 0.6）、装填 8.4 秒——它负责把整片战场铺满。',
+      L10N['mod.copy.078']!.zh,
   },
   {
     id: 'mod-wh-c-frame',
@@ -1961,7 +1963,7 @@ export const MODULES: readonly ModuleDef[] = [
     //   那是**解释**（"为什么"），按 2026-09-17 立的硬规矩（说明只写规格、不写原因）不留；
     //   同批「结构容量」那行的灰色注「（最后一段血量）」也已按船长令删除（`shipInfo.tsx`）。
     description:
-      '把整副骨架换成几丁质复合层：结构层容量 +75%，并让舰船速度 +5%——壳更厚，却更轻。',
+      L10N['mod.copy.079']!.zh,
   },
   /* ── D 族（守墓 · 重装：三系抗 / 必中远程 / 最慢）──
    * 窝点套已占：陵墓护盾阵列（三系盾抗）・守墓者长炮（动能必中 12 km）・陵寝装甲层（甲容量） */
@@ -1982,7 +1984,7 @@ export const MODULES: readonly ModuleDef[] = [
     ammoPerShot: 2, // 船长：每次攻击消耗 2 发弹药
     cpuUse: 46,
         description:
-      '陵卫的连装炮：5.4 km 内 2.8 秒一轮，一轮打出两发、单发极重。长炮点名硬目标，它负责把贴上来的一群清掉。',
+      L10N['mod.copy.080']!.zh,
   },
   {
     id: 'mod-wh-d-shield',
@@ -1993,7 +1995,7 @@ export const MODULES: readonly ModuleDef[] = [
     cpuUse: 52,
     // ⟪文案调整 2026-09-24⟫ 原「与本族那套"三系抗性的盾"互补」——"本族"指该势力套系 ⇒ 写明势力名
     description:
-      '从陵墓阵列里取出的核心：护盾容量 +90%。与守墓古舰那套"三系抗性的盾"互补——一个管厚度，一个管硬度。',
+      L10N['mod.copy.081']!.zh,
   },
   {
     id: 'mod-wh-d-lock',
@@ -2002,7 +2004,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     lockDmgBonus: 0.3, // 目标锁定阵列 MK3 = 0.2
     cpuUse: 40,
-    description: '全队集火编队首位，全队伤害 +30%',
+    description: L10N['mod.copy.082']!.zh,
   },
   {
     id: 'mod-wh-d-laser',
@@ -2019,7 +2021,7 @@ export const MODULES: readonly ModuleDef[] = [
     dmgMult: 9.4,
     cpuUse: 73, // ⟪2026-09-22 船长令⟫ 68 → 73（+5）
     description:
-      '把陵墓顶端的棱镜拆下来当炮管：12.5 km 必中光束、单发极重。装填 6.8 秒——瞄准的时间，就是它全部的代价。',
+      L10N['mod.copy.083']!.zh,
   },
   {
     id: 'mod-wh-d-loader',
@@ -2029,7 +2031,7 @@ export const MODULES: readonly ModuleDef[] = [
     reloadCutPct: 0.18, // 射速计算机 MK3 = 0.12
     cpuUse: 54, // 船长审核：34 → 54（CPU +20）
     description:
-      '一套不知疲倦的机械装填臂：炮台装填间隔 ÷1.18。必中长炮唯一的短板就是慢，它专补这一处。',
+      L10N['mod.copy.084']!.zh,
   },
   {
     id: 'mod-wh-d-steady',
@@ -2039,7 +2041,7 @@ export const MODULES: readonly ModuleDef[] = [
     damageTypeBonusPct: { kinetic: 0.18, plasma: 0.18 }, // 船长审核：22% → 18%，并追加能量（等离子）18%
     cpuUse: 30,
     description:
-      '刻在炮闩上的铭文：动能与能量武器单发各 +18%。守墓者的炮不是动能就是能量，它两系都认。',
+      L10N['mod.copy.085']!.zh,
   },
   /* ── E 族（巨构 · 平台：机库 / CPU）──
    * 窝点套已占：巨构残骸炮（爆破重锤）・深层机库（机库容量）・巨构骨架（甲+结构容量） */
@@ -2052,7 +2054,7 @@ export const MODULES: readonly ModuleDef[] = [
     hullHpBonus: 0.35, // 船长：结构值 +35%
     cpuUse: 38, // 船长：CPU −10（48 → 38）
         description:
-      '巨构造物的自带损管网：结构对动能与爆炸的抗性各 +30%、结构值 +35%，占用只有 38 点 CPU。巨构本来是挨打不还手的料，这一层让它挨得住第二轮。',
+      L10N['mod.copy.086']!.zh,
   },
   {
     id: 'mod-wh-e-tac',
@@ -2069,7 +2071,7 @@ export const MODULES: readonly ModuleDef[] = [
     //   ② 新效果走 `droneHitGapPct`（收窄 5%）：工作文档 `docs/design/drone-hit-gap-20260929.md`。
     droneHitGapPct: 0.05,
     description:
-      '塔状的机群指挥中枢：放飞无人机单发 +50%；被它指挥的机群更难被对方打中。',
+      L10N['mod.copy.087']!.zh,
   },
   {
     id: 'mod-wh-e-cpu',
@@ -2080,7 +2082,7 @@ export const MODULES: readonly ModuleDef[] = [
     reloadPenaltyPct: 0.12, // 船长：负面 = 装填 +12%
     cpuUse: 0, // 协处理器口径：自身不占 CPU
         description:
-      '巨构造物的并行计算核心：装配 CPU 上限 +90，自身不占 CPU，代价是全舰装填 +12%——算力是借来的，得用射速还。',
+      L10N['mod.copy.088']!.zh,
   },
   {
     id: 'mod-wh-e-pd',
@@ -2098,7 +2100,7 @@ export const MODULES: readonly ModuleDef[] = [
     antiDrone: 2, // 防空值 = 2（船长 2026-09-12「那伤害倍率按 2 倍算」——全游统一，专属件也不破例）
     cpuUse: 56,
     description:
-      '一整套阵列化点防：射程 2.5 km，贴到近处靠射速压制——防空属性 ×2，单发也重。',
+      L10N['mod.copy.089']!.zh,
   },
   {
     id: 'mod-wh-e-shield',
@@ -2110,7 +2112,7 @@ export const MODULES: readonly ModuleDef[] = [
     cpuUse: 70, // 船长：CPU +20（50 → 70）
         // ⟪文案调整 2026-09-24⟫ 原「巨构族的第一块盾」⇒ 正字势力名「泰坦巨构」
     description:
-      '矩阵式护盾发生层：动能与能量护盾抗性各 +32%，同时把护盾上限抬高 42%。占用 70 点 CPU——泰坦巨构的第一块盾。',
+      L10N['mod.copy.090']!.zh,
   },
   /* ── G 族（亡军 · 幽灵：低信号 / 快 / 远锁定 / 无人机）──
    * 窝点套已占：鱿蜂无人机（专属无人机）・鱿蜂群导控（无人机伤害）・流亡中继桅（无人机射程） */
@@ -2122,7 +2124,7 @@ export const MODULES: readonly ModuleDef[] = [
     droneBayBonusM3: 110, // 深层机库 = +95
     cpuUse: 54,
     description:
-      '由废弃蜂巢改成的机坞：无人机舱 +110 m³。亡军给了无人机伤害与射程，唯独没给"装得下"——这就是那一块。',
+      L10N['mod.copy.091']!.zh,
   },
   {
     id: 'mod-wh-g-fcs',
@@ -2133,7 +2135,7 @@ export const MODULES: readonly ModuleDef[] = [
     damageBonusPct: 0.06, // 船长：伤害 +6%（通用单发加成，只进炮台/光束）
     cpuUse: 36,
         description:
-      '从沉船里捡回的火控残骸，还在按老参数工作：炮台命中整体 ×1.12，并让全部武器单发 +6%。它记得上一任主人的射击习惯。',
+      L10N['mod.copy.092']!.zh,
   },
   {
     id: 'mod-wh-g-ballistic',
@@ -2144,7 +2146,7 @@ export const MODULES: readonly ModuleDef[] = [
     rangeTypeBonusPct: { kinetic: 0.22 }, // 船长：动能武器射程 +22%
     cpuUse: 60, // 船长审核：30 → 60（CPU +30）
         description:
-      '一把没有主人的弹道仪：动能武器单发 +22%，并把动能武器的射程拉长 22%。占用 60 点 CPU——亡军的炮都是捡来的动能炮，校正器也只好认这一系。',
+      L10N['mod.copy.093']!.zh,
   },
   {
     id: 'mod-wh-g-hull',
@@ -2163,7 +2165,7 @@ export const MODULES: readonly ModuleDef[] = [
     //   ③ 尾句是风味句，按"说明只写规格"清掉。现在与卡面行名/句式对齐：
     //   结构抗性那行 = 三系 chip +28%（`ui.shipInfo.087`）、短行 = 结构抗 +28% · 甲容 +18% · 机群结构层 +80%。
     description:
-      '结构层三系减伤各 +28%；装甲容量 +18%；本舰机群的结构层 +80%。',
+      L10N['mod.copy.094']!.zh,
   },
   {
     id: 'mod-wh-g-turret',
@@ -2186,7 +2188,7 @@ export const MODULES: readonly ModuleDef[] = [
        * 那种写法 = **本件效果 × 别件的当前基数**，攻坚炮台一动这句就陈旧（判据已并入
        * `docs/roadmap.md`「待办活面」③，工作文档按 §8 归档删除）。现在只留本件的规格与风味。
        */
-      '把三门废炮的部件拼成一门：单发极重、射程很远，代价是射速极慢、命中只有 0.75——它经手过太多任主人，膛线早就花了。',
+      L10N['mod.copy.095']!.zh,
   },
   {
     id: 'mod-wh-g-prop',
@@ -2196,7 +2198,7 @@ export const MODULES: readonly ModuleDef[] = [
     speedBonusPct: 0.85, // 船长审核：+115% → +85%
     cpuUse: 36,
     description:
-      '没有排气痕迹的推进段：战斗机动 +85%，且不拖累命中。幽灵的走法是悄无声息地靠近。',
+      L10N['mod.copy.096']!.zh,
   },
   /* ══════════════ 舰船插件（**2026-09-26 船长令**）══════════════
    * 表体在 `./plugs.ts`（单列一份便于对照设计稿）：插件与装备**共用 `ModuleDef`**，

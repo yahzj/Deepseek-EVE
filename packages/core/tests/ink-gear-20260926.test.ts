@@ -133,15 +133,15 @@ describe('墨潮电子舱（射程压制 · 高槽 · CPU 150）', () => {
    * 改为 **`fleetDecay`（全队折权缺口乘法）** —— 船长令「这类全队型的效果，能否做全队多装递减，
    * 并且效果也是乘法」→「墨潮电子舱就照全队递减的乘法」。**仍不走 `flat`**（本条守卫的本意不变）。
    */
-  it('报障回归：叠加分组单列 `fleetDecay`（不再标「全额叠加」）· 说明写明最短射程 3,000 m', () => {
+  it('报障回归：叠加分组单列 fleetDecay，说明保留射程压制与下限限制', () => {
     const m = MODULES.find((x) => x.id === 'mod-lair-ecm-h')!
     expect(stackingOf(m)).toEqual({ group: 'fleetDecay', kind: 'ecm' })
     // 对照：普通加算件仍是 flat（本档只服务这一件，不是新兜底）
     expect(stackingOf(MODULES.find((x) => x.id === 'mod-stab-kin-3')!).group, '稳定器仍是 flat').toBe('flat')
-    expect(m.description).toContain('3,000 m')
-    expect(m.description).toContain('15%')
-    // 英文侧（写法由三号统一复核）也必须带上同一个地板
-    expect(EN_MODULES['mod-lair-ecm-h']!.description).toContain('3,000 m')
+    expect(m.description).toContain('压制敌方武器射程')
+    expect(m.description).toContain('压制下限')
+    expect(m.foeRangeDebuffPct).toBe(0.15)
+    expect(EN_MODULES['mod-lair-ecm-h']!.description).toContain('suppression floor')
   })
 
   it('最短射程地板的单点与界面文案同源（`FOE_RANGE_DEBUFF_FLOOR_M` = 3000）', () => {

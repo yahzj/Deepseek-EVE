@@ -16,6 +16,7 @@
 import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
 import { DEFAULT_BALANCE, DC_LOCK_MS, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, beamPowerFactor, thrusterCycleNote, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules, fittedEffectParamsOf, WEB_BREAK_DIST_M } from '@whale/core'
+import { HIGH_SEC_PENALTY, JUMP_FUEL_SPEED_MUL, SYNAPTIC_ACCELERANT_MS, SYNAPTIC_ACCELERANT_MUL, wormholeIsShapedItem, wormholeShapeOf } from '@whale/core'
 /** 引擎类型（"装上船之后的实修值"那一行要现算 —— 2026-09-29 船长令） */
 import type { GameEngine } from '../game/engine'
 import { hoverTipProps } from './Tooltip'
@@ -669,6 +670,7 @@ export function moduleShortEffect(mod: ModuleDef): string {
       if (mod.speedAddMps !== undefined) bits.push(tr('ui.shipInfo.195', { p1: fmt(mod.speedAddMps) }))
       if (mod.speedPenaltyMps !== undefined) bits.push(tr('ui.shipInfo.196', { p1: fmt(mod.speedPenaltyMps) }))
       if (mod.rangeCutPct !== undefined && mod.rangeCutPct < 0) bits.push(tr('ui.shipInfo.197', { p1: pct(-mod.rangeCutPct) }))
+      if ((mod.plugRangeBonusPct ?? 0) > 0) bits.push(tr('ui.shipInfo.197', { p1: pct(mod.plugRangeBonusPct ?? 0) }))
       if (mod.targetWeightMul !== undefined) {
         bits.push(mod.targetWeightMul > 1 ? tr('ui.shipInfo.198') : tr('ui.shipInfo.199'))
       }
@@ -1088,6 +1090,8 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
     lines.push({ k: tr("ui.shipInfo.037"), v: `+${pctOpt(mod.bonus)}` })
   } else if (mod.slot === 'cargo') {
     lines.push({ k: tr("ui.Handbook.010"), v: `+${pctOpt(mod.bonus)}` })
+  } else if (mod.slot === 'drone-shield') {
+    lines.push({ k: tr('ui.shipInfo.208'), v: `+${pctOpt(mod.droneShieldHpBonusPct)}` })
   } else if (mod.slot === 'shield') {
     if (mod.shieldHpBonus !== undefined) lines.push({ k: tr("ui.shipInfo.019"), v: `+${pct(mod.shieldHpBonus)}` })
     const row = resistAddLine(tr("ui.FitPage.002"), mod.shieldResistAdd)
@@ -1443,6 +1447,26 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   }
   // 跨族加成（2026-09-11 修复：槽位族之外的加成原先一律不显示——见 crossFamilyLines 注释）
   lines.push(...crossFamilyLines(mod))
+  // ⟪文案调整 2026-10-04⟫ 这些读数原来只在短行或正文，通用详情也应可见。
+  if ((mod.foeRangeDebuffPct ?? 0) > 0) {
+    lines.push({ k: tr('ui.moduleSpecs.001'), v: tr('ui.shipInfo.185', { p1: pct(mod.foeRangeDebuffPct ?? 0), p2: String(FOE_RANGE_DEBUFF_FLOOR_M) }) })
+  }
+  if ((mod.shieldPulsePct ?? 0) > 0) {
+    lines.push({ k: tr('ui.moduleSpecs.002'), v: tr('ui.shipInfo.103', { p1: SHIELD_PULSE_MS / 1000, p2: pct(mod.shieldPulsePct ?? 0) }) })
+  }
+  if ((mod.shieldFieldPct ?? 0) > 0 && (mod.shieldFieldMs ?? 0) > 0) {
+    lines.push({ k: tr('ui.moduleSpecs.003'), v: tr('ui.shipInfo.181', { p1: (mod.shieldFieldMs ?? 0) / 1000, p2: pct(mod.shieldFieldPct ?? 0) }) })
+  }
+  if (mod.overlayDrive) {
+    lines.push({ k: tr('ui.moduleSpecs.004'), v: tr('ui.shipInfo.246', { p1: ((mod.reloadMs ?? 0) / 1000).toFixed(1), p2: (mod.overlayDrive.stepMs / 1000).toFixed(1), p3: (mod.overlayDrive.floorMs / 1000).toFixed(1) }) })
+  }
+  if (mod.blink) {
+    lines.push({ k: tr('ui.moduleSpecs.005'), v: tr('ui.moduleSpecs.006', { p1: mod.blink.distanceM, p2: mod.blink.cooldownMs / 1000 }) })
+  }
+  if (mod.burst) {
+    lines.push({ k: tr('ui.moduleSpecs.007'), v: tr('ui.moduleSpecs.008', { p1: mod.burst.shots, p2: mod.burst.gapMs / 1000 }) })
+  }
+  if (mod.slot === 'plug') lines.push({ k: tr('ui.moduleSpecs.009'), v: moduleShortEffect(mod) })
   // V18.1 叠加方式标签（所有装备统一：收敛件 = 多装递减；线性件 = 全额叠加；
   // 2026-09-15 隐秘行动装置 = **取最长一件、不叠加**——`max` 组单列一档，不谎报"全额叠加"）
   // 2026-09-11 船长定精简：只留结论一句（机制解释在手册「装配」条目里）
@@ -1771,6 +1795,22 @@ export function itemInfoLines(item: ItemDef, nameOf?: (id: string) => string | u
   }
   if (item.repairRestore !== undefined) {
     lines.push({ k: tr("ui.itemSubs.001"), v: tr("ui.shipInfo.178", { p1: item.repairRestore }) })
+  }
+  // ⟪文案调整 2026-10-04⟫ 说明不手写数字，形状和消耗品读数由真实单点提供。
+  if (wormholeIsShapedItem(item.id)) {
+    const shape = wormholeShapeOf(item.id)
+    lines.push({ k: tr('ui.itemSpecs.001'), v: tr('ui.itemSpecs.002', { p1: shape.w, p2: shape.h, p3: shape.w * shape.h }) })
+  }
+  if (item.id === 'synaptic-accelerant') {
+    lines.push({ k: tr('ui.itemSpecs.003'), v: tr('ui.itemSpecs.004', { p1: SYNAPTIC_ACCELERANT_MS / 3_600_000 }) })
+    lines.push({ k: tr('ui.itemSpecs.005'), v: `×${SYNAPTIC_ACCELERANT_MUL}` })
+  } else if (item.id === 'jump-fuel') {
+    lines.push({ k: tr('ui.itemSpecs.006'), v: `×${JUMP_FUEL_SPEED_MUL}` })
+    lines.push({ k: tr('ui.itemSpecs.007'), v: tr('ui.itemSpecs.008') })
+  } else if (item.id === 'invasion-beacon') {
+    lines.push({ k: tr('ui.itemSpecs.009'), v: tr('ui.itemSpecs.010', { p1: HIGH_SEC_PENALTY }) })
+  } else if (item.id === 'repairkit-dc') {
+    lines.push({ k: tr('ui.itemSpecs.013'), v: tr('ui.shipInfo.207', { p1: DC_LOCK_MS / 1000 }) })
   }
   return lines
 }

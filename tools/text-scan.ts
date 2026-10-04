@@ -76,7 +76,7 @@ export function stripComments(s: string): string {
   return out
 }
 
-/** 一条 id 引用：`core.<段>.<三位>` / `ui.<段>.<三位>`（形态与 `l10n-check` 的 `ID_RE` 同口径） */
+/** 一条 id 引用；域列表与 l10n-check 的合法域一致。 */
 export interface IdLiteral {
   id: string
   line: number
@@ -90,7 +90,7 @@ export interface IdLiteral {
  */
 export function idLiteralsIn(src: string): IdLiteral[] {
   const out: IdLiteral[] = []
-  for (const m of src.matchAll(/['"`]((?:core|ui)\.[A-Za-z][A-Za-z0-9]*\.\d{3})['"`]/g)) {
+  for (const m of src.matchAll(/['"`]((?:ui|ship|mod|item|skill|ano|gal|bp|wreck|station|faction|travel|matter|core)\.[A-Za-z][A-Za-z0-9]*\.\d{3})['"`]/g)) {
     const line = src.slice(0, m.index).split('\n').length
     out.push({ id: m[1]!, line })
   }

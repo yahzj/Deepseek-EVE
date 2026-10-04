@@ -28,6 +28,8 @@
  * `EN_MODULES`）；"原 → 新"逐条见 `docs/design/plug-blackbox-20260927.md` 的「文案调整台账」。
  */
 import type { ModuleDef } from '@whale/core'
+import { L10N } from './l10n/table'
+// ⟪文案调整 2026-10-04⟫ 船长授权整批说明重写，数值与功能不变。
 
 /** 插件模块 id 常量（数据/用例引用它，写错当场编译不过） */
 export const PLUG_IDS = {
@@ -62,7 +64,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     shieldHpAdd: 80,
     cpuUse: 0,
-    description: '舰体内部加装的护盾发生层：护盾上限 +80。',
+    description: L10N['mod.copy.097']!.zh,
   },
   {
     id: PLUG_IDS.armorPlate,
@@ -72,7 +74,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     armorHpAdd: 140,
     speedPenaltyMps: 20,
     cpuUse: 0,
-    description: '整块焊入舰体的复合装甲：装甲上限 +140，代价是最大速度 −20 m/s。',
+    description: L10N['mod.copy.098']!.zh,
   },
   {
     id: PLUG_IDS.hullPlate,
@@ -81,7 +83,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     hullHpAdd: 80,
     cpuUse: 0,
-    description: '贯穿主梁的加强件：结构上限 +80。',
+    description: L10N['mod.copy.099']!.zh,
   },
   // ── ② 两条扩槽 ──
   {
@@ -91,7 +93,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     midSlotsAdd: 1,
     cpuUse: 0,
-    description: '在中层加开一段标准挂点：中槽 +1。',
+    description: L10N['mod.copy.100']!.zh,
   },
   {
     id: PLUG_IDS.lowBay,
@@ -100,7 +102,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     lowSlotsAdd: 1,
     cpuUse: 0,
-    description: '在底层加开一段标准挂点：低槽 +1。',
+    description: L10N['mod.copy.101']!.zh,
   },
   // ── ③ 预算与火力 ──
   {
@@ -110,7 +112,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     cpuBonus: 80,
     cpuUse: 0,
-    description: '并联的运算单元：装配 CPU 上限 +80。',
+    description: L10N['mod.copy.102']!.zh,
   },
   {
     id: PLUG_IDS.firepower,
@@ -119,7 +121,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     damageBonusPct: 0.15,
     cpuUse: 0,
-    description: '直连武器总线的超载模块：武器单发伤害 +15%。',
+    description: L10N['mod.copy.103']!.zh,
   },
   {
     id: PLUG_IDS.sight,
@@ -128,7 +130,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     hitBonusPct: 0.15,
     cpuUse: 0,
-    description: '与火控并联的测距组件：武器命中 +15%。',
+    description: L10N['mod.copy.104']!.zh,
   },
   {
     id: PLUG_IDS.rangefinder,
@@ -144,7 +146,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
      */
     plugRangeBonusPct: 0.2,
     cpuUse: 0,
-    description: '沿舰体加装的加速导轨：武器射程 +20%。',
+    description: L10N['mod.copy.105']!.zh,
   },
   // ── ④ 机动与选靶 ──
   {
@@ -154,7 +156,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     speedAddMps: 40,
     cpuUse: 0,
-    description: '舰尾加装的辅助喷口：最大速度 +40 m/s。',
+    description: L10N['mod.copy.106']!.zh,
   },
   {
     id: PLUG_IDS.targetBeacon,
@@ -163,7 +165,7 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     targetWeightMul: 3,
     cpuUse: 0,
-    description: '全功率辐射的诱饵信标：敌方更倾向于选中本舰。',
+    description: L10N['mod.copy.107']!.zh,
   },
   {
     id: PLUG_IDS.concealment,
@@ -172,6 +174,6 @@ export const SHIP_PLUGS: readonly ModuleDef[] = [
     rack: 'low',
     targetWeightMul: 0.7,
     cpuUse: 0,
-    description: '压平信号特征的外壳：敌方更少选中本舰。',
+    description: L10N['mod.copy.108']!.zh,
   },
 ]
