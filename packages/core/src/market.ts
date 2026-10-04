@@ -1269,7 +1269,7 @@ function settleSnatchBuy(state: GameState, ctx: SimContext, order: PlayerOrder):
 
 /** 买入商品入对应库存（物品→物品仓库；装备→装备库；蓝图→蓝图书；核心→核心库；船→舰队）。
  * 返回：kind=ship 时为本次入队的舰船实例 uid（最后加入的一艘；多艘同批时取末艘），其余返回 null */
-function depositGood(state: GameState, ctx: SimContext, goodKey: string, qty: number): string | null {
+export function depositGood(state: GameState, ctx: SimContext, goodKey: string, qty: number): string | null {
   const def = ctx.marketGoods.get(goodKey)
   if (!def) return null
   if (def.kind === 'item') addWare(state, def.refId, qty)

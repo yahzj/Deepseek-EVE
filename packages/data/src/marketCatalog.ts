@@ -17,6 +17,7 @@
 
 import type { MarketGoodDef } from '@whale/core'
 import { rarityTierOf } from './rarityTier' // 2026-09-09 数字稀有度表（物品本体属性，市场调用）
+import { BLACK_MARKET_EXCLUSIVE_REFS } from './blackMarketGoods'
 import { wreckItemIdOf, WRECK_GROUPS } from '@whale/core'
 
 export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
@@ -1035,5 +1036,8 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
  * 一律看不到也交易不到；而它在 `MARKET_GOODS`（目录表）里，**契约照核**（`content:check` 用该表）。
  * 上线时把卡上的 `unreleased` 删掉即可。 */
 export function buildMarketGoodsCatalog(): ReadonlyMap<string, MarketGoodDef> {
-  return new Map(MARKET_GOODS.filter((g) => g.unreleased !== true).map((g) => [g.key, { ...g, rarityTier: rarityTierOf(g.refId) }]))
+  return new Map(MARKET_GOODS.filter((g) => g.unreleased !== true).map((g) => [g.key, {
+    ...g, rarityTier: rarityTierOf(g.refId),
+    ...(g.playerBuyable === false && BLACK_MARKET_EXCLUSIVE_REFS.has(g.refId) ? { blackMarketBuyable: true } : {}),
+  }]))
 }

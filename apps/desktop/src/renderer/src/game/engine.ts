@@ -7,6 +7,7 @@
  * 2. 把玩家动作（训练/开采/精炼/出售/买船/重置…）翻译成核心引擎指令；
  * 3. 状态一变就通知界面刷新（subscribe）。
  */
+import { blackMarketBuy, ensureBlackMarket } from '@whale/core'
 import {
   MAX_SKILL_LEVEL,
   SaveError,
@@ -2358,6 +2359,20 @@ export class GameEngine {
       this.notify()
     }
     return r.ok ? { ok: true } : { ok: false, error: r.error, errorId: r.errorId, errorParams: r.errorParams }
+  }
+
+  openBlackMarketAt(): void {
+    if (ensureBlackMarket(this.state, this.ctx, Date.now())) {
+      void this.persist()
+      this.notify()
+    }
+  }
+
+  buyBlackMarketAt(goodKey: string, dayWallMs: number, price: number): CommandResult {
+    const result = blackMarketBuy(this.state, this.ctx, goodKey, dayWallMs, price, Date.now())
+    void this.persist()
+    this.notify()
+    return result
   }
 
   /** 市价买入商品（默认 1 件；矿石/矿物传数量）。

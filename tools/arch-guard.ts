@@ -108,6 +108,12 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '黑市累计声望入口门槛', symbol: 'blackMarketUnlocked', file: 'packages/core/src/blackMarket.ts', exported: true },
+  { concept: '黑市候选池与例外购买资格', symbol: 'blackMarketCandidateGoods', file: 'packages/core/src/blackMarket.ts', exported: true },
+  { concept: '黑市本地日界', symbol: 'blackMarketDayStart', file: 'packages/core/src/blackMarket.ts', exported: true },
+  { concept: '黑市下次刷新时间', symbol: 'blackMarketNextRefresh', file: 'packages/core/src/blackMarket.ts', exported: true },
+  { concept: '市场商品可读名称', symbol: 'marketGoodDisplayName', file: 'apps/desktop/src/renderer/src/ui/marketGoodHover.tsx', exported: true },
+  { concept: '市场蓝图产物与材料悬停行', symbol: 'blueprintHoverLines', file: 'apps/desktop/src/renderer/src/ui/marketGoodHover.tsx', exported: true },
   { concept: '纯货舰模块能力兼容', symbol: 'moduleAllowedOnShip', file: 'packages/core/src/shipFitting.ts', exported: true },
   { concept: '物品领域分类与未知条目兜底', symbol: 'itemCategoryOf', file: 'apps/desktop/src/renderer/src/ui/itemSubs.ts', exported: true },
   { concept: '市场领域分类及细分判定', symbol: 'marketDomainPasses', file: 'apps/desktop/src/renderer/src/ui/itemSubs.ts', exported: true },

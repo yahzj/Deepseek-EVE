@@ -17,15 +17,13 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { askLineOf, buyLineOf, bmGateNote, marketLockNote, aiCoreGoodNameId, goodName, marketHistory, marketQuote, marketTrend, naturalHoldings, PRICE_SAMPLE_MS, salesTaxRate, shipStoredCount } from '@whale/core'
-import type { BlueprintDef, GameState, MarketGoodDef, MarketRarity, ShipBlueprintDef } from '@whale/core'
+import { askLineOf, buyLineOf, bmGateNote, marketLockNote, goodName, marketHistory, marketQuote, marketTrend, naturalHoldings, PRICE_SAMPLE_MS, salesTaxRate, shipStoredCount } from '@whale/core'
+import type { GameState, MarketGoodDef } from '@whale/core'
 import { Panel } from '@whale/ui'
-import { HoverTip } from '../ui/Tooltip'
-import { InfoHover, ItemHover, itemInfoLines, ModuleHover, moduleInfoLines, ShipHover, shipInfoLines } from '../ui/shipInfo'
-import type { InfoLine } from '../ui/shipInfo'
+import { MarketGoodHover, marketGoodDisplayName as goodDisplayName } from '../ui/marketGoodHover'
 import type { PageProps } from './common'
 import { isk } from './common'
-import { fmtDuration, fmtInt } from '../i18n/fmt'
+import { fmtInt } from '../i18n/fmt'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { MarkStar, pinMarked } from '../ui/marks'
@@ -33,6 +31,8 @@ import { SUB_ALL, DOMAIN_ALL, DOMAIN_ITEM, DOMAIN_SHIP, ITEM_DOMAIN_SUBS, SHIP_D
 import type { SubOption } from '../ui/itemSubs'
 import { tr, cmdText } from '../i18n/locale'
 import { kindTextOfItem, rackText } from '../ui/labelsText'
+import { blackMarketUnlocked } from '@whale/core'
+import { BlackMarketPage } from './BlackMarketPage'
 
 /**
  * 一级领域的中文名 —— **改读单点表 `MARKET_DOMAIN_TABS`**。
@@ -53,7 +53,6 @@ import { kindTextOfItem, rackText } from '../ui/labelsText'
  */
 type KindFilter = typeof DOMAIN_ALL | typeof DOMAIN_ITEM | typeof DOMAIN_SHIP
 const KIND_OPTIONS: readonly KindFilter[] = [DOMAIN_ALL, ...MARKET_DOMAIN_TABS.map((t) => t.key as KindFilter)]
-const RARITY_TEXT: Record<MarketRarity, string> = { common: tr("ui.MarketPage.010"), rare: tr("ui.IndustryPage.035"), exotic: tr("ui.MarketPage.011") }
 
 /* 类型子分类表已抽到 ui/itemSubs.ts（市场页与手册图鉴共用同一套口径） */
 /** 目录条目对应的物品定义（item 类才查物品表） */
@@ -130,86 +129,6 @@ function earliestSellRemaining(engine: PageProps['engine'], goodKey: string): nu
  * `goodName` 对它们只能回落中文原串 ⇒ 英文界面下市场那行一直是「基础 AI 核心」。
  * 数据侧给了 `aiCoreGoodNameId(refId)` ⇒ 有 id 就走 `tr`；其余（物品/装备/舰船/蓝图）**逐字仍是 `goodName`**。
  */
-function goodDisplayName(ctx: PageProps['engine']['ctx'], goodKey: string): string {
-  const def = ctx.marketGoods.get(goodKey)
-  if (def?.kind === 'aicore') {
-    const id = aiCoreGoodNameId(def.refId)
-    if (id !== undefined) return tr(id)
-  }
-  return goodName(ctx, goodKey)
-}
-
-/** 商品悬停说明（名称/类型/稀有度 + 数据表描述；AI 核心按效率动态描述）
- *  2026-09-10 船长：不再写「常驻」（普通商品的常驻标记对玩家没有信息量），只标稀有/限定 */
-function goodTipText(engine: PageProps['engine'], good: MarketGoodDef): string {
-  const rarity = good.rarity !== 'common' ? ` · ${RARITY_TEXT[good.rarity] ?? ''}` : ''
-  const head = `${goodDisplayName(engine.ctx, good.key)}（${kindTextOf(engine.ctx, good)}${rarity}）`
-  let desc = ''
-  if (good.kind === 'item') desc = engine.ctx.items.get(good.refId)?.description ?? ''
-  else if (good.kind === 'module') desc = engine.ctx.modules.get(good.refId)?.description ?? ''
-  else if (good.kind === 'ship') desc = engine.ctx.ships.get(good.refId)?.description ?? ''
-  else if (good.kind === 'blueprint')
-    desc = engine.ctx.blueprints.get(good.refId)?.description ?? engine.ctx.shipBlueprints.get(good.refId)?.description ?? ''
-  else if (good.kind === 'aicore') {
-    const eff = Math.round((engine.ctx.balance.aiCore.efficiency[good.refId as never] ?? 1) * 100)
-    const tier =
-      good.refId === 'basic' ? tr("ui.MarketPage.012") : good.refId === 'gamma' ? tr("ui.MarketPage.013") : good.refId === 'beta' ? tr("ui.MarketPage.014") : tr("ui.MarketPage.015")
-    desc = tr("ui.MarketPage.136", { tier: tier, eff: eff })
-  }
-  return `${head}\n${desc || tr('ui.MarketPage.171')}`
-}
-
-/** 蓝图悬浮参数行（产物/产物属性/材料/制造）；装备/弹药/舰船蓝图共用同一形状。
- * 2026-09-08 船长定（玩家反馈）：悬浮须同显产物的属性与介绍——查蓝图 = 看造出来的是什么；
- * 产物属性行/介绍与市场商品行悬浮、手册图鉴同一数据源。蓝图自身文案移入参数行「蓝图说明」。 */
-function blueprintHoverLines(
-  ctx: PageProps['engine']['ctx'],
-  bp: BlueprintDef | ShipBlueprintDef,
-): { title: string; lines: InfoLine[]; note: string } {
-  const isModuleBp = 'moduleId' in bp
-  const isItemBp = 'itemId' in bp // 2026-09-05 弹药蓝图
-  const def = bp as BlueprintDef
-  const productName = isItemBp
-    ? ctx.items.get(def.itemId!)?.name ?? def.itemId!
-    : isModuleBp
-      ? ctx.modules.get(def.moduleId!)?.name ?? def.moduleId!
-      : ctx.ships.get((bp as ShipBlueprintDef).shipId)?.name ?? (bp as ShipBlueprintDef).shipId
-  const materials = bp.materials.map((m) => `${ctx.items.get(m.itemId)?.name ?? m.itemId} ×${m.count}`).join('　')
-  // 产物属性行（产物是什么：槽位/效果/伤害/抗性/货舱…全站同源行）与产物介绍（note 槽）
-  const prodLines: InfoLine[] = []
-  let prodDesc = ''
-  if (isItemBp) {
-    const item = ctx.items.get(def.itemId!)
-    if (item) {
-      for (const l of itemInfoLines(item, (id) => ctx.items.get(id)?.name)) prodLines.push(l)
-      prodDesc = item.description
-    }
-  } else if (isModuleBp) {
-    const mod = ctx.modules.get(def.moduleId!)
-    if (mod) {
-      for (const l of moduleInfoLines(mod)) prodLines.push(l)
-      prodDesc = mod.description
-    }
-  } else {
-    const ship = ctx.ships.get((bp as ShipBlueprintDef).shipId)
-    if (ship) {
-      for (const l of shipInfoLines(ship)) prodLines.push(l)
-      prodDesc = ship.description
-    }
-  }
-  return {
-    title: bp.name,
-    lines: [
-      { k: tr("ui.MarketPage.016"), v: productName },
-      ...prodLines,
-      ...(bp.description ? [{ k: tr("ui.MarketPage.017"), v: bp.description }] : []),
-      { k: tr("ui.MarketPage.018"), v: materials },
-      { k: tr("ui.MarketPage.019"), v: tr("ui.MarketPage.137", { p1: fmtDuration(bp.buildSeconds * 1000) }) },
-    ],
-    note: prodDesc || bp.description,
-  }
-}
-
 /**
  * 商品行悬停（全站统一富卡皮肤）：装备/物品/舰船/蓝图/AI 核心各自组装
  * 标题 + 参数表 + 描述——与仓库/货仓/手册列表同一悬浮视觉。
@@ -223,69 +142,7 @@ function GoodHover({
   good: MarketGoodDef
   children: ReactNode
 }) {
-  const ctx = engine.ctx
-  const rowCls = 'app-inv-row app-mkt-row'
-  if (good.kind === 'module') {
-    const mod = ctx.modules.get(good.refId)
-    if (mod) {
-      return (
-        <ModuleHover as="li" mod={mod} className={rowCls}>
-          {children}
-        </ModuleHover>
-      )
-    }
-  } else if (good.kind === 'item') {
-    const item = ctx.items.get(good.refId)
-    if (item) {
-      return (
-        <ItemHover as="li" item={item} className={rowCls} nameOf={(id) => ctx.items.get(id)?.name}>
-          {children}
-        </ItemHover>
-      )
-    }
-  } else if (good.kind === 'ship') {
-    const ship = ctx.ships.get(good.refId)
-    if (ship) {
-      return (
-        <ShipHover as="li" ship={ship} className={rowCls} note={ship.description}>
-          {children}
-        </ShipHover>
-      )
-    }
-  } else if (good.kind === 'blueprint') {
-    const bp = ctx.blueprints.get(good.refId) ?? ctx.shipBlueprints.get(good.refId)
-    if (bp) {
-      const info = blueprintHoverLines(ctx, bp)
-      return (
-        <InfoHover as="li" title={info.title} lines={info.lines} note={info.note} className={rowCls}>
-          {children}
-        </InfoHover>
-      )
-    }
-  } else if (good.kind === 'aicore') {
-    const eff = Math.round((engine.ctx.balance.aiCore.efficiency[good.refId as never] ?? 1) * 100)
-    const tier =
-      good.refId === 'basic' ? tr("ui.MarketPage.020") : good.refId === 'gamma' ? tr("ui.MarketPage.013") : good.refId === 'beta' ? tr("ui.MarketPage.014") : tr("ui.MarketPage.015")
-    return (
-      <InfoHover
-        as="li"
-        title={goodName(ctx, good.key)}
-        lines={[
-          { k: tr("ui.MarketPage.002"), v: tier },
-          { k: tr("ui.MarketPage.021"), v: tr("ui.MarketPage.138", { eff: eff }) },
-        ]}
-        note={tr("ui.MarketPage.022")}
-        className={rowCls}
-      >
-        {children}
-      </InfoHover>
-    )
-  }
-  return (
-    <HoverTip as="li" tip={goodTipText(engine, good)} className={rowCls}>
-      {children}
-    </HoverTip>
-  )
+  return <MarketGoodHover ctx={engine.ctx} good={good} as="li" className="app-inv-row app-mkt-row">{children}</MarketGoodHover>
 }
 
 /** 玩家自己这件东西的库存（舰船 = 舰船仓库 ＋ 在役舰队；其余走 core「自然库存」单点） */
@@ -1253,6 +1110,7 @@ export function MarketPage({
 }: PageProps & { focusKey?: string | null; focusSeq?: number; onFocusUsed?: () => void }) {
   const state = engine.state
   const goods = useMemo(() => [...engine.ctx.marketGoods.values()], [engine])
+  const [blackMarketOpen, setBlackMarketOpen] = useState(false)
   const common = goods.filter((g) => g.rarity === 'common')
   // 2026-09-14 船长：奇货从稀有订单里独立成第三个标签（「限定奇货」· 图标 ◈ · 常态显示）
   const rareCol = goods.filter((g) => g.rarity === 'rare')
@@ -1411,10 +1269,15 @@ export function MarketPage({
     [goods, engine, kind, sub, detail, rack, query, engine.state.gameMs],
   )
 
+  if (blackMarketOpen) return <BlackMarketPage engine={engine} onToast={onToast} onBack={() => setBlackMarketOpen(false)} />
+
   return (
     // `app-mkt-page`：窄窗（≤1180px，单栏）时本页**放开「一级页不滚」**——船长 2026-09-14：
     // 「放宽闸门，允许市场页面在这种情况下出现滚动条。让所有子窗口完整显示」（见 styles.css 同名断点块）
     <div className="page-stack page-fill app-mkt-page">
+      {blackMarketUnlocked(state) ? <div className="app-bm-entry">
+        <button className="app-btn" onClick={() => { engine.openBlackMarketAt(); setBlackMarketOpen(true) }}><Glyph name="nav-shop" size={18} />{tr('ui.blackMarket.001')}</button>
+      </div> : null}
       {/* 常驻双栏：左 = 搜索 + 标签 + 商品列表；右 = 市场详情大盘（常驻，无选中时显示引导） */}
       <div className="app-mkt-split">
         <div className="app-mkt-left">

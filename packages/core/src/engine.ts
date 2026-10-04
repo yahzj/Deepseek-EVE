@@ -27,6 +27,7 @@ import { advanceWormhole } from './wormholeBattle'
 import { advanceAi, AI_CORE_ORDER } from './ai'
 import { advanceEvents } from './events'
 import { advanceMarket } from './market'
+import { ensureBlackMarket } from './blackMarket'
 import { advanceEncounterWatch } from './encounters'
 import { advanceScanning, ensureTransitExplored } from './explore'
 import { advanceWormholeScan, reconcileWormholePromoGift, reconcileWormholeScanWelcome } from './wormholeScan'
@@ -276,6 +277,7 @@ export function advanceGame(
   // **派系活跃 = 每天本地 12:00 换新**（2026-09-29 船长令：切换时间 24 时 → 12 时，只挪活跃）。
   // 离线大步长只按末窗结算一次（见 sideTasks.advanceSideTasks）
   advanceSideTasks(state, ctx, opts?.nowWallMs)
+  ensureBlackMarket(state, ctx, opts?.nowWallMs ?? state.savedAtWallMs)
   // 通讯收件箱（2026-09-11）：数据消息按触发条件送达 + 未读记账（幂等；表为空时零开销）
   advanceComms(state, ctx)
   /**

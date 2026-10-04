@@ -32,6 +32,7 @@ import { WORMHOLE_ARCHETYPES, WORMHOLE_GRID_SAVE_MAX_R, wormholeArchetypeOf } fr
 import { WORMHOLE_FAMILY_ORDER, wormholeFamilyOfSeed } from './wormholeFoes'
 import type { WormholeHoldState } from './wormholeHold'
 import { emptyFitted, uidDefId } from './labels'
+import { normalizeBlackMarket } from './blackMarket'
 import { maxScanWindowMs } from './explore'
 import { pruneMarks } from './marks'
 import { FIT_PRESET_MAX, FIT_PRESET_NAME_MAX } from './fitPresets'
@@ -3307,6 +3308,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   }
   const achievements: GameState['achievements'] = { earned: achEarned }
 
+  const blackMarket = normalizeBlackMarket(src.blackMarket)
   const normalized: GameState = {
     version: CURRENT_STATE_VERSION,
     gameMs:
@@ -3338,6 +3340,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     ...(Object.keys(fitPresets).length > 0 ? { fitPresets } : {}),
     blueprintStock,
     market,
+    ...(blackMarket ? { blackMarket } : {}),
     orders,
     escrowItems,
     escrowShips,

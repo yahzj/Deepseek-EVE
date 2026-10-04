@@ -847,6 +847,8 @@ export interface MarketGoodDef {
   playerSellable?: boolean
   /** 玩家可否买入（默认 true） */
   playerBuyable?: boolean
+  /** 黑市专用供货白名单；不放开普通市场的playerBuyable限制。 */
+  blackMarketBuyable?: boolean
   /**
    * **未上线商品**（2026-09-12 船长定：「所有虫洞相关的内容需要等虫洞落地后才统一对玩家可见」）。
    *

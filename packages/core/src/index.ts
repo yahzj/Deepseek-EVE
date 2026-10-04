@@ -74,6 +74,7 @@ export type {
 export { FOE_TARGETING_LABELS } from './types'
 
 export { moduleAllowedOnShip } from './shipFitting'
+export type { BlackMarketState, BlackMarketOffer } from './state'
 export {
   CURRENT_STATE_VERSION,
   MAX_SKILL_LEVEL,
@@ -871,6 +872,12 @@ export {
   refundToStorage,
   snatchSellFill,
 } from './market'
+export {
+  blackMarketUnlocked, blackMarketCandidateGoods, blackMarketDayStart, blackMarketNextRefresh,
+  ensureBlackMarket, blackMarketBuy, normalizeBlackMarket,
+  BLACK_MARKET_OFFER_COUNT, BLACK_MARKET_EXCLUSIVE_COUNT,
+  BLACK_MARKET_MIN_MULTIPLIER, BLACK_MARKET_MAX_MULTIPLIER,
+} from './blackMarket'
 
 export {
   EVENT_TAG,

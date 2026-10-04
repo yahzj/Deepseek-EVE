@@ -2930,7 +2930,22 @@ export type GameStateV31 = Omit<GameStateV30, 'version'> & {
  * - ⚠ 旧口径「**货舱优先 → 仓库兜底**」**退役**（本开关取代"两路并用"）。
  * - ⚠ 为免动 `GameStateV31` 的定义体，本字段以**交叉类型**挂在别名上；日后要并入 V31 随手搬进去即可。
  */
+export interface BlackMarketOffer {
+  goodKey: string
+  basePrice: number
+  multiplier: number
+  price: number
+  sold: boolean
+}
+export interface BlackMarketState {
+  /** 最近货架所属本地日界；回拨不换板。 */
+  dayWallMs: number
+  offers: BlackMarketOffer[]
+}
+
 export type GameState = GameStateV31 & {
+  /** 黑市货架，缺失的旧档在解锁后首次正常推进初始化。 */
+  blackMarket?: BlackMarketState
   resupplyFromWarehouse?: boolean
   /**
    * **跃迁燃料的活动开关**（**2026-09-29 船长令 · 跃迁燃料批**）：键 = 活动 id
