@@ -6168,5 +6168,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.App.171": { zh: "复制", en: "Copy" },
   "ui.App.172": { zh: "网页版", en: "Web" },
   "ui.App.173": { zh: "桌面版", en: "Desktop" },
+  "ui.App.174": { zh: "收窄导航", en: "Collapse navigation" },
+  "ui.App.175": { zh: "展开导航", en: "Expand navigation" },
 }
 

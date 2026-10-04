@@ -37,6 +37,7 @@ import { Glyph } from './Glyphs'
 import { ICO_TONES, NAV_TONES } from './tones'
 import { MoneyFit } from './MoneyFit'
 import { ShipStatusWin } from './ShipStatusWin'
+import { useClassicNavCollapse } from './classicSidebars'
 import type { MapTab } from '../pages/MapPage'
 import type { ShipTab } from '../pages/ShipPage'
 import type { PageKey } from '../App'
@@ -139,6 +140,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
   const QQ_GROUP = qqGroup
   // 导航项文案：外壳块里用的是 `t(...)`（App 里来自 useL10n）⇒ 外壳自取一份，不追加 props
   const { t } = useL10n()
+  const classicNav = useClassicNavCollapse(layoutKind === 'classic', mobileLog !== null)
 
   return layoutKind === 'classic' ? renderClassic() : renderModern()
 
@@ -504,9 +506,21 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
           </div>
         </header>
         <div className="app-workspace">
-          <nav className="app-nav-side">
+          <nav id="classic-navigation" className={`app-nav-side${classicNav.collapsed ? ' is-compact' : ''}`}>
+            <button className="app-btn app-classic-nav-toggle" onClick={classicNav.toggle}
+              aria-expanded={!classicNav.collapsed} aria-controls="classic-navigation"
+              aria-label={tr(classicNav.collapsed ? 'ui.App.175' : 'ui.App.174')}
+              title={tr(classicNav.collapsed ? 'ui.App.175' : 'ui.App.174')}>
+              <Glyph name={classicNav.collapsed ? 'ico-unfold' : 'ico-fold'} size={20} />
+            </button>
             {/* 舰船状态小窗：2026-09-21 起同时是**窗口最小化后的还原按钮**（见 `windowRestore`） */}
             <ShipStatusWin engine={engine} restore={windowRestore} />
+            {classicNav.collapsed && windowRestore ? (
+              <button className="app-btn app-classic-restore" onClick={windowRestore.onRestore}
+                title={windowRestore.title} aria-label={windowRestore.title}>
+                <Glyph name="ico-unfold" size={24} />
+              </button>
+            ) : null}
             {/**
              * ⚠ **钱包已移回顶栏**（**2026-09-29 船长令**：「将旧版界面的钱包也和新版一样移动到顶部玩家
              * 名字右侧」）——原先这里那条金钱栏是 2026-09-13 令「移到左侧的出港上方」的落点，
@@ -526,8 +540,11 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
               return (
                 <button
                   key={item.key}
+                  data-nav-page={item.key}
+                  aria-label={t(item.label)}
                   className={`app-nav-item${page === item.key ? ' is-active' : ''}${item.key === 'map' ? ' is-featured' : ''}${unreadN > 0 ? ' is-unread' : ''}${navBeat?.key === item.key ? ' is-beat' : ''}`}
-                  title={
+                  title={[
+                    classicNav.collapsed ? t(item.label) : null,
                     unreadN > 0
                       ? item.key === 'task'
                         ? [
@@ -544,15 +561,15 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
                             .filter((s) => s !== null)
                             .join('\n')
                         : tr("ui.App.114", { unreadN: unreadN })
-                      : undefined
-                  }
+                      : null,
+                  ].filter(Boolean).join('\n') || undefined}
                   onClick={() => changePage(item.key as PageKey)}
                 >
                   <span className="app-nav-icon">
                     <Glyph name={item.icon} size={item.key === 'map' ? 40 : 19} color={NAV_TONES[item.icon]} />
                     {unreadN > 0 ? <i className="app-nav-badge">{unreadN > 9 ? '9+' : unreadN}</i> : null}
                   </span>
-                  <span>{t(item.label)}</span>
+                  <span className="app-nav-label">{t(item.label)}</span>
                 </button>
               )
             })}
