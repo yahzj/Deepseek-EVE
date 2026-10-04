@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { runSaveModule } from './helpers/save-shell'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { runInNewContext } from 'node:vm'
+import ts from 'typescript'
+import { ROOT, runSaveModule } from './helpers/save-shell'
 
 interface Api {
   readClassicNavPrefs(): { desktop: boolean; mobile: boolean }
@@ -49,6 +53,50 @@ function harness(raw: string | null = null) {
 }
 
 afterEach(() => vi.useRealTimers())
+describe('旧版导航滚动区与底部工具区结构', () => {
+  const source = ts.createSourceFile('AppShell.tsx', readFileSync(resolve(ROOT, 'apps/desktop/src/renderer/src/ui/AppShell.tsx'), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  function elements(node: ts.Node, tag?: string): ts.JsxElement[] {
+    const found: ts.JsxElement[] = []
+    function visit(n: ts.Node) { if (ts.isJsxElement(n) && (!tag || n.openingElement.tagName.getText(source) === tag)) found.push(n); ts.forEachChild(n, visit) }
+    visit(node)
+    return found
+  }
+  const hasClass = (node: ts.JsxElement, name: string) => node.openingElement.attributes.properties.some(p => ts.isJsxAttribute(p) && p.name.getText(source) === 'className' && p.initializer?.getText(source).includes(name))
+  it('列表和底部是两个兄弟区域，唯一开关在底部而非滚动区', () => {
+    const nav = elements(source, 'nav').find(n => n.openingElement.attributes.properties.some(p => ts.isJsxAttribute(p) && p.name.getText(source) === 'id' && p.initializer?.getText(source) === '"classic-navigation"'))!
+    const children = nav.children.filter(ts.isJsxElement)
+    expect(children).toHaveLength(2)
+    expect(hasClass(children[0]!, 'app-classic-nav-scroll')).toBe(true)
+    expect(hasClass(children[1]!, 'app-classic-nav-footer')).toBe(true)
+    expect(elements(children[0]!, 'button').some(n => hasClass(n, 'app-classic-nav-toggle'))).toBe(false)
+    expect(elements(children[1]!, 'button').filter(n => hasClass(n, 'app-classic-nav-toggle'))).toHaveLength(1)
+  })
+  it('滚动条留位按实际宽度更新，尺寸不变不写；现代版不监听且卸载清理', () => {
+    let effect: ts.ArrowFunction | undefined
+    function visit(n: ts.Node) {
+      if (ts.isCallExpression(n) && n.expression.getText(source) === 'useLayoutEffect' && n.arguments[0] && ts.isArrowFunction(n.arguments[0]) && n.arguments[0].getText(source).includes('--classic-nav-scrollbar')) effect = n.arguments[0]
+      ts.forEachChild(n, visit)
+    }
+    visit(source)
+    expect(effect).toBeDefined()
+    const value = new Map<string, string>(), setProperty = vi.fn((k: string, v: string) => value.set(k, v))
+    const nav = { style: { getPropertyValue: (k: string) => value.get(k) ?? '', setProperty } }
+    const scroll = { offsetWidth: 168, clientWidth: 160 }
+    let update!: () => void
+    const observe = vi.fn(), disconnect = vi.fn()
+    const bindings = { classicNavRef: { current: nav }, classicNavScrollRef: { current: scroll }, layoutKind: 'classic',
+      ResizeObserver: class { constructor(fn: () => void) { update = fn } observe = observe; disconnect = disconnect }, run: undefined as unknown as () => (() => void) | undefined }
+    const js = ts.transpileModule(`globalThis.run = ${effect!.getText(source)}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText
+    runInNewContext(js, bindings)
+    const cleanup = bindings.run()!
+    expect(observe).toHaveBeenCalledWith(scroll)
+    expect(value.get('--classic-nav-scrollbar')).toBe('8px')
+    update(); expect(setProperty).toHaveBeenCalledTimes(1)
+    scroll.clientWidth = 168; update(); expect(value.get('--classic-nav-scrollbar')).toBe('0px')
+    cleanup(); expect(disconnect).toHaveBeenCalledOnce()
+    bindings.layoutKind = 'modern'; bindings.run(); expect(observe).toHaveBeenCalledTimes(1)
+  })
+})
 describe('旧版导航偏好与日志显示时序', () => {
   it.each([null, '{bad', '[]', 'null', '{"desktop":"true","mobile":1}'])('缺省/损坏偏好 %s 保持展开', (raw) => {
     expect(harness(raw).api.readClassicNavPrefs()).toEqual({ desktop: false, mobile: false })
