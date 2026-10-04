@@ -7,7 +7,7 @@
  * - 中部：左侧为主窗口（按顶部菜单切换页面），右侧事件日志
  *   （可向右滑出隐藏 + 按日志类型过滤，偏好存 localStorage）
  */
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useReducer, useRef, useState, type CSSProperties } from 'react'
 import { useL10n } from './i18n/locale'
 import {
   activePromos,
@@ -73,6 +73,7 @@ import { fmtDuration } from './i18n/fmt'
 // 2026-10-02 批次 4t：设置/日志偏好/性能浮层域已拆到 ./panels/appSettings，本文件借回使用
 import { gameClock, kindOf, LOG_KINDS, KIND_LABEL, KIND_DESC, KIND_DOT, PREFS_KEY, readLogPrefs, SettingsPanel, PerfListener, PerfHud } from './panels/appSettings'
 import type { LogFilter } from './panels/appSettings'
+import { CLASSIC_LOG_FADE_MS, useClassicLogVisibility } from './ui/classicSidebars'
 
 /** 左侧导航项（出港 = 星图主入口，为首并放大描边；船长 2026-09-05：文案「点击 出港」+强调配色避免被误认作栏目装饰） */
 const NAV_ITEMS: Array<{ key: PageKey; label: string; icon: string }> = [
@@ -907,11 +908,21 @@ async function applyLayoutAndReload(): Promise<void> {
   const [logCollapsed, setLogCollapsed] = useState<boolean>(() => readLogPrefs().collapsed)
   const [logFilter, setLogFilter] = useState<LogFilter>(() => readLogPrefs().filter)
   const logDrawerRef = useRef<HTMLElement>(null)
-  const logClosed = mobileLayout ? !mobileLogOpen : logCollapsed
+  const logHandleRef = useRef<HTMLButtonElement>(null)
+  const classicLog = useClassicLogVisibility(logCollapsed, layoutKind === 'classic' && !mobileLayout)
+  const logClosed = mobileLayout ? !mobileLogOpen : classicLog.closed
   const closeLog = (): void => {
     if (mobileLayout) setMobileLogOpen(false)
     else setLogCollapsed(true)
   }
+  useLayoutEffect(() => {
+    const drawer = logDrawerRef.current
+    if (!drawer) return
+    const hidden = layoutKind === 'classic' && !mobileLayout && logClosed
+    const heldFocus = drawer.contains(document.activeElement)
+    drawer.inert = hidden
+    if (hidden && heldFocus) logHandleRef.current?.focus()
+  }, [layoutKind, mobileLayout, logClosed])
   useEffect(() => {
     if (!mobileLayout) { setMobileLogOpen(false); return }
     if (!mobileLogOpen) return
@@ -1512,7 +1523,9 @@ async function applyLayoutAndReload(): Promise<void> {
         logDock={(
             <div className={`app-log-dock${mobileLayout ? ' is-mobile-drawer' : ''}${mobileLayout && mobileLogOpen ? ' is-open' : ''}`}>
             {mobileLayout && mobileLogOpen ? <button className="app-mobile-log-mask" onClick={closeLog} aria-label={tr('ui.App.086')} /> : null}
-            <aside ref={logDrawerRef} className={`app-log-side${logClosed ? ' is-collapsed' : ''}`}
+            <aside ref={logDrawerRef} className={`app-log-side${logClosed ? ' is-collapsed' : ''}${layoutKind === 'classic' && !mobileLayout && classicLog.faded ? ' is-fading' : ''}`}
+              style={layoutKind === 'classic' ? { '--classic-log-fade-ms': `${CLASSIC_LOG_FADE_MS}ms` } as CSSProperties : undefined}
+              aria-hidden={layoutKind === 'classic' && logClosed || undefined}
               role={mobileLayout && mobileLogOpen ? 'dialog' : undefined} aria-modal={mobileLayout && mobileLogOpen ? true : undefined}
               aria-label={mobileLayout ? tr('ui.App.067') : undefined} id="mobile-log-drawer" tabIndex={mobileLayout ? -1 : undefined}>
             <Panel
@@ -1570,8 +1583,8 @@ async function applyLayoutAndReload(): Promise<void> {
             )}
             </Panel>
             </aside>
-            {!mobileLayout && logCollapsed ? (
-            <button className="app-log-handle" onClick={() => setLogCollapsed(false)} title={tr("ui.App.073")}>
+            {!mobileLayout && logClosed ? (
+            <button ref={logHandleRef} className="app-log-handle" onClick={() => setLogCollapsed(false)} title={tr("ui.App.073")} aria-label={tr("ui.App.073")}>
             «
             </button>
             ) : null}

@@ -10,6 +10,7 @@
  * --quick 仅跑中文双布局 390竖屏/568横屏，完整验收不使用该选项。
  * --actions-only 仅调试操作弹层，不能替代完整页面、桌面与活动回归。
  * 单独操作报告输出 mobile-actions-audit-20261004.json，快速报告为 mobile-quick-audit-20261004.json，不覆盖完整页面报告。
+ * --sidebars-only 测旧版图标栏、桌面日志逐帧宽度与焦点、偏好隔离和活动还原，输出 classic-sidebars-audit-20261004.json。
  * 版本自检：游戏版本 v0.1.0 · 存档结构 v31 · 最后核对 2026-10-04 · 最后跑过 2026-10-04。
  */
 import { createServer } from 'node:http'
@@ -39,7 +40,7 @@ class Page {
     })
   }
   async js<T>(expression: string): Promise<T> { const v=await this.send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true}) as { error?:unknown;result?:{exceptionDetails?:unknown;result?:{value?:T}} };if(v.error||v.result?.exceptionDetails)throw new Error(JSON.stringify(v));return v.result?.result?.value as T }
-  async tap(selector: string): Promise<void> {
+  async tap(selector: string, touch = true): Promise<void> {
     await this.js(`(() => {const e=document.querySelector(${JSON.stringify(selector)});if(!e||e.disabled)throw new Error('触控目标不存在或禁用：'+${JSON.stringify(selector)}+' '+document.querySelector('.app-fit-modal')?.textContent.slice(0,500));e.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});return new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))})()`)
     await sleep(150)
     const point = await this.js<{ x: number; y: number; label: string }>(`(() => {
@@ -62,9 +63,14 @@ class Page {
         ancestors:(()=>{const rows=[];let p=element;while(p){const r=p.getBoundingClientRect(),s=getComputedStyle(p);rows.push({name:p.className,y:r.y,h:r.height,ch:p.clientHeight,sh:p.scrollHeight,top:p.scrollTop,overflow:s.overflow});p=p.parentElement}return rows})()};
     })()`)
     assert(hitResult.ok, '触控目标被遮挡：' + selector + ' ' + JSON.stringify({point,...hitResult}))
-    await this.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: point.x, y: point.y }] })
-    await sleep(60)
-    await this.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    if (touch) {
+      await this.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: point.x, y: point.y }] })
+      await sleep(60)
+      await this.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    } else {
+      await this.send('Input.dispatchMouseEvent', { type: 'mousePressed', x:point.x,y:point.y,button:'left',clickCount:1 })
+      await this.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x:point.x,y:point.y,button:'left',clickCount:1 })
+    }
     await sleep(200)
   }
   async wait(expression: string): Promise<void> {
@@ -148,8 +154,9 @@ async function main() {
   const rows=[]
   const quick = process.argv.includes('--quick')
   const actionsOnly = process.argv.includes('--actions-only')
+  const sidebarsOnly = process.argv.includes('--sidebars-only')
   const drawerChecks: object[] = []
-  for(const locale of (actionsOnly ? [] : quick ? ['zh'] : ['zh','en']))for(const layout of ['classic','modern'])for(const [width,height] of (quick ? [[390,844],[568,320]] : [[390,844],[844,390],[320,568],[568,320]])){
+  for(const locale of (actionsOnly || sidebarsOnly ? [] : quick ? ['zh'] : ['zh','en']))for(const layout of ['classic','modern'])for(const [width,height] of (quick ? [[390,844],[568,320]] : [[390,844],[844,390],[320,568],[568,320]])){
    await page.send('Emulation.setDeviceMetricsOverride',{width,height,screenWidth:width,screenHeight:height,deviceScaleFactor:1,mobile:true,screenOrientation:{type:width<height?'portraitPrimary':'landscapePrimary',angle:width<height?0:90}})
    const injection=await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('whale:idle:save',${JSON.stringify(serializeSaveFile(state,Date.now()))});localStorage.setItem('whale-idle:layout-set','1');localStorage.setItem('whale-idle:layout',${JSON.stringify(layout)});localStorage.setItem('whale-idle:announce-seen',${JSON.stringify(ANNOUNCEMENTS[0]!.id)});localStorage.setItem('whale-idle:locale',${JSON.stringify(locale)});localStorage.setItem('whale-idle:log-prefs',JSON.stringify({collapsed:false,filter:'all'}))`}) as {result:{identifier:string}}
    await page.send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'})
@@ -213,7 +220,7 @@ async function main() {
    console.log('页面与日志完成：'+JSON.stringify({locale,layout,width,height}));
   }
   const desktopChecks: object[]=[];
-  for(const layout of (actionsOnly?[]:['classic','modern']))for(const collapsed of [false,true]){
+  for(const layout of (actionsOnly||sidebarsOnly?[]:['classic','modern']))for(const collapsed of [false,true]){
     await page.send('Emulation.setTouchEmulationEnabled',{enabled:false});
     await page.send('Emulation.setDeviceMetricsOverride',{width:1280,height:800,screenWidth:1280,screenHeight:800,deviceScaleFactor:1,mobile:false,screenOrientation:{type:'landscapePrimary',angle:90}});
     const seed=await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('whale:idle:save',${JSON.stringify(serializeSaveFile(state,Date.now()))});localStorage.setItem('whale-idle:layout',${JSON.stringify(layout)});localStorage.setItem('whale-idle:locale','zh');localStorage.setItem('whale-idle:log-prefs',${JSON.stringify(JSON.stringify({collapsed,filter:'all'}))});`}) as {result:{identifier:string}};
@@ -238,7 +245,7 @@ async function main() {
   }
   await page.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
   const viewportChecks: object[]=[];
-  for(const layout of (actionsOnly?[]:['classic','modern'])){
+  for(const layout of (actionsOnly||sidebarsOnly?[]:['classic','modern'])){
     const seed=await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('whale:idle:save',${JSON.stringify(serializeSaveFile(state,Date.now()))});localStorage.setItem('whale-idle:layout',${JSON.stringify(layout)});localStorage.setItem('whale-idle:locale','zh');`}) as {result:{identifier:string}};
     const metrics={width:390,height:844,screenWidth:390,screenHeight:844,deviceScaleFactor:1,mobile:true,screenOrientation:{type:'portraitPrimary',angle:0}};
     await page.send('Emulation.setDeviceMetricsOverride',metrics);
@@ -259,7 +266,7 @@ async function main() {
     await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:seed.result.identifier});
   }
   const windows=[];
-  for(const layout of (actionsOnly?[]:['classic','modern']))for(const kind of ['mine','salvage','haul','scan']){
+  for(const layout of (actionsOnly||sidebarsOnly?[]:['classic','modern']))for(const kind of ['mine','salvage','haul','scan']){
    const s=structuredClone(state);s.debugQuick=false;
    s.skills.trained['ai-expert']=5;s.standings.dsi=100;(s.standingsEarned??={}).dsi=100;
    for(const [id,site] of ctx.stations)s.stationSites[id]={stage:site.tiers.length,delivered:{}};
@@ -289,7 +296,7 @@ async function main() {
    await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:injection.result.identifier});
   }
   const modalChecks: object[]=[];
-  for(const locale of (quick?['zh']:['zh','en']))for(const layout of ['classic','modern'])for(const [width,height] of (quick?[[568,320]]:[[320,568],[568,320]])){
+  for(const locale of (sidebarsOnly?[]:quick?['zh']:['zh','en']))for(const layout of ['classic','modern'])for(const [width,height] of (quick?[[568,320]]:[[320,568],[568,320]])){
     await page.send('Emulation.setDeviceMetricsOverride',{width,height,screenWidth:width,screenHeight:height,deviceScaleFactor:1,mobile:true,screenOrientation:{type:width<height?'portraitPrimary':'landscapePrimary',angle:width<height?0:90}});
     const seed=await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('whale:idle:save',${JSON.stringify(serializeSaveFile(state,Date.now()))});localStorage.setItem('whale-idle:layout',${JSON.stringify(layout)});localStorage.setItem('whale-idle:locale',${JSON.stringify(locale)});localStorage.setItem('whale-idle:view:items','grid');`}) as {result:{identifier:string}};
     await page.send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});await page.wait(`!!document.querySelector('.app-root')`);await sleep(250);
@@ -341,7 +348,7 @@ async function main() {
     console.log('操作弹层完成：'+JSON.stringify({locale,layout,width,height}));
   }
   const wormholeChecks: object[]=[];
-  for(const layout of ['classic','modern'])for(const [width,height] of [[320,568],[568,320]]){
+  for(const layout of (sidebarsOnly?[]:['classic','modern']))for(const [width,height] of [[320,568],[568,320]]){
     const s=structuredClone(state);s.standings.dsi=100;(s.standingsEarned??={}).dsi=100;
     const entered=wormholeEnter(s,ctx,[s.shipId,'sh-falconet'],20261004);assert(entered.ok,JSON.stringify(entered));
     await page.send('Emulation.setDeviceMetricsOverride',{width,height,screenWidth:width,screenHeight:height,deviceScaleFactor:1,mobile:true,screenOrientation:{type:width<height?'portraitPrimary':'landscapePrimary',angle:width<height?0:90}});
@@ -356,7 +363,7 @@ async function main() {
     await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:seed.result.identifier});
   }
   const fitExtras: object[]=[];
-  for(const layout of ['classic','modern'])for(const [width,height] of [[320,568],[568,320]]){
+  for(const layout of (sidebarsOnly?[]:['classic','modern']))for(const [width,height] of [[320,568],[568,320]]){
     const s=structuredClone(state);s.shipId='sh-falconet';assert(s.fleet[s.shipId]);
     const droneHull=[...ctx.ships.values()].find(ship=>!ship.unreleased&&(ship.droneBayM3??0)>0)!;assert(droneHull);
     s.fleet[s.shipId]!.defId=droneHull.id;
@@ -377,14 +384,86 @@ async function main() {
     fitExtras.push({layout,width,height,preset,drone,closeAndLoadReachable:true});
     await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:seed.result.identifier});
   }
-  const out=join(root,`tools/_ui-artifacts/mobile-${actionsOnly?'actions':quick?'quick':'page'}-audit-20261004.json`);await fs.mkdir(join(root,'tools/_ui-artifacts'),{recursive:true});await fs.writeFile(out,JSON.stringify({rows,windows,drawerChecks,desktopChecks,viewportChecks,modalChecks,wormholeChecks,fitExtras},null,2),'utf8')
+  const sidebarChecks: object[]=[];
+  if(sidebarsOnly)for(const locale of ['zh','en'])for(const [width,height,mobile] of [[1280,800,false],[1024,768,false],[390,844,true],[568,320,true]] as const){
+    await page.send('Emulation.setTouchEmulationEnabled',{enabled:mobile,maxTouchPoints:5});
+    await page.send('Emulation.setDeviceMetricsOverride',{width,height,screenWidth:width,screenHeight:height,deviceScaleFactor:1,mobile,screenOrientation:{type:width<height?'portraitPrimary':'landscapePrimary',angle:width<height?0:90}});
+    const s=structuredClone(state);s.fleet[s.shipId]!.fitted.high=['mod-miner-1'];
+    const unreadId=[...ctx.commsMessages.keys()][0]!;s.commsRead![unreadId]=false;
+    const belt=[...ctx.belts.values()].find(b=>b.galaxyId==='galaxy-hub')!;assert(startMining(s,belt.id,ctx).ok);
+    const seed=await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('whale:idle:save',${JSON.stringify(serializeSaveFile(s,Date.now()))});localStorage.setItem('whale-idle:layout','classic');localStorage.setItem('whale-idle:locale',${JSON.stringify(locale)});localStorage.removeItem('whale-idle:classic-nav-prefs');`}) as {result:{identifier:string}};
+    await page.send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});await page.wait(`!!document.querySelector('.app-classic-nav-toggle')`);await sleep(350);
+    assert(!await page.js(`document.querySelector('.app-nav-side').classList.contains('is-compact')`));
+    await page.tap('.app-classic-nav-toggle',mobile);
+    const nav=await page.js<{width:number;labelsHidden:boolean}>(`(()=>{const n=document.querySelector('.app-nav-side');return {width:n.offsetWidth,labelsHidden:[...n.querySelectorAll('.app-nav-label')].every(e=>getComputedStyle(e).display==='none')}})()`);
+    assert.equal(nav.width,56);assert(nav.labelsHidden);
+    assert(await page.js(`!!document.querySelector('.app-nav-item[data-nav-page="comms"] .app-nav-badge')`),'收窄丢失未读徽标');
+    await page.tap('.app-winbox-head button',mobile);await page.wait(`!!document.querySelector('.app-classic-restore')`);
+    await page.tap('.app-classic-restore',mobile);assert(await page.js(`!!document.querySelector('.app-winbox.is-activity')`));
+    for(const key of ['map','ship','fit','items','market','industry','skills','task','achieve','comms']){
+      const selector=`.app-nav-item[data-nav-page="${key}"]`;
+      assert(await page.js(`(()=>{const b=document.querySelector(${JSON.stringify(selector)});return !!b.getAttribute('aria-label')&&!!(b.getAttribute('title')||b.getAttribute('data-tip-native'))})()`),'图标名称或悬停缺失：'+key);
+      await page.tap(selector,mobile);await page.wait(`document.querySelector('.app-page-content')?.dataset.page===${JSON.stringify(key)}`);
+      assert(await page.js(`document.querySelector(${JSON.stringify(selector)}).classList.contains('is-active')`));
+    }
+    const pref=await page.js<string>(`localStorage.getItem('whale-idle:classic-nav-prefs')`);
+    assert.deepEqual(JSON.parse(pref),{desktop:!mobile,mobile});
+    await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:seed.result.identifier});
+    const carry=await page.send('Page.addScriptToEvaluateOnNewDocument',{source:`localStorage.setItem('whale:idle:save',${JSON.stringify(serializeSaveFile(s,Date.now()))})`}) as {result:{identifier:string}};
+    await page.send('Page.reload');await page.wait(`!!document.querySelector('.app-nav-side.is-compact')`);
+    await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:carry.result.identifier});
+    const nextMobile=!mobile;
+    await page.send('Emulation.setTouchEmulationEnabled',{enabled:nextMobile,maxTouchPoints:5});
+    await page.send('Emulation.setDeviceMetricsOverride',{width:nextMobile?568:1280,height:nextMobile?320:800,screenWidth:nextMobile?568:1280,screenHeight:nextMobile?320:800,deviceScaleFactor:1,mobile:nextMobile,screenOrientation:{type:'landscapePrimary',angle:90}});
+    await sleep(400);assert(!await page.js(`document.querySelector('.app-nav-side').classList.contains('is-compact')`),'设备偏好串用');
+    await page.send('Emulation.setTouchEmulationEnabled',{enabled:mobile,maxTouchPoints:5});
+    await page.send('Emulation.setDeviceMetricsOverride',{width,height,screenWidth:width,screenHeight:height,deviceScaleFactor:1,mobile,screenOrientation:{type:width<height?'portraitPrimary':'landscapePrimary',angle:width<height?0:90}});await sleep(400);
+    assert(await page.js(`!!document.querySelector('.app-nav-side.is-compact')`));
+    if(!mobile){
+      await page.js(`(()=>{const body=document.querySelector('.app-log-side .wui-panel-body');body.scrollTop=123;window.auditScroll=body.scrollTop;document.querySelector('.app-log-head-right button').focus();window.auditPanel=document.querySelector('.app-log-side .wui-panel');window.auditFrames=[];document.querySelector('.app-log-head-right button').addEventListener('click',()=>{const begin=performance.now();const sample=()=>{const e=document.querySelector('.app-log-side'),p=e.querySelector('.wui-panel'),line=e.querySelector('.wui-log-item');window.auditFrames.push({side:e.clientWidth,panel:p.clientWidth,lineHeight:line.clientHeight,main:document.querySelector('.app-page-main').clientWidth,opacity:parseFloat(getComputedStyle(e).opacity),closed:e.classList.contains('is-collapsed')});if(performance.now()-begin<300)requestAnimationFrame(sample)};requestAnimationFrame(sample)},{once:true})})()`);
+      assert((await page.js<number>('window.auditScroll'))>0,'必须用真实长日志验证滚动保留');
+      await page.tap('.app-log-head-right button',false);await page.wait(`!!document.querySelector('.app-log-side.is-collapsed')`);await sleep(120);
+      const frames=await page.js<Array<{side:number;panel:number;lineHeight:number;main:number;opacity:number;closed:boolean}>>('window.auditFrames');
+      assert(frames.length>5);assert(frames.every(f=>f.panel===frames[0]!.panel),'日志正文被压缩');
+      assert(frames.every(f=>f.lineHeight===frames[0]!.lineHeight),'日志文字行高发生重排');
+      assert.equal(new Set(frames.map(f=>f.main)).size,2,'主区应只在开/关两个宽度间切换');
+      assert(frames.every(f=>f.side===320||f.side===0),'日志占位连续变化');assert(frames.some(f=>f.opacity>0&&f.opacity<1),'没有淡出中间帧');
+      assert(await page.js(`document.querySelector('.app-log-side').inert&&document.activeElement===document.querySelector('.app-log-handle')`),'隐藏日志未退出焦点');
+      await page.tap('.app-log-handle',false);await sleep(200);
+      assert(await page.js(`window.auditPanel===document.querySelector('.app-log-side .wui-panel')&&window.auditScroll===document.querySelector('.app-log-side .wui-panel-body').scrollTop`),'日志组件或滚动位置重置');
+      await page.tap('.app-log-filter:nth-child(2)',false);await page.tap('.app-log-head-right button',false);
+      await page.wait(`!!document.querySelector('.app-log-side.is-collapsed')`);await page.tap('.app-log-handle',false);
+      assert(await page.js(`!document.querySelector('.app-log-filter:nth-child(2)').classList.contains('is-off')`),'收起重置日志筛选');
+      await page.tap('.app-log-filter:first-child',false);
+      await page.js(`document.querySelector('.app-classic-nav-toggle').focus()`);
+      assert(await page.js(`document.activeElement===document.querySelector('.app-classic-nav-toggle')`),'导航开关未获得键盘焦点');
+      await page.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'});
+      await page.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
+      await page.wait(`!document.querySelector('.app-nav-side.is-compact')`);
+      assert.equal(await page.js(`getComputedStyle(document.querySelector('.app-nav-item')).transitionProperty`),'color, background-color, border-color','展开继承尺寸动画');
+      await page.tap('.app-classic-nav-toggle',false);
+      await page.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});await sleep(100);
+      await page.tap('.app-log-head-right button',false);assert(await page.js(`document.querySelector('.app-log-side').classList.contains('is-collapsed')`));
+      assert.equal(await page.js(`getComputedStyle(document.querySelector('.app-log-side')).transitionDuration`),'0s');
+      await page.tap('.app-log-handle',false);await page.send('Emulation.setEmulatedMedia',{features:[]});
+      await page.js(`document.body.classList.add('no-fx')`);await sleep(100);
+      await page.tap('.app-log-head-right button',false);assert(await page.js(`document.querySelector('.app-log-side').classList.contains('is-collapsed')`));
+      assert.equal(await page.js(`getComputedStyle(document.querySelector('.app-log-side')).transitionDuration`),'0s');
+      await page.tap('.app-log-handle',false);await page.js(`document.body.classList.remove('no-fx')`);
+      sidebarChecks.push({locale,width,height,mobile,nav,preferencesSeparate:true,restore:true,navigation:true,keyboardToggle:true,filterKept:true,frames,scrollKept:true,hiddenInert:true,reducedMotion:true,noFx:true});
+    }else sidebarChecks.push({locale,width,height,mobile,nav,preferencesSeparate:true,restore:true,navigation:true});
+    const shot=await page.send('Page.captureScreenshot',{format:'png'}) as {result:{data:string}};
+    await fs.mkdir(join(root,'tools/_ui-artifacts'),{recursive:true});await fs.writeFile(join(root,'tools/_ui-artifacts',`classic-sidebar-${locale}-${width}.png`),Buffer.from(shot.result.data,'base64'));
+    console.log('旧版侧栏完成：'+JSON.stringify({locale,width,height,mobile}));
+  }
+  const out=join(root,sidebarsOnly?'tools/_ui-artifacts/classic-sidebars-audit-20261004.json':`tools/_ui-artifacts/mobile-${actionsOnly?'actions':quick?'quick':'page'}-audit-20261004.json`);await fs.mkdir(join(root,'tools/_ui-artifacts'),{recursive:true});await fs.writeFile(out,JSON.stringify({rows,windows,drawerChecks,desktopChecks,viewportChecks,modalChecks,wormholeChecks,fitExtras,sidebarChecks},null,2),'utf8')
   const narrow=rows.filter(r=>r.width===568 && r.layout==='classic' && r.view==='舰船');
   for (const row of narrow) {
     const reading = row.reading as {usableMain?:{cw:number}; count:number}
     assert((reading.usableMain?.cw??0)>=350, '手机主区仍被挤占：'+JSON.stringify(row));
     assert.equal(reading.count,0,'舰船页仍有不可滚动裁切');
   }
-  console.log(JSON.stringify({edgePid:child.pid,output:out,samples:rows.length,windows,drawerChecks,desktopChecks,viewportChecks,modalChecks,wormholeChecks,fitExtras},null,2))
+  console.log(JSON.stringify({edgePid:child.pid,output:out,samples:rows.length,windows,drawerChecks,desktopChecks,viewportChecks,modalChecks,wormholeChecks,fitExtras,sidebarChecks},null,2))
  }finally{ws?.close();child.kill();await new Promise<void>(r=>server.close(()=>r()));assert(resolve(profile).startsWith(resolve(tmpdir())+sep) && profile.includes('whale-mobile-audit-'));await sleep(200);await fs.rm(profile,{recursive:true,force:true}).catch(()=>console.log('隔离配置待清理：'+profile))}
 }
 main().catch(e=>{console.error(e);process.exitCode=1})
