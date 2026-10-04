@@ -33,6 +33,7 @@
  */
 
 import type { ShipBlueprintDef } from '@whale/core'
+import { L10N } from './l10n/table'
 
 export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
   {
@@ -448,6 +449,21 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 7_200_000, // = 行价 2,400,000 × 3（100~400 万档系数；2026-09-13 价位重排）
     description: '高速货舰，货舱 8,500 m³、循环 11 秒产 18 单位。',
+  },
+  {
+    id: 'sbp-manatee',
+    name: L10N['bp.manatee.001']!.zh,
+    shipId: 'sh-manatee',
+    // 2026-10-04：沿用T3矿物配方与料/价锚，具体材料及工时随本批读数交审。
+    materials: [
+      { itemId: 'min-tritanium', count: 236_251 },
+      { itemId: 'min-pyerite', count: 63_281 },
+      { itemId: 'min-mexallon', count: 19_406 },
+    ],
+    buildSeconds: 15_947,
+    buildCostIsk: 0,
+    priceIsk: 27_000_000,
+    description: L10N['ship.manatee.002']!.zh,
   },
   {
     id: 'sbp-swordfish',
@@ -927,6 +943,21 @@ export const SHIP_BLUEPRINTS: readonly ShipBlueprintDef[] = [
     buildCostIsk: 0,
     priceIsk: 1_200_000, // = 行价 ×50%（2026-09-14 船长改判：原 ×100%） // = 行价 ×100%
     description: '高速货舰，货舱 8,500 m³、循环 11 秒产 18 单位。',
+  },
+  {
+    id: 'sbp-once-manatee',
+    name: L10N['bp.manatee.002']!.zh,
+    shipId: 'sh-manatee',
+    singleUse: true,
+    materials: [
+      { itemId: 'min-tritanium', count: 236_251 },
+      { itemId: 'min-pyerite', count: 63_281 },
+      { itemId: 'min-mexallon', count: 19_406 },
+    ],
+    buildSeconds: 15_947,
+    buildCostIsk: 0,
+    priceIsk: 3_375_000,
+    description: L10N['ship.manatee.002']!.zh,
   },
   {
     id: 'sbp-once-sentinel',

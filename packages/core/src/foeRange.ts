@@ -14,6 +14,8 @@ import { createPlayerSpec } from './playerSpec'
 import { allFittedModules, stackingOf, stackWeight, WEIGHTED_GAP_FLEET_CAP, weightedGap } from './equipment'
 import { distFactor } from './combatMath'
 import { coronaFocusBonusOf } from './coronaFocus'
+import { moduleAllowedOnShip } from './shipFitting'
+import { fleetDefOf } from './instances'
 
 /** **敌机有效射程**（单一真相源）＝机型绝对射程 × **全敌队的受击增程倍率**（未触发 = ×1）－ **我方电子舰削减**。
  *
@@ -149,6 +151,7 @@ export function meFoeRangeDebuffOf(
     if (hull > 0 && hull < 1) own.push(hull)
     if (entry?.fitted) {
       for (const m of allFittedModules(entry.fitted, ctx)) {
+        if (!moduleAllowedOnShip(fleetDefOf(state, ctx, sid), m)) continue
         const v = Math.max(0, m.foeRangeDebuffPct ?? 0)
         if (v > 0) own.push(v)
       }

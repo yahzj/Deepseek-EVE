@@ -113,6 +113,7 @@
     "docs:seal": "tsx tools/docs-seal.ts",
     "tools:audit": "tsx tools/tools-audit.ts",
     "commit:msg": "tsx tools/commit-msg.ts",
+    "commit:approval": "node tools/git-gate-approval.cjs",
     "ui:actwin": "tsx tools/activity-win-probe.ts",
     "ui:whhold": "tsx tools/wh-hold-geom.ts",
     "ui:whmobile": "tsx tools/wh-mobile-check.ts",

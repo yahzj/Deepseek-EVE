@@ -3075,7 +3075,7 @@ export class GameEngine {
 
   /** 自动探索：召回一趟（无收益无损伤；虫洞不退还） */
   wormholeAutoStop(runId: string): CommandResult {
-    const r = wormholeAutoStop(this.state, runId)
+    const r = wormholeAutoStop(this.state, runId, this.ctx)
     if (r.ok) {
       void this.persist()
       this.notify()

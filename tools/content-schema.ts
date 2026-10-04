@@ -268,6 +268,7 @@ export const TABLES: readonly TableSpec[] = [
       col('船体无人机加成droneDmgBonus(只喂放飞无人机)', 'droneDmgBonus', 'num', { min: 0, max: 1 }),
       col('未上线闸门unreleased(是=施工期对玩家不可见；勿手改)', 'unreleased', 'bool'),
       col('CPU总量', 'cpu', 'num', { min: 0 }),
+      col('只限民用装配civilianFittingOnly', 'civilianFittingOnly', 'bool'),
       col('高槽数', 'slots.high', 'obj', { min: 0, int: true }),
       col('中槽数', 'slots.mid', 'obj', { min: 0, int: true }),
       col('低槽数', 'slots.low', 'obj', { min: 0, int: true }),

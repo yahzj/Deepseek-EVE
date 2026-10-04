@@ -74,6 +74,8 @@
 4. 有疑问但用户不在场：记录下来进总结，不猜着做。
 
 ### 验证闭环（项目固定动作）
+提交钩子的B类审批使用`npm run commit:approval -- approve --reason <船长明确批准依据> -- <精确路径...>`登记（PowerShell也可直调`node tools/git-gate-approval.cjs`）。批准绑定当前工作树、分支、基线及完整暂存树，不入库；变更内容或基线后需重新核对人的批准范围。钩子前后检查已跟踪工作文件与暂存一致，四项技术检查照常执行、失败拒绝；成功提交后消费审批记录。工具不认证裁定者身份，不能凭工具自行扩大人类授权。
+
 - `npm run typecheck`（core / data / ui / desktop 四包全绿）；
 - `npm run test -w @whale/core`（vitest；改行为必须同步改/加测试，断言确定性优先）；
 - `npm run content:check`（内容契约体检）与 **`npm run ui:rot-check`**（**旋转口径体检 · 2026-09-14 起为第五道闸门**，

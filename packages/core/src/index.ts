@@ -73,6 +73,7 @@ export type {
 // 虫洞内敌方选靶模式的中文名（界面/战报/工具读数用；施工期仅调试面板可见）
 export { FOE_TARGETING_LABELS } from './types'
 
+export { moduleAllowedOnShip } from './shipFitting'
 export {
   CURRENT_STATE_VERSION,
   MAX_SKILL_LEVEL,
@@ -580,6 +581,7 @@ export {
   ownedItemCount,
   V17_MODULE_MIGRATIONS,
   repairDeprecatedModules,
+  repairCivilianFittings,
   migrateDeprecatedAmmo,
   // V18.1 多件收敛（取消同类唯一后的防超模机制；UI 标签与装配提示用）
   stackingOf,

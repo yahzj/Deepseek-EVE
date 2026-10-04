@@ -11,6 +11,7 @@ import type { ModuleDef, SimContext } from './types'
 import { isAlive } from './combatMath'
 import { allFittedModules, pulseStreamOf, stackWeight } from './equipment'
 import { fleetDefOf } from './instances'
+import { moduleAllowedOnShip } from './shipFitting'
 import { addWare, cargoOfShip, countWare, removeCargoOfShip, removeWare } from './inventory'
 import { quickRepairFactor } from './repair'
 import { createPlayerSpec } from './playerSpec'
@@ -315,6 +316,7 @@ function fittedPulseParts(
   if (!ship) return []
   const out: Array<{ modelId: string; pct: number; ms: number; armorHp: number; hullHp: number }> = []
   for (const d of allFittedModules(ship.fitted, ctx)) {
+    if (!moduleAllowedOnShip(fleetDefOf(state, ctx, shipId), d)) continue
     const st = pulseStreamOf(d)
     if (!st || st.kind !== kind) continue
     if (kind === 'shield-field') {

@@ -348,6 +348,19 @@ export const SHIP_ART_EXTRA: Record<string, ReactNode> = {
           <circle className="shipart-accf" cx="130" cy="76" r="1.6"/>
     </g>
   ),
+  "sh-manatee": (
+    <g>
+      <path d="M200 56 L188 42 L158 34 H98 C76 34 59 40 50 49 L44 56 L50 63 C59 72 76 78 98 78 H158 L188 70 Z"/>
+      <path d="M60 40 L36 32 H26 M60 72 L36 80 H26" opacity=".75"/>
+      <path d="M88 37 H164 V75 H88 Z"/>
+      <path className="shipart-panel" d="M104 37 V75 M124 37 V75 M144 37 V75 M88 49 H164 M88 63 H164"/>
+      <path d="M164 44 H181 V57 H164 Z"/>
+      <path className="shipart-panel" d="M168 48 H177 M168 53 H177"/>
+      <path d="M49 46 H59 V55 H49 Z M49 59 H59 V68 H49 Z" opacity=".85"/>
+      <path d="M184 55 H204 V61 H184 Z M70 45 H78 M70 67 H78"/>
+      <circle className="shipart-accf" cx="173" cy="66" r="1.6"/>
+    </g>
+  ),
   "sh-colossal": (
     <g>
       <path d="M212 60 L200 46 L96 44 C72 44 52 48 40 54 L32 56 L40 62 C54 70 80 76 108 76 L186 74 Z"/>

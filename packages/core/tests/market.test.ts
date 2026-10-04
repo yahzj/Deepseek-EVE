@@ -147,7 +147,8 @@ describe('市场 · 消耗品在稀有渠道的批量档（2026-09-20 船长令 
      * **50000** / **50000** / 400 / **50000** / 22832 / 832 / 22000
      * ⇒ 改用 **seed 9**（整单被吸收的种子 = 9 / 18 / 23 / 24 / 25 / 27，取最小号便于复现）。
      */
-    const state = createInitialState({ nowWallMs: 0, seed: 9 })
+    // 2026-10-04：海牛新增三行市场目录；30种子复跑记录在本批工作文档，种子7完整成交。
+    const state = createInitialState({ nowWallMs: 0, seed: 7 })
     advanceGame(state, 1000, ctxReal)
     for (let i = 0; i < 30; i++) advanceGame(state, 60_000, ctxReal) // 让簿上有报价
     const key = 'ammo-kinetic-2'

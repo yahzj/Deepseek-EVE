@@ -13,7 +13,7 @@
  *   缺口复合组（抗性/闪避）、EVE 曲线组（命中/跃迁速度/目标锁定）、折权加算组（速度 ＋ 无人机射程中继天线）、加算组（伤害/射速/容量/导控）
  *   线性叠加不额外收敛——唯一硬约束 = CPU 全位合计（与无人机放飞共用）；
  * - V17 CPU 装配校验沿用：全部位合计 cpuUse ≤ 船体 cpu（与无人机放飞共用）；
- *   口径已随 V18 取消：任意船可装任意炮；
+ *   V18默认任意船可装任意炮；2026-10-04纯货舰例外由civilianFittingOnly与moduleAllowedOnShip判定；
  * - 载入修复链（repairDeprecatedModules）：下架型号迁移/退回 + V18 槽位数与船布局
  *   对齐（超长尾件退库、短位补空）+ 旧 -h 弹药并入（migrateDeprecatedAmmo）；
  * - 加成查询 = 按家族求和（复数矿枪/货舱扩展线性叠加；AI/采矿/货舱同源单点）。
@@ -26,6 +26,7 @@ import { allFittedIds, isRackModule, MODULE_SLOTS, rackBays, rackLabel, rackOf, 
 import { isPlugOf, plugSlotsOf } from './plugs'
 import { currentShipState, addWare, countWare, removeWare } from './inventory'
 import { fleetDefOf } from './instances'
+import { moduleAllowedOnShip } from './shipFitting'
 import { plugModulesOf, shipSlotsWithPlugsOf } from './plugs'
 
 /** 槽位顺序（界面展示用；V18 保留家族序供清单/徽标） */
@@ -55,7 +56,7 @@ export function cpuBudgetOf(
   shipId: string,
   fittedOverride?: FittedModules | null,
 ): number {
-  const shipDef = ctx.ships.get(state.fleet[shipId]?.defId ?? shipId)
+  const shipDef = fleetDefOf(state, ctx, shipId)
   const base = effectiveCpu(state, ctx, shipDef)
   const fitted = fittedOverride === undefined ? state.fleet[shipId]?.fitted : fittedOverride
   let bonus = 0
@@ -607,6 +608,9 @@ export function fitModule(
   const shipId = opts?.shipId ?? state.shipId
   const fitted = state.fleet[shipId]?.fitted
   if (!fitted) return { ok: false, error: '舰队里找不到该舰船，无法装配。', errorId: 'core.equipment.003' }
+  if (!moduleAllowedOnShip(fleetDefOf(state, ctx, shipId), def)) {
+    return { ok: false, errorId: 'core.equipment.033', error: '该货舰不支持武器、战斗机群、进攻电子或全队护盾装备。' }
+  }
   /**
    * **同舰唯一**（**2026-09-25 船长令**：「**损管只能装备一件**」）——单点判据见 `uniqueConflictOf`。
    */
@@ -716,7 +720,8 @@ export function unfitAt(
  * 2026-09-26 从两处私有实现（本文件的 `droneBayCapOf` 与装配页的内联求和）合并为**唯一单点**——
  * 舰船悬停卡（舰队页「当前属性」）与装配页主表都用它，避免两处口径漂移。
  */
-export function droneBayTotalM3(ship: { droneBayM3?: number } | undefined, fitted: FittedModules | undefined, ctx: SimContext): number {
+export function droneBayTotalM3(ship: { droneBayM3?: number; civilianFittingOnly?: boolean } | undefined, fitted: FittedModules | undefined, ctx: SimContext): number {
+  if (ship?.civilianFittingOnly === true) return 0
   let cap = ship?.droneBayM3 ?? 0
   if (fitted) {
     for (const id of allFittedIds(fitted)) {
@@ -771,6 +776,9 @@ export function swapModuleAt(
   const fleet = state.fleet[shipId]
   const fitted = fleet?.fitted
   if (!fitted) return { ok: false, error: '舰队里找不到该舰船，无法换装。', errorId: 'core.equipment.004' }
+  if (!moduleAllowedOnShip(fleetDefOf(state, ctx, shipId), def)) {
+    return { ok: false, errorId: 'core.equipment.033', error: '该货舰不支持武器、战斗机群、进攻电子或全队护盾装备。' }
+  }
   const bays = ensureRackBays(fitted, opts.rack, wantedBaysOf(state, ctx, shipId, opts.rack))
   if (opts.index < 0 || opts.index >= bays.length) {
     return {
@@ -886,6 +894,9 @@ export function adjustDroneLoad(
   const fleet = state.fleet[shipId]
   if (!fleet) return { ok: false, error: '舰队里找不到该舰船，无法装载无人机。', errorId: 'core.equipment.005' }
   if (!Number.isInteger(delta) || delta === 0) return { ok: false, error: '数量必须是整数且不能为 0。', errorId: 'core.equipment.012' }
+  if (delta > 0 && fleetDefOf(state, ctx, shipId)?.civilianFittingOnly === true) {
+    return { ok: false, errorId: 'core.equipment.034', error: '该货舰不能部署战斗无人机，备用无人机可作为货物携带。' }
+  }
   const load: Record<string, number> = { ...(fleet.droneLoad ?? {}) }
   const cur = load[droneId] ?? 0
   const next = cur + delta
@@ -1193,6 +1204,40 @@ export const V17_MODULE_MIGRATIONS: Readonly<Record<string, string>> = {
   'mod-turret-proto': 'mod-laser-proto',
 }
 
+/** 纯货舰旧装配无损退库；在途虫洞编队保持本趟规格，结束后再整理，重复调用不增发。 */
+export function repairCivilianFittings(state: GameState, ctx: SimContext): void {
+  const inRun = new Set([...(state.wormhole?.run?.fleet ?? []), ...(state.wormholeAuto ?? []).flatMap((r) => r.shipIds)])
+  let modules = 0
+  let drones = 0
+  for (const [uid, entry] of Object.entries(state.fleet)) {
+    if (inRun.has(uid)) continue
+    const ship = fleetDefOf(state, ctx, uid)
+    if (ship?.civilianFittingOnly !== true) continue
+    for (const rack of ['high', 'mid', 'low'] as const) {
+      const bays = rackBays(entry.fitted, rack)
+      for (let i = 0; i < bays.length; i++) {
+        const id = bays[i]
+        const actualId = id ? V17_MODULE_MIGRATIONS[id] ?? id : undefined
+        const mod = actualId ? ctx.modules.get(actualId) : undefined
+        if (!id || !mod || moduleAllowedOnShip(ship, mod)) continue
+        addModule(state, actualId!)
+        bays[i] = null
+        modules++
+      }
+    }
+    for (const [id, n] of Object.entries(entry.droneLoad ?? {})) {
+      if (!Number.isFinite(n) || n <= 0) continue
+      addWare(state, id, n)
+      drones += n
+    }
+    delete entry.droneLoad
+  }
+  if (modules + drones > 0) {
+    addLog(state, 'fleet', `货舰装配已整理：${modules} 件装备退回装备库，${drones} 架无人机退回物品仓库。`,
+      'core.equipment.035', { p1: modules, p2: drones })
+  }
+}
+
 /**
  * 载入存档后的装备修复（V17/V18；幂等）：把装配中/装备库里的已下架型号替换为迁移款、
  * 悬空件退回；把每船位数组长度与船槽布局对齐（超长尾件退库、短位补空——含 v17 档
@@ -1201,6 +1246,7 @@ export const V17_MODULE_MIGRATIONS: Readonly<Record<string, string>> = {
  * 应在 ctx 就绪后、离线结算前调用。
  */
 export function repairDeprecatedModules(state: GameState, ctx: SimContext): void {
+  repairCivilianFittings(state, ctx)
   let fittedMoved = 0
   let slotEmptied = 0
   let bayMoved = 0
@@ -1210,11 +1256,11 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
   let bayRackMoved = 0
   let bayRackFreed = 0
   /** 在洞编队（uid）——与「进洞船只所有行为都锁定（含改装）」同口径：归位时跳过，出洞后再载入即归位 */
-  const inRun = new Set<string>(state.wormhole?.run?.fleet ?? [])
+  const inRun = new Set<string>([...(state.wormhole?.run?.fleet ?? []), ...(state.wormholeAuto ?? []).flatMap((r) => r.shipIds)])
   for (const [uid, ship] of Object.entries(state.fleet)) {
     const fitted = ship?.fitted
     if (!fitted) continue
-    const shipDef = ship?.defId ? ctx.ships.get(ship.defId) : undefined
+    const shipDef = fleetDefOf(state, ctx, uid)
     // 1) 逐位：目录外 id → 迁移替换，否则卸下退回
     for (const rack of ['high', 'mid', 'low'] as const) {
       const bays = rackBays(fitted, rack)
@@ -1368,7 +1414,7 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
    * ⚠ **在洞编队跳过**：与上面对齐/归位同口径（进洞船只所有行为锁定，含改装）⇒ 出洞后载入即归正。
    */
   const dupReturned: string[] = []
-  const inRunFleet = new Set<string>(state.wormhole?.run?.fleet ?? [])
+  const inRunFleet = inRun
   for (const [uid, ship] of Object.entries(state.fleet)) {
     if (inRunFleet.has(uid)) continue
     const fitted = ship?.fitted

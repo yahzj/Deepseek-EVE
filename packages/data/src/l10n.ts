@@ -66,6 +66,10 @@ export const EN_SHIPS: EnTable = {
     name: 'Manta-class Heavy Freighter',
     description: 'A heavy freighter assembled by the Leviathan yards: over 26,000 m³ of hold — the backbone of offline stockpiling and long hauls.',
   },
+  'sh-manatee': {
+    name: 'Manatee-class Freighter',
+    description: 'A Leviathan freighter with a large cargo hold and fittings for defense and field work, suited to bulk transport.',
+  },
   'sh-colossal': {
     name: 'Oarfish-class Flagship Freighter',
     description: 'The flagship freighter of the Leviathan yards: 108,000 m³ of hold — a mobile fortress of deep-space logistics.',
@@ -1366,6 +1370,7 @@ export const EN_BLUEPRINTS: EnTable = (() => {
  * 数值（货舱/循环/产量）照抄中文原文，不做本地化换算（单位与千分位与英文侧一致）。
  */
 const SBP_DESC_EN: Readonly<Record<string, string>> = {
+  'sbp-manatee': 'A Leviathan freighter with a large cargo hold and fittings for defense and field work, suited to bulk transport.',
   'sbp-pioneer': 'Mining corvette; 5,200 m³ hold, 38 units per 9 s cycle — a fifth more output than the Whaleswallow-class.',
   'sbp-whale-king': 'Mining corvette; 7,000 m³ hold, 58 units per 8 s cycle — the peak output of the mining family.',
   'sbp-humpback': 'Mining ship; 19,000 m³ hold, 140 units per 30 s cycle — the flagship of mining output.',

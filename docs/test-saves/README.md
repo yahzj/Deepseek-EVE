@@ -11,6 +11,9 @@ case 名（即该档服务的唯一测试用途），格式固定为 `test-save-
 「档案清单」补一段说明（注入门槛 + 建议测试路径），然后才生成存档。
 
 ## 加载方法（固定步骤）
+
+`hauler`货舰验收用途由`make-test-save.ts`注册，但使用全新初始档，不读取个人档。命令`npx tsx tools/make-test-save.ts hauler`；门槛与操作路径见`docs/test-saves/hauler-20261004.md`。本批新船材料/工时已获批准。
+
 1. 游戏内「存档管理 → 备份」（保留当前档）；
 2. 退出游戏；
 3. 把目标 `test-save-<feature>-<stamp>.json` **复制替换** `%APPDATA%\whale-idle\save.json`；

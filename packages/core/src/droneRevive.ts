@@ -32,6 +32,8 @@
  */
 import type { BattleState, GameState } from './state'
 import type { SimContext } from './types'
+import { fleetDefOf } from './instances'
+import { moduleAllowedOnShip } from './shipFitting'
 
 /** 该舰装了几件储备甲板、各件周期毫秒（**升序** ⇒ 下标 0 = 最快的那件） */
 export function droneReviveCyclesOf(state: GameState, ctx: SimContext, shipId: string): number[] {
@@ -39,7 +41,9 @@ export function droneReviveCyclesOf(state: GameState, ctx: SimContext, shipId: s
   const out: number[] = []
   for (const modId of high) {
     if (!modId) continue
-    const ms = ctx.modules.get(modId)?.droneReviveCycleMs
+    const mod = ctx.modules.get(modId)
+    if (!mod || !moduleAllowedOnShip(fleetDefOf(state, ctx, shipId), mod)) continue
+    const ms = mod.droneReviveCycleMs
     if (typeof ms === 'number' && ms > 0) out.push(ms)
   }
   return out.sort((a, b) => a - b)

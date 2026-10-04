@@ -618,6 +618,8 @@ export interface ShipDef {
   tier: number
   /** 船型角色（V10：舰船细分系统的占位字段，本轮仅 UI 徽标展示） */
   role: ShipRole
+  /** 纯货舰装配：只允许自身防御、航运与作业装备；旧虫洞趟由实例查询保留旧规格。 */
+  civilianFittingOnly?: boolean
   /** **舰种子分类**（仅虫洞专属舰船写；见 `ShipSubClass` 注释） */
   subClass?: ShipSubClass
   /** 货舱容量（立方米） */

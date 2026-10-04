@@ -108,6 +108,7 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '纯货舰模块能力兼容', symbol: 'moduleAllowedOnShip', file: 'packages/core/src/shipFitting.ts', exported: true },
   { concept: '物品领域分类与未知条目兜底', symbol: 'itemCategoryOf', file: 'apps/desktop/src/renderer/src/ui/itemSubs.ts', exported: true },
   { concept: '市场领域分类及细分判定', symbol: 'marketDomainPasses', file: 'apps/desktop/src/renderer/src/ui/itemSubs.ts', exported: true },
   { concept: '网页重连存档进度摘要', symbol: 'reconnectProgress', file: 'apps/desktop/src/renderer/src/game/saveReconnect.ts', exported: true },

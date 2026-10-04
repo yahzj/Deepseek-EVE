@@ -561,6 +561,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'ship-hawksbill', kind: 'ship', refId: 'sh-hawksbill', rarity: 'exotic', basePrice: 6_000_000, demandMultiplier: 1.0, standingReq: 12 }, // 2026-09-13：价位重排（T3 装甲，陆龟 0.45M ×13.3）+ **渠道升奇货**（船长「玳瑁现货和蓝图上调至奇货」）
   { key: 'ship-flyingfish', kind: 'ship', refId: 'sh-flyingfish', rarity: 'rare', basePrice: 210_000, demandMultiplier: 0.65 },
   { key: 'ship-sailfish', kind: 'ship', refId: 'sh-sailfish', rarity: 'rare', basePrice: 2_400_000, demandMultiplier: 0.65, standingReq: 12 }, // 2026-09-13 价位重排：T3 货舰（飞鱼 0.21M ×11.4）；T3 门槛 12
+  { key: 'ship-manatee', kind: 'ship', refId: 'sh-manatee', rarity: 'rare', basePrice: 6_750_000, demandMultiplier: 0.65, standingReq: 12 },
   /**
    * **官方五艘巡洋舰的现货**（**2026-09-16 船长裁定「甲」＋「乙」**）。
    *
@@ -652,6 +653,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'sbp-xuanwu', kind: 'blueprint', refId: 'sbp-xuanwu', rarity: 'exotic', basePrice: 900_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 玄武级（⚠ 2026-09-29 船长裁决乙：随锚价统一 ⇒ 行价 225M ×4 = 900M；原「2026-09-13：船价 90M ×4 = 360M」作废）
   { key: 'sbp-flyingfish', kind: 'blueprint', refId: 'sbp-flyingfish', rarity: 'rare', basePrice: 420000, demandMultiplier: 0.65 }, // 飞鱼级（蓝图=船价×2）
   { key: 'sbp-sailfish', kind: 'blueprint', refId: 'sbp-sailfish', rarity: 'rare', basePrice: 7_200_000, demandMultiplier: 0.65, standingReq: 15 }, // 旗鱼级（2026-09-13 价位重排：船价 2.4M 属 100~400 万档 ⇒ ×3 = 7.2M；T3 蓝图门槛 15）
+  { key: 'sbp-manatee', kind: 'blueprint', refId: 'sbp-manatee', rarity: 'rare', basePrice: 27_000_000, demandMultiplier: 0.65, standingReq: 15 },
   { key: 'sbp-swordfish', kind: 'blueprint', refId: 'sbp-swordfish', rarity: 'exotic', basePrice: 96_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 剑鱼级（2026-09-13 价位重排：船价 24M ×4；T4 蓝图门槛 25）
   { key: 'sbp-megalodon', kind: 'blueprint', refId: 'sbp-megalodon', rarity: 'exotic', basePrice: 900_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 巨齿鲨级（船价 225M ×4；T4 蓝图门槛 25）
   // 2026-09-26 新增两艘 T4 的图纸（书价 = 行价 ×4 · T4 蓝图门槛 25，与同档邻舰一致）
@@ -671,6 +673,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   //         一次性蓝图 **15 → 8**（原「2026-09-13：T3 蓝图门槛 15」对**这 5 张**作废；其余 T3 五张仍 15）。
   { key: 'sbp-once-pioneer', kind: 'blueprint', refId: 'sbp-once-pioneer', rarity: 'rare', basePrice: 4_000_000, demandMultiplier: 0.65, standingReq: 15 }, // 2026-09-28 独角鲸升 T3 ⇒ 补一次性图（行价 8M ×50%）；层 2 稀释池 9 → 10 张
   { key: 'sbp-once-sailfish', kind: 'blueprint', refId: 'sbp-once-sailfish', rarity: 'rare', basePrice: 1_200_000, demandMultiplier: 0.65, standingReq: 15 },
+  { key: 'sbp-once-manatee', kind: 'blueprint', refId: 'sbp-once-manatee', rarity: 'rare', basePrice: 3_375_000, demandMultiplier: 0.65, standingReq: 15 },
   { key: 'sbp-once-sentinel', kind: 'blueprint', refId: 'sbp-once-sentinel', rarity: 'rare', basePrice: 1_300_000, demandMultiplier: 0.65, standingReq: 15 },
   { key: 'sbp-once-hawksbill', kind: 'blueprint', refId: 'sbp-once-hawksbill', rarity: 'rare', basePrice: 3_000_000, demandMultiplier: 0.65, standingReq: 15 },
   { key: 'sbp-once-humpback', kind: 'blueprint', refId: 'sbp-once-humpback', rarity: 'rare', basePrice: 45_000_000, demandMultiplier: 0.65, standingReq: 15 }, // 2026-09-28 升 T4：行价 90M ×50%（原 9M ×50% = 4.5M）
