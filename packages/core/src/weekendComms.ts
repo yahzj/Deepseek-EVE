@@ -112,14 +112,15 @@ export function weekendWarnCommsOf(
   const subject = `航线警告：${family}入侵`
   /** 这一场是不是玩家在高安点的火（决定要不要加质问段 ＋ 喂 `p4`） */
   const suspicion = ev.beaconHighSec === true
+  // ⟪文案调整 2026-10-04⟫ 高安点火保持怀疑与实扣，战况段不承诺常规安全等级仍有效。
   const paragraphs = [
     ...(suspicion
       ? [
-          `协会要先确认一件事：这次入侵的信号，来自一次在高安启动的信号发射器。发射前后，我们在附近只发现了你的舰船信号。协会不认为这是巧合，已经按规矩从你的声望里扣了 ${HIGH_SEC_PENALTY} 点。这件事协会会继续追查。`,
+          `飞行员，这次入侵与高安空域启动的信号发射器有关。发射前后，附近只检测到你的舰船信号，协会有理由怀疑你参与其中。已按规定扣除 ${HIGH_SEC_PENALTY} 点可支配声望，调查仍会继续。`,
         ]
       : []),
-    `现在，${family}的舰队正在入侵这片空域，落点 ${count} 处，核心是「${coreName}」，标记已经打到星图上。被入侵的星系会有大量${family}舰队活动，请非战斗人员避开危险星系。`,
-    `但如果你想为协会出一份力，或者单纯想赚上一笔，我们也欢迎你加入清缴入侵舰队的行列。战役结束后，协会会统一按各位的贡献发放报酬。`,
+    `目前，${family}舰队已进入 ${count} 处星系，核心位于「${coreName}」。占领范围已在星图标明。非战斗作业请避开这些星系，原有安全等级不代表入侵期间仍然安全。`,
+    `清缴行动正在进行。有作战准备的飞行员可以参与，出击前先查看各星系敌情。协会按贡献结算报酬，在本场行动结束后统一发放。`,
   ]
   return {
     id: WEEKEND_COMMS_WARN_ID,
@@ -165,7 +166,8 @@ export function weekendSettleCommsOf(
    */
   const standing = snapshot.standing ?? 0
   const standingLine = `本次入侵按你在清缴行动中的贡献，协会为你记入「深空工业协会」声望 +${standing}。`
-  const subject = `航线通报：${family}入侵已被终结！星域恢复了和平！`
+  // ⟪文案调整 2026-10-04⟫ 官方结算只说明本场结束与实发，不承诺整个星域安全。
+  const subject = `航线通报：${family}入侵结束`
   /**
    * **旗舰战留档那一段**（**2026-09-27 船长令**：「和入侵结束的报告一样，留档玩家的旗舰战记录」）：
    * 有"玩家亲手击沉"的记录才加这一段 ⇒ 结算信里也说得清"旗舰是谁打沉的"（原先只有面板的归属抬头）。
@@ -173,8 +175,8 @@ export function weekendSettleCommsOf(
   const kill = snapshot.flagshipPlayerKill
   const paragraphs = [
     hasReward
-      ? `${family}的入侵已经结束，「${coreName}」附近的星系已经恢复正常。根据你在清缴行动中的表现，你将获得 ${listText} 等奖励以示鼓励（实物奖励已存入物品仓库）。`
-      : `${family}的入侵已经结束，「${coreName}」附近的星系已经恢复正常。本次清缴你没有贡献记录，因此没有奖励。`,
+      ? `${family}本场入侵已结束，「${coreName}」附近解除占领。你的清缴报酬为 ${listText}，已按记录发放；实物在物品仓库，信用点进钱包。各项明细可在结算记录查看。`
+      : `${family}本场入侵已结束，「${coreName}」附近解除占领。本场没有你的可结算奖励记录，未发放报酬。详细战况可查看结算记录。`,
     ...(kill !== undefined ? ['你在本期的旗舰战中亲手击沉了入侵旗舰。'] : []),
     ...(standing > 0 ? [standingLine] : []),
   ]

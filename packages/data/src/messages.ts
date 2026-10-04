@@ -65,10 +65,12 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'dshi',
     deptId: 'dept-survey',
     kind: '提示',
-    subject: '测绘备忘：未知信号优先',
+    // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
+    subject: L10N['ui.comms.029']!.zh,
     body: [
-      '你已经探索了不少星系。想必应该明白星图上那些还没点亮的「未知信号」，扫开之后往往同时解决两件事：一是航路，二是货源——很多矿带与残骸场就在没人去过的星系里。',
-      '顺带提醒：安全等级越低的地方，扫描越就费时间，这时候你应该去提升你的扫描技能了。',
+      L10N['ui.commsSurvey.001']!.zh,
+      L10N['ui.commsSurvey.002']!.zh,
+      L10N['ui.commsSurvey.003']!.zh,
     ],
     trigger: { kind: 'explored', count: 3 },
     hint: { text: '星图 · 点选未知信号开始扫描', page: 'map' },
@@ -78,11 +80,12 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'dshi',
     deptId: 'dept-route-safety',
     kind: '剧情',
-    subject: '航线警告：烬火星区',
+    // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
+    subject: L10N['ui.comms.030']!.zh,
     body: [
-      '飞行员，这里是协会航线安全。',
-      '你刚点亮烬火星区，先给你一句实话：那边能见度极差，进了深处基本靠仪表认路。常年在那片活动的是火力配齐的编队，不是散兵。你的名字进了它们的射程，能不能出来只取决于装甲撑得够不够久。',
-      '协会不建议没改装的船单舰往里走。真要去，出发前在装配页把装甲和推进器补齐，备弹也多带点——那里的战斗不给第二次装填的机会。',
+      L10N['ui.commsCinder.001']!.zh,
+      L10N['ui.commsCinder.002']!.zh,
+      L10N['ui.commsCinder.003']!.zh,
     ],
     trigger: { kind: 'galaxy', galaxyId: 'galaxy-cinder' },
     hint: { text: '出发前先去装配页检查一遍武器与防护。', page: 'fit' },
@@ -92,9 +95,12 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'dshi',
     deptId: 'dept-industry',
     kind: '提示',
-    subject: '产能提醒：别让工位空着',
+    // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
+    subject: L10N['ui.comms.031']!.zh,
     body: [
-      '缺钱了？协会工业部提醒一句：空间站内的各种工业设施都是免费开放，因此请不要使用没有安全保证的非官方工业设施。',
+      L10N['ui.commsIndustry.001']!.zh,
+      L10N['ui.commsIndustry.002']!.zh,
+      L10N['ui.commsIndustry.003']!.zh,
     ],
     trigger: { kind: 'isk', amount: 50000 },
     hint: { text: '工业页可以同时开多台炉子。', page: 'industry' },
@@ -104,9 +110,12 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'dshi',
     deptId: 'dept-smelt',
     kind: '提示',
-    subject: '冶炼交底：精炼学值不值',
+    // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
+    subject: L10N['ui.comms.032']!.zh,
     body: [
-      '老有人问精炼到底划不划算，俺们就给个交底。\n精炼肯定是赚的，问题只是赚多赚少。掌握了各种处理技能的老手可是能赚的盆满钵满。\n至于新人也不要灰心，毕竟没有人一开始就是老手，学习技能，从现在开始！',
+      L10N['ui.commsSmelt.001']!.zh,
+      L10N['ui.commsSmelt.002']!.zh,
+      L10N['ui.commsSmelt.003']!.zh,
     ],
     trigger: { kind: 'skill', skillId: 'refining', level: 2 },
     hint: { text: '技能页可以先把精炼学排进队列。', page: 'skills' },
@@ -132,10 +141,12 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'dshi',
     deptId: 'dept-infra',
     kind: '剧情',
-    subject: '并网致谢：前哨站已点亮',
+    // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
+    subject: L10N['ui.comms.034']!.zh,
     body: [
-      '红环前哨站并网运行的第一个班次，基建部全体向你致意。',
-      '我们感谢你在空间站建设过程中的贡献，因此决定无偿给予你使用空间站各种设施的权限。',
+      L10N['ui.commsThanks.001']!.zh,
+      L10N['ui.commsThanks.002']!.zh,
+      L10N['ui.commsThanks.003']!.zh,
     ],
     trigger: { kind: 'siteBuilt', siteId: 'site-redring' },
     hint: { text: '副站建成后泊位、维修、补给与换船全部开放。', page: 'ship' },
@@ -153,12 +164,13 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'dshi',
     deptId: 'dept-survey',
     kind: '剧情',
-    subject: '勘探提醒：奥罗荒环的巨构残骸',
+    // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
+    subject: L10N['ui.comms.035']!.zh,
     body: [
-      '我们发现你将「奥罗荒环」录进星图了。因此在这里给你一些意见：那片环带上的残骸不是普通船壳，是几具还在运转的巨构残骸。',
-      '巨构残骸的很多核心都还在运转，它们会把进到射程里的东西当靶子。',
-      '更麻烦的是挂在它身上的警戒机群——那是它的第二套火力，打掉几架还会从机库里补位。机群平时伸不了太远，可只要本体挨了打，残存的自动程序就会放开它们的射程：长臂能一直伸到两万米以外，而且这一场里不会收回去。',
-      '还有一条实用的：巨构残存的近防炮专打无人机，放出去的东西还没靠近就会被一架架点掉。反过来也一样——想清掉警戒机群，只有带防空属性的武器筛得到目标，装一门近防炮就是为这种场面准备的。',
+      L10N['ui.commsAuro.001']!.zh,
+      L10N['ui.commsAuro.002']!.zh,
+      L10N['ui.commsAuro.003']!.zh,
+      L10N['ui.commsAuro.004']!.zh,
     ],
     trigger: { kind: 'galaxy', galaxyId: 'galaxy-auro' },
     hint: { text: '出发前在装配页把对空火力与装甲补齐。', page: 'fit' },
@@ -168,9 +180,12 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'dshi',
     deptId: 'dept-route-safety',
     kind: '剧情',
-    subject: '敌情通报：鱿鱼亡军的蜂群',
+    // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
+    subject: L10N['ui.comms.036']!.zh,
     body: [
-      '你探到的这片空域有「鱿鱼亡军」活动——它们是不服从协会管理的叛军组织。一直在试图推翻协会。\n目前它们的主力已经被协会给击溃了，但是还是有不少的残部在活动。因此在这些星区活动需要小心。',
+      L10N['ui.commsExile.001']!.zh,
+      L10N['ui.commsExile.002']!.zh,
+      L10N['ui.commsExile.003']!.zh,
     ],
     trigger: { kind: 'foeFamily', family: 'G' },
     hint: { text: '打之前先去装配页，把对空火力带上。', page: 'fit' },
@@ -190,11 +205,12 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'dshi',
     deptId: 'dept-route-safety',
     kind: '剧情',
-    subject: '航线通报：第七层起的围剿',
+    // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
+    subject: L10N['ui.comms.067']!.zh,
     body: [
-      '你已经到达了虫洞深层。从这一层起，驻守的敌人不再等你上门：他们开始主动围剿你了。',
-      '每回合敌人都会增援，它们会占据各个地点。只有击退地点上的敌人你才能安心进行活动。',
-      '在少数时候，敌人甚至会跃迁到你的位置抓你。',
+      L10N['ui.commsSiege.001']!.zh,
+      L10N['ui.commsSiege.002']!.zh,
+      L10N['ui.commsSiege.003']!.zh,
     ],
     trigger: { kind: 'wormholeSiege' },
   },
@@ -203,10 +219,12 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'dshi',
     deptId: 'dept-route-safety',
     kind: '提示',
-    subject: '航线须知：低安空域',
+    // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
+    subject: L10N['ui.comms.037']!.zh,
     body: [
-      '观测部报告说你已经探到低安星系了。因此有必要给你发一则注意事项。',
-      '低安星系都是协会无法照顾到的星系，因此经常会有海盗流窜袭击过往的舰船。建议给你在该地区活动的舰船配备一定的战斗力和修理装置。或者干脆加派一艘舰船在该星系巡逻。\n不过被袭击了通常只是损失一些货仓物品，在有跃迁的情况下，这些流寇很难真正留下你。',
+      L10N['ui.commsLowsec.001']!.zh,
+      L10N['ui.commsLowsec.002']!.zh,
+      L10N['ui.commsLowsec.003']!.zh,
     ],
     trigger: { kind: 'lowSec' },
     hint: { text: '星图 · 出发前看清目标星系的安全等级。', page: 'map' },
@@ -216,12 +234,13 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'dshi',
     deptId: 'dept-infra',
     kind: '委托',
-    subject: '建站征询：红环航道的泊位',
+    // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
+    subject: L10N['ui.comms.038']!.zh,
     body: [
-      '飞行员，见字好。协会基建部有件事想问问你的意思。',
-      '红环航道上没有可用泊位，往来船只要绕远。协会打算在那里放一座前哨站，位置已经勘好了。工程不整包外包，只分材料单：按档交齐建材就推进一档，交到最后一档就并网。',
-      '建成之后，泊位、维修、补给和换船一并对你开放，往后跑这条线省下的时间不止一点。有意的话，把建材备在货舱里，到地方按单交付就行。协会照档结算，不多收一分。',
-      '星图里选「红环航道」，可以看那份交付单。',
+      L10N['ui.commsOutpost.001']!.zh,
+      L10N['ui.commsOutpost.002']!.zh,
+      L10N['ui.commsOutpost.003']!.zh,
+      L10N['ui.commsOutpost.004']!.zh,
     ],
     trigger: { kind: 'galaxy', galaxyId: 'galaxy-redring' },
     hint: { text: '星图 · 选「红环航道」查看建站交付。', page: 'map' },
@@ -231,12 +250,12 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'dshi',
     deptId: 'dept-survey',
     kind: '提示',
-    subject: '深空备忘：星云带里的信号遮蔽',
+    // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
+    subject: L10N['ui.comms.039']!.zh,
     body: [
-      '备忘：虫洞第 4 层起，深处开始出现星云带。以下按你的推进节奏整理一次。',
-      '星云会挡住落在里面的地点信号。第一次扫到它，你看不出那是什么地点，只看到云本身。',
-      '应对办法是在原地再扫一次。同一片区域归同一套扫描阵列管，第二遍能把云驱散，信号随即显形。',
-      '代价是多花一个回合。深层行动的回合本来就紧，规划路线时把「多扫一次」算进预算，别到拐角才发现不够用。',
+      L10N['ui.commsNebula.001']!.zh,
+      L10N['ui.commsNebula.002']!.zh,
+      L10N['ui.commsNebula.003']!.zh,
     ],
     trigger: { kind: 'wormholeNebula' },
     // ⚠ **刻意不给 `hint`**：`CommsHint.page` 只认导航直系页（`CommsJumpPage`），
@@ -263,13 +282,13 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'dshi',
     deptId: 'dept-survey',
     kind: '提示',
-    subject: '深空测绘解锁：虫洞扫描阵列',
+    // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
+    subject: L10N['ui.comms.040']!.zh,
     body: [
-      '备忘：你的协会声望已达 40，可以接入虫洞扫描阵列。',
-      '阵列装在船上，扫的是星域之间那些不稳的虫洞。扫满一个窗口，就能标出一处可进入的虫洞。',
-      '标出来的先存着，最多同时存五处，什么时候去由你决定。扫描期间照常会遇上航线上的那些事，遇袭也不影响进度，阵列自己接着扫。',
-      '开始扫描的位置：星图「出港」页的「扫描虫洞」标签。',
-      '标出来的每一处都不一样，残骸多、矿脉密、驻守舰队的来路各有各的。进洞之前你就能看明白。进洞前给编队装上「采集器」与「打捞器」——洞里的矿脉靠采集器采，遗迹与残骸靠打捞器捞。',
+      L10N['ui.commsWhunlock.001']!.zh,
+      L10N['ui.commsWhunlock.002']!.zh,
+      L10N['ui.commsWhunlock.003']!.zh,
+      L10N['ui.commsWhunlock.004']!.zh,
     ],
     trigger: { kind: 'standing', factionId: 'dsi', min: 40 },
     popup: true,
@@ -295,12 +314,13 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'dshi',
     deptId: 'dept-route-safety',
     kind: '提示',
-    subject: '航线提醒：被袭后的自动撤离',
+    // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
+    subject: L10N['ui.comms.041']!.zh,
     body: [
-      '刚才那次脱离交火，不是故障，别去拆船。',
-      '你在低安空域挨了打。装甲或结构掉到一半以下，船会按保命规矩自动脱离交火。补不动的，就收手返港待命。',
-      '规矩就两条。结构掉一半以下自动脱离，绝不弃船。补得动，留在原地继续干活；补不动，才回家。',
-      '自动修补有个前提，船上得有中槽的船体维修装置。它只吃与装置对应的那种修理组件。民用维修装置吃民用修理组件，一批 5 枚、每枚补得少；MK1 与 MK2 吃军用修理组件，一批 3 枚、每枚补得多。两种组件都能在工业页自制，图纸市场有售。断料，或者压根没装维修装置，都是它被送回家的原因。',
+      L10N['ui.commsRetreat.001']!.zh,
+      L10N['ui.commsRetreat.002']!.zh,
+      L10N['ui.commsRetreat.003']!.zh,
+      L10N['ui.commsRetreat.004']!.zh,
     ],
     trigger: { kind: 'ambushRetreat' },
     hint: { text: '工业页 · 造一批修理组件，给船装上维修装置', page: 'industry' },
@@ -325,12 +345,13 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'dshi',
     deptId: 'dept-industry',
     kind: '提示',
-    subject: '产能致意：第一艘自造船下线',
+    // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
+    subject: L10N['ui.comms.042']!.zh,
     body: [
-      '组装机线交出了第一艘船。从这条船开始，产能不再只出零件与弹药。',
-      '船停在舰船页的「舰船仓库」。组装机造好的船一律先进仓库，同型堆叠计数。',
-      '点「转入舰队」就编进机库，之后可切换驾驶，也可装上 AI 核心派出去干活。',
-      '卖船也在这里，仓库里可直接出售。有收购单当场成交，没人收购就自动挂卖单，随时可撤单退回仓库。入仓规矩：只有卸下模块、结构与装甲都完好、货仓清空的船才收得进去，正在驾驶或带着 AI 任务的船要先空出来。',
+      L10N['ui.commsFirstship.001']!.zh,
+      L10N['ui.commsFirstship.002']!.zh,
+      L10N['ui.commsFirstship.003']!.zh,
+      L10N['ui.commsFirstship.004']!.zh,
     ],
     trigger: { kind: 'shipBuilt' },
     hint: { text: '舰船页 · 「舰船仓库」可转入舰队或出售', page: 'ship', shipTab: 'store' },
@@ -353,13 +374,13 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'dshi',
     deptId: 'dept-route-safety',
     kind: '提示',
-    subject: '航线通报：海盗的劫掠捕获网',
+    // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
+    subject: L10N['ui.comms.043']!.zh,
     body: [
-      '通报一个情况：劫掠海盗里出现了「劫掠电子舰」。它不带重炮，专门张开一张劫掠捕获网。',
-      '被网住的那一艘会同时吃四种亏：机动掉到只剩一成、推进器全部熄火、闪避彻底失效、武器射程被压短 500 米。',
-      '网是拴在它自己身上的。把它击沉，网立刻松开；把距离拉到 4500 米以外，网也会自己绷断。',
-      '它整场只张一次网，而且只罩得住当时被它锁定的那一艘。',
-      '建议：遇到它别急着换目标，先把它点掉。若是编队进洞，让僚舰替被罩住的那一艘顶住火力，或者在它张网之前先打掉。',
+      L10N['ui.commsWeb.001']!.zh,
+      L10N['ui.commsWeb.002']!.zh,
+      L10N['ui.commsWeb.003']!.zh,
+      L10N['ui.commsWeb.004']!.zh,
     ],
     trigger: { kind: 'foeShipSeen', shipId: 'foe-pirate-raider' },
     holdWhenBusy: true,
@@ -372,20 +393,18 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
      * - 触发 = `{ kind: 'blackboxSeen' }`（判据走 `blackbox.blackboxSeenOf`：随档标记 ＋ 老档按库存回填）；
      * - **落款带「前往」直达「章鱼人兑换」窗口**（`hint.action = 'plug-exchange'`——本批新开的
      *   通讯跳转动作，界面侧见 `CommsReader` 的 `onAction`；这是船长"通讯内跳转"那句的落点）；
-     * - **正文 = 船长 2026-09-26 亲笔三段（照抄，一字未改）**：航线安全部门报告 → 开放限定商店窗口 ＋
-     *   讲清插件的性质与两条禁令 → 工程部已开放组装机那一档。
-     *   ⚠ **三段就是三段**（英文覆盖表 `COMMS_BODY_EN` 按行数对齐，多拆一段英文就会整段回落中文）；
-     *   ⚠ 英文侧同款三段的落点见 `apps/desktop/.../ui/commsText.ts` 的 `msg-blackbox-plug-unlock`。
+     * - 正文讲插件制造、兑换与安装禁令；中英正文按同组 id 逐段取词。
      */
     id: 'msg-blackbox-plug-unlock',
     factionId: 'dshi',
     deptId: 'dept-industry',
     kind: '提示',
-    subject: '工业通报：黑匣可以换舰船插件了',
+    // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
+    subject: L10N['ui.comms.079']!.zh,
     body: [
-      '你从残骸里得到了一枚黑匣。黑匣内部的数据可以制作特殊舰船插件。',
-      '协会因此对你开放限定商店窗口，制作插件所需的蓝图在那里用声望兑换。制作舰船插件的组装机也对你开放。',
-      '插件和装备不一样，装上就拆不下来、也换不了别的。它给这艘船一项大幅加成，下单之前想清楚要做哪一件。装了插件的舰船不能放进舰船仓库，也不能挂到市场上卖。',
+      L10N['ui.commsPlug.001']!.zh,
+      L10N['ui.commsPlug.002']!.zh,
+      L10N['ui.commsPlug.003']!.zh,
     ],
     trigger: { kind: 'blackboxSeen' },
     /**

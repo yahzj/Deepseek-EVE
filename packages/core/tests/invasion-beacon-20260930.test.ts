@@ -350,8 +350,9 @@ describe('信号发射器 · 目标属高安那一场的通讯变体', () => {
     const mail = weekendWarnCommsOf(s, ctx, s.weekendEvent!)
     expect(mail.bodyIds).toEqual(['core.weekend.044', 'core.weekend.011', 'core.weekend.012'])
     expect(mail.params?.['p4'], '扣分槽 = 实扣数').toBe(HIGH_SEC_PENALTY)
-    expect(mail.paragraphs[0]).toContain('只发现了你的舰船信号')
-    expect(mail.paragraphs[0]).toContain(`扣了 ${HIGH_SEC_PENALTY} 点`)
+    expect(mail.paragraphs[0]).toContain('只检测到你的舰船信号')
+    expect(mail.paragraphs[0]).toContain('有理由怀疑')
+    expect(mail.paragraphs[0]).toContain(`扣除 ${HIGH_SEC_PENALTY} 点可支配声望`)
     expect(mail.paragraphs[0], '只写怀疑，不写确凿证据').not.toContain('登记在你名下')
   })
 
@@ -372,17 +373,18 @@ describe('信号发射器 · 目标属高安那一场的通讯变体', () => {
     expect(weekendWarnCommsOf(s, ctx, s.weekendEvent!).bodyIds).toEqual(['core.weekend.011', 'core.weekend.012'])
   })
 
-  it('实况段改成承接口气（侦查叙述换成「现在，…」，战况四件事一件不少）', () => {
+  it('实况段承接质问，星系数量、核心、星图标记和避险四件事齐备', () => {
     const s = readyState()
     noteStandingEarned(s, DSI_FACTION_ID, 50)
     expect(useInvasionBeacon(s, ctx, { galaxyId: nonHighSecId() }).ok).toBe(true)
     const mail = weekendWarnCommsOf(s, ctx, s.weekendEvent!)
     const live = mail.paragraphs[mail.bodyIds.indexOf('core.weekend.011')]!
-    expect(live.startsWith('现在，')).toBe(true)
+    expect(live.startsWith('目前，')).toBe(true)
     expect(live, '原稿的侦查叙述已换掉').not.toContain('就在刚刚')
-    expect(live).toContain('落点')
-    expect(live).toContain('标记已经打到星图上')
-    expect(live).toContain('请非战斗人员避开危险星系')
+    expect(live).toContain(`${s.weekendEvent!.peripheryIds.length + 1} 处星系`)
+    expect(live).toContain(ctx.galaxies.get(s.weekendEvent!.coreId)!.name)
+    expect(live).toContain('占领范围已在星图标明')
+    expect(live).toContain('非战斗作业请避开')
   })
 
   it('存档往返：留痕跟着这一场走（读档后照样发质问段）', () => {

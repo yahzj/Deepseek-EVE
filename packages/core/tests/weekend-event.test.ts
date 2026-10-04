@@ -392,7 +392,7 @@ describe('周末入侵 · 族名（通讯正文只印正式称呼）', () => {
     expect(mail.params?.['p1'], '槽值 = 正式名').toBe('光环')
     expect(mail.params?.['p1Id'], '槽译文 id 指向 R 族词条').toBe('core.weekend.024')
     const body = mail.paragraphs.join('')
-    expect(body, '正文用正式名').toContain('光环的舰队正在入侵')
+    expect(body, '正文用正式名').toContain('光环舰队已进入')
     expect(body, '正文不许出现族代号').not.toMatch(/R\s*族/)
   })
 })

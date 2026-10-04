@@ -6,6 +6,8 @@
  * 于是收件箱里的立场小片、发件说明与数据消息同一套口径；`title` 保留为原文兜底（未挂靠时显示它）。
  */
 import type { DialogueScriptDef } from '@whale/core'
+import { L10N } from './l10n/table'
+// ⟪文案调整 2026-10-04⟫ 四份剧本逐篇重写，角色、行数与触发不变。
 
 /** 全量剧本（id 稳定；重看/已读按 id 记录） */
 export const DIALOGUES: readonly DialogueScriptDef[] = [
@@ -16,13 +18,13 @@ export const DIALOGUES: readonly DialogueScriptDef[] = [
     commsDeptId: 'dept-infra',
     commsSigner: '柯岚',
     // 2026-09-11 通讯系统：剧本与消息同处一个收件箱，故各给一条主题（通讯页列表主行用）
-    subject: '红环前哨站 · 建站交底',
+    subject: L10N['ui.commsDialogue.001']!.zh,
     lines: [
-      { speaker: '基建部 · 柯岚', text: '飞行员，能收到吗？红环这地方终于有人闯进来了。' },
-      { speaker: '基建部 · 柯岚', text: '长话短说：协会想在红环航道立一座前哨站——就是你现在看到的这片星域。' },
-      { speaker: '基建部 · 柯岚', text: '建材就地取材：赤环岩与辉长岩，红环危机带里到处都是。' },
-      { speaker: '基建部 · 柯岚', text: '分三档施工：奠基、完善、建成。全部档位完工前，站址只是一片工地——不提供停靠与任何站内服务。' },
-      { speaker: '基建部 · 柯岚', text: '建材送到工地就行；人不在现场时，也可以从空间站直接安排「前往工地交付」航线。等它建成并入协会基地网络，泊位、维修、补给、换船会一次性全部开放。' },
+      { speaker: L10N['ui.commsSpeaker.001']!.zh, text: L10N['ui.commsRedintro.001']!.zh },
+      { speaker: L10N['ui.commsSpeaker.001']!.zh, text: L10N['ui.commsRedintro.002']!.zh },
+      { speaker: L10N['ui.commsSpeaker.001']!.zh, text: L10N['ui.commsRedintro.003']!.zh },
+      { speaker: L10N['ui.commsSpeaker.001']!.zh, text: L10N['ui.commsRedintro.004']!.zh },
+      { speaker: L10N['ui.commsSpeaker.001']!.zh, text: L10N['ui.commsRedintro.005']!.zh },
     ],
   },
   {
@@ -31,22 +33,14 @@ export const DIALOGUES: readonly DialogueScriptDef[] = [
     commsFactionId: 'dshi',
     commsDeptId: 'dept-infra',
     commsSigner: '柯岚',
-    subject: '红环前哨站 · 并网通报',
+    subject: L10N['ui.commsDialogue.002']!.zh,
     lines: [
-      { speaker: '基建部 · 柯岚', text: '信号稳定了——红环前哨站，全功率运行。' },
-      { speaker: '基建部 · 柯岚', text: '从今天起，这片航线的矿船、维修、补给都绕不开你的名字了。' },
-      { speaker: '基建部 · 柯岚', text: '红环前哨站已并入协会空间站网络。去停靠区看看吧——那是你建起来的。' },
-      /** **燃料段**（**2026-09-29 船长令**：「第一个空间站的通讯内添加燃料相关内容」；不保证玩家先建哪一座
-       *  ⇒ **两座站的并网通报都写**）。
-       *  **⟪文案调整 2026-09-30⟫ 文案审核批 · 重写稿 v3**（船长两条口径：「不应该说明燃料的体积和装货仓或者生产…
-       *  应该重点介绍（**以推销员的口气**）燃料的**作用和潜在价值**，并**告知燃料获取图鉴**（虚空晶要进虫洞、
-       *  虫洞门槛 40 声望）」＋「**你不要单独看，要和之前的上文连起来看**」）：
-       *  ⇒ 第一句**接住上一条的落点**（柯岚上一条说「去停靠区看看吧」，这里顺着"停靠区"数同一座站的另一件配套；
-       *  沈灼上一条说「从此有了自己的补给线」，这里就用"补给线"起话）；后面两句是作用与价值、获取图鉴。
-       *  旧两句（讲"一秒一单位 ＋ 去哪勾选 ＋ 投放原料"）与本稿内容重合，**整段替换**。 */
-      { speaker: '基建部 · 柯岚', text: '停靠区之外还有一件配套：这座站的「实验室」能合成超空间折跃燃料。' },
-      { speaker: '基建部 · 柯岚', text: '它管的是返航：返航时点一把火，速度提到十倍——本来二十分钟的路，两分钟进港。省下的时间，够你的矿船多跑一趟。' },
-      { speaker: '基建部 · 柯岚', text: '料也好凑：星云气出折跃等离子、冰矿出低温跃迁浆，曲率凝析物与同位聚晶常见矿里就有。只有虚空晶金贵——它只出在虫洞的「虚空母矿」上，而扫描虫洞得先攒到协会声望 40。' },
+      { speaker: L10N['ui.commsSpeaker.001']!.zh, text: L10N['ui.commsReddone.001']!.zh },
+      { speaker: L10N['ui.commsSpeaker.001']!.zh, text: L10N['ui.commsReddone.002']!.zh },
+      { speaker: L10N['ui.commsSpeaker.001']!.zh, text: L10N['ui.commsReddone.003']!.zh },
+      { speaker: L10N['ui.commsSpeaker.001']!.zh, text: L10N['ui.commsReddone.004']!.zh },
+      { speaker: L10N['ui.commsSpeaker.001']!.zh, text: L10N['ui.commsReddone.005']!.zh },
+      { speaker: L10N['ui.commsSpeaker.001']!.zh, text: L10N['ui.commsReddone.006']!.zh },
     ],
   },
   {
@@ -55,12 +49,12 @@ export const DIALOGUES: readonly DialogueScriptDef[] = [
     commsFactionId: 'dshi',
     commsDeptId: 'dept-infra',
     commsSigner: '沈灼',
-    subject: '烬火前哨站 · 建站交底',
+    subject: L10N['ui.commsDialogue.003']!.zh,
     lines: [
-      { speaker: '基建部 · 沈灼', text: '烬火……能见度这么差的地方，难得有船敢摸进来。' },
-      { speaker: '基建部 · 沈灼', text: '协会在这片高危采集区批了一座前哨站，建材用蓝霜冰——冰层致密，就地开采最划算。' },
-      { speaker: '基建部 · 沈灼', text: '照老规矩分三档施工。三档完工前这里只是工地，不提供停靠与服务；建成并网后泊位、维修、补给与换船一次性开放。' },
-      { speaker: '基建部 · 沈灼', text: '建材可直接送到工地；人不在现场时，可从空间站直接安排「前往工地交付」航线。这片灰烬里的第一盏灯，就交给你点了。' },
+      { speaker: L10N['ui.commsSpeaker.002']!.zh, text: L10N['ui.commsCinderintro.001']!.zh },
+      { speaker: L10N['ui.commsSpeaker.002']!.zh, text: L10N['ui.commsCinderintro.002']!.zh },
+      { speaker: L10N['ui.commsSpeaker.002']!.zh, text: L10N['ui.commsCinderintro.003']!.zh },
+      { speaker: L10N['ui.commsSpeaker.002']!.zh, text: L10N['ui.commsCinderintro.004']!.zh },
     ],
   },
   {
@@ -69,17 +63,14 @@ export const DIALOGUES: readonly DialogueScriptDef[] = [
     commsFactionId: 'dshi',
     commsDeptId: 'dept-infra',
     commsSigner: '沈灼',
-    subject: '烬火前哨站 · 并网通报',
+    subject: L10N['ui.commsDialogue.004']!.zh,
     lines: [
-      { speaker: '基建部 · 沈灼', text: '灯亮了。烬火前哨站，正式并网。' },
-      { speaker: '基建部 · 沈灼', text: '这片星域最挑剔的采集点，从此有了自己的补给线。' },
-      { speaker: '基建部 · 沈灼', text: '灰烬里点灯的人——协会会一直记得你。' },
-      /** 燃料段（船长 2026-09-29「第一个空间站的通讯内添加燃料相关内容」）——与红环那座同口径（两座都写）。
-       *  **⟪文案调整 2026-09-30⟫ 重写稿 v3**（同红环那段的依据）：第一句接住沈灼自己上一条的「补给线」，
-       *  后两句写作用/价值与获取图鉴（虚空晶＝虫洞、虫洞＝声望 40）。旧两句整段替换。 */
-      { speaker: '基建部 · 沈灼', text: '补给线建起来了，再给你一样让它跑得快的东西：超空间折跃燃料——返航烧一份，速度十倍，长途那一趟的时间全给你省回来。' },
-      { speaker: '基建部 · 沈灼', text: '一单位抵一秒原返航时间；开关在舰船页「跃迁燃料」页，料在工业页「实验室」投。' },
-      { speaker: '基建部 · 沈灼', text: '材料好凑：星云气炼折跃等离子、冰矿炼低温跃迁浆，曲率凝析物与同位聚晶常见矿里就有。唯一的门槛是虚空晶——只在虫洞的「虚空母矿」里，而进虫洞要协会声望 40。' },
+      { speaker: L10N['ui.commsSpeaker.002']!.zh, text: L10N['ui.commsCinderdone.001']!.zh },
+      { speaker: L10N['ui.commsSpeaker.002']!.zh, text: L10N['ui.commsCinderdone.002']!.zh },
+      { speaker: L10N['ui.commsSpeaker.002']!.zh, text: L10N['ui.commsCinderdone.003']!.zh },
+      { speaker: L10N['ui.commsSpeaker.002']!.zh, text: L10N['ui.commsCinderdone.004']!.zh },
+      { speaker: L10N['ui.commsSpeaker.002']!.zh, text: L10N['ui.commsCinderdone.005']!.zh },
+      { speaker: L10N['ui.commsSpeaker.002']!.zh, text: L10N['ui.commsCinderdone.006']!.zh },
     ],
   },
 ]

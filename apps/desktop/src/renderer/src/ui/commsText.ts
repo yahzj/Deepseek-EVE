@@ -100,6 +100,28 @@ const COMMS_SUBJECT_ID: Record<string, string> = {
   'msg-lab-contraband': 'ui.comms.076', // 首访实验室：黑市的违禁货通讯（2026-09-30 船长令）
 }
 
+// ⟪文案调整 2026-10-04⟫ 建站弹层和收件箱镜像共用同一组对白 id。
+const COMMS_DIALOGUE_ID: Record<string, { subject: string; prefix: string; speaker: string; count: number }> = {
+  'dlg-redring-intro': { subject: 'ui.commsDialogue.001', prefix: 'ui.commsRedintro', speaker: 'ui.commsSpeaker.001', count: 5 },
+  'dlg-redring-done': { subject: 'ui.commsDialogue.002', prefix: 'ui.commsReddone', speaker: 'ui.commsSpeaker.001', count: 6 },
+  'dlg-cinder-intro': { subject: 'ui.commsDialogue.003', prefix: 'ui.commsCinderintro', speaker: 'ui.commsSpeaker.002', count: 4 },
+  'dlg-cinder-done': { subject: 'ui.commsDialogue.004', prefix: 'ui.commsCinderdone', speaker: 'ui.commsSpeaker.002', count: 6 },
+}
+
+export function commsDialogueText<T extends { id?: string; title: string; lines: readonly { speaker: string; text: string }[] }>(script: T): T {
+  const spec = script.id ? COMMS_DIALOGUE_ID[script.id] : undefined
+  if (!isEn() || !spec || spec.count !== script.lines.length) return script
+  return {
+    ...script,
+    title: commsSenderText(script.title),
+    lines: script.lines.map((line, i) => ({
+      ...line,
+      speaker: tr(spec.speaker),
+      text: tr(`${spec.prefix}.${String(i + 1).padStart(3, '0')}`),
+    })),
+  }
+}
+
 /**
  * 主题行（有登记走当前语言；没登记回落数据侧原文）。
  *
@@ -134,7 +156,7 @@ export function commsSubjectText(
     }
     return tr(dynamic.subjectId, out)
   }
-  const l10nId = COMMS_SUBJECT_ID[id]
+  const l10nId = COMMS_SUBJECT_ID[id] ?? (id.startsWith('dlg:') ? COMMS_DIALOGUE_ID[id.slice(4)]?.subject : undefined)
   return l10nId !== undefined ? tr(l10nId) : fallback
 }
 
@@ -296,14 +318,19 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
     L10N['ui.commsWelcome.002']!.en,
   ],
   'msg-survey-memo': [
-    'You have mapped a good number of systems by now, so you have probably worked out what those unlit “unknown signals” are worth: scanning one settles the route and the supply in the same pass — plenty of belts and wreck fields sit in systems nobody has visited.',
-    'One reminder: the lower the security level, the longer an on-site scan takes, and that is the point to train your scanning skills.',
+    L10N['ui.commsSurvey.001']!.en,
+    L10N['ui.commsSurvey.002']!.en,
+    L10N['ui.commsSurvey.003']!.en,
   ],
   'msg-industry-shift': [
-    'Short on credits? A word from the Industry Dept: every industrial facility on a station is free to use, so do not turn to unofficial ones with no safety guarantee.',
+    L10N['ui.commsIndustry.001']!.en,
+    L10N['ui.commsIndustry.002']!.en,
+    L10N['ui.commsIndustry.003']!.en,
   ],
   'msg-refinery-note': [
-    'People keep asking whether refining is worth it, so the Smelting Group will give it to you straight.\nRefining pays, always — the only question is how much. Veterans with the processing skills trained up make a fortune at it.\nAnd newcomers should not be discouraged: nobody starts out a veteran. Train the skills, starting now.',
+    L10N['ui.commsSmelt.001']!.en,
+    L10N['ui.commsSmelt.002']!.en,
+    L10N['ui.commsSmelt.003']!.en,
   ],
   'msg-salvage-crew': [
     L10N['ui.commsSalvage.001']!.en,
@@ -312,25 +339,26 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
     L10N['ui.commsSalvage.004']!.en,
   ],
   'msg-site-thanks': [
-    'On the first shift of the Redring Outpost running on the grid, the whole Infrastructure Dept salutes you.',
-    'We thank you for what you put into the station build, and have decided to grant you free use of every facility it carries.',
+    L10N['ui.commsThanks.001']!.en,
+    L10N['ui.commsThanks.002']!.en,
+    L10N['ui.commsThanks.003']!.en,
   ],
   'msg-redring-outpost': [
-    'Pilot, greetings. The Infrastructure Dept has something to put to you.',
-    'The Redring Corridor has no usable berth, and ships passing through have to go the long way round. The Association plans to place an outpost there, and the site is already surveyed. The work is not contracted out whole but split into a materials list: deliver one tier of materials and the build advances one stage, and the last tier brings it onto the grid.',
-    'Once it is up, berths, repairs, resupply and ship swaps all open to you, and the time saved on this corridor is no small thing. If you are interested, keep the materials in your hold and deliver them on site — the Association settles by tier and takes no extra credit.',
-    'Pick “Redring Corridor” on the star map to read the delivery list.',
+    L10N['ui.commsOutpost.001']!.en,
+    L10N['ui.commsOutpost.002']!.en,
+    L10N['ui.commsOutpost.003']!.en,
+    L10N['ui.commsOutpost.004']!.en,
   ],
   'msg-first-ship': [
-    'Your assembler line has handed over its first hull. From this ship on, your output is no longer limited to parts and ammo.',
-    'The hull sits in Ship Storage on the Ships page; anything the assembler finishes lands there first and stacks by type.',
-    'Click “Move into fleet” and it joins the hangar; from there you can swap to flying it, or fit an AI core and send it out to work.',
-    'Selling happens there too: ship storage sells directly — a standing buy order fills on the spot, and with no buyer the hull is listed automatically, and a listing can be pulled back to storage at any time. One storage rule: only ships with modules removed, structure and armor intact and an empty hold are accepted; a hull you are flying or one on an AI task has to be freed up first.',
+    L10N['ui.commsFirstship.001']!.en,
+    L10N['ui.commsFirstship.002']!.en,
+    L10N['ui.commsFirstship.003']!.en,
+    L10N['ui.commsFirstship.004']!.en,
   ],
   'msg-wh-siege': [
-    'You are down in the deep layers of the wormhole. From this layer the garrisons stop waiting for you: they start hunting you down.',
-    'Every turn brings enemy reinforcements, and they take tiles as they come. Only by driving the enemy off a tile can you work there in peace.',
-    'On rare occasions they will even jump straight onto your position to catch you.',
+    L10N['ui.commsSiege.001']!.en,
+    L10N['ui.commsSiege.002']!.en,
+    L10N['ui.commsSiege.003']!.en,
   ],
   // ⟪文案调整 2026-10-04⟫ 已审三封正文中英同源，沿用现有逐段覆盖与强调索引。
   'msg-lab-contraband': [
@@ -349,58 +377,54 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
     L10N['ui.firstBriefing.002']!.en,
   ],
   'msg-lowsec-rules': [
-    'The Observation Dept reports you have scanned into low-sec systems, so a note on the rules is in order.',
-    'Low-sec systems are ones the Association cannot look after, so pirates roam them and jump passing ships. Fit whatever you send in there with real firepower and a repair unit — or post a second ship to patrol the system outright.\nAn ambush usually costs you only some cargo, though: with a working warp drive, those raiders rarely manage to hold you.',
+    L10N['ui.commsLowsec.001']!.en,
+    L10N['ui.commsLowsec.002']!.en,
+    L10N['ui.commsLowsec.003']!.en,
   ],
   'msg-wormhole-unlock': [
-    'Memo: your Association standing has reached 40, so you can connect to a wormhole scanning array.',
-    'The array is fitted to a ship and scans the unstable wormholes between systems; fill one window and it pins down one enterable wormhole.',
-    'Found wormholes are kept until you decide to go, five at a time at most. The usual route events still happen while scanning, and an ambush does not stall the work — the array keeps scanning on its own.',
-    'To start a scan: the “Scan for wormholes” tab on the star map’s Undock page.',
-    'Every wormhole found is different — one holds more wreckage, one has denser ore veins, and the garrisons inside come from different outfits — and all of it can be read before you go in. Before you enter, fit the squad with mining lasers and salvagers: ore veins inside are worked with mining lasers, ruins and wreckage with salvagers.',
+    L10N['ui.commsWhunlock.001']!.en,
+    L10N['ui.commsWhunlock.002']!.en,
+    L10N['ui.commsWhunlock.003']!.en,
+    L10N['ui.commsWhunlock.004']!.en,
   ],
   'msg-auro-megastructure': [
-    'We see you have logged the Auro Waste Ring onto the star map, so here is a word of advice: the wreckage on that ring is not ordinary hull — it is several megastructures, still running.',
-    'Most of their cores are still live, and anything that comes inside their range is treated as a target.',
-    'The worse trouble is the sentry swarm riding on it: that is its second set of guns, and shooting down a few only brings replacements out of the hangar. The swarm stays short-ranged most of the time, but once the structure itself takes a hit the surviving automation lets their range out — the long arm reaches past twenty thousand metres and does not pull back for the rest of the engagement.',
-    'One more practical note: the megastructure’s surviving point defense exists to kill drones, and anything you launch gets picked off one by one before it closes. The reverse holds as well — the only way to clear the sentry swarm is weapons with the point defense attribute, and fitting a point defense gun is exactly what that job calls for.',
+    L10N['ui.commsAuro.001']!.en,
+    L10N['ui.commsAuro.002']!.en,
+    L10N['ui.commsAuro.003']!.en,
+    L10N['ui.commsAuro.004']!.en,
   ],
   'msg-exile-swarm': [
-    'The space you have scanned has Squid Deadarmy activity — a rebel outfit that answers to no one and has been trying to overthrow the Association.\nTheir main force has already been broken, but plenty of remnants are still operating, so keep your guard up in those sectors.',
+    L10N['ui.commsExile.001']!.en,
+    L10N['ui.commsExile.002']!.en,
+    L10N['ui.commsExile.003']!.en,
   ],
   'msg-wormhole-nebula': [
-    'Memo: from layer 4 of a wormhole, nebula belts start appearing in the deep. Here it is once, in the order you will meet it.',
-    'A nebula masks the signal of any site inside it: on the first scan you cannot tell what the site is, only see the cloud itself.',
-    'The answer is to scan the same spot again — one region is covered by one scanning array, so the second pass disperses the cloud and the signal shows through.',
-    'The cost is one extra turn, and turns are tight in deep operations anyway, so budget that extra scan when you plan a route instead of finding out at the corner that you are short.',
+    L10N['ui.commsNebula.001']!.en,
+    L10N['ui.commsNebula.002']!.en,
+    L10N['ui.commsNebula.003']!.en,
   ],
   'msg-ambush-retreat': [
-    'That break-off was not a malfunction — do not go taking the ship apart.',
-    'You took hits in low-sec. With armor or hull below half, the ship breaks off on the survival rule; whatever it cannot patch up, it leaves alone and returns to port to wait for you.',
-    'There are two rules. Below half hull it breaks off automatically, and the ship is never abandoned. If it can patch up, it stays where it is and keeps working; only if it cannot does it head home.',
-    'Self-repair has one precondition: a mid-slot hull repair unit has to be fitted. It only burns the repair kit that matches the unit — a civilian unit takes Civilian Repair Kits, five to a batch and a small patch each, while MK1 and MK2 take Military Repair Kits, three to a batch and a bigger patch each. Both can be built on the Industry page and the blueprints are sold at market. Running dry, or having no repair unit at all, is what sends it home.',
+    L10N['ui.commsRetreat.001']!.en,
+    L10N['ui.commsRetreat.002']!.en,
+    L10N['ui.commsRetreat.003']!.en,
+    L10N['ui.commsRetreat.004']!.en,
   ],
   'msg-pirate-capture-web': [
-    'Route Safety reports something new: raider groups are fielding a “Raider Electronic Ship”. It carries no heavy guns — its job is to spread a raider snare net.',
-    'The ship caught in it takes four hits at once: mobility down to a tenth, every thruster dead, evasion gone entirely, and weapon range cut by 500 metres.',
-    'The net is tied to the ship that cast it: sink that ship and it releases at once, and the caught ship is back to normal on the spot; open the range past 4,500 metres and the net snaps on its own.',
-    'The good news: it spreads the net once per engagement and only over whatever it had locked at that moment — once it is broken, no second net comes.',
-    'So do not rush to switch targets when you meet one: kill it first. Running a squad into a wormhole, have the escorts soak fire for whoever is caught, or simply take it down before it casts.',
+    L10N['ui.commsWeb.001']!.en,
+    L10N['ui.commsWeb.002']!.en,
+    L10N['ui.commsWeb.003']!.en,
+    L10N['ui.commsWeb.004']!.en,
   ],
-  /** 首匣 → 舰船插件（2026-09-26 船长亲笔三段的英文；**必须三段**，行数不符会整段回落中文） */
+  /** 首匣 → 舰船插件：中文与英文正文同源，安装与出售禁令不变。 */
   'msg-blackbox-plug-unlock': [
-    // ⟪文案调整 2026-10-01⟫ 中文原句由「和谜质一样」改「和装备一样」（船长报障）⇒ 英文同步：
-    //   原开头 "A ship plug is a device as remarkable as Enigma." 一并去掉 Enigma 比喻。
-    //   ⚠ 仍是**一段**（`COMMS_BODY_EN` 按行数对齐，拆成两段就会整段回落中文）。
-    //   台账：本次工作文档 `docs/design/blackbox-copy-fix-20261001.md`。
-    'You pulled a black box out of a wreck. The data sealed inside can be used to build special ship plugs.',
-    'In light of that, the Association is opening a limited shop window for you: the blueprints for building ship plugs are exchanged there for standing. The assembly unit that builds ship plugs is open to you as well.',
-    'A ship plug is not like ordinary equipment: once fitted it cannot be taken off, nor swapped for another. It gives the ship a large bonus, so think over which one you want before you place the order. A ship carrying a plug cannot be put into the ship warehouse, nor listed for sale on the market.',
+    L10N['ui.commsPlug.001']!.en,
+    L10N['ui.commsPlug.002']!.en,
+    L10N['ui.commsPlug.003']!.en,
   ],
   'msg-cinder-warning': [
-    'Pilot, this is Association Route Safety.',
-    'You have just lit the Cinder Sector, so here is a straight word: visibility there is terrible, and deep in you navigate by instruments alone. What works that space year-round is fully armed formations, not stragglers. Once you are inside their range, whether you come out depends only on how long your armor holds.',
-    'The Association does not advise taking an unmodified ship in alone. If you go anyway, fill out armor and thrusters on the Fitting page before departure and carry spare ammo — fights there do not hand out a second loading.',
+    L10N['ui.commsCinder.001']!.en,
+    L10N['ui.commsCinder.002']!.en,
+    L10N['ui.commsCinder.003']!.en,
   ],
 }
 
@@ -448,6 +472,12 @@ export function commsBriefText(brief: string): string {
 /** 正文段落（英文；查不到或行数不符 ⇒ 原样返回中文，绝不错行） */
 export function commsBodyText(id: string, paragraphs: readonly string[]): readonly string[] {
   if (!isEn()) return paragraphs
+  if (id.startsWith('dlg:')) {
+    const spec = COMMS_DIALOGUE_ID[id.slice(4)]
+    if (!spec || spec.count !== paragraphs.length) return paragraphs
+    const script = commsDialogueText({ id: id.slice(4), title: '', lines: paragraphs.map((text) => ({ speaker: '', text })) })
+    return script.lines.map((line) => `${line.speaker}: ${line.text}`)
+  }
   const en = COMMS_BODY_EN[id]
   return en !== undefined && en.length === paragraphs.length ? en : paragraphs
 }
