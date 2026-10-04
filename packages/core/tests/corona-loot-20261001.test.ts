@@ -6,7 +6,7 @@
  * > 需要玩家叠满才威力较强。闪现装置为中槽，和R族同款，挨打触发闪现。但是冷却时间延长到12秒。**」
  *
  * 同日逐条追问的裁定（决定实现口径）：
- * - AI 核心：触发点 = **回收炉烧 R 族残骸时**（甲）· 产出率 **10%/批** ＋ **60/30/10**（甲·甲）·
+ * - AI 核心：2026-10-04 限定为光环稀有残骸回收 · 产出率 **10%/批** ＋ **60/30/10**保持 ·
  *   **只在回收炉出**（甲）· **直接入核心账本**（船长答「如果是〔回收时抽中〕，**直接入账**」）；
  * - 激光武器：只做**一档**、势力特色、**放入残骸回收的奖励池**（甲 ＋ 追加「将AI核心也放进这个池子」）；
  *   曲线「单发 = 正常 MK3 的 30%」· 步长 **−300ms** · 下限 **600ms** · 射程 **7,000m** ·
@@ -265,38 +265,37 @@ describe('R 族势力特色装备：真实战斗', () => {
 })
 
 describe('R 族残骸回收的 AI 核心（回收炉）', () => {
-  it('⑧ 只有 R 族残骸掷骰；其余各族一次都不掷', () => {
-    // R 族（普通 / 稀有）都可能命中
+  it('⑧ 只有 R 族稀有残骸掷骰；普通与其余各族不出核心', () => {
     const rHits = Array.from({ length: 4000 }, (_, i) => rollRecycleCoreGain('wreck-r-inv', i + 1)).filter(
       (x) => x !== undefined,
     )
     const rHitsRare = Array.from({ length: 4000 }, (_, i) => rollRecycleCoreGain('wreck-rare-r-inv', i + 1)).filter(
       (x) => x !== undefined,
     )
-    expect(rHits.length, 'R 族普通残骸应有命中').toBeGreaterThan(0)
+    expect(rHits.length, 'R 族普通残骸不再产出核心').toBe(0)
     expect(rHitsRare.length, 'R 族稀有残骸应有命中').toBeGreaterThan(0)
     // 出货率 ≈ 10%
-    const rate = rHits.length / 4000
+    const rate = rHitsRare.length / 4000
     expect(rate, `实测出货率 ${rate}（应 ≈ ${RECYCLE_CORE_SHARE}）`).toBeGreaterThan(0.07)
     expect(rate).toBeLessThan(0.13)
     // 档位分布 ≈ 60/30/10
     const counts = { gamma: 0, beta: 0, alpha: 0 }
-    for (const t of rHits) counts[t] += 1
-    const total = rHits.length
+    for (const t of rHitsRare) counts[t] += 1
+    const total = rHitsRare.length
     expect(counts.gamma / total, '伽马最常见（60%）').toBeGreaterThan(0.5)
     expect(counts.alpha / total, '阿尔法最稀有（10%）').toBeLessThan(0.2)
     console.log(
-      `  [读数] ${4000} 批 R 族残骸：命中 ${rHits.length} 次（${(rate * 100).toFixed(1)}%）· ` +
+      `  [读数] ${4000} 批 R 族稀有残骸：命中 ${rHitsRare.length} 次（${(rate * 100).toFixed(1)}%）· ` +
         `伽马 ${counts.gamma} / 贝塔 ${counts.beta} / 阿尔法 ${counts.alpha}` +
         `（权重 ${RECYCLE_CORE_WEIGHTS.gamma}/${RECYCLE_CORE_WEIGHTS.beta}/${RECYCLE_CORE_WEIGHTS.alpha}）`,
     )
     // 其余各族：一次都不掷（既有各族回收产出零变化的硬保证）
-    for (const id of ['wreck-a-hi', 'wreck-c-wh', 'wreck-d-wh', 'wreck-e-wh', 'wreck-g-wh', 'wreck-h-hi', 'wreck-h-inv']) {
+    for (const id of ['wreck-a-hi', 'wreck-c-wh', 'wreck-d-wh', 'wreck-e-wh', 'wreck-g-wh', 'wreck-h-hi', 'wreck-rare-h-hi', 'wreck-rare-a-hi', 'wreck-unknown', 'wreck-rare-unknown']) {
       for (let i = 1; i <= 200; i++) {
         expect(rollRecycleCoreGain(id, i), `${id} 不该出核心`).toBeUndefined()
       }
     }
     // 同批可复现、不同批不同
-    expect(rollRecycleCoreGain('wreck-r-inv', 7)).toBe(rollRecycleCoreGain('wreck-r-inv', 7))
+    expect(rollRecycleCoreGain('wreck-rare-r-inv', 7)).toBe(rollRecycleCoreGain('wreck-rare-r-inv', 7))
   })
 })

@@ -90,10 +90,9 @@ describe('PD激光：参数 = 船长令', () => {
     )
   })
 
-  it('② 产出面：R 族残骸池第三件（2026-10-03 起）＋ 市场只收不卖 ＋ 图鉴登记（与三叉戟同链）', () => {
+  it('② 产出面：R 族残骸池第四件 ＋ 市场只收不卖 ＋ 图鉴登记（与三叉戟同链）', () => {
     expect(FOE_LAIR_GEAR.R, '稀有残骸高级箱专属池应含本件').toContain('mod-lair-pd-r')
-    // ⟪2026-10-03 船长选「甲」⟫ 跃迁规避装置移出专属池（改走普通残骸主题件）⇒ 四件 → 三件武器
-    expect(FOE_LAIR_GEAR.R!.length, 'R 族专属池现为三件武器').toBe(3)
+    expect(FOE_LAIR_GEAR.R!.length, 'R 族现在四件').toBe(4)
     expect(mod('mod-lair-pd-r')!.unreleased, '势力件是正式产出（不得标 unreleased）').toBeUndefined()
   })
 })

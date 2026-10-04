@@ -41,14 +41,7 @@ import type { BattleState } from '../src/state'
 
 const ctx = buildSimContext()
 const bal = ctx.balance.battle
-/**
- * H 族**族专属件全集**（三件 · 2026-09-26 船长定）—— ⚠ 与 `FOE_LAIR_GEAR.H` **不是同一个集合**：
- * ⟪**2026-10-03 船长选「甲」**⟫ 捕获网改走 `h-hi` 组的**主题件**（普通残骸回收直出）⇒
- * 高级箱专属池只剩 **H_POOL 两件**（电子舱 · 重袭无人机）；捕获网仍在全集里、仍在本文件全部机制用例中。
- */
-const H_ALL = ['mod-lair-ecm-h', 'mod-lair-web-h', 'drone-ink-heavy'] as const
-/** 高级箱**专属池**（`FOE_LAIR_GEAR.H`，2026-10-03 起两件） */
-const H_POOL = ['mod-lair-ecm-h', 'drone-ink-heavy'] as const
+const H_POOL = ['mod-lair-ecm-h', 'mod-lair-web-h', 'drone-ink-heavy'] as const
 
 /** 造一条装了指定件的我方船（返回规格 + 状态） */
 function carrierOf(moduleId: string, shipId = 'sh-shrike'): { state: GameState; id: string; spec: UnitSpec } {
@@ -83,11 +76,11 @@ function battleOf(spec: UnitSpec, foes: readonly UnitSpec[] = []): BattleState {
 }
 
 describe('H 族势力装备 · 池子与掉落链路', () => {
-  it('`FOE_LAIR_GEAR.H` 两件齐备（2026-10-03 起）· 族专属件全集三件都能在目录里解析到', () => {
+  it('`FOE_LAIR_GEAR.H` 三件齐备、且都能在目录里解析到', () => {
     expect(FOE_LAIR_GEAR.H).toEqual([...H_POOL])
     const card = ANOMALIES.find((a) => a.foeFamily === 'H')!
     expect(lairGearOf(card)).toEqual([...H_POOL])
-    for (const id of H_ALL) {
+    for (const id of H_POOL) {
       expect(ctx.modules.has(id) || ctx.items.has(id), `${id} 必须能被解析`).toBe(true)
     }
     // 两件高槽模块 ＋ 一架攻坚机（船长：「分别占据高槽，高槽，攻坚机」）
@@ -96,7 +89,7 @@ describe('H 族势力装备 · 池子与掉落链路', () => {
     expect(ctx.items.get('drone-ink-heavy')!.droneClass).toBe('assault')
   })
 
-  it('高级箱：集齐前不重复掉同一件，两件全到手后才允许重复', () => {
+  it('高级箱：集齐前不重复掉同一件，三件全到手后才允许重复', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 4242 })
     const profile = { rare: true as const, lairGear: H_POOL, tier: 'common' as const }
     const got = new Set<string>()

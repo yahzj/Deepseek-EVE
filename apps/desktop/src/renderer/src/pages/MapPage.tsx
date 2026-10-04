@@ -1092,8 +1092,7 @@ function WreckCard({
       if (!notes.includes(note)) notes.push(note)
     }
     const feature = recycleFeatureOf(
-      // 入侵族特色池（2026-10-03）：族专属件 ＋ 家族 MK2（星图卡与工业页回收卡共用同一份取数）
-      { lowSec, threat: group.threat, loot: group.theme, themeGear: group.themeGear, themeGearMk2: group.themeGearMk2 },
+      { lowSec, threat: group.threat, loot: group.theme },
       { mods: engine.ctx.modules, items: engine.ctx.items },
     )
     for (const p of feature.named) if (!namedList.includes(p)) namedList.push(p)

@@ -3208,49 +3208,10 @@ for (const m of MODULES) {
       const bad = [...union].filter((id) => !own.has(id)).concat([...own].filter((id) => !union.has(id)))
       check(bad.length === 0, `残骸组契约：${g.key} 的 theme.${key} 与成员卡并集不一致（差异：${bad.join(' / ')}）`)
     }
-    /**
-     * ⑤★ **入侵族特色池契约**（**2026-10-03 船长定**「普通残骸有10%概率出特色掉落，特色掉落里，
-     * MK2和势力装备混在一起。稀有残骸必定出特色掉落」）——四条：
-     * ① `region: 'inv'` 的两组必须配 `themeGear`（族专属件）＋ `themeGearMk2`（家族 MK2）；其余组不许配；
-     * ② 两组件的 `theme` 必须为空（走 `themeGear` 那条替换支，而不是会把整条直出链压垮的"主题追加件"）；
-     * ③ 特色池的族专属件**必须是模块**（抽取池按 `ctx.modules` 过滤）且**不得是武器**（B3.1「武器移出主题」）；
-     * ④ 族专属件与"稀有箱专属池"（`FOE_LAIR_GEAR[族]`）**不得重叠** ⇒ 两条支路各自独立；
-     *    且入侵组必须配 `rareTheme`（稀有箱未命中专属支时的兜底件 —— 船长令"稀有残骸必定出特色掉落"）。
-     */
-    const gearIds = new Set<string>(FOE_LAIR_GEAR[g.family] ?? [])
-    const isInv = g.region === 'inv'
-    check(
-      isInv === (g.themeGear !== undefined && g.themeGear.length > 0),
-      `残骸组契约：${g.key} 的 themeGear 只在入侵组（region='inv'）配 —— 现 region=${g.region}、themeGear=${JSON.stringify(g.themeGear)}`,
-    )
-    if (isInv) {
-      check(
-        (g.theme.modules?.length ?? 0) === 0 && (g.theme.mk2?.length ?? 0) === 0,
-        `残骸组契约：${g.key}（入侵组）的 theme 必须为空（走 themeGear 特色池；旧"主题追加件"会把整条直出链压低）`,
-      )
-      check(
-        (g.themeGearMk2?.length ?? 0) > 0,
-        `残骸组契约：${g.key}（入侵组）须配 themeGearMk2（家族 MK2；船长：「MK2和势力装备混在一起」）`,
-      )
-      check(
-        (g.rareTheme?.length ?? 0) > 0,
-        `残骸组契约：${g.key}（入侵组）须配 rareTheme（稀有箱未命中专属支时的兜底件；船长：「稀有残骸必定出特色掉落」）`,
-      )
-      for (const id of g.themeGear ?? []) {
-        const mod = MODULES.find((m) => m.id === id)
-        check(mod !== undefined, `残骸组契约：${g.key} 的特色池族专属件 ${id} 不是模块（直出支只收模块）`)
-        check(
-          mod === undefined || !['turret', 'laser', 'missile'].includes(mod.slot),
-          `残骸组契约：${g.key} 的特色池族专属件 ${id} 是武器（B3.1：武器不入主题；唯一例外 = 穹顶守卫三把 MK3）`,
-        )
-        check(!gearIds.has(id), `残骸组契约：${g.key} 的 ${id} 同时挂在"特色池"与"稀有箱专属池"⇒ 两条支路重叠`)
-      }
-      for (const id of g.themeGearMk2 ?? []) {
-        check(
-          !id.endsWith('-3'),
-          `残骸组契约：${g.key} 的特色池家族件 ${id} 不该是 MK3（MK3 一律走碎片）`,
-        )
-      }
+    // 2026-10-04 回调契约：普通残骸主题件不得收录稀有专属势力装备。
+    const factionGearIds = new Set(Object.values(FOE_LAIR_GEAR).flat())
+    for (const id of [...(g.theme.modules ?? []), ...(g.theme.mk2 ?? [])]) {
+      check(!factionGearIds.has(id), `残骸组契约：${g.key} 的普通主题件 ${id} 是势力专属件，应仅在稀有专属池`)
     }
     // 组威胁 = 组内产残骸卡**回收口径体量**的算术平均（取整）——2026-09-25「冻结残骸经济」起与 `threat` 脱钩
     const avgThreat = Math.round(producing.reduce((s, a) => s + wreckInjectThreatOf(a), 0) / producing.length)
@@ -3275,8 +3236,7 @@ for (const m of MODULES) {
   )
   console.log(
     `· 残骸组契约：${groupsChecked} 组（成员覆盖 ${memberOf.size} 张卡 · 保值 ±3% · 组池矿物 ⊆ 卡池并集 · 钛钢 ≥40% · 主题件 = 并集 · 组威胁/档位与卡一致）` +
-      ` · 出量梯度 常 ${WRECK_YIELD_TIER_MUL.common} / 险 ${WRECK_YIELD_TIER_MUL.risky} / 危 ${WRECK_YIELD_TIER_MUL.dire}` +
-      ` · 入侵族特色池：2 组（族专属件非武器 · 与稀有箱专属池不重叠 · themeMk2/rareTheme 齐备）`,
+      ` · 出量梯度 常 ${WRECK_YIELD_TIER_MUL.common} / 险 ${WRECK_YIELD_TIER_MUL.risky} / 危 ${WRECK_YIELD_TIER_MUL.dire}`,
   )
 
   /* ── B3.2 档位基础池（2026-09-14 船长「所有残骸回收都加钛钢」）：

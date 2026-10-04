@@ -10,10 +10,9 @@
  *    并入本族独立卡，2026-09-26 修玩家报障那条）；
  * 3. **捞出来的是本族残骸**：选「入侵残骸」打捞 ⇒ 稀有箱 = **`wreck-rare-r-inv`**（＝势力装备的载体）、
  *    普通残骸 = `wreck-r-inv`；
- * 4. **回收画像**：`wreck-rare-r-inv` 的 `lairGear` = `FOE_LAIR_GEAR.R`（**三件武器** · ⟪2026-10-03 起⟫）·
- *    档位 `dire` ⇒ 专属命中率 **10%/箱**；普通残骸的主题件 = **跃迁规避装置**（同日起从专属池移出、
- *    改走"普通残骸直出"这条面 —— 船长报障「普通残骸卡牌的特色掉落只有基础的MK2系列」的修法）；
- * 5. **真回收炉**：烧 `wreck-r-inv` 若干批 ⇒ **AI 核心入核心账本**（10%/批，60/30/10）；烧
+ * 4. **回收画像**：`wreck-rare-r-inv` 的 `lairGear` = `FOE_LAIR_GEAR.R`（四件势力装备）· 档位 `dire` ⇒
+ *    专属命中率 **10%/箱**；
+ * 5. **2026-10-04 回调**：普通残骸不出核心，烧 `wreck-rare-r-inv` 才判定核心（10%/批，60/30/10）；烧
  *    `wreck-rare-r-inv` ⇒ 装备库/核心账本至少一处进账 ＋ 保底矿物照给。
  */
 import { describe, expect, it } from 'vitest'
@@ -119,28 +118,23 @@ describe('③ 捞出来的是本族残骸（势力装备的载体）', () => {
   })
 })
 
-describe('④ 回收画像：稀有残骸挂着三件武器类势力装备', () => {
-  it('lairGear = FOE_LAIR_GEAR.R（三件）· 档位 dire ⇒ 命中率 10%', () => {
-    expect(R_GEAR.length, 'R 族残骸族专属池现在三件武器（2026-10-03 跃迁规避装置改走主题件）').toBe(3)
+describe('④ 回收画像：稀有残骸挂着四件势力装备', () => {
+  it('lairGear = FOE_LAIR_GEAR.R（四件）· 档位 dire ⇒ 命中率 10%', () => {
+    expect(R_GEAR.length, 'R 族残骸族专属池现在四件').toBe(4)
     const prof = recycleProfileOf(ctx, 'wreck-rare-r-inv')!
     expect(prof, '稀有残骸有回收画像').toBeTruthy()
     expect(prof.tier).toBe('dire')
     expect(prof.family, '画像带来源族（核心掉落判据）').toBe('R')
     expect(prof.lairGear, '专属池 = FOE_LAIR_GEAR.R 逐字相等').toEqual(R_GEAR)
     const plain = recycleProfileOf(ctx, 'wreck-r-inv')!
-    expect(plain.lairGear, '普通残骸不带专属池（只走保底 ＋ 主题件）').toBeUndefined()
+    expect(plain.lairGear, '普通残骸不带专属池（只走保底）').toBeUndefined()
     expect(plain.family).toBe('R')
-    // ⟪2026-10-03 船长改口径⟫ 普通残骸走 `themeGear` 特色池（10%/批 · 专属件 : 家族 MK2 = 1 : 20）
-    expect(plain.themeGear, '普通残骸的族专属件 = 跃迁规避装置').toEqual(['mod-lair-blink-r'])
-    expect(plain.themeGearMk2?.length ?? 0, '特色池另有家族 MK2').toBeGreaterThan(0)
-    expect(plain.theme?.modules ?? [], '不再走"主题追加件"那条').toEqual([])
-    expect(R_GEAR, '该件已从专属池移出（同一件不许同时挂两条支路）').not.toContain('mod-lair-blink-r')
-    console.log(`  [读数] 画像：稀有 lairGear=${R_GEAR.join(' / ')}（${prof.tier} 档 · 10%/箱）· 普通特色池=跃迁规避装置 ＋ MK2×${plain.themeGearMk2?.length ?? 0}`)
+    console.log(`  [读数] 画像：稀有 lairGear=${R_GEAR.join(' / ')}（${prof.tier} 档 · 10%/箱）`)
   })
 })
 
-describe('⑤ 开稀有箱：三件武器类势力装备都出得来', () => {
-  it('连开 400 箱 ⇒ 三件都出现过；且"集齐前不重复"（前 3 次专属命中互不相同）', () => {
+describe('⑤ 开稀有箱：四件势力装备都出得来', () => {
+  it('连开 400 箱 ⇒ 四件都出现过；且"集齐前不重复"（前 4 次专属命中互不相同）', () => {
     const { s } = invasion()
     const prof = recycleProfileOf(ctx, 'wreck-rare-r-inv')!
     /** 只统计走"专属装备"那一支的命中（note 前缀区分：专属装备 / 主题装备） */
@@ -159,22 +153,22 @@ describe('⑤ 开稀有箱：三件武器类势力装备都出得来', () => {
     }
     const unique = new Set(gearHits)
     expect(gearHits.length, `400 箱里应有专属命中（实测 ${gearHits.length}）`).toBeGreaterThan(10)
-    expect([...unique].sort(), '三件势力装备必须都能开出来').toEqual([...R_GEAR].sort())
-    expect(themeHits, '未命中时保底给主题件（跃迁规避装置）').toBeGreaterThan(0)
+    expect([...unique].sort(), '四件势力装备必须都能开出来').toEqual([...R_GEAR].sort())
+    expect(themeHits, '未命中时保底给主题件').toBeGreaterThan(0)
     expect(mineralHits, '每箱都附一批高阶矿物').toBe(400)
     const rate = gearHits.length / 400
     expect(rate, `专属命中率 ${(rate * 100).toFixed(1)}% 应≈10%`).toBeGreaterThan(0.05)
     expect(rate).toBeLessThan(0.16)
     console.log(
       `  [读数] 400 箱：专属命中 ${gearHits.length} 次（${((gearHits.length / 400) * 100).toFixed(1)}%）· ` +
-        `集齐三件用时 ${gearHits.findIndex((_, i) => new Set(gearHits.slice(0, i + 1)).size === 3) + 1} 次命中 · ` +
+        `集齐四件用时 ${gearHits.findIndex((_, i) => new Set(gearHits.slice(0, i + 1)).size === 4) + 1} 次命中 · ` +
         `主题件 ${themeHits} · 矿物 ${mineralHits}`,
     )
   })
 })
 
 describe('⑥ 真回收炉：烧 R 族残骸出 AI 核心', () => {
-  it('普通残骸烧 80 批 ⇒ 核心入账（10%/批）＋ 保底矿物照给；对照族一批都不出', () => {
+  it('普通残骸烧 80 批 ⇒ 不出核心，保底矿物照给', () => {
     const { s } = invasion()
     const batches = 80
     addWare(s, 'wreck-r-inv', RECYCLE_BATCH_M3 * batches)
@@ -193,20 +187,39 @@ describe('⑥ 真回收炉：烧 R 族残骸出 AI 核心', () => {
     expect(countWare(s, 'wreck-r-inv'), '料尽 = 烧完').toBe(0)
     /** ⚠ 末批与炉子一起消失 ⇒ 读不到最终批数，只能保证"确实烧到了最后"（前一次读到 ≥75） */
     expect(done, '炉子确实烧到了最后（末批随炉消失）').toBeGreaterThanOrEqual(batches - 5)
-    expect(cores, `烧 ${batches} 批应出核心（10%/批）`).toBeGreaterThan(0)
-    expect(cores, '不该离谱地多').toBeLessThanOrEqual(batches * 0.25)
+    expect(cores, '普通残骸不出核心').toBe(0)
+    expect(s.logs.some((l) => l.textId === 'core.industry.045'), '不写核心产出日志').toBe(false)
+    expect(countWare(s, 'min-tritanium'), '矿物照给').toBeGreaterThan(0)
     /** 对照：H 族残骸（同为入侵族但没登记核心特色）一批都不出 */
     let hHits = 0
-    for (let i = 1; i <= 500; i++) if (rollRecycleCoreGain('wreck-h-inv', i) !== undefined) hHits += 1
+    for (let i = 1; i <= 500; i++) if (rollRecycleCoreGain('wreck-rare-h-hi', i) !== undefined) hHits += 1
     expect(hHits, 'H 族一次都不该出核心').toBe(0)
     console.log(
-      `  [读数] 回收炉烧 ${batches} 批 wreck-r-inv：核心 +${cores} 枚（约 ${((cores / batches) * 100).toFixed(1)}%/批，标称 10%）· 对照 H 族 500 批命中 ${hHits}`,
+      `  [读数] 回收炉烧 ${batches} 批普通光环残骸：核心 +${cores}；墨潮稀有残骸500批核心命中 ${hHits}`,
     )
+  })
+
+  it('稀有残骸烧80具，核心按逐批单点入账，不落物品仓库', () => {
+    const { s } = invasion()
+    const batches = 80
+    const expected = Array.from({ length: batches }, (_, i) => rollRecycleCoreGain('wreck-rare-r-inv', i + 1)).filter((x) => x !== undefined)
+    addWare(s, 'wreck-rare-r-inv', RARE_WRECK_VOLUME_M3 * batches)
+    const before = coreCount(s)
+    expect(startRecycleRun(s, 'wreck-rare-r-inv', 'pilot', ctx).ok).toBe(true)
+    for (let i = 0; i < batches + 4 && s.refineRuns.length; i++) {
+      s.gameMs += RECYCLE_CYCLE_MS
+      advanceRefining(s, ctx)
+    }
+    expect(expected.length).toBeGreaterThan(0)
+    expect(coreCount(s) - before).toBe(expected.length)
+    expect(s.logs.filter((l) => l.textId === 'core.industry.045')).toHaveLength(expected.length)
+    for (const type of ['gamma','beta','alpha']) expect(countWare(s, `ai-core-${type}`)).toBe(0)
+    expect(s.refineRuns).toHaveLength(0)
   })
 
   it('稀有残骸烧 1 具 ⇒ 至少一处进账（专属装备 / 主题件 / 核心 / 矿物）', () => {
     const { s } = invasion()
-    addWare(s, 'wreck-rare-r-inv', RARE_WRECK_VOLUME_M3) // 一件 = 30 m³（= 3 批 × 10 m³）
+    addWare(s, 'wreck-rare-r-inv', RARE_WRECK_VOLUME_M3) // 一件 = 30 m³，即一批。
     const prof = recycleProfileOf(ctx, 'wreck-rare-r-inv')!
     const mineralIds = (prof.pool ?? []).map(([id]) => id)
     const mineralsOf = (): number => mineralIds.reduce((n, id) => n + countWare(s, id), 0)

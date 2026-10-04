@@ -96,12 +96,10 @@ describe('三叉戟光束炮：件参数与产出面', () => {
 
   it('② 产出面：R 族势力件池第三件 ＋ 市场只收不卖 ＋ 图鉴登记（每族不重复）', () => {
     expect(FOE_LAIR_GEAR.R, '稀有残骸高级箱专属池应含本件').toContain('mod-lair-beam-r')
-    /** ⚠ 池子随船长令长大：2026-10-01 两件 → 2026-10-02 追加 PD激光 = 四件 →
-     *  ⟪2026-10-03 船长选「甲」⟫ 跃迁规避装置**移出**（改走 `r-inv` 组的主题件）⇒ **三件武器** */
-    expect(FOE_LAIR_GEAR.R!.length, 'R 族专属池现为三件武器（2026-10-03 起）').toBe(3)
-    expect(FOE_LAIR_GEAR.R, '跃迁规避装置已移出专属池（它的产出面 = 普通残骸主题件）').not.toContain('mod-lair-blink-r')
-    // 其余族的池子未被本次改动碰到（除 H 族同批同款处理）
-    expect(FOE_LAIR_GEAR.H!.length, 'H 族同批移出捕获网 ⇒ 两件').toBe(2)
+    /** ⚠ 池子随船长令长大：2026-10-01 两件 → 2026-10-03 三件（本件）→ **同日再追加 PD激光 = 四件** */
+    expect(FOE_LAIR_GEAR.R!.length, 'R 族现在四件（含 2026-10-02 追加的 PD激光）').toBe(4)
+    // 其余族的池子未被本次改动碰到（零行为变化）
+    expect(FOE_LAIR_GEAR.H!.length).toBe(3)
     expect(FOE_LAIR_GEAR.A!.length).toBe(3)
     const m = moduleOf('mod-lair-beam-r')!
     expect(m.unreleased, '势力件是正式产出（不得标 unreleased）').toBeUndefined()

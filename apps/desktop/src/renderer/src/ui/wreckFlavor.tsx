@@ -26,16 +26,6 @@ export type RecycleFeatureSrc = {
   threat: number
   /** 该敌群主题追加件（中安 = modules 组、低安 = mk2 组；缺省无主题件） */
   loot?: { modules?: readonly string[]; mk2?: readonly string[] }
-  /**
-   * **入侵族特色池的族专属件**（**2026-10-03**）：`region: 'inv'` 的两组改用特色池后，
-   * 具名件不再挂在 `loot`（那组 `theme` 为空），而是走这里 ⇒ 卡面「特色掉落」照样印件名。
-   */
-  themeGear?: readonly string[]
-  /**
-   * **入侵族特色池的家族 MK2**（权重 20；具名后可读作「跃迁规避装置 ＋ MK2 系列装备」）——
-   * 只用来决定兜底那句是否还要重复印「另有 MK2 系列装备」。
-   */
-  themeGearMk2?: readonly string[]
   /** 稀有残骸：该敌群专属装备池（模块 id 或物品 id），开箱额外掉落 → 具名列特色 */
   lairGear?: readonly string[]
 }
@@ -89,11 +79,8 @@ export function recycleFeatureOf(src: RecycleFeatureSrc, maps: NameMaps): Recycl
     named.push(names.join(tr("ui.MatterTechTab.017")))
     return { label: tr("ui.MapPage.058"), named, generic: [], tone: 'strong' }
   }
-  // 主题追加件（中安 modules 组、低安 mk2 组）——按敌群特色具名；
-  // 🔴 **2026-10-03 补入侵族特色池**：`region: 'inv'` 的两组不再用 `theme`（那两组 `theme` 为空），
-  // 具名件改从 `themeGear`（族专属件）取 ⇒ 卡面照样印「跃迁规避装置 / 墨潮捕获网」，
-  // `themeGearMk2` 表示池里还有家族 MK2，泛化那句就不必再重复。
-  const themed = [...(src.loot?.modules ?? []), ...(src.loot?.mk2 ?? []), ...(src.themeGear ?? [])]
+  // 主题追加件（中安 modules 组、低安 mk2 组）——按敌群特色具名
+  const themed = [...(src.loot?.modules ?? []), ...(src.loot?.mk2 ?? [])]
   for (const id of themed) {
     if (!maps.mods.has(id)) continue
     const name = moduleName(id)
@@ -101,11 +88,7 @@ export function recycleFeatureOf(src: RecycleFeatureSrc, maps: NameMaps): Recycl
   }
   const generic: string[] = []
   const series = [tr('ui.wreckFlavor.001')]
-  /**
-   * `lowSec`（低安门槛 MK2）或 **特色池里带家族 MK2**（2026-10-03）⇒ 泛化那句补「MK2 系列装备」。
-   * ⚠ 特色池那条支路把 MK2 与族专属件**混在一个池**里（1 : 20），所以要写出来；否则玩家会以为只有那件专属件。
-   */
-  if (src.lowSec || (src.themeGearMk2?.length ?? 0) > 0) series.push(tr('ui.wreckFlavor.002'))
+  if (src.lowSec) series.push(tr('ui.wreckFlavor.002'))
   // 有具名特色件时用「另有…」；没有（整行退为「其他掉落」）时直接给系列名
   generic.push(`${named.length > 0 ? tr("ui.FitPage.072") : ''}${series.join(tr("ui.MatterTechTab.017"))}`)
   const frag = fragClause(src.threat)
