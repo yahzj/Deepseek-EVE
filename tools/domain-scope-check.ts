@@ -154,6 +154,7 @@ const SHARED: readonly string[] = [
   '**/package.json',
   'apps/desktop/src/renderer/src/App.tsx',
   'apps/desktop/src/renderer/src/ui/AppShell.tsx',
+  'apps/desktop/src/renderer/src/ui/classicSidebars.ts',
   'apps/desktop/src/renderer/src/game/**',
   'pnpm-workspace.yaml',
   'tsconfig*.json',

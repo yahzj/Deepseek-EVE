@@ -436,9 +436,11 @@ async function main() {
       assert(await page.js(`!document.querySelector('.app-log-filter:nth-child(2)').classList.contains('is-off')`),'收起重置日志筛选');
       await page.tap('.app-log-filter:first-child',false);
       await page.js(`document.querySelector('.app-classic-nav-toggle').focus()`);
-      await page.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
+      assert(await page.js(`document.activeElement===document.querySelector('.app-classic-nav-toggle')`),'导航开关未获得键盘焦点');
+      await page.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'});
       await page.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
-      assert(!await page.js(`!!document.querySelector('.app-nav-side.is-compact')`),'键盘不能展开导航');
+      await page.wait(`!document.querySelector('.app-nav-side.is-compact')`);
+      assert.equal(await page.js(`getComputedStyle(document.querySelector('.app-nav-item')).transitionProperty`),'color, background-color, border-color','展开继承尺寸动画');
       await page.tap('.app-classic-nav-toggle',false);
       await page.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});await sleep(100);
       await page.tap('.app-log-head-right button',false);assert(await page.js(`document.querySelector('.app-log-side').classList.contains('is-collapsed')`));
