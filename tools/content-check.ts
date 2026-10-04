@@ -2024,14 +2024,14 @@ for (const m of MODULES) {
     /**
      * ⚠ **2026-10-01 判据源迁移**（船长令「以市场为准，三处都改，层级按市场来」）：
      * 一级类型单点从「MarketPage 里手写的 `KIND_TEXT` 字面量」收敛到 `ui/itemSubs.ts` 的
-     * `COMMODITY_TABS`（市场 / 仓库 / 货仓 / 手册图鉴**四处共读同一张表**）⇒ 契约的**判据源随单点一起搬**，
+   * `MARKET_DOMAIN_TABS`（市场的领域一级单点）⇒ 契约的**判据源随单点一起搬**，
      * 否则契约只会对着一个已不存在的手写表报红（本批实测：3 条误红）。
      * **契约意图一字未改**：货柜与货物同级且紧跟其后 · 一级类型名叫「货物」不叫「物品」· 黑匣单独一档。
      */
     const subPath = 'apps/desktop/src/renderer/src/ui/itemSubs.ts'
     const subSrc = stripComments(readSrc(subPath)).join('\n')
-    /** `COMMODITY_TABS` 的项：键 + 该项 `label:` 的原文（`tr('id')` 或 `RACK_LABELS.x` 这类引用） */
-    const tabsAt = subSrc.indexOf('export const COMMODITY_TABS')
+    /** `MARKET_DOMAIN_TABS` 的项：键 + 该项 `label:` 的原文 */
+    const tabsAt = subSrc.indexOf('export const MARKET_DOMAIN_TABS')
     const tabsEnd = tabsAt < 0 ? -1 : subSrc.indexOf('\n]', tabsAt)
     const tabsSeg = tabsAt < 0 || tabsEnd < 0 ? '' : subSrc.slice(tabsAt, tabsEnd + 2)
     const tabEntries = [...tabsSeg.matchAll(/key:\s*'([\w-]+)',\s*label:\s*([^\n]+?)\s*\}/g)].map((m) => ({
@@ -2046,24 +2046,23 @@ for (const m of MODULES) {
       const m = /tr\(\s*['"]([\w.]+)['"]\s*\)/.exec(e.raw)
       return m ? (L10N[m[1]]?.zh ?? null) : null
     }
-    check(tabKeys.length > 0, `市场类型契约：${subPath} 的 \`COMMODITY_TABS\` 一项都读不出来（一级类型单点丢了）`)
+    check(tabKeys.length > 0, `市场类型契约：${subPath} 的 \`MARKET_DOMAIN_TABS\` 一项都读不出来（一级领域单点丢了）`)
     check(
-      tabKeys[0] === 'item' && tabKeys[1] === 'container',
-      `市场类型契约：\`COMMODITY_TABS\` 里「货柜」没有紧跟「货物」（现应是 … 'item', 'container', 'consume' …；` +
+      tabKeys[0] === 'domain-item' && tabKeys[1] === 'domain-ship',
+      `市场类型契约：领域顺序不是「物品 / 舰船」（实取：` +
         `实取：${tabKeys.slice(0, 4).join(', ')}）`,
     )
     check(
-      tabLabelZh('container') === '货柜',
-      `市场类型契约：\`COMMODITY_TABS\` 的 \`container\` 项文案不是「货柜」（实取：${tabLabelZh('container') ?? '取不到'}）`,
+      tabLabelZh('domain-item') === '货物',
+      `市场类型契约：\`MARKET_DOMAIN_TABS\` 的物品领域文案不是「货物」（实取：${tabLabelZh('domain-item') ?? '取不到'}）`,
     )
     check(
-      tabLabelZh('item') === '货物',
-      `市场类型契约：\`COMMODITY_TABS\` 的 \`item\` 项文案不是「货物」（船长 2026-09-16 定为「货物」；` +
-        `实取：${tabLabelZh('item') ?? '取不到'}）`,
+      tabLabelZh('domain-ship') === '舰船',
+      `市场类型契约：\`MARKET_DOMAIN_TABS\` 的舰船领域文案不是「舰船」（实取：${tabLabelZh('domain-ship') ?? '取不到'}）`,
     )
     check(
-      mpSrc.includes('COMMODITY_TABS'),
-      `市场类型契约：${mpPath} 的类型下拉没有读 \`COMMODITY_TABS\`（一级类型必须走那张单点表）`,
+      mpSrc.includes('MARKET_DOMAIN_TABS'),
+      `市场类型契约：${mpPath} 的类型下拉没有读 \`MARKET_DOMAIN_TABS\`（一级领域必须走那张单点表）`,
     )
     check(
       subSrc.includes('CONTAINER_KIND_KEYS'),
@@ -2097,9 +2096,9 @@ for (const m of MODULES) {
       )
     }
     console.log(
-      '· 市场类型契约：一级类型 = 全部 / 货物 / 货柜 / 消耗品 / 残骸 / 黑匣 / 高·中·低槽装备 / 舰船插件 / 舰船 / 蓝图 / 核心' +
-        '（单点 = ui/itemSubs.ts 的 COMMODITY_TABS · 市场/仓库/货仓/图鉴四处共读）· 「货柜」紧跟「货物」· ' +
-        '子分类 = 货物（原矿/原材料/气体/冰矿/基础零件/高级零件/奢侈品）· 货柜（遗迹安全/图纸/贵重品/军用）· 蓝图含「零件蓝图」',
+      '· 市场类型契约：一级领域 = 全部 / 物品 / 舰船（单点 = ui/itemSubs.ts 的 MARKET_DOMAIN_TABS）· ' +
+        '物品二级 = 货物/装备/消耗品/货柜/残骸/黑匣/蓝图/核心/其他 · 舰船二级 = 采矿舰/货运舰/武装舰/装甲舰/其他 · ' +
+        '货物细分仍含原矿/原材料/气体/冰矿/零件/奢侈品',
     )
   }
 
@@ -3038,14 +3037,14 @@ for (const m of MODULES) {
         check(isBlackboxItem(boxId), `每族黑匣契约：${boxId} 没被 core 单点 isBlackboxItem 认下（入库不会置位"见过黑匣"）`)
       }
     }
-    // 市场页的类型下拉：本块自带读源码小工具（同名变量都在别的块作用域里，取不到）
+    // 市场页的领域下拉：本块自带读源码小工具（同名变量都在别的块作用域里，取不到）
     const mpRead = (rel: string): string => readFileSync(join(process.cwd(), rel), 'utf8')
-    // 市场页的类型下拉读的是 `ui/itemSubs.ts` 的 `COMMODITY_TABS`（2026-10-01 起的一级类型单点）
+    // 市场页的领域下拉读的是 `ui/itemSubs.ts` 的 `MARKET_DOMAIN_TABS`
     const subRead = (rel: string): string => readFileSync(join(process.cwd(), rel), 'utf8')
     const subsSrc2 = subRead('apps/desktop/src/renderer/src/ui/itemSubs.ts')
     check(
       subsSrc2.includes("key: 'blackbox'"),
-      '黑匣契约：`COMMODITY_TABS` 里没有 blackbox 一档（船长令：市场内黑匣单独一个分类）',
+      '黑匣契约：物品领域子分类里没有 blackbox 一档（船长令：市场内黑匣单独一个分类）',
     )
     console.log(
       `· 黑匣契约：${blackboxes.map((b) => b.id).join(' / ')} 独立成类（仓库/货仓/图鉴/市场四档一致）· ` +

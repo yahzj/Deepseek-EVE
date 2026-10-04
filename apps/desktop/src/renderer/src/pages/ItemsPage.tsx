@@ -17,8 +17,9 @@ import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type 
 import { SellQtyModal } from '../ui/SellQtyModal'
 import { RedeemFragmentButton } from '../ui/fragmentRedeem'
 import {
-  BUCKET_OF_ITEM_KIND,
-  COMMODITY_TABS,
+  ITEM_DOMAIN_SUBS,
+  MODULE_SUBS,
+  itemCategoryOf,
   SUBS_OF_KIND,
   SUB_ALL,
   itemBucketPasses,
@@ -51,9 +52,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const [wareQuery, setWareQuery] = useState('')
   /* 仓库筛选（2026-09-13 船长：「物品界面的仓库也添加筛选」；2026-09-19 甲组补丁按船长
      「涉及到特定分类的父分类时，将其子分类也放入」补齐）：
-     一级 = **市场那 12 档**（`COMMODITY_TABS`：「货物」聚合 ＋ 装备按归属档拆四档 ＋ 货柜/消耗品/残骸/
-     黑匣/AI 核心/舰船/蓝图）；二级 = `SUBS_OF_KIND` 的天然子维度（装备⇒**功能分组**、货柜/残骸⇒档位、
-     AI 核心⇒档位、货物⇒物品大类）。表与判定**全部走 `ui/itemSubs.ts` 单点**。
+     一级 = 物品领域分类（货物 / 装备 / 消耗品 / 货柜 / 残骸 / 黑匣 / AI 核心 / 其他）；二级 = `SUBS_OF_KIND`
+     的天然子维度（装备⇒功能分组、货柜/残骸⇒档位、AI 核心⇒档位、货物⇒物品大类）。表与判定全部走单点。
      与搜索取「与」；**不落盘**，切页/重开即重置（与市场、手册同一哲学）。
      ⚠ **2026-10-01 船长令**「以市场为准，三处都改，层级按市场来」⇒ 本页原**三级维度（槽类⇒功能分组）
      已删**：归属档进了**一级**、二级直接是功能分组，与市场两个下拉的层级一致。 */
@@ -66,7 +66,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   const kindPicked = wareKind !== 'all'
   /** 装备是否在展示范围内（「全部」与「装备」都在范围内；选了某个物品大类时装备库整块不显示） */
   /** 装备是否在展示范围内（「全部」与四个装备档都在范围内；选了物品侧的档时装备库整块不显示） */
-  const showMods = wareKind === 'all' || wareKind.startsWith('module-')
+  const showMods = wareKind === 'all' || wareKind === 'module'
   const wq = wareQuery.trim().toLowerCase()
   const rows = Object.entries(state.warehouse.items).filter(([, n]) => n > 0)
   /**
@@ -103,12 +103,13 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
    * AI 核心：仓库里只有物品形态的 gamma/beta/alpha（`basic` 只有市场商品）⇒ 按目录存在性列档。
    */
   /**
-   * 一级「分类」档 = **市场那 12 档**（`COMMODITY_TABS`）里**仓库真有内容的那些**（`presentSubs` 式；
-   * 判定走单点 `itemBucketPasses`——装备域查 `modRows`、物品域查 `rows`）。
+   * 一级「分类」档 = 物品领域表里**仓库真有内容的那些**（`presentSubs` 式）；装备查 `modRows`，物品查 `rows`。
    * 「同步」= 同类东西同口径，不是硬凑档数：仓库里没有舰船与图纸实物 ⇒ `ship` / `blueprint` 两档自然不出现。
    */
-  const wareKindTabs = presentSubs(COMMODITY_TABS, (key) =>
-    (key.startsWith('module-') ? modRows : rows).some(([id]) => itemBucketPasses(engine.ctx, id, key)),
+  const wareKindTabs = presentSubs(ITEM_DOMAIN_SUBS, (key) =>
+    key === 'module'
+      ? modRows.length > 0
+      : rows.some(([id]) => itemCategoryOf(engine.ctx.items.get(id)) === key),
   )
   /** **道具逐件档的档名解析器**（2026-10-02 船长令：消耗品桶里每件道具自成一档）：档名 = 那件道具
    *  自己的名字，从物品表单点取（`subText` 的第二个参数），不在分类表里再抄一份名字。 */
@@ -118,12 +119,12 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
     //（`rows` = 仓库物品条目 · `modRows` = 装备库条目；判定一律走单点 `itemSubPasses`）。
     // **2026-10-01 同步市场层级**：二级表统一取 `SUBS_OF_KIND[wareKind]`（装备四档 ⇒ 功能分组）；
     // 原「装备档二级 = 槽类（`RACK_SUBS` / `rackPasses`）」与整条**三级维度**已删（层级按市场来）。
-    const options = SUBS_OF_KIND[wareKind]
+    const options = wareKind === 'module' ? MODULE_SUBS : SUBS_OF_KIND[wareKind]
     if (options === undefined) return null
-    const pool = wareKind.startsWith('module-') ? modRows : rows
+    const pool = wareKind === 'module' ? modRows : rows
     return {
       options: presentSubs(options, (key) => pool.some(([id]) => itemSubPasses(engine.ctx, id, wareKind, key))),
-      label: wareKind.startsWith('module-') ? tr('ui.ItemsPage.048') : wareKind === 'item' ? tr('ui.ItemsPage.059') : tr('ui.ItemsPage.023'),
+      label: wareKind === 'module' ? tr('ui.ItemsPage.048') : wareKind === 'item' ? tr('ui.ItemsPage.059') : tr('ui.ItemsPage.023'),
     }
   })()
   /**
@@ -154,6 +155,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   }
   const itemHits = rows.filter(([id]) => hitItem(id) && dimHit(id))
   const modHits = showMods ? modRows.filter(([id]) => hitMod(id) && dimHit(id)) : []
+  const otherRows = rows.filter(([id]) => itemCategoryOf(engine.ctx.items.get(id)) === 'other' && hitItem(id) && dimHit(id))
   const hitTotal = itemHits.length + modHits.length
   /** 搜索或筛选任一生效（标题计数与空态文案据此换措辞） */
   const wareNarrowed = wq.length > 0 || kindPicked || wareSub !== SUB_ALL
@@ -392,9 +394,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       {mode === 'list' ? (
         <>
       {ITEM_KIND_ORDER.map((kind) => {
-        // 一级筛选：选了某一档就只渲染**属于该档**的大类（BUCKET_OF_ITEM_KIND 反查；装备四档走下面的装备库 Panel）
-        if (kindPicked && BUCKET_OF_ITEM_KIND[kind] !== wareKind) return null
-        const kindRows = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind && hitItem(id))
+        // 一级筛选：选了某一档就只渲染属于该物品领域分类的大类；装备库单独渲染。
+        const kindRows = rows.filter(([id]) => (wareKind === 'all' || itemCategoryOf(engine.ctx.items.get(id)) === wareKind) && engine.ctx.items.get(id)?.kind === kind && hitItem(id) && dimHit(id))
         // 矿石/矿物面板常驻（引导文案有教学作用），其余分类空时不显示；搜索/筛选时任一空类都隐藏
         if (kindRows.length === 0 && (kind !== 'ore' && kind !== 'mineral' || wareNarrowed)) return null
         const extra = kindExtraNote(kind)
@@ -525,6 +526,18 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
         )
       })}
 
+      {otherRows.length > 0 ? (
+        <Panel key="other" title={subText(ITEM_DOMAIN_SUBS.find((s) => s.key === 'other')!)} right={<span className="app-dim">{tr('ui.CargoPage.009', { n: otherRows.length })}</span>}>
+          <ul className="app-inv-list">
+            {otherRows.map(([id, units]) => {
+              const def = engine.ctx.items.get(id)
+              if (!def) return null
+              return <ItemHover key={id} as="li" item={def} nameOf={(pid) => engine.ctx.items.get(pid)?.name} className="app-inv-row"><div className="app-inv-main"><span className="app-inv-name"><RowGlyph glyph={itemGlyphName(id, def.kind)} tone={inventoryItemTone(id, def.kind)} /> {def.name}</span><span className="app-inv-count">×{units.toLocaleString('zh-CN')}</span></div></ItemHover>
+            })}
+          </ul>
+        </Panel>
+      ) : null}
+
       {/* 装备库（2026-09-13 筛选：选了某个物品大类时整块不显示；计数随槽类二级筛选收窄） */}
       {showMods ? (
       <Panel
@@ -595,9 +608,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       ) : (
         <>
           {ITEM_KIND_ORDER.map((kind) => {
-            // 一级筛选：选了某一档就只渲染**属于该档**的大类（BUCKET_OF_ITEM_KIND 反查；装备四档走下面的装备库 Panel）
-            if (kindPicked && BUCKET_OF_ITEM_KIND[kind] !== wareKind) return null
-            const kindRows2 = rows.filter(([id]) => engine.ctx.items.get(id)?.kind === kind && hitItem(id))
+            // 一级筛选：选了某一档就只渲染属于该物品领域分类的大类；装备库单独渲染。
+            const kindRows2 = rows.filter(([id]) => (wareKind === 'all' || itemCategoryOf(engine.ctx.items.get(id)) === wareKind) && engine.ctx.items.get(id)?.kind === kind && hitItem(id) && dimHit(id))
             if (kindRows2.length === 0 && (kind !== 'ore' && kind !== 'mineral' || wareNarrowed)) return null
             const cells: ItemGridCell[] = kindRows2.map(([id, units]) => {
               const def = engine.ctx.items.get(id)
@@ -634,6 +646,26 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               </Panel>
             )
           })}
+          {otherRows.length > 0 ? (
+            <Panel key="other" title={subText(ITEM_DOMAIN_SUBS.find((s) => s.key === 'other')!)} right={<span className="app-dim">{tr('ui.CargoPage.009', { n: otherRows.length })}</span>}>
+              <ItemGlyphGrid
+                cells={otherRows.map(([id, units]) => {
+                  const def = engine.ctx.items.get(id)
+                  return {
+                    key: id,
+                    glyph: itemGlyphName(def?.id ?? id, def?.kind ?? 'item'),
+                    name: def?.name ?? id,
+                    sub: `×${units.toLocaleString('zh-CN')} · ${m3(units * (def?.unitM3 ?? 1))}`,
+                    title: def?.description,
+                    hover: def ? itemHoverContent(def, (pid) => engine.ctx.items.get(pid)?.name) : undefined,
+                    tone: inventoryItemTone(id, def?.kind ?? 'item'),
+                    rarity: itemRarityTierOf(id),
+                  }
+                })}
+                onPick={(key) => setPickItem(key)}
+              />
+            </Panel>
+          ) : null}
           {showMods ? (
           <Panel
             title={tr("ui.ItemsPage.028")}

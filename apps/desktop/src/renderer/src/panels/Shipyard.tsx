@@ -28,7 +28,7 @@ import { useL10n } from '../i18n/locale'
 import { fmtInt } from '../i18n/fmt'
 import {
   BLUEPRINT_LEARN_TABS,
-  SHIP_SUBS,
+  SHIP_DOMAIN_SUBS,
   SHIP_TIER_SUBS,
   SUB_ALL,
   presentSubs,
@@ -178,7 +178,7 @@ export function ShipyardPanel({
   /** 2026-09-20 筛选清理（船长「明显不存在的子类筛选隐藏」）：只列真有内容的档 —— 与组装机同一套 `presentSubs` 口径 */
   const tierShown = presentSubs(SHIP_TIER_SUBS, (key) => items.some((it) => it.subKey === key))
   /** 类别候选（同一套 `presentSubs` 口径；判据 = 唯一入口 `shipRolePasses`，船型定义按 id 现取） */
-  const catShown = presentSubs(SHIP_SUBS, (key) =>
+  const catShown = presentSubs(SHIP_DOMAIN_SUBS, (key) =>
     items.some((it) => shipRolePasses(engine.ctx.ships.get(it.shipId), key)),
   )
 

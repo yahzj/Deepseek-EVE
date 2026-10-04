@@ -65,7 +65,7 @@ import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
 import { MarkStar, pinMarked } from '../ui/marks'
 import {
   FLEET_STATE_TABS,
-  SHIP_SUBS,
+  SHIP_DOMAIN_SUBS,
   SHIP_TIER_SUBS,
   STORE_OWN_TABS,
   SUB_ALL,
@@ -719,7 +719,7 @@ export function ShipPage({
               >
                 {tr("ui.IndustryPage.001")}
               </button>
-              {SHIP_SUBS.map((s) => (
+              {SHIP_DOMAIN_SUBS.map((s) => (
                 <button
                   key={s.key}
                   role="tab"
@@ -1046,7 +1046,7 @@ export function ShipPage({
                 >
                   {tr("ui.IndustryPage.001")}
                 </button>
-                {SHIP_SUBS.map((s) => (
+                {SHIP_DOMAIN_SUBS.map((s) => (
                   <button
                     key={s.key}
                     role="tab"

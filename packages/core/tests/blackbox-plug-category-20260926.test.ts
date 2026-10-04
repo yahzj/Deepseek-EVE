@@ -75,15 +75,15 @@ describe('黑匣独立成类（船长报障：入侵获得的黑匣在仓库内�
     // 仓库页 / 货仓页 / 手册物品图鉴都按 `ITEM_KIND_ORDER` 渲染 ⇒ 上面那条断言即覆盖它们的分类行
     /**
      * ⚠ **2026-10-01 判据源迁移**（船长令「以市场为准，三处都改，层级按市场来」）：一级类型单点
-     * 从「MarketPage 里手写的 `KIND_TEXT` 字面量」收敛到 `ui/itemSubs.ts` 的 `COMMODITY_TABS`
+     * 从「MarketPage 里手写的类型表」收敛到 `ui/itemSubs.ts` 的统一领域表
      * （市场 / 仓库 / 货仓 / 手册图鉴**四处共读**）⇒ 本条断言的**判据源随单点一起搬**，否则它只会
      * 对着一个已不存在的手写表报红（本批实测：就是这一条）。**契约意图一字未改**：市场一级类型里
      * 必须有 blackbox 这一档（船长令：黑匣单独一个分类，不挪进「货物」）。
      */
     const market = read('apps/desktop/src/renderer/src/pages/MarketPage.tsx')
-    expect(market, '市场页的类型下拉读的是一级类型单点').toContain('COMMODITY_TABS')
+    expect(market, '市场页的类型下拉读的是一级领域单点').toContain('MARKET_DOMAIN_TABS')
     const subs = read('apps/desktop/src/renderer/src/ui/itemSubs.ts')
-    expect(subs, '一级类型单点里有 blackbox 档').toContain("key: 'blackbox'")
+    expect(subs, '物品领域二级单点里有 blackbox 档').toContain("key: 'blackbox'")
     expect(subs, '黑匣键集合单点').toContain('BLACKBOX_KIND_KEYS')
     const glyphs = read('apps/desktop/src/renderer/src/ui/Glyphs.tsx')
     expect(glyphs, 'Glyphs 有黑匣形').toContain('blackbox: (')
@@ -106,7 +106,7 @@ describe('装备归属档新增「舰船插件」（船长令：和高中低槽�
     expect(subs, '归属档单点存在').toContain('export function rackDimKeyOf')
     expect(subs, '四档键序').toContain("(['high', 'mid', 'low', 'plug'] as const)")
     expect(subs, '分组族').toContain("plug: ['plug']")
-    expect(subs, '市场桶登记（黑匣同样只装物品）').toContain("'blackbox', 'module'")
+    expect(subs, '物品领域登记仍保留黑匣桶').toContain("'blackbox'")
   })
 
   it('手册两处分组改读单点（不再直接读 `rackOf`——那会把插件蓝图归进低槽）', () => {
@@ -114,5 +114,25 @@ describe('装备归属档新增「舰船插件」（船长令：和高中低槽�
     expect(hb).toContain('rackDimKeyOf')
     expect(hb.includes('mod ? rackOf(mod) :'), '旧写法已清').toBe(false)
     expect(hb.includes('rackOf(mod) === sub'), '旧写法已清').toBe(false)
+  })
+})
+
+describe('物品/舰船筛选领域收口（2026-10-04）', () => {
+  it('市场用领域一级，物品域包含黑匣与其他，舰船域包含其他', () => {
+    const subs = read('apps/desktop/src/renderer/src/ui/itemSubs.ts')
+    expect(subs).toContain('export const MARKET_DOMAIN_TABS')
+    expect(subs).toContain("{ key: 'domain-item'")
+    expect(subs).toContain("{ key: 'domain-ship'")
+    expect(subs).toContain("{ key: 'blackbox', label: tr('ui.labelsText.069') }")
+    expect(subs).toContain("{ key: 'other', label: tr('ui.hud.137') }")
+    expect(subs).toContain('export function itemCategoryOf')
+    expect(subs).toContain("if (role === 'other')")
+  })
+
+  it('物品页列表与网格都接入二级筛选判定', () => {
+    const page = read('apps/desktop/src/renderer/src/pages/ItemsPage.tsx')
+    expect(page.match(/kindRows[^\n]*dimHit\(id\)/g)?.length ?? 0).toBeGreaterThanOrEqual(2)
+    expect(page).toContain('const otherRows')
+    expect(page).toContain('ITEM_DOMAIN_SUBS')
   })
 })

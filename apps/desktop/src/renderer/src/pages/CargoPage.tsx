@@ -34,7 +34,7 @@ import { useL10n, cmdText } from '../i18n/locale'
 import { crestFamOf, slotText } from '../ui/labelsText'
 import { isk, itemBuyQuote, m3 } from './common'
 import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type ItemGridCell } from '../ui/itemView'
-import { BUCKET_OF_ITEM_KIND, COMMODITY_TABS, itemBucketPasses, subText } from '../ui/itemSubs'
+import { ITEM_CARGO_SUBS, itemCategoryOf, subText } from '../ui/itemSubs'
 import { tr } from '../i18n/locale'
 /* 「使用」按钮的判据 = core 的 id 常量（**单点**，不在页面里写死字面量） */
 import { INVASION_BEACON_ITEM_ID, SYNAPTIC_ACCELERANT_ITEM_ID } from '@whale/core'
@@ -47,11 +47,11 @@ const KIND_EMPTY: Record<string, string> = {
   ammo: 'ui.CargoPage.014',
   drone: 'ui.CargoPage.015',
 }
-/** 桶 → 它收录的物品大类（`BUCKET_OF_ITEM_KIND` 反查；装备域不走本表，另走 `rackDimKeyOf`）。
+/** 物品领域分类 → 它收录的物品大类；装备域不走本表。
  *  **2026-10-01 分类同步市场**（船长令「以市场为准，三处都改，层级按市场来」）：货仓页与手册
  *  图鉴的**分组键**由「物品大类」换成「市场那 12 档的桶」——同一件东西在两处的归类从此一致。 */
 function kindsOfBucket(bucket: string): string[] {
-  return ITEM_KIND_ORDER.filter((k) => BUCKET_OF_ITEM_KIND[k] === bucket)
+  return ITEM_KIND_ORDER.filter((k) => itemCategoryOf({ kind: k }) === bucket)
 }
 
 /** 桶的空态文案 id：取桶内**第一条有专属文案**的大类 —— 换桶后仍保留原按大类写的引导语
@@ -271,8 +271,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
       <ItemViewBar mode={view} onChange={setView} />
       {view === 'list' ? (
         <>
-      {COMMODITY_TABS.map((tab) => {
-        const kindRows = rows.filter(([id]) => itemBucketPasses(engine.ctx, id, tab.key))
+      {ITEM_CARGO_SUBS.map((tab) => {
+        const kindRows = rows.filter(([id]) => itemCategoryOf(engine.ctx.items.get(id)) === tab.key)
         // 「货物」面板常驻（引导开采），其余分类空时不显示
         if (kindRows.length === 0 && tab.key !== 'item') return null
         const emptyText =
@@ -442,8 +442,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
           {rows.length === 0 ? (
             <div className="app-dim app-inv-empty">{tr("ui.CargoPage.049")}</div>
           ) : (
-            COMMODITY_TABS.map((tab) => {
-              const kindRows = rows.filter(([id]) => itemBucketPasses(engine.ctx, id, tab.key))
+            ITEM_CARGO_SUBS.map((tab) => {
+              const kindRows = rows.filter(([id]) => itemCategoryOf(engine.ctx.items.get(id)) === tab.key)
               if (kindRows.length === 0) return null
               const cells: ItemGridCell[] = kindRows.map(([id, units]) => {
                 const def = engine.ctx.items.get(id)

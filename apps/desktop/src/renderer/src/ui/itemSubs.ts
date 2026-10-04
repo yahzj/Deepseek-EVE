@@ -56,6 +56,15 @@ import { tr } from '../i18n/locale'
 
 /** 「全部子类」哨兵键（市场下拉与分组判定共用；不作为分组键） */
 export const SUB_ALL = 'sub-all'
+/** 一级领域选择器的「全部」键（市场用；领域下的二级仍使用 SUB_ALL）。 */
+export const DOMAIN_ALL = 'domain-all'
+export const DOMAIN_ITEM = 'domain-item'
+export const DOMAIN_SHIP = 'domain-ship'
+
+const KNOWN_ITEM_CATEGORIES = new Set([
+  'ore', 'mineral', 'part', 'gas', 'ice', 'matter', 'essence', 'luxury', 'fragment',
+])
+const SHIP_ROLE_KEYS = ['industrial', 'hauler', 'armed', 'armored'] as const
 
 /**
  * 一个筛选子项：`key` = 判定键；`label` = **中文原串**（同时充当"键表"里的可读常量）。
@@ -231,6 +240,7 @@ export const MODULE_SUBS: SubOption[] = [
    * 单点口径：**舰船插件的标签全仓只有这一条 id**（本处与 `RACK_LABELS.plug` 都读它）。
    */
   { key: 'plug', label: tr("ui.itemSubs.042") },
+  { key: 'other', label: tr('ui.hud.137') },
 ]
 
 /**
@@ -445,74 +455,38 @@ export const SUBS_OF_KIND: Record<string, SubOption[]> = {
   wreck: WRECK_SUBS,
 }
 
-/**
- * **一级类型档 · 唯一登记处**（市场 / 物品仓库 / 货仓 / 手册图鉴**共用**）
- *
- * **2026-10-01 船长令**：「能否将仓库物品的筛选分类和市场的筛选分类同步」⇒ 追问后裁定
- * 「**以市场为准，三处都改，层级按市场来**」。
- *
- * 收敛前是**两套**：市场页自制 `KIND_OPTIONS`（11 档 · 「货物」聚合 · 装备按槽拆开），
- * 而仓库/货仓/手册直接铺 core 的 `ITEM_KIND_ORDER`（17 档 · 货物平铺 · 装备聚合成一档）
- * ⇒ 同一件东西在两页落进不同档（例：原矿在市场是「货物 › 原矿」，在仓库却是**一级**「原矿」）。
- *
- * 现全部读本表；**判定不用另写**——一级一律走本文件的判定单点 `itemBucketPasses`。
- *
- * ⚠ **各页按自己的内容过滤本表**（`presentSubs` 式）：仓库里没有舰船与图纸实物 ⇒ 那两档
- * 自然不出现。「同步」是**同类东西同口径**，不是硬凑档数。
- * ⚠ **`fragment`（蓝图碎片）归「货物」桶**（`itemBucketPasses` 的 `'item'` 只排除
- * 残骸/消耗品/货柜/黑匣）⇒ 它原有的"功能分组"二级随本批并入货物桶的子分类。
- * ⚠ **`consumable`（道具）2026-10-02 起归「消耗品」桶**（船长令：「信号发射器和技能加速剂应该归类到
- * 消耗品内。每个单独一个档位」）——此前它落「货物」桶（当日那条"照现状不擅自改口径"的待定项，
- * 船长今回已定）；逐件档见 `CONSUMABLE_ITEM_SUBS`。
- * ⚠ **`module-plug`（舰船插件）是本批补的第 12 档**：2026-09-26 插件已独立成归属档，市场一级
- * 当时漏了这一档（插件三档皆筛不出、行内却显示「低槽装备」）⇒ 补档即修该缺陷，理由见 `RACK_KIND_KEYS`。
- */
-export const COMMODITY_TABS: readonly SubOption[] = [
-  { key: 'item', label: tr('ui.MarketPage.005') }, // 货物
-  { key: 'container', label: tr('ui.MarketPage.006') }, // 货柜
-  { key: 'consume', label: tr('ui.MarketPage.007') }, // 消耗品
-  { key: 'wreck', label: tr('ui.MarketPage.009') }, // 残骸
-  { key: 'blackbox', label: tr('ui.labelsText.069') }, // 黑匣
-  { key: 'module-high', label: RACK_LABELS.high },
-  { key: 'module-mid', label: RACK_LABELS.mid },
-  { key: 'module-low', label: RACK_LABELS.low },
-  { key: 'module-plug', label: RACK_LABELS.plug }, // 舰船插件（紧跟三槽之后 · 与 `RACK_SUBS` 顺序一致）
-  { key: 'ship', label: tr('ui.App.002') }, // 舰船
-  { key: 'blueprint', label: tr('ui.MarketPage.004') }, // 蓝图
-  { key: 'aicore', label: tr('ui.MarketPage.008') }, // AI 核心
+/** 市场同时展示多个领域时使用的一级领域标签。 */
+export const MARKET_DOMAIN_TABS: readonly SubOption[] = [
+  { key: 'domain-item', label: tr('ui.MarketPage.005') },
+  { key: 'domain-ship', label: tr('ui.App.002') },
 ]
 
-/**
- * **物品大类 → 它归属的一级桶**（货仓页 / 手册图鉴**按桶分组**时用；装备域另走 `rackDimKeyOf`）。
- *
- * ⚠ 口径**与 `itemBucketPasses` 逐格对齐**（本表只是它的反查，不是第二套判据）：
- * 「消耗品」桶 = 弹药/修理组件/无人机（`CONSUME_KIND_KEYS`）＋ **道具 `consumable`**（2026-10-02 船长令）；
- * 「货物」桶＝除 残骸/消耗品（含道具）/货柜/黑匣 之外的一切（含 `fragment` 蓝图碎片）。
- */
-export const BUCKET_OF_ITEM_KIND: Readonly<Record<string, string>> = {
-  ore: 'item',
-  mineral: 'item',
-  part: 'item',
-  gas: 'item',
-  ice: 'item',
-  matter: 'item',
-  essence: 'item',
-  luxury: 'item',
-  fragment: 'item',
-  consumable: 'consume',
-  wreck: 'wreck',
-  container: 'container',
-  blackbox: 'blackbox',
-  aicore: 'aicore',
-  ammo: 'consume',
-  kit: 'consume',
-  drone: 'consume',
-}
+/** 物品领域的二级分类（物品页/物品图鉴/市场物品域共用）。 */
+export const ITEM_DOMAIN_SUBS: readonly SubOption[] = [
+  { key: 'item', label: tr('ui.MarketPage.005') },
+  { key: 'module', label: tr('ui.MarketPage.178') },
+  { key: 'consume', label: tr('ui.MarketPage.007') },
+  { key: 'container', label: tr('ui.MarketPage.006') },
+  { key: 'wreck', label: tr('ui.MarketPage.009') },
+  { key: 'blackbox', label: tr('ui.labelsText.069') },
+  { key: 'blueprint', label: tr('ui.MarketPage.004') },
+  { key: 'aicore', label: tr('ui.MarketPage.008') },
+  { key: 'other', label: tr('ui.hud.137') },
+]
 
-/** 一级档的中文名（按 `COMMODITY_TABS` 取；未登记的键原样回落，便于暴露新键） */
-export function commodityLabelOf(key: string): string {
-  return COMMODITY_TABS.find((t) => t.key === key)?.label ?? key
-}
+/** 物品仓库/物品图鉴只展示实物分类；蓝图图鉴与装备图鉴各自有独立页面。 */
+export const ITEM_CODEX_SUBS: readonly SubOption[] = ITEM_DOMAIN_SUBS.filter(
+  (s) => s.key !== 'module' && s.key !== 'blueprint',
+)
+
+/** 货仓只展示可装入货舱的物品分类，装备库仍单独使用 MODULE_SUBS。 */
+export const ITEM_CARGO_SUBS: readonly SubOption[] = ITEM_CODEX_SUBS
+
+/** 舰船领域的二级分类（舰队/舰船仓库/舰船图鉴/市场舰船域共用）。 */
+export const SHIP_DOMAIN_SUBS: readonly SubOption[] = [
+  ...SHIP_SUBS,
+  { key: 'other', label: tr('ui.hud.137') },
+]
 
 /**
  * 子分类判定（good 是否属于所选子类；sub = SUB_ALL 恒真）。
@@ -565,6 +539,27 @@ export function subPasses(ctx: SimContext, good: MarketGoodDef, kind: string, su
   return true
 }
 
+/** 市场的领域→二级分类判定；市场是唯一同时展示物品与舰船的页面。 */
+export function marketDomainPasses(
+  ctx: SimContext,
+  good: MarketGoodDef,
+  domain: string,
+  sub: string,
+  state?: GameState,
+): boolean {
+  if (domain === DOMAIN_ALL) return true
+  if (domain === DOMAIN_SHIP) {
+    return good.kind === 'ship' && (sub === SUB_ALL || shipRolePasses(ctx.ships.get(good.refId), sub))
+  }
+  if (domain !== DOMAIN_ITEM) return false
+  if (sub === SUB_ALL) return good.kind !== 'ship'
+  if (good.kind === 'item') return itemCategoryOf(ctx.items.get(good.refId)) === sub
+  if (good.kind === 'module') return sub === 'module'
+  if (good.kind === 'blueprint') return sub === 'blueprint'
+  if (good.kind === 'aicore') return sub === 'aicore'
+  return false
+}
+
 /**
  * 模块 → 装备子分类键（手册图鉴分组、市场/碎片二级判定共用；未收录返回 `''`，调用方按「其它」兜底）。
  *
@@ -581,7 +576,7 @@ export function moduleSubKeyOf(slot: string, moduleId?: string): string {
   for (const [key, slots] of Object.entries(MODULE_SUB_SLOTS)) {
     if (slots.includes(slot)) return key
   }
-  return ''
+  return 'other'
 }
 
 /**
@@ -675,20 +670,21 @@ export function itemBucketPasses(ctx: SimContext, refId: string, bucket: string)
   /* ── 物品域（`ctx.items`）── */
   const it = ctx.items.get(refId)
   if (!it) return false
-  if (bucket === 'item') {
-    if (it.kind === 'wreck') return false
-    if (CONSUME_KIND_KEYS.includes(it.kind)) return false
-    // 2026-10-02 船长令：**道具（`consumable`）也归「消耗品」**（原先落货物桶 ⇒ 一级选消耗品找不到它）
-    if (it.kind === 'consumable') return false
-    if (CONTAINER_KIND_KEYS.includes(it.kind)) return false
-    // 2026-09-26 船长令：「市场内黑匣单独一个分类，不要挪到「货物」」⇒ 黑匣也从「货物」里剔出
-    if (BLACKBOX_KIND_KEYS.includes(it.kind)) return false
-    return true
+  if (bucket === 'item' || bucket === 'consume' || bucket === 'container' || bucket === 'wreck' || bucket === 'blackbox' || bucket === 'aicore' || bucket === 'other') {
+    return itemCategoryOf(it) === bucket
   }
-  if (bucket === 'consume') return CONSUME_KIND_KEYS.includes(it.kind) || it.kind === 'consumable'
-  if (bucket === 'container') return CONTAINER_KIND_KEYS.includes(it.kind)
-  if (bucket === 'blackbox') return BLACKBOX_KIND_KEYS.includes(it.kind)
   return it.kind === bucket // 真实大类（含 wreck / aicore / fragment …）
+}
+
+/** 物品领域的稳定分类键；未知 kind 统一进入「其他」，不让新增内容从筛选中消失。 */
+export function itemCategoryOf(def: { kind?: string } | undefined): string {
+  const kind = def?.kind ?? ''
+  if (kind === 'wreck') return 'wreck'
+  if (CONSUME_KIND_KEYS.includes(kind) || kind === 'consumable') return 'consume'
+  if (CONTAINER_KIND_KEYS.includes(kind)) return 'container'
+  if (BLACKBOX_KIND_KEYS.includes(kind)) return 'blackbox'
+  if (kind === 'aicore') return 'aicore'
+  return KNOWN_ITEM_CATEGORIES.has(kind) ? 'item' : 'other'
 }
 
 /**
@@ -815,6 +811,7 @@ export function itemSubPasses(ctx: SimContext, refId: string, bucket: string, su
   if (sub.startsWith(CONSUMABLE_SUB_PREFIX)) {
     return it.kind === 'consumable' && refId === sub.slice(CONSUMABLE_SUB_PREFIX.length)
   }
+  if (sub === 'other') return itemCategoryOf(it) === 'other'
   return it.kind === sub // item（货物）/ consume / 真实大类
 }
 
@@ -856,7 +853,9 @@ type ShipCategoryInput = Parameters<typeof shipCategoryKeyOf>[0]
  *  不借收敛之名改这个边界行为。 */
 export function shipRolePasses(def: ShipCategoryInput | undefined, role: string): boolean {
   if (role === SUB_ALL) return true
-  return shipCategoryKeyOf(def ?? {}) === role
+  const actual = shipCategoryKeyOf(def ?? {})
+  if (role === 'other') return !(SHIP_ROLE_KEYS as readonly string[]).includes(actual)
+  return actual === role
 }
 
 /** **舰船「级别」维度判据（唯一入口）**：键 = `t<级别>`（与组装机「舰船蓝图」子筛选同一张 `SHIP_TIER_SUBS` 表）。 */

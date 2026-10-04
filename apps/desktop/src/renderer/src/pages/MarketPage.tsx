@@ -29,17 +29,17 @@ import { fmtDuration, fmtInt } from '../i18n/fmt'
 import { Glyph, ICO_TONES } from '../ui/Glyphs'
 import { HintIcon } from '../ui/Hint'
 import { MarkStar, pinMarked } from '../ui/marks'
-import { SUB_ALL, subPasses, SUBS_OF_KIND, RACK_KIND_KEYS, itemBucketPasses, presentSubs, subText, COMMODITY_TABS, rackDimKeyOf } from '../ui/itemSubs'
+import { SUB_ALL, DOMAIN_ALL, DOMAIN_ITEM, DOMAIN_SHIP, ITEM_DOMAIN_SUBS, SHIP_DOMAIN_SUBS, MARKET_DOMAIN_TABS, marketDomainPasses, subText, rackDimKeyOf } from '../ui/itemSubs'
 import type { SubOption } from '../ui/itemSubs'
 import { tr, cmdText } from '../i18n/locale'
 import { kindTextOfItem } from '../ui/labelsText'
 
 /**
- * 一级类型的中文名 —— **改读单点表 `COMMODITY_TABS`**。
+ * 一级领域的中文名 —— **改读单点表 `MARKET_DOMAIN_TABS`**。
  *
  * **2026-10-01 船长令**：「能否将仓库物品的筛选分类和市场的筛选分类同步」⇒ 追问后裁定
  * 「**以市场为准，三处都改，层级按市场来**」⇒ 档位顺序与中文名一起搬进 `ui/itemSubs.ts` 的
- * `COMMODITY_TABS`（市场 / 物品仓库 / 货仓 / 手册图鉴**四处共用**）。
+ * 市场是唯一同时展示物品与舰船的页面；其他页面按自己的领域直接显示分类。
  *
  * 沿革（今天的档位是下面这些裁定累积出来的；原表体随本批搬走，注释留档）：
  * · 2026-09-16「给市场的添加奢侈品分类，放入物品下，**物品改名叫货物**」⇒ `item` 中文名由「物品」改「货物」；
@@ -51,11 +51,9 @@ import { kindTextOfItem } from '../ui/labelsText'
  * ⚠ 原先那句「这只是市场下拉的显示名，导航页「物品」与手册「物品图鉴」走各自的单点，未随本改」
  * **已随本批作废**——那三处现在读同一张表了。
  */
-const KIND_TEXT: Record<string, string> = Object.fromEntries(COMMODITY_TABS.map((t) => [t.key, t.label]))
-/** 一级类型键（＝单点表 `COMMODITY_TABS` 的键；本页只负责渲染） */
-type KindFilter = (typeof COMMODITY_TABS)[number]['key'] | 'all'
-/** 一级类型档：`'all'` 由本页加在最前（2026-09-19 基线②：一级选择器的"全部"用 `'all'`，下级维度才用 `SUB_ALL`） */
-const KIND_OPTIONS: readonly KindFilter[] = ['all', ...COMMODITY_TABS.map((t) => t.key as KindFilter)]
+const DOMAIN_TEXT: Record<string, string> = Object.fromEntries(MARKET_DOMAIN_TABS.map((t) => [t.key, t.label]))
+type KindFilter = typeof DOMAIN_ALL | typeof DOMAIN_ITEM | typeof DOMAIN_SHIP
+const KIND_OPTIONS: readonly KindFilter[] = [DOMAIN_ALL, ...MARKET_DOMAIN_TABS.map((t) => t.key as KindFilter)]
 const RARITY_TEXT: Record<MarketRarity, string> = { common: tr("ui.MarketPage.010"), rare: tr("ui.IndustryPage.035"), exotic: tr("ui.MarketPage.011") }
 
 /* 类型子分类表已抽到 ui/itemSubs.ts（市场页与手册图鉴共用同一套口径） */
@@ -77,9 +75,12 @@ function kindTextOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef): strin
   if (good.kind === 'module') {
     const mod = ctx.modules.get(good.refId)
     const rack = mod ? rackDimKeyOf(mod) : undefined
-    return rack !== undefined ? (KIND_TEXT[`module-${rack}`] ?? tr('ui.MarketPage.178')) : tr("ui.MarketPage.003")
+    return rack === 'high' ? tr('ui.itemSubs.025') : rack === 'mid' ? tr('ui.itemSubs.026') : rack === 'low' ? tr('ui.itemSubs.027') : rack === 'plug' ? tr('ui.itemSubs.042') : tr('ui.MarketPage.178')
   }
-  return KIND_TEXT[good.kind] ?? good.kind
+  if (good.kind === 'ship') return DOMAIN_TEXT[DOMAIN_SHIP]
+  if (good.kind === 'blueprint') return tr('ui.MarketPage.004')
+  if (good.kind === 'aicore') return tr('ui.MarketPage.008')
+  return good.kind
 }
 
 /**
@@ -90,12 +91,8 @@ function kindTextOf(ctx: PageProps['engine']['ctx'], good: MarketGoodDef): strin
  *
  * ⚠ `kind === 'module'` 已不在类型下拉里，但仍保留判定（`subPasses` 与旧调用方兼容）。
  */
-function kindPasses(ctx: PageProps['engine']['ctx'], good: MarketGoodDef, kind: KindFilter | 'module'): boolean {
-  if (kind === 'all') return true
-  if (good.kind === 'item' || good.kind === 'module') return itemBucketPasses(ctx, good.refId, kind)
-  // 舰船 / 蓝图 / AI 核心：类型键与商品自身 kind 同字面
-  if (kind === 'module' || RACK_KIND_KEYS.includes(kind as (typeof RACK_KIND_KEYS)[number])) return false
-  return good.kind === kind
+function domainPasses(ctx: PageProps['engine']['ctx'], good: MarketGoodDef, domain: KindFilter, sub: string): boolean {
+  return marketDomainPasses(ctx, good, domain, sub)
 }
 
 /** mm:ss（向上取整到秒） */
@@ -1337,10 +1334,10 @@ export function MarketPage({
 
   // 页面级全局搜索（船长 2026-09-05）：搜索栏从各栏内取出；输入/类型过滤时同时检索常驻 / 稀有 / 限定奇货
   // （三档商品集互不重叠——rarity 单值归属，跨档合并不会重复条目）。
-  const [kind, setKind] = useState<KindFilter>('all')
+  const [kind, setKind] = useState<KindFilter>(DOMAIN_ALL)
   const [sub, setSub] = useState<string>(SUB_ALL)
   const query = kw.trim().toLowerCase()
-  const filterActive = query.length > 0 || kind !== 'all'
+  const filterActive = query.length > 0 || kind !== DOMAIN_ALL
   /** **道具逐件档的档名解析器**（2026-10-02 船长令）：档名 = 那件道具自己的名字，从物品表单点取，
    *  中英随物品表走 ⇒ 不在 `ui/itemSubs.ts` 里再抄一份名字（`subText` 的第二个参数）。 */
   const itemNameOf = (id: string): string | undefined => engine.ctx.items.get(id)?.name
@@ -1350,14 +1347,10 @@ export function MarketPage({
    * 判据复用市场自己的两把尺（kindPasses + subPasses），「全部」档常显（基线②）。
    */
   const kindSubs: SubOption[] | undefined =
-    kind !== 'all'
-      ? presentSubs(SUBS_OF_KIND[kind] ?? [], (key) =>
-          // 「学没学会」两档**常显**（2026-09-24 船长令加了「未学会」）：它按玩家存档实时判定、不是内容分类，
-          // 若跟着"本档真没商品就隐藏"那把尺走，玩家在"一张都还没学会"时会看不到这两档。
-          key === 'learned' || key === 'unlearned'
-            ? true
-            : goods.some((g) => kindPasses(engine.ctx, g, kind) && subPasses(engine.ctx, g, kind, key, engine.state)),
-        )
+    kind === DOMAIN_ITEM
+      ? ITEM_DOMAIN_SUBS.filter((s) => goods.some((g) => domainPasses(engine.ctx, g, DOMAIN_ITEM, s.key)))
+      : kind === DOMAIN_SHIP
+        ? SHIP_DOMAIN_SUBS.filter((s) => goods.some((g) => domainPasses(engine.ctx, g, DOMAIN_SHIP, s.key)))
       : undefined
   /** 切换主类型时子分类回到"全部子类" */
   const changeKind = (v: KindFilter): void => {
@@ -1367,7 +1360,7 @@ export function MarketPage({
   /** 「我的挂单」行内跳转：按该商品搜索（跨栏合并显示）并打开行情详情（2026-09-08 船长定） */
   const jumpToOrder = (goodKey: string): void => {
     setKw(goodKey)
-    changeKind('all')
+    changeKind(DOMAIN_ALL)
     setSelKey(goodKey)
     if (narrow) setDetailOpen(true)
   }
@@ -1389,8 +1382,7 @@ export function MarketPage({
       stockedFirst(
         engine,
         goods.filter((good) => {
-          if (kind !== 'all' && !kindPasses(engine.ctx, good, kind)) return false
-          if (sub !== SUB_ALL && !subPasses(engine.ctx, good, kind, sub, engine.state)) return false
+          if (kind !== DOMAIN_ALL && !domainPasses(engine.ctx, good, kind, sub)) return false
           if (query.length > 0) {
             const name = goodDisplayName(engine.ctx, good.key).toLowerCase()
             if (!name.includes(query) && !good.key.toLowerCase().includes(query)) return false
@@ -1418,10 +1410,10 @@ export function MarketPage({
               onChange={(e) => setKw(e.target.value)}
             />
             <select className="app-mkt-kind" value={kind} onChange={(e) => changeKind(e.target.value as KindFilter)}>
-              <option value="all">{tr("ui.MarketPage.099")}</option>
-              {KIND_OPTIONS.filter((k) => k !== 'all').map((k) => (
+              <option value={DOMAIN_ALL}>{tr("ui.MarketPage.099")}</option>
+              {KIND_OPTIONS.filter((k) => k !== DOMAIN_ALL).map((k) => (
                 <option key={k} value={k}>
-                  {KIND_TEXT[k]}
+                  {DOMAIN_TEXT[k]}
                 </option>
               ))}
             </select>
@@ -1430,9 +1422,9 @@ export function MarketPage({
                 className="app-mkt-kind"
                 value={sub}
                 onChange={(e) => setSub(e.target.value)}
-                title={tr("ui.MarketPage.169", { p1: KIND_TEXT[kind] })}
+                title={tr("ui.MarketPage.169", { p1: DOMAIN_TEXT[kind] })}
               >
-                <option value={SUB_ALL}>{tr("ui.IndustryPage.001")}{KIND_TEXT[kind]}</option>
+                <option value={SUB_ALL}>{tr("ui.IndustryPage.001")}{DOMAIN_TEXT[kind]}</option>
                 {kindSubs.map((s) => (
                   <option key={s.key} value={s.key}>
                     {/* 消耗品桶里有「道具逐件档」（档名 = 那件道具自己的名字）⇒ 第二参数给物品名解析器 */}
@@ -1450,7 +1442,7 @@ export function MarketPage({
               title={
                 query.length > 0
                   ? tr("ui.MarketPage.170", { p1: kw.trim() })
-                  : `全部 ${KIND_TEXT[kind] ?? kind}${
+                  : `全部 ${DOMAIN_TEXT[kind] ?? kind}${
                       sub !== SUB_ALL && kindSubs ? ` · ${subText(kindSubs.find((s) => s.key === sub) ?? { key: sub, label: sub }, itemNameOf)}` : ''
                     }`
               }
