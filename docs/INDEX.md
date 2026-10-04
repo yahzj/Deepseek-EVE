@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **457** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7598** KB · **58985** 行
+- 文档总数 **457** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7599** KB · **58987** 行
 - 状态分布：**未标注** 249 · **已确认/已实现** 137 · **进行中** 53 · **待裁定** 17 · **历史留档** 1
 - 孤儿文档（0 引用）**88** 份 · 状态未标注 **249** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -61,7 +61,7 @@
 |---|---|---|---|---|---|
 | `docs/design/activity-mobile-audit-20261004.md` | 主控活动切换、显示与手机适配核查 | 未标注（第一轮实现与验证完成） | 2026-10-04 | 9 KB / 78 行 | 1 / 0 |
 | `docs/design/classic-nav-footer-20261004.md` | 旧版导航底部开关与矮窗口布局 | 已确认/已实现（已确认） | 2026-10-04 | 5 KB / 37 行 | 0 / 0 |
-| `docs/design/classic-navigation-touch-20261004.md` | 旧版导航单指拖动 | 已确认/已实现（已确认） | 2026-10-04 | 2 KB / 21 行 | 0 / 0 |
+| `docs/design/classic-navigation-touch-20261004.md` | 旧版导航单指拖动 | 已确认/已实现（已确认） | 2026-10-04 | 3 KB / 23 行 | 0 / 0 |
 | `docs/design/classic-sidebar-collapse-20261004.md` | 旧版导航收窄与事件日志收起 | 已确认/已实现（已确认） | 2026-10-04 | 6 KB / 47 行 | 0 / 0 |
 | `docs/design/invasion-salvage-throughput-20261004.md` | 入侵打捞速度对标与有限池收尾 | 已确认/已实现（已确认） | 2026-10-04 | 4 KB / 38 行 | 0 / 0 |
 | `docs/design/item-filter-hint-audit-20261004.md` | 分类相关提示文本筛查 | 已确认/已实现（已确认） | 2026-10-04 | 23 KB / 168 行 | 0 / 0 |
@@ -532,7 +532,7 @@
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/classic-nav-footer-20261004.md`（2026-10-04 · 5 KB）—— 旧版导航底部开关与矮窗口布局
-- `docs/design/classic-navigation-touch-20261004.md`（2026-10-04 · 2 KB）—— 旧版导航单指拖动
+- `docs/design/classic-navigation-touch-20261004.md`（2026-10-04 · 3 KB）—— 旧版导航单指拖动
 - `docs/design/classic-sidebar-collapse-20261004.md`（2026-10-04 · 6 KB）—— 旧版导航收窄与事件日志收起
 - `docs/design/invasion-salvage-throughput-20261004.md`（2026-10-04 · 4 KB）—— 入侵打捞速度对标与有限池收尾
 - `docs/design/item-filter-hint-audit-20261004.md`（2026-10-04 · 23 KB）—— 分类相关提示文本筛查
