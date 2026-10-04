@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **458** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7605** KB · **59043** 行
-- 状态分布：**未标注** 249 · **已确认/已实现** 138 · **进行中** 53 · **待裁定** 17 · **历史留档** 1
-- 孤儿文档（0 引用）**89** 份 · 状态未标注 **249** 份
+- 文档总数 **459** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7609** KB · **59082** 行
+- 状态分布：**未标注** 249 · **已确认/已实现** 139 · **进行中** 53 · **待裁定** 17 · **历史留档** 1
+- 孤儿文档（0 引用）**90** 份 · 状态未标注 **249** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**306** 份
+- 三、现行设计稿（design）：**307** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**4** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -35,7 +35,7 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 299 KB / 308 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 90 KB / 908 行 | 95 / 5 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 509 KB / 1021 行 | 227 / 20 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 509 KB / 1023 行 | 227 / 20 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 88 KB / 463 行 | 376 / 26 |
 
 ## 七、评审与体检（review） —— 12 份
@@ -55,7 +55,7 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 306 份
+## 三、现行设计稿（design） —— 307 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -70,6 +70,7 @@
 | `docs/design/mobile-navigation-overflow-20261004.md` | 手机导航栏溢出与遮挡修复 | 已确认/已实现（已确认） | 2026-10-04 | 1 KB / 17 行 | 0 / 0 |
 | `docs/design/mobile-navigation-web-style-20261004.md` | 手机导航恢复网页版规则 | 已确认/已实现（已确认） | 2026-10-04 | 3 KB / 27 行 | 0 / 0 |
 | `docs/design/mobile-shell-layout-20261004.md` | 手机布局第二轮：日志抽屉与主区优先 | 已确认/已实现（已确认） | 2026-10-04 | 8 KB / 59 行 | 0 / 0 |
+| `docs/design/titan-class-black-market-20261004.md` | T5泰坦分类与黑市门槛落地 | 已确认/已实现（已确认） | 2026-10-04 | 3 KB / 36 行 | 0 / 0 |
 | `docs/design/wormhole-expedition-rework-20261004.md` | 虫洞改进方案：整备、情报与远征选择 | 待裁定（待确认） | 2026-10-04 | 33 KB / 336 行 | 0 / 0 |
 | `docs/design/wreck-faction-rollback-20261004.md` | 普通残骸势力装备回调与核心稀有限定 | 已确认/已实现（已确认） | 2026-10-04 | 4 KB / 39 行 | 0 / 0 |
 | `docs/design/beacon-target-highsec-20261003.md` | 信号发射器：高安判据改看「玩家选定的目标星系」 | 未标注 | 2026-10-03 | 5 KB / 64 行 | 0 / 0 |
@@ -412,7 +413,7 @@
 |---|---|---|---|---|---|
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 5 KB / 82 行 | 6 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
-| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 46 KB / 800 行 | 27 / 19 |
+| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 801 行 | 27 / 18 |
 | `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 9 KB / 83 行 | 18 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
@@ -528,7 +529,7 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，89 份）
+## 附：孤儿文档（0 引用，90 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
@@ -542,6 +543,7 @@
 - `docs/design/mobile-navigation-overflow-20261004.md`（2026-10-04 · 1 KB）—— 手机导航栏溢出与遮挡修复
 - `docs/design/mobile-navigation-web-style-20261004.md`（2026-10-04 · 3 KB）—— 手机导航恢复网页版规则
 - `docs/design/mobile-shell-layout-20261004.md`（2026-10-04 · 8 KB）—— 手机布局第二轮：日志抽屉与主区优先
+- `docs/design/titan-class-black-market-20261004.md`（2026-10-04 · 3 KB）—— T5泰坦分类与黑市门槛落地
 - `docs/design/wormhole-expedition-rework-20261004.md`（2026-10-04 · 33 KB）—— 虫洞改进方案：整备、情报与远征选择
 - `docs/design/wreck-faction-rollback-20261004.md`（2026-10-04 · 4 KB）—— 普通残骸势力装备回调与核心稀有限定
 - `docs/design/beacon-target-highsec-20261003.md`（2026-10-03 · 5 KB）—— 信号发射器：高安判据改看「玩家选定的目标星系」

@@ -26,13 +26,13 @@ function tierOfEquivalentMass(eq: number): 1 | 2 | 3 | 4 | 5 {
 }
 
 describe('舰种表（2026-09-11 船长定案：5 档·敌我共用）', () => {
-  it('五档命名：护卫舰 / 驱逐舰 / 巡洋舰 / 战列舰 / 旗舰', () => {
+  it('五档命名：护卫舰 / 驱逐舰 / 巡洋舰 / 战列舰 / 泰坦', () => {
     expect([1, 2, 3, 4, 5].map((t) => HULL_CLASS_NAME[t as 1])).toEqual([
       '护卫舰',
       '驱逐舰',
       '巡洋舰',
       '战列舰',
-      '旗舰',
+      '泰坦',
     ])
   })
 
@@ -71,7 +71,7 @@ describe('舰种表（2026-09-11 船长定案：5 档·敌我共用）', () => {
     expect(hullClassTierOfTier(7)).toBe(5)
     expect(hullClassTierOfTier(Number.NaN)).toBe(1)
     expect(hullClassOf({ tier: 4 })).toBe('战列舰')
-    expect(hullClassOf({ tier: 99 })).toBe('旗舰')
+    expect(hullClassOf({ tier: 99 })).toBe('泰坦')
   })
 
   // 2026-09-12：25 → **27**（船长「T4,T5 可以先立个模子」⇒ 新增两具壳体：巨齿鲨级战列舰 / 邓氏鱼级旗舰）

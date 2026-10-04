@@ -2035,12 +2035,13 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.labelsText.011": { zh: "贝塔 AI 核心", en: "Beta AI core" },
   "ui.labelsText.012": { zh: "阿尔法 AI 核心", en: "Alpha AI core" },
   "ui.labelsText.013": { zh: "{p1} · {p2}", en: "{p1} · {p2}" },
-  /* 舰船级别（core `shipSizeLabel`）：整档模板（含 T 档号），英文用词按 `docs/glossary-en.md` 的 Frigate/Destroyer/Cruiser/Battleship/Flagship */
+  /* 舰船级别整档模板：Frigate/Destroyer/Cruiser/Battleship/Titan，T5档名与指挥旗舰职务分开。 */
   "ui.labelsText.014": { zh: "T{p1} 护卫舰", en: "T{p1} Frigate" },
   "ui.labelsText.015": { zh: "T{p1} 驱逐舰", en: "T{p1} Destroyer" },
   "ui.labelsText.016": { zh: "T{p1} 巡洋舰", en: "T{p1} Cruiser" },
   "ui.labelsText.017": { zh: "T{p1} 战列舰", en: "T{p1} Battleship" },
-  "ui.labelsText.018": { zh: "T{p1} 旗舰", en: "T{p1} Flagship" },
+  // ⟪文案调整 2026-10-04⟫ T5分类改为泰坦，指挥职务的旗舰不改。
+  "ui.labelsText.018": { zh: "T{p1} 泰坦", en: "T{p1} Titan" },
   /* 技能分类（`SKILL_GROUPS`：舰船/工业/矿业/战斗/工程/贸易/探索/物流） */
   "ui.labelsText.019": { zh: "舰船", en: "Ships" },
   "ui.labelsText.020": { zh: "工业", en: "Industry" },
@@ -2109,7 +2110,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.labelsText.061": { zh: "T{p1} 驱逐舰蓝图", en: "T{p1} Destroyer Blueprint" },
   "ui.labelsText.062": { zh: "T{p1} 巡洋舰蓝图", en: "T{p1} Cruiser Blueprint" },
   "ui.labelsText.063": { zh: "T{p1} 战列舰蓝图", en: "T{p1} Battleship Blueprint" },
-  "ui.labelsText.064": { zh: "T{p1} 旗舰蓝图", en: "T{p1} Flagship Blueprint" },
+  "ui.labelsText.064": { zh: "T{p1} 泰坦蓝图", en: "T{p1} Titan Blueprint" },
   /* ── 2026-09-26 补（船长报障「部分遗漏未本地化的文本（舰船类型，高中低槽位数量的文本）」）──
      同一族病根：护盾力场**槽位名**与窝点**档名**原先在渲染层直读 core 的纯中文表
      （`SLOT_LABELS['shield-field']` / `LAIR_TIER_LABELS`）⇒ 英文界面下漏中文。
@@ -3856,7 +3857,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.210": { zh: "深空偶发奇遇与市场风云：约 10~30 分钟一件，事件日志带 ✦，在线时弹小卡。", en: "Chance encounters in deep space and market upheaval: roughly one every 10–30 minutes, marked ✦ in the event log and popped up as a small card while you are online." },
   "ui.Handbook.211": { zh: "编队与质量", en: "Formation and mass" },
   "ui.Handbook.212": { zh: "编队", en: "Formation" },
-  "ui.Handbook.213": { zh: "最多带 4 艘船，旗舰过重进不去（会压塌虫洞入口）。", en: "Up to 4 ships can go; an overweight flagship cannot enter (it would collapse the wormhole mouth)." },
+  // ⟪文案调整 2026-10-04⟫ T5分类名称与舰船筛选一致。
+  "ui.Handbook.213": { zh: "最多带 4 艘船，泰坦过重进不去（会压塌虫洞入口）。", en: "Up to 4 ships can go; an overweight Titan cannot enter (it would collapse the wormhole mouth)." },
   "ui.Handbook.214": { zh: "编队总质量越高、可探索的回合数越少——4 艘护卫舰 93 回合，4 艘巡洋舰 53 回合。", en: "The higher the formation's total mass, the fewer turns you can explore — 4 frigates give 93 turns, 4 cruisers 53." },
   "ui.Handbook.215": { zh: "洞内按节点推进（舰船信号 / 墓场与遗迹 / 矿脉 / 谜质 / 漂浮信标）：每层要走到下潜点并打赢层末守卫，才能继续深入。", en: "Inside, progress runs node by node (ship signals, graveyards and ruins, ore veins, Enigma, drifting beacons): each layer needs the descent point reached and the layer's final guard beaten before you can go deeper." },
   "ui.Handbook.216": { zh: "洞内只产原矿「虚空母矿」，回港在精炼炉精炼出「虚空晶」。", en: "Inside, the only ore is Voidmother Ore, refined into Void Crystal in a refinery back at the station." },
@@ -3916,7 +3918,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Handbook.269": { zh: "解锁", en: "Unlocking" },
   "ui.Handbook.270": { zh: "选一条两站航线即可开始自动往返货运——虚拟货物占满货仓（不影响真实货物），每段按货仓容量 × 航程结算报酬，到站自动续下一段。", en: "Pick a route between two stations to start automatic round-trip hauling — virtual freight fills the hold (without touching real cargo), each leg pays hold capacity × distance, and docking starts the next leg automatically." },
   "ui.Handbook.271": { zh: "随时「停止运输」会立即返港停靠，无惩罚。", en: "Stop hauling at any time docks the ship at once, with no penalty." },
-  "ui.Handbook.272": { zh: "舰船按舰体尺寸分五档：护卫舰、驱逐舰、巡洋舰、战列舰、旗舰——档位越高舰体越强，价格与协会声望门槛随之抬高。", en: "Ships come in five classes by hull size: frigate, destroyer, cruiser, battleship and flagship — the higher the class the stronger the hull, and the price and Association reputation gate rise with it." },
+  "ui.Handbook.272": { zh: "舰船按舰体尺寸分五档：护卫舰、驱逐舰、巡洋舰、战列舰、泰坦——档位越高舰体越强，价格与协会声望门槛随之抬高。", en: "Ships come in five classes by hull size: frigate, destroyer, cruiser, battleship and Titan — the higher the class the stronger the hull, and the price and Association reputation gate rise with it." },
   "ui.Handbook.273": { zh: "随机事件", en: "Random events" },
   "ui.Handbook.274": { zh: "节奏", en: "Pacing" },
   // ⟪文案调整 2026-09-24⟫ 船长令「统一为势力」：原「每处锁定一个敌族」⇒「一个势力」
@@ -5897,7 +5899,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.Wormhole.086": { zh: "准备 · 选编队（最多 {WORMHOLE_AUTO_MAX_SHIPS} 条副船）", en: "Preparation · pick a formation (up to {WORMHOLE_AUTO_MAX_SHIPS} auxiliary ships)" },
   "ui.Wormhole.087": { zh: "准备 · 选编队（最多 {WORMHOLE_MAX_SHIPS} 艘）", en: "Preparation · pick a formation (up to {WORMHOLE_MAX_SHIPS} ships)" },
   "ui.Wormhole.088": { zh: "分钟后返航结算；收益 = 手动一趟期望的", en: " minutes before returning to settle; the yield is the expected value of a manual run " },
-  "ui.Wormhole.089": { zh: "带入舰船按「级别折算质量」压塌虫洞入口：旗舰（T5）进不去，总质量超过", en: "Ships brought along convert to mass by class and can collapse the wormhole mouth: a flagship (T5) cannot enter, and any total mass above " },
+  // ⟪文案调整 2026-10-04⟫ T5分类名称改为泰坦，限制不变。
+  "ui.Wormhole.089": { zh: "带入舰船按「级别折算质量」压塌虫洞入口：泰坦（T5）进不去，总质量超过", en: "Ships brought along convert to mass by class and can collapse the wormhole mouth: a Titan (T5) cannot enter, and any total mass above " },
   "ui.Wormhole.090": { zh: "匹配 {p1} / 共 {p2} 艘", en: "{p1} of {p2} ships match" },
   "ui.Wormhole.091": { zh: "已编入", en: "Assigned" },
   "ui.Wormhole.092": { zh: "占用中", en: "Occupied" },

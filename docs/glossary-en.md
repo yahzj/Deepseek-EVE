@@ -28,6 +28,7 @@
 2. **舰级后缀按中文量词直译**：艇 → `Corvette` · 舰 → `Frigate / Destroyer / Cruiser / Battleship`（按中文名里的实际级别）·
    旗舰 → `Flagship` · 货舰 → `Freighter` · 母舰 → `Carrier` · 炮舰 → `Gunboat`。
 3. **档位与型号照抄**：`MK1 / MK2 / MK3` 原样保留；舰体档 `T3 / T4 / T5` → `Tier 3 / Tier 4 / Tier 5`（表格里可写 `T3`）。
+   **2026-10-04 船长改名：T5舰体分类「泰坦」→ `Titan`**；指挥职务「旗舰」及具体舰船型号中的后缀仍译 `Flagship`，不是同一概念。
 4. **族系前缀照译**：掠袭 → `Raider` · 亡军 → `Deadarmy` · 陵卫/陵寝 → `Tombwarden / Mausoleum` · 巢群 → `Hiveswarm` ·
    构件 → `Construct` · 幽影 → `Wraith` · 哨戒 → `Sentry` · 幼虫 → `Larva` · 甲壳 → `Carapace`。
 5. **中文神话/自造专名**：意译优先，意译会失真时保留拼音（`Xuanwu-class`）＋ 表内加注。

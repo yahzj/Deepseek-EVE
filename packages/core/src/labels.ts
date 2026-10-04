@@ -241,14 +241,15 @@ export function shipCategoryLabelOf(ship: { role?: ShipRole; shieldHp?: number; 
   return shipRoleLabel(shipCategoryKeyOf(ship))
 }
 
-/** 舰船尺寸大分类名（2026-09-09 船长定：护卫 T1 / 驱逐 T2 / 巡洋 T3 / 主力 T4 / 旗舰 T5；
+/** 舰船尺寸大分类名（T1护卫 / T2驱逐 / T3巡洋 / T4战列 / T5泰坦；
  * 由等效质量落档的 tier 决定；船名内的旧规格词（炮舰/巡舰/母舰/艇…）作为子分类保留） */
 export const SHIP_SIZE_CLASS: Record<number, string> = {
   1: '护卫舰',
   2: '驱逐舰',
   3: '巡洋舰',
   4: '战列舰', // 2026-09-13 船长定：T4 档名 = **战列舰**（原写「主力舰」，与词典『舰种』条口径统一）
-  5: '旗舰',
+  // ⟪文案调整 2026-10-04⟫ 船长将T5舰体分类改为泰坦。
+  5: '泰坦',
 }
 
 export function shipSizeLabel(tier: number): string {

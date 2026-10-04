@@ -166,7 +166,8 @@ export interface WormholeAdmission {
 export const WORMHOLE_ADMISSION_TEXT: Record<WormholeAdmissionCode, string> = {
   ok: '',
   'too-many-ships': `最多只能带 ${WORMHOLE_MAX_SHIPS} 艘船`,
-  'tier-too-high': `旗舰过重，会压塌虫洞入口（最多带到 T${WORMHOLE_MAX_TIER} 战列舰）`,
+  // ⟪文案调整 2026-10-04⟫ T5分类改名，入场判据不变。
+  'tier-too-high': `泰坦过重，会压塌虫洞入口（最多带到 T${WORMHOLE_MAX_TIER} 战列舰）`,
   'no-ship': '至少要带一艘船',
   'mass-over-cap': `编队总质量超过 ${WORMHOLE_TOTAL_MASS_CAP.toLocaleString('zh-CN')}，无法跃入`,
   'unknown-ship': '编队里有无法识别的船型',

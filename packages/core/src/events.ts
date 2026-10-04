@@ -21,6 +21,7 @@ import type { MarketGoodDef, SimContext } from './types'
 import { nextInt, nextRandom, pickWeighted } from './rng'
 import { rollLowSecAmbush } from './encounters'
 import { ensureMarket, goodName, levelOf } from './market'
+import { DSI_FACTION_ID, standingOf } from './standing'
 
 /** 事件日志前缀（桌面端用它在新增日志里识别事件弹卡） */
 export const EVENT_TAG = '✦'
@@ -317,6 +318,8 @@ export function fireMarketShockEvent(state: GameState, ctx: SimContext, offline 
  *       1 神秘买家（以近乎现货价的天价收购稀有/限定商品 ×1，寿命按稀有度）。
  */
 export const BLACK_MARKET_LIFE_MS = 8 * 60_000 // 黑市溢价现货时限（船长：比稀有 9 分钟/奇货 6 小时更短）
+/** 通讯承诺的累计声望门槛，不扣可支配声望，无需另存解锁标记。 */
+export const BLACK_MARKET_STANDING_REQ = 100
 export function fireMarketOrderEvent(state: GameState, ctx: SimContext, offline = false): void {
   ensureMarket(state, ctx)
   const goods = rareGoods(ctx)
@@ -340,7 +343,8 @@ export function fireMarketOrderEvent(state: GameState, ctx: SimContext, offline 
    * 也给专属货留了销路；两支各消耗一次 `nextRandom` ⇒ **随机序列与改前逐位一致**（同种子的老档不受扰动）。
    */
   const wantsSupply = nextInt(state.rng, 2) === 0
-  if (wantsSupply && def.playerBuyable !== false) {
+  // 未达累计门槛沿用只收不卖的降级支，额外不掷骰，随机序列不变。
+  if (wantsSupply && def.playerBuyable !== false && standingOf(state, DSI_FACTION_ID) >= BLACK_MARKET_STANDING_REQ) {
     // 变体 0：黑市溢价现货——价格 ≈行情价 ×1.8~2.0（高溢价应急渠道），仅存 8 分钟
     const mul = 1.8 + nextRandom(state.rng) * 0.2
     const price = clampPrice(ctx, def, Math.round(level * mul))

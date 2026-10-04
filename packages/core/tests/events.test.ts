@@ -122,6 +122,7 @@ describe('随机事件系统（V11）', () => {
     let sawBlack = false
     for (let i = 0; i < 2; i++) {
       const { state, ctx } = makeWorld()
+      state.standingsEarned = { dsi: 100 }
       for (let k = 0; k < 40; k++) {
         fireMarketOrderEvent(state, ctx)
       }
@@ -151,6 +152,7 @@ describe('随机事件系统（V11）', () => {
      * （点买入被 `market.buyGood` 挡回「该商品只收不卖，市场不出售现货」——正是玩家看到的那一幕）。
      */
     const state = createInitialState({ nowWallMs: 0, seed: 77 })
+    state.standingsEarned = { dsi: 100 }
     const ctx = makeTestCtx({ marketGoods: [POOL_GOOD, RARE_GOOD, EXCLUSIVE_GOOD] })
     for (let k = 0; k < 200; k++) fireMarketOrderEvent(state, ctx)
     // ① 一条卖单都不许有（改前这颗种子会强刷出"黑市溢价现货"）
