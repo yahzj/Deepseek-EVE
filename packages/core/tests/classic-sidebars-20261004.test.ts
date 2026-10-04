@@ -96,6 +96,18 @@ describe('旧版导航滚动区与底部工具区结构', () => {
     cleanup(); expect(disconnect).toHaveBeenCalledOnce()
     bindings.layoutKind = 'modern'; bindings.run(); expect(observe).toHaveBeenCalledTimes(1)
   })
+  it('手机两套导航都有独立可用的滚动边界，不把内容盖到主窗口', () => {
+    const css = readFileSync(resolve(ROOT, 'apps/desktop/src/renderer/src/styles.css'), 'utf8')
+    const classic = css.match(/\.app-root\.is-layout-classic\.is-mobile-layout \.app-nav-side \{([\s\S]*?)\n\}/)?.[1] ?? ''
+    const classicScroll = css.match(/\.app-root\.is-layout-classic\.is-mobile-layout #classic-navigation \.app-classic-nav-scroll \{([\s\S]*?)\n\}/)?.[1] ?? ''
+    const modern = css.match(/\.app-root\.is-layout-modern\.is-mobile-layout \.app-left-col \{([\s\S]*?)\n\}/)?.[1] ?? ''
+    expect(classic).toContain('width: 120px')
+    expect(classic).toContain('overflow: hidden')
+    expect(classicScroll).toContain('overflow-y: auto')
+    expect(classicScroll).toContain('touch-action: pan-y')
+    expect(modern).toContain('width: 156px')
+    expect(modern).toContain('min-width: 156px')
+  })
 })
 describe('旧版导航偏好与日志显示时序', () => {
   it.each([null, '{bad', '[]', 'null', '{"desktop":"true","mobile":1}'])('缺省/损坏偏好 %s 保持展开', (raw) => {

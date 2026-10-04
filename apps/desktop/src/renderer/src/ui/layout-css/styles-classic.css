@@ -13006,8 +13006,13 @@ html[data-locale='en'] body {
 .app-root.is-mobile-layout .app-log-filter { min-height: 28px; }
 
 .app-root.is-layout-classic.is-mobile-layout .app-nav-side {
-  flex: 0 0 80px; width: 80px; min-width: 0; padding: 4px; box-sizing: border-box;
-  overflow-y: auto; overflow-x: hidden; gap: 4px; justify-content: flex-start; align-items: stretch;
+  /* 手机旧版导航需要给中文标签留出宽度；滚动只交给内部列表，避免外层滚动条拦截拖动。 */
+  flex: 0 0 120px; width: 120px; min-width: 120px; padding: 4px; box-sizing: border-box;
+  overflow: hidden; gap: 4px; justify-content: flex-start; align-items: stretch;
+}
+.app-root.is-layout-classic.is-mobile-layout #classic-navigation .app-classic-nav-scroll {
+  flex: 1 1 auto; min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden;
+  scrollbar-gutter: stable; touch-action: pan-y; -webkit-overflow-scrolling: touch;
 }
 .app-root.is-layout-classic.is-mobile-layout .app-nav-side .app-nav-item {
   width: 100%; min-width: 0; min-height: 44px; flex: 0 0 auto; padding: 4px 2px;
@@ -13024,7 +13029,10 @@ html[data-locale='en'] body {
 .app-root.is-layout-classic.is-mobile-layout .app-activitybar .wui-panel-head { flex-wrap: nowrap; }
 .app-root.is-layout-classic.is-mobile-layout .app-activitybar .wui-panel-right { flex-wrap: nowrap; }
 
-.app-root.is-layout-modern.is-mobile-layout .app-left-col { flex: 0 0 100px; width: 100px; }
+.app-root.is-layout-modern.is-mobile-layout .app-left-col {
+  /* 活动栏本身固定150px；100px会让它伸入主区并被主窗口遮住。 */
+  flex: 0 0 156px; width: 156px; min-width: 156px;
+}
 .app-root.is-layout-modern.is-mobile-layout .app-nav-side { padding: 4px; min-width: 0; gap: 4px; }
 .app-root.is-layout-modern.is-mobile-layout .app-nav-side > .app-nav-group {
   overflow-x: auto; overflow-y: hidden; align-items: stretch; gap: 4px;
