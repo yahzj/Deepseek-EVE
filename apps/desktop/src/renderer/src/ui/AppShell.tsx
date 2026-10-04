@@ -38,6 +38,7 @@ import { ICO_TONES, NAV_TONES } from './tones'
 import { MoneyFit } from './MoneyFit'
 import { ShipStatusWin } from './ShipStatusWin'
 import { useClassicNavCollapse } from './classicSidebars'
+import { bindClassicNavTouchScroll } from './classicNavTouch'
 import type { MapTab } from '../pages/MapPage'
 import type { ShipTab } from '../pages/ShipPage'
 import type { PageKey } from '../App'
@@ -143,6 +144,12 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
   const classicNav = useClassicNavCollapse(layoutKind === 'classic', mobileLog !== null)
   const classicNavRef = useRef<HTMLElement>(null)
   const classicNavScrollRef = useRef<HTMLDivElement>(null)
+  const touchNavigation = layoutKind === 'classic' && mobileLog !== null
+  useLayoutEffect(() => {
+    const scroll = classicNavScrollRef.current
+    if (!touchNavigation || !scroll) return
+    return bindClassicNavTouchScroll(scroll)
+  }, [touchNavigation])
   useLayoutEffect(() => {
     const nav = classicNavRef.current, scroll = classicNavScrollRef.current
     if (layoutKind !== 'classic' || !nav || !scroll) return

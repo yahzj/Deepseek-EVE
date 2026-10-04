@@ -7,6 +7,7 @@ import { readFileSync, mkdirSync, mkdtempSync, existsSync, writeFileSync } from 
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { strict as assert } from 'node:assert'
+import ts from 'typescript'
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const root = process.cwd()
@@ -68,6 +69,14 @@ async function main() {
       const html = `<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${tokens}\n${css}</style></head><body><div class="app-root is-layout-${layout}${mobile ? ' is-mobile-layout' : ''}${rotated ? ' is-mobile-rot' : ''}" style="--mob-w:1200px;--mob-h:${logicalH}px;--mob-scale:${844 / 1200};--mob-y:844px"><header class="app-header">测试外壳</header><div class="app-workspace">${layout === 'classic' ? classic : modern}</div>${layout === 'modern' ? modernNav : ''}</div></body></html>`
       const { frameTree } = await send('Page.getFrameTree')
       await send('Page.setDocumentContent', { frameId: frameTree.frame.id, html })
+      if (layout === 'classic' && mobile) {
+        const source = readFileSync(join(root, 'apps/desktop/src/renderer/src/ui/classicNavTouch.ts'), 'utf8')
+        const js = ts.transpileModule(source.replace('export function', 'function'), {
+          compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
+        }).outputText
+        await evaluate(`${js}\nbindClassicNavTouchScroll(document.querySelector('.app-classic-nav-scroll')); true`)
+        await evaluate(`window.navClicks=0;document.querySelectorAll('#classic-navigation .app-nav-item').forEach(b=>b.addEventListener('click',()=>window.navClicks++));true`)
+      }
       await pause(200)
       const r = await evaluate(`(() => {
         const side=document.querySelector('${layout === 'classic' ? '#classic-navigation' : '.app-left-col'}'), main=document.querySelector('main'), scroll=document.querySelector('${layout === 'classic' ? '.app-classic-nav-scroll' : '.app-activitybar'}');
@@ -92,8 +101,24 @@ async function main() {
         await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
         await pause(300)
         r.scrolled = await evaluate(`document.querySelector('${layout === 'classic' ? '.app-classic-nav-scroll' : '.app-activitybar'}').scrollTop`)
-        if (!rotated) assert(r.scrolled > 0, `${layout}/${mode}触摸未滚动`)
-        // 旋转层的原生手势只记录，不以程序设置scrollTop替代触摸成功结论。
+        assert(r.scrolled > 0, `${layout}/${mode}触摸未滚动`)
+        if (layout === 'classic') {
+          assert.equal(await evaluate('window.navClicks'), 0, `${mode}拖动误触切页`)
+          const button = await evaluate(`(() => {
+            const s=document.querySelector('.app-classic-nav-scroll').getBoundingClientRect();
+            for(const b of document.querySelectorAll('#classic-navigation .app-nav-item')) {
+              const r=b.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+              if(x>s.left&&x<s.right&&y>s.top&&y<s.bottom)return {x,y};
+            }
+          })()`)
+          assert(button, '找不到可见轻点导航项')
+          await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [button] })
+          await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+          await pause(150)
+          assert.equal(await evaluate('window.navClicks'), 1, `${mode}轻点不能切页`)
+          r.tapWorks = true
+        }
+        // 必须先看到真实触摸成功，再检查末项可达。
         const reachable = await evaluate(`(() => {const s=document.querySelector('${layout === 'classic' ? '.app-classic-nav-scroll' : '.app-activitybar'}');s.scrollTop=s.scrollHeight;return s.scrollTop>0;})()`)
         assert(reachable, `${layout}/${mode}滚动区域无法到达末项`)
         r.lastReachable = reachable
