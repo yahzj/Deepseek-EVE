@@ -499,8 +499,7 @@ html[data-locale='en'] body {
    ② 其余导航项在旋转模式下**先按紧凑款起步**——只收**上下内边距**（11 → 5px）与间距（5 → 4px），
       **字号 / 行高 / 图标尺寸一律不动**（"字正常显示"）；
    ③ 收完仍不足才由侧栏出滚动条（`.app-nav-side` 自带 `overflow-y: auto`）。
-   ⚠ **2026-09-25 起本套口径降级为"历史记录"**：导航已改为**底部横栏**（船长令），竖栏的"高度不足"
-   这个前提消失 ⇒ 下面两条只为兼容旋转模式保留，收的是**横向**内边距与**图标上下的**余量。 */
+   2026-10-04 船长要求手机导航与网页版相同；旋转导航专用覆盖已撤，保留本段为历史。 */
 /* ── 虫洞弹层内部：旋转时按**桌面款**排（船长 2026-09-14 裁定「只还原虫洞弹层内部」）──
    弹层本身已按逻辑空间定尺寸（1060 × ≈520），但**物理竖屏宽仍是 ~390** ⇒ 上批给窄屏加的那条
    `@media (max-width: 640px)` 防御块照样命中：地图排被改成竖排、缩放控件改横排、结算卡满宽单列、
@@ -13068,17 +13067,11 @@ html[data-locale='en'] body {
 .app-root.is-layout-classic #classic-navigation .app-classic-nav-scroll > .app-shipwin-wrap {
   box-sizing: border-box; width: 100%;
 }
-.app-root.is-layout-classic:not(.is-mobile-layout) #classic-navigation:not(.is-compact) .app-nav-item.is-featured {
+.app-root.is-layout-classic #classic-navigation:not(.is-compact) .app-nav-item.is-featured {
   min-height: calc(42px + 6px + 1.25 * var(--wui-fs-lgb) + 4px);
 }
 .app-root.is-layout-classic .app-classic-nav-scroll > .app-shipwin-wrap { flex: 0 0 auto; }
 .app-root.is-layout-classic .app-classic-nav-scroll .app-shipwin { width: 100%; box-sizing: border-box; }
-.app-root.is-layout-classic.is-mobile-layout #classic-navigation .app-nav-label {
-  min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;
-}
-.app-root.is-layout-classic.is-mobile-layout #classic-navigation:not(.is-compact) .app-nav-item.is-featured {
-  aspect-ratio: auto; height: auto; flex: 0 0 auto; padding: 4px 2px; white-space: normal;
-}
 .app-root.is-layout-classic .app-classic-nav-footer {
   flex: 0 0 auto; min-width: 0; padding-top: 4px; padding-right: var(--classic-nav-scrollbar, 0px);
   border-top: 1px solid rgb(var(--wui-border)); display: flex; justify-content: center; box-sizing: border-box;
@@ -13112,7 +13105,7 @@ html[data-locale='en'] body {
 .app-root.is-layout-classic .app-classic-restore { width: 44px; height: 44px; flex: 0 0 44px; padding: 4px; }
 @container classic-nav (max-height: 650px) {
   .app-classic-nav-scroll { gap: 4px; }
-  .app-root.is-layout-classic:not(.is-mobile-layout) #classic-navigation:not(.is-compact) .app-nav-item:not(.is-featured) {
+  .app-root.is-layout-classic #classic-navigation:not(.is-compact) .app-nav-item:not(.is-featured) {
     padding-top: 5px; padding-bottom: 5px;
   }
 }

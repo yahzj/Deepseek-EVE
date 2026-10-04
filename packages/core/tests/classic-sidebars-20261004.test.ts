@@ -102,8 +102,15 @@ describe('旧版导航滚动区与底部工具区结构', () => {
     expect(css).not.toContain('.app-root.is-layout-modern.is-mobile-layout .app-nav-side')
     expect(css).not.toContain('.app-root.is-layout-modern.is-mobile-layout .app-left-col')
     expect(css).not.toContain('.app-root.is-mobile-rot .app-nav-side')
+    expect(css).not.toContain('.is-mobile-layout) #classic-navigation')
+    expect(css).not.toContain('.is-mobile-layout #classic-navigation')
     expect(css).toContain('.app-root.is-layout-classic .app-classic-nav-scroll')
     expect(css).toContain('.app-nav-side .app-nav-item')
+    for (const layout of ['classic','modern']) {
+      const generated = readFileSync(resolve(ROOT, `apps/desktop/src/renderer/src/ui/layout-css/styles-${layout}.css`), 'utf8')
+      expect(generated).not.toContain('.app-root.is-mobile-rot .app-nav-side')
+      expect(generated).not.toContain('.is-mobile-layout #classic-navigation')
+    }
   })
 })
 describe('旧版导航偏好与日志显示时序', () => {

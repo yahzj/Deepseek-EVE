@@ -51,8 +51,7 @@ const CHECK = process.argv.includes('--check')
  *   ⇒ **新增外壳取值时，务必回头把这几个族逐条核对一遍**（工具会回读自检，漏了会直接报错）。
  */
 const SHELL_SELECTORS = [
-  '.app-root.is-mobile-rot .app-nav-side',
-  '.app-root.is-mobile-rot .app-nav-side .app-nav-item:not(.is-featured)',
+  // 2026-10-04：手机导航沿用网页版，不再从历史基准注入旋转专用覆盖。
   '.app-workspace',
   '.app-page-main',
   // 导航族（含舰船窗 / 矮窗紧凑款）
