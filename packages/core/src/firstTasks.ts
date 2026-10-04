@@ -126,12 +126,12 @@ export interface FirstTaskDef {
    * 取值一律走 {@link firstTaskText}，渲染层不许直接读 `title`/`detail`（否则英文界面漏中文）。
    */
   titleEn?: string
-  /** 任务卡一句话（**不写原因解释、≤30 字**，与 §5 文案硬规矩同口径） */
+  /** 任务卡目标摘要；长度上限已废止。 */
   brief: string
   /**
    * **任务卡正文**（船长 2026-09-18：「任务内容过于简略，建议加入一定量的文本丰富」）——
    * 一段话讲清"这件事怎么做、做成什么样、有什么好处"，并带一句实物奖励提示。
-   * ⚠ 它会超过 §5「说明文案 ≤30 字」那条规矩（那是给商品说明定的）；是否把任务卡正文豁免，已上报船长。
+   * 文案调整时与 detailEn 成对维护；完成条件与奖励独立，不因改字变化。
    */
   detail: string
   /** 英文正文（口径与取舍见 `titleEn` 的头注） */
@@ -294,15 +294,16 @@ export function sequentialPrefixDone(state: GameState): boolean {
  * 打捞改为 **1,000 m³ 高安海盗残骸**；维修取消起手修理组件（船长在 Excel 里清空了那一格）。
  */
 export const FIRST_TASKS: readonly FirstTaskDef[] = [
+  // ⟪文案调整 2026-10-04⟫ 船长授权教程整批优化、一次性验收；沿现有中英字段，不改判据及奖励。
   {
     id: 'first-scan',
     title: '第一次扫描',
     titleEn: 'First Scan',
     brief: '对星图上的未知信号执行一次扫描探索',
     detail:
-      '在探索一个新的星系时，需要先派一艘深空扫描艇进行扫描作业，了解该星系的航线、矿带、悬赏与残骸情报等。初始的章鱼人母港只需十来秒，后续其他星系越危险扫得越久。',
+      '到星图点选母港的未知信号，选择「扫描探索」。母港扫描需要 10 秒，完成后会显示这里的矿带、悬赏与残骸。回任务中心点击「完成」，领取奖励并开始下一项。',
     detailEn:
-      'To explore a new system, send a deep-space scanning vessel to scan it first: that reveals its routes, belts, bounties and wreck intel. The starting Octopus home port takes only a dozen seconds; the more dangerous the system, the longer the scan.',
+      'Select the unknown signal at your home port on the star map and choose Scan. The home port scan takes 10 seconds and reveals its belts, bounties and wreck sites. Return to the Task Center and click Complete to collect the reward and continue.',
     judge: (state, ctx) => state.exploredGalaxies.filter((g) => ctx.galaxies.has(g)).length,
     commsId: 'first-scan',
     /**
@@ -324,9 +325,9 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     //   采矿艇磷虾级开局就在舰船仓库里 ⇒ 文本第一句直接点明"先去舰船页换驾驶"。
     // ⟪文案调整 2026-09-30⟫ 船长令改名：沙猫级 → 磷虾级（中英同步）
     detail:
-      '先到「舰船」页把驾驶换成采矿艇（磷虾级），再到矿带派出采矿。采掘、返航、卸货都会自动完成。原矿可以按市价卖出，也可以送进精炼炉炼成原材料——绝大多数情况下精炼会更加划算。',
+      '强化采集器 MK1 已放入装备库。先到「舰船」页换驾驶为磷虾级采矿艇，再到「装配」页装上采集器，然后去星图的「矿带开采」开始采矿。采到原矿即可回任务中心完成；要转去精炼，先停止采矿，等待返港。',
     detailEn:
-      'First go to the Ships page and switch to a mining vessel (Krill-class), then send it to a belt. Digging, returning and unloading all happen automatically. Ore can be sold at market price, or fed into the refinery to make materials — refining pays better in almost every case.',
+      'A Reinforced Mining Laser MK1 is in Module Storage. Switch to the Krill-class Mining Corvette on the Ships page, fit the laser on the Fitting page, then start mining from Ore Mining on the star map. Once ore is collected, return to the Task Center to complete the task. Stop mining and wait to return to port before refining.',
     judge: (state) => (state.firstStats?.mineUnits ?? 0),
     commsId: 'first-mine',
     /**
@@ -353,9 +354,9 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     titleEn: 'First Refinery Run',
     brief: '让精炼炉出一批料',
     detail:
-      '精炼炉按批运转：原料足够就能一直运转，直到原料全部用光。生产装备和舰船需要大量的材料都是通过精炼炉来生产。可以通过学习技能来大幅提高精炼效率。',
+      '上一项奖励的橄榄岩已入物品仓库。停靠后，到「工业」页的「精炼炉」选择橄榄岩，用手动工作位开炉。等一批原材料出炉即可回任务中心完成，不必把全部原矿炼完。炉子仍在手动运转时，先停炉再安排出港。',
     detailEn:
-      'The refinery runs in batches: as long as it has feedstock it keeps going until the feedstock runs out. The bulk of the materials needed for gear and ships comes out of the refinery, and skills can raise its efficiency a lot.',
+      'The Peridotite reward from the previous task is in Item Storage. While docked, select it in Refinery on the Industry page and start a manual run. One completed batch of materials is enough to claim the task; you do not need to refine all the ore. Stop a manual refinery before heading out.',
     judge: (state) => (state.firstStats?.refineBatches ?? 0),
     commsId: 'first-refine',
     // 奖励（船长 2026-09-18 定、2026-09-22 Excel 复核不变）：动能弹药生产线蓝图
@@ -375,9 +376,9 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     titleEn: 'First Bounty Cleared',
     brief: '打赢一场悬赏讨伐',
     detail:
-      '各个星系都有常驻悬赏。章鱼人通常将悬赏按威胁分档：档位越高敌人越厚、火力越重，报酬与协会声望也越高。声望是协会渠道的通行证，市场门槛与虫洞扫描都看它。',
+      '到星图的「常驻悬赏」查看母港的「演习场驱逐令」。开局自带的基础舰炮就能参与这场演习，不必先买炮或弹药。选择目标出击，打赢一场后回任务中心完成；不需要开启重复清剿。其他悬赏出发前，应先检查装配与敌情。',
     detailEn:
-      'Every system keeps a standing bounty board. Bounties are tiered by threat: the higher the tier, the tougher and harder-hitting the enemy — and the better the pay and Association reputation. Reputation is your pass to Association channels; market gates and wormhole scanning both check it.',
+      'Open Standing Bounties on the star map and look for the training-ground bounty at your home port. The built-in basic gun can fight this exercise; no gun or ammunition purchase is needed first. Win one fight and return to the Task Center. Repeat sweeps are not required. Check fittings and enemy details before taking other bounties.',
     judge: (state) => (state.firstStats?.bountyWins ?? 0),
     commsId: 'first-bounty',
     // 奖励（船长 2026-09-18 定、2026-09-22 Excel 复核不变）：一艘鲣鱼级（直接进机库；同型自动编号 #2）
@@ -390,9 +391,9 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     titleEn: 'First Ship Repair',
     brief: '用修理组件或港内维修修一次船',
     detail:
-      '在战斗结束后，舰船的护盾会自行回满，而装甲与结构的损伤则会跨场保留。返回星港进行修理吧。想要自动修理的话，你需要一个船体维修装置和一些修理组件。不同的船体维修装置会消耗不同类型的修理组件。',
+      '装甲和结构的损伤不会随战斗结束消失。等舰船停靠后，到「舰船」页的舰队列表，选一艘受损舰船，使用港内维修并支付信用点。完成一次实际维修即可回任务中心完成。若当前舰船完好，看看开局已有损伤的鲣鱼级。',
     detailEn:
-      'After a battle a ship\'s shields refill on their own, but armour and structure damage carries over between fights. Head back to a station to repair. For automatic repairs you need a hull repair unit plus repair kits — different hull repair units consume different kit types.',
+      'Armor and structure damage remains after a fight. Once docked, select a damaged ship in the fleet list on the Ships page and pay for station repairs. One actual repair is enough to complete this task. If your current ship is undamaged, check the Skipjack-class Frigate that started with damage.',
     judge: (state) => (state.firstStats?.repairs ?? 0),
     commsId: 'first-repair',
     /**
@@ -420,9 +421,9 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     titleEn: 'First Wreck Salvage',
     brief: '到残骸地点打捞一批',
     detail:
-      '星系里的残骸点可以派船打捞，打捞到的残骸可以送入精炼炉进行回收。除了回收出各种材料外，偶尔还能发现完好的装备和图纸碎片。图纸碎片集齐后可以在蓝图书架处拼接成完整蓝图。带稀有标记的残骸更值钱，也有概率出现更好的装备。',
+      '打捞器 MK1 已放入装备库。到「装配」页为准备驾驶的舰船装上打捞器，再去星图的「残骸打捞」选择母港残骸场开始作业。收上一批残骸即可回任务中心完成，不必捞满货舱。停止作业后会返港，带回的残骸可送进工业页的回收炉。',
     detailEn:
-      'Wreck sites in a system can be salvaged by sending a ship; the wrecks you pull in can be recycled in the refinery. Besides materials, salvage occasionally turns up intact gear and blueprint fragments. Collect enough fragments and the Blueprint Shelf can assemble them into a full blueprint. Wrecks marked as rare are worth more and may hold better gear.',
+      'A Salvager MK1 is in Module Storage. Fit it to the ship you intend to fly, then start work at a home-port wreck field from Wreck Salvage on the star map. Collect one batch and return to the Task Center to complete the task; a full hold is not required. Stopping returns you to port. Wreckage can be processed in the recycling unit on the Industry page.',
     judge: (state) => (state.firstStats?.salvageRuns ?? 0),
     commsId: 'first-salvage',
     reward: { ware: [{ itemId: 'wreck-a-hi', units: 1_000 }] },
@@ -439,9 +440,9 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     titleEn: 'First Skill Trained',
     brief: '把 AI 核心操作学练到 Lv1',
     detail:
-      '鉴于数据库的遗失，我们需要重新收集各种数据进行技能学习。越高级的技能需要学习的时间越长。初期建议优先将 AI 核心操作学升到 Lv3，这样就能驱动 AI 副手帮我们完成工作。它在「技能」页的「工程」里，切过去就能看到。',
+      '到「技能」页的「工程」找到「AI 核心操作学」，把它加入训练队列。练成 Lv1 即满足本项条件，回任务中心点击「完成」。先学这一门，下一项就能启用一枚核心，让闲置舰船替我们作业；不必现在练到 Lv3。',
     detailEn:
-      'With the database lost, data has to be gathered again before skills can be trained, and higher-level skills take longer. Early on, raise AI Core Operation to Lv3 so AI auxiliaries can take work off your hands. It sits under Engineering on the Skills page — switch over and you will see it.',
+      'Find AI Core Operation under Engineering on the Skills page and add it to the training queue. Lv1 is enough for this task; return to the Task Center and click Complete when it finishes. That level lets you activate one core for an idle ship in the next task. Lv3 is not required now.',
     judge: (state) => state.skills.trained['ai-expert'] ?? 0,
     commsId: 'first-skill',
     /**
@@ -458,9 +459,9 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     titleEn: 'First AI Auxiliary Assigned',
     brief: '给一艘闲置舰船派个 AI 任务',
     detail:
-      '闲置舰船配上一枚 AI 核心就能自己出海：采矿、打捞、驻留待命都能接。初期建议让 AI 副手驾驶采矿艇（磷虾级）进行挖矿作业。因为战斗、运输、扫描虫洞较为复杂，所以无法通过 AI 副手完成。',
+      '基础 AI 核心已到账。先停止主控作业并等返港，换驾驶到另一艘舰船，把装有采集器的磷虾级留作副船。到「舰船」页的「AI 副船」，选磷虾级、基础核心和可用矿带，指派采矿。指派成功即可回任务中心完成，不必等它跑完一趟。',
     detailEn:
-      'An idle ship plus one AI core can head out on its own: mining, salvage or standing by on station. Early on, put an AI auxiliary in a mining vessel (Krill-class) to dig. Combat, hauling and wormhole scanning are too involved to hand to an AI auxiliary.',
+      'A Basic AI Core is available. Stop your current work, wait to dock, and switch to another ship, leaving the Krill-class vessel with its mining laser as an auxiliary. In AI Auxiliaries on the Ships page, select that vessel, the Basic core and an available belt, then assign mining. A successful assignment is enough; you do not need to wait for a trip to finish.',
     // 船长 2026-09-17：「将安排 AI 核心的任务设置为需要玩家完成学习技能才出现」
     judge: (state) => (state.firstStats?.aiAssigns ?? 0),
     commsId: 'first-ai',
@@ -479,9 +480,9 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一次生产',
     titleEn: 'First Production Run',
     brief: '让组装机造出一件东西',
-    detail: '组装机要三样：蓝图、材料、时间。一般会安排其他 AI 副手进行自动生产加工，加工生产弹药是一个不错的初始资金来源。',
+    detail: '到「工业」页的蓝图书架学习已经领到的「动能弹药生产线」蓝图，再到组装机选择这条生产线，用手动工作位生产一批。起手材料已入物品仓库，不需要把副船的核心收回来。等成品交付后回任务中心完成。',
     detailEn:
-      'The assembler needs three things: a blueprint, materials and time. Production is usually handed to an AI auxiliary; making ammunition is a solid first source of income.',
+      'Learn the Kinetic Ammo blueprint you received earlier from the Blueprint Shelf on the Industry page. Select its production line in the assembler and run one manual batch. Starting materials are in Item Storage; you do not need to recall the auxiliary ship\'s core. Complete the task after the finished goods are delivered.',
     judge: (state) => (state.firstStats?.produceUnits ?? 0),
     commsId: 'first-produce',
     /**
@@ -505,9 +506,9 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
      */
     brief: '在市场做成一笔买卖（挂单或市价都算）',
     detail:
-      '在市场上进行交易物资是很重要的一个补充资源缺口和获取信用点来源的好办法。你可以直接按市价快速买入卖出，或者挂定一个期望价格等待有人收购或者卖出。对于一些稀有东西，你可以挂出数倍的价格进行求购，说不定什么时候就有人会心动于你的价格将东西买给你。',
+      '市场已开放。选一件持有的物品按市价卖出，或买入需要的物资，都能完成本项。也可以提交一张买单或卖单，挂单成功即可，不必等成交。先用少量物资试一次，再回任务中心完成；造船所需的材料先留着。',
     detailEn:
-      'Trading at market is an important way to cover resource shortfalls and earn credits. You can buy and sell instantly at market price, or post your own price and wait for someone to take it. For rare goods you can post a buy order at several times the going rate — sooner or later someone may like your price and sell to you.',
+      'The market is open. Sell an item you hold at market price, or buy supplies you need; either completes this task. Posting a buy or sell order also counts as soon as it is accepted, without waiting for a fill. Try a small quantity, then return to the Task Center. Keep materials needed for shipbuilding.',
     /**
      * 判据 = `firstStats.orders`（**2026-09-22 船长令**后语义 = "做过几笔市场交易"）：
      * 挂卖单 / **挂买单** / **市价买入** / **市价卖出**（含整船）四条路各记一笔
@@ -525,9 +526,9 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     title: '第一条船',
     titleEn: 'First Ship Built',
     brief: '造出第一艘自造船',
-    detail: '造船厂对任何人来说都是十分重要的地方。除去市场外，这里是我们获取舰船的主要来源。制造一艘船并不便宜，但是回报绝对值得这个价格。',
+    detail: '磷虾级舰船蓝图已放入蓝图书架，先学习它，再到「工业」页的「造船厂」选择磷虾级。准备生产所需的原材料，用手动工作位开工；缺料可继续采矿精炼，或到市场购买。等舰船交付到「舰船仓库」后，回任务中心完成。',
     detailEn:
-      'The shipyard matters to everyone: apart from the market, it is where ships come from. Building one is not cheap, but the return is well worth the price.',
+      'The Krill-class ship blueprint is on the Blueprint Shelf. Learn it, then select the Krill-class vessel in Shipyard on the Industry page. Prepare the listed materials and start a manual build. Mine and refine any missing materials, or buy them at market. Once the hull is delivered to Ship Storage, return to the Task Center to complete the task.',
     judge: (state) => (state.firstStats?.ships ?? 0),
     commsId: 'first-ship',
     /**
@@ -546,9 +547,9 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     brief: '完成一趟长途运输',
     titleEn: 'First Long-haul Run',
     detail:
-      '长途运输是一笔十分稳定的收入，各个空间站之间一直有着常驻的货运需求，不过前提是需要有 2 个以上空间站，红环航带一直有一个空间站的建设计划，完成后就能够开始长途运输。',
+      '长途运输需要两座已建成的空间站。若目前只有母港，先在星图探明红环航道，查看前哨站材料单并完成建设。航线开放后，到「长途运输」选择两站开始往返；完成一趟后回任务中心领取奖励。运输会自动续跑，想停下可在活动栏停止。',
     detailEn:
-      'Long-haul transport is a very steady income: stations always need freight moved, but it takes two or more stations to start. The Redring Corridor has a standing station construction plan — once it is finished, long-haul runs open up.',
+      'Long-haul transport needs two completed stations. If only the home port is available, first chart Redring Corridor, check the outpost materials bill and finish construction. Once a route is available, choose two stations under Long-haul Transport and start the round trip. Complete one trip to claim the reward. Transport repeats automatically; stop it from the activity bar when needed.',
     judge: (state) => (state.firstStats?.haulTrips ?? 0),
     commsId: 'first-haul',
     // 奖励（船长 2026-09-18 定、2026-09-22 Excel 复核不变）：飞鱼级快运舰（直接进机库）
@@ -561,9 +562,9 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
     titleEn: 'First Wormhole',
     brief: '把深空工业协会声望攒到 40',
     detail:
-      '协会声望攒到 40 就能解禁虫洞扫描阵列。通过扫描发现隐藏在各个星系的虫洞入口。不过需要注意，大部分虫洞都已经成为各个势力的躲藏点，前往虫洞内搜寻稀有资源时极有可能会遭遇强力的敌人。并且因为虫洞的特殊性，在虫洞中的战斗很难逃离，请做好充足的准备再前往。',
+      '本项要求累计获得 40 点协会声望，不需要先进入虫洞。到常驻悬赏查看还没拿过首胜声望的目标，逐步积攒；重复清缴同一目标不会再给首胜声望。达标后回任务中心完成，领取两处虫洞坐标，再到「扫描虫洞」检查编队、武器、采集器与打捞器，准备好再进入。',
     detailEn:
-      'At 40 Association reputation the wormhole scanning array unlocks, letting you scan out wormhole entrances hidden across the systems. Be warned: most wormholes have become hiding places for one faction or another, so hunting rare resources inside will very likely run into tough enemies — and because of how wormholes work, a fight inside is hard to run from. Prepare properly before you go in.',
+      'This task requires 40 total earned Association standing, not a wormhole entry. Check Standing Bounties for targets whose first-win standing you have not collected. Repeating the same target does not award that standing again. Once eligible, claim the task to receive two wormhole coordinates. Then open Scan for Wormholes and check your squad, weapons, mining lasers and salvagers before entering.',
     // 任务目标就是"完成解锁条件的内容"（船长原话）⇒ 判据 = 声望门槛（虫洞解锁线 40）
     judge: (state) => (dsiStanding(state) >= WORMHOLE_UNLOCK_STANDING ? 1 : 0),
     commsId: 'first-wormhole',

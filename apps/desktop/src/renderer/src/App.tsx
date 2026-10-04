@@ -1451,6 +1451,8 @@ async function applyLayoutAndReload(): Promise<void> {
             onJump={(t) => {
             if (t.industrySec) setIndFocus(t.industrySec)
             if (t.skillGroup) focusSkillGroup(t.skillGroup)
+            // 教程的装配入口始终选当前驾驶船，不沿用上次浏览的其他舰船。
+            if (t.page === 'fit') setFitShipId(engine.state.shipId)
             changePage(t.page as PageKey)
             if (t.mapTab) changeMapTab(t.mapTab as MapTab)
             if (t.shipTab) changeShipTab(t.shipTab as ShipTab)

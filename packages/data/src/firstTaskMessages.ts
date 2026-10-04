@@ -1,38 +1,8 @@
-/**
- * **「第一次」任务系列的 13 封通讯**（船长 2026-09-17 教程重做批 · 阶段②收尾）。
- *
- * 船长原话：「**每个'第一次'的任务完成后就会有一则通讯告诉玩家一些相关的情报。**
- * 之前生产舰船的通讯可以合并到这里面。」
- *
- * 口径（沿用 `messages.ts` 的既有纪律）：
- * - 送达条件 = **该「第一次」任务已完成**（新触发 `{ kind: 'firstTask', taskId }`，由 `core/firstTasks`
- *   写入的 `importantTasks[id].done` 判定）⇒ **不再单独挂"造好第一条船"的触发器**（那封并进 `first-ship`）。
- *   ⚠ **2026-09-21 船长令**：任务改成"玩家回任务中心点「完成」才推进" ⇒ 这里的 `done` 落在那**一次点击**上，
- *   通讯自然也在点击之后送达（同一拍性未变）。⇒ 这一点击**同时**发下一条的**起手道具** ⇒ 第三行「随信附…」
- *   写的就是"这一下真正到手的东西"（本条完成奖励 and/or 下一条的起手道具，逐封核对过）。
- * - 发件方 = **舰载信息库 · 检索重启**（船自己的系统，与开场简报同一发件人）。
- * - 正文只给"情报 + 一句建议"，不写开发用语；**玩家就是那条船**（不出现「你的舰船」这类分离说法）。
- * - **13 封的「前往」一律指向「任务中心」**（**2026-09-21 船长令**：「**任务完成后出现的通讯的跳转改为
- *   返回任务中心**」）——读完情报正好顺手点「完成」继续下一步；文案各行独立（同一句话，便于逐条改）。
- *
- * ---
- *
- * **2026-09-22 船长令：正文按船长的任务文本风格重写**（船长原话：「**情报信的文案你没根据我的第一次任务的
- * 文本风格重新写吗？**」）。此前只对齐了顺序与「随信附」几行，**正文 39 行仍是旧档案腔** ⇒ 本批整篇重写。
- *
- * **重写口径（照 `core/src/firstTasks.ts` 里船长那 13 条 detail 的风格）**：
- * 1. **人称**：用「我们 / 你」说话（船长 detail 就是「我们需要重新收集…」「这样就能驱动 AI 副手帮我们
- *    完成工作」「返回星港进行修理吧」这种共事口吻），**不用**第三人称、不写"你的舰船"这类分离说法；
- * 2. **句式**：完整句串联，**少用破折号**（船长几乎不用 ⇒ 每封最多留一处），改用「，」「。」或「：」列举；
- * 3. **语气**：给情报之外**带一句建议或提醒**（船长 detail 的固定动作：「初期建议…」「绝大多数情况下…更划算」
- *    「请做好充足的准备再前往」）；
- * 4. **术语**：页面 / 系统 / 技能名一律加「」（「舰船」页、「AI 核心操作学」、「精炼学」），舰船写
- *    「通名（型号）」（采矿艇（磷虾级）），物品用**内容表里的正式名**（强化采集器 MK1 · 钛钢合金 · 银纹超金属）；
- * 5. **长度**：每行 ≤ 60 字左右（与 detail 同量级），三行分工 = ① 情报 / 机制 ② 建议或提醒 ③ 随信附了什么、
- *    拿去干什么；
- * 6. **主题行保留**「档案补全 · ××」的归档格式（那是发件人"舰载信息库"的落款习惯，与正文口吻不冲突）。
+/** 「第一次」任务完成信；船长 2026-10-04 授权整批调整、一次性验收。
+ * ⟪文案调整 2026-10-04⟫ 信息库报告成果并衔接下一步，不改触发或奖励。
  */
 import type { CommsMessageDef } from '@whale/core'
+import { L10N } from './l10n/table'
 
 export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
   {
@@ -40,110 +10,109 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'archive',
     deptId: 'dept-recall',
     kind: '提示',
-    subject: '档案补全 · 星图扫描',
+    subject: L10N['ui.comms.014']!.zh,
     body: [
-      '星图上那些只剩剪影的位置，就是还没解读的未知信号；派一艘深空扫描艇过去就能点亮它。',
-      '点亮之后，那处星系的航线、矿带、悬赏与残骸情报才会进入可作业清单；越危险的星系，扫得越久。',
-      '检查发现了仓库内积压的一台强化采集器 MK1，下一步要下矿带，正好装上它。',
+      L10N['ui.firstScan.001']!.zh,
+      L10N['ui.firstScan.002']!.zh,
+      L10N['ui.firstScan.003']!.zh,
     ],
     trigger: { kind: 'firstTask', taskId: 'first-scan' },
-    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
+    hint: { text: L10N['ui.comms.051']!.zh, page: 'task', taskTab: 'important' },
   },
   {
     id: 'first-mine',
     factionId: 'archive',
     deptId: 'dept-recall',
     kind: '提示',
-    subject: '档案补全 · 采矿与精炼',
+    subject: L10N['ui.comms.015']!.zh,
     body: [
-      '矿带产出原矿，精炼炉把原矿炼成原材料，而绝大多数蓝图要的正是原材料。',
-      '原矿按市价直接卖也能赚钱，不过送进精炼炉再卖通常更划算。',
-      '检查发现了一批仓库内积压 1,000 单位橄榄岩，精炼炉每批吃 100 单位，这批料够开十炉。',
+      L10N['ui.firstMine.001']!.zh,
+      L10N['ui.firstMine.002']!.zh,
+      L10N['ui.firstMine.003']!.zh,
     ],
     trigger: { kind: 'firstTask', taskId: 'first-mine' },
-    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
+    hint: { text: L10N['ui.comms.051']!.zh, page: 'task', taskTab: 'important' },
   },
   {
     id: 'first-refine',
     factionId: 'archive',
     deptId: 'dept-recall',
     kind: '提示',
-    subject: '档案补全 · 精炼炉',
+    subject: L10N['ui.comms.016']!.zh,
     body: [
-      '精炼炉在原料充足的时候会持续运转，各种生产所需的基础材料都是通过精炼炉获取。',
-      '「精炼学」每级 +6% 产出，「高级回收处理」每级 +3%，两条练满合计 165%。',
-      '检查发现了一张仓库内积压的「动能弹药生产线」蓝图，它的材料是钛钢合金，正好由原矿炼出来。',
+      L10N['ui.firstRefine.001']!.zh,
+      L10N['ui.firstRefine.002']!.zh,
+      L10N['ui.firstRefine.003']!.zh,
     ],
     trigger: { kind: 'firstTask', taskId: 'first-refine' },
-    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
+    hint: { text: L10N['ui.comms.051']!.zh, page: 'task', taskTab: 'important' },
   },
   {
     id: 'first-bounty',
     factionId: 'archive',
     deptId: 'dept-recall',
     kind: '提示',
-    subject: '档案补全 · 悬赏讨伐',
+    subject: L10N['ui.comms.017']!.zh,
     body: [
-      '各个星系都有常驻悬赏。完成悬赏是我们前期直接获得声望和信用点的唯一途径。',
-      // ⟪文案调整 2026-10-02⟫ 船长确认笔误：「只有积攒生物」→「只有积攒声望」
-      //   （依据：docs/roadmap.md 2026-10-02「本地化尾巴清场」条的英文回补那件；英文同步）
-      '声望是章鱼人协会的通行证。只有积攒声望才能解锁更多市场物品和功能。',
-      '检查发现了一艘仓库内积压的低级战舰，已将其编入舰队。',
+      L10N['ui.firstBounty.001']!.zh,
+      L10N['ui.firstBounty.002']!.zh,
+      L10N['ui.firstBounty.003']!.zh,
     ],
     trigger: { kind: 'firstTask', taskId: 'first-bounty' },
-    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
+    hint: { text: L10N['ui.comms.051']!.zh, page: 'task', taskTab: 'important' },
   },
   {
     id: 'first-repair',
     factionId: 'archive',
     deptId: 'dept-recall',
     kind: '提示',
-    subject: '档案补全 · 损伤与维修',
+    subject: L10N['ui.comms.018']!.zh,
     body: [
-      '大部分情况下战斗结束后护盾会自行回满，装甲与结构的损伤则会保留，需要依靠修理组件与港内工位处理。',
-      '检查发现了仓库内积压的民用船体维修装置 ×1 与民用修理组件 ×20。',
+      L10N['ui.firstRepair.001']!.zh,
+      L10N['ui.firstRepair.002']!.zh,
+      L10N['ui.firstRepair.003']!.zh,
     ],
     trigger: { kind: 'firstTask', taskId: 'first-repair' },
-    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
+    hint: { text: L10N['ui.comms.051']!.zh, page: 'task', taskTab: 'important' },
   },
   {
     id: 'first-salvage',
     factionId: 'archive',
     deptId: 'dept-recall',
     kind: '提示',
-    subject: '档案补全 · 残骸打捞',
+    subject: L10N['ui.comms.019']!.zh,
     body: [
-      '星系里的残骸点可以派船打捞，捞回来的残骸送进精炼炉就能回收出各种材料。',
-      '想要打捞就必须给舰船安装打捞器。',
-      '检查发现了仓库内积压的附 1,000 m³ 高安海盗残骸，送进回收炉就是材料与旧件。',
+      L10N['ui.firstSalvage.001']!.zh,
+      L10N['ui.firstSalvage.002']!.zh,
+      L10N['ui.firstSalvage.003']!.zh,
     ],
     trigger: { kind: 'firstTask', taskId: 'first-salvage' },
-    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
+    hint: { text: L10N['ui.comms.051']!.zh, page: 'task', taskTab: 'important' },
   },
   {
     id: 'first-skill',
     factionId: 'archive',
     deptId: 'dept-recall',
     kind: '提示',
-    subject: '档案补全 · 技能训练',
+    subject: L10N['ui.comms.020']!.zh,
     body: [
-      '技能数据库丢失，技能需要重新进行训练。',
-      '为了更方便展开活动，需要先掌握「AI 核心操作学」。\n「AI 核心操作学」在「技能」页的「工程」里，切过去就能看到；它是调度副船与自动产线的前置，越早练越省事。',
-      '检查发现了仓库内积压的一枚基础 AI 核心，下一步派副船正好用得上。',
+      L10N['ui.firstSkill.001']!.zh,
+      L10N['ui.firstSkill.002']!.zh,
+      L10N['ui.firstSkill.003']!.zh,
     ],
     trigger: { kind: 'firstTask', taskId: 'first-skill' },
     /**
      * **2026-09-24 船长令**：「跳到技能页并自动选中工程」——这封信的「前往」不再只回任务中心，
      * 而是直接落到「技能」页并选中「工程」那一档（`tab` = 大类键；落点规则见 App 的 `gotoFromComms`）。
      */
-    hint: { text: '到「技能」页的「工程」里训练 AI 核心操作学', page: 'skills', tab: '工程' },
+    hint: { text: L10N['ui.comms.051']!.zh, page: 'task', taskTab: 'important' },
   },
   {
     id: 'first-ai',
     factionId: 'archive',
     deptId: 'dept-recall',
     kind: '提示',
-    subject: '档案补全 · 副船调度',
+    subject: L10N['ui.comms.021']!.zh,
     /**
      * ⟪文案调整 2026-10-01⟫ 船长改稿落地（通讯工作台回写）。
      *
@@ -154,76 +123,81 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
      * （本信发件方是信息库 `archive`，`alignment = '系统'`，契约注释写明"它本该知道玩家是什么"）。
      */
     body: [
-      '闲置舰船配上一枚 AI 核心就能自己出航。采矿、打捞、驻留待命都能接，每项指派占一枚核心。',
-      '战斗、运输与虫洞扫描太复杂，只能依赖舰载 AI。',
-      '检查发现了仓库内积压的 150 单位钛钢合金与 50 单位银纹超金属，下一步开线正好用这批料。',
+      L10N['ui.firstAi.001']!.zh,
+      L10N['ui.firstAi.002']!.zh,
+      L10N['ui.firstAi.003']!.zh,
     ],
     trigger: { kind: 'firstTask', taskId: 'first-ai' },
-    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
+    hint: { text: L10N['ui.comms.051']!.zh, page: 'task', taskTab: 'important' },
   },
   {
     id: 'first-produce',
     factionId: 'archive',
     deptId: 'dept-recall',
     kind: '提示',
-    subject: '档案补全 · 组装机',
+    subject: L10N['ui.comms.022']!.zh,
     body: [
-      '组装机要三样东西：蓝图、材料、时间；装上 AI 核心后组装机就能无人值守自动开线。',
-      '弹药与修理组件这类消耗品最适合常驻开线，市场内对零件的需求量很大，可以作为赚取信用点的手段之一。',
+      L10N['ui.firstProduce.001']!.zh,
+      L10N['ui.firstProduce.002']!.zh,
+      L10N['ui.firstProduce.003']!.zh,
     ],
     trigger: { kind: 'firstTask', taskId: 'first-produce' },
-    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
+    hint: { text: L10N['ui.comms.051']!.zh, page: 'task', taskTab: 'important' },
   },
   {
     id: 'first-order',
     factionId: 'archive',
     deptId: 'dept-recall',
     kind: '提示',
-    subject: '档案补全 · 市场交易',
+    subject: L10N['ui.comms.023']!.zh,
     body: [
-      '我们可以在市场上出售多余物资或者购买缺少的资源。\n市场采用订单制。因此可以提前挂单出一个自己期望的价格。\n不过如果想快速收购某个稀少的商品，建议挂出五倍以上的价格。',
+      L10N['ui.firstOrder.001']!.zh,
+      L10N['ui.firstOrder.002']!.zh,
+      L10N['ui.firstOrder.003']!.zh,
     ],
     trigger: { kind: 'firstTask', taskId: 'first-order' },
-    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
+    hint: { text: L10N['ui.comms.051']!.zh, page: 'task', taskTab: 'important' },
   },
   {
     id: 'first-ship',
     factionId: 'archive',
     deptId: 'dept-recall',
     kind: '提示',
-    subject: '档案补全 · 自造船下线',
+    subject: L10N['ui.comms.024']!.zh,
     body: [
-      '第一艘自造船已经入库。',
-      '新建造的舰船都存放在「舰船仓库」，在「舰船仓库」页转入舰队，再到「装配」页配好槽位与弹档就能出港。',
+      L10N['ui.firstShip.001']!.zh,
+      L10N['ui.firstShip.002']!.zh,
+      L10N['ui.firstShip.003']!.zh,
     ],
     trigger: { kind: 'firstTask', taskId: 'first-ship' },
-    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
+    hint: { text: L10N['ui.comms.051']!.zh, page: 'task', taskTab: 'important' },
   },
   {
     id: 'first-haul',
     factionId: 'archive',
     deptId: 'dept-recall',
     kind: '提示',
-    subject: '档案补全 · 长途运输',
+    subject: L10N['ui.comms.025']!.zh,
     body: [
-      '站间运输按趟结算，报酬随行情浮动，船上原本的货不受影响。',
-      '低安航段会遇袭，因此请尽可能提高舰船的战斗力或维修能力。拥有维修能力后，受损的舰船会自动维修继续执行任务。',
-      '检查发现了仓库内积压的一艘飞鱼级快运舰，跑长途用它更合适。',
+      L10N['ui.firstHaul.001']!.zh,
+      L10N['ui.firstHaul.002']!.zh,
+      L10N['ui.firstHaul.003']!.zh,
     ],
     trigger: { kind: 'firstTask', taskId: 'first-haul' },
-    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
+    hint: { text: L10N['ui.comms.051']!.zh, page: 'task', taskTab: 'important' },
   },
   {
     id: 'first-wormhole',
     factionId: 'archive',
     deptId: 'dept-recall',
     kind: '提示',
-    subject: '档案补全 · 虫洞',
+    subject: L10N['ui.comms.026']!.zh,
     body: [
-      '虫洞是危险的未知区域。在这里战斗都是发生在比较近的距离且战斗中几乎无法脱战。\n但是虫洞也是虚空晶唯一的来源。在虫洞内可以获取大量虚空晶，各类残骸，以及各种货柜。\n货柜可以获取不同的稀有图纸或者装备。是中期快速提升战斗力的手段。',
-      '协会已经标记 2 处未探索虫洞坐标，到星图页的「扫描虫洞」标签决定何时进去。',
+      L10N['ui.firstWormhole.001']!.zh,
+      L10N['ui.firstWormhole.002']!.zh,
+      L10N['ui.firstWormhole.003']!.zh,
     ],
     trigger: { kind: 'firstTask', taskId: 'first-wormhole' },
-    hint: { text: '回任务中心，点「完成」继续下一步', page: 'task' },
+    hint: { text: L10N['ui.comms.051']!.zh, page: 'task', taskTab: 'important' },
   },
 ]

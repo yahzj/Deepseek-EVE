@@ -166,8 +166,8 @@ const COMMS_KIND_ID: Record<string, string> = {
 }
 /** 跳转栏那句说明（数据侧 `hint.text`，逐句独立） */
 const COMMS_HINT_ID: Record<string, string> = {
-  '回任务中心，点「完成」继续下一步': 'ui.comms.051',
-  待办清单在任务中心: 'ui.comms.052',
+  [L10N['ui.comms.051']!.zh]: 'ui.comms.051',
+  [L10N['ui.comms.052']!.zh]: 'ui.comms.052',
   '星图 · 点选未知信号开始扫描': 'ui.comms.053',
   '星图 · 出发前看清目标星系的安全等级。': 'ui.comms.054',
   '星图 · 残骸打捞页有各星系的残骸存量。': 'ui.comms.055',
@@ -226,63 +226,69 @@ export function commsHintText(text: string): string {
  */
 const COMMS_BODY_EN: Record<string, readonly string[]> = {
   'first-scan': [
-    'On the star map, those silhouettes are unknown signals nobody has read yet. Send a deep-space scanning craft over and one lights up.',
-    'Only once a system is lit do its routes, belts, bounties and wreck sites enter your work list. The more dangerous the system, the longer the scan.',
-    'The self-check turned up one Reinforced Mining Laser MK1 sitting in storage. A belt is next on the list, so fit it now.',
+    L10N['ui.firstScan.001']!.en,
+    L10N['ui.firstScan.002']!.en,
+    L10N['ui.firstScan.003']!.en,
   ],
   'first-mine': [
-    'Belts yield raw ore, the refinery turns raw ore into materials, and most blueprints ask for materials.',
-    'Selling raw ore at market price does pay, but running it through the refinery first usually pays better.',
-    'The self-check turned up 1,000 units of Peridotite in storage. The refinery takes 100 units a batch, so this is ten batches.',
+    L10N['ui.firstMine.001']!.en,
+    L10N['ui.firstMine.002']!.en,
+    L10N['ui.firstMine.003']!.en,
   ],
   'first-refine': [
-    'The refinery keeps running as long as it has feed; the base materials every production line needs all come out of it.',
-    'Refining adds 6% output per level and Reprocessing adds 3%; both maxed comes to 165%.',
-    'The self-check turned up a Kinetic Ammo blueprint in storage. Its material is Tritanium Alloy, which raw ore refines into.',
+    L10N['ui.firstRefine.001']!.en,
+    L10N['ui.firstRefine.002']!.en,
+    L10N['ui.firstRefine.003']!.en,
   ],
   'first-bounty': [
-    'Every system keeps standing bounties. Running them is the one direct way to earn standing and credits early on.',
-    'Standing is your pass with the Association: banking it is what unlocks more market goods and more functions.',
-    'The self-check turned up a low-tier warship in storage; it has been moved into the fleet.',
+    L10N['ui.firstBounty.001']!.en,
+    L10N['ui.firstBounty.002']!.en,
+    L10N['ui.firstBounty.003']!.en,
   ],
   'first-repair': [
-    'Shields refill on their own after a fight, but armor and hull damage carries over — that takes repair kits, or a berth back at a station.',
-    'The self-check turned up 1 Civilian Hull Repair Unit and 20 Civilian Repair Kits in storage.',
+    L10N['ui.firstRepair.001']!.en,
+    L10N['ui.firstRepair.002']!.en,
+    L10N['ui.firstRepair.003']!.en,
   ],
   'first-salvage': [
-    'Wreck sites in a system can be salvaged by sending a ship over, and the wreckage you bring back is recovered into materials of every kind.',
-    'To salvage at all, the ship has to be fitted with a salvager.',
-    'The self-check turned up 1,000 m³ of high-sec pirate wreckage in storage; through the recycling unit it becomes materials and old modules.',
+    L10N['ui.firstSalvage.001']!.en,
+    L10N['ui.firstSalvage.002']!.en,
+    L10N['ui.firstSalvage.003']!.en,
   ],
   'first-skill': [
-    'The skill database is gone. Every skill has to be trained again from scratch.',
-    'To get more done at once, train AI Core Operation first.\nIt sits under Engineering on the Skills page. That is the prerequisite for dispatching support ships and running automated lines, so the earlier you train it the less trouble later.',
-    'The self-check turned up one Basic AI Core in storage; you will want it for the support ship assignment next.',
+    L10N['ui.firstSkill.001']!.en,
+    L10N['ui.firstSkill.002']!.en,
+    L10N['ui.firstSkill.003']!.en,
   ],
   'first-ai': [
-    'An idle ship with an AI core can put to space on its own: mining, salvaging and standing by are all on offer, and each assignment takes one core.',
-    'Combat, hauling and wormhole scanning are too complex to hand to a core; those the shipboard AI flies itself.',
-    'The self-check turned up 150 units of Tritanium Alloy and 50 of Silvervein Supermetal in storage — exactly the feed the next line needs.',
+    L10N['ui.firstAi.001']!.en,
+    L10N['ui.firstAi.002']!.en,
+    L10N['ui.firstAi.003']!.en,
   ],
   'first-produce': [
-    'The assembler needs three things: a blueprint, materials and time. Fit it with an AI core and the line runs unattended.',
-    'Consumables like ammo and repair kits are the best fit for a standing line, and the market absorbs parts in volume — one way to earn credits.',
+    L10N['ui.firstProduce.001']!.en,
+    L10N['ui.firstProduce.002']!.en,
+    L10N['ui.firstProduce.003']!.en,
   ],
   'first-order': [
-    'We can sell surplus goods on the market, or buy the resources we are short of.\nThe market runs on orders, so you can post at whatever price you want ahead of time.\nIf you need to buy up something scarce quickly, post at five times the going price or more.',
+    L10N['ui.firstOrder.001']!.en,
+    L10N['ui.firstOrder.002']!.en,
+    L10N['ui.firstOrder.003']!.en,
   ],
   'first-ship': [
-    'The first home-built hull has landed in storage.',
-    'New hulls all sit in Ship Storage. Move one into the fleet on the Ships page, then fit its slots and ammo on the Fitting page and it can leave port.',
+    L10N['ui.firstShip.001']!.en,
+    L10N['ui.firstShip.002']!.en,
+    L10N['ui.firstShip.003']!.en,
   ],
   'first-haul': [
-    'Station-to-station hauling settles per trip and the pay floats with the market. Cargo already aboard is unaffected.',
-    'Low-sec legs draw ambushes, so raise the ship’s firepower or its repair capacity as far as you can. With repair capacity fitted, a damaged ship patches itself up and carries on with the run.',
-    'The self-check turned up one Flyingfish-class Courier in storage; it suits the long routes better.',
+    L10N['ui.firstHaul.001']!.en,
+    L10N['ui.firstHaul.002']!.en,
+    L10N['ui.firstHaul.003']!.en,
   ],
   'first-wormhole': [
-    'Wormholes are dangerous, unknown space. Fights inside happen at close range, and once one starts there is almost no breaking away.\nA wormhole is also the only source of Void Crystal. Inside you can pull out large amounts of it, along with wreckage of every kind and all sorts of containers.\nContainers hold rare blueprints and modules — it is how a mid-game fleet gets strong fast.',
-    'The Association has marked two unexplored wormhole coordinates for you. Decide when to go in from the “Scan for wormholes” tab on the star map.',
+    L10N['ui.firstWormhole.001']!.en,
+    L10N['ui.firstWormhole.002']!.en,
+    L10N['ui.firstWormhole.003']!.en,
   ],
   // ── 协会侧短札（2026-09-22 第四批；长设定的几封见文件末的挂账注释）──
   'msg-welcome': [
@@ -336,22 +342,11 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
   ],
   // ── 长设定文 9 封（2026-09-26 三号补齐 · roadmap L3 尾巴；逐段与中文行数对齐）──
   /**
-   * 开局简报（12 段）。⚠ 分段标题（`【自检记录｜本舰】` 这类）**是正文的一部分**，
-   * 英文沿用同一套方括号标记，便于与中文逐段对照（`COMMS_BODY_EN` 按行数校验，不符整段回落中文）。
+   * ⟪文案调整 2026-10-04⟫ 开局简报与任务完成信按唯一表逐段读取。
    */
   'msg-briefing': [
-    '[Self-check log | this ship]',
-    'Self-check complete. The crew roster is empty; hull and memory both have sectors missing.',
-    'The identity file is corrupt.',
-    '[To-do | The First Time]',
-    'The self-check has a list: first scan, first raw ore, first turn at the refinery…',
-    'Work it in the order the self-check laid out.',
-    'Each time you finish one, the Archive files the related intelligence into your inbox.',
-    '[Starting out]',
-    'Start by sweeping the system your home port sits in.',
-    'A position on the star map has to be lit first; only then do its belts, lanes and bounties enter the work list.',
-    '[Note]',
-    'The list stays in the Task Center, ready to be read again at any time.',
+    L10N['ui.firstBriefing.001']!.en,
+    L10N['ui.firstBriefing.002']!.en,
   ],
   'msg-lowsec-rules': [
     'The Observation Dept reports you have scanned into low-sec systems, so a note on the rules is in order.',

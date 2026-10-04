@@ -12,9 +12,9 @@
 
 ## 统计
 
-- 文档总数 **445** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7499** KB · **58133** 行
-- 状态分布：**未标注** 246 · **已确认/已实现** 128 · **进行中** 54 · **待裁定** 16 · **历史留档** 1
-- 孤儿文档（0 引用）**80** 份 · 状态未标注 **246** 份
+- 文档总数 **445** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7507** KB · **58199** 行
+- 状态分布：**未标注** 247 · **已确认/已实现** 128 · **进行中** 53 · **待裁定** 16 · **历史留档** 1
+- 孤儿文档（0 引用）**80** 份 · 状态未标注 **247** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
 - 三、现行设计稿（design）：**295** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 299 KB / 307 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 89 KB / 906 行 | 95 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 508 KB / 1019 行 | 227 / 20 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 94 KB / 462 行 | 376 / 27 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 94 KB / 462 行 | 376 / 26 |
 
 ## 七、评审与体检（review） —— 12 份
 
@@ -60,7 +60,7 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/activity-mobile-audit-20261004.md` | 主控活动切换、显示与手机适配核查 | 未标注（第一轮实现与验证完成） | 2026-10-04 | 9 KB / 78 行 | 0 / 0 |
-| `docs/design/comms-first-tasks-20261004.md` | 通讯重写与「第一次」任务顺序核查 | 进行中（进行中） | 2026-10-04 | 10 KB / 105 行 | 0 / 0 |
+| `docs/design/comms-first-tasks-20261004.md` | 通讯重写与「第一次」任务顺序核查 | 未标注（教程整批调整与验证完成） | 2026-10-04 | 18 KB / 171 行 | 0 / 0 |
 | `docs/design/beacon-target-highsec-20261003.md` | 信号发射器：高安判据改看「玩家选定的目标星系」 | 未标注 | 2026-10-03 | 5 KB / 64 行 | 0 / 0 |
 | `docs/design/corona-balance-20261003.md` | 光环敌舰强度调整 | 待裁定（待船长审字） | 2026-10-03 | 4 KB / 48 行 | 0 / 0 |
 | `docs/design/corona-enemy-pd-beam-20261003.md` | 光环势力敌人的近防炮 = 能量光束近防炮 · 必中（2026-10-03 · 二号 · d2） | 未标注 | 2026-10-03 | 5 KB / 75 行 | 0 / 0 |
@@ -520,7 +520,7 @@
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/activity-mobile-audit-20261004.md`（2026-10-04 · 9 KB）—— 主控活动切换、显示与手机适配核查
-- `docs/design/comms-first-tasks-20261004.md`（2026-10-04 · 10 KB）—— 通讯重写与「第一次」任务顺序核查
+- `docs/design/comms-first-tasks-20261004.md`（2026-10-04 · 18 KB）—— 通讯重写与「第一次」任务顺序核查
 - `docs/design/beacon-target-highsec-20261003.md`（2026-10-03 · 5 KB）—— 信号发射器：高安判据改看「玩家选定的目标星系」
 - `docs/design/corona-balance-20261003.md`（2026-10-03 · 4 KB）—— 光环敌舰强度调整
 - `docs/design/corona-enemy-pd-beam-20261003.md`（2026-10-03 · 5 KB）—— 光环势力敌人的近防炮 = 能量光束近防炮 · 必中（2026-10-03 · 二号 · d2）
@@ -600,9 +600,10 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（246 份，待补一行 `状态：…`）
+## 附：状态未标注（247 份，待补一行 `状态：…`）
 
 - `docs/design/activity-mobile-audit-20261004.md`（2026-10-04）—— 主控活动切换、显示与手机适配核查
+- `docs/design/comms-first-tasks-20261004.md`（2026-10-04）—— 通讯重写与「第一次」任务顺序核查
 - `docs/design/beacon-target-highsec-20261003.md`（2026-10-03）—— 信号发射器：高安判据改看「玩家选定的目标星系」
 - `docs/design/corona-enemy-pd-beam-20261003.md`（2026-10-03）—— 光环势力敌人的近防炮 = 能量光束近防炮 · 必中（2026-10-03 · 二号 · d2）
 - `docs/design/guoqing-audit-resume-20261003.md`（2026-10-03）—— 国庆节审查续接核验

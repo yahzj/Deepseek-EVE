@@ -33,22 +33,60 @@ interface TaskJump {
    */
   skillId?: string
   /** 按钮上写的去处（「前往××」） */
-  label: string
+  labelId: string
 }
-const FIRST_JUMPS: Record<string, TaskJump> = {
-  'first-scan': { page: 'map', mapTab: 'star', label: tr("ui.ActivityBar.006") },
-  'first-mine': { page: 'map', mapTab: 'mine', label: tr("ui.MapPage.003") },
-  'first-salvage': { page: 'map', mapTab: 'salvage', label: tr("ui.MapPage.005") },
-  'first-repair': { page: 'ship', shipTab: 'fleet', label: tr("ui.FirstTasks.011") },
-  'first-bounty': { page: 'map', mapTab: 'bounty', label: tr("ui.MapPage.004") },
-  'first-refine': { page: 'industry', industrySec: 'refine', label: tr("ui.ShipPage.097") },
-  'first-produce': { page: 'industry', industrySec: 'craft', label: tr("ui.IndustryPage.059") },
-  'first-order': { page: 'market', label: tr("ui.App.005") },
-  'first-ship': { page: 'industry', industrySec: 'craft', label: tr("ui.FirstTasks.012") },
-  'first-skill': { page: 'skills', skillId: 'ai-expert', label: tr("ui.App.007") },
-  'first-ai': { page: 'ship', shipTab: 'ai', label: tr("ui.ShipPage.057") },
-  'first-haul': { page: 'map', mapTab: 'haul', label: tr("ui.MapPage.006") },
-  'first-wormhole': { page: 'map', mapTab: 'whscan', label: tr("ui.MapPage.007") },
+// ⟪文案调整 2026-10-04⟫ 准备步骤沿现有入口，标签在渲染时取词。
+const FIRST_JUMPS: Record<string, readonly TaskJump[]> = {
+  'first-scan': [{ page: 'map', mapTab: 'star', labelId: 'ui.ActivityBar.006' }],
+  'first-mine': [
+    { page: 'ship', shipTab: 'fleet', labelId: 'ui.FirstTasks.011' },
+    { page: 'fit', labelId: 'ui.App.003' },
+    { page: 'map', mapTab: 'mine', labelId: 'ui.MapPage.003' },
+  ],
+  'first-salvage': [
+    { page: 'fit', labelId: 'ui.App.003' },
+    { page: 'map', mapTab: 'salvage', labelId: 'ui.MapPage.005' },
+  ],
+  'first-repair': [{ page: 'ship', shipTab: 'fleet', labelId: 'ui.FirstTasks.011' }],
+  'first-bounty': [
+    { page: 'fit', labelId: 'ui.App.003' },
+    { page: 'map', mapTab: 'bounty', labelId: 'ui.MapPage.004' },
+  ],
+  'first-refine': [{ page: 'industry', industrySec: 'refine', labelId: 'ui.ShipPage.097' }],
+  'first-produce': [
+    { page: 'industry', industrySec: 'shelf', labelId: 'ui.IndustryPage.060' },
+    { page: 'industry', industrySec: 'craft', labelId: 'ui.IndustryPage.059' },
+  ],
+  'first-order': [{ page: 'market', labelId: 'ui.App.005' }],
+  'first-ship': [
+    { page: 'industry', industrySec: 'shelf', labelId: 'ui.IndustryPage.060' },
+    { page: 'industry', industrySec: 'shipyard', labelId: 'ui.FirstTasks.012' },
+  ],
+  'first-skill': [{ page: 'skills', skillId: 'ai-expert', labelId: 'ui.App.007' }],
+  'first-ai': [{ page: 'ship', shipTab: 'ai', labelId: 'ui.ShipPage.057' }],
+  'first-haul': [
+    { page: 'map', mapTab: 'star', labelId: 'ui.ActivityBar.006' },
+    { page: 'map', mapTab: 'haul', labelId: 'ui.MapPage.006' },
+  ],
+  'first-wormhole': [
+    { page: 'map', mapTab: 'bounty', labelId: 'ui.MapPage.004' },
+    { page: 'map', mapTab: 'whscan', labelId: 'ui.MapPage.007' },
+  ],
+}
+const FIRST_GOAL_IDS: Record<string, string> = {
+  'first-scan': 'ui.firstTasks.014',
+  'first-mine': 'ui.firstTasks.002',
+  'first-refine': 'ui.firstTasks.003',
+  'first-bounty': 'ui.firstTasks.004',
+  'first-repair': 'ui.firstTasks.005',
+  'first-salvage': 'ui.firstTasks.006',
+  'first-skill': 'ui.firstTasks.007',
+  'first-ai': 'ui.firstTasks.008',
+  'first-produce': 'ui.firstTasks.009',
+  'first-order': 'ui.firstTasks.010',
+  'first-ship': 'ui.firstTasks.011',
+  'first-haul': 'ui.firstTasks.012',
+  'first-wormhole': 'ui.firstTasks.013',
 }
 
 export function FirstTasks({
@@ -95,7 +133,7 @@ export function FirstTasks({
         <span className="app-dim">{ordered.length > 1 ? tr('ui.FirstTasks.036') : tr('ui.FirstTasks.035')}</span>
       </div>
       {ordered.map(({ def }) => {
-        const jump = FIRST_JUMPS[def.id]
+        const jumps = FIRST_JUMPS[def.id] ?? []
         /**
          * **完成推进**（**2026-09-21 船长令**：「第一次任务不要自动完成。要让玩家回到任务中心点击完成
          * 才开始下一步，这样给予任务开始前道具的时间点就很明确」）：
@@ -129,10 +167,11 @@ export function FirstTasks({
               <span className="app-station-actions">
                 {/* 右上角：跳转按钮（船长 2026-09-18：「所有'第一次'任务都加一个跳转界面的按钮」）
                     ＋「完成」按钮（2026-09-21 船长令）：判据已达成才可点，否则置灰并给一句说明 */}
-                {jump && onJump ? (
+                {onJump ? jumps.map((jump) => (
                   <button
+                    key={jump.labelId}
                     className="app-btn is-small"
-                    title={tr("ui.FirstTasks.029", { p1: jump.label })}
+                    title={tr("ui.FirstTasks.029", { p1: tr(jump.labelId) })}
                     onClick={() =>
                       onJump({
                         page: jump.page,
@@ -144,9 +183,9 @@ export function FirstTasks({
                       })
                     }
                   >
-                    {tr("ui.CommsReader.004")}{jump.label} ›
+                    {tr("ui.CommsReader.004")}{tr(jump.labelId)} ›
                   </button>
-                ) : null}
+                )) : null}
                 <button
                   className="app-btn is-primary is-small"
                   title={claimable ? tr('ui.FirstTasks.037') : tr('ui.FirstTasks.038')}
@@ -162,6 +201,10 @@ export function FirstTasks({
             </div>
             {/* 正文：一段话讲清怎么做 / 做成什么样 / 有什么奖励 */}
             <div className="app-station-mats">{firstTaskText(def, loc, 'detail')}</div>
+            <div className="app-station-deliver">
+              <span className="app-dim">{tr('ui.firstTasks.001')} </span>
+              {tr(FIRST_GOAL_IDS[def.id]!)}
+            </div>
             {/**
              * **奖励两段**（船长 2026-09-21：起手道具与完成奖励分开写；沿用 2026-09-18「独立成行 + 金色」口径）：
              * 「开始即给」只在有 `startReward` 时出现；里程碑链的奖金行仍只在「里程碑任务」页。
