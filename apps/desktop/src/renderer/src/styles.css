@@ -497,9 +497,6 @@ html[data-locale='en'] body {
    ③ 收完仍不足才由侧栏出滚动条（`.app-nav-side` 自带 `overflow-y: auto`）。
    ⚠ **2026-09-25 起本套口径降级为"历史记录"**：导航已改为**底部横栏**（船长令），竖栏的"高度不足"
    这个前提消失 ⇒ 下面两条只为兼容旋转模式保留，收的是**横向**内边距与**图标上下的**余量。 */
-.app-root.is-mobile-rot .app-nav-side { padding-left: var(--wui-sp-6); padding-right: var(--wui-sp-6); gap: var(--wui-sp-1); }
-.app-root.is-mobile-rot .app-nav-side .app-nav-item:not(.is-featured) { padding-top: var(--wui-sp-3); padding-bottom: var(--wui-sp-3); }
-
 /* ── 虫洞弹层内部：旋转时按**桌面款**排（船长 2026-09-14 裁定「只还原虫洞弹层内部」）──
    弹层本身已按逻辑空间定尺寸（1060 × ≈520），但**物理竖屏宽仍是 ~390** ⇒ 上批给窄屏加的那条
    `@media (max-width: 640px)` 防御块照样命中：地图排被改成竖排、缩放控件改横排、结算卡满宽单列、
@@ -12995,46 +12992,11 @@ html[data-locale='en'] body {
 .app-root.is-mobile-layout .app-log-filters { gap: 6px; }
 .app-root.is-mobile-layout .app-log-filter { min-height: 28px; }
 
-.app-root.is-layout-classic.is-mobile-layout .app-nav-side {
-  /* 手机旧版导航需要给中文标签留出宽度；滚动只交给内部列表，避免外层滚动条拦截拖动。 */
-  flex: 0 0 120px; width: 120px; min-width: 120px; padding: 4px; box-sizing: border-box;
-  overflow: hidden; gap: 4px; justify-content: flex-start; align-items: stretch;
-}
-.app-root.is-layout-classic.is-mobile-layout #classic-navigation .app-classic-nav-scroll {
-  flex: 1 1 auto; min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden;
-  scrollbar-gutter: stable; touch-action: pan-y; -webkit-overflow-scrolling: touch;
-}
-.app-root.is-layout-classic.is-mobile-layout .app-nav-side .app-nav-item {
-  width: 100%; min-width: 0; min-height: 44px; flex: 0 0 auto; padding: 4px 2px;
-  display: flex; flex-direction: column; gap: 2px; align-items: center;
-  font-size: 12px; line-height: 1.2; white-space: normal; text-align: center; box-sizing: border-box;
-}
-.app-root.is-layout-classic.is-mobile-layout .app-nav-side .app-nav-item .app-nav-icon { height: 24px; }
-.app-root.is-layout-classic.is-mobile-layout .app-nav-side .app-nav-item svg { width: 24px; height: 24px; }
-.app-root.is-layout-classic.is-mobile-layout .app-nav-side .app-shipwin { width: 100%; height: 46px; }
-.app-root.is-layout-classic.is-mobile-layout .app-nav-side .app-shipwin-wrap { flex: 0 0 auto; margin-bottom: 4px; }
 .app-root.is-layout-classic.is-mobile-layout .app-activitybar {
   max-height: min(100px, 25%); width: 100%; box-sizing: border-box; overflow-y: auto; flex-shrink: 0;
 }
 .app-root.is-layout-classic.is-mobile-layout .app-activitybar .wui-panel-head { flex-wrap: nowrap; }
 .app-root.is-layout-classic.is-mobile-layout .app-activitybar .wui-panel-right { flex-wrap: nowrap; }
-
-.app-root.is-layout-modern.is-mobile-layout .app-left-col {
-  /* 活动栏本身固定150px；100px会让它伸入主区并被主窗口遮住。 */
-  flex: 0 0 156px; width: 156px; min-width: 156px;
-}
-.app-root.is-layout-modern.is-mobile-layout .app-nav-side { padding: 4px; min-width: 0; gap: 4px; }
-.app-root.is-layout-modern.is-mobile-layout .app-nav-side > .app-nav-group {
-  overflow-x: auto; overflow-y: hidden; align-items: stretch; gap: 4px;
-}
-.app-root.is-layout-modern.is-mobile-layout .app-nav-side > .app-nav-group.is-left { justify-content: flex-start; }
-.app-root.is-layout-modern.is-mobile-layout .app-nav-side > .app-nav-item { flex: 0 0 64px; }
-.app-root.is-layout-modern.is-mobile-layout .app-nav-side .app-nav-item {
-  width: 60px; min-width: 60px; min-height: 44px; padding: 2px; gap: 2px;
-  font-size: 12px; white-space: normal; box-sizing: border-box; line-height: 1.2;
-}
-.app-root.is-layout-modern.is-mobile-layout .app-nav-side .app-nav-item .app-nav-icon { height: 24px; }
-.app-root.is-layout-modern.is-mobile-layout .app-nav-side .app-nav-item svg { width: 24px; height: 24px; }
 
 .app-root.is-mobile-layout .app-modal-mask,
 .app-root.is-mobile-layout .app-ann-mask { padding: 8px; box-sizing: border-box; }
