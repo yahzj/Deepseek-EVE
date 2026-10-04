@@ -9,7 +9,7 @@
  * 有裁切不等于已完全不可达，需要核查内滚与旋转轴；诊断不是观感或全弹层验收。
  * --quick 仅跑中文双布局 390竖屏/568横屏，完整验收不使用该选项。
  * --actions-only 仅调试操作弹层，不能替代完整页面、桌面与活动回归。
- * 单独操作报告输出 mobile-actions-audit-20261004.json，不覆盖完整页面报告。
+ * 单独操作报告输出 mobile-actions-audit-20261004.json，快速报告为 mobile-quick-audit-20261004.json，不覆盖完整页面报告。
  * 版本自检：游戏版本 v0.1.0 · 存档结构 v31 · 最后核对 2026-10-04 · 最后跑过 2026-10-04。
  */
 import { createServer } from 'node:http'
@@ -377,7 +377,7 @@ async function main() {
     fitExtras.push({layout,width,height,preset,drone,closeAndLoadReachable:true});
     await page.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:seed.result.identifier});
   }
-  const out=join(root,`tools/_ui-artifacts/mobile-${actionsOnly?'actions':'page'}-audit-20261004.json`);await fs.mkdir(join(root,'tools/_ui-artifacts'),{recursive:true});await fs.writeFile(out,JSON.stringify({rows,windows,drawerChecks,desktopChecks,viewportChecks,modalChecks,wormholeChecks,fitExtras},null,2),'utf8')
+  const out=join(root,`tools/_ui-artifacts/mobile-${actionsOnly?'actions':quick?'quick':'page'}-audit-20261004.json`);await fs.mkdir(join(root,'tools/_ui-artifacts'),{recursive:true});await fs.writeFile(out,JSON.stringify({rows,windows,drawerChecks,desktopChecks,viewportChecks,modalChecks,wormholeChecks,fitExtras},null,2),'utf8')
   const narrow=rows.filter(r=>r.width===568 && r.layout==='classic' && r.view==='舰船');
   for (const row of narrow) {
     const reading = row.reading as {usableMain?:{cw:number}; count:number}
