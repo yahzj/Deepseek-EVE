@@ -37,6 +37,7 @@ import { weekendFlagshipEncounterOf } from './weekendBattle'
 import { wormholeMatterBuffs, wormholeMatterDeviceAt } from './wormholeMatter'
 import { matterTechWhBuffs } from './matterTech'
 import { bumpFirst } from './firstTasks'
+import { repairCivilianFittings } from './equipment'
 import {
   wormholeDeliverRelics,
   wormholeGrantShipSpoils,
@@ -711,6 +712,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
       lostIsk: bagValueIsk(ctx, run),
     }
     state.wormhole.run = null
+    repairCivilianFittings(state, ctx)
     return
   }
   // 胜：先出战报（与结算同源），再按战斗用途分流
@@ -736,6 +738,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
     // 新趟不会再产生 `kind='extract'` 的战斗（`wormholeStartBattle` 已不接受该用途）。
     deliverExtraction(state, ctx, run)
     state.wormhole.run = null
+    repairCivilianFittings(state, ctx)
     return
   }
   if (kind === 'boss') {
@@ -1201,10 +1204,12 @@ export function advanceWormhole(
         lostIsk: bagValueIsk(ctx, run),
       }
       state.wormhole.run = null
+      repairCivilianFittings(state, ctx)
       return
     }
     deliverExtraction(state, ctx, run)
     state.wormhole.run = null
+    repairCivilianFittings(state, ctx)
     return
   }
 }

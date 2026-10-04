@@ -24,6 +24,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { SHIPS } from '@whale/data'
 
 const ROOT = process.cwd()
 const UI = join(ROOT, 'apps', 'desktop', 'src', 'renderer', 'src', 'ui')
@@ -73,17 +74,7 @@ interface Row {
 
 /** 船表：按 `{ id: '…' … },` 切块取 id/name/tier/role（⚠ 源码是 CRLF，切块正则要容 `\r`） */
 function readShips(): Row[] {
-  const src = readFileSync(join(ROOT, 'packages', 'data', 'src', 'ships.ts'), 'utf8')
-  const rows: Row[] = []
-  for (const block of src.split(/\r?\n  \{\r?\n/).slice(1)) {
-    const id = block.match(/id:\s*'([a-z0-9-]+)'/)?.[1]
-    const name = block.match(/name:\s*'([^']+)'/)?.[1]
-    if (!id || !name) continue
-    const tier = Number(block.match(/tier:\s*(\d)/)?.[1] ?? 0)
-    const role = block.match(/role:\s*'([a-z]+)'/)?.[1] ?? 'armed'
-    rows.push({ id, name, tier, role })
-  }
-  return rows
+  return SHIPS.map(({ id, name, tier, role }) => ({ id, name, tier, role }))
 }
 
 const artSrc = ['shipArt.tsx', 'shipArtData.tsx', 'shipArtWh.tsx', 'shipArtFoe.tsx']

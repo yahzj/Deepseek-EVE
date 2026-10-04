@@ -2080,6 +2080,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   // 在跑的趟：id/stockId 非空、种子与层为正整数、参与舰是舰队里的船（不在舰队 ⇒ 丢弃该条目，
   // 免得锁定一艘已经不存在的船）；到点未结算的照旧保留（下一拍 `advanceWormholeAuto` 会结算）。
   const wormholeAuto: Array<{
+    haulerFittingVersion?: 1
     id: string
     stockId: string
     seed: number
@@ -2104,6 +2105,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     const started = Math.floor(num(o.startedAtGameMs))
     const finish = Math.floor(num(o.finishAtGameMs))
     wormholeAuto.push({
+      ...(o.haulerFittingVersion === 1 ? { haulerFittingVersion: 1 as const } : {}),
       id,
       stockId,
       seed: Number.isFinite(seed) && seed > 0 ? seed : 1,
@@ -3105,6 +3107,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
             nodeIndex: Math.max(0, Math.floor(num(rRaw.nodeIndex))),
             turnsLeft: Math.max(0, turnsLeft),
             turnsTotal: Math.max(0, turnsTotal),
+            ...(rRaw.haulerFittingVersion === 1 ? { haulerFittingVersion: 1 as const } : {}),
             fleet,
             totalMass: Math.max(0, num(rRaw.totalMass)),
             bag,

@@ -20,51 +20,12 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 staged=$(git diff --cached --name-only)
 if [ -z "$staged" ]; then exit 0; fi
 
+# B类路径仍须明确批准；批准只绑定本工作树、本基线和本次完整暂存树。
+# 合并继承豁免保留在统一工具中，审批记录不入库。
 ask=0
-
-# ── ⚠️ 需裁决（B 类，只收"机器能检测"的）──────────────────────────────────
-# ⚠ **合并提交豁免**（**2026-10-02 船长「按你推荐来」**）：
-#   合并的 staged 集 = **两侧并集** ⇒ 另一侧改过的存档/冻结件必然被列进来。
-#   实测（2026-10-02）：verify 侧**一笔都没碰** `save.ts`，合并时却被 B-2 拦下 ——
-#   `git log main..verify -- packages/core/src/save.ts` 为空、合并结果与 main 在该路径**逐字相同**。
-#   豁免判据 = **该路径相对另一父提交确有差异**才算"我方改动"；合并中且逐字相同 ⇒ 只提示、不拦。
-b2_files() { printf '%s\n' "$1" | grep -E '(^|/)save\.ts$|test-saves|ironman' || true; }
-b3_files() { printf '%s\n' "$1" | grep -E 'tools/docs-seal\.ts|packages/core/src/balance\.ts' || true; }
-# 合并中 ⇒ 只留"与另一父提交不同"的那些；非合并 ⇒ 原样返回
-filter_if_merge() {
-  _cand="$1"
-  [ -z "$_cand" ] && return 0
-  [ -f "$(git rev-parse --git-dir)/MERGE_HEAD" ] || { printf '%s\n' "$_cand"; return 0; }
-  _other=$(head -n 1 "$(git rev-parse --git-dir)/MERGE_HEAD")
-  # shellcheck disable=SC2086
-  git diff --name-only "$_other" -- $_cand 2>/dev/null || true
-}
-
-# B-2 要碰玩家数据/存档（读档、迁移、补发、改档）
-b2_all=$(b2_files "$staged")
-b2_hit=$(filter_if_merge "$b2_all")
-if [ -n "$b2_hit" ]; then
-  echo "⚠️ 需裁决：本次提交触及 **存档 / 玩家数据** 相关文件："
-  printf '%s\n' "$b2_hit" | sed 's/^/      /'
-  echo "      ⇒ 停下来向船长报告（改了哪几处、为什么改、会不会影响玩家档），等他回复再继续。"
+gate_snapshot=$(node tools/git-gate-approval.cjs snapshot) || exit 1
+if ! node tools/git-gate-approval.cjs check --snapshot "$gate_snapshot"; then
   ask=1
-elif [ -n "$b2_all" ]; then
-  echo "ℹ️ 合并提交：存档相关路径与另一父提交逐字相同 ⇒ 不算我方改动，不拦。"
-fi
-# B-3 要动已冻结/已标定的东西（封存工具、标定过的数值表）
-# ⚠ **2026-09-27 船长批：`docs/archive/` 已移出本档** —— 因为 `npm run docs:seal` 是它的
-#   **唯一正常写入者**（每次正常归档都会写封存卷），留着这条会让"每次归档都被拦"。
-#   改由规则约束：**封存卷只允许 `docs:seal` 写，手改才算违规**。
-#   保留的两项仍需裁决：改封存工具本身、改 balance.ts 的标定数值。
-b3_all=$(b3_files "$staged")
-b3_hit=$(filter_if_merge "$b3_all")
-if [ -n "$b3_hit" ]; then
-  echo "⚠️ 需裁决：本次提交触及 **已冻结 / 已标定** 的内容："
-  printf '%s\n' "$b3_hit" | sed 's/^/      /'
-  echo "      ⇒ 封存工具是冻结件的唯一写入者；balance.ts 的数值多为已标定关系。先向船长报告再继续。"
-  ask=1
-elif [ -n "$b3_all" ]; then
-  echo "ℹ️ 合并提交：冻结/标定件与另一父提交逐字相同 ⇒ 不算我方改动，不拦。"
 fi
 
 # ── ❌ 阻断（A 类）：快四样（合计约 30 秒）──────────────────────────────────
@@ -91,8 +52,9 @@ if [ "$fail" != 0 ]; then
 fi
 if [ "$ask" != 0 ]; then
   echo "⚠️ 有需裁决项 ⇒ 本次提交被拒绝：先向船长报告并等回复。"
-  echo "   （确认可以继续后，再提交即可；本钩子只负责把你叫住。）"
+  echo "   （明确批准后，用git-gate-approval工具登记本次精确范围；技术检查不跳过。）"
   exit 1
 fi
+node tools/git-gate-approval.cjs prepare --snapshot "$gate_snapshot" || exit 1
 echo "✅ 提交前闸门全绿"
 exit 0

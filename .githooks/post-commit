@@ -1,0 +1,4 @@
+#!/bin/sh
+# 成功提交后消费与实际提交树匹配的一次性审批；失败不影响已完成的Git提交。
+cd "$(git rev-parse --show-toplevel)" || exit 0
+node tools/git-gate-approval.cjs consume || echo "审批回执清理失败；旧批准因HEAD变化已失效，请核对。"

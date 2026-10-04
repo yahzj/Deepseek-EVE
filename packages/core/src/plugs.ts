@@ -24,6 +24,8 @@ import type { ModuleDef, ShipSlots, SimContext } from './types'
 import { addLog } from './state'
 import { addWare } from './inventory'
 import { shipSlotsOf } from './labels'
+import { fleetDefOf } from './instances'
+import { moduleAllowedOnShip } from './shipFitting'
 // ⚠ 本模块被 `combat.ts`（建档）· `shipyard.ts` / `market.ts`（入仓与挂卖的闸门）反向引用
 //   ⇒ 依赖方向要保守：**只依赖 `state` / `types`**。原先还 import 了 `equipment.countModule`，
 //   但那只是一行取表（`state.moduleBay[id] ?? 0`），为省掉 `equipment → labels → …` 这条可能成环的
@@ -92,8 +94,7 @@ export function plugSlotAddsOf(state: GameState, ctx: SimContext, shipId: string
  * `installPlug` 里还要把数组**就地补齐**（插件不可拆 ⇒ 只增不减）。
  */
 export function shipSlotsWithPlugsOf(state: GameState, ctx: SimContext, shipId: string): ShipSlots {
-  const defId = state.fleet[shipId]?.defId ?? shipId
-  const base = shipSlotsOf(ctx.ships.get(defId) ?? {})
+  const base = shipSlotsOf(fleetDefOf(state, ctx, shipId) ?? {})
   const add = plugSlotAddsOf(state, ctx, shipId)
   return { high: base.high, mid: base.mid + add.mid, low: base.low + add.low }
 }
@@ -121,6 +122,9 @@ export function installPlug(
   }
   const ship = state.fleet[shipId]
   if (!ship) return { ok: false, error: '舰队里找不到这艘舰船。', errorId: 'core.plug.003' }
+  if (!moduleAllowedOnShip(fleetDefOf(state, ctx, shipId), def)) {
+    return { ok: false, errorId: 'core.equipment.033', error: '该货舰不支持武器、战斗机群、进攻电子或全队护盾装备。' }
+  }
   const cap = plugSlotsOf(state, ctx, shipId)
   const have = plugsOf(state, shipId)
   if (cap <= 0) {

@@ -18,6 +18,7 @@
 
 | 关注点 | 唯一实现 | 护栏 |
 |---|---|---|
+| 纯货舰模块能力兼容（安装/换装/候选/建档/修复同源） | `moduleAllowedOnShip()` · `shipFitting.ts` | `hauler-balance-20261004.test.ts`；`arch:guard` F2/F3 |
 | 入侵残骸每族余额/箱子读数与旧账迁移 | `weekendWreckPoolsOf()` · `salvage.ts`；`normalizeWeekendWreckRecord()` · `weekendWreckLedger.ts` | `invasion-ledger-20261003.test.ts`：多族守恒、迁移、独立衰减与满舱不丢货 |
 | 聚焦阵列波内射程/防空加算修正率 | `coronaFocusBonusOf()` · `coronaFocus.ts` | `corona-balance-20261003.test.ts`：时点/换波/加算抵消/真实近防入口 |
 | 技能取消的"连带失效"基线（只报/只删因本次取消才失效的项） | `preexistingUnmet()` · `skillQueue.ts` | core 用例 `skill-cancel-baseline-20260926.test.ts` |
@@ -63,6 +64,7 @@
 | 关注点 | 唯一实现 | 护栏 |
 |---|---|---|
 | 正式工具与临时探针的区分与收尾 | 约定 §十（`tools/xxx.ts` vs `tools/_*.ts`） | `npm run tools:audit` |
+| 提交钩子B类审批范围与暂存内容绑定 | `tools/git-gate-approval.cjs`；本工作树Git目录审批记录，`.githooks/pre-commit` / `post-commit`调用 | `git-gate-approval-20261004.test.ts`：精确批准、变更失效、技术失败拒绝与成功消费 |
 | 文档索引（全仓清册） | `docs/INDEX.md`（仅由 `npm run docs:index` 生成） | `docs:index --check` |
 | roadmap 滚动窗口与封存卷 | `npm run docs:seal` | 工具自带守恒校验 |
 | 工作文档 → 归档三步 | 约定 §十五 | 人工核（本批列出） |

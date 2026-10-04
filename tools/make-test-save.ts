@@ -7,6 +7,7 @@
  *  - 产物落 docs/test-saves/test-save-<feature>-<stamp>.json，加载方法见 docs/test-saves/README.md。
  *
  * 功能 case 注册制（扩展在此追加）：
+ *  - hauler 纯货舰验收（2026-10-04）：从全新初始档生成海牛/快运/武装货舰对照，绝不读取个人档。
  *  - battleship **战列舰实机测试档**（2026-09-24 船长：「你给我准备一个有战列舰和各种装备的存档」）：
  *         真战列 T4 巨齿鲨（6/5/3 · 动能抗 · 驾驶）＋ T4 均衡对照 ＋ T5 邓氏鱼旗舰 ＋ T3 锤头鲨巡洋对照，
  *         **中低槽装满**、备件 31 种 ×3、弹药三型 ×8000、全星系点亮、声望 13
@@ -93,6 +94,7 @@
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import {
+  createInitialState,
   loadSaveFile,
   serializeSaveFile,
   addShipToFleet,
@@ -109,6 +111,7 @@ import {
   noteShipWreck,
 } from '@whale/core'
 import type { GameState } from '@whale/core'
+import { injectHaulerTestState } from './hauler-test-fixture'
 // 满池常量（旗舰 BOSS 血池；`@whale/core` 未转出 ⇒ 走深路径，与本文件既有做法一致）
 import { WEEKEND_FLAGSHIP_POOL_HP } from '../packages/core/src/weekendEvent'
 import { FACTION_CODEX_ORDER, FOE_SHIPS, GALAXIES, ITEMS, MODULES, SHIPS, SHIP_BLUEPRINTS, buildSimContext } from '@whale/data'
@@ -3579,6 +3582,7 @@ function injectShipWreck(state: GameState): string[] {
 }
 
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
+  hauler: injectHaulerTestState,
   /**
    * **损伤管制装置验收档**（`dc` · **2026-09-26 船长令**：「做完后给我一个存档 我要测试」）。
    *
@@ -3774,6 +3778,19 @@ function main(): void {
   if (!feature || feature === 'help' || !(feature in INJECTORS)) {
     console.log(`用法：npx tsx tools/make-test-save.ts <feature> [--keep-ironman]\n已注册功能：${Object.keys(INJECTORS).join(' / ')}`)
     process.exit(feature ? 1 : 0)
+  }
+  if (feature === 'hauler') {
+    const state = createInitialState({ name: '货舰验收', seed: 7, nowWallMs: Date.now() })
+    const notes = INJECTORS[feature]!(state)
+    const text = serializeSaveFile(state, Date.now())
+    const back = loadSaveFile(text).state
+    if (back.fleet[back.shipId]?.defId !== 'sh-manatee') throw new Error('货舰验收档往返不一致')
+    mkdirSync(OUT_DIR, { recursive: true })
+    const target = join(OUT_DIR, 'test-save-hauler-20261004.json')
+    writeFileSync(target, text, 'utf8')
+    console.log(`已生成全新货舰验收档：${target}；未读取或覆写个人档。`)
+    for (const note of notes) console.log(note)
+    return
   }
   if (!existsSync(SAVE_PATH)) {
     console.error(`找不到真档：${SAVE_PATH}\n请先启动一次游戏（生成存档）再运行本脚本。`)

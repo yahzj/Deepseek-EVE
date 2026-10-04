@@ -112,6 +112,10 @@ export const SHIP_MOUNTS: Record<string, ShipMounts> = {
     engines: [{ x: 60, y: 51.5 }, { x: 60, y: 66.5 }],
     muzzles: [],
   },
+  'sh-manatee': {
+    engines: [{ x: 49, y: 50.5 }, { x: 49, y: 63.5 }],
+    muzzles: [{ x: 204, y: 58 }],
+  },
   // 皇带鱼级（超长多舱货舰）：双喷口 M58 46/62
   'sh-colossal': {
     engines: [{ x: 58, y: 52 }, { x: 58, y: 68 }],

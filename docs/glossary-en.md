@@ -150,6 +150,7 @@
 | sh-dunkleosteus | 邓氏鱼级旗舰 | `Dunkleosteus-class Flagship` |
 | sh-flyingfish | 飞鱼级快运舰 | `Flyingfish-class Courier` |
 | sh-sailfish | 旗鱼级高速货舰 | `Sailfish-class Fast Freighter` |
+| sh-manatee | 海牛级货舰 | `Manatee-class Freighter` |
 | sh-swordfish | 剑鱼级大型货舰 | `Swordfish-class Heavy Freighter` |
 | sh-wh-a-frigate | 掠袭电子舰 | `Raider EW Frigate` |
 | sh-wh-a-destroyer | 掠袭炮舰 | `Raider Gunboat` |

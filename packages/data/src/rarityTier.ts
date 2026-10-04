@@ -430,6 +430,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'sbp-once-nautilus': 3,
   'sbp-once-pioneer': 3, // 2026-09-28 新增（独角鲸级升 T3 后补的一次性图纸；市场行 rare ⇒ 档位 3）
   'sbp-once-sailfish': 3,
+  'sbp-once-manatee': 3,
   'sbp-once-sentinel': 3,
   'sbp-once-swordfish': 3,
   'sbp-once-thresher': 3,
@@ -440,6 +441,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'sbp-once-xuanwu': 4,
   'sbp-pioneer': 4,
   'sbp-sailfish': 3,
+  'sbp-manatee': 3,
   'sbp-sentinel': 4,
   'sbp-shrike': 2,
   'sbp-swarm': 3,
@@ -464,6 +466,7 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'sh-megalodon': 4, // 2026-09-13 新增（巨齿鲨级战列舰 · 奇货渠道，只收不卖）
   'sh-nautilus': 4, // 2026-09-13 新增（鹦鹉螺级测绘巡洋舰 · 奇货渠道；✅ 2026-09-14 上线放开）
   'sh-sailfish': 2,
+  'sh-manatee': 2,
   'sh-sentinel': 4,
   'sh-shrike': 2,
   'sh-swarm': 3,

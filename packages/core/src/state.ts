@@ -373,6 +373,8 @@ export interface WormholeStockItem {
  * 到点结算「手动期望 × 40%」的收益与 −40%~−80% 的损伤（绝不丢船）。
  */
 export interface WormholeAutoRun {
+  /** 新自动趟采用纯货舰装配限制；旧趟缺省保留旧规格直到返航。 */
+  haulerFittingVersion?: 1
   id: string
   /** 对应的库存虫洞 id（**开始时即消耗**；中止也不退还） */
   stockId: string

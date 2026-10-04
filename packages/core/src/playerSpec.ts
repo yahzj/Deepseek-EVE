@@ -10,6 +10,7 @@ import type { DamageResists, DamageType, ModuleDef, SimContext } from './types'
 import { clamp, RESIST_FLOOR } from './combatMath'
 import type { Hp3 } from './combatMath'
 import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, weightedSum } from './equipment'
+import { moduleAllowedOnShip } from './shipFitting'
 import { fleetDefOf } from './instances'
 import { shipCategoryKeyOf } from './labels'
 import { plugModulesOf } from './plugs'
@@ -122,7 +123,12 @@ export function createPlayerSpec(
   const fleet = state.fleet[shipId]
   if (!ship || !fleet) return null
   const bal = ctx.balance.battle
-  const fitted = fleet.fitted
+  const fitted = ship.civilianFittingOnly === true
+    ? Object.fromEntries((['high', 'mid', 'low'] as const).map((rack) => [rack, fleet.fitted[rack].map((id) => {
+      const mod = id ? ctx.modules.get(id) : undefined
+      return mod && !moduleAllowedOnShip(ship, mod) ? null : id
+    })])) as typeof fleet.fitted
+    : fleet.fitted
 
   // V18：家族件列表（全位；V18.1 起无同类唯一——多件按收敛组合成）
   const shieldDefs = familyModules(state, ctx, shipId, 'shield')
@@ -620,7 +626,7 @@ export function createPlayerSpec(
   // CPU 余量 = 预算总额（船体 CPU + 已装协处理器加成；2026-09-11 新增件）− 已装模块占用
   // ⚠ 传 `shipDef`：含**本船特性折算**（侦察舰的隐秘行动装置 CPU 减半，见 `equipment.cpuUseOf`）
   let cpuLeft = cpuBudgetOf(state, ctx, shipId) - fittedCpuUsed(fitted, ctx, ship)
-  const droneLoad = fleet.droneLoad ?? {}
+  const droneLoad = ship.civilianFittingOnly === true ? {} : fleet.droneLoad ?? {}
   // 批次五更正（船长 2026-09-05）：无人机整备学改折装填（CPU 不打折）——每级 −4%
   //（与武器装填技术同口径，均为乘算；武器装填技术不含无人机，两者独立乘算）
   // 2026-09-10 船长（配合出击-返航动画节奏）：装填基准 2200→**4400ms**、单发同步 ×2

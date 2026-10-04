@@ -16,7 +16,6 @@ import type {
   UnitSpec,
 } from '@whale/core'
 import {
-  allFittedIds,
   /** 本场预载需求（与开战装载同一函数）＋ 取档判定（船长 2026-09-16「甲」口径的单点） */
   ammoLoadTotals,
   resolveAmmoTier,
@@ -56,6 +55,7 @@ import {
   // 2026-09-26 无人机舱总容量（船体 + 甲板扩展）唯一单点——主表与舰队页悬停卡同一把尺
   cargoCapacityM3Of,
   droneBayTotalM3,
+  moduleAllowedOnShip,
   // 2026-09-14 跃迁计算机：装配页显示**有效跃迁速度**（含装备加成）与航行时间因子（与引擎同源）
   travelTimeFactor,
   warpBonusMult,
@@ -527,7 +527,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   /** 打开/关闭浮层时重置筛选（与市场页切换类型时子分类归零同哲学） */
   const pickQuery = pickKw.trim().toLowerCase()
   function candidatesOf(rack: RackSlot): ModuleDef[] {
-    const base = bayModules.filter((m) => isRackModule(m) && rackOf(m) === rack)
+    const base = bayModules.filter((m) => isRackModule(m) && rackOf(m) === rack && moduleAllowedOnShip(shipDef, m))
     const hit = (m: ModuleDef): boolean => {
       if (pickSlot !== 'all' && m.slot !== pickSlot) return false
       if (pickQuery.length === 0) return true
@@ -553,7 +553,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   function pickSlotOptions(rack: RackSlot): Array<{ slot: string; label: string; count: number }> {
     const cnt = new Map<string, number>()
     for (const m of bayModules) {
-      if (!isRackModule(m) || rackOf(m) !== rack) continue
+      if (!isRackModule(m) || rackOf(m) !== rack || !moduleAllowedOnShip(shipDef, m)) continue
       cnt.set(m.slot, (cnt.get(m.slot) ?? 0) + 1)
     }
     return [...cnt.entries()]
@@ -1671,12 +1671,7 @@ function DroneBaySection({
   const fitted = entry?.fitted
   const load = entry?.droneLoad ?? {}
   // 舱上限 = 船体 droneBayM3 + 已装甲板扩展（rack 高槽件）
-  let cap = shipDef?.droneBayM3 ?? 0
-  if (fitted) {
-    for (const id of allFittedIds(fitted)) {
-      cap += ctx.modules.get(id)?.droneBayBonusM3 ?? 0
-    }
-  }
+  const cap = droneBayTotalM3(shipDef, fitted, ctx)
   if (cap <= 0 && Object.keys(load).length === 0) return null // 无舱不显示（与机舱平衡表一致）
   const droneTypes = [...ctx.items.values()].filter((d) => d.kind === 'drone')
   const usedM3 = droneLoadM3(load, ctx)

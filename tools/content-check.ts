@@ -2478,7 +2478,7 @@ for (const [tier, b] of Object.entries(tierTotalAvg)) {
 // `docs/design/scout-cruiser-20260913.md`）。
 // 2026-09-26 船长令（两艘新官方战列舰）：43 → **45** ⇒ 新增 **虎鲸级指挥舰 sh-orca**（T4 战巡口径 ·
 // 4/5/4 中槽型指挥舰 · 全队单发 +20%）与 **旋齿鲨级装甲战列舰 sh-helicoprion**（T4 装甲线 · 5/3/6 · 甲 700）。
-check(SHIPS.length === 45, `舰船应为 45 艘（既有 29 + 虫洞专属 15 + 鹦鹉螺级 1），实际 ${SHIPS.length}`)
+check(SHIPS.length === 46, `舰船应为 46 艘（2026-10-04 增海牛级货舰），实际 ${SHIPS.length}`)
 console.log(
   `· 舰船：${SHIPS.length} 艘（role 分布：${["industrial", "armed", "armored", "hauler"].map((r) => `${r}=${SHIPS.filter((s) => s.role === r).length}`).join(" ")})`,
 )
@@ -7624,9 +7624,9 @@ const MATERIAL_RATIO_REGISTERED: Readonly<Record<string, string>> = {
     const dil5 = wormholeDilutionPoolOf(poolCtx, 5)
     // 件数是"防手滑"守卫：现内容 = T3 十艘 / T4 七艘 / T5 一艘（加船时这里与用例要一起改）
     // ⚠ 2026-09-28：独角鲸级升 T3（+1 张一次性）、座头鲸升 T4（层 2 → 层 3）⇒ 层 3 16 → 17、层 5 17 → 18；层 2 仍 10。
-    check(dil2.length === 10, `稀释池契约：层 2 应为 T3 十张，实际 ${dil2.length} 张（${dil2.join('、')}）`)
-    check(dil3.length === 17, `稀释池契约：层 3 应加 T4 七张（共 17；2026-09-28 座头鲸升 T4 后 16 → 17），实际 ${dil3.length} 张`)
-    check(dil5.length === 18, `稀释池契约：层 5 应加 T5 一张（共 18；随 T4 同步 17 → 18），实际 ${dil5.length} 张`)
+    check(dil2.length === 11, `稀释池契约：层 2 应为 T3 十一张（含海牛），实际 ${dil2.length} 张（${dil2.join('、')}）`)
+    check(dil3.length === 18, `稀释池契约：层 3 应加 T4 七张（共 18），实际 ${dil3.length} 张`)
+    check(dil5.length === 19, `稀释池契约：层 5 应加 T5 一张（共 19），实际 ${dil5.length} 张`)
     for (const id of dil5) {
       const bp = poolCtx.shipBlueprints.get(id)
       check(bp?.singleUse === true, `稀释池契约：${id} 不是一次性舰船蓝图（稀释池只放 ` + '`sbp-once-*` + singleUse）')

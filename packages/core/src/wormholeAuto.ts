@@ -49,6 +49,9 @@ import { logParams } from './logParts'
 import { changeShip } from './shipyard'
 import { shipBusyLabel } from './activity'
 import { wormholeAutoDescend, type WormholeAutoPower } from './wormholeAutoSim'
+import { LEGACY_HAULER_STATS, moduleAllowedOnShip } from './shipFitting'
+import { fleetDefOf } from './instances'
+import { repairCivilianFittings } from './equipment'
 
 /** 货舱**每格**折合多少 m³（自动探索的"装得下多少"用；量级与货舱页的格位口径一致） */
 export const WORMHOLE_AUTO_HOLD_M3_PER_CELL = 50
@@ -84,12 +87,14 @@ function fleetPowerOf(state: GameState, ctx: SimContext, shipIds: readonly strin
   for (const id of shipIds) {
     const ship = state.fleet[id]
     if (!ship) continue
-    const def = ctx.ships.get(ship.defId ?? id)
+    const def = fleetDefOf(state, ctx, id)
     const tier = def?.tier ?? 1
     let own = 0
     for (const modId of ship.fitted?.high ?? []) {
       if (!modId) continue
-      const slot = ctx.modules.get(modId)?.slot
+      const mod = ctx.modules.get(modId)
+      if (!mod || !moduleAllowedOnShip(def, mod)) continue
+      const slot = mod.slot
       if (slot === 'turret' || slot === 'missile' || slot === 'laser' || slot === 'drone-rack' || slot === 'drone-tac') own += 1
     }
     guns += own
@@ -667,6 +672,7 @@ export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: st
   const picked = [...(shipIds ?? wormholeAutoDefaultShips(state, ctx))]
   wormholeStockTake(state, stockId)
   const run: WormholeAutoRun = {
+    haulerFittingVersion: 1,
     id: `wha-${state.gameMs.toString(36)}-${wormholeAutoRunsOf(state).length.toString(36)}`,
     stockId,
     seed: item.seed,
@@ -724,20 +730,21 @@ export function wormholeRunMeta(run: { seed: number; archetype?: WormholeArchety
  * **中止**一趟自动探索（无收益、无损伤；参与舰与 AI 名额当场释放）。
  * ⚠ **该处虫洞不退还**（队伍已经进去了）——界面在按钮旁写明这条。
  */
-export function wormholeAutoStop(state: GameState, runId: string): CommandResult {
+export function wormholeAutoStop(state: GameState, runId: string, ctx?: SimContext): CommandResult {
   const runs = wormholeAutoRunsOf(state)
   const run = runs.find((r) => r.id === runId)
   if (!run) return { ok: false, error: '这一趟自动探索已经结束了。', errorId: 'core.wormholeAuto.001' }
   state.wormholeAuto = runs.filter((r) => r.id !== runId)
+  if (ctx) repairCivilianFittings(state, ctx)
   addLog(state, 'fleet', '🛰 自动探索队已召回：没有收益、也没有损伤；那条通道就此关闭。', 'core.wormholeAuto.019')
   return { ok: true }
 }
 
 /** 按参与舰 id 中止（活动栏那一行用） */
-export function wormholeAutoStopByShip(state: GameState, shipId: string): CommandResult {
+export function wormholeAutoStopByShip(state: GameState, shipId: string, ctx?: SimContext): CommandResult {
   const run = wormholeAutoRunsOf(state).find((r) => r.shipIds.includes(shipId))
   if (!run) return { ok: false, error: '这一趟自动探索已经结束了。', errorId: 'core.wormholeAuto.001' }
-  return wormholeAutoStop(state, run.id)
+  return wormholeAutoStop(state, run.id, ctx)
 }
 
 /* ═══════════ 四、推进与结算 ═══════════ */
@@ -772,7 +779,22 @@ export function advanceWormholeAuto(state: GameState, ctx: SimContext): void {
   const dueIds = new Set(due.map((r) => r.id))
   // 先出队（AI 名额当场释放），再结算
   state.wormholeAuto = runs.filter((r) => !dueIds.has(r.id))
-  for (const run of due) settleRun(state, ctx, run)
+  for (const run of due) {
+    // 本趟已出队；结算仍用旧趟的船体目录，完成后再整理存活船的配装。
+    let runCtx = ctx
+    if (run.haulerFittingVersion !== 1) {
+      const ships = new Map(ctx.ships)
+      for (const uid of run.shipIds) {
+        const defId = state.fleet[uid]?.defId ?? uid
+        const def = ships.get(defId)
+        const legacy = LEGACY_HAULER_STATS[defId]
+        if (def && legacy) ships.set(defId, { ...def, ...legacy, civilianFittingOnly: false })
+      }
+      runCtx = { ...ctx, ships }
+    }
+    settleRun(state, runCtx, run)
+  }
+  repairCivilianFittings(state, ctx)
 }
 
 /** 结算一趟：算收益（手动期望 × 40%）、掷损伤、入仓库、出报告 + 日志 */

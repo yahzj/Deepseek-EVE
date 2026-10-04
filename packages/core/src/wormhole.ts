@@ -355,6 +355,8 @@ export interface WormholeNode {
 }
 
 export interface WormholeRunState {
+  /** 新趟采用纯货舰规则；缺省为已在途旧趟，舰船实例查询保留旧规格直到结算。 */
+  haulerFittingVersion?: 1
   phase: WormholePhase
   /** 当前层（1 起） */
   depth: number
@@ -726,6 +728,7 @@ export function wormholeStartRun(
   return {
     ok: true,
     run: {
+      haulerFittingVersion: 1,
       phase: 'inside',
       depth,
       nodeIndex: 0,
@@ -1923,6 +1926,7 @@ export function wormholeEnter(
   }
   const r = wormholeStartRun(ctx, shipIds, seed, blankShareFactorOf(state), matterTechWhBuffs(state, ctx).turnBonus)
   if (!r.ok || !r.run) return r
+  r.run.haulerFittingVersion = 1
   r.run.attending = true // 进洞即人在洞里：占着主控，直到临时离开或本趟收场
   // 出生信息（丙/丁）：层夹 1~9；原型与族缺省 ⇒ 按种子现算（与库存列表显示的同源）
   if (origin?.depth !== undefined) r.run.depth = Math.max(1, Math.min(9, Math.floor(origin.depth)))

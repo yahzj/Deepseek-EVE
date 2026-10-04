@@ -7,16 +7,38 @@
  * tag（系统 / 内容 / 数值 / 修复）· bullets（3~5 条玩家向说明：改了什么、如何体验）。
  * 已读状态存 localStorage（whale-idle:announce-seen），不清档不重弹。
  */
+import { L10N } from './l10n/table'
+
 export interface AnnouncementDef {
   id: string
   title: string
   date: string
   tag: string
   bullets: readonly string[]
+  /** 新公告按id取词；历史正文仍保留发布时的文本，不追改。 */
+  titleId?: string
+  tagId?: string
+  bulletIds?: readonly string[]
 }
 
 /** 全量公告（新的放最上方） */
 export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
+  {
+    // 2026-10-04 船长「确认没问题」：纯货舰数值、能力边界、材料工时与中英公告通过。
+    id: 'ann-hauler-refit-20261004',
+    title: L10N['ano.hauler.001']!.zh,
+    titleId: 'ano.hauler.001',
+    date: '2026-10-04',
+    tag: L10N['ano.hauler.002']!.zh,
+    tagId: 'ano.hauler.002',
+    bullets: [
+      L10N['ano.hauler.003']!.zh,
+      L10N['ano.hauler.004']!.zh,
+      L10N['ano.hauler.005']!.zh,
+      L10N['ano.hauler.006']!.zh,
+    ],
+    bulletIds: ['ano.hauler.003', 'ano.hauler.004', 'ano.hauler.005', 'ano.hauler.006'],
+  },
   {
     /**
      * **2026-10-02 船长审核定稿**（原话照抄）：

@@ -809,6 +809,7 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
         .map(([t, v]) => tr("ui.shipInfo.123", { p1: DMG_LABEL[t as keyof typeof DMG_LABEL] ?? t, p2: Math.round((v ?? 0) * 100) }))
         .join(' · ')
       if (rangeText) bits.push(rangeText)
+      if (ship.civilianFittingOnly === true) bits.push(tr('ui.shipInfo.249'))
       if (ship.fleetDamageBonusPct) bits.push(tr("ui.shipInfo.124", { p1: Math.round(ship.fleetDamageBonusPct * 100) }))
       if (ship.wormholeScanRadiusBonus) bits.push(tr("ui.shipInfo.125", { p1: ship.wormholeScanRadiusBonus }))
       // 2026-09-16 船长：后勤舰特性进「船体特性」栏（判据已由 `subClass` 改为数据字段，界面与引擎同源）

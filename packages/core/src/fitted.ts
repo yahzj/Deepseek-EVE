@@ -9,6 +9,8 @@
 import { allFittedIds } from './labels'
 import type { FittedModules, ModuleDef, ModuleSlot, SimContext } from './types'
 import type { GameState } from './state'
+import { fleetDefOf } from './instances'
+import { moduleAllowedOnShip } from './shipFitting'
 
 /** 全位已装模块定义（顺序 = 高→中→低 位序；跳过空位） */
 export function allFittedModules(fitted: FittedModules, ctx: SimContext): ModuleDef[] {
@@ -24,5 +26,6 @@ export function allFittedModules(fitted: FittedModules, ctx: SimContext): Module
 export function familyModules(state: GameState, ctx: SimContext, shipId: string, family: ModuleSlot): ModuleDef[] {
   const fitted = state.fleet[shipId]?.fitted
   if (!fitted) return []
-  return allFittedModules(fitted, ctx).filter((d) => d.slot === family)
+  const ship = fleetDefOf(state, ctx, shipId)
+  return allFittedModules(fitted, ctx).filter((d) => d.slot === family && moduleAllowedOnShip(ship, d))
 }

@@ -23,7 +23,7 @@
  * - **2026-09-15 船长定：非战斗舰（industrial / hauler）血量 = 同档官方战斗舰「总血中位」× 0.8**
  *   —— 起因＝船长「提高所有非战斗舰船的血量，使其约等于同级官方战斗舰船血量的 0.8」；
  *   四问四答（全取推荐）：**参考值 = 同档中位**（不被鲣鱼 126 / 玳瑁 910 这类极端值带偏）·
- *   **按原比例放大三层**（盾/甲/结构的占比一字不动，取整余数记入结构层 ⇒ 总血恰为目标）·
+ *   **按原比例放大三层**；2026-10-04纯货舰修订例外：本批四艘总血不变、盾甲结构比例重分，其他非战斗舰不动·
  *   **含 T1 新手船磷虾** · **价格/舱位/产能一律不动**。
  *   **档位目标总血**：T1 **182** · T2 **307** · T3 **540** · T4 **1018** · T5 **1884**。
  *   **"官方战斗舰"判据** = 官方目录里 role 为 `armed` / `armored` 的船（含侦察/电子/装甲子分类；
@@ -65,6 +65,7 @@
  */
 
 import type { ShipDef } from '@whale/core'
+import { L10N } from './l10n/table'
 
 /**
  * ⚠ **本表可变**（与 `modules.ts` 的 `MODULES` 同款）：文末会按档位给各舰补 `plugSlots`
@@ -297,7 +298,8 @@ export const SHIPS: ShipDef[] = [
     id: 'sh-bowhead',
     name: '蝠鲼级重载货舰',
     role: 'hauler', // 2026-09-09 船长定：货舰与矿船分族（原归 industrial 名称易误导），鲸盟制造、航运编列
-    slots: { high: 3, mid: 2, low: 3 }, // V18 槽位布局（草案表 v18-slots.md）
+    civilianFittingOnly: true,
+    slots: { high: 3, mid: 4, low: 6 }, // 2026-10-04 船长确认：重载货舰保留作业高槽，补防御与物流配装
     tier: 4,
     cargoM3: 26_000,
     cycleSeconds: 36,
@@ -306,11 +308,11 @@ export const SHIPS: ShipDef[] = [
     agility: 0.28,
     evasion: 0,
     hitBonus: 0.1,
-    shieldHp: 111,
+    shieldHp: 204,
     shieldResist: { kinetic: 0.25 }, // 鲸盟：护盾抗动能（整数主抗制）
-    armorHp: 343,
-    hullHp: 564, // 货舰：结构占比略高
-    cpu: 160,
+    armorHp: 407,
+    hullHp: 407,
+    cpu: 350,
     droneBayM3: 0,
     maxSpeedMps: 180,
     warpSpeedAus: 3.5,
@@ -319,6 +321,34 @@ export const SHIPS: ShipDef[] = [
     signatureM: 190,
     scanResMm: 360,
     description: '鲸盟总装的重载货舰：超两万六立方货舱，离线囤货与长途运输的中坚。',
+  },
+  {
+    id: 'sh-manatee',
+    name: L10N['ship.manatee.001']!.zh,
+    role: 'hauler',
+    civilianFittingOnly: true,
+    slots: { high: 2, mid: 3, low: 5 },
+    tier: 3,
+    cargoM3: 16_000,
+    cycleSeconds: 36,
+    oreUnitsPerCycle: 18,
+    priceIsk: 6_750_000,
+    agility: 0.36,
+    evasion: 0,
+    hitBonus: 0.08,
+    shieldHp: 108,
+    shieldResist: { kinetic: 0.25 },
+    armorHp: 216,
+    hullHp: 216,
+    cpu: 250,
+    droneBayM3: 0,
+    maxSpeedMps: 210,
+    warpSpeedAus: 3.8,
+    massKg: 11_000_000,
+    lockRangeM: 22_000,
+    signatureM: 155,
+    scanResMm: 380,
+    description: L10N['ship.manatee.002']!.zh,
   },
   {
     id: 'sh-colossal',
@@ -979,7 +1009,8 @@ export const SHIPS: ShipDef[] = [
     id: 'sh-flyingfish',
     name: '飞鱼级快运舰',
     role: 'hauler',
-    slots: { high: 1, mid: 2, low: 2 }, // V18 槽位布局（草案表 v18-slots.md）
+    civilianFittingOnly: true,
+    slots: { high: 1, mid: 3, low: 4 }, // 2026-10-04 船长确认：保留快运机动，补防御与物流配装
     tier: 2,
     cargoM3: 5000,
     cycleSeconds: 11,
@@ -988,12 +1019,12 @@ export const SHIPS: ShipDef[] = [
     agility: 0.62,
     evasion: 0.3,
     hitBonus: 0.08,
-    shieldHp: 52,
-    armorHp: 66,
-    hullHp: 189,
+    shieldHp: 77,
+    armorHp: 107,
+    hullHp: 123,
     hullResist: { plasma: 0.25 }, // 蜃楼：结构抗能量（整数主抗制）
-    cpu: 105,
-    droneBayM3: 40,
+    cpu: 150,
+    droneBayM3: 0,
     maxSpeedMps: 430,
     warpSpeedAus: 7.4,
     massKg: 4_000_000,
@@ -1006,7 +1037,8 @@ export const SHIPS: ShipDef[] = [
     id: 'sh-sailfish',
     name: '旗鱼级高速货舰',
     role: 'hauler',
-    slots: { high: 1, mid: 3, low: 3 }, // V18 槽位布局（草案表 v18-slots.md）
+    civilianFittingOnly: true,
+    slots: { high: 1, mid: 4, low: 5 },
     tier: 3,
     cargoM3: 8500,
     cycleSeconds: 11,
@@ -1015,12 +1047,12 @@ export const SHIPS: ShipDef[] = [
     agility: 0.56,
     evasion: 0.3,
     hitBonus: 0.08,
-    shieldHp: 88,
-    armorHp: 119,
-    hullHp: 333,
+    shieldHp: 135,
+    armorHp: 189,
+    hullHp: 216,
     hullResist: { plasma: 0.25 }, // 蜃楼：结构抗能量（整数主抗制）
-    cpu: 135,
-    droneBayM3: 50,
+    cpu: 240,
+    droneBayM3: 0,
     maxSpeedMps: 415,
     warpSpeedAus: 6.3,
     massKg: 8_000_000,
@@ -1033,7 +1065,8 @@ export const SHIPS: ShipDef[] = [
     id: 'sh-swordfish',
     name: '剑鱼级大型货舰',
     role: 'hauler',
-    slots: { high: 2, mid: 2, low: 3 }, // V18 槽位布局（草案表 v18-slots.md）
+    civilianFittingOnly: true,
+    slots: { high: 2, mid: 5, low: 6 },
     tier: 4,
     cargoM3: 14000,
     cycleSeconds: 12,
@@ -1042,12 +1075,12 @@ export const SHIPS: ShipDef[] = [
     agility: 0.5,
     evasion: 0.28,
     hitBonus: 0.08,
-    shieldHp: 170,
-    armorHp: 226,
-    hullHp: 622,
+    shieldHp: 254,
+    armorHp: 356,
+    hullHp: 408,
     hullResist: { plasma: 0.25 }, // 蜃楼：结构抗能量（整数主抗制）
-    cpu: 175,
-    droneBayM3: 60,
+    cpu: 320,
+    droneBayM3: 0,
     maxSpeedMps: 400,
     warpSpeedAus: 6.2,
     massKg: 13_000_000,
