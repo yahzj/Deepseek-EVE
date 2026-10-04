@@ -444,7 +444,7 @@ export function bountyRewardFactor(state: GameState): number {
  */
 function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: string): CommandResult {
   const anomaly = ctx.anomalies.get(anomalyId)
-  if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。`, errorId: 'core.expedition.003' }
+  if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。`, errorId: 'core.expedition.003', errorParams: { p1: anomalyId } }
   /** ⚠ `wormholePilotHoldReason` 已撤（2026-09-21 统一批）：扫描虫洞 = 可自动停、人在洞里 = 拒，都归 `activityGate` */
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }

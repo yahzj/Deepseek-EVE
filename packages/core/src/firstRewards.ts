@@ -127,6 +127,7 @@ export interface ClaimFirstTaskResult {
   ok: boolean
   error?: string
   errorId?: string
+  errorParams?: Readonly<Record<string, string | number>>
   /** 本次新发下去的起手道具属于哪几条（读数用） */
   started?: string[]
 }
@@ -142,7 +143,7 @@ export interface ClaimFirstTaskResult {
  */
 export function claimFirstTask(state: GameState, ctx: SimContext, id: string): ClaimFirstTaskResult {
   const def = FIRST_TASKS.find((d) => d.id === id)
-  if (!def) return { ok: false, error: `未知任务：${id}。`, errorId: 'core.firstRewards.002' }
+  if (!def) return { ok: false, error: `未知任务：${id}。`, errorId: 'core.firstRewards.002', errorParams: { p1: id } }
   if (state.importantTasks[id]?.done === true) {
     return { ok: false, error: '这条任务已经完成过了。', errorId: 'core.firstRewards.003' }
   }

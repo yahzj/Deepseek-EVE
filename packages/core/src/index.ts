@@ -85,6 +85,7 @@ export {
   createInitialState,
   // 虫洞锁定判据（洞外开战要避开锁在洞里的锚点船；放 state.ts 避免依赖环）
   shipLockedInWormhole,
+  shipLockedReason,
   // 主控活动位判据（人在洞里 ⇒ 别的活动开不了）
   wormholePilotHoldReason,
   // 停掉「扫描虫洞」的状态单点（手动停扫与「进洞自动停扫」共用；进度保留）
@@ -529,6 +530,8 @@ export {
   cargoCapacityM3,
   freeCargoM3,
   freeCargoM3Of,
+  cargoUnitM3,
+  MODULE_CARGO_UNIT_M3,
   unloadCargoToWarehouse,
   unloadCargoOfShipToWarehouse,
   // 2026-09-26 玩家报障：误落进物品仓库的装备（插件装货仓再卸货）搬回装备库（读档时跑、幂等）

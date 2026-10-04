@@ -139,7 +139,8 @@ export interface ItemGridCell {
 /** 分类补充说明（仓库/货仓列表与图标模式共用；2026-09-08 船长反馈弹药/无人机存放含义） */
 export function kindExtraNote(kind: string): string | null {
   if (kind === 'drone') {
-    return tr("ui.itemView.001")
+    // ⟪文案调整 2026-10-04⟫ 使用战后自动补货说明，不再提示回港手动补充。
+    return tr("ui.itemView.004")
   }
   if (kind === 'ammo') {
     return tr("ui.itemView.002")

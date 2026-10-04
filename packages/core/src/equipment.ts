@@ -585,7 +585,7 @@ export function fitModule(
   const lock = shipLockedReason(state, opts?.shipId ?? state.shipId, '改装它')
   if (lock) return { ok: false, error: lock }
   const def = ctx.modules.get(moduleId)
-  if (!def) return { ok: false, error: `未知装备：${moduleId}。`, errorId: 'core.equipment.001' }
+  if (!def) return { ok: false, error: `未知装备：${moduleId}。`, errorId: 'core.equipment.001', errorParams: { p1: moduleId } }
   /**
    * **舰船插件不许走高/中/低槽**（**2026-09-27 船长报障**：「有部分船插会在装备栏显示」）。
    *
@@ -598,10 +598,11 @@ export function fitModule(
       ok: false,
       error: `「${def.name}」是舰船插件，只能装进插件槽（装上去拆不下来，也不会占高/中/低槽）。`,
       errorId: 'core.equipment.030',
+      errorParams: { p1: def.name },
     }
   }
   if (countModule(state, moduleId) < 1) {
-    return { ok: false, error: `装备库里没有 ${def.name}，先去组装机造一件。`, errorId: 'core.equipment.002' }
+    return { ok: false, error: `装备库里没有 ${def.name}，先去组装机造一件。`, errorId: 'core.equipment.002', errorParams: { p1: def.name } }
   }
   const shipId = opts?.shipId ?? state.shipId
   const fitted = state.fleet[shipId]?.fitted
@@ -752,7 +753,7 @@ export function swapModuleAt(
   const lock = shipLockedReason(state, opts.shipId ?? state.shipId, '改装它')
   if (lock) return { ok: false, error: lock }
   const def = ctx.modules.get(moduleId)
-  if (!def) return { ok: false, error: `未知装备：${moduleId}。`, errorId: 'core.equipment.001' }
+  if (!def) return { ok: false, error: `未知装备：${moduleId}。`, errorId: 'core.equipment.001', errorParams: { p1: moduleId } }
   /**
    * **舰船插件不许走高/中/低槽**（**2026-09-27 船长报障**）：本函数是装配页候选卡的落点
    * （`engine.swapModuleTo` → 这里），而低槽候选此前会把插件列出来 ⇒ 不拦就会被写进 `fitted.low`。
@@ -763,6 +764,7 @@ export function swapModuleAt(
       ok: false,
       error: `「${def.name}」是舰船插件，只能装进插件槽（装上去拆不下来，也不会占高/中/低槽）。`,
       errorId: 'core.equipment.030',
+      errorParams: { p1: def.name },
     }
   }
   const shipId = opts.shipId ?? state.shipId
@@ -783,7 +785,7 @@ export function swapModuleAt(
     return { ok: false, error: `${def.name} 已装在此位。`, errorId: 'core.equipment.010', errorParams: { p1: def.name } }
   }
   if (countModule(state, moduleId) < 1) {
-    return { ok: false, error: `装备库里没有 ${def.name}，先去组装机造一件。`, errorId: 'core.equipment.002' }
+    return { ok: false, error: `装备库里没有 ${def.name}，先去组装机造一件。`, errorId: 'core.equipment.002', errorParams: { p1: def.name } }
   }
   /**
    * **同舰唯一**（**2026-09-26 报障修复**）：换装路径此前**没查这条** ⇒ 玩家能把第二件损管

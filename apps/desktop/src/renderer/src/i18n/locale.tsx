@@ -385,7 +385,8 @@ export interface CmdTextSource {
 export function paramText(idOrRaw: string | number | undefined): string {
   if (idOrRaw === undefined) return ''
   if (typeof idOrRaw === 'number') return String(idOrRaw)
-  return idOrRaw.startsWith('core.') ? tr(idOrRaw) : idOrRaw
+  // ⟪文案调整 2026-10-04⟫ 活动参数可复用 ui 域词条，按实际登记取词，普通文本/未知 id 原样回退。
+  return Object.prototype.hasOwnProperty.call(L10N, idOrRaw) ? tr(idOrRaw) : idOrRaw
 }
 
 export interface L10nApi {

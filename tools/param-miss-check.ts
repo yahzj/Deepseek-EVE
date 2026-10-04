@@ -36,6 +36,9 @@
  * （分隔符词条在表里 · 外层模板真有那一槽 · 逐项模板在表里且逐项参数给齐 · 不许只有 ItemId 没有 List）。
  *
  * 用法：`npx tsx tools/param-miss-check.ts`（等价 `npm run l10n:params`）· **只读**，不写文件。
+ * **基本错误返回判据（2026-10-04 加）**：静态 `errorId` 模板所需槽，必须出现在同对象的
+ * `errorParams` 中（直接值或同名 `p{n}Id`）。只检查可确定的对象字面量；变量、动态 id、展开跳过，
+ * 不以零命中宣称所有错误路径已覆盖。槽内模板继续由第二段判据检查。
  * 退出码：命中 > 0 ⇒ 1（可挂进合入前闸门）；0 ⇒ 0。 *
  * ⚠ **误报的两种情形**（工具会点名，需人工看一眼）：
  *   ① 参数对象是**变量**（如 `tr('ui.weekend.022', params)`）——静态判不出里面有什么键；
@@ -82,6 +85,43 @@ interface Finding {
 }
 
 const findings: Finding[] = []
+
+/** 基本错误返回：静态 errorId 的每个槽必须由 errorParams 或同名槽 id 提供；展开/变量保守跳过。 */
+const errorFindings: Array<{ at: string; id: string; missing: string[] }> = []
+for (const root of CORE_ROOTS) for (const file of walk(root)) {
+  const sf = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true)
+  function visit(node: ts.Node): void {
+    if (ts.isObjectLiteralExpression(node)) {
+      const field = (name: string) => node.properties.find((p): p is ts.PropertyAssignment =>
+        ts.isPropertyAssignment(p) && p.name.getText(sf).replace(/['"]/g, '') === name)?.initializer
+      const id = field('errorId')
+      if (id && ts.isStringLiteral(id) && L10N[id.text]) {
+        const need = [...L10N[id.text]!.zh.matchAll(/\{(\w+)\}/g)].map((m) => m[1]!)
+        const params = field('errorParams')
+        const spread = node.properties.some(ts.isSpreadAssignment)
+        if (need.length && (!params || ts.isObjectLiteralExpression(params)) && !spread) {
+          const keys = new Set<string>()
+          let opaque = false
+          if (params && ts.isObjectLiteralExpression(params)) for (const p of params.properties) {
+            if (ts.isSpreadAssignment(p)) { opaque = true; continue }
+            if (ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p)) keys.add(p.name.getText(sf).replace(/['"]/g, ''))
+          }
+          const missing = need.filter((key) => !keys.has(key) && !keys.has(`${key}Id`))
+          if (missing.length && !opaque) errorFindings.push({
+            at: `${relative(process.cwd(), file).split('\\').join('/')}:${sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1}`,
+            id: id.text, missing,
+          })
+        }
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sf)
+}
+if (errorFindings.length) {
+  console.log(`■ 基本错误模板漏参 ${errorFindings.length} 处：`)
+  for (const finding of errorFindings) console.log(`  ${finding.at} ${finding.id} 缺 ${finding.missing.join('/')}`)
+} else console.log('✅ 基本错误模板无明确漏参（静态 errorId/errorParams；变量或展开不冒称全覆盖）。')
 
 for (const root of ROOTS) {
   for (const file of walk(root)) {
@@ -615,6 +655,7 @@ if (slotFindings.length > 0) {
 }
 
 process.exitCode =
+  errorFindings.length === 0 &&
   hard.length === 0 &&
   slotFindings.length === 0 &&
   thirdFindings.length === 0 &&

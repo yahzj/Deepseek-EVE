@@ -2036,7 +2036,7 @@ export function sellStoredShipAtMarket(
  *  它只能拿到组装机去造一次（开工时消耗，见 `manufacturing.startManufacturing`）。 */
 export function learnBlueprint(state: GameState, ctx: SimContext, blueprintId: string): { ok: boolean; error?: string; errorId?: string; errorParams?: Readonly<Record<string, string | number>> } {
   const known = ctx.blueprints.get(blueprintId) ?? ctx.shipBlueprints.get(blueprintId)
-  if (!known) return { ok: false, error: `未知蓝图：${blueprintId}。`, errorId: 'core.market.001' }
+  if (!known) return { ok: false, error: `未知蓝图：${blueprintId}。`, errorId: 'core.market.001', errorParams: { p1: blueprintId } }
   if (known.singleUse === true) {
     return { ok: false, error: `「${known.name}」是一次性图纸：不能学习，请到组装机直接用掉（只能制造一次）。`,
       errorId: 'core.market.002',
@@ -2113,7 +2113,7 @@ export function marketSellHolding(
   remaining: number
 } {
   const def = ctx.marketGoods.get(goodKey)
-  if (!def) return { ok: false, error: `未知商品：${goodKey}`, errorId: 'core.market.005', sold: 0, total: 0, remaining: 0 }
+  if (!def) return { ok: false, error: `未知商品：${goodKey}`, errorId: 'core.market.005', errorParams: { p1: goodKey }, sold: 0, total: 0, remaining: 0 }
   if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。', errorId: 'core.market.006', sold: 0, total: 0, remaining: 0 }
   if (def.kind === 'ship') {
     // 2026-09-14 船长报障「市场依旧无法挂单或者直接出售舰船」⇒ 卖出侧对舰船放行：
@@ -2173,7 +2173,7 @@ export function marketSellPreview(
 } {
   const def = ctx.marketGoods.get(goodKey)
   const zero = { avail: 0, want: 0, fillable: 0, orders: 0, gross: 0, tax: 0, net: 0, leftover: 0 }
-  if (!def) return { ok: false, error: `未知商品：${goodKey}`, errorId: 'core.market.005', ...zero }
+  if (!def) return { ok: false, error: `未知商品：${goodKey}`, errorId: 'core.market.005', errorParams: { p1: goodKey }, ...zero }
   if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。', errorId: 'core.market.006', ...zero }
   // 舰船（2026-09-14 船长报障后放行）：可卖 = 舰船仓库艘数；估价口径与「市价卖出」逐条同源
   // （成交走 settleSell ⇒ **只有声望加成、无营销学加成**，故这里也不乘 marketSellSkillMult）
@@ -2227,7 +2227,7 @@ export function listSellHolding(
   resting?: number
 } {
   const def = ctx.marketGoods.get(goodKey)
-  if (!def) return { ok: false, error: `未知商品：${goodKey}`, errorId: 'core.market.005' }
+  if (!def) return { ok: false, error: `未知商品：${goodKey}`, errorId: 'core.market.005', errorParams: { p1: goodKey } }
   if (def.playerSellable === false) return { ok: false, error: '该商品不支持玩家出售。', errorId: 'core.market.006' }
   const isShip = def.kind === 'ship'
   const available = isShip ? shipStoredCount(state, def.refId) : naturalHoldings(state, def)

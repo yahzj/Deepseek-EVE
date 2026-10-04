@@ -113,27 +113,27 @@ export function installPlug(
   ctx: SimContext,
   moduleId: string,
   shipId: string = state.shipId,
-): { ok: true } | { ok: false; errorId?: string; error?: string } {
+): { ok: true } | { ok: false; errorId?: string; error?: string; errorParams?: Readonly<Record<string, string | number>> } {
   const def = ctx.modules.get(moduleId)
-  if (!def) return { ok: false, error: `未知装备：${moduleId}。`, errorId: 'core.equipment.001' }
+  if (!def) return { ok: false, error: `未知装备：${moduleId}。`, errorId: 'core.equipment.001', errorParams: { p1: moduleId } }
   if (!isPlugOf(def)) {
-    return { ok: false, error: `「${def.name}」不是舰船插件。`, errorId: 'core.plug.002' }
+    return { ok: false, error: `「${def.name}」不是舰船插件。`, errorId: 'core.plug.002', errorParams: { p1: def.name } }
   }
   const ship = state.fleet[shipId]
   if (!ship) return { ok: false, error: '舰队里找不到这艘舰船。', errorId: 'core.plug.003' }
   const cap = plugSlotsOf(state, ctx, shipId)
   const have = plugsOf(state, shipId)
   if (cap <= 0) {
-    return { ok: false, error: `「${ctx.ships.get(ship.defId ?? '')?.name ?? shipId}」没有舰船插件槽。`, errorId: 'core.plug.004' }
+    return { ok: false, error: `「${ctx.ships.get(ship.defId ?? '')?.name ?? shipId}」没有舰船插件槽。`, errorId: 'core.plug.004', errorParams: { p1: ctx.ships.get(ship.defId ?? '')?.name ?? shipId } }
   }
   if (have.length >= cap) {
-    return { ok: false, error: `插件槽已满：本舰 ${cap} 格，且插件装上去就拆不下来。`, errorId: 'core.plug.005' }
+    return { ok: false, error: `插件槽已满：本舰 ${cap} 格，且插件装上去就拆不下来。`, errorId: 'core.plug.005', errorParams: { p1: cap } }
   }
   if (have.includes(moduleId)) {
-    return { ok: false, error: `本舰已经装了一件「${def.name}」——同型插件不能重复装。`, errorId: 'core.plug.006' }
+    return { ok: false, error: `本舰已经装了一件「${def.name}」——同型插件不能重复装。`, errorId: 'core.plug.006', errorParams: { p1: def.name } }
   }
   if ((state.moduleBay[moduleId] ?? 0) < 1) {
-    return { ok: false, error: `装备库里没有「${def.name}」，先去组装机造一件。`, errorId: 'core.equipment.002' }
+    return { ok: false, error: `装备库里没有「${def.name}」，先去组装机造一件。`, errorId: 'core.equipment.002', errorParams: { p1: def.name } }
   }
   // 扣库 + 装入（复用装备库的扣减单点口径：够就减 1）
   const rest = (state.moduleBay[moduleId] ?? 0) - 1
@@ -242,7 +242,7 @@ export const UNIVERSAL_BLACKBOX_ITEM_ID = 'blackbox-universal'
 export function exchangeUniversalBlackBox(
   state: GameState,
   count = 1,
-): { ok: true; count: number } | { ok: false; errorId: string; error: string } {
+): { ok: true; count: number } | { ok: false; errorId: string; error: string; errorParams?: Readonly<Record<string, string | number>> } {
   const n = Math.max(1, Math.floor(count))
   const price = UNIVERSAL_BLACKBOX_COST * n
   const have = spendableStandingOf(state)
@@ -250,6 +250,7 @@ export function exchangeUniversalBlackBox(
     return {
       ok: false,
       errorId: 'core.plug.013',
+      errorParams: { p1: n, p2: price, p3: have },
       error: `声望不足：换通用黑匣 ×${n} 要 ${price} 点，当前可支配 ${have} 点。`,
     }
   }
@@ -284,10 +285,10 @@ export function exchangePlugBlueprint(
   state: GameState,
   ctx: SimContext,
   moduleId: string,
-): { ok: true; blueprintId: string } | { ok: false; errorId: string; error: string } {
+): { ok: true; blueprintId: string } | { ok: false; errorId: string; error: string; errorParams?: Readonly<Record<string, string | number>> } {
   const def = ctx.modules.get(moduleId)
   if (!isPlugOf(def)) {
-    return { ok: false, errorId: 'core.plug.002', error: `「${moduleId}」不是舰船插件。` }
+    return { ok: false, errorId: 'core.plug.002', error: `「${moduleId}」不是舰船插件。`, errorParams: { p1: moduleId } }
   }
   const bpId = plugBlueprintIdOf(moduleId)
   const bp = ctx.blueprints.get(bpId)
@@ -295,13 +296,14 @@ export function exchangePlugBlueprint(
     return { ok: false, errorId: 'core.plug.008', error: `图纸目录里没有「${bpId}」。` }
   }
   if ((state.learnedRecipes ?? []).includes(bpId)) {
-    return { ok: false, errorId: 'core.plug.009', error: `已经学会「${bp.name}」了，不用再换。` }
+    return { ok: false, errorId: 'core.plug.009', error: `已经学会「${bp.name}」了，不用再换。`, errorParams: { p1: bp.name } }
   }
   const have = spendableStandingOf(state)
   if (have < PLUG_BLUEPRINT_COST) {
     return {
       ok: false,
       errorId: 'core.plug.010',
+      errorParams: { p1: bp.name, p2: PLUG_BLUEPRINT_COST, p3: have },
       error: `声望不足：换「${bp.name}」要 ${PLUG_BLUEPRINT_COST} 点，当前可支配 ${have} 点。`,
     }
   }

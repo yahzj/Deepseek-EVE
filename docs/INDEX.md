@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **448** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7516** KB · **58232** 行
-- 状态分布：**未标注** 247 · **已确认/已实现** 131 · **进行中** 53 · **待裁定** 16 · **历史留档** 1
-- 孤儿文档（0 引用）**81** 份 · 状态未标注 **247** 份
+- 文档总数 **449** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7539** KB · **58398** 行
+- 状态分布：**未标注** 248 · **已确认/已实现** 131 · **进行中** 53 · **待裁定** 16 · **历史留档** 1
+- 孤儿文档（0 引用）**82** 份 · 状态未标注 **248** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**298** 份
+- 三、现行设计稿（design）：**299** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**3** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -55,13 +55,14 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 298 份
+## 三、现行设计稿（design） —— 299 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/activity-mobile-audit-20261004.md` | 主控活动切换、显示与手机适配核查 | 未标注（第一轮实现与验证完成） | 2026-10-04 | 9 KB / 78 行 | 1 / 0 |
 | `docs/design/classic-nav-footer-20261004.md` | 旧版导航底部开关与矮窗口布局 | 已确认/已实现（已确认） | 2026-10-04 | 5 KB / 37 行 | 0 / 0 |
 | `docs/design/classic-sidebar-collapse-20261004.md` | 旧版导航收窄与事件日志收起 | 已确认/已实现（已确认） | 2026-10-04 | 6 KB / 47 行 | 0 / 0 |
+| `docs/design/item-filter-hint-audit-20261004.md` | 分类相关提示文本筛查 | 未标注（已实施） | 2026-10-04 | 23 KB / 166 行 | 0 / 0 |
 | `docs/design/item-ship-filter-taxonomy-20261004.md` | 物品与舰船筛选归类统一 | 未标注（实施完成） | 2026-10-04 | 7 KB / 53 行 | 0 / 0 |
 | `docs/design/mobile-shell-layout-20261004.md` | 手机布局第二轮：日志抽屉与主区优先 | 已确认/已实现（已确认） | 2026-10-04 | 8 KB / 59 行 | 0 / 0 |
 | `docs/design/beacon-target-highsec-20261003.md` | 信号发射器：高安判据改看「玩家选定的目标星系」 | 未标注 | 2026-10-03 | 5 KB / 64 行 | 0 / 0 |
@@ -518,12 +519,13 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，81 份）
+## 附：孤儿文档（0 引用，82 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/classic-nav-footer-20261004.md`（2026-10-04 · 5 KB）—— 旧版导航底部开关与矮窗口布局
 - `docs/design/classic-sidebar-collapse-20261004.md`（2026-10-04 · 6 KB）—— 旧版导航收窄与事件日志收起
+- `docs/design/item-filter-hint-audit-20261004.md`（2026-10-04 · 23 KB）—— 分类相关提示文本筛查
 - `docs/design/item-ship-filter-taxonomy-20261004.md`（2026-10-04 · 7 KB）—— 物品与舰船筛选归类统一
 - `docs/design/mobile-shell-layout-20261004.md`（2026-10-04 · 8 KB）—— 手机布局第二轮：日志抽屉与主区优先
 - `docs/design/beacon-target-highsec-20261003.md`（2026-10-03 · 5 KB）—— 信号发射器：高安判据改看「玩家选定的目标星系」
@@ -604,9 +606,10 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（247 份，待补一行 `状态：…`）
+## 附：状态未标注（248 份，待补一行 `状态：…`）
 
 - `docs/design/activity-mobile-audit-20261004.md`（2026-10-04）—— 主控活动切换、显示与手机适配核查
+- `docs/design/item-filter-hint-audit-20261004.md`（2026-10-04）—— 分类相关提示文本筛查
 - `docs/design/item-ship-filter-taxonomy-20261004.md`（2026-10-04）—— 物品与舰船筛选归类统一
 - `docs/design/beacon-target-highsec-20261003.md`（2026-10-03）—— 信号发射器：高安判据改看「玩家选定的目标星系」
 - `docs/design/corona-enemy-pd-beam-20261003.md`（2026-10-03）—— 光环势力敌人的近防炮 = 能量光束近防炮 · 必中（2026-10-03 · 二号 · d2）

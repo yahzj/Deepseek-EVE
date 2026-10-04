@@ -54,9 +54,10 @@ function kindsOfBucket(bucket: string): string[] {
   return ITEM_KIND_ORDER.filter((k) => itemCategoryOf({ kind: k }) === bucket)
 }
 
-/** 桶的空态文案 id：取桶内**第一条有专属文案**的大类 —— 换桶后仍保留原按大类写的引导语
- *  （「货物」桶 ⇒ 原矿那条），并让 `KIND_EMPTY` 那六条文案都仍有引用。 */
+/** 货物组使用泛称空态，其余专类复用对应物品提示。 */
 function bucketEmptyId(bucket: string): string | undefined {
+  // ⟪文案调整 2026-10-04⟫ 货物组包含多种货物，不以原矿的空态代替整个组。
+  if (bucket === 'item') return 'ui.CargoPage.010'
   for (const k of kindsOfBucket(bucket)) {
     const id = KIND_EMPTY[k]
     if (id !== undefined) return id
@@ -64,13 +65,10 @@ function bucketEmptyId(bucket: string): string | undefined {
   return undefined
 }
 
-/** 桶的引导提示：取桶内第一条有提示的大类（`kindExtraNote` 是单点；取舍同 `bucketEmptyId`） */
+/** 桶的引导提示只取该分类自身，不以单一物品说明代替综合桶。 */
 function bucketExtraNote(bucket: string): string | undefined {
-  for (const k of kindsOfBucket(bucket)) {
-    const note = kindExtraNote(k)
-    if (note) return note
-  }
-  return undefined
+  // 综合桶不以第一种物品的操作说明代表整个组。
+  return kindExtraNote(bucket) ?? undefined
 }
 
 export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNavProps) {
@@ -288,18 +286,22 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
             <option value="all">{tr('ui.IndustryPage.001')}</option>
             {categories.map((s) => <option key={s.key} value={s.key}>{subText(s)}</option>)}
           </select>
-          {subs.length > 0 ? <select className="app-mkt-kind" value={sub} title={tr('ui.Handbook.252')} onChange={(e) => setSub(e.target.value)}>
-            <option value={SUB_ALL}>{tr('ui.IndustryPage.001')}</option>
+          {subs.length > 0 ? <select className="app-mkt-kind" value={sub} title={tr('ui.hintAudit.005')} onChange={(e) => setSub(e.target.value)}>
+            <option value={SUB_ALL}>{tr(category === 'module' ? 'ui.hintAudit.007' : 'ui.hintAudit.009')}</option>
             {subs.map((s) => <option key={s.key} value={s.key}>{subText(s, (id) => engine.ctx.items.get(id)?.name)}</option>)}
           </select> : null}
         </div>
       </div>
+      {/* ⟪文案调整 2026-10-04⟫ 两种视图共用空态，筛选无匹配不冒称库存为空。 */}
+      {rows.length === 0 ? <div className="app-dim app-inv-empty">
+        {tr(allRows.length === 0 ? 'ui.CargoPage.049' : 'ui.hintAudit.001')}
+      </div> : null}
       {view === 'list' ? (
         <>
       {ITEM_CARGO_SUBS.map((tab) => {
         const kindRows = rows.filter(([id]) => !engine.ctx.modules.has(id) && itemCategoryOf(engine.ctx.items.get(id)) === tab.key)
         // 「货物」面板常驻（引导开采），其余分类空时不显示
-        if (kindRows.length === 0 && (tab.key !== 'item' || category !== 'all')) return null
+        if (kindRows.length === 0 && (rows.length === 0 || tab.key !== 'item' || category !== 'all')) return null
         const emptyText =
           tab.key === 'item' && !isPiloted
             ? t('ui.CargoPage.017', { ship: targetName })
@@ -464,9 +466,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
         </>
       ) : (
         <>
-          {rows.length === 0 ? (
-            <div className="app-dim app-inv-empty">{tr("ui.CargoPage.049")}</div>
-          ) : (
+          {rows.length > 0 ? (
             ITEM_CARGO_SUBS.map((tab) => {
               const kindRows = rows.filter(([id]) => !engine.ctx.modules.has(id) && itemCategoryOf(engine.ctx.items.get(id)) === tab.key)
               if (kindRows.length === 0) return null
@@ -502,7 +502,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 </Panel>
               )
             })
-          )}
+          ) : null}
 
           {/* 船载装备（图标卡；2026-09-09 船长口径 A：模块可入货仓携带） */}
           {modRows.length > 0 ? (

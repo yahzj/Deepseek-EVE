@@ -343,7 +343,8 @@ function handEntryHits(e: HandEntry, q: string): number {
   return e.paras.filter(([, t]) => t.toLowerCase().includes(q)).length
 }
 
-const GUIDE_GROUPS: HandGroup[] = [
+// ⟪文案调整 2026-10-04⟫ 本批奇货说明随语言切换取词，不缓存模块加载时的译文。
+function guideGroupsOf(): HandGroup[] { return [
   {
     title: tr("ui.Handbook.194"),
     entries: [
@@ -525,6 +526,8 @@ const GUIDE_GROUPS: HandGroup[] = [
     ],
   },
 ]
+
+}
 
 /** 「小贴士」子页的 key（它不是词条，单独占一页） */
 const TIPS_KEY = '__tips'
@@ -1028,7 +1031,8 @@ export function Handbook({
     String(c.raw.description ?? '').toLowerCase().includes(q)
   /* 说明类（玩法速览 / 航行须知）：搜索作用于**整章**（跨子页命中，见 handEntryHits）。
      `cur` 是当前该显示的**一页**：玩家点的子页；点的那条被关键词滤掉时自动落到第一条命中的（搜索即跳页）。 */
-  const sects: HandGroup[] = tab === 'guide' ? GUIDE_GROUPS : tab === 'rules' ? RULE_SECTS : []
+  const guideGroups = guideGroupsOf()
+  const sects: HandGroup[] = tab === 'guide' ? guideGroups : tab === 'rules' ? RULE_SECTS : []
   const flat = sects.flatMap((g) => g.entries.map((e) => ({ g, e })))
   const matched = flat.filter((x) => handEntryHits(x.e, q) > 0)
   const onTips = tab === 'guide' && pageKey === TIPS_KEY
@@ -1317,7 +1321,7 @@ export function Handbook({
 
   /** 左侧导航计数：图鉴类 = 条目数（搜索时显示命中数；**不含筛选**——筛选是当前页的临时收窄），说明类 = 词条数 */
   function navCount(t: Tab): number {
-    if (t === 'guide') return GUIDE_GROUPS.reduce((n, g) => n + g.entries.filter((e) => handEntryHits(e, q) > 0).length, 0)
+    if (t === 'guide') return guideGroups.reduce((n, g) => n + g.entries.filter((e) => handEntryHits(e, q) > 0).length, 0)
     if (t === 'rules') return RULE_SECTS.reduce((n, g) => n + g.entries.filter((e) => handEntryHits(e, q) > 0).length, 0)
     return codexCells[t].filter(hitCell).length
   }

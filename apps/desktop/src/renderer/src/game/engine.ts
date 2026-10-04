@@ -2345,7 +2345,7 @@ export class GameEngine {
       void this.persist()
       this.notify()
     }
-    return r.ok ? { ok: true } : { ok: false, error: r.error }
+    return r.ok ? { ok: true } : { ok: false, error: r.error, errorId: r.errorId, errorParams: r.errorParams }
   }
   /**
    * **用声望换一枚通用黑匣**（**2026-09-27 船长令**：「**在章鱼人声望商店加入购买通用黑匣的卡片，
@@ -2357,7 +2357,7 @@ export class GameEngine {
       void this.persist()
       this.notify()
     }
-    return r.ok ? { ok: true } : { ok: false, error: r.error }
+    return r.ok ? { ok: true } : { ok: false, error: r.error, errorId: r.errorId, errorParams: r.errorParams }
   }
 
   /** 市价买入商品（默认 1 件；矿石/矿物传数量）。

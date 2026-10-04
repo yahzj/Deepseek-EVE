@@ -6,7 +6,7 @@
  * - 货仓 tab：原货仓页（T3 船选择条 / 驾驶船可装卸出售，副船只读）整体并入。
  */
 import { useEffect, useState } from 'react'
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, marketGoodOf, SYNAPTIC_ACCELERANT_ITEM_ID, INVASION_BEACON_ITEM_ID } from '@whale/core'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, marketGoodOf, SYNAPTIC_ACCELERANT_ITEM_ID, INVASION_BEACON_ITEM_ID, shipLockedReason, freeCargoM3, cargoUnitM3, MODULE_CARGO_UNIT_M3 } from '@whale/core'
 import { itemRarityTierOf } from '@whale/data'
 import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemHoverContent, itemInfoLines, moduleHoverContent, ModuleHover, moduleInfoLines } from '../ui/shipInfo'
@@ -128,7 +128,9 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
     return {
       options: presentSubs(options, (key) => pool.some(([id]) => itemBucketPasses(engine.ctx, id, wareKind) &&
         (wareKind !== 'module' || rackPasses(engine.ctx, id, wareRack)) && itemSubPasses(engine.ctx, id, wareKind, key))),
-      label: wareKind === 'module' ? tr('ui.ItemsPage.048') : wareKind === 'item' ? tr('ui.ItemsPage.059') : tr('ui.ItemsPage.023'),
+      // ⟪文案调整 2026-10-04⟫ 细分前缀按功能、分类、类型或档位取词。
+      label: wareKind === 'module' ? tr('ui.ItemsPage.048') : wareKind === 'item' ? tr('ui.ItemsPage.059') :
+        wareKind === 'container' || wareKind === 'consume' ? tr('ui.hintAudit.003') : tr('ui.ItemsPage.023'),
     }
   })()
   /**
@@ -193,8 +195,12 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       onToast(t('ui.ItemsPage.052', { p1: def.name }), true)
       return
     }
+    // ⟪文案调整 2026-10-04⟫ 失败按既有锁定和空间判据提示，不把返回零一律说成满舱。
+    const lock = shipLockedReason(state, state.shipId)
+    if (lock) { onToast(tr('ui.hintAudit.012'), true); return }
     const loaded = engine.loadWareToCargoFit(id)
-    if (loaded === 0) onToast(t('ui.ItemsPage.012'), true)
+    if (loaded === 0) onToast(t((state.warehouse.items[id] ?? 0) > 0 && freeCargoM3(state, engine.ctx) < cargoUnitM3(state, def)
+      ? 'ui.hintAudit.010' : 'ui.ItemsPage.012'), true)
     else {
       onToast(t('ui.ItemsPage.013', { name: def.name, n: loaded.toLocaleString('zh-CN') }))
       setPickItem(null)
@@ -210,8 +216,11 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   /** 2026-09-09（船长口径 A）：装备装船 = 携带（按 1 m³/件 计入货舱，从装备库扣）；装配台取料仍只认装备库 */
   function handleLoadMod(id: string): void {
     const def = engine.ctx.modules.get(id)
+    const lock = shipLockedReason(state, state.shipId)
+    if (lock) { onToast(tr('ui.hintAudit.012'), true); return }
     const loaded = engine.loadWareToCargoFit(id)
-    if (loaded === 0) onToast(tr("ui.ItemsPage.040"), true)
+    if (loaded === 0) onToast(tr((state.moduleBay[id] ?? 0) > 0 && freeCargoM3(state, engine.ctx) < MODULE_CARGO_UNIT_M3
+      ? 'ui.hintAudit.011' : 'ui.ItemsPage.040'), true)
     else onToast(tr("ui.ItemsPage.041", { p1: def?.name ?? id, p2: loaded.toLocaleString('zh-CN') }))
   }
 
@@ -328,7 +337,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       {/* 仓库筛选（2026-09-13 船长：「物品界面的仓库也添加筛选」；2026-09-19 甲组补丁补齐子维度）
           —— 工具条固定在列表上方不随滚动（复刻「我的舰队」那套：app-fleet-toolbar + app-fleet-row）；
           一级＝各大类 + 「装备」；二级/三级**按一级现算**（基线③级联：上级没选就不占位）；
-          胶囊行文案一律「全部」+ 同行灰字前缀（基线①） */}
+          细分默认项按当前维度命名，不暗示一次清除全部条件。 */}
       <div className="app-fleet-toolbar">
         <div className="app-fleet-row">
           <span className="app-dim">{tr("ui.ItemsPage.021")}</span>
@@ -363,9 +372,9 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
           </div>
         </div>
         {rackOptions.length > 0 ? <div className="app-fleet-row">
-          <span className="app-dim">{tr('ui.ItemsPage.021')}</span>
-          <select className="app-mkt-kind" value={wareRack} onChange={(e) => { setWareRack(e.target.value); setWareSub(SUB_ALL) }}>
-            <option value={SUB_ALL}>{tr('ui.IndustryPage.001')}</option>
+          <span className="app-dim">{tr('ui.ItemsPage.022')}{tr('ui.ItemsPage.046')}</span>
+          <select className="app-mkt-kind" value={wareRack} title={tr('ui.hintAudit.004')} onChange={(e) => { setWareRack(e.target.value); setWareSub(SUB_ALL) }}>
+            <option value={SUB_ALL}>{tr('ui.hintAudit.006')}</option>
             {rackOptions.map((s) => <option key={s.key} value={s.key}>{subText(s)}</option>)}
           </select>
         </div> : null}
@@ -381,7 +390,7 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                   setWareSub(SUB_ALL)
                 }}
               >
-                {tr("ui.IndustryPage.001")}
+                {tr(wareKind === 'module' ? 'ui.hintAudit.007' : wareKind === 'wreck' || wareKind === 'aicore' ? 'ui.hintAudit.008' : 'ui.hintAudit.009')}
               </button>
               {subDim.options.map((s) => (
                 <button

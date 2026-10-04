@@ -288,11 +288,6 @@ function GoodHover({
   )
 }
 
-/** 「自己的库存」口径说明（悬停用）：与"能卖出的量"同源；已挂单托管的量不计在内
- *  ⚠ 2026-09-14 船长：舰船拆成「舰船仓库 ＋ 在役舰队」两处（仓库是出售入口）⇒ 舰船那一档改成两者相加 */
-const MY_STOCK_TIP =
-  tr("ui.MarketPage.023")
-
 /** 玩家自己这件东西的库存（舰船 = 舰船仓库 ＋ 在役舰队；其余走 core「自然库存」单点） */
 function myStockOf(state: GameState, good: MarketGoodDef): number {
   if (good.kind === 'ship') {
@@ -404,7 +399,8 @@ function GoodRow({
               {fmtClock(life)}
             </span>
           ) : null}
-          <span className="app-dim" title={MY_STOCK_TIP}>
+          {/* ⟪文案调整 2026-10-04⟫ 库存去处按现行账本说明，并随语言切换取词。 */}
+          <span className="app-dim" title={tr('ui.MarketPage.023')}>
             {' '}
             {tr('ui.MarketPage.126', { n: fmtInt(holdings) })}
           </span>
@@ -453,10 +449,6 @@ function taxTipText(state: GameState, ctx: PageProps['engine']['ctx']): string {
   return tr("ui.MarketPage.143", { p1: Math.round(rate * 1000) / 10, skillNote: skillNote })
 }
 
-/** 协会市场的撮合与星标说明（挂单簿语义、冲击动量、行首星标；2026-09-13 收进列表标题后的圆形感叹号） */
-const MKT_MECH_TIP =
-  tr("ui.MarketPage.034")
-
 /** 有货冒泡上浮（供应簿有现货的排前面）；其余保持目录稳定顺序。
  *  2026-09-10 船长定：默认排序下已标记（收藏）的商品置顶——两栏与搜索结果都是这一套默认口径。 */
 function stockedFirst(engine: PageProps['engine'], goods: MarketGoodDef[]): MarketGoodDef[] {
@@ -496,7 +488,7 @@ function MarketColumn({
   hint?: ReactNode
   right: ReactNode
   rows: MarketGoodDef[]
-  /** 空态文案（缺省＝"没有匹配的订单"那句；「限定奇货」这类会周期性缺货的档要写自己的话，见调用处） */
+  /** 空态文案（缺省为搜索/筛选无匹配商品；周期性缺货的渠道另传提示）。 */
   empty?: string
   selKey?: string | null
   onSelect?: (key: string) => void
@@ -1461,28 +1453,30 @@ export function MarketPage({
             ) : null}
           </div>
           {rackOptions.length > 0 || detailOptions.length > 0 ? <div className="app-fleet-row">
-            {rackOptions.length > 0 ? <select className="app-mkt-kind" value={rack} title={tr('ui.ItemsPage.021')} onChange={(e) => { setRack(e.target.value); setDetail(SUB_ALL) }}>
-              <option value={SUB_ALL}>{tr('ui.IndustryPage.001')}</option>
+            {rackOptions.length > 0 ? <select className="app-mkt-kind" value={rack} title={tr('ui.hintAudit.004')} onChange={(e) => { setRack(e.target.value); setDetail(SUB_ALL) }}>
+              <option value={SUB_ALL}>{tr('ui.hintAudit.006')}</option>
               {rackOptions.map((s) => <option key={s.key} value={s.key}>{subText(s)}</option>)}
             </select> : null}
-            {detailOptions.length > 0 ? <select className="app-mkt-kind" value={detail} title={tr('ui.Handbook.252')} onChange={(e) => setDetail(e.target.value)}>
-              <option value={SUB_ALL}>{tr('ui.IndustryPage.001')}</option>
+            {detailOptions.length > 0 ? <select className="app-mkt-kind" value={detail} title={tr('ui.hintAudit.005')} onChange={(e) => setDetail(e.target.value)}>
+              <option value={SUB_ALL}>{tr(kind === DOMAIN_SHIP ? 'ui.hintAudit.008' : sub === 'module' ? 'ui.hintAudit.007' : 'ui.hintAudit.009')}</option>
               {detailOptions.map((s) => <option key={s.key} value={s.key}>{subText(s, itemNameOf)}</option>)}
             </select> : null}
           </div> : null}
 
           {filterActive ? (
             /* ── 搜索/过滤激活：跨档合并结果（常驻 + 稀有 + 限定奇货一次搜全；GoodRow 自带稀有度徽标区分） ── */
+            // ⟪文案调整 2026-10-04⟫ 标题包含全部已选条件，避免细分筛选被隐藏。
             <MarketColumn
               engine={engine}
               title={
-                query.length > 0
-                  ? tr("ui.MarketPage.170", { p1: kw.trim() })
-                  : `${tr('ui.IndustryPage.001')} ${domainText[kind] ?? ''}${
-                      sub !== SUB_ALL && kindSubs ? ` · ${subText(kindSubs.find((s) => s.key === sub) ?? { key: sub, label: sub }, itemNameOf)}` : ''
-                    }`
+                [query.length > 0 ? tr('ui.MarketPage.170', { p1: kw.trim() }) : tr('ui.hintAudit.002'),
+                  kind !== DOMAIN_ALL ? domainText[kind] : '',
+                  sub !== SUB_ALL ? subText(kindSubs?.find((s) => s.key === sub) ?? { label: sub }, itemNameOf) : '',
+                  rack !== SUB_ALL ? subText(rackOptions.find((s) => s.key === rack) ?? { label: rack }) : '',
+                  detail !== SUB_ALL ? subText(detailOptions.find((s) => s.key === detail) ?? { label: detail }, itemNameOf) : '',
+                ].filter(Boolean).join(' · ')
               }
-              hint={<HintIcon tip={MKT_MECH_TIP} />}
+              hint={<HintIcon tip={tr('ui.MarketPage.034')} />}
               right={<span className="app-dim">{tr("ui.MarketPage.100")}</span>}
               rows={filteredAll}
               selKey={listSelKey}
@@ -1560,7 +1554,7 @@ export function MarketPage({
                 <MarketColumn
                   engine={engine}
                   title={tr("ui.MarketPage.105")}
-                  hint={<HintIcon tip={MKT_MECH_TIP} />}
+                  hint={<HintIcon tip={tr('ui.MarketPage.034')} />}
                   right={
                     <span className="app-dim" title={tr("ui.MarketPage.106")}>
                       {tr("ui.MarketPage.107")} {fmtClock(nextSupplyIn(engine))}{tr('ui.MarketPage.134')}
@@ -1574,7 +1568,7 @@ export function MarketPage({
                 <MarketColumn
                   engine={engine}
                   title={tr("ui.MarketPage.103")}
-                  hint={<HintIcon tip={MKT_MECH_TIP} />}
+                  hint={<HintIcon tip={tr('ui.MarketPage.034')} />}
                   right={<span className="app-dim">{tr("ui.MarketPage.108")}</span>}
                   rows={rareOrderRows(engine, rareCol)}
                   selKey={listSelKey}
@@ -1584,7 +1578,7 @@ export function MarketPage({
                 <MarketColumn
                   engine={engine}
                   title={tr("ui.MarketPage.028")}
-                  hint={<HintIcon tip={MKT_MECH_TIP} />}
+                  hint={<HintIcon tip={tr('ui.MarketPage.034')} />}
                   right={<span className="app-dim">{tr("ui.MarketPage.109")}</span>}
                   rows={rareOrderRows(engine, exoticCol)}
                   empty={tr('ui.MarketPage.177')}

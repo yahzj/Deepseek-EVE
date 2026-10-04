@@ -52,6 +52,7 @@ function warehouse(mode: Mode) {
   state.warehouse.items = Object.fromEntries([...context.items.keys()].map((id) => [id, 5]))
   state.moduleBay = Object.fromEntries([...context.modules.keys()].map((id) => [id, 1]))
   const values: unknown[] = []
+  const notices: string[] = []
   let cursor = 0
   let effects: (() => void)[] = []
   const components = Object.fromEntries(['Panel', 'ItemHover', 'ModuleHover', 'ItemGlyphGrid', 'RowGlyph', 'HintIcon',
@@ -75,11 +76,11 @@ function warehouse(mode: Mode) {
     result: undefined,
   }
   evaluate(load('apps/desktop/src/renderer/src/pages/ItemsPage.tsx', 'WarehouseView') + '\nglobalThis.result = WarehouseView', scope)
-  const engine = { state, ctx: context, fragmentRedeemRows: () => [] }
+  const engine = { state, ctx: context, fragmentRedeemRows: () => [], loadWareToCargoFit: (id: string) => core.loadWarehouseToCargoFit(state, id, context) }
   const render = (): Node[] => {
     cursor = 0
     effects = []
-    const root = (scope.result as unknown as (props: unknown) => unknown)({ engine, onToast: () => {}, onGotoMarket: () => {} })
+    const root = (scope.result as unknown as (props: unknown) => unknown)({ engine, onToast: (text: string) => notices.push(text), onGotoMarket: () => {} })
     effects.forEach((effect) => effect())
     return nodesOf(root)
   }
@@ -90,7 +91,7 @@ function warehouse(mode: Mode) {
   }
   const ids = (): string[] => render().flatMap((node) => node.type === 'ItemHover' ? [node.props.item.id] :
     node.type === 'ModuleHover' ? [node.props.mod.id] : node.type === 'ItemGlyphGrid' ? node.props.cells.map((c: any) => c.key) : []).sort()
-  return { render, click, ids, context, state }
+  return { render, click, ids, context, state, notices }
 }
 
 describe('真实领域与子分类判定', () => {
@@ -169,5 +170,57 @@ describe('真实仓库组件点击与两种视图', () => {
     try {
       expect(filters.MARKET_DOMAIN_TABS.map((s: any) => filters.subText(s))).toEqual(['Items', 'Ships'])
     } finally { language.value = 'zh' }
+  })
+  it('仓库装船失败区分空间不足与缺货，不改变装货判据', () => {
+    const view = warehouse('list')
+    const id = [...view.context.items.values()].find((d) => d.kind === 'ore')!.id
+    view.state.fleet[view.state.shipId]!.cargo = { [id]: 1e9 }
+    const item = view.render().find((n) => n.type === 'ItemHover' && n.props.item.id === id)!
+    const load = nodesOf(item).find((n) => n.type === 'button' && textOf(n.children) === tr('ui.ItemsPage.025'))!
+    load.props.onClick()
+    expect(view.notices.at(-1)).toBe(tr('ui.hintAudit.010'))
+    delete view.state.warehouse.items[id]
+    load.props.onClick()
+    expect(view.notices.at(-1)).toBe(tr('ui.ItemsPage.012'))
+  })
+  it.each(['zh','en'] as const)('%s 锁定舰船装货保持库存并给出双语拒因', (locale) => {
+    language.value = locale
+    try {
+      const view = warehouse('list')
+      const id = [...view.context.items.values()].find((d) => d.kind === 'ore')!.id
+      view.state.wormhole.run = { fleet: [view.state.shipId] } as any
+      const before = JSON.stringify([view.state.warehouse,view.state.fleet[view.state.shipId]!.cargo])
+      const item = view.render().find((n) => n.type === 'ItemHover' && n.props.item.id === id)!
+      nodesOf(item).find((n) => n.type === 'button' && textOf(n.children) === tr('ui.ItemsPage.025'))!.props.onClick()
+      expect(view.notices.at(-1)).toBe(tr('ui.hintAudit.012'))
+      expect(JSON.stringify([view.state.warehouse,view.state.fleet[view.state.shipId]!.cargo])).toBe(before)
+    } finally { language.value = 'zh' }
+  })
+})
+
+describe('真实货仓空态提示', () => {
+  it.each(['list','grid'] as const)('%s 视图区分真空仓与筛选无匹配', (mode) => {
+    for (const empty of [false,true]) {
+      const context = buildSimContext()
+      const state = core.createInitialState({ nowWallMs: 0, seed: 7 })
+      const item = [...context.items.values()].find((d) => d.kind === 'ore')!
+      state.fleet[state.shipId]!.cargo = empty ? {} : { [item.id]: 1 }
+      let cursor = 0
+      const components = Object.fromEntries(['Panel','ProgressBar','ItemHover','ModuleHover','ItemGlyphGrid','RowGlyph','HintIcon','Glyph',
+        'ItemViewBar','ItemActionModal','InfoTable','SellQtyModal','RedeemFragmentButton'].map((n)=>[n,n]))
+      const scope = { ...core,...filters,...components,tr,exports:{},
+        React:{createElement:(type:string,props:Record<string,unknown>|null,...children:unknown[]):Node=>({type,props:props??{},children})},
+        useState:(initial:unknown)=>[cursor++===1?'consume':typeof initial==='function'?(initial as ()=>unknown)():initial,()=>{}],
+        useEffect:()=>{},useL10n:()=>({t:tr}),useItemView:()=>[mode,()=>{}],
+        itemRarityTierOf:()=>undefined,itemBuyQuote:()=>undefined,kindExtraNote:()=>undefined,
+        itemGlyphName:()=>'',inventoryItemTone:()=>'',slotText:()=>'',crestFamOf:()=>undefined,
+        itemHoverContent:()=>'',moduleHoverContent:()=>'',isk:String,m3:String,cmdText:()=>'',result:undefined,
+      }
+      evaluate(load('apps/desktop/src/renderer/src/pages/CargoPage.tsx')+'\nglobalThis.result = CargoPage',scope)
+      const nodes=nodesOf((scope.result as unknown as (props:object)=>unknown)({engine:{state,ctx:context,fragmentRedeemRows:()=>[]},onToast:()=>{},onGotoMarket:()=>{}}))
+      const messages=nodes.filter((n)=>n.props.className==='app-dim app-inv-empty').map(textOf)
+      expect(messages).toContain(tr(empty?'ui.CargoPage.049':'ui.hintAudit.001'))
+      if(!empty)expect(messages).not.toContain(tr('ui.CargoPage.049'))
+    }
   })
 })

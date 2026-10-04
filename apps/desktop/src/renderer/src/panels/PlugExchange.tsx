@@ -40,7 +40,7 @@ import {
   standingOf,
 } from '@whale/core'
 import type { GameEngine } from '../game/engine'
-import { tr } from '../i18n/locale'
+import { tr, cmdText } from '../i18n/locale'
 import { Glyph } from '../ui/Glyphs'
 import { toneOfAny } from '../ui/tones'
 import { moduleShortEffect } from '../ui/shipInfo'
@@ -81,7 +81,7 @@ export function PlugExchangeBody({ engine, onToast }: { engine: GameEngine; onTo
   const boxOwned = countWare(engine.state, UNIVERSAL_BLACKBOX_ITEM_ID)
   const buyBox = (): void => {
     const r = engine.exchangeUniversalBlackBoxAt()
-    onToast(r.ok ? tr('ui.IndustryPage.144') : (r.error ?? tr('ui.IndustryPage.121', { p1: boxPrice })))
+    onToast(r.ok ? tr('ui.IndustryPage.144') : (cmdText(r) || tr('ui.IndustryPage.121', { p1: boxPrice })))
     setAsk(null)
     setTick((n) => n + 1)
   }
@@ -89,7 +89,7 @@ export function PlugExchangeBody({ engine, onToast }: { engine: GameEngine; onTo
   const exchange = (moduleId: string): void => {
     /** 走引擎命令（成功才落盘 ＋ 广播刷新；与 `learnBlueprintAt` 同款） */
     const r = engine.exchangePlugBlueprintAt(moduleId)
-    onToast(r.ok ? tr('ui.IndustryPage.123') : (r.error ?? tr('ui.IndustryPage.121', { p1: PLUG_BLUEPRINT_COST })))
+    onToast(r.ok ? tr('ui.IndustryPage.123') : (cmdText(r) || tr('ui.IndustryPage.121', { p1: PLUG_BLUEPRINT_COST })))
     setAsk(null)
     setTick((n) => n + 1)
   }

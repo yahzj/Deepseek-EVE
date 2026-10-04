@@ -517,7 +517,7 @@ export function startManufacturing(
   const spentMaterials: { itemId: string; count: number }[] = []
   if (!spendMaterialsFor(state, buildable.spec.materials, spentMaterials)) {
     /** 上面已用 `missingMaterials` 挡过一次；走到这里 = 库存竞态（同批多个入口并发扣）⇒ 照实报，不留半扣 */
-    return { ok: false, error: '材料不足：物品仓库里的料凑不齐这一件。', errorId: 'core.manufacturing.010' }
+    return { ok: false, error: '材料不足：物品仓库里的料凑不齐这一件。', errorId: 'core.manufacturing.010', errorParams: { p1Id: 'core.manufacturing.016' } }
   }
   // 一次性图纸：**开工那一刻吃掉这本书**（船长裁定「3甲」，与材料同源）；
   // ⚠ 2026-09-20 船长改判：「一次性蓝图的制造取消后返还玩家蓝图」

@@ -1473,7 +1473,7 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
       setErr(null)
       setNote(tr('ui.FitPage.191'))
     } else {
-      setErr(r.error ?? '')
+      setErr(cmdText(r))
       setNote(null)
     }
   }

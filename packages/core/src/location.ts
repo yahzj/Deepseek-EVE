@@ -353,9 +353,9 @@ function hasLoadableDeliverWare(state: GameState, ctx: SimContext, site: Station
  */
 export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: string): CommandResult {
   const site = ctx.stations.get(siteId)
-  if (!site) return { ok: false, error: `未知建站点：${siteId}。`, errorId: 'core.location.010' }
+  if (!site) return { ok: false, error: `未知建站点：${siteId}。`, errorId: 'core.location.010', errorParams: { p1: siteId } }
   const prog = siteProgress(state, siteId)
-  if (prog.stage >= site.tiers.length) return { ok: false, error: `「${site.name}」已建成并网，无需再交付建材。`, errorId: 'core.location.011' }
+  if (prog.stage >= site.tiers.length) return { ok: false, error: `「${site.name}」已建成并网，无需再交付建材。`, errorId: 'core.location.011', errorParams: { p1: site.name } }
   /**
    * **本入口自己的两道"点了也白点"的前置**——放在统一判据**之前**（顺序纪律：绝不"先停了玩家的活、
    * 再说开不了"）。两道都与"停不停别的活动"无关：
@@ -395,11 +395,11 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
   if (state.transit.active) return { ok: false, error: '已有进行中的行程（返航/交付航线）。', errorId: 'core.location.014' }
   if (!state.exploredGalaxies.includes(site.galaxyId)) {
     const g = ctx.galaxies.get(site.galaxyId)?.name ?? site.galaxyId
-    return { ok: false, error: `「${g}」尚未探明——先对其执行扫描探索，才能规划交付航线。`, errorId: 'core.location.018' }
+    return { ok: false, error: `「${g}」尚未探明——先对其执行扫描探索，才能规划交付航线。`, errorId: 'core.location.018', errorParams: { p1: g } }
   }
   const from = originGalaxyOf(state, ctx)
   const mins = shortestTravelMinutes(ctx, from, site.galaxyId)
-  if (!Number.isFinite(mins)) return { ok: false, error: `「${site.galaxyId}」不在已知航路内，无法规划航线。`, errorId: 'core.location.019' }
+  if (!Number.isFinite(mins)) return { ok: false, error: `「${site.galaxyId}」不在已知航路内，无法规划航线。`, errorId: 'core.location.019', errorParams: { p1: site.galaxyId } }
   // 出发装载（物理载货模型）：这里真装一次（上面已确认"货仓有位、仓库有料"）
   const loaded = loadDeliverCargo(state, ctx, site)
   const loadedTotal = Object.values(loaded).reduce((s, n) => s + n, 0)
@@ -729,22 +729,22 @@ export function transitStatus(state: GameState, ctx: SimContext): TransitView {
  */
 export function goStandbyAt(state: GameState, galaxyId: string, ctx: SimContext): CommandResult {
   const target = ctx.galaxies.get(galaxyId)
-  if (!target) return { ok: false, error: `未知星系：${galaxyId}。`, errorId: 'core.location.033' }
+  if (!target) return { ok: false, error: `未知星系：${galaxyId}。`, errorId: 'core.location.033', errorParams: { p1: galaxyId } }
   /** ⚠ `wormholePilotHoldReason` 已撤（2026-09-21 统一批）：扫描虫洞 = 可自动停、人在洞里 = 拒，都归 `activityGate` */
   const pilotBlock = pilotUnavailableReason(state)
   if (pilotBlock) return { ok: false, error: pilotBlock }
   const s = state.standby
   if (s.active) return { ok: false, error: '掩护巡逻进行中：请先取消（顶部活动栏）。', errorId: 'core.location.024' }
-  if (isExploredOf(state, galaxyId) === false) return { ok: false, error: `「${target.name}」尚未探明——先对其执行扫描探索。`, errorId: 'core.location.028' }
+  if (isExploredOf(state, galaxyId) === false) return { ok: false, error: `「${target.name}」尚未探明——先对其执行扫描探索。`, errorId: 'core.location.028', errorParams: { p1: target.name } }
   const from = originGalaxyOf(state, ctx)
   if (from === galaxyId && state.awayGalaxy === null) {
-    return { ok: false, error: `舰船已停靠「${target.name}」，无需前往。`, errorId: 'core.location.029' }
+    return { ok: false, error: `舰船已停靠「${target.name}」，无需前往。`, errorId: 'core.location.029', errorParams: { p1: target.name } }
   }
   if (state.awayGalaxy === galaxyId && isIdleField(state)) {
-    return { ok: false, error: `舰船已在「${target.name}」掩护巡逻。`, errorId: 'core.location.030' }
+    return { ok: false, error: `舰船已在「${target.name}」掩护巡逻。`, errorId: 'core.location.030', errorParams: { p1: target.name } }
   }
   const mins = shortestTravelMinutes(ctx, from, galaxyId)
-  if (!Number.isFinite(mins)) return { ok: false, error: `「${target.name}」不在已知航路内。`, errorId: 'core.location.031' }
+  if (!Number.isFinite(mins)) return { ok: false, error: `「${target.name}」不在已知航路内。`, errorId: 'core.location.031', errorParams: { p1: target.name } }
   /**
    * **其余主控活动 ⇒ 走统一判据**（**2026-09-21 船长令**：能直接切就自动取消当前活动，只有长途运输
    * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 7 条硬拒，现已收进
