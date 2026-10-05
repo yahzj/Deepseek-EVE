@@ -39,6 +39,8 @@ import { wormholeMatterBuffs, wormholeMatterThreatMul } from './wormholeMatter'
 import { matterTechBattleSpeedTiers, matterTechWhBuffs } from './matterTech'
 import type { WormholeMatterBuffs } from './wormholeMatter'
 import { nextInt, nextRandom, pickWeighted } from './rng'
+import { volleyGunCountOf, volleyDamageShareOf } from './combatVolley'
+export { volleyGunCountOf, volleyDamageShareOf } from './combatVolley'
 import { countWare, removeCargoOfShip, removeWare } from './inventory'
 import { shipDisplayName } from './instances'
 import { uidDefId } from './labels'
@@ -134,6 +136,8 @@ export interface WeaponSpec {
    *  **2026-09-11 修复**：一轮齐射按**门数**扣弹（此前只扣 1 发 → 多门武器等于白嫖弹药；
    *  弹药预载同样按门数放大，见 `ammoLoadTotals`）。 */
   count?: number
+  /** 敌方主炮门数；不改变shotDmg的武器组总伤语义。 */
+  gunCount?: number
   /**
    * **全体攻击**（2026-09-13 船长：C 族「孢子导弹巢」＝「对所有敌方同时攻击」）：
    * `true` = 本武器每轮齐射**逐个结算到全部存活敌舰**（逐目标独立掷命中、各吃各自的层克制与抗性），
@@ -1070,7 +1074,9 @@ export function applyFoeShot(
   let next = hp
   let left = totalDmg
   entries.forEach(([t, v], i) => {
-    const dmg = i === entries.length - 1 ? left : Math.max(1, Math.round((totalDmg * (v ?? 0)) / sum))
+    // 多炮拆小单发后不逐系取整，避免低伤炮把原混伤比例改成一半一半。
+    const share = (totalDmg * (v ?? 0)) / sum
+    const dmg = i === entries.length - 1 ? left : (weapon.gunCount ?? 1) > 1 ? share : Math.max(1, Math.round(share))
     const take = Math.max(0, Math.min(left, dmg))
     if (take <= 0) return
     next = applyDamage(next, resists, take, t as DamageType).hp
@@ -4575,14 +4581,14 @@ function stepBattle(
       // 带标记的武器**优先打机群**（防空是它的本职）。
       // **射程口径（船长 2026-09-11 甲案）**：打机群**不看两舰间距**（敌机扑到您舰旁才开火，
       // 机制服从画面）⇒ 有敌机可打时不受 `inRange` 拦截；只有"打舰"才按本武器射程判。
-      const droneHit = w.canHitDrones
+      let droneHit = w.canHitDrones
         ? pickFoeDroneTarget(state, b, foes, b.distanceM, w, wi, unit.tag)
         : null
       if (!droneHit && !inRange(b.distanceM, w)) continue;
       // V18B 随机目标（船长 2026-09-05）：每发武器在开火瞬间从存活敌人中独立抽取
       // （确定性 rng 种子，可复现；齐射可分散到不同目标）。目标死亡即时换人。
       // 2026-09-09 锁定装置：装上即切换"集火模式"——全部武器打存活编队首位（主舰优先、击毁接力）。
-      const foeTarget = droneHit
+      let foeTarget = droneHit
         ? null
         : unit.lockedDmgBonus
           ? firstAliveFoe(foes, b)
@@ -4636,268 +4642,290 @@ function stepBattle(
       // 倍率来自装备表（`ModuleDef.antiDroneDmgMul` → `WeaponSpec.antiDroneMul`），缺省 = 1 ⇒ 不乘。
       if (droneHit && (w.antiDroneMul ?? 1) !== 1)
         dmg = Math.round(dmg * (w.antiDroneMul ?? 1))
-      b.stats.meShots += 1;
-      // **隐秘行动：开火即现形**（2026-09-15 船长 Q1 甲）——本舰任一门武器打出第一发时窗口清空；
-      // 同一拍稍后的敌方开火段因此已经"看得见"它（现实语义亦然：枪口一闪就暴露了）。
-      if (meRt.stealthUntilMs !== undefined) {
-        meRt.stealthUntilMs = undefined
-        pushBattleNotice(b, '隐秘行动结束：本舰开火现形')
-      }
-      // **反应式防空**：我方**无人机**打过敌舰 ⇒ 记录时刻，供**敌方近防炮**在窗口内反击
-      // ⚠ 记的是**敌方全队共用**的一枚令牌（**不按被打的敌舰 tag 分记**）——船长 2026-09-16「点防没问题」
-      //   = 现状为准；换靶/换敌舰都共用它，消费一次即全队过窗（见 `resolvePointDefense`）。
-      if (w.src === 'drone')
-        b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: b.lastTickGameMs };
-      // AI favor：我方（AI 副船）命中按优势放大，上限放开到 100%（可必中）；
-      // beam 已必中（autoHit），不掷骰、favor 不放大
-      // **两条命中分开算**（船长 2026-09-12 裁定「按丁修复」，口径说明见 `droneHitChance`）：
-      // 打**机群**不吃两舰距离衰减（守方只用该架的闪避 `DronePoolEntry.evasion`，机型表绝对值）；
-      // 打**舰**一字未动（仍按两舰间距算 `distFactor`）。
-      const meHit = autoHit
-        ? 1
-        : droneHit
-          ? droneHitChance(w, meAtk, droneHit.pool.evasion, bal)
-          : hitChance(w, meAtk, foeTarget!, b.distanceM, bal)
-      const meHitEff = autoHit
-        ? 1
-        : favor
-          ? clamp(0, 1, meHit * favor.meMul)
-          : meHit
-      const hit = dmg > 0 && (autoHit || nextRandom(state.rng) < meHitEff)
-      /**
-       * **本发对主目标的实收伤害**（2026-09-24 船长令「战斗伤害的数值动画」）——
-       * 逐段累加（主段 + 附伤段），仅供飘字读数：与 `stats.meDmg` 同源（同一批 `dealt`）。
-       * 未命中保持 0 ⇒ 下面**不写 `dmg`**（UI 就只飘 MISS，不硬编数字）。
-       * ⚠ 齐射协调仪的**溢火结转那一截不计在本发头上**（它落在另一艘敌舰身上，已有画面提示）。
-       */
-      let selfDealt = 0
-      if (hit) {
-        b.stats.meHits += 1
-        if (droneHit) {
-          // 打机群：扣该架的三层血（吃它自己的层抗）；打空 = **击落**（停火 + 小型爆炸演出）。
-          // ⚠ 锁定装置的加深**不作用于机群**（锁定锁的是舰）——防空靠的是射速与命中，不是锁定。
-          const pool = droneHit.pool
-          const r = applyDamage(
-            { s: pool.s, a: pool.a, h: pool.h },
-            pool.resists ?? {},
-            dmg,
-            type,
-          )
-          pool.s = r.hp.s
-          pool.a = r.hp.a
-          pool.h = r.hp.h
-          b.stats.meDmg += r.dealt
-          selfDealt = r.dealt
-          if (pool.s + pool.a + pool.h <= 0) {
-            pool.alive = false
-            // **备用机库补位排期**（2026-09-12 船长「损坏后补充敌机」）：前线战损 ⇒ 从机库放出一架，
-            // `respawnMs` 后到位。⚠ 同一时刻只排**一架**（在前的那架到位后才轮到下一架）。
-            const reserveOf = foes.find((x) => x.tag === droneHit.foeTag)?.foeDroneReserve
-            const hangar = b.foeDronePools?.[droneHit.foeTag] ?? []
+      const gunCount = volleyGunCountOf(w)
+      const volleyDmg = dmg
+      const rawBeam = w.kind === 'beam' ? w.shotDmg ?? 0 : dmg
+      // 合并条目只共享装填与弹药账；每门炮独立命中和伤害事件。
+      for (let gun = 0; gun < gunCount; gun++) {
+        if (gun > 0 && droneHit && !droneHit.pool.alive) {
+          droneHit = pickFoeDroneTarget(state, b, foes, b.distanceM, w, wi, unit.tag, true)
+          if (!droneHit) {
+            if (!inRange(b.distanceM, w)) break
+            foeTarget = unit.lockedDmgBonus ? firstAliveFoe(foes, b) : randomAliveFoe(state, b, foes)
+            if (!foeTarget) break
+          }
+        }
+        if (gun > 0 && !droneHit && !isAlive(b, foeTarget!.tag)) {
+          foeTarget = unit.lockedDmgBonus ? firstAliveFoe(foes, b) : randomAliveFoe(state, b, foes)
+          if (!foeTarget) break
+        }
+        const targetVolleyDmg = w.kind === 'beam'
+          ? Math.round(Math.max(1, Math.round(rawBeam * beamPowerVsTargetOf(b.distanceM, w, droneHit !== null))) * (droneHit ? w.antiDroneMul ?? 1 : 1))
+          : droneHit ? volleyDmg : (w.kind === 'gun' ? w.shotsByType?.[type] ?? 0 : w.shotDmg ?? 0)
+        dmg = volleyDamageShareOf(targetVolleyDmg, gunCount, gun)
+        b.stats.meShots += 1;
+        // **隐秘行动：开火即现形**（2026-09-15 船长 Q1 甲）——本舰任一门武器打出第一发时窗口清空；
+        // 同一拍稍后的敌方开火段因此已经"看得见"它（现实语义亦然：枪口一闪就暴露了）。
+        if (meRt.stealthUntilMs !== undefined) {
+          meRt.stealthUntilMs = undefined
+          pushBattleNotice(b, '隐秘行动结束：本舰开火现形')
+        }
+        // **反应式防空**：我方**无人机**打过敌舰 ⇒ 记录时刻，供**敌方近防炮**在窗口内反击
+        // ⚠ 记的是**敌方全队共用**的一枚令牌（**不按被打的敌舰 tag 分记**）——船长 2026-09-16「点防没问题」
+        //   = 现状为准；换靶/换敌舰都共用它，消费一次即全队过窗（见 `resolvePointDefense`）。
+        if (w.src === 'drone')
+          b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: b.lastTickGameMs };
+        // AI favor：我方（AI 副船）命中按优势放大，上限放开到 100%（可必中）；
+        // beam 已必中（autoHit），不掷骰、favor 不放大
+        // **两条命中分开算**（船长 2026-09-12 裁定「按丁修复」，口径说明见 `droneHitChance`）：
+        // 打**机群**不吃两舰距离衰减（守方只用该架的闪避 `DronePoolEntry.evasion`，机型表绝对值）；
+        // 打**舰**一字未动（仍按两舰间距算 `distFactor`）。
+        const meHit = autoHit
+          ? 1
+          : droneHit
+            ? droneHitChance(w, meAtk, droneHit.pool.evasion, bal)
+            : hitChance(w, meAtk, foeTarget!, b.distanceM, bal)
+        const meHitEff = autoHit
+          ? 1
+          : favor
+            ? clamp(0, 1, meHit * favor.meMul)
+            : meHit
+        const hit = autoHit || (dmg > 0 && nextRandom(state.rng) < meHitEff)
+        /**
+         * **本发对主目标的实收伤害**（2026-09-24 船长令「战斗伤害的数值动画」）——
+         * 逐段累加（主段 + 附伤段），仅供飘字读数：与 `stats.meDmg` 同源（同一批 `dealt`）。
+         * 未命中保持 0 ⇒ 下面**不写 `dmg`**（UI 就只飘 MISS，不硬编数字）。
+         * ⚠ 齐射协调仪的**溢火结转那一截不计在本发头上**（它落在另一艘敌舰身上，已有画面提示）。
+         */
+        let selfDealt = 0
+        if (hit) {
+          b.stats.meHits += 1
+          if (droneHit) {
+            // 打机群：扣该架的三层血（吃它自己的层抗）；打空 = **击落**（停火 + 小型爆炸演出）。
+            // ⚠ 锁定装置的加深**不作用于机群**（锁定锁的是舰）——防空靠的是射速与命中，不是锁定。
+            const pool = droneHit.pool
+            const r = applyDamage(
+              { s: pool.s, a: pool.a, h: pool.h },
+              pool.resists ?? {},
+              dmg,
+              type,
+            )
+            pool.s = r.hp.s
+            pool.a = r.hp.a
+            pool.h = r.hp.h
+            b.stats.meDmg += r.dealt
+            selfDealt = r.dealt
+            if (pool.s + pool.a + pool.h <= 0) {
+              pool.alive = false
+              // **备用机库补位排期**（2026-09-12 船长「损坏后补充敌机」）：前线战损 ⇒ 从机库放出一架，
+              // `respawnMs` 后到位。⚠ 同一时刻只排**一架**（在前的那架到位后才轮到下一架）。
+              const droneFoeTag = droneHit.foeTag
+              const reserveOf = foes.find((x) => x.tag === droneFoeTag)?.foeDroneReserve
+              const hangar = b.foeDronePools?.[droneHit.foeTag] ?? []
+              if (
+                reserveOf &&
+                reserveOf.count > 0 &&
+                !hangar.some((p) => p.inHangar === true && p.readyAtMs !== undefined)
+              ) {
+                const next = hangar.find(
+                  (p) => p.inHangar === true && p.readyAtMs === undefined,
+                )
+                if (next) next.readyAtMs = b.lastTickGameMs + reserveOf.respawnMs
+              }
+              pushBattleFx(b, {
+                atMs: b.lastTickGameMs + dtMs,
+                side: 'foe',
+                tag: droneHit.foeTag,
+                to: 'player',
+                type,
+                src: 'drone',
+                artId: pool.artId,
+                hit: true,
+                droneDown: true, // 击落演出（与我方被点防打落同款事件类型）
+              })
+            }
+          } else {
+            const rt = b.units[foeTarget!.tag]!;
+            const hpBefore = { ...rt.hp }
+            // 锁定装置：被锁目标受本舰伤害加深（对锁定目标的任意命中都乘入；2026-09-09）
+            const volleyLocked = unit.lockedDmgBonus ? Math.round(targetVolleyDmg * (1 + unit.lockedDmgBonus)) : targetVolleyDmg
+            const dmgLocked = volleyDamageShareOf(volleyLocked, gunCount, gun)
+            /** 主段：走**敌舰伤害唯一收口**（血写回 ＋ 死亡观测；算术与消费顺序一字不变） */
+            const r = applyFoeUnitDamage(b, foeTarget!, dmgLocked, type, b.lastTickGameMs + dtMs)
+            b.stats.meDmg += r.dealt
+            selfDealt = r.dealt
+            /**
+             * **谜质「齐射协调仪」：溢出火力转移**（F3c B2 · 船长 2026-09-13：
+             * 「齐射协调仪改为溢出火力会转移到其他敌舰」）——目标被这一发打空后，把超出
+             * 「打空它所需原始伤害」的那一截转给下一艘存活敌舰（按那一艘自己的层克重重算）。
+             * 只在本场带了该装置时生效（`battle.wormhole.volleyOverflow`）。
+             */
+            if (b.wormhole?.volleyOverflow === true && rt.hp.s + rt.hp.a + rt.hp.h <= 0) {
+              const carry = carryVolleyOverflow(b, foes, foeTarget!.tag, type, dmgLocked, hpBefore)
+              if (carry.hits > 0) {
+                pushBattleNotice(b, `齐射协调：溢火结转 ${Math.round(carry.total)} 点伤害到下一艘敌舰`)
+              }
+            }
+            // **附加伤害段**（2026-09-13 船长：掠袭破片炮「额外造成 50% 的动能伤害是附加伤害，
+            // 和弹种无关」）——口径（船长 2026-09-13 二次裁定）：「**伤害各自吃各自的制（克制）效果**」：
+            // 副段取**武器原伤害**（含锁定加深，不含主段已吃的克制）×比例，然后**两段各吃各自的层克制**。
+            // ⚠ 不能用主段实收做基数——那会把主系的克制乘进副段（实测该目标会从 +50% 放大到 +75%）。
+            const secPct = w.secondaryDamagePct ?? 0
+            if (secPct > 0 && rt.hp.s + rt.hp.a + rt.hp.h > 0) {
+              const secType = w.secondaryDamageType ?? 'kinetic'
+              const secDmg = volleyDamageShareOf(Math.max(1, Math.round(volleyLocked * secPct)), gunCount, gun)
+              /** 附伤段：同走唯一收口（它也可能就是打沉那一发） */
+              const r2 = applyFoeUnitDamage(b, foeTarget!, secDmg, secType, b.lastTickGameMs + dtMs)
+              b.stats.meDmg += r2.dealt
+              selfDealt += r2.dealt
+            }
+            // **受击增程触发点（唯一）**——2026-09-11 船长：「受到攻击后，大幅提高无人机射程
+            // （提高 400%）」：**母舰本体被命中** ⇒ 该舰全部机群射程 ×倍率（本场永久）。
+            // ⚠ 打机群（上面的 `droneHit` 分支）**不触发**、未命中（`hit === false`）也进不到这里。
+            if (markFoeDroneRangeBuff(foeTarget!, b)) {
+              // **画面提示**（船长 2026-09-11 二次裁定：日志不写，改走画面顶部提示位 ⇒ `battle.notices`，
+              // 与「敌方增援」同一处显示、限时自动消失）。
+              // ⚠ **整队只推一条**（三次裁定：「每个敌人都会单独触发一次射程增加的文字提示，理论上应该
+              // **只触发一次**，**对所有敌舰生效**」）⇒ 文案不点单舰名（生效范围是全敌队）。
+              pushBattleNotice(b, '巨构残存程序过载：警戒机群解除射程限制')
+            }
+            // **炮台受击增程触发点（唯一）**——2026-09-12 船长：D 族静滞卫舰「挨打后射程增加 50%」，
+            // **仅影响所有静滞卫舰**（同场其它舰级不受影响）。命中其本体 ⇒ 本场该型舰炮台射程 ×1.5。
+            // ⚠ 打机群／未命中都进不到这里；状态该型舰共享 ⇒ 只推一条提示（文案不点单舰名）。
+            if (markFoeGunRangeBuff(foeTarget!, b)) {
+              pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
+            }
+            // **闪现跃迁触发点（唯一）**——**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」。
+            // 与上面两条**同一个钩子**（本体被命中；打机群／未命中都进不到这里）。冷却期内静默。
             if (
-              reserveOf &&
-              reserveOf.count > 0 &&
-              !hangar.some((p) => p.inHangar === true && p.readyAtMs !== undefined)
-            ) {
-              const next = hangar.find(
-                (p) => p.inHangar === true && p.readyAtMs === undefined,
+              markFoeBlink(
+                foeTarget!,
+                foeTarget!.tag,
+                b,
+                bal,
+                battleMaxDistanceM(b, me, foes, bal, myUnits),
+                // 它自己的期望距离要跟着"我方电子舰的射程压制"走 —— 直接读每拍写进运行态的那个值
+                // （pplyFoeRangeDebuff 每拍**先**写 attle.meFoeRangeDebuff，与走位口径同源）
+                b.meFoeRangeDebuff ?? 0,
               )
-              if (next) next.readyAtMs = b.lastTickGameMs + reserveOf.respawnMs
+            ) {
+              /**
+               * 🔴 **不推画面提示**（**船长 2026-10-02 令**，原话照抄）：
+               * 「**跳跃规避的提示同样过于频繁**」——本条原先推「跃迁规避：目标瞬时换位」。
+               * 现在演出本身就足够显眼（整段 2 秒的消失 → 出现 + 配套动画）⇒ 提示是多余的噪音。
+               * ⚠ 与"闪烁过载"那条同口径（那条更早就不再推提示）。
+               */
+              // **闪现演出**（**船长 2026-10-01 令**：「闪现时候要给舰船一个闪现的动画」）——
+              // 与捕获网同款承载（`: true` 旗标 + `type` 占位）；界面对该 tag 播"淡出→淡入"。
+              pushBattleFx(b, {
+                atMs: b.lastTickGameMs,
+                side: 'foe',
+                tag: foeTarget!.tag,
+                type: 'kinetic',
+                hit: true,
+                blink: true,
+              })
+              // **挂在闪现上的两个装置**（2026-10-01）：闪烁过载（护盾回满 / 结构 −上限5%）
+              // ＋ 叠光（攻击间隔再缩一格）。只在"闪现真的发生了"这一支里结算。
+              // ⚠ 装填基准取本舰主武器那条（与开火处同一个数）。
+              settleFoeBlinkExtras(foeTarget!, foeTarget!.tag, b, foeTarget!.weapons[0]?.reloadMs)
+            }
+          }
+        }
+        // **全体攻击**（2026-09-13 船长：C 孢子导弹巢「对所有敌方同时攻击」）——
+        // 主目标已按上面的常规口径结算；这里把**同一轮齐射**逐个结算到其余存活敌舰：
+        // 逐目标独立掷命中（各用各自的命中条件）、各吃各自的层克制与抗性；受击增程等触发点照常逐舰触发。
+        // ⚠ 副目标**不吃锁定加深**（锁定锁的是主目标）⇒ 基数用 dmg，主目标仍用 dmgLocked。
+        //
+        // ⚠⚠ **2026-09-25 船长报障修复**：「**装孢子导弹巢有时候会只有一发弹道**」。
+        // 根因 = **本段原先整块写在上面那个 `if (hit) { … }` 里面**（那一层的 `hit` 就是**主目标那一发的
+        // 命中判定**）⇒ 主目标没中时，"整轮是否铺开"跟着一起被跳过：副目标**连掷都不掷**，画面只剩主目标
+        // 那一条弹道（原条件里那个多余的 `&& hit` 只是同一件事的第二道锁，去掉它并不改变行为）。
+        // 现把本段**移出 `if (hit)`** ⇒ **主目标的命中只决定它自己**，副目标照常逐个独立结算。
+        // 真跑读数（3 敌 · 28 轮 · 主目标命中率 0.357）：修复前**单发轮 18 / 铺开轮 10 = 64%**
+        // （正好等于 `1 − 0.357`），每轮期望命中目标数 0.679；修复后 = 命中率 × 3 = 1.071 ⇒ **×1.58**。
+        // 为什么判定为缺陷（三份口径里两份都是"每目标独立"）：① 落码记录（2026-09-13）只写
+        // 「**逐目标独立掷命中** + 各吃各自层克制」，从没提过这道闸；② **胜率预估器**（`steadyPreview`
+        // 的 `allFoesMul = foes.length`）一直按"每轮打全部敌舰"算 ⇒ 与实战差 1.58×（预估偏高）；
+        // ③ 船长 2026-09-13 原话就是「对所有敌方同时攻击」。⇒ 船长 2026-09-25 裁「按甲」。
+        // 影响面：只此一件武器带 `allFoes`（`mod-wh-c-missile`）⇒ 只有装了它的场次读数变化；
+        // 单发/装填/射程/命中一字未动，**单体标称 DPS 锚（`wh-weapon-dps` 的 ×0.69）不受影响**
+        // （只有 1 艘敌舰时本就没有副目标，这一段本就不做事）。
+        if (w.allFoes === true && !droneHit) {
+          for (const other of foes) {
+            if (other.tag === foeTarget!.tag) continue
+            const ort = b.units[other.tag]
+            if (!ort || !isAlive(b, other.tag)) continue
+            const oHitChance = autoHit ? 1 : hitChance(w, meAtk, other, b.distanceM, bal)
+            const oHit = autoHit || (dmg > 0 && nextRandom(state.rng) < oHitChance)
+            /** 本发打**这一艘副目标**的实收（含附伤段）——飘字逐舰各出一个数字 */
+            let oDealt = 0
+            if (oHit) {
+              b.stats.meHits += 1
+              /** 全体攻击主段：同走唯一收口 */
+              const rAll = applyFoeUnitDamage(b, other, dmg, type, b.lastTickGameMs + dtMs)
+              b.stats.meDmg += rAll.dealt
+              oDealt = rAll.dealt
+              const secPctAll = w.secondaryDamagePct ?? 0
+              if (secPctAll > 0 && ort.hp.s + ort.hp.a + ort.hp.h > 0) {
+                const secTypeAll = w.secondaryDamageType ?? 'kinetic'
+              const secDmgAll = volleyDamageShareOf(Math.max(1, Math.round(targetVolleyDmg * secPctAll)), gunCount, gun)
+                /** 全体攻击附伤段：同走唯一收口 */
+                const rAll2 = applyFoeUnitDamage(b, other, secDmgAll, secTypeAll, b.lastTickGameMs + dtMs)
+                b.stats.meDmg += rAll2.dealt
+                oDealt += rAll2.dealt
+              }
+              if (markFoeDroneRangeBuff(other, b)) {
+                pushBattleNotice(b, '巨构残存程序过载：警戒机群解除射程限制')
+              }
+              if (markFoeGunRangeBuff(other, b)) {
+                pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
+              }
+              // **闪现跃迁**（2026-10-01）：与上面两条**同款**——"全体攻击"打到的副目标同样会触发。
+              // ⚠ 2026-10-01 补：初版只写在了主目标那处 ⇒ 用全体攻击武器（孢子导弹巢那类）打中带闪现的
+              // 敌舰时**不会闪**，与两条受击增程的行为不一致。
+              if (
+                markFoeBlink(other, other.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits), b.meFoeRangeDebuff ?? 0)
+              ) {
+                /**
+                 * ⚠ **这里不再推演出事件**（**2026-10-02 修**）：`markFoeBlink` **内部已经推过**一条带
+                 * 队列时刻（`atMs = vanishMs`）、`blink: true` 与倍速的事件；原先此处再推一条**没有 `blink`
+                 * 旗标的 `pushBattleFx`** —— 界面会把它当**一次开火**处理（画弹道 + 打命中闪光）。
+                 * 顺带也不推画面提示（船长：「跃迁规避的提示同样过于频繁」）。
+                 */
+                // **挂在闪现上的两个装置**（2026-10-01）：与主目标那处**同一函数** ⇒ 全体攻击
+                // 打中带闪烁过载 / 叠光的敌舰同样结算（不因"它是副目标"而漏）。
+                settleFoeBlinkExtras(other, other.tag, b, other.weapons[0]?.reloadMs)
+              }
             }
             pushBattleFx(b, {
               atMs: b.lastTickGameMs + dtMs,
-              side: 'foe',
-              tag: droneHit.foeTag,
-              to: 'player',
+              side: 'me',
+              tag: unit.tag,
+              to: other.tag,
               type,
-              src: 'drone',
-              artId: pool.artId,
-              hit: true,
-              droneDown: true, // 击落演出（与我方被点防打落同款事件类型）
+              src: w.src,
+              artId: w.artId,
+              hit: oHit,
+              ...(oDealt > 0 ? { dmg: oDealt } : {}),
             })
           }
-        } else {
-          const rt = b.units[foeTarget!.tag]!;
-          const hpBefore = { ...rt.hp }
-          // 锁定装置：被锁目标受本舰伤害加深（对锁定目标的任意命中都乘入；2026-09-09）
-          const dmgLocked = unit.lockedDmgBonus
-            ? Math.round(dmg * (1 + unit.lockedDmgBonus))
-            : dmg
-          /** 主段：走**敌舰伤害唯一收口**（血写回 ＋ 死亡观测；算术与消费顺序一字不变） */
-          const r = applyFoeUnitDamage(b, foeTarget!, dmgLocked, type, b.lastTickGameMs + dtMs)
-          b.stats.meDmg += r.dealt
-          selfDealt = r.dealt
-          /**
-           * **谜质「齐射协调仪」：溢出火力转移**（F3c B2 · 船长 2026-09-13：
-           * 「齐射协调仪改为溢出火力会转移到其他敌舰」）——目标被这一发打空后，把超出
-           * 「打空它所需原始伤害」的那一截转给下一艘存活敌舰（按那一艘自己的层克重重算）。
-           * 只在本场带了该装置时生效（`battle.wormhole.volleyOverflow`）。
-           */
-          if (b.wormhole?.volleyOverflow === true && rt.hp.s + rt.hp.a + rt.hp.h <= 0) {
-            const carry = carryVolleyOverflow(b, foes, foeTarget!.tag, type, dmgLocked, hpBefore)
-            if (carry.hits > 0) {
-              pushBattleNotice(b, `齐射协调：溢火结转 ${Math.round(carry.total)} 点伤害到下一艘敌舰`)
-            }
-          }
-          // **附加伤害段**（2026-09-13 船长：掠袭破片炮「额外造成 50% 的动能伤害是附加伤害，
-          // 和弹种无关」）——口径（船长 2026-09-13 二次裁定）：「**伤害各自吃各自的制（克制）效果**」：
-          // 副段取**武器原伤害**（含锁定加深，不含主段已吃的克制）×比例，然后**两段各吃各自的层克制**。
-          // ⚠ 不能用主段实收做基数——那会把主系的克制乘进副段（实测该目标会从 +50% 放大到 +75%）。
-          const secPct = w.secondaryDamagePct ?? 0
-          if (secPct > 0 && rt.hp.s + rt.hp.a + rt.hp.h > 0) {
-            const secType = w.secondaryDamageType ?? 'kinetic'
-            const secDmg = Math.max(1, Math.round(dmgLocked * secPct))
-            /** 附伤段：同走唯一收口（它也可能就是打沉那一发） */
-            const r2 = applyFoeUnitDamage(b, foeTarget!, secDmg, secType, b.lastTickGameMs + dtMs)
-            b.stats.meDmg += r2.dealt
-            selfDealt += r2.dealt
-          }
-          // **受击增程触发点（唯一）**——2026-09-11 船长：「受到攻击后，大幅提高无人机射程
-          // （提高 400%）」：**母舰本体被命中** ⇒ 该舰全部机群射程 ×倍率（本场永久）。
-          // ⚠ 打机群（上面的 `droneHit` 分支）**不触发**、未命中（`hit === false`）也进不到这里。
-          if (markFoeDroneRangeBuff(foeTarget!, b)) {
-            // **画面提示**（船长 2026-09-11 二次裁定：日志不写，改走画面顶部提示位 ⇒ `battle.notices`，
-            // 与「敌方增援」同一处显示、限时自动消失）。
-            // ⚠ **整队只推一条**（三次裁定：「每个敌人都会单独触发一次射程增加的文字提示，理论上应该
-            // **只触发一次**，**对所有敌舰生效**」）⇒ 文案不点单舰名（生效范围是全敌队）。
-            pushBattleNotice(b, '巨构残存程序过载：警戒机群解除射程限制')
-          }
-          // **炮台受击增程触发点（唯一）**——2026-09-12 船长：D 族静滞卫舰「挨打后射程增加 50%」，
-          // **仅影响所有静滞卫舰**（同场其它舰级不受影响）。命中其本体 ⇒ 本场该型舰炮台射程 ×1.5。
-          // ⚠ 打机群／未命中都进不到这里；状态该型舰共享 ⇒ 只推一条提示（文案不点单舰名）。
-          if (markFoeGunRangeBuff(foeTarget!, b)) {
-            pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
-          }
-          // **闪现跃迁触发点（唯一）**——**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」。
-          // 与上面两条**同一个钩子**（本体被命中；打机群／未命中都进不到这里）。冷却期内静默。
-          if (
-            markFoeBlink(
-              foeTarget!,
-              foeTarget!.tag,
-              b,
-              bal,
-              battleMaxDistanceM(b, me, foes, bal, myUnits),
-              // 它自己的期望距离要跟着"我方电子舰的射程压制"走 —— 直接读每拍写进运行态的那个值
-              // （pplyFoeRangeDebuff 每拍**先**写 attle.meFoeRangeDebuff，与走位口径同源）
-              b.meFoeRangeDebuff ?? 0,
-            )
-          ) {
-            /**
-             * 🔴 **不推画面提示**（**船长 2026-10-02 令**，原话照抄）：
-             * 「**跳跃规避的提示同样过于频繁**」——本条原先推「跃迁规避：目标瞬时换位」。
-             * 现在演出本身就足够显眼（整段 2 秒的消失 → 出现 + 配套动画）⇒ 提示是多余的噪音。
-             * ⚠ 与"闪烁过载"那条同口径（那条更早就不再推提示）。
-             */
-            // **闪现演出**（**船长 2026-10-01 令**：「闪现时候要给舰船一个闪现的动画」）——
-            // 与捕获网同款承载（`: true` 旗标 + `type` 占位）；界面对该 tag 播"淡出→淡入"。
-            pushBattleFx(b, {
-              atMs: b.lastTickGameMs,
-              side: 'foe',
-              tag: foeTarget!.tag,
-              type: 'kinetic',
-              hit: true,
-              blink: true,
-            })
-            // **挂在闪现上的两个装置**（2026-10-01）：闪烁过载（护盾回满 / 结构 −上限5%）
-            // ＋ 叠光（攻击间隔再缩一格）。只在"闪现真的发生了"这一支里结算。
-            // ⚠ 装填基准取本舰主武器那条（与开火处同一个数）。
-            settleFoeBlinkExtras(foeTarget!, foeTarget!.tag, b, foeTarget!.weapons[0]?.reloadMs)
-          }
         }
+        pushBattleFx(b, {
+          atMs: b.lastTickGameMs + dtMs,
+          side: 'me',
+          tag: unit.tag,
+          to: droneHit ? droneHit.foeTag : foeTarget!.tag,
+          type,
+          src: w.src,
+          artId: w.artId,
+          hit,
+          // **本发实收**（2026-09-24 船长令）：命中才有，飘字用；未命中 ⇒ 缺省（UI 只飘 MISS）
+          ...(selfDealt > 0 ? { dmg: selfDealt } : {}),
+          // **打的是机群**（船长 2026-09-11：「炮在攻击无人机时**不显示弹道**」）——UI 只出炮口闪光。
+          ...(droneHit ? { pd: true } : {}),
+        })
       }
-      // **全体攻击**（2026-09-13 船长：C 孢子导弹巢「对所有敌方同时攻击」）——
-      // 主目标已按上面的常规口径结算；这里把**同一轮齐射**逐个结算到其余存活敌舰：
-      // 逐目标独立掷命中（各用各自的命中条件）、各吃各自的层克制与抗性；受击增程等触发点照常逐舰触发。
-      // ⚠ 副目标**不吃锁定加深**（锁定锁的是主目标）⇒ 基数用 dmg，主目标仍用 dmgLocked。
-      //
-      // ⚠⚠ **2026-09-25 船长报障修复**：「**装孢子导弹巢有时候会只有一发弹道**」。
-      // 根因 = **本段原先整块写在上面那个 `if (hit) { … }` 里面**（那一层的 `hit` 就是**主目标那一发的
-      // 命中判定**）⇒ 主目标没中时，"整轮是否铺开"跟着一起被跳过：副目标**连掷都不掷**，画面只剩主目标
-      // 那一条弹道（原条件里那个多余的 `&& hit` 只是同一件事的第二道锁，去掉它并不改变行为）。
-      // 现把本段**移出 `if (hit)`** ⇒ **主目标的命中只决定它自己**，副目标照常逐个独立结算。
-      // 真跑读数（3 敌 · 28 轮 · 主目标命中率 0.357）：修复前**单发轮 18 / 铺开轮 10 = 64%**
-      // （正好等于 `1 − 0.357`），每轮期望命中目标数 0.679；修复后 = 命中率 × 3 = 1.071 ⇒ **×1.58**。
-      // 为什么判定为缺陷（三份口径里两份都是"每目标独立"）：① 落码记录（2026-09-13）只写
-      // 「**逐目标独立掷命中** + 各吃各自层克制」，从没提过这道闸；② **胜率预估器**（`steadyPreview`
-      // 的 `allFoesMul = foes.length`）一直按"每轮打全部敌舰"算 ⇒ 与实战差 1.58×（预估偏高）；
-      // ③ 船长 2026-09-13 原话就是「对所有敌方同时攻击」。⇒ 船长 2026-09-25 裁「按甲」。
-      // 影响面：只此一件武器带 `allFoes`（`mod-wh-c-missile`）⇒ 只有装了它的场次读数变化；
-      // 单发/装填/射程/命中一字未动，**单体标称 DPS 锚（`wh-weapon-dps` 的 ×0.69）不受影响**
-      // （只有 1 艘敌舰时本就没有副目标，这一段本就不做事）。
-      if (w.allFoes === true && !droneHit) {
-        for (const other of foes) {
-          if (other.tag === foeTarget!.tag) continue
-          const ort = b.units[other.tag]
-          if (!ort || !isAlive(b, other.tag)) continue
-          const oHitChance = autoHit ? 1 : hitChance(w, meAtk, other, b.distanceM, bal)
-          const oHit = dmg > 0 && (autoHit || nextRandom(state.rng) < oHitChance)
-          /** 本发打**这一艘副目标**的实收（含附伤段）——飘字逐舰各出一个数字 */
-          let oDealt = 0
-          if (oHit) {
-            b.stats.meHits += 1
-            /** 全体攻击主段：同走唯一收口 */
-            const rAll = applyFoeUnitDamage(b, other, dmg, type, b.lastTickGameMs + dtMs)
-            b.stats.meDmg += rAll.dealt
-            oDealt = rAll.dealt
-            const secPctAll = w.secondaryDamagePct ?? 0
-            if (secPctAll > 0 && ort.hp.s + ort.hp.a + ort.hp.h > 0) {
-              const secTypeAll = w.secondaryDamageType ?? 'kinetic'
-              const secDmgAll = Math.max(1, Math.round(dmg * secPctAll))
-              /** 全体攻击附伤段：同走唯一收口 */
-              const rAll2 = applyFoeUnitDamage(b, other, secDmgAll, secTypeAll, b.lastTickGameMs + dtMs)
-              b.stats.meDmg += rAll2.dealt
-              oDealt += rAll2.dealt
-            }
-            if (markFoeDroneRangeBuff(other, b)) {
-              pushBattleNotice(b, '巨构残存程序过载：警戒机群解除射程限制')
-            }
-            if (markFoeGunRangeBuff(other, b)) {
-              pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
-            }
-            // **闪现跃迁**（2026-10-01）：与上面两条**同款**——"全体攻击"打到的副目标同样会触发。
-            // ⚠ 2026-10-01 补：初版只写在了主目标那处 ⇒ 用全体攻击武器（孢子导弹巢那类）打中带闪现的
-            // 敌舰时**不会闪**，与两条受击增程的行为不一致。
-            if (
-              markFoeBlink(other, other.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits), b.meFoeRangeDebuff ?? 0)
-            ) {
-              /**
-               * ⚠ **这里不再推演出事件**（**2026-10-02 修**）：`markFoeBlink` **内部已经推过**一条带
-               * 队列时刻（`atMs = vanishMs`）、`blink: true` 与倍速的事件；原先此处再推一条**没有 `blink`
-               * 旗标的 `pushBattleFx`** —— 界面会把它当**一次开火**处理（画弹道 + 打命中闪光）。
-               * 顺带也不推画面提示（船长：「跃迁规避的提示同样过于频繁」）。
-               */
-              // **挂在闪现上的两个装置**（2026-10-01）：与主目标那处**同一函数** ⇒ 全体攻击
-              // 打中带闪烁过载 / 叠光的敌舰同样结算（不因"它是副目标"而漏）。
-              settleFoeBlinkExtras(other, other.tag, b, other.weapons[0]?.reloadMs)
-            }
-          }
-          pushBattleFx(b, {
-            atMs: b.lastTickGameMs + dtMs,
-            side: 'me',
-            tag: unit.tag,
-            to: other.tag,
-            type,
-            src: w.src,
-            artId: w.artId,
-            hit: oHit,
-            ...(oDealt > 0 ? { dmg: oDealt } : {}),
-          })
-        }
-      }
-      pushBattleFx(b, {
-        atMs: b.lastTickGameMs + dtMs,
-        side: 'me',
-        tag: unit.tag,
-        to: droneHit ? droneHit.foeTag : foeTarget!.tag,
-        type,
-        src: w.src,
-        artId: w.artId,
-        hit,
-        // **本发实收**（2026-09-24 船长令）：命中才有，飘字用；未命中 ⇒ 缺省（UI 只飘 MISS）
-        ...(selfDealt > 0 ? { dmg: selfDealt } : {}),
-        // **打的是机群**（船长 2026-09-11：「炮在攻击无人机时**不显示弹道**」）——UI 只出炮口闪光。
-        ...(droneHit ? { pd: true } : {}),
-      })
     }
   }
 
@@ -5102,111 +5130,118 @@ function stepBattle(
     // 玩家武器无此待遇（近盲带内仍不开火）——双方在近盲带上行为区分。
     // 射程门：**炮台受击增程**生效时读 `foeGunMaxRangeOf`（原射程 × 倍率；仅带该字段的舰）
     if (b.distanceM > foeGunMaxRangeOf(b, f, w)) continue
-    // 选靶（多单位）：**本发开火前重选**（上一次齐射可能已把目标打沉）
-    const gtgt = pickTarget()
-    if (!gtgt) continue // 我方已全灭（正常由结束判定收场）
-    // **劫掠捕获网**（船长 2026-09-16）：「在自身第一次开火时发动」——**不看命中**，
-    // 就在这一发之前钉住本发目标（于是这一发的命中判定也吃到"闪避归零"）。
-    // ⚠ ⟪2026-09-25 船长报障⟫：目标**已被别的网钉住**时本舰的网**不算用掉**（保留到它钉住新目标为止）
-    // —— 该判定在 `fireFoeCaptureWeb` 内部，这里只判"本舰还没发过"。
-    if (f.foeCaptureWeb !== undefined && b.foeWebFired?.[f.tag] !== true) {
-      fireFoeCaptureWeb(state, b, f, gtgt.spec)
-    }
-    b.stats.foeShots += 1
-    const fType = w.fixedType ?? 'kinetic'
-    // 2026-09-08（船长定）：能量（beam）= 必中——不掷命中骰；威力：近盲带内 ×blindDmgMul
-    // （近盲带保留），带内至远端按 beamPowerFactor 距离衰减（与玩家激光同源语义）
-    if (w.kind === 'beam') {
-      // **炮台受击增程感知的折减**（船长选乙：原射程内读数一字不变，延长段同斜率外推）
-      const pow = b.distanceM < w.minRangeM ? w.blindDmgMul ?? 0.3 : foeGunPowerFactorOf(b, f, wShot, b.distanceM)
-      const dmg = foeRepairDiscountedShot(f, Math.max(1, Math.round((w.shotDmg ?? 0) * pow)))
-      // 冲锋解除（船长 2026-09-14）：光束必中 ⇒ 本发即"自身炮台命中我方"
-      releaseFoeChargeOnHit(b, f.tag, bal, f.foeChargeCooldownMs)
-      b.stats.foeHits += 1
-      // 混伤（2026-09-10 船长）：按逐系单发各自结算（各系吃自己的层位克制与层抗）
-      const beamBefore = gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h
-      gtgt.rt.hp = applyFoeShot(
-        gtgt.rt.hp,
-        gtgt.spec.resists,
-        w,
-        /* 损伤管制装置：光束这一路同样过免死夹伤（窗口内逐段夹 ⇒ 同拍多段破不了） */
-        applyDcGuard(
-          state,
-          b,
-          gtgt.spec.tag,
-          gtgt.spec,
+    const gunCount = volleyGunCountOf(w)
+    // 敌主武器仍保存整组总伤；各门共享本轮装填、独立命中。
+    let volleyTarget: ReturnType<typeof pickTarget> = null
+    for (let gun = 0; gun < gunCount; gun++) {
+      // 选靶（多单位）：**本发开火前重选**（上一次齐射可能已把目标打沉）
+      if (!volleyTarget || !isAlive(b, volleyTarget.spec.tag)) volleyTarget = pickTarget()
+      if (!volleyTarget) break // 我方已全灭（正常由结束判定收场）
+      const gtgt = volleyTarget
+      // **劫掠捕获网**（船长 2026-09-16）：「在自身第一次开火时发动」——**不看命中**，
+      // 就在这一发之前钉住本发目标（于是这一发的命中判定也吃到"闪避归零"）。
+      // ⚠ ⟪2026-09-25 船长报障⟫：目标**已被别的网钉住**时本舰的网**不算用掉**（保留到它钉住新目标为止）
+      // —— 该判定在 `fireFoeCaptureWeb` 内部，这里只判"本舰还没发过"。
+      if (f.foeCaptureWeb !== undefined && b.foeWebFired?.[f.tag] !== true) {
+        fireFoeCaptureWeb(state, b, f, gtgt.spec)
+      }
+      b.stats.foeShots += 1
+      const fType = w.fixedType ?? 'kinetic'
+      // 2026-09-08（船长定）：能量（beam）= 必中——不掷命中骰；威力：近盲带内 ×blindDmgMul
+      // （近盲带保留），带内至远端按 beamPowerFactor 距离衰减（与玩家激光同源语义）
+      if (w.kind === 'beam') {
+        // **炮台受击增程感知的折减**（船长选乙：原射程内读数一字不变，延长段同斜率外推）
+        const pow = b.distanceM < w.minRangeM ? w.blindDmgMul ?? 0.3 : foeGunPowerFactorOf(b, f, wShot, b.distanceM)
+        const dmg = volleyDamageShareOf(foeRepairDiscountedShot(f, Math.max(1, Math.round((w.shotDmg ?? 0) * pow))), gunCount, gun)
+        // 冲锋解除（船长 2026-09-14）：光束必中 ⇒ 本发即"自身炮台命中我方"
+        releaseFoeChargeOnHit(b, f.tag, bal, f.foeChargeCooldownMs)
+        b.stats.foeHits += 1
+        // 混伤（2026-09-10 船长）：按逐系单发各自结算（各系吃自己的层位克制与层抗）
+        const beamBefore = gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h
+        gtgt.rt.hp = applyFoeShot(
           gtgt.rt.hp,
-          cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, dmg),
+          gtgt.spec.resists,
+          w,
+          /* 损伤管制装置：光束这一路同样过免死夹伤（窗口内逐段夹 ⇒ 同拍多段破不了） */
+          applyDcGuard(
+            state,
+            b,
+            gtgt.spec.tag,
+            gtgt.spec,
+            gtgt.rt.hp,
+            cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, dmg),
+            fType,
+            (r) => applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, r, fType),
+          ),
           fType,
-          (r) => applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, r, fType),
-        ),
-        fType,
-      )
-      // 本发实收（2026-09-24 船长令：飘字读数；光束必中 ⇒ 恒有值）
-      const beamDealt = Math.max(0, beamBefore - (gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h))
-      pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: true, ...(beamDealt > 0 ? { dmg: beamDealt } : {}) })
-      /**
-       * **我方「跃迁规避装置」触发点**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
-       * 但是冷却时间延长到12秒。」）—— **敌方舰炮命中我方舰船本体**这一支（打我方无人机不算、
-       * 未命中不算，与敌方那两件受击挂载件同一钩子口径）。
-       */
-      if (
-        markMeBlink(gtgt.spec, gtgt.spec.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits))
-      ) {
+        )
+        // 本发实收（2026-09-24 船长令：飘字读数；光束必中 ⇒ 恒有值）
+        const beamDealt = Math.max(0, beamBefore - (gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h))
+        pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: true, ...(beamDealt > 0 ? { dmg: beamDealt } : {}) })
         /**
-         * ⚠ **演出事件不在这里推了**（**2026-10-02 §35 抽出**）：`markMeBlink` 内部已推一条带
-         * `atMs`（排队后的真实起点）与 `speedX` 的（与 `markFoeBlink` 同款）——在这里再推一条
-         * 会**排两根柱**、而且缺 `speedX`（倍速下时长会跑飞）。这里只留画面提示。
+         * **我方「跃迁规避装置」触发点**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
+         * 但是冷却时间延长到12秒。」）—— **敌方舰炮命中我方舰船本体**这一支（打我方无人机不算、
+         * 未命中不算，与敌方那两件受击挂载件同一钩子口径）。
          */
-        pushBattleNotice(b, '跃迁规避：本舰瞬时换位')
-      }      continue
-    }
-    const blindMul = b.distanceM < w.minRangeM ? (w.blindDmgMul ?? 0.3) : 1
-    const shotDmgRaw = blindMul < 1 ? Math.max(1, Math.round((w.shotDmg ?? 0) * blindMul)) : (w.shotDmg ?? 0)
-    const shotDmg = foeRepairDiscountedShot(f, shotDmgRaw)
-    // AI favor：敌方命中被优势压制，且始终保留 97% 命中上限（3% miss 底线不变）
-    // ⚠ 距离折减传**增程感知**的 `foeGunPowerFactorOf`（原射程内与原公式逐字一致；延长段同斜率外推）
-    const foeHit = hitChance(w, f, gtgt.spec, b.distanceM, bal, foeGunPowerFactorOf(b, f, wShot, b.distanceM))
-    const foeHitEff = favor ? clamp(0, 0.97, foeHit * favor.foeMul) : foeHit
-    const fHit = nextRandom(state.rng) < foeHitEff
-    /** 本发对**被打的那艘我方舰**的实收伤害（2026-09-24 船长令：飘字读数；未命中保持 0） */
-    let gunDealt = 0
-    if (fHit) {
-      b.stats.foeHits += 1
-      const gunBefore = gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h
-      gtgt.rt.hp = applyFoeShot(
-        gtgt.rt.hp,
-        gtgt.spec.resists,
-        w,
-        /* 损伤管制装置：炮台这一路同样过免死夹伤（窗口内逐段夹 ⇒ 同拍多段破不了） */
-        applyDcGuard(
-          state,
-          b,
-          gtgt.spec.tag,
-          gtgt.spec,
+        if (
+          markMeBlink(gtgt.spec, gtgt.spec.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits))
+        ) {
+          /**
+           * ⚠ **演出事件不在这里推了**（**2026-10-02 §35 抽出**）：`markMeBlink` 内部已推一条带
+           * `atMs`（排队后的真实起点）与 `speedX` 的（与 `markFoeBlink` 同款）——在这里再推一条
+           * 会**排两根柱**、而且缺 `speedX`（倍速下时长会跑飞）。这里只留画面提示。
+           */
+          pushBattleNotice(b, '跃迁规避：本舰瞬时换位')
+        }      continue
+      }
+      const blindMul = b.distanceM < w.minRangeM ? (w.blindDmgMul ?? 0.3) : 1
+      const shotDmgRaw = blindMul < 1 ? Math.max(1, Math.round((w.shotDmg ?? 0) * blindMul)) : (w.shotDmg ?? 0)
+      const shotDmg = volleyDamageShareOf(foeRepairDiscountedShot(f, shotDmgRaw), gunCount, gun)
+      // AI favor：敌方命中被优势压制，且始终保留 97% 命中上限（3% miss 底线不变）
+      // ⚠ 距离折减传**增程感知**的 `foeGunPowerFactorOf`（原射程内与原公式逐字一致；延长段同斜率外推）
+      const foeHit = hitChance(w, f, gtgt.spec, b.distanceM, bal, foeGunPowerFactorOf(b, f, wShot, b.distanceM))
+      const foeHitEff = favor ? clamp(0, 0.97, foeHit * favor.foeMul) : foeHit
+      const fHit = nextRandom(state.rng) < foeHitEff
+      /** 本发对**被打的那艘我方舰**的实收伤害（2026-09-24 船长令：飘字读数；未命中保持 0） */
+      let gunDealt = 0
+      if (fHit) {
+        b.stats.foeHits += 1
+        const gunBefore = gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h
+        gtgt.rt.hp = applyFoeShot(
           gtgt.rt.hp,
-          cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, shotDmg),
+          gtgt.spec.resists,
+          w,
+          /* 损伤管制装置：炮台这一路同样过免死夹伤（窗口内逐段夹 ⇒ 同拍多段破不了） */
+          applyDcGuard(
+            state,
+            b,
+            gtgt.spec.tag,
+            gtgt.spec,
+            gtgt.rt.hp,
+            cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, shotDmg),
+            fType,
+            (r) => applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, r, fType),
+          ),
           fType,
-          (r) => applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, r, fType),
-        ),
-        fType,
-      )
-      gunDealt = Math.max(0, gunBefore - (gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h))
-      // 冲锋解除（船长 2026-09-14）：**自身炮台命中我方** ⇒ 立刻解除冲锋并进入冷却（掷命中，只有真命中才算）
-      releaseFoeChargeOnHit(b, f.tag, bal, f.foeChargeCooldownMs)
+        )
+        gunDealt = Math.max(0, gunBefore - (gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h))
+        // 冲锋解除（船长 2026-09-14）：**自身炮台命中我方** ⇒ 立刻解除冲锋并进入冷却（掷命中，只有真命中才算）
+        releaseFoeChargeOnHit(b, f.tag, bal, f.foeChargeCooldownMs)
+      }
+      pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: fHit, ...(gunDealt > 0 ? { dmg: gunDealt } : {}) })
+        /**
+         * **我方「跃迁规避装置」触发点**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
+         * 但是冷却时间延长到12秒。」）—— **敌方舰炮命中我方舰船本体**这一支（打我方无人机不算、
+         * 未命中不算，与敌方那两件受击挂载件同一钩子口径）。
+         */
+        if (
+          markMeBlink(gtgt.spec, gtgt.spec.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits))
+        ) {
+          /** ⚠ 同上：演出事件由 `markMeBlink` 内部推（带 `atMs`/`speedX`），这里只留画面提示。 */
+          pushBattleNotice(b, '跃迁规避：本舰瞬时换位')
+        }
     }
-    pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: fHit, ...(gunDealt > 0 ? { dmg: gunDealt } : {}) })
-      /**
-       * **我方「跃迁规避装置」触发点**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
-       * 但是冷却时间延长到12秒。」）—— **敌方舰炮命中我方舰船本体**这一支（打我方无人机不算、
-       * 未命中不算，与敌方那两件受击挂载件同一钩子口径）。
-       */
-      if (
-        markMeBlink(gtgt.spec, gtgt.spec.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits))
-      ) {
-        /** ⚠ 同上：演出事件由 `markMeBlink` 内部推（带 `atMs`/`speedX`），这里只留画面提示。 */
-        pushBattleNotice(b, '跃迁规避：本舰瞬时换位')
-      }  }
+  }
 
   // ── 敌方点防（2026-09-10 船长「无人机可被击落」）：对我方放飞机群逐架结算 ──
   // ⚠ 机群池自 2026-09-14「逐舰机群」起是**逐舰**建的（键 = `舰tag:武器下标`，见 4803 一带），

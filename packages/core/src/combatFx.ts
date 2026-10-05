@@ -52,7 +52,7 @@ export function stampFoeArrivalFx(b: import('./state').BattleState, nowMs = b.la
   })
 }
 
-/** 追加可视化开火事件（环缓冲 48 条，超长丢最旧；纯展示）。
+/** 追加可视化开火事件（通常留48条；同拍多炮保留完整批次，硬上限512条；纯展示）。
  * seq 由战斗内计数器自增分配——环头部裁剪后序号仍单调，UI 按 seq>last 续播不受裁剪影响。
  * 导出仅供"事件环回归测试"锁定该语义；引擎内部调用。 */
 export function pushBattleFx(
@@ -60,7 +60,12 @@ export function pushBattleFx(
   ev: Omit<import('./state').BattleFx, 'seq'>,
 ): void {
   b.fx.push({ ...ev, seq: b.fxSeq++ })
-  if (b.fx.length > 48) b.fx.splice(0, b.fx.length - 48)
+  if (b.fx.length > 48) {
+    let keepAt = b.fx.length - 48
+    while (keepAt > 0 && b.fx[keepAt - 1]!.atMs === ev.atMs) keepAt--
+    keepAt = Math.max(keepAt, b.fx.length - 512)
+    if (keepAt > 0) b.fx.splice(0, keepAt)
+  }
 }
 
 /** **战斗内提示条**（画面顶部提示位，与「敌方增援」同一处显示）——2026-09-11 船长二次裁定：

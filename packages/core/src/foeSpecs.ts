@@ -456,6 +456,7 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
           kind: isBeam ? ('beam' as const) : ('fixed' as const),
           fixedType: type,
           shotDmg,
+          ...(ship.gunCount !== undefined ? { gunCount: ship.gunCount } : {}),
           ...(multiShots ? { shotsByType: multiShots } : {}),
           // ⚠ **干扰舰的武器射程不受自己压制的影响**（船长 2026-09-24 三例：「敌方不变」）——
           // 它的 `foeRangeDebuffPct` 只作用于**我方射程**（见 `meRangeMulOf` / `applyMeJammerDebuff`）。

@@ -3385,7 +3385,10 @@ for (const m of MODULES) {
     if (!(v >= 0 && v <= 1)) badFf.push(`${where} = ${v}`)
   }
   for (const m of MODULES) chkFf(`装备 ${m.id}`, m.falloff)
-  for (const s of FOE_SHIPS) chkFf(`敌舰级 ${s.id}`, s.falloff)
+  for (const s of FOE_SHIPS) {
+    chkFf(`敌舰级 ${s.id}`, s.falloff)
+    check(Number.isInteger(s.gunCount) && s.gunCount! >= 1 && s.gunCount! <= 8, `敌舰级 ${s.id} 炮数需为1~8整数`)
+  }
   for (const d of FOE_DRONES) chkFf(`敌机 ${d.id}`, d.falloff)
   for (const d of DRONES) chkFf(`我方无人机 ${d.id}`, d.falloff)
   for (const def of ANOMALIES_FLAVORED) {

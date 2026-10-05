@@ -183,6 +183,8 @@ export interface FoeBriefLine {
  */
 function bitsOf(ship: FoeShipDef, out: { mounts?: FoeMountLine[] }): string[] {
   const bits: string[] = []
+  // ⟪文案调整 2026-10-05⟫ 复用武器标签展示舰级炮数，数值直接读战斗数据。
+  if (ship.gunCount !== undefined) bits.push(`${tr('ui.itemSubs.009')} ×${ship.gunCount}`)
   if (ship.tactic === 'brawl') bits.push(tr('ui.foeIntro.010'))
   else if (ship.tactic === 'orbit') bits.push(tr('ui.foeIntro.011'))
   else if (ship.tactic === 'kite') bits.push(tr('ui.foeIntro.012'))

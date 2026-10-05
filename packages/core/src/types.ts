@@ -2213,6 +2213,8 @@ export interface FoeShipDef {
   split: { s: number; a: number; h: number }
   /** 基础单发（绝对值） */
   shotDmg: number
+  /** 舰体主武器炮数；shotDmg仍是武器组总伤，逐炮分摊，不乘炮数放大火力。 */
+  gunCount?: number
   /** 命中率 0~1（**能量主系**是否消费本值取决于 `energyForm`：缺省光束必中 → 不消费；`'spit'` 掷命中 → 消费） */
   hitRate: number
   /** 装填（毫秒） */

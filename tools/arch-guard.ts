@@ -108,6 +108,8 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '武器组炮数', symbol: 'volleyGunCountOf', file: 'packages/core/src/combatVolley.ts', exported: true },
+  { concept: '齐射总伤逐炮守恒分摊', symbol: 'volleyDamageShareOf', file: 'packages/core/src/combatVolley.ts', exported: true },
   { concept: '黑市累计声望入口门槛', symbol: 'blackMarketUnlocked', file: 'packages/core/src/blackMarket.ts', exported: true },
   { concept: '黑市候选池与例外购买资格', symbol: 'blackMarketCandidateGoods', file: 'packages/core/src/blackMarket.ts', exported: true },
   { concept: '黑市本地日界', symbol: 'blackMarketDayStart', file: 'packages/core/src/blackMarket.ts', exported: true },

@@ -464,7 +464,7 @@ export function createPlayerSpec(
     falloff: 0.3,
     reloadMs: 3500,
   })
-  // V18 多炮：同 id 同参合并为 ×N 齐射条目（避免 UI 弧线爆炸），异型各自成条目
+  // 同型仍合并展示/装填/弹药账，伤害字段为该组总量；开火时逐门独立命中。
   const gunGroups = new Map<string, ModuleDef[]>()
   for (const t of turretDefs) {
     if (t.maxRangeM === undefined || t.reloadMs === undefined) continue

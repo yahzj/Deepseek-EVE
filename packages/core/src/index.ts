@@ -74,6 +74,7 @@ export type {
 export { FOE_TARGETING_LABELS } from './types'
 
 export { moduleAllowedOnShip } from './shipFitting'
+export { volleyGunCountOf, volleyDamageShareOf } from './combatVolley'
 export type { BlackMarketState, BlackMarketOffer } from './state'
 export {
   CURRENT_STATE_VERSION,

@@ -18,6 +18,7 @@
 
 | 关注点 | 唯一实现 | 护栏 |
 |---|---|---|
+| 武器组炮数与逐炮守恒分摊 | `volleyGunCountOf()` / `volleyDamageShareOf()` · `combatVolley.ts` | 逐炮齐射专项；`arch:guard` F2/F3 |
 | 黑市入口、候选资格、本地日界与下次刷新 | `blackMarketUnlocked()` / `blackMarketCandidateGoods()` / `blackMarketDayStart()` / `blackMarketNextRefresh()` · `blackMarket.ts` | `black-market-page-20261004.test.ts` · `arch:guard` F2/F3 |
 | 纯货舰模块能力兼容（安装/换装/候选/建档/修复同源） | `moduleAllowedOnShip()` · `shipFitting.ts` | `hauler-balance-20261004.test.ts`；`arch:guard` F2/F3 |
 | 入侵残骸每族余额/箱子读数与旧账迁移 | `weekendWreckPoolsOf()` · `salvage.ts`；`normalizeWeekendWreckRecord()` · `weekendWreckLedger.ts` | `invasion-ledger-20261003.test.ts`：多族守恒、迁移、独立衰减与满舱不丢货 |

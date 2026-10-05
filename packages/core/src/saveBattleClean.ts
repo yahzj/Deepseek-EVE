@@ -962,6 +962,7 @@ function cleanFx(raw: unknown, numf: (v: unknown, fallback: number) => number): 
         : {}),
     })
   }
-  if (out.length > 48) out.splice(0, out.length - 48)
+  // 与逐炮演出缓存的硬上限一致，同拍多炮不在读档时再次裁成48条。
+  if (out.length > 512) out.splice(0, out.length - 512)
   return out
 }

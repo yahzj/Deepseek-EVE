@@ -12,16 +12,16 @@
 
 ## 统计
 
-- 文档总数 **463** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7638** KB · **59356** 行
-- 状态分布：**未标注** 250 · **已确认/已实现** 141 · **进行中** 53 · **待裁定** 18 · **历史留档** 1
-- 孤儿文档（0 引用）**92** 份 · 状态未标注 **250** 份
+- 文档总数 **467** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7655** KB · **59523** 行
+- 状态分布：**未标注** 253 · **已确认/已实现** 141 · **进行中** 53 · **待裁定** 19 · **历史留档** 1
+- 孤儿文档（0 引用）**94** 份 · 状态未标注 **253** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**310** 份
+- 三、现行设计稿（design）：**313** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**4** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
-- 八、测试档说明（test-saves）：**3** 份
+- 八、测试档说明（test-saves）：**4** 份
 - 六、专题：舰船美术（design/ship-battle-art）：**7** 份
 - 四、已归档设计稿（design/archive）：**83** 份
 
@@ -55,11 +55,14 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 310 份
+## 三、现行设计稿（design） —— 313 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/market-pool-capacity-20261005.md` | 七种商品目标池容量调整 | 已确认/已实现（已实现并本地合入） | 2026-10-05 | 4 KB / 46 行 | 0 / 0 |
+| `docs/design/per-gun-volley-20261005.md` | 逐炮命中与敌方炮数 | 未标注（实施与自测完成） | 2026-10-05 | 6 KB / 62 行 | 0 / 0 |
+| `docs/design/real-playthrough-bug-test-20261005.md` | 三目标实机式全流程BUG测试 | 未标注（已按船长要求挂起） | 2026-10-05 | 5 KB / 43 行 | 0 / 0 |
+| `docs/design/small-ship-survival-proposal-20261005.md` | 势力护卫与驱逐舰的生存优化方案 | 待裁定（待船长确认） | 2026-10-05 | 5 KB / 49 行 | 1 / 0 |
 | `docs/design/activity-mobile-audit-20261004.md` | 主控活动切换、显示与手机适配核查 | 未标注（第一轮实现与验证完成） | 2026-10-04 | 9 KB / 78 行 | 1 / 0 |
 | `docs/design/black-market-page-20261004.md` | 独立黑市页面与ASCII商人 | 已确认/已实现（已实现） | 2026-10-04 | 12 KB / 107 行 | 0 / 0 |
 | `docs/design/classic-nav-footer-20261004.md` | 旧版导航底部开关与矮窗口布局 | 已确认/已实现（已确认） | 2026-10-04 | 5 KB / 37 行 | 0 / 0 |
@@ -417,7 +420,7 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 5 KB / 82 行 | 6 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 801 行 | 27 / 18 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 9 KB / 85 行 | 18 / 7 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 9 KB / 86 行 | 18 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -425,10 +428,11 @@
 |---|---|---|---|---|---|
 | `docs/design/battle-data/p41-drone-readings-20260912.md` | P-41 机群批标定轮 · 读数（2026-09-12 · 二号 d2） | 未标注 | 2026-09-12 | 7 KB / 88 行 | 3 / 0 |
 
-## 八、测试档说明（test-saves） —— 3 份
+## 八、测试档说明（test-saves） —— 4 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/test-saves/per-gun-20261005.md` | 逐炮齐射验收档 | 未标注 | 2026-10-05 | 1 KB / 12 行 | 1 / 0 |
 | `docs/test-saves/black-market-20261004.md` | 黑市页面验收档 | 待裁定（随功能待船长验收） | 2026-10-04 | 1 KB / 15 行 | 1 / 0 |
 | `docs/test-saves/hauler-20261004.md` | 纯货舰修订验收档 | 未标注（已验收） | 2026-10-04 | 2 KB / 25 行 | 3 / 0 |
 | `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 72 KB / 724 行 | 59 / 14 |
@@ -533,11 +537,13 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，92 份）
+## 附：孤儿文档（0 引用，94 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/market-pool-capacity-20261005.md`（2026-10-05 · 4 KB）—— 七种商品目标池容量调整
+- `docs/design/per-gun-volley-20261005.md`（2026-10-05 · 6 KB）—— 逐炮命中与敌方炮数
+- `docs/design/real-playthrough-bug-test-20261005.md`（2026-10-05 · 5 KB）—— 三目标实机式全流程BUG测试
 - `docs/design/black-market-page-20261004.md`（2026-10-04 · 12 KB）—— 独立黑市页面与ASCII商人
 - `docs/design/classic-nav-footer-20261004.md`（2026-10-04 · 5 KB）—— 旧版导航底部开关与矮窗口布局
 - `docs/design/classic-navigation-touch-20261004.md`（2026-10-04 · 3 KB）—— 旧版导航单指拖动
@@ -630,8 +636,11 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（250 份，待补一行 `状态：…`）
+## 附：状态未标注（253 份，待补一行 `状态：…`）
 
+- `docs/design/per-gun-volley-20261005.md`（2026-10-05）—— 逐炮命中与敌方炮数
+- `docs/design/real-playthrough-bug-test-20261005.md`（2026-10-05）—— 三目标实机式全流程BUG测试
+- `docs/test-saves/per-gun-20261005.md`（2026-10-05）—— 逐炮齐射验收档
 - `docs/design/activity-mobile-audit-20261004.md`（2026-10-04）—— 主控活动切换、显示与手机适配核查
 - `docs/design/item-ship-filter-taxonomy-20261004.md`（2026-10-04）—— 物品与舰船筛选归类统一
 - `docs/design/market-health-audit-20261004.md`（2026-10-04）—— 市场长期买卖与库存池健康体检

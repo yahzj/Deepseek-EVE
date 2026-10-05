@@ -90,6 +90,7 @@ import { FOE_DRONE_C_SPORE, FOE_DRONE_E_ALERT, FOE_DRONE_G_BEE_EXP, FOE_DRONE_G_
  * 射程 −15%：`1 ×0.85 → 1` / `2215 ×0.85 = 1882.75 → 1883`。 */
 export const FOE_SHIP_PIRATE_SKIFF: FoeShipDef = {
   id: 'foe-pirate-skiff',
+  gunCount: 2,
   name: '海盗快艇',
   family: 'A',
   evasion: 0.22, // 2026-09-24 船长令：A 族**除电子舰外** +10% 闪避（缺省 0.12 → 0.22）
@@ -115,6 +116,7 @@ export const FOE_SHIP_PIRATE_SKIFF: FoeShipDef = {
  * 全族贴脸，武器死区下沿取消；原按 −15% 推导为 `383 ×0.85 = 326`，该推导现在只对上限生效）。 */
 export const FOE_SHIP_PIRATE_CORVETTE: FoeShipDef = {
   id: 'foe-pirate-corvette',
+  gunCount: 3,
   name: '劫掠护卫舰',
   family: 'A',
   evasion: 0.22, // 2026-09-24 船长令：A 族**除电子舰外** +10% 闪避（缺省 0.12 → 0.22）
@@ -138,6 +140,7 @@ export const FOE_SHIP_PIRATE_CORVETTE: FoeShipDef = {
  * 射程 −15%：`1476 ×0.85 = 1254.6 → 1255` / `11316 ×0.85 = 9618.6 → 9619`。 */
 export const FOE_SHIP_PIRATE_SNIPER: FoeShipDef = {
   id: 'foe-pirate-sniper',
+  gunCount: 2,
   name: '劫掠狙击舰',
   family: 'A',
   evasion: 0.22, // 2026-09-24 船长令：A 族**除电子舰外** +10% 闪避（缺省 0.12 → 0.22）
@@ -167,6 +170,7 @@ export const FOE_SHIP_PIRATE_SNIPER: FoeShipDef = {
  */
 export const FOE_SHIP_PIRATE_WARLORD: FoeShipDef = {
   id: 'foe-pirate-warlord',
+  gunCount: 4,
   name: '海盗头目舰',
   family: 'A',
   evasion: 0.22, // 2026-09-24 船长令：A 族**除电子舰外** +10% 闪避（缺省 0.12 → 0.22）
@@ -207,6 +211,7 @@ export const FOE_SHIP_PIRATE_WARLORD: FoeShipDef = {
  * 速度 = 1 护卫舰基准 340 × **`0.80`** = **272**（船长「速度偏慢」→ 2026-09-11 裁决「B 族速落实 0.8」）。 */
 export const FOE_SCAV_SKIFF: FoeShipDef = {
   id: 'foe-scav-skiff',
+  gunCount: 2,
   name: '拾荒武装艇',
   family: 'B',
   hullClassTier: 1, // 护卫舰（新手过渡族只用 1/2 两档）
@@ -231,6 +236,7 @@ export const FOE_SCAV_SKIFF: FoeShipDef = {
  * ⚠ **乱射（命中 0.55）不写在这里**——那是占港那张卡的**单卡特征**，写在卡的条目 `hitRate` 上。 */
 export const FOE_SCAV_ARMED: FoeShipDef = {
   id: 'foe-scav-armed',
+  gunCount: 3,
   name: '拾荒火力舰',
   family: 'B',
   hullClassTier: 2, // 驱逐舰（B 族顶格）
@@ -448,6 +454,7 @@ export const ALIEN_CHARGE_MUL_BY_TIER: Readonly<Record<number, number>> = { 1: 1
  * 倍率 = **1.5**（本舰 T1 ⇒ 按档阶梯 `ALIEN_CHARGE_MUL_BY_TIER`；2026-09-16 全族按档口径，值不变）。 */
 export const FOE_ALIEN_RIFT: FoeShipDef = {
   id: 'foe-alien-rift-larva',
+  gunCount: 2,
   name: '畸变幼虫',
   family: 'C',
   ...C_FAMILY_RESISTS, // C 族族抗性：三层各 25% 爆炸抗（船长 2026-09-15，见常量注释）
@@ -487,6 +494,7 @@ export const FOE_ALIEN_RIFT: FoeShipDef = {
  * 倍率 = **1.5**（本舰 T1 ⇒ 按档阶梯 `ALIEN_CHARGE_MUL_BY_TIER`；2026-09-16 全族按档口径，值不变）。 */
 export const FOE_ALIEN_STARCORE: FoeShipDef = {
   id: 'foe-alien-starcore-larva',
+  gunCount: 2,
   name: '星髓幼虫',
   family: 'C',
   ...C_FAMILY_RESISTS, // C 族族抗性：三层各 25% 爆炸抗（船长 2026-09-15，见常量注释）
@@ -533,6 +541,7 @@ export const FOE_ALIEN_STARCORE: FoeShipDef = {
  * 血型均衡（噬口卡 `defProfile` 未写 = 缺省）；主系**等离子** 8:2。形态 = `'spit'`。 */
 export const FOE_ALIEN_MAW: FoeShipDef = {
   id: 'foe-alien-maw',
+  gunCount: 6,
   name: '噬口巨兽',
   family: 'C',
   ...C_FAMILY_RESISTS, // C 族族抗性：三层各 25% 爆炸抗（船长 2026-09-15，见常量注释）
@@ -572,6 +581,7 @@ export const FOE_ALIEN_MAW: FoeShipDef = {
  * **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：`foeCanCharge` + `foeChargeMul: 1.5`。 */
 export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
   id: 'foe-alien-starcore-adult',
+  gunCount: 3,
   name: '星髓成虫',
   family: 'C',
   ...C_FAMILY_RESISTS, // C 族族抗性：三层各 25% 爆炸抗（船长 2026-09-15，见常量注释）
@@ -615,6 +625,7 @@ export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
  * ⚠ **不是"多一条 C 族卡"那么简单**：它是 C 族**唯一带机群**的舰级，也是洞内 C 族深层卡的主体。 */
 export const FOE_ALIEN_SPORE_HIVE: FoeShipDef = {
   id: 'foe-alien-spore-hive',
+  gunCount: 4,
   name: '孢群异虫',
   family: 'C',
   hullClassTier: 3, // 巡洋舰
@@ -676,6 +687,7 @@ export const FOE_ALIEN_SPORE_HIVE: FoeShipDef = {
  * 形态 = **`beam` 光束必中**（「靠必中与射程立身」；本族**保留必中**，不走 C 族那套掷命中）。 */
 export const FOE_D_GHOST: FoeShipDef = {
   id: 'foe-d-ghost',
+  gunCount: 3,
   name: '幽灵舰',
   family: 'D',
   hullClassTier: 2, // 驱逐舰（船长「1 驱逐 2 巡洋」里的那个"1"）
@@ -703,6 +715,7 @@ export const FOE_D_GHOST: FoeShipDef = {
  * 血型默认**装甲型**（= 坟场守墓者卡面）；虚海守望者卡的条目覆写为**均衡**（其卡面本是均衡）。 */
 export const FOE_D_LONGSHIP: FoeShipDef = {
   id: 'foe-d-longship',
+  gunCount: 4,
   name: '守墓长舰',
   family: 'D',
   hullClassTier: 3, // 巡洋舰
@@ -730,6 +743,7 @@ export const FOE_D_LONGSHIP: FoeShipDef = {
  * 不是'你贴上来它不打你'——「越界即清除」在射程上就该是'任何距离都打得到'。 */
 export const FOE_D_STASIS: FoeShipDef = {
   id: 'foe-d-stasis',
+  gunCount: 4,
   name: '静滞卫舰',
   family: 'D',
   hullClassTier: 3, // 巡洋舰
@@ -778,6 +792,7 @@ export const FOE_D_STASIS: FoeShipDef = {
  * 两支到场单位写在**那张卡的条目**上（`enterAt` ＋ `enterBranch`）。 */
 export const FOE_D_THRONE: FoeShipDef = {
   id: 'foe-d-throne',
+  gunCount: 6,
   name: '守墓王座舰',
   family: 'D',
   hullClassTier: 4, // 战列舰（D 族新档）
@@ -824,6 +839,7 @@ export const FOE_D_THRONE: FoeShipDef = {
  * `falloff: 1`（命中不随距离衰减）**保留不动**。 */
 export const FOE_MISSILE_HULK: FoeShipDef = {
   id: 'foe-missile-hulk',
+  gunCount: 4,
   name: '导弹残段',
   family: 'E',
   hullClassTier: 3, // 巡洋舰
@@ -897,6 +913,7 @@ export const FOE_SHIP_MIX_AUTHORITY_IDS: readonly string[] = [
  * 也是据点词「**警戒机群**」承诺的第二套火力。 */
 export const FOE_SHIP_TITAN_HULK: FoeShipDef = {
   id: 'foe-titan-hulk',
+  gunCount: 6,
   name: '巨构残段',
   family: 'E',
   hullClassTier: 4, // 战列舰（"泰坦级巨构"的档位）
@@ -936,6 +953,7 @@ export const FOE_SHIP_TITAN_HULK: FoeShipDef = {
  * **机群**：警戒机 ×2——与巨构残段同款'第二套火力'。 */
 export const FOE_SHIP_AURO_HULK: FoeShipDef = {
   id: 'foe-auro-hulk',
+  gunCount: 4,
   name: '奥罗残骸段',
   family: 'E',
   hullClassTier: 3, // 巡洋舰
@@ -970,6 +988,7 @@ export const FOE_SHIP_AURO_HULK: FoeShipDef = {
  * **`elite`**（显示名加「精锐」前缀）——「接近完好」＝族内唯一精锐档。 */
 export const FOE_SHIP_CORE_SECTION: FoeShipDef = {
   id: 'foe-core-section',
+  gunCount: 8,
   name: '核心舱段',
   family: 'E',
   hullClassTier: 5, // **旗舰**（船长 2026-09-12「调为旗舰级」）
@@ -1034,6 +1053,7 @@ export const FOE_SHIP_CORE_SECTION: FoeShipDef = {
 /** G 族 · 一档「围攻残兵舰」——orbit 环绕（层次词「外围围攻军」；数量型小艇）。 */
 export const FOE_G_SWARM_SKIFF: FoeShipDef = {
   id: 'foe-g-swarm-skiff',
+  gunCount: 3,
   name: '围攻残兵舰',
   family: 'G',
   hullClassTier: 1, // 护卫舰
@@ -1054,6 +1074,7 @@ export const FOE_G_SWARM_SKIFF: FoeShipDef = {
 /** G 族 · 二档「残响残舰」——orbit 环绕（层次词「残响残舰」）。 */
 export const FOE_G_ECHO_REMNANT: FoeShipDef = {
   id: 'foe-g-echo-remnant',
+  gunCount: 4,
   name: '残响残舰',
   family: 'G',
   hullClassTier: 2, // 驱逐舰
@@ -1074,6 +1095,7 @@ export const FOE_G_ECHO_REMNANT: FoeShipDef = {
 /** G 族 · 三档「天底封锁舰」——orbit 环绕（层次词「最后据点」）；**族内唯一挂蜂群机的舰级**。 */
 export const FOE_G_NADIR_LOCK: FoeShipDef = {
   id: 'foe-g-nadir-lock',
+  gunCount: 4,
   name: '天底封锁舰',
   family: 'G',
   hullClassTier: 3, // 巡洋舰
@@ -1117,6 +1139,7 @@ export const FOE_G_NADIR_LOCK: FoeShipDef = {
  * （三种机型终于全有挂载点——G 族"三系无人机"的族格由本条兑现）。 */
 export const FOE_G_EXILE_BATTLESHIP: FoeShipDef = {
   id: 'foe-g-exile-battleship',
+  gunCount: 6,
   name: '亡军战列舰',
   family: 'G',
   hullClassTier: 4, // 战列舰（2026-09-15 起**已启用**，不再是空置壳体）
@@ -1160,6 +1183,7 @@ export const FOE_G_EXILE_BATTLESHIP: FoeShipDef = {
  */
 export const FOE_G_REMNANT_TENDER: FoeShipDef = {
   id: 'foe-g-remnant-tender',
+  gunCount: 2,
   name: '残军补给舰',
   family: 'G',
   hullClassTier: 3, // 巡洋舰（船长 2026-09-16：「T3巡洋」）
@@ -1190,6 +1214,7 @@ export const FOE_G_REMNANT_TENDER: FoeShipDef = {
  * ⚠ 有效挂载是 `条目 ?? 舰级`（**替换**不是叠加）⇒ 条目必须**两件都写**，只写一件会顶掉另一件。 */
 export const FOE_SHIP_PIRATE_RAIDER: FoeShipDef = {
   id: 'foe-pirate-raider',
+  gunCount: 2,
   name: '劫掠电子舰',
   family: 'A',
   hullClassTier: 1, // 护卫舰
@@ -1235,6 +1260,7 @@ export const FOE_SHIP_PIRATE_RAIDER: FoeShipDef = {
  */
 export const FOE_H_INK_JAMMER: FoeShipDef = {
   id: 'foe-h-ink-jammer',
+  gunCount: 3,
   name: '墨潮干扰舰',
   family: 'H',
   evasion: 0.18,
@@ -1277,6 +1303,7 @@ export const FOE_H_INK_JAMMER: FoeShipDef = {
  */
 export const FOE_H_INK_CORVETTE: FoeShipDef = {
   id: 'foe-h-ink-corvette',
+  gunCount: 3,
   name: '墨潮突击舰',
   family: 'H',
   /**
@@ -1320,6 +1347,7 @@ export const FOE_H_INK_CORVETTE: FoeShipDef = {
  */
 export const FOE_H_INK_TORPEDO: FoeShipDef = {
   id: 'foe-h-ink-torpedo',
+  gunCount: 4,
   name: '墨潮鱼雷舰',
   family: 'H',
   evasion: 0.18,
@@ -1351,6 +1379,7 @@ export const FOE_H_INK_TORPEDO: FoeShipDef = {
  */
 export const FOE_H_INK_BATTLECRUISER: FoeShipDef = {
   id: 'foe-h-ink-battlecruiser',
+  gunCount: 6,
   name: '墨潮战列巡洋舰',
   family: 'H',
   evasion: 0.12,
@@ -1381,6 +1410,7 @@ export const FOE_H_INK_BATTLECRUISER: FoeShipDef = {
  */
 export const FOE_H_INK_FLAGSHIP: FoeShipDef = {
   id: 'foe-h-ink-flagship',
+  gunCount: 8,
   name: '墨潮入侵母舰',
   family: 'H',
   evasion: 0.1,
@@ -1444,6 +1474,7 @@ export const FOE_H_INK_FLAGSHIP: FoeShipDef = {
  */
 export const FOE_R_CORONA_GLINT: FoeShipDef = {
   id: 'foe-r-corona-glint',
+  gunCount: 2,
   name: '粼光级',
   family: 'R',
   /**
@@ -1493,6 +1524,7 @@ export const FOE_R_CORONA_GLINT: FoeShipDef = {
  */
 export const FOE_R_CORONA_ECHO: FoeShipDef = {
   id: 'foe-r-corona-echo',
+  gunCount: 3,
   name: '回响级',
   family: 'R',
   /**
@@ -1539,6 +1571,7 @@ export const FOE_R_CORONA_ECHO: FoeShipDef = {
  */
 export const FOE_R_CORONA_OVERLAY: FoeShipDef = {
   id: 'foe-r-corona-overlay',
+  gunCount: 4,
   name: '叠光级',
   family: 'R',
   evasion: 0.18,
@@ -1574,6 +1607,7 @@ export const FOE_R_CORONA_OVERLAY: FoeShipDef = {
  */
 export const FOE_R_CORONA_DUSK: FoeShipDef = {
   id: 'foe-r-corona-dusk',
+  gunCount: 6,
   name: '垂暮级',
   family: 'R',
   evasion: 0.12,
@@ -1613,6 +1647,7 @@ export const FOE_R_CORONA_DUSK: FoeShipDef = {
  */
 export const FOE_R_CORONA_NEXUS: FoeShipDef = {
   id: 'foe-r-corona-nexus',
+  gunCount: 8,
   name: '光环中枢',
   family: 'R',
   evasion: 0.10,

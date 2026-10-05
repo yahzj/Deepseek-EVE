@@ -383,6 +383,8 @@ export function pickFoeDroneTarget(
   wi = 0,
   /** **开火的那艘我方舰**（tag；缺省 `player` = 单船路径 ⇒ 与旧口径逐字相同） */
   myTag = 'player',
+  /** 同轮剩余炮接力选靶，不重复消费已由本组取得的反击令牌。 */
+  volleyFollowup = false,
 ): { foeTag: string; pool: import('./state').DronePoolEntry } | null {
   const pools = b.foeDronePools
   if (!pools) return null;
@@ -421,7 +423,7 @@ export function pickFoeDroneTarget(
    * 靠"本门已对本次令牌时刻还手过"防重复；窗口过期由上面的 `PD_REACTIVE_WINDOW_MS` 兜底）。
    */
   const answered = b.mePdAnsweredBy?.[lockKey]
-  if (answered !== undefined && answered >= tokenAt) return null  /** 成功还手后记账（只有**选到目标**才算还过手：没目标时不消耗本门这次机会） */
+  if (!volleyFollowup && answered !== undefined && answered >= tokenAt) return null  /** 成功还手后记账（只有**选到目标**才算还过手：没目标时不消耗本门这次机会） */
   const markAnswered = (): void => {
     b.mePdAnsweredBy = { ...(b.mePdAnsweredBy ?? {}), [lockKey]: tokenAt }
   }
