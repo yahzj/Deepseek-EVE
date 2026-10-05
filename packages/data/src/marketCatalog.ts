@@ -126,13 +126,14 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   { key: 'min-mexallon', kind: 'item', refId: 'min-mexallon', rarity: 'common', basePrice: 20, poolTarget: 507_720, supplyFlow: 4_231 },
   { key: 'min-nocxium', kind: 'item', refId: 'min-nocxium', rarity: 'common', basePrice: 90, poolTarget: 95_280, supplyFlow: 794 },
   { key: 'min-isotope', kind: 'item', refId: 'min-isotope', rarity: 'common', basePrice: 55, poolTarget: 175_320, supplyFlow: 1_461 },
-  { key: 'min-starcore', kind: 'item', refId: 'min-starcore', rarity: 'common', basePrice: 245, poolTarget: 15_960, supplyFlow: 133 },
-  { key: 'min-darkiron', kind: 'item', refId: 'min-darkiron', rarity: 'common', basePrice: 780, poolTarget: 3_120, supplyFlow: 26 },
+  // 2026-10-05 船长确认七池容量表：只扩目标池，流量与成交规则保持原值。
+  { key: 'min-starcore', kind: 'item', refId: 'min-starcore', rarity: 'common', basePrice: 245, poolTarget: 48_000, supplyFlow: 133 },
+  { key: 'min-darkiron', kind: 'item', refId: 'min-darkiron', rarity: 'common', basePrice: 780, poolTarget: 16_000, supplyFlow: 26 },
   // 【虚空晶（2026-09-14 船长：「虚空晶和虚空母矿也添加只收不卖」「市场不会出现…卖单」）：
   //   它是**24 张洞内蓝图 + 皇带鱼级**的通用主料，来源只有"虚空母矿精炼"与"回收彩头"
   //   ⇒ 只收不卖（NPC 不铺卖单、买入被拦），**收购照常**。`poolTarget/supplyFlow` 保留：
   //   池面仍参与均衡价与收购阶梯的计算，只是不再铺供应单。】
-  { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 5_400, poolTarget: 1_560, supplyFlow: 13, playerBuyable: false }, // 只收不卖（2026-09-14 船长）；2026-10-01 船长裁「甲」：行情价 1,800 → **5,400**（与 items.ts 的基准价同步 ⇒ 修掉"精炼面板显示亏本"）
+  { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 5_400, poolTarget: 48_000, supplyFlow: 13, playerBuyable: false }, // 只收不卖（2026-09-14 船长）；2026-10-01 船长裁「甲」：行情价 1,800 → **5,400**（与 items.ts 的基准价同步 ⇒ 修掉"精炼面板显示亏本"）
   // ── 跃迁燃料链（**2026-09-29 船长令**：3 种新精炼材料 ＋ 燃料）──
   // 【新矿物 = 玩家产出要拿去卖钱 ⇒ 照本文件既有口径走 **common 池**（船长 2026-09-29「4 是」：
   //   新矿物放普通池）。池宽按"单炉满技能精炼产能的 ~2 倍"标（同 2026-09-10 那批的算法）：
@@ -236,10 +237,11 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // 损管修理组件（2026-09-25 船长令：损伤管制装置启动时消耗的那一种）——单场最多吃 1 枚，池按同族口径给
   { key: 'repairkit-dc', kind: 'item', refId: 'repairkit-dc', rarity: 'common', basePrice: 550_000, demandMultiplier: 0.6, poolTarget: 1_080, supplyFlow: 9 },
   // ── 无人机（V10 占位：NPC 补给池） ──
-  { key: 'drone-scout', kind: 'item', refId: 'drone-scout', rarity: 'common', basePrice: 900, demandMultiplier: 0.6, poolTarget: 480, supplyFlow: 4 }, // 2026-09-11 池 = flow×120（原 200）
-  { key: 'drone-assault', kind: 'item', refId: 'drone-assault', rarity: 'common', basePrice: 2_200, demandMultiplier: 0.6, poolTarget: 240, supplyFlow: 2 },
-  { key: 'drone-heavy', kind: 'item', refId: 'drone-heavy', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.6, poolTarget: 120, supplyFlow: 1 },
-  { key: 'drone-sentry', kind: 'item', refId: 'drone-sentry', rarity: 'common', basePrice: 9_500, demandMultiplier: 0.6, poolTarget: 120, supplyFlow: 1 },
+  // 容量与flow×120解绑，采用船长确认的七池表；不改变无人机每窗供需流量。
+  { key: 'drone-scout', kind: 'item', refId: 'drone-scout', rarity: 'common', basePrice: 900, demandMultiplier: 0.6, poolTarget: 18_000, supplyFlow: 4 },
+  { key: 'drone-assault', kind: 'item', refId: 'drone-assault', rarity: 'common', basePrice: 2_200, demandMultiplier: 0.6, poolTarget: 18_000, supplyFlow: 2 },
+  { key: 'drone-heavy', kind: 'item', refId: 'drone-heavy', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.6, poolTarget: 12_000, supplyFlow: 1 },
+  { key: 'drone-sentry', kind: 'item', refId: 'drone-sentry', rarity: 'common', basePrice: 9_500, demandMultiplier: 0.6, poolTarget: 9_000, supplyFlow: 1 },
 
   // ── 单件平价品 ──
   // 民用/入门装备（市场供应价 = 制造价的合理回本价；玩家自己造更便宜）
