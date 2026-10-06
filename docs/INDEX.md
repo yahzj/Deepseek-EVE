@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **469** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7672** KB · **59692** 行
-- 状态分布：**未标注** 252 · **已确认/已实现** 142 · **进行中** 53 · **待裁定** 21 · **历史留档** 1
-- 孤儿文档（0 引用）**96** 份 · 状态未标注 **252** 份
+- 文档总数 **470** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7681** KB · **59780** 行
+- 状态分布：**未标注** 252 · **已确认/已实现** 143 · **进行中** 53 · **待裁定** 21 · **历史留档** 1
+- 孤儿文档（0 引用）**97** 份 · 状态未标注 **252** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**315** 份
+- 三、现行设计稿（design）：**316** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**4** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -35,7 +35,7 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 299 KB / 308 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 90 KB / 908 行 | 95 / 5 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 509 KB / 1023 行 | 227 / 20 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 510 KB / 1032 行 | 227 / 20 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 88 KB / 463 行 | 376 / 26 |
 
 ## 七、评审与体检（review） —— 12 份
@@ -55,10 +55,11 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 315 份
+## 三、现行设计稿（design） —— 316 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/market-limited-supply-20261006.md` | 限额慢补货与虚空晶应急供应 | 已确认/已实现（已实现） | 2026-10-06 | 7 KB / 78 行 | 0 / 0 |
 | `docs/design/drone-launch-preview-20261005.md` | 无人机队列出击隔离预演 | 待裁定（待船长审查） | 2026-10-05 | 5 KB / 67 行 | 0 / 0 |
 | `docs/design/market-pool-capacity-20261005.md` | 七种商品目标池容量调整 | 已确认/已实现（已实现并本地合入） | 2026-10-05 | 4 KB / 46 行 | 0 / 0 |
 | `docs/design/per-gun-volley-20261005.md` | 逐炮命中与敌方炮数 | 已确认/已实现（已实现并本地合入） | 2026-10-05 | 7 KB / 64 行 | 0 / 0 |
@@ -422,7 +423,7 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 5 KB / 82 行 | 6 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 801 行 | 27 / 18 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 9 KB / 86 行 | 18 / 7 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 10 KB / 87 行 | 18 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -539,10 +540,11 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，96 份）
+## 附：孤儿文档（0 引用，97 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/market-limited-supply-20261006.md`（2026-10-06 · 7 KB）—— 限额慢补货与虚空晶应急供应
 - `docs/design/drone-launch-preview-20261005.md`（2026-10-05 · 5 KB）—— 无人机队列出击隔离预演
 - `docs/design/market-pool-capacity-20261005.md`（2026-10-05 · 4 KB）—— 七种商品目标池容量调整
 - `docs/design/per-gun-volley-20261005.md`（2026-10-05 · 7 KB）—— 逐炮命中与敌方炮数

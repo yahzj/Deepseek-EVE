@@ -44,6 +44,7 @@ import { shipInReturn } from './mining'
 import { DSI_FACTION_ID, standingOf } from './standing'
 import { ironmanCommonFlowMul, ironmanExoticCapBonus, ironmanExoticWeightMul, ironmanRareWeightMul } from './ironman'
 import { plugBlockReasonOf } from './plugs'
+import { advanceLimitedSupply, consumeLimitedSupply, ensureLimitedSupply, hasLimitedSupply, limitedSupplyAvailable } from './marketLimitedSupply'
 
 /* ═══════════ 建站收购网络扩容（2026-09-09 船长定：每建成一座副站，协会收购网扩容，
  * 玩家"单件商品"卖出吞吐 ×1.5，乘法叠加无封顶——只作用于单件商品（装备/蓝图/船等件货的
@@ -210,6 +211,28 @@ export function ensureMarket(state: GameState, ctx: SimContext, opts?: { openAtG
       seedCommonBook(state, ctx, def, state.gameMs)
     }
   }
+  // 新启用的限额商品只发一次库存；旧账保持余额，损坏/缺失簿面只重铺该余额。
+  for (const def of ctx.marketGoods.values()) {
+    if (!hasLimitedSupply(def)) continue
+    const pool = mk.pools[def.key]!
+    const fresh = ensureLimitedSupply(pool, def, openAt)
+    const qty = mk.npcSell[def.key]!.reduce((sum, order) => sum + order.qty, 0)
+    if (fresh || qty !== pool.limitedSupply!.remaining) refreshLimitedSupplyBook(state, ctx, def, openAt)
+  }
+}
+
+/** 价格阶梯只是独立余额的分档，过期/换价不创造新库存，也不受经济池断供门影响。 */
+function refreshLimitedSupplyBook(state: GameState, ctx: SimContext, def: MarketGoodDef, now: number): void {
+  const pool = state.market.pools[def.key]!
+  const remaining = pool.limitedSupply?.remaining ?? 0
+  const L = priceLevel(state, ctx, def, pool.q)
+  const base = Math.max(sellPrice(def, L), (bestBuy(state.market.npcBuy[def.key]!) ?? 0) + 1)
+  const step = Math.max(1, Math.round(base * 0.04))
+  const shares = [Math.ceil(remaining * 0.3), Math.floor(remaining * 0.35)]
+  shares.push(remaining - shares[0]! - shares[1]!)
+  state.market.npcSell[def.key] = shares.flatMap((qty, i) => qty > 0 ? [{
+    price: base + i * step, qty, expiresAtGameMs: now + orderLifeMsOf(def, ctx.balance.market),
+  }] : [])
 }
 
 /** 常驻商品开局簿（openAtMs = 开盘时刻：订单寿命与簿面基准） */
@@ -220,7 +243,7 @@ function seedCommonBook(state: GameState, ctx: SimContext, def: MarketGoodDef, o
   const L = priceLevel(state, ctx, def, def.poolTarget ?? 0)
   const sellable = def.playerSellable !== false
   /**
-   * **只收不卖 ⇒ 一笔 NPC 卖单都不铺**（2026-09-14 船长：「**市场不会出现虚空晶和母矿的卖单。**」）。
+   * **只收不卖 ⇒ 一笔 NPC 卖单都不铺**；虚空晶2026-10-06改走限额慢补货，母矿仍受此门约束。
    *
    * 原实现**无条件**铺卖单（池商品 `flow×0.8` 一笔 / 单件平价品两笔）⇒ 货架上挂着"买不了"的卖单：
    * 实测 `box-relic-a`（洞内货柜，`playerBuyable: false`）开盘就有 **2 件卖单**，点买入被
@@ -236,7 +259,7 @@ function seedCommonBook(state: GameState, ctx: SimContext, def: MarketGoodDef, o
       mk.npcBuy[def.key]!.push({ price: buyPrice(def, L), qty: Math.max(1, Math.round(flow * buyVolMul)), expiresAtGameMs: now + life })
       mk.npcBuy[def.key]!.push({ price: buyPrice(def, L, -0.01), qty: Math.max(1, Math.round(flow * 1.25 * buyVolMul)), expiresAtGameMs: now + life })
     }
-    if (buyable) {
+    if (buyable && !hasLimitedSupply(def)) {
       mk.npcSell[def.key]!.push({ price: sellPrice(def, L), qty: Math.max(1, Math.round(flow * 0.8)), expiresAtGameMs: now + life })
     }
     mk.pools[def.key]!.q = def.poolTarget
@@ -245,7 +268,7 @@ function seedCommonBook(state: GameState, ctx: SimContext, def: MarketGoodDef, o
     if (sellable) {
       mk.npcBuy[def.key]!.push({ price: buyPrice(def, L), qty: 3, expiresAtGameMs: now + life })
     }
-    if (buyable) {
+    if (buyable && !hasLimitedSupply(def)) {
       mk.npcSell[def.key]!.push({ price: sellPrice(def, L), qty: 1, expiresAtGameMs: now + life })
       mk.npcSell[def.key]!.push({ price: sellPrice(def, L, 0.02), qty: 1, expiresAtGameMs: now + life })
     }
@@ -676,6 +699,7 @@ function processWindow(state: GameState, ctx: SimContext): void {
 
     // 池向目标回归（站内吸收/补给）+ 冲击衰减
     if (def.poolTarget && def.poolTarget > 0) pool.q += (def.poolTarget - pool.q) * regenK
+    advanceLimitedSupply(pool, def, dt, nextNow)
     pool.shock *= 1 - decayK
     // 慢速均值回归噪声：随机游走 + 向 0 回报，钳制 ±0.4（船长 2026-09-05：常驻行情"太稳定"，加真实起伏）
     pool.noise = Math.max(-0.4, Math.min(0.4, pool.noise * (1 - noiseK) + (nextRandom(state.rng) - 0.5) * bal.noiseStep))
@@ -711,7 +735,7 @@ function processWindow(state: GameState, ctx: SimContext): void {
   }
 
   // 撮合我的限价单（含已成交挂单的清理）
-  matchPlayerOrders(state, ctx)
+  matchPlayerOrders(state, ctx, nextNow)
   // 站内让利吸收（2026-09-08 船长定：吸收量与卖单价挂钩——先吃簿，差额按折价倍率站内补收）
   absorbViaStation(state, ctx)
 
@@ -947,7 +971,9 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
       // 供应阶梯：最低档在 L×1.06，越深越贵、量越大（playerBuyable=false 的只收商品不出售）。
       // **砸盘时挂卖单量同步削减**（2026-09-11 船长：每层未衰减惩罚 −8%）——价格崩了卖方缩手，
       // 与"买家变多"对称：砸得越狠，簿面上接货的越多、出货的越少。
-      if (def.playerBuyable !== false) {
+      if (hasLimitedSupply(def)) {
+        refreshLimitedSupplyBook(state, ctx, def, now)
+      } else if (def.playerBuyable !== false) {
         for (let i = 0; i < 3; i += 1) {
           const price = Math.max(1, sellBase + i * sellStep)
           const qty = Math.max(1, Math.round(flow * avail * (0.5 + 0.35 * i) * sellVolMul))
@@ -961,7 +987,8 @@ function refreshGoodOrders(state: GameState, ctx: SimContext, def: MarketGoodDef
       // 常驻供给：蓝图书出现概率 −50%（2026-09-09 船长定——蓝图不走"簿薄必补"保底，纯 0.425 掷骰；
       // 收购侧不变：玩家回卖蓝图不受影响）
       const sellChance = def.kind === 'blueprint' ? 0.425 : 0.85
-      if (
+      if (hasLimitedSupply(def)) refreshLimitedSupplyBook(state, ctx, def, now)
+      else if (
         def.playerBuyable !== false &&
         (def.kind === 'blueprint' ? nextRandom(state.rng) < sellChance : sellList.length < 2 || nextRandom(state.rng) < sellChance)
       ) {
@@ -1007,7 +1034,7 @@ function digestAdd(state: GameState, ctx: SimContext, key: string, qty: number, 
  * 只吃簿面、**不掷越线抢单骰**——越线（买单低于供应价线 / 卖单高于收购价线）仍归每 60 秒
  * 窗口的概率机制（2026-09-08 船长定），挂单瞬间不额外掷骰。
  */
-function eatBook(state: GameState, ctx: SimContext, order: PlayerOrder): void {
+function eatBook(state: GameState, ctx: SimContext, order: PlayerOrder, atGameMs = state.gameMs): void {
   if (order.qty <= 0) return
   if (!ctx.marketGoods.has(order.good)) return
   if (order.side === 'sell') {
@@ -1028,7 +1055,7 @@ function eatBook(state: GameState, ctx: SimContext, order: PlayerOrder): void {
       if (npc.price > order.price) continue
       const idx = sellList.indexOf(npc)
       if (idx < 0) continue
-      settleBuy(state, ctx, order, npc, idx)
+      settleBuy(state, ctx, order, npc, idx, atGameMs)
     }
   }
 }
@@ -1048,14 +1075,14 @@ function crossOnPlacement(state: GameState, ctx: SimContext, order: PlayerOrder)
   return { filled, resting: order.qty }
 }
 
-function matchPlayerOrders(state: GameState, ctx: SimContext): void {
+function matchPlayerOrders(state: GameState, ctx: SimContext, atGameMs = state.gameMs): void {
   const bal = ctx.balance.market
   // 窗口簿面成交计数归零（站内让利吸收按"本窗总吸收 ≥ 配额"补差，见 absorbViaStation）
   for (const o of state.orders) if (o.side === 'sell') o.windowFilled = 0
   for (const order of [...state.orders]) {
     if (order.qty <= 0) continue
     // 簿面撮合（含商品下架防御，见 eatBook）
-    eatBook(state, ctx, order)
+    eatBook(state, ctx, order, atGameMs)
     if (order.side === 'sell') {
       // 越线抢单（卖出侧，2026-09-08 船长定）：簿吃不掉且挂价高于收购价线 → 巡游采购每窗掷骰；
       // 单次件数随溢价收窄放大（snatchSellFill：池商品贴线一次可收几十件，越远越小）
@@ -1086,7 +1113,7 @@ function matchPlayerOrders(state: GameState, ctx: SimContext): void {
           if (order.price < ask) {
             const s = ask > 0 ? (ask - order.price) / ask : 1
             const pRoll = Math.min(1, bal.snatchBuyChance * Math.exp(-bal.snatchBuyDecay * s))
-            if (nextRandom(state.rng) < pRoll) settleSnatchBuy(state, ctx, order)
+            if (nextRandom(state.rng) < pRoll) settleSnatchBuy(state, ctx, order, atGameMs)
           }
         }
       }
@@ -1149,8 +1176,10 @@ function settleSell(
 /** 买单成交：**从预扣里结算**（挂价 × 成交量），挂价高于实际成交价时把价差退回钱包，货入对应库存，池售出。
  *  2026-09-11（船长裁决「甲」预扣冻结）：钱在挂单时已扣，故此处不再看钱包；
  *  **遗留单**（改动前挂的、`escrowIsk` 缺省 0）仍按旧口径——钱包够才成交，不够继续挂着等。 */
-function settleBuy(state: GameState, ctx: SimContext, order: PlayerOrder, npc: NpcMarketOrder, idx: number): void {
-  const take = Math.min(order.qty, npc.qty)
+function settleBuy(state: GameState, ctx: SimContext, order: PlayerOrder, npc: NpcMarketOrder, idx: number, atGameMs: number): void {
+  const def = ctx.marketGoods.get(order.good)
+  const take = Math.min(order.qty, npc.qty, limitedSupplyAvailable(state.market.pools[order.good], def))
+  if (take <= 0) return
   const actual = take * npc.price // 实付给 NPC
   const reserved = take * order.price // 本笔应从预扣里核销的额度
   const escrow = order.escrowIsk ?? 0
@@ -1164,7 +1193,7 @@ function settleBuy(state: GameState, ctx: SimContext, order: PlayerOrder, npc: N
     state.wallet.isk -= actual
     order.escrowIsk = 0
   }
-  const def = ctx.marketGoods.get(order.good)
+  consumeLimitedSupply(state.market.pools[order.good], def, take, atGameMs)
   depositGood(state, ctx, order.good, take)
   order.filled += take
   order.qty -= take
@@ -1235,7 +1264,9 @@ function settleSnatchSell(state: GameState, ctx: SimContext, order: PlayerOrder,
 
 /** 越线买单抢单成交（2026-09-08 船长定：巡游供货 1 件 @ 挂单价）。
  *  2026-09-11（预扣冻结）：钱在挂单时已扣 ⇒ 从预扣里核销 1 件；遗留单（无预扣）仍看钱包。 */
-function settleSnatchBuy(state: GameState, ctx: SimContext, order: PlayerOrder): void {
+function settleSnatchBuy(state: GameState, ctx: SimContext, order: PlayerOrder, atGameMs: number): void {
+  const def = ctx.marketGoods.get(order.good)
+  if (limitedSupplyAvailable(state.market.pools[order.good], def) < 1) return
   const escrow = order.escrowIsk ?? 0
   if (escrow >= order.price) {
     order.escrowIsk = escrow - order.price
@@ -1243,7 +1274,8 @@ function settleSnatchBuy(state: GameState, ctx: SimContext, order: PlayerOrder):
     if (state.wallet.isk < order.price) return // 遗留单：钱包不足当窗跳过
     state.wallet.isk -= order.price
   }
-  const def = ctx.marketGoods.get(order.good)
+  consumeLimitedSupply(state.market.pools[order.good], def, 1, atGameMs)
+  if (hasLimitedSupply(def)) refreshLimitedSupplyBook(state, ctx, def!, atGameMs)
   depositGood(state, ctx, order.good, 1)
   order.filled += 1
   order.qty -= 1
@@ -1483,6 +1515,7 @@ export function placeBuyOrder(state: GameState, ctx: SimContext, goodKey: string
   if (goodLockedReason(state, def) !== null) return null
   if (bmGateLocked(state, def)) return null // P2：声望闸内不开放常驻买单（暗市单现买即可）
   if (def.playerBuyable === false) return null // 只收不卖商品（如残骸）：不开放挂买单
+  if (hasLimitedSupply(def)) ensureMarket(state, ctx)
   const unit = Math.round(price)
   // 预扣口径：按余额缩量（向下取整到件；轮不到 1 件就拒绝）
   const affordable = Math.floor(state.wallet.isk / unit)
@@ -1759,7 +1792,8 @@ export function buyAtMarket(
       blocked = 'standing' // 单子在、但被声望闸跳过——不能报"没货"
       continue
     }
-    const take = Math.min(remaining, npc.qty)
+    const take = Math.min(remaining, npc.qty, limitedSupplyAvailable(mk.pools[goodKey], def))
+    if (take <= 0) break
     const value = take * npc.price
     if (state.wallet.isk < value) {
       blocked = 'insufficient-isk' // 钱不够——同样不能报"没货"
@@ -1768,6 +1802,7 @@ export function buyAtMarket(
     const idx = sellList.indexOf(npc)
     if (idx < 0) continue
     state.wallet.isk -= value
+    consumeLimitedSupply(mk.pools[goodKey], def, take, state.gameMs)
     total += value
     remaining -= take
     const depUid = depositGood(state, ctx, goodKey, take)

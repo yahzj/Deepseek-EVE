@@ -1,12 +1,12 @@
 /**
- * 洞内产出链：虚空母矿 / 虚空晶 **只收不卖** ＋ 虚空晶产出量半量（2026-09-14 船长）。
+ * 洞内产出链：母矿只收不卖，虚空晶2026-10-06改走限额慢补货；精炼半量保持。
  *
  * 船长原话：「**虚空晶和虚空母矿也添加只收不卖。**」＋「**市场不会出现虚空晶和母矿的卖单。**」
  * ＋「**然后精炼炉，虚空晶的产出量下调到一半**」＋（价格口径）「**价格不动。**」
  *
  * 口径（设计稿 `docs/design/void-chain-20260914.md`）：
- * - 市场两行 `playerBuyable: false`：**买不到**、**NPC 一笔卖单都不铺**（`market.seedCommonBook` 的门），
- *   但 **NPC 照常收购**（带回的母矿/晶体随时能卖）；价格一律不动；
+ * - 市场母矿 `playerBuyable: false`；虚空晶出售上限3000枚、每6分钟补1枚。
+ *   两者NPC收购照常；现行价格保持，虚空晶旧只收不卖部分已由新裁定覆盖。
  * - 精炼产出：虚空母矿 → 虚空晶 `perOre` **0.5 → 0.25**（副产物同位聚晶 1.0 / 星髓晶 0.25 不动）。
  */
 import { describe, expect, it } from 'vitest'
@@ -30,13 +30,17 @@ function bookQty(book: Map<string, Array<{ qty: number }>> | Record<string, Arra
   return (rows ?? []).reduce((s, o) => s + o.qty, 0)
 }
 
-describe('洞内产出链（虚空母矿 / 虚空晶）只收不卖 ＋ 半量（2026-09-14 船长）', () => {
-  it('数据口径：两条市场行只收不卖 · 精炼虚空晶 perOre = 0.25（2026-09-14 半量；2026-09-28 排除体积平衡后回原值）', () => {
+describe('洞内产出链：母矿只收不卖、虚空晶限额慢补货，精炼半量保持', () => {
+  it('数据口径：母矿只收不卖，虚空晶限额供应 · 精炼虚空晶 perOre = 0.25', () => {
     const { ctx } = world()
     for (const key of ['ore-voidmother', 'min-voidcrystal']) {
       const def = ctx.marketGoods.get(key)
       expect(def, `${key} 应有市场行`).toBeTruthy()
-      expect(def!.playerBuyable, `${key} 必须只收不卖`).toBe(false)
+      if (key === 'ore-voidmother') expect(def!.playerBuyable).toBe(false)
+      else {
+        expect(def!.playerBuyable).not.toBe(false)
+        expect(def!.limitedSupplyCap).toBe(3000)
+      }
       // 2026-09-28 船长令「把虚空母矿排除在体积平衡」⇒ 市场行价回到原值 1,300（收购 ≈780）；
       // 2026-10-01 船长裁「甲」⇒ 虚空晶行情价 1,800 → **5,400**（与 items.ts 基准价一物一价，修"精炼显示亏本"）
       expect(def!.basePrice, `${key} 基础价`).toBe(key === 'ore-voidmother' ? 1_300 : 5_400)
@@ -68,10 +72,10 @@ describe('洞内产出链（虚空母矿 / 虚空晶）只收不卖 ＋ 半量�
     expect(value - cost, '面板必须显示正收益').toBeGreaterThan(0)
   })
 
-  it('市场簿面：两条 **一笔 NPC 卖单都不铺**，但**照常收购**（对照组：普通原矿两侧都有单）', () => {
+  it('市场簿面：母矿不铺卖单，虚空晶初始3000枚，两者照常收购', () => {
     const { state } = world()
     for (const key of ['ore-voidmother', 'min-voidcrystal']) {
-      expect(bookQty(state.market.npcSell, key), `${key} 不该有 NPC 卖单`).toBe(0)
+      expect(bookQty(state.market.npcSell, key)).toBe(key === 'ore-voidmother' ? 0 : 3000)
       expect(bookQty(state.market.npcBuy, key), `${key} 应有 NPC 收购单`).toBeGreaterThan(0)
     }
     // 对照：普通原矿两侧都有（证明上一条不是"整个簿面都空"的假绿）
@@ -82,11 +86,11 @@ describe('洞内产出链（虚空母矿 / 虚空晶）只收不卖 ＋ 半量�
     expect(bookQty(state.market.npcBuy, 'box-relic-a')).toBeGreaterThan(0)
   })
 
-  it('买入被拦（not-buyable）；玩家挂买单亦被拦 —— 现状口径（船长若要放开，改 placeBuyOrder 那条门）', () => {
+  it('母矿买入与挂买单仍被拦；虚空晶可买入', () => {
     const { state, ctx } = world()
     expect(buyAtMarket(state, ctx, 'ore-voidmother', 1).blocked).toBe('not-buyable')
-    expect(buyAtMarket(state, ctx, 'min-voidcrystal', 1).blocked).toBe('not-buyable')
     state.wallet.isk = 10_000_000
+    expect(buyAtMarket(state, ctx, 'min-voidcrystal', 1).bought).toBe(1)
     expect(placeBuyOrder(state, ctx, 'ore-voidmother', 1_000, 10), '只收不卖商品不开放玩家挂买单').toBeNull()
   })
 

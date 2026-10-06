@@ -129,11 +129,9 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
   // 2026-10-05 船长确认七池容量表：只扩目标池，流量与成交规则保持原值。
   { key: 'min-starcore', kind: 'item', refId: 'min-starcore', rarity: 'common', basePrice: 245, poolTarget: 48_000, supplyFlow: 133 },
   { key: 'min-darkiron', kind: 'item', refId: 'min-darkiron', rarity: 'common', basePrice: 780, poolTarget: 16_000, supplyFlow: 26 },
-  // 【虚空晶（2026-09-14 船长：「虚空晶和虚空母矿也添加只收不卖」「市场不会出现…卖单」）：
-  //   它是**24 张洞内蓝图 + 皇带鱼级**的通用主料，来源只有"虚空母矿精炼"与"回收彩头"
-  //   ⇒ 只收不卖（NPC 不铺卖单、买入被拦），**收购照常**。`poolTarget/supplyFlow` 保留：
-  //   池面仍参与均衡价与收购阶梯的计算，只是不再铺供应单。】
-  { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 5_400, poolTarget: 48_000, supplyFlow: 13, playerBuyable: false }, // 只收不卖（2026-09-14 船长）；2026-10-01 船长裁「甲」：行情价 1,800 → **5,400**（与 items.ts 的基准价同步 ⇒ 修掉"精炼面板显示亏本"）
+  // 2026-10-06 船长确认限额慢补货：初始/上限3000枚，每6分钟补1枚；覆盖虚空晶旧只收不卖裁定。
+  // 经济池48000、收购流量13与5400基础价不变，虚空母矿仍只收不卖。
+  { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 5_400, poolTarget: 48_000, supplyFlow: 13, limitedSupplyCap: 3_000, limitedSupplyEveryMs: 6 * 60_000, limitedSupplyUnits: 1 },
   // ── 跃迁燃料链（**2026-09-29 船长令**：3 种新精炼材料 ＋ 燃料）──
   // 【新矿物 = 玩家产出要拿去卖钱 ⇒ 照本文件既有口径走 **common 池**（船长 2026-09-29「4 是」：
   //   新矿物放普通池）。池宽按"单炉满技能精炼产能的 ~2 倍"标（同 2026-09-10 那批的算法）：

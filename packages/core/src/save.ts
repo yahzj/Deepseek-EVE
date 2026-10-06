@@ -952,6 +952,15 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       netVol: num(p.netVol, 0),
       lastHistoryGameMs: Math.max(0, Math.floor(num(p.lastHistoryGameMs))),
       noise: num(p.noise, 0),
+      ...(p.limitedSupply !== undefined ? {
+        limitedSupply: {
+          remaining: Math.max(0, Math.floor(num(asRaw(p.limitedSupply).remaining))),
+          refillProgressMs: Math.max(0, Math.floor(num(asRaw(p.limitedSupply).refillProgressMs))),
+          ...(asRaw(p.limitedSupply).lastRefillGameMs !== undefined ? {
+            lastRefillGameMs: Math.max(0, Math.floor(num(asRaw(p.limitedSupply).lastRefillGameMs))),
+          } : {}),
+        },
+      } : {}),
     }
   }
   const buyBooks: Record<string, unknown> = {}

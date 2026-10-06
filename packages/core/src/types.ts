@@ -816,6 +816,12 @@ export interface MarketGoodDef {
   poolTarget?: number
   /** 常驻商品：NPC 供应单的稳态流量（玩家买入侧保障量级） */
   supplyFlow?: number
+  /** 限额慢补货：常驻NPC出售额度上限，与经济库存池独立；不配置则沿用原供货。 */
+  limitedSupplyCap?: number
+  /** 限额慢补货周期（游戏毫秒）；满额时不积攒进度。 */
+  limitedSupplyEveryMs?: number
+  /** 每周期增加的出售数量，缺省1；不受技能/铁人/建站倍率影响。 */
+  limitedSupplyUnits?: number
   /** 站内让利吸收：每窗基础吸收额覆写（2026-09-08 船长定，缺省按类别推导：
    * 池商品 = supplyFlow（或 poolTarget/120）、common 单件 = 1、rare = 0.3、奇货 = 0.1 件/窗） */
   absorbQtyPerWindow?: number

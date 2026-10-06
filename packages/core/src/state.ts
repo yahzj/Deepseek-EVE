@@ -1783,6 +1783,8 @@ export interface MarketPoolState {
   netVol: number
   /** 最近一次历史记录时刻（价格小史采样） */
   lastHistoryGameMs: number
+  /** 限额慢补货独立出售账本，零余额也必须随档保留；经济池回归不增加此额度。 */
+  limitedSupply?: { remaining: number; refillProgressMs: number; lastRefillGameMs?: number }
 }
 
 /** NPC 订单簿单条 */
