@@ -13099,20 +13099,12 @@ html[data-locale='en'] body {
 .app-bm-monitor-rim { fill: none; stroke: rgb(var(--wui-text-dim) / 0.4); stroke-width: 1; }
 .app-bm-monitor-glass { fill: rgb(var(--wui-bg-scene-dock)); stroke: currentColor; stroke-width: 1.5; }
 .app-bm-screen-guide { fill: none; stroke: currentColor; stroke-width: 1; opacity: 0.2; }
-.app-bm-robot-plate { fill: rgb(var(--wui-text-2) / 0.72); stroke: rgb(var(--wui-text)); stroke-width: 1.5; stroke-linejoin: round; }
-.app-bm-robot-joint, .app-bm-robot-eye-socket { fill: rgb(var(--wui-bg-panel)); stroke: rgb(var(--wui-text-dim)); stroke-width: 1.2; }
-.app-bm-robot-highlight { fill: rgb(var(--wui-text) / 0.4); stroke: none; }
-.app-bm-robot-seam { fill: none; stroke: rgb(var(--wui-bg-scene-dock)); stroke-width: 1.4; stroke-linejoin: round; }
-.app-bm-robot-detail { fill: none; stroke: rgb(var(--wui-bg-scene-dock)); stroke-width: 1; opacity: 0.7; }
-.app-bm-robot-cable { fill: none; stroke: rgb(var(--wui-accent)); stroke-width: 3; stroke-linecap: round; }
-.app-bm-robot-port { fill: rgb(var(--wui-bg-panel)); stroke: rgb(var(--wui-rare)); stroke-width: 1.8; stroke-linejoin: round; }
-.app-bm-merchant-mouth { fill: none; stroke: rgb(var(--wui-accent)); stroke-width: 1.2; stroke-linecap: round; }
-.app-bm-merchant-eyes { fill: rgb(var(--wui-accent) / 0.45); stroke: rgb(var(--wui-accent)); stroke-width: 1; transform-box: fill-box; transform-origin: center; animation: app-bm-blink 6.8s ease-in-out infinite; }
-.app-bm-robot-iris { fill: rgb(var(--wui-text)); stroke: currentColor; stroke-width: 1; }
-.app-bm-monitor.is-deal .app-bm-robot-iris { fill: rgb(var(--wui-rare)); }
-.app-bm-robot-glint { fill: rgb(var(--wui-bg-scene-dock)); stroke: none; }
-.app-bm-merchant-tentacle { fill: rgb(var(--wui-accent-deep) / 0.55); stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.app-bm-robot-suckers { fill: rgb(var(--wui-accent) / 0.14); stroke: currentColor; stroke-width: 1; }
+.app-bm-comms-portrait { color: rgb(var(--wui-tone-nav-shop)); }
+.app-bm-merchant-hood { fill: rgb(var(--wui-bg-panel)); stroke: rgb(var(--wui-text-dim)); stroke-width: 0.22; stroke-linejoin: round; }
+.app-bm-merchant-hood-opening { fill: rgb(var(--wui-bg-scene-dock)); stroke: rgb(var(--wui-text-dim) / 0.5); stroke-width: 0.15; }
+.app-bm-merchant-hood-seam { fill: none; stroke: rgb(var(--wui-text-dim) / 0.6); stroke-width: 0.15; stroke-linecap: round; }
+.app-bm-merchant-monocle { fill: none; stroke: currentColor; stroke-width: 0.22; stroke-linecap: round; }
+.app-bm-monocle-reflection { stroke: rgb(var(--wui-text)); stroke-width: 0.12; }
 .app-bm-merchant-image { animation: app-bm-signal-shift 9s linear infinite; }
 .app-bm-scanline { stroke: currentColor; stroke-width: 1; opacity: 0.16; }
 .app-bm-signal-band { color: rgb(var(--wui-text)); opacity: 0.07; animation: app-bm-signal-sweep 8s linear infinite; }
@@ -13132,7 +13124,6 @@ html[data-locale='en'] body {
 @container bm-stock (max-width: 340px) {
   .app-bm-cardflow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@keyframes app-bm-blink { 0%, 44%, 48%, 100% { transform: scaleY(1); } 46% { transform: scaleY(0.12); } }
 @keyframes app-bm-signal-shift { 0%, 92%, 96%, 100% { transform: translateX(0); } 93%, 95% { transform: translateX(1px); } 94% { transform: translateX(-1px); } }
 @keyframes app-bm-signal-sweep { from { transform: translateY(-28px); } to { transform: translateY(282px); } }
 body.no-fx .app-bm-monitor * { animation: none; }

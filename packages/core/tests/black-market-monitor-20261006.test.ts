@@ -73,24 +73,25 @@ describe('黑市监视器与入口真实组件行为', () => {
     expect(changes).toEqual(['', 'all', 'rare'])
   })
 
-  it('SVG监视器保持章鱼人身份，剪裁/扫描标识逐组件唯一，成交嘴形改变', () => {
+  it('SVG监视器保持章鱼人身份，剪裁/扫描标识逐组件唯一，三姿态复用同一通讯头像', () => {
     let seq = 0
-    const scope = { React: jsx, exports: {}, useId: () => `:r${seq++}:`, tr, result: undefined }
+    const scope = { React: jsx, exports: {}, useId: () => `:r${seq++}:`, tr, Glyph: 'Glyph', result: undefined }
     const monitor = component('ui/MerchantMonitor.tsx', 'MerchantMonitor', scope)
     const idle = nodes(monitor({ mood: 'idle' })), deal = nodes(monitor({ mood: 'deal' }))
     expect(idle[0]!.props['aria-label']).toBe(tr('ui.blackMarket.023'))
     expect(idle.find(n => n.type === 'svg')!.props.viewBox).toBe('0 0 420 350')
     const ids = (rows: Node[]) => rows.filter(n => n.props.id).map(n => n.props.id)
     expect(ids(idle).some(id => ids(deal).includes(id))).toBe(false)
-    const mouth = (rows: Node[]) => rows.find(n => n.props.className === 'app-bm-merchant-mouth')!.props.d
-    expect(mouth(idle)).not.toBe(mouth(deal))
+    const avatar = (rows: Node[]) => rows.find(n => n.type === 'Glyph')!
+    expect(avatar(idle).props).toEqual(avatar(deal).props)
+    expect(avatar(idle).props.name).toBe('faction-octopus')
     expect(idle.some(n => n.type === 'pre' || n.type === 'filter')).toBe(false)
   })
 
   it.each(['idle', 'pitch', 'deal'])('%s姿态只重绘商人，上一版监视器/扫描/剪裁结构逐项不变', mood => {
     const path = 'ui/MerchantMonitor.tsx'
     const before = execFileSync('git', ['show', `c5f8be83:${ui + path}`], { cwd: ROOT, encoding: 'utf8' })
-    const scope = () => ({ React: jsx, exports: {}, useId: () => ':monitor:', tr, result: undefined })
+    const scope = () => ({ React: jsx, exports: {}, useId: () => ':monitor:', tr, Glyph: 'Glyph', result: undefined })
     const previous = component(path, 'MerchantMonitor', scope(), before)({ mood })
     const current = component(path, 'MerchantMonitor', scope())({ mood })
     const shell = (value: unknown): unknown => {
@@ -105,18 +106,38 @@ describe('黑市监视器与入口真实组件行为', () => {
     expect(shell(current)).toEqual(shell(previous))
   })
 
-  it('机械面甲/关节与触手发束齐备，选货改变视线和头部，移除衣服及招手', () => {
-    const monitor = component('ui/MerchantMonitor.tsx', 'MerchantMonitor', { React: jsx, exports: {}, useId: () => ':r:', tr, result: undefined })
+  it('通讯头像加兜帽和单片镜，选货只改整体姿态，不重画五官或保留机器人', () => {
+    const monitor = component('ui/MerchantMonitor.tsx', 'MerchantMonitor', { React: jsx, exports: {}, useId: () => ':r:', tr, Glyph: 'Glyph', result: undefined })
     const idle = nodes(monitor({ mood: 'idle' })), pitch = nodes(monitor({ mood: 'pitch' })), deal = nodes(monitor({ mood: 'deal' }))
-    for (const className of ['app-bm-robot-neck', 'app-bm-robot-shoulders', 'app-bm-robot-head', 'app-bm-robot-plate', 'app-bm-robot-suckers', 'app-bm-merchant-tentacle']) {
+    for (const className of ['app-bm-comms-portrait', 'app-bm-merchant-hood', 'app-bm-merchant-hood-opening', 'app-bm-merchant-monocle']) {
       expect(idle.some(n => n.props.className === className), className).toBe(true)
     }
-    const head = (rows: Node[]) => rows.find(n => n.props.className === 'app-bm-robot-head')!
+    const head = (rows: Node[]) => rows.find(n => n.props.className === 'app-bm-comms-portrait')!
     expect(head(idle).props.transform).toBeUndefined()
     expect(head(pitch).props.transform).not.toBe(head(deal).props.transform)
-    const iris = (rows: Node[]) => rows.find(n => n.props.className === 'app-bm-robot-iris')!
-    expect(iris(idle).props.cx).not.toBe(iris(pitch).props.cx)
-    expect(idle.some(n => ['app-bm-merchant-coat', 'app-bm-merchant-hand', 'app-bm-merchant-headset'].includes(n.props.className))).toBe(false)
+    expect(idle.filter(n => n.type === 'Glyph')).toHaveLength(1)
+    expect(idle.some(n => String(n.props.className).startsWith('app-bm-robot-'))).toBe(false)
+    expect(idle.some(n => ['app-bm-merchant-mouth', 'app-bm-merchant-eyes'].includes(n.props.className))).toBe(false)
+    const monocle = idle.find(n => n.props.className === 'app-bm-merchant-monocle')!
+    expect(nodes(monocle).find(n => n.type === 'circle')!.props).toMatchObject({ cx: '14.94', cy: '8.25' })
+  })
+
+  it('共享章鱼图形与通讯头像调用保留，不修改原五官和腕足', () => {
+    for (const path of ['ui/Glyphs.tsx', 'panels/CommsReader.tsx']) {
+      const before = execFileSync('git', ['show', `b994234f:${ui + path}`], { cwd: ROOT, encoding: 'utf8' })
+      const avatar = (ast: ts.SourceFile) => {
+        let found: ts.Node | undefined
+        const visit = (node: ts.Node) => {
+          if (path.endsWith('Glyphs.tsx') && ts.isPropertyAssignment(node) && ts.isStringLiteral(node.name) && node.name.text === 'faction-octopus') found = node.initializer
+          if (path.endsWith('CommsReader.tsx') && ts.isJsxSelfClosingElement(node) && node.tagName.getText(ast) === 'Glyph' && node.getText(ast).includes('entry.glyph')) found = node
+          ts.forEachChild(node, visit)
+        }
+        visit(ast)
+        expect(found, path).toBeDefined()
+        return found!.getText(ast).replace(/\r\n/g, '\n')
+      }
+      expect(avatar(source(path)), path).toBe(avatar(source(path, before)))
+    }
   })
 
   it('九卡选货到购买调用保持原报价与日期，商人mood随选货/成交切换', () => {
