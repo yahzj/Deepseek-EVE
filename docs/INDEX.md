@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **479** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7739** KB · **60186** 行
-- 状态分布：**未标注** 254 · **已确认/已实现** 150 · **进行中** 53 · **待裁定** 21 · **历史留档** 1
-- 孤儿文档（0 引用）**104** 份 · 状态未标注 **254** 份
+- 文档总数 **478** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7731** KB · **60124** 行
+- 状态分布：**未标注** 254 · **已确认/已实现** 149 · **进行中** 53 · **待裁定** 21 · **历史留档** 1
+- 孤儿文档（0 引用）**103** 份 · 状态未标注 **254** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**323** 份
+- 三、现行设计稿（design）：**322** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**5** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 299 KB / 308 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 90 KB / 908 行 | 95 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 512 KB / 1042 行 | 227 / 20 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 90 KB / 467 行 | 376 / 26 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 90 KB / 469 行 | 377 / 26 |
 
 ## 七、评审与体检（review） —— 12 份
 
@@ -55,7 +55,7 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 323 份
+## 三、现行设计稿（design） —— 322 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -67,7 +67,6 @@
 | `docs/design/black-market-monitor-20261006.md` | 黑市紧凑货架与商人监视器 | 已确认/已实现（已实现） | 2026-10-06 | 8 KB / 68 行 | 0 / 0 |
 | `docs/design/black-market-speech-name-20261006.md` | 黑市对白下方重复商品名移除 | 已确认/已实现（已实现） | 2026-10-06 | 3 KB / 42 行 | 0 / 0 |
 | `docs/design/market-limited-supply-20261006.md` | 限额慢补货与虚空晶应急供应 | 已确认/已实现（已实现并本地合入） | 2026-10-06 | 7 KB / 80 行 | 0 / 0 |
-| `docs/design/signal-space-occupied-vein-20261006.md` | 信号空间被占矿点战后无法采矿复核 | 已确认/已实现（已确认/已修复） | 2026-10-06 | 10 KB / 84 行 | 0 / 0 |
 | `docs/design/drone-launch-preview-20261005.md` | 无人机队列出击隔离预演 | 待裁定（待船长审查） | 2026-10-05 | 5 KB / 67 行 | 0 / 0 |
 | `docs/design/market-pool-capacity-20261005.md` | 七种商品目标池容量调整 | 已确认/已实现（已实现并本地合入） | 2026-10-05 | 4 KB / 46 行 | 0 / 0 |
 | `docs/design/per-gun-volley-20261005.md` | 逐炮命中与敌方炮数 | 已确认/已实现（已实现并本地合入） | 2026-10-05 | 7 KB / 64 行 | 0 / 0 |
@@ -203,7 +202,7 @@
 | `docs/design/shield-field-cpu-20260924.md` | 护盾充能力场装置 MK2 / MK3 的 CPU 占用上调（2026-09-24） | 进行中（进行中 —— 改动已落码） | 2026-09-24 | 3 KB / 45 行 | 3 / 0 |
 | `docs/design/weekend-invasion-m2-20260924.md` | 周末入侵 M2 · 三族入侵者与各自 T5 旗舰（2026-09-24 · 进行中） | 进行中（进行中 —— 逐族落地） | 2026-09-24 | 26 KB / 274 行 | 0 / 1 |
 | `docs/design/skills-merge-20260923.md` | 技能页合并（旧目录 → 科技树页）· 2026-09-23 | 未标注（已落码） | 2026-09-23 | 8 KB / 78 行 | 0 / 0 |
-| `docs/design/wh-spawn-layer7-20260923.md` | 虫洞：强度增幅上调 ＋ 第 7 层起「逐回合刷怪」（2026-09-23） | 进行中（进行中 —— ①数值回调已确认并落码） | 2026-09-23 | 8 KB / 78 行 | 1 / 1 |
+| `docs/design/wh-spawn-layer7-20260923.md` | 虫洞：强度增幅上调 ＋ 第 7 层起「逐回合刷怪」（2026-09-23） | 进行中（进行中 —— ①数值回调已确认并落码） | 2026-09-23 | 10 KB / 98 行 | 2 / 1 |
 | `docs/design/archived-window-embed-20260922.md` | 归档备用：窗口化 / 嵌入主区 这一整套界面改动（2026-09-22） | 未标注（已封存 · 备用） | 2026-09-22 | 9 KB / 104 行 | 1 / 11 |
 | `docs/design/hold-ux-20260922.md` | 洞内货仓操作体验四条（2026-09-22） | 未标注（四条已全部落码） | 2026-09-22 | 9 KB / 98 行 | 0 / 1 |
 | `docs/design/import-save-edge-20260922.md` | 网页版导入存档"没反应"：取消判定竞态（2026-09-22） | 进行中（进行中） | 2026-09-22 | 3 KB / 39 行 | 1 / 0 |
@@ -549,7 +548,7 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，104 份）
+## 附：孤儿文档（0 引用，103 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
@@ -560,7 +559,6 @@
 - `docs/design/black-market-monitor-20261006.md`（2026-10-06 · 8 KB）—— 黑市紧凑货架与商人监视器
 - `docs/design/black-market-speech-name-20261006.md`（2026-10-06 · 3 KB）—— 黑市对白下方重复商品名移除
 - `docs/design/market-limited-supply-20261006.md`（2026-10-06 · 7 KB）—— 限额慢补货与虚空晶应急供应
-- `docs/design/signal-space-occupied-vein-20261006.md`（2026-10-06 · 10 KB）—— 信号空间被占矿点战后无法采矿复核
 - `docs/design/drone-launch-preview-20261005.md`（2026-10-05 · 5 KB）—— 无人机队列出击隔离预演
 - `docs/design/market-pool-capacity-20261005.md`（2026-10-05 · 4 KB）—— 七种商品目标池容量调整
 - `docs/design/per-gun-volley-20261005.md`（2026-10-05 · 7 KB）—— 逐炮命中与敌方炮数
