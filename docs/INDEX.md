@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **477** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7841** KB · **61016** 行
-- 状态分布：**未标注** 254 · **已确认/已实现** 148 · **进行中** 53 · **待裁定** 21 · **历史留档** 1
-- 孤儿文档（0 引用）**103** 份 · 状态未标注 **254** 份
+- 文档总数 **476** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7712** KB · **59981** 行
+- 状态分布：**未标注** 253 · **已确认/已实现** 148 · **进行中** 53 · **待裁定** 21 · **历史留档** 1
+- 孤儿文档（0 引用）**101** 份 · 状态未标注 **253** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**322** 份
+- 三、现行设计稿（design）：**321** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**4** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -30,13 +30,13 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 8 KB / 97 行 | 221 / 10 |
-| `docs/architecture.md` | 架构文档 | 未标注 | — | 23 KB / 227 行 | 32 / 1 |
+| `docs/architecture.md` | 架构文档 | 未标注 | — | 24 KB / 231 行 | 32 / 1 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 6 KB / 62 行 | 33 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 8 KB / 123 行 | 1 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 299 KB / 308 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 90 KB / 908 行 | 95 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 512 KB / 1042 行 | 227 / 21 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 88 KB / 463 行 | 376 / 26 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 89 KB / 465 行 | 376 / 26 |
 
 ## 七、评审与体检（review） —— 12 份
 
@@ -55,11 +55,11 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 322 份
+## 三、现行设计稿（design） —— 321 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/announcement-draft-signal-space-20261006.md` | 信号空间公告待审稿 | 待裁定（待船长明确批准） | 2026-10-06 | 1 KB / 26 行 | 0 / 0 |
+| `docs/design/announcement-draft-signal-space-20261006.md` | 信号空间公告待审稿 | 待裁定（待船长明确批准） | 2026-10-06 | 1 KB / 26 行 | 1 / 0 |
 | `docs/design/black-market-android-merchant-20261006.md` | 触手发束与机械副官风格商人 | 已确认/已实现（已实现） | 2026-10-06 | 6 KB / 57 行 | 0 / 0 |
 | `docs/design/black-market-cards-rework-20261006.md` | 黑市商品卡详情统一与商人重绘 | 已确认/已实现（已实现） | 2026-10-06 | 12 KB / 95 行 | 0 / 0 |
 | `docs/design/black-market-comms-avatar-20261006.md` | 黑市复用通讯章鱼人头像 | 已确认/已实现（已实现） | 2026-10-06 | 5 KB / 54 行 | 0 / 0 |
@@ -86,7 +86,6 @@
 | `docs/design/mobile-navigation-web-style-20261004.md` | 手机导航恢复网页版规则 | 已确认/已实现（已确认） | 2026-10-04 | 3 KB / 27 行 | 0 / 0 |
 | `docs/design/mobile-shell-layout-20261004.md` | 手机布局第二轮：日志抽屉与主区优先 | 已确认/已实现（已确认） | 2026-10-04 | 8 KB / 59 行 | 0 / 0 |
 | `docs/design/titan-class-black-market-20261004.md` | T5泰坦分类与黑市门槛落地 | 已确认/已实现（已确认） | 2026-10-04 | 3 KB / 37 行 | 0 / 0 |
-| `docs/design/wormhole-expedition-rework-20261004.md` | 虫洞改进方案：整备、情报与远征选择 | 未标注（船长批准合入与检查同步后推送） | 2026-10-04 | 143 KB / 1125 行 | 0 / 0 |
 | `docs/design/wreck-faction-rollback-20261004.md` | 普通残骸势力装备回调与核心稀有限定 | 已确认/已实现（已确认） | 2026-10-04 | 4 KB / 39 行 | 0 / 0 |
 | `docs/design/beacon-target-highsec-20261003.md` | 信号发射器：高安判据改看「玩家选定的目标星系」 | 未标注 | 2026-10-03 | 5 KB / 64 行 | 0 / 0 |
 | `docs/design/corona-balance-20261003.md` | 光环敌舰强度调整 | 待裁定（待船长审字） | 2026-10-03 | 4 KB / 48 行 | 0 / 0 |
@@ -121,7 +120,7 @@
 | `docs/design/handover-yihao-20261002.md` | 交接卡 · 一号会话（2026-10-02 收尾） | 进行中（进行中） | 2026-10-02 | 7 KB / 70 行 | 5 / 0 |
 | `docs/design/invasion-open-gate-20261002.md` | 入侵开局判据：改「一窗一场」为「无进行中的场」（2026-10-02 · 二号 · 待船长验收） | 未标注 | 2026-10-02 | 7 KB / 91 行 | 0 / 1 |
 | `docs/design/invasion-wreck-amount-20261002.md` | 入侵残骸出量：让池子的量真正约束出量（2026-10-02 · 二号 · 待船长验收） | 未标注 | 2026-10-02 | 6 KB / 89 行 | 1 / 0 |
-| `docs/design/mobile-wormhole-20261002.md` | 手机模式 · 虫洞探索界面全屏两栏 ＋ 货仓触摸拖拽（工作文档） | 进行中（进行中） | 2026-10-02 | 5 KB / 73 行 | 1 / 4 |
+| `docs/design/mobile-wormhole-20261002.md` | 手机模式 · 虫洞探索界面全屏两栏 ＋ 货仓触摸拖拽（工作文档） | 进行中（进行中） | 2026-10-02 | 5 KB / 73 行 | 0 / 4 |
 | `docs/design/player-bugfix-20261002.md` | 玩家报障三修（期望距离 · 技能加速自动续用）（工作文档） | 进行中（进行中） | 2026-10-02 | 5 KB / 60 行 | 3 / 0 |
 | `docs/design/r-open-distance-20261002.md` | 开场距离被 R 族族格顶掉（2026-10-03 · 二号 · 已落码 · 待验收） | 未标注 | 2026-10-02 | 4 KB / 60 行 | 1 / 0 |
 | `docs/design/refactor-modularization-20261002.md` | 按功能模块拆分（重构蓝图与批次台账 · 工作文档 · 2026-10-02） | 进行中（进行中） | 2026-10-02 | 51 KB / 605 行 | 6 / 3 |
@@ -202,7 +201,7 @@
 | `docs/design/shield-field-cpu-20260924.md` | 护盾充能力场装置 MK2 / MK3 的 CPU 占用上调（2026-09-24） | 进行中（进行中 —— 改动已落码） | 2026-09-24 | 3 KB / 45 行 | 3 / 0 |
 | `docs/design/weekend-invasion-m2-20260924.md` | 周末入侵 M2 · 三族入侵者与各自 T5 旗舰（2026-09-24 · 进行中） | 进行中（进行中 —— 逐族落地） | 2026-09-24 | 26 KB / 274 行 | 0 / 1 |
 | `docs/design/skills-merge-20260923.md` | 技能页合并（旧目录 → 科技树页）· 2026-09-23 | 未标注（已落码） | 2026-09-23 | 8 KB / 78 行 | 0 / 0 |
-| `docs/design/wh-spawn-layer7-20260923.md` | 虫洞：强度增幅上调 ＋ 第 7 层起「逐回合刷怪」（2026-09-23） | 进行中（进行中 —— ①数值回调已确认并落码） | 2026-09-23 | 8 KB / 78 行 | 2 / 1 |
+| `docs/design/wh-spawn-layer7-20260923.md` | 虫洞：强度增幅上调 ＋ 第 7 层起「逐回合刷怪」（2026-09-23） | 进行中（进行中 —— ①数值回调已确认并落码） | 2026-09-23 | 8 KB / 78 行 | 1 / 1 |
 | `docs/design/archived-window-embed-20260922.md` | 归档备用：窗口化 / 嵌入主区 这一整套界面改动（2026-09-22） | 未标注（已封存 · 备用） | 2026-09-22 | 9 KB / 104 行 | 1 / 11 |
 | `docs/design/hold-ux-20260922.md` | 洞内货仓操作体验四条（2026-09-22） | 未标注（四条已全部落码） | 2026-09-22 | 9 KB / 98 行 | 0 / 1 |
 | `docs/design/import-save-edge-20260922.md` | 网页版导入存档"没反应"：取消判定竞态（2026-09-22） | 进行中（进行中） | 2026-09-22 | 3 KB / 39 行 | 1 / 0 |
@@ -258,7 +257,7 @@
 | `docs/design/wormhole-ships-review-20260913.md` | 虫洞专属舰船 · 数值审查表（15 艘） | 未标注（数据上桌） | 2026-09-13 | 18 KB / 162 行 | 1 / 2 |
 | `docs/design/haul-security-and-ambush-repair-20260912.md` | 低安运输批：长途运输报酬重标 + 遇袭后自动维修（2026-09-12 · 二号） | 已确认/已实现（已确认并实现） | 2026-09-12 | 10 KB / 124 行 | 4 / 0 |
 | `docs/design/p0-ai-cargo-capacity-20260912.md` | P0 结案：采矿船「货仓没满就返航」——AI 副船满舱判定的漏技能副本（2026-09-12 · 二号） | 已确认/已实现（已确认） | 2026-09-12 | 5 KB / 60 行 | 1 / 0 |
-| `docs/design/wormhole-extraction-endgame-20260912.md` | 终局玩法「虫洞」（搜打撤底层）· 设计稿 | 未标注 | 2026-09-12 | 182 KB / 1818 行 | 33 / 7 |
+| `docs/design/wormhole-extraction-endgame-20260912.md` | 终局玩法「虫洞」（搜打撤底层）· 设计稿 | 未标注 | 2026-09-12 | 194 KB / 1902 行 | 35 / 7 |
 | `docs/design/comms-20260911.md` | 通讯（通讯录）系统 · 设计稿（2026-09-11） | 已确认/已实现（已确认） | 2026-09-11 | 64 KB / 652 行 | 12 / 4 |
 | `docs/design/cpu-coprocessor-20260911.md` | 协处理器（低槽 CPU 预算扩容件）· 2026-09-11 | 已确认/已实现（已确认并已实现） | 2026-09-11 | 10 KB / 121 行 | 4 / 0 |
 | `docs/design/foe-baseline-audit-20260911.md` | 敌人数值复核：多装配对照 + 标准复核配置集（2026-09-11 · 已确认口径） | 未标注（纯测量批 · 未改任何数值） | 2026-09-11 | 16 KB / 205 行 | 17 / 3 |
@@ -345,7 +344,7 @@
 | `docs/design/power-ladder-rework.md` | 战力阶梯拉长：威胁曲线重标 + 装备解锁闸门（设计稿 · 2026-09-06 立稿） | 未标注 | — | 41 KB / 484 行 | 18 / 5 |
 | `docs/design/refine-balance-50.md` | 精炼配平：产出倍率 100% 基准 + 工业页净收益口径（设计定稿与实现记录） | 已确认/已实现（已确认并实现） | — | 7 KB / 89 行 | 9 / 0 |
 | `docs/design/refine-cycles.md` | 工业细化：精炼炉「运转周期」（设计定稿与实现记录） | 已确认/已实现（已确认并实现） | — | 8 KB / 100 行 | 10 / 0 |
-| `docs/design/ship-size-tier-rework.md` | 舰船尺寸分级重构 + 巡洋舰线(设计定稿 v3,2026-09-09 船长逐轮拍板;状态:已确认并实现、已合入 main) | 已确认/已实现（已确认并实现、已合入 main） | — | 13 KB / 153 行 | 12 / 0 |
+| `docs/design/ship-size-tier-rework.md` | 舰船尺寸分级重构 + 巡洋舰线(设计定稿 v3,2026-09-09 船长逐轮拍板;状态:已确认并实现、已合入 main) | 已确认/已实现（已确认并实现、已合入 main） | — | 13 KB / 153 行 | 11 / 0 |
 | `docs/design/skill-rank-dispersion.md` | 技能 rank 分散化：相似效果错开级别（已确认 2026-09-08） | 已确认/已实现（已确认并落地） | — | 4 KB / 58 行 | 7 / 1 |
 | `docs/design/standby-starmap-actions.md` | B1.5 星图「前往星系」：掩护巡逻（原"待命"）/ 矿带 / 悬赏 快捷行动（状态：已确认并实现） | 已确认/已实现（已确认并实现） | — | 4 KB / 47 行 | 1 / 0 |
 | `docs/design/substation-hub-return.md` | 已建成副空间站 = 母港镜像 + 自动返航最近站（状态：已确认） | 已确认/已实现（已确认） | — | 4 KB / 43 行 | 2 / 0 |
@@ -429,7 +428,7 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 5 KB / 82 行 | 6 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 805 行 | 27 / 18 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 13 KB / 98 行 | 19 / 7 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 13 KB / 98 行 | 20 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -444,7 +443,7 @@
 | `docs/test-saves/per-gun-20261005.md` | 逐炮齐射验收档 | 未标注 | 2026-10-05 | 1 KB / 12 行 | 1 / 0 |
 | `docs/test-saves/black-market-20261004.md` | 黑市页面验收档 | 待裁定（随功能待船长验收） | 2026-10-04 | 1 KB / 15 行 | 1 / 0 |
 | `docs/test-saves/hauler-20261004.md` | 纯货舰修订验收档 | 未标注（已验收） | 2026-10-04 | 2 KB / 25 行 | 3 / 0 |
-| `docs/test-saves/whexpedition-20261004.md` | 虫洞第一批合成测试档 | 未标注（未来虫洞整备/事件/警戒的隔离验收材） | 2026-10-04 | 10 KB / 78 行 | 3 / 0 |
+| `docs/test-saves/whexpedition-20261004.md` | 虫洞第一批合成测试档 | 未标注（未来虫洞整备/事件/警戒的隔离验收材） | 2026-10-04 | 10 KB / 78 行 | 2 / 0 |
 | `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 72 KB / 724 行 | 59 / 14 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
@@ -547,11 +546,10 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，103 份）
+## 附：孤儿文档（0 引用，101 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/announcement-draft-signal-space-20261006.md`（2026-10-06 · 1 KB）—— 信号空间公告待审稿
 - `docs/design/black-market-android-merchant-20261006.md`（2026-10-06 · 6 KB）—— 触手发束与机械副官风格商人
 - `docs/design/black-market-cards-rework-20261006.md`（2026-10-06 · 12 KB）—— 黑市商品卡详情统一与商人重绘
 - `docs/design/black-market-comms-avatar-20261006.md`（2026-10-06 · 5 KB）—— 黑市复用通讯章鱼人头像
@@ -575,7 +573,6 @@
 - `docs/design/mobile-navigation-web-style-20261004.md`（2026-10-04 · 3 KB）—— 手机导航恢复网页版规则
 - `docs/design/mobile-shell-layout-20261004.md`（2026-10-04 · 8 KB）—— 手机布局第二轮：日志抽屉与主区优先
 - `docs/design/titan-class-black-market-20261004.md`（2026-10-04 · 3 KB）—— T5泰坦分类与黑市门槛落地
-- `docs/design/wormhole-expedition-rework-20261004.md`（2026-10-04 · 143 KB）—— 虫洞改进方案：整备、情报与远征选择
 - `docs/design/wreck-faction-rollback-20261004.md`（2026-10-04 · 4 KB）—— 普通残骸势力装备回调与核心稀有限定
 - `docs/design/beacon-target-highsec-20261003.md`（2026-10-03 · 5 KB）—— 信号发射器：高安判据改看「玩家选定的目标星系」
 - `docs/design/corona-balance-20261003.md`（2026-10-03 · 4 KB）—— 光环敌舰强度调整
@@ -655,14 +652,13 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（254 份，待补一行 `状态：…`）
+## 附：状态未标注（253 份，待补一行 `状态：…`）
 
 - `docs/design/real-playthrough-bug-test-20261005.md`（2026-10-05）—— 三目标实机式全流程BUG测试
 - `docs/test-saves/per-gun-20261005.md`（2026-10-05）—— 逐炮齐射验收档
 - `docs/design/activity-mobile-audit-20261004.md`（2026-10-04）—— 主控活动切换、显示与手机适配核查
 - `docs/design/item-ship-filter-taxonomy-20261004.md`（2026-10-04）—— 物品与舰船筛选归类统一
 - `docs/design/market-health-audit-20261004.md`（2026-10-04）—— 市场长期买卖与库存池健康体检
-- `docs/design/wormhole-expedition-rework-20261004.md`（2026-10-04）—— 虫洞改进方案：整备、情报与远征选择
 - `docs/test-saves/hauler-20261004.md`（2026-10-04）—— 纯货舰修订验收档
 - `docs/test-saves/whexpedition-20261004.md`（2026-10-04）—— 虫洞第一批合成测试档
 - `docs/design/beacon-target-highsec-20261003.md`（2026-10-03）—— 信号发射器：高安判据改看「玩家选定的目标星系」
