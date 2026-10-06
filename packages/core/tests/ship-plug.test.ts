@@ -9,7 +9,7 @@
  * 没有的舰队条目，拿合成船型测往返只会得到"读回来是起始船"的假失败。
  *
  * 本文件钉八件事：
- * 1. **装入**：走装备库扣 1、进 `plugs`（**不占**高/中/低槽）、同型不许重复、槽满不许再装；
+ * 1. **装入**：走装备库扣 1、进 `plugs`（**不占**高/中/低槽）、同型可重复、槽满不许再装；
  * 2. **无卸下函数**（结构性保证：本模块没有 `removePlug`，"不可拆"不靠界面藏按钮）；
  * 3. **闸门**：装了插件 ⇒ `shipStorable` 与 `shipSellable` **两条路都拒**（判据单点 `plugBlockReasonOf`）；
  * 4. **残骸快照**：船沉时 `plugs` 原样存进残骸（与 `fitted` 两本账）；
@@ -114,7 +114,7 @@ describe('装入：扣库 · 进 plugs · 不占高/中/低槽', () => {
     console.log(`  [读数] ${T1} 插件槽 ${plugSlotsOf(state, ctx, T1)} 格 · 已装 ${plugsOf(state, T1).length} 件`)
   })
 
-  it('六道校验：普通装备 / 库里没有 / 同型重复 / 槽满 —— 各拒各的', () => {
+  it('普通装备与缺库存仍拒绝，同型可重复且每件扣一件', () => {
     const state = world()
     addModule(state, 'mod-turret-kin-1', 1)
     const notPlug = installPlug(state, ctx, 'mod-turret-kin-1', T1)
@@ -125,9 +125,9 @@ describe('装入：扣库 · 进 plugs · 不占高/中/低槽', () => {
     addModule(state, PLUG_SHIELD, 2)
     expect(installPlug(state, ctx, PLUG_SHIELD, T1).ok).toBe(true)
     const dup = installPlug(state, ctx, PLUG_SHIELD, T1)
-    expect(dup.ok === false && dup.errorId, '同型不许重复').toBe('core.plug.006')
-    expect(countModule(state, PLUG_SHIELD), '被拒的那条不该扣库').toBe(1)
-    console.log(`  [读数] 拒因：${dup.ok === false ? dup.error : '(意外通过)'}`)
+    expect(dup.ok).toBe(true)
+    expect(countModule(state, PLUG_SHIELD)).toBe(0)
+    expect(plugsOf(state, T1)).toEqual([PLUG_SHIELD, PLUG_SHIELD])
   })
 
   it('T5 船只有 1 格：装了第一件之后第二件被槽位拒', () => {

@@ -192,6 +192,7 @@ import {
   deleteFitPreset,
   renameFitPreset,
   saveFitPreset,
+  saveWreckFitPreset,
   overwriteFitPreset,
   unfitAllModules,
   unloadCargoToWarehouse,
@@ -2707,6 +2708,12 @@ export class GameEngine {
       void this.persist()
       this.notify()
     }
+    return result
+  }
+
+  saveWreckFitPresetAt(seq: number, name?: string, expectedOverwrite?: import('@whale/core').ShipFitPreset): ReturnType<typeof saveWreckFitPreset> {
+    const result = saveWreckFitPreset(this.state, this.ctx, seq, name, expectedOverwrite)
+    if (result.ok) { void this.persist(); this.notify() }
     return result
   }
 

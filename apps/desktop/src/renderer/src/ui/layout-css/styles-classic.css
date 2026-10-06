@@ -11729,6 +11729,15 @@ html[data-locale='en'] body {
 }
 .app-wh-cell b { color: rgb(var(--wui-accent)); font-weight: 600; }
 .app-wh-gate { font-size: var(--wui-fs-s); color: rgb(var(--wui-danger)); margin: var(--wui-sp-4) 0; }
+.app-wreck-fit { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.app-wreck-fit-head, .app-wreck-fit-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.app-wreck-fit-head > .app-btn { margin-left: auto; }
+.app-wreck-fit-group { min-width: 0; }
+.app-wreck-fit .app-fit-icongrid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+.app-wreck-fit-card { width: 100%; box-sizing: border-box; }
+.app-wreck-fit-name { display: flex; flex-direction: column; gap: 8px; }
+.app-wreck-fit-name input { width: 100%; min-width: 0; box-sizing: border-box; }
+.app-wreck-fit-actions { justify-content: flex-end; margin-top: 12px; }
 .app-wh-actions { display: flex; align-items: center; gap: var(--wui-sp-8); margin-top: var(--wui-sp-8); }
 .app-wh-ships { max-height: 240px; overflow-y: auto; }
 /* ── 虫洞 · 选舰卡片（船长 2026-09-13：「采用卡片形式…含舰船名称/级别/折算质量/货仓/SVG 外形，

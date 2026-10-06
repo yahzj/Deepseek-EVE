@@ -557,7 +557,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       cargo: cargoMap,
       fitted,
       droneLoad,
-      // 舰船插件（2026-09-26，兼容字段无版本号）：非空字符串、去重、上限 = 槽位上限 8；
+      // 保留重复插件件数；实际可装数量由船型槽数校验。
       // ⚠ 漏了这里 ⇒ 读档/刷新即丢插件（`salvagerGift` 同款静默缺口），设计稿 §五 已点名。
       plugs: cleanPlugIds(shipRaw.plugs),
       // 弹药 MK2（2026-09-09）：档位偏好透传（键 = 伤害类型；坏值丢键，引擎侧再防御未知 id）
@@ -885,14 +885,15 @@ for (const [key, value] of Object.entries(licensesRaw)) {
         return out
       }
       const fitted = { high: cleanRack(fitRaw.high), mid: cleanRack(fitRaw.mid), low: cleanRack(fitRaw.low) }
+      const plugs = cleanPlugIds(item.plugs)
       const droneLoad: Record<string, number> = {}
       for (const [id, n] of Object.entries(asRaw(item.droneLoad))) {
         if (typeof n === 'number' && Number.isFinite(n) && n > 0) droneLoad[id] = Math.floor(n)
       }
       const empty =
-        fitted.high.length + fitted.mid.length + fitted.low.length === 0 && Object.keys(droneLoad).length === 0
+        fitted.high.length + fitted.mid.length + fitted.low.length === 0 && Object.keys(droneLoad).length === 0 && !plugs?.length
       if (empty) continue
-      list.push({ name, fitted, ...(Object.keys(droneLoad).length > 0 ? { droneLoad } : {}) })
+      list.push({ name, fitted, ...(Object.keys(droneLoad).length > 0 ? { droneLoad } : {}), ...(plugs ? { plugs } : {}) })
       if (list.length >= FIT_PRESET_MAX) break
     }
     if (list.length > 0) fitPresets[defId] = list

@@ -28,6 +28,11 @@ case 名（即该档服务的唯一测试用途），格式固定为 `test-save-
 
 ## 档案清单
 
+### 重复插件与沉船装配复用（wreck-fit）
+- 文件：`test-save-wreck-fit-20261007.json`；全新合成档，不读取或备份个人档。
+- 生成：`npx tsx tools/make-test-save.ts wreck-fit`。沉船记录有重复插件、普通装备及无人机；主控有同型插件备件，方案名Repeat用于覆盖确认。
+- 路径和加载说明见`docs/test-saves/wreck-fit-20261007.md`。保存方案不会恢复装备或安装插件，不覆盖未备份的个人进度。
+
 ### 黑市独占MK3弹药生产线（ammo-mk3）
 - 文件：`test-save-ammo-mk3-20261006.json`；全新合成档，不读取或备份个人档。
 - 生成：`npx tsx tools/make-test-save.ts ammo-mk3`。累计声望100、停靠母港，黑市三张图纸未购买；主控三系武器、三档弹药与十批无虚空晶材料已备。

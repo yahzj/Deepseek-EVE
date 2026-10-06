@@ -1937,6 +1937,8 @@ export interface ShipFitPreset {
   name: string
   fitted: { high: Array<string | null>; mid: Array<string | null>; low: Array<string | null> }
   droneLoad?: Record<string, number>
+  /** 插件参考清单，不参与套用时的不可逆安装。 */
+  plugs?: string[]
 }
 
 /** AI 副船任务：采矿（自动循环，满舱回港卸货入仓库后自动再出航） */

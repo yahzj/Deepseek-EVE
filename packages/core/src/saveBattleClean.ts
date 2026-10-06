@@ -917,14 +917,13 @@ function cleanLedgerMap<T>(
 }
 
 /**
- * **舰船插件槽位上限**（**2026-09-26**）：船型档位给 T1=5…T5=1，加上「中层/下层舱段插件」各 +1
- * ⇒ 单类槽位最多 **7 + 1 = 8** 格。清洗器原先一律 `slice(0, 7)`（见 `fitPresets` 与残骸快照两处），
- * 插件上线后必须同步抬到 8，否则第 8 格在读档时被静默裁掉。
+ * 保存数组的安全边界 = 基础槽位上界 + 插件件数上界；不是可装槽位，实装仍由船型/插件校验。
  */
-export const RACK_MAX = 8
+export const PLUG_LIST_MAX = 8
+export const RACK_MAX = 7 + PLUG_LIST_MAX
 
 /**
- * 插件 id 列表清洗（舰船插件，2026-09-26，兼容字段无版本号）：只留非空字符串 · 去重 · 截到 `RACK_MAX`。
+ * 插件 id 列表清洗：非空字符串，保留重复件及位序，截到插件列表安全上界。
  *
  * ⚠ **这是"随档字段两处落笔"的第二处**（约定 §二验证闭环）：引擎侧写 `FleetShipState.plugs`，
  * 清洗器这里必须重建它，否则读档/刷新即丢（`importantTasks.salvagerGift` 的同款前车之鉴）。
@@ -936,9 +935,9 @@ export function cleanPlugIds(raw: unknown): string[] | undefined {
   for (const x of raw) {
     if (typeof x !== 'string') continue
     const id = x.trim()
-    if (id.length === 0 || out.includes(id)) continue
+    if (id.length === 0) continue
     out.push(id)
-    if (out.length >= RACK_MAX) break
+    if (out.length >= PLUG_LIST_MAX) break
   }
   return out.length > 0 ? out : undefined
 }

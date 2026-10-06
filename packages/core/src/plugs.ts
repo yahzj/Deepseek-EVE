@@ -21,7 +21,7 @@
  */
 import type { GameState } from './state'
 import type { ModuleDef, ShipSlots, SimContext } from './types'
-import { addLog } from './state'
+import { addLog, shipLockedReason } from './state'
 import { addWare } from './inventory'
 import { shipSlotsOf } from './labels'
 import { fleetDefOf } from './instances'
@@ -103,8 +103,7 @@ export function shipSlotsWithPlugsOf(state: GameState, ctx: SimContext, shipId: 
  * **装一件插件**（本模块是唯一入口）。
  *
  * 六道校验：① 船在不在 ⇒ ② 是插件吗（普通装备走 `fitModule`）⇒ ③ 槽满没满
- * （`plugSlotsOf`，T1=5…T5=1；无档船恒 0 = 装不了）⇒ ④ 装备库有没有 ⇒ ⑤ 同型**不许重复装**
- * （不可替换 ⇒ 装第二件同型没有意义）⇒ ⑥ 船只锁（进洞 / AI 执勤等，与 `fitModule` 同一把尺）。
+ * （`plugSlotsOf`；无档船恒 0 = 装不了）⇒ ④ 装备库有没有。同型可重复，每件占一格。
  *
  * ⚠ **没有对应的卸下函数**（船长：「**不可拆卸，不可替换**」）：这是"不可拆"的**结构性**保证，
  * 不是靠界面藏按钮。
@@ -122,6 +121,8 @@ export function installPlug(
   }
   const ship = state.fleet[shipId]
   if (!ship) return { ok: false, error: '舰队里找不到这艘舰船。', errorId: 'core.plug.003' }
+  const lock = shipLockedReason(state, shipId, '安装舰船插件')
+  if (lock) return { ok: false, error: lock }
   if (!moduleAllowedOnShip(fleetDefOf(state, ctx, shipId), def)) {
     return { ok: false, errorId: 'core.equipment.033', error: '该货舰不支持武器、战斗机群、进攻电子或全队护盾装备。' }
   }
@@ -132,9 +133,6 @@ export function installPlug(
   }
   if (have.length >= cap) {
     return { ok: false, error: `插件槽已满：本舰 ${cap} 格，且插件装上去就拆不下来。`, errorId: 'core.plug.005', errorParams: { p1: cap } }
-  }
-  if (have.includes(moduleId)) {
-    return { ok: false, error: `本舰已经装了一件「${def.name}」——同型插件不能重复装。`, errorId: 'core.plug.006', errorParams: { p1: def.name } }
   }
   if ((state.moduleBay[moduleId] ?? 0) < 1) {
     return { ok: false, error: `装备库里没有「${def.name}」，先去组装机造一件。`, errorId: 'core.equipment.002', errorParams: { p1: def.name } }

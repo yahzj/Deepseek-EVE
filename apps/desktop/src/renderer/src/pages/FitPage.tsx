@@ -1135,6 +1135,10 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                           ))
                         )}
                       </div>
+                      {detail.plugs.length > 0 ? <div className="app-fit-preset-detail-line">
+                        <span className="app-fit-preset-detail-rack">{tr('ui.wreckFit.002')}</span>
+                        {detail.plugs.map((p, at) => <span key={`${p.id}-${at}`} className={`app-fit-preset-detail-cell${p.missing ? ' is-missing' : ''}`}>{p.name}</span>)}
+                      </div> : null}
                       {detail.overflow > 0 ? (
                         <div className="app-fit-preset-detail-note">
                           {tr("ui.FitPage.072")} {detail.overflow} {tr("ui.FitPage.073")}
@@ -1452,10 +1456,9 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
   const scrap = shipScrapPreviewOf(state, ctx, target)
   if (slots <= 0) return null
   const full = installed.length >= slots
-  const installedIds = new Set(installed.map((d) => d.id))
-  /** 装备库里**有货且本舰还没装**的插件（顺序 = `ctx.modules` 登记序；界面不自己判槽位上限，装入时由 core 再判一次） */
+  /** 有库存的插件仍可重复安装，顺序沿用目录。 */
   const pickable = [...ctx.modules.values()].filter(
-    (d) => d.slot === 'plug' && (state.moduleBay[d.id] ?? 0) > 0 && !installedIds.has(d.id),
+    (d) => d.slot === 'plug' && (state.moduleBay[d.id] ?? 0) > 0,
   )
   const doInstall = (moduleId: string): void => {
     const r = installPlug(state, ctx, moduleId, target)

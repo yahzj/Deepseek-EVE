@@ -32,6 +32,7 @@ import { WeekendSummaryView } from '../panels/WeekendSummary'
 import { PlugExchangeModal } from '../panels/PlugExchange'
 import { sessionPick, setSessionPick, useSessionScroll } from '../ui/sessionView'
 import { fmtDuration } from '../i18n/fmt'
+import { WreckFitPanel } from '../panels/WreckFitPanel'
 
 /**
  * ⚠ **右栏（机身 + 内嵌屏幕 + 下檐口）已抽成公共件 `panels/CommsReader.tsx`**
@@ -254,7 +255,6 @@ function WreckLogPane({ engine, rows }: { engine: PageProps['engine']; rows: Ret
   if (rows.length === 0) return <div className="app-dim app-exp-idle">{tr('ui.WreckLog.003')}</div>
   const cur = rows.find((r) => String(r.entry.seq) === sel) ?? rows[0]!
   const e = cur.entry
-  const modName = (id: string): string => engineCtx.ctx.modules.get(id)?.name ?? id
   const shipName = (id: string | undefined): string =>
     id === undefined ? '—' : (engineCtx.ctx.ships.get(id)?.name ?? id)
   const clock = (ms: number): string => fmtDuration(Math.max(0, ms))
@@ -281,11 +281,6 @@ function WreckLogPane({ engine, rows }: { engine: PageProps['engine']; rows: Ret
         : cur.wreck === 'expired'
           ? tr('ui.WreckLog.013')
           : tr('ui.WreckLog.014')
-  const racks: Array<[string, Array<string | null>]> = [
-    ['H', e.fitted?.high ?? []],
-    ['M', e.fitted?.mid ?? []],
-    ['L', e.fitted?.low ?? []],
-  ]
   return (
     <div className="app-comms-grid">
       <div className="app-comms-list" role="list">
@@ -312,28 +307,7 @@ function WreckLogPane({ engine, rows }: { engine: PageProps['engine']; rows: Ret
             <div className="app-kv"><span>{tr('ui.WreckLog.004')}</span><span>{cause}</span></div>
             <div className="app-kv"><span>{tr('ui.WreckLog.005')}</span><span>{where}</span></div>
             <div className="app-kv"><span>{tr('ui.WreckLog.010')}</span><span>{wreckText}</span></div>
-            {racks.map(([label, list]) => (
-              <div className="app-kv" key={label}>
-                <span>{label}</span>
-                <span>{list.filter((x): x is string => x !== null).map(modName).join(' · ') || '—'}</span>
-              </div>
-            ))}
-            {(e.plugs?.length ?? 0) > 0 ? (
-              <div className="app-kv">
-                <span>{tr('ui.WreckLog.008')}</span>
-                <span>{e.plugs!.map(modName).join(' · ')}</span>
-              </div>
-            ) : null}
-            {Object.keys(e.droneLoad ?? {}).length > 0 ? (
-              <div className="app-kv">
-                <span>{tr('ui.WreckLog.009')}</span>
-                <span>
-                  {Object.entries(e.droneLoad!)
-                    .map(([id, n]) => `${engineCtx.ctx.items.get(id)?.name ?? id}×${n}`)
-                    .join(' · ')}
-                </span>
-              </div>
-            ) : null}
+            <WreckFitPanel key={e.seq} engine={engine} entry={e} />
           </div>
         </div>
       </div>

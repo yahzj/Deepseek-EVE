@@ -17,6 +17,19 @@ export interface L10nEntry {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  "core.wreckFit.001": { zh: "沉船记录已不存在。", en: "This ship loss record no longer exists." },
+  "core.wreckFit.002": { zh: "这条记录缺少可识别的船型，无法保存方案。", en: "This record has no recognized ship type, so its fit cannot be saved." },
+  "core.wreckFit.003": { zh: "已有同名方案「{name}」，确认后才会覆盖。", en: "A preset named {name} already exists. Confirm before replacing it." },
+  "core.wreckFit.004": { zh: "目标方案已变化，请重新确认。", en: "The target preset has changed. Please confirm again." },
+  "core.wreckFit.005": { zh: "这条记录没有可保存的装配。", en: "This record has no fit to save." },
+  "ui.wreckFit.001": { zh: "保存为装配方案", en: "Save Fit Preset" },
+  "ui.wreckFit.002": { zh: "插件参考，不自动安装", en: "Plug Reference, Not Auto-Installed" },
+  "ui.wreckFit.003": { zh: "当前型号属性", en: "Current Model Attributes" },
+  "ui.wreckFit.004": { zh: "覆盖同名方案", en: "Replace Preset" },
+  "ui.wreckFit.005": { zh: "方案名称", en: "Preset Name" },
+  "ui.wreckFit.006": { zh: "装配方案已保存。", en: "Fit preset saved." },
+  "ui.wreckFit.007": { zh: "型号已不存在：{id}", en: "Model no longer available: {id}" },
+  "ui.wreckFit.008": { zh: "装备详情", en: "Equipment Details" },
   "item.ammoMk3.001": { zh: "冥铁包覆的高密度弹体，用于动能武器，强化对护盾的冲击。", en: "A dense projectile clad in Darkiron Alloy for kinetic weapons and stronger impacts against shields." },
   "item.ammoMk3.002": { zh: "冥铁约束的高能装药，强化对装甲的爆破。", en: "A high-energy charge confined by Darkiron Alloy for stronger blasts against armor." },
   "item.ammoMk3.003": { zh: "冥铁谐振腔封装的高密度能量介质，用于强化束流伤害。", en: "Dense energy medium sealed in a Darkiron Alloy resonant cavity for stronger beam damage." },
