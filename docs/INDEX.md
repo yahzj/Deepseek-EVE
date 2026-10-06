@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **483** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7820** KB · **60805** 行
-- 状态分布：**未标注** 256 · **已确认/已实现** 151 · **进行中** 53 · **待裁定** 22 · **历史留档** 1
-- 孤儿文档（0 引用）**103** 份 · 状态未标注 **256** 份
+- 文档总数 **482** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7759** KB · **60368** 行
+- 状态分布：**未标注** 255 · **已确认/已实现** 151 · **进行中** 53 · **待裁定** 22 · **历史留档** 1
+- 孤儿文档（0 引用）**104** 份 · 状态未标注 **255** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**325** 份
+- 三、现行设计稿（design）：**324** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**5** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 299 KB / 308 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 90 KB / 908 行 | 95 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 513 KB / 1054 行 | 227 / 20 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 91 KB / 471 行 | 377 / 26 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 92 KB / 473 行 | 377 / 26 |
 
 ## 七、评审与体检（review） —— 12 份
 
@@ -55,11 +55,11 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 325 份
+## 三、现行设计稿（design） —— 324 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/announcement-draft-alien-invasion-20261007.md` | 异形入侵公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 26 行 | 1 / 0 |
+| `docs/design/announcement-draft-alien-invasion-20261007.md` | 异形入侵公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 26 行 | 2 / 0 |
 | `docs/design/ammo-mk3-black-market-20261006.md` | 黑市独占MK3弹药生产线 | 已确认/已实现（已实现并本地合入） | 2026-10-06 | 7 KB / 63 行 | 0 / 0 |
 | `docs/design/announcement-draft-signal-space-20261006.md` | 信号空间公告待审稿 | 待裁定（待船长明确批准） | 2026-10-06 | 1 KB / 26 行 | 1 / 0 |
 | `docs/design/black-market-android-merchant-20261006.md` | 触手发束与机械副官风格商人 | 已确认/已实现（已实现） | 2026-10-06 | 6 KB / 57 行 | 0 / 0 |
@@ -68,7 +68,6 @@
 | `docs/design/black-market-drone-lots-20261006.md` | 黑市无人机按组出售 | 已确认/已实现（已实现并本地合入） | 2026-10-06 | 5 KB / 47 行 | 0 / 0 |
 | `docs/design/black-market-monitor-20261006.md` | 黑市紧凑货架与商人监视器 | 已确认/已实现（已实现） | 2026-10-06 | 8 KB / 68 行 | 0 / 0 |
 | `docs/design/black-market-speech-name-20261006.md` | 黑市对白下方重复商品名移除 | 已确认/已实现（已实现） | 2026-10-06 | 3 KB / 42 行 | 0 / 0 |
-| `docs/design/invasion-new-family-resume-20261006.md` | 本周 C 族入侵扩充设计与接手核对 | 未标注（船长授权合入/推送） | 2026-10-06 | 72 KB / 509 行 | 1 / 0 |
 | `docs/design/market-limited-supply-20261006.md` | 限额慢补货与虚空晶应急供应 | 已确认/已实现（已实现并本地合入） | 2026-10-06 | 7 KB / 80 行 | 0 / 0 |
 | `docs/design/drone-launch-preview-20261005.md` | 无人机队列出击隔离预演 | 待裁定（待船长审查） | 2026-10-05 | 5 KB / 67 行 | 0 / 0 |
 | `docs/design/market-pool-capacity-20261005.md` | 七种商品目标池容量调整 | 已确认/已实现（已实现并本地合入） | 2026-10-05 | 4 KB / 46 行 | 0 / 0 |
@@ -92,7 +91,7 @@
 | `docs/design/titan-class-black-market-20261004.md` | T5泰坦分类与黑市门槛落地 | 已确认/已实现（已确认） | 2026-10-04 | 3 KB / 37 行 | 0 / 0 |
 | `docs/design/wreck-faction-rollback-20261004.md` | 普通残骸势力装备回调与核心稀有限定 | 已确认/已实现（已确认） | 2026-10-04 | 4 KB / 39 行 | 0 / 0 |
 | `docs/design/beacon-target-highsec-20261003.md` | 信号发射器：高安判据改看「玩家选定的目标星系」 | 未标注 | 2026-10-03 | 5 KB / 64 行 | 0 / 0 |
-| `docs/design/corona-balance-20261003.md` | 光环敌舰强度调整 | 待裁定（待船长审字） | 2026-10-03 | 4 KB / 48 行 | 1 / 0 |
+| `docs/design/corona-balance-20261003.md` | 光环敌舰强度调整 | 待裁定（待船长审字） | 2026-10-03 | 4 KB / 48 行 | 0 / 0 |
 | `docs/design/corona-enemy-pd-beam-20261003.md` | 光环势力敌人的近防炮 = 能量光束近防炮 · 必中（2026-10-03 · 二号 · d2） | 未标注 | 2026-10-03 | 5 KB / 75 行 | 0 / 0 |
 | `docs/design/docs-cleanup-20261003.md` | 文档整理第一批 | 进行中（进行中） | 2026-10-03 | 2 KB / 41 行 | 0 / 0 |
 | `docs/design/docs-status-audit-20261003.md` | 设计稿状态核验第一批 | 进行中（进行中） | 2026-10-03 | 3 KB / 42 行 | 0 / 0 |
@@ -148,7 +147,7 @@
 | `docs/design/industry-manual-slot-guard-20261001.md` | 新工业 HUD 页：主控手动位守卫复原（工作文档） | 进行中（进行中） | 2026-10-01 | 6 KB / 75 行 | 0 / 0 |
 | `docs/design/lab-comms-rewrite-20261001.md` | 首访实验室 · 黑市通讯正文重写（工作文档） | 进行中（进行中） | 2026-10-01 | 5 KB / 57 行 | 0 / 0 |
 | `docs/design/voidcrystal-price-20261001.md` | 虚空晶一物一价（精炼面板修正）· 2026-10-01 | 未标注 | 2026-10-01 | 5 KB / 64 行 | 3 / 0 |
-| `docs/design/weekend-faction-corona-20261001.md` | 设计案：入侵新敌对势力「光环科技 / Corona Systems」（参考远行星号 Remnants）（2026-10-01 · 二号） | 未标注 | 2026-10-01 | 131 KB / 1884 行 | 3 / 1 |
+| `docs/design/weekend-faction-corona-20261001.md` | 设计案：入侵新敌对势力「光环科技 / Corona Systems」（参考远行星号 Remnants）（2026-10-01 · 二号） | 未标注 | 2026-10-01 | 131 KB / 1884 行 | 2 / 1 |
 | `docs/design/weekend-family-name-20261001.md` | 入侵族名用正式称呼（R 族 = 光环）· 2026-10-01 | 未标注 | 2026-10-01 | 8 KB / 104 行 | 1 / 0 |
 | `docs/design/announcement-draft-20260930.md` | 公告待审稿 · 2026-09-30 批次（实验室投产）（2026-09-30） | 未标注 | 2026-09-30 | 11 KB / 180 行 | 6 / 2 |
 | `docs/design/beacon-parts-20260930.md` | 信号发射器配方改用零件（2026-09-30） | 未标注 | 2026-09-30 | 3 KB / 49 行 | 1 / 2 |
@@ -269,7 +268,7 @@
 | `docs/design/foe-faction-a-numbers-20260911.md` | A 族数值落地方案（2026-09-11 · 已确认） | 未标注 | 2026-09-11 | 58 KB / 683 行 | 22 / 2 |
 | `docs/design/foe-faction-a-pirate-20260911.md` | A 族「海盗舰系」族特色 · 对账与调整方案（2026-09-11 · 讨论中） | 未标注 | 2026-09-11 | 7 KB / 99 行 | 0 / 0 |
 | `docs/design/foe-faction-b-scavenger-20260911.md` | B 族设定卡 · 武装拾荒者（2026-09-11 · 已确认） | 已确认/已实现（已确认 · 已落码） | 2026-09-11 | 25 KB / 278 行 | 28 / 2 |
-| `docs/design/foe-faction-c-alien-20260911.md` | C 族「异形生物」族格 · 现状对账与待裁清单（2026-09-11 · 第一步 + 第二批均已落码） | 未标注 | 2026-09-11 | 48 KB / 509 行 | 17 / 2 |
+| `docs/design/foe-faction-c-alien-20260911.md` | C 族「异形生物」族格 · 现状对账与待裁清单（2026-09-11 · 第一步 + 第二批均已落码） | 未标注 | 2026-09-11 | 48 KB / 509 行 | 16 / 2 |
 | `docs/design/foe-faction-d-gravekeeper-20260911.md` | D 族「守墓古舰」设定卡（2026-09-11 · 已确认） | 未标注 | 2026-09-11 | 16 KB / 207 行 | 8 / 1 |
 | `docs/design/foe-faction-d-ships-20260911.md` | D 族「守墓古舰」舰船（舰级）设定稿（2026-09-11 · 已确认 · 已落码 · 已验收） | 未标注 | 2026-09-11 | 31 KB / 396 行 | 5 / 1 |
 | `docs/design/foe-faction-e-titan-20260911.md` | E 族「泰坦巨构」设定卡（2026-09-11 · 已确认） | 未标注 | 2026-09-11 | 29 KB / 329 行 | 6 / 1 |
@@ -382,7 +381,7 @@
 | `docs/design/v7-design.md` | V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版 | 未标注 | — | 7 KB / 117 行 | 0 / 0 |
 | `docs/design/v9-market.md` | V9 设计：市场系统（已实现） | 未标注（已按用户确认的 V4/V5 方案实现） | — | 16 KB / 174 行 | 16 / 0 |
 | `docs/design/weapon-skill-batch.md` | 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四） | 未标注 | — | 8 KB / 100 行 | 4 / 0 |
-| `docs/design/weekend-invasion.md` | 周末入侵活动（设计定稿 · 2026-09-25 22:00 已对玩家开放 · M2 余下三族 / M3 未开工） | 未标注（M1 机制骨架 ＋ M2 的 H 族） | — | 31 KB / 259 行 | 14 / 7 |
+| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注（M1 机制骨架 ＋ M2 的 H 族） | — | 41 KB / 329 行 | 16 / 7 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 5 KB / 56 行 | 5 / 0 |
 
 ## 九、封存卷（archive · 冻结件，只读不改） —— 35 份
@@ -445,7 +444,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/test-saves/alien-invasion-20261006.md` | 异形入侵验收档 | 未标注 | 2026-10-06 | 2 KB / 22 行 | 1 / 0 |
+| `docs/test-saves/alien-invasion-20261006.md` | 异形入侵验收档 | 未标注 | 2026-10-06 | 2 KB / 22 行 | 2 / 0 |
 | `docs/test-saves/ammo-mk3-20261006.md` | MK3弹药生产线验收档 | 已确认/已实现（随已确认功能交付） | 2026-10-06 | 1 KB / 21 行 | 2 / 0 |
 | `docs/test-saves/per-gun-20261005.md` | 逐炮齐射验收档 | 未标注 | 2026-10-05 | 1 KB / 12 行 | 1 / 0 |
 | `docs/test-saves/black-market-20261004.md` | 黑市页面验收档 | 待裁定（随功能待船长验收） | 2026-10-04 | 1 KB / 15 行 | 1 / 0 |
@@ -553,7 +552,7 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，103 份）
+## 附：孤儿文档（0 引用，104 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
@@ -584,6 +583,7 @@
 - `docs/design/titan-class-black-market-20261004.md`（2026-10-04 · 3 KB）—— T5泰坦分类与黑市门槛落地
 - `docs/design/wreck-faction-rollback-20261004.md`（2026-10-04 · 4 KB）—— 普通残骸势力装备回调与核心稀有限定
 - `docs/design/beacon-target-highsec-20261003.md`（2026-10-03 · 5 KB）—— 信号发射器：高安判据改看「玩家选定的目标星系」
+- `docs/design/corona-balance-20261003.md`（2026-10-03 · 4 KB）—— 光环敌舰强度调整
 - `docs/design/corona-enemy-pd-beam-20261003.md`（2026-10-03 · 5 KB）—— 光环势力敌人的近防炮 = 能量光束近防炮 · 必中（2026-10-03 · 二号 · d2）
 - `docs/design/docs-cleanup-20261003.md`（2026-10-03 · 2 KB）—— 文档整理第一批
 - `docs/design/docs-status-audit-20261003.md`（2026-10-03 · 3 KB）—— 设计稿状态核验第一批
@@ -661,9 +661,8 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（256 份，待补一行 `状态：…`）
+## 附：状态未标注（255 份，待补一行 `状态：…`）
 
-- `docs/design/invasion-new-family-resume-20261006.md`（2026-10-06）—— 本周 C 族入侵扩充设计与接手核对
 - `docs/test-saves/alien-invasion-20261006.md`（2026-10-06）—— 异形入侵验收档
 - `docs/design/real-playthrough-bug-test-20261005.md`（2026-10-05）—— 三目标实机式全流程BUG测试
 - `docs/test-saves/per-gun-20261005.md`（2026-10-05）—— 逐炮齐射验收档
@@ -908,7 +907,7 @@
 - `docs/design/v7-design.md`（无日期）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 - `docs/design/v9-market.md`（无日期）—— V9 设计：市场系统（已实现）
 - `docs/design/weapon-skill-batch.md`（无日期）—— 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四）
-- `docs/design/weekend-invasion.md`（无日期）—— 周末入侵活动（设计定稿 · 2026-09-25 22:00 已对玩家开放 · M2 余下三族 / M3 未开工）
+- `docs/design/weekend-invasion.md`（无日期）—— 周末入侵活动（常设设计）
 - `docs/development-conventions-changelog.md`（无日期）—— 开发约定 · 变更记录（development-conventions.md 的历次变更）
 - `docs/development-conventions.md`（无日期）—— 开发约定（Development Conventions）
 - `docs/git-gate-approval.md`（无日期）—— Git提交审批放行
