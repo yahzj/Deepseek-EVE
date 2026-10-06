@@ -85,6 +85,7 @@ import {
   // ⟪2026-10-02 船长令⟫ 洞内「禁止打捞普通残骸」开关（唯一读取点）
   noCommonWreckSalvageOn,
   wormholePendingBattleReason,
+  WORMHOLE_ORE_ITEM_ID,
 } from './wormhole'
 import type { WormholeBagSlot, WormholePile } from './wormhole'
 import type { WormholeActivateEffect, WormholeRunState } from './wormhole'
@@ -702,6 +703,20 @@ export function familyOfCard(ctx: SimContext, cardId: string): string {
   return (WORMHOLE_FAMILIES as readonly string[]).includes(f) ? f : 'A'
 }
 
+/** 旧完成格不重铺；旧矿堆可识别母矿，旧遗迹/墓场的非空堆来源不明时保守接续。 */
+function signalSpaceResourcePilesReady(run: WormholeRunState, cell: WormholeGridCell): boolean {
+  if (cell.resourcePilesGenerated === true) return true
+  const existing = cell.piles ?? []
+  const hasOriginal = cell.place === 'vein'
+    ? existing.some(p => p.itemId === WORMHOLE_ORE_ITEM_ID)
+    : existing.length > 0
+  if (run.grid?.activated.includes(cell.key) || hasOriginal) {
+    cell.resourcePilesGenerated = true
+    return true
+  }
+  return false
+}
+
 /**
  * **生成某格的打捞堆**（**只生成一次**：已有 `piles` 就原样返回）。
  * 确定性 = `(本趟种子, 层, 格坐标, 地点类型)` ⇒ 同一趟里反复进出该格结果不变；
@@ -711,7 +726,10 @@ export function wormholeEnsureSalvagePiles(state: GameState, cell: WormholeGridC
   const run = state.wormhole.run
   const grid = run?.grid
   if (!run || !grid) return
-  if ((cell.piles ?? []).length > 0) return
+  if (cell.place !== 'graveyard' && cell.place !== 'ruins') return
+  if (run.expeditionRules === undefined) {
+    if (signalSpaceResourcePilesReady(run, cell)) return
+  } else if ((cell.piles ?? []).length > 0) return
   /**
    * **"只铺一次"的硬闸门 = 该格已在 `activated` 里**（**2026-09-23 玩家报障修复**：
    * 「虫洞内资源格重复进入会刷新资源」）。
@@ -722,12 +740,10 @@ export function wormholeEnsureSalvagePiles(state: GameState, cell: WormholeGridC
    * `save.ts` 的**读档清洗**（`:2792`）把空数组整条丢掉 ⇒ 连"这格铺过"的痕迹都没了
    * （写档侧照写 `piles: []`，故不读档只靠进出也能触发）。
    *
-   * `activated` 在**采空那一刻**入册（两条收尾都写）且**随档**，老档同样被堵住；
-   * 而"激活"那条路对 graveyard/ruins **本就直接拒绝**（`wormholeGridActivate`）⇒
-   * 不存在"没铺过却已在 activated 里"的格。
+   * 信号空间另用`resourcePilesGenerated`登记初始化；旧`activated`只作保守完成证据，
+   * 不反推误标格应当重新补满。新虫洞仍沿用原完成闸门。
    */
   if (grid.activated.includes(cell.key)) return
-  if (cell.place !== 'graveyard' && cell.place !== 'ruins') return
   const cardId = wormholeCellCardIdOf(run, cell)
   // 2026-09-19 合并：堆里的物品 = 该卡**所属组**的残骸（洞内 5 组，皆常档 ⇒ 堆量与合并前逐字一致）
   const group = wreckGroupOfCard(cardId)
@@ -755,7 +771,8 @@ export function wormholeEnsureSalvagePiles(state: GameState, cell: WormholeGridC
     for (let i = 0; i < rares; i++) piles.push({ itemId: rare, units: RARE_WRECK_VOLUME_M3 * tuningMul(state, 'rareWreckVolume') })
   }
   // **稀有在前**：回收按数组顺序取 ⇒ "优先打捞稀有残骸"天然成立
-  cell.piles = piles
+  cell.piles = [...piles, ...(cell.piles ?? [])]
+  if (run.expeditionRules === undefined) cell.resourcePilesGenerated = true
 }
 
 /* ═══════════ 三之二、收益口径（残骸的真价值在回收炉，不在市场） ═══════════ */
@@ -1719,20 +1736,24 @@ export function wormholeCollectOreAt(state: GameState, ctx: SimContext): Wormhol
   const minersWant = miners + workExtraPiles(state, collectEff, cell.key, run.depth)
   wormholeEnsureVeinPiles(state, cell)
   const piles = cell.piles ?? []
-  if (piles.length === 0) return { ok: false, error: '这条矿脉已经采空了。', errorId: 'core.wormholeSalvage.021' }
+  const mineable = (p: WormholeCellPile): boolean => run.expeditionRules !== undefined || p.itemId === WORMHOLE_ORE_ITEM_ID
+  const oreLeft = (): number => piles.filter(mineable).length
+  if (oreLeft() === 0) return { ok: false, error: '这条矿脉已经采空了。', errorId: 'core.wormholeSalvage.021' }
   if (run.turnsLeft < WORMHOLE_TURN_PER_WORK) return { ok: false, error: '回合不足：只能撤离。', errorId: 'core.wormhole.002', mustExtract: true }
   run.turnsLeft -= WORMHOLE_TURN_PER_WORK
   // 围剿者（2026-09-23 新机制）：作业的 1 回合也掷一次（采集 / 打捞两个入口共用这一句）
   wormholeSpawnAfterTurns(state, WORMHOLE_TURN_PER_WORK)
   const taken: WormholeCellPile[] = []
   let full = false
-  for (let i = 0; i < minersWant && piles.length > 0; i++) {
-    const pile = piles[0]!
+  for (let i = 0; i < minersWant; i++) {
+    const index = piles.findIndex(mineable)
+    if (index < 0) break
+    const pile = piles[index]!
     if (!tryMergeIntoBag(state, ctx, run, pile)) {
       full = true
       break
     }
-    piles.shift()
+    piles.splice(index, 1)
     taken.push(pile)
   }
   const names = taken
@@ -1742,17 +1763,17 @@ export function wormholeCollectOreAt(state: GameState, ctx: SimContext): Wormhol
     state,
     'salvage',
     `🕳 采集（${miners} 台采集器）：回收 ${taken.length} 堆${names.length > 0 ? `——${names}` : ''}` +
-      ` · 剩 ${piles.length} 堆 · 剩 ${run.turnsLeft} 回合。`,
+      ` · 剩 ${oreLeft()} 堆 · 剩 ${run.turnsLeft} 回合。`,
   )
   if (full) addLog(state, 'warn', `🕳 货仓放不下：这一批只回收了 ${taken.length} 堆，剩下的仍留在原处。`, 'core.wormholeSalvage.027', { p1: taken.length })
-  const finished = piles.length === 0
+  const finished = oreLeft() === 0
   if (finished && !grid.activated.includes(cell.key)) grid.activated.push(cell.key)
   wormholePatrolAfterAction(state)
   return {
     ok: true,
     spent: WORMHOLE_TURN_PER_WORK,
     taken,
-    left: piles.length,
+    left: oreLeft(),
     finished,
     mustExtract: run.turnsLeft <= 0,
   }
@@ -2362,6 +2383,8 @@ export function wormholeGrantShipSpoils(
   if (!run || !grid) return { bagged: 0, leftOnCell: 0 }
   const cell = gridCellAt(grid, grid.pos)
   if (!cell) return { bagged: 0, leftOnCell: 0 }
+  // 覆盖者战果可能散落资源格；先初始化原产出，残骸/货柜不能替代原地点内容。
+  if (shape === 'spawn' && run.expeditionRules === undefined) wormholeEnsureArrivalPiles(state, ctx)
   // 围剿战的卡是"刷出那一刻抽定"的那张（族锁不变 ⇒ 残骸组与普通节点一致）
   const cardId = cell.foe?.card ?? wormholeCellCardIdOf(run, cell)
   const group = wreckGroupOfCard(cardId, ctx)
@@ -2447,13 +2470,15 @@ export function wormholeEnsureVeinPiles(state: GameState, cell: WormholeGridCell
   const run = state.wormhole.run
   const grid = run?.grid
   if (!run || !grid) return
-  if ((cell.piles ?? []).length > 0) return
+  if (cell.place !== 'vein') return
+  if (run.expeditionRules === undefined) {
+    if (signalSpaceResourcePilesReady(run, cell)) return
+  } else if ((cell.piles ?? []).length > 0) return
   /** ⚠ **"只铺一次"的硬闸门 = 该格已在 `activated` 里**（**2026-09-23 玩家报障**：
    *  「虫洞内资源格重复进入会刷新资源」）——采空后 `piles` 是**空数组**（读档清洗还会把该字段
    *  整条丢掉，`save.ts:2792`），只靠 `length > 0` 挡不住重进；口径与理由见
    *  `wormholeEnsureSalvagePiles` 同名闸门。 */
   if (grid.activated.includes(cell.key)) return
-  if (cell.place !== 'vein') return
   const rng = wormholeStream(runSeedOf(state) * 97 + run.depth * 577 + (cell.q * 89 + cell.r * 71) * 19)
   const span = WORMHOLE_VEIN_PILES_MAX - WORMHOLE_VEIN_PILES_MIN + 1
   const count = WORMHOLE_VEIN_PILES_MIN + Math.floor(rng() * span)
@@ -2465,7 +2490,9 @@ export function wormholeEnsureVeinPiles(state: GameState, cell: WormholeGridCell
    * ⚠ **有意只吃装置**（2026-09-19）：矿脉富集倍率没有对应的科技 `effect`；日后若加，这里要补科技袋。
    */
   const mul = wormholeMatterBuffs(run.hold).oreYieldMul
-  cell.piles = mul === 1 ? piles : piles.map((p) => ({ ...p, units: Math.max(1, Math.round(p.units * mul)) }))
+  const original = mul === 1 ? piles : piles.map((p) => ({ ...p, units: Math.max(1, Math.round(p.units * mul)) }))
+  cell.piles = [...original, ...(cell.piles ?? [])]
+  if (run.expeditionRules === undefined) cell.resourcePilesGenerated = true
 }
 
 /**

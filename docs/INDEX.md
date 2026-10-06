@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **480** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7737** KB · **60190** 行
+- 文档总数 **480** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7740** KB · **60213** 行
 - 状态分布：**未标注** 254 · **已确认/已实现** 151 · **进行中** 53 · **待裁定** 21 · **历史留档** 1
 - 孤儿文档（0 引用）**104** 份 · 状态未标注 **254** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 299 KB / 308 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 90 KB / 908 行 | 95 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 512 KB / 1042 行 | 227 / 20 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 90 KB / 467 行 | 376 / 26 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 90 KB / 469 行 | 377 / 26 |
 
 ## 七、评审与体检（review） —— 12 份
 
@@ -59,7 +59,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/ammo-mk3-black-market-20261006.md` | 黑市独占MK3弹药生产线 | 已确认/已实现（已实现） | 2026-10-06 | 6 KB / 60 行 | 0 / 0 |
+| `docs/design/ammo-mk3-black-market-20261006.md` | 黑市独占MK3弹药生产线 | 已确认/已实现（已实现） | 2026-10-06 | 7 KB / 61 行 | 0 / 0 |
 | `docs/design/announcement-draft-signal-space-20261006.md` | 信号空间公告待审稿 | 待裁定（待船长明确批准） | 2026-10-06 | 1 KB / 26 行 | 1 / 0 |
 | `docs/design/black-market-android-merchant-20261006.md` | 触手发束与机械副官风格商人 | 已确认/已实现（已实现） | 2026-10-06 | 6 KB / 57 行 | 0 / 0 |
 | `docs/design/black-market-cards-rework-20261006.md` | 黑市商品卡详情统一与商人重绘 | 已确认/已实现（已实现） | 2026-10-06 | 12 KB / 95 行 | 0 / 0 |
@@ -203,7 +203,7 @@
 | `docs/design/shield-field-cpu-20260924.md` | 护盾充能力场装置 MK2 / MK3 的 CPU 占用上调（2026-09-24） | 进行中（进行中 —— 改动已落码） | 2026-09-24 | 3 KB / 45 行 | 3 / 0 |
 | `docs/design/weekend-invasion-m2-20260924.md` | 周末入侵 M2 · 三族入侵者与各自 T5 旗舰（2026-09-24 · 进行中） | 进行中（进行中 —— 逐族落地） | 2026-09-24 | 26 KB / 274 行 | 0 / 1 |
 | `docs/design/skills-merge-20260923.md` | 技能页合并（旧目录 → 科技树页）· 2026-09-23 | 未标注（已落码） | 2026-09-23 | 8 KB / 78 行 | 0 / 0 |
-| `docs/design/wh-spawn-layer7-20260923.md` | 虫洞：强度增幅上调 ＋ 第 7 层起「逐回合刷怪」（2026-09-23） | 进行中（进行中 —— ①数值回调已确认并落码） | 2026-09-23 | 8 KB / 78 行 | 1 / 1 |
+| `docs/design/wh-spawn-layer7-20260923.md` | 虫洞：强度增幅上调 ＋ 第 7 层起「逐回合刷怪」（2026-09-23） | 进行中（进行中 —— ①数值回调已确认并落码） | 2026-09-23 | 10 KB / 98 行 | 2 / 1 |
 | `docs/design/archived-window-embed-20260922.md` | 归档备用：窗口化 / 嵌入主区 这一整套界面改动（2026-09-22） | 未标注（已封存 · 备用） | 2026-09-22 | 9 KB / 104 行 | 1 / 11 |
 | `docs/design/hold-ux-20260922.md` | 洞内货仓操作体验四条（2026-09-22） | 未标注（四条已全部落码） | 2026-09-22 | 9 KB / 98 行 | 0 / 1 |
 | `docs/design/import-save-edge-20260922.md` | 网页版导入存档"没反应"：取消判定竞态（2026-09-22） | 进行中（进行中） | 2026-09-22 | 3 KB / 39 行 | 1 / 0 |
@@ -554,7 +554,7 @@
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/ammo-mk3-black-market-20261006.md`（2026-10-06 · 6 KB）—— 黑市独占MK3弹药生产线
+- `docs/design/ammo-mk3-black-market-20261006.md`（2026-10-06 · 7 KB）—— 黑市独占MK3弹药生产线
 - `docs/design/black-market-android-merchant-20261006.md`（2026-10-06 · 6 KB）—— 触手发束与机械副官风格商人
 - `docs/design/black-market-cards-rework-20261006.md`（2026-10-06 · 12 KB）—— 黑市商品卡详情统一与商人重绘
 - `docs/design/black-market-comms-avatar-20261006.md`（2026-10-06 · 5 KB）—— 黑市复用通讯章鱼人头像

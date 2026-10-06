@@ -209,6 +209,7 @@ describe('虫洞 · 限时倍率表（八个开关逐个接线）', () => {
     const rolls = Math.floor(commons / 3)
     expect(raresOff).toBeLessThanOrEqual(rolls) // 默认是概率 ⇒ 不会超过判定次数
     cell.piles = []
+    delete cell.resourcePilesGenerated
     withRules([on('rareWreckRate', 1e9)], () => {
       wormholeEnsureArrivalPiles(s, ctx)
       const raresOn = (cell.piles ?? []).filter((p) => p.itemId.startsWith('wreck-rare-')).length
@@ -224,6 +225,7 @@ describe('虫洞 · 限时倍率表（八个开关逐个接线）', () => {
     const off = (cell.piles ?? []).filter((p) => p.itemId.startsWith('wreck-rare-'))[0]?.units ?? 0
     expect(off).toBeGreaterThan(0)
     cell.piles = []
+    delete cell.resourcePilesGenerated
     withRules([on('rareWreckVolume', 2)], () => {
       wormholeEnsureArrivalPiles(s, ctx)
       const onU = (cell.piles ?? []).filter((p) => p.itemId.startsWith('wreck-rare-'))[0]?.units ?? 0

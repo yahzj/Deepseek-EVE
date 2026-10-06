@@ -510,6 +510,8 @@ export interface WormholeGridCell {
   alarmDisabled?: boolean
   /** 该格上还没被搬走的堆（F3b 打捞/挖矿往里放；非资源地点不写该字段） */
   piles?: WormholeCellPile[]
+  /** 信号空间原地点的产出已初始化，独立于围剿战果；耗尽后仍随档保留。 */
+  resourcePilesGenerated?: true
   /**
    * **这一格被星云罩着**（船长 2026-09-13 星云机制；层 4 起、只长在有信号的地点上）。
    * ⚠ 它**不改变真相**（`place`/`piles` 照旧），只是让**已扫描**的格先显示"星云遮蔽"，

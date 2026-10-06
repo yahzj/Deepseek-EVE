@@ -40,6 +40,7 @@ import {
   wormholeIsShapedItem,
   WORMHOLE_SLOT_M3,
   WORMHOLE_TOTAL_MASS_CAP,
+  WORMHOLE_ORE_ITEM_ID,
   cargoCapacityM3Of,
   isExitCell,
   shipDisplayName,
@@ -452,7 +453,9 @@ export function SignalSpacePanel({
    * 按钮可用性只看**可成批回收的那部分**（只剩货柜时「打捞」不该亮着）。
    */
   const shapedPiles = herePiles.filter((p) => wormholeIsShapedItem(p.itemId))
-  const bulkPiles = herePiles.length - shapedPiles.length
+  const bulkPiles = veinCell
+    ? herePiles.filter(p => p.itemId === WORMHOLE_ORE_ITEM_ID).length
+    : herePiles.length - shapedPiles.length
   /**
    * **被拿走的那几堆卡片：向下移出 + 淡出**（船长 2026-09-13 深夜：「将地点详细里，那些被打捞或者
    * 采集掉的卡片，添加一个向下移出+淡出的消失动画」）。
