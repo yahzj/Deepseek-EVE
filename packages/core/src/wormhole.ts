@@ -1362,8 +1362,9 @@ export function wormholeGridTravel(
   if (atExit) markExitKnown(grid)
   // ── 到达即触发：舰船信号（开打）/ 漂浮信标（第 1 个标出入口 · 后续揭示谜质） ──
   const first = !grid.activated.includes(dest.key)
-  const autoBattle = (first && dest.place === 'ship' && !dest.combatCleared) || hasLiveFoe(dest)
-  const beacon = first && dest.place === 'beacon'
+  const coveringFoe = hasLiveFoe(dest)
+  const autoBattle = (first && dest.place === 'ship' && !dest.combatCleared) || coveringFoe
+  const beacon = first && dest.place === 'beacon' && (run.expeditionRules === 2 || !coveringFoe)
   const event = run.expeditionRules === 2 && dest.eventKey !== undefined && dest.eventResolved !== true ? dest.eventKey : undefined
   /**
    * **这是第几个信标**（船长 2026-09-20「信标第一次显示下一层入口，后续还激活其他信标则显示谜质位置」）
@@ -1383,7 +1384,10 @@ export function wormholeGridTravel(
    * ⇒ "走进去才发现里面是敌人"。**拦截不算**（那种玩家在移动前已确认过"会被拦下并开战"）。
    */
   const ambush = autoBattle && !scanned && !intercept
-  if (autoBattle || beacon) grid.activated.push(dest.key)
+  // 围剿只是覆盖，不能把未采/未捞的原地点记为完成；新虫洞沿用自己的地点账本。
+  if ((autoBattle && (run.expeditionRules === 2 || !coveringFoe)) || beacon) {
+    if (!grid.activated.includes(dest.key)) grid.activated.push(dest.key)
+  }
   if (event) run.pendingEvent = { key: event, cellKey: dest.key }
   /** 后续信标揭示到的那一格（`null` = 本层已没有可揭示的谜质） */
   let beaconReveal: { cell: WormholeGridCell; nebulaDispersed: boolean } | null = null

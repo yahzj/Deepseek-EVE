@@ -3052,6 +3052,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
         ...(row.combatCleared === true ? { combatCleared: true } : {}),
         ...(row.alarmDisabled === true ? { alarmDisabled: true } : {}),
         ...(cellPiles ? { piles: cellPiles } : {}),
+        ...(row.resourcePilesGenerated === true ? { resourcePilesGenerated: true as const } : {}),
         // 星云标记（船长 2026-09-13 星云机制）：只在为真时写（老档/非星云格 ⇒ 不写 = 零迁移）
         ...(row.nebula === true ? { nebula: true } : {}),
         /**

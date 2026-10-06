@@ -122,6 +122,7 @@ function standOn(state: GameState, place: WormholeGridCell['place']): WormholeGr
   const cell = gridCellAt(grid, grid.pos)!
   cell.place = place
   cell.piles = []
+  delete cell.resourcePilesGenerated
   grid.activated = grid.activated.filter((k) => k !== cell.key)
   return cell
 }
