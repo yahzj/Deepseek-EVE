@@ -13050,38 +13050,74 @@ html[data-locale='en'] body {
 .app-root.is-mobile-layout .app-mkt-trade-row { flex-wrap: wrap; }
 .app-root.is-mobile-layout .app-mkt-trade-row input { min-width: 0; max-width: 100%; box-sizing: border-box; }
 
-/* 黑市为独立市场视图：左右各半，货架仅在左半内滚动。 */
-.app-bm-entry { display: flex; justify-content: flex-end; flex: 0 0 auto; }
+/* 黑市入口同市场子标签；九件货架固定三行，过小窗口才在货架内部滚动。 */
+.app-mkt-tabs { flex: 0 0 auto; }
 .app-bm-page { min-height: 0; min-width: 0; overflow: hidden; }
-.app-bm-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; flex: 0 0 auto; }
+.app-bm-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; flex: 0 0 auto; }
 .app-bm-head h2 { font-size: 18px; margin: 0; letter-spacing: 0; }
 .app-bm-head > .app-gold { margin-left: auto; overflow-wrap: anywhere; min-width: 0; }
 .app-bm-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; flex: 1 1 0; min-height: 0; min-width: 0; }
-.app-bm-stock { min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden; padding-right: 6px; container: bm-stock / inline-size; }
-.app-bm-cardflow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-content: start; }
-.app-bm-cardflow > * { min-width: 0; display: block; }
-.app-bm-card { box-sizing: border-box; height: 320px; min-width: 0; display: flex; flex-direction: column; gap: 5px; padding: 10px; border: 1px solid rgb(var(--wui-border)); border-radius: 6px; background: rgb(var(--wui-bg-panel) / 0.88); }
+.app-bm-stock { min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden; container: bm-stock / inline-size; }
+.app-bm-cardflow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(166px, 1fr)); gap: 6px; height: 100%; min-height: 510px; box-sizing: border-box; }
+.app-bm-cardflow > * { min-width: 0; min-height: 0; display: block; }
+.app-bm-card { box-sizing: border-box; height: 100%; min-width: 0; display: grid; grid-template-rows: minmax(36px, 1fr) 18px 26px 14px 26px 24px; gap: 2px; padding: 5px; border: 1px solid rgb(var(--wui-border)); border-radius: 6px; background: rgb(var(--wui-bg-panel) / 0.88); }
 .app-bm-card.is-selected { border-color: rgb(var(--wui-accent)); }
 .app-bm-card.is-sold { opacity: 0.6; }
-.app-bm-select { border: 0; padding: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; text-align: left; min-width: 0; height: 150px; flex: 0 0 150px; }
-.app-bm-name { font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; min-width: 0; }
-.app-bm-card .app-dim { font-size: 11px; line-height: 1.3; overflow-wrap: anywhere; }
-.app-bm-premium { font-size: 12px; color: rgb(var(--wui-flag)); }
-.app-bm-price { font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
-.app-bm-card > .app-btn { margin-top: auto; flex: 0 0 28px; }
-.app-bm-merchant { display: flex; flex-direction: column; align-items: center; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; border-left: 1px solid rgb(var(--wui-border)); padding: 10px 12px; box-sizing: border-box; }
+.app-bm-select { border: 0; padding: 0; background: transparent; color: inherit; display: flex; align-items: flex-start; text-align: left; min-width: 0; min-height: 0; }
+.app-bm-name { font-size: 11px; line-height: 12px; overflow-wrap: anywhere; min-width: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.app-bm-card .app-dim { font-size: 10px; line-height: 1.3; overflow-wrap: anywhere; }
+.app-bm-card-meta { display: flex; align-items: center; gap: 3px; }
+.app-bm-card-meta > span:last-child { margin-left: auto; }
+.app-bm-card .app-bm-card-base { line-height: 12px; }
+.app-bm-premium { font-size: 10px; line-height: 12px; color: rgb(var(--wui-flag)); }
+.app-bm-price { display: flex; flex-direction: column; font-size: 11px; line-height: 13px; min-width: 0; }
+.app-bm-price > .app-bm-price-amount { white-space: nowrap; font-size: 11px; font-weight: bold; }
+.app-bm-price > span { font-size: 10px; font-weight: normal; }
+.app-bm-card > .app-btn { min-height: 24px; padding: 1px 4px; font-size: 11px; line-height: 18px; }
+.app-bm-select:focus-visible { outline: 2px solid rgb(var(--wui-accent)); outline-offset: 2px; }
+.app-bm-merchant { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; border-left: 1px solid rgb(var(--wui-border)); padding: 8px 10px; box-sizing: border-box; }
 .app-bm-sign { font-size: 13px; color: rgb(var(--wui-text-dim)); flex: 0 0 auto; }
-.app-bm-portrait { width: min(100%, 470px); min-height: 360px; flex: 1 0 360px; display: flex; align-items: center; justify-content: center; container: bm-portrait / inline-size; }
-.app-bm-portrait pre { box-sizing: border-box; width: 36ch; margin: 0; font-family: Consolas, 'Courier New', monospace; font-size: 18px; line-height: 1.15; letter-spacing: 0; color: rgb(var(--wui-accent)); white-space: pre; user-select: none; }
-.app-bm-speech { flex: 0 0 auto; max-width: 440px; width: 100%; font-size: 15px; line-height: 1.6; padding: 16px 0 10px; border-top: 1px solid rgb(var(--wui-border)); overflow-wrap: anywhere; }
-.app-bm-picked { flex: 0 0 auto; width: 100%; font-size: 12px; overflow-wrap: anywhere; }
+.app-bm-monitor { width: 100%; min-height: 140px; flex: 1 0 140px; display: flex; align-items: center; justify-content: center; color: rgb(var(--wui-accent)); }
+.app-bm-monitor-art { display: block; width: 100%; height: 100%; max-height: 470px; min-height: 0; }
+.app-bm-monitor-case { fill: rgb(var(--wui-bg-panel)); stroke: rgb(var(--wui-border)); stroke-width: 3; }
+.app-bm-monitor-rim { fill: none; stroke: rgb(var(--wui-text-dim) / 0.4); stroke-width: 1; }
+.app-bm-monitor-glass { fill: rgb(var(--wui-bg-scene-dock)); stroke: currentColor; stroke-width: 1.5; }
+.app-bm-screen-guide { fill: none; stroke: currentColor; stroke-width: 1; opacity: 0.2; }
+.app-bm-merchant-coat { fill: rgb(var(--wui-text-dim) / 0.13); stroke: rgb(var(--wui-text-dim)); stroke-width: 1.5; }
+.app-bm-merchant-head { fill: rgb(var(--wui-accent) / 0.12); stroke: currentColor; stroke-width: 2; }
+.app-bm-merchant-seam { fill: none; stroke: rgb(var(--wui-text-dim)); stroke-width: 1.3; }
+.app-bm-merchant-detail { fill: none; stroke: currentColor; stroke-width: 1; opacity: 0.5; }
+.app-bm-merchant-brow, .app-bm-merchant-mouth { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.app-bm-merchant-eyes { fill: rgb(var(--wui-bg-scene-dock)); stroke: currentColor; stroke-width: 1.6; transform-box: fill-box; transform-origin: center; animation: app-bm-blink 6.8s ease-in-out infinite; }
+.app-bm-merchant-tentacle { fill: rgb(var(--wui-accent) / 0.06); stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.app-bm-merchant-hand { transform-box: fill-box; transform-origin: left bottom; }
+.app-bm-monitor.is-pitch .app-bm-merchant-hand, .app-bm-monitor.is-deal .app-bm-merchant-hand { animation: app-bm-hand 4.2s ease-in-out infinite; }
+.app-bm-merchant-image { animation: app-bm-signal-shift 9s linear infinite; }
+.app-bm-scanline { stroke: currentColor; stroke-width: 1; opacity: 0.16; }
+.app-bm-signal-band { color: rgb(var(--wui-text)); opacity: 0.07; animation: app-bm-signal-sweep 8s linear infinite; }
+.app-bm-signal-band path { fill: none; stroke: currentColor; stroke-width: 1; }
+.app-bm-signal-band rect { fill: currentColor; }
+.app-bm-screen-reflection { fill: rgb(var(--wui-text) / 0.025); }
+.app-bm-monitor-vents, .app-bm-monitor-stand { fill: none; stroke: rgb(var(--wui-text-dim)); stroke-width: 1.7; stroke-linecap: round; }
+.app-bm-monitor-led { fill: rgb(var(--wui-green)); }
+.app-bm-speech { box-sizing: border-box; flex: 0 0 auto; max-width: 440px; width: 100%; min-height: 95px; font-size: 13px; line-height: 1.5; padding: 10px 0 4px; border-top: 1px solid rgb(var(--wui-border)); overflow-wrap: anywhere; }
+.app-bm-picked { flex: 0 0 auto; width: 100%; min-height: 32px; font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
 .app-bm-confirm { display: flex; flex-direction: column; gap: 14px; overflow-wrap: anywhere; }
 .app-bm-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
-@container bm-stock (max-width: 560px) { .app-bm-cardflow { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@container bm-stock (max-width: 290px) { .app-bm-cardflow { grid-template-columns: minmax(0, 1fr); } }
-@container bm-portrait (max-width: 410px) { .app-bm-portrait pre { font-size: 14px; } }
-@container bm-portrait (max-width: 320px) { .app-bm-portrait pre { font-size: 11px; } }
-@container bm-portrait (max-width: 240px) { .app-bm-portrait pre { font-size: 8px; } }
+@container bm-stock (max-width: 340px) {
+  .app-bm-cardflow { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(5, 176px); min-height: 904px; height: max-content; }
+  .app-bm-card { height: 176px; }
+}
+@keyframes app-bm-blink { 0%, 44%, 48%, 100% { transform: scaleY(1); } 46% { transform: scaleY(0.12); } }
+@keyframes app-bm-hand { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-3deg); } }
+@keyframes app-bm-signal-shift { 0%, 92%, 96%, 100% { transform: translateX(0); } 93%, 95% { transform: translateX(1px); } 94% { transform: translateX(-1px); } }
+@keyframes app-bm-signal-sweep { from { transform: translateY(-28px); } to { transform: translateY(282px); } }
+body.no-fx .app-bm-monitor *, body.no-fx .app-bm-monitor.is-pitch .app-bm-merchant-hand,
+body.no-fx .app-bm-monitor.is-deal .app-bm-merchant-hand { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .app-bm-monitor *, .app-bm-monitor.is-pitch .app-bm-merchant-hand,
+  .app-bm-monitor.is-deal .app-bm-merchant-hand { animation: none; }
+}
 
 /* 旧版侧栏：导航只切换占位；日志原宽淡出后一次释放空间，不压缩正文。 */
 .app-root.is-layout-classic #classic-navigation {

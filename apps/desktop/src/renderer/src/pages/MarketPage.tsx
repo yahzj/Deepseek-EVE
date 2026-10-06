@@ -1214,6 +1214,11 @@ export function MarketPage({
     setDetail(SUB_ALL)
     setRack(SUB_ALL)
   }
+  const changeMarketTab = (tab: typeof mktTab): void => {
+    setKw('')
+    changeKind(DOMAIN_ALL)
+    setMktTab(tab)
+  }
   const changeCategory = (v: string): void => {
     setSub(v)
     setDetail(SUB_ALL)
@@ -1275,9 +1280,6 @@ export function MarketPage({
     // `app-mkt-page`：窄窗（≤1180px，单栏）时本页**放开「一级页不滚」**——船长 2026-09-14：
     // 「放宽闸门，允许市场页面在这种情况下出现滚动条。让所有子窗口完整显示」（见 styles.css 同名断点块）
     <div className="page-stack page-fill app-mkt-page">
-      {blackMarketUnlocked(state) ? <div className="app-bm-entry">
-        <button className="app-btn" onClick={() => { engine.openBlackMarketAt(); setBlackMarketOpen(true) }}><Glyph name="nav-shop" size={18} />{tr('ui.blackMarket.001')}</button>
-      </div> : null}
       {/* 常驻双栏：左 = 搜索 + 标签 + 商品列表；右 = 市场详情大盘（常驻，无选中时显示引导） */}
       <div className="app-mkt-split">
         <div className="app-mkt-left">
@@ -1326,6 +1328,23 @@ export function MarketPage({
             </select> : null}
           </div> : null}
 
+          <div className="app-subtabs app-mkt-tabs" role="tablist">
+            <button role="tab" aria-selected={mktTab === 'mine' && !filterActive} className={`app-subtab${mktTab === 'mine' && !filterActive ? ' is-active' : ''}`} onClick={() => changeMarketTab('mine')}>
+              <span>▤</span><span>{tr('ui.MarketPage.113')}</span>
+            </button>
+            <button role="tab" aria-selected={mktTab === 'common' && !filterActive} className={`app-subtab${mktTab === 'common' && !filterActive ? ' is-active' : ''}`} onClick={() => changeMarketTab('common')}>
+              <span>≡</span><span>{tr('ui.MarketPage.101')}</span>
+            </button>
+            <button role="tab" aria-selected={mktTab === 'rare' && !filterActive} className={`app-subtab${mktTab === 'rare' && !filterActive ? ' is-active' : ''}`} onClick={() => changeMarketTab('rare')} title={tr('ui.MarketPage.102')}>
+              <span>✦</span><span>{tr('ui.MarketPage.103')}</span>
+            </button>
+            <button role="tab" aria-selected={mktTab === 'exotic' && !filterActive} className={`app-subtab${mktTab === 'exotic' && !filterActive ? ' is-active' : ''}`} onClick={() => changeMarketTab('exotic')} title={tr('ui.MarketPage.104')}>
+              <span>◈</span><span>{tr('ui.MarketPage.028')}</span>
+            </button>
+            {blackMarketUnlocked(state) ? <button className="app-subtab app-bm-entry" role="tab" aria-selected={false} onClick={() => { engine.openBlackMarketAt(); setBlackMarketOpen(true) }}>
+              <Glyph name="nav-shop" size={16} /><span>{tr('ui.blackMarket.001')}</span>
+            </button> : null}
+          </div>
           {filterActive ? (
             /* ── 搜索/过滤激活：跨档合并结果（常驻 + 稀有 + 限定奇货一次搜全；GoodRow 自带稀有度徽标区分） ── */
             // ⟪文案调整 2026-10-04⟫ 标题包含全部已选条件，避免细分筛选被隐藏。
@@ -1347,51 +1366,6 @@ export function MarketPage({
             />
           ) : (
             <>
-              {/* 我的挂单 / 常驻订单 / 稀有订单 / 限定奇货（与星图页同款 app-subtabs 标签规范；后两者时效短，
-                  切回本页记得看一眼）—— 2026-09-14 船长：「将市场页面的奇货从稀有订单里独立出现…
-                  可以新增一个标签页切换」＋三答：标签名取「限定奇货」· 图标取 `◈` · **常态显示**；
-                  「我的挂单」为 2026-09-22 船长令新增，**排第一位**（进页面默认仍是常驻订单） */}
-              <div className="app-subtabs" role="tablist">
-                <button
-                  role="tab"
-                  aria-selected={mktTab === 'mine'}
-                  className={`app-subtab${mktTab === 'mine' ? ' is-active' : ''}`}
-                  onClick={() => setMktTab('mine')}
-                >
-                  <span>▤</span>
-                  <span>{tr("ui.MarketPage.113")}</span>
-                </button>
-                <button
-                  role="tab"
-                  aria-selected={mktTab === 'common'}
-                  className={`app-subtab${mktTab === 'common' ? ' is-active' : ''}`}
-                  onClick={() => setMktTab('common')}
-                >
-                  <span>≡</span>
-                  <span>{tr("ui.MarketPage.101")}</span>
-                </button>
-                <button
-                  role="tab"
-                  aria-selected={mktTab === 'rare'}
-                  className={`app-subtab${mktTab === 'rare' ? ' is-active' : ''}`}
-                  onClick={() => setMktTab('rare')}
-                  title={tr("ui.MarketPage.102")}
-                >
-                  <span>✦</span>
-                  <span>{tr("ui.MarketPage.103")}</span>
-                </button>
-                <button
-                  role="tab"
-                  aria-selected={mktTab === 'exotic'}
-                  className={`app-subtab${mktTab === 'exotic' ? ' is-active' : ''}`}
-                  onClick={() => setMktTab('exotic')}
-                  title={tr("ui.MarketPage.104")}
-                >
-                  <span>◈</span>
-                  <span>{tr("ui.MarketPage.028")}</span>
-                </button>
-              </div>
-
               {mktTab === 'mine' ? (
                 /**
                  * **「我的挂单」子页面**（船长 2026-09-22：与常驻订单同级、排第一位）。

@@ -5,7 +5,7 @@ import { Glyph } from '../ui/Glyphs'
 import { MarketGoodHover, marketGoodDisplayName } from '../ui/marketGoodHover'
 import { tr, cmdText, useL10n } from '../i18n/locale'
 import { fmtDuration } from '../i18n/fmt'
-import { AsciiMerchant } from '../ui/AsciiMerchant'
+import { MerchantMonitor } from '../ui/MerchantMonitor'
 import type { PageProps } from './common'
 import { isk } from './common'
 
@@ -62,14 +62,13 @@ export function BlackMarketPage({ engine, onToast, onBack }: PageProps & { onBac
             if (!g) return null
             return <MarketGoodHover key={o.goodKey} ctx={engine.ctx} good={g}>
               <article className={`app-bm-card${selected === o.goodKey ? ' is-selected' : ''}${o.sold ? ' is-sold' : ''}`}>
-                <button className="app-bm-select" aria-pressed={selected === o.goodKey} onClick={() => { setSelected(o.goodKey); setDeal(false) }}>
-                  <Glyph name={g.kind === 'ship' ? 'nav-ship' : g.kind === 'aicore' ? 'nav-ai' : g.kind === 'blueprint' ? 'nav-industry' : g.kind === 'module' ? 'nav-fit' : 'nav-items'} size={32} />
+                <button className="app-bm-select" title={marketGoodDisplayName(engine.ctx, g.key)} aria-pressed={selected === o.goodKey} onClick={() => { setSelected(o.goodKey); setDeal(false) }}>
                   <span className="app-bm-name">{marketGoodDisplayName(engine.ctx, g.key)}</span>
-                  <span className="app-dim">R{g.rarityTier} · {tr(o.sold ? 'ui.blackMarket.008' : 'ui.blackMarket.007')}</span>
                 </button>
-                <span className="app-dim">{tr('ui.blackMarket.005', { p1: isk(o.basePrice) })}</span>
-                <span className="app-bm-premium">{tr('ui.blackMarket.006', { p1: o.multiplier })}</span>
-                <strong className="app-bm-price">{isk(o.price)} {tr('ui.blackMarket.021')}</strong>
+                <div className="app-bm-card-meta app-dim"><Glyph name={g.kind === 'ship' ? 'nav-ship' : g.kind === 'aicore' ? 'nav-ai' : g.kind === 'blueprint' ? 'nav-industry' : g.kind === 'module' ? 'nav-fit' : 'nav-items'} size={16} /><span>R{g.rarityTier}</span><span>{tr(o.sold ? 'ui.blackMarket.008' : 'ui.blackMarket.007')}</span></div>
+                <div className="app-bm-card-base app-dim">{tr('ui.blackMarket.005', { p1: isk(o.basePrice) })}</div>
+                <div className="app-bm-premium">{tr('ui.blackMarket.006', { p1: o.multiplier })}</div>
+                <strong className="app-bm-price"><span className="app-bm-price-amount">{isk(o.price)}</span><span>{tr('ui.blackMarket.021')}</span></strong>
                 <button className="app-btn" disabled={o.sold} onClick={(e) => { trigger.current = e.currentTarget; setSelected(o.goodKey); setDeal(false); setAsk({ offer: { ...o }, day: board.dayWallMs }) }}>{tr(o.sold ? 'ui.blackMarket.008' : 'ui.blackMarket.009')}</button>
               </article>
             </MarketGoodHover>
@@ -79,7 +78,7 @@ export function BlackMarketPage({ engine, onToast, onBack }: PageProps & { onBac
       </section>
       <section className="app-bm-merchant" aria-label={tr('ui.blackMarket.013')}>
         <div className="app-bm-sign">{tr('ui.blackMarket.013')}</div>
-        <AsciiMerchant mood={deal ? 'deal' : good ? 'pitch' : 'idle'} />
+        <MerchantMonitor mood={deal ? 'deal' : good ? 'pitch' : 'idle'} />
         <div className="app-bm-speech" aria-live="polite">{tr(speech)}</div>
         {good ? <div className="app-bm-picked app-dim">{marketGoodDisplayName(engine.ctx, good.key)}</div> : null}
       </section>
