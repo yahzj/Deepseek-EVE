@@ -34,6 +34,12 @@ async function until(expression: string) {
 async function click(selector: string) {
   assert(await js(`(()=>{const b=document.querySelector(${JSON.stringify(selector)});if(!b||b.disabled)return false;b.click();return true})()`), selector)
 }
+async function dismissNotice() {
+  for (let i = 0; i < 6; i++) {
+    await js(`(()=>{const b=[...document.querySelectorAll('.app-modal-head button')].find(x=>x.textContent.includes('关闭')||x.textContent.includes('Close'))??document.querySelector('.app-comm-pop .app-comms-eave-extra button');if(b)b.click();return true})()`)
+    await sleep(120)
+  }
+}
 async function main() {
   await fs.mkdir(out, { recursive: true })
   const server = createServer(async (req, res) => {
@@ -97,7 +103,9 @@ async function main() {
       const stressGoods = [...new Map([original, highest, ...longest].map(g => [g.key, g])).values()].slice(0, 9)
       fixture.blackMarket!.offers = stressGoods.map(g => ({ goodKey: g.key, basePrice: g.basePrice,
         multiplier: BLACK_MARKET_MAX_MULTIPLIER, price: g.basePrice * BLACK_MARKET_MAX_MULTIPLIER, sold: false }))
-      const save = serializeSaveFile(fixture, fixtureNow)
+      // 固定商品抽样与日板时间，但本轮保存时刻保持当前，避免后面的用例触发离线简报。
+      fixture.savedAtWallMs = Date.now()
+      const save = serializeSaveFile(fixture, fixture.savedAtWallMs)
       // 新文档启动前注入，避免旧引擎的pagehide保存覆写合成档。
       const injection = await send('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.clear();localStorage.setItem('whale:idle:save',${JSON.stringify(save)});localStorage.setItem('whale-idle:layout',${JSON.stringify(layout)});localStorage.setItem('whale-idle:layout-set','1');localStorage.setItem('whale-idle:locale',${JSON.stringify(locale)});localStorage.setItem('whale-idle:announce-seen',${JSON.stringify(ANNOUNCEMENTS[0]!.id)});` })
       await send('Page.reload')
@@ -111,6 +119,16 @@ async function main() {
       await click('.app-mkt-tabs .app-bm-entry')
       await until('document.querySelectorAll(".app-bm-card").length === 9')
       await sleep(250)
+      await dismissNotice()
+      const logOverlay = await js(`(()=>{const a=document.querySelector('.app-bm-monitor-art').getBoundingClientRect(),log=document.querySelector('.app-log-side'),b=log.getBoundingClientRect();return getComputedStyle(log).display!=='none'&&Math.min(a.right,b.right)>Math.max(a.left,b.left)&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)})()`)
+      // 新版展开日志按已确认外壳规则覆盖主区；收起后再验证监视器无遮挡。
+      if (layout === 'modern' && !mobile) {
+        const overlayShot = await send('Page.captureScreenshot', { format: 'png' })
+        await fs.writeFile(join(out, `${layout}-${locale}-${mode}-log-open.png`), Buffer.from(overlayShot.data, 'base64'))
+        await click('.app-log-head-right button')
+        await until('document.querySelector(".app-log-side").getBoundingClientRect().width < 1')
+        await sleep(250)
+      }
       const r = await js(`(()=>{
         const page=document.querySelector('.app-bm-page'),stock=document.querySelector('.app-bm-stock'),merchant=document.querySelector('.app-bm-merchant'),portrait=document.querySelector('.app-bm-monitor');
         const root=document.querySelector('.app-root'),transform=getComputedStyle(root).transform;
@@ -139,6 +157,9 @@ async function main() {
       assert.equal(r.priceOverflow, 0, '商品售价溢出')
       assert.equal(r.baseOverflow, 0, '商品基准价溢出')
       assert.equal(r.outside, 0, '卡片内容伸出边框')
+      const monitorUncovered = await js(`(()=>{const monitor=document.querySelector('.app-bm-monitor'),r=document.querySelector('.app-bm-monitor-art').getBoundingClientRect();return [0.1,0.5,0.9].every(x=>[0.1,0.5,0.9].every(y=>monitor.contains(document.elementFromPoint(r.left+r.width*x,r.top+r.height*y))))})()`)
+      if (!monitorUncovered) console.log(JSON.stringify({ layout, locale, mode, hits: await js(`(()=>{const r=document.querySelector('.app-bm-monitor-art').getBoundingClientRect();return [0.1,0.5,0.9].flatMap(x=>[0.1,0.5,0.9].map(y=>({x:r.left+r.width*x,y:r.top+r.height*y,hit:document.elementFromPoint(r.left+r.width*x,r.top+r.height*y)?.outerHTML.slice(0,400)})))})()`) }))
+      assert(monitorUncovered, '监视器被外部界面遮挡')
       const highestAt = stressGoods.findIndex(g => g.key === highest.key)
       assert.equal(await js(`document.querySelectorAll('.app-bm-price-amount')[${highestAt}].textContent`),
         (highest.basePrice * BLACK_MARKET_MAX_MULTIPLIER).toLocaleString('zh-CN'), '最高报价未完整展示')
@@ -185,8 +206,7 @@ async function main() {
       await until(`JSON.parse(localStorage.getItem('whale:idle:save')).state.blackMarket.offers[0].sold`)
       const after = await js(`JSON.parse(localStorage.getItem('whale:idle:save')).state`)
       assert.equal(before.wallet.isk - after.wallet.isk, before.blackMarket.offers[0].price)
-      await js(`(()=>{const b=[...document.querySelectorAll('.app-modal-head button')].find(x=>x.textContent.includes('关闭')||x.textContent.includes('Close'));if(b)b.click();return true})()`)
-      await sleep(120)
+      await dismissNotice()
       await js(`document.querySelector('.app-bm-page')?.scrollTo(0,0);true`)
       const backHit = await js(`(()=>{const e=document.querySelector('.app-bm-head > button'),r=e.getBoundingClientRect(),hit=document.elementFromPoint(Math.max(1,r.left+r.width/2),Math.max(1,r.top+r.height/2));return {ok:r.bottom>0&&r.right>0&&(e===hit||e.contains(hit)),hit:hit?.outerHTML?.slice(0,600),button:{x:r.x,y:r.y,w:r.width,h:r.height}}})()`)
       if (!backHit.ok) console.log(JSON.stringify({ layout,locale,mode,...r,backHit }))
@@ -208,7 +228,7 @@ async function main() {
       assert(await js(`JSON.parse(localStorage.getItem('whale:idle:save')).state.blackMarket.offers[0].sold`), '刷新售罄恢复')
       readings.push({ layout, locale, mode, ...r, highestPrice: highest.basePrice * BLACK_MARKET_MAX_MULTIPLIER,
         longestName: goodName(ctx, longest[0]!.key), animation: true, reducedMotion: true, noFx: true,
-        purchased: true, savedSold: true, returnedSearch: true, merchantLastReachable: true })
+        purchased: true, savedSold: true, returnedSearch: true, merchantLastReachable: true, logOverlay, monitorUncovered })
       console.log(`${layout}/${locale}/${mode}通过`)
     }
     await fs.writeFile(join(out, 'readings.json'), JSON.stringify(readings, null, 2), 'utf8')
