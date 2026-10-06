@@ -20,43 +20,53 @@ export function MerchantMonitor({ mood }: { mood: 'idle' | 'pitch' | 'deal' }) {
       <g clipPath={`url(#${clip})`}>
         <path d="M45 67H76M45 67V87M375 67H344M375 67V87M45 275H76M45 275V255M375 275H344M375 275V255" className="app-bm-screen-guide" />
         <g className="app-bm-merchant-image">
-          <path d="M147 124C119 150 128 193 113 218C101 239 77 227 87 209C89 205 94 204 98 208C99 187 95 158 103 122C111 82 133 51 157 43L189 48Z" className="app-bm-merchant-tentacle" />
-          <path d="M265 71C302 99 305 139 297 175C289 202 305 230 289 244C279 253 260 251 257 238C275 234 270 218 260 199L246 107Z" className="app-bm-merchant-tentacle" />
-          <path d="M105 299L117 240Q127 219 174 210H240Q276 216 292 244L311 299Z" className="app-bm-merchant-coat" />
-          <path d="M180 181V214Q211 239 237 211V180" className="app-bm-merchant-head" />
-          <path d="M174 211L156 230L184 264L204 228M240 210L264 227L235 262L213 228M204 229L194 299M213 229L229 299M130 250L147 299M279 254L270 299" className="app-bm-merchant-seam" />
-          <path d="M135 271H163V288H139ZM243 267H270V285H239Z" className="app-bm-merchant-seam" />
-          <path d="M179 222Q207 250 237 221M189 243L202 290" className="app-bm-merchant-detail" />
-          <path d="M145 120L120 104L127 142L151 151M267 117L296 99L286 140L264 150" className="app-bm-merchant-head" />
-          <path d="M132 117L138 138M282 113L274 137" className="app-bm-merchant-detail" />
-          <path d="M152 86Q207 49 262 91L268 135Q266 172 244 191Q219 211 194 202Q157 189 150 152Z" className="app-bm-merchant-head" />
-          <path d="M147 107C123 83 139 45 163 38C185 26 220 35 236 29C267 36 285 61 279 92L263 121L252 89C228 91 215 78 209 65C201 87 177 104 150 110Z" className="app-bm-merchant-tentacle" />
-          <path d="M145 104C147 130 144 158 151 180C157 195 171 183 166 173C161 164 167 130 179 102M257 82C287 105 275 135 278 157C280 175 302 177 305 163C306 157 301 152 296 157C294 139 300 105 282 86" className="app-bm-merchant-tentacle" />
-          <path d="M154 59Q180 37 204 47M226 46Q255 45 265 62" className="app-bm-merchant-detail" />
-          <path d="M161 117L195 111M225 111Q245 106 257 117" className="app-bm-merchant-brow" />
-          <g className="app-bm-merchant-eyes">
-            <path d="M157 134Q177 113 199 129Q194 153 173 151Q159 148 157 134ZM222 130Q242 112 262 132Q258 151 239 150Q226 148 222 130Z" />
-            <ellipse cx="183" cy="134" rx="7" ry="12" className="app-bm-merchant-pupil" />
-            <ellipse cx="240" cy="133" rx="7" ry="12" className="app-bm-merchant-pupil" />
-            <circle cx="185" cy="130" r="2" className="app-bm-merchant-glint" /><circle cx="242" cy="129" r="2" className="app-bm-merchant-glint" />
+          <path d="M174 173L179 209L166 230L142 246L129 301H306L282 249L249 232L239 209L247 171Z" className="app-bm-robot-joint" />
+          <g className="app-bm-robot-neck">
+            <path d="M191 187L191 215L200 236M228 189L229 216L221 236M205 195L208 232M216 195L214 232" className="app-bm-robot-cable" />
+            <path d="M183 207Q210 217 238 206L239 219Q211 231 181 219ZM183 225Q212 236 238 224L236 236Q212 247 184 235Z" className="app-bm-robot-plate" />
+            <path d="M197 215L196 223M210 218V228M224 215L225 225" className="app-bm-robot-seam" />
           </g>
-          <path d="M211 145L207 158L218 156M164 162L177 165M249 162L255 156" className="app-bm-merchant-detail" />
-          <path d={mood === 'deal' ? 'M190 172Q217 195 242 168L238 181Q215 198 197 181Z' : mood === 'pitch' ? 'M193 176Q218 188 242 167M237 166L246 169' : 'M198 179Q219 183 238 171'} className="app-bm-merchant-mouth" />
-          <path d="M137 63Q167 26 207 38Q258 33 278 77" className="app-bm-merchant-headset" />
-          <rect x="129" y="107" width="17" height="40" rx="7" className="app-bm-merchant-headset" />
-          <path d="M136 144L141 159H158" className="app-bm-merchant-seam" />
-          <circle cx="160" cy="159" r="3" className="app-bm-merchant-pupil" />
-          <g className="app-bm-merchant-hand">
-            <path d="M279 285Q328 302 340 270L344 242L324 238Q318 264 292 255Z" className="app-bm-merchant-coat" />
-            <path d="M325 240L318 219Q309 207 315 199Q321 194 328 211L330 215L333 182Q334 174 340 176Q345 178 343 199L346 184Q350 175 355 180Q358 184 352 205L357 194Q362 190 365 195Q367 201 357 218L350 243Q338 249 325 240Z" className="app-bm-merchant-head" />
-            <path d="M325 240L351 244M335 216L345 220" className="app-bm-merchant-seam" />
+          <g className="app-bm-robot-shoulders">
+            <path d="M166 221L112 236L78 271L85 297H141L155 254L184 242Z" className="app-bm-robot-plate" />
+            <path d="M246 220L291 233L330 266L332 297H278L264 252L234 243Z" className="app-bm-robot-plate" />
+            <path d="M165 243L146 270L149 302H274L273 267L251 243L215 260L205 260Z" className="app-bm-robot-plate" />
+            <path d="M122 244L101 264L104 278H134L142 258M287 242L311 265L305 280H281L277 258M174 251L173 278L204 290M248 251L249 278L219 290M211 267V302" className="app-bm-robot-seam" />
+            <path d="M89 287H133M287 287H322M165 287L179 294M167 293L178 299M239 295H262M239 301H259" className="app-bm-robot-detail" />
+            <circle cx="136" cy="245" r="5" className="app-bm-robot-port" /><circle cx="282" cy="244" r="5" className="app-bm-robot-port" />
+            <path d="M207 248L212 245L217 248V253L212 256L207 253Z" className="app-bm-robot-port" />
           </g>
-          <g className="app-bm-merchant-detail">
-            <ellipse cx="115" cy="144" rx="4" ry="7" /><ellipse cx="112" cy="167" rx="4" ry="7" /><ellipse cx="107" cy="190" rx="4" ry="6" />
-            <ellipse cx="289" cy="128" rx="3" ry="5" /><ellipse cx="288" cy="145" rx="3" ry="5" /><ellipse cx="287" cy="162" rx="3" ry="5" />
-            <circle cx="160" cy="146" r="3" /><circle cx="157" cy="163" r="3" /><circle cx="270" cy="221" r="3" /><circle cx="271" cy="237" r="3" />
+          <g className="app-bm-robot-head" transform={mood === 'pitch' ? 'rotate(-2 212 210)' : mood === 'deal' ? 'rotate(1 212 210)' : undefined}>
+            <path d="M162 70C133 51 110 68 106 104C101 139 117 174 110 202C106 219 92 222 91 208C88 222 92 242 106 245C133 250 140 213 135 185C130 151 142 126 163 115Z" className="app-bm-merchant-tentacle" />
+            <path d="M254 57C287 46 310 72 316 113C320 146 302 172 309 200C313 215 329 209 328 198C341 217 332 239 315 236C289 234 279 197 288 166C295 133 276 115 256 105Z" className="app-bm-merchant-tentacle" />
+            <path d="M155 76Q145 40 184 30Q224 18 260 44Q280 63 276 103L263 162L244 191L216 205L188 191L163 166L151 113Z" className="app-bm-robot-joint" />
+            <path d="M159 94L171 58L208 40L247 52L265 86L262 126L248 160L215 173L181 158L162 128Z" className="app-bm-robot-plate" />
+            <path d="M171 58L197 61L210 42M197 61L190 90M197 61L233 62L250 84M215 44L215 85M169 97L185 93M239 95L257 97" className="app-bm-robot-seam" />
+            <path d="M176 62L187 55L182 83L171 90ZM224 49L243 58L248 76L235 65Z" className="app-bm-robot-highlight" />
+            <path d="M144 98L155 91L162 103L161 150L153 165L143 151ZM268 97L282 101L286 141L274 158L263 143Z" className="app-bm-robot-plate" />
+            <circle cx="152" cy="124" r="8" className="app-bm-robot-joint" /><circle cx="274" cy="124" r="8" className="app-bm-robot-joint" />
+            <circle cx="152" cy="124" r="4" className="app-bm-robot-port" /><circle cx="274" cy="124" r="4" className="app-bm-robot-port" />
+            <path d="M164 140L181 143L190 157L198 184L215 192L232 184L242 157L259 138L262 158L244 182L230 199L214 204L195 198L176 179L161 155Z" className="app-bm-robot-plate" />
+            <path d="M164 148L178 153L185 169L177 173M258 146L247 154L242 170L248 174M198 184L197 194M232 184L234 194M202 195L215 200L226 195" className="app-bm-robot-seam" />
+            <path d="M167 104L177 100L196 102L202 111L190 123L171 121L165 114ZM221 108L237 101L254 104L260 114L250 123L231 120Z" className="app-bm-robot-eye-socket" />
+            <g className="app-bm-merchant-eyes">
+              <path d="M170 112Q184 107 197 112Q184 120 172 117ZM227 112Q240 106 255 113Q243 121 231 117Z" />
+              <circle cx={mood === 'idle' ? 184 : 187} cy="113" r="3.5" className="app-bm-robot-iris" />
+              <circle cx={mood === 'idle' ? 241 : 244} cy="113" r="3.5" className="app-bm-robot-iris" />
+              <circle cx="188" cy="112" r="1" className="app-bm-robot-glint" /><circle cx="245" cy="112" r="1" className="app-bm-robot-glint" />
+            </g>
+            <path d="M211 111L203 142L208 147H220L225 142L218 113M207 150L215 153L222 149" className="app-bm-robot-seam" />
+            <path d="M196 159L203 156H224L234 157L228 166H201Z" className="app-bm-robot-eye-socket" />
+            <path d={mood === 'deal' ? 'M202 160L215 163L228 159' : mood === 'pitch' ? 'M202 161H217L228 158' : 'M203 161H227'} className="app-bm-merchant-mouth" />
+            <path d="M165 128L182 132M167 134L181 138M241 133L258 129M242 139L255 135M205 176H225" className="app-bm-robot-detail" />
+            <path d="M155 54C159 35 183 28 202 31C211 55 183 68 173 95C168 107 162 114 156 105C148 91 148 70 155 54Z" className="app-bm-merchant-tentacle" />
+            <path d="M231 31C254 29 275 47 280 70C284 91 273 109 269 130C263 150 284 160 289 145C286 163 269 174 258 159C244 141 252 120 256 102C262 75 243 64 231 54Z" className="app-bm-merchant-tentacle" />
+            <path d="M159 51L168 44L174 60L164 69ZM233 33L244 36L254 51L243 56Z" className="app-bm-robot-port" />
+            <g className="app-bm-robot-suckers">
+              <ellipse cx="116" cy="119" rx="4" ry="7" /><ellipse cx="120" cy="143" rx="4" ry="7" /><ellipse cx="122" cy="168" rx="4" ry="7" /><ellipse cx="119" cy="191" rx="4" ry="7" />
+              <ellipse cx="304" cy="116" rx="4" ry="7" /><ellipse cx="299" cy="139" rx="4" ry="7" /><ellipse cx="297" cy="162" rx="4" ry="7" /><ellipse cx="299" cy="186" rx="4" ry="7" />
+              <ellipse cx="165" cy="81" rx="3" ry="5" /><ellipse cx="165" cy="95" rx="3" ry="5" /><ellipse cx="265" cy="123" rx="3" ry="5" /><ellipse cx="263" cy="138" rx="3" ry="5" />
+            </g>
           </g>
-          <circle cx="182" cy="236" r="6" className="app-bm-merchant-badge" /><path d="M180 233L184 236L180 239" className="app-bm-merchant-seam" />
         </g>
         <rect x="26" y="24" width="368" height="282" rx="12" fill={`url(#${scan})`} />
         <g className="app-bm-signal-band">

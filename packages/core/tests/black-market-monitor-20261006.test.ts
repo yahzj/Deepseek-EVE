@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
@@ -15,16 +16,16 @@ const jsx = { createElement: (type: string, props: Record<string, unknown> | nul
 const nodes = (value: unknown): Node[] => Array.isArray(value) ? value.flatMap(nodes) : value && typeof value === 'object' && 'children' in value
   ? [value as Node, ...(value as Node).children.flatMap(nodes)] : []
 
-function source(path: string) {
-  return ts.createSourceFile(path, readFileSync(resolve(ROOT, ui + path), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+function source(path: string, text?: string) {
+  return ts.createSourceFile(path, text ?? readFileSync(resolve(ROOT, ui + path), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
 }
 function execute(text: string, scope: Record<string, any>) {
   runInNewContext(ts.transpileModule(text, { compilerOptions: {
     target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React,
   } }).outputText, scope)
 }
-function component(path: string, name: string, scope: Record<string, any>) {
-  const ast = source(path)
+function component(path: string, name: string, scope: Record<string, any>, text?: string) {
+  const ast = source(path, text)
   const fn = ast.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === name)!
   execute(fn.getText(ast) + `\nglobalThis.result = ${name}`, scope)
   return scope.result as (props: any) => Node
@@ -84,6 +85,38 @@ describe('黑市监视器与入口真实组件行为', () => {
     const mouth = (rows: Node[]) => rows.find(n => n.props.className === 'app-bm-merchant-mouth')!.props.d
     expect(mouth(idle)).not.toBe(mouth(deal))
     expect(idle.some(n => n.type === 'pre' || n.type === 'filter')).toBe(false)
+  })
+
+  it.each(['idle', 'pitch', 'deal'])('%s姿态只重绘商人，上一版监视器/扫描/剪裁结构逐项不变', mood => {
+    const path = 'ui/MerchantMonitor.tsx'
+    const before = execFileSync('git', ['show', `c5f8be83:${ui + path}`], { cwd: ROOT, encoding: 'utf8' })
+    const scope = () => ({ React: jsx, exports: {}, useId: () => ':monitor:', tr, result: undefined })
+    const previous = component(path, 'MerchantMonitor', scope(), before)({ mood })
+    const current = component(path, 'MerchantMonitor', scope())({ mood })
+    const shell = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(shell)
+      if (value && typeof value === 'object' && 'children' in value) {
+        const node = value as Node
+        if (node.props.className === 'app-bm-merchant-image') return 'merchant-image'
+        return { ...node, children: node.children.map(shell) }
+      }
+      return value
+    }
+    expect(shell(current)).toEqual(shell(previous))
+  })
+
+  it('机械面甲/关节与触手发束齐备，选货改变视线和头部，移除衣服及招手', () => {
+    const monitor = component('ui/MerchantMonitor.tsx', 'MerchantMonitor', { React: jsx, exports: {}, useId: () => ':r:', tr, result: undefined })
+    const idle = nodes(monitor({ mood: 'idle' })), pitch = nodes(monitor({ mood: 'pitch' })), deal = nodes(monitor({ mood: 'deal' }))
+    for (const className of ['app-bm-robot-neck', 'app-bm-robot-shoulders', 'app-bm-robot-head', 'app-bm-robot-plate', 'app-bm-robot-suckers', 'app-bm-merchant-tentacle']) {
+      expect(idle.some(n => n.props.className === className), className).toBe(true)
+    }
+    const head = (rows: Node[]) => rows.find(n => n.props.className === 'app-bm-robot-head')!
+    expect(head(idle).props.transform).toBeUndefined()
+    expect(head(pitch).props.transform).not.toBe(head(deal).props.transform)
+    const iris = (rows: Node[]) => rows.find(n => n.props.className === 'app-bm-robot-iris')!
+    expect(iris(idle).props.cx).not.toBe(iris(pitch).props.cx)
+    expect(idle.some(n => ['app-bm-merchant-coat', 'app-bm-merchant-hand', 'app-bm-merchant-headset'].includes(n.props.className))).toBe(false)
   })
 
   it('九卡选货到购买调用保持原报价与日期，商人mood随选货/成交切换', () => {
