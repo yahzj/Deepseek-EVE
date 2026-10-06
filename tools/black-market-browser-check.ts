@@ -10,7 +10,7 @@ import { promises as fs } from 'node:fs'
 import { createServer } from 'node:http'
 import { extname, join, resolve, sep } from 'node:path'
 import { tmpdir } from 'node:os'
-import { blackMarketCandidateGoods, BLACK_MARKET_MAX_MULTIPLIER, goodName, loadSaveFile, serializeSaveFile } from '@whale/core'
+import { blackMarketCandidateGoods, BLACK_MARKET_MAX_MULTIPLIER, blackMarketLotQuantity, goodName, loadSaveFile, serializeSaveFile } from '@whale/core'
 import { ANNOUNCEMENTS, buildSimContext, L10N } from '@whale/data'
 import { blackMarketTestSave } from './black-market-test-fixture'
 
@@ -109,9 +109,11 @@ async function main() {
         .sort((a, b) => goodName(ctx, b.key).length - goodName(ctx, a.key).length)
       const fixture = loadSaveFile(blackMarketTestSave(fixtureNow)).state
       const original = ctx.marketGoods.get(fixture.blackMarket!.offers[0]!.goodKey)!
-      const stressGoods = [...new Map([ctx.marketGoods.get('blackbox-h')!, original, highest, ...longest].map(g => [g.key, g])).values()].slice(0, 9)
+      const drone = ctx.marketGoods.get('drone-wh-e-sentry')!
+      const stressGoods = [...new Map([drone, ctx.marketGoods.get('blackbox-h')!, original, highest, ...longest].map(g => [g.key, g])).values()].slice(0, 9)
       fixture.blackMarket!.offers = stressGoods.map(g => ({ goodKey: g.key, basePrice: g.basePrice,
-        multiplier: BLACK_MARKET_MAX_MULTIPLIER, price: g.basePrice * BLACK_MARKET_MAX_MULTIPLIER, sold: false }))
+        ...(blackMarketLotQuantity(ctx, g) > 1 ? { quantity: blackMarketLotQuantity(ctx, g) } : {}),
+        multiplier: BLACK_MARKET_MAX_MULTIPLIER, price: g.basePrice * BLACK_MARKET_MAX_MULTIPLIER * blackMarketLotQuantity(ctx, g), sold: false }))
       // 固定商品抽样与日板时间，但本轮保存时刻保持当前，避免后面的用例触发离线简报。
       fixture.savedAtWallMs = Date.now()
       const save = serializeSaveFile(fixture, fixture.savedAtWallMs)
@@ -127,6 +129,8 @@ async function main() {
       await js(`(()=>{const el=document.querySelector('.app-mkt-search-input');if(!el)return;const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;set.call(el,'zzz-market-preserved');el.dispatchEvent(new Event('input',{bubbles:true}))})()`)
       await click('.app-mkt-tabs .app-bm-entry')
       await until('document.querySelectorAll(".app-bm-card").length === 9')
+      const groupLabel = L10N['ui.blackMarket.025']![locale as 'zh' | 'en'].replace('{p1}', '50')
+      assert.equal(await js(`document.querySelector('.app-bm-card-meta .app-dim').textContent`), groupLabel, '无人机组数量未显示')
       await sleep(250)
       await dismissNotice()
       const logOverlay = await js(`(()=>{const a=document.querySelector('.app-bm-monitor-art').getBoundingClientRect(),log=document.querySelector('.app-log-side'),b=log.getBoundingClientRect();return getComputedStyle(log).display!=='none'&&Math.min(a.right,b.right)>Math.max(a.left,b.left)&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)})()`)
@@ -149,7 +153,8 @@ async function main() {
         const m=rect(monitor),s=rect(speech),left=rect(stock),right=rect(merchant),p=rect(page);
         const priceOverflow=[...document.querySelectorAll('.app-bm-price-amount')].filter(e=>e.scrollWidth>e.clientWidth).length;
         const childOverlap=[...document.querySelectorAll('.app-bm-card')].filter(card=>{const children=[...card.children].map(rect);return children.some((c,i)=>i>0&&children[i-1].y+children[i-1].h>c.y+0.75)}).length;
-        return {page:p,stock:left,merchant:right,stockWidth:stock.clientWidth,merchantWidth:merchant.clientWidth,portrait:rect(portrait),monitorInside:m.y+m.h<=s.y+1,leftRight:left.x+left.w<=right.x+1,sectionsInside:right.x+right.w<=p.x+p.w+1&&right.y+right.h<=p.y+p.h+1,pageOverflow:page.scrollWidth-page.clientWidth,stockOverflow:stock.scrollWidth-stock.clientWidth,overlaps,outside,priceOverflow,childOverlap,rotated:root.classList.contains('is-mobile-rot'),scrollHeight:stock.scrollHeight,clientHeight:stock.clientHeight};})()`)
+        const quantityOverflow=[...document.querySelectorAll('.app-bm-card-meta')].filter(e=>e.scrollWidth>e.clientWidth||e.scrollHeight>e.clientHeight).length;
+        return {page:p,stock:left,merchant:right,stockWidth:stock.clientWidth,merchantWidth:merchant.clientWidth,portrait:rect(portrait),monitorInside:m.y+m.h<=s.y+1,leftRight:left.x+left.w<=right.x+1,sectionsInside:right.x+right.w<=p.x+p.w+1&&right.y+right.h<=p.y+p.h+1,pageOverflow:page.scrollWidth-page.clientWidth,stockOverflow:stock.scrollWidth-stock.clientWidth,overlaps,outside,priceOverflow,childOverlap,quantityOverflow,rotated:root.classList.contains('is-mobile-rot'),scrollHeight:stock.scrollHeight,clientHeight:stock.clientHeight};})()`)
       if (r.outside || r.overlaps || r.priceOverflow) {
         console.log(JSON.stringify({ layout, locale, mode, ...r, cards: await js(`[...document.querySelectorAll('.app-bm-card')].map(e=>({height:e.clientHeight,scroll:e.scrollHeight,width:e.clientWidth,name:e.querySelector('.app-bm-name').textContent,children:[...e.children].map(c=>({height:c.offsetHeight,scroll:c.scrollHeight}))}))`) }))
         const failedShot = await send('Page.captureScreenshot', { format: 'png' })
@@ -162,6 +167,7 @@ async function main() {
       assert(r.leftRight && r.sectionsInside, '左商品/右监视器位置或页面边界错误')
       assert.equal(r.overlaps, 0, '卡片文字重叠')
       assert.equal(r.childOverlap, 0, '卡片信息行互相重叠')
+      assert.equal(r.quantityOverflow, 0, '组数量超出库存标签')
       assert.equal(r.priceOverflow, 0, '商品售价溢出')
       assert.equal(r.outside, 0, '卡片内容伸出边框')
       assert(await js(`!document.querySelector('.app-bm-card [title],.app-bm-card [data-tip],.app-bm-card-base,.app-bm-premium')`), '卡片仍有独立简易提示或基准价/倍率')
@@ -254,6 +260,7 @@ async function main() {
       // 先取消再购买，验证精确报价、焦点循环、原交易实际落盘与售罄。
       await click('.app-bm-buy')
       await until('!!document.querySelector(".app-bm-confirm")')
+      assert(String(await js('document.querySelector(".app-bm-confirm").textContent')).includes(`${goodName(ctx, drone.key)} ×50`), '确认未显示整组交付数量')
       await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab' })
       assert(await js('document.activeElement === document.querySelectorAll(".app-bm-confirm-actions button")[1]'), '确认弹层焦点')
       await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
@@ -265,6 +272,8 @@ async function main() {
       await until(`JSON.parse(localStorage.getItem('whale:idle:save')).state.blackMarket.offers[0].sold`)
       const after = await js(`JSON.parse(localStorage.getItem('whale:idle:save')).state`)
       assert.equal(before.wallet.isk - after.wallet.isk, before.blackMarket.offers[0].price)
+      assert.equal((after.warehouse.items[drone.refId] ?? 0) - (before.warehouse.items[drone.refId] ?? 0), 50, '实际入库不是整组')
+      assert.equal(after.blackMarket.offers[0].quantity, 50, '组数量未落盘')
       await dismissNotice()
       await js(`document.querySelector('.app-bm-page')?.scrollTo(0,0);true`)
       const backHit = await js(`(()=>{const e=document.querySelector('.app-bm-head > button'),r=e.getBoundingClientRect(),hit=document.elementFromPoint(Math.max(1,r.left+r.width/2),Math.max(1,r.top+r.height/2));return {ok:r.bottom>0&&r.right>0&&(e===hit||e.contains(hit)),hit:hit?.outerHTML?.slice(0,600),button:{x:r.x,y:r.y,w:r.width,h:r.height}}})()`)

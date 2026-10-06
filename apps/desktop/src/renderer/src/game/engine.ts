@@ -2444,8 +2444,8 @@ export class GameEngine {
     }
   }
 
-  buyBlackMarketAt(goodKey: string, dayWallMs: number, price: number): CommandResult {
-    const result = blackMarketBuy(this.state, this.ctx, goodKey, dayWallMs, price, Date.now())
+  buyBlackMarketAt(goodKey: string, dayWallMs: number, price: number, quantity?: number): CommandResult {
+    const result = blackMarketBuy(this.state, this.ctx, goodKey, dayWallMs, price, Date.now(), quantity)
     void this.persist()
     this.notify()
     return result

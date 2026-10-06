@@ -2963,6 +2963,8 @@ export type GameStateV31 = Omit<GameStateV30, 'version'> & {
  */
 export interface BlackMarketOffer {
   goodKey: string
+  /** 锁定本次整组交付数量；旧货架缺省1，不随当前目录重新推导。 */
+  quantity?: number
   basePrice: number
   multiplier: number
   price: number

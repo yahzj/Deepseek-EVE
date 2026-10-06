@@ -875,9 +875,11 @@ export {
 } from './market'
 export {
   blackMarketUnlocked, blackMarketCandidateGoods, blackMarketDayStart, blackMarketNextRefresh,
+  blackMarketLotQuantity, blackMarketOfferQuantity,
   ensureBlackMarket, blackMarketBuy, normalizeBlackMarket,
   BLACK_MARKET_OFFER_COUNT, BLACK_MARKET_EXCLUSIVE_COUNT,
   BLACK_MARKET_MIN_MULTIPLIER, BLACK_MARKET_MAX_MULTIPLIER,
+  BLACK_MARKET_DRONE_LOT_SIZE,
 } from './blackMarket'
 
 export {

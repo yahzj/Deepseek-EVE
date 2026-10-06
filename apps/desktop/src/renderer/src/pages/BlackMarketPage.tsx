@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { blackMarketNextRefresh, blackMarketUnlocked } from '@whale/core'
+import { blackMarketNextRefresh, blackMarketUnlocked, blackMarketOfferQuantity } from '@whale/core'
 import type { BlackMarketOffer } from '@whale/core'
 import { Glyph } from '../ui/Glyphs'
 import { MarketGoodHover, marketGoodDisplayName, marketGoodInfo } from '../ui/marketGoodHover'
@@ -46,7 +46,7 @@ export function BlackMarketPage({ engine, onToast, onBack }: PageProps & { onBac
   }, [ask, detailKey])
   function buy() {
     if (!ask) return
-    const r = engine.buyBlackMarketAt(ask.offer.goodKey, ask.day, ask.offer.price)
+    const r = engine.buyBlackMarketAt(ask.offer.goodKey, ask.day, ask.offer.price, blackMarketOfferQuantity(ask.offer))
     setAsk(null)
     if (r.ok) setDeal(true)
     else onToast(cmdText(r), true)
@@ -68,6 +68,7 @@ export function BlackMarketPage({ engine, onToast, onBack }: PageProps & { onBac
             const g = engine.ctx.marketGoods.get(o.goodKey)
             if (!g) return null
             const info = marketGoodInfo(engine.ctx, g, true)
+            const quantity = blackMarketOfferQuantity(o)
             return <MarketGoodHover key={o.goodKey} ctx={engine.ctx} good={g} hidePrices>
               <article style={{ '--bm-good-tone': info.tone } as CSSProperties} className={`app-bm-card${selected === o.goodKey ? ' is-selected' : ''}${o.sold ? ' is-sold' : ''}`}>
                 <div className="app-bm-card-identity">
@@ -75,7 +76,8 @@ export function BlackMarketPage({ engine, onToast, onBack }: PageProps & { onBac
                   {info.crest ? <span className="app-bm-crest" aria-label={crestLabelOf(info.crest)} style={{ color: FOE_ACCENT[info.crest] }}>
                     <Glyph name={`fam-${info.crest.toLowerCase()}`} size={13} color="currentColor" />
                   </span> : null}
-                  <div className="app-bm-card-meta"><span className={`app-hand-cell-rarity is-r${g.rarityTier}`}>R{g.rarityTier}</span><span className="app-dim">{tr(o.sold ? 'ui.blackMarket.008' : 'ui.blackMarket.007')}</span></div>
+                  {/* ⟪文案调整 2026-10-06⟫ 数量读锁定货架，旧单件与新组货分别显示。 */}
+                  <div className="app-bm-card-meta"><span className={`app-hand-cell-rarity is-r${g.rarityTier}`}>R{g.rarityTier}</span><span className="app-dim">{o.sold ? tr('ui.blackMarket.008') : quantity > 1 ? tr('ui.blackMarket.025', { p1: quantity }) : tr('ui.blackMarket.007')}</span></div>
                   <span className="app-bm-category app-dim">{info.category}</span>
                 </div>
                 <button className="app-bm-select" aria-pressed={selected === o.goodKey} onClick={() => { setSelected(o.goodKey); setDeal(false) }}>
@@ -110,7 +112,8 @@ export function BlackMarketPage({ engine, onToast, onBack }: PageProps & { onBac
     {ask ? <div className="app-modal-mask" onClick={() => setAsk(null)}>
       <div ref={dialog} className="app-modal app-bm-confirm" role="dialog" aria-modal="true" aria-labelledby="bm-confirm-title" onClick={(e) => e.stopPropagation()}>
         <h3 id="bm-confirm-title">{tr('ui.blackMarket.010')}</h3>
-        <div>{marketGoodDisplayName(engine.ctx, ask.offer.goodKey)}</div>
+        {/* ⟪文案调整 2026-10-06⟫ 确认显示实际交付数量，报价是整组总价。 */}
+        <div>{tr('ui.blackMarket.026', { p1: marketGoodDisplayName(engine.ctx, ask.offer.goodKey), p2: blackMarketOfferQuantity(ask.offer) })}</div>
         <div className="app-gold">{tr('ui.blackMarket.012', { p1: isk(ask.offer.price) })}</div>
         <div className="app-bm-confirm-actions"><button className="app-btn" autoFocus onClick={() => setAsk(null)}>{tr('ui.blackMarket.011')}</button><button className="app-btn" onClick={buy}>{tr('ui.blackMarket.010')}</button></div>
       </div>

@@ -119,6 +119,8 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '黑市候选池与例外购买资格', symbol: 'blackMarketCandidateGoods', file: 'packages/core/src/blackMarket.ts', exported: true },
   { concept: '黑市本地日界', symbol: 'blackMarketDayStart', file: 'packages/core/src/blackMarket.ts', exported: true },
   { concept: '黑市下次刷新时间', symbol: 'blackMarketNextRefresh', file: 'packages/core/src/blackMarket.ts', exported: true },
+  { concept: '黑市新货架商品组数量', symbol: 'blackMarketLotQuantity', file: 'packages/core/src/blackMarket.ts', exported: true },
+  { concept: '黑市锁定交付数量与旧货架兼容', symbol: 'blackMarketOfferQuantity', file: 'packages/core/src/blackMarket.ts', exported: true },
   { concept: '市场商品可读名称', symbol: 'marketGoodDisplayName', file: 'apps/desktop/src/renderer/src/ui/marketGoodHover.tsx', exported: true },
   { concept: '市场蓝图产物与材料悬停行', symbol: 'blueprintHoverLines', file: 'apps/desktop/src/renderer/src/ui/marketGoodHover.tsx', exported: true },
   { concept: '市场商品卡与完整详情同源', symbol: 'marketGoodInfo', file: 'apps/desktop/src/renderer/src/ui/marketGoodHover.tsx', exported: true },

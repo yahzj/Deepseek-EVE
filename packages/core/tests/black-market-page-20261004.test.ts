@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import type { BlackMarketState } from '../src/state'
-import { blackMarketUnlocked, blackMarketCandidateGoods, ensureBlackMarket, blackMarketBuy, blackMarketNextRefresh, normalizeBlackMarket } from '../src/blackMarket'
+import { blackMarketUnlocked, blackMarketCandidateGoods, ensureBlackMarket, blackMarketBuy, blackMarketNextRefresh, normalizeBlackMarket, blackMarketOfferQuantity } from '../src/blackMarket'
 import { serializeSaveFile, loadSaveFile } from '../src/save'
 import { buyAtMarket } from '../src/market'
 import { naturalHoldings } from '../src/market'
@@ -44,7 +44,7 @@ describe('独立黑市日板候选与报价', () => {
     for (const o of offers) {
       expect(o.multiplier).toBeGreaterThanOrEqual(30)
       expect(o.multiplier).toBeLessThanOrEqual(100)
-      expect(o.price).toBe(o.basePrice * o.multiplier)
+      expect(o.price).toBe(o.basePrice * o.multiplier * blackMarketOfferQuantity(o))
       expect(o.sold).toBe(false)
     }
   })

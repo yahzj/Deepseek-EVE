@@ -5,13 +5,14 @@ import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext, L10N } from '@whale/data'
 import { createInitialState } from '../src/state'
-import { blackMarketBuy, blackMarketUnlocked, blackMarketNextRefresh, ensureBlackMarket } from '../src/blackMarket'
+import { blackMarketBuy, blackMarketUnlocked, blackMarketNextRefresh, ensureBlackMarket, blackMarketOfferQuantity } from '../src/blackMarket'
 import { ROOT } from './helpers/save-shell'
 import { resolve } from 'node:path'
 
 type Node = { type: string; props: Record<string, any>; children: unknown[] }
 const ui = 'apps/desktop/src/renderer/src/'
-const tr = (id: string) => L10N[id]?.zh ?? id
+const tr = (id: string, params?: Record<string, unknown>) => (L10N[id]?.zh ?? id)
+  .replace(/\{(\w+)\}/g, (match, key: string) => String(params?.[key] ?? match))
 const jsx = { createElement: (type: string, props: Record<string, unknown> | null, ...children: unknown[]): Node => ({ type, props: props ?? {}, children }) }
 const nodes = (value: unknown): Node[] => Array.isArray(value) ? value.flatMap(nodes) : value && typeof value === 'object' && 'children' in value
   ? [value as Node, ...(value as Node).children.flatMap(nodes)] : []
@@ -150,14 +151,14 @@ describe('黑市监视器与入口真实组件行为', () => {
     const calls: unknown[][] = []
     const scope = { React: jsx, exports: {}, tr, useL10n: () => {}, useEffect: () => {}, useRef: () => ({ current: null }),
       useState: (initial: unknown) => { const at = cursor++; if (!(at in values)) values[at] = initial; return [values[at], (v: unknown) => values[at] = v] },
-      blackMarketUnlocked, blackMarketNextRefresh, fmtDuration: String, isk: String, cmdText: () => '',
+      blackMarketUnlocked, blackMarketNextRefresh, blackMarketOfferQuantity, fmtDuration: String, isk: String, cmdText: () => '',
       marketGoodDisplayName: (_ctx: unknown, key: string) => key,
       marketGoodInfo: (_ctx: unknown, good: { key: string }) => ({ title: good.key, lines: [], note: '说明', category: '类别', glyph: 'blueprint', tone: 'currentColor' }),
       infoCardContent: () => null, crestLabelOf: String, FOE_ACCENT: {},
       Glyph: 'Glyph', MerchantMonitor: 'MerchantMonitor', MarketGoodHover: 'MarketGoodHover', result: undefined }
     const page = component('pages/BlackMarketPage.tsx', 'BlackMarketPage', scope)
-    const engine = { state, ctx, buyBlackMarketAt: (key: string, day: number, price: number) => {
-      calls.push([key, day, price]); return blackMarketBuy(state, ctx, key, day, price, now)
+    const engine = { state, ctx, buyBlackMarketAt: (key: string, day: number, price: number, quantity: number) => {
+      calls.push([key, day, price, quantity]); return blackMarketBuy(state, ctx, key, day, price, now, quantity)
     } }
     const render = () => { cursor = 0; return nodes(page({ engine, onToast: () => {}, onBack: () => {} })) }
     const cards = render().filter(n => n.type === 'article')
@@ -170,13 +171,47 @@ describe('黑市监视器与入口真实组件行为', () => {
     expect(merchantChildren()).toEqual(['app-bm-sign', 'MerchantMonitor', 'app-bm-speech'])
     const purchase = nodes(cards[0]).find(n => n.props.className === 'app-btn app-bm-buy')!
     purchase.props.onClick({ currentTarget: {} })
-    expect(nodes(render().find(n => n.props.className === 'app-modal app-bm-confirm')).some(n => n.children.includes(before.goodKey))).toBe(true)
+    expect(nodes(render().find(n => n.props.className === 'app-modal app-bm-confirm')).some(n => n.children.includes(tr('ui.blackMarket.026', { p1: before.goodKey, p2: blackMarketOfferQuantity(before) })))).toBe(true)
     const confirm = render().find(n => n.props.className === 'app-bm-confirm-actions')!
     nodes(confirm).filter(n => n.type === 'button')[1]!.props.onClick()
-    expect(calls).toEqual([[before.goodKey, state.blackMarket!.dayWallMs, before.price]])
+    expect(calls).toEqual([[before.goodKey, state.blackMarket!.dayWallMs, before.price, blackMarketOfferQuantity(before)]])
     expect(state.wallet.isk).toBe(money - before.price)
     expect(render().find(n => n.type === 'MerchantMonitor')!.props.mood).toBe('deal')
     expect(merchantChildren()).toEqual(['app-bm-sign', 'MerchantMonitor', 'app-bm-speech'])
     expect(render().filter(n => n.type === 'article' && n.props.className.includes('is-sold'))).toHaveLength(1)
+  })
+
+  it.each(['zh', 'en'] as const)('%s组数量在卡面和确认显示，取消不扣款，整组购买后售罄', locale => {
+    const ctx = buildSimContext(locale), now = Date.now()
+    const state = createInitialState({ nowWallMs: now, seed: 7 })
+    state.standingsEarned = { dsi: 100 }; state.wallet.isk = 1e14
+    const good = ctx.marketGoods.get('drone-wh-e-sentry')!
+    ensureBlackMarket(state, { ...ctx, marketGoods: new Map([[good.key, good]]) }, now)
+    const values: unknown[] = []
+    let cursor = 0
+    const trLocal = (id: string, params?: Record<string, unknown>) => (L10N[id]?.[locale] ?? id)
+      .replace(/\{(\w+)\}/g, (match, key: string) => String(params?.[key] ?? match))
+    const scope = { React: jsx, exports: {}, tr: trLocal, useL10n: () => {}, useEffect: () => {}, useRef: () => ({ current: null }),
+      useState: (initial: unknown) => { const at = cursor++; if (!(at in values)) values[at] = initial; return [values[at], (v: unknown) => values[at] = v] },
+      blackMarketUnlocked, blackMarketNextRefresh, blackMarketOfferQuantity, fmtDuration: String, isk: String, cmdText: () => '',
+      marketGoodDisplayName: () => ctx.items.get(good.refId)!.name,
+      marketGoodInfo: () => ({ title: ctx.items.get(good.refId)!.name, lines: [], note: '', category: '', glyph: 'drone', tone: 'currentColor' }),
+      infoCardContent: () => null, crestLabelOf: String, FOE_ACCENT: {}, Glyph: 'Glyph', MerchantMonitor: 'MerchantMonitor', MarketGoodHover: 'MarketGoodHover', result: undefined }
+    const page = component('pages/BlackMarketPage.tsx', 'BlackMarketPage', scope)
+    const engine = { state, ctx, buyBlackMarketAt: (key: string, day: number, price: number, quantity: number) => blackMarketBuy(state, ctx, key, day, price, now, quantity) }
+    const render = () => { cursor = 0; return nodes(page({ engine, onToast: () => {}, onBack: () => {} })) }
+    expect(render().some(n => n.children.includes(trLocal('ui.blackMarket.025', { p1: 50 })))).toBe(true)
+    const before = JSON.stringify(state)
+    const clickBuy = () => render().find(n => n.props.className === 'app-btn app-bm-buy')!.props.onClick({ currentTarget: {} })
+    clickBuy()
+    expect(render().some(n => n.children.includes(trLocal('ui.blackMarket.026', { p1: ctx.items.get(good.refId)!.name, p2: 50 })))).toBe(true)
+    expect(render().some(n => n.children.includes(trLocal('ui.blackMarket.012', { p1: String(state.blackMarket!.offers[0]!.price) })))).toBe(true)
+    nodes(render().find(n => n.props.className === 'app-bm-confirm-actions')).filter(n => n.type === 'button')[0]!.props.onClick()
+    expect(JSON.stringify(state)).toBe(before)
+    clickBuy()
+    nodes(render().find(n => n.props.className === 'app-bm-confirm-actions')).filter(n => n.type === 'button')[1]!.props.onClick()
+    expect(state.warehouse.items[good.refId]).toBe(50)
+    expect(render().find(n => n.props.className === 'app-btn app-bm-buy')!.props.disabled).toBe(true)
+    expect(render().some(n => n.children.includes(trLocal('ui.blackMarket.008')))).toBe(true)
   })
 })

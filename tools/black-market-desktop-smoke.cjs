@@ -1,6 +1,6 @@
 /** 黑市Electron外壳冒烟。用法：构建后node tools/black-market-desktop-smoke.cjs。
- * 只读合成验收档，临时userData，隐藏自建窗口；真实IPC购买/存盘/读档校验。
- * 版本自检：游戏版本v0.1.0 · 存档结构v31 · 最后核对2026-10-04 · 最后跑过2026-10-04。
+ * 全新合成档，临时userData，隐藏自建窗口；真实IPC整组购买/存盘/读档校验。
+ * 版本自检：游戏版本v0.1.0 · 存档结构v31 · 最后核对2026-10-06。
  */
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -10,9 +10,20 @@ const { spawnSync } = require('node:child_process')
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 if (!process.argv.includes('--smoke-child')) {
+  require('tsx/cjs')
+  const core = require('../packages/core/src/index.ts')
+  const { buildSimContext } = require('../packages/data/src/index.ts')
+  const { blackMarketTestSave } = require('./black-market-test-fixture.ts')
+  const now = Date.now(), ctx = buildSimContext()
+  const state = core.loadSaveFile(blackMarketTestSave(now)).state
+  const good = ctx.marketGoods.get('drone-wh-e-sentry')
+  const quantity = core.blackMarketLotQuantity(ctx, good)
+  const offer = { goodKey: good.key, basePrice: good.basePrice, multiplier: 30, quantity, price: good.basePrice * 30 * quantity, sold: false }
+  state.blackMarket.offers = [offer, ...state.blackMarket.offers.filter(row => row.goodKey !== good.key)].slice(0, 9)
+  assert.equal(state.blackMarket.offers.length, 9)
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'whale-blackmarket-desktop-'))
   try {
-    fs.copyFileSync(path.resolve('docs/test-saves/test-save-black-market-20261004.json'), path.join(profile, 'save.json'))
+    fs.writeFileSync(path.join(profile, 'save.json'), core.serializeSaveFile(state, now), 'utf8')
     const env = { ...process.env, WHALE_PERF_USERDATA: profile }
     delete env.ELECTRON_RUN_AS_NODE
     const run = spawnSync(require('electron'), [__filename, '--smoke-child'], {
@@ -22,9 +33,12 @@ if (!process.argv.includes('--smoke-child')) {
     console.log(run.stdout)
     if (run.error) throw run.error
     assert.equal(run.status, 0, run.stderr)
-    const state = JSON.parse(fs.readFileSync(path.join(profile, 'save.json'), 'utf8')).state
-    assert.equal(state.blackMarket.offers[0].sold, true)
-    console.log(JSON.stringify({ ok: true, target: path.resolve('apps/desktop/out'), syntheticIPCWrite: true }))
+    const saved = JSON.parse(fs.readFileSync(path.join(profile, 'save.json'), 'utf8')).state
+    assert.equal(saved.blackMarket.offers[0].sold, true)
+    assert.equal(saved.blackMarket.offers[0].quantity, quantity)
+    assert.equal((saved.warehouse.items[good.refId] ?? 0) - (state.warehouse.items[good.refId] ?? 0), quantity)
+    assert.equal(state.wallet.isk - saved.wallet.isk, offer.price)
+    console.log(JSON.stringify({ ok: true, target: path.resolve('apps/desktop/out'), syntheticIPCWrite: true, delivered: quantity, total: offer.price }))
   } finally {
     assert(path.resolve(profile).startsWith(path.resolve(os.tmpdir()) + path.sep) && profile.includes('whale-blackmarket-desktop-'))
     fs.rmSync(profile, { recursive: true, force: true })
@@ -46,8 +60,10 @@ if (!process.argv.includes('--smoke-child')) {
     await until(`!!document.querySelector('.app-mkt-tabs .app-bm-entry')`)
     await js(`document.querySelector('.app-mkt-tabs .app-bm-entry').click()`)
     await until(`document.querySelectorAll('.app-bm-card').length===9`)
+    assert(String(await js(`document.querySelector('.app-bm-card-meta .app-dim').textContent`)).includes('50'), '卡片未显示组数量')
     await js(`document.querySelector('.app-bm-buy').click()`)
     await until(`!!document.querySelector('.app-bm-confirm')`)
+    assert(String(await js(`document.querySelector('.app-bm-confirm').textContent`)).includes('×50'), '确认未显示50架')
     await js(`document.querySelector('.app-bm-confirm-actions button:last-child').click()`)
     await until(`!!document.querySelector('.app-bm-card.is-sold')`)
     let saved

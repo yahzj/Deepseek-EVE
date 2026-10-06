@@ -17,6 +17,9 @@ export interface L10nEntry {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  "ui.blackMarket.025": { zh: "{p1} 架／组", en: "{p1} drones / group" },
+  "ui.blackMarket.026": { zh: "{p1} ×{p2}", en: "{p1} ×{p2}" },
+  "core.blackMarket.008": { zh: "黑市购入 {p1}×{p3}（{p2} 信用点）。", en: "Bought {p1} ×{p3} from the Black Market for {p2} credits." },
   "core.explorationStatus.001": { zh: "发现一处信号空间：{p1}，已记录{p2}/{p3}处。", en: "Signal Space discovered: {p1}; {p2}/{p3} sites recorded." },
   "core.explorationStatus.002": { zh: "测绘处标记了{p1}处信号空间，当前共{p2}处。", en: "The Survey Office marked {p1} Signal Spaces; {p2} sites are now recorded." },
   "core.explorationStatus.003": { zh: "扫描已暂停：信号空间坐标达到上限{p1}处。", en: "Scanning paused: the Signal Space coordinate limit of {p1} has been reached." },

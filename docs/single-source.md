@@ -22,6 +22,7 @@
 | 限额慢补货：配置判据、初始化、周期进度、余额与统一核销 | `hasLimitedSupply()` / `ensureLimitedSupply()` / `advanceLimitedSupply()` / `limitedSupplyAvailable()` / `consumeLimitedSupply()` · `marketLimitedSupply.ts`；价格分档在 `market.ts:refreshLimitedSupplyBook()` | 市场限额专项、存档往返；`arch:guard` F2/F3；`content:check` 配置合法性 |
 | 武器组炮数与逐炮守恒分摊 | `volleyGunCountOf()` / `volleyDamageShareOf()` · `combatVolley.ts` | 逐炮齐射专项；`arch:guard` F2/F3 |
 | 黑市入口、候选资格、本地日界与下次刷新 | `blackMarketUnlocked()` / `blackMarketCandidateGoods()` / `blackMarketDayStart()` / `blackMarketNextRefresh()` · `blackMarket.ts` | `black-market-page-20261004.test.ts` · `arch:guard` F2/F3 |
+| 黑市新货架组数量、锁定交付数与老货架单件兼容 | `blackMarketLotQuantity()` / `blackMarketOfferQuantity()` · `blackMarket.ts` | `black-market-drone-lots-20261006.test.ts`：四机型、总价/库存/售罄守恒、旧报价和读档 |
 | 虫洞整备库存/容量预览、补给占格与撤离核对 | `wormholePreparationPlan()` · `wormholePreparation.ts`；`wormholeSupplyCells()` · `wormholeSupplies.ts`；`wormholeExtractionPlan()` · `wormholeExtraction.ts` | `wormhole-supplies-20261004.test.ts` / `wormhole-cargo-flow-20261004.test.ts`；`arch:guard` F2/F3 |
 | 虫洞当前地点实物格板（不建立免费随行空间） | `wormholeGroundBoard()` · `wormholeGround.ts` | `wormhole-cargo-flow-20261004.test.ts`：地点隔离、往返不复制、深入确认与数量守恒 |
 | 虫洞现役机群数量；旧一套备用辅助仅留核心回归、无界面入口 | `wormholePreparationPlan().deployedDrones` / `wormholePreparationFillPlan()` · `wormholePreparation.ts` | `wormhole-supplies-20261004.test.ts`：四舰、混合机型、缺货、超容、预览不扣货；`arch:guard` F2/F3 |
