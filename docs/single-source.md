@@ -48,6 +48,7 @@
 | 关注点 | 唯一实现 | 护栏 |
 |---|---|---|
 | 两个市场入口的商品名称与蓝图产物/材料悬停 | `marketGoodDisplayName()` / `blueprintHoverLines()` / `MarketGoodHover` · `ui/marketGoodHover.tsx` | `arch:guard` F2/F3；黑市浏览器专项 |
+| 市场商品卡图标/分类/说明及完整详情 | `marketGoodInfo()` · `ui/marketGoodHover.tsx`；参数沿用仓库信息行，黑市场景不含参考价 | `arch:guard` F2/F3；黑市卡片详情回归 |
 | 网页重连存档摘要与有效状态内容比较 | `reconnectProgress()` / `sameReconnectProgress()` · `game/saveReconnect.ts` | `save-reconnect-engine-20261004.test.ts` · `arch:guard` F2/F3 |
 | 物品领域分类与未知条目兜底 | `itemCategoryOf()` · `ui/itemSubs.ts` | 筛选专项测试 · `arch:guard` F2/F3 |
 | 市场领域与细分判定 | `marketDomainPasses()` · `ui/itemSubs.ts` | 筛选专项测试 · `arch:guard` F2/F3 |

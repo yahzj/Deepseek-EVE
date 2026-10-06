@@ -46,7 +46,7 @@ if (!process.argv.includes('--smoke-child')) {
     await until(`!!document.querySelector('.app-mkt-tabs .app-bm-entry')`)
     await js(`document.querySelector('.app-mkt-tabs .app-bm-entry').click()`)
     await until(`document.querySelectorAll('.app-bm-card').length===9`)
-    await js(`document.querySelector('.app-bm-card > .app-btn').click()`)
+    await js(`document.querySelector('.app-bm-buy').click()`)
     await until(`!!document.querySelector('.app-bm-confirm')`)
     await js(`document.querySelector('.app-bm-confirm-actions button:last-child').click()`)
     await until(`!!document.querySelector('.app-bm-card.is-sold')`)

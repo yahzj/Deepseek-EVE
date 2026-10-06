@@ -1380,10 +1380,7 @@ export const PARTS: readonly ItemDef[] = [
  * （见 `ItemKind` 注释）：仓库分类 / 货仓分组 / 手册物品图鉴按 `ITEM_KIND_ORDER` 渲染 ⇒ **自动**多出
  * 「黑匣」；市场一级类型另在 `MarketPage` 的类型下拉里显式登记一档。
  *
- * ⚠ **价格（2026-09-26 船长令）**：「**黑匣的价格需要提高到8000万**」⇒ `baseSellPriceIsk` 由 80 万
- * 提到 **8,000 万**（市场行 `marketCatalog.ts` 的 `basePrice` 同步同值——两处历来同值，改一处必改另一处）。
- * 连带读数（本批实测，列在汇报里）：协会收购价 80 万 → **8,000 万**（奇货档 · 只收不卖 · 每窗 1% 掷骰）；
- * 插件蓝图每件吃 1 枚 ⇒ 单件插件的黑匣料值 = 8,000 万。
+ * 价格按2026-10-06船长确认下调；物品基础收价与市场目录基价保持同值，用例核对。
  */
 export const WEEKEND_TROPHIES: readonly ItemDef[] = [
   {
@@ -1391,7 +1388,7 @@ export const WEEKEND_TROPHIES: readonly ItemDef[] = [
     name: '墨潮旗舰黑匣',
     kind: 'blackbox',
     unitM3: 5,
-    baseSellPriceIsk: 80_000_000,
+    baseSellPriceIsk: 10_000_000,
     description: L10N['item.copy.106']!.zh,
   },
   /**
@@ -1409,7 +1406,7 @@ export const WEEKEND_TROPHIES: readonly ItemDef[] = [
     name: '光环旗舰黑匣',
     kind: 'blackbox',
     unitM3: 5,
-    baseSellPriceIsk: 80_000_000,
+    baseSellPriceIsk: 10_000_000,
     description:
       L10N['item.copy.107']!.zh,
   },
@@ -1417,7 +1414,7 @@ export const WEEKEND_TROPHIES: readonly ItemDef[] = [
    * **通用黑匣**（**2026-09-27 船长令**：「**在章鱼人声望商店加入购买通用黑匣的卡片，玩家可以用30声望换一个
    * 通用黑匣。（现有的舰船插件蓝图都只要使用任意类型黑匣就可以制作）**」）。
    *
-   * - 与 `blackbox-h` **并列的一档 `blackbox`**（不是替代它）：旗舰黑匣仍由入侵掉落、仍卖 8,000 万；
+   * - 与 `blackbox-h` **并列的一档 `blackbox`**（不是替代它）：旗舰黑匣仍由入侵掉落；
    *   本件**只能拿声望换**（30 点/枚，见 `core/plugs.ts` 的 `exchangeUniversalBlackBox`）；
    * - 用途 = 制造舰船插件时的**等价料**：与旗舰黑匣互为替代（组序 = 先扣本件），见
    *   `core/manufacturing.ts` 的 `MATERIAL_GROUPS`；

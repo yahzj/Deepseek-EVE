@@ -30,10 +30,12 @@ describe('物品装备说明双语与数据守恒', () => {
       }
     }
   })
-  it('111 种物品除 description 外所有字段逐项不变', () => {
+  it('111 种物品除 description 和后续明确确认的旗舰黑匣价值外所有字段逐项不变', () => {
     const before = historical<typeof ITEMS>('packages/data/src/items.ts', 'ITEMS')
+    // 2026-10-06船长确认：仅两种旗舰黑匣基础价值下调；其余历史守恒范围不放宽。
+    const adjusted = before.map(item => ['blackbox-h', 'blackbox-r'].includes(item.id) ? { ...item, baseSellPriceIsk: 10_000_000 } : item)
     const strip = (entries: typeof ITEMS) => entries.map(({ description: _description, ...rest }) => rest)
-    expect(strip(ITEMS)).toEqual(strip(before))
+    expect(strip(ITEMS)).toEqual(strip(adjusted))
   })
   it('170 件装备含插件，除 description 外所有字段逐项不变', () => {
     const plugs = historical<typeof MODULES>('packages/data/src/plugs.ts', 'SHIP_PLUGS')

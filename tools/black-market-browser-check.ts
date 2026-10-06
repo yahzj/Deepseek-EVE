@@ -11,7 +11,7 @@ import { createServer } from 'node:http'
 import { extname, join, resolve, sep } from 'node:path'
 import { tmpdir } from 'node:os'
 import { blackMarketCandidateGoods, BLACK_MARKET_MAX_MULTIPLIER, goodName, loadSaveFile, serializeSaveFile } from '@whale/core'
-import { ANNOUNCEMENTS, buildSimContext } from '@whale/data'
+import { ANNOUNCEMENTS, buildSimContext, L10N } from '@whale/data'
 import { blackMarketTestSave } from './black-market-test-fixture'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -33,6 +33,14 @@ async function until(expression: string) {
 }
 async function click(selector: string) {
   assert(await js(`(()=>{const b=document.querySelector(${JSON.stringify(selector)});if(!b||b.disabled)return false;b.click();return true})()`), selector)
+}
+async function point(selector: string, action: 'hover' | 'tap') {
+  const position = await js(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});e.scrollIntoView({block:'nearest'});const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2}})()`)
+  if (action === 'hover') await send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...position })
+  else {
+    await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [position] })
+    await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  }
 }
 async function dismissNotice() {
   for (let i = 0; i < 6; i++) {
@@ -79,6 +87,7 @@ async function main() {
       else waiter.resolve(m.result)
     })
     await send('Page.enable')
+    await send('Emulation.setFocusEmulationEnabled', { enabled: true })
     await send('Page.navigate', { url })
     await until('document.readyState === "complete"')
     const readings: any[] = []
@@ -100,7 +109,7 @@ async function main() {
         .sort((a, b) => goodName(ctx, b.key).length - goodName(ctx, a.key).length)
       const fixture = loadSaveFile(blackMarketTestSave(fixtureNow)).state
       const original = ctx.marketGoods.get(fixture.blackMarket!.offers[0]!.goodKey)!
-      const stressGoods = [...new Map([original, highest, ...longest].map(g => [g.key, g])).values()].slice(0, 9)
+      const stressGoods = [...new Map([ctx.marketGoods.get('blackbox-h')!, original, highest, ...longest].map(g => [g.key, g])).values()].slice(0, 9)
       fixture.blackMarket!.offers = stressGoods.map(g => ({ goodKey: g.key, basePrice: g.basePrice,
         multiplier: BLACK_MARKET_MAX_MULTIPLIER, price: g.basePrice * BLACK_MARKET_MAX_MULTIPLIER, sold: false }))
       // 固定商品抽样与日板时间，但本轮保存时刻保持当前，避免后面的用例触发离线简报。
@@ -139,11 +148,10 @@ async function main() {
         const speech=document.querySelector('.app-bm-speech'),monitor=document.querySelector('.app-bm-monitor-art');
         const m=rect(monitor),s=rect(speech),left=rect(stock),right=rect(merchant),p=rect(page);
         const priceOverflow=[...document.querySelectorAll('.app-bm-price-amount')].filter(e=>e.scrollWidth>e.clientWidth).length;
-        const baseOverflow=[...document.querySelectorAll('.app-bm-card-base')].filter(el=>{const range=document.createRange();range.selectNodeContents(el);const text=rect(range),box=rect(el);return text.h>box.h+1||text.w>box.w+1}).length;
         const childOverlap=[...document.querySelectorAll('.app-bm-card')].filter(card=>{const children=[...card.children].map(rect);return children.some((c,i)=>i>0&&children[i-1].y+children[i-1].h>c.y+0.75)}).length;
-        return {page:p,stock:left,merchant:right,stockWidth:stock.clientWidth,merchantWidth:merchant.clientWidth,portrait:rect(portrait),monitorInside:m.y+m.h<=s.y+1,leftRight:left.x+left.w<=right.x+1,sectionsInside:right.x+right.w<=p.x+p.w+1&&right.y+right.h<=p.y+p.h+1,pageOverflow:page.scrollWidth-page.clientWidth,stockOverflow:stock.scrollWidth-stock.clientWidth,overlaps,outside,priceOverflow,baseOverflow,childOverlap,rotated:root.classList.contains('is-mobile-rot'),scrollHeight:stock.scrollHeight,clientHeight:stock.clientHeight};})()`)
-      if (r.outside || r.overlaps || r.baseOverflow || r.priceOverflow) {
-        console.log(JSON.stringify({ layout, locale, mode, ...r, cards: await js(`[...document.querySelectorAll('.app-bm-card')].map(e=>({height:e.clientHeight,scroll:e.scrollHeight,width:e.clientWidth,name:e.querySelector('.app-bm-name').textContent,base:e.querySelector('.app-bm-card-base').textContent,baseLineHeight:getComputedStyle(e.querySelector('.app-bm-card-base')).lineHeight,children:[...e.children].map(c=>({height:c.offsetHeight,scroll:c.scrollHeight}))}))`) }))
+        return {page:p,stock:left,merchant:right,stockWidth:stock.clientWidth,merchantWidth:merchant.clientWidth,portrait:rect(portrait),monitorInside:m.y+m.h<=s.y+1,leftRight:left.x+left.w<=right.x+1,sectionsInside:right.x+right.w<=p.x+p.w+1&&right.y+right.h<=p.y+p.h+1,pageOverflow:page.scrollWidth-page.clientWidth,stockOverflow:stock.scrollWidth-stock.clientWidth,overlaps,outside,priceOverflow,childOverlap,rotated:root.classList.contains('is-mobile-rot'),scrollHeight:stock.scrollHeight,clientHeight:stock.clientHeight};})()`)
+      if (r.outside || r.overlaps || r.priceOverflow) {
+        console.log(JSON.stringify({ layout, locale, mode, ...r, cards: await js(`[...document.querySelectorAll('.app-bm-card')].map(e=>({height:e.clientHeight,scroll:e.scrollHeight,width:e.clientWidth,name:e.querySelector('.app-bm-name').textContent,children:[...e.children].map(c=>({height:c.offsetHeight,scroll:c.scrollHeight}))}))`) }))
         const failedShot = await send('Page.captureScreenshot', { format: 'png' })
         await fs.writeFile(join(out, 'failed.png'), Buffer.from(failedShot.data, 'base64'))
       }
@@ -155,20 +163,66 @@ async function main() {
       assert.equal(r.overlaps, 0, '卡片文字重叠')
       assert.equal(r.childOverlap, 0, '卡片信息行互相重叠')
       assert.equal(r.priceOverflow, 0, '商品售价溢出')
-      assert.equal(r.baseOverflow, 0, '商品基准价溢出')
       assert.equal(r.outside, 0, '卡片内容伸出边框')
+      assert(await js(`!document.querySelector('.app-bm-card [title],.app-bm-card [data-tip],.app-bm-card-base,.app-bm-premium')`), '卡片仍有独立简易提示或基准价/倍率')
+      const referenceLabel = L10N['ui.shipInfo.086']![locale as 'zh' | 'en']
+      const checkPrivatePrice = async (selector: string) => assert(!String(await js(`document.querySelector(${JSON.stringify(selector)})?.textContent`)).includes(referenceLabel), '黑市详情泄露参考价')
+      let hoverText = ''
+      if (!mobile) {
+        for (const selector of ['.app-bm-card-identity', '.app-bm-name', '.app-bm-note', '.app-bm-price']) {
+          await dismissNotice()
+          await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 })
+          await sleep(100)
+          await point(selector, 'hover')
+          await until('!!document.querySelector(".app-tip .app-info-table")')
+          const text = await js('document.querySelector(".app-tip").textContent')
+          if (hoverText) assert.equal(text, hoverText, '卡内不同区域悬停内容不一致')
+          hoverText = text
+          await checkPrivatePrice('.app-tip')
+        }
+        await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 })
+      }
+      await dismissNotice()
+      if (mobile) await point('.app-bm-detail-button', 'tap')
+      else {
+        await js(`document.querySelector('.app-bm-detail-button').focus()`)
+        assert(await js('document.activeElement===document.querySelector(".app-bm-detail-button")'), '详情按钮未取得焦点')
+        await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', text: '\r', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 })
+        await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 })
+      }
+      await sleep(100)
+      if (!await js('!!document.querySelector(".app-bm-detail")')) console.log(JSON.stringify({ layout, locale, mode,
+        active: await js('document.activeElement.outerHTML'), focus: await js('document.hasFocus()'), modal: await js('document.querySelector(".app-modal-mask,.app-ann-mask")?.outerHTML?.slice(0,200)') }))
+      await until('!!document.querySelector(".app-bm-detail")')
+      await checkPrivatePrice('.app-bm-detail')
+      assert(await js('!!document.querySelector(".app-bm-detail .app-info-table")'), '主动详情未复用参数表')
+      if (hoverText) assert.equal(await js('document.querySelector(".app-bm-detail .app-ship-hover-title").textContent'), goodName(ctx, stressGoods[0]!.key))
+      assert(await js('document.activeElement===document.querySelector(".app-bm-detail-head button")'), '主动详情焦点未进入')
+      await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
+      await until('!document.querySelector(".app-bm-detail")')
+      assert(await js('document.activeElement===document.querySelector(".app-bm-detail-button")'), '主动详情关闭后焦点未返回')
       const monitorUncovered = await js(`(()=>{const monitor=document.querySelector('.app-bm-monitor'),r=document.querySelector('.app-bm-monitor-art').getBoundingClientRect();return [0.1,0.5,0.9].every(x=>[0.1,0.5,0.9].every(y=>monitor.contains(document.elementFromPoint(r.left+r.width*x,r.top+r.height*y))))})()`)
       if (!monitorUncovered) console.log(JSON.stringify({ layout, locale, mode, hits: await js(`(()=>{const r=document.querySelector('.app-bm-monitor-art').getBoundingClientRect();return [0.1,0.5,0.9].flatMap(x=>[0.1,0.5,0.9].map(y=>({x:r.left+r.width*x,y:r.top+r.height*y,hit:document.elementFromPoint(r.left+r.width*x,r.top+r.height*y)?.outerHTML.slice(0,400)})))})()`) }))
       assert(monitorUncovered, '监视器被外部界面遮挡')
       const highestAt = stressGoods.findIndex(g => g.key === highest.key)
       assert.equal(await js(`document.querySelectorAll('.app-bm-price-amount')[${highestAt}].textContent`),
         (highest.basePrice * BLACK_MARKET_MAX_MULTIPLIER).toLocaleString('zh-CN'), '最高报价未完整展示')
+      await click(`.app-bm-cardflow > :nth-child(${highestAt + 1}) .app-bm-detail-button`)
+      await until('!!document.querySelector(".app-bm-detail")')
+      const detailGeometry = await js(`(()=>{const e=document.querySelector('.app-bm-detail'),b=e.getBoundingClientRect(),body=e.querySelector('.app-bm-detail-body');body.scrollTop=1e6;const close=e.querySelector('button'),c=close.getBoundingClientRect(),hit=document.elementFromPoint(c.left+c.width/2,c.top+c.height/2);return {inside:b.left>=0&&b.top>=0&&b.right<=innerWidth+1&&b.bottom<=innerHeight+1,horizontal:e.scrollWidth-e.clientWidth,bodyHorizontal:body.scrollWidth-body.clientWidth,lastReachable:body.scrollTop+body.clientHeight>=body.scrollHeight-1,closeReachable:close===hit||close.contains(hit)}})()`)
+      assert(detailGeometry.inside && detailGeometry.lastReachable && detailGeometry.closeReachable, '长详情或关闭按钮不可达')
+      assert.equal(detailGeometry.horizontal, 0, '详情横向溢出')
+      assert.equal(detailGeometry.bodyHorizontal, 0, '详情正文横向溢出')
+      await checkPrivatePrice('.app-bm-detail')
+      await point('.app-bm-detail-head button', mobile ? 'tap' : 'hover')
+      if (mobile) await until('!document.querySelector(".app-bm-detail")')
+      else { await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' }); await until('!document.querySelector(".app-bm-detail")') }
+      await js(`document.querySelector('.app-bm-stock').scrollTop=0;true`)
       const longestAt = stressGoods.findIndex(g => g.key === longest[0]!.key)
       assert(longestAt >= 0, '最长商品名未进入边界夹具')
-      const idleSpeech = await js('document.querySelector(".app-bm-speech").textContent')
       await click(`.app-bm-cardflow > :nth-child(${longestAt + 1}) .app-bm-select`)
       assert.equal(await js('document.querySelector(".app-bm-picked").textContent'), goodName(ctx, longest[0]!.key), '选中后未显示完整名称')
-      assert.notEqual(await js('document.querySelector(".app-bm-speech").textContent'), idleSpeech, '选货后对白未改变')
+      assert(await js('document.querySelector(".app-bm-monitor").classList.contains("is-pitch")'), '选货后对白姿态未改变')
       if ((mode === 'desktop' || mode === 'compact') && r.scrollHeight > r.clientHeight + 1) console.log(JSON.stringify({ layout, locale, mode, ...r, cards: await js(`[...document.querySelectorAll('.app-bm-card')].map(e=>({h:e.clientHeight,sh:e.scrollHeight,w:e.clientWidth}))`) }))
       if (mode === 'desktop' || mode === 'compact') assert(r.scrollHeight<=r.clientHeight+1, `${layout}/${locale}/${mode}九件未同屏`)
       if (mode === 'portrait') assert(r.rotated, '真实手机竖屏未旋转')
@@ -193,14 +247,14 @@ async function main() {
       await click('.app-bm-select')
       assert(await js('document.querySelector(".app-bm-monitor").classList.contains("is-pitch")'), '选货后未切换商人姿态')
       // 先取消再购买，验证精确报价、焦点循环、原交易实际落盘与售罄。
-      await click('.app-bm-card > .app-btn')
+      await click('.app-bm-buy')
       await until('!!document.querySelector(".app-bm-confirm")')
       await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab' })
       assert(await js('document.activeElement === document.querySelectorAll(".app-bm-confirm-actions button")[1]'), '确认弹层焦点')
       await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' })
       await until('!document.querySelector(".app-bm-confirm")')
       const before = await js(`JSON.parse(localStorage.getItem('whale:idle:save')).state`)
-      await click('.app-bm-card > .app-btn')
+      await click('.app-bm-buy')
       await click('.app-bm-confirm-actions button:last-child')
       await until('!!document.querySelector(".app-bm-card.is-sold")')
       await until(`JSON.parse(localStorage.getItem('whale:idle:save')).state.blackMarket.offers[0].sold`)
@@ -228,7 +282,8 @@ async function main() {
       assert(await js(`JSON.parse(localStorage.getItem('whale:idle:save')).state.blackMarket.offers[0].sold`), '刷新售罄恢复')
       readings.push({ layout, locale, mode, ...r, highestPrice: highest.basePrice * BLACK_MARKET_MAX_MULTIPLIER,
         longestName: goodName(ctx, longest[0]!.key), animation: true, reducedMotion: true, noFx: true,
-        purchased: true, savedSold: true, returnedSearch: true, merchantLastReachable: true, logOverlay, monitorUncovered })
+        purchased: true, savedSold: true, returnedSearch: true, merchantLastReachable: true, logOverlay, monitorUncovered,
+        richHover: mobile ? '主动详情' : '四处一致', detailInput: mobile ? '触控' : '键盘', noReferencePrice: true })
       console.log(`${layout}/${locale}/${mode}通过`)
     }
     await fs.writeFile(join(out, 'readings.json'), JSON.stringify(readings, null, 2), 'utf8')

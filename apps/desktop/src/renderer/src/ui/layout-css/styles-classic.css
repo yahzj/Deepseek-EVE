@@ -13068,22 +13068,28 @@ html[data-locale='en'] body {
 .app-bm-head > .app-gold { margin-left: auto; overflow-wrap: anywhere; min-width: 0; }
 .app-bm-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; flex: 1 1 0; min-height: 0; min-width: 0; }
 .app-bm-stock { min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden; container: bm-stock / inline-size; }
-.app-bm-cardflow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(166px, 1fr)); gap: 6px; height: 100%; min-height: 510px; box-sizing: border-box; }
+.app-bm-cardflow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 170px; gap: 6px; align-content: start; box-sizing: border-box; }
 .app-bm-cardflow > * { min-width: 0; min-height: 0; display: block; }
-.app-bm-card { box-sizing: border-box; height: 100%; min-width: 0; display: grid; grid-template-rows: minmax(36px, 1fr) 18px 26px 14px 26px 24px; gap: 2px; padding: 5px; border: 1px solid rgb(var(--wui-border)); border-radius: 6px; background: rgb(var(--wui-bg-panel) / 0.88); }
+.app-bm-card { box-sizing: border-box; height: 100%; min-width: 0; display: grid; grid-template-rows: 36px 36px 28px 26px 24px; gap: 2px; padding: 5px; border: 1px solid rgb(var(--wui-border)); border-top-color: var(--bm-good-tone); border-radius: 6px; background: rgb(var(--wui-bg-panel) / 0.88); }
 .app-bm-card.is-selected { border-color: rgb(var(--wui-accent)); }
 .app-bm-card.is-sold { opacity: 0.6; }
 .app-bm-select { border: 0; padding: 0; background: transparent; color: inherit; display: flex; align-items: flex-start; text-align: left; min-width: 0; min-height: 0; }
-.app-bm-name { font-size: 11px; line-height: 12px; overflow-wrap: anywhere; min-width: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.app-bm-name { font-size: 12px; line-height: 12px; overflow-wrap: anywhere; min-width: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .app-bm-card .app-dim { font-size: 10px; line-height: 1.3; overflow-wrap: anywhere; }
-.app-bm-card-meta { display: flex; align-items: center; gap: 3px; }
-.app-bm-card-meta > span:last-child { margin-left: auto; }
-.app-bm-card .app-bm-card-base { line-height: 12px; }
-.app-bm-premium { font-size: 10px; line-height: 12px; color: rgb(var(--wui-flag)); }
+.app-bm-card-identity { display: grid; grid-template-columns: 32px minmax(0, 1fr); grid-template-rows: 18px 18px; align-items: center; position: relative; column-gap: 4px; }
+.app-bm-card-identity > svg { grid-row: 1 / 3; }
+.app-bm-card-meta { display: flex; align-items: center; justify-content: space-between; gap: 3px; min-width: 0; }
+.app-bm-card-meta > .app-hand-cell-rarity { position: static; flex: 0 0 auto; }
+.app-bm-category { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-bm-crest { position: absolute; top: 0; left: 0; line-height: 0; pointer-events: none; }
+.app-bm-card .app-bm-note { font-size: 11px; line-height: 14px; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .app-bm-price { display: flex; flex-direction: column; font-size: 11px; line-height: 13px; min-width: 0; }
 .app-bm-price > .app-bm-price-amount { white-space: nowrap; font-size: 11px; font-weight: bold; }
 .app-bm-price > span { font-size: 10px; font-weight: normal; }
-.app-bm-card > .app-btn { min-height: 24px; padding: 1px 4px; font-size: 11px; line-height: 18px; }
+.app-bm-card-actions { display: flex; gap: 6px; min-width: 0; }
+.app-bm-card-actions > .app-btn { height: 24px; min-height: 24px; padding: 1px 4px; font-size: 11px; line-height: 18px; }
+.app-bm-detail-button { display: flex; align-items: center; justify-content: center; width: 24px; flex: 0 0 24px; }
+.app-bm-buy { flex: 1 1 0; min-width: 0; }
 .app-bm-select:focus-visible { outline: 2px solid rgb(var(--wui-accent)); outline-offset: 2px; }
 .app-bm-merchant { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; border-left: 1px solid rgb(var(--wui-border)); padding: 8px 10px; box-sizing: border-box; }
 .app-bm-sign { font-size: 13px; color: rgb(var(--wui-text-dim)); flex: 0 0 auto; }
@@ -13093,13 +13099,17 @@ html[data-locale='en'] body {
 .app-bm-monitor-rim { fill: none; stroke: rgb(var(--wui-text-dim) / 0.4); stroke-width: 1; }
 .app-bm-monitor-glass { fill: rgb(var(--wui-bg-scene-dock)); stroke: currentColor; stroke-width: 1.5; }
 .app-bm-screen-guide { fill: none; stroke: currentColor; stroke-width: 1; opacity: 0.2; }
-.app-bm-merchant-coat { fill: rgb(var(--wui-text-dim) / 0.13); stroke: rgb(var(--wui-text-dim)); stroke-width: 1.5; }
-.app-bm-merchant-head { fill: rgb(var(--wui-accent) / 0.12); stroke: currentColor; stroke-width: 2; }
+.app-bm-merchant-coat { fill: rgb(var(--wui-bg-panel)); stroke: rgb(var(--wui-text-dim)); stroke-width: 1.5; }
+.app-bm-merchant-head { fill: rgb(var(--wui-text) / 0.2); stroke: rgb(var(--wui-text)); stroke-width: 1.8; }
 .app-bm-merchant-seam { fill: none; stroke: rgb(var(--wui-text-dim)); stroke-width: 1.3; }
 .app-bm-merchant-detail { fill: none; stroke: currentColor; stroke-width: 1; opacity: 0.5; }
 .app-bm-merchant-brow, .app-bm-merchant-mouth { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
-.app-bm-merchant-eyes { fill: rgb(var(--wui-bg-scene-dock)); stroke: currentColor; stroke-width: 1.6; transform-box: fill-box; transform-origin: center; animation: app-bm-blink 6.8s ease-in-out infinite; }
-.app-bm-merchant-tentacle { fill: rgb(var(--wui-accent) / 0.06); stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.app-bm-merchant-eyes { fill: rgb(var(--wui-text)); stroke: rgb(var(--wui-bg-scene-dock)); stroke-width: 3; transform-box: fill-box; transform-origin: center; animation: app-bm-blink 6.8s ease-in-out infinite; }
+.app-bm-merchant-pupil { fill: rgb(var(--wui-bg-scene-dock)); stroke: currentColor; stroke-width: 1.5; }
+.app-bm-merchant-glint { fill: rgb(var(--wui-text)); stroke: none; }
+.app-bm-merchant-tentacle { fill: rgb(var(--wui-accent) / 0.32); stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.app-bm-merchant-headset { fill: rgb(var(--wui-bg-panel)); stroke: rgb(var(--wui-text-dim)); stroke-width: 3; }
+.app-bm-merchant-badge { fill: rgb(var(--wui-rare) / 0.4); stroke: rgb(var(--wui-rare)); stroke-width: 1.5; }
 .app-bm-merchant-hand { transform-box: fill-box; transform-origin: left bottom; }
 .app-bm-monitor.is-pitch .app-bm-merchant-hand, .app-bm-monitor.is-deal .app-bm-merchant-hand { animation: app-bm-hand 4.2s ease-in-out infinite; }
 .app-bm-merchant-image { animation: app-bm-signal-shift 9s linear infinite; }
@@ -13114,9 +13124,12 @@ html[data-locale='en'] body {
 .app-bm-picked { flex: 0 0 auto; width: 100%; min-height: 32px; font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
 .app-bm-confirm { display: flex; flex-direction: column; gap: 14px; overflow-wrap: anywhere; }
 .app-bm-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.app-bm-detail { overflow: hidden; box-sizing: border-box; border-radius: 6px; }
+.app-bm-detail-head { flex: 0 0 auto; gap: 8px; }
+.app-bm-detail-body { flex: 1 1 auto; overflow-wrap: anywhere; }
+.app-bm-detail-head > .app-btn { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; }
 @container bm-stock (max-width: 340px) {
-  .app-bm-cardflow { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(5, 176px); min-height: 904px; height: max-content; }
-  .app-bm-card { height: 176px; }
+  .app-bm-cardflow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @keyframes app-bm-blink { 0%, 44%, 48%, 100% { transform: scaleY(1); } 46% { transform: scaleY(0.12); } }
 @keyframes app-bm-hand { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-3deg); } }

@@ -133,7 +133,7 @@ describe('① 内容侧：每族登记一件黑匣（R 族「光环旗舰黑匣�
     expect(r.name).toBe('光环旗舰黑匣')
     expect(r.kind).toBe('blackbox')
     expect(r.unitM3).toBe(h.unitM3)
-    expect(r.baseSellPriceIsk, '与墨潮那件同价（8,000 万）').toBe(h.baseSellPriceIsk)
+    expect(r.baseSellPriceIsk, '与墨潮那件同价').toBe(h.baseSellPriceIsk)
     expect(isBlackboxItem('blackbox-r'), 'core 单点按 id 前缀认它').toBe(true)
     expect(BLACKBOX_ITEM_IDS, '三件都在名单里（族匣 ×2 ＋ 通用）').toEqual([
       PLUG_BLACKBOX_ITEM_ID,
@@ -142,12 +142,12 @@ describe('① 内容侧：每族登记一件黑匣（R 族「光环旗舰黑匣�
     ])
   })
 
-  it('市场行 / 稀有度 / 中英覆盖齐备（只收不卖 · 奇货档 80,000,000）', () => {
+  it('市场行 / 稀有度 / 中英覆盖齐备（只收不卖 · 奇货档）', () => {
     const g = marketGoodOf(ctx, 'item', 'blackbox-r')!
     expect(g).toBeTruthy()
     expect(g.rarity).toBe('exotic')
     expect(g.playerBuyable).toBe(false)
-    expect(g.basePrice).toBe(80_000_000)
+    expect(g.basePrice).toBe(10_000_000)
     expect(RARITY_TIER['blackbox-r'], '与墨潮那件同档（奇货层 4）').toBe(4)
     expect(EN_ITEMS['blackbox-r']?.name).toBe('Corona Flagship Black Box')
     expect(EN_ITEMS['blackbox-r']?.description, '英文说明非空').toBeTruthy()

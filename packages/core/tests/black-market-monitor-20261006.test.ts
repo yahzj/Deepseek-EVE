@@ -97,7 +97,10 @@ describe('黑市监视器与入口真实组件行为', () => {
     const scope = { React: jsx, exports: {}, tr, useL10n: () => {}, useEffect: () => {}, useRef: () => ({ current: null }),
       useState: (initial: unknown) => { const at = cursor++; if (!(at in values)) values[at] = initial; return [values[at], (v: unknown) => values[at] = v] },
       blackMarketUnlocked, blackMarketNextRefresh, fmtDuration: String, isk: String, cmdText: () => '',
-      marketGoodDisplayName: (_ctx: unknown, key: string) => key, Glyph: 'Glyph', MerchantMonitor: 'MerchantMonitor', MarketGoodHover: 'MarketGoodHover', result: undefined }
+      marketGoodDisplayName: (_ctx: unknown, key: string) => key,
+      marketGoodInfo: (_ctx: unknown, good: { key: string }) => ({ title: good.key, lines: [], note: '说明', category: '类别', glyph: 'blueprint', tone: 'currentColor' }),
+      infoCardContent: () => null, crestLabelOf: String, FOE_ACCENT: {},
+      Glyph: 'Glyph', MerchantMonitor: 'MerchantMonitor', MarketGoodHover: 'MarketGoodHover', result: undefined }
     const page = component('pages/BlackMarketPage.tsx', 'BlackMarketPage', scope)
     const engine = { state, ctx, buyBlackMarketAt: (key: string, day: number, price: number) => {
       calls.push([key, day, price]); return blackMarketBuy(state, ctx, key, day, price, now)
@@ -108,7 +111,7 @@ describe('黑市监视器与入口真实组件行为', () => {
     const before = { ...state.blackMarket!.offers[0]! }, money = state.wallet.isk
     nodes(cards[0]).find(n => n.props.className === 'app-bm-select')!.props.onClick()
     expect(render().find(n => n.type === 'MerchantMonitor')!.props.mood).toBe('pitch')
-    const purchase = nodes(cards[0]).find(n => n.props.className === 'app-btn')!
+    const purchase = nodes(cards[0]).find(n => n.props.className === 'app-btn app-bm-buy')!
     purchase.props.onClick({ currentTarget: {} })
     const confirm = render().find(n => n.props.className === 'app-bm-confirm-actions')!
     nodes(confirm).filter(n => n.type === 'button')[1]!.props.onClick()
