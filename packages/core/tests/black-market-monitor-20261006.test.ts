@@ -165,13 +165,18 @@ describe('黑市监视器与入口真实组件行为', () => {
     const before = { ...state.blackMarket!.offers[0]! }, money = state.wallet.isk
     nodes(cards[0]).find(n => n.props.className === 'app-bm-select')!.props.onClick()
     expect(render().find(n => n.type === 'MerchantMonitor')!.props.mood).toBe('pitch')
+    const merchantChildren = () => render().find(n => n.props.className === 'app-bm-merchant')!.children
+      .map(n => (n as Node).props.className ?? (n as Node).type)
+    expect(merchantChildren()).toEqual(['app-bm-sign', 'MerchantMonitor', 'app-bm-speech'])
     const purchase = nodes(cards[0]).find(n => n.props.className === 'app-btn app-bm-buy')!
     purchase.props.onClick({ currentTarget: {} })
+    expect(nodes(render().find(n => n.props.className === 'app-modal app-bm-confirm')).some(n => n.children.includes(before.goodKey))).toBe(true)
     const confirm = render().find(n => n.props.className === 'app-bm-confirm-actions')!
     nodes(confirm).filter(n => n.type === 'button')[1]!.props.onClick()
     expect(calls).toEqual([[before.goodKey, state.blackMarket!.dayWallMs, before.price]])
     expect(state.wallet.isk).toBe(money - before.price)
     expect(render().find(n => n.type === 'MerchantMonitor')!.props.mood).toBe('deal')
+    expect(merchantChildren()).toEqual(['app-bm-sign', 'MerchantMonitor', 'app-bm-speech'])
     expect(render().filter(n => n.type === 'article' && n.props.className.includes('is-sold'))).toHaveLength(1)
   })
 })

@@ -13114,7 +13114,6 @@ html[data-locale='en'] body {
 .app-bm-monitor-vents, .app-bm-monitor-stand { fill: none; stroke: rgb(var(--wui-text-dim)); stroke-width: 1.7; stroke-linecap: round; }
 .app-bm-monitor-led { fill: rgb(var(--wui-green)); }
 .app-bm-speech { box-sizing: border-box; flex: 0 0 auto; max-width: 440px; width: 100%; min-height: 95px; font-size: 13px; line-height: 1.5; padding: 10px 0 4px; border-top: 1px solid rgb(var(--wui-border)); overflow-wrap: anywhere; }
-.app-bm-picked { flex: 0 0 auto; width: 100%; min-height: 32px; font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
 .app-bm-confirm { display: flex; flex-direction: column; gap: 14px; overflow-wrap: anywhere; }
 .app-bm-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .app-bm-detail { overflow: hidden; box-sizing: border-box; border-radius: 6px; }

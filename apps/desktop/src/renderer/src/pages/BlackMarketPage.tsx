@@ -97,8 +97,8 @@ export function BlackMarketPage({ engine, onToast, onBack }: PageProps & { onBac
       <section className="app-bm-merchant" aria-label={tr('ui.blackMarket.013')}>
         <div className="app-bm-sign">{tr('ui.blackMarket.013')}</div>
         <MerchantMonitor mood={deal ? 'deal' : good ? 'pitch' : 'idle'} />
+        {/* ⟪文案调整 2026-10-06⟫ 右栏仅保留商人对白，商品全名在富详情和购买确认中展示。 */}
         <div className="app-bm-speech" aria-live="polite">{tr(speech)}</div>
-        {good ? <div className="app-bm-picked app-dim">{marketGoodDisplayName(engine.ctx, good.key)}</div> : null}
       </section>
     </div>
     {detail ? <div className="app-modal-mask" onClick={() => setDetailKey(null)}>
