@@ -944,6 +944,13 @@ export interface BlinkSeg {
 
 /** V12 实时战斗持久状态（确定性事件步进；只存动态量） */
 export interface BattleState {
+  /** 本场腐蚀与爆虫触发去重，跨波保留、战后随战斗销毁。 */
+  alienCorrosion?: number
+  acidBursts?: Record<string, { cause: 'attack' | 'killed'; atMs: number; resolved?: boolean }>
+  /** 每舰孵化额度、跨舰待补机位及周期；数字机位兼容前版本舰队列。 */
+  foeHatcheries?: Record<string, { left: number | 'unlimited'; revived: number; queue: Array<number | { tag: string; index: number }>; nextAtMs?: number }>
+  /** 新挂件携带者的有效参战时长，供渐增加速和局部复活节拍共同读取。 */
+  foeAbilityClocks?: Record<string, number>
   /** 战斗开始（到港）的游戏内时刻 */
   startedAtGameMs: number
   /** 上次推进时刻（离线大步长切段基准） */

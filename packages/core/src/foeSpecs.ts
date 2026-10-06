@@ -21,7 +21,7 @@ import type {
   SimContext,
 } from './types'
 import type { UnitSpec, WeaponSpec } from './combat'
-import { clamp } from './combatMath'
+import { clamp, isAlive } from './combatMath'
 import type { Hp3 } from './combatMath'
 import { nextInt } from './rng'
 import { resolveFoeMounts } from './foeMounts'
@@ -258,6 +258,7 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
   return units.map((u, ui) => {
     const sp = fireSplit[ui]
     const ship = u.slot.ship
+    const mount = resolveFoeMounts(u.slot.mounts ?? ship.mounts)
     const mix = u.slot.dmgMix ?? ship.dmgMix
     const type = pickTopType(mix)
     const totalHp = ship.hp * (u.slot.hpMul ?? 1)
@@ -267,9 +268,10 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     const hp: Hp3 = { s: totalHp * split.s, a: totalHp * split.a, h: totalHp * split.h }
     // 炮台单发：写了比例 ⇒ 取拆分后的 G 摊分结果（Σ 与旧口径守恒），否则逐字沿用旧算法；
     // 之后再乘**舰体火力越线折扣**（越线才 <1；`fireSplit` 非空的条目缩放 = 1，见 `foeDpsCapScaleOf`）
-    const shotDmg = sp
+    const rawShotDmg = sp
       ? sp.gun
       : Math.max(1, Math.round(ship.shotDmg * (u.slot.dmgMul ?? 1) * comp * (dpsCapScale.get(u.slot) ?? 1)))
+    const shotDmg = ship.acidBurst ? 0 : mount.broodControl ? Math.max(1, Math.round(rawShotDmg * mount.broodControl.gunDmgMul)) : rawShotDmg
     const shotSplit = splitShotByComposition(shotDmg, compositionOfMix(mix))
     const multiShots: Partial<Record<DamageType, number>> | undefined =
       shotSplit.length > 1
@@ -302,7 +304,6 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
      * `droneRangeMulOnHit`/`gunRangeMulOnHit`）保留为**兼容回退**：只有**没挂 mounts** 时才读，
      * 所以老卡、老档、老测试逐字不变。
      */
-    const mount = resolveFoeMounts(u.slot.mounts ?? ship.mounts)
     /** 本条目内**逐架机群单发**的游标（与 `ship.drones` 展开顺序一致，仅写了比例时消费） */
     let dIdx = 0
     // **舰载机群**（2026-09-11 机群批 · 设计稿 `foe-drone-system-20260911.md` §三/§五）：
@@ -317,9 +318,8 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
         artId: ds.drone.id,
         fixedType: ds.drone.damageType,
         // 机群单发：写了比例 ⇒ 取拆分后的 D 摊分结果（逐架、余数补前面的架次），否则沿用旧算法
-        shotDmg: sp
-          ? sp.drones[dIdx++]!
-          : Math.max(1, Math.round(ds.drone.dmg * (u.slot.dmgMul ?? 1))),
+        shotDmg: Math.max(1, Math.round((sp ? sp.drones[dIdx++]! : Math.max(1, Math.round(ds.drone.dmg * (u.slot.dmgMul ?? 1)))) * (mount.broodControl?.droneDmgMul ?? 1))),
+        ...(mount.broodControl ? { foeDroneRangeBonusPct: mount.broodControl.droneRangeBonusPct } : {}),
         maxRangeM: Math.max(2, ds.drone.maxRangeM),
         minRangeM: 1, // 机群无近盲带（贴脸也打）
         hitRate: ds.drone.hitRate,
@@ -352,6 +352,9 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     }
     return {
       tag: u.tag,
+      ...(ship.acidBurst ? { acidBurst: { ...ship.acidBurst, ...(ship.acidBurst.damage !== undefined ? { damage: Math.round(ship.acidBurst.damage * (u.slot.dmgMul ?? 1) * comp) } : {}) } } : {}),
+      ...(mount.hatchery ? { foeHatchery: { ...mount.hatchery } } : {}),
+      ...(mount.fleetSpeedRamp ? { foeFleetSpeedRamp: { ...mount.fleetSpeedRamp } } : {}),
       name,
       side: 'foe' as const,
       hp,
@@ -707,10 +710,12 @@ export function resolveFoeRevive(
   const rt = b.units[summoner.tag]
   if (!rt || (rt.hp.s <= 0 && rt.hp.a <= 0 && rt.hp.h <= 0)) return
   const everyMs = Math.max(1_000, Math.round(summoner.foeReviveEscort.everyMs))
-  if (b.foeReviveAtMs === undefined) b.foeReviveAtMs = (rt.enteredAtMs ?? b.startedAtGameMs) + everyMs
-  if (nowMs < b.foeReviveAtMs) return
+  const activeClock = summoner.foeReviveEscort.activeClock === true
+  const clock = activeClock ? b.foeAbilityClocks?.[summoner.tag] ?? 0 : nowMs
+  if (b.foeReviveAtMs === undefined) b.foeReviveAtMs = activeClock ? everyMs : (rt.enteredAtMs ?? b.startedAtGameMs) + everyMs
+  if (clock < b.foeReviveAtMs) return
   /** 到点 ⇒ 推进一格（大步长/离线补算一格一格来，不在一次推进里连刷） */
-  b.foeReviveAtMs = nowMs + everyMs
+  b.foeReviveAtMs = clock + everyMs
   /**
    * **本波"槽位"口径**：一个编成条目 = 一个槽位，槽位里站着的是**原单位或它的支援舰**（`sup{n}-`）。
    * ⚠ 支援舰不是 `curFoes` 里的条目 ⇒ 数"在场数"必须把它们的**剥壳 tag** 一并算上，
@@ -735,6 +740,7 @@ export function resolveFoeRevive(
   const dead = curFoes.filter(
     (f) =>
       f.foeReviveEscort === undefined &&
+      (summoner.foeReviveEscort!.allowedShipIds === undefined || summoner.foeReviveEscort!.allowedShipIds.includes(f.foeShipId ?? '')) &&
       b.units[f.tag] !== undefined &&
       !aliveSlots.has(f.tag) &&
       b.units[f.tag]!.hp.s <= 0 &&
@@ -775,8 +781,8 @@ export function resolveFoeRevive(
     const spec: UnitSpec = { ...pick, tag: `sup${n}-${pick.tag}` }
     seedUnit(b, spec, {
       enterReload: true,
-      // ⚠ 入场时刻取**全局时钟**（与转场/单波增援同一条理由：战斗时钟在演出窗口里是冻住的）
-      arrivedAtMs: state.gameMs,
+      // 旧H维持全局入场时刻；C有效时钟按实际推进拍入场，离线不会推迟到整个预算末尾。
+      arrivedAtMs: activeClock ? b.lastTickGameMs : state.gameMs,
       ...(b.wormhole ? { foePhaseMs: WORMHOLE_FOE_VOLLEY_STAGGER_MS } : {}),
     })
     // 随新单位补建机群池与修理账本（与波次转场同款；没挂那两件的单位一个键都不建）
@@ -1404,8 +1410,11 @@ export function foeDesiredRange(
    * 不必挪窝）——所以这里的倍率固定传 1，不读 `foeGunRangeBuff`。
    */
   foeRangeDebuffR = 0,
+  battle?: import('./state').BattleState,
 ): number {
-  const head = foes[0]
+  const acidRoster = battle !== undefined && foes.some(f => f.acidBurst)
+  if (acidRoster && foes.some(f => f.acidBurst && isAlive(battle!, f.tag))) return bal.minDistanceM
+  const head = acidRoster ? foes.find(f => isAlive(battle!, f.tag)) : foes[0]
   // **期望距离覆写优先**（船长 2026-09-11 E 族：「战术调整、期望距离不改」）
   const pinned = head?.foeDesireRangeM
   // 舰级路径：带 = 自己的有效射程带；旧路径：带 = 全局战术表（原样）

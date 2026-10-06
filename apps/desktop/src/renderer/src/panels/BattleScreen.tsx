@@ -1600,6 +1600,7 @@ const meSpeedRef = useRef(200)
    */
   const NOTICE_LIFE_MS = 12_000
   const noticeItems: Array<{ key: string; text: string }> = []
+  if (battle.alienCorrosion) noticeItems.push({ key: 'corrosion', text: tr('ui.alien.004', { p1: Math.round(battle.alienCorrosion * 100) }) })
   if (wavePending)
     noticeItems.push({
       key: 'wave',
@@ -2056,6 +2057,10 @@ const meSpeedRef = useRef(200)
     foeRowTags.find((t) => (hangarByTag.get(t) ?? 0) > 0) ??
     null
   const hangarBadgeOf = (tag: string): ReactNode => {
+    const hatchery = battle.foeHatcheries?.[tag]
+    const hp = battle.units[tag]?.hp
+    // ⟪文案调整 2026-10-06⟫ 无限模式用符号显示，避免开发侧枚举直接出现在玩家界面。
+    if (hatchery && hp && hp.s + hp.a + hp.h > 0) return <span className="app-bts-hangar" title={tr('ui.alien.005', { p1: hatchery.left === 'unlimited' ? tr('ui.alien.006') : hatchery.left, p2: hatchery.revived })}><span className="app-ico"><Glyph name="drone-rack" size={11} color={ICO_TONES['drone-rack']} /></span>×{hatchery.left === 'unlimited' ? '\u221e' : hatchery.left}</span>
     if (tag !== hangarCarrierTag || hangarTotal <= 0) return null
     return (
       <span
@@ -2920,7 +2925,7 @@ const meSpeedRef = useRef(200)
 
           {/* 敌方舰列（2026-09-11 船长③：血条跟着各舰走——已随各舰渲染，列底不再竖排血条；
               尸骸原位占槽演出见 foeUnitEls） */}
-          <div className="app-bts-col is-foe" ref={foeColRef} style={{ left: lay.foeLeft }}>
+          <div className="app-bts-col is-foe" ref={foeColRef} style={{ left: lay.foeLeft, ...(foeAnomaly?.foeFamily === 'C' && foeAnomaly.region === 'inv' ? { width: foeFormation.rowW, maxWidth: 'none' } : {}) }}>
             {/* 整行 `margin-top` = 下沉补偿（抬升超出上方留白时才非 0，现值 0）——与 layout 的基线同源 */}
             {/* **敌列阵形：斜向菱形**（2026-09-12 船长「2×2 菱形 → 斜向菱形、第二排向右偏移」选丙②）：
                 两排各若干舰，**第二排右移半格 + 下移一个舰高**（`layout` 的阵形几何是唯一出处）；

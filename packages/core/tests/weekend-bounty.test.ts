@@ -36,7 +36,7 @@ const card: AnomalyDef = {
 function setup(peripheryIds: string[] = ['galaxy-home']): { s: ReturnType<typeof createInitialState>; ev: WeekendEventState } {
   const s = createInitialState({ nowWallMs: 0, seed: 11 })
   s.debugQuick = true
-  const ev: WeekendEventState = { seq: 1, startedAtWallMs: 0, coreId: 'galaxy-kor', peripheryIds, family: 'C', contributed: {} }
+  const ev: WeekendEventState = { seq: 1, startedAtWallMs: 0, coreId: 'galaxy-kor', peripheryIds, family: 'A', contributed: {} }
   s.weekendEvent = ev
   return { s, ev }
 }

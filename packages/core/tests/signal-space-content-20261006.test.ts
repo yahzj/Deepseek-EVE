@@ -150,14 +150,14 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
   })
 
   it('五族残骸只改地区显示：组标识、枚举、成员、池、档位、威胁和数量乘数不变', () => {
-    expect(WRECK_GROUPS.map((row) => without(row, ['name', 'rareName', 'note'])))
+    expect(WRECK_GROUPS.filter(row => row.key !== 'c-inv').map((row) => without(row, ['name', 'rareName', 'note'])))
       .toEqual(baseWrecks.map((row) => without(row, ['name', 'rareName', 'note'])))
     const baseWreckModule = baselineModule('packages/core/src/wreckGroups.ts')
     expect(WRECK_FAMILY_NAMES).toEqual(baseWreckModule.WRECK_FAMILY_NAMES)
     expect(WRECK_YIELD_TIER_MUL).toEqual(baseWreckModule.WRECK_YIELD_TIER_MUL)
     expect(WRECK_REGION_LABELS).toEqual({ ...(baseWreckModule.WRECK_REGION_LABELS as object), wh: '信号空间' })
     expect(WRECK_GROUPS.filter((row) => row.region === 'wh')).toHaveLength(5)
-    for (const row of WRECK_GROUPS) {
+    for (const row of WRECK_GROUPS.filter(row => row.key !== 'c-inv')) {
       const before = baseWrecks.find((group) => group.key === row.key)!
       for (const field of ['name', 'rareName', 'note'] as const) {
         expect(row[field], `${row.key}/${field}`).toBe(row.region === 'wh' ? before[field].replace('虫洞', '信号空间') : before[field])
@@ -177,12 +177,12 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
   })
 
   it('旧资产数值与配方不变；模块及谜质装置说明取新ID，历史正文仍可读取', () => {
-    const addedAmmo = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3'])
-    expect(ITEMS.filter(item => addedAmmo.has(item.id)).map(item => item.id).sort()).toEqual([...addedAmmo].sort())
-    sameData(ITEMS.filter(item => !addedAmmo.has(item.id)), baseItems, ['name', 'description'])
+    const addedItems = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c'])
+    expect(ITEMS.filter(item => addedItems.has(item.id)).map(item => item.id).sort()).toEqual([...addedItems].sort())
+    sameData(ITEMS.filter(item => !addedItems.has(item.id)), baseItems, ['name', 'description'])
     expect(EN_ITEMS['mat-wh-essence']!.name).toBe('Signal Enigma')
     for (const [id, text] of Object.entries(EN_ITEMS)) {
-      if (addedAmmo.has(id)) continue
+      if (addedItems.has(id)) continue
       expect(text.name, id).toBe(id === 'mat-wh-essence' ? 'Signal Enigma' : baseEn.EN_ITEMS[id]!.name)
     }
     for (const [id, text] of Object.entries(EN_MODULES)) expect(text.name, id).toBe(baseEn.EN_MODULES[id]!.name)

@@ -52,6 +52,7 @@ import { applyFirstBountyBuff, isFirstBountyBattle } from './firstTasks'
 import { droneRevivedCount, droneRevivedOf, initDroneRevive, initDroneReviveStock, resolveDroneRevive } from './droneRevive'
 // 命中与伤害数学（2026-10-02 批次 4a 拆到 combatMath.ts）；本文件借回使用并再导出，既有引用零改动
 import { applyDamage, battleClockNowMs, clamp, distFactor, droneHitChance, hitChance, inRange, isAlive, typeLayerMult } from './combatMath'
+import { triggerAcidBurst, applyAlienCorrosion, advanceFoeHatcheries, advanceFoeAbilityClocks, foeFleetSpeedMulOf } from './alienCombat'
 import type { Hp3 } from './combatMath'
 export { applyDamage, battleClockNowMs, battleShowWindowMs, battleSpeedOf, distFactor, droneHitChance, hitChance, inRange, typeLayerMult, waveGapTotalMs } from './combatMath'
 export type { Hp3 } from './combatMath'
@@ -103,6 +104,7 @@ export type WeaponSrc = 'turret' | 'missile' | 'laser' | 'drone' | 'base'
 
 /** 静态武器卡 */
 export interface WeaponSpec {
+  foeDroneRangeBonusPct?: number
   label: string
   /** gun = 我方炮台/导弹架（吃弹药，按 shotsByType 给单发伤害）；beam = 激光炮（必中、
    * 逐发扣能量弹药、威力随距离衰减）；fixed = 固定单发（基础舰炮/无人机/敌方） */
@@ -229,6 +231,10 @@ export function beamPowerVsTargetOf(
 
 /** 静态单位卡（构建后不进存档） */
 export interface UnitSpec {
+  acidBurst?: import('./types').FoeShipDef['acidBurst']
+  foeHatchery?: import('./types').FoeMountDef['hatchery']
+  foeFleetSpeedRamp?: import('./types').FoeMountDef['fleetSpeedRamp']
+  corrosionAppliedPct?: number
   tag: string
   name: string
   /** **舰种档**（1 护卫舰 … 5 旗舰；2026-09-12 加）：敌方单位 = 编成条目所引舰级的档位；
@@ -525,7 +531,7 @@ export interface UnitSpec {
    * **同日追答**「**应该是优先复活干扰舰**」⇒ 名单是**优先**语义：名单内的舰在可补池里就先占一个名额
    * （它活着 / 已补进场则名额回落到随机）。
    */
-  foeReviveEscort?: { everyMs: number; count?: number; priorityShipIds?: readonly string[] }
+  foeReviveEscort?: import('./types').FoeMountDef['reviveEscort']
   foeTactic: FoeTactic | null
   /**
    * **舰级 id**（2026-09-24 加；只给"舰级路径"建的敌单位写）：旗舰 BOSS 的伤害台账靠它认出母舰
@@ -666,6 +672,9 @@ function snapshotFoeStandby(b: import('./state').BattleState, foes: readonly Uni
  */
 function applyFoeUnitDamage(
   b: {
+    distanceM?: number
+    alienCorrosion?: number
+    acidBursts?: import('./state').BattleState['acidBursts']
     units: Record<string, { hp: Hp3; foeShipId?: string; downAtMs?: number }>
     foeOverride?: { bossShipId?: string }
     lastTickGameMs?: number
@@ -678,6 +687,7 @@ function applyFoeUnitDamage(
   /** 目标单位（认 tag；`resists` 取它自己的层抗，「待机护盾阵列」也取它自己的那份） */
   foe: {
     tag: string
+    acidBurst?: UnitSpec['acidBurst']
     resists?: UnitSpec['resists']
     /** **待机护盾阵列参数**（带该件的单位才有；判据见 `standbyShieldActiveOf`） */
     foeStandbyShield?: UnitSpec['foeStandbyShield']
@@ -704,6 +714,7 @@ function applyFoeUnitDamage(
     const atMs = atMsOverride ?? b.lastTickGameMs ?? 0
     if (rt.downAtMs === undefined) rt.downAtMs = atMs
     killedNow = wasAlive
+    if (killedNow) triggerAcidBurst(b, foe, 'killed', atMs)
     const bossId = b.foeOverride?.bossShipId
     if (killedNow && bossId !== undefined && rt.foeShipId === bossId) {
       b.bossDownAtMs ??= atMs
@@ -747,6 +758,9 @@ export function rawDamageToKill(hp: Hp3, resists: UnitSpec['resists'], type: Dam
  */
 export function carryVolleyOverflow(
   b: {
+    distanceM?: number
+    alienCorrosion?: number
+    acidBursts?: import('./state').BattleState['acidBursts']
     units: Record<string, { hp: Hp3; foeShipId?: string; downAtMs?: number }>
     stats: { meDmg: number }
     foeOverride?: { bossShipId?: string }
@@ -868,6 +882,7 @@ export function pulseFoeRepair(
   let bestRatio = Number.POSITIVE_INFINITY
   for (const s of foeSpecs) {
     if ((s.repairPct ?? 0) > 0) continue // 永不以任何后勤舰为目标（含自己）
+    if (s.foeShipId === 'foe-alien-broodmother' && b.foeOverride?.bossShipId === s.foeShipId) continue
     const rt = b.units[s.tag]
     if (!rt) continue
     // 阵亡敌舰不修（2026-09-19 报障修复）：三层全 0 ⇒ 修活 = 玩家的"已沉没"敌舰复活
@@ -1767,6 +1782,7 @@ function buildMyUnitSpecs(
     if (isFirstBountyBattle(state, anomalyId, shipId)) applyFirstBountyBuff(me)
     // **指挥舰全舰单发光环**（2026-09-17 修：原先只在开战那一刻乘 ⇒ 被每拍重建冲掉、从未生效）
     applyFleetDamageAura([me], 1 + fleetDamageAuraOf(state, ctx, [shipId]))
+    applyAlienCorrosion(me, battle.alienCorrosion ?? 0)
     return applyFleetLockAura([me])
   }
   const out: UnitSpec[] = []
@@ -1788,6 +1804,7 @@ function buildMyUnitSpecs(
   }
   // **指挥舰全舰单发光环**：全队取最高一份、不叠加（同批修：见 `applyFleetDamageAura` 的注释）
   applyFleetDamageAura(out, 1 + fleetDamageAuraOf(state, ctx, fleet.map((e) => e.shipId)))
+  for (const spec of out) applyAlienCorrosion(spec, battle.alienCorrosion ?? 0)
   return applyFleetLockAura(out)
 }
 
@@ -2836,6 +2853,7 @@ export function battleArcsFor(
   const leaderTag = battle.myFleet?.find((e) => e.shipId === leaderShipId)?.tag ?? 'player'
   const me = createPlayerSpec(state, ctx, leaderShipId, battleAmmoIdsFor(battle, leaderTag), meRefs)
   if (!me) return null
+  applyAlienCorrosion(me, battle.alienCorrosion ?? 0)
   // **捕获网**（船长 2026-09-16）：视图锚舰被钉时同样施加四层效果 ⇒ 面板速度/射程带与引擎同尺
   {
     const web = battle.meWebDebuffs?.[me.tag]
@@ -3146,7 +3164,7 @@ export function battleArcsFor(
      */
     maxM: battleMaxDistanceM(battle, me, foes, bal),
     desireMaxM: battleMaxDistanceM(battle, me, foes, bal) * (battle.wormhole?.desireRangeMul ?? 1),
-    foeDesireM: Math.min(openM, foeDesiredRange(me, foes, bal, battle.meFoeRangeDebuff ?? 0)),
+    foeDesireM: Math.min(openM, foeDesiredRange(me, foes, bal, battle.meFoeRangeDebuff ?? 0, battle)),
     ammo: { kin: battle.ammo.kin, exp: battle.ammo.exp, pla: battle.ammo.pla },
     ...(Object.keys(ammoNames).length > 0 ? { ammoNames } : {}),
     me: meArcs,
@@ -3750,6 +3768,8 @@ export function advanceBattleFor(
      * **支援舰召唤**（船长 2026-09-25：「支援舰船召唤装置」）——与上面那条同位置（`stepBattle` 之前）：
      * 上一拍刚打死的僚舰，本拍就能被"复活/支援"补回场；没挂该件的战斗第一步就返回（零行为变化）。
      */
+    const dt = Math.min(BATTLE_STEP_MS, nowMs() - battle.lastTickGameMs)
+    advanceFoeAbilityClocks(battle, curFoes, dt)
     resolveFoeRevive(state, battle, curFoes, bal, nowMs())
     /**
      * **无人机储备甲板：每拍复位**（2026-09-27 船长令）——与上面那条**同位置**（`stepBattle` 之前）：
@@ -3763,7 +3783,9 @@ export function advanceBattleFor(
      * 本拍刚召唤入场的支援舰这一拍就进开火循环/选靶池（支援舰与编成的关系见 `foesWithSupport`）。
      */
     const liveFoes = foesWithSupport(battle, curFoes)
-    const dt = Math.min(BATTLE_STEP_MS, nowMs() - battle.lastTickGameMs)
+    if (!battle.foeRepair && liveFoes.some(f => (f.repairPct ?? 0) > 0)) {
+      battle.foeRepair = { nextPulseAtMs: battle.lastTickGameMs + REPAIR_PULSE_MS, pulses: 0, healed: 0 }
+    }
     stepBattle(
       state,
       battle,
@@ -3870,7 +3892,7 @@ export function advanceBattleFor(
         battle.foeRepair.nextPulseAtMs <= battle.lastTickGameMs &&
         guardF < BATTLE_MAX_STEPS
       ) {
-        pulseFoeRepair(battle, foes, battle.foeRepair)
+        pulseFoeRepair(battle, liveFoes, battle.foeRepair)
         battle.foeRepair.nextPulseAtMs += REPAIR_PULSE_MS
         guardF++
       }
@@ -4502,6 +4524,7 @@ function stepBattle(
   foeTargetingChance = 1,
 ): void {
   const dtSec = dtMs / 1000
+  advanceFoeHatcheries(b, foes, b.lastTickGameMs)
   // **我方"不被一击带走"保险：本拍账本清零**（船长 2026-09-16；见 `cappedFoeDamage`。
   // 逐拍重置 ⇒ 运行态、不入档；洞外洞内共用这一处）
   b.meVolleyDmg = {}
@@ -4525,7 +4548,8 @@ function stepBattle(
   // 爆发倍率**逐舰各取自己的**（装微型跃迁引擎那条只在它自己的 10 秒窗口里快；其余船维持 60/60）——
   // 全队同款推进器时与改前逐字等价（相位与倍率都相同 ⇒ 平均速度 ×(1+倍率)）。
   // 敌方期望距离不得超出开战距离（近距开局下 kite 战术系数可能越界 → 钳制，避免一直想拉开）
-  const foeDesireClamped = Math.min(openM, foeDesire);
+  const normalDesire = foes.some(f => f.acidBurst) ? foeDesiredRange(me, foes, bal, b.meFoeRangeDebuff ?? 0, b) : foeDesire
+  const foeDesireClamped = Math.min(openM, normalDesire);
   // 冲锋状态机（2026-09-14 船长改判：**逐单位** + **自身炮台命中解除** + 冷却 10 秒）——
   // ⚠ **顺序**：先更新状态、再算接近速度（倍率由状态读出来，见 `unitSpeedMulOf` 的单点）。
   // 触发条件（乙）与"到达期望交距"兜底都在 `updateFoeCharge` 里；本处只管"读状态算速度"。
@@ -4569,9 +4593,10 @@ function stepBattle(
   let foeV = 0
   let foePanel = 0
   let foeAliveN = 0
+  const fleetSpeedMul = foeFleetSpeedMulOf(b, foes)
   for (const f of foes) {
     if (!isAlive(b, f.tag)) continue
-    const mul = unitSpeedMulOf(f, b, bal, 'foe')
+    const mul = unitSpeedMulOf(f, b, bal, 'foe') * fleetSpeedMul
     foeV += combatSpeed(f.speedMps, f.agility, bal) * mul
     foePanel += f.speedMps * mul
     foeAliveN += 1
@@ -5019,6 +5044,36 @@ function stepBattle(
 
   // ── 敌方开火（按**选靶模式**打我方；单船路径 = 恒打唯一那艘、零随机数消费） ──
   for (const f of foes) {
+    if (f.acidBurst && isFoeEngageable(b, f.tag)) triggerAcidBurst(b, f, 'attack', b.lastTickGameMs + dtMs)
+  }
+  // 包含玩家炮火、全体攻击及溢火产生的死亡爆发；每只结算一次，伤害先于自身腐蚀。
+  for (const f of foes) {
+    const event = b.acidBursts?.[f.tag]
+    const acid = f.acidBurst
+    if (!acid || !event || event.resolved) continue
+    event.resolved = true
+    const target = pickMyUnitTarget(state, b, myUnits, foeTargeting, foeTargetingChance)
+    if (target) {
+      const rt = b.units[target.tag]!
+      const chance = hitChance({ hitRate: acid.hitRate ?? .95, minRangeM: 1, maxRangeM: acid.deathRangeM, falloff: 1 }, f, target, b.distanceM, bal, 1)
+      const hit = nextRandom(state.rng) < (favor ? clamp(0, .97, chance * favor.foeMul) : chance)
+      b.stats.foeShots += 1
+      let dealt = 0
+      if (hit) {
+        b.stats.foeHits += 1
+        const raw = applyDcGuard(state, b, target.tag, target, rt.hp, cappedFoeDamage(b, target.tag, target, acid.damage ?? 0), 'kinetic')
+        const result = applyDamage(rt.hp, target.resists, raw, 'kinetic')
+        rt.hp = result.hp
+        dealt = result.dealt
+      }
+      pushBattleFx(b, { atMs: event.atMs, side: 'foe', tag: f.tag, to: target.tag, type: 'kinetic', hit, ...(dealt > 0 ? { dmg: dealt } : {}) })
+    }
+    b.alienCorrosion = Math.max(b.alienCorrosion ?? 0, acid.corrosionPct)
+    for (const u of myUnits) applyAlienCorrosion(u, b.alienCorrosion)
+  }
+  for (const u of myUnits) applyAlienCorrosion(u, b.alienCorrosion ?? 0)
+  advanceFoeHatcheries(b, foes, b.lastTickGameMs + dtMs)
+  for (const f of foes) {
     const rt = b.units[f.tag]
     if (!rt || !isAlive(b, f.tag)) continue;
     // 本发（本次齐射）的目标：**每次开火前重选**——目标被打沉后自动换人，与"每发独立抽敌人"对称。
@@ -5142,6 +5197,7 @@ function stepBattle(
         })
       }
     }
+    if (f.acidBurst) continue
     const w = f.weapons[0]!
     const cd = rt.weapons[0] ?? 0
     if (cd > 0) {

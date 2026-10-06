@@ -30,7 +30,7 @@ export function foeDroneRangeOf(
   b: import('./state').BattleState,
   w: WeaponSpec,
 ): number {
-  const buffMul = b.foeDroneRangeBuff && b.foeDroneRangeBuff > 1 ? b.foeDroneRangeBuff : 1
+  const buffMul = (b.foeDroneRangeBuff && b.foeDroneRangeBuff > 1 ? b.foeDroneRangeBuff : 1) + (w.foeDroneRangeBonusPct ?? 0)
   return effectiveFoeRangeM(b, w.maxRangeM, buffMul)
 }
 

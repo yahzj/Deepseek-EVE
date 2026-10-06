@@ -508,6 +508,7 @@ const PARTS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
 }
 
 const WEEKEND_TROPHIES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  'blackbox-c': { name: L10N['item.alien.002']!.zh, description: L10N['item.alien.003']!.zh },
   "blackbox-h": {
     name: '墨潮旗舰黑匣',
     description: L10N['item.copy.106']!.zh,

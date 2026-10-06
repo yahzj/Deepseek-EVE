@@ -36,6 +36,9 @@
  */
 import { FOE_MOUNT_IDS } from '@whale/core'
 import type { AnomalyDef } from '@whale/core'
+import type { FoeShipDef, FoeShipSlot } from '@whale/core'
+import { L10N } from './l10n/table'
+import { FOE_ALIEN_ACID_BURSTER, FOE_ALIEN_BROOD_WORKER, FOE_ALIEN_HIVEBACK, FOE_ALIEN_BROODMOTHER } from './foe-ships'
 import {
   FOE_ALIEN_MAW,
   FOE_ALIEN_SPORE_HIVE,
@@ -953,6 +956,7 @@ export const WEEKEND_CORONA_NEXUS_CARD: AnomalyDef = {
 
 /** 周末入侵·独立卡的 id（core 的 `weekendFoeCardOf` 按族路由到它们；**本表是唯一登记处**） */
 export const WEEKEND_FOE_CARD_IDS = {
+  C_vanguard: 'alien-vanguard', C_escort: 'alien-escort', C_main: 'alien-main', C_flagship: 'alien-broodmother', C_assault: 'alien-vanguard',
   /** H 族（墨潮帮）· 1 骚扰舰队（外围常驻） */
   H_harass: WEEKEND_INK_HARASS_CARD.id,
   /** H 族（墨潮帮）· 2 袭击舰队（2 波） */
@@ -976,7 +980,49 @@ export const WEEKEND_FOE_CARD_IDS = {
 } as const
 
 /** 周末入侵·独立卡清单（`data/context.ts` 把它们并进 `ANOMALIES_FLAVORED` ⇒ 引擎 `ctx.anomalies` 能取到） */
+function alienInvasionCard(id: string, nameId: string, scale: number, wreckThreat: number, waves: readonly (readonly [FoeShipDef, number][])[]): AnomalyDef {
+  const count = waves.reduce((n, wave) => n + wave.reduce((m, [, size]) => m + size, 0), 0)
+  const comp = 2 * count / (count + 1)
+  const ships: FoeShipSlot[] = waves.flatMap((wave, index) => wave.map(([ship, size]) => ({
+    ship, count: size, wave: index, hpMul: ship === FOE_ALIEN_BROODMOTHER ? 20 : scale,
+    dmgMul: scale / comp,
+    ...(ship === FOE_ALIEN_HIVEBACK ? { firepowerAnchor: Math.round(228 * scale * size) } : {}),
+    ...(ship === FOE_ALIEN_BROODMOTHER ? { firepowerAnchor: Math.round(558 * scale * size) } : {}),
+  })))
+  return {
+    id, name: L10N[nameId]!.zh, description: L10N['ano.alien.005']!.zh,
+    galaxyId: 'galaxy-hub', foeFamily: 'C', region: 'inv', wreckTier: 'dire', wreckThreat,
+    threat: ({ 'alien-vanguard': 90, 'alien-escort': 108, 'alien-main': 129, 'alien-broodmother': 170 } as Record<string, number>)[id]!, threatJudged: wreckThreat,
+    ...(id === 'alien-main' ? { rareWreckDrop: 1 } : {}), foeTargeting: 'smallest', foeTargetingChance: .4,
+    dmgMix: { plasma: 8, explosive: 2 }, ships,
+    waves: waves.map(wave => ({ units: wave.reduce((n, [, size]) => n + size, 0), hpShare: 1 / waves.length })),
+    standingReq: 0, standingGain: 0, rewardIsk: 0, loot: [], combatSeconds: 60, hidden: true,
+  }
+}
+
+export const WEEKEND_ALIEN_CARDS: readonly AnomalyDef[] = [
+  alienInvasionCard('alien-vanguard', 'ano.alien.001', 1.19, 90, [
+    [[FOE_ALIEN_ACID_BURSTER, 5]],
+    [[FOE_ALIEN_STARCORE_ADULT, 5]],
+  ]),
+  alienInvasionCard('alien-escort', 'ano.alien.002', 1.49, 108, [
+    [[FOE_ALIEN_ACID_BURSTER, 4]],
+    [[FOE_ALIEN_SPORE_HIVE, 2], [FOE_ALIEN_BROOD_WORKER, 1]],
+  ]),
+  alienInvasionCard('alien-main', 'ano.alien.003', 1.02, 129, [
+    [[FOE_ALIEN_ACID_BURSTER, 4]],
+    [[FOE_ALIEN_HIVEBACK, 1], [FOE_ALIEN_SPORE_HIVE, 2], [FOE_ALIEN_BROOD_WORKER, 2]],
+  ]),
+  alienInvasionCard('alien-broodmother', 'ano.alien.004', 1.5, 170, [
+    [[FOE_ALIEN_ACID_BURSTER, 4]],
+    [[FOE_ALIEN_MAW, 1], [FOE_ALIEN_STARCORE_ADULT, 2]],
+    [[FOE_ALIEN_HIVEBACK, 2], [FOE_ALIEN_BROOD_WORKER, 1]],
+    [[FOE_ALIEN_BROODMOTHER, 1], [FOE_ALIEN_HIVEBACK, 1], [FOE_ALIEN_BROOD_WORKER, 2]],
+  ]),
+]
+
 export const WEEKEND_FOE_CARDS: readonly AnomalyDef[] = [
+  ...WEEKEND_ALIEN_CARDS,
   WEEKEND_INK_HARASS_CARD,
   WEEKEND_INK_RAID_CARD,
   WEEKEND_INK_MAIN_CARD,

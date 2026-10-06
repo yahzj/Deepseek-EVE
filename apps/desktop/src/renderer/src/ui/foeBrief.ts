@@ -50,6 +50,12 @@ export function mountEffectText(id: string): string | null {
   const def = FOE_MOUNTS[id as keyof typeof FOE_MOUNTS]
   if (!def) return null
   const pct = (v: number) => String(Math.round(v * 100))
+  if (def.broodControl) return tr('ui.alien.002', { p1: def.broodControl.gunDmgMul, p2: pct(def.broodControl.droneDmgMul - 1), p3: pct(def.broodControl.droneRangeBonusPct) })
+  // ⟪文案调整 2026-10-06⟫ 巢母多项效果仍列在同一孵化挂件内，三处说明同源。
+  if (def.hatchery) {
+    if (def.hatchery.stock === 'unlimited' && def.reviveEscort && def.fleetSpeedRamp) return tr('ui.alien.007', { p1: def.hatchery.cycleMs / 1000, p2: def.reviveEscort.everyMs / 1000, p3: def.fleetSpeedRamp.rampMs / 1000, p4: pct(def.fleetSpeedRamp.maxBonusPct) })
+    return tr('ui.alien.003', { p1: def.hatchery.cycleMs / 1000, p2: def.hatchery.stock })
+  }
 
   if (def.droneRangeOnHit) {
     return tr('ui.foeIntro.100', { p1: String(def.droneRangeOnHit.mul) })
@@ -184,7 +190,7 @@ export interface FoeBriefLine {
 function bitsOf(ship: FoeShipDef, out: { mounts?: FoeMountLine[] }): string[] {
   const bits: string[] = []
   // ⟪文案调整 2026-10-05⟫ 复用武器标签展示舰级炮数，数值直接读战斗数据。
-  if (ship.gunCount !== undefined) bits.push(`${tr('ui.itemSubs.009')} ×${ship.gunCount}`)
+  if (ship.gunCount !== undefined && !ship.acidBurst) bits.push(`${tr('ui.itemSubs.009')} ×${ship.gunCount}`)
   if (ship.tactic === 'brawl') bits.push(tr('ui.foeIntro.010'))
   else if (ship.tactic === 'orbit') bits.push(tr('ui.foeIntro.011'))
   else if (ship.tactic === 'kite') bits.push(tr('ui.foeIntro.012'))
@@ -202,6 +208,7 @@ function bitsOf(ship: FoeShipDef, out: { mounts?: FoeMountLine[] }): string[] {
     bits.push(tr('ui.foeIntro.040', { p1: String(drones.reduce((n, d) => n + (d.count ?? 1), 0)) }))
   }
   const mech: FoeMountLine[] = []
+  if (ship.acidBurst) mech.push({ name: '', effect: tr('ui.alien.001', { p1: ship.acidBurst.attackRangeM, p2: ship.acidBurst.deathRangeM, p3: ship.acidBurst.corrosionPct * 100, p4: ship.acidBurst.damage ?? 0, p5: Math.round((ship.acidBurst.hitRate ?? .95) * 100) }) })
   for (const id of ship.mounts ?? []) {
     const eff = mountEffectText(id)
     if (!eff) continue

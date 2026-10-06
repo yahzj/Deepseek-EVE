@@ -390,6 +390,10 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       speed: createFoeSpecs({ ...shell, ships: [{ ship }] }, bal)[0]!.speedMps,
     }))
     expect(got).toEqual([
+      { id: 'foe-alien-acid-burster', tier: 1, speed: 714 },
+      { id: 'foe-alien-brood-worker', tier: 3, speed: 387 },
+      { id: 'foe-alien-hiveback', tier: 4, speed: 287 },
+      { id: 'foe-alien-broodmother', tier: 5, speed: 240 },
       { id: 'foe-pirate-skiff', tier: 1, speed: 391 },
       { id: 'foe-pirate-corvette', tier: 1, speed: 374 },
       { id: 'foe-pirate-sniper', tier: 2, speed: 325 },
@@ -885,7 +889,7 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeGreaterThanOrEqual(band.min)
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeLessThanOrEqual(band.max)
     }
-    expect(checked).toBe(50); // ⚠ 2026-09-24 起 42 → **44**（H 族墨潮帮两张入侵卡：ink-flagship / ink-assault）
+    expect(checked).toBe(54);
     // A 族 6 + **A 族旧遭遇模板 4** + B 族 3 + C 族 4 + D 族 4 + E 族 3 + **G 族 3** + **虫洞洞内 5**（2026-09-13 补 E 族「巨构残响」）+ **洞内扩充批 1 的 A 族中/深 2 张 + 批 2 的 C 族中/深 2 张**（2026-09-15）
     // ⚠ 2026-09-12（P-43 舰级补完）起**全表 27 张敌军卡都在舰级路径**：G 族三卡迁入 +「废弃 F 族」
     //   的四张隐藏遭遇模板（`enc-pirate-1..4`）也迁入 A 族舰级 ⇒ **旧威胁推导路径再无真实卡**。
@@ -1358,11 +1362,11 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
       fastestA.set(s.hullClassTier, Math.max(fastestA.get(s.hullClassTier) ?? 0, spd))
     }
     const aliens = FOE_SHIPS.filter((x) => x.family === 'C')
-    expect(aliens).toHaveLength(5) // 2026-09-15 洞内扩充批 2：+「孢群异虫」T3 无人机舰（船长「C组添加一艘巡洋舰，为无人机舰」）
+    expect(aliens).toHaveLength(9)
     // 2026-09-16 船长「孢群异虫速度削减到300」⇒ C 族「允许慢」白名单**逐条例外**（无人机母舰不追人）
     expect(ALIEN_SLOW_SHIP_IDS, '允许慢白名单成员').toEqual(['foe-alien-spore-hive'])
     for (const s of aliens) {
-      expect(s.hullClassTier, s.id).toBeLessThanOrEqual(4) // 不配 5 旗舰
+      expect(s.hullClassTier, s.id).toBeLessThanOrEqual(s.id === 'foe-alien-broodmother' ? 5 : 4)
       const spd = Math.round(bal.hullClassBaseSpeedMps[s.hullClassTier] * s.speedRatio)
       if (ALIEN_SLOW_SHIP_IDS.includes(s.id)) {
         // 反查：白名单不是摆设——登记在案的舰必须**确实**低于族格下限（否则该摘牌）
@@ -1371,7 +1375,9 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
       }
       expect(s.speedRatio, s.id).toBeGreaterThanOrEqual(1.3)
       expect(s.speedRatio, s.id).toBeLessThanOrEqual(2.1)
-      if (s.hullClassTier === 4) {
+      if (s.hullClassTier === 5) {
+        expect(s.id).toBe('foe-alien-broodmother')
+      } else if (s.hullClassTier === 4) {
         expect(ALIEN_BEAST_SHIP_IDS, `${s.id} 用 T4 必须登记为"巨兽"用途`).toContain(s.id)
       } else {
         const a = fastestA.get(s.hullClassTier)!
@@ -1397,7 +1403,7 @@ describe('C 族族抗性（2026-09-15 船长 · 全血条 25% 爆炸抗）', () 
     expect(
       aliens,
       'C 族舰级数（畸变幼虫 / 星髓幼虫 / 噬口巨兽 / 星髓成虫 / 孢群异虫）',
-    ).toHaveLength(5)
+    ).toHaveLength(9)
     for (const s of aliens) {
       for (const layer of ['shieldResist', 'armorResist', 'hullResist'] as const) {
         expect(s[layer], `${s.name}.${layer}`).toEqual({ explosive: 0.25 })

@@ -30,6 +30,10 @@ export function asRaw(value: unknown): RawState {
 type BattleFieldSpec = { kind: 'persist' } | { kind: 'runtime'; why: string }
 
 const BATTLE_FIELDS = {
+  alienCorrosion: { kind: 'persist' },
+  acidBursts: { kind: 'persist' },
+  foeAbilityClocks: { kind: 'persist' },
+  foeHatcheries: { kind: 'persist' },
   /* ── 随档持久化：战中重载必须原样续算 ── */
   startedAtGameMs: { kind: 'persist' },
   lastTickGameMs: { kind: 'persist' },
@@ -418,6 +422,25 @@ export function cleanBattle(raw: unknown): BattleState | null {
   })
   /** **复活总预算**（开战库存快照，全队一本）：机型 → 剩余可补架数（坏值整条丢） */
   const droneReviveStock = cleanCountMap(b.droneReviveStock)
+  const alienCorrosion = typeof b.alienCorrosion === 'number' && Number.isFinite(b.alienCorrosion) && b.alienCorrosion > 0 && b.alienCorrosion <= 0.9 ? b.alienCorrosion : undefined
+  const acidBursts = cleanLedgerMap(b.acidBursts, raw => {
+    const r = asRaw(raw)
+    if ((r.cause !== 'attack' && r.cause !== 'killed') || typeof r.atMs !== 'number' || !Number.isFinite(r.atMs) || r.atMs < 0) return undefined
+    return { cause: r.cause as 'attack' | 'killed', atMs: r.atMs, resolved: r.resolved !== false }
+  })
+  const foeHatcheries = cleanLedgerMap(b.foeHatcheries, raw => {
+    const r = asRaw(raw)
+    if ((r.left !== 'unlimited' && (typeof r.left !== 'number' || !Number.isInteger(r.left) || r.left < 0)) || typeof r.revived !== 'number' || !Number.isInteger(r.revived) || r.revived < 0) return undefined
+    const queue: NonNullable<BattleState['foeHatcheries']>[string]['queue'] = []
+    for (const raw of Array.isArray(r.queue) ? r.queue : []) {
+      if (typeof raw === 'number' && Number.isInteger(raw) && raw >= 0) { if (!queue.includes(raw)) queue.push(raw); continue }
+      const slot = asRaw(raw)
+      if (typeof slot.tag !== 'string' || slot.tag.length === 0 || typeof slot.index !== 'number' || !Number.isInteger(slot.index) || slot.index < 0) continue
+      if (!queue.some(i => typeof i !== 'number' && i.tag === slot.tag && i.index === slot.index)) queue.push({ tag: slot.tag, index: slot.index })
+    }
+    return { left: r.left, revived: r.revived, queue, ...(typeof r.nextAtMs === 'number' && Number.isFinite(r.nextAtMs) && r.nextAtMs >= 0 ? { nextAtMs: r.nextAtMs } : {}) }
+  })
+  const foeAbilityClocks = cleanLedgerMap(b.foeAbilityClocks, value => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined)
   const foeDroneRangeBuff = cleanPosNum(b.foeDroneRangeBuff)
   const foeGunRangeBuff = cleanPosNum(b.foeGunRangeBuff)
   /**
@@ -576,6 +599,10 @@ export function cleanBattle(raw: unknown): BattleState | null {
     ...(droneLoadAtStartBy !== undefined ? { droneLoadAtStartBy } : {}),
     ...(droneRevive !== undefined ? { droneRevive } : {}),
     ...(droneReviveStock !== undefined ? { droneReviveStock } : {}),
+    ...(alienCorrosion !== undefined ? { alienCorrosion } : {}),
+    ...(acidBursts !== undefined ? { acidBursts } : {}),
+    ...(foeAbilityClocks !== undefined ? { foeAbilityClocks } : {}),
+    ...(foeHatcheries !== undefined ? { foeHatcheries } : {}),
     ...(foeDroneRangeBuff !== undefined ? { foeDroneRangeBuff } : {}),
     ...(foeGunRangeBuff !== undefined ? { foeGunRangeBuff } : {}),
     // 2026-09-27 本场 BOSS 阵亡时刻（丢了 ⇒ "玩家亲手打沉"的事实消失，旗舰留档只能靠池子算术反推）

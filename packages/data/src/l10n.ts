@@ -546,6 +546,7 @@ export const EN_ITEMS: EnTable = {
   'blackbox-h': { name: 'Ink Tide Flagship Black Box', description: L10N['item.copy.106']!.en },
   // 光环旗舰黑匣（2026-10-02 船长令「甲」：一件族一件匣）——与墨潮那件同构，只换族名与外壳
   'blackbox-r': { name: 'Corona Flagship Black Box', description: L10N['item.copy.107']!.en },
+  'blackbox-c': { name: L10N['item.alien.002']!.en, description: L10N['item.alien.003']!.en },
   // 货柜
   'box-relic-a': { name: 'Ruins Safe Container (Pirate)', description: L10N['item.copy.058']!.en },
   'box-relic-c': { name: 'Ruins Safe Container (Alien)', description: L10N['item.copy.059']!.en },
@@ -754,6 +755,7 @@ function wreckEnText(id: string): EnText {
 }
 
 const WRECK_IDS = [
+  'wreck-c-inv', 'wreck-rare-c-inv',
   'wreck-a-hi',
   'wreck-rare-a-hi',
   'wreck-b-hi',
@@ -897,6 +899,10 @@ export function overlayWreckGroups<T extends { key: string; name: string; rareNa
 
 /** 异常点 / 敌卡（42 · `docs/glossary-en.md` §十/§十一）—— **名称 + 说明** */
 export const EN_ANOMALIES: EnTable = {
+  'alien-vanguard': { name: L10N['ano.alien.001']!.en, description: L10N['ano.alien.005']!.en },
+  'alien-escort': { name: L10N['ano.alien.002']!.en, description: L10N['ano.alien.005']!.en },
+  'alien-main': { name: L10N['ano.alien.003']!.en, description: L10N['ano.alien.005']!.en },
+  'alien-broodmother': { name: L10N['ano.alien.004']!.en, description: L10N['ano.alien.005']!.en },
   'ano-training': {
     name: 'Proving Grounds Eviction',
     description: "The Deep Space Industry Association's routine clearance order: scavengers have picked over exercise wrecks at the proving grounds for years, and the Association pays per eviction. A standing bounty that can be taken again and again — a new pilot's first long-term contract.",
@@ -1451,6 +1457,10 @@ export const EN_SHIP_BLUEPRINTS: EnTable = (() => {
 
 /** 敌舰（25 · `docs/glossary-en.md` §十一；卡片把它**内嵌**在 `anomaly.ships[].ship` 里 ⇒ 见 `overlayCardFoes`） */
 export const EN_FOE_SHIPS: EnTable = {
+  'foe-alien-acid-burster': { name: L10N['ship.alien.001']!.en },
+  'foe-alien-brood-worker': { name: L10N['ship.alien.002']!.en },
+  'foe-alien-hiveback': { name: L10N['ship.alien.003']!.en },
+  'foe-alien-broodmother': { name: L10N['ship.alien.004']!.en },
   'foe-pirate-skiff': { name: 'Pirate Skiff' },
   'foe-pirate-corvette': { name: 'Raider Frigate' },
   'foe-pirate-sniper': { name: 'Raider Sniper' },
@@ -1507,7 +1517,9 @@ function cardFoesOf<T extends { ships?: readonly { ship: { id: string; name: str
     const text = en[slot.ship.id]
     if (text?.name === undefined) return slot
     changed = true
-    return { ...slot, ship: { ...slot.ship, name: text.name } }
+    const ship = slot.ship as typeof slot.ship & { drones?: readonly import('@whale/core').FoeDroneSlot[] }
+    const drones = ship.drones?.map(ds => ds.drone.id === 'foe-drone-c-jawclaw' ? { ...ds, drone: { ...ds.drone, name: L10N['item.alien.001']!.en } } : ds)
+    return { ...slot, ship: { ...ship, name: text.name, ...(drones ? { drones } : {}) } }
   })
   return changed ? { ...def, ships: mapped } : null
 }

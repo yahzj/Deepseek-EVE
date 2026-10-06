@@ -171,7 +171,9 @@ describe('敌血量钳制解除（船长 2026-09-12「解除血量钳制，改�
     //   同日 H 族三张入侵卡按船长给定的 90 / 108 / 129 重定价 ⇒ 全表上界抬到 **170**（旗舰部队卡，同日晚旗舰轮）。
     const cards = ANOMALIES.filter((a) => typeof a.threat === 'number')
     expect(Math.max(...cards.map((a) => a.threat))).toBe(170)
-    expect(ANOMALIES.find((a) => a.threat === 170)!.id).toBe('ink-flagship')
+    // 新巢母与墨潮旗舰同为170，不能把表顺序当作唯一旗舰身份。
+    expect(ANOMALIES.find((a) => a.id === 'ink-flagship')!.threat).toBe(170)
+    expect(ANOMALIES.find((a) => a.id === 'alien-broodmother')!.threat).toBe(170)
     // 派生档仍以基础卡的曲线值为基准 ⇒ 基础卡曲线值零变化就保证了派生档零变化
     expect(foeHpOfThreat(96, bal)).toBe(1152)
   })
@@ -185,7 +187,7 @@ describe('敌血量钳制解除（船长 2026-09-12「解除血量钳制，改�
     // 2026-09-15 批 4：再 +2 张（E 族中/深）⇒ 表长 40
     // 2026-09-15 批 5：再 +2 张（G 族中/深）⇒ 表长 42（= 15 张洞内敌卡齐备）
     const cards = ANOMALIES.filter((a) => typeof a.threat === 'number')
-    expect(cards.length).toBe(50) // ⚠ 2026-09-24：42 → 44（H 族墨潮帮两张入侵卡）
+    expect(cards.length).toBe(54) // 本批新增4张独立异形入侵卡。
     // ⚠ 2026-09-25：全表上界 = 129（H 族「墨潮帮主力舰队」，船长给定威胁）；速度/射程曲线本身未被本次改动触碰
     expect(Math.max(...cards.map((a) => a.threat))).toBe(170)
   })
@@ -196,7 +198,7 @@ describe('敌舰体火力越线折扣（2026-09-12「DPS 上限 150」→ 2026-0
     // ⚠ 这条守卫是为"口径别再造谣"设的：`hullDps()` 遍历全部单位、逐条求和 ⇒ 与真实建造**逐字相同**；
     //   若哪天有人改成"只取第一条"、或引擎的建档口径变了，本用例会立刻红。
     const cards = ANOMALIES.filter((a) => typeof a.threat === 'number')
-    expect(cards.length).toBe(50) // ⚠ 2026-09-24：42 → 44（H 族墨潮帮两张入侵卡）
+    expect(cards.length).toBe(54)
     for (const a of cards) {
       const viaFixture = hullDps(a, OFF_BOTH)
       const specs = createFoeSpecs(a, OFF_BOTH, { tagPrefix: '' }) as unknown as Array<{
