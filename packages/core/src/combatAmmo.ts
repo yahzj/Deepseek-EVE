@@ -9,7 +9,7 @@ import type { BattleState, GameState } from './state'
 import type { BattleBalance, DamageType, SimContext } from './types'
 import type { UnitSpec, WeaponSpec } from './combat'
 import { AMMO_IDS } from './playerSpec'
-import { addWare, cargoItemsOf, countWare, removeItem, removeWare } from './inventory'
+import { addWare, cargoOfShip, removeCargoOfShip, removeWare } from './inventory'
 import { restoreWormholeSupply, wormholeSupplyForBattle } from './wormholeSupplies'
 
 /* 以下为 2026-10-02 批次 4i 从 combat.ts 切接过来的整簇（ammoLoadTotals ~ ammoKeyOf）。 */
@@ -69,7 +69,7 @@ export function ammoLoadTotals(
 /**
  * V17.2 单型装载：只装载炮台固定弹种的那一型（炮族制——炮台 damageType 决定弹种，
  * battle.ammo 其余键恒 0；开火/退还/UI dominant 仍走既有三键结构，无需第二套）。
- * 货仓优先、仓库兜底；返回实装各型数量（只有目标型非零）。
+ * 来源按补给开关二选一；返回实装各型数量（只有目标型非零）。
  * （基础弹装载：旧语义保留，测试/兼容用；开战装载请走 loadAmmoTier 按档装载）
  */
 export function loadAmmo(state: GameState, ctx: SimContext, type: DamageType, total: number): { kin: number; exp: number; pla: number } {
@@ -79,8 +79,13 @@ export function loadAmmo(state: GameState, ctx: SimContext, type: DamageType, to
   return out
 }
 
-/** 装载指定弹 id（货仓优先、仓库兜底，单型一次抽足）；返回实装数 */
-function loadAmmoOf(state: GameState, ctx: SimContext, id: string, total: number): number {
+/** 预估与装载共用允许来源，货仓模式始终认目标舰而非驾驶舰。 */
+function ammoStockForShip(state: GameState, shipId: string): Readonly<Record<string, number>> {
+  return state.resupplyFromWarehouse !== false ? state.warehouse.items : cargoOfShip(state, shipId)
+}
+
+/** 从允许来源装载指定弹 id，单型一次抽足；返回实际扣到的数量。 */
+function loadAmmoOf(state: GameState, ctx: SimContext, id: string, total: number, shipId = state.shipId): number {
   void ctx
   if (total <= 0) return 0
   /**
@@ -88,14 +93,10 @@ function loadAmmoOf(state: GameState, ctx: SimContext, id: string, total: number
    * 取用。关闭后只从舰队内舰船的货仓取用。」）——旧口径「货舱优先 → 仓库兜底」**退役**。
    * 缺省（老档没有该字段）= **开**（只仓库）。
    */
-  if (state.resupplyFromWarehouse !== false) {
-    const got = Math.min(Math.floor(countWare(state, id)), Math.floor(total))
-    if (got > 0) removeWare(state, id, got)
-    return got
-  }
-  const got = Math.min(Math.floor(cargoItemsOf(state)[id] ?? 0), Math.floor(total))
-  if (got > 0) removeItem(state, id, got)
-  return got
+  const got = Math.min(Math.floor(ammoStockForShip(state, shipId)[id] ?? 0), Math.floor(total))
+  if (got <= 0) return 0
+  if (state.resupplyFromWarehouse !== false) return removeWare(state, id, got) ? got : 0
+  return removeCargoOfShip(state, shipId, id, got)
 }
 
 /**
@@ -124,7 +125,8 @@ export function ammoTierFallbackLog(
  * （与"界面与引擎同一把尺"的既有纪律一致）。
  *
  * 口径：候选 = **基础弹恒在** ∪ 物品表里同族（`ammo-<族>-*`）的全部档；各算可装量
- * `min(货舱+仓库库存, want)`；**取可装量最大者**；平局 = `ammoPref` ＞ 基础弹 ＞ 其余（id 序）。
+ * `min(允许来源库存, want)`；开关开只仓库、关只目标舰货仓，显式库存只读快照。
+ * **取可装量最大者**；平局 = `ammoPref` ＞ 基础弹 ＞ 其余（id 序）。
  * `want <= 0` 或全族无货 ⇒ 回"期望档"（`pref ?? 基础弹`）且 `can = 0`。
  */
 export function resolveAmmoTier(
@@ -139,8 +141,9 @@ export function resolveAmmoTier(
   const prefId = state.fleet[shipId]?.ammoPref?.[type]
   const wantId = prefId && ctx.items.has(prefId) ? prefId : null
   const baseId = AMMO_IDS[type]
+  const available = stock ?? ammoStockForShip(state, shipId)
   const canLoadOf = (id: string): number =>
-    Math.min(Math.floor(stock ? stock[id] ?? 0 : (cargoItemsOf(state)[id] ?? 0) + countWare(state, id)), need)
+    Math.min(Math.floor(available[id] ?? 0), need)
   /** 候选：**基础弹恒在**（它是无档时的默认）+ 物品表里同族的所有档（日后加档自动纳入） */
   const family = [...new Set([baseId, ...[...ctx.items.keys()].filter((id) => id.startsWith(`ammo-${type}-`))])].sort()
   const ranked = family
@@ -184,7 +187,7 @@ export function loadAmmoTier(
   total: number,
 ): { loaded: number; id: string; fellBack: boolean } {
   const r = resolveAmmoTier(state, ctx, shipId, type, total)
-  const loaded = r.can > 0 ? loadAmmoOf(state, ctx, r.id, Math.max(0, Math.floor(total))) : 0
+  const loaded = r.can > 0 ? loadAmmoOf(state, ctx, r.id, Math.max(0, Math.floor(total)), shipId) : 0
   return { loaded, id: r.id, fellBack: r.fellBack }
 }
 
