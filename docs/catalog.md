@@ -30,6 +30,7 @@
 | 改 UI / 页面 / 视觉物件 | `docs/development-conventions.md` **§九**（UI 与视觉一致性）＋ **§十四**（表现层实现与性能纪律）＋ 同级相似界面代码 |
 | 改战斗 / 表现层 / 动画 | §九 ＋ §十四 ＋ `docs/design/` 里对应设计稿（如 `drone-combat-animation-20260910.md`） |
 | 改数值 / 经济 / 平衡 | §一（闸门）§二（验证）§八 ＋ 对应设计稿 ＋ `tools/*`（校准脚本，如 `battle:calibrate`） |
+| 数据编辑器 / JSON静态参数 / Excel回写 | `docs/data-map.md` → `docs/data-editor.md` → `docs/content-workbench.md`；五类静态参数以JSON为准，文本与派生留TS |
 | 改存档结构 / 迁移 | §八 ＋ `docs/architecture.md` ＋ 只读真档或先备份 |
 | 写 / 改玩家可见文案 | §十三（文案纯净与设定：**含括号限用**）§十一（术语）＋ `docs/glossary.md`；**双语与 id 制见 §十一之三**（新文案**先取 id、再写表**：`packages/data/src/l10n/table.ts`）＋ `docs/glossary-en.md`（英文术语权威，**命名规则第 9 条同为括号限用**） |
 | 准备更新公告 | §十二（公告与发布审核）＋ `docs/design/announcement-draft-*.md`（待审稿） |

@@ -6,11 +6,11 @@
 
 ## 一、单点数值改动 = 标准三步（快速通道）
 
-1. **定位并改掉那一行**（数据表：`packages/data/src/{ships,modules,items,skills,foe-ships,...}.ts`）。
+1. **定位并改掉权威字段**：舰船、装备、插件、物品和商品的静态参数已迁到`packages/data/src/static/{ships,modules,plugs,items,market}.json`，可用独立EXE或按ID改JSON；名称/文案/表达式/派生规则仍在原TS模块。技能、敌舰、蓝图等未迁移表继续改原TS，不能修改派生值或再复制一套数字。编辑器用法见`docs/data-editor.md`。
 2. **同步"说明文案"**：⚠ 数据侧 `description` 里**手写的数字**是唯一真正的冗余副本 —— 见 §二-①。甲案生效后**新写/新改的说明不再手写数字**（§五）。
 3. **跑体检**：`npm run content:check`（＋改动涉及战斗/经济时跑 `npm run test -w @whale/core`）。
 
-**不做**（正常情况**不需要**）：不去通读"谁在读这个字段"——消费方是**读数据源**的，改一处即全线跟随。
+**不做**（正常情况**不需要**）：不去通读"谁在读这个字段"——消费方是**读数据源**的，改一处即全线跟随。数据仍随构建发布，不会直接热换已安装游戏或运行中的战斗/订单。
 
 ## 二、会产生"连带"的只有三类
 
@@ -26,8 +26,8 @@
 
 ### ② 同一份数据的第二表示：`content-csv/` 工作台
 - `content-csv/*.csv` 与 `content-workbench.xlsx` 是**同一份数据的另一个副本**（不是消费方）。
-- 单向同步：代码表 → 工作台 `npm run content:export`；工作台 → 代码表 `npm run content:import`。
-- ⚠ 改完代码表**记得导出**，否则工作台与代码脱节（下次导入会把旧值带回来）。
+- 单向同步：权威数据 → 工作台 `npm run content:export`；工作台 → 权威数据 `npm run content:import`。五类迁移表回写JSON，其他表继续回写TS；CSV/xlsx不是第二份权威来源。
+- ⚠ 改完权威数据需要重导工作台，但**先核对旧工作簿是否含未导入手改**，不能直接覆盖。未导入编辑先导入或另存，新导出写另一目录；导出工具的备份不代替这一步。
 
 ### ③ 已标定的平衡关系与守护用例
 - 有些数值不是孤立的，而是被**关系**钉住的（例：近防炮对舰名义 DPS 反超同档主炮 1.2~1.3 倍；
@@ -65,6 +65,8 @@
 | UI/样式体检（改界面必跑） | `npm run ui:rot-check` |
 | 双端构建 | `npm run build` |
 | 数据表 ⇄ 工作台 | `npm run content:export` / `npm run content:import` |
+| 独立数值编辑器 | `npm run data:editor` / `data:editor-pack`；完整说明`docs/data-editor.md` |
+| 数值编辑器回归 | `npm run data:editor-test`；迁移专用全值验收`npm run data:migration-check`（有意调参后不要求旧值相同） |
 | 采矿收益曲线（船 × 配置 × 技能档 × 建站前后 × 燃料） | `npm run mining:curve`（`--skills=mine` / `--stations=built` / `--fuel=on` / `--ships=…`） |
 | 文档索引 / 批次封存 | `npm run docs:index` / `npm run docs:seal`（先 `-- --dry-run`） |
 

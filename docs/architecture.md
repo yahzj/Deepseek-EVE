@@ -57,6 +57,13 @@
 - core/data/ui 通过 npm workspaces + Vite 别名让渲染进程直接消费 TS 源码，
   开发改完即时生效；包内同时保留"先 tsc 后消费"的能力（未来服务端用 tsup/tsx 同源打包）。
 
+### 决策 6：静态参数与代码分离（2026-10-06）
+- 船长批准JSON权威数据、统一校验和独立EXE，先不使用SQL。`packages/data/src/static/{ships,modules,plugs,items,market}.json`保存864条直接静态记录的参数，原TS绑定文本、复杂表达式和派生规则；不是运行SimContext快照，不保留重复数字。
+- `staticDataGroup`装配出原目录接口，保持ID/顺序/缺省/zh/en与过滤规则；`staticFieldTypes.json`及统一编辑字段契约供运行、内容检查、编辑器与旧CLI使用。数据格式版本1独立于个人存档版本，不升存档结构、不改数值/玩法。
+- `apps/data-editor`是独立开发应用，不接游戏userData或保存桥。安全main/preload只开放固定API，默认零号可写、主树/main/master/游离HEAD只读；固定可信同仓身份、realpath白名单、严格UTF8/重复JSON键、最新预览token、完整隔离检查、哈希与WIP冲突、事务备份/中断恢复共同限制写入。
+- 市场名称依refId读取内容，装备/物品蓝图与舰船蓝图名称安全解析原TS/L10N，两源纳入指纹。仅完善显示与搜索，不提供不完整蓝图书价的单处修改；公式/继承/派生字段、ID/结构/文案/行为仍只读。
+- 数据仍随构建发布。编辑器构建保留在工具自己的产物目录，不覆盖正在玩的游戏。独立EXE不入Git，源码和打包配置入库；操作、检查、恢复及约束见`docs/data-editor.md`，基线等价验收只显式运行，不成为日常新数值硬锁。
+
 ## 存档设计
 
 ```
