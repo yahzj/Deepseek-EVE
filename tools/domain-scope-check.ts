@@ -59,7 +59,7 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '市场与经济',
-    globs: ['packages/core/src/market.ts', 'packages/core/src/money.ts', 'packages/data/src/marketCatalog.ts', 'apps/desktop/src/renderer/src/pages/MarketPage*', 'apps/desktop/src/renderer/src/ui/SellQtyModal.tsx', 'apps/desktop/src/renderer/src/ui/marketJump.ts', 'apps/desktop/src/renderer/src/ui/MoneyFit.tsx', 'apps/desktop/src/renderer/src/ui/yieldView.tsx'],
+    globs: ['packages/core/src/market.ts', 'packages/core/src/marketLimitedSupply.ts', 'packages/core/src/money.ts', 'packages/data/src/marketCatalog.ts', 'apps/desktop/src/renderer/src/pages/MarketPage*', 'apps/desktop/src/renderer/src/ui/SellQtyModal.tsx', 'apps/desktop/src/renderer/src/ui/marketJump.ts', 'apps/desktop/src/renderer/src/ui/MoneyFit.tsx', 'apps/desktop/src/renderer/src/ui/yieldView.tsx'],
   },
   {
     name: '工业（炉/组装机/造船/实验室）',
