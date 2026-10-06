@@ -111,7 +111,12 @@ import type { GameEngine } from '../game/engine'
 import { ShipSprite, ShipSpriteShape } from '../ui/ShipSprite'
 import type { ToastFn } from '../pages/common'
 import { SHIP_DOMAIN_SUBS, SHIP_TIER_SUBS, SUB_ALL, shipRolePasses, shipTierPasses, subText, wreckTierOf } from '../ui/itemSubs'
-import { tr, cmdText } from '../i18n/locale'
+import { futureTr, futureCmdText, tr as signalTr, cmdText as signalCmdText } from '../i18n/locale'
+import { futureWormholeEnabled } from '../game/debugFlag'
+import { WhPreparation, WhSupplies, WhGroundList, WhExtraction, WhItemCounts, WhEventChoices, WhAlert, WhEncounterIntel, WhObjectiveProgress, manifestDraftKey, readManifestDraft, writeManifestDraft } from './WormholeExpedition'
+import { WORMHOLE_EVENT_IDS } from '@whale/core'
+import { wormholeGroundBoard } from '@whale/core'
+import type { WormholePreparationPlan } from '@whale/core'
 
 /* 探索地图的几何口径（缩放档 / viewBox 尺寸 / 锚点 / 拖动夹取）抽到 `./wormholeMapGeom`：纯函数、无导入
    ⇒ "拖动可达性 / 自动缩放"这类**读数**能用探针直接核对（面板 import 了 spaceBg 的 `import.meta.glob`，
@@ -130,6 +135,7 @@ import {
 } from './wormholeMapGeom'
 
 type WhTab = 'prep' | 'map' | 'bag'
+const tr = futureTr
 
 /**
  * **洞内货仓取色**（船长 2026-09-22 ①：「**货舱内，残骸和稀有残骸按照手册内的颜色做出区分**」）。
@@ -257,6 +263,16 @@ export function WormholePanel({
    * 不占主控活动位）⇒ 直接把 `run` 当没有。玩家若正躺在虫洞里，那趟进度原样保存在 state 里。
    */
   const run = auto ? undefined : state.wormhole.run
+  const futureName = run ? run.expeditionRules === 2 : !auto && state.wormhole.lastSettle ? state.wormhole.lastSettle.expeditionProgress !== undefined : true
+  const tr = futureName ? futureTr : signalTr
+  const cmdText = futureName ? futureCmdText : signalCmdText
+  const newRun = run?.supplyVersion === 1
+  const preparedEntry = (auto ? autoStockId !== null : stockId !== null) && futureWormholeEnabled()
+  const [manifestView, setManifestView] = useState(false)
+  const [extractionView, setExtractionView] = useState(false)
+  const extractButtonRef = useRef<HTMLButtonElement>(null)
+  const closingRef = useRef(false)
+  const [descendCargoAsk, setDescendCargoAsk] = useState(false)
   /**
    * **洞内背景固定**（船长 2026-09-13：「**当次虫洞内的背景图需要固定**」）：
    * 以**本趟种子**为键，把进洞那一刻的全站底图**钉住**（--wh-space-bg）——
@@ -281,12 +297,20 @@ export function WormholePanel({
           .wormholeAutoCandidates([])
           .filter((c) => c.picked)
           .map((c) => c.shipId)
+      : preparedEntry && readManifestDraft(manifestDraftKey(engine, stockId))?.picked.some((id) => !!state.fleet[id])
+        ? readManifestDraft(manifestDraftKey(engine, stockId))!.picked.filter((id) => !!state.fleet[id])
       : state.shipId
         ? [state.shipId]
         : [],
   )
+  useEffect(() => {
+    if (!preparedEntry || run || manifestView) return
+    const key = manifestDraftKey(engine, stockId)
+    writeManifestDraft(key, { picked, request: readManifestDraft(key)?.request ?? { targets: {}, unload: [] } })
+  }, [engine, stockId, picked, preparedEntry, run, manifestView])
   /** 自动探索：选了主控船 ⇒ 派队前先弹确认（写明主控要换给谁） */
   const [mainAsk, setMainAsk] = useState(false)
+  const [autoPlan, setAutoPlan] = useState<WormholePreparationPlan | null>(null)
   /**
    * 待确认的"前往未知地点"目标（船长 2026-09-13：前往未扫描的地方**需要警告**）。
    * 口径：点未扫描的格 **不直接走**（也不扣回合），先把警告摆出来，等玩家点「确认前往」。
@@ -301,6 +325,7 @@ export function WormholePanel({
     r: number
     unknown: boolean
     intercept: { q: number; r: number; known: boolean } | null
+    leaveCargo?: boolean
   } | null>(null)
 
   /**
@@ -435,7 +460,7 @@ export function WormholePanel({
    *
    * ⚠ 2026-09-15 撤离战取消 ⇒ **只剩下节点档**（原先还有一档"撤离 ×0.8"的读数，随撤离战一并退役）。
    */
-  const nodeThreat = run ? Math.round(wormholeLayerThreat(run.depth) * wormholeMatterThreatMul(matterBuffs, 'node')) : 0
+  const nodeThreat = run?.expeditionRules === 2 ? engine.wormholeEncounterView(undefined, 'ordinary')?.threat ?? 0 : run ? Math.round(wormholeLayerThreat(run.depth) * wormholeMatterThreatMul(matterBuffs, 'node')) : 0
   const matterThreatTip =
     matterBuffs.threatNodeMul < 1 || matterBuffs.threatBossMul < 1
       ? tr("ui.Wormhole.182", { p1: matterBuffs.threatNodeMul.toFixed(2), p2: (matterBuffs.threatNodeMul * matterBuffs.threatBossMul).toFixed(2) })
@@ -563,7 +588,8 @@ export function WormholePanel({
    */
   const layerBlocked = run ? engine.wormholeLayerBlocked() : null
   /** 作业按钮（扫描 / 打捞·采集 / 激活 / 继续深入）的统一闸：**先报动作闸，再报欠着的战斗** */
-  const workBlocked = actionBlocked ?? layerBlocked
+  const battleRequired = newRun && (atExit || hereCell?.place === 'ship')
+  const workBlocked = battleRequired ? layerBlocked : actionBlocked ?? layerBlocked
   /**
    * **进场/换层动效相位**（船长 2026-09-13：「入场动画时长可以拉长到 1 秒，并且可以实现玩家初始舰船
    * 从屏幕外入场的效果（前往下一层时也可以飞出屏幕外，到达时从屏幕外飞入）」）：
@@ -806,7 +832,8 @@ export function WormholePanel({
     })
   }
 
-  function handleEnter(): void {
+  function handleEnter(plan?: WormholePreparationPlan): void {
+    if (preparedEntry && !plan) { setManifestView(true); return }
     /**
      * **进洞会中断长途运输**（`wormhole.ts` 的 `haulingHalt` 在进洞那一刻自动停运）⇒
      * **2026-09-20 船长令**：先弹一次警告（**本趟报酬到站才结，中断就拿不到**），再点一次才真进洞。
@@ -817,11 +844,13 @@ export function WormholePanel({
       return
     }
     setEnterHaulAsk(false)
-    const r = stockId ? engine.wormholeEnterFromStock(stockId, picked) : engine.wormholeEnter(picked)
-    if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.296'), true)
+    const r = preparedEntry && plan && stockId ? engine.wormholeEnterPreparedFromStock(stockId, picked, plan)
+      : stockId ? engine.wormholeEnterFromStock(stockId, picked) : engine.wormholeEnter(picked)
+    if (!r.ok) onToast(preparedEntry ? tr('ui.whExpedition.016') : cmdText(r) || tr('ui.Wormhole.296'), true)
     else {
       onToast(tr("ui.Wormhole.065"))
       setTab('map')
+      setManifestView(false)
     }
   }
 
@@ -831,7 +860,7 @@ export function WormholePanel({
    */
   function startAuto(): void {
     if (autoStockId === null) return
-    const r = engine.wormholeAutoStart(autoStockId, picked)
+    const r = preparedEntry && autoPlan ? engine.wormholeAutoStartPrepared(autoStockId, picked, autoPlan, 'deep') : engine.wormholeAutoStart(autoStockId, picked)
     if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.297'), true)
     else {
       onToast(
@@ -842,6 +871,7 @@ export function WormholePanel({
   }
 
   function handleAutoStart(): void {
+    if (preparedEntry) { setManifestView(true); return }
     if (autoMainPicked) setMainAsk(true)
     else startAuto()
   }
@@ -874,13 +904,14 @@ export function WormholePanel({
     }
     const unknown = !grid.scanned.includes(cell.key) && !grid.visited.includes(cell.key)
     const hit = wormholePathInterceptAt(grid, { q, r })
+    const leaveCargo = newRun && (wormholeGroundBoard(run)?.placements.length ?? 0) > 0
     if (hit) {
       const known = grid.scanned.includes(hit.key) || grid.visited.includes(hit.key)
-      setPendingCell({ q, r, unknown, intercept: { q: hit.q, r: hit.r, known } })
+      setPendingCell({ q, r, unknown, intercept: { q: hit.q, r: hit.r, known }, leaveCargo })
       return
     }
-    if (unknown) {
-      setPendingCell({ q, r, unknown: true, intercept: null })
+    if (unknown || leaveCargo) {
+      setPendingCell({ q, r, unknown, intercept: null, leaveCargo })
       return
     }
     travelTo(q, r, false, false)
@@ -890,9 +921,10 @@ export function WormholePanel({
    * 真的走（`confirmUnknown` / `confirmIntercept` 由上面的确认栏给出；核心侧同样有这两道闸）。
    * 被拦截时战斗界面接手（那条路径与"到达舰船信号即开打"完全同款，故不额外弹提示）。
    */
-  function travelTo(q: number, r: number, confirmUnknown: boolean, confirmIntercept: boolean): void {
-    const res = engine.wormholeTravel(q, r, confirmUnknown, confirmIntercept)
+  function travelTo(q: number, r: number, confirmUnknown: boolean, confirmIntercept: boolean, confirmLeaveCargo = false): void {
+    const res = engine.wormholeTravel(q, r, confirmUnknown, confirmIntercept, confirmLeaveCargo)
     if (!res.ok) {
+      if (res.code === 'cargo-pending') { setPendingCell({ q, r, unknown: false, intercept: null, leaveCargo: true }); return }
       onToast(res.error ?? tr('ui.Wormhole.298'), true)
       return
     }
@@ -988,11 +1020,16 @@ export function WormholePanel({
    * ① 先播 600ms「飞出屏幕外」（这一段时间真的**不下沉**，所以失败也不会出现"飞走了却没走成"）；
    * ② 到点才调 `engine.wormholeDescend()`；③ 新层挂载后由 `layerKey` 那个 effect 播 1 秒飞入。
    */
-  function doDescend(): void {
+  function doDescend(confirmLeaveCargo = false): void {
+    if (newRun && !confirmLeaveCargo && Object.values(run?.groundCargo ?? {}).some((board) => board.placements.length > 0)) {
+      setDescendCargoAsk(true)
+      return
+    }
+    setDescendCargoAsk(false)
     if (fxBusy) return
     setFx('out')
     window.setTimeout(() => {
-      const r = engine.wormholeDescend()
+      const r = engine.wormholeDescend(confirmLeaveCargo)
       if (!r.ok) {
         setFx('idle')
         onToast(cmdText(r) || tr('ui.Wormhole.301'), true)
@@ -1002,6 +1039,7 @@ export function WormholePanel({
   }
 
   function doExtract(): void {
+    if (newRun) { setExtractionView(true); return }
     /**
      * **临时空间没清空 ⇒ 先切到背包页弹确认条**（船长 2026-09-14：「撤离前必须清空（丢掉或放回）」）。
      * ⚠ **2026-09-20 起这道闸的含义变了**（船长：「**撤离时临时空间的东西全部丢弃。**」）：
@@ -1031,7 +1069,7 @@ export function WormholePanel({
    * 临时空间非空就不放行，弹确认条（逐件列出）；处理完**按原意图继续**（切探索 / 撤离）。
    */
   function leaveBagPage(intent: 'tab' | 'extract', go: () => void): void {
-    if (engine.wormholeTempPending().count === 0) {
+    if (newRun || engine.wormholeTempPending().count === 0) {
       go()
       return
     }
@@ -1079,10 +1117,11 @@ export function WormholePanel({
    */
   function renderHereNode(): React.ReactNode {
     if (!grid || !hereCell) return null
+    if (run?.expeditionRules === 2 && hereCell.eventKey && !hereCell.eventResolved && run.pendingEvent) return <WhEventChoices engine={engine} onToast={onToast} />
     return (
       <>
         <div className="app-wh-node-title">
-          {atExit ? tr("ui.Wormhole.007") : placeText(hereCell.place)}
+          {atExit ? tr("ui.Wormhole.007") : hereCell.eventKey ? tr(WORMHOLE_EVENT_IDS[hereCell.eventKey]) : placeText(hereCell.place)}
           {/* 地点说明**不进 ⓘ**（2026-09-14 船长裁定：「地点卡的说明不要进 ⓘ」）：它跟着当前格子变，
               属于"这一格现在是什么"的读数 ⇒ 按 2026-09-13 口径（常驻说明进 ⓘ、状态读数留眼前）留在卡里 */}
           <span className="app-dim">
@@ -1090,6 +1129,7 @@ export function WormholePanel({
             {grid.activated.includes(hereKey) ? tr('ui.Wormhole.303') : ''}
           </span>
         </div>
+        {run?.expeditionRules === 2 && (hereCell.elite || atExit) ? <WhEncounterIntel engine={engine} cellKey={hereKey} /> : null}
         {/* **作业进度条**（F2b · 纯表现 380ms）：摆在堆清单正上方——卡片"向下移出"的同时，这条在走 */}
         {jobFx ? (
           <div className="app-wh-jobrow" key={jobFx.nonce}>
@@ -1204,10 +1244,77 @@ export function WormholePanel({
             </div>
           </>
         ) : (
-          <div className="app-dim app-note">{PLACE_NOTE[hereCell.place]}</div>
+          <div className="app-dim app-note">{tr(PLACE_NOTE[hereCell.place])}</div>
         )}
       </>
     )
+  }
+
+  function renderExploreConfirmations(): React.ReactNode {
+    if (!run || !grid) return null
+    return <div className="app-wh-confirmations">
+      {extractAsk ? (
+        <div className="app-wh-extract-ask">
+          <span>
+            {tr("ui.Wormhole.033")} <b>{tr('ui.Wormhole.349', { p1: run.depth })}</b>
+            {tr('ui.Wormhole.350')}<b>{tr("ui.Wormhole.143")}</b>{tr("ui.Wormhole.258")}
+          </span>
+          <span className="app-wh-actions">
+            <button className="app-btn is-small is-danger" onClick={() => { setExtractAsk(false); doExtract() }}>
+              {tr("ui.Wormhole.193")}
+            </button>
+            <button className="app-btn is-small" onClick={() => setExtractAsk(false)}>{tr("ui.ActivityBar.004")}</button>
+          </span>
+        </div>
+      ) : null}
+      {run.pendingRuinsBattle === true ? (
+        <div className="app-wh-extract-ask">
+          <span>⚠ <b>{tr("ui.Wormhole.099")}</b>{tr('ui.Wormhole.351')}</span>
+          <span className="app-wh-actions">
+            <button className="app-btn is-small is-danger" onClick={() => {
+              const r = engine.wormholeFight('ruins')
+              if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.341'), true)
+            }}>{tr("ui.App.080")}</button>
+          </span>
+        </div>
+      ) : null}
+      {run.pendingNodeBattle === true ? (
+        <div className="app-wh-extract-ask">
+          <span>⚠ <b>{tr("ui.Handbook.308")}</b>{tr('ui.Wormhole.352', { p1: `Q${grid.pos.q} · R${grid.pos.r}` })}</span>
+          <span className="app-wh-actions">
+            <button className="app-btn is-small is-danger" onClick={() => {
+              const r = engine.wormholeFight('node')
+              if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.341'), true)
+            }}>{tr("ui.Wormhole.100")}</button>
+          </span>
+        </div>
+      ) : null}
+      {descendCargoAsk ? <div className="app-wh-ask"><span>{tr('ui.whExpedition.028')}</span><div className="app-wh-actions"><button className="app-btn is-warn" onClick={() => doDescend(true)}>{tr('ui.whExpedition.029')}</button><button className="app-btn" onClick={() => setDescendCargoAsk(false)}>{tr('ui.ActivityBar.004')}</button></div></div> : null}
+      {pendingCell ? (
+        <div className="app-wh-ask">
+          <span>
+            {pendingCell.intercept ? (
+              pendingCell.intercept.known ? (
+                <>{tr("ui.Wormhole.210")}<b>{tr("ui.Wormhole.146")}</b>{tr('ui.Wormhole.354')}<b>{tr("ui.Wormhole.100")}</b>{tr("ui.Wormhole.034")}</>
+              ) : (
+                <>{tr("ui.Wormhole.211")}<b>{tr("ui.Wormhole.102")}</b>{tr('ui.Wormhole.353')}<b>{tr("ui.Wormhole.100")}</b>{tr('ui.Wormhole.355')}</>
+              )
+            ) : pendingCell.unknown ? (
+              <>{tr("ui.Wormhole.103")}<b>{tr("ui.Wormhole.147")}</b>{tr("ui.Wormhole.148")}{tr('ui.Wormhole.356')}</>
+            ) : null}
+            {pendingCell.leaveCargo ? <span>{tr('ui.whExpedition.027')}</span> : null}
+            {pendingCell.intercept && pendingCell.unknown ? <><br />{tr("ui.Wormhole.104")}Q{pendingCell.q} · R{pendingCell.r}）<b>{tr("ui.Wormhole.260")}</b>{tr('ui.Wormhole.363')}</> : null}
+          </span>
+          <span className="app-wh-actions">
+            <button className="app-btn is-small is-warn" disabled={!!run.battle || run.turnsLeft < 1}
+              onClick={() => travelTo(pendingCell.q, pendingCell.r, true, !!pendingCell.intercept, !!pendingCell.leaveCargo)}>
+              {tr(pendingCell.leaveCargo ? 'ui.whExpedition.026' : 'ui.Wormhole.212')}
+            </button>
+            <button className="app-btn is-small" onClick={() => setPendingCell(null)}>{tr("ui.ActivityBar.004")}</button>
+          </span>
+        </div>
+      ) : null}
+    </div>
   }
 
   /**
@@ -1235,6 +1342,7 @@ export function WormholePanel({
       onToast(tr("ui.Wormhole.009"), true)
       return
     }
+    closingRef.current = true
     if (state.wormhole.run) engine.wormholeLeave()
     onClose()
   }
@@ -1243,7 +1351,7 @@ export function WormholePanel({
   const [resumeNote, setResumeNote] = useState<string | null>(null)
   useEffect(() => {
     /** 自动探索模式不改"在不在洞里"这件事（本面板不主张主控活动位） */
-    if (auto) return
+    if (auto || closingRef.current) return
     if (!state.wormhole.run || state.wormhole.run.attending === true) return
     const r = engine.wormholeResume()
     if (!r.ok) setResumeNote(cmdText(r) || tr('ui.Wormhole.308'))
@@ -1292,7 +1400,7 @@ export function WormholePanel({
       <div className="app-modal app-wh-modal" onClick={(e) => e.stopPropagation()}>
         <div className="app-modal-head">
           <span className="app-report-title">{settle ? tr("ui.Wormhole.130") : tr("ui.Expedition.005")}</span>
-          <span className="app-dim app-wh-devnote">
+          <span className="app-dim app-wh-devnote" title={run ? tr(run.attending ? 'ui.Wormhole.010' : 'ui.Wormhole.084') : undefined}>
             {auto
               ? tr("ui.Wormhole.190", { WORMHOLE_AUTO_MAX_SHIPS: WORMHOLE_AUTO_MAX_SHIPS, p2: Math.round(WORMHOLE_AUTO_DURATION_MS / 60_000) })
               : settle
@@ -1313,11 +1421,13 @@ export function WormholePanel({
            * 战斗进行中一律禁用（见下）。
            * ⚠ 2026-09-15 撤离战取消：这一撤不再触发任何战斗（"交火中不能撤"照旧）。
            */}
-          {!settle && run ? (
+          {!settle && !extractionView && run ? (
             <button
+              ref={extractButtonRef}
               className={`app-btn is-small is-danger app-wh-extract${extractAsk ? ' is-armed' : ''}`}
               disabled={!!run.battle || fxBusy}
               onClick={() => {
+                if (newRun) { doExtract(); return }
                 if (!extractAsk) {
                   setExtractAsk(true)
                   return
@@ -1351,7 +1461,7 @@ export function WormholePanel({
          * 背包那枚顺带把**货仓占用**摆在脸上（超载转红）——省得玩家为了看格数专门切过去。
          * 进洞后「准备」是死按钮（编队已锁定）⇒ **直接不渲染**；没进洞时只有准备页 ⇒ 整条不渲染。
          */}
-        {!settle && run ? (
+        {!settle && !extractionView && run ? (
           <div className="app-wh-tabbar">
             {(['map', 'bag'] as WhTab[]).map((k) => (
               <button
@@ -1388,7 +1498,7 @@ export function WormholePanel({
         {/* `app-wh-body` = 让本面板的页体成为**纵向弹性容器**（船长 2026-09-13：
             「舰船选择界面高度可以适当缩减，让上一层的虫洞界面不要有滚动条」）——
             准备页把自己撑满页体、**卡网格吸收剩余高度并在内部滚动**，外层页体就不再出现滚动条。 */}
-        <div className="app-modal-body app-wh-body">
+        <div className={`app-modal-body app-wh-body${extractionView || (manifestView && preparedEntry) ? ' is-expedition-form' : ''}${!settle && !extractionView && tab === 'map' && run ? ' is-exploring' : ''}`}>
           {/**
            * **本趟结算界面**（船长 2026-09-13：「玩家撤离后弹出一个结算界面，表示玩家的收益和损失。
            * 然后关闭虫洞界面」）：有结算单时**整页只显示它**（页签隐去），
@@ -1405,6 +1515,7 @@ export function WormholePanel({
              * 数字走 `useCountUp` **跳数** 320ms。⚠ **「确认并返回」立刻可点**——不拿动画锁玩家。
              */
             <SettleView
+              engine={engine}
               settle={settle}
               onConfirm={() => {
                 engine.wormholeAckSettle()
@@ -1427,7 +1538,14 @@ export function WormholePanel({
               {tr("ui.Wormhole.132")} {state.wormhole.lastFleetLost} {tr("ui.Wormhole.197")}
             </div>
           ) : null}
-          {!settle && tab === 'prep' ? (
+          {!settle && tab === 'prep' && manifestView && preparedEntry ? <div className="app-wh-prepared-body"><button className="app-btn is-small" onClick={() => setManifestView(false)}>{tr('ui.Wormhole.063')}</button><WhPreparation engine={engine} picked={picked} stockId={auto ? autoStockId : stockId} auto={auto} onEnter={(plan) => {
+            if (!auto) { handleEnter(plan); return }
+            if (autoStockId === null) return
+            if (autoMainPicked) { setAutoPlan(plan); setMainAsk(true); return }
+            const result = engine.wormholeAutoStartPrepared(autoStockId, picked, plan, 'deep')
+            if (result.ok) onClose(); else onToast(cmdText(result) || tr('ui.whExpedition.016'), true)
+          }} /></div> : null}
+          {!settle && tab === 'prep' && !(manifestView && preparedEntry) ? (
             <div className="app-wh-prep">
               <div className="app-bay-title">
                 {auto
@@ -1446,7 +1564,7 @@ export function WormholePanel({
                 </div>
               ) : null}
               <div className="app-dim app-note">
-                {auto ? (
+                {auto && preparedEntry ? <span className="app-warn">{tr('ui.whExpedition.078')}</span> : auto ? (
                   <>
                     {tr("ui.Wormhole.002")}<b>{tr("ui.Wormhole.016")}</b>{tr('ui.Wormhole.365', { p1: WORMHOLE_AUTO_MAX_SHIPS })}{' '}
                     <b>{tr("ui.Wormhole.017")}</b>{tr("ui.Wormhole.246")}{' '}
@@ -1547,7 +1665,7 @@ export function WormholePanel({
                   <button
                     className="app-btn is-primary app-wh-enter"
                     disabled={auto ? picked.length === 0 || autoGate !== null : !admission.ok || !!run || entryGate !== null}
-                    onClick={auto ? handleAutoStart : handleEnter}
+                    onClick={auto ? handleAutoStart : () => handleEnter()}
                     title={
                       !auto && enterHaulAsk
                         ? tr('ui.Hauling.035')
@@ -1594,6 +1712,7 @@ export function WormholePanel({
                     <li key={uid}>
                       <button
                         type="button"
+                        data-wh-pick={uid}
                         className={`app-wh-card${on ? ' is-picked' : ''}${canPick ? '' : ' is-locked'}`}
                         disabled={!canPick}
                         onClick={() => togglePick(uid)}
@@ -1774,8 +1893,12 @@ export function WormholePanel({
             </div>
           ) : null}
 
-          {!settle && tab === 'map' && run ? (
+          {!settle && run && extractionView ? <WhExtraction engine={engine} onCancel={() => { setExtractionView(false); requestAnimationFrame(() => extractButtonRef.current?.focus()) }} /> : null}
+          {!settle && !extractionView && tab === 'map' && run ? (
             <div className="app-wh-run">
+              {grid && hereCell ? (
+              <div className="app-wh-explore">
+                <div className="app-wh-map-pane">
               <div className="app-wh-head">
                 <span className="app-wh-cell">{tr('ui.Wormhole.349', { p1: run.depth })}</span>
                 <span className="app-wh-cell">
@@ -1796,8 +1919,6 @@ export function WormholePanel({
                 >
                   {tr("ui.Wormhole.238")} <b>{miners}</b> {tr('ui.Wormhole.288')} <b>{Math.round(runCollectEff * 100)}%</b>
                 </span>
-                <span className="app-wh-cell">{tr("ui.Wormhole.078")} <b>{run.turnsLeft}</b> / {run.turnsTotal}</span>
-                <span className="app-wh-cell">{tr("ui.CargoPage.004")} <b>{usage?.used ?? 0}</b> / {usage?.capacity ?? 0}{tr('ui.Wormhole.346')}</span>
                 {/**
                  * **谜质增益读数**（F3c · 船长 2026-09-13）：悬停逐台列出装置 —— 效果一律从货仓现算
                  * （`wormholeMatterBuffs`），界面与 core 同源。
@@ -1851,108 +1972,9 @@ export function WormholePanel({
                   {tr("ui.Wormhole.142")} <b>{wormholeDisplayThreat(nodeThreat)}</b>
                 </span>
               </div>
-              {grid && hereCell ? (
-              /*
-               * **探索视图容器**（**2026-10-02 船长令**：「手机模式下虫洞探索界面放大到全屏，操作界面挪到右侧」）：
-               * 手机旋转模式下由本容器把这一段排成**左＝地图 / 右＝操作区**两栏（见 `styles.css` 的
-               * `is-mobile-rot` 段）；桌面上它 `display: contents` ⇒ **不产生盒子、布局与改造前逐字相同**
-               * （本仓既有惯用法，同 `.app-win-host`）。原先这里是个 `<>…</>` 片段，作用域与本容器完全一致。
-               */
-              <div className="app-wh-explore">
-                {/**
-                 * **撤离确认条**（船长 2026-09-13：「玩家撤离时会警告玩家并需要确认」）：
-                 * 待确认时摆在页体顶部，写清"这一撤会发生什么"。
-                 * ⚠ 2026-09-15 撤离战取消 ⇒ 文案改为"不消耗回合、不触发战斗"，不再分第 1 层 / 深层两档。
-                 */}
-                {extractAsk ? (
-                  <div className="app-wh-extract-ask">
-                    <span>
-                      {tr("ui.Wormhole.033")} <b>{tr('ui.Wormhole.349', { p1: run.depth })}</b>
-                      {tr('ui.Wormhole.350')}<b>{tr("ui.Wormhole.143")}</b>{tr("ui.Wormhole.258")}
-                    </span>
-                    <span className="app-wh-actions">
-                      <button
-                        className="app-btn is-small is-danger"
-                        onClick={() => {
-                          setExtractAsk(false)
-                          doExtract()
-                        }}
-                      >
-                        {tr("ui.Wormhole.193")}
-                      </button>
-                      <button className="app-btn is-small" onClick={() => setExtractAsk(false)}>
-                        {tr("ui.ActivityBar.004")}
-                      </button>
-                    </span>
-                  </div>
-                ) : null}
-                {/**
-                 * **遗迹守备的迎战确认条**（船长 2026-09-13：「打捞遗迹触发战斗时……战斗突然发生没有任何提示，
-                 * 应该提示玩家惊扰守卫等，**玩家确认后跳转**」）：
-                 * 打捞已经结算（回合扣了、货进包了），这里只等玩家点「迎战」；点之前别的动作一律被 core 拦。
-                 * ⚠ **2026-09-14 修船长报障「虫洞的战斗胜利后，点击战报有时会退出虫洞界面」**：
-                 *   这里原先跟着一句 `onClose()`（"关掉面板，全屏战场接管"）——与上面那条
-                 *   「**战斗中不渲染本面板、`whOpen` 保持为真 ⇒ 打完面板自动回来**」的既有设计**直接冲突**：
-                 *   面板一旦关掉就再也回不来 ⇒ 打完战报一关，人落在星图上（= 退出了虫洞界面）。
-                 *   "有时"正是因为**只有这一条路**关面板：另外两条开战路径（`doActivate` 的舰船信号 /
-                 *   层末守卫）不关 ⇒ 那两条打完都能回到面板。
-                 *   现改为**不关面板**：战斗中本组件 `return null`（层级硬保证，见文件末那条注释），
-                 *   战斗收口后自动回来，与另两条路径一致。
-                 */}
-                {run.pendingRuinsBattle === true ? (
-                  <div className="app-wh-extract-ask">
-                    <span>
-                      ⚠ <b>{tr("ui.Wormhole.099")}</b>{tr('ui.Wormhole.351')}
-                    </span>
-                    <span className="app-wh-actions">
-                      <button
-                        className="app-btn is-small is-danger"
-                        onClick={() => {
-                          const r = engine.wormholeFight('ruins')
-                          if (!r.ok) {
-                            onToast(cmdText(r) || tr('ui.Wormhole.341'), true)
-                            return
-                          }
-                          // 面板**保持打开**（战斗中自动不渲染）⇒ 战报一关就回到虫洞界面
-                        }}
-                      >
-                        {tr("ui.App.080")}
-                      </button>
-                    </span>
-                  </div>
-                ) : null}
-                {/**
-                 * **踩中埋伏**（船长 2026-09-16：「移动途中被敌方拦截或者**进入未扫描地点踩到怪**了，
-                 * 都要弹窗提示，玩家确认后进入战斗」）——与上面「遗迹守备」**同一套语言与形态**：
-                 * 到达那一刻已发事件提醒（日志 + 这条警告条），**玩家点「开战」才进战斗**；
-                 * 提醒里只写来由与坐标（船长选定：不写残血/回合）。
-                 */}
-                {run.pendingNodeBattle === true ? (
-                  <div className="app-wh-extract-ask">
-                    <span>
-                      ⚠ <b>{tr("ui.Handbook.308")}</b>{tr('ui.Wormhole.352', { p1: `Q${grid?.pos.q ?? 0} · R${grid?.pos.r ?? 0}` })}
-                    </span>
-                    <span className="app-wh-actions">
-                      <button
-                        className="app-btn is-small is-danger"
-                        onClick={() => {
-                          const r = engine.wormholeFight('node')
-                          if (!r.ok) {
-                            onToast(cmdText(r) || tr('ui.Wormhole.341'), true)
-                            return
-                          }
-                        }}
-                      >
-                        {tr("ui.Wormhole.100")}
-                      </button>
-                    </span>
-                  </div>
-                ) : null}
                 {/**
                  * **地图行 = 左侧缩放控件 + 地图**（船长 2026-09-13：「虫洞探索地图添加一个宇宙背景。
-                 * 且窗口高度固定（不会随着地图变大变高），在探索界面的左侧给玩家一个缩放按钮或者滚动条。
-                 * 让玩家能够调节探索地图的大小」）：地图框**定高** 300px（不再随圈数长高），
-                 * 缩放只放大图内内容（以玩家所在格为中心），超出部分由地图框裁掉 ⇒ 外层永不因此滚动。
+                 * 且窗口高度固定（不会随着地图变大变高）」）；本轮按已确认 §20 让地图吃左栏余高。
                  */}
                 {/* 洞内战斗不在本面板里渲染（现行：战斗中整块不渲染本面板，战场全屏独占） */}
                 <div className="app-wh-maprow">
@@ -2081,6 +2103,7 @@ export function WormholePanel({
                      */}
                     <WhGridMap
                       grid={grid}
+                      tr={tr}
                       onPickCell={pickCell}
                       shipDefId={leadShipDefId}
                       layerKey={`${run.seed ?? 0}-${run.depth}`}
@@ -2110,8 +2133,9 @@ export function WormholePanel({
                     />
                   </div>
                 </div>
-                <div className="app-wh-ops">
-                  <div className="app-wh-legend">
+                  <details className="app-wh-map-info">
+                    <summary title={tr('ui.Wormhole.145')} aria-label={tr('ui.Wormhole.145')}><Glyph name="ico-hint" size={18} /></summary>
+                    <div className="app-wh-legend">
                     {GRID_LEGEND.map((l) => (
                       <span key={l.key} className="app-wh-legend-item">
                         <svg
@@ -2140,60 +2164,25 @@ export function WormholePanel({
                      * 弹出来，与格子自己的 `data-tip` 自绘提示同屏（一个屏幕两个提示）。图例行是地图的
                      * 常驻说明位（与"常驻说明进 ⓘ、状态读数留眼前"同款口径），搬来即不再打架。
                      */}
-                    <HintIcon tip={tr("ui.Wormhole.145")} />
-                  </div>
-                  {pendingCell ? (
-                    <div className="app-wh-ask">
-                      <span>
-                        {pendingCell.intercept ? (
-                          pendingCell.intercept.known ? (
-                            <>
-                              {tr("ui.Wormhole.210")}<b>{tr("ui.Wormhole.146")}</b>{tr('ui.Wormhole.354')}<b>{tr("ui.Wormhole.100")}</b>{tr("ui.Wormhole.034")}
-                            </>
-                          ) : (
-                            <>
-                              {tr("ui.Wormhole.211")}<b>{tr("ui.Wormhole.102")}</b>{tr('ui.Wormhole.353')}<b>{tr("ui.Wormhole.100")}</b>{tr('ui.Wormhole.355')}
-                            </>
-                          )
-                        ) : (
-                          <>
-                            {tr("ui.Wormhole.103")}<b>{tr("ui.Wormhole.147")}</b>{tr("ui.Wormhole.148")}{tr('ui.Wormhole.356')}
-                          </>
-                        )}
-                        {pendingCell.intercept && pendingCell.unknown ? (
-                          <>
-                            <br />
-                            {tr("ui.Wormhole.104")}Q{pendingCell.q} · R{pendingCell.r}）<b>{tr("ui.Wormhole.260")}</b>{tr('ui.Wormhole.363')}
-                          </>
-                        ) : null}
-                      </span>
-                      <span className="app-wh-actions">
-                        <button
-                          className="app-btn is-small is-warn"
-                          disabled={!!run.battle || run.turnsLeft < 1}
-                          onClick={() => travelTo(pendingCell.q, pendingCell.r, true, !!pendingCell.intercept)}
-                        >
-                          {tr("ui.Wormhole.212")}
-                        </button>
-                        <button className="app-btn is-small" onClick={() => setPendingCell(null)}>
-                          {tr("ui.ActivityBar.004")}
-                        </button>
-                      </span>
+                    <span className="app-dim">{tr("ui.Wormhole.152")}</span>
                     </div>
-                  ) : null}
-                  {/**
-                   * **左列 = 扫描 + 作业按钮 + 继续深入**（船长 2026-09-13：「激活等按钮可以放在扫描下方」
-                   * ＋「**继续深入按钮也可以整合到扫描 + 作业按钮处**」）：三枚同宽、纵向排列；
-                   * 右边是地点信息窗（其列表已改**卡片 + 内部滚动**，见 `renderHereNode`）。
-                   * 作业按钮**只在真能用的时候才出现**（船长：「有可以采集或者激活的情况时，才显示对应按钮」）；
-                   * 「继续深入」只在守卫清掉后出现。「撤离」已搬到标题行（红色 · 两讨伐确认）。
-                   */}
-                  <div className="app-wh-workspace">
-                    <div className="app-wh-workspace-left">
+                  </details>
+                </div>
+                <div className="app-wh-ops">
+                  <div className="app-wh-ops-fixed">
+                    <div className="app-wh-status">
+                      <span className="app-wh-cell">{tr("ui.Wormhole.078")} <b>{run.turnsLeft}</b> / {run.turnsTotal}</span>
+                      <span className="app-wh-cell">{tr("ui.CargoPage.004")} <b>{newRun ? holdInfo?.used ?? 0 : usage?.used ?? 0}</b> / {newRun ? holdInfo?.capacity ?? 0 : usage?.capacity ?? 0}{tr('ui.Wormhole.346')}</span>
+                    </div>
+                    {run.expeditionRules === 2 ? <WhAlert engine={engine} /> : null}
+                    {newRun ? <WhSupplies engine={engine} compact onOpen={() => setTab('bag')} /> : null}
+                    <div className="app-wh-priority">
+                    <div className="app-wh-commands">
                       <button
                         className="app-btn is-primary app-wh-scan-big"
-                        disabled={!!run.battle || workBlocked !== null || run.turnsLeft < 1 || fxBusy}
+                        disabled={!!run.battle || (newRun ? layerBlocked !== null : workBlocked !== null) || run.turnsLeft < 1 || fxBusy}
                         onClick={doScan}
+                        data-wh-scan
                         title={tr("ui.Wormhole.105")}
                       >
                         {tr("ui.Wormhole.106")}
@@ -2204,6 +2193,7 @@ export function WormholePanel({
                           className="app-btn is-primary app-wh-work"
                           disabled={!!run.battle || workBlocked !== null || run.turnsLeft < 1 || fxBusy}
                           onClick={doActivate}
+                          data-wh-guard={atExit ? true : undefined}
                           title={workTitle}
                         >
                           {veinCell ? tr("ui.Wormhole.261") : tr("ui.Wormhole.107")}
@@ -2217,6 +2207,7 @@ export function WormholePanel({
                           className="app-btn is-primary app-wh-work"
                           disabled={!!run.battle || workBlocked !== null || fxBusy}
                           onClick={doActivate}
+                          data-wh-guard={atExit ? true : undefined}
                           title={
                             atExit
                               ? tr("ui.Wormhole.149")
@@ -2236,21 +2227,22 @@ export function WormholePanel({
                         <button
                           className="app-btn is-primary app-wh-work"
                           disabled={!!run.battle || workBlocked !== null || run.turnsLeft <= 0 || fxBusy}
-                          onClick={doDescend}
+                          onClick={() => doDescend()}
+                          data-wh-descend
                           title={tr("ui.Wormhole.108")}
                         >
                           {tr("ui.Wormhole.213")}
                           <span className="app-wh-scan-sub">
-                            {tr('ui.Wormhole.349', { p1: run.depth + 1 })} {tr("ui.Wormhole.109")} {wormholeDisplayThreat(wormholeLayerThreat(run.depth + 1))}
+                            {tr('ui.Wormhole.349', { p1: run.depth + 1 })}{run.expeditionRules !== 2 ? ` ${tr('ui.Wormhole.109')} ${wormholeDisplayThreat(wormholeLayerThreat(run.depth + 1))}` : ''}
                           </span>
                         </button>
                       ) : null}
                     </div>
+                    {renderExploreConfirmations()}
+                    </div>
+                  </div>
+                  <div className="app-wh-details">
                     <div className="app-wh-node">{renderHereNode()}</div>
-                  </div>
-                  <div className="app-wh-actions">
-                    <span className="app-dim">{tr("ui.Wormhole.152")}</span>
-                  </div>
                   {/**
                    * 撤离进行中的一行读数：`extracting` = 已发起撤离、等待收口（2026-09-15 起撤离不再触发
                    * 战斗；**2026-09-27 起点撤离当拍结算** ⇒ 正常路径一闪而过，本条只兜老档／离线）。
@@ -2302,6 +2294,8 @@ export function WormholePanel({
                   {outOfTurns ? (
                     <div className="app-wh-ask">{tr("ui.Wormhole.111")}</div>
                   ) : null}
+                    {run.expeditionRules === 2 ? grid.cells.filter(cell => { const reveal = revealOf(grid, cell); const info = reveal.kind === 'foe' ? reveal.under : reveal; return (info.kind === 'signal' || info.kind === 'known') && info.elite && !cell.combatCleared }).map(cell => <details key={cell.key} className="app-wh-elite-intel"><summary>{tr('ui.whExpedition.095')} · Q{cell.q} R{cell.r}</summary><WhEncounterIntel engine={engine} cellKey={cell.key} /></details>) : null}
+                  </div>
                 </div>
               </div>
               ) : (
@@ -2321,7 +2315,7 @@ export function WormholePanel({
                     <button
                       className="app-btn is-small is-primary"
                       disabled={!!run.battle || run.turnsLeft <= 0 || !bossDone}
-                      onClick={doDescend}
+                      onClick={() => doDescend()}
                     >
                       {tr("ui.Wormhole.213")}
                     </button>
@@ -2331,7 +2325,7 @@ export function WormholePanel({
             </div>
           ) : null}
 
-          {!settle && tab === 'bag' && run ? (
+          {!settle && !extractionView && tab === 'bag' && run ? (
             <WhHold
         engine={engine}
         onToast={onToast}
@@ -2395,7 +2389,8 @@ export function WormholePanel({
 /** 核心账本键 → 短名（结算单里那行小字用；全称见 core 的 `aiCoreName`） */
 const CORE_LABEL: Readonly<Record<'gamma' | 'beta' | 'alpha', string>> = { gamma: tr("ui.Wormhole.042"), beta: tr("ui.Wormhole.215"), alpha: tr("ui.Wormhole.266") }
 
-function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onConfirm: () => void }) {
+function SettleView({ engine, settle, onConfirm }: { engine: GameEngine; settle: WormholeSettleRecord; onConfirm: () => void }) {
+  const tr = settle.expeditionProgress !== undefined ? futureTr : signalTr
   const total = useCountUp(settle.oreIsk + settle.wreckIsk)
   const cells: Array<{ label: string; value: string; sub: string; wide?: boolean }> = [
     { label: tr("ui.Wormhole.187"), value: n(settle.oreUnits), sub: tr("ui.Wormhole.116", { p1: n(settle.oreIsk) }) },
@@ -2461,6 +2456,8 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
         </span>
       </div>
       <div className="app-wh-settle-grid">
+        <WhObjectiveProgress progress={settle.expeditionProgress} />
+        {settle.suppliesReturned ? <section className="app-wh-settle-cell is-wide"><h4>{tr('ui.whExpedition.037')}</h4><WhItemCounts engine={engine} items={settle.suppliesReturned} /><h4>{tr('ui.whExpedition.038')}</h4><WhItemCounts engine={engine} items={settle.suppliesUsed ?? {}} />{settle.suppliesFound ? <><h4>{tr(settle.expeditionProgress !== undefined ? 'ui.whExpedition.099' : 'ui.explorationName.023')}</h4><WhItemCounts engine={engine} items={settle.suppliesFound} /></> : null}</section> : null}
         {cells.map((c, i) => (
           <div
             key={c.label}
@@ -2474,6 +2471,7 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
         ))}
       </div>
       <div className="app-wh-settle-total is-pop" style={{ animationDelay: `${(cells.length + 1) * STEP}ms` }}>
+        {settle.suppliesReturned ? <span>{tr('ui.whExpedition.039')} · {tr('ui.whExpedition.040')} · </span> : null}
         {tr("ui.Wormhole.159")} <b>{n(total)}</b> {tr("ui.FirstTasks.003")}
         {settle.boxes.length > 0 ? tr('ui.Wormhole.323', { p1: settle.boxes.length }) : ''}
       </div>
@@ -2515,6 +2513,7 @@ function SettleView({ settle, onConfirm }: { settle: WormholeSettleRecord; onCon
  */
 function WhGridMap({
   grid,
+  tr = futureTr,
   onPickCell,
   shipDefId,
   layerKey,
@@ -2527,6 +2526,7 @@ function WhGridMap({
   pathPreview = null,
 }: {
   grid: WormholeGridState
+  tr?: typeof futureTr
   onPickCell: (q: number, r: number) => void
   /** 编队第一艘船的 defId（画玩家舰影用；取不到就退化成一个小箭头） */
   shipDefId?: string
@@ -2691,8 +2691,9 @@ function WhGridMap({
          * ⚠ **下一层入口（`isExit`）不吃这条**：它是导航标记不是地点图标，玩家还要靠它认路。
          */
         const activated = grid.activated.includes(c.key)
-        const hasLeftover = (c.piles ?? []).length > 0
-        const cleared = activated || (visited && !hasLeftover)
+        const eventPending = !!c.eventKey && c.eventResolved !== true
+        const hasLeftover = (c.piles ?? []).length > 0 || eventPending
+        const cleared = !eventPending && (activated || (visited && !hasLeftover))
         const iconGone = cleared && !isExit
         const dim = visited && (cleared || hasLeftover)
         /** 这一格是不是"这一批刚被驱散"的星云（动画期间单独画云散开；动画结束 `dissolving` 清空 ⇒ 自动落回信号档） */
@@ -2737,7 +2738,7 @@ function WhGridMap({
               : isExit
                 ? tr('ui.Wormhole.324', { p1: cleared ? tr("ui.Wormhole.269") : tr("ui.Wormhole.270") })
                 : visited
-                  ? tr('ui.Wormhole.325', { p1: placeText(c.place), p2: cleared ? tr('ui.Wormhole.303') : '' }) +
+                  ? tr('ui.Wormhole.325', { p1: c.eventKey ? tr(WORMHOLE_EVENT_IDS[c.eventKey]) : placeText(c.place), p2: cleared ? tr('ui.Wormhole.303') : '' }) +
                     `${hasLeftover ? ` · 还有 ${(c.piles ?? []).length} 堆没拿` : ''}`
                   : nebula
                     ? tr("ui.Wormhole.163")
@@ -2747,6 +2748,7 @@ function WhGridMap({
         return (
           <g
             key={c.key}
+            data-wh-cell={c.key}
             className={cls}
             onClick={() => onPickCell(c.q, c.r)}
             // 格子说明：SVG 元素用 **`data-tip`**（React 的 SVG 类型不接受 `title` 属性；SVG 的
@@ -2934,14 +2936,13 @@ const GRID_LEGEND: ReadonlyArray<{
 
 /** 地点说明（看板一处说清"这里有什么/能干什么"；数字口径与 core 常量同源） */
 const PLACE_NOTE: Readonly<Record<WormholePlace, string>> = {
-  empty: tr("ui.Wormhole.224"),
-  graveyard: tr("ui.Wormhole.225"),
-  ruins: tr("ui.Wormhole.272"),
-  ship: tr("ui.Wormhole.226"),
-  vein: tr("ui.Wormhole.168"),
-  matter:
-    tr("ui.Wormhole.227"),
-  beacon: tr("ui.Wormhole.169"),
+  empty: "ui.Wormhole.224",
+  graveyard: "ui.Wormhole.225",
+  ruins: "ui.Wormhole.272",
+  ship: "ui.Wormhole.226",
+  vein: "ui.Wormhole.168",
+  matter: "ui.Wormhole.227",
+  beacon: "ui.Wormhole.169",
 }
 /**
  * **货仓页 = 形状网格**（F4b · 船长 2026-09-13：「类似背包英雄那种需要管理的背包格（没有背包，
@@ -2992,6 +2993,9 @@ function WhHold({
   const state = engine.state
   const ctx = engine.ctx
   const run = state.wormhole.run!
+  const tr = run.expeditionRules === 2 ? futureTr : signalTr
+  const cmdText = run.expeditionRules === 2 ? futureCmdText : signalCmdText
+  const newRun = run.supplyVersion === 1
   const info = engine.wormholeHoldInfo()
   /** **临时空间读数**（船长 2026-09-13：「大件货先进临时空间，让玩家协调」） */
   const tempInfo = engine.wormholeTempInfo()
@@ -3015,7 +3019,10 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
   const holdDragAteClickRef = useRef(false)
   const cols = WORMHOLE_HOLD_COLS
   const holdBoard = run.hold ?? makeHoldState()
-  const tempBoard = run.tempGrid ?? makeHoldState(WORMHOLE_TEMP_COLS)
+  const tempBoard = newRun ? wormholeGroundBoard(run) ?? makeHoldState(WORMHOLE_TEMP_COLS) : run.tempGrid ?? makeHoldState(WORMHOLE_TEMP_COLS)
+  const holdCapacity = newRun ? wormholeHoldCapacityOf(state, ctx) : info.capacity
+  const tempRows = newRun ? Math.max(WORMHOLE_TEMP_ROWS, ...tempBoard.placements.map((p) => p.y + p.h)) : WORMHOLE_TEMP_ROWS
+  const tempCapacity = newRun ? tempRows * WORMHOLE_TEMP_COLS : WORMHOLE_TEMP_CELLS
   /**
    * **禁止打捞普通残骸**（**2026-10-02 船长令**；开关座落在**货仓页** —— 船长原话「只做甲，坐在货仓背包处」）。
    * 只读这一把尺（core `wormhole.noCommonWreckSalvageOn` 是唯一读取点）；点击走 `engine.setNoCommonWreckSalvageNow`。
@@ -3027,7 +3034,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
    * （core `holdCompact`：先保彼此不重叠，再由界面提示抛货）——只按容量算行数，这些件会跑到格子外**看不见**。
    */
   const rows = Math.max(
-    holdRows(info.capacity, cols),
+    holdRows(holdCapacity, cols),
     placements.reduce((m, p) => Math.max(m, p.y + p.h), 0),
   )
   const boxes = placements.filter((p) => p.kind === 'box').length
@@ -3060,8 +3067,8 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
     if (!id) return
     const from = src?.from ?? dragFrom
     const target = ownerMap(kind).get(`${x},${y}`)
-    if (target && target.id !== id) {
-      const r = engine.wormholeHoldSwap(id, target.id)
+    if (target && target.id !== id && from === kind) {
+      const r = newRun && kind === 'temp' ? engine.wormholeGroundSwap(id, target.id) : engine.wormholeHoldSwap(id, target.id)
       if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.326'), true)
       setDragId(null)
       setTouchDragging(false)
@@ -3069,7 +3076,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
     }
     const r =
       from === kind
-        ? engine.wormholeHoldDropAt(id, x, y, grabRef.current)
+        ? newRun && kind === 'temp' ? engine.wormholeGroundDrop(id, x, y, grabRef.current) : engine.wormholeHoldDropAt(id, x, y, grabRef.current)
         : engine.wormholeBoardTransfer(from, kind, id, x, y, grabRef.current)
     if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.327'), true)
     setDragId(null)
@@ -3160,7 +3167,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
 
   /** 某一板上「格 → 件」的占用表（画格子与判落点都用它） */
   function ownerMap(kind: BoardKind): Map<string, WormholeHoldPlacement> {
-    const board = kind === 'hold' ? run.hold : run.tempGrid
+    const board = kind === 'hold' ? holdBoard : tempBoard
     const out = new Map<string, WormholeHoldPlacement>()
     for (const p of board?.placements ?? []) for (const c of placementCells(p)) out.set(`${c.x},${c.y}`, p)
     return out
@@ -3358,12 +3365,14 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                     const r =
                       kind === 'temp'
                         ? engine.wormholeTempStow(p.id)
+                        : newRun
+                          ? engine.wormholeLeaveCargoPiece(p.id)
                         : (() => {
                             const spot = findFreeSpot(tempBoard, { w: p.w, h: p.h }, tempInfo.capacity)
                             if (!spot) return { ok: false, error: undefined } as { ok: boolean; error?: string }
                             return engine.wormholeBoardTransfer('hold', 'temp', p.id, spot.x, spot.y, { dx: 0, dy: 0 })
                           })()
-                    if (!r.ok) onToast(cmdText(r) || tr('ui.Wormhole.327'), true)
+                    if (!r.ok) onToast(tr('ui.Wormhole.327'), true)
                     return
                   }
                   setDragFrom(kind)
@@ -3382,12 +3391,13 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
 
   return (
     <div className="app-wh-hold">
+      {newRun ? <WhSupplies engine={engine} /> : null}
       {/**
        * **临时空间待处理确认条**（船长 2026-09-14：「切换回探索界面触发丢弃（但是需要提醒玩家是否要丢弃物品
        * 并列出丢弃的物品列表）」＋「强制二选一：丢掉 或 放回」＋「撤离前必须清空」）：
        * 逐件列出（图标 + 名称 + 数量 + 是否失效），两个按钮 = 丢掉这些 / 放回货仓；谜质装置会失效。
        */}
-      {tempAsk !== null && tempPending.length > 0 ? (
+      {!newRun && tempAsk !== null && tempPending.length > 0 ? (
         <div className="app-wh-tempask">
           <div className="app-wh-tempask-title">
             {tr("ui.Wormhole.052")} <b>{tempPending.length}</b> {tr("ui.Wormhole.053")}{tempInfo.cells}/{tempInfo.capacity} {tr("ui.Wormhole.170")}
@@ -3440,7 +3450,8 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
           tip={tr("ui.Wormhole.174", { p1: n(WORMHOLE_SLOT_M3) })}
         />
       </div>
-      {info.overload ? (
+      {info.overload && newRun ? <p className="app-warn" role="alert">{tr('ui.whExpedition.034')} {tr('ui.whExpedition.033', { p1: info.used - info.capacity })}</p> : null}
+      {info.overload && !newRun ? (
         <div className="app-wh-hold-overload">
           <span>
             {tr("ui.Wormhole.232")}{info.used}/{info.capacity}{tr('ui.Wormhole.359')}
@@ -3466,7 +3477,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
            * 放外层 ⇒ 格板保持自然高度、块层跟着整块走，滚的只是外层窗口。
            */}
           <div className="app-wh-hold-scroll">
-            {boardView('hold', holdBoard, info.capacity, cols, rows, tr("ui.Wormhole.274"))}
+            {boardView('hold', holdBoard, holdCapacity, cols, rows, tr("ui.Wormhole.274"))}
           </div>
           <div className="app-wh-actions">
             <button
@@ -3514,11 +3525,11 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
          */}
         <div className="app-wh-hold-board-side">
           <div className="app-bay-title">
-            {tr("ui.Wormhole.059")} <b>{tempInfo.cells}</b> {tr("ui.Wormhole.376", { p1: tempInfo.capacity })}
-            {tempInfo.full ? <span className="app-wh-hold-warn">{tr('ui.Wormhole.283')}</span> : null}
+            {newRun ? tr('ui.whExpedition.023') : tr("ui.Wormhole.059")} <b>{tempInfo.cells}</b> {!newRun ? tr("ui.Wormhole.376", { p1: tempInfo.capacity }) : null}
+            {!newRun && tempInfo.full ? <span className="app-wh-hold-warn">{tr('ui.Wormhole.283')}</span> : null}
           </div>
           <div className="app-wh-hold-scroll is-temp">
-            {boardView('temp', tempBoard, WORMHOLE_TEMP_CELLS, WORMHOLE_TEMP_COLS, WORMHOLE_TEMP_ROWS, '')}
+            {boardView('temp', tempBoard, tempCapacity, WORMHOLE_TEMP_COLS, tempRows, '')}
           </div>
           <div className="app-wh-actions">
             <button
@@ -3531,13 +3542,14 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
             >
               {tr("ui.Wormhole.176")}
             </button>
-            <span className="app-dim">{tr("ui.Wormhole.177")}</span>
+            <span className="app-dim">{tr(newRun ? 'ui.whExpedition.027' : 'ui.Wormhole.177')}</span>
           </div>
           <div className="app-dim app-note">
-            {tr('ui.Wormhole.284')}
+            {tr(newRun ? 'ui.whExpedition.027' : 'ui.Wormhole.284')}
           </div>
         </div>
       </div>
+      {newRun ? <WhGroundList engine={engine} /> : null}
       {/* 货柜清单（形状件：位置读数 + 抛弃；散货条在下面的散货清单里按"类"处理） */}
       <div className="app-bay-title">{tr("ui.Wormhole.233")} {tr("ui.MarketPage.117", { p1: boxes })}</div>
       {boxes === 0 ? (
@@ -3569,6 +3581,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                   </span>
                 </div>
                 <div className="app-inv-btns">
+                  {newRun ? <button type="button" className="app-btn is-small" onClick={() => { const r = engine.wormholeLeaveCargoPiece(p.id); if (!r.ok) onToast(tr('ui.whExpedition.036'), true) }}>{tr('ui.whExpedition.025')}</button> : null}
                   {/* 谜质「时序核心」这类**回合类**装置：抛之前先问一句（船长 2026-09-13：「需要提醒玩家」） */}
                   {wormholeMatterDiscardHint(p.itemId) && askDiscard === p.id ? null : (
                     <button
@@ -3665,6 +3678,7 @@ const [askDiscard, setAskDiscard] = useState<string | null>(null)
                   </span>
                 </div>
                 <div className="app-inv-btns">
+                  {newRun ? <button type="button" className="app-btn is-small" onClick={() => { const r = engine.wormholeLeaveCargoPiece(p.id); if (!r.ok) onToast(tr('ui.whExpedition.036'), true) }}>{tr('ui.whExpedition.025')}</button> : null}
                   {asking ? null : (
                     <button
                       className="app-btn is-small is-warn"

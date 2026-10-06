@@ -48,3 +48,20 @@ export function setDebugEnabled(on: boolean): void {
     /* 存储被禁：忽略 */
   }
 }
+
+/** 新虫洞只在显式本机实验标记/隔离验收下开启，普通调试不改变信号空间入口。 */
+export function futureWormholeEnabled(): boolean {
+  if (!debugEnabled()) return false
+  try {
+    return localStorage.getItem('whale-idle:future-wormhole') === '1' || localStorage.getItem('whale-idle:wh-expedition-test') === '1'
+  } catch { return false }
+}
+
+export function setFutureWormholeEnabled(on: boolean): void {
+  if (!debugAllowed()) return
+  try {
+    if (on) localStorage.setItem('whale-idle:future-wormhole', '1')
+    else localStorage.removeItem('whale-idle:future-wormhole')
+    window.dispatchEvent(new Event('whale-future-wormhole-change'))
+  } catch { /* 存储被禁仍不开启。 */ }
+}

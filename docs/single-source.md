@@ -21,6 +21,16 @@
 | 限额慢补货：配置判据、初始化、周期进度、余额与统一核销 | `hasLimitedSupply()` / `ensureLimitedSupply()` / `advanceLimitedSupply()` / `limitedSupplyAvailable()` / `consumeLimitedSupply()` · `marketLimitedSupply.ts`；价格分档在 `market.ts:refreshLimitedSupplyBook()` | 市场限额专项、存档往返；`arch:guard` F2/F3；`content:check` 配置合法性 |
 | 武器组炮数与逐炮守恒分摊 | `volleyGunCountOf()` / `volleyDamageShareOf()` · `combatVolley.ts` | 逐炮齐射专项；`arch:guard` F2/F3 |
 | 黑市入口、候选资格、本地日界与下次刷新 | `blackMarketUnlocked()` / `blackMarketCandidateGoods()` / `blackMarketDayStart()` / `blackMarketNextRefresh()` · `blackMarket.ts` | `black-market-page-20261004.test.ts` · `arch:guard` F2/F3 |
+| 虫洞整备库存/容量预览、补给占格与撤离核对 | `wormholePreparationPlan()` · `wormholePreparation.ts`；`wormholeSupplyCells()` · `wormholeSupplies.ts`；`wormholeExtractionPlan()` · `wormholeExtraction.ts` | `wormhole-supplies-20261004.test.ts` / `wormhole-cargo-flow-20261004.test.ts`；`arch:guard` F2/F3 |
+| 虫洞当前地点实物格板（不建立免费随行空间） | `wormholeGroundBoard()` · `wormholeGround.ts` | `wormhole-cargo-flow-20261004.test.ts`：地点隔离、往返不复制、深入确认与数量守恒 |
+| 虫洞现役机群数量；旧一套备用辅助仅留核心回归、无界面入口 | `wormholePreparationPlan().deployedDrones` / `wormholePreparationFillPlan()` · `wormholePreparation.ts` | `wormhole-supplies-20261004.test.ts`：四舰、混合机型、缺货、超容、预览不扣货；`arch:guard` F2/F3 |
+| 虫洞多模板保存/清洗与按模板补齐（总量包含已有货，含明确0） | `cleanWormholePreparationTemplates()` / `wormholeTemplateFillPlan()` · `wormholePreparationTemplates.ts` | `wormhole-preparation-templates-20261006.test.ts` / `wormhole-expedition-ui-20261004.test.ts`：缺货、超容、已有货超目标、卸港、保存往返 |
+| 旧信号空间与未来虫洞命名、历史文本保留 | `signalSpaceTextId()` · `explorationText.ts`；客户端`futureWormholeEnabled()` · `debugFlag.ts` | `signal-space-identity-20261006.test.ts`：旧坐标/新实验标记/历史日志/明确门禁；新日志写入时锁定ID，不重写存档历史 |
+| 虫洞第二批事件费用/后果、出发补给包与有限巡逻 | `wormholeEventPreview()` · `wormholeExpedition.ts`；`wormholeSupplyPackageOf()` · `wormholePreparation.ts`；`wormholePatrolAfterAction()` · `wormholePatrol.ts` | 仅显式新规则测试趟；一次性、费用、警戒名额与存档往返用例；`arch:guard` F2/F3 |
+| 虫洞新规则实际敌方血/火力预算与机制编成 | `wormholeExpeditionCard()` · `wormholeExpeditionFoes.ts` | 独立副本卡、不改变共用舰级；实际属性反推显示威胁；开战/续战/视图同源；新规则敌人用例及十层工具 |
+| 虫洞自动新模式与十层工具的真实决策策略 | `wormholeRunExpeditionPolicy()` · `wormholeExpeditionPolicy.ts` | 只读已揭露信息、逐拍真实战斗、不补料不跳层；独立模拟状态，限定回写结果 |
+| 虫洞已知守卫战前只读风险预估 | `wormholeGuardRiskPreview()` · `wormholeExpeditionPolicy.ts` | 三份固定独立随机副本、真战斗引擎和有限物资；不改真实账，必须交火时不提供脱离 |
+| 虫洞事件/警戒/已揭露敌情展示 | `wormholeEventView()` / `wormholeAlertView()` / `wormholeEncounterView()` · `wormholeExpeditionView.ts` | 费用与后果复用事务预览；敌卡复用战斗派生；未知地点不泄露情报 |
 | 纯货舰模块能力兼容（安装/换装/候选/建档/修复同源） | `moduleAllowedOnShip()` · `shipFitting.ts` | `hauler-balance-20261004.test.ts`；`arch:guard` F2/F3 |
 | 入侵残骸每族余额/箱子读数与旧账迁移 | `weekendWreckPoolsOf()` · `salvage.ts`；`normalizeWeekendWreckRecord()` · `weekendWreckLedger.ts` | `invasion-ledger-20261003.test.ts`：多族守恒、迁移、独立衰减与满舱不丢货 |
 | 聚焦阵列波内射程/防空加算修正率 | `coronaFocusBonusOf()` · `coronaFocus.ts` | `corona-balance-20261003.test.ts`：时点/换波/加算抵消/真实近防入口 |

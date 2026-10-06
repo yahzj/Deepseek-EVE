@@ -133,7 +133,8 @@ export const EN_SHIPS: EnTable = {
   },
   'sh-nautilus': {
     name: 'Nautilus-class Survey Cruiser',
-    description: 'An Association survey cruiser: joining a wormhole fleet widens scan range by one ring (multiple ships stack).',
+    // ⟪文案调整2026-10-06⟫ 扫描半径为新旧探索共享效果。
+    description: 'An Association survey cruiser: joining an exploration fleet widens scan range inside the space by one ring (multiple ships stack).',
   },
   // ── 重装 / 旗舰
   'sh-tortoise': {
@@ -168,7 +169,8 @@ export const EN_SHIPS: EnTable = {
   // ── 虫洞族舰（敌舰模板名，不带 -class）
   'sh-wh-a-frigate': {
     name: 'Raider EW Frigate',
-    description: 'A pirate electronic-warfare boat: strong in fire control and evasion — it locks first, hits first, and is harder to pin. Joining a wormhole fleet widens scan range by one ring (multiple ships stack).',
+    // ⟪文案调整2026-10-06⟫ 扫描半径为新旧探索共享效果。
+    description: 'A pirate electronic-warfare boat: strong in fire control and evasion — it locks first, hits first, and is harder to pin. Joining an exploration fleet widens scan range inside the space by one ring (multiple ships stack).',
   },
   'sh-wh-a-destroyer': {
     name: 'Raider Gunboat',
@@ -192,7 +194,8 @@ export const EN_SHIPS: EnTable = {
   },
   'sh-wh-d-frigate': {
     name: 'Sentry EW Frigate',
-    description: 'A mausoleum electronic sentry: thick shields over thin armor, with fire control and evasion both raised to open fire before the fleet. Joining a wormhole fleet widens scan range by one ring (multiple ships stack).',
+    // ⟪文案调整2026-10-06⟫ 扫描半径为新旧探索共享效果。
+    description: 'A mausoleum electronic sentry: thick shields over thin armor, with fire control and evasion both raised to open fire before the fleet. Joining an exploration fleet widens scan range inside the space by one ring (multiple ships stack).',
   },
   'sh-wh-d-destroyer': {
     name: 'Tombwarden Command Ship',
@@ -216,7 +219,8 @@ export const EN_SHIPS: EnTable = {
   },
   'sh-wh-g-frigate': {
     name: 'Wraith Scout Frigate',
-    description: 'A deadarmy scout: very high evasion with solid fire control. Joining a wormhole fleet widens scan range by one ring (multiple ships stack) — it is the one that sees the others first.',
+    // ⟪文案调整2026-10-06⟫ 扫描半径为新旧探索共享效果。
+    description: 'A deadarmy scout: very high evasion with solid fire control. Joining an exploration fleet widens scan range inside the space by one ring (multiple ships stack) — it is the one that sees the others first.',
   },
   'sh-wh-g-destroyer': {
     name: 'Deadarmy Logistics Ship',
@@ -255,11 +259,12 @@ export const EN_MODULES: EnTable = {
   'mod-dc-2': { name: 'Damage Control Unit MK2', description: L10N['mod.copy.031']!.en },
   'mod-dc-3': { name: 'Damage Control Unit MK3', description: L10N['mod.copy.031']!.en },
   // 采集 / 货舱
-  'mod-miner-civ': { name: 'Civilian Mining Laser', description: L10N['mod.copy.001']!.en },
-  'mod-miner-1': { name: 'Reinforced Mining Laser MK1', description: L10N['mod.copy.001']!.en },
-  'mod-miner-2': { name: 'Reinforced Mining Laser MK2', description: L10N['mod.copy.001']!.en },
-  'mod-miner-3': { name: 'Precision Mining Laser MK3', description: L10N['mod.copy.001']!.en },
-  'mod-miner-proto': { name: 'Alien Prototype Mining Laser', description: L10N['mod.copy.002']!.en },
+  // ⟪文案调整2026-10-06⟫ 旧来源说明取新表项，不重写历史正文。
+  'mod-miner-civ': { name: 'Civilian Mining Laser', description: L10N['mod.signalSpace.001']!.en },
+  'mod-miner-1': { name: 'Reinforced Mining Laser MK1', description: L10N['mod.signalSpace.001']!.en },
+  'mod-miner-2': { name: 'Reinforced Mining Laser MK2', description: L10N['mod.signalSpace.001']!.en },
+  'mod-miner-3': { name: 'Precision Mining Laser MK3', description: L10N['mod.signalSpace.001']!.en },
+  'mod-miner-proto': { name: 'Alien Prototype Mining Laser', description: L10N['mod.signalSpace.002']!.en },
   'mod-cargo-civ': { name: 'Civilian Cargo Expander', description: L10N['mod.copy.003']!.en },
   'mod-cargo-1': { name: 'Cargo Expander MK1', description: L10N['mod.copy.003']!.en },
   'mod-cargo-2': { name: 'Cargo Expander MK2', description: L10N['mod.copy.003']!.en },
@@ -359,9 +364,10 @@ export const EN_MODULES: EnTable = {
   'mod-cpu-1': { name: 'Coprocessor MK1', description: L10N['mod.copy.042']!.en },
   'mod-cpu-2': { name: 'Coprocessor MK2', description: L10N['mod.copy.042']!.en },
   'mod-cpu-3': { name: 'Coprocessor MK3', description: L10N['mod.copy.043']!.en },
-  'mod-salvager-1': { name: 'Salvager MK1', description: L10N['mod.copy.044']!.en },
-  'mod-salvager-2': { name: 'Salvager MK2', description: L10N['mod.copy.044']!.en },
-  'mod-salvager-3': { name: 'Salvager MK3', description: L10N['mod.copy.044']!.en },
+  // ⟪文案调整2026-10-06⟫ 旧来源说明取新表项，不重写历史正文。
+  'mod-salvager-1': { name: 'Salvager MK1', description: L10N['mod.signalSpace.003']!.en },
+  'mod-salvager-2': { name: 'Salvager MK2', description: L10N['mod.signalSpace.003']!.en },
+  'mod-salvager-3': { name: 'Salvager MK3', description: L10N['mod.signalSpace.003']!.en },
   'mod-hullrep-civ': { name: 'Civilian Hull Repair Unit', description: L10N['mod.copy.045']!.en },
   'mod-hullrep-1': { name: 'Hull Repair Unit MK1', description: L10N['mod.copy.046']!.en },
   'mod-hullrep-2': { name: 'Hull Repair Unit MK2', description: L10N['mod.copy.046']!.en },
@@ -436,7 +442,8 @@ export const EN_ITEMS: EnTable = {
   'ore-sunshard': { name: 'Dawnshard Crystal', description: L10N['item.copy.005']!.en },
   'ore-voidshard': { name: 'Voidcrystal', description: L10N['item.copy.006']!.en },
   'ore-nebulite': { name: 'Starwraith Ore', description: L10N['item.copy.007']!.en },
-  'ore-voidmother': { name: 'Voidmother Ore', description: L10N['item.copy.008']!.en },
+  // ⟪文案调整2026-10-06⟫ 旧来源说明取新表项，不重写历史正文。
+  'ore-voidmother': { name: 'Voidmother Ore', description: L10N['item.signalSpace.001']!.en },
   // 精炼产物
   'min-tritanium': { name: 'Tritanium Alloy', description: L10N['item.copy.009']!.en },
   'min-pyerite': { name: 'Silvervein Supermetal', description: L10N['item.copy.010']!.en },
@@ -504,31 +511,33 @@ export const EN_ITEMS: EnTable = {
   /* 损管修理组件（2026-09-25 船长令：损伤管制装置启动时消耗的那一种，与民用/军用修理组件同族） */
   'repairkit-dc': { name: 'Damage Control Repair Kit', description: L10N['item.copy.057']!.en },
   // 谜质装置（Enigma Device）—— 尾句统一复用 T_WORM
-  'mat-surveyor': { name: 'Deepspace Surveyor', description: L10N['item.copy.066']!.en },
-  'mat-chrono': { name: 'Chrono Core', description: L10N['item.copy.067']!.en },
-  'mat-crane': { name: 'Salvage Crane', description: L10N['item.copy.068']!.en },
-  'mat-drill': { name: 'Mining Drill', description: L10N['item.copy.069']!.en },
-  'mat-nebula': { name: 'Nebula Disperser', description: L10N['item.copy.070']!.en },
-  'mat-enricher': { name: 'Voidmother Enricher', description: L10N['item.copy.071']!.en },
-  'mat-expander': { name: 'Hold Expander', description: L10N['item.copy.072']!.en },
-  'mat-suppressor': { name: 'Suppression Field', description: L10N['item.copy.073']!.en },
-  'mat-boss-analyzer': { name: 'Guardian Analyzer', description: L10N['item.copy.074']!.en },
-  'mat-extract-cover': { name: 'Extraction Cover', description: L10N['item.copy.075']!.en },
-  'mat-shield-res': { name: 'Shield Resonance Plate', description: L10N['item.copy.076']!.en },
-  'mat-armor-res': { name: 'Armor Reinforcement Plate', description: L10N['item.copy.077']!.en },
-  'mat-hull-res': { name: 'Hull Reinforcement Plate', description: L10N['item.copy.078']!.en },
-  'mat-tracker': { name: 'Tracking Array', description: L10N['item.copy.079']!.en },
-  'mat-gyro': { name: 'Gyro Stabilizer', description: L10N['item.copy.080']!.en },
-  'mat-jammer': { name: 'Jammer Emitter', description: L10N['item.copy.081']!.en },
-  'mat-rangefinder': { name: 'Rangefinder Extender', description: L10N['item.copy.082']!.en },
-  'mat-blindspot': { name: 'Blindspot Suppressor', description: L10N['item.copy.083']!.en },
-  'mat-ammo-dmg': { name: 'Ammo Enhancer', description: L10N['item.copy.084']!.en },
-  'mat-reload': { name: 'Reload Accelerator', description: L10N['item.copy.085']!.en },
-  'mat-volley': { name: 'Volley Coordinator', description: L10N['item.copy.086']!.en },
-  'mat-ammo-back': { name: 'Ammo Recovery Unit', description: L10N['item.copy.087']!.en },
-  'mat-drone-net': { name: 'Drone Recovery Net', description: L10N['item.copy.088']!.en },
-  'mat-field-repair': { name: 'Field Repair Unit', description: L10N['item.copy.089']!.en },
-  'mat-wh-essence': { name: 'Wormhole Enigma', description: L10N['item.copy.090']!.en },
+  // ⟪文案调整2026-10-06⟫ 析出产物改名信号谜质，说明仍读唯一表。
+  'mat-surveyor': { name: 'Deepspace Surveyor', description: L10N['item.signalSpace.002']!.en },
+  'mat-chrono': { name: 'Chrono Core', description: L10N['item.signalSpace.003']!.en },
+  'mat-crane': { name: 'Salvage Crane', description: L10N['item.signalSpace.004']!.en },
+  'mat-drill': { name: 'Mining Drill', description: L10N['item.signalSpace.005']!.en },
+  'mat-nebula': { name: 'Nebula Disperser', description: L10N['item.signalSpace.006']!.en },
+  'mat-enricher': { name: 'Voidmother Enricher', description: L10N['item.signalSpace.007']!.en },
+  'mat-expander': { name: 'Hold Expander', description: L10N['item.signalSpace.008']!.en },
+  'mat-suppressor': { name: 'Suppression Field', description: L10N['item.signalSpace.009']!.en },
+  'mat-boss-analyzer': { name: 'Guardian Analyzer', description: L10N['item.signalSpace.010']!.en },
+  'mat-extract-cover': { name: 'Extraction Cover', description: L10N['item.signalSpace.011']!.en },
+  'mat-shield-res': { name: 'Shield Resonance Plate', description: L10N['item.signalSpace.012']!.en },
+  'mat-armor-res': { name: 'Armor Reinforcement Plate', description: L10N['item.signalSpace.013']!.en },
+  'mat-hull-res': { name: 'Hull Reinforcement Plate', description: L10N['item.signalSpace.014']!.en },
+  'mat-tracker': { name: 'Tracking Array', description: L10N['item.signalSpace.015']!.en },
+  'mat-gyro': { name: 'Gyro Stabilizer', description: L10N['item.signalSpace.016']!.en },
+  'mat-jammer': { name: 'Jammer Emitter', description: L10N['item.signalSpace.017']!.en },
+  'mat-rangefinder': { name: 'Rangefinder Extender', description: L10N['item.signalSpace.018']!.en },
+  'mat-blindspot': { name: 'Blindspot Suppressor', description: L10N['item.signalSpace.019']!.en },
+  'mat-ammo-dmg': { name: 'Ammo Enhancer', description: L10N['item.signalSpace.020']!.en },
+  'mat-reload': { name: 'Reload Accelerator', description: L10N['item.signalSpace.021']!.en },
+  'mat-volley': { name: 'Volley Coordinator', description: L10N['item.signalSpace.022']!.en },
+  'mat-ammo-back': { name: 'Ammo Recovery Unit', description: L10N['item.signalSpace.023']!.en },
+  'mat-drone-net': { name: 'Drone Recovery Net', description: L10N['item.signalSpace.024']!.en },
+  'mat-field-repair': { name: 'Field Repair Unit', description: L10N['item.signalSpace.025']!.en },
+  // ⟪文案调整2026-10-06⟫ 仅改既有资产译名，物品标识不动。
+  'mat-wh-essence': { name: 'Signal Enigma', description: L10N['item.copy.090']!.en },
   // 入侵旗舰黑匣（2026-09-25 船长「先做壳」）：只做壳 ⇒ 可存/可回收/可售，用途留待改装件那批
   'blackbox-universal': { name: 'Universal Black Box', description: L10N['item.copy.108']!.en },
   'blackbox-h': { name: 'Ink Tide Flagship Black Box', description: L10N['item.copy.106']!.en },
@@ -647,12 +656,13 @@ export const EN_SKILLS: EnTable = {
   marketing: { name: 'Marketing', description: 'Cargo presentation and channel sales: +⟦1.2%⟧ market sale settlement price per level (max +⟦6%⟧, multiplied with Association standing bonuses).' },
   'source-sweeping': { name: 'Source Sweeping', description: 'Supply-chain intelligence network: rare and limited market orders refresh ×⟦1.1⟧ per level (about ×⟦1.5⟧ maxed).' },
   'secondhand-market': { name: 'Secondhand Market', description: 'Secondhand market channels: −⟦2%⟧ supply price of rare market goods per level (max −⟦10%⟧).' },
-  'signal-analysis': { name: 'Signal Analysis', description: 'Unknown signal interpretation and locking: −⟦8%⟧ local and wormhole scan window per level (max −⟦40%⟧).' },
-  cartography: { name: 'Cartography', description: 'Route calibration and jump window optimization: −⟦6%⟧ local and wormhole scan window per level (max −⟦30%⟧; stacks multiplicatively with Signal Analysis and Signal Filtering).' },
-  'signal-filtering': { name: 'Signal Filtering', description: 'Interference suppression and signal purification: a further −⟦6%⟧ local and wormhole scan window per level (stacks multiplicatively with Signal Analysis).' },
-  'galactic-happenings': { name: 'Galactic Happenings', description: 'A nose for curiosities: −⟦8%⟧ interval between online random events per level (about sixty percent of the base at max); the chance of a random event on departure is ×⟦1.15⟧ per level; the wormhole scan window shortens by ⟦4%⟧ per level (max −⟦20%⟧).' },
-  'event-dividend': { name: 'Event Dividend', description: 'Turning every coincidence into income: +⟦15%⟧ cash from random events per level; luck reaches into wormholes too — the chance of an empty location in the hole is relatively cut by ⟦4%⟧ per level (max −⟦20%⟧).' },
-  'chart-archive': { name: 'Chart Archive', description: 'Deep-space charts and wormhole archives: +⟦2⟧ wormholes that can be kept on the star map per level (max +⟦10⟧, from 5 to 15).' },
+  // ⟪文案调整2026-10-06⟫ 扫描、空白地点与坐标库存同步中文；技能名与数字不动。
+  'signal-analysis': { name: 'Signal Analysis', description: 'Unknown signal interpretation and locking: −⟦8%⟧ local and Signal Space scan window per level (max −⟦40%⟧).' },
+  cartography: { name: 'Cartography', description: 'Route calibration and jump window optimization: −⟦6%⟧ local and Signal Space scan window per level (max −⟦30%⟧; stacks multiplicatively with Signal Analysis and Signal Filtering).' },
+  'signal-filtering': { name: 'Signal Filtering', description: 'Interference suppression and signal purification: a further −⟦6%⟧ local and Signal Space scan window per level (stacks multiplicatively with Signal Analysis).' },
+  'galactic-happenings': { name: 'Galactic Happenings', description: 'A nose for curiosities: −⟦8%⟧ interval between online random events per level (about sixty percent of the base at max); the chance of a random event on departure is ×⟦1.15⟧ per level; the Signal Space scan window shortens by ⟦4%⟧ per level (max −⟦20%⟧).' },
+  'event-dividend': { name: 'Event Dividend', description: 'Turning every coincidence into income: +⟦15%⟧ cash from random events per level; luck reaches into Signal Spaces too — the chance of an empty location inside the space is relatively cut by ⟦4%⟧ per level (max −⟦20%⟧).' },
+  'chart-archive': { name: 'Chart Archive', description: 'Deep-space charts and Signal Space archives: +⟦2⟧ Signal Space coordinates that can be kept on the star map per level (max +⟦10⟧, from 5 to 15).' },
   'salvage-diving': { name: 'Salvage Diving', description: 'Wreck salvage and loot collection: +⟦12%⟧ expedition loot volume and salvage yield per level (applies to the player ship and AI alike).' },
   'seizure-appraisal': { name: 'Seizure Appraisal', description: 'Loot appraisal and fencing channels: +⟦10%⟧ credits seized from Low-sec repulses and victories per level.' },
   'lowsec-survival': { name: 'Low-sec Survival', description: 'Staying alive in dangerous space: −⟦12%⟧ cap on cargo seized in Low-sec per level (max −⟦60%⟧).' },
@@ -711,7 +721,8 @@ const WRECK_FAMILY_EN: Readonly<Record<string, string>> = {
 const WRECK_AREA_EN: Readonly<Record<string, string>> = {
   hi: 'High-sec',
   lo: 'Low-sec',
-  wh: 'Wormhole',
+  // ⟪文案调整2026-10-06⟫ 动态残骸名称与说明共用新来源名。
+  wh: 'Signal Space',
   // 2026-09-26 船长令「H族残骸不分高安低安，统一为入侵残骸（新增一个类别）」⇒ 区名多一档
   inv: 'Invasion',
 }
@@ -992,65 +1003,66 @@ export const EN_ANOMALIES: EnTable = {
     description: 'Low-sec encounter template: a high-risk butcher fleet (hidden).',
   },
   // 虫洞敌卡（15，hidden ⇒ 不进悬赏目录，但战斗/虫洞页会显示）
+  // ⟪文案调整2026-10-06⟫ 新实验趟也克隆这些说明，来源泛称空间内探索。
   'wh-pirate-scout': {
     name: 'Raider Detachment',
-    description: 'Wormhole encounter: a small raiding detachment (hidden card, spawned by the wormhole only).',
+    description: 'Encounter inside the space: a small raiding detachment (hidden card, encountered during space exploration only).',
   },
   'wh-pirate-hunt': {
     name: 'Raider Hunt',
-    description: 'Wormhole encounter: raider hunters covering each other, one near and one far (hidden card, spawned by the wormhole only).',
+    description: 'Encounter inside the space: raider hunters covering each other, one near and one far (hidden card, encountered during space exploration only).',
   },
   'wh-pirate-warband': {
     name: 'Pirate Warband',
-    description: 'Wormhole encounter: a pirate warband with the warlord himself in the line (hidden card, spawned by the wormhole only).',
+    description: 'Encounter inside the space: a pirate warband with the warlord himself in the line (hidden card, encountered during space exploration only).',
   },
   'wh-alien-swarm': {
     name: 'Starcore Hunting Swarm',
-    description: 'Wormhole encounter: a hunting pack of starcore adults (hidden card, spawned by the wormhole only).',
+    description: 'Encounter inside the space: a hunting pack of starcore adults (hidden card, encountered during space exploration only).',
   },
   'wh-alien-brood': {
     name: 'Spore Brood Tide',
-    description: 'Wormhole encounter: spore aberrants leading starcore adults in (hidden card, spawned by the wormhole only).',
+    description: 'Encounter inside the space: spore aberrants leading starcore adults in (hidden card, encountered during space exploration only).',
   },
   'wh-alien-hive': {
     name: 'Maw Deep Hive',
-    description: 'Wormhole encounter: a deep hive where the maw behemoth lairs (hidden card, spawned by the wormhole only).',
+    description: 'Encounter inside the space: a deep hive where the maw behemoth lairs (hidden card, encountered during space exploration only).',
   },
   'wh-grave-watch': {
     name: 'Gravekeeper Patrol',
-    description: 'Wormhole encounter: a patrol formation left behind by the gravekeepers (hidden card, spawned by the wormhole only).',
+    description: 'Encounter inside the space: a patrol formation left behind by the gravekeepers (hidden card, encountered during space exploration only).',
   },
   'wh-grave-sentry': {
     name: 'Stasis Sentry Chain',
-    description: 'Wormhole encounter: two stasis sentry links, one near and one far (hidden card, spawned by the wormhole only).',
+    description: 'Encounter inside the space: two stasis sentry links, one near and one far (hidden card, encountered during space exploration only).',
   },
   'wh-grave-throne': {
     name: 'Mausoleum Court',
-    description: 'Wormhole encounter: the throne guard at the deepest point of the mausoleum (hidden card, spawned by the wormhole only).',
+    description: 'Encounter inside the space: the throne guard at the deepest point of the mausoleum (hidden card, encountered during space exploration only).',
   },
   'wh-titan-echo': {
     name: 'Titan Echo',
-    description: 'Wormhole encounter: a megastructure wreck still discharging, with its sentry swarm (hidden card, spawned by the wormhole only).',
+    description: 'Encounter inside the space: a megastructure wreck still discharging, with its sentry swarm (hidden card, encountered during space exploration only).',
   },
   'wh-titan-missile': {
     name: 'Missile Echo',
-    description: 'Wormhole encounter: a missile section still firing salvoes (hidden card, spawned by the wormhole only).',
+    description: 'Encounter inside the space: a missile section still firing salvoes (hidden card, encountered during space exploration only).',
   },
   'wh-titan-hulk': {
     name: 'Titan Onslaught',
-    description: 'Wormhole encounter: a whole megastructure wreck section with its sentry swarm (hidden card, spawned by the wormhole only).',
+    description: 'Encounter inside the space: a whole megastructure wreck section with its sentry swarm (hidden card, encountered during space exploration only).',
   },
   'wh-exile-blockade': {
     name: 'Deadarmy Blockade',
-    description: 'Wormhole encounter: a blockade squad of the deadarmy (hidden card, spawned by the wormhole only).',
+    description: 'Encounter inside the space: a blockade squad of the deadarmy (hidden card, encountered during space exploration only).',
   },
   'wh-exile-swarm': {
     name: 'Echo Swarm',
-    description: 'Wormhole encounter: a swarm formed by two echo remnant ships (hidden card, spawned by the wormhole only).',
+    description: 'Encounter inside the space: a swarm formed by two echo remnant ships (hidden card, encountered during space exploration only).',
   },
   'wh-exile-line': {
     name: 'Remnant Battle Line',
-    description: "Wormhole encounter: the deadarmy's last battle line with its swarm escort (hidden card, spawned by the wormhole only).",
+    description: "Encounter inside the space: the deadarmy's last battle line with its swarm escort (hidden card, encountered during space exploration only).",
   },
   // H 族（墨潮帮）· 周末入侵的四张独立敌卡（2026-09-24 船长逐条给定编成）
   'ink-harass': {
@@ -1791,26 +1803,28 @@ export const EN_MATTER_TECH: EnTable = {
  * 时序核心 = Chrono Core · 虚空母矿 = Void Ore）；③ 不写原因解释。
  */
 export const EN_MATTER_TECH_NOTES: Readonly<Record<string, string>> = {
-  'mt-explore-turn': 'Each level raises the maximum turn count for wormhole exploration by 10 (a permanent bonus; it adds to any Chrono Core carried into the run).',
+  // ⟪文案调整2026-10-06⟫ 共享探索与战斗效果泛称空间内；旧扫描入口单独改名。
+  'mt-explore-turn': 'Each level raises the maximum turn count for exploration inside the space by 10 (a permanent bonus; it adds to any Chrono Core carried into the run).',
   'mt-explore-salvage': 'Each level raises salvager efficiency by 20%: every salvage run pulls extra piles in proportion (each full 100% is one guaranteed extra pile, the remainder by chance).',
   'mt-explore-collect': 'Each level raises mining laser efficiency by 20%: every mining cycle takes extra piles in proportion (each full 100% is one guaranteed extra pile, the remainder by chance).',
-  'mt-explore-hold': 'Each level adds 4 effective slots to the wormhole hold.',
-  'mt-explore-scan': 'Each level shortens the scan interval of “Scan for wormholes” by 5% (multiplied with the skill chain).',
-  'mt-explore-speed': 'Unlocks battle speed multiplier inside wormholes: level 1 ×2, level 2 ×4 (switch back to ×1 at any time during a fight).',
-  'mt-battle-shield': 'Each level cuts the shield layer’s resistance gap against the enemy’s main damage type by 5% (wormhole battles only).',
-  'mt-battle-armor': 'Each level cuts the armor layer’s resistance gap against the enemy’s main damage type by 5% (wormhole battles only).',
-  'mt-battle-hull': 'Each level cuts the hull layer’s resistance gap against the enemy’s main damage type by 5% (wormhole battles only; requires Resonant Shield Array and Armor Realignment at level 1 each).',
-  'mt-battle-hit': 'Each level raises our accuracy by 1% (wormhole battles only).',
-  'mt-battle-evasion': 'Each level raises our evasion by 1% (wormhole battles only).',
-  'mt-battle-noise': 'Each level lowers enemy accuracy by 1% (wormhole battles only).',
-  'mt-battle-range': 'Each level raises the range of all our weapons by 4% (wormhole battles only).',
-  'mt-battle-reload': 'Each level shortens our weapon reload cycle by 3% (wormhole battles only).',
-  'mt-battle-damage': 'Each level raises our damage per shot by 3% (wormhole battles only).',
-  'mt-battle-blind': 'Each level lowers the damage the enemy deals inside its blind zone by 5% (wormhole battles only).',
-  'mt-battle-threat-node': 'Each level lowers enemy threat in wormhole node battles by 3%.',
-  'mt-battle-threat-boss': 'Each level lowers the threat of the guardian at the end of a wormhole layer by 3%.',
-  'mt-battle-drone': 'Each level raises the recovery rate of drones shot down by 5% (wormhole battles only).',
-  'mt-battle-repair': 'Each level restores 10% of armor and hull after a battle ends (wormhole battles only).',
+  // ⟪文案调整2026-10-06⟫ 新旧共享说明同步中文，不限定为仅信号空间有效。
+  'mt-explore-hold': 'Each level adds 4 effective slots to the hold inside the space.',
+  'mt-explore-scan': 'Each level shortens the scan interval of “Scan for Signal Spaces” by 5% (multiplied with the skill chain).',
+  'mt-explore-speed': 'Unlocks battle speed multiplier inside the space: level 1 ×2, level 2 ×4 (switch back to ×1 at any time during a fight).',
+  'mt-battle-shield': 'Each level cuts the shield layer’s resistance gap against the enemy’s main damage type by 5% (battles inside the space only).',
+  'mt-battle-armor': 'Each level cuts the armor layer’s resistance gap against the enemy’s main damage type by 5% (battles inside the space only).',
+  'mt-battle-hull': 'Each level cuts the hull layer’s resistance gap against the enemy’s main damage type by 5% (battles inside the space only; requires Resonant Shield Array and Armor Realignment at level 1 each).',
+  'mt-battle-hit': 'Each level raises our accuracy by 1% (battles inside the space only).',
+  'mt-battle-evasion': 'Each level raises our evasion by 1% (battles inside the space only).',
+  'mt-battle-noise': 'Each level lowers enemy accuracy by 1% (battles inside the space only).',
+  'mt-battle-range': 'Each level raises the range of all our weapons by 4% (battles inside the space only).',
+  'mt-battle-reload': 'Each level shortens our weapon reload cycle by 3% (battles inside the space only).',
+  'mt-battle-damage': 'Each level raises our damage per shot by 3% (battles inside the space only).',
+  'mt-battle-blind': 'Each level lowers the damage the enemy deals inside its blind zone by 5% (battles inside the space only).',
+  'mt-battle-threat-node': 'Each level lowers enemy threat in node battles inside the space by 3%.',
+  'mt-battle-threat-boss': 'Each level lowers the threat of the guardian at the end of a layer inside the space by 3%.',
+  'mt-battle-drone': 'Each level raises the recovery rate of drones shot down by 5% (battles inside the space only).',
+  'mt-battle-repair': 'Each level restores 10% of armor and hull after a battle ends (battles inside the space only).',
   'mt-industry-unbox': 'Each level shortens the container unboxing cycle by 25%.',
   'mt-industry-void': 'Each level raises the Void Crystal yield from refining Void Ore by 10%.',
   'mt-industry-wreck': 'Each level raises the guaranteed raw material output of wreck recovery by 5%.',
@@ -1893,6 +1907,7 @@ export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
     items: overlayMap(ctx.items, EN_ITEMS_ALL, locale),
     skills: overlayMap(ctx.skills, EN_SKILLS, locale),
     anomalies: overlayCardFoes(overlayMap(ctx.anomalies, EN_ANOMALIES, locale), EN_FOE_SHIPS, locale),
+    ...(ctx.foeShips ? { foeShips: overlayMap(ctx.foeShips, EN_FOE_SHIPS, locale) } : {}),
     blueprints: overlayMap(ctx.blueprints, EN_BLUEPRINTS, locale),
     shipBlueprints: overlayMap(ctx.shipBlueprints, EN_SHIP_BLUEPRINTS, locale),
     galaxies: overlayMap(ctx.galaxies, EN_GALAXIES, locale),

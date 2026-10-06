@@ -21,6 +21,7 @@ import { goFor } from '../ui/activityGo'
 // 活动栏「停止/取消」按钮文案 = 单点（两套外壳共用，见文件头注）
 import { stopLabel } from './activityStopLabel'
 import { fmtDuration } from '../i18n/fmt'
+import { explorationActivityText } from '../ui/explorationActivityText'
 
 const KIND_ICON: Record<string, string> = {
   train: 'nav-skills',
@@ -139,7 +140,7 @@ export function ActivityBar({
   onOpenWormhole?: () => void
 }) {
   const state = engine.state
-  const all = activityOverview(state, engine.ctx)
+  const all = activityOverview(state, engine.ctx).map(explorationActivityText)
   // 船长 2026-09-05：活动窗口垂直排布；「玩家活动」「技能训练」两个常驻分区，各自待机文案；AI 用徽标
   // 2026-09-08：AI 徽标计数 = AI 副船 + AI 核心驱动的生产线/精炼炉（后者不再占用"玩家活动"行）
   // 2026-09-10 船长：徽标**拆成两枚**——「副船」与「工业」各一枚（图标与配色不同，便于辨识）；

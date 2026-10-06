@@ -375,7 +375,8 @@ describe('英文覆盖层（P2）', () => {
     }
     expect(noDesc, `这些异常点还没有英文说明：${noDesc.slice(0, 8).join(', ')}`).toEqual([])
     expect(en.anomalies.get('ano-maw-hunt')?.description).toContain('Star Maw')
-    expect(en.anomalies.get('wh-pirate-scout')?.description).toContain('spawned by the wormhole only')
+    // §21：新旧探索共享敌卡，来源说明保留空间探索泛称。
+    expect(en.anomalies.get('wh-pirate-scout')?.description).toContain('encountered during space exploration only')
   })
 
   it('星系 / 矿带 / 站点 / 残骸说明：全部有英文说明且不残留中日韩字符', () => {
@@ -402,7 +403,7 @@ describe('英文覆盖层（P2）', () => {
     expect(en.belts.get('belt-fortune')?.description).toContain('never exhausted')
     expect(en.stations.get('site-cinder')?.description).toContain('Tritanium Alloy')
     expect(en.items.get('wreck-a-hi')?.description).toContain('Wreck Recycling')
-    expect(en.items.get('wreck-rare-g-wh')?.description).toContain('Deadarmy (Wormhole)')
+    expect(en.items.get('wreck-rare-g-wh')?.description).toContain('Deadarmy (Signal Space)')
   })
 
   it('蓝图说明：135 条装备/物品蓝图全部有英文说明，且不残留中日韩字符', () => {

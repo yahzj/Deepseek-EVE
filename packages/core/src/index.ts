@@ -2136,5 +2136,25 @@ export {
  * 装配校验与装配页格数共用同一把尺；`installPlug` 里同步就地补齐位数组。
  */
 export { plugSlotAddsOf, shipSlotsWithPlugsOf } from './plugs'
+export { wormholePreparationPlan, wormholePreparationFillPlan, wormholeEnterPrepared } from './wormholePreparation'
+export type { WormholePreparationRequest, WormholePreparationPlan, WormholePreparedResult } from './wormholePreparation'
+export { WORMHOLE_TEMPLATE_MAX, WORMHOLE_TEMPLATE_NAME_MAX, cleanWormholePreparationTemplates, wormholeSavePreparationTemplate, wormholeRenamePreparationTemplate, wormholeDeletePreparationTemplate, wormholeTemplateFillPlan } from './wormholePreparationTemplates'
+export type { WormholePreparationTemplate, WormholeTemplateResult } from './wormholePreparationTemplates'
+export { signalSpaceTextId, SIGNAL_SPACE_TEXT_IDS } from './explorationText'
+export { wormholeEventAt, wormholeEventActions, wormholeEventPreview, wormholeResolveEvent, wormholeFreezeEvents } from './wormholeExpedition'
+export type { WormholeEventAction, WormholeEventPreview } from './wormholeExpedition'
+export { wormholeExpeditionCard, wormholeExpeditionFoeSpecs, wormholeExpeditionStrengthOf } from './wormholeExpeditionFoes'
+export type { WormholeExpeditionFoeContext, WormholeExpeditionFoeRole, WormholeExpeditionFoeCard } from './wormholeExpeditionFoes'
+export { wormholeRunExpeditionPolicy, wormholeGuardRiskPreview } from './wormholeExpeditionPolicy'
+export type { WormholePolicyResult, WormholePolicyLayer } from './wormholeExpeditionPolicy'
+export { wormholeEventView, wormholeEventErrorText, wormholeAlertView, wormholeEncounterView, wormholeChangeExpeditionGoal, WORMHOLE_GOALS, WORMHOLE_GOAL_IDS, WORMHOLE_EVENT_IDS } from './wormholeExpeditionView'
+export type { WormholeViewText, WormholeExpeditionGoal } from './wormholeExpeditionView'
+export { wormholePatrolAfterAction, wormholeRaiseAlert } from './wormholePatrol'
+export { wormholeSupplyCells } from './wormholeSupplies'
+export type { WormholeSupplyLedger } from './wormholeSupplies'
+export { wormholeGroundBoard, wormholeGroundKey } from './wormholeGround'
+export { wormholeLeaveHoldPiece, wormholeLeaveSupply } from './wormholeSalvage'
+export { wormholeExtractionPlan, wormholeConfirmExtraction } from './wormholeExtraction'
+export type { WormholeExtractionRequest, WormholeExtractionPlan } from './wormholeExtraction'
 
 

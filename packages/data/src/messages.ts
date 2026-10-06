@@ -253,7 +253,7 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
     subject: L10N['ui.comms.039']!.zh,
     body: [
-      L10N['ui.commsNebula.001']!.zh,
+      L10N['ui.signalSpace.004']!.zh,
       L10N['ui.commsNebula.002']!.zh,
       L10N['ui.commsNebula.003']!.zh,
     ],
@@ -283,16 +283,17 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     deptId: 'dept-survey',
     kind: '提示',
     // ⟪文案调整 2026-10-04⟫ 船长授权整批重写，保持发件方、触发与跳转。
-    subject: L10N['ui.comms.040']!.zh,
+    subject: L10N['ui.signalSpace.025']!.zh,
     body: [
-      L10N['ui.commsWhunlock.001']!.zh,
-      L10N['ui.commsWhunlock.002']!.zh,
-      L10N['ui.commsWhunlock.003']!.zh,
-      L10N['ui.commsWhunlock.004']!.zh,
+      L10N['ui.signalSpace.005']!.zh,
+      L10N['ui.signalSpace.006']!.zh,
+      L10N['ui.signalSpace.007']!.zh,
+      L10N['ui.signalSpace.008']!.zh,
     ],
     trigger: { kind: 'standing', factionId: 'dsi', min: 40 },
     popup: true,
-    hint: { text: '星图 · 出港 · 「扫描虫洞」标签开始扫描', page: 'map' },
+    // ⟪文案调整 2026-10-06⟫ 显示名修改，不改触发与跳转。
+    hint: { text: '星图 · 出港 · 「扫描信号空间」标签开始扫描', page: 'map' },
   },
   {
     /**

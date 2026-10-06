@@ -558,13 +558,14 @@ export const FIRST_TASKS: readonly FirstTaskDef[] = [
   },
   {
     id: 'first-wormhole',
-    title: '第一次虫洞',
-    titleEn: 'First Wormhole',
+    // ⟪文案调整 2026-10-06⟫ 旧玩法改名，任务ID/门槛/奖励不变。
+    title: '第一次信号空间',
+    titleEn: 'First Signal Space',
     brief: '把深空工业协会声望攒到 40',
     detail:
-      '本项要求累计获得 40 点协会声望，不需要先进入虫洞。到常驻悬赏查看还没拿过首胜声望的目标，逐步积攒；重复清缴同一目标不会再给首胜声望。达标后回任务中心完成，领取两处虫洞坐标，再到「扫描虫洞」检查编队、武器、采集器与打捞器，准备好再进入。',
+      '本项要求累计获得 40 点协会声望，不需要先进入信号空间。到常驻悬赏查看还没拿过首胜声望的目标，逐步积攒；重复清缴同一目标不会再给首胜声望。达标后回任务中心完成，领取两处信号空间坐标，再到「扫描信号空间」检查编队、武器、采集器与打捞器，准备好再进入。',
     detailEn:
-      'This task requires 40 total earned Association standing, not a wormhole entry. Check Standing Bounties for targets whose first-win standing you have not collected. Repeating the same target does not award that standing again. Once eligible, claim the task to receive two wormhole coordinates. Then open Scan for Wormholes and check your squad, weapons, mining lasers and salvagers before entering.',
+      'This task requires 40 total earned Association standing, not entry into a Signal Space. Check Standing Bounties for targets whose first-win standing you have not collected. Repeating the same target does not award that standing again. Once eligible, claim the task to receive two Signal Space coordinates. Then open Scan for Signal Spaces and check your squad, weapons, mining lasers and salvagers before entering.',
     // 任务目标就是"完成解锁条件的内容"（船长原话）⇒ 判据 = 声望门槛（虫洞解锁线 40）
     judge: (state) => (dsiStanding(state) >= WORMHOLE_UNLOCK_STANDING ? 1 : 0),
     commsId: 'first-wormhole',

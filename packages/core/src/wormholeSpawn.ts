@@ -52,6 +52,8 @@ export function wormholeSpawnAfterTurns(state: GameState, turns: number): Wormho
   const run = state.wormhole.run
   const grid = run?.grid
   if (!run || !grid) return none
+  // 第二批用有限警戒/巡逻替代旧的第7层逐回合刷怪；巡逻模块接管名额，旧趟保持原行为。
+  if (run.expeditionRules === 2) return none
   if (run.depth < WORMHOLE_SPAWN_MIN_DEPTH) return none
   const n = Math.max(0, Math.floor(turns))
   if (n === 0) return none

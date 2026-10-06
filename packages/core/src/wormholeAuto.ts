@@ -26,7 +26,8 @@ import type { CoreBlockReason } from './engine'
 import { AI_CORE_IDS } from './aiCores'
 import { tuningMul } from './tuning'
 import type { GameState, WormholeArchetype, WormholeAutoReport, WormholeAutoRun, WormholeFamily, WormholeStockItem } from './state'
-import { addLog, shipLockedInWormhole, wormholeAutoRunsOf } from './state'
+import { addLog, createInitialState, shipLockedInWormhole, wormholeAutoRunsOf } from './state'
+import { signalSpaceTextId } from './explorationText'
 // 再导出：index 与既有引用照旧从本模块读（单向边，不成环）
 export { wormholeAutoRunsOf } from './state'
 import type { SimContext } from './types'
@@ -46,7 +47,11 @@ import { WORMHOLE_ARCHETYPE_IDS, WORMHOLE_ARCHETYPE_LABELS, wormholeArchetypeOf 
 import { wormholeStockOf, wormholeStockTake } from './wormholeScan'
 import { aiCoreCap, aiCoreIndustryUsed, aiCoreName, aiCoreShipUsed, gainAiCore, industryAiBonus } from './ai'
 import { logParams } from './logParts'
-import { changeShip } from './shipyard'
+import { changeShip, loseShip } from './shipyard'
+import { wormholePreparationPlan, wormholeEnterPrepared } from './wormholePreparation'
+import type { WormholePreparationPlan } from './wormholePreparation'
+import { wormholeExtractionPlan, wormholeConfirmExtraction } from './wormholeExtraction'
+import { wormholeRunExpeditionPolicy } from './wormholeExpeditionPolicy'
 import { shipBusyLabel } from './activity'
 import { wormholeAutoDescend, type WormholeAutoPower } from './wormholeAutoSim'
 import { LEGACY_HAULER_STATS, moduleAllowedOnShip } from './shipFitting'
@@ -656,7 +661,8 @@ export function wormholeAutoMainHandover(
  * 校验放行主控（`mainMayJoin`）通过后**真正换船走 `changeShip`**（守卫/日志/善后单一出处），
  * 再照常派队 —— 于是主控船以"普通副船"的身份随队出发。
  */
-export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: string, shipIds?: readonly string[]): CommandResult {
+export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: string, shipIds?: readonly string[], opts?: { prepared: WormholePreparationPlan; confirmLossRisk: true; goal?: import('./wormhole').WormholeRunState['expeditionGoal'] }): CommandResult {
+  if (opts) return startPreparedAuto(state, ctx, stockId, shipIds ?? [], opts)
   const pool = shipIds ?? wormholeAutoDefaultShips(state, ctx)
   const handover = wormholeAutoMainHandover(state, ctx, pool)
   if (handover.needed && handover.reason)
@@ -716,6 +722,110 @@ export function wormholeAutoStart(state: GameState, ctx: SimContext, stockId: st
 }
 
 /** 一趟（或一处）的原型与族：字段缺省一律按 `seed` 现算 ⇒ 老档与新建同口径 */
+function startPreparedAuto(
+  state: GameState, ctx: SimContext, stockId: string, ships: readonly string[],
+  opts: { prepared: WormholePreparationPlan; confirmLossRisk: true; goal?: import('./wormhole').WormholeRunState['expeditionGoal'] },
+): CommandResult {
+  if (opts.confirmLossRisk !== true || new Set(ships).size !== ships.length) return { ok: false }
+  const handover = wormholeAutoMainHandover(state, ctx, ships)
+  if (handover.reason) return { ok: false, errorId: handover.reasonId }
+  const blocked = wormholeAutoBlockReason(state, ctx, stockId, ships, { mainMayJoin: handover.needed })
+  if (blocked) return { ok: false, ...blocked }
+  const current = wormholePreparationPlan(state, ctx, ships, opts.prepared.request)
+  if (!current.ok || current.fingerprint !== opts.prepared.fingerprint) return { ok: false }
+  const staged = structuredClone(state)
+  if (handover.needed && handover.toId) {
+    const changed = changeShip(staged, handover.toId, ctx)
+    if (!changed.ok) return changed
+  }
+  const stock = wormholeStockOf(staged).find(s => s.id === stockId)!
+  const sim = structuredClone(staged)
+  const idle = createInitialState({ nowWallMs: 0, seed: stock.seed })
+  sim.shipId = ships[0]!
+  sim.wormhole = { run: null, lastFleetLost: 0 }
+  sim.wormholeAuto = []
+  sim.fleet = Object.fromEntries(ships.map(id => [id, structuredClone(staged.fleet[id]!)]))
+  sim.aiAssignments = {}
+  sim.mining = idle.mining; sim.salvaging = idle.salvaging; sim.hauling = idle.hauling
+  sim.expedition = idle.expedition; sim.encounter = idle.encounter; sim.transit = idle.transit
+  sim.scanning = idle.scanning; sim.standby = idle.standby; sim.wormholeScan = idle.wormholeScan
+  sim.awayGalaxy = null; sim.dockedSite = null
+  const beforeWare = { ...sim.warehouse.items }
+  const beforeModules = { ...sim.moduleBay }
+  const simPlan = wormholePreparationPlan(sim, ctx, ships, current.request)
+  const entered = wormholeEnterPrepared(sim, ctx, ships, stock.seed, simPlan, stockId, { expeditionRules: 2, goal: opts.goal ?? 'deep' })
+  if (!entered.ok) return { ok: false, errorId: entered.errorId }
+  for (const id of new Set([...Object.keys(beforeWare), ...Object.keys(sim.warehouse.items)])) {
+    const delta = (sim.warehouse.items[id] ?? 0) - (beforeWare[id] ?? 0)
+    if (delta !== 0) staged.warehouse.items[id] = (staged.warehouse.items[id] ?? 0) + delta
+    if (staged.warehouse.items[id] === 0) delete staged.warehouse.items[id]
+  }
+  for (const id of Object.keys(sim.moduleBay)) {
+    const delta = (sim.moduleBay[id] ?? 0) - (beforeModules[id] ?? 0)
+    if (delta > 0) staged.moduleBay[id] = (staged.moduleBay[id] ?? 0) + delta
+  }
+  for (const uid of ships) staged.fleet[uid]!.cargo = structuredClone(sim.fleet[uid]!.cargo)
+  sim.warehouse.items = {}
+  sim.moduleBay = {}
+  sim.aiCores = { gamma: 0, beta: 0, alpha: 0 }
+  sim.logs = []
+  sim.wreckLog = []
+  sim.wormholeStock = []
+  wormholeStockTake(staged, stockId)
+  const run: WormholeAutoRun = {
+    id: `wha-${state.gameMs.toString(36)}-${wormholeAutoRunsOf(state).length.toString(36)}`,
+    stockId, seed: stock.seed, depth: sim.wormhole.run!.depth,
+    family: sim.wormhole.run!.family, archetype: sim.wormhole.run!.archetype,
+    shipIds: [...ships], haulerFittingVersion: 1, expeditionRules: 2,
+    expeditionSnapshot: JSON.stringify(sim),
+    startedAtGameMs: state.gameMs, finishAtGameMs: state.gameMs + WORMHOLE_AUTO_DURATION_MS,
+  }
+  staged.wormholeAuto = [...wormholeAutoRunsOf(staged), run]
+  Object.assign(state, staged)
+  return { ok: true }
+}
+
+function finishPreparedAuto(state: GameState, ctx: SimContext, run: WormholeAutoRun, before: GameState, sim: GameState): void {
+  const lost: string[] = []
+  const damage: WormholeAutoReport['damage'] = []
+  for (const uid of run.shipIds) {
+    const result = sim.fleet[uid]
+    const original = before.fleet[uid]
+    if (!result) {
+      lost.push(uid)
+      if (state.fleet[uid]) loseShip(state, uid, ctx, '', undefined, { cause: 'wormhole-lost', wormholeDepth: sim.wormhole.lastSettle?.depth ?? run.depth })
+    } else if (state.fleet[uid]) {
+      state.fleet[uid] = structuredClone(result)
+      damage.push({ shipId: uid, name: shipNameOf(state, ctx, uid), durabilityLossPct: Math.round(((original?.durability ?? 1) - result.durability) * 100), armorLossPct: Math.round(((original?.armorPct ?? 1) - (result.armorPct ?? 1)) * 100), durabilityPct: Math.round(result.durability * 100), armorPct: Math.round((result.armorPct ?? 1) * 100) })
+    }
+  }
+  const gains: WormholeAutoReport['gains'] = []
+  for (const [itemId, n] of Object.entries(sim.warehouse.items)) {
+    const delta = n - (before.warehouse.items[itemId] ?? 0)
+    if (delta > 0) {
+      state.warehouse.items[itemId] = (state.warehouse.items[itemId] ?? 0) + delta
+      const loot = delta - (sim.wormhole.lastSettle?.suppliesReturned?.[itemId] ?? 0)
+      if (loot > 0) gains.push({ itemId, units: loot })
+    }
+  }
+  for (const [id, n] of Object.entries(sim.moduleBay)) {
+    const delta = n - (before.moduleBay[id] ?? 0)
+    if (delta > 0) state.moduleBay[id] = (state.moduleBay[id] ?? 0) + delta
+  }
+  for (const type of ['gamma', 'beta', 'alpha'] as const) {
+    const delta = sim.aiCores[type] - before.aiCores[type]
+    if (delta > 0) gainAiCore(state, type, delta)
+  }
+  state.wormholeAutoReports = [{
+    id: `${run.id}-report`, stockId: run.stockId, depth: sim.wormhole.lastSettle?.depth ?? run.depth,
+    finishedAtGameMs: state.gameMs, shipIds: [...run.shipIds], coresReleased: 1, gains, damage,
+    confirmed: false, expeditionRules: 2, shipsLost: lost,
+    suppliesReturned: sim.wormhole.lastSettle?.suppliesReturned ?? {}, simulationMs: sim.gameMs - before.gameMs,
+    suppliesFound: sim.wormhole.lastSettle?.suppliesFound ?? {},
+    expeditionGoal: sim.wormhole.lastSettle?.expeditionGoal, expeditionProgress: sim.wormhole.lastSettle?.expeditionProgress,
+  }, ...(state.wormholeAutoReports ?? [])].slice(0, WORMHOLE_AUTO_REPORT_MAX)
+}
+
 export function wormholeRunMeta(run: { seed: number; archetype?: WormholeArchetype; family?: import('./state').WormholeFamily }): {
   archetype: WormholeArchetype
   family: WormholeFamily
@@ -734,6 +844,18 @@ export function wormholeAutoStop(state: GameState, runId: string, ctx?: SimConte
   const runs = wormholeAutoRunsOf(state)
   const run = runs.find((r) => r.id === runId)
   if (!run) return { ok: false, error: '这一趟自动探索已经结束了。', errorId: 'core.wormholeAuto.001' }
+  if (run.expeditionRules !== undefined) {
+    if (run.expeditionRules !== 2 || !ctx || !run.expeditionSnapshot) return { ok: false, code: 'unsupported-rules' }
+    let sim: GameState
+    try { sim = JSON.parse(run.expeditionSnapshot) as GameState } catch { return { ok: false, code: 'unsupported-rules' } }
+    if (sim.wormhole?.run?.expeditionRules !== 2 || sim.wormhole.run.supplyVersion !== 1) return { ok: false, code: 'unsupported-rules' }
+    const before = structuredClone(sim)
+    const plan = wormholeExtractionPlan(sim, ctx, { leavePieces: [], leaveSupplies: {}, takeGround: [] })
+    if (!wormholeConfirmExtraction(sim, ctx, plan).ok) return { ok: false, errorId: 'core.wormholeBattle.002' }
+    finishPreparedAuto(state, ctx, run, before, sim)
+    state.wormholeAuto = runs.filter(r => r.id !== runId)
+    return { ok: true }
+  }
   state.wormholeAuto = runs.filter((r) => r.id !== runId)
   if (ctx) repairCivilianFittings(state, ctx)
   addLog(state, 'fleet', '🛰 自动探索队已召回：没有收益、也没有损伤；那条通道就此关闭。', 'core.wormholeAuto.019')
@@ -774,12 +896,29 @@ let reportSeq = 0
 export function advanceWormholeAuto(state: GameState, ctx: SimContext): void {
   const runs = wormholeAutoRunsOf(state)
   if (runs.length === 0) return
-  const due = runs.filter((r) => state.gameMs >= r.finishAtGameMs)
+  const due = runs.filter((r) => state.gameMs >= r.finishAtGameMs && (r.expeditionRules === undefined || (r.expeditionRules === 2 && r.expeditionSnapshot !== undefined)))
   if (due.length === 0) return
-  const dueIds = new Set(due.map((r) => r.id))
+  for (const run of due.filter(r => r.expeditionRules === 2)) {
+    try {
+      const sim = JSON.parse(run.expeditionSnapshot!) as GameState
+      if (sim.wormhole?.run?.expeditionRules !== 2 || sim.wormhole.run.supplyVersion !== 1) continue
+      const before = structuredClone(sim)
+      const result = wormholeRunExpeditionPolicy(sim, ctx)
+      if (result.state.wormhole.run) {
+        const plan = wormholeExtractionPlan(result.state, ctx, { leavePieces: [], leaveSupplies: {}, takeGround: [] })
+        if (!wormholeConfirmExtraction(result.state, ctx, plan).ok) continue
+      }
+      const staged = structuredClone(state)
+      finishPreparedAuto(staged, ctx, run, before, result.state)
+      staged.wormholeAuto = wormholeAutoRunsOf(staged).filter(r => r.id !== run.id)
+      Object.assign(state, staged)
+    } catch { /* 封存异常保留锁船，不降回旧无损模拟。 */ }
+  }
+  const legacyDue = due.filter(r => r.expeditionRules === undefined)
+  const dueIds = new Set(legacyDue.map((r) => r.id))
   // 先出队（AI 名额当场释放），再结算
-  state.wormholeAuto = runs.filter((r) => !dueIds.has(r.id))
-  for (const run of due) {
+  state.wormholeAuto = wormholeAutoRunsOf(state).filter((r) => !dueIds.has(r.id))
+  for (const run of legacyDue) {
     // 本趟已出队；结算仍用旧趟的船体目录，完成后再整理存活船的配装。
     let runCtx = ctx
     if (run.haulerFittingVersion !== 1) {
@@ -993,7 +1132,7 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
     'fleet',
     `🛰 自动探索队返航：带回 ${gainText}（已入仓库）${coreText}；损伤：${dmgText}。${techText}` +
       `${run.shipIds.length} 条舰全部安全返航，1 枚 AI 核心已释放（每次自动探索占 1 枚）——报告在「扫描虫洞」页等你确认。`,
-    'core.wormholeAuto.021',
+    signalSpaceTextId('core.wormholeAuto.021'),
     logParams({
       p1: gainText,
       ...(gains.length > 0

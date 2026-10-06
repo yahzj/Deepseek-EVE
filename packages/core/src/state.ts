@@ -13,6 +13,7 @@ import type { AiCoreType, CommsInstanceEntry, DamageResists, DamageType, FittedM
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { emptyFitted } from './labels'
 import type { WormholeState } from './wormhole'
+import { signalSpaceTextId } from './explorationText'
 /**
  * 🔴 **这里绝不能 import `mining` / `salvaging`**（**2026-10-02 实测踩到**）：
  * 我曾为了"切活动自动停作业时建返航账本"在本文件 import 那两个模块 —— 立即形成
@@ -349,6 +350,8 @@ export type WormholeFamily = 'A' | 'C' | 'D' | 'E' | 'G'
 /** **已发现、未开始探索的虫洞**（种子 + 内容原型 + 敌族；起始层恒 1；上限 `WORMHOLE_STOCK_MAX`） */
 export interface WormholeStockItem {
   id: string
+  /** 缺省为旧信号空间；2仅用于合成实验坐标，扫描/任务不会赋此标记。 */
+  expeditionRules?: number
   /** 本趟种子（进洞时传给 `wormholeEnter`） */
   seed: number
   /**
@@ -373,6 +376,9 @@ export interface WormholeStockItem {
  * 到点结算「手动期望 × 40%」的收益与 −40%~−80% 的损伤（绝不丢船）。
  */
 export interface WormholeAutoRun {
+  /** 显式测试新模式；缺省旧自动，未知版本不降级结算。 */
+  expeditionRules?: number
+  expeditionSnapshot?: string
   /** 新自动趟采用纯货舰装配限制；旧趟缺省保留旧规格直到返航。 */
   haulerFittingVersion?: 1
   id: string
@@ -397,6 +403,13 @@ export interface WormholeAutoRun {
  * 收益列表与损伤读数都按"逐项可读"存，确认后 `confirmed = true`（仍留档，超上限丢最旧）。
  */
 export interface WormholeAutoReport {
+  expeditionRules?: number
+  shipsLost?: string[]
+  suppliesReturned?: Record<string, number>
+  simulationMs?: number
+  expeditionGoal?: import('./wormhole').WormholeRunState['expeditionGoal']
+  expeditionProgress?: import('./wormhole').WormholeRunState['expeditionProgress']
+  suppliesFound?: Record<string, number>
   id: string
   stockId: string
   depth: number
@@ -953,6 +966,13 @@ export interface BattleState {
    * 战斗推进/视图重建我方规格时以此覆盖装配档位偏好（伤害与实际弹种一致）；
    * 缺省 = 无覆盖（按船装配 ammoPref/基础弹），旧档零迁移 */
   ammoIds?: Partial<Record<DamageType, string>>
+  /** 新虫洞趟按物品id共用库存，逐舰记录实际档；旧战斗不写。 */
+  expeditionAmmo?: {
+    stock: Record<string, number>
+    loaded: Record<string, number>
+    idsByTag: Record<string, Partial<Record<DamageType, string>>>
+    revivesSettled?: boolean
+  }
   /** 战斗累计统计（战报/小剧场用） */
   stats: { meShots: number; meHits: number; meDmg: number; foeShots: number; foeHits: number }
   /** 可视化开火事件环（最新 48 条；战斗画面动画回放用，不影响结算） */
@@ -1091,6 +1111,10 @@ export interface BattleState {
     kind: 'node' | 'boss' | 'extract' | 'ruins' | 'spawn'
     /** 本节点打几波（同一编成分波进场；撤离战恒 1 波） */
     waves: number
+    expeditionRules?: number
+    expeditionRole?: 'ordinary' | 'elite' | 'guard' | 'patrol' | 'event'
+    guardSupportDisabled?: boolean
+    desireRangeMul?: number
     /* ── F3c B1：谜质装置在**开战那一刻**的快照（逐拍重建读同一份，不各算各的）── */
     /** 威胁乘数（压制力场 / 守卫解析仪 / 撤离掩护器；三档各自 −50% 封顶） */
     threatMul?: number
@@ -1547,6 +1571,9 @@ export interface BattleState {
  * 战报弹层据此展示两行——汇总（损坏/回收/净损失）+ 逐型明细（回收名单 ｜ 净损失名单）。
  * rows 按**机型基准价降序**（高价值在前，与"优先回收高价值"的观感一致）。 */
 export interface DroneLossReport {
+  /** 新虫洞趟：复位为备用机转入战斗，不冲减实际损坏次数。 */
+  revived?: number
+  returnedToSupply?: Record<string, number>
   /** 该场战斗起手时刻（与战报快照配对，避免并行战斗结果串场） */
   battleStartedAtGameMs: number
   /** 本场回收率（0~1） */
@@ -1901,6 +1928,8 @@ export interface GameStateV9 extends Omit<GameStateV8, 'version' | 'blueprints'>
    * 可选字段 + 归一化清洗 + 缺省不写键 ⇒ 老档往返逐字一致）。
    */
   fitPresets?: Record<string, ShipFitPreset[]>
+  /** 虫洞整备多模板随角色保存；老档缺省为空，不写空字段。 */
+  wormholePreparationTemplates?: import('./wormholePreparationTemplates').WormholePreparationTemplate[]
 }
 
 /** 一套装配方案（存"哪一位装什么 + 无人机舱装载"；套用时按目标船槽位布局对齐，超出位丢弃） */
@@ -3700,14 +3729,17 @@ export function addLog(
   textId?: string,
   textParams?: LogParams,
 ): void {
+  const rules = textId?.startsWith('core.wormholeScan.') ? undefined : state.wormhole.run?.expeditionRules
+  const runtimeTextId = textId === undefined ? undefined : signalSpaceTextId(textId, rules)
+  const runtimeParams = rules === 2 || !textParams ? textParams : Object.fromEntries(Object.entries(textParams).map(([key, value]) => [key, key.endsWith('Id') && typeof value === 'string' ? signalSpaceTextId(value) : key === 'parts' && Array.isArray(value) ? value.map(id => typeof id === 'string' ? signalSpaceTextId(id) : id) : value])) as LogParams
   const lastId = state.logs.length > 0 ? state.logs[state.logs.length - 1]!.id : 0
   state.logs.push({
     id: lastId + 1,
     atGameMs: state.gameMs,
     kind,
     text,
-    ...(textId !== undefined ? { textId } : {}),
-    ...(textParams !== undefined ? { textParams } : {}),
+    ...(runtimeTextId !== undefined ? { textId: runtimeTextId } : {}),
+    ...(runtimeParams !== undefined ? { textParams: runtimeParams } : {}),
   })
   const cap = state.logCap > 0 ? state.logCap : DEFAULT_LOG_CAP
   if (state.logs.length > cap) {

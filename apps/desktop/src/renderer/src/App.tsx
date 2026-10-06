@@ -62,6 +62,8 @@ import { Handbook } from './panels/Handbook'
 import { BattleScreen } from './panels/BattleScreen'
 import { debugEnabled as readDebugEnabled } from './panels/DebugPanel'
 import { WormholePanel } from './panels/Wormhole'
+import { SignalSpacePanel } from './panels/SignalSpace'
+import { futureWormholeEnabled } from './game/debugFlag'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ActivityScreen, activityKindOf } from './ui/ActivityScreen'
@@ -172,6 +174,11 @@ export function App({ engine }: { engine: GameEngine }) {
   useThemeBootstrap()
 
   const [, force] = useReducer((n: number) => n + 1, 0)
+  useEffect(() => {
+    const changed = () => force()
+    window.addEventListener('whale-future-wormhole-change', changed)
+    return () => window.removeEventListener('whale-future-wormhole-change', changed)
+  }, [])
   /** 语言（2026-09-19 船长令「英语本地化」）：界面文案走 `t(中文源串)`；缺词条回退中文 */
   const { locale } = useL10n()
   /** 切语言 ⇒ 让引擎按语言重建 ctx 与目录表（只换文案，id/数值不动），引擎 `notify()` 后界面整体刷新 */
@@ -476,6 +483,10 @@ export function App({ engine }: { engine: GameEngine }) {
   const [whStockPick, setWhStockPick] = useState<string | null>(null)
   /** **自动探索模式**要派的那一处库存（2026-09-14 船长：自动探索走同一个准备页） */
   const [whAutoPick, setWhAutoPick] = useState<string | null>(null)
+  const selectedRun = state.wormhole.run
+  const selectedStock = state.wormholeStock?.find(s => s.id === (whAutoPick ?? whStockPick))
+  const futurePanel = whAutoPick !== null ? futureWormholeEnabled() && selectedStock?.expeditionRules === 2 : selectedRun ? selectedRun.expeditionRules === 2 || selectedRun.supplyVersion === 1 : state.wormhole.lastSettle?.expeditionProgress !== undefined || state.wormhole.lastSettle?.suppliesReturned !== undefined || futureWormholeEnabled() && selectedStock?.expeditionRules === 2
+  const ExplorationPanel = futurePanel ? WormholePanel : SignalSpacePanel
   /**
    * 打开虫洞面板（stockId 给了 = 从「扫描虫洞」页选中的那处库存虫洞开始探索）。
    *
@@ -1897,7 +1908,7 @@ async function applyLayoutAndReload(): Promise<void> {
       ) : null}
       {/* 虫洞面板（终局玩法 · 已上线）：挂在这一层 ⇒ 不依赖星图选中星系 */}
       {whOpen ? (
-          <WormholePanel
+          <ExplorationPanel
             engine={engine}
             onToast={showToast}
             stockId={whStockPick}

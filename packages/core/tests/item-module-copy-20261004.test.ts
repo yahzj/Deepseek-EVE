@@ -17,7 +17,7 @@ function historical<T>(file: string, symbol: string, bindings: Record<string, un
 }
 
 describe('物品装备说明双语与数据守恒', () => {
-  it('英文覆盖的物品和装备名称保持改稿前定名', () => {
+  it('英文覆盖的物品和装备名称仅信号谜质采用后续已确认改名，其余保持改稿前定名', () => {
     const text = execFileSync('git', ['show', 'd2ab64f1:packages/data/src/l10n.ts'], { encoding: 'utf8' })
     const ast = ts.createSourceFile('l10n.ts', text, ts.ScriptTarget.Latest, true)
     for (const [symbol, live] of [['EN_ITEMS', EN_ITEMS_ALL], ['EN_MODULES', EN_MODULES]] as const) {
@@ -26,14 +26,20 @@ describe('物品装备说明双语与数据守恒', () => {
       for (const field of declaration.initializer.properties) {
         if (!ts.isPropertyAssignment(field) || !ts.isStringLiteral(field.name) || !ts.isObjectLiteralExpression(field.initializer)) continue
         const name = field.initializer.properties.find((p): p is ts.PropertyAssignment => ts.isPropertyAssignment(p) && p.name.getText(ast) === 'name')?.initializer
-        if (name && ts.isStringLiteral(name)) expect(live[field.name.text]?.name, field.name.text).toBe(name.text)
+        if (name && ts.isStringLiteral(name)) {
+          const expected = symbol === 'EN_ITEMS' && field.name.text === 'mat-wh-essence' ? 'Signal Enigma' : name.text
+          expect(live[field.name.text]?.name, field.name.text).toBe(expected)
+        }
       }
     }
   })
-  it('111 种物品除 description 和后续明确确认的旗舰黑匣价值外所有字段逐项不变', () => {
+  it('111 种物品除 description、已确认的信号谜质改名和旗舰黑匣价值外所有字段逐项不变', () => {
     const before = historical<typeof ITEMS>('packages/data/src/items.ts', 'ITEMS')
-    // 2026-10-06船长确认：仅两种旗舰黑匣基础价值下调；其余历史守恒范围不放宽。
-    const adjusted = before.map(item => ['blackbox-h', 'blackbox-r'].includes(item.id) ? { ...item, baseSellPriceIsk: 10_000_000 } : item)
+    // 2026-10-06船长确认：两种旗舰黑匣基础价值下调，§21仅改信号谜质显示名。
+    const adjusted = before.map(item => {
+      if (['blackbox-h', 'blackbox-r'].includes(item.id)) return { ...item, baseSellPriceIsk: 10_000_000 }
+      return item.id === 'mat-wh-essence' ? { ...item, name: '信号谜质' } : item
+    })
     const strip = (entries: typeof ITEMS) => entries.map(({ description: _description, ...rest }) => rest)
     expect(strip(ITEMS)).toEqual(strip(adjusted))
   })
@@ -44,14 +50,14 @@ describe('物品装备说明双语与数据守恒', () => {
     expect(strip(MODULES)).toEqual(strip(before))
   })
   it.each(ITEMS)('$id 物品说明中英唯一表接线一致，名称不变', (item) => {
-    const pair = Object.entries(L10N).find(([id, entry]) => id.startsWith('item.copy.') && entry.zh === item.description)
+    const pair = Object.entries(L10N).find(([id, entry]) => (id.startsWith('item.copy.') || id.startsWith('item.signalSpace.')) && entry.zh === item.description)
     expect(pair, item.id).toBeDefined()
     expect(EN_ITEMS_ALL[item.id]?.description).toBe(pair![1].en)
     expect(buildSimContext('en').items.get(item.id)?.description).toBe(pair![1].en)
     expect(pair![1].en).not.toMatch(/[\u4e00-\u9fff]/)
   })
   it.each(MODULES)('$id 装备说明中英唯一表接线一致', (module) => {
-    const pair = Object.entries(L10N).find(([id, entry]) => id.startsWith('mod.copy.') && entry.zh === module.description)
+    const pair = Object.entries(L10N).find(([id, entry]) => (id.startsWith('mod.copy.') || id.startsWith('mod.signalSpace.')) && entry.zh === module.description)
     expect(pair, module.id).toBeDefined()
     expect(EN_MODULES[module.id]?.description).toBe(pair![1].en)
     expect(buildSimContext('en').modules.get(module.id)?.description).toBe(pair![1].en)

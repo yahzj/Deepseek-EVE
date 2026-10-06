@@ -61,7 +61,7 @@ describe('第一次任务跳转与目标行', () => {
       const array = ast.statements.filter(ts.isVariableStatement).flatMap((s) => [...s.declarationList.declarations])
         .find((d) => d.name.getText(ast) === 'FIRST_TASKS')?.initializer
       if (!array || !ts.isArrayLiteralExpression(array)) throw new Error('任务表不存在')
-      const copy = new Set(['detail', 'detailEn'])
+      const copy = new Set(['detail', 'detailEn', 'title', 'titleEn'])
       const printer = ts.createPrinter({ removeComments: true })
       return array.elements.map((element) => {
         if (!ts.isObjectLiteralExpression(element)) throw new Error('任务不是静态对象')
@@ -72,6 +72,7 @@ describe('第一次任务跳转与目标行', () => {
     const before = execFileSync('git', ['show', 'c182264d:packages/core/src/firstTasks.ts'], { encoding: 'utf8' })
     const after = readFileSync(new URL('../src/firstTasks.ts', import.meta.url), 'utf8')
     expect(policy(after)).toEqual(policy(before))
+    expect(FIRST_TASKS.find(task => task.id === 'first-wormhole')?.title).toBe('第一次信号空间')
   })
   it.each(FIRST_TASKS)('$id 两种语言显示目标，按钮没有缓存上次语言', (task) => {
     for (const locale of ['zh', 'en'] as const) {

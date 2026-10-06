@@ -39,6 +39,7 @@ import { buildCommsFactionCatalog } from './commsFactions'
 import { buildDialogueCatalog } from './dialogues'
 import { GALAXY_EDGES } from './universe'
 import { EN_FRAGMENT, localizeCtx, type Locale } from './l10n'
+import { FOE_SHIPS } from './foe-ships'
 
 export function buildSimContext(locale: Locale = 'zh'): SimContext {
   const galaxies = buildGalaxyCatalog()
@@ -79,6 +80,7 @@ export function buildSimContext(locale: Locale = 'zh'): SimContext {
       galaxies,
       galaxyEdges: GALAXY_EDGES,
       anomalies,
+      foeShips: new Map(FOE_SHIPS.map(ship => [ship.id, ship])),
       travelEvents: buildTravelEvents(),
       stations: buildStationCatalog(),
       labRecipes: buildLabRecipeCatalog(),

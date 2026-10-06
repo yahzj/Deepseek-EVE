@@ -15,6 +15,25 @@ import {
   advanceAutoLoopBounty,
   advanceGame,
   advanceWormhole, // 2026-09-27 船长令「立即弹结算界面」：撤离当拍结算（见本文件 wormholeExtract）
+  wormholePreparationPlan,
+  wormholeTemplateFillPlan,
+  wormholeSavePreparationTemplate,
+  wormholeRenamePreparationTemplate,
+  wormholeDeletePreparationTemplate,
+  wormholeEventPreview,
+  wormholeEventActions,
+  wormholeEventView,
+  wormholeAlertView,
+  wormholeEncounterView,
+  wormholeChangeExpeditionGoal,
+  wormholeFreezeEvents,
+  wormholeResolveEvent,
+  wormholeEnterPrepared,
+  wormholeExtractionPlan,
+  wormholeConfirmExtraction,
+  wormholeLeaveHoldPiece,
+  wormholeLeaveSupply,
+  wormholeGroundBoard,
   fightEncounter,
   fleeEncounter,
   itemReleased, // 2026-09-13 施工期闸门：未上线内容不进"给玩家看的"目录枚举
@@ -352,6 +371,11 @@ import type {
   WormholeAutoReport,
   WormholeAutoRun,
   WormholeHoldPlacement,
+  WormholePreparationRequest,
+  WormholePreparationPlan,
+  WormholePreparedResult,
+  WormholeExtractionRequest,
+  WormholeExtractionPlan,
   TrainingItem,
 } from '@whale/core'
 import { BELTS, BLUEPRINTS, GALAXIES, GALAXY_EDGES, ANOMALIES_FLAVORED, ITEMS, MODULES, SHIP_BLUEPRINTS, SHIPS, SKILL_GROUPS, SKILLS, DIALOGUES, EN_SHIPS, buildSimContext, overlayList, EN_MODULES, EN_ITEMS_ALL, EN_SKILLS, EN_ANOMALIES, EN_BLUEPRINTS, EN_SHIP_BLUEPRINTS, EN_FOE_SHIPS, EN_GALAXIES, EN_BELTS, overlayCardFoesList, type L10nLocale } from '@whale/data'
@@ -362,7 +386,7 @@ import type { ReconnectChoice } from './saveReconnect'
 /** 存档存储体检与告警（2026-09-25 船长令：修「MacBook · Safari 关掉游戏后存档丢失」） */
 import { noteSaveWriteFailed, requestPersistentStorage, saveStorageProbe } from './saveGuard'
 /** **2026-10-03 船长令**（「调试模式允许载入铁人存档」）：本机调试门禁（发布版恒 false）⇒ 铁人闸门放行 */
-import { debugEnabled } from './debugFlag'
+import { debugEnabled, futureWormholeEnabled } from './debugFlag'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
 import { tr, cmdText, paramText } from '../i18n/locale'
@@ -1120,7 +1144,7 @@ export class GameEngine {
      */
     repairHoldForbiddenCargo(this.state, this.ctx)
     const now = Date.now()
-    if (lastSavedWall !== null) {
+    if (lastSavedWall !== null && !this.wormholeTestEnabled()) {
       // B4：离线结算前后对比，生成启动简报（离线 ≥1 分钟才展示）；stats 收集 AI 核心作业
       const before = snapshotBasics(this.state)
       const stats = newSettleStats()
@@ -1149,6 +1173,57 @@ export class GameEngine {
 
     await this.persist()
     this.notify()
+    this.installWormholeTestApi()
+  }
+
+  private wormholeTestEnabled(): boolean {
+    try {
+      return debugEnabled() && ['localhost', '127.0.0.1', '::1', '[::1]'].includes(location.hostname) && localStorage.getItem('whale-idle:wh-expedition-test') === '1'
+    } catch { return false }
+  }
+
+  /** 隔离验收桥只放行真实命令，无任意状态写入、清敌或强制胜利入口。 */
+  private installWormholeTestApi(): void {
+    if (!this.wormholeTestEnabled()) return
+    const target = window as typeof window & { __whExpeditionTest?: object }
+    target.__whExpeditionTest = {
+      snapshot: () => this.wormholeTestEnabled() ? structuredClone(this.state) : null,
+      command: async (name: string, args: unknown[] = []) => {
+        if (!this.wormholeTestEnabled()) return { ok: false }
+        let result: unknown
+        switch (name) {
+          case 'scan': result = this.wormholeScan(); break
+          case 'travel': result = this.wormholeTravel(Number(args[0]), Number(args[1]), args[2] === true, args[3] === true, args[4] === true); break
+          case 'activate': result = this.wormholeActivate(); break
+          case 'battle': result = this.wormholeFight(args[0] === 'ruins' ? 'ruins' : 'node'); break
+          case 'event': result = this.wormholeResolveEvent(args[0] as import('@whale/core').WormholeEventAction); break
+          case 'eventView': return this.wormholeEventView()
+          case 'descend': result = this.wormholeDescend(args[0] === true); break
+          case 'extractPreview': return this.wormholeExtractionPreview({ leavePieces: [], leaveSupplies: {}, takeGround: [] })
+          case 'extract': result = this.wormholeExtractConfirmed(args[0] as WormholeExtractionPlan); break
+          case 'load': result = this.wormholeTempStow(String(args[0])); break
+          case 'leave': result = this.wormholeLeave(); break
+          case 'resume': result = this.wormholeResume(); break
+          case 'step': {
+            const duration = Number(args[0])
+            if (!Number.isSafeInteger(duration) || duration < 0 || duration > 900_000) return { ok: false }
+            for (let left = duration; left > 0;) {
+              const dt = Math.min(100, left)
+              this.state.gameMs += dt
+              advanceWormhole(this.state, this.ctx)
+              left -= dt
+            }
+            result = { ok: true }
+            this.notify()
+            break
+          }
+          case 'persist': result = { ok: await this.persist() }; break
+          default: return { ok: false }
+        }
+        await this.persist()
+        return result
+      },
+    }
   }
 
   /** 启动自动落盘心跳（幂等；间隔值见 `SAVE_INTERVAL_MS` 的头注，F7 盯着它） */
@@ -1296,6 +1371,7 @@ export class GameEngine {
   }
 
   private tick(): void {
+    if (this.wormholeTestEnabled()) { this.lastRealMs = Date.now(); return }
     if (!canWriteSave() || this.reconnectResolving) { this.lastRealMs = Date.now(); return }
     const now = Date.now()
     const dt = Math.max(1, now - this.lastRealMs)
@@ -2918,6 +2994,7 @@ export class GameEngine {
   wormholeEnterFromStock(stockId: string, shipIds: readonly string[]): CommandResult {
     const item = wormholeStockOf(this.state).find((x) => x.id === stockId)
     if (!item) return { ok: false, error: tr("ui.engine.038") }
+    if (item.expeditionRules !== undefined) return { ok: false, code: 'unsupported-rules' }
     const r = wormholeEnter(this.state, this.ctx, shipIds, this.freshLayerSeed(), {
       depth: item.depth,
       archetype: item.archetype ?? wormholeArchetypeOf(item.seed),
@@ -2932,9 +3009,120 @@ export class GameEngine {
     return { ok: true }
   }
 
+  wormholePrepare(shipIds: readonly string[], request: WormholePreparationRequest): WormholePreparationPlan {
+    return wormholePreparationPlan(this.state, this.ctx, shipIds, request)
+  }
+
+  wormholePrepareFromTemplate(shipIds: readonly string[], request: WormholePreparationRequest, id: string) {
+    const template = this.state.wormholePreparationTemplates?.find(t => t.id === id)
+    return template ? wormholeTemplateFillPlan(this.state, this.ctx, shipIds, request, template) : null
+  }
+
+  async wormholeSaveTemplate(name: string, targets: Record<string, number>, replaceId?: string) {
+    const result = wormholeSavePreparationTemplate(this.state, name, targets, replaceId)
+    if (!result.ok) return result
+    this.notify()
+    return { ...result, saved: await this.persist() }
+  }
+
+  async wormholeRenameTemplate(id: string, name: string) {
+    const result = wormholeRenamePreparationTemplate(this.state, id, name)
+    if (!result.ok) return result
+    this.notify()
+    return { ...result, saved: await this.persist() }
+  }
+
+  async wormholeDeleteTemplate(id: string) {
+    const result = wormholeDeletePreparationTemplate(this.state, id)
+    if (!result.ok) return result
+    this.notify()
+    return { ...result, saved: await this.persist() }
+  }
+
+  wormholeEventPreview(action: import('@whale/core').WormholeEventAction): import('@whale/core').WormholeEventPreview {
+    return wormholeEventPreview(this.state, this.ctx, action)
+  }
+
+  wormholeEventActions(): readonly import('@whale/core').WormholeEventAction[] {
+    return wormholeEventActions(this.state)
+  }
+
+  wormholeEventView() { return wormholeEventView(this.state, this.ctx) }
+  wormholeAlertView() { return wormholeAlertView(this.state) }
+  wormholeEncounterView(cellKey?: string, role?: 'ordinary' | 'guard') { return wormholeEncounterView(this.state, this.ctx, cellKey, role) }
+  wormholeChangeGoal(goal: import('@whale/core').WormholeExpeditionGoal): boolean {
+    const ok = wormholeChangeExpeditionGoal(this.state, goal)
+    if (ok) { void this.persist(); this.notify() }
+    return ok
+  }
+
+  wormholeResolveEvent(action: import('@whale/core').WormholeEventAction, expected?: import('@whale/core').WormholeEventPreview): import('@whale/core').WormholeEventPreview {
+    const result = wormholeResolveEvent(this.state, this.ctx, action, expected)
+    if (result.ok) { void this.persist(); this.notify() }
+    return result
+  }
+
+  /** 新趟入场仅供本机调试验收，普通入场在整批开放前保持旧规则。 */
+  wormholeEnterPreparedFromStock(stockId: string, shipIds: readonly string[], plan: WormholePreparationPlan, goal: import('@whale/core').WormholeExpeditionGoal = 'deep'): WormholePreparedResult {
+    if (!futureWormholeEnabled()) return { ok: false, code: 'entry-blocked' }
+    if (this.wormholeStock().find(s => s.id === stockId)?.expeditionRules !== 2) return { ok: false, code: 'entry-blocked' }
+    const seed = this.wormholeTestEnabled() ? this.wormholeStock().find(s => s.id === stockId)?.seed ?? this.freshLayerSeed() : this.freshLayerSeed()
+    const r = wormholeEnterPrepared(this.state, this.ctx, shipIds, seed, plan, stockId, { expeditionRules: 2, goal })
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
+  }
+
+  wormholeExtractionPreview(request: WormholeExtractionRequest): WormholeExtractionPlan {
+    return wormholeExtractionPlan(this.state, this.ctx, request)
+  }
+
+  wormholeExtractConfirmed(plan: WormholeExtractionPlan): ReturnType<typeof wormholeConfirmExtraction> {
+    const r = wormholeConfirmExtraction(this.state, this.ctx, plan)
+    if (r.ok) {
+      void this.persist()
+      this.notify()
+    }
+    return r
+  }
+
+  wormholeLeaveCargoPiece(id: string): { ok: boolean } {
+    const r = wormholeLeaveHoldPiece(this.state, this.ctx, id)
+    if (r.ok) { void this.persist(); this.notify() }
+    return r
+  }
+
+  wormholeLeaveSupplyUnits(id: string, units: number): { ok: boolean } {
+    const r = wormholeLeaveSupply(this.state, this.ctx, id, units)
+    if (r.ok) { void this.persist(); this.notify() }
+    return r
+  }
+
+  wormholeGroundDrop(id: string, x: number, y: number, grab: { dx: number; dy: number }): CommandResult {
+    const run = this.state.wormhole.run
+    const board = run ? wormholeGroundBoard(run) : undefined
+    if (!board || run?.battle || wormholePendingBattleReason(this.state)) return { ok: false }
+    const capacity = board.cols * (Math.max(8, ...board.placements.map((p) => p.y + p.h)) + 2)
+    const r = holdDropWithGrab(board, id, x, y, capacity, grab)
+    if (r.ok) { void this.persist(); this.notify() }
+    return r
+  }
+
+  wormholeGroundSwap(a: string, b: string): CommandResult {
+    const run = this.state.wormhole.run
+    const board = run ? wormholeGroundBoard(run) : undefined
+    if (!board || run?.battle || wormholePendingBattleReason(this.state)) return { ok: false }
+    const r = holdSwap(board, a, b, board.cols * (Math.max(8, ...board.placements.map((p) => p.y + p.h)) + 2))
+    if (r.ok) { void this.persist(); this.notify() }
+    return r
+  }
+
   /** 虫洞扫描：库存读数（界面用） */
   wormholeStock(): Array<{
     id: string
+    expeditionRules?: number
     seed: number
     depth: number
     archetype: WormholeArchetype
@@ -3080,12 +3268,21 @@ export class GameEngine {
 
   /** 自动探索：开始一趟（消耗该处库存、**整队占 1 枚 AI 核心**、参与舰锁定到返航） */
   wormholeAutoStart(stockId: string, shipIds: readonly string[]): CommandResult {
+    if (this.wormholeStock().find(s => s.id === stockId)?.expeditionRules !== undefined) return { ok: false, code: 'unsupported-rules' }
     const r = wormholeAutoStart(this.state, this.ctx, stockId, shipIds)
     if (r.ok) {
       void this.persist()
       this.notify()
     }
     return r
+  }
+
+  wormholeAutoStartPrepared(stockId: string, shipIds: readonly string[], plan: WormholePreparationPlan, goal: import('@whale/core').WormholeExpeditionGoal = 'deep'): CommandResult {
+    if (!futureWormholeEnabled()) return { ok: false }
+    if (this.wormholeStock().find(s => s.id === stockId)?.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
+    const result = wormholeAutoStart(this.state, this.ctx, stockId, shipIds, { prepared: plan, confirmLossRisk: true, goal })
+    if (result.ok) { void this.persist(); this.notify() }
+    return result
   }
 
   /** 自动探索：召回一趟（无收益无损伤；虫洞不退还） */
@@ -3206,12 +3403,12 @@ export class GameEngine {
    * `deferAmbush: true` ⇒ **这一场先挂起**（`run.pendingNodeBattle`），回执带 `pendingBattle: 'node'`，
    * 玩家点「开战」才进战斗（与遗迹守备同一套确认语言）。工具/用例不传 ⇒ 到达即开打（原行为）。
    */
-  wormholeTravel(q: number, r: number, confirmUnknown = false, confirmIntercept = false): CommandResult {
+  wormholeTravel(q: number, r: number, confirmUnknown = false, confirmIntercept = false, confirmLeaveCargo = false): CommandResult {
     const res = wormholeTravelTo(
       this.state,
       this.ctx,
       { q, r },
-      { confirmUnknown, confirmIntercept, deferAmbush: true },
+      { confirmUnknown, confirmIntercept, deferAmbush: true, confirmLeaveCargo },
     )
     if (res.ok) {
       this.wormholeTickNow()
@@ -3438,6 +3635,12 @@ export class GameEngine {
   ): CommandResult {
     const run = this.state.wormhole.run
     if (!run) return { ok: false, error: tr("ui.engine.042") }
+    if (run.supplyVersion === 1) {
+      if (from === to) return { ok: false }
+      const r = from === 'hold' ? wormholeLeaveHoldPiece(this.state, this.ctx, id, x, y, grab) : wormholeTempStowPiece(this.state, this.ctx, id, x, y, grab)
+      if (r.ok) { void this.persist(); this.notify() }
+      return r
+    }
     run.hold = run.hold ?? makeHoldState()
     const holdCap = wormholeHoldCapacityOf(this.state, this.ctx)
     const src = from === 'hold' ? run.hold : wormholeTempBoard(run)
@@ -3456,6 +3659,14 @@ export class GameEngine {
   /** 虫洞：**整理临时空间**（与货仓的「整理」同一把尺：按件大小重排，只重排不丢件） */
   wormholeTempCompact(): CommandResult {
     const run = this.state.wormhole.run
+    if (run?.supplyVersion === 1) {
+      const board = wormholeGroundBoard(run)
+      if (!board) return { ok: false }
+      holdCompact(board, Math.max(WORMHOLE_TEMP_CELLS, board.cols * (board.placements.length * 2 + 2)))
+      void this.persist()
+      this.notify()
+      return { ok: true }
+    }
     if (!run?.tempGrid) return { ok: false, error: tr("ui.engine.044") }
     const r = holdCompact(run.tempGrid, WORMHOLE_TEMP_CELLS)
     if (r.moved > 0 || r.unplaced.length > 0) {
@@ -3465,7 +3676,7 @@ export class GameEngine {
     return { ok: true, error: r.unplaced.length > 0 ? tr("ui.engine.045", { p1: r.unplaced.length }) : undefined }
   }
   /** 虫洞：深入下一层（只在层末可用） */
-  wormholeDescend(): CommandResult {
+  wormholeDescend(confirmLeaveCargo = false): CommandResult {
     const run = this.state.wormhole.run
     if (!run) return { ok: false, error: tr("ui.engine.042") }
     const blocked = wormholeActionBlockReason(this.state, this.ctx)
@@ -3478,18 +3689,21 @@ export class GameEngine {
      * ⚠ 2026-09-19（船长「取消固定种子」·裁定「甲」）：**第二入参改成现掷**（原 `state.rng.seed` 随档
      * ⇒ 读档深入能预览同一张下层图）。现掷 ⇒ 每一层的盘面只在**真正下去的那一刻**才生成。
      */
-    const r = wormholeDescend(this.state, this.freshLayerSeed(), wormholeScanBonusOf(this.ctx, run.fleet))
+    const seed = this.wormholeTestEnabled() ? ((run.seed ?? 1) * 1664525 + run.depth * 1013904223) >>> 0 : this.freshLayerSeed()
+    const r = wormholeDescend(this.state, seed, wormholeScanBonusOf(this.ctx, run.fleet), { confirmLeaveCargo })
+    if (r.ok) wormholeFreezeEvents(this.state, this.ctx)
     if (r.ok) {
       void this.persist()
       this.notify()
     }
-    return { ok: r.ok, error: r.error }
+    return { ok: r.ok, error: r.error, code: r.code }
   }
 
   /** 虫洞：发起撤离（进入 `extracting` 相位；**下一拍直接结算入港** —— 2026-09-15 起撤离不触发战斗） */
   wormholeExtract(): CommandResult {
     const run = this.state.wormhole.run
     if (!run) return { ok: false, error: tr("ui.engine.042") }
+    if (run.supplyVersion === 1) return { ok: false, code: 'cargo-pending' }
     // **超载不许撤离**（船长裁定 8）：先把货抛到容量内（抛货本身任何时候都能做 ⇒ 不会软锁）
     const blocked = wormholeActionBlockReason(this.state, this.ctx)
     if (blocked) return { ok: false, error: blocked }

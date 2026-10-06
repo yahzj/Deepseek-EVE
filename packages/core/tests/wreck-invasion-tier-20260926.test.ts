@@ -52,7 +52,7 @@ const H_GEAR = ['mod-lair-ecm-h', 'mod-lair-web-h', 'drone-ink-heavy']
 
 describe('残骸新类别「入侵」（2026-09-26 船长令）', () => {
   it('地区标签表多一档 `inv`，其余三档逐字不变', () => {
-    expect(WRECK_REGION_LABELS).toEqual({ hi: '高安', lo: '低安', wh: '虫洞', inv: '入侵' })
+    expect(WRECK_REGION_LABELS).toEqual({ hi: '高安', lo: '低安', wh: '信号空间', inv: '入侵' })
   })
 
   it('H 组 = 入侵类：region/tier/组名/物品 id 都对上（组 key 不改 ⇒ 旧档零迁移）', () => {

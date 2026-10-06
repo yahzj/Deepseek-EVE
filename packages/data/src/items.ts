@@ -167,7 +167,7 @@ export const ORES: readonly ItemDef[] = [
     kind: 'ore',
     unitM3: 1, // **排除在体积平衡之外**（2026-09-28 船长令：「把虚空母矿排除在体积平衡」）
     baseSellPriceIsk: 915,
-    description: L10N['item.copy.008']!.zh,
+    description: L10N['item.signalSpace.001']!.zh,
     refine: [
       { mineralId: 'min-voidcrystal', perOre: 0.25 }, // 2026-09-14 船长：产出量下调到一半（原 0.5）
       { mineralId: 'min-isotope', perOre: 1.0 },
@@ -850,7 +850,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.066']!.zh,
+    description: L10N['item.signalSpace.002']!.zh,
   },
   {
     id: 'mat-chrono',
@@ -858,7 +858,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.067']!.zh,
+    description: L10N['item.signalSpace.003']!.zh,
   },
   {
     id: 'mat-crane',
@@ -866,7 +866,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.068']!.zh,
+    description: L10N['item.signalSpace.004']!.zh,
   },
   {
     id: 'mat-drill',
@@ -874,7 +874,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.069']!.zh,
+    description: L10N['item.signalSpace.005']!.zh,
   },
   {
     id: 'mat-nebula',
@@ -882,7 +882,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.070']!.zh,
+    description: L10N['item.signalSpace.006']!.zh,
   },
   {
     id: 'mat-enricher',
@@ -890,7 +890,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.071']!.zh,
+    description: L10N['item.signalSpace.007']!.zh,
   },
   {
     id: 'mat-expander',
@@ -898,7 +898,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.072']!.zh,
+    description: L10N['item.signalSpace.008']!.zh,
   },
   /* ── B1 批：威胁类（三档合计最多把威胁压到一半）── */
   {
@@ -907,7 +907,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.073']!.zh,
+    description: L10N['item.signalSpace.009']!.zh,
   },
   {
     id: 'mat-boss-analyzer',
@@ -915,7 +915,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.074']!.zh,
+    description: L10N['item.signalSpace.010']!.zh,
   },
   {
     /**
@@ -929,7 +929,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.075']!.zh,
+    description: L10N['item.signalSpace.011']!.zh,
   },
   /* ── B1 批：战斗类（一律只在本趟虫洞的战斗里生效）── */
   {
@@ -938,7 +938,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.076']!.zh,
+    description: L10N['item.signalSpace.012']!.zh,
   },
   {
     id: 'mat-armor-res',
@@ -946,7 +946,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.077']!.zh,
+    description: L10N['item.signalSpace.013']!.zh,
   },
   {
     id: 'mat-hull-res',
@@ -954,7 +954,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.078']!.zh,
+    description: L10N['item.signalSpace.014']!.zh,
   },
   {
     id: 'mat-tracker',
@@ -962,7 +962,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.079']!.zh,
+    description: L10N['item.signalSpace.015']!.zh,
   },
   {
     id: 'mat-gyro',
@@ -970,7 +970,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.080']!.zh,
+    description: L10N['item.signalSpace.016']!.zh,
   },
   {
     id: 'mat-jammer',
@@ -978,7 +978,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.081']!.zh,
+    description: L10N['item.signalSpace.017']!.zh,
   },
   {
     id: 'mat-rangefinder',
@@ -986,7 +986,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.082']!.zh,
+    description: L10N['item.signalSpace.018']!.zh,
   },
   {
     id: 'mat-blindspot',
@@ -994,7 +994,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.083']!.zh,
+    description: L10N['item.signalSpace.019']!.zh,
   },
   {
     id: 'mat-ammo-dmg',
@@ -1002,7 +1002,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.084']!.zh,
+    description: L10N['item.signalSpace.020']!.zh,
   },
   {
     id: 'mat-reload',
@@ -1010,7 +1010,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.085']!.zh,
+    description: L10N['item.signalSpace.021']!.zh,
   },
   /* ── B2 批：战后收口与新机制 ── */
   {
@@ -1019,7 +1019,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.086']!.zh,
+    description: L10N['item.signalSpace.022']!.zh,
   },
   {
     id: 'mat-ammo-back',
@@ -1027,7 +1027,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.087']!.zh,
+    description: L10N['item.signalSpace.023']!.zh,
   },
   {
     id: 'mat-drone-net',
@@ -1035,7 +1035,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.088']!.zh,
+    description: L10N['item.signalSpace.024']!.zh,
   },
   {
     id: 'mat-field-repair',
@@ -1043,7 +1043,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
     kind: 'matter',
     unitM3: 2000,
     baseSellPriceIsk: 1,
-    description: L10N['item.copy.089']!.zh,
+    description: L10N['item.signalSpace.025']!.zh,
   },
 ]
 
@@ -1082,7 +1082,8 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
 export const WORMHOLE_ESSENCES: readonly ItemDef[] = [
   {
     id: 'mat-wh-essence',
-    name: '虫洞谜质',
+    // ⟪文案调整 2026-10-06⟫ 旧玩法改名，物品ID、数量与用途保持。
+    name: '信号谜质',
     kind: 'essence',
     unitM3: 0.5,
     baseSellPriceIsk: 700_000,

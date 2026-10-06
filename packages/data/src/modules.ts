@@ -66,7 +66,7 @@ export const MODULES: readonly ModuleDef[] = [
     workEfficiency: 0, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 0.1,
-    description: L10N['mod.copy.001']!.zh,
+    description: L10N['mod.signalSpace.001']!.zh,
     cpuUse: 3,
   },
   {
@@ -76,7 +76,7 @@ export const MODULES: readonly ModuleDef[] = [
     workEfficiency: 0.2, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 0.2,
-    description: L10N['mod.copy.001']!.zh,
+    description: L10N['mod.signalSpace.001']!.zh,
     cpuUse: 5,
   },
   {
@@ -86,7 +86,7 @@ export const MODULES: readonly ModuleDef[] = [
     workEfficiency: 0.4, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 0.5,
-    description: L10N['mod.copy.001']!.zh,
+    description: L10N['mod.signalSpace.001']!.zh,
     cpuUse: 15,
   },
   {
@@ -96,7 +96,7 @@ export const MODULES: readonly ModuleDef[] = [
     workEfficiency: 0.6, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 0.8,
-    description: L10N['mod.copy.001']!.zh,
+    description: L10N['mod.signalSpace.001']!.zh,
     cpuUse: 40,
   },
   {
@@ -106,7 +106,7 @@ export const MODULES: readonly ModuleDef[] = [
     workEfficiency: 0.8, // 虫洞内打捞/采集效率（2026-09-19 谜质科技树批；见 ModuleDef.workEfficiency）
     rack: 'high',
     bonus: 1.1,
-    description: L10N['mod.copy.002']!.zh,
+    description: L10N['mod.signalSpace.002']!.zh,
     cpuUse: 60,
   },
 
@@ -1237,7 +1237,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 2,
     salvageCycleMs: 10_000,
-    description: L10N['mod.copy.044']!.zh,
+    description: L10N['mod.signalSpace.003']!.zh,
   },
   {
     id: 'mod-salvager-2',
@@ -1247,7 +1247,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 6,
     salvageCycleMs: 8_000,
-    description: L10N['mod.copy.044']!.zh,
+    description: L10N['mod.signalSpace.003']!.zh,
   },
   {
     id: 'mod-salvager-3',
@@ -1257,7 +1257,7 @@ export const MODULES: readonly ModuleDef[] = [
     rack: 'high',
     cpuUse: 15,
     salvageCycleMs: 6_000,
-    description: L10N['mod.copy.044']!.zh,
+    description: L10N['mod.signalSpace.003']!.zh,
   },
   /* ═══ 2026-09-09 船体维修装置（船长定：中槽；战斗中每 5 秒自动修复装甲+结构，
       每脉冲消耗 1 枚修理组件（民用级吃民用组件 / MK1·MK2 吃军用组件）；组件耗尽自动停机；

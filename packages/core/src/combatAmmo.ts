@@ -5,15 +5,35 @@
  * 只依赖 state 类型 / types / inventory / playerSpec（规格里的弹种偏好）。`combat.ts` 原样再导出
  * （先例：fitted.ts），既有引用零改动。
  */
-import type { GameState } from './state'
+import type { BattleState, GameState } from './state'
 import type { BattleBalance, DamageType, SimContext } from './types'
 import type { UnitSpec, WeaponSpec } from './combat'
 import { AMMO_IDS } from './playerSpec'
 import { addWare, cargoItemsOf, countWare, removeItem, removeWare } from './inventory'
+import { restoreWormholeSupply, wormholeSupplyForBattle } from './wormholeSupplies'
 
 /* 以下为 2026-10-02 批次 4i 从 combat.ts 切接过来的整簇（ammoLoadTotals ~ ammoKeyOf）。 */
 
 /* ═══════════ 弹药 ═══════════ */
+
+/** 从首次齐射起算的名义耗弹；用规格里的装填/连发/自加速，不包含预载余量。 */
+export function weaponNominalAmmoForMs(w: WeaponSpec, durationMs: number): number {
+  if ((w.kind !== 'gun' && w.kind !== 'beam') || !(durationMs > 0) || !Number.isFinite(durationMs)) return 0
+  const volley = Math.max(1, w.count ?? 1) * Math.max(1, w.ammoPerShot ?? 1)
+  const shots = Math.max(1, Math.floor(w.burst?.shots ?? 1))
+  let elapsed = 0
+  let fired = 0
+  let reload = Math.max(50, w.reloadMs)
+  while (elapsed < durationMs) {
+    fired += 1
+    if (fired % shots !== 0) elapsed += Math.max(50, w.burst?.gapMs ?? reload)
+    else {
+      if (w.overlayDrive) reload = Math.max(w.overlayDrive.floorMs, reload - w.overlayDrive.stepMs)
+      elapsed += Math.max(50, reload)
+    }
+  }
+  return fired * volley
+}
 
 /**
  * 预载需求（V18B-2 per-gun 多键）：按每种耗弹武器键分别估量
@@ -113,13 +133,14 @@ export function resolveAmmoTier(
   shipId: string,
   type: DamageType,
   want: number,
+  stock?: Readonly<Record<string, number>>,
 ): { id: string; can: number; expected: string; fellBack: boolean } {
   const need = Math.max(0, Math.floor(want))
   const prefId = state.fleet[shipId]?.ammoPref?.[type]
   const wantId = prefId && ctx.items.has(prefId) ? prefId : null
   const baseId = AMMO_IDS[type]
   const canLoadOf = (id: string): number =>
-    Math.min(Math.floor((cargoItemsOf(state)[id] ?? 0) + countWare(state, id)), need)
+    Math.min(Math.floor(stock ? stock[id] ?? 0 : (cargoItemsOf(state)[id] ?? 0) + countWare(state, id)), need)
   /** 候选：**基础弹恒在**（它是无档时的默认）+ 物品表里同族的所有档（日后加档自动纳入） */
   const family = [...new Set([baseId, ...[...ctx.items.keys()].filter((id) => id.startsWith(`ammo-${type}-`))])].sort()
   const ranked = family
@@ -209,4 +230,87 @@ export function nextAmmoType(ammo: { kin: number; exp: number; pla: number }): D
 export type AmmoKey = 'kin' | 'exp' | 'pla'
 export function ammoKeyOf(t: DamageType): AmmoKey {
   return t === 'kinetic' ? 'kin' : t === 'explosive' ? 'exp' : 'pla'
+}
+
+export function battleAmmoIdsFor(battle: BattleState, tag: string): Partial<Record<DamageType, string>> | undefined {
+  return battle.expeditionAmmo ? battle.expeditionAmmo.idsByTag[tag] ?? {} : battle.ammoIds
+}
+
+export function battleAmmoAvailable(battle: BattleState, tag: string, type: DamageType): number {
+  if (!battle.expeditionAmmo) return battle.ammo[ammoKeyOf(type)]
+  const id = battle.expeditionAmmo.idsByTag[tag]?.[type]
+  return id ? battle.expeditionAmmo.stock[id] ?? 0 : 0
+}
+
+export function wormholeAmmoIdsForSpec(
+  state: GameState, ctx: SimContext, shipId: string, spec: UnitSpec, stock: Readonly<Record<string, number>>,
+): Partial<Record<DamageType, string>> {
+  const ids: Partial<Record<DamageType, string>> = {}
+  for (const [typeRaw, n] of Object.entries(ammoLoadTotals(spec, ctx.balance.battle, state))) {
+    const type = typeRaw as DamageType
+    ids[type] = resolveAmmoTier(state, ctx, shipId, type, n ?? 0, stock).id
+  }
+  return ids
+}
+
+export function consumeBattleAmmo(battle: BattleState, tag: string, type: DamageType, count: number): boolean {
+  if (!Number.isSafeInteger(count) || count <= 0) return false
+  if (battleAmmoAvailable(battle, tag, type) < count) return false
+  if (battle.expeditionAmmo) {
+    const id = battle.expeditionAmmo.idsByTag[tag]![type]!
+    battle.expeditionAmmo.stock[id] = (battle.expeditionAmmo.stock[id] ?? 0) - count
+  }
+  battle.ammo[ammoKeyOf(type)] -= count
+  return true
+}
+
+/** 同一快照选档，按id汇总预载，不能将不同档合并后用主控档退货。 */
+export function loadWormholeBattleAmmo(state: GameState, ctx: SimContext, battle: BattleState, specs: ReadonlyMap<string, UnitSpec>): boolean {
+  const ledger = wormholeSupplyForBattle(state, battle)
+  if (!ledger) return false
+  const wanted: Record<string, number> = {}
+  const idsByTag: NonNullable<BattleState['expeditionAmmo']>['idsByTag'] = {}
+  for (const entry of battle.myFleet ?? []) {
+    const spec = specs.get(entry.shipId)!
+    const ids = wormholeAmmoIdsForSpec(state, ctx, entry.shipId, spec, ledger.items)
+    for (const [typeRaw, n] of Object.entries(ammoLoadTotals(spec, ctx.balance.battle, state))) {
+      const type = typeRaw as DamageType
+      const id = ids[type]!
+      wanted[id] = (wanted[id] ?? 0) + (n ?? 0)
+    }
+    idsByTag[entry.tag] = ids
+  }
+  const stock: Record<string, number> = {}
+  for (const [id, n] of Object.entries(wanted)) {
+    const take = Math.min(ledger.items[id] ?? 0, n)
+    if (take <= 0) continue
+    stock[id] = take
+    const left = (ledger.items[id] ?? 0) - take
+    if (left > 0) ledger.items[id] = left
+    else delete ledger.items[id]
+  }
+  battle.expeditionAmmo = { stock, loaded: { ...stock }, idsByTag }
+  battle.ammo = { kin: 0, exp: 0, pla: 0 }
+  for (const [id, n] of Object.entries(stock)) {
+    const type = (['kinetic', 'explosive', 'plasma'] as const).find((t) => id.startsWith(`ammo-${t}-`))
+    if (type) battle.ammo[ammoKeyOf(type)] += n
+  }
+  return true
+}
+
+/** 战后余弹/回收回到本趟；全损调用方直接销趟，不走母港退款。 */
+export function settleWormholeBattleAmmo(state: GameState, battle: BattleState, recoveryPct: number): void {
+  const ledger = wormholeSupplyForBattle(state, battle)
+  const ammo = battle.expeditionAmmo
+  if (!ledger || !ammo) return
+  for (const [id, loaded] of Object.entries(ammo.loaded)) {
+    const left = ammo.stock[id] ?? 0
+    const back = Math.round(Math.max(0, loaded - left) * Math.max(0, Math.min(1, recoveryPct)))
+    const consumed = (ledger.consumed[id] ?? 0) + Math.max(0, loaded - left)
+    if (consumed > 0) ledger.consumed[id] = consumed
+    if (left > 0) ledger.items[id] = (ledger.items[id] ?? 0) + left
+    restoreWormholeSupply(ledger, id, back)
+  }
+  ammo.stock = {}
+  ammo.loaded = {}
 }

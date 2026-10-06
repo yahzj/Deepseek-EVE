@@ -36,7 +36,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
       3_000_000, 3_000_000, 3_000_000, 3_000_000, 3_000_000,
       3_000_000, 3_000_000, 3_000_000, 3_000_000, 3_000_000,
     ],
-    note: '每级提高虫洞探索的最大回合数 10（永久加成；与本趟带出的「时序核心」各自相加）。',
+    // ⟪文案调整2026-10-06⟫ 回合加成为新旧探索共享效果。
+    note: '每级提高空间内探索的最大回合数 10（永久加成；与本趟带出的「时序核心」各自相加）。',
   },
   {
     id: 'mt-explore-salvage',
@@ -75,7 +76,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [5, 10, 15],
     isk: [6_000_000, 12_000_000, 18_000_000],
     prereq: { 'mt-explore-turn': 1 },
-    note: '每级提高虫洞货仓有效格 4。',
+    // ⟪文案调整2026-10-06⟫ 货仓加成为新旧探索共享效果。
+    note: '每级提高空间内货仓有效格 4。',
   },
   {
     id: 'mt-explore-scan',
@@ -88,7 +90,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [10, 20, 30, 40, 50],
     isk: [10_000_000, 20_000_000, 30_000_000, 40_000_000, 50_000_000],
     prereq: { 'mt-explore-turn': 2 },
-    note: '每级缩短「扫描虫洞」的扫描间隔 5%（与技能链相乘）。',
+    // ⟪文案调整2026-10-06⟫ 旧扫描入口改名信号空间。
+    note: '每级缩短「扫描信号空间」的扫描间隔 5%（与技能链相乘）。',
   },
   {
     id: 'mt-explore-speed',
@@ -101,7 +104,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [30, 60],
     isk: [120_000_000, 240_000_000],
     prereq: { 'mt-explore-scan': 1 },
-    note: '解锁虫洞内战斗的倍速：1 级 ×2、2 级 ×4（战斗中可随时切回 ×1）。',
+    // ⟪文案调整2026-10-06⟫ 战斗倍速为新旧探索共享效果。
+    note: '解锁空间内战斗的倍速：1 级 ×2、2 级 ×4（战斗中可随时切回 ×1）。',
   },
 
   /* ══════════════ B 虫洞战斗线（14） ══════════════
@@ -122,7 +126,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     maxLevel: 3,
     essence: [2, 4, 6],
     isk: [3_000_000, 6_000_000, 9_000_000],
-    note: '每级降低护盾层对敌方主用伤害系的抗性缺口 5%（仅洞内战斗生效）。',
+    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
+    note: '每级降低护盾层对敌方主用伤害系的抗性缺口 5%（仅空间内战斗生效）。',
   },
   {
     id: 'mt-battle-armor',
@@ -134,7 +139,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     maxLevel: 3,
     essence: [2, 4, 6],
     isk: [3_000_000, 6_000_000, 9_000_000],
-    note: '每级降低装甲层对敌方主用伤害系的抗性缺口 5%（仅洞内战斗生效）。',
+    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
+    note: '每级降低装甲层对敌方主用伤害系的抗性缺口 5%（仅空间内战斗生效）。',
   },
   {
     id: 'mt-battle-hull',
@@ -147,7 +153,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [5, 10, 15],
     isk: [6_000_000, 12_000_000, 18_000_000],
     prereq: { 'mt-battle-shield': 1, 'mt-battle-armor': 1 },
-    note: '每级降低结构层对敌方主用伤害系的抗性缺口 5%（仅洞内战斗生效；前置：谐振护盾阵列与装甲重排各 1 级）。',
+    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
+    note: '每级降低结构层对敌方主用伤害系的抗性缺口 5%（仅空间内战斗生效；前置：谐振护盾阵列与装甲重排各 1 级）。',
   },
   {
     id: 'mt-battle-hit',
@@ -159,7 +166,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     maxLevel: 3,
     essence: [2, 4, 6],
     isk: [3_000_000, 6_000_000, 9_000_000],
-    note: '每级提高我方命中 1%（仅洞内战斗生效）。',
+    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
+    note: '每级提高我方命中 1%（仅空间内战斗生效）。',
   },
   {
     id: 'mt-battle-evasion',
@@ -172,7 +180,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [5, 10, 15],
     isk: [6_000_000, 12_000_000, 18_000_000],
     prereq: { 'mt-battle-hit': 1 },
-    note: '每级提高我方回避 1%（仅洞内战斗生效）。',
+    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
+    note: '每级提高我方回避 1%（仅空间内战斗生效）。',
   },
   {
     id: 'mt-battle-noise',
@@ -185,7 +194,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [5, 10, 15],
     isk: [6_000_000, 12_000_000, 18_000_000],
     prereq: { 'mt-battle-hit': 1 },
-    note: '每级降低敌方命中 1%（仅洞内战斗生效）。',
+    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
+    note: '每级降低敌方命中 1%（仅空间内战斗生效）。',
   },
   {
     id: 'mt-battle-range',
@@ -198,7 +208,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [5, 10, 15],
     isk: [6_000_000, 12_000_000, 18_000_000],
     prereq: { 'mt-battle-hit': 1 },
-    note: '每级提高我方全武器射程 4%（仅洞内战斗生效）。',
+    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
+    note: '每级提高我方全武器射程 4%（仅空间内战斗生效）。',
   },
   {
     id: 'mt-battle-reload',
@@ -211,7 +222,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [10, 20, 30],
     isk: [10_000_000, 20_000_000, 30_000_000],
     prereq: { 'mt-battle-range': 1 },
-    note: '每级缩短我方武器装填周期 3%（仅洞内战斗生效）。',
+    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
+    note: '每级缩短我方武器装填周期 3%（仅空间内战斗生效）。',
   },
   {
     id: 'mt-battle-damage',
@@ -224,7 +236,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [10, 20, 30],
     isk: [10_000_000, 20_000_000, 30_000_000],
     prereq: { 'mt-battle-range': 1 },
-    note: '每级提高我方单发伤害 3%（仅洞内战斗生效）。',
+    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
+    note: '每级提高我方单发伤害 3%（仅空间内战斗生效）。',
   },
   {
     id: 'mt-battle-blind',
@@ -237,7 +250,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [10, 20, 30],
     isk: [10_000_000, 20_000_000, 30_000_000],
     prereq: { 'mt-battle-range': 1 },
-    note: '每级降低敌方在近盲带内的伤害比例 5%（仅洞内战斗生效）。',
+    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
+    note: '每级降低敌方在近盲带内的伤害比例 5%（仅空间内战斗生效）。',
   },
   {
     id: 'mt-battle-threat-node',
@@ -250,7 +264,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [10, 20, 30],
     isk: [10_000_000, 20_000_000, 30_000_000],
     prereq: { 'mt-battle-noise': 1 },
-    note: '每级降低洞内节点战的敌方威胁 3%。',
+    // ⟪文案调整2026-10-06⟫ 节点战加成为新旧探索共享效果。
+    note: '每级降低空间内节点战的敌方威胁 3%。',
   },
   {
     id: 'mt-battle-threat-boss',
@@ -263,7 +278,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [10, 20, 30],
     isk: [10_000_000, 20_000_000, 30_000_000],
     prereq: { 'mt-battle-noise': 1 },
-    note: '每级降低洞内层末守卫的威胁 3%。',
+    // ⟪文案调整2026-10-06⟫ 守卫加成为新旧探索共享效果。
+    note: '每级降低空间内层末守卫的威胁 3%。',
   },
   {
     id: 'mt-battle-drone',
@@ -276,7 +292,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [10, 20, 30],
     isk: [10_000_000, 20_000_000, 30_000_000],
     prereq: { 'mt-battle-evasion': 1 },
-    note: '每级提高被击落无人机的回收率 5%（仅洞内战斗生效）。',
+    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
+    note: '每级提高被击落无人机的回收率 5%（仅空间内战斗生效）。',
   },
   {
     id: 'mt-battle-repair',
@@ -289,7 +306,8 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     essence: [30, 60],
     isk: [120_000_000, 240_000_000],
     prereq: { 'mt-battle-drone': 1 },
-    note: '每级让战斗结束后的装甲与结构回复 10%（仅洞内战斗生效）。',
+    // ⟪文案调整2026-10-06⟫ 空间内战斗为新旧探索共享范围。
+    note: '每级让战斗结束后的装甲与结构回复 10%（仅空间内战斗生效）。',
   },
 
   /* ══════════════ C 洞外工业线（3 · 船长 2026-09-19 重做） ══════════════ */

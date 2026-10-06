@@ -219,10 +219,11 @@ interface MilestoneSpec {
 function milestoneAchievements(): AchievementDef[] {
   const specs: MilestoneSpec[] = [
     /* ── 深渊层深（4 枚）── 只计**手动**虫洞：自动探索不经过 `wormholeDescend`（船长裁定） */
-    { slug: 'wh-depth-2', slot: 'depth', name: '初入深渊', stat: 'whMaxDepth', target: 2, unit: ' 层', note: '在虫洞中到达第 {n}。' },
-    { slug: 'wh-depth-3', slot: 'depth', name: '深渊宿将', stat: 'whMaxDepth', target: 3, unit: ' 层', note: '在虫洞中到达第 {n}。' },
-    { slug: 'wh-depth-4', slot: 'depth', name: '深渊之主', stat: 'whMaxDepth', target: 4, unit: ' 层', note: '在虫洞中到达第 {n}。' },
-    { slug: 'wh-depth-5', slot: 'depth', name: '深渊彼岸', stat: 'whMaxDepth', target: 5, unit: ' 层', note: '在虫洞中到达第 {n}。' },
+    // ⟪文案调整 2026-10-06⟫ 旧深渊探索来源改名，成就与统计键保持。
+    { slug: 'wh-depth-2', slot: 'depth', name: '初入深渊', stat: 'whMaxDepth', target: 2, unit: ' 层', note: '在信号空间中到达第 {n}。' },
+    { slug: 'wh-depth-3', slot: 'depth', name: '深渊宿将', stat: 'whMaxDepth', target: 3, unit: ' 层', note: '在信号空间中到达第 {n}。' },
+    { slug: 'wh-depth-4', slot: 'depth', name: '深渊之主', stat: 'whMaxDepth', target: 4, unit: ' 层', note: '在信号空间中到达第 {n}。' },
+    { slug: 'wh-depth-5', slot: 'depth', name: '深渊彼岸', stat: 'whMaxDepth', target: 5, unit: ' 层', note: '在信号空间中到达第 {n}。' },
     /* ── 层末守卫（2 枚）── 累计打掉的守卫数 */
     { slug: 'wh-boss-2', slot: 'guard', name: '斩层者', stat: 'whBossClears', target: 2, unit: ' 个', note: '累计击破 {n}层末守卫。' },
     { slug: 'wh-boss-4', slot: 'guard', name: '守关终结者', stat: 'whBossClears', target: 4, unit: ' 个', note: '累计击破 {n}层末守卫。' },

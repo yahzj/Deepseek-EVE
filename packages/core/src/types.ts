@@ -2666,6 +2666,9 @@ export interface AnomalyDef {
    * ⚠ **不显示给玩家**：界面一律读 `threat`（价目表）。
    */
   threatJudged?: number
+  /** 仅新虫洞派生卡写入：修理与近防资格独立于展示威胁。 */
+  wormholeRepairScale?: number
+  wormholePdTags?: readonly string[]
   /**
    * **打赢这张卡掉落几件稀有残骸**（**2026-09-27 船长令**：「**主力舰队添加一个稀有残骸掉落**」＋
    * 追问落点答「**进残骸场**」）。
@@ -2841,6 +2844,8 @@ export interface SimContext {
   galaxies: ReadonlyMap<string, GalaxyDef>
   galaxyEdges: readonly GalaxyEdgeDef[]
   anomalies: ReadonlyMap<string, AnomalyDef>
+  /** 新虫洞独立编成可取未进入旧卡的已登记舰级；合成上下文可省略。 */
+  foeShips?: ReadonlyMap<string, FoeShipDef>
   travelEvents: readonly TravelEventDef[]
   /** 副空间站建站点（T9） */
   stations: ReadonlyMap<string, StationSiteDef>

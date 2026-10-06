@@ -35,7 +35,8 @@ export type WreckRegion = 'hi' | 'lo' | 'wh' | 'inv'
 export const WRECK_REGION_LABELS: Readonly<Record<WreckRegion, string>> = {
   hi: '高安',
   lo: '低安',
-  wh: '虫洞',
+  // ⟪文案调整2026-10-06⟫ 旧残骸来源改名，地区枚举不动。
+  wh: '信号空间',
   inv: '入侵',
 }
 
@@ -224,12 +225,14 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     key: 'a-wh',
     family: 'A',
     region: 'wh',
-    name: '海盗残骸（虫洞）',
-    rareName: '海盗稀有残骸（虫洞）',
+    // ⟪文案调整2026-10-06⟫ 仅改来源显示，组标识与回收画像不动。
+    name: '海盗残骸（信号空间）',
+    rareName: '海盗稀有残骸（信号空间）',
     // 2026-09-30 船长令「虫洞残骸也调整到危级别」⇒ 档位升危、池子按族特色给（均价 91.75 · 偏差 −0.86%）
     tier: 'dire',
     pool: [['min-tritanium', 40], ['min-nocxium', 23], ['min-starcore', 25], ['min-isotope', 12]],
-    note: '海盗残骸（虫洞）：重钨合金甲与星髓晶髓材为主，夹同位聚晶',
+    // ⟪文案调整2026-10-06⟫ 产出倾向只改来源名。
+    note: '海盗残骸（信号空间）：重钨合金甲与星髓晶髓材为主，夹同位聚晶',
     threat: 45,
     theme: {},
     members: ['wh-pirate-scout', 'wh-pirate-hunt', 'wh-pirate-warband'],
@@ -238,12 +241,14 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     key: 'c-wh',
     family: 'C',
     region: 'wh',
-    name: '异形生物残骸（虫洞）',
-    rareName: '异形生物稀有残骸（虫洞）',
+    // ⟪文案调整2026-10-06⟫ 仅改来源显示，组标识与回收画像不动。
+    name: '异形生物残骸（信号空间）',
+    rareName: '异形生物稀有残骸（信号空间）',
     // 2026-09-30 船长令：升危档 + 按族特色池（均价 93.60 · 偏差 +1.13%）
     tier: 'dire',
     pool: [['min-tritanium', 40], ['min-starcore', 28], ['min-isotope', 20], ['min-nocxium', 12]],
-    note: '异形生物残骸（虫洞）：星髓晶髓材为主，夹同位聚晶与重钨',
+    // ⟪文案调整2026-10-06⟫ 产出倾向只改来源名。
+    note: '异形生物残骸（信号空间）：星髓晶髓材为主，夹同位聚晶与重钨',
     threat: 45,
     theme: {},
     members: ['wh-alien-swarm', 'wh-alien-brood', 'wh-alien-hive'],
@@ -252,12 +257,14 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     key: 'd-wh',
     family: 'D',
     region: 'wh',
-    name: '守墓者残骸（虫洞）',
-    rareName: '守墓者稀有残骸（虫洞）',
+    // ⟪文案调整2026-10-06⟫ 仅改来源显示，组标识与回收画像不动。
+    name: '守墓者残骸（信号空间）',
+    rareName: '守墓者稀有残骸（信号空间）',
     // 2026-09-30 船长令：升危档 + 按族特色池（均价 92.60 · 偏差 +0.05%）
     tier: 'dire',
     pool: [['min-tritanium', 40], ['min-darkiron', 4], ['min-nocxium', 24], ['min-starcore', 10], ['min-isotope', 22]],
-    note: '守墓者残骸（虫洞）：冥铁合金残片与重钨合金甲为主，夹星髓晶髓材',
+    // ⟪文案调整2026-10-06⟫ 产出倾向只改来源名。
+    note: '守墓者残骸（信号空间）：冥铁合金残片与重钨合金甲为主，夹星髓晶髓材',
     threat: 45,
     theme: {},
     members: ['wh-grave-watch', 'wh-grave-sentry', 'wh-grave-throne'],
@@ -266,12 +273,14 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     key: 'e-wh',
     family: 'E',
     region: 'wh',
-    name: '泰坦巨构残骸（虫洞）',
-    rareName: '泰坦巨构稀有残骸（虫洞）',
+    // ⟪文案调整2026-10-06⟫ 仅改来源显示，组标识与回收画像不动。
+    name: '泰坦巨构残骸（信号空间）',
+    rareName: '泰坦巨构稀有残骸（信号空间）',
     // 2026-09-30 船长令：升危档 + 按族特色池（均价 93.50 · 偏差 +1.03%）
     tier: 'dire',
     pool: [['min-tritanium', 40], ['min-isotope', 26], ['min-darkiron', 2], ['min-starcore', 24], ['min-mexallon', 8]],
-    note: '泰坦巨构残骸（虫洞）：同位聚晶为主，夹冥铁合金与星髓晶髓材',
+    // ⟪文案调整2026-10-06⟫ 产出倾向只改来源名。
+    note: '泰坦巨构残骸（信号空间）：同位聚晶为主，夹冥铁合金与星髓晶髓材',
     threat: 45,
     theme: {},
     members: ['wh-titan-echo', 'wh-titan-missile', 'wh-titan-hulk'],
@@ -280,12 +289,14 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     key: 'g-wh',
     family: 'G',
     region: 'wh',
-    name: '鱿鱼亡军残骸（虫洞）',
-    rareName: '鱿鱼亡军稀有残骸（虫洞）',
+    // ⟪文案调整2026-10-06⟫ 仅改来源显示，组标识与回收画像不动。
+    name: '鱿鱼亡军残骸（信号空间）',
+    rareName: '鱿鱼亡军稀有残骸（信号空间）',
     // 2026-09-30 船长令：升危档 + 按族特色池（均价 93.80 · 偏差 +1.35%）
     tier: 'dire',
     pool: [['min-tritanium', 40], ['min-darkiron', 8], ['min-starcore', 2], ['min-isotope', 38], ['min-mexallon', 12]],
-    note: '鱿鱼亡军残骸（虫洞）：冥铁合金与同位聚晶为主，夹晶态胶体',
+    // ⟪文案调整2026-10-06⟫ 产出倾向只改来源名。
+    note: '鱿鱼亡军残骸（信号空间）：冥铁合金与同位聚晶为主，夹晶态胶体',
     threat: 45,
     theme: {},
     members: ['wh-exile-blockade', 'wh-exile-swarm', 'wh-exile-line'],

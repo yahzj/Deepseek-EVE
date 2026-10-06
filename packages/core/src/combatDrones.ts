@@ -262,6 +262,7 @@ export function resolvePointDefense(
   if (tokenOpen) b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: undefined }
   const focus: Array<string | undefined> = b.pdFocus ? [...b.pdFocus] : []
   for (let fi = 0; fi < foes.length; fi++) {
+    if (foes[fi]!.foePointDefenseEnabled === false) continue
     if (!isAlive(b, foes[fi]!.tag)) continue
     let cd = (b.pdCd[fi] ?? period) - dtMs
     let guard = 0

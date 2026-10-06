@@ -148,6 +148,13 @@ export type WormholeSignal = 'wreck' | 'ship' | 'resource' | 'radar' | 'beacon'
 /** **到达后才知道的真相**：空地点 / 舰船墓场 / 遗迹 / 舰船 / 矿脉 / 谜质 / 漂浮信标 */
 export type WormholePlace = 'empty' | 'graveyard' | 'ruins' | 'ship' | 'vein' | 'matter' | 'beacon'
 
+/** 第二批新趟地点事件；只在规则版本2的生成盘使用，旧盘不解释这些字段。 */
+export type WormholeEventKey = 'maintenance' | 'transport' | 'controller' | 'relay' | 'storm' | 'distress'
+export const WORMHOLE_EVENT_KEYS: readonly WormholeEventKey[] = ['maintenance', 'transport', 'controller', 'relay', 'storm', 'distress']
+export function isWormholeEventKey(value: unknown): value is WormholeEventKey {
+  return WORMHOLE_EVENT_KEYS.some(key => key === value)
+}
+
 /**
  * 各类信号的权重（**已扣除空地点**后的相对权重；船长确认：空 ≥50%、遗迹 30%）。
  *
@@ -475,6 +482,18 @@ export interface WormholeCellPile {
   units: number
 }
 
+export interface WormholeEventInstance {
+  /** 生成时锁定；核验和重载不重掷。 */
+  identity?: 'genuine' | 'ambush'
+  verified?: boolean
+  intelKey?: string
+  ruinsKey?: string
+  containerId?: string
+  supply?: Record<string, number>
+  battle?: 'pending' | 'won'
+  choice?: string
+}
+
 /** 一格（真相随档；**信号遮蔽靠"未扫描不展示"实现**，不是靠不存） */
 export interface WormholeGridCell {
   key: string
@@ -482,6 +501,13 @@ export interface WormholeGridCell {
   r: number
   /** 真相：到达后才知道 */
   place: WormholePlace
+  /** 新趟第二批的确定性地点事件；到达前只显示信号，事件结果在选择后随档。 */
+  eventKey?: WormholeEventKey
+  eventResolved?: boolean
+  event?: WormholeEventInstance
+  elite?: boolean
+  combatCleared?: boolean
+  alarmDisabled?: boolean
   /** 该格上还没被搬走的堆（F3b 打捞/挖矿往里放；非资源地点不写该字段） */
   piles?: WormholeCellPile[]
   /**
@@ -505,7 +531,7 @@ export interface WormholeGridCell {
    * ⚠ **顶掉星云**（船长：「这个敌人会直接覆盖星云的效果」）：落在星云格上时把该格记进 `dispersed`
    * ⇒ 打掉后直接看到原内容，不用再扫一次。
    */
-  foe?: { card: string; seq: number; cleared?: boolean }
+  foe?: { card: string; seq: number; cleared?: boolean; patrolId?: number }
 }
 
 export interface WormholeGridState {
@@ -569,7 +595,7 @@ export interface WormholeGridState {
 export type WormholeCellReveal =
   | { kind: 'unknown' }
   /** `signal === null` = **空信息地点**（船长 2026-09-13：扫开发现"这里什么都没有"，占全盘 ≥50%） */
-  | { kind: 'signal'; signal: WormholeSignal | null }
+  | { kind: 'signal'; signal: WormholeSignal | null; elite?: true }
   /**
    * **星云遮蔽**（船长 2026-09-13）：已扫描、但这一格被星云罩着且还没驱散
    * ⇒ **信号与地点都不给**（"遮挡该地点的信号"），要再花一次扫描动作驱散。
@@ -585,7 +611,7 @@ export type WormholeCellReveal =
    * 界面拿 `kind === 'foe'` 画右上角族徽、拿 `under` 画中心符号，两者互不顶替。
    */
   | { kind: 'foe'; under: WormholeCellReveal }
-  | { kind: 'known'; signal: WormholeSignal | null; place: WormholePlace }
+  | { kind: 'known'; signal: WormholeSignal | null; place: WormholePlace; elite?: true }
 
 /** 查格（坏键 ⇒ undefined） */
 export function gridCellAt(grid: WormholeGridState, cell: HexCell): WormholeGridCell | undefined {
@@ -726,6 +752,7 @@ export function wormholePathInterceptAt(
     // 围剿者也挡路（船长 2026-09-23：「挡路」）——与舰船信号格同一条尺
     if (cell.place !== 'ship' && !liveFoe) continue
     if (cell.place === 'ship' && !liveFoe && grid.activated.includes(cell.key)) continue
+    if (cell.combatCleared && !liveFoe) continue
     return cell
   }
   return undefined
@@ -753,13 +780,18 @@ export function revealOf(grid: WormholeGridState, cell: HexCell): WormholeCellRe
  * 顺序就是既有口径：**去过 > 扫过 > 没扫过**；扫过的星云格在驱散前只给星云。
  */
 function revealWithoutFoe(grid: WormholeGridState, c: WormholeGridCell): WormholeCellReveal {
-  if (grid.visited.includes(c.key)) return { kind: 'known', signal: signalOfPlace(c.place), place: c.place }
+  if (grid.visited.includes(c.key)) return { kind: 'known', signal: signalOfCell(c), place: c.place, ...(c.elite ? { elite: true as const } : {}) }
   if (grid.scanned.includes(c.key)) {
     // **星云遮蔽**（层 4 起）：扫开了也先只看到星云，再扫一次才驱散（船长 2026-09-13）
     if (c.nebula === true && !(grid.dispersed ?? []).includes(c.key)) return { kind: 'nebula' }
-    return { kind: 'signal', signal: signalOfPlace(c.place) }
+    return { kind: 'signal', signal: signalOfCell(c), ...(c.elite ? { elite: true as const } : {}) }
   }
   return { kind: 'unknown' }
+}
+
+/** 事件只占空地点，仍给模糊信号，不泄露求援身份或箱内物品。 */
+export function signalOfCell(cell: WormholeGridCell): WormholeSignal | null {
+  return cell.eventKey ? 'radar' : signalOfPlace(cell.place)
 }
 
 /* ═══════════ 三之二、星云（层 4 起 · 回合税机制） ═══════════ */
@@ -927,9 +959,9 @@ export function pickPlace(signal: WormholeSignal, rnd: number, ruinsShare: numbe
  *    不够就从"资源/谜质"借残骸信号；舰船与信标不动）；
  * 6. **层 4 起点星云**（`WORMHOLE_NEBULA_MIN_DEPTH`）：只点有信号的地点、配额 15%、独立随机流。
  */
-export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 0, blankShareFactor = 1): WormholeGridState {
+export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 0, blankShareFactor = 1, expeditionRules?: number): WormholeGridState {
   const rng = wormholeStream(seed * 7919 + depth * 104729)
-  const radius = wormholeGridRadiusFor(depth)
+  const radius = expeditionRules === 2 ? (depth <= 2 ? 2 : depth <= 4 ? 3 : 4) : wormholeGridRadiusFor(depth)
   const all = hexDiskCells(radius)
   const outer = all.filter((c) => hexDistance(c, { q: 0, r: 0 }) === radius)
   const start = outer[Math.min(outer.length - 1, Math.floor(rng() * outer.length))]!
@@ -991,7 +1023,7 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
    */
   const quotaOf = (k: WormholeSignal): { n: number; frac: number } => quota.find((q) => q.k === k)!
   /** 遗迹下限 = 层基准 + 原型加成（`ruins` 原型 +1；船长 2026-09-14） */
-  const ruinsFloorWanted = wormholeRuinsFloorFor(depth) + wormholeRuinsFloorBonusFor(archetype)
+  const ruinsFloorWanted = expeditionRules === 2 ? Math.min(5, wormholeRuinsFloorFor(depth) + wormholeRuinsFloorBonusFor(archetype)) : wormholeRuinsFloorFor(depth) + wormholeRuinsFloorBonusFor(archetype)
   let wreckN = quotaOf('wreck').n
   while (Math.round(wreckN * ruinsShare) < ruinsFloorWanted && wreckN < pool.length) {
     const donor = quotaOf('resource').n > 1 ? 'resource' : quotaOf('radar').n > 1 ? 'radar' : null
@@ -1104,8 +1136,7 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
    * ⚠ **层 1/2 的下限 = 0**（`wormholeRuinsFloorFor` 已按 2026-09-16 裁定返回 0）⇒ 这里天然不翻转；
    * 「遗迹密集」原型的 **+1 加成一并从层 3 起才生效**（`WORMHOLE_RUINS_FLOOR_MIN_DEPTH`）。
    */
-  const ruinsFloor =
-    depth >= WORMHOLE_RUINS_FLOOR_MIN_DEPTH ? wormholeRuinsFloorFor(depth) + wormholeRuinsFloorBonusFor(archetype) : 0
+  const ruinsFloor = depth >= WORMHOLE_RUINS_FLOOR_MIN_DEPTH ? ruinsFloorWanted : 0
   let ruinsNow = cells.filter((c) => c.place === 'ruins').length
   if (ruinsNow < ruinsFloor) {
     for (const c of cells) {
@@ -1158,6 +1189,32 @@ export function wormholeMakeGrid(seed: number, depth: number, extraScanRadius = 
         idx[j] = t
       }
       for (const i of idx.slice(0, quotaN)) candidates[i]!.nebula = true
+    }
+  }
+  if (expeditionRules === 2) {
+    const ordinaryCap = depth <= 3 ? 2 : depth <= 6 ? 3 : 4
+    for (const cell of cells.filter(c => c.place === 'ship').slice(ordinaryCap)) { cell.place = 'empty'; delete cell.nebula }
+    const candidates = cells.filter(c => c.place === 'empty' && c.key !== startKey && c.key !== hexKey(exit.q, exit.r))
+    const rngEvent = wormholeStream(seed * 31 + depth * 7919 + 131)
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(rngEvent() * (i + 1)); const cell = candidates[i]!; candidates[i] = candidates[j]!; candidates[j] = cell
+    }
+    if (candidates.length < (depth >= 3 ? 3 : 2)) throw new Error('虫洞事件配额无法满足')
+    candidates[0]!.eventKey = rngEvent() < 0.5 ? 'maintenance' : 'transport'
+    const choices: WormholeEventKey[] = cells.some(c => c.place === 'ruins') ? ['controller', 'relay', 'storm', 'distress'] : ['relay', 'storm', 'distress']
+    candidates[1]!.eventKey = choices[Math.floor(rngEvent() * choices.length)]!
+    const ruins = cells.filter(c => c.place === 'ruins')
+    const supply = candidates[0]!
+    const risk = candidates[1]!
+    supply.event = {}
+    risk.event = {
+      ...(risk.eventKey === 'distress' ? { identity: rngEvent() < 0.5 ? 'genuine' as const : 'ambush' as const, intelKey: ruins[0]?.key ?? supply.key } : {}),
+      ...(risk.eventKey === 'controller' ? { ruinsKey: ruins[Math.floor(rngEvent() * ruins.length)]!.key } : {}),
+    }
+    if (depth >= 3) {
+      const elite = candidates[2]!
+      elite.place = 'ship'
+      elite.elite = true
     }
   }
   return {

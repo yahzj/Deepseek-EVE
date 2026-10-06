@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { COMMS_MESSAGES, DIALOGUES, FIRST_TASK_MESSAGES, L10N } from '@whale/data'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
+import { signalSpaceTextId } from '../src/explorationText'
 import { weekendWarnCommsOf, weekendSettleCommsOf } from '../src/weekendComms'
 import type { WeekendResultSnapshot } from '../src/weekendEvent'
 
@@ -22,7 +23,7 @@ const code = statements.map((node) => node.getText(source).replace(/^export\s+/,
 const context = {
   L10N,
   isEn: () => language.en,
-  tr: (id: string) => L10N[id]?.[language.en ? 'en' : 'zh'] ?? id,
+  tr: (id: string) => L10N[signalSpaceTextId(id)]?.[language.en ? 'en' : 'zh'] ?? id,
   paramText: (value: string | number) => String(value),
   result: undefined,
 }
@@ -99,9 +100,14 @@ describe('其余通讯整批中英接线与行为守恒', () => {
     const bindings = { FIRST_TASK_MESSAGES, L10N, result: undefined }
     runInNewContext(ts.transpileModule(text + '\nglobalThis.result = COMMS_MESSAGES', { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, bindings)
     function policy(messages: typeof COMMS_MESSAGES) {
-      return messages.map(({ subject: _subject, body: _body, ...rest }) => rest)
+      return messages.map(({ subject: _subject, body: _body, hint, ...rest }) => {
+        if (hint === undefined) return rest
+        const { text: _text, ...jump } = hint
+        return { ...rest, hint: jump }
+      })
     }
     expect(policy(COMMS_MESSAGES)).toEqual(policy(bindings.result as unknown as typeof COMMS_MESSAGES))
+    expect(COMMS_MESSAGES.find((message) => message.id === 'msg-wormhole-unlock')!.hint!.text).toBe(L10N['ui.signalSpace.026']!.zh)
   })
   it('建站对白 id、角色、主题、行数与挂靠不变', () => {
     const before = execFileSync('git', ['show', '71ca2ba0:packages/data/src/dialogues.ts'], { encoding: 'utf8' })

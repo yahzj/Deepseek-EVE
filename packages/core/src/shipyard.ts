@@ -225,7 +225,7 @@ export function loseShip(
   reason: string,
   wreckGalaxyId?: string,
   /** 沉船记录用（**2026-09-27 船长令**）：结构化原因 + 虫洞层数（没有残骸的虫洞损失也要记） */
-  meta?: { cause?: WreckLogCause; wormholeDepth?: number },
+  meta?: { cause?: WreckLogCause; wormholeDepth?: number; reasonId?: string },
 ): void {
   const display = shipDisplayName(state, ctx, shipId)
   const wasCurrent = state.shipId === shipId
@@ -294,6 +294,7 @@ export function loseShip(
   delete state.fleet[shipId]
   addLog(state, 'fleet', `${reason}：${display} 已损毁，船上的货仓与装备一并遗失。`, 'core.shipyard.020', {
     p1: reason,
+    ...(meta?.reasonId ? { p1Id: meta.reasonId } : {}),
     p2: display,
   })
 

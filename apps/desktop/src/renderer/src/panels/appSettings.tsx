@@ -12,6 +12,7 @@ import type { LogKind } from '@whale/core'
 import { perfHub } from '../game/perf'
 import type { SaveStorageProbe } from '../game/saveGuard'
 import { debugAllowed, setDebugEnabled } from '../panels/DebugPanel'
+import { futureWormholeEnabled, setFutureWormholeEnabled } from '../game/debugFlag'
 import { THEME_CHOICES, THEME_LABEL_ID, themeUsesSpacePhoto, useTheme } from '../ui/theme'
 import { currentSpaceBg, rerollSpaceBg } from '../ui/spaceBg'
 import type { SpaceBgInfo } from '../ui/spaceBg'
@@ -452,6 +453,7 @@ export function SettingsPanel({
               <div className="app-settings-desc">{tr('ui.App.144')}</div>
             </div>
           ) : null}
+          {debugAllowed() && debugOnState ? <div className="app-settings-row"><div className="app-settings-head"><label className="app-settings-label"><input type="checkbox" checked={futureWormholeEnabled()} onChange={e => { setFutureWormholeEnabled(e.target.checked); onDebugChange(debugOnState) }} />{tr('ui.explorationName.019')}</label></div><div className="app-settings-desc">{tr('ui.explorationName.018')}</div></div> : null}
           {/**
            * **存档一组**（2026-09-25 船长令：「将存档管理，重置档案，保存移动到设置内」）
            * —— 这三个按钮原先在顶栏右侧，与本组功能同类（都作用于存档）⇒ 归到设置里。

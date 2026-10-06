@@ -27,6 +27,8 @@ import {
 import type {  ShipDef, SimContext } from './types'
 import { uidDefId } from './labels'
 import { cargoCapacityM3Of } from './inventory'
+import { WORMHOLE_SLOT_M3 } from './wormholeHold'
+import { wormholeGroundPending } from './wormholeGround'
 import { shipDisplayName } from './instances'
 import {
   wormholeLayerRewardMul,
@@ -40,6 +42,7 @@ import {
   WORMHOLE_TURN_PER_SCAN,
   disperseNebulae,
   gridCellAt,
+  hasLiveFoe,
   gridNebulaDisperseTargets,
   gridScanTargets,
   hexKey,
@@ -48,7 +51,7 @@ import {
   markExitKnown,
   // 2026-09-20 船长：第 2 个及以后的信标揭示一处谜质信号（可穿透星云）
   revealNearestMatterCell,
-  signalOfPlace,
+  signalOfCell,
   wormholeMakeGrid,
   wormholePathInterceptAt,
 } from './wormholeGrid'
@@ -59,6 +62,7 @@ import { wormholeMatterBuffs } from './wormholeMatter'
 import { wormholeSpawnAfterTurns } from './wormholeSpawn'
 // 谜质科技树（2026-09-19 船长批）：「最大回合数」永久加成在**入场裁定**时并入回合预算
 import { matterTechWhBuffs } from './matterTech'
+import { wormholePatrolAfterAction, wormholePatrolLayerReset } from './wormholePatrol'
 
 /* ═══════════ 一、质量压塌（船长 2026-09-12 定） ═══════════ */
 
@@ -218,7 +222,7 @@ export function wormholeAdmission(
 /* ═══════════ 四、背包格模型（船长 2026-09-12 定：每格 500 m³） ═══════════ */
 
 /** 一格体积（m³）——船长原提案值 */
-export const WORMHOLE_SLOT_M3 = 500
+export { WORMHOLE_SLOT_M3 } from './wormholeHold'
 
 /**
  * **背包格数 = floor(货仓合计 ÷ 500)**；货仓口径走 `cargoCapacityM3Of`（**含技能与货舱件加成**，船长已确认）。
@@ -356,6 +360,13 @@ export interface WormholeNode {
 }
 
 export interface WormholeRunState {
+  /** 仅显式整备入口写入；旧趟缺省不迁移、不改供货。 */
+  supplyVersion?: 1
+  /** 缺省是旧探索；未知新规则保留标记，拒绝动作而不降级。 */
+  expeditionRules?: number
+  supplies?: import('./wormholeSupplies').WormholeSupplyLedger
+  /** 新趟本层地点待装载实物；深入时旧层清除，不随队移动。 */
+  groundCargo?: Record<string, import('./wormholeHold').WormholeHoldState>
   /** 新趟采用纯货舰规则；缺省为已在途旧趟，舰船实例查询保留旧规格直到结算。 */
   haulerFittingVersion?: 1
   phase: WormholePhase
@@ -427,6 +438,20 @@ export interface WormholeRunState {
    * 可选字段 ⇒ 老档零迁移。
    */
   pendingNodeBattle?: boolean
+  /** 当前地点事件等待玩家选择；第二批只对 expeditionRules=2 生效。 */
+  pendingEvent?: { key: import('./wormholeGrid').WormholeEventKey; cellKey: string }
+  /** 本趟已触发的有限巡逻名额与可见警戒。 */
+  alertLevel?: number
+  patrolsSpawned?: number
+  patrolsCleared?: number
+  patrolActionSeq?: number
+  patrols?: import('./wormholePatrol').WormholePatrolState[]
+  expeditionSupplyPackage?: Record<string, number>
+  supplyPackagesTaken?: number
+  guardSupportDisabled?: boolean
+  nextBattleRangeMul?: number
+  expeditionGoal?: 'deep' | 'ruins' | 'survey'
+  expeditionProgress?: { peakDepth: number; guards: number; ruins: number; events: number; revealed: number; clues: number; elites: number }
   /** 编队（船型 id；进场时锁定） */
   fleet: readonly string[]
   /** 折合总质量（进场时锁定） */
@@ -552,6 +577,12 @@ export const WORMHOLE_TEMP_CELLS = WORMHOLE_TEMP_COLS * WORMHOLE_TEMP_ROWS
  * ⚠ 可选字段 ⇒ **零迁移**（老档没有 = 没弹过结算）。
  */
 export interface WormholeSettleRecord {
+  suppliesFound?: Record<string, number>
+  expeditionGoal?: WormholeRunState['expeditionGoal']
+  expeditionProgress?: WormholeRunState['expeditionProgress']
+  /** 新趟未用携入物资与实际消耗独立报账，不计入战利品收益。 */
+  suppliesReturned?: Record<string, number>
+  suppliesUsed?: Record<string, number>
   /** 结束方式：撤离成功 / 全损 */
   kind: 'extract' | 'lost'
   /** 撤离（或全损）时所在的层 */
@@ -722,6 +753,7 @@ export function wormholeStartRun(
    * 与 `blankShareFactor` 同款理由：本函数拿不到 `state`，由调用方（`wormholeEnter` / 界面预览）传入。
    */
   techTurnBonus = 0,
+  expeditionRules?: number,
 ): WormholeStartResult {
   const adm = wormholeAdmission(ctx, shipIds, techTurnBonus)
   if (!adm.ok) return { ok: false, error: WORMHOLE_ADMISSION_TEXT[adm.code] }
@@ -744,7 +776,8 @@ export function wormholeStartRun(
       // 新开趟一律为 `null`（老档里已有的 pendingNode 仍能被 `wormholeAdvanceNode` 走完，见该函数注释）。
       pendingNode: null,
       nodesPerLayer: wormholeNodesPerLayer(depth),
-      grid: wormholeMakeGrid(rngSeed, depth, wormholeScanBonusOf(ctx, shipIds), blankShareFactor),
+      grid: wormholeMakeGrid(rngSeed, depth, wormholeScanBonusOf(ctx, shipIds), blankShareFactor, expeditionRules),
+      ...(expeditionRules !== undefined ? { expeditionRules } : {}),
       seed: rngSeed,
     },
   }
@@ -786,6 +819,7 @@ export function wormholeMakeNode(seed: number, depth: number, index: number): Wo
 /** 推进结果（读数为准；界面到 E 批接） */
 export interface WormholeAdvanceResult {
   ok: boolean
+  code?: 'cargo-pending' | 'unsupported-rules'
   error?: string
   errorId?: string
   errorParams?: Readonly<Record<string, string | number>>
@@ -836,10 +870,18 @@ export function wormholeDescend(
   state: GameState,
   rngSeed: number,
   scanBonus = 0,
+  opts?: { confirmLeaveCargo?: boolean },
 ): WormholeAdvanceResult {
   const run = state.wormhole.run
   if (!run) return { ok: false, error: '当前不在虫洞里。', errorId: 'core.wormhole.003' }
+  if (run.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
   if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能深入。', errorId: 'core.wormhole.004' }
+  if (run.supplyVersion === 1) {
+    const pending = wormholePendingBattleReasonOf(run)
+    if (pending) return { ok: false, errorId: pending.errorId }
+    const here = run.grid ? gridCellAt(run.grid, run.grid.pos) : undefined
+    if (here && hasLiveFoe(here)) return { ok: false, errorId: 'core.wormhole.035' }
+  }
   if (run.pendingNode) return { ok: false, error: '本层战斗未结束：不能撤离、也不能深入。', errorId: 'core.wormhole.005' }
   // 层末 BOSS 是门（设计稿 §3）：没打通本层 BOSS 不许往下走
   if ((run.bossCleared ?? 0) < run.depth) {
@@ -859,6 +901,12 @@ export function wormholeDescend(
   if (run.grid && !isExitCell(run.grid, run.grid.pos)) {
     return { ok: false, error: '没站在下一层入口：先走到入口（下潜点）再深入。', errorId: 'core.wormhole.008' }
   }
+  if (run.supplyVersion === 1) {
+    if (Object.values(run.groundCargo ?? {}).some((board) => board.placements.length > 0) && opts?.confirmLeaveCargo !== true) {
+      return { ok: false, code: 'cargo-pending' }
+    }
+    delete run.groundCargo
+  }
   run.depth += 1
   /**
    * **里程碑「深渊层深」的计数点**（成就系统第二批 · 船长 2026-09-20「开始第二批」）。
@@ -871,7 +919,14 @@ export function wormholeDescend(
   run.nodeIndex = 0
   run.nodesPerLayer = wormholeNodesPerLayer(run.depth)
   // 新层 = 新盘（同 seed + 新 depth ⇒ 确定性新盘；入口格重新随机、扫描范围重置）
-  run.grid = wormholeMakeGrid(rngSeed, run.depth, scanBonus, blankShareFactorOf(state))
+  run.grid = wormholeMakeGrid(rngSeed, run.depth, scanBonus, blankShareFactorOf(state), run.expeditionRules)
+  if (run.expeditionRules === 2) {
+    delete run.pendingEvent
+    delete run.guardSupportDisabled
+    delete run.nextBattleRangeMul
+    wormholePatrolLayerReset(run)
+    if (run.expeditionProgress) run.expeditionProgress.peakDepth = Math.max(run.expeditionProgress.peakDepth, run.depth)
+  }
   maybeHintNebula(state, run.depth)
   maybeHintSiege(state, run.depth)
   return { ok: true, spent: 0, atLayerEnd: false }
@@ -919,6 +974,7 @@ function maybeHintNebula(state: GameState, depth: number): void {
  * 层 1~6 一个字都不写；老档首次下到 7 层时照常补送。
  */
 function maybeHintSiege(state: GameState, depth: number): void {
+  if (state.wormhole.run?.expeditionRules === 2) return
   if (depth < WORMHOLE_SPAWN_MIN_DEPTH) return
   if (state.wormhole.siegeHintShown === true) return
   state.wormhole.siegeHintShown = true
@@ -957,8 +1013,18 @@ export function wormholeOutOfTurns(run: WormholeRunState): boolean {
  * ⚠ 老档兼容：存档里**正在打的撤离战**照打完（`advanceWormhole` 的 `run.battle` 分支在前，天然满足），
  * 打完按新口径结算（赢了入港、输了全损），此后不再有下一场。
  */
-export function wormholeExtract(run: WormholeRunState): WormholeAdvanceResult {
+export function wormholeExtract(run: WormholeRunState, opts?: { confirmLeaveCargo?: boolean }): WormholeAdvanceResult {
+  if (run.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
   if (run.battle) return { ok: false, error: '战斗中：战斗没结束不能撤退。', errorId: 'core.wormhole.009' }
+  if (run.supplyVersion === 1) {
+    const pending = wormholePendingBattleReasonOf(run)
+    if (pending) return { ok: false, errorId: pending.errorId }
+    const here = run.grid ? gridCellAt(run.grid, run.grid.pos) : undefined
+    if (here && hasLiveFoe(here)) return { ok: false, errorId: 'core.wormhole.035' }
+    if (Object.values(run.groundCargo ?? {}).some((board) => board.placements.length > 0) && !opts?.confirmLeaveCargo) {
+      return { ok: false, code: 'cargo-pending' }
+    }
+  }
   run.phase = 'extracting'
   return { ok: true }
 }
@@ -1003,7 +1069,7 @@ export interface WormholeGridActionResult {
   errorParams?: Readonly<Record<string, string | number>>
   /** 拒绝码：`unknown-target` = 目标格没扫过（界面据此先弹「前往未知地点」的确认）；
    *  `path-blocked` = **直线路径上有未清掉的敌人**（界面据此先弹「路径上有敌人阻拦」的确认，见 `confirmIntercept`） */
-  code?: 'unknown-target' | 'path-blocked'
+  code?: 'unknown-target' | 'path-blocked' | 'cargo-pending' | 'unsupported-rules'
   /** 本次花掉几回合 */
   spent?: number
   /** 本次新揭开的格（扫描；`signal === null` = 空信息地点） */
@@ -1031,6 +1097,7 @@ export interface WormholeGridActionResult {
      *   未知 ⇒ 只警示路径线、**不指名**，不泄漏未扫描格的内容）。
      */
     intercepted?: { target: string; known: boolean }
+    eventKey?: import('./wormholeGrid').WormholeEventKey
   }
   /** 激活产生的效果（激活；有它就该接着开战/结算，见 `wormholeActivateAt`） */
   effect?: WormholeActivateEffect
@@ -1084,6 +1151,8 @@ export function wormholePendingBattleReason(state: GameState): CoreBlockReason |
 /** 战斗中不许做任何层内动作（与"战斗没结束不能撤/不能深入"同一把尺） */
 function gridActionBlocked(run: WormholeRunState): CoreBlockReason | null {
   if (run.battle) return { error: '战斗中：先打完这一场。', errorId: 'core.wormhole.035' }
+  const here = run.grid ? gridCellAt(run.grid, run.grid.pos) : undefined
+  if (run.expeditionRules === 2 && here && hasLiveFoe(here)) return { error: '对方已经发现我们：先点「开战」打完这一场。', errorId: 'core.wormhole.034' }
   // **遗迹守备已惊动 / 踩中埋伏**：先迎战（船长 2026-09-13：不要让战斗毫无提示地突然发生）
   const pendingBattle = wormholePendingBattleReasonOf(run)
   if (pendingBattle) return pendingBattle
@@ -1094,7 +1163,7 @@ function gridActionBlocked(run: WormholeRunState): CoreBlockReason | null {
    * 在打捞/采集/开战/拾取/撤离/深入各口把守（`wormhole.ts` 不能反向依赖它，模块方向见文件头）。
    */
   const pending = run.tempGrid?.placements.length ?? 0
-  if (pending > 0) {
+  if (run.supplyVersion !== 1 && pending > 0) {
     return {
       error: `临时空间里有 ${pending} 件没处理：先到「货仓」页放回货仓或丢弃，再继续。`,
       errorId: 'core.wormhole.036',
@@ -1122,6 +1191,7 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
   const hit = gridRun(state)
   if (!hit) return { ok: false, error: '本层没有网格：无法扫描。', errorId: 'core.wormhole.010' }
   const { run, grid } = hit
+  if (run.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
   const blocked = gridActionBlocked(run)
   if (blocked) return { ok: false, error: blocked.error, errorId: blocked.errorId, errorParams: blocked.errorParams }
   /**
@@ -1157,10 +1227,21 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
     if (!cell) continue
     if (!grid.scanned.includes(cell.key)) grid.scanned.push(cell.key)
     if (cell.key === exitKey) exitScanned = true
-    revealed.push({ key: cell.key, signal: signalOfPlace(cell.place) })
+    revealed.push({ key: cell.key, signal: signalOfCell(cell) })
   }
-  if (exitScanned) markExitKnown(grid)
+  if (run.expeditionRules === 2) {
+    // 首扫只指向导航信标；新规则仍须读取它才获出口位置。
+    const beacon = grid.cells.find(c => c.place === 'beacon')
+    if (beacon && !grid.scanned.includes(beacon.key)) {
+      grid.scanned.push(beacon.key)
+      revealed.push({ key: beacon.key, signal: 'beacon' })
+    }
+    if (beacon) disperseNebulae(grid, [beacon])
+    exitScanned = false
+    if (run.expeditionProgress) run.expeditionProgress.revealed += revealed.length
+  } else if (exitScanned) markExitKnown(grid)
   const dispersed = disperseNebulae(grid, nebulaTargets)
+  wormholePatrolAfterAction(state)
   const empty = revealed.filter((r) => r.signal === null).length
   /**
    * 新揭开的格里**有几格被星云遮住**（= 刚扫出来、但信号还看不到的那些）——
@@ -1210,16 +1291,18 @@ export function wormholeGridScan(state: GameState): WormholeGridActionResult {
 export function wormholeGridTravel(
   state: GameState,
   target: HexCell,
-  opts?: { confirmUnknown?: boolean; confirmIntercept?: boolean },
+  opts?: { confirmUnknown?: boolean; confirmIntercept?: boolean; confirmLeaveCargo?: boolean },
 ): WormholeGridActionResult {
   const hit = gridRun(state)
   if (!hit) return { ok: false, error: '本层没有网格：无法前往。', errorId: 'core.wormhole.012' }
   const { run, grid } = hit
+  if (run.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
   const blocked = gridActionBlocked(run)
   if (blocked) return { ok: false, error: blocked.error, errorId: blocked.errorId, errorParams: blocked.errorParams }
   const cell = gridCellAt(grid, target)
   if (!cell) return { ok: false, error: '那一格不在本层网格里。', errorId: 'core.wormhole.013' }
   if (cell.key === gridCellAt(grid, grid.pos)?.key) return { ok: false, error: '已经在这个地点了。', errorId: 'core.wormhole.014' }
+  if (wormholeGroundPending(run) && opts?.confirmLeaveCargo !== true) return { ok: false, code: 'cargo-pending' }
   const scanned = grid.scanned.includes(cell.key) || grid.visited.includes(cell.key)
   if (!scanned && !opts?.confirmUnknown) {
     return { ok: false, error: '这个地点还没扫描过：前往未知地点？', errorId: 'core.wormhole.015', code: 'unknown-target' }
@@ -1263,10 +1346,11 @@ export function wormholeGridTravel(
   // 围剿者（2026-09-23 新机制）：移动的 1 回合也掷一次（可能在**新落点**触发袭击 ⇒ 置 pendingNodeBattle）
   wormholeSpawnAfterTurns(state, WORMHOLE_TURN_PER_MOVE)
   grid.pos = { q: dest.q, r: dest.r }
+  delete run.pendingEvent
   // 到达 ⇒ 真相揭开（`revealOf` 里 visited 优先于 scanned）；同时并入 scanned，避免后续扫描重复"揭开"它
   if (!grid.visited.includes(dest.key)) grid.visited.push(dest.key)
   if (!grid.scanned.includes(dest.key)) grid.scanned.push(dest.key)
-  const signal = signalOfPlace(dest.place)
+  const signal = signalOfCell(dest)
   const atExit = isExitCell(grid, dest)
   /**
    * **踩到入口格 ⇒ 把它标在地图上**（船长 2026-09-18 配套裁定）。
@@ -1278,8 +1362,9 @@ export function wormholeGridTravel(
   if (atExit) markExitKnown(grid)
   // ── 到达即触发：舰船信号（开打）/ 漂浮信标（第 1 个标出入口 · 后续揭示谜质） ──
   const first = !grid.activated.includes(dest.key)
-  const autoBattle = first && dest.place === 'ship'
+  const autoBattle = (first && dest.place === 'ship' && !dest.combatCleared) || hasLiveFoe(dest)
   const beacon = first && dest.place === 'beacon'
+  const event = run.expeditionRules === 2 && dest.eventKey !== undefined && dest.eventResolved !== true ? dest.eventKey : undefined
   /**
    * **这是第几个信标**（船长 2026-09-20「信标第一次显示下一层入口，后续还激活其他信标则显示谜质位置」）
    * ——数 `grid.activated` 里已触发过的信标格即可，**不新增存档字段**（本格还没入列 ⇒ +1 = 名次）。
@@ -1299,6 +1384,7 @@ export function wormholeGridTravel(
    */
   const ambush = autoBattle && !scanned && !intercept
   if (autoBattle || beacon) grid.activated.push(dest.key)
+  if (event) run.pendingEvent = { key: event, cellKey: dest.key }
   /** 后续信标揭示到的那一格（`null` = 本层已没有可揭示的谜质） */
   let beaconReveal: { cell: WormholeGridCell; nebulaDispersed: boolean } | null = null
   if (beacon) {
@@ -1313,6 +1399,14 @@ export function wormholeGridTravel(
        * **2026-09-16 甲案**起，**扫描扫到出口格本身**也走同一个收口（见 `markExitKnown` 的注释）。
        */
       markExitKnown(grid)
+      if (run.expeditionRules === 2) {
+        const clue = grid.cells.find(c => c.eventKey && c.eventResolved !== true)
+        if (clue && !grid.scanned.includes(clue.key)) grid.scanned.push(clue.key)
+        if (clue) {
+          disperseNebulae(grid, [clue])
+          if (run.expeditionProgress) run.expeditionProgress.clues += 1
+        }
+      }
     } else {
       /**
        * **第 2 个及以后 = 揭示一处谜质信号**（船长 2026-09-20，落地见 `revealNearestMatterCell`）：
@@ -1360,6 +1454,7 @@ export function wormholeGridTravel(
     arrivalText = `🕳 抵达新地点（${dest.q},${dest.r}）：${WORMHOLE_PLACE_TEXT[dest.place]} · 剩 ${run.turnsLeft} 回合。`
   }
   addLog(state, 'fleet', arrivalText, arrivalId, arrivalParams)
+  wormholePatrolAfterAction(state, { deferMovement: autoBattle })
   return {
     ok: true,
     spent: WORMHOLE_TURN_PER_MOVE,
@@ -1371,6 +1466,7 @@ export function wormholeGridTravel(
       ...(autoBattle ? { autoBattle: true } : {}),
       ...(ambush ? { ambush: true as const } : {}),
       ...(beacon ? { beacon: true } : {}),
+      ...(event ? { eventKey: event } : {}),
       ...(intercept ? { intercepted: { target: cell.key, known: interceptKnown } } : {}),
     },
     mustExtract: run.turnsLeft <= 0,
@@ -1393,6 +1489,7 @@ export function wormholeGridActivate(state: GameState): WormholeGridActionResult
   const hit = gridRun(state)
   if (!hit) return { ok: false, error: '本层没有网格：无法激活。', errorId: 'core.wormhole.017' }
   const { run, grid } = hit
+  if (run.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
   const blocked = gridActionBlocked(run)
   if (blocked) return { ok: false, error: blocked.error, errorId: blocked.errorId, errorParams: blocked.errorParams }
   const cell = gridCellAt(grid, grid.pos)
@@ -1467,10 +1564,10 @@ export interface WormholePile {
  * 数量 = `基准 × 层收益系数 × (0.8~1.2)`（随机项同样来自确定性散列，便于复现与用例）。
  * ⚠ 绝对值待 F 批校准（见 `WORMHOLE_PILE_UNITS_BASE` 注释）。
  */
-export function wormholeNodePiles(seed: number, depth: number, index: number, count: number): WormholePile[] {
+export function wormholeNodePiles(seed: number, depth: number, index: number, count: number, expeditionRules?: number): WormholePile[] {
   const n = Math.max(0, Math.floor(count))
   if (n <= 0) return []
-  const mul = wormholeLayerRewardMul(depth)
+  const mul = wormholeLayerRewardMul(depth, expeditionRules)
   const out: WormholePile[] = []
   for (let k = 0; k < n; k++) {
     const h = Math.abs((seed * 1103515245 + (depth * 137 + index * 31 + k * 7) * 7919) % 2147483647)
@@ -1909,7 +2006,7 @@ export function wormholeEnter(
    * **本处的"出生信息"**（可选）：从库存项进洞时把 起始层 / 内容原型 / 敌族 一并带进来
    * （丙 + 丁 · 船长 2026-09-14）。不传（调试入口/老路径）⇒ 层按老口径、族与原型按 `seed` 现算。
    */
-  origin?: { depth?: number; archetype?: WormholeArchetype; family?: WormholeFamily },
+  origin?: { depth?: number; archetype?: WormholeArchetype; family?: WormholeFamily; expeditionRules?: number },
 ): WormholeStartResult {
   if (state.wormhole.run) return { ok: false, error: '已经在虫洞里了：先撤离或结算本趟。', errorId: 'core.wormhole.026' }
   const blocked = wormholeEntryBlockReason(state, ctx, shipIds)
@@ -1925,14 +2022,16 @@ export function wormholeEnter(
   for (const a of wormholeEntryAutoStops(state)) {
     logAutoHalt(state, a.mainKind, haltEntryActivityOf(state, ctx, a.mainKind))
   }
-  const r = wormholeStartRun(ctx, shipIds, seed, blankShareFactorOf(state), matterTechWhBuffs(state, ctx).turnBonus)
+  const r = wormholeStartRun(ctx, shipIds, seed, blankShareFactorOf(state), matterTechWhBuffs(state, ctx).turnBonus, origin?.expeditionRules)
   if (!r.ok || !r.run) return r
   r.run.haulerFittingVersion = 1
   r.run.attending = true // 进洞即人在洞里：占着主控，直到临时离开或本趟收场
   // 出生信息（丙/丁）：层夹 1~9；原型与族缺省 ⇒ 按种子现算（与库存列表显示的同源）
   if (origin?.depth !== undefined) r.run.depth = Math.max(1, Math.min(9, Math.floor(origin.depth)))
+  if (origin?.expeditionRules === 2 && r.run.depth !== 1) r.run.grid = wormholeMakeGrid(seed, r.run.depth, wormholeScanBonusOf(ctx, shipIds), blankShareFactorOf(state), 2)
   r.run.archetype = origin?.archetype ?? wormholeArchetypeOf(seed)
   r.run.family = origin?.family ?? wormholeFamilyOfSeed(seed)
+  if (origin?.expeditionRules !== undefined) r.run.expeditionRules = origin.expeditionRules
   state.wormhole.run = r.run
   /**
    * **进新一趟 ⇒ 上一趟的结算单作废**（**2026-09-27 玩家报障修复 · 甲案**，船长批「按你推荐来」）。
@@ -1962,6 +2061,8 @@ export function wormholeEnter(
     state,
     'fleet',
     `🕳 虫洞跃入：编队 ${shipIds.length} 艘 · 折算总质量 ${r.run.totalMass.toLocaleString('zh-CN')} · 可探索 ${r.run.turnsTotal} 回合。`,
+    r.run.expeditionRules === 2 ? 'core.explorationStatus.005' : 'core.explorationStatus.004',
+    { p1: shipIds.length, p2: r.run.totalMass, p3: r.run.turnsTotal },
   )
   return r
 }
@@ -1974,4 +2075,3 @@ export function wormholeEnter(
 export function wormholeDebugReset(state: GameState): void {
   state.wormhole.run = null
 }
-

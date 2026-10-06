@@ -16,6 +16,7 @@ import { addWare, cargoOfShip, countWare, removeCargoOfShip, removeWare } from '
 import { quickRepairFactor } from './repair'
 import { createPlayerSpec } from './playerSpec'
 import type { UnitSpec } from './combat'
+import { takeWormholeSupply, wormholeSupplyForBattle } from './wormholeSupplies'
 
 /** 船体维修装置脉冲间隔（毫秒；2026-09-09 三档统一 5 秒一跳，见 data/modules.ts mod-hullrep-*） */
 export const REPAIR_PULSE_MS = 5_000
@@ -175,6 +176,8 @@ export function preloadRepairFor(
  * 读数改走本函数 ⇒ 显示的是"还能用多少"，与实际消耗同源。
  */
 export function repairKitAvailableOf(state: GameState, shipId: string, kitId: string): number {
+  const run = state.wormhole.run
+  if (run?.supplyVersion === 1 && run.fleet.includes(shipId)) return run.supplies?.items[kitId] ?? 0
   return state.resupplyFromWarehouse !== false
     ? countWare(state, kitId)
     : Math.floor(cargoOfShip(state, shipId)[kitId] ?? 0)
@@ -708,8 +711,9 @@ export function pulseRepairsFor(
       // **按需取用**：这一跳真要修 ⇒ 现取 1 枚；取不到就跳过本跳（不是永久停机）
       // ⚠ 单船战斗路径没有 `myFleet` 条目 ⇒ 回落到驾驶船（与弹药口径 `cargoItemsOf` 同源）
       const shipUid = b.myFleet?.find((en) => en.tag === spec.tag)?.shipId ?? state.shipId
+      const supply = wormholeSupplyForBattle(state, b)
       const ok =
-        state.resupplyFromWarehouse !== false
+        supply ? takeWormholeSupply(supply, u.kitId, 1) === 1 : state.resupplyFromWarehouse !== false
           ? countWare(state, u.kitId) > 0 && (removeWare(state, u.kitId, 1), true)
           : shipUid !== undefined && removeCargoOfShip(state, shipUid, u.kitId, 1) > 0
       if (!ok) continue

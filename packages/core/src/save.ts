@@ -28,7 +28,9 @@ import { WORMHOLE_SCAN_BASE_MS, WORMHOLE_STOCK_MAX_HARD } from './wormholeScan'
 // 沉船记录上限（2026-09-27 船长令）：读档截断与写入共用同一常量
 import { WRECK_LOG_MAX } from './shipWrecks'
 import { WORMHOLE_AUTO_MAX_SHIPS, WORMHOLE_AUTO_REPORT_MAX } from './wormholeAuto'
-import { WORMHOLE_ARCHETYPES, WORMHOLE_GRID_SAVE_MAX_R, wormholeArchetypeOf } from './wormholeGrid'
+import { WORMHOLE_ARCHETYPES, WORMHOLE_GRID_SAVE_MAX_R, isWormholeEventKey, wormholeArchetypeOf } from './wormholeGrid'
+import { cleanWormholeEventInstance, cleanWormholeExpeditionRun } from './wormholeExpeditionSave'
+import { cleanWormholePreparationTemplates } from './wormholePreparationTemplates'
 import { WORMHOLE_FAMILY_ORDER, wormholeFamilyOfSeed } from './wormholeFoes'
 import type { WormholeHoldState } from './wormholeHold'
 import { emptyFitted, uidDefId } from './labels'
@@ -866,6 +868,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
    * 裁掉尾部空位、长度 ≤ `RACK_MAX`（槽位上限；插件上线后由 7 抬到 8）· 无人机只收正整数 · **全空方案丢弃**。
    */
   const fitPresets: Record<string, ShipFitPreset[]> = {}
+  const wormholePreparationTemplates = cleanWormholePreparationTemplates(src.wormholePreparationTemplates)
   for (const [defId, listRaw] of Object.entries(asRaw(src.fitPresets))) {
     if (defId.length === 0 || !Array.isArray(listRaw)) continue
     const list: ShipFitPreset[] = []
@@ -2054,6 +2057,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   // 库存：只收"结构完整"的条目（id 非空 / 种子为正整数），上限 = `WORMHOLE_STOCK_MAX_HARD`（基础 5 ＋ 星图记录学满级 10 ⇒ 读档不会截掉满级玩家的 15 格）
   const wormholeStock: Array<{
     id: string
+    expeditionRules?: number
     seed: number
     depth: number
     archetype: WormholeArchetype
@@ -2069,6 +2073,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     if (id.length === 0 || !Number.isFinite(seed) || seed <= 0) continue
     wormholeStock.push({
       id,
+      ...(o.expeditionRules === undefined ? {} : { expeditionRules: Number.isSafeInteger(o.expeditionRules) && num(o.expeditionRules) > 0 ? num(o.expeditionRules) : 999 }),
       seed,
       /** 起始层：**恒 1**（船长 2026-09-14「所有虫洞都是从1层开始探索」）⇒ 旧档里的 2/3 一并归 1 */
       depth: 1,
@@ -2089,16 +2094,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   // --- 自动探索（2026-09-14 批次 3 · 可选字段 ⇒ 零迁移）---
   // 在跑的趟：id/stockId 非空、种子与层为正整数、参与舰是舰队里的船（不在舰队 ⇒ 丢弃该条目，
   // 免得锁定一艘已经不存在的船）；到点未结算的照旧保留（下一拍 `advanceWormholeAuto` 会结算）。
-  const wormholeAuto: Array<{
-    haulerFittingVersion?: 1
-    id: string
-    stockId: string
-    seed: number
-    depth: number
-    shipIds: string[]
-    startedAtGameMs: number
-    finishAtGameMs: number
-  }> = []
+  const wormholeAuto: NonNullable<GameState['wormholeAuto']> = []
   for (const item of Array.isArray(src.wormholeAuto) ? src.wormholeAuto : []) {
     const o = asRaw(item)
     const id = typeof o.id === 'string' ? o.id : ''
@@ -2114,6 +2110,19 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     if (live.length === 0) continue
     const started = Math.floor(num(o.startedAtGameMs))
     const finish = Math.floor(num(o.finishAtGameMs))
+    const expeditionSnapshot = (() => {
+      if (o.expeditionRules !== 2 || typeof o.expeditionSnapshot !== 'string') return undefined
+      try {
+        const snapshot = asRaw(JSON.parse(o.expeditionSnapshot))
+        const wh = asRaw(asRaw(snapshot.wormhole).run)
+        if (wh.expeditionRules !== 2 || wh.supplyVersion !== 1) return undefined
+        // 内层不是另一批自动任务；截断递归入口后使用同一套字段白名单。
+        snapshot.wormholeAuto = []
+        const normalized = normalizeState(snapshot)
+        if (!normalized.wormhole.run || normalized.wormhole.run.fleet.some(uid => !live.includes(uid))) return undefined
+        return JSON.stringify(normalized)
+      } catch { return undefined }
+    })()
     wormholeAuto.push({
       ...(o.haulerFittingVersion === 1 ? { haulerFittingVersion: 1 as const } : {}),
       id,
@@ -2123,27 +2132,14 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       shipIds: live.slice(0, WORMHOLE_AUTO_MAX_SHIPS),
       startedAtGameMs: Number.isFinite(started) ? Math.max(0, started) : 0,
       finishAtGameMs: Number.isFinite(finish) ? Math.max(0, finish) : 0,
+      ...(o.expeditionRules !== undefined ? { expeditionRules: typeof o.expeditionRules === 'number' && Number.isSafeInteger(o.expeditionRules) ? o.expeditionRules : -1 } : {}),
+      ...(expeditionSnapshot !== undefined ? { expeditionSnapshot } : {}),
+      ...(WORMHOLE_FAMILY_ORDER.includes(o.family as WormholeFamily) ? { family: o.family as WormholeFamily } : {}),
+      ...(WORMHOLE_ARCHETYPES.includes(o.archetype as WormholeArchetype) ? { archetype: o.archetype as WormholeArchetype } : {}),
     })
   }
   // 报告队列：结构完整的才收；`gains`/`damage` 逐项净化；上限 = `WORMHOLE_AUTO_REPORT_MAX`（新的在前）
-  const wormholeAutoReports: Array<{
-    id: string
-    stockId: string
-    depth: number
-    finishedAtGameMs: number
-    shipIds: string[]
-    coresReleased: number
-    gains: Array<{ itemId: string; units: number }>
-    damage: Array<{
-      shipId: string
-      name: string
-      durabilityLossPct: number
-      armorLossPct: number
-      durabilityPct: number
-      armorPct: number
-    }>
-    confirmed: boolean
-  }> = []
+  const wormholeAutoReports: NonNullable<GameState['wormholeAutoReports']> = []
   for (const item of Array.isArray(src.wormholeAutoReports) ? src.wormholeAutoReports : []) {
     if (wormholeAutoReports.length >= WORMHOLE_AUTO_REPORT_MAX) break
     const o = asRaw(item)
@@ -2183,7 +2179,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     wormholeAutoReports.push({
       id,
       stockId: typeof o.stockId === 'string' ? o.stockId : '',
-      depth: Number.isFinite(depth) ? Math.min(9, Math.max(1, depth)) : 1,
+      depth: Number.isFinite(depth) ? o.expeditionRules === 2 ? Math.max(1, depth) : Math.min(9, Math.max(1, depth)) : 1,
       finishedAtGameMs: Number.isFinite(num(o.finishedAtGameMs)) ? Math.max(0, Math.floor(num(o.finishedAtGameMs))) : 0,
       shipIds,
       /**
@@ -2195,6 +2191,15 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       gains,
       damage,
       confirmed: o.confirmed === true,
+      ...(o.expeditionRules === 2 ? {
+        expeditionRules: 2,
+        shipsLost: Array.isArray(o.shipsLost) ? o.shipsLost.filter((id): id is string => typeof id === 'string') : [],
+        simulationMs: Math.max(0, num(o.simulationMs)),
+        suppliesReturned: Object.fromEntries(Object.entries(asRaw(o.suppliesReturned)).filter(([, n]) => typeof n === 'number' && Number.isSafeInteger(n) && n > 0)) as Record<string, number>,
+        suppliesFound: Object.fromEntries(Object.entries(asRaw(o.suppliesFound)).filter(([, n]) => typeof n === 'number' && Number.isSafeInteger(n) && n > 0)) as Record<string, number>,
+        expeditionGoal: cleanWormholeExpeditionRun({ expeditionRules: 2, expeditionGoal: o.expeditionGoal }).expeditionGoal,
+        expeditionProgress: cleanWormholeExpeditionRun({ expeditionRules: 2, expeditionProgress: o.expeditionProgress }).expeditionProgress,
+      } : {}),
     })
   }
 
@@ -2950,12 +2955,12 @@ for (const [key, value] of Object.entries(licensesRaw)) {
    * **围剿者清洗**（2026-09-23 新机制）：`{ card: string; seq: number; cleared?: true }`。
    * 坏值（缺 card / card 为空 / seq 不是有限数）⇒ 整条丢弃；`cleared` 只在为真时写。
    */
-  const cleanWormholeFoe = (raw: unknown): { card: string; seq: number; cleared?: true } | undefined => {
+  const cleanWormholeFoe = (raw: unknown): { card: string; seq: number; cleared?: true; patrolId?: number } | undefined => {
     const row = asRaw(raw)
     const card = typeof row.card === 'string' ? row.card : ''
     const seq = Math.floor(num(row.seq))
     if (card.length === 0 || !Number.isFinite(seq) || seq < 0) return undefined
-    return { card, seq, ...(row.cleared === true ? { cleared: true as const } : {}) }
+    return { card, seq, ...(row.cleared === true ? { cleared: true as const } : {}), ...(row.patrolId === 0 || row.patrolId === 1 ? { patrolId: row.patrolId } : {}) }
   }
 
   /**
@@ -3040,6 +3045,12 @@ for (const [key, value] of Object.entries(licensesRaw)) {
         q: Math.floor(num(row.q)),
         r: Math.floor(num(row.r)),
         place: placeOk,
+        ...(isWormholeEventKey(row.eventKey) ? { eventKey: row.eventKey } : {}),
+        ...(row.eventResolved === true ? { eventResolved: true } : {}),
+        ...(cleanWormholeEventInstance(row.event) ? { event: cleanWormholeEventInstance(row.event) } : {}),
+        ...(row.elite === true ? { elite: true } : {}),
+        ...(row.combatCleared === true ? { combatCleared: true } : {}),
+        ...(row.alarmDisabled === true ? { alarmDisabled: true } : {}),
         ...(cellPiles ? { piles: cellPiles } : {}),
         // 星云标记（船长 2026-09-13 星云机制）：只在为真时写（老档/非星云格 ⇒ 不写 = 零迁移）
         ...(row.nebula === true ? { nebula: true } : {}),
@@ -3122,6 +3133,17 @@ for (const [key, value] of Object.entries(licensesRaw)) {
             turnsLeft: Math.max(0, turnsLeft),
             turnsTotal: Math.max(0, turnsTotal),
             ...(rRaw.haulerFittingVersion === 1 ? { haulerFittingVersion: 1 as const } : {}),
+            ...(rRaw.supplyVersion !== undefined || rRaw.expeditionRules !== undefined ? {
+              // 未知标记不退成旧供货；保留封闭模式且不补造库存。
+              supplyVersion: 1 as const,
+              supplies: (() => {
+                const raw = asRaw(rRaw.supplies)
+                const counts = (value: unknown): Record<string, number> => Object.fromEntries(
+                  Object.entries(asRaw(value)).filter(([id, n]) => id.length > 0 && typeof n === 'number' && Number.isSafeInteger(n) && n > 0),
+                ) as Record<string, number>
+                return { items: counts(raw.items), carried: counts(raw.carried), consumed: counts(raw.consumed), deployed: counts(raw.deployed), recovered: counts(raw.recovered), leftBehind: counts(raw.leftBehind), found: counts(raw.found) }
+              })(),
+            } : {}),
             fleet,
             totalMass: Math.max(0, num(rRaw.totalMass)),
             bag,
@@ -3161,6 +3183,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
             attending: rRaw.attending === true || hasBattleInFlight,
             // 网格探索（F3a）：老档/坏值 ⇒ 不写（该层走旧口径，零迁移）
             ...(cleanWormholeGrid(rRaw.grid) !== undefined ? { grid: cleanWormholeGrid(rRaw.grid) } : {}),
+            ...cleanWormholeExpeditionRun(rRaw),
             // 临时离开时刻（回来时按它前移战斗时钟）：坏值/缺省 = 不写（= 没离开过）
             ...(Math.floor(num(rRaw.leftAtGameMs)) > 0 ? { leftAtGameMs: Math.floor(num(rRaw.leftAtGameMs)) } : {}),
             // 本趟期望交距偏好（洞内拖距离条选的；0/坏值不写）
@@ -3188,6 +3211,13 @@ for (const [key, value] of Object.entries(licensesRaw)) {
             ...(battleInFlight !== null ? { battle: battleInFlight } : {}),
             // 货仓格（F4）：形状件逐个清洗；坏件丢弃、**重叠的丢弃**（越界保留 ⇒ 那是"超载"态）
             ...(cleanWormholeHold(rRaw.hold) !== undefined ? { hold: cleanWormholeHold(rRaw.hold) } : {}),
+            ...(rRaw.supplyVersion !== undefined && rRaw.groundCargo !== undefined ? {
+              groundCargo: Object.fromEntries(Object.entries(asRaw(rRaw.groundCargo)).flatMap(([key, board]) => {
+                if (!/^-?\d+,-?\d+$/.test(key)) return []
+                const cleaned = cleanWormholeHold(board)
+                return cleaned ? [[key, cleaned]] : []
+              })),
+            } : {}),
             /**
              * **临时空间**（2026-09-13 船长：大件货先进临时空间让玩家协调）：
              * 一种物品一条，只留"id 非空 + 单位数为正"的条目；坏值丢条、空数组不写（零迁移）。
@@ -3245,6 +3275,9 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     const settleRaw = asRaw(wRaw.lastSettle)
     const strList = (v: unknown): string[] =>
       Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.length > 0) : []
+    const supplyCounts = (v: unknown): Record<string, number> => Object.fromEntries(
+      Object.entries(asRaw(v)).filter(([id, n]) => id.length > 0 && typeof n === 'number' && Number.isSafeInteger(n) && n > 0),
+    ) as Record<string, number>
     const lastSettle =
       settleRaw !== null &&
       typeof settleRaw === 'object' &&
@@ -3259,6 +3292,14 @@ for (const [key, value] of Object.entries(licensesRaw)) {
             relics: strList(settleRaw.relics),
             shipsLost: strList(settleRaw.shipsLost),
             lostIsk: Math.max(0, num(settleRaw.lostIsk)),
+            ...(settleRaw.suppliesReturned !== undefined ? { suppliesReturned: supplyCounts(settleRaw.suppliesReturned) } : {}),
+            ...(settleRaw.suppliesUsed !== undefined ? { suppliesUsed: supplyCounts(settleRaw.suppliesUsed) } : {}),
+            ...(settleRaw.suppliesFound !== undefined ? { suppliesFound: supplyCounts(settleRaw.suppliesFound) } : {}),
+            ...(settleRaw.expeditionGoal === 'deep' || settleRaw.expeditionGoal === 'ruins' || settleRaw.expeditionGoal === 'survey' ? { expeditionGoal: settleRaw.expeditionGoal as 'deep' | 'ruins' | 'survey' } : {}),
+            ...(() => {
+              const cleaned = cleanWormholeExpeditionRun({ expeditionRules: 2, expeditionProgress: settleRaw.expeditionProgress })
+              return cleaned.expeditionProgress ? { expeditionProgress: cleaned.expeditionProgress } : {}
+            })(),
             ...(settleRaw.skippedExtractBattle === true ? { skippedExtractBattle: true } : {}),
           }
         : undefined
@@ -3347,6 +3388,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     // ⚠ **缺省不写键**（与 `sideTasks.bountySeenWindow` 同款口径）：无条件写空表会让老档往返
     //   多出一个键 ⇒ `toEqual` 快照用例红（踩过）；因此只在真有方案时才落这个字段。
     ...(Object.keys(fitPresets).length > 0 ? { fitPresets } : {}),
+    ...(wormholePreparationTemplates.length > 0 ? { wormholePreparationTemplates } : {}),
     blueprintStock,
     market,
     ...(blackMarket ? { blackMarket } : {}),

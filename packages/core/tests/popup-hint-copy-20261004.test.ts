@@ -10,14 +10,15 @@ import { goStandbyAt, originGalaxyOf } from '../src/location'
 import { installPlug, exchangePlugBlueprint, exchangeUniversalBlackBox } from '../src/plugs'
 import { learnBlueprint, marketSellPreview, marketSellHolding, listSellHolding } from '../src/market'
 import { claimFirstTask } from '../src/firstRewards'
+import { signalSpaceTextId } from '../src/explorationText'
 
 const path = new URL('../../../apps/desktop/src/renderer/src/i18n/locale.tsx', import.meta.url)
 const source = ts.createSourceFile('locale.tsx', readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
-const names = new Set(['interpolate', 'textOf', 'tr', 'paramText', 'resolveParamIds', 'cmdText'])
+const names = new Set(['interpolate', 'textOf', 'tr', 'futureTr', 'paramText', 'resolveParamIds', 'cmdText'])
 const code = source.statements.filter((n) => ts.isFunctionDeclaration(n) && names.has(n.name?.text ?? ''))
   .map((n) => n.getText(source)).join('\n')
 function renderer(locale: 'zh' | 'en') {
-  const bindings = { L10N, activeLocale: locale, exports: {} }
+  const bindings = { L10N, signalSpaceTextId, activeLocale: locale, exports: {} }
   runInNewContext(ts.transpileModule(code, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, bindings)
   return bindings.exports as { cmdText: (r: any) => string; paramText: (v: string | number | undefined) => string }
 }
@@ -39,7 +40,7 @@ describe('弹出提示真实参数取词', () => {
   it.each(['zh', 'en'] as const)('%s 所有活动id按登记取词，普通文本/未知id/数字仍保持', (locale) => {
     const r = renderer(locale)
     for (const id of [...Object.values(ACTIVITY_LABEL_ID), ...Object.values(HALT_COST_ID)]) {
-      expect(r.paramText(id)).toBe(L10N[id]![locale])
+      expect(r.paramText(id)).toBe(L10N[signalSpaceTextId(id)]![locale])
     }
     expect(r.paramText('ui.missing.999')).toBe('ui.missing.999')
     expect(r.paramText('ordinary text')).toBe('ordinary text')

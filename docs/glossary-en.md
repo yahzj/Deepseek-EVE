@@ -43,6 +43,8 @@
 
 ## 二、机制与 UI 术语表
 
+<!-- ⟪文案调整2026-10-06⟫ 信号空间为已上线旧玩法，虫洞只指未来未开放内容。 -->
+
 | 中文 | English | 备注 |
 |---|---|---|
 | 星图 | Star Map | 一级页 |
@@ -74,7 +76,9 @@
 | 克制系数 | Damage Type Multiplier | |
 | 异常点 | Anomaly | |
 | 悬赏 | Bounty | |
-| 虫洞 | Wormhole | |
+| 信号空间 | Signal Space | 已上线旧玩法，原称虫洞；2026-10-06船长批准 |
+| 信号谜质 | Signal Enigma | 原虫洞谜质；物品标识`mat-wh-essence`不变 |
+| 虫洞 | Wormhole | 未来新玩法，未开放；不指已上线信号空间 |
 | 遗迹 | Ruins | |
 | 舰船墓场 | Graveyard | |
 | 矿脉 | Ore Vein | |
@@ -83,7 +87,7 @@
 | 精炼 | Refine | |
 | 回收 / 解体 | Reprocessing / Salvage | 残骸专用 |
 | 拆解 | Unbox | **货柜专用** |
-| 全损 | Total Loss | 虫洞失败 |
+| 全损 | Total Loss | 探索失败，信号空间与实验虫洞共享 |
 | 撤离 | Extraction | |
 | 战力 / 威胁 | Threat | |
 | 僚机 | Escort | |
@@ -288,7 +292,7 @@
 | mat-ammo-back | 弹药回收装置 | `Ammo Recovery Unit` |
 | mat-drone-net | 机群回收网 | `Drone Recovery Net` |
 | mat-field-repair | 战地维修单元 | `Field Repair Unit` |
-| mat-wh-essence | 虫洞谜质 | `Wormhole Enigma` |
+| mat-wh-essence | 信号谜质 | `Signal Enigma` |
 | box-relic-a | 遗迹安全货柜（海盗） | `Ruins Safe Container (Pirate)` |
 | box-relic-c | 遗迹安全货柜（异形） | `Ruins Safe Container (Alien)` |
 | box-relic-d | 遗迹安全货柜（守墓） | `Ruins Safe Container (Gravekeeper)` |

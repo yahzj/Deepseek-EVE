@@ -16,6 +16,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { L10N } from '@whale/data'
+import { signalSpaceTextId } from '@whale/core'
 
 export type Locale = 'zh' | 'en'
 
@@ -89,8 +90,13 @@ export function textOf(id: string, locale: Locale): string {
 }
 
 /** 组件外也能用的翻译（读模块级语言；组件内请用 `useL10n().t` 以获得重渲染） */
-export function tr(id: string, params?: Record<string, string | number>): string {
+export function futureTr(id: string, params?: Record<string, string | number>): string {
   return interpolate(textOf(id, activeLocale), params)
+}
+
+/** 当前已开放内容默认信号空间；未来虫洞明确调用futureTr，不做正文字符串替换。 */
+export function tr(id: string, params?: Record<string, string | number>): string {
+  return futureTr(signalSpaceTextId(id), params)
 }
 
 /**
@@ -124,6 +130,7 @@ export function mountNamesTextOf(
  */
 function resolveParamIds(
   params: Readonly<Record<string, string | number>> | undefined,
+  expeditionRules?: number,
 ): Record<string, string | number> | undefined {
   if (params === undefined) return undefined
   const out: Record<string, string | number> = {}
@@ -141,7 +148,7 @@ function resolveParamIds(
   for (const [k, v] of Object.entries(params)) {
     if (!/^p\d+Id$/.test(k)) continue
     const base = k.slice(0, -2)
-    const rendered = paramText(v)
+    const rendered = paramText(v, expeditionRules)
     if (rendered !== '') out[base] = rendered
   }
   return out
@@ -345,7 +352,7 @@ function composeParts(
 
 /** 渲染一条 core 日志：有 `textId` ⇒ 按当前语言渲染；否则回退中文正文 */
 export function logText(entry: LogEntryText): string {
-  return composeParts(entry, (id, params) => tr(id, params))
+  return composeParts(entry, (id, params) => futureTr(id, params))
 }
 
 /**
@@ -358,12 +365,18 @@ export function logText(entry: LogEntryText): string {
  * 那样会绕过 id，把 core 侧的甲案成果白扔。
  */
 export function cmdText(r: CmdTextSource): string {
+  if (r.errorId !== undefined && r.expeditionRules === 2) return futureTr(r.errorId, resolveParamIds(r.errorParams, 2))
   if (r.errorId !== undefined) return tr(r.errorId, resolveParamIds(r.errorParams))
   return r.error ?? ''
 }
 
+export function futureCmdText(r: CmdTextSource): string {
+  return cmdText({ ...r, expeditionRules: 2 })
+}
+
 /** `CommandResult` 里与文案相关的那三个字段（结构型，避免渲染层为类型反向依赖 core） */
 export interface CmdTextSource {
+  readonly expeditionRules?: number
   readonly error?: string
   readonly errorId?: string
   readonly errorParams?: Readonly<Record<string, string | number>>
@@ -382,11 +395,11 @@ export interface CmdTextSource {
  * 为什么需要它：`{p1}` 的内容本身也是一句要翻译的话（如「已勾选本次返航卸货后停止」），
  * 而参数值**不会再被翻译**——所以按约定给它配一个 `p1Id`，由这里先渲染好再喂进去。
  */
-export function paramText(idOrRaw: string | number | undefined): string {
+export function paramText(idOrRaw: string | number | undefined, expeditionRules?: number): string {
   if (idOrRaw === undefined) return ''
   if (typeof idOrRaw === 'number') return String(idOrRaw)
   // ⟪文案调整 2026-10-04⟫ 活动参数可复用 ui 域词条，按实际登记取词，普通文本/未知 id 原样回退。
-  return Object.prototype.hasOwnProperty.call(L10N, idOrRaw) ? tr(idOrRaw) : idOrRaw
+  return Object.prototype.hasOwnProperty.call(L10N, idOrRaw) ? futureTr(signalSpaceTextId(idOrRaw, expeditionRules)) : idOrRaw
 }
 
 export interface L10nApi {
@@ -437,7 +450,7 @@ export function L10nProvider({ children }: { children: ReactNode }): ReactNode {
     ;(window as unknown as { __setLocale?: (l: Locale) => void }).__setLocale = setLocale
   }, [setLocale])
   const t = useCallback(
-    (id: string, params?: Record<string, string | number>) => interpolate(textOf(id, locale), params),
+    (id: string, params?: Record<string, string | number>) => interpolate(textOf(signalSpaceTextId(id), locale), params),
     [locale],
   )
   const api = useMemo<L10nApi>(() => ({ locale, setLocale, t }), [locale, setLocale, t])

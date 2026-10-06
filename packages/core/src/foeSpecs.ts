@@ -958,7 +958,16 @@ export function flagshipBattleLedger(
 export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: FoeSpecOpts = {}): UnitSpec[] {
   // 2026-09-11 舰级路径（船长定案「敌舰配置表」）：写了 ships 的卡按**舰级绝对值**建档；
   // 未写的卡走下面的旧"威胁推导"路径，行为逐字不变（试点只转 A 族 6 张）。
-  if (anomaly.ships && anomaly.ships.length > 0) return createFoeSpecsFromShips(anomaly, bal, opts)
+  if (anomaly.ships && anomaly.ships.length > 0) {
+    const specs = createFoeSpecsFromShips(anomaly, bal, opts)
+    if (anomaly.wormholePdTags || anomaly.wormholeRepairScale !== undefined) {
+      for (const spec of specs) {
+        if (anomaly.wormholePdTags) spec.foePointDefenseEnabled = anomaly.wormholePdTags.includes(spec.tag)
+        if (spec.foeRepairPulse && anomaly.wormholeRepairScale !== undefined) spec.foeRepairPulse.k = anomaly.wormholeRepairScale
+      }
+    }
+    return specs
+  }
   const tactic = anomaly.tactic ?? 'orbit'
   const split = PROFILE_SPLIT[anomaly.defProfile ?? 'balanced'] ?? PROFILE_SPLIT.balanced!
   const escorts = Math.max(0, Math.min(2, anomaly.escorts ?? 0))

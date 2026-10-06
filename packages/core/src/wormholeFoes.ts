@@ -100,8 +100,9 @@ export function wormholeLayerThreat(depth: number): number {
 }
 
 /** 第 `depth` 层的收益系数（层 1 = 1.0，每层 ×1.2）——**涨得比威胁快** */
-export function wormholeLayerRewardMul(depth: number): number {
+export function wormholeLayerRewardMul(depth: number, expeditionRules?: number): number {
   const d = Math.max(1, Math.floor(depth))
+  if (expeditionRules === 2) return 1 + 0.08 * (d - 1)
   return Math.pow(1 + WORMHOLE_REWARD_GROWTH, d - 1)
 }
 

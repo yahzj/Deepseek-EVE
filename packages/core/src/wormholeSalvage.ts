@@ -47,12 +47,15 @@ import {
   cargoBlockArea,
   findCargoSpot,
   holdAdd,
+  holdAddCargo,
+  holdDropWithGrab,
   holdRemove,
   holdTransferTo,
   makeHoldState,
   WORMHOLE_CARGO_PIECE,
   wormholeShapeOf,
   placementCellsCount,
+  placementInBounds,
   wormholeIsShapedItem,
 } from './wormholeHold'
 import type { WormholeHoldPlacement, WormholeHoldState } from './wormholeHold'
@@ -60,6 +63,7 @@ import type { WormholeHoldPlacement, WormholeHoldState } from './wormholeHold'
 import { wormholeMatterBuffs, wormholeMatterDiscardHint } from './wormholeMatter'
 // 围剿者（2026-09-23 新机制）：采集/打捞各扣 1 回合 ⇒ 各掷一次刷怪
 import { wormholeSpawnAfterTurns } from './wormholeSpawn'
+import { wormholePatrolAfterAction, wormholeRaiseAlert } from './wormholePatrol'
 import { matterTechWhBuffs, matterTechWorkEffBonus } from './matterTech'
 import {
   WORMHOLE_TURN_PER_WORK,
@@ -77,11 +81,15 @@ import {
   wormholeUnitsPerSlot,
   WORMHOLE_TEMP_CELLS,
   WORMHOLE_TEMP_COLS,
+  WORMHOLE_TEMP_ROWS,
   // ⟪2026-10-02 船长令⟫ 洞内「禁止打捞普通残骸」开关（唯一读取点）
   noCommonWreckSalvageOn,
+  wormholePendingBattleReason,
 } from './wormhole'
 import type { WormholeBagSlot, WormholePile } from './wormhole'
 import type { WormholeActivateEffect, WormholeRunState } from './wormhole'
+import { wormholeSupplyCells } from './wormholeSupplies'
+import { wormholeGroundAddShape, wormholeGroundAddCargo, wormholeGroundBoard } from './wormholeGround'
 
 /* ═══════════ 一、口径常量（F3c 配平的旋钮都在这里） ═══════════ */
 
@@ -726,7 +734,7 @@ export function wormholeEnsureSalvagePiles(state: GameState, cell: WormholeGridC
   if (!group) return
   const common = wreckItemIdOf(group.key)
   const rare = rareWreckItemIdOf(group.key)
-  const mul = wormholeLayerRewardMul(run.depth)
+  const mul = wormholeLayerRewardMul(run.depth, run.expeditionRules)
   const rng = wormholeStream(runSeedOf(state) * 31 + run.depth * 7919 + (cell.q * 131 + cell.r * 17) * 7)
   const piles: WormholeCellPile[] = []
   if (cell.place === 'graveyard') {
@@ -811,7 +819,7 @@ export function wormholeHoldCapacityOf(state: GameState, ctx: SimContext): numbe
   const run = state.wormhole.run
   if (!run) return 0
   // 谜质「舱段扩展器」：货仓有效格数 +8/台（现算；物理上不越过货仓真实容量——它只是加格子）
-  return wormholeBagSlotsOfFleet(state, ctx, run.fleet) + wormholeMatterBuffs(run.hold, matterTechWhBuffs(state, ctx)).holdCells
+  return Math.max(0, wormholeBagSlotsOfFleet(state, ctx, run.fleet) + wormholeMatterBuffs(run.hold, matterTechWhBuffs(state, ctx)).holdCells - wormholeSupplyCells(state, ctx))
 }
 
 /** 一条散货占几格（数量 ÷ 每格单位数，向上取整；认不出物品 ⇒ 按 1 格兜底） */
@@ -871,10 +879,10 @@ export function wormholeHoldSyncCargo(
   const capacity = wormholeHoldCapacityOf(state, ctx)
   run.hold = run.hold ?? makeHoldState()
   const hold = run.hold
-  const temp = (run.tempGrid = run.tempGrid ?? makeHoldState(WORMHOLE_TEMP_COLS))
+  const temp = run.supplyVersion === 1 ? makeHoldState(WORMHOLE_TEMP_COLS) : (run.tempGrid = run.tempGrid ?? makeHoldState(WORMHOLE_TEMP_COLS))
   const boards: Array<{ board: WormholeHoldState; capacity: number }> = [
     { board: hold, capacity },
-    { board: temp, capacity: WORMHOLE_TEMP_CELLS },
+    ...(run.supplyVersion === 1 ? [] : [{ board: temp, capacity: WORMHOLE_TEMP_CELLS }]),
   ]
   const unplaced: string[] = []
   let moved = 0
@@ -944,7 +952,9 @@ export function wormholeHoldUsage(
 } {
   const run = state.wormhole.run
   if (!run) return { used: 0, capacity: 0, cargoCells: 0, shapeCells: 0, unplacedCells: 0, overload: false }
-  const capacity = wormholeHoldCapacityOf(state, ctx)
+  const runCapacity = wormholeBagSlotsOfFleet(state, ctx, run.fleet) + wormholeMatterBuffs(run.hold, matterTechWhBuffs(state, ctx)).holdCells
+  const supplyCells = wormholeSupplyCells(state, ctx)
+  const capacity = runCapacity
   let cargoCells = 0
   let shapeCells = 0
   for (const p of run.hold?.placements ?? []) {
@@ -956,7 +966,7 @@ export function wormholeHoldUsage(
   //   老档里那种 8×1 大件算 8 格（不是 1 件），否则会把老档误报成"凭空少了 21 格"（实测踩过）。
   // ⚠ 2026-09-14：**临时空间里的散货件也算"已摆下"**（否则把货挪进临时空间会被误报成超载）。
   let unplacedCells = 0
-  const cargoBoards = [run.hold, run.tempGrid]
+  const cargoBoards = run.supplyVersion === 1 ? [run.hold] : [run.hold, run.tempGrid]
   for (const slot of run.bag) {
     const want = wormholeCargoPieceUnitsOf(ctx, slot.itemId, slot.units).length
     let haveCells = 0
@@ -967,7 +977,7 @@ export function wormholeHoldUsage(
     }
     unplacedCells += Math.max(0, want - haveCells)
   }
-  const used = cargoCells + shapeCells + unplacedCells
+  const used = cargoCells + shapeCells + unplacedCells + supplyCells
   return { used, capacity, cargoCells, shapeCells, unplacedCells, overload: used > capacity }
 }
 
@@ -993,6 +1003,7 @@ export function wormholeHoldOverloaded(state: GameState, ctx: SimContext): boole
 
 /** 临时空间的格板（**懒建**：老档没有 = 空的，零迁移） */
 export function wormholeTempBoard(run: WormholeRunState): WormholeHoldState {
+  if (run.supplyVersion === 1) return wormholeGroundBoard(run, true) ?? makeHoldState(WORMHOLE_TEMP_COLS)
   return (run.tempGrid = run.tempGrid ?? makeHoldState(WORMHOLE_TEMP_COLS))
 }
 
@@ -1003,7 +1014,7 @@ export function wormholeTempUsage(
 ): { cells: number; capacity: number; placements: WormholeHoldPlacement[]; full: boolean } {
   void ctx
   const run = state.wormhole.run
-  const placements = run?.tempGrid?.placements ?? []
+  const placements = run?.supplyVersion === 1 ? wormholeGroundBoard(run)?.placements ?? [] : run?.tempGrid?.placements ?? []
   let cells = 0
   for (const p of placements) cells += placementCellsCount(p)
   return { cells, capacity: WORMHOLE_TEMP_CELLS, placements, full: cells >= WORMHOLE_TEMP_CELLS }
@@ -1035,6 +1046,10 @@ export function wormholeTempAddShape(
   const run = state.wormhole.run
   if (!run) return { ok: false, error: '不在虫洞内。', errorId: 'core.wormhole.003' }
   if (!wormholeIsShapedItem(itemId)) return { ok: false, error: '这件东西不是形状件。', errorId: 'core.wormholeSalvage.001' }
+  if (run.supplyVersion === 1) {
+    const shape = wormholeShapeOf(itemId)
+    return { ok: wormholeGroundAddShape(run, itemId), cells: shape.w * shape.h }
+  }
   const board = wormholeTempBoard(run)
   const r = holdAdd(board, itemId, WORMHOLE_TEMP_CELLS)
   if (!r.ok) {
@@ -1067,10 +1082,15 @@ export function wormholeTempStowPiece(
   state: GameState,
   ctx: SimContext,
   id: string,
+  x?: number,
+  y?: number,
+  grab?: { dx: number; dy: number },
 ): CommandResult {
   const run = state.wormhole.run
-  if (!run?.tempGrid) return { ok: false, error: '临时空间是空的。', errorId: 'core.wormholeSalvage.003' }
-  const p = run.tempGrid.placements.find((q) => q.id === id)
+  if (run?.supplyVersion === 1 && (run.battle || wormholePendingBattleReason(state))) return { ok: false, errorId: 'core.wormhole.035' }
+  const temp = run?.supplyVersion === 1 ? wormholeGroundBoard(run) : run?.tempGrid
+  if (!run || !temp) return { ok: false, error: '临时空间是空的。', errorId: 'core.wormholeSalvage.003' }
+  const p = temp.placements.find((q) => q.id === id)
   if (!p) return { ok: false, error: '临时空间里没有这件东西。', errorId: 'core.wormholeSalvage.004' }
   run.hold = run.hold ?? makeHoldState()
   const capacity = wormholeHoldCapacityOf(state, ctx)
@@ -1078,18 +1098,52 @@ export function wormholeTempStowPiece(
   if (p.kind === 'box') {
     const before = wormholeHoldUsage(state, ctx)
     const need = placementCellsCount(p)
-    if (before.used + need - before.unplacedCells > capacity && before.used + need > capacity) {
+    if (before.used + need - before.unplacedCells > before.capacity && before.used + need > before.capacity) {
       return {
         ok: false,
-        error: `货仓放不下：这件要占 ${need} 格（现在 ${before.used}/${capacity} 格）。`,
+        error: `货仓放不下：这件要占 ${need} 格（现在 ${before.used}/${before.capacity} 格）。`,
         errorId: 'core.wormholeSalvage.005',
-        errorParams: { p1: need, p2: before.used, p3: capacity },
+        errorParams: { p1: need, p2: before.used, p3: before.capacity },
       }
     }
   }
-  const r = holdTransferTo(run.tempGrid, run.hold, id, capacity)
+  if (run.supplyVersion === 1 && p.kind === 'cargo') {
+    const kind = ctx.items.get(p.itemId)?.kind
+    if ((p.supply || kind === 'ammo' || kind === 'kit' || kind === 'drone') && run.supplies) {
+      const n = p.units ?? 0
+      const previous = { ...run.supplies.items }
+      run.supplies.items[p.itemId] = (run.supplies.items[p.itemId] ?? 0) + n
+      const geometryInvalid = run.hold.placements.some((piece) => !placementInBounds(piece.x, piece.y, piece, wormholeHoldCapacityOf(state, ctx), run.hold!.cols, piece.fill))
+      if (wormholeHoldUsage(state, ctx).overload || geometryInvalid) {
+        run.supplies.items = previous
+        return { ok: false, errorId: 'core.wormholeHold.010' }
+      }
+      if (p.supply) {
+        const left = (run.supplies.leftBehind[p.itemId] ?? 0) - n
+        if (left > 0) run.supplies.leftBehind[p.itemId] = left
+        else delete run.supplies.leftBehind[p.itemId]
+      } else run.supplies.found[p.itemId] = (run.supplies.found[p.itemId] ?? 0) + n
+      holdRemove(temp, id)
+      return { ok: true }
+    }
+    const before = run.bag.map((s) => ({ ...s }))
+    const holdBefore = structuredClone(run.hold)
+    const tempBefore = structuredClone(temp)
+    if (x !== undefined && y !== undefined && !holdTransferTo(temp, run.hold, id, capacity, x, y, grab).ok) return { ok: false, errorId: 'core.wormholeHold.010' }
+    run.bag = mergeIntoBag(run.bag, { itemId: p.itemId, units: p.units ?? 0 })
+    if (wormholeHoldSyncCargo(state, ctx).unplaced.length > 0) {
+      run.bag = before
+      run.hold = holdBefore
+      temp.placements = tempBefore.placements
+      return { ok: false, errorId: 'core.wormholeHold.010' }
+    }
+    holdRemove(temp, id)
+    return { ok: true }
+  }
+  const r = holdTransferTo(temp, run.hold, id, capacity, x, y, grab)
   if (!r.ok) return { ok: false, error: r.error }
   wormholeSyncMatterTurns(state, ctx) // 谜质装置进货仓 ⇒ 实时派生（时序核心 +10）；从货仓拿出 ⇒ 夹紧
+  if (run.supplyVersion === 1) return { ok: true }
   const name = ctx.items.get(p.itemId)?.name ?? p.itemId
   addLog(state, 'salvage', `🕳 整理：${name} 从临时空间进货仓。`, 'core.wormholeSalvage.023', { p1: name })
   return { ok: true }
@@ -1102,12 +1156,14 @@ export function wormholeTempDiscardPiece(
   id: string,
 ): CommandResult {
   const run = state.wormhole.run
-  if (!run?.tempGrid) return { ok: false, error: '临时空间是空的。', errorId: 'core.wormholeSalvage.003' }
-  const p = run.tempGrid.placements.find((q) => q.id === id)
+  if (run?.supplyVersion === 1 && (run.battle || wormholePendingBattleReason(state))) return { ok: false, errorId: 'core.wormhole.035' }
+  const temp = run?.supplyVersion === 1 ? wormholeGroundBoard(run) : run?.tempGrid
+  if (!run || !temp) return { ok: false, error: '临时空间是空的。', errorId: 'core.wormholeSalvage.003' }
+  const p = temp.placements.find((q) => q.id === id)
   if (!p) return { ok: false, error: '临时空间里没有这件东西。', errorId: 'core.wormholeSalvage.004' }
-  run.tempGrid.placements = run.tempGrid.placements.filter((q) => q.id !== id)
+  temp.placements = temp.placements.filter((q) => q.id !== id)
   // 散货：数量账本也要跟着减（否则下次 sync 会把它重新铺出来）
-  if (p.kind === 'cargo') {
+  if (p.kind === 'cargo' && run.supplyVersion !== 1) {
     const cut = Math.max(1, Math.floor(p.units ?? 0))
     const slot = run.bag.find((s) => s.itemId === p.itemId)
     if (slot) {
@@ -1116,6 +1172,7 @@ export function wormholeTempDiscardPiece(
     }
   }
   wormholeSyncMatterTurns(state, ctx)
+  if (run.supplyVersion === 1) return { ok: true }
   const name = ctx.items.get(p.itemId)?.name ?? p.itemId
   addLog(state, 'warn', `🕳 丢弃（临时空间）：${name}${(p.units ?? 0) > 1 ? `×${Math.floor(p.units ?? 0)}` : ''}。`, 'core.wormholeSalvage.024', { p1: `${name}${(p.units ?? 0) > 1 ? `×${Math.floor(p.units ?? 0)}` : ''}` })
   return { ok: true }
@@ -1126,7 +1183,7 @@ export function wormholeTempStowAll(state: GameState, ctx: SimContext): { moved:
   const run = state.wormhole.run
   const stuck: string[] = []
   let moved = 0
-  for (const p of [...(run?.tempGrid?.placements ?? [])]) {
+  for (const p of [...(run ? wormholeTempPending(state, ctx).placements : [])]) {
     const r = wormholeTempStowPiece(state, ctx, p.id)
     if (r.ok) moved += 1
     else stuck.push(p.id)
@@ -1138,7 +1195,7 @@ export function wormholeTempStowAll(state: GameState, ctx: SimContext): { moved:
 export function wormholeTempDiscardAll(state: GameState, ctx: SimContext): { moved: number } {
   const run = state.wormhole.run
   let moved = 0
-  for (const p of [...(run?.tempGrid?.placements ?? [])]) {
+  for (const p of [...(run ? wormholeTempPending(state, ctx).placements : [])]) {
     const r = wormholeTempDiscardPiece(state, ctx, p.id)
     if (r.ok) moved += 1
   }
@@ -1192,6 +1249,10 @@ export function wormholeStowOrTemp(
   itemId: string,
   units = 1,
 ): CommandResult & { where?: 'hold' | 'temp' } {
+  if (state.wormhole.run?.supplyVersion === 1) {
+    if (!Number.isSafeInteger(units) || units <= 0 || !ctx.items.has(itemId)) return { ok: false }
+    if (wormholeIsShapedItem(itemId) && units !== 1) return { ok: false }
+  }
   if (wormholeIsShapedItem(itemId)) {
     const stowed = wormholeHoldStow(state, ctx, itemId)
     if (stowed.ok) {
@@ -1204,7 +1265,23 @@ export function wormholeStowOrTemp(
   }
   const run = state.wormhole.run
   if (!run) return { ok: false, error: '不在虫洞内。', errorId: 'core.wormhole.003' }
-  if (tryMergeIntoBag(state, ctx, run, { itemId, units })) return { ok: true, where: 'hold' }
+  if (run.supplyVersion === 1) {
+    const kind = ctx.items.get(itemId)?.kind
+    if (kind === 'ammo' || kind === 'kit' || kind === 'drone') {
+      const board = wormholeGroundBoard(run, true)
+      const existing = new Set(board?.placements.map((p) => p.id))
+      if (!wormholeGroundAddCargo(run, ctx, itemId, units)) return { ok: false }
+      const pieces = wormholeGroundBoard(run)!.placements.filter((p) => !existing.has(p.id))
+      let pending = false
+      for (const piece of pieces) if (!wormholeTempStowPiece(state, ctx, piece.id).ok) pending = true
+      return { ok: true, where: pending ? 'temp' : 'hold' }
+    }
+  }
+  const groundCount = wormholeGroundBoard(run)?.placements.length ?? 0
+  if (tryMergeIntoBag(state, ctx, run, { itemId, units })) {
+    const landedOnGround = (wormholeGroundBoard(run)?.placements.length ?? 0) > groundCount
+    return { ok: true, where: landedOnGround ? 'temp' : 'hold' }
+  }
   return { ok: false, error: '货仓与临时空间都放不下（先整理或丢弃腾位置）。', errorId: 'core.wormholeSalvage.006' }
 }
 
@@ -1229,8 +1306,8 @@ export function wormholeHoldStow(
   // 船长口径是"放不下整件拒收"，不是"先装进去再逼你抛货"。
   const shape = wormholeShapeOf(itemId)
   const before = wormholeHoldUsage(state, ctx)
-  if (before.used + shape.w * shape.h > capacity) {
-    const left = Math.max(0, capacity - before.used)
+  if (before.used + shape.w * shape.h > before.capacity) {
+    const left = Math.max(0, before.capacity - before.used)
     return {
       ok: false,
       error: `货仓只剩 ${left} 格，装不下这件（${shape.w}×${shape.h} = ${shape.w * shape.h} 格）。`,
@@ -1374,6 +1451,7 @@ export function wormholeOverloadBlockReason(state: GameState, ctx: SimContext): 
  * ⚠ 仍然**不软锁**：丢弃/放回都在背包页做得到，且丢弃永远可用。
  */
 export function wormholeTempBlockReason(state: GameState, ctx: SimContext): string | null {
+  if (state.wormhole.run?.supplyVersion === 1) return null
   const pending = wormholeTempPending(state, ctx)
   if (pending.count <= 0) return null
   return (
@@ -1606,6 +1684,7 @@ export function wormholeEnsureArrivalPiles(state: GameState, ctx: SimContext): v
 
 export interface WormholeCollectResult {
   ok: boolean
+  code?: 'unsupported-rules'
   error?: string
   errorId?: string
   errorParams?: Readonly<Record<string, string | number>>
@@ -1622,6 +1701,7 @@ export interface WormholeCollectResult {
  */
 export function wormholeCollectOreAt(state: GameState, ctx: SimContext): WormholeCollectResult {
   const run = state.wormhole.run
+  if (run?.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
   const grid = run?.grid
   if (!run || !grid) return { ok: false, error: '本层没有网格：无法采集。', errorId: 'core.wormholeSalvage.014' }
   if (run.battle) return { ok: false, error: '战斗中：先打完这一场。', errorId: 'core.wormholeSalvage.016' }
@@ -1667,6 +1747,7 @@ export function wormholeCollectOreAt(state: GameState, ctx: SimContext): Wormhol
   if (full) addLog(state, 'warn', `🕳 货仓放不下：这一批只回收了 ${taken.length} 堆，剩下的仍留在原处。`, 'core.wormholeSalvage.027', { p1: taken.length })
   const finished = piles.length === 0
   if (finished && !grid.activated.includes(cell.key)) grid.activated.push(cell.key)
+  wormholePatrolAfterAction(state)
   return {
     ok: true,
     spent: WORMHOLE_TURN_PER_WORK,
@@ -1680,6 +1761,8 @@ export function wormholeCollectOreAt(state: GameState, ctx: SimContext): Wormhol
 
 export interface WormholeSalvageResult {
   ok: boolean
+  code?: 'unsupported-rules'
+  alarm?: { alertLevel: number }
   error?: string
   errorId?: string
   errorParams?: Readonly<Record<string, string | number>>
@@ -1713,15 +1796,64 @@ export interface WormholeSalvageResult {
  */
 function tryMergeIntoBag(state: GameState, ctx: SimContext, run: WormholeRunState, pile: WormholeCellPile): boolean {
   const before = run.bag.map((s) => ({ ...s }))
+  const holdBefore = run.supplyVersion === 1 ? structuredClone(run.hold) : undefined
   // 合并只认 `wormhole.mergeIntoBag`（全仓唯一一份"同类并格"实现）
   run.bag = mergeIntoBag(run.bag, pile)
   const sync = wormholeHoldSyncCargo(state, ctx)
   if (sync.unplaced.length > 0) {
     run.bag = before
+    if (run.supplyVersion === 1) {
+      run.hold = holdBefore
+      return wormholeGroundAddCargo(run, ctx, pile.itemId, pile.units)
+    }
     wormholeHoldSyncCargo(state, ctx) // 把网格也还原
     return false
   }
   return true
+}
+
+/** 新趟将随行件留下，保留地点实物；失败不改原货仓。 */
+export function wormholeLeaveHoldPiece(
+  state: GameState, ctx: SimContext, id: string,
+  x?: number, y?: number, grab?: { dx: number; dy: number },
+): { ok: boolean } {
+  const run = state.wormhole.run
+  if (run?.supplyVersion !== 1 || run.battle || wormholePendingBattleReason(state)) return { ok: false }
+  const piece = run.hold?.placements.find((p) => p.id === id)
+  if (!piece) return { ok: false }
+  const ground = structuredClone(wormholeGroundBoard(run) ?? makeHoldState(WORMHOLE_TEMP_COLS))
+  const capacity = ground.cols * (Math.max(WORMHOLE_TEMP_ROWS, ...ground.placements.map((p) => p.y + p.h)) + piece.h + 2)
+  if (piece.kind === 'box') {
+    if (!holdTransferTo(run.hold!, ground, id, capacity, x, y, grab).ok) return { ok: false }
+  } else {
+    // 随行散货同步会重编 #编号；地面必须使用独立编号，避免与剩下的同型件撞号。
+    const added = holdAddCargo(ground, piece.itemId, piece.units ?? 0, placementCellsCount(piece), capacity)
+    if (!added.ok || !added.placement) return { ok: false }
+    if (x !== undefined && y !== undefined && !holdDropWithGrab(ground, added.placement.id, x, y, capacity, grab ?? { dx: 0, dy: 0 }).ok) return { ok: false }
+    holdRemove(run.hold!, id)
+  }
+  wormholeGroundBoard(run, true)!.placements = ground.placements
+  if (piece.kind === 'cargo') {
+    const slot = run.bag.find((s) => s.itemId === piece.itemId)
+    if (slot) {
+      slot.units -= piece.units ?? 0
+      if (slot.units <= 0) run.bag = run.bag.filter((s) => s.itemId !== piece.itemId)
+    }
+  }
+  wormholeSyncMatterTurns(state, ctx)
+  return { ok: true }
+}
+
+export function wormholeLeaveSupply(state: GameState, ctx: SimContext, id: string, count: number): { ok: boolean } {
+  const run = state.wormhole.run
+  const supplies = run?.supplies
+  if (run?.supplyVersion !== 1 || run.battle || wormholePendingBattleReason(state) || !supplies || !Number.isSafeInteger(count) || count <= 0 || (supplies.items[id] ?? 0) < count) return { ok: false }
+  if (!wormholeGroundAddCargo(run, ctx, id, count, true)) return { ok: false }
+  const left = supplies.items[id]! - count
+  if (left > 0) supplies.items[id] = left
+  else delete supplies.items[id]
+  supplies.leftBehind[id] = (supplies.leftBehind[id] ?? 0) + count
+  return { ok: true }
 }
 
 /**
@@ -1733,6 +1865,7 @@ function tryMergeIntoBag(state: GameState, ctx: SimContext, run: WormholeRunStat
  */
 export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSalvageResult {
   const run = state.wormhole.run
+  if (run?.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
   const grid = run?.grid
   if (!run || !grid) return { ok: false, error: '本层没有网格：无法打捞。', errorId: 'core.wormholeSalvage.015' }
   if (run.battle) return { ok: false, error: '战斗中：先打完这一场。', errorId: 'core.wormholeSalvage.016' }
@@ -1877,6 +2010,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
    * ⚠ "第一次"以**实际收走 ≥1 堆**为准（`taken.length > 0`）：货仓满到一堆都收不走的空动作不算，
    * 不浪费这一格的判定。
    */
+  wormholePatrolAfterAction(state)
   const ruinsFirstPull = cell.place === 'ruins' && taken.length > 0 && !(grid.ruinsRolled ?? []).includes(cell.key)
   const ruinsBoxes: string[] = []
   let ruinsCores: string[] | undefined
@@ -1931,7 +2065,13 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     }
     // ③ 惊扰守卫（船长 2026-09-16 选「也提前到第一次打捞」）⇒ 当场开战，打完才能做别的
     const battleRng = wormholeStream(runSeedOf(state) * 17 + run.depth * 613 + (cell.q * 41 + cell.r * 53) * 11 + 5)
-    if (battleRng() < WORMHOLE_RUINS_BATTLE_CHANCE) {
+    if (run.expeditionRules === 2) {
+      if (!cell.alarmDisabled) {
+        wormholeRaiseAlert(state, 1)
+        addLog(state, 'warn', '', 'core.whExpedition.005', { p1: run.alertLevel ?? 0 })
+      }
+      if (run.expeditionProgress) run.expeditionProgress.ruins += 1
+    } else if (battleRng() < WORMHOLE_RUINS_BATTLE_CHANCE) {
       ruinsBattle = true
       run.pendingRuinsBattle = true
       addLog(state, 'salvage', '🕳 遗迹深处的守备被惊动了：交火在即——这一场必须打完。', 'core.wormholeSalvage.034')
@@ -1950,6 +2090,7 @@ export function wormholeSalvageAt(state: GameState, ctx: SimContext): WormholeSa
     ...(ruinsCores !== undefined ? { cores: ruinsCores } : {}),
     ...(resultRelics !== undefined ? { relics: resultRelics } : {}),
     ...(ruinsBattle ? { effect: { kind: 'ruinsBattle', key: cell.key } as WormholeActivateEffect } : {}),
+    ...(run.expeditionRules === 2 && ruinsFirstPull && !cell.alarmDisabled ? { alarm: { alertLevel: run.alertLevel ?? 0 } } : {}),
   }
   if (!finished) return result
   // ── 打捞结束：记完成（掉落与收尾战已在上面"首捞"那一刻结算过，此处不再掷）──
@@ -2194,7 +2335,7 @@ export function wormholeDeliverRelics(
  * - `spawn` ：**围剿战**（2026-09-23 新机制；按裁定取折减形状 = **1 堆普通、不给稀有件**——
  *   层 7 一趟最多 45 场，全额会变成"刷高级箱"的入口）
  */
-export type WormholeSpoilsShape = 'node' | 'boss' | 'ruins' | 'spawn'
+export type WormholeSpoilsShape = 'node' | 'boss' | 'ruins' | 'spawn' | 'elite'
 
 /** 形状表（堆数 / 件数；每堆体积仍 = `WORMHOLE_WRECK_PILE_M3_BASE × 层收益系数`，稀有件 = 30 m³） */
 export const WORMHOLE_SPOILS_TABLE: Readonly<Record<WormholeSpoilsShape, { commons: number; rares: number }>> = {
@@ -2202,6 +2343,7 @@ export const WORMHOLE_SPOILS_TABLE: Readonly<Record<WormholeSpoilsShape, { commo
   boss: { commons: 3, rares: 3 },
   ruins: { commons: 2, rares: 2 },
   spawn: { commons: 1, rares: 0 },
+  elite: { commons: 0, rares: 2 },
 }
 
 /**
@@ -2224,9 +2366,9 @@ export function wormholeGrantShipSpoils(
   const cardId = cell.foe?.card ?? wormholeCellCardIdOf(run, cell)
   const group = wreckGroupOfCard(cardId, ctx)
   if (!group) return { bagged: 0, leftOnCell: 0 }
-  const mul = wormholeLayerRewardMul(run.depth)
+  const mul = wormholeLayerRewardMul(run.depth, run.expeditionRules)
   const rng = wormholeStream(runSeedOf(state) * 7 + run.depth * 331 + (cell.q * 61 + cell.r * 67) * 3 + 11)
-  const row = WORMHOLE_SPOILS_TABLE[shape]
+  const row = run.expeditionRules === 2 && shape === 'node' ? { commons: 2, rares: 1 } : WORMHOLE_SPOILS_TABLE[shape]
   const spoils: WormholeCellPile[] = []
   /**
    * ⟪**2026-10-03 船长令**⟫ **开关也管战果**：原话「**我希望那个开关同时能关闭战斗后获取的普通残骸**」。
@@ -2272,7 +2414,11 @@ export function wormholeGrantShipSpoils(
    */
   let box: string | undefined
   const boxRng = wormholeStream(runSeedOf(state) * 53 + run.depth * 613 + (cell.q * 41 + cell.r * 59) * 23 + (cell.foe?.seq ?? 0) * 17 + 29)
-  if (boxRng() < WORMHOLE_LOOT_BOX_CHANCE) {
+  if (shape === 'elite' && run.expeditionRules === 2) {
+    const eligible = wormholeBpBoxIdsForDepth(run.depth)
+    const boxId = eligible[Math.floor(boxRng() * eligible.length)]
+    if (boxId) { wormholeGroundAddShape(run, boxId); box = boxId }
+  } else if (!(run.expeditionRules === 2 && shape === 'spawn') && boxRng() < WORMHOLE_LOOT_BOX_CHANCE) {
     const classes = wormholeSalvageBoxClassesOf(familyOfCard(ctx, cardId), run.depth)
     const pool = classes[Math.min(classes.length - 1, Math.floor(boxRng() * classes.length))]!
     const boxId = pool[Math.min(pool.length - 1, Math.floor(boxRng() * pool.length))]!
@@ -2395,6 +2541,6 @@ export function wormholeSyncMatterTurns(state: GameState, ctx: SimContext): void
 function wormholeNodePilesFor(state: GameState, cell: WormholeGridCell, count: number): WormholeCellPile[] {
   const run = state.wormhole.run!
   const index = Math.abs(cell.q * 13 + cell.r * 29) % 97
-  return wormholeNodePiles(runSeedOf(state), run.depth, index, count)
+  return wormholeNodePiles(runSeedOf(state), run.depth, index, count, run.expeditionRules)
 }
 

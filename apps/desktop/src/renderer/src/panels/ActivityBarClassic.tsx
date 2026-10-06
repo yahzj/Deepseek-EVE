@@ -29,6 +29,7 @@ import { aiIndustrySlots, aiSlotTip } from '../ui/aiSlots'
 //   （冻结件要的"和昨天一模一样"在**观感与文本**上仍然成立；要回退只需把单点里的 switch 复制回本文件）。
 import { stopLabel } from './activityStopLabel'
 import { tr, cmdText } from '../i18n/locale'
+import { explorationActivityText } from '../ui/explorationActivityText'
 // 活动行「点击去哪」的跳转单点（2026-09-27 建：原先两套外壳各一份，快递那档跳到了已删除的星图页签 ⇒ 空白页）
 import { goFor } from '../ui/activityGo'
 import { fmtDate, fmtDuration, fmtDurationShort } from '../i18n/fmt'
@@ -147,7 +148,7 @@ export function ActivityBarClassic({
   onOpenWormhole?: () => void
 }) {
   const state = engine.state
-  const all = activityOverview(state, engine.ctx)
+  const all = activityOverview(state, engine.ctx).map(explorationActivityText)
   // 船长 2026-09-05：活动窗口垂直排布；「玩家活动」「技能训练」两个常驻分区，各自待机文案；AI 用徽标
   // 2026-09-08：AI 徽标计数 = AI 副船 + AI 核心驱动的生产线/精炼炉（后者不再占用"玩家活动"行）
   // 2026-09-10 船长：徽标**拆成两枚**——「副船」与「工业」各一枚（图标与配色不同，便于辨识）；

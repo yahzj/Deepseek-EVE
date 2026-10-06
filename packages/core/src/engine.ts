@@ -107,7 +107,7 @@ export interface CommandResult {
    * `path-blocked` = **直线路径上有没清掉的敌人**（船长 2026-09-16 路径拦截），界面据此弹
    * 「路径上有敌人阻拦」的确认，玩家确认后带 `confirmIntercept` 重来。
    */
-  code?: 'unknown-target' | 'path-blocked'
+  code?: 'unknown-target' | 'path-blocked' | 'cargo-pending' | 'unsupported-rules'
   /** 虫洞"前往"专用：到达的格是舰船信号 ⇒ **就地开打**（船长 2026-09-13）；界面不用再点激活 */
   autoBattle?: boolean
   /** 虫洞"前往"专用：到达的格是漂浮信标 ⇒ **下一层入口已标出**（界面提示一句） */

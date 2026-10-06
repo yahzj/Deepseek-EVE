@@ -38,6 +38,9 @@ import { wormholeMatterBuffs, wormholeMatterDeviceAt } from './wormholeMatter'
 import { matterTechWhBuffs } from './matterTech'
 import { bumpFirst } from './firstTasks'
 import { repairCivilianFittings } from './equipment'
+import { settleWormholeBattleAmmo } from './combatAmmo'
+import { settleWormholeDroneRevives, wormholeSupplyForBattle } from './wormholeSupplies'
+import { wormholeCancelPatrol, wormholePatrolDefeated, wormholeRaiseAlert } from './wormholePatrol'
 import {
   wormholeDeliverRelics,
   wormholeGrantShipSpoils,
@@ -80,6 +83,8 @@ export function wormholeStartBattle(
 ): CommandResult {
   const run = state.wormhole.run
   if (!run) return { ok: false, error: '不在虫洞内。', errorId: 'core.wormholeBattle.001' }
+  if (run.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
+  if (run.expeditionRules === 2 && run.supplyVersion !== 1) return { ok: false, code: 'unsupported-rules' }
   if (run.battle) return { ok: false, error: '战斗还没结束。', errorId: 'core.wormholeBattle.002' }
   const grid = run.grid
   const here = grid ? gridCellAt(grid, grid.pos) : undefined
@@ -88,10 +93,12 @@ export function wormholeStartBattle(
    * （强度 = 该层普通节点、战果走折减形状、打赢后解除覆盖）。界面照旧调 `'node'`（袭击确认链同一条）。
    */
   const spawnHere = grid !== undefined && here !== undefined && hasLiveFoe(here)
+  const eventHere = run.expeditionRules === 2 && here?.event?.battle === 'pending'
+  if (run.expeditionRules === 2 && kind === 'node' && !spawnHere && !eventHere && here?.combatCleared) return { ok: false, errorId: 'core.wormholeBattle.008' }
   if (kind === 'node') {
     if (grid) {
       // 网格层：战斗由**地点**触发（舰船信号 / 遗迹收尾，后者 F3b 接）；围剿者盖在任何格上都算
-      if (here?.place !== 'ship' && !spawnHere) {
+      if (here?.place !== 'ship' && !spawnHere && !eventHere) {
         return { ok: false, error: '这里没有可交火的信号。', errorId: 'core.wormholeBattle.003' }
       }
     } else {
@@ -164,7 +171,7 @@ export function wormholeStartBattle(
       : wormholeCardIdForRun({
           family: run.family,
           seed: run.seed,
-          depth: run.depth,
+          depth: run.expeditionRules === 2 ? 1 : run.depth,
           kind: battleKind,
           nodeIndex: grid ? gridContentIndex(grid, grid.pos) : run.nodeIndex,
         })
@@ -173,6 +180,12 @@ export function wormholeStartBattle(
     depth: run.depth,
     kind: battleKind,
     waves,
+    ...(run.expeditionRules === 2 ? {
+      expeditionRules: 2,
+      expeditionRole: battleKind === 'spawn' ? 'patrol' as const : eventHere ? 'event' as const : battleKind === 'boss' ? 'guard' as const : here?.elite ? 'elite' as const : 'ordinary' as const,
+      ...(battleKind === 'boss' && run.guardSupportDisabled ? { guardSupportDisabled: true } : {}),
+      ...(run.nextBattleRangeMul ? { desireRangeMul: run.nextBattleRangeMul } : {}),
+    } : {}),
     ...(opts?.strengthMul !== undefined ? { strengthMul: opts.strengthMul } : {}),
   })
   if (!battle) return { ok: false, error: '无法开战（编队或敌卡缺失）。', errorId: 'core.wormholeBattle.012' }
@@ -181,6 +194,7 @@ export function wormholeStartBattle(
   // 洞外那一场是我方飞入、敌方没有入场动画 ⇒ **不盖**（有动画才有窗口）。
   stampFoeArrivalFx(battle)
   run.battle = battle
+  if (run.expeditionRules === 2) delete run.nextBattleRangeMul
   // 开战成功 ⇒ 清「待迎战」标记（遗迹收尾战那条确认链到此闭合）
   if (run.pendingRuinsBattle === true) run.pendingRuinsBattle = false
   // **踩中埋伏**那条确认链同样到此闭合（船长 2026-09-16）
@@ -218,8 +232,10 @@ export function wormholeActivateAt(
   /** 已结算但**等确认**的战斗（目前只有 `'ruins'`） */
   pendingBattle?: 'ruins'
   taken?: number
+  code?: 'unsupported-rules'
 } {
   const run = state.wormhole.run
+  if (run?.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
   const turnsBefore = run?.turnsLeft ?? 0
   /**
    * **欠着一场战斗 ⇒ 这一口也不许做**（**2026-09-20 玩家报障修复**）：旧实现只拦"超载/临时空间"，
@@ -234,7 +250,9 @@ export function wormholeActivateAt(
   }
   // **超载闸**（F4 · 船长裁定 8）：货仓装不下时不许再做任何"会装货"的动作（打捞/挖矿/开战都算）。
   const overloaded = wormholeActionBlockReason(state, ctx)
-  if (overloaded) return { ok: false, error: overloaded }
+  const battleCell = run?.grid ? gridCellAt(run.grid, run.grid.pos) : undefined
+  const mustBattle = run?.supplyVersion === 1 && battleCell && (battleCell.place === 'ship' || hasLiveFoe(battleCell) || isExitCell(run.grid!, run.grid!.pos))
+  if (overloaded && !mustBattle) return { ok: false, error: overloaded }
 
   // **打捞格**（墓场/遗迹 · F5 起不用激活）：打捞一批 + 遗迹捞空时的收尾战 —— 合成一次调用
   const hereCell = run?.grid ? gridCellAt(run.grid, run.grid.pos) : undefined
@@ -349,14 +367,28 @@ export function wormholeTravelTo(
   state: GameState,
   ctx: SimContext,
   target: { q: number; r: number },
-  opts?: { confirmUnknown?: boolean; confirmIntercept?: boolean; deferAmbush?: boolean },
+  opts?: { confirmUnknown?: boolean; confirmIntercept?: boolean; deferAmbush?: boolean; confirmLeaveCargo?: boolean },
+  atGameMs?: number,
+): ReturnType<typeof wormholeTravelToMutable> {
+  if (state.wormhole.run?.expeditionRules !== 2) return wormholeTravelToMutable(state, ctx, target, opts, atGameMs)
+  const staged = structuredClone(state)
+  const result = wormholeTravelToMutable(staged, ctx, target, opts, atGameMs)
+  if (result.ok) Object.assign(state, staged)
+  return result
+}
+
+function wormholeTravelToMutable(
+  state: GameState,
+  ctx: SimContext,
+  target: { q: number; r: number },
+  opts?: { confirmUnknown?: boolean; confirmIntercept?: boolean; deferAmbush?: boolean; confirmLeaveCargo?: boolean },
   atGameMs?: number,
 ): {
   ok: boolean
   error?: string
   errorId?: string
   errorParams?: Readonly<Record<string, string | number>>
-  code?: 'unknown-target' | 'path-blocked'
+  code?: 'unknown-target' | 'path-blocked' | 'cargo-pending' | 'unsupported-rules'
   spent?: number
   autoBattle?: boolean
   beacon?: boolean
@@ -369,7 +401,7 @@ export function wormholeTravelTo(
 } {
   const run = state.wormhole.run
   const overloaded = wormholeActionBlockReason(state, ctx)
-  if (overloaded) return { ok: false, error: overloaded }
+  if (overloaded && run?.supplyVersion !== 1) return { ok: false, error: overloaded }
   const g = run?.grid
   const snap =
     run && g
@@ -550,7 +582,9 @@ export function salvagePlugsOnSink(state: GameState, ctx: SimContext, uid: strin
   addLog(
     state,
     'fleet',
-    `🕳 ${name} 沉没：船上 ${n} 件舰船插件当场折成 ${boxName} ×${n} 入库（洞内沉船不留残骸，捞不回来）。`,
+    `${name}沉没：舰船插件折成${n}个${boxName}入库，空间内沉船不留残骸。`,
+    'core.explorationStatus.007',
+    { p1: name, p2: n, p3: boxName },
   )
 }
 
@@ -563,13 +597,18 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   // 否则首舰一沉就找不到归属、机群战损会全部漏结。
   const droneOwner = run.fleet[0]
   const sunk = sunkShipIdsOfBattle(battle)
+  const supply = wormholeSupplyForBattle(state, battle)
+  if (supply) settleWormholeDroneRevives(state, battle)
+  const matterBuffs = wormholeMatterBuffs(run.hold, matterTechWhBuffs(state, ctx))
+  if (supply && battle.ended === 'me') settleWormholeBattleAmmo(state, battle, matterBuffs.ammoRefundPct)
   for (const uid of sunk) {
     const name = ctx.ships.get(uidDefId(uid))?.name ?? uid
     // **插件先折黑匣、再沉船**（顺序敏感：`loseShip` 会删掉 fleet 条目）
     salvagePlugsOnSink(state, ctx, uid)
-    loseShip(state, uid, ctx, `虫洞内被击沉（${name}）`, undefined, {
+    loseShip(state, uid, ctx, `${run.expeditionRules === 2 ? '虫洞' : '信号空间'}内被击沉（${name}）`, undefined, {
       cause: 'wormhole-sunk',
       wormholeDepth: run.depth,
+      reasonId: 'ui.WreckLog.018',
     })
   }
   if (sunk.length > 0) {
@@ -596,8 +635,10 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   // 开战时按"每艘船各自装载"抽过的弹药/组件，**余额必须退回仓库** —— 首版漏了这一步，
   // 后果是**连打第二场起全队哑火**（仓库被上一场抽干）：整趟模拟里表现为"节点战轻松赢、
   // 撤离战却 74 秒全灭、我开火 61/命中 17"（探针实测），把小费当成了难度。
-  refundAmmo(state, battle.ammo, battle.ammoIds)
-  refundRepairKitsAll(state, battle)
+  if (!supply) {
+    refundAmmo(state, battle.ammo, battle.ammoIds)
+    refundRepairKitsAll(state, battle)
+  }
   /**
    * **谜质 B2：战后收口三件**（F3c · 船长 2026-09-13）。
    * 一律**现算**（从货仓的装置派生）⇒ 打完这一场立刻按"这一场带了什么"结算，不留状态。
@@ -607,8 +648,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
    * ② **机群回收网**：回收率加成本（在 `settleDroneLosses` 里夹在 100% 以内）；
    * ③ **战地维修单元**：每场交火后自动修补**装甲与结构**（船长：「同时修复护甲」），不耗货仓组件。
    */
-  const matterBuffs = wormholeMatterBuffs(run.hold, matterTechWhBuffs(state, ctx))
-  if (matterBuffs.ammoRefundPct > 0 && battle.ammoLoaded) {
+  if (!supply && matterBuffs.ammoRefundPct > 0 && battle.ammoLoaded) {
     const fired = {
       kin: Math.max(0, battle.ammoLoaded.kin - battle.ammo.kin),
       exp: Math.max(0, battle.ammoLoaded.exp - battle.ammo.exp),
@@ -636,11 +676,11 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   // 战损日志），是最便宜的一种白嫖。**2026-09-14 船长「逐舰机群」**：改为**逐舰结算**——每艘编队舰
   // 各自扣各自的机舱清单、各写一条战损日志；老档/旧战斗只有合计账本 ⇒ 回落到主控那一份。
   const fleetForDrones = battle.myFleet
-  if (fleetForDrones && fleetForDrones.length > 0) {
+  if ((!supply || battle.ended === 'me') && fleetForDrones && fleetForDrones.length > 0) {
     for (const e of fleetForDrones) {
       settleDroneLosses(state, ctx, e.shipId, battle, matterBuffs.droneRecoveryPct, e.tag)
     }
-  } else if (droneOwner) {
+  } else if ((!supply || battle.ended === 'me') && droneOwner) {
     settleDroneLosses(state, ctx, droneOwner, battle, matterBuffs.droneRecoveryPct)
   }
   if (matterBuffs.fieldRepairPct > 0) {
@@ -683,25 +723,29 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
       if (!sunk.includes(uid)) {
         // **同样是沉船 ⇒ 插件先折黑匣**（顺序敏感：`loseShip` 会删掉 fleet 条目）
         salvagePlugsOnSink(state, ctx, uid)
-        loseShip(state, uid, ctx, `虫洞内失联（${name}）`)
+        loseShip(state, uid, ctx, `${run.expeditionRules === 2 ? '虫洞' : '信号空间'}内失联（${name}）`, undefined, { reasonId: 'ui.WreckLog.019' })
       }
     }
     state.wormhole.lastFleetLost += run.fleet.length
-    const lostText = `🕳 虫洞探险失败：编队失联、货仓内容全部丢失（损失 ${lost.length} 艘）。`
-    addLog(state, 'combat', lostText)
+    // ⟪文案调整 2026-10-06⟫ 新生成失败记录按本趟规则命名，旧存档历史不追改。
+    const lostText = `🕳 ${run.expeditionRules === 2 ? '虫洞探险' : '信号空间探索'}失败：编队失联、货仓内容全部丢失（损失 ${lost.length} 艘）。`
+    const lostTextId = run.expeditionRules === 2 ? 'core.explorationStatus.009' : 'core.explorationStatus.008'
+    const lostParams = { p1: lost.length }
+    addLog(state, 'combat', lostText, lostTextId, lostParams)
     /**
      * **结构化战报**（2026-09-14 船长定）：洞内全损 = 我方全灭那一档 ⇒ `lose`，
      * 沉船名单用**整趟丢掉的这批**（含"这一场沉掉的 + 还活着但整趟判负的"）。
      * ⚠ 老档的撤离战（`extract`）**不弹战报弹层**（那一场由虫洞结算单说话）⇒ 这份记录只在
      * 节点/守卫/遗迹那几种用途上会被读到；写它只是为了各类战斗同源。**新趟已无撤离战**（2026-09-15 退役）。
      */
-    captureBattleReport(state, battle, { source: 'wormhole', outcome: 'lose', summary: lostText, shipsLost: lostNames })
+    captureBattleReport(state, battle, { source: 'wormhole', outcome: 'lose', summary: lostText, summaryId: lostTextId, summaryParams: lostParams, shipsLost: lostNames })
     /**
      * **结算单（全损）**：把"本来能带走多少"如实算出来 —— 玩家要看到自己赌掉了什么
      * （船长 2026-09-13：「结算界面表示玩家的收益和损失」）。
      */
     state.wormhole.lastSettle = {
       kind: 'lost',
+      ...(run.expeditionRules === 2 ? { expeditionGoal: run.expeditionGoal, expeditionProgress: run.expeditionProgress } : {}),
       depth: run.depth,
       oreUnits: 0,
       oreIsk: 0,
@@ -743,6 +787,7 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   }
   if (kind === 'boss') {
     run.bossCleared = run.depth
+    if (run.expeditionProgress) run.expeditionProgress.guards += 1
     /**
      * **里程碑「层末守卫」的计数点**（成就系统第二批 · 船长 2026-09-20）。
      * 口径 = **累计**打掉的守卫数（`bumpFirst`）——每层守卫一条命、一趟内不会重复；
@@ -766,13 +811,40 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   // 网格层的地点战：回合已在"激活地点"那一步扣掉、地点也已记进 `activated` ⇒ 这里只报账
   // （地点收益——墓场/遗迹的打捞、矿脉的母矿、谜质的增强——在 F3b/F3c 接）
   if (run.grid) {
+    const here = gridCellAt(run.grid, run.grid.pos)
+    if (battle.wormhole?.expeditionRole === 'event' && here?.event?.battle === 'pending') {
+      here.event.battle = 'won'
+      here.eventResolved = true
+      if (run.expeditionProgress) run.expeditionProgress.events += 1
+      if (here.eventKey === 'relay') {
+        const cancelled = run.patrols?.filter(p => p.status === 'cancelled').length ?? 0
+        wormholeRaiseAlert(state, -2)
+        if ((run.patrols?.filter(p => p.status === 'cancelled').length ?? 0) === cancelled) wormholeCancelPatrol(run)
+        run.guardSupportDisabled = true
+      } else if (here.eventKey === 'controller') {
+        const ruins = run.grid.cells.find(c => c.key === here.event?.ruinsKey && c.place === 'ruins')
+        if (ruins) ruins.alarmDisabled = true
+        run.guardSupportDisabled = true
+      }
+      return
+    }
     // 舰船信号的战果：形状由用途决定（2026-09-23 船长令：普通节点 2 堆 + 2 件稀有；遗迹 2+2；围剿 1+0）
-    if (kind === 'node') wormholeGrantShipSpoils(state, ctx, 'node')
+    if (kind === 'node') {
+      if (run.expeditionRules === 2 && here) {
+        here.combatCleared = true
+        if (!run.grid.activated.includes(here.key)) run.grid.activated.push(here.key)
+      }
+      if (battle.wormhole?.expeditionRole === 'elite') {
+        if (run.expeditionProgress) run.expeditionProgress.elites += 1
+        wormholeGrantShipSpoils(state, ctx, 'elite')
+      } else wormholeGrantShipSpoils(state, ctx, 'node')
+    }
     else if (kind === 'ruins') wormholeGrantShipSpoils(state, ctx, 'ruins')
     else if (kind === 'spawn') {
       /** 打掉围剿者 ⇒ **覆盖解除、原格内容照旧**（船长：「打掉后进入原内容」）：只清 `foe`，不碰 `place`/`piles` */
       const cell = gridCellAt(run.grid, run.grid.pos)
       if (cell?.foe) cell.foe = { ...cell.foe, cleared: true }
+      if (cell?.foe?.patrolId !== undefined) wormholePatrolDefeated(run, cell.foe.patrolId)
       wormholeGrantShipSpoils(state, ctx, 'spawn')
     }
     if (run.turnsLeft <= 0) addLog(state, 'combat', `🕳 回合已耗尽：只能撤离。`, 'core.wormholeBattle.019')
@@ -975,6 +1047,9 @@ export function deliverWormholeCores(
  * 做四件事：散货入港 → 随行战利品入库 → **货柜（形状件）入港** → 写**结算单** + 写日志。
  */
 function deliverExtraction(state: GameState, ctx: SimContext, run: WormholeRunState): void {
+  if (run.supplyVersion === 1 && run.supplies) {
+    for (const [id, n] of Object.entries(run.supplies.items)) addWare(state, id, n)
+  }
   let isk = 0
   let recycle = 0
   let oreUnits = 0
@@ -1068,7 +1143,9 @@ function deliverExtraction(state: GameState, ctx: SimContext, run: WormholeRunSt
     addLog(
       state,
       'combat',
-      `🕳 谜质装置 ×${matterDevices} 析出 ${essenceName} ×${essences}（已入仓库 · 只收不卖）。`,
+      `谜质装置${matterDevices}件析出${essences}枚${essenceName}，已入仓库。`,
+      'core.explorationStatus.006',
+      { p1: matterDevices, p2: essences, p3: essenceName },
     )
   }
   /** 谜质行价参考估值（与核心同一口径：唯一出处 = 市场卡；**不计入「到手合计」**） */
@@ -1094,6 +1171,11 @@ function deliverExtraction(state: GameState, ctx: SimContext, run: WormholeRunSt
   // **结算单**（界面弹层用；玩家确认后清掉）
   state.wormhole.lastSettle = {
     kind: 'extract',
+    ...(run.expeditionRules === 2 ? { expeditionGoal: run.expeditionGoal, expeditionProgress: run.expeditionProgress } : {}),
+    ...(run.supplyVersion === 1 && run.supplies ? {
+      suppliesReturned: { ...run.supplies.items }, suppliesUsed: { ...run.supplies.consumed },
+      suppliesFound: { ...run.supplies.found },
+    } : {}),
     depth: run.depth,
     oreUnits,
     oreIsk: isk,
@@ -1114,6 +1196,7 @@ export function advanceWormhole(
   battleSpeedX = 1,
 ): void {
   const run = state.wormhole.run
+  if (run?.expeditionRules !== undefined && run.expeditionRules !== 2) return
   if (!run) return
   reconcileWormholeFleet(state, ctx, run)
   // **临时离开 = 活动停止 ⇒ 洞内一切冻结**（船长 2026-09-13 批准 · 议案 A 第 4 条）：战斗不推进
@@ -1124,7 +1207,7 @@ export function advanceWormhole(
    * 站在压着围剿者的格上、又没有在途战斗 ⇒ 本拍**自动开一场 `'spawn'` 战**（不弹确认条、不等玩家点）。
    * 与"伏击/未扫描踩怪"那条确认链（`pendingNodeBattle`）有意分开：那两处仍按船长 2026-09-16 的口径先提示。
    */
-  if (!run.battle && run.grid && run.pendingRuinsBattle !== true) {
+  if (!run.battle && run.grid && run.pendingRuinsBattle !== true && !(run.supplyVersion === 1 && run.phase === 'extracting')) {
     const hereSpawn = gridCellAt(run.grid, run.grid.pos)
     if (hereSpawn !== undefined && hasLiveFoe(hereSpawn)) wormholeStartBattle(state, ctx, 'spawn')
   }
@@ -1171,6 +1254,10 @@ export function advanceWormhole(
   }
   // 撤离相位：**直接结算入港**（2026-09-15 船长「虫洞的撤离战取消吧」⇒ 零战斗零风险，不再有拦截舰队）
   if (run.phase === 'extracting' && !freezeBattle) {
+    if (run.supplyVersion === 1 && wormholeHoldUsage(state, ctx).overload) {
+      run.phase = 'inside'
+      return
+    }
     /**
      * 现行口径（2026-09-15 · 船长「**虫洞的撤离战取消吧**」）：**撤离一律不触发战斗** ——
      * 任意层、任意时候点「撤离」，下一拍直接把货仓与货柜入港。

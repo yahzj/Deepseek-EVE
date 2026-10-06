@@ -358,7 +358,9 @@ export function wormholeStockPush(state: GameState, ctx: SimContext): WormholeSt
   addLog(
     state,
     'fleet',
-    `🛰 发现一处虫洞：${WORMHOLE_ARCHETYPE_LABELS[item.archetype ?? wormholeArchetypeOf(item.seed)]}（已囤积 ${wormholeStockOf(state).length}/${wormholeStockMaxOf(state)} 处）——到「扫描虫洞」页决定何时探索。`,
+    `发现一处信号空间：${WORMHOLE_ARCHETYPE_LABELS[item.archetype ?? wormholeArchetypeOf(item.seed)]}，已记录${wormholeStockOf(state).length}/${wormholeStockMaxOf(state)}处。`,
+    'core.explorationStatus.001',
+    { p1: WORMHOLE_ARCHETYPE_LABELS[item.archetype ?? wormholeArchetypeOf(item.seed)], p1Id: ({ balanced: 'core.wormholeArch.001', wreck: 'core.wormholeArch.002', ruins: 'core.wormholeArch.003', vein: 'core.wormholeArch.004', combat: 'core.wormholeArch.005' } as Record<string, string>)[item.archetype ?? wormholeArchetypeOf(item.seed)]!, p2: wormholeStockOf(state).length, p3: wormholeStockMaxOf(state) },
   )
   return item
 }
@@ -414,7 +416,9 @@ export function reconcileWormholePromoGift(state: GameState, ctx: SimContext): b
     addLog(
       state,
       'fleet',
-      `🛰 测绘处传来一批坐标：协会为你标记了 ${g.count} 处虫洞（共囤积 ${wormholeStockOf(state).length} 处，到「扫描虫洞」页查看）——进洞前记得带采集器与打捞器。`,
+      `测绘处标记了${g.count}处信号空间，当前共${wormholeStockOf(state).length}处。`,
+      'core.explorationStatus.002',
+      { p1: g.count, p2: wormholeStockOf(state).length },
     )
   }
   return changed
@@ -447,7 +451,9 @@ export function advanceWormholeScan(state: GameState, ctx: SimContext, deltaMs: 
       addLog(
         state,
         'warn',
-        `🛰 扫描停机：已囤积 ${wormholeStockMaxOf(state)} 处未探索的虫洞（上限）——先去探索掉一处，再回来开扫。`,
+        `扫描已暂停：信号空间坐标达到上限${wormholeStockMaxOf(state)}处。`,
+        'core.explorationStatus.003',
+        { p1: wormholeStockMaxOf(state) },
       )
       return
     }

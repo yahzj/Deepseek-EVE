@@ -1022,6 +1022,7 @@ export function refillDroneLoadTo(
   ctx: SimContext,
   shipId: string,
   target: Readonly<Record<string, number>>,
+  take?: (id: string) => 'hold' | 'ware' | null,
 ): DroneRefillResult {
   const out: DroneRefillResult = { added: {}, fromHold: {}, fromWare: {}, short: {} }
   const fleet = state.fleet[shipId]
@@ -1048,7 +1049,7 @@ export function refillDroneLoadTo(
     for (let i = 0; i < want; i++) {
       if (usedM3 + m3 > cap + 1e-6) break // 舱容
       if (cpuTotal > 0 && cpuFitted + usedCpu + cpu > cpuTotal) break // CPU 预算
-      const src = takeDroneUnit(state, shipId, id)
+      const src = take ? take(id) : takeDroneUnit(state, shipId, id)
       if (src === null) {
         out.short[id] = want - i
         break

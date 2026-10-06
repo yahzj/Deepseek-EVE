@@ -34,6 +34,7 @@ import type { BattleState, GameState } from './state'
 import type { SimContext } from './types'
 import { fleetDefOf } from './instances'
 import { moduleAllowedOnShip } from './shipFitting'
+import { wormholeSupplyForBattle } from './wormholeSupplies'
 
 /** 该舰装了几件储备甲板、各件周期毫秒（**升序** ⇒ 下标 0 = 最快的那件） */
 export function droneReviveCyclesOf(state: GameState, ctx: SimContext, shipId: string): number[] {
@@ -70,9 +71,10 @@ export function initDroneReviveStock(
     if (p.artId) kinds.add(p.artId)
   }
   const stock: Record<string, number> = {}
+  const supply = wormholeSupplyForBattle(state, battle)
   for (const id of kinds) {
-    let n = state.warehouse.items[id] ?? 0
-    for (const shipId of withDeck) n += state.fleet[shipId]?.cargo[id] ?? 0
+    let n = supply ? supply.items[id] ?? 0 : state.warehouse.items[id] ?? 0
+    if (!supply) for (const shipId of withDeck) n += state.fleet[shipId]?.cargo[id] ?? 0
     if (n > 0) stock[id] = n
   }
   battle.droneReviveStock = stock

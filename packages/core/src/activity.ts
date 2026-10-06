@@ -81,6 +81,10 @@ export type ActivityStopKind =
 
 /** 一条活动（只读视图；引擎/指令仍是唯一修改入口） */
 export interface ActivityView {
+  labelId?: string
+  labelParams?: Readonly<Record<string, string | number>>
+  subId?: string
+  subParams?: Readonly<Record<string, string | number>>
   /** 稳定 key（AI 任务用副船 id，其余用 kind） */
   id: string
   kind: ActivityKind
@@ -95,6 +99,7 @@ export interface ActivityView {
   stopable: boolean
   /** 不可终止时的原因说明 */
   stopReason?: string
+  stopReasonId?: string
   /**
    * **这条 AI 活动归哪一枚徽标**（船长 2026-09-13：「活动界面 AI 图标的鼠标悬浮提示改为显示
    * AI 正在干哪些活动」）：`ship` = AI 副船任务（采矿/远征/打捞/掩护巡逻）· `industry` = 站内
@@ -227,6 +232,9 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       id: 'whscan',
       kind: 'whscan',
       label: '扫描虫洞',
+      labelId: 'ui.explorationName.009',
+      subId: 'ui.explorationName.013',
+      subParams: { p1: wormholeStockOf(state).length, p2: wormholeStockMaxOf(state) },
       sub:
         wormholeStockFull(state)
           ? `已囤满 ${wormholeStockMaxOf(state)} 处 · 待处理`
@@ -246,6 +254,9 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       id: `whauto:${run.id}`,
       kind: 'whauto',
       label: '自动探索',
+      labelId: run.expeditionRules === 2 ? 'ui.explorationName.011' : 'ui.explorationName.010',
+      subId: 'ui.explorationName.012',
+      subParams: { p1: run.shipIds.length },
       /**
        * ⚠ **⟪文案调整 2026-10-01⟫（船长报障）**（原话：「自动探索虫洞的活动栏，还是显示各占一个 AI 核心
        * （实际上现在总共只占一个，有些多余，建议删除）」）：核心占用早就是**整队一趟 1 枚**
@@ -393,6 +404,10 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       id: 'wormhole',
       kind: 'wormhole',
       label: `虫洞探索 · ${where}`,
+      labelId: whRun.expeditionRules === 2 ? 'ui.explorationName.002' : 'ui.explorationName.001',
+      labelParams: { p1: where, p1Id: whRun.battle ? 'ui.explorationName.003' : whRun.phase === 'extracting' ? 'ui.explorationName.004' : 'ui.explorationName.005', p1p1: whRun.depth },
+      subId: 'ui.explorationName.006',
+      subParams: { p1: whRun.turnsLeft, p2: whRun.turnsTotal, p3: whRun.bag.length, p4: whRun.attending === true ? '探索中' : '已暂停，进度已保存', p4Id: whRun.attending === true ? 'ui.explorationName.007' : 'ui.explorationName.008' },
       sub:
         `回合 ${whRun.turnsLeft}/${whRun.turnsTotal} · 货仓 ${whRun.bag.length} 类物资` +
         (whRun.attending === true ? ' · 人在洞里' : ' · 已离开（进度已保存）'),
@@ -400,6 +415,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       remainingMs: null,
       stopable: false,
       stopReason: '洞内那趟要自己走完：在虫洞界面里发起「撤离」把货带回来，或全损收场。',
+      stopReasonId: whRun.expeditionRules === 2 ? 'ui.explorationName.022' : 'ui.explorationName.021',
       stop: null,
     })
   }

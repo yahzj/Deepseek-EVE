@@ -46,7 +46,7 @@ import {
   fanPath, ringPath, HpTri, boltGeom, resolveBoltAnchors, droneOwnerAnchor, residentDroneFrom,
 } from './battleViewCore'
 import type { Dims, Anchor, BoltV, FlashV, Stage, OutroSnap } from './battleViewCore'
-import { tr, cmdText, mountNamesTextOf } from '../i18n/locale'
+import { tr as normalTr, futureTr, cmdText, mountNamesTextOf } from '../i18n/locale'
 // 2026-09-26 战斗界面信息层级批：图例 chip 的射程数字收进"点按/悬停"卡片 ⇒ 走全站统一的富内容提示层
 import { hoverTipProps } from '../ui/Tooltip'
 import { useBattleFit } from '../ui/battleFit'
@@ -101,6 +101,7 @@ export function BattleScreen({
   onDone?: () => void
 }) {
   const state = engine.state
+  const tr = state.wormhole.run?.expeditionRules === 2 ? futureTr : normalTr
   /** 洞内战斗视图（F2 · 2026-09-13）：有它就用它，否则照旧走远征口径 */
   const whView = wormholeBattleViewOf(state, engine.ctx)
   /**
@@ -112,7 +113,8 @@ export function BattleScreen({
   const host = whView ?? wkView
   const view = expeditionStatus(state, engine.ctx)
   const combatView = view.combat ?? host?.combat ?? null
-  const sceneName = view.combat ? view.anomalyName : (host?.name ?? '')
+  const whBattle = state.wormhole.run?.battle
+  const sceneName = whBattle?.wormhole ? tr(state.wormhole.run?.expeditionRules === 2 ? 'ui.explorationName.015' : 'ui.explorationName.014', { p1: tr(whBattle.wormhole.kind === 'boss' ? 'ui.explorationName.016' : whBattle.wormhole.kind === 'ruins' ? 'ui.explorationName.017' : 'ui.explorationName.005', { p1: whBattle.wormhole.depth }) }) : view.combat ? view.anomalyName : (host?.name ?? '')
   /** 本场是不是洞内战斗（洞内**不能中途撤退**——船长第 8 条）；旗舰战**可以**撤退（照记母舰伤害） */
   const inWormhole = !!whView && !!combatView
   /**
@@ -1700,7 +1702,7 @@ const meSpeedRef = useRef(200)
    * （2026-10-02 修：拖动中的节流提交不写盘，收尾必须写——否则拖完立刻关游戏会把这次选择丢掉）。
    */
   const commitDesire = (v: number, persist = false): void => {
-    const r = engine.battleSetDesireAt(sliderToDesire(v), persist)
+    const r = engine.battleSetDesireAt(Math.min(sliderToDesire(v), arcs.desireMaxM), persist)
     if (!r.ok) onToast(cmdText(r) || tr('ui.FitPage.172'), true)
   }
   /**

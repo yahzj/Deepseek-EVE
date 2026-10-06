@@ -529,27 +529,18 @@ html[data-locale='en'] body {
   height: calc(var(--mob-h, 100vw) - 24px);
   max-height: calc(var(--mob-h, 100vw) - 12px);
 }
-/* 探索视图两栏：左＝地图（吃满左栏高度）· 右＝操作区（纵向排；内容多时**只滚右栏**） */
+/* 已确认 §20 扩至桌面；旋转模式仍按逻辑空间保留 400px 操作栏。 */
 .app-root.is-mobile-rot .app-wh-explore {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: var(--wui-sp-10);
-  flex: 1 1 auto;
-  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) 400px;
 }
-.app-root.is-mobile-rot .app-wh-explore > .app-wh-maprow { flex: 1 1 auto; min-width: 0; min-height: 0; }
-.app-root.is-mobile-rot .app-wh-explore > .app-wh-ops {
-  display: flex;
-  flex-direction: column;
-  gap: var(--wui-sp-8);
-  flex: 0 0 400px;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-/* 地图框：桌面上是**定高 300px**（船长 2026-09-13：窗口高度不随地图变大）⇒ 手机上改为吃满左栏高度 */
 .app-root.is-mobile-rot .app-wh-mapbox { height: auto; min-height: 0; }
+.app-root.is-mobile-rot .app-wh-commands > .app-btn,
+.app-root.is-mobile-rot .app-wh-confirmations .app-btn,
+.app-root.is-mobile-rot .app-wh-supply-summary,
+.app-root.is-mobile-rot .app-wh-event .app-btn,
+.app-root.is-mobile-rot .app-wh-map-info > summary,
+.app-root.is-mobile-rot .app-wh-elite-intel > summary { min-height: 44px; }
+.app-root.is-mobile-rot .app-wh-zoom-btn { width: 44px; height: 44px; }
 /* 货仓格板：手指按在物品上起手是**拖物品** ⇒ 不让这一次触摸去滚页面（按空格或格板外仍可滚） */
 .app-root.is-mobile-rot .app-wh-hold-fig { touch-action: none; }
 
@@ -11793,16 +11784,137 @@ html[data-locale='en'] body {
 .app-wh-card-tag.is-warn { border-color: rgb(var(--wui-rare) / 0.55); color: rgb(var(--wui-rare)); }
 .app-inv-row.is-picked { border-color: rgb(var(--wui-accent) / 0.55); background: rgb(var(--wui-accent) / 0.06); }
 .app-wh-head { display: flex; flex-wrap: wrap; gap: var(--wui-sp-8); margin-bottom: var(--wui-sp-6); }
-/* ── 探索页版式（船长 2026-09-13 晚）──
-   **窗口高度固定**：地图框定高 300px（不再随圈数长高）、信息窗的卡片列表自己滚 ⇒ 外层永不出滚动条。 */
-.app-wh-run { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
-/* ── 虫洞**探索视图**的两个挂载点（2026-10-02）────────────────────────────────
-   `.app-wh-explore`（探索视图整段）与 `.app-wh-ops`（右栏：图例 / 移动确认 / 工作区 / 各提示行）
-   在桌面上都是 `display: contents` ⇒ **不产生盒子**，布局与改造前逐字相同
-   （本仓既有惯用法，同 `.app-win-host`）；手机旋转模式下才由文件上方 `is-mobile-rot` 那段
-   把它们变成「左＝地图 / 右＝操作区」两栏。 */
-.app-wh-explore,
-.app-wh-ops { display: contents; }
+/* 已确认 §20：地图与操作栏同高，常用命令独立于地点详情的滚动区。 */
+.app-root:has(.app-wh-modal) { overflow: clip; }
+.app-wh-run { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; min-width: 0; }
+.app-root .app-wh-modal .app-wh-body.is-exploring { flex: 1 1 auto; overflow: clip; }
+.app-wh-explore { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: var(--wui-sp-10); flex: 1 1 auto; min-height: 0; min-width: 0; }
+.app-wh-map-pane { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.app-wh-map-pane > .app-wh-head { flex: 0 0 auto; max-height: 72px; overflow-y: auto; gap: var(--wui-sp-4) var(--wui-sp-8); }
+.app-wh-map-pane > .app-wh-maprow { flex: 1 1 auto; min-height: 0; min-width: 0; }
+.app-wh-map-pane .app-wh-zoom { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.app-wh-map-pane .app-wh-zoom-btn { flex: 0 0 auto; }
+.app-wh-map-pane .app-wh-mapbox { height: auto; min-height: 0; }
+.app-wh-map-info { flex: 0 0 auto; min-width: 0; margin-top: var(--wui-sp-4); }
+.app-wh-map-info > summary { display: flex; align-items: center; justify-content: center; width: 36px; min-height: 28px; box-sizing: border-box; border: 1px solid rgb(var(--wui-border)); border-radius: var(--wui-sp-5); color: rgb(var(--wui-dim)); background: rgb(var(--wui-bg-hover) / 0.6); cursor: pointer; list-style: none; }
+.app-wh-map-info > summary::-webkit-details-marker { display: none; }
+.app-wh-map-info > summary:hover { color: rgb(var(--wui-accent)); border-color: rgb(var(--wui-accent) / 0.55); }
+.app-wh-map-info > .app-wh-legend { max-height: 64px; overflow-y: auto; overscroll-behavior: contain; }
+.app-wh-map-info > summary:focus-visible,
+.app-wh-elite-intel > summary:focus-visible,
+.app-wh-template-name:focus-visible { outline: 2px solid rgb(var(--wui-accent)); outline-offset: 2px; }
+.app-wh-ops { display: flex; flex-direction: column; gap: var(--wui-sp-8); min-height: 0; min-width: 0; container: wh-ops / size; }
+.app-wh-ops-fixed { display: grid; gap: var(--wui-sp-6); flex: 0 0 auto; min-width: 0; }
+.app-wh-ops-fixed > .app-wh-supply-summary { box-sizing: border-box; min-height: 36px; }
+.app-wh-status { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--wui-sp-4) var(--wui-sp-8); }
+.app-wh-ops-fixed > .app-wh-alert { max-height: 84px; overflow-y: auto; overscroll-behavior: contain; }
+.app-wh-ops-fixed .app-wh-alert > header { position: sticky; top: 0; background: rgb(var(--wui-bg-panel)); }
+.app-wh-commands { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--wui-sp-6); min-width: 0; }
+.app-wh-priority { display: grid; gap: var(--wui-sp-6); min-width: 0; }
+.app-wh-commands > .app-btn { min-width: 0; min-height: 52px; padding: var(--wui-sp-6) var(--wui-sp-8); font-size: var(--wui-fs-md); white-space: normal; overflow-wrap: anywhere; letter-spacing: 0; }
+.app-wh-confirmations { display: grid; gap: var(--wui-sp-6); min-height: 0; min-width: 0; }
+.app-wh-confirmations:empty { display: none; }
+.app-wh-confirmations > .app-wh-ask,
+.app-wh-confirmations > .app-wh-extract-ask { margin: 0; min-width: 0; padding: var(--wui-sp-6) var(--wui-sp-8); }
+.app-wh-confirmations > div > span:first-child { max-height: 64px; overflow-y: auto; overscroll-behavior: contain; }
+.app-wh-confirmations .app-wh-actions { flex-wrap: wrap; gap: var(--wui-sp-6); margin: 0; flex: 0 0 auto; }
+.app-wh-confirmations .app-btn { min-height: 36px; white-space: normal; overflow-wrap: anywhere; letter-spacing: 0; }
+.app-wh-details { flex: 1 1 0; min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scroll-padding-block: var(--wui-sp-8); }
+.app-wh-details > .app-wh-node { margin-top: 0; min-height: 0; }
+.app-wh-details .app-wh-cardlist,
+.app-wh-details .app-wh-node > .app-wh-event { overflow: visible; min-height: 0; }
+.app-wh-details .app-wh-jobrow { flex-wrap: wrap; }
+.app-wh-details .app-wh-jobrow-text { min-width: 0; overflow-wrap: anywhere; }
+.app-wh-details .app-wh-jobbar { min-width: 80px; }
+.app-wh-elite-intel { margin-top: var(--wui-sp-8); border-top: 1px solid rgb(var(--wui-border)); }
+.app-wh-elite-intel > summary { display: list-item; box-sizing: border-box; min-height: 32px; padding: var(--wui-sp-6) var(--wui-sp-4); color: rgb(var(--wui-flag)); cursor: pointer; }
+.app-wh-details p, .app-wh-alert p, .app-wh-intel header { overflow-wrap: anywhere; }
+@container wh-ops (max-height: 480px) {
+  .app-wh-ops-fixed { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--wui-sp-4); }
+  .app-wh-status,
+  .app-wh-ops-fixed > .app-wh-alert,
+  .app-wh-ops-fixed > .app-wh-supply-summary,
+  .app-wh-priority { grid-column: 1 / -1; }
+  .app-wh-status { align-content: center; }
+  .app-wh-ops-fixed > .app-wh-alert { max-height: 48px; padding-block: var(--wui-sp-4); }
+  .app-wh-ops-fixed > .app-wh-supply-summary { width: auto; padding: var(--wui-sp-4); gap: var(--wui-sp-4); }
+  .app-wh-commands > .app-btn { min-height: 44px; padding-block: var(--wui-sp-4); }
+  .app-wh-confirmations > div { flex-direction: row; align-items: center; gap: var(--wui-sp-6); }
+  .app-wh-confirmations > div > span:first-child { flex: 1 1 auto; min-width: 0; max-height: 72px; }
+  .app-wh-confirmations .app-wh-actions { flex: 0 0 160px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container wh-ops (max-height: 300px) {
+  .app-wh-ops-fixed { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .app-wh-status { grid-column: 1; }
+  .app-wh-ops-fixed > .app-wh-alert { grid-column: 2; }
+  .app-wh-ops-fixed > .app-wh-supply-summary { grid-column: 3; }
+  .app-wh-status, .app-wh-ops-fixed > .app-wh-supply-summary { font-size: var(--wui-fs-xs); }
+}
+@media (max-width: 880px) {
+  .app-root:not(.is-mobile-rot) .app-wh-explore { grid-template-columns: minmax(0, 1fr); grid-template-rows: 112px minmax(0, 1fr); }
+  .app-root:not(.is-mobile-rot) .app-wh-map-pane { display: grid; grid-template-columns: minmax(0, 1fr) 140px; grid-template-rows: minmax(0, 1fr) auto; gap: var(--wui-sp-6); }
+  .app-root:not(.is-mobile-rot) .app-wh-map-pane > .app-wh-maprow { grid-column: 1; grid-row: 1; flex-direction: row; }
+  .app-root:not(.is-mobile-rot) .app-wh-map-pane > .app-wh-head { grid-column: 2; grid-row: 1; max-height: none; margin: 0; display: block; }
+  .app-root:not(.is-mobile-rot) .app-wh-map-pane .app-wh-cell { display: block; margin-bottom: var(--wui-sp-4); }
+  .app-root:not(.is-mobile-rot) .app-wh-map-pane > .app-wh-map-info { grid-column: 1 / -1; margin: 0; }
+  .app-root:not(.is-mobile-rot) .app-wh-map-pane .app-wh-zoom { flex-direction: column; justify-content: flex-start; }
+}
+/* 极矮窄窗：命令跨整行，下面按余宽分地图与详情，不占用固定 400px 操作栏。 */
+@media (max-width: 880px) and (max-height: 540px) {
+  .app-root:not(.is-mobile-rot) .app-modal-mask:has(.is-exploring) { padding: var(--wui-sp-8); }
+  .app-root:not(.is-mobile-rot) .app-wh-modal:has(.is-exploring) { height: calc(100% - 24px); max-height: calc(100% - 24px); }
+  .app-root:not(.is-mobile-rot) .app-wh-modal:has(.is-exploring) .app-modal-head { flex-wrap: nowrap; gap: var(--wui-sp-4); }
+  .app-root:not(.is-mobile-rot) .app-wh-modal:has(.is-exploring) .app-wh-devnote { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .app-root:not(.is-mobile-rot) .app-wh-modal:has(.is-exploring) .app-modal-head > .app-btn { flex: 0 0 auto; }
+  .app-root:not(.is-mobile-rot) .app-wh-modal .app-wh-body.is-exploring { padding: var(--wui-sp-6) var(--wui-sp-8); }
+  .app-root:not(.is-mobile-rot) .app-wh-modal:has(.is-exploring) .app-wh-tab { flex-direction: row; flex-wrap: wrap; gap: var(--wui-sp-4); }
+  .app-root:not(.is-mobile-rot) .app-wh-explore { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto minmax(0, 1fr); gap: var(--wui-sp-6); }
+  .app-root:not(.is-mobile-rot) .app-wh-ops { display: contents; container: none; }
+  .app-root:not(.is-mobile-rot) .app-wh-ops-fixed { grid-column: 1 / -1; grid-row: 1; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--wui-sp-4); }
+  .app-root:not(.is-mobile-rot) .app-wh-priority { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); align-items: start; gap: var(--wui-sp-4); }
+  .app-root:not(.is-mobile-rot) .app-wh-priority:has(.app-wh-confirmations:empty) { grid-template-columns: minmax(0, 1fr); }
+  .app-root:not(.is-mobile-rot) .app-wh-commands > .app-btn { min-height: 44px; padding-block: var(--wui-sp-4); }
+  .app-root:not(.is-mobile-rot) .app-wh-confirmations > div { flex-direction: row; align-items: center; }
+  .app-root:not(.is-mobile-rot) .app-wh-confirmations > div > span:first-child { flex: 1 1 auto; min-width: 0; max-height: 44px; }
+  .app-root:not(.is-mobile-rot) .app-wh-confirmations .app-wh-actions { flex: 0 0 80px; display: grid; grid-template-columns: minmax(0, 1fr); }
+  .app-root:not(.is-mobile-rot) .app-wh-map-pane { position: relative; grid-column: 1; grid-row: 2; grid-template-columns: minmax(0, 1fr) 36px; grid-template-rows: minmax(0, 1fr) 28px; }
+  .app-root:not(.is-mobile-rot) .app-wh-map-pane > .app-wh-maprow { grid-column: 1 / -1; grid-row: 1; }
+  .app-root:not(.is-mobile-rot) .app-wh-map-pane > .app-wh-head { grid-column: 1; grid-row: 2; max-height: 24px; display: flex; }
+  .app-root:not(.is-mobile-rot) .app-wh-map-pane > .app-wh-map-info { grid-column: 2; grid-row: 2; }
+  .app-root:not(.is-mobile-rot) .app-wh-map-info > .app-wh-legend { position: absolute; right: 0; bottom: 30px; z-index: 1; max-height: 120px; width: min(360px, 100%); box-sizing: border-box; padding: var(--wui-sp-6); background: rgb(var(--wui-bg-panel)); border: 1px solid rgb(var(--wui-border)); }
+  .app-root:not(.is-mobile-rot) .app-wh-map-pane .app-wh-zoom { padding: var(--wui-sp-2); }
+  .app-root:not(.is-mobile-rot) .app-wh-status,
+  .app-root:not(.is-mobile-rot) .app-wh-ops-fixed > .app-wh-alert,
+  .app-root:not(.is-mobile-rot) .app-wh-ops-fixed > .app-wh-supply-summary { align-content: center; font-size: var(--wui-fs-xs); }
+  .app-root:not(.is-mobile-rot) .app-wh-ops-fixed > .app-wh-alert { max-height: 48px; padding: var(--wui-sp-4); overflow-y: auto; }
+  .app-root:not(.is-mobile-rot) .app-wh-ops-fixed > .app-wh-supply-summary { width: auto; padding: var(--wui-sp-4); gap: var(--wui-sp-4); }
+  .app-root:not(.is-mobile-rot) .app-wh-details { grid-column: 2; grid-row: 2; min-height: 0; }
+}
+.app-wh-goals,
+.app-wh-alert,
+.app-wh-intel,
+.app-wh-objective,
+.app-wh-event { min-width: 0; box-sizing: border-box; }
+.app-wh-goals { display: flex; flex-wrap: wrap; align-items: center; gap: var(--wui-sp-8); margin: 0; padding: var(--wui-sp-8) var(--wui-sp-10); border: 1px solid rgb(var(--wui-x01) / 0.12); background: rgb(var(--wui-x01) / 0.035); }
+.app-wh-goals legend { width: 100%; padding: 0; color: rgb(var(--wui-x07)); font-size: var(--wui-fs-sm); }
+.app-wh-goals label { display: inline-flex; align-items: center; gap: var(--wui-sp-4); min-height: 30px; color: rgb(var(--wui-x06)); font-size: var(--wui-fs-sm); }
+.app-wh-alert,
+.app-wh-intel,
+.app-wh-objective { padding: var(--wui-sp-8) var(--wui-sp-10); border-left: 2px solid rgb(var(--wui-accent) / 0.6); background: rgb(var(--wui-x01) / 0.035); }
+.app-wh-alert header,
+.app-wh-intel header { display: flex; justify-content: space-between; align-items: baseline; gap: var(--wui-sp-8); }
+.app-wh-alert p,
+.app-wh-intel p,
+.app-wh-objective p { margin: var(--wui-sp-4) 0 0; color: rgb(var(--wui-x07)); font-size: var(--wui-fs-sm); line-height: 1.35; }
+.app-wh-intel { border-left-color: rgb(var(--wui-flag) / 0.72); }
+.app-wh-event { display: grid; gap: var(--wui-sp-8); padding: var(--wui-sp-10); border: 1px solid rgb(var(--wui-flag) / 0.45); background: rgb(var(--wui-flag) / 0.06); }
+.app-wh-event > header { display: flex; justify-content: space-between; gap: var(--wui-sp-8); align-items: center; }
+.app-wh-event-options { display: grid; gap: var(--wui-sp-8); min-width: 0; }
+.app-wh-event-option { display: grid; gap: var(--wui-sp-4); min-width: 0; padding: var(--wui-sp-8); border: 1px solid rgb(var(--wui-x01) / 0.1); background: rgb(var(--wui-x01) / 0.035); }
+.app-wh-event-command { display: flex; flex-wrap: wrap; align-items: center; gap: var(--wui-sp-6); }
+.app-wh-event-option p { margin: 0; font-size: var(--wui-fs-sm); line-height: 1.35; }
+.app-wh-node > .app-wh-event { overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+.app-wh-auto-risk { display: flex; align-items: center; gap: var(--wui-sp-8); color: rgb(var(--wui-flag)); }
 /* ⚠ 2026-09-22：`.app-wh-run.is-battle` / `.app-wh-battle` 那一套（洞内战斗内嵌进本面板）已随
    「界面回滚」删除 —— 现行做法回到本批之前：**战斗中本面板整块不渲染**，战场全屏独占。
    封存版见分支 `archive/window-embed-20260922`（`docs/design/archived-window-embed-20260922.md`）。 */
@@ -11822,7 +11934,7 @@ html[data-locale='en'] body {
 .app-wh-zoom-btn:disabled { opacity: 0.4; cursor: default; }
 .app-wh-zoom-btn.is-text { width: 30px; height: 24px; font-size: var(--wui-fs-2xse); font-weight: 400; }
 .app-wh-zoom-val { font-size: var(--wui-fs-2xse); color: rgb(var(--wui-dim)); }
-/* 地图框：**宇宙背景**（船长 2026-09-13：「虫洞探索地图添加一个宇宙背景」）+ 定高裁切。
+/* 地图框：**宇宙背景**（船长 2026-09-13：「虫洞探索地图添加一个宇宙背景」）+ 左栏余高裁切。
    分三层叠：① 中心柔光/边缘压暗（让圆盘读得清）② 全站那套无缝星云贴图 `--space-bg`（有就上）
    ③ **CSS 星点**（几条 radial-gradient 平铺；即使没有底图变量，地图也有星空感——网页版就不设该变量）。 */
 .app-wh-mapbox {
@@ -12053,7 +12165,84 @@ html[data-locale='en'] body {
 .app-wh-settle-ok { font-size: var(--wui-fs-lg); font-weight: 600; padding: var(--wui-sp-12) var(--wui-sp-26); }
 /* ── 准备页不撑出外层滚动条（同一条船长口径）：页体纵向弹性 · 准备页撑满 · 卡网格吃剩余高度 ── */
 .app-wh-body { display: flex; flex-direction: column; }
+.app-wh-body.is-expedition-form { flex: 1 1 auto; overflow: hidden; }
 .app-wh-body > .app-wh-prep { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+/* 虫洞整备与撤离：固定页体内滚动，确认按钮不随长清单挤出窗口。 */
+.app-wh-prepared-body, .app-wh-manifest, .app-wh-extraction { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; min-width: 0; gap: var(--wui-sp-8); }
+.app-wh-manifest h3, .app-wh-extraction h3, .app-wh-supply-list h3, .app-wh-ground-list h3 { margin: 0; font-size: var(--wui-fs-base); letter-spacing: 0; }
+.app-wh-manifest-head, .app-wh-extraction > header, .app-wh-manifest-footer, .app-wh-extraction > footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--wui-sp-8); flex: 0 0 auto; }
+.app-wh-manifest-tools { display: flex; flex-wrap: wrap; gap: var(--wui-sp-8); }
+/* 整备模板沿用装配方案行；编辑区封顶，物资清单和装载命令不随模板数量退场。 */
+.app-wh-template-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--wui-sp-6); min-width: 0; }
+.app-wh-template-tools > label { display: inline-flex; align-items: center; gap: var(--wui-sp-6); min-width: 0; }
+.app-wh-template-tools select { box-sizing: border-box; min-width: 0; width: 176px; max-width: 100%; min-height: 36px; padding: var(--wui-sp-4) var(--wui-sp-6); border: 1px solid rgb(var(--wui-border)); border-radius: var(--wui-sp-5); color: rgb(var(--wui-text)); background: rgb(var(--wui-bg-field) / 0.8); font: inherit; }
+.app-wh-template-editor { display: flex; flex-direction: column; gap: var(--wui-sp-6); box-sizing: border-box; flex: 0 0 auto; min-height: 48px; max-height: 160px; min-width: 0; padding: var(--wui-sp-6) var(--wui-sp-8); border: 1px solid rgb(var(--wui-border)); border-radius: var(--wui-sp-6); background: rgb(var(--wui-bg-sunken) / 0.45); overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: var(--wui-sp-6); }
+.app-wh-template-editor[hidden] { display: none; }
+details.app-wh-template-editor:not([open]) { display: block; }
+.app-wh-template-editor > summary { flex: 0 0 auto; min-height: 32px; cursor: pointer; }
+.app-wh-template-editor > form { display: flex; flex-wrap: wrap; align-items: center; gap: var(--wui-sp-6); min-width: 0; flex: 0 0 auto; }
+.app-wh-template-list { display: flex; flex-direction: column; gap: var(--wui-sp-6); flex: 1 1 auto; list-style: none; padding: 0; margin: 0; min-height: 44px; max-height: 112px; min-width: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: var(--wui-sp-6); }
+.app-wh-template-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--wui-sp-6); flex: 0 0 auto; min-width: 0; padding: var(--wui-sp-4) var(--wui-sp-6); border-bottom: 1px solid rgb(var(--wui-border)); }
+.app-wh-template-row > b,
+.app-wh-template-row > span { flex: 1 1 120px; min-width: 0; overflow-wrap: anywhere; }
+.app-wh-template-row > label { display: flex; flex-wrap: wrap; align-items: center; gap: var(--wui-sp-6); min-width: 0; }
+.app-wh-template-name { box-sizing: border-box; flex: 0 1 176px; width: 176px; min-width: 0; max-width: 100%; }
+input.app-wh-template-name { min-height: 36px; padding: var(--wui-sp-6) var(--wui-sp-8); border: 1px solid rgb(var(--wui-border)); border-radius: var(--wui-sp-5); background: rgb(var(--wui-bg-field) / 0.8); color: rgb(var(--wui-text)); font: inherit; }
+.app-wh-template-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--wui-sp-4); min-width: 0; flex: 0 0 auto; }
+.app-wh-template-tools .app-btn,
+.app-wh-template-actions .app-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--wui-sp-4); }
+.app-wh-template-tools .app-btn > svg,
+.app-wh-template-actions .app-btn > svg { flex: 0 0 auto; }
+.app-wh-template-tools > :last-child { margin-left: auto; }
+.app-root.is-mobile-rot .app-wh-template-tools .app-btn,
+.app-root.is-mobile-rot .app-wh-template-actions .app-btn,
+.app-root.is-mobile-rot .app-wh-template-tools select,
+.app-root.is-mobile-rot input.app-wh-template-name,
+.app-root.is-mobile-rot .app-wh-template-editor > summary { min-height: 44px; }
+.app-root.is-mobile-rot .app-wh-template-actions .app-btn { min-width: 44px; }
+.app-wh-manifest-scroll, .app-wh-extraction-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.app-wh-manifest-row { display: grid; grid-template-columns: minmax(180px, 1fr) 100px 128px 150px; align-items: center; gap: var(--wui-sp-8); padding: var(--wui-sp-8); border-bottom: 1px solid rgb(var(--wui-border)); }
+.app-wh-manifest-row.is-heading { background: rgb(var(--wui-bg-panel)); font-size: var(--wui-fs-xs); }
+.app-wh-manifest .app-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.app-wh-manifest-row > div { display: flex; flex-wrap: wrap; gap: var(--wui-sp-8); align-items: center; }
+.app-wh-manifest-row input[type="number"], .app-wh-supply-list input[type="number"], .app-wh-extraction input[type="number"] { box-sizing: border-box; width: 100%; max-width: 128px; min-height: 36px; color: inherit; background: rgb(var(--wui-x01) / 0.04); border: 1px solid rgb(var(--wui-border)); border-radius: 4px; padding: var(--wui-sp-6); font: inherit; }
+.app-wh-manifest-row small { display: block; font-size: var(--wui-fs-xs); }
+.app-wh-manifest-deployed { flex: 0 0 100%; color: rgb(var(--wui-dim)); }
+.app-wh-manifest-item { display: inline-flex; align-items: center; gap: var(--wui-sp-6); min-width: 0; overflow-wrap: anywhere; }
+.app-wh-manifest-item svg { flex: 0 0 18px; }
+.app-wh-manifest-unload, .app-wh-extraction-selection label { display: inline-flex; align-items: center; gap: var(--wui-sp-6); }
+.app-wh-manifest-errors { flex: 0 0 auto; max-height: 90px; overflow: auto; color: rgb(var(--wui-danger)); }
+.app-wh-manifest-errors:empty { display: none; }
+.app-wh-manifest-errors a, .app-wh-manifest-warnings span { display: block; }
+.app-wh-manifest-warnings { flex: 0 0 auto; max-height: 66px; overflow: auto; color: rgb(var(--wui-amber)); font-size: var(--wui-fs-xs); }
+.app-wh-manifest-footer { padding-top: var(--wui-sp-6); border-top: 1px solid rgb(var(--wui-border)); }
+.app-wh-manifest-footer > span { flex: 1 1 240px; font-size: var(--wui-fs-xs); }
+.app-wh-manifest .app-btn, .app-wh-extraction .app-btn { white-space: normal; overflow-wrap: anywhere; min-height: 36px; letter-spacing: 0; }
+.app-wh-supply-summary { display: flex; flex-wrap: wrap; gap: var(--wui-sp-8); align-items: center; width: 100%; flex: 0 0 auto; padding: var(--wui-sp-8); background: rgb(var(--wui-x01) / 0.03); color: inherit; border: 1px solid rgb(var(--wui-border)); border-radius: 4px; text-align: left; cursor: pointer; }
+.app-wh-supply-summary span { display: inline-flex; align-items: center; gap: var(--wui-sp-4); }
+.app-wh-supply-list, .app-wh-ground-list { padding-block: var(--wui-sp-8); border-bottom: 1px solid rgb(var(--wui-border)); }
+.app-wh-supply-list ul, .app-wh-ground-list ul, .app-wh-extraction-selection, .app-wh-manifest-counts { list-style: none; margin: 0; padding: 0; }
+.app-wh-supply-list li, .app-wh-ground-list li, .app-wh-extraction-selection li, .app-wh-manifest-counts li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--wui-sp-8); padding-block: var(--wui-sp-6); border-bottom: 1px solid rgb(var(--wui-border) / 0.5); }
+.app-wh-supply-list li > .app-wh-manifest-item, .app-wh-ground-list li > .app-wh-manifest-item, .app-wh-extraction-selection li > .app-wh-manifest-item, .app-wh-manifest-counts li > .app-wh-manifest-item { flex: 1 1 160px; }
+.app-wh-extraction-results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--wui-sp-12); border-top: 1px solid rgb(var(--wui-border)); }
+.app-wh-extraction h4 { font-size: var(--wui-fs-s); margin-block: var(--wui-sp-10) var(--wui-sp-4); }
+.app-wh-extraction > footer { justify-content: flex-end; border-top: 1px solid rgb(var(--wui-border)); padding-top: var(--wui-sp-8); }
+.app-wh-extraction-selection input[type="checkbox"], .app-wh-manifest-unload input { width: 20px; height: 20px; flex: 0 0 auto; }
+.app-root.is-mobile-rot .app-wh-manifest-row { grid-template-columns: minmax(180px, 1fr) 100px 128px 150px; }
+.app-root.is-mobile-rot .app-wh-manifest .app-btn, .app-root.is-mobile-rot .app-wh-extraction .app-btn, .app-root.is-mobile-rot .app-wh-supply-list .app-btn, .app-root.is-mobile-rot .app-wh-ground-list .app-btn { min-height: 44px; }
+@media (max-height: 440px) {
+  .app-root:not(.is-mobile-rot) .app-wh-manifest { display: block; overflow-y: auto; scroll-padding-block: 8px 80px; }
+  .app-root:not(.is-mobile-rot) .app-wh-manifest-scroll { overflow: visible; min-height: 120px; }
+  .app-root:not(.is-mobile-rot) .app-wh-manifest-head, .app-root:not(.is-mobile-rot) .app-wh-manifest-tools { margin-bottom: 8px; }
+  .app-root:not(.is-mobile-rot) .app-wh-manifest-warnings { max-height: 28px; }
+  .app-root:not(.is-mobile-rot) .app-wh-manifest-tools .app-btn { padding-block: 4px; }
+  .app-root:not(.is-mobile-rot) .app-wh-manifest-footer { position: sticky; bottom: 0; background: rgb(var(--wui-bg-panel)); gap: 4px; padding-block: 6px; }
+}
+@media (max-width: 640px) {
+  .app-root:not(.is-mobile-rot) .app-wh-manifest-row { grid-template-columns: minmax(100px, 1fr) 65px 90px; }
+  .app-root:not(.is-mobile-rot) .app-wh-manifest-row > :last-child { grid-column: 1 / -1; }
+  .app-root:not(.is-mobile-rot) .app-wh-extraction-results { grid-template-columns: 1fr; }
+}
 /* ── 本趟结算界面（船长 2026-09-13：撤离后弹结算 + 关闭虫洞界面；
    同日晚追加「**结算界面尽量居中显示**」＋「**收获信息挨个弹出显示（需要动效）**」）──
    定宽 640 + 整块居中（内容多少都不跳动）；`.is-pop` 逐条弹出（延迟由 TSX 用 `animation-delay` 给）。 */

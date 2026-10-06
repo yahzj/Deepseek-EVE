@@ -204,7 +204,7 @@ describe('虫洞 · 扫描虫洞（主控活动）', () => {
     advanceWormholeScan(state, ctx, w)
     expect(state.wormholeScan!.active).toBe(false) // 停机
     expect(wormholeStockOf(state)).toHaveLength(WORMHOLE_STOCK_MAX)
-    expect(state.logs.map((l) => l.text).some((t) => t.includes('扫描停机'))).toBe(true)
+    expect(state.logs.some(l => l.textId === 'core.explorationStatus.003')).toBe(true)
     // 满仓时也不许再开扫（给的是"先去探索掉一处"）
     // 甲案（本地化批二 · 2026-09-27）：拒因改走结构化 `{ error, errorId, errorParams }`
     // ⇒ 断言**断 id 与参数**（英文界面渲染什么由 l10n 表决定，不再靠中文子串）
@@ -272,7 +272,7 @@ describe('虫洞 · 扫描虫洞（主控活动）', () => {
     expect(s.wormholeScan!.active).toBe(true) // 第 16 个窗口才撞上限
     advanceWormholeScan(s, ctx, 1_000)
     expect(s.wormholeScan!.active).toBe(false) // 停机
-    expect(s.logs.map((l) => l.text).some((t) => t.includes('扫描停机'))).toBe(true)
+    expect(s.logs.some(l => l.textId === 'core.explorationStatus.003')).toBe(true)
     // 满仓时的开扫拦截**参数**带的是新上限（15），不是 5
     // （甲案 · 本地化批二：断 id 与参数，不再断中文子串）
     const capped = wormholeScanBlockReason(s)

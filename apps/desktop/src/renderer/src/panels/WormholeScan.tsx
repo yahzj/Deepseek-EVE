@@ -29,13 +29,15 @@ import {
 } from '@whale/core'
 import type { GameState, WormholeArchetype, WormholeFamily } from '@whale/core'
 import type { GameEngine } from '../game/engine'
+import { WhItemCounts, WhObjectiveProgress } from './WormholeExpedition'
 import type { ToastFn } from '../pages/common'
 import { HintIcon } from '../ui/Hint'
 // ⚠ 原型名走本地化单点（2026-09-26 乙批）——core 的 `WORMHOLE_ARCHETYPE_LABELS` 是纯中文表
 import { aiCoreText, archetypeText } from '../ui/labelsText'
 import { MatterTechTab } from './MatterTechTab'
 import { wormholeIntelLine, wormholeIntelTip } from '../ui/wormholeIntel'
-import { tr, cmdText } from '../i18n/locale'
+import { tr, futureTr, cmdText } from '../i18n/locale'
+import { futureWormholeEnabled } from '../game/debugFlag'
 import { fmtDuration } from '../i18n/fmt'
 
 /**
@@ -87,7 +89,9 @@ export function WormholeScanTab({
   /** 正在确认「放弃」的那一处（null = 没在确认） */
   const [discardAsk, setDiscardAsk] = useState<string | null>(null)
   const scan = state.wormholeScan ?? { active: false, progressMs: 0 }
-  const stock = engine.wormholeStock()
+  const allStock = engine.wormholeStock()
+  const stock = allStock.filter(s => s.expeditionRules === undefined)
+  const futureStock = allStock.filter(s => s.expeditionRules === 2)
   const runs = engine.wormholeAutoRuns()
   const reports = engine.wormholeAutoReports()
   const pending = engine.wormholeAutoPending()
@@ -227,22 +231,29 @@ export function WormholeScanTab({
         {run ? (
           <div className="app-wh-scanbar">
             <div className="app-wh-scanbar-label">
-              <span className="app-wh-hold-warn">{tr("ui.WormholeScan.013")}</span>
+              <span className="app-wh-hold-warn">{(run.expeditionRules === 2 ? futureTr : tr)("ui.WormholeScan.013")}</span>
             </div>
             <div className="app-wh-scanbar-actions">
               <button
                 className="app-btn is-small is-primary"
                 disabled={!onReturn}
-                title={tr("ui.WormholeScan.014")}
+                title={(run.expeditionRules === 2 ? futureTr : tr)("ui.WormholeScan.014")}
                 onClick={() => onReturn?.()}
               >
-                {tr("ui.WormholeScan.015")}
+                {(run.expeditionRules === 2 ? futureTr : tr)("ui.WormholeScan.015")}
               </button>
             </div>
           </div>
         ) : null}
 
         {/* 船长 2026-09-14：标题里要显示**最多能保留多少** ⇒ 写成 `X/Y 处`（Y 随「星图记录学」满级变化） */}
+        {futureWormholeEnabled() ? <section data-future-wormhole-stock>
+          <div className="app-bay-title">{tr('ui.explorationName.019')}</div>
+          {futureStock.length ? <ul className="app-inv-list">{futureStock.map(item => <li key={item.id} className="app-inv-row">
+            <div className="app-inv-main"><span className="app-inv-name">{futureTr('ui.Expedition.005')}</span><span className="app-inv-count">{stockLineOf(state, item).text}</span></div>
+            <div className="app-inv-btns"><button className="app-btn is-small is-primary" onClick={() => onExplore(item.id)}>{futureTr('ui.WormholeScan.018')}</button><button className="app-btn is-small" onClick={() => onAutoExplore(item.id)}>{futureTr('ui.Wormhole.002')}</button></div>
+          </li>)}</ul> : <div className="app-dim">{tr('ui.explorationName.020')}</div>}
+        </section> : null}
         <div className="app-bay-title">{tr("ui.WormholeScan.016")} {tr("ui.WormholeScan.064", { p1: `${stock.length}/${stockMax}` })}</div>
         {stock.length === 0 ? (
           <div className="app-dim app-inv-empty">{tr("ui.WormholeScan.017")}</div>
@@ -388,7 +399,7 @@ export function WormholeScanTab({
                 return (
                   <li key={run.id} className="app-inv-row">
                     <div className="app-inv-main">
-                      <span className="app-inv-name">{tr("ui.WormholeScan.028")}</span>
+                      <span className="app-inv-name">{(run.expeditionRules === 2 ? futureTr : tr)("ui.WormholeScan.028")}</span>
                       <span className="app-inv-count">
                         {run.shipIds.length} {tr("ui.WormholeScan.029")}{' '}
                         {fmtDuration(Math.max(0, run.finishAtGameMs - state.gameMs))}
@@ -398,7 +409,7 @@ export function WormholeScanTab({
                       <span className="app-dim">{prog}%</span>
                       <button
                         className="app-btn is-small is-warn"
-                        title={tr("ui.WormholeScan.030")}
+                        title={tr(run.expeditionRules === 2 ? 'ui.whExpedition.078' : 'ui.WormholeScan.030')}
                         onClick={() => {
                           const r = engine.wormholeAutoStop(run.id)
                           if (!r.ok) onToast(cmdText(r) || tr('ui.WormholeScan.062'), true)
@@ -440,6 +451,7 @@ export function WormholeScanTab({
                     <span className="app-inv-name">
                       {tr("ui.WormholeScan.034")} {rep.confirmed ? tr("ui.WormholeScan.035") : tr("ui.WormholeScan.036")}
                     </span>
+                    {rep.expeditionRules === 2 ? <><WhObjectiveProgress progress={rep.expeditionProgress} /><span>{tr('ui.whExpedition.037')}</span><WhItemCounts engine={engine} items={rep.suppliesReturned ?? {}} />{rep.suppliesFound ? <><span>{tr('ui.whExpedition.099')}</span><WhItemCounts engine={engine} items={rep.suppliesFound} /></> : null}{rep.shipsLost?.length ? <span className="app-warn">{tr('ui.whExpedition.104', { p1: rep.shipsLost.length })}</span> : null}</> : null}
                     <span className="app-inv-count">
                       {tr("ui.WormholeScan.037")}
                       {rep.gains.length > 0

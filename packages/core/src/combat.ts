@@ -34,6 +34,8 @@ import type { LairTier } from './lairs'
 // 洞内敌卡的按层派生（F 批）：**单向依赖** —— wormholeFoes 只吃类型，不反向依赖本模块
 import { WORMHOLE_FOE_BASE_STRENGTH_MUL, WORMHOLE_TIER_THREAT_MUL, wormholeAnomalyOf, wormholeTierOfCard } from './wormholeFoes'
 import { wormholeCardThreatOf, wormholeSkippedBranch } from './wormholeFoes'
+import { wormholeExpeditionCard, wormholeExpeditionModifyCard } from './wormholeExpeditionFoes'
+import type { WormholeExpeditionFoeCard } from './wormholeExpeditionFoes'
 // F3c 谜质（B1）：战斗增益一律从货仓**现算**（本模块只读，不反向依赖 wormhole.ts ⇒ 无环）
 import { wormholeMatterBuffs, wormholeMatterThreatMul } from './wormholeMatter'
 import { matterTechBattleSpeedTiers, matterTechWhBuffs } from './matterTech'
@@ -75,7 +77,8 @@ export { DRONE_SKILL, MY_WEB_RANGE_M, WEB_BREAK_DIST_M, createPlayerSpec, damage
 import { preloadRepairFor, preloadShieldChargeFor, preloadShieldFieldFor, pulseRepairsFor, pulseShieldChargeFor, pulseShieldFieldFor, REPAIR_PULSE_MS, repairLedgersOf, SHIELD_REGEN_FLOOR_PCT, shieldChargeLedgersOf, shieldChargeStreamsOf } from './combatRepair'
 export { REPAIR_PULSE_MS, SHIELD_PULSE_MS, SHIELD_REGEN_FLOOR_PCT, fittedRepairModules, preloadRepairFor, preloadShieldChargeFor, preloadShieldFieldFor, pulseShieldCharge, pulseShieldChargeFor, pulseShieldFieldFor, refundRepairKits, refundRepairKitsAll, repairKitAvailableOf, repairLedgersOf, repairStatsFor, repairStreamsOf, repairUsageText, shieldChargeLedgersOf, shieldChargeStreamsOf, shieldFieldOf, shieldFieldStreamsOf, shieldPulsePctOf } from './combatRepair'
 // 战斗弹药装载（2026-10-02 批次 4i 拆到 combatAmmo.ts）；本文件借回使用并再导出
-import { ammoKeyOf, ammoLoadTotals, ammoTierFallbackLog, loadAmmoTier } from './combatAmmo'
+import { ammoKeyOf, ammoLoadTotals, ammoTierFallbackLog, loadAmmoTier, battleAmmoIdsFor, battleAmmoAvailable, consumeBattleAmmo, loadWormholeBattleAmmo, wormholeAmmoIdsForSpec } from './combatAmmo'
+import { deployWormholeSupply, returnWormholeDroneSupply, settleWormholeDroneRevives, takeWormholeSupply, wormholeSupplyForBattle } from './wormholeSupplies'
 export { ammoKeyOf, ammoLoadTotals, loadAmmo, loadAmmoTier, nextAmmoType, refundAmmo, resolveAmmoTier } from './combatAmmo'
 export type { AmmoKey } from './combatAmmo'
 // 机群池与近防炮（2026-10-02 批次 4j 拆到 combatDrones.ts）；本文件借回使用并再导出
@@ -511,6 +514,7 @@ export interface UnitSpec {
    * 缺省不写 ⇒ 该单位没有这个机制（零行为变化）。
    */
   foeRepairPulse?: { everyMs: number; armor: number; hull: number; k: number }
+  foePointDefenseEnabled?: boolean
   /**
    * **支援舰船召唤装置的节拍**（船长 2026-09-25；见 `FoeMountDef.reviveEscort`）——
    * 挂件单位（入侵母舰）每 `everyMs`（60 秒）把**当前波已阵亡**的敌舰满血复活入场
@@ -1005,7 +1009,8 @@ export function applyDcGuard(
   /** 启动：扣 1 枚损管修理组件（仓库优先/关掉开关则走本舰货仓，与修理组件同一口径） */
   const kitId = spec.hullSaveKit
   const shipId = spec.shipId ?? state.shipId
-  const took = state.resupplyFromWarehouse !== false
+  const supply = wormholeSupplyForBattle(state, b)
+  const took = supply ? takeWormholeSupply(supply, kitId, 1) === 1 : state.resupplyFromWarehouse !== false
     ? countWare(state, kitId) > 0 && (removeWare(state, kitId, 1), true)
     : removeCargoOfShip(state, shipId, kitId, 1) > 0
   if (!took) {
@@ -1749,7 +1754,7 @@ function buildMyUnitSpecs(
    */
   const jammerRefs: { weaponRanges?: Array<{ baseM: number; bonusMul: number }> } = { weaponRanges: [] }
   if (!fleet || fleet.length === 0) {
-    const me = createPlayerSpec(state, ctx, shipId, battle.ammoIds, jammerRefs) // 弹药 MK2：按本场实装弹 id 重建（回退同源）
+    const me = createPlayerSpec(state, ctx, shipId, battleAmmoIdsFor(battle, 'player'), jammerRefs)
     if (!me) return []
     if (matterBuffs) applyMatterPlayerBuffs(me, matterBuffs, matterFoeMain)
     // **捕获网**（船长 2026-09-16）：每拍重建后重新施加（否则下一拍就"复活"）
@@ -1767,7 +1772,7 @@ function buildMyUnitSpecs(
   const out: UnitSpec[] = []
   for (const entry of fleet) {
     const shipRefs: { weaponRanges?: Array<{ baseM: number; bonusMul: number }> } = { weaponRanges: [] }
-    const spec = createPlayerSpec(state, ctx, entry.shipId, battle.ammoIds, shipRefs)
+    const spec = createPlayerSpec(state, ctx, entry.shipId, battleAmmoIdsFor(battle, entry.tag), shipRefs)
     if (!spec) continue
     if (matterBuffs) applyMatterPlayerBuffs(spec, matterBuffs, matterFoeMain)
     spec.tag = entry.tag
@@ -2201,6 +2206,7 @@ export function startBattleFor(
  * 只存最近一份：一局里同时只会有一种用途在场（节点/守卫/撤离），换键即重算。
  */
 let wormholeDerivedMemo: { key: string; card: AnomalyDef } | null = null
+const expeditionDerivedMemo = new WeakMap<SimContext, Map<string, WormholeExpeditionFoeCard>>()
 
 export function wormholeDerivedAnomaly(
   ctx: SimContext,
@@ -2209,6 +2215,9 @@ export function wormholeDerivedAnomaly(
     depth: number
     kind: 'node' | 'boss' | 'extract' | 'ruins' | 'spawn'
     waves: number
+    expeditionRules?: number
+    expeditionRole?: 'ordinary' | 'elite' | 'guard' | 'patrol' | 'event'
+    guardSupportDisabled?: boolean
     strengthMul?: number
     /** 谜质：威胁乘数（缺省 1）+ 敌方命中/近盲带削减（见 `battle.wormhole` 的字段说明） */
     threatMul?: number
@@ -2216,6 +2225,22 @@ export function wormholeDerivedAnomaly(
     blindReduce?: number
   },
 ): AnomalyDef {
+  if (spec.expeditionRules !== undefined) {
+    if (spec.expeditionRules !== 2) throw new Error('wormhole-expedition-unsupported-rules')
+    const family = baseCard.foeFamily
+    if (family !== 'A' && family !== 'C' && family !== 'D' && family !== 'E' && family !== 'G') throw new Error('wormhole-expedition-family-invalid')
+    const role = spec.expeditionRole ?? (spec.kind === 'boss' ? 'guard' : spec.kind === 'spawn' ? 'patrol' : 'ordinary')
+    const key = JSON.stringify([family, spec.depth, role, spec.guardSupportDisabled, spec.threatMul, spec.foeHitDown, spec.blindReduce])
+    const cache = expeditionDerivedMemo.get(ctx) ?? new Map<string, WormholeExpeditionFoeCard>()
+    if (!expeditionDerivedMemo.has(ctx)) expeditionDerivedMemo.set(ctx, cache)
+    const old = cache.get(key)
+    if (old) return old
+    const base = wormholeExpeditionCard(ctx, family, spec.depth, role, spec.guardSupportDisabled)
+    const card = wormholeExpeditionModifyCard(base, ctx.balance.battle, spec)
+    if (cache.size >= 64) cache.clear()
+    cache.set(key, card)
+    return card
+  }
   /**
    * **一层记忆（2026-09-13 性能修）**：本函数被**每 100ms 一拍**（战斗推进）＋**每次重渲染**
    * （战场视图 `wormholeBattleViewOf`）调用，每次都克隆/缩放整张敌卡与槽位 ⇒ 拖距离条那种
@@ -2310,6 +2335,10 @@ export function startFleetBattleFor(
     depth: number
     kind: 'node' | 'boss' | 'extract' | 'ruins' | 'spawn'
     waves: number
+    expeditionRules?: number
+    expeditionRole?: 'ordinary' | 'elite' | 'guard' | 'patrol' | 'event'
+    guardSupportDisabled?: boolean
+    desireRangeMul?: number
     strengthMul?: number
     /**
      * **谜质装置在开战那一刻的快照**（F3c B1 · 船长 2026-09-13）：
@@ -2381,11 +2410,15 @@ export function startFleetBattleFor(
   const fullHpOf = new Map<string, { s: number; a: number; h: number }>()
   for (let i = 0; i < ordered.length; i++) {
     const sid = ordered[i]!
-    const spec = createPlayerSpec(state, ctx, sid)
+    let spec = createPlayerSpec(state, ctx, sid)
     // 主力船记录缺失 = 与单船路径同样的"开不了战"（不让它退化成"打头的变成僚舰"）
     if (!spec) {
       if (i === 0) return null
       continue
+    }
+    if (wormhole && state.wormhole.run?.supplyVersion === 1) {
+      const ids = wormholeAmmoIdsForSpec(state, ctx, sid, spec, state.wormhole.run.supplies?.items ?? {})
+      spec = createPlayerSpec(state, ctx, sid, ids)!
     }
     spec.tag = i === 0 ? 'player' : `ally-${i}`
     fullHpOf.set(spec.tag, { ...spec.hp })
@@ -2496,10 +2529,12 @@ export function startFleetBattleFor(
     for (const f of foes) if (f.family === 'R') f.foeDesireRangeM = rDesire
   }
   battle.myFleet = fleet
+  if (wormhole) battle.wormhole = { cardId: anomalyId, ...wormhole }
+  if (wormhole?.desireRangeMul) battle.myDesireM = Math.min(battle.myDesireM, openM * wormhole.desireRangeMul)
   // 弹药：**逐船装载、汇入同一个池**（成本按各船各付；档口按主控优先）
   // **取档口径 2026-09-16 船长改判**：同族取"能装得最多"的那一档、允许装不满（细则见 `loadAmmoTier`）
   const ammoIds: Partial<Record<DamageType, string>> = {}
-  for (const entry of fleet) {
+  if (!loadWormholeBattleAmmo(state, ctx, battle, specOf)) for (const entry of fleet) {
     const spec = specOf.get(entry.shipId)!
     const totals = ammoLoadTotals(spec, bal, state)
     for (const [t, n] of Object.entries(totals)) {
@@ -2685,6 +2720,7 @@ export function battleArcsFor(
    * **无增程时逐字等于 `openM`** ⇒ 常规战斗的界面几何/距离尺一字不变。
    */
   maxM: number
+  desireMaxM: number
   /** 敌方当前战术期望距离（与引擎推进同口径：按战术系数换算后钳制在开战距离内）——UI 判断敌舰意图方向用 */
   foeDesireM: number
   ammo: { kin: number; exp: number; pla: number }
@@ -2731,6 +2767,7 @@ export function battleArcsFor(
     hp: { s: number; a: number; h: number }
     hpMax: { s: number; a: number; h: number }
     alive: boolean
+    ammoIds?: Partial<Record<DamageType, string>>
   }>
   /** 敌方各武器射程带（聚合）：`minM~maxM` 跨全部单位取极值，`type` = 遍历到的最后一件武器弹种 */
   foe: { minM: number; maxM: number; type: DamageType }
@@ -2796,7 +2833,8 @@ export function battleArcsFor(
   const leaderShipId = override?.leaderShipId ?? state.shipId
   /** 干扰压制的基准账（见 `applyMeJammerDebuff`）——视图锚舰同样要吃这份基准 */
   const meRefs: { weaponRanges?: Array<{ baseM: number; bonusMul: number }> } = { weaponRanges: [] }
-  const me = createPlayerSpec(state, ctx, leaderShipId, battle.ammoIds, meRefs) // 弹药 MK2：视图与实际弹种对齐
+  const leaderTag = battle.myFleet?.find((e) => e.shipId === leaderShipId)?.tag ?? 'player'
+  const me = createPlayerSpec(state, ctx, leaderShipId, battleAmmoIdsFor(battle, leaderTag), meRefs)
   if (!me) return null
   // **捕获网**（船长 2026-09-16）：视图锚舰被钉时同样施加四层效果 ⇒ 面板速度/射程带与引擎同尺
   {
@@ -2839,7 +2877,7 @@ export function battleArcsFor(
     if (w.src === 'drone' && battle.dronePools?.[i]?.alive === false) return
     let type: DamageType | null = null
     if (w.kind === 'fixed') type = w.fixedType ?? 'kinetic'
-    else if (w.kind === 'beam') type = battle.ammo.pla >= Math.max(1, w.count ?? 1) ? 'plasma' : null // 激光吃能量弹药键（按门数）
+    else if (w.kind === 'beam') type = battleAmmoAvailable(battle, leaderTag, 'plasma') >= Math.max(1, w.count ?? 1) * Math.max(1, w.ammoPerShot ?? 1) ? 'plasma' : null
     else {
       /**
        * **炮台 / 导弹架：报"这件武器自己打的那一型"**，不是全船主流弹种。
@@ -2853,7 +2891,7 @@ export function battleArcsFor(
        */
       const own = (Object.keys(w.shotsByType ?? {})[0] as DamageType | undefined) ?? w.fixedType ?? null
       const need = Math.max(1, w.count ?? 1) * Math.max(1, w.ammoPerShot ?? 1)
-      type = own !== null && battle.ammo[ammoKeyOf(own)] >= need ? own : null
+      type = own !== null && battleAmmoAvailable(battle, leaderTag, own) >= need ? own : null
     }
     const rem = Math.max(0, Math.floor(meRt[i] ?? 0))
     if (w.src === 'drone') {
@@ -3012,7 +3050,7 @@ export function battleArcsFor(
   // 弹药 MK2（2026-09-09）：本场实装弹名（仅当与基础弹不同时提供；UI 兜底用弹型名）
   const ammoNames: Partial<Record<'kin' | 'exp' | 'pla', string>> = {}
   for (const t of ['kinetic', 'explosive', 'plasma'] as const) {
-    const id = battle.ammoIds?.[t]
+    const id = battleAmmoIdsFor(battle, leaderTag)?.[t]
     if (!id) continue
     const def = ctx.items.get(id)
     if (def?.name && id !== AMMO_IDS[t]) ammoNames[ammoKeyOf(t)] = def.name
@@ -3086,6 +3124,7 @@ export function battleArcsFor(
       hp: u ? { ...u.hp } : { s: 0, a: 0, h: 0 },
       hpMax: u?.hpMax ?? { s: 0, a: 0, h: 0 },
       alive: !!u && u.hp.s + u.hp.a + u.hp.h > 0,
+      ...(battle.expeditionAmmo ? { ammoIds: battleAmmoIdsFor(battle, e.tag) } : {}),
       /** 逐舰机群机体清单（见上方类型注释；只算**该舰存活**的池条目） */
       drones: (() => {
         const byArt = new Map<string, number>()
@@ -3106,6 +3145,7 @@ export function battleArcsFor(
      * 这样敌方挨打增程（或我方科技增程）把战场撑宽时，画面与引擎**同一把尺**（无增程时 = `openM`，逐像素不变）。
      */
     maxM: battleMaxDistanceM(battle, me, foes, bal),
+    desireMaxM: battleMaxDistanceM(battle, me, foes, bal) * (battle.wormhole?.desireRangeMul ?? 1),
     foeDesireM: Math.min(openM, foeDesiredRange(me, foes, bal, battle.meFoeRangeDebuff ?? 0)),
     ammo: { kin: battle.ammo.kin, exp: battle.ammo.exp, pla: battle.ammo.pla },
     ...(Object.keys(ammoNames).length > 0 ? { ammoNames } : {}),
@@ -3214,15 +3254,22 @@ export function settleDroneLosses(
   if (!fleetShip) return null
   const rate = droneRecoveryRateWithBonus(state, recoveryBonus)
   const load: Record<string, number> = { ...(fleetShip.droneLoad ?? {}) }
+  const supply = wormholeSupplyForBattle(state, battle)
+  const startLoad = battle?.droneLoadAtStartBy?.[ownerTag] ??
+    (ownerTag === 'player' ? battle?.droneLoadAtStart : undefined) ?? load
+  const revivedMap = droneRevivedOf(battle, ownerTag)
+  const revivedTotal = droneRevivedCount(battle, ownerTag)
 
-  // ── ① 先算出各型的损坏数（按清单实有数封顶）与基础名额 floor(损坏×回收率) ──
+  // 新趟损坏按出发与复位实物数校验；旧趟仍以清单实有数封顶。
   type Row = { id: string; name: string; value: number; lost: number; back: number }
   const rows: Row[] = []
   let total = 0
   for (const [id, n] of Object.entries(lost)) {
     if (!n || n <= 0) continue
     const def = ctx.items.get(id)
-    const cut = Math.min(load[id] ?? 0, n)
+    const cut = supply
+      ? Math.min((startLoad[id] ?? 0) + (revivedMap[id] ?? 0), Math.max(0, Math.floor(n)))
+      : Math.min(load[id] ?? 0, n)
     if (cut <= 0) continue
     rows.push({
       id,
@@ -3247,6 +3294,53 @@ export function settleDroneLosses(
     rest -= add
   }
 
+  if (supply) {
+    settleWormholeDroneRevives(state, battle!)
+    const alive: Record<string, number> = {}
+    const recovered: Record<string, number> = {}
+    for (const [id, n] of Object.entries(startLoad)) {
+      const row = rows.find((r) => r.id === id)
+      const left = Math.max(0, n + (revivedMap[id] ?? 0) - (row?.lost ?? 0))
+      if (left > 0) alive[id] = left
+      if ((row?.back ?? 0) > 0) recovered[id] = row!.back
+    }
+    const takeFrom = (stock: Record<string, number>) => (id: string): 'hold' | null => {
+      if ((stock[id] ?? 0) <= 0) return null
+      stock[id] = stock[id]! - 1
+      return 'hold'
+    }
+    fleetShip.droneLoad = undefined
+    refillDroneLoadTo(state, ctx, shipId, { ...alive }, takeFrom(alive))
+    refillDroneLoadTo(state, ctx, shipId, startLoad, takeFrom(recovered))
+    const settledLoad: Record<string, number> = { ...(state.fleet[shipId]?.droneLoad ?? {}) }
+    const survivors = Object.values(settledLoad).reduce((n, v) => n + v, 0)
+    const returnedToSupply: Record<string, number> = {}
+    for (const id of new Set([...Object.keys(alive), ...Object.keys(recovered)])) {
+      const n = (alive[id] ?? 0) + (recovered[id] ?? 0)
+      if (n <= 0) continue
+      returnWormholeDroneSupply(supply, id, n)
+      returnedToSupply[id] = n
+    }
+    const refill = refillDroneLoadTo(state, ctx, shipId, startLoad, (id) => deployWormholeSupply(supply, id, 1) === 1 ? 'hold' : null)
+    battle!.droneLost = undefined
+    if (battle!.droneLostBy) delete battle!.droneLostBy[ownerTag]
+    if (ownerTag === 'player') {
+      const back = rows.reduce((n, r) => n + r.back, 0)
+      state.droneLossReport = {
+        battleStartedAtGameMs: battle!.startedAtGameMs,
+        rate, total, recovered: back, gone: total - back, survivors, revived: revivedTotal, returnedToSupply,
+        rows: byValue.map((r) => ({ id: r.id, name: r.name, value: r.value, lost: r.lost, back: r.back, gone: r.lost - r.back })),
+      }
+    }
+    const back = rows.reduce((n, r) => n + r.back, 0)
+    addLog(state, 'warn', '', 'core.whExpedition.001', { p1: total, p2: back, p3: total - back })
+    if (revivedTotal > 0) addLog(state, 'combat', '', 'core.whExpedition.002', { p1: revivedTotal })
+    const returned = Object.values(returnedToSupply).reduce((n, v) => n + v, 0)
+    if (returned > 0) addLog(state, 'combat', '', 'core.whExpedition.003', { p1: returned })
+    if (Object.keys(refill.short).length > 0) addLog(state, 'warn', '', 'core.whExpedition.004')
+    return byValue.map((r) => `${r.name}×${r.lost}`).join('、')
+  }
+
   // ── ③ 落库：先扣**战中复活**的货、再扣净损失、最后按出发快照补货 ──
   /**
    * **战中复活的扣货点（唯一一处）**（**2026-09-27 船长令**）。
@@ -3262,8 +3356,6 @@ export function settleDroneLosses(
    * - `droneLost` / `droneLostBy` **照记不回冲**（上面算回收率读的就是它，回冲会让回收率失真）
    *   ⇒ 只是把**清单纯损失**减掉战中复活的架数（那几架已经补回来了，不能再算一次损失）。
    */
-  const revivedMap = droneRevivedOf(battle, ownerTag)
-  const revivedTotal = droneRevivedCount(battle, ownerTag)
   /**
    * ① **扣复活的那几架货**（本舰货舱 → 物品仓库；`takeDroneUnit` 是唯一取货口）。
    * ⚠ 可能扣不满：预算快照是**开战那一刻**拍的，若同队其它舰在本场结算前先扣过同一只仓库，
@@ -3310,11 +3402,9 @@ export function settleDroneLosses(
    * 货源 = 本船货仓 → 物品仓库（`refillDroneLoadTo` 单一入口，受舱容/CPU 校验、不自动购买）。
    * ⚠ **必须在 `survivors` 之后**：停环记账与战损判定读的是补货前的架数。
    */
-  const startLoad =
-    battle?.droneLoadAtStartBy?.[ownerTag] ??
-    (ownerTag === 'player' ? battle?.droneLoadAtStart : undefined) ??
-    {}
-  const refill = refillDroneLoadTo(state, ctx, shipId, startLoad)
+  const legacyStartLoad = battle?.droneLoadAtStartBy?.[ownerTag] ??
+    (ownerTag === 'player' ? battle?.droneLoadAtStart : undefined) ?? {}
+  const refill = refillDroneLoadTo(state, ctx, shipId, legacyStartLoad)
   const refillRows = Object.entries(refill.added)
   const refillTxt = refillRows
     .map(([id, n]) => {
@@ -4604,13 +4694,12 @@ function stepBattle(
         // 该键弹尽 → 本武器停火（不拖累其它型）。**齐射按门数扣弹**：不足一轮齐射的余弹不发射
         // （等返港补弹；预载已按门数放大，正常战斗不会因缺弹中断）
         const pick = (Object.keys(w.shotsByType ?? {})[0] as DamageType | undefined) ?? null
-        if (!pick || b.ammo[ammoKeyOf(pick)] < roundsPerVolley) {
+        if (!pick || !consumeBattleAmmo(b, unit.tag, pick, roundsPerVolley)) {
           meRt.weapons[wi] = w.reloadMs // 无弹：等一轮再查（避免每步空转）
           continue
         }
         type = pick
         dmg = w.shotsByType?.[pick] ?? 0
-        b.ammo[ammoKeyOf(pick)] -= roundsPerVolley
         // **装填计时**（合并入口）：挂了「三连射」（本轮还没打完 ⇒ 100ms 后再来一发）或
         // 「叠光同款 · 装填自加速」的门走 `meBurstReloadOf`；两者都不挂 ⇒ 逐字回到老路径（零行为变化）
         // ⚠ 传 **`unit`**（正在开火那一艘）而不是主控 `me`：登记表的键按设计是 `舰tag#炮位`
@@ -4620,12 +4709,11 @@ function stepBattle(
         // V18B-2 激光：必中光束——逐发扣能量弹药（按门数）；威力随距离衰减（beamPowerFactor）
         // ⚠ **打机群不吃这个衰减**（船长 2026-10-02 令「对无人机无衰减」）⇒ 距离系数走单一取数口
         //   `beamPowerVsTargetOf`（`droneHit` 非空 ⇔ 本发打的是敌机群）。
-        if (b.ammo.pla < roundsPerVolley) {
+        if (!consumeBattleAmmo(b, unit.tag, 'plasma', roundsPerVolley)) {
           meRt.weapons[wi] = w.reloadMs
           continue
         }
         type = 'plasma'
-        b.ammo.pla -= roundsPerVolley
         dmg = Math.max(1, Math.round((w.shotDmg ?? 0) * beamPowerVsTargetOf(b.distanceM, w, droneHit !== null)))
         // **装填计时**：激光这一路同样走合并入口（三连射 / 叠光自加速 / 老路径三合一）
         meRt.weapons[wi] = meBurstReloadOf(unit, unit.tag, wi, b, dtMs, w.reloadMs)

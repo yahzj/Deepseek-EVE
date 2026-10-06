@@ -167,7 +167,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       L10N['ui.firstShip.001']!.zh,
       L10N['ui.firstShip.002']!.zh,
-      L10N['ui.firstShip.003']!.zh,
+      L10N['ui.signalSpace.009']!.zh,
     ],
     trigger: { kind: 'firstTask', taskId: 'first-ship' },
     hint: { text: L10N['ui.comms.051']!.zh, page: 'task', taskTab: 'important' },
@@ -181,7 +181,7 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     body: [
       L10N['ui.firstHaul.001']!.zh,
       L10N['ui.firstHaul.002']!.zh,
-      L10N['ui.firstHaul.003']!.zh,
+      L10N['ui.signalSpace.010']!.zh,
     ],
     trigger: { kind: 'firstTask', taskId: 'first-haul' },
     hint: { text: L10N['ui.comms.051']!.zh, page: 'task', taskTab: 'important' },
@@ -191,11 +191,11 @@ export const FIRST_TASK_MESSAGES: readonly CommsMessageDef[] = [
     factionId: 'archive',
     deptId: 'dept-recall',
     kind: '提示',
-    subject: L10N['ui.comms.026']!.zh,
+    subject: L10N['ui.signalSpace.024']!.zh,
     body: [
-      L10N['ui.firstWormhole.001']!.zh,
-      L10N['ui.firstWormhole.002']!.zh,
-      L10N['ui.firstWormhole.003']!.zh,
+      L10N['ui.signalSpace.011']!.zh,
+      L10N['ui.signalSpace.012']!.zh,
+      L10N['ui.signalSpace.013']!.zh,
     ],
     trigger: { kind: 'firstTask', taskId: 'first-wormhole' },
     hint: { text: L10N['ui.comms.051']!.zh, page: 'task', taskTab: 'important' },

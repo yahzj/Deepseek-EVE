@@ -19,6 +19,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
+import { signalSpaceTextId } from '../src/explorationText'
 import type { GameState } from '../src/state'
 import { addWare } from '../src/inventory'
 import { addShipToFleet } from '../src/shipyard'
@@ -438,7 +439,7 @@ describe('虫洞 · 自动探索吃谜质科技（船长 2026-09-19 甲案）', 
 
     state.gameMs = WORMHOLE_AUTO_DURATION_MS + 1
     advanceWormholeAuto(state, ctx)
-    const back = state.logs.filter((l) => l.textId === 'core.wormholeAuto.021').at(-1)
+    const back = state.logs.filter((l) => l.textId === signalSpaceTextId('core.wormholeAuto.021')).at(-1)
     expect(back, '返航日志必须挂 textId').toBeDefined()
     const tp = back!.textParams as Record<string, unknown>
     const report = wormholeAutoReportsOf(state)[0]!

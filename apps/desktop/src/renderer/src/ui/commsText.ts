@@ -300,17 +300,17 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
   'first-ship': [
     L10N['ui.firstShip.001']!.en,
     L10N['ui.firstShip.002']!.en,
-    L10N['ui.firstShip.003']!.en,
+    L10N['ui.signalSpace.009']!.en,
   ],
   'first-haul': [
     L10N['ui.firstHaul.001']!.en,
     L10N['ui.firstHaul.002']!.en,
-    L10N['ui.firstHaul.003']!.en,
+    L10N['ui.signalSpace.010']!.en,
   ],
   'first-wormhole': [
-    L10N['ui.firstWormhole.001']!.en,
-    L10N['ui.firstWormhole.002']!.en,
-    L10N['ui.firstWormhole.003']!.en,
+    L10N['ui.signalSpace.011']!.en,
+    L10N['ui.signalSpace.012']!.en,
+    L10N['ui.signalSpace.013']!.en,
   ],
   // ── 协会侧短札（2026-09-22 第四批；长设定的几封见文件末的挂账注释）──
   'msg-welcome': [
@@ -382,10 +382,10 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
     L10N['ui.commsLowsec.003']!.en,
   ],
   'msg-wormhole-unlock': [
-    L10N['ui.commsWhunlock.001']!.en,
-    L10N['ui.commsWhunlock.002']!.en,
-    L10N['ui.commsWhunlock.003']!.en,
-    L10N['ui.commsWhunlock.004']!.en,
+    L10N['ui.signalSpace.005']!.en,
+    L10N['ui.signalSpace.006']!.en,
+    L10N['ui.signalSpace.007']!.en,
+    L10N['ui.signalSpace.008']!.en,
   ],
   'msg-auro-megastructure': [
     L10N['ui.commsAuro.001']!.en,
@@ -399,7 +399,7 @@ const COMMS_BODY_EN: Record<string, readonly string[]> = {
     L10N['ui.commsExile.003']!.en,
   ],
   'msg-wormhole-nebula': [
-    L10N['ui.commsNebula.001']!.en,
+    L10N['ui.signalSpace.004']!.en,
     L10N['ui.commsNebula.002']!.en,
     L10N['ui.commsNebula.003']!.en,
   ],

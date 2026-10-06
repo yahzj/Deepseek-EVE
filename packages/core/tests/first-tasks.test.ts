@@ -636,7 +636,7 @@ describe('末段并列批（2026-09-20 船长第三道令：完成第 11 条后�
     expect(firstTasksMarkSeen(s)).toBe(true) // 看过当前那一条（第 11 条）
     expect(s.firstTaskSeenId).toBe('first-ship') // 2026-09-22 改序后：顺序段第 11 条 = 第一条船
     s.importantTasks['first-ship'] = { done: true }
-    expect(firstTaskNotice(s)).toEqual({ taskId: 'first-haul', title: '第一次长途运输、第一次虫洞', ready: false })
+    expect(firstTaskNotice(s)).toEqual({ taskId: 'first-haul', title: '第一次长途运输、第一次信号空间', ready: false })
     expect(firstTasksMarkSeen(s)).toBe(true)
     expect(s.firstTaskSeenId).toBe('first-haul|first-wormhole')
     expect(firstTaskNotice(s)).toBeNull()

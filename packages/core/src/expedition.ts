@@ -343,7 +343,7 @@ export function setBattleDesire(state: GameState, desireM: number, ctx: SimConte
    * 单波场次两者同值 ⇒ **常规战斗一字不变**（只有多波卡与带增程的场次会变）。
    */
   const waveFoes = activeFoeSpecsOf(anomaly, ctx.balance.battle, battle.waveIdx)
-  const maxD = battleMaxDistanceM(battle, me, waveFoes, ctx.balance.battle)
+  const maxD = battleMaxDistanceM(battle, me, waveFoes, ctx.balance.battle) * (battle.wormhole?.desireRangeMul ?? 1)
   const minD = ctx.balance.battle.minDistanceM
   const clamped = Math.round(Math.min(maxD, Math.max(minD, desireM)))
   battle.myDesireM = clamped

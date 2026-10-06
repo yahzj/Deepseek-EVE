@@ -40,6 +40,7 @@ const BATTLE_FIELDS = {
   // F3c B2：开战预载量（谜质「弹药回收装置」战后按「预载 − 余额」算已耗）——随档，免得中途读档后加成失效
   ammoLoaded: { kind: 'persist' },
   ammoIds: { kind: 'persist' },
+  expeditionAmmo: { kind: 'persist' },
   stats: { kind: 'persist' },
   fx: { kind: 'persist' },
   // ⚠ **派生字段**：载入侧不读存档里的旧值，而是按清洗后的 fx 环尾部重算（`尾序号 + 1`），
@@ -537,6 +538,15 @@ export function cleanBattle(raw: unknown): BattleState | null {
         : undefined,
     // 弹药 MK2（2026-09-09）：本场实装弹 id（键 = 伤害类型；坏值丢键，零迁移）
     ammoIds: cleanAmmoIdMap(b.ammoIds),
+    expeditionAmmo: b.expeditionAmmo === undefined ? undefined : (() => {
+      const r = asRaw(b.expeditionAmmo)
+      const idsByTag: NonNullable<BattleState['expeditionAmmo']>['idsByTag'] = {}
+      for (const [tag, ids] of Object.entries(asRaw(r.idsByTag))) idsByTag[tag] = cleanAmmoIdMap(ids) ?? {}
+      return {
+        stock: cleanCountMap(r.stock) ?? {}, loaded: cleanCountMap(r.loaded) ?? {}, idsByTag,
+        ...(r.revivesSettled === true ? { revivesSettled: true } : {}),
+      }
+    })(),
     // 我方编队（虫洞 D 批）：坏项丢弃、空表 = 不写（= 单船路径，零迁移）
     myFleet: cleanMyFleet(b.myFleet),
     // 虫洞战斗标记（虫洞 F 批）：坏值丢弃（= 退回原卡强度），零迁移
@@ -629,7 +639,7 @@ function cleanBattleWormhole(raw: unknown): BattleState['wormhole'] | undefined 
   const w = asRaw(raw)
   const cardId = typeof w.cardId === 'string' && w.cardId.length > 0 ? w.cardId : null
   const kind =
-    w.kind === 'node' || w.kind === 'boss' || w.kind === 'extract' || w.kind === 'ruins' ? w.kind : null
+    w.kind === 'node' || w.kind === 'boss' || w.kind === 'extract' || w.kind === 'ruins' || w.kind === 'spawn' ? w.kind : null
   const depth = cleanPosNum(w.depth)
   const waves = cleanPosNum(w.waves)
   if (!cardId || !kind || depth === undefined || waves === undefined) return undefined
@@ -638,6 +648,15 @@ function cleanBattleWormhole(raw: unknown): BattleState['wormhole'] | undefined 
     kind,
     depth: Math.max(1, Math.floor(depth)),
     waves: Math.max(1, Math.floor(waves)),
+    ...(typeof w.expeditionRules === 'number' && Number.isSafeInteger(w.expeditionRules) ? { expeditionRules: w.expeditionRules } : {}),
+    ...(w.expeditionRole === 'ordinary' || w.expeditionRole === 'elite' || w.expeditionRole === 'guard' || w.expeditionRole === 'patrol' || w.expeditionRole === 'event' ? { expeditionRole: w.expeditionRole } : {}),
+    ...(w.guardSupportDisabled === true ? { guardSupportDisabled: true } : {}),
+    ...(w.desireRangeMul === 0.8 ? { desireRangeMul: 0.8 } : {}),
+    ...(typeof w.threatMul === 'number' && w.threatMul > 0 && Number.isFinite(w.threatMul) ? { threatMul: w.threatMul } : {}),
+    ...(typeof w.foeHitDown === 'number' && w.foeHitDown > 0 && Number.isFinite(w.foeHitDown) ? { foeHitDown: w.foeHitDown } : {}),
+    ...(typeof w.blindReduce === 'number' && w.blindReduce > 0 && Number.isFinite(w.blindReduce) ? { blindReduce: w.blindReduce } : {}),
+    ...(w.foeMainType === 'kinetic' || w.foeMainType === 'explosive' || w.foeMainType === 'plasma' ? { foeMainType: w.foeMainType } : {}),
+    ...(w.volleyOverflow === true ? { volleyOverflow: true } : {}),
   }
 }
 

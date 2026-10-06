@@ -17,6 +17,8 @@
 
 /** 货仓网格的固定列数（船长口径"按推荐"：8 列；行数 = ⌈可用格数 ÷ 8⌉） */
 export const WORMHOLE_HOLD_COLS = 8
+/** 货仓格的体积单点，虫洞状态机与补给读数共用。 */
+export const WORMHOLE_SLOT_M3 = 500
 /** **细条上限**（历史常量）：≤ 4 格曾沿用"一条细条"的观感、> 4 格改矩形方块。
  *  ⚠ 2026-09-13 深夜船长再定「**每件散货不超过 500 m³（= 一格），超过就分件**」⇒
  *  散货一律 `1×1`；本常量只对**老档落形**（读档兼容）还有意义。 */
@@ -131,6 +133,8 @@ export interface WormholeHoldPlacement {
   kind: 'box' | 'cargo'
   /** 散货件的数量（单位数；`box` 不带此字段） */
   units?: number
+  /** 新趟地点货为携入物资时，取回必须回补给账而不是战利品账。 */
+  supply?: true
   /** 左上角（列 x 从 0 起、行 y 从 0 起） */
   x: number
   y: number
@@ -806,6 +810,7 @@ export function cleanHoldPlacement(raw: unknown): WormholeHoldPlacement | null {
     id,
     itemId,
     kind,
+    ...(o.supply === true ? { supply: true as const } : {}),
     ...(kind === 'cargo' && Number.isFinite(units) && units > 0 ? { units } : {}),
     x,
     y,
