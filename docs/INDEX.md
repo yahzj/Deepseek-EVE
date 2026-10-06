@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **478** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7728** KB · **60100** 行
+- 文档总数 **478** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7729** KB · **60102** 行
 - 状态分布：**未标注** 254 · **已确认/已实现** 149 · **进行中** 53 · **待裁定** 21 · **历史留档** 1
 - 孤儿文档（0 引用）**103** 份 · 状态未标注 **254** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -63,7 +63,7 @@
 | `docs/design/black-market-android-merchant-20261006.md` | 触手发束与机械副官风格商人 | 已确认/已实现（已实现） | 2026-10-06 | 6 KB / 57 行 | 0 / 0 |
 | `docs/design/black-market-cards-rework-20261006.md` | 黑市商品卡详情统一与商人重绘 | 已确认/已实现（已实现） | 2026-10-06 | 12 KB / 95 行 | 0 / 0 |
 | `docs/design/black-market-comms-avatar-20261006.md` | 黑市复用通讯章鱼人头像 | 已确认/已实现（已实现） | 2026-10-06 | 5 KB / 54 行 | 0 / 0 |
-| `docs/design/black-market-drone-lots-20261006.md` | 黑市无人机按组出售 | 已确认/已实现（已实现） | 2026-10-06 | 4 KB / 45 行 | 0 / 0 |
+| `docs/design/black-market-drone-lots-20261006.md` | 黑市无人机按组出售 | 已确认/已实现（已实现并本地合入） | 2026-10-06 | 5 KB / 47 行 | 0 / 0 |
 | `docs/design/black-market-monitor-20261006.md` | 黑市紧凑货架与商人监视器 | 已确认/已实现（已实现） | 2026-10-06 | 8 KB / 68 行 | 0 / 0 |
 | `docs/design/black-market-speech-name-20261006.md` | 黑市对白下方重复商品名移除 | 已确认/已实现（已实现） | 2026-10-06 | 3 KB / 42 行 | 0 / 0 |
 | `docs/design/market-limited-supply-20261006.md` | 限额慢补货与虚空晶应急供应 | 已确认/已实现（已实现并本地合入） | 2026-10-06 | 7 KB / 80 行 | 0 / 0 |
@@ -555,7 +555,7 @@
 - `docs/design/black-market-android-merchant-20261006.md`（2026-10-06 · 6 KB）—— 触手发束与机械副官风格商人
 - `docs/design/black-market-cards-rework-20261006.md`（2026-10-06 · 12 KB）—— 黑市商品卡详情统一与商人重绘
 - `docs/design/black-market-comms-avatar-20261006.md`（2026-10-06 · 5 KB）—— 黑市复用通讯章鱼人头像
-- `docs/design/black-market-drone-lots-20261006.md`（2026-10-06 · 4 KB）—— 黑市无人机按组出售
+- `docs/design/black-market-drone-lots-20261006.md`（2026-10-06 · 5 KB）—— 黑市无人机按组出售
 - `docs/design/black-market-monitor-20261006.md`（2026-10-06 · 8 KB）—— 黑市紧凑货架与商人监视器
 - `docs/design/black-market-speech-name-20261006.md`（2026-10-06 · 3 KB）—— 黑市对白下方重复商品名移除
 - `docs/design/market-limited-supply-20261006.md`（2026-10-06 · 7 KB）—— 限额慢补货与虚空晶应急供应
