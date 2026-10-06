@@ -1,0 +1,1146 @@
+{
+  "format": "whale-static-data",
+  "version": 1,
+  "table": "items",
+  "groups": {
+    "ORES_0": [
+      {
+        "id": "ore-veldspar",
+        "kind": "ore",
+        "unitM3": 0.5,
+        "baseSellPriceIsk": 7,
+        "refine": [
+          {
+            "mineralId": "min-tritanium",
+            "perOre": 1.02
+          },
+          {
+            "mineralId": "min-pyerite",
+            "perOre": 0.295
+          }
+        ],
+        "refineBatchUnits": 100,
+        "refineCycleMs": 10000
+      },
+      {
+        "id": "ore-scorched",
+        "kind": "ore",
+        "unitM3": 0.5,
+        "baseSellPriceIsk": 7,
+        "refine": [
+          {
+            "mineralId": "min-pyerite",
+            "perOre": 0.612
+          },
+          {
+            "mineralId": "min-mexallon",
+            "perOre": 0.217
+          }
+        ],
+        "refineBatchUnits": 100,
+        "refineCycleMs": 10000
+      },
+      {
+        "id": "ore-hemorphite",
+        "kind": "ore",
+        "unitM3": 1,
+        "baseSellPriceIsk": 15,
+        "refine": [
+          {
+            "mineralId": "min-nocxium",
+            "perOre": 0.224
+          },
+          {
+            "mineralId": "min-tritanium",
+            "perOre": 0.611
+          }
+        ],
+        "refineBatchUnits": 100,
+        "refineCycleMs": 20000
+      },
+      {
+        "id": "ore-glowstone",
+        "kind": "ore",
+        "unitM3": 2,
+        "baseSellPriceIsk": 32,
+        "refine": [
+          {
+            "mineralId": "min-isotope",
+            "perOre": 0.869
+          },
+          {
+            "mineralId": "min-tritanium",
+            "perOre": 0.708
+          }
+        ],
+        "refineBatchUnits": 100,
+        "refineCycleMs": 40000
+      },
+      {
+        "id": "ore-sunshard",
+        "kind": "ore",
+        "unitM3": 2,
+        "baseSellPriceIsk": 32,
+        "refine": [
+          {
+            "mineralId": "min-isotope",
+            "perOre": 0.899
+          },
+          {
+            "mineralId": "min-pyerite",
+            "perOre": 0.334
+          }
+        ],
+        "refineBatchUnits": 100,
+        "refineCycleMs": 40000
+      },
+      {
+        "id": "ore-voidshard",
+        "kind": "ore",
+        "unitM3": 4,
+        "baseSellPriceIsk": 68,
+        "refine": [
+          {
+            "mineralId": "min-starcore",
+            "perOre": 0.349
+          },
+          {
+            "mineralId": "min-darkiron",
+            "perOre": 0.028
+          },
+          {
+            "mineralId": "min-nocxium",
+            "perOre": 0.071
+          }
+        ],
+        "refineBatchUnits": 100,
+        "refineCycleMs": 80000
+      },
+      {
+        "id": "ore-nebulite",
+        "kind": "ore",
+        "unitM3": 8,
+        "baseSellPriceIsk": 145,
+        "refine": [
+          {
+            "mineralId": "min-darkiron",
+            "perOre": 0.217
+          },
+          {
+            "mineralId": "min-starcore",
+            "perOre": 0.297
+          }
+        ],
+        "refineBatchUnits": 100,
+        "refineCycleMs": 160000
+      },
+      {
+        "id": "ore-voidmother",
+        "kind": "ore",
+        "unitM3": 1,
+        "baseSellPriceIsk": 915,
+        "refine": [
+          {
+            "mineralId": "min-voidcrystal",
+            "perOre": 0.25
+          },
+          {
+            "mineralId": "min-isotope",
+            "perOre": 1
+          },
+          {
+            "mineralId": "min-starcore",
+            "perOre": 0.25
+          }
+        ],
+        "refineBatchUnits": 100,
+        "refineCycleMs": 60000
+      }
+    ],
+    "RELIC_CONTAINERS_0": [
+      {
+        "id": "box-relic-a",
+        "kind": "container",
+        "unitM3": 3000,
+        "baseSellPriceIsk": 3232500
+      },
+      {
+        "id": "box-relic-c",
+        "kind": "container",
+        "unitM3": 3000,
+        "baseSellPriceIsk": 3352500
+      },
+      {
+        "id": "box-relic-d",
+        "kind": "container",
+        "unitM3": 3000,
+        "baseSellPriceIsk": 6112500
+      },
+      {
+        "id": "box-relic-e",
+        "kind": "container",
+        "unitM3": 3000,
+        "baseSellPriceIsk": 4927500
+      },
+      {
+        "id": "box-relic-g",
+        "kind": "container",
+        "unitM3": 3000,
+        "baseSellPriceIsk": 4815000
+      }
+    ],
+    "BLUEPRINT_CONTAINERS_0": [
+      {
+        "id": "box-bp-shallow",
+        "kind": "container",
+        "unitM3": 1000,
+        "baseSellPriceIsk": 3595000
+      },
+      {
+        "id": "box-bp-mid",
+        "kind": "container",
+        "unitM3": 1000,
+        "baseSellPriceIsk": 14045000
+      },
+      {
+        "id": "box-bp-deep",
+        "kind": "container",
+        "unitM3": 1000,
+        "baseSellPriceIsk": 25840000
+      }
+    ],
+    "MINERALS_0": [
+      {
+        "id": "min-tritanium",
+        "kind": "mineral",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 8
+      },
+      {
+        "id": "min-pyerite",
+        "kind": "mineral",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 12
+      },
+      {
+        "id": "min-mexallon",
+        "kind": "mineral",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 20
+      },
+      {
+        "id": "min-nocxium",
+        "kind": "mineral",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 90
+      },
+      {
+        "id": "min-isotope",
+        "kind": "mineral",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 55
+      },
+      {
+        "id": "min-starcore",
+        "kind": "mineral",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 245
+      },
+      {
+        "id": "min-darkiron",
+        "kind": "mineral",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 780
+      },
+      {
+        "id": "min-voidcrystal",
+        "kind": "mineral",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 5400
+      },
+      {
+        "id": "min-jumplasma",
+        "kind": "mineral",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 120
+      },
+      {
+        "id": "min-cryoslurry",
+        "kind": "mineral",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 120
+      },
+      {
+        "id": "min-curvature",
+        "kind": "mineral",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 420
+      }
+    ],
+    "GASES_0": [
+      {
+        "id": "gas-neon",
+        "kind": "gas",
+        "unitM3": 2,
+        "baseSellPriceIsk": 32,
+        "refine": [
+          {
+            "mineralId": "min-jumplasma",
+            "perOre": 0.178
+          },
+          {
+            "mineralId": "min-isotope",
+            "perOre": 0.533
+          },
+          {
+            "mineralId": "min-tritanium",
+            "perOre": 0.343
+          }
+        ],
+        "refineBatchUnits": 100,
+        "refineCycleMs": 40000
+      },
+      {
+        "id": "gas-phosphor",
+        "kind": "gas",
+        "unitM3": 8,
+        "baseSellPriceIsk": 144,
+        "refine": [
+          {
+            "mineralId": "min-jumplasma",
+            "perOre": 0.601
+          },
+          {
+            "mineralId": "min-curvature",
+            "perOre": 0.057
+          },
+          {
+            "mineralId": "min-isotope",
+            "perOre": 0.98
+          },
+          {
+            "mineralId": "min-starcore",
+            "perOre": 0.347
+          },
+          {
+            "mineralId": "min-mexallon",
+            "perOre": 0.27
+          }
+        ],
+        "refineBatchUnits": 100,
+        "refineCycleMs": 160000
+      },
+      {
+        "id": "gas-ionstorm",
+        "kind": "gas",
+        "unitM3": 4,
+        "baseSellPriceIsk": 68,
+        "refine": [
+          {
+            "mineralId": "min-jumplasma",
+            "perOre": 0.285
+          },
+          {
+            "mineralId": "min-curvature",
+            "perOre": 0.027
+          },
+          {
+            "mineralId": "min-starcore",
+            "perOre": 0.205
+          },
+          {
+            "mineralId": "min-darkiron",
+            "perOre": 0.017
+          },
+          {
+            "mineralId": "min-isotope",
+            "perOre": 0.083
+          }
+        ],
+        "refineBatchUnits": 100,
+        "refineCycleMs": 80000
+      },
+      {
+        "id": "gas-aurora",
+        "kind": "gas",
+        "unitM3": 8,
+        "baseSellPriceIsk": 144,
+        "refine": [
+          {
+            "mineralId": "min-jumplasma",
+            "perOre": 0.601
+          },
+          {
+            "mineralId": "min-curvature",
+            "perOre": 0.057
+          },
+          {
+            "mineralId": "min-starcore",
+            "perOre": 0.283
+          },
+          {
+            "mineralId": "min-darkiron",
+            "perOre": 0.096
+          }
+        ],
+        "refineBatchUnits": 100,
+        "refineCycleMs": 160000
+      }
+    ],
+    "ICES_0": [
+      {
+        "id": "ice-frost",
+        "kind": "ice",
+        "unitM3": 2,
+        "baseSellPriceIsk": 32,
+        "refine": [
+          {
+            "mineralId": "min-cryoslurry",
+            "perOre": 0.178
+          },
+          {
+            "mineralId": "min-isotope",
+            "perOre": 0.526
+          },
+          {
+            "mineralId": "min-mexallon",
+            "perOre": 0.155
+          }
+        ],
+        "refineBatchUnits": 100,
+        "refineCycleMs": 40000
+      },
+      {
+        "id": "ice-marrow",
+        "kind": "ice",
+        "unitM3": 4,
+        "baseSellPriceIsk": 68,
+        "refine": [
+          {
+            "mineralId": "min-cryoslurry",
+            "perOre": 0.284
+          },
+          {
+            "mineralId": "min-curvature",
+            "perOre": 0.027
+          },
+          {
+            "mineralId": "min-starcore",
+            "perOre": 0.19
+          },
+          {
+            "mineralId": "min-isotope",
+            "perOre": 0.348
+          },
+          {
+            "mineralId": "min-mexallon",
+            "perOre": 0.127
+          }
+        ],
+        "refineBatchUnits": 100,
+        "refineCycleMs": 80000
+      },
+      {
+        "id": "ice-darkstar",
+        "kind": "ice",
+        "unitM3": 8,
+        "baseSellPriceIsk": 144,
+        "refine": [
+          {
+            "mineralId": "min-cryoslurry",
+            "perOre": 0.602
+          },
+          {
+            "mineralId": "min-curvature",
+            "perOre": 0.057
+          },
+          {
+            "mineralId": "min-darkiron",
+            "perOre": 0.103
+          },
+          {
+            "mineralId": "min-starcore",
+            "perOre": 0.191
+          },
+          {
+            "mineralId": "min-isotope",
+            "perOre": 0.318
+          }
+        ],
+        "refineBatchUnits": 100,
+        "refineCycleMs": 160000
+      }
+    ],
+    "AMMO_0": [
+      {
+        "id": "ammo-kinetic-l",
+        "kind": "ammo",
+        "unitM3": 0.02,
+        "baseSellPriceIsk": 6,
+        "damageType": "kinetic",
+        "dmg": 6
+      },
+      {
+        "id": "ammo-explosive-l",
+        "kind": "ammo",
+        "unitM3": 0.02,
+        "baseSellPriceIsk": 7,
+        "damageType": "explosive",
+        "dmg": 7
+      },
+      {
+        "id": "ammo-plasma-l",
+        "kind": "ammo",
+        "unitM3": 0.02,
+        "baseSellPriceIsk": 8,
+        "damageType": "plasma",
+        "dmg": 9
+      },
+      {
+        "id": "ammo-kinetic-2",
+        "kind": "ammo",
+        "unitM3": 0.02,
+        "baseSellPriceIsk": 45,
+        "damageType": "kinetic",
+        "dmg": 8
+      },
+      {
+        "id": "ammo-explosive-2",
+        "kind": "ammo",
+        "unitM3": 0.02,
+        "baseSellPriceIsk": 60,
+        "damageType": "explosive",
+        "dmg": 9
+      },
+      {
+        "id": "ammo-plasma-2",
+        "kind": "ammo",
+        "unitM3": 0.02,
+        "baseSellPriceIsk": 80,
+        "damageType": "plasma",
+        "dmg": 12
+      }
+    ],
+    "DRONES_0": [
+      {
+        "id": "drone-scout",
+        "kind": "drone",
+        "unitM3": 5,
+        "baseSellPriceIsk": 900,
+        "damageType": "kinetic",
+        "dmg": 3,
+        "cpuUse": 4,
+        "maxRangeM": 6000,
+        "droneClass": "scout",
+        "hitRate": 0.75,
+        "falloff": 1,
+        "defense": {
+          "shieldHp": 12,
+          "armorHp": 6,
+          "hullHp": 20,
+          "evasion": 0.45
+        }
+      },
+      {
+        "id": "drone-assault",
+        "kind": "drone",
+        "unitM3": 10,
+        "baseSellPriceIsk": 2200,
+        "damageType": "explosive",
+        "dmg": 6,
+        "cpuUse": 7,
+        "maxRangeM": 5000,
+        "droneClass": "combat",
+        "hitRate": 0.75,
+        "falloff": 1,
+        "defense": {
+          "shieldHp": 24,
+          "armorHp": 16,
+          "hullHp": 40,
+          "shieldResist": {
+            "kinetic": 0.1
+          },
+          "evasion": 0.25
+        }
+      },
+      {
+        "id": "drone-heavy",
+        "kind": "drone",
+        "unitM3": 20,
+        "baseSellPriceIsk": 5000,
+        "damageType": "plasma",
+        "dmg": 12,
+        "cpuUse": 11,
+        "maxRangeM": 4000,
+        "droneClass": "assault",
+        "hitRate": 0.75,
+        "falloff": 1,
+        "defense": {
+          "shieldHp": 60,
+          "armorHp": 44,
+          "hullHp": 90,
+          "shieldResist": {
+            "kinetic": 0.25,
+            "explosive": 0.25,
+            "plasma": 0.25
+          },
+          "armorResist": {
+            "kinetic": 0.25,
+            "explosive": 0.25,
+            "plasma": 0.25
+          },
+          "hullResist": {
+            "kinetic": 0.25,
+            "explosive": 0.25,
+            "plasma": 0.25
+          },
+          "evasion": 0.1
+        }
+      },
+      {
+        "id": "drone-sentry",
+        "kind": "drone",
+        "unitM3": 40,
+        "baseSellPriceIsk": 9500,
+        "damageType": "plasma",
+        "dmg": 20,
+        "cpuUse": 16,
+        "maxRangeM": 6500,
+        "reloadMs": 8800,
+        "droneClass": "sentry",
+        "hitRate": 1.1,
+        "falloff": 0.35,
+        "defense": {
+          "shieldHp": 16,
+          "armorHp": 10,
+          "hullHp": 20,
+          "shieldResist": {
+            "kinetic": 0.1
+          },
+          "evasion": 0.18
+        }
+      },
+      {
+        "id": "drone-exile-bee",
+        "kind": "drone",
+        "unitM3": 5,
+        "baseSellPriceIsk": 24000,
+        "damageType": "kinetic",
+        "dmg": 6,
+        "cpuUse": 5,
+        "maxRangeM": 6000,
+        "droneClass": "scout",
+        "hitRate": 0.75,
+        "falloff": 1,
+        "defense": {
+          "shieldHp": 12,
+          "armorHp": 6,
+          "hullHp": 12,
+          "evasion": 0.55
+        },
+        "exclusive": true
+      },
+      {
+        "id": "drone-wh-c-heavy",
+        "kind": "drone",
+        "unitM3": 20,
+        "baseSellPriceIsk": 48000,
+        "damageType": "explosive",
+        "dmg": 15,
+        "cpuUse": 12,
+        "maxRangeM": 4000,
+        "droneClass": "assault",
+        "hitRate": 0.78,
+        "falloff": 1,
+        "defense": {
+          "shieldHp": 50,
+          "armorHp": 70,
+          "hullHp": 120,
+          "shieldResist": {
+            "kinetic": 0.25,
+            "explosive": 0.25,
+            "plasma": 0.25
+          },
+          "armorResist": {
+            "kinetic": 0.35,
+            "explosive": 0.35,
+            "plasma": 0.35
+          },
+          "hullResist": {
+            "kinetic": 0.35,
+            "explosive": 0.35,
+            "plasma": 0.35
+          },
+          "evasion": 0.08
+        },
+        "exclusive": true
+      },
+      {
+        "id": "drone-wh-e-sentry",
+        "kind": "drone",
+        "unitM3": 40,
+        "baseSellPriceIsk": 88000,
+        "damageType": "kinetic",
+        "dmg": 24,
+        "cpuUse": 18,
+        "maxRangeM": 7500,
+        "reloadMs": 8800,
+        "droneClass": "sentry",
+        "hitRate": 1.15,
+        "falloff": 0.4,
+        "defense": {
+          "shieldHp": 28,
+          "armorHp": 14,
+          "hullHp": 18,
+          "shieldResist": {
+            "kinetic": 0.2
+          },
+          "armorResist": {
+            "kinetic": 0.1
+          },
+          "hullResist": {
+            "kinetic": 0.1
+          },
+          "evasion": 0.2
+        },
+        "exclusive": true
+      },
+      {
+        "id": "drone-ink-heavy",
+        "kind": "drone",
+        "unitM3": 20,
+        "baseSellPriceIsk": 48000,
+        "damageType": "kinetic",
+        "dmg": 16,
+        "cpuUse": 13,
+        "maxRangeM": 4000,
+        "droneClass": "assault",
+        "hitRate": 0.85,
+        "falloff": 1,
+        "defense": {
+          "shieldHp": 40,
+          "armorHp": 80,
+          "hullHp": 100,
+          "shieldResist": {
+            "kinetic": 0.25,
+            "explosive": 0.25,
+            "plasma": 0.25
+          },
+          "armorResist": {
+            "kinetic": 0.2,
+            "explosive": 0.2,
+            "plasma": 0.2
+          },
+          "hullResist": {
+            "kinetic": 0.2,
+            "explosive": 0.2,
+            "plasma": 0.2
+          },
+          "evasion": 0.05
+        },
+        "exclusive": true
+      }
+    ],
+    "REPAIR_KITS_0": [
+      {
+        "id": "repairkit-civ",
+        "kind": "kit",
+        "unitM3": 1,
+        "baseSellPriceIsk": 3000,
+        "repairRestore": 5
+      },
+      {
+        "id": "repairkit-mil",
+        "kind": "kit",
+        "unitM3": 1,
+        "baseSellPriceIsk": 21000,
+        "repairRestore": 10
+      },
+      {
+        "id": "repairkit-dc",
+        "kind": "kit",
+        "unitM3": 1,
+        "baseSellPriceIsk": 500000
+      }
+    ],
+    "MATTER_DEVICES_0": [
+      {
+        "id": "mat-surveyor",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-chrono",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-crane",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-drill",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-nebula",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-enricher",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-expander",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-suppressor",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-boss-analyzer",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-extract-cover",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-shield-res",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-armor-res",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-hull-res",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-tracker",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-gyro",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-jammer",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-rangefinder",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-blindspot",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-ammo-dmg",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-reload",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-volley",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-ammo-back",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-drone-net",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "mat-field-repair",
+        "kind": "matter",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 1
+      }
+    ],
+    "WORMHOLE_ESSENCES_0": [
+      {
+        "id": "mat-wh-essence",
+        "kind": "essence",
+        "unitM3": 0.5,
+        "baseSellPriceIsk": 700000
+      }
+    ],
+    "LUXURIES_0": [
+      {
+        "id": "lux-1",
+        "kind": "luxury",
+        "unitM3": 2,
+        "baseSellPriceIsk": 100000
+      },
+      {
+        "id": "lux-2",
+        "kind": "luxury",
+        "unitM3": 2,
+        "baseSellPriceIsk": 400000
+      },
+      {
+        "id": "lux-3",
+        "kind": "luxury",
+        "unitM3": 2,
+        "baseSellPriceIsk": 2000000
+      },
+      {
+        "id": "lux-4",
+        "kind": "luxury",
+        "unitM3": 2,
+        "baseSellPriceIsk": 60000
+      },
+      {
+        "id": "lux-5",
+        "kind": "luxury",
+        "unitM3": 2,
+        "baseSellPriceIsk": 140000
+      },
+      {
+        "id": "lux-6",
+        "kind": "luxury",
+        "unitM3": 2,
+        "baseSellPriceIsk": 250000
+      },
+      {
+        "id": "lux-7",
+        "kind": "luxury",
+        "unitM3": 2,
+        "baseSellPriceIsk": 600000
+      },
+      {
+        "id": "lux-8",
+        "kind": "luxury",
+        "unitM3": 2,
+        "baseSellPriceIsk": 800000
+      },
+      {
+        "id": "lux-9",
+        "kind": "luxury",
+        "unitM3": 2,
+        "baseSellPriceIsk": 1200000
+      },
+      {
+        "id": "lux-10",
+        "kind": "luxury",
+        "unitM3": 2,
+        "baseSellPriceIsk": 3200000
+      }
+    ],
+    "VALUABLES_CONTAINERS_0": [
+      {
+        "id": "box-valuables",
+        "kind": "container",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 3828000
+      }
+    ],
+    "MILITARY_CONTAINERS_0": [
+      {
+        "id": "box-military",
+        "kind": "container",
+        "unitM3": 2000,
+        "baseSellPriceIsk": 2800000
+      }
+    ],
+    "AI_CORE_ITEMS_0": [
+      {
+        "id": "ai-core-gamma",
+        "kind": "aicore",
+        "unitM3": 500,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "ai-core-beta",
+        "kind": "aicore",
+        "unitM3": 500,
+        "baseSellPriceIsk": 1
+      },
+      {
+        "id": "ai-core-alpha",
+        "kind": "aicore",
+        "unitM3": 500,
+        "baseSellPriceIsk": 1
+      }
+    ],
+    "PARTS_0": [
+      {
+        "id": "part-circuit",
+        "kind": "part",
+        "unitM3": 0.1,
+        "baseSellPriceIsk": 95
+      },
+      {
+        "id": "part-armor-plate",
+        "kind": "part",
+        "unitM3": 0.1,
+        "baseSellPriceIsk": 250
+      },
+      {
+        "id": "part-frame",
+        "kind": "part",
+        "unitM3": 0.1,
+        "baseSellPriceIsk": 145
+      },
+      {
+        "id": "part-cable",
+        "kind": "part",
+        "unitM3": 0.1,
+        "baseSellPriceIsk": 155
+      },
+      {
+        "id": "part-coolant",
+        "kind": "part",
+        "unitM3": 0.1,
+        "baseSellPriceIsk": 115
+      },
+      {
+        "id": "part-gyro",
+        "kind": "part",
+        "unitM3": 0.1,
+        "baseSellPriceIsk": 420
+      },
+      {
+        "id": "part-lens",
+        "kind": "part",
+        "unitM3": 0.1,
+        "baseSellPriceIsk": 190
+      },
+      {
+        "id": "part-drone-neural",
+        "kind": "part",
+        "unitM3": 0.1,
+        "baseSellPriceIsk": 930
+      },
+      {
+        "id": "part-shield-gen",
+        "kind": "part",
+        "unitM3": 0.1,
+        "baseSellPriceIsk": 1010
+      },
+      {
+        "id": "part-jet-array",
+        "kind": "part",
+        "unitM3": 0.1,
+        "baseSellPriceIsk": 1550
+      },
+      {
+        "id": "part-qchip",
+        "kind": "part",
+        "unitM3": 0.1,
+        "baseSellPriceIsk": 700
+      },
+      {
+        "id": "part-keel",
+        "kind": "part",
+        "unitM3": 0.1,
+        "baseSellPriceIsk": 3120
+      },
+      {
+        "id": "part-fire-control",
+        "kind": "part",
+        "unitM3": 0.1,
+        "baseSellPriceIsk": 1670
+      },
+      {
+        "id": "part-grav-comp",
+        "kind": "part",
+        "unitM3": 0.1,
+        "baseSellPriceIsk": 7500
+      }
+    ],
+    "WEEKEND_TROPHIES_0": [
+      {
+        "id": "blackbox-h",
+        "kind": "blackbox",
+        "unitM3": 5,
+        "baseSellPriceIsk": 10000000
+      },
+      {
+        "id": "blackbox-r",
+        "kind": "blackbox",
+        "unitM3": 5,
+        "baseSellPriceIsk": 10000000
+      },
+      {
+        "id": "blackbox-universal",
+        "kind": "blackbox",
+        "unitM3": 5,
+        "baseSellPriceIsk": 5000000
+      }
+    ],
+    "CONSUMABLES_0": [
+      {
+        "id": "jump-fuel",
+        "kind": "consumable",
+        "unitM3": 1,
+        "holdForbidden": true,
+        "baseSellPriceIsk": 5800
+      },
+      {
+        "id": "invasion-beacon",
+        "kind": "consumable",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 96000000
+      },
+      {
+        "id": "synaptic-accelerant",
+        "kind": "consumable",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 18000000
+      }
+    ]
+  }
+}

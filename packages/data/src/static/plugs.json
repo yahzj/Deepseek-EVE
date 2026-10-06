@@ -1,0 +1,94 @@
+{
+  "format": "whale-static-data",
+  "version": 1,
+  "table": "plugs",
+  "groups": {
+    "SHIP_PLUGS_0": [
+      {
+        "id": "plug-shield-plate",
+        "slot": "plug",
+        "rack": "low",
+        "shieldHpAdd": 80,
+        "cpuUse": 0
+      },
+      {
+        "id": "plug-armor-plate",
+        "slot": "plug",
+        "rack": "low",
+        "armorHpAdd": 140,
+        "speedPenaltyMps": 20,
+        "cpuUse": 0
+      },
+      {
+        "id": "plug-hull-plate",
+        "slot": "plug",
+        "rack": "low",
+        "hullHpAdd": 80,
+        "cpuUse": 0
+      },
+      {
+        "id": "plug-mid-bay",
+        "slot": "plug",
+        "rack": "low",
+        "midSlotsAdd": 1,
+        "cpuUse": 0
+      },
+      {
+        "id": "plug-low-bay",
+        "slot": "plug",
+        "rack": "low",
+        "lowSlotsAdd": 1,
+        "cpuUse": 0
+      },
+      {
+        "id": "plug-cpu-core",
+        "slot": "plug",
+        "rack": "low",
+        "cpuBonus": 80,
+        "cpuUse": 0
+      },
+      {
+        "id": "plug-firepower",
+        "slot": "plug",
+        "rack": "low",
+        "damageBonusPct": 0.15,
+        "cpuUse": 0
+      },
+      {
+        "id": "plug-sight",
+        "slot": "plug",
+        "rack": "low",
+        "hitBonusPct": 0.15,
+        "cpuUse": 0
+      },
+      {
+        "id": "plug-rangefinder",
+        "slot": "plug",
+        "rack": "low",
+        "plugRangeBonusPct": 0.2,
+        "cpuUse": 0
+      },
+      {
+        "id": "plug-thruster",
+        "slot": "plug",
+        "rack": "low",
+        "speedAddMps": 40,
+        "cpuUse": 0
+      },
+      {
+        "id": "plug-target-beacon",
+        "slot": "plug",
+        "rack": "low",
+        "targetWeightMul": 3,
+        "cpuUse": 0
+      },
+      {
+        "id": "plug-concealment",
+        "slot": "plug",
+        "rack": "low",
+        "targetWeightMul": 0.7,
+        "cpuUse": 0
+      }
+    ]
+  }
+}

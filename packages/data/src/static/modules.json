@@ -1,0 +1,1502 @@
+{
+  "format": "whale-static-data",
+  "version": 1,
+  "table": "modules",
+  "groups": {
+    "MODULES_0": [
+      {
+        "id": "mod-miner-civ",
+        "slot": "miner",
+        "workEfficiency": 0,
+        "rack": "high",
+        "bonus": 0.1,
+        "cpuUse": 3
+      },
+      {
+        "id": "mod-miner-1",
+        "slot": "miner",
+        "workEfficiency": 0.2,
+        "rack": "high",
+        "bonus": 0.2,
+        "cpuUse": 5
+      },
+      {
+        "id": "mod-miner-2",
+        "slot": "miner",
+        "workEfficiency": 0.4,
+        "rack": "high",
+        "bonus": 0.5,
+        "cpuUse": 15
+      },
+      {
+        "id": "mod-miner-3",
+        "slot": "miner",
+        "workEfficiency": 0.6,
+        "rack": "high",
+        "bonus": 0.8,
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-miner-proto",
+        "slot": "miner",
+        "workEfficiency": 0.8,
+        "rack": "high",
+        "bonus": 1.1,
+        "cpuUse": 60
+      },
+      {
+        "id": "mod-cargo-civ",
+        "slot": "cargo",
+        "rack": "low",
+        "bonus": 0.15,
+        "cpuUse": 3
+      },
+      {
+        "id": "mod-cargo-1",
+        "slot": "cargo",
+        "rack": "low",
+        "bonus": 0.3,
+        "cpuUse": 5
+      },
+      {
+        "id": "mod-cargo-2",
+        "slot": "cargo",
+        "rack": "low",
+        "bonus": 0.8,
+        "cpuUse": 15
+      },
+      {
+        "id": "mod-cargo-3",
+        "slot": "cargo",
+        "rack": "low",
+        "bonus": 1.4,
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-cargo-proto",
+        "slot": "cargo",
+        "rack": "low",
+        "bonus": 1.8,
+        "cpuUse": 60
+      },
+      {
+        "id": "mod-turret-civ",
+        "slot": "turret",
+        "rack": "high",
+        "damageType": "kinetic",
+        "ammoPerEngagement": 24,
+        "cpuUse": 6,
+        "maxRangeM": 4200,
+        "minRangeM": 250,
+        "hitRate": 0.8,
+        "falloff": 0.5,
+        "reloadMs": 2400,
+        "dmgMult": 1
+      },
+      {
+        "id": "mod-turret-kin-1",
+        "slot": "turret",
+        "rack": "high",
+        "damageType": "kinetic",
+        "ammoPerEngagement": 24,
+        "cpuUse": 10,
+        "maxRangeM": 3220,
+        "minRangeM": 500,
+        "hitRate": 0.8,
+        "falloff": 0.5,
+        "reloadMs": 1540,
+        "dmgMult": 1.25
+      },
+      {
+        "id": "mod-turret-kin-2",
+        "slot": "turret",
+        "rack": "high",
+        "damageType": "kinetic",
+        "ammoPerEngagement": 12,
+        "cpuUse": 28,
+        "maxRangeM": 5740,
+        "minRangeM": 600,
+        "hitRate": 0.78,
+        "falloff": 0.5,
+        "reloadMs": 2380,
+        "dmgMult": 3.73
+      },
+      {
+        "id": "mod-turret-kin-3",
+        "slot": "turret",
+        "rack": "high",
+        "damageType": "kinetic",
+        "ammoPerEngagement": 12,
+        "cpuUse": 52,
+        "maxRangeM": 7350,
+        "minRangeM": 700,
+        "hitRate": 0.78,
+        "falloff": 0.5,
+        "reloadMs": 2940,
+        "dmgMult": 5.13
+      },
+      {
+        "id": "mod-pd-e",
+        "slot": "turret",
+        "rack": "high",
+        "damageType": "kinetic",
+        "ammoPerEngagement": 40,
+        "cpuUse": 12,
+        "maxRangeM": 2500,
+        "minRangeM": 1,
+        "hitRate": 0.9,
+        "falloff": 0.5,
+        "reloadMs": 1500,
+        "dmgMult": 1.65,
+        "antiDrone": 2
+      },
+      {
+        "id": "mod-pd-e-2",
+        "slot": "turret",
+        "rack": "high",
+        "damageType": "kinetic",
+        "ammoPerEngagement": 48,
+        "cpuUse": 26,
+        "maxRangeM": 2500,
+        "minRangeM": 1,
+        "hitRate": 0.9,
+        "falloff": 0.5,
+        "reloadMs": 1400,
+        "dmgMult": 2.65,
+        "antiDrone": 2
+      },
+      {
+        "id": "mod-pd-e-3",
+        "slot": "turret",
+        "rack": "high",
+        "damageType": "kinetic",
+        "ammoPerEngagement": 56,
+        "cpuUse": 44,
+        "maxRangeM": 2500,
+        "minRangeM": 1,
+        "hitRate": 0.92,
+        "falloff": 0.5,
+        "reloadMs": 1300,
+        "dmgMult": 2.85,
+        "antiDrone": 2
+      },
+      {
+        "id": "mod-laser-1",
+        "slot": "laser",
+        "rack": "high",
+        "damageType": "plasma",
+        "ammoPerEngagement": 24,
+        "cpuUse": 10,
+        "maxRangeM": 4600,
+        "minRangeM": 0,
+        "hitRate": 1,
+        "falloff": 0.1,
+        "reloadMs": 2000,
+        "dmgMult": 1.1
+      },
+      {
+        "id": "mod-laser-2",
+        "slot": "laser",
+        "rack": "high",
+        "damageType": "plasma",
+        "ammoPerEngagement": 12,
+        "cpuUse": 28,
+        "maxRangeM": 8200,
+        "minRangeM": 0,
+        "hitRate": 1,
+        "falloff": 0.1,
+        "reloadMs": 3200,
+        "dmgMult": 3
+      },
+      {
+        "id": "mod-laser-3",
+        "slot": "laser",
+        "rack": "high",
+        "damageType": "plasma",
+        "ammoPerEngagement": 12,
+        "cpuUse": 52,
+        "maxRangeM": 10500,
+        "minRangeM": 0,
+        "hitRate": 1,
+        "falloff": 0.1,
+        "reloadMs": 4000,
+        "dmgMult": 4.2
+      },
+      {
+        "id": "mod-laser-proto",
+        "slot": "laser",
+        "rack": "high",
+        "damageType": "plasma",
+        "ammoPerEngagement": 12,
+        "cpuUse": 70,
+        "maxRangeM": 13000,
+        "minRangeM": 0,
+        "hitRate": 1,
+        "falloff": 0.1,
+        "reloadMs": 4600,
+        "dmgMult": 5.1
+      },
+      {
+        "id": "mod-missile-1",
+        "slot": "missile",
+        "rack": "high",
+        "damageType": "explosive",
+        "ammoPerEngagement": 24,
+        "cpuUse": 10,
+        "maxRangeM": 7440,
+        "minRangeM": 500,
+        "hitRate": 0.92,
+        "falloff": 1,
+        "reloadMs": 3432,
+        "dmgMult": 1.5
+      },
+      {
+        "id": "mod-missile-2",
+        "slot": "missile",
+        "rack": "high",
+        "damageType": "explosive",
+        "ammoPerEngagement": 12,
+        "cpuUse": 28,
+        "maxRangeM": 11760,
+        "minRangeM": 900,
+        "hitRate": 0.92,
+        "falloff": 1,
+        "reloadMs": 5280,
+        "dmgMult": 4.39
+      },
+      {
+        "id": "mod-missile-3",
+        "slot": "missile",
+        "rack": "high",
+        "damageType": "explosive",
+        "ammoPerEngagement": 12,
+        "cpuUse": 52,
+        "maxRangeM": 14880,
+        "minRangeM": 1400,
+        "hitRate": 0.92,
+        "falloff": 1,
+        "reloadMs": 6600,
+        "dmgMult": 6.04
+      },
+      {
+        "id": "mod-drone-rack-1",
+        "slot": "drone-rack",
+        "rack": "low",
+        "droneBayBonusM3": 15,
+        "cpuUse": 5
+      },
+      {
+        "id": "mod-drone-rack-2",
+        "slot": "drone-rack",
+        "rack": "low",
+        "droneBayBonusM3": 35,
+        "cpuUse": 15
+      },
+      {
+        "id": "mod-drone-rack-3",
+        "slot": "drone-rack",
+        "rack": "low",
+        "droneBayBonusM3": 70,
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-drone-tac-1",
+        "slot": "drone-tac",
+        "rack": "high",
+        "droneDmgBonus": 0.12,
+        "cpuUse": 8
+      },
+      {
+        "id": "mod-drone-tac-2",
+        "slot": "drone-tac",
+        "rack": "high",
+        "droneDmgBonus": 0.25,
+        "cpuUse": 20
+      },
+      {
+        "id": "mod-drone-tac-3",
+        "slot": "drone-tac",
+        "rack": "high",
+        "droneDmgBonus": 0.4,
+        "cpuUse": 45
+      },
+      {
+        "id": "mod-drone-relay-1",
+        "slot": "drone-relay",
+        "rack": "high",
+        "droneRangeBonusPct": 0.2,
+        "cpuUse": 6
+      },
+      {
+        "id": "mod-drone-relay-2",
+        "slot": "drone-relay",
+        "rack": "high",
+        "droneRangeBonusPct": 0.45,
+        "cpuUse": 16
+      },
+      {
+        "id": "mod-drone-relay-3",
+        "slot": "drone-relay",
+        "rack": "high",
+        "droneRangeBonusPct": 0.8,
+        "cpuUse": 46
+      },
+      {
+        "id": "mod-drone-shield-2",
+        "slot": "drone-shield",
+        "rack": "mid",
+        "droneShieldHpBonusPct": 0.7,
+        "cpuUse": 20
+      },
+      {
+        "id": "mod-drone-shield-3",
+        "slot": "drone-shield",
+        "rack": "mid",
+        "droneShieldHpBonusPct": 1,
+        "cpuUse": 45
+      },
+      {
+        "id": "mod-drone-deck-1",
+        "slot": "drone-deck",
+        "rack": "high",
+        "droneReviveCycleMs": 14000,
+        "cpuUse": 35
+      },
+      {
+        "id": "mod-drone-deck-2",
+        "slot": "drone-deck",
+        "rack": "high",
+        "droneReviveCycleMs": 12000,
+        "cpuUse": 45
+      },
+      {
+        "id": "mod-drone-deck-3",
+        "slot": "drone-deck",
+        "rack": "high",
+        "droneReviveCycleMs": 9000,
+        "cpuUse": 55
+      },
+      {
+        "id": "mod-shield-kin-1",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldResistAdd": {
+          "kinetic": 0.2
+        },
+        "cpuUse": 5
+      },
+      {
+        "id": "mod-shield-exp-1",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldResistAdd": {
+          "explosive": 0.2
+        },
+        "cpuUse": 5
+      },
+      {
+        "id": "mod-shield-pla-1",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldResistAdd": {
+          "plasma": 0.2
+        },
+        "cpuUse": 5
+      },
+      {
+        "id": "mod-shield-kin-2",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldResistAdd": {
+          "kinetic": 0.35
+        },
+        "cpuUse": 15
+      },
+      {
+        "id": "mod-shield-exp-2",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldResistAdd": {
+          "explosive": 0.35
+        },
+        "cpuUse": 15
+      },
+      {
+        "id": "mod-shield-pla-2",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldResistAdd": {
+          "plasma": 0.35
+        },
+        "cpuUse": 15
+      },
+      {
+        "id": "mod-shield-kin-3",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldResistAdd": {
+          "kinetic": 0.5
+        },
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-shield-exp-3",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldResistAdd": {
+          "explosive": 0.5
+        },
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-shield-pla-3",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldResistAdd": {
+          "plasma": 0.5
+        },
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-shield-ext-1",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldHpBonus": 0.15,
+        "cpuUse": 5
+      },
+      {
+        "id": "mod-shield-ext-2",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldHpBonus": 0.35,
+        "cpuUse": 15
+      },
+      {
+        "id": "mod-shield-ext-3",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldHpBonus": 0.6,
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-shieldchg-1",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldPulsePct": 0.12,
+        "cpuUse": 25
+      },
+      {
+        "id": "mod-shieldchg-2",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldPulsePct": 0.2,
+        "cpuUse": 45
+      },
+      {
+        "id": "mod-shieldchg-3",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldPulsePct": 0.32,
+        "cpuUse": 70
+      },
+      {
+        "id": "mod-shieldfield-2",
+        "slot": "shield-field",
+        "rack": "high",
+        "shieldFieldPct": 0.1,
+        "shieldFieldMs": 10000,
+        "cpuUse": 63
+      },
+      {
+        "id": "mod-shieldfield-3",
+        "slot": "shield-field",
+        "rack": "high",
+        "shieldFieldPct": 0.1,
+        "shieldFieldMs": 8000,
+        "cpuUse": 91
+      },
+      {
+        "id": "mod-armor-kin-1",
+        "slot": "armor",
+        "rack": "low",
+        "armorResistAdd": {
+          "kinetic": 0.25
+        },
+        "cpuUse": 4
+      },
+      {
+        "id": "mod-armor-exp-1",
+        "slot": "armor",
+        "rack": "low",
+        "armorResistAdd": {
+          "explosive": 0.25
+        },
+        "cpuUse": 4
+      },
+      {
+        "id": "mod-armor-pla-1",
+        "slot": "armor",
+        "rack": "low",
+        "armorResistAdd": {
+          "plasma": 0.25
+        },
+        "cpuUse": 4
+      },
+      {
+        "id": "mod-armor-kin-2",
+        "slot": "armor",
+        "rack": "low",
+        "armorResistAdd": {
+          "kinetic": 0.4
+        },
+        "cpuUse": 12
+      },
+      {
+        "id": "mod-armor-exp-2",
+        "slot": "armor",
+        "rack": "low",
+        "armorResistAdd": {
+          "explosive": 0.4
+        },
+        "cpuUse": 12
+      },
+      {
+        "id": "mod-armor-pla-2",
+        "slot": "armor",
+        "rack": "low",
+        "armorResistAdd": {
+          "plasma": 0.4
+        },
+        "cpuUse": 12
+      },
+      {
+        "id": "mod-armor-kin-3",
+        "slot": "armor",
+        "rack": "low",
+        "armorResistAdd": {
+          "kinetic": 0.55
+        },
+        "cpuUse": 32
+      },
+      {
+        "id": "mod-armor-exp-3",
+        "slot": "armor",
+        "rack": "low",
+        "armorResistAdd": {
+          "explosive": 0.55
+        },
+        "cpuUse": 32
+      },
+      {
+        "id": "mod-armor-pla-3",
+        "slot": "armor",
+        "rack": "low",
+        "armorResistAdd": {
+          "plasma": 0.55
+        },
+        "cpuUse": 32
+      },
+      {
+        "id": "mod-dc-1",
+        "slot": "support",
+        "rack": "low",
+        "hullResistAdd": {
+          "kinetic": 0.3,
+          "explosive": 0.3,
+          "plasma": 0.3
+        },
+        "hullSaveKit": "repairkit-dc",
+        "unique": true,
+        "cpuUse": 30
+      },
+      {
+        "id": "mod-dc-2",
+        "slot": "support",
+        "rack": "low",
+        "hullResistAdd": {
+          "kinetic": 0.4,
+          "explosive": 0.4,
+          "plasma": 0.4
+        },
+        "hullSaveKit": "repairkit-dc",
+        "unique": true,
+        "cpuUse": 38
+      },
+      {
+        "id": "mod-dc-3",
+        "slot": "support",
+        "rack": "low",
+        "hullResistAdd": {
+          "kinetic": 0.5,
+          "explosive": 0.5,
+          "plasma": 0.5
+        },
+        "hullSaveKit": "repairkit-dc",
+        "unique": true,
+        "cpuUse": 46
+      },
+      {
+        "id": "mod-armor-plate-1",
+        "slot": "armor",
+        "rack": "low",
+        "armorHpBonus": 0.2,
+        "cpuUse": 4
+      },
+      {
+        "id": "mod-armor-plate-2",
+        "slot": "armor",
+        "rack": "low",
+        "armorHpBonus": 0.45,
+        "cpuUse": 12
+      },
+      {
+        "id": "mod-armor-plate-3",
+        "slot": "armor",
+        "rack": "low",
+        "armorHpBonus": 0.8,
+        "cpuUse": 32
+      },
+      {
+        "id": "mod-prop-1",
+        "slot": "propulsion",
+        "rack": "mid",
+        "speedBonusPct": 0.3,
+        "hitPenalty": 0.05,
+        "cpuUse": 5
+      },
+      {
+        "id": "mod-prop-2",
+        "slot": "propulsion",
+        "rack": "mid",
+        "speedBonusPct": 0.6,
+        "hitPenalty": 0.12,
+        "cpuUse": 15
+      },
+      {
+        "id": "mod-prop-3",
+        "slot": "propulsion",
+        "rack": "mid",
+        "speedBonusPct": 1,
+        "hitPenalty": 0.2,
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-mwd-1",
+        "slot": "propulsion",
+        "rack": "mid",
+        "speedBonusPct": 0.8,
+        "hitPenalty": 0.2,
+        "thrusterBoostMs": 10000,
+        "thrusterCooldownMs": 60000,
+        "cpuUse": 10
+      },
+      {
+        "id": "mod-mwd-2",
+        "slot": "propulsion",
+        "rack": "mid",
+        "speedBonusPct": 1.5,
+        "hitPenalty": 0.25,
+        "thrusterBoostMs": 10000,
+        "thrusterCooldownMs": 60000,
+        "cpuUse": 25
+      },
+      {
+        "id": "mod-mwd-3",
+        "slot": "propulsion",
+        "rack": "mid",
+        "speedBonusPct": 2.5,
+        "hitPenalty": 0.4,
+        "thrusterBoostMs": 10000,
+        "thrusterCooldownMs": 60000,
+        "cpuUse": 50
+      },
+      {
+        "id": "mod-stab-kin-1",
+        "slot": "support",
+        "rack": "low",
+        "damageTypeBonusPct": {
+          "kinetic": 0.06
+        },
+        "cpuUse": 5
+      },
+      {
+        "id": "mod-stab-kin-2",
+        "slot": "support",
+        "rack": "low",
+        "damageTypeBonusPct": {
+          "kinetic": 0.1
+        },
+        "cpuUse": 15
+      },
+      {
+        "id": "mod-stab-kin-3",
+        "slot": "support",
+        "rack": "low",
+        "damageTypeBonusPct": {
+          "kinetic": 0.15
+        },
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-stab-exp-1",
+        "slot": "support",
+        "rack": "low",
+        "damageTypeBonusPct": {
+          "explosive": 0.06
+        },
+        "cpuUse": 5
+      },
+      {
+        "id": "mod-stab-exp-2",
+        "slot": "support",
+        "rack": "low",
+        "damageTypeBonusPct": {
+          "explosive": 0.1
+        },
+        "cpuUse": 15
+      },
+      {
+        "id": "mod-stab-exp-3",
+        "slot": "support",
+        "rack": "low",
+        "damageTypeBonusPct": {
+          "explosive": 0.15
+        },
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-stab-pla-1",
+        "slot": "support",
+        "rack": "low",
+        "damageTypeBonusPct": {
+          "plasma": 0.06
+        },
+        "cpuUse": 5
+      },
+      {
+        "id": "mod-stab-pla-2",
+        "slot": "support",
+        "rack": "low",
+        "damageTypeBonusPct": {
+          "plasma": 0.1
+        },
+        "cpuUse": 15
+      },
+      {
+        "id": "mod-stab-pla-3",
+        "slot": "support",
+        "rack": "low",
+        "damageTypeBonusPct": {
+          "plasma": 0.15
+        },
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-rof-1",
+        "slot": "support",
+        "rack": "low",
+        "reloadCutPct": 0.05,
+        "cpuUse": 5
+      },
+      {
+        "id": "mod-rof-2",
+        "slot": "support",
+        "rack": "low",
+        "reloadCutPct": 0.08,
+        "cpuUse": 15
+      },
+      {
+        "id": "mod-rof-3",
+        "slot": "support",
+        "rack": "low",
+        "reloadCutPct": 0.12,
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-warpcomp-2",
+        "slot": "support",
+        "rack": "low",
+        "warpSpeedBonusPct": 0.2,
+        "cpuUse": 15
+      },
+      {
+        "id": "mod-warpcomp-3",
+        "slot": "support",
+        "rack": "low",
+        "warpSpeedBonusPct": 0.35,
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-track-1",
+        "slot": "support",
+        "rack": "mid",
+        "hitBonusPct": 0.08,
+        "cpuUse": 5
+      },
+      {
+        "id": "mod-track-2",
+        "slot": "support",
+        "rack": "mid",
+        "hitBonusPct": 0.12,
+        "cpuUse": 15
+      },
+      {
+        "id": "mod-track-3",
+        "slot": "support",
+        "rack": "mid",
+        "hitBonusPct": 0.16,
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-gyro-1",
+        "slot": "support",
+        "rack": "mid",
+        "evasionGapPct": 0.1,
+        "cpuUse": 5
+      },
+      {
+        "id": "mod-gyro-2",
+        "slot": "support",
+        "rack": "mid",
+        "evasionGapPct": 0.15,
+        "cpuUse": 15
+      },
+      {
+        "id": "mod-gyro-3",
+        "slot": "support",
+        "rack": "mid",
+        "evasionGapPct": 0.2,
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-cpu-1",
+        "slot": "cpu",
+        "rack": "low",
+        "cpuUse": 0,
+        "cpuBonus": 25
+      },
+      {
+        "id": "mod-cpu-2",
+        "slot": "cpu",
+        "rack": "low",
+        "cpuUse": 0,
+        "cpuBonus": 35
+      },
+      {
+        "id": "mod-cpu-3",
+        "slot": "cpu",
+        "rack": "low",
+        "cpuUse": 0,
+        "cpuBonus": 45
+      },
+      {
+        "id": "mod-salvager-1",
+        "slot": "salvager",
+        "workEfficiency": 0.2,
+        "rack": "high",
+        "cpuUse": 2,
+        "salvageCycleMs": 10000
+      },
+      {
+        "id": "mod-salvager-2",
+        "slot": "salvager",
+        "workEfficiency": 0.4,
+        "rack": "high",
+        "cpuUse": 6,
+        "salvageCycleMs": 8000
+      },
+      {
+        "id": "mod-salvager-3",
+        "slot": "salvager",
+        "workEfficiency": 0.6,
+        "rack": "high",
+        "cpuUse": 15,
+        "salvageCycleMs": 6000
+      },
+      {
+        "id": "mod-hullrep-civ",
+        "slot": "support",
+        "rack": "mid",
+        "cpuUse": 7,
+        "repairArmorHp": 5,
+        "repairHullHp": 5,
+        "repairKit": "repairkit-civ"
+      },
+      {
+        "id": "mod-hullrep-1",
+        "slot": "support",
+        "rack": "mid",
+        "cpuUse": 17,
+        "repairArmorHp": 10,
+        "repairHullHp": 10,
+        "repairKit": "repairkit-mil"
+      },
+      {
+        "id": "mod-hullrep-2",
+        "slot": "support",
+        "rack": "mid",
+        "cpuUse": 31,
+        "repairArmorHp": 18,
+        "repairHullHp": 18,
+        "repairKit": "repairkit-mil"
+      },
+      {
+        "id": "mod-lock-1",
+        "slot": "target-lock",
+        "rack": "high",
+        "cpuUse": 6,
+        "lockDmgBonus": 0.08
+      },
+      {
+        "id": "mod-lock-2",
+        "slot": "target-lock",
+        "rack": "high",
+        "cpuUse": 14,
+        "lockDmgBonus": 0.12
+      },
+      {
+        "id": "mod-lock-3",
+        "slot": "target-lock",
+        "rack": "high",
+        "cpuUse": 26,
+        "lockDmgBonus": 0.2
+      },
+      {
+        "id": "mod-stealth-2",
+        "slot": "support",
+        "rack": "high",
+        "cpuUse": 55,
+        "stealthMs": 20000
+      },
+      {
+        "id": "mod-stealth-3",
+        "slot": "support",
+        "rack": "high",
+        "cpuUse": 80,
+        "stealthMs": 30000
+      },
+      {
+        "id": "mod-lair-turret-a",
+        "slot": "turret",
+        "rack": "high",
+        "damageType": "kinetic",
+        "ammoPerEngagement": 48,
+        "maxRangeM": 3600,
+        "minRangeM": 180,
+        "hitRate": 0.84,
+        "falloff": 0.35,
+        "reloadMs": 500,
+        "ammoPerShot": 0.5,
+        "dmgMult": 1.8,
+        "cpuUse": 34
+      },
+      {
+        "id": "mod-lair-missile-a",
+        "slot": "missile",
+        "rack": "high",
+        "damageType": "explosive",
+        "ammoPerEngagement": 36,
+        "maxRangeM": 4500,
+        "minRangeM": 200,
+        "hitRate": 0.92,
+        "falloff": 1,
+        "reloadMs": 1720,
+        "dmgMult": 2.6,
+        "cpuUse": 36
+      },
+      {
+        "id": "mod-lair-cargo-a",
+        "slot": "cargo",
+        "rack": "low",
+        "bonus": 1,
+        "armorHpBonus": 0.15,
+        "cpuUse": 36
+      },
+      {
+        "id": "mod-lair-armor-c",
+        "slot": "armor",
+        "rack": "low",
+        "armorResistAdd": {
+          "kinetic": 0.1,
+          "explosive": 0.1,
+          "plasma": 0.1
+        },
+        "repairArmorHp": 6,
+        "repairIntervalMs": 5000,
+        "repairFree": true,
+        "repairIgnoresCapacityAmp": true,
+        "cpuUse": 30
+      },
+      {
+        "id": "mod-lair-dc-c",
+        "slot": "support",
+        "rack": "mid",
+        "hullResistAdd": {
+          "kinetic": 0.25,
+          "explosive": 0.25,
+          "plasma": 0.25
+        },
+        "repairHullHp": 4,
+        "repairIntervalMs": 5000,
+        "repairFree": true,
+        "repairIgnoresCapacityAmp": true,
+        "cpuUse": 34
+      },
+      {
+        "id": "mod-lair-laser-c",
+        "slot": "laser",
+        "rack": "high",
+        "damageType": "plasma",
+        "ammoPerEngagement": 24,
+        "maxRangeM": 2800,
+        "minRangeM": 0,
+        "hitRate": 1,
+        "falloff": 0.35,
+        "reloadMs": 2800,
+        "dmgMult": 4.4,
+        "cpuUse": 34
+      },
+      {
+        "id": "mod-lair-shield-d",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldResistAdd": {
+          "kinetic": 0.3,
+          "explosive": 0.3,
+          "plasma": 0.3
+        },
+        "cpuUse": 42
+      },
+      {
+        "id": "mod-lair-turret-d",
+        "slot": "turret",
+        "rack": "high",
+        "damageType": "kinetic",
+        "ammoPerEngagement": 12,
+        "maxRangeM": 12000,
+        "minRangeM": 1300,
+        "hitRate": 1,
+        "falloff": 0.6,
+        "reloadMs": 7350,
+        "dmgMult": 13.35,
+        "cpuUse": 62
+      },
+      {
+        "id": "mod-lair-armor-d",
+        "slot": "armor",
+        "rack": "low",
+        "armorHpBonus": 1.1,
+        "speedPenaltyPct": 0.25,
+        "cpuUse": 42
+      },
+      {
+        "id": "mod-lair-turret-e",
+        "slot": "turret",
+        "rack": "high",
+        "damageType": "explosive",
+        "ammoPerEngagement": 12,
+        "maxRangeM": 9600,
+        "minRangeM": 900,
+        "hitRate": 0.7,
+        "falloff": 0.1,
+        "reloadMs": 10000,
+        "dmgMult": 19.1,
+        "cpuUse": 22
+      },
+      {
+        "id": "mod-lair-hangar-e",
+        "slot": "drone-rack",
+        "rack": "low",
+        "droneBayBonusM3": 95,
+        "cpuUse": 50
+      },
+      {
+        "id": "mod-lair-frame-e",
+        "slot": "armor",
+        "rack": "low",
+        "armorHpBonus": 0.3,
+        "hullHpBonus": 0.6,
+        "cpuUse": 50
+      },
+      {
+        "id": "mod-lair-drone-tac-g",
+        "slot": "drone-tac",
+        "rack": "high",
+        "droneDmgBonus": 0.45,
+        "cpuUse": 32
+      },
+      {
+        "id": "mod-lair-drone-relay-g",
+        "slot": "drone-relay",
+        "rack": "high",
+        "droneRangeBonusPct": 0.65,
+        "cpuUse": 34
+      },
+      {
+        "id": "mod-lair-ecm-h",
+        "slot": "support",
+        "rack": "high",
+        "foeRangeDebuffPct": 0.15,
+        "cpuUse": 150
+      },
+      {
+        "id": "mod-lair-web-h",
+        "slot": "support",
+        "rack": "high",
+        "captureWebCycleMs": 20000,
+        "captureWebRangeM": 3800,
+        "captureWebBreakM": 4500,
+        "captureWebSlowMul": 0.5,
+        "cpuUse": 44
+      },
+      {
+        "id": "mod-lair-laser-r",
+        "slot": "laser",
+        "rack": "high",
+        "damageType": "plasma",
+        "ammoPerEngagement": 250,
+        "maxRangeM": 7000,
+        "minRangeM": 0,
+        "hitRate": 1,
+        "falloff": 0.1,
+        "reloadMs": 4400,
+        "dmgMult": 1.26,
+        "overlayDrive": {
+          "stepMs": 300,
+          "floorMs": 600
+        },
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-lair-blink-r",
+        "slot": "propulsion",
+        "rack": "mid",
+        "blink": {
+          "distanceM": 2000,
+          "cooldownMs": 12000
+        },
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-lair-beam-r",
+        "slot": "laser",
+        "rack": "high",
+        "damageType": "plasma",
+        "ammoPerEngagement": 120,
+        "maxRangeM": 10500,
+        "minRangeM": 0,
+        "hitRate": 1,
+        "falloff": 0.1,
+        "reloadMs": 3000,
+        "dmgMult": 1.512,
+        "burst": {
+          "shots": 3,
+          "gapMs": 100
+        },
+        "cpuUse": 75
+      },
+      {
+        "id": "mod-lair-pd-r",
+        "slot": "laser",
+        "rack": "high",
+        "damageType": "plasma",
+        "ammoPerEngagement": 40,
+        "maxRangeM": 3000,
+        "minRangeM": 0,
+        "hitRate": 1,
+        "falloff": 0.5,
+        "reloadMs": 1800,
+        "dmgMult": 2.75,
+        "antiDrone": 2,
+        "cpuUse": 63
+      },
+      {
+        "id": "mod-wh-a-frag",
+        "slot": "turret",
+        "rack": "high",
+        "damageType": "explosive",
+        "ammoPerEngagement": 20,
+        "maxRangeM": 7300,
+        "minRangeM": 0,
+        "hitRate": 0.8,
+        "falloff": 0.5,
+        "reloadMs": 5600,
+        "dmgMult": 8.54,
+        "cpuUse": 37,
+        "secondaryDamagePct": 0.5,
+        "secondaryDamageType": "kinetic"
+      },
+      {
+        "id": "mod-wh-a-hangar",
+        "slot": "drone-rack",
+        "rack": "low",
+        "droneBayBonusM3": 40,
+        "droneCycleCutPct": 0.08,
+        "cpuUse": 25
+      },
+      {
+        "id": "mod-wh-a-prop",
+        "slot": "propulsion",
+        "rack": "mid",
+        "speedBonusPct": 1.2,
+        "hitPenalty": 0.35,
+        "cpuUse": 18
+      },
+      {
+        "id": "mod-wh-a-coat",
+        "slot": "armor",
+        "rack": "low",
+        "evasionGapPct": 0.28,
+        "allResistPenaltyPct": 0.15,
+        "cpuUse": 34
+      },
+      {
+        "id": "mod-wh-a-scan",
+        "slot": "support",
+        "rack": "mid",
+        "hitBonusPct": 0.24,
+        "rangeCutPct": 0.15,
+        "cpuUse": 36
+      },
+      {
+        "id": "mod-wh-a-shield",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldHpBonus": 0.8,
+        "rangeCutPct": 0.25,
+        "cpuUse": 46
+      },
+      {
+        "id": "mod-wh-c-laser",
+        "slot": "laser",
+        "rack": "high",
+        "damageType": "plasma",
+        "ammoPerEngagement": 22,
+        "maxRangeM": 8600,
+        "minRangeM": 0,
+        "hitRate": 1,
+        "falloff": 0.1,
+        "reloadMs": 5600,
+        "dmgMult": 7.6,
+        "cpuUse": 60
+      },
+      {
+        "id": "mod-wh-c-prism",
+        "slot": "armor",
+        "rack": "low",
+        "armorResistAdd": {
+          "kinetic": 0.3,
+          "explosive": 0.3,
+          "plasma": 0.3
+        },
+        "cpuUse": 46
+      },
+      {
+        "id": "mod-wh-c-pulse",
+        "slot": "support",
+        "rack": "low",
+        "reloadCutPct": 0.06,
+        "speedBonusPct": 0.1,
+        "cpuUse": 42
+      },
+      {
+        "id": "mod-wh-c-missile",
+        "slot": "missile",
+        "rack": "high",
+        "damageType": "explosive",
+        "ammoPerEngagement": 30,
+        "maxRangeM": 13500,
+        "minRangeM": 400,
+        "hitRate": 0.6,
+        "hitsAllFoes": true,
+        "falloff": 1,
+        "reloadMs": 8360,
+        "dmgMult": 9.68,
+        "cpuUse": 58
+      },
+      {
+        "id": "mod-wh-c-frame",
+        "slot": "armor",
+        "rack": "low",
+        "hullHpBonus": 0.75,
+        "speedBonusPct": 0.05,
+        "cpuUse": 46
+      },
+      {
+        "id": "mod-wh-d-turret",
+        "slot": "turret",
+        "rack": "high",
+        "damageType": "kinetic",
+        "ammoPerEngagement": 40,
+        "maxRangeM": 5400,
+        "minRangeM": 300,
+        "hitRate": 0.76,
+        "falloff": 0.4,
+        "reloadMs": 2800,
+        "dmgMult": 4.6,
+        "shots": 2,
+        "ammoPerShot": 2,
+        "cpuUse": 46
+      },
+      {
+        "id": "mod-wh-d-shield",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldHpBonus": 0.9,
+        "cpuUse": 52
+      },
+      {
+        "id": "mod-wh-d-lock",
+        "slot": "target-lock",
+        "rack": "high",
+        "lockDmgBonus": 0.3,
+        "cpuUse": 40
+      },
+      {
+        "id": "mod-wh-d-laser",
+        "slot": "laser",
+        "rack": "high",
+        "damageType": "plasma",
+        "ammoPerEngagement": 18,
+        "maxRangeM": 12500,
+        "minRangeM": 0,
+        "hitRate": 1,
+        "falloff": 0.1,
+        "reloadMs": 6800,
+        "dmgMult": 9.4,
+        "cpuUse": 73
+      },
+      {
+        "id": "mod-wh-d-loader",
+        "slot": "support",
+        "rack": "low",
+        "reloadCutPct": 0.18,
+        "cpuUse": 54
+      },
+      {
+        "id": "mod-wh-d-steady",
+        "slot": "support",
+        "rack": "low",
+        "damageTypeBonusPct": {
+          "kinetic": 0.18,
+          "plasma": 0.18
+        },
+        "cpuUse": 30
+      },
+      {
+        "id": "mod-wh-e-dc",
+        "slot": "armor",
+        "rack": "low",
+        "hullResistAdd": {
+          "kinetic": 0.3,
+          "explosive": 0.3
+        },
+        "hullHpBonus": 0.35,
+        "cpuUse": 38
+      },
+      {
+        "id": "mod-wh-e-tac",
+        "slot": "drone-tac",
+        "rack": "high",
+        "droneDmgBonus": 0.5,
+        "cpuUse": 44,
+        "droneHitGapPct": 0.05
+      },
+      {
+        "id": "mod-wh-e-cpu",
+        "slot": "cpu",
+        "rack": "low",
+        "cpuBonus": 90,
+        "reloadPenaltyPct": 0.12,
+        "cpuUse": 0
+      },
+      {
+        "id": "mod-wh-e-pd",
+        "slot": "turret",
+        "rack": "high",
+        "damageType": "kinetic",
+        "ammoPerEngagement": 64,
+        "maxRangeM": 2500,
+        "minRangeM": 1,
+        "hitRate": 0.92,
+        "falloff": 0.5,
+        "reloadMs": 1200,
+        "dmgMult": 3.7,
+        "antiDrone": 2,
+        "cpuUse": 56
+      },
+      {
+        "id": "mod-wh-e-shield",
+        "slot": "shield",
+        "rack": "mid",
+        "shieldResistAdd": {
+          "kinetic": 0.32,
+          "plasma": 0.32
+        },
+        "shieldHpBonus": 0.42,
+        "cpuUse": 70
+      },
+      {
+        "id": "mod-wh-g-hangar",
+        "slot": "drone-rack",
+        "rack": "low",
+        "droneBayBonusM3": 110,
+        "cpuUse": 54
+      },
+      {
+        "id": "mod-wh-g-fcs",
+        "slot": "support",
+        "rack": "mid",
+        "hitBonusPct": 0.12,
+        "damageBonusPct": 0.06,
+        "cpuUse": 36
+      },
+      {
+        "id": "mod-wh-g-ballistic",
+        "slot": "support",
+        "rack": "low",
+        "damageTypeBonusPct": {
+          "kinetic": 0.22
+        },
+        "rangeTypeBonusPct": {
+          "kinetic": 0.22
+        },
+        "cpuUse": 60
+      },
+      {
+        "id": "mod-wh-g-hull",
+        "slot": "armor",
+        "rack": "low",
+        "armorHpBonus": 0.18,
+        "hullResistAdd": {
+          "kinetic": 0.28,
+          "explosive": 0.28,
+          "plasma": 0.28
+        },
+        "droneHullHpBonusPct": 0.8,
+        "cpuUse": 44
+      },
+      {
+        "id": "mod-wh-g-turret",
+        "slot": "turret",
+        "rack": "high",
+        "damageType": "explosive",
+        "ammoPerEngagement": 36,
+        "maxRangeM": 8600,
+        "minRangeM": 700,
+        "hitRate": 0.75,
+        "falloff": 0.4,
+        "reloadMs": 4600,
+        "dmgMult": 11.5,
+        "cpuUse": 54
+      },
+      {
+        "id": "mod-wh-g-prop",
+        "slot": "propulsion",
+        "rack": "mid",
+        "speedBonusPct": 0.85,
+        "cpuUse": 36
+      }
+    ]
+  }
+}

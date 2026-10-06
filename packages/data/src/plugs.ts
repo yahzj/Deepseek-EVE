@@ -27,6 +27,61 @@
  * 伤害与命中百分比、射程、两条选靶权重），描述里的高亮数值随之同步（zh 在本文件、en 在 `l10n.ts` 的
  * `EN_MODULES`）；"原 → 新"逐条见 `docs/design/plug-blackbox-20260927.md` 的「文案调整台账」。
  */
+import staticDocument from './static/plugs.json'
+import type { DataDocument } from '../../../tools/data-editor-contract'
+import { staticDataGroup } from './staticData'
+
+const SHIP_PLUGS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "plug-shield-plate": {
+    name: '护盾强化插板',
+    description: L10N['mod.copy.097']!.zh,
+  },
+  "plug-armor-plate": {
+    name: '装甲强化插板',
+    description: L10N['mod.copy.098']!.zh,
+  },
+  "plug-hull-plate": {
+    name: '结构强化插板',
+    description: L10N['mod.copy.099']!.zh,
+  },
+  "plug-mid-bay": {
+    name: '中层舱段插件',
+    description: L10N['mod.copy.100']!.zh,
+  },
+  "plug-low-bay": {
+    name: '下层舱段插件',
+    description: L10N['mod.copy.101']!.zh,
+  },
+  "plug-cpu-core": {
+    name: '协处理插件',
+    description: L10N['mod.copy.102']!.zh,
+  },
+  "plug-firepower": {
+    name: '火力强化插件',
+    description: L10N['mod.copy.103']!.zh,
+  },
+  "plug-sight": {
+    name: '瞄具插件',
+    description: L10N['mod.copy.104']!.zh,
+  },
+  "plug-rangefinder": {
+    name: '射程插件',
+    description: L10N['mod.copy.105']!.zh,
+  },
+  "plug-thruster": {
+    name: '推进插件',
+    description: L10N['mod.copy.106']!.zh,
+  },
+  "plug-target-beacon": {
+    name: '靶标插件',
+    description: L10N['mod.copy.107']!.zh,
+  },
+  "plug-concealment": {
+    name: '隐匿插件',
+    description: L10N['mod.copy.108']!.zh,
+  },
+}
+
 import type { ModuleDef } from '@whale/core'
 import { L10N } from './l10n/table'
 // ⟪文案调整 2026-10-04⟫ 船长授权整批说明重写，数值与功能不变。
@@ -56,124 +111,5 @@ export const PLUG_IDS = {
  * 描述文案守 §十三：只写"是什么 / 起作用是多少"，**不用括号做解释**（船长 2026-09-26 令）。
  */
 export const SHIP_PLUGS: readonly ModuleDef[] = [
-  // ── ① 三条固定值加血（船长逐条给数） ──
-  {
-    id: PLUG_IDS.shieldPlate,
-    name: '护盾强化插板',
-    slot: 'plug',
-    rack: 'low',
-    shieldHpAdd: 80,
-    cpuUse: 0,
-    description: L10N['mod.copy.097']!.zh,
-  },
-  {
-    id: PLUG_IDS.armorPlate,
-    name: '装甲强化插板',
-    slot: 'plug',
-    rack: 'low',
-    armorHpAdd: 140,
-    speedPenaltyMps: 20,
-    cpuUse: 0,
-    description: L10N['mod.copy.098']!.zh,
-  },
-  {
-    id: PLUG_IDS.hullPlate,
-    name: '结构强化插板',
-    slot: 'plug',
-    rack: 'low',
-    hullHpAdd: 80,
-    cpuUse: 0,
-    description: L10N['mod.copy.099']!.zh,
-  },
-  // ── ② 两条扩槽 ──
-  {
-    id: PLUG_IDS.midBay,
-    name: '中层舱段插件',
-    slot: 'plug',
-    rack: 'low',
-    midSlotsAdd: 1,
-    cpuUse: 0,
-    description: L10N['mod.copy.100']!.zh,
-  },
-  {
-    id: PLUG_IDS.lowBay,
-    name: '下层舱段插件',
-    slot: 'plug',
-    rack: 'low',
-    lowSlotsAdd: 1,
-    cpuUse: 0,
-    description: L10N['mod.copy.101']!.zh,
-  },
-  // ── ③ 预算与火力 ──
-  {
-    id: PLUG_IDS.cpuCore,
-    name: '协处理插件',
-    slot: 'plug',
-    rack: 'low',
-    cpuBonus: 80,
-    cpuUse: 0,
-    description: L10N['mod.copy.102']!.zh,
-  },
-  {
-    id: PLUG_IDS.firepower,
-    name: '火力强化插件',
-    slot: 'plug',
-    rack: 'low',
-    damageBonusPct: 0.15,
-    cpuUse: 0,
-    description: L10N['mod.copy.103']!.zh,
-  },
-  {
-    id: PLUG_IDS.sight,
-    name: '瞄具插件',
-    slot: 'plug',
-    rack: 'low',
-    hitBonusPct: 0.15,
-    cpuUse: 0,
-    description: L10N['mod.copy.104']!.zh,
-  },
-  {
-    id: PLUG_IDS.rangefinder,
-    name: '射程插件',
-    slot: 'plug',
-    rack: 'low',
-    /**
-     * 射程 +20% ⇒ **正向字段** `plugRangeBonusPct`（**2026-09-27 船长令**：原先借 `rangeCutPct` 写负值，
-     * 船长问「射程加成为什么负值才是加成」后按乙案改为写正数）。
-     * ⚠ 与 `rangeCutPct` 的口径**互不替代**：后者是"代价件"的削减（多件取最重一件）；
-     * 本字段**多件加算、不吃递减**（船长对插件批的裁决「③不吃」）——建档侧插件是**单独一段**，
-     * 直接并进"战前射程加成池"（与装备按系加成同池加算）。
-     */
-    plugRangeBonusPct: 0.2,
-    cpuUse: 0,
-    description: L10N['mod.copy.105']!.zh,
-  },
-  // ── ④ 机动与选靶 ──
-  {
-    id: PLUG_IDS.thruster,
-    name: '推进插件',
-    slot: 'plug',
-    rack: 'low',
-    speedAddMps: 40,
-    cpuUse: 0,
-    description: L10N['mod.copy.106']!.zh,
-  },
-  {
-    id: PLUG_IDS.targetBeacon,
-    name: '靶标插件',
-    slot: 'plug',
-    rack: 'low',
-    targetWeightMul: 3,
-    cpuUse: 0,
-    description: L10N['mod.copy.107']!.zh,
-  },
-  {
-    id: PLUG_IDS.concealment,
-    name: '隐匿插件',
-    slot: 'plug',
-    rack: 'low',
-    targetWeightMul: 0.7,
-    cpuUse: 0,
-    description: L10N['mod.copy.108']!.zh,
-  },
+  ...staticDataGroup<ModuleDef>(staticDocument as unknown as DataDocument, 'SHIP_PLUGS_0', SHIP_PLUGS_0_TEXT_BINDINGS),
 ]

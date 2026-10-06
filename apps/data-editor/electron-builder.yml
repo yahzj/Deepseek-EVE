@@ -1,0 +1,16 @@
+appId: com.whale.static-data-editor
+productName: 大鲸鱼数据编辑器
+directories:
+  output: release
+files:
+  - out/**
+asar: true
+npmRebuild: false
+win:
+  target:
+    - target: portable
+      arch: [x64]
+  artifactName: ${productName}-${version}-${arch}.${ext}
+  signAndEditExecutable: false
+portable:
+  artifactName: ${productName}-${version}-${arch}.${ext}

@@ -109,6 +109,8 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '静态JSON参数与代码文本装配', symbol: 'staticDataGroup', file: 'packages/data/src/staticData.ts', exported: true },
+  { concept: '数值编辑字段与范围计划', symbol: 'planDocuments', file: 'tools/data-editor-schema.ts', exported: true },
   { concept: '限额慢补货配置判据', symbol: 'hasLimitedSupply', file: 'packages/core/src/marketLimitedSupply.ts', exported: true },
   { concept: '限额慢补货额度核销', symbol: 'consumeLimitedSupply', file: 'packages/core/src/marketLimitedSupply.ts', exported: true },
   { concept: '武器组炮数', symbol: 'volleyGunCountOf', file: 'packages/core/src/combatVolley.ts', exported: true },

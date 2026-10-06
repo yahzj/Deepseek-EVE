@@ -1,6 +1,6 @@
 /**
  * 内容工作台 · 导入回写（Phase B，2026-09-05 船长确认）：
- * 读回 content:export 生成的 CSV，按主键字段级回写源 TS（保留注释/分组/排版，最小 diff），
+ * 读回 content:export 生成的 CSV，按主键字段级回写权威 JSON 或未迁移表的源 TS，
  * 四道护栏：
  *   1) 主键只读：CSV 出现未知 id = 拒绝（新增条目走代办）；源表有而 CSV 缺失 = 拒绝
  *      （多发生在"筛选视图保存"误删——提示复原或走代办）；
@@ -9,15 +9,20 @@
  *   4) 只写有差异的字段；收尾自动 content:check + core/data typecheck + diff 摘要。
  *
  * 用法：npm run content:import <表名> <csv文件> [--dry-run]   （表名见 content-schema.ts）
- * 实现：TypeScript AST 定位对象与属性节点，做区间级最小替换（源格式/注释/下划线数字不重排；
- * market 卡为单行对象，同样按区间处理）。
+ * 实现：已迁移表只按JSON字段做局部替换，TS文本/表达式和代码派生行只读；
+ * 未迁移表仍用TypeScript AST定位对象与属性节点，保留原注释和数字排版。
  */
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { isDeepStrictEqual } from 'node:util'
 import * as ts from 'typescript'
 import ExcelJS from 'exceljs'
 import { ANOMALIES, BELTS, BLUEPRINTS, FOE_SHIPS, GALAXIES, ITEMS, MARKET_GOODS, MODULES, SHIPS, SKILLS } from '@whale/data'
 import { normalizeHead, tableOf, type ColSpec } from './content-schema'
+import type { DataDocument, DataRow } from './data-editor-contract'
+import { staticDocumentIssues } from '../packages/data/src/staticData'
 
 /* ═══════════ CSV 解析（标准：引号转义/BOM/编码与分隔符自动容错） ═══════════
  * Excel/WPS 保存 CSV 有各种变体：UTF-8 或 ANSI(GBK) 编码、逗号或 Tab 分隔——
@@ -332,15 +337,15 @@ function renderListText(inner: string, multi: boolean, propIndent: string, itemK
 
 /* ═══════════ 单元格 → 目标值（校验；返回 null = 无差异/跳过） ═══════════ */
 /** 解析数值单元格：非法/越界 → 记错并返回 undefined */
-function parseNum(rowId: string, head: string, cell: string, col: ColSpec): number | undefined {
+function parseNum(rowId: string, head: string, cell: string, col: ColSpec, report: (message: string) => void = err): number | undefined {
   const n = Number(cell)
   if (!Number.isFinite(n)) {
-    err(`${rowId}：${head} 不是数字「${cell}」`)
+    report(`${rowId}：${head} 不是数字「${cell}」`)
     return undefined
   }
-  if (col.int && !Number.isInteger(n)) err(`${rowId}：${head} 须为整数（得 ${cell}）`)
-  if (col.min !== undefined && n < col.min) err(`${rowId}：${head} 不得小于 ${col.min}（得 ${cell}）`)
-  if (col.max !== undefined && n > col.max) err(`${rowId}：${head} 不得大于 ${col.max}（得 ${cell}）`)
+  if (col.int && !Number.isInteger(n)) report(`${rowId}：${head} 须为整数（得 ${cell}）`)
+  if (col.min !== undefined && n < col.min) report(`${rowId}：${head} 不得小于 ${col.min}（得 ${cell}）`)
+  if (col.max !== undefined && n > col.max) report(`${rowId}：${head} 不得大于 ${col.max}（得 ${cell}）`)
   return n
 }
 
@@ -514,7 +519,7 @@ function planRow(
             })
           if (same) continue
         }
-        const multi = curText.includes('\n')
+        const multi = curText?.includes('\n') ?? false
         changes.push({ kind: 'set', rowId: csvRow[0]!, prop: root, text: renderListText(cell, multi, indent, col.itemKey!, col.valKey!) })
         break
       }
@@ -524,6 +529,222 @@ function planRow(
 
 /* ═══════════ 应用变更（区间替换；由后向前套用） ═══════════ */
 interface Edit { start: number; end: number; text: string }
+
+const STATIC_TABLES = new Set(['ships', 'modules', 'plugs', 'items', 'market'])
+export type StaticChange =
+  | { kind: 'set'; rowId: string; prop: string; value: unknown }
+  | { kind: 'del'; rowId: string; prop: string }
+
+/** 只读字段由迁移后的TS绑定判定，不将运行期继承值倒写成JSON字面量。 */
+function staticBindings(sources: ReadonlyMap<string, string>): Map<string, Set<string>> {
+  const bindings = new Map<string, Set<string>>()
+  for (const [path, text] of sources) {
+    const sf = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true)
+    for (const statement of sf.statements) {
+      if (!ts.isVariableStatement(statement)) continue
+      for (const declaration of statement.declarationList.declarations) {
+        if (!ts.isIdentifier(declaration.name) || !declaration.name.text.endsWith('_TEXT_BINDINGS') ||
+          !declaration.initializer || !ts.isObjectLiteralExpression(declaration.initializer)) continue
+        for (const entry of declaration.initializer.properties) {
+          if (!ts.isPropertyAssignment(entry) || !ts.isStringLiteralLike(entry.name) || !ts.isObjectLiteralExpression(entry.initializer)) {
+            throw new Error(`静态数据绑定不是具名对象：${path}`)
+          }
+          if (bindings.has(entry.name.text)) throw new Error(`静态数据文本绑定主键重复：${entry.name.text}`)
+          const fields = new Set<string>()
+          for (const field of entry.initializer.properties) {
+            if (ts.isSpreadAssignment(field)) fields.add('*')
+            else if (ts.isPropertyAssignment(field)) fields.add(ts.isStringLiteralLike(field.name) ? field.name.text : field.name.getText(sf))
+            else throw new Error(`静态数据绑定字段无法解析：${entry.name.text}`)
+          }
+          bindings.set(entry.name.text, fields)
+        }
+      }
+    }
+  }
+  return bindings
+}
+
+export function planStaticImport(
+  spec: NonNullable<ReturnType<typeof tableOf>>,
+  source: string,
+  sources: ReadonlyMap<string, string>,
+  data: string[][],
+  headIdx: ReadonlyMap<string, number>,
+): { changes: StaticChange[]; errors: string[]; readOnly: string[]; derivedSkipped: number } {
+  const document = JSON.parse(source) as DataDocument
+  const documentIssues = staticDocumentIssues(document)
+  if (documentIssues.length > 0) return { changes: [], errors: documentIssues, readOnly: [], derivedSkipped: 0 }
+  if (document.format !== 'whale-static-data' || document.version !== 1 || document.table !== spec.name ||
+    !document.groups || typeof document.groups !== 'object' || Array.isArray(document.groups)) {
+    throw new Error(`静态JSON格式/版本/表名错误：${spec.name}`)
+  }
+  const bindings = staticBindings(sources)
+  const rows = new Map<string, DataRow>()
+  for (const group of Object.values(document.groups)) {
+    if (!Array.isArray(group)) throw new Error(`静态JSON分组不是数组：${spec.name}`)
+    for (const row of group) {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) throw new Error(`静态JSON行不是对象：${spec.name}`)
+      const id = row[spec.idProp]
+      if (typeof id !== 'string' || !id || rows.has(id) || !bindings.has(id)) throw new Error(`静态JSON主键或绑定错误：${String(id)}`)
+      rows.set(id, row)
+    }
+  }
+  const issues: string[] = []
+  const readOnly: string[] = []
+  const changes = new Map<string, StaticChange>()
+  const report = (message: string): void => { issues.push(message) }
+  const idIndex = headIdx.get(spec.cols[0]!.head)!
+  const sourceIds = IDS[spec.name as keyof typeof IDS]
+  const csvIds = data.map(row => (row[idIndex] ?? '').trim())
+  const seen = new Set<string>()
+  for (const id of csvIds) {
+    if (!sourceIds.has(id)) report(`CSV 含不存在的主键：${id}`)
+    if (seen.has(id)) report(`CSV 主键重复：${id}`)
+    seen.add(id)
+  }
+  for (const id of sourceIds) if (!seen.has(id)) report(`源表有而 CSV 缺失：${id}（疑似筛选视图保存误删）`)
+  for (const id of rows.keys()) if (!sourceIds.has(id)) report(`静态JSON主键不在数据目录：${id}`)
+  let derivedSkipped = 0
+  for (let i = 0; i < data.length; i++) {
+    const id = csvIds[i]!
+    if (!sourceIds.has(id)) continue
+    const row = rows.get(id)
+    if (!row) {
+      if (spec.name === 'market' && !bindings.has(id)) { derivedSkipped++; continue }
+      report(`静态JSON找不到 ${id} 的行（不回写旧TS数值）`)
+      continue
+    }
+    const fields = bindings.get(id)!
+    for (const col of spec.cols) {
+      if (col.k === 'id') continue
+      const idx = headIdx.get(col.head)
+      if (idx === undefined) continue
+      const cell = (data[i]![idx] ?? '').trim()
+      if (!cell) continue
+      const [prop, key] = col.p.split('.') as [string, string | undefined]
+      if (prop === 'name' || prop === 'description' || fields.has(prop) || fields.has('*')) {
+        if (cell !== '-' && (col.k === 'num' || col.k === 'obj')) parseNum(id, col.head, cell, col, report)
+        readOnly.push(`${id}·${col.head}（TS文本/表达式绑定，只读）`)
+        continue
+      }
+      const changeKey = `${id}\0${prop}`
+      if (cell === '-') {
+        if (Object.hasOwn(row, prop)) changes.set(changeKey, { kind: 'del', rowId: id, prop })
+        continue
+      }
+      let value: unknown
+      const errorsBefore = issues.length
+      switch (col.k) {
+        case 'str': case 'enum': case 'ref':
+          if (col.k === 'enum' && !col.vals!.includes(cell)) report(`${id}：${col.head} 非法枚举「${cell}」（合法：${col.vals!.join('/')}）`)
+          if (col.k === 'ref' && !IDS[col.ref!].has(cell)) report(`${id}：${col.head} 引用了不存在的 id「${cell}」`)
+          value = cell
+          break
+        case 'num':
+          value = parseNum(id, col.head, cell, col, report)
+          break
+        case 'bool':
+          if (cell === '是' || cell.toLowerCase() === 'true') value = true
+          else if (cell === '否' || cell.toLowerCase() === 'false') value = false
+          else report(`${id}：${col.head} 须填 是/否（得「${cell}」）`)
+          break
+        case 'obj': {
+          const n = parseNum(id, col.head, cell, col, report)
+          const pending = changes.get(changeKey)
+          const current = pending?.kind === 'set' ? pending.value : pending?.kind === 'del' ? undefined : row[prop]
+          if (current !== undefined && (!current || typeof current !== 'object' || Array.isArray(current))) {
+            report(`${id}：${prop} 不是数值对象`)
+            break
+          }
+          value = { ...(current as DataRow | undefined), [key!]: n }
+          break
+        }
+        case 'list': {
+          const list: DataRow[] = []
+          for (const seg of cell.split('|')) {
+            const [k, v] = seg.split('×')
+            if (!k?.trim() || v === undefined || !Number.isFinite(Number(v))) {
+              report(`${id}：${col.head} 片段「${seg}」格式应为 id×值`)
+              continue
+            }
+            if (col.ref && !IDS[col.ref].has(k.trim())) report(`${id}：${col.head} 引用了不存在的 id「${k.trim()}」`)
+            const n = Number(v)
+            if (col.valMin !== undefined && n < col.valMin) report(`${id}：${col.head} 值不得小于 ${col.valMin}（得 ${v}）`)
+            if (col.valInt && !Number.isInteger(n)) report(`${id}：${col.head} 值须为整数（得 ${v}）`)
+            list.push({ [col.itemKey!]: k.trim(), [col.valKey!]: n })
+          }
+          value = list
+          break
+        }
+      }
+      if (issues.length !== errorsBefore || value === undefined) continue
+      if (isDeepStrictEqual(row[prop], value)) changes.delete(changeKey)
+      else changes.set(changeKey, { kind: 'set', rowId: id, prop, value })
+    }
+  }
+  const candidate = structuredClone(document)
+  const candidateRows = new Map(Object.values(candidate.groups).flat().map(row => [row[spec.idProp], row]))
+  for (const change of changes.values()) {
+    const row = candidateRows.get(change.rowId)!
+    if (change.kind === 'set') row[change.prop] = change.value
+    else delete row[change.prop]
+  }
+  issues.push(...staticDocumentIssues(candidate))
+  return { changes: [...changes.values()], errors: issues, readOnly, derivedSkipped }
+}
+
+/** JSON也按语法节点做局部替换，只重排发生增删的最小对象，不序列化整张表。 */
+export function applyStaticChanges(source: string, changes: readonly StaticChange[]): string {
+  const sf = ts.parseJsonText('static.json', source)
+  const edits: Edit[] = []
+  const byRow = new Map<string, StaticChange[]>()
+  for (const change of changes) byRow.set(change.rowId, [...(byRow.get(change.rowId) ?? []), change])
+  const propertyName = (prop: ts.PropertyAssignment): string => ts.isStringLiteralLike(prop.name) ? prop.name.text : prop.name.getText(sf)
+  const render = (value: unknown, node: ts.Node): string => {
+    const indent = indentOf(source, node.getStart(sf))
+    const eol = source.includes('\r\n') ? '\r\n' : '\n'
+    return JSON.stringify(value, null, 2).replace(/\n/g, `${eol}${indent}`)
+  }
+  const diff = (node: ts.Expression, before: unknown, after: unknown): void => {
+    if (isDeepStrictEqual(before, after)) return
+    if (ts.isObjectLiteralExpression(node) && before && after && typeof before === 'object' && typeof after === 'object' &&
+      !Array.isArray(before) && !Array.isArray(after) &&
+      isDeepStrictEqual(Object.keys(before), Object.keys(after))) {
+      for (const property of node.properties) {
+        if (!ts.isPropertyAssignment(property)) throw new Error('JSON对象属性无法解析')
+        const key = propertyName(property)
+        diff(property.initializer, (before as DataRow)[key], (after as DataRow)[key])
+      }
+    } else edits.push({ start: node.getStart(sf), end: node.end, text: render(after, node) })
+  }
+  const found = new Set<string>()
+  const visit = (node: ts.Node): void => {
+    if (ts.isObjectLiteralExpression(node)) {
+      const idProp = node.properties.find((p): p is ts.PropertyAssignment => ts.isPropertyAssignment(p) && ['id', 'key'].includes(propertyName(p)))
+      const id = idProp && ts.isStringLiteralLike(idProp.initializer) ? idProp.initializer.text : undefined
+      const rowChanges = id === undefined ? undefined : byRow.get(id)
+      if (rowChanges) {
+        if (found.has(id!)) throw new Error(`JSON主键重复：${id}`)
+        found.add(id!)
+        const before = JSON.parse(node.getText(sf)) as DataRow
+        const after = { ...before }
+        for (const change of rowChanges) {
+          if (change.kind === 'set') after[change.prop] = change.value
+          else delete after[change.prop]
+        }
+        diff(node, before, after)
+        return
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sf)
+  if (found.size !== byRow.size) throw new Error('JSON变更主键未全部定位')
+  let output = source
+  for (const edit of edits.sort((a, b) => b.start - a.start)) output = output.slice(0, edit.start) + edit.text + output.slice(edit.end)
+  JSON.parse(output)
+  return output
+}
 
 function applyChanges(
   srcText: string,
@@ -657,10 +878,12 @@ async function main(): Promise<void> {
    * 现在逐个文件收集对象块并合并（同一 id 出现在两处 = 数据错误，直接拦下）。
    */
   const sources: Sources = { textOf: new Map(), sfOf: new Map(), numConstOf: new Map() }
+  const staticPath = STATIC_TABLES.has(spec.name) ? `packages/data/src/static/${spec.name}.json` : undefined
   const objs = new Map<string, ObjInfo>()
   for (const srcPath of spec.files) {
     const srcText = readFileSync(srcPath, 'utf8')
     sources.textOf.set(srcPath, srcText)
+    if (staticPath) continue
     const sf = ts.createSourceFile(srcPath, srcText, ts.ScriptTarget.Latest, true)
     sources.sfOf.set(srcPath, sf)
     sources.numConstOf.set(srcPath, collectNumConsts(sf))
@@ -670,9 +893,15 @@ async function main(): Promise<void> {
     }
   }
 
-  const changes: Change[] = []
-  let derivedSkipped = 0
-  for (let i = 0; i < dataRows.length; i++) {
+  const staticText = staticPath ? readFileSync(staticPath, 'utf8') : undefined
+  const staticPlan = staticText === undefined ? undefined : planStaticImport(spec, staticText, sources.textOf, dataRows, headIdx)
+  if (staticPlan) {
+    errors.push(...staticPlan.errors)
+    readOnlySkips.push(...staticPlan.readOnly)
+  }
+  const changes: Array<Change | StaticChange> = staticPlan?.changes ?? []
+  let derivedSkipped = staticPlan?.derivedSkipped ?? 0
+  for (let i = 0; !staticPlan && i < dataRows.length; i++) {
     const id = csvIds[i]!
     if (!sourceIds.has(id)) continue
     const info = objs.get(id)
@@ -687,14 +916,14 @@ async function main(): Promise<void> {
       err(`源文件找不到 ${id} 的对象块（id 在数据目录但源文件缺失？）`)
       continue
     }
-    planRow(spec, info, dataRows[i]!, headIdx, sources, changes)
+    planRow(spec, info, dataRows[i]!, headIdx, sources, changes as Change[])
   }
   if (derivedSkipped > 0) {
-    console.log(`ℹ️ 跳过 ${derivedSkipped} 行派生只读卡（wreck-* 残骸收购卡由敌群表生成，改动请走敌群表/代码）`)
+    console.log(`ℹ️ 跳过 ${derivedSkipped} 行派生只读卡（残骸收购/插件占位等由代码生成，改动请走来源表/代码）`)
   }
   if (readOnlySkips.length > 0) {
     console.log(
-      `ℹ️ ${readOnlySkips.length} 处列现值是表达式或**源对象含展开口**（同文件常量/计算式），表格**不改它**（要改请直接编辑源码）：` +
+      `ℹ️ ${readOnlySkips.length} 处列为文本、表达式或源对象展开口，表格不改它（请编辑原文本/公式来源）：` +
         `${readOnlySkips.slice(0, 6).join('、')}${readOnlySkips.length > 6 ? '…' : ''}`,
     )
   }
@@ -720,9 +949,9 @@ async function main(): Promise<void> {
     console.log('（--dry-run 预览模式，未写盘）')
     return
   }
-  // **按源文件分组回写**（多源表：一张表可能横跨多个 TS 文件，如 anomalies + wormholeFoes）
+  // **按源文件分组回写**（已迁移表只写JSON，旧表继续按TS对象所在文件分组）
   const byFile = new Map<string, Change[]>()
-  for (const c of changes) {
+  for (const c of changes as Change[]) {
     const info = objs.get(c.rowId)
     if (!info) continue
     const arr = byFile.get(info.srcPath) ?? []
@@ -730,6 +959,21 @@ async function main(): Promise<void> {
     byFile.set(info.srcPath, arr)
   }
   let applied = 0
+  let backup: string | undefined
+  if (staticPath && staticText !== undefined && staticPlan) {
+    const output = applyStaticChanges(staticText, staticPlan.changes)
+    if (readFileSync(staticPath, 'utf8') !== staticText) throw new Error('静态JSON在预览后被修改，拒绝覆盖，请重新导入')
+    for (const [path, text] of sources.textOf) {
+      if (readFileSync(path, 'utf8') !== text) throw new Error(`TS文本/表达式绑定在预览后被修改，拒绝覆盖：${path}`)
+    }
+    const backupDir = resolve('content-csv', 'backups', `content-import-${Date.now()}-${process.pid}`)
+    mkdirSync(backupDir, { recursive: true })
+    backup = resolve(backupDir, `${spec.name}.json`)
+    writeFileSync(backup, readFileSync(staticPath))
+    writeFileSync(staticPath, output, 'utf8')
+    applied = staticPlan.changes.length
+    console.log(`ℹ️ 写入前备份：${backup}`)
+  }
   for (const [path, fileChanges] of byFile) {
     const { text, count } = applyChanges(sources.textOf.get(path)!, sources.sfOf.get(path)!, fileChanges, objs)
     applied += count
@@ -739,7 +983,7 @@ async function main(): Promise<void> {
     console.error(`❌ 内部不一致：计划 ${changes.length} 处，实际应用 ${applied} 处——请报告`)
     process.exit(1)
   }
-  const written = [...byFile.keys()]
+  const written = staticPath ? [staticPath] : [...byFile.keys()]
   console.log(`✅ 已回写 ${written.join(' · ')}（${applied} 处字段变更）`)
   console.log('—— 自动校验：content:check + core/data typecheck ……')
   for (const args of [
@@ -747,8 +991,17 @@ async function main(): Promise<void> {
     ['run', 'typecheck', '-w', '@whale/core'],
     ['run', 'typecheck', '-w', '@whale/data'],
   ]) {
-    const r = spawnSync('npm.cmd', args, { stdio: 'inherit' })
+    const r = spawnSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', args, {
+      stdio: 'inherit', shell: process.platform === 'win32', windowsHide: true,
+    })
     if (r.status !== 0) {
+      if (staticPath && backup && staticText !== undefined) {
+        const expected = applyStaticChanges(staticText, staticPlan!.changes)
+        if (readFileSync(staticPath, 'utf8') === expected) {
+          writeFileSync(staticPath, readFileSync(backup))
+          console.error(`⚠️ 自动校验失败，本次JSON写入已恢复；备份：${backup}`)
+        } else console.error(`⚠️ JSON又被并行修改，未自动覆盖；原始备份：${backup}`)
+      }
       console.error(`⚠️ 自动校验 ${args.slice(1).join(' ')} 失败——请查看上面的错误；如需还原：git restore ${written.join(' ')}`)
       process.exitCode = 1
       return
@@ -761,7 +1014,7 @@ async function main(): Promise<void> {
   console.log('anomalies 表数值改动进二号 C4 平衡复核清单。')
 }
 
-main().catch((e) => {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main().catch((e) => {
   console.error('❌ 导入失败：', e)
   process.exit(1)
 })

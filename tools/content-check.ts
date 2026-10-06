@@ -87,6 +87,12 @@ import {
   // 2026-09-30 文案审核批：开发侧残留契约要逐条扫公告正文（此前本文件没读过公告表）
   ANNOUNCEMENTS,
 } from '@whale/data'
+import staticShips from '../packages/data/src/static/ships.json'
+import staticModules from '../packages/data/src/static/modules.json'
+import staticPlugs from '../packages/data/src/static/plugs.json'
+import staticItems from '../packages/data/src/static/items.json'
+import staticMarket from '../packages/data/src/static/market.json'
+import { validateDocument } from './data-editor-schema'
 // ⚠ **跨层 import（有意为之）**：装配页卡片正文由渲染层 `moduleShortEffect` 生成，而 `apps/desktop`
 //   **没有测试运行器** ⇒ 这条口径只能由体检兜住（见下方「装备卡片说明契约」）。
 import { moduleShortEffect } from '../apps/desktop/src/renderer/src/ui/shipInfo'
@@ -8574,15 +8580,9 @@ const PLUG_EFFECT_FIELDS: readonly string[] = [
 const PLUG_PLAIN_FIELDS = new Set(['id', 'name', 'slot', 'rack', 'cpuUse', 'description'])
 
 function checkPlugEffectWiring(): void {
-  const dataText = readFileSync(join(process.cwd(), 'packages/data/src/plugs.ts'), 'utf8')
-  const listText = dataText
-    .slice(dataText.indexOf('export const SHIP_PLUGS'))
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/\/\/[^\n]*/g, '')
   const used = new Set<string>()
-  for (const m of listText.matchAll(/^ {4}([a-zA-Z][a-zA-Z0-9]*):/gm)) {
-    const f = m[1]!
-    if (!PLUG_PLAIN_FIELDS.has(f)) used.add(f)
+  for (const module of MODULES.filter(row => row.slot === 'plug')) {
+    for (const field of Object.keys(module)) if (!PLUG_PLAIN_FIELDS.has(field)) used.add(field)
   }
   const unregistered = [...used].filter((f) => !PLUG_EFFECT_FIELDS.includes(f))
   check(
@@ -8616,6 +8616,10 @@ function checkPlugEffectWiring(): void {
   )
 }
 checkPlugEffectWiring()
+
+for (const [table, document] of Object.entries({ ships: staticShips, modules: staticModules, plugs: staticPlugs, items: staticItems, market: staticMarket })) {
+  for (const issue of validateDocument(document, table as import('./data-editor-contract').DataTable)) check(false, `静态数据${table}/${issue.id ?? ''}/${issue.path ?? ''}：${issue.message}`)
+}
 
 /* ── 输出 ── */
 console.log(`· 蓝图：装备 ${BLUEPRINTS.length} 张 + 舰船 ${SHIP_BLUEPRINTS.length} 张`)

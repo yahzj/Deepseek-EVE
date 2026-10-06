@@ -1,0 +1,4657 @@
+{
+  "format": "whale-static-data",
+  "version": 1,
+  "table": "market",
+  "groups": {
+    "MARKET_GOODS_RAW_0": [
+      {
+        "key": "ore-veldspar",
+        "kind": "item",
+        "refId": "ore-veldspar",
+        "rarity": "common",
+        "basePrice": 7,
+        "poolTarget": 4896000,
+        "supplyFlow": 40800
+      },
+      {
+        "key": "ore-scorched",
+        "kind": "item",
+        "refId": "ore-scorched",
+        "rarity": "common",
+        "basePrice": 7,
+        "poolTarget": 4896000,
+        "supplyFlow": 40800
+      },
+      {
+        "key": "ore-hemorphite",
+        "kind": "item",
+        "refId": "ore-hemorphite",
+        "rarity": "common",
+        "basePrice": 15,
+        "poolTarget": 2448000,
+        "supplyFlow": 20400
+      },
+      {
+        "key": "ore-glowstone",
+        "kind": "item",
+        "refId": "ore-glowstone",
+        "rarity": "common",
+        "basePrice": 32,
+        "poolTarget": 489600,
+        "supplyFlow": 4080
+      },
+      {
+        "key": "ore-sunshard",
+        "kind": "item",
+        "refId": "ore-sunshard",
+        "rarity": "common",
+        "basePrice": 32,
+        "poolTarget": 489600,
+        "supplyFlow": 4080
+      },
+      {
+        "key": "ore-voidshard",
+        "kind": "item",
+        "refId": "ore-voidshard",
+        "rarity": "common",
+        "basePrice": 68,
+        "poolTarget": 244800,
+        "supplyFlow": 2040
+      },
+      {
+        "key": "ore-nebulite",
+        "kind": "item",
+        "refId": "ore-nebulite",
+        "rarity": "common",
+        "basePrice": 145,
+        "poolTarget": 122400,
+        "supplyFlow": 1020
+      },
+      {
+        "key": "ore-voidmother",
+        "kind": "item",
+        "refId": "ore-voidmother",
+        "rarity": "common",
+        "basePrice": 1300,
+        "demandMultiplier": 0.6,
+        "playerBuyable": false
+      },
+      {
+        "key": "box-relic-a",
+        "kind": "item",
+        "refId": "box-relic-a",
+        "rarity": "common",
+        "basePrice": 3232500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "box-relic-c",
+        "kind": "item",
+        "refId": "box-relic-c",
+        "rarity": "common",
+        "basePrice": 3352500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "box-relic-d",
+        "kind": "item",
+        "refId": "box-relic-d",
+        "rarity": "common",
+        "basePrice": 6112500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "box-relic-e",
+        "kind": "item",
+        "refId": "box-relic-e",
+        "rarity": "common",
+        "basePrice": 4927500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "box-relic-g",
+        "kind": "item",
+        "refId": "box-relic-g",
+        "rarity": "common",
+        "basePrice": 4815000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "box-bp-shallow",
+        "kind": "item",
+        "refId": "box-bp-shallow",
+        "rarity": "common",
+        "basePrice": 3595000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "box-bp-mid",
+        "kind": "item",
+        "refId": "box-bp-mid",
+        "rarity": "common",
+        "basePrice": 14045000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "box-bp-deep",
+        "kind": "item",
+        "refId": "box-bp-deep",
+        "rarity": "common",
+        "basePrice": 25840000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "ai-core-gamma",
+        "kind": "item",
+        "refId": "ai-core-gamma",
+        "rarity": "common",
+        "basePrice": 200000,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "ai-core-beta",
+        "kind": "item",
+        "refId": "ai-core-beta",
+        "rarity": "common",
+        "basePrice": 1500000,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "ai-core-alpha",
+        "kind": "item",
+        "refId": "ai-core-alpha",
+        "rarity": "common",
+        "basePrice": 10000000,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-surveyor",
+        "kind": "item",
+        "refId": "mat-surveyor",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-chrono",
+        "kind": "item",
+        "refId": "mat-chrono",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-crane",
+        "kind": "item",
+        "refId": "mat-crane",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-drill",
+        "kind": "item",
+        "refId": "mat-drill",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-nebula",
+        "kind": "item",
+        "refId": "mat-nebula",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-enricher",
+        "kind": "item",
+        "refId": "mat-enricher",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-expander",
+        "kind": "item",
+        "refId": "mat-expander",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-suppressor",
+        "kind": "item",
+        "refId": "mat-suppressor",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-boss-analyzer",
+        "kind": "item",
+        "refId": "mat-boss-analyzer",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-extract-cover",
+        "kind": "item",
+        "refId": "mat-extract-cover",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-shield-res",
+        "kind": "item",
+        "refId": "mat-shield-res",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-armor-res",
+        "kind": "item",
+        "refId": "mat-armor-res",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-hull-res",
+        "kind": "item",
+        "refId": "mat-hull-res",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-tracker",
+        "kind": "item",
+        "refId": "mat-tracker",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-gyro",
+        "kind": "item",
+        "refId": "mat-gyro",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-jammer",
+        "kind": "item",
+        "refId": "mat-jammer",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-rangefinder",
+        "kind": "item",
+        "refId": "mat-rangefinder",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-blindspot",
+        "kind": "item",
+        "refId": "mat-blindspot",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-ammo-dmg",
+        "kind": "item",
+        "refId": "mat-ammo-dmg",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-reload",
+        "kind": "item",
+        "refId": "mat-reload",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-volley",
+        "kind": "item",
+        "refId": "mat-volley",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-ammo-back",
+        "kind": "item",
+        "refId": "mat-ammo-back",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-drone-net",
+        "kind": "item",
+        "refId": "mat-drone-net",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "mat-field-repair",
+        "kind": "item",
+        "refId": "mat-field-repair",
+        "rarity": "common",
+        "basePrice": 1,
+        "demandMultiplier": 0,
+        "unreleased": true
+      },
+      {
+        "key": "min-tritanium",
+        "kind": "item",
+        "refId": "min-tritanium",
+        "rarity": "common",
+        "basePrice": 8,
+        "poolTarget": 2386800,
+        "supplyFlow": 19890
+      },
+      {
+        "key": "min-pyerite",
+        "kind": "item",
+        "refId": "min-pyerite",
+        "rarity": "common",
+        "basePrice": 12,
+        "poolTarget": 1432080,
+        "supplyFlow": 11934
+      },
+      {
+        "key": "min-mexallon",
+        "kind": "item",
+        "refId": "min-mexallon",
+        "rarity": "common",
+        "basePrice": 20,
+        "poolTarget": 507720,
+        "supplyFlow": 4231
+      },
+      {
+        "key": "min-nocxium",
+        "kind": "item",
+        "refId": "min-nocxium",
+        "rarity": "common",
+        "basePrice": 90,
+        "poolTarget": 95280,
+        "supplyFlow": 794
+      },
+      {
+        "key": "min-isotope",
+        "kind": "item",
+        "refId": "min-isotope",
+        "rarity": "common",
+        "basePrice": 55,
+        "poolTarget": 175320,
+        "supplyFlow": 1461
+      },
+      {
+        "key": "min-starcore",
+        "kind": "item",
+        "refId": "min-starcore",
+        "rarity": "common",
+        "basePrice": 245,
+        "poolTarget": 48000,
+        "supplyFlow": 133
+      },
+      {
+        "key": "min-darkiron",
+        "kind": "item",
+        "refId": "min-darkiron",
+        "rarity": "common",
+        "basePrice": 780,
+        "poolTarget": 16000,
+        "supplyFlow": 26
+      },
+      {
+        "key": "min-voidcrystal",
+        "kind": "item",
+        "refId": "min-voidcrystal",
+        "rarity": "common",
+        "basePrice": 5400,
+        "poolTarget": 48000,
+        "supplyFlow": 13,
+        "limitedSupplyCap": 3000,
+        "limitedSupplyUnits": 1
+      },
+      {
+        "key": "min-jumplasma",
+        "kind": "item",
+        "refId": "min-jumplasma",
+        "rarity": "common",
+        "basePrice": 120,
+        "poolTarget": 36000,
+        "supplyFlow": 300
+      },
+      {
+        "key": "min-cryoslurry",
+        "kind": "item",
+        "refId": "min-cryoslurry",
+        "rarity": "common",
+        "basePrice": 120,
+        "poolTarget": 36000,
+        "supplyFlow": 300
+      },
+      {
+        "key": "min-curvature",
+        "kind": "item",
+        "refId": "min-curvature",
+        "rarity": "common",
+        "basePrice": 420,
+        "poolTarget": 4800,
+        "supplyFlow": 40
+      },
+      {
+        "key": "jump-fuel",
+        "kind": "item",
+        "refId": "jump-fuel",
+        "rarity": "rare",
+        "basePrice": 5800,
+        "demandMultiplier": 0.6,
+        "poolTarget": 28800,
+        "supplyFlow": 240,
+        "rareQtyMul": 200,
+        "rareWeightMul": 3,
+        "absorbQtyPerWindow": 14400
+      },
+      {
+        "key": "invasion-beacon",
+        "kind": "item",
+        "refId": "invasion-beacon",
+        "rarity": "exotic",
+        "basePrice": 96000000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "synaptic-accelerant",
+        "kind": "item",
+        "refId": "synaptic-accelerant",
+        "rarity": "exotic",
+        "basePrice": 18000000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mat-wh-essence",
+        "kind": "item",
+        "refId": "mat-wh-essence",
+        "rarity": "exotic",
+        "basePrice": 700000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "blackbox-h",
+        "kind": "item",
+        "refId": "blackbox-h",
+        "rarity": "exotic",
+        "basePrice": 10000000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "blackbox-r",
+        "kind": "item",
+        "refId": "blackbox-r",
+        "rarity": "exotic",
+        "basePrice": 10000000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "blackbox-universal",
+        "kind": "item",
+        "refId": "blackbox-universal",
+        "rarity": "exotic",
+        "basePrice": 5000000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "lux-1",
+        "kind": "item",
+        "refId": "lux-1",
+        "rarity": "common",
+        "basePrice": 100000,
+        "demandMultiplier": 1
+      },
+      {
+        "key": "lux-2",
+        "kind": "item",
+        "refId": "lux-2",
+        "rarity": "common",
+        "basePrice": 400000,
+        "demandMultiplier": 1
+      },
+      {
+        "key": "lux-3",
+        "kind": "item",
+        "refId": "lux-3",
+        "rarity": "common",
+        "basePrice": 2000000,
+        "demandMultiplier": 1
+      },
+      {
+        "key": "lux-4",
+        "kind": "item",
+        "refId": "lux-4",
+        "rarity": "common",
+        "basePrice": 60000,
+        "demandMultiplier": 1
+      },
+      {
+        "key": "lux-5",
+        "kind": "item",
+        "refId": "lux-5",
+        "rarity": "common",
+        "basePrice": 140000,
+        "demandMultiplier": 1
+      },
+      {
+        "key": "lux-6",
+        "kind": "item",
+        "refId": "lux-6",
+        "rarity": "common",
+        "basePrice": 250000,
+        "demandMultiplier": 1
+      },
+      {
+        "key": "lux-7",
+        "kind": "item",
+        "refId": "lux-7",
+        "rarity": "common",
+        "basePrice": 600000,
+        "demandMultiplier": 1
+      },
+      {
+        "key": "lux-8",
+        "kind": "item",
+        "refId": "lux-8",
+        "rarity": "common",
+        "basePrice": 800000,
+        "demandMultiplier": 1
+      },
+      {
+        "key": "lux-9",
+        "kind": "item",
+        "refId": "lux-9",
+        "rarity": "common",
+        "basePrice": 1200000,
+        "demandMultiplier": 1
+      },
+      {
+        "key": "lux-10",
+        "kind": "item",
+        "refId": "lux-10",
+        "rarity": "common",
+        "basePrice": 3200000,
+        "demandMultiplier": 1
+      },
+      {
+        "key": "box-valuables",
+        "kind": "item",
+        "refId": "box-valuables",
+        "rarity": "common",
+        "basePrice": 3828000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "box-military",
+        "kind": "item",
+        "refId": "box-military",
+        "rarity": "common",
+        "basePrice": 2800000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "gas-neon",
+        "kind": "item",
+        "refId": "gas-neon",
+        "rarity": "common",
+        "basePrice": 32,
+        "poolTarget": 489600,
+        "supplyFlow": 4080
+      },
+      {
+        "key": "gas-phosphor",
+        "kind": "item",
+        "refId": "gas-phosphor",
+        "rarity": "common",
+        "basePrice": 144,
+        "poolTarget": 122400,
+        "supplyFlow": 1020
+      },
+      {
+        "key": "gas-ionstorm",
+        "kind": "item",
+        "refId": "gas-ionstorm",
+        "rarity": "common",
+        "basePrice": 68,
+        "poolTarget": 244800,
+        "supplyFlow": 2040
+      },
+      {
+        "key": "gas-aurora",
+        "kind": "item",
+        "refId": "gas-aurora",
+        "rarity": "common",
+        "basePrice": 144,
+        "poolTarget": 122400,
+        "supplyFlow": 1020
+      },
+      {
+        "key": "ice-frost",
+        "kind": "item",
+        "refId": "ice-frost",
+        "rarity": "common",
+        "basePrice": 32,
+        "poolTarget": 489600,
+        "supplyFlow": 4080
+      },
+      {
+        "key": "ice-marrow",
+        "kind": "item",
+        "refId": "ice-marrow",
+        "rarity": "common",
+        "basePrice": 68,
+        "poolTarget": 244800,
+        "supplyFlow": 2040
+      },
+      {
+        "key": "ice-darkstar",
+        "kind": "item",
+        "refId": "ice-darkstar",
+        "rarity": "common",
+        "basePrice": 144,
+        "poolTarget": 122400,
+        "supplyFlow": 1020
+      },
+      {
+        "key": "ammo-kinetic-l",
+        "kind": "item",
+        "refId": "ammo-kinetic-l",
+        "rarity": "common",
+        "basePrice": 7,
+        "demandMultiplier": 0.6,
+        "poolTarget": 1296000,
+        "supplyFlow": 10800
+      },
+      {
+        "key": "part-circuit",
+        "kind": "item",
+        "refId": "part-circuit",
+        "rarity": "common",
+        "basePrice": 95,
+        "demandMultiplier": 0.6,
+        "poolTarget": 300000,
+        "supplyFlow": 2500
+      },
+      {
+        "key": "part-armor-plate",
+        "kind": "item",
+        "refId": "part-armor-plate",
+        "rarity": "common",
+        "basePrice": 250,
+        "demandMultiplier": 0.6,
+        "poolTarget": 176200,
+        "supplyFlow": 1468
+      },
+      {
+        "key": "part-frame",
+        "kind": "item",
+        "refId": "part-frame",
+        "rarity": "common",
+        "basePrice": 145,
+        "demandMultiplier": 0.6,
+        "poolTarget": 237700,
+        "supplyFlow": 1981
+      },
+      {
+        "key": "part-cable",
+        "kind": "item",
+        "refId": "part-cable",
+        "rarity": "common",
+        "basePrice": 155,
+        "demandMultiplier": 0.6,
+        "poolTarget": 229200,
+        "supplyFlow": 1910
+      },
+      {
+        "key": "part-coolant",
+        "kind": "item",
+        "refId": "part-coolant",
+        "rarity": "common",
+        "basePrice": 115,
+        "demandMultiplier": 0.6,
+        "poolTarget": 270100,
+        "supplyFlow": 2251
+      },
+      {
+        "key": "part-gyro",
+        "kind": "item",
+        "refId": "part-gyro",
+        "rarity": "common",
+        "basePrice": 420,
+        "demandMultiplier": 0.6,
+        "poolTarget": 132500,
+        "supplyFlow": 1104
+      },
+      {
+        "key": "part-lens",
+        "kind": "item",
+        "refId": "part-lens",
+        "rarity": "common",
+        "basePrice": 190,
+        "demandMultiplier": 0.6,
+        "poolTarget": 204900,
+        "supplyFlow": 1708
+      },
+      {
+        "key": "ammo-explosive-l",
+        "kind": "item",
+        "refId": "ammo-explosive-l",
+        "rarity": "common",
+        "basePrice": 8,
+        "demandMultiplier": 0.6,
+        "poolTarget": 1296000,
+        "supplyFlow": 10800
+      },
+      {
+        "key": "ammo-plasma-l",
+        "kind": "item",
+        "refId": "ammo-plasma-l",
+        "rarity": "common",
+        "basePrice": 9,
+        "demandMultiplier": 0.6,
+        "poolTarget": 1296000,
+        "supplyFlow": 10800
+      },
+      {
+        "key": "ammo-kinetic-2",
+        "kind": "item",
+        "refId": "ammo-kinetic-2",
+        "rarity": "rare",
+        "basePrice": 45,
+        "demandMultiplier": 0.6,
+        "poolTarget": 518400,
+        "supplyFlow": 4320,
+        "rareQtyMul": 200,
+        "rareWeightMul": 3,
+        "absorbQtyPerWindow": 21600
+      },
+      {
+        "key": "ammo-explosive-2",
+        "kind": "item",
+        "refId": "ammo-explosive-2",
+        "rarity": "rare",
+        "basePrice": 60,
+        "demandMultiplier": 0.6,
+        "poolTarget": 518400,
+        "supplyFlow": 4320,
+        "rareQtyMul": 200,
+        "rareWeightMul": 3,
+        "absorbQtyPerWindow": 21600
+      },
+      {
+        "key": "ammo-plasma-2",
+        "kind": "item",
+        "refId": "ammo-plasma-2",
+        "rarity": "rare",
+        "basePrice": 80,
+        "demandMultiplier": 0.6,
+        "poolTarget": 518400,
+        "supplyFlow": 4320,
+        "rareQtyMul": 200,
+        "rareWeightMul": 3,
+        "absorbQtyPerWindow": 21600
+      },
+      {
+        "key": "repairkit-civ",
+        "kind": "item",
+        "refId": "repairkit-civ",
+        "rarity": "common",
+        "basePrice": 3300,
+        "demandMultiplier": 0.6,
+        "poolTarget": 2400,
+        "supplyFlow": 20
+      },
+      {
+        "key": "repairkit-mil",
+        "kind": "item",
+        "refId": "repairkit-mil",
+        "rarity": "common",
+        "basePrice": 23100,
+        "demandMultiplier": 0.6,
+        "poolTarget": 1080,
+        "supplyFlow": 9
+      },
+      {
+        "key": "repairkit-dc",
+        "kind": "item",
+        "refId": "repairkit-dc",
+        "rarity": "common",
+        "basePrice": 550000,
+        "demandMultiplier": 0.6,
+        "poolTarget": 1080,
+        "supplyFlow": 9
+      },
+      {
+        "key": "drone-scout",
+        "kind": "item",
+        "refId": "drone-scout",
+        "rarity": "common",
+        "basePrice": 900,
+        "demandMultiplier": 0.6,
+        "poolTarget": 18000,
+        "supplyFlow": 4
+      },
+      {
+        "key": "drone-assault",
+        "kind": "item",
+        "refId": "drone-assault",
+        "rarity": "common",
+        "basePrice": 2200,
+        "demandMultiplier": 0.6,
+        "poolTarget": 18000,
+        "supplyFlow": 2
+      },
+      {
+        "key": "drone-heavy",
+        "kind": "item",
+        "refId": "drone-heavy",
+        "rarity": "common",
+        "basePrice": 5000,
+        "demandMultiplier": 0.6,
+        "poolTarget": 12000,
+        "supplyFlow": 1
+      },
+      {
+        "key": "drone-sentry",
+        "kind": "item",
+        "refId": "drone-sentry",
+        "rarity": "common",
+        "basePrice": 9500,
+        "demandMultiplier": 0.6,
+        "poolTarget": 9000,
+        "supplyFlow": 1
+      },
+      {
+        "key": "mod-miner-civ",
+        "kind": "module",
+        "refId": "mod-miner-civ",
+        "rarity": "common",
+        "basePrice": 9000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-cargo-civ",
+        "kind": "module",
+        "refId": "mod-cargo-civ",
+        "rarity": "common",
+        "basePrice": 8000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-turret-civ",
+        "kind": "module",
+        "refId": "mod-turret-civ",
+        "rarity": "common",
+        "basePrice": 12000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-miner-1",
+        "kind": "module",
+        "refId": "mod-miner-1",
+        "rarity": "common",
+        "basePrice": 31200,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-cargo-1",
+        "kind": "module",
+        "refId": "mod-cargo-1",
+        "rarity": "common",
+        "basePrice": 29200,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-turret-kin-1",
+        "kind": "module",
+        "refId": "mod-turret-kin-1",
+        "rarity": "common",
+        "basePrice": 53000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-pd-e",
+        "kind": "module",
+        "refId": "mod-pd-e",
+        "rarity": "rare",
+        "basePrice": 118000,
+        "demandMultiplier": 0.7
+      },
+      {
+        "key": "bp-pd-e",
+        "kind": "blueprint",
+        "refId": "bp-pd-e",
+        "rarity": "rare",
+        "basePrice": 236000,
+        "demandMultiplier": 0.7
+      },
+      {
+        "key": "mod-pd-e-2",
+        "kind": "module",
+        "refId": "mod-pd-e-2",
+        "rarity": "rare",
+        "basePrice": 315000,
+        "demandMultiplier": 0.7
+      },
+      {
+        "key": "bp-pd-e-2",
+        "kind": "blueprint",
+        "refId": "bp-pd-e-2",
+        "rarity": "rare",
+        "basePrice": 787500,
+        "demandMultiplier": 0.7
+      },
+      {
+        "key": "mod-pd-e-3",
+        "kind": "module",
+        "refId": "mod-pd-e-3",
+        "rarity": "exotic",
+        "basePrice": 690000,
+        "demandMultiplier": 0.75
+      },
+      {
+        "key": "bp-pd-e-3",
+        "kind": "blueprint",
+        "refId": "bp-pd-e-3",
+        "rarity": "exotic",
+        "basePrice": 2760000,
+        "demandMultiplier": 0.75
+      },
+      {
+        "key": "mod-missile-1",
+        "kind": "module",
+        "refId": "mod-missile-1",
+        "rarity": "common",
+        "basePrice": 62000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-laser-1",
+        "kind": "module",
+        "refId": "mod-laser-1",
+        "rarity": "common",
+        "basePrice": 66000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-shield-kin-1",
+        "kind": "module",
+        "refId": "mod-shield-kin-1",
+        "rarity": "common",
+        "basePrice": 5000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-shield-exp-1",
+        "kind": "module",
+        "refId": "mod-shield-exp-1",
+        "rarity": "common",
+        "basePrice": 5000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-shield-pla-1",
+        "kind": "module",
+        "refId": "mod-shield-pla-1",
+        "rarity": "common",
+        "basePrice": 5000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-armor-kin-1",
+        "kind": "module",
+        "refId": "mod-armor-kin-1",
+        "rarity": "common",
+        "basePrice": 5500,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-armor-exp-1",
+        "kind": "module",
+        "refId": "mod-armor-exp-1",
+        "rarity": "common",
+        "basePrice": 5500,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-armor-pla-1",
+        "kind": "module",
+        "refId": "mod-armor-pla-1",
+        "rarity": "common",
+        "basePrice": 5500,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-shield-ext-1",
+        "kind": "module",
+        "refId": "mod-shield-ext-1",
+        "rarity": "common",
+        "basePrice": 5000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-shieldchg-1",
+        "kind": "module",
+        "refId": "mod-shieldchg-1",
+        "rarity": "common",
+        "basePrice": 30000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-armor-plate-1",
+        "kind": "module",
+        "refId": "mod-armor-plate-1",
+        "rarity": "common",
+        "basePrice": 5500,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-prop-1",
+        "kind": "module",
+        "refId": "mod-prop-1",
+        "rarity": "common",
+        "basePrice": 6000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-drone-rack-1",
+        "kind": "module",
+        "refId": "mod-drone-rack-1",
+        "rarity": "common",
+        "basePrice": 12000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-drone-tac-1",
+        "kind": "module",
+        "refId": "mod-drone-tac-1",
+        "rarity": "common",
+        "basePrice": 18000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-drone-relay-1",
+        "kind": "module",
+        "refId": "mod-drone-relay-1",
+        "rarity": "common",
+        "basePrice": 15000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-drone-deck-1",
+        "kind": "module",
+        "refId": "mod-drone-deck-1",
+        "rarity": "common",
+        "basePrice": 22000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-miner-1",
+        "kind": "blueprint",
+        "refId": "bp-miner-1",
+        "rarity": "common",
+        "basePrice": 62500,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-cargo-1",
+        "kind": "blueprint",
+        "refId": "bp-cargo-1",
+        "rarity": "common",
+        "basePrice": 58500,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-turret-1",
+        "kind": "blueprint",
+        "refId": "bp-turret-1",
+        "rarity": "common",
+        "basePrice": 106000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-miner-civ",
+        "kind": "blueprint",
+        "refId": "bp-miner-civ",
+        "rarity": "common",
+        "basePrice": 18000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-cargo-civ",
+        "kind": "blueprint",
+        "refId": "bp-cargo-civ",
+        "rarity": "common",
+        "basePrice": 16000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-turret-civ",
+        "kind": "blueprint",
+        "refId": "bp-turret-civ",
+        "rarity": "common",
+        "basePrice": 24000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-ammo-kinetic",
+        "kind": "blueprint",
+        "refId": "bp-ammo-kinetic",
+        "rarity": "common",
+        "basePrice": 1350,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-ammo-explosive",
+        "kind": "blueprint",
+        "refId": "bp-ammo-explosive",
+        "rarity": "common",
+        "basePrice": 1650,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-ammo-plasma",
+        "kind": "blueprint",
+        "refId": "bp-ammo-plasma",
+        "rarity": "common",
+        "basePrice": 1950,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-ammo-kinetic-2",
+        "kind": "blueprint",
+        "refId": "bp-ammo-kinetic-2",
+        "rarity": "exotic",
+        "basePrice": 540000,
+        "demandMultiplier": 1
+      },
+      {
+        "key": "bp-ammo-explosive-2",
+        "kind": "blueprint",
+        "refId": "bp-ammo-explosive-2",
+        "rarity": "exotic",
+        "basePrice": 720000,
+        "demandMultiplier": 1
+      },
+      {
+        "key": "bp-ammo-plasma-2",
+        "kind": "blueprint",
+        "refId": "bp-ammo-plasma-2",
+        "rarity": "exotic",
+        "basePrice": 960000,
+        "demandMultiplier": 1
+      },
+      {
+        "key": "bp-repairkit-civ",
+        "kind": "blueprint",
+        "refId": "bp-repairkit-civ",
+        "rarity": "common",
+        "basePrice": 33000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-repairkit-mil",
+        "kind": "blueprint",
+        "refId": "bp-repairkit-mil",
+        "rarity": "common",
+        "basePrice": 138500,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-repairkit-dc",
+        "kind": "blueprint",
+        "refId": "bp-repairkit-dc",
+        "rarity": "common",
+        "basePrice": 1000000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-laser-1",
+        "kind": "blueprint",
+        "refId": "bp-laser-1",
+        "rarity": "common",
+        "basePrice": 132000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-missile-1",
+        "kind": "blueprint",
+        "refId": "bp-missile-1",
+        "rarity": "common",
+        "basePrice": 124000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-drone-rack-1",
+        "kind": "blueprint",
+        "refId": "bp-drone-rack-1",
+        "rarity": "common",
+        "basePrice": 24000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-drone-tac-1",
+        "kind": "blueprint",
+        "refId": "bp-drone-tac-1",
+        "rarity": "common",
+        "basePrice": 36000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-shield-kin-1",
+        "kind": "blueprint",
+        "refId": "bp-shield-kin-1",
+        "rarity": "common",
+        "basePrice": 10000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-shield-exp-1",
+        "kind": "blueprint",
+        "refId": "bp-shield-exp-1",
+        "rarity": "common",
+        "basePrice": 10000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-shield-pla-1",
+        "kind": "blueprint",
+        "refId": "bp-shield-pla-1",
+        "rarity": "common",
+        "basePrice": 10000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-shield-ext-1",
+        "kind": "blueprint",
+        "refId": "bp-shield-ext-1",
+        "rarity": "common",
+        "basePrice": 10000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-shieldchg-1",
+        "kind": "blueprint",
+        "refId": "bp-shieldchg-1",
+        "rarity": "common",
+        "basePrice": 60000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-armor-kin-1",
+        "kind": "blueprint",
+        "refId": "bp-armor-kin-1",
+        "rarity": "common",
+        "basePrice": 11000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-armor-exp-1",
+        "kind": "blueprint",
+        "refId": "bp-armor-exp-1",
+        "rarity": "common",
+        "basePrice": 11000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-armor-pla-1",
+        "kind": "blueprint",
+        "refId": "bp-armor-pla-1",
+        "rarity": "common",
+        "basePrice": 11000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-armor-plate-1",
+        "kind": "blueprint",
+        "refId": "bp-armor-plate-1",
+        "rarity": "common",
+        "basePrice": 11000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-prop-1",
+        "kind": "blueprint",
+        "refId": "bp-prop-1",
+        "rarity": "common",
+        "basePrice": 12000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-stab-kin-1",
+        "kind": "blueprint",
+        "refId": "bp-stab-kin-1",
+        "rarity": "common",
+        "basePrice": 68000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-stab-exp-1",
+        "kind": "blueprint",
+        "refId": "bp-stab-exp-1",
+        "rarity": "common",
+        "basePrice": 68000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-stab-pla-1",
+        "kind": "blueprint",
+        "refId": "bp-stab-pla-1",
+        "rarity": "common",
+        "basePrice": 68000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-rof-1",
+        "kind": "blueprint",
+        "refId": "bp-rof-1",
+        "rarity": "common",
+        "basePrice": 60000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-track-1",
+        "kind": "blueprint",
+        "refId": "bp-track-1",
+        "rarity": "common",
+        "basePrice": 52000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-gyro-1",
+        "kind": "blueprint",
+        "refId": "bp-gyro-1",
+        "rarity": "common",
+        "basePrice": 48000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-salvager-1",
+        "kind": "blueprint",
+        "refId": "bp-salvager-1",
+        "rarity": "common",
+        "basePrice": 40000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-hullrep-civ",
+        "kind": "blueprint",
+        "refId": "bp-hullrep-civ",
+        "rarity": "common",
+        "basePrice": 60000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-hullrep-1",
+        "kind": "blueprint",
+        "refId": "bp-hullrep-1",
+        "rarity": "common",
+        "basePrice": 936000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-lock-1",
+        "kind": "blueprint",
+        "refId": "bp-lock-1",
+        "rarity": "common",
+        "basePrice": 60000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "ship-burrower",
+        "kind": "ship",
+        "refId": "burrower",
+        "rarity": "common",
+        "basePrice": 120000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "core-basic",
+        "kind": "aicore",
+        "refId": "basic",
+        "rarity": "common",
+        "basePrice": 25000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-miner-2",
+        "kind": "module",
+        "refId": "mod-miner-2",
+        "rarity": "rare",
+        "basePrice": 466000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-cargo-2",
+        "kind": "module",
+        "refId": "mod-cargo-2",
+        "rarity": "rare",
+        "basePrice": 475000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-turret-kin-2",
+        "kind": "module",
+        "refId": "mod-turret-kin-2",
+        "rarity": "rare",
+        "basePrice": 385000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-missile-2",
+        "kind": "module",
+        "refId": "mod-missile-2",
+        "rarity": "rare",
+        "basePrice": 451000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-laser-2",
+        "kind": "module",
+        "refId": "mod-laser-2",
+        "rarity": "rare",
+        "basePrice": 481000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-miner-3",
+        "kind": "module",
+        "refId": "mod-miner-3",
+        "rarity": "rare",
+        "basePrice": 2330000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-cargo-3",
+        "kind": "module",
+        "refId": "mod-cargo-3",
+        "rarity": "rare",
+        "basePrice": 2400000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-turret-kin-3",
+        "kind": "module",
+        "refId": "mod-turret-kin-3",
+        "rarity": "rare",
+        "basePrice": 1916000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-missile-3",
+        "kind": "module",
+        "refId": "mod-missile-3",
+        "rarity": "rare",
+        "basePrice": 2242000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-laser-3",
+        "kind": "module",
+        "refId": "mod-laser-3",
+        "rarity": "rare",
+        "basePrice": 2395000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-shield-kin-2",
+        "kind": "module",
+        "refId": "mod-shield-kin-2",
+        "rarity": "rare",
+        "basePrice": 385000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-shield-exp-2",
+        "kind": "module",
+        "refId": "mod-shield-exp-2",
+        "rarity": "rare",
+        "basePrice": 385000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-shield-pla-2",
+        "kind": "module",
+        "refId": "mod-shield-pla-2",
+        "rarity": "rare",
+        "basePrice": 385000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-armor-kin-2",
+        "kind": "module",
+        "refId": "mod-armor-kin-2",
+        "rarity": "rare",
+        "basePrice": 388000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-armor-exp-2",
+        "kind": "module",
+        "refId": "mod-armor-exp-2",
+        "rarity": "rare",
+        "basePrice": 388000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-armor-pla-2",
+        "kind": "module",
+        "refId": "mod-armor-pla-2",
+        "rarity": "rare",
+        "basePrice": 388000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-prop-2",
+        "kind": "module",
+        "refId": "mod-prop-2",
+        "rarity": "rare",
+        "basePrice": 391000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-drone-rack-2",
+        "kind": "module",
+        "refId": "mod-drone-rack-2",
+        "rarity": "rare",
+        "basePrice": 418000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-drone-tac-2",
+        "kind": "module",
+        "refId": "mod-drone-tac-2",
+        "rarity": "rare",
+        "basePrice": 455000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-drone-relay-2",
+        "kind": "module",
+        "refId": "mod-drone-relay-2",
+        "rarity": "rare",
+        "basePrice": 449000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-drone-deck-2",
+        "kind": "module",
+        "refId": "mod-drone-deck-2",
+        "rarity": "rare",
+        "basePrice": 520000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-shield-kin-3",
+        "kind": "module",
+        "refId": "mod-shield-kin-3",
+        "rarity": "rare",
+        "basePrice": 1920000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-shield-exp-3",
+        "kind": "module",
+        "refId": "mod-shield-exp-3",
+        "rarity": "rare",
+        "basePrice": 1920000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-shield-pla-3",
+        "kind": "module",
+        "refId": "mod-shield-pla-3",
+        "rarity": "rare",
+        "basePrice": 1920000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-armor-kin-3",
+        "kind": "module",
+        "refId": "mod-armor-kin-3",
+        "rarity": "rare",
+        "basePrice": 1940000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-armor-exp-3",
+        "kind": "module",
+        "refId": "mod-armor-exp-3",
+        "rarity": "rare",
+        "basePrice": 1940000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-armor-pla-3",
+        "kind": "module",
+        "refId": "mod-armor-pla-3",
+        "rarity": "rare",
+        "basePrice": 1940000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-shield-ext-2",
+        "kind": "module",
+        "refId": "mod-shield-ext-2",
+        "rarity": "rare",
+        "basePrice": 385000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-shieldchg-2",
+        "kind": "module",
+        "refId": "mod-shieldchg-2",
+        "rarity": "rare",
+        "basePrice": 468000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-armor-plate-2",
+        "kind": "module",
+        "refId": "mod-armor-plate-2",
+        "rarity": "rare",
+        "basePrice": 388000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-shield-ext-3",
+        "kind": "module",
+        "refId": "mod-shield-ext-3",
+        "rarity": "rare",
+        "basePrice": 1920000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-shieldchg-3",
+        "kind": "module",
+        "refId": "mod-shieldchg-3",
+        "rarity": "rare",
+        "basePrice": 2290000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-armor-plate-3",
+        "kind": "module",
+        "refId": "mod-armor-plate-3",
+        "rarity": "rare",
+        "basePrice": 1940000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-dc-1",
+        "kind": "module",
+        "refId": "mod-dc-1",
+        "rarity": "rare",
+        "basePrice": 620000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-dc-2",
+        "kind": "module",
+        "refId": "mod-dc-2",
+        "rarity": "rare",
+        "basePrice": 2800000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-dc-3",
+        "kind": "module",
+        "refId": "mod-dc-3",
+        "rarity": "rare",
+        "basePrice": 9500000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-prop-3",
+        "kind": "module",
+        "refId": "mod-prop-3",
+        "rarity": "rare",
+        "basePrice": 1970000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-mwd-1",
+        "kind": "module",
+        "refId": "mod-mwd-1",
+        "rarity": "rare",
+        "basePrice": 60000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-mwd-1",
+        "kind": "blueprint",
+        "refId": "bp-mwd-1",
+        "rarity": "rare",
+        "basePrice": 120000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-mwd-2",
+        "kind": "module",
+        "refId": "mod-mwd-2",
+        "rarity": "rare",
+        "basePrice": 780000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-mwd-2",
+        "kind": "blueprint",
+        "refId": "bp-mwd-2",
+        "rarity": "rare",
+        "basePrice": 1950000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-drone-rack-3",
+        "kind": "module",
+        "refId": "mod-drone-rack-3",
+        "rarity": "rare",
+        "basePrice": 1960000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-drone-tac-3",
+        "kind": "module",
+        "refId": "mod-drone-tac-3",
+        "rarity": "rare",
+        "basePrice": 2040000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-drone-relay-3",
+        "kind": "module",
+        "refId": "mod-drone-relay-3",
+        "rarity": "rare",
+        "basePrice": 2030000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-drone-deck-3",
+        "kind": "module",
+        "refId": "mod-drone-deck-3",
+        "rarity": "rare",
+        "basePrice": 2600000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-drone-shield-2",
+        "kind": "module",
+        "refId": "mod-drone-shield-2",
+        "rarity": "rare",
+        "basePrice": 450000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-drone-shield-3",
+        "kind": "module",
+        "refId": "mod-drone-shield-3",
+        "rarity": "rare",
+        "basePrice": 2000000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-stab-kin-1",
+        "kind": "module",
+        "refId": "mod-stab-kin-1",
+        "rarity": "common",
+        "basePrice": 34000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-stab-exp-1",
+        "kind": "module",
+        "refId": "mod-stab-exp-1",
+        "rarity": "common",
+        "basePrice": 34000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-stab-pla-1",
+        "kind": "module",
+        "refId": "mod-stab-pla-1",
+        "rarity": "common",
+        "basePrice": 34000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-rof-1",
+        "kind": "module",
+        "refId": "mod-rof-1",
+        "rarity": "common",
+        "basePrice": 30000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-track-1",
+        "kind": "module",
+        "refId": "mod-track-1",
+        "rarity": "common",
+        "basePrice": 26000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-gyro-1",
+        "kind": "module",
+        "refId": "mod-gyro-1",
+        "rarity": "common",
+        "basePrice": 24000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-hullrep-civ",
+        "kind": "module",
+        "refId": "mod-hullrep-civ",
+        "rarity": "common",
+        "basePrice": 30000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-stab-kin-2",
+        "kind": "module",
+        "refId": "mod-stab-kin-2",
+        "rarity": "rare",
+        "basePrice": 481000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-stab-exp-2",
+        "kind": "module",
+        "refId": "mod-stab-exp-2",
+        "rarity": "rare",
+        "basePrice": 481000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-stab-pla-2",
+        "kind": "module",
+        "refId": "mod-stab-pla-2",
+        "rarity": "rare",
+        "basePrice": 481000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-rof-2",
+        "kind": "module",
+        "refId": "mod-rof-2",
+        "rarity": "rare",
+        "basePrice": 468000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-track-2",
+        "kind": "module",
+        "refId": "mod-track-2",
+        "rarity": "rare",
+        "basePrice": 455000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-gyro-2",
+        "kind": "module",
+        "refId": "mod-gyro-2",
+        "rarity": "rare",
+        "basePrice": 449000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-stab-kin-3",
+        "kind": "module",
+        "refId": "mod-stab-kin-3",
+        "rarity": "rare",
+        "basePrice": 2360000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-stab-exp-3",
+        "kind": "module",
+        "refId": "mod-stab-exp-3",
+        "rarity": "rare",
+        "basePrice": 2360000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-stab-pla-3",
+        "kind": "module",
+        "refId": "mod-stab-pla-3",
+        "rarity": "rare",
+        "basePrice": 2360000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-rof-3",
+        "kind": "module",
+        "refId": "mod-rof-3",
+        "rarity": "rare",
+        "basePrice": 2290000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-track-3",
+        "kind": "module",
+        "refId": "mod-track-3",
+        "rarity": "rare",
+        "basePrice": 2230000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-gyro-3",
+        "kind": "module",
+        "refId": "mod-gyro-3",
+        "rarity": "rare",
+        "basePrice": 2210000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-warpcomp-2",
+        "kind": "module",
+        "refId": "mod-warpcomp-2",
+        "rarity": "rare",
+        "basePrice": 1924000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-warpcomp-3",
+        "kind": "module",
+        "refId": "mod-warpcomp-3",
+        "rarity": "rare",
+        "basePrice": 9440000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-cpu-1",
+        "kind": "module",
+        "refId": "mod-cpu-1",
+        "rarity": "rare",
+        "basePrice": 388000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-cpu-2",
+        "kind": "module",
+        "refId": "mod-cpu-2",
+        "rarity": "rare",
+        "basePrice": 1940000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-hullrep-1",
+        "kind": "module",
+        "refId": "mod-hullrep-1",
+        "rarity": "rare",
+        "basePrice": 468000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-hullrep-2",
+        "kind": "module",
+        "refId": "mod-hullrep-2",
+        "rarity": "rare",
+        "basePrice": 2290000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-lock-1",
+        "kind": "module",
+        "refId": "mod-lock-1",
+        "rarity": "common",
+        "basePrice": 30000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-lock-2",
+        "kind": "module",
+        "refId": "mod-lock-2",
+        "rarity": "rare",
+        "basePrice": 465000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-lock-3",
+        "kind": "module",
+        "refId": "mod-lock-3",
+        "rarity": "rare",
+        "basePrice": 2270000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-stealth-2",
+        "kind": "module",
+        "refId": "mod-stealth-2",
+        "rarity": "rare",
+        "basePrice": 3000000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-stealth-3",
+        "kind": "module",
+        "refId": "mod-stealth-3",
+        "rarity": "exotic",
+        "basePrice": 10000000,
+        "demandMultiplier": 0.75
+      },
+      {
+        "key": "mod-salvager-1",
+        "kind": "module",
+        "refId": "mod-salvager-1",
+        "rarity": "common",
+        "basePrice": 20000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "mod-salvager-2",
+        "kind": "module",
+        "refId": "mod-salvager-2",
+        "rarity": "rare",
+        "basePrice": 439000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "mod-salvager-3",
+        "kind": "module",
+        "refId": "mod-salvager-3",
+        "rarity": "rare",
+        "basePrice": 2220000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-miner-2",
+        "kind": "blueprint",
+        "refId": "bp-miner-2",
+        "rarity": "rare",
+        "basePrice": 1165000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-cargo-2",
+        "kind": "blueprint",
+        "refId": "bp-cargo-2",
+        "rarity": "rare",
+        "basePrice": 1187500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-turret-2",
+        "kind": "blueprint",
+        "refId": "bp-turret-2",
+        "rarity": "rare",
+        "basePrice": 962500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-miner-3",
+        "kind": "blueprint",
+        "refId": "bp-miner-3",
+        "rarity": "rare",
+        "basePrice": 6990000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-cargo-3",
+        "kind": "blueprint",
+        "refId": "bp-cargo-3",
+        "rarity": "rare",
+        "basePrice": 7200000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-turret-3",
+        "kind": "blueprint",
+        "refId": "bp-turret-3",
+        "rarity": "rare",
+        "basePrice": 5748000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-laser-2",
+        "kind": "blueprint",
+        "refId": "bp-laser-2",
+        "rarity": "rare",
+        "basePrice": 1202500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-laser-3",
+        "kind": "blueprint",
+        "refId": "bp-laser-3",
+        "rarity": "rare",
+        "basePrice": 7185000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-missile-2",
+        "kind": "blueprint",
+        "refId": "bp-missile-2",
+        "rarity": "rare",
+        "basePrice": 1127500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-missile-3",
+        "kind": "blueprint",
+        "refId": "bp-missile-3",
+        "rarity": "rare",
+        "basePrice": 6726000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-drone-rack-2",
+        "kind": "blueprint",
+        "refId": "bp-drone-rack-2",
+        "rarity": "rare",
+        "basePrice": 1045000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-drone-rack-3",
+        "kind": "blueprint",
+        "refId": "bp-drone-rack-3",
+        "rarity": "rare",
+        "basePrice": 5880000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-drone-tac-2",
+        "kind": "blueprint",
+        "refId": "bp-drone-tac-2",
+        "rarity": "rare",
+        "basePrice": 1137500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-drone-tac-3",
+        "kind": "blueprint",
+        "refId": "bp-drone-tac-3",
+        "rarity": "rare",
+        "basePrice": 6120000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-drone-relay-1",
+        "kind": "blueprint",
+        "refId": "bp-drone-relay-1",
+        "rarity": "common",
+        "basePrice": 30000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-drone-deck-1",
+        "kind": "blueprint",
+        "refId": "bp-drone-deck-1",
+        "rarity": "common",
+        "basePrice": 44000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-drone-relay-2",
+        "kind": "blueprint",
+        "refId": "bp-drone-relay-2",
+        "rarity": "rare",
+        "basePrice": 1122500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-drone-deck-2",
+        "kind": "blueprint",
+        "refId": "bp-drone-deck-2",
+        "rarity": "rare",
+        "basePrice": 1300000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-drone-relay-3",
+        "kind": "blueprint",
+        "refId": "bp-drone-relay-3",
+        "rarity": "rare",
+        "basePrice": 6090000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-drone-deck-3",
+        "kind": "blueprint",
+        "refId": "bp-drone-deck-3",
+        "rarity": "rare",
+        "basePrice": 7800000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-drone-shield-2",
+        "kind": "blueprint",
+        "refId": "bp-drone-shield-2",
+        "rarity": "rare",
+        "basePrice": 1125000,
+        "demandMultiplier": 0.7
+      },
+      {
+        "key": "bp-drone-shield-3",
+        "kind": "blueprint",
+        "refId": "bp-drone-shield-3",
+        "rarity": "exotic",
+        "basePrice": 8000000,
+        "demandMultiplier": 0.75
+      },
+      {
+        "key": "bp-shield-kin-2",
+        "kind": "blueprint",
+        "refId": "bp-shield-kin-2",
+        "rarity": "rare",
+        "basePrice": 962500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-shield-exp-2",
+        "kind": "blueprint",
+        "refId": "bp-shield-exp-2",
+        "rarity": "rare",
+        "basePrice": 962500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-shield-pla-2",
+        "kind": "blueprint",
+        "refId": "bp-shield-pla-2",
+        "rarity": "rare",
+        "basePrice": 962500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-shield-kin-3",
+        "kind": "blueprint",
+        "refId": "bp-shield-kin-3",
+        "rarity": "rare",
+        "basePrice": 5760000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-shield-exp-3",
+        "kind": "blueprint",
+        "refId": "bp-shield-exp-3",
+        "rarity": "rare",
+        "basePrice": 5760000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-shield-pla-3",
+        "kind": "blueprint",
+        "refId": "bp-shield-pla-3",
+        "rarity": "rare",
+        "basePrice": 5760000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-shield-ext-2",
+        "kind": "blueprint",
+        "refId": "bp-shield-ext-2",
+        "rarity": "rare",
+        "basePrice": 962500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-shieldchg-2",
+        "kind": "blueprint",
+        "refId": "bp-shieldchg-2",
+        "rarity": "common",
+        "basePrice": 936000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-shield-ext-3",
+        "kind": "blueprint",
+        "refId": "bp-shield-ext-3",
+        "rarity": "rare",
+        "basePrice": 5760000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-shieldchg-3",
+        "kind": "blueprint",
+        "refId": "bp-shieldchg-3",
+        "rarity": "rare",
+        "basePrice": 5725000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-armor-kin-2",
+        "kind": "blueprint",
+        "refId": "bp-armor-kin-2",
+        "rarity": "rare",
+        "basePrice": 970000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-armor-exp-2",
+        "kind": "blueprint",
+        "refId": "bp-armor-exp-2",
+        "rarity": "rare",
+        "basePrice": 970000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-armor-pla-2",
+        "kind": "blueprint",
+        "refId": "bp-armor-pla-2",
+        "rarity": "rare",
+        "basePrice": 970000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-armor-kin-3",
+        "kind": "blueprint",
+        "refId": "bp-armor-kin-3",
+        "rarity": "rare",
+        "basePrice": 5820000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-armor-exp-3",
+        "kind": "blueprint",
+        "refId": "bp-armor-exp-3",
+        "rarity": "rare",
+        "basePrice": 5820000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-armor-pla-3",
+        "kind": "blueprint",
+        "refId": "bp-armor-pla-3",
+        "rarity": "rare",
+        "basePrice": 5820000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-dc-1",
+        "kind": "blueprint",
+        "refId": "bp-dc-1",
+        "rarity": "rare",
+        "basePrice": 1240000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-dc-2",
+        "kind": "blueprint",
+        "refId": "bp-dc-2",
+        "rarity": "rare",
+        "basePrice": 7000000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-dc-3",
+        "kind": "blueprint",
+        "refId": "bp-dc-3",
+        "rarity": "rare",
+        "basePrice": 28500000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-drone-scout",
+        "kind": "blueprint",
+        "refId": "bp-drone-scout",
+        "rarity": "rare",
+        "basePrice": 180000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-drone-assault",
+        "kind": "blueprint",
+        "refId": "bp-drone-assault",
+        "rarity": "rare",
+        "basePrice": 440000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-drone-heavy",
+        "kind": "blueprint",
+        "refId": "bp-drone-heavy",
+        "rarity": "rare",
+        "basePrice": 1000000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-drone-sentry",
+        "kind": "blueprint",
+        "refId": "bp-drone-sentry",
+        "rarity": "rare",
+        "basePrice": 1900000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-armor-plate-2",
+        "kind": "blueprint",
+        "refId": "bp-armor-plate-2",
+        "rarity": "rare",
+        "basePrice": 970000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-armor-plate-3",
+        "kind": "blueprint",
+        "refId": "bp-armor-plate-3",
+        "rarity": "rare",
+        "basePrice": 5820000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-prop-2",
+        "kind": "blueprint",
+        "refId": "bp-prop-2",
+        "rarity": "rare",
+        "basePrice": 977500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-prop-3",
+        "kind": "blueprint",
+        "refId": "bp-prop-3",
+        "rarity": "rare",
+        "basePrice": 5910000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-stab-kin-2",
+        "kind": "blueprint",
+        "refId": "bp-stab-kin-2",
+        "rarity": "rare",
+        "basePrice": 1202500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-stab-kin-3",
+        "kind": "blueprint",
+        "refId": "bp-stab-kin-3",
+        "rarity": "rare",
+        "basePrice": 7080000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-stab-exp-2",
+        "kind": "blueprint",
+        "refId": "bp-stab-exp-2",
+        "rarity": "rare",
+        "basePrice": 1202500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-stab-exp-3",
+        "kind": "blueprint",
+        "refId": "bp-stab-exp-3",
+        "rarity": "rare",
+        "basePrice": 7080000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-stab-pla-2",
+        "kind": "blueprint",
+        "refId": "bp-stab-pla-2",
+        "rarity": "rare",
+        "basePrice": 1202500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-stab-pla-3",
+        "kind": "blueprint",
+        "refId": "bp-stab-pla-3",
+        "rarity": "rare",
+        "basePrice": 7080000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-rof-2",
+        "kind": "blueprint",
+        "refId": "bp-rof-2",
+        "rarity": "rare",
+        "basePrice": 1170000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-rof-3",
+        "kind": "blueprint",
+        "refId": "bp-rof-3",
+        "rarity": "rare",
+        "basePrice": 6870000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-track-2",
+        "kind": "blueprint",
+        "refId": "bp-track-2",
+        "rarity": "rare",
+        "basePrice": 1137500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-track-3",
+        "kind": "blueprint",
+        "refId": "bp-track-3",
+        "rarity": "rare",
+        "basePrice": 6690000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-gyro-2",
+        "kind": "blueprint",
+        "refId": "bp-gyro-2",
+        "rarity": "rare",
+        "basePrice": 1122500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-gyro-3",
+        "kind": "blueprint",
+        "refId": "bp-gyro-3",
+        "rarity": "rare",
+        "basePrice": 6630000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-warpcomp-2",
+        "kind": "blueprint",
+        "refId": "bp-warpcomp-2",
+        "rarity": "rare",
+        "basePrice": 4810000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-warpcomp-3",
+        "kind": "blueprint",
+        "refId": "bp-warpcomp-3",
+        "rarity": "rare",
+        "basePrice": 28320000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-cpu-1",
+        "kind": "blueprint",
+        "refId": "bp-cpu-1",
+        "rarity": "rare",
+        "basePrice": 776000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-cpu-2",
+        "kind": "blueprint",
+        "refId": "bp-cpu-2",
+        "rarity": "rare",
+        "basePrice": 4850000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-salvager-2",
+        "kind": "blueprint",
+        "refId": "bp-salvager-2",
+        "rarity": "rare",
+        "basePrice": 1097500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-salvager-3",
+        "kind": "blueprint",
+        "refId": "bp-salvager-3",
+        "rarity": "rare",
+        "basePrice": 6660000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-hullrep-2",
+        "kind": "blueprint",
+        "refId": "bp-hullrep-2",
+        "rarity": "rare",
+        "basePrice": 5725000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "part-drone-neural",
+        "kind": "item",
+        "refId": "part-drone-neural",
+        "rarity": "common",
+        "basePrice": 930,
+        "demandMultiplier": 0.6,
+        "poolTarget": 85500,
+        "supplyFlow": 713
+      },
+      {
+        "key": "part-shield-gen",
+        "kind": "item",
+        "refId": "part-shield-gen",
+        "rarity": "common",
+        "basePrice": 1010,
+        "demandMultiplier": 0.6,
+        "poolTarget": 81800,
+        "supplyFlow": 682
+      },
+      {
+        "key": "part-jet-array",
+        "kind": "item",
+        "refId": "part-jet-array",
+        "rarity": "common",
+        "basePrice": 1550,
+        "demandMultiplier": 0.6,
+        "poolTarget": 64600,
+        "supplyFlow": 538
+      },
+      {
+        "key": "part-qchip",
+        "kind": "item",
+        "refId": "part-qchip",
+        "rarity": "common",
+        "basePrice": 700,
+        "demandMultiplier": 0.6,
+        "poolTarget": 100000,
+        "supplyFlow": 833
+      },
+      {
+        "key": "part-keel",
+        "kind": "item",
+        "refId": "part-keel",
+        "rarity": "common",
+        "basePrice": 3120,
+        "demandMultiplier": 0.6,
+        "poolTarget": 44000,
+        "supplyFlow": 367
+      },
+      {
+        "key": "part-fire-control",
+        "kind": "item",
+        "refId": "part-fire-control",
+        "rarity": "common",
+        "basePrice": 1670,
+        "demandMultiplier": 0.6,
+        "poolTarget": 62000,
+        "supplyFlow": 517
+      },
+      {
+        "key": "part-grav-comp",
+        "kind": "item",
+        "refId": "part-grav-comp",
+        "rarity": "common",
+        "basePrice": 7500,
+        "demandMultiplier": 0.6,
+        "poolTarget": 27100,
+        "supplyFlow": 226
+      },
+      {
+        "key": "bp-part-drone-neural",
+        "kind": "blueprint",
+        "refId": "bp-part-drone-neural",
+        "rarity": "common",
+        "basePrice": 10000000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-part-shield-gen",
+        "kind": "blueprint",
+        "refId": "bp-part-shield-gen",
+        "rarity": "common",
+        "basePrice": 10000000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-part-jet-array",
+        "kind": "blueprint",
+        "refId": "bp-part-jet-array",
+        "rarity": "common",
+        "basePrice": 10000000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-part-qchip",
+        "kind": "blueprint",
+        "refId": "bp-part-qchip",
+        "rarity": "common",
+        "basePrice": 10000000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-part-keel",
+        "kind": "blueprint",
+        "refId": "bp-part-keel",
+        "rarity": "common",
+        "basePrice": 10000000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-part-fire-control",
+        "kind": "blueprint",
+        "refId": "bp-part-fire-control",
+        "rarity": "common",
+        "basePrice": 10000000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-part-grav-comp",
+        "kind": "blueprint",
+        "refId": "bp-part-grav-comp",
+        "rarity": "common",
+        "basePrice": 10000000,
+        "demandMultiplier": 0.6
+      },
+      {
+        "key": "bp-lock-2",
+        "kind": "blueprint",
+        "refId": "bp-lock-2",
+        "rarity": "rare",
+        "basePrice": 1162500,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-lock-3",
+        "kind": "blueprint",
+        "refId": "bp-lock-3",
+        "rarity": "rare",
+        "basePrice": 6810000,
+        "demandMultiplier": 0.65,
+        "standingReq": 4
+      },
+      {
+        "key": "bp-stealth-2",
+        "kind": "blueprint",
+        "refId": "bp-stealth-2",
+        "rarity": "rare",
+        "basePrice": 7500000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "bp-stealth-3",
+        "kind": "blueprint",
+        "refId": "bp-stealth-3",
+        "rarity": "exotic",
+        "basePrice": 40000000,
+        "demandMultiplier": 0.75
+      },
+      {
+        "key": "sbp-pioneer",
+        "kind": "blueprint",
+        "refId": "sbp-pioneer",
+        "rarity": "exotic",
+        "basePrice": 32000000,
+        "demandMultiplier": 1,
+        "standingReq": 11
+      },
+      {
+        "key": "sbp-humpback",
+        "kind": "blueprint",
+        "refId": "sbp-humpback",
+        "rarity": "exotic",
+        "basePrice": 360000000,
+        "demandMultiplier": 1,
+        "standingReq": 15
+      },
+      {
+        "key": "ship-whale",
+        "kind": "ship",
+        "refId": "whale",
+        "rarity": "rare",
+        "basePrice": 900000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "ship-pioneer",
+        "kind": "ship",
+        "refId": "pioneer",
+        "rarity": "rare",
+        "basePrice": 8000000,
+        "demandMultiplier": 0.65,
+        "playerBuyable": false
+      },
+      {
+        "key": "ship-humpback",
+        "kind": "ship",
+        "refId": "sh-humpback",
+        "rarity": "rare",
+        "basePrice": 90000000,
+        "demandMultiplier": 0.65,
+        "standingReq": 12
+      },
+      {
+        "key": "ship-bowhead",
+        "kind": "ship",
+        "refId": "sh-bowhead",
+        "rarity": "exotic",
+        "basePrice": 67500000,
+        "demandMultiplier": 1,
+        "standingReq": 20
+      },
+      {
+        "key": "ship-falconet",
+        "kind": "ship",
+        "refId": "sh-falconet",
+        "rarity": "rare",
+        "basePrice": 42000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "ship-shrike",
+        "kind": "ship",
+        "refId": "sh-shrike",
+        "rarity": "rare",
+        "basePrice": 110000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "ship-tigershark",
+        "kind": "ship",
+        "refId": "sh-tigershark",
+        "rarity": "rare",
+        "basePrice": 240000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "ship-mako",
+        "kind": "ship",
+        "refId": "sh-mako",
+        "rarity": "rare",
+        "basePrice": 480000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "ship-swarm",
+        "kind": "ship",
+        "refId": "sh-swarm",
+        "rarity": "rare",
+        "basePrice": 620000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "ship-tortoise",
+        "kind": "ship",
+        "refId": "sh-tortoise",
+        "rarity": "rare",
+        "basePrice": 450000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "ship-hawksbill",
+        "kind": "ship",
+        "refId": "sh-hawksbill",
+        "rarity": "exotic",
+        "basePrice": 6000000,
+        "demandMultiplier": 1,
+        "standingReq": 12
+      },
+      {
+        "key": "ship-flyingfish",
+        "kind": "ship",
+        "refId": "sh-flyingfish",
+        "rarity": "rare",
+        "basePrice": 210000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "ship-sailfish",
+        "kind": "ship",
+        "refId": "sh-sailfish",
+        "rarity": "rare",
+        "basePrice": 2400000,
+        "demandMultiplier": 0.65,
+        "standingReq": 12
+      },
+      {
+        "key": "ship-manatee",
+        "kind": "ship",
+        "refId": "sh-manatee",
+        "rarity": "rare",
+        "basePrice": 6750000,
+        "demandMultiplier": 0.65,
+        "standingReq": 12
+      },
+      {
+        "key": "ship-thresher",
+        "kind": "ship",
+        "refId": "sh-thresher",
+        "rarity": "rare",
+        "basePrice": 9000000,
+        "demandMultiplier": 1,
+        "standingReq": 8
+      },
+      {
+        "key": "ship-electricray",
+        "kind": "ship",
+        "refId": "sh-electricray",
+        "rarity": "rare",
+        "basePrice": 15000000,
+        "demandMultiplier": 1,
+        "standingReq": 8
+      },
+      {
+        "key": "ship-hammerhead",
+        "kind": "ship",
+        "refId": "sh-hammerhead",
+        "rarity": "rare",
+        "basePrice": 11000000,
+        "demandMultiplier": 1,
+        "standingReq": 8
+      },
+      {
+        "key": "ship-bullshark",
+        "kind": "ship",
+        "refId": "sh-bullshark",
+        "rarity": "rare",
+        "basePrice": 13000000,
+        "demandMultiplier": 1,
+        "standingReq": 8
+      },
+      {
+        "key": "ship-nautilus",
+        "kind": "ship",
+        "refId": "sh-nautilus",
+        "rarity": "rare",
+        "basePrice": 9000000,
+        "demandMultiplier": 1,
+        "standingReq": 8
+      },
+      {
+        "key": "ship-whale-king",
+        "kind": "ship",
+        "refId": "whale-king",
+        "rarity": "exotic",
+        "basePrice": 100000000,
+        "demandMultiplier": 1,
+        "standingReq": 12,
+        "playerBuyable": false
+      },
+      {
+        "key": "sbp-whale-king",
+        "kind": "blueprint",
+        "refId": "sbp-whale-king",
+        "rarity": "exotic",
+        "basePrice": 400000000,
+        "demandMultiplier": 1,
+        "standingReq": 15
+      },
+      {
+        "key": "ship-sentinel",
+        "kind": "ship",
+        "refId": "sh-sentinel",
+        "rarity": "exotic",
+        "basePrice": 2600000,
+        "demandMultiplier": 1,
+        "standingReq": 12
+      },
+      {
+        "key": "ship-whiteshark",
+        "kind": "ship",
+        "refId": "sh-whiteshark",
+        "rarity": "exotic",
+        "basePrice": 1100000,
+        "demandMultiplier": 1,
+        "standingReq": 7
+      },
+      {
+        "key": "ship-swordfish",
+        "kind": "ship",
+        "refId": "sh-swordfish",
+        "rarity": "exotic",
+        "basePrice": 24000000,
+        "demandMultiplier": 1,
+        "standingReq": 20
+      },
+      {
+        "key": "ship-xuanwu",
+        "kind": "ship",
+        "refId": "sh-xuanwu",
+        "rarity": "exotic",
+        "basePrice": 225000000,
+        "demandMultiplier": 1,
+        "standingReq": 20,
+        "playerBuyable": false
+      },
+      {
+        "key": "ship-megalodon",
+        "kind": "ship",
+        "refId": "sh-megalodon",
+        "rarity": "exotic",
+        "basePrice": 225000000,
+        "demandMultiplier": 1,
+        "standingReq": 20,
+        "playerBuyable": false
+      },
+      {
+        "key": "ship-colossal",
+        "kind": "ship",
+        "refId": "sh-colossal",
+        "rarity": "exotic",
+        "basePrice": 640000000,
+        "demandMultiplier": 1,
+        "standingReq": 35,
+        "playerBuyable": false
+      },
+      {
+        "key": "ship-orca",
+        "kind": "ship",
+        "refId": "sh-orca",
+        "rarity": "exotic",
+        "basePrice": 225000000,
+        "demandMultiplier": 1,
+        "standingReq": 20,
+        "playerBuyable": false
+      },
+      {
+        "key": "ship-helicoprion",
+        "kind": "ship",
+        "refId": "sh-helicoprion",
+        "rarity": "exotic",
+        "basePrice": 225000000,
+        "demandMultiplier": 1,
+        "standingReq": 20,
+        "playerBuyable": false
+      },
+      {
+        "key": "sbp-burrower",
+        "kind": "blueprint",
+        "refId": "sbp-burrower",
+        "rarity": "rare",
+        "basePrice": 240000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "sbp-whale",
+        "kind": "blueprint",
+        "refId": "sbp-whale",
+        "rarity": "rare",
+        "basePrice": 2250000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "sbp-bowhead",
+        "kind": "blueprint",
+        "refId": "sbp-bowhead",
+        "rarity": "exotic",
+        "basePrice": 270000000,
+        "demandMultiplier": 1,
+        "standingReq": 25
+      },
+      {
+        "key": "sbp-falconet",
+        "kind": "blueprint",
+        "refId": "sbp-falconet",
+        "rarity": "rare",
+        "basePrice": 80000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "sbp-shrike",
+        "kind": "blueprint",
+        "refId": "sbp-shrike",
+        "rarity": "rare",
+        "basePrice": 220000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "sbp-tigershark",
+        "kind": "blueprint",
+        "refId": "sbp-tigershark",
+        "rarity": "rare",
+        "basePrice": 480000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "sbp-mako",
+        "kind": "blueprint",
+        "refId": "sbp-mako",
+        "rarity": "rare",
+        "basePrice": 1200000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "sbp-whiteshark",
+        "kind": "blueprint",
+        "refId": "sbp-whiteshark",
+        "rarity": "exotic",
+        "basePrice": 3300000,
+        "demandMultiplier": 1,
+        "standingReq": 11
+      },
+      {
+        "key": "sbp-swarm",
+        "kind": "blueprint",
+        "refId": "sbp-swarm",
+        "rarity": "rare",
+        "basePrice": 1550000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "sbp-sentinel",
+        "kind": "blueprint",
+        "refId": "sbp-sentinel",
+        "rarity": "exotic",
+        "basePrice": 7800000,
+        "demandMultiplier": 1,
+        "standingReq": 15
+      },
+      {
+        "key": "sbp-thresher",
+        "kind": "blueprint",
+        "refId": "sbp-thresher",
+        "rarity": "exotic",
+        "basePrice": 36000000,
+        "demandMultiplier": 1,
+        "standingReq": 15
+      },
+      {
+        "key": "sbp-electricray",
+        "kind": "blueprint",
+        "refId": "sbp-electricray",
+        "rarity": "exotic",
+        "basePrice": 60000000,
+        "demandMultiplier": 1,
+        "standingReq": 15
+      },
+      {
+        "key": "sbp-hammerhead",
+        "kind": "blueprint",
+        "refId": "sbp-hammerhead",
+        "rarity": "exotic",
+        "basePrice": 44000000,
+        "demandMultiplier": 1,
+        "standingReq": 15
+      },
+      {
+        "key": "sbp-bullshark",
+        "kind": "blueprint",
+        "refId": "sbp-bullshark",
+        "rarity": "exotic",
+        "basePrice": 52000000,
+        "demandMultiplier": 1,
+        "standingReq": 15
+      },
+      {
+        "key": "sbp-nautilus",
+        "kind": "blueprint",
+        "refId": "sbp-nautilus",
+        "rarity": "exotic",
+        "basePrice": 36000000,
+        "demandMultiplier": 1,
+        "standingReq": 15
+      },
+      {
+        "key": "sbp-tortoise",
+        "kind": "blueprint",
+        "refId": "sbp-tortoise",
+        "rarity": "rare",
+        "basePrice": 830000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "sbp-hawksbill",
+        "kind": "blueprint",
+        "refId": "sbp-hawksbill",
+        "rarity": "exotic",
+        "basePrice": 24000000,
+        "demandMultiplier": 1,
+        "standingReq": 15
+      },
+      {
+        "key": "sbp-xuanwu",
+        "kind": "blueprint",
+        "refId": "sbp-xuanwu",
+        "rarity": "exotic",
+        "basePrice": 900000000,
+        "demandMultiplier": 1,
+        "standingReq": 25
+      },
+      {
+        "key": "sbp-flyingfish",
+        "kind": "blueprint",
+        "refId": "sbp-flyingfish",
+        "rarity": "rare",
+        "basePrice": 420000,
+        "demandMultiplier": 0.65
+      },
+      {
+        "key": "sbp-sailfish",
+        "kind": "blueprint",
+        "refId": "sbp-sailfish",
+        "rarity": "rare",
+        "basePrice": 7200000,
+        "demandMultiplier": 0.65,
+        "standingReq": 15
+      },
+      {
+        "key": "sbp-manatee",
+        "kind": "blueprint",
+        "refId": "sbp-manatee",
+        "rarity": "rare",
+        "basePrice": 27000000,
+        "demandMultiplier": 0.65,
+        "standingReq": 15
+      },
+      {
+        "key": "sbp-swordfish",
+        "kind": "blueprint",
+        "refId": "sbp-swordfish",
+        "rarity": "exotic",
+        "basePrice": 96000000,
+        "demandMultiplier": 1,
+        "standingReq": 25
+      },
+      {
+        "key": "sbp-megalodon",
+        "kind": "blueprint",
+        "refId": "sbp-megalodon",
+        "rarity": "exotic",
+        "basePrice": 900000000,
+        "demandMultiplier": 1,
+        "standingReq": 25
+      },
+      {
+        "key": "sbp-orca",
+        "kind": "blueprint",
+        "refId": "sbp-orca",
+        "rarity": "exotic",
+        "basePrice": 900000000,
+        "demandMultiplier": 1,
+        "standingReq": 25
+      },
+      {
+        "key": "sbp-helicoprion",
+        "kind": "blueprint",
+        "refId": "sbp-helicoprion",
+        "rarity": "exotic",
+        "basePrice": 900000000,
+        "demandMultiplier": 1,
+        "standingReq": 25
+      },
+      {
+        "key": "sbp-colossal",
+        "kind": "blueprint",
+        "refId": "sbp-colossal",
+        "rarity": "exotic",
+        "basePrice": 2560000000,
+        "demandMultiplier": 1,
+        "standingReq": 40
+      },
+      {
+        "key": "sbp-once-pioneer",
+        "kind": "blueprint",
+        "refId": "sbp-once-pioneer",
+        "rarity": "rare",
+        "basePrice": 4000000,
+        "demandMultiplier": 0.65,
+        "standingReq": 15
+      },
+      {
+        "key": "sbp-once-sailfish",
+        "kind": "blueprint",
+        "refId": "sbp-once-sailfish",
+        "rarity": "rare",
+        "basePrice": 1200000,
+        "demandMultiplier": 0.65,
+        "standingReq": 15
+      },
+      {
+        "key": "sbp-once-manatee",
+        "kind": "blueprint",
+        "refId": "sbp-once-manatee",
+        "rarity": "rare",
+        "basePrice": 3375000,
+        "demandMultiplier": 0.65,
+        "standingReq": 15
+      },
+      {
+        "key": "sbp-once-sentinel",
+        "kind": "blueprint",
+        "refId": "sbp-once-sentinel",
+        "rarity": "rare",
+        "basePrice": 1300000,
+        "demandMultiplier": 0.65,
+        "standingReq": 15
+      },
+      {
+        "key": "sbp-once-hawksbill",
+        "kind": "blueprint",
+        "refId": "sbp-once-hawksbill",
+        "rarity": "rare",
+        "basePrice": 3000000,
+        "demandMultiplier": 0.65,
+        "standingReq": 15
+      },
+      {
+        "key": "sbp-once-humpback",
+        "kind": "blueprint",
+        "refId": "sbp-once-humpback",
+        "rarity": "rare",
+        "basePrice": 45000000,
+        "demandMultiplier": 0.65,
+        "standingReq": 15
+      },
+      {
+        "key": "sbp-once-thresher",
+        "kind": "blueprint",
+        "refId": "sbp-once-thresher",
+        "rarity": "rare",
+        "basePrice": 4500000,
+        "demandMultiplier": 0.65,
+        "standingReq": 8
+      },
+      {
+        "key": "sbp-once-nautilus",
+        "kind": "blueprint",
+        "refId": "sbp-once-nautilus",
+        "rarity": "rare",
+        "basePrice": 4500000,
+        "demandMultiplier": 0.65,
+        "standingReq": 8
+      },
+      {
+        "key": "sbp-once-hammerhead",
+        "kind": "blueprint",
+        "refId": "sbp-once-hammerhead",
+        "rarity": "rare",
+        "basePrice": 5500000,
+        "demandMultiplier": 0.65,
+        "standingReq": 8
+      },
+      {
+        "key": "sbp-once-whale-king",
+        "kind": "blueprint",
+        "refId": "sbp-once-whale-king",
+        "rarity": "rare",
+        "basePrice": 50000000,
+        "demandMultiplier": 0.65,
+        "standingReq": 15
+      },
+      {
+        "key": "sbp-once-bullshark",
+        "kind": "blueprint",
+        "refId": "sbp-once-bullshark",
+        "rarity": "rare",
+        "basePrice": 6500000,
+        "demandMultiplier": 0.65,
+        "standingReq": 8
+      },
+      {
+        "key": "sbp-once-electricray",
+        "kind": "blueprint",
+        "refId": "sbp-once-electricray",
+        "rarity": "rare",
+        "basePrice": 7500000,
+        "demandMultiplier": 0.65,
+        "standingReq": 8
+      },
+      {
+        "key": "sbp-once-swordfish",
+        "kind": "blueprint",
+        "refId": "sbp-once-swordfish",
+        "rarity": "rare",
+        "basePrice": 12000000,
+        "demandMultiplier": 0.65,
+        "standingReq": 25
+      },
+      {
+        "key": "sbp-once-bowhead",
+        "kind": "blueprint",
+        "refId": "sbp-once-bowhead",
+        "rarity": "rare",
+        "basePrice": 33750000,
+        "demandMultiplier": 0.65,
+        "standingReq": 25
+      },
+      {
+        "key": "sbp-once-xuanwu",
+        "kind": "blueprint",
+        "refId": "sbp-once-xuanwu",
+        "rarity": "exotic",
+        "basePrice": 112500000,
+        "demandMultiplier": 1,
+        "standingReq": 25
+      },
+      {
+        "key": "sbp-once-megalodon",
+        "kind": "blueprint",
+        "refId": "sbp-once-megalodon",
+        "rarity": "exotic",
+        "basePrice": 112500000,
+        "demandMultiplier": 1,
+        "standingReq": 25
+      },
+      {
+        "key": "sbp-once-orca",
+        "kind": "blueprint",
+        "refId": "sbp-once-orca",
+        "rarity": "exotic",
+        "basePrice": 112500000,
+        "demandMultiplier": 1,
+        "standingReq": 25
+      },
+      {
+        "key": "sbp-once-helicoprion",
+        "kind": "blueprint",
+        "refId": "sbp-once-helicoprion",
+        "rarity": "exotic",
+        "basePrice": 112500000,
+        "demandMultiplier": 1,
+        "standingReq": 25
+      },
+      {
+        "key": "sbp-once-colossal",
+        "kind": "blueprint",
+        "refId": "sbp-once-colossal",
+        "rarity": "exotic",
+        "basePrice": 320000000,
+        "demandMultiplier": 1,
+        "standingReq": 40
+      },
+      {
+        "key": "mod-miner-proto",
+        "kind": "module",
+        "refId": "mod-miner-proto",
+        "rarity": "exotic",
+        "basePrice": 34950000,
+        "demandMultiplier": 1,
+        "standingReq": 10
+      },
+      {
+        "key": "mod-cargo-proto",
+        "kind": "module",
+        "refId": "mod-cargo-proto",
+        "rarity": "exotic",
+        "basePrice": 36000000,
+        "demandMultiplier": 1,
+        "standingReq": 10
+      },
+      {
+        "key": "mod-laser-proto",
+        "kind": "module",
+        "refId": "mod-laser-proto",
+        "rarity": "exotic",
+        "basePrice": 35925000,
+        "demandMultiplier": 1,
+        "standingReq": 10
+      },
+      {
+        "key": "mod-cpu-3",
+        "kind": "module",
+        "refId": "mod-cpu-3",
+        "rarity": "exotic",
+        "basePrice": 2600000,
+        "demandMultiplier": 1
+      },
+      {
+        "key": "core-gamma",
+        "kind": "aicore",
+        "refId": "gamma",
+        "rarity": "exotic",
+        "basePrice": 200000,
+        "demandMultiplier": 1
+      },
+      {
+        "key": "core-beta",
+        "kind": "aicore",
+        "refId": "beta",
+        "rarity": "exotic",
+        "basePrice": 1500000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "core-alpha",
+        "kind": "aicore",
+        "refId": "alpha",
+        "rarity": "exotic",
+        "basePrice": 10000000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      }
+    ],
+    "MARKET_GOODS_0": [
+      {
+        "key": "sbp-wh-a-frigate",
+        "kind": "blueprint",
+        "refId": "sbp-wh-a-frigate",
+        "rarity": "exotic",
+        "basePrice": 1153000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sbp-wh-a-destroyer",
+        "kind": "blueprint",
+        "refId": "sbp-wh-a-destroyer",
+        "rarity": "exotic",
+        "basePrice": 2555000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sbp-wh-a-cruiser",
+        "kind": "blueprint",
+        "refId": "sbp-wh-a-cruiser",
+        "rarity": "exotic",
+        "basePrice": 4942000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sbp-wh-c-frigate",
+        "kind": "blueprint",
+        "refId": "sbp-wh-c-frigate",
+        "rarity": "exotic",
+        "basePrice": 1307000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sbp-wh-c-destroyer",
+        "kind": "blueprint",
+        "refId": "sbp-wh-c-destroyer",
+        "rarity": "exotic",
+        "basePrice": 2822000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sbp-wh-c-cruiser",
+        "kind": "blueprint",
+        "refId": "sbp-wh-c-cruiser",
+        "rarity": "exotic",
+        "basePrice": 5680000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sbp-wh-d-frigate",
+        "kind": "blueprint",
+        "refId": "sbp-wh-d-frigate",
+        "rarity": "exotic",
+        "basePrice": 1536500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sbp-wh-d-destroyer",
+        "kind": "blueprint",
+        "refId": "sbp-wh-d-destroyer",
+        "rarity": "exotic",
+        "basePrice": 3722000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sbp-wh-d-cruiser",
+        "kind": "blueprint",
+        "refId": "sbp-wh-d-cruiser",
+        "rarity": "exotic",
+        "basePrice": 7680000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sbp-wh-e-frigate",
+        "kind": "blueprint",
+        "refId": "sbp-wh-e-frigate",
+        "rarity": "exotic",
+        "basePrice": 1437000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sbp-wh-e-destroyer",
+        "kind": "blueprint",
+        "refId": "sbp-wh-e-destroyer",
+        "rarity": "exotic",
+        "basePrice": 3107000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sbp-wh-e-carrier",
+        "kind": "blueprint",
+        "refId": "sbp-wh-e-carrier",
+        "rarity": "exotic",
+        "basePrice": 7172500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sbp-wh-g-frigate",
+        "kind": "blueprint",
+        "refId": "sbp-wh-g-frigate",
+        "rarity": "exotic",
+        "basePrice": 1515000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sbp-wh-g-destroyer",
+        "kind": "blueprint",
+        "refId": "sbp-wh-g-destroyer",
+        "rarity": "exotic",
+        "basePrice": 3335000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sbp-wh-g-cruiser",
+        "kind": "blueprint",
+        "refId": "sbp-wh-g-cruiser",
+        "rarity": "exotic",
+        "basePrice": 6693000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-a-frag",
+        "kind": "blueprint",
+        "refId": "bp-wh-a-frag",
+        "rarity": "exotic",
+        "basePrice": 5244500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-a-hangar",
+        "kind": "blueprint",
+        "refId": "bp-wh-a-hangar",
+        "rarity": "exotic",
+        "basePrice": 3955500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-a-prop",
+        "kind": "blueprint",
+        "refId": "bp-wh-a-prop",
+        "rarity": "exotic",
+        "basePrice": 2995500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-a-coat",
+        "kind": "blueprint",
+        "refId": "bp-wh-a-coat",
+        "rarity": "exotic",
+        "basePrice": 2674000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-a-scan",
+        "kind": "blueprint",
+        "refId": "bp-wh-a-scan",
+        "rarity": "exotic",
+        "basePrice": 2802000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-a-shield",
+        "kind": "blueprint",
+        "refId": "bp-wh-a-shield",
+        "rarity": "exotic",
+        "basePrice": 4764500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-c-laser",
+        "kind": "blueprint",
+        "refId": "bp-wh-c-laser",
+        "rarity": "exotic",
+        "basePrice": 4995500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-c-prism",
+        "kind": "blueprint",
+        "refId": "bp-wh-c-prism",
+        "rarity": "exotic",
+        "basePrice": 4844500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-c-pulse",
+        "kind": "blueprint",
+        "refId": "bp-wh-c-pulse",
+        "rarity": "exotic",
+        "basePrice": 2915500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-c-missile",
+        "kind": "blueprint",
+        "refId": "bp-wh-c-missile",
+        "rarity": "exotic",
+        "basePrice": 4653500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-c-frame",
+        "kind": "blueprint",
+        "refId": "bp-wh-c-frame",
+        "rarity": "exotic",
+        "basePrice": 4898000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-d-turret",
+        "kind": "blueprint",
+        "refId": "bp-wh-d-turret",
+        "rarity": "exotic",
+        "basePrice": 8555500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-d-shield",
+        "kind": "blueprint",
+        "refId": "bp-wh-d-shield",
+        "rarity": "exotic",
+        "basePrice": 8087000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-d-lock",
+        "kind": "blueprint",
+        "refId": "bp-wh-d-lock",
+        "rarity": "exotic",
+        "basePrice": 6454000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-d-laser",
+        "kind": "blueprint",
+        "refId": "bp-wh-d-laser",
+        "rarity": "exotic",
+        "basePrice": 9312000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-d-loader",
+        "kind": "blueprint",
+        "refId": "bp-wh-d-loader",
+        "rarity": "exotic",
+        "basePrice": 5506000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-d-steady",
+        "kind": "blueprint",
+        "refId": "bp-wh-d-steady",
+        "rarity": "exotic",
+        "basePrice": 5141000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-e-dc",
+        "kind": "blueprint",
+        "refId": "bp-wh-e-dc",
+        "rarity": "exotic",
+        "basePrice": 7442000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-e-tac",
+        "kind": "blueprint",
+        "refId": "bp-wh-e-tac",
+        "rarity": "exotic",
+        "basePrice": 6009000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-e-cpu",
+        "kind": "blueprint",
+        "refId": "bp-wh-e-cpu",
+        "rarity": "exotic",
+        "basePrice": 6377000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-e-pd",
+        "kind": "blueprint",
+        "refId": "bp-wh-e-pd",
+        "rarity": "exotic",
+        "basePrice": 6153000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-e-shield",
+        "kind": "blueprint",
+        "refId": "bp-wh-e-shield",
+        "rarity": "exotic",
+        "basePrice": 7406000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-g-hangar",
+        "kind": "blueprint",
+        "refId": "bp-wh-g-hangar",
+        "rarity": "exotic",
+        "basePrice": 6360000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-g-fcs",
+        "kind": "blueprint",
+        "refId": "bp-wh-g-fcs",
+        "rarity": "exotic",
+        "basePrice": 4978000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-g-ballistic",
+        "kind": "blueprint",
+        "refId": "bp-wh-g-ballistic",
+        "rarity": "exotic",
+        "basePrice": 4642000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-g-hull",
+        "kind": "blueprint",
+        "refId": "bp-wh-g-hull",
+        "rarity": "exotic",
+        "basePrice": 6718000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-g-turret",
+        "kind": "blueprint",
+        "refId": "bp-wh-g-turret",
+        "rarity": "exotic",
+        "basePrice": 6306500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-g-prop",
+        "kind": "blueprint",
+        "refId": "bp-wh-g-prop",
+        "rarity": "exotic",
+        "basePrice": 4709000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-a-frag",
+        "kind": "module",
+        "refId": "mod-wh-a-frag",
+        "rarity": "exotic",
+        "basePrice": 5244500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-a-hangar",
+        "kind": "module",
+        "refId": "mod-wh-a-hangar",
+        "rarity": "exotic",
+        "basePrice": 3955500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-a-prop",
+        "kind": "module",
+        "refId": "mod-wh-a-prop",
+        "rarity": "exotic",
+        "basePrice": 2995500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-a-coat",
+        "kind": "module",
+        "refId": "mod-wh-a-coat",
+        "rarity": "exotic",
+        "basePrice": 2674000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-a-scan",
+        "kind": "module",
+        "refId": "mod-wh-a-scan",
+        "rarity": "exotic",
+        "basePrice": 2802000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-a-shield",
+        "kind": "module",
+        "refId": "mod-wh-a-shield",
+        "rarity": "exotic",
+        "basePrice": 4764500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-c-laser",
+        "kind": "module",
+        "refId": "mod-wh-c-laser",
+        "rarity": "exotic",
+        "basePrice": 4995500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-c-prism",
+        "kind": "module",
+        "refId": "mod-wh-c-prism",
+        "rarity": "exotic",
+        "basePrice": 4844500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-c-pulse",
+        "kind": "module",
+        "refId": "mod-wh-c-pulse",
+        "rarity": "exotic",
+        "basePrice": 2915500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-c-missile",
+        "kind": "module",
+        "refId": "mod-wh-c-missile",
+        "rarity": "exotic",
+        "basePrice": 4653500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-c-frame",
+        "kind": "module",
+        "refId": "mod-wh-c-frame",
+        "rarity": "exotic",
+        "basePrice": 4898000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-d-turret",
+        "kind": "module",
+        "refId": "mod-wh-d-turret",
+        "rarity": "exotic",
+        "basePrice": 8555500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-d-shield",
+        "kind": "module",
+        "refId": "mod-wh-d-shield",
+        "rarity": "exotic",
+        "basePrice": 8087000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-d-lock",
+        "kind": "module",
+        "refId": "mod-wh-d-lock",
+        "rarity": "exotic",
+        "basePrice": 6454000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-d-laser",
+        "kind": "module",
+        "refId": "mod-wh-d-laser",
+        "rarity": "exotic",
+        "basePrice": 9312000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-d-loader",
+        "kind": "module",
+        "refId": "mod-wh-d-loader",
+        "rarity": "exotic",
+        "basePrice": 5506000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-d-steady",
+        "kind": "module",
+        "refId": "mod-wh-d-steady",
+        "rarity": "exotic",
+        "basePrice": 5141000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-e-dc",
+        "kind": "module",
+        "refId": "mod-wh-e-dc",
+        "rarity": "exotic",
+        "basePrice": 7442000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-e-tac",
+        "kind": "module",
+        "refId": "mod-wh-e-tac",
+        "rarity": "exotic",
+        "basePrice": 6009000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-e-cpu",
+        "kind": "module",
+        "refId": "mod-wh-e-cpu",
+        "rarity": "exotic",
+        "basePrice": 6377000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-e-pd",
+        "kind": "module",
+        "refId": "mod-wh-e-pd",
+        "rarity": "exotic",
+        "basePrice": 6153000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-e-shield",
+        "kind": "module",
+        "refId": "mod-wh-e-shield",
+        "rarity": "exotic",
+        "basePrice": 7406000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-g-hangar",
+        "kind": "module",
+        "refId": "mod-wh-g-hangar",
+        "rarity": "exotic",
+        "basePrice": 6360000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-g-fcs",
+        "kind": "module",
+        "refId": "mod-wh-g-fcs",
+        "rarity": "exotic",
+        "basePrice": 4978000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-g-ballistic",
+        "kind": "module",
+        "refId": "mod-wh-g-ballistic",
+        "rarity": "exotic",
+        "basePrice": 4642000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-g-hull",
+        "kind": "module",
+        "refId": "mod-wh-g-hull",
+        "rarity": "exotic",
+        "basePrice": 6718000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-g-turret",
+        "kind": "module",
+        "refId": "mod-wh-g-turret",
+        "rarity": "exotic",
+        "basePrice": 6306500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-wh-g-prop",
+        "kind": "module",
+        "refId": "mod-wh-g-prop",
+        "rarity": "exotic",
+        "basePrice": 4709000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-shieldfield-2",
+        "kind": "module",
+        "refId": "mod-shieldfield-2",
+        "rarity": "exotic",
+        "basePrice": 4000000,
+        "demandMultiplier": 0.75
+      },
+      {
+        "key": "mod-shieldfield-3",
+        "kind": "module",
+        "refId": "mod-shieldfield-3",
+        "rarity": "exotic",
+        "basePrice": 20000000,
+        "demandMultiplier": 0.75
+      },
+      {
+        "key": "bp-shieldfield-2",
+        "kind": "blueprint",
+        "refId": "bp-shieldfield-2",
+        "rarity": "rare",
+        "basePrice": 4000000,
+        "demandMultiplier": 0.7
+      },
+      {
+        "key": "bp-shieldfield-3",
+        "kind": "blueprint",
+        "refId": "bp-shieldfield-3",
+        "rarity": "rare",
+        "basePrice": 20000000,
+        "demandMultiplier": 0.7
+      },
+      {
+        "key": "sh-wh-a-frigate",
+        "kind": "ship",
+        "refId": "sh-wh-a-frigate",
+        "rarity": "exotic",
+        "basePrice": 2306000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sh-wh-a-destroyer",
+        "kind": "ship",
+        "refId": "sh-wh-a-destroyer",
+        "rarity": "exotic",
+        "basePrice": 5109500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sh-wh-a-cruiser",
+        "kind": "ship",
+        "refId": "sh-wh-a-cruiser",
+        "rarity": "exotic",
+        "basePrice": 9884500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sh-wh-c-frigate",
+        "kind": "ship",
+        "refId": "sh-wh-c-frigate",
+        "rarity": "exotic",
+        "basePrice": 2613500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sh-wh-c-destroyer",
+        "kind": "ship",
+        "refId": "sh-wh-c-destroyer",
+        "rarity": "exotic",
+        "basePrice": 5644500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sh-wh-c-cruiser",
+        "kind": "ship",
+        "refId": "sh-wh-c-cruiser",
+        "rarity": "exotic",
+        "basePrice": 11360000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sh-wh-d-frigate",
+        "kind": "ship",
+        "refId": "sh-wh-d-frigate",
+        "rarity": "exotic",
+        "basePrice": 3073000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sh-wh-d-destroyer",
+        "kind": "ship",
+        "refId": "sh-wh-d-destroyer",
+        "rarity": "exotic",
+        "basePrice": 7443500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sh-wh-d-cruiser",
+        "kind": "ship",
+        "refId": "sh-wh-d-cruiser",
+        "rarity": "exotic",
+        "basePrice": 15360000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sh-wh-e-frigate",
+        "kind": "ship",
+        "refId": "sh-wh-e-frigate",
+        "rarity": "exotic",
+        "basePrice": 2874500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sh-wh-e-destroyer",
+        "kind": "ship",
+        "refId": "sh-wh-e-destroyer",
+        "rarity": "exotic",
+        "basePrice": 6213500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sh-wh-e-carrier",
+        "kind": "ship",
+        "refId": "sh-wh-e-carrier",
+        "rarity": "exotic",
+        "basePrice": 14345000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sh-wh-g-frigate",
+        "kind": "ship",
+        "refId": "sh-wh-g-frigate",
+        "rarity": "exotic",
+        "basePrice": 3030000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sh-wh-g-destroyer",
+        "kind": "ship",
+        "refId": "sh-wh-g-destroyer",
+        "rarity": "exotic",
+        "basePrice": 6670000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "sh-wh-g-cruiser",
+        "kind": "ship",
+        "refId": "sh-wh-g-cruiser",
+        "rarity": "exotic",
+        "basePrice": 13386500,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-turret-a",
+        "kind": "module",
+        "refId": "mod-lair-turret-a",
+        "rarity": "exotic",
+        "basePrice": 7664000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-missile-a",
+        "kind": "module",
+        "refId": "mod-lair-missile-a",
+        "rarity": "exotic",
+        "basePrice": 8968000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-cargo-a",
+        "kind": "module",
+        "refId": "mod-lair-cargo-a",
+        "rarity": "exotic",
+        "basePrice": 9600000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-armor-c",
+        "kind": "module",
+        "refId": "mod-lair-armor-c",
+        "rarity": "exotic",
+        "basePrice": 7760000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-dc-c",
+        "kind": "module",
+        "refId": "mod-lair-dc-c",
+        "rarity": "exotic",
+        "basePrice": 9440000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-laser-c",
+        "kind": "module",
+        "refId": "mod-lair-laser-c",
+        "rarity": "exotic",
+        "basePrice": 12000000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-shield-d",
+        "kind": "module",
+        "refId": "mod-lair-shield-d",
+        "rarity": "exotic",
+        "basePrice": 9160000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-turret-d",
+        "kind": "module",
+        "refId": "mod-lair-turret-d",
+        "rarity": "exotic",
+        "basePrice": 7664000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-armor-d",
+        "kind": "module",
+        "refId": "mod-lair-armor-d",
+        "rarity": "exotic",
+        "basePrice": 7760000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-turret-e",
+        "kind": "module",
+        "refId": "mod-lair-turret-e",
+        "rarity": "exotic",
+        "basePrice": 7664000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-hangar-e",
+        "kind": "module",
+        "refId": "mod-lair-hangar-e",
+        "rarity": "exotic",
+        "basePrice": 7840000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-frame-e",
+        "kind": "module",
+        "refId": "mod-lair-frame-e",
+        "rarity": "exotic",
+        "basePrice": 7760000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-drone-tac-g",
+        "kind": "module",
+        "refId": "mod-lair-drone-tac-g",
+        "rarity": "exotic",
+        "basePrice": 8160000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-drone-relay-g",
+        "kind": "module",
+        "refId": "mod-lair-drone-relay-g",
+        "rarity": "exotic",
+        "basePrice": 8120000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-ecm-h",
+        "kind": "module",
+        "refId": "mod-lair-ecm-h",
+        "rarity": "exotic",
+        "basePrice": 12000000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-web-h",
+        "kind": "module",
+        "refId": "mod-lair-web-h",
+        "rarity": "exotic",
+        "basePrice": 9600000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-laser-r",
+        "kind": "module",
+        "refId": "mod-lair-laser-r",
+        "rarity": "exotic",
+        "basePrice": 9580000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-blink-r",
+        "kind": "module",
+        "refId": "mod-lair-blink-r",
+        "rarity": "exotic",
+        "basePrice": 10400000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-beam-r",
+        "kind": "module",
+        "refId": "mod-lair-beam-r",
+        "rarity": "exotic",
+        "basePrice": 9580000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-lair-pd-r",
+        "kind": "module",
+        "refId": "mod-lair-pd-r",
+        "rarity": "exotic",
+        "basePrice": 9580000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "drone-exile-bee",
+        "kind": "item",
+        "refId": "drone-exile-bee",
+        "rarity": "exotic",
+        "basePrice": 24000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "drone-wh-c-heavy",
+        "kind": "item",
+        "refId": "drone-wh-c-heavy",
+        "rarity": "exotic",
+        "basePrice": 48000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "drone-wh-e-sentry",
+        "kind": "item",
+        "refId": "drone-wh-e-sentry",
+        "rarity": "exotic",
+        "basePrice": 88000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "drone-ink-heavy",
+        "kind": "item",
+        "refId": "drone-ink-heavy",
+        "rarity": "exotic",
+        "basePrice": 48000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-lair-g-drone",
+        "kind": "blueprint",
+        "refId": "bp-lair-g-drone",
+        "rarity": "exotic",
+        "basePrice": 1200000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-c-drone",
+        "kind": "blueprint",
+        "refId": "bp-wh-c-drone",
+        "rarity": "exotic",
+        "basePrice": 2400000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-wh-e-drone",
+        "kind": "blueprint",
+        "refId": "bp-wh-e-drone",
+        "rarity": "exotic",
+        "basePrice": 4400000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
+        "key": "mod-mwd-3",
+        "kind": "module",
+        "refId": "mod-mwd-3",
+        "rarity": "exotic",
+        "basePrice": 2600000,
+        "demandMultiplier": 0.75
+      },
+      {
+        "key": "bp-mwd-3",
+        "kind": "blueprint",
+        "refId": "bp-mwd-3",
+        "rarity": "exotic",
+        "basePrice": 10400000,
+        "demandMultiplier": 0.75
+      }
+    ]
+  }
+}

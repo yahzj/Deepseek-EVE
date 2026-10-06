@@ -11,6 +11,523 @@
  * - 弹药/无人机为占位消耗品：市场流通、可囤可回卖，战斗系统开放后启用消耗。
  */
 
+import staticDocument from './static/items.json'
+import type { DataDocument } from '../../../tools/data-editor-contract'
+import { staticDataGroup } from './staticData'
+
+const ORES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "ore-veldspar": {
+    name: '橄榄岩',
+    description: L10N['item.copy.001']!.zh,
+  },
+  "ore-scorched": {
+    name: '辉长岩',
+    description: L10N['item.copy.002']!.zh,
+  },
+  "ore-hemorphite": {
+    name: '赤环岩',
+    description: L10N['item.copy.003']!.zh,
+  },
+  "ore-glowstone": {
+    name: '辉云岩',
+    description: L10N['item.copy.004']!.zh,
+  },
+  "ore-sunshard": {
+    name: '曦棱晶',
+    description: L10N['item.copy.005']!.zh,
+  },
+  "ore-voidshard": {
+    name: '玄晶',
+    description: L10N['item.copy.006']!.zh,
+  },
+  "ore-nebulite": {
+    name: '星幽矿',
+    description: L10N['item.copy.007']!.zh,
+  },
+  "ore-voidmother": {
+    name: '虚空母矿',
+    description: L10N['item.signalSpace.001']!.zh,
+  },
+}
+
+const RELIC_CONTAINERS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "box-relic-a": {
+    name: '遗迹安全货柜（海盗）',
+    description:
+      L10N['item.copy.058']!.zh,
+  },
+  "box-relic-c": {
+    name: '遗迹安全货柜（异形）',
+    description:
+      L10N['item.copy.059']!.zh,
+  },
+  "box-relic-d": {
+    name: '遗迹安全货柜（守墓）',
+    description:
+      L10N['item.copy.060']!.zh,
+  },
+  "box-relic-e": {
+    name: '遗迹安全货柜（巨构）',
+    description:
+      L10N['item.copy.061']!.zh,
+  },
+  "box-relic-g": {
+    name: '遗迹安全货柜（亡军）',
+    description:
+      L10N['item.copy.062']!.zh,
+  },
+}
+
+const BLUEPRINT_CONTAINERS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "box-bp-shallow": {
+    name: '图纸货柜（浅层）',
+    description:
+      L10N['item.copy.063']!.zh,
+  },
+  "box-bp-mid": {
+    name: '图纸货柜（中层）',
+    description:
+      L10N['item.copy.064']!.zh,
+  },
+  "box-bp-deep": {
+    name: '图纸货柜（深层）',
+    description:
+      L10N['item.copy.065']!.zh,
+  },
+}
+
+const MINERALS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "min-tritanium": {
+    name: '钛钢合金',
+    description: L10N['item.copy.009']!.zh,
+  },
+  "min-pyerite": {
+    name: '银纹超金属',
+    description: L10N['item.copy.010']!.zh,
+  },
+  "min-mexallon": {
+    name: '晶态胶体',
+    description: L10N['item.copy.011']!.zh,
+  },
+  "min-nocxium": {
+    name: '重钨合金',
+    description: L10N['item.copy.012']!.zh,
+  },
+  "min-isotope": {
+    name: '同位聚晶',
+    description: L10N['item.copy.013']!.zh,
+  },
+  "min-starcore": {
+    name: '星髓晶',
+    description: L10N['item.copy.014']!.zh,
+  },
+  "min-darkiron": {
+    name: '冥铁合金',
+    description: L10N['item.copy.015']!.zh,
+  },
+  "min-voidcrystal": {
+    name: '虚空晶',
+    description: L10N['item.copy.016']!.zh,
+  },
+  "min-jumplasma": {
+    name: '折跃等离子',
+    description: L10N['item.copy.017']!.zh,
+  },
+  "min-cryoslurry": {
+    name: '低温跃迁浆',
+    description: L10N['item.copy.018']!.zh,
+  },
+  "min-curvature": {
+    name: '曲率凝析物',
+    description: L10N['item.copy.019']!.zh,
+  },
+}
+
+const GASES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "gas-neon": {
+    name: '氖云气',
+    description: L10N['item.copy.034']!.zh,
+  },
+  "gas-phosphor": {
+    name: '磷光霾',
+    description: L10N['item.copy.035']!.zh,
+  },
+  "gas-ionstorm": {
+    name: '离子风暴云',
+    description: L10N['item.copy.036']!.zh,
+  },
+  "gas-aurora": {
+    name: '极光云',
+    description: L10N['item.copy.037']!.zh,
+  },
+}
+
+const ICES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "ice-frost": {
+    name: '蓝霜冰',
+    description: L10N['item.copy.038']!.zh,
+  },
+  "ice-marrow": {
+    name: '寒髓冰',
+    description: L10N['item.copy.039']!.zh,
+  },
+  "ice-darkstar": {
+    name: '暗星冰',
+    description: L10N['item.copy.040']!.zh,
+  },
+}
+
+const AMMO_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "ammo-kinetic-l": {
+    name: '动能弹药',
+    description: L10N['item.copy.041']!.zh,
+  },
+  "ammo-explosive-l": {
+    name: '爆破弹药',
+    description: L10N['item.copy.042']!.zh,
+  },
+  "ammo-plasma-l": {
+    name: '能量弹药',
+    description: L10N['item.copy.043']!.zh,
+  },
+  "ammo-kinetic-2": {
+    name: '动能弹药 MK2',
+    description: L10N['item.copy.044']!.zh,
+  },
+  "ammo-explosive-2": {
+    name: '爆破弹药 MK2',
+    description: L10N['item.copy.045']!.zh,
+  },
+  "ammo-plasma-2": {
+    name: '能量弹药 MK2',
+    description: L10N['item.copy.046']!.zh,
+  },
+}
+
+const DRONES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "drone-scout": {
+    name: '蜂鸟侦察无人机',
+    description: L10N['item.copy.047']!.zh,
+  },
+  "drone-assault": {
+    name: '赤鸢战斗无人机',
+    description: L10N['item.copy.048']!.zh,
+  },
+  "drone-heavy": {
+    name: '猎鹰攻坚无人机',
+    description: L10N['item.copy.049']!.zh,
+  },
+  "drone-sentry": {
+    name: '雷鸥哨戒无人机',
+    description: L10N['item.copy.050']!.zh,
+  },
+  "drone-exile-bee": {
+    name: '鱿蜂无人机',
+    description:
+      L10N['item.copy.051']!.zh,
+  },
+  "drone-wh-c-heavy": {
+    name: '巢卫攻坚无人机',
+    description:
+      L10N['item.copy.052']!.zh,
+  },
+  "drone-wh-e-sentry": {
+    name: '构件哨戒无人机',
+    description:
+      L10N['item.copy.053']!.zh,
+  },
+  "drone-ink-heavy": {
+    name: '墨潮重袭无人机',
+    description:
+      L10N['item.copy.054']!.zh,
+  },
+}
+
+const REPAIR_KITS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "repairkit-civ": {
+    name: '民用修理组件',
+    description: L10N['item.copy.055']!.zh,
+  },
+  "repairkit-mil": {
+    name: '军用修理组件',
+    description: L10N['item.copy.056']!.zh,
+  },
+  "repairkit-dc": {
+    name: '损管修理组件',
+    description: L10N['item.copy.057']!.zh,
+  },
+}
+
+const MATTER_DEVICES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "mat-surveyor": {
+    name: '深空测绘仪',
+    description: L10N['item.signalSpace.002']!.zh,
+  },
+  "mat-chrono": {
+    name: '时序核心',
+    description: L10N['item.signalSpace.003']!.zh,
+  },
+  "mat-crane": {
+    name: '打捞起重机',
+    description: L10N['item.signalSpace.004']!.zh,
+  },
+  "mat-drill": {
+    name: '采集钻机',
+    description: L10N['item.signalSpace.005']!.zh,
+  },
+  "mat-nebula": {
+    name: '星云驱散器',
+    description: L10N['item.signalSpace.006']!.zh,
+  },
+  "mat-enricher": {
+    name: '母矿富集器',
+    description: L10N['item.signalSpace.007']!.zh,
+  },
+  "mat-expander": {
+    name: '舱段扩展器',
+    description: L10N['item.signalSpace.008']!.zh,
+  },
+  "mat-suppressor": {
+    name: '压制力场',
+    description: L10N['item.signalSpace.009']!.zh,
+  },
+  "mat-boss-analyzer": {
+    name: '守卫解析仪',
+    description: L10N['item.signalSpace.010']!.zh,
+  },
+  "mat-extract-cover": {
+    name: '撤离掩护器',
+    description: L10N['item.signalSpace.011']!.zh,
+  },
+  "mat-shield-res": {
+    name: '护盾谐振片',
+    description: L10N['item.signalSpace.012']!.zh,
+  },
+  "mat-armor-res": {
+    name: '装甲强化片',
+    description: L10N['item.signalSpace.013']!.zh,
+  },
+  "mat-hull-res": {
+    name: '结构加固片',
+    description: L10N['item.signalSpace.014']!.zh,
+  },
+  "mat-tracker": {
+    name: '追踪阵列',
+    description: L10N['item.signalSpace.015']!.zh,
+  },
+  "mat-gyro": {
+    name: '陀螺稳定器',
+    description: L10N['item.signalSpace.016']!.zh,
+  },
+  "mat-jammer": {
+    name: '干扰发射器',
+    description: L10N['item.signalSpace.017']!.zh,
+  },
+  "mat-rangefinder": {
+    name: '射程扩展器',
+    description: L10N['item.signalSpace.018']!.zh,
+  },
+  "mat-blindspot": {
+    name: '盲区压制器',
+    description: L10N['item.signalSpace.019']!.zh,
+  },
+  "mat-ammo-dmg": {
+    name: '弹药增效器',
+    description: L10N['item.signalSpace.020']!.zh,
+  },
+  "mat-reload": {
+    name: '装填加速器',
+    description: L10N['item.signalSpace.021']!.zh,
+  },
+  "mat-volley": {
+    name: '齐射协调仪',
+    description: L10N['item.signalSpace.022']!.zh,
+  },
+  "mat-ammo-back": {
+    name: '弹药回收装置',
+    description: L10N['item.signalSpace.023']!.zh,
+  },
+  "mat-drone-net": {
+    name: '机群回收网',
+    description: L10N['item.signalSpace.024']!.zh,
+  },
+  "mat-field-repair": {
+    name: '战地维修单元',
+    description: L10N['item.signalSpace.025']!.zh,
+  },
+}
+
+const WORMHOLE_ESSENCES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "mat-wh-essence": {
+    name: '信号谜质',
+    description: L10N['item.copy.090']!.zh,
+  },
+}
+
+const LUXURIES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "lux-1": {
+    name: '星港陈酿',
+    description: L10N['item.copy.091']!.zh,
+  },
+  "lux-2": {
+    name: '贵族香料',
+    description: L10N['item.copy.092']!.zh,
+  },
+  "lux-3": {
+    name: '失落艺术品',
+    description: L10N['item.copy.093']!.zh,
+  },
+  "lux-4": {
+    name: '陈年雪茄',
+    description: L10N['item.copy.094']!.zh,
+  },
+  "lux-5": {
+    name: '异域织物',
+    description: L10N['item.copy.095']!.zh,
+  },
+  "lux-6": {
+    name: '香木雕刻',
+    description: L10N['item.copy.096']!.zh,
+  },
+  "lux-7": {
+    name: '宫廷乐谱',
+    description: L10N['item.copy.097']!.zh,
+  },
+  "lux-8": {
+    name: '古法香膏',
+    description: L10N['item.copy.098']!.zh,
+  },
+  "lux-9": {
+    name: '星图真迹',
+    description: L10N['item.copy.099']!.zh,
+  },
+  "lux-10": {
+    name: '王冠遗钻',
+    description: L10N['item.copy.100']!.zh,
+  },
+}
+
+const VALUABLES_CONTAINERS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "box-valuables": {
+    name: '贵重品货柜',
+    description: L10N['item.copy.101']!.zh,
+  },
+}
+
+const MILITARY_CONTAINERS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "box-military": {
+    name: '军用备货柜',
+    description: L10N['item.copy.102']!.zh,
+  },
+}
+
+const AI_CORE_ITEMS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "ai-core-gamma": {
+    name: '伽马 AI 核心',
+    description: L10N['item.copy.103']!.zh,
+  },
+  "ai-core-beta": {
+    name: '贝塔 AI 核心',
+    description: L10N['item.copy.104']!.zh,
+  },
+  "ai-core-alpha": {
+    name: '阿尔法 AI 核心',
+    description: L10N['item.copy.105']!.zh,
+  },
+}
+
+const PARTS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "part-circuit": {
+    name: '电路基板',
+    description: L10N['item.copy.020']!.zh,
+  },
+  "part-armor-plate": {
+    name: '装甲板',
+    description: L10N['item.copy.021']!.zh,
+  },
+  "part-frame": {
+    name: '结构框架',
+    description: L10N['item.copy.022']!.zh,
+  },
+  "part-cable": {
+    name: '超导电缆',
+    description: L10N['item.copy.023']!.zh,
+  },
+  "part-coolant": {
+    name: '冷却导管',
+    description: L10N['item.copy.024']!.zh,
+  },
+  "part-gyro": {
+    name: '陀螺稳定器座',
+    description: L10N['item.copy.025']!.zh,
+  },
+  "part-lens": {
+    name: '光学透镜组',
+    description: L10N['item.copy.026']!.zh,
+  },
+  "part-drone-neural": {
+    name: '无人机神经原件',
+    description: L10N['item.copy.027']!.zh,
+  },
+  "part-shield-gen": {
+    name: '护盾发生装置',
+    description: L10N['item.copy.028']!.zh,
+  },
+  "part-jet-array": {
+    name: '能量射流阵列',
+    description: L10N['item.copy.029']!.zh,
+  },
+  "part-qchip": {
+    name: '量子协处理器芯',
+    description: L10N['item.copy.030']!.zh,
+  },
+  "part-keel": {
+    name: '舰用龙骨组件',
+    description: L10N['item.copy.031']!.zh,
+  },
+  "part-fire-control": {
+    name: '军规火控计算机',
+    description: L10N['item.copy.032']!.zh,
+  },
+  "part-grav-comp": {
+    name: '引力子补偿器',
+    description: L10N['item.copy.033']!.zh,
+  },
+}
+
+const WEEKEND_TROPHIES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "blackbox-h": {
+    name: '墨潮旗舰黑匣',
+    description: L10N['item.copy.106']!.zh,
+  },
+  "blackbox-r": {
+    name: '光环旗舰黑匣',
+    description:
+      L10N['item.copy.107']!.zh,
+  },
+  "blackbox-universal": {
+    name: '通用黑匣',
+    description: L10N['item.copy.108']!.zh,
+  },
+}
+
+const CONSUMABLES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "jump-fuel": {
+    name: '超空间折跃燃料',
+    description: L10N['item.copy.109']!.zh,
+  },
+  "invasion-beacon": {
+    name: '信号发射器',
+    description:
+      L10N['item.copy.110']!.zh,
+  },
+  "synaptic-accelerant": {
+    name: '突触加速剂',
+    description:
+      L10N['item.copy.111']!.zh,
+  },
+}
+
 import type { ItemDef } from '@whale/core'
 import { L10N } from './l10n/table'
 // ⟪文案调整 2026-10-04⟫ 船长授权整批说明重写，数值与功能不变。
@@ -33,149 +550,7 @@ import { L10N } from './l10n/table'
  * ⚠ 存档存量按**体积守恒**折算（v31→v32，见 `packages/core/src/save.ts`）。
  */
 export const ORES: readonly ItemDef[] = [
-  {
-    id: 'ore-veldspar',
-    name: '橄榄岩',
-    kind: 'ore',
-    unitM3: 0.5, // R1：最轻的矿，一舱装得最多
-    baseSellPriceIsk: 7,
-    description: L10N['item.copy.001']!.zh,
-    refine: [
-      { mineralId: 'min-tritanium', perOre: 1.02 },
-      { mineralId: 'min-pyerite', perOre: 0.295 },
-    ],
-    refineBatchUnits: 100,
-    refineCycleMs: 10_000,
-  },
-  {
-    id: 'ore-scorched',
-    name: '辉长岩',
-    kind: 'ore',
-    unitM3: 0.5, // R1
-    baseSellPriceIsk: 7,
-    description: L10N['item.copy.002']!.zh,
-    refine: [
-      { mineralId: 'min-pyerite', perOre: 0.612 },
-      { mineralId: 'min-mexallon', perOre: 0.217 },
-    ],
-    refineBatchUnits: 100,
-    refineCycleMs: 10_000,
-  },
-  {
-    id: 'ore-hemorphite',
-    name: '赤环岩',
-    kind: 'ore',
-    unitM3: 1, // R2
-    baseSellPriceIsk: 15,
-    description: L10N['item.copy.003']!.zh,
-    refine: [
-      { mineralId: 'min-nocxium', perOre: 0.224 },
-      { mineralId: 'min-tritanium', perOre: 0.611 },
-    ],
-    refineBatchUnits: 100,
-    refineCycleMs: 20_000, // R2：炉周期 = unitM3 × 20s（2026-09-29 船长令：炉子按体积恒速）
-  },
-  {
-    id: 'ore-glowstone',
-    name: '辉云岩',
-    kind: 'ore',
-    unitM3: 2, // R3
-    baseSellPriceIsk: 32,
-    description: L10N['item.copy.004']!.zh,
-    refine: [
-      { mineralId: 'min-isotope', perOre: 0.869 },
-      { mineralId: 'min-tritanium', perOre: 0.708 },
-    ],
-    refineBatchUnits: 100,
-    refineCycleMs: 40_000, // R3：unitM3 2 × 20s
-  },
-  {
-    id: 'ore-sunshard',
-    name: '曦棱晶',
-    kind: 'ore',
-    unitM3: 2, // R3
-    baseSellPriceIsk: 32,
-    description: L10N['item.copy.005']!.zh,
-    refine: [
-      { mineralId: 'min-isotope', perOre: 0.899 },
-      { mineralId: 'min-pyerite', perOre: 0.334 },
-    ],
-    refineBatchUnits: 100,
-    refineCycleMs: 40_000, // R3：unitM3 2 × 20s
-  },
-  {
-    id: 'ore-voidshard',
-    name: '玄晶',
-    kind: 'ore',
-    unitM3: 4, // R4
-    baseSellPriceIsk: 68,
-    description: L10N['item.copy.006']!.zh,
-    refine: [
-      { mineralId: 'min-starcore', perOre: 0.349 },
-      { mineralId: 'min-darkiron', perOre: 0.028 },
-      { mineralId: 'min-nocxium', perOre: 0.071 },
-    ],
-    refineBatchUnits: 100,
-    refineCycleMs: 80_000, // R4：unitM3 4 × 20s
-  },
-  {
-    id: 'ore-nebulite',
-    name: '星幽矿',
-    kind: 'ore',
-    unitM3: 8, // R5：最占地方，一舱装得最少
-    baseSellPriceIsk: 145,
-    description: L10N['item.copy.007']!.zh,
-    refine: [
-      { mineralId: 'min-darkiron', perOre: 0.217 },
-      { mineralId: 'min-starcore', perOre: 0.297 },
-    ],
-    refineBatchUnits: 100,
-    refineCycleMs: 160_000, // R5：unitM3 8 × 20s
-  },
-  {
-    /**
-     * **虚空母矿**（2026-09-12 船长定 · 虫洞线的唯一原矿）。
-     *
-     * 船长原话：「虚空晶添加一个原矿石用于精炼出虚空晶。原矿石采取正常矿石体积（**1 m³/单位**），
-     * 虚空晶保持不变」＋「虫洞内只能获得原矿」。
-     * ⚠ 后半句（「只能获得原矿」）**已于 2026-09-13 由船长删除**（「**「虫洞内只掉原矿」删除。残骸能进背包。**」）
-     * ⇒ 洞内现在也掉**残骸类**（墓场/遗迹打捞产物，见设计稿 §11.5）；本矿仍是洞内唯一的**原矿**。
-     *
-     * 口径：
-     * - **虚空晶本身一字未动**（`unitM3 0.01` · `baseSellPriceIsk 1,800`）——变的只是**来源**：
-     *   今后它从这本原矿精炼出来，而不是从市场稀缺口 / 残骸彩头直接给；
-     * - 精炼产出 = 虚空晶 **0.25** + 副产物（同位聚晶 1.0 · 星髓晶 0.25）⇒ 每单位产出价值
-     *   `0.25×1800 + 1.0×55 + 0.25×245 = **566.25 信用点**`。
-     *   ⚠ **2026-09-14 船长：「然后精炼炉，虚空晶的产出量下调到一半」** ⇒ 虚空晶由 **0.5 → 0.25**
-     *   （副产物与价格一律不动；基础卖价 915 亦按"价格不动"保留）。半量后每单位母矿的两条路变成
-     *   「卖原矿 ≈780 现金（站内收购）」vs「炼成三件套再卖 ≈566」⇒ **炼不如卖**：这是船长要的
-     *   "虚空晶更稀缺"的直接后果（洞内 24 张蓝图 + 皇带鱼级都以虚空晶为主料，挖矿量相应翻倍）；
-     *   "要虚空晶就得自己炼"这条主线不受影响。
-     * - **2026-09-14 船长：「虚空晶和虚空母矿也添加只收不卖」「市场不会出现虚空晶和母矿的卖单」**
-     *   ⇒ 市场两行 `playerBuyable: false`（见 `marketCatalog.ts`）：**买不到**、**NPC 一笔卖单都不铺**
-     *   （`core/market.ts seedCommonBook`），但**照常收购**。原有的"买入精炼不赚"防套利论证随之退休
-     *   （这条路已经封死）。
-     * - **虫洞落地前对玩家不可见**：**两道闸门都要标**——
-     *   a) 市场卡 `unreleased`（见 `marketCatalog.ts`）⇒ 挡在市场/图鉴/挂单/任务/事件之外；
-     *   b) **物品卡 `unreleased`**（2026-09-13 补）⇒ 挡在工业页「可精炼资源」网格、
-     *      舰船页 AI 精炼炉下拉、组装机材料提示、手册物品图鉴之外。
-     *   ⚠ 首版只标了 a)：实测**这本矿连卡带"虫洞"描述一起挂在工业页可精炼资源里**（玩家可见泄露）。
-     *   虫洞上线时把两个字段一起去掉即可（2026-09-14 已上线 ⇒ 两道闸门都已撤）。
-     */
-    id: 'ore-voidmother',
-    name: '虚空母矿',
-    kind: 'ore',
-    unitM3: 1, // **排除在体积平衡之外**（2026-09-28 船长令：「把虚空母矿排除在体积平衡」）
-    baseSellPriceIsk: 915,
-    description: L10N['item.signalSpace.001']!.zh,
-    refine: [
-      { mineralId: 'min-voidcrystal', perOre: 0.25 }, // 2026-09-14 船长：产出量下调到一半（原 0.5）
-      { mineralId: 'min-isotope', perOre: 1.0 },
-      { mineralId: 'min-starcore', perOre: 0.25 },
-    ],
-    refineBatchUnits: 100,
-    refineCycleMs: 60_000, // 排除在体积平衡之外 ⇒ 周期也回到原值（调平那刀不落在它身上）
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'ORES_0', ORES_0_TEXT_BINDINGS),
 ]
 
 /**
@@ -193,51 +568,7 @@ export const ORES: readonly ItemDef[] = [
  *   结果这 8 行**变成 1 信用点的常驻现货**（船长报障「谜质出现在了市场内…并且可以购买」的同源问题）。
  */
 export const RELIC_CONTAINERS: readonly ItemDef[] = [
-  {
-    id: 'box-relic-a',
-    name: '遗迹安全货柜（海盗）',
-    kind: 'container',
-    unitM3: 3000, // 2026-09-15 船长「将安全货柜大小增加到6格」：2000（2×2=4 格）→ **3000（3×2=6 格）**
-    baseSellPriceIsk: 3_232_500, // 2026-09-15 船长「安全货柜价格允许提升」：体积 ×1.5 同比例提价（原 2_155_000）
-    description:
-      L10N['item.copy.058']!.zh,
-  },
-  {
-    id: 'box-relic-c',
-    name: '遗迹安全货柜（异形）',
-    kind: 'container',
-    unitM3: 3000, // 2026-09-15 船长「将安全货柜大小增加到6格」：2000（2×2=4 格）→ **3000（3×2=6 格）**
-    baseSellPriceIsk: 3_352_500, // 2026-09-15 船长「安全货柜价格允许提升」：体积 ×1.5 同比例提价（原 2_235_000）
-    description:
-      L10N['item.copy.059']!.zh,
-  },
-  {
-    id: 'box-relic-d',
-    name: '遗迹安全货柜（守墓）',
-    kind: 'container',
-    unitM3: 3000, // 2026-09-15 船长「将安全货柜大小增加到6格」：2000（2×2=4 格）→ **3000（3×2=6 格）**
-    baseSellPriceIsk: 6_112_500, // 2026-09-15 船长「安全货柜价格允许提升」：体积 ×1.5 同比例提价（原 4_075_000）
-    description:
-      L10N['item.copy.060']!.zh,
-  },
-  {
-    id: 'box-relic-e',
-    name: '遗迹安全货柜（巨构）',
-    kind: 'container',
-    unitM3: 3000, // 2026-09-15 船长「将安全货柜大小增加到6格」：2000（2×2=4 格）→ **3000（3×2=6 格）**
-    baseSellPriceIsk: 4_927_500, // 2026-09-15 船长「安全货柜价格允许提升」：体积 ×1.5 同比例提价（原 3_285_000）
-    description:
-      L10N['item.copy.061']!.zh,
-  },
-  {
-    id: 'box-relic-g',
-    name: '遗迹安全货柜（亡军）',
-    kind: 'container',
-    unitM3: 3000, // 2026-09-15 船长「将安全货柜大小增加到6格」：2000（2×2=4 格）→ **3000（3×2=6 格）**
-    baseSellPriceIsk: 4_815_000, // 2026-09-15 船长「安全货柜价格允许提升」：体积 ×1.5 同比例提价（原 3_210_000）
-    description:
-      L10N['item.copy.062']!.zh,
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'RELIC_CONTAINERS_0', RELIC_CONTAINERS_0_TEXT_BINDINGS),
 ]
 
 /**
@@ -255,280 +586,22 @@ export const RELIC_CONTAINERS: readonly ItemDef[] = [
  *   **单张皇带鱼一次性图纸（3.2 亿 × 6.3% 出货）就占 46%**；该定价锚由船长选定「维持 EV×0.6」。
  */
 export const BLUEPRINT_CONTAINERS: readonly ItemDef[] = [
-  {
-    id: 'box-bp-shallow',
-    name: '图纸货柜（浅层）',
-    kind: 'container',
-    unitM3: 1000,
-    baseSellPriceIsk: 3_595_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
-    description:
-      L10N['item.copy.063']!.zh,
-  },
-  {
-    id: 'box-bp-mid',
-    name: '图纸货柜（中层）',
-    kind: 'container',
-    unitM3: 1000,
-    baseSellPriceIsk: 14_045_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
-    description:
-      L10N['item.copy.064']!.zh,
-  },
-  {
-    id: 'box-bp-deep',
-    name: '图纸货柜（深层）',
-    kind: 'container',
-    unitM3: 1000,
-    baseSellPriceIsk: 25_840_000, // 2026-09-14：与市场行同值（全表惯例）＝ 内容期望市值 ×0.6
-    description:
-      L10N['item.copy.065']!.zh,
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'BLUEPRINT_CONTAINERS_0', BLUEPRINT_CONTAINERS_0_TEXT_BINDINGS),
 ]
 
 /** 矿物（精炼产物，可出售；制造原料） */
 export const MINERALS: readonly ItemDef[] = [
-  {
-    id: 'min-tritanium',
-    name: '钛钢合金',
-    kind: 'mineral',
-    unitM3: 0.01,
-    baseSellPriceIsk: 8,
-    description: L10N['item.copy.009']!.zh,
-  },
-  {
-    id: 'min-pyerite',
-    name: '银纹超金属',
-    kind: 'mineral',
-    unitM3: 0.01,
-    baseSellPriceIsk: 12,
-    description: L10N['item.copy.010']!.zh,
-  },
-  {
-    id: 'min-mexallon',
-    name: '晶态胶体',
-    kind: 'mineral',
-    unitM3: 0.01,
-    baseSellPriceIsk: 20,
-    description: L10N['item.copy.011']!.zh,
-  },
-  {
-    id: 'min-nocxium',
-    name: '重钨合金',
-    kind: 'mineral',
-    unitM3: 0.01,
-    baseSellPriceIsk: 90,
-    description: L10N['item.copy.012']!.zh,
-  },
-  {
-    id: 'min-isotope',
-    name: '同位聚晶',
-    kind: 'mineral',
-    unitM3: 0.01,
-    baseSellPriceIsk: 55,
-    description: L10N['item.copy.013']!.zh,
-  },
-  {
-    id: 'min-starcore',
-    name: '星髓晶',
-    kind: 'mineral',
-    unitM3: 0.01,
-    baseSellPriceIsk: 245,
-    description: L10N['item.copy.014']!.zh,
-  },
-  {
-    id: 'min-darkiron',
-    name: '冥铁合金',
-    kind: 'mineral',
-    unitM3: 0.01,
-    baseSellPriceIsk: 780,
-    description: L10N['item.copy.015']!.zh,
-  },
-  {
-    id: 'min-voidcrystal',
-    name: '虚空晶',
-    kind: 'mineral',
-    unitM3: 0.01,
-    baseSellPriceIsk: 5_400, // **2026-10-01 船长裁「甲」**：虚空晶**一物一价** —— 行情价（marketCatalog）与基准价同步为 5,400。
-    // （起因：精炼面板按**行情价**算，母矿 1,300×100=130,000 对 虚空晶 1,800 ⇒ 面板显示 −56% 亏本；
-    //  2026-09-15 那次抬价只改了本行、**没同步 marketCatalog 的行情价** ⇒ 平衡从来没在面板上生效过。
-    //  平衡点按母矿 1,300 口径反算 = (130,000 − 11,625) ÷ 25 = 4,735，取 5,400 留约 13% 余量。
-    //  ⚠ 本条按 §十五之二之 5（船长 2026-10-01 令）**不写净额结论**：读数由 `void-chain.test.ts` 的
-    //  「精炼面板口径」用例盯住（数据一变就报红）。
-    description: L10N['item.copy.016']!.zh,
-  },
-  /**
-   * **跃迁燃料三件套**（**2026-09-29 船长令**：「为星云和冰添加新的精炼分解的主要材料，大概 2~3 种
-   * 用于制作'超空间折跃燃料'的材料」＋「Q4a 甲（给现有气/冰加新产出、重配比）· b 3 种 · d 能买卖」）。
-   *
-   * 口径：
-   * - **只从现有气/冰的重配比里出**（不新增矿带、不动星图）：气体 ⇒ 折跃等离子 · 冰矿 ⇒ 低温跃迁浆 ·
-   *   高阶气/冰（离子风暴云/极光云/寒髓冰/暗星冰）另出少量**曲率凝析物**；
-   * - **每种气/冰的精炼总价值与改前逐值同档**（新矿物切走 30~40% 的价值，老产出等比缩放 ⇒
-   *   增值率仍 ≈ +67%，见 `packages/data/src/items.ts` 里各资源 `refine` 的注释）；
-   * - 市场走**普通池**（与其它矿物同档、可买卖）——船长 2026-09-29「4 是」。
-   */
-  {
-    id: 'min-jumplasma',
-    name: '折跃等离子',
-    kind: 'mineral',
-    unitM3: 0.01,
-    baseSellPriceIsk: 120,
-    description: L10N['item.copy.017']!.zh,
-  },
-  {
-    id: 'min-cryoslurry',
-    name: '低温跃迁浆',
-    kind: 'mineral',
-    unitM3: 0.01,
-    baseSellPriceIsk: 120,
-    description: L10N['item.copy.018']!.zh,
-  },
-  {
-    id: 'min-curvature',
-    name: '曲率凝析物',
-    kind: 'mineral',
-    unitM3: 0.01,
-    baseSellPriceIsk: 420,
-    description: L10N['item.copy.019']!.zh,
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'MINERALS_0', MINERALS_0_TEXT_BINDINGS),
 ]
 
 /** 气体（可采集可精炼；V10 新资源类） */
 export const GASES: readonly ItemDef[] = [
-  {
-    id: 'gas-neon',
-    name: '氖云气',
-    kind: 'gas',
-    unitM3: 2,
-    baseSellPriceIsk: 32,
-    description: L10N['item.copy.034']!.zh,
-    // ⟪2026-09-29 船长令（跃迁燃料链）⟫ 重配比：折跃等离子切走 40% 价值（0.178×120 = 21.36），
-    // 老产出等比 ×0.6（同位聚晶 0.533×55 = 29.315 · 钛钢 0.343×8 = 2.744）⇒ 合计 53.419（改前 53.416）
-    refine: [
-      { mineralId: 'min-jumplasma', perOre: 0.178 },
-      { mineralId: 'min-isotope', perOre: 0.533 },
-      { mineralId: 'min-tritanium', perOre: 0.343 },
-    ],
-    refineBatchUnits: 100,
-    refineCycleMs: 40_000, // R3：unitM3 2 × 20s
-  },
-  {
-    id: 'gas-phosphor',
-    name: '磷光霾',
-    kind: 'gas',
-    unitM3: 8,
-    baseSellPriceIsk: 144,
-    description: L10N['item.copy.035']!.zh,
-    // ⟪2026-09-29 船长令⟫ 重配比（高阶气：主料 30% ＋ 曲率凝析物 10%，老产出等比 ×0.6）：
-    // 折跃等离子 72.12 · 曲率凝析物 23.94 · 同位聚晶 53.90 · 星髓晶 85.015 · 晶态胶体 5.40
-    // ⇒ 合计 240.375（改前 240.48）
-    refine: [
-      { mineralId: 'min-jumplasma', perOre: 0.601 },
-      { mineralId: 'min-curvature', perOre: 0.057 },
-      { mineralId: 'min-isotope', perOre: 0.980 },
-      { mineralId: 'min-starcore', perOre: 0.347 },
-      { mineralId: 'min-mexallon', perOre: 0.270 },
-    ],
-    refineBatchUnits: 100,
-    refineCycleMs: 160_000, // R5：unitM3 8 × 20s
-  },
-  {
-    id: 'gas-ionstorm',
-    name: '离子风暴云',
-    kind: 'gas',
-    unitM3: 4,
-    baseSellPriceIsk: 68,
-    description: L10N['item.copy.036']!.zh,
-    // ⟪2026-09-29 船长令⟫ 重配比（高阶气）：折跃等离子 34.20 · 曲率凝析物 11.34 ·
-    // 星髓晶 50.225 · 冥铁合金 13.26 · 同位聚晶 4.565 ⇒ 合计 113.59（改前 113.81）
-    refine: [
-      { mineralId: 'min-jumplasma', perOre: 0.285 },
-      { mineralId: 'min-curvature', perOre: 0.027 },
-      { mineralId: 'min-starcore', perOre: 0.205 },
-      { mineralId: 'min-darkiron', perOre: 0.017 },
-      { mineralId: 'min-isotope', perOre: 0.083 },
-    ],
-    refineBatchUnits: 100,
-    refineCycleMs: 80_000, // R4：unitM3 4 × 20s
-  },
-  {
-    id: 'gas-aurora',
-    name: '极光云',
-    kind: 'gas',
-    unitM3: 8,
-    baseSellPriceIsk: 144,
-    description: L10N['item.copy.037']!.zh,
-    // ⟪2026-09-29 船长令⟫ 重配比（高阶气）：折跃等离子 72.12 · 曲率凝析物 23.94 ·
-    // 星髓晶 69.335 · 冥铁合金 74.88 ⇒ 合计 240.275（改前 240.195）
-    refine: [
-      { mineralId: 'min-jumplasma', perOre: 0.601 },
-      { mineralId: 'min-curvature', perOre: 0.057 },
-      { mineralId: 'min-starcore', perOre: 0.283 },
-      { mineralId: 'min-darkiron', perOre: 0.096 },
-    ],
-    refineBatchUnits: 100,
-    refineCycleMs: 160_000, // R5：unitM3 8 × 20s
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'GASES_0', GASES_0_TEXT_BINDINGS),
 ]
 
 /** 冰矿（可采集可精炼；V10 新资源类） */
 export const ICES: readonly ItemDef[] = [
-  {
-    id: 'ice-frost',
-    name: '蓝霜冰',
-    kind: 'ice',
-    unitM3: 2,
-    baseSellPriceIsk: 32,
-    description: L10N['item.copy.038']!.zh,
-    // ⟪2026-09-29 船长令⟫ 重配比：低温跃迁浆切走 40%（0.178×120 = 21.36），老产出等比 ×0.6
-    // （同位聚晶 0.526×55 = 28.93 · 晶态胶体 0.155×20 = 3.10）⇒ 合计 53.39（改前 53.415）
-    refine: [
-      { mineralId: 'min-cryoslurry', perOre: 0.178 },
-      { mineralId: 'min-isotope', perOre: 0.526 },
-      { mineralId: 'min-mexallon', perOre: 0.155 },
-    ],
-    refineBatchUnits: 100,
-    refineCycleMs: 40_000, // R3：unitM3 2 × 20s
-  },
-  {
-    id: 'ice-marrow',
-    name: '寒髓冰',
-    kind: 'ice',
-    unitM3: 4,
-    baseSellPriceIsk: 68,
-    description: L10N['item.copy.039']!.zh,
-    // ⟪2026-09-29 船长令⟫ 重配比（高阶冰）：低温跃迁浆 34.08 · 曲率凝析物 11.34 ·
-    // 星髓晶 46.55 · 同位聚晶 19.14 · 晶态胶体 2.54 ⇒ 合计 113.65（改前 113.54）
-    refine: [
-      { mineralId: 'min-cryoslurry', perOre: 0.284 },
-      { mineralId: 'min-curvature', perOre: 0.027 },
-      { mineralId: 'min-starcore', perOre: 0.190 },
-      { mineralId: 'min-isotope', perOre: 0.348 },
-      { mineralId: 'min-mexallon', perOre: 0.127 },
-    ],
-    refineBatchUnits: 100,
-    refineCycleMs: 80_000, // R4：unitM3 4 × 20s
-  },
-  {
-    id: 'ice-darkstar',
-    name: '暗星冰',
-    kind: 'ice',
-    unitM3: 8,
-    baseSellPriceIsk: 144,
-    description: L10N['item.copy.040']!.zh,
-    // ⟪2026-09-29 船长令⟫ 重配比（高阶冰）：低温跃迁浆 72.24 · 曲率凝析物 23.94 ·
-    // 冥铁合金 80.34 · 星髓晶 46.795 · 同位聚晶 17.49 ⇒ 合计 240.805（改前 240.685）
-    refine: [
-      { mineralId: 'min-cryoslurry', perOre: 0.602 },
-      { mineralId: 'min-curvature', perOre: 0.057 },
-      { mineralId: 'min-darkiron', perOre: 0.103 },
-      { mineralId: 'min-starcore', perOre: 0.191 },
-      { mineralId: 'min-isotope', perOre: 0.318 },
-    ],
-    // 2026-09-09 顶阶档校准：58/8s 会使 120% 产出倍率净率 135.9% 超护栏(≤135%)——取 42/5.8s
-    // （吞吐 ≈26,069/h，净率 132.7% 带内；min-darkiron 高价使 floor 阶梯敏感）
-    refineBatchUnits: 100,
-    refineCycleMs: 160_000, // R5：unitM3 8 × 20s
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'ICES_0', ICES_0_TEXT_BINDINGS),
 ]
 
 /** 弹药（V10.5 战斗数值契约就位：克制体系见 docs/design/v10b-combat-data.md；
@@ -538,68 +611,7 @@ export const ICES: readonly ItemDef[] = [
  * ⚠ **2026-09-16 船长定名批**：「将弹药 爆破导弹改名为爆破弹药，其他的弹药也进行类似的改名」
  * ⇒ 全族统一到《系+弹药》：**动能弹 → 动能弹药** · **爆破导弹 → 爆破弹药** · 能量弹药不变（含 MK2 两档）。 */
 export const AMMO: readonly ItemDef[] = [
-  {
-    id: 'ammo-kinetic-l',
-    name: '动能弹药',
-    kind: 'ammo',
-    unitM3: 0.02,
-    baseSellPriceIsk: 6,
-    description: L10N['item.copy.041']!.zh,
-    damageType: 'kinetic',
-    dmg: 6,
-  },
-  {
-    id: 'ammo-explosive-l',
-    name: '爆破弹药',
-    kind: 'ammo',
-    unitM3: 0.02,
-    baseSellPriceIsk: 7,
-    description: L10N['item.copy.042']!.zh,
-    damageType: 'explosive',
-    dmg: 7,
-  },
-  {
-    id: 'ammo-plasma-l',
-    name: '能量弹药',
-    kind: 'ammo',
-    unitM3: 0.02,
-    baseSellPriceIsk: 8,
-    description: L10N['item.copy.043']!.zh,
-    damageType: 'plasma',
-    dmg: 9,
-  },
-  /* ═══ 弹药 MK2（2026-09-09 船长拍板：三族各出一档高级版——纯数值上级、克制表同基础；
-   * dmg 8/9/12、市场 45/60/80、蓝图书稀有可造；装配页按族选档、连打消耗当前配置弹） ═══ */
-  {
-    id: 'ammo-kinetic-2',
-    name: '动能弹药 MK2',
-    kind: 'ammo',
-    unitM3: 0.02,
-    baseSellPriceIsk: 45,
-    description: L10N['item.copy.044']!.zh,
-    damageType: 'kinetic',
-    dmg: 8,
-  },
-  {
-    id: 'ammo-explosive-2',
-    name: '爆破弹药 MK2',
-    kind: 'ammo',
-    unitM3: 0.02,
-    baseSellPriceIsk: 60,
-    description: L10N['item.copy.045']!.zh,
-    damageType: 'explosive',
-    dmg: 9,
-  },
-  {
-    id: 'ammo-plasma-2',
-    name: '能量弹药 MK2',
-    kind: 'ammo',
-    unitM3: 0.02,
-    baseSellPriceIsk: 80,
-    description: L10N['item.copy.046']!.zh,
-    damageType: 'plasma',
-    dmg: 12,
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'AMMO_0', AMMO_0_TEXT_BINDINGS),
 ]
 
 /** 无人机（V10.5 战斗数值契约就位：自带伤害源不耗弹；放飞占用船体 CPU——V10.5b 带宽并入；
@@ -608,226 +620,14 @@ export const AMMO: readonly ItemDef[] = [
  * 体积档（2026-09-09 船长拍板）：unitM3 按机种大小分 5/10/20/40 四档——机巢能装几架由体积主导
  * （小护卫带蜂鸟/赤鸢、炮舰带猎鹰、母舰带雷鸥；甲板扩展 +m³ 恢复意义），每架 CPU 不变 */
 export const DRONES: readonly ItemDef[] = [
-  {
-    id: 'drone-scout',
-    name: '蜂鸟侦察无人机',
-    kind: 'drone',
-    unitM3: 5, // 体积档 1/4：轻型侦察机（2026-09-09 船长：体积 5/10/20/40 四档，机巢架数由体积主导）
-    baseSellPriceIsk: 900,
-    description: L10N['item.copy.047']!.zh,
-    damageType: 'kinetic',
-    dmg: 3,
-    cpuUse: 4,
-    maxRangeM: 6000, // 2026-09-27 船长令「无人机射程重排（哨戒 > 侦察 > 战斗 > 攻坚）」：侦察档 6000（原 4000）
-    droneClass: 'scout', // 2026-09-10 分类入本体：「种类」显示 无人机 · 侦察机
-    hitRate: 0.75, // 2026-09-10 船长：轻型机群命中 0.6→0.75
-    falloff: 1, // 2026-09-10 船长：侦察/战斗/攻坚三型**命中不随距离衰减**（射程带内恒定）
-    defense: { shieldHp: 12, armorHp: 6, hullHp: 20, evasion: 0.45 },
-  },
-  {
-    id: 'drone-assault',
-    name: '赤鸢战斗无人机',
-    kind: 'drone',
-    unitM3: 10, // 体积档 2/4：轻型战斗（2026-09-09 船长：体积 5/10/20/40 四档）
-    baseSellPriceIsk: 2200,
-    description: L10N['item.copy.048']!.zh,
-    damageType: 'explosive',
-    dmg: 6,
-    cpuUse: 7,
-    maxRangeM: 5000, // **2026-09-28 船长令「微调无人机的射程，攻坚机的射程基础值上调到4000，战斗机5000，侦察机维持6000」**：战斗档 4200 → **5000**（原 09-27 重排时定的 4200）
-    droneClass: 'combat', // 2026-09-10：无人机 · 战斗机
-    hitRate: 0.75, // 2026-09-10 船长
-    falloff: 1, // 命中不随距离衰减
-    // 2026-09-10 定位调整：属性平均档（闪避 25%、血居中）
-    defense: { shieldHp: 24, armorHp: 16, hullHp: 40, shieldResist: { kinetic: 0.1 }, evasion: 0.25 },
-  },
-  {
-    id: 'drone-heavy',
-    name: '猎鹰攻坚无人机',
-    kind: 'drone',
-    unitM3: 20, // 体积档 3/4：重型攻坚（2026-09-09 船长：体积 5/10/20/40 四档）
-    baseSellPriceIsk: 5000,
-    description: L10N['item.copy.049']!.zh,
-    damageType: 'plasma',
-    dmg: 12,
-    cpuUse: 11,
-    maxRangeM: 4000, // **2026-09-28 船长令「微调无人机的射程……攻坚机 4000、战斗机 5000、侦察机维持 6000」**：攻坚档 3000 → **4000**
-    droneClass: 'assault', // 2026-09-10：无人机 · 攻坚机
-    hitRate: 0.75, // 2026-09-10 船长
-    falloff: 1, // 命中不随距离衰减
-    // 2026-09-10 定位调整：血量最厚（97）+ 闪避最低（10%）+ 装甲向抗性（抗拆甲）
-    // 2026-09-12 船长裁决：「**给攻坚无人机添加 25% 全抗性**」⇒ 三层 × 三系**全抗 25%**
-    //（取代原来的"甲抗爆炸 0.15 / 结构抗动能 0.05"两处零散抗性——攻坚机 = 硬、慢、挨打抗）。
-    defense: {
-      shieldHp: 60,
-      armorHp: 44,
-      hullHp: 90,
-      shieldResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 },
-      armorResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 },
-      hullResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 },
-      evasion: 0.1,
-    },
-  },
-  {
-    id: 'drone-sentry',
-    name: '雷鸥哨戒无人机',
-    kind: 'drone',
-    unitM3: 40, // 体积档 4/4：重型哨戒（2026-09-09 船长：体积 5/10/20/40 四档）
-    baseSellPriceIsk: 9500,
-    description: L10N['item.copy.050']!.zh,
-    damageType: 'plasma',
-    dmg: 20,
-    cpuUse: 16,
-    maxRangeM: 6500, // 射程分类 4/4：远程哨戒（2026-09-10 船长——哨戒独享远程，兑现"航程极远"）；2026-09-14 +1500（船长「只有我方无人机，射程+1500」）
-    reloadMs: 8800, // 2026-09-11 船长「哨卫将攻击周期翻倍」：4400 → **8800**（哨戒机不再会被攻击 ⇒ 削 DPS）
-    droneClass: 'sentry', // 2026-09-10：无人机 · 哨戒机
-    hitRate: 1.1, // 2026-09-10 船长：哨戒基础命中 110%（近距被 100% 上限截断，用于抵消回避）
-    falloff: 0.35, // 2026-09-10 船长：哨戒**保留正常命中衰减**（射程端点 ×0.35）——独有代价
-    // 2026-09-10 定位调整：血量与侦察机相仿（23）+ 闪避次低（18%）——狙击平台靠距离活命
-    defense: { shieldHp: 16, armorHp: 10, hullHp: 20, shieldResist: { kinetic: 0.1 }, evasion: 0.18 },
-  },
-  // ══════════ 专属机型（2026-09-10 船长：G 族「鱿蜂群巢」改为专属侦查无人机） ══════════
-  // 只在敌族窝点 → 稀有残骸 → 高级箱这条链路上产出（exclusive：无蓝图、不上市场、不入常规掉落池）；
-  // 无人机是消耗品（会被点防击落、永久损失），故**一次掉一批 ×10 架**，打光之后再刷可补。
-  {
-    id: 'drone-exile-bee',
-    name: '鱿蜂无人机',
-    kind: 'drone',
-    unitM3: 5, // 轻型侦察机档（与蜂鸟同体积）
-    baseSellPriceIsk: 24_000, // 2026-09-14 船长「专属 ×4」：6,000 → 24,000（与市场行同值）
-    description:
-      L10N['item.copy.051']!.zh,
-    damageType: 'kinetic', // 侦察机档：动能点射（破盾）
-    dmg: 6, // 2026-09-10 船长裁决：A 档基础上「输出提高到 6 点」（专属强化型，契约登记豁免）
-    cpuUse: 5, // 船长裁决：随单发上调（仍低于制式战斗机赤鸢的 7）
-    maxRangeM: 6000, // 2026-09-27 船长令「无人机射程重排（哨戒 > 侦察 > 战斗 > 攻坚）」：侦察·独占档 6000（原 4000）
-    droneClass: 'scout', // 侦察机（「种类」显示：无人机 · 侦察机）
-    hitRate: 0.75,
-    falloff: 1, // 侦察机档：命中不随距离衰减
-    defense: { shieldHp: 12, armorHp: 6, hullHp: 12, evasion: 0.55 }, // 三层血 15（最薄）+ 闪避最高
-    exclusive: true,
-  },
-  // ══════════ 虫洞族专属机型（2026-09-13 船长：C 移「活性甲壳层」/ E 移「巨构稳态器」⇒ **换成族专属无人机**，
-  // 不用制式机。两型都走"专属强化型"口径（`exclusive`：无蓝图、不上市场、不入常规掉落）＋施工期 `unreleased`） ══════════
-  {
-    id: 'drone-wh-c-heavy',
-    name: '巢卫攻坚无人机',
-    kind: 'drone',
-    unitM3: 20, // 体积档 3/4：重型攻坚（与制式攻坚机同档）
-    baseSellPriceIsk: 48_000, // 2026-09-14 专属 ×4：12,000 → 48,000
-    description:
-      L10N['item.copy.052']!.zh,
-    damageType: 'explosive', // 族弹型权威：C 族 = 等离子 8 / 爆炸 2 ⇒ 爆炸在族内（且呼应本族「孢子导弹巢」）
-    dmg: 15, // 制式攻坚机 12 ⇒ +25%（专属强化型，豁免区间校验、只受硬边界约束）
-    cpuUse: 12,
-    maxRangeM: 4000, // **2026-09-28 船长令：「攻坚机 4000」**：攻坚·独占档 3000 → **4000**（与制式攻坚同档）
-    droneClass: 'assault', // 攻坚机
-    hitRate: 0.78,
-    falloff: 1, // 攻坚机档：命中不随距离衰减
-    // 2026-09-13 船长：「C 组无人机护甲和结构抗性提高 10%」⇒ 护甲/结构抗性 0.25 → **0.35**，护盾维持 0.25
-    defense: {
-      shieldHp: 50,
-      armorHp: 70,
-      hullHp: 120, // 三层血 240（制式 194 ⇒ +24%），偏甲/壳
-      shieldResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 },
-      armorResist: { kinetic: 0.35, explosive: 0.35, plasma: 0.35 },
-      hullResist: { kinetic: 0.35, explosive: 0.35, plasma: 0.35 },
-      evasion: 0.08, // 厚而慢（制式 0.10）
-    },
-    exclusive: true,
-  },
-  {
-    id: 'drone-wh-e-sentry',
-    name: '构件哨戒无人机',
-    kind: 'drone',
-    unitM3: 40, // 体积档 4/4：重型哨戒（与制式哨戒机同档）
-    baseSellPriceIsk: 88_000, // 2026-09-14 专属 ×4：22,000 → 88,000
-    description:
-      L10N['item.copy.053']!.zh,
-    damageType: 'kinetic', // 族弹型权威：E 族 = 动能 5 / 爆炸 5 ⇒ 动能在族内（呼应本族「巨构导控塔/近防阵列」）
-    dmg: 24, // 制式哨戒机 20 ⇒ +20%（专属强化型）
-    cpuUse: 18,
-    maxRangeM: 7500, // **专属射程豁免**（船长 2026-09-13「专属无人机开豁免」）：档位标准 5000 ⇒ 6,000（哨戒区间上限）；2026-09-14 +1500（船长「只有我方无人机，射程+1500」）
-    reloadMs: 8800, // 沿用"哨戒机攻击周期翻倍"口径（与制式同）
-    droneClass: 'sentry', // 哨戒机
-    hitRate: 1.15,
-    falloff: 0.4, // 哨戒机保留命中衰减（独有代价），比制式 0.35 略缓
-    defense: {
-      shieldHp: 28,
-      armorHp: 14,
-      hullHp: 18, // 三层血 60（制式 46 ⇒ +30%），偏盾
-      shieldResist: { kinetic: 0.2 },
-      armorResist: { kinetic: 0.1 },
-      hullResist: { kinetic: 0.1 },
-      evasion: 0.2,
-    },
-    exclusive: true,
-  },
-  /* ══════════ H 族（墨潮帮）专属机型（**2026-09-26 船长定**：「**墨潮帮势力装备定为射程压制、捕获网、
-     重袭机，分别占据高槽，高槽，攻坚机。**」）——走"专属强化型"口径（`exclusive`：无蓝图、不上市场、
-     不入常规掉落），只在 H 族稀有残骸 → 高级箱这条链路上产出（一次 ×10 架，见 `RARE_BOX_DRONE_UNITS`） ══════════ */
-  {
-    id: 'drone-ink-heavy',
-    name: '墨潮重袭无人机',
-    kind: 'drone',
-    unitM3: 20, // 体积档 3/4：重型攻坚（与制式攻坚机同档）
-    baseSellPriceIsk: 48_000, // 专属 ×4 口径（与巢卫攻坚机同价）
-    description:
-      L10N['item.copy.054']!.zh,
-    damageType: 'kinetic', // 船长 2026-09-26：「重袭机单发16的动能伤害」（H 族格 = 爆炸 8 : 动能 2，动能在族内）
-    dmg: 16, // 船长 2026-09-26 给定
-    cpuUse: 13,
-    maxRangeM: 4000, // **2026-09-28 船长令：「攻坚机 4000」**：攻坚·独占档 3000 → **4000**（与制式攻坚同档）
-    droneClass: 'assault', // 攻坚机（船长：「分别占据高槽，高槽，攻坚机」）
-    hitRate: 0.85,
-    falloff: 1, // 攻坚机档：命中不随距离衰减
-    defense: {
-      shieldHp: 40,
-      armorHp: 80,
-      hullHp: 100, // 三层血 40/80/100（船长 2026-09-26 给定）
-      shieldResist: { kinetic: 0.25, explosive: 0.25, plasma: 0.25 },
-      armorResist: { kinetic: 0.2, explosive: 0.2, plasma: 0.2 },
-      hullResist: { kinetic: 0.2, explosive: 0.2, plasma: 0.2 },
-      evasion: 0.05, // 船长 2026-09-26 给定（全机型最低）
-    },
-    exclusive: true,
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'DRONES_0', DRONES_0_TEXT_BINDINGS),
 ]
 
 /** 修理组件（P2 定稿 2026-09-05；**2026-09-13 船长改数值**：基础回复对齐「船体维修装置每跳」口径——
  * 民用 30 → **5**、军用 70 → **10**；甲、结构各按此值 × 该层容量增幅 × 舰体快修学（与装置侧同吃该技能）。
  * 厚甲船绝对回复更大 = 甲抗流特征保留） */
 export const REPAIR_KITS: readonly ItemDef[] = [
-  {
-    id: 'repairkit-civ',
-    name: '民用修理组件',
-    kind: 'kit',
-    unitM3: 1,
-    baseSellPriceIsk: 3_000,
-    repairRestore: 5,
-    // ⟪文案调整 2026-09-30⟫ 文案审核批 E12（船长批「按你推荐来」）：括号里原来套着破折号且偏口语
-    //   ⇒ 拆成两句（说明只写规格；"越厚回得越多"改成陈述句写进规格）。
-    description: L10N['item.copy.055']!.zh,
-  },
-  {
-    id: 'repairkit-mil',
-    name: '军用修理组件',
-    kind: 'kit',
-    unitM3: 1,
-    baseSellPriceIsk: 21_000,
-    repairRestore: 10,
-    description: L10N['item.copy.056']!.zh,
-  },
-  /* ═══ 损管修理组件（2026-09-25 船长令：「维修组件新增新的消耗品，损管修理组件，触发损管效果时需要消耗一份」）═══
-     唯一用途 = 「损伤管制装置」启动那一下（结构锁定 1 点 · 持续 1 秒）时消耗 1 枚；不参与常规修复。 */
-  {
-    id: 'repairkit-dc',
-    name: '损管修理组件',
-    kind: 'kit',
-    unitM3: 1,
-    baseSellPriceIsk: 500_000,
-    description: L10N['item.copy.057']!.zh,
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'REPAIR_KITS_0', REPAIR_KITS_0_TEXT_BINDINGS),
 ]
 
 /**
@@ -844,207 +644,7 @@ export const REPAIR_KITS: readonly ItemDef[] = [
  * - 战斗类与威胁类装置（12 + 3 台）在 B 批追加。
  */
 export const MATTER_DEVICES: readonly ItemDef[] = [
-  {
-    id: 'mat-surveyor',
-    name: '深空测绘仪',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.002']!.zh,
-  },
-  {
-    id: 'mat-chrono',
-    name: '时序核心',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.003']!.zh,
-  },
-  {
-    id: 'mat-crane',
-    name: '打捞起重机',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.004']!.zh,
-  },
-  {
-    id: 'mat-drill',
-    name: '采集钻机',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.005']!.zh,
-  },
-  {
-    id: 'mat-nebula',
-    name: '星云驱散器',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.006']!.zh,
-  },
-  {
-    id: 'mat-enricher',
-    name: '母矿富集器',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.007']!.zh,
-  },
-  {
-    id: 'mat-expander',
-    name: '舱段扩展器',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.008']!.zh,
-  },
-  /* ── B1 批：威胁类（三档合计最多把威胁压到一半）── */
-  {
-    id: 'mat-suppressor',
-    name: '压制力场',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.009']!.zh,
-  },
-  {
-    id: 'mat-boss-analyzer',
-    name: '守卫解析仪',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.010']!.zh,
-  },
-  {
-    /**
-     * ⚠ **退役留档（2026-09-15 船长「虫洞的撤离战取消吧」）**：撤离战整条退役 ⇒ 本装置**不再从谜质里抽出**
-     * （core 的 `WORMHOLE_MATTER_DRAW_POOL` 已排除退役项）。物品卡与 core 装置条目**保留不删**：
-     * 老档货仓里可能正带着它（谜质是本趟限定物），删掉会变成"读不懂的东西"；体检的「谜质契约」也要求
-     * core 装置表与 data 物品表（`kind: 'matter'`）逐字一致。说明改成"已不再提供增益"以免误导玩家。
-     */
-    id: 'mat-extract-cover',
-    name: '撤离掩护器',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.011']!.zh,
-  },
-  /* ── B1 批：战斗类（一律只在本趟虫洞的战斗里生效）── */
-  {
-    id: 'mat-shield-res',
-    name: '护盾谐振片',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.012']!.zh,
-  },
-  {
-    id: 'mat-armor-res',
-    name: '装甲强化片',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.013']!.zh,
-  },
-  {
-    id: 'mat-hull-res',
-    name: '结构加固片',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.014']!.zh,
-  },
-  {
-    id: 'mat-tracker',
-    name: '追踪阵列',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.015']!.zh,
-  },
-  {
-    id: 'mat-gyro',
-    name: '陀螺稳定器',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.016']!.zh,
-  },
-  {
-    id: 'mat-jammer',
-    name: '干扰发射器',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.017']!.zh,
-  },
-  {
-    id: 'mat-rangefinder',
-    name: '射程扩展器',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.018']!.zh,
-  },
-  {
-    id: 'mat-blindspot',
-    name: '盲区压制器',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.019']!.zh,
-  },
-  {
-    id: 'mat-ammo-dmg',
-    name: '弹药增效器',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.020']!.zh,
-  },
-  {
-    id: 'mat-reload',
-    name: '装填加速器',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.021']!.zh,
-  },
-  /* ── B2 批：战后收口与新机制 ── */
-  {
-    id: 'mat-volley',
-    name: '齐射协调仪',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.022']!.zh,
-  },
-  {
-    id: 'mat-ammo-back',
-    name: '弹药回收装置',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.023']!.zh,
-  },
-  {
-    id: 'mat-drone-net',
-    name: '机群回收网',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.024']!.zh,
-  },
-  {
-    id: 'mat-field-repair',
-    name: '战地维修单元',
-    kind: 'matter',
-    unitM3: 2000,
-    baseSellPriceIsk: 1,
-    description: L10N['item.signalSpace.025']!.zh,
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'MATTER_DEVICES_0', MATTER_DEVICES_0_TEXT_BINDINGS),
 ]
 
 /**
@@ -1080,15 +680,7 @@ export const MATTER_DEVICES: readonly ItemDef[] = [
  * - 它是**仓库物品**（不占虫洞货仓形状格、不进拆解/精炼/制造链）。
  */
 export const WORMHOLE_ESSENCES: readonly ItemDef[] = [
-  {
-    id: 'mat-wh-essence',
-    // ⟪文案调整 2026-10-06⟫ 旧玩法改名，物品ID、数量与用途保持。
-    name: '信号谜质',
-    kind: 'essence',
-    unitM3: 0.5,
-    baseSellPriceIsk: 700_000,
-    description: L10N['item.copy.090']!.zh,
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'WORMHOLE_ESSENCES_0', WORMHOLE_ESSENCES_0_TEXT_BINDINGS),
 ]
 
 /**
@@ -1105,86 +697,7 @@ export const WORMHOLE_ESSENCES: readonly ItemDef[] = [
  * **−40% ~ +39%**（撞满市场噪声的 ±0.4 钳制），故本条**不动**任何行情参数。
  */
 export const LUXURIES: readonly ItemDef[] = [
-  {
-    id: 'lux-1',
-    name: '星港陈酿',
-    kind: 'luxury',
-    unitM3: 2,
-    baseSellPriceIsk: 100_000,
-    description: L10N['item.copy.091']!.zh,
-  },
-  {
-    id: 'lux-2',
-    name: '贵族香料',
-    kind: 'luxury',
-    unitM3: 2,
-    baseSellPriceIsk: 400_000,
-    description: L10N['item.copy.092']!.zh,
-  },
-  {
-    id: 'lux-3',
-    name: '失落艺术品',
-    kind: 'luxury',
-    unitM3: 2,
-    baseSellPriceIsk: 2_000_000,
-    description: L10N['item.copy.093']!.zh,
-  },
-  {
-    id: 'lux-4',
-    name: '陈年雪茄',
-    kind: 'luxury',
-    unitM3: 2,
-    baseSellPriceIsk: 60_000,
-    description: L10N['item.copy.094']!.zh,
-  },
-  {
-    id: 'lux-5',
-    name: '异域织物',
-    kind: 'luxury',
-    unitM3: 2,
-    baseSellPriceIsk: 140_000,
-    description: L10N['item.copy.095']!.zh,
-  },
-  {
-    id: 'lux-6',
-    name: '香木雕刻',
-    kind: 'luxury',
-    unitM3: 2,
-    baseSellPriceIsk: 250_000,
-    description: L10N['item.copy.096']!.zh,
-  },
-  {
-    id: 'lux-7',
-    name: '宫廷乐谱',
-    kind: 'luxury',
-    unitM3: 2,
-    baseSellPriceIsk: 600_000,
-    description: L10N['item.copy.097']!.zh,
-  },
-  {
-    id: 'lux-8',
-    name: '古法香膏',
-    kind: 'luxury',
-    unitM3: 2,
-    baseSellPriceIsk: 800_000,
-    description: L10N['item.copy.098']!.zh,
-  },
-  {
-    id: 'lux-9',
-    name: '星图真迹',
-    kind: 'luxury',
-    unitM3: 2,
-    baseSellPriceIsk: 1_200_000,
-    description: L10N['item.copy.099']!.zh,
-  },
-  {
-    id: 'lux-10',
-    name: '王冠遗钻',
-    kind: 'luxury',
-    unitM3: 2,
-    baseSellPriceIsk: 3_200_000,
-    description: L10N['item.copy.100']!.zh,
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'LUXURIES_0', LUXURIES_0_TEXT_BINDINGS),
 ]
 
 /**
@@ -1197,14 +710,7 @@ export const LUXURIES: readonly ItemDef[] = [
  * ⇒ 箱价 **382.8 万**（原 365 万 = 三款均价 83.33 万 × 17.5 × 0.25）。
  */
 export const VALUABLES_CONTAINERS: readonly ItemDef[] = [
-  {
-    id: 'box-valuables',
-    name: '贵重品货柜',
-    kind: 'container',
-    unitM3: 2000, // 2026-09-16 船长「奢侈品货柜调整为2*2」⇒ 2×2 = 4 格（500 m³/格）；旧值 1000（2×1）
-    baseSellPriceIsk: 3_828_000, // 2026-09-16 重算：内容期望（5~30 件 · 十款等权 · 均价 87.5 万 ≈ 1,531.25 万）× 0.25
-    description: L10N['item.copy.101']!.zh,
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'VALUABLES_CONTAINERS_0', VALUABLES_CONTAINERS_0_TEXT_BINDINGS),
 ]
 
 /**
@@ -1213,40 +719,10 @@ export const VALUABLES_CONTAINERS: readonly ItemDef[] = [
  * 拆解产物 = **随机 MK3 装备 1~3 件**（**含武器**；**排除** `mod-lair-*` 族专属与 `mod-wh-*` 虫洞专属）。
  */
 export const MILITARY_CONTAINERS: readonly ItemDef[] = [
-  {
-    id: 'box-military',
-    name: '军用备货柜',
-    kind: 'container',
-    unitM3: 2000,
-    baseSellPriceIsk: 2_800_000, // 2026-09-15 批 B 复核：MK3 池 30 件、行价均 235.5 万 × 期望 2 件 = 470.95 万 × **0.6** ⇒ 280 万（原估值 700 万高于拆解期望，会诱导"只卖箱不拆箱"）
-    description: L10N['item.copy.102']!.zh,
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'MILITARY_CONTAINERS_0', MILITARY_CONTAINERS_0_TEXT_BINDINGS),
 ]
 export const AI_CORE_ITEMS: readonly ItemDef[] = [
-  {
-    id: 'ai-core-gamma',
-    name: '伽马 AI 核心',
-    kind: 'aicore',
-    unitM3: 500,
-    baseSellPriceIsk: 1,
-    description: L10N['item.copy.103']!.zh,
-  },
-  {
-    id: 'ai-core-beta',
-    name: '贝塔 AI 核心',
-    kind: 'aicore',
-    unitM3: 500,
-    baseSellPriceIsk: 1,
-    description: L10N['item.copy.104']!.zh,
-  },
-  {
-    id: 'ai-core-alpha',
-    name: '阿尔法 AI 核心',
-    kind: 'aicore',
-    unitM3: 500,
-    baseSellPriceIsk: 1,
-    description: L10N['item.copy.105']!.zh,
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'AI_CORE_ITEMS_0', AI_CORE_ITEMS_0_TEXT_BINDINGS),
 ]
 
 /**
@@ -1256,118 +732,7 @@ export const AI_CORE_ITEMS: readonly ItemDef[] = [
  * 用途：专属装备/专属舰船/旗舰配方与空间站建材；定价 = 材料成本 ×1.3~1.5（基础）/ ×1.4~1.6（高级）。
  */
 export const PARTS: readonly ItemDef[] = [
-  {
-    id: 'part-circuit',
-    name: '电路基板',
-    kind: 'part',
-    unitM3: 0.1,
-    baseSellPriceIsk: 95, // 材料 68（银纹 4×12＋晶态 20）×1.40
-    description: L10N['item.copy.020']!.zh,
-  },
-  {
-    id: 'part-armor-plate',
-    name: '装甲板',
-    kind: 'part',
-    unitM3: 0.1,
-    baseSellPriceIsk: 250, // 材料 180（钛钢 15×8＋银纹 5×12）×1.39
-    description: L10N['item.copy.021']!.zh,
-  },
-  {
-    id: 'part-frame',
-    name: '结构框架',
-    kind: 'part',
-    unitM3: 0.1,
-    baseSellPriceIsk: 145, // 材料 104（钛钢 10×8＋银纹 2×12）×1.39
-    description: L10N['item.copy.022']!.zh,
-  },
-  {
-    id: 'part-cable',
-    name: '超导电缆',
-    kind: 'part',
-    unitM3: 0.1,
-    baseSellPriceIsk: 155, // 材料 112（银纹 6×12＋晶态 2×20）×1.38
-    description: L10N['item.copy.023']!.zh,
-  },
-  {
-    id: 'part-coolant',
-    name: '冷却导管',
-    kind: 'part',
-    unitM3: 0.1,
-    baseSellPriceIsk: 115, // 材料 84（钛钢 8×8＋晶态 20）×1.37
-    description: L10N['item.copy.024']!.zh,
-  },
-  {
-    id: 'part-gyro',
-    name: '陀螺稳定器座',
-    kind: 'part',
-    unitM3: 0.1,
-    baseSellPriceIsk: 420, // 材料 300（重钨 2×90＋银纹 10×12）×1.40
-    description: L10N['item.copy.025']!.zh,
-  },
-  {
-    id: 'part-lens',
-    name: '光学透镜组',
-    kind: 'part',
-    unitM3: 0.1,
-    baseSellPriceIsk: 190, // 材料 135（晶态 4×20＋同位聚晶 55）×1.41
-    description: L10N['item.copy.026']!.zh,
-  },
-  {
-    id: 'part-drone-neural',
-    name: '无人机神经原件',
-    kind: 'part',
-    unitM3: 0.1,
-    baseSellPriceIsk: 930, // 材料 620（电路基板 2×95＋晶态 8×20＋重钨 3×90）×1.50
-    description: L10N['item.copy.027']!.zh,
-  },
-  {
-    id: 'part-shield-gen',
-    name: '护盾发生装置',
-    kind: 'part',
-    unitM3: 0.1,
-    baseSellPriceIsk: 1_010, // 材料 675（超导电缆 2×155＋晶态 10×20＋同位聚晶 3×55）×1.50
-    description: L10N['item.copy.028']!.zh,
-  },
-  {
-    id: 'part-jet-array',
-    name: '能量射流阵列',
-    kind: 'part',
-    unitM3: 0.1,
-    baseSellPriceIsk: 1_550, // 材料 1,030（透镜组 2×190＋重钨 6×90＋同位聚晶 2×55）×1.50
-    description: L10N['item.copy.029']!.zh,
-  },
-  {
-    id: 'part-qchip',
-    name: '量子协处理器芯',
-    kind: 'part',
-    unitM3: 0.1,
-    baseSellPriceIsk: 700, // 材料 470（电路基板 2×95＋晶态 5×20＋重钨 2×90）×1.49
-    description: L10N['item.copy.030']!.zh,
-  },
-  {
-    id: 'part-keel',
-    name: '舰用龙骨组件',
-    kind: 'part',
-    unitM3: 0.1,
-    baseSellPriceIsk: 3_120, // 材料 2,080（结构框架 6×145＋重钨 8×90＋星髓晶 2×245）×1.50
-    description: L10N['item.copy.031']!.zh,
-  },
-  {
-    id: 'part-fire-control',
-    name: '军规火控计算机',
-    kind: 'part',
-    unitM3: 0.1,
-    baseSellPriceIsk: 1_670, // 材料 1,110（协处理器芯 700＋电路基板 2×95＋同位聚晶 4×55）×1.50
-    description: L10N['item.copy.032']!.zh,
-  },
-  {
-    id: 'part-grav-comp',
-    name: '引力子补偿器',
-    kind: 'part',
-    unitM3: 0.1,
-    baseSellPriceIsk: 7_500, // 材料 5,000（龙骨组件 3,120＋重钨 10×90＋星髓晶 4×245）×1.50
-    description: L10N['item.copy.033']!.zh,
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'PARTS_0', PARTS_0_TEXT_BINDINGS),
 ]
 
 /**
@@ -1384,52 +749,7 @@ export const PARTS: readonly ItemDef[] = [
  * 价格按2026-10-06船长确认下调；物品基础收价与市场目录基价保持同值，用例核对。
  */
 export const WEEKEND_TROPHIES: readonly ItemDef[] = [
-  {
-    id: 'blackbox-h',
-    name: '墨潮旗舰黑匣',
-    kind: 'blackbox',
-    unitM3: 5,
-    baseSellPriceIsk: 10_000_000,
-    description: L10N['item.copy.106']!.zh,
-  },
-  /**
-   * **光环旗舰黑匣**（**船长 2026-10-02 令「甲」**）：R 族（光环科技 · 2026-10-01 建族）旗舰战的战利品，
-   * 与 `blackbox-h` **同构**（同体积 · 同卖价 · 同稀有度 · 同 `kind`）。
-   *
-   * **起因**（船长转述玩家报障）：「**光环入侵结束给的黑匣还是墨潮的**」——原先 core 的
-   * `weekendGrantRewards` **写死**发 `blackbox-h` ⇒ R 族玩家拿到墨潮那件（连名字与料值都是 H 的）。
-   * 现按族发：**一件族一件匣**（约定 `blackbox-<族小写>`，取数口见 `core/blackbox.ts`）；
-   * 与旗舰黑匣 / 通用黑匣**互为替代**（`core/manufacturing.ts` 的 `MATERIAL_GROUPS`）
-   * ⇒ 12 张舰船插件图纸照旧能拿它下料；入库即置位 `blackboxSeen`（`isBlackboxItem` 按 id 前缀认）。
-   */
-  {
-    id: 'blackbox-r',
-    name: '光环旗舰黑匣',
-    kind: 'blackbox',
-    unitM3: 5,
-    baseSellPriceIsk: 10_000_000,
-    description:
-      L10N['item.copy.107']!.zh,
-  },
-  /**
-   * **通用黑匣**（**2026-09-27 船长令**：「**在章鱼人声望商店加入购买通用黑匣的卡片，玩家可以用30声望换一个
-   * 通用黑匣。（现有的舰船插件蓝图都只要使用任意类型黑匣就可以制作）**」）。
-   *
-   * - 与 `blackbox-h` **并列的一档 `blackbox`**（不是替代它）：旗舰黑匣仍由入侵掉落；
-   *   本件**只能拿声望换**（30 点/枚，见 `core/plugs.ts` 的 `exchangeUniversalBlackBox`）；
-   * - 用途 = 制造舰船插件时的**等价料**：与旗舰黑匣互为替代（组序 = 先扣本件），见
-   *   `core/manufacturing.ts` 的 `MATERIAL_GROUPS`；
-   * - 卖价 **500 万**（**船长 2026-09-27 定**：「**按500万算价格，只收不卖**」）——
-   *   市场卡照做但 `playerBuyable: false`（NPC 不出售现货）。
-   */
-  {
-    id: 'blackbox-universal',
-    name: '通用黑匣',
-    kind: 'blackbox',
-    unitM3: 5,
-    baseSellPriceIsk: 5_000_000,
-    description: L10N['item.copy.108']!.zh,
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'WEEKEND_TROPHIES_0', WEEKEND_TROPHIES_0_TEXT_BINDINGS),
 ]
 
 /**
@@ -1447,50 +767,7 @@ export const WEEKEND_TROPHIES: readonly ItemDef[] = [
  *   上限也只算仓库（`core/jumpFuel.ts` 的 `JUMP_FUEL_CAP_BASE`）；老档残留在货仓的那份由读档迁移归仓。
  */
 export const CONSUMABLES: readonly ItemDef[] = [
-  {
-    id: 'jump-fuel',
-    name: '超空间折跃燃料',
-    kind: 'consumable',
-    unitM3: 1,
-    /** 普通舰船货仓装不进去（判据单点在物品数据上，装船入口读它；见 `core/inventory.ts`） */
-    holdForbidden: true,
-    /** 货值（站内收价）：**与市场行同值是全表惯例**（见 `marketCatalog.ts` 的 `jump-fuel` 行）。
-     *  **2026-10-01 船长令**：「**燃料打算抬价，燃料自己制作的成本价格控制在 10%（基础燃料配方）**」
-     *  ⇒ 定价口径 = **一批料价 ÷ 600 单位 ÷ 10%** 取整 ⇒ **5,800/单位**（料价随配方/虚空晶价浮动，
-     *  按 §十五之二之 5 **不写死净额**：读数走 `npm run manufacture:econ` 现算）。 */
-    baseSellPriceIsk: 5_800,
-    description: L10N['item.copy.109']!.zh,
-  },
-  /* ═══ 实验室后续内容（**2026-09-30 船长令**「你先继续制作后续实验室内容」＋「信号发射器和技能加速剂」·
-   *   口径见工作文档 `docs/design/lab-consumables-20260930.md`：第 2 批信号发射器 10,000 虚空晶 ·
-   *   第 3 批突触加速剂 2,000 虚空晶（船长 2026-09-29 六答））═══
-   *
-   * ⚠ **施工期一律 `unreleased`**（与虫洞同批惯例）：效果与界面还没接完 —— 数据先就位、**玩家看不到也拿不到**，
-   * 等 core 的"使用"动作与界面落地后一起摘掉这个字段（`content:check` 的物品/市场契约照旧盯着）。 */
-  {
-    id: 'invasion-beacon',
-    name: '信号发射器',
-    kind: 'consumable',
-    unitM3: 0.01,
-    baseSellPriceIsk: 96_000_000,
-    // ⟪2026-09-30 上线⟫ 效果（主动诱发一次入侵）与物品页「使用」按钮都已接完 ⇒ 摘掉施工期 `unreleased`
-    // ⟪文案调整 2026-09-30⟫ 补两条真规则（船长令：首访通讯说"细则在物品说明里"⇒ 说明必须写全）：
-    //   ① 母港 / 已建成副站所在星系点不着（`isAtHomeLike` 判据）② 高安启动付 10 点可支配声望（不足则拒绝）
-    description:
-      L10N['item.copy.110']!.zh,
-  },
-  {
-    id: 'synaptic-accelerant',
-    name: '突触加速剂',
-    kind: 'consumable',
-    unitM3: 0.01,
-    baseSellPriceIsk: 18_000_000,
-    // ⟪2026-09-30 上线⟫ 效果（24h ×0.5 · 不可叠用）、「使用」动作与物品页按钮都已接完 ⇒ 摘掉施工期 `unreleased`
-    // ⟪文案调整 2026-10-02⟫ 使用去处由两处补成**三处**（船长令）：技能页「技能加速」子窗口里也有同一颗
-    //   「使用」按钮（`SkillsTreePage.tsx` 的 `SkillBoostBlock`），原句只写了物品页与货仓页 ⇒ 说明漏了一处。
-    description:
-      L10N['item.copy.111']!.zh,
-  },
+  ...staticDataGroup<ItemDef>(staticDocument as unknown as DataDocument, 'CONSUMABLES_0', CONSUMABLES_0_TEXT_BINDINGS),
 ]
 
 /** 全部物品（矿石/矿物在前为兼容旧展示顺序，其后气体/冰/弹药/无人机/修理组件） */

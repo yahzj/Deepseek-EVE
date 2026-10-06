@@ -15,725 +15,1634 @@
  *   门槛梯度：MK3 蓝图 4、武装/重装/航运顶级船 7~9、异星原型与旗舰 10~11。
  */
 
+import staticDocument from './static/market.json'
+import type { DataDocument } from '../../../tools/data-editor-contract'
+import { staticDataGroup } from './staticData'
+
+const MARKET_GOODS_RAW_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "ore-veldspar": {
+
+  },
+  "ore-scorched": {
+
+  },
+  "ore-hemorphite": {
+
+  },
+  "ore-glowstone": {
+
+  },
+  "ore-sunshard": {
+
+  },
+  "ore-voidshard": {
+
+  },
+  "ore-nebulite": {
+
+  },
+  "ore-voidmother": {
+
+  },
+  "box-relic-a": {
+
+  },
+  "box-relic-c": {
+
+  },
+  "box-relic-d": {
+
+  },
+  "box-relic-e": {
+
+  },
+  "box-relic-g": {
+
+  },
+  "box-bp-shallow": {
+
+  },
+  "box-bp-mid": {
+
+  },
+  "box-bp-deep": {
+
+  },
+  "ai-core-gamma": {
+
+  },
+  "ai-core-beta": {
+
+  },
+  "ai-core-alpha": {
+
+  },
+  "mat-surveyor": {
+
+  },
+  "mat-chrono": {
+
+  },
+  "mat-crane": {
+
+  },
+  "mat-drill": {
+
+  },
+  "mat-nebula": {
+
+  },
+  "mat-enricher": {
+
+  },
+  "mat-expander": {
+
+  },
+  "mat-suppressor": {
+
+  },
+  "mat-boss-analyzer": {
+
+  },
+  "mat-extract-cover": {
+
+  },
+  "mat-shield-res": {
+
+  },
+  "mat-armor-res": {
+
+  },
+  "mat-hull-res": {
+
+  },
+  "mat-tracker": {
+
+  },
+  "mat-gyro": {
+
+  },
+  "mat-jammer": {
+
+  },
+  "mat-rangefinder": {
+
+  },
+  "mat-blindspot": {
+
+  },
+  "mat-ammo-dmg": {
+
+  },
+  "mat-reload": {
+
+  },
+  "mat-volley": {
+
+  },
+  "mat-ammo-back": {
+
+  },
+  "mat-drone-net": {
+
+  },
+  "mat-field-repair": {
+
+  },
+  "min-tritanium": {
+
+  },
+  "min-pyerite": {
+
+  },
+  "min-mexallon": {
+
+  },
+  "min-nocxium": {
+
+  },
+  "min-isotope": {
+
+  },
+  "min-starcore": {
+
+  },
+  "min-darkiron": {
+
+  },
+  "min-voidcrystal": {
+    limitedSupplyEveryMs: 6 * 60_000,
+  },
+  "min-jumplasma": {
+
+  },
+  "min-cryoslurry": {
+
+  },
+  "min-curvature": {
+
+  },
+  "jump-fuel": {
+
+  },
+  "invasion-beacon": {
+
+  },
+  "synaptic-accelerant": {
+
+  },
+  "mat-wh-essence": {
+
+  },
+  "blackbox-h": {
+
+  },
+  "blackbox-r": {
+
+  },
+  "blackbox-universal": {
+
+  },
+  "lux-1": {
+
+  },
+  "lux-2": {
+
+  },
+  "lux-3": {
+
+  },
+  "lux-4": {
+
+  },
+  "lux-5": {
+
+  },
+  "lux-6": {
+
+  },
+  "lux-7": {
+
+  },
+  "lux-8": {
+
+  },
+  "lux-9": {
+
+  },
+  "lux-10": {
+
+  },
+  "box-valuables": {
+
+  },
+  "box-military": {
+
+  },
+  "gas-neon": {
+
+  },
+  "gas-phosphor": {
+
+  },
+  "gas-ionstorm": {
+
+  },
+  "gas-aurora": {
+
+  },
+  "ice-frost": {
+
+  },
+  "ice-marrow": {
+
+  },
+  "ice-darkstar": {
+
+  },
+  "ammo-kinetic-l": {
+
+  },
+  "part-circuit": {
+
+  },
+  "part-armor-plate": {
+
+  },
+  "part-frame": {
+
+  },
+  "part-cable": {
+
+  },
+  "part-coolant": {
+
+  },
+  "part-gyro": {
+
+  },
+  "part-lens": {
+
+  },
+  "ammo-explosive-l": {
+
+  },
+  "ammo-plasma-l": {
+
+  },
+  "ammo-kinetic-2": {
+
+  },
+  "ammo-explosive-2": {
+
+  },
+  "ammo-plasma-2": {
+
+  },
+  "repairkit-civ": {
+
+  },
+  "repairkit-mil": {
+
+  },
+  "repairkit-dc": {
+
+  },
+  "drone-scout": {
+
+  },
+  "drone-assault": {
+
+  },
+  "drone-heavy": {
+
+  },
+  "drone-sentry": {
+
+  },
+  "mod-miner-civ": {
+
+  },
+  "mod-cargo-civ": {
+
+  },
+  "mod-turret-civ": {
+
+  },
+  "mod-miner-1": {
+
+  },
+  "mod-cargo-1": {
+
+  },
+  "mod-turret-kin-1": {
+
+  },
+  "mod-pd-e": {
+
+  },
+  "bp-pd-e": {
+
+  },
+  "mod-pd-e-2": {
+
+  },
+  "bp-pd-e-2": {
+
+  },
+  "mod-pd-e-3": {
+
+  },
+  "bp-pd-e-3": {
+
+  },
+  "mod-missile-1": {
+
+  },
+  "mod-laser-1": {
+
+  },
+  "mod-shield-kin-1": {
+
+  },
+  "mod-shield-exp-1": {
+
+  },
+  "mod-shield-pla-1": {
+
+  },
+  "mod-armor-kin-1": {
+
+  },
+  "mod-armor-exp-1": {
+
+  },
+  "mod-armor-pla-1": {
+
+  },
+  "mod-shield-ext-1": {
+
+  },
+  "mod-shieldchg-1": {
+
+  },
+  "mod-armor-plate-1": {
+
+  },
+  "mod-prop-1": {
+
+  },
+  "mod-drone-rack-1": {
+
+  },
+  "mod-drone-tac-1": {
+
+  },
+  "mod-drone-relay-1": {
+
+  },
+  "mod-drone-deck-1": {
+
+  },
+  "bp-miner-1": {
+
+  },
+  "bp-cargo-1": {
+
+  },
+  "bp-turret-1": {
+
+  },
+  "bp-miner-civ": {
+
+  },
+  "bp-cargo-civ": {
+
+  },
+  "bp-turret-civ": {
+
+  },
+  "bp-ammo-kinetic": {
+
+  },
+  "bp-ammo-explosive": {
+
+  },
+  "bp-ammo-plasma": {
+
+  },
+  "bp-ammo-kinetic-2": {
+
+  },
+  "bp-ammo-explosive-2": {
+
+  },
+  "bp-ammo-plasma-2": {
+
+  },
+  "bp-repairkit-civ": {
+
+  },
+  "bp-repairkit-mil": {
+
+  },
+  "bp-repairkit-dc": {
+
+  },
+  "bp-laser-1": {
+
+  },
+  "bp-missile-1": {
+
+  },
+  "bp-drone-rack-1": {
+
+  },
+  "bp-drone-tac-1": {
+
+  },
+  "bp-shield-kin-1": {
+
+  },
+  "bp-shield-exp-1": {
+
+  },
+  "bp-shield-pla-1": {
+
+  },
+  "bp-shield-ext-1": {
+
+  },
+  "bp-shieldchg-1": {
+
+  },
+  "bp-armor-kin-1": {
+
+  },
+  "bp-armor-exp-1": {
+
+  },
+  "bp-armor-pla-1": {
+
+  },
+  "bp-armor-plate-1": {
+
+  },
+  "bp-prop-1": {
+
+  },
+  "bp-stab-kin-1": {
+
+  },
+  "bp-stab-exp-1": {
+
+  },
+  "bp-stab-pla-1": {
+
+  },
+  "bp-rof-1": {
+
+  },
+  "bp-track-1": {
+
+  },
+  "bp-gyro-1": {
+
+  },
+  "bp-salvager-1": {
+
+  },
+  "bp-hullrep-civ": {
+
+  },
+  "bp-hullrep-1": {
+
+  },
+  "bp-lock-1": {
+
+  },
+  "ship-burrower": {
+
+  },
+  "core-basic": {
+
+  },
+  "mod-miner-2": {
+
+  },
+  "mod-cargo-2": {
+
+  },
+  "mod-turret-kin-2": {
+
+  },
+  "mod-missile-2": {
+
+  },
+  "mod-laser-2": {
+
+  },
+  "mod-miner-3": {
+
+  },
+  "mod-cargo-3": {
+
+  },
+  "mod-turret-kin-3": {
+
+  },
+  "mod-missile-3": {
+
+  },
+  "mod-laser-3": {
+
+  },
+  "mod-shield-kin-2": {
+
+  },
+  "mod-shield-exp-2": {
+
+  },
+  "mod-shield-pla-2": {
+
+  },
+  "mod-armor-kin-2": {
+
+  },
+  "mod-armor-exp-2": {
+
+  },
+  "mod-armor-pla-2": {
+
+  },
+  "mod-prop-2": {
+
+  },
+  "mod-drone-rack-2": {
+
+  },
+  "mod-drone-tac-2": {
+
+  },
+  "mod-drone-relay-2": {
+
+  },
+  "mod-drone-deck-2": {
+
+  },
+  "mod-shield-kin-3": {
+
+  },
+  "mod-shield-exp-3": {
+
+  },
+  "mod-shield-pla-3": {
+
+  },
+  "mod-armor-kin-3": {
+
+  },
+  "mod-armor-exp-3": {
+
+  },
+  "mod-armor-pla-3": {
+
+  },
+  "mod-shield-ext-2": {
+
+  },
+  "mod-shieldchg-2": {
+
+  },
+  "mod-armor-plate-2": {
+
+  },
+  "mod-shield-ext-3": {
+
+  },
+  "mod-shieldchg-3": {
+
+  },
+  "mod-armor-plate-3": {
+
+  },
+  "mod-dc-1": {
+
+  },
+  "mod-dc-2": {
+
+  },
+  "mod-dc-3": {
+
+  },
+  "mod-prop-3": {
+
+  },
+  "mod-mwd-1": {
+
+  },
+  "bp-mwd-1": {
+
+  },
+  "mod-mwd-2": {
+
+  },
+  "bp-mwd-2": {
+
+  },
+  "mod-drone-rack-3": {
+
+  },
+  "mod-drone-tac-3": {
+
+  },
+  "mod-drone-relay-3": {
+
+  },
+  "mod-drone-deck-3": {
+
+  },
+  "mod-drone-shield-2": {
+
+  },
+  "mod-drone-shield-3": {
+
+  },
+  "mod-stab-kin-1": {
+
+  },
+  "mod-stab-exp-1": {
+
+  },
+  "mod-stab-pla-1": {
+
+  },
+  "mod-rof-1": {
+
+  },
+  "mod-track-1": {
+
+  },
+  "mod-gyro-1": {
+
+  },
+  "mod-hullrep-civ": {
+
+  },
+  "mod-stab-kin-2": {
+
+  },
+  "mod-stab-exp-2": {
+
+  },
+  "mod-stab-pla-2": {
+
+  },
+  "mod-rof-2": {
+
+  },
+  "mod-track-2": {
+
+  },
+  "mod-gyro-2": {
+
+  },
+  "mod-stab-kin-3": {
+
+  },
+  "mod-stab-exp-3": {
+
+  },
+  "mod-stab-pla-3": {
+
+  },
+  "mod-rof-3": {
+
+  },
+  "mod-track-3": {
+
+  },
+  "mod-gyro-3": {
+
+  },
+  "mod-warpcomp-2": {
+
+  },
+  "mod-warpcomp-3": {
+
+  },
+  "mod-cpu-1": {
+
+  },
+  "mod-cpu-2": {
+
+  },
+  "mod-hullrep-1": {
+
+  },
+  "mod-hullrep-2": {
+
+  },
+  "mod-lock-1": {
+
+  },
+  "mod-lock-2": {
+
+  },
+  "mod-lock-3": {
+
+  },
+  "mod-stealth-2": {
+
+  },
+  "mod-stealth-3": {
+
+  },
+  "mod-salvager-1": {
+
+  },
+  "mod-salvager-2": {
+
+  },
+  "mod-salvager-3": {
+
+  },
+  "bp-miner-2": {
+
+  },
+  "bp-cargo-2": {
+
+  },
+  "bp-turret-2": {
+
+  },
+  "bp-miner-3": {
+
+  },
+  "bp-cargo-3": {
+
+  },
+  "bp-turret-3": {
+
+  },
+  "bp-laser-2": {
+
+  },
+  "bp-laser-3": {
+
+  },
+  "bp-missile-2": {
+
+  },
+  "bp-missile-3": {
+
+  },
+  "bp-drone-rack-2": {
+
+  },
+  "bp-drone-rack-3": {
+
+  },
+  "bp-drone-tac-2": {
+
+  },
+  "bp-drone-tac-3": {
+
+  },
+  "bp-drone-relay-1": {
+
+  },
+  "bp-drone-deck-1": {
+
+  },
+  "bp-drone-relay-2": {
+
+  },
+  "bp-drone-deck-2": {
+
+  },
+  "bp-drone-relay-3": {
+
+  },
+  "bp-drone-deck-3": {
+
+  },
+  "bp-drone-shield-2": {
+
+  },
+  "bp-drone-shield-3": {
+
+  },
+  "bp-shield-kin-2": {
+
+  },
+  "bp-shield-exp-2": {
+
+  },
+  "bp-shield-pla-2": {
+
+  },
+  "bp-shield-kin-3": {
+
+  },
+  "bp-shield-exp-3": {
+
+  },
+  "bp-shield-pla-3": {
+
+  },
+  "bp-shield-ext-2": {
+
+  },
+  "bp-shieldchg-2": {
+
+  },
+  "bp-shield-ext-3": {
+
+  },
+  "bp-shieldchg-3": {
+
+  },
+  "bp-armor-kin-2": {
+
+  },
+  "bp-armor-exp-2": {
+
+  },
+  "bp-armor-pla-2": {
+
+  },
+  "bp-armor-kin-3": {
+
+  },
+  "bp-armor-exp-3": {
+
+  },
+  "bp-armor-pla-3": {
+
+  },
+  "bp-dc-1": {
+
+  },
+  "bp-dc-2": {
+
+  },
+  "bp-dc-3": {
+
+  },
+  "bp-drone-scout": {
+
+  },
+  "bp-drone-assault": {
+
+  },
+  "bp-drone-heavy": {
+
+  },
+  "bp-drone-sentry": {
+
+  },
+  "bp-armor-plate-2": {
+
+  },
+  "bp-armor-plate-3": {
+
+  },
+  "bp-prop-2": {
+
+  },
+  "bp-prop-3": {
+
+  },
+  "bp-stab-kin-2": {
+
+  },
+  "bp-stab-kin-3": {
+
+  },
+  "bp-stab-exp-2": {
+
+  },
+  "bp-stab-exp-3": {
+
+  },
+  "bp-stab-pla-2": {
+
+  },
+  "bp-stab-pla-3": {
+
+  },
+  "bp-rof-2": {
+
+  },
+  "bp-rof-3": {
+
+  },
+  "bp-track-2": {
+
+  },
+  "bp-track-3": {
+
+  },
+  "bp-gyro-2": {
+
+  },
+  "bp-gyro-3": {
+
+  },
+  "bp-warpcomp-2": {
+
+  },
+  "bp-warpcomp-3": {
+
+  },
+  "bp-cpu-1": {
+
+  },
+  "bp-cpu-2": {
+
+  },
+  "bp-salvager-2": {
+
+  },
+  "bp-salvager-3": {
+
+  },
+  "bp-hullrep-2": {
+
+  },
+  "part-drone-neural": {
+
+  },
+  "part-shield-gen": {
+
+  },
+  "part-jet-array": {
+
+  },
+  "part-qchip": {
+
+  },
+  "part-keel": {
+
+  },
+  "part-fire-control": {
+
+  },
+  "part-grav-comp": {
+
+  },
+  "bp-part-drone-neural": {
+
+  },
+  "bp-part-shield-gen": {
+
+  },
+  "bp-part-jet-array": {
+
+  },
+  "bp-part-qchip": {
+
+  },
+  "bp-part-keel": {
+
+  },
+  "bp-part-fire-control": {
+
+  },
+  "bp-part-grav-comp": {
+
+  },
+  "bp-lock-2": {
+
+  },
+  "bp-lock-3": {
+
+  },
+  "bp-stealth-2": {
+
+  },
+  "bp-stealth-3": {
+
+  },
+  "sbp-pioneer": {
+
+  },
+  "sbp-humpback": {
+
+  },
+  "ship-whale": {
+
+  },
+  "ship-pioneer": {
+
+  },
+  "ship-humpback": {
+
+  },
+  "ship-bowhead": {
+
+  },
+  "ship-falconet": {
+
+  },
+  "ship-shrike": {
+
+  },
+  "ship-tigershark": {
+
+  },
+  "ship-mako": {
+
+  },
+  "ship-swarm": {
+
+  },
+  "ship-tortoise": {
+
+  },
+  "ship-hawksbill": {
+
+  },
+  "ship-flyingfish": {
+
+  },
+  "ship-sailfish": {
+
+  },
+  "ship-manatee": {
+
+  },
+  "ship-thresher": {
+
+  },
+  "ship-electricray": {
+
+  },
+  "ship-hammerhead": {
+
+  },
+  "ship-bullshark": {
+
+  },
+  "ship-nautilus": {
+
+  },
+  "ship-whale-king": {
+
+  },
+  "sbp-whale-king": {
+
+  },
+  "ship-sentinel": {
+
+  },
+  "ship-whiteshark": {
+
+  },
+  "ship-swordfish": {
+
+  },
+  "ship-xuanwu": {
+
+  },
+  "ship-megalodon": {
+
+  },
+  "ship-colossal": {
+
+  },
+  "ship-orca": {
+
+  },
+  "ship-helicoprion": {
+
+  },
+  "sbp-burrower": {
+
+  },
+  "sbp-whale": {
+
+  },
+  "sbp-bowhead": {
+
+  },
+  "sbp-falconet": {
+
+  },
+  "sbp-shrike": {
+
+  },
+  "sbp-tigershark": {
+
+  },
+  "sbp-mako": {
+
+  },
+  "sbp-whiteshark": {
+
+  },
+  "sbp-swarm": {
+
+  },
+  "sbp-sentinel": {
+
+  },
+  "sbp-thresher": {
+
+  },
+  "sbp-electricray": {
+
+  },
+  "sbp-hammerhead": {
+
+  },
+  "sbp-bullshark": {
+
+  },
+  "sbp-nautilus": {
+
+  },
+  "sbp-tortoise": {
+
+  },
+  "sbp-hawksbill": {
+
+  },
+  "sbp-xuanwu": {
+
+  },
+  "sbp-flyingfish": {
+
+  },
+  "sbp-sailfish": {
+
+  },
+  "sbp-manatee": {
+
+  },
+  "sbp-swordfish": {
+
+  },
+  "sbp-megalodon": {
+
+  },
+  "sbp-orca": {
+
+  },
+  "sbp-helicoprion": {
+
+  },
+  "sbp-colossal": {
+
+  },
+  "sbp-once-pioneer": {
+
+  },
+  "sbp-once-sailfish": {
+
+  },
+  "sbp-once-manatee": {
+
+  },
+  "sbp-once-sentinel": {
+
+  },
+  "sbp-once-hawksbill": {
+
+  },
+  "sbp-once-humpback": {
+
+  },
+  "sbp-once-thresher": {
+
+  },
+  "sbp-once-nautilus": {
+
+  },
+  "sbp-once-hammerhead": {
+
+  },
+  "sbp-once-whale-king": {
+
+  },
+  "sbp-once-bullshark": {
+
+  },
+  "sbp-once-electricray": {
+
+  },
+  "sbp-once-swordfish": {
+
+  },
+  "sbp-once-bowhead": {
+
+  },
+  "sbp-once-xuanwu": {
+
+  },
+  "sbp-once-megalodon": {
+
+  },
+  "sbp-once-orca": {
+
+  },
+  "sbp-once-helicoprion": {
+
+  },
+  "sbp-once-colossal": {
+
+  },
+  "mod-miner-proto": {
+
+  },
+  "mod-cargo-proto": {
+
+  },
+  "mod-laser-proto": {
+
+  },
+  "mod-cpu-3": {
+
+  },
+  "core-gamma": {
+
+  },
+  "core-beta": {
+
+  },
+  "core-alpha": {
+
+  },
+}
+
+const MARKET_GOODS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "sbp-wh-a-frigate": {
+
+  },
+  "sbp-wh-a-destroyer": {
+
+  },
+  "sbp-wh-a-cruiser": {
+
+  },
+  "sbp-wh-c-frigate": {
+
+  },
+  "sbp-wh-c-destroyer": {
+
+  },
+  "sbp-wh-c-cruiser": {
+
+  },
+  "sbp-wh-d-frigate": {
+
+  },
+  "sbp-wh-d-destroyer": {
+
+  },
+  "sbp-wh-d-cruiser": {
+
+  },
+  "sbp-wh-e-frigate": {
+
+  },
+  "sbp-wh-e-destroyer": {
+
+  },
+  "sbp-wh-e-carrier": {
+
+  },
+  "sbp-wh-g-frigate": {
+
+  },
+  "sbp-wh-g-destroyer": {
+
+  },
+  "sbp-wh-g-cruiser": {
+
+  },
+  "bp-wh-a-frag": {
+
+  },
+  "bp-wh-a-hangar": {
+
+  },
+  "bp-wh-a-prop": {
+
+  },
+  "bp-wh-a-coat": {
+
+  },
+  "bp-wh-a-scan": {
+
+  },
+  "bp-wh-a-shield": {
+
+  },
+  "bp-wh-c-laser": {
+
+  },
+  "bp-wh-c-prism": {
+
+  },
+  "bp-wh-c-pulse": {
+
+  },
+  "bp-wh-c-missile": {
+
+  },
+  "bp-wh-c-frame": {
+
+  },
+  "bp-wh-d-turret": {
+
+  },
+  "bp-wh-d-shield": {
+
+  },
+  "bp-wh-d-lock": {
+
+  },
+  "bp-wh-d-laser": {
+
+  },
+  "bp-wh-d-loader": {
+
+  },
+  "bp-wh-d-steady": {
+
+  },
+  "bp-wh-e-dc": {
+
+  },
+  "bp-wh-e-tac": {
+
+  },
+  "bp-wh-e-cpu": {
+
+  },
+  "bp-wh-e-pd": {
+
+  },
+  "bp-wh-e-shield": {
+
+  },
+  "bp-wh-g-hangar": {
+
+  },
+  "bp-wh-g-fcs": {
+
+  },
+  "bp-wh-g-ballistic": {
+
+  },
+  "bp-wh-g-hull": {
+
+  },
+  "bp-wh-g-turret": {
+
+  },
+  "bp-wh-g-prop": {
+
+  },
+  "mod-wh-a-frag": {
+
+  },
+  "mod-wh-a-hangar": {
+
+  },
+  "mod-wh-a-prop": {
+
+  },
+  "mod-wh-a-coat": {
+
+  },
+  "mod-wh-a-scan": {
+
+  },
+  "mod-wh-a-shield": {
+
+  },
+  "mod-wh-c-laser": {
+
+  },
+  "mod-wh-c-prism": {
+
+  },
+  "mod-wh-c-pulse": {
+
+  },
+  "mod-wh-c-missile": {
+
+  },
+  "mod-wh-c-frame": {
+
+  },
+  "mod-wh-d-turret": {
+
+  },
+  "mod-wh-d-shield": {
+
+  },
+  "mod-wh-d-lock": {
+
+  },
+  "mod-wh-d-laser": {
+
+  },
+  "mod-wh-d-loader": {
+
+  },
+  "mod-wh-d-steady": {
+
+  },
+  "mod-wh-e-dc": {
+
+  },
+  "mod-wh-e-tac": {
+
+  },
+  "mod-wh-e-cpu": {
+
+  },
+  "mod-wh-e-pd": {
+
+  },
+  "mod-wh-e-shield": {
+
+  },
+  "mod-wh-g-hangar": {
+
+  },
+  "mod-wh-g-fcs": {
+
+  },
+  "mod-wh-g-ballistic": {
+
+  },
+  "mod-wh-g-hull": {
+
+  },
+  "mod-wh-g-turret": {
+
+  },
+  "mod-wh-g-prop": {
+
+  },
+  "mod-shieldfield-2": {
+
+  },
+  "mod-shieldfield-3": {
+
+  },
+  "bp-shieldfield-2": {
+
+  },
+  "bp-shieldfield-3": {
+
+  },
+  "sh-wh-a-frigate": {
+
+  },
+  "sh-wh-a-destroyer": {
+
+  },
+  "sh-wh-a-cruiser": {
+
+  },
+  "sh-wh-c-frigate": {
+
+  },
+  "sh-wh-c-destroyer": {
+
+  },
+  "sh-wh-c-cruiser": {
+
+  },
+  "sh-wh-d-frigate": {
+
+  },
+  "sh-wh-d-destroyer": {
+
+  },
+  "sh-wh-d-cruiser": {
+
+  },
+  "sh-wh-e-frigate": {
+
+  },
+  "sh-wh-e-destroyer": {
+
+  },
+  "sh-wh-e-carrier": {
+
+  },
+  "sh-wh-g-frigate": {
+
+  },
+  "sh-wh-g-destroyer": {
+
+  },
+  "sh-wh-g-cruiser": {
+
+  },
+  "mod-lair-turret-a": {
+
+  },
+  "mod-lair-missile-a": {
+
+  },
+  "mod-lair-cargo-a": {
+
+  },
+  "mod-lair-armor-c": {
+
+  },
+  "mod-lair-dc-c": {
+
+  },
+  "mod-lair-laser-c": {
+
+  },
+  "mod-lair-shield-d": {
+
+  },
+  "mod-lair-turret-d": {
+
+  },
+  "mod-lair-armor-d": {
+
+  },
+  "mod-lair-turret-e": {
+
+  },
+  "mod-lair-hangar-e": {
+
+  },
+  "mod-lair-frame-e": {
+
+  },
+  "mod-lair-drone-tac-g": {
+
+  },
+  "mod-lair-drone-relay-g": {
+
+  },
+  "mod-lair-ecm-h": {
+
+  },
+  "mod-lair-web-h": {
+
+  },
+  "mod-lair-laser-r": {
+
+  },
+  "mod-lair-blink-r": {
+
+  },
+  "mod-lair-beam-r": {
+
+  },
+  "mod-lair-pd-r": {
+
+  },
+  "drone-exile-bee": {
+
+  },
+  "drone-wh-c-heavy": {
+
+  },
+  "drone-wh-e-sentry": {
+
+  },
+  "drone-ink-heavy": {
+
+  },
+  "bp-lair-g-drone": {
+
+  },
+  "bp-wh-c-drone": {
+
+  },
+  "bp-wh-e-drone": {
+
+  },
+  "mod-mwd-3": {
+
+  },
+  "bp-mwd-3": {
+
+  },
+}
+
 import type { MarketGoodDef } from '@whale/core'
 import { rarityTierOf } from './rarityTier' // 2026-09-09 数字稀有度表（物品本体属性，市场调用）
 import { BLACK_MARKET_EXCLUSIVE_REFS } from './blackMarketGoods'
 import { wreckItemIdOf, WRECK_GROUPS } from '@whale/core'
 
 export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
-  // ══════════ 常驻供应（common） ══════════
-
-  // ── 矿石（池模型：玩家售矿主渠道；收购平价，池淤积压价） ──
-  // 2026-09-05 船长：低级矿石/矿物是海量消耗品，池量与流量按"越低级越大"放大（稀有矿保持小）
-  // 【2026-09-10 船长定：**按玩家生产能力标定**（原值按感觉定，17 个矿带里 15 个覆盖比 <1 = 采了卖不掉）。
-  //   基准 = 沙鳗级 + 满采矿技能 + 2×强化采集器 MK1（引擎实测 15.4k~20.0k 件/h ⇒ 日产 37~48 万件）；
-  //   规则 = **按单价分层覆盖比**：≤20 信用点 → ×15（大宗）／≤200 → ×6（中阶）／≤400 → ×3（高阶）／>400 → ×2（顶级）；
-  //   `supplyFlow`（每 60 秒窗吸收/补单量）按 `目标日吸收 ÷ 1440` 定、`poolTarget = supplyFlow × 120`。
-  //   效果：梯度保留（建议 flow 513~4,991/窗 = **9.7× 差距**，原 6~5,000 = 833×），最低档仍是基准产能的 2 倍 ⇒ 挖高阶矿也卖得掉；
-  //   低阶几乎不动（橄榄 ×1.0、辉长 ×2.5）。价格、产率、弹药/修理件/无人机池**一律未动**。】
-  // 【**2026-09-30 船长令：「基准上调为座头鲸0技能满装备」** ⇒ 基准由"沙鳗级 ＋ 满技能 ＋ 2×MK1"
-  //   换成 **座头鲸级 · 0 技能 · 满装备**（高槽 3×强化采集器 MK3 ＋ 低槽货舱扩展 MK3/MK2 = CPU 175 用满；
-  //   中槽装不装推进器不改件/时）。新基准日产 = 旧基准的 **4.1~6.2 倍**（橄榄 163,200 件/h vs 39,927 等），
-  //   分层规则（×15/×6/×3/×2）与"flow = 日吸收÷1440、池 = flow×120"**原样不动** ⇒ 下面 14 条
-  //   （7 矿 ＋ 4 气 ＋ 3 冰）的池按新基准重标；读数与对照见 `npm run liquidity:audit`。】
-  // 【2026-09-11 船长定：**消耗品池按同一把尺重标**（弹药/修理组件玩家可自造 → 基准 = **单工位无技能日产**；
-  //   无人机**无蓝图**（纯市场货源）→ 基准按 144 场/天战损折算）。
-  //   实测改前产能覆盖比：动能弹药 0.21× / 动能弹药 MK2 0.03× / 民用修理组件 0.40× / 军用修理组件 0.33×
-  //   ——"一个工位造出来的量，市场一天都吃不下"，故按 ≤20 → ×15、≤200 → ×6、>400 → ×2 重标：
-  //   弹药 MK1 150 → **10,800/窗**（池 4,000 → **1,296,000**）、弹药 MK2 20 → **4,320**（池 → **518,400**）、
-  //   民用修理组件 4 → **20**（池 300 → **2,400**）、军用修理组件 1.5 → **9**（池 120 → **1,080**）、
-  //   无人机池同步为 flow×120（4/2/1/1 → 池 480/240/120/120）。价格、产率、其它池一律未动。】
-  { key: 'ore-veldspar', kind: 'item', refId: 'ore-veldspar', rarity: 'common', basePrice: 7, poolTarget: 4_896_000, supplyFlow: 40_800 }, // 2026-09-30 换基准（座头鲸·0技能满装备）：flow 9,818→40,800 · 池 1,178,160→4,896,000（×15 层）
-  { key: 'ore-scorched', kind: 'item', refId: 'ore-scorched', rarity: 'common', basePrice: 7, poolTarget: 4_896_000, supplyFlow: 40_800 }, // 同上（辉长岩）
-  { key: 'ore-hemorphite', kind: 'item', refId: 'ore-hemorphite', rarity: 'common', basePrice: 15, poolTarget: 2_448_000, supplyFlow: 20_400 }, // 2026-09-30 换基准：flow 1,964→20,400 · 池 235,680→2,448,000（×15 层，×10.4）
-  { key: 'ore-glowstone', kind: 'item', refId: 'ore-glowstone', rarity: 'common', basePrice: 32, poolTarget: 489_600, supplyFlow: 4_080 }, // 2026-09-30 换基准：flow 963→4,080 · 池 115,560→489,600（×6 层）
-  { key: 'ore-sunshard', kind: 'item', refId: 'ore-sunshard', rarity: 'common', basePrice: 32, poolTarget: 489_600, supplyFlow: 4_080 }, // 同上（曦棱晶）
-  { key: 'ore-voidshard', kind: 'item', refId: 'ore-voidshard', rarity: 'common', basePrice: 68, poolTarget: 244_800, supplyFlow: 2_040 }, // 2026-09-30 换基准：flow 173→2,040 · 池 20,760→244,800（×6 层，×11.8）
-  { key: 'ore-nebulite', kind: 'item', refId: 'ore-nebulite', rarity: 'common', basePrice: 145, poolTarget: 122_400, supplyFlow: 1_020 }, // 2026-09-30 换基准：flow 51→1,020 · 池 6,120→122,400（×6 层，×20）
-  // 【虚空母矿 —— 虫洞线的唯一原矿（2026-09-12 船长定）。**虫洞落地前不对玩家可见**：
-  //   `unreleased: true` ⇒ 不进 `ctx.marketGoods`（市场页/图鉴/挂单/任务全看不到），
-  //   但契约照核（"每种物品必须有市场卡"）。**上线时删掉这一个字段即可开卖。**
-  //   ⚠ **2026-09-14 船长：「虚空晶和虚空母矿也添加只收不卖。」＋「市场不会出现虚空晶和母矿的卖单。」**
-  //   ⇒ `playerBuyable: false`：**NPC 侧一笔卖单都不铺**（见 `core/market.ts seedCommonBook` 的门），
-  //   买入亦被拦；**收购照常**（带回的母矿随时能卖给 NPC）。
-  //   数值（2026-09-14 半量后）：虚空晶 **0.25** + 同位聚晶 1.0 + 星髓晶 0.25 ⇒ 产出价值 **566.25**
-  //   （改前 0.5 ⇒ 1,016.25）· basePrice 1,300 / demandMultiplier 0.6 ⇒ 收购 ≈780（价格按船长「价格不动」未调）。】
-  { key: 'ore-voidmother', kind: 'item', refId: 'ore-voidmother', rarity: 'common', basePrice: 1_300, demandMultiplier: 0.6, playerBuyable: false }, // 只收不卖（2026-09-14 船长）；2026-09-28 船长令「把虚空母矿排除在体积平衡」⇒ 回到原价 1,300（收购 ≈780）
-  // ── **遗迹安全货柜**（F4 · 2026-09-13；2026-09-14 船长改判：给像样的价、只收不卖）──
-  // 【它是"带回后拆解"的中间件：**不带货进洞、只从洞内带出** ⇒ 市场**只收不卖**
-  //   （`playerBuyable: false`，市场不出售现货 —— 否则花钱就能买箱子，洞内打捞这条渠道被架穿）。
-  //   **基础价 = 该族内容期望市值 × 0.6**（一次性探针用真引擎 `wormholeUnboxRoll` 抽 4000 次量得；
-  //   内容价一律取内容自身的市场行价）：A 359.3 万 · C 372.6 万 · D 679.3 万 · E 547.7 万 · G 534.6 万。
-  //   ⚠ **0.6 这条折扣与残骸同一条哲学**：收购价恒**低于**拆解期望 ⇒ "开箱比卖箱更划算"，
-  //   箱子仍是"打开它"的东西，想换现钱随时可以卖（`demandMultiplier: 1.0` = 按基础价全额收）。
-  //   ⚠ **2026-09-15 船长「安全货柜价格允许提升」（体积 2000 → 3000 m³ · 6 格）⇒ 五族价一律 ×1.5**
-  //   （2,155,000 → 3,232,500 等）：收购价从"期望 ×0.6"变成 **"期望 ×0.9"**——**仍低于**拆解期望，
-  //   哲学不破，只是"开箱 vs 卖箱"的差距收窄（体积变 6 格、带回来更难，故补偿到接近等价）。
-  //   若日后觉得拆箱动力不足，把这条 ×1.5 收回（或只提到 ×0.75）即可，改的是这一处的 5 个数。】
-  { key: 'box-relic-a', kind: 'item', refId: 'box-relic-a', rarity: 'common', basePrice: 3_232_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 359.3 万 ×0.9（原 ×0.6）
-  { key: 'box-relic-c', kind: 'item', refId: 'box-relic-c', rarity: 'common', basePrice: 3_352_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 372.6 万 ×0.9（原 ×0.6）
-  { key: 'box-relic-d', kind: 'item', refId: 'box-relic-d', rarity: 'common', basePrice: 6_112_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 679.3 万 ×0.9（原 ×0.6）
-  { key: 'box-relic-e', kind: 'item', refId: 'box-relic-e', rarity: 'common', basePrice: 4_927_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 547.7 万 ×0.9（原 ×0.6）
-  { key: 'box-relic-g', kind: 'item', refId: 'box-relic-g', rarity: 'common', basePrice: 4_815_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 534.6 万 ×0.9（原 ×0.6）
-  // 【图纸货柜 3 种（2026-09-14 船长定：虫洞遗迹打捞新增）：口径与安全货柜逐字相同 —— 只收不卖 +
-  //   基础价 = 内容期望市值 ×0.6（浅 598.9 万 · 中 2,340.8 万 · 深 4,306.8 万；层档越高箱越值钱）。】
-  { key: 'box-bp-shallow', kind: 'item', refId: 'box-bp-shallow', rarity: 'common', basePrice: 3_595_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 598.9 万 ×0.6
-  { key: 'box-bp-mid', kind: 'item', refId: 'box-bp-mid', rarity: 'common', basePrice: 14_045_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 2,340.8 万 ×0.6
-  { key: 'box-bp-deep', kind: 'item', refId: 'box-bp-deep', rarity: 'common', basePrice: 25_840_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 期望 4,306.8 万 ×0.6
-  // 【AI 核心 **洞内实物形态** 3 种（2026-09-14 船长定：虫洞遗迹打捞新增掉落）——**不进市场**：
-  //   ① 它占货仓 1 格、撤离成功即自动接入核心库（`state.aiCores`）⇒ **永不进仓库**，市场行没有交易对手；
-  //   ② **AI 核心在市场已经有自己的卡**（`core-basic / core-gamma / core-beta / core-alpha` 四档账本核心）
-  //      ⇒ 实物再挂一张卡就是"同一个东西的第二张卡"（船长 2026-09-14：「**AI核心已经存在了**」）。
-  //   故一律 `unreleased: true`（照"每种物品必须有市场卡"的既有契约保留卡、契约照核，但不进 `ctx.marketGoods`）。】
-  { key: 'ai-core-gamma', kind: 'item', refId: 'ai-core-gamma', rarity: 'common', basePrice: 200_000, demandMultiplier: 0, unreleased: true },
-  { key: 'ai-core-beta', kind: 'item', refId: 'ai-core-beta', rarity: 'common', basePrice: 1_500_000, demandMultiplier: 0, unreleased: true },
-  { key: 'ai-core-alpha', kind: 'item', refId: 'ai-core-alpha', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0, unreleased: true },
-  // 【谜质储存器 24 台（F3c · 船长 2026-09-13 起）：**不进市场**——"本趟虫洞内生效、离开即消失"的装置，
-  //   既不带回来也不流通（船长 2026-09-14：「谜质则不一样，**需要设置不出现在市场**」）。
-  //   一律 `unreleased: true`：卡留在目录表里（"每种物品必须有市场卡"的契约照核），但不进 `ctx.marketGoods`
-  //   ⇒ 市场页 / 挂单 / 订单 / 事件一律看不到、也买不到。`content:check` 有常驻契约钉住这一条。】
-  { key: 'mat-surveyor', kind: 'item', refId: 'mat-surveyor', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-chrono', kind: 'item', refId: 'mat-chrono', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-crane', kind: 'item', refId: 'mat-crane', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-drill', kind: 'item', refId: 'mat-drill', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-nebula', kind: 'item', refId: 'mat-nebula', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-enricher', kind: 'item', refId: 'mat-enricher', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-expander', kind: 'item', refId: 'mat-expander', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-suppressor', kind: 'item', refId: 'mat-suppressor', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-boss-analyzer', kind: 'item', refId: 'mat-boss-analyzer', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-extract-cover', kind: 'item', refId: 'mat-extract-cover', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-shield-res', kind: 'item', refId: 'mat-shield-res', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-armor-res', kind: 'item', refId: 'mat-armor-res', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-hull-res', kind: 'item', refId: 'mat-hull-res', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-tracker', kind: 'item', refId: 'mat-tracker', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-gyro', kind: 'item', refId: 'mat-gyro', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-jammer', kind: 'item', refId: 'mat-jammer', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-rangefinder', kind: 'item', refId: 'mat-rangefinder', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-blindspot', kind: 'item', refId: 'mat-blindspot', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-ammo-dmg', kind: 'item', refId: 'mat-ammo-dmg', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-reload', kind: 'item', refId: 'mat-reload', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-volley', kind: 'item', refId: 'mat-volley', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-ammo-back', kind: 'item', refId: 'mat-ammo-back', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-drone-net', kind: 'item', refId: 'mat-drone-net', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  { key: 'mat-field-repair', kind: 'item', refId: 'mat-field-repair', rarity: 'common', basePrice: 1, demandMultiplier: 0, unreleased: true },
-  // ── 矿物（池模型：制造原料主渠道；供应微溢 6%） ──
-  // 【2026-09-10 同批按"单炉满技能精炼产能"标定（矿 → 矿物取该矿物产率最高的那支矿）：
-  //   钛钢 90,734 件/h、银纹 63,385、晶态 22,523、同位聚晶 78,408、重钨 29,233、星髓 29,730、冥铁 7,722
-  //   ——冥铁/星髓/重钨/同位聚晶原覆盖比 0.16~0.82×（炼出来卖不掉），钛钢/银纹/晶态本就 ≥5.7× 故仅微调；
-  //   虚空晶无精炼来源（回收彩头），池不动。】
-  { key: 'min-tritanium', kind: 'item', refId: 'min-tritanium', rarity: 'common', basePrice: 8, poolTarget: 2_386_800, supplyFlow: 19_890 },
-  { key: 'min-pyerite', kind: 'item', refId: 'min-pyerite', rarity: 'common', basePrice: 12, poolTarget: 1_432_080, supplyFlow: 11_934 },
-  { key: 'min-mexallon', kind: 'item', refId: 'min-mexallon', rarity: 'common', basePrice: 20, poolTarget: 507_720, supplyFlow: 4_231 },
-  { key: 'min-nocxium', kind: 'item', refId: 'min-nocxium', rarity: 'common', basePrice: 90, poolTarget: 95_280, supplyFlow: 794 },
-  { key: 'min-isotope', kind: 'item', refId: 'min-isotope', rarity: 'common', basePrice: 55, poolTarget: 175_320, supplyFlow: 1_461 },
-  // 2026-10-05 船长确认七池容量表：只扩目标池，流量与成交规则保持原值。
-  { key: 'min-starcore', kind: 'item', refId: 'min-starcore', rarity: 'common', basePrice: 245, poolTarget: 48_000, supplyFlow: 133 },
-  { key: 'min-darkiron', kind: 'item', refId: 'min-darkiron', rarity: 'common', basePrice: 780, poolTarget: 16_000, supplyFlow: 26 },
-  // 2026-10-06 船长确认限额慢补货：初始/上限3000枚，每6分钟补1枚；覆盖虚空晶旧只收不卖裁定。
-  // 经济池48000、收购流量13与5400基础价不变，虚空母矿仍只收不卖。
-  { key: 'min-voidcrystal', kind: 'item', refId: 'min-voidcrystal', rarity: 'common', basePrice: 5_400, poolTarget: 48_000, supplyFlow: 13, limitedSupplyCap: 3_000, limitedSupplyEveryMs: 6 * 60_000, limitedSupplyUnits: 1 },
-  // ── 跃迁燃料链（**2026-09-29 船长令**：3 种新精炼材料 ＋ 燃料）──
-  // 【新矿物 = 玩家产出要拿去卖钱 ⇒ 照本文件既有口径走 **common 池**（船长 2026-09-29「4 是」：
-  //   新矿物放普通池）。池宽按"单炉满技能精炼产能的 ~2 倍"标（同 2026-09-10 那批的算法）：
-  //   折跃等离子/低温跃迁浆 ≈ 1,400~1,600/炉·h（气/冰 R3~R5 皆出）⇒ 取 flow 300/窗（≈18,000/h）；
-  //   曲率凝析物只从高阶气/冰少量出（≈120~130/炉·h）⇒ 取 flow 40/窗（≈2,400/h）。】
-  { key: 'min-jumplasma', kind: 'item', refId: 'min-jumplasma', rarity: 'common', basePrice: 120, poolTarget: 36_000, supplyFlow: 300 },
-  { key: 'min-cryoslurry', kind: 'item', refId: 'min-cryoslurry', rarity: 'common', basePrice: 120, poolTarget: 36_000, supplyFlow: 300 },
-  { key: 'min-curvature', kind: 'item', refId: 'min-curvature', rarity: 'common', basePrice: 420, poolTarget: 4_800, supplyFlow: 40 },
-  // 【超空间折跃燃料 —— **稀有档 ＋ 池 ＋ 批量档**（船长 2026-09-29：「燃料可买卖放入稀有（但是是池子）」）：
-  //   `rareQtyMul: 200` 与弹药同档（**存量口径：稀有批量档恒 200 件/张**，见 market.test.ts 的契约）；
-  //   `absorbQtyPerWindow` 与实验室满产对齐（1 条线 600 单位/5 分钟 ⇒ 7,200/h = 120/分钟 ⇒ 窗吸收 14,400/h）。
-  //   `demandMultiplier: 0.6` 与弹药同档（消耗品，卖给协会不划算、留着自用）。
-  //   ⚠ **2026-09-30 船长令「调整燃料价格」**：同日虚空晶用量 ×10 ⇒ 自产单价 77.57 → **401.57 ISK/单位**
-  //   ⇒ 行价 120 → **420**（与自产同价：自产不再是"省钱路"，而是"用虚空晶换时间"；市场退为应急渠道）。】
-  { key: 'jump-fuel', kind: 'item', refId: 'jump-fuel', rarity: 'rare', basePrice: 5_800, demandMultiplier: 0.6, poolTarget: 28_800, supplyFlow: 240, rareQtyMul: 200, rareWeightMul: 3, absorbQtyPerWindow: 14_400 }, // 2026-10-01 船长令「燃料打算抬价，燃料自己制作的成本价格控制在 10%（基础燃料配方）」：420 → **5,800**（定价口径 = 一批料价 ÷ 600 单位 ÷ 10% 取整；净额读数走工具现算，不写进注释）
-  /* 实验室后续内容（**2026-09-30 船长令**）：信号发射器与突触加速剂走**奇货档**
-   * （船长 2026-09-29 Q8「燃料可买卖放入稀有（但是是池子）。**其他放入奇货**」）。
-   * ⚠ 施工期 `unreleased`（效果/界面未接完）——玩家既看不到也买不到；行价 = 我按料价 ×2.4 的口径提的（待船长核）。 */
-  { key: 'invasion-beacon', kind: 'item', refId: 'invasion-beacon', rarity: 'exotic', basePrice: 96_000_000, demandMultiplier: 1.0, playerBuyable: false },
-  { key: 'synaptic-accelerant', kind: 'item', refId: 'synaptic-accelerant', rarity: 'exotic', basePrice: 18_000_000, demandMultiplier: 1.0, playerBuyable: false },
-  // ── 虫洞战利品与经济扩充（船长 2026-09-15 确认）：谜质精华只收不卖 · 奢侈品正常交易 · 两个新货柜只收不卖 ──
-  //   ⚠ **档位口径（2026-09-15 落码）**：凡"玩家产出要拿去卖钱"的行一律 **common（常驻）**——
-  //   common 才每 60s 窗口铺 3 档收购阶梯（池商品）或 85% 掷一次收购单（单件平价品）；
-  //   rare/exotic 的收购单只有 3% / 1% 每窗的掷骰 ⇒ 内容体检会报「玩家产出将无法稳定卖出」。
-  //   既有同类先例：虚空晶 `min-voidcrystal`（common · 池商品）· 遗迹安全货柜/图纸货柜 `box-relic-*`/`box-bp-*`（common）。
-  //   ⚠ **谜质（`mat-wh-essence`）暂留 exotic**：`-wh-` 专属内容档位另有 2026-09-14 船长裁定
-  //   （「所有专属的东西，价格翻4倍」⇒ 用例 `exclusive-market.test.ts` ① 要求 `-wh-` 行 = 奇货档 + 只收不卖），
-  //   与"常驻才好卖"冲突 ⇒ 待船长裁决（见汇报），裁决前不动。
-  { key: 'mat-wh-essence', kind: 'item', refId: 'mat-wh-essence', rarity: 'exotic', basePrice: 700_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 虫洞谜质（撤离成功按台数换算：1 台 = 1 枚；NPC 收购 = 700,000；2026-09-19 船长「谜质单价提高到70W」）
-  // 只收不卖 · 墨潮旗舰黑匣（周末入侵击毁旗舰必掉 ×1；2026-09-25 船长「黑匣先做壳」⇒ 先按可回收/可卖的壳制品落市场行）
-  // 2026-10-06船长确认降价，两种旗舰匣与物品基础收价同值。
-  { key: 'blackbox-h', kind: 'item', refId: 'blackbox-h', rarity: 'exotic', basePrice: 10_000_000, demandMultiplier: 1.0, playerBuyable: false },
-  /** 光环旗舰黑匣：R族入侵自己的战利品，与墨潮匣同档同价、只收不卖。 */
-  { key: 'blackbox-r', kind: 'item', refId: 'blackbox-r', rarity: 'exotic', basePrice: 10_000_000, demandMultiplier: 1.0, playerBuyable: false },
-  /** 通用黑匣（2026-09-27 船长令「按500万算价格，只收不卖」）：同"只收不卖"档，NPC 不出售现货 */
-  { key: 'blackbox-universal', kind: 'item', refId: 'blackbox-universal', rarity: 'exotic', basePrice: 5_000_000, demandMultiplier: 1.0, playerBuyable: false },
-  { key: 'lux-1', kind: 'item', refId: 'lux-1', rarity: 'common', basePrice: 100_000, demandMultiplier: 1.0 }, // 奢侈品·低带（贵重品货柜拆解产物；正常交易）· 2026-09-15 船长「单价差距提高」：2.4 → 10 万
-  { key: 'lux-2', kind: 'item', refId: 'lux-2', rarity: 'common', basePrice: 400_000, demandMultiplier: 1.0 }, // 奢侈品·中带（常驻 ⇒ 稳定卖出）· 4.8 → 40 万
-  { key: 'lux-3', kind: 'item', refId: 'lux-3', rarity: 'common', basePrice: 2_000_000, demandMultiplier: 1.0 }, // 奢侈品·高带（常驻 ⇒ 稳定卖出）· 9.6 → 200 万
-  // ⚠ 2026-09-16 船长：「添加更多奢侈品，让奢侈品有10个类型，分布在目前的3个奢侈品价格附近」＋「十件等权」
-  //   ⇒ 低带 ≈6~14 万 / 中带 ≈25~80 万 / 高带 ≈120~320 万，围绕原来的 10 / 40 / 200 万铺开；
-  //   十款均价 **87.5 万** ⇒ 一箱期望 1,531.25 万 ⇒ 箱价 382.8 万（×0.25 契约不变）。
-  { key: 'lux-4', kind: 'item', refId: 'lux-4', rarity: 'common', basePrice: 60_000, demandMultiplier: 1.0 }, // 奢侈品·低带（陈年雪茄）
-  { key: 'lux-5', kind: 'item', refId: 'lux-5', rarity: 'common', basePrice: 140_000, demandMultiplier: 1.0 }, // 奢侈品·低带（异域织物）
-  { key: 'lux-6', kind: 'item', refId: 'lux-6', rarity: 'common', basePrice: 250_000, demandMultiplier: 1.0 }, // 奢侈品·中带（香木雕刻）
-  { key: 'lux-7', kind: 'item', refId: 'lux-7', rarity: 'common', basePrice: 600_000, demandMultiplier: 1.0 }, // 奢侈品·中带（宫廷乐谱）
-  { key: 'lux-8', kind: 'item', refId: 'lux-8', rarity: 'common', basePrice: 800_000, demandMultiplier: 1.0 }, // 奢侈品·中带（古法香膏）
-  { key: 'lux-9', kind: 'item', refId: 'lux-9', rarity: 'common', basePrice: 1_200_000, demandMultiplier: 1.0 }, // 奢侈品·高带（星图真迹）
-  { key: 'lux-10', kind: 'item', refId: 'lux-10', rarity: 'common', basePrice: 3_200_000, demandMultiplier: 1.0 }, // 奢侈品·高带（王冠遗钻）
-  { key: 'box-valuables', kind: 'item', refId: 'box-valuables', rarity: 'common', basePrice: 3_828_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 贵重品货柜（2 格）· 期望 = 17.5 件 × 十款均价 87.5 万 = 1,531.25 万 ×**0.25**（2026-09-15 船长改判的专属折扣；其余三类柜仍是 ×0.6）
-  { key: 'box-military', kind: 'item', refId: 'box-military', rarity: 'common', basePrice: 2_800_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 军用备货柜（4 格）· 期望 = 2 件 × MK3 均价 235.5 万 = 470.95 万 ×0.6（2026-09-15 批 B 复核：原估值 700 万 > 拆解期望，会诱导"只卖箱不拆箱"⇒ 按同一条 ×0.6 规则下调）
-  // ── 气体（V10 池商品） ──
-  { key: 'gas-neon', kind: 'item', refId: 'gas-neon', rarity: 'common', basePrice: 32, poolTarget: 489_600, supplyFlow: 4_080 }, // 2026-09-30 换基准：flow 1,194→4,080 · 池 143,280→489,600（×6 层）
-  { key: 'gas-phosphor', kind: 'item', refId: 'gas-phosphor', rarity: 'common', basePrice: 144, poolTarget: 122_400, supplyFlow: 1_020 }, // 2026-09-30 换基准：flow 77→1,020 · 池 9,240→122,400（×6 层，×13.2）
-  { key: 'gas-ionstorm', kind: 'item', refId: 'gas-ionstorm', rarity: 'common', basePrice: 68, poolTarget: 244_800, supplyFlow: 2_040 }, // 2026-09-30 换基准：flow 231→2,040 · 池 27,720→244,800（×6 层，×8.8）
-  { key: 'gas-aurora', kind: 'item', refId: 'gas-aurora', rarity: 'common', basePrice: 144, poolTarget: 122_400, supplyFlow: 1_020 }, // 2026-09-30 换基准：flow 77→1,020 · 池 9,240→122,400（×6 层，×13.2）
-  // ── 冰矿（V10 池商品） ──
-  { key: 'ice-frost', kind: 'item', refId: 'ice-frost', rarity: 'common', basePrice: 32, poolTarget: 489_600, supplyFlow: 4_080 }, // 2026-09-30 换基准：flow 1,194→4,080 · 池 143,280→489,600（×6 层）
-  { key: 'ice-marrow', kind: 'item', refId: 'ice-marrow', rarity: 'common', basePrice: 68, poolTarget: 244_800, supplyFlow: 2_040 }, // 2026-09-30 换基准：flow 231→2,040 · 池 27,720→244,800（×6 层，×8.8）
-  { key: 'ice-darkstar', kind: 'item', refId: 'ice-darkstar', rarity: 'common', basePrice: 144, poolTarget: 122_400, supplyFlow: 1_020 }, // 2026-09-30 换基准：flow 77→1,020 · 池 9,240→122,400（×6 层，×13.2）
-  // ── 弹药（V10 占位消耗品：NPC 补给池，玩家可囤可回卖） ──
-  { key: 'ammo-kinetic-l', kind: 'item', refId: 'ammo-kinetic-l', rarity: 'common', basePrice: 7, demandMultiplier: 0.6, poolTarget: 1_296_000, supplyFlow: 10_800 }, // 2026-09-11 消耗品池按产能标定（原 4,000/150）
-  // 【基础零件 7 种（2026-09-20 零件体系）：常驻池商品——**池规则 = 幂律连续曲线**
-  //   （船长 2026-09-20：「百万级是最低价格的零件，其他价格的零件在这基础上下调」＋「池子更平滑 + 高级零件池总价值逐步上涨」
-  //    ＋同日追加「**零件池总价允许除以4进行平衡**」）：
-  //   锚 = 最低价零件（电路基板 95 信用点）= **300,000**（原 1,200,000 ÷4）；`poolTarget(p) = 300,000 × (95 / p)^0.55`
-  //   ⇒ 池数量随价格**平滑递减**（30 万 → 2.71 万）、池总价值随价格**平滑递增**（2,850 万 → 2.03 亿）；
-  //   `supplyFlow = poolTarget ÷ 120`（全表既有比例）。定价 = 材料成本 ×1.37~1.41（船长「普通零件平均涨幅 30~50%」）。】
-  { key: 'part-circuit', kind: 'item', refId: 'part-circuit', rarity: 'common', basePrice: 95, demandMultiplier: 0.6, poolTarget: 300_000, supplyFlow: 2_500 },
-  { key: 'part-armor-plate', kind: 'item', refId: 'part-armor-plate', rarity: 'common', basePrice: 250, demandMultiplier: 0.6, poolTarget: 176_200, supplyFlow: 1_468 },
-  { key: 'part-frame', kind: 'item', refId: 'part-frame', rarity: 'common', basePrice: 145, demandMultiplier: 0.6, poolTarget: 237_700, supplyFlow: 1_981 },
-  { key: 'part-cable', kind: 'item', refId: 'part-cable', rarity: 'common', basePrice: 155, demandMultiplier: 0.6, poolTarget: 229_200, supplyFlow: 1_910 },
-  { key: 'part-coolant', kind: 'item', refId: 'part-coolant', rarity: 'common', basePrice: 115, demandMultiplier: 0.6, poolTarget: 270_100, supplyFlow: 2_251 },
-  { key: 'part-gyro', kind: 'item', refId: 'part-gyro', rarity: 'common', basePrice: 420, demandMultiplier: 0.6, poolTarget: 132_500, supplyFlow: 1_104 },
-  { key: 'part-lens', kind: 'item', refId: 'part-lens', rarity: 'common', basePrice: 190, demandMultiplier: 0.6, poolTarget: 204_900, supplyFlow: 1_708 },
-  { key: 'ammo-explosive-l', kind: 'item', refId: 'ammo-explosive-l', rarity: 'common', basePrice: 8, demandMultiplier: 0.6, poolTarget: 1_296_000, supplyFlow: 10_800 },
-  { key: 'ammo-plasma-l', kind: 'item', refId: 'ammo-plasma-l', rarity: 'common', basePrice: 9, demandMultiplier: 0.6, poolTarget: 1_296_000, supplyFlow: 10_800 },
-  // ── 弹药 MK2（2026-09-09 船长拍板：攻坚/提速消耗品；补给池高价低耗节流，参数可调） ──
-  // 2026-09-20 船长：「**弹药 MK2 移动到稀有订单**」⇒ 三系 MK2 由 common 改 **rare**（数字档 R1 → R2）。
-  //   ⚠ 与产能池口径的连带：它原先走 `common` 的"池商品阶梯"（`poolTarget` / `supplyFlow` 那套盘口），
-  //   改档后**不再吃那条路** ⇒ 池参数保留不删（改回 common 时需要，也是产能标定的原始读数）。
-  //   ⚠ `common` 的档位**本就不影响交易**（`market.ts` 的 `rareTierWeight` 只在 rare/exotic 分支被调用）
-  //   ⇒ 本次改档的**实质影响 = 供货渠道由"常驻盘口"变为"稀有订单"**，不是加权。
-  /**
-   * ⚠ **2026-09-20 追加（船长令：「3 种 MK2 弹药供应量和收购太少了，起码要足够玩家消耗和交易出售」⇒ 乙案）**：
-   * 稀有订单渠道每张单只有 1~3 件 ⇒ 实测**24 小时只买得到 61~81 发**，而一场 4 舰战斗要烧 ~3,000 发
-   * （`ammoLoadTotals`：4 分钟 ÷ 装填 ×1.5 轮 × 门数 ≈ 755 发/舰）。故给这三件**消耗品**开批量档：
-   * - `rareQtyMul: 200` ⇒ 稀有单件数 1~3 件 **→ 200~600 发/张**（供货与簿面收购两侧同乘）；
-   * - `rareWeightMul: 3` ⇒ 稀有抽取/收购概率 ×3 ⇒ 每系每天约 **3 万发**供货（够 ~10 场战斗），
-   *   且对 167 件 rare 池的挤占可忽略（权重 +6/167）；
-   * - `absorbQtyPerWindow: 21_600` ⇒ **收购额度 = 4,320 × 5**（船长：「收购额度增加约 5 倍」）——
-   *   写在卡上而不再靠下面那两个池参数**顺带**生效（原先"买不到却卖得掉"就是那个残留造成的）。
-   * 池参数（`poolTarget`/`supplyFlow`）**保留不删**：改回 common 时需要，也是当初产能标定的原始读数。
-   */
-  { key: 'ammo-kinetic-2', kind: 'item', refId: 'ammo-kinetic-2', rarity: 'rare', basePrice: 45, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320, rareQtyMul: 200, rareWeightMul: 3, absorbQtyPerWindow: 21_600 }, // 2026-09-11 消耗品池按产能标定（原 1,200/20）
-  { key: 'ammo-explosive-2', kind: 'item', refId: 'ammo-explosive-2', rarity: 'rare', basePrice: 60, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320, rareQtyMul: 200, rareWeightMul: 3, absorbQtyPerWindow: 21_600 },
-  { key: 'ammo-plasma-2', kind: 'item', refId: 'ammo-plasma-2', rarity: 'rare', basePrice: 80, demandMultiplier: 0.6, poolTarget: 518_400, supplyFlow: 4_320, rareQtyMul: 200, rareWeightMul: 3, absorbQtyPerWindow: 21_600 },
-  // ── 修理组件（2026-09-05：承伤持久化配套消耗品；民用/军用两档 NPC 常驻补给池） ──
-  { key: 'repairkit-civ', kind: 'item', refId: 'repairkit-civ', rarity: 'common', basePrice: 3_300, demandMultiplier: 0.6, poolTarget: 2_400, supplyFlow: 20 }, // 2026-09-11 消耗品池按产能标定（原 300/4）
-  { key: 'repairkit-mil', kind: 'item', refId: 'repairkit-mil', rarity: 'common', basePrice: 23_100, demandMultiplier: 0.6, poolTarget: 1_080, supplyFlow: 9 }, // 2026-09-11（原 120/1.5；船长定：与其它消耗品同口径，激战单场可吃 23 枚 ⇒ 池约撑 45 场）
-  // 损管修理组件（2026-09-25 船长令：损伤管制装置启动时消耗的那一种）——单场最多吃 1 枚，池按同族口径给
-  { key: 'repairkit-dc', kind: 'item', refId: 'repairkit-dc', rarity: 'common', basePrice: 550_000, demandMultiplier: 0.6, poolTarget: 1_080, supplyFlow: 9 },
-  // ── 无人机（V10 占位：NPC 补给池） ──
-  // 容量与flow×120解绑，采用船长确认的七池表；不改变无人机每窗供需流量。
-  { key: 'drone-scout', kind: 'item', refId: 'drone-scout', rarity: 'common', basePrice: 900, demandMultiplier: 0.6, poolTarget: 18_000, supplyFlow: 4 },
-  { key: 'drone-assault', kind: 'item', refId: 'drone-assault', rarity: 'common', basePrice: 2_200, demandMultiplier: 0.6, poolTarget: 18_000, supplyFlow: 2 },
-  { key: 'drone-heavy', kind: 'item', refId: 'drone-heavy', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.6, poolTarget: 12_000, supplyFlow: 1 },
-  { key: 'drone-sentry', kind: 'item', refId: 'drone-sentry', rarity: 'common', basePrice: 9_500, demandMultiplier: 0.6, poolTarget: 9_000, supplyFlow: 1 },
-
-  // ── 单件平价品 ──
-  // 民用/入门装备（市场供应价 = 制造价的合理回本价；玩家自己造更便宜）
-  { key: 'mod-miner-civ', kind: 'module', refId: 'mod-miner-civ', rarity: 'common', basePrice: 9_000, demandMultiplier: 0.6 },
-  { key: 'mod-cargo-civ', kind: 'module', refId: 'mod-cargo-civ', rarity: 'common', basePrice: 8_000, demandMultiplier: 0.6 },
-  { key: 'mod-turret-civ', kind: 'module', refId: 'mod-turret-civ', rarity: 'common', basePrice: 12_000, demandMultiplier: 0.6 },
-  { key: 'mod-miner-1', kind: 'module', refId: 'mod-miner-1', rarity: 'common', basePrice: 31_200, demandMultiplier: 0.6 },
-  { key: 'mod-cargo-1', kind: 'module', refId: 'mod-cargo-1', rarity: 'common', basePrice: 29_200, demandMultiplier: 0.6 },
-  { key: 'mod-turret-kin-1', kind: 'module', refId: 'mod-turret-kin-1', rarity: 'common', basePrice: 53_000, demandMultiplier: 0.6 },
-  // 巨构近防炮（2026-09-11 机群批 S4）：**唯一能打敌方机群**的武器类型（防空属性），点上架
-  // 蓝图行书价 = 产物 × 档位系数（2026-09-12 船长裁定「乙」对齐；原三行书价照抄了产物价）
-  { key: 'mod-pd-e', kind: 'module', refId: 'mod-pd-e', rarity: 'rare', basePrice: 118_000, demandMultiplier: 0.7 },
-  { key: 'bp-pd-e', kind: 'blueprint', refId: 'bp-pd-e', rarity: 'rare', basePrice: 236_000, demandMultiplier: 0.7 },
-  { key: 'mod-pd-e-2', kind: 'module', refId: 'mod-pd-e-2', rarity: 'rare', basePrice: 315_000, demandMultiplier: 0.7 },
-  { key: 'bp-pd-e-2', kind: 'blueprint', refId: 'bp-pd-e-2', rarity: 'rare', basePrice: 787_500, demandMultiplier: 0.7 },
-  { key: 'mod-pd-e-3', kind: 'module', refId: 'mod-pd-e-3', rarity: 'exotic', basePrice: 690_000, demandMultiplier: 0.75 },
-  { key: 'bp-pd-e-3', kind: 'blueprint', refId: 'bp-pd-e-3', rarity: 'exotic', basePrice: 2_760_000, demandMultiplier: 0.75 },
-  { key: 'mod-missile-1', kind: 'module', refId: 'mod-missile-1', rarity: 'common', basePrice: 62_000, demandMultiplier: 0.6 },
-  { key: 'mod-laser-1', kind: 'module', refId: 'mod-laser-1', rarity: 'common', basePrice: 66_000, demandMultiplier: 0.6 },
-  // 战斗家族 MK1（V17 起真生效：护盾/装甲为分系专精三款、矢量推进器；低价鼓励勤换装）
-  { key: 'mod-shield-kin-1', kind: 'module', refId: 'mod-shield-kin-1', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.6 },
-  { key: 'mod-shield-exp-1', kind: 'module', refId: 'mod-shield-exp-1', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.6 },
-  { key: 'mod-shield-pla-1', kind: 'module', refId: 'mod-shield-pla-1', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.6 },
-  { key: 'mod-armor-kin-1', kind: 'module', refId: 'mod-armor-kin-1', rarity: 'common', basePrice: 5_500, demandMultiplier: 0.6 },
-  { key: 'mod-armor-exp-1', kind: 'module', refId: 'mod-armor-exp-1', rarity: 'common', basePrice: 5_500, demandMultiplier: 0.6 },
-  { key: 'mod-armor-pla-1', kind: 'module', refId: 'mod-armor-pla-1', rarity: 'common', basePrice: 5_500, demandMultiplier: 0.6 },
-  { key: 'mod-shield-ext-1', kind: 'module', refId: 'mod-shield-ext-1', rarity: 'common', basePrice: 5_000, demandMultiplier: 0.6 },
-  // 护盾充能装置（2026-09-14 船长新增件：每 30 秒脉冲回满盾的一个比例；与扩展器同槽同档同价）
-  { key: 'mod-shieldchg-1', kind: 'module', refId: 'mod-shieldchg-1', rarity: 'common', basePrice: 30_000, demandMultiplier: 0.6 }, // 护盾充能装置 MK1（价/渠道照船体维修装置·民用档）
-  { key: 'mod-armor-plate-1', kind: 'module', refId: 'mod-armor-plate-1', rarity: 'common', basePrice: 5_500, demandMultiplier: 0.6 },
-  { key: 'mod-prop-1', kind: 'module', refId: 'mod-prop-1', rarity: 'common', basePrice: 6_000, demandMultiplier: 0.6 },
-  // V18 无人机装置（高槽；现货 + 蓝图双渠道——2026-09-09 全蓝图化后有书可学）
-  { key: 'mod-drone-rack-1', kind: 'module', refId: 'mod-drone-rack-1', rarity: 'common', basePrice: 12_000, demandMultiplier: 0.6 },
-  { key: 'mod-drone-tac-1', kind: 'module', refId: 'mod-drone-tac-1', rarity: 'common', basePrice: 18_000, demandMultiplier: 0.6 },
-  { key: 'mod-drone-relay-1', kind: 'module', refId: 'mod-drone-relay-1', rarity: 'common', basePrice: 15_000, demandMultiplier: 0.6 }, // 无人机中继天线 MK1（2026-09-10 现货）
-  { key: 'mod-drone-deck-1', kind: 'module', refId: 'mod-drone-deck-1', rarity: 'common', basePrice: 22_000, demandMultiplier: 0.6 }, // 无人机储备甲板 MK1（2026-09-27 现货）
-  // 低级蓝图（价格 = 蓝图商店价；买来学习后永久可造，重复蓝图回卖按 common 档 0.6L 收购）
-  { key: 'bp-miner-1', kind: 'blueprint', refId: 'bp-miner-1', rarity: 'common', basePrice: 62500, demandMultiplier: 0.6 },
-  { key: 'bp-cargo-1', kind: 'blueprint', refId: 'bp-cargo-1', rarity: 'common', basePrice: 58500, demandMultiplier: 0.6 },
-  { key: 'bp-turret-1', kind: 'blueprint', refId: 'bp-turret-1', rarity: 'common', basePrice: 106000, demandMultiplier: 0.6 },
-  { key: 'bp-miner-civ', kind: 'blueprint', refId: 'bp-miner-civ', rarity: 'common', basePrice: 18000, demandMultiplier: 0.6 },
-  { key: 'bp-cargo-civ', kind: 'blueprint', refId: 'bp-cargo-civ', rarity: 'common', basePrice: 16000, demandMultiplier: 0.6 },
-  { key: 'bp-turret-civ', kind: 'blueprint', refId: 'bp-turret-civ', rarity: 'common', basePrice: 24000, demandMultiplier: 0.6 },
-  // 弹药生产线蓝图（2026-09-05：基础弹自制；书籍价随弹型市场价；2026-09-09 全蓝图化补给线现价 ×1.5）
-  // 弹药生产线蓝图（**弹药线书价不随系数漂移**：船长 2026-09-11 复核「弹药蓝图回滚到 1.5 倍，其他保持不变」
-  // ⇒ 维持 2026-09-09「补给线 ×1.5」批的落账原值，逐条登记在 blueprints.ts 的 BLUEPRINT_PRICE_OVERRIDES）
-  { key: 'bp-ammo-kinetic', kind: 'blueprint', refId: 'bp-ammo-kinetic', rarity: 'common', basePrice: 1350, demandMultiplier: 0.6 },
-  { key: 'bp-ammo-explosive', kind: 'blueprint', refId: 'bp-ammo-explosive', rarity: 'common', basePrice: 1650, demandMultiplier: 0.6 },
-  { key: 'bp-ammo-plasma', kind: 'blueprint', refId: 'bp-ammo-plasma', rarity: 'common', basePrice: 1950, demandMultiplier: 0.6 },
-  // 弹药 MK2 生产线蓝图（2026-09-09：奇货书——船长追加拍板 rare→exotic；收购档随奇货惯例 1.0L 全价回收，
-  // 与全部 exotic 蓝图书行一致）。
-  // ⚠ **2026-09-26 船长令改价**：「MK2图纸价格按照一百批弹药的倍率乘上去」＋「是100批，12000发」＋
-  // 「不套无人机，就是单纯MK2弹药」＋「按你推荐」⇒ 书价 = **100 批（12,000 发）的货值**
-  // （9,000/12,750/18,000 = 单批 ×1.5 的 2026-09-09 冻结值**作废**；基础弹三条不动）。
-  // 定义侧 `blueprints.ts priceIsk` 必须与本行同值（`content:check` 的蓝图价格硬契约）。
-  { key: 'bp-ammo-kinetic-2', kind: 'blueprint', refId: 'bp-ammo-kinetic-2', rarity: 'exotic', basePrice: 540_000, demandMultiplier: 1.0 },
-  { key: 'bp-ammo-explosive-2', kind: 'blueprint', refId: 'bp-ammo-explosive-2', rarity: 'exotic', basePrice: 720_000, demandMultiplier: 1.0 },
-  { key: 'bp-ammo-plasma-2', kind: 'blueprint', refId: 'bp-ammo-plasma-2', rarity: 'exotic', basePrice: 960_000, demandMultiplier: 1.0 },
-  // 修理组件蓝图（2026-09-05：书籍价随组件市场价同构）
-  { key: 'bp-repairkit-civ', kind: 'blueprint', refId: 'bp-repairkit-civ', rarity: 'common', basePrice: 33000, demandMultiplier: 0.6 },
-  { key: 'bp-repairkit-mil', kind: 'blueprint', refId: 'bp-repairkit-mil', rarity: 'common', basePrice: 138500, demandMultiplier: 0.6 },
-  { key: 'bp-repairkit-dc', kind: 'blueprint', refId: 'bp-repairkit-dc', rarity: 'common', basePrice: 1000000, demandMultiplier: 0.6 }, // 2026-09-25 损管修理组件图纸（整批产物价 ×2.2，与民用/军用同式）
-  // 2026-09-09 全蓝图化：全部装备可学蓝图自造（双渠道，现货保留）；蓝图书出现概率 −50%。
-  // **蓝图价口径 2026-09-11 归一（船长裁决甲）**：书价 = 产物现货价 × 档位系数（民用/基础/MK1 ×2 · MK2 ×2.5 · MK3 ×3，
-  // 取整 500 信用点）——单点 = `blueprints.ts` 的 `blueprintTierCoefOf`，本表每行只做「与 blueprints.ts 同值」的落账。
-  { key: 'bp-laser-1', kind: 'blueprint', refId: 'bp-laser-1', rarity: 'common', basePrice: 132000, demandMultiplier: 0.6 }, // 轻型激光炮 MK1（蓝图=产物×2）
-  { key: 'bp-missile-1', kind: 'blueprint', refId: 'bp-missile-1', rarity: 'common', basePrice: 124000, demandMultiplier: 0.6 }, // 轻型导弹架 MK1（蓝图=产物×2）
-  { key: 'bp-drone-rack-1', kind: 'blueprint', refId: 'bp-drone-rack-1', rarity: 'common', basePrice: 24000, demandMultiplier: 0.6 }, // 无人机甲板扩展 MK1（蓝图=产物×2）
-  { key: 'bp-drone-tac-1', kind: 'blueprint', refId: 'bp-drone-tac-1', rarity: 'common', basePrice: 36000, demandMultiplier: 0.6 }, // 战术导控阵列 MK1（蓝图=产物×2）
-  { key: 'bp-shield-kin-1', kind: 'blueprint', refId: 'bp-shield-kin-1', rarity: 'common', basePrice: 10000, demandMultiplier: 0.6 }, // 护盾增强器 MK1·动能型（蓝图=产物×2）
-  { key: 'bp-shield-exp-1', kind: 'blueprint', refId: 'bp-shield-exp-1', rarity: 'common', basePrice: 10000, demandMultiplier: 0.6 }, // 护盾增强器 MK1·高爆型（蓝图=产物×2）
-  { key: 'bp-shield-pla-1', kind: 'blueprint', refId: 'bp-shield-pla-1', rarity: 'common', basePrice: 10000, demandMultiplier: 0.6 }, // 护盾增强器 MK1·能量型（蓝图=产物×2）
-  { key: 'bp-shield-ext-1', kind: 'blueprint', refId: 'bp-shield-ext-1', rarity: 'common', basePrice: 10000, demandMultiplier: 0.6 }, // 护盾扩展器 MK1（蓝图=产物×2）
-  { key: 'bp-shieldchg-1', kind: 'blueprint', refId: 'bp-shieldchg-1', rarity: 'common', basePrice: 60000, demandMultiplier: 0.6 }, // 护盾充能装置 MK1（蓝图=产物×2 · 照船体维修装置·民用档）
-  { key: 'bp-armor-kin-1', kind: 'blueprint', refId: 'bp-armor-kin-1', rarity: 'common', basePrice: 11000, demandMultiplier: 0.6 }, // 装甲镀层 MK1·动能型（蓝图=产物×2）
-  { key: 'bp-armor-exp-1', kind: 'blueprint', refId: 'bp-armor-exp-1', rarity: 'common', basePrice: 11000, demandMultiplier: 0.6 }, // 装甲镀层 MK1·高爆型（蓝图=产物×2）
-  { key: 'bp-armor-pla-1', kind: 'blueprint', refId: 'bp-armor-pla-1', rarity: 'common', basePrice: 11000, demandMultiplier: 0.6 }, // 装甲镀层 MK1·能量型（蓝图=产物×2）
-  { key: 'bp-armor-plate-1', kind: 'blueprint', refId: 'bp-armor-plate-1', rarity: 'common', basePrice: 11000, demandMultiplier: 0.6 }, // 装甲增厚板 MK1（蓝图=产物×2）
-  { key: 'bp-prop-1', kind: 'blueprint', refId: 'bp-prop-1', rarity: 'common', basePrice: 12000, demandMultiplier: 0.6 }, // 矢量推进器 MK1（蓝图=产物×2）
-  { key: 'bp-stab-kin-1', kind: 'blueprint', refId: 'bp-stab-kin-1', rarity: 'common', basePrice: 68000, demandMultiplier: 0.6 }, // 动能稳定器 MK1（蓝图=产物×2）
-  { key: 'bp-stab-exp-1', kind: 'blueprint', refId: 'bp-stab-exp-1', rarity: 'common', basePrice: 68000, demandMultiplier: 0.6 }, // 高爆稳定器 MK1（蓝图=产物×2）
-  { key: 'bp-stab-pla-1', kind: 'blueprint', refId: 'bp-stab-pla-1', rarity: 'common', basePrice: 68000, demandMultiplier: 0.6 }, // 等离子稳定器 MK1（蓝图=产物×2）
-  { key: 'bp-rof-1', kind: 'blueprint', refId: 'bp-rof-1', rarity: 'common', basePrice: 60000, demandMultiplier: 0.6 }, // 射速计算机 MK1（蓝图=产物×2）
-  { key: 'bp-track-1', kind: 'blueprint', refId: 'bp-track-1', rarity: 'common', basePrice: 52000, demandMultiplier: 0.6 }, // 索敌阵列 MK1（蓝图=产物×2）
-  { key: 'bp-gyro-1', kind: 'blueprint', refId: 'bp-gyro-1', rarity: 'common', basePrice: 48000, demandMultiplier: 0.6 }, // 姿态陀螺 MK1（蓝图=产物×2）
-  { key: 'bp-salvager-1', kind: 'blueprint', refId: 'bp-salvager-1', rarity: 'common', basePrice: 40000, demandMultiplier: 0.6 }, // 打捞器 MK1（蓝图=产物×2）
-  { key: 'bp-hullrep-civ', kind: 'blueprint', refId: 'bp-hullrep-civ', rarity: 'common', basePrice: 60000, demandMultiplier: 0.6 }, // 民用船体维修装置（蓝图=产物×2）
-  { key: 'bp-hullrep-1', kind: 'blueprint', refId: 'bp-hullrep-1', rarity: 'common', basePrice: 936000, demandMultiplier: 0.6 }, // 船体维修装置 MK1（蓝图=产物×2）
-  { key: 'bp-lock-1', kind: 'blueprint', refId: 'bp-lock-1', rarity: 'common', basePrice: 60000, demandMultiplier: 0.6 }, // 目标锁定阵列 MK1（蓝图=产物×2）
-  // 低级船（AI 副船军团的主力船）
-  { key: 'ship-burrower', kind: 'ship', refId: 'burrower', rarity: 'common', basePrice: 120_000, demandMultiplier: 0.6 },
-  // 基础 AI 核心（原直购并入市场，平价常驻；可回卖：收购档 common 0.6×L）
-  { key: 'core-basic', kind: 'aicore', refId: 'basic', rarity: 'common', basePrice: 25_000, demandMultiplier: 0.6 },
-
-  // ══════════ 稀有订单（rare：低频刷新、寿命 9 分钟） ══════════
-
-  // MK2 装备（制造党自用为主；偶有现货——现货价 = 自制成本 ×1.4 稀有溢价）
-  // 【2026-09-10 船长定：MK2/MK3 **装备**价一律**对齐同级武器价**（线性映射进攻器带；三武为锚点）。
-  //   第 2 档：原 2.8~21 万 → 38.5~48.1 万（×3.70）；第 3 档：原 17~112.2 万 → 192~240 万（×3.69）。
-  //   武器价、第 1 档与民用价、奇货价、蓝图价与舰船价**一律未动**；属性/数值零改动。
-  //   同批 12 件 MK3 装备的稀有感档位由 T2 升 T3（见 rarityTier.ts），并 `rareTier3Weight` 0.25 → 0.15。】
-  { key: 'mod-miner-2', kind: 'module', refId: 'mod-miner-2', rarity: 'rare', basePrice: 466_000, demandMultiplier: 0.65 },
-  { key: 'mod-cargo-2', kind: 'module', refId: 'mod-cargo-2', rarity: 'rare', basePrice: 475_000, demandMultiplier: 0.65 },
-  { key: 'mod-turret-kin-2', kind: 'module', refId: 'mod-turret-kin-2', rarity: 'rare', basePrice: 385_000, demandMultiplier: 0.65 },
-  { key: 'mod-missile-2', kind: 'module', refId: 'mod-missile-2', rarity: 'rare', basePrice: 451_000, demandMultiplier: 0.65 },
-  { key: 'mod-laser-2', kind: 'module', refId: 'mod-laser-2', rarity: 'rare', basePrice: 481_000, demandMultiplier: 0.65 },
-  // MK3 攻坚装备（V10 起蓝图可造 + 稀有现货高价应急；自制成本 ×1.7）
-  { key: 'mod-miner-3', kind: 'module', refId: 'mod-miner-3', rarity: 'rare', basePrice: 2_330_000, demandMultiplier: 0.65 },
-  { key: 'mod-cargo-3', kind: 'module', refId: 'mod-cargo-3', rarity: 'rare', basePrice: 2_400_000, demandMultiplier: 0.65 },
-  { key: 'mod-turret-kin-3', kind: 'module', refId: 'mod-turret-kin-3', rarity: 'rare', basePrice: 1_916_000, demandMultiplier: 0.65 },
-  { key: 'mod-missile-3', kind: 'module', refId: 'mod-missile-3', rarity: 'rare', basePrice: 2_242_000, demandMultiplier: 0.65 },
-  { key: 'mod-laser-3', kind: 'module', refId: 'mod-laser-3', rarity: 'rare', basePrice: 2_395_000, demandMultiplier: 0.65 },
-  // 战斗家族 MK2/MK3（V17：分系专精 ×3 款；MK3 市场专供——V18 复查：稀有溢价 ×1.4/×1.7）
-  // 2026-09-10 船长定：**MK2/MK3 装备价对齐同级武器价**（规则 = 线性映射进攻器带：
-  // 第 2 档全部落进 38.5~48.1 万、第 3 档全部落进 192~240 万；锚点 = 三武价，各级中位 45.1 万 / 224.2 万）
-  { key: 'mod-shield-kin-2', kind: 'module', refId: 'mod-shield-kin-2', rarity: 'rare', basePrice: 385_000, demandMultiplier: 0.65 },
-  { key: 'mod-shield-exp-2', kind: 'module', refId: 'mod-shield-exp-2', rarity: 'rare', basePrice: 385_000, demandMultiplier: 0.65 },
-  { key: 'mod-shield-pla-2', kind: 'module', refId: 'mod-shield-pla-2', rarity: 'rare', basePrice: 385_000, demandMultiplier: 0.65 },
-  { key: 'mod-armor-kin-2', kind: 'module', refId: 'mod-armor-kin-2', rarity: 'rare', basePrice: 388_000, demandMultiplier: 0.65 },
-  { key: 'mod-armor-exp-2', kind: 'module', refId: 'mod-armor-exp-2', rarity: 'rare', basePrice: 388_000, demandMultiplier: 0.65 },
-  { key: 'mod-armor-pla-2', kind: 'module', refId: 'mod-armor-pla-2', rarity: 'rare', basePrice: 388_000, demandMultiplier: 0.65 },
-  { key: 'mod-prop-2', kind: 'module', refId: 'mod-prop-2', rarity: 'rare', basePrice: 391_000, demandMultiplier: 0.65 },
-  { key: 'mod-drone-rack-2', kind: 'module', refId: 'mod-drone-rack-2', rarity: 'rare', basePrice: 418_000, demandMultiplier: 0.65 },
-  { key: 'mod-drone-tac-2', kind: 'module', refId: 'mod-drone-tac-2', rarity: 'rare', basePrice: 455_000, demandMultiplier: 0.65 },
-  { key: 'mod-drone-relay-2', kind: 'module', refId: 'mod-drone-relay-2', rarity: 'rare', basePrice: 449_000, demandMultiplier: 0.65 }, // 无人机中继天线 MK2（2026-09-10 现货）
-  { key: 'mod-drone-deck-2', kind: 'module', refId: 'mod-drone-deck-2', rarity: 'rare', basePrice: 520_000, demandMultiplier: 0.65 }, // 无人机储备甲板 MK2（2026-09-27 现货）
-  { key: 'mod-shield-kin-3', kind: 'module', refId: 'mod-shield-kin-3', rarity: 'rare', basePrice: 1_920_000, demandMultiplier: 0.65 },
-  { key: 'mod-shield-exp-3', kind: 'module', refId: 'mod-shield-exp-3', rarity: 'rare', basePrice: 1_920_000, demandMultiplier: 0.65 },
-  { key: 'mod-shield-pla-3', kind: 'module', refId: 'mod-shield-pla-3', rarity: 'rare', basePrice: 1_920_000, demandMultiplier: 0.65 },
-  { key: 'mod-armor-kin-3', kind: 'module', refId: 'mod-armor-kin-3', rarity: 'rare', basePrice: 1_940_000, demandMultiplier: 0.65 },
-  { key: 'mod-armor-exp-3', kind: 'module', refId: 'mod-armor-exp-3', rarity: 'rare', basePrice: 1_940_000, demandMultiplier: 0.65 },
-  { key: 'mod-armor-pla-3', kind: 'module', refId: 'mod-armor-pla-3', rarity: 'rare', basePrice: 1_940_000, demandMultiplier: 0.65 },
-  { key: 'mod-shield-ext-2', kind: 'module', refId: 'mod-shield-ext-2', rarity: 'rare', basePrice: 385_000, demandMultiplier: 0.65 },
-  { key: 'mod-shieldchg-2', kind: 'module', refId: 'mod-shieldchg-2', rarity: 'rare', basePrice: 468_000, demandMultiplier: 0.65 }, // 护盾充能装置 MK2（价/渠道照船体维修装置 MK1）
-  { key: 'mod-armor-plate-2', kind: 'module', refId: 'mod-armor-plate-2', rarity: 'rare', basePrice: 388_000, demandMultiplier: 0.65 },
-  { key: 'mod-shield-ext-3', kind: 'module', refId: 'mod-shield-ext-3', rarity: 'rare', basePrice: 1_920_000, demandMultiplier: 0.65 },
-  { key: 'mod-shieldchg-3', kind: 'module', refId: 'mod-shieldchg-3', rarity: 'rare', basePrice: 2_290_000, demandMultiplier: 0.65 }, // 护盾充能装置 MK3（价/渠道照船体维修装置 MK2）
-  { key: 'mod-armor-plate-3', kind: 'module', refId: 'mod-armor-plate-3', rarity: 'rare', basePrice: 1_940_000, demandMultiplier: 0.65 },
-  // 损伤管制装置 MK1~MK3（2026-09-25 船长令：低槽 · 结构三系减伤 +30/40/50 ＋ 每场一次免死 · 同舰只能装一件）
-  { key: 'mod-dc-1', kind: 'module', refId: 'mod-dc-1', rarity: 'rare', basePrice: 620_000, demandMultiplier: 0.65 },
-  { key: 'mod-dc-2', kind: 'module', refId: 'mod-dc-2', rarity: 'rare', basePrice: 2_800_000, demandMultiplier: 0.65 },
-  { key: 'mod-dc-3', kind: 'module', refId: 'mod-dc-3', rarity: 'rare', basePrice: 9_500_000, demandMultiplier: 0.65 },
-  { key: 'mod-prop-3', kind: 'module', refId: 'mod-prop-3', rarity: 'rare', basePrice: 1_970_000, demandMultiplier: 0.65 },
-  // 微型跃迁引擎（2026-09-14 船长定：中槽短爆发推进，点火 10 秒 / 冷却 60 秒）——
-  // 价 = 「同族之上的溢价」：MK1 60,000（矢量 MK1 6,000 ×10）· MK2 780,000（矢量 MK2 ×2）；
-  // 书价按档位系数（`blueprintTierCoefOf`：id 后缀 -2 ⇒ ×2.5、其余非奇货 ⇒ ×2）：120,000 / 1,950,000（两处必须同值，体检硬契约）。
-  { key: 'mod-mwd-1', kind: 'module', refId: 'mod-mwd-1', rarity: 'rare', basePrice: 60_000, demandMultiplier: 0.65 },
-  { key: 'bp-mwd-1', kind: 'blueprint', refId: 'bp-mwd-1', rarity: 'rare', basePrice: 120_000, demandMultiplier: 0.65 },
-  { key: 'mod-mwd-2', kind: 'module', refId: 'mod-mwd-2', rarity: 'rare', basePrice: 780_000, demandMultiplier: 0.65 },
-  { key: 'bp-mwd-2', kind: 'blueprint', refId: 'bp-mwd-2', rarity: 'rare', basePrice: 1_950_000, demandMultiplier: 0.65 },
-  { key: 'mod-drone-rack-3', kind: 'module', refId: 'mod-drone-rack-3', rarity: 'rare', basePrice: 1_960_000, demandMultiplier: 0.65 },
-  { key: 'mod-drone-tac-3', kind: 'module', refId: 'mod-drone-tac-3', rarity: 'rare', basePrice: 2_040_000, demandMultiplier: 0.65 },
-  { key: 'mod-drone-relay-3', kind: 'module', refId: 'mod-drone-relay-3', rarity: 'rare', basePrice: 2_030_000, demandMultiplier: 0.65 }, // 无人机中继天线 MK3（2026-09-10 现货）
-  { key: 'mod-drone-deck-3', kind: 'module', refId: 'mod-drone-deck-3', rarity: 'rare', basePrice: 2_600_000, demandMultiplier: 0.65 }, // 无人机储备甲板 MK3（2026-09-27 现货）
-  // 2026-09-27 船长令：中槽「无人机护盾投射仪」MK2/MK3（成品普通稀有单；MK3 蓝图进奇货，见下）
-  { key: 'mod-drone-shield-2', kind: 'module', refId: 'mod-drone-shield-2', rarity: 'rare', basePrice: 450_000, demandMultiplier: 0.65 },
-  { key: 'mod-drone-shield-3', kind: 'module', refId: 'mod-drone-shield-3', rarity: 'rare', basePrice: 2_000_000, demandMultiplier: 0.65 },
-  // V18.1 支援件（伤害稳定器/射速计算机 = 低槽；索敌阵列/姿态陀螺 = 中槽；MK1 常驻、MK2/3 稀有）
-  { key: 'mod-stab-kin-1', kind: 'module', refId: 'mod-stab-kin-1', rarity: 'common', basePrice: 34_000, demandMultiplier: 0.6 },
-  { key: 'mod-stab-exp-1', kind: 'module', refId: 'mod-stab-exp-1', rarity: 'common', basePrice: 34_000, demandMultiplier: 0.6 },
-  { key: 'mod-stab-pla-1', kind: 'module', refId: 'mod-stab-pla-1', rarity: 'common', basePrice: 34_000, demandMultiplier: 0.6 },
-  { key: 'mod-rof-1', kind: 'module', refId: 'mod-rof-1', rarity: 'common', basePrice: 30_000, demandMultiplier: 0.6 },
-  { key: 'mod-track-1', kind: 'module', refId: 'mod-track-1', rarity: 'common', basePrice: 26_000, demandMultiplier: 0.6 },
-  { key: 'mod-gyro-1', kind: 'module', refId: 'mod-gyro-1', rarity: 'common', basePrice: 24_000, demandMultiplier: 0.6 },
-  // 船体维修装置（2026-09-09：中槽自动修复件——消耗型；民用级常驻、MK1/MK2 稀有现货；
-  // 2026-09-09 船长定：价格档位对位升一级 = 民用级对标支援件 MK1 档、MK1 对标 MK2 档、MK2 对标 MK3 档）
-  { key: 'mod-hullrep-civ', kind: 'module', refId: 'mod-hullrep-civ', rarity: 'common', basePrice: 30_000, demandMultiplier: 0.6 },
-  { key: 'mod-stab-kin-2', kind: 'module', refId: 'mod-stab-kin-2', rarity: 'rare', basePrice: 481_000, demandMultiplier: 0.65 },
-  { key: 'mod-stab-exp-2', kind: 'module', refId: 'mod-stab-exp-2', rarity: 'rare', basePrice: 481_000, demandMultiplier: 0.65 },
-  { key: 'mod-stab-pla-2', kind: 'module', refId: 'mod-stab-pla-2', rarity: 'rare', basePrice: 481_000, demandMultiplier: 0.65 },
-  { key: 'mod-rof-2', kind: 'module', refId: 'mod-rof-2', rarity: 'rare', basePrice: 468_000, demandMultiplier: 0.65 },
-  { key: 'mod-track-2', kind: 'module', refId: 'mod-track-2', rarity: 'rare', basePrice: 455_000, demandMultiplier: 0.65 },
-  { key: 'mod-gyro-2', kind: 'module', refId: 'mod-gyro-2', rarity: 'rare', basePrice: 449_000, demandMultiplier: 0.65 },
-  { key: 'mod-stab-kin-3', kind: 'module', refId: 'mod-stab-kin-3', rarity: 'rare', basePrice: 2_360_000, demandMultiplier: 0.65 },
-  { key: 'mod-stab-exp-3', kind: 'module', refId: 'mod-stab-exp-3', rarity: 'rare', basePrice: 2_360_000, demandMultiplier: 0.65 },
-  { key: 'mod-stab-pla-3', kind: 'module', refId: 'mod-stab-pla-3', rarity: 'rare', basePrice: 2_360_000, demandMultiplier: 0.65 },
-  { key: 'mod-rof-3', kind: 'module', refId: 'mod-rof-3', rarity: 'rare', basePrice: 2_290_000, demandMultiplier: 0.65 },
-  { key: 'mod-track-3', kind: 'module', refId: 'mod-track-3', rarity: 'rare', basePrice: 2_230_000, demandMultiplier: 0.65 },
-  { key: 'mod-gyro-3', kind: 'module', refId: 'mod-gyro-3', rarity: 'rare', basePrice: 2_210_000, demandMultiplier: 0.65 },
-  // 2026-09-14 跃迁计算机（船长：「添加低槽装备…提高玩家舰船的跃迁速度，分别提高20%和35%，多件叠加惩罚。
-  // 基础价格可以按照同级装备价格的四倍，有蓝图」）：价 = 低槽支援件同档（48.1 万 / 236 万）×4
-  { key: 'mod-warpcomp-2', kind: 'module', refId: 'mod-warpcomp-2', rarity: 'rare', basePrice: 1_924_000, demandMultiplier: 0.65 }, // 跃迁计算机 MK2（支援件同档 48.1 万 ×4）
-  { key: 'mod-warpcomp-3', kind: 'module', refId: 'mod-warpcomp-3', rarity: 'rare', basePrice: 9_440_000, demandMultiplier: 0.65 }, // 跃迁计算机 MK3（支援件同档 236 万 ×4）
-  // 2026-09-11 协处理器（船长定：低槽 CPU 预算扩容件；MK1 稀有 2 档 / MK2 稀有 3 档 /
-  // **MK3 稀有 4 档走奇货、无蓝图**）——价格落在本档既有带内（第 2 档 38.5~48.1 万、第 3 档 192~240 万）
-  { key: 'mod-cpu-1', kind: 'module', refId: 'mod-cpu-1', rarity: 'rare', basePrice: 388_000, demandMultiplier: 0.65 },
-  { key: 'mod-cpu-2', kind: 'module', refId: 'mod-cpu-2', rarity: 'rare', basePrice: 1_940_000, demandMultiplier: 0.65 },
-  // 船体维修装置 MK1/MK2（消耗型修复件：2026-09-09 船长定档位价对位——MK1 对标支援件 MK2 档、MK2 对标支援件 MK3 档；
-  // 2026-09-10 起改按「同级武器价对齐」→ MK1 落第 2 档带 46.8 万、MK2 落第 3 档带 229 万）
-  { key: 'mod-hullrep-1', kind: 'module', refId: 'mod-hullrep-1', rarity: 'rare', basePrice: 468_000, demandMultiplier: 0.65 },
-  { key: 'mod-hullrep-2', kind: 'module', refId: 'mod-hullrep-2', rarity: 'rare', basePrice: 2_290_000, demandMultiplier: 0.65 },
-  // 目标锁定阵列（2026-09-09 高槽 target-lock：集火 + 被锁目标受击加深；MK1 常驻、MK2/3 稀有——价档对齐索敌阵列同梯队）
-  { key: 'mod-lock-1', kind: 'module', refId: 'mod-lock-1', rarity: 'common', basePrice: 30_000, demandMultiplier: 0.6 },
-  { key: 'mod-lock-2', kind: 'module', refId: 'mod-lock-2', rarity: 'rare', basePrice: 465_000, demandMultiplier: 0.65 },
-  { key: 'mod-lock-3', kind: 'module', refId: 'mod-lock-3', rarity: 'rare', basePrice: 2_270_000, demandMultiplier: 0.65 },
-  /* ═══ 2026-09-15 隐秘行动装置（船长：高槽 · 自身武器开火前隐身 20/30 秒 · 带推进器则直接解除隐身）
-      2026-09-16 船长定数与渠道：**MK2 = CPU 55 · 300 万 · 稀有订单档 3** · **MK3 = CPU 80 · 1000 万 · 奇货档 4**；
-      蓝图书价照档位系数 = 产物 **×2.5（750 万）/ ×4（奇货，4000 万）**，与 blueprints.ts 的 bp-stealth-2/3 同值 ═══ */
-  { key: 'mod-stealth-2', kind: 'module', refId: 'mod-stealth-2', rarity: 'rare', basePrice: 3_000_000, demandMultiplier: 0.65 },
-  { key: 'mod-stealth-3', kind: 'module', refId: 'mod-stealth-3', rarity: 'exotic', basePrice: 10_000_000, demandMultiplier: 0.75 },
-  /* ═══ B3 打捞器（2026-09-05；**高槽**无伤害件（2026-09-13 曾改判低槽，2026-09-14 船长「改回高槽」）：升级只减周期；初价按低耗件梯队，可调） ═══ */
-  { key: 'mod-salvager-1', kind: 'module', refId: 'mod-salvager-1', rarity: 'common', basePrice: 20_000, demandMultiplier: 0.6 },
-  { key: 'mod-salvager-2', kind: 'module', refId: 'mod-salvager-2', rarity: 'rare', basePrice: 439_000, demandMultiplier: 0.65 },
-  { key: 'mod-salvager-3', kind: 'module', refId: 'mod-salvager-3', rarity: 'rare', basePrice: 2_220_000, demandMultiplier: 0.65 },
-  // 高级蓝图 MK2（旧）+ MK3（V10：学习需声望 4）
-  { key: 'bp-miner-2', kind: 'blueprint', refId: 'bp-miner-2', rarity: 'rare', basePrice: 1165000, demandMultiplier: 0.65 },
-  { key: 'bp-cargo-2', kind: 'blueprint', refId: 'bp-cargo-2', rarity: 'rare', basePrice: 1187500, demandMultiplier: 0.65 },
-  { key: 'bp-turret-2', kind: 'blueprint', refId: 'bp-turret-2', rarity: 'rare', basePrice: 962500, demandMultiplier: 0.65 },
-  { key: 'bp-miner-3', kind: 'blueprint', refId: 'bp-miner-3', rarity: 'rare', basePrice: 6990000, demandMultiplier: 0.65, standingReq: 4 },
-  { key: 'bp-cargo-3', kind: 'blueprint', refId: 'bp-cargo-3', rarity: 'rare', basePrice: 7200000, demandMultiplier: 0.65, standingReq: 4 },
-  { key: 'bp-turret-3', kind: 'blueprint', refId: 'bp-turret-3', rarity: 'rare', basePrice: 5748000, demandMultiplier: 0.65, standingReq: 4 },
-  // 2026-09-09 全蓝图化（MK2 蓝图稀有；MK3 蓝图稀有+声望 4，战斗系 MK3 与维修装置 MK2 进声望 11 暗市闸）
-  { key: 'bp-laser-2', kind: 'blueprint', refId: 'bp-laser-2', rarity: 'rare', basePrice: 1202500, demandMultiplier: 0.65 }, // 重型激光炮 MK2（蓝图=产物×2.5）
-  { key: 'bp-laser-3', kind: 'blueprint', refId: 'bp-laser-3', rarity: 'rare', basePrice: 7185000, demandMultiplier: 0.65, standingReq: 4 }, // 攻坚激光炮 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-missile-2', kind: 'blueprint', refId: 'bp-missile-2', rarity: 'rare', basePrice: 1127500, demandMultiplier: 0.65 }, // 重型导弹架 MK2（蓝图=产物×2.5）
-  { key: 'bp-missile-3', kind: 'blueprint', refId: 'bp-missile-3', rarity: 'rare', basePrice: 6726000, demandMultiplier: 0.65, standingReq: 4 }, // 巡航导弹架 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-drone-rack-2', kind: 'blueprint', refId: 'bp-drone-rack-2', rarity: 'rare', basePrice: 1045000, demandMultiplier: 0.65 }, // 无人机甲板扩展 MK2（蓝图=产物×2.5）
-  { key: 'bp-drone-rack-3', kind: 'blueprint', refId: 'bp-drone-rack-3', rarity: 'rare', basePrice: 5880000, demandMultiplier: 0.65, standingReq: 4 }, // 无人机甲板扩展 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-drone-tac-2', kind: 'blueprint', refId: 'bp-drone-tac-2', rarity: 'rare', basePrice: 1137500, demandMultiplier: 0.65 }, // 战术导控阵列 MK2（蓝图=产物×2.5）
-  { key: 'bp-drone-tac-3', kind: 'blueprint', refId: 'bp-drone-tac-3', rarity: 'rare', basePrice: 6120000, demandMultiplier: 0.65, standingReq: 4 }, // 战术导控阵列 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-drone-relay-1', kind: 'blueprint', refId: 'bp-drone-relay-1', rarity: 'common', basePrice: 30000, demandMultiplier: 0.6 }, // 无人机中继天线 MK1（蓝图=产物×2）
-  { key: 'bp-drone-deck-1', kind: 'blueprint', refId: 'bp-drone-deck-1', rarity: 'common', basePrice: 44000, demandMultiplier: 0.6 }, // 无人机储备甲板 MK1（蓝图=产物×2）
-  { key: 'bp-drone-relay-2', kind: 'blueprint', refId: 'bp-drone-relay-2', rarity: 'rare', basePrice: 1122500, demandMultiplier: 0.65 }, // 无人机中继天线 MK2（蓝图=产物×2.5）
-  { key: 'bp-drone-deck-2', kind: 'blueprint', refId: 'bp-drone-deck-2', rarity: 'rare', basePrice: 1300000, demandMultiplier: 0.65 }, // 无人机储备甲板 MK2（蓝图=产物×2.5）
-  { key: 'bp-drone-relay-3', kind: 'blueprint', refId: 'bp-drone-relay-3', rarity: 'rare', basePrice: 6090000, demandMultiplier: 0.65, standingReq: 4 }, // 无人机中继天线 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-drone-deck-3', kind: 'blueprint', refId: 'bp-drone-deck-3', rarity: 'rare', basePrice: 7800000, demandMultiplier: 0.65 }, // 无人机储备甲板 MK3（蓝图=产物×3）
-  { key: 'bp-drone-shield-2', kind: 'blueprint', refId: 'bp-drone-shield-2', rarity: 'rare', basePrice: 1_125_000, demandMultiplier: 0.7 },
-  // 2026-09-27 船长令「MK3 蓝图放奇货」：奇货档书价 = 产物现货价 ×4（= 2,000,000 ×4）
-  { key: 'bp-drone-shield-3', kind: 'blueprint', refId: 'bp-drone-shield-3', rarity: 'exotic', basePrice: 8_000_000, demandMultiplier: 0.75 },
-  { key: 'bp-shield-kin-2', kind: 'blueprint', refId: 'bp-shield-kin-2', rarity: 'rare', basePrice: 962500, demandMultiplier: 0.65 }, // 护盾增强器 MK2·动能型（蓝图=产物×2.5）
-  { key: 'bp-shield-exp-2', kind: 'blueprint', refId: 'bp-shield-exp-2', rarity: 'rare', basePrice: 962500, demandMultiplier: 0.65 }, // 护盾增强器 MK2·高爆型（蓝图=产物×2.5）
-  { key: 'bp-shield-pla-2', kind: 'blueprint', refId: 'bp-shield-pla-2', rarity: 'rare', basePrice: 962500, demandMultiplier: 0.65 }, // 护盾增强器 MK2·能量型（蓝图=产物×2.5）
-  { key: 'bp-shield-kin-3', kind: 'blueprint', refId: 'bp-shield-kin-3', rarity: 'rare', basePrice: 5760000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾增强器 MK3·动能型（蓝图=产物×3）（入闸）
-  { key: 'bp-shield-exp-3', kind: 'blueprint', refId: 'bp-shield-exp-3', rarity: 'rare', basePrice: 5760000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾增强器 MK3·高爆型（蓝图=产物×3）（入闸）
-  { key: 'bp-shield-pla-3', kind: 'blueprint', refId: 'bp-shield-pla-3', rarity: 'rare', basePrice: 5760000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾增强器 MK3·能量型（蓝图=产物×3）（入闸）
-  { key: 'bp-shield-ext-2', kind: 'blueprint', refId: 'bp-shield-ext-2', rarity: 'rare', basePrice: 962500, demandMultiplier: 0.65 }, // 护盾扩展器 MK2（蓝图=产物×2.5）
-  { key: 'bp-shieldchg-2', kind: 'blueprint', refId: 'bp-shieldchg-2', rarity: 'common', basePrice: 936000, demandMultiplier: 0.6 }, // 护盾充能装置 MK2（**书比件好买**：现货稀有、书常驻；照船体维修装置 MK1）
-  { key: 'bp-shield-ext-3', kind: 'blueprint', refId: 'bp-shield-ext-3', rarity: 'rare', basePrice: 5760000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾扩展器 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-shieldchg-3', kind: 'blueprint', refId: 'bp-shieldchg-3', rarity: 'rare', basePrice: 5725000, demandMultiplier: 0.65, standingReq: 4 }, // 护盾充能装置 MK3（蓝图=产物×2.5）（入闸 · 照船体维修装置 MK2）
-  { key: 'bp-armor-kin-2', kind: 'blueprint', refId: 'bp-armor-kin-2', rarity: 'rare', basePrice: 970000, demandMultiplier: 0.65 }, // 装甲镀层 MK2·动能型（蓝图=产物×2.5）
-  { key: 'bp-armor-exp-2', kind: 'blueprint', refId: 'bp-armor-exp-2', rarity: 'rare', basePrice: 970000, demandMultiplier: 0.65 }, // 装甲镀层 MK2·高爆型（蓝图=产物×2.5）
-  { key: 'bp-armor-pla-2', kind: 'blueprint', refId: 'bp-armor-pla-2', rarity: 'rare', basePrice: 970000, demandMultiplier: 0.65 }, // 装甲镀层 MK2·能量型（蓝图=产物×2.5）
-  { key: 'bp-armor-kin-3', kind: 'blueprint', refId: 'bp-armor-kin-3', rarity: 'rare', basePrice: 5820000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲镀层 MK3·动能型（蓝图=产物×3）（入闸）
-  { key: 'bp-armor-exp-3', kind: 'blueprint', refId: 'bp-armor-exp-3', rarity: 'rare', basePrice: 5820000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲镀层 MK3·高爆型（蓝图=产物×3）（入闸）
-  { key: 'bp-armor-pla-3', kind: 'blueprint', refId: 'bp-armor-pla-3', rarity: 'rare', basePrice: 5820000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲镀层 MK3·能量型（蓝图=产物×3）（入闸）
-  // 损伤管制装置蓝图（2026-09-25 船长令：**无声望门槛**——不入 `BM_MK3_KEYS` 那道闸；书价 = 产物价 ×(MK1 2 / MK2 2.5 / MK3 3)）
-  { key: 'bp-dc-1', kind: 'blueprint', refId: 'bp-dc-1', rarity: 'rare', basePrice: 1_240_000, demandMultiplier: 0.65 },
-  { key: 'bp-dc-2', kind: 'blueprint', refId: 'bp-dc-2', rarity: 'rare', basePrice: 7_000_000, demandMultiplier: 0.65 },
-  { key: 'bp-dc-3', kind: 'blueprint', refId: 'bp-dc-3', rarity: 'rare', basePrice: 28_500_000, demandMultiplier: 0.65 },
-  // 制式无人机永久图纸（**2026-09-26 船长令**：「给官方的无人机添加永久图纸，**放入稀有订单档**」）：
-  // 四条**永久**（可学习、不限次）· 走稀有订单 · **无声望门槛** · 数字档 2（大众）。
-  // 书价 = 一单（100 架）货值 ×2 = 200 架货值（口径见 `blueprints.ts` 那批的头注）。
-  { key: 'bp-drone-scout', kind: 'blueprint', refId: 'bp-drone-scout', rarity: 'rare', basePrice: 180_000, demandMultiplier: 0.65 },
-  { key: 'bp-drone-assault', kind: 'blueprint', refId: 'bp-drone-assault', rarity: 'rare', basePrice: 440_000, demandMultiplier: 0.65 },
-  { key: 'bp-drone-heavy', kind: 'blueprint', refId: 'bp-drone-heavy', rarity: 'rare', basePrice: 1_000_000, demandMultiplier: 0.65 },
-  { key: 'bp-drone-sentry', kind: 'blueprint', refId: 'bp-drone-sentry', rarity: 'rare', basePrice: 1_900_000, demandMultiplier: 0.65 },
-  { key: 'bp-armor-plate-2', kind: 'blueprint', refId: 'bp-armor-plate-2', rarity: 'rare', basePrice: 970000, demandMultiplier: 0.65 }, // 装甲增厚板 MK2（蓝图=产物×2.5）
-  { key: 'bp-armor-plate-3', kind: 'blueprint', refId: 'bp-armor-plate-3', rarity: 'rare', basePrice: 5820000, demandMultiplier: 0.65, standingReq: 4 }, // 装甲增厚板 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-prop-2', kind: 'blueprint', refId: 'bp-prop-2', rarity: 'rare', basePrice: 977500, demandMultiplier: 0.65 }, // 矢量推进器 MK2（蓝图=产物×2.5）
-  { key: 'bp-prop-3', kind: 'blueprint', refId: 'bp-prop-3', rarity: 'rare', basePrice: 5910000, demandMultiplier: 0.65, standingReq: 4 }, // 矢量推进器 MK3（蓝图=产物×3）
-  { key: 'bp-stab-kin-2', kind: 'blueprint', refId: 'bp-stab-kin-2', rarity: 'rare', basePrice: 1202500, demandMultiplier: 0.65 }, // 动能稳定器 MK2（蓝图=产物×2.5）
-  { key: 'bp-stab-kin-3', kind: 'blueprint', refId: 'bp-stab-kin-3', rarity: 'rare', basePrice: 7080000, demandMultiplier: 0.65, standingReq: 4 }, // 动能稳定器 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-stab-exp-2', kind: 'blueprint', refId: 'bp-stab-exp-2', rarity: 'rare', basePrice: 1202500, demandMultiplier: 0.65 }, // 高爆稳定器 MK2（蓝图=产物×2.5）
-  { key: 'bp-stab-exp-3', kind: 'blueprint', refId: 'bp-stab-exp-3', rarity: 'rare', basePrice: 7080000, demandMultiplier: 0.65, standingReq: 4 }, // 高爆稳定器 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-stab-pla-2', kind: 'blueprint', refId: 'bp-stab-pla-2', rarity: 'rare', basePrice: 1202500, demandMultiplier: 0.65 }, // 等离子稳定器 MK2（蓝图=产物×2.5）
-  { key: 'bp-stab-pla-3', kind: 'blueprint', refId: 'bp-stab-pla-3', rarity: 'rare', basePrice: 7080000, demandMultiplier: 0.65, standingReq: 4 }, // 等离子稳定器 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-rof-2', kind: 'blueprint', refId: 'bp-rof-2', rarity: 'rare', basePrice: 1170000, demandMultiplier: 0.65 }, // 射速计算机 MK2（蓝图=产物×2.5）
-  { key: 'bp-rof-3', kind: 'blueprint', refId: 'bp-rof-3', rarity: 'rare', basePrice: 6870000, demandMultiplier: 0.65, standingReq: 4 }, // 射速计算机 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-track-2', kind: 'blueprint', refId: 'bp-track-2', rarity: 'rare', basePrice: 1137500, demandMultiplier: 0.65 }, // 索敌阵列 MK2（蓝图=产物×2.5）
-  { key: 'bp-track-3', kind: 'blueprint', refId: 'bp-track-3', rarity: 'rare', basePrice: 6690000, demandMultiplier: 0.65, standingReq: 4 }, // 索敌阵列 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-gyro-2', kind: 'blueprint', refId: 'bp-gyro-2', rarity: 'rare', basePrice: 1122500, demandMultiplier: 0.65 }, // 姿态陀螺 MK2（蓝图=产物×2.5）
-  { key: 'bp-gyro-3', kind: 'blueprint', refId: 'bp-gyro-3', rarity: 'rare', basePrice: 6630000, demandMultiplier: 0.65, standingReq: 4 }, // 姿态陀螺 MK3（蓝图=产物×3）（入闸）
-  { key: 'bp-warpcomp-2', kind: 'blueprint', refId: 'bp-warpcomp-2', rarity: 'rare', basePrice: 4810000, demandMultiplier: 0.65 }, // 跃迁计算机 MK2（蓝图=产物×2.5）
-  { key: 'bp-warpcomp-3', kind: 'blueprint', refId: 'bp-warpcomp-3', rarity: 'rare', basePrice: 28320000, demandMultiplier: 0.65, standingReq: 4 }, // 跃迁计算机 MK3（蓝图=产物×3）（入闸）
-  // 协处理器蓝图书（2026-09-11 新增；**无 MK3 蓝图**——船长定 MK3 走奇货现货）
-  // 价按文档口径「蓝图 = 产物 × 2（MK1）/ × 2.5（MK2）」，与 blueprints.priceIsk 同源
-  { key: 'bp-cpu-1', kind: 'blueprint', refId: 'bp-cpu-1', rarity: 'rare', basePrice: 776000, demandMultiplier: 0.65 }, // 协处理器 MK1（蓝图=产物×2）
-  { key: 'bp-cpu-2', kind: 'blueprint', refId: 'bp-cpu-2', rarity: 'rare', basePrice: 4850000, demandMultiplier: 0.65 }, // 协处理器 MK2（蓝图=产物×2.5）
-  { key: 'bp-salvager-2', kind: 'blueprint', refId: 'bp-salvager-2', rarity: 'rare', basePrice: 1097500, demandMultiplier: 0.65 }, // 打捞器 MK2（蓝图=产物×2.5）
-  { key: 'bp-salvager-3', kind: 'blueprint', refId: 'bp-salvager-3', rarity: 'rare', basePrice: 6660000, demandMultiplier: 0.65, standingReq: 4 }, // 打捞器 MK3（蓝图=产物×3）
-  { key: 'bp-hullrep-2', kind: 'blueprint', refId: 'bp-hullrep-2', rarity: 'rare', basePrice: 5725000, demandMultiplier: 0.65, standingReq: 4 }, // 船体维修装置 MK2（蓝图=产物×3）（入闸）
-  // 【高级零件 7 种 + 蓝图 7 张（2026-09-20 零件体系）】：船长「所有零件及其蓝图都在常驻市场有出售，但是高级零件蓝图需要1000W」
-  //   ⇒ 全部常驻池商品（池规则同基础零件：同一幂律曲线延续到高级零件）；高级零件蓝图书价 = 1,000 万（basePrice 与 blueprints.ts priceIsk 同值）。
-  { key: 'part-drone-neural', kind: 'item', refId: 'part-drone-neural', rarity: 'common', basePrice: 930, demandMultiplier: 0.6, poolTarget: 85_500, supplyFlow: 713 },
-  { key: 'part-shield-gen', kind: 'item', refId: 'part-shield-gen', rarity: 'common', basePrice: 1_010, demandMultiplier: 0.6, poolTarget: 81_800, supplyFlow: 682 },
-  { key: 'part-jet-array', kind: 'item', refId: 'part-jet-array', rarity: 'common', basePrice: 1_550, demandMultiplier: 0.6, poolTarget: 64_600, supplyFlow: 538 },
-  { key: 'part-qchip', kind: 'item', refId: 'part-qchip', rarity: 'common', basePrice: 700, demandMultiplier: 0.6, poolTarget: 100_000, supplyFlow: 833 },
-  { key: 'part-keel', kind: 'item', refId: 'part-keel', rarity: 'common', basePrice: 3_120, demandMultiplier: 0.6, poolTarget: 44_000, supplyFlow: 367 },
-  { key: 'part-fire-control', kind: 'item', refId: 'part-fire-control', rarity: 'common', basePrice: 1_670, demandMultiplier: 0.6, poolTarget: 62_000, supplyFlow: 517 },
-  { key: 'part-grav-comp', kind: 'item', refId: 'part-grav-comp', rarity: 'common', basePrice: 7_500, demandMultiplier: 0.6, poolTarget: 27_100, supplyFlow: 226 },
-  { key: 'bp-part-drone-neural', kind: 'blueprint', refId: 'bp-part-drone-neural', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
-  { key: 'bp-part-shield-gen', kind: 'blueprint', refId: 'bp-part-shield-gen', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
-  { key: 'bp-part-jet-array', kind: 'blueprint', refId: 'bp-part-jet-array', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
-  { key: 'bp-part-qchip', kind: 'blueprint', refId: 'bp-part-qchip', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
-  { key: 'bp-part-keel', kind: 'blueprint', refId: 'bp-part-keel', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
-  { key: 'bp-part-fire-control', kind: 'blueprint', refId: 'bp-part-fire-control', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
-  { key: 'bp-part-grav-comp', kind: 'blueprint', refId: 'bp-part-grav-comp', rarity: 'common', basePrice: 10_000_000, demandMultiplier: 0.6 },
-  { key: 'bp-lock-2', kind: 'blueprint', refId: 'bp-lock-2', rarity: 'rare', basePrice: 1162500, demandMultiplier: 0.65 }, // 目标锁定阵列 MK2（蓝图=产物×2.5）
-  { key: 'bp-lock-3', kind: 'blueprint', refId: 'bp-lock-3', rarity: 'rare', basePrice: 6810000, demandMultiplier: 0.65, standingReq: 4 }, // 目标锁定阵列 MK3（蓝图=产物×3）
-  // 2026-09-15 隐秘行动装置（高槽 · 开火前隐身 20/30 秒）；2026-09-16 船长定数：MK2 = 300 万（稀有档 3）、
-  // MK3 = 1000 万（**奇货档 4**）⇒ 书价 = 产物 ×2.5 / **×4**（奇货档规矩，无 MK 阶梯），与 blueprints.ts 同值（硬契约）
-  { key: 'bp-stealth-2', kind: 'blueprint', refId: 'bp-stealth-2', rarity: 'rare', basePrice: 7500000, demandMultiplier: 0.65 },
-  { key: 'bp-stealth-3', kind: 'blueprint', refId: 'bp-stealth-3', rarity: 'exotic', basePrice: 40000000, demandMultiplier: 0.75 },
-  // 舰船蓝图（造船；稀有）
-  { key: 'sbp-pioneer', kind: 'blueprint', refId: 'sbp-pioneer', rarity: 'exotic', basePrice: 32_000_000, demandMultiplier: 1.0, standingReq: 11 }, // 独角鲸级（2026-09-28 随船价 1.2M→8M：书价 = 8M ×4；2026-09-09 升奇货档 + 声望 11）
-  { key: 'sbp-humpback', kind: 'blueprint', refId: 'sbp-humpback', rarity: 'exotic', basePrice: 360_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 座头鲸级（2026-09-28 升 T4：船价 90M ×4；蓝图门槛 15 不变）
-  // 稀有舰船（V10 四条族线中坚）
-  { key: 'ship-whale', kind: 'ship', refId: 'whale', rarity: 'rare', basePrice: 900_000, demandMultiplier: 0.65 },
-  // 蓝图船（2026-09-09 船长：成品无现货、只收不卖）——玩家已拥有的独角鲸级可二手挂售，NPC 收购，
-  // 市场不出售成品（图鉴「仅可制造」标注自洽；供给抽取侧 playerBuyable=false 天然排除）
-  { key: 'ship-pioneer', kind: 'ship', refId: 'pioneer', rarity: 'rare', basePrice: 8_000_000, demandMultiplier: 0.65, playerBuyable: false }, // 2026-09-28 船长令「独角鲸市价上调」：升 T3 后按同档鲸王 12M × 产能比（17,600÷26,100 = 0.674）⇒ 8M（原 T2 价 1.2M）
-  { key: 'ship-humpback', kind: 'ship', refId: 'sh-humpback', rarity: 'rare', basePrice: 90_000_000, demandMultiplier: 0.65, standingReq: 12 }, // 2026-09-28 升 T4：T4 非战斗船 = T3 ×10（原 9M 是 T3 价）；声望 12 不变
-  { key: 'ship-bowhead', kind: 'ship', refId: 'sh-bowhead', rarity: 'exotic', basePrice: 67_500_000, demandMultiplier: 1.0, standingReq: 20 }, // 2026-09-13：价位重排（T4 货舰，剑鱼 24M ×2.81）+ **渠道升奇货**（船长「蝠鲼现货和蓝图上调至奇货」）
-  { key: 'ship-falconet', kind: 'ship', refId: 'sh-falconet', rarity: 'rare', basePrice: 42_000, demandMultiplier: 0.65 },
-  { key: 'ship-shrike', kind: 'ship', refId: 'sh-shrike', rarity: 'rare', basePrice: 110_000, demandMultiplier: 0.65 },
-  { key: 'ship-tigershark', kind: 'ship', refId: 'sh-tigershark', rarity: 'rare', basePrice: 240_000, demandMultiplier: 0.65 },
-  { key: 'ship-mako', kind: 'ship', refId: 'sh-mako', rarity: 'rare', basePrice: 480_000, demandMultiplier: 0.65 },
-  { key: 'ship-swarm', kind: 'ship', refId: 'sh-swarm', rarity: 'rare', basePrice: 620_000, demandMultiplier: 0.65 },
-  { key: 'ship-tortoise', kind: 'ship', refId: 'sh-tortoise', rarity: 'rare', basePrice: 450_000, demandMultiplier: 0.65 },
-  { key: 'ship-hawksbill', kind: 'ship', refId: 'sh-hawksbill', rarity: 'exotic', basePrice: 6_000_000, demandMultiplier: 1.0, standingReq: 12 }, // 2026-09-13：价位重排（T3 装甲，陆龟 0.45M ×13.3）+ **渠道升奇货**（船长「玳瑁现货和蓝图上调至奇货」）
-  { key: 'ship-flyingfish', kind: 'ship', refId: 'sh-flyingfish', rarity: 'rare', basePrice: 210_000, demandMultiplier: 0.65 },
-  { key: 'ship-sailfish', kind: 'ship', refId: 'sh-sailfish', rarity: 'rare', basePrice: 2_400_000, demandMultiplier: 0.65, standingReq: 12 }, // 2026-09-13 价位重排：T3 货舰（飞鱼 0.21M ×11.4）；T3 门槛 12
-  { key: 'ship-manatee', kind: 'ship', refId: 'sh-manatee', rarity: 'rare', basePrice: 6_750_000, demandMultiplier: 0.65, standingReq: 12 },
-  /**
-   * **官方五艘巡洋舰的现货**（**2026-09-16 船长裁定「甲」＋「乙」**）。
-   *
-   * 船长原话（照抄）：「**将目前官方的几艘巡洋舰舰船和一次性蓝图在稀有度不变的前提下，放到稀有订单里，
-   * 所需声望降低为8。其他不变。**」⇒ 追问后裁定：**范围＝甲**（名字带「巡洋舰」的 5 艘：长尾鲨 / 电鳐 /
-   * 锤头鲨 / 牛鲨 / 鹦鹉螺）· **数字档＝乙**（**保持 4 不动**，渠道照船长话挪进稀有订单）。
-   *
-   * ⚠ **两条旧口径就此作废**（原注：`:465` 「2026-09-09 尺寸分级：**T3 巡洋入奇货**」·
-   * `:463` 「2026-09-13：**T3 门槛统一 12**」）：现行为**稀有订单渠道 ＋ 声望 8**，数字档仍 4。
-   * 价位（9 / 15 / 11 / 13 / 9 M）与 `demandMultiplier: 1.0`（全价回收）**按"其他不变"逐字保留**。
-   * ⚠ **连带（引擎不改渠道规则）**：渠道一换，这几行走稀有渠道的既有规则——供给单寿命 6h → 36 分钟、
-   * NPC 收购价按 `demandMultiplier` 仍 1.0L。刷新权重：`rareTierWeight` 原本**只特判档 3** ⇒ 档 4 拿 ×1
-   * （与大众档同频，实测 ≈32 分钟/件）——**2026-09-16 船长随后选「选项 B」，给档 4 补了单独系数
-   * `rareTier4Weight` = 0.05 ⇒ 实测 ≈9.5 小时/件**（见 `balance.ts` 该字段注释）。契约侧同步**按区间放宽**
-   * （船长同日：「**修正契约，rate现在允许2~4，exotic拓展到3~5**」）——`content-check` 的渠道带现为
-   * common 1 / **rare 2~4** / **exotic 3~5**，故本段 5 行**不需要任何白名单**。
-   */
-  { key: 'ship-thresher', kind: 'ship', refId: 'sh-thresher', rarity: 'rare', basePrice: 9_000_000, demandMultiplier: 1.0, standingReq: 8 },
-  { key: 'ship-electricray', kind: 'ship', refId: 'sh-electricray', rarity: 'rare', basePrice: 15_000_000, demandMultiplier: 1.0, standingReq: 8 },
-  { key: 'ship-hammerhead', kind: 'ship', refId: 'sh-hammerhead', rarity: 'rare', basePrice: 11_000_000, demandMultiplier: 1.0, standingReq: 8 },
-  { key: 'ship-bullshark', kind: 'ship', refId: 'sh-bullshark', rarity: 'rare', basePrice: 13_000_000, demandMultiplier: 1.0, standingReq: 8 },
-  { key: 'ship-nautilus', kind: 'ship', refId: 'sh-nautilus', rarity: 'rare', basePrice: 9_000_000, demandMultiplier: 1.0, standingReq: 8 },
-
-  // ══════════ 限定奇货（exotic：极低概率、寿命 4 分钟、天价） ══════════
-
-  // 鲸王级成品 2026-09-09 船长定只收不卖：蓝图船无现货——市场只供其造船蓝图书（sbp 奇货）；
-  // 玩家已拥有的鲸王级可二手挂售（NPC 收购），成品永不出售
-  //
-  // ⚠ **2026-09-29 船长裁决「甲」**（原话：「**鲸王蓝图的价格不对，鲸王在产量上甚至比座头鲸还高，
-  //   所以应该比座头鲸更贵**」⇒「**鲸王按照甲该**」）：鲸王 26,100 m³/时 > 座头鲸 24,000 m³/时，
-  //   价目却便宜 7.5× ⇒ **锚价 12M → 100M**（= 座头鲸 90M × 产能比 1.0875 取整）·
-  //   永久蓝图 48M → **400M** · 一次性 6M → **50M** · 料单 ×8.344（料/价恒 45%）。
-  //   作废的旧口径：「2026-09-13 价位重排：T3 工业（开拓 1.2M ×10）= 12M」。
-  { key: 'ship-whale-king', kind: 'ship', refId: 'whale-king', rarity: 'exotic', basePrice: 100_000_000, demandMultiplier: 1.0, standingReq: 12, playerBuyable: false }, // 2026-09-29：锚价随产量对齐（原 12M）
-  { key: 'sbp-whale-king', kind: 'blueprint', refId: 'sbp-whale-king', rarity: 'exotic', basePrice: 400_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 2026-09-29：蓝图 = 锚价 ×4（原 48M）；T3 蓝图门槛 15
-  // V10 顶级船（声望解锁）
-  { key: 'ship-sentinel', kind: 'ship', refId: 'sh-sentinel', rarity: 'exotic', basePrice: 2_600_000, demandMultiplier: 1.0, standingReq: 12 }, // 2026-09-13：T3 门槛统一 12（原 2026-09-09 定的 6→10 由本口径取代）
-  { key: 'ship-whiteshark', kind: 'ship', refId: 'sh-whiteshark', rarity: 'exotic', basePrice: 1_100_000, demandMultiplier: 1.0, standingReq: 7 }, // T2：保留门槛（船长 2026-09-13「大白鲨作为稀有船，可以保留门槛」）
-  // 掠食者巡洋舰线（价位 2026-09-09 船长定档：按战力序 9/11/13/15M）
-  // ⚠ **2026-09-16 船长裁定「甲」：这 5 艘官方巡洋舰的现货已挪进「稀有订单」段**（声望 8、数字档按「乙」保持 4）——
-  // 原「2026-09-09 尺寸分级：T3 巡洋入奇货」与「T3 门槛统一 12」两条口径**作废**，行体见上面稀有段的注释块。
-  // 2026-09-13 船长：**鹦鹉螺级**（协会测绘处 · T3 侦察巡洋舰）——数字 4（与长尾鲨级同档同价）；
-  // ✅ 2026-09-14 虫洞上线：**闸门已删**（与舰体/两张图纸同一批放开，见 design/scout-cruiser §2.3）
-  { key: 'ship-swordfish', kind: 'ship', refId: 'sh-swordfish', rarity: 'exotic', basePrice: 24_000_000, demandMultiplier: 1.0, standingReq: 20 }, // 2026-09-13 价位重排：T4 货舰（旗鱼 2.4M ×10）；T4 门槛 20
-  { key: 'ship-xuanwu', kind: 'ship', refId: 'sh-xuanwu', rarity: 'exotic', basePrice: 225_000_000, demandMultiplier: 1.0, standingReq: 20, playerBuyable: false }, // ⚠ 2026-09-29 船长裁决「乙」：玄武属 T4 战斗船 ⇒ 价目锚**统一为巨齿鲨**（原「2026-09-13 价位重排：T4 装甲（玳瑁 6M ×15）= 90M ＋ 现货在售」作废）；成品下架（只收不卖）
-  // 2026-09-13 船长裁定：巨齿鲨级（T4 战列舰）走**仅图纸制造**——成品只收不卖（照皇带鱼口径），
-  // 行价 225M = T3 武装顶（电鳐 15M）×15；蓝图价 900M = 行价 ×4（>400 万档系数）。**T4 门槛 20**。
-  // ⚠ 2026-09-29 船长裁决「乙」：**225M 这条锚从"巨齿鲨专属"升为"全部 T4 战斗船"的口径** ⇒
-  //   虎鲸 / 旋齿鲨 / 玄武三艘一并对齐本条（见下方两行与 2026-09-29 段注释）。
-  { key: 'ship-megalodon', kind: 'ship', refId: 'sh-megalodon', rarity: 'exotic', basePrice: 225_000_000, demandMultiplier: 1.0, standingReq: 20, playerBuyable: false },
-  // 2026-09-11 船长裁决（甲）：皇带鱼与独角鲸/鲸王同口径——**蓝图船收起成品现货**（只收不卖，二手可卖）。
-  // 此前它漏在 2026-09-09「蓝图船成品现货下架」那次清扫之外：图鉴写着「仅可制造」（ships.ts priceIsk=0），
-  // 市场却挂着 550 万现货——同一条口径两处打架，由 content-check「舰船价格口径（预警）」抓出。
-  { key: 'ship-colossal', kind: 'ship', refId: 'sh-colossal', rarity: 'exotic', basePrice: 640_000_000, demandMultiplier: 1.0, standingReq: 35, playerBuyable: false }, // 2026-09-13 价位重排：T5 旗舰（旗舰基准 8 亿 ×0.8 非战斗下浮）；T5 门槛 35
-  // 2026-09-26 船长令：两艘新官方战列舰（「需要和巨齿鲨做区分」）。
-  // - 虎鲸级指挥舰 = 设定里的**战列巡洋舰**（不可见说法）：T4 档、比巨齿鲨快得多、其余全面落后 ⇒
-  //   照巨齿鲨口径**仅图纸制造**（成品只收不卖）· 行价 150M · 蓝图 600M（= 行价 ×4）；
-  // - 旋齿鲨级装甲战列舰 = 照**玄武**口径（现货在售 + 图纸）· 行价 90M · 蓝图 360M（= 行价 ×4）。
-  // 两者 T4 门槛一律 20（现货）/ 25（图纸），与 2026-09-13 声望口径一致。
-  //
-  // ⚠ **2026-09-29 船长裁决「乙」＋「虎鲸也是」——本段的价格与渠道口径整段作废**（上面两行价格只是留痕）：
-  //   船长原话「作为T4战斗船，价格应该对标的巨齿鲨」⇒ **虎鲸 / 旋齿鲨 / 玄武三艘的价目锚统一为巨齿鲨**
-  //   （行价 225M · 成品**一律下架** · 蓝图 900M · 一次性 112.5M）；「与巨齿鲨做区分」改由**性能与舰影**承担，
-  //   不再由"更便宜 ＋ 能买现货"承担。T4 门槛（现货 20 / 图纸 25）不变，料单与工时不动。
-  { key: 'ship-orca', kind: 'ship', refId: 'sh-orca', rarity: 'exotic', basePrice: 225_000_000, demandMultiplier: 1.0, standingReq: 20, playerBuyable: false },
-  { key: 'ship-helicoprion', kind: 'ship', refId: 'sh-helicoprion', rarity: 'exotic', basePrice: 225_000_000, demandMultiplier: 1.0, standingReq: 20, playerBuyable: false },
-  // 2026-09-09 全舰船蓝图化（第二批）：全部可造舰船开放蓝图书；**蓝图价 = 船市场价 × 档位系数**
-  // （≤30 万 ×2 / 30~100 万 ×2.5 / 100~400 万 ×3 / >400 万 ×4）——这条**仍然有效**。
-  // ⚠ **2026-09-13 旧规则作废**：同一条注释里的「船价 ≤100 万 → 稀有、>100 万 → 奇货+声望 11」已作废——
-  // 声望口径改为**按舰种档**（T1/T2 保持现状 · T3 现货 12 / 蓝图 15 · T4 20/25 · T5 35/40；
-  // 装备与物品行不动）。见 `docs/design/price-ladder-20260913.md`。
-  { key: 'sbp-burrower', kind: 'blueprint', refId: 'sbp-burrower', rarity: 'rare', basePrice: 240000, demandMultiplier: 0.65 }, // 沙鳗级（蓝图=船价×2）
-  { key: 'sbp-whale', kind: 'blueprint', refId: 'sbp-whale', rarity: 'rare', basePrice: 2250000, demandMultiplier: 0.65 }, // 鲸吞级（蓝图=船价×2.5）
-  { key: 'sbp-bowhead', kind: 'blueprint', refId: 'sbp-bowhead', rarity: 'exotic', basePrice: 270_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 蝠鲼级（2026-09-13：船价 67.5M ×4 + **渠道升奇货**）
-  { key: 'sbp-falconet', kind: 'blueprint', refId: 'sbp-falconet', rarity: 'rare', basePrice: 80000, demandMultiplier: 0.65 }, // 鲣鱼级（蓝图=船价×2）
-  { key: 'sbp-shrike', kind: 'blueprint', refId: 'sbp-shrike', rarity: 'rare', basePrice: 220000, demandMultiplier: 0.65 }, // 马鲛级（蓝图=船价×2）
-  { key: 'sbp-tigershark', kind: 'blueprint', refId: 'sbp-tigershark', rarity: 'rare', basePrice: 480000, demandMultiplier: 0.65 }, // 虎鲨级（蓝图=船价×2）
-  { key: 'sbp-mako', kind: 'blueprint', refId: 'sbp-mako', rarity: 'rare', basePrice: 1200000, demandMultiplier: 0.65 }, // 灰鲭鲨级（蓝图=船价×2.5）
-  { key: 'sbp-whiteshark', kind: 'blueprint', refId: 'sbp-whiteshark', rarity: 'exotic', basePrice: 3300000, demandMultiplier: 1.0, standingReq: 11 }, // 大白鲨级（蓝图=船价×3）
-  { key: 'sbp-swarm', kind: 'blueprint', refId: 'sbp-swarm', rarity: 'rare', basePrice: 1550000, demandMultiplier: 0.65 }, // 梭鱼级（蓝图=船价×2.5）
-  { key: 'sbp-sentinel', kind: 'blueprint', refId: 'sbp-sentinel', rarity: 'exotic', basePrice: 7_800_000, demandMultiplier: 1.0, standingReq: 15 }, // 王鲭级（2026-09-13：T3 蓝图门槛 15）
-  { key: 'sbp-thresher', kind: 'blueprint', refId: 'sbp-thresher', rarity: 'exotic', basePrice: 36_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 长尾鲨级（2026-09-13：T3 蓝图门槛 15）
-  { key: 'sbp-electricray', kind: 'blueprint', refId: 'sbp-electricray', rarity: 'exotic', basePrice: 60_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 电鳐级（2026-09-13：T3 蓝图门槛 15）
-  { key: 'sbp-hammerhead', kind: 'blueprint', refId: 'sbp-hammerhead', rarity: 'exotic', basePrice: 44_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 锤头鲨级（2026-09-13：T3 蓝图门槛 15）
-  { key: 'sbp-bullshark', kind: 'blueprint', refId: 'sbp-bullshark', rarity: 'exotic', basePrice: 52_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 牛鲨级（2026-09-13：T3 蓝图门槛 15）
-  { key: 'sbp-nautilus', kind: 'blueprint', refId: 'sbp-nautilus', rarity: 'exotic', basePrice: 36_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 鹦鹉螺级（2026-09-13：T3 蓝图门槛 15；✅ 2026-09-14 上线放开）
-  { key: 'sbp-tortoise', kind: 'blueprint', refId: 'sbp-tortoise', rarity: 'rare', basePrice: 830000, demandMultiplier: 0.65 }, // 陆龟级（蓝图=船价×2.5）
-  { key: 'sbp-hawksbill', kind: 'blueprint', refId: 'sbp-hawksbill', rarity: 'exotic', basePrice: 24_000_000, demandMultiplier: 1.0, standingReq: 15 }, // 玳瑁级（2026-09-13：船价 6M ×4 + **渠道升奇货**）
-  { key: 'sbp-xuanwu', kind: 'blueprint', refId: 'sbp-xuanwu', rarity: 'exotic', basePrice: 900_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 玄武级（⚠ 2026-09-29 船长裁决乙：随锚价统一 ⇒ 行价 225M ×4 = 900M；原「2026-09-13：船价 90M ×4 = 360M」作废）
-  { key: 'sbp-flyingfish', kind: 'blueprint', refId: 'sbp-flyingfish', rarity: 'rare', basePrice: 420000, demandMultiplier: 0.65 }, // 飞鱼级（蓝图=船价×2）
-  { key: 'sbp-sailfish', kind: 'blueprint', refId: 'sbp-sailfish', rarity: 'rare', basePrice: 7_200_000, demandMultiplier: 0.65, standingReq: 15 }, // 旗鱼级（2026-09-13 价位重排：船价 2.4M 属 100~400 万档 ⇒ ×3 = 7.2M；T3 蓝图门槛 15）
-  { key: 'sbp-manatee', kind: 'blueprint', refId: 'sbp-manatee', rarity: 'rare', basePrice: 27_000_000, demandMultiplier: 0.65, standingReq: 15 },
-  { key: 'sbp-swordfish', kind: 'blueprint', refId: 'sbp-swordfish', rarity: 'exotic', basePrice: 96_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 剑鱼级（2026-09-13 价位重排：船价 24M ×4；T4 蓝图门槛 25）
-  { key: 'sbp-megalodon', kind: 'blueprint', refId: 'sbp-megalodon', rarity: 'exotic', basePrice: 900_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 巨齿鲨级（船价 225M ×4；T4 蓝图门槛 25）
-  // 2026-09-26 新增两艘 T4 的图纸（书价 = 行价 ×4 · T4 蓝图门槛 25，与同档邻舰一致）
-  // ⚠ 2026-09-29 船长裁决「乙」＋「虎鲸也是」：两艘与玄武一并按巨齿鲨锚价（225M）重算 ⇒ 书价一律 900M。
-  { key: 'sbp-orca', kind: 'blueprint', refId: 'sbp-orca', rarity: 'exotic', basePrice: 900_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 虎鲸级指挥舰（行价 225M ×4）
-  { key: 'sbp-helicoprion', kind: 'blueprint', refId: 'sbp-helicoprion', rarity: 'exotic', basePrice: 900_000_000, demandMultiplier: 1.0, standingReq: 25 }, // 旋齿鲨级装甲战列舰（行价 225M ×4）
-
-// 2026-09-13 价位重排：皇带鱼 = 旗舰基准 8 亿 ×0.8 = 640M（蓝图 ×4 = 2.56B）；其余三张的价格口径见各自行注释
-  { key: 'sbp-colossal', kind: 'blueprint', refId: 'sbp-colossal', rarity: 'exotic', basePrice: 2_560_000_000, demandMultiplier: 1.0, standingReq: 40 }, // 皇带鱼级（2026-09-13：船价 640M ×4；T5 蓝图门槛 40）
-  // ══════════ T3/T4/T5 的**一次性蓝图**（2026-09-13 船长：「给T3船也添加一次性蓝图」＋
-  //   「T4T5舰船都出一张一次性蓝图，价格按照舰船价格的100%算」）══════════
-  // 口径：① 价格 = **该舰市场行价 × 50%**（**2026-09-14 船长改判**：「将一次性蓝图的价格下调到舰船的
-  //       0.5倍」——原「×100%」作废）；② `singleUse` ⇒ 造一艘吃一张；③ 材料/工期同永久蓝图；
-  //      ④ **渠道**：T3 十张 + 剑鱼/蝠鲼 = 稀有订单层（数字 3）；玄武/巨齿鲨/皇带鱼 = 奇货（数字 4）；
-  //      ⑤ **权重**：引擎 `blueprintWeight` 对一次性舰船蓝图 = ×0.5（普通蓝图 ×0.05）；
-  //      ⑥ **声望**（**2026-09-16 船长裁定「甲」**）：官方五艘巡洋舰（长尾鲨/电鳐/锤头鲨/牛鲨/鹦鹉螺）的
-  //         一次性蓝图 **15 → 8**（原「2026-09-13：T3 蓝图门槛 15」对**这 5 张**作废；其余 T3 五张仍 15）。
-  { key: 'sbp-once-pioneer', kind: 'blueprint', refId: 'sbp-once-pioneer', rarity: 'rare', basePrice: 4_000_000, demandMultiplier: 0.65, standingReq: 15 }, // 2026-09-28 独角鲸升 T3 ⇒ 补一次性图（行价 8M ×50%）；层 2 稀释池 9 → 10 张
-  { key: 'sbp-once-sailfish', kind: 'blueprint', refId: 'sbp-once-sailfish', rarity: 'rare', basePrice: 1_200_000, demandMultiplier: 0.65, standingReq: 15 },
-  { key: 'sbp-once-manatee', kind: 'blueprint', refId: 'sbp-once-manatee', rarity: 'rare', basePrice: 3_375_000, demandMultiplier: 0.65, standingReq: 15 },
-  { key: 'sbp-once-sentinel', kind: 'blueprint', refId: 'sbp-once-sentinel', rarity: 'rare', basePrice: 1_300_000, demandMultiplier: 0.65, standingReq: 15 },
-  { key: 'sbp-once-hawksbill', kind: 'blueprint', refId: 'sbp-once-hawksbill', rarity: 'rare', basePrice: 3_000_000, demandMultiplier: 0.65, standingReq: 15 },
-  { key: 'sbp-once-humpback', kind: 'blueprint', refId: 'sbp-once-humpback', rarity: 'rare', basePrice: 45_000_000, demandMultiplier: 0.65, standingReq: 15 }, // 2026-09-28 升 T4：行价 90M ×50%（原 9M ×50% = 4.5M）
-  { key: 'sbp-once-thresher', kind: 'blueprint', refId: 'sbp-once-thresher', rarity: 'rare', basePrice: 4_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
-  { key: 'sbp-once-nautilus', kind: 'blueprint', refId: 'sbp-once-nautilus', rarity: 'rare', basePrice: 4_500_000, demandMultiplier: 0.65, standingReq: 8 }, // ✅ 2026-09-14 随鹦鹉螺级同步放开；2026-09-16 甲案：15 → 8
-  { key: 'sbp-once-hammerhead', kind: 'blueprint', refId: 'sbp-once-hammerhead', rarity: 'rare', basePrice: 5_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
-  // ⚠ 2026-09-29 船长裁决「甲」：一次性图纸随锚价重算 ⇒ 6M → **50M**（= 锚价 ×50%）。
-  //   ⚠ **渠道待裁**：现为 `rare`（稀有订单层 · 数字档 3 · 非奇货 0.65 回收率），
-  //   而 T4/T5 的一次性图纸都在奇货（数字档 4）——50M 这张留在稀有层是否合适，等船长点名。
-  { key: 'sbp-once-whale-king', kind: 'blueprint', refId: 'sbp-once-whale-king', rarity: 'rare', basePrice: 50_000_000, demandMultiplier: 0.65, standingReq: 15 },
-  { key: 'sbp-once-bullshark', kind: 'blueprint', refId: 'sbp-once-bullshark', rarity: 'rare', basePrice: 6_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
-  { key: 'sbp-once-electricray', kind: 'blueprint', refId: 'sbp-once-electricray', rarity: 'rare', basePrice: 7_500_000, demandMultiplier: 0.65, standingReq: 8 }, // 2026-09-16 甲案：随舰体同批（15 → 8）
-  { key: 'sbp-once-swordfish', kind: 'blueprint', refId: 'sbp-once-swordfish', rarity: 'rare', basePrice: 12_000_000, demandMultiplier: 0.65, standingReq: 25 }, // T4：船长「剑鱼的一次性蓝图也下放稀有」
-  { key: 'sbp-once-bowhead', kind: 'blueprint', refId: 'sbp-once-bowhead', rarity: 'rare', basePrice: 33_750_000, demandMultiplier: 0.65, standingReq: 25 }, // T4：船长「蝠鲼…一次性蓝图保留在稀有」
-  // ⚠ 2026-09-29 船长裁决「乙」：玄武/旋齿鲨的一次性图纸随锚价重算（225M ×50% = 112.5M，与巨齿鲨同值）
-  { key: 'sbp-once-xuanwu', kind: 'blueprint', refId: 'sbp-once-xuanwu', rarity: 'exotic', basePrice: 112_500_000, demandMultiplier: 1.0, standingReq: 25 },
-  { key: 'sbp-once-megalodon', kind: 'blueprint', refId: 'sbp-once-megalodon', rarity: 'exotic', basePrice: 112_500_000, demandMultiplier: 1.0, standingReq: 25 },
-  // 2026-09-26 新增两艘 T4 的一次性图纸（价 = 行价 ×50% · 奇货 · T4 蓝图门槛 25）
-  // ⚠ 2026-09-29 船长裁决「乙」＋「虎鲸也是」：两艘一并按巨齿鲨锚价重算 ⇒ 112.5M
-  { key: 'sbp-once-orca', kind: 'blueprint', refId: 'sbp-once-orca', rarity: 'exotic', basePrice: 112_500_000, demandMultiplier: 1.0, standingReq: 25 },
-  { key: 'sbp-once-helicoprion', kind: 'blueprint', refId: 'sbp-once-helicoprion', rarity: 'exotic', basePrice: 112_500_000, demandMultiplier: 1.0, standingReq: 25 },
-  { key: 'sbp-once-colossal', kind: 'blueprint', refId: 'sbp-once-colossal', rarity: 'exotic', basePrice: 320_000_000, demandMultiplier: 1.0, standingReq: 40 },
-  /**
-   * **异星原型装备**（V10：**超档收藏**，无蓝图、不可制造，需声望 10）。
-   *
-   * ⚠ **2026-09-17 船长定价（原价偏低，已抬）**：船长问「**异星装备的价格是否太低了？**」⇒ 取证读数
-   * （同槽 MK3 对照）：原价让**两件工业件比它们取代的 MK3 还便宜** —— 采集器 **+110%** 卖 1.6M 而
-   * MK3 **+80%** 卖 2.33M（每 +1% 效果 14,545 vs 29,125）· 货舱 **+180%** 卖 1.5M 而 MK3 **+140%**
-   * 卖 2.4M（8,333 vs 17,143）⇒ 拍板「**按照 MK3 的十五倍价格估算**」：三件一律 = **同槽 MK3 行价 ×15**
-   * （采集器 2,330,000×15 = **34,950,000** · 货舱 2,400,000×15 = **36,000,000** ·
-   * 激光 2,395,000×15 = **35,925,000**）。
-   * 连带：`demandMultiplier: 1.0`（奇货**全价回收**）同步生效 ⇒ 抬价 1:1 抬收购价、不产生套利
-   * （供应价恒 ≈1.0~1.06L 高于全价回收）；带原型件的船，其**装配价值/损失估值**也随之上升。
-   * 常驻护栏：`tools/price-audit.ts` 的「奇货原型件 ×15」段 + 用例 `tests/proto-price.test.ts`。
-   */
-  { key: 'mod-miner-proto', kind: 'module', refId: 'mod-miner-proto', rarity: 'exotic', basePrice: 34_950_000, demandMultiplier: 1.0, standingReq: 10 }, // = mod-miner-3 (2,330,000) ×15
-  { key: 'mod-cargo-proto', kind: 'module', refId: 'mod-cargo-proto', rarity: 'exotic', basePrice: 36_000_000, demandMultiplier: 1.0, standingReq: 10 }, // = mod-cargo-3 (2,400,000) ×15
-  { key: 'mod-laser-proto', kind: 'module', refId: 'mod-laser-proto', rarity: 'exotic', basePrice: 35_925_000, demandMultiplier: 1.0, standingReq: 10 }, // = mod-laser-3 (2,395,000) ×15
-  // 协处理器 MK3（2026-09-11 船长定：稀有度 4 走奇货、**无蓝图**——只能等奇货现货；无声望门槛）
-  { key: 'mod-cpu-3', kind: 'module', refId: 'mod-cpu-3', rarity: 'exotic', basePrice: 2_600_000, demandMultiplier: 1.0 },
-  /**
-   * **高级 AI 核心**（伽马 / 贝塔 / 阿尔法）——**2026-09-14 船长两条改判**：
-   *
-   * ① **贝塔与阿尔法「移除出售订单」**（船长原话：「核心加入虫洞掉落后，移除市场的贝塔和阿尔法
-   *    AI 核心的出售订单并备注」）⇒ 照**残骸 / 皇带鱼成品**的现成口径设 `playerBuyable: false`
-   *    （**只收不卖**：市场不出售现货，NPC 仍按行价收购 ⇒ 玩家仍可回卖，只是买不到）。
-   *    动机：这两种核心已在**虫洞遗迹打捞**里产出（10% 出货 · 贝塔 30 / 阿尔法 10 权重），
-   *    再让市场卖现货就等于"花钱跳过副本"，掉落的稀缺性归零。
-   *    ⚠ 伽马**不在此列**（船长只点了贝塔与阿尔法）⇒ 仍可市场购入。
-   *
-   * ② **按级别大幅提高价值**（船长原话：「同时按级别大幅提高AI核心的价值。阿尔法核心定价为1000万」，
-   *    同日给定四档 = **2.5 万 / 20 万 / 150 万 / 1000 万**）：伽马 9 万 → **20 万**（×2.2）·
-   *    贝塔 28 万 → **150 万**（×5.4）· 阿尔法 90 万 → **1000 万**（×11.1）；基础核心 2.5 万**不动**
-   *    （不碰早期 AI 副船/产线的入门成本）。
-   *    回卖价 = `basePrice × demandMultiplier`（exotic 档 = 1.0×）⇒ 捞到一枚阿尔法可卖 **1000 万**。
-   */
-  { key: 'core-gamma', kind: 'aicore', refId: 'gamma', rarity: 'exotic', basePrice: 200_000, demandMultiplier: 1.0 },
-  { key: 'core-beta', kind: 'aicore', refId: 'beta', rarity: 'exotic', basePrice: 1_500_000, demandMultiplier: 1.0, playerBuyable: false },
-  { key: 'core-alpha', kind: 'aicore', refId: 'alpha', rarity: 'exotic', basePrice: 10_000_000, demandMultiplier: 1.0, playerBuyable: false },
+  ...staticDataGroup<MarketGoodDef>(staticDocument as unknown as DataDocument, 'MARKET_GOODS_RAW_0', MARKET_GOODS_RAW_0_TEXT_BINDINGS),
 ]
 
 /**
@@ -821,181 +1730,7 @@ export const WRECK_BUY_GOODS: readonly MarketGoodDef[] = WRECK_GROUPS.filter((g)
 export const MARKET_GOODS: readonly MarketGoodDef[] = [
   ...MARKET_GOODS_RAW.map((g) => (BM_MK3_KEYS.has(g.key) ? { ...g, bmStanding: 11 } : g)),
   ...WRECK_BUY_GOODS,
-
-  /* ══════════ 专属内容的市场行（2026-09-14 船长四条裁定 · 三号）══════════
-   * 船长原话（照抄）：「允许玩家挂卖，顺便检查下其他物品，维持所有物品允许玩家挂卖」＋
-   *   「所有专属的东西，价格翻4倍」。⇒ 凡此前**无市场行**的可获得内容一律补行：
-   *   **一律 `playerBuyable: false`（只收不卖）**——市场不出售现货（渠道与稀缺性不变：洞内遗迹打捞 /
-   *   窝点高级箱），但玩家**可以挂卖**（自定价挂单）、也可以卖给 NPC 收购单（奇货档 = 全价回收）。
-   * 价 = **基准 × 4**（专属口径）：有材料单的走「材料 ÷ 0.45」当基准（全表"料/价 45%"锚）、
-   *   窝点专属件走「同槽位最高档常规件」、专属无人机走**自带货值 `baseSellPriceIsk`**。
-   * 不设声望门槛（门槛只挡买入，这些行不出售现货 ⇒ 设了没意义）；老档零迁移（纯内容表）。
-   * ⚠ 磷虾级（协会保底艇）与邓氏鱼级（无渠道壳体）**有意不补**（船长裁定）——见 roadmap 同日条目。 */
-  // ── 舰船图纸 15 张（`sbp-wh-*`：五族各 3，一次性）──
-    { key: 'sbp-wh-a-frigate', kind: 'blueprint', refId: 'sbp-wh-a-frigate', rarity: 'exotic', basePrice: 1_153_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭电子舰图纸（一次性）（= 舰价 ×0.5）
-    { key: 'sbp-wh-a-destroyer', kind: 'blueprint', refId: 'sbp-wh-a-destroyer', rarity: 'exotic', basePrice: 2_555_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭炮舰图纸（一次性）（= 舰价 ×0.5）
-    { key: 'sbp-wh-a-cruiser', kind: 'blueprint', refId: 'sbp-wh-a-cruiser', rarity: 'exotic', basePrice: 4_942_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭重型突击巡洋舰图纸（一次性）（= 舰价 ×0.5）
-    { key: 'sbp-wh-c-frigate', kind: 'blueprint', refId: 'sbp-wh-c-frigate', rarity: 'exotic', basePrice: 1_307_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幼虫截击舰图纸（一次性）（= 舰价 ×0.5）
-    { key: 'sbp-wh-c-destroyer', kind: 'blueprint', refId: 'sbp-wh-c-destroyer', rarity: 'exotic', basePrice: 2_822_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 甲壳截击舰图纸（一次性）（= 舰价 ×0.5）
-    { key: 'sbp-wh-c-cruiser', kind: 'blueprint', refId: 'sbp-wh-c-cruiser', rarity: 'exotic', basePrice: 5_680_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巢群重型突击巡洋舰图纸（一次性）（= 舰价 ×0.5）
-    { key: 'sbp-wh-d-frigate', kind: 'blueprint', refId: 'sbp-wh-d-frigate', rarity: 'exotic', basePrice: 1_536_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 哨戒电子舰图纸（一次性）（= 舰价 ×0.5）
-    { key: 'sbp-wh-d-destroyer', kind: 'blueprint', refId: 'sbp-wh-d-destroyer', rarity: 'exotic', basePrice: 3_722_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵卫指挥舰图纸（一次性）（= 舰价 ×0.5）
-    { key: 'sbp-wh-d-cruiser', kind: 'blueprint', refId: 'sbp-wh-d-cruiser', rarity: 'exotic', basePrice: 7_680_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵寝巡洋舰图纸（一次性）（= 舰价 ×0.5）
-    { key: 'sbp-wh-e-frigate', kind: 'blueprint', refId: 'sbp-wh-e-frigate', rarity: 'exotic', basePrice: 1_437_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 构件鱼雷舰图纸（一次性）（= 舰价 ×0.5）
-    { key: 'sbp-wh-e-destroyer', kind: 'blueprint', refId: 'sbp-wh-e-destroyer', rarity: 'exotic', basePrice: 3_107_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 机库无人机作战舰图纸（一次性）（= 舰价 ×0.5）
-    { key: 'sbp-wh-e-carrier', kind: 'blueprint', refId: 'sbp-wh-e-carrier', rarity: 'exotic', basePrice: 7_172_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构无人机作战舰图纸（一次性）（= 舰价 ×0.5）
-    { key: 'sbp-wh-g-frigate', kind: 'blueprint', refId: 'sbp-wh-g-frigate', rarity: 'exotic', basePrice: 1_515_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幽影侦察舰图纸（一次性）（= 舰价 ×0.5）
-    { key: 'sbp-wh-g-destroyer', kind: 'blueprint', refId: 'sbp-wh-g-destroyer', rarity: 'exotic', basePrice: 3_335_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军后勤舰图纸（一次性）（= 舰价 ×0.5）
-    { key: 'sbp-wh-g-cruiser', kind: 'blueprint', refId: 'sbp-wh-g-cruiser', rarity: 'exotic', basePrice: 6_693_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军鱼雷舰图纸（一次性）（= 舰价 ×0.5）
-  // ── 装备图纸 28 张（`bp-wh-*`：五族专属装备的一次性图纸）──
-    { key: 'bp-wh-a-frag', kind: 'blueprint', refId: 'bp-wh-a-frag', rarity: 'exotic', basePrice: 5_244_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭破片炮图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-a-hangar', kind: 'blueprint', refId: 'bp-wh-a-hangar', rarity: 'exotic', basePrice: 3_955_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭机库图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-a-prop', kind: 'blueprint', refId: 'bp-wh-a-prop', rarity: 'exotic', basePrice: 2_995_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭加力器图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-a-coat', kind: 'blueprint', refId: 'bp-wh-a-coat', rarity: 'exotic', basePrice: 2_674_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭折射涂层图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-a-scan', kind: 'blueprint', refId: 'bp-wh-a-scan', rarity: 'exotic', basePrice: 2_802_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 赃物扫描阵图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-a-shield', kind: 'blueprint', refId: 'bp-wh-a-shield', rarity: 'exotic', basePrice: 4_764_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭者护盾笼图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-c-laser', kind: 'blueprint', refId: 'bp-wh-c-laser', rarity: 'exotic', basePrice: 4_995_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 生体棱镜束图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-c-prism', kind: 'blueprint', refId: 'bp-wh-c-prism', rarity: 'exotic', basePrice: 4_844_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 甲壳棱镜层图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-c-pulse', kind: 'blueprint', refId: 'bp-wh-c-pulse', rarity: 'exotic', basePrice: 2_915_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 生体脉搏加速器图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-c-missile', kind: 'blueprint', refId: 'bp-wh-c-missile', rarity: 'exotic', basePrice: 4_653_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 孢子导弹巢图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-c-frame', kind: 'blueprint', refId: 'bp-wh-c-frame', rarity: 'exotic', basePrice: 4_898_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 几丁质骨架层图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-d-turret', kind: 'blueprint', refId: 'bp-wh-d-turret', rarity: 'exotic', basePrice: 8_555_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵卫连装炮图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-d-shield', kind: 'blueprint', refId: 'bp-wh-d-shield', rarity: 'exotic', basePrice: 8_087_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵墓护盾芯图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-d-lock', kind: 'blueprint', refId: 'bp-wh-d-lock', rarity: 'exotic', basePrice: 6_454_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 守墓者丧钟图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-d-laser', kind: 'blueprint', refId: 'bp-wh-d-laser', rarity: 'exotic', basePrice: 9_312_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵寝棱镜炮图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-d-loader', kind: 'blueprint', refId: 'bp-wh-d-loader', rarity: 'exotic', basePrice: 5_506_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 守墓者速装填机图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-d-steady', kind: 'blueprint', refId: 'bp-wh-d-steady', rarity: 'exotic', basePrice: 5_141_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵墓弹道铭文图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-e-dc', kind: 'blueprint', refId: 'bp-wh-e-dc', rarity: 'exotic', basePrice: 7_442_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构损管阵列图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-e-tac', kind: 'blueprint', refId: 'bp-wh-e-tac', rarity: 'exotic', basePrice: 6_009_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构导控塔图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-e-cpu', kind: 'blueprint', refId: 'bp-wh-e-cpu', rarity: 'exotic', basePrice: 6_377_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构协处理器图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-e-pd', kind: 'blueprint', refId: 'bp-wh-e-pd', rarity: 'exotic', basePrice: 6_153_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构近防阵列图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-e-shield', kind: 'blueprint', refId: 'bp-wh-e-shield', rarity: 'exotic', basePrice: 7_406_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构护盾矩阵图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-g-hangar', kind: 'blueprint', refId: 'bp-wh-g-hangar', rarity: 'exotic', basePrice: 6_360_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军蜂巢坞图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-g-fcs', kind: 'blueprint', refId: 'bp-wh-g-fcs', rarity: 'exotic', basePrice: 4_978_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军火控图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-g-ballistic', kind: 'blueprint', refId: 'bp-wh-g-ballistic', rarity: 'exotic', basePrice: 4_642_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幽灵弹道校正器图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-g-hull', kind: 'blueprint', refId: 'bp-wh-g-hull', rarity: 'exotic', basePrice: 6_718_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂结构层图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-g-turret', kind: 'blueprint', refId: 'bp-wh-g-turret', rarity: 'exotic', basePrice: 6_306_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军残炮图纸（一次性）（料÷0.45×4）
-    { key: 'bp-wh-g-prop', kind: 'blueprint', refId: 'bp-wh-g-prop', rarity: 'exotic', basePrice: 4_709_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幽灵推进器图纸（一次性）（料÷0.45×4）
-  // ── 虫洞装备 28 件（`mod-wh-*`：与各自图纸同料单 ⇒ 同价）──
-    { key: 'mod-wh-a-frag', kind: 'module', refId: 'mod-wh-a-frag', rarity: 'exotic', basePrice: 5_244_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭破片炮（料÷0.45×4）
-    { key: 'mod-wh-a-hangar', kind: 'module', refId: 'mod-wh-a-hangar', rarity: 'exotic', basePrice: 3_955_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭机库（料÷0.45×4）
-    { key: 'mod-wh-a-prop', kind: 'module', refId: 'mod-wh-a-prop', rarity: 'exotic', basePrice: 2_995_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭加力器（料÷0.45×4）
-    { key: 'mod-wh-a-coat', kind: 'module', refId: 'mod-wh-a-coat', rarity: 'exotic', basePrice: 2_674_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭折射涂层（料÷0.45×4）
-    { key: 'mod-wh-a-scan', kind: 'module', refId: 'mod-wh-a-scan', rarity: 'exotic', basePrice: 2_802_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 赃物扫描阵（料÷0.45×4）
-    { key: 'mod-wh-a-shield', kind: 'module', refId: 'mod-wh-a-shield', rarity: 'exotic', basePrice: 4_764_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭者护盾笼（料÷0.45×4）
-    { key: 'mod-wh-c-laser', kind: 'module', refId: 'mod-wh-c-laser', rarity: 'exotic', basePrice: 4_995_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 生体棱镜束（料÷0.45×4）
-    { key: 'mod-wh-c-prism', kind: 'module', refId: 'mod-wh-c-prism', rarity: 'exotic', basePrice: 4_844_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 甲壳棱镜层（料÷0.45×4）
-    { key: 'mod-wh-c-pulse', kind: 'module', refId: 'mod-wh-c-pulse', rarity: 'exotic', basePrice: 2_915_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 生体脉搏加速器（料÷0.45×4）
-    { key: 'mod-wh-c-missile', kind: 'module', refId: 'mod-wh-c-missile', rarity: 'exotic', basePrice: 4_653_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 孢子导弹巢（料÷0.45×4）
-    { key: 'mod-wh-c-frame', kind: 'module', refId: 'mod-wh-c-frame', rarity: 'exotic', basePrice: 4_898_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 几丁质骨架层（料÷0.45×4）
-    { key: 'mod-wh-d-turret', kind: 'module', refId: 'mod-wh-d-turret', rarity: 'exotic', basePrice: 8_555_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵卫连装炮（料÷0.45×4）
-    { key: 'mod-wh-d-shield', kind: 'module', refId: 'mod-wh-d-shield', rarity: 'exotic', basePrice: 8_087_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵墓护盾芯（料÷0.45×4）
-    { key: 'mod-wh-d-lock', kind: 'module', refId: 'mod-wh-d-lock', rarity: 'exotic', basePrice: 6_454_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 守墓者丧钟（料÷0.45×4）
-    { key: 'mod-wh-d-laser', kind: 'module', refId: 'mod-wh-d-laser', rarity: 'exotic', basePrice: 9_312_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵寝棱镜炮（料÷0.45×4）
-    { key: 'mod-wh-d-loader', kind: 'module', refId: 'mod-wh-d-loader', rarity: 'exotic', basePrice: 5_506_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 守墓者速装填机（料÷0.45×4）
-    { key: 'mod-wh-d-steady', kind: 'module', refId: 'mod-wh-d-steady', rarity: 'exotic', basePrice: 5_141_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵墓弹道铭文（料÷0.45×4）
-    { key: 'mod-wh-e-dc', kind: 'module', refId: 'mod-wh-e-dc', rarity: 'exotic', basePrice: 7_442_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构损管阵列（料÷0.45×4）
-    { key: 'mod-wh-e-tac', kind: 'module', refId: 'mod-wh-e-tac', rarity: 'exotic', basePrice: 6_009_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构导控塔（料÷0.45×4）
-    { key: 'mod-wh-e-cpu', kind: 'module', refId: 'mod-wh-e-cpu', rarity: 'exotic', basePrice: 6_377_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构协处理器（料÷0.45×4）
-    { key: 'mod-wh-e-pd', kind: 'module', refId: 'mod-wh-e-pd', rarity: 'exotic', basePrice: 6_153_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构近防阵列（料÷0.45×4）
-    { key: 'mod-wh-e-shield', kind: 'module', refId: 'mod-wh-e-shield', rarity: 'exotic', basePrice: 7_406_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构护盾矩阵（料÷0.45×4）
-    { key: 'mod-wh-g-hangar', kind: 'module', refId: 'mod-wh-g-hangar', rarity: 'exotic', basePrice: 6_360_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军蜂巢坞（料÷0.45×4）
-    { key: 'mod-wh-g-fcs', kind: 'module', refId: 'mod-wh-g-fcs', rarity: 'exotic', basePrice: 4_978_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军火控（料÷0.45×4）
-    { key: 'mod-wh-g-ballistic', kind: 'module', refId: 'mod-wh-g-ballistic', rarity: 'exotic', basePrice: 4_642_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幽灵弹道校正器（料÷0.45×4）
-    { key: 'mod-wh-g-hull', kind: 'module', refId: 'mod-wh-g-hull', rarity: 'exotic', basePrice: 6_718_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂结构层（料÷0.45×4）
-    { key: 'mod-wh-g-turret', kind: 'module', refId: 'mod-wh-g-turret', rarity: 'exotic', basePrice: 6_306_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军残炮（料÷0.45×4）
-    { key: 'mod-wh-g-prop', kind: 'module', refId: 'mod-wh-g-prop', rarity: 'exotic', basePrice: 4_709_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幽灵推进器（料÷0.45×4）
-  /* ── 护盾充能力场装置（2026-09-20 船长：「新增高槽装备，护盾充能力场装置 MK2……装备成品在奇货。
-     MK2 和 MK3 的稀有度分别是 4 和 5。平均价格分别是 400W 和 2000W」）
-     ⚠ **本批首次：成品可买**（不写 `playerBuyable` = 默认 true）——与上面那批"只收不卖"的
-        虫洞专属件**不同**，因为船长给的是一句"装备成品在奇货"（上架售卖口径）。
-     稀有度档住在 `rarityTier.ts` 的 `RARITY_TIER` 表（**单点**，本行不带档）⇒ 查得 4 / 5。── */
-    { key: 'mod-shieldfield-2', kind: 'module', refId: 'mod-shieldfield-2', rarity: 'exotic', basePrice: 4_000_000, demandMultiplier: 0.75 }, // 船长定平均价 400 万 · 稀有度 4
-    { key: 'mod-shieldfield-3', kind: 'module', refId: 'mod-shieldfield-3', rarity: 'exotic', basePrice: 20_000_000, demandMultiplier: 0.75 }, // 船长定平均价 2000 万 · 稀有度 5
-  /* ── 护盾充能力场装置的**一次性图纸**（船长：「都只有一次性蓝图。**一次性蓝图在稀有**」）
-     ⚠ 与全仓既有 31 张一次性图（全在奇货且 `playerBuyable: false`）不同：这两张**在稀有渠道、
-       可买**（船长原话）；书价 = 产物价（一次性图既有口径 ⇒ 400 万 / 2000 万）。
-     ⚠ 档位与装备一致（船长：「和装备一致稀有度」）⇒ 4 / 5；**这会让 rare 渠道出现档 5**，
-       与既有"rare 带 2~4"的契约冲突 ⇒ 按 §5.2 已把该带放宽为 **2~5** 并记入 changelog。── */
-    { key: 'bp-shieldfield-2', kind: 'blueprint', refId: 'bp-shieldfield-2', rarity: 'rare', basePrice: 4_000_000, demandMultiplier: 0.7 },
-    { key: 'bp-shieldfield-3', kind: 'blueprint', refId: 'bp-shieldfield-3', rarity: 'rare', basePrice: 20_000_000, demandMultiplier: 0.7 },
-  // ── 虫洞舰船 15 艘（`sh-wh-*`：定制船，`priceIsk` 仍为 0 = 定制口径，契约「舰船价格口径」守）──
-    { key: 'sh-wh-a-frigate', kind: 'ship', refId: 'sh-wh-a-frigate', rarity: 'exotic', basePrice: 2_306_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭电子舰（料÷0.45×4）
-    { key: 'sh-wh-a-destroyer', kind: 'ship', refId: 'sh-wh-a-destroyer', rarity: 'exotic', basePrice: 5_109_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭炮舰（料÷0.45×4）
-    { key: 'sh-wh-a-cruiser', kind: 'ship', refId: 'sh-wh-a-cruiser', rarity: 'exotic', basePrice: 9_884_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭重型突击巡洋舰（料÷0.45×4）
-    { key: 'sh-wh-c-frigate', kind: 'ship', refId: 'sh-wh-c-frigate', rarity: 'exotic', basePrice: 2_613_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幼虫截击舰（料÷0.45×4）
-    { key: 'sh-wh-c-destroyer', kind: 'ship', refId: 'sh-wh-c-destroyer', rarity: 'exotic', basePrice: 5_644_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 甲壳截击舰（料÷0.45×4）
-    { key: 'sh-wh-c-cruiser', kind: 'ship', refId: 'sh-wh-c-cruiser', rarity: 'exotic', basePrice: 11_360_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巢群重型突击巡洋舰（料÷0.45×4）
-    { key: 'sh-wh-d-frigate', kind: 'ship', refId: 'sh-wh-d-frigate', rarity: 'exotic', basePrice: 3_073_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 哨戒电子舰（料÷0.45×4）
-    { key: 'sh-wh-d-destroyer', kind: 'ship', refId: 'sh-wh-d-destroyer', rarity: 'exotic', basePrice: 7_443_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵卫指挥舰（料÷0.45×4）
-    { key: 'sh-wh-d-cruiser', kind: 'ship', refId: 'sh-wh-d-cruiser', rarity: 'exotic', basePrice: 15_360_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵寝巡洋舰（料÷0.45×4）
-    { key: 'sh-wh-e-frigate', kind: 'ship', refId: 'sh-wh-e-frigate', rarity: 'exotic', basePrice: 2_874_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 构件鱼雷舰（料÷0.45×4）
-    { key: 'sh-wh-e-destroyer', kind: 'ship', refId: 'sh-wh-e-destroyer', rarity: 'exotic', basePrice: 6_213_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 机库无人机作战舰（料÷0.45×4）
-    { key: 'sh-wh-e-carrier', kind: 'ship', refId: 'sh-wh-e-carrier', rarity: 'exotic', basePrice: 14_345_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构无人机作战舰（料÷0.45×4）
-    { key: 'sh-wh-g-frigate', kind: 'ship', refId: 'sh-wh-g-frigate', rarity: 'exotic', basePrice: 3_030_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 幽影侦察舰（料÷0.45×4）
-    { key: 'sh-wh-g-destroyer', kind: 'ship', refId: 'sh-wh-g-destroyer', rarity: 'exotic', basePrice: 6_670_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军后勤舰（料÷0.45×4）
-    { key: 'sh-wh-g-cruiser', kind: 'ship', refId: 'sh-wh-g-cruiser', rarity: 'exotic', basePrice: 13_386_500, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 亡军鱼雷舰（料÷0.45×4）
-  // ── 窝点专属装备 14 件（`mod-lair-*`：无蓝图、无料单 ⇒ 同槽位最高档 ×4）──
-    { key: 'mod-lair-turret-a', kind: 'module', refId: 'mod-lair-turret-a', rarity: 'exotic', basePrice: 7_664_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 劫掠者转管炮（同槽位最高档 1,916,000×4）
-    { key: 'mod-lair-missile-a', kind: 'module', refId: 'mod-lair-missile-a', rarity: 'exotic', basePrice: 8_968_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 掠袭导弹巢（同槽位最高档 2,242,000×4）
-    { key: 'mod-lair-cargo-a', kind: 'module', refId: 'mod-lair-cargo-a', rarity: 'exotic', basePrice: 9_600_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 赃物强化舱（同槽位最高档 2,400,000×4）
-    { key: 'mod-lair-armor-c', kind: 'module', refId: 'mod-lair-armor-c', rarity: 'exotic', basePrice: 7_760_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 生体甲壳板（同槽位最高档 1,940,000×4）
-    { key: 'mod-lair-dc-c', kind: 'module', refId: 'mod-lair-dc-c', rarity: 'exotic', basePrice: 9_440_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 生体损管腔（同槽位最高档 2,360,000×4）
-    { key: 'mod-lair-laser-c', kind: 'module', refId: 'mod-lair-laser-c', rarity: 'exotic', basePrice: 12_000_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 酸液喷吐器（同槽位最高档 3,000,000×4）
-    { key: 'mod-lair-shield-d', kind: 'module', refId: 'mod-lair-shield-d', rarity: 'exotic', basePrice: 9_160_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵墓护盾阵列（同槽位最高档 2,290,000×4）
-    { key: 'mod-lair-turret-d', kind: 'module', refId: 'mod-lair-turret-d', rarity: 'exotic', basePrice: 7_664_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 守墓者长炮（同槽位最高档 1,916,000×4）
-    { key: 'mod-lair-armor-d', kind: 'module', refId: 'mod-lair-armor-d', rarity: 'exotic', basePrice: 7_760_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 陵寝装甲层（同槽位最高档 1,940,000×4）
-    { key: 'mod-lair-turret-e', kind: 'module', refId: 'mod-lair-turret-e', rarity: 'exotic', basePrice: 7_664_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构残骸炮（同槽位最高档 1,916,000×4）
-    { key: 'mod-lair-hangar-e', kind: 'module', refId: 'mod-lair-hangar-e', rarity: 'exotic', basePrice: 7_840_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 深层机库（同槽位最高档 1,960,000×4）
-    { key: 'mod-lair-frame-e', kind: 'module', refId: 'mod-lair-frame-e', rarity: 'exotic', basePrice: 7_760_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巨构骨架（同槽位最高档 1,940,000×4）
-    { key: 'mod-lair-drone-tac-g', kind: 'module', refId: 'mod-lair-drone-tac-g', rarity: 'exotic', basePrice: 8_160_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂群导控（同槽位最高档 2,040,000×4）
-    { key: 'mod-lair-drone-relay-g', kind: 'module', refId: 'mod-lair-drone-relay-g', rarity: 'exotic', basePrice: 8_120_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 流亡中继桅（同槽位最高档 2,030,000×4）
-    /**
-     * 2026-09-26 H 族（墨潮帮）三件：两件 support/high 模块 ＋ 一架攻坚机。
-     *
-     * 🔴 **定价改判（2026-09-26 船长裁定「甲」）**：原值 **40,000,000** 是按窝点那套
-     * "**同槽位最高档 ×4**"（隐秘行动装置 MK3 10,000,000 ×4）机械推的，落进 14 件窝点件里
-     * **一枝独秀**（次高 = 酸液喷吐器 12,000,000 ⇒ 本件是它的 3.33 倍、中位数 8,120,000 的 4.9 倍）。
-     * 船长看过横向对照后改判**甲案**：**这两件与"同池最高件"同价** —— H 件与窝点件**出自同一个
-     * 「族稀有残骸高级箱」池**（5%／箱、集齐前不重复），同池吊着 3.3 倍差价会让"掉到哪件"变成运气问题。
-     * **档差看代价不只看槽位**：电子舱 CPU **150**（全仓装备最高档）⇒ 与酸液喷吐器同价 **12,000,000**；
-     * 捕获网 CPU **44** ⇒ 与赃物强化舱同价 **9,600,000**。
-     * ⚠ 两件**都无蓝图、无料单**（纯掉落），故不存在"书价两处同值"的连带；`content:check` 的
-     * 蓝图价格契约按 `bp-*` 核，本两行不参与。
-     */
-    { key: 'mod-lair-ecm-h', kind: 'module', refId: 'mod-lair-ecm-h', rarity: 'exotic', basePrice: 12_000_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 墨潮电子舱（⟪2026-09-26 船长令⟫ 40,000,000 → 12,000,000：与同池最高件「酸液喷吐器」同价）
-    { key: 'mod-lair-web-h', kind: 'module', refId: 'mod-lair-web-h', rarity: 'exotic', basePrice: 9_600_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 墨潮捕获网（⟪2026-09-26 船长令⟫ 40,000,000 → 9,600,000：CPU 44 低于电子舱 150 ⇒ 低一档）
-  // ── R 族（光环）势力特色装备（**船长 2026-10-01 令**）：只收不卖 · 同池还有 AI 核心（核心不走市场行，
-  //    它是账本制、三种实物物品一律 unreleased）。定价 = 同槽位最高档 MK3 价 × 4（与既有 12 件同一算式）。
-  { key: 'mod-lair-laser-r', kind: 'module', refId: 'mod-lair-laser-r', rarity: 'exotic', basePrice: 9_580_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 叠光激光炮（同槽位最高档 2,395,000×4）
-  { key: 'mod-lair-blink-r', kind: 'module', refId: 'mod-lair-blink-r', rarity: 'exotic', basePrice: 10_400_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 跃迁规避装置（同槽位最高档 2,600,000×4）
-  { key: 'mod-lair-beam-r', kind: 'module', refId: 'mod-lair-beam-r', rarity: 'exotic', basePrice: 9_580_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 三叉戟光束炮（**2026-10-03 船长令**第三件；同槽位最高档 2,395,000×4 ⇒ 与叠光激光炮同价）
-  { key: 'mod-lair-pd-r', kind: 'module', refId: 'mod-lair-pd-r', rarity: 'exotic', basePrice: 9_580_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · PD激光（**2026-10-02 船长令**第四件；同槽位最高档 2,395,000×4）
-  // ── 专属无人机 3 型（自带货值 ×4；无人机线**无制式图纸**，这三型各有一张一次性图纸，见 blueprints.ts）──
-    { key: 'drone-exile-bee', kind: 'item', refId: 'drone-exile-bee', rarity: 'exotic', basePrice: 24_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂无人机（自带货值 6000×4）
-    { key: 'drone-wh-c-heavy', kind: 'item', refId: 'drone-wh-c-heavy', rarity: 'exotic', basePrice: 48_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巢卫攻坚无人机（自带货值 12000×4）
-    { key: 'drone-wh-e-sentry', kind: 'item', refId: 'drone-wh-e-sentry', rarity: 'exotic', basePrice: 88_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 构件哨戒无人机（自带货值 22000×4）
-    { key: 'drone-ink-heavy', kind: 'item', refId: 'drone-ink-heavy', rarity: 'exotic', basePrice: 48_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 墨潮重袭无人机（自带货值 12000×4）
-  // ── 3 张新增的一次性无人机蓝图（每次开工出 50 架）──
-  { key: 'bp-lair-g-drone', kind: 'blueprint', refId: 'bp-lair-g-drone', rarity: 'exotic', basePrice: 1_200_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 鱿蜂无人机图纸（一次性）（料÷0.45×4）
-  { key: 'bp-wh-c-drone', kind: 'blueprint', refId: 'bp-wh-c-drone', rarity: 'exotic', basePrice: 2_400_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 巢卫无人机图纸（一次性）（料÷0.45×4）
-  { key: 'bp-wh-e-drone', kind: 'blueprint', refId: 'bp-wh-e-drone', rarity: 'exotic', basePrice: 4_400_000, demandMultiplier: 1.0, playerBuyable: false }, // 只收不卖 · 构件无人机图纸（一次性）（料÷0.45×4）
-  // ── 微型跃迁引擎 MK3（2026-09-14 船长定 · 奇货档：顶配那条「十秒 +250%」）——
-  // 价 = 同族之上的溢价（矢量推进器 MK3 1,970,000 ×1.32 ≈ 2,600,000）；书价按奇货档 ×4 = 10,400,000。
-  { key: 'mod-mwd-3', kind: 'module', refId: 'mod-mwd-3', rarity: 'exotic', basePrice: 2_600_000, demandMultiplier: 0.75 },
-  { key: 'bp-mwd-3', kind: 'blueprint', refId: 'bp-mwd-3', rarity: 'exotic', basePrice: 10_400_000, demandMultiplier: 0.75 },
-
-  /**
-   * ── **舰船插件 12 件**（**2026-09-26 船长令**，设计稿 `docs/design/ship-plug-20260926.md`）──
-   *
-   * 🔴 **船长口径**：「**目前的市场不可见。但是先做好市场卡并备注**」⇒ 本批**全部挂 `unreleased: true`**：
-   * 卡在目录表里（`content:check` 与用例照核），但 `buildMarketGoodsCatalog` 会把它们挡在市场之外，
-   * 玩家既买不到也卖不掉。**日后要开只删这一行里的 `unreleased`**。
-   *
-   * **定价备注**：插件是**造出来的**（组装机 · 每件消耗黑匣 ×1），不是掉落件 ⇒ 按"料价 × 档位系数"定价
-   * 更贴现有体系，故**本批先不给价**（`basePrice: 0`），等船长定"黑匣值多少 + 插件卖多少"再回填；
-   * `demandMultiplier: 0` 同理（0 = 不收）。**这张卡现在只是占位与契约锚点。**
-   */
+  ...staticDataGroup<MarketGoodDef>(staticDocument as unknown as DataDocument, 'MARKET_GOODS_0', MARKET_GOODS_0_TEXT_BINDINGS),
   ...([
     'plug-shield-plate', 'plug-armor-plate', 'plug-hull-plate', 'plug-mid-bay', 'plug-low-bay', 'plug-cpu-core',
     'plug-firepower', 'plug-sight', 'plug-thruster', 'plug-rangefinder', 'plug-target-beacon', 'plug-concealment',
@@ -1009,9 +1744,6 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
     playerBuyable: false,
     unreleased: true,
   })),
-  /* 舰船插件**蓝图**（2026-09-26 船长令）：图纸在「章鱼人兑换」窗口用声望换 ⇒ 与插件本体同款占位卡，
-     不进市场、不给价（`basePrice: 0` / `demandMultiplier: 0` / `playerBuyable: false` / `unreleased`）；
-     ⚠ `content:check` 的「蓝图价格口径」要求每张蓝图在目录里有行，这一组就是那些行。 */
   ...([
     'bp-plug-shield-plate', 'bp-plug-armor-plate', 'bp-plug-hull-plate', 'bp-plug-mid-bay', 'bp-plug-low-bay',
     'bp-plug-cpu-core', 'bp-plug-firepower', 'bp-plug-sight', 'bp-plug-thruster', 'bp-plug-rangefinder',
