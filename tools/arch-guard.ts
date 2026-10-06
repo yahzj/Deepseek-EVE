@@ -109,6 +109,11 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '爆虫一次性腐蚀触发', symbol: 'triggerAcidBurst', file: 'packages/core/src/alienCombat.ts', exported: true },
+  { concept: '本场装甲结构腐蚀抗性', symbol: 'applyAlienCorrosion', file: 'packages/core/src/alienCombat.ts', exported: true },
+  { concept: '敌机全队有限或无限补损', symbol: 'advanceFoeHatcheries', file: 'packages/core/src/alienCombat.ts', exported: true },
+  { concept: '敌挂件有效参战时长', symbol: 'advanceFoeAbilityClocks', file: 'packages/core/src/alienCombat.ts', exported: true },
+  { concept: '存活敌舰全队渐增机动', symbol: 'foeFleetSpeedMulOf', file: 'packages/core/src/alienCombat.ts', exported: true },
   { concept: '静态JSON参数与代码文本装配', symbol: 'staticDataGroup', file: 'packages/data/src/staticData.ts', exported: true },
   { concept: '数值编辑字段与范围计划', symbol: 'planDocuments', file: 'tools/data-editor-schema.ts', exported: true },
   { concept: '限额慢补货配置判据', symbol: 'hasLimitedSupply', file: 'packages/core/src/marketLimitedSupply.ts', exported: true },

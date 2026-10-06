@@ -61,19 +61,20 @@ describe('族循环锚点：按本地墙钟算（2026-10-02 修）', () => {
 
   it('④ 连续四期的族 = R / H / R / H（10-09 = 墨潮帮，不再连着出光环）', () => {
     const fams = [0, 1, 2, 3].map((n) => weekendFamilyForWindow(t0Of(n)))
-    expect(fams, '本期 R（船长指定那期）').toEqual(['R', 'H', 'R', 'H'])
+    expect(fams, '本批确认异形加入轮换').toEqual(['R', 'C', 'H', 'R'])
     expect(fams[0]).toBe(WEEKEND_FAMILY_ROTATION[0])
     expect(fams[1]).toBe(WEEKEND_FAMILY_ROTATION[1])
     console.log(`  [读数] 10-02 / 10-09 / 10-16 / 10-23 四期族 = ${fams.join(' / ')}`)
   })
 
   it('⑤ 特意设置只作用于那一期：10-02 = 指定 R，10-09 回落循环（H）', () => {
-    expect(WEEKEND_FAMILY_OVERRIDE?.periodIndex, '指定的是第 0 期（本期）').toBe(0)
-    expect(WEEKEND_FAMILY_OVERRIDE?.family).toBe('R')
-    expect(weekendFamilyForWindow(t0Of(0)), '本期 = 指定值').toBe(WEEKEND_FAMILY_OVERRIDE!.family)
+    expect(WEEKEND_FAMILY_OVERRIDE?.periodIndex, '本批指定10-09第1期').toBe(1)
+    expect(WEEKEND_FAMILY_OVERRIDE?.family).toBe('C')
+    expect(weekendFamilyForWindow(t0Of(0)), '之前的光环周期不改').toBe('R')
     expect(
       weekendFamilyForWindow(t0Of(1)),
       '**下一期不再被这份指定粘住**（旧值下它也是第 0 期 ⇒ 被粘成 R）',
-    ).toBe(WEEKEND_FAMILY_ROTATION[1])
+    ).toBe('C')
+    expect(weekendFamilyForWindow(t0Of(2))).toBe('H')
   })
 })

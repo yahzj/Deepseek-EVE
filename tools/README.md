@@ -32,6 +32,8 @@
 
 | 工具 | npm script | 挂牌状态 |
 |---|---|---|
+| `alien-invasion-check.ts` / `alien-invasion-fixture.ts` | `npx tsx tools/alien-invasion-check.ts --seeds=8`，`--save`生成合成档，`--audit`导出逐舰输出 | v31；新波次/爆虫一次性动能/巢母无限补机与指挥校准，标准A0~A3及高阶合法配装、三族对照；审核分别列循环射击、爆发、护理与后备；无个人档，不改正式数值；审核模式不覆盖校准报告 |
+| `alien-invasion-ui-check.cjs` | 构建后`node tools/alien-invasion-ui-check.cjs` | v31；自建隐藏Electron和隔离userData，合成末波检查两布局/两视口；不当观感验收，关闭自有PID |
 | `guoqing-audit-recheck.ts` | 直接 `tsx tools/guoqing-audit-recheck.ts` | 国庆节审查 C01～C10 合成续接复核；v31，核对/运行 2026-10-03；诊断不是修复门禁，不读个人档 |
 | `save-reconnect-browser-check.ts` | `npm run save:reconnect-check`（先构建 web） | C02 真实 Web Locks/OPFS/IndexedDB/UI 回归；自建服务与隔离 Edge，模拟权限/选择器，无个人档，端口占用则失败；v31，2026-10-04 |
 | `mobile-page-audit.ts` | `npm run ui:mobile-pages`（先构建 web） | 合成解锁档，208 组手机页面/弹层几何＋8 组活动窗口回归，自建服务与隔离 Edge；输出诊断不冒称观感/全弹层验收；v31，2026-10-04 |

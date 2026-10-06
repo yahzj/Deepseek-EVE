@@ -1127,6 +1127,12 @@
     ],
     "WEEKEND_TROPHIES_0": [
       {
+        "id": "blackbox-c",
+        "kind": "blackbox",
+        "unitM3": 5,
+        "baseSellPriceIsk": 10000000
+      },
+      {
         "id": "blackbox-h",
         "kind": "blackbox",
         "unitM3": 5,

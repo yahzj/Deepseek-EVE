@@ -69,7 +69,7 @@ describe('周末入侵 · 板面去重（船长裁决甲）', () => {
   })
 
   it('A/C/G：2 个槽位各自派生（保留原卡 id）⇒ 一条都不删', () => {
-    const s = setup('C')
+    const s = setup('A')
     const board = boardOf(s, [CARD_A, CARD_B], 'galaxy-redring')
     expect(board.length).toBe(2)
     expect(board.map((c) => c.id)).toEqual([CARD_A.id, CARD_B.id])

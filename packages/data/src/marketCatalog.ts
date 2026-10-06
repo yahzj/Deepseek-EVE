@@ -200,6 +200,7 @@ const MARKET_GOODS_RAW_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> 
   "blackbox-r": {
 
   },
+  "blackbox-c": {},
   "blackbox-universal": {
 
   },

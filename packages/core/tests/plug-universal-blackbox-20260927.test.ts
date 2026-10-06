@@ -48,7 +48,7 @@ describe('通用黑匣（2026-09-27 船长令）', () => {
   it('② 等价组：旗舰黑匣与通用黑匣互为替代，**组序 = 优先扣除序（先通用）**；组外物品只返回自己', () => {
     // 2026-10-02 每族一件黑匣批（船长令「甲」）：R 族匣 `blackbox-r` 并入同一组（三件互为替代），
     // 组序仍是"通用最先"⇒ 优先扣除序与报名字口径（下面②之补）一个字没变
-    const boxGroup = [UNIVERSAL_BLACKBOX_ITEM_ID, 'blackbox-h', 'blackbox-r']
+    const boxGroup = [UNIVERSAL_BLACKBOX_ITEM_ID, 'blackbox-h', 'blackbox-r', 'blackbox-c']
     expect(materialGroupIdsOf('blackbox-h')).toEqual(boxGroup)
     expect(materialGroupIdsOf('blackbox-r'), '光环匣在同一组里').toEqual(boxGroup)
     expect(materialGroupIdsOf(UNIVERSAL_BLACKBOX_ITEM_ID)).toEqual(boxGroup)

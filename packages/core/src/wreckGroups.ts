@@ -90,6 +90,12 @@ export interface WreckGroupDef {
  */
 export const WRECK_GROUPS: readonly WreckGroupDef[] = [
   {
+    key: 'c-inv', family: 'C', region: 'inv', name: '异形生物残骸（入侵）', rareName: '异形生物稀有残骸（入侵）',
+    tier: 'dire', pool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
+    note: '异形生物残骸（入侵）：星髓晶与重钨合金为主，夹结构料', threat: 124,
+    theme: { modules: ['mod-armor-plate-2'] }, members: ['alien-vanguard', 'alien-escort', 'alien-main', 'alien-broodmother'],
+  },
+  {
     key: 'a-hi',
     family: 'A',
     region: 'hi',

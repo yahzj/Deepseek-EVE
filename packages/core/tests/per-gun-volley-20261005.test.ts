@@ -214,7 +214,7 @@ describe('势力敌舰炮数登记不改变舰级和敌卡名义火力', () => {
   const ctx = buildSimContext()
   it.each(FOE_SHIPS.map((s) => [s.id, s] as const))('%s有效炮数和舰级总伤守恒', (_id, foe) => {
     expect(Number.isInteger(foe.gunCount)).toBe(true)
-    expect(foe.gunCount).toBeGreaterThanOrEqual(2)
+    expect(foe.gunCount).toBeGreaterThanOrEqual(1)
     expect(foe.gunCount).toBeLessThanOrEqual(8)
     const card = { ...anomaly('single', 'galaxy-hub'), ships: [{ ship: foe, count: 1 }] }
     const old = { ...card, ships: [{ ship: { ...foe, gunCount: undefined }, count: 1 }] }

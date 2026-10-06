@@ -67,6 +67,10 @@ export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = 
   'corona-split': { modules: ['mod-shield-pla-2'] },
   'corona-converge': { modules: ['mod-shield-pla-2'] },
   'corona-nexus': { modules: ['mod-shield-pla-2'] },
+  'alien-vanguard': { modules: ['mod-armor-plate-2'] },
+  'alien-escort': { modules: ['mod-armor-plate-2'] },
+  'alien-main': { modules: ['mod-armor-plate-2'] },
+  'alien-broodmother': { modules: ['mod-armor-plate-2'] },
 }
 
 /** 卡级特色池与产出倾向（**构建依据 · 体检输入**；运行时见 `@whale/core` 的 `WRECK_GROUPS`） */
@@ -243,6 +247,10 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
     recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
     recycleNote: '光环中枢卫队残骸：星髓晶与重钨合金为主',
   },
+  'alien-vanguard': { recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]], recycleNote: '异形生物残骸：星髓晶与重钨合金为主' },
+  'alien-escort': { recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]], recycleNote: '异形生物残骸：星髓晶与重钨合金为主' },
+  'alien-main': { recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]], recycleNote: '异形生物残骸：星髓晶与重钨合金为主' },
+  'alien-broodmother': { recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]], recycleNote: '异形生物残骸：星髓晶与重钨合金为主' },
 }
 
 /** ⚠ **2026-09-19 已删除 `withRecycleFlavor`**：卡级特色不再并进 `AnomalyDef`（字段已删），

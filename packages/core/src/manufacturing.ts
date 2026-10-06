@@ -316,7 +316,7 @@ function spendMaterialsFor(
  * 同为 8,000 万的族匣之间按登记序（H → R）扣，谁先谁后不影响玩家手上的料值。
  */
 export const MATERIAL_GROUPS: readonly (readonly string[])[] = [
-  ['blackbox-universal', 'blackbox-h', 'blackbox-r'],
+  ['blackbox-universal', 'blackbox-h', 'blackbox-r', 'blackbox-c'],
 ]
 
 /** 该材料 id 所属的等价组（不在任何组里 ⇒ 只返回它自己） */

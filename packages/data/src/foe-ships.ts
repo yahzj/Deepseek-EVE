@@ -83,6 +83,8 @@
 
 import { FOE_MOUNT_IDS } from '@whale/core'
 import type { FoeShipDef } from '@whale/core'
+import { L10N } from './l10n/table'
+import { FOE_DRONE_C_JAWCLAW } from './foe-drones'
 import { FOE_DRONE_C_SPORE, FOE_DRONE_E_ALERT, FOE_DRONE_G_BEE_EXP, FOE_DRONE_G_BEE_KIN, FOE_DRONE_G_BEE_PLA, FOE_DRONE_H_HEAVY } from './foe-drones'
 
 /** A 族 · 一档「海盗快艇」——brawl 贴脸杂鱼。
@@ -291,7 +293,7 @@ export const FOE_SCAV_ARMED: FoeShipDef = {
  * 当前唯一成员 = **噬口巨兽**（T80 卡的'巨兽慢而硬'例外：T4 允许低于本档基准；
  * 且**全族唯一**——船长「**出现稀少**…**因此也更加强大**」由'只此一处 + 80% 血量/火力'表达）。
  */
-export const ALIEN_BEAST_SHIP_IDS: readonly string[] = ['foe-alien-maw']
+export const ALIEN_BEAST_SHIP_IDS: readonly string[] = ['foe-alien-maw', 'foe-alien-hiveback']
 
 /**
  * **C 族「T5 旗舰」白名单**（船长 2026-09-24：「**每次入侵只有单一种族…并且设计每个种族的T5旗舰。**」）。
@@ -303,7 +305,7 @@ export const ALIEN_BEAST_SHIP_IDS: readonly string[] = ['foe-alien-maw']
  *
  * ⚠ 新增成员 = 一次**内容设计决定**（等于给该族再添一条旗舰），须船长明确令。
  */
-export const ALIEN_FLAGSHIP_SHIP_IDS: readonly string[] = []
+export const ALIEN_FLAGSHIP_SHIP_IDS: readonly string[] = ['foe-alien-broodmother']
 
 /**
  * **G 族（鱿鱼亡军）「T5 旗舰」白名单**（船长 2026-09-24：「**设计每个种族的T5旗舰。**」）。
@@ -435,6 +437,46 @@ const C_FAMILY_RESISTS: Pick<FoeShipDef, 'shieldResist' | 'armorResist' | 'hullR
  * 逐条核对舰级实挂倍率（改倍率 = 改这一处 + 各舰级的 `foeChargeMul`，两处不一致会被体检拦下）。
  */
 export const ALIEN_CHARGE_MUL_BY_TIER: Readonly<Record<number, number>> = { 1: 1.5, 2: 2, 3: 2.5, 4: 3, 5: 4 }
+
+/** 船长确认的入侵用途例外，不放宽既有 C 舰级。 */
+export const ALIEN_INVASION_CHARGE_MUL: Readonly<Record<string, number>> = {
+  'foe-alien-acid-burster': 5, 'foe-alien-hiveback': 1.5, 'foe-alien-broodmother': 1.25,
+}
+export const ALIEN_FAST_SHIP_IDS: readonly string[] = ['foe-alien-acid-burster']
+
+export const FOE_ALIEN_ACID_BURSTER: FoeShipDef = {
+  id: 'foe-alien-acid-burster', name: L10N['ship.alien.001']!.zh, family: 'C',
+  hullClassTier: 1, speedRatio: 714 / 340, hp: 130, split: { s: .2, a: .55, h: .25 },
+  ...C_FAMILY_RESISTS, shotDmg: 0, gunCount: 1, hitRate: 1, reloadMs: 4000,
+  rangeMinM: 1, rangeMaxM: 250, falloff: 1, dmgMix: { kinetic: 1 }, tactic: 'brawl',
+  acidBurst: { attackRangeM: 250, deathRangeM: 300, corrosionPct: .15, damage: 300, hitRate: .95 }, mounts: [FOE_MOUNT_IDS.acidCharge],
+}
+export const FOE_ALIEN_BROOD_WORKER: FoeShipDef = {
+  id: 'foe-alien-brood-worker', name: L10N['ship.alien.002']!.zh, family: 'C',
+  hullClassTier: 3, speedRatio: 387 / 258, hp: 1080, split: { s: .2, a: .55, h: .25 },
+  ...C_FAMILY_RESISTS, shotDmg: 124, gunCount: 4, hitRate: .95, reloadMs: 4000,
+  rangeMinM: 1, rangeMaxM: 2700, falloff: .5, blindDmgMul: .3,
+  dmgMix: { plasma: 8, explosive: 2 }, energyForm: 'spit', tactic: 'brawl', repairPct: .5,
+  mounts: [FOE_MOUNT_IDS.chargeSwarmT3],
+}
+export const FOE_ALIEN_HIVEBACK: FoeShipDef = {
+  id: 'foe-alien-hiveback', name: L10N['ship.alien.003']!.zh, family: 'C',
+  hullClassTier: 4, speedRatio: 287 / 205, hp: 2080, split: { s: .2, a: .55, h: .25 },
+  ...C_FAMILY_RESISTS, shotDmg: 192, gunCount: 1, hitRate: .95, reloadMs: 4000,
+  rangeMinM: 1, rangeMaxM: 6000, falloff: .5, blindDmgMul: .3,
+  dmgMix: { plasma: 8, explosive: 2 }, energyForm: 'spit', tactic: 'brawl',
+  drones: [{ drone: FOE_DRONE_C_JAWCLAW, count: 8 }], droneFireShare: .6,
+  mounts: [FOE_MOUNT_IDS.hivebackCharge, FOE_MOUNT_IDS.broodControl, FOE_MOUNT_IDS.hivebackHatchery],
+}
+export const FOE_ALIEN_BROODMOTHER: FoeShipDef = {
+  id: 'foe-alien-broodmother', name: L10N['ship.alien.004']!.zh, family: 'C',
+  hullClassTier: 5, speedRatio: 240 / 155, hp: 3640, split: { s: .2, a: .55, h: .25 },
+  ...C_FAMILY_RESISTS, shotDmg: 504, gunCount: 2, hitRate: .95, reloadMs: 4000,
+  rangeMinM: 1, rangeMaxM: 6000, falloff: .5, blindDmgMul: .3,
+  dmgMix: { plasma: 8, explosive: 2 }, energyForm: 'spit', tactic: 'brawl',
+  drones: [{ drone: FOE_DRONE_C_JAWCLAW, count: 12 }], droneFireShare: .5,
+  mounts: [FOE_MOUNT_IDS.broodmotherCharge, FOE_MOUNT_IDS.broodControl, FOE_MOUNT_IDS.broodmotherHatchery],
+}
 
 /** C 族 · 一档「畸变幼虫」——裂谷畸变体的**幼体**，brawl 贴脸撕咬（服务：裂谷畸变体猎杀令 58、
  * 噬口猎杀令 80）。舰种档由 T3 巡洋**下落为 T1 护卫舰**（船长族级结构修正：C 族只留
@@ -1691,6 +1733,7 @@ export const FOE_R_CORONA_NEXUS: FoeShipDef = {
   elite: true, // 显示名挂「精锐」前缀
 }
 /** 舰级表（按 id 索引；content-check 校验卡上引用的舰级必须在此） */export const FOE_SHIPS: readonly FoeShipDef[] = [
+  FOE_ALIEN_ACID_BURSTER, FOE_ALIEN_BROOD_WORKER, FOE_ALIEN_HIVEBACK, FOE_ALIEN_BROODMOTHER,
   FOE_SHIP_PIRATE_SKIFF,
   FOE_SHIP_PIRATE_CORVETTE,
   FOE_SHIP_PIRATE_SNIPER,

@@ -177,10 +177,8 @@ export const WEEKEND_GAIN_REPEL = 0.03
 export const WEEKEND_GAIN_OFFLINE_REPEL = 0.01
 
 /**
- * **锁定的入侵族**（2026-09-25 船长令：「**目前只做了H族，所以先锁定H族**」）：
- * A/C/G 三族仍是"占位口径"（派生卡只换名字/威胁/奖励、敌人编成还是原来那批）⇒ 抽到它们时玩家打不到真正的
- * 入侵舰队。置 `'H'` ⇒ **开局面一律判为 H 族**（独立卡 · 170 旗舰 · 黑匣一整套）；M2/M3 把三族补齐后
- * **置回 `null`** 即恢复"四族等概率随机"（`weekendRollOccupation` 里那一行就是唯一开关）。
+ * 全线硬锁；现行为null，普通周排期走已完成族循环，发射器从同池随机。
+ * 历史依据：2026-09-25曾仅完成H并锁H，2026-10-02批准循环，2026-10-06批准加入C。
  */
 export const WEEKEND_LOCKED_FAMILY: string | null = null
 
@@ -188,21 +186,21 @@ export const WEEKEND_LOCKED_FAMILY: string | null = null
  * **"做完了的族"**（**唯一登记处**）—— **船长 2026-10-02 令**：「**信号发射器召唤的敌人是随机的
  * （目前只有R和H）**」里那个"目前只有"的池子，同时也是族循环队列（`WEEKEND_FAMILY_ROTATION`）的来源。
  *
- * **口径 = 有自家独立入侵卡的族**（H 墨潮帮 2026-09-24 落地 · R 光环 2026-10-01 落地）；
- * A/C/G 三族仍是**占位口径**（派生卡只换名字/威胁/奖励，敌人编成还是虫洞那批）⇒ **不进本表**，
+ * 口径 = 有自家独立入侵卡的族；本批确认增加C异形。
+ * A/G 两族仍是**占位口径**（派生卡只换名字/威胁/奖励，敌人编成还是虫洞那批）⇒ **不进本表**，
  * 免得玩家抽到打不到真正入侵舰队的场。做一族就加一行（加完记得看族名表 `WEEKEND_FAMILY_NAME_ID`）。
  *
  * 两个消费方：
  * - **族循环**（`weekendFamilyForWindow`：无特意设置时按期顺延）；
  * - **随机抽族**（`weekendRandomFamilyOf`：信号发射器召唤用；`weekendRollOccupation` 的随机兜底同池）。
  */
-export const WEEKEND_FINISHED_FAMILIES: readonly string[] = ['R', 'H']
+export const WEEKEND_FINISHED_FAMILIES: readonly string[] = ['R', 'C', 'H']
 
 /**
  * **循环敌对势力**（**船长 2026-10-02 令**：「**一会8点开启入侵，设置为R族，下周如果没有特意设置，
  * 就采用循环敌对势力。**」）—— 玩家线**默认**按这条队**逐期顺延**，不必每周手动改。
  *
- * - **只有"做完了的族"进这条队**（= `WEEKEND_FINISHED_FAMILIES`）——A/C/G 三族是占位口径，
+ * - **只有"做完了的族"进这条队**（= `WEEKEND_FINISHED_FAMILIES`）——A/G 两族是占位口径，
  *   **不进循环**，免得玩家抽到打不到真舰队的场；
  * - 顺序 = 数组顺序，第 N 期取 `ROTATION[N % ROTATION.length]`（N 见 `weekendPeriodIndexOf`）；
  * - 想**特意设置某一期** ⇒ 见下面的 `WEEKEND_FAMILY_OVERRIDE`（也支持 `WEEKEND_LOCKED_FAMILY` 全线硬锁）。
@@ -212,7 +210,7 @@ export const WEEKEND_FAMILY_ROTATION: readonly string[] = WEEKEND_FINISHED_FAMIL
 /**
  * **循环锚点 = 2026-10-02 20:00（本地墙钟）那一期**——**船长 2026-10-02 令**里"一会 8 点开启入侵、
  * 设置为 R 族"的**那一期**：本期 = `ROTATION[0]` = **R**（与船长指定一致，指定与循环不打架）；
- * 此后每期顺延 ⇒ **10-09 那期 = H**、10-16 那期 = R ……（无特意设置时一直转下去）。
+ * 此后每期顺延，2026-10-06批准增加C族后采用R→C→H。
  *
  * 🔴 **2026-10-02 修（一号 · 船长令「按你推荐来」）**：原值是**手抄的毫秒数** `1_790_971_200_000`，
  * 实测 = **2026-10-03 04:00 本地**（＝`2026-10-02T20:00Z`）——比本注释写的锚点**晚 8 小时**。
@@ -224,7 +222,7 @@ export const WEEKEND_FAMILY_ROTATION: readonly string[] = WEEKEND_FINISHED_FAMIL
  * - 10-16 起才是 `floor(328h/168h) = 1` ⇒ 整个族循环**整整错一期**。
  *
  * 现在改成**按本地时间组件算**（与 `weekendT0Of` 的"本地周五 20:00"同一把尺；
- * 也免了下次再手抄毫秒数抄错）：锚点 = 本期 T0 ⇒ 期号 0/1/2… 逐期 +1，10-09 = H、10-16 = R。
+ * 也免了下次再手抄毫秒数抄错）：锚点与期号逐期递增；族取当前循环表及指定期覆盖。
  * 回归守卫见 `tests/rotation-anchor-20261002.test.ts`（旧值下 ③④⑤ 三条会红）。
  */
 export const WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS = new Date(2026, 9, 2, 20, 0, 0, 0).getTime()
@@ -235,12 +233,11 @@ export const WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS = new Date(2026, 9, 2, 20, 0
  * `periodIndex` = **第几期**（`weekendPeriodIndexOf(该期窗口 T0)`；锚点那一期 = 0）；
  * 只对**那一期**生效 ⇒ 过完自动回落到循环，不会像全线硬锁那样一直粘着。
  *
- * ⚠ 本期（index 0）本就 = 循环的 `'R'`；这里写出来是**把船长令显式记账在代码里**，
- * 也示范"以后要特意指定某一期"怎么写（例如 `{ family: 'H', periodIndex: 3 }`）。
+ * 船长确认本周异形入侵：指定锚点后一周，即2026-10-09那一期；历史已开场不追改。
  */
 export const WEEKEND_FAMILY_OVERRIDE: { readonly family: string; readonly periodIndex: number } | null = {
-  family: 'R',
-  periodIndex: 0,
+  family: 'C',
+  periodIndex: 1,
 }
 
 /** **某一期窗口的期号**（锚点那期 = 0；按**周**顺延 —— 排期是每周五 20:00 一期，窗口长 96h） */
@@ -266,17 +263,17 @@ export function weekendFamilyForWindow(windowT0WallMs: number): string | null {
 }
 
 /**
- * **调试模式下锁定的入侵族**（**船长 2026-10-01 令**：「**先让本地调试模式必定出新的R族入侵，我进行本地测试**」）。
+ * **调试模式下锁定的入侵族**（2026-10-07船长令：新异形入侵替换现有调试入侵）。
  *
  * 口径：
- * - **`debugQuick` 打开时**（本机调试档）⇒ 开局面一律判为 **R 族（光环）**，
+ * - **`debugQuick` 打开时**（本机调试档）⇒ 开局面一律判为 **C 族（异形）**，
  *   与 `WEEKEND_DEBUG_WIN_GAIN`（两场夺回）· `WEEKEND_DEBUG_TIME_DIVISOR`（时间 ÷60）·
  *   `WEEKEND_DEBUG_RESTART_MS`（1 小时后可重开）同属"调试便利"，只为让本机能反复实测新族；
- * - **非调试档逐字不变** ⇒ 仍走 `WEEKEND_LOCKED_FAMILY`（现 `'H'`）⇒ **真实玩家线看不到 R 族**。
+ * - 非调试档仍按普通周排期/循环，已开的历史场及光环补场不因调试常量而追改。
  *
  * ⚠ 想换调试族只改这一个常量（`null` = 调试档也走 `WEEKEND_LOCKED_FAMILY`）。
  */
-export const WEEKEND_DEBUG_FAMILY: string | null = 'R'
+export const WEEKEND_DEBUG_FAMILY: string | null = 'C'
 
 /**
  * **本次开局面实际锁定的族**（单点）——调试档优先于玩家线锁定：
@@ -348,7 +345,7 @@ export const WEEKEND_FLAGSHIP_DEADLINE_MS = 24 * 3_600_000
  * 2026-10-01：**加 R 族（光环）**——船长令「新势力：光环」，与新族同批进本表
  * （不进则光环没有旗舰战，与 H 族体感不对等）。
  */
-export const WEEKEND_BOSS_FAMILIES: readonly string[] = ['H', 'R']
+export const WEEKEND_BOSS_FAMILIES: readonly string[] = ['H', 'R', 'C']
 /**
  * **BOSS 池子总量 = 固定 150,000**（船长 2026-09-25：「**BOSS 血条 15 万（约 2.5 个母舰）来算**」）。
  *
@@ -867,11 +864,11 @@ export function weekendFoeFleetNameOf(family: string, cardName: string): string 
 
 /**
  * **该族的入侵敌卡是否"自带定价"**（独立卡 ⇒ 威胁 = 卡面实测价，可被抽签换卡）。
- * H / R 两族 = 真（各自的四张独立卡已按定价式落档）；A/C/G 三族 = 假（仍用虫洞池卡 + 入侵覆写威胁
+ * H / R / C = 真（独立卡按定价式落档）；A/G = 假（仍用虫洞池卡 + 入侵覆写威胁
  * 78/120，属 M1 占位口径，等各自旗舰卡设计好再迁）。
  */
 export function weekendFoeCardsSelfPriced(family: string): boolean {
-  return family === 'H' || family === 'R'
+  return family === 'H' || family === 'R' || family === 'C'
 }
 
 /**
@@ -893,9 +890,11 @@ const R_FOE_POOL_CORE: readonly string[] = ['corona-split', 'corona-converge']
  * **某族某区域的入侵敌卡池**：
  * - H 族：外围 `{骚扰 90, 袭击 108}` · 核心 `{袭击 108, 主力 129}`（等概率）；
  * - R 族：外围 `{游弋 90, 分光 108}` · 核心 `{分光 108, 汇聚 129}`（同上，威胁档沿用 H 族）；
- * - A/C/G 三族：仍取该族虫洞池（外围 = 层 5 池 · 核心 = 层 9 池）——**池长 1 ⇒ 抽签退化为取那一张**（逐字不变）。
+ * - C族：外围前锋/护卫，核心护卫/主力；旗舰另走巢母卡。
+ * - A/G：仍取该族虫洞池，外围层5、核心层9。
  */
 export function weekendFoePoolOf(family: string, isCore: boolean): readonly string[] {
+  if (family === 'C') return isCore ? ['alien-escort', 'alien-main'] : ['alien-vanguard', 'alien-escort']
   if (family === 'H') return isCore ? H_FOE_POOL_CORE : H_FOE_POOL_PERIPHERY
   if (family === 'R') return isCore ? R_FOE_POOL_CORE : R_FOE_POOL_PERIPHERY
   const fam = (WEEKEND_FAMILIES.includes(family) ? family : WEEKEND_FAMILIES[0]!) as WormholeFamily
@@ -980,6 +979,7 @@ export function weekendAmbushPickOf(
  * ⚠ 旗舰卡**不参与抽签**（船长 2026-09-25：「**旗舰卡单独**」）。
  */
 export function weekendFoeCardOf(family: string, kind: 'assault' | 'flagship'): string {
+  if (family === 'C') return kind === 'flagship' ? 'alien-broodmother' : 'alien-vanguard'
   if (family === 'H') return kind === 'flagship' ? 'ink-flagship' : H_FOE_POOL_PERIPHERY[0]!
   if (family === 'R') return kind === 'flagship' ? 'corona-nexus' : R_FOE_POOL_PERIPHERY[0]!
   const fam = (WEEKEND_FAMILIES.includes(family) ? family : WEEKEND_FAMILIES[0]!) as WormholeFamily

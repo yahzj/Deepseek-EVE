@@ -32,9 +32,9 @@ const ctx = buildSimContext()
 
 describe('残骸组表（14 组 · 族 × 地区）', () => {
   it('成员覆盖全表 42 张卡，一张不漏、一张不重；族/地区与卡的数据一致', () => {
-    expect(WRECK_GROUPS.length).toBe(15) // ⚠ 2026-09-24：13 → 14（H 族墨潮帮组 h-hi）· 2026-10-01：14 → 15（R 族余晖组 r-inv）
+    expect(WRECK_GROUPS.length).toBe(16)
     expect(WRECK_GROUP_OF_MEMBER.size).toBe(ctx.anomalies.size)
-    expect(ctx.anomalies.size).toBe(50) // ⚠ 2026-09-24：42 → 44（H 族两张入侵卡）· 2026-10-01：46 → 50（R 族四张入侵卡）
+    expect(ctx.anomalies.size).toBe(54)
     let wh = 0
     let hi = 0
     let lo = 0
@@ -55,7 +55,7 @@ describe('残骸组表（14 组 · 族 × 地区）', () => {
         expect(region, `${m} 的地区判定`).toBe(g.region)
       }
     }
-    expect([hi, lo, wh, inv]).toEqual([3, 5, 5, 2]) // 2026-09-26：H 族那组由**高安**改新类别**入侵**（船长令「统一为入侵残骸（新增一个类别）」）⇒ 高安 3 · 低安 5 · 洞内 5 · 入侵 1；2026-10-01：R 族余晖再加一个入侵组 ⇒ 入侵 2
+    expect([hi, lo, wh, inv]).toEqual([3, 5, 5, 3])
     expect(Object.keys(WRECK_REGION_LABELS)).toEqual(['hi', 'lo', 'wh', 'inv'])
   })
 

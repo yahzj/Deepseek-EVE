@@ -351,6 +351,12 @@ export type FoeMountId =
    * 见 `FoeMountDef.focusArray`。
    */
   | 'foe-mount-corona-focus-array'
+  | 'foe-mount-c-acid-charge'
+  | 'foe-mount-c-hiveback-charge'
+  | 'foe-mount-c-broodmother-charge'
+  | 'foe-mount-c-brood-control'
+  | 'foe-mount-c-hiveback-hatchery'
+  | 'foe-mount-c-broodmother-hatchery'
 
 /**
  * **敌方挂载件定义**（船长 2026-09-16 三句合一的落点）：
@@ -366,6 +372,12 @@ export type FoeMountId =
  * 多件同类效果相撞时按 `resolveFoeMounts` 的"后写覆盖先写"聚合；`note` 写设计备注。
  */
 export interface FoeMountDef {
+  /** 仅携带者的舰炮/机群修正；机群增程保留基础值供电子压制加算。 */
+  broodControl?: { gunDmgMul: number; droneDmgMul: number; droneRangeBonusPct: number }
+  /** 战损后补回当前波的损失机位；无限后备采用可序列化标识。 */
+  hatchery?: { cycleMs: number; stock: number | 'unlimited'; fleet?: true }
+  /** 存活并实际参战期间，逐秒增加全队机动速度。 */
+  fleetSpeedRamp?: { rampMs: number; maxBonusPct: number }
   id: FoeMountId
   /** 玩家可见名（敌舰悬停 / 战报里逐件列出） */
   name: string
@@ -578,6 +590,10 @@ export interface FoeMountDef {
     count?: number
     /** 优先复活名单（舰 id；名单内且处于阵亡状态者必定占名额——2026-09-26 加：墨潮干扰舰） */
     priorityShipIds?: readonly string[]
+    /** 仅允许这些舰级复活；缺省不限制，旧墨潮规则不变。 */
+    allowedShipIds?: readonly string[]
+    /** 使用携带者实际参战时长，避免后续波预积累。 */
+    activeClock?: true
   }
   /** 设计备注（不进玩家视野） */
   note?: string
@@ -2190,6 +2206,8 @@ export type FoeFamily = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'R'
  * 敌速两种口径混用无人察觉）。
  */
 export interface FoeShipDef {
+  /** 一次性爆发与腐蚀；不生成常规循环炮台。 */
+  acidBurst?: { attackRangeM: number; deathRangeM: number; corrosionPct: number; damage?: number; hitRate?: number }
   /** 舰级 id */
   id: string
   /** 舰级名（玩家可见舰种名；舰级路径的卡不再走"战术 × 血型"推导名） */

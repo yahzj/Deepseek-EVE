@@ -138,6 +138,7 @@ describe('① 内容侧：每族登记一件黑匣（R 族「光环旗舰黑匣�
     expect(BLACKBOX_ITEM_IDS, '三件都在名单里（族匣 ×2 ＋ 通用）').toEqual([
       PLUG_BLACKBOX_ITEM_ID,
       'blackbox-r',
+      'blackbox-c',
       'blackbox-universal',
     ])
   })

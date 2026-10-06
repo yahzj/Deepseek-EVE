@@ -189,6 +189,11 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
     bolt: { style: 'dot', len: 9, width: 2, tail: false },
     art: SPORE_DRONE_ART,
   },
+  'foe-drone-c-jawclaw': {
+    name: tr('item.alien.001'), tint: FOE_ACCENT.C, slots: SLOTS_HIGH(-26),
+    bolt: { style: 'dot', len: 8, width: 1.8, tail: false },
+    art: <><path d="M-12 0 Q-6-8 2-5 L10-9 L7-2 L13 0 L7 2 L10 9 L2 5 Q-6 8-12 0 Z" /><path d="M-5-5 L-10-9 M-5 5 L-10 9 M0-4 L4 0 L0 4" /></>,
+  },
   /* ══════════ **专属无人机**（2026-09-26 船长报障「**玩家的构件哨戒无人机不会出现在战斗场景中**」） ══════════
    *
    * 病根与修法：本表原先只登记**制式四型**，而玩家能造/能掉的**三款族专属机**（E 构件哨戒 · C 巢卫攻坚 ·

@@ -68,6 +68,7 @@ export function isBlackboxItem(itemId: string): boolean {
 export const BLACKBOX_ITEM_IDS: readonly string[] = [
   PLUG_BLACKBOX_ITEM_ID,
   blackBoxItemIdOfFamily('R'),
+  blackBoxItemIdOfFamily('C'),
   'blackbox-universal',
 ]
 

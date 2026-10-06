@@ -153,7 +153,7 @@ describe('本期击杀旗舰 ⇒ 本期封盘（船长 2026-10-02 令「甲」�
     expect(r.ok, r.ok ? '' : String(r.error)).toBe(true)
     expect(s.weekendEvent?.endedAtWallMs, '点出一场新场（未结束）').toBeUndefined()
     /** 发射器点出来的族是**随机**的（R/H，2026-10-02 另一条船长令）——这里只断言"确实是一支合法的入侵族" */
-    expect(['R', 'H']).toContain(s.weekendEvent?.family)
+    expect(['R', 'C', 'H']).toContain(s.weekendEvent?.family)
     /** 受影响档的补偿补场：与本期封盘互不干涉（那条路是承诺，不是自动连开） */
     const c = base()
     bossEvent(c)

@@ -12,16 +12,16 @@
 
 ## 统计
 
-- 文档总数 **482** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7748** KB · **60284** 行
-- 状态分布：**未标注** 254 · **已确认/已实现** 153 · **进行中** 53 · **待裁定** 21 · **历史留档** 1
-- 孤儿文档（0 引用）**105** 份 · 状态未标注 **254** 份
+- 文档总数 **484** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7765** KB · **60430** 行
+- 状态分布：**未标注** 255 · **已确认/已实现** 153 · **进行中** 53 · **待裁定** 22 · **历史留档** 1
+- 孤儿文档（0 引用）**105** 份 · 状态未标注 **255** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**324** 份
+- 三、现行设计稿（design）：**325** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**5** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
-- 八、测试档说明（test-saves）：**7** 份
+- 八、测试档说明（test-saves）：**8** 份
 - 六、专题：舰船美术（design/ship-battle-art）：**7** 份
 - 四、已归档设计稿（design/archive）：**83** 份
 
@@ -35,8 +35,8 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 9 KB / 125 行 | 2 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 299 KB / 308 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 90 KB / 908 行 | 95 / 5 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 512 KB / 1042 行 | 227 / 20 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 91 KB / 471 行 | 377 / 26 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 513 KB / 1054 行 | 227 / 20 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 92 KB / 473 行 | 377 / 26 |
 
 ## 七、评审与体检（review） —— 12 份
 
@@ -55,11 +55,12 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 324 份
+## 三、现行设计稿（design） —— 325 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/wreck-fit-repeat-plugs-20261007.md` | 重复插件与沉船装配复用 | 已确认/已实现（已确认） | 2026-10-07 | 4 KB / 37 行 | 0 / 0 |
+| `docs/design/announcement-draft-alien-invasion-20261007.md` | 异形入侵公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 26 行 | 2 / 0 |
+| `docs/design/wreck-fit-repeat-plugs-20261007.md` | 重复插件与沉船装配复用 | 已确认/已实现（已实现） | 2026-10-07 | 5 KB / 41 行 | 0 / 0 |
 | `docs/design/ammo-mk3-black-market-20261006.md` | 黑市独占MK3弹药生产线 | 已确认/已实现（已实现并本地合入） | 2026-10-06 | 7 KB / 63 行 | 0 / 0 |
 | `docs/design/announcement-draft-signal-space-20261006.md` | 信号空间公告待审稿 | 待裁定（待船长明确批准） | 2026-10-06 | 1 KB / 26 行 | 1 / 0 |
 | `docs/design/black-market-android-merchant-20261006.md` | 触手发束与机械副官风格商人 | 已确认/已实现（已实现） | 2026-10-06 | 6 KB / 57 行 | 0 / 0 |
@@ -381,7 +382,7 @@
 | `docs/design/v7-design.md` | V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版 | 未标注 | — | 7 KB / 117 行 | 0 / 0 |
 | `docs/design/v9-market.md` | V9 设计：市场系统（已实现） | 未标注（已按用户确认的 V4/V5 方案实现） | — | 16 KB / 174 行 | 16 / 0 |
 | `docs/design/weapon-skill-batch.md` | 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四） | 未标注 | — | 8 KB / 100 行 | 4 / 0 |
-| `docs/design/weekend-invasion.md` | 周末入侵活动（设计定稿 · 2026-09-25 22:00 已对玩家开放 · M2 余下三族 / M3 未开工） | 未标注（M1 机制骨架 ＋ M2 的 H 族） | — | 31 KB / 259 行 | 14 / 7 |
+| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注（M1 机制骨架 ＋ M2 的 H 族） | — | 41 KB / 329 行 | 16 / 7 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 5 KB / 56 行 | 5 / 0 |
 
 ## 九、封存卷（archive · 冻结件，只读不改） —— 35 份
@@ -431,8 +432,8 @@
 | `docs/data-editor.md` | 大鲸鱼数据编辑器 | 未标注 | — | 7 KB / 57 行 | 6 / 0 |
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
-| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 805 行 | 27 / 18 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 14 KB / 102 行 | 20 / 7 |
+| `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 27 / 18 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 14 KB / 103 行 | 20 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -440,11 +441,12 @@
 |---|---|---|---|---|---|
 | `docs/design/battle-data/p41-drone-readings-20260912.md` | P-41 机群批标定轮 · 读数（2026-09-12 · 二号 d2） | 未标注 | 2026-09-12 | 7 KB / 88 行 | 3 / 0 |
 
-## 八、测试档说明（test-saves） —— 7 份
+## 八、测试档说明（test-saves） —— 8 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/test-saves/wreck-fit-20261007.md` | 重复插件与沉船装配验收档 | 已确认/已实现（随已确认功能交付） | 2026-10-07 | 1 KB / 15 行 | 2 / 0 |
+| `docs/test-saves/alien-invasion-20261006.md` | 异形入侵验收档 | 未标注 | 2026-10-06 | 2 KB / 22 行 | 2 / 0 |
 | `docs/test-saves/ammo-mk3-20261006.md` | MK3弹药生产线验收档 | 已确认/已实现（随已确认功能交付） | 2026-10-06 | 1 KB / 21 行 | 2 / 0 |
 | `docs/test-saves/per-gun-20261005.md` | 逐炮齐射验收档 | 未标注 | 2026-10-05 | 1 KB / 12 行 | 1 / 0 |
 | `docs/test-saves/black-market-20261004.md` | 黑市页面验收档 | 待裁定（随功能待船长验收） | 2026-10-04 | 1 KB / 15 行 | 1 / 0 |
@@ -556,7 +558,7 @@
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/wreck-fit-repeat-plugs-20261007.md`（2026-10-07 · 4 KB）—— 重复插件与沉船装配复用
+- `docs/design/wreck-fit-repeat-plugs-20261007.md`（2026-10-07 · 5 KB）—— 重复插件与沉船装配复用
 - `docs/design/ammo-mk3-black-market-20261006.md`（2026-10-06 · 7 KB）—— 黑市独占MK3弹药生产线
 - `docs/design/black-market-android-merchant-20261006.md`（2026-10-06 · 6 KB）—— 触手发束与机械副官风格商人
 - `docs/design/black-market-cards-rework-20261006.md`（2026-10-06 · 12 KB）—— 黑市商品卡详情统一与商人重绘
@@ -662,8 +664,9 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（254 份，待补一行 `状态：…`）
+## 附：状态未标注（255 份，待补一行 `状态：…`）
 
+- `docs/test-saves/alien-invasion-20261006.md`（2026-10-06）—— 异形入侵验收档
 - `docs/design/real-playthrough-bug-test-20261005.md`（2026-10-05）—— 三目标实机式全流程BUG测试
 - `docs/test-saves/per-gun-20261005.md`（2026-10-05）—— 逐炮齐射验收档
 - `docs/design/activity-mobile-audit-20261004.md`（2026-10-04）—— 主控活动切换、显示与手机适配核查
@@ -907,7 +910,7 @@
 - `docs/design/v7-design.md`（无日期）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 - `docs/design/v9-market.md`（无日期）—— V9 设计：市场系统（已实现）
 - `docs/design/weapon-skill-batch.md`（无日期）—— 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四）
-- `docs/design/weekend-invasion.md`（无日期）—— 周末入侵活动（设计定稿 · 2026-09-25 22:00 已对玩家开放 · M2 余下三族 / M3 未开工）
+- `docs/design/weekend-invasion.md`（无日期）—— 周末入侵活动（常设设计）
 - `docs/development-conventions-changelog.md`（无日期）—— 开发约定 · 变更记录（development-conventions.md 的历次变更）
 - `docs/development-conventions.md`（无日期）—— 开发约定（Development Conventions）
 - `docs/git-gate-approval.md`（无日期）—— Git提交审批放行

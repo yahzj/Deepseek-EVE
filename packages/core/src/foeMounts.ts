@@ -24,6 +24,12 @@ import type { FoeMountDef, FoeMountId } from './types'
 
 /** id 常量表（数据侧引用它，写错当场编译不过） */
 export const FOE_MOUNT_IDS = {
+  acidCharge: 'foe-mount-c-acid-charge',
+  hivebackCharge: 'foe-mount-c-hiveback-charge',
+  broodmotherCharge: 'foe-mount-c-broodmother-charge',
+  broodControl: 'foe-mount-c-brood-control',
+  hivebackHatchery: 'foe-mount-c-hiveback-hatchery',
+  broodmotherHatchery: 'foe-mount-c-broodmother-hatchery',
   /** A 族海盗：×1.6 · 冷却 **30 秒**（船长 2026-09-16 亲定；只挂洞内三张 A 族卡的条目） */
   chargePirate: 'foe-mount-charge-pirate',
   /** C 族虫群：按档倍率 1.5 / 2 / 2.5 / 3（`ALIEN_CHARGE_MUL_BY_TIER` 是契约基准）、冷却 10 秒 */
@@ -95,6 +101,17 @@ export const FOE_MOUNT_IDS = {
 
 /** 全部挂载件（键 = id；`FoeMountId` 联合类型保证穷尽） */
 export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
+  'foe-mount-c-acid-charge': { id: 'foe-mount-c-acid-charge', name: '爆虫冲锋器', en: 'Acid Burster Charger', charge: { mul: 5, cooldownMs: 10_000, webImmune: true } },
+  'foe-mount-c-hiveback-charge': { id: 'foe-mount-c-hiveback-charge', name: '背巢缓冲锋器', en: 'Hiveback Charger', charge: { mul: 1.5, cooldownMs: 10_000, webImmune: true } },
+  'foe-mount-c-broodmother-charge': { id: 'foe-mount-c-broodmother-charge', name: '巢母缓冲锋器', en: 'Broodmother Charger', charge: { mul: 1.25, cooldownMs: 10_000, webImmune: true } },
+  'foe-mount-c-brood-control': { id: 'foe-mount-c-brood-control', name: '巢群导控腔', en: 'Brood Control Chamber', broodControl: { gunDmgMul: 0.4, droneDmgMul: 1.5, droneRangeBonusPct: 0.5 } },
+  'foe-mount-c-hiveback-hatchery': { id: 'foe-mount-c-hiveback-hatchery', name: '虫群孵化巢', en: 'Brood Hatchery', hatchery: { cycleMs: 12_000, stock: 32, fleet: true } },
+  'foe-mount-c-broodmother-hatchery': {
+    id: 'foe-mount-c-broodmother-hatchery', name: '巢母孵化巢', en: 'Broodmother Hatchery',
+    hatchery: { cycleMs: 9_000, stock: 'unlimited', fleet: true },
+    reviveEscort: { everyMs: 30_000, count: 1, allowedShipIds: ['foe-alien-brood-worker'], activeClock: true },
+    fleetSpeedRamp: { rampMs: 120_000, maxBonusPct: 1.8 },
+  },
   [FOE_MOUNT_IDS.chargePirate]: {
     id: FOE_MOUNT_IDS.chargePirate,
     name: '劫掠冲锋推进器',
@@ -338,6 +355,9 @@ export function foeMountOf(id: string): FoeMountDef | undefined {
 
 /** 挂载件解析结果 = 运行时字段（`UnitSpec` 上那几个可选字段的同名子集）＋ 展示名 */
 export interface ResolvedFoeMounts {
+  broodControl?: FoeMountDef['broodControl']
+  hatchery?: FoeMountDef['hatchery']
+  fleetSpeedRamp?: FoeMountDef['fleetSpeedRamp']
   foeCanCharge?: true
   foeChargeMul?: number
   foeChargeCooldownMs?: number
@@ -361,7 +381,7 @@ export interface ResolvedFoeMounts {
   /** **船体修理装置的脉冲参数**（原样带给单位；`k` 由建档侧按本层威胁现算，见 `FoeMountDef.repairPulse`） */
   foeRepairPulse?: { everyMs: number; armor: number; hull: number }
   /** **支援舰船召唤装置的节拍**（原样带给单位；池子/上限/入场口径见 `FoeMountDef.reviveEscort`） */
-  foeReviveEscort?: { everyMs: number; count?: number; priorityShipIds?: readonly string[] }
+  foeReviveEscort?: FoeMountDef['reviveEscort']
   /**
    * **射程压制阵列的削减率**（原样带给单位；消费方 = `meJammerNetOf` 那条链，逐字不变）。
    * 与舰级字段 `FoeShipDef.foeRangeDebuffPct` **同源不同入口**：解析后写进**同一个运行时字段**。
@@ -420,6 +440,9 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
       continue
     }
     out.names.push(def.name)
+    if (def.broodControl) out.broodControl = { ...def.broodControl }
+    if (def.hatchery) out.hatchery = { ...def.hatchery }
+    if (def.fleetSpeedRamp) out.fleetSpeedRamp = { ...def.fleetSpeedRamp }
     out.namePairs.push([def.name, def.en ?? def.name])
     if (def.charge) {
       out.foeCanCharge = true

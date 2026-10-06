@@ -488,6 +488,15 @@
 | foe-alien-starcore-adult | 星髓成虫 | `Starcore Adult` |
 | foe-alien-maw | 噬口巨兽 | `Maw Behemoth` |
 | foe-alien-spore-hive | 孢群异虫 | `Spore Hive Aberrant` |
+| foe-alien-acid-burster | 酸液爆虫 | `Acid Burster` |
+| foe-alien-brood-worker | 哺育工虫 | `Brood Worker` |
+| foe-alien-hiveback | 背巢巨兽 | `Hiveback Behemoth` |
+| foe-alien-broodmother | 巢母巨兽 | `Broodmother Behemoth` |
+| foe-drone-c-jawclaw | 颚钳虫群 | `Jawclaw Swarm` |
+| foe-mount-c-brood-control | 巢群导控腔 | `Brood Control Chamber` |
+| foe-mount-c-hiveback-hatchery | 虫群孵化巢 | `Brood Hatchery` |
+| foe-mount-c-broodmother-hatchery | 巢母孵化巢 | `Broodmother Hatchery` |
+| blackbox-c | 异形旗舰黑匣 | `Alien Flagship Black Box` |
 | foe-d-ghost | 幽灵舰 | `Ghost Ship` |
 | foe-d-longship | 守墓长舰 | `Gravekeeper Longship` |
 | foe-d-stasis | 静滞卫舰 | `Stasis Guard Ship` |

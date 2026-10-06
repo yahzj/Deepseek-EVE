@@ -66,6 +66,8 @@ import {
   INK_SPEED_EXEMPT_SHIP_IDS,
   CORONA_SPEED_BAND,
   ALIEN_CHARGE_MUL_BY_TIER,
+  ALIEN_INVASION_CHARGE_MUL,
+  ALIEN_FAST_SHIP_IDS,
   ALIEN_SLOW_SHIP_IDS,
   COMMS_MESSAGES,
   COMMS_FACTIONS,
@@ -356,7 +358,7 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 //   +4（折跃等离子 / 低温跃迁浆 / 曲率凝析物 / 超空间折跃燃料）→ 物品总数 104→**108**、原材料 8→**11**
 // 2026-09-30（实验室后续内容批 · 船长令「信号发射器和技能加速剂」）：+2（信号发射器 / 突触加速剂，
 //   走奇货档 · 施工期 `unreleased`）→ 物品总数 108→**110**
-check(itemDefs.length === 114, `物品总数应为 114（2026-10-06 增三系MK3弹药），实际 ${itemDefs.length}`)
+check(itemDefs.length === 115, `物品总数应为115（含三系MK3弹药与异形旗舰黑匣），实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 11, `原材料应为 11 种（2026-09-29 跃迁燃料链 +3），实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
@@ -3236,7 +3238,7 @@ for (const m of MODULES) {
     check(g.tier === majority, `残骸组契约：${g.key} 档位记 ${g.tier}，成员产残骸卡多数档是 ${majority}`)
     groupsChecked += 1
   }
-  check(WRECK_GROUPS.length === 15, `残骸组契约：组数应为 15（2026-09-24 起含 H 族墨潮帮那组 · 2026-10-01 起含 R 族光环那组），实际 ${WRECK_GROUPS.length}`)
+  check(WRECK_GROUPS.length === 16, `残骸组契约：包含本批 C 族入侵共16组，实际 ${WRECK_GROUPS.length}`)
   // ⑥ 出量梯度：常 ≡ 1.00、常 ≤ 险 ≤ 危
   check(WRECK_YIELD_TIER_MUL.common === 1, `残骸组契约：常档出量乘数应为 1.00，实际 ${WRECK_YIELD_TIER_MUL.common}`)
   check(
@@ -3295,7 +3297,7 @@ for (const m of MODULES) {
   // 行数 = 洞外 9 组（洞内 5 组维持无市场行 —— 合并前洞内 15 张隐藏卡本就没有收购行）
   const wreckBuyPrice = { common: 30, risky: 40, dire: 50 }
   const noSkillPerM3 = 82_000 / 1_440
-  check(WRECK_BUY_GOODS.length === 10, `残骸收购卡应有 10 张（洞外 15−5 组；2026-09-25 新增 H 族洞外组 h-hi · 2026-10-01 新增 R 族洞外组 r-inv），实际 ${WRECK_BUY_GOODS.length}`)
+  check(WRECK_BUY_GOODS.length === 11, `残骸收购卡包含C入侵应有11张，实际 ${WRECK_BUY_GOODS.length}`)
   for (const g of WRECK_BUY_GOODS) {
     const key = g.refId.startsWith('wreck-') ? g.refId.slice('wreck-'.length) : ''
     const def = WRECK_GROUP_BY_KEY.get(key)
@@ -3807,11 +3809,11 @@ for (const m of MODULES) {
             )
             if (tier === 4 || tier === 5) {
               check(
-                ALIEN_BEAST_SHIP_IDS.includes(slot.ship.id),
+                (tier === 5 ? ALIEN_FLAGSHIP_SHIP_IDS : ALIEN_BEAST_SHIP_IDS).includes(slot.ship.id),
                 `敌速口径契约：C 族 ${def.name} 的舰级「${slot.ship.name}」登记了 T${tier} 档却不在**巨兽白名单**` +
                   `（ALIEN_BEAST_SHIP_IDS）——船长裁定③只允许「生物巨兽」用 T4，且**允许慢**（本档免比率校验）`,
               )
-            } else {
+            } else if (!ALIEN_FAST_SHIP_IDS.includes(slot.ship.id)) {
               check(
                 ratio >= ALIEN_SPEED_BAND[0] && ratio <= ALIEN_SPEED_BAND[1],
                 `敌速口径契约：C 族 ${def.name} 的舰级「${slot.ship.name}」（${tactic}）比率 ${ratio.toFixed(2)}× 越出**全族提速带** ` +
@@ -4207,7 +4209,7 @@ for (const m of MODULES) {
      *    ④ **已备未上场**（有 `repairPct` 但没有任何卡引用）：**预警**、不阻断——照机群「已备未挂」先例
      *       （2026-09-16 船长定「先不进卡」⇒ 本批应收在这一行里）。 */
     {
-      const REPAIR_SHIP_WHITELIST = new Set(['foe-g-remnant-tender'])
+      const REPAIR_SHIP_WHITELIST = new Set(['foe-g-remnant-tender', 'foe-alien-brood-worker'])
       const referenced = new Set<string>()
       const repCtx = buildSimContext()
       for (const card of repCtx.anomalies.values()) for (const slot of card.ships ?? []) referenced.add(slot.ship.id)
@@ -4259,7 +4261,7 @@ for (const m of MODULES) {
       const aliens = FOE_SHIPS.filter((s) => s.family === 'C')
       for (const s of aliens) {
         const r = resolveFoeMounts(s.mounts)
-        const want = ALIEN_CHARGE_MUL_BY_TIER[s.hullClassTier]
+        const want = ALIEN_INVASION_CHARGE_MUL[s.id] ?? ALIEN_CHARGE_MUL_BY_TIER[s.hullClassTier]
         if (r.foeCanCharge !== true) bad.push(`${s.name}（${s.id}）未挂冲锋件`)
         else if (want === undefined) bad.push(`${s.name}（${s.id}）的档位 T${s.hullClassTier} 在按档表里没有倍率`)
         else if (r.foeChargeMul !== want)
@@ -4392,7 +4394,7 @@ for (const m of MODULES) {
          *    ② 其余任何卡的条目也不许挂（免得普通悬赏莫名其妙开始复活）。
          */
         for (const s of FOE_SHIPS) {
-          if (resolveFoeMounts(s.mounts).foeReviveEscort !== undefined) {
+          if (resolveFoeMounts(s.mounts).foeReviveEscort !== undefined && s.id !== 'foe-alien-broodmother') {
             bad.push(`舰级 ${s.name}（${s.id}）挂了支援舰船召唤装置——该件只允许写在 ink-flagship 的母舰条目上`)
           }
         }
@@ -4400,10 +4402,12 @@ for (const m of MODULES) {
           for (const sl of a.ships ?? []) {
             const eff = resolveFoeMounts(sl.mounts ?? sl.ship.mounts)
             if (eff.foeReviveEscort === undefined) continue
-            if (a.id !== 'ink-flagship' || sl.ship.id !== 'foe-h-ink-flagship') {
+            const validInk = a.id === 'ink-flagship' && sl.ship.id === 'foe-h-ink-flagship'
+            const validAlien = a.id === 'alien-broodmother' && sl.ship.id === 'foe-alien-broodmother' && eff.foeReviveEscort.allowedShipIds?.join() === 'foe-alien-brood-worker'
+            if (!validInk && !validAlien) {
               bad.push(
                 `卡 ${a.id} 的条目 ${sl.ship.name}（${sl.ship.id}）挂了支援舰船召唤装置——` +
-                  `该件只允许挂在入侵母舰（ink-flagship 的 foe-h-ink-flagship 条目）上`,
+                  `复活仅允许墨潮入侵母舰或本批只补工虫的巢母`,
               )
             }
           }
@@ -4424,6 +4428,9 @@ for (const m of MODULES) {
             FOE_MOUNT_IDS.chargeSwarmT2,
             FOE_MOUNT_IDS.chargeSwarmT3,
             FOE_MOUNT_IDS.chargeSwarmT4,
+            FOE_MOUNT_IDS.acidCharge,
+            FOE_MOUNT_IDS.hivebackCharge,
+            FOE_MOUNT_IDS.broodmotherCharge,
           ] as const
           for (const id of swarm) {
             if (FOE_MOUNTS[id].charge?.webImmune !== true) {
@@ -4790,7 +4797,7 @@ for (const m of MODULES) {
             `舰级契约：${def.name} 的编成条目「${slot.ship.name}」有效血型 Σ ≠ 1（${got.s}+${got.a}+${got.h}）——血型比例须归一`,
           )
         }
-        if (def.dmgMix) {
+        if (def.dmgMix && !slot.ship.acidBurst) {
           const eff = slot.dmgMix ?? slot.ship.dmgMix
           check(
             normMix(def.dmgMix) === normMix(eff),
@@ -8627,6 +8634,37 @@ function checkPlugEffectWiring(): void {
   )
 }
 checkPlugEffectWiring()
+
+// 本批状态攻击与载体例外必须具名登记，不能借此放宽旧敌舰。
+{
+  const newIds = new Set(['foe-alien-acid-burster', 'foe-alien-brood-worker', 'foe-alien-hiveback', 'foe-alien-broodmother'])
+  const carriers = new Set(['foe-alien-hiveback', 'foe-alien-broodmother'])
+  const acid = FOE_SHIPS.find(s => s.id === 'foe-alien-acid-burster')!
+  check(acid.shotDmg === 0 && acid.hullClassTier === 1 && acid.dmgMix.kinetic === 1 && acid.acidBurst?.attackRangeM === 250 && acid.acidBurst.deathRangeM === 300 && acid.acidBurst.corrosionPct === .15 && acid.acidBurst.damage === 300 && acid.acidBurst.hitRate === .95, '爆虫契约：T1一次性300动能攻击、250/300米及15个百分点必须接线')
+  for (const ship of FOE_SHIPS) {
+    const mount = resolveFoeMounts(ship.mounts)
+    if (ship.acidBurst) check(ship.id === acid.id, `一次性腐蚀只登记爆虫：${ship.id}`)
+    if (mount.hatchery || mount.broodControl) check(carriers.has(ship.id), `载体挂件越界：${ship.id}`)
+    if (carriers.has(ship.id)) {
+      const count = ship.drones?.reduce((n, ds) => n + ds.count, 0)
+      const isBack = ship.id === 'foe-alien-hiveback'
+      check(ship.gunCount === (isBack ? 1 : 2) && ship.rangeMaxM === 6000 && count === (isBack ? 8 : 12), `载体配置错位：${ship.id}`)
+      check(mount.broodControl?.gunDmgMul === .4 && mount.broodControl.droneDmgMul === 1.5 && mount.broodControl.droneRangeBonusPct === .5, `载体加成缺失：${ship.id}`)
+      check(mount.hatchery?.stock === (isBack ? 32 : 'unlimited') && mount.hatchery.cycleMs === (isBack ? 12000 : 9000) && mount.hatchery.fleet === true, `孵化额度或周期错位：${ship.id}`)
+      if (!isBack) {
+        check(mount.foeReviveEscort?.everyMs === 30000 && mount.foeReviveEscort.count === 1 && mount.foeReviveEscort.allowedShipIds?.join() === 'foe-alien-brood-worker' && mount.foeReviveEscort.activeClock === true, '巢母仅30秒复活一艘本波工虫')
+        check(mount.fleetSpeedRamp?.rampMs === 120000 && mount.fleetSpeedRamp.maxBonusPct === 1.8, '巢母120秒全队速度增加180%')
+      }
+    }
+    if (mount.fleetSpeedRamp || mount.foeReviveEscort?.activeClock) check(ship.id === 'foe-alien-broodmother', `巢母能力越界：${ship.id}`)
+  }
+  for (const card of ANOMALIES_FLAVORED) for (const slot of card.ships ?? []) {
+    if (newIds.has(slot.ship.id)) check(card.region === 'inv' && card.foeFamily === 'C', `新异形泄露非入侵：${card.id}/${slot.ship.id}`)
+    if (slot.ship.acidBurst) check(card.region === 'inv' && slot.ship.shotDmg === 0, `混伤状态例外不合法：${card.id}`)
+  }
+  const drone = FOE_DRONES.find(d => d.id === 'foe-drone-c-jawclaw')!
+  check(drone.role === 'scout' && drone.hitRate === .89 && drone.damageType === 'kinetic', '颚钳契约：侦察/动能/89%基础命中')
+}
 
 for (const [table, document] of Object.entries({ ships: staticShips, modules: staticModules, plugs: staticPlugs, items: staticItems, market: staticMarket })) {
   for (const issue of validateDocument(document, table as import('./data-editor-contract').DataTable)) check(false, `静态数据${table}/${issue.id ?? ''}/${issue.path ?? ''}：${issue.message}`)

@@ -89,7 +89,7 @@ describe('入侵残骸按来源族分账', () => {
     injectWeekendWreck(s, GID, 1, 'R')
     expect(s.weekendWrecks?.[GID]?.byFamily['?']?.density).toBe(200)
     const pick = pullOneWreck(s, ctx, GID, 0)!
-    expect(['wreck-h-hi', 'wreck-r-inv']).toContain(pick.itemId)
+    expect(['wreck-h-hi', 'wreck-r-inv', 'wreck-c-inv']).toContain(pick.itemId)
     expect(weekendWreckDensityOf(s, GID)).toBeLessThan(201)
   })
 

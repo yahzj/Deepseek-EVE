@@ -206,7 +206,7 @@ describe('入侵敌卡随机抽取（船长 2026-09-25：外围 {骚扰, 袭击}
   it('池成员：H 族两张 · A/C/G 三族仍取虫洞池（池长 1 ⇒ 抽签退化为取那一张）', () => {
     expect(weekendFoePoolOf('H', false)).toEqual(['ink-harass', 'ink-raid'])
     expect(weekendFoePoolOf('H', true)).toEqual(['ink-raid', 'ink-main'])
-    for (const fam of ['A', 'C', 'G']) {
+    for (const fam of ['A', 'G']) {
       expect(weekendFoePoolOf(fam, false)).toHaveLength(1)
       expect(weekendFoePoolOf(fam, true)).toHaveLength(1)
     }
@@ -244,7 +244,7 @@ describe('入侵敌卡随机抽取（船长 2026-09-25：外围 {骚扰, 袭击}
   })
 
   it('A/C/G 三族仍是占位口径：标签 = 主动威胁 × 0.75（与它们的主动标签同一把尺）', () => {
-    const { s } = occupied(11, 'C')
+    const { s } = occupied(11, 'A')
     const per = weekendAmbushPickOf(s, ctx, 'galaxy-home', 0)!
     expect(per.threat).toBe(Math.round(78 * 0.75))
     expect(per.strengthMul).toBe(0.75)

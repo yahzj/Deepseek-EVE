@@ -89,7 +89,7 @@ describe('信号发射器 · 使用与拒绝', () => {
     expect(ev.peripheryIds.length, '外围星系非空').toBeGreaterThan(0)
     /** 🔴 **势力随机**（船长 2026-10-02 令）：落在"做完了的族"里，**且绝不是占位族** */
     expect(WEEKEND_FINISHED_FAMILIES, '先决：随机池非空').toContain(ev.family)
-    for (const placeholder of ['A', 'C', 'G']) {
+    for (const placeholder of ['A', 'G']) {
       expect(ev.family, `占位族 ${placeholder} 不该被召唤出来`).not.toBe(placeholder)
       expect(WEEKEND_FINISHED_FAMILIES, `占位族 ${placeholder} 不该在随机池里`).not.toContain(placeholder)
     }
@@ -111,7 +111,7 @@ describe('信号发射器 · 使用与拒绝', () => {
       /** 收场 ⇒ 下一枚才能用（Q3b：只能在没有入侵时使用） */
       s.weekendEvent!.endedAtWallMs = (s.weekendEvent!.startedAtWallMs ?? 0) + 1
     }
-    expect([...seen].sort(), '12 场里 R 与 H 都该出现过（随机而非恒定）').toEqual(['H', 'R'])
+    expect([...seen].sort(), '三种完整入侵都能随机出现').toEqual(['C', 'H', 'R'])
     /** 纯函数：同一个 (种子, 场次) 恒得同一族 */
     const probe = readyState()
     expect(weekendRandomFamilyOf(probe, 7)).toBe(weekendRandomFamilyOf(probe, 7))

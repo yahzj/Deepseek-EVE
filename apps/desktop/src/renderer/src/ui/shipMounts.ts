@@ -316,6 +316,10 @@ export const FOE_MOUNTS: Record<string, ShipMounts> = {
  * 未收录舰 → 回退 `FOE_MOUNTS[族字母]`（族级）→ 再回退旧单焰（`ShipSprite` 内的兜底）。
  */
 export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
+  'foe-alien-acid-burster': { engines: [], muzzles: [{ x: 198, y: 59 }] },
+  'foe-alien-brood-worker': { engines: [], muzzles: [{ x: 218, y: 31 }, { x: 220, y: 94 }, { x: 213, y: 57 }, { x: 213, y: 70 }] },
+  'foe-alien-hiveback': { engines: [], muzzles: [{ x: 224, y: 57 }] },
+  'foe-alien-broodmother': { engines: [], muzzles: [{ x: 231, y: 46 }, { x: 232, y: 77 }] },
   // ── A 族 · 海盗 ──
   // 海盗快艇：nozzle(44,52,8,18) 左缘中点；桅顶族色小旗尖端(74,36)
   'foe-pirate-skiff': { engines: [{ x: 44, y: 61 }], muzzles: [{ x: 74, y: 36 }] },

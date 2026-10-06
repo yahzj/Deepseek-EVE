@@ -15,6 +15,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { ALIEN_CHARGE_MUL_BY_TIER, ANOMALIES_FLAVORED, FOE_SHIPS, WORMHOLE_FOE_CARDS } from '@whale/data'
+import { ALIEN_INVASION_CHARGE_MUL } from '@whale/data'
 import type { GameState, SimContext } from '../src/index'
 import type { FoeShipDef } from '../src/types'
 import { addShipToFleet, createInitialState, createPlayerSpec, effectiveHitMul, foeChargeCount, repairDeprecatedModules, thrusterCycleFullText, thrusterCycleOfModule, thrusterCycleSeconds, thrusterCycleText, thrusterPhase, unitThrusterCycle } from '../src/index'
@@ -503,7 +504,7 @@ describe('敌冲锋（2026-09-10 定资格；2026-09-11 改"到达解除"；**20
     for (const s of aliens) {
       const r = resolveFoeMounts(s.mounts)
       expect(r.foeCanCharge, `${s.name} 须具冲锋资格`).toBe(true)
-      expect(r.foeChargeMul, `${s.name}（T${s.hullClassTier}）倍率`).toBe(ALIEN_CHARGE_MUL_BY_TIER[s.hullClassTier])
+      expect(r.foeChargeMul, `${s.name}（T${s.hullClassTier}）倍率`).toBe(ALIEN_INVASION_CHARGE_MUL[s.id] ?? ALIEN_CHARGE_MUL_BY_TIER[s.hullClassTier])
       expect(r.foeChargeCooldownMs, `${s.name} 冲锋冷却`).toBe(10_000) // C 族维持 10 秒
     }
     // 逐条点名（防"表改了但舰级没跟上"被上面那条掩盖）：T1 1.5 · T2 2 · T3 2.5 · T4 3

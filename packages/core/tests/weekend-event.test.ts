@@ -240,11 +240,11 @@ describe('周末入侵 · 时间轴', () => {
    * **族的选择**（沿革：2026-09-25 船长令「**目前只做了H族，所以先锁定H族**」⇒
    * 🔴 **2026-10-01 船长令**「**先让本地调试模式必定出新的R族入侵，我进行本地测试**」⇒
    * 🔴 **2026-10-02 船长令**「**一会8点开启入侵，设置为R族，下周如果没有特意设置，就采用循环敌对势力。**」）：
-   * **玩家线 = 循环**（锚点 2026-10-02 20:00 那期起：R → H → R …，`WEEKEND_LOCKED_FAMILY` 平时 `null`）；
-   * **调试档判 R**（本地实测新族），且调试档下手上的**历史场**（别的族）**就地改判**，
+   * **玩家线 = 循环**（锚点 2026-10-02 20:00 那期起，新增异形后R → C → H，硬锁平时为null）；
+   * 2026-10-07船长令：调试档判C，且调试档下手上的历史场就地改判，
    * 进度台账与场次号都留着（只换族）。
    */
-  it('族的选择：玩家线走循环（本期 = R）、调试档判 R；调试档把历史场就地改判为 R（进度台账不动）', () => {
+  it('族的选择：玩家线走三族循环、调试档判C；历史调试场改族保留进度台账', () => {
     expect(WEEKEND_LOCKED_FAMILY, '全线硬锁平时不启用（改由循环决定）').toBeNull()
     const s0 = fresh(true)
     expect(weekendFamilyForWindow(WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS), '锚点那期 = 循环第 0 位').toBe(
@@ -256,20 +256,19 @@ describe('周末入侵 · 时间轴', () => {
     ).toBe(WEEKEND_FAMILY_ROTATION[1])
     expect(
       weekendFamilyForWindow(WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS + 14 * 24 * 3_600_000),
-      '再下一期转回第 0 位',
-    ).toBe(WEEKEND_FAMILY_ROTATION[0])
+      '三族轮换再下一期到墨潮',
+    ).toBe(WEEKEND_FAMILY_ROTATION[2])
     expect(s0.weekendEvent, '（该档只是拿来占位，未开局）').toBeUndefined()
     const t = 1_700_000_000_000
     const s = fresh(true)
     s.exploredGalaxies = [...ctx.galaxies.keys()]
     expect(ensureWeekendEvent(s, ctx, t), '调试模式首调即开').toBe(true)
-    // 🔴 2026-10-01 船长令「先让本地调试模式必定出新的R族入侵」⇒ **调试档判 R**（原判 H）
-    expect(s.weekendEvent?.family, '调试档开出来的就是 R（光环）').toBe('R')
-    /** 历史场（抽到 A 的旧场）⇒ 调试模式下一次判定就地改判成 R，其余字段一个不动 */
+    expect(s.weekendEvent?.family, '调试档开出异形').toBe('C')
+    /** 历史场下一次调试判定改为C，其余字段不动。 */
     const seq = s.weekendEvent!.seq
     s.weekendEvent = { ...s.weekendEvent!, family: 'A', contributed: { 'galaxy-kor': 0.7 } }
     expect(ensureWeekendEvent(s, ctx, t + 1000), '已有一场活着的 ⇒ 不新开').toBe(false)
-    expect(s.weekendEvent?.family, '就地改判为 R').toBe('R')
+    expect(s.weekendEvent?.family, '就地改判为C').toBe('C')
     expect(s.weekendEvent?.seq, '场次号没换').toBe(seq)
     expect(s.weekendEvent?.contributed['galaxy-kor'], '进度台账留着').toBeCloseTo(0.7, 6)
   })
@@ -374,26 +373,29 @@ describe('周末入侵 · 族名（通讯正文只印正式称呼）', () => {
     }
   })
 
-  it('**R 族 = 光环**：调试档那封预警信印的是正式名，不是「R 族」', () => {
-    const s = fresh(true) // 调试档 ⇒ 开局面判 R 族（见 `weekend-debug-family-20261001.test.ts`）
+  it.each([
+    ['C', '异形生物', 'core.weekend.021'],
+    ['R', '光环', 'core.weekend.024'],
+  ])('%s预警信印正式名；异形调试切换不破坏光环历史文案', (family, name, nameId) => {
+    const s = fresh(true)
     const rolled = weekendRollOccupation(s, ctx, 1)!
-    expect(rolled.family, '调试档抽到 R 族').toBe('R')
+    expect(rolled.family, '调试档抽到C族').toBe('C')
     const ev: WeekendEventState = {
       seq: 1,
       startedAtWallMs: 0,
       coreId: rolled.coreId,
       peripheryIds: rolled.peripheryIds,
-      family: rolled.family,
+      family,
       contributed: {},
     }
     const mail = weekendWarnCommsOf(s, ctx, ev)
-    expect(mail.subject, '主题用正式名').toBe('航线警告：光环入侵')
-    expect(mail.subject, '主题不许出现族代号').not.toMatch(/R\s*族/)
-    expect(mail.params?.['p1'], '槽值 = 正式名').toBe('光环')
-    expect(mail.params?.['p1Id'], '槽译文 id 指向 R 族词条').toBe('core.weekend.024')
+    expect(mail.subject, '主题用正式名').toBe(`航线警告：${name}入侵`)
+    expect(mail.subject, '主题不许出现族代号').not.toMatch(/[RC]\s*族/)
+    expect(mail.params?.['p1'], '槽值 = 正式名').toBe(name)
+    expect(mail.params?.['p1Id'], '槽译文id指向本族词条').toBe(nameId)
     const body = mail.paragraphs.join('')
-    expect(body, '正文用正式名').toContain('光环舰队已进入')
-    expect(body, '正文不许出现族代号').not.toMatch(/R\s*族/)
+    expect(body, '正文用正式名').toContain(`${name}舰队已进入`)
+    expect(body, '正文不许出现族代号').not.toMatch(/[RC]\s*族/)
   })
 })
 

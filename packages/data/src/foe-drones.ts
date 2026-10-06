@@ -18,6 +18,13 @@
  */
 
 import type { FoeDroneDef } from "@whale/core";
+import { L10N } from './l10n/table'
+
+export const FOE_DRONE_C_JAWCLAW: FoeDroneDef = {
+  id: 'foe-drone-c-jawclaw', name: L10N['item.alien.001']!.zh, family: 'C', role: 'scout',
+  defense: { shieldHp: 6, armorHp: 12, hullHp: 20, evasion: 0.45 },
+  dmg: 6, damageType: 'kinetic', hitRate: 0.89, falloff: 1, maxRangeM: 6000, reloadMs: 4400,
+}
 
 /** E 族「**警戒机**」——巨构自带的警戒机群（＝**巨构的第二套火力**，据点词「警戒机群」的落点）。
  *
@@ -250,6 +257,7 @@ export const FOE_DRONE_R_PRISM: FoeDroneDef = {
 
 /** 敌机机型表（按 id 索引；`content:check` 校验舰级引用的机型必须在此） */
 export const FOE_DRONES: readonly FoeDroneDef[] = [
+  FOE_DRONE_C_JAWCLAW,
   FOE_DRONE_E_ALERT,
   FOE_DRONE_G_BEE_KIN,
   FOE_DRONE_G_BEE_EXP,

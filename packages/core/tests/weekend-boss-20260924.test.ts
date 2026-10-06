@@ -63,7 +63,7 @@ function bossEvent(state: GameState, family = 'H'): WeekendEventState {
 describe('旗舰 BOSS 池 · 累计伤害', () => {
   it('族池开关：只有 `WEEKEND_BOSS_FAMILIES` 里的族走池子口径（2026-09-24 = H）', () => {
     const s = fresh()
-    expect([...WEEKEND_BOSS_FAMILIES]).toEqual(['H', 'R'])
+    expect([...WEEKEND_BOSS_FAMILIES]).toEqual(['H', 'R', 'C'])
     expect(weekendIsBossFamily(bossEvent(s, 'H'))).toBe(true)
     expect(weekendIsBossFamily(bossEvent(s, 'A'))).toBe(false)
     // 非 BOSS 族：任何记账都是空转（逐字走老口径）
