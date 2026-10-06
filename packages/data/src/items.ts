@@ -202,6 +202,18 @@ const AMMO_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
     name: '能量弹药 MK2',
     description: L10N['item.copy.046']!.zh,
   },
+  "ammo-kinetic-3": {
+    name: '动能弹药 MK3',
+    description: L10N['item.ammoMk3.001']!.zh,
+  },
+  "ammo-explosive-3": {
+    name: '爆破弹药 MK3',
+    description: L10N['item.ammoMk3.002']!.zh,
+  },
+  "ammo-plasma-3": {
+    name: '能量弹药 MK3',
+    description: L10N['item.ammoMk3.003']!.zh,
+  },
 }
 
 const DRONES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {

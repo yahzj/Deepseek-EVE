@@ -7,6 +7,7 @@
  *  - 产物落 docs/test-saves/test-save-<feature>-<stamp>.json，加载方法见 docs/test-saves/README.md。
  *
  * 功能 case 注册制（扩展在此追加）：
+ *  - ammo-mk3 黑市独占弹药生产线（2026-10-06）：全新合成档，三张黑市货架、三系武器/弹药/材料，不读个人档。
  *  - hauler 纯货舰验收（2026-10-04）：从全新初始档生成海牛/快运/武装货舰对照，绝不读取个人档。
  *  - battleship **战列舰实机测试档**（2026-09-24 船长：「你给我准备一个有战列舰和各种装备的存档」）：
  *         真战列 T4 巨齿鲨（6/5/3 · 动能抗 · 驾驶）＋ T4 均衡对照 ＋ T5 邓氏鱼旗舰 ＋ T3 锤头鲨巡洋对照，
@@ -112,6 +113,7 @@ import {
 } from '@whale/core'
 import type { GameState } from '@whale/core'
 import { injectHaulerTestState } from './hauler-test-fixture'
+import { injectAmmoMk3TestState } from './ammo-mk3-test-fixture'
 // 满池常量（旗舰 BOSS 血池；`@whale/core` 未转出 ⇒ 走深路径，与本文件既有做法一致）
 import { WEEKEND_FLAGSHIP_POOL_HP } from '../packages/core/src/weekendEvent'
 import { FACTION_CODEX_ORDER, FOE_SHIPS, GALAXIES, ITEMS, MODULES, SHIPS, SHIP_BLUEPRINTS, buildSimContext } from '@whale/data'
@@ -3582,6 +3584,7 @@ function injectShipWreck(state: GameState): string[] {
 }
 
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
+  'ammo-mk3': injectAmmoMk3TestState,
   hauler: injectHaulerTestState,
   /**
    * **损伤管制装置验收档**（`dc` · **2026-09-26 船长令**：「做完后给我一个存档 我要测试」）。
@@ -3779,16 +3782,17 @@ function main(): void {
     console.log(`用法：npx tsx tools/make-test-save.ts <feature> [--keep-ironman]\n已注册功能：${Object.keys(INJECTORS).join(' / ')}`)
     process.exit(feature ? 1 : 0)
   }
-  if (feature === 'hauler') {
-    const state = createInitialState({ name: '货舰验收', seed: 7, nowWallMs: Date.now() })
+  if (feature === 'hauler' || feature === 'ammo-mk3') {
+    const state = createInitialState({ name: feature === 'hauler' ? '货舰验收' : 'MK3弹药验收', seed: 7, nowWallMs: Date.now() })
     const notes = INJECTORS[feature]!(state)
     const text = serializeSaveFile(state, Date.now())
     const back = loadSaveFile(text).state
-    if (back.fleet[back.shipId]?.defId !== 'sh-manatee') throw new Error('货舰验收档往返不一致')
+    if (feature === 'hauler' && back.fleet[back.shipId]?.defId !== 'sh-manatee') throw new Error('货舰验收档往返不一致')
+    if (feature === 'ammo-mk3' && !['kinetic', 'explosive', 'plasma'].every(type => back.blackMarket?.offers.some(row => row.goodKey === `bp-ammo-${type}-3` && !row.sold))) throw new Error('MK3验收货架往返不一致')
     mkdirSync(OUT_DIR, { recursive: true })
-    const target = join(OUT_DIR, 'test-save-hauler-20261004.json')
+    const target = join(OUT_DIR, feature === 'hauler' ? 'test-save-hauler-20261004.json' : 'test-save-ammo-mk3-20261006.json')
     writeFileSync(target, text, 'utf8')
-    console.log(`已生成全新货舰验收档：${target}；未读取或覆写个人档。`)
+    console.log(`已生成全新验收档：${target}；未读取或覆写个人档。`)
     for (const note of notes) console.log(note)
     return
   }

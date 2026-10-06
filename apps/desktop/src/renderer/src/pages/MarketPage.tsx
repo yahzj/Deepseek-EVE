@@ -31,7 +31,7 @@ import { SUB_ALL, DOMAIN_ALL, DOMAIN_ITEM, DOMAIN_SHIP, ITEM_DOMAIN_SUBS, SHIP_D
 import type { SubOption } from '../ui/itemSubs'
 import { tr, cmdText } from '../i18n/locale'
 import { kindTextOfItem, rackText } from '../ui/labelsText'
-import { blackMarketUnlocked } from '@whale/core'
+import { blackMarketUnlocked, marketTradingGoods } from '@whale/core'
 import { BlackMarketPage } from './BlackMarketPage'
 
 /**
@@ -1109,7 +1109,7 @@ export function MarketPage({
   onFocusUsed,
 }: PageProps & { focusKey?: string | null; focusSeq?: number; onFocusUsed?: () => void }) {
   const state = engine.state
-  const goods = useMemo(() => [...engine.ctx.marketGoods.values()], [engine])
+  const goods = useMemo(() => marketTradingGoods(engine.ctx), [engine])
   const [blackMarketOpen, setBlackMarketOpen] = useState(false)
   const common = goods.filter((g) => g.rarity === 'common')
   // 2026-09-14 船长：奇货从稀有订单里独立成第三个标签（「限定奇货」· 图标 ◈ · 常态显示）

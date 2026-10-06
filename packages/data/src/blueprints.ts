@@ -14,6 +14,7 @@
  */
 
 import type { BlueprintDef, MarketRarity } from '@whale/core'
+import { L10N } from './l10n/table'
 
 /**
  * 装备/物品蓝图的**档位系数**（2026-09-11 船长裁决「甲」+ 同日复核补正）：
@@ -59,6 +60,9 @@ export const BLUEPRINT_PRICE_OVERRIDES: Readonly<Record<string, { price: number;
   'bp-ammo-kinetic-2': { price: 540_000, reason: '2026-09-26 船长令：MK2 弹药书价 = 100 批（12,000 发）货值（动能 45/发）' },
   'bp-ammo-explosive-2': { price: 720_000, reason: '2026-09-26 船长令：MK2 弹药书价 = 100 批（12,000 发）货值（爆破 60/发）' },
   'bp-ammo-plasma-2': { price: 960_000, reason: '2026-09-26 船长令：MK2 弹药书价 = 100 批（12,000 发）货值（能量 80/发）' },
+  'bp-ammo-kinetic-3': { price: 10_260_000, reason: '2026-10-06 船长确认：MK3黑市独占图纸基础价=对应MK2基础价×19' },
+  'bp-ammo-explosive-3': { price: 13_680_000, reason: '2026-10-06 船长确认：MK3黑市独占图纸基础价=对应MK2基础价×19' },
+  'bp-ammo-plasma-3': { price: 18_240_000, reason: '2026-10-06 船长确认：MK3黑市独占图纸基础价=对应MK2基础价×19' },
   // 高级零件蓝图（2026-09-20 船长定：「所有零件及其蓝图都在常驻市场有出售，但是高级零件蓝图需要1000W」）：
   'bp-part-drone-neural': { price: 10_000_000, reason: '2026-09-20 船长定：高级零件蓝图书价 1,000 万（不套产物 ×2.5 档位系数）' },
   'bp-part-shield-gen': { price: 10_000_000, reason: '2026-09-20 船长定：高级零件蓝图书价 1,000 万（不套产物 ×2.5 档位系数）' },
@@ -371,6 +375,39 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildCostIsk: 160,
     priceIsk: 960_000, // 2026-09-26 船长令：= 100 批（12,000 发 × 80）货值
     description: '能量弹药 MK2 生产线图纸，120 发/批，对护盾 ×1.25、对甲/结构 ×1。',
+  },
+  {
+    id: 'bp-ammo-kinetic-3',
+    name: '动能弹药 MK3 生产线蓝图',
+    itemId: 'ammo-kinetic-3',
+    outputUnits: 120,
+    materials: [{ itemId: 'min-nocxium', count: 47 }, { itemId: 'min-darkiron', count: 6 }],
+    buildSeconds: 20,
+    buildCostIsk: 0,
+    priceIsk: 10_260_000,
+    description: L10N['bp.ammoMk3.001']!.zh,
+  },
+  {
+    id: 'bp-ammo-explosive-3',
+    name: '爆破弹药 MK3 生产线蓝图',
+    itemId: 'ammo-explosive-3',
+    outputUnits: 120,
+    materials: [{ itemId: 'min-isotope', count: 174 }, { itemId: 'min-darkiron', count: 3 }],
+    buildSeconds: 20,
+    buildCostIsk: 0,
+    priceIsk: 13_680_000,
+    description: L10N['bp.ammoMk3.002']!.zh,
+  },
+  {
+    id: 'bp-ammo-plasma-3',
+    name: '能量弹药 MK3 生产线蓝图',
+    itemId: 'ammo-plasma-3',
+    outputUnits: 120,
+    materials: [{ itemId: 'min-starcore', count: 46 }, { itemId: 'min-darkiron', count: 6 }],
+    buildSeconds: 20,
+    buildCostIsk: 0,
+    priceIsk: 18_240_000,
+    description: L10N['bp.ammoMk3.003']!.zh,
   },
   /* ═══ 修理组件蓝图（2026-09-05 P2 定稿：材料≈市价 55% 锚，参数可调） ═══ */
   {

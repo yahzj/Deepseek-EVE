@@ -18,6 +18,7 @@ import type {
 import {
   /** 本场预载需求（与开战装载同一函数）＋ 取档判定（船长 2026-09-16「甲」口径的单点） */
   ammoLoadTotals,
+  ammoTiersOf,
   resolveAmmoTier,
   /** 战后自动补足机群（2026-09-20）⇒ 机群门槛只在"货源不够"时拦人；这里把缺额写出来 */
   autoLoopDroneShortfall,
@@ -1323,14 +1324,11 @@ function AmmoTierSection({
   const rows = AMMO_SLOT_TYPES.map(({ slot, type }) => {
     const hasWeapon = [...highIds].some((id) => ctx.modules.get(id)?.slot === slot)
     if (!hasWeapon) return null
-    const mk2 = ctx.items.get(`ammo-${type}-2`)
+    const tiers = ammoTiersOf(ctx, type)
     const base = ctx.items.get(`ammo-${type}-l`)
     const baseName = base?.name ?? DMG_LABEL[type]
-    if (!mk2) return null
+    if (tiers.length < 2) return null
     const pref = ship?.ammoPref?.[type]
-    const onMk2 = pref === mk2.id
-    const haveMk2 = countWare(state, mk2.id)
-    const haveBase = countWare(state, base?.id ?? `ammo-${type}-l`)
     /**
      * **本场实际会装哪一档**（船长 2026-09-16「甲」口径：同族取"能装得最多"的那一档）——
      * 走 core 的 `resolveAmmoTier`（**与开战预载同一函数** ⇒ 界面显示 = 实战结果，不各写一套）。
@@ -1343,29 +1341,23 @@ function AmmoTierSection({
       <div key={type} className="app-fit-ammotier-row">
         <DmgChip t={type} label={baseName} />
         <span className="app-fit-ammotier-opts">
-          <button
-            className={`app-fit-ammotier-opt${!onMk2 ? ' is-active' : ''}`}
+          {tiers.map((item, index) => <button
+            key={item.id}
+            aria-pressed={pref ? pref === item.id : index === 0}
+            className={`app-fit-ammotier-opt${(pref ? pref === item.id : index === 0) ? ' is-active' : ''}`}
             onClick={() => {
-              const r = engine.setAmmoTierAt(type, null, target)
+              const r = engine.setAmmoTierAt(type, index === 0 ? null : item.id, target)
               if (!r.ok) onToast(cmdText(r) || tr('ui.FitPage.172'), true)
             }}
-            title={tr("ui.FitPage.154", { baseName: baseName, baseName2: baseName })}
+            title={index === 0 ? tr('ui.FitPage.154', { baseName, baseName2: baseName })
+              : item.id.endsWith('-2') ? tr('ui.FitPage.155', { p1: item.name, p2: item.dmg ?? '?', p3: base?.dmg ?? '?', haveMk2: countWare(state, item.id) })
+                : tr('ui.ammoTier.001', { name: item.name, damage: item.dmg ?? '?', stock: countWare(state, item.id) })}
           >
-            {baseName}
-          </button>
-          <button
-            className={`app-fit-ammotier-opt${onMk2 ? ' is-active' : ''}`}
-            onClick={() => {
-              const r = engine.setAmmoTierAt(type, mk2.id, target)
-              if (!r.ok) onToast(cmdText(r) || tr('ui.FitPage.172'), true)
-            }}
-            title={tr("ui.FitPage.155", { p1: mk2.name, p2: mk2.dmg ?? '?', p3: base?.dmg ?? '?', haveMk2: haveMk2 })}
-          >
-            {mk2.name}
-          </button>
+            {item.name}
+          </button>)}
         </span>
         <span className="app-dim">
-          {baseName} ×{fmt(haveBase)} · {mk2.name} ×{fmt(haveMk2)}
+          {tiers.map((item, index) => <span key={item.id}>{index > 0 ? ' · ' : ''}{item.name} ×{fmt(countWare(state, item.id))}</span>)}
           {need > 0 ? (
             <>
               {' · '}

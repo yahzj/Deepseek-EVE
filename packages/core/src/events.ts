@@ -20,7 +20,7 @@ import type { GameState } from './state'
 import type { MarketGoodDef, SimContext } from './types'
 import { nextInt, nextRandom, pickWeighted } from './rng'
 import { rollLowSecAmbush } from './encounters'
-import { ensureMarket, goodName, levelOf } from './market'
+import { ensureMarket, goodName, levelOf, marketTradingGoods } from './market'
 import { DSI_FACTION_ID, standingOf } from './standing'
 
 /** 事件日志前缀（桌面端用它在新增日志里识别事件弹卡） */
@@ -252,7 +252,7 @@ function poolGoods(ctx: SimContext): MarketGoodDef[] {
 
 /** 稀有/限定商品（模块/蓝图/船，不含 AI 核心）：市场奇货对象 */
 function rareGoods(ctx: SimContext): MarketGoodDef[] {
-  return [...ctx.marketGoods.values()].filter((g) => g.kind !== 'aicore' && g.rarity !== 'common' && g.kind !== 'item')
+  return marketTradingGoods(ctx).filter((g) => g.kind !== 'aicore' && g.rarity !== 'common' && g.kind !== 'item')
 }
 /**
  * 市场大类 A：行情突变动（公开导出，测试可直接调用）。

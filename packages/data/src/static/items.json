@@ -519,6 +519,30 @@
         "baseSellPriceIsk": 80,
         "damageType": "plasma",
         "dmg": 12
+      },
+      {
+        "id": "ammo-kinetic-3",
+        "kind": "ammo",
+        "unitM3": 0.02,
+        "baseSellPriceIsk": 135,
+        "damageType": "kinetic",
+        "dmg": 11
+      },
+      {
+        "id": "ammo-explosive-3",
+        "kind": "ammo",
+        "unitM3": 0.02,
+        "baseSellPriceIsk": 180,
+        "damageType": "explosive",
+        "dmg": 12
+      },
+      {
+        "id": "ammo-plasma-3",
+        "kind": "ammo",
+        "unitM3": 0.02,
+        "baseSellPriceIsk": 240,
+        "damageType": "plasma",
+        "dmg": 16
       }
     ],
     "DRONES_0": [

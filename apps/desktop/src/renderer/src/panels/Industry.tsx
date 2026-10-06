@@ -368,6 +368,7 @@ export function BlueprintShelfPanel({
           const kindShip = (bp && 'shipId' in bp) || (!bp && engine.allShipBlueprints.some((b) => b.id === id))
           // 2026-09-20 零件体系：舰船书「去造船厂」、其余「去组装机」
           const isShipBook = kindShip
+          const noResale = engine.ctx.marketGoods.get(bpGoodKey(engine, id) ?? '')?.playerSellable === false
           return (
             <div
               key={id}
@@ -390,7 +391,7 @@ export function BlueprintShelfPanel({
                       ? tr("ui.Industry.010")
                       : tr("ui.Industry.011")
                   : learned
-                    ? tr("ui.Industry.012")
+                    ? tr(noResale ? 'ui.ammoMk3.002' : 'ui.Industry.012')
                     : tr("ui.Industry.013")}
               </div>
               <div className="app-belt-actions">
@@ -414,7 +415,7 @@ export function BlueprintShelfPanel({
                     {tr("ui.Industry.016")}
                   </button>
                 ) : null}
-                {!su ? (
+                {!su && !noResale ? (
                   <button className="app-btn is-small" onClick={() => handleSell(id)} title={tr("ui.Industry.017")}>
                     {tr("ui.Industry.018")}
                   </button>
@@ -656,6 +657,8 @@ export const BlueprintCard = memo(function BlueprintCard({
    * 「市场求购」是条死路（点进去只会看到"只收不卖"），改给「去虫洞」。
    */
   const bookBuyable = goodKey !== null && engine.ctx.marketGoods.get(goodKey)?.playerBuyable !== false
+  const blackMarketBlueprint = !bookBuyable && goodKey !== null && engine.ctx.marketGoods.get(goodKey)?.blackMarketBuyable === true
+    && engine.ctx.marketGoods.get(goodKey)?.playerSellable === false
   const whBlueprint = isWormholeBlueprint(blueprintId)
   /**
    * **舰船插件图纸**（**2026-09-26 船长令**：「**没有蓝图的舰船插件组装机应该显示去商店兑换，
@@ -1087,6 +1090,8 @@ export const BlueprintCard = memo(function BlueprintCard({
               </button>
             ) : null}
           </>
+        ) : blackMarketBlueprint ? (
+          <span className="app-dim">{tr('ui.ammoMk3.001')}</span>
         ) : plugBlueprint ? (
           /**
            * **舰船插件图纸 ⇒ 去声望商店兑换**（**2026-09-26 船长令**：「**没有蓝图的舰船插件组装机应该

@@ -440,6 +440,12 @@ const MARKET_GOODS_RAW_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> 
   "bp-ammo-plasma-2": {
 
   },
+  "ammo-kinetic-3": {},
+  "ammo-explosive-3": {},
+  "ammo-plasma-3": {},
+  "bp-ammo-kinetic-3": {},
+  "bp-ammo-explosive-3": {},
+  "bp-ammo-plasma-3": {},
   "bp-repairkit-civ": {
 
   },

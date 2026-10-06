@@ -41,7 +41,9 @@ describe('物品装备说明双语与数据守恒', () => {
       return item.id === 'mat-wh-essence' ? { ...item, name: '信号谜质' } : item
     })
     const strip = (entries: typeof ITEMS) => entries.map(({ description: _description, ...rest }) => rest)
-    expect(strip(ITEMS)).toEqual(strip(adjusted))
+    const added = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3'])
+    expect(ITEMS.filter(item => added.has(item.id)).map(item => item.id).sort()).toEqual([...added].sort())
+    expect(strip(ITEMS.filter(item => !added.has(item.id)))).toEqual(strip(adjusted))
   })
   it('170 件装备含插件，除 description 外所有字段逐项不变', () => {
     const plugs = historical<typeof MODULES>('packages/data/src/plugs.ts', 'SHIP_PLUGS')
@@ -50,7 +52,7 @@ describe('物品装备说明双语与数据守恒', () => {
     expect(strip(MODULES)).toEqual(strip(before))
   })
   it.each(ITEMS)('$id 物品说明中英唯一表接线一致，名称不变', (item) => {
-    const pair = Object.entries(L10N).find(([id, entry]) => (id.startsWith('item.copy.') || id.startsWith('item.signalSpace.')) && entry.zh === item.description)
+    const pair = Object.entries(L10N).find(([id, entry]) => (id.startsWith('item.copy.') || id.startsWith('item.signalSpace.') || id.startsWith('item.ammoMk3.')) && entry.zh === item.description)
     expect(pair, item.id).toBeDefined()
     expect(EN_ITEMS_ALL[item.id]?.description).toBe(pair![1].en)
     expect(buildSimContext('en').items.get(item.id)?.description).toBe(pair![1].en)

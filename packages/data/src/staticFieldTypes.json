@@ -223,6 +223,8 @@
     "supplyFlow": "number",
     "demandMultiplier": "number",
     "playerBuyable": "boolean",
+    "playerSellable": "boolean",
+    "blackMarketBuyable": "boolean",
     "unreleased": "boolean",
     "limitedSupplyCap": "number",
     "limitedSupplyUnits": "number",

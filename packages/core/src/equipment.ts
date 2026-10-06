@@ -27,6 +27,7 @@ import { isPlugOf, plugSlotsOf } from './plugs'
 import { currentShipState, addWare, countWare, removeWare } from './inventory'
 import { fleetDefOf } from './instances'
 import { moduleAllowedOnShip } from './shipFitting'
+import { ammoTiersOf } from './ammoTiers'
 import { plugModulesOf, shipSlotsWithPlugsOf } from './plugs'
 
 /** 槽位顺序（界面展示用；V18 保留家族序供清单/徽标） */
@@ -1100,8 +1101,7 @@ export function setAmmoTier(
         errorParams: { p1: def.name, p2: type },
       }
     }
-    // 可选档 = 该族基础弹（-l）或 MK2 弹（-2）；未知档位拒绝（未来加档在此扩展）
-    if (itemId !== `ammo-${type}-l` && itemId !== `ammo-${type}-2`) {
+    if (!ammoTiersOf(ctx, type).some(item => item.id === itemId)) {
       return {
         ok: false,
         error: `${def.name} 不是可选的弹药档位。`,

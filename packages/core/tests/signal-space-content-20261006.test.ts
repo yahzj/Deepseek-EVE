@@ -177,9 +177,12 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
   })
 
   it('旧资产数值与配方不变；模块及谜质装置说明取新ID，历史正文仍可读取', () => {
-    sameData(ITEMS, baseItems, ['name', 'description'])
+    const addedAmmo = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3'])
+    expect(ITEMS.filter(item => addedAmmo.has(item.id)).map(item => item.id).sort()).toEqual([...addedAmmo].sort())
+    sameData(ITEMS.filter(item => !addedAmmo.has(item.id)), baseItems, ['name', 'description'])
     expect(EN_ITEMS['mat-wh-essence']!.name).toBe('Signal Enigma')
     for (const [id, text] of Object.entries(EN_ITEMS)) {
+      if (addedAmmo.has(id)) continue
       expect(text.name, id).toBe(id === 'mat-wh-essence' ? 'Signal Enigma' : baseEn.EN_ITEMS[id]!.name)
     }
     for (const [id, text] of Object.entries(EN_MODULES)) expect(text.name, id).toBe(baseEn.EN_MODULES[id]!.name)

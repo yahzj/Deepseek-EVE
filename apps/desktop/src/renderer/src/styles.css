@@ -5698,6 +5698,8 @@ html[data-locale='en'] body {
 .app-fit-ammotier-row {
 
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
 
   align-items: center;
 
@@ -5712,12 +5714,16 @@ html[data-locale='en'] body {
 .app-fit-ammotier-opts {
 
   display: inline-flex;
+  flex-wrap: wrap;
+  min-width: 0;
 
   gap: var(--wui-sp-4);
 
 }
 
 .app-fit-ammotier-opt {
+  max-width: 100%;
+  overflow-wrap: anywhere;
 
   padding: var(--wui-sp-1) var(--wui-sp-8);
 

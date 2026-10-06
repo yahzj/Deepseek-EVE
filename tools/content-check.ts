@@ -356,12 +356,12 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 //   +4（折跃等离子 / 低温跃迁浆 / 曲率凝析物 / 超空间折跃燃料）→ 物品总数 104→**108**、原材料 8→**11**
 // 2026-09-30（实验室后续内容批 · 船长令「信号发射器和技能加速剂」）：+2（信号发射器 / 突触加速剂，
 //   走奇货档 · 施工期 `unreleased`）→ 物品总数 108→**110**
-check(itemDefs.length === 111, `物品总数应为 111（2026-10-02 起：每族一件黑匣 +1 ⇒ 光环旗舰黑匣），实际 ${itemDefs.length}`)
+check(itemDefs.length === 114, `物品总数应为 114（2026-10-06 增三系MK3弹药），实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 11, `原材料应为 11 种（2026-09-29 跃迁燃料链 +3），实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
 check(ices.length === 3, `冰矿应为 3 种，实际 ${ices.length}`)
-check(ammos.length === 6, `弹药应为 6 种（每族基础弹 + MK2），实际 ${ammos.length}`)
+check(ammos.length === 9, `弹药应为 9 种（每族基础弹 + MK2 + MK3），实际 ${ammos.length}`)
 check(drones.length === 8, `无人机应为 8 种（四型制式锚点 + 鱿蜂 + 2 型虫洞族专属 + 墨潮重袭），实际 ${drones.length}`)
 
 /* ── 市场目录 ── */
@@ -2497,13 +2497,14 @@ for (const a of ammos) {
 // V18（口径取消）+ 2026-09-09 弹药 MK2：每族 2 件 = 基础弹（-l）+ MK2（-2），各档能量基数最高
 for (const t of DMG_TYPES) {
   const list = ammos.filter((a) => a.damageType === t)
-  check(list.length === 2, `弹药：${t} 型应恰有 2 件（基础 -l + MK2 -2），实际 ${list.length}`)
+  check(list.length === 3, `弹药：${t} 型应恰有 3 件（基础 -l + MK2 -2 + MK3 -3），实际 ${list.length}`)
   check(list.some((a) => a.id.endsWith('-l')), `弹药：${t} 型缺基础弹（-l）`)
   check(list.some((a) => a.id.endsWith('-2')), `弹药：${t} 型缺 MK2 弹（-2）`)
+  check(list.some((a) => a.id.endsWith('-3')), `弹药：${t} 型缺 MK3 弹（-3）`)
 }
 {
   // 能量(plasma)基数最高契约按档成立（基础 6/7/9、MK2 8/9/12 各自档内 plasma 最高）
-  for (const suffix of ['-l', '-2']) {
+  for (const suffix of ['-l', '-2', '-3']) {
     const byType = (t: string) => ammos.find((a) => a.damageType === t && a.id.endsWith(suffix))?.dmg ?? 0
     check(
       byType('plasma') > byType('kinetic') &&
@@ -2516,6 +2517,8 @@ for (const t of DMG_TYPES) {
     const base = ammos.find((a) => a.damageType === t && a.id.endsWith('-l'))
     const mk2 = ammos.find((a) => a.damageType === t && a.id.endsWith('-2'))
     check((mk2?.dmg ?? 0) > (base?.dmg ?? 0), `弹药：${t} MK2 单发应高于基础弹`)
+    const mk3 = ammos.find((a) => a.damageType === t && a.id.endsWith('-3'))
+    check((mk3?.dmg ?? 0) > (mk2?.dmg ?? 0), `弹药：${t} MK3 单发应高于MK2`)
   }
 }
 /** 射程豁免机型（船长 2026-09-13「专属无人机开豁免」）——只登记并打印，不参与断言 */
@@ -5985,12 +5988,18 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
    *    但玩家可挂卖、也可卖给 NPC 收购单（奇货档 = 全价回收）。判据 = id 带 `-wh-` 的洞内专属 +
    *    窝点专属池成员（`FOE_LAIR_GEAR`）。 */
   {
-    // ① 全表可挂卖
-    const notSellable = MARKET_GOODS.filter((g) => g.playerSellable === false).map((g) => g.key)
+    // 2026-10-06 船长确认：MK3弹药三张生产线图纸只在黑市获取，不允许转售；其余沿用全表可卖。
+    const noResale = new Set(['bp-ammo-kinetic-3', 'bp-ammo-explosive-3', 'bp-ammo-plasma-3'])
+    const notSellable = MARKET_GOODS.filter((g) => g.playerSellable === false && !noResale.has(g.key)).map((g) => g.key)
     check(
       notSellable.length === 0,
       `挂卖可达契约：${notSellable.join(' · ')} 标了 playerSellable: false——2026-09-14 船长「维持所有物品允许玩家挂卖」`,
     )
+    for (const key of noResale) {
+      const row = MARKET_GOODS.find(g => g.key === key)
+      check(row?.playerSellable === false && row.playerBuyable === false && row.blackMarketBuyable === true,
+        `MK3黑市独占契约：${key}必须仅黑市供货且不可普通市场买卖`)
+    }
     // ② 可获得内容必须有市场行（例外表逐条写理由）
     const NO_ROW_OK: ReadonlyArray<readonly [string, string]> = [
       ['sandcat', '协会保底艇（开局船）：不给市场行，防"卖光起步资产"把新档卡死'],
@@ -6037,7 +6046,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       `挂卖可达契约：专属内容的市场行必须"只收不卖"（playerBuyable: false）——${sellableExclusive.slice(0, 8).join(' · ')} 在卖现货`,
     )
     console.log(
-      `· 挂卖可达契约：市场 ${MARKET_GOODS.length} 行**全部允许玩家挂卖**（playerSellable 无 false）· 可获得内容无市场行的仅 ${NO_ROW_OK.length} 条有意例外（${NO_ROW_OK.map(([id]) => id).join(' / ')}）· 专属内容 ${exclusiveRows} 行**全部只收不卖**`,
+      `· 挂卖可达契约：市场 ${MARKET_GOODS.length} 行除${noResale.size}张黑市独占MK3弹药图纸外均允许挂卖 · 可获得内容无市场行的仅 ${NO_ROW_OK.length} 条有意例外（${NO_ROW_OK.map(([id]) => id).join(' / ')}）· 专属内容 ${exclusiveRows} 行**全部只收不卖**`,
     )
   }
   /* **图鉴市场跳转契约**（2026-09-14 船长：「玩家查看图鉴内的道具时，添加一个跳转市场的按钮」）：
@@ -6078,6 +6087,8 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
         checkedEntries += 1
         if (handMarketKeyOf(jumpCtx, g.tab, id) !== null) continue
         if (handNoJumpOk.has(id)) continue
+        const marketRow = [...jumpCtx.marketGoods.values()].find(row => row.refId === id)
+        if (marketRow?.playerBuyable === false && marketRow.playerSellable === false) continue
         if (unreleasedRowIds.has(id)) {
           skippedGated += 1
           continue

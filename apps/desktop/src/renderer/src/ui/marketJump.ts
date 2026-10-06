@@ -27,5 +27,6 @@ export function handMarketKeyOf(ctx: SimContext, tab: string, key: string): stri
             ? 'blueprint'
             : null
   if (kind === null) return null
-  return marketGoodOf(ctx, kind, key)?.key ?? null
+  const good = marketGoodOf(ctx, kind, key)
+  return good && (good.playerBuyable !== false || good.playerSellable !== false) ? good.key : null
 }

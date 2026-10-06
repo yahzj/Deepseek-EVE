@@ -46,6 +46,11 @@ import { ironmanCommonFlowMul, ironmanExoticCapBonus, ironmanExoticWeightMul, ir
 import { plugBlockReasonOf } from './plugs'
 import { advanceLimitedSupply, consumeLimitedSupply, ensureLimitedSupply, hasLimitedSupply, limitedSupplyAvailable } from './marketLimitedSupply'
 
+/** 普通市场与订单事件只列可买或可卖的货，双禁令商品只保留黑市报价用途。 */
+export function marketTradingGoods(ctx: SimContext): MarketGoodDef[] {
+  return [...ctx.marketGoods.values()].filter(g => g.playerBuyable !== false || g.playerSellable !== false)
+}
+
 /* ═══════════ 建站收购网络扩容（2026-09-09 船长定：每建成一座副站，协会收购网扩容，
  * 玩家"单件商品"卖出吞吐 ×1.5，乘法叠加无封顶——只作用于单件商品（装备/蓝图/船等件货的
  * NPC 收购单与站内吸收配额），池商品（矿石/矿物/弹药等大宗）不受影响。见
@@ -1454,6 +1459,7 @@ function bumpFirstMarketTrade(state: GameState): void {
 export function placeSellOrder(state: GameState, ctx: SimContext, goodKey: string, price: number, qty: number): PlayerOrder | null {
   if (qty <= 0 || price <= 0) return null
   if (typeof goodKey !== 'string' || !ctx.marketGoods.has(goodKey)) return null
+  if (ctx.marketGoods.get(goodKey)!.playerSellable === false) return null
   const order = pushSellOrder(state, goodKey, price, qty)
   state.escrowItems[goodKey] = (state.escrowItems[goodKey] ?? 0) + qty
   // 挂单瞬间先吃簿（2026-09-10 船长定）：与现有收购单对冲的部分立即成交，剩余才挂着
@@ -2080,6 +2086,9 @@ export function learnBlueprint(state: GameState, ctx: SimContext, blueprintId: s
   const count = state.blueprintStock[blueprintId] ?? 0
   if (count <= 0) return { ok: false, error: '没有可学习的蓝图书。', errorId: 'core.market.003' }
   if (state.learnedRecipes.includes(blueprintId)) {
+    if (marketGoodOf(ctx, 'blueprint', blueprintId)?.playerSellable === false) {
+      return { ok: false, error: '该配方已学会。', errorId: 'core.ammoMk3.001' }
+    }
     return { ok: false, error: '该配方已学会——多余的蓝图书可以挂到市场出售。', errorId: 'core.market.004' }
   }
   state.blueprintStock[blueprintId] = count - 1

@@ -1250,6 +1250,66 @@
         "demandMultiplier": 1
       },
       {
+        "key": "ammo-kinetic-3",
+        "kind": "item",
+        "refId": "ammo-kinetic-3",
+        "rarity": "common",
+        "basePrice": 135,
+        "demandMultiplier": 0.6,
+        "absorbQtyPerWindow": 21600,
+        "playerBuyable": false
+      },
+      {
+        "key": "ammo-explosive-3",
+        "kind": "item",
+        "refId": "ammo-explosive-3",
+        "rarity": "common",
+        "basePrice": 180,
+        "demandMultiplier": 0.6,
+        "absorbQtyPerWindow": 21600,
+        "playerBuyable": false
+      },
+      {
+        "key": "ammo-plasma-3",
+        "kind": "item",
+        "refId": "ammo-plasma-3",
+        "rarity": "common",
+        "basePrice": 240,
+        "demandMultiplier": 0.6,
+        "absorbQtyPerWindow": 21600,
+        "playerBuyable": false
+      },
+      {
+        "key": "bp-ammo-kinetic-3",
+        "kind": "blueprint",
+        "refId": "bp-ammo-kinetic-3",
+        "rarity": "exotic",
+        "basePrice": 10260000,
+        "playerBuyable": false,
+        "playerSellable": false,
+        "blackMarketBuyable": true
+      },
+      {
+        "key": "bp-ammo-explosive-3",
+        "kind": "blueprint",
+        "refId": "bp-ammo-explosive-3",
+        "rarity": "exotic",
+        "basePrice": 13680000,
+        "playerBuyable": false,
+        "playerSellable": false,
+        "blackMarketBuyable": true
+      },
+      {
+        "key": "bp-ammo-plasma-3",
+        "kind": "blueprint",
+        "refId": "bp-ammo-plasma-3",
+        "rarity": "exotic",
+        "basePrice": 18240000,
+        "playerBuyable": false,
+        "playerSellable": false,
+        "blackMarketBuyable": true
+      },
+      {
         "key": "bp-repairkit-civ",
         "kind": "blueprint",
         "refId": "bp-repairkit-civ",

@@ -17,6 +17,16 @@ export interface L10nEntry {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  "item.ammoMk3.001": { zh: "冥铁包覆的高密度弹体，用于动能武器，强化对护盾的冲击。", en: "A dense projectile clad in Darkiron Alloy for kinetic weapons and stronger impacts against shields." },
+  "item.ammoMk3.002": { zh: "冥铁约束的高能装药，强化对装甲的爆破。", en: "A high-energy charge confined by Darkiron Alloy for stronger blasts against armor." },
+  "item.ammoMk3.003": { zh: "冥铁谐振腔封装的高密度能量介质，用于强化束流伤害。", en: "Dense energy medium sealed in a Darkiron Alloy resonant cavity for stronger beam damage." },
+  "bp.ammoMk3.001": { zh: "动能弹药生产线图纸，包含冥铁弹壳与高密度弹芯的压装工艺。", en: "Kinetic ammunition line plans covering Darkiron Alloy casings and dense-core assembly." },
+  "bp.ammoMk3.002": { zh: "爆破弹药生产线图纸，包含高能装药与冥铁约束壳的封装工艺。", en: "Explosive ammunition line plans covering high-energy charges and Darkiron Alloy containment casings." },
+  "bp.ammoMk3.003": { zh: "能量弹药生产线图纸，包含能量介质与冥铁谐振腔的封装工艺。", en: "Energy ammunition line plans covering energy media and Darkiron Alloy resonant cavities." },
+  "ui.ammoTier.001": { zh: "{name}：伤害基数 {damage}；仓库 ×{stock}。", en: "{name}: base damage {damage}; storage ×{stock}." },
+  "ui.ammoMk3.001": { zh: "黑市独占图纸", en: "Black Market exclusive blueprint" },
+  "ui.ammoMk3.002": { zh: "配方已学会", en: "Recipe learned" },
+  "core.ammoMk3.001": { zh: "该配方已学会。", en: "That recipe is already learned." },
   "ui.blackMarket.025": { zh: "{p1} 架／组", en: "{p1} drones / group" },
   "ui.blackMarket.026": { zh: "{p1} ×{p2}", en: "{p1} ×{p2}" },
   "core.blackMarket.008": { zh: "黑市购入 {p1}×{p3}（{p2} 信用点）。", en: "Bought {p1} ×{p3} from the Black Market for {p2} credits." },
