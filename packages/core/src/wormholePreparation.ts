@@ -23,6 +23,8 @@ export interface WormholePreparationRequest {
 }
 
 export interface WormholePreparationPlan {
+  /** 自动整备不占主控活动；仅用于预览重验，不是随档字段。 */
+  automatic?: true
   request: WormholePreparationRequest
   fingerprint: string
   items: Record<string, number>
@@ -47,6 +49,7 @@ export function wormholePreparationPlan(
   ctx: SimContext,
   fleet: readonly string[],
   request: WormholePreparationRequest,
+  opts?: { automatic?: boolean },
 ): WormholePreparationPlan {
   const onboard: Record<string, number> = {}
   const invalid: string[] = []
@@ -114,10 +117,12 @@ export function wormholePreparationPlan(
     skills: state.skills.trained,
     stock: state.wormholeStock,
     // 主控停机和归还舰载货都会使准备预览失效。
-    mining: state.mining, salvaging: state.salvaging, hauling: state.hauling,
+    ...(!opts?.automatic ? { mining: state.mining, salvaging: state.salvaging, hauling: state.hauling } : {}),
+    automatic: opts?.automatic === true,
     request,
   })
   return {
+    ...(opts?.automatic ? { automatic: true as const } : {}),
     request: { targets: { ...request.targets }, unload: [...request.unload] }, fingerprint,
     items, fromWarehouse, shortage, invalid, deployedDrones, cells, capacity, rows, warnings,
     ok: invalid.length === 0 && Object.keys(shortage).length === 0 && cells <= capacity && wormholeAdmission(ctx, fleet).ok,

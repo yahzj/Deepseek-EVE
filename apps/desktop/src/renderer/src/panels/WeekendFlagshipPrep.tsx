@@ -18,6 +18,7 @@ import type { GameEngine } from '../game/engine'
 import { tr } from '../i18n/locale'
 import { ShipSprite } from '../ui/ShipSprite'
 import { pinMarked } from '../ui/marks'
+import { usePreparationSquad } from '../ui/usePreparationSquad'
 
 /** 缺口标记 → 文案 id（与准备面板同源；加新缺口时两处一起加） */
 const ISSUE_ID: Record<WeekendPrepIssue, string> = {
@@ -36,7 +37,7 @@ const n = (v: number): string => Math.round(v).toLocaleString()
 export function WeekendFlagshipPrepModal({ engine, onClose }: { engine: GameEngine; onClose: () => void }): ReactNode {
   const prep = engine.weekendFlagshipPrep()
   /** 默认勾选 = core 给的（落盘编队优先 ⇒ 上次选过的还记得） */
-  const [picked, setPicked] = useState<string[]>(() => prep?.defaultSquad ?? [])
+  const [picked, setPicked] = usePreparationSquad(engine, 'weekend', () => prep?.defaultSquad ?? [])
   const [err, setErr] = useState('')
   /** 关掉（旗舰打完了 / 事件结束）⇒ 自动收起，别留一个再也点不动的面板 */
   useEffect(() => {

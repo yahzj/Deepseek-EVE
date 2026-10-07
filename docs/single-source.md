@@ -19,6 +19,7 @@
 | 关注点 | 唯一实现 | 护栏 |
 | 静态JSON参数与文本/派生绑定、数值编辑计划 | `staticDataGroup()` · `packages/data/src/staticData.ts`；`planDocuments()` · `tools/data-editor-schema.ts` | 固定基线目录等价、编辑事务与字段校验；JSON权威静态参数，公式/文本留代码 |
 |---|---|---|
+| 五类准备阵容清洗、恢复与记忆 | `cleanPreparationSquads()` / `preparationSquadOf()` / `notePreparationSquad()` · `preparationSquads.ts` | 五类隔离、实例顺序、缺船/忙态、显式空、旧档兼容与往返；页面通过统一选择hook接入；`arch:guard` F2/F3 |
 | 护盾力场排除自身、有效目标与最大护盾代价 | `pulseShieldFieldFor()` / `SHIELD_FIELD_COST_PCT` · `combatRepair.ts` | 力场专项：费用与目标数无关、足量/不足/无目标、周期/混装/读档；详情费用读取同一常量；`arch:guard` F2/F3 |
 | 星球运行、供电、工程材料与运输 | `advancePlanetary()` / `planetRuntime.ts`；`planetColonyView()` / `planetColony.ts`；`cancelPlanetJob()` / `planetConstruction.ts`；`dispatchPlanetDelivery()` / `planetLogistics.ts` | 在线离线同值、实际扣料／到货、人口保护与保存专项，F9无环 |
 | 战斗逐舰推进器点火与敌舰冲锋状态 | `battleArcsFor().myUnits[].boosting` / `.foeChargingTags` · `combat.ts`；复用`buildMyUnitSpecs`、`unitSpeedMulOf` | 加速特效专项：周期、捕获网、死亡、真实冲锋、重载及视图只读；`arch:guard` F2/F3 |

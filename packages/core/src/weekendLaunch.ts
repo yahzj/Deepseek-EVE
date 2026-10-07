@@ -26,6 +26,7 @@ import type { WeekendBossPoolView } from './weekendEvent'
 import type { FoeOverride } from './combat'
 import { shipDisplayName } from './instances'
 import { calcPower } from './expedition'
+import { preparationSquadOf, notePreparationSquad } from './preparationSquads'
 
 /** 参战舰船**上限**（旗舰战 = 4 艘小队战；语义是上限、不是"必须带满"——与虫洞 `WORMHOLE_MAX_SHIPS` 同款口径） */
 export const WEEKEND_FLAGSHIP_MAX_SHIPS = 4
@@ -155,6 +156,7 @@ export function weekendFlagshipPrepView(
  * 一个都不剩 ⇒ 回落到现有自动编队。**开战前与准备界面都调它**，界面显示什么、开战就用什么。
  */
 export function weekendPrepSquadOf(state: GameState): string[] {
+  if (state.preparationSquads?.weekend !== undefined) return preparationSquadOf(state, 'weekend')
   const saved = (state.weekendPrepSquad ?? []).filter((id) => state.fleet[id] !== undefined)
   return saved.length > 0 ? saved.slice(0, WEEKEND_FLAGSHIP_MAX_SHIPS) : weekendFlagshipSquadOf(state)
 }
@@ -164,6 +166,7 @@ export function weekendNoteFlagshipSquad(state: GameState, squad: readonly strin
   const clean = weekendSanitizeFlagshipSquad(state, squad)
   if (clean.length === 0) return
   state.weekendPrepSquad = clean
+  notePreparationSquad(state, 'weekend', clean)
 }
 
 /**

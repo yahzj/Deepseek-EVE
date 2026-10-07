@@ -10,6 +10,8 @@
 import { blackMarketBuy, ensureBlackMarket } from '@whale/core'
 import {
   MAX_SKILL_LEVEL,
+  preparationSquadOf,
+  notePreparationSquad,
   SaveError,
   addLog,
   advanceAutoLoopBounty,
@@ -3041,8 +3043,16 @@ export class GameEngine {
     return { ok: true }
   }
 
-  wormholePrepare(shipIds: readonly string[], request: WormholePreparationRequest): WormholePreparationPlan {
-    return wormholePreparationPlan(this.state, this.ctx, shipIds, request)
+  wormholePrepare(shipIds: readonly string[], request: WormholePreparationRequest, automatic = false): WormholePreparationPlan {
+    return wormholePreparationPlan(this.state, this.ctx, shipIds, request, { automatic })
+  }
+
+  preparationSquad(kind: import('@whale/core').PreparationSquadKind, fallback: readonly string[] = []): string[] {
+    return preparationSquadOf(this.state, kind, fallback)
+  }
+
+  rememberPreparationSquad(kind: import('@whale/core').PreparationSquadKind, squad: readonly string[]): void {
+    if (notePreparationSquad(this.state, kind, squad)) void this.persist()
   }
 
   wormholePrepareFromTemplate(shipIds: readonly string[], request: WormholePreparationRequest, id: string) {

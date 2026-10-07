@@ -59,7 +59,7 @@ export function WhPreparation({ engine, picked, stockId, onEnter, auto = false }
   const state = engine.state
   const onboard: Record<string, number> = {}
   for (const uid of picked) for (const [id, n] of Object.entries(state.fleet[uid]?.cargo ?? {})) onboard[id] = (onboard[id] ?? 0) + n
-  const plan = engine.wormholePrepare(picked, request)
+  const plan = engine.wormholePrepare(picked, request, auto)
   const rows = new Map(plan.rows.map((row) => [row.itemId, row]))
   const ids = [...new Set([
     ...[...engine.ctx.items.values()].filter((item) => ['ammo', 'kit', 'drone'].includes(item.kind) && item.unreleased !== true).map((item) => item.id),

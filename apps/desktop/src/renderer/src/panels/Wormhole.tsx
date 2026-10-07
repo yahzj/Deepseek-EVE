@@ -109,6 +109,7 @@ import {
 import type { WormholeGridState, WormholeHoldPlacement, WormholeHoldState, WormholePlace, WormholeSettleRecord, WormholeSignal } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { ShipSprite, ShipSpriteShape } from '../ui/ShipSprite'
+import { usePreparationSquad } from '../ui/usePreparationSquad'
 import type { ToastFn } from '../pages/common'
 import { SHIP_DOMAIN_SUBS, SHIP_TIER_SUBS, SUB_ALL, shipRolePasses, shipTierPasses, subText, wreckTierOf } from '../ui/itemSubs'
 import { futureTr, futureCmdText, tr as signalTr, cmdText as signalCmdText } from '../i18n/locale'
@@ -291,7 +292,7 @@ export function WormholePanel({
    * - 手动 ⇒ 默认**带上主控**（老口径）；
    * - 自动 ⇒ 默认给**自动配置的那一队**（`wormholeAutoCandidates` 里被勾中的，最多 4 条、不超过核心余量）。
    */
-  const [picked, setPicked] = useState<string[]>(() =>
+  const [picked, setPicked] = usePreparationSquad(engine, auto ? 'wormhole-auto' : 'wormhole-manual', () =>
     auto
       ? engine
           .wormholeAutoCandidates([])
@@ -304,10 +305,10 @@ export function WormholePanel({
         : [],
   )
   useEffect(() => {
-    if (!preparedEntry || run || manifestView) return
+    if (auto || !preparedEntry || run || manifestView) return
     const key = manifestDraftKey(engine, stockId)
     writeManifestDraft(key, { picked, request: readManifestDraft(key)?.request ?? { targets: {}, unload: [] } })
-  }, [engine, stockId, picked, preparedEntry, run, manifestView])
+  }, [engine, stockId, picked, preparedEntry, run, manifestView, auto])
   /** 自动探索：选了主控船 ⇒ 派队前先弹确认（写明主控要换给谁） */
   const [mainAsk, setMainAsk] = useState(false)
   const [autoPlan, setAutoPlan] = useState<WormholePreparationPlan | null>(null)
@@ -359,7 +360,7 @@ export function WormholePanel({
    */
   const autoBlock =
     auto && autoStockId !== null ? engine.wormholeAutoBlockReason(autoStockId, picked, autoMainPicked) : null
-  const autoGate = autoMainReason ?? autoBlock
+  const autoGate = (autoMainPicked ? autoMainReason : null) ?? autoBlock
   /**
    * **本次准备的是哪一处虫洞**（船长 2026-09-16 的敌情行要用它）：从库存进来时
    * `stockId`（手动）/ `autoStockId`（自动）有值 ⇒ 取其族；两者都没有（从星图入口直接开面板）
@@ -1714,7 +1715,7 @@ export function WormholePanel({
                         type="button"
                         data-wh-pick={uid}
                         className={`app-wh-card${on ? ' is-picked' : ''}${canPick ? '' : ' is-locked'}`}
-                        disabled={!canPick}
+                        disabled={!canPick && !on}
                         onClick={() => togglePick(uid)}
                         title={title}
                       >

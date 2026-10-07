@@ -110,6 +110,9 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '五类准备阵容清洗与显式空记忆', symbol: 'cleanPreparationSquads', file: 'packages/core/src/preparationSquads.ts', exported: true },
+  { concept: '准备阵容恢复与缺省来源', symbol: 'preparationSquadOf', file: 'packages/core/src/preparationSquads.ts', exported: true },
+  { concept: '准备阵容按实例保存且不执行任务', symbol: 'notePreparationSquad', file: 'packages/core/src/preparationSquads.ts', exported: true },
   { concept: '护盾力场每次有效脉冲的最大护盾代价', symbol: 'SHIELD_FIELD_COST_PCT', file: 'packages/core/src/combatRepair.ts', exported: true },
   { concept: '护盾力场排除自身与按需支付恢复', symbol: 'pulseShieldFieldFor', file: 'packages/core/src/combatRepair.ts', exported: true },
   { concept: '星球供电与产消视图', symbol: 'planetColonyView', file: 'packages/core/src/planetColony.ts', exported: true },

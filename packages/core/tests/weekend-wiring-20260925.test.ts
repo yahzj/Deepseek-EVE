@@ -659,6 +659,7 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     expect(s.weekendPrepSquad).toEqual(sanitized)
     expect(weekendPrepSquadOf(s), '默认 = 落盘编队').toEqual(sanitized)
     s.weekendPrepSquad = ['ghost-ship']
+    delete s.preparationSquads // 模拟仅有旧旗舰阵容字段的存档。
     expect(weekendPrepSquadOf(s).length, '落盘全失效 ⇒ 回落自动编队').toBeGreaterThan(0)
     expect(weekendPrepSquadOf(s)).not.toContain('ghost-ship')
 

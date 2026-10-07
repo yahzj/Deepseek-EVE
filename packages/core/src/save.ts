@@ -32,6 +32,7 @@ import { WORMHOLE_AUTO_MAX_SHIPS, WORMHOLE_AUTO_REPORT_MAX } from './wormholeAut
 import { WORMHOLE_ARCHETYPES, WORMHOLE_GRID_SAVE_MAX_R, isWormholeEventKey, wormholeArchetypeOf } from './wormholeGrid'
 import { cleanWormholeEventInstance, cleanWormholeExpeditionRun } from './wormholeExpeditionSave'
 import { cleanWormholePreparationTemplates } from './wormholePreparationTemplates'
+import { cleanPreparationSquads } from './preparationSquads'
 import { WORMHOLE_FAMILY_ORDER, wormholeFamilyOfSeed } from './wormholeFoes'
 import type { WormholeHoldState } from './wormholeHold'
 import { emptyFitted, uidDefId } from './labels'
@@ -873,6 +874,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
    */
   const fitPresets: Record<string, ShipFitPreset[]> = {}
   const wormholePreparationTemplates = cleanWormholePreparationTemplates(src.wormholePreparationTemplates)
+  const preparationSquads = cleanPreparationSquads(src.preparationSquads)
   for (const [defId, listRaw] of Object.entries(asRaw(src.fitPresets))) {
     if (defId.length === 0 || !Array.isArray(listRaw)) continue
     const list: ShipFitPreset[] = []
@@ -3405,6 +3407,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     //   多出一个键 ⇒ `toEqual` 快照用例红（踩过）；因此只在真有方案时才落这个字段。
     ...(Object.keys(fitPresets).length > 0 ? { fitPresets } : {}),
     ...(wormholePreparationTemplates.length > 0 ? { wormholePreparationTemplates } : {}),
+    ...(preparationSquads !== undefined ? { preparationSquads } : {}),
     blueprintStock,
     market,
     ...(blackMarket ? { blackMarket } : {}),

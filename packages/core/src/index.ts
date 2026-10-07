@@ -2166,6 +2166,8 @@ export {
  */
 export { plugSlotAddsOf, shipSlotsWithPlugsOf } from './plugs'
 export { wormholePreparationPlan, wormholePreparationFillPlan, wormholeEnterPrepared } from './wormholePreparation'
+export { PREPARATION_SQUAD_KINDS, cleanPreparationSquads, preparationSquadOf, notePreparationSquad } from './preparationSquads'
+export type { PreparationSquadKind, PreparationSquads } from './preparationSquads'
 export type { WormholePreparationRequest, WormholePreparationPlan, WormholePreparedResult } from './wormholePreparation'
 export { WORMHOLE_TEMPLATE_MAX, WORMHOLE_TEMPLATE_NAME_MAX, cleanWormholePreparationTemplates, wormholeSavePreparationTemplate, wormholeRenamePreparationTemplate, wormholeDeletePreparationTemplate, wormholeTemplateFillPlan } from './wormholePreparationTemplates'
 export type { WormholePreparationTemplate, WormholeTemplateResult } from './wormholePreparationTemplates'

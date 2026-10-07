@@ -731,7 +731,7 @@ function startPreparedAuto(
   if (handover.reason) return { ok: false, errorId: handover.reasonId }
   const blocked = wormholeAutoBlockReason(state, ctx, stockId, ships, { mainMayJoin: handover.needed })
   if (blocked) return { ok: false, ...blocked }
-  const current = wormholePreparationPlan(state, ctx, ships, opts.prepared.request)
+  const current = wormholePreparationPlan(state, ctx, ships, opts.prepared.request, { automatic: opts.prepared.automatic })
   if (!current.ok || current.fingerprint !== opts.prepared.fingerprint) return { ok: false }
   const staged = structuredClone(state)
   if (handover.needed && handover.toId) {

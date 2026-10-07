@@ -1942,6 +1942,8 @@ export interface GameStateV9 extends Omit<GameStateV8, 'version' | 'blueprints'>
   fitPresets?: Record<string, ShipFitPreset[]>
   /** 虫洞整备多模板随角色保存；老档缺省为空，不写空字段。 */
   wormholePreparationTemplates?: import('./wormholePreparationTemplates').WormholePreparationTemplate[]
+  /** 五类准备界面分别记忆实例与顺序；空数组是玩家明确清空，缺省才走默认。 */
+  preparationSquads?: import('./preparationSquads').PreparationSquads
 }
 
 /** 一套装配方案（存"哪一位装什么 + 无人机舱装载"；套用时按目标船槽位布局对齐，超出位丢弃） */
