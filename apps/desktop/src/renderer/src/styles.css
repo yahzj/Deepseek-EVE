@@ -8603,6 +8603,21 @@ html[data-locale='en'] body {
 
 @keyframes app-engine-pulse { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
 
+.app-bts-ship { position: relative; display: inline-block; vertical-align: top; }
+.app-bts-acceleration { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
+.app-bts-acceleration path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.app-bts-acceleration .accel-core { fill: currentColor; fill-opacity: .65; stroke: none; }
+.app-bts-acceleration .accel-edge { stroke-width: 1.3; opacity: .8; }
+.app-bts-acceleration .accel-flame { transform-origin: 0 0; animation: app-bts-accel-flame .6s ease-in-out infinite; }
+.app-bts-acceleration .accel-lines { animation: app-bts-accel-lines .7s linear infinite; }
+.app-bts-acceleration.is-charge .accel-lines { animation-duration: .45s; }
+.app-bts-acceleration .accel-bow { stroke-width: 2.8; }
+@keyframes app-bts-accel-flame { 0%, 100% { transform: scaleX(.9); opacity: .8; } 50% { transform: scaleX(1.1); opacity: 1; } }
+@keyframes app-bts-accel-lines { 0% { transform: translateX(9px); opacity: .25; } 50% { opacity: .85; } 100% { transform: translateX(-9px); opacity: .25; } }
+@media (prefers-reduced-motion: reduce) {
+  .app-bts-acceleration .accel-flame, .app-bts-acceleration .accel-lines { animation: none; opacity: .9; }
+}
+
 .app-battle-note { font-size: var(--wui-fs-2xse); }
 
 /* V12.2 battle anim screen (ASCII-safe append) */

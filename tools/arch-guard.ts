@@ -110,6 +110,7 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '战斗视图逐舰推进器点火与敌舰冲锋', symbol: 'battleArcsFor', file: 'packages/core/src/combat.ts', exported: true },
   { concept: '星球注入目录完整性校验', symbol: 'planetCatalogIssues', file: 'packages/core/src/planetCatalog.ts', exported: true },
   { concept: '星球独立子流与地块生成', symbol: 'generatePlanet', file: 'packages/core/src/planetGeneration.ts', exported: true },
   { concept: '星球环境与成本派生', symbol: 'planetEnvironmentOf', file: 'packages/core/src/planetRules.ts', exported: true },

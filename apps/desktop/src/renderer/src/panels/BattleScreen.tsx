@@ -15,7 +15,7 @@ import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battle
 import type { BattleReportRecord, BattleVerdict, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
-import { ShipSprite } from '../ui/ShipSprite'
+import { BattleShipSprite } from './battleShipFx'
 import { ammoKey, planBlinkPillars, syncBlinkPillarDom } from '../ui/battleBlink'
 import type { BlinkPillarFx } from '../ui/battleBlink'
 import { FOE_ACCENT, foeFamilyOf } from '../ui/shipArt'
@@ -2219,12 +2219,13 @@ const meSpeedRef = useRef(200)
         {/* 淡出作用于舰体容器（外层 .app-bts-unit 有入场动画 fill 占位，透明度须压在子层）；
             尸骸灰化 = accent 传灰（2026-09-10 性能：不再用 CSS 滤镜重新栅格化整份舰体矢量） */}
         <span className="app-bts-corpse" style={acidDeath && corpseOn ? { opacity: 0 } : fadeT > 0 ? { opacity: Math.max(0, 1 - fadeT) } : undefined}>
-          <ShipSprite
+          <BattleShipSprite
             shipId={foeShipId ?? undefined}
             foeKey={foeKey}
             flip={foeFlip}
             accent={corpseOn ? UI_TONES.corpse : FOE_ACCENT[foeKey] ?? '#ff8373'}
             size={size}
+            acceleration={arcs.foeChargingTags.includes(tag) ? 'charge' : undefined}
           />
         </span>
         {/**
@@ -2723,7 +2724,7 @@ const meSpeedRef = useRef(200)
                       {u.name}
                       {u.leader ? <i className="app-bts-fleet-lead">{tr("ui.BattleScreen.031")}</i> : null}
                     </span>
-                    <ShipSprite
+                    <BattleShipSprite
                       /**
                        * ⚠ **画舰影要用 `defId`（船型 id），不是 `shipId`（编队 uid）** ——
                        * 船长 2026-09-14 报障「**在虫洞内，友方舰船的图形不正确**」的真因：
@@ -2735,6 +2736,7 @@ const meSpeedRef = useRef(200)
                       accent={ROLE_ACCENT[role]}
                       size={spriteSize}
                       flip={meFlip}
+                      acceleration={u.boosting ? 'boost' : undefined}
                     />
                     {u.alive ? (
                       /**
@@ -2765,7 +2767,7 @@ const meSpeedRef = useRef(200)
                 }
               >
                 <span className="app-bts-name">{meShip?.name}</span>
-                <ShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={meSize} flip={meFlip} />
+                <BattleShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={meSize} flip={meFlip} acceleration={arcs.myUnits[0]?.boosting ? 'boost' : undefined} />
                 <div className="app-bts-hpWrap">
                   <HpTri hp={combat.meHp} max={arcs.maxHp.me} />
                 </div>
