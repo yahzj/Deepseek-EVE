@@ -3796,7 +3796,7 @@ function main(): void {
     process.exit(feature ? 1 : 0)
   }
   if (feature === 'hauler' || feature === 'ammo-mk3' || feature === 'wreck-fit' || feature === 'ship-recovery' || feature === 'planetary' || feature === 'planetary-runtime') {
-    const state = createInitialState({ name: feature === 'planetary' ? '星球规则验收' : feature === 'hauler' ? '货舰验收' : 'MK3弹药验收', seed: 7, nowWallMs: Date.now() })
+    const state = createInitialState({ name: feature === 'planetary-runtime' ? '星球建设验收' : feature === 'planetary' ? '星球规则验收' : feature === 'hauler' ? '货舰验收' : 'MK3弹药验收', seed: 7, nowWallMs: Date.now() })
     const notes = INJECTORS[feature]!(state)
     const text = serializeSaveFile(state, Date.now())
     const back = loadSaveFile(text).state

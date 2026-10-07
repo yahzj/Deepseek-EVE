@@ -1,6 +1,6 @@
 import type { PlanetDef, PlanetTraitDef, PlanetBuildingDef, PlanetCatalog, PlanetBuildingKind, PlanetOperationDef, PlanetProjectDef } from '@whale/core'
 
-// ⟪未完成 2026-10-07⟫ 闭门原型参数；不接公开入口、物品或市场条目。
+// 隐藏验收目录；完整建设规则已接线，公开入口、物品与市场条目不开放。
 export const PLANET_DEFS: readonly PlanetDef[] = [
   { id: 'planet-prototype-small', galaxyId: 'galaxy-hub', size: 4 },
   { id: 'planet-prototype-medium', galaxyId: 'galaxy-kor', size: 5 },
