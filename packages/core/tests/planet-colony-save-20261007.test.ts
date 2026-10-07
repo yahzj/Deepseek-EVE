@@ -66,9 +66,11 @@ describe('星球运行态存档字段穷尽及往返', () => {
     const back = cleanPlanetaryState(runtime())!
     const p = back.planets['planet-4']!
     back.tickRemainderMs = 1234
-    expectKeys<PlanetaryState>(back, { planets: true, runtimeVersion: true, tickRemainderMs: true, humans: true, deliveries: true })
+    back.stellar = { systems: {}, searchSeq: 0, autoSearch: false }
+    expectKeys<PlanetaryState>(back, { planets: true, stellar: true, runtimeVersion: true, tickRemainderMs: true, humans: true, deliveries: true })
     expect(cleanPlanetaryState(back)!.tickRemainderMs).toBe(1234)
-    expectKeys<PlanetState>(p, { id: true, galaxyId: true, size: true, generationVersion: true, seed: true,
+    const typed = { ...p, systemId: 'system-v1-0', surfaceAllowed: false }
+    expectKeys<PlanetState>(typed, { id: true, galaxyId: true, size: true, systemId: true, surfaceAllowed: true, generationVersion: true, seed: true,
       traitIds: true, hiddenTraitId: true, survey: true, cells: true, colony: true, originalTraitIds: true, projectHistory: true })
     expectKeys<PlanetBuildingState>(p.cells[0]!.building!, { id: true, status: true, powered: true, staffed: true, condition: true, enabled: true })
     expectKeys<PlanetGridCell>({ ...p.cells[15]!, obstacle: 'rubble', building: p.cells[0]!.building },

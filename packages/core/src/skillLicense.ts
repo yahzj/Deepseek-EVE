@@ -26,6 +26,7 @@
 import type { GameState } from './state'
 import { addLog } from './state'
 import type { SkillCatalog, SkillDef } from './types'
+import { DEEP_SPACE_SKILL_IDS, probeManufacturingUnlocked } from './probeManufacturing'
 
 /**
  * **许可价目表**（信用点）——键 = 技能 rank。
@@ -78,6 +79,7 @@ export function buySkillLicense(
   /** 成功时返回实付金额（信用点），供界面回话用 */
   price?: number
 } {
+  if (DEEP_SPACE_SKILL_IDS.includes(skillId) && !probeManufacturingUnlocked(state)) return { ok: false, error: '深空搜索尚未解锁。', errorId: 'ui.stellar.059' }
   const def = catalog.get(skillId)
   if (!def) {
     return {

@@ -33,6 +33,8 @@ import {
   // ⇒ 悬停卡改报装后合成值（与装配页/战斗同源：createPlayerSpec ＋ 机舱合计）
   createPlayerSpec,
   droneBayTotalM3,
+  cleanShipDamage,
+  plugInfoOf,
   // 2026-09-26 船长令「所有声望门槛改读累计声望」：本页矿带下拉的锁定判据走唯一入口
   standingOf,
   DSI_FACTION_ID,
@@ -50,11 +52,12 @@ import { FuelTank } from '../ui/FuelTank'
 import '../ui/layout-css/_hud-industry.css'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
-import type { AiCoreType, FleetShipState, GameState, ShipRole } from '@whale/core'
+import type { AiCoreType, FleetShipState, GameState, ModuleDef, ShipRole } from '@whale/core'
 import { durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
 import { Panel } from '@whale/ui'
-import { ShipHover } from '../ui/shipInfo'
+import { moduleHoverContent, ShipHover } from '../ui/shipInfo'
 import { ShipDamageMods } from '../ui/ShipDamageMods'
+import { hoverTipProps } from '../ui/Tooltip'
 import { useSessionScroll } from '../ui/sessionView'
 import type { GameEngine } from '../game/engine'
 import type { ShipDef } from '@whale/core'
@@ -62,7 +65,7 @@ import { ShipSprite } from '../ui/ShipSprite'
 import { AiTaskBar } from '../ui/aiProgress'
 import { AiWorkFx, industryWorkKindOf } from '../ui/aiWorkFx'
 import type { AiWorkKind } from '../ui/aiWorkFx'
-import { Glyph, NAV_TONES, ICO_TONES } from '../ui/Glyphs'
+import { Glyph, NAV_TONES, ICO_TONES, toneOf } from '../ui/Glyphs'
 import { MarkStar, pinMarked } from '../ui/marks'
 import {
   FLEET_STATE_TABS,
@@ -100,6 +103,34 @@ const FleetArt = memo(function FleetArt({ shipId, role }: { shipId: string; role
     </div>
   )
 })
+
+function ShipPlugSummary({ engine, uid }: { engine: GameEngine; uid: string }) {
+  const { slots, installed } = plugInfoOf(engine.state, engine.ctx, uid)
+  const damage = cleanShipDamage(engine.state.fleet[uid]?.damagePlugs)
+  if (!installed.length && !damage) return null
+  const grouped = new Map<string, { def: ModuleDef; count: number }>()
+  for (const def of installed) {
+    const row = grouped.get(def.id)
+    if (row) row.count += 1
+    else grouped.set(def.id, { def, count: 1 })
+  }
+  return <div className="app-ship-plug-summary">
+    <div className="app-bay-title"><span>{tr('ui.itemSubs.042')}</span>
+      <span className="app-dim">{tr('ui.Expedition.444', { p1: installed.length, p2: slots })}</span>
+      {damage ? <span className="app-ship-damage-count">{tr('ui.shipDamage.013')} {damage.length}</span> : null}
+    </div>
+    <div className="app-fit-icongrid">
+      {[...grouped.values()].map(({ def, count }) => <span key={def.id} className="app-fit-slot-icon is-filled is-readonly app-ship-plug-card"
+        data-ship-plug-id={def.id} aria-label={`${def.name} ×${count}`}
+        {...hoverTipProps(moduleHoverContent(def, tr('ui.Expedition.443'), engine, uid))}>
+        <span className="app-fit-slot-icon-glyph" aria-hidden="true"><Glyph name="plug" size={22} color={toneOf('plug')} /></span>
+        <span className="app-fit-slot-icon-name">{def.name}</span>
+        <span className="app-fit-slot-icon-sub">×{count}</span>
+      </span>)}
+      <ShipDamageMods ids={damage} />
+    </div>
+  </div>
+}
 
 /** 市场稀有度中文标签 */
 function rarityLabel(rarity: 'common' | 'rare' | 'exotic'): string {
@@ -896,7 +927,7 @@ export function ShipPage({
                 <div className="app-ship-spec">
                   {tr("ui.ShipPage.019")} {def.cargoM3.toLocaleString('zh-CN')} {tr("ui.ShipPage.020")} {def.cycleSeconds} {tr("ui.ShipPage.021")} {def.oreUnitsPerCycle} {tr("ui.Handbook.012")} {Math.round(def.agility * 100)}%
                 </div>
-                <ShipDamageMods ids={shipState.damagePlugs} />
+                <ShipPlugSummary engine={engine} uid={uid} />
                 <div className="app-dur-row">
                   <div className="app-dur-track">
                     <div className="app-dur-fill" style={{ width: `${Math.round(dur * 100)}%` }} />

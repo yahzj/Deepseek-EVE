@@ -129,6 +129,7 @@ export const CONSUMABLE_SUB_PREFIX = 'consume-item-'
 
 /** 道具逐件档（顺序 = 渲染顺序；新增道具时在**数据**与**本表**各加一行，契约会盯着） */
 export const CONSUMABLE_ITEM_SUBS: SubOption[] = [
+  { key: `${CONSUMABLE_SUB_PREFIX}deep-space-probe`, itemId: 'deep-space-probe', label: tr('ui.stellar.001') },
   { key: `${CONSUMABLE_SUB_PREFIX}jump-fuel`, itemId: 'jump-fuel', label: '超空间折跃燃料' },
   { key: `${CONSUMABLE_SUB_PREFIX}invasion-beacon`, itemId: 'invasion-beacon', label: '信号发射器' },
   { key: `${CONSUMABLE_SUB_PREFIX}synaptic-accelerant`, itemId: 'synaptic-accelerant', label: '突触加速剂' },

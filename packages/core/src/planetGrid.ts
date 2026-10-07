@@ -12,10 +12,11 @@ export function planetNeighborIndices(size: number, index: number): number[] {
   return out
 }
 
-export type PlanetConstructionCheck = { ok: true } | { ok: false; reason: 'unsupported' | 'survey-required' | 'invalid-cell' | 'unknown-building' | 'obstacle' | 'occupied' | 'unique' | 'resource-required' | 'trait-required' }
+export type PlanetConstructionCheck = { ok: true } | { ok: false; reason: 'no-surface' | 'unsupported' | 'survey-required' | 'invalid-cell' | 'unknown-building' | 'obstacle' | 'occupied' | 'unique' | 'resource-required' | 'trait-required' }
 
 export function planetConstructionCheck(planet: PlanetState, index: number, buildingId: string, catalog: PlanetCatalog): PlanetConstructionCheck {
   if (!planetRulesSupported(planet, catalog)) return { ok: false, reason: 'unsupported' }
+  if (planet.surfaceAllowed === false) return { ok: false, reason: 'no-surface' }
   if (planet.survey < 2) return { ok: false, reason: 'survey-required' }
   if (!Number.isSafeInteger(index) || index < 0 || index >= planet.size ** 2 || planet.cells[index]?.index !== index) return { ok: false, reason: 'invalid-cell' }
   const def = catalog.buildings.get(buildingId)
@@ -30,7 +31,7 @@ export function planetConstructionCheck(planet: PlanetState, index: number, buil
 }
 
 export function planetClearanceCheck(planet: PlanetState, index: number, catalog: PlanetCatalog): { ok: boolean } {
-  return { ok: planetRulesSupported(planet, catalog) && planet.survey >= 2
+  return { ok: planet.surfaceAllowed !== false && planetRulesSupported(planet, catalog) && planet.survey >= 2
     && Number.isSafeInteger(index) && index >= 0 && index < planet.size ** 2
     && planet.cells[index]?.obstacle !== undefined && planet.cells[index]?.building === undefined }
 }

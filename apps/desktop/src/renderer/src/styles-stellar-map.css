@@ -1,0 +1,127 @@
+.app-stellar-map {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 280px;
+  box-sizing: border-box;
+  color: rgb(var(--wui-text));
+  letter-spacing: 0;
+}
+
+.app-stellar-map-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 6px 0;
+  min-width: 0;
+}
+
+.app-stellar-map-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--wui-fs-xs);
+  overflow-wrap: anywhere;
+}
+
+.app-stellar-map-tools {
+  flex: 0 0 auto;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.app-stellar-map-tool.app-map-zoom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border-radius: 5px;
+}
+
+.app-stellar-map-percent {
+  width: 44px;
+  min-width: 44px;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-stellar-map-selected {
+  display: flex;
+  flex: 1 1 120px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 4px 8px;
+  min-width: 0;
+  margin-left: auto;
+  font-size: var(--wui-fs-xs);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.app-stellar-map-selected strong { font-weight: 600; }
+
+.app-stellar-map-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: rgb(var(--wui-bg-hover) / 0.25);
+  border: 1px solid rgb(var(--wui-map-minor) / 0.35);
+  box-sizing: border-box;
+}
+
+.app-stellar-map-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  overscroll-behavior: contain;
+}
+
+.app-stellar-map-svg.is-panning,
+.app-stellar-map-svg.is-panning .app-stellar-map-body { cursor: grabbing; }
+.app-stellar-map-svg:focus-visible,
+.app-stellar-map-tool:focus-visible { outline: 2px solid rgb(var(--wui-accent)); outline-offset: -2px; }
+
+.app-stellar-map-orbits,
+.app-stellar-map-stars,
+.app-stellar-map-labels { pointer-events: none; }
+.app-stellar-map-orbits { fill: none; stroke: rgb(var(--wui-map-minor) / 0.4); stroke-width: 1; }
+.app-stellar-map-orbits circle { vector-effect: non-scaling-stroke; }
+
+.app-stellar-map-stars { color: rgb(var(--wui-gold)); fill: none; stroke: currentColor; stroke-width: 1.4; }
+.app-stellar-map-stars.is-star-red { color: rgb(var(--wui-danger-map)); }
+.app-stellar-map-stars.is-star-blue,
+.app-stellar-map-stars.is-star-neutron { color: rgb(var(--wui-accent)); }
+.app-stellar-map-stars.is-star-white,
+.app-stellar-map-stars.is-white-dwarf { color: rgb(var(--wui-text)); }
+.app-stellar-map-stars.is-black-hole { color: rgb(var(--wui-gold)); }
+.app-stellar-map-star { fill: currentColor; fill-opacity: 0.25; }
+.app-stellar-map-star-ring { opacity: 0.55; }
+.app-stellar-map-horizon { fill: rgb(var(--wui-bg)); }
+.app-stellar-map-accretion { stroke-width: 2; }
+.app-stellar-map-beam { stroke-width: 2; stroke-dasharray: 5 3; }
+
+.app-stellar-map-gas-ring,
+.app-stellar-map-solid-mark { fill: none; stroke: rgb(var(--wui-text)); stroke-width: 1.2; pointer-events: none; }
+.app-stellar-map-body.is-gas .app-stellar-map-planet { fill: rgb(var(--wui-gold) / 0.22); stroke: rgb(var(--wui-gold)); }
+.app-stellar-map-body.is-selected .app-stellar-map-planet { stroke: rgb(var(--wui-accent)); }
+.app-stellar-map-selection { fill: none; stroke: rgb(var(--wui-accent)); stroke-width: 1.5; visibility: hidden; pointer-events: none; vector-effect: non-scaling-stroke; }
+.app-stellar-map-body.is-selected .app-stellar-map-selection,
+.app-stellar-map-body:focus-visible .app-stellar-map-selection,
+.app-stellar-map-body:hover .app-stellar-map-selection { visibility: visible; }
+.app-stellar-map-body:focus { outline: none; }
+.app-stellar-map-hit { fill: transparent; pointer-events: all; }
+.app-stellar-map-labels text { letter-spacing: 0; }

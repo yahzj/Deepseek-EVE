@@ -64,6 +64,8 @@ export interface PlanetGridCell {
   building?: PlanetBuildingState
 }
 export interface PlanetState extends PlanetDef {
+  systemId?: string
+  surfaceAllowed?: boolean
   generationVersion: number
   seed: number
   traitIds: string[]
@@ -75,6 +77,7 @@ export interface PlanetState extends PlanetDef {
   projectHistory?: string[]
 }
 export interface PlanetaryState {
+  stellar?: import('./stellarTypes').StellarState
   planets: Record<string, PlanetState>
   runtimeVersion?: 1
   tickRemainderMs?: number

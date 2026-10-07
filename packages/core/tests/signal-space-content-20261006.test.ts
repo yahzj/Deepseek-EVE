@@ -103,7 +103,7 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
 
   it('技能仅六条说明改词：名称、档位、前置、训练时间与中英高亮数字都与来源一致', () => {
     const existing = SKILLS.filter(row => baseSkills.some(original => original.id === row.id))
-    expect(SKILLS.filter(row => !baseSkills.some(original => original.id === row.id)).map(row => row.id)).toEqual([
+    expect(SKILLS.filter(row => !baseSkills.some(original => original.id === row.id) && !['deep-space-probing', 'advanced-deep-space-probing', 'stellar-archive', 'probe-assembly'].includes(row.id)).map(row => row.id)).toEqual([
       'hull-salvage-engineering', 'advanced-hull-salvage-engineering', 'wreck-equipment-preservation',
     ])
     sameData(existing, baseSkills, ['description'])
@@ -181,7 +181,7 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
   })
 
   it('旧资产数值与配方不变；模块及谜质装置说明取新ID，历史正文仍可读取', () => {
-    const addedItems = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c'])
+    const addedItems = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'deep-space-probe'])
     expect(ITEMS.filter(item => addedItems.has(item.id)).map(item => item.id).sort()).toEqual([...addedItems].sort())
     sameData(ITEMS.filter(item => !addedItems.has(item.id)), baseItems, ['name', 'description'])
     expect(EN_ITEMS['mat-wh-essence']!.name).toBe('Signal Enigma')

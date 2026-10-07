@@ -7,13 +7,15 @@ import { advancePlanetConstruction } from './planetConstruction'
 import { advancePlanetDeliveries } from './planetLogistics'
 import { advancePlanetEvents } from './planetProjects'
 import { hashSeed } from './rng'
+import { advanceStellarSearch } from './stellarSearch'
 
 /** 实验规则只对显式启用的测试世界推进；旧原型档仍冻结。 */
 export function advancePlanetary(state: GameState, deltaMs: number, catalog: PlanetCatalog, startGameMs = state.gameMs): void {
   if (state.planetary?.runtimeVersion !== 1 || !Number.isFinite(deltaMs) || deltaMs <= 0) return
   // 以整个系统一条余数对齐物流与工程节点，避免长步先到货后补算之前产出。
-  const planets = Object.values(state.planetary.planets).filter(p => p.colony && planetRulesSupported(p, catalog))
-  if (planets.length === 0) return
+  const planets = Object.values(state.planetary.planets).filter(p => p.colony && planetRulesSupported(p, catalog)
+    && (!p.systemId || state.planetary!.stellar?.systems[p.systemId]?.generationVersion === 1))
+  if (planets.length === 0) { advanceStellarSearch(state, deltaMs); return }
   state.planetary.tickRemainderMs ??= planets[0]!.colony!.tickRemainderMs
   let left = Math.floor(deltaMs)
   while (left > 0) {
@@ -21,26 +23,32 @@ export function advancePlanetary(state: GameState, deltaMs: number, catalog: Pla
     state.planetary.tickRemainderMs += step
     for (const p of planets) p.colony!.tickRemainderMs = state.planetary.tickRemainderMs
     left -= step
-    if (state.planetary.tickRemainderMs < PLANET_TICK_MS) continue
+    if (state.planetary.tickRemainderMs < PLANET_TICK_MS) { advanceStellarSearch(state, step); continue }
     state.planetary.tickRemainderMs = 0
     for (const p of planets) {
       p.colony!.tickRemainderMs = 0
       p.colony!.clockMs += PLANET_TICK_MS
       tickPlanetColony(p, catalog, PLANET_TICK_MS)
       advancePlanetConstruction(p, catalog, PLANET_TICK_MS)
+      if (p.systemId && p.cells.some(cell => cell.building?.id === 'base' && cell.building.status === 'ready')) {
+        state.planetary.stellar!.systems[p.systemId]!.developed = true
+      }
       advancePlanetEvents(p, catalog, PLANET_TICK_MS)
     }
-    advancePlanetDeliveries(state, PLANET_TICK_MS)
+    advancePlanetDeliveries(state, PLANET_TICK_MS, catalog)
     reconcilePlanetHome(state, catalog, startGameMs + Math.floor(deltaMs) - left)
+    advanceStellarSearch(state, step)
   }
 }
 
 export function discoverPlanetHumans(state: GameState, ctx: SimContext, catalog: PlanetCatalog, planetId: string): PlanetActionResult {
   const p = state.planetary?.planets[planetId]
+  if (p?.systemId && state.planetary?.stellar?.systems[p.systemId]?.generationVersion !== 1) return { ok: false, reason: 'unsupported' }
   if (state.planetary?.runtimeVersion !== 1 || !p || p.survey !== 3 || !planetRulesSupported(p, catalog)) return { ok: false, reason: 'survey-required' }
   if (state.planetary.humans) return { ok: false, reason: 'already-discovered' }
   const candidates = [...catalog.planets.keys()].sort()
   const source = candidates[hashSeed(`human-source:${state.rng.seed}`) % candidates.length]
+  if (p.surfaceAllowed === false) return { ok: false, reason: 'no-surface' }
   if (p.id !== source && !p.traitIds.includes('underground-ruins') && !p.traitIds.includes('old-dome')) return { ok: false, reason: 'trait-required' }
   if (!state.importantTasks['find-humans'] || ![...ctx.galaxies.keys()].every(id => state.exploredGalaxies.includes(id))) return { ok: false, reason: 'not-ready' }
   state.planetary.humans = { discoveredAtGameMs: state.gameMs, sourcePlanetId: p.id, sleeping: 6 }
@@ -61,6 +69,7 @@ export function reconcilePlanetHome(state: GameState, catalog: PlanetCatalog, at
   const task = state.importantTasks['human-home']
   if (!task || task.done) return
   for (const p of Object.values(state.planetary.planets)) {
+    if (p.systemId && state.planetary.stellar?.systems[p.systemId]?.generationVersion !== 1) continue
     allocatePlanetPower(p, catalog)
     const view = planetColonyView(p, catalog)
     if (view.stage === 'home' && p.colony?.crisis === 'none'

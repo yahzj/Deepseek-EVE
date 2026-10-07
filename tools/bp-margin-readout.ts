@@ -34,7 +34,7 @@ function row(
 ): void {
   const price = marketPriceOf(state, ctx, refId)
   const matCost = materials.reduce(
-    (sum, m) => sum + matNeedCount(state, m.count) * (marketPriceOf(state, ctx, m.itemId) ?? ctx.items.get(m.itemId)?.baseSellPriceIsk ?? 0),
+    (sum, m) => sum + matNeedCount(state, m.count, bpId) * (marketPriceOf(state, ctx, m.itemId) ?? ctx.items.get(m.itemId)?.baseSellPriceIsk ?? 0),
     0,
   )
   const name =

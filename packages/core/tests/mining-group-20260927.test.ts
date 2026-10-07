@@ -21,8 +21,8 @@ describe('矿业大类拆分（2026-09-27）', () => {
     // 2026-09-29 船长令再加 3 条（炉压调控学 R3 · 炉膛重构学 R5 · 工业自动化统合 R5）⇒ 工业 31 → 34、总 105 → 108；
     // 2026-09-30 船长令（燃料上限批）再加 4 条实验室书技能 ⇒ 工业 34 → 38、总 108 → 112
     expect(SKILLS.filter((s) => s.group === '矿业').length).toBe(7)
-    expect(SKILLS.filter((s) => s.group === '工业').length).toBe(38)
-    expect(SKILLS.length).toBe(115)
+    expect(SKILLS.filter((s) => s.group === '工业').length).toBe(39)
+    expect(SKILLS.length).toBe(119)
   })
 
   it('矿业七条点名核对（防顺手多搬或少搬）', () => {

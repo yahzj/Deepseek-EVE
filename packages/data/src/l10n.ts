@@ -495,6 +495,7 @@ export const EN_ITEMS: EnTable = {
   'invasion-beacon': { name: 'Signal Beacon', description: L10N['item.copy.110']!.en },
   // ⟪文案调整 2026-10-02⟫ 与中文同批：使用去处补上技能页「技能加速」（三处同源；`Skill Boost` 取 `ui.boost.001` 的冻结译名）
   'synaptic-accelerant': { name: 'Synaptic Accelerant', description: L10N['item.copy.111']!.en },
+  'deep-space-probe': { name: L10N['ui.stellar.001']!.en, description: L10N['ui.stellar.002']!.en },
   // 零件（2026-09-20 零件体系：基础 7 直接可造 / 高级 7 需蓝图）
   'part-circuit': { name: 'Circuit Board', description: L10N['item.copy.020']!.en },
   'part-armor-plate': { name: 'Armor Plate', description: L10N['item.copy.021']!.en },
@@ -577,6 +578,10 @@ export const EN_ITEMS: EnTable = {
 
 /** 技能（79 · `docs/glossary-en.md` §九）—— **名称 + 说明**（说明逐条译自中文原文；`⟦⟧` 高亮标记照留） */
 export const EN_SKILLS: EnTable = {
+  'deep-space-probing': { name: 'Deep Space Probing', description: 'Reduces the stellar system search cycle by ⟦6%⟧ per level, additive with Advanced Deep Space Probing.' },
+  'advanced-deep-space-probing': { name: 'Advanced Deep Space Probing', description: 'Further reduces the stellar system search cycle by ⟦4%⟧ per level, additive with Deep Space Probing.' },
+  'stellar-archive': { name: 'Stellar Archive', description: 'Adds ⟦2⟧ candidate stellar system slots per level.' },
+  'probe-assembly': { name: 'Probe Assembly Engineering', description: 'Reduces Deep Space Probe material requirements by ⟦4%⟧ per level, stacking multiplicatively with Materials and Component Standardization.' },
   'hull-salvage-engineering': { name: 'Hull Salvage Engineering', description: 'Increases whole-ship recovery from player ship wrecks by ⟦5⟧ percentage points per level, additive with Advanced Hull Salvage Engineering.' },
   'advanced-hull-salvage-engineering': { name: 'Advanced Hull Salvage Engineering', description: 'Further increases whole-ship recovery from player ship wrecks by ⟦4⟧ percentage points per level, additive with Hull Salvage Engineering.' },
   'wreck-equipment-preservation': { name: 'Equipment Preservation Engineering', description: 'On successful player ship recovery, increases ordinary equipment preservation by ⟦4⟧ percentage points per level, from ⟦80%⟧ to ⟦100%⟧ at maximum level; drones are unaffected.' },
@@ -1197,6 +1202,7 @@ function shipClassSegment(enName: string): string {
  * 「现有的舰船插件蓝图都只要使用任意类型黑匣就可以制作」。中文侧同批改（`blueprints.ts`）。
  */
 const BP_DESC_EN: Readonly<Record<string, string>> = {
+  'bp-deep-space-probe': L10N['ui.stellar.004']!.en,
   'bp-miner-1': 'A starter blueprint: assemble your first mining laser from Tritanium Alloy and Silvervein Supermetal.',
   'bp-cargo-1': 'A cargo hold refit plan; Crystalline Colloid makes the sealing lining.',
   'bp-miner-2': 'Resonant drill head plans: a Crystalline Colloid resonance ring plus a Silvervein Supermetal heat sink — a milestone of mid-game industry.',
@@ -1388,7 +1394,8 @@ export const EN_BLUEPRINTS: EnTable = (() => {
     const product = bp.moduleId ? EN_MODULES[bp.moduleId]?.name : bp.itemId ? EN_ITEMS_ALL[bp.itemId]?.name : undefined
     if (!product) continue
     const desc = BP_DESC_EN[bp.id]
-    out[bp.id] = desc !== undefined ? { name: `${product} Blueprint`, description: desc } : { name: `${product} Blueprint` }
+    const name = bp.id === 'bp-deep-space-probe' ? L10N['ui.stellar.003']!.en : `${product} Blueprint`
+    out[bp.id] = desc !== undefined ? { name, description: desc } : { name }
   }
   return out
 })()

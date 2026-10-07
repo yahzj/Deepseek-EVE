@@ -110,6 +110,16 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '版本化星系初始世界生成', symbol: 'generateStellarSystem', file: 'packages/core/src/stellarGeneration.ts', exported: true },
+  { concept: '无符号星系坐标输入', symbol: 'parseStellarSeed', file: 'packages/core/src/stellarGeneration.ts', exported: true },
+  { concept: '深空搜索周期与技能加算', symbol: 'stellarSearchDuration', file: 'packages/core/src/stellarSearch.ts', exported: true },
+  { concept: '候选星系保存容量', symbol: 'stellarCapacity', file: 'packages/core/src/stellarSearch.ts', exported: true },
+  { concept: '已开发星系保护', symbol: 'stellarSystemDeveloped', file: 'packages/core/src/stellarSearch.ts', exported: true },
+  { concept: '候选星系实际占用', symbol: 'stellarCandidateCount', file: 'packages/core/src/stellarSearch.ts', exported: true },
+  { concept: '深空坐标和任务快照清洗', symbol: 'cleanStellarState', file: 'packages/core/src/stellarSave.ts', exported: true },
+  { concept: '探测机专属材料折扣', symbol: 'probeMaterialFactor', file: 'packages/core/src/probeManufacturing.ts', exported: true },
+  { concept: '星系视口世界坐标与缩放', symbol: 'stellarViewBox', file: 'apps/desktop/src/renderer/src/panels/stellarMapView.ts', exported: true },
+  { concept: '星系单指与双指几何', symbol: 'moveStellarGesture', file: 'apps/desktop/src/renderer/src/panels/stellarMapView.ts', exported: true },
   { concept: '五类准备阵容清洗与显式空记忆', symbol: 'cleanPreparationSquads', file: 'packages/core/src/preparationSquads.ts', exported: true },
   { concept: '准备阵容恢复与缺省来源', symbol: 'preparationSquadOf', file: 'packages/core/src/preparationSquads.ts', exported: true },
   { concept: '准备阵容按实例保存且不执行任务', symbol: 'notePreparationSquad', file: 'packages/core/src/preparationSquads.ts', exported: true },

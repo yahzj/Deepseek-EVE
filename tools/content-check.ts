@@ -361,7 +361,7 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 //   +4（折跃等离子 / 低温跃迁浆 / 曲率凝析物 / 超空间折跃燃料）→ 物品总数 104→**108**、原材料 8→**11**
 // 2026-09-30（实验室后续内容批 · 船长令「信号发射器和技能加速剂」）：+2（信号发射器 / 突触加速剂，
 //   走奇货档 · 施工期 `unreleased`）→ 物品总数 108→**110**
-check(itemDefs.length === 115, `物品总数应为115（含三系MK3弹药与异形旗舰黑匣），实际 ${itemDefs.length}`)
+check(itemDefs.length === 116, `物品总数应为116（含深空探测机），实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 11, `原材料应为 11 种（2026-09-29 跃迁燃料链 +3），实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
@@ -441,7 +441,7 @@ console.log(`· 市场商品卡：${MARKET_GOODS.length} 张`)
   }
   for (const k of tableKeys) {
     if (refSet.has(k)) continue // 市场商品的键（上一条已核）
-    check(itemIds.has(k), `稀有度表多余键 ${k}：既不是任何市场卡的 refId，也不是任何物品的 id（改名/删除后留下的死键？）`)
+    check(itemIds.has(k) || k === 'bp-deep-space-probe' && BLUEPRINTS.some(bp => bp.id === k && bp.unreleased), `稀有度表多余键 ${k}：既不是任何市场卡的 refId，也不是任何物品的 id（改名/删除后留下的死键？）`)
   }
   /** 反向：**残骸必须有档**（它们不在市场里，漏配就永远没有稀有度 ⇒ 静默半成品） */
   for (const d of itemDefs) {
@@ -487,6 +487,7 @@ const hasRareBulk = (g: MarketGoodDef): boolean =>
   g.rareQtyMul !== undefined && g.rareWeightMul !== undefined && g.absorbQtyPerWindow !== undefined
 for (const item of itemDefs) {
   const good = itemGoods.get(item.id)
+  if (item.id === 'deep-space-probe' && item.unreleased && !good) continue
   if (item.exclusive === true) {
     check(
       !good || good.playerBuyable === false,
@@ -1169,6 +1170,10 @@ for (const sbp of SHIP_BLUEPRINTS) {
   )
   // ③ 引擎内联常量（2026-09-11 逐条按现场代码登记；wired:false = 说明承诺但引擎无接线）
   const INLINE: Array<{ skill: string; per: number | null; call: string | null; note?: string }> = [
+    { skill: 'deep-space-probing', per: .06, call: 'stellarSearch.stellarSearchDuration' },
+    { skill: 'advanced-deep-space-probing', per: .04, call: 'stellarSearch.stellarSearchDuration' },
+    { skill: 'stellar-archive', per: 2, call: 'stellarSearch.stellarCapacity' },
+    { skill: 'probe-assembly', per: .04, call: 'probeManufacturing.probeMaterialFactor' },
     { skill: 'spaceship-command', per: 0.02, call: 'travel.ts travelTimeFactor' },
     { skill: 'mining-frigate', per: 0.03, call: 'balance.mining.timePerLevel' },
     { skill: 'industrial-ops', per: 0.04, call: 'mining.ts（industrial 族产量）' },

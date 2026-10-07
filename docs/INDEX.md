@@ -12,16 +12,16 @@
 
 ## 统计
 
-- 文档总数 **494** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7853** KB · **61289** 行
-- 状态分布：**未标注** 258 · **已确认/已实现** 159 · **进行中** 53 · **待裁定** 23 · **历史留档** 1
-- 孤儿文档（0 引用）**110** 份 · 状态未标注 **258** 份
+- 文档总数 **499** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7899** KB · **61747** 行
+- 状态分布：**未标注** 260 · **已确认/已实现** 162 · **进行中** 53 · **待裁定** 23 · **历史留档** 1
+- 孤儿文档（0 引用）**111** 份 · 状态未标注 **260** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**332** 份
+- 三、现行设计稿（design）：**336** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**5** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
-- 八、测试档说明（test-saves）：**11** 份
+- 八、测试档说明（test-saves）：**12** 份
 - 六、专题：舰船美术（design/ship-battle-art）：**7** 份
 - 四、已归档设计稿（design/archive）：**83** 份
 
@@ -35,7 +35,7 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 9 KB / 125 行 | 2 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 299 KB / 308 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 90 KB / 908 行 | 95 / 5 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 515 KB / 1064 行 | 227 / 20 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 516 KB / 1074 行 | 227 / 20 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 92 KB / 473 行 | 377 / 26 |
 
 ## 七、评审与体检（review） —— 12 份
@@ -55,7 +55,7 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 332 份
+## 三、现行设计稿（design） —— 336 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -64,8 +64,12 @@
 | `docs/design/announcement-draft-wreck-loot-buy-20261007.md` | 残骸回收与装备收购公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 23 行 | 1 / 0 |
 | `docs/design/invasion-wreck-ordinary-decrement-20261007.md` | 入侵稀有残骸清空后普通残骸不减量排查 | 未标注（已修复并本地合入） | 2026-10-07 | 4 KB / 45 行 | 0 / 0 |
 | `docs/design/planetary-habitation-20261007.md` | 星球勘探、改造与人类家园建设方案 | 已确认/已实现（完整隐藏系统已实现并验证） | 2026-10-07 | 39 KB / 398 行 | 2 / 0 |
+| `docs/design/planetary-system-search-20261007.md` | 深空星系搜索与种子坐标方案 | 未标注（实现与自测完成） | 2026-10-07 | 23 KB / 226 行 | 1 / 0 |
+| `docs/design/shield-field-transfer-20261007.md` | 护盾充能力场排除自身并支付护盾代价 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 44 行 | 0 / 0 |
 | `docs/design/ship-acceleration-fx-20261007.md` | 推进器点火与敌舰冲锋的逐舰特效 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 48 行 | 0 / 0 |
-| `docs/design/ship-wreck-recovery-20261007.md` | 玩家舰船整船回收与战损插件 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 7 KB / 62 行 | 0 / 0 |
+| `docs/design/ship-damage-inline-display-20261007.md` | 战损插件并入现有插件展示区 | 未标注（实现与自测完成） | 2026-10-07 | 5 KB / 47 行 | 1 / 0 |
+| `docs/design/ship-wreck-recovery-20261007.md` | 玩家舰船整船回收与战损插件 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 7 KB / 62 行 | 1 / 0 |
+| `docs/design/squad-memory-auto-gate-20261007.md` | 自动探索主控忙态误拦与五类准备阵容记忆 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 7 KB / 63 行 | 0 / 0 |
 | `docs/design/wreck-fit-repeat-plugs-20261007.md` | 重复插件与沉船装配复用 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 43 行 | 0 / 0 |
 | `docs/design/wreck-loot-price-audit-20261007.md` | 残骸掉落与装备价格审查 | 已确认/已实现（已确认/已实现） | 2026-10-07 | 16 KB / 137 行 | 0 / 0 |
 | `docs/design/ammo-mk3-black-market-20261006.md` | 黑市独占MK3弹药生产线 | 已确认/已实现（已实现并本地合入） | 2026-10-06 | 7 KB / 63 行 | 0 / 0 |
@@ -440,7 +444,7 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 27 / 18 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 16 KB / 108 行 | 20 / 7 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 17 KB / 113 行 | 20 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -448,13 +452,14 @@
 |---|---|---|---|---|---|
 | `docs/design/battle-data/p41-drone-readings-20260912.md` | P-41 机群批标定轮 · 读数（2026-09-12 · 二号 d2） | 未标注 | 2026-09-12 | 7 KB / 88 行 | 3 / 0 |
 
-## 八、测试档说明（test-saves） —— 11 份
+## 八、测试档说明（test-saves） —— 12 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/test-saves/planetary-20261007.md` | 星球第一批规则原型验收 | 未标注（核心规则原型） | 2026-10-07 | 1 KB / 16 行 | 1 / 0 |
 | `docs/test-saves/planetary-runtime-20261007.md` | 星球建设完整运行验收 | 未标注（隐藏实验系统） | 2026-10-07 | 2 KB / 30 行 | 2 / 0 |
 | `docs/test-saves/ship-recovery-20261007.md` | 整船回收与战损插件验收 | 已确认/已实现（随已确认功能交付） | 2026-10-07 | 2 KB / 18 行 | 1 / 0 |
+| `docs/test-saves/stellar-search-20261007.md` | 深空星系与并列战损验收 | 已确认/已实现（已确认方案的本机测试说明） | 2026-10-07 | 3 KB / 58 行 | 2 / 0 |
 | `docs/test-saves/wreck-fit-20261007.md` | 重复插件与沉船装配验收档 | 已确认/已实现（随已确认功能交付） | 2026-10-07 | 1 KB / 15 行 | 2 / 0 |
 | `docs/test-saves/alien-invasion-20261006.md` | 异形入侵验收档 | 未标注 | 2026-10-06 | 2 KB / 22 行 | 2 / 0 |
 | `docs/test-saves/ammo-mk3-20261006.md` | MK3弹药生产线验收档 | 已确认/已实现（随已确认功能交付） | 2026-10-06 | 1 KB / 21 行 | 2 / 0 |
@@ -462,7 +467,7 @@
 | `docs/test-saves/black-market-20261004.md` | 黑市页面验收档 | 待裁定（随功能待船长验收） | 2026-10-04 | 1 KB / 15 行 | 1 / 0 |
 | `docs/test-saves/hauler-20261004.md` | 纯货舰修订验收档 | 未标注（已验收） | 2026-10-04 | 2 KB / 25 行 | 3 / 0 |
 | `docs/test-saves/whexpedition-20261004.md` | 虫洞第一批合成测试档 | 未标注（未来虫洞整备/事件/警戒的隔离验收材） | 2026-10-04 | 10 KB / 78 行 | 2 / 0 |
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 74 KB / 747 行 | 59 / 14 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 75 KB / 752 行 | 59 / 14 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -564,14 +569,15 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，110 份）
+## 附：孤儿文档（0 引用，111 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/acid-burst-stacking-fx-20261007.md`（2026-10-07 · 5 KB）—— 酸液爆虫腐蚀叠加与专属自爆动画
 - `docs/design/invasion-wreck-ordinary-decrement-20261007.md`（2026-10-07 · 4 KB）—— 入侵稀有残骸清空后普通残骸不减量排查
+- `docs/design/shield-field-transfer-20261007.md`（2026-10-07 · 5 KB）—— 护盾充能力场排除自身并支付护盾代价
 - `docs/design/ship-acceleration-fx-20261007.md`（2026-10-07 · 5 KB）—— 推进器点火与敌舰冲锋的逐舰特效
-- `docs/design/ship-wreck-recovery-20261007.md`（2026-10-07 · 7 KB）—— 玩家舰船整船回收与战损插件
+- `docs/design/squad-memory-auto-gate-20261007.md`（2026-10-07 · 7 KB）—— 自动探索主控忙态误拦与五类准备阵容记忆
 - `docs/design/wreck-fit-repeat-plugs-20261007.md`（2026-10-07 · 5 KB）—— 重复插件与沉船装配复用
 - `docs/design/wreck-loot-price-audit-20261007.md`（2026-10-07 · 16 KB）—— 残骸掉落与装备价格审查
 - `docs/design/ammo-mk3-black-market-20261006.md`（2026-10-06 · 7 KB）—— 黑市独占MK3弹药生产线
@@ -679,9 +685,11 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（258 份，待补一行 `状态：…`）
+## 附：状态未标注（260 份，待补一行 `状态：…`）
 
 - `docs/design/invasion-wreck-ordinary-decrement-20261007.md`（2026-10-07）—— 入侵稀有残骸清空后普通残骸不减量排查
+- `docs/design/planetary-system-search-20261007.md`（2026-10-07）—— 深空星系搜索与种子坐标方案
+- `docs/design/ship-damage-inline-display-20261007.md`（2026-10-07）—— 战损插件并入现有插件展示区
 - `docs/test-saves/planetary-20261007.md`（2026-10-07）—— 星球第一批规则原型验收
 - `docs/test-saves/planetary-runtime-20261007.md`（2026-10-07）—— 星球建设完整运行验收
 - `docs/test-saves/alien-invasion-20261006.md`（2026-10-06）—— 异形入侵验收档

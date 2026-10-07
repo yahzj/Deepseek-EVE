@@ -298,6 +298,8 @@ export function skillGroupText(group: string): string {
  * 查不到就原样返回（漏登记时**看得见**，不静默变空）。
  */
 const SKILL_BRANCH_ID: Record<string, string> = {
+  'b-deep-space': 'ui.stellar.060',
+  'b-probe-assembly': 'ui.stellar.061',
   'b-fly': 'ui.labelsText.026',
   'b-mine': 'ui.labelsText.027',
   'b-refine': 'ui.labelsText.028',

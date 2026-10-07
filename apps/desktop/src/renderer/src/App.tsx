@@ -64,7 +64,7 @@ import { debugEnabled as readDebugEnabled } from './panels/DebugPanel'
 import { WormholePanel } from './panels/Wormhole'
 import { SignalSpacePanel } from './panels/SignalSpace'
 import { futureWormholeEnabled, planetaryEnabled } from './game/debugFlag'
-import { PlanetaryPanel } from './panels/PlanetaryPanel'
+import { StellarExplorer } from './panels/StellarExplorer'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ActivityScreen, activityKindOf } from './ui/ActivityScreen'
@@ -2030,7 +2030,7 @@ async function applyLayoutAndReload(): Promise<void> {
 
       {/* 全局悬停提示层（置于最上） */}
       <TooltipLayer />
-      {planetOpen && planetaryEnabled() && engine.ctx.planetary ? <PlanetaryPanel engine={engine} catalog={engine.ctx.planetary}
+      {planetOpen && planetaryEnabled() && engine.ctx.planetary ? <StellarExplorer engine={engine} catalog={engine.ctx.planetary}
         onClose={() => setPlanetOpen(false)} onCommand={(action, args) => engine.planetaryCommand(action, args)} /> : null}
     </div>
   )

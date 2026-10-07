@@ -18,6 +18,7 @@ export interface PlanetaryPanelProps {
   catalog: PlanetCatalog
   onClose: () => void
   onCommand: (action: string, args: unknown[]) => PlanetActionResult
+  initialPlanetId?: string
 }
 
 type Tab = 'candidates' | 'surface' | 'population' | 'projects'
@@ -30,7 +31,7 @@ const RESOURCE_ICONS: Record<string, string> = { metal: 'mineral', water: 'ice',
 const buildingName = (id: string): string => pt('building.' + id)
 const resourceName = (id: string): string => pt('resource.' + id)
 const traitName = (id: string): string => pt('trait.' + id)
-const planetName = (id: string): string => pt('name.' + id)
+const planetName = (id: string): string => /-p\d+$/.test(id) ? `${pt('planet')} ${id.match(/-p(\d+)$/)?.[1]}` : pt('name.' + id)
 const percent = (value: number): string => `${fmtNum(value * 100, 0)}%`
 const range = (value?: { min: number; max: number }): string => value
   ? value.min === value.max ? fmtInt(value.min) : `${fmtInt(value.min)} ~ ${fmtInt(value.max)}`
@@ -81,12 +82,12 @@ function cellStatus(cell: PlanetGridCell, needsWorker: boolean): string {
   return pt('status.ready')
 }
 
-export function PlanetaryPanel({ engine, catalog, onClose, onCommand }: PlanetaryPanelProps): ReactNode {
+export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPlanetId }: PlanetaryPanelProps): ReactNode {
   const state = engine.state
   const ctx = engine.getCtx()
   const planets = state.planetary?.planets ?? {}
   const definitions = [...catalog.planets.values()]
-  const [planetId, setPlanetId] = useState(() => Object.keys(planets)[0] ?? definitions[0]?.id ?? '')
+  const [planetId, setPlanetId] = useState(() => initialPlanetId ?? Object.keys(planets)[0] ?? definitions[0]?.id ?? '')
   const [tab, setTab] = useState<Tab>('surface')
   const [sort, setSort] = useState<Sort>('default')
   const [compareId, setCompareId] = useState('')

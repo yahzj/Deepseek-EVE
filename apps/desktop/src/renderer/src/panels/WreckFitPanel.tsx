@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { FIT_PRESET_NAME_MAX, wreckFitDetailOf, type ShipFitPreset, type WreckLogEntry } from '@whale/core'
+import { cleanShipDamage, FIT_PRESET_NAME_MAX, wreckFitDetailOf, type ShipFitPreset, type WreckLogEntry } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { cmdText, tr } from '../i18n/locale'
 import { Glyph, toneOf } from '../ui/Glyphs'
@@ -37,6 +37,7 @@ export function WreckFitPanel({ engine, entry }: { engine: GameEngine; entry: Wr
     return () => { window.removeEventListener('keydown', key); if (previous?.isConnected) previous.focus() }
   }, [opened])
   const detail = wreckFitDetailOf(engine.ctx, entry)
+  const damage = cleanShipDamage(entry.damagePlugs)
   const content = (id: string, drone: boolean): ReactNode => {
     if (drone) {
       const item = engine.ctx.items.get(id)
@@ -75,12 +76,12 @@ export function WreckFitPanel({ engine, entry }: { engine: GameEngine; entry: Wr
       <div className="app-bay-title">{rackText(rack)}</div>
       <div className="app-fit-icongrid">{detail.slots.filter(slot => slot.rack === rack).map(slot => card(slot.id, slot.index))}</div>
     </div>)}
-    {detail.plugs.length ? <div className="app-wreck-fit-group"><div className="app-bay-title">{tr('ui.WreckLog.008')}</div>
-      <div className="app-fit-icongrid">{detail.plugs.map((plug, at) => card(plug.id, at + 1))}</div></div> : null}
+    {detail.plugs.length || damage ? <div className="app-wreck-fit-group"><div className="app-bay-title">{tr('ui.WreckLog.008')}
+      {damage ? <span className="app-ship-damage-count"> {tr('ui.shipDamage.013')} {damage.length}</span> : null}</div>
+      <div className="app-fit-icongrid">{detail.plugs.map((plug, at) => card(plug.id, at + 1))}<ShipDamageMods ids={damage} /></div></div> : null}
     {detail.drones.length ? <div className="app-wreck-fit-group"><div className="app-bay-title">{tr('ui.WreckLog.009')}</div>
       <div className="app-fit-icongrid">{detail.drones.map((drone, at) => card(drone.id, at + 1, true, drone.count))}</div></div> : null}
     {note ? <div role="status" className="app-dim">{note}</div> : null}
-    <ShipDamageMods ids={entry.damagePlugs} />
     {opened ? createPortal(<div className="app-modal-mask" onClick={() => { setPicked(null); setSaving(false); setOverwrite(null) }}>
       <div ref={modal} className="app-modal app-wreck-fit-modal" role="dialog" aria-modal="true"
         aria-label={tr(picked ? 'ui.wreckFit.008' : 'ui.wreckFit.001')} onClick={event => event.stopPropagation()}>

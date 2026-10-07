@@ -525,6 +525,11 @@ const WEEKEND_TROPHIES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> 
 }
 
 const CONSUMABLES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  "deep-space-probe": {
+    name: L10N['ui.stellar.001']!.zh,
+    description: L10N['ui.stellar.002']!.zh,
+    unreleased: true,
+  },
   "jump-fuel": {
     name: '超空间折跃燃料',
     description: L10N['item.copy.109']!.zh,

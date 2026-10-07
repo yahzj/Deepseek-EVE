@@ -16,6 +16,7 @@ import { skillLevelTimeMs, trainingTimeFactor } from './training'
 import { tuningMul } from './tuning'
 import { skillLicenseMissing, skillLicensePriceOf } from './skillLicense'
 import { syncBoostRenew } from './consumables'
+import { DEEP_SPACE_SKILL_IDS, probeManufacturingUnlocked } from './probeManufacturing'
 
 /** 界面隐藏且不可训练的技能 id（2026-09-05 批次三起战斗占位全部开放，当前为空；
  * 未来新占位条目在此登记——引擎禁训 + 界面过滤共用本清单）
@@ -362,6 +363,7 @@ export function enqueueSkill(
 ): CommandResult {
   const def = catalog.get(skillId)
   if (!def) return { ok: false, error: `未知技能：${skillId}（数据表里没有）。`, errorId: 'core.engine.005', errorParams: { p1: skillId } }
+  if (DEEP_SPACE_SKILL_IDS.includes(skillId) && !probeManufacturingUnlocked(state)) return { ok: false, error: '深空搜索尚未解锁。', errorId: 'ui.stellar.059' }
   if (HIDDEN_SKILL_IDS.includes(skillId)) {
     return { ok: false, error: `「${def.name}」尚在研发中，暂不可训练。`, errorId: 'core.engine.006', errorParams: { p1: def.name } }
   }

@@ -42,6 +42,7 @@ export const SKILL_BRANCHES: readonly { readonly id: string; readonly group: str
   { id: 'b-mine', group: '矿业' },
   { id: 'b-refine', group: '工业' },
   { id: 'b-craft', group: '工业' },
+  { id: 'b-probe-assembly', group: '工业' },
   { id: 'b-salvage', group: '工业' },
   { id: 'b-auto', group: '工业' },
   { id: 'b-build', group: '工业' },
@@ -60,6 +61,7 @@ export const SKILL_BRANCHES: readonly { readonly id: string; readonly group: str
   { id: 'b-ai', group: '工程' },
   { id: 'b-learn', group: '工程' },
   { id: 'b-scan', group: '探索' },
+  { id: 'b-deep-space', group: '探索' },
   { id: 'b-survive', group: '探索' },
   { id: 'b-market', group: '贸易' },
   { id: 'b-bounty', group: '贸易' },
@@ -230,6 +232,14 @@ export const SKILLS: readonly SkillDef[] = [
   },
 
   // ───────── 工业 ─────────
+  {
+    id: 'probe-assembly',
+    name: '探测机装配工程学',
+    group: '工业',
+    rank: 3,
+    branch: 'b-probe-assembly',
+    description: '深空探测机材料需求每级降低 ⟦4%⟧；与材料学、组件标准化乘算叠加。',
+  },
   {
     id: 'mining',
     name: '采矿技术',
@@ -1035,6 +1045,32 @@ export const SKILLS: readonly SkillDef[] = [
   },
 
   // ───────── 探索（2026-09-04 新组） ─────────
+  {
+    id: 'deep-space-probing',
+    name: '深空探测学',
+    group: '探索',
+    rank: 3,
+    branch: 'b-deep-space',
+    description: '星系搜索周期每级缩短 ⟦6%⟧；与高级深空探测学加算叠加。',
+  },
+  {
+    id: 'advanced-deep-space-probing',
+    name: '高级深空探测学',
+    group: '探索',
+    rank: 4,
+    branch: 'b-deep-space',
+    prereq: ['deep-space-probing'],
+    prereqLevel: { 'deep-space-probing': 1 },
+    description: '星系搜索周期每级再缩短 ⟦4%⟧；与深空探测学加算叠加。',
+  },
+  {
+    id: 'stellar-archive',
+    name: '星系档案学',
+    group: '探索',
+    rank: 4,
+    branch: 'b-deep-space',
+    description: '候选星系保存名额每级增加 ⟦2⟧ 个。',
+  },
   {
     id: 'signal-analysis',
     name: '信号分析学',

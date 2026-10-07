@@ -4,6 +4,8 @@ import {
   wakePlanetPopulation, sleepPlanetPopulation, startPlanetProject, resolvePlanetEvent, repairPlanetBuilding,
   discoverPlanetHumans, dispatchPlanetDelivery, convertPlanetSupplies, allocatePlanetPower,
   type GameState, type SimContext, type PlanetActionResult,
+  beginStellarSearch, pauseStellarSearch, cancelStellarSearch, setStellarAutoSearch, discardStellarSystem,
+  startManufacturing,
 } from '@whale/core'
 import { planetaryEnabled } from './debugFlag'
 
@@ -11,21 +13,39 @@ export function runPlanetaryCommand(state: GameState, ctx: SimContext, action: s
   if (!planetaryEnabled() || !ctx.planetary) return { ok: false, reason: 'entry-blocked' }
   const catalog = ctx.planetary
   if (state.planetary?.runtimeVersion !== undefined && state.planetary.runtimeVersion !== 1) return { ok: false, reason: 'unsupported' }
-  if (!state.planetary && action !== 'discover') return { ok: false, reason: 'not-discovered' }
+  if (!state.planetary && !['discover', 'search', 'searchAuto', 'manufactureProbe'].includes(action)) return { ok: false, reason: 'not-discovered' }
+  const existed = !!state.planetary
+  const startResult = (result: PlanetActionResult): PlanetActionResult => {
+    if (!result.ok && !existed) delete state.planetary
+    return result
+  }
   if (!state.planetary) state.planetary = { planets: {}, runtimeVersion: 1 }
   state.planetary.runtimeVersion = 1
+  if (action === 'search') return startResult(beginStellarSearch(state, args[0] as 'random' | 'specified', String(args[1] ?? '')))
+  if (action === 'searchPause') return pauseStellarSearch(state, args[0] === true)
+  if (action === 'searchCancel') return cancelStellarSearch(state)
+  if (action === 'searchAuto') return setStellarAutoSearch(state, args[0] === true)
+  if (action === 'discardSystem') return discardStellarSystem(state, String(args[0]))
+  if (action === 'manufactureProbe') {
+    const result = startManufacturing(state, 'bp-deep-space-probe', 'pilot', ctx)
+    return startResult({ ok: result.ok, ...(result.ok ? {} : { reason: result.errorId === 'core.activityGate.002' ? 'ship-busy' : 'materials' }) })
+  }
   const id = String(args[0] ?? '')
-  if (action === 'discover') return discoverPlanet(state, catalog, id)
-  if (action === 'survey') return surveyPlanet(state, catalog, id, Number(args[1]) as 1 | 2 | 3)
+  if (action === 'discover') return startResult(discoverPlanet(state, catalog, id))
   const p = state.planetary.planets[id]
   if (!p) return { ok: false, reason: 'not-discovered' }
+  if (p.systemId && state.planetary.stellar?.systems[p.systemId]?.generationVersion !== 1) return { ok: false, reason: 'unsupported' }
+  if (action === 'survey') return surveyPlanet(state, catalog, id, Number(args[1]) as 1 | 2 | 3)
   const index = Number(args[1])
   let result: PlanetActionResult
   switch (action) {
     case 'prepare': result = preparePlanetBase(p, catalog); break
     case 'build':
-      if (!p.colony) { const prepared = preparePlanetBase(p, catalog); if (!prepared.ok) return prepared }
-      result = startPlanetBuild(p, catalog, index, String(args[2])); break
+      { const existed = !!p.colony
+        if (!existed) { const prepared = preparePlanetBase(p, catalog); if (!prepared.ok) return prepared }
+        result = startPlanetBuild(p, catalog, index, String(args[2]))
+        if (!result.ok && !existed) delete p.colony
+        break }
     case 'clear': result = startPlanetClear(p, catalog, index); break
     case 'move': result = startPlanetMove(p, catalog, index, Number(args[2])); break
     case 'cancel': result = cancelPlanetJob(p, index); break

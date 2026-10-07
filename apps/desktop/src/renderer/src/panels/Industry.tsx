@@ -511,7 +511,7 @@ export function cardLiveKeyOf(
   const mats = materials
     .map((m) => materialGroupIdsOf(m.itemId).reduce((sum, id) => sum + countWare(state, id), 0))
     .join(',')
-  const needs = materials.map((m) => matNeedCount(state, m.count)).join(',')
+  const needs = materials.map((m) => matNeedCount(state, m.count, blueprintId)).join(',')
   const loop = manufacturingLoopOf(state, blueprintId)
   const singleUse =
     engine.ctx.blueprints.get(blueprintId)?.singleUse === true || engine.ctx.shipBlueprints.get(blueprintId)?.singleUse === true
@@ -852,7 +852,7 @@ export const BlueprintCard = memo(function BlueprintCard({
         {matsCollapsible && !matsOpen
           ? null
           : materials.map((need) => {
-          const needCount = matNeedCount(state, need.count) // 材料学折扣后的实际需求
+          const needCount = matNeedCount(state, need.count, blueprintId) // 预览与实际投料共用需求
           /**
            * **等价组**（**2026-09-29 船长报障**：「组装机中，舰船插件材料消耗列表中还是显示了墨潮黑匣
            * （**应该显示通用黑匣**）」）：
@@ -927,7 +927,7 @@ export const BlueprintCard = memo(function BlueprintCard({
               const matCost = materials.reduce(
                 (sum, m) =>
                   sum +
-                  matNeedCount(state, m.count) *
+                  matNeedCount(state, m.count, blueprintId) *
                     (marketPriceOf(state, engine.ctx, m.itemId) ?? engine.ctx.items.get(m.itemId)?.baseSellPriceIsk ?? 0),
                 0,
               )
@@ -1537,10 +1537,10 @@ export function ManufacturingPanel({
     const su = engine.ctx.blueprints.get(blueprintId)?.singleUse === true
       || engine.ctx.shipBlueprints.get(blueprintId)?.singleUse === true
     if (engine.ctx.blueprints.get(blueprintId)?.learnless === true) {
-      return missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk: 0 }).length === 0
+      return canStartBlueprint(state, engine.ctx, blueprintId) && missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk: 0 }, blueprintId).length === 0
     }
     if (!ownsBlueprint(state, blueprintId) && recipeCapability(state, blueprintId, su).kind !== 'ok') return false
-    return missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk: 0 }).length === 0
+    return missingMaterials(state, engine.ctx, { materials, buildSeconds, buildCostIsk: 0 }, blueprintId).length === 0
   }
 
   const visible = items

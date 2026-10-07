@@ -17,7 +17,8 @@ describe('战损详情真实组件', () => {
     const fn = ast.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === 'ShipDamageMods')!
     const createElement = (type: string, props: object | null, ...children: unknown[]) => ({ type, props: props ?? {}, children })
     const tr = (id: string, p?: Record<string, unknown>) => (L10N[id]?.[locale] ?? id).replace(/\{(\w+)\}/g, (m,k: string) => String(p?.[k] ?? m))
-    const scope = { exports: {}, result: undefined, React: { createElement }, cleanShipDamage, SHIP_DAMAGE_DEFS, SHIP_DAMAGE_PENALTY,
+    const scope = { exports: {}, result: undefined, React: { createElement, Fragment: 'Fragment' }, cleanShipDamage, SHIP_DAMAGE_DEFS, SHIP_DAMAGE_PENALTY,
+      useState: () => [null, () => {}], useRef: () => ({ current: null }), useId: () => 'damage-dialog', useEffect: () => {},
       tr, Glyph: 'Glyph', hoverTipProps: (tip: unknown) => ({ richTip: tip }),
       infoCardContent: (title: unknown, _lines: unknown[], note: unknown, extra: unknown) => createElement('InfoCard', {}, title, note, extra) }
     runInNewContext(ts.transpileModule(fn.getText(ast) + '\nglobalThis.result=ShipDamageMods', {
@@ -26,10 +27,10 @@ describe('战损详情真实组件', () => {
     const component = scope.result as unknown as (p: unknown) => unknown
     expect(component({ ids: [] })).toBeNull()
     const content = nodes(component({ ids: ['shield', 'cargo', 'range', 'ghost', 'shield'] }))
-    expect(content.filter(n => n.type === 'details')).toHaveLength(3)
-    expect(content.filter(n => n.type === 'summary').map(n => n.props['data-damage-kind'])).toEqual(['shield','cargo','range'])
+    expect(content.filter(n => n.props['data-damage-kind'])).toHaveLength(3)
+    expect(content.filter(n => n.props['data-damage-kind']).map(n => n.props['data-damage-kind'])).toEqual(['shield','cargo','range'])
     expect(content.filter(n => n.type === 'InfoCard').every(n => n.children.some(v => typeof v === 'string' && v.includes('15%')))).toBe(true)
     expect(content.filter(n => n.type === 'InfoCard').every(n => n.children.includes(tr('ui.shipDamage.014')))).toBe(true)
-    expect(content.filter(n => n.type === 'summary').every(n => n.props.richTip)).toBe(true)
+    expect(content.filter(n => n.props['data-damage-kind']).every(n => n.props.richTip)).toBe(true)
   })
 })

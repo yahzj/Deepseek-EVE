@@ -34,6 +34,11 @@ case 名（即该档服务的唯一测试用途），格式固定为 `test-save-
 
 ## 档案清单
 
+### 深空星系与并列战损（stellar-search）
+- 生成：`npx tsx tools/make-test-save.ts stellar-search`，全新合成档，不读取或备份个人档。
+- 文件：`test-save-stellar-search-20261007.json`；未预先取得探测机或星系，仓库备有3架探测机材料。
+- 隐藏入口、操作路径与隔离原生测试见`stellar-search-20261007.md`；不开放普通玩家入口，不覆盖个人主档。
+
 ### 星球规则原型（planetary）
 - 完整运行用途`planetary-runtime`：`npx tsx tools/make-test-save.ts planetary-runtime`，全新合成档，不读取个人档；本机实验入口、实际操作与恢复见`planetary-runtime-20261007.md`。
 - 生成：`npx tsx tools/make-test-save.ts planetary`，全新合成档，不读取个人档。

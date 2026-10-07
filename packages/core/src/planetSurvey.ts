@@ -7,11 +7,11 @@ export type PlanetCommandResult = { ok: true } | { ok: false; reason: 'unknown-p
 
 /** 仅供显式调用；不在新档、读取存档或引擎推进中自动创建。 */
 export function discoverPlanet(state: GameState, catalog: PlanetCatalog, id: string): PlanetCommandResult {
-  const def = catalog.planets.get(id)
+  const def = catalog.planets.get(id) ?? state.planetary?.planets[id]
   if (!def) return { ok: false, reason: 'unknown-planet' }
-  if (!state.exploredGalaxies.includes(def.galaxyId)) return { ok: false, reason: 'unknown-galaxy' }
+  if (!state.planetary?.planets[id]?.systemId && !state.exploredGalaxies.includes(def.galaxyId)) return { ok: false, reason: 'unknown-galaxy' }
   if (Object.hasOwn(state.planetary?.planets ?? {}, id)) return { ok: true }
-  if (Object.keys(state.planetary?.planets ?? {}).length >= PLANET_RULES.maxPlanets) return { ok: false, reason: 'limit' }
+  if (Object.values(state.planetary?.planets ?? {}).filter(p => !p.systemId).length >= PLANET_RULES.maxPlanets) return { ok: false, reason: 'limit' }
   const planet = generatePlanet(def, state.rng.seed, catalog)
   state.planetary ??= { planets: {} }
   state.planetary.planets[id] = planet
@@ -22,6 +22,7 @@ export function surveyPlanet(state: GameState, catalog: PlanetCatalog, id: strin
   if (level !== 1 && level !== 2 && level !== 3) return { ok: false, reason: 'invalid-survey' }
   const planet = state.planetary?.planets[id]
   if (!planet) return { ok: false, reason: 'not-discovered' }
+  if (planet.systemId && state.planetary?.stellar?.systems[planet.systemId]?.generationVersion !== 1) return { ok: false, reason: 'unsupported' }
   if (!planetRulesSupported(planet, catalog)) return { ok: false, reason: 'unsupported' }
   planet.survey = Math.max(planet.survey, level) as PlanetSurveyLevel
   return { ok: true }

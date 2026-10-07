@@ -37,6 +37,7 @@ import { formatDurationMs } from './time'
 import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
 import { stationIndustryBlocked } from './location'
 import { addAiIncome, addAiMakeDone, addAiShipDone, type SettleStats } from './settleStats'
+import { DEEP_SPACE_PROBE_BLUEPRINT_ID, probeManufacturingUnlocked, probeMaterialFactor } from './probeManufacturing'
 
 /** 市场基准价（离线结算预估收入用：装备/舰船粗估；找不到返回 0） */
 function marketBasePrice(ctx: SimContext, kind: 'module' | 'ship', refId: string): number {
@@ -171,6 +172,7 @@ export function isSingleUseBlueprint(ctx: SimContext, blueprintId: string): bool
  * 其余（未学会的普通图纸）⇒ false**。
  */
 export function canStartBlueprint(state: GameState, ctx: SimContext, blueprintId: string): boolean {
+  if (blueprintId === DEEP_SPACE_PROBE_BLUEPRINT_ID && !probeManufacturingUnlocked(state)) return false
   if (ownsBlueprint(state, blueprintId)) return true
   // 2026-09-20 零件体系：隐式蓝图（基础零件）无需学习即可开工
   if (ctx.blueprints.get(blueprintId)?.learnless === true) return true
@@ -253,9 +255,10 @@ export function materialFactor(state: GameState): number {
   return Math.max(0.7, (1 - 0.015 * lv1) * (1 - 0.008 * lv2))
 }
 
-/** 材料学折扣后的实际需求数量（预览/扣料/取消退回同口径） */
-export function matNeedCount(state: GameState, count: number): number {
-  return Math.max(1, Math.floor(count * materialFactor(state)))
+/** 实际材料需求（探测机专属折扣与通用折扣相乘后统一取整；预览/扣料/退款同源） */
+export function matNeedCount(state: GameState, count: number, blueprintId?: string): number {
+  const probeFactor = blueprintId === DEEP_SPACE_PROBE_BLUEPRINT_ID ? probeMaterialFactor(state) : 1
+  return Math.max(1, Math.floor(count * materialFactor(state) * probeFactor))
 }
 
 /**
@@ -273,13 +276,14 @@ function spendMaterialsFor(
   state: GameState,
   materials: readonly { itemId: string; count: number }[],
   spent: { itemId: string; count: number }[],
+  blueprintId: string,
 ): boolean {
   const taken: { itemId: string; count: number }[] = []
   const rollback = (): void => {
     for (const t of taken) addWare(state, t.itemId, t.count)
   }
   for (const need of materials) {
-    let left = matNeedCount(state, need.count)
+    let left = matNeedCount(state, need.count, blueprintId)
     for (const id of materialGroupIdsOf(need.itemId)) {
       if (left <= 0) break
       const take = Math.min(countWare(state, id), left)
@@ -348,10 +352,10 @@ export function materialDisplayIdOf(state: GameState, itemId: string): string {
 }
 
 /** 材料缺口说明（界面提示用；材料从物品仓库取用；数量已按材料学折扣折算） */
-export function missingMaterials(state: GameState, ctx: SimContext, spec: BuildSpec): string[] {
+export function missingMaterials(state: GameState, ctx: SimContext, spec: BuildSpec, blueprintId?: string): string[] {
   const missing: string[] = []
   for (const need of spec.materials) {
-    const needCount = matNeedCount(state, need.count)
+    const needCount = matNeedCount(state, need.count, blueprintId)
     /** **等价组按组内合计**（2026-09-27）：通用黑匣 ＋ 旗舰黑匣凑够数就行 */
     const ids = materialGroupIdsOf(need.itemId)
     const have = ids.reduce((sum, id) => sum + countWare(state, id), 0)
@@ -397,6 +401,9 @@ export function startManufacturing(
   if (!buildable) {
     return { ok: false, error: `未知蓝图：${blueprintId}。`, errorId: 'core.manufacturing.002', errorParams: { p1: blueprintId } }
   }
+  if (blueprintId === DEEP_SPACE_PROBE_BLUEPRINT_ID && !probeManufacturingUnlocked(state)) {
+    return { ok: false, error: '星系搜索尚未解锁，无法制造深空探测机。', errorId: 'core.probeManufacturing.001' }
+  }
   // 配方可用性（2026-09-12 船长定）：普通蓝图 = 必须已学会；一次性图纸 = 有书 + 名额未用尽
   // （⚠ **已永久学会时，一次性书不消耗也不使用** —— 船长裁定「2乙」）
   // 2026-09-20 零件体系：隐式蓝图（learnless = 基础零件）无需学习即可开工。
@@ -432,7 +439,7 @@ export function startManufacturing(
   }
   // 2026-09-08 船长定：取消每次制造费——开工不再校验/收取 buildCostIsk（蓝图数据字段保留为历史遗留）
   // ⚠ 材料校验放在**统一判据之前**（它是本入口自己的前置，且与停机无关——材料读的是货仓 + 仓库）
-  const missing = missingMaterials(state, ctx, buildable.spec)
+  const missing = missingMaterials(state, ctx, buildable.spec, blueprintId)
   if (missing.length > 0) {
     const missingText = missing.join('、')
     return {
@@ -515,7 +522,7 @@ export function startManufacturing(
    * 循环续做下一件时换记那一件的 ⇒ 取消/停机时退的**正好是在跑那件**，不会多退也不会少退。
    */
   const spentMaterials: { itemId: string; count: number }[] = []
-  if (!spendMaterialsFor(state, buildable.spec.materials, spentMaterials)) {
+  if (!spendMaterialsFor(state, buildable.spec.materials, spentMaterials, blueprintId)) {
     /** 上面已用 `missingMaterials` 挡过一次；走到这里 = 库存竞态（同批多个入口并发扣）⇒ 照实报，不留半扣 */
     return { ok: false, error: '材料不足：物品仓库里的料凑不齐这一件。', errorId: 'core.manufacturing.010', errorParams: { p1Id: 'core.manufacturing.016' } }
   }
@@ -586,7 +593,7 @@ export function cancelManufacturing(state: GameState, ctx: SimContext, runId: nu
       refundMaterialsToWarehouse(state, mf.spentMaterials)
     } else {
       for (const need of buildable.spec.materials) {
-        addWare(state, need.itemId, matNeedCount(state, need.count))
+        addWare(state, need.itemId, matNeedCount(state, need.count, mf.blueprintId ?? undefined))
       }
     }
     addLog(
@@ -798,7 +805,11 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
         stopWhy = `已达成目标 ${goal} 批`
         break
       }
-      const missing = missingMaterials(state, ctx, buildable.spec)
+      if (blueprintId === DEEP_SPACE_PROBE_BLUEPRINT_ID && !probeManufacturingUnlocked(state)) {
+        stopWhy = '星系搜索尚未解锁'
+        break
+      }
+      const missing = missingMaterials(state, ctx, buildable.spec, blueprintId ?? undefined)
       if (missing.length > 0) {
         stopWhy = `材料不足（缺 ${missing.join('、')}）`
         break
@@ -817,7 +828,7 @@ export function advanceManufacturing(state: GameState, ctx: SimContext, stats?: 
        * ⇒ 玩家手上只有通用黑匣时**续做的那几件白造**。
        */
       const spent: { itemId: string; count: number }[] = []
-      if (!spendMaterialsFor(state, buildable.spec.materials, spent)) {
+      if (!spendMaterialsFor(state, buildable.spec.materials, spent, blueprintId!)) {
         stopWhy = `材料不足（缺 ${missing.join('、')}）`
         break
       }

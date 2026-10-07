@@ -96,7 +96,12 @@ async function child() {
   const step = async ms => { assert(await page.js(`window.__whalePlanetaryTest.step(${ms})`)) }
   const select = async (selector, value) => page.js(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw Error('select missing');e.value=${JSON.stringify(value)};e.dispatchEvent(new Event('change',{bubbles:true}));return true})()`)
   const input = async (selector, value) => page.js(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,${JSON.stringify(String(value))});e.dispatchEvent(new Event('input',{bubbles:true}));return true})()`)
-  const open = async () => { await page.js('window.dispatchEvent(new Event("whale-planetary-open"));true'); await page.wait('!!document.querySelector(".app-planet-modal")') }
+  const open = async () => {
+    await page.js('window.dispatchEvent(new Event("whale-planetary-open"));true')
+    await page.wait('!!document.querySelector(".app-stellar-modal")')
+    await page.text('.app-stellar-sidebar', data.L10N['ui.stellar.038'][options.locale])
+    await page.wait('!!document.querySelector(".app-planet-modal")')
+  }
   await open()
   console.log('阶段：打开星球')
   let state = await snap()

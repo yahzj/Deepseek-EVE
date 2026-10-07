@@ -3,6 +3,7 @@ import type {
   PlanetLocalResource, PlanetObstacle, PlanetResource, PlanetaryState, PlanetState,
 } from './planetTypes'
 import { PLANET_RULES } from './planetRules'
+import { cleanStellarState } from './stellarSave'
 
 function record(raw: unknown): Record<string, unknown> {
   const result: Record<string, unknown> = Object.create(null)
@@ -124,10 +125,20 @@ function cleanPlanetDelivery(raw: unknown): PlanetDelivery | undefined {
 export function cleanPlanetaryState(raw: unknown): PlanetaryState | undefined {
   const root = record(raw)
   checkRuntimeVersion(root.runtimeVersion)
+  const stellar = cleanStellarState(root.stellar)
+  const bodies = new Map((stellar ? Object.values(stellar.systems) : []).flatMap(system =>
+    system.bodies.map(body => [body.planetId, { systemId: system.id, kind: body.kind }] as const)))
   const source = record(root.planets)
   const planets: Record<string, PlanetState> = {}
-  for (const [key, value] of Object.entries(source).slice(0, PLANET_RULES.maxPlanets)) {
+  let legacyCount = 0
+  for (const [key, value] of Object.entries(source)) {
     const p = record(value)
+    const body = p.systemId !== undefined ? bodies.get(key) : undefined
+    // 旧记录仍只读取前六十四条；新星球必须属于已清洗的星系，不能靠伪造归属绕过上限。
+    if (p.systemId === undefined) {
+      if (++legacyCount > PLANET_RULES.maxPlanets) continue
+    } else if (!id(p.systemId) || !body || body.systemId !== p.systemId) continue
+    if (p.surfaceAllowed !== undefined && typeof p.surfaceAllowed !== 'boolean') continue
     if (!id(key) || p.id !== key || !id(p.galaxyId) || (p.size !== 4 && p.size !== 5 && p.size !== 6)) continue
     if (!Number.isSafeInteger(p.seed) || (p.seed as number) < 0 || (p.seed as number) > 0xffffffff) continue
     if (!Number.isSafeInteger(p.generationVersion) || (p.generationVersion as number) < 1) continue
@@ -166,12 +177,15 @@ export function cleanPlanetaryState(raw: unknown): PlanetaryState | undefined {
       id: key, galaxyId: p.galaxyId, size: p.size, seed: p.seed as number,
       generationVersion: p.generationVersion as number, traitIds, hiddenTraitId: p.hiddenTraitId,
       survey: p.survey === 2 || p.survey === 3 ? p.survey : 1, cells,
+      ...(p.systemId !== undefined ? { systemId: p.systemId as string } : {}),
+      ...(body?.kind === 'gas' ? { surfaceAllowed: false }
+        : typeof p.surfaceAllowed === 'boolean' ? { surfaceAllowed: p.surfaceAllowed } : {}),
       ...(colony ? { colony } : {}),
       ...(p.originalTraitIds !== undefined ? { originalTraitIds: strings(p.originalTraitIds) } : {}),
       ...(p.projectHistory !== undefined ? { projectHistory: strings(p.projectHistory, Number.MAX_SAFE_INTEGER) } : {}),
     }
   }
-  const result: PlanetaryState = { planets }
+  const result: PlanetaryState = { planets, ...(stellar ? { stellar } : {}) }
   if (root.runtimeVersion === 1) result.runtimeVersion = 1
   if (finite(root.tickRemainderMs) && root.tickRemainderMs < TICK_MS) result.tickRemainderMs = root.tickRemainderMs
   const humans = record(root.humans)
@@ -190,5 +204,5 @@ export function cleanPlanetaryState(raw: unknown): PlanetaryState | undefined {
     }
     result.deliveries = deliveries
   }
-  return Object.keys(planets).length || result.runtimeVersion === 1 || result.humans || result.deliveries?.length ? result : undefined
+  return Object.keys(planets).length || result.stellar || result.runtimeVersion === 1 || result.humans || result.deliveries?.length ? result : undefined
 }

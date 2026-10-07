@@ -183,10 +183,31 @@ export function advanceGame(
     offline?: boolean
   },
 ): void {
+  let left = Math.floor(deltaMs)
+  if (!Number.isFinite(left) || left <= 0) return
+  // 深空连续搜索与探测机交付在同一时间轴上结算；无搜索时保留既有整段推进。
+  while (left > 0) {
+    let step = left
+    const search = state.planetary?.stellar?.search
+    if (ctx.planetary && state.planetary?.runtimeVersion === 1 && search && !search.paused) {
+      step = Math.min(step, Math.max(1, Math.ceil(search.durationMs - search.progressMs)))
+      for (const run of state.manufacturingRuns) if (run.active && run.blueprintId === 'bp-deep-space-probe' && Number.isFinite(run.finishAtGameMs)) {
+        step = Math.min(step, Math.max(1, Math.ceil(run.finishAtGameMs - state.gameMs)))
+      }
+    }
+    const segmented = step !== left || left !== Math.floor(deltaMs)
+    const stepOpts = segmented && opts?.nowWallMs !== undefined ? { ...opts, nowWallMs: opts.nowWallMs - left + step } : opts
+    advanceGameStep(state, step, ctx, stepOpts)
+    left -= step
+  }
+}
+
+function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opts?: Parameters<typeof advanceGame>[3]): void {
   const d = Math.floor(deltaMs)
   if (!Number.isFinite(d) || d <= 0) return
   state.gameMs += d
-  if (ctx.planetary) { advancePlanetary(state, d, ctx.planetary, state.gameMs - d); reconcilePlanetHome(state, ctx.planetary) }
+  const deferPlanetary = !!state.planetary?.stellar?.search
+  if (ctx.planetary && !deferPlanetary) { advancePlanetary(state, d, ctx.planetary, state.gameMs - d); reconcilePlanetHome(state, ctx.planetary) }
   /**
    * **现实墙钟落进 state**（2026-09-15 限时倍率批）：只有**显式传入 `nowWallMs`** 时才写
    * （在线心跳 / 离线结算都传 ⇒ 正式运行恒有值）；**工具与用例不传 ⇒ `state.wallMs` 保持 undefined
@@ -233,6 +254,7 @@ export function advanceGame(
   advanceTransit(state, ctx)
   advanceStandby(state, ctx)
   advanceManufacturing(state, ctx, opts?.settleStats)
+  if (ctx.planetary && deferPlanetary) { advancePlanetary(state, d, ctx.planetary, state.gameMs - d); reconcilePlanetHome(state, ctx.planetary) }
   advanceRefining(state, ctx, opts?.settleStats)
   /** 实验室（2026-09-29 跃迁燃料批；**2026-10-01 起按组装机那套：一线一批 ＋ 循环开关**） */
   advanceLab(state, ctx, opts?.settleStats)

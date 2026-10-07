@@ -1153,6 +1153,12 @@
     ],
     "CONSUMABLES_0": [
       {
+        "id": "deep-space-probe",
+        "kind": "consumable",
+        "unitM3": 10,
+        "baseSellPriceIsk": 1000000
+      },
+      {
         "id": "jump-fuel",
         "kind": "consumable",
         "unitM3": 1,

@@ -1,0 +1,63 @@
+.app-fit-slot-icon.app-ship-damage-card {
+  min-width: 0;
+  border-color: rgb(var(--wui-warn-soft) / 0.6);
+}
+
+.app-ship-damage-card .app-fit-slot-icon-glyph {
+  flex: 0 0 22px;
+  gap: var(--wui-sp-4);
+  color: rgb(var(--wui-warn-soft));
+}
+
+.app-ship-damage-card .app-fit-slot-icon-name {
+  min-height: 0;
+  flex-shrink: 1;
+}
+
+.app-ship-damage-card .app-fit-slot-icon-sub {
+  flex-shrink: 0;
+  color: rgb(var(--wui-warn-soft));
+}
+
+.app-ship-damage-card:focus-visible,
+.app-ship-damage-modal .app-btn:focus-visible {
+  outline: 2px solid rgb(var(--wui-accent));
+  outline-offset: 2px;
+}
+
+.app-ship-damage-count {
+  color: rgb(var(--wui-warn-soft));
+}
+
+.app-fit-plugslots .app-fit-dronebay-head {
+  flex-wrap: wrap;
+}
+
+.app-ship-damage-mask {
+  z-index: 1200;
+}
+
+.app-ship-damage-modal .app-modal-head > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-ship-damage-modal .app-modal-head > button {
+  flex-shrink: 0;
+}
+
+.app-ship-plug-summary {
+  min-width: 0;
+  margin-block: var(--wui-sp-8);
+}
+
+.app-ship-plug-summary .app-bay-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--wui-sp-8);
+}
+
+.app-ship-plug-card {
+  min-width: 0;
+}

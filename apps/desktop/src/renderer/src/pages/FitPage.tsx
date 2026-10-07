@@ -29,6 +29,7 @@ import {
   createPlayerSpec,
   /** 2026-09-26 船长令：装配页插件槽只读区（core 单点给槽位上限 + 已装清单） */
   plugInfoOf,
+  cleanShipDamage,
   /** 2026-09-27 船长报障：装入入口（空槽可点，弹层选装，二次确认，installPlug） */
   installPlug,
   /** 2026-09-27 船长令：拆船回收（预览 ＋ 执行；界面两次警告都用预览那一份算术） */
@@ -1001,7 +1002,6 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
            * 槽位上限与已装清单都走 core 单点 `plugInfoOf`；短效果复用装备行同一把尺 `moduleShortEffect`。
            */}
           <PluginSlotsSection engine={engine} target={effectiveTarget} />
-          <ShipDamageMods ids={state.fleet[effectiveTarget]?.damagePlugs} />
           {/* 无人机舱已移到左栏（2026-09-26 船长令：「无人机仓位移动到左半边」） */}
         </div>
           </div>
@@ -1411,7 +1411,7 @@ function AmmoTierSection({
  * - **没有卸下按钮、没有浮层选装**——"不可拆"是 core 侧的结构性保证（`plugs.ts` 里连 `removePlug`
  *   都不存在）；界面这一块只负责**读数**，不给任何"点了能改"的错觉；
  * - 槽位上限与已装清单走 core 单点 `plugInfoOf`（= `plugSlotsOf` ＋ `plugModulesOf`），界面不自己数；
- * - 无插件槽的船（无档船 / 插件槽为 0）**整块不显示**——不留一行"0/0"的空壳。
+ * - 无普通插件槽且无战损时不显示；战损只占展示格，不进入普通安装数。
  *
  * 满槽时在标题行右侧给一句提示（玩家想知道"还能不能再装"）；未满也报「已装 N/M」。
  *
@@ -1423,6 +1423,7 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
   const state = engine.state
   const ctx = engine.ctx
   const { slots, installed } = plugInfoOf(state, ctx, target)
+  const damage = cleanShipDamage(state.fleet[target]?.damagePlugs)
   /**
    * **装入入口**（**2026-09-27 船长报障**：「**找不到舰船插件安装的入口（装配处无法装入）**」）：
    * 09-26 那批把这一区做成**只读**、并把装入动作推给"装备库"，而装备库那条入口**从来没做**
@@ -1456,8 +1457,8 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   const scrap = shipScrapPreviewOf(state, ctx, target)
-  if (slots <= 0) return null
-  const full = installed.length >= slots
+  if (slots <= 0 && !damage) return null
+  const full = slots > 0 && installed.length >= slots
   /** 有库存的插件仍可重复安装，顺序沿用目录。 */
   const pickable = [...ctx.modules.values()].filter(
     (d) => d.slot === 'plug' && (state.moduleBay[d.id] ?? 0) > 0,
@@ -1482,12 +1483,13 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
           {tr('ui.Expedition.444', { p1: installed.length, p2: slots })}
           {full ? ` · ${tr('ui.FitPage.177')}` : ''}
         </span>
+        {damage ? <span className="app-ship-damage-count">{tr('ui.shipDamage.013')} {damage.length}</span> : null}
         {/* 拆船回收入口（2026-09-27 船长令）：位置按船长指定放在插件槽区 */}
-        <span style={{ marginLeft: 'auto' }}>
+        {slots > 0 ? <span style={{ marginLeft: 'auto' }}>
           <button className="app-btn is-small" onClick={() => setScrapStep(1)}>
             {tr('ui.FitPage.184')}
           </button>
-        </span>
+        </span> : null}
       </div>
       <div className="app-fit-icongrid">
         {Array.from({ length: slots }, (_, i) => {
@@ -1541,6 +1543,7 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
             </span>
           )
         })}
+        <ShipDamageMods ids={damage} />
       </div>
       {/* **装入弹层**（2026-09-27 补）：复用本页既有的 `.app-fit-overlay` / `.app-fit-modal` 一族，
           不另造样式；二次确认在同一弹层内完成（第一次点「装入」⇒ 该行变成「确认装入」＋「取消」） */}

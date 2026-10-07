@@ -95,6 +95,26 @@ export function blueprintBookPriceOf(bpId: string, productPrice: number, rarity:
 
 export const BLUEPRINTS: readonly BlueprintDef[] = [
   {
+    id: 'bp-deep-space-probe',
+    name: L10N['ui.stellar.003']!.zh,
+    itemId: 'deep-space-probe',
+    outputUnits: 1,
+    learnless: true,
+    unreleased: true,
+    materials: [
+      { itemId: 'part-frame', count: 800 },
+      { itemId: 'part-circuit', count: 800 },
+      { itemId: 'part-lens', count: 700 },
+      { itemId: 'part-coolant', count: 200 },
+      { itemId: 'part-drone-neural', count: 400 },
+      { itemId: 'part-qchip', count: 400 },
+    ],
+    buildSeconds: 3_600,
+    buildCostIsk: 0,
+    priceIsk: 0,
+    description: L10N['ui.stellar.004']!.zh,
+  },
+  {
     id: 'bp-miner-1',
     name: '强化采集器 MK1 蓝图',
     moduleId: 'mod-miner-1',

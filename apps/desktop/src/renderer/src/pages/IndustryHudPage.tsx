@@ -212,8 +212,8 @@ interface HudShelfRow {
  * 技能口径（chart 域 Bullet）：「每个区间与目标都要有文字标注，颜色只是补充」⇒ 调用处必须把
  * 百分比与"缺哪几项"用文字给出（`title` 与可见读数同源）。
  */
-function readinessOf(engine: GameEngine, materials: readonly MaterialNeed[]): { pct: number; short: string[] } {
-  const rows = matRowsOf(engine, materials)
+function readinessOf(engine: GameEngine, materials: readonly MaterialNeed[], blueprintId?: string): { pct: number; short: string[] } {
+  const rows = matRowsOf(engine, materials, blueprintId)
   if (rows.length === 0) return { pct: 1, short: [] }
   let sum = 0
   const short: string[] = []
@@ -232,9 +232,10 @@ function readinessOf(engine: GameEngine, materials: readonly MaterialNeed[]): { 
 function matRowsOf(
   engine: GameEngine,
   materials: readonly MaterialNeed[],
+  blueprintId?: string,
 ): Array<{ id: string; name: string; glyph: string; need: number; have: number; ok: boolean }> {
   return materials.map((m) => {
-    const need = matNeedCount(engine.state, m.count)
+    const need = matNeedCount(engine.state, m.count, blueprintId)
     const have = materialGroupIdsOf(m.itemId).reduce((s, id) => s + countWare(engine.state, id), 0)
     const def = engine.ctx.items.get(materialDisplayIdOf(engine.state, m.itemId))
     return {
@@ -249,11 +250,11 @@ function matRowsOf(
 }
 
 /** 一批料的**料值**（按当前行情价估；取不到行情退回物品基准价——与卡面行情同一把尺） */
-function matsValueOf(engine: GameEngine, materials: readonly MaterialNeed[]): number {
+function matsValueOf(engine: GameEngine, materials: readonly MaterialNeed[], blueprintId?: string): number {
   let v = 0
   for (const m of materials) {
     const price = marketPriceOf(engine.state, engine.ctx, m.itemId) ?? engine.ctx.items.get(m.itemId)?.baseSellPriceIsk ?? 0
-    v += matNeedCount(engine.state, m.count) * price
+    v += matNeedCount(engine.state, m.count, blueprintId) * price
   }
   return v
 }
@@ -454,6 +455,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
   const shelfRows: HudShelfRow[] = useMemo(() => {
     const rows: HudShelfRow[] = []
     for (const bp of ctx.blueprints.values()) {
+      if (bp.unreleased) continue
       const mod = bp.moduleId !== undefined ? ctx.modules.get(bp.moduleId) : undefined
       const item = bp.itemId !== undefined ? ctx.items.get(bp.itemId) : undefined
       if (mod === undefined && item === undefined) continue
@@ -772,8 +774,8 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
    * 缺料由卡底那行**齐备度（缺：…）**点出（颜色不是唯一载体）。
    */
   const shelfTip = (row: { product: string; glyph: string; materials: readonly MaterialNeed[] }): ReactNode => {
-    const rows = matRowsOf(engine, row.materials)
-    const ready = readinessOf(engine, row.materials)
+    const rows = matRowsOf(engine, row.materials, 'id' in row ? String(row.id) : undefined)
+    const ready = readinessOf(engine, row.materials, 'id' in row ? String(row.id) : undefined)
     /**
      * 多料蓝图：**每味料两行**——第一行「图标 ＋ 名 ＋ ×需要量」，第二行「（可用：M 件）」
      * （**2026-09-30 船长报障**：一行里塞不下，数字会被折行截断 ⇒ 库存另起一行）。
@@ -1155,7 +1157,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                     ? (ctx.blueprints.get(v.blueprintId) ?? ctx.shipBlueprints.get(v.blueprintId))
                     : undefined
                   const mats = bp?.materials ?? []
-                  const ready = readinessOf(engine, mats)
+                  const ready = readinessOf(engine, mats, v.blueprintId ?? undefined)
                   const readyPct = Math.round(ready.pct * 100)
                   return (
                     <div className="hud-card" key={v.id}>
@@ -1379,7 +1381,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                           </span>
                           <span title={tr('ui.hud.105')}>
                             <Glyph name="ico-eff" size={12} color="currentColor" />{' '}
-                            {(matsValueOf(engine, mats) / 1_000_000).toFixed(1)}M
+                            {(matsValueOf(engine, mats, v.blueprintId ?? undefined) / 1_000_000).toFixed(1)}M
                           </span>
                           <span title={tr('ui.hud.090')}>
                             <Glyph name="ico-stop" size={12} color="currentColor" /> {durText(v.remainingMs)}

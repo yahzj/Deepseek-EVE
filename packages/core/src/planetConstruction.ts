@@ -33,6 +33,7 @@ export function startPlanetBuild(planet: PlanetState, catalog: PlanetCatalog, in
   return result
 }
 export function preparePlanetBase(planet: PlanetState, catalog: PlanetCatalog): PlanetActionResult {
+  if (planet.surfaceAllowed === false) return { ok: false, reason: 'no-surface' }
   if (!planetRulesSupported(planet, catalog) || planet.survey < 2) return { ok: false, reason: 'survey-required' }
   if (!planet.colony) planet.colony = createPlanetColony()
   return { ok: true }

@@ -7,6 +7,7 @@ import { shipBusyLabel } from './activity'
 import { shortestTravelMinutes, travelLegMs } from './travel'
 import { preparePlanetBase } from './planetConstruction'
 import { planetColonyView } from './planetColony'
+import { planetRulesSupported } from './planetRules'
 
 const LOCAL_INPUTS: Readonly<Record<string, { resource: 'food' | 'water' | 'medicine' | 'parts'; units: number }>> = {
   'repairkit-civ': { resource: 'medicine', units: 1 },
@@ -28,7 +29,10 @@ export function convertPlanetSupplies(state: GameState, planetId: string, itemId
 export function dispatchPlanetDelivery(state: GameState, ctx: SimContext, catalog: PlanetCatalog,
   planetId: string, shipUid: string, items: Record<string, number>, credits: number, humans: number): PlanetActionResult {
   const p = state.planetary?.planets[planetId]
-  if (state.planetary?.runtimeVersion !== 1 || !p || p.survey < 2 || !ctx.galaxies.has(p.galaxyId)) return { ok: false, reason: 'not-ready' }
+  const system = p?.systemId ? state.planetary?.stellar?.systems[p.systemId] : undefined
+  if (system && system.generationVersion !== 1) return { ok: false, reason: 'unsupported' }
+  if (state.planetary?.runtimeVersion !== 1 || !p || p.survey < 2 || p.surfaceAllowed === false
+    || (!system && !ctx.galaxies.has(p.galaxyId))) return { ok: false, reason: 'not-ready' }
   const ship = Object.hasOwn(state.fleet, shipUid) ? state.fleet[shipUid] : undefined
   if (!ship || shipUid === state.shipId || shipBusyLabel(state, ctx, shipUid) || shipLockedReason(state, shipUid) || ship.durability <= 0) return { ok: false, reason: 'ship-busy' }
   if ((state.planetary.deliveries ?? []).some(d => d.shipUid === shipUid)) return { ok: false, reason: 'ship-busy' }
@@ -43,7 +47,7 @@ export function dispatchPlanetDelivery(state: GameState, ctx: SimContext, catalo
   if (volume + cargoUsedM3Of(state, ctx, shipUid) > cargoCapacityM3Of(state, ctx, shipUid)) return { ok: false, reason: 'cargo-full' }
   if (humans > 0 && (!p.colony || planetColonyView(p, catalog).cryoCapacity < p.colony.awake + p.colony.sleeping + humans
     + (state.planetary.deliveries ?? []).filter(d => d.planetId === planetId).reduce((n, d) => n + d.humans, 0))) return { ok: false, reason: 'housing' }
-  const minutes = shortestTravelMinutes(ctx, HOME_GALAXY_ID, p.galaxyId)
+  const minutes = system?.routeMinutes ?? shortestTravelMinutes(ctx, HOME_GALAXY_ID, p.galaxyId)
   if (!Number.isFinite(minutes)) return { ok: false, reason: 'unreachable' }
   const check = preparePlanetBase(p, catalog)
   if (!check.ok) return check
@@ -57,14 +61,17 @@ export function dispatchPlanetDelivery(state: GameState, ctx: SimContext, catalo
   return { ok: true }
 }
 
-export function advancePlanetDeliveries(state: GameState, deltaMs: number): void {
+export function advancePlanetDeliveries(state: GameState, deltaMs: number, catalog: PlanetCatalog): void {
   if (state.planetary?.runtimeVersion !== 1) return
   const pending = state.planetary.deliveries ?? []
   for (const delivery of pending) {
+    const p = state.planetary.planets[delivery.planetId]
+    if (!p || !planetRulesSupported(p, catalog)
+      || (p.systemId && state.planetary.stellar?.systems[p.systemId]?.generationVersion !== 1)) continue
     if (delivery.remainingMs <= 0) continue
     delivery.remainingMs = Math.max(0, delivery.remainingMs - deltaMs)
     if (delivery.remainingMs > 0) continue
-    const c = state.planetary.planets[delivery.planetId]?.colony
+    const c = p.colony
     if (!c || !Object.hasOwn(state.fleet, delivery.shipUid)) { delivery.remainingMs = 1; continue }
     for (const [id, units] of Object.entries(delivery.items)) c.items[id] = (c.items[id] ?? 0) + units
     c.credits += delivery.credits

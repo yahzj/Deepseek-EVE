@@ -391,7 +391,7 @@ import { noteSaveWriteFailed, requestPersistentStorage, saveStorageProbe } from 
 /** **2026-10-03 船长令**（「调试模式允许载入铁人存档」）：本机调试门禁（发布版恒 false）⇒ 铁人闸门放行 */
 import { debugEnabled, futureWormholeEnabled, planetaryEnabled } from './debugFlag'
 import { runPlanetaryCommand } from './planetaryCommands'
-import { advancePlanetary, reconcilePlanetHome } from '@whale/core'
+import { DEEP_SPACE_SKILL_IDS, probeManufacturingUnlocked } from '@whale/core'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
 import { tr, cmdText, paramText } from '../i18n/locale'
@@ -665,9 +665,7 @@ export class GameEngine {
       command: async (action: string, args: unknown[]) => { const result = this.planetaryCommand(action, args); await this.persist(); return result },
       step: async (duration: number) => {
         if (!planetaryEnabled() || !Number.isSafeInteger(duration) || duration < 0 || duration > 8 * 3600000 || !this.ctx.planetary) return false
-        advancePlanetary(this.state, duration, this.ctx.planetary)
-        reconcilePlanetHome(this.state, this.ctx.planetary)
-        this.state.gameMs += duration
+        advanceGame(this.state, duration, this.ctx, { offline: true })
         this.notify(); await this.persist(); return true
       },
       persist: () => this.persist(),
@@ -683,7 +681,8 @@ export class GameEngine {
   private locale: L10nLocale = 'zh'
   /** 界面目录数据（**施工期闸门**：标了 `unreleased` 的内容不进这些"给玩家看的"枚举
    *  —— 与下面 `anomalies` 的 `hidden` 过滤同款，2026-09-13 船长铁律） */
-  skills = SKILLS
+  private skillEntries: readonly import('@whale/core').SkillDef[] = SKILLS
+  get skills() { return this.skillEntries.filter(s => probeManufacturingUnlocked(this.state) || !DEEP_SPACE_SKILL_IDS.includes(s.id)) }
   readonly groups = SKILL_GROUPS
   ships = SHIPS.filter((d) => itemReleased(d))
   belts = BELTS
@@ -940,7 +939,7 @@ export class GameEngine {
     this.modules = overlayList(MODULES, EN_MODULES, locale).filter((d) => itemReleased(d))
     this.allModules = overlayList(MODULES, EN_MODULES, locale)
     this.items = overlayList(ITEMS, EN_ITEMS_ALL, locale)
-    this.skills = overlayList(SKILLS, EN_SKILLS, locale)
+    this.skillEntries = overlayList(SKILLS, EN_SKILLS, locale)
     this.blueprints = overlayList(BLUEPRINTS, EN_BLUEPRINTS, locale).filter((d) => itemReleased(d))
     this.shipBlueprints = overlayList(SHIP_BLUEPRINTS, EN_SHIP_BLUEPRINTS, locale).filter((d) => itemReleased(d))
     this.allBlueprints = overlayList(BLUEPRINTS, EN_BLUEPRINTS, locale)

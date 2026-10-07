@@ -1,0 +1,18 @@
+.app-root.is-mobile-rot .app-modal.app-stellar-modal,
+.app-root.is-mobile-layout .app-modal.app-stellar-modal,
+.app-root .app-modal.app-stellar-modal,
+.app-modal.app-stellar-modal { width: 96%; height: 94%; max-width: 1300px; max-height: 850px; min-width: 0; min-height: 0; border-radius: 8px; overflow: hidden; box-sizing: border-box; }
+.app-stellar-modal .app-modal-head { display: flex; gap: 12px; flex-shrink: 0; min-height: 48px; }
+.app-stellar-modal .app-modal-head strong { font-size: var(--wui-fs-m); white-space: nowrap; }
+.app-stellar-modal .app-modal-head select { margin-left: auto; width: 330px; max-width: 50%; }
+.app-stellar-workspace { display: grid; grid-template-columns: minmax(0,1fr) 320px; flex: 1; min-height: 0; min-width: 0; }
+.app-stellar-mapcolumn { min-width: 0; min-height: 0; display: flex; overflow: hidden; }
+.app-stellar-sidebar { min-width: 0; min-height: 0; border-left: 1px solid rgb(var(--wui-border)); }
+.app-stellar-scroll { height: 100%; overflow: auto; padding: 12px; box-sizing: border-box; overscroll-behavior: contain; }
+.app-stellar-sidebar h3 { font-size: var(--wui-fs-s); margin: 8px 0; }
+.app-stellar-sidebar input[type=text] { width: 100%; box-sizing: border-box; font-size: 16px; }
+.app-stellar-sidebar progress { width: 100%; }
+.app-stellar-actions,.app-stellar-modes { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.app-stellar-sidebar .app-btn { white-space: normal; min-height: 32px; }
+.app-stellar-feedback { min-height: 28px; overflow-wrap: anywhere; margin-top: 8px; }
+@media (max-width: 700px) { .app-root:not(.is-mobile-rot) .app-stellar-workspace { grid-template-columns: minmax(0,1fr); overflow: auto; } .app-root:not(.is-mobile-rot) .app-stellar-mapcolumn { min-height: 340px; } .app-root:not(.is-mobile-rot) .app-stellar-sidebar { border-left: 0; } }
