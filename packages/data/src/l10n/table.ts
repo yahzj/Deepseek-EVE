@@ -1426,6 +1426,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.combat.009": { zh: "劫掠捕获网已失效：{p1} 摆脱了束缚（距离超过 {p2} 米）。", en: "The raider snare net has failed: {p1} broke free (the range opened past {p2} metres)." },
   "core.combat.010": { zh: "墨潮捕获网已失效：{p1} 挣脱了束缚（网手已被击沉）。", en: "The ink capture web has failed: {p1} tore free (the caster was sunk)." },
   "core.combat.011": { zh: "墨潮捕获网松开：{p1} 已被击沉，{p2} 的网开始冷却。", en: "The ink capture web released: {p1} was sunk, and {p2}’s web goes on cooldown." },
+  // ⟪文案调整 2026-10-07⟫ 导弹与静滞观瞄各用独立提示；增幅读取实际挂载参数。
+  "core.combat.012": { zh: "巨构齐射观瞄启动：导弹残段最远射程 +{p1}%", en: "Megastructure Salvo Optics activated: Missile Hulk maximum range +{p1}%" },
+  "core.combat.013": { zh: "静滞阵列解除限幅：静滞卫舰炮台射程 +{p1}%", en: "Stasis array limiters released: Stasis Guard Ship gun range +{p1}%" },
   // 2026-09-25 入侵里程碑入账日志（夺回 / 全部夺回 / 旗舰击沉）；普通进度推进不记（面板有进度条）
   // ⟪文案调整 2026-09-29⟫ 船长令「夺回奖按投入比例缩水」（乙案 · 全清乘平均参与度）：夺回那一刻算不出
   //   最终金额（= 全额 × 玩家在该处的最终投入比例）⇒ 两条日志去掉金额与 `p2/p3` 两个参数，只留规格
@@ -3449,6 +3452,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     "ui.foeIntro.112": { zh: "闪现未在冷却中时，护盾层受到的伤害 −{p1}%", en: "While its blink is off cooldown, its shields take {p1}% less damage" },
     /** R 族（光环）聚焦阵列（2026-10-02 船长令：「武器的远端衰减，随时间提高到1（就是无衰减）。」＋改判「旗舰挂载件的会随波重置」） */
     "ui.foeIntro.113": { zh: "远端衰减随本波开战时间在 {p1} 秒内升到 1，随波重置", en: "Its falloff climbs to 1 over {p1} s of the current wave; resets each wave" },
+    // ⟪文案调整 2026-10-07⟫ 导弹残段独立观瞄说明，不再显示炮台文本。
+    "ui.foeIntro.114": { zh: "从自身导弹射程之外被命中后，导弹最远射程 ×{p1}，本场战斗内持续生效。", en: "When hit from beyond its missile range, maximum missile range is multiplied by {p1} for the rest of the battle." },
   /* ── 入侵「重复出击」（2026-09-25 船长令：「入侵活动的悬赏，允许玩家开启自动重复，照常计算返回时间」）── */
   "ui.weekend.106": { zh: "重复出击", en: "Repeat assault" },
   "ui.weekend.107": { zh: "开启重复出击：每场从该星系的入侵舰队里重抽一支，胜利后自动返航（返航路程 = 单程）、随后自动再次出发；该星系被夺回或活动结束时自动停止", en: "Start repeat assault: each run draws a fresh invader fleet from that system; after a win the fleet flies home (return leg = one way) and sets out again automatically. It stops when the system is reclaimed or the event ends" },

@@ -147,8 +147,8 @@ describe('市场 · 消耗品在稀有渠道的批量档（2026-09-20 船长令 
      * **50000** / **50000** / 400 / **50000** / 22832 / 832 / 22000
      * ⇒ 改用 **seed 9**（整单被吸收的种子 = 9 / 18 / 23 / 24 / 25 / 27，取最小号便于复现）。
      */
-    // 新增C入侵收购行改变随机相位；按原规程复跑30种子，读数见本批工作文档。
-    const state = createInitialState({ nowWallMs: 0, seed: 4 })
+    // 皇带鱼一次性图纸退出供应抽取改变随机相位；按原规程复跑30种子，读数见本批工作文档。
+    const state = createInitialState({ nowWallMs: 0, seed: 1 })
     advanceGame(state, 1000, ctxReal)
     for (let i = 0; i < 30; i++) advanceGame(state, 60_000, ctxReal) // 让簿上有报价
     const key = 'ammo-kinetic-2'

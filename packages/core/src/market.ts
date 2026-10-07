@@ -188,6 +188,8 @@ export function ensureMarket(state: GameState, ctx: SimContext, opts?: { openAtG
     mk.pools[key]!.noise = mk.pools[key]!.noise ?? 0
     mk.npcBuy[key] ??= []
     mk.npcSell[key] ??= []
+    // 目录停售后撤下旧档NPC供应，收购簿与玩家订单不动。
+    if (def.playerBuyable === false && mk.npcSell[key]!.length > 0) mk.npcSell[key] = []
     mk.digest[key] ??= { qty: 0, price: 0, perWindow: 0 }
     mk.priceHistory[key] ??= []
   }

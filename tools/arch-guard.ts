@@ -120,6 +120,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '探测机专属材料折扣', symbol: 'probeMaterialFactor', file: 'packages/core/src/probeManufacturing.ts', exported: true },
   { concept: '星系视口世界坐标与缩放', symbol: 'stellarViewBox', file: 'apps/desktop/src/renderer/src/panels/stellarMapView.ts', exported: true },
   { concept: '星系单指与双指几何', symbol: 'moveStellarGesture', file: 'apps/desktop/src/renderer/src/panels/stellarMapView.ts', exported: true },
+  { concept: '敌舰受击增程的独立挂载件触发提示', symbol: 'announceFoeGunRangeBuff', file: 'packages/core/src/foeRange.ts', exported: true },
   { concept: '五类准备阵容清洗与显式空记忆', symbol: 'cleanPreparationSquads', file: 'packages/core/src/preparationSquads.ts', exported: true },
   { concept: '准备阵容恢复与缺省来源', symbol: 'preparationSquadOf', file: 'packages/core/src/preparationSquads.ts', exported: true },
   { concept: '准备阵容按实例保存且不执行任务', symbol: 'notePreparationSquad', file: 'packages/core/src/preparationSquads.ts', exported: true },

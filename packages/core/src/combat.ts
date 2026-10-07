@@ -85,7 +85,7 @@ export type { AmmoKey } from './combatAmmo'
 // 机群池与近防炮（2026-10-02 批次 4j 拆到 combatDrones.ts）；本文件借回使用并再导出
 import { buildDronePoolsFor, dronePoolKey, dronePoolOwner, isFoeEngageable, pickFoeDroneTarget, resolvePointDefense } from './combatDrones'
 export { droneLostCount, dronePoolKey, dronePoolOwner, pdPriorityOf, pdShotOf, pickFoeDroneTarget } from './combatDrones'
-import { applyFoeRangeDebuff, applyMeJammerDebuff, foeDroneRangeOf, foeGunMaxRangeOf, foeGunPowerFactorOf, markFoeDroneRangeBuff, markFoeGunRangeBuff, meFoeRangeDebuffOf, meJammerNetOf } from './foeRange'
+import { applyFoeRangeDebuff, applyMeJammerDebuff, foeDroneRangeOf, foeGunMaxRangeOf, foeGunPowerFactorOf, markFoeDroneRangeBuff, announceFoeGunRangeBuff, meFoeRangeDebuffOf, meJammerNetOf } from './foeRange'
 import { coronaFocusFalloffOf } from './coronaFocus'
 export { coronaFocusFalloffOf } from './coronaFocus'
 export { FOE_RANGE_DEBUFF_FLOOR_M, applyMeJammerDebuff, fittedEffectParamsOf, foeDroneRangeOf, foeGunMaxRangeOf, foeGunPowerFactorOf, foeGunRangeMulOf, foeJammerCountOf, foeRangeDebuffOf, foeUnitDeadOf, meFoeRangeDebuffOf, meJammerNetOf, meRangeMulForBonus, meRangeMulOf } from './foeRange'
@@ -475,6 +475,8 @@ export interface UnitSpec {
    *  「挨打后射程增加 50%」，**只影响所有静滞卫舰**）——与机群那条**同款触发、不同作用面**：
    *  任一此类敌舰被命中 ⇒ `BattleState.foeGunRangeBuff` 盖章；读射程时**只对本字段存在的单位**生效。 */
   foeGunRangeMulOnHit?: number
+  /** 实际挂载件的触发提示编号，仅用于显示，不入档。 */
+  foeGunRangeNoticeId?: string
   /**
    * **劫掠捕获网**（船长 2026-09-16，A 族新舰「劫掠电子舰」专属；参数见 `FoeMountDef.web`）：
    * 本舰**第一次开火那一刻**（不看命中）钉住**它这一发的目标**；**击杀发动者**（2026-09-16）
@@ -4911,12 +4913,8 @@ function stepBattle(
               // **只触发一次**，**对所有敌舰生效**」）⇒ 文案不点单舰名（生效范围是全敌队）。
               pushBattleNotice(b, '巨构残存程序过载：警戒机群解除射程限制')
             }
-            // **炮台受击增程触发点（唯一）**——2026-09-12 船长：D 族静滞卫舰「挨打后射程增加 50%」，
-            // **仅影响所有静滞卫舰**（同场其它舰级不受影响）。命中其本体 ⇒ 本场该型舰炮台射程 ×1.5。
-            // ⚠ 打机群／未命中都进不到这里；状态该型舰共享 ⇒ 只推一条提示（文案不点单舰名）。
-            if (markFoeGunRangeBuff(foeTarget!, b)) {
-              pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
-            }
+            // ⟪文案调整 2026-10-07⟫ 两件独立观瞄按实际挂载提示，受击距离判据不变。
+            announceFoeGunRangeBuff(foeTarget!, b)
             // **闪现跃迁触发点（唯一）**——**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」。
             // 与上面两条**同一个钩子**（本体被命中；打机群／未命中都进不到这里）。冷却期内静默。
             if (
@@ -5000,9 +4998,7 @@ function stepBattle(
               if (markFoeDroneRangeBuff(other, b)) {
                 pushBattleNotice(b, '巨构残存程序过载：警戒机群解除射程限制')
               }
-              if (markFoeGunRangeBuff(other, b)) {
-                pushBattleNotice(b, '静滞阵列解除限幅：静滞卫舰炮台射程 +50%')
-              }
+              announceFoeGunRangeBuff(other, b)
               // **闪现跃迁**（2026-10-01）：与上面两条**同款**——"全体攻击"打到的副目标同样会触发。
               // ⚠ 2026-10-01 补：初版只写在了主目标那处 ⇒ 用全体攻击武器（孢子导弹巢那类）打中带闪现的
               // 敌舰时**不会闪**，与两条受击增程的行为不一致。

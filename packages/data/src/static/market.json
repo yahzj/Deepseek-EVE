@@ -3591,7 +3591,8 @@
         "rarity": "exotic",
         "basePrice": 320000000,
         "demandMultiplier": 1,
-        "standingReq": 40
+        "standingReq": 40,
+        "playerBuyable": false
       },
       {
         "key": "mod-miner-proto",

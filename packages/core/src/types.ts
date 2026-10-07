@@ -415,7 +415,7 @@ export interface FoeMountDef {
    */
   droneRangeOnHit?: { mul: number }
   /** **炮台受击增程**：**从它射程之外**被命中 ⇒ **本舰**炮台射程 ×`mul`（只对挂了本件的舰生效）。 */
-  gunRangeOnHit?: { mul: number }
+  gunRangeOnHit?: { mul: number; effectTextId?: string; noticeTextId?: string }
   /**
    * **劫掠捕获网**（船长 2026-09-16：「劫掠捕获网：**降低目标90%移动速度，并关闭所有类型推进器**。
    * **在自身第一次开火时发动**。动画效果为一根蓝色的光速连着命中舰船」＋补充「**还会让目标闪避强制为0，

@@ -18,6 +18,7 @@ const caps = ['mod-shieldfield-2', 'mod-shieldfield-3', 'mod-stealth-3', 'mod-dc
 const keys = ['r-inv', 'h-hi', 'c-inv', 'd-hi']
 const root = fileURLToPath(new URL('../../../', import.meta.url))
 const beforeMarket = JSON.parse(execFileSync('git', ['show', '31c6cf55:packages/data/src/static/market.json'], { cwd: root, encoding: 'utf8' })) as typeof staticMarket
+const buybackBatchMarket = JSON.parse(execFileSync('git', ['show', 'a8287262:packages/data/src/static/market.json'], { cwd: root, encoding: 'utf8' })) as typeof staticMarket
 
 describe('残骸主题出货', () => {
   it.each(WRECK_GROUPS)('$key完好基础出货有默认池，主题不再独占；低安层保留', group => {
@@ -161,9 +162,9 @@ describe('专属补缺计入待售托管', () => {
 })
 
 describe('收购价格精确配置', () => {
-  it('相对主树只修改53行的demandMultiplier，全部基价和其他参数不变', () => {
+  it('历史残骸批仅修改53行收购倍率，不锁死后续合法目录调整', () => {
     let special = 0, capped = 0
-    for (const [group, rows] of Object.entries(staticMarket.groups)) {
+    for (const [group, rows] of Object.entries(buybackBatchMarket.groups)) {
       const before = beforeMarket.groups[group as keyof typeof beforeMarket.groups]!
       expect(rows).toHaveLength(before.length)
       for (let i = 0; i < rows.length; i++) {
@@ -174,6 +175,22 @@ describe('收购价格精确配置', () => {
         if (row.kind === 'module' && (id.startsWith('mod-lair-') || id.startsWith('mod-wh-'))) { multiplier = .25; special++ }
         if (caps.includes(String(row.key))) { multiplier = 2000000 / Number(row.basePrice); capped++ }
         expect(row, String(row.key)).toEqual({ ...old, demandMultiplier: multiplier })
+      }
+    }
+    expect(special).toBe(48)
+    expect(capped).toBe(5)
+  })
+  it('现行专属装备和高价通用件的收购倍率仍按确认值生效', () => {
+    let special = 0, capped = 0
+    for (const row of Object.values(staticMarket.groups).flat()) {
+      const id = row.refId
+      if (row.kind === 'module' && (id.startsWith('mod-lair-') || id.startsWith('mod-wh-'))) {
+        expect(row.demandMultiplier, row.key).toBe(.25)
+        special++
+      }
+      if (caps.includes(row.key)) {
+        expect(row.demandMultiplier, row.key).toBe(2000000 / row.basePrice)
+        capped++
       }
     }
     expect(special).toBe(48)

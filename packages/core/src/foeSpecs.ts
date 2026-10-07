@@ -521,6 +521,7 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       ...((mount.foeGunRangeMulOnHit ?? ship.gunRangeMulOnHit) !== undefined
         ? { foeGunRangeMulOnHit: mount.foeGunRangeMulOnHit ?? ship.gunRangeMulOnHit }
         : {}),
+      ...(mount.foeGunRangeNoticeId !== undefined ? { foeGunRangeNoticeId: mount.foeGunRangeNoticeId } : {}),
       // **劫掠捕获网**（船长 2026-09-16）：本舰第一次开火那一刻钉住它这一发的目标；四层效果与解除口径见 FoeMountDef.web / applyMeWebDebuff
       ...(mount.foeCaptureWeb !== undefined ? { foeCaptureWeb: mount.foeCaptureWeb } : {}),
       // **舰种档**（2026-09-12 加）：敌舰近防炮的档系数用（`balance.pdTierMul`，越大的船防空越强）

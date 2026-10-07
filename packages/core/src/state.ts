@@ -1498,7 +1498,7 @@ export interface BattleState {
    * （不像日志那样永久留档）。只保留最近 4 条（`pushBattleNotice`）。
    * 缺省 = 本场没有提示（零行为变化）。
    */
-  notices?: Array<{ atMs: number; text: string }>;
+  notices?: Array<{ atMs: number; text: string; textId?: string; textParams?: LogParams }>;
   /** 本场已击落架数（机型 id → 架数，**全队合计**）；结算时按此**永久扣除**无人机舱清单 */
   droneLost?: Record<string, number>
   /** **逐舰战损**（2026-09-14 船长「战损按舰归属」）：`舰tag → (机型 id → 架数)`。
