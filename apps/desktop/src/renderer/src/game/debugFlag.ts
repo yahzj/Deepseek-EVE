@@ -57,6 +57,12 @@ export function futureWormholeEnabled(): boolean {
   } catch { return false }
 }
 
+/** 仅明确本机实验标记开放；公网及打包file协议始终关闭。 */
+export function planetaryEnabled(): boolean {
+  if (!debugEnabled()) return false
+  try { return localStorage.getItem('whale-idle:planetary-test') === '1' } catch { return false }
+}
+
 export function setFutureWormholeEnabled(on: boolean): void {
   if (!debugAllowed()) return
   try {

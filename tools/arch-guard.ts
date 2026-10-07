@@ -94,7 +94,7 @@ const ALLOW_TABLE_READERS: Record<string, string> = {
  * ⚠ 只收**游戏数据**；**标签/枚举/常量不算**（标签类由 `ui-subs-check` 的本地化直读契约管）。
  */
 const DATA_TABLES: readonly string[] = [
-  'PLANET_DEFS', 'PLANET_TRAITS', 'PLANET_BUILDINGS',
+  'PLANET_DEFS', 'PLANET_TRAITS', 'PLANET_BUILDINGS', 'PLANET_OPERATIONS', 'PLANET_PROJECTS',
   // data 侧内容表
   'SHIPS', 'MODULES', 'ITEMS', 'BLUEPRINTS', 'SHIP_BLUEPRINTS', 'SKILLS', 'BELTS', 'GALAXIES',
   'GALAXY_EDGES', 'DIALOGUES', 'ANOMALIES_FLAVORED', 'SKILL_GROUPS', 'FOE_SHIPS',
@@ -110,6 +110,10 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '星球供电与产消视图', symbol: 'planetColonyView', file: 'packages/core/src/planetColony.ts', exported: true },
+  { concept: '星球离线与在线量子演算', symbol: 'advancePlanetary', file: 'packages/core/src/planetRuntime.ts', exported: true },
+  { concept: '星球实际运输与材料交付', symbol: 'dispatchPlanetDelivery', file: 'packages/core/src/planetLogistics.ts', exported: true },
+  { concept: '星球工程与退料账', symbol: 'cancelPlanetJob', file: 'packages/core/src/planetConstruction.ts', exported: true },
   { concept: '星球注入目录完整性校验', symbol: 'planetCatalogIssues', file: 'packages/core/src/planetCatalog.ts', exported: true },
   { concept: '星球独立子流与地块生成', symbol: 'generatePlanet', file: 'packages/core/src/planetGeneration.ts', exported: true },
   { concept: '星球环境与成本派生', symbol: 'planetEnvironmentOf', file: 'packages/core/src/planetRules.ts', exported: true },
@@ -595,6 +599,10 @@ for (const file of rendererFiles) {
   ]
   /** **有意不过门禁的入口**（白名单 · 逐条理由） */
   const EXEMPT: readonly { fn: string; reason: string }[] = [
+    { fn: 'startPlanetBuild', reason: '星球自动工程，独立本地施工队列，不占主控舰船' },
+    { fn: 'startPlanetClear', reason: '同上：本地自动清障' },
+    { fn: 'startPlanetMove', reason: '同上：本地自动迁建' },
+    { fn: 'startPlanetProject', reason: '同上：本地改造工程' },
     { fn: 'startScan', reason: '星图扫描：船长 2026-09-15 令「不占主控活动」' },
     { fn: 'startTransitHome', reason: '换港返航：属 LOCKED 档（锁定态由 cannotInterruptReason 统一挡）' },
     { fn: 'startBattleFor', reason: '开战：非主控活动入口（战斗中由 cannotInterruptReason 的锁定态挡）' },

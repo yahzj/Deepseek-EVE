@@ -1653,6 +1653,7 @@ export function shipBusyForWormhole(state: GameState, shipId: string): BusyLabel
  * 由 `tests/wormhole-activity-lock.test.ts` 逐档钉住（含与 `shipBusyLabel` 的一致性）。
  */
 export function shipActivityBusy(state: GameState, shipId: string): BusyLabel | null {
+  if ((state.planetary?.deliveries ?? []).some(d => d.shipUid === shipId)) return busyLabel('planetDelivery')
   if (shipId !== state.shipId) {
     const task = state.aiAssignments[shipId]?.task
     if (!task) return null

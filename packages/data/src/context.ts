@@ -40,6 +40,7 @@ import { buildDialogueCatalog } from './dialogues'
 import { GALAXY_EDGES } from './universe'
 import { EN_FRAGMENT, localizeCtx, type Locale } from './l10n'
 import { FOE_SHIPS } from './foe-ships'
+import { buildPlanetCatalog } from './planets'
 
 export function buildSimContext(locale: Locale = 'zh'): SimContext {
   const galaxies = buildGalaxyCatalog()
@@ -70,6 +71,7 @@ export function buildSimContext(locale: Locale = 'zh'): SimContext {
   //   再用**覆盖后的**装备名生成碎片（否则英文界面里碎片会留着中文装备名）。
   const base = localizeCtx(
     {
+      planetary: buildPlanetCatalog(),
       skills: buildSkillCatalog(),
       ships: buildShipCatalog(),
       belts: buildBeltCatalog(),

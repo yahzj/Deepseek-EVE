@@ -37,5 +37,20 @@ export function planetCatalogIssues(catalog: PlanetCatalog): string[] {
       targets.add(rule.target)
     }
   }
+  for (const [key, op] of catalog.operations ?? []) {
+    if (!catalog.buildings.has(key) || op.buildingId !== key || !finite(op.power, -1000, 1000)
+      || !finite(op.priority, 0, 100) || !finite(op.bill.credits, 0, 1e12)
+      || !finite(op.bill.durationMs, 1, 7 * 86400000)) issues.push(`operation:${key}`)
+    for (const [id, count] of Object.entries(op.bill.items)) if (!idValid(id) || !Number.isSafeInteger(count) || count < 1) issues.push(`bill:${key}/${id}`)
+    for (const rates of [op.inputs, op.output]) for (const [resource, rate] of Object.entries(rates ?? {})) {
+      if (!['food', 'water', 'medicine', 'metal', 'parts', 'research', 'rare'].includes(resource) || !finite(rate, 0, 10000)) issues.push(`rate:${key}/${resource}`)
+    }
+  }
+  for (const [key, project] of catalog.projects ?? []) {
+    if (key !== project.id || !idValid(key) || !finite(project.requiredResearch, 0, 1e6)) issues.push(`project:${key}`)
+    for (const id of [project.fromTraitId, project.toTraitId, project.removeTraitId]) if (id && !catalog.traits.has(id)) issues.push(`project-trait:${key}/${id}`)
+    if (!finite(project.bill.durationMs, 1, 7 * 86400000) || !finite(project.bill.credits, 0, 1e12)) issues.push(`project-bill:${key}`)
+    for (const [id, count] of Object.entries(project.bill.items)) if (!idValid(id) || !Number.isSafeInteger(count) || count < 1) issues.push(`project-item:${key}/${id}`)
+  }
   return issues
 }

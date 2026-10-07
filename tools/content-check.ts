@@ -8698,6 +8698,8 @@ for (const [table, document] of Object.entries({ ships: staticShips, modules: st
   for (const issue of planetCatalogIssues(catalog)) check(false, `星球原型目录：${issue}`)
   const galaxies = new Set(GALAXIES.map(g => g.id))
   for (const planet of PLANET_DEFS) check(galaxies.has(planet.galaxyId), `星球原型星系不存在：${planet.id}`)
+  for (const op of catalog.operations?.values() ?? []) for (const id of Object.keys(op.bill.items)) check(ITEMS.some(i => i.id === id), `星球建材不存在：${id}`)
+  for (const p of catalog.projects?.values() ?? []) for (const id of Object.keys(p.bill.items)) check(ITEMS.some(i => i.id === id), `星球改造材料不存在：${id}`)
 }
 console.log(`· 蓝图：装备 ${BLUEPRINTS.length} 张 + 舰船 ${SHIP_BLUEPRINTS.length} 张`)
 if (warn.length > 0) {

@@ -246,7 +246,8 @@ export function idleAiShipIds(state: GameState): string[] {
   const inHole = state.wormhole.run?.fleet ?? []
   return Object.keys(state.fleet).filter(
     (id) =>
-      id !== state.shipId && !inHole.includes(id) && !(id in state.aiAssignments) && !shipInReturn(state, id),
+      id !== state.shipId && !inHole.includes(id) && !(id in state.aiAssignments) && !shipInReturn(state, id)
+      && !(state.planetary?.deliveries ?? []).some(d => d.shipUid === id),
   )
 }
 
@@ -254,6 +255,7 @@ export function idleAiShipIds(state: GameState): string[] {
 
 /** 共同校验：船、名额、核心、空闲 */
 function checkAssignable(state: GameState, shipId: string, coreType: AiCoreType, ctx: SimContext): CommandResult {
+  if ((state.planetary?.deliveries ?? []).some(d => d.shipUid === shipId)) return { ok: false, error: '星球物资运输中', errorId: 'core.busy.031' }
   if (shipId === state.shipId) return { ok: false, error: '主控船由你亲自驾驶，不能指派 AI。', errorId: 'core.ai.003' }
   if (!state.fleet[shipId]) return { ok: false, error: '舰队里没有这艘船。', errorId: 'core.ai.004' }
   if (shipId in state.aiAssignments) return { ok: false, error: '这艘船已有 AI 任务。', errorId: 'core.ai.005' }

@@ -41,6 +41,8 @@ export interface PlanetCatalog {
   planets: ReadonlyMap<string, PlanetDef>
   traits: ReadonlyMap<string, PlanetTraitDef>
   buildings: ReadonlyMap<string, PlanetBuildingDef>
+  operations?: ReadonlyMap<string, PlanetOperationDef>
+  projects?: ReadonlyMap<string, PlanetProjectDef>
 }
 export interface PlanetDeposit {
   resource: PlanetResource
@@ -52,6 +54,8 @@ export interface PlanetBuildingState {
   status: 'construction' | 'ready' | 'stopped'
   powered: boolean
   staffed: boolean
+  condition?: number
+  enabled?: boolean
 }
 export interface PlanetGridCell {
   index: number
@@ -66,9 +70,90 @@ export interface PlanetState extends PlanetDef {
   hiddenTraitId: string
   survey: PlanetSurveyLevel
   cells: PlanetGridCell[]
+  colony?: PlanetColonyState
+  originalTraitIds?: string[]
+  projectHistory?: string[]
 }
 export interface PlanetaryState {
   planets: Record<string, PlanetState>
+  runtimeVersion?: 1
+  tickRemainderMs?: number
+  humans?: { discoveredAtGameMs: number; sourcePlanetId: string; sleeping: number }
+  deliveries?: PlanetDelivery[]
+}
+
+export type PlanetLocalResource = 'food' | 'water' | 'medicine' | 'metal' | 'parts' | 'research' | 'rare'
+export interface PlanetBill { items: Record<string, number>; credits: number; durationMs: number }
+export interface PlanetOperationDef {
+  buildingId: string
+  bill: PlanetBill
+  power: number
+  priority: number
+  housing?: number
+  cryoCapacity?: number
+  lifeSupport?: boolean
+  output?: Partial<Record<PlanetLocalResource, number>>
+  inputs?: Partial<Record<PlanetLocalResource, number>>
+}
+export interface PlanetProjectDef {
+  id: string
+  fromTraitId?: string
+  toTraitId?: string
+  removeTraitId?: string
+  requiredResearch: number
+  bill: PlanetBill
+}
+export interface PlanetJob {
+  seq: number
+  kind: 'build' | 'clear' | 'move' | 'project'
+  cellIndex?: number
+  targetIndex?: number
+  buildingId?: string
+  projectId?: string
+  remainingMs: number
+  totalMs: number
+  spentItems: Record<string, number>
+  spentCredits: number
+  spentResearch?: number
+  paused: boolean
+}
+export interface PlanetEvent {
+  seq: number
+  kind: 'equipment' | 'weather' | 'resources' | 'health' | 'ruins'
+  atMs: number
+  cellIndex?: number
+}
+export interface PlanetColonyState {
+  runtimeVersion: 1
+  items: Record<string, number>
+  credits: number
+  supplies: Partial<Record<PlanetLocalResource, number>>
+  awake: number
+  sleeping: number
+  jobs: PlanetJob[]
+  jobSeq: number
+  clockMs: number
+  tickRemainderMs: number
+  crisis: 'none' | 'sheltered' | 'rescue'
+  event?: PlanetEvent
+  eventSeq: number
+  nextEventMs: number
+  eventRngCount: number
+  pauseEvents?: boolean
+}
+export interface PlanetDelivery {
+  seq: number
+  planetId: string
+  shipUid: string
+  items: Record<string, number>
+  credits: number
+  humans: number
+  remainingMs: number
+  durationMs: number
+}
+export interface PlanetActionResult {
+  ok: boolean
+  reason?: string
 }
 export interface PlanetEnvironment {
   hazard: number

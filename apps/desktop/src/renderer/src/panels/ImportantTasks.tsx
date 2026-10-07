@@ -18,6 +18,7 @@
 import { TASK_FIND_HUMANS } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { tr } from '../i18n/locale'
+import { pt } from '../ui/planetText'
 
 /** 只剩「寻找人类」这一条贯穿任务（教程卡随线性教程退场）⇒ 不再需要 onToast（没有可点的动作） */
 export function ImportantTasks({ engine }: { engine: GameEngine }) {
@@ -31,6 +32,11 @@ export function ImportantTasks({ engine }: { engine: GameEngine }) {
 
   return (
     <div className="app-imp-quests">
+      {state.planetary?.runtimeVersion === 1 && state.planetary.humans ? <div className="app-imp-card is-perm">
+        <div className="app-imp-card-title">{tr('core.planet.003')}</div>
+        <div className="app-imp-card-body">{tr('core.planet.002')}</div>
+        <div className="app-imp-card-state">{pt(state.importantTasks['human-home']?.done ? 'completed' : 'stage.settlement')}</div>
+      </div> : null}
       {findHumanOn ? (
         <div className="app-imp-card is-perm">
           <div className="app-imp-card-title">{tr("ui.ImportantTasks.001")}</div>

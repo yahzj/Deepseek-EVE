@@ -387,7 +387,9 @@ import type { ReconnectChoice } from './saveReconnect'
 /** 存档存储体检与告警（2026-09-25 船长令：修「MacBook · Safari 关掉游戏后存档丢失」） */
 import { noteSaveWriteFailed, requestPersistentStorage, saveStorageProbe } from './saveGuard'
 /** **2026-10-03 船长令**（「调试模式允许载入铁人存档」）：本机调试门禁（发布版恒 false）⇒ 铁人闸门放行 */
-import { debugEnabled, futureWormholeEnabled } from './debugFlag'
+import { debugEnabled, futureWormholeEnabled, planetaryEnabled } from './debugFlag'
+import { runPlanetaryCommand } from './planetaryCommands'
+import { advancePlanetary, reconcilePlanetHome } from '@whale/core'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
 import { tr, cmdText, paramText } from '../i18n/locale'
@@ -647,6 +649,28 @@ function saveWormholeSpeedPick(x: number): void {
 }
 
 export class GameEngine {
+  getCtx(): SimContext { return this.ctx }
+  planetaryCommand(action: string, args: unknown[]): import('@whale/core').PlanetActionResult {
+    const result = runPlanetaryCommand(this.state, this.ctx, action, args)
+    if (result.ok) { this.notify(); void this.persist() }
+    return result
+  }
+  private installPlanetaryTestApi(): void {
+    if (!planetaryEnabled()) return
+    const target = window as Window & { __whalePlanetaryTest?: unknown }
+    target.__whalePlanetaryTest = {
+      snapshot: () => planetaryEnabled() ? structuredClone(this.state) : undefined,
+      command: async (action: string, args: unknown[]) => { const result = this.planetaryCommand(action, args); await this.persist(); return result },
+      step: async (duration: number) => {
+        if (!planetaryEnabled() || !Number.isSafeInteger(duration) || duration < 0 || duration > 8 * 3600000 || !this.ctx.planetary) return false
+        advancePlanetary(this.state, duration, this.ctx.planetary)
+        reconcilePlanetHome(this.state, this.ctx.planetary)
+        this.state.gameMs += duration
+        this.notify(); await this.persist(); return true
+      },
+      persist: () => this.persist(),
+    }
+  }
   /**
    * 引擎规则计算需要的静态内容（技能/舰船/矿带/物品 + 平衡数值）。
    * ⚠ 2026-09-19 英语本地化：`ctx` 与下面几张目录表**不再是 readonly** —— `setLocale()` 会按语言重建
@@ -1175,6 +1199,7 @@ export class GameEngine {
     await this.persist()
     this.notify()
     this.installWormholeTestApi()
+    this.installPlanetaryTestApi()
   }
 
   private wormholeTestEnabled(): boolean {

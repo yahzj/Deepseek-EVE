@@ -3361,6 +3361,7 @@ export type GameStateV24 = Omit<GameStateV23, 'version'> & {
  * 空 = 可以操作。文案统一说明"为什么"与"怎么解"。
  */
 export function shipLockedReason(state: GameState, shipId: string, what = '操作这艘船'): string | null {
+  if ((state.planetary?.deliveries ?? []).some(d => d.shipUid === shipId)) return '该舰正在运送星球物资，抵达前不能改装或转派。'
   if (shipLockedInWormhole(state, shipId)) {
     return `该舰在虫洞里（已锁定）：${what}要等它出洞——先撤离或结算本趟。`
   }

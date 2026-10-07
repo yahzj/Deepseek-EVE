@@ -69,7 +69,7 @@ describe('星球目录与确定性生成', () => {
     expect(planetTraitsCompatible(a, [{ ...a, id: 'other', conflicts: ['cold'] }])).toBe(false)
     const invalid = { ...catalog, traits: new Map(catalog.traits).set('cold', { ...a, weight: NaN }) }
     expect(() => generatePlanet(PLANET_DEFS[0]!, 7, invalid)).toThrow('invalid-planet-catalog')
-    expect(() => generatePlanet(PLANET_DEFS[0]!, 7, { ...catalog, traits: new Map() })).toThrow('insufficient-planet-traits')
+    expect(() => generatePlanet(PLANET_DEFS[0]!, 7, { ...catalog, traits: new Map(), projects: undefined })).toThrow('insufficient-planet-traits')
     expect(() => gen(NaN)).toThrow('invalid-planet-definition')
     expect(() => generatePlanet({ ...PLANET_DEFS[0]!, id: 'constructor' }, 7, catalog)).toThrow('invalid-planet-definition')
   })

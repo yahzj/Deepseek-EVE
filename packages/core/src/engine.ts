@@ -22,6 +22,7 @@ import { reconcilePilotShip } from './shipyard'
 import { advanceManufacturing } from './manufacturing'
 import { advanceRefining } from './industry'
 import { advanceLab } from './lab'
+import { advancePlanetary, reconcilePlanetHome } from './planetRuntime'
 import { advanceExpedition } from './expedition'
 import { advanceWormhole } from './wormholeBattle'
 import { advanceAi, AI_CORE_ORDER } from './ai'
@@ -185,6 +186,7 @@ export function advanceGame(
   const d = Math.floor(deltaMs)
   if (!Number.isFinite(d) || d <= 0) return
   state.gameMs += d
+  if (ctx.planetary) { advancePlanetary(state, d, ctx.planetary, state.gameMs - d); reconcilePlanetHome(state, ctx.planetary) }
   /**
    * **现实墙钟落进 state**（2026-09-15 限时倍率批）：只有**显式传入 `nowWallMs`** 时才写
    * （在线心跳 / 离线结算都传 ⇒ 正式运行恒有值）；**工具与用例不传 ⇒ `state.wallMs` 保持 undefined

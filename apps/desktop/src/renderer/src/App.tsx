@@ -63,7 +63,8 @@ import { BattleScreen } from './panels/BattleScreen'
 import { debugEnabled as readDebugEnabled } from './panels/DebugPanel'
 import { WormholePanel } from './panels/Wormhole'
 import { SignalSpacePanel } from './panels/SignalSpace'
-import { futureWormholeEnabled } from './game/debugFlag'
+import { futureWormholeEnabled, planetaryEnabled } from './game/debugFlag'
+import { PlanetaryPanel } from './panels/PlanetaryPanel'
 import { TooltipLayer, hideTip } from './ui/Tooltip'
 import { Glyph, NAV_TONES, ICO_TONES } from './ui/Glyphs'
 import { ActivityScreen, activityKindOf } from './ui/ActivityScreen'
@@ -1293,6 +1294,12 @@ async function applyLayoutAndReload(): Promise<void> {
    * 待办清单与开场信都指向这里——先看清单，再决定做哪一件。
    */
   const prevObStep = useRef(engine.state.onboarding.step)
+  const [planetOpen, setPlanetOpen] = useState(false)
+  useEffect(() => {
+    const open = (): void => { if (planetaryEnabled()) setPlanetOpen(true) }
+    window.addEventListener('whale-planetary-open', open)
+    return () => window.removeEventListener('whale-planetary-open', open)
+  }, [])
   useEffect(() => {
     const s = engine.state.onboarding.step
     if (prevObStep.current === ONB_AWAKEN && s !== ONB_AWAKEN) {
@@ -2023,6 +2030,8 @@ async function applyLayoutAndReload(): Promise<void> {
 
       {/* 全局悬停提示层（置于最上） */}
       <TooltipLayer />
+      {planetOpen && planetaryEnabled() && engine.ctx.planetary ? <PlanetaryPanel engine={engine} catalog={engine.ctx.planetary}
+        onClose={() => setPlanetOpen(false)} onCommand={(action, args) => engine.planetaryCommand(action, args)} /> : null}
     </div>
   )
 }

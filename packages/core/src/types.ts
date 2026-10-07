@@ -2848,6 +2848,8 @@ export interface AnomalyDef {
 
 /** 模拟需要的全部静态内容（由数据包构建后一次性传入） */
 export interface SimContext {
+  /** 星球实验目录，只有显式runtimeVersion测试世界推进，不自动生成。 */
+  planetary?: import('./planetTypes').PlanetCatalog
   skills: SkillCatalog
   ships: ReadonlyMap<string, ShipDef>
   belts: ReadonlyMap<string, BeltDef>

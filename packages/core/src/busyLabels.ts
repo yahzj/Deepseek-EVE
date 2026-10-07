@@ -13,6 +13,7 @@
 
 /** 忙态档位（键名即语义；新增档位时**必须同时**在 BUSY_TEXT 与 l10n 表补条目） */
 export type BusyLabelId =
+  | 'planetDelivery'
   | 'wormhole'
   | 'mining'
   | 'miningOut'
@@ -47,6 +48,7 @@ export type BusyLabelId =
 
 /** 档位 → l10n id（唯一表 `core.busy.*`） */
 export const BUSY_LABEL_ID: Readonly<Record<BusyLabelId, string>> = {
+  planetDelivery: 'core.busy.031',
   wormhole: 'core.busy.001',
   mining: 'core.busy.002',
   miningOut: 'core.busy.003',
@@ -82,6 +84,7 @@ export const BUSY_LABEL_ID: Readonly<Record<BusyLabelId, string>> = {
 
 /** 档位 → 中文兜底文案（`patrolTo` 带 `{p1}`＝目标星系名） */
 export const BUSY_TEXT: Readonly<Record<BusyLabelId, string>> = {
+  planetDelivery: '星球物资运输中',
   wormhole: '虫洞探索中',
   mining: '采矿中',
   miningOut: '采矿·出航中',

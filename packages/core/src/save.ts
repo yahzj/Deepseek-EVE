@@ -3370,7 +3370,10 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   const achievements: GameState['achievements'] = { earned: achEarned }
 
   const blackMarket = normalizeBlackMarket(src.blackMarket)
-  const planetary = cleanPlanetaryState(src.planetary)
+  const planetary = (() => {
+    try { return cleanPlanetaryState(src.planetary) }
+    catch { throw new SaveError('VERSION', '存档中的星球运行规则高于当前支持范围，请升级游戏。') }
+  })()
   const normalized: GameState = {
     ...(planetary ? { planetary } : {}),
     version: CURRENT_STATE_VERSION,

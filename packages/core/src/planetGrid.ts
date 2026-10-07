@@ -41,6 +41,7 @@ export function planetBuildingOperational(planet: PlanetState, index: number, ca
   const building = cell?.building
   const def = building ? catalog.buildings.get(building.id) : undefined
   return !!building && !!def && !cell?.obstacle && building.status === 'ready' && building.powered
+    && building.enabled !== false && (building.condition ?? 1) > 0
     && (def.worker === 'automatic' || building.staffed)
     && (!def.requiredResource || cell.deposit?.resource === def.requiredResource)
     && (!def.requiredTraitId || (planet.survey >= 2 && planetSurveyView(planet, catalog)?.traitIds.includes(def.requiredTraitId) === true))
