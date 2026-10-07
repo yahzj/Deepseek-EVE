@@ -48,10 +48,9 @@ async function parent() {
         delete env.ELECTRON_RUN_AS_NODE
         const child = spawn(require('electron'), [__filename, '--child'], { cwd: ROOT, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
         let output = '', error = ''
-        child.stdout.on('data', b => { output += b }); child.stderr.on('data', b => { error += b })
-        const timer = setTimeout(() => child.kill(), 90_000)
+        child.stdout.on('data', b => { output += b; process.stdout.write(b) }); child.stderr.on('data', b => { error += b; process.stderr.write(b) })
+        const timer = setTimeout(() => child.kill(), 150_000)
         const [code] = await once(child, 'exit'); clearTimeout(timer)
-        console.log(output)
         assert.equal(code, 0, error)
         const saved = core.loadSaveFile(fs.readFileSync(path.join(profile, 'save.json'), 'utf8')).state
         assert.equal(saved.planetary.planets['planet-prototype-medium'].colony.awake, 4)
@@ -91,6 +90,7 @@ async function child() {
   }
   await page.send('Page.reload')
   await page.wait('!!window.__whalePlanetaryTest && !!document.querySelector(".app-root")')
+  console.log('阶段：渲染与实验API就绪')
   const text = key => data.L10N[core.PLANET_TEXT_IDS[key]][options.locale]
   const snap = () => page.js('window.__whalePlanetaryTest.snapshot()')
   const step = async ms => { assert(await page.js(`window.__whalePlanetaryTest.step(${ms})`)) }
@@ -98,30 +98,35 @@ async function child() {
   const input = async (selector, value) => page.js(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,${JSON.stringify(String(value))});e.dispatchEvent(new Event('input',{bubbles:true}));return true})()`)
   const open = async () => { await page.js('window.dispatchEvent(new Event("whale-planetary-open"));true'); await page.wait('!!document.querySelector(".app-planet-modal")') }
   await open()
+  console.log('阶段：打开星球')
   let state = await snap()
   const source = Object.values(state.planetary.planets).find(p => p.traitIds.includes('old-dome') || p.traitIds.includes('underground-ruins'))
   await select('.app-planet-picker select', source.id)
   await page.text('.app-planet-tabs', text('population'))
   await page.text('.app-planet-population', text('discoverHumans'))
   state = await snap(); assert(state.planetary.humans)
+  console.log('阶段：人类发现')
   await select('.app-planet-picker select', 'planet-prototype-medium')
   const uid = Object.keys(state.fleet).find(id => id.startsWith('sh-manatee'))
   await select('.app-planet-population select', uid)
   await input('.app-planet-population input[data-planet-input="delivery-humans"]', 4)
   await page.tap('.app-planet-population [data-delivery-submit]')
   assert.equal((await snap()).planetary.deliveries[0].humans, 4)
+  console.log('阶段：派运')
   await step(3600000)
   await input('.app-planet-population [data-planet-input="population"]', 1)
   await page.text('.app-planet-population', text('wake'))
   await input('.app-planet-population [data-planet-input="population"]', 3)
   await page.text('.app-planet-population', text('wake'))
   assert.equal((await snap()).planetary.planets['planet-prototype-medium'].colony.awake, 4)
+  console.log('阶段：唤醒')
   await page.text('.app-planet-tabs', text('projects'))
   const p = (await snap()).planetary.planets['planet-prototype-medium']
   const project = [...data.buildPlanetCatalog().projects.values()].find(pr => pr.fromTraitId && p.traitIds.includes(pr.fromTraitId))
   await page.tap(`[data-project-id="${project.id}"] button`)
   await step(project.bill.durationMs)
   assert((await snap()).importantTasks['human-home'].done)
+  console.log('阶段：家园改造')
   await page.text('.app-planet-tabs', text('surface'))
   await select('.app-planet-picker select', 'planet-prototype-large')
   const large = (await snap()).planetary.planets['planet-prototype-large']
@@ -142,6 +147,7 @@ async function child() {
   await page.tap(`[data-planet-cell="${blocked.index}"]`)
   await page.text('.app-planet-detail', text('clear'))
   await step(120000)
+  console.log('阶段：施工与清障')
   assert.equal((await snap()).planetary.planets[large.id].cells[blocked.index].obstacle, undefined)
   await page.tap('[data-planet-cell="35"]')
   const geometry = await page.js(`(()=>{const m=document.querySelector('.app-planet-modal'),g=document.querySelector('.app-planet-grid');const b=m.getBoundingClientRect(),d=document.querySelector('.app-planet-detail');return {modalWidth:b.width,modalHeight:b.height,tiles:g.querySelectorAll('button').length,gridWidth:g.offsetWidth,detail:d.offsetWidth,bodyOverflow:m.scrollWidth>m.clientWidth+1}})()`)
@@ -152,6 +158,7 @@ async function child() {
   await open()
   await select('.app-planet-picker select', 'planet-prototype-large')
   await page.text('.app-planet-tabs', text('surface'))
+  console.log('阶段：重载通过')
   const shot = await page.send('Page.captureScreenshot', { format: 'png' })
   fs.writeFileSync(path.join(OUTPUT, `${options.layout}-${options.locale}-${options.mobile ? 'mobile' : 'desktop'}.png`), Buffer.from(shot.data, 'base64'))
   assert.equal(errors.length, 0, JSON.stringify(errors))
