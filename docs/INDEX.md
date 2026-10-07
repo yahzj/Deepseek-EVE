@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **501** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7913** KB · **61874** 行
-- 状态分布：**未标注** 260 · **已确认/已实现** 164 · **进行中** 53 · **待裁定** 23 · **历史留档** 1
-- 孤儿文档（0 引用）**113** 份 · 状态未标注 **260** 份
+- 文档总数 **502** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7915** KB · **61897** 行
+- 状态分布：**未标注** 261 · **已确认/已实现** 164 · **进行中** 53 · **待裁定** 23 · **历史留档** 1
+- 孤儿文档（0 引用）**114** 份 · 状态未标注 **261** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**338** 份
+- 三、现行设计稿（design）：**339** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**5** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -55,10 +55,11 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 338 份
+## 三、现行设计稿（design） —— 339 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/stellar-debug-navigation-20261008.md` | 调试导航开放星系入口 | 未标注（实现与验证完成） | 2026-10-08 | 2 KB / 23 行 | 0 / 0 |
 | `docs/design/acid-burst-stacking-fx-20261007.md` | 酸液爆虫腐蚀叠加与专属自爆动画 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 53 行 | 0 / 0 |
 | `docs/design/announcement-draft-alien-invasion-20261007.md` | 异形入侵公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 26 行 | 2 / 0 |
 | `docs/design/announcement-draft-wreck-loot-buy-20261007.md` | 残骸回收与装备收购公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 23 行 | 1 / 0 |
@@ -571,10 +572,11 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，113 份）
+## 附：孤儿文档（0 引用，114 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/stellar-debug-navigation-20261008.md`（2026-10-08 · 2 KB）—— 调试导航开放星系入口
 - `docs/design/acid-burst-stacking-fx-20261007.md`（2026-10-07 · 5 KB）—— 酸液爆虫腐蚀叠加与专属自爆动画
 - `docs/design/colossal-once-buyback-only-20261007.md`（2026-10-07 · 4 KB）—— 皇带鱼一次性蓝图只收不卖
 - `docs/design/invasion-wreck-ordinary-decrement-20261007.md`（2026-10-07 · 4 KB）—— 入侵稀有残骸清空后普通残骸不减量排查
@@ -689,8 +691,9 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（260 份，待补一行 `状态：…`）
+## 附：状态未标注（261 份，待补一行 `状态：…`）
 
+- `docs/design/stellar-debug-navigation-20261008.md`（2026-10-08）—— 调试导航开放星系入口
 - `docs/design/invasion-wreck-ordinary-decrement-20261007.md`（2026-10-07）—— 入侵稀有残骸清空后普通残骸不减量排查
 - `docs/design/planetary-system-search-20261007.md`（2026-10-07）—— 深空星系搜索与种子坐标方案
 - `docs/design/ship-damage-inline-display-20261007.md`（2026-10-07）—— 战损插件并入现有插件展示区

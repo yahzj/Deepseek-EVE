@@ -47,6 +47,8 @@ import { fmtDate, fmtDuration, fmtDurationShort } from '../i18n/fmt'
 
 export type LayoutKind = 'modern' | 'classic'
 
+interface ShellNavItem { key: string; label: string; icon: string; onSelect?: () => void }
+
 /** 外壳需要的全部输入（App 提供；外壳只读） */
 export interface ShellCtx {
   state: GameState
@@ -81,8 +83,8 @@ export interface ShellCtx {
   tuningsNow: readonly ActiveTuning[]
   tuningTick: number
   layoutKind: LayoutKind
-  navItems: readonly { key: string; label: string; icon: string }[]
-  debugNavItems: readonly { key: string; label: string; icon: string }[]
+  navItems: readonly ShellNavItem[]
+  debugNavItems: readonly ShellNavItem[]
   readDebugEnabled: () => boolean
   qqGroup: string
   pageMain: ReactNode
@@ -411,7 +413,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
         : tr("ui.App.114", { unreadN: unreadN })
         : undefined
         }
-        onClick={() => changePage(item.key as PageKey)}
+        onClick={() => item.onSelect ? item.onSelect() : changePage(item.key as PageKey)}
         >
         <span className="app-nav-icon">
         {/* 2026-09-25 船长令：「导航栏图除了出港外的图标还是太小了，在宽度不变的前提下，高度要和导航栏匹配」
@@ -580,7 +582,7 @@ export function AppShell(ctx: ShellCtx): JSX.Element {
                         : tr("ui.App.114", { unreadN: unreadN })
                       : null,
                   ].filter(Boolean).join('\n') || undefined}
-                  onClick={() => changePage(item.key as PageKey)}
+                  onClick={() => item.onSelect ? item.onSelect() : changePage(item.key as PageKey)}
                 >
                   <span className="app-nav-icon">
                     <Glyph name={item.icon} size={item.key === 'map' ? 40 : 19} color={NAV_TONES[item.icon]} />

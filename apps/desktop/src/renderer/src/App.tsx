@@ -1351,7 +1351,8 @@ async function applyLayoutAndReload(): Promise<void> {
         tuningsNow={tuningsNow}
         tuningTick={tuningTick}
         navItems={NAV_ITEMS}
-        debugNavItems={DEBUG_NAV_ITEMS}
+        debugNavItems={[...DEBUG_NAV_ITEMS, { key: 'stellar', label: 'ui.stellar.054', icon: 'nav-map',
+          onSelect: () => { if (planetaryEnabled()) { hideActivityWin(); setPlanetOpen(true) } } }]}
         readDebugEnabled={readDebugEnabled}
         qqGroup={QQ_GROUP}
         pageMain={(

@@ -70,7 +70,7 @@ async function child() {
   }
   const errors = []; win.webContents.debugger.on('message', (_e, m, p) => { if (m === 'Runtime.exceptionThrown') errors.push(p) })
   await page.send('Runtime.enable'); await page.send('Page.enable')
-  const init = `localStorage.setItem('whale-idle:layout',${JSON.stringify(options.layout)});localStorage.setItem('whale-idle:layout-set','1');localStorage.setItem('whale-idle:locale',${JSON.stringify(options.locale)});localStorage.setItem('whale-idle:debug','1');localStorage.setItem('whale-idle:planetary-test','1');localStorage.setItem('whale-idle:announce-seen',${JSON.stringify(data.ANNOUNCEMENTS[0].id)})`
+  const init = `localStorage.setItem('whale-idle:layout',${JSON.stringify(options.layout)});localStorage.setItem('whale-idle:layout-set','1');localStorage.setItem('whale-idle:locale',${JSON.stringify(options.locale)});localStorage.setItem('whale-idle:debug','1');localStorage.setItem('whale-idle:announce-seen',${JSON.stringify(data.ANNOUNCEMENTS[0].id)})`
   await page.send('Page.addScriptToEvaluateOnNewDocument', { source: init })
   if (options.mobile) {
     await page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 740, deviceScaleFactor: 1, mobile: true, screenWidth: 390, screenHeight: 740, screenOrientation: { type: 'portraitPrimary', angle: 0 } })
@@ -95,7 +95,9 @@ async function child() {
   await page.wait('!!document.querySelector(".app-wreck-fit [data-damage-kind]")')
   await page.tap('.app-wreck-fit [data-damage-kind]'); await page.wait('!!document.querySelector(".app-ship-damage-modal")'); await closeDamage()
   console.log('战损三界面同区与触屏详情通过')
-  await page.js('window.dispatchEvent(new Event("whale-planetary-open"));true'); await page.wait('!!document.querySelector(".app-stellar-modal")')
+  const underlyingPage = await page.js('document.querySelector(".app-nav-item.is-active")?.textContent')
+  await page.text('.app-nav-side', t('ui.stellar.054')); await page.wait('!!document.querySelector(".app-stellar-modal")')
+  assert.equal(await page.js('document.querySelector(".app-nav-item.is-active")?.textContent'), underlyingPage)
   await page.tap('[data-probe-manufacture]'); await page.wait('!!document.querySelector("[data-probe-production]")'); await step(3600000)
   assert.equal((await snap()).warehouse.items['deep-space-probe'], 1)
   await page.text('.app-stellar-modes', t('ui.stellar.007'))
@@ -147,7 +149,7 @@ async function child() {
   await page.tap('.app-planet-close'); await page.wait('!!document.querySelector(".app-stellar-modal")')
   await page.js('window.__whalePlanetaryTest.persist()'); await page.send('Page.reload'); await page.wait('!!window.__whalePlanetaryTest')
   assert.equal((await snap()).planetary.stellar.systems['system-v1-7'].seed, 7)
-  await page.js('window.dispatchEvent(new Event("whale-planetary-open"));true'); await page.wait('!!document.querySelector(".app-stellar-modal")')
+  await page.text('.app-nav-side', t('ui.stellar.054')); await page.wait('!!document.querySelector(".app-stellar-modal")')
   const geometry = await page.js(`(()=>{const e=document.querySelector('.app-stellar-modal'),s=document.querySelector('.app-stellar-sidebar'),m=document.querySelector('.app-stellar-mapcolumn');return {overflow:e.scrollWidth>e.clientWidth+1,side:s.offsetWidth,width:e.offsetWidth,map:m.offsetWidth,root:document.querySelector('.app-root').offsetWidth,bodies:document.querySelectorAll('[data-stellar-body]').length}})()`)
   assert(!geometry.overflow); assert(geometry.side >= 280); assert(geometry.width >= geometry.root * .85); assert(geometry.map >= 500)
   assert.equal(errors.length, 0, JSON.stringify(errors))

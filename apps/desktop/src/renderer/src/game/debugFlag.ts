@@ -57,10 +57,9 @@ export function futureWormholeEnabled(): boolean {
   } catch { return false }
 }
 
-/** 仅明确本机实验标记开放；公网及打包file协议始终关闭。 */
+/** 船长2026-10-08：本机调试导航直接开放星系；公网及打包file协议仍关闭。 */
 export function planetaryEnabled(): boolean {
-  if (!debugEnabled()) return false
-  try { return localStorage.getItem('whale-idle:planetary-test') === '1' } catch { return false }
+  return debugEnabled()
 }
 
 export function setFutureWormholeEnabled(on: boolean): void {

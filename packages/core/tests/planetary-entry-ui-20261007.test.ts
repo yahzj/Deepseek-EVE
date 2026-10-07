@@ -17,7 +17,8 @@ function gate(protocol: string, hostname: string, debug: string, test: string) {
 }
 describe('星球本机门禁与界面双语', () => {
   it.each([
-    ['http:', '127.0.0.1', '1', '1', true], ['http:', 'localhost', '1', '', false],
+    ['http:', '127.0.0.1', '1', '1', true], ['http:', 'localhost', '1', '', true],
+    ['http:', 'localhost', 'true', '', true],
     ['http:', 'localhost', '', '1', false], ['https:', 'game.example.com', '1', '1', false],
     ['file:', '', '1', '1', false],
   ])('本机实验限定 %s/%s', (protocol, host, debug, test, expected) => {
@@ -31,6 +32,15 @@ describe('星球本机门禁与界面双语', () => {
     const state = createInitialState({ seed: 7, nowWallMs: 0 }), before = structuredClone(state)
     expect(scope.exports.runPlanetaryCommand(state, buildSimContext(), 'discover', ['planet-prototype-small'])).toEqual({ ok: false, reason: 'entry-blocked' })
     expect(state).toEqual(before)
+  })
+  it('两套调试导航复用星系窗口，不创建或跳转虚假一级页', () => {
+    const app = readFileSync(resolve(ROOT, 'apps/desktop/src/renderer/src/App.tsx'), 'utf8')
+    const shell = readFileSync(resolve(ROOT, 'apps/desktop/src/renderer/src/ui/AppShell.tsx'), 'utf8')
+    expect(app).toMatch(/debugNavItems=\{\[\.\.\.DEBUG_NAV_ITEMS, \{ key: 'stellar', label: 'ui\.stellar\.054', icon: 'nav-map'/)
+    expect(app).toContain('if (planetaryEnabled()) { hideActivityWin(); setPlanetOpen(true) }')
+    expect(shell.match(/onClick=\{\(\) => item\.onSelect \? item\.onSelect\(\) : changePage\(item\.key as PageKey\)\}/g)).toHaveLength(2)
+    expect(shell).toContain("readDebugEnabled() ? DEBUG_NAV_ITEMS : []")
+    expect(app).not.toContain("| 'stellar'")
   })
   it('面板使用的静态语义都有唯一表译文，未接上条目不伪装成未知', () => {
     const source = readFileSync(resolve(ROOT, 'apps/desktop/src/renderer/src/panels/PlanetaryPanel.tsx'), 'utf8')
