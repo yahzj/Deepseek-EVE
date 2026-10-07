@@ -72,14 +72,19 @@ export function pushBattleFx(
  *  「**日志内不用显示提示，将该提示放入战斗画面内显示**（和敌方增援统一下系统，**显示位置改为战斗
  *  窗口正上方**）」⇒ 机制提示**不写 `addLog`**，改推这里；UI 按 `atMs` 限时显示后自动消失。
  *  只保留最近 4 条（提示位是"当前正在发生的事"，不是留档——留档归战报）。 */
-export function pushBattleNotice(b: import('./state').BattleState, text: string): void {
+export function pushBattleNotice(
+  b: import('./state').BattleState,
+  text: string,
+  textId?: string,
+  textParams?: import('./state').LogParams,
+): void {
   /**
    * **同类提示同时只留一条**（**船长 2026-10-01 实测反馈**：「**跃迁规避的提示同样过于频繁
    * （同类提示建议同时只存在一条）**」）——
    * 先按**文字**去掉已有的同款，再把新的一条推到末尾 ⇒ 反复触发的机制（闪现/规避/自毁…）
    * 在提示位里始终最多一条、且总显示**最近一次**的时刻。
-   * ⚠ 只按"文字完全相同"判同款（不做模糊匹配）；不同机制的提示互不影响；上限仍 4 条。
+   * 带文案编号时按编号去重，旧提示按正文完全相同判同款；不同机制互不影响。
    */
-  const fresh = (b.notices ?? []).filter((n) => n.text !== text)
-  b.notices = [...fresh, { atMs: b.lastTickGameMs, text }].slice(-4)
+  const fresh = (b.notices ?? []).filter((n) => textId ? n.textId !== textId : n.textId !== undefined || n.text !== text)
+  b.notices = [...fresh, { atMs: b.lastTickGameMs, text, ...(textId ? { textId, textParams } : {}) }].slice(-4)
 }

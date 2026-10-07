@@ -48,7 +48,7 @@ import {
 import type { Dims, Anchor, BoltV, FlashV, Stage, OutroSnap } from './battleViewCore'
 import { ACID_FX_LIFE_MS, AcidEffect } from './battleAcidFx'
 import type { AcidFx } from './battleAcidFx'
-import { tr as normalTr, futureTr, cmdText, mountNamesTextOf } from '../i18n/locale'
+import { tr as normalTr, futureTr, cmdText, mountNamesTextOf, logText } from '../i18n/locale'
 // 2026-09-26 战斗界面信息层级批：图例 chip 的射程数字收进"点按/悬停"卡片 ⇒ 走全站统一的富内容提示层
 import { hoverTipProps } from '../ui/Tooltip'
 import { useBattleFit } from '../ui/battleFit'
@@ -1659,7 +1659,7 @@ const meSpeedRef = useRef(200)
     })
   for (const [i, n] of (battle.notices ?? []).entries()) {
     if (battle.lastTickGameMs - n.atMs > battleShowWindowMs(battle, NOTICE_LIFE_MS)) continue
-    noticeItems.push({ key: `notice-${i}-${n.atMs}`, text: n.text })
+    noticeItems.push({ key: `notice-${i}-${n.atMs}`, text: logText(n) })
   }
 
   /* 射程弧：锚定双方舰艏枪口（与弹道同源、随舰身移动）。

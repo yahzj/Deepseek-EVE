@@ -61,7 +61,8 @@ export function mountEffectText(id: string): string | null {
     return tr('ui.foeIntro.100', { p1: String(def.droneRangeOnHit.mul) })
   }
   if (def.gunRangeOnHit) {
-    return tr('ui.foeIntro.101', { p1: String(def.gunRangeOnHit.mul) })
+    // ⟪文案调整 2026-10-07⟫ 导弹观瞄使用自己的说明；旧炮台件保持原文。
+    return tr(def.gunRangeOnHit.effectTextId ?? 'ui.foeIntro.101', { p1: String(def.gunRangeOnHit.mul) })
   }
   if (def.web) {
     // ⚠ 解除条件 = 击沉发动者（2026-09-16）**或交战距离超过 4500 米**（2026-09-26「这个断开对敌我都有效」）

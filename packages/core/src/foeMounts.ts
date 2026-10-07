@@ -182,7 +182,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     name: '守墓远距观瞄',
     // 「观瞄」= `Optics`；族名按 §一 第 4 条与既有表：守墓 = `Gravekeeper`
     en: 'Gravekeeper Long-range Optics',
-    gunRangeOnHit: { mul: 1.5 },
+    gunRangeOnHit: { mul: 1.5, noticeTextId: 'core.combat.013' },
     note:
       'D 族静滞卫舰：从它射程之外被命中 ⇒ 本舰炮台射程 ×1.5（迁移前 gunRangeMulOnHit: 1.5）。' +
       '「只允许静滞卫舰」的约束改由 content:check 的挂载件契约守。',
@@ -192,7 +192,8 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     name: '巨构齐射观瞄',
     // 与 D 族那件**刻意不同名**（该件 note 明写"名字要不同"）⇒ 取「齐射」= `Salvo`
     en: 'Megastructure Salvo Optics',
-    gunRangeOnHit: { mul: 1.5 },
+    // ⟪文案调整 2026-10-07⟫ 导弹件说明与触发提示独立，不复用静滞卫舰文本。
+    gunRangeOnHit: { mul: 1.5, effectTextId: 'ui.foeIntro.114', noticeTextId: 'core.combat.012' },
     note:
       '船长 2026-09-19：「并挂载类似静滞卫舰的挨打后对方在射程外就增加射程的挂载件」＋同日澄清' +
       '「只是采用类似的效果的挂载件，并不是真的是静滞卫舰的挂载件（因此名字要不同）」' +
@@ -368,6 +369,7 @@ export interface ResolvedFoeMounts {
   foeChargeWebImmune?: true
   foeDroneRangeMulOnHit?: number
   foeGunRangeMulOnHit?: number
+  foeGunRangeNoticeId?: string
   /** **劫掠捕获网**参数（原样带给单位；触发/作用面见 `FoeMountDef.web`） */
   foeCaptureWeb?: { slowMul: number; noThruster: true; noEvasion: true; rangeDownM: number }
   /** **支援呼叫装置**参数（原样带给单位；判定/锁存/补偿口径见 `FoeMountDef.supportCall`） */
@@ -452,7 +454,10 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
       if (def.charge.webImmune === true) out.foeChargeWebImmune = true
     }
     if (def.droneRangeOnHit) out.foeDroneRangeMulOnHit = def.droneRangeOnHit.mul
-    if (def.gunRangeOnHit) out.foeGunRangeMulOnHit = def.gunRangeOnHit.mul
+    if (def.gunRangeOnHit) {
+      out.foeGunRangeMulOnHit = def.gunRangeOnHit.mul
+      out.foeGunRangeNoticeId = def.gunRangeOnHit.noticeTextId
+    }
     if (def.web) out.foeCaptureWeb = { ...def.web }
     if (def.supportCall) out.foeSupportCall = { ...def.supportCall }
     // **加和**（与一号定义层合并后的口径）：两件陀螺仪 = +0.20，上限由建档侧夹 0.9

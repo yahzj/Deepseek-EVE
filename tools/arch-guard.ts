@@ -110,6 +110,7 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '敌舰受击增程的独立挂载件触发提示', symbol: 'announceFoeGunRangeBuff', file: 'packages/core/src/foeRange.ts', exported: true },
   { concept: '五类准备阵容清洗与显式空记忆', symbol: 'cleanPreparationSquads', file: 'packages/core/src/preparationSquads.ts', exported: true },
   { concept: '准备阵容恢复与缺省来源', symbol: 'preparationSquadOf', file: 'packages/core/src/preparationSquads.ts', exported: true },
   { concept: '准备阵容按实例保存且不执行任务', symbol: 'notePreparationSquad', file: 'packages/core/src/preparationSquads.ts', exported: true },

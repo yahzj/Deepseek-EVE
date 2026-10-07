@@ -16,6 +16,7 @@ import { distFactor } from './combatMath'
 import { coronaFocusBonusOf } from './coronaFocus'
 import { moduleAllowedOnShip } from './shipFitting'
 import { fleetDefOf } from './instances'
+import { pushBattleNotice } from './combatFx'
 
 /** **敌机有效射程**（单一真相源）＝机型绝对射程 × **全敌队的受击增程倍率**（未触发 = ×1）－ **我方电子舰削减**。
  *
@@ -425,4 +426,12 @@ export function markFoeGunRangeBuff(rt: UnitSpec, b: import('./state').BattleSta
   if (cur !== undefined && cur >= mul) return false // 该型舰共享 ⇒ 不重复盖章、不重复提示
   b.foeGunRangeBuff = mul
   return true
+}
+
+/** 同一受击判据，提示从实际挂载件取；旧舰级字段沿用静滞提示。 */
+export function announceFoeGunRangeBuff(unit: UnitSpec, b: import('./state').BattleState): void {
+  if (!markFoeGunRangeBuff(unit, b)) return
+  pushBattleNotice(b, '', unit.foeGunRangeNoticeId ?? 'core.combat.013', {
+    p1: Math.round((unit.foeGunRangeMulOnHit! - 1) * 100),
+  })
 }

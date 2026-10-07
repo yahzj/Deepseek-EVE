@@ -15,7 +15,7 @@
  * 正好同时覆盖"该型舰吃倍率 / 同场其它舰级不吃"两面。
  */
 import { describe, expect, it } from "vitest";
-import { buildSimContext, FOE_SHIPS } from "@whale/data";
+import { buildSimContext, FOE_SHIPS, L10N } from "@whale/data";
 import { addShipToFleet, addWare, createInitialState } from "../src/index";
 import {
   advanceBattleFor,
@@ -220,7 +220,8 @@ describe("敌方炮台受击增程（D 族静滞卫舰 · 仅该型舰）", () =
     const { state, battle } = runShort(null);
     expect(battle.foeGunRangeBuff).toBe(1.5);
     const noticeText = (b: BattleState): string[] =>
-      (b.notices ?? []).map((n) => n.text).filter((t) => t.includes("静滞阵列解除限幅"));
+      (b.notices ?? []).filter(n => n.textId === 'core.combat.013').map(n =>
+        L10N[n.textId!]!.zh.replace('{p1}', String(n.textParams?.p1)));
     expect(noticeText(battle)).toHaveLength(1); // 该型舰共享同一状态 ⇒ 只推一条（不逐舰各推）
     expect(noticeText(battle)[0]).toBe("静滞阵列解除限幅：静滞卫舰炮台射程 +50%");
     // 继续打：不重复盖章、不重复提示
@@ -233,7 +234,7 @@ describe("敌方炮台受击增程（D 族静滞卫舰 · 仅该型舰）", () =
   it("**负向（新门）**：命中永远发生在**它射程之内**（超远射程 14,000m）⇒ **不解锁**增程（船长 2026-09-16）", () => {
     const { battle } = runLongGun();
     expect(battle.foeGunRangeBuff).toBeUndefined();
-    expect((battle.notices ?? []).some((n) => n.text.includes("静滞阵列解除限幅"))).toBe(false);
+    expect((battle.notices ?? []).some((n) => n.textId === 'core.combat.013')).toBe(false);
   });
 
   it("负向：只有守墓长舰的卡（无该字段）跑满 60 秒 ⇒ 绝不触发", () => {
