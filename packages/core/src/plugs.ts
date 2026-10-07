@@ -196,6 +196,9 @@ export interface ShipPlugBlock {
  * 理由本身就是通行规则，念名字属于额外说明）。想看装了哪几件走 `plugInfoOf`（装配页只读区）。
  */
 export function plugBlockReasonOf(state: GameState, shipId: string): ShipPlugBlock | null {
+  if (state.fleet[shipId]?.damagePlugs?.length) {
+    return { textId: 'core.shipRecovery.003', text: '这艘船带有战损插件，不能放入舰船仓库或挂卖。' }
+  }
   const plugs = plugsOf(state, shipId)
   if (plugs.length === 0) return null
   return {

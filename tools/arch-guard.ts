@@ -109,6 +109,10 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '整船回收与工程技能加算概率', symbol: 'hullRecoveryChanceOf', file: 'packages/core/src/shipWrecks.ts', exported: true },
+  { concept: '整船装备保全技能概率', symbol: 'wreckEquipmentRecoveryChanceOf', file: 'packages/core/src/shipWrecks.ts', exported: true },
+  { concept: '战损插件清洗与最终属性倍率', symbol: 'shipDamageEffects', file: 'packages/core/src/shipDamage.ts', exported: true },
+  { concept: '战损插件随机新增与去重上限', symbol: 'rollShipDamage', file: 'packages/core/src/shipDamage.ts', exported: true },
   { concept: '爆虫一次性腐蚀触发', symbol: 'triggerAcidBurst', file: 'packages/core/src/alienCombat.ts', exported: true },
   { concept: '本场装甲结构腐蚀抗性', symbol: 'applyAlienCorrosion', file: 'packages/core/src/alienCombat.ts', exported: true },
   { concept: '敌机全队有限或无限补损', symbol: 'advanceFoeHatcheries', file: 'packages/core/src/alienCombat.ts', exported: true },

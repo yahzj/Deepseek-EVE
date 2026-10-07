@@ -279,7 +279,7 @@ describe('残骸：插件快照 → 整批换黑匣', () => {
       reinforceChance: 0.3,
       createdAtWallMs: 0,
     })
-    expect(hullRecoveryChanceOf(rec)).toBe(0.3)
+    expect(hullRecoveryChanceOf(rec)).toBe(0.55)
   })
 })
 

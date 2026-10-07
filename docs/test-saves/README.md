@@ -1,5 +1,11 @@
 # 测试门槛存档（Test Saves）
 
+## 整船回收与战损插件
+
+- `ship-recovery`：`npx tsx tools/make-test-save.ts ship-recovery`，生成全新合成档，绝不读取个人存档。
+- 文件`test-save-ship-recovery-20261007.json`；流程及恢复说明见`ship-recovery-20261007.md`。
+- 隔离原生界面复测：先`npm run build`，再`node tools/ship-recovery-desktop-check.cjs`；旧/新版、双语、桌面/手机仿真共8组。工具使用自建临时userData。
+
 > 约定见 `docs/development-conventions.md` 第八章。B 批次 / 新玩法数值交付时，用
 > `tools/make-test-save.ts` 基于船长当前真档注入门槛，生成存档提交到本目录。
 

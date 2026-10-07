@@ -12,16 +12,16 @@
 
 ## 统计
 
-- 文档总数 **484** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7765** KB · **60432** 行
-- 状态分布：**未标注** 255 · **已确认/已实现** 153 · **进行中** 53 · **待裁定** 22 · **历史留档** 1
-- 孤儿文档（0 引用）**105** 份 · 状态未标注 **255** 份
+- 文档总数 **486** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7774** KB · **60517** 行
+- 状态分布：**未标注** 255 · **已确认/已实现** 155 · **进行中** 53 · **待裁定** 22 · **历史留档** 1
+- 孤儿文档（0 引用）**106** 份 · 状态未标注 **255** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**325** 份
+- 三、现行设计稿（design）：**326** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**5** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
-- 八、测试档说明（test-saves）：**8** 份
+- 八、测试档说明（test-saves）：**9** 份
 - 六、专题：舰船美术（design/ship-battle-art）：**7** 份
 - 四、已归档设计稿（design/archive）：**83** 份
 
@@ -55,11 +55,12 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 325 份
+## 三、现行设计稿（design） —— 326 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/announcement-draft-alien-invasion-20261007.md` | 异形入侵公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 26 行 | 2 / 0 |
+| `docs/design/ship-wreck-recovery-20261007.md` | 玩家舰船整船回收与战损插件 | 已确认/已实现（已实现） | 2026-10-07 | 6 KB / 60 行 | 0 / 0 |
 | `docs/design/wreck-fit-repeat-plugs-20261007.md` | 重复插件与沉船装配复用 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 43 行 | 0 / 0 |
 | `docs/design/ammo-mk3-black-market-20261006.md` | 黑市独占MK3弹药生产线 | 已确认/已实现（已实现并本地合入） | 2026-10-06 | 7 KB / 63 行 | 0 / 0 |
 | `docs/design/announcement-draft-signal-space-20261006.md` | 信号空间公告待审稿 | 待裁定（待船长明确批准） | 2026-10-06 | 1 KB / 26 行 | 1 / 0 |
@@ -433,7 +434,7 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 27 / 18 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 14 KB / 103 行 | 20 / 7 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 14 KB / 104 行 | 20 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -441,10 +442,11 @@
 |---|---|---|---|---|---|
 | `docs/design/battle-data/p41-drone-readings-20260912.md` | P-41 机群批标定轮 · 读数（2026-09-12 · 二号 d2） | 未标注 | 2026-09-12 | 7 KB / 88 行 | 3 / 0 |
 
-## 八、测试档说明（test-saves） —— 8 份
+## 八、测试档说明（test-saves） —— 9 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/test-saves/ship-recovery-20261007.md` | 整船回收与战损插件验收 | 已确认/已实现（随已确认功能交付） | 2026-10-07 | 2 KB / 18 行 | 1 / 0 |
 | `docs/test-saves/wreck-fit-20261007.md` | 重复插件与沉船装配验收档 | 已确认/已实现（随已确认功能交付） | 2026-10-07 | 1 KB / 15 行 | 2 / 0 |
 | `docs/test-saves/alien-invasion-20261006.md` | 异形入侵验收档 | 未标注 | 2026-10-06 | 2 KB / 22 行 | 2 / 0 |
 | `docs/test-saves/ammo-mk3-20261006.md` | MK3弹药生产线验收档 | 已确认/已实现（随已确认功能交付） | 2026-10-06 | 1 KB / 21 行 | 2 / 0 |
@@ -452,7 +454,7 @@
 | `docs/test-saves/black-market-20261004.md` | 黑市页面验收档 | 待裁定（随功能待船长验收） | 2026-10-04 | 1 KB / 15 行 | 1 / 0 |
 | `docs/test-saves/hauler-20261004.md` | 纯货舰修订验收档 | 未标注（已验收） | 2026-10-04 | 2 KB / 25 行 | 3 / 0 |
 | `docs/test-saves/whexpedition-20261004.md` | 虫洞第一批合成测试档 | 未标注（未来虫洞整备/事件/警戒的隔离验收材） | 2026-10-04 | 10 KB / 78 行 | 2 / 0 |
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 73 KB / 735 行 | 59 / 14 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 74 KB / 741 行 | 59 / 14 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -554,10 +556,11 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，105 份）
+## 附：孤儿文档（0 引用，106 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/ship-wreck-recovery-20261007.md`（2026-10-07 · 6 KB）—— 玩家舰船整船回收与战损插件
 - `docs/design/wreck-fit-repeat-plugs-20261007.md`（2026-10-07 · 5 KB）—— 重复插件与沉船装配复用
 - `docs/design/ammo-mk3-black-market-20261006.md`（2026-10-06 · 7 KB）—— 黑市独占MK3弹药生产线
 - `docs/design/black-market-android-merchant-20261006.md`（2026-10-06 · 6 KB）—— 触手发束与机械副官风格商人

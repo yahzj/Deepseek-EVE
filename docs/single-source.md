@@ -19,6 +19,7 @@
 | 关注点 | 唯一实现 | 护栏 |
 | 静态JSON参数与文本/派生绑定、数值编辑计划 | `staticDataGroup()` · `packages/data/src/staticData.ts`；`planDocuments()` · `tools/data-editor-schema.ts` | 固定基线目录等价、编辑事务与字段校验；JSON权威静态参数，公式/文本留代码 |
 |---|---|---|
+| 玩家整船回收/装备保全与战损插件 | `hullRecoveryChanceOf()` / `wreckEquipmentRecoveryChanceOf()` · `shipWrecks.ts`；`shipDamageEffects()` / `rollShipDamage()` · `shipDamage.ts` | 工程技能加算、首次判定/往返不重掷、六类最终属性及普通插件隔离；旧残骸规则兼容 |
 | 爆虫触发、本场腐蚀、全队孵化与巢母加速 | `triggerAcidBurst()` / `applyAlienCorrosion()` / `advanceFoeHatcheries()` / `advanceFoeAbilityClocks()` / `foeFleetSpeedMulOf()` · `alienCombat.ts` | 异形入侵专项：距离边界、伤害顺序、死亡去重、随档、有限/无限额度、多载体去重、有效时长与死亡解除；`arch:guard` F2/F3 |
 | 限额慢补货：配置判据、初始化、周期进度、余额与统一核销 | `hasLimitedSupply()` / `ensureLimitedSupply()` / `advanceLimitedSupply()` / `limitedSupplyAvailable()` / `consumeLimitedSupply()` · `marketLimitedSupply.ts`；价格分档在 `market.ts:refreshLimitedSupplyBook()` | 市场限额专项、存档往返；`arch:guard` F2/F3；`content:check` 配置合法性 |
 | 武器组炮数与逐炮守恒分摊 | `volleyGunCountOf()` / `volleyDamageShareOf()` · `combatVolley.ts` | 逐炮齐射专项；`arch:guard` F2/F3 |

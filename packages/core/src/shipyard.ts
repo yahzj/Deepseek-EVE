@@ -249,6 +249,7 @@ export function loseShip(
       atGameMs: state.gameMs,
       ...(doomed?.fitted !== undefined ? { fitted: doomed.fitted } : {}),
       ...((doomed?.plugs?.length ?? 0) > 0 ? { plugs: [...(doomed?.plugs ?? [])] } : {}),
+      ...(doomed?.damagePlugs?.length ? { damagePlugs: [...doomed.damagePlugs] } : {}),
       ...(doomed?.droneLoad !== undefined ? { droneLoad: doomed.droneLoad } : {}),
     })
   }
@@ -265,6 +266,8 @@ export function loseShip(
         shipId,
         shipName: display,
         defId,
+        customName: doomed?.customName ?? null,
+        ...(doomed?.damagePlugs?.length ? { damagePlugs: [...doomed.damagePlugs] } : {}),
         ...(doomed?.durability !== undefined ? { durability: doomed.durability } : {}),
         ...(doomed?.armorPct !== undefined ? { armorPct: doomed.armorPct } : {}),
         ...(doomed?.fitted !== undefined ? { fitted: doomed.fitted } : {}),

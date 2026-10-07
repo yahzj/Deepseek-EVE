@@ -11728,6 +11728,9 @@ html[data-locale='en'] body {
 .app-wreck-fit-name { display: flex; flex-direction: column; gap: 8px; }
 .app-wreck-fit-name input { width: 100%; min-width: 0; box-sizing: border-box; }
 .app-wreck-fit-actions { justify-content: flex-end; margin-top: 12px; }
+.app-ship-damage { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.app-ship-damage-detail { min-width: 0; }
+.app-ship-damage-detail > summary { max-width: 100%; width: fit-content; white-space: normal; overflow-wrap: anywhere; }
 .app-wh-actions { display: flex; align-items: center; gap: var(--wui-sp-8); margin-top: var(--wui-sp-8); }
 .app-wh-ships { max-height: 240px; overflow-y: auto; }
 /* ── 虫洞 · 选舰卡片（船长 2026-09-13：「采用卡片形式…含舰船名称/级别/折算质量/货仓/SVG 外形，

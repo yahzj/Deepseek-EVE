@@ -9,7 +9,8 @@
  */
 import type { FittedModules, FleetShipState, GameState } from './state'
 import { emptyFitted } from './labels'
-import { RECOVERED_HULL_ARMOR_PCT, RECOVERED_HULL_DURABILITY_PCT } from './shipWrecks'
+import { RECOVERED_HULL_ARMOR_PCT, RECOVERED_HULL_DURABILITY_PCT, RECOVERED_SHIP_CONDITION } from './shipWrecks'
+import { cleanShipDamage, type ShipDamageKind } from './shipDamage'
 
 /** v17：加入一艘"全新"的同型副船（分配新实例 uid 并落账），返回实例 uid */
 export function addShipToFleet(state: GameState, defId: string): string {
@@ -20,7 +21,7 @@ export function addShipToFleet(state: GameState, defId: string): string {
 
 /**
  * 给一个船型分配新实例的 uid——同型无船时 = 船型 id（不带号）；
- * 已有（含市场挂卖 escrow 中的同型）则取「现存最大 #N + 1」，空号不复用（号 = 船的身份，稳定不重排）。
+ * 已有（含挂卖、正常星系残骸及其记录）取最大#N+1，避免新舰覆盖尚未回收的同型旧残骸。
  */
 export function allocateShipUid(state: GameState, defId: string): string {
   let max = 0
@@ -35,6 +36,8 @@ export function allocateShipUid(state: GameState, defId: string): string {
   }
   for (const uid of Object.keys(state.fleet)) consider(uid)
   for (const hold of Object.values(state.escrowShips)) consider(hold.shipId)
+  for (const wreck of Object.values(state.shipWrecks ?? {})) consider(wreck.shipId)
+  for (const entry of state.wreckLog ?? []) if (entry.wreckGalaxyId) consider(entry.shipId)
   return max === 0 ? defId : `${defId}#${max + 1}`
 }
 
@@ -47,12 +50,8 @@ function emptyShipState(defId: string): FleetShipState {
  * **整船回收**（**2026-09-26 船长令**：「**留一个接口，给之后舰船插件的。之后会添加一个加固结构的
  * 舰船插件，有加固结构的插件，玩家有概率能够回收该舰船。**」）——把残骸里捞回的船拖回母港入队。
  *
- * 三条口径（船长 2026-09-26 同日裁定）：
- * - **回母港舰队**、**不自动成为驾驶船**（玩家自己去舰船页切）；
- * - **按残骸时刻的值打折**：结构（耐久）×`RECOVERED_HULL_DURABILITY_PCT`（0.3）、
- *   装甲 ×`RECOVERED_HULL_ARMOR_PCT`（0.5）；两个比例都以"损毁那一刻的残余"为基数
- *   （残骸快照存的正是那一刻的值），缺省按满值起算；
- * - **同一艘船**：装配与无人机舱随快照回队；**货舱货物不回**（「除此以外没有其他资源」）。
+ * 回母港舰队、不切主控、货舱物资不恢复。新规则状态用RECOVERED_SHIP_CONDITION，
+ * 保存已有正常插件与战损；保全装备的预算校验由打捞消费方处理。旧规则保留残余比例算法。
  *
  * 实例 uid 走 `allocateShipUid`（**新分配、不复用原 uid**）：原 uid 在残骸账里还占着键（同一时刻
  * 可能有多具残骸），复用会串账。
@@ -61,6 +60,9 @@ export function restoreShipFromWreck(
   state: GameState,
   args: {
     defId: string
+    customName?: string | null
+    recoveryRules?: 2
+    damagePlugs?: readonly ShipDamageKind[]
     durability?: number
     armorPct?: number
     fitted?: FittedModules
@@ -77,10 +79,13 @@ export function restoreShipFromWreck(
   if (!ship) return uid
   const baseDur = Number.isFinite(args.durability) ? Math.max(0, args.durability as number) : 1
   const baseArmor = Number.isFinite(args.armorPct) ? Math.max(0, args.armorPct as number) : 1
-  ship.durability = Math.max(0, Math.min(1, baseDur * RECOVERED_HULL_DURABILITY_PCT))
-  ship.armorPct = Math.max(0, Math.min(1, baseArmor * RECOVERED_HULL_ARMOR_PCT))
-  if (args.fitted !== undefined) ship.fitted = args.fitted
-  if (args.droneLoad !== undefined && Object.keys(args.droneLoad).length > 0) ship.droneLoad = args.droneLoad
+  ship.durability = args.recoveryRules === 2 ? RECOVERED_SHIP_CONDITION : Math.max(0, Math.min(1, baseDur * RECOVERED_HULL_DURABILITY_PCT))
+  ship.armorPct = args.recoveryRules === 2 ? RECOVERED_SHIP_CONDITION : Math.max(0, Math.min(1, baseArmor * RECOVERED_HULL_ARMOR_PCT))
+  if (args.customName !== undefined) ship.customName = args.customName
+  if (args.fitted !== undefined) ship.fitted = structuredClone(args.fitted)
+  if (args.droneLoad !== undefined && Object.keys(args.droneLoad).length > 0) ship.droneLoad = { ...args.droneLoad }
+  const damagePlugs = cleanShipDamage(args.damagePlugs)
+  if (damagePlugs) ship.damagePlugs = damagePlugs
   const plugs = (args.plugs ?? []).filter((id) => typeof id === 'string' && id.length > 0)
   if (plugs.length > 0) ship.plugs = [...plugs]
   return uid

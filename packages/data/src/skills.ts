@@ -55,6 +55,7 @@ export const SKILL_BRANCHES: readonly { readonly id: string; readonly group: str
   { id: 'b-warship', group: '战斗' },
   { id: 'b-protect', group: '工程' },
   { id: 'b-repair', group: '工程' },
+  { id: 'b-ship-recovery', group: '工程' },
   { id: 'b-shipfit', group: '工程' },
   { id: 'b-ai', group: '工程' },
   { id: 'b-learn', group: '工程' },
@@ -839,6 +840,32 @@ export const SKILLS: readonly SkillDef[] = [
   },
 
   // ───────── 工程 ─────────
+  {
+    id: 'hull-salvage-engineering',
+    name: '舰体打捞工程学',
+    group: '工程',
+    rank: 4,
+    branch: 'b-ship-recovery',
+    description: '玩家舰船残骸的整船回收率每级提高 ⟦5⟧ 个百分点，与高级舰体打捞工程学加算。',
+  },
+  {
+    id: 'advanced-hull-salvage-engineering',
+    name: '高级舰体打捞工程学',
+    group: '工程',
+    rank: 5,
+    branch: 'b-ship-recovery',
+    prereq: ['hull-salvage-engineering'],
+    description: '玩家舰船残骸的整船回收率每级再提高 ⟦4⟧ 个百分点，与舰体打捞工程学加算。',
+  },
+  {
+    id: 'wreck-equipment-preservation',
+    name: '装备保全工程学',
+    group: '工程',
+    rank: 5,
+    branch: 'b-ship-recovery',
+    prereq: ['hull-salvage-engineering'],
+    description: '成功回收玩家舰船时，普通装备的保全率每级提高 ⟦4⟧ 个百分点，基础 ⟦80%⟧，满级 ⟦100%⟧；无人机不受影响。',
+  },
   // 说明：护盾操作学 / 能量管理学 / 船体加固理论原为战斗线预留条目（曾由 HIDDEN_SKILL_IDS 隐藏），
   // 批次三起已全部开放并入战斗数值；批次五追加护盾调谐学 / 装甲调谐学（减伤缺口收窄）。
   {

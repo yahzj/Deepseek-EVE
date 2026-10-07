@@ -27,7 +27,7 @@ describe('沉船真实卡牌组件', () => {
       useState: (initial: unknown) => { const at = cursor++; if (!(at in values)) values[at] = initial; return [values[at], (value: unknown) => values[at] = value] },
       useEffect: () => {}, useRef: () => ({ current: null }), createPortal: (v: unknown) => v,
       document: { querySelector: () => ({}) }, cmdText: (r: core.CommandResult) => r.error ?? '',
-      Glyph: 'Glyph', toneOf: () => 'currentColor', rackText: String, hoverTipProps: (tip: unknown) => ({ richTip: tip }),
+      Glyph: 'Glyph', ShipDamageMods: 'ShipDamageMods', toneOf: () => 'currentColor', rackText: String, hoverTipProps: (tip: unknown) => ({ richTip: tip }),
       moduleHoverContent: content, itemHoverContent: content }
     runInNewContext(ts.transpileModule(fn.getText(source) + '\nglobalThis.result=WreckFitPanel', { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText, scope)
     const page = scope.result as unknown as (p: unknown) => Node

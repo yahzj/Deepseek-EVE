@@ -315,6 +315,7 @@ const SKILL_BRANCH_ID: Record<string, string> = {
   'b-warship': 'ui.labelsText.038',
   'b-protect': 'ui.labelsText.039',
   'b-repair': 'ui.labelsText.040',
+  'b-ship-recovery': 'ui.shipRecovery.001',
   'b-shipfit': 'ui.labelsText.041',
   'b-ai': 'ui.labelsText.042',
   'b-learn': 'ui.labelsText.043',

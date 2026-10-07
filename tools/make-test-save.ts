@@ -7,6 +7,7 @@
  *  - 产物落 docs/test-saves/test-save-<feature>-<stamp>.json，加载方法见 docs/test-saves/README.md。
  *
  * 功能 case 注册制（扩展在此追加）：
+ *  - ship-recovery 整船回收/战损插件/工程技能（2026-10-07）：全新合成档，不读取个人档。
  *  - wreck-fit 重复插件与沉船装配详情/保存（2026-10-07）：全新合成记录与门槛，不读取个人档。
  *  - ammo-mk3 黑市独占弹药生产线（2026-10-06）：全新合成档，三张黑市货架、三系武器/弹药/材料，不读个人档。
  *  - hauler 纯货舰验收（2026-10-04）：从全新初始档生成海牛/快运/武装货舰对照，绝不读取个人档。
@@ -116,6 +117,7 @@ import type { GameState } from '@whale/core'
 import { injectHaulerTestState } from './hauler-test-fixture'
 import { injectAmmoMk3TestState } from './ammo-mk3-test-fixture'
 import { injectWreckFitTestState } from './wreck-fit-test-fixture'
+import { injectShipRecoveryTestState } from './ship-recovery-test-fixture'
 // 满池常量（旗舰 BOSS 血池；`@whale/core` 未转出 ⇒ 走深路径，与本文件既有做法一致）
 import { WEEKEND_FLAGSHIP_POOL_HP } from '../packages/core/src/weekendEvent'
 import { FACTION_CODEX_ORDER, FOE_SHIPS, GALAXIES, ITEMS, MODULES, SHIPS, SHIP_BLUEPRINTS, buildSimContext } from '@whale/data'
@@ -3586,6 +3588,7 @@ function injectShipWreck(state: GameState): string[] {
 }
 
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
+  'ship-recovery': injectShipRecoveryTestState,
   'wreck-fit': injectWreckFitTestState,
   'ammo-mk3': injectAmmoMk3TestState,
   hauler: injectHaulerTestState,
@@ -3785,7 +3788,7 @@ function main(): void {
     console.log(`用法：npx tsx tools/make-test-save.ts <feature> [--keep-ironman]\n已注册功能：${Object.keys(INJECTORS).join(' / ')}`)
     process.exit(feature ? 1 : 0)
   }
-  if (feature === 'hauler' || feature === 'ammo-mk3' || feature === 'wreck-fit') {
+  if (feature === 'hauler' || feature === 'ammo-mk3' || feature === 'wreck-fit' || feature === 'ship-recovery') {
     const state = createInitialState({ name: feature === 'hauler' ? '货舰验收' : 'MK3弹药验收', seed: 7, nowWallMs: Date.now() })
     const notes = INJECTORS[feature]!(state)
     const text = serializeSaveFile(state, Date.now())
@@ -3793,8 +3796,9 @@ function main(): void {
     if (feature === 'hauler' && back.fleet[back.shipId]?.defId !== 'sh-manatee') throw new Error('货舰验收档往返不一致')
     if (feature === 'ammo-mk3' && !['kinetic', 'explosive', 'plasma'].every(type => back.blackMarket?.offers.some(row => row.goodKey === `bp-ammo-${type}-3` && !row.sold))) throw new Error('MK3验收货架往返不一致')
     if (feature === 'wreck-fit' && (back.wreckLog?.[0]?.plugs?.length !== 2 || back.fleet[back.shipId]?.plugs?.length !== 1)) throw new Error('沉船装配验收档往返不一致')
+    if (feature === 'ship-recovery' && (Object.values(back.shipWrecks ?? {})[0]?.recoveryRules !== 2 || !Object.values(back.fleet).some(s => s.damagePlugs?.length === 3))) throw new Error('整船回收验收档往返不一致')
     mkdirSync(OUT_DIR, { recursive: true })
-    const target = join(OUT_DIR, feature === 'hauler' ? 'test-save-hauler-20261004.json' : feature === 'wreck-fit' ? 'test-save-wreck-fit-20261007.json' : 'test-save-ammo-mk3-20261006.json')
+    const target = join(OUT_DIR, feature === 'ship-recovery' ? 'test-save-ship-recovery-20261007.json' : feature === 'hauler' ? 'test-save-hauler-20261004.json' : feature === 'wreck-fit' ? 'test-save-wreck-fit-20261007.json' : 'test-save-ammo-mk3-20261006.json')
     writeFileSync(target, text, 'utf8')
     console.log(`已生成全新验收档：${target}；未读取或覆写个人档。`)
     for (const note of notes) console.log(note)

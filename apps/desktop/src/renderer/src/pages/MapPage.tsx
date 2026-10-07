@@ -31,6 +31,8 @@ import {
   wreckGroupOfAnomaly,
   // 2026-09-26 玩家舰船残骸（船长令）：打捞页置顶卡 —— 船名 / 可回收件数 / 剩余小时
   shipWrecksOf,
+  hullRecoveryChanceOf,
+  wreckEquipmentRecoveryChanceOf,
   wreckLootRowsOf,
   SHIP_WRECK_DECAY_MS,
   // 2026-09-26 船长令「所有声望门槛改读累计声望」：矿带卡片的锁定判据走唯一入口
@@ -1165,6 +1167,10 @@ function WreckCard({
                   p3: String(Math.max(0, Math.round((1 - w.decayAccMs / SHIP_WRECK_DECAY_MS) * 48))),
                 })}
               </span>
+              {w.recoveryRules === 2 && !w.hullRolled ? <span className="app-dim">{tr('ui.shipRecovery.002', {
+                  hull: `${Math.round(hullRecoveryChanceOf(w, engine.state) * 100)}%`,
+                  equipment: `${Math.round(wreckEquipmentRecoveryChanceOf(engine.state) * 100)}%`,
+              })}</span> : null}
               <div className="app-card-progress is-shipwreck">
                 <i style={{ width: `${Math.max(0, Math.min(100, (1 - w.decayAccMs / SHIP_WRECK_DECAY_MS) * 100))}%` }} />
               </div>

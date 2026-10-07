@@ -25,7 +25,8 @@ import { shortestTravelMinutes, travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
 import { bumpFirst } from './firstTasks'
 import {  shipDisplayName } from './instances'
-import { addModule, allFittedModules } from './equipment'
+import { addModule, allFittedModules, adjustDroneLoad, fitModule } from './equipment'
+import { shipSlotsWithPlugsOf } from './plugs'
 import { restoreShipFromWreck } from './fleetBook'
 import { hasSalvageableShipWreck, trySalvagePlayerWreckOf } from './shipWrecks'
 import { PLUG_BLACKBOX_ITEM_ID } from './blackbox'
@@ -769,18 +770,42 @@ export function pullOneWreck(
     }
     if (salvage.kind === 'ship') {
       /**
-       * **整船回收**（加固结构插件命中，接口见 `shipWrecks.hullRecoveryChanceOf`）：
-       * 船**回母港**、按残骸时刻打折入队（结构 ×0.3 / 装甲 ×0.5）、**不自动成为驾驶船**；
-       * 货舱货物不回（船长 2026-09-26：「除此以外没有其他资源」）。
-       * ⚠ **插件跟着船回去**（不可拆的固定件）——只有没捞回整船时才换黑匣。
+       * 新规则先恢复舰体/正常插件，再按原位及CPU预算装回保全装备，不能安装的退库。
+       * 不切主控、不恢复作业和货载；只有整船失败时普通插件才换黑匣，战损不产物品。
        */
       if (salvage.defId !== undefined) {
-        restoreShipFromWreck(state, {
+        const restoredId = restoreShipFromWreck(state, {
           defId: salvage.defId,
           durability: salvage.durability,
           armorPct: salvage.armorPct,
+          customName: salvage.customName,
+          recoveryRules: salvage.recoveryRules,
+          damagePlugs: salvage.damagePlugs,
           ...(salvage.plugs !== undefined ? { plugs: salvage.plugs } : {}),
         })
+        if (salvage.recoveryRules === 2) {
+          const restored = state.fleet[restoredId]!
+          const slots = shipSlotsWithPlugsOf(state, ctx, restoredId)
+          for (const rack of ['high', 'mid', 'low'] as const) restored.fitted[rack] = Array(slots[rack]).fill(null)
+          const jobs = (['high', 'mid', 'low'] as const).flatMap(rack => (salvage.fitted?.[rack] ?? [])
+            .flatMap((id, index) => id ? [{ id, rack, index }] : []))
+          jobs.sort((a, b) => (ctx.modules.get(b.id)?.cpuBonus ?? 0) - (ctx.modules.get(a.id)?.cpuBonus ?? 0))
+          let returned = 0
+          for (const job of jobs) {
+            addModule(state, job.id)
+            if (!fitModule(state, job.id, ctx, { shipId: restoredId, rack: job.rack, index: job.index }).ok) returned++
+          }
+          for (const [id, n] of Object.entries(salvage.droneLoad ?? {})) {
+            addWare(state, id, n)
+            adjustDroneLoad(state, ctx, id, n, restoredId)
+          }
+          addLog(state, 'warn', `舰船回收：装备保全 ${salvage.keptModules ?? 0} 件，损失 ${salvage.lostModules ?? 0} 件，${returned} 件退回装备库。`,
+            'core.shipRecovery.001', { p1: salvage.keptModules ?? 0, p2: salvage.lostModules ?? 0, p3: returned })
+          if (restored.damagePlugs?.length) {
+            addLog(state, 'warn', `回收舰船附有 ${restored.damagePlugs.length} 个战损插件，常规维修不会清除。`,
+              'core.shipRecovery.002', { p1: restored.damagePlugs.length })
+          }
+        }
       }
       /** 同批把"整船回收"也提到 `warn`（2026-09-26 船长令：回收自己残骸的日志要醒目） */
       addLog(state, 'warn', `舰船残骸里捞回了一艘还能修的船：${salvage.wreckName}——已拖回母港入队。`, 'core.salvaging.031', {

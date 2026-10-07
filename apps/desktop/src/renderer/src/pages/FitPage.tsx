@@ -63,6 +63,7 @@ import {
   warpSpeedAus,
 } from '@whale/core'
 import { Panel } from '@whale/ui'
+import { ShipDamageMods } from '../ui/ShipDamageMods'
 // 装备稀有度档位（换装浮层默认"稀有度高的排前面"；2026-09-11 船长定）
 import { rarityTierOf } from '@whale/data'
 import { combatBadges, COMBAT_BASE_KEYS, DmgChip, DMG_LABEL, FIT_MAIN_HIDDEN_KEYS, fitHiddenBaseKeys, fittedDroneBayLine, fittedHoldLine, fittedSpeedLine, InfoTable, itemHoverContent, moduleHoverContent, moduleShortEffect, shipIndirectLines, shipInfoLines } from '../ui/shipInfo'
@@ -1000,6 +1001,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
            * 槽位上限与已装清单都走 core 单点 `plugInfoOf`；短效果复用装备行同一把尺 `moduleShortEffect`。
            */}
           <PluginSlotsSection engine={engine} target={effectiveTarget} />
+          <ShipDamageMods ids={state.fleet[effectiveTarget]?.damagePlugs} />
           {/* 无人机舱已移到左栏（2026-09-26 船长令：「无人机仓位移动到左半边」） */}
         </div>
           </div>

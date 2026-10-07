@@ -54,6 +54,8 @@ import {
   scanWindowMsFor,
   shipDisplayName,
   shipWrecksOf,
+  hullRecoveryChanceOf,
+  wreckEquipmentRecoveryChanceOf,
   standingOf,
   stationBillView,
   travelMinutesEff,
@@ -2361,6 +2363,10 @@ export function GalaxyActions({
               return (
                 <span key={w.shipId} className="app-dim app-ga-desc">
                   {tr('ui.weekend.111', { p1: w.name, p2: String(rows), p3: String(leftH) })}
+                  {w.recoveryRules === 2 && !w.hullRolled ? <span className="app-note">{tr('ui.shipRecovery.002', {
+                    hull: `${Math.round(hullRecoveryChanceOf(w, state) * 100)}%`,
+                    equipment: `${Math.round(wreckEquipmentRecoveryChanceOf(state) * 100)}%`,
+                  })}</span> : null}
                 </span>
               )
             })}

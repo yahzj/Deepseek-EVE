@@ -11,6 +11,7 @@
  * - 船在 data 缺失或弃船瞬间 fleet 条目会短暂为空：所有辅助函数都做容错（按空处理）。
  */
 import type { FleetShipState, GameState } from './state'
+import { shipDamageEffects } from './shipDamage'
 import type { ItemDef, SimContext } from './types'
 import { fleetDefOf } from './instances'
 import { shipLockedReason } from './state'
@@ -198,7 +199,7 @@ export function cargoCapacityM3Of(state: GameState, ctx: SimContext, shipId: str
     const haulerLv = Math.min(5, state.skills.trained['hauler-ops'] ?? 0)
     if (haulerLv > 0) capMult *= 1 + 0.05 * haulerLv
   }
-  return Math.round(ship.cargoM3 * (1 + bonus) * capMult)
+  return Math.round(ship.cargoM3 * (1 + bonus) * capMult * shipDamageEffects(state.fleet[shipId]?.damagePlugs).cargo)
 }
 
 /** 当前驾驶船货仓已占用体积（m³） */

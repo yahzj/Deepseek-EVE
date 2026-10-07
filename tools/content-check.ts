@@ -133,6 +133,7 @@ import {
   /** 高安启动信号发射器的声望代价（2026-09-30：物品说明里写明「付 10 点声望」⇒ 登记为语境常量） */
   HIGH_SEC_PENALTY,
   DRONE_SKILL,
+  WRECK_RECOVERY_SKILL,
   MINEABLE_KINDS,
   RACK_SLOTS,
   RARE_WRECK_VOLUME_M3,
@@ -1154,6 +1155,9 @@ for (const sbp of SHIP_BLUEPRINTS) {
   collect(DEFAULT_BALANCE, 'balance');
   // ② 引擎导出的无人机技能参数
   pairs.push(
+    { skill: WRECK_RECOVERY_SKILL.hullSkillId, per: WRECK_RECOVERY_SKILL.hullPerLevel, from: 'shipWrecks.WRECK_RECOVERY_SKILL.hullPerLevel' },
+    { skill: WRECK_RECOVERY_SKILL.advancedHullSkillId, per: WRECK_RECOVERY_SKILL.advancedHullPerLevel, from: 'shipWrecks.WRECK_RECOVERY_SKILL.advancedHullPerLevel' },
+    { skill: WRECK_RECOVERY_SKILL.equipmentSkillId, per: WRECK_RECOVERY_SKILL.equipmentPerLevel, from: 'shipWrecks.WRECK_RECOVERY_SKILL.equipmentPerLevel' },
     { skill: 'drone-warfare', per: DRONE_SKILL.warfarePerLevel, from: 'combat.DRONE_SKILL.warfarePerLevel' },
     { skill: 'drone-strike', per: DRONE_SKILL.strikePerLevel, from: 'combat.DRONE_SKILL.strikePerLevel' },
     { skill: 'drone-durability', per: DRONE_SKILL.durabilityPerLevel, from: 'combat.DRONE_SKILL.durabilityPerLevel' },

@@ -577,6 +577,9 @@ export const EN_ITEMS: EnTable = {
 
 /** 技能（79 · `docs/glossary-en.md` §九）—— **名称 + 说明**（说明逐条译自中文原文；`⟦⟧` 高亮标记照留） */
 export const EN_SKILLS: EnTable = {
+  'hull-salvage-engineering': { name: 'Hull Salvage Engineering', description: 'Increases whole-ship recovery from player ship wrecks by ⟦5⟧ percentage points per level, additive with Advanced Hull Salvage Engineering.' },
+  'advanced-hull-salvage-engineering': { name: 'Advanced Hull Salvage Engineering', description: 'Further increases whole-ship recovery from player ship wrecks by ⟦4⟧ percentage points per level, additive with Hull Salvage Engineering.' },
+  'wreck-equipment-preservation': { name: 'Equipment Preservation Engineering', description: 'On successful player ship recovery, increases ordinary equipment preservation by ⟦4⟧ percentage points per level, from ⟦80%⟧ to ⟦100%⟧ at maximum level; drones are unaffected.' },
   'spaceship-command': { name: 'Spaceship Command', description: 'Basic handling training for every hull. Travel speed-up: each level shortens star-map travel time by a further ⟦2%⟧ (multiplies with the three navigation skills; applies to all ships).' },
   navigation: { name: 'Navigation', description: 'Faster route plotting and sublight maneuvering. Travel speed-up: each level shortens star-map travel time by ⟦4%⟧ (multiplies with skills of the same kind).' },
   'warp-drive-operation': { name: 'Warp Drive Operation', description: 'Tuning and maintenance of warp drives. Travel speed-up: each level shortens star-map travel time by ⟦4%⟧ (multiplies with skills of the same kind).' },

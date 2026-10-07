@@ -25,10 +25,8 @@
  * ② 普通池 ⓐ 同池内入侵残骸优先  ⓑ 否则按各组数量比
  * ```
  *
- * ## 加固结构插件接口（**本批只留口子**）
- * `ModuleDef.hullRecoveryChance`（0~1）= 带该字段的件即"加固结构插件"。损毁那一刻把该船装着的加固件
- * 数值**求和**存进 `ShipWreckRecord.reinforceChance`（日后插件改数值，**已生成的残骸口径不变**）。
- * **现无一件带此字段 ⇒ 回收率恒 0 ⇒ 整船回收永不触发**，行为与"没有这个接口"逐字相同。
+ * 新残骸按2026-10-07船长确认的整船回收/装备保全规则；缺recoveryRules的旧残骸保留原规则。
+ * 加固件的hullRecoveryChance在损毁时求和存reinforceChance，新规则再与基础率/当前工程技能加算。
  *
  * ⚠ **依赖方向**：本文件只依赖 `state` / `types` / `rng`。**刻意不 import `equipment` 与 `instances`**
  * （那两者处在装配与舰船域的中心，引进来容易成环）；"装配件求回收率之和"与"舰船显示名"都由调用方
@@ -37,6 +35,7 @@
 import type { GameState, ShipWreckRecord, WreckLogEntry } from './state'
 import type { FittedModules, SimContext } from './types'
 import { nextInt, nextRandom } from './rng'
+import { cleanShipDamage, rollShipDamage, type ShipDamageKind } from './shipDamage'
 
 /** 玩家舰船残骸的衰减时长（48 游戏小时线性到 0；与入侵残骸同一把尺） */
 export const SHIP_WRECK_DECAY_MS = 48 * 3_600_000
@@ -107,8 +106,20 @@ export const WRECK_PLUG_BLACKBOX_ITEM_ID = 'blackbox-h'
 const SHIP_WRECK_SNAP = 0.05
 /** 每具残骸的"残骸量"当量（**只决定"这具残骸在不在"**：衰减到 0 即消失；**不折算矿物、不并入任何密度读数**） */
 export const SHIP_WRECK_WEIGHT = 30
-/** **加固结构插件的整船回收率上限**（加算后夹到本值：概率类不封顶容易被叠成必成） */
-export const HULL_RECOVERY_MAX = 0.6
+/** 新残骸整船回收总上限；基础/技能/加固件全部加算后夹取。 */
+export const HULL_RECOVERY_MAX = 0.9
+const LEGACY_HULL_RECOVERY_MAX = 0.6
+export const WRECK_RECOVERY_SKILL = {
+  hullBase: 0.25,
+  hullSkillId: 'hull-salvage-engineering',
+  hullPerLevel: 0.05,
+  advancedHullSkillId: 'advanced-hull-salvage-engineering',
+  advancedHullPerLevel: 0.04,
+  equipmentBase: 0.8,
+  equipmentSkillId: 'wreck-equipment-preservation',
+  equipmentPerLevel: 0.04,
+} as const
+export const RECOVERED_SHIP_CONDITION = 0.2
 /** 整船回收后回港的舰船状态：结构（耐久）与装甲按残骸时刻的值打折 */
 export const RECOVERED_HULL_DURABILITY_PCT = 0.3
 export const RECOVERED_HULL_ARMOR_PCT = 0.5
@@ -190,15 +201,25 @@ export function shipWreckValueOf(rec: ShipWreckRecord): number {
 }
 
 /**
- * **加固结构插件的整船回收率**（唯一判定单点）。
- *
- * = 快照里存下的 `reinforceChance`（损毁那刻求和的加固件数值，上游已夹到 `HULL_RECOVERY_MAX`）。
- * **无插件 / 老档 ⇒ 0** ⇒ 整船回收永不触发（这条留白由用例钉住）。
+ * 整船回收概率单点：新规则基础+打捞时技能+损毁时加固件快照；旧规则只读加固件快照。
  */
-export function hullRecoveryChanceOf(rec: ShipWreckRecord): number {
-  const v = rec.reinforceChance
-  if (v === undefined || !Number.isFinite(v) || v <= 0) return 0
-  return Math.min(HULL_RECOVERY_MAX, v)
+export function hullRecoveryChanceOf(rec: ShipWreckRecord, state?: Pick<GameState, 'skills'>): number {
+  const reinforce = Number.isFinite(rec.reinforceChance) ? Math.max(0, rec.reinforceChance ?? 0) : 0
+  if (rec.recoveryRules !== 2) return Math.min(LEGACY_HULL_RECOVERY_MAX, reinforce)
+  const skill = WRECK_RECOVERY_SKILL
+  return Math.min(HULL_RECOVERY_MAX, skill.hullBase + reinforce +
+    skill.hullPerLevel * recoverySkillLevel(state, skill.hullSkillId) +
+    skill.advancedHullPerLevel * recoverySkillLevel(state, skill.advancedHullSkillId))
+}
+
+function recoverySkillLevel(state: Pick<GameState, 'skills'> | undefined, id: string): number {
+  const level = state?.skills.trained[id] ?? 0
+  return Number.isFinite(level) ? Math.max(0, Math.min(5, Math.floor(level))) : 0
+}
+
+export function wreckEquipmentRecoveryChanceOf(state: Pick<GameState, 'skills'>): number {
+  const skill = WRECK_RECOVERY_SKILL
+  return Math.min(1, skill.equipmentBase + skill.equipmentPerLevel * recoverySkillLevel(state, skill.equipmentSkillId))
 }
 
 /** 某星系当前所有有效残骸（**按记录号倒序 = 最新那具优先**）；无 = 空表 */
@@ -220,7 +241,7 @@ export function shipWreckFor(state: GameState, galaxyId: string): ShipWreckRecor
 /** 该星系是否有一具「还有东西可捞」的玩家残骸（四级序第 ①★ 档的判据，界面与打捞序共用） */
 export function hasSalvageableShipWreck(state: GameState, galaxyId: string): boolean {
   return shipWrecksOf(state, galaxyId).some(
-    (rec) => rec.fitted !== undefined || rec.droneLoad !== undefined || (rec.plugs?.length ?? 0) > 0,
+    (rec) => (rec.recoveryRules === 2 && !rec.hullRolled) || rec.fitted !== undefined || rec.droneLoad !== undefined || (rec.plugs?.length ?? 0) > 0,
   )
 }
 
@@ -263,7 +284,9 @@ export function noteShipWreck(
     /** 损毁那一刻的显示名（含玩家自定义名）⇒ 残骸名 = 「<船名>的残骸」 */
     shipName: string
     defId?: string
-    /** 结构层（= `FleetShipState.durability`）；整船回收后按 ×`RECOVERED_HULL_DURABILITY_PCT` 回港 */
+    customName?: string | null
+    damagePlugs?: readonly ShipDamageKind[]
+    /** 损毁时结构残余；旧回收读取，新规则用RECOVERED_SHIP_CONDITION固定残余。 */
     durability?: number
     armorPct?: number
     fitted?: FittedModules
@@ -286,6 +309,9 @@ export function noteShipWreck(
     galaxyId: args.galaxyId,
     shipId: args.shipId,
     name: `${args.shipName}的残骸`,
+    recoveryRules: 2,
+    ...(args.customName !== undefined ? { customName: args.customName } : {}),
+    ...(cleanShipDamage(args.damagePlugs) ? { damagePlugs: cleanShipDamage(args.damagePlugs) } : {}),
     ...(args.defId !== undefined ? { defId: args.defId } : {}),
     ...(args.fitted !== undefined ? { fitted: args.fitted } : {}),
     ...(hasDrones ? { droneLoad: args.droneLoad } : {}),
@@ -336,7 +362,8 @@ function removedLootFrom(rec: ShipWreckRecord, row: WreckLootRow): ShipWreckReco
   for (const slot of ['high', 'mid', 'low'] as const) {
     const i = fitted[slot].indexOf(row.itemId)
     if (i >= 0) {
-      fitted[slot].splice(i, 1)
+      if (rec.recoveryRules === 2) fitted[slot][i] = null
+      else fitted[slot].splice(i, 1)
       break
     }
   }
@@ -356,17 +383,37 @@ export type PlayerWreckSalvage =
    */
   | { kind: 'plugs'; blackBoxes: number }
   /** **整船回收**（加固结构插件命中）：船回港，残骸消失 */
-  | { kind: 'ship'; wreckName: string; defId?: string; durability?: number; armorPct?: number; plugs?: string[] }
+  | { kind: 'ship'; wreckName: string; defId?: string; durability?: number; armorPct?: number; plugs?: string[];
+      customName?: string | null; recoveryRules?: 2; fitted?: FittedModules; droneLoad?: Record<string, number>;
+      damagePlugs?: ShipDamageKind[]; keptModules?: number; lostModules?: number }
+
+/** 新规则先逐件筛出可回收模块；空位原样保留，重复模块各判一次。 */
+function rollWreckEquipment(state: GameState, rec: ShipWreckRecord, ctx: SimContext, shipRecovered: boolean): FittedModules {
+  const source = rec.fitted ?? { high: [], mid: [], low: [] }
+  const rate = shipRecovered ? wreckEquipmentRecoveryChanceOf(state) : undefined
+  const fitted = { high: [...source.high], mid: [...source.mid], low: [...source.low] }
+  const candidates: Array<{ rack: keyof FittedModules; at: number; id: string }> = []
+  let kept = 0
+  for (const rack of ['high', 'mid', 'low'] as const) {
+    for (let at = 0; at < fitted[rack].length; at++) {
+      const id = fitted[rack][at]
+      if (!id) continue
+      candidates.push({ rack, at, id })
+      if (nextRandom(state.rng) < (rate ?? moduleRateOf(id, ctx))) kept++
+      else fitted[rack][at] = null
+    }
+  }
+  // 拆捞仍保留至少一件；整船保全的80%不额外套用装备保底。
+  if (!shipRecovered && kept === 0 && candidates.length > 0) {
+    const pick = candidates[nextInt(state.rng, candidates.length)]!
+    fitted[pick.rack][pick.at] = pick.id
+  }
+  return fitted
+}
 
 /**
- * **从玩家舰船残骸里捞一轮**（四级序第 ①★ 档，唯一入口）。四条判定，按序：
- *
- * 1. **整船回收**（**只在第一次捞这具残骸时掷**；未命中即记 `hullRolled` ⇒ **一具只掷一次**，防反复捞刷概率）
- *    —— 加固结构插件接口；**回收率 0 ⇒ 不掷、不消耗随机数**（"没有这个接口"的路径与今天逐位一致）；
- * 2. **插件整批换黑匣**（`rec.plugs` 非空即换、清字段；**不掷骰、不占本轮产出**，换完接着走第 3 步）；
- * 3. **逐行掷骰**（行序 = 高/中/低槽装配件 → 无人机）：命中即取该行、扣掉、产出这一件；
- * 4. **保底**：整具残骸一次都没给过东西（`pityUsed` 未置）且本轮没中 ⇒ 从剩余行里等概率给回一件；
- * 5. 行全部清空 ⇒ **残骸消失**；否则留着等下一轮（48h 内）。
+ * 首轮判定舰体；失败后新规则普通模块只筛一次，后续轮次依位序交付已保全件。
+ * 正常插件整批换黑匣，无人机保留原来的逐型独立判定；旧残骸逐轮尝试不变。
  */
 export function trySalvagePlayerWreckOf(
   state: GameState,
@@ -374,33 +421,49 @@ export function trySalvagePlayerWreckOf(
   galaxyId: string,
 ): PlayerWreckSalvage {
   const map = state.shipWrecks
-  const rec = shipWreckFor(state, galaxyId)
+  let rec = shipWreckFor(state, galaxyId)
   if (!map || !rec) return { kind: 'none' }
 
-  // ① 整船回收（加固结构插件）
+  // ① 舰体每具只判定一次；无效船型不产生舰体奖励。
   if (rec.hullRolled !== true) {
-    const chance = hullRecoveryChanceOf(rec)
+    const canRecover = rec.recoveryRules !== 2 || !!rec.defId && ctx.ships.has(rec.defId)
+    const chance = canRecover ? hullRecoveryChanceOf(rec, state) : 0
     if (chance <= 0) {
       // 没有插件接口 ⇒ 标记已掷（免得日后插件上线时，老残骸补掷一次）
-      map[rec.shipId] = { ...rec, hullRolled: true }
+      rec = { ...rec, hullRolled: true }
+      map[rec.shipId] = rec
     } else if (nextRandom(state.rng) < chance) {
       delete map[rec.shipId]
       markWreckRecovered(state, rec.shipId) // 整船捞回 ⇒ 沉船记录标「已回收」
+      const fitted = rec.recoveryRules === 2 ? rollWreckEquipment(state, rec, ctx, true) : undefined
+      const droneLoad = rec.recoveryRules === 2 ? Object.fromEntries(Object.entries(rec.droneLoad ?? {})
+        .filter(([id, n]) => ctx.items.has(id) && n > 0 && nextRandom(state.rng) < WRECK_RECOVERY_RATE.drone)) : undefined
+      const count = (fit: FittedModules | undefined): number => fit ? [...fit.high, ...fit.mid, ...fit.low].filter(Boolean).length : 0
+      const damagePlugs = rec.recoveryRules === 2 ? rollShipDamage(state, rec.damagePlugs) : cleanShipDamage(rec.damagePlugs)
       return {
         kind: 'ship',
         wreckName: rec.name,
         ...(rec.defId !== undefined ? { defId: rec.defId } : {}),
         ...(rec.durability !== undefined ? { durability: rec.durability } : {}),
         ...(rec.armorPct !== undefined ? { armorPct: rec.armorPct } : {}),
+        ...(rec.customName !== undefined ? { customName: rec.customName } : {}),
+        ...(rec.recoveryRules === 2 ? { recoveryRules: 2 as const, fitted, droneLoad,
+          keptModules: count(fitted), lostModules: count(rec.fitted) - count(fitted) } : {}),
+        ...(damagePlugs?.length ? { damagePlugs } : {}),
         // 整船捞回来了 ⇒ **插件跟着船回去**（不换黑匣；船已经不在残骸里了）
         ...((rec.plugs?.length ?? 0) > 0 ? { plugs: [...(rec.plugs ?? [])] } : {}),
       }
     } else {
-      map[rec.shipId] = { ...rec, hullRolled: true }
+      rec = { ...rec, hullRolled: true }
+      map[rec.shipId] = rec
     }
   }
 
   // ② 逐行掷骰
+  if (rec.recoveryRules === 2 && rec.equipmentRolled !== true) {
+    rec = { ...rec, fitted: rollWreckEquipment(state, rec, ctx, false), equipmentRolled: true }
+    map[rec.shipId] = rec
+  }
   const rows = wreckLootRowsOf(rec, ctx)
   /**
    * **②★ 插件整批换黑匣**（船长：「**玩家回收按插件数量直接回收成黑匣**」）。
@@ -428,7 +491,7 @@ export function trySalvagePlayerWreckOf(
     markWreckRecovered(state, rec.shipId)
     return { kind: 'none' }
   }
-  let row = rows.find((r) => nextRandom(state.rng) < r.rate)
+  let row = rows.find((r) => (rec!.recoveryRules === 2 && r.isModule) || nextRandom(state.rng) < r.rate)
   const usedPity = row === undefined
   // ③ 保底：整具残骸一次都没给过东西 ⇒ 至少给回一件
   if (!row && rec.pityUsed !== true) row = rows[nextInt(state.rng, rows.length)]

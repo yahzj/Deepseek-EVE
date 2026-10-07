@@ -14,6 +14,7 @@ import { moduleAllowedOnShip } from './shipFitting'
 import { fleetDefOf } from './instances'
 import { shipCategoryKeyOf } from './labels'
 import { plugModulesOf } from './plugs'
+import { shipDamageEffects } from './shipDamage'
 import type { UnitSpec, WeaponSpec } from './combat'
 
 /**
@@ -234,6 +235,7 @@ export function createPlayerSpec(
    * 速度那两格同理。本段把它们提到基线处，旧的死累加随之删除。
    */
   const plugDefs = plugModulesOf(state, ctx, shipId)
+  const damage = shipDamageEffects(fleet.damagePlugs)
   const plugHpAdd = {
     s: plugDefs.reduce((n, p) => n + (p.shieldHpAdd ?? 0), 0),
     a: plugDefs.reduce((n, p) => n + (p.armorHpAdd ?? 0), 0),
@@ -248,9 +250,9 @@ export function createPlayerSpec(
     h: (ship.hullHp ?? 0) + plugHpAdd.h,
   }
   const hp: Hp3 = {
-    s: baseHp.s * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv) * (1 + 0.03 * battleshipOpsLv),
-    a: baseHp.a * Math.max(1, armorHpMult) * hullSkillMult,
-    h: baseHp.h * Math.max(1, hullHpMult) * hullSkillMult,
+    s: baseHp.s * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv) * (1 + 0.03 * battleshipOpsLv) * damage.shield,
+    a: baseHp.a * Math.max(1, armorHpMult) * hullSkillMult * damage.armor,
+    h: baseHp.h * Math.max(1, hullHpMult) * hullSkillMult * damage.hull,
   }
   const shieldRes = mergeResist(ship.shieldResist, undefined)
   for (const m of shieldDefs) applyAdds(shieldRes, m.shieldResistAdd)
@@ -698,6 +700,10 @@ export function createPlayerSpec(
     }
   }
 
+  if (damage.range !== 1) {
+    for (const weapon of weapons) weapon.maxRangeM = Math.round(weapon.maxRangeM * damage.range)
+    for (const range of refs?.weaponRanges ?? []) range.baseM *= damage.range
+  }
   return {
     tag: 'player',
     name: ship.name,
@@ -756,7 +762,7 @@ export function createPlayerSpec(
     speedMps:
       ((ship.maxSpeedMps ?? 200) + plugSpeedMps) *
       (1 + bal.speedPerLevel * Math.min(5, state.skills.trained[bal.speedSkillId] ?? 0)) *
-      Math.max(0.1, 1 - worstSpeedPen),
+      Math.max(0.1, 1 - worstSpeedPen) * damage.speed,
     // 推进器爆发倍率（多件 EVE 曲线收敛后的合成值 − 1）：0 = 未装；爆发窗口内才乘上去
     ...(speedEq > 1 ? { thrusterBoost: speedEq - 1 } : {}),
     // 本单位自己的点火周期（只在有覆盖件时写；没写 = 全局 60/60，见 `unitThrusterCycle`）

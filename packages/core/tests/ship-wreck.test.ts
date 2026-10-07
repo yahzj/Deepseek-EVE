@@ -83,7 +83,7 @@ function wreckIn(
     reinforceChance?: number
   },
 ) {
-  return noteShipWreck(state, {
+  const rec = noteShipWreck(state, {
     galaxyId: opts?.galaxyId ?? GAL,
     shipId: opts?.shipId ?? 'sh-t-frigate',
     shipName: opts?.shipName ?? '磷虾',
@@ -95,6 +95,9 @@ function wreckIn(
     ...(opts?.reinforceChance !== undefined ? { reinforceChance: opts.reinforceChance } : {}),
     createdAtWallMs: 0,
   })
+  // 本文件继续锁定已保存旧残骸；新规则由ship-wreck-recovery-20261007专项覆盖。
+  delete rec.recoveryRules
+  return rec
 }
 
 describe('触发面：正常星系才留残骸（虫洞不生成）', () => {
@@ -310,7 +313,7 @@ describe('加固结构插件接口（本批只留口子）', () => {
   it('装了加固件（合成夹具）⇒ 第一次捞先掷整船回收；未命中则记下"已掷过"、之后再也不会掷', () => {
     const state = world()
     wreckIn(state, { reinforceChance: HULL_RECOVERY_MAX })
-    expect(hullRecoveryChanceOf(shipWreckFor(state, GAL)!)).toBe(HULL_RECOVERY_MAX)
+    expect(hullRecoveryChanceOf(shipWreckFor(state, GAL)!)).toBe(0.6)
 
     const first = trySalvagePlayerWreckOf(state, ctx, GAL)
     console.log(`  [读数] 60% 整船回收第一次掷：${first.kind}`)

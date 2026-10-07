@@ -229,6 +229,8 @@ export interface FleetShipState {
    * 兼容字段（可选，**零迁移**）：老档缺席 = 没装过插件。
    */
   plugs?: string[]
+  /** 战损插件不占普通插件槽，仅随舰体保留。 */
+  damagePlugs?: import('./shipDamage').ShipDamageKind[]
   /** 无人机舱装载清单（2026-09-08 无人机舱大改）：droneId -> 架数（0 = 不存）；
    *  战斗只放飞此清单（不再自动从仓库贪心）；CPU 预占计入船体预算；旧档缺省 = 空 = 无无人机 */
   droneLoad?: Record<string, number>
@@ -2633,6 +2635,7 @@ export interface WreckLogEntry {
   fitted?: FittedModules
   /** 损毁那一刻装着的舰船插件 id 列表 */
   plugs?: string[]
+  damagePlugs?: import('./shipDamage').ShipDamageKind[]
   /** 损毁那一刻的无人机舱清单（droneId → 架数） */
   droneLoad?: Record<string, number>
   /** 留下的残骸所在星系（虫洞内损毁不写） */
@@ -2652,6 +2655,12 @@ export interface ShipWreckRecord {
   name: string
   /** 来源船型 id（界面画舰船轮廓用） */
   defId?: string
+  customName?: string | null
+  /** 新残骸为2；缺席表示旧版逐轮回收规则，不补整船基础概率。 */
+  recoveryRules?: 2
+  /** 普通装备一次性判定已完成；剩下的装备都是已保全待打捞的件。 */
+  equipmentRolled?: boolean
+  damagePlugs?: import('./shipDamage').ShipDamageKind[]
   /** **损毁那一刻的装配快照**（高/中/低槽各装了什么件；打捞逐件掷骰就照它算） */
   fitted?: FittedModules
   /** **损毁那一刻的无人机舱清单**（droneId → 架数；打捞时按"这一型还剩几架"整型给回） */
@@ -2662,13 +2671,12 @@ export interface ShipWreckRecord {
    * 残骸第一次被捞时按件数整批换回黑匣，然后把这个字段清空。
    */
   plugs?: string[]
-  /** 损毁那一刻的结构层（= `FleetShipState.durability`）：整船回收后按它 ×0.3 回港 */
+  /** 损毁时结构残余，供旧回收规则使用。 */
   durability?: number
-  /** 损毁那一刻的装甲残余比例：整船回收后按它 ×0.5 回港 */
+  /** 损毁时装甲残余，供旧回收规则使用。 */
   armorPct?: number
   /**
-   * **损毁那一刻**该船装着的「加固结构插件」回收率之和（`ModuleDef.hullRecoveryChance`，已夹到 60%）。
-   * 快照存下来的意义 = **日后插件改数值，已生成的残骸口径不变**。无插件 ⇒ 无此字段 ⇒ 整船回收永不触发。
+   * 损毁时加固件回收率快照；新规则与基础/工程技能加算，旧规则只读取本值。
    */
   reinforceChance?: number
   /** 该具残骸是否已掷过「整船回收」（**一具只掷一次**，防反复捞刷概率；无插件时首捞即置位） */

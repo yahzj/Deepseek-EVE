@@ -102,9 +102,13 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
   })
 
   it('技能仅六条说明改词：名称、档位、前置、训练时间与中英高亮数字都与来源一致', () => {
-    sameData(SKILLS, baseSkills, ['description'])
-    expect(SKILLS.filter((row, i) => row.description !== baseSkills[i]!.description).map((row) => row.id)).toEqual(skillIds)
-    for (const row of SKILLS) {
+    const existing = SKILLS.filter(row => baseSkills.some(original => original.id === row.id))
+    expect(SKILLS.filter(row => !baseSkills.some(original => original.id === row.id)).map(row => row.id)).toEqual([
+      'hull-salvage-engineering', 'advanced-hull-salvage-engineering', 'wreck-equipment-preservation',
+    ])
+    sameData(existing, baseSkills, ['description'])
+    expect(existing.filter((row, i) => row.description !== baseSkills[i]!.description).map((row) => row.id)).toEqual(skillIds)
+    for (const row of existing) {
       const original = baseSkills.find((before) => before.id === row.id)!
       expect(highlights(row.description), row.id).toEqual(highlights(original.description))
       expect(numbers(row.description), row.id).toEqual(numbers(original.description))

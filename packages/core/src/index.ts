@@ -75,6 +75,8 @@ export { FOE_TARGETING_LABELS } from './types'
 
 export { moduleAllowedOnShip } from './shipFitting'
 export type { ShipFitPreset } from './state'
+export { SHIP_DAMAGE_DEFS, SHIP_DAMAGE_MAX, SHIP_DAMAGE_CHANCE, SHIP_DAMAGE_PENALTY, cleanShipDamage, shipDamageEffects, rollShipDamage } from './shipDamage'
+export type { ShipDamageKind } from './shipDamage'
 export { ammoTiersOf } from './ammoTiers'
 export { marketTradingGoods } from './market'
 export { volleyGunCountOf, volleyDamageShareOf } from './combatVolley'
@@ -1025,6 +1027,9 @@ export {
   RECOVERED_HULL_DURABILITY_PCT,
   RECOVERED_HULL_ARMOR_PCT,
   WRECK_RECOVERY_RATE,
+  WRECK_RECOVERY_SKILL,
+  RECOVERED_SHIP_CONDITION,
+  wreckEquipmentRecoveryChanceOf,
   recoveryRateOfSlot,
   wreckLootRowsOf,
   shipWreckValueOf,

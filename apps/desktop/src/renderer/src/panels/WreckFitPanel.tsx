@@ -7,6 +7,7 @@ import { Glyph, toneOf } from '../ui/Glyphs'
 import { hoverTipProps } from '../ui/Tooltip'
 import { itemHoverContent, moduleHoverContent } from '../ui/shipInfo'
 import { rackText } from '../ui/labelsText'
+import { ShipDamageMods } from '../ui/ShipDamageMods'
 
 /** 装配卡只读投影，详情按当前目录展示；历史快照不用于重造损毁时的战斗数值。 */
 export function WreckFitPanel({ engine, entry }: { engine: GameEngine; entry: WreckLogEntry }): ReactNode {
@@ -79,6 +80,7 @@ export function WreckFitPanel({ engine, entry }: { engine: GameEngine; entry: Wr
     {detail.drones.length ? <div className="app-wreck-fit-group"><div className="app-bay-title">{tr('ui.WreckLog.009')}</div>
       <div className="app-fit-icongrid">{detail.drones.map((drone, at) => card(drone.id, at + 1, true, drone.count))}</div></div> : null}
     {note ? <div role="status" className="app-dim">{note}</div> : null}
+    <ShipDamageMods ids={entry.damagePlugs} />
     {opened ? createPortal(<div className="app-modal-mask" onClick={() => { setPicked(null); setSaving(false); setOverwrite(null) }}>
       <div ref={modal} className="app-modal app-wreck-fit-modal" role="dialog" aria-modal="true"
         aria-label={tr(picked ? 'ui.wreckFit.008' : 'ui.wreckFit.001')} onClick={event => event.stopPropagation()}>

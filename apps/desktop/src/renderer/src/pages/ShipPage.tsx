@@ -54,6 +54,7 @@ import type { AiCoreType, FleetShipState, GameState, ShipRole } from '@whale/cor
 import { durabilityOf, repairCostIsk, shipDisplayName } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { ShipHover } from '../ui/shipInfo'
+import { ShipDamageMods } from '../ui/ShipDamageMods'
 import { useSessionScroll } from '../ui/sessionView'
 import type { GameEngine } from '../game/engine'
 import type { ShipDef } from '@whale/core'
@@ -895,6 +896,7 @@ export function ShipPage({
                 <div className="app-ship-spec">
                   {tr("ui.ShipPage.019")} {def.cargoM3.toLocaleString('zh-CN')} {tr("ui.ShipPage.020")} {def.cycleSeconds} {tr("ui.ShipPage.021")} {def.oreUnitsPerCycle} {tr("ui.Handbook.012")} {Math.round(def.agility * 100)}%
                 </div>
+                <ShipDamageMods ids={shipState.damagePlugs} />
                 <div className="app-dur-row">
                   <div className="app-dur-track">
                     <div className="app-dur-fill" style={{ width: `${Math.round(dur * 100)}%` }} />

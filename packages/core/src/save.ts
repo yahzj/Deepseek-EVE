@@ -27,6 +27,7 @@ import { WORMHOLE_HOLD_COLS, cleanHoldPlacement } from './wormholeHold'
 import { WORMHOLE_SCAN_BASE_MS, WORMHOLE_STOCK_MAX_HARD } from './wormholeScan'
 // 沉船记录上限（2026-09-27 船长令）：读档截断与写入共用同一常量
 import { WRECK_LOG_MAX } from './shipWrecks'
+import { cleanShipDamage } from './shipDamage'
 import { WORMHOLE_AUTO_MAX_SHIPS, WORMHOLE_AUTO_REPORT_MAX } from './wormholeAuto'
 import { WORMHOLE_ARCHETYPES, WORMHOLE_GRID_SAVE_MAX_R, isWormholeEventKey, wormholeArchetypeOf } from './wormholeGrid'
 import { cleanWormholeEventInstance, cleanWormholeExpeditionRun } from './wormholeExpeditionSave'
@@ -487,6 +488,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     droneLoad?: Record<string, number>
     /** 舰船插件（2026-09-26）：新船**没有**插件 ⇒ 不下发该键（与 `droneLoad` 同款） */
     plugs?: string[]
+    damagePlugs?: import('./shipDamage').ShipDamageKind[]
     ammoPref?: Partial<Record<'kinetic' | 'explosive' | 'plasma', string>>
   } => ({
     defId,
@@ -560,6 +562,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       // 保留重复插件件数；实际可装数量由船型槽数校验。
       // ⚠ 漏了这里 ⇒ 读档/刷新即丢插件（`salvagerGift` 同款静默缺口），设计稿 §五 已点名。
       plugs: cleanPlugIds(shipRaw.plugs),
+      ...(cleanShipDamage(shipRaw.damagePlugs) ? { damagePlugs: cleanShipDamage(shipRaw.damagePlugs) } : {}),
       // 弹药 MK2（2026-09-09）：档位偏好透传（键 = 伤害类型；坏值丢键，引擎侧再防御未知 id）
       ammoPref: cleanAmmoIdMap(shipRaw.ammoPref),
     }
@@ -1784,6 +1787,10 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       galaxyId,
       shipId,
       name,
+      ...(r.recoveryRules === 2 ? { recoveryRules: 2 as const } : {}),
+      ...(r.equipmentRolled === true ? { equipmentRolled: true } : {}),
+      ...(r.customName !== undefined ? { customName: cleanCustomName(r.customName) } : {}),
+      ...(cleanShipDamage(r.damagePlugs) ? { damagePlugs: cleanShipDamage(r.damagePlugs) } : {}),
       ...(defId !== undefined ? { defId } : {}),
       fitted,
       ...(Object.keys(droneLoad).length > 0 ? { droneLoad } : {}),
@@ -1968,6 +1975,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
       atGameMs,
       fitted,
       ...(logPlugs !== undefined ? { plugs: logPlugs } : {}),
+      ...(cleanShipDamage(r.damagePlugs) ? { damagePlugs: cleanShipDamage(r.damagePlugs) } : {}),
       ...(Object.keys(droneLoad).length > 0 ? { droneLoad } : {}),
       ...(wreckGalaxyId !== undefined ? { wreckGalaxyId } : {}),
       ...(r.recovered === true ? { recovered: true } : {}),
