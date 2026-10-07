@@ -110,7 +110,7 @@ describe('打捞对象 · 分组记账（船长 2026-09-26 令）', () => {
     console.log(`  [读数] 选组 ${pick}：前 ${firstOther} 轮只出该组，之后回落「全部」`)
   })
 
-  it('**选入侵残骸 ⇒ 只扣入侵池、不碰星系池**；反之选组不碰入侵池', () => {
+  it('入侵库存优先且只扣入侵池；旧常驻筛选不能覆盖自动优先规则', () => {
     const s = fresh(13)
     injectWreckDensity(s, ctx, GAL, 500)
     injectWeekendWreck(s, GAL, 400, 'H')
@@ -123,13 +123,14 @@ describe('打捞对象 · 分组记账（船长 2026-09-26 令）', () => {
     pullOneWreck(s, ctx, GAL, 60_000)
     expect(s.galaxyWrecks[GAL]!.density, '星系池一分不动').toBeCloseTo(beforeGal, 6)
     expect(wreckGroupStockOf(s, ctx, GAL, WEEKEND_WRECK_TARGET), '入侵池被扣掉一截').toBeLessThan(beforeInv)
-    // ② 选某一组 ⇒ 入侵池一分不动
+    // ② 旧常驻筛选仍有库存，也要恢复自动入侵优先。
     const invAfter = wreckGroupStockOf(s, ctx, GAL, WEEKEND_WRECK_TARGET)
     const galAfter = s.galaxyWrecks[GAL]!.density
     s.salvaging.targetGroup = GROUPS[0]!
     pullOneWreck(s, ctx, GAL, 60_000)
-    expect(wreckGroupStockOf(s, ctx, GAL, WEEKEND_WRECK_TARGET), '入侵池一分不动').toBeCloseTo(invAfter, 6)
-    expect(s.galaxyWrecks[GAL]!.density, '星系池被扣').toBeLessThan(galAfter)
+    expect(wreckGroupStockOf(s, ctx, GAL, WEEKEND_WRECK_TARGET), '入侵池继续扣量').toBeLessThan(invAfter)
+    expect(s.galaxyWrecks[GAL]!.density, '星系池保持原量').toBeCloseTo(galAfter, 6)
+    expect(s.salvaging.targetGroup, '旧筛选被清除').toBeUndefined()
   })
 
   it('**漂移按总池等比回调**（Σ份额 == 总密度 不变）', () => {

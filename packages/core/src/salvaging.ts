@@ -48,6 +48,7 @@ import {
   // 2026-09-26（玩家报障）：残骸场带来源族 ⇒ 有场就并入那一族的独立入侵卡
   weekendWreckDensityOf,
   weekendWreckPoolsOf,
+  weekendRareWreckCountOf,
   /** **2026-10-02 船长令「甲」**：入侵池按**实际出量**扣（并由池子余额封顶出量）；
    *  同一令下"从入侵池出的那一轮"改用上面的 `salvageRoundMulOf` 只读取数（不扣池）。 */
   chargeWeekendWreckByVolume,
@@ -711,6 +712,12 @@ export function pullOneWreck(
    * **对象已捞干 / 只剩箱子也没有 ⇒ 就地清掉它、本轮按「全部」出**（自愈，不再空转）。
    */
   let target = state.salvaging.targetGroup
+  // 手选入口已撤；有入侵库存时，旧档常驻筛选不能覆盖自动优先规则。
+  if (target !== undefined && target !== WEEKEND_WRECK_TARGET &&
+    (weekendWreckDensityOf(state, galaxyId) > 0 || weekendRareWreckCountOf(state, galaxyId) > 0)) {
+    state.salvaging.targetGroup = undefined
+    target = undefined
+  }
   if (
     target !== undefined &&
     wreckGroupStockOf(state, ctx, galaxyId, target) <= 0.05 &&
