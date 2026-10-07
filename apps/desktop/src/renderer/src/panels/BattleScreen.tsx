@@ -15,7 +15,7 @@ import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battle
 import type { BattleReportRecord, BattleVerdict, DamageType, DroneLossReport, ShipRole } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
-import { ShipSprite } from '../ui/ShipSprite'
+import { BattleShipSprite } from './battleShipFx'
 import { ammoKey, planBlinkPillars, syncBlinkPillarDom } from '../ui/battleBlink'
 import type { BlinkPillarFx } from '../ui/battleBlink'
 import { FOE_ACCENT, foeFamilyOf } from '../ui/shipArt'
@@ -46,6 +46,8 @@ import {
   fanPath, ringPath, HpTri, boltGeom, resolveBoltAnchors, droneOwnerAnchor, residentDroneFrom,
 } from './battleViewCore'
 import type { Dims, Anchor, BoltV, FlashV, Stage, OutroSnap } from './battleViewCore'
+import { ACID_FX_LIFE_MS, AcidEffect } from './battleAcidFx'
+import type { AcidFx } from './battleAcidFx'
 import { tr as normalTr, futureTr, cmdText, mountNamesTextOf } from '../i18n/locale'
 // 2026-09-26 战斗界面信息层级批：图例 chip 的射程数字收进"点按/悬停"卡片 ⇒ 走全站统一的富内容提示层
 import { hoverTipProps } from '../ui/Tooltip'
@@ -238,6 +240,10 @@ const meSpeedRef = useRef(200)
   const keyRef = useRef(1)
   const boltsRef = useRef<BoltV[]>([])
   const flashRef = useRef<FlashV[]>([])
+  const acidFxRef = useRef<AcidFx[]>([])
+  const acidDeathsRef = useRef<Set<string>>(new Set())
+  const acidFxWakeAtRef = useRef(Number.POSITIVE_INFINITY)
+  const [, refreshAcidFx] = useState(0)
   /**
    * **伤害飘字**（**2026-09-24 船长令**：「战斗界面，我希望添加战斗伤害的数值动画（包括 MISS）」＋四答甲）：
    * 目标旁向上飘 · **同一拍对同一目标累加成一个数字** · 类型色数字 + 灰色 MISS · 只在战斗画面且随倍速/暂停。
@@ -518,6 +524,9 @@ const meSpeedRef = useRef(200)
         .map((u) => u.tag),
     )
     corpseAtRef.current.clear()
+    acidFxRef.current = []
+    acidDeathsRef.current.clear()
+    acidFxWakeAtRef.current = Number.POSITIVE_INFINITY
     prevHpRef.current.clear()
     hpInitRef.current = false
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -548,6 +557,9 @@ const meSpeedRef = useRef(200)
         moveSnapRef.current = { prev: null, cur: null }
         visDistRef.current = 0
         corpseAtRef.current.clear()
+        acidFxRef.current = []
+        acidDeathsRef.current.clear()
+        acidFxWakeAtRef.current = Number.POSITIVE_INFINITY
         prevHpRef.current.clear()
         hpInitRef.current = false
         /** ⚠ 闪现光柱的两本账也要清（`fxSeq` 与 `foeBlinkQueue` 都是**逐场**的） */
@@ -582,6 +594,11 @@ const meSpeedRef = useRef(200)
         }
       }
       setSmoothM((old) => (old === null || Math.abs(old - vis) >= 0.05 ? vis : old))
+      // 静止交距下也清理专属爆发，避免演完的机位留在队列里。
+      if (now >= acidFxWakeAtRef.current) {
+        acidFxWakeAtRef.current = Number.POSITIVE_INFINITY
+        refreshAcidFx(tick => tick + 1)
+      }
       /**
        * 🔴 **闪现光柱：排期 ＋ 建/删 DOM**（**船长 2026-10-02 两次实机报障**）——
        * 两件事都必须在这里做（RAF、**不走 React**）：演出期间距离**可能整段不变**
@@ -935,7 +952,8 @@ const meSpeedRef = useRef(200)
         drop.add(tag) // 无演出登记（已撤/开屏前已死）：永不占位
         continue
       }
-      if (now < ba + BOOM_LIFE + WRECK_FADE_MS) laterVisible = true
+      const deathLife = acidDeathsRef.current.has(tag) ? ACID_FX_LIFE_MS : BOOM_LIFE + WRECK_FADE_MS
+      if (now < ba + deathLife) laterVisible = true
       else if (!laterVisible) drop.add(tag)
     }
     return drop
@@ -990,6 +1008,34 @@ const meSpeedRef = useRef(200)
     const downCursor = new Map<string, number>()
     for (const fx of arrivals) {
       fxSeqRef.current = fx.seq
+      if (fx.acidBurst) {
+        const anchors = resolveBoltAnchors({ side: 'foe', tag: fx.tag, to: fx.to, rowFxTags,
+          meAnchors: meAnchorByTag, meFallback: layFx.me, foeAnchors: layFx.foe })
+        const cause = battle.acidBursts?.[fx.tag]?.cause
+        const delay = cause === 'killed' ? BOLT_LOOK[lastHitTypeRef.current.get(fx.tag) ?? 'kinetic'].fly : 0
+        acidDeathsRef.current.add(fx.tag)
+        deadRef.current.add(fx.tag)
+        corpseAtRef.current.set(fx.tag, now + delay)
+        if (anchors) {
+          acidFxRef.current.push({ key: keyRef.current++, tag: fx.tag, kind: 'burst',
+            ...anchors.src, size: foeSizeOf(fx.tag), born: now, delay })
+          if (fx.to && fx.hit) acidFxRef.current.push({ key: keyRef.current++, tag: fx.to, kind: 'impact',
+            ...anchors.dst, size: meSizeByTag.get(fx.to) ?? meSize, born: now, delay })
+          if (fx.to) {
+            const prev = popupAccRef.current.get(fx.to)
+            popupAccRef.current.set(fx.to, { ...anchors.dst, amount: (prev?.amount ?? 0) + (fx.dmg ?? 0),
+              type: 'kinetic', miss: (prev?.miss ?? false) || !fx.hit })
+          }
+        }
+        // 同拍多只爆虫只覆盖一份全队附着，伤害事件仍逐只显示。
+        for (const unit of arcs.myUnits.filter(unit => unit.alive)) {
+          const anchor = meAnchorByTag.get(unit.tag) ?? layFx.me
+          acidFxRef.current = acidFxRef.current.filter(effect => effect.kind !== 'coating' || effect.tag !== unit.tag)
+          acidFxRef.current.push({ key: keyRef.current++, tag: unit.tag, kind: 'coating',
+            ...anchor, size: meSizeByTag.get(unit.tag) ?? meSize, born: now, delay })
+        }
+        continue
+      }
       /**
        * **闪现跃迁演出**（**船长 2026-10-01/02 三次令**）——R 族「瞬光跃迁仪」触发时引擎推这一条
        * （**不是开火**）。与下面 `droneDown` 同款：必须**提前拦下并 continue**。
@@ -1379,6 +1425,11 @@ const meSpeedRef = useRef(200)
   // 惰性清理过期元素（渲染输出不再包含它们即从 DOM 移除；延迟弹道按 delay 延长存活）
   boltsRef.current = boltsRef.current.filter((b) => now - b.born < BOLT_LIFE + (b.delay ?? 0))
   flashRef.current = flashRef.current.filter((f) => now - f.at < FLASH_LIFE + (f.delay ?? 0))
+  acidFxRef.current = acidFxRef.current.filter(effect => now - effect.born < ACID_FX_LIFE_MS + effect.delay).slice(-48)
+  acidFxWakeAtRef.current = Math.min(...acidFxRef.current.map(effect => {
+    const start = effect.born + effect.delay
+    return now < start ? start : start + ACID_FX_LIFE_MS
+  }))
   /**
    * **伤害飘字：每拍把累加结果落成一条飘字**（甲②：同一拍对同一目标只出一个数字）。
    * `popupAccRef` 在本拍的开火循环里累加（key = 目标 tag），这里一次性消费并清空 ⇒ 下一拍重新累计。
@@ -2100,6 +2151,7 @@ const meSpeedRef = useRef(200)
     const ba = corpseAtRef.current.get(tag)
     const sinceBoom = ba === undefined ? -1 : now - ba
     const corpseOn = sinceBoom >= 0 // 致死弹道着弹后才是真尸骸；着弹前原样停留
+    const acidDeath = acidDeathsRef.current.has(tag)
     const locked = !corpseOn && tag === combat.lockTag
     /**
      * 🔴 **闪现跃迁演出 · 三段**（**船长 2026-10-01 原话 ＋ 2026-10-02 实机修正**）：
@@ -2166,13 +2218,14 @@ const meSpeedRef = useRef(200)
       >
         {/* 淡出作用于舰体容器（外层 .app-bts-unit 有入场动画 fill 占位，透明度须压在子层）；
             尸骸灰化 = accent 传灰（2026-09-10 性能：不再用 CSS 滤镜重新栅格化整份舰体矢量） */}
-        <span className="app-bts-corpse" style={fadeT > 0 ? { opacity: Math.max(0, 1 - fadeT) } : undefined}>
-          <ShipSprite
+        <span className="app-bts-corpse" style={acidDeath && corpseOn ? { opacity: 0 } : fadeT > 0 ? { opacity: Math.max(0, 1 - fadeT) } : undefined}>
+          <BattleShipSprite
             shipId={foeShipId ?? undefined}
             foeKey={foeKey}
             flip={foeFlip}
             accent={corpseOn ? UI_TONES.corpse : FOE_ACCENT[foeKey] ?? '#ff8373'}
             size={size}
+            acceleration={arcs.foeChargingTags.includes(tag) ? 'charge' : undefined}
           />
         </span>
         {/**
@@ -2213,7 +2266,7 @@ const meSpeedRef = useRef(200)
           </span>
         ) : null}
         {/* 敌方机群由**机群层**统一出海（第二层，见 `.app-bts-drones` 内的 foeWings 渲染） */}
-        {boomLive ? (
+        {boomLive && !acidDeath ? (
           <span className="app-bts-boom">
             <i className="b-core" />
             <i className="b-ring" />
@@ -2671,7 +2724,7 @@ const meSpeedRef = useRef(200)
                       {u.name}
                       {u.leader ? <i className="app-bts-fleet-lead">{tr("ui.BattleScreen.031")}</i> : null}
                     </span>
-                    <ShipSprite
+                    <BattleShipSprite
                       /**
                        * ⚠ **画舰影要用 `defId`（船型 id），不是 `shipId`（编队 uid）** ——
                        * 船长 2026-09-14 报障「**在虫洞内，友方舰船的图形不正确**」的真因：
@@ -2683,6 +2736,7 @@ const meSpeedRef = useRef(200)
                       accent={ROLE_ACCENT[role]}
                       size={spriteSize}
                       flip={meFlip}
+                      acceleration={u.boosting ? 'boost' : undefined}
                     />
                     {u.alive ? (
                       /**
@@ -2713,7 +2767,7 @@ const meSpeedRef = useRef(200)
                 }
               >
                 <span className="app-bts-name">{meShip?.name}</span>
-                <ShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={meSize} flip={meFlip} />
+                <BattleShipSprite shipId={meShip?.id} role={meRole} accent={ROLE_ACCENT[meRole]} size={meSize} flip={meFlip} acceleration={arcs.myUnits[0]?.boosting ? 'boost' : undefined} />
                 <div className="app-bts-hpWrap">
                   <HpTri hp={combat.meHp} max={arcs.maxHp.me} />
                 </div>
@@ -2977,6 +3031,12 @@ const meSpeedRef = useRef(200)
           {/* 开火闪光 + 弹道 + 撞点特效（最上层） */}
           {muzzleEls}
           {boltEls}
+          <div className="app-bts-acid-layer" aria-hidden="true">
+            {acidFxRef.current.map(effect => {
+              const anchor = effect.kind === 'burst' ? effect : meAnchorByTag.get(effect.tag) ?? layFx.me
+              return <AcidEffect key={effect.key} effect={{ ...effect, x: anchor.x, y: anchor.y }} />
+            })}
+          </div>
           {/* 伤害飘字层（2026-09-24 船长令）：叠在弹道之上、不吃点击（CSS 里 pointer-events:none） */}
           {popupEls}
         </div>

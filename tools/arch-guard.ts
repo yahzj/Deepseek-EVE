@@ -114,6 +114,7 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '星球离线与在线量子演算', symbol: 'advancePlanetary', file: 'packages/core/src/planetRuntime.ts', exported: true },
   { concept: '星球实际运输与材料交付', symbol: 'dispatchPlanetDelivery', file: 'packages/core/src/planetLogistics.ts', exported: true },
   { concept: '星球工程与退料账', symbol: 'cancelPlanetJob', file: 'packages/core/src/planetConstruction.ts', exported: true },
+  { concept: '战斗视图逐舰推进器点火与敌舰冲锋', symbol: 'battleArcsFor', file: 'packages/core/src/combat.ts', exported: true },
   { concept: '星球注入目录完整性校验', symbol: 'planetCatalogIssues', file: 'packages/core/src/planetCatalog.ts', exported: true },
   { concept: '星球独立子流与地块生成', symbol: 'generatePlanet', file: 'packages/core/src/planetGeneration.ts', exported: true },
   { concept: '星球环境与成本派生', symbol: 'planetEnvironmentOf', file: 'packages/core/src/planetRules.ts', exported: true },

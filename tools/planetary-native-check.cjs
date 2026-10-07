@@ -36,6 +36,8 @@ async function parent() {
   const reports = []
   try {
     for (const layout of ['classic', 'modern']) for (const locale of ['zh', 'en']) for (const mobile of [false, true]) {
+      const selected = process.argv.find(arg => arg.startsWith('--case='))?.slice(7)
+      if (selected && selected !== `${layout}-${locale}-${mobile ? 'mobile' : 'desktop'}`) continue
       const profile = fs.mkdtempSync(path.join(os.tmpdir(), PREFIX))
       try {
         const state = core.createInitialState({ seed: 7, nowWallMs: Date.now() })

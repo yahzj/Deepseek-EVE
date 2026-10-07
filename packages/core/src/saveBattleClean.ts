@@ -422,7 +422,7 @@ export function cleanBattle(raw: unknown): BattleState | null {
   })
   /** **复活总预算**（开战库存快照，全队一本）：机型 → 剩余可补架数（坏值整条丢） */
   const droneReviveStock = cleanCountMap(b.droneReviveStock)
-  const alienCorrosion = typeof b.alienCorrosion === 'number' && Number.isFinite(b.alienCorrosion) && b.alienCorrosion > 0 && b.alienCorrosion <= 0.9 ? b.alienCorrosion : undefined
+  const alienCorrosion = typeof b.alienCorrosion === 'number' && Number.isFinite(b.alienCorrosion) && b.alienCorrosion > 0 ? b.alienCorrosion : undefined
   const acidBursts = cleanLedgerMap(b.acidBursts, raw => {
     const r = asRaw(raw)
     if ((r.cause !== 'attack' && r.cause !== 'killed') || typeof r.atMs !== 'number' || !Number.isFinite(r.atMs) || r.atMs < 0) return undefined
@@ -1001,6 +1001,9 @@ function cleanFx(raw: unknown, numf: (v: unknown, fallback: number) => number): 
       tag: typeof ev.tag === 'string' && ev.tag.length > 0 ? ev.tag : side === 'me' ? 'player' : 'foe-0',
       type,
       hit: ev.hit === true,
+      ...(ev.acidBurst === true && side === 'foe' && type === 'kinetic'
+        ? { acidBurst: true as const, ...(typeof ev.to === 'string' && ev.to.length > 0 ? { to: ev.to } : {}) }
+        : {}),
       // 本发实收伤害（2026-09-24 船长令：飘字读数）——坏值/缺省一律不写（UI 只飘 MISS）
       ...(typeof ev.dmg === 'number' && Number.isFinite(ev.dmg) && ev.dmg > 0
         ? { dmg: Math.floor(ev.dmg) }

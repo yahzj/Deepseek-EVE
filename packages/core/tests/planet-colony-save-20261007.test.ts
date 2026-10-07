@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { cleanPlanetColonyState, cleanPlanetaryState } from '../src/planetSave'
 import { createInitialState } from '../src/state'
-import { loadSaveFile, serializeSaveFile } from '../src/save'
+import { loadSaveFile, serializeSaveFile, SaveError } from '../src/save'
 import type {
   PlanetBuildingState, PlanetColonyState, PlanetDelivery, PlanetDeposit, PlanetEvent, PlanetGridCell, PlanetJob,
   PlanetLocalResource, PlanetaryState, PlanetState,
@@ -150,10 +150,11 @@ describe('星球运行态存档字段穷尽及往返', () => {
       .toThrow('unsupported-planet-runtime-version')
   })
   it('完整存档读取入口拒绝未来全球或殖民规则版本', () => {
-    expect(() => roundtrip({ ...runtime(), runtimeVersion: 2 as 1 })).toThrow('unsupported-planet-runtime-version')
+    expect(() => roundtrip({ ...runtime(), runtimeVersion: 2 as 1 })).toThrow(SaveError)
+    try { roundtrip({ ...runtime(), runtimeVersion: 2 as 1 }) } catch (e) { expect((e as SaveError).code).toBe('VERSION') }
     const raw = runtime()
     raw.planets['planet-4']!.colony!.runtimeVersion = 2 as 1
-    expect(() => roundtrip(raw)).toThrow('unsupported-planet-runtime-version')
+    expect(() => roundtrip(raw)).toThrow(SaveError)
   })
   it('缺少版本的坏殖民记录不修成空基地', () => {
     const p = prototype()

@@ -2784,6 +2784,8 @@ export function battleArcsFor(
     hp: { s: number; a: number; h: number }
     hpMax: { s: number; a: number; h: number }
     alive: boolean
+    /** 本舰推进器当前有效点火状态，含逐舰周期与捕获网压制。 */
+    boosting: boolean
     ammoIds?: Partial<Record<DamageType, string>>
   }>
   /** 敌方各武器射程带（聚合）：`minM~maxM` 跨全部单位取极值，`type` = 遍历到的最后一件武器弹种 */
@@ -2804,6 +2806,8 @@ export function battleArcsFor(
   thrusterCycle: { boostMs: number; cooldownMs: number }
   /** 敌方是否有突进资格（威胁 ≥ 门槛 且 近战）——UI「突进中」标记用（未突进时为 false） */
   foeCanCharge: boolean;
+  /** 本波存活且正在冲锋的敌舰，含支援舰；战斗结束后为空。 */
+  foeChargingTags: string[]
   /**
    * **双方当前速度（m/s）**（2026-09-16 船长：距离条两端显示；同日裁「只改战斗显示数值」）——
    * **面板同源口径**：单位 `speedMps` × 机动倍率（我方点火期含推进器倍率、敌方冲锋期含冲锋倍率），逐单位平均；
@@ -3117,12 +3121,14 @@ export function battleArcsFor(
    * **我方编队逐舰读数**（2026-09-13 F 批「4 条舰影 + 血条」的数据源）：
    * 单船路径 = 只有主控一条（`tag='player'`）；多单位路径 = 主控 + 僚舰（各自三层血）。
    */
+  const mySpecs = new Map(buildMyUnitSpecs(state, ctx, battle, leaderShipId, anomaly.id, foes).map(spec => [spec.tag, spec]))
   const myUnits = (battle.myFleet && battle.myFleet.length > 0
     ? battle.myFleet
     : [{ tag: 'player', shipId: leaderShipId }]
   ).map((e) => {
     const u = battle.units[e.tag]
     const def = ctx.ships.get(uidDefId(e.shipId))
+    const spec = mySpecs.get(e.tag)
     return {
       tag: e.tag,
       /** **编队 uid**（`船型id#序号`）—— 血条 / 名称 / 装配查找都用它 */
@@ -3142,6 +3148,7 @@ export function battleArcsFor(
       hp: u ? { ...u.hp } : { s: 0, a: 0, h: 0 },
       hpMax: u?.hpMax ?? { s: 0, a: 0, h: 0 },
       alive: !!u && u.hp.s + u.hp.a + u.hp.h > 0,
+      boosting: battle.ended === null && isAlive(battle, e.tag) && !!spec && unitSpeedMulOf(spec, battle, bal, 'me') > 1,
       ...(battle.expeditionAmmo ? { ammoIds: battleAmmoIdsFor(battle, e.tag) } : {}),
       /** 逐舰机群机体清单（见上方类型注释；只算**该舰存活**的池条目） */
       drones: (() => {
@@ -3183,6 +3190,9 @@ export function battleArcsFor(
     ...(battle.meSpeedMps !== undefined ? { meSpeedMps: battle.meSpeedMps } : {}),
     ...(battle.foeSpeedMps !== undefined ? { foeSpeedMps: battle.foeSpeedMps } : {}),
     foeCanCharge: foes.some((f) => f.foeCanCharge === true),
+    foeChargingTags: battle.ended === null
+      ? foesWithSupport(battle, foes).filter(f => isAlive(battle, f.tag) && unitSpeedMulOf(f, battle, bal, 'foe') > 1).map(f => f.tag)
+      : [],
     // **捕获网连线**（船长 2026-09-16：「动画效果为一根蓝色的光速连着命中舰船」）——
     // 渲染层按 (from = 施放者 tag, to = 被钉舰 tag) 画一条蓝色光束，**持续到效果解除**。
     // ⚠ **2026-09-26 起两个方向都下发**：敌方网钉我方（`meWebDebuffs`）＋ 我方网钉敌方（`foeWebDebuffs`，
@@ -5053,12 +5063,13 @@ function stepBattle(
     if (!acid || !event || event.resolved) continue
     event.resolved = true
     const target = pickMyUnitTarget(state, b, myUnits, foeTargeting, foeTargetingChance)
+    let hit = false
+    let dealt = 0
     if (target) {
       const rt = b.units[target.tag]!
       const chance = hitChance({ hitRate: acid.hitRate ?? .95, minRangeM: 1, maxRangeM: acid.deathRangeM, falloff: 1 }, f, target, b.distanceM, bal, 1)
-      const hit = nextRandom(state.rng) < (favor ? clamp(0, .97, chance * favor.foeMul) : chance)
+      hit = nextRandom(state.rng) < (favor ? clamp(0, .97, chance * favor.foeMul) : chance)
       b.stats.foeShots += 1
-      let dealt = 0
       if (hit) {
         b.stats.foeHits += 1
         const raw = applyDcGuard(state, b, target.tag, target, rt.hp, cappedFoeDamage(b, target.tag, target, acid.damage ?? 0), 'kinetic')
@@ -5066,9 +5077,11 @@ function stepBattle(
         rt.hp = result.hp
         dealt = result.dealt
       }
-      pushBattleFx(b, { atMs: event.atMs, side: 'foe', tag: f.tag, to: target.tag, type: 'kinetic', hit, ...(dealt > 0 ? { dmg: dealt } : {}) })
     }
-    b.alienCorrosion = Math.max(b.alienCorrosion ?? 0, acid.corrosionPct)
+    pushBattleFx(b, { atMs: event.atMs, side: 'foe', tag: f.tag, ...(target ? { to: target.tag } : {}),
+      type: 'kinetic', acidBurst: true, hit, ...(dealt > 0 ? { dmg: dealt } : {}) })
+    // 2026-10-07 船长确认：逐只追加腐蚀，仍先伤害后施加自身减抗。
+    b.alienCorrosion = (b.alienCorrosion ?? 0) + acid.corrosionPct
     for (const u of myUnits) applyAlienCorrosion(u, b.alienCorrosion)
   }
   for (const u of myUnits) applyAlienCorrosion(u, b.alienCorrosion ?? 0)

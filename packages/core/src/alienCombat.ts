@@ -24,7 +24,7 @@ export function triggerAcidBurst(
   const book = battle.acidBursts ?? (battle.acidBursts = {})
   // 伤害在敌方开火段结算，先记录事件；旧纯状态单位仍立即施加腐蚀。
   book[foe.tag] = { cause, atMs, resolved: !((effect.damage ?? 0) > 0) }
-  if (book[foe.tag]!.resolved) battle.alienCorrosion = Math.max(battle.alienCorrosion ?? 0, effect.corrosionPct)
+  if (book[foe.tag]!.resolved) battle.alienCorrosion = (battle.alienCorrosion ?? 0) + effect.corrosionPct
   if (cause === 'attack') {
     rt.hp = { s: 0, a: 0, h: 0 }
     rt.downAtMs ??= atMs

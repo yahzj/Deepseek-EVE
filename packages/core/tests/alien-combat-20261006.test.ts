@@ -35,14 +35,14 @@ describe('酸液爆虫与腐蚀', () => {
     expect(triggerAcidBurst(battle, acid, 'killed', 100)).toBe(true)
     expect(triggerAcidBurst(battle, acid, 'killed', 101)).toBe(false)
   })
-  it('远距死亡不触发，下一只爆虫不叠加腐蚀', () => {
+  it('远距死亡不触发，下一只爆虫追加腐蚀', () => {
     const { battle } = world(300.01)
     expect(triggerAcidBurst(battle, acid, 'killed', 100)).toBe(false)
     battle.distanceM = 250
     triggerAcidBurst(battle, acid, 'attack', 101)
     battle.units['foe-1'] = { ...battle.units['foe-0']!, hp: { s: 10, a: 10, h: 10 }, tag: 'foe-1' }
     triggerAcidBurst(battle, { ...acid, tag: 'foe-1' }, 'attack', 102)
-    expect(battle.alienCorrosion).toBe(.15)
+    expect(battle.alienCorrosion).toBe(.3)
   })
   it('装甲结构全抗减少，不影响盾；同一规格重复施加不累扣', () => {
     const { player } = world()

@@ -874,6 +874,8 @@ export interface BattleFx {
   /** 武器来源（2026-09-10 船长批：无人机动画差异化的展示字段；旧事件/测试构造缺省 →
    *  UI 按旧口径回退，不区分来源）。取值同 WeaponSpec.src */
   src?: 'turret' | 'missile' | 'laser' | 'drone' | 'base'
+  /** 爆虫本体爆发，不走通用武器弹道；伤害类型仍为动能。 */
+  acidBurst?: true
   /** 无人机机型 id（src='drone' 时携带：drone-scout/assault/heavy/sentry） */
   artId?: string
   /**
@@ -947,7 +949,7 @@ export interface BlinkSeg {
 
 /** V12 实时战斗持久状态（确定性事件步进；只存动态量） */
 export interface BattleState {
-  /** 本场腐蚀与爆虫触发去重，跨波保留、战后随战斗销毁。 */
+  /** 本场逐次累计腐蚀与爆虫触发去重，跨波保留、战后随战斗销毁。 */
   alienCorrosion?: number
   acidBursts?: Record<string, { cause: 'attack' | 'killed'; atMs: number; resolved?: boolean }>
   /** 每舰孵化额度、跨舰待补机位及周期；数字机位兼容前版本舰队列。 */
