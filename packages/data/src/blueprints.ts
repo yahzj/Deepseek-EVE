@@ -2876,7 +2876,8 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 1_200,
     buildCostIsk: 0,
     priceIsk: 4_000_000, // 船长定平均价 400 万；**书价 = 产物价**（一次性图既有口径）
-    description: '护盾充能力场装置 MK2：每 10 秒为队内所有舰船恢复护盾，恢复量为本舰护盾量的 10%。',
+    // ⟪文案调整 2026-10-07⟫ 力场图纸沿用产物效果说明，避免旧全队免费恢复口径。
+    description: L10N['mod.copy.027']!.zh,
   },
   {
     id: 'bp-shieldfield-3',
@@ -2899,7 +2900,8 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 3_000,
     buildCostIsk: 0,
     priceIsk: 20_000_000, // 船长定平均价 2000 万；**书价 = 产物价**
-    description: '护盾充能力场装置 MK3：每 8 秒为队内所有舰船恢复护盾，恢复量为本舰护盾量的 10%。',
+    // ⟪文案调整 2026-10-07⟫ 型号周期由产物参数行显示，不再手写机制数值。
+    description: L10N['mod.copy.027']!.zh,
   },
   /* ══════════════ 舰船插件蓝图（**2026-09-26 船长令**）══════════════
    * 船长原话（照抄）：「**在工业-组装机的门类筛选中，添加舰船插件的新分类，打算依靠黑匣来生产舰船插件。**」

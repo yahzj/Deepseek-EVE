@@ -196,13 +196,14 @@ describe('逐型号独立回转：战斗中的计时器', () => {
     expect(fb.repair!.units[0]!.nextPulseAtMs).toBeGreaterThan(fb.lastTickGameMs)
   })
 
-  it('④ 单船路径也建力场账本（改前只有多舰路径建 ⇒ 悬赏/遭遇里装了白装）', () => {
+  it('④ 单船保留力场排程，但排除自身且无队友时不回盾', () => {
     const { state, uid } = world(['mod-shieldfield-3'], [])
     const b = startBattleFor(state, ctx, uid, 'ano-training', 0)!
     expect(b.shieldFieldBy?.['player'], '单船路径必须建力场账本').toBeTruthy()
     b.units['player']!.hp.s = 0
     runUntil(state, b, 8_000)
-    expect(b.units['player']!.hp.s, '8 秒那一跳要把盾点起来').toBeGreaterThan(0)
+    expect(b.units['player']!.hp.s, '没有其他队友，不发动自身力场').toBe(0)
+    expect(b.shieldFieldBy!.player!.streams[0]!.nextPulseAtMs).toBe(16_000)
   })
 })
 

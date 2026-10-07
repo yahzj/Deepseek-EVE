@@ -76,7 +76,7 @@ import { AMMO_IDS, createPlayerSpec, DRONE_SKILL, droneSkillLv, WEB_BREAK_DIST_M
 export { DRONE_SKILL, MY_WEB_RANGE_M, WEB_BREAK_DIST_M, createPlayerSpec, damageUpgradeMult, droneReloadUpgradeMult, familyUpgradeMult, familyUpgradeSkillIdOf, hitUpgradeMult, mergeResist, playerAmmoType, reloadUpgradeMult } from './playerSpec'
 // 维修与护盾脉冲（2026-10-02 批次 4h 拆到 combatRepair.ts）；本文件借回使用并再导出
 import { preloadRepairFor, preloadShieldChargeFor, preloadShieldFieldFor, pulseRepairsFor, pulseShieldChargeFor, pulseShieldFieldFor, REPAIR_PULSE_MS, repairLedgersOf, SHIELD_REGEN_FLOOR_PCT, shieldChargeLedgersOf, shieldChargeStreamsOf } from './combatRepair'
-export { REPAIR_PULSE_MS, SHIELD_PULSE_MS, SHIELD_REGEN_FLOOR_PCT, fittedRepairModules, preloadRepairFor, preloadShieldChargeFor, preloadShieldFieldFor, pulseShieldCharge, pulseShieldChargeFor, pulseShieldFieldFor, refundRepairKits, refundRepairKitsAll, repairKitAvailableOf, repairLedgersOf, repairStatsFor, repairStreamsOf, repairUsageText, shieldChargeLedgersOf, shieldChargeStreamsOf, shieldFieldOf, shieldFieldStreamsOf, shieldPulsePctOf } from './combatRepair'
+export { REPAIR_PULSE_MS, SHIELD_PULSE_MS, SHIELD_FIELD_COST_PCT, SHIELD_REGEN_FLOOR_PCT, fittedRepairModules, preloadRepairFor, preloadShieldChargeFor, preloadShieldFieldFor, pulseShieldCharge, pulseShieldChargeFor, pulseShieldFieldFor, refundRepairKits, refundRepairKitsAll, repairKitAvailableOf, repairLedgersOf, repairStatsFor, repairStreamsOf, repairUsageText, shieldChargeLedgersOf, shieldChargeStreamsOf, shieldFieldOf, shieldFieldStreamsOf, shieldPulsePctOf } from './combatRepair'
 // 战斗弹药装载（2026-10-02 批次 4i 拆到 combatAmmo.ts）；本文件借回使用并再导出
 import { ammoKeyOf, ammoLoadTotals, ammoTierFallbackLog, loadAmmoTier, battleAmmoIdsFor, battleAmmoAvailable, consumeBattleAmmo, loadWormholeBattleAmmo, wormholeAmmoIdsForSpec } from './combatAmmo'
 import { deployWormholeSupply, returnWormholeDroneSupply, settleWormholeDroneRevives, takeWormholeSupply, wormholeSupplyForBattle } from './wormholeSupplies'
@@ -3973,8 +3973,7 @@ export function advanceBattleFor(
      * 玩家完全可能只装力场不装充能装置 —— 第一版我把它写在上面那个 `if` 内，
      * 结果"只装力场 ⇒ 一跳都不跳"（用例当场抓出）。
      *
-     * ⚠ **施放者必须存活**（人没了装置就停，与另两套同款）；但**受益方是全队存活单位**
-     * ⇒ 跳一次给 `myUnits` 全体补盾，不是只补施放者。
+     * 2026-10-07：只恢复其他存活单位，有目标且足够支付时才扣施放者满盾代价；排程照旧。
      *
      * ⚠ **本跳的绝对回盾量按"本路施放者（装件舰）的满盾"算**（**2026-09-25 船长改判**：
      * 「恢复量为本舰护盾量的 10%」）⇒ 逐路把**该路的施放者**传给 `pulseShieldFieldFor`；

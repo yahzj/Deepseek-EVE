@@ -21,6 +21,9 @@ import { takeWormholeSupply, wormholeSupplyForBattle } from './wormholeSupplies'
 /** 船体维修装置脉冲间隔（毫秒；2026-09-09 三档统一 5 秒一跳，见 data/modules.ts mod-hullrep-*） */
 export const REPAIR_PULSE_MS = 5_000
 
+/** 2026-10-07 船长确认：每路有效力场脉冲消耗施放者最大护盾的比例。 */
+export const SHIELD_FIELD_COST_PCT = 0.1
+
 /* 以下为 2026-10-02 批次 4h 从 combat.ts 切接过来的整簇（layerAmpOf ~ pulseRepairsFor）。 */
 
 /**
@@ -481,30 +484,9 @@ export function preloadShieldFieldFor(
 }
 
 /**
- * **单次力场脉冲**（**一路**型号跳一次）：给**我方全队存活单位**各补
- * **「施放者（装件舰）满盾 × 本路比例」这个同一个绝对量**（各人再夹在自己的满盾内）。
- *
- * ⚠⚠ **2026-09-25 船长改判（现行口径）**：「**恢复量为本舰护盾量的 10%**」——
- * 船长澄清「原本设想的就是」**按装件舰（使用船）的护盾量**、全队拿同一个数，
- * 而不是"每艘受益舰各按自身满盾"。
- *
- * **旧口径（已作废）**：对每个受益单位各取其**自身** `hpMax.s × pct`。
- * 由来 = 2026-09-20 那句追问答复「10% 按**携带者自己的满盾**」里"携带者"= 装件舰还是受益舰
- * 没当场澄清，被补注成"每艘被治疗舰按它自己那本账"后落了码；
- * ⚠ 它之所以长期没被发现：`tests/shield-field.test.ts` 的测试世界两艘船**同型同盾**
- * ⇒ 新旧口径数值完全相同，**旧口径下没有任何用例能分辨**（本轮已补一条能分辨的判据）。
- *
- * 现口径的两个必然结果（船长 2026-09-25 均已裁定"不管"，即照此办）：
- * - 装件舰是**大盾舰** ⇒ 小盾僚舰会被一跳直接顶满并溢出（超出部分丢弃）；
- * - **多舰各带一件** ⇒ 各自按**自己**满盾各跳一路、全队叠加（沿用 2026-09-20
- *   「多舰各带一件 ⇒ 各自独立、可叠加」那条，不加收敛）。
- *
- * ⚠ **2026-09-21 起本函数只管"一路"**（船长令：逐型号独立回转）——调用方按 `ledger.streams` 逐路传
- * `{ pct, ms }` 与**本路的施放者**；改前传整个账本（那时一台只有一路）。
- *
- * ⚠ **施放者阵亡 ⇒ 本次不跳**（由调用方判：人没了装置就停，与维修/护盾充能装置同款）；
- * 但**受益方**是全队存活单位 ⇒ 与"只治自己"的 `pulseShieldChargeFor` 是两回事。
- * 死亡单位跳过（`isAlive`）——护士不拉尸体，与全仓口径一致。
+ * 每路恢复量 = 施放者满盾 × 本路比例（2026-09-25 船长确认），受益舰各自封顶。
+ * 2026-10-07 改判：排除自身；有缺盾存活队友且足够支付时，直接扣一次满盾代价再恢复。
+ * 不足或无目标不发动，原周期排程仍由调用方推进；费用不按目标数或叠加权重放大。
  */
 export function pulseShieldFieldFor(
   b: import('./state').BattleState,
@@ -514,18 +496,25 @@ export function pulseShieldFieldFor(
   caster: UnitSpec,
 ): void {
   const gain = Math.max(0, stream.pct)
-  if (gain <= 0) return
+  if (!Number.isFinite(gain) || gain <= 0 || b.ended !== null || !isAlive(b, caster.tag)) return
   // 施放者满盾：容量优先、缺 `hpMax` 才回落规格（与全仓「满血/上限」读法同一把尺）
   const casterRt = b.units[caster.tag]
   const casterCapS = Math.max(0, casterRt?.hpMax?.s ?? caster.hp.s)
   const amount = casterCapS * gain
-  if (amount <= 0) return
+  const cost = casterCapS * SHIELD_FIELD_COST_PCT
+  if (!casterRt || !Number.isFinite(amount) || amount <= 0 || casterRt.hp.s < cost) return
+  const targets: Array<{ rt: (typeof b.units)[string]; capS: number }> = []
   for (const u of myUnits) {
+    if (u.tag === caster.tag) continue
     const rt = b.units[u.tag]
     if (!rt || !isAlive(b, u.tag)) continue
-    // 各人仍夹在**自己**的满盾内（超出部分丢弃）
     const capS = Math.max(0, rt.hpMax?.s ?? u.hp.s)
-    if (capS <= 0) continue
+    if (capS <= 0 || rt.hp.s >= capS) continue
+    targets.push({ rt, capS })
+  }
+  if (targets.length === 0) return
+  casterRt.hp.s = Math.max(0, casterRt.hp.s - cost)
+  for (const { rt, capS } of targets) {
     rt.hp.s = Math.min(capS, rt.hp.s + amount)
   }
 }

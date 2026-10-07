@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
-import { ITEMS, MODULES, L10N, EN_ITEMS_ALL, EN_MODULES, buildSimContext } from '@whale/data'
+import { ITEMS, MODULES, L10N, EN_ITEMS_ALL, EN_MODULES, EN_BLUEPRINTS, buildSimContext } from '@whale/data'
 import * as core from '../src/index'
 import { idLiteralsIn, stripComments } from '../../../tools/text-scan'
 
@@ -98,6 +98,21 @@ function textOf(value: unknown): string {
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 }
 describe('真实参数行承接说明数字', () => {
+  it('护盾力场费用与结算常量同源，装备/图纸中英都排除自身', () => {
+    for (const locale of ['zh', 'en'] as const) {
+      language.value = locale
+      for (const tier of [2, 3]) {
+        const id = `mod-shieldfield-${tier}`
+        const rows = display.moduleInfoLines(MODULES.find(module => module.id === id)!).map(row => textOf(row.v)).join('|')
+        expect(rows).toContain(`${Math.round(core.SHIELD_FIELD_COST_PCT * 100)}%`)
+        expect(rows).toContain(locale === 'zh' ? '其他存活舰船' : 'other surviving fleet ship')
+        expect(rows).not.toMatch(/\{p\d\}/)
+        const bp = `bp-shieldfield-${tier}`
+        expect(buildSimContext(locale).blueprints.get(bp)!.description).toBe(L10N['mod.copy.027']![locale])
+        expect(EN_BLUEPRINTS[bp]!.description).toBe(L10N['mod.copy.027']!.en)
+      }
+    }
+  })
   it('加速剂/燃料/发射器和货柜的中英行从实际单点取值', () => {
     for (const locale of ['zh', 'en'] as const) {
       language.value = locale

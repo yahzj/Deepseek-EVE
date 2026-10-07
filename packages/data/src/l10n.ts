@@ -318,7 +318,7 @@ export const EN_MODULES: EnTable = {
   'mod-shieldchg-2': { name: 'Shield Recharger MK2', description: L10N['mod.copy.026']!.en },
   'mod-shieldchg-3': { name: 'Shield Recharger MK3', description: L10N['mod.copy.026']!.en },
   /* 护盾充能力场装置（2026-09-20 船长）：高槽 · 护盾族 —— 与上一条中槽「Shield Recharger」区分开：
-     本件治**全队**（"Field"），冷却按件自带（10 s / 8 s）。
+     2026-10-07：本件只治其他舰船、按需消耗自身护盾，冷却按件自带。
      ⟪2026-09-25 船长令⟫ 恢复量改按**本舰（装件舰）的护盾量**算（旧 "each ship's max shield" 作废）。 */
   'mod-shieldfield-2': { name: 'Shield Charge Field MK2', description: L10N['mod.copy.027']!.en },
   'mod-shieldfield-3': { name: 'Shield Charge Field MK3', description: L10N['mod.copy.027']!.en },
@@ -1267,8 +1267,9 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-shieldchg-1': 'Shield recharge circuit plans: rebuild the generator bank into a time-shared bus that can force a recharge cycle.',
   'bp-shieldchg-2': 'High-power shield recharge circuit plans: a dedicated recharge bus that doubles the shield restored per tick.',
   'bp-shieldchg-3': 'Capital-grade shield recharge circuit plans: one tick brings an empty shield back to fighting strength.',
-  'bp-shieldfield-2': 'Shield charge field emitter plans: a wide-area emitter that restores shield to the whole fleet every 10 s, 10% of this ship’s shield capacity each time.',
-  'bp-shieldfield-3': 'High-power shield charge field plans: a faster cycle — the whole fleet regains 10% of this ship’s shield capacity every 8 s.',
+  // ⟪文案调整 2026-10-07⟫ 图纸英文与产物机制说明共用唯一表。
+  'bp-shieldfield-2': L10N['mod.copy.027']!.en,
+  'bp-shieldfield-3': L10N['mod.copy.027']!.en,
   'bp-armor-kin-1': 'Kinetic-resistant armor plating: layered ceramic sandwiches break up armor-piercing warheads.',
   'bp-armor-exp-1': 'Explosive-resistant armor plating: a honeycomb backing plate vents blast pressure outboard.',
   'bp-armor-pla-1': 'Energy-resistant armor plating: an ablative coating carries beam heat away by vaporizing itself.',

@@ -15,7 +15,7 @@
  *
  * 本文件钉七件事：
  * (a) **冷却按件自带**（MK2 = 10 秒 / MK3 = 8 秒）——与中槽「护盾充能装置」的固定 15 秒是两套；
- * (b) **受益方是全队**（不是只本舰）——与 `pulseShieldChargeFor` 的关键区别；
+ * (b) **受益方是其他存活队友**，排除自身（2026-10-07船长改判）；
  * (c) **同舰多件按 EVE 曲线收敛**（"有叠加惩罚"）；
  * (d) **多艘船各带一件 ⇒ 各自独立、可叠加**（两条账本各跳各的）；
  * (e) **能从 0 盾把盾点起来**（与护盾充能装置同款：被动回充对 0 盾无效）；
@@ -27,6 +27,7 @@ import { createInitialState } from '../src/state'
 import type { BattleState, GameState } from '../src/state'
 import { addShipToFleet } from '../src/shipyard'
 import { stackWeight } from '../src/equipment'
+import { DEFAULT_BALANCE } from '../src/balance'
 import { advanceBattleFor, createPlayerSpec, preloadShieldFieldFor, pulseShieldFieldFor, shieldFieldOf, shieldFieldStreamsOf, startFleetBattleFor } from '../src/combat'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { anomaly, makeTestCtx, moduleDef } from './helpers'
@@ -72,6 +73,7 @@ function world(opts: { mods: Array<{ id: string; sec: number }>; main: string[];
   const ids = new Set([...opts.main, ...(opts.ally ?? [])])
   const mods = opts.mods.filter((m) => ids.has(m.id)).map((m) => field(m.id, m.sec))
   const ctx = makeTestCtx({
+    balance: { ...DEFAULT_BALANCE, battle: { ...DEFAULT_BALANCE.battle, shieldRegenPerSec: 0 } },
     modules: mods,
     ships: [BARGE as never],
     anomalies: [
@@ -227,15 +229,20 @@ describe('护盾充能力场装置：口径（装配快照）', () => {
 })
 
 describe('护盾充能力场装置：战斗行为', () => {
-  it('**受益方是全队**：装上它的船一跳，两艘船都回盾（不只是本舰）', () => {
+  it('力场恢复其他队友，自身只支付代价，不再自回盾', () => {
     const { state, ctx, main, ally } = world({ mods: [{ id: 'f2', sec: 10 }], main: ['f2'] })
-    const b = run(state, ctx, [main, ally], 20_000) // 足够走完两跳（10 秒 / 20 秒）
+    const b = startFleetBattleFor(state, ctx, [main, ally], 'ano-field', 0)!
     const tm = tagOf(b, main)
     const ta = tagOf(b, ally)
+    b.units[tm]!.hp.s = 600
+    b.units[ta]!.hp.s = 0
+    for (let i = 0; i < 200 && !b.ended; i++) {
+      state.gameMs += 100
+      advanceBattleFor(state, ctx, b, main, 'ano-field')
+    }
     expect(b.shieldFieldBy?.[tm]?.pulses ?? 0).toBeGreaterThanOrEqual(1)
-    // 僚舰**没装**该件，却也回了盾 ⇒ 全队受益（这是与中槽「护盾充能装置」的关键区别）
-    expect(b.units[tm]!.hp.s).toBeGreaterThan(900)
-    expect(b.units[ta]!.hp.s).toBeGreaterThan(900)
+    expect(b.units[tm]!.hp.s).toBeLessThan(600)
+    expect(b.units[ta]!.hp.s).toBeGreaterThan(0)
   })
 
   it('**回盾量按施放者（装件舰）的满盾算** ⇒ 全队拿同一个绝对量（2026-09-25 船长改判）', () => {
@@ -246,10 +253,10 @@ describe('护盾充能力场装置：战斗行为', () => {
      * ③ 施放者盾**远大于**僚舰满盾（1000 vs 80）⇒ 僚舰被一跳顶满（80），超出部分丢弃。
      * ⚠ 旧口径（每艘按自身满盾）在 ① 得 40、在 ② 得 100 ⇒ 三个方向都能分辨。
      */
-    const cases: Array<{ main: number; ally: number; want: number; casterGain: number }> = [
-      { main: 1_000, ally: 400, want: 100, casterGain: 100 },
-      { main: 100, ally: 1_000, want: 10, casterGain: 10 },
-      { main: 1_000, ally: 80, want: 80, casterGain: 100 },
+    const cases: Array<{ main: number; ally: number; want: number }> = [
+      { main: 1_000, ally: 400, want: 100 },
+      { main: 100, ally: 1_000, want: 10 },
+      { main: 1_000, ally: 80, want: 80 },
     ]
     for (const c of cases) {
       const { state, ctx, main, ally } = worldMixed(c.main, c.ally)
@@ -261,30 +268,28 @@ describe('护盾充能力场装置：战斗行为', () => {
         s.tag = tagOf(b, id)
         return s
       })
-      for (const s of specs) b.units[s.tag]!.hp.s = 0
+      b.units[tm]!.hp.s = c.main
+      b.units[ta]!.hp.s = 0
       pulseShieldFieldFor(b, specs, { pct: 0.1 }, specs[0]!)
       const why = `（施放者满盾 ${c.main} · 僚舰满盾 ${c.ally}）`
       expect(b.units[ta]!.hp.s, `僚舰${why}`).toBeCloseTo(c.want, 6)
-      expect(b.units[tm]!.hp.s, `施放者${why}`).toBeCloseTo(c.casterGain, 6)
-      // 两舰拿的是**同一个绝对量**（除非被自己满盾夹住）—— 这条就是"同一个数"的直接判据
-      if (c.want === c.casterGain) expect(b.units[ta]!.hp.s).toBeCloseTo(b.units[tm]!.hp.s, 6)
+      expect(b.units[tm]!.hp.s, `施放者支付${why}`).toBeCloseTo(c.main * .9, 6)
     }
   })
 
-  it('**能从 0 盾点起来**（被动回充对 0 盾恒为 0，只有脉冲件能救）', () => {
+  it('有足够护盾的施放者能够把其他队友从0盾点起来', () => {
     const { state, ctx, main, ally } = world({ mods: [{ id: 'f3', sec: 8 }], main: ['f3'] })
     const b = startFleetBattleFor(state, ctx, [main, ally], 'ano-field', 0)!
     const tm = tagOf(b, main)
     const ta = tagOf(b, ally)
-    b.units[tm]!.hp.s = 0
+    b.units[tm]!.hp.s = 500
     b.units[ta]!.hp.s = 0
     for (let i = 0; i < 100; i++) {
       state.gameMs += 100
       advanceBattleFor(state, ctx, b, tm, 'ano-field')
       if (b.ended) break
     }
-    // 8 秒后首跳：两艘都从 0 被点起来
-    expect(b.units[tm]!.hp.s).toBeGreaterThan(0)
+    expect(b.units[tm]!.hp.s).toBeLessThan(500)
     expect(b.units[ta]!.hp.s).toBeGreaterThan(0)
   })
 
@@ -301,8 +306,8 @@ describe('护盾充能力场装置：战斗行为', () => {
     const tm = tagOf(b, main)
     const ta = tagOf(b, ally)
     // ⚠ 先把两舰的盾**打到很低**再看恢复：满盾时补盾会被 `Math.min(满盾, …)` 夹住 ⇒ 看不出"可叠加"
-    b.units[tm]!.hp.s = 100
-    b.units[ta]!.hp.s = 100
+    b.units[tm]!.hp.s = 500
+    b.units[ta]!.hp.s = 500
     for (let i = 0; i < 120; i++) {
       state.gameMs += 100
       advanceBattleFor(state, ctx, b, tm, 'ano-field')
@@ -314,12 +319,11 @@ describe('护盾充能力场装置：战斗行为', () => {
     // 僚舰那条 8 秒一跳 ⇒ 12 秒内至少 1 跳；主控 10 秒一跳 ⇒ 也至少 1 跳
     expect(b.shieldFieldBy![ta]!.pulses).toBeGreaterThanOrEqual(1)
     expect(b.shieldFieldBy![tm]!.pulses).toBeGreaterThanOrEqual(1)
-    /**
-     * ⚠ **单舰装一件**时 12 秒内只跳 1 次（主控 10 秒那条；僚舰 8 秒那条对它也有效）
-     * ⇒ 两艘船都拿到**两份**来源的补盾（各 10%）⇒ 从 100 起步至少被抬过 20%。
-     * 这条就是"多舰独立可叠加"的判据（而不是"超过满盾"——盾永远被夹在满盾）。
-     */
-    expect(b.units[tm]!.hp.s).toBeGreaterThan(100 + 1_000 * 0.2 - 1)
+    // 两舰互补，各自支付一次，不再从自身力场获得免费增长。
+    expect(b.units[tm]!.hp.s).toBeGreaterThan(400)
+    expect(b.units[tm]!.hp.s).toBeLessThanOrEqual(500)
+    expect(b.units[ta]!.hp.s).toBeGreaterThan(400)
+    expect(b.units[ta]!.hp.s).toBeLessThanOrEqual(500)
   })
 
   it('**施放者阵亡 ⇒ 该力场停跳**（人没了装置就停，与另两套同款）', () => {

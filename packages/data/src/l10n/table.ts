@@ -618,7 +618,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "mod.copy.024": { zh: "提高护盾对能量伤害的抗性，不增加护盾容量。", en: "Increases shield resistance to energy damage, not shield capacity." },
   "mod.copy.025": { zh: "增加护盾容量，不改变护盾抗性或充能周期。", en: "Increases shield capacity, not shield resistance or recharge cycles." },
   "mod.copy.026": { zh: "按周期恢复本舰护盾，回复量按护盾上限计算。", en: "Periodically restores this ship's shield, with restoration based on shield capacity." },
-  "mod.copy.027": { zh: "按周期为编队舰船恢复护盾，回复量以装置所在舰船的护盾量为基准。", en: "Periodically restores squad shields, using the carrying ship's shield capacity as the restoration basis." },
+  // ⟪文案调整 2026-10-07⟫ 船长确认：排除自身、按最大护盾支付，数值由详细参数行展示。
+  "mod.copy.027": { zh: "周期性消耗本舰护盾，为队内其他舰船恢复护盾；恢复量按本舰最大护盾计算。自身护盾不足时不发动。", en: "Periodically consumes this ship's shield to restore shields on other fleet ships, using this ship's maximum shield capacity as the restoration basis. Does not activate if this ship lacks sufficient shield." },
   "mod.copy.028": { zh: "提高装甲对动能伤害的抗性，不增加装甲容量。", en: "Increases armor resistance to kinetic damage, not armor capacity." },
   "mod.copy.029": { zh: "提高装甲对爆炸伤害的抗性，不增加装甲容量。", en: "Increases armor resistance to explosive damage, not armor capacity." },
   "mod.copy.030": { zh: "提高装甲对能量伤害的抗性，不增加装甲容量。", en: "Increases armor resistance to energy damage, not armor capacity." },
@@ -6070,9 +6071,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.178": { zh: "单件基础回复 {p1} HP（结构/装甲各按层容量增幅，层越厚回得越多）", en: "Base repair {p1} HP per kit (structure and armor each scale with that layer's capacity, so thicker layers restore more)" },
   "ui.shipInfo.179": { zh: " · 多装递减", en: " · stacks with diminishing returns" },
   "ui.shipInfo.180": { zh: "能打敌方机群", en: "Can engage enemy drone swarms" },
-  /** 护盾充能力场装置（2026-09-20 船长）的装配页短行：**全队**受益 + 冷却按件自带；
-   *  ⟪2026-09-25 船长令⟫ 恢复量改按**本舰（装件舰）的护盾量**算（旧「按各舰满盾」作废） */
-  "ui.shipInfo.181": { zh: "每 {p1} 秒为队内所有舰船恢复护盾，恢复量为本舰护盾量的 {p2}", en: "Every {p1} s, restores shield to every ship in the fleet — the amount is {p2} of this ship's shield capacity" },
+  // ⟪文案调整 2026-10-07⟫ 每路按需支付且排除自身；费用参数读取结算常量。
+  "ui.shipInfo.181": { zh: "每 {p1} 秒消耗本舰最大护盾的 {p3}，为队内其他存活舰船各恢复本舰最大护盾的 {p2}；自身护盾不足或队友均无需恢复时不发动", en: "Every {p1} s, consumes {p3} of this ship's maximum shield to restore {p2} of that capacity to each other surviving fleet ship. Does not activate if this ship lacks sufficient shield or no ally needs restoration." },
   "ui.ShipPage.001": { zh: "我的舰队", en: "My Fleet" },
   "ui.ShipPage.002": { zh: "搜索舰船…", en: "Search ships…" },
   "ui.ShipPage.003": { zh: "状态：", en: "Status:" },

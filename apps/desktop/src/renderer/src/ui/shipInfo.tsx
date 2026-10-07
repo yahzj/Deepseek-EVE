@@ -16,7 +16,7 @@
 import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
 import { DEFAULT_BALANCE, DC_LOCK_MS, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, beamPowerFactor, thrusterCycleNote, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules, fittedEffectParamsOf, WEB_BREAK_DIST_M } from '@whale/core'
-import { HIGH_SEC_PENALTY, JUMP_FUEL_SPEED_MUL, SYNAPTIC_ACCELERANT_MS, SYNAPTIC_ACCELERANT_MUL, wormholeIsShapedItem, wormholeShapeOf } from '@whale/core'
+import { HIGH_SEC_PENALTY, JUMP_FUEL_SPEED_MUL, SHIELD_FIELD_COST_PCT, SYNAPTIC_ACCELERANT_MS, SYNAPTIC_ACCELERANT_MUL, wormholeIsShapedItem, wormholeShapeOf } from '@whale/core'
 /** 引擎类型（"装上船之后的实修值"那一行要现算 —— 2026-09-29 船长令） */
 import type { GameEngine } from '../game/engine'
 import { hoverTipProps } from './Tooltip'
@@ -513,12 +513,13 @@ export function moduleShortEffect(mod: ModuleDef): string {
       /**
        * 护盾充能力场装置（2026-09-20 船长）：**高槽 · 护盾族**。
        * 短行必须自己一支 —— 与中槽 `shield` 那条（「每 N 秒回盾 x（按满盾）」）不同：
-       * 本件**全队受益**、且**冷却按件自带**（`mod.shieldFieldMs`，不写死 30 秒）。
+       * 本件排除自身、按需扣盾，冷却按件自带（`mod.shieldFieldMs`）。
        */
       const parts: string[] = []
       const ms = mod.shieldFieldMs ?? 0
       if ((mod.shieldFieldPct ?? 0) > 0 && ms > 0) {
-        parts.push(tr("ui.shipInfo.181", { p1: Math.round(ms / 1000), p2: pct(mod.shieldFieldPct ?? 0) }))
+        // ⟪文案调整 2026-10-07⟫ 力场扣盾代价与结算同源。
+        parts.push(tr("ui.shipInfo.181", { p1: Math.round(ms / 1000), p2: pct(mod.shieldFieldPct ?? 0), p3: pct(SHIELD_FIELD_COST_PCT) }))
       }
       body = parts.join(' · ')
       break
@@ -1456,7 +1457,8 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
     lines.push({ k: tr('ui.moduleSpecs.002'), v: tr('ui.shipInfo.103', { p1: SHIELD_PULSE_MS / 1000, p2: pct(mod.shieldPulsePct ?? 0) }) })
   }
   if ((mod.shieldFieldPct ?? 0) > 0 && (mod.shieldFieldMs ?? 0) > 0) {
-    lines.push({ k: tr('ui.moduleSpecs.003'), v: tr('ui.shipInfo.181', { p1: (mod.shieldFieldMs ?? 0) / 1000, p2: pct(mod.shieldFieldPct ?? 0) }) })
+    // ⟪文案调整 2026-10-07⟫ 详情与装配短行共用同一机制模板及代价常量。
+    lines.push({ k: tr('ui.moduleSpecs.003'), v: tr('ui.shipInfo.181', { p1: (mod.shieldFieldMs ?? 0) / 1000, p2: pct(mod.shieldFieldPct ?? 0), p3: pct(SHIELD_FIELD_COST_PCT) }) })
   }
   if (mod.overlayDrive) {
     lines.push({ k: tr('ui.moduleSpecs.004'), v: tr('ui.shipInfo.246', { p1: ((mod.reloadMs ?? 0) / 1000).toFixed(1), p2: (mod.overlayDrive.stepMs / 1000).toFixed(1), p3: (mod.overlayDrive.floorMs / 1000).toFixed(1) }) })
