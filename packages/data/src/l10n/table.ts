@@ -74,8 +74,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ano.alien.003': { zh: '背巢虫群', en: 'Hiveback Swarm' },
   'ano.alien.004': { zh: '巢母卫群', en: 'Broodmother Guard' },
   'ano.alien.005': { zh: '异形虫群正在向占领区集结。', en: 'Alien swarms are gathering in the occupied systems.' },
-  // ⟪文案调整 2026-10-06⟫ 按已确认一次性动能爆发与全队腐蚀规则展示基础值。
-  'ui.alien.001': { zh: '在{p1}米内攻击并自毁，在{p2}米内被击杀也会爆发；对一艘舰船造成基础{p4}点动能伤害，基础命中{p5}%。本场所有参战舰船装甲和结构全抗性降低{p3}个百分点，不叠加；未命中仍施加腐蚀。', en: 'Attacks and self-destructs within {p1} m; also bursts when killed within {p2} m. Deals {p4} base kinetic damage to one ship at {p5}% base accuracy. All participating ships lose {p3} percentage points of armor and hull resistance for this battle. Corrosion does not stack and applies even on a miss.' },
+  // ⟪文案调整 2026-10-07⟫ 船长确认腐蚀逐次叠加、允许负抗性；保留爆发基础值。
+  'ui.alien.001': { zh: '在{p1}米内攻击并自毁，在{p2}米内被击杀也会爆发；对一艘舰船造成基础{p4}点动能伤害，基础命中{p5}%。每次爆发使玩家全队装甲和结构全抗性降低{p3}个百分点，可叠加，抗性可降至负数；未命中仍施加腐蚀。', en: 'Attacks and self-destructs within {p1} m; also bursts when killed within {p2} m. Deals {p4} base kinetic damage to one ship at {p5}% base accuracy. Each burst reduces all player ships\' armor and hull resistances by {p3} percentage points for this battle. Corrosion stacks, can make resistances negative and applies even on a miss.' },
   'ui.alien.002': { zh: '本舰炮台伤害×{p1}，无人机伤害增加{p2}%，射程增加{p3}%。', en: 'This carrier has ×{p1} gun damage, +{p2}% drone damage and +{p3}% drone range.' },
   // ⟪文案调整 2026-10-06⟫ 群体补损仍逐架消耗有限储备。
   'ui.alien.003': { zh: '无人机战损后，等待{p1}秒满血补回本波存活舰船损失的机位；本场储备{p2}架，用完或载体被击毁后停止。', en: 'After drone losses, waits {p1} seconds before restoring lost slots of surviving ships in this wave at full health. Has {p2} reserve drones for this battle; stops when reserves run out or the carrier is destroyed.' },

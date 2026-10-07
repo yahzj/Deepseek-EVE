@@ -5053,12 +5053,13 @@ function stepBattle(
     if (!acid || !event || event.resolved) continue
     event.resolved = true
     const target = pickMyUnitTarget(state, b, myUnits, foeTargeting, foeTargetingChance)
+    let hit = false
+    let dealt = 0
     if (target) {
       const rt = b.units[target.tag]!
       const chance = hitChance({ hitRate: acid.hitRate ?? .95, minRangeM: 1, maxRangeM: acid.deathRangeM, falloff: 1 }, f, target, b.distanceM, bal, 1)
-      const hit = nextRandom(state.rng) < (favor ? clamp(0, .97, chance * favor.foeMul) : chance)
+      hit = nextRandom(state.rng) < (favor ? clamp(0, .97, chance * favor.foeMul) : chance)
       b.stats.foeShots += 1
-      let dealt = 0
       if (hit) {
         b.stats.foeHits += 1
         const raw = applyDcGuard(state, b, target.tag, target, rt.hp, cappedFoeDamage(b, target.tag, target, acid.damage ?? 0), 'kinetic')
@@ -5066,9 +5067,11 @@ function stepBattle(
         rt.hp = result.hp
         dealt = result.dealt
       }
-      pushBattleFx(b, { atMs: event.atMs, side: 'foe', tag: f.tag, to: target.tag, type: 'kinetic', hit, ...(dealt > 0 ? { dmg: dealt } : {}) })
     }
-    b.alienCorrosion = Math.max(b.alienCorrosion ?? 0, acid.corrosionPct)
+    pushBattleFx(b, { atMs: event.atMs, side: 'foe', tag: f.tag, ...(target ? { to: target.tag } : {}),
+      type: 'kinetic', acidBurst: true, hit, ...(dealt > 0 ? { dmg: dealt } : {}) })
+    // 2026-10-07 船长确认：逐只追加腐蚀，仍先伤害后施加自身减抗。
+    b.alienCorrosion = (b.alienCorrosion ?? 0) + acid.corrosionPct
     for (const u of myUnits) applyAlienCorrosion(u, b.alienCorrosion)
   }
   for (const u of myUnits) applyAlienCorrosion(u, b.alienCorrosion ?? 0)
