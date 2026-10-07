@@ -1,6 +1,6 @@
 # 入侵稀有残骸清空后普通残骸不减量排查
 
-> **状态：已修复，自测通过，待船长验收**（三号 · verify · 2026-10-07）
+> **状态：已修复并本地合入，自测通过，待船长验收**（三号 · verify · 2026-10-07）
 > 船长原话：「玩家反应bug，入侵残骸捞完稀有残骸后，普通残骸继续捞数量并不会减少」
 > 范围：星图打捞的选池、出量、扣账及对应读数；不读取个人存档，不调整打捞经济或稀有轮规则。
 > 待裁决点：暂无；本批修复已有自动入侵优先规则的执行缺陷。
@@ -33,11 +33,12 @@
 - 四包 `typecheck`、`content:check`、`arch:guard`（F1–F9）通过；内容检查保留既有警告。
 - `save:roundtrip-audit`：105 份成功，第二轮丢键及类型变化均为 0；1 份 v17 旧测试档低于 v24 支持下限，不支持迁移，工具返回 0。
 - 桌面 `npm run build`、网页 `npm --prefix web run build` 通过；既有包体积及构建警告未扩范围处理。
-- `git diff --check` 通过。正常提交继续执行 `typecheck`、`content:check`、`l10n:check`、`ui:rot-check` 四项钩子检查。
+- `git diff --check` 通过；正常提交的 `typecheck`、`content:check`、`l10n:check`、`ui:rot-check` 四项钩子检查通过，范围读数为单一功能域。
 
 ## 交付
 
 - 修改 `packages/core/src/salvaging.ts` 与 `packages/core/tests/salvage-target-20260926.test.ts`；新增 `packages/core/tests/invasion-wreck-ordinary-decrement-20261007.test.ts` 与本工作文档。
 - 功能域为采矿与打捞，参照现有自动选池、旧筛选自愈及入侵台账专项，无跨域实现。
-- 合入方式：verify 本地提交后同步 main，再由主树快进合入并更新本地桌面与网页产物；本轮不推送。
+- 实现提交 `603820d4` 已无冲突快进合入 main，verify 追平 main；主树桌面与网页构建通过，本地产物已更新，本轮未推送。
+- 四个改动文件严格 UTF-8 解码通过，两树归一行尾后逐字一致。
 - 保留他人未跟踪文件，无个人真档读写；待船长验收后归档。
