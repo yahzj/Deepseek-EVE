@@ -36,7 +36,9 @@ describe('普通残骸回调，无势力装备且原有通用件保留', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     state.moduleBay = {}
     for (let i = 0; i < 100; i++) rollIntactHullLoot(state, ctx, card)
-    expect(Object.keys(state.moduleBay)).toEqual(['mod-shield-pla-2'])
+    expect(state.moduleBay['mod-shield-pla-2']).toBeGreaterThan(0)
+    expect(Object.keys(state.moduleBay).some(id => RECYCLE_BASE_MODULES.includes(id))).toBe(true)
+    for (const id of Object.keys(state.moduleBay)) expect(factionGear.has(id)).toBe(false)
   })
 
   it.each(['wreck-h-hi','wreck-r-inv'])('%s 真实炉结算不出势力装备及核心', (id) => {

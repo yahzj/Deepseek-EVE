@@ -1080,7 +1080,11 @@ export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleP
     ...(isRareWreck(wreckItemId)
       ? (() => {
           const gear = FOE_LAIR_GEAR[group.family] ?? []
-          return gear.length > 0 ? { rare: true as const, lairGear: gear } : { rare: true as const }
+          return {
+            rare: true as const,
+            ...(gear.length > 0 ? { lairGear: gear } : {}),
+            ...(group.rareTheme !== undefined ? { rareTheme: group.rareTheme } : {}),
+          }
         })()
       : {}),
   }
@@ -1088,9 +1092,7 @@ export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleP
 
 /* ═══════════ 高级箱（稀有残骸额外掉落，2026-09-10 船长定） ═══════════ */
 
-/** 专属装备命中率（按回收档位；2026-09-10 船长定：**5% / 8% / 10%**，原 25/40/55 太容易——
- *  专属装备一周就全齐；降下来后集齐一族约 3~6 天。未命中必给该敌群主题件，
- *  且命中给的是**不可出售**的专属件、未命中给的是**可出售**的主题件，所以"非命中"收益不受影响） */
+/** 专属装备命中率，沿用2026-09-10船长裁定；未命中走该组主题池或地区回落池。 */
 export const RARE_BOX_GEAR_CHANCE: Record<RecycleTier, number> = { common: 0.05, risky: 0.08, dire: 0.1 }
 
 /**
@@ -1103,8 +1105,7 @@ export const RARE_BOX_DRONE_UNITS = 10
 export const RARE_BOX_MINERAL_UNITS: Record<RecycleTier, number> = { common: 300, risky: 120, dire: 40 }
 
 /**
- * **高级箱第②支「主题件」的池（单点）**：组表 `theme`（`mk2` + `modules`）优先，
- * 空则用调用方给的**回落池**。
+ * 高级箱主题件单点：专用rareTheme优先，未设置时沿用组theme；空池让位地区回落。
  *
  * ⚠ **为什么要有回落**（2026-09-16 玩家报障「稀有残骸拆解只拆除了 300 钛钢合金」）：
  * **洞内 15 张卡从没配过主题件**（2026-09-19 合并后 = 洞内 5 组的 `theme` 为空）
@@ -1117,7 +1118,9 @@ export function rareBoxThemePoolOf(
   profile: RecycleProfile,
   themeFallback: readonly string[] = [],
 ): string[] {
-  const own = [...(profile.theme?.mk2 ?? []), ...(profile.theme?.modules ?? [])]
+  const own = profile.rareTheme !== undefined
+    ? [...profile.rareTheme]
+    : [...(profile.theme?.mk2 ?? []), ...(profile.theme?.modules ?? [])]
   return own.length > 0 ? own : [...themeFallback]
 }
 
@@ -1168,9 +1171,14 @@ export function rollRareBoxExtra(
   //    **蓝图看蓝图书架存量**（2026-09-14：池里新增一次性图纸后补的这一支）——打光后重新进池）
   const gearAll = profile.lairGear ?? []
   const heldCount = (id: string): number => {
-    if (ctx.modules.has(id)) return ownedModuleCount(state, id)
-    if (ctx.items.has(id)) return ownedItemCount(state, id)
-    return state.blueprintStock[id] ?? 0
+    const kind = ctx.modules.has(id) ? 'module' : ctx.items.has(id) ? 'item' : 'blueprint'
+    let held = kind === 'module' ? ownedModuleCount(state, id)
+      : kind === 'item' ? ownedItemCount(state, id) : state.blueprintStock[id] ?? 0
+    // 待售货仍属于玩家；按商品引用匹配，兼容商品key与物品id不同的目录。
+    for (const good of ctx.marketGoods.values()) {
+      if (good.kind === kind && good.refId === id) held += Math.max(0, state.escrowItems[good.key] ?? 0)
+    }
+    return held
   }
   const gear = gearAll.filter((id) => heldCount(id) <= 0)
   const gearPool = gear.length > 0 ? gear : gearAll
@@ -1194,7 +1202,7 @@ export function rollRareBoxExtra(
     /**
      * ② 主题追加件（未出专属时保底一件主题件）。**取值优先级**（2026-09-30 修 · 船长报障「洞内稀有残骸
      * 回收疑似还是只有 MK3，没有 MK2 池」）：
-     *   ① **卡面 `theme`** —— 各族自己的主题件，洞外组走这里；
+     *   ① 组专用rareTheme或原theme，洞外组走这里；
      *   ② **带权重的洞内回落组** —— 2026-09-24 船长令：MK2 w=1 / MK3 w=0.25 ⇒ 出 MK3 实际 20%；
      *   ③ **扁平回落池** —— 2026-09-16 甲1案的洞内 MK3 池，只在 ①② 都空时兜底。
      *
@@ -1277,6 +1285,8 @@ export interface RecycleProfile {
   note?: string
   /** 组主题追加件并集（2026-09-08"追加"语义：默认池 + 该组主题件；缺省 = 无追加） */
   theme: { modules?: readonly string[]; mk2?: readonly string[] }
+  /** 稀有箱专用兜底；缺省沿用组主题及地区回落。 */
+  rareTheme?: readonly string[]
   /** 是否稀有残骸（2026-09-10：赏金任务窝点战利品）——开箱走"高级箱"：保底照常 + **必定**额外掉落 */
   rare?: boolean
   /** 该**族**的专属装备池（稀有残骸额外掉落优先在此掷；缺省 = 未配置） */
@@ -1595,7 +1605,7 @@ const INTACT_FRAG_T3_COUNT = 1
 /**
  * 完好舰体当场直发（主控/AI 打捞共用；在 pullOneWreck 命中完好舰体时调用一次）：
  * 不再折算体积（旧 ×2 移除），改为按该敌卡**所属组**的回收画像直发回收彩头：
- * ① 基础件**必中 1 件**（该组主题件优先，否则默认基础件池 8 件）；
+ * ① 基础件必中1件（默认基础件池与本组主题追加件混抽，2026-10-07船长确认）；
  * ② 低安组（地区 = 低安）另按 balance.intactMk2Chance 掷 MK2 档（默认 MK2 池 + 组主题件）；
  * ③ 碎片层：威胁 ≥17 按 INTACT_FRAG_T2_CHANCE 掷 MK2 碎片 ×3 片；≥41 追加掷 MK3 碎片 ×1 片。
  * 产物：装备 → 装备库、碎片 → 物品仓库（协会货运直送——打捞舰仍在野外，不占货仓、
@@ -1607,14 +1617,11 @@ export function rollIntactHullLoot(state: GameState, ctx: SimContext, anomalyId:
   const profile = recycleProfileOf(ctx, wreckItemIdOf(group.key))
   if (!profile) return null
   const gains: string[] = []
-  // ① 基础件必中（主题追加件优先；无主题或不在上下文 = 默认基础池）
+  // ① 默认池与主题等权混抽；低安MK2层及碎片仍各自独立。
   const defBase = RECYCLE_BASE_MODULES.filter((id) => ctx.modules.has(id))
   const appendBase = (profile.theme?.modules ?? []).filter((id) => ctx.modules.has(id) && !defBase.includes(id))
   if (defBase.length === 0 && appendBase.length === 0) return null
-  const basePick =
-    appendBase.length > 0
-      ? pickOne(state.rng, appendBase)!
-      : pickOne(state.rng, defBase)!
+  const basePick = pickOne(state.rng, [...defBase, ...appendBase])!
   addModule(state, basePick)
   gains.push(`「${ctx.modules.get(basePick)?.name ?? basePick}」`)
   // ② 低安 MK2 层

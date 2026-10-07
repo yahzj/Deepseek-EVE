@@ -79,6 +79,8 @@ export interface WreckGroupDef {
   threat: number
   /** 主题追加件并集（`modules` = 直出基础池追加；`mk2` = 低安门槛池追加；洞内 5 组为空） */
   theme: { modules?: readonly string[]; mk2?: readonly string[] }
+  /** 稀有箱未出专属时的独立兜底池；不扩张普通残骸主题池。 */
+  rareTheme?: readonly string[]
   /** 隶属该组的**全部卡 id**（含隐藏遭遇模板与洞内卡；存档迁移的映射依据） */
   members: readonly string[]
 }
@@ -93,7 +95,9 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     key: 'c-inv', family: 'C', region: 'inv', name: '异形生物残骸（入侵）', rareName: '异形生物稀有残骸（入侵）',
     tier: 'dire', pool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
     note: '异形生物残骸（入侵）：星髓晶与重钨合金为主，夹结构料', threat: 124,
-    theme: { modules: ['mod-armor-plate-2'] }, members: ['alien-vanguard', 'alien-escort', 'alien-main', 'alien-broodmother'],
+    theme: { modules: ['mod-armor-plate-2'] },
+    rareTheme: ['mod-armor-plate-2', 'mod-armor-exp-2', 'mod-drone-tac-2', 'mod-drone-rack-2'],
+    members: ['alien-vanguard', 'alien-escort', 'alien-main', 'alien-broodmother'],
   },
   {
     key: 'a-hi',
@@ -138,6 +142,7 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     threat: 46,
     theme: { modules: ['mod-shield-pla-2'] },
     members: ['ano-ghost-signal'],
+    rareTheme: ['mod-shield-pla-2', 'mod-shield-ext-2', 'mod-armor-plate-2', 'mod-rof-2'],
   },
   {
     key: 'a-lo',
@@ -352,6 +357,7 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     // ⟪2026-10-04 回调⟫ 普通残骸恢复通用主题件，势力装备只走稀有专属池。
     theme: { modules: ['mod-shield-pla-2'] },
     members: ['ink-harass', 'ink-raid', 'ink-main', 'ink-flagship'],
+    rareTheme: ['mod-shield-pla-2', 'mod-shield-ext-2', 'mod-track-2', 'mod-gyro-2'],
   },
   /* ── R 族（光环 · Corona Systems · 2026-10-01 船长令「是新势力：余晖」）：**第二个入侵族的独立残骸组** ──
    * 与 H 族组（`h-hi`）同构，一次到位（不像 H 那样经过 `h-wh → h-hi` 两轮迁移）：
@@ -378,6 +384,7 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     // ⟪2026-10-04 回调⟫ 普通残骸恢复通用主题件，势力装备只走稀有专属池。
     theme: { modules: ['mod-shield-pla-2'] },
     members: ['corona-drift', 'corona-split', 'corona-converge', 'corona-nexus'],
+    rareTheme: ['mod-shield-pla-2', 'mod-shield-ext-2', 'mod-shieldchg-2', 'mod-track-2'],
   },
 ]
 

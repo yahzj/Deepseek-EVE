@@ -8670,6 +8670,20 @@ checkPlugEffectWiring()
   check(drone.role === 'scout' && drone.hitRate === .89 && drone.damageType === 'kinetic', '颚钳契约：侦察/动能/89%基础命中')
 }
 
+// 2026-10-07船长批准：稀有专用池与普通主题分离，只登记本批四组通用MK2。
+{
+  const groups = new Set(['r-inv', 'h-hi', 'c-inv', 'd-hi'])
+  for (const group of WRECK_GROUPS) {
+    if (group.rareTheme === undefined) continue
+    check(groups.has(group.key), `稀有主题池未登记：${group.key}`)
+    check(group.rareTheme.length === 4 && new Set(group.rareTheme).size === 4, `稀有主题池须四件不重复：${group.key}`)
+    for (const id of group.rareTheme) {
+      check(MODULES.some(module => module.id === id) && id.endsWith('-2') && !id.includes('-wh-') && !id.startsWith('mod-lair-'), `稀有主题池只能登记通用MK2：${group.key}/${id}`)
+    }
+  }
+  for (const key of groups) check(WRECK_GROUPS.find(group => group.key === key)?.rareTheme !== undefined, `稀有主题池缺失：${key}`)
+}
+
 for (const [table, document] of Object.entries({ ships: staticShips, modules: staticModules, plugs: staticPlugs, items: staticItems, market: staticMarket })) {
   for (const issue of validateDocument(document, table as import('./data-editor-contract').DataTable)) check(false, `静态数据${table}/${issue.id ?? ''}/${issue.path ?? ''}：${issue.message}`)
 }

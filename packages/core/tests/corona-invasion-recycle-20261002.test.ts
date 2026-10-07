@@ -225,7 +225,7 @@ describe('⑥ 真回收炉：烧 R 族残骸出 AI 核心', () => {
     const mineralsOf = (): number => mineralIds.reduce((n, id) => n + countWare(s, id), 0)
     const st = () => ({
       gear: R_GEAR.reduce((n, id) => n + (s.moduleBay[id] ?? 0), 0),
-      theme: s.moduleBay['mod-shield-pla-2'] ?? 0,
+      theme: (prof.rareTheme ?? prof.theme.modules ?? []).reduce((n, id) => n + (s.moduleBay[id] ?? 0), 0),
       cores: coreCount(s),
       minerals: mineralsOf(),
     })

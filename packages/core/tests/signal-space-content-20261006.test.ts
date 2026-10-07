@@ -154,8 +154,8 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
   })
 
   it('五族残骸只改地区显示：组标识、枚举、成员、池、档位、威胁和数量乘数不变', () => {
-    expect(WRECK_GROUPS.filter(row => row.key !== 'c-inv').map((row) => without(row, ['name', 'rareName', 'note'])))
-      .toEqual(baseWrecks.map((row) => without(row, ['name', 'rareName', 'note'])))
+    expect(WRECK_GROUPS.filter(row => row.key !== 'c-inv').map((row) => without(row, ['name', 'rareName', 'note', 'rareTheme'])))
+      .toEqual(baseWrecks.map((row) => without(row, ['name', 'rareName', 'note', 'rareTheme'])))
     const baseWreckModule = baselineModule('packages/core/src/wreckGroups.ts')
     expect(WRECK_FAMILY_NAMES).toEqual(baseWreckModule.WRECK_FAMILY_NAMES)
     expect(WRECK_YIELD_TIER_MUL).toEqual(baseWreckModule.WRECK_YIELD_TIER_MUL)

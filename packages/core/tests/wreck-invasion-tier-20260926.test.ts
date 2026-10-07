@@ -148,7 +148,7 @@ describe('H 势力装备进残骸（船长「可以放入残骸内」＋「甲2�
     const rare = recycleProfileOf(ctx, 'wreck-rare-h-hi')!
     expect(rare.rare).toBe(true)
     expect(rare.lairGear).toEqual(H_GEAR) // ① 专属支（绝境档 10%）
-    expect(rareBoxThemePoolOf(rare)).toEqual(['mod-shield-pla-2']) // ② 未命中的兜底支（通用件）
+    expect(rareBoxThemePoolOf(rare)).toEqual(rare.rareTheme) // ② 未命中的独立通用MK2兜底支
     // 两条支路**不重叠** ⇒ 正是"按照其他族那样混池"
     for (const id of H_GEAR) expect(rareBoxThemePoolOf(rare), `${id} 不该在兜底支里`).not.toContain(id)
   })

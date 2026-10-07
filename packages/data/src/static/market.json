@@ -1836,7 +1836,7 @@
         "refId": "mod-dc-3",
         "rarity": "rare",
         "basePrice": 9500000,
-        "demandMultiplier": 0.65
+        "demandMultiplier": 0.21052631578947367
       },
       {
         "key": "mod-prop-3",
@@ -2092,7 +2092,7 @@
         "refId": "mod-warpcomp-3",
         "rarity": "rare",
         "basePrice": 9440000,
-        "demandMultiplier": 0.65
+        "demandMultiplier": 0.211864406779661
       },
       {
         "key": "mod-cpu-1",
@@ -2164,7 +2164,7 @@
         "refId": "mod-stealth-3",
         "rarity": "exotic",
         "basePrice": 10000000,
-        "demandMultiplier": 0.75
+        "demandMultiplier": 0.2
       },
       {
         "key": "mod-salvager-1",
@@ -4049,7 +4049,7 @@
         "refId": "mod-wh-a-frag",
         "rarity": "exotic",
         "basePrice": 5244500,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4058,7 +4058,7 @@
         "refId": "mod-wh-a-hangar",
         "rarity": "exotic",
         "basePrice": 3955500,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4067,7 +4067,7 @@
         "refId": "mod-wh-a-prop",
         "rarity": "exotic",
         "basePrice": 2995500,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4076,7 +4076,7 @@
         "refId": "mod-wh-a-coat",
         "rarity": "exotic",
         "basePrice": 2674000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4085,7 +4085,7 @@
         "refId": "mod-wh-a-scan",
         "rarity": "exotic",
         "basePrice": 2802000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4094,7 +4094,7 @@
         "refId": "mod-wh-a-shield",
         "rarity": "exotic",
         "basePrice": 4764500,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4103,7 +4103,7 @@
         "refId": "mod-wh-c-laser",
         "rarity": "exotic",
         "basePrice": 4995500,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4112,7 +4112,7 @@
         "refId": "mod-wh-c-prism",
         "rarity": "exotic",
         "basePrice": 4844500,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4121,7 +4121,7 @@
         "refId": "mod-wh-c-pulse",
         "rarity": "exotic",
         "basePrice": 2915500,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4130,7 +4130,7 @@
         "refId": "mod-wh-c-missile",
         "rarity": "exotic",
         "basePrice": 4653500,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4139,7 +4139,7 @@
         "refId": "mod-wh-c-frame",
         "rarity": "exotic",
         "basePrice": 4898000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4148,7 +4148,7 @@
         "refId": "mod-wh-d-turret",
         "rarity": "exotic",
         "basePrice": 8555500,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4157,7 +4157,7 @@
         "refId": "mod-wh-d-shield",
         "rarity": "exotic",
         "basePrice": 8087000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4166,7 +4166,7 @@
         "refId": "mod-wh-d-lock",
         "rarity": "exotic",
         "basePrice": 6454000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4175,7 +4175,7 @@
         "refId": "mod-wh-d-laser",
         "rarity": "exotic",
         "basePrice": 9312000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4184,7 +4184,7 @@
         "refId": "mod-wh-d-loader",
         "rarity": "exotic",
         "basePrice": 5506000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4193,7 +4193,7 @@
         "refId": "mod-wh-d-steady",
         "rarity": "exotic",
         "basePrice": 5141000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4202,7 +4202,7 @@
         "refId": "mod-wh-e-dc",
         "rarity": "exotic",
         "basePrice": 7442000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4211,7 +4211,7 @@
         "refId": "mod-wh-e-tac",
         "rarity": "exotic",
         "basePrice": 6009000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4220,7 +4220,7 @@
         "refId": "mod-wh-e-cpu",
         "rarity": "exotic",
         "basePrice": 6377000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4229,7 +4229,7 @@
         "refId": "mod-wh-e-pd",
         "rarity": "exotic",
         "basePrice": 6153000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4238,7 +4238,7 @@
         "refId": "mod-wh-e-shield",
         "rarity": "exotic",
         "basePrice": 7406000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4247,7 +4247,7 @@
         "refId": "mod-wh-g-hangar",
         "rarity": "exotic",
         "basePrice": 6360000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4256,7 +4256,7 @@
         "refId": "mod-wh-g-fcs",
         "rarity": "exotic",
         "basePrice": 4978000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4265,7 +4265,7 @@
         "refId": "mod-wh-g-ballistic",
         "rarity": "exotic",
         "basePrice": 4642000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4274,7 +4274,7 @@
         "refId": "mod-wh-g-hull",
         "rarity": "exotic",
         "basePrice": 6718000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4283,7 +4283,7 @@
         "refId": "mod-wh-g-turret",
         "rarity": "exotic",
         "basePrice": 6306500,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4292,7 +4292,7 @@
         "refId": "mod-wh-g-prop",
         "rarity": "exotic",
         "basePrice": 4709000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4301,7 +4301,7 @@
         "refId": "mod-shieldfield-2",
         "rarity": "exotic",
         "basePrice": 4000000,
-        "demandMultiplier": 0.75
+        "demandMultiplier": 0.5
       },
       {
         "key": "mod-shieldfield-3",
@@ -4309,7 +4309,7 @@
         "refId": "mod-shieldfield-3",
         "rarity": "exotic",
         "basePrice": 20000000,
-        "demandMultiplier": 0.75
+        "demandMultiplier": 0.1
       },
       {
         "key": "bp-shieldfield-2",
@@ -4468,7 +4468,7 @@
         "refId": "mod-lair-turret-a",
         "rarity": "exotic",
         "basePrice": 7664000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4477,7 +4477,7 @@
         "refId": "mod-lair-missile-a",
         "rarity": "exotic",
         "basePrice": 8968000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4486,7 +4486,7 @@
         "refId": "mod-lair-cargo-a",
         "rarity": "exotic",
         "basePrice": 9600000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4495,7 +4495,7 @@
         "refId": "mod-lair-armor-c",
         "rarity": "exotic",
         "basePrice": 7760000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4504,7 +4504,7 @@
         "refId": "mod-lair-dc-c",
         "rarity": "exotic",
         "basePrice": 9440000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4513,7 +4513,7 @@
         "refId": "mod-lair-laser-c",
         "rarity": "exotic",
         "basePrice": 12000000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4522,7 +4522,7 @@
         "refId": "mod-lair-shield-d",
         "rarity": "exotic",
         "basePrice": 9160000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4531,7 +4531,7 @@
         "refId": "mod-lair-turret-d",
         "rarity": "exotic",
         "basePrice": 7664000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4540,7 +4540,7 @@
         "refId": "mod-lair-armor-d",
         "rarity": "exotic",
         "basePrice": 7760000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4549,7 +4549,7 @@
         "refId": "mod-lair-turret-e",
         "rarity": "exotic",
         "basePrice": 7664000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4558,7 +4558,7 @@
         "refId": "mod-lair-hangar-e",
         "rarity": "exotic",
         "basePrice": 7840000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4567,7 +4567,7 @@
         "refId": "mod-lair-frame-e",
         "rarity": "exotic",
         "basePrice": 7760000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4576,7 +4576,7 @@
         "refId": "mod-lair-drone-tac-g",
         "rarity": "exotic",
         "basePrice": 8160000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4585,7 +4585,7 @@
         "refId": "mod-lair-drone-relay-g",
         "rarity": "exotic",
         "basePrice": 8120000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4594,7 +4594,7 @@
         "refId": "mod-lair-ecm-h",
         "rarity": "exotic",
         "basePrice": 12000000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4603,7 +4603,7 @@
         "refId": "mod-lair-web-h",
         "rarity": "exotic",
         "basePrice": 9600000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4612,7 +4612,7 @@
         "refId": "mod-lair-laser-r",
         "rarity": "exotic",
         "basePrice": 9580000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4621,7 +4621,7 @@
         "refId": "mod-lair-blink-r",
         "rarity": "exotic",
         "basePrice": 10400000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4630,7 +4630,7 @@
         "refId": "mod-lair-beam-r",
         "rarity": "exotic",
         "basePrice": 9580000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
@@ -4639,7 +4639,7 @@
         "refId": "mod-lair-pd-r",
         "rarity": "exotic",
         "basePrice": 9580000,
-        "demandMultiplier": 1,
+        "demandMultiplier": 0.25,
         "playerBuyable": false
       },
       {
