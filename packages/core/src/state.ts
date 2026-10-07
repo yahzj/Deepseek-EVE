@@ -13,6 +13,7 @@ import type { AiCoreType, CommsInstanceEntry, DamageResists, DamageType, FittedM
 import type { WeekendEventState, WeekendResultSnapshot } from './weekendEvent'
 import { emptyFitted } from './labels'
 import type { WormholeState } from './wormhole'
+import type { PlanetaryState } from './planetTypes'
 import { signalSpaceTextId } from './explorationText'
 /**
  * 🔴 **这里绝不能 import `mining` / `salvaging`**（**2026-10-02 实测踩到**）：
@@ -2994,6 +2995,8 @@ export interface BlackMarketState {
 }
 
 export type GameState = GameStateV31 & {
+  /** 星球规则原型，缺省不生成星球；首次显式发现才写入，老档零迁移。 */
+  planetary?: PlanetaryState
   /** 黑市货架，缺失的旧档在解锁后首次正常推进初始化。 */
   blackMarket?: BlackMarketState
   resupplyFromWarehouse?: boolean

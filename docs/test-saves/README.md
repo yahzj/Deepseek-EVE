@@ -34,6 +34,11 @@ case 名（即该档服务的唯一测试用途），格式固定为 `test-save-
 
 ## 档案清单
 
+### 星球规则原型（planetary）
+- 生成：`npx tsx tools/make-test-save.ts planetary`，全新合成档，不读取个人档。
+- 文件：`test-save-planetary-20261007.json`；只供核心和存档验证，没有玩家入口，不需要替换个人存档。
+- 核验：`npx tsx tools/planetary-prototype-check.ts --file docs/test-saves/test-save-planetary-20261007.json`；说明见`planetary-20261007.md`。
+
 ### 重复插件与沉船装配复用（wreck-fit）
 - 文件：`test-save-wreck-fit-20261007.json`；全新合成档，不读取或备份个人档。
 - 生成：`npx tsx tools/make-test-save.ts wreck-fit`。沉船记录有重复插件、普通装备及无人机；主控有同型插件备件，方案名Repeat用于覆盖确认。

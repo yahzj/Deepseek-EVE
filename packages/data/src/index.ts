@@ -19,6 +19,7 @@ export {
 } from './blueprints'
 export { SHIP_BLUEPRINTS, buildShipBlueprintCatalog } from './shipBlueprints'
 export { GALAXIES, GALAXY_EDGES, buildGalaxyCatalog } from './universe'
+export { PLANET_DEFS, PLANET_TRAITS, PLANET_BUILDINGS, buildPlanetCatalog } from './planets'
 export { ANOMALIES, ANOMALIES_FLAVORED, buildAnomalyCatalog } from './anomalies'
 // 2026-09-19 残骸合并：卡级特色池/主题件表退居**构建依据与体检输入**（运行时一律走 core 的 13 组表）
 export { RECYCLE_FLAVOR, RECYCLE_LOOT_PILOT } from './salvageFlavors'

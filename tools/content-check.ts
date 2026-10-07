@@ -17,6 +17,7 @@
  */
 
 import {
+  PLANET_DEFS, PLANET_TRAITS, PLANET_BUILDINGS, buildPlanetCatalog,
   BLUEPRINTS,
   BLUEPRINT_PRICE_STEP,
   BLUEPRINT_PRICE_OVERRIDES,
@@ -299,6 +300,7 @@ securityZoneOf,
 } from '@whale/core'
 // 2026-09-26：残骸来源地区联合类型（新增 `inv` 入侵类）——只作类型用，单独一行 type import
 import type { WreckRegion } from '@whale/core'
+import { planetCatalogIssues } from '@whale/core'
 
 const errors: string[] = []
 const warn: string[] = []
@@ -8689,6 +8691,14 @@ for (const [table, document] of Object.entries({ ships: staticShips, modules: st
 }
 
 /* ── 输出 ── */
+{
+  const catalog = buildPlanetCatalog()
+  check(catalog.planets.size === PLANET_DEFS.length && catalog.traits.size === PLANET_TRAITS.length
+    && catalog.buildings.size === PLANET_BUILDINGS.length, '星球原型目录存在重复编号')
+  for (const issue of planetCatalogIssues(catalog)) check(false, `星球原型目录：${issue}`)
+  const galaxies = new Set(GALAXIES.map(g => g.id))
+  for (const planet of PLANET_DEFS) check(galaxies.has(planet.galaxyId), `星球原型星系不存在：${planet.id}`)
+}
 console.log(`· 蓝图：装备 ${BLUEPRINTS.length} 张 + 舰船 ${SHIP_BLUEPRINTS.length} 张`)
 if (warn.length > 0) {
   console.log('· 警告：')

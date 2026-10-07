@@ -94,6 +94,7 @@ const ALLOW_TABLE_READERS: Record<string, string> = {
  * ⚠ 只收**游戏数据**；**标签/枚举/常量不算**（标签类由 `ui-subs-check` 的本地化直读契约管）。
  */
 const DATA_TABLES: readonly string[] = [
+  'PLANET_DEFS', 'PLANET_TRAITS', 'PLANET_BUILDINGS',
   // data 侧内容表
   'SHIPS', 'MODULES', 'ITEMS', 'BLUEPRINTS', 'SHIP_BLUEPRINTS', 'SKILLS', 'BELTS', 'GALAXIES',
   'GALAXY_EDGES', 'DIALOGUES', 'ANOMALIES_FLAVORED', 'SKILL_GROUPS', 'FOE_SHIPS',
@@ -109,6 +110,13 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '星球注入目录完整性校验', symbol: 'planetCatalogIssues', file: 'packages/core/src/planetCatalog.ts', exported: true },
+  { concept: '星球独立子流与地块生成', symbol: 'generatePlanet', file: 'packages/core/src/planetGeneration.ts', exported: true },
+  { concept: '星球环境与成本派生', symbol: 'planetEnvironmentOf', file: 'packages/core/src/planetRules.ts', exported: true },
+  { concept: '勘探视图未知信息隔离', symbol: 'planetSurveyView', file: 'packages/core/src/planetSurvey.ts', exported: true },
+  { concept: '星球四向相邻固定支援', symbol: 'planetAdjacencyOf', file: 'packages/core/src/planetGrid.ts', exported: true },
+  { concept: '星球建设只读校验', symbol: 'planetConstructionCheck', file: 'packages/core/src/planetGrid.ts', exported: true },
+  { concept: '星球可选状态清洗', symbol: 'cleanPlanetaryState', file: 'packages/core/src/planetSave.ts', exported: true },
   { concept: '整船回收与工程技能加算概率', symbol: 'hullRecoveryChanceOf', file: 'packages/core/src/shipWrecks.ts', exported: true },
   { concept: '整船装备保全技能概率', symbol: 'wreckEquipmentRecoveryChanceOf', file: 'packages/core/src/shipWrecks.ts', exported: true },
   { concept: '战损插件清洗与最终属性倍率', symbol: 'shipDamageEffects', file: 'packages/core/src/shipDamage.ts', exported: true },

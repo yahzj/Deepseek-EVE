@@ -46,6 +46,10 @@ type Domain = { name: string; globs: readonly string[] }
  */
 const DOMAINS: readonly Domain[] = [
   {
+    name: '星球勘探与家园建设',
+    globs: ['packages/core/src/planet*.ts', 'packages/data/src/planets.ts'],
+  },
+  {
     name: '星图与航行',
     globs: ['packages/core/src/explore.ts', 'packages/core/src/travel.ts', 'packages/core/src/events.ts', 'packages/core/src/jumpFuel.ts', 'packages/core/src/fuelSupply.ts', 'packages/core/src/marks.ts', 'packages/core/src/securityZone.ts', 'packages/data/src/universe.ts', 'packages/data/src/travelEvents.ts', 'apps/desktop/src/renderer/src/pages/MapPage*', 'apps/desktop/src/renderer/src/panels/StarMap*', 'apps/desktop/src/renderer/src/panels/Expedition.tsx', 'apps/desktop/src/renderer/src/panels/ExpeditionCards.tsx', 'apps/desktop/src/renderer/src/ui/spaceBg.ts', 'apps/desktop/src/renderer/src/ui/FuelTank.tsx'],
   },

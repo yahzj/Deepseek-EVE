@@ -50,6 +50,7 @@ import { weekendFlagshipWindowMs } from './weekendEvent'
 /** 2026-10-02（每族一件黑匣批）：结算快照的 `blackBoxItemId` 白名单判据（core 单点，按 id 前缀） */
 import { isBlackboxItem } from './blackbox'
 import { normalizeWeekendWreckRecord } from './weekendWreckLedger'
+import { cleanPlanetaryState } from './planetSave'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
 export const SAVE_FORMAT = 'whale-idle-save'
@@ -3369,7 +3370,9 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   const achievements: GameState['achievements'] = { earned: achEarned }
 
   const blackMarket = normalizeBlackMarket(src.blackMarket)
+  const planetary = cleanPlanetaryState(src.planetary)
   const normalized: GameState = {
+    ...(planetary ? { planetary } : {}),
     version: CURRENT_STATE_VERSION,
     gameMs:
       typeof src.gameMs === 'number' && Number.isFinite(src.gameMs) ? Math.max(0, Math.floor(src.gameMs)) : 0,
