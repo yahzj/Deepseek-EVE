@@ -1,9 +1,9 @@
-/** 战斗周期紧凑修订原生验收 v2，2026-10-08；游戏 v0.1.0 / 存档 v31。
+/** 战斗周期读秒定位与装置换行原生验收 v3，2026-10-08；游戏 v0.1.0 / 存档 v31。
  * 输入：当前 core/data、apps/desktop/out 构建；仅使用合成四艘 T4 战列舰档。
  * 用法：父侧 npm run build 后 node tools/battle-cycles-native-check.cjs。
  * 可选：--case=classic-zh-desktop（classic/modern x zh/en x desktop/mobile）、
  * --self-test（只跑合法配装、真实四波推进及工具隔离检查，不启动 Electron）、--help。
- * 输出：tools/_ui-artifacts/battle-cycles/compact-20261008 的截图、DOM/CSS 读数与隔离清理报告。
+ * 输出：tools/_ui-artifacts/battle-cycles/timer-wrap-20261008 的截图、DOM/CSS 读数与隔离清理报告。
  * 旧 report.json 只读，启动时将带 SHA256 的几何基线快照写入修订目录。
  * 不读个人档、不构建、不改业务文件、不提交；截图及像素仅证实渲染，不作观感结论。
  */
@@ -18,7 +18,7 @@ const { ROOT, JourneyPage, settingsScript, staticServer, sleep } = require('./wo
 
 const PREFIX = 'whale-battle-cycles-'
 const BASELINE = path.join(ROOT, 'tools/_ui-artifacts/battle-cycles/report.json')
-const OUT = path.join(ROOT, 'tools/_ui-artifacts/battle-cycles/compact-20261008')
+const OUT = path.join(ROOT, 'tools/_ui-artifacts/battle-cycles/timer-wrap-20261008')
 const OWNER_FILE = '.battle-cycles-owner.json'
 const SEL = {
   trigger: '[data-battle-weapons-trigger]', popup: '[data-battle-weapons-popup]', weapons: '[data-battle-weapons-popup] [data-cycle-id]',
@@ -317,17 +317,17 @@ async function selfTest() {
       return { id: want.id, owner: want.ownerTag, ship: want.shipId, kind: want.kind, state: want.state,
         target: want.targetTag, count: want.count, cycleMs: want.cycleMs, remainingMs: want.remainingMs,
         minM: want.minM, maxM: want.maxM, compact: true, label: `${want.label} \u00d7${want.count}`,
-        timer: timed ? seconds(want.remainingMs) : state, range: weapon ? `${want.minM.toLocaleString('en')}~${want.maxM.toLocaleString('en')}m` : '',
+        timer: timed ? seconds(want.remainingMs) : state, timerInTrack: true, range: weapon ? `${want.minM.toLocaleString('en')}~${want.maxM.toLocaleString('en')}m` : '',
         countText: `\u00d7${want.count}`,
         alive: want.aliveCount === undefined ? undefined : `${want.aliveCount}/${want.count}`,
         progress: want.cycleMs > 0 && ['reload', 'cooldown', 'ready', 'active'].includes(want.state) && (want.state !== 'active' || want.remainingMs > 0) ? Math.round(want.percent) : null,
         stateText: timed ? `${state} \u00b7 ${seconds(want.remainingMs)}` : state,
-        title: [want.ownerName, state, seconds(want.cycleMs), want.targetName, want.effectPct].join(' '), text: want.label }
+        title: [`#${['player', 'ally-1', 'ally-2', 'ally-3'].indexOf(want.ownerTag) + 1}`, want.ownerName, state, seconds(want.cycleMs), want.targetName, want.effectPct].join(' '), text: want.label }
     })
     assertCycleRows(rows, expected, weapon, locale, data)
-    for (const key of ['owner', 'ship', 'state', 'count', 'cycleMs', 'remainingMs', ...(weapon ? ['minM', 'maxM', 'range'] : [])]) {
+    for (const key of ['owner', 'ship', 'state', 'count', 'cycleMs', 'remainingMs', 'timerInTrack', ...(weapon ? ['minM', 'maxM', 'range'] : [])]) {
       const bad = structuredClone(rows)
-      bad[0][key] = typeof bad[0][key] === 'number' ? bad[0][key] + 1 : 'invalid'
+      bad[0][key] = typeof bad[0][key] === 'number' ? bad[0][key] + 1 : typeof bad[0][key] === 'boolean' ? false : 'invalid'
       assert.throws(() => assertCycleRows(bad, expected, weapon, locale, data), `工具放过错误 ${key}`)
     }
     assert.throws(() => assertCycleRows(rows.slice(1), expected, weapon, locale, data), '工具放过缺行')
@@ -411,7 +411,7 @@ async function parent() {
     await writeJson(path.join(OUT, cases.length === 1 ? `report-${cases[0].id}.json` : 'report.json'), report)
   }
   console.log(JSON.stringify({ ok: report.ok, cases: report.reports.map(row => ({ id: row.id, ok: row.ok, pid: row.pid, cleanup: row.cleanup, failure: row.failure })) }))
-  assert(report.ok, '原生验收未全通过；见 battle-cycles/compact-20261008 下结构化报告')
+  assert(report.ok, '原生验收未全通过；见 battle-cycles/timer-wrap-20261008 下结构化报告')
 }
 
 async function rect(page, selector) {
@@ -461,14 +461,16 @@ function assertGeometry(reading, options) {
       `控件越出实际视口：${key}/${JSON.stringify(b)}`)
   }
   assert(['auto', 'scroll'].includes(boxes.popup.overflowY), '武器列表没有内部滚动')
-  assert(['auto', 'scroll'].includes(boxes.devices.overflowX), '装置区没有横向内部滚动')
-  assert(boxes.devices.scrollWidth > boxes.devices.clientWidth, '四舰装置未形成横向滚动')
-  assert(boxes.devices.scrollHeight <= boxes.devices.clientHeight + 1 && boxes.devices.scrollTop === 0, '装置区出现竖滚')
+  assert(['auto', 'scroll'].includes(boxes.devices.overflowY), '超出预算的装置没有竖向内部滚动')
+  assert.equal(boxes.devices.flexWrap, 'wrap', '装置区没有自动换行')
+  assert(boxes.devices.scrollWidth <= boxes.devices.clientWidth + 1 && boxes.devices.scrollLeft === 0, '装置区仍需横向滑动')
+  assert(new Set(reading.rows.filter(row => row.kind).map(row => row.logical.top)).size > 1, '四舰装置没有实际换行')
+  assert(boxes.devices.offsetHeight <= (options.mobile ? 116 : 110), '装置区超过顶部预算')
   assert.equal(boxes.popup.position, 'absolute', '武器弹层不应挤占战场高度')
   assert.equal(reading.dockRows.length, 2, 'dock 常驻内容不是敌情/补给与武器/装置两行')
-  assert(boxes.dock.offsetHeight - (boxes.speed?.offsetHeight ?? 0) <= 140, '基本 dock 超过140逻辑px')
+  assert(boxes.dock.offsetHeight - (boxes.speed?.offsetHeight ?? 0) <= 224, '基本 dock 超过换行预算224逻辑px')
   assert(boxes.legends.scrollHeight <= boxes.legends.clientHeight + 1, '敌情/补给行纵向增长')
-  assert(boxes.cycles.offsetHeight <= boxes.trigger.offsetHeight + boxes.devices.offsetHeight + 8, '武器入口与装置未并为两行')
+  assert(boxes.cycles.offsetHeight <= Math.max(boxes.trigger.offsetHeight, boxes.devices.offsetHeight) + 1, '武器入口与装置换行容器高度异常')
   assert(boxes.stage.logical.top >= boxes.dock.logical.bottom - 2 && boxes.stage.logical.bottom <= boxes.controls.logical.top + 2, 'stage 与顶部或底部重叠')
   for (const key of ['dock', 'controls', 'screen']) assert.equal(boxes[key].transform, 'none', `操作区被二次缩放：${key}`)
   for (const control of reading.controls) {
@@ -482,11 +484,15 @@ function readCycleRows(selector) {
   return Array.from(document.querySelectorAll(selector), e => {
     const label = e.querySelector('.app-bts-reload-name'), timer = e.querySelector('.app-bts-reload-ms')
     const bar = e.querySelector('[role=progressbar]'), range = e.querySelector('.app-bc-range')
+    const track = e.querySelector('.app-bts-reload-track')
+    const t = timer?.getBoundingClientRect(), b = track?.getBoundingClientRect()
     const number = key => e.dataset[key] === undefined || e.dataset[key] === '' ? null : Number(e.dataset[key])
     return { id: e.dataset.cycleId, owner: e.dataset.ownerTag, ship: e.dataset.shipId, kind: e.dataset.deviceKind,
       state: e.dataset.cycleState, target: e.dataset.targetTag, count: number('cycleCount'), cycleMs: number('cycleMs'),
       remainingMs: number('remainingMs'), minM: number('minM'), maxM: number('maxM'), compact: e.classList.contains('app-bts-reload'),
       label: label?.textContent, timer: timer?.textContent, range: range?.textContent,
+      timerInTrack: !!timer && timer.parentElement === track,
+      timerFits: !!t && !!b && t.left >= b.left - 1 && t.top >= b.top - 1 && t.right <= b.right + 1 && t.bottom <= b.bottom + 1 && timer.scrollWidth <= timer.clientWidth + 1 && timer.scrollHeight <= timer.clientHeight + 1,
       alive: e.querySelector('.app-bc-alive')?.textContent, countText: e.querySelector('.app-bc-count')?.textContent,
       progress: bar ? Number(bar.getAttribute('aria-valuenow')) : null,
       stateText: bar?.getAttribute('aria-valuetext'), title: [e.title, ...Array.from(e.querySelectorAll('[title]'), n => n.title)].filter(Boolean).join('\n'), text: e.textContent }
@@ -504,6 +510,8 @@ function assertCycleRows(rows, expected, weapon, locale, data) {
   for (const want of expected) {
     const row = rows.find(candidate => candidate.id === want.id)
     assert(row.compact, `未复用旧装填条：${want.id}`)
+    assert.equal(row.timerInTrack, true, `读秒仍位于最右侧独立尾列：${want.id}`)
+    if (row.timerFits !== undefined) assert.equal(row.timerFits, true, `条内读秒或状态被挤压：${want.id}`)
     for (const [key, field] of [['owner', 'ownerTag'], ['ship', 'shipId'], ['state', 'state'], ['count', 'count'], ['cycleMs', 'cycleMs'], ['remainingMs', 'remainingMs']]) {
       assert.equal(row[key], want[field], `${key} 与 core 不一致：${want.id}`)
     }
@@ -557,6 +565,20 @@ async function compareRows(page, expected, weapon, locale, data) {
   return rows
 }
 
+async function timerLabelReadings(page, locale, data) {
+  const labels = Object.values(STATE_IDS).map(id => data.L10N[`ui.battleCycles.${id}`][locale])
+  const readings = await page.js(`(()=>{
+    const labels=${JSON.stringify([...labels, '9999.9s'])};
+    return ${JSON.stringify([SEL.weapons, SEL.devices])}.flatMap(selector=>{
+      const row=document.querySelector(selector),original=row.querySelector('.app-bts-reload-ms'),track=original.parentElement;
+      const clone=original.cloneNode(false);clone.style.visibility='hidden';track.appendChild(clone);
+      try{return labels.map(text=>{clone.textContent=text;const range=document.createRange();range.selectNodeContents(clone);const r=range.getBoundingClientRect();return {selector,text,width:clone.clientWidth,height:clone.clientHeight,textWidth:r.width,textHeight:r.height,fits:clone.scrollWidth<=clone.clientWidth+1&&clone.scrollHeight<=clone.clientHeight+1}})}finally{clone.remove()}
+    })
+  })()`)
+  assert(readings.every(row => row.fits), `状态词超出条内区域：${JSON.stringify(readings.filter(row => !row.fits))}`)
+  return readings
+}
+
 async function visitRows(page, selector, scroller, axis) {
   const ids = await page.js(`Array.from(document.querySelectorAll(${JSON.stringify(selector)}),e=>e.dataset.cycleId)`)
   const readings = []
@@ -604,9 +626,9 @@ async function nativeScroll(page, selector, axis, mobile) {
 
 async function keyboardScroll(page) {
   await page.js(`(()=>{const e=document.querySelector(${JSON.stringify(SEL.deviceScroll)});e.scrollTo({left:0,top:0,behavior:'instant'});e.focus({preventScroll:true})})()`)
-  await page.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 })
-  await page.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 })
-  await page.wait(`document.querySelector(${JSON.stringify(SEL.deviceScroll)}).scrollLeft>0`, 5000)
+  await page.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 })
+  await page.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 })
+  await page.wait(`document.querySelector(${JSON.stringify(SEL.deviceScroll)}).scrollTop>0`, 5000)
   return page.js(`(()=>{const e=document.querySelector(${JSON.stringify(SEL.deviceScroll)});return {focused:document.activeElement===e,scrollLeft:e.scrollLeft,scrollTop:e.scrollTop}})()`)
 }
 
@@ -686,6 +708,7 @@ async function child() {
     report.interactions.push(options.mobile ? 'real-touch-start/end-opens' : 'mouse-click-pins')
     await compareRows(page, fixture.initialWeapons, true, options.locale, data)
     await compareRows(page, fixture.initialDevices, false, options.locale, data)
+    report.readings.push({ timerLabels: await timerLabelReadings(page, options.locale, data) })
     assert((await page.snapshot()).expedition.battle.stats.meShots === 0, '开场初始装填已经开火')
     report.screenshots.push(await screenshot(win, path.join(OUT, `${options.id}-opening.png`)))
     await escape(page)
@@ -764,10 +787,10 @@ async function child() {
       // 下拉窗口覆盖下方装置属正常叠层；收起后逐行验证常驻区可达。
       await escape(page)
       await page.wait(closed)
-      report.interactions.push({ deviceNativeScroll: await nativeScroll(page, SEL.deviceScroll, 'x', options.mobile), viewport: [width, height] })
+      report.interactions.push({ deviceNativeScroll: await nativeScroll(page, SEL.deviceScroll, 'y', options.mobile), viewport: [width, height] })
       const keyboard = await keyboardScroll(page)
-      assert(keyboard.focused && keyboard.scrollLeft > 0 && keyboard.scrollTop === 0, '装置键盘横滚不可达')
-      report.interactions.push({ deviceKeyboardScroll: keyboard, deviceRowsReachable: await visitRows(page, SEL.devices, SEL.deviceScroll, 'x'), viewport: [width, height] })
+      assert(keyboard.focused && keyboard.scrollTop > 0 && keyboard.scrollLeft === 0, '装置键盘竖滚不可达')
+      report.interactions.push({ deviceKeyboardScroll: keyboard, deviceRowsReachable: await visitRows(page, SEL.devices, SEL.deviceScroll, 'y'), viewport: [width, height] })
       const closedReading = await geometry(page)
       const stable = [closedReading]
       for (let sample = 0; sample < 3; sample++) { await sleep(120); stable.push(await geometry(page)) }
@@ -797,7 +820,7 @@ async function child() {
       report.interactions.push({ webBadgeReachable: badgeReachable, viewport: [width, height] })
       report.readings.push({ requested: { width, height }, web: webEvidence })
       report.screenshots.push(await screenshot(win, path.join(OUT, `${options.id}-${width}x${height}-final.png`)))
-      console.log(`${options.id} ${width}x${height} 周期组/横滚/僚舰网/几何通过 dock=${reading.boxes.dock.offsetHeight} stage=${reading.boxes.stage.offsetHeight} delta=${reading.comparison.delta.stageHeight}`)
+      console.log(`${options.id} ${width}x${height} 条内读秒/换行/僚舰网/几何通过 dock=${reading.boxes.dock.offsetHeight} stage=${reading.boxes.stage.offsetHeight} delta=${reading.comparison.delta.stageHeight}`)
       if (await page.js(opened)) { await page.tap(SEL.trigger); await page.wait(closed) }
     }
     if (await page.js(closed)) { await page.tap(SEL.trigger); await page.wait(opened) }
@@ -870,7 +893,7 @@ if (process.argv.includes('--child')) {
   app.setPath('sessionData', profile)
   child().catch(error => { console.error(error); app.exit(1) })
 } else if (require.main === module) {
-  if (process.argv.includes('--help')) console.log('父侧先 build；node tools/battle-cycles-native-check.cjs [--case=classic-zh-desktop] [--self-test]；只读旧基线，输出 tools/_ui-artifacts/battle-cycles/compact-20261008；8 组合：' + CASES.map(row => row.id).join(', '))
+  if (process.argv.includes('--help')) console.log('父侧先 build；node tools/battle-cycles-native-check.cjs [--case=classic-zh-desktop] [--self-test]；只读旧基线，输出 tools/_ui-artifacts/battle-cycles/timer-wrap-20261008；8 组合：' + CASES.map(row => row.id).join(', '))
   else if (process.argv.includes('--self-test')) selfTest().catch(error => { console.error(error); process.exitCode = 1 })
   else parent().catch(error => { console.error(error); process.exitCode = 1 })
 }

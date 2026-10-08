@@ -306,6 +306,24 @@ describe('战斗周期真实组件交互', () => {
 })
 
 describe('战斗周期真实组件读数与局部布局', () => {
+  it.each(['zh', 'en'] as const)('%s武器与装置读秒在各自进度条内，状态切换不增加尾列或改变计数占位', locale => {
+    const view = harness(locale)
+    for (const state of ['reload', 'ready', 'no-ammo', 'down']) {
+      const content = view.render({ weapons: [weapon({ state })], devices: [device({ state: state === 'reload' ? 'cooldown' : state === 'no-ammo' ? 'no-stock' : state })] })
+      for (const row of content.filter(n => n.props['data-cycle-id'])) {
+        const track = nodes(row).find(n => String(n.props.className).split(' ').includes('app-bts-reload-track'))!
+        const timer = nodes(track).filter(n => n.props.className === 'app-bts-reload-ms')
+        expect(timer).toHaveLength(1)
+        expect(nodes(row).filter(n => n.props.className === 'app-bts-reload-ms')).toEqual(timer)
+        expect(row.children.some(child => child && typeof child === 'object' && (child as VNode).props?.className === 'app-bts-reload-ms')).toBe(false)
+        expect(row.children.filter(child => child && typeof child === 'object' && (child as VNode).props?.className === 'app-bc-count')).toHaveLength(1)
+        expect(text(timer)).toBe(state === 'reload' ? row.props['data-device-kind'] ? '3.0s' : '1.2s' : view.tr(`ui.battleCycles.${state === 'ready' ? '006' : state === 'down' ? '010' : row.props['data-device-kind'] ? '014' : '008'}`))
+      }
+    }
+    expect(css).toMatch(/\.app-battle-cycles\[data-battle-cycles\] \.app-bts-reload-ms\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;[^}]*justify-content:\s*center;/)
+    expect(css).toMatch(/\.app-battle-cycles\[data-battle-cycles\] \.app-bts-reload-track\s*\{[^}]*position:\s*relative;[^}]*height:\s*18px;/)
+  })
+
   it.each(['zh', 'en'] as const)('%s按tag分舰，重复武器不丢行；实际周期和机群损失可见', locale => {
     const view = harness(locale)
     const content = view.render({ weapons: [weapon(), weapon({ id: 'me:gun:1' }),
@@ -377,7 +395,7 @@ describe('战斗周期真实组件读数与局部布局', () => {
     expect(text(field)).toContain('1.0s')
   })
 
-  it('四舰多装置只内滚，目标改变不增减占位；短高与旋转读取逻辑尺寸而非物理视口', () => {
+  it('四舰多装置自动换行并有竖向预算，目标改变不增减占位；短高与旋转读取逻辑尺寸', () => {
     const view = harness()
     const devices = Array.from({ length: 48 }, (_, i) => device({ id: `d${i}`, ownerTag: `u${i % 4}`, targetName: undefined, targetTag: undefined, effectPct: undefined }))
     const content = view.render({ weapons: [weapon()], devices })
@@ -393,6 +411,13 @@ describe('战斗周期真实组件读数与局部布局', () => {
     expect(css).toMatch(/\.app-battle-screen \.app-bts-topdock\s*\{[^}]*position:\s*relative;[^}]*z-index:\s*10;/)
     expect(css).toMatch(/\.app-battle-screen \.app-bts-topdock \.app-bts-legends\s*\{[^}]*height:\s*32px;[^}]*overflow-x:\s*auto;/)
     expect(css).toContain('touch-action: none')
+    expect(css).toMatch(/\.app-battle-cycles\[data-battle-cycles\] \.app-bc-device-scroll\.app-bts-reloads\s*\{[^}]*flex-wrap:\s*wrap;[^}]*height:\s*auto;[^}]*max-height:\s*110px;[^}]*overflow-x:\s*hidden;[^}]*overflow-y:\s*auto;/)
+    expect(css).toMatch(/\.app-battle-cycles\[data-battle-cycles\]\s*\{[^}]*flex:\s*0 0 auto;[^}]*min-height:\s*32px;/)
+    expect(source).toContain('touch.inverse.b * (point.clientX - touch.x) + touch.inverse.d * (point.clientY - touch.y)')
+    const down = view.key('ArrowDown')
+    view.find('app-bc-device-scroll').props.onKeyDown({ ...down, currentTarget: view.hosts.scroll })
+    expect(view.hosts.scroll.scrollTop).toBe(32)
+    expect(view.hosts.scroll.scrollLeft).toBe(0)
     expect(css).toContain('.app-battle-cycles[data-battle-cycles] .app-btn.app-bc-trigger')
     expect(css).toContain('.app-root.is-mobile-rot .app-battle-cycles[data-battle-cycles]')
     expect(css).not.toMatch(/\d(?:vw|vh)\b|letter-spacing:\s*-/)

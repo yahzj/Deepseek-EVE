@@ -73,14 +73,16 @@ function CycleLine({ row, ownerMark, weapon = false }: { row: CycleRow; ownerMar
     <i className="app-bts-reload-dot" aria-hidden="true" />
     {!weapon ? <span className="app-bc-owner-mark">{ownerMark}</span> : null}
     <span className="app-bts-reload-name app-bc-label">{label}</span>
-    {weapon || count ? <span className="app-bc-count">{count}</span> : null}
+    <span className="app-bc-count">{count}</span>
     {weapon ? <span className="app-bc-range">{range}</span> : null}
     {track ? <span className="app-bts-reload-track" role="progressbar" aria-label={`${row.ownerName}: ${label}`}
       aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(percent)}
       aria-valuetext={timed ? `${state} · ${seconds(row.remainingMs)}` : state}>
       <i className="app-bts-reload-fill" style={{ width: `${percent}%` }} />
-    </span> : <span className="app-bts-reload-track is-untimed" aria-hidden="true" />}
-    <span className="app-bts-reload-ms">{timed ? `${track ? '' : `${state} · `}${seconds(row.remainingMs)}` : state}</span>
+      <span className="app-bts-reload-ms" aria-hidden="true">{timed ? seconds(row.remainingMs) : state}</span>
+    </span> : <span className="app-bts-reload-track is-untimed">
+      <span className="app-bts-reload-ms">{timed ? `${state} · ${seconds(row.remainingMs)}` : state}</span>
+    </span>}
   </div>
 }
 
@@ -115,43 +117,31 @@ export function BattleCycles({ weapons, devices }: BattleCyclesProps) {
   useEffect(() => {
     const host = deviceScroll.current
     if (!host) return
-    const wheel = (event: WheelEvent): void => {
-      if (event.ctrlKey || event.metaKey || host.scrollWidth <= host.clientWidth) return
-      const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
-      if (!Number.isFinite(delta) || delta === 0) return
-      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? host.clientWidth : 1
-      host.scrollLeft += delta * unit
-      event.preventDefault()
-      event.stopPropagation()
-    }
-    let touch: { id: number; x: number; y: number; left: number; inverse: DOMMatrix } | null = null
+    let touch: { id: number; x: number; y: number; top: number; inverse: DOMMatrix } | null = null
     const start = (event: TouchEvent): void => {
       if (event.touches.length !== 1) { touch = null; return }
       const point = event.touches[0]!
       const app = host.closest<HTMLElement>('.app-root')
-      touch = { id: point.identifier, x: point.clientX, y: point.clientY, left: host.scrollLeft,
+      touch = { id: point.identifier, x: point.clientX, y: point.clientY, top: host.scrollTop,
         inverse: new DOMMatrix(app ? getComputedStyle(app).transform : undefined).inverse() }
     }
     const move = (event: TouchEvent): void => {
       if (!touch || event.touches.length !== 1) return
       const point = [...event.touches].find(item => item.identifier === touch!.id)
       if (!point) return
-      // 手机外层旋转，手指位移先还原为逻辑横轴，不能交给物理轴原生滚动。
-      const delta = touch.inverse.a * (point.clientX - touch.x) + touch.inverse.c * (point.clientY - touch.y)
+      // 外层旋转后，手指位移还原为逻辑竖轴；不依赖物理屏幕的默认滚动方向。
+      const delta = touch.inverse.b * (point.clientX - touch.x) + touch.inverse.d * (point.clientY - touch.y)
       if (Math.abs(delta) < 3) return
-      host.scrollLeft = touch.left - delta
+      host.scrollTop = touch.top - delta
       event.preventDefault()
       event.stopPropagation()
     }
     const end = (): void => { touch = null }
-    // 原生非被动监听才能把鼠标纵向滚轮可靠地留在这一行内。
-    host.addEventListener('wheel', wheel, { passive: false })
     host.addEventListener('touchstart', start, { passive: true })
     host.addEventListener('touchmove', move, { passive: false })
     host.addEventListener('touchend', end)
     host.addEventListener('touchcancel', end)
     return () => {
-      host.removeEventListener('wheel', wheel)
       host.removeEventListener('touchstart', start)
       host.removeEventListener('touchmove', move)
       host.removeEventListener('touchend', end)
@@ -238,10 +228,10 @@ export function BattleCycles({ weapons, devices }: BattleCyclesProps) {
       aria-label={tr('ui.battleCycles.002')} onKeyDown={event => {
         if (event.altKey || event.ctrlKey || event.metaKey) return
         const host = event.currentTarget
-        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-          host.scrollLeft += event.key === 'ArrowLeft' ? -120 : 120
-        } else if (event.key === 'Home') host.scrollLeft = 0
-        else if (event.key === 'End') host.scrollLeft = host.scrollWidth - host.clientWidth
+        if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+          host.scrollTop += event.key === 'ArrowUp' ? -32 : 32
+        } else if (event.key === 'Home') host.scrollTop = 0
+        else if (event.key === 'End') host.scrollTop = host.scrollHeight - host.clientHeight
         else return
         event.preventDefault()
         event.stopPropagation()
