@@ -171,25 +171,35 @@ describe('战损并列卡格', () => {
     expect(nodes(view.render({ engine: partial, target: 'target' })).filter(node => node.props.className === 'app-fit-slot-icon is-empty')).toHaveLength(1)
   })
 
-  it.each(['zh', 'en'] as const)('%s舰船摘要：重复普通插件的数量与富卡只读，战损同网格', locale => {
-    const view = component('pages/ShipPage.tsx', 'ShipPlugSummary', locale)
+  it.each(['zh', 'en'] as const)('%s舰队摘要：隐藏普通插件及计数，保留战损且不改插件效果', locale => {
+    const view = component('pages/ShipPage.tsx', 'ShipDamageSummary', locale)
     const engine = fixture(locale, 3, ['plug-cpu-core', 'plug-cpu-core', 'plug-shield-plate'], ['cargo'])
     const before = JSON.stringify(engine.state)
+    const spec = core.createPlayerSpec(engine.state, engine.ctx, 'target')
     const result = view.render({ engine, uid: 'target' })
     const grid = nodes(result).find(node => node.props.className === 'app-fit-icongrid')!
     const ordinary = nodes(grid).filter(node => node.props['data-ship-plug-id'])
-    expect(ordinary).toHaveLength(2)
-    expect(text(ordinary.find(node => node.props['data-ship-plug-id'] === 'plug-cpu-core'))).toContain('×2')
-    expect(ordinary.every(node => node.type === 'span' && !node.props.onClick && node.props.richTip?.props.uid === 'target')).toBe(true)
+    expect(ordinary).toHaveLength(0)
+    expect(nodes(grid)).toHaveLength(2)
     expect(nodes(grid).at(-1)!.type).toBe('ShipDamageMods')
-    expect(text(result)).toContain(view.tr('ui.Expedition.444', { p1: 3, p2: 3 }))
+    expect(nodes(grid).at(-1)!.props.ids).toEqual(['cargo'])
+    expect(text(result)).toContain(`${view.tr('ui.shipDamage.013')} 1`)
+    expect(text(result)).not.toContain(view.tr('ui.itemSubs.042'))
+    expect(text(result)).not.toContain(view.tr('ui.Expedition.444', { p1: 3, p2: 3 }))
+    for (const id of engine.state.fleet.target!.plugs!) expect(text(result)).not.toContain(engine.ctx.modules.get(id)!.name)
     expect(JSON.stringify(engine.state)).toBe(before)
+    expect(core.createPlayerSpec(engine.state, engine.ctx, 'target')).toEqual(spec)
     const onlyDamage = fixture(locale, 0, [], ['hull'])
     expect(nodes(view.render({ engine: onlyDamage, uid: 'target' })).some(node => node.type === 'ShipDamageMods')).toBe(true)
     onlyDamage.state.fleet.target!.damagePlugs = []
     expect(view.render({ engine: onlyDamage, uid: 'target' })).toBeNull()
     engine.state.fleet.target!.damagePlugs = []
-    expect(nodes(view.render({ engine, uid: 'target' })).filter(node => node.props['data-ship-plug-id'])).toHaveLength(2)
+    expect(view.render({ engine, uid: 'target' })).toBeNull()
+    engine.state.fleet.target!.damagePlugs = ['ghost', 'cargo', 'cargo'] as never
+    const cleaned = nodes(view.render({ engine, uid: 'target' }))
+    expect(cleaned.find(node => node.type === 'ShipDamageMods')!.props.ids).toEqual(['cargo'])
+    expect(text(cleaned)).toContain(`${view.tr('ui.shipDamage.013')} 1`)
+    expect(view.render({ engine, uid: 'missing' })).toBeNull()
   })
 
   it.each(['zh', 'en'] as const)('%s沉船：普通插件后、无人机前，同网格且仅有战损也保留组', locale => {
@@ -211,8 +221,8 @@ describe('战损并列卡格', () => {
     expect(nodes(view.render({ engine, entry })).some(node => node.type === 'ShipDamageMods')).toBe(false)
   })
 
-  it('组件只挂在插件网格内，样式复用固定卡高，不另作展开清单', () => {
-    for (const [path, name] of [['pages/FitPage.tsx', 'PluginSlotsSection'], ['pages/ShipPage.tsx', 'ShipPlugSummary'], ['panels/WreckFitPanel.tsx', 'WreckFitPanel']]) {
+  it('战损组件挂在同款网格内，舰队仅挂战损摘要，样式复用固定卡高', () => {
+    for (const [path, name] of [['pages/FitPage.tsx', 'PluginSlotsSection'], ['pages/ShipPage.tsx', 'ShipDamageSummary'], ['panels/WreckFitPanel.tsx', 'WreckFitPanel']]) {
       const source = ts.createSourceFile(path!, file(path!), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
       const calls: ts.JsxSelfClosingElement[] = []
       const visit = (node: ts.Node): void => {
@@ -227,6 +237,16 @@ describe('战损并列卡格', () => {
       while (parent && !ts.isFunctionDeclaration(parent)) parent = parent.parent
       expect((parent as ts.FunctionDeclaration).name?.text).toBe(name)
     }
+    const fleet = ts.createSourceFile('ShipPage.tsx', file('pages/ShipPage.tsx'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    const summaries: ts.JsxSelfClosingElement[] = []
+    const visit = (node: ts.Node): void => {
+      if (ts.isJsxSelfClosingElement(node) && node.tagName.getText(fleet) === 'ShipDamageSummary') summaries.push(node)
+      ts.forEachChild(node, visit)
+    }
+    visit(fleet)
+    expect(summaries).toHaveLength(1)
+    expect(summaries[0]!.getText(fleet)).toContain('uid={uid}')
+    expect(file('pages/ShipPage.tsx')).not.toMatch(/ShipPlugSummary|plugInfoOf|data-ship-plug-id/)
     const css = file('styles-ship-damage.css')
     expect(css).not.toMatch(/(?:^|\n)\s*height\s*:|\btransform\s*:|\b[\d.]+v[wh]\b/)
     expect(file('ui/ShipDamageMods.tsx')).toContain("import '../styles-ship-damage.css'")

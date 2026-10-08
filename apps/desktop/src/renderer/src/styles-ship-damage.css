@@ -57,7 +57,3 @@
   flex-wrap: wrap;
   gap: var(--wui-sp-8);
 }
-
-.app-ship-plug-card {
-  min-width: 0;
-}
