@@ -1419,6 +1419,10 @@ export interface BattleState {
   foeReviveAtMs?: number
   /** 本场已召唤的支援舰数（见 `foeReviveAtMs`） */
   foeReviveCount?: number
+  /** 固定空槽召唤的下次检查时刻，按召唤者分账，随档保留。 */
+  foeSummonAtMs?: Record<string, number>
+  /** 当前波聚焦来源，按规格重建；不保存累计倍率。 */
+  foeFocusArrays?: Record<string, NonNullable<import('./types').FoeMountDef['focusArray']>>
   /* ═══ 机群战损（2026-09-10 船长拍板「无人机可被击落」，永久损失制；零迁移可选） ═══ */
   /** 逐架生存池：键 = **`舰tag:武器条目下标`**（仅 src='drone' 的条目）；开战由 startBattleFor /
    *  startFleetBattleFor **逐舰**写入（2026-09-14 船长「逐舰机群」）。

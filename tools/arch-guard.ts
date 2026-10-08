@@ -201,6 +201,8 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '入侵残骸每族余额与箱子读数', symbol: 'weekendWreckPoolsOf', file: 'packages/core/src/salvage.ts', exported: true },
   { concept: '入侵残骸旧账迁移与新桶归一', symbol: 'normalizeWeekendWreckRecord', file: 'packages/core/src/weekendWreckLedger.ts', exported: true },
   { concept: '聚焦阵列波内修正率（射程与防空同源）', symbol: 'coronaFocusBonusOf', file: 'packages/core/src/coronaFocus.ts', exported: true },
+  { concept: '聚焦阵列全队射程与来源存活', symbol: 'coronaFleetRangeBonusOf', file: 'packages/core/src/coronaFocus.ts', exported: true },
+  { concept: '固定支援舰真实型号标识', symbol: 'supportFoeModelTagOf', file: 'packages/core/src/foeCard.ts', exported: true },
   { concept: '仿真上下文（页面取数的唯一入口）', symbol: 'buildSimContext', file: 'packages/data/src/context.ts', exported: true },
   { concept: '渲染层引擎（ctx 的产地，页面取数都从它来）', symbol: 'GameEngine', file: 'apps/desktop/src/renderer/src/game/engine.ts', exported: true },
   { concept: '玩家可见文案唯一表（id → 各语言）', symbol: 'L10N', file: 'packages/data/src/l10n/table.ts', exported: true },

@@ -25,7 +25,8 @@ import { clamp, isAlive } from './combatMath'
 import type { Hp3 } from './combatMath'
 import { nextInt } from './rng'
 import { resolveFoeMounts } from './foeMounts'
-import { baseFoeTag, enumerateShipUnits, FOE_SUPPORT_TAG_RE, foeUnitNameOf, shipWaveIndexOf } from './foeCard'
+import { baseFoeTag, enumerateShipUnits, FOE_SUPPORT_TAG_RE, foeUnitNameOf, shipWaveIndexOf, supportFoeModelTagOf } from './foeCard'
+import { syncCoronaFleetFocus } from './coronaFocus'
 import { foeHpOfThreat, foeJudgedThreatOf, foeMultiShipCompMul, foeRefSpeedMps, foeSpeedBase, foeThreatRatingOf, TACTIC_RANGE } from './foePower'
 import { compositionOfMix, foeDamageComposition, pickTopType, PROFILE_SPLIT, WORMHOLE_THREAT_BASE } from './wormholeFoes'
 import { foeDroneRangeOf, foeGunMaxRangeOf, foeRangeWithDebuff } from './foeRange'
@@ -711,6 +712,7 @@ export function resolveFoeRevive(
   const summoner = curFoes.find((f) => f.foeReviveEscort !== undefined || f.foeSummonEscort !== undefined)
   if (summoner === undefined) return
   const summon = summoner.foeSummonEscort
+  if (summon?.formationSlots) return
   const config = summon ?? summoner.foeReviveEscort
   if (!config || summon && !summoner.foeSummonTemplate) return
   if (summon && b.ended !== null) return
@@ -853,7 +855,8 @@ export function foesWithSupport(
   for (const tag of Object.keys(b.units)) {
     if (!FOE_SUPPORT_TAG_RE.test(tag)) continue
     if (foes.some((f) => f.tag === tag)) continue
-    const sourceTag = baseFoeTag(tag)
+    const sourceTag = supportFoeModelTagOf(tag)
+    if (sourceTag !== baseFoeTag(tag) && !foes.some(f => f.tag === baseFoeTag(tag))) continue
     const original = foes.find((f) => f.tag === sourceTag)
     const template = original ? undefined : foes.find(f => f.foeSummonTemplate?.tag === sourceTag)?.foeSummonTemplate
     // 同型号援军的网／武器修改互不污染，也不回写下拍重建用的模板。
@@ -862,6 +865,41 @@ export function foesWithSupport(
     ;(extra ??= []).push({ ...base, tag })
   }
   return extra === null ? (foes as UnitSpec[]) : [...foes, ...extra]
+}
+
+/** 固定舰型按原编成空槽补入，型号取当前波同型规格，沿用支援舰参战与恢复路径。 */
+export function resolveFoeSummon(
+  state: GameState,
+  b: import('./state').BattleState,
+  curFoes: readonly UnitSpec[],
+  bal: BattleBalance,
+  nowMs: number,
+): void {
+  if (bal.foeReviveEnabled !== true || b.ended !== null) return
+  for (const summoner of curFoes) {
+    const config = summoner.foeSummonEscort
+    if (!config?.formationSlots || !isAlive(b, summoner.tag)) continue
+    const model = curFoes.find(foe => foe.foeShipId === config.shipId)
+    if (!model) continue
+    const rt = b.units[summoner.tag]!
+    const everyMs = Math.max(1_000, Math.round(config.everyMs))
+    const ledger = b.foeSummonAtMs ?? (b.foeSummonAtMs = {})
+    const next = ledger[summoner.tag] ?? (ledger[summoner.tag] = (rt.enteredAtMs ?? b.foeWaveStartMs ?? b.startedAtGameMs) + everyMs)
+    if (nowMs < next) continue
+    // 满员也消耗本次检查，离线按子步推进，不积攒补舰次数。
+    ledger[summoner.tag] = nowMs + everyMs
+    const occupied = new Set(Object.keys(b.units).filter(tag => isAlive(b, tag)).map(baseFoeTag))
+    const slot = curFoes.find(foe => foe.tag !== summoner.tag && b.units[foe.tag] !== undefined && !occupied.has(foe.tag))
+    if (!slot) continue
+    const n = (b.foeReviveCount ?? 0) + 1
+    b.foeReviveCount = n
+    const spec = { ...structuredClone(model), tag: `sup${n}~${model.tag}~${slot.tag}` }
+    seedUnit(b, spec, { enterReload: true, arrivedAtMs: nowMs, ...(b.wormhole ? { foePhaseMs: WORMHOLE_FOE_VOLLEY_STAGGER_MS } : {}) })
+    initFoeDronePools(b, [spec])
+    initFoeRepairPulses(b, [spec])
+    pushBattleNotice(b, '', 'core.combat.001', { p1: spec.name, p2: n })
+    addLog(state, 'warn', `⚔ 敌方支援舰船入场：${spec.name}（第 ${n} 次支援）`, 'core.combat.001', { p1: spec.name, p2: n })
+  }
 }
 
 /**
@@ -1544,7 +1582,7 @@ export function createBattleState(
         : {}),
     }
   }
-  return {
+  const battle: import('./state').BattleState = {
     startedAtGameMs: nowMs,
     lastTickGameMs: nowMs,
     distanceM: 0, // 由调用方按 battleOpenM 赋值
@@ -1567,6 +1605,8 @@ export function createBattleState(
     droneHitAtMeBy: {},
     mePdFocusBy: {},
   }
+  syncCoronaFleetFocus(battle, foes)
+  return battle
 }
 
 /**

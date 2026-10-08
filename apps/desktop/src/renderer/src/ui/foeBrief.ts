@@ -80,6 +80,8 @@ export function mountEffectText(id: string): string | null {
     // ⟪文案调整 2026-10-08⟫ 墨潮手册同步现有两艘与干扰舰优先规则。
     return tr('ui.foeIntro.104', { p1: String(Math.round(def.reviveEscort.everyMs / 1000)), p2: def.reviveEscort.count ?? 1 })
   }
+  if (def.summonEscort) return tr('ui.foeIntro.116', { p1: def.summonEscort.everyMs / 1000 })
+  if (def.overlayDrive) return tr('ui.foeIntro.115', { p1: def.overlayDrive.stepMs / 1000, p2: def.overlayDrive.floorMs / 1000, p3: def.overlayDrive.dmgMul })
   if (def.repairPulse) {
     const sec = Math.round(def.repairPulse.everyMs / 1000)
     const amt = `${def.repairPulse.armor}/${def.repairPulse.hull}`
@@ -123,10 +125,12 @@ export function mountEffectText(id: string): string | null {
    * （2026-10-03 报障的成因就是这个坑，别重犯）。文案只写规格（§十三：不写"为什么"、括号只放规格）。
    */
   if (def.standbyShield) {
-    return tr('ui.foeIntro.112', { p1: pct(def.standbyShield.resistPct) })
+    // ⟪文案调整 2026-10-08⟫ 垂暮抗性改为冷却满1秒后生效，冷却结束失效。
+    return tr('ui.foeIntro.112', { p1: pct(def.standbyShield.resistPct), p2: def.standbyShield.delayMs / 1000 })
   }
   if (def.focusArray) {
-    return tr('ui.foeIntro.113', { p1: String(Math.round(def.focusArray.rampMs / 1000)) })
+    // ⟪文案调整 2026-10-08⟫ 补全全队射程、自身近防增伤和来源被毁失效。
+    return tr('ui.foeIntro.113', { p1: def.focusArray.rampMs / 1000, p2: pct(def.focusArray.rangeBonusPct ?? 0), p3: pct(def.focusArray.antiDroneBonusPct ?? 0) })
   }
   /** 目录里只留了名字、没有任何效果字段 ⇒ 没有可解释的机制（**不返回名字**，避免复读） */
   return null

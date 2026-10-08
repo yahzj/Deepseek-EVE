@@ -99,24 +99,26 @@ describe('聚焦：波次同源、加算抵消', () => {
   })
 })
 
-describe('垂暮：闪现后 2 秒护盾宽限', () => {
-  it('触发前、触发当刻、1999ms、2000ms、冷却结束边界', () => {
+describe('垂暮：冷却满1秒后至冷却结束生效', () => {
+  it('未闪现、触发当刻、999ms、1000ms、冷却结束边界', () => {
     const readyAt = 13_000
-    expect(standbyShieldActiveOf(dusk, undefined, 0)).toBe(true)
-    expect(standbyShieldActiveOf(dusk, readyAt, 1_000)).toBe(true)
+    expect(standbyShieldActiveOf(dusk, undefined, 0)).toBe(false)
+    expect(standbyShieldActiveOf(dusk, readyAt, 1_000)).toBe(false)
+    expect(standbyShieldActiveOf(dusk, readyAt, 1_999)).toBe(false)
+    expect(standbyShieldActiveOf(dusk, readyAt, 2_000)).toBe(true)
     expect(standbyShieldActiveOf(dusk, readyAt, 2_999)).toBe(true)
-    expect(standbyShieldActiveOf(dusk, readyAt, 3_000)).toBe(false)
-    expect(standbyShieldActiveOf(dusk, readyAt, 12_999)).toBe(false)
-    expect(standbyShieldActiveOf(dusk, readyAt, 13_000)).toBe(true)
+    expect(standbyShieldActiveOf(dusk, readyAt, 3_000)).toBe(true)
+    expect(standbyShieldActiveOf(dusk, readyAt, 12_999)).toBe(true)
+    expect(standbyShieldActiveOf(dusk, readyAt, 13_000)).toBe(false)
     expect(standbyShieldActiveOf({}, readyAt, 1_000)).toBe(false)
   })
 
-  it('宽限结束同拍保持快照，下一拍重新计算', () => {
-    const b = { lastTickGameMs: 2_999, foeBlinks: { [dusk.tag]: 13_000 } }
+  it('冷却结束同次齐射保持快照，下一窗口重新计算', () => {
+    const b = { lastTickGameMs: 12_990, foeBlinks: { [dusk.tag]: 13_000 } }
     expect(foeStandbyReadyOf(b, dusk)).toBe(true)
-    b.foeBlinks[dusk.tag] = 12_999
+    b.foeBlinks[dusk.tag] = 12_990
     expect(foeStandbyReadyOf(b, dusk)).toBe(true)
-    b.lastTickGameMs = 3_000
+    b.lastTickGameMs = 13_000
     expect(foeStandbyReadyOf(b, dusk)).toBe(false)
   })
 })

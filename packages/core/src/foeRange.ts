@@ -13,7 +13,7 @@ import type { UnitSpec, WeaponSpec } from './combat'
 import { createPlayerSpec } from './playerSpec'
 import { allFittedModules, stackingOf, stackWeight, WEIGHTED_GAP_FLEET_CAP, weightedGap, fittedPenaltyPartsOf } from './equipment'
 import { distFactor } from './combatMath'
-import { coronaFocusBonusOf } from './coronaFocus'
+import { coronaFleetRangeBonusOf } from './coronaFocus'
 import { moduleAllowedOnShip } from './shipFitting'
 import { fleetDefOf } from './instances'
 import { pushBattleNotice } from './combatFx'
@@ -31,7 +31,7 @@ export function foeDroneRangeOf(
   b: import('./state').BattleState,
   w: WeaponSpec,
 ): number {
-  const buffMul = (b.foeDroneRangeBuff && b.foeDroneRangeBuff > 1 ? b.foeDroneRangeBuff : 1) + (w.foeDroneRangeBonusPct ?? 0)
+  const buffMul = (b.foeDroneRangeBuff && b.foeDroneRangeBuff > 1 ? b.foeDroneRangeBuff : 1) + (w.foeDroneRangeBonusPct ?? 0) + coronaFleetRangeBonusOf(b)
   return effectiveFoeRangeM(b, w.maxRangeM, buffMul)
 }
 
@@ -395,7 +395,7 @@ export function foeGunMaxRangeOf(
   unit: Pick<UnitSpec, 'foeGunRangeMulOnHit' | 'foeFocusArray'>,
   w: { maxRangeM: number },
 ): number {
-  const bonus = coronaFocusBonusOf(b, unit.foeFocusArray, 'rangeBonusPct')
+  const bonus = coronaFleetRangeBonusOf(b, unit.foeFocusArray)
   return effectiveFoeRangeM(b, w.maxRangeM, foeGunRangeMulOf(b, unit) + bonus)
 }
 
@@ -406,7 +406,7 @@ export function foeGunPowerFactorOf(
   w: { minRangeM: number; maxRangeM: number; falloff: number },
   dist: number,
 ): number {
-  if (unit.foeFocusArray !== undefined) {
+  if (unit.foeFocusArray !== undefined || coronaFleetRangeBonusOf(b) > 0) {
     return distFactor(dist, { ...w, maxRangeM: foeGunMaxRangeOf(b, unit, w) })
   }
   const base = distFactor(dist, w) // 原区间内 = 原读数（一字不变）

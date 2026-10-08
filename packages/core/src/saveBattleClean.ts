@@ -94,6 +94,8 @@ const BATTLE_FIELDS = {
   // （写入点 = combat.resolveFoeRevive，白名单 = cleanBattle。）
   foeReviveAtMs: { kind: 'persist' },
   foeReviveCount: { kind: 'persist' },
+  foeSummonAtMs: { kind: 'persist' },
+  foeFocusArrays: { kind: 'runtime', why: '当前波聚焦来源由敌舰规格重建，增益按波时钟与来源存活状态现算' },
   dronePools: { kind: 'persist' }, // 我方机群生存池（丢了 ⇒ 重载后无人机不再会被击落）
   foeDronePools: { kind: 'persist' }, // 敌机生存池（丢了 ⇒ 重载后敌方机群整支消失）
   droneLost: { kind: 'persist' }, // 本场已击落架数（丢了 ⇒ 可反复重载规避机群战损）
@@ -441,6 +443,7 @@ export function cleanBattle(raw: unknown): BattleState | null {
     return { left: r.left, revived: r.revived, queue, ...(typeof r.nextAtMs === 'number' && Number.isFinite(r.nextAtMs) && r.nextAtMs >= 0 ? { nextAtMs: r.nextAtMs } : {}) }
   })
   const foeAbilityClocks = cleanLedgerMap(b.foeAbilityClocks, value => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined)
+  const foeSummonAtMs = cleanLedgerMap(b.foeSummonAtMs, value => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined)
   const foeDroneRangeBuff = cleanPosNum(b.foeDroneRangeBuff)
   const foeGunRangeBuff = cleanPosNum(b.foeGunRangeBuff)
   /**
@@ -602,6 +605,7 @@ export function cleanBattle(raw: unknown): BattleState | null {
     ...(alienCorrosion !== undefined ? { alienCorrosion } : {}),
     ...(acidBursts !== undefined ? { acidBursts } : {}),
     ...(foeAbilityClocks !== undefined ? { foeAbilityClocks } : {}),
+    ...(foeSummonAtMs !== undefined ? { foeSummonAtMs } : {}),
     ...(foeHatcheries !== undefined ? { foeHatcheries } : {}),
     ...(foeDroneRangeBuff !== undefined ? { foeDroneRangeBuff } : {}),
     ...(foeGunRangeBuff !== undefined ? { foeGunRangeBuff } : {}),

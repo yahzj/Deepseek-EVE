@@ -87,8 +87,7 @@ export const FOE_MOUNT_IDS = {
   /**
    * **待机护盾阵列**（**船长 2026-10-02 令**：「**或者换个说法，闪现未处于冷却中的时候，
    * 护盾拥有全伤害50%的抗性。**」）—— R 族 T4 **垂暮级**专属。
-   * 效果 = 闪现**不在冷却中**时（从未闪过也算可用）**护盾层**对全伤害类型 **50% 抗性**
-   * （只护盾层；与闪现共用那条冷却 —— **2026-10-03 起 12 秒**）。
+   * 2026-10-08：闪现冷却满1秒后至冷却结束前，护盾层获得50%全伤害抗性。
    */
   coronaStandbyShield: 'foe-mount-corona-standby-shield',
   /**
@@ -97,6 +96,7 @@ export const FOE_MOUNT_IDS = {
    * 效果 = 它自己武器的远端衰减从面板值线性爬到 1.0（无衰减），**120 秒**到满、**随波重置**。
    */
   coronaFocusArray: 'foe-mount-corona-focus-array',
+  coronaOverlayBeacon: 'foe-mount-corona-overlay-beacon',
 } as const
 
 /** 全部挂载件（键 = id；`FoeMountId` 联合类型保证穷尽） */
@@ -327,12 +327,11 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     // 命名规则第 4 条（族系前缀照译）：R 族五件一律 `Corona …`；本件取直译 `Standby Shield Array`
     en: 'Standby Shield Array',
     // 船长 2026-10-02 定案：50% 写死在件上（与闪烁过载的 hullCostPct 同款）、只护盾层、与闪现共用冷却
-    standbyShield: { resistPct: 0.5, lingerMs: 2_000 },
+    standbyShield: { resistPct: 0.5, delayMs: 1_000 },
     note:
       '船长 2026-10-02：「垂暮级添加挂载件，触发闪现时，触发的那次齐射受到的伤害减半。」' +
       '⇒ 我追问时点后船长改口径：「或者换个说法，闪现未处于冷却中的时候，护盾拥有全伤害50%的抗性。」' +
-      '⇒ 只挂 R 族 T4 垂暮级。口径 = 闪现不在冷却中（`now >= BattleState.foeBlinks[tag]`，从未闪过也算可用' +
-      '⇒ 开场即生效）时，护盾层对全部伤害类型 ×0.5；装甲/结构照常；2026-10-03 改判：闪现触发后延续 2 秒，之后失效，冷却结束恢复。',
+      '⇒ 只挂 R 族 T4 垂暮级；2026-10-08 改判：仅冷却满1秒至冷却结束前生效，取消旧常驻与2秒宽限。护盾层对全部伤害类型 ×0.5；装甲/结构照常。',
   },
   [FOE_MOUNT_IDS.coronaFocusArray]: {
     id: FOE_MOUNT_IDS.coronaFocusArray,
@@ -345,7 +344,14 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
       '⇒ 只挂 R 族 T5 光环中枢（周末入侵旗舰战的 BOSS 本体）。' +
       '我提"整场计时"时船长改判：「旗舰挂载件的会随波重置」⇒ 计时锚 = 本波起点' +
       '（`BattleState.foeWaveStartMs`，缺省回落 `startedAtGameMs`），每波从头爬。' +
-      '曲线 = min(1, falloff + (1 − falloff) × t ÷ 120000)；只影响它自己。2026-10-03 改判：同进度增加射程与对无人机近防伤害，满层修正率各 +200%，加算抵消负修正。',
+      '曲线 = min(1, falloff + (1 − falloff) × t ÷ 120000)；2026-10-03 改判：同进度增加射程与对无人机近防伤害，满层修正率各 +200%，加算抵消负修正。2026-10-08：射程扩为全队，中枢被毁立即失效；衰减与近防增伤仍仅自己。',
+  },
+  [FOE_MOUNT_IDS.coronaOverlayBeacon]: {
+    id: FOE_MOUNT_IDS.coronaOverlayBeacon,
+    name: '叠光支援信标',
+    en: 'Overlay Support Beacon',
+    summonEscort: { everyMs: 60_000, count: 1, shipId: 'foe-r-corona-overlay', formationSlots: true },
+    note: '船长2026-10-08确认：每60秒检查当前波空位，满血召唤一艘叠光级；不超原编成，满员跳过不累计，中枢被毁后停止。',
   },
 }
 

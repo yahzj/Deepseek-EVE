@@ -340,7 +340,7 @@ export type FoeMountId =
   /**
    * **待机护盾阵列**（**船长 2026-10-02 令**：「**或者换个说法，闪现未处于冷却中的时候，
    * 护盾拥有全伤害50%的抗性。**」）—— R 族 T4 **垂暮级**专属。
-   * 效果 = **闪现不在冷却中**时（从未闪过也算可用）**护盾层**对全伤害类型 +50% 抗性。
+   * 2026-10-08起：冷却满1秒后至结束前，护盾层获得50%全伤害抗性。
    * 见 `FoeMountDef.standbyShield`。
    */
   | 'foe-mount-corona-standby-shield'
@@ -351,6 +351,7 @@ export type FoeMountId =
    * 见 `FoeMountDef.focusArray`。
    */
   | 'foe-mount-corona-focus-array'
+  | 'foe-mount-corona-overlay-beacon'
   | 'foe-mount-c-acid-charge'
   | 'foe-mount-c-hiveback-charge'
   | 'foe-mount-c-broodmother-charge'
@@ -494,17 +495,15 @@ export interface FoeMountDef {
    * > ② （追问减半时点后**改口径**）「**或者换个说法，闪现未处于冷却中的时候，护盾拥有全伤害50%的抗性。**」
    *
    * 口径（以第二轮为准，船长 2026-10-02 显式确认「按你的提案，开始做」）：
-   * - **条件** = 该舰的闪现**不在冷却中**（`now >= BattleState.foeBlinks[tag]`；**从未闪过也算可用**
-   *   ⇒ 开场即生效）；
+   * - 2026-10-08：闪现进入冷却满 `delayMs` 后生效，冷却结束失效；未闪现时不生效。
    * - **效果** = **只有护盾层**对**全部伤害类型**（动能 / 爆破 / 能量）获得 `resistPct` 抗性
    *   ⇒ 落在该层的伤害 ×(1 − `resistPct`)；**装甲 / 结构照常**；
-   * - **与闪现共用冷却**；闪现触发后延续 `lingerMs` 宽限，宽限之外失效，冷却结束恢复；
+   * - 与闪现共用冷却，取消旧的冷却外常驻抗性和触发后宽限。
    * - 数值**写死在件上**（与「闪烁过载」的 `hullCostPct` 同款），**不另开旋钮**。
    *
    * 缺省不写 ⇒ 既有各族各件**零行为变化**。
    */
-  /** 闪现触发后继续保留抗性的毫秒数；缺省 0 = 旧判据。 */
-  standbyShield?: { resistPct: number; lingerMs?: number }
+  standbyShield?: { resistPct: number; delayMs: number }
   /**
    * **聚焦阵列**（**船长 2026-10-02 令**：「**武器的远端衰减，随时间提高到1（就是无衰减）。**」
    * ＋纠正"整场计时"的改判：「**旗舰挂载件的会随波重置**」）—— R 族 T5 **光环中枢**专属。
@@ -512,7 +511,7 @@ export interface FoeMountDef {
    * 语义 = **它自己武器**的远端衰减系数 `falloff` 随**本波开战时间**线性爬升到 1.0：
    * `f(t) = min(1, falloff + (1 − falloff) × t ÷ rampMs)`（面板 `falloff` 0.2 ⇒ 第 60 秒 0.6）。
    * - **计时锚 = 本波起点**（`BattleState.foeWaveStartMs`，缺省回落到 `startedAtGameMs`）⇒ **每波从头爬**；
-   * - **只影响它自己**的武器（不 buff 僚舰）；
+   * - 远端衰减与近防增伤只影响自己；2026-10-08起射程作用于全队，携带者被击毁即失效。
    * - 2026-10-03：射程与对玩家无人机的近防伤害修正率沿同一曲线爬升，加算抵消负修正；
    * - `rampMs` **写死在件上**。
    *
@@ -596,7 +595,14 @@ export interface FoeMountDef {
     activeClock?: true
   }
   /** 主动召唤指定型号，规格取本场敌卡同型号条目，不复制召唤者的旗舰厚血。 */
-  summonEscort?: { everyMs: number; count: number; shipId: string; activeClock: true }
+  summonEscort?: {
+    everyMs: number
+    count: number
+    shipId: string
+    activeClock?: true
+    /** 固定原编成空槽补位；不写时沿用巢母在场数量上限规则。 */
+    formationSlots?: true
+  }
   /** 设计备注（不进玩家视野） */
   note?: string
 }

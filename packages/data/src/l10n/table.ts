@@ -3478,11 +3478,15 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
     /** R 族（光环）闪烁过载装置（同上，2026-10-03 补） */
     "ui.foeIntro.111": { zh: "每次闪现后护盾回满，结构 −上限的 {p1}%", en: "Shields refill after each blink; hull −{p1}% of max" },
     /** R 族（光环）待机护盾阵列（2026-10-02 船长令：「闪现未处于冷却中的时候，护盾拥有全伤害50%的抗性。」） */
-    "ui.foeIntro.112": { zh: "闪现未在冷却中时，护盾层受到的伤害 −{p1}%", en: "While its blink is off cooldown, its shields take {p1}% less damage" },
+    // ⟪文案调整 2026-10-08⟫ 船长确认垂暮只在冷却满1秒后至冷却结束间获得抗性。
+    "ui.foeIntro.112": { zh: "闪现进入冷却{p2}秒后，护盾获得{p1}%全伤害抗性，持续至本次冷却结束。", en: "Once blink has been on cooldown for {p2} s, shields gain {p1}% resistance to all damage until that cooldown ends." },
     /** R 族（光环）聚焦阵列（2026-10-02 船长令：「武器的远端衰减，随时间提高到1（就是无衰减）。」＋改判「旗舰挂载件的会随波重置」） */
-    "ui.foeIntro.113": { zh: "远端衰减随本波开战时间在 {p1} 秒内升到 1，随波重置", en: "Its falloff climbs to 1 over {p1} s of the current wave; resets each wave" },
+    // ⟪文案调整 2026-10-08⟫ 补全全队射程与自身衰减、防空增强，不扩大防空增伤作用面。
+    "ui.foeIntro.113": { zh: "随本波时间增强，{p1}秒后全队武器最远射程 +{p2}%，自身武器无远端衰减、近防伤害 +{p3}%；随波重置，中枢被击毁后全队射程加成失效。", en: "Strengthens over the current wave. After {p1} s, the fleet gains +{p2}% maximum weapon range, while the Nexus's own weapons have no falloff and its point-defense damage gains +{p3}%. Resets each wave; the fleet range bonus ends when the Nexus is destroyed." },
     // ⟪文案调整 2026-10-07⟫ 导弹残段独立观瞄说明，不再显示炮台文本。
     "ui.foeIntro.114": { zh: "从自身导弹射程之外被命中后，导弹最远射程 ×{p1}，本场战斗内持续生效。", en: "When hit from beyond its missile range, maximum missile range is multiplied by {p1} for the rest of the battle." },
+    "ui.foeIntro.115": { zh: "每次攻击或闪现后，装填间隔缩短{p1}秒，最低{p2}秒；自身全部伤害 ×{p3}。", en: "Each attack or blink reduces the reload interval by {p1} s, down to a minimum of {p2} s. All damage dealt by this ship is multiplied by {p3}." },
+    "ui.foeIntro.116": { zh: "每{p1}秒检查一次编队空位，有空位时召唤一艘满血叠光级；在场舰船不超过本波初始编成。", en: "Checks for a vacant formation slot every {p1} s and summons one Corona Overlay at full health if a slot is available. Active ships cannot exceed the wave's initial formation size." },
   /* ── 入侵「重复出击」（2026-09-25 船长令：「入侵活动的悬赏，允许玩家开启自动重复，照常计算返回时间」）── */
   "ui.weekend.106": { zh: "重复出击", en: "Repeat assault" },
   // ⟪文案调整 2026-10-08⟫ 入侵循环先外围后核心，收复后切换，不自动挑战旗舰。

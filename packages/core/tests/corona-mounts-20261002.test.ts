@@ -100,7 +100,7 @@ describe('两件新挂载件：件定义与解析', () => {
   it('① 参数 = 船长定案（护盾层 50% 抗性 · 120 秒爬到 1.0）', () => {
     const sb = resolveFoeMounts([FOE_MOUNT_IDS.coronaStandbyShield])
     expect(sb.unknown, '件 id 必须已登记（否则体检判红）').toEqual([])
-    expect(sb.foeStandbyShield, '待机护盾：50% 抗性，闪现后延续 2 秒').toEqual({ resistPct: 0.5, lingerMs: 2_000 })
+    expect(sb.foeStandbyShield, '待机护盾：50% 抗性，冷却满1秒后触发').toEqual({ resistPct: 0.5, delayMs: 1_000 })
     const fa = resolveFoeMounts([FOE_MOUNT_IDS.coronaFocusArray])
     expect(fa.unknown).toEqual([])
     expect(fa.foeFocusArray, '聚焦阵列：120 秒爬满，射程/防空修正 +200%').toEqual({ rampMs: 120_000, rangeBonusPct: 2, antiDroneBonusPct: 2 })
@@ -130,6 +130,7 @@ describe('挂载面（只挂各自主人）', () => {
     expect(mountsOf('foe-r-corona-nexus'), '中枢 = 闪现 ＋ 聚焦阵列').toEqual([
       FOE_MOUNT_IDS.coronaBlink,
       FOE_MOUNT_IDS.coronaFocusArray,
+      FOE_MOUNT_IDS.coronaOverlayBeacon,
     ])
     for (const id of ['foe-r-corona-glint']) {
       expect(mountsOf(id), `${id} 只带瞬光跃迁仪`).toEqual([FOE_MOUNT_IDS.coronaBlink])
@@ -150,7 +151,7 @@ describe('挂载面（只挂各自主人）', () => {
     // 垂暮级在 `corona-converge` 的第 2 波（waveIdx = 1）
     const dusk = specOf(CARD_DUSK, 1, 'foe-r-corona-dusk')
     expect(dusk, '该波应有垂暮级').toBeTruthy()
-    expect(dusk!.foeStandbyShield, '垂暮级应带待机护盾参数').toEqual({ resistPct: 0.5, lingerMs: 2_000 })
+    expect(dusk!.foeStandbyShield, '垂暮级应带待机护盾参数').toEqual({ resistPct: 0.5, delayMs: 1_000 })
     expect(dusk!.foeFocusArray, '垂暮级不得带聚焦阵列').toBeUndefined()
     // 中枢在 `corona-nexus` 的第 4 波（waveIdx = 3）
     const nexus = specOf(CARD_NEXUS, 3, 'foe-r-corona-nexus')
@@ -206,7 +207,7 @@ describe('挂载面（只挂各自主人）', () => {
   })
 })
 
-describe('待机护盾阵列：护盾层 ×0.5（未冷却 ⇒ 生效 / 冷却中 ⇒ 原伤）', () => {
+describe('待机护盾阵列：护盾层 ×0.5，仅冷却满1秒后生效', () => {
   it('⑤ 单点算术：同一发伤害 ⇒ 生效时**只有护盾层**少掉一半，装甲/结构一字不动', () => {
     const dusk = specOf(CARD_DUSK, 1, 'foe-r-corona-dusk')!
     const mount = dusk.foeStandbyShield!
@@ -224,16 +225,12 @@ describe('待机护盾阵列：护盾层 ×0.5（未冷却 ⇒ 生效 / 冷却�
     expect(shielded.a, '生效时装甲同样不动（只护盾层）').toBe(dusk.hp.a)
     expect(shielded.h, '生效时结构同样不动').toBe(dusk.hp.h)
     /**
-     * **开合判据**（船长原话「闪现**未处于冷却中**的时候」）：
-     * - 从未闪过（冷却表没有本舰）⇒ **算可用**（开场即生效）；
-     * - 冷却到 `now + 12000`（闪现刚发生）⇒ **不生效**（那段冷却里没有这层抗性 = 机制的一部分）。
-     *   ⚠ 冷却长度**取自件上的 `blink.cooldownMs`**：**2026-10-03 船长令起 = 12 秒**
-     *   （该令由 5 秒延长到 12 秒 ⇒ 本判据随之改）。
+     * 2026-10-08：未闪现与刚触发均无抗性，冷却满1秒后生效。
      */
     const now = 10_000
-    expect(standbyShieldActiveOf(dusk, undefined, now), '从未闪过 ⇒ 算可用').toBe(true)
-    expect(standbyShieldActiveOf(dusk, now + 12_000, now), '刚触发 ⇒ 延续 2 秒').toBe(true)
-    expect(standbyShieldActiveOf(dusk, now + 12_000, now + 2_000), '2 秒边界 ⇒ 失效').toBe(false)
+    expect(standbyShieldActiveOf(dusk, undefined, now), '从未闪过 ⇒ 无抗性').toBe(false)
+    expect(standbyShieldActiveOf(dusk, now + 12_000, now), '刚触发 ⇒ 无抗性').toBe(false)
+    expect(standbyShieldActiveOf(dusk, now + 12_000, now + 1_000), '1 秒边界 ⇒ 生效').toBe(true)
     expect(standbyShieldActiveOf({}, now + 12_000, now), '没带该件的单位 ⇒ 恒不生效').toBe(false)
     console.log(
       `  [读数] 单发 ${dmg}（盾层 ${dusk.hp.s.toFixed(0)}/甲 ${dusk.hp.a.toFixed(0)}/结 ${dusk.hp.h.toFixed(0)}）：` +
@@ -241,17 +238,13 @@ describe('待机护盾阵列：护盾层 ×0.5（未冷却 ⇒ 生效 / 冷却�
     )
   })
 
-  it('⑥ 真实战斗 A/B：摘掉闪现（件恒生效）⇒ 盾层累计掉幅**恰好减半**；带闪现 ⇒ 只在冷却窗外生效', () => {
+  it('⑥ 真实战斗：没有闪现不能触发抗性，出荷配置不增加承伤', () => {
     /**
      * **为什么要关护盾回充**：不关的话"盾层掉幅"= 承伤 − 回充，读数被回充糊住；
      * 关掉之后 `hp.s` 的每一格下降就是**这一拍真吃进去的伤害**，A/B 才有可判的判据。
      * ⚠ 三场的**随机序列与编成完全一致**（同 seed、同卡、只差挂载件/回充）⇒ 差额只可能来自本件。
      *
-     * 🔴 **判据取"头 20 秒窗口"而不是整场累计**（**2026-10-03 取数定位**）：护盾抗性只在
-     * **一发打不穿盾**时才按比例减伤；一发大到能把残盾一次打空时，盾层的掉幅**只等于它剩下的那点**
-     * （抗性帮不上忙）。整场跑下去盾越薄、这种"破盾发"越多 ⇒ 累计比值会从 0.50 一路漂到 0.62
-     * （实测：冷却 5 秒时窗口短、盾还厚 ⇒ 恰好 0.50；冷却延长到 12 秒后战斗更久 ⇒ 漂到 0.62）。
-     * ⇒ 钉"恰好吃一半"要用**盾还厚的那段窗口**（观测窗起点一致、两边同随机序列），整场累计另作读数。
+     * 头20秒观察盾仍较厚的阶段，整场累计另作读数，不把跨层溢出的盾损当减伤比例。
      */
     const run = (useCtx: SimContext) => {
       const { b, tick } = battleOf(CARD_DUSK, 16, useCtx)
@@ -299,53 +292,44 @@ describe('待机护盾阵列：护盾层 ×0.5（未冷却 ⇒ 生效 / 冷却�
       }),
     )
     expect(plain.head, '对照场应真的挨了打').toBeGreaterThan(0)
-    /** ① **件恒生效 ⇒ 头 20 秒恰好吃一半**（这条钉住"接线到了唯一收口"） */
+    // 没有闪现就不能进入冷却，阵列不得常驻。
     expect(
-      Math.abs(shieldOnly.head * 2 - plain.head) / plain.head,
-      `摘掉闪现时头 20 秒的盾层掉幅应恰为对照的一半（实测 ${shieldOnly.head.toFixed(1)} vs ${plain.head.toFixed(1)}）`,
-    ).toBeLessThan(0.03)
-    /** ② **出荷配置（闪现 ＋ 待机护盾）⇒ 介于两者之间**：闪现一挨打就闪 ⇒ 冷却窗内没有这层抗性（口径的一部分）。
-     *     ⚠ 冷却 **2026-10-03 起由 5 秒延长到 12 秒** ⇒ 这层抗性的"开门时间"更短 ⇒ `shipped` 读数回升
-     *     （同拍整次齐射都算那条裁定仍然生效，见 ⑪）。
-     *
-     *     🔴 **2026-10-02 再订正（回响级改判的连带 · 如实记账）**：船长同日两条令「回响级**闪避率改为 0**」
-     *     ＋「回响级**血量 33/33/34**」⇒ 本夹具卡（`corona-converge`）**第 1 波就是回响级 ×3**，
-     *     它变得"必中且盾薄" ⇒ 整场节拍前移，垂暮级那段曝露窗口跟着变 ⇒ 实测 `shipped.total` 由
-     *     「净更省」变成 **≈ 裸对照**（**1279.08 vs 1278.98**，差 **+0.01%**；改判前是"更省"那一侧）。
-     *     ⇒ 判据由「净更省 0.5%」改成「**不高于裸对照（±0.5% 容差）**」——
-     *     本件**自己的契约**由下面那条 `> shieldOnly × 1.2` 继续钉住（闪现确实关掉了抗性窗口）；
-     *     「两件合起来在**某张卡**里是否净赚」随卡面编成与节拍而变，**不在这里当断言**（要那类结论请走
-     *     夹具固定成"纯垂暮级"的卡，或直接读 ⑨/⑩ 的挂牌读数）。 */
+      shieldOnly.head,
+      '摘掉闪现后无法进入冷却，护盾阵列不生效',
+    ).toBe(plain.head)
+    // 真实闪现与延迟抗性组合的观察窗减伤，不把这张夹具卡当全配置胜率结论。
     expect(shipped.total, '带闪现时不应高于裸对照（容差 ±0.5%）').toBeLessThanOrEqual(plain.total * 1.005)
-    expect(shipped.total, '带闪现时不可能达到"恒生效"那种减半').toBeGreaterThan(shieldOnly.total * 1.2)
+    expect(shipped.head, '带闪现时冷却窗口内减少承伤').toBeLessThan(plain.head)
     console.log(
       `  [读数] 垂暮级盾层掉幅（关回充 · 同一场同一随机序列）：` +
-        `头 20 秒窗 裸对照 ${plain.head.toFixed(1)} / 只挂件 ${shieldOnly.head.toFixed(1)}（恰一半）/ ` +
+        `头 20 秒窗 裸对照 ${plain.head.toFixed(1)} / 无闪现 ${shieldOnly.head.toFixed(1)} / ` +
         `出荷 ${shipped.head.toFixed(1)}；整场累计 裸对照 ${plain.total.toFixed(0)} · 只挂件 ${shieldOnly.total.toFixed(0)} · ` +
         `出荷 ${shipped.total.toFixed(0)}（占对照 ${((shipped.total / plain.total) * 100).toFixed(1)}%）`,
     )
   })
 
-  it('⑪ 同一拍整次齐射都算（船长 2026-10-03 裁定）：本拍中途盖了闪现冷却 ⇒ 本拍照旧生效、下一拍才失效', () => {
+  it('⑪ 同次齐射保持快照，触发后的1秒延迟与冷却结束均按窗口更新', () => {
     const dusk = specOf(CARD_DUSK, 1, 'foe-r-corona-dusk')!
     const b = {
       lastTickGameMs: 1_000,
       foeBlinks: {} as Record<string, number>,
       foeStandbyTick: {} as Record<string, { atMs: number; ready: boolean }>,
     }
-    expect(foeStandbyReadyOf(b, dusk), '本拍开头闪现可用 ⇒ 就绪').toBe(true)
+    expect(foeStandbyReadyOf(b, dusk), '未闪现 ⇒ 无抗性').toBe(false)
     /**
      * 本拍**中途**它挨打触发了闪现、盖上 12 秒冷却（**2026-10-03 船长令起冷却 = 12 秒**）——
      * 引擎的真实次序就是这个（同一发里"伤害结算在前、`markFoeBlink` 盖冷却在后"）。
      */
     b.foeBlinks[dusk.tag] = 1_000 + 12_000
-    expect(foeStandbyReadyOf(b, dusk), '同一拍内整次齐射同命 ⇒ 仍算就绪（这是船长裁定那一条）').toBe(true)
+    expect(foeStandbyReadyOf(b, dusk), '同次齐射仍无抗性').toBe(false)
     b.lastTickGameMs = 1_100
-    expect(foeStandbyReadyOf(b, dusk), '进了下一拍 ⇒ 仍在 2 秒宽限内').toBe(true)
+    expect(foeStandbyReadyOf(b, dusk), '尚未满1秒 ⇒ 无抗性').toBe(false)
+    b.lastTickGameMs = 2_000
+    expect(foeStandbyReadyOf(b, dusk), '冷却满1秒 ⇒ 获得抗性').toBe(true)
     b.lastTickGameMs = 3_000
-    expect(foeStandbyReadyOf(b, dusk), '2 秒边界 ⇒ 失效').toBe(false)
+    expect(foeStandbyReadyOf(b, dusk), '仍在冷却中 ⇒ 保持抗性').toBe(true)
     b.lastTickGameMs = 13_100
-    expect(foeStandbyReadyOf(b, dusk), '冷却走完那一拍 ⇒ 恢复生效').toBe(true)
+    expect(foeStandbyReadyOf(b, dusk), '冷却结束 ⇒ 失效').toBe(false)
     /** 没带该件的单位：恒 false，且**一次都不写这张快照表**（零行为变化的守卫） */
     const b2 = {
       lastTickGameMs: 0,
@@ -354,7 +338,7 @@ describe('待机护盾阵列：护盾层 ×0.5（未冷却 ⇒ 生效 / 冷却�
     }
     expect(foeStandbyReadyOf(b2, { tag: 'nobody' })).toBe(false)
     expect(Object.keys(b2.foeStandbyTick)).toEqual([])
-    console.log('  [读数] 同拍判据：t=1000 触发 ⇒ t=1100 宽限 ⇒ t=3000 失效 ⇒ t=13100 恢复（不带件者零写入）')
+    console.log('  [读数] 齐射快照：触发后1秒内无抗性，满1秒生效，冷却结束失效；不带件者零写入')
   })
 })
 
@@ -409,6 +393,9 @@ describe('聚焦阵列：远端衰减爬到 1.0（随波重置）', () => {
         if (!nexusTag) {
           nexusTag = Object.values(b.units).find((u) => u.foeShipId === 'foe-r-corona-nexus')?.tag ?? ''
         }
+        // 隔离距离与承伤层，避免细步长改变走位/破盾时刻后污染聚焦曲线比较。
+        b.distanceM = 9000
+        for (const u of Object.values(b.units)) if (u.side === 'me' && u.hp.h > 0) u.hp = { ...u.hpMax! }
         for (const ev of b.fx) {
           if (ev.seq <= lastSeq) continue
           lastSeq = ev.seq

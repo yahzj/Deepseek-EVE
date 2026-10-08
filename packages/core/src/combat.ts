@@ -89,18 +89,20 @@ export type { AmmoKey } from './combatAmmo'
 import { buildDronePoolsFor, dronePoolKey, dronePoolOwner, isFoeEngageable, pickFoeDroneTarget, resolvePointDefense } from './combatDrones'
 export { droneLostCount, dronePoolKey, dronePoolOwner, pdPriorityOf, pdShotOf, pickFoeDroneTarget } from './combatDrones'
 import { applyFoeRangeDebuff, applyMeJammerDebuff, foeDroneRangeOf, foeGunMaxRangeOf, foeGunPowerFactorOf, markFoeDroneRangeBuff, announceFoeGunRangeBuff, meFoeRangeDebuffOf, meJammerNetOf } from './foeRange'
-import { coronaFocusFalloffOf } from './coronaFocus'
+import { coronaFocusFalloffOf, syncCoronaFleetFocus } from './coronaFocus'
 export { coronaFocusFalloffOf } from './coronaFocus'
 export { FOE_RANGE_DEBUFF_FLOOR_M, applyMeJammerDebuff, fittedEffectParamsOf, foeDroneRangeOf, foeGunMaxRangeOf, foeGunPowerFactorOf, foeGunRangeMulOf, foeJammerCountOf, foeRangeDebuffOf, foeUnitDeadOf, meFoeRangeDebuffOf, meJammerNetOf, meRangeMulForBonus, meRangeMulOf } from './foeRange'
 // 敌群建档与增援（2026-10-02 批次 4l 拆到 foeSpecs.ts）；本文件借回使用并再导出
 export { FOE_REPAIR_THREAT_REF, activeFoeSpecsOf, battleMaxDistanceM, battleOpenM, createBattleState, createFoeSpecs, desiredRangeFor, flagshipBattleLedger, foeDesiredRange, foeStrengthOf, foeThreatOfAnomaly, mainWeaponOf, rFamilyDesireOf } from './foeSpecs'
 export type { FoeSpecOpts } from './foeSpecs'
-import { activeFoeSpecsOf, announceStealthStart, announceSupportCallStart, battleMaxDistanceM, battleOpenM, BLINK_SHARE_DEN, BLINK_VANISH_SHARE_NUM, blinkGapMs, blinkProcessMs, createBattleState, createFoeSpecs, desiredRangeFor, foeDesiredRange, foesWithSupport, initFoeDronePools, initFoeRepairPulses, mainWeaponOf, nominalWeaponDps, rFamilyDesireOf, resolveFoeRevive, resolveReinforcements, seedUnit } from './foeSpecs'
+import { activeFoeSpecsOf, announceStealthStart, announceSupportCallStart, battleMaxDistanceM, battleOpenM, BLINK_SHARE_DEN, BLINK_VANISH_SHARE_NUM, blinkGapMs, blinkProcessMs, createBattleState, createFoeSpecs, desiredRangeFor, foeDesiredRange, foesWithSupport, initFoeDronePools, initFoeRepairPulses, mainWeaponOf, nominalWeaponDps, rFamilyDesireOf, resolveFoeRevive, resolveFoeSummon, resolveReinforcements, seedUnit } from './foeSpecs'
 
 /** 战斗基本步长（毫秒） */
 export const BATTLE_STEP_MS = 100
 /** 步数守卫上限（防失控循环） */
 export const BATTLE_MAX_STEPS = 40_000
+/** 护盾抗性保持原100毫秒齐射快照，独立于内部步长。 */
+const BATTLE_VOLLEY_WINDOW_MS = 100
 
 /** 武器来源（2026-09-10 船长批：无人机战斗动画差异化地基——纯展示字段，不参与任何数值结算） */
 export type WeaponSrc = 'turret' | 'missile' | 'laser' | 'drone' | 'base'
@@ -393,18 +395,17 @@ export interface UnitSpec {
    * 护盾拥有全伤害50%的抗性。**」）—— 由 R 族 T4 垂暮级那件「待机护盾阵列」
    * （`FoeMountDef.standbyShield`）解析而来。
    *
-   * 消费单点 = `applyFoeUnitDamage`（打敌舰本体的唯一收口）：闪现**不在冷却中**
-   * （`now >= b.foeBlinks[tag]`，从未闪过也算可用）⇒ 把 `resistPct` 并进**护盾层**抗性
+   * 消费单点 = `applyFoeUnitDamage`：闪现冷却已满延迟且尚未结束时，把抗性并进护盾层。
    * （与既有层抗**乘算**：`1 − (1−a)(1−b)`；装甲/结构不并）。缺省不写 ⇒ 零行为变化。
    */
-  foeStandbyShield?: { resistPct: number; lingerMs?: number };
+  foeStandbyShield?: import('./types').FoeMountDef['standbyShield'];
   /**
    * **本单位的「聚焦阵列」参数**（**船长 2026-10-02 令**：「**武器的远端衰减，随时间提高到1
    * （就是无衰减）。**」＋改判「**旗舰挂载件的会随波重置**」）—— 由 R 族 T5 光环中枢那件
    * 「聚焦阵列」（`FoeMountDef.focusArray`）解析而来。
    *
    * 消费单点 = 敌方开火段（本单位的**当拍**远端衰减系数按本波起点现算，见 `coronaFocusFalloffOf`）；
-   * **只影响它自己**的武器。缺省不写 ⇒ 零行为变化。
+   * 衰减与近防只影响自己，射程通过全队聚焦来源传播。缺省不写 ⇒ 零行为变化。
    */
   foeFocusArray?: { rampMs: number; rangeBonusPct?: number; antiDroneBonusPct?: number };
   /**
@@ -550,30 +551,18 @@ export interface UnitSpec {
   foeShipId?: string
 }
 
-/**
- * **待机护盾阵列：本拍是否生效**（**船长 2026-10-02 令**：「**闪现未处于冷却中的时候，护盾拥有
- * 全伤害50%的抗性。**」）—— 判据 = 带该件，且闪现不在冷却中或仍在触发后的宽限内
- * （`now >= BattleState.foeBlinks[tag]`；**从未闪过也算可用** ⇒ **开场即生效**，船长原话的读法）。
- *
- * 闪现触发后仍保留 `lingerMs` 的抗性宽限；用冷却截止戳减去件的冷却时长还原触发时刻。
- * ⚠ 与闪现**共用那条冷却**是机制的一部分（宽限之外没有这层抗性；**冷却 = 件的 `blink.cooldownMs`，
- * 2026-10-03 起 12 秒**），不是缺陷。
- * ⚠ **本函数只是那条纯判据**（"这一瞬是否就绪"）：**引擎里请走 `foeStandbyReadyOf`**
- * （它按**每拍开头**取快照 ⇒ 同一拍整次齐射同命，船长 2026-10-03 裁定）。
- * 缺省（没带件）⇒ 恒 `false`；没带件的单位**一次都不会走到下面的并抗性**。
- */
+/** 冷却满延迟后至截止时刻前生效；未闪现与冷却外均关闭。引擎承伤走齐射快照。 */
 export function standbyShieldActiveOf(
   unit: Pick<UnitSpec, 'foeStandbyShield' | 'foeBlink'>,
   blinkReadyAtMs: number | undefined,
   nowMs: number,
 ): boolean {
   if (unit.foeStandbyShield === undefined) return false
-  if (blinkReadyAtMs === undefined || nowMs >= blinkReadyAtMs) return true
+  if (blinkReadyAtMs === undefined || nowMs >= blinkReadyAtMs) return false
   const cooldown = unit.foeBlink?.cooldownMs
-  const linger = unit.foeStandbyShield.lingerMs ?? 0
-  if (cooldown === undefined || linger <= 0) return false
+  if (cooldown === undefined) return false
   const triggeredAt = blinkReadyAtMs - cooldown
-  return nowMs >= triggeredAt && nowMs < triggeredAt + linger
+  return nowMs >= triggeredAt + unit.foeStandbyShield.delayMs
 }
 
 /**
@@ -592,22 +581,10 @@ export function withStandbyShield(
   }
 }
 
-/**
- * **本拍该舰的「待机护盾阵列」是否就绪**（**船长 2026-10-03 裁定**：「**同一拍整次齐射都算**」）——
- * 判据 = **本拍开头那一瞬**闪现是否在冷却中（`standbyShieldActiveOf` 是那条纯判据），
- * **同一拍之内恒定不变**。
- *
- * 为什么必须按拍定死：闪现是**挨打触发**的（同一发里"伤害结算在前、盖冷却在后"）——
- * 若现查冷却表，同一拍里只有**触发那一发**吃得到抗性，随后同拍的其余发全被刚盖上的冷却挡掉
- * （2026-10-03 实测：出荷配置下这层抗性只挡下约 7%，几乎等于没挂）。船长第一句原话是
- * 「**触发的那次齐射**受到的伤害减半」⇒ 本拍整次齐射同命。
- *
- * 取数次序：① 本拍开头由 `stepBattle` 盖好的快照（`BattleState.foeStandbyTick`）；
- * ② 没有本拍快照（拍外调用 / 增援新 tag）⇒ **现算并补一份本拍快照** ⇒ 语义恒为"本拍开头"。
- * 没带该件的单位**一次都不写这张表**（`foeStandbyShield` 缺省 ⇒ 直接 `false`，零行为变化）。
- */
+/** 同次齐射固定抗性答案；内部子步不能拆开原100毫秒承伤窗口。 */
 export function foeStandbyReadyOf(
   b: {
+    startedAtGameMs?: number
     lastTickGameMs?: number
     foeBlinks?: Record<string, number>
     foeStandbyTick?: Record<string, { atMs: number; ready: boolean }>
@@ -616,11 +593,13 @@ export function foeStandbyReadyOf(
 ): boolean {
   if (foe.foeStandbyShield === undefined) return false
   const now = b.lastTickGameMs ?? 0
+  const anchor = b.startedAtGameMs ?? 0
+  const windowAt = anchor + Math.floor((now - anchor) / BATTLE_VOLLEY_WINDOW_MS) * BATTLE_VOLLEY_WINDOW_MS
   const reg = b.foeStandbyTick ?? (b.foeStandbyTick = {})
   const hit = reg[foe.tag]
-  if (hit !== undefined && hit.atMs === now) return hit.ready
+  if (hit !== undefined && hit.atMs === windowAt) return hit.ready
   const ready = standbyShieldActiveOf(foe, b.foeBlinks?.[foe.tag], now)
-  reg[foe.tag] = { atMs: now, ready }
+  reg[foe.tag] = { atMs: windowAt, ready }
   return ready
 }
 
@@ -654,12 +633,7 @@ function foeResistsNow(
  * 只扫"带该件"的单位（R 族那几档才有）⇒ 其余场次一次判断都不多做。
  */
 function snapshotFoeStandby(b: import('./state').BattleState, foes: readonly UnitSpec[]): void {
-  const now = b.lastTickGameMs
-  const reg = b.foeStandbyTick ?? (b.foeStandbyTick = {})
-  for (const f of foes) {
-    if (f.foeStandbyShield === undefined) continue
-    reg[f.tag] = { atMs: now, ready: standbyShieldActiveOf(f, b.foeBlinks?.[f.tag], now) }
-  }
+  for (const f of foes) foeStandbyReadyOf(b, f)
 }
 
 /**
@@ -712,8 +686,7 @@ function applyFoeUnitDamage(
   if (!rt) return { dealt: 0, killedNow: false }
   const wasAlive = rt.hp.s + rt.hp.a + rt.hp.h > 0
   /**
-   * **待机护盾阵列**（**船长 2026-10-02 令**：「**闪现未处于冷却中的时候，护盾拥有全伤害50%的抗性。**」）
-   * —— 挂在 R 族 T4 垂暮级上的那件：闪现**不在冷却中**（从未闪过也算可用）⇒ **只有护盾层**吃这层抗性。
+   * 待机护盾阵列只在本次冷却满延迟后至结束前保护护盾层。
    * ⚠ 放在**唯一收口**里 ⇒ 主段 / 附加段 / 全体攻击 / 齐射溢火**四条伤害路径同源**吃到它。
    * 没带该件的单位 ⇒ `foeResistsNow` 直接返回原引用 ⇒ **既有各族逐字不变**。
    */
@@ -2902,6 +2875,7 @@ export function battleArcsFor(
    * 某一波出场 ⇒ 取第 0 波会漏判。
    */
   const foes = foesWithSupport(battle, activeFoeSpecsOf(anomaly, bal, battle.waveIdx))
+  syncCoronaFleetFocus(battle, foes)
   applyMeJammerDebuff(me, meJammerNetOf(battle, foes), meRefs.weaponRanges)
   /** 我方各武器当前装填剩余（与 units['player'].weapons 同序；单位缺失 = 空） */
   const meRt = battle.units['player']?.weapons ?? []
@@ -3701,6 +3675,7 @@ export function advanceBattleFor(
     // 读档中断补缺 = 视为"增援入场" ⇒ 同样盖入场窗口（时刻取**全局时钟**，理由同转场那一处）
     seedUnit(battle, f, { enterReload: true, arrivedAtMs: nowMs() })
   }
+  syncCoronaFleetFocus(battle, foesWithSupport(battle, curFoes))
   let guard = 0
   while (nowMs() > battle.lastTickGameMs && !battle.ended && guard < BATTLE_MAX_STEPS) {
     guard++
@@ -3826,6 +3801,7 @@ export function advanceBattleFor(
     const dt = Math.min(BATTLE_STEP_MS, nowMs() - battle.lastTickGameMs)
     advanceFoeAbilityClocks(battle, curFoes, dt)
     resolveFoeRevive(state, battle, curFoes, bal, nowMs())
+    resolveFoeSummon(state, battle, curFoes, bal, battle.lastTickGameMs)
     /**
      * **无人机储备甲板：每拍复位**（2026-09-27 船长令）——与上面那条**同位置**（`stepBattle` 之前）：
      * 本拍到点补回来的那架，这一拍就重新进开火循环/选靶池。
@@ -4588,6 +4564,7 @@ function stepBattle(
   foeTargetingChance = 1,
 ): void {
   const dtSec = dtMs / 1000
+  syncCoronaFleetFocus(b, foes)
   advanceFoeHatcheries(b, foes, b.lastTickGameMs)
   // **我方"不被一击带走"保险：本拍账本清零**（船长 2026-09-16；见 `cappedFoeDamage`。
   // 逐拍重置 ⇒ 运行态、不入档；洞外洞内共用这一处）

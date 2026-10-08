@@ -103,22 +103,26 @@ export function enumerateShipUnits(
 }
 
 /**
- * **支援舰的 tag 前缀**（船长 2026-09-25「支援舰船召唤装置」）：复活/入场的支援舰 tag = `sup{n}-<原tag>`
- * ⇒ 界面上它是一艘**新单位**（新的舰影 + 入场动画），而美术/体积/名称仍按**原 tag** 解析。
- * `baseFoeTag` 是那条解析的**唯一剥壳点**（下面三个查询函数都先过它）。
+ * 支援标识：原舰复活沿用 `sup{n}-<原槽>`，固定空槽召唤用 `sup{n}~<型号来源>~<原槽>`。
+ * 空位统计走 `baseFoeTag`，规格与舰影走 `supportFoeModelTagOf`；无需另存规格副本。
  */
-export const FOE_SUPPORT_TAG_RE = /^sup\d+-/
+export const FOE_SUPPORT_TAG_RE = /^sup\d+(?:~([^~]+)~|-)/
 
 /** 剥掉支援舰前缀（非支援舰 tag 原样返回） */
 export function baseFoeTag(tag: string): string {
   return tag.replace(FOE_SUPPORT_TAG_RE, '')
 }
 
+/** 固定召唤的舰型与空槽分开编码；老支援标识仍沿用原舰型。 */
+export function supportFoeModelTagOf(tag: string): string {
+  return FOE_SUPPORT_TAG_RE.exec(tag)?.[1] ?? baseFoeTag(tag)
+}
+
 /** 舰级路径的 tag → 舰级反查（界面 `foeUnitNameOf` 沿用同一入口，读档/实时推导都不迁移） */
 function foeShipAtTag(anomaly: AnomalyDef, tag: string): { ship: FoeShipDef; escort: boolean } | null {
   if (!anomaly.ships || anomaly.ships.length === 0) return null
   /** ⚠ **先剥支援舰前缀**（`sup1-foe-0` → `foe-0`）：不剥的话它查不到舰级 ⇒ 舰影/体积/名称一起回落 */
-  const base = baseFoeTag(tag)
+  const base = supportFoeModelTagOf(tag)
   const m = /^w(\d+)-/.exec(base)
   const waveIdx = m ? parseInt(m[1]!, 10) : 0
   const summon = /^(?:w\d+-)?summon-(.+)$/.exec(base)

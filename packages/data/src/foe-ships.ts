@@ -1727,7 +1727,7 @@ export const FOE_R_CORONA_NEXUS: FoeShipDef = {
   // **聚焦阵列**（**船长 2026-10-02 令**：「武器的远端衰减，随时间提高到1（就是无衰减）。」＋改判
   // 「旗舰挂载件的会随波重置」）：它自己武器的远端衰减 0.2 线性爬到 1.0（120 秒到满）、**每波从头爬**；
   // 只影响它自己（不 buff 僚舰）。见 `FoeMountDef.focusArray`。
-  mounts: [FOE_MOUNT_IDS.coronaBlink, FOE_MOUNT_IDS.coronaFocusArray],
+  mounts: [FOE_MOUNT_IDS.coronaBlink, FOE_MOUNT_IDS.coronaFocusArray, FOE_MOUNT_IDS.coronaOverlayBeacon],
   tactic: 'kite', // 船长令「非常擅长风筝战术」⇒ 全档 kite（改前 T1~T3 是 orbit）
 
   elite: true, // 显示名挂「精锐」前缀

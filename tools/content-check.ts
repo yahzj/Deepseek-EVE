@@ -4413,10 +4413,17 @@ for (const m of MODULES) {
           for (const sl of a.ships ?? []) {
             const eff = resolveFoeMounts(sl.mounts ?? sl.ship.mounts)
             if (eff.foeSummonEscort !== undefined) {
-              const valid = a.id === 'alien-broodmother' && sl.ship.id === 'foe-alien-broodmother' &&
-                eff.foeSummonEscort.shipId === 'foe-alien-starcore-adult' &&
-                a.ships?.some(slot => slot.ship.id === eff.foeSummonEscort!.shipId)
-              if (!valid) bad.push(`卡 ${a.id} 的条目 ${sl.ship.id} 配置了不受支持的主动召唤或缺少成虫属性来源`)
+              const summon = eff.foeSummonEscort
+              const validMother = a.id === 'alien-broodmother' && sl.ship.id === 'foe-alien-broodmother' &&
+                summon.shipId === 'foe-alien-starcore-adult' && summon.everyMs === 30000 && summon.count === 3 &&
+                summon.activeClock === true && summon.formationSlots === undefined
+              const validNexus = a.id === 'corona-nexus' && sl.ship.id === 'foe-r-corona-nexus' &&
+                summon.shipId === 'foe-r-corona-overlay' && summon.everyMs === 60000 && summon.count === 1 &&
+                summon.activeClock === undefined && summon.formationSlots === true &&
+                a.ships?.some(slot => slot.ship.id === summon.shipId && (slot.wave ?? 0) === (sl.wave ?? 0))
+              if ((!validMother && !validNexus) || !a.ships?.some(slot => slot.ship.id === summon.shipId)) {
+                bad.push(`卡 ${a.id} 的条目 ${sl.ship.id} 配置了不受支持的主动召唤或缺少指定舰型属性来源`)
+              }
             }
             if (eff.foeReviveEscort === undefined) continue
             const validInk = a.id === 'ink-flagship' && sl.ship.id === 'foe-h-ink-flagship'
@@ -8670,7 +8677,10 @@ checkPlugEffectWiring()
         check(mount.fleetSpeedRamp?.rampMs === 120000 && mount.fleetSpeedRamp.maxBonusPct === 1.8, '巢母120秒全队速度增加180%')
       }
     }
-    if (mount.fleetSpeedRamp || mount.foeSummonEscort) check(ship.id === 'foe-alien-broodmother', `巢母能力越界：${ship.id}`)
+    if (mount.fleetSpeedRamp || mount.foeSummonEscort && !mount.foeSummonEscort.formationSlots) check(ship.id === 'foe-alien-broodmother', `巢母能力越界：${ship.id}`)
+    if (mount.foeSummonEscort?.formationSlots) {
+      check(ship.id === 'foe-r-corona-nexus' && mount.foeSummonEscort.shipId === 'foe-r-corona-overlay' && mount.foeSummonEscort.everyMs === 60000 && mount.foeSummonEscort.count === 1, `光环空槽召唤配置错位：${ship.id}`)
+    }
   }
   for (const card of ANOMALIES_FLAVORED) for (const slot of card.ships ?? []) {
     if (newIds.has(slot.ship.id)) check(card.region === 'inv' && card.foeFamily === 'C', `新异形泄露非入侵：${card.id}/${slot.ship.id}`)

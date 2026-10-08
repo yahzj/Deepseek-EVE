@@ -53,6 +53,8 @@
 | 纯货舰模块能力兼容（安装/换装/候选/建档/修复同源） | `moduleAllowedOnShip()` · `shipFitting.ts` | `hauler-balance-20261004.test.ts`；`arch:guard` F2/F3 |
 | 入侵残骸每族余额/箱子读数与旧账迁移 | `weekendWreckPoolsOf()` · `salvage.ts`；`normalizeWeekendWreckRecord()` · `weekendWreckLedger.ts` | `invasion-ledger-20261003.test.ts`：多族守恒、迁移、独立衰减与满舱不丢货 |
 | 聚焦阵列波内射程/防空加算修正率 | `coronaFocusBonusOf()` · `coronaFocus.ts` | `corona-balance-20261003.test.ts`：时点/换波/加算抵消/真实近防入口 |
+| 聚焦阵列全队射程与来源存活 | `coronaFleetRangeBonusOf()` · `coronaFocus.ts` | `corona-reinforcement-20261008.test.ts`：同进度/新支援/死亡失效/多源取最高 |
+| 固定支援舰真实型号标识 | `supportFoeModelTagOf()` · `foeCard.ts` | `corona-reinforcement-20261008.test.ts`：型号/空槽分离、名称/舰影/规格同源 |
 | 技能取消的"连带失效"基线（只报/只删因本次取消才失效的项） | `preexistingUnmet()` · `skillQueue.ts` | core 用例 `skill-cancel-baseline-20260926.test.ts` |
 | 存档清洗白名单（新增随档字段必须"写入点 ＋ 白名单"两处落笔） | `normalizeState()` · `save.ts` | `packages/core/tests/save.test.ts` 类型穷尽 ＋ `save:roundtrip-audit` |
 | 伤害类型配色（动能/爆破/能量 同族同色） | 伤害配色契约（token 单点） | `npm run ui:theme-check` 的 `dmg-color-check` |
