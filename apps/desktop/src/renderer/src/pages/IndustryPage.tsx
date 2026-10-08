@@ -1290,6 +1290,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
           <BlueprintShelfPanel
             engine={engine}
             onToast={onToast}
+            onGotoMarket={onGotoMarket}
             focusBookId={bookFocus}
             onGotoCraft={(bpId) => {
               // 2026-09-20 零件体系：舰船书跳造船厂、其余书跳组装机；切栏 + 定位高亮那张卡

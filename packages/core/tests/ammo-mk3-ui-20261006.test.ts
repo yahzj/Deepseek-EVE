@@ -55,7 +55,8 @@ describe('三档弹药真实装配组件', () => {
   })
   it('工业同一书架关闭不可出售入口、缺书时标明黑市来源，不把它当无市场渠道', () => {
     const source = readFileSync(resolve(ROOT, 'apps/desktop/src/renderer/src/panels/Industry.tsx'), 'utf8')
-    expect(source).toContain("engine.ctx.marketGoods.get(bpGoodKey(engine, id) ?? '')?.playerSellable === false")
+    expect(source).toContain("marketGoodOf(engine.ctx, 'blueprint', id)")
+    expect(source).toContain('const noResale = marketGood?.playerSellable === false')
     expect(source).toContain('{!su && !noResale ? (')
     expect(source).toContain("tr(noResale ? 'ui.ammoMk3.002' : 'ui.Industry.012')")
     expect(source).toContain(') : blackMarketBlueprint ? (')

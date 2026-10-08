@@ -11,6 +11,7 @@ import {
   manufacturingLoopOf,
   manufacturingRunViews,
   marketLockedReason,
+  marketGoodOf,
   matNeedCount,
   missingMaterials,
   ownsBlueprint,
@@ -86,10 +87,7 @@ import { fmtDuration } from '../i18n/fmt'
 
 /** 在市场目录里找某蓝图的市场商品（key）；找不到返回 null */
 function bpGoodKey(engine: GameEngine, blueprintId: string): string | null {
-  for (const good of engine.ctx.marketGoods.values()) {
-    if (good.kind === 'blueprint' && good.refId === blueprintId) return good.key
-  }
-  return null
+  return marketGoodOf(engine.ctx, 'blueprint', blueprintId)?.key ?? null
 }
 
 /** 产物现货基准价（产物在市场目录的 basePrice；弹药等按单次产出数量折算） */
@@ -118,6 +116,7 @@ export function BlueprintShelfPanel({
   engine,
   onToast,
   onGotoCraft,
+  onGotoMarket,
   focusBookId,
 }: {
   engine: GameEngine
@@ -125,6 +124,8 @@ export function BlueprintShelfPanel({
   /** 「去组装机」：切到组装机标签并定位那张蓝图卡（船长 2026-09-14：「蓝图书架内，玩家可以通过蓝图
    *  直接跳转对应组装机」）——由工业页透传（跳转时会**清掉组装机的三级筛选**，否则目标卡可能被筛掉） */
   onGotoCraft?: (blueprintId: string) => void
+  /** 打开该蓝图市场详情；这里只导航，不出售或扣书。 */
+  onGotoMarket?: (goodKey: string) => void
   /** **反向定位**（**2026-09-26 船长令**：「优化工业界面」→ 采纳"优3"）：组装机那边点「去书架」
    *  跳过来时，这一本要高亮（页面层同一套 `.app-belt-card.is-goto` ＋ 居中滚动）。 */
   focusBookId?: string | null
@@ -368,7 +369,8 @@ export function BlueprintShelfPanel({
           const kindShip = (bp && 'shipId' in bp) || (!bp && engine.allShipBlueprints.some((b) => b.id === id))
           // 2026-09-20 零件体系：舰船书「去造船厂」、其余「去组装机」
           const isShipBook = kindShip
-          const noResale = engine.ctx.marketGoods.get(bpGoodKey(engine, id) ?? '')?.playerSellable === false
+          const marketGood = marketGoodOf(engine.ctx, 'blueprint', id)
+          const noResale = marketGood?.playerSellable === false
           return (
             <div
               key={id}
@@ -418,6 +420,16 @@ export function BlueprintShelfPanel({
                 {!su && !noResale ? (
                   <button className="app-btn is-small" onClick={() => handleSell(id)} title={tr("ui.Industry.017")}>
                     {tr("ui.Industry.018")}
+                  </button>
+                ) : null}
+                {/* ⟪文案调整 2026-10-08⟫ 复用市场查看入口，可交易的一次性图纸同样可达。 */}
+                {onGotoMarket && marketGood && marketGood.unreleased !== true && marketGood.playerSellable !== false ? (
+                  <button
+                    className="app-btn is-small"
+                    title={tr('ui.CargoPage.002')}
+                    onClick={() => onGotoMarket(marketGood.key)}
+                  >
+                    {tr('ui.CargoPage.001')}
                   </button>
                 ) : null}
               </div>

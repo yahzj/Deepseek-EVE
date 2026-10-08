@@ -956,19 +956,8 @@ function crossFamilyLines(mod: ModuleDef): InfoLine[] {
     const row = resistAddLine(tr("ui.FitPage.002"), mod.shieldResistAdd)
     if (row) out.push(row)
   }
-  // 推进器族（加力推进 / 点火代价）
+  // ⟪文案调整 2026-10-08⟫ 跨族速度已由通用航速行显示，不把装甲/支援件再标成加力推进。
   if (foreign('propulsion')) {
-    if (mod.speedBonusPct !== undefined) {
-      out.push({
-        k: tr("ui.shipInfo.020"),
-        v: (
-          <>
-            {tr("ui.shipInfo.135", { p1: pct(mod.speedBonusPct) })}
-            <span className="app-dim">{propTailOf(mod)}</span>
-          </>
-        ),
-      })
-    }
     if ((mod.hitPenalty ?? 0) > 0) {
       out.push({ k: tr("ui.shipInfo.021"), v: tr("ui.shipInfo.136", { p1: (1 - (mod.hitPenalty ?? 0)).toFixed(2) }) })
     }

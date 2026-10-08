@@ -96,13 +96,42 @@ const bindings = {
   MODULE_SUBS: [], moduleSubKeyOf: () => '', subText: () => '',
 }
 runInNewContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText, bindings)
-const display = bindings.exports as { itemInfoLines: (item: (typeof ITEMS)[number]) => Row[]; moduleInfoLines: (module: (typeof MODULES)[number], engine?: unknown, shipId?: string, ordinal?: number) => Row[] }
+const display = bindings.exports as { itemInfoLines: (item: (typeof ITEMS)[number]) => Row[]; moduleInfoLines: (module: (typeof MODULES)[number], engine?: unknown, shipId?: string, ordinal?: number) => Row[]; moduleShortEffect: (module: (typeof MODULES)[number]) => string }
+const subSource = ts.createSourceFile('itemSubs.ts', readFileSync(new URL('../../../apps/desktop/src/renderer/src/ui/itemSubs.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true)
+const subCode = subSource.statements.filter(node => !ts.isImportDeclaration(node)).map(node => node.getText(subSource)).join('\n')
+const subBindings = { ...core, exports: {}, tr: bindings.tr }
+runInNewContext(ts.transpileModule(subCode, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, subBindings)
+const filters = subBindings.exports as { moduleSubKeyOf: (slot: core.ModuleSlot, id: string) => string }
 function textOf(value: unknown): string {
   if (Array.isArray(value)) return value.map(textOf).join('')
   if (value && typeof value === 'object' && 'children' in value) return textOf((value as { children: unknown[] }).children)
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 }
 describe('真实参数行承接说明数字', () => {
+  it.each(['zh', 'en'] as const)('%s 全目录的速度加成只显示一次，不把非推进器误称加力推进', locale => {
+    language.value = locale
+    const speedModules = MODULES.filter(module => (module.speedBonusPct ?? 0) > 0)
+    expect(speedModules.filter(module => module.slot !== 'propulsion').map(module => module.id)).toEqual(['mod-wh-c-pulse', 'mod-wh-c-frame'])
+    expect(filters.moduleSubKeyOf('armor', 'mod-wh-c-frame')).toBe('armor')
+    expect(filters.moduleSubKeyOf('support', 'mod-wh-c-pulse')).toBe('support-aux')
+    for (const module of speedModules) {
+      const rows = display.moduleInfoLines(module)
+      const afterburner = rows.filter(row => row.k === L10N['ui.shipInfo.020']![locale])
+      const speed = rows.filter(row => row.k === L10N['ui.shipInfo.075']![locale])
+      expect(afterburner, module.id).toHaveLength(module.slot === 'propulsion' ? 1 : 0)
+      expect(speed, module.id).toHaveLength(module.slot === 'propulsion' ? 0 : 1)
+      const value = textOf((speed[0] ?? afterburner[0])!.v)
+      const pct = `${Math.round(module.speedBonusPct! * 100)}%`
+      expect(value, module.id).toContain(pct)
+      expect(value, module.id).toMatch(locale === 'zh' ? /点火/ : /burning/)
+      expect(display.moduleShortEffect(module), module.id).toContain(pct)
+      const cycle = core.thrusterCycleSeconds(core.DEFAULT_BALANCE.battle, core.thrusterCycleOfModule(module))
+      const period = L10N['ui.shipInfo.183']![locale].replace('{p1}', String(cycle.boost)).replace('{p2}', String(cycle.cooldown))
+      expect(display.moduleShortEffect(module), module.id).toContain(period)
+      expect(textOf(rows[0]!.v), module.id).toBe(`${module.slot}（${module.rack}）`)
+      if (module.slot === 'propulsion') expect(filters.moduleSubKeyOf(module.slot, module.id)).toBe('prop')
+    }
+  })
   it('中英已装周期与负面值均从真实核心读取，不漏槽或保留最大值旧提示', () => {
     const ctx = buildSimContext()
     const state = core.createInitialState({ nowWallMs: 0, seed: 12 })
