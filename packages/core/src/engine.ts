@@ -29,6 +29,7 @@ import { advanceAi, AI_CORE_ORDER } from './ai'
 import { advanceEvents } from './events'
 import { advanceMarket } from './market'
 import { ensureBlackMarket } from './blackMarket'
+import { repairSlotExpansionPlugs } from './equipment'
 import { advanceEncounterWatch } from './encounters'
 import { advanceScanning, ensureTransitExplored } from './explore'
 import { advanceWormholeScan, reconcileWormholePromoGift, reconcileWormholeScanWelcome } from './wormholeScan'
@@ -292,6 +293,8 @@ function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opt
   advanceAi(state, d, ctx, opts?.settleStats)
   // B1 低安遭遇：在场记录维护（事件到点判定前刷新）+ 遭遇推进（待决超时自动文字结算 / 战斗推演）
   advanceEncounterWatch(state, ctx, d, opts?.freezeBattle)
+  // 在途舰船不改配置；作业结算释放后，接续整理旧同类型扩槽插件。
+  repairSlotExpansionPlugs(state, ctx)
   // 随机事件（到达式触发；B1 低安遭遇占用其到点时机的判定入口；先于市场窗口撮合）
   advanceEvents(state, d, ctx, opts?.offline === true)
   // 市场按窗口推进（离线大推进同样覆盖：订单过期/池回归/内部消化/补单/挂单撮合）

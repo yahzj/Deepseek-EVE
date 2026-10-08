@@ -19,6 +19,7 @@
 | 关注点 | 唯一实现 | 护栏 |
 | 静态JSON参数与文本/派生绑定、数值编辑计划 | `staticDataGroup()` · `packages/data/src/staticData.ts`；`planDocuments()` · `tools/data-editor-schema.ts` | 固定基线目录等价、编辑事务与字段校验；JSON权威静态参数，公式/文本留代码 |
 |---|---|---|
+| 扩槽插件同类型限制 | `plugSlotExpansionKindOf()` / `plugSlotExpansionBlockedOf()` / `normalizePlugSlotExpansions()` · `plugs.ts`；`repairSlotExpansionPlugs()` · `equipment.ts` | 中低两类分别限一件、普通重复件保留、免费退库与幂等；F2/F3 |
 | 全编队武器与装置周期 | `battleWeaponCyclesOf()` · `battleWeaponView.ts`；`battleDeviceCyclesOf()` · `battleDeviceView.ts` | 实际账本只读、僚舰覆盖、同舰同型数量与实际射程、动态装填、缺料与沉没状态；F2/F3 |
 | 装备负面随收益折权、抗性减法与全战斗主动周期 | `fittedPenaltyPartsOf()` / `equipmentPenaltiesOf()` / `equipmentCycleMsOf()` · `equipment.ts` | 同型/混装排序、缺口边际、正负值一致、武器与主动周期/往返专项，F2/F3 |
 | 敌舰受击增程的独立挂载件触发提示 | `announceFoeGunRangeBuff()` · `foeRange.ts`；说明继续走`mountEffectText()` | 主/副目标、独立文案、中英参数及原增程判定专项；`arch:guard` F2/F3 |

@@ -3,7 +3,6 @@ import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { addShipToFleet } from '../src/fleetBook'
 import { equipmentPenaltiesOf, fittedPenaltyPartsOf, stackWeight, cpuBudgetOf, addModule, fitModule } from '../src/equipment'
-import { installPlug } from '../src/plugs'
 import { advanceBattleFor, createPlayerSpec, startFleetBattleFor } from '../src/combat'
 import { fittedEffectParamsOf } from '../src/foeRange'
 import { repairStatsFor, shieldChargeStreamsOf, shieldFieldStreamsOf, SHIELD_PULSE_MS } from '../src/combatRepair'
@@ -29,23 +28,28 @@ function world(high: string[] = ['mod-turret-kin-2'], mid: string[] = [], low: s
 }
 
 describe('装备负面累计与收益递减', () => {
-  it('合法T1护卫舰重复扩槽5件，实际安装5件巨构，原有低槽保留而代价完整累计', () => {
+  it('真实T4玄武六低槽合法安装五件巨构，首位保留而代价完整累计', () => {
     const state = createInitialState({ nowWallMs: 0, seed: 13 })
-    const uid = addShipToFleet(state, 'sh-wh-g-frigate')
+    const uid = addShipToFleet(state, 'sh-xuanwu')
     state.shipId = uid
+    const ship = ctx.ships.get('sh-xuanwu')!
+    expect(ship.tier).toBe(4)
+    expect(ship.slots!.low).toBe(6)
     const base = cpuBudgetOf(state, ctx, uid)
+    expect(base).toBe(ship.cpu)
     for (let i = 0; i < 5; i++) {
-      addModule(state, 'plug-low-bay')
-      expect(installPlug(state, ctx, 'plug-low-bay', uid).ok).toBe(true)
       addModule(state, CPU)
       expect(fitModule(state, CPU, ctx, { shipId: uid, rack: 'low', index: i + 1 }).ok).toBe(true)
     }
-    expect(state.fleet[uid]!.fitted.low[0]).toBeNull()
+    expect(state.fleet[uid]!.fitted.low).toEqual([null, ...Array(5).fill(CPU)])
+    expect(state.fleet[uid]!.plugs ?? []).toEqual([])
     expect(cpuBudgetOf(state, ctx, uid)).toBe(base + 450)
     expect(equipmentPenaltiesOf(state, ctx, uid).reload).toBeCloseTo(1.08 ** 5, 12)
     const back = loadSaveFile(serializeSaveFile(state, 0)).state
     expect(equipmentPenaltiesOf(back, ctx, uid)).toEqual(equipmentPenaltiesOf(state, ctx, uid))
-    expect(back.fleet[uid]!.plugs).toHaveLength(5)
+    expect(back.fleet[uid]!.fitted.low).toEqual(state.fleet[uid]!.fitted.low)
+    expect(back.fleet[uid]!.plugs ?? []).toEqual([])
+    expect(cpuBudgetOf(back, ctx, uid)).toBe(base + 450)
   })
   it.each([0, 1, 2, 3, 5])('%s件巨构：8%逐件相乘，武器/基础炮/无人机/动态下限都生效', n => {
     const high = ['mod-turret-kin-2', 'mod-missile-2', 'mod-lair-laser-r']

@@ -25,7 +25,7 @@ import { shortestTravelMinutes, travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
 import { bumpFirst } from './firstTasks'
 import {  shipDisplayName } from './instances'
-import { addModule, allFittedModules, adjustDroneLoad, fitModule } from './equipment'
+import { addModule, allFittedModules, adjustDroneLoad, fitModule, repairSlotExpansionPlugs } from './equipment'
 import { shipSlotsWithPlugsOf } from './plugs'
 import { restoreShipFromWreck } from './fleetBook'
 import { hasSalvageableShipWreck, trySalvagePlayerWreckOf } from './shipWrecks'
@@ -790,6 +790,7 @@ export function pullOneWreck(
           damagePlugs: salvage.damagePlugs,
           ...(salvage.plugs !== undefined ? { plugs: salvage.plugs } : {}),
         })
+        repairSlotExpansionPlugs(state, ctx)
         if (salvage.recoveryRules === 2) {
           const restored = state.fleet[restoredId]!
           const slots = shipSlotsWithPlugsOf(state, ctx, restoredId)

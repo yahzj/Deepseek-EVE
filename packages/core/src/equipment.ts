@@ -23,7 +23,7 @@ import type { CommandResult, CoreBlockReason } from './engine'
 import type { GameState } from './state'
 import type { FittedModules, ModuleDef, ModuleSlot, RackSlot, SimContext, DamageResists, DamageType } from './types'
 import { allFittedIds, isRackModule, MODULE_SLOTS, rackBays, rackLabel, rackOf,  SLOT_LABELS, slotLabel as labelOf } from './labels'
-import { isPlugOf, plugSlotsOf } from './plugs'
+import { isPlugOf, normalizePlugSlotExpansions, plugSlotExpansionBlockedOf, plugSlotsOf } from './plugs'
 import { currentShipState, addWare, countWare, removeWare } from './inventory'
 import { fleetDefOf } from './instances'
 import { moduleAllowedOnShip } from './shipFitting'
@@ -1310,6 +1310,7 @@ export function repairCivilianFittings(state: GameState, ctx: SimContext): void 
  */
 export function repairDeprecatedModules(state: GameState, ctx: SimContext): void {
   repairCivilianFittings(state, ctx)
+  repairSlotExpansionPlugs(state, ctx)
   let fittedMoved = 0
   let slotEmptied = 0
   let bayMoved = 0
@@ -1535,7 +1536,7 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
         if (!def || !isPlugOf(def)) continue
         bays[i] = null
         const have = ship.plugs ?? []
-        if (have.length < plugSlotsOf(state, ctx, uid)) {
+        if (have.length < plugSlotsOf(state, ctx, uid) && !plugSlotExpansionBlockedOf(state, ctx, uid, def)) {
           ship.plugs = [...have, id]
           plugFixed.push(def.name)
         } else {
@@ -1562,6 +1563,11 @@ export function repairDeprecatedModules(state: GameState, ctx: SimContext): void
   for (const uid of Object.keys(state.fleet)) {
     if (state.fleet[uid]?.defId) trimDroneLoadToBay(state, ctx, uid)
   }
+}
+
+/** 缩槽退回机舱装备后，超出容量的无人机也沿既有入口完整退库。 */
+export function repairSlotExpansionPlugs(state: GameState, ctx: SimContext): void {
+  for (const shipId of normalizePlugSlotExpansions(state, ctx)) trimDroneLoadToBay(state, ctx, shipId)
 }
 
 export { SLOT_LABELS }

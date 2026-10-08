@@ -110,6 +110,10 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '扩槽插件类型', symbol: 'plugSlotExpansionKindOf', file: 'packages/core/src/plugs.ts', exported: true },
+  { concept: '扩槽插件同类型安装门禁', symbol: 'plugSlotExpansionBlockedOf', file: 'packages/core/src/plugs.ts', exported: true },
+  { concept: '扩槽插件同类型限装与免费退回', symbol: 'normalizePlugSlotExpansions', file: 'packages/core/src/plugs.ts', exported: true },
+  { concept: '扩槽插件缩容后装备与机体退库', symbol: 'repairSlotExpansionPlugs', file: 'packages/core/src/equipment.ts', exported: true },
   { concept: '入侵循环下一目标与真实抽卡冷却', symbol: 'autoLoopInvasionPlanOf', file: 'packages/core/src/expedition.ts', exported: true },
   { concept: '全编队同型武器装填与实际射程视图', symbol: 'battleWeaponCyclesOf', file: 'packages/core/src/battleWeaponView.ts', exported: true },
   { concept: '全编队装置运行周期视图', symbol: 'battleDeviceCyclesOf', file: 'packages/core/src/battleDeviceView.ts', exported: true },

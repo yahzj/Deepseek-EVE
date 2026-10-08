@@ -8,6 +8,7 @@
  * ## 三条不可逆口径
  * 1. **不可拆、不可替换** —— 本模块**只提供 `installPlug`，没有 `removePlug`**（结构性保证：
  *    连函数都不存在，界面与会话都没得调）；装配页插件槽不给按钮。
+ *    旧配置同类型重复扩槽的免费退回是一次性兼容例外，不开放通用拆卸。
  * 2. **装了插件 ⇒ 不许进舰船仓库、不许挂市场卖** —— 判据单点 `plugBlockReasonOf`，
  *    由 `shipyard.shipStorable` 与市场挂卖两处消费。
  * 3. **唯一失去途径 = 船被打沉** —— 插件随 `fleet` 条目一起消失（`loseShip` 删条目时自然带走），
@@ -59,6 +60,67 @@ export function plugModulesOf(state: GameState, ctx: SimContext, shipId: string)
   return out
 }
 
+/** 插件扩槽类型：中槽扩展与低槽扩展各自只允许一件；其它插件不受此限制。 */
+export type PlugSlotExpansionKind = 'mid' | 'low'
+
+export function plugSlotExpansionKindOf(def: Pick<ModuleDef, 'slot' | 'midSlotsAdd' | 'lowSlotsAdd'> | undefined): PlugSlotExpansionKind | null {
+  if (!isPlugOf(def)) return null
+  if ((def?.midSlotsAdd ?? 0) > 0) return 'mid'
+  if ((def?.lowSlotsAdd ?? 0) > 0) return 'low'
+  return null
+}
+
+/** 装配候选与命令共用同类型扩槽限制，不影响普通插件重复安装。 */
+export function plugSlotExpansionBlockedOf(state: GameState, ctx: SimContext, shipId: string, def: ModuleDef): boolean {
+  const kind = plugSlotExpansionKindOf(def)
+  return kind !== null && plugModulesOf(state, ctx, shipId).some(existing => plugSlotExpansionKindOf(existing) === kind)
+}
+
+/** 保留最先安装的扩槽插件，同类型多余件免费退回装备库；幂等。 */
+export function normalizePlugSlotExpansions(state: GameState, ctx: SimContext): string[] {
+  let returned = 0
+  const changedShips: string[] = []
+  for (const [shipId, ship] of Object.entries(state.fleet)) {
+    const plugs = ship?.plugs
+    if (!plugs || plugs.length < 2) continue
+    if (shipLockedReason(state, shipId) || state.aiAssignments[shipId]) continue
+    if (state.shipReturns[shipId] || shipId === state.shipId &&
+      (state.mining.active || state.salvaging.active || state.transit.active || state.standby.active ||
+        state.hauling.active || state.expedition.active || state.sideTasks?.deliver)) continue
+    const inBattle = [{ battle: state.expedition.battle, active: state.expedition.active, leader: state.shipId },
+      { battle: state.encounter?.battle, active: state.encounter?.active, leader: state.encounter?.shipId ?? state.shipId }]
+      .some(({ battle, active, leader }) => active && battle &&
+        (battle.myFleet?.some(entry => entry.shipId === shipId) || !battle.myFleet?.length && leader === shipId))
+    if (inBattle) continue
+    const seen = new Set<PlugSlotExpansionKind>()
+    const kept: string[] = []
+    for (const id of plugs) {
+      const kind = plugSlotExpansionKindOf(ctx.modules.get(id))
+      if (kind !== null && seen.has(kind)) {
+        state.moduleBay[id] = (state.moduleBay[id] ?? 0) + 1
+        returned++
+        continue
+      }
+      if (kind !== null) seen.add(kind)
+      kept.push(id)
+    }
+    if (kept.length === plugs.length) continue
+    ship.plugs = kept
+    changedShips.push(shipId)
+    // 多余扩槽收回时仅裁超出位置；装备完整返还，保留其它位置及装配顺序。
+    if (fleetDefOf(state, ctx, shipId)) {
+      const slots = shipSlotsWithPlugsOf(state, ctx, shipId)
+      for (const rack of ['mid', 'low'] as const) {
+        const bays = ship.fitted[rack]
+        for (const id of bays.slice(slots[rack])) if (id) state.moduleBay[id] = (state.moduleBay[id] ?? 0) + 1
+        if (bays.length > slots[rack]) bays.length = slots[rack]
+      }
+    }
+  }
+  if (returned > 0) addLog(state, 'fleet', `插件整理：同类型扩槽插件超出限制，已免费退回装备库 ${returned} 件。`, 'core.plug.015', { p1: returned })
+  return changedShips
+}
+
 /** 装配页插件槽只读区要的两份数（槽位上限 + 已装的插件定义，按装入顺序） */
 export function plugInfoOf(
   state: GameState,
@@ -70,7 +132,7 @@ export function plugInfoOf(
 
 /**
  * **扩槽插件加成**（`midSlotsAdd` / `lowSlotsAdd`，**2026-09-27 船长令「修」**）——
- * 多件加算、不吃递减（与插件批其余字段同口径）。
+ * 两种扩槽各一件；其它插件收益仍沿原公式。
  */
 export function plugSlotAddsOf(state: GameState, ctx: SimContext, shipId: string): { mid: number; low: number } {
   let mid = 0
@@ -103,7 +165,7 @@ export function shipSlotsWithPlugsOf(state: GameState, ctx: SimContext, shipId: 
  * **装一件插件**（本模块是唯一入口）。
  *
  * 六道校验：① 船在不在 ⇒ ② 是插件吗（普通装备走 `fitModule`）⇒ ③ 槽满没满
- * （`plugSlotsOf`；无档船恒 0 = 装不了）⇒ ④ 装备库有没有。同型可重复，每件占一格。
+ * （`plugSlotsOf`；无档船恒 0 = 装不了）⇒ ④ 装备库有没有。普通同型可重复；中槽扩展和低槽扩展各限一件。
  *
  * ⚠ **没有对应的卸下函数**（船长：「**不可拆卸，不可替换**」）：这是"不可拆"的**结构性**保证，
  * 不是靠界面藏按钮。
@@ -126,8 +188,11 @@ export function installPlug(
   if (!moduleAllowedOnShip(fleetDefOf(state, ctx, shipId), def)) {
     return { ok: false, errorId: 'core.equipment.033', error: '该货舰不支持武器、战斗机群、进攻电子或全队护盾装备。' }
   }
-  const cap = plugSlotsOf(state, ctx, shipId)
   const have = plugsOf(state, shipId)
+  if (plugSlotExpansionBlockedOf(state, ctx, shipId, def)) {
+    return { ok: false, errorId: 'core.plug.014', error: '同类型扩槽插件每舰只能安装一件。' }
+  }
+  const cap = plugSlotsOf(state, ctx, shipId)
   if (cap <= 0) {
     return { ok: false, error: `「${ctx.ships.get(ship.defId ?? '')?.name ?? shipId}」没有舰船插件槽。`, errorId: 'core.plug.004', errorParams: { p1: ctx.ships.get(ship.defId ?? '')?.name ?? shipId } }
   }

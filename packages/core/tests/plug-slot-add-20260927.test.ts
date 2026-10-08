@@ -21,6 +21,7 @@ import {
   fitModule,
   fitPresetDetailOf,
   installPlug,
+  normalizePlugSlotExpansions,
   loadSaveFile,
   plugSlotAddsOf,
   repairDeprecatedModules,
@@ -121,6 +122,28 @@ describe('扩槽插件（中层舱段 / 下层舱段 · 2026-09-27 船长令「�
     addModule(state, 'plug-mid-bay')
     expect(installPlug(state, ctx, 'plug-mid-bay', uid).ok).toBe(true)
     expect(cpuBudgetOf(state, ctx, uid)).toBe(before)
+  })
+
+  it('同类型扩槽插件只能装一件；中槽与低槽扩展可以并存', () => {
+    const { state, ctx, uid } = world()
+    addModule(state, 'plug-mid-bay', 2)
+    expect(installPlug(state, ctx, 'plug-mid-bay', uid).ok).toBe(true)
+    expect(installPlug(state, ctx, 'plug-mid-bay', uid)).toMatchObject({ ok: false, errorId: 'core.plug.014' })
+    expect(state.moduleBay['plug-mid-bay']).toBe(1)
+    addModule(state, 'plug-low-bay')
+    expect(installPlug(state, ctx, 'plug-low-bay', uid).ok).toBe(true)
+    expect(state.fleet[uid]!.plugs).toEqual(['plug-mid-bay', 'plug-low-bay'])
+  })
+
+  it('旧档同类型重复扩槽插件自动免费退回，普通重复插件不受影响且幂等', () => {
+    const { state, ctx, uid } = world()
+    state.fleet[uid]!.plugs = ['plug-mid-bay', 'plug-mid-bay', 'plug-low-bay', 'plug-low-bay', 'plug-cpu-core', 'plug-cpu-core']
+    const before = state.moduleBay['plug-mid-bay'] ?? 0
+    expect(normalizePlugSlotExpansions(state, ctx)).toEqual([uid])
+    expect(state.fleet[uid]!.plugs).toEqual(['plug-mid-bay', 'plug-low-bay', 'plug-cpu-core', 'plug-cpu-core'])
+    expect(state.moduleBay['plug-mid-bay']).toBe(before + 1)
+    expect(state.moduleBay['plug-low-bay']).toBe(1)
+    expect(normalizePlugSlotExpansions(state, ctx)).toEqual([])
   })
 
   it('卸装不受影响：扩槽后第 2 格的件照常卸下，槽位不回缩（插件不可拆）', () => {

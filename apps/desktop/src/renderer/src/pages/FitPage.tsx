@@ -32,6 +32,7 @@ import {
   cleanShipDamage,
   /** 2026-09-27 船长报障：装入入口（空槽可点，弹层选装，二次确认，installPlug） */
   installPlug,
+  plugSlotExpansionBlockedOf,
   /** 2026-09-27 船长令：拆船回收（预览 ＋ 执行；界面两次警告都用预览那一份算术） */
   shipScrapPreviewOf,
   scrapShip,
@@ -1459,9 +1460,9 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
   const scrap = shipScrapPreviewOf(state, ctx, target)
   if (slots <= 0 && !damage) return null
   const full = slots > 0 && installed.length >= slots
-  /** 有库存的插件仍可重复安装，顺序沿用目录。 */
+  /** 普通同型仍可重复；扩槽插件候选与核心按同类型限一件。 */
   const pickable = [...ctx.modules.values()].filter(
-    (d) => d.slot === 'plug' && (state.moduleBay[d.id] ?? 0) > 0,
+    (d) => d.slot === 'plug' && (state.moduleBay[d.id] ?? 0) > 0 && !plugSlotExpansionBlockedOf(state, ctx, target, d),
   )
   const doInstall = (moduleId: string): void => {
     const r = installPlug(state, ctx, moduleId, target)

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState, type WreckLogEntry, type ShipFitPreset } from '../src/state'
 import { addShipToFleet, loseShip } from '../src/shipyard'
-import { cpuBudgetOf, fitModule, repairDeprecatedModules } from '../src/equipment'
+import { cpuBudgetOf, repairDeprecatedModules } from '../src/equipment'
 import { installPlug, plugModulesOf, shipSlotsWithPlugsOf } from '../src/plugs'
 import { createPlayerSpec } from '../src/playerSpec'
 import { cleanPlugIds, PLUG_LIST_MAX } from '../src/saveBattleClean'
@@ -18,6 +18,16 @@ function world(defId = 'sh-wh-a-frigate') {
   state.shipId = uid
   return { state, uid }
 }
+/** 旧规则下合法保存的九中槽舰船；直接还原历史档，不走当前限装入口。 */
+function legacyNineMidWorld() {
+  const { state, uid } = world()
+  const ship = state.fleet[uid]!
+  const slots = ctx.ships.get(ship.defId!)!.slots!
+  ship.plugs = Array(5).fill('plug-mid-bay')
+  ship.fitted = { high: Array(slots.high).fill(null), mid: Array(slots.mid + 5).fill(null), low: Array(slots.low).fill(null) }
+  ship.fitted.mid[8] = 'mod-shield-kin-1'
+  return { state, uid }
+}
 function record(overrides: Partial<WreckLogEntry> = {}): WreckLogEntry {
   return { seq: 1, shipId: 'lost-ship', shipName: '沉船测试', defId: 'sh-hammerhead', cause: 'wormhole-sunk', atGameMs: 0,
     fitted: { high: ['mod-turret-kin-1', null, 'mod-gone'], mid: ['mod-shield-kin-1'], low: [] },
@@ -25,7 +35,7 @@ function record(overrides: Partial<WreckLogEntry> = {}): WreckLogEntry {
 }
 
 describe('重复插件安装/效果/库存/快照', () => {
-  it.each(['plug-shield-plate', 'plug-cpu-core', 'plug-mid-bay', 'plug-low-bay', 'plug-firepower', 'plug-sight', 'plug-concealment'])('%s重复安装保留件数，滿槽/缺库存拒绝不扣料', id => {
+  it.each(['plug-shield-plate', 'plug-cpu-core', 'plug-firepower', 'plug-sight', 'plug-concealment'])('%s重复安装保留件数，滿槽/缺库存拒绝不扣料', id => {
     const { state, uid } = world()
     const capacity = ctx.ships.get(state.fleet[uid]!.defId!)!.plugSlots!
     state.moduleBay[id] = capacity
@@ -40,6 +50,28 @@ describe('重复插件安装/效果/库存/快照', () => {
     expect(JSON.stringify(state)).toBe(before)
     const back = loadSaveFile(serializeSaveFile(state)).state
     expect(back.fleet[uid]!.plugs).toEqual(state.fleet[uid]!.plugs)
+  })
+  it.each([
+    ['plug-mid-bay', 'plug-low-bay'],
+    ['plug-low-bay', 'plug-mid-bay'],
+  ])('%s只装一件，重复拒绝不扣料，与%s可并存', (id, otherId) => {
+    const { state, uid } = world()
+    const base = shipSlotsWithPlugsOf(state, ctx, uid)
+    state.moduleBay[id] = 2
+    state.moduleBay[otherId] = 1
+    expect(installPlug(state, ctx, id, uid).ok).toBe(true)
+    expect(state.fleet[uid]!.plugs).toEqual([id])
+    expect(state.moduleBay[id]).toBe(1)
+    const before = JSON.stringify(state)
+    expect(installPlug(state, ctx, id, uid)).toMatchObject({ ok: false, errorId: 'core.plug.014' })
+    expect(JSON.stringify(state)).toBe(before)
+    expect(installPlug(state, ctx, otherId, uid).ok).toBe(true)
+    expect(state.fleet[uid]!.plugs).toEqual([id, otherId])
+    expect(state.moduleBay[otherId] ?? 0).toBe(0)
+    expect(shipSlotsWithPlugsOf(state, ctx, uid)).toEqual({ high: base.high, mid: base.mid + 1, low: base.low + 1 })
+    const back = loadSaveFile(serializeSaveFile(state)).state
+    expect(back.fleet[uid]!.plugs).toEqual([id, otherId])
+    expect(back.moduleBay).toEqual(state.moduleBay)
   })
   it('护盾/CPU固定值逐件加，命中/选靶沿用乘算，未知和空插件仍清洗', () => {
     const { state, uid } = world()
@@ -64,26 +96,56 @@ describe('重复插件安装/效果/库存/快照', () => {
     expect(installPlug(state, ctx, 'plug-cpu-core', uid).ok).toBe(false)
     expect(JSON.stringify(state)).toBe(before)
   })
-  it('九个中槽的舰队/方案/残骸/沉船记录读档不丢装备，打捞按重复件回黑匣', () => {
-    const { state, uid } = world()
-    state.moduleBay['plug-mid-bay'] = 5
-    for (let n = 0; n < 5; n++) expect(installPlug(state, ctx, 'plug-mid-bay', uid).ok).toBe(true)
+  it('旧档九中槽舰队/方案原样往返，整理只留首件扩槽并退回四插件和尾装备，历史方案不改', () => {
+    const { state, uid } = legacyNineMidWorld()
     expect(shipSlotsWithPlugsOf(state, ctx, uid).mid).toBe(9)
-    state.moduleBay['mod-shield-kin-1'] = 1
-    expect(fitModule(state, 'mod-shield-kin-1', ctx, { shipId: uid, rack: 'mid', index: 8 }).ok).toBe(true)
     expect(saveFitPreset(state, ctx, uid, '九槽')).toEqual({ ok: true })
+    const presets = structuredClone(state.fitPresets)
     const back = loadSaveFile(serializeSaveFile(state)).state
+    expect(back.fleet[uid]!.fitted).toEqual(state.fleet[uid]!.fitted)
+    expect(back.fleet[uid]!.plugs).toEqual(Array(5).fill('plug-mid-bay'))
+    expect(back.fitPresets).toEqual(presets)
+    const modules = structuredClone(back.moduleBay)
+    const unchanged = structuredClone({ wallet: back.wallet, warehouse: back.warehouse, rng: back.rng })
     repairDeprecatedModules(back, ctx)
-    expect(back.fleet[uid]!.fitted.mid[8]).toBe('mod-shield-kin-1')
+    expect(back.fleet[uid]!.plugs).toEqual(['plug-mid-bay'])
+    expect(shipSlotsWithPlugsOf(back, ctx, uid).mid).toBe(5)
+    expect(back.fleet[uid]!.fitted.mid).toEqual(Array(5).fill(null))
+    expect(back.moduleBay).toEqual({ ...modules,
+      'plug-mid-bay': (modules['plug-mid-bay'] ?? 0) + 4,
+      'mod-shield-kin-1': (modules['mod-shield-kin-1'] ?? 0) + 1,
+    })
+    expect({ wallet: back.wallet, warehouse: back.warehouse, rng: back.rng }).toEqual(unchanged)
+    expect(back.fitPresets).toEqual(presets)
     expect(back.fitPresets![back.fleet[uid]!.defId!]![0]!.fitted.mid[8]).toBe('mod-shield-kin-1')
-    loseShip(back, uid, ctx, '测试损失', 'galaxy-hub')
-    const sunk = loadSaveFile(serializeSaveFile(back)).state
-    expect(sunk.shipWrecks![uid]!.fitted!.mid[8]).toBe('mod-shield-kin-1')
-    expect(sunk.wreckLog![0]!.fitted!.mid[8]).toBe('mod-shield-kin-1')
+    expect(back.fitPresets![back.fleet[uid]!.defId!]![0]!.plugs).toEqual(Array(5).fill('plug-mid-bay'))
+    const repaired = loadSaveFile(serializeSaveFile(back)).state
+    expect(repaired.fleet[uid]!.fitted).toEqual(back.fleet[uid]!.fitted)
+    expect(repaired.fleet[uid]!.plugs).toEqual(['plug-mid-bay'])
+    expect(repaired.moduleBay).toEqual(back.moduleBay)
+    expect(repaired.fitPresets).toEqual(presets)
+  })
+  it('未整理历史沉船的九格快照/方案与五重复插件完整往返，打捞仅换五黑匣', () => {
+    const { state, uid } = legacyNineMidWorld()
+    const fitted = { high: [], mid: [...state.fleet[uid]!.fitted.mid], low: [] }
+    expect(saveFitPreset(state, ctx, uid, '九槽')).toEqual({ ok: true })
+    loseShip(state, uid, ctx, '测试损失', 'galaxy-hub')
+    const sunk = loadSaveFile(serializeSaveFile(state)).state
+    expect(sunk.shipWrecks![uid]!.fitted).toEqual(fitted)
+    expect(sunk.wreckLog![0]!.fitted).toEqual(fitted)
+    expect(sunk.shipWrecks![uid]!.plugs).toEqual(Array(5).fill('plug-mid-bay'))
     expect(sunk.wreckLog![0]!.plugs).toEqual(Array(5).fill('plug-mid-bay'))
+    const historical = structuredClone({ wrecks: sunk.shipWrecks, log: sunk.wreckLog, presets: sunk.fitPresets, modules: sunk.moduleBay })
+    repairDeprecatedModules(sunk, ctx)
+    expect({ wrecks: sunk.shipWrecks, log: sunk.wreckLog, presets: sunk.fitPresets, modules: sunk.moduleBay }).toEqual(historical)
     expect(trySalvagePlayerWreckOf(sunk, ctx, 'galaxy-hub')).toEqual({ kind: 'plugs', blackBoxes: 5 })
     expect(sunk.shipWrecks![uid]!.plugs).toEqual([])
+    expect(trySalvagePlayerWreckOf(sunk, ctx, 'galaxy-hub')).toEqual({ kind: 'item', itemId: 'mod-shield-kin-1', units: 1, isModule: true })
+    expect(trySalvagePlayerWreckOf(sunk, ctx, 'galaxy-hub')).toEqual({ kind: 'none' })
+    expect(sunk.wreckLog![0]!.fitted).toEqual(fitted)
     expect(sunk.wreckLog![0]!.plugs).toEqual(Array(5).fill('plug-mid-bay'))
+    expect(sunk.fitPresets).toEqual(historical.presets)
+    expect(sunk.moduleBay).toEqual(historical.modules)
   })
 })
 
