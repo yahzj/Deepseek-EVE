@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **522** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8105** KB · **63440** 行
+- 文档总数 **522** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8107** KB · **63453** 行
 - 状态分布：**未标注** 267 · **已确认/已实现** 176 · **进行中** 53 · **待裁定** 25 · **历史留档** 1
 - 孤儿文档（0 引用）**115** 份 · 状态未标注 **267** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -68,7 +68,7 @@
 | `docs/design/battle-mount-readiness-speed-20261008.md` | 战斗挂载件、开场装填与敌速核查 | 已确认/已实现（已实现并本地合入主树） | 2026-10-08 | 15 KB / 107 行 | 1 / 0 |
 | `docs/design/broodmother-summon-handbook-20261008.md` | 巢母召唤成虫与手册实际挂载 | 已确认/已实现（已实现、自测通过并本地合入） | 2026-10-08 | 5 KB / 50 行 | 0 / 0 |
 | `docs/design/data-editor-field-compat-20261008.md` | 独立编辑器读取新字段兼容修复 | 未标注（已本地合入并交付兼容版） | 2026-10-08 | 5 KB / 38 行 | 0 / 0 |
-| `docs/design/drone-launch-merge-20261008.md` | 玩家无人机首次出击队列合入 | 已确认/已实现（已实现自测通过） | 2026-10-08 | 7 KB / 62 行 | 0 / 0 |
+| `docs/design/drone-launch-merge-20261008.md` | 玩家无人机首次出击队列合入 | 已确认/已实现（已实现并本地合入） | 2026-10-08 | 9 KB / 75 行 | 0 / 0 |
 | `docs/design/equipment-penalty-stacking-20261008.md` | 装备惩罚取最大值检查与巨构装填调整 | 已确认/已实现（已实现并本地合入） | 2026-10-08 | 19 KB / 170 行 | 0 / 0 |
 | `docs/design/fleet-hide-plugs-20261008.md` | 我的舰队隐藏普通舰船插件 | 已确认/已实现（已实现并本地合入） | 2026-10-08 | 4 KB / 38 行 | 1 / 0 |
 | `docs/design/invasion-autoloop-live-test-20261008.md` | 入侵自动路线原生客户端实测 | 未标注（实机测试通过） | 2026-10-08 | 7 KB / 62 行 | 0 / 0 |
@@ -602,7 +602,7 @@
 - `docs/design/battle-cycles-compact-revision-20261008.md`（2026-10-08 · 7 KB）—— 战斗顶部紧凑化与旧式装填条复用
 - `docs/design/broodmother-summon-handbook-20261008.md`（2026-10-08 · 5 KB）—— 巢母召唤成虫与手册实际挂载
 - `docs/design/data-editor-field-compat-20261008.md`（2026-10-08 · 5 KB）—— 独立编辑器读取新字段兼容修复
-- `docs/design/drone-launch-merge-20261008.md`（2026-10-08 · 7 KB）—— 玩家无人机首次出击队列合入
+- `docs/design/drone-launch-merge-20261008.md`（2026-10-08 · 9 KB）—— 玩家无人机首次出击队列合入
 - `docs/design/equipment-penalty-stacking-20261008.md`（2026-10-08 · 19 KB）—— 装备惩罚取最大值检查与巨构装填调整
 - `docs/design/invasion-autoloop-live-test-20261008.md`（2026-10-08 · 7 KB）—— 入侵自动路线原生客户端实测
 - `docs/design/invasion-drone-defense-audit-20261008.md`（2026-10-08 · 14 KB）—— 入侵旗舰战无人机五分钟零损失排查
