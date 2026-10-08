@@ -750,7 +750,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "mod.copy.067": { zh: "能量光束武器，每轮连续射击；必中，威力随距离衰减。", en: "An energy beam firing a burst each cycle; always hits with power falloff at range." },
   "mod.copy.068": { zh: "能量点防光束，必中；可攻击敌方机群，对机群不受对舰距离衰减影响。", en: "Always-hit energy point defense capable of attacking enemy drones without the ship-range damage falloff." },
   "mod.copy.069": { zh: "爆炸破片武器，额外附带动能伤害；命中随距离衰减，额外伤害不改变消耗弹种。", en: "An explosive fragment weapon adding kinetic damage; accuracy falls with range and the additional damage does not change ammunition consumed." },
-  "mod.copy.070": { zh: "扩展无人机舱，并缩短本舰放飞无人机的出击周期。", en: "Expands drone bay capacity and shortens this ship's drone attack cycles." },
+  // ⟪文案调整 2026-10-08⟫
+  "mod.copy.070": { zh: "扩展无人机舱，并缩短本舰无人机首次出击的等待时间。", en: "Expands drone bay capacity and reduces the wait between this ship's initial drone launches." },
   "mod.copy.071": { zh: "高推力加力装置，点火时大幅提高战斗机动，同时降低开火命中。", en: "A high-thrust afterburner strongly increasing combat speed during ignition while reducing weapon accuracy." },
   "mod.copy.072": { zh: "折射涂层，提高闪避，同时降低护盾、装甲与结构的各系抗性。", en: "A refraction coating increasing evasion while reducing shield, armor and structure resistances." },
   "mod.copy.073": { zh: "火控阵列，提高舰载武器命中，同时缩短武器射程。", en: "A fire-control array increasing ship weapon accuracy while reducing weapon range." },
@@ -6084,7 +6085,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.071": { zh: "单发加成", en: "Per-shot bonus" },
   "ui.shipInfo.072": { zh: "装填代价", en: "Reload cost" },
   "ui.shipInfo.073": { zh: "抗性代价", en: "Resistance cost" },
-  "ui.shipInfo.074": { zh: "出击周期", en: "Launch cycle" },
+  // ⟪文案调整 2026-10-08⟫
+  "ui.shipInfo.074": { zh: "首次出击等待", en: "Initial Launch Delay" },
   "ui.shipInfo.075": { zh: "航速", en: "Speed" },
   "ui.shipInfo.076": { zh: "叠加方式", en: "Stacking" },
   "ui.shipInfo.077": { zh: "全额叠加", en: "Full stacking" },
@@ -6186,7 +6188,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.166": { zh: "护盾、装甲、结构各系抗性减{p1}个百分点；多件负面随收益递减，可降至负值", en: "Shield, armor and hull resistances each −{p1} percentage points; penalties follow diminishing returns and can cause negative resistance" },
   "ui.equipmentPenalty.001": { zh: "装后周期", en: "Fitted cycle" },
   "ui.equipmentPenalty.002": { zh: "{p1}秒，原周期{p2}秒", en: "{p1}s, base cycle {p2}s" },
-  "ui.shipInfo.167": { zh: "放飞无人机的出击周期 −{p1}", en: "Drone launch cycle −{p1}" },
+  // ⟪文案调整 2026-10-08⟫
+  "ui.shipInfo.167": { zh: "首次出击等待 −{p1}", en: "Initial launch delay −{p1}" },
   "ui.shipInfo.168": { zh: "战斗机动 +{p1}（点火期间）", en: "Combat maneuverability +{p1} (while burning)" },
   "ui.shipInfo.169": { zh: "CPU 占用", en: "CPU use" },
   "ui.shipInfo.170": { zh: "伤害类型", en: "Damage type" },

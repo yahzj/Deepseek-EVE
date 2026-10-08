@@ -600,6 +600,7 @@ const MODULES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
   "mod-wh-a-hangar": {
     name: '掠袭机库',
     description:
+      // ⟪文案调整 2026-10-08⟫
       L10N['mod.copy.070']!.zh,
   },
   "mod-wh-a-prop": {

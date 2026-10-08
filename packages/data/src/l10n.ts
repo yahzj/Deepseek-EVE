@@ -1328,7 +1328,8 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
   'bp-stealth-2': "Presses the whole hull's signature below background noise; the materials are easy to find — the masking procedure is the hard part.",
   'bp-stealth-3': "The top-grade masking procedure: long enough to cross a whole stretch under the enemy's nose, at the cost of nearly all your compute.",
   'bp-wh-a-frag': 'Raider fragment cannon: explosive main segment, kinetic secondary, 20 rounds per cycle.',
-  'bp-wh-a-hangar': 'Raider hangar: enlarges the drone bay and speeds up the swarm cycle.',
+  // ⟪文案调整 2026-10-08⟫
+  'bp-wh-a-hangar': 'Raider hangar: enlarges the drone bay and reduces initial launch delays.',
   'bp-wh-a-prop': 'Raider afterburner: a big speed boost at the cost of accuracy.',
   'bp-wh-a-coat': 'Raider refraction coating: opens up the evasion gap at the cost of all resistances.',
   'bp-wh-a-scan': 'Spoils scan array: accuracy well up, range cut.',

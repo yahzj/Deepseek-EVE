@@ -332,7 +332,9 @@ describe('隐身期间基础舰炮闭麦（2026-09-17 船长）', () => {
     const b = startBattleFor(state, ctx, uid, CARD, 0)!
     expect(createPlayerSpec(state, ctx, uid)!.weapons.map((w) => w.src)).toEqual(['base', 'turret'])
     loadAll(b)
-    pinned(state, ctx, b, uid, 100)
+    b.distanceM = 1000
+    state.gameMs += 10
+    advanceBattleFor(state, ctx, b, uid, CARD)
     expect(b.stats.meShots, '装的炮台没有开火').toBeGreaterThan(0)
     expect(b.units['player']!.stealthUntilMs, '开火后没有现形').toBeUndefined()
     // 基础舰炮排第 0 位、在炮台**之前**结算 ⇒ 这一拍它没开火（倒计时仍 0），炮台已进装填

@@ -73,7 +73,7 @@ describe('转管炮已付弹药份额', () => {
     expect(events.every(f => f.hit)).toBe(true)
     expect(run.battle.ammo.kin).toBe(0)
     expect(run.battle.ammoCreditByWeapon).toBeUndefined()
-    expect(new Set(events.slice(1).map((e, i) => e.atMs - events[i]!.atMs))).toEqual(new Set([600]))
+    expect(new Set(events.slice(1).map((e, i) => e.atMs - events[i]!.atMs))).toEqual(new Set([510]))
     expect(events.reduce((sum, e) => sum + (e.dmg ?? 0), 0)).toBe(run.weapon.shotsByType!.kinetic! * 96)
     expect(advance(run, 60000, 61000)).toHaveLength(0)
   })

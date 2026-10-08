@@ -99,9 +99,9 @@ export type { FoeSpecOpts } from './foeSpecs'
 import { activeFoeSpecsOf, announceStealthStart, announceSupportCallStart, battleMaxDistanceM, battleOpenM, BLINK_SHARE_DEN, BLINK_VANISH_SHARE_NUM, blinkGapMs, blinkProcessMs, createBattleState, createFoeSpecs, desiredRangeFor, foeDesiredRange, foesWithSupport, initFoeDronePools, initFoeRepairPulses, mainWeaponOf, nominalWeaponDps, rFamilyDesireOf, resolveFoeRevive, resolveFoeSummon, resolveReinforcements, seedUnit } from './foeSpecs'
 
 /** 战斗基本步长（毫秒） */
-export const BATTLE_STEP_MS = 100
+export const BATTLE_STEP_MS = 10
 /** 步数守卫上限（防失控循环） */
-export const BATTLE_MAX_STEPS = 40_000
+export const BATTLE_MAX_STEPS = 400_000
 /** 护盾抗性保持原100毫秒齐射快照，独立于内部步长。 */
 const BATTLE_VOLLEY_WINDOW_MS = 100
 
@@ -938,12 +938,12 @@ export function pulseFoeMountRepair(
  * （只对我方生效）**」）。
  *
  * 口径：**同一拍内落在同一艘我方舰上的敌方伤害合计 ≤ 该舰满血（三层合计）× 本比例（0.8）**
- * —— 逐拍账本 `battle.meVolleyDmg[tag]`（每拍开头清空）⇒ **满血舰永不可能被一次齐射带走**（至少留 20%）。
+ * —— `battle.meVolleyDmg[tag]`按独立100ms窗口归组，不随内部子步缩小。
  * - **只削我方承伤**：本函数只在"敌方 → 我方"的三处结算点调用（敌机群 / 敌光束 / 敌炮台），
  *   我方打敌人**一字不动**；
  * - **洞内洞外都生效**：挂在共用的 `stepBattle` 上 ⇒ 悬赏 / 低安遭遇 / AI 副船 / 虫洞一律吃保险；
  * - 夹的是**入伤**（已含近盲折扣与受击增程折减之后），所以实际掉血 ≤ 上面那条上限。
- * - "一次齐射"按**同拍落地**计（错开首轮之后各敌首发已不同拍；同拍多为同一艘的多门炮）。
+ * - "一次齐射"按原100ms归组窗口计，窗口标记为 `meVolleyWindow`。
  */
 export const PLAYER_VOLLEY_DMG_CAP_SHARE = 0.8
 
@@ -4573,9 +4573,12 @@ function stepBattle(
   const dtSec = dtMs / 1000
   syncCoronaFleetFocus(b, foes)
   advanceFoeHatcheries(b, foes, b.lastTickGameMs)
-  // **我方"不被一击带走"保险：本拍账本清零**（船长 2026-09-16；见 `cappedFoeDamage`。
-  // 逐拍重置 ⇒ 运行态、不入档；洞外洞内共用这一处）
-  b.meVolleyDmg = {}
+  // 齐射承伤仍按原100ms归组，不能随内部步长缩小而拆开保险。
+  const volleyWindow = Math.floor((b.lastTickGameMs - b.startedAtGameMs) / BATTLE_VOLLEY_WINDOW_MS)
+  if (b.meVolleyWindow !== volleyWindow) {
+    b.meVolleyWindow = volleyWindow
+    b.meVolleyDmg = {}
+  }
   /**
    * **本拍开头：把「待机护盾阵列」的就绪态定死**（**船长 2026-10-03 裁定**「**同一拍整次齐射都算**」）——
    * 必须在**任何伤害结算之前**盖这一份（伤害结算在前、闪现盖冷却在后 ⇒ 现查的话只有触发那一发吃得到）。
@@ -5533,7 +5536,7 @@ function stepBattle(
 export function steerStep(cur: number, desire: number, speedMps: number, dtSec: number): number {
   const gap = desire - cur
   if (Math.abs(gap) < 0.5) return 0
-  const cap = Math.max(0.5, speedMps * dtSec)
+  const cap = Math.max(5 * dtSec, speedMps * dtSec)
   const step = Math.min(Math.abs(gap), cap)
   return gap > 0 ? step : -step
 }

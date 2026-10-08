@@ -196,6 +196,7 @@ const BATTLE_FIELDS = {
     kind: 'runtime',
     why: '我方"不被一击带走"保险的逐拍承伤账本（船长 2026-09-16）：跨拍即重置，重载即清空 ⇒ 不入档',
   },
+  meVolleyWindow: { kind: 'runtime', why: '100ms齐射保险窗口标记，随本拍承伤账一起重建' },
   droneHitAt: { kind: 'runtime', why: '反应式防空的最近受击时刻：短窗缓存，超窗即脱锁' },
   // 2026-09-16 近防炮逐舰（船长「将缺少的一并实现」）：令牌与集火锁都按 `舰tag` 分账，
   // 与上面两条同款 —— 短窗运行态，重载即重置（设计即零迁移）。
@@ -1031,6 +1032,14 @@ function cleanFx(raw: unknown, numf: (v: unknown, fallback: number) => number): 
       tag: typeof ev.tag === 'string' && ev.tag.length > 0 ? ev.tag : side === 'me' ? 'player' : 'foe-0',
       type,
       hit: ev.hit === true,
+      ...(typeof ev.to === 'string' && ev.to.length > 0 ? { to: ev.to } : {}),
+      ...(ev.src === 'turret' || ev.src === 'missile' || ev.src === 'laser' || ev.src === 'drone' || ev.src === 'base' ? { src: ev.src } : {}),
+      ...(typeof ev.artId === 'string' && ev.artId.length > 0 ? { artId: ev.artId } : {}),
+      ...(ev.web === true ? { web: true as const } : {}),
+      ...(ev.blink === true ? { blink: true as const } : {}),
+      ...(ev.droneDown === true ? { droneDown: true } : {}),
+      ...(ev.pd === true ? { pd: true } : {}),
+      ...(typeof ev.speedX === 'number' && Number.isFinite(ev.speedX) && ev.speedX > 0 ? { speedX: ev.speedX } : {}),
       ...(ev.acidBurst === true && side === 'foe' && type === 'kinetic'
         ? { acidBurst: true as const, ...(typeof ev.to === 'string' && ev.to.length > 0 ? { to: ev.to } : {}) }
         : {}),

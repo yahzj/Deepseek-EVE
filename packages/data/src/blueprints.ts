@@ -1926,7 +1926,8 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     buildSeconds: 4600,
     buildCostIsk: 0,
     priceIsk: 3_955_500, // 2026-09-14：设为市场行同值（专属 ×4 口径；契约「书价＝市场行」守）
-    description: '掠袭机库，扩大无人机舱并加快机群循环。',
+    // ⟪文案调整 2026-10-08⟫
+    description: '掠袭机库，扩大无人机舱并缩短首次出击等待。',
   },
   {
     id: 'bp-wh-a-prop',

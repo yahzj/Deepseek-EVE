@@ -989,7 +989,7 @@ export interface BattleState {
   }
   /** 战斗累计统计（战报/小剧场用） */
   stats: { meShots: number; meHits: number; meDmg: number; foeShots: number; foeHits: number }
-  /** 可视化开火事件环（最新 48 条；战斗画面动画回放用，不影响结算） */
+  /** 可视化事件环（至少48条，保留近期跨子步事件，硬上限512；不影响结算） */
   fx: BattleFx[]
   /** 下一条开火事件的序号（pushFx 自增分配；环裁剪后消费端按序号续播） */
   fxSeq: number
@@ -1292,13 +1292,15 @@ export interface BattleState {
    * **我方"不被一击带走"保险的运行态账本**（船长 2026-09-16：「血量 100%，单次齐射伤害最多只能造成
    * **总血量 80%** 的伤害（**只对我方生效**）」）。
    *
-   * 键 = 我方舰 tag（`player` / `ally-N`），值 = **本拍已吃下的敌方伤害**（每拍开头清空）。
-   * 语义：同一拍内落在同一艘我方舰上的敌方炮火**合计**不得超过该舰总血 × `PLAYER_VOLLEY_DMG_CAP_SHARE`
+   * 键 = 我方舰 tag（`player` / `ally-N`），值 = 当前100ms窗口已吃下的敌方伤害。
+   * 语义：同一窗口内落在同一艘我方舰上的敌方炮火**合计**不得超过该舰总血 × `PLAYER_VOLLEY_DMG_CAP_SHARE`
    * （0.8）⇒ 满血舰**永不可能被一次齐射带走**（至少留 20%）；敌方承伤**完全不受影响**。
    * **洞内洞外都生效**（这条挂在共用的 `stepBattle` 上，所以悬赏/遭遇/远征/虫洞一律吃保险）。
-   * 字段**可选、零迁移、有意不入档**（运行态：跨拍即重置，见 `save.ts` 登记表）。
+   * 字段**可选、零迁移、有意不入档**（运行态：跨窗口即重置，见 `saveBattleClean.ts` 登记表）。
    */
   meVolleyDmg?: Record<string, number>;
+  /** 独立100ms齐射保险窗口，不随战斗子步缩小。 */
+  meVolleyWindow?: number
   /**
    * **我方「叠光同款装填自加速」的当前装填间隔**（**船长 2026-10-01 令**：「激光武器为叠光同款叠加攻速的」；
    * R 族势力特色激光炮 `mod-lair-laser-r` 用）。

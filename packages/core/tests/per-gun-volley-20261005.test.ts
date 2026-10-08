@@ -182,6 +182,8 @@ describe('逐炮齐射守恒与独立命中', () => {
     for (let i = 0; i < 300; i++) pushBattleFx(run.battle, { atMs: 1000, side: 'foe', tag: 'foe-0', type: 'kinetic', hit: true })
     expect(run.battle.fx).toHaveLength(512)
     pushBattleFx(run.battle, { atMs: 1100, side: 'foe', tag: 'foe-0', type: 'kinetic', hit: true })
+    expect(run.battle.fx).toHaveLength(512)
+    pushBattleFx(run.battle, { atMs: 4000, side: 'foe', tag: 'foe-0', type: 'kinetic', hit: true })
     expect(run.battle.fx).toHaveLength(48)
   })
   it('超过48条的同拍炮火事件读档仍完整保留', () => {

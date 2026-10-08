@@ -1448,6 +1448,7 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
     })
   }
   if ((mod.droneCycleCutPct ?? 0) > 0) {
+    // ⟪文案调整 2026-10-08⟫
     lines.push({ k: tr("ui.shipInfo.074"), v: tr("ui.shipInfo.167", { p1: pct(mod.droneCycleCutPct ?? 0) }) })
   }
   if ((mod.speedBonusPct ?? 0) > 0 && mod.slot !== 'propulsion') {

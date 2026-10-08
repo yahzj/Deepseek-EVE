@@ -56,6 +56,8 @@ import { useBattleFit } from '../ui/battleFit'
 import { dronePoseAt, oneThirdToward, foeDroneStation, foePoseAt, DRONE_DOWN_FREEZE_MS } from './battleDrones'
 import { BattleMountLines } from './battleMounts'
 import { BattleCycles } from './BattleCycles'
+import { battleFxArrivals } from '../ui/battleFxCursor'
+import type { BattleFxCursor } from '../ui/battleFxCursor'
 
 /**
  * 33ms 平滑循环需要的**最小战斗句柄**（结构类型：远征与洞内两种 `BattleState` 都满足；
@@ -225,8 +227,7 @@ const meSpeedRef = useRef(200)
   const facingRef = useRef({ meFlip: false, foeFlip: true })
   /** 已消费的最新开火事件序号（引擎事件环超 48 条会丢最旧——按序号续播而非数组下标，
    *  避免"攒满 48 条后新开火全部不再播放"（战斗超 ~60 秒动画停播 bug） */
-  const fxSeqRef = useRef(0)
-  const initedFxRef = useRef(false)
+  const fxCursorRef = useRef<BattleFxCursor>({ seq: -1 })
   const keyRef = useRef(1)
   const boltsRef = useRef<BoltV[]>([])
   const flashRef = useRef<FlashV[]>([])
@@ -861,6 +862,35 @@ const meSpeedRef = useRef(200)
   }
 
   if (!combatView || !battle || !arcs) return null
+  const fxRead = battleFxArrivals(fxCursorRef.current, battle)
+  if (fxRead.reset) {
+    boltsRef.current = []
+    flashRef.current = []
+    popupsRef.current = []
+    popupAccRef.current.clear()
+    acidFxRef.current = []
+    acidDeathsRef.current.clear()
+    acidFxWakeAtRef.current = Number.POSITIVE_INFINITY
+    droneSortieRef.current.clear()
+    foeSortieRef.current.clear()
+    droneSlotRef.current.clear()
+    dronePrevShowRef.current.clear()
+    droneWritesRef.current.clear()
+    droneDownRef.current = []
+    muzzleCountRef.current.clear()
+    blinkRef.current.clear()
+    blinkSeenRef.current.clear()
+    for (const pillar of blinkFxRef.current) pillar.el?.remove()
+    blinkFxRef.current = []
+    deadRef.current = new Set(Object.values(battle.units)
+      .filter(unit => unit.side === 'foe' && unit.hp.s + unit.hp.a + unit.hp.h <= 0).map(unit => unit.tag))
+    corpseAtRef.current.clear()
+    prevHpRef.current.clear()
+    lastHitTypeRef.current.clear()
+    hpInitRef.current = false
+    moveSnapRef.current = { prev: null, cur: null }
+    visDistRef.current = battle.distanceM
+  }
   // 交给 33ms 平滑循环（每渲染同步一次句柄；`dimsRef` 同款模式）
   battleRef.current = battle
   const combat = combatView
@@ -873,16 +903,6 @@ const meSpeedRef = useRef(200)
    */
   const farM = arcs.maxM
   const nearM = arcs.nearM
-
-  // 首帧不重放历史开火事件：只从"当前环尾"续播（迟到进战场不补播旧弹道）；
-  // 无历史时置 -1——引擎每场战斗首发的 seq=0，若按 0 初始化会被 seq>0 过滤吞掉
-  // （2026-09-05 修复“导弹第一次攻击没有动画”：旧实现里首发发生在画面弹出前的隐藏秒，
-  // 从未被看见；开场缓冲拉开后首发成为可见第一发，序号断层立刻显形）
-  if (!initedFxRef.current) {
-    const tail = battle.fx.length > 0 ? battle.fx[battle.fx.length - 1] : undefined
-    fxSeqRef.current = tail ? tail.seq : -1
-    initedFxRef.current = true
-  }
 
   const meShip = fleetDefOf(state, engine.ctx, state.shipId)
   const meRole: ShipRole = meShip?.role ?? 'industrial'
@@ -922,7 +942,7 @@ const meSpeedRef = useRef(200)
   const defeat = battle.ended === 'foe'
 
   const realDist = battle.distanceM // 引擎实时距离（交火中每 ~100ms 更新）
-  const visM = smoothM !== null ? smoothM : realDist // 视觉插值距离（舰列/弧/游标平滑用）
+  const visM = !fxRead.reset && smoothM !== null ? smoothM : realDist // 换场首帧不借上一场插值位置。
   const now = performance.now()
   const pct = (m: number): number => approachOf(m, farM, nearM) * 100
 
@@ -992,12 +1012,11 @@ const meSpeedRef = useRef(200)
 
   /* ── 消费新到达的开火事件（按序号取 seq > lastSeq 的新事件，同帧转弹道 + 闪光；
         环裁剪丢旧事件不影响：序号跳跃即自动跳过丢失部分） ── */
-  const arrivals = battle.fx.filter((f) => f.seq > fxSeqRef.current)
+  const arrivals = fxRead.events
   if (arrivals.length > 0) {
     // 本帧各机型的"击落落点游标"：同一拍被打掉两架时逐架往前取位（不叠在同一处）
     const downCursor = new Map<string, number>()
     for (const fx of arrivals) {
-      fxSeqRef.current = fx.seq
       if (fx.acidBurst) {
         const anchors = resolveBoltAnchors({ side: 'foe', tag: fx.tag, to: fx.to, rowFxTags,
           meAnchors: meAnchorByTag, meFallback: layFx.me, foeAnchors: layFx.foe })

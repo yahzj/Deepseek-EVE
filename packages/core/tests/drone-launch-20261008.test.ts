@@ -168,17 +168,17 @@ function live(hangars = 0, count = 2, size = 1) {
   return { state, local, battle, events, ids, card, advance }
 }
 
-describe('主树100毫秒版本实际首次出击', () => {
-  it('先装填，两架首发3700/4200毫秒，后续仍按原攻击周期', () => {
-    expect(BATTLE_STEP_MS).toBe(100)
+describe('10毫秒版本实际首次出击', () => {
+  it('先装填，两架首发3530/4030毫秒，后续仍按原攻击周期', () => {
+    expect(BATTLE_STEP_MS).toBe(10)
     const w = live()
     for (let time = 100; time <= 8000; time += 100) w.advance(time)
     const times = w.events.filter(event => event.artId === 'drone-scout').map(event => event.atMs)
-    expect(times.slice(0, 2)).toEqual([3700, 4200])
-    expect(times.slice(2, 4)).toEqual([7400, 7900])
+    expect(times.slice(0, 2)).toEqual([3530, 4030])
+    expect(times.slice(2, 4)).toEqual([7060, 7560])
     expect(w.events.filter(event => event.artId === 'drone-sentry')[0]!.atMs).toBeGreaterThanOrEqual(7000)
   })
-  it.each([[0, 500], [1, 400], [2, 400], [3, 300]])('%i机库实际相邻首发%i毫秒，非整拍向后量化', (hangars, gap) => {
+  it.each([[0, 500], [1, 400], [2, 320], [3, 260]])('%i机库实际相邻首发%i毫秒，非整拍向后量化', (hangars, gap) => {
     const w = live(hangars)
     for (let time = 100; time <= 5000; time += 100) w.advance(time)
     const pair = w.events.filter(event => event.artId === 'drone-scout').slice(0, 2)
@@ -209,7 +209,7 @@ describe('主树100毫秒版本实际首次出击', () => {
     const get = (events: typeof online.events) => events.filter(e => e.artId === 'drone-scout').map(e => [e.tag, e.atMs])
     expect(get(offline.events)).toEqual(get(online.events))
     for (const tag of ['player', 'ally-1', 'ally-2', 'ally-3']) {
-      expect(online.events.filter(e => e.tag === tag && e.artId === 'drone-scout').map(e => e.atMs)).toEqual([3700, 4200, 4700, 5200])
+      expect(online.events.filter(e => e.tag === tag && e.artId === 'drone-scout').map(e => e.atMs)).toEqual([3530, 4030, 4530, 5030])
     }
   })
   it('已放飞数随真实队列增长；混合同型聚合不被待出击零冷却覆盖', () => {
