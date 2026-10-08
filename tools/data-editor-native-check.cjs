@@ -150,6 +150,12 @@ async function enemyChecks(page, target) {
   const counts = Object.fromEntries(ENEMY_TABLES.map(table => [table, project.rows.filter(row => row.table === table).length]))
   for (const count of Object.values(counts)) assert(count > 0, '六表未完整显示')
   const request = { table: 'invasionFleets', id: 'alien-broodmother', mode: 'flagship', depth: 1, role: 'ordinary' }
+  if (!project.writable) {
+    const denial = await page.js(`window.dataEditor.enemyPreview(${JSON.stringify(ROOT)}, ${JSON.stringify(project.fingerprint)}, [], ${JSON.stringify(request)}).then(()=>({blocked:false}), error=>({blocked:true,message:String(error)}))`)
+    assert(denial.blocked && denial.message.includes('主树只读'), '主树预览未被只读门禁拒绝')
+    assert.deepEqual(await Promise.all(ENEMY_TABLES.map(table => fs.readFile(path.join(ROOT, ENEMY_FILES[table])))), before, '主树只读检查修改了参数')
+    return { target, version: EDITOR_VERSION, counts, readOnly: true, previewBlocked: true, dataUnchanged: true }
+  }
   const result = await page.js(`window.dataEditor.enemyPreview(${JSON.stringify(ROOT)}, ${JSON.stringify(project.fingerprint)}, [], ${JSON.stringify(request)})`)
   assert.deepEqual(result.rows, enemyEnginePreview(request).rows, '候选引擎预览不是当前源码读数')
   assert(result.rows.some(row => row.hp === 150000), '未读取旗舰共享血池')
