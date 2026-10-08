@@ -7,6 +7,8 @@ import { buildSimContext, L10N } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { activityOverview, type ActivityView } from '../src/activity'
 import { autoLoopInvasionPlanOf, setAutoLoopInvasion, bountyCooldownMsFor } from '../src/expedition'
+import { startExpedition } from '../src/expedition'
+import { addShipToFleet } from '../src/fleetBook'
 import { ROOT } from './helpers/save-shell'
 
 type Node = { type: unknown; props: Record<string, any>; children: unknown[] }
@@ -59,9 +61,13 @@ describe.each(['ActivityBar', 'ActivityBarClassic'])('%s入侵循环活动行', 
     expect(text(rendered)).toContain('50%')
     expect(text(rendered)).toContain(`${Math.ceil(cd / 2 / 1000)}s`)
     expect(text(rendered)).toContain(ctx.galaxies.get('galaxy-redring')!.name)
+    const badges = list.filter(node => node.props.className?.includes('app-activitybar-badge'))
+    expect(badges).toHaveLength(1)
+    expect(text(badges)).toBe(L10N['ui.invasionActivity.001']![locale])
     expect(text(rendered)).not.toMatch(/\{p\d+\}|ui\.invasionLoop/)
     if (locale === 'en') {
-      expect(text(rendered)).toContain('Invasion repeat assault')
+      expect(text(rendered)).toContain('Invasion')
+      expect(text(rendered)).toContain('Repeat assault')
       expect(text(rendered)).not.toMatch(/[\u4e00-\u9fff]/)
     }
     list[0]!.props.onClick()
@@ -74,5 +80,42 @@ describe.each(['ActivityBar', 'ActivityBarClassic'])('%s入侵循环活动行', 
     expect(component.onToast).toHaveBeenCalledOnce()
     const waiting = { ...view, percent: null, remainingMs: null }
     expect(nodes(component.render(waiting)).some(node => node.props.className === 'app-activitybar-fill')).toBe(false)
+  })
+  it.each(['zh', 'en'] as const)('%s手动入侵交火/返航保持单枚标签、实际星系，普通悬赏无标签', locale => {
+    const ctx = buildSimContext(locale), now = Date.now()
+    const state = createInitialState({ nowWallMs: now, seed: 7 })
+    state.shipId = addShipToFleet(state, 'sh-megalodon')
+    state.standings.dsi = 100
+    state.standingsEarned = { dsi: 100 }
+    state.exploredGalaxies = [...ctx.galaxies.keys()]
+    state.weekendEvent = { seq: 1, family: 'C', startedAtWallMs: now, coreId: 'galaxy-kor', peripheryIds: ['galaxy-redring'], contributed: {} }
+    expect(startExpedition(state, 'alien-vanguard', ctx, { foeGalaxyId: 'galaxy-redring' }).ok).toBe(true)
+    const renderer = rowRenderer(layout, locale)
+    for (const phase of ['battle', 'back', 'out'] as const) {
+      state.expedition.phase = phase
+      const snapshot = JSON.stringify(state)
+      const rows = activityOverview(state, ctx)
+      const row = rows.find(row => row.kind === 'expedition')!
+      const rendered = renderer.render(row), list = nodes(rendered)
+      expect(row.badge).toBe('invasion')
+      expect(row.subParams?.p1).toBe(ctx.galaxies.get('galaxy-redring')!.name)
+      expect(text(rendered)).toContain(ctx.galaxies.get('galaxy-redring')!.name)
+      const stage = phase === 'battle' ? '003' : phase === 'back' ? '004' : '005'
+      expect(text(rendered)).toContain(L10N[`ui.invasionActivity.${stage}`]![locale])
+      if (locale === 'en') expect(text(rendered)).not.toMatch(/[\u4e00-\u9fff]/)
+      expect(list.filter(node => node.props.className?.includes('app-activitybar-badge'))).toHaveLength(1)
+      expect(rows.filter(row => row.kind === 'expedition' || row.kind === 'invasion-loop')).toHaveLength(1)
+      expect(JSON.stringify(state)).toBe(snapshot)
+    }
+    state.weekendEvent.autoLoopGalaxyId = 'galaxy-kor'
+    state.expedition.phase = 'back'
+    expect(activityOverview(state, ctx).find(row => row.kind === 'expedition')!.subParams?.p1).toBe(ctx.galaxies.get('galaxy-redring')!.name)
+    state.weekendEvent.endedAtWallMs = now
+    expect(activityOverview(state, ctx).find(row => row.kind === 'expedition')!.badge).toBe('invasion')
+    state.expedition.anomalyId = 'ano-training-skirmish'
+    delete state.expedition.foeGalaxyId
+    const ordinary = activityOverview(state, ctx).find(row => row.kind === 'expedition')!
+    expect(ordinary.badge).toBeUndefined()
+    expect(nodes(renderer.render(ordinary)).some(node => node.props.className?.includes('app-activitybar-badge'))).toBe(false)
   })
 })

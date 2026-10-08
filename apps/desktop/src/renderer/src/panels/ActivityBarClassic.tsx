@@ -33,6 +33,7 @@ import { explorationActivityText } from '../ui/explorationActivityText'
 // 活动行「点击去哪」的跳转单点（2026-09-27 建：原先两套外壳各一份，快递那档跳到了已删除的星图页签 ⇒ 空白页）
 import { goFor } from '../ui/activityGo'
 import { fmtDate, fmtDuration, fmtDurationShort } from '../i18n/fmt'
+import '../styles-activity-invasion.css'
 
 const KIND_ICON: Record<string, string> = {
   train: 'nav-skills',
@@ -270,7 +271,10 @@ export function ActivityBarClassic({
       <span className="app-activitybar-icon"><Glyph name={KIND_ICON[v.kind] ?? 'fallback'} size={15} color={NAV_TONES[KIND_ICON[v.kind]] ?? ICO_TONES[KIND_ICON[v.kind]]} /></span>
       <div className="app-activitybar-main">
         <div className="app-activitybar-line">
-          <span className="app-activitybar-label">{v.label}</span>
+          <span className={`app-activitybar-label${v.badge === 'invasion' ? ' is-invasion' : ''}`}>
+            {v.badge === 'invasion' ? <span className="app-chip is-danger app-activitybar-badge">{tr('ui.invasionActivity.001')}</span> : null}
+            <span>{v.label}</span>
+          </span>
           <span className="app-dim app-activitybar-sub">{v.sub}</span>
           {v.percent !== null ? (
             <span className="app-activitybar-track">
@@ -279,7 +283,7 @@ export function ActivityBarClassic({
           ) : null}
           <span className="app-activitybar-time">
             {v.percent !== null ? `${Math.round(v.percent)}%` : ''}
-            {v.remainingMs !== null && v.remainingMs > 0 ? v.kind === 'invasion-loop'
+            {v.remainingMs !== null && v.remainingMs > 0 ? v.badge === 'invasion'
               ? ` · ${tr('ui.boost.005', { p1: fmtDuration(v.remainingMs) })}`
               : ` · 剩 ${fmtDuration(v.remainingMs)}` : ''}
           </span>

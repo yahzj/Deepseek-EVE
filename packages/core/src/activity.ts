@@ -26,6 +26,7 @@ import { shipDisplayName } from './instances'
 import { legMsFor, outboundLegMsFor, salvagerCyclesOf } from './salvaging'
 import { haulEndpointName } from './hauling'
 import { travelMinutesEff } from './travel'
+import { weekendFoePoolOf } from './weekendEvent'
 
 /** 活动种类（UI 据此渲染图标；新增耗时作业在此扩展） */
 export type ActivityKind =
@@ -83,6 +84,8 @@ export type ActivityStopKind =
 
 /** 一条活动（只读视图；引擎/指令仍是唯一修改入口） */
 export interface ActivityView {
+  /** 展示标识，不入存档；手动出击与循环出击共用。 */
+  badge?: 'invasion'
   labelId?: string
   labelParams?: Readonly<Record<string, string | number>>
   subId?: string
@@ -359,6 +362,11 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
   if (ev.active) {
     const inBattle = ev.phase === 'combat'
     const canStop = inBattle || ev.recallable
+    const invasionEvent = state.weekendEvent
+    const actualGalaxyId = state.expedition.foeGalaxyId
+    const invasion = invasionEvent !== undefined && actualGalaxyId !== undefined && ev.anomalyId !== null
+      && (actualGalaxyId === invasionEvent.coreId || invasionEvent.peripheryIds.includes(actualGalaxyId))
+      && weekendFoePoolOf(invasionEvent.family, actualGalaxyId === invasionEvent.coreId).includes(ev.anomalyId)
     // 2026-09-08（船长）：重复清剿中的本趟返航不另开独立活动行——在本次讨伐行内提供
     // 「停止清剿」（胜利返航原本不可召回，但允许停掉后续自动再出击）
     const loopReturning = state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === ev.anomalyId && ev.phase === 'back'
@@ -388,7 +396,12 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       kind: 'expedition',
       label: ev.anomalyName,
       sub,
-      ...(invasionReturning ? { subId: 'ui.invasionLoop.005' } : {}),
+      ...(invasion ? {
+        badge: 'invasion' as const,
+        subId: 'ui.invasionActivity.002',
+        subParams: { p1: ev.galaxyName, p2: ev.phaseLabel,
+          p2Id: inBattle ? 'ui.invasionActivity.003' : ev.phase === 'back' ? 'ui.invasionActivity.004' : 'ui.invasionActivity.005' },
+      } : invasionReturning ? { subId: 'ui.invasionLoop.005' } : {}),
       percent: ev.percent,
       remainingMs: ev.remainingMs,
       stopable,
@@ -479,7 +492,8 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       '实验室作业': 'core.busy.030',
     }
     out.push({
-      id: 'invasion-loop', kind: 'invasion-loop', label: '入侵重复出击', labelId: 'ui.invasionLoop.001',
+      // ⟪文案调整 2026-10-08⟫ 入侵类型交由标题前标签显示，不重复堆词。
+      id: 'invasion-loop', kind: 'invasion-loop', badge: 'invasion', label: '重复出击', labelId: 'ui.invasionLoop.001',
       sub: waitFor !== null ? `目标「${name}」；等待${waitFor}结束`
         : invasionPlan.remainingMs > 0 ? `目标「${name}」；正在扫描新敌人` : `目标「${name}」；即将自动出击`,
       subId: waitFor !== null ? 'ui.invasionLoop.002' : invasionPlan.remainingMs > 0 ? 'ui.invasionLoop.003' : 'ui.invasionLoop.004',
