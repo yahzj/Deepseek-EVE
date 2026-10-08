@@ -91,8 +91,8 @@ describe('新波次和全队补损', () => {
   })
 })
 
-describe('巢母工虫复活与渐增机动', () => {
-  it('只复活本波工虫，每30秒一艘，不补背巢或上一波工虫', () => {
+describe('巢母成虫召唤与渐增机动', () => {
+  it('每30秒最多召唤三架成虫，空位不足不超编，不复活工虫或背巢', () => {
     const { battle, foes, state } = wave()
     down(battle, foes[1]!.tag); down(battle, foes[2]!.tag); down(battle, foes[3]!.tag)
     battle.units['old-worker'] = { ...battle.units[foes[2]!.tag]!, tag: 'old-worker' }
@@ -101,22 +101,23 @@ describe('巢母工虫复活与渐增机动', () => {
     expect(battle.foeReviveCount).toBeUndefined()
     battle.foeAbilityClocks[foes[0]!.tag] = 30000
     resolveFoeRevive(state, battle, foes, ctx.balance.battle, 999999)
-    expect(battle.foeReviveCount).toBe(1)
-    expect(foesWithSupport(battle, foes).filter(f => f.tag.startsWith('sup')).map(f => f.foeShipId)).toEqual(['foe-alien-brood-worker'])
+    expect(battle.foeReviveCount).toBe(3)
+    expect(foesWithSupport(battle, foes).filter(f => f.tag.startsWith('sup')).map(f => f.foeShipId)).toEqual(Array(3).fill('foe-alien-starcore-adult'))
     battle.foeAbilityClocks[foes[0]!.tag] = 60000
     resolveFoeRevive(state, battle, foes, ctx.balance.battle, 999999)
-    expect(battle.foeReviveCount).toBe(2)
+    expect(battle.foeReviveCount).toBe(3)
     battle.foeAbilityClocks[foes[0]!.tag] = 90000
     resolveFoeRevive(state, battle, foes, ctx.balance.battle, 999999)
-    expect(battle.foeReviveCount).toBe(2)
+    expect(battle.foeReviveCount).toBe(3)
     const revived = foesWithSupport(battle, foes).find(f => f.tag.startsWith('sup'))!
     down(battle, revived.tag)
     battle.foeAbilityClocks[foes[0]!.tag] = 120000
     resolveFoeRevive(state, battle, foes, ctx.balance.battle, 999999)
-    expect(battle.foeReviveCount).toBe(3)
-    expect(foesWithSupport(battle, foes).filter(f => f.foeShipId === 'foe-alien-brood-worker' && battle.units[f.tag]!.hp.h > 0)).toHaveLength(2)
+    expect(battle.foeReviveCount).toBe(4)
+    expect(foesWithSupport(battle, foes).filter(f => f.foeShipId === 'foe-alien-starcore-adult' && battle.units[f.tag]!.hp.h > 0)).toHaveLength(3)
+    expect(battle.units[foes[2]!.tag]!.hp.h).toBe(0)
   })
-  it('空转不积蓄、巢母死亡不复活，重载不重置节拍', () => {
+  it('空转不积蓄、巢母死亡不召唤，重载不重置节拍', () => {
     const { battle, foes, state } = wave()
     battle.foeAbilityClocks = { [foes[0]!.tag]: 30000 }
     resolveFoeRevive(state, battle, foes, ctx.balance.battle, 30000)
@@ -167,7 +168,7 @@ describe('巢母工虫复活与渐增机动', () => {
     pulseFoeRepair(battle, foes, ledger)
     expect(battle.units[foes[0]!.tag]!.hp.a).toBeGreaterThan(1)
   })
-  it('真推进末波复活工虫能护理，不预积累首波时间且速度显示同源', () => {
+  it('真推进末波只召唤成虫，不预积累首波时间且速度显示同源', () => {
     const { state } = alienFixture(ctx, 'heavy')
     const def = ctx.ships.get('sh-megalodon')!
     const local = { ...ctx, ships: new Map([...ctx.ships, [def.id, { ...def, shieldHp: 900000, armorHp: 900000, hullHp: 900000 }]]) }
@@ -187,14 +188,17 @@ describe('巢母工虫复活与渐增机动', () => {
       advanceBattleFor(state, local, battle, state.shipId, card.id)
       if (delta === 30000) expect(battle.foeReviveCount).toBeUndefined()
     }
-    expect(battle.foeReviveCount).toBe(1)
+    expect(battle.foeReviveCount).toBe(2)
     expect(battle.foeAbilityClocks![foes[0]!.tag]).toBeLessThan(33000)
     for (let delta = 33100; delta <= 124000; delta += 100) {
       state.gameMs = start + delta
       advanceBattleFor(state, local, battle, state.shipId, card.id)
     }
-    expect(battle.foeRepair!.healed).toBeGreaterThan(0)
+    expect(battle.foeRepair?.healed ?? 0).toBe(0)
     expect(battle.foeReviveCount).toBe(2)
+    const support = foesWithSupport(battle, foes).filter(f => f.tag.startsWith('sup'))
+    expect(support.map(f => f.foeShipId)).toEqual(Array(2).fill('foe-alien-starcore-adult'))
+    expect(support.every(f => (f.repairPct ?? 0) === 0)).toBe(true)
     expect(foeFleetSpeedMulOf(battle, foesWithSupport(battle, foes))).toBe(2.8)
     const loaded = cleanBattle(JSON.parse(JSON.stringify(battle)))!
     expect(loaded.foeAbilityClocks).toEqual(battle.foeAbilityClocks)

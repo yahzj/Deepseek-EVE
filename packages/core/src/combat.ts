@@ -539,6 +539,9 @@ export interface UnitSpec {
    * （它活着 / 已补进场则名额回落到随机）。
    */
   foeReviveEscort?: import('./types').FoeMountDef['reviveEscort']
+  foeSummonEscort?: import('./types').FoeMountDef['summonEscort']
+  /** 只在建档时派生；读档按本场原成虫条目重新建立，不写入存档。 */
+  foeSummonTemplate?: UnitSpec
   foeTactic: FoeTactic | null
   /**
    * **舰级 id**（2026-09-24 加；只给"舰级路径"建的敌单位写）：旗舰 BOSS 的伤害台账靠它认出母舰
@@ -2898,7 +2901,7 @@ export function battleArcsFor(
    * ⚠ 敌阵取**当前波**（`activeFoeSpecsOf`，与引擎 `specsOf(waveIdx)` 同源）：多波卡里干扰舰只在
    * 某一波出场 ⇒ 取第 0 波会漏判。
    */
-  const foes = activeFoeSpecsOf(anomaly, bal, battle.waveIdx)
+  const foes = foesWithSupport(battle, activeFoeSpecsOf(anomaly, bal, battle.waveIdx))
   applyMeJammerDebuff(me, meJammerNetOf(battle, foes), meRefs.weaponRanges)
   /** 我方各武器当前装填剩余（与 units['player'].weapons 同序；单位缺失 = 空） */
   const meRt = battle.units['player']?.weapons ?? []

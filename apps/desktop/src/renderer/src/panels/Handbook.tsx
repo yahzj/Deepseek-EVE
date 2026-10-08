@@ -242,13 +242,15 @@ function FactionDetailPanel({ engine, family }: { engine: GameEngine; family: st
 
 function collectFoeShips(engine: GameEngine): Map<string, FoeShipDef> {
   const out = new Map<string, FoeShipDef>()
-  const put = (s: FoeShipDef | null | undefined): void => {
-    if (s && !out.has(s.id)) out.set(s.id, s)
+  const put = (s: FoeShipDef | null | undefined, mounts = s?.mounts): void => {
+    if (!s) return
+    const previous = out.get(s.id)
+    out.set(s.id, { ...(previous ?? s), mounts: [...new Set([...(previous?.mounts ?? []), ...(mounts ?? [])])] })
   }
   // 存档卡片（已过 l10n 覆盖层 ⇒ 舰名与挂载件名都是当前语言；与悬赏卡悬停同一份数据）
-  for (const card of engine.ctx.anomalies.values()) for (const slot of card.ships ?? []) put(slot?.ship)
+  for (const card of engine.ctx.anomalies.values()) for (const slot of card.ships ?? []) put(slot?.ship, slot.mounts ?? slot.ship.mounts)
   // 未遇的舰级：只借 FOE_SHIPS 补 id 与族（**不读它的中文名**，名字由界面显示为占位）
-  for (const s of FOE_SHIPS) put(s)
+  for (const s of FOE_SHIPS) if (!out.has(s.id)) put(s)
   return out
 }
 

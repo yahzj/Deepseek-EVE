@@ -456,7 +456,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.alien.004': { zh: '腐蚀：装甲和结构全抗性 −{p1}个百分点', en: 'Corrosion: armor and hull resistances −{p1} percentage points' },
   'ui.alien.005': { zh: '孵化储备剩余：{p1}；已补回：{p2}', en: 'Hatchery reserves remaining: {p1}; replacements deployed: {p2}' },
   'ui.alien.006': { zh: '无限', en: 'Unlimited' },
-  'ui.alien.007': { zh: '无人机战损后，等待{p1}秒满血补回本波存活舰船的全部损失机位，后备无限；每{p2}秒满血复活一艘本波哺育工虫，不超过原编制。存活时全队速度每秒增加，{p3}秒达到+{p4}%；被击毁后补机、复活和加速均停止。', en: 'After drone losses, waits {p1} seconds before restoring all lost slots of surviving ships in this wave at full health, with unlimited reserves. Revives one Brood Worker from this wave at full health every {p2} seconds, within the original formation limit. While alive, increases fleet speed each second, reaching +{p4}% after {p3} seconds. Drone replacement, revival and the speed bonus end when destroyed.' },
+  // ⟪文案调整 2026-10-08⟫ 船长确认巢母改为召唤成虫，满编不召唤。
+  'ui.alien.007': { zh: '无人机战损后，等待{p1}秒满血补回本波存活舰船的全部损失机位，后备无限；每{p2}秒召唤最多{p5}架星髓成虫，满编时不召唤，不超过本波原编制。存活时全队速度每秒增加，{p3}秒达到+{p4}%；被击毁后补机、召唤和加速均停止。', en: 'After drone losses, waits {p1} seconds before restoring all lost slots of surviving ships in this wave at full health, with unlimited reserves. Summons up to {p5} Starcore Adults every {p2} seconds, within this wave\'s original formation limit; no summons when full. While alive, increases fleet speed each second, reaching +{p4}% after {p3} seconds. Drone replacement, summoning and the speed bonus end when destroyed.' },
   "core.explorationStatus.001": { zh: "发现一处信号空间：{p1}，已记录{p2}/{p3}处。", en: "Signal Space discovered: {p1}; {p2}/{p3} sites recorded." },
   "core.explorationStatus.002": { zh: "测绘处标记了{p1}处信号空间，当前共{p2}处。", en: "The Survey Office marked {p1} Signal Spaces; {p2} sites are now recorded." },
   "core.explorationStatus.003": { zh: "扫描已暂停：信号空间坐标达到上限{p1}处。", en: "Scanning paused: the Signal Space coordinate limit of {p1} has been reached." },
@@ -3460,7 +3461,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.foeIntro.101": { zh: "从它射程之外被命中后，自身炮台射程 ×{p1}", en: "when hit from beyond its range, its guns reach ×{p1}" },
   "ui.foeIntro.102": { zh: "首次开火时钉住一个未被钉住的目标，减速 {p1}%、闪避归零、射程 −{p2} 米，击沉发动者或拉到 {p3} 米外才解除", en: "its first shot pins an un-webbed target: slowed {p1}%, evasion zeroed, range −{p2} m; released by sinking the caster or opening the range past {p3} m" },
   "ui.foeIntro.103": { zh: "开战 {p1} 秒后呼叫增援", en: "calls reinforcements {p1} s into the fight" },
-  "ui.foeIntro.104": { zh: "每 {p1} 秒召回一艘已被击毁的友舰", en: "every {p1} s recalls one destroyed ally" },
+  // ⟪文案调整 2026-10-08⟫ 手册漏挂载修复，同步墨潮现有两艘与干扰舰优先规则。
+  "ui.foeIntro.104": { zh: "每 {p1} 秒满血召回最多 {p2} 艘本波已被击毁的友舰，优先召回墨潮干扰舰，不超过本波原编制", en: "every {p1} s recalls up to {p2} destroyed allies from this wave at full health, prioritizing the Ink Tide Jammer within the original formation limit" },
   "ui.foeIntro.105": { zh: "每 {p1} 秒恢复 {p2} 装甲/结构", en: "every {p1} s restores {p2} armour/hull" },
   "ui.foeIntro.106": { zh: "闪避 +{p1} 个百分点", en: "evasion +{p1} points" },
   "ui.foeIntro.107": { zh: "受击后冲锋：速度 ×{p1}，冷却 {p2} 秒", en: "when hit, charges: speed ×{p1}, {p2} s cooldown" },

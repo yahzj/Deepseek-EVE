@@ -1,6 +1,7 @@
 /** 本批合成入侵档的隐藏原生窗口检查；不读取个人档。
  * 用法：npm run build后，node tools/alien-invasion-ui-check.cjs。
- * 游戏v0.1.0 / 存档v31，2026-10-06；截图和报告在tools/_ui-artifacts/alien-invasion。
+ * 游戏v0.1.0 / 存档v31，2026-10-08；--summon-only只检查召唤后的成虫。
+ * 截图和报告在tools/_ui-artifacts/alien-invasion；读数不是观感验收。
  */
 const assert = require('node:assert/strict')
 const fs = require('node:fs/promises')
@@ -21,6 +22,7 @@ function fixture(scenario) {
   const { state, ships } = alienFixture(ctx, 'heavy', 611, 4)
   state.onboarding = { ...state.onboarding, step: 99 }
   state.modeChosen = true
+  if (scenario === 'summon') for (const uid of ships) state.fleet[uid].fitted.high = []
   const id = scenario === 'main' ? 'alien-main' : 'alien-broodmother'
   const battle = startFleetBattleFor(state, ctx, ships, id, 0, 200)
   assert(battle)
@@ -32,6 +34,17 @@ function fixture(scenario) {
   // 隔离窗口冻结心跳；先用真实引擎走完入场，避免把屏幕外飞入起点当作阵形越界。
   state.gameMs = 3000
   advanceBattleFor(state, ctx, battle, state.shipId, id)
+  if (scenario === 'summon') {
+    for (const unit of Object.values(battle.units)) if (unit.side === 'foe' && unit.foeShipId !== 'foe-alien-broodmother') unit.hp = { s: 0, a: 0, h: 0 }
+    for (let time = 3100; time <= 35000; time += 100) {
+      state.gameMs = time
+      advanceBattleFor(state, ctx, battle, state.shipId, id)
+    }
+    const adults = Object.values(battle.units).filter(unit => unit.tag.startsWith('sup') && unit.foeShipId === 'foe-alien-starcore-adult')
+    assert.equal(adults.length, 3, '真实召唤数量不等于三架')
+    assert(adults.every(unit => Math.abs(unit.hpMax.s + unit.hpMax.a + unit.hpMax.h - 936) < 1e-7), '成虫倍率不等于原旗舰战成虫')
+    assert.equal(battle.ended, null, '召唤检查点已结束')
+  }
   battle.alienCorrosion = .15
   state.expedition = { ...state.expedition, active: true, phase: 'battle', shipId: ships[0], galaxyId: 'galaxy-kor', foeGalaxyId: 'galaxy-kor', anomalyId: id, battle }
   return { save: serializeSaveFile(state), announcement: require('../packages/data/src/announcements.ts').ANNOUNCEMENTS[0]?.id ?? 'synthetic' }
@@ -40,10 +53,10 @@ function fixture(scenario) {
 async function parent() {
   await fs.mkdir(OUT, { recursive: true })
   const reports = []
-  for (const scenario of ['main', 'boss']) for (const layout of ['classic', 'modern']) {
+  for (const scenario of process.argv.includes('--summon-only') ? ['summon'] : ['main', 'boss', 'summon']) for (const layout of ['classic', 'modern']) {
+    const input = fixture(scenario)
     const prefix = 'whale-alien-ui-'
     const profile = await fs.mkdtemp(path.join(os.tmpdir(), prefix))
-    const input = fixture(scenario)
     const init = settingsScript(input.announcement, undefined, { debug: true, test: true, layout })
     let server
     let child
@@ -68,7 +81,7 @@ async function parent() {
       await removeProfile(profile, prefix)
     }
   }
-  await fs.writeFile(path.join(OUT, 'ui-report.json'), JSON.stringify({ reports, scope: '隐藏原生窗口几何、非空截图与真实合成战斗；不代表观感验收。' }, null, 2))
+  await fs.writeFile(path.join(OUT, process.argv.includes('--summon-only') ? 'ui-summon-report.json' : 'ui-report.json'), JSON.stringify({ reports, scope: '隐藏原生窗口几何、非空截图与真实合成战斗；不代表观感验收。' }, null, 2))
 }
 
 async function child() {
@@ -103,6 +116,12 @@ async function child() {
     const diagnostic = await win.webContents.capturePage(undefined, { stayHidden: true })
     await fs.writeFile(path.join(OUT, `ui-diagnostic-${process.env.ALIEN_UI_SCENARIO}-${process.env.ALIEN_UI_LAYOUT}-${width}.png`), diagnostic.toPNG())
     assert(geometry.unitCount >= 4, '真实编队未显示')
+    if (process.env.ALIEN_UI_SCENARIO === 'summon') {
+      const adults = await page.js(`Array.from(document.querySelectorAll('.app-bts-unit[data-tag^=sup]'),e=>({tag:e.dataset.tag,text:e.textContent,paths:e.querySelectorAll('svg path').length,adultArt:[...e.querySelectorAll('svg path')].some(p=>p.getAttribute('d')?.includes('M84 48 Q92 62 84 86'))}))`)
+      assert.equal(adults.length, 3, '召唤成虫舰影未完整渲染')
+      assert(adults.every(unit => unit.text.includes('星髓成虫') && unit.paths > 0 && unit.adultArt), '召唤成虫名称或独立舰影缺失')
+      geometry.summoned = adults
+    }
     assert.equal(geometry.w, width, '实际视口宽度不得被原生最小尺寸钳制')
     assert.equal(geometry.h, height, '实际视口高度与请求不符')
     assert(geometry.svgs.every(s => s.paths > 0 && s.box.width > 0 && s.box.height > 0), '舰影空白或尺寸归零')

@@ -4412,13 +4412,18 @@ for (const m of MODULES) {
         for (const a of ANOMALIES_FLAVORED) {
           for (const sl of a.ships ?? []) {
             const eff = resolveFoeMounts(sl.mounts ?? sl.ship.mounts)
+            if (eff.foeSummonEscort !== undefined) {
+              const valid = a.id === 'alien-broodmother' && sl.ship.id === 'foe-alien-broodmother' &&
+                eff.foeSummonEscort.shipId === 'foe-alien-starcore-adult' &&
+                a.ships?.some(slot => slot.ship.id === eff.foeSummonEscort!.shipId)
+              if (!valid) bad.push(`卡 ${a.id} 的条目 ${sl.ship.id} 配置了不受支持的主动召唤或缺少成虫属性来源`)
+            }
             if (eff.foeReviveEscort === undefined) continue
             const validInk = a.id === 'ink-flagship' && sl.ship.id === 'foe-h-ink-flagship'
-            const validAlien = a.id === 'alien-broodmother' && sl.ship.id === 'foe-alien-broodmother' && eff.foeReviveEscort.allowedShipIds?.join() === 'foe-alien-brood-worker'
-            if (!validInk && !validAlien) {
+            if (!validInk) {
               bad.push(
                 `卡 ${a.id} 的条目 ${sl.ship.name}（${sl.ship.id}）挂了支援舰船召唤装置——` +
-                  `复活仅允许墨潮入侵母舰或本批只补工虫的巢母`,
+                  `复活仅允许墨潮入侵母舰`,
               )
             }
           }
@@ -8661,11 +8666,11 @@ checkPlugEffectWiring()
       check(mount.broodControl?.gunDmgMul === .4 && mount.broodControl.droneDmgMul === 1.5 && mount.broodControl.droneRangeBonusPct === .5, `载体加成缺失：${ship.id}`)
       check(mount.hatchery?.stock === (isBack ? 32 : 'unlimited') && mount.hatchery.cycleMs === (isBack ? 12000 : 9000) && mount.hatchery.fleet === true, `孵化额度或周期错位：${ship.id}`)
       if (!isBack) {
-        check(mount.foeReviveEscort?.everyMs === 30000 && mount.foeReviveEscort.count === 1 && mount.foeReviveEscort.allowedShipIds?.join() === 'foe-alien-brood-worker' && mount.foeReviveEscort.activeClock === true, '巢母仅30秒复活一艘本波工虫')
+        check(mount.foeReviveEscort === undefined && mount.foeSummonEscort?.everyMs === 30000 && mount.foeSummonEscort.count === 3 && mount.foeSummonEscort.shipId === 'foe-alien-starcore-adult' && mount.foeSummonEscort.activeClock === true, '巢母仅30秒召唤最多3架星髓成虫，不复活工虫')
         check(mount.fleetSpeedRamp?.rampMs === 120000 && mount.fleetSpeedRamp.maxBonusPct === 1.8, '巢母120秒全队速度增加180%')
       }
     }
-    if (mount.fleetSpeedRamp || mount.foeReviveEscort?.activeClock) check(ship.id === 'foe-alien-broodmother', `巢母能力越界：${ship.id}`)
+    if (mount.fleetSpeedRamp || mount.foeSummonEscort) check(ship.id === 'foe-alien-broodmother', `巢母能力越界：${ship.id}`)
   }
   for (const card of ANOMALIES_FLAVORED) for (const slot of card.ships ?? []) {
     if (newIds.has(slot.ship.id)) check(card.region === 'inv' && card.foeFamily === 'C', `新异形泄露非入侵：${card.id}/${slot.ship.id}`)

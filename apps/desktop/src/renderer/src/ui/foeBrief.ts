@@ -51,9 +51,9 @@ export function mountEffectText(id: string): string | null {
   if (!def) return null
   const pct = (v: number) => String(Math.round(v * 100))
   if (def.broodControl) return tr('ui.alien.002', { p1: def.broodControl.gunDmgMul, p2: pct(def.broodControl.droneDmgMul - 1), p3: pct(def.broodControl.droneRangeBonusPct) })
-  // ⟪文案调整 2026-10-06⟫ 巢母多项效果仍列在同一孵化挂件内，三处说明同源。
+  // ⟪文案调整 2026-10-08⟫ 巢母30秒召唤成虫；9秒补机与全队加速保留，三处说明同源。
   if (def.hatchery) {
-    if (def.hatchery.stock === 'unlimited' && def.reviveEscort && def.fleetSpeedRamp) return tr('ui.alien.007', { p1: def.hatchery.cycleMs / 1000, p2: def.reviveEscort.everyMs / 1000, p3: def.fleetSpeedRamp.rampMs / 1000, p4: pct(def.fleetSpeedRamp.maxBonusPct) })
+    if (def.hatchery.stock === 'unlimited' && def.summonEscort && def.fleetSpeedRamp) return tr('ui.alien.007', { p1: def.hatchery.cycleMs / 1000, p2: def.summonEscort.everyMs / 1000, p3: def.fleetSpeedRamp.rampMs / 1000, p4: pct(def.fleetSpeedRamp.maxBonusPct), p5: def.summonEscort.count })
     return tr('ui.alien.003', { p1: def.hatchery.cycleMs / 1000, p2: def.hatchery.stock })
   }
 
@@ -77,7 +77,8 @@ export function mountEffectText(id: string): string | null {
     return tr('ui.foeIntro.103', { p1: String(def.supportCall.delaySec) })
   }
   if (def.reviveEscort) {
-    return tr('ui.foeIntro.104', { p1: String(Math.round(def.reviveEscort.everyMs / 1000)) })
+    // ⟪文案调整 2026-10-08⟫ 墨潮手册同步现有两艘与干扰舰优先规则。
+    return tr('ui.foeIntro.104', { p1: String(Math.round(def.reviveEscort.everyMs / 1000)), p2: def.reviveEscort.count ?? 1 })
   }
   if (def.repairPulse) {
     const sec = Math.round(def.repairPulse.everyMs / 1000)

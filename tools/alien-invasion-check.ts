@@ -67,7 +67,8 @@ function audit() {
           hatcheryCycleSec: unit.foeHatchery ? unit.foeHatchery.cycleMs / 1000 : 0,
           currentReserve: unit.foeHatchery?.stock ?? 0,
           burstDamage: unit.acidBurst?.damage ?? 0,
-          workerReviveSec: unit.foeReviveEscort?.everyMs ? unit.foeReviveEscort.everyMs / 1000 : 0,
+          adultSummonSec: (unit.foeSummonEscort?.everyMs ?? 0) / 1000,
+          adultSummonCount: unit.foeSummonEscort?.count ?? 0,
           speedRampSec: unit.foeFleetSpeedRamp ? unit.foeFleetSpeedRamp.rampMs / 1000 : 0,
           speedMaxBonusPct: (unit.foeFleetSpeedRamp?.maxBonusPct ?? 0) * 100,
         }
@@ -100,7 +101,7 @@ function audit() {
   mkdirSync(out, { recursive: true })
   const lines = [
     '# C族入侵卡与敌舰输出审核', '',
-    '> 当前代码取数：2026-10-06，三号verify。新波次、群体补损、无限巢母、工虫复活、渐增加速和爆虫动能爆发已接入；验证状态见本批工作文档。', '',
+    '> 当前代码取数：2026-10-08。新波次、群体补损、无限巢母、成虫召唤、渐增加速和爆虫动能爆发已接入；验证状态见本批工作文档。', '',
     '## 读数说明', '',
     '- 主列为单个单位、所有炮口合计的每轮伤害；每秒输出按配置攻击间隔计算，尚未乘命中、距离衰减、守方抗性及层位克制，不等于实际扣血。',
     '- 已包含卡倍率、编成补偿、越线折扣、0.4炮伤、1.5机群伤害以及工虫的护理折减；不应再乘炮数或卡倍率。',
@@ -114,8 +115,8 @@ function audit() {
     '| 背巢巨兽 | 12秒 | 8 | 每艘32架 | 到点补齐当前波存活舰船的损失机位，每架扣1储备 |',
     '| 巢母巨兽 | 9秒 | 12 | 无限 | 到点补齐当前波存活舰船的全部损失机位 |', '',
     '后备不提高同时在场上限，巢母末波最多20架颚钳。没有战损不积蓄周期；活机不回血；有限后备不足时按队列补到用完，不透支。载体死亡停止自身孵化，不为死亡舰船补机，不恢复上一波机群。', '',
-    '巢母每30秒满血复活一艘本波哺育工虫，最多同时2艘；不复活其他舰种和上一波工虫。存活时每秒全队速度增加1.5个百分点，120秒达到+180%即2.8倍，与各舰冲锋相乘；死亡解除，重载继续有效时长。', '',
-    '多载体同拍先处理无限巢母，有限背巢重新读取空槽，不重复复活或白扣后备。储备和跨舰队列分别随档；工虫复活走原编制槽位及支援入场。', '',
+    '巢母每30秒召唤最多3架星髓成虫，计入本波4艘编队上限，满编跳过且不积累；规格沿用本场第二波成虫，不继承巢母专用厚血或共享血池。存活时每秒全队速度增加1.5个百分点，120秒达到+180%即2.8倍，与各舰冲锋相乘；死亡解除，重载继续有效时长。', '',
+    '多载体同拍先处理无限巢母，有限背巢重新读取空槽，不重复复活或白扣后备。储备和跨舰队列分别随档；成虫召唤沿用支援入场时钟与装填窗口。', '',
     '## 卡片总览', '',
     '| 卡片 | 标签 | 波数/舰体总数 | 实战全波总血 | 射击峰值/秒 | 现有定价峰值/秒 |',
     '|---|---:|---|---:|---:|---:|',
@@ -139,8 +140,8 @@ function audit() {
     }
   }
   lines.push('## 机群生存与增程', '', '颚钳每架护盾6/装甲12/结构20，总血38、闪避45%、无额外抗性；旧孢群机15/28/45，总血88、闪避8%、装甲/结构全抗20%。这些血不吃敌卡舰体倍率。', '', '颚钳基础射程6000，载体加50%后9000；旧孢群机6000。玩家电子压制仍与增程加算抵消，15%压制时颚钳8100，60%压制时5400。', '', '巡游遇袭另按现有0.75强度缩放并逐条取整；不是本审核表再乘0.75即可逐项准确复现。群体复活只延长满编火力持续时间，不直接抬高满编峰值。', '')
-  const header = ['卡片ID', '卡名', '波次', '舰级ID', '敌舰名', '数量', '每体总血', '护盾', '装甲', '结构', '炮口数', '本体总齐射', '每炮分摊', '本体间隔秒', '本体每秒输出', '本体射程米', '无人机数量', '无人机单发分摊', '机群总齐射', '无人机间隔秒', '机群每秒输出', '机群射程米', '每体射击合计每秒', '护理每5秒', '速度米每秒', '冲锋倍率', '孵化周期秒', '现行储备', '一次爆发原伤', '工虫复活周期秒', '加速封顶秒', '最大速度加成百分比']
-  const csvRows = auditCards.flatMap(card => card.waves.flatMap(wave => wave.units.map(unit => [card.id, card.name, wave.wave, unit.shipId, unit.name, unit.count, unit.hp, numeric(unit.layers.s), numeric(unit.layers.a), numeric(unit.layers.h), unit.guns, unit.gunShot, unit.gunPerPort, unit.gunReloadSec, unit.gunDps, unit.gunRangeM, unit.drones, unit.dronePerUnit, unit.droneShot, unit.droneReloadSec, unit.droneDps, unit.droneRangeM, unit.shotDps, unit.repairPer5, unit.speedMps, unit.chargeMul, unit.hatcheryCycleSec, unit.currentReserve, unit.burstDamage, unit.workerReviveSec, unit.speedRampSec, unit.speedMaxBonusPct])))
+  const header = ['卡片ID', '卡名', '波次', '舰级ID', '敌舰名', '数量', '每体总血', '护盾', '装甲', '结构', '炮口数', '本体总齐射', '每炮分摊', '本体间隔秒', '本体每秒输出', '本体射程米', '无人机数量', '无人机单发分摊', '机群总齐射', '无人机间隔秒', '机群每秒输出', '机群射程米', '每体射击合计每秒', '护理每5秒', '速度米每秒', '冲锋倍率', '孵化周期秒', '现行储备', '一次爆发原伤', '成虫召唤周期秒', '成虫每批数量', '加速封顶秒', '最大速度加成百分比']
+  const csvRows = auditCards.flatMap(card => card.waves.flatMap(wave => wave.units.map(unit => [card.id, card.name, wave.wave, unit.shipId, unit.name, unit.count, unit.hp, numeric(unit.layers.s), numeric(unit.layers.a), numeric(unit.layers.h), unit.guns, unit.gunShot, unit.gunPerPort, unit.gunReloadSec, unit.gunDps, unit.gunRangeM, unit.drones, unit.dronePerUnit, unit.droneShot, unit.droneReloadSec, unit.droneDps, unit.droneRangeM, unit.shotDps, unit.repairPer5, unit.speedMps, unit.chargeMul, unit.hatcheryCycleSec, unit.currentReserve, unit.burstDamage, unit.adultSummonSec, unit.adultSummonCount, unit.speedRampSec, unit.speedMaxBonusPct])))
   const quote = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`
   writeFileSync(resolve(out, 'enemy-output-audit.json'), JSON.stringify({ scope: '当前新编成实战满池建档，循环射击、一次爆发、护理与定价输出分开', cards: auditCards, baseUnits }, null, 2), 'utf8')
   writeFileSync(resolve(out, 'enemy-output-audit.md'), lines.join('\n'), 'utf8')
@@ -166,7 +167,7 @@ function run(profile: string, target: string, seed: number, boss = false) {
   assert(battle.ended, '模拟必须正常结束')
   const hp = Object.values(battle.units).filter(u => u.side === 'me').reduce((n, u) => n + u.hp.s + u.hp.a + u.hp.h, 0)
   const healed = battle.foeRepair?.healed ?? 0
-  return { win: Number(battle.ended === 'me'), seconds: (battle.lastTickGameMs - battle.startedAtGameMs) / 1000, hpFraction: hp / initialHp, acid: Number(!!battle.alienCorrosion), revived: Object.values(battle.foeHatcheries ?? {}).reduce((n, l) => n + l.revived, 0), droneDown, healed, sunk: Object.values(battle.units).filter(u => u.side === 'me' && u.hp.s + u.hp.a + u.hp.h <= 0).length, bossDamage: boss ? flagshipBattleLedger(battle, [battle.foeOverride!.bossShipId!]).rawDmg : 0 }
+  return { win: Number(battle.ended === 'me'), seconds: (battle.lastTickGameMs - battle.startedAtGameMs) / 1000, hpFraction: hp / initialHp, acid: Number(!!battle.alienCorrosion), revived: Object.values(battle.foeHatcheries ?? {}).reduce((n, l) => n + l.revived, 0), summoned: battle.foeReviveCount ?? 0, droneDown, healed, sunk: Object.values(battle.units).filter(u => u.side === 'me' && u.hp.s + u.hp.a + u.hp.h <= 0).length, bossDamage: boss ? flagshipBattleLedger(battle, [battle.foeOverride!.bossShipId!]).rawDmg : 0 }
 }
 
 if (process.argv.includes('--audit')) {
@@ -186,7 +187,7 @@ if (!process.argv.includes('--save')) {
     const mean = Object.fromEntries(Object.keys(readings[0]!).map(key => [key, readings.reduce((n, r) => n + Number(r[key as keyof typeof r]), 0) / seeds]))
     rows.push({ profile, target, squad: 4, seeds, mean, readings })
     assert(Object.values(mean).every(Number.isFinite), '报告不得包含无效数值')
-    console.log(`四舰 ${profile} ${target}：进池${Number(mean.bossDamage).toFixed(0)}，沉船${Number(mean.sunk).toFixed(1)}，补机${Number(mean.revived).toFixed(1)}`)
+    console.log(`四舰 ${profile} ${target}：进池${Number(mean.bossDamage).toFixed(0)}，沉船${Number(mean.sunk).toFixed(1)}，补机${Number(mean.revived).toFixed(1)}，支援${Number(mean.summoned).toFixed(1)}`)
   }
 }
 const out = resolve('tools/_ui-artifacts/alien-invasion')

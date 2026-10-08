@@ -595,6 +595,8 @@ export interface FoeMountDef {
     /** 使用携带者实际参战时长，避免后续波预积累。 */
     activeClock?: true
   }
+  /** 主动召唤指定型号，规格取本场敌卡同型号条目，不复制召唤者的旗舰厚血。 */
+  summonEscort?: { everyMs: number; count: number; shipId: string; activeClock: true }
   /** 设计备注（不进玩家视野） */
   note?: string
 }

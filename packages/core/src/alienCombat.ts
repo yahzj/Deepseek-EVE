@@ -109,7 +109,7 @@ export function advanceFoeHatcheries(
 
 export function advanceFoeAbilityClocks(battle: BattleState, foes: readonly UnitSpec[], dtMs: number): void {
   for (const foe of foes) {
-    if (!foe.foeFleetSpeedRamp && !foe.foeReviveEscort?.activeClock) continue
+    if (!foe.foeFleetSpeedRamp && !foe.foeReviveEscort?.activeClock && !foe.foeSummonEscort?.activeClock) continue
     if (!isAlive(battle, foe.tag)) continue
     const rt = battle.units[foe.tag]!
     const entry = rt.enteredAtMs === undefined ? battle.startedAtGameMs : rt.enteredAtMs + battleShowWindowMs(battle, BATTLE_ARRIVAL_FLY_MS)

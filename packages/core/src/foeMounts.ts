@@ -109,7 +109,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
   'foe-mount-c-broodmother-hatchery': {
     id: 'foe-mount-c-broodmother-hatchery', name: '巢母孵化巢', en: 'Broodmother Hatchery',
     hatchery: { cycleMs: 9_000, stock: 'unlimited', fleet: true },
-    reviveEscort: { everyMs: 30_000, count: 1, allowedShipIds: ['foe-alien-brood-worker'], activeClock: true },
+    summonEscort: { everyMs: 30_000, count: 3, shipId: 'foe-alien-starcore-adult', activeClock: true },
     fleetSpeedRamp: { rampMs: 120_000, maxBonusPct: 1.8 },
   },
   [FOE_MOUNT_IDS.chargePirate]: {
@@ -384,6 +384,7 @@ export interface ResolvedFoeMounts {
   foeRepairPulse?: { everyMs: number; armor: number; hull: number }
   /** **支援舰船召唤装置的节拍**（原样带给单位；池子/上限/入场口径见 `FoeMountDef.reviveEscort`） */
   foeReviveEscort?: FoeMountDef['reviveEscort']
+  foeSummonEscort?: FoeMountDef['summonEscort']
   /**
    * **射程压制阵列的削减率**（原样带给单位；消费方 = `meJammerNetOf` 那条链，逐字不变）。
    * 与舰级字段 `FoeShipDef.foeRangeDebuffPct` **同源不同入口**：解析后写进**同一个运行时字段**。
@@ -464,6 +465,7 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
     if (def.evasionBonus) out.foeEvasionBonusAdd = (out.foeEvasionBonusAdd ?? 0) + def.evasionBonus.add
     if (def.repairPulse) out.foeRepairPulse = { ...def.repairPulse }
     if (def.reviveEscort) out.foeReviveEscort = { ...def.reviveEscort }
+    if (def.summonEscort) out.foeSummonEscort = { ...def.summonEscort }
     if (def.rangeDebuff) out.foeRangeDebuffPct = def.rangeDebuff.pct
     // 闪现跃迁（2026-10-01）：多件相撞取**最后一件**（与冲锋/射程倍率同款"后写覆盖先写"）
     if (def.blink) out.foeBlink = { ...def.blink }

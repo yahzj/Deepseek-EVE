@@ -8,6 +8,7 @@
  * 因 `createFoeSpecs` 也要用而转公开。
  */
 import type { AnomalyDef, FoeShipDef, FoeShipSlot } from './types'
+import { resolveFoeMounts } from './foeMounts'
 
 /* ═══════════ 敌舰显示名（2026-09-09 船长拍板：同一悬赏内规格/属性不同的敌舰名字不同；
    名字只由"异常属性 × 单位规格"推导，引擎建档与界面显示同源，存档字符串仅作兜底） ═══════════ */
@@ -120,6 +121,13 @@ function foeShipAtTag(anomaly: AnomalyDef, tag: string): { ship: FoeShipDef; esc
   const base = baseFoeTag(tag)
   const m = /^w(\d+)-/.exec(base)
   const waveIdx = m ? parseInt(m[1]!, 10) : 0
+  const summon = /^(?:w\d+-)?summon-(.+)$/.exec(base)
+  if (summon) {
+    const enabled = enumerateShipUnits(anomaly, waveIdx).some(unit =>
+      resolveFoeMounts(unit.slot.mounts ?? unit.slot.ship.mounts).foeSummonEscort?.shipId === summon[1])
+    const ship = enabled ? anomaly.ships.find(slot => slot.ship.id === summon[1])?.ship : undefined
+    return ship ? { ship, escort: false } : null
+  }
   for (const u of enumerateShipUnits(anomaly, waveIdx)) {
     if (u.tag === base) return { ship: u.slot.ship, escort: u.escort }
   }

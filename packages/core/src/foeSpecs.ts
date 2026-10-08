@@ -511,6 +511,7 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
        * 缺省不写 ⇒ 该单位不召唤（零行为变化）。
        */
       ...(mount.foeReviveEscort !== undefined ? { foeReviveEscort: mount.foeReviveEscort } : {}),
+      ...(mount.foeSummonEscort !== undefined ? { foeSummonEscort: mount.foeSummonEscort } : {}),
       // **受击增程**（2026-09-11 船长）：只有挂了机群的舰级才可能写；缺省不写 ⇒ 零行为变化。
       // 2026-09-16 起走挂载件（`foe-mount-drone-range-x4`），旧字段 `ship.droneRangeMulOnHit` 兼容回退
       ...((mount.foeDroneRangeMulOnHit ?? ship.droneRangeMulOnHit) !== undefined && droneWeapons.length > 0
@@ -697,6 +698,7 @@ function resolveSupportBranch(
  *   优先名单全按它算）⇒ 参战列表由调用方用 `foesWithSupport` 重取（开火/选靶/判清波三处同源），
  *   漏了这一步它就只是一具"会显示的摆设"（2026-09-27 玩家报障的根因）；
  * - 随机走 `state.rng`，但**只在挂了本件的战斗里消费** ⇒ 没挂件的战斗随机序列逐字不变。
+ * 2026-10-08 巢母主动召唤另走指定型号模板：沿用时钟／支援入场，上限仍为本波原编成。
  */
 export function resolveFoeRevive(
   state: GameState,
@@ -706,17 +708,40 @@ export function resolveFoeRevive(
   nowMs: number,
 ): void {
   if (bal.foeReviveEnabled !== true) return
-  const summoner = curFoes.find((f) => f.foeReviveEscort !== undefined)
-  if (summoner === undefined || summoner.foeReviveEscort === undefined) return
+  const summoner = curFoes.find((f) => f.foeReviveEscort !== undefined || f.foeSummonEscort !== undefined)
+  if (summoner === undefined) return
+  const summon = summoner.foeSummonEscort
+  const config = summon ?? summoner.foeReviveEscort
+  if (!config || summon && !summoner.foeSummonTemplate) return
+  if (summon && b.ended !== null) return
   const rt = b.units[summoner.tag]
   if (!rt || (rt.hp.s <= 0 && rt.hp.a <= 0 && rt.hp.h <= 0)) return
-  const everyMs = Math.max(1_000, Math.round(summoner.foeReviveEscort.everyMs))
-  const activeClock = summoner.foeReviveEscort.activeClock === true
+  const everyMs = Math.max(1_000, Math.round(config.everyMs))
+  const activeClock = config.activeClock === true
   const clock = activeClock ? b.foeAbilityClocks?.[summoner.tag] ?? 0 : nowMs
   if (b.foeReviveAtMs === undefined) b.foeReviveAtMs = activeClock ? everyMs : (rt.enteredAtMs ?? b.startedAtGameMs) + everyMs
   if (clock < b.foeReviveAtMs) return
   /** 到点 ⇒ 推进一格（大步长/离线补算一格一格来，不在一次推进里连刷） */
   b.foeReviveAtMs = clock + everyMs
+  if (summon) {
+    const alive = foesWithSupport(b, curFoes).filter(foe => isAlive(b, foe.tag)).length
+    const quota = Math.min(Math.max(1, Math.round(summon.count)), Math.max(0, curFoes.length - alive))
+    for (let i = 0; i < quota; i++) {
+      const n = (b.foeReviveCount ?? 0) + 1
+      b.foeReviveCount = n
+      const template = summoner.foeSummonTemplate!
+      const spec = { ...structuredClone(template), tag: `sup${n}-${template.tag}` }
+      seedUnit(b, spec, { enterReload: true, arrivedAtMs: b.lastTickGameMs,
+        ...(b.wormhole ? { foePhaseMs: i * WORMHOLE_FOE_VOLLEY_STAGGER_MS } : {}) })
+      initFoeDronePools(b, [spec])
+      initFoeRepairPulses(b, [spec])
+      pushBattleNotice(b, `敌方支援舰船入场：${spec.name}`)
+      addLog(state, 'warn', `⚔ 敌方支援舰船入场：${spec.name}（第 ${n} 次支援）`, 'core.combat.001', { p1: spec.name, p2: n })
+    }
+    return
+  }
+  const revive = summoner.foeReviveEscort
+  if (!revive) return
   /**
    * **本波"槽位"口径**：一个编成条目 = 一个槽位，槽位里站着的是**原单位或它的支援舰**（`sup{n}-`）。
    * ⚠ 支援舰不是 `curFoes` 里的条目 ⇒ 数"在场数"必须把它们的**剥壳 tag** 一并算上，
@@ -741,7 +766,7 @@ export function resolveFoeRevive(
   const dead = curFoes.filter(
     (f) =>
       f.foeReviveEscort === undefined &&
-      (summoner.foeReviveEscort!.allowedShipIds === undefined || summoner.foeReviveEscort!.allowedShipIds.includes(f.foeShipId ?? '')) &&
+      (revive.allowedShipIds === undefined || revive.allowedShipIds.includes(f.foeShipId ?? '')) &&
       b.units[f.tag] !== undefined &&
       !aliveSlots.has(f.tag) &&
       b.units[f.tag]!.hp.s <= 0 &&
@@ -757,11 +782,11 @@ export function resolveFoeRevive(
    *   （= 阵亡且槽位空着）就**优先占一个名额**（按名单顺序取）；取完再在**剩下的池子**里随机补足；
    *   它活着 / 已补进场（不在池子里）⇒ 名额回落到随机（与"死一个补一个"的上限口径一致）。
    */
-  const want = Math.max(1, Math.round(summoner.foeReviveEscort.count ?? 1))
+  const want = Math.max(1, Math.round(revive.count ?? 1))
   const room = curFoes.length - aliveSlots.size
   const quota = Math.min(want, room, dead.length)
   if (quota <= 0) return
-  const priorityIds = summoner.foeReviveEscort.priorityShipIds ?? []
+  const priorityIds = revive.priorityShipIds ?? []
   const picks: UnitSpec[] = []
   let rest = [...dead]
   for (const shipId of priorityIds) {
@@ -828,7 +853,11 @@ export function foesWithSupport(
   for (const tag of Object.keys(b.units)) {
     if (!FOE_SUPPORT_TAG_RE.test(tag)) continue
     if (foes.some((f) => f.tag === tag)) continue
-    const base = foes.find((f) => f.tag === baseFoeTag(tag))
+    const sourceTag = baseFoeTag(tag)
+    const original = foes.find((f) => f.tag === sourceTag)
+    const template = original ? undefined : foes.find(f => f.foeSummonTemplate?.tag === sourceTag)?.foeSummonTemplate
+    // 同型号援军的网／武器修改互不污染，也不回写下拍重建用的模板。
+    const base = original ?? (template ? structuredClone(template) : undefined)
     if (base === undefined) continue
     ;(extra ??= []).push({ ...base, tag })
   }
@@ -967,6 +996,17 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
   // 未写的卡走下面的旧"威胁推导"路径，行为逐字不变（试点只转 A 族 6 张）。
   if (anomaly.ships && anomaly.ships.length > 0) {
     const specs = createFoeSpecsFromShips(anomaly, bal, opts)
+    for (const spec of specs) {
+      const summon = spec.foeSummonEscort
+      if (!summon) continue
+      const source = anomaly.ships.find(slot => slot.ship.id === summon.shipId)
+      if (!source) continue
+      const sourceWave = source.wave ?? 0
+      // 从原成虫所在波重建本场规格；巢母血池覆写只作用于巢母条目。
+      const template = createFoeSpecsFromShips(anomaly, bal, { tagPrefix: sourceWave === 0 ? '' : `w${sourceWave}-` })
+        .find(unit => unit.foeShipId === summon.shipId)
+      if (template) spec.foeSummonTemplate = { ...template, tag: `${opts.tagPrefix ?? ''}summon-${summon.shipId}` }
+    }
     if (anomaly.wormholePdTags || anomaly.wormholeRepairScale !== undefined) {
       for (const spec of specs) {
         if (anomaly.wormholePdTags) spec.foePointDefenseEnabled = anomaly.wormholePdTags.includes(spec.tag)
