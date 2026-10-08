@@ -66,7 +66,8 @@ import { equipmentCycleMsOf } from './equipment'
 import { battleWeaponCyclesOf, type BattleWeaponCycleView } from './battleWeaponView'
 import { battleDeviceCyclesOf, type BattleDeviceCycleView } from './battleDeviceView'
 export { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, pushBattleFx, stampFoeArrivalFx, WORMHOLE_FOE_VOLLEY_STAGGER_MS } from './combatFx'
-// 敌卡档案（2026-10-02 批次 4d 拆到 foeCard.ts）；本文件只再导出
+// 敌卡档案（2026-10-02 批次 4d 拆到 foeCard.ts）；换波装填判据借用支援舰识别，其余再导出
+import { FOE_SUPPORT_TAG_RE } from './foeCard'
 export { FOE_LIGHT_WORD, FOE_ELITE_WORD, FOE_SUPPORT_TAG_RE, baseFoeTag, foeCardShipIdOf, foeClassName, foeMainTagOf, foeShipEliteOf, foeShipIdOfTag, foeShipTierOf, foeUnitNameOf } from './foeCard'
 // 敌力曲线（2026-10-02 批次 4e 拆到 foePower.ts）；本文件借回使用并再导出
 import { foeHpOfThreat, foeJudgedThreatOf } from './foePower'
@@ -4699,6 +4700,10 @@ function stepBattle(
   const foeBlinkHold = blinkHold.foe
   const meAtkOf = (u: UnitSpec): UnitSpec =>
     phaseOf(u) ? u : { ...u, hitMul: effectiveHitMul(u, false) }
+  // 新波主编队尚在入场且无可攻击目标时保留装填；单波内召唤/补位不改原节奏。
+  const awaitingWaveArrival = (b.waveIdx ?? 0) > 0 &&
+    foes.some(f => !FOE_SUPPORT_TAG_RE.test(f.tag) && isAlive(b, f.tag) && b.units[f.tag]?.enteredAtMs !== undefined) &&
+    !foes.some(f => isFoeEngageable(b, f.tag))
   for (const unit of myUnits) {
     const meRt = b.units[unit.tag]
     if (!meRt || !isAlive(b, unit.tag)) continue
@@ -4716,6 +4721,7 @@ function stepBattle(
         const poolEntry = b.dronePools?.[dronePoolKey(unit.tag, wi)]
         if (!poolEntry || poolEntry.alive === false) continue // 已被点防打掉的架次不再开火（条目保留占位）
       }
+      if (awaitingWaveArrival) continue
       const cd = meRt.weapons[wi] ?? 0
       if (cd > 0) {
         meRt.weapons[wi] = Math.max(0, cd - dtMs)
