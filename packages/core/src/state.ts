@@ -968,6 +968,8 @@ export interface BattleState {
   units: Record<string, BattleUnitRt>
   /** 我方剩余弹药（出发预载后按开火即时扣减；开火弹型 = 剩余最多型，平局 kin→exp→pla） */
   ammo: { kin: number; exp: number; pla: number }
+  /** 已扣整发的剩余射击额度；原舰／武器组／弹种独占，战中随档，清场不退半发。 */
+  ammoCreditByWeapon?: Record<string, number>
   /**
    * **开战预载量**（F3c B2 · 谜质「弹药回收装置」要用）：开战装完后立刻记一份，
    * 战后按「预载 − 余额」算出这一场打出去多少。

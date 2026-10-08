@@ -580,7 +580,7 @@ export function createPlayerSpec(
             secondaryDamageType: turret.secondaryDamageType ?? 'kinetic',
           }
         : {}),
-      ...(turret.ammoPerShot !== undefined && turret.ammoPerShot > 1 ? { ammoPerShot: turret.ammoPerShot } : {}),
+      ...(turret.ammoPerShot !== undefined && turret.ammoPerShot > 0 ? { ammoPerShot: turret.ammoPerShot } : {}),
       // 2026-09-13 虫洞专属（C 孢子导弹巢）：「对所有敌方同时攻击」——缺省不写 ⇒ 既有武器零变化
       ...(turret.hitsAllFoes === true ? { allFoes: true } : {}),
       falloff: turret.falloff ?? 0.3,

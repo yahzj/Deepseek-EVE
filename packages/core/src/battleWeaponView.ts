@@ -1,7 +1,7 @@
 import type { BattleState } from './state'
 import type { DamageType, SimContext } from './types'
 import type { UnitSpec, WeaponSrc } from './combat'
-import { battleAmmoAvailable } from './combatAmmo'
+import { battleAmmoAvailable, battleWeaponAmmoCost } from './combatAmmo'
 import { dronePoolKey } from './combatDrones'
 import { isAlive } from './combatMath'
 
@@ -40,7 +40,7 @@ export function battleWeaponCyclesOf(battle: BattleState,
       const drone = weapon.src === 'drone'
       const aliveCount = drone ? (battle.dronePools?.[dronePoolKey(spec.tag, index)]?.alive === true ? 1 : 0) : undefined
       const queued = drone && battle.dronePools?.[dronePoolKey(spec.tag, index)]?.launched === false
-      const need = Math.max(1, weapon.count ?? 1) * Math.max(1, weapon.ammoPerShot ?? 1)
+      const need = damageType !== undefined ? battleWeaponAmmoCost(battle, spec.tag, index, damageType, weapon) : 1
       const noAmmo = weapon.kind !== 'fixed' && damageType !== undefined && battleAmmoAvailable(battle, spec.tag, damageType) < need
       const state: BattleWeaponCycleView['state'] = !isAlive(battle, spec.tag) ? 'down'
         : aliveCount === 0 ? 'lost' : noAmmo ? 'no-ammo' : remainingMs > 0 ? 'reload' : queued ? 'waiting' : 'ready'

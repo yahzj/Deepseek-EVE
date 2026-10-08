@@ -41,6 +41,7 @@ const BATTLE_FIELDS = {
   myDesireM: { kind: 'persist' },
   units: { kind: 'persist' },
   ammo: { kind: 'persist' },
+  ammoCreditByWeapon: { kind: 'persist' },
   // F3c B2：开战预载量（谜质「弹药回收装置」战后按「预载 − 余额」算已耗）——随档，免得中途读档后加成失效
   ammoLoaded: { kind: 'persist' },
   ammoIds: { kind: 'persist' },
@@ -566,6 +567,15 @@ export function cleanBattle(raw: unknown): BattleState | null {
         : undefined,
     // 弹药 MK2（2026-09-09）：本场实装弹 id（键 = 伤害类型；坏值丢键，零迁移）
     ammoIds: cleanAmmoIdMap(b.ammoIds),
+    ammoCreditByWeapon: (() => {
+      const out: Record<string, number> = {}
+      for (const [key, value] of Object.entries(asRaw(b.ammoCreditByWeapon))) {
+        const match = /^([A-Za-z][\w-]*)#(\d+):(kinetic|explosive|plasma)$/.exec(key)
+        if (!match || !units[match[1]!] || units[match[1]!]!.side !== 'me' || Number(match[2]) >= units[match[1]!]!.weapons.length) continue
+        if (typeof value === 'number' && Number.isFinite(value) && value > 0 && value < 1) out[key] = value
+      }
+      return Object.keys(out).length ? out : undefined
+    })(),
     expeditionAmmo: b.expeditionAmmo === undefined ? undefined : (() => {
       const r = asRaw(b.expeditionAmmo)
       const idsByTag: NonNullable<BattleState['expeditionAmmo']>['idsByTag'] = {}

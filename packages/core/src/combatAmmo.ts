@@ -16,10 +16,16 @@ import { restoreWormholeSupply, wormholeSupplyForBattle } from './wormholeSuppli
 
 /* ═══════════ 弹药 ═══════════ */
 
+/** 每组齐射的精确需求，库存仍只扣整发。 */
+function weaponAmmoPerVolley(w: Pick<WeaponSpec, 'count' | 'ammoPerShot'>): number {
+  const per = w.ammoPerShot ?? 1
+  return Math.max(1, Math.floor(w.count ?? 1)) * (Number.isFinite(per) && per > 0 ? per : 1)
+}
+
 /** 从首次齐射起算的名义耗弹；用规格里的装填/连发/自加速，不包含预载余量。 */
 export function weaponNominalAmmoForMs(w: WeaponSpec, durationMs: number): number {
   if ((w.kind !== 'gun' && w.kind !== 'beam') || !(durationMs > 0) || !Number.isFinite(durationMs)) return 0
-  const volley = Math.max(1, w.count ?? 1) * Math.max(1, w.ammoPerShot ?? 1)
+  const volley = weaponAmmoPerVolley(w)
   const shots = Math.max(1, Math.floor(w.burst?.shots ?? 1))
   let elapsed = 0
   let fired = 0
@@ -32,7 +38,7 @@ export function weaponNominalAmmoForMs(w: WeaponSpec, durationMs: number): numbe
       elapsed += Math.max(50, reload)
     }
   }
-  return fired * volley
+  return Math.ceil(fired * volley)
 }
 
 /**
@@ -49,18 +55,16 @@ export function ammoLoadTotals(
   const condFactor = 1 + 0.08 * condLv
   const out: Partial<Record<DamageType, number>> = {}
   /** 一轮齐射的用弹量 = 条目门数（同型合并条目 ×N）× 每次耗弹数（缺省 1）；2026-09-11 修复：预载按门数放大 */
-  const roundsPerVolley = (w: WeaponSpec): number =>
-    Math.max(1, w.count ?? 1) * Math.max(1, w.ammoPerShot ?? 1)
   const addFor = (t: DamageType, reloadMs: number, volley: number): void => {
     const volleys = Math.max(1, Math.ceil(((bal.ammoTimeCapMs * condFactor) / Math.max(100, reloadMs)) * bal.ammoMargin))
-    out[t] = (out[t] ?? 0) + volleys * volley
+    out[t] = (out[t] ?? 0) + Math.ceil(volleys * volley)
   }
   for (const w of me.weapons) {
     if (w.kind === 'gun') {
       const t = (Object.keys(w.shotsByType ?? {})[0] as DamageType | undefined) ?? null
-      if (t) addFor(t, w.reloadMs, roundsPerVolley(w))
+      if (t) addFor(t, w.reloadMs, weaponAmmoPerVolley(w))
     } else if (w.kind === 'beam') {
-      addFor('plasma', w.reloadMs, roundsPerVolley(w))
+      addFor('plasma', w.reloadMs, weaponAmmoPerVolley(w))
     }
   }
   return out
@@ -264,6 +268,36 @@ export function consumeBattleAmmo(battle: BattleState, tag: string, type: Damage
     battle.expeditionAmmo.stock[id] = (battle.expeditionAmmo.stock[id] ?? 0) - count
   }
   battle.ammo[ammoKeyOf(type)] -= count
+  return true
+}
+
+function weaponAmmoCredit(battle: BattleState, key: string): number {
+  const value = battle.ammoCreditByWeapon?.[key] ?? 0
+  return Number.isFinite(value) && value > 0 && value < 1 ? value : 0
+}
+
+/** 实战与缺弹显示共用，只用原舰／原组／原弹种的预付余额。 */
+export function battleWeaponAmmoCost(battle: BattleState, tag: string, wi: number, type: DamageType, w: WeaponSpec): number {
+  const demand = weaponAmmoPerVolley(w)
+  const credit = Number.isInteger(demand) ? 0 : weaponAmmoCredit(battle, `${tag}#${wi}:${type}`)
+  return Math.ceil(Math.max(0, demand - credit))
+}
+
+export function consumeBattleWeaponAmmo(battle: BattleState, tag: string, wi: number, type: DamageType, w: WeaponSpec): boolean {
+  const cost = battleWeaponAmmoCost(battle, tag, wi, type, w)
+  if (cost > 0 && !consumeBattleAmmo(battle, tag, type, cost)) return false
+  const demand = weaponAmmoPerVolley(w)
+  if (!Number.isInteger(demand)) {
+    const key = `${tag}#${wi}:${type}`
+    const remaining = weaponAmmoCredit(battle, key) + cost - demand
+    if (remaining > 1e-9) {
+      const credits = battle.ammoCreditByWeapon ??= {}
+      credits[key] = remaining
+    } else if (battle.ammoCreditByWeapon) {
+      delete battle.ammoCreditByWeapon[key]
+      if (!Object.keys(battle.ammoCreditByWeapon).length) delete battle.ammoCreditByWeapon
+    }
+  }
   return true
 }
 

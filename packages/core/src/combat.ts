@@ -81,7 +81,7 @@ export { DRONE_SKILL, MY_WEB_RANGE_M, WEB_BREAK_DIST_M, createPlayerSpec, damage
 import { preloadRepairFor, preloadShieldChargeFor, preloadShieldFieldFor, pulseRepairsFor, pulseShieldChargeFor, pulseShieldFieldFor, REPAIR_PULSE_MS, repairLedgersOf, SHIELD_REGEN_FLOOR_PCT, shieldChargeLedgersOf, shieldChargeStreamsOf, shieldFieldStreamsOf } from './combatRepair'
 export { REPAIR_PULSE_MS, SHIELD_PULSE_MS, SHIELD_FIELD_COST_PCT, SHIELD_REGEN_FLOOR_PCT, fittedRepairModules, preloadRepairFor, preloadShieldChargeFor, preloadShieldFieldFor, pulseShieldCharge, pulseShieldChargeFor, pulseShieldFieldFor, refundRepairKits, refundRepairKitsAll, repairKitAvailableOf, repairLedgersOf, repairStatsFor, repairStreamsOf, repairUsageText, shieldChargeLedgersOf, shieldChargeStreamsOf, shieldFieldOf, shieldFieldStreamsOf, shieldPulsePctOf } from './combatRepair'
 // 战斗弹药装载（2026-10-02 批次 4i 拆到 combatAmmo.ts）；本文件借回使用并再导出
-import { ammoKeyOf, ammoLoadTotals, ammoTierFallbackLog, loadAmmoTier, battleAmmoIdsFor, battleAmmoAvailable, consumeBattleAmmo, loadWormholeBattleAmmo, wormholeAmmoIdsForSpec } from './combatAmmo'
+import { ammoKeyOf, ammoLoadTotals, ammoTierFallbackLog, loadAmmoTier, battleAmmoIdsFor, battleAmmoAvailable, battleWeaponAmmoCost, consumeBattleWeaponAmmo, loadWormholeBattleAmmo, wormholeAmmoIdsForSpec } from './combatAmmo'
 import { deployWormholeSupply, returnWormholeDroneSupply, settleWormholeDroneRevives, takeWormholeSupply, wormholeSupplyForBattle } from './wormholeSupplies'
 export { ammoKeyOf, ammoLoadTotals, loadAmmo, loadAmmoTier, nextAmmoType, refundAmmo, resolveAmmoTier } from './combatAmmo'
 export type { AmmoKey } from './combatAmmo'
@@ -2910,7 +2910,7 @@ export function battleArcsFor(
     if (w.src === 'drone' && battle.dronePools?.[i]?.alive === false) return
     let type: DamageType | null = null
     if (w.kind === 'fixed') type = w.fixedType ?? 'kinetic'
-    else if (w.kind === 'beam') type = battleAmmoAvailable(battle, leaderTag, 'plasma') >= Math.max(1, w.count ?? 1) * Math.max(1, w.ammoPerShot ?? 1) ? 'plasma' : null
+    else if (w.kind === 'beam') type = battleAmmoAvailable(battle, leaderTag, 'plasma') >= battleWeaponAmmoCost(battle, leaderTag, i, 'plasma', w) ? 'plasma' : null
     else {
       /**
        * **炮台 / 导弹架：报"这件武器自己打的那一型"**，不是全船主流弹种。
@@ -2923,7 +2923,7 @@ export function battleArcsFor(
        * 显示"无弹/虚线弧"，不再假装有弹）。
        */
       const own = (Object.keys(w.shotsByType ?? {})[0] as DamageType | undefined) ?? w.fixedType ?? null
-      const need = Math.max(1, w.count ?? 1) * Math.max(1, w.ammoPerShot ?? 1)
+      const need = own !== null ? battleWeaponAmmoCost(battle, leaderTag, i, own, w) : 1
       type = own !== null && battleAmmoAvailable(battle, leaderTag, own) >= need ? own : null
     }
     const rem = Math.max(0, Math.floor(meRt[i] ?? 0))
@@ -4762,14 +4762,12 @@ function stepBattle(
       let type: DamageType
       let dmg: number
       let autoHit = false
-      /** 一轮齐射的用弹量（同型合并条目 ×N × 每次耗弹数；2026-09-11 修复：此前多门武器只扣 1 发弹药） */
-      const roundsPerVolley = Math.max(1, w.count ?? 1) * Math.max(1, w.ammoPerShot ?? 1)
       if (w.kind === 'gun') {
         // V18B-2 per-gun 弹型：每件武器打自己的键（动能/爆破导弹/能量弹药混装各自供弹），
         // 该键弹尽 → 本武器停火（不拖累其它型）。**齐射按门数扣弹**：不足一轮齐射的余弹不发射
         // （等返港补弹；预载已按门数放大，正常战斗不会因缺弹中断）
         const pick = (Object.keys(w.shotsByType ?? {})[0] as DamageType | undefined) ?? null
-        if (!pick || !consumeBattleAmmo(b, unit.tag, pick, roundsPerVolley)) {
+        if (!pick || !consumeBattleWeaponAmmo(b, unit.tag, wi, pick, w)) {
           meRt.weapons[wi] = w.reloadMs // 无弹：等一轮再查（避免每步空转）
           continue
         }
@@ -4784,7 +4782,7 @@ function stepBattle(
         // V18B-2 激光：必中光束——逐发扣能量弹药（按门数）；威力随距离衰减（beamPowerFactor）
         // ⚠ **打机群不吃这个衰减**（船长 2026-10-02 令「对无人机无衰减」）⇒ 距离系数走单一取数口
         //   `beamPowerVsTargetOf`（`droneHit` 非空 ⇔ 本发打的是敌机群）。
-        if (!consumeBattleAmmo(b, unit.tag, 'plasma', roundsPerVolley)) {
+        if (!consumeBattleWeaponAmmo(b, unit.tag, wi, 'plasma', w)) {
           meRt.weapons[wi] = w.reloadMs
           continue
         }

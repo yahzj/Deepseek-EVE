@@ -110,6 +110,7 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '武器齐射整数扣弹与预付余额', symbol: 'battleWeaponAmmoCost', file: 'packages/core/src/combatAmmo.ts', exported: true },
   { concept: '首次无人机出击间隔', symbol: 'droneLaunchGapMsOf', file: 'packages/core/src/droneLaunch.ts', exported: true },
   { concept: '扩槽插件类型', symbol: 'plugSlotExpansionKindOf', file: 'packages/core/src/plugs.ts', exported: true },
   { concept: '扩槽插件同类型安装门禁', symbol: 'plugSlotExpansionBlockedOf', file: 'packages/core/src/plugs.ts', exported: true },
