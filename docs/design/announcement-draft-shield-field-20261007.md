@@ -34,7 +34,7 @@ Tag: Balance
 ## 核对记录
 
 - 同类参照：异形入侵及残骸回收公告待审稿，采用标题、数值分类与5条要点，中英文配对。
-- 机制依据：`shield-field-transfer-20261007.md`已确认规则；现场核对`combatRepair.ts`的`pulseShieldFieldFor`、`SHIELD_FIELD_COST_PCT`及逐型号脉冲流。
+- 机制依据：`v12-combat.md`的护盾力场现行规则；现场核对`combatRepair.ts`的`pulseShieldFieldFor`、`SHIELD_FIELD_COST_PCT`及逐型号脉冲流。
 - 装备英文名称沿用当前覆盖表的Shield Charge Field，区分中槽Shield Recharger；不依据尚未归档更新的词典历史条目判断现行效果。
 - 一次扣盾按有效型号脉冲计算，不按队友人数增加；费用不因恢复量的多装递减而降低。新装填代价会影响实际力场/中槽充能周期，因此删掉旧稿「中槽不受影响」的绝对表述，改写为基础周期。
 - 本稿按船长要求整合战斗/装配与舰船图纸市场价格，不把整合授权当作正文发布批准；没有第一、第二人称、设计动机或开发验收话术进入公告正文。

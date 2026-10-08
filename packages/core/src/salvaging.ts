@@ -922,7 +922,7 @@ export function pullOneWreck(
    * 🔴 **2026-10-03 船长回滚令**（原话照抄）：「**将打捞获取量进行回滚，回滚到 2026-10-02 那条「甲」**」
    * —— 当天早些时候按「恢复渐近缓释」改的那版（池子每轮只放干 2%×超出量）**已按本令作废**
    * （它与"出量按池量算系数"相乘会把总获取量放大 54~157 倍；读数见
-   * `docs/design/salvage-asymptotic-unified-20261003.md` §三）。
+   * `docs/design/wreck-groups-20260919.md`；详细读数保留在Git历史）。
    */
   if (fromWeekend) volumeM3 = chargeWeekendWreckByVolume(state, galaxyId, volumeM3, bucketKey)
   else salvageRoundPull(state, ctx, galaxyId, target)

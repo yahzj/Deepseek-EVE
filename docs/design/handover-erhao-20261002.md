@@ -45,8 +45,8 @@
    - ⚠ **手册 `mountEffectText` 两支必须一起接** ＋ `l10n/table.ts` 两条 id（顺号 **112/113**，zh＋en）——
      R 族前两件就是**漏接**才导致手册整节不显示（`cd3b868d` 刚修），别重犯。
 2. **把 `e62eb2af` 合入 main**（三号 verify 也建议一并追平）。
-3. **归档待办**：本会话两份工作文档 —— `docs/design/desire-invasion-20261002.md`、`r-open-distance-20261002.md`
-   （船长验收后按 §8 三步：并入 roadmap/词典 → 删文档 → `docs:index`）。
+3. **归档状态（2026-10-09核对）**：入侵距离偏好的已完成结论归入`docs/design/weekend-invasion.md`；
+   `r-open-distance-20261002.md`仍保留开场距离夹具的真实测试缺口，不标作已补齐。
 4. **上期遗留**：`tools:audit` 的 20 个"需重检"（船长已裁「用到时再更新」，**不是欠账**）·
    主树未跟踪件（`docs/exports/*` 5 个 ＋ `docs/test-saves/*` 2 个）处置等船长裁。
 

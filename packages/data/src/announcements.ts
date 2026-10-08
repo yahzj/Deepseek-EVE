@@ -127,7 +127,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
      * 「高级箱」是**施工期工作名**，`content:check` 的**陈旧术语契约**判红（2026-09-16 起：档名写
      * 「稀有残骸」、**叙述写「额外战利品」**、残骸的处理动词写**解体 / 回收**）。
      * ⇒ 只把这半句改成「**稀有残骸用回收炉解体可开出**…」，**其余一字未动**（语义不变）。
-     * 待审稿与逐条数据出处 = `docs/design/announcement-draft-20261002-corona.md`。
+     * 当时待审稿由Git历史保留；现行规则出处 = `docs/design/weekend-invasion.md`。
      *
      * 🔴 **发布前置（未解 · 等船长一句话）**：光环科技**现在玩家遇不到** ——
      * `packages/core/src/weekendEvent.ts` 的 `WEEKEND_LOCKED_FAMILY` 仍是 `'H'`

@@ -21,6 +21,7 @@
 - `docs/test-saves/` — 可复现测试档说明；`packages/data/src/announcements.ts` — 公告数据（仅经船长批准后写入）。
 - `docs/review/` — **第三方独立审查报告**与复核/事实核查件（如 `guoqing-audit-20261002.md`：全项目风险审查 ＋ 分批交接指南，
   基线 `3c5624ee`；**报告结论是工作依据、不是修复授权**，动手前必须在新基线上复跑它给的最小复现）。
+- `docs/review/guoqing-audit-followup.md` — 国庆节审查的当前跟进入口，区分已合入修复与仍需复现/裁定的事项；原报告保留原文。
 
 ## 二、按任务类型指路
 

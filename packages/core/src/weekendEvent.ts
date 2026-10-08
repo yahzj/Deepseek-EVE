@@ -1762,7 +1762,7 @@ export interface WeekendTickResult {
  * 3. 章鱼人得手（`view.down === octopus`）⇒ 写 `flagshipDown` 并结束本场
  *    （⚠ **还有没打完的旗舰战时不判**：见 `flagshipBattleActive`，船长 2026-09-27 裁定「要一起闸」）；
  * 4. **本场该收场了吗**（**2026-10-02 船长令「乙」改口径**，见 `weekendTick` ④ 那一段与
- *    `docs/design/window-close-removal-20261002.md`）：
+ *    `docs/design/weekend-invasion.md`的现行排期章节）：
  *    - **周排期场** ⇒ **下一期 T0 到了**（不再是"自己 +96h＝周二 20:00"）；
  *    - **玩家召唤场**（`beaconLit`）⇒ **豁免周排期收场**（船长令「玩家召唤的不算在下一期」），
  *      改看**它自己那 96 小时**；

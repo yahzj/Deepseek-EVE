@@ -4,7 +4,7 @@
   同日对「正文 ≠ id」那条口径冲突选「**按你推荐**」= 甲案）
 - 经办：一号（主树 `H:\大鲸鱼\Deepseek-EVE`）
 - 归档时：关键结论并入 `docs/roadmap.md` 一条精简条目后删除本文件（§八 文档工作流）
-- 同批姊妹交付：R 族（光环）公告待审稿 `docs/design/announcement-draft-20261002-corona.md`
+- 同批光环公告已发布，现行规则见`docs/design/weekend-invasion.md`，当时待审稿保留在Git历史。
 
 ## 1. 船长原话（照抄）
 

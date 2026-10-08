@@ -2580,7 +2580,7 @@ export interface WreckGalaxyRecord {
  *
  * ⚠ **2026-10-03 船长令「按族分账」**（原话：「**所以，现在不同入侵的残骸是会记忆并且分开算的吗**」→
  * 读数说明改前是"每星系一条 ＋ 一个族标签、换族注入会覆盖老族的型号归属" ⇒ 裁「**甲：改成按族分账**」）
- * ⇒ **改法见工作文档 `docs/design/wreck-ledger-by-family-20261003.md`**（结构改为按族分桶、老档迁移、
+ * ⇒ **现行规则见 `docs/design/weekend-invasion.md`**（结构改为按族分桶、老档迁移、
  * 打捞池按桶、界面每族一张独立卡）。每个桶独立保留普通量、衰减时钟和按卡稀有账。
  */
 export interface WeekendWreckBucket {

@@ -634,7 +634,7 @@ export function weekendWreckDensityOf(state: GameState, galaxyId: string): numbe
  * - `family`= 收窄后的族码（`null` = 未知族桶 ⇒ 打捞池并入**全部**隐藏入侵卡）；
  * - `density` = 该族**当前有效**存量（m³，48h 线性衰减后）；`rare` = 该族箱子件数。
  *
- * 每族独立读数，按普通残骸余额降序；设计见 `docs/design/wreck-ledger-by-family-20261003.md`。
+ * 每族独立读数，按普通残骸余额降序；设计见 `docs/design/weekend-invasion.md`。
  */
 export interface WeekendWreckPool {
   key: string
@@ -841,7 +841,7 @@ export function salvageRoundMulOf(
  * 池子按本轮真出的量等量扣、出量按余额封顶；2026-10-04速度独立，耗时随库存线性增长。
  *
  * 🔴 **2026-10-03 船长令（原话照抄）**：「**将打捞获取量进行回滚，回滚到 2026-10-02 那条「甲」**」。
- * 回滚理由（同日探针读数，见 `docs/design/salvage-asymptotic-unified-20261003.md` §三）：
+ * 回滚理由（同日探针读数，现行结论见 `docs/design/wreck-groups-20260919.md`，过程见Git历史）：
  * 当天早些时候按「恢复渐近缓释」改成的版本（池子每轮只放干"超出基础值部分"的 2%）与"**出量系数按池量算**"
  * （`mul = 池量/10`，而入侵卡单份体积恰好 = 威胁×0.06 ≈ **5.4~10.2 m³** ⇒ 每轮出量 ≈ **池量的 0.5~1.0 倍**）
  * 相乘后总量失控：272 m³ 的场子 400 轮吐出 **17,757 m³（≈65 倍）**、30 m³ 的吐出 **4,702 m³（≈157 倍）**；

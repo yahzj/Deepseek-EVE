@@ -204,7 +204,7 @@ export function closeIronman(state: { ironman?: IronmanLike }, atWallMs: number)
  *                    ⇒ **发布版恒 false**（公网域名、桌面打包版的 `file:` 都进不来）⇒ 玩家侧不可达。
  *                    ⚠ **取舍（如实记账）**：旁路开着时，闸门原本要挡的"关掉铁人 ⇒ 导回关闭前的
  *                    旧铁人档"也会放行；这是"允许载入铁人存档"的必然含义，船长已知情并选「甲」
- *                    （若要留痕可改成按"救援"记账，见工作文档 `docs/design/ironman-load-in-debug-20261003.md`）。
+ *                    （现行边界见 `docs/architecture.md`；按"救援"记账的备选未采纳）。
  */
 export function ironmanLoadVerdict(args: {
   ironman: boolean
