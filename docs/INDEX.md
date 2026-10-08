@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **519** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8072** KB · **63238** 行
-- 状态分布：**未标注** 266 · **已确认/已实现** 175 · **进行中** 53 · **待裁定** 24 · **历史留档** 1
-- 孤儿文档（0 引用）**112** 份 · 状态未标注 **266** 份
+- 文档总数 **520** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8093** KB · **63339** 行
+- 状态分布：**未标注** 266 · **已确认/已实现** 175 · **进行中** 53 · **待裁定** 25 · **历史留档** 1
+- 孤儿文档（0 引用）**113** 份 · 状态未标注 **266** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**355** 份
+- 三、现行设计稿（design）：**356** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**5** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -55,13 +55,14 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 355 份
+## 三、现行设计稿（design） —— 356 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/activity-invasion-badge-20261008.md` | 活动栏入侵标签试做 | 已确认/已实现（试做已实现并本地合入） | 2026-10-08 | 8 KB / 67 行 | 1 / 0 |
 | `docs/design/announcement-draft-corona-reinforcement-20261008.md` | 公告待审稿：光环中枢增援与装置调整 | 待裁定（待船长审字） | 2026-10-08 | 1 KB / 23 行 | 2 / 0 |
 | `docs/design/announcement-draft-release-consolidated-20261008.md` | 待发公告整合与遗漏核对 | 待裁定（待船长审核） | 2026-10-08 | 32 KB / 252 行 | 0 / 0 |
+| `docs/design/announcement-draft-two-release-20261008.md` | 待发公告两篇整合稿 | 待裁定（待船长审核） | 2026-10-08 | 21 KB / 101 行 | 0 / 0 |
 | `docs/design/battle-cycle-timer-wrap-20261008.md` | 战斗读秒回到进度条与装置自动换行 | 已确认/已实现（已实现、自测通过并本地合入） | 2026-10-08 | 5 KB / 33 行 | 0 / 0 |
 | `docs/design/battle-cycles-compact-revision-20261008.md` | 战斗顶部紧凑化与旧式装填条复用 | 已确认/已实现（已实现） | 2026-10-08 | 7 KB / 55 行 | 0 / 0 |
 | `docs/design/battle-mount-readiness-speed-20261008.md` | 战斗挂载件、开场装填与敌速核查 | 已确认/已实现（已实现并本地合入主树） | 2026-10-08 | 15 KB / 107 行 | 1 / 0 |
@@ -589,11 +590,12 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，112 份）
+## 附：孤儿文档（0 引用，113 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/announcement-draft-release-consolidated-20261008.md`（2026-10-08 · 32 KB）—— 待发公告整合与遗漏核对
+- `docs/design/announcement-draft-two-release-20261008.md`（2026-10-08 · 21 KB）—— 待发公告两篇整合稿
 - `docs/design/battle-cycle-timer-wrap-20261008.md`（2026-10-08 · 5 KB）—— 战斗读秒回到进度条与装置自动换行
 - `docs/design/battle-cycles-compact-revision-20261008.md`（2026-10-08 · 7 KB）—— 战斗顶部紧凑化与旧式装填条复用
 - `docs/design/broodmother-summon-handbook-20261008.md`（2026-10-08 · 5 KB）—— 巢母召唤成虫与手册实际挂载
