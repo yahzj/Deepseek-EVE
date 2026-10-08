@@ -16,6 +16,7 @@ import { shipCategoryKeyOf } from './labels'
 import { plugModulesOf } from './plugs'
 import { shipDamageEffects } from './shipDamage'
 import type { UnitSpec, WeaponSpec } from './combat'
+import { droneLaunchGapMsOf } from './droneLaunch'
 
 /**
  * **捕获网的断开距离（敌我通用）**（**船长 2026-09-26**：「**将断开距离提高到4500米，
@@ -632,18 +633,13 @@ export function createPlayerSpec(
   // ——每轮更重、节奏更舒缓，**净 DPS 不变**（故既有校准矩阵口径不变，无需复跑）。
   // 机型级装填（2026-09-11 船长「哨卫将攻击周期翻倍」）：`def.reloadMs` 优先，缺省 = 基准 4400ms；
   // 整备学折减口径不变（每级 −4%）。
-  // 2026-09-13 虫洞专属（掠袭机库「无人机攻击间隔 −8%」）：船长澄清 = **无人机出击周期**——
-  // 与整备学（每级 −4%）同口径乘算；多件加算，合计上限 0.9（避免周期被压到 0）。
-  const droneCycleCut = Math.min(
-    0.9,
-    droneGear.reduce((s, g) => s + (g.droneCycleCutPct ?? 0), 0),
-  )
+  // 掠袭机库改缩短首次出击等待，不再修改攻击装填。
   const droneReloadOf = (def: { reloadMs?: number }): number =>
     Math.round(
       (def.reloadMs ?? 4400) *
         (1 - 0.04 * Math.min(5, state.skills.trained['drone-servicing'] ?? 0)) *
         droneReloadUpgradeMult(state) *
-        (1 - droneCycleCut) * penalties.reload,
+        penalties.reload,
     )
   if (bayLimit > 0 && cpuLeft > 0) {
     for (const [droneId, want] of Object.entries(droneLoad)) {
@@ -779,6 +775,7 @@ export function createPlayerSpec(
     })(),
     agility: ship.agility,
     weapons,
+    droneLaunchGapMs: droneLaunchGapMsOf(droneGear),
     // 锁定装置（2026-09-09）：被锁目标受击加深等效比例（>0 同时开启集火模式）
     ...(lockEq > 1 ? { lockedDmgBonus: lockEq - 1 } : {}),
     // **隐秘行动装置**（2026-09-15 船长）：隐身窗口取所装件里**最长**的一件；

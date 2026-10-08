@@ -36,6 +36,7 @@ import { fleetDefOf } from './instances'
 import { moduleAllowedOnShip } from './shipFitting'
 import { wormholeSupplyForBattle } from './wormholeSupplies'
 import { equipmentCycleMsOf } from './equipment'
+import { requeueDroneLaunch } from './droneLaunch'
 
 /** 该舰装了几件储备甲板、各件周期毫秒（**升序** ⇒ 下标 0 = 最快的那件） */
 export function droneReviveCyclesOf(state: GameState, ctx: SimContext, shipId: string): number[] {
@@ -152,6 +153,7 @@ function reviveOne(state: GameState, battle: BattleState, e: NonNullable<BattleS
   pool.s = pool.maxS ?? pool.s
   pool.a = pool.maxA ?? pool.a
   pool.h = pool.maxH ?? pool.h
+  requeueDroneLaunch(battle, key)
   e.v[pool.artId] = (e.v[pool.artId] ?? 0) + 1
   return true
 }

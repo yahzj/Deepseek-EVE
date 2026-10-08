@@ -183,14 +183,16 @@ describe('虫洞装备新机制（2026-09-13）', () => {
     expect(spec.resists.hull?.kinetic ?? 0).toBeCloseTo(-0.15, 5)
   })
 
-  it('⑧ 无人机出击周期：−8% 直接乘在无人机的装填（出击节拍）上', () => {
+  it('⑧ 无人机首次等待缩短不修改攻击装填', () => {
     const w = world(
       [moduleDef('mod-bay', 'drone-rack', 0, { rack: 'high', cpuUse: 1, droneBayBonusM3: 30, droneCycleCutPct: 0.08 })],
       { high: ['mod-bay', null, null, null] },
       { 'drone-x': 1 },
     )
-    const drone = specOf(w.state, w.ctx).weapons.find((x) => x.src === 'drone')!
-    expect(drone.reloadMs).toBe(Math.round(4_000 * 0.92))
+    const spec = specOf(w.state, w.ctx)
+    const drone = spec.weapons.find((x) => x.src === 'drone')!
+    expect(drone.reloadMs).toBe(4_000)
+    expect(spec.droneLaunchGapMs).toBe(460)
   })
 
   it('⑨ 速度加成跨槽生效：支援槽带 speedBonusPct 也算进战斗机动', () => {

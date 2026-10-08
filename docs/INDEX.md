@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **521** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8098** KB · **63377** 行
-- 状态分布：**未标注** 267 · **已确认/已实现** 175 · **进行中** 53 · **待裁定** 25 · **历史留档** 1
-- 孤儿文档（0 引用）**114** 份 · 状态未标注 **267** 份
+- 文档总数 **522** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8105** KB · **63440** 行
+- 状态分布：**未标注** 267 · **已确认/已实现** 176 · **进行中** 53 · **待裁定** 25 · **历史留档** 1
+- 孤儿文档（0 引用）**115** 份 · 状态未标注 **267** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**357** 份
+- 三、现行设计稿（design）：**358** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**5** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -55,7 +55,7 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 357 份
+## 三、现行设计稿（design） —— 358 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -68,6 +68,7 @@
 | `docs/design/battle-mount-readiness-speed-20261008.md` | 战斗挂载件、开场装填与敌速核查 | 已确认/已实现（已实现并本地合入主树） | 2026-10-08 | 15 KB / 107 行 | 1 / 0 |
 | `docs/design/broodmother-summon-handbook-20261008.md` | 巢母召唤成虫与手册实际挂载 | 已确认/已实现（已实现、自测通过并本地合入） | 2026-10-08 | 5 KB / 50 行 | 0 / 0 |
 | `docs/design/data-editor-field-compat-20261008.md` | 独立编辑器读取新字段兼容修复 | 未标注（已本地合入并交付兼容版） | 2026-10-08 | 5 KB / 38 行 | 0 / 0 |
+| `docs/design/drone-launch-merge-20261008.md` | 玩家无人机首次出击队列合入 | 已确认/已实现（已实现自测通过） | 2026-10-08 | 7 KB / 62 行 | 0 / 0 |
 | `docs/design/equipment-penalty-stacking-20261008.md` | 装备惩罚取最大值检查与巨构装填调整 | 已确认/已实现（已实现并本地合入） | 2026-10-08 | 19 KB / 170 行 | 0 / 0 |
 | `docs/design/fleet-hide-plugs-20261008.md` | 我的舰队隐藏普通舰船插件 | 已确认/已实现（已实现并本地合入） | 2026-10-08 | 4 KB / 38 行 | 1 / 0 |
 | `docs/design/invasion-autoloop-live-test-20261008.md` | 入侵自动路线原生客户端实测 | 未标注（实机测试通过） | 2026-10-08 | 7 KB / 62 行 | 0 / 0 |
@@ -465,7 +466,7 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 27 / 18 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 19 KB / 120 行 | 20 / 7 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 19 KB / 121 行 | 20 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -591,7 +592,7 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，114 份）
+## 附：孤儿文档（0 引用，115 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
@@ -601,6 +602,7 @@
 - `docs/design/battle-cycles-compact-revision-20261008.md`（2026-10-08 · 7 KB）—— 战斗顶部紧凑化与旧式装填条复用
 - `docs/design/broodmother-summon-handbook-20261008.md`（2026-10-08 · 5 KB）—— 巢母召唤成虫与手册实际挂载
 - `docs/design/data-editor-field-compat-20261008.md`（2026-10-08 · 5 KB）—— 独立编辑器读取新字段兼容修复
+- `docs/design/drone-launch-merge-20261008.md`（2026-10-08 · 7 KB）—— 玩家无人机首次出击队列合入
 - `docs/design/equipment-penalty-stacking-20261008.md`（2026-10-08 · 19 KB）—— 装备惩罚取最大值检查与巨构装填调整
 - `docs/design/invasion-autoloop-live-test-20261008.md`（2026-10-08 · 7 KB）—— 入侵自动路线原生客户端实测
 - `docs/design/invasion-drone-defense-audit-20261008.md`（2026-10-08 · 14 KB）—— 入侵旗舰战无人机五分钟零损失排查

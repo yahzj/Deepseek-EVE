@@ -34,7 +34,7 @@ function aliveDroneKeys(
   const others: string[] = []
   const sentries: string[] = []
   for (const [k, p] of Object.entries(pools)) {
-    if (!p.alive) continue
+    if (!p.alive || p.launched === false) continue
     if (p.artId && sentryIds.has(p.artId)) sentries.push(k)
     else others.push(k)
   }

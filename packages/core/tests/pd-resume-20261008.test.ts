@@ -148,6 +148,8 @@ function resumeFixture(fleet = false, overrides: Partial<AnomalyDef> = {}) {
   }
   const battle = fleet ? startFleetBattleFor(state, c, squad, card.id, 0)! : startBattleFor(state, c, state.shipId, card.id, 0)!
   expect(battle).toBeTruthy()
+  // 续战调度专项使用已在场机群，首次出击另有队列测试。
+  for (const pool of Object.values(battle.dronePools ?? {})) pool.launched = true
   state.expedition = { ...state.expedition, active: true, phase: 'battle', anomalyId: card.id, battle }
   return { state, battle, c, card }
 }

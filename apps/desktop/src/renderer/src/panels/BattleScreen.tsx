@@ -144,7 +144,7 @@ export function BattleScreen({
    *  2026-09-14「逐舰机群」：由 core 视图的**逐舰**机体清单（`myUnits[].drones`）建表——此前只有主控那张。 */
   const droneCountOf = new Map<string, number>()
   for (const u of arcs?.myUnits ?? [])
-    for (const d of u.drones ?? []) droneCountOf.set(`${u.tag}:${d.artId}`, d.count);
+    for (const d of u.drones ?? []) droneCountOf.set(`${u.tag}:${d.artId}`, d.deployed ?? d.count);
   /** 敌方机群：敌单位 tag + 机型 → **该舰现存架数**（弹道道次取模要用它；敌我各用各的表，见弹道层） */
   const foeDroneAliveOf = (tag: string, artId: string): number =>
     arcs?.foeDrones?.find((d) => d.tag === tag && d.artId === artId)?.alive ??
@@ -1989,7 +1989,7 @@ const meSpeedRef = useRef(200)
    *   出击状态表、上一帧机体数表与弹道侧**四处必须用同一个键**，否则击落演出会找不到机体。
    */
   const droneWings = arcs.myUnits.flatMap((u) =>
-    (u.drones ?? []).map((d) => {
+    (u.drones ?? []).filter(d => (d.deployed ?? d.count) > 0).map((d) => {
       const key = `${u.tag}:${d.artId}`
       // **兜底取机型**（2026-09-12）：漏登记机型时画"未知机型"灰机体 + 名字回退成 id，
       // 不再静默消失（G 族蜂群机曾因漏登记而在战斗里看不见）。
@@ -2004,7 +2004,8 @@ const meSpeedRef = useRef(200)
           : elapsed < cycleMs
             ? 'back'
             : 'deck'
-      const show = model.resident ? 1 : Math.max(1, Math.min(d.count, DRONE_SHOW_MAX))
+      const deployed = d.deployed ?? d.count
+      const show = model.resident ? 1 : Math.max(1, Math.min(deployed, DRONE_SHOW_MAX))
       // 记下本帧渲染的机体数：下一拍的击落演出靠它定位"即将消失的末位机体"（见 fx 消费处）
       dronePrevShowRef.current.set(key, show)
       return {
@@ -2016,7 +2017,7 @@ const meSpeedRef = useRef(200)
         elapsed,
         st,
         show,
-        total: d.count,
+        total: deployed,
       }
     }),
   );

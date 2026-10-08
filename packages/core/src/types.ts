@@ -2018,8 +2018,7 @@ export interface ModuleDef {
   reloadPenaltyPct?: number
   /** 全层抗性代价：按收益权重折减后逐件减百分点，允许负抗性，受核心抗性下限约束。 */
   allResistPenaltyPct?: number
-  /** **无人机出击周期折减**（掠袭机库「无人机攻击间隔 −8%」= 船长 2026-09-13 澄清的**出击周期**）：
-   *  周期 × (1 − 本值)；多件加算、上限 0.9（与 reloadCutPct 同款）。缺省 0。 */
+  /** 首次出击等待缩短率，多件逐件乘算；不修改攻击装填。 */
   droneCycleCutPct?: number
   /* ═══ 2026-09-11 协处理器（cpu 家族·低槽；装配 CPU 预算扩容——船长定：本件自身不占 CPU） ═══ */
   /**

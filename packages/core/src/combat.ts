@@ -87,6 +87,7 @@ export { ammoKeyOf, ammoLoadTotals, loadAmmo, loadAmmoTier, nextAmmoType, refund
 export type { AmmoKey } from './combatAmmo'
 // 机群池与近防炮（2026-10-02 批次 4j 拆到 combatDrones.ts）；本文件借回使用并再导出
 import { buildDronePoolsFor, dronePoolKey, dronePoolOwner, isFoeEngageable, pickFoeDroneTarget, resolvePointDefense } from './combatDrones'
+import { initDroneLaunch, releaseDroneLaunch } from './droneLaunch'
 export { droneLostCount, dronePoolKey, dronePoolOwner, pdPriorityOf, pdShotOf, pickFoeDroneTarget } from './combatDrones'
 import { applyFoeRangeDebuff, applyMeJammerDebuff, foeDroneRangeOf, foeGunMaxRangeOf, foeGunPowerFactorOf, markFoeDroneRangeBuff, announceFoeGunRangeBuff, meFoeRangeDebuffOf, meJammerNetOf } from './foeRange'
 import { coronaFocusFalloffOf, syncCoronaFleetFocus } from './coronaFocus'
@@ -238,6 +239,8 @@ export function beamPowerVsTargetOf(
 
 /** 静态单位卡（构建后不进存档） */
 export interface UnitSpec {
+  /** 玩家无人机首次出击间隔；缺省为500ms。 */
+  droneLaunchGapMs?: number
   acidBurst?: import('./types').FoeShipDef['acidBurst']
   foeHatchery?: import('./types').FoeMountDef['hatchery']
   foeFleetSpeedRamp?: import('./types').FoeMountDef['fleetSpeedRamp']
@@ -2159,6 +2162,7 @@ export function startBattleFor(
   buildDronePoolsFor(ctx, me, pools, durMul, evaMul)
   if (Object.keys(pools).length > 0) {
     battle.dronePools = pools
+    initDroneLaunch(battle, [me])
     battle.droneLost = {}
     battle.droneLostBy = {}
     // 开战清单快照（战后判定"机群战损过半"→ 停重复清剿用）：单船路径只有主控一份
@@ -2583,6 +2587,7 @@ export function startFleetBattleFor(
   for (const spec of specs) buildDronePoolsFor(ctx, spec, pools, durMul, evaMul)
   if (Object.keys(pools).length > 0) {
     battle.dronePools = pools
+    initDroneLaunch(battle, specs)
     battle.droneLost = {}
     battle.droneLostBy = {}
     // 开战清单快照：**逐舰**一份（战后按舰扣各自的机舱清单）；老字段 `droneLoadAtStart` 仍是主控那份
@@ -2785,7 +2790,7 @@ export function battleArcsFor(
      * 键里带 owner，故主控那条与旧口径同源（同 artId、同架数、同锚点 ⇒ 逐像素不变）。
      * 缺省/空数组 = 该舰没有机群（或不参战）。
      */
-    drones: Array<{ artId: string; count: number }>
+    drones: Array<{ artId: string; count: number; deployed?: number }>
     hp: { s: number; a: number; h: number }
     hpMax: { s: number; a: number; h: number }
     alive: boolean
@@ -3158,13 +3163,16 @@ export function battleArcsFor(
       ...(battle.expeditionAmmo ? { ammoIds: battleAmmoIdsFor(battle, e.tag) } : {}),
       /** 逐舰机群机体清单（见上方类型注释；只算**该舰存活**的池条目） */
       drones: (() => {
-        const byArt = new Map<string, number>()
+        const byArt = new Map<string, { count: number; deployed: number }>()
         for (const [k, p] of Object.entries(battle.dronePools ?? {})) {
           if (!p.alive || !p.artId) continue
           if (dronePoolOwner(k) !== e.tag) continue
-          byArt.set(p.artId, (byArt.get(p.artId) ?? 0) + 1)
+          const row = byArt.get(p.artId) ?? { count: 0, deployed: 0 }
+          row.count++
+          if (p.launched !== false) row.deployed++
+          byArt.set(p.artId, row)
         }
-        return [...byArt].map(([artId, count]) => ({ artId, count }))
+        return [...byArt].map(([artId, counts]) => ({ artId, ...counts }))
       })(),
     }
   })
@@ -4741,6 +4749,7 @@ function stepBattle(
         ? pickFoeDroneTarget(state, b, foes, b.distanceM, w, wi, unit.tag)
         : null
       if (!droneHit && !inRange(b.distanceM, w)) continue;
+      if (w.src === 'drone' && (!foes.some(f => isFoeEngageable(b, f.tag)) || !releaseDroneLaunch(b, unit, wi))) continue
       // V18B 随机目标（船长 2026-09-05）：每发武器在开火瞬间从存活敌人中独立抽取
       // （确定性 rng 种子，可复现；齐射可分散到不同目标）。目标死亡即时换人。
       // 2026-09-09 锁定装置：装上即切换"集火模式"——全部武器打存活编队首位（主舰优先、击毁接力）。

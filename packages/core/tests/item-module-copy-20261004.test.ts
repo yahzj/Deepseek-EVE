@@ -45,11 +45,14 @@ describe('物品装备说明双语与数据守恒', () => {
     expect(ITEMS.filter(item => added.has(item.id)).map(item => item.id).sort()).toEqual([...added].sort())
     expect(strip(ITEMS.filter(item => !added.has(item.id)))).toEqual(strip(adjusted))
   })
-  it('170 件装备含插件，除说明与已确认的巨构8%代价外所有字段逐项不变', () => {
+  it('170 件装备含插件，仅说明、巨构8%代价和掠袭首次等待20%按已确认值调整', () => {
     const plugs = historical<typeof MODULES>('packages/data/src/plugs.ts', 'SHIP_PLUGS')
     const before = historical<typeof MODULES>('packages/data/src/modules.ts', 'MODULES', { SHIP_PLUGS: plugs })
     const strip = (entries: typeof MODULES) => entries.map(({ description: _description, ...rest }) => rest)
-    const adjusted = before.map(mod => mod.id === 'mod-wh-e-cpu' ? { ...mod, reloadPenaltyPct: .08 } : mod)
+    const adjusted = before.map(mod => {
+      if (mod.id === 'mod-wh-e-cpu') return { ...mod, reloadPenaltyPct: .08 }
+      return mod.id === 'mod-wh-a-hangar' ? { ...mod, droneCycleCutPct: .2 } : mod
+    })
     expect(strip(MODULES)).toEqual(strip(adjusted))
   })
   it.each(ITEMS)('$id 物品说明中英唯一表接线一致，名称不变', (item) => {

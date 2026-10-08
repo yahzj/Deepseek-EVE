@@ -137,11 +137,11 @@ describe('开场装填专项（2026-10-08）', () => {
     expect(w.battle.stats.meShots).toBe(0)
     expect(w.battle.ammo).toEqual(ammo)
     w.advance(cycle + 1)
-    const count = mount === 'drone' ? indices.length : weapon.count ?? 1
+    const count = mount === 'drone' ? 1 : weapon.count ?? 1
     expect(w.battle.stats.meShots).toBe(count)
     expect(myShots(w.battle)).toHaveLength(count)
     expect(myShots(w.battle).every(event => event.atMs === cycle + 1 && event.src === weapon.src)).toBe(true)
-    for (const index of indices) expect(w.battle.units.player!.weapons[index]).toBe(cycle)
+    for (const [position, index] of indices.entries()) expect(w.battle.units.player!.weapons[index]).toBe(mount === 'drone' && position > 0 ? 0 : cycle)
     expect(w.battle.ammo).toEqual({
       kin: ammo.kin - (mount === 'gun' ? count * (weapon.ammoPerShot ?? 1) : 0),
       pla: ammo.pla - (mount === 'beam' ? count : 0),
@@ -150,6 +150,14 @@ describe('开场装填专项（2026-10-08）', () => {
     if (mount === 'PD') {
       expect(myShots(w.battle)[0]!.pd).toBe(true)
       expect(w.battle.mePdAnsweredBy?.[`player:${indices[0]}`]).toBe(w.battle.droneHitAt!.me)
+    }
+    if (mount === 'drone') {
+      w.advance(cycle + 500)
+      expect(w.battle.stats.meShots).toBe(1)
+      w.advance(cycle + 501)
+      expect(w.battle.stats.meShots).toBe(2)
+      expect(myShots(w.battle).map(event => event.atMs)).toEqual([cycle + 1, cycle + 501])
+      expect(w.battle.dronePools?.[`player:${indices[1]}`]?.launched).toBe(true)
     }
   })
 
@@ -185,18 +193,28 @@ describe('开场装填专项（2026-10-08）', () => {
     for (const deadline of deadlines.filter(ms => ms > earliest)) {
       const due = w.entries.flatMap(({ spec }) => spec.weapons.flatMap((weapon, index) =>
         weapon.reloadMs === deadline ? [{ spec, weapon, index }] : []))
+      const expectedDue = due.filter(({ weapon, index }) => weapon.src !== 'drone' || index === 4)
       w.advance(deadline - 1)
       for (const { spec, index } of due) expect(w.battle.units[spec.tag]!.weapons[index]).toBe(1)
       w.advance(deadline)
       for (const { spec, index } of due) expect(w.battle.units[spec.tag]!.weapons[index]).toBe(0)
       const shots = w.battle.stats.meShots
       w.advance(deadline + 1)
-      expect(w.battle.stats.meShots).toBeGreaterThanOrEqual(shots + due.reduce((n, { weapon }) => n + (weapon.count ?? 1), 0))
+      expect(w.battle.stats.meShots).toBeGreaterThanOrEqual(shots + expectedDue.reduce((n, { weapon }) => n + (weapon.count ?? 1), 0))
       for (const { spec, weapon, index } of due) {
+        if (weapon.src === 'drone' && index === 5) {
+          expect(w.battle.units[spec.tag]!.weapons[index]).toBe(0)
+          expect(w.battle.dronePools?.[`${spec.tag}:${index}`]?.launched).toBe(false)
+          continue
+        }
         expect(w.battle.units[spec.tag]!.weapons[index]).toBe(weapon.reloadMs)
         const type = weapon.fixedType ?? Object.keys(weapon.shotsByType ?? {})[0]
         expect(myShots(w.battle).some(event => event.atMs === deadline + 1 && event.tag === spec.tag && event.src === weapon.src && event.type === type)).toBe(true)
       }
+    }
+    for (let time = w.battle.lastTickGameMs + 100; time <= deadlines.at(-1)! + 700; time += 100) w.advance(time)
+    for (const { spec } of w.entries) {
+      expect(w.battle.dronePools?.[`${spec.tag}:5`]?.launched).toBe(true)
     }
   })
 

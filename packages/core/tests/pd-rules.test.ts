@@ -165,6 +165,8 @@ describe('敌方近防炮 · 2026-09-12 船长八条裁决', () => {
     const run = (c: SimContext, seed: number, evasion: Record<string, number>): { lost: number; hp: number; note: string } => {
       const s = makeState(seed)
       const battle = startBattleFor(s, c, s.shipId, itemId, 0)!
+      // 此夹具仅核对近防必中效果，机群设为已放飞，不由射程外队头阻塞。
+      for (const pool of Object.values(battle.dronePools ?? {})) pool.launched = true
       s.expedition.active = true
       s.expedition.phase = 'battle'
       s.expedition.anomalyId = itemId

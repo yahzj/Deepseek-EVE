@@ -97,6 +97,7 @@ const BATTLE_FIELDS = {
   foeSummonAtMs: { kind: 'persist' },
   foeFocusArrays: { kind: 'runtime', why: '当前波聚焦来源由敌舰规格重建，增益按波时钟与来源存活状态现算' },
   dronePools: { kind: 'persist' }, // 我方机群生存池（丢了 ⇒ 重载后无人机不再会被击落）
+  droneLaunchBy: { kind: 'persist' },
   foeDronePools: { kind: 'persist' }, // 敌机生存池（丢了 ⇒ 重载后敌方机群整支消失）
   droneLost: { kind: 'persist' }, // 本场已击落架数（丢了 ⇒ 可反复重载规避机群战损）
   droneLoadAtStart: { kind: 'persist' }, // 开战机群快照（丢了 ⇒ 战后"战损过半"判定失效）
@@ -393,6 +394,7 @@ export function cleanBattle(raw: unknown): BattleState | null {
   /** 力场账本（2026-09-20 新增；与 `shieldChargeBy` 分开：冷却按件、受益方是全队） */
   const shieldFieldBy = cleanLedgerMap(b.shieldFieldBy, cleanShieldField)
   const dronePools = cleanDronePools(b.dronePools)
+  const droneLaunchBy = cleanDroneLaunchBy(b.droneLaunchBy)
   const foeDronePools = cleanFoeDronePools(b.foeDronePools)
   const droneLost = cleanCountMap(b.droneLost)
   const droneLoadAtStart = cleanCountMap(b.droneLoadAtStart)
@@ -595,6 +597,7 @@ export function cleanBattle(raw: unknown): BattleState | null {
     ...(myWebs !== undefined ? { myWebs } : {}),
     ...(foeWebDebuffs !== undefined ? { foeWebDebuffs } : {}),
     ...(dronePools !== undefined ? { dronePools } : {}),
+    ...(droneLaunchBy !== undefined ? { droneLaunchBy } : {}),
     ...(foeDronePools !== undefined ? { foeDronePools } : {}),
     ...(droneLost !== undefined ? { droneLost } : {}),
     ...(droneLoadAtStart !== undefined ? { droneLoadAtStart } : {}),
@@ -725,6 +728,7 @@ function cleanDronePoolEntry(raw: unknown): NonNullable<BattleState['dronePools'
     a,
     h,
     alive: e.alive === true,
+    ...(typeof e.launched === 'boolean' ? { launched: e.launched } : {}),
     ...(artId !== undefined ? { artId } : {}),
     ...(owner !== undefined ? { owner } : {}),
     evasion: cleanPosNum(e.evasion) ?? 0,
@@ -738,6 +742,18 @@ function cleanDronePoolEntry(raw: unknown): NonNullable<BattleState['dronePools'
     ...(maxA !== undefined ? { maxA } : {}),
     ...(maxH !== undefined ? { maxH } : {}),
   }
+}
+
+function cleanDroneLaunchBy(raw: unknown): BattleState['droneLaunchBy'] {
+  const out: NonNullable<BattleState['droneLaunchBy']> = {}
+  for (const [tag, value] of Object.entries(asRaw(raw))) {
+    if (!/^[A-Za-z][\w-]*$/.test(tag)) continue
+    const row = asRaw(value)
+    const nextAtMs = cleanPosNum(row.nextAtMs), gapMs = cleanPosNum(row.gapMs)
+    if (!Array.isArray(row.q) || nextAtMs === undefined || gapMs === undefined) continue
+    out[tag] = { q: [...new Set(row.q.filter((k): k is string => typeof k === 'string' && k.startsWith(`${tag}:`) && /^\d+$/.test(k.slice(tag.length + 1))))], nextAtMs, gapMs: Math.max(10, gapMs) }
+  }
+  return Object.keys(out).length > 0 ? out : undefined
 }
 
 /** 我方机群生存池（键 = **`舰tag:武器下标`**；2026-09-14「逐舰机群」起逐舰。
