@@ -24,6 +24,39 @@ export interface AnnouncementDef {
 /** 全量公告（新的放最上方） */
 export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
   {
+    // 船长批准两篇整合正文，正式发布日期按本次落库日记。
+    id: 'ann-alien-invasion-20261007',
+    title: L10N['ano.incursionRelease.001']!.zh,
+    titleId: 'ano.incursionRelease.001',
+    date: '2026-10-09',
+    tag: L10N['ano.incursionRelease.002']!.zh,
+    tagId: 'ano.incursionRelease.002',
+    bullets: [
+      L10N['ano.incursionRelease.003']!.zh,
+      L10N['ano.incursionRelease.004']!.zh,
+      L10N['ano.incursionRelease.005']!.zh,
+      L10N['ano.incursionRelease.006']!.zh,
+      L10N['ano.incursionRelease.007']!.zh,
+    ],
+    bulletIds: ['ano.incursionRelease.003', 'ano.incursionRelease.004', 'ano.incursionRelease.005', 'ano.incursionRelease.006', 'ano.incursionRelease.007'],
+  },
+  {
+    id: 'ann-balance-mechanics-summary-20261008',
+    title: L10N['ano.mechanicsRelease.001']!.zh,
+    titleId: 'ano.mechanicsRelease.001',
+    date: '2026-10-09',
+    tag: L10N['ano.mechanicsRelease.002']!.zh,
+    tagId: 'ano.mechanicsRelease.002',
+    bullets: [
+      L10N['ano.mechanicsRelease.003']!.zh,
+      L10N['ano.mechanicsRelease.004']!.zh,
+      L10N['ano.mechanicsRelease.005']!.zh,
+      L10N['ano.mechanicsRelease.006']!.zh,
+      L10N['ano.mechanicsRelease.007']!.zh,
+    ],
+    bulletIds: ['ano.mechanicsRelease.003', 'ano.mechanicsRelease.004', 'ano.mechanicsRelease.005', 'ano.mechanicsRelease.006', 'ano.mechanicsRelease.007'],
+  },
+  {
     // 2026-10-04 船长「确认没问题」：纯货舰数值、能力边界、材料工时与中英公告通过。
     id: 'ann-hauler-refit-20261004',
     title: L10N['ano.hauler.001']!.zh,

@@ -31,7 +31,7 @@ function world(defId = 'sh-sailfish') {
 
 describe('纯货舰修订', () => {
   it('验收后的货舰公告中英逐条接线，历史公告不改正文', () => {
-    const announcement = ANNOUNCEMENTS[0]!
+    const announcement = ANNOUNCEMENTS.find(a => a.id === 'ann-hauler-refit-20261004')!
     expect(announcement.id).toBe('ann-hauler-refit-20261004')
     expect(announcement.bulletIds).toHaveLength(4)
     expect(announcement.title).toBe(L10N[announcement.titleId!]!.zh)
