@@ -32,6 +32,7 @@
 
 | 工具 | npm script | 挂牌状态 |
 |---|---|---|
+| `startup-win-worker-check.cjs` | 双端构建后`node tools/startup-win-worker-check.cjs` | v31；隐藏隔离Electron加载桌面file/网页HTTP，合法合成16架机群、真实Worker每卡30局/单实例/输入延迟/长任务与停止清理；不读个人档，不冒称手机性能或观感 |
 | `battle-step-preview.ts` / `battle-step-preview-worker.ts` | `npx tsx tools/battle-step-preview.ts`，worker仅由父工具打包 | v31；100/50/10ms步长及补算预算、装填/齐射/回充/机动与5场景多种子对照；内存注入，不改源码或个人档，前后校验哈希 |
 | `data-editor-enemy-schema.ts` / `data-editor-enemy-preview.ts` | 编辑器服务调用，预览CLI由候选服务执行 | v31；六类敌人源数字字段、范围、来源和当前core派生预览；不复制战斗算法，不倒写派生值 |
 | `data-enemy-migrate.ts` / `data-enemy-alien-migrate.ts` / `data-enemy-metadata.ts` | `npx tsx tools/data-enemy-migrate.ts --baseline`及显式迁移/来源登记 | v31；一次性AST源数字迁移，已迁移源码拒绝重写，六表权威数字与TS公式/引用分离；不得用于日常参数覆盖 |

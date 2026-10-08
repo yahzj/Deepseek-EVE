@@ -15,6 +15,7 @@
 
 import { tr } from '../i18n/locale'
 import { debugEnabled } from './debugFlag'
+import type { BountyWinDiagnostic } from './bountyWinProtocol'
 export type PerfBucket = 'idle' | 'battle'
 
 /** 一个计量段（全局总量或单个场景切片的形态一致） */
@@ -31,6 +32,7 @@ export interface PerfSegment {
   adv: { idle: CountBox; battle: CountBox }
   notify: { idle: CountBox; battle: CountBox }
   commit: CountBox
+  winPreheat: { dispatch: CountBox; compute: CountBox; cancelled: number; errors: number }
   long: CountBox
   fps: { samples: number; avg: number; min: number }
   heapAvgMB: number
@@ -73,6 +75,7 @@ class PerfHub {
       adv: { idle: { n: 0, sumMs: 0, maxMs: 0 }, battle: { n: 0, sumMs: 0, maxMs: 0 } },
       notify: { idle: { n: 0, sumMs: 0, maxMs: 0 }, battle: { n: 0, sumMs: 0, maxMs: 0 } },
       commit: { n: 0, sumMs: 0, maxMs: 0 },
+      winPreheat: { dispatch: { n: 0, sumMs: 0, maxMs: 0 }, compute: { n: 0, sumMs: 0, maxMs: 0 }, cancelled: 0, errors: 0 },
       long: { n: 0, sumMs: 0, maxMs: 0 },
       fps: { samples: 0, avg: 0, min: Infinity },
       heapAvgMB: 0,
@@ -209,6 +212,18 @@ class PerfHub {
     const s = this.seg
     if (s) this.addBox(s.long, ms)
     this.addBox(this.totals.long, ms)
+  }
+
+  /** 主线程派发与后台计算分开记账；后台耗时不是界面长任务。 */
+  recordWinPreheat(event: BountyWinDiagnostic): void {
+    if (!this.recording) return
+    for (const segment of [this.totals, this.seg]) {
+      if (!segment) continue
+      if (event.kind === 'dispatch') this.addBox(segment.winPreheat.dispatch, event.ms)
+      else if (event.kind === 'result') this.addBox(segment.winPreheat.compute, event.ms)
+      else if (event.kind === 'cancel') segment.winPreheat.cancelled++
+      else segment.winPreheat.errors++
+    }
   }
 
   /** 已采集墙钟秒数（HUD 用；未激活返回 0） */

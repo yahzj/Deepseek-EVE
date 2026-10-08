@@ -204,10 +204,6 @@ import {
   beginAfterAwaken,
   skipPrologue,
   ONB_AWAKEN,
-  // 悬赏胜率蒙特卡洛预估（2026-09-09：玩家可见展示口径；预热缓存）
-  BOUNTY_MC_RUNS,
-  buildEvalState,
-  estimateBountyWinOn,
   // 2026-09-09 长途运输
   startHauling,
   stopHauling,
@@ -394,6 +390,8 @@ import { runPlanetaryCommand } from './planetaryCommands'
 import { DEEP_SPACE_SKILL_IDS, probeManufacturingUnlocked } from '@whale/core'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
+import { BountyWinCache } from './bountyWinCache'
+import type { BountyWinWorker } from './bountyWinProtocol'
 import { tr, cmdText, paramText, logText } from '../i18n/locale'
 /**
  * ⚠ **只借"档位名文案"这一个纯函数**（不起循环依赖：`labelsText` 不反向引 engine，见其文件头）——
@@ -785,12 +783,18 @@ export class GameEngine {
    */
   private wormholeSpeedPick = loadWormholeSpeedPick()
 
-  /* ═══ 悬赏胜率蒙特卡洛缓存（2026-09-09 船长确认 N=21：战力指纹变化 → 分帧全板预热） ═══ */
-  private winCache = new Map<string, BountyWinMC>() // anomalyId → 当前指纹下的预估结果
-  private winFpCur = ''
-  private winEval: { ev: GameState; uid: string } | null = null // 战力评估快照（fp 变化时重建）
-  private winQueue: string[] = []
-  private winLastPumpAt = 0
+  private stopped = false
+  private winCache = new BountyWinCache({
+    createWorker: () => new Worker(new URL('./bountyWin.worker.ts', import.meta.url), { type: 'module' }) as unknown as BountyWinWorker,
+    source: () => ({ state: this.state, ctx: this.ctx, fingerprint: this.winFingerprint(), locale: this.locale,
+      ids: this.anomalies.filter(a => this.ctx.anomalies.has(a.id)).map(a => a.id) }),
+    paused: () => this.stopped || this.inLiveBattle() || this.saveWriteState() !== 'ok',
+    changed: () => this.notify(),
+    diagnostic: event => perfHub.recordWinPreheat(event),
+    // l10n-keep：后台计算故障仅进入开发控制台，不向玩家暴露技术文本。
+    error: message => console.warn('Bounty worker:', message),
+    now: () => performance.now(),
+  })
 
   /**
    * **主控活动切换：首击警告、二击执行**（**2026-09-21 船长令**：「统一为能够直接切换（自动取消当前
@@ -840,45 +844,8 @@ export class GameEngine {
     return `${uid}|${f?.defId}|${f?.armorPct ?? 1}|${f?.durability ?? 1}|${JSON.stringify(f?.fitted ?? {})}|${JSON.stringify(f?.droneLoad ?? null)}|${JSON.stringify(f?.ammoPref ?? null)}|${st.resupplyFromWarehouse !== false ? 1 : 0}|${JSON.stringify(st.winRecord ?? null)}|${st.expedition.lairTier ?? 0}|${st.expedition.factionActive === true ? 1 : 0}|${sk}`
   }
 
-  /**
-   * 悬赏胜率 MC 预热泵（挂在每秒心跳尾；战斗交火期跳过避免挤占实时推进）：
-   * 指纹变化 → 重建评估快照 + 全板入队；每批预算 + 节流 + 每批条数上限，批完成 notify 一次，
-   * 悬赏卡数字随批从旧口径变准（全板约几秒）。评估用独立快照/种子，不消耗真实存档 rng。
-   *
-   * 2026-09-10 船长反馈"击毁敌人后画面明显卡顿"定位（perfHub 快照：adv ≤0.7ms、commit ≤6.4ms，
-   * 但 long = 1×63ms、FPS min 19.8，且恰好落在战斗结束那一刻）：原单批预算 60ms 会把
-   * 全板重算（真档实测 26 条共 ~70ms）**塞进同一个任务** → 一次 ~60ms 的可见卡顿。
-   * 现改：单批预算 8ms + 每批最多 2 条 → 同样工作量摊到十几拍（每拍 ≤10ms，肉眼无感）。
-   */
-  private pumpWinCache(now: number): void {
-    // 洞内交火同样跳过（2026-09-13）：实时推进优先，别让胜率预热抢帧；旗舰战同款（2026-09-25）
-    if (this.inLiveBattle()) return
-    if (now - this.winLastPumpAt < 400) return
-    const fp = this.winFingerprint()
-    if (fp !== this.winFpCur) {
-      this.winFpCur = fp
-      this.winCache.clear()
-      this.winEval = buildEvalState(this.state, this.state.shipId)
-      this.winQueue = this.anomalies.map((a) => a.id)
-    }
-    if (this.winQueue.length === 0) return
-    const snap = this.winEval
-    if (!snap) {
-      this.winQueue = []
-      return
-    }
-    this.winLastPumpAt = now
-    const until = now + 8 // 单批预算 8ms（原 60ms：会在战斗结束那一下形成一次长任务）
-    let done = 0
-    while (this.winQueue.length > 0 && done < 2 && Date.now() < until) {
-      const id = this.winQueue.shift()!
-      const a = this.ctx.anomalies.get(id)
-      if (!a) continue
-      this.winCache.set(id, estimateBountyWinOn(snap.ev, this.ctx, a, snap.uid, BOUNTY_MC_RUNS))
-      done += 1
-    }
-    if (done > 0) this.notify()
-  }
+  /** 每个空闲心跳只派发一张卡，完整推演由后台执行，主线程不作同步回退。 */
+  private pumpWinCache(): void { this.winCache.pump() }
 
   /** 悬赏卡读胜率缓存（2026-09-09）；未就绪返回 null → 调用方临时回退旧口径显示，预热完成后随 notify 变准 */
   winEstimateOf(anomalyId: string): BountyWinMC | null {
@@ -906,6 +873,7 @@ export class GameEngine {
 
   /** 按当前局面重排心跳周期（只在需要变速时才重建定时器，避免每拍 clearInterval 抖动） */
   private ensurePump(): void {
+    if (this.stopped) return
     const want = this.wantsFastPump() ? 100 : 500
     if (want === this.pumpMs) return
     this.pumpMs = want
@@ -1080,6 +1048,7 @@ export class GameEngine {
   }
 
   private notify(): void {
+    this.winCache.sync()
     // 任何状态变更通知后重排心跳：交火中/教学加速/远征去程 = 100ms，普通挂机 = 500ms（2026-09-08 降频）
     this.ensurePump()
     const rec = perfHub.recording
@@ -1112,6 +1081,8 @@ export class GameEngine {
 
   /** 启动引擎：读档 → 离线结算 → 每秒推进 + 自动保存 */
   async start(): Promise<void> {
+    this.stopped = false
+    this.winCache.reset()
     let lastSavedWall: number | null = null
     /** 甲：启动体检结果（`main.tsx` 在 start 之前 await 过一次）——不通 ⇒ 本局所有写入直接短路 */
     const guard = saveStorageProbe()
@@ -1202,6 +1173,24 @@ export class GameEngine {
     this.notify()
     this.installWormholeTestApi()
     this.installPlanetaryTestApi()
+    window.addEventListener('pagehide', this.onPageHide)
+  }
+
+  private onPageHide = (event: PageTransitionEvent): void => {
+    if (event.persisted) this.winCache.pause()
+    else this.stop()
+  }
+
+  /** 停止自有心跳与后台推演，启动入口卸载或窗口退出时复用。 */
+  stop = (): void => {
+    this.stopped = true
+    this.winCache.reset()
+    if (this.intervalId !== null) window.clearInterval(this.intervalId)
+    if (this.saveIntervalId !== null) window.clearInterval(this.saveIntervalId)
+    this.intervalId = null
+    this.saveIntervalId = null
+    this.pumpMs = 0
+    window.removeEventListener('pagehide', this.onPageHide)
   }
 
   private wormholeTestEnabled(): boolean {
@@ -1399,8 +1388,9 @@ export class GameEngine {
   }
 
   private tick(): void {
-    if (this.wormholeTestEnabled()) { this.lastRealMs = Date.now(); return }
-    if (!canWriteSave() || this.reconnectResolving) { this.lastRealMs = Date.now(); return }
+    if (this.stopped) return
+    if (this.wormholeTestEnabled()) { this.winCache.pause(); this.lastRealMs = Date.now(); return }
+    if (!canWriteSave() || this.reconnectResolving) { this.winCache.pause(); this.lastRealMs = Date.now(); return }
     const now = Date.now()
     const dt = Math.max(1, now - this.lastRealMs)
     this.lastRealMs = now
@@ -1493,8 +1483,8 @@ export class GameEngine {
     }
     // 讨伐远征结束后复位标记（下一场手动出击照常自动弹战场）
     if (this.autoSortie && !this.state.expedition.active) this.autoSortie = false
-    // 悬赏胜率 MC 预热（2026-09-09：指纹变化时分帧重算；节流+预算防卡 UI）
-    this.pumpWinCache(now)
+    // 悬赏胜率只派发后台任务，不在心跳内同步推演。
+    this.pumpWinCache()
   }
 
   /** 保存存档（2026-09-08 船长定：事件日志不落盘——写盘前剥离 logs，
