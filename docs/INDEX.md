@@ -60,7 +60,7 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/stellar-debug-navigation-20261008.md` | 调试导航开放星系入口 | 未标注（已本地合入及复测） | 2026-10-08 | 2 KB / 24 行 | 0 / 0 |
-| `docs/design/stellar-ready-save-20261008.md` | 新星系即用存档 | 未标注（已生成并验证） | 2026-10-08 | 2 KB / 23 行 | 0 / 0 |
+| `docs/design/stellar-ready-save-20261008.md` | 新星系即用存档 | 未标注（已本地合入并交付） | 2026-10-08 | 2 KB / 23 行 | 0 / 0 |
 | `docs/design/acid-burst-stacking-fx-20261007.md` | 酸液爆虫腐蚀叠加与专属自爆动画 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 53 行 | 0 / 0 |
 | `docs/design/announcement-draft-alien-invasion-20261007.md` | 异形入侵公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 26 行 | 2 / 0 |
 | `docs/design/announcement-draft-wreck-loot-buy-20261007.md` | 残骸回收与装备收购公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 23 行 | 1 / 0 |
