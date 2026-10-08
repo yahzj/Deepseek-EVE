@@ -156,7 +156,9 @@ describe('入场窗口：动画没结束不开火（船长 2026-09-14）', () =>
     const { state, ctx } = world([solo])
     const b = startBattleFor(state, ctx, state.shipId, 'ano-arrival-solo', 0)!
     const me = b.units['player']!
-    expect(Math.max(...me.weapons)).toBe(0) // 开战满装填 ⇒ 只要选中就能开火（排掉"装填没好"这个混淆项）
+    expect(Math.max(...me.weapons)).toBeGreaterThan(0)
+    // 本例隔离敌方入场门禁，玩家开场装填另有专项。
+    me.weapons = me.weapons.map(() => 0)
     const tag = Object.keys(b.units).find((t) => b.units[t]!.side === 'foe')!
     // 手工把入场窗口推到开战 +10 秒（950ms 太短，观测窗口不足）
     const WINDOW = 10_000

@@ -79,7 +79,7 @@ const DOMAINS: readonly Domain[] = [
   },
   {
     name: '战斗',
-    globs: ['packages/core/src/combat*.ts', 'packages/core/src/foe*.ts', 'packages/core/src/playerSpec.ts', 'packages/core/src/winEstimate.ts', 'packages/core/src/encounters.ts', 'packages/core/src/hullDamage.ts', 'packages/data/src/anomalies.ts', 'packages/data/src/foe-ships.ts', 'packages/data/src/foe-drones.ts', 'packages/data/src/droneRoles.ts', 'apps/desktop/src/renderer/src/panels/BattleScreen.tsx', 'apps/desktop/src/renderer/src/panels/battle*.tsx', 'apps/desktop/src/renderer/src/panels/battle*.ts', 'apps/desktop/src/renderer/src/ui/battle*.ts', 'apps/desktop/src/renderer/src/ui/foeBrief.ts', 'apps/desktop/src/renderer/src/ui/droneArt.tsx'],
+    globs: ['packages/core/src/combat*.ts', 'packages/core/src/battle*View.ts', 'packages/core/src/foe*.ts', 'packages/core/src/playerSpec.ts', 'packages/core/src/winEstimate.ts', 'packages/core/src/encounters.ts', 'packages/core/src/hullDamage.ts', 'packages/data/src/anomalies.ts', 'packages/data/src/foe-ships.ts', 'packages/data/src/foe-drones.ts', 'packages/data/src/droneRoles.ts', 'apps/desktop/src/renderer/src/panels/BattleScreen.tsx', 'apps/desktop/src/renderer/src/panels/BattleCycles.tsx', 'apps/desktop/src/renderer/src/panels/battle*.tsx', 'apps/desktop/src/renderer/src/panels/battle*.ts', 'apps/desktop/src/renderer/src/ui/battle*.ts', 'apps/desktop/src/renderer/src/ui/foeBrief.ts', 'apps/desktop/src/renderer/src/ui/droneArt.tsx'],
   },
   {
     name: '采矿与打捞',

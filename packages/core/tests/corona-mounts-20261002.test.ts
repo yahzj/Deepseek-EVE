@@ -379,6 +379,8 @@ describe('聚焦阵列：远端衰减爬到 1.0（随波重置）', () => {
      */
     const run = (useCtx: SimContext) => {
       const { b, tick } = battleOf(CARD_NEXUS, 32, useCtx)
+      // 固定旧攻击相位隔离聚焦曲线；玩家开场装填由独立专项验证。
+      for (const unit of Object.values(b.units)) if (unit.side === 'me') unit.weapons = unit.weapons.map(() => 0)
       const waveMarks: Array<{ wave: number; atMs: number; anchor: number | undefined }> = []
       let wave4At = 0
       let lastWave = -1

@@ -201,6 +201,13 @@ describe('MK3装配/实战/退弹兼容', () => {
     expect(loaded).toBeGreaterThan(0)
     state.gameMs = 100
     advanceBattleFor(state, ctx, battle, state.shipId, cardId)
+    expect(battle.ammo[key]).toBe(loaded)
+    const firstReload = battle.units.player!.weapons.find((_, i) => createPlayerSpec(state, ctx, state.shipId)!.weapons[i]!.src !== 'base')!
+    for (let time = 200; time <= firstReload + 300 && battle.ammo[key] === loaded; time += 100) {
+      battle.distanceM = 1000
+      state.gameMs = time
+      advanceBattleFor(state, ctx, battle, state.shipId, cardId)
+    }
     expect(battle.ammo[key]).toBe(loaded - 1)
     refundAmmo(state, battle.ammo, battle.ammoIds)
     expect(state.warehouse.items[id]).toBe(9999)

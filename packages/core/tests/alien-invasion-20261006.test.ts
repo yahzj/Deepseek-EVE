@@ -55,7 +55,11 @@ describe('异形入侵真实接线', () => {
     const battle = startBattleFor(state, local, state.shipId, card.id, 0, distance)!
     battle.distanceM = distance
     const acid = Object.values(battle.units).find(u => u.side === 'foe')!
-    if (kill) acid.hp = { s: 0, a: 0, h: 1 }
+    if (kill) {
+      acid.hp = { s: 0, a: 0, h: 1 }
+      // 本例隔离炮火致死触发，开场装填另有专项。
+      battle.units.player!.weapons = battle.units.player!.weapons.map(() => 0)
+    }
     else battle.units.player!.weapons = battle.units.player!.weapons.map(() => 100000)
     state.gameMs = 100
     advanceBattleFor(state, local, battle, state.shipId, card.id)

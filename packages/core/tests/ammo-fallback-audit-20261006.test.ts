@@ -50,7 +50,7 @@ describe('选档与取弹读取同一允许来源', () => {
     const src = type === 'plasma' ? 'laser' : type === 'explosive' ? 'missile' : 'turret'
     expect(battleArcsFor(state, ctx, { battle, anomaly: foe, leaderShipId: uid })!.me.find(w => w.src === src)!.type).toBe(type)
     battle.distanceM = 1000
-    state.gameMs = 100
+    state.gameMs = 1100
     advanceBattleFor(state, ctx, battle, uid, foe.id)
     expect(battle.ammo[keyOf(type)]).toBe(24)
     expect(battle.fx.some(fx => fx.side === 'me' && fx.src === src && fx.type === type)).toBe(true)
@@ -127,7 +127,7 @@ describe('选档与取弹读取同一允许来源', () => {
     expect(state.warehouse.items[tierId(type)]).toBe(10000)
     expect(state.shipId).toBe(uid)
     battle.distanceM = 1000
-    state.gameMs = 100
+    state.gameMs = 1100
     advanceBattleFor(state, ctx, battle, uid, foe.id)
     expect(battle.ammo[keyOf(type)]).toBe(46)
     expect(new Set(battle.fx.filter(f => f.side === 'me' && f.src === (type === 'plasma' ? 'laser' : type === 'explosive' ? 'missile' : 'turret')).map(f => f.tag))).toEqual(new Set(['player', 'ally-1']))

@@ -53,7 +53,9 @@ import { tr as normalTr, futureTr, cmdText, mountNamesTextOf, logText } from '..
 import { hoverTipProps } from '../ui/Tooltip'
 import { useBattleFit } from '../ui/battleFit'
 // 2026-10-02 批次 4u：无人机几何域（挂载件悬停明文/敌我机群姿态/击落爆炸点）已拆到 ./battleDrones，本文件借回使用
-import { foeMountsTipOf, dronePoseAt, oneThirdToward, foeDroneStation, foePoseAt, DRONE_DOWN_FREEZE_MS } from './battleDrones'
+import { dronePoseAt, oneThirdToward, foeDroneStation, foePoseAt, DRONE_DOWN_FREEZE_MS } from './battleDrones'
+import { BattleMountLines } from './battleMounts'
+import { BattleCycles } from './BattleCycles'
 
 /**
  * 33ms 平滑循环需要的**最小战斗句柄**（结构类型：远征与洞内两种 `BattleState` 都满足；
@@ -138,23 +140,11 @@ export function BattleScreen({
    * 且**必须带 `whView`**（洞内优先）——旗舰战（`wkView`）与远征各自兜后。
    */
   const battle = whView ? whView.battle : wkView ? wkView.battle : state.expedition.battle
-  /**
-   * 推进器周期状态（2026-09-10 船长定：点火 60 秒 / 冷却 60 秒 / 开场即点火）——与引擎同源。
-   * **2026-09-14 起周期逐单位**（微型跃迁引擎 = 10 秒点火）：这一格显示**我方首舰（主控/读数锚）**的周期
-   * （`arcs.thrusterCycle`），与「推进器点火中：战斗中机动 +N%」用的 `arcs.thrusterBoost` 同一个单位。
-   */
-  const thruster = battle ? thrusterPhase(battle, engine.ctx.balance.battle, arcs?.thrusterCycle) : null
   /** 机群池键（**`舰tag:机型`**）→ 实际架数（弹道道次必须落在"实际渲染的机体数"内；见 fx 消费处 2026-09-10 修复）。
    *  2026-09-14「逐舰机群」：由 core 视图的**逐舰**机体清单（`myUnits[].drones`）建表——此前只有主控那张。 */
   const droneCountOf = new Map<string, number>()
   for (const u of arcs?.myUnits ?? [])
     for (const d of u.drones ?? []) droneCountOf.set(`${u.tag}:${d.artId}`, d.count);
-  /**
-   * **视图锚（主控）那条舰的存活机群**（`artId → 架数`）——装填冷却条上**无人机条目**据此判"打光了没"
-   * （**2026-09-26 玩家报障**：「无人机显示就绪不会开火，但是无人机实际上已经被打掉了」：
-   * 冷却条只反映装填周期，机群全灭它也照样归零 ⇒ 必须再看存活架数）。
-   */
-  const leaderDrones = arcs?.myUnits.find((u) => u.leader)?.drones ?? []
   /** 敌方机群：敌单位 tag + 机型 → **该舰现存架数**（弹道道次取模要用它；敌我各用各的表，见弹道层） */
   const foeDroneAliveOf = (tag: string, artId: string): number =>
     arcs?.foeDrones?.find((d) => d.tag === tag && d.artId === artId)?.alive ??
@@ -1822,8 +1812,8 @@ const meSpeedRef = useRef(200)
   const meAnchorOfTag = (tag: string): { x: number; y: number } | undefined =>
     multiMe ? meAnchorByTag.get(tag) : tag === 'player' ? layFx.me : undefined
   const webEls = (arcs.webLinks ?? []).flatMap((l) => {
-    const from = foeAnchorByTag.get(l.from)
-    const to = meAnchorOfTag(l.to)
+    const from = foeAnchorByTag.get(l.from) ?? meAnchorOfTag(l.from)
+    const to = meAnchorOfTag(l.to) ?? foeAnchorByTag.get(l.to)
     if (!from || !to) return []
     const dx = to.x - from.x
     const dy = to.y - from.y
@@ -1832,9 +1822,10 @@ const meSpeedRef = useRef(200)
     return [
       <div
         key={`web-${l.from}-${l.to}`}
+        data-web-from={l.from} data-web-to={l.to}
         className="app-bts-web"
         style={{ left: from.x, top: from.y, transform: `rotate(${ang}deg)` }}
-        title={tr("ui.BattleScreen.034")}
+        title={tr('ui.battleCycles.021', { from: l.fromName, to: l.toName, pct: Math.round(l.slowPct * 100) })}
       >
         <i className="app-bts-web-bar" style={{ width: len }} />
       </div>,
@@ -2243,6 +2234,10 @@ const meSpeedRef = useRef(200)
             {hangarBadgeOf(tag)}
           </span>
         ) : null}
+        {(arcs.webLinks ?? []).some(link => link.to === tag) ? <span className="app-bts-web-status"
+          {...hoverTipProps(<>{(arcs.webLinks ?? []).filter(link => link.to === tag).map(link => <div key={link.from}>
+            {tr('ui.battleCycles.021', { from: link.fromName, to: link.toName, pct: Math.round(link.slowPct * 100) })}
+          </div>)}</>)}>{tr('ui.battleCycles.022')}</span> : null}
         {/* 血条（2026-09-11 船长③）：贴在本舰正下方（绝对定位，不参与行内布局）；
             尸骸不显示血条（与改造前"只给存活单位画条"一致） */}
         {!corpseOn ? (
@@ -2369,7 +2364,7 @@ const meSpeedRef = useRef(200)
       </div>
       {/* **顶部读数区**（**2026-09-30 船长令**：「将所有炮和冷却相关的放到屏幕上方」）——
           倍速（仅虫洞出现）→ 图例 chip（我方武器/无人机 ＋ 敌方射程带/挂载件 ＋ 弹药/修理）
-          → 装填冷却平铺（含推进器格）；整块**不在等比缩放层里**（读数与触控不跟着战场缩，
+          → 武器下拉与逐舰装置周期；整块**不在等比缩放层里**（读数与触控不跟着战场缩，
           口径同 2026-09-26 船长令，见 `ui/battleFit.ts`）。 */}
       <div className="app-bts-topdock">
         <div className="app-bts-dock">
@@ -2456,12 +2451,11 @@ const meSpeedRef = useRef(200)
                     </span>
                     <div className="app-info-note">
                       {b.names.length > 0
-                        ? tr("ui.BattleScreen.089", { p1: b.names.join(tr("ui.MatterTechTab.017")), p2: b.minM, p3: b.maxM }) +
-                          // 2026-09-16 船长「敌舰悬停展示挂载件」：本带的敌方挂载件挂在同一条悬停里
-                          // 2026-09-26 船长报障「不应该复读一遍相同的文字」⇒ 改走**明文效果**（`foeMountsTipOf`）
-                          (b.mounts && b.mounts.length > 0 ? tr("ui.BattleScreen.090", { p1: foeMountsTipOf(b.mounts) }) : '')
+                        ? tr("ui.BattleScreen.089", { p1: b.names.join(tr("ui.MatterTechTab.017")), p2: b.minM, p3: b.maxM })
                         : tr("ui.BattleScreen.058")}
                     </div>
+                    {b.mounts?.length ? <BattleMountLines names={b.mounts} pairs={b.mounts.map(name =>
+                      arcs.foeMountNamePairs?.[arcs.foeMounts?.indexOf(name) ?? -1] ?? [name, name])} /> : null}
                   </>,
                 )}
               >
@@ -2488,9 +2482,7 @@ const meSpeedRef = useRef(200)
                 {...hoverTipProps(
                   <>
                     <span className="app-ship-hover-title">{tr("ui.BattleScreen.061")}</span>
-                    <div className="app-info-note">
-                      {tr("ui.BattleScreen.091", { p1: foeMountsTipOf(arcs.foeMounts, arcs.foeMountNamePairs) })}
-                    </div>
+                    <BattleMountLines names={arcs.foeMounts} pairs={arcs.foeMountNamePairs} />
                   </>,
                 )}
               >
@@ -2522,99 +2514,7 @@ const meSpeedRef = useRef(200)
               </span>
             ) : null}
           </div>
-          {/* 装填冷却平铺（距离条窗口上方）：每件武器一格——色点 + 名称 + 冷却条 + 倒计时/就绪 */}
-          <div className="app-bts-reloads">
-            {arcs.me.map((w, wi) => {
-              const remain = arcs.meReload[wi] ?? 0
-              const ready = remain <= 0
-              /**
-               * **无人机条目要看"还剩几架"**（**2026-09-26 玩家报障**：「无人机显示就绪不会开火，
-               * 但是无人机实际上已经被打掉了」）：冷却条只反映装填周期，**机群全灭时它照样会归零**
-               * ⇒ 那一格若继续写「就绪」，玩家会以为马上开火。存活架数取**视图锚（主控）那条舰**的
-               * `drones`（与画机体同一份读数、按 artId 归并）⇒ 打光 = 0。
-               */
-              const aliveHere =
-                w.src === 'drone' && w.artId !== undefined
-                  ? (leaderDrones.find((d) => d.artId === w.artId)?.count ?? 0)
-                  : null
-              const lost = aliveHere === 0
-              const pct = lost
-                ? 0
-                : ready
-                  ? 100
-                  : Math.min(100, Math.max(0, ((w.reloadMs - remain) / Math.max(1, w.reloadMs)) * 100))
-              const dotColor = lost ? 'rgb(var(--wui-dim))' : w.type ? DMG_COLOR[w.type] : 'rgb(var(--wui-dim))'
-              return (
-                <span
-                  key={`rl${wi}`}
-                  className={`app-bts-reload${lost ? " is-lost" : ready ? " is-ready" : ""}`}
-                  title={
-                    lost
-                      ? tr("ui.BattleScreen.110", { p1: w.label })
-                      : aliveHere !== null && aliveHere < (w.count ?? aliveHere)
-                        ? tr("ui.BattleScreen.111", {
-                            p1: w.label,
-                            p2: String(aliveHere),
-                            p3: String(w.count ?? aliveHere),
-                          })
-                        : ready
-                          ? tr("ui.BattleScreen.092", { p1: w.label })
-                          : tr("ui.BattleScreen.093", { p1: w.label, p2: Math.max(0.1, Math.ceil(remain / 100) / 10) })
-                  }
-                >
-                  <i className="app-bts-reload-dot" style={{ background: dotColor }} />
-                  <span className="app-bts-reload-name">{w.label}</span>
-                  <span className="app-bts-reload-track">
-                    <i
-                      className="app-bts-reload-fill"
-                      style={{
-                        width: `${pct}%`,
-                        background: lost ? 'rgb(var(--wui-dim))' : ready ? 'rgb(var(--wui-heal))' : dotColor,
-                      }}
-                    />
-                  </span>
-                  <span className="app-bts-reload-ms">
-                    {lost
-                      ? tr("ui.BattleScreen.109")
-                      : ready
-                        ? tr("ui.BattleScreen.067")
-                        : `${Math.max(0.1, Math.ceil(remain / 100) / 10)}s`}
-                  </span>
-                </span>
-              )
-            })}
-            {/* 推进器周期状态（2026-09-10 船长定：点火 60 秒 / 冷却 60 秒 / 开场即点火）——
-                复刻同级"装填冷却"格结构（色点 + 名称 + 冷却条 + 倒计时/就绪） */}
-            {thruster && arcs && arcs.thrusterBoost > 0 ? (
-              <span
-                className={`app-bts-reload${thruster.boosting ? " is-ready" : ""}`}
-                title={
-                  thruster.boosting
-                    ? tr("ui.BattleScreen.094", { p1: Math.round(arcs.thrusterBoost * 100), p2: Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10) })
-                    : tr("ui.BattleScreen.095", { p1: Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10) })
-                }
-              >
-                <i className="app-bts-reload-dot" style={{ background: thruster.boosting ? 'rgb(var(--wui-heal))' : 'rgb(var(--wui-dim))' }} />
-                <span className="app-bts-reload-name">{tr("ui.BattleScreen.004")}</span>
-                <span className="app-bts-reload-track">
-                  <i
-                    className="app-bts-reload-fill"
-                    style={{
-                      width: `${
-                        thruster.boosting
-                          ? 100
-                          : Math.min(100, Math.max(0, (1 - thruster.remainMs / Math.max(1, engine.ctx.balance.battle.thrusterCooldownMs)) * 100))
-                      }%`,
-                      background: thruster.boosting ? 'rgb(var(--wui-heal))' : 'rgb(var(--wui-dim))',
-                    }}
-                  />
-                </span>
-                <span className="app-bts-reload-ms">
-                  {thruster.boosting ? tr("ui.BattleScreen.096", { p1: Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10) }) : `${Math.max(0.1, Math.ceil(thruster.remainMs / 100) / 10)}s`}
-                </span>
-              </span>
-            ) : null}
-          </div>
+          <BattleCycles weapons={arcs.weapons} devices={arcs.devices} />
         </div>
       </div>
 

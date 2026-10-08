@@ -84,6 +84,8 @@ describe('全舰单发伤害光环（指挥舰 +15%）', () => {
     const run = (aura: number): number => {
       const { state, ctx, ids } = world({ leadAura: aura })
       const battle = startFleetBattleFor(state, ctx, ids, 'ano-x', 0)!
+      // 隔离每拍光环重建，开场装填由独立专项覆盖。
+      for (const u of Object.values(battle.units)) if (u.side === 'me') u.weapons = u.weapons.map(() => 0)
       for (let i = 0; i < 3; i++) {
         battle.distanceM = 1_000
         state.gameMs += 100
