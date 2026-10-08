@@ -34,6 +34,12 @@ case 名（即该档服务的唯一测试用途），格式固定为 `test-save-
 
 ## 档案清单
 
+### 新星系即用档（stellar-ready）
+- 生成：`npx tsx tools/make-test-save.ts stellar-ready`，全新合成档，不读取个人档。
+- 文件：`test-save-stellar-ready-20261008.json`，六类星系、30架探测机、满级专属技能、生存基地与两艘运输舰。
+- 直接体验：备份当前进度→导入测试档→开启本机调试→导航“星系星图”；完整门槛和操作见`stellar-ready-20261008.md`。
+- 原`stellar-search`流程档保留；本档开启测试1秒化制造／搜索，不用于正常工期或经济读数。
+
 ### 深空星系与并列战损（stellar-search）
 - 生成：`npx tsx tools/make-test-save.ts stellar-search`，全新合成档，不读取或备份个人档。
 - 文件：`test-save-stellar-search-20261007.json`；未预先取得探测机或星系，仓库备有3架探测机材料。
