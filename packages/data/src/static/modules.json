@@ -1173,7 +1173,7 @@
         "rack": "mid",
         "blink": {
           "distanceM": 2000,
-          "cooldownMs": 12000
+          "cooldownMs": 16000
         },
         "cpuUse": 40
       },

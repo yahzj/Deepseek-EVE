@@ -4116,7 +4116,7 @@ function aloftDroneSet(
  * ⚠ 多闪几次才归位 = **闪烁过载的结构代价真的按次计**（每闪一次扣上限 5%）——这正是该件设计意图。
  *
  * @param curM 当前交战距离
- * @param wantM 目标距离（敌 = 它自己的期望交战距离；我 = 朝远离侧拉开）
+ * @param wantM 目标距离，敌我各自使用自身期望交战距离。
  * @param stepM 单次位移上限（= 件上的 `blink.distanceM`）
  * @param minM 交战距离下限、`maxM` 战场最大距离（两端都钳）
  * @returns 跳完之后应该站在哪；**与 `curM` 相同 = 跳不动**（调用方据此不白盖冷却）
@@ -4420,16 +4420,15 @@ function meBurstReloadOf(
 }
 
 /**
- * **我方「跃迁规避装置」的闪现触发器**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
- * 但是冷却时间延长到12秒。」）——只由"**敌方舰炮命中我方舰船本体**"调用
+ * **我方「跃迁规避装置」的闪现触发器**，按船长裁定朝自身期望距离移动，冷却读取装备。
+ * 只由"**敌方舰炮命中我方舰船本体**"调用
  * （打我方无人机不算、未命中不算；与敌方那件的受击钩子同口径）。
  *
  * **口径与敌方那件统一**（**船长 2026-10-01**：「**与敌舰统一口径**」）⇒ 两件都走同一条 `blinkStep`
  * （**朝目标走一跳、单次不超过件上的 `distanceM`**）。两件**只差"目标"这一项**：
  * - 敌方：目标是**它自己的期望交战距离**（它往它想站的位置闪）；
- * - 我方：目标是**朝远离敌人一侧拉开**（本件是玩家自己的保命件 ⇒ "挨打换一口气"）。
+ * - 我方：目标是玩家当前期望交战距离，朝自身目标走一跳。
  *
- * 拉开后引擎的走位逻辑会按 `myDesireM` 逐拍把我方拉回去 ⇒ 净效果 = "挨打换一口气"。
  * 突变受既有钳制（`bal.minDistanceM` 与战场最大距离）；**闪不动时不白耗冷却**。
  *
  * @returns 本次是否真的闪了（供画面提示与闪现动画用）
@@ -4445,8 +4444,8 @@ function markMeBlink(
   if (bl === undefined || bl.distanceM <= 0 || bl.cooldownMs <= 0) return false
   const nowMs = b.lastTickGameMs
   if (nowMs < (b.meBlinks?.[tag] ?? 0)) return false // 冷却中 ⇒ 再挨打也不闪
-  const landed = blinkStep(b.distanceM, b.distanceM + bl.distanceM, bl.distanceM, bal.minDistanceM, maxDistanceM)
-  if (landed === b.distanceM) return false // 已被钳到边界 ⇒ 闪不动（不白盖冷却）
+  const landed = blinkStep(b.distanceM, b.myDesireM, bl.distanceM, bal.minDistanceM, maxDistanceM)
+  if (landed === Math.round(b.distanceM)) return false // 无实际位移，不白盖冷却。
   /** 记账起点 = **取整后的位置**（与 `blinkStep` 内部同一把尺；理由同 `markFoeBlink` 那处） */
   const from = Math.round(b.distanceM)
   if (!b.meBlinks) b.meBlinks = {}
@@ -5368,8 +5367,7 @@ function stepBattle(
         const beamDealt = Math.max(0, beamBefore - (gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h))
         pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: true, ...(beamDealt > 0 ? { dmg: beamDealt } : {}) })
         /**
-         * **我方「跃迁规避装置」触发点**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
-         * 但是冷却时间延长到12秒。」）—— **敌方舰炮命中我方舰船本体**这一支（打我方无人机不算、
+         * **我方「跃迁规避装置」触发点**，沿用受击触发规则。**敌方舰炮命中我方舰船本体**这一支（打我方无人机不算、
          * 未命中不算，与敌方那两件受击挂载件同一钩子口径）。
          */
         if (
@@ -5419,12 +5417,11 @@ function stepBattle(
       }
       pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: fHit, ...(gunDealt > 0 ? { dmg: gunDealt } : {}) })
         /**
-         * **我方「跃迁规避装置」触发点**（**船长 2026-10-01 令**：「闪现装置为中槽，和R族同款，挨打触发闪现。
-         * 但是冷却时间延长到12秒。」）—— **敌方舰炮命中我方舰船本体**这一支（打我方无人机不算、
+         * **我方「跃迁规避装置」触发点**，沿用受击触发规则。**敌方舰炮命中我方舰船本体**这一支（打我方无人机不算、
          * 未命中不算，与敌方那两件受击挂载件同一钩子口径）。
          */
         if (
-          markMeBlink(gtgt.spec, gtgt.spec.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits))
+          fHit && markMeBlink(gtgt.spec, gtgt.spec.tag, b, bal, battleMaxDistanceM(b, me, foes, bal, myUnits))
         ) {
           /** ⚠ 同上：演出事件由 `markMeBlink` 内部推（带 `atMs`/`speedX`），这里只留画面提示。 */
           pushBattleNotice(b, '跃迁规避：本舰瞬时换位')

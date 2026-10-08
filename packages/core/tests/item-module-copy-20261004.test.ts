@@ -51,6 +51,7 @@ describe('物品装备说明双语与数据守恒', () => {
     const strip = (entries: typeof MODULES) => entries.map(({ description: _description, ...rest }) => rest)
     const adjusted = before.map(mod => {
       if (mod.id === 'mod-wh-e-cpu') return { ...mod, reloadPenaltyPct: .08 }
+      if (mod.id === 'mod-lair-blink-r') return { ...mod, blink: { ...mod.blink!, cooldownMs: 16000 } }
       return mod.id === 'mod-wh-a-hangar' ? { ...mod, droneCycleCutPct: .2 } : mod
     })
     expect(strip(MODULES)).toEqual(strip(adjusted))
@@ -160,7 +161,7 @@ describe('真实参数行承接说明数字', () => {
     expect(rowsOf('mod-lair-beam-r')).toContain('3 发')
     expect(rowsOf('mod-lair-beam-r')).toContain('0.1 秒')
     expect(rowsOf('mod-lair-blink-r')).toContain('2000 m')
-    expect(rowsOf('mod-lair-blink-r')).toContain('12 秒')
+    expect(rowsOf('mod-lair-blink-r')).toContain('16 秒')
     expect(rowsOf('mod-lair-laser-r')).toContain('0.6')
     expect(rowsOf('mod-shieldchg-2')).toContain('20%')
     expect(rowsOf('mod-shieldfield-3')).toContain('8')

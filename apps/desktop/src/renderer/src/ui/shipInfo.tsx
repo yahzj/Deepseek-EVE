@@ -570,6 +570,7 @@ export function moduleShortEffect(mod: ModuleDef): string {
        * 这里补它自己那一段（拉开距离 + 冷却），否则短行一句话都没有（`content:check` 的短效说明契约会判红）。
        */
       if (mod.blink) {
+        // ⟪文案调整 2026-10-08⟫ 玩家朝期望交距闪现，参数仍从本件读取。
         parts.push(
           tr("ui.shipInfo.247", {
             p1: (mod.blink.distanceM / 1000).toFixed(mod.blink.distanceM % 1000 === 0 ? 0 : 1),

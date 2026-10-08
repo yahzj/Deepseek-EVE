@@ -82,11 +82,11 @@ describe('R 族势力特色装备：件定义', () => {
     )
   })
 
-  it('② 跃迁规避装置 = 中槽单件 · 拉开 2km · 冷却 12 秒（比敌方的 5 秒长）', () => {
+  it('② 跃迁规避装置 = 中槽单件，朝期望距离最多2km，冷却16秒', () => {
     const m = modOf(BLINK)!
     expect(m, '件应在装备目录里').toBeTruthy()
     expect(m.rack, '船长：闪现装置为中槽').toBe('mid')
-    expect(m.blink, '与 R 族同款、冷却延长到 12 秒').toEqual({ distanceM: 2000, cooldownMs: 12_000 })
+    expect(m.blink, '玩家16秒，敌方12秒保持').toEqual({ distanceM: 2000, cooldownMs: 16_000 })
     expect(m.speedBonusPct, '它不是提速推进器（契约已开口子）').toBeUndefined()
     console.log(`  [读数] 跃迁规避装置：${m.rack} 槽 · 拉开 ${m.blink!.distanceM}m · 冷却 ${m.blink!.cooldownMs / 1000}s`)
   })
@@ -99,7 +99,7 @@ describe('R 族势力特色装备：装备 → 单位字段（建档接线）', 
     const laser = spec.weapons.find((w) => w.overlayDrive !== undefined)
     expect(laser, '激光那条武器应带 overlayDrive').toBeTruthy()
     expect(laser!.overlayDrive).toEqual({ stepMs: 300, floorMs: 600 })
-    expect(spec.meBlink, '单位应带 meBlink').toEqual({ distanceM: 2000, cooldownMs: 12_000 })
+    expect(spec.meBlink, '单位应带 meBlink').toEqual({ distanceM: 2000, cooldownMs: 16_000 })
     console.log(
       `  [读数] 建档：武器「${laser!.label}」overlayDrive=${JSON.stringify(laser!.overlayDrive)} · ` +
         `meBlink=${JSON.stringify(spec.meBlink)}`,
@@ -185,7 +185,7 @@ describe('R 族势力特色装备：真实战斗', () => {
     )
   })
 
-  it('⑥ 跃迁规避装置：挨打即拉开，冷却戳 = 触发时刻 + 12 秒', () => {
+  it('⑥ 跃迁规避装置：挨打朝期望距离，冷却戳为触发时刻加16秒', () => {
     const { b, tick } = battleOf(8, { high: ['mod-turret-kin-2'], mid: [BLINK] })
     let sawBlink = false
     /**
@@ -202,7 +202,8 @@ describe('R 族势力特色装备：真实战斗', () => {
         const tag = Object.keys(b.meBlinks ?? {})[0]!
         const seg = b.meBlinkQueue?.[tag]
         expect(seg, '我方闪现应排进 `meBlinkQueue`（§35：三段演出与光柱都靠它）').toBeTruthy()
-        expect(seg!.to, '闪现应把我方与敌方的距离拉开（这一跳的终点 > 起点）').toBeGreaterThan(seg!.from)
+        expect(Math.abs(seg!.to - b.myDesireM)).toBeLessThan(Math.abs(seg!.from - b.myDesireM))
+        expect(Math.abs(seg!.to - seg!.from)).toBeLessThanOrEqual(2000)
         expect(seg!.appearMs - seg!.vanishMs, '单段演出时长应等于旋钮').toBe(ctx.balance.battle.foeBlinkProcessMs)
         /**
          * ⚠ **裁定 2甲的守卫**：触发那一拍位移**还没兑现**（旧口径是"触发即写"）。
@@ -210,7 +211,7 @@ describe('R 族势力特色装备：真实战斗', () => {
          * "位移推迟到 `moveAtMs`"。
          */
         expect(b.distanceM, '触发那一拍不应已经换位（位移推迟到 moveAtMs）').not.toBe(seg!.to)
-        for (const v of stamps) expect((v - 12_000) % 100, '冷却戳 = 触发时刻 + 12 秒（引擎基本步长 100ms）').toBe(0)
+        for (const v of stamps) expect((v - 16_000) % 100, '冷却戳 = 触发时刻加16秒').toBe(0)
         break
       }
     }

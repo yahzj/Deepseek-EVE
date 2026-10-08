@@ -745,7 +745,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "mod.copy.063": { zh: "编队电子战装置，持续压制敌方武器射程，与电子舰压制叠加；低于压制下限的基础射程不受影响。", en: "A squad electronic warfare unit continuously suppressing enemy weapon range and stacking with electronic hull suppression; base ranges below the suppression floor are unaffected." },
   "mod.copy.064": { zh: "周期捕获网，降低一艘敌舰机动，使其推进器熄火、闪避失效；目标击沉、超出断开距离或施网舰击沉后解除。", en: "A cycling capture web reducing one enemy ship's mobility and disabling its thrusters and evasion; ends when the target is sunk, exceeds break range, or the caster is sunk." },
   "mod.copy.065": { zh: "能量光束武器，必中；连续开火逐步缩短装填周期，缩短量有下限。", en: "An always-hit energy beam whose successive shots shorten reload time down to a fixed floor." },
-  "mod.copy.066": { zh: "被命中时短距跃迁，拉开交战距离；触发后进入冷却。", en: "Makes a short jump when hit to increase combat range, then enters cooldown." },
+  // ⟪文案调整 2026-10-08⟫ 玩家朝自身期望交距闪现，船长明确要求实现后合入。
+  "mod.copy.066": { zh: "被命中时朝期望交战距离短距跃迁；触发后进入冷却。", en: "Makes a short jump toward the desired engagement range when hit, then enters cooldown." },
   "mod.copy.067": { zh: "能量光束武器，每轮连续射击；必中，威力随距离衰减。", en: "An energy beam firing a burst each cycle; always hits with power falloff at range." },
   "mod.copy.068": { zh: "能量点防光束，必中；可攻击敌方机群，对机群不受对舰距离衰减影响。", en: "Always-hit energy point defense capable of attacking enemy drones without the ship-range damage falloff." },
   "mod.copy.069": { zh: "爆炸破片武器，额外附带动能伤害；命中随距离衰减，额外伤害不改变消耗弹种。", en: "An explosive fragment weapon adding kinetic damage; accuracy falls with range and the additional damage does not change ammunition consumed." },
@@ -5981,7 +5982,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.245": { zh: "不会被网子选为目标", en: "Cannot be targeted by webs" },
   // **R 族势力特色装备**（船长 2026-10-01 令）：叠光激光炮的"装填自加速"与跃迁规避装置的"挨打闪现"
   "ui.shipInfo.246": { zh: "装填 {p1} 秒，每次开火缩短 {p2} 秒，最低 {p3} 秒", en: "Reload {p1}s; each shot cuts {p2}s, down to {p3}s" },
-  "ui.shipInfo.247": { zh: "被命中时拉开交战距离 {p1} km；冷却 {p2} 秒", en: "When hit, opens engagement range by {p1} km; {p2}s cooldown" },
+  // ⟪文案调整 2026-10-08⟫ 单跳上限与冷却读取本件参数，不再写固定拉远。
+  "ui.shipInfo.247": { zh: "被命中时朝期望距离闪现，单次最多 {p1} km；冷却 {p2} 秒", en: "When hit, blinks toward the desired engagement range by up to {p1} km; {p2}s cooldown" },
   "ui.shipInfo.248": { zh: "{p1}：盾 {p2} · 甲 {p3} · 结构 {p4}", en: "{p1}: shield {p2} · armor {p3} · hull {p4}" },
 
   /* ── 沉船记录（2026-09-27 船长令：通讯内新增一个分类，记录玩家损失的舰船与当时的装配）── */  "ui.WreckLog.001": { zh: "沉船记录", en: "Ship Loss Log" },
