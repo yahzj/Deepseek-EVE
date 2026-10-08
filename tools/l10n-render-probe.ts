@@ -117,6 +117,21 @@ interface Fixture {
 
 const FIXTURES: Fixture[] = [
   {
+    name: '入侵循环·完成停止',
+    text: '外围与核心星系均已收复，重复出击已停止；旗舰需手动挑战。',
+    textId: 'core.invasionLoop.002', textParams: {},
+    expectZh: '外围与核心星系均已收复，重复出击已停止；旗舰需手动挑战。',
+    expectEn: 'All peripheral and core systems reclaimed. Repeat assault stopped; the flagship must be challenged manually.',
+  },
+  {
+    name: '入侵循环·暂停原因嵌套参数',
+    text: '重复出击已暂停：货仓剩余空间不足以装载「Brood Guard」的缴获——舰船已在母港，请卸货后重新开启讨伐。（当前 装甲 40% / 结构 60%）',
+    textId: 'core.invasionLoop.006',
+    textParams: { p1: '', p2: 40, p3: 60, p1Id: 'core.invasionLoop.011', p1p1: 'Brood Guard' },
+    expectZh: '重复出击已暂停：货仓剩余空间不足以装载「Brood Guard」的缴获——舰船已在母港，请卸货后重新开启讨伐。（当前 装甲 40% / 结构 60%）',
+    expectEn: 'Repeat assault paused: The hold cannot take the loot from “Brood Guard”. Unload at the station before restarting repeat assault. (armor 40% / hull 60%)',
+  },
+  {
     name: '事件·纯正文（无金额）',
     text: '✦ 深空漂流货柜被你的牵引光捕获，里面有一箱完好的电路板。',
     textId: 'core.events.001',

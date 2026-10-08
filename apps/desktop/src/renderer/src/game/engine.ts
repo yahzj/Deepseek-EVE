@@ -394,7 +394,7 @@ import { runPlanetaryCommand } from './planetaryCommands'
 import { DEEP_SPACE_SKILL_IDS, probeManufacturingUnlocked } from '@whale/core'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
-import { tr, cmdText, paramText } from '../i18n/locale'
+import { tr, cmdText, paramText, logText } from '../i18n/locale'
 /**
  * ⚠ **只借"档位名文案"这一个纯函数**（不起循环依赖：`labelsText` 不反向引 engine，见其文件头）——
  * 离线简报的 AI 核心作业行要按语言出档位名（**2026-09-30 批 5**）。
@@ -1059,7 +1059,8 @@ export class GameEngine {
     const loopStop = this.state.autoLoopStopNotice
     if (loopStop) {
       this.state.autoLoopStopNotice = null
-      if (this.onSystemNotice) this.onSystemNotice(loopStop)
+      const noticeLog = [...this.state.logs].reverse().find(log => log.text === loopStop && log.textId?.startsWith('core.invasionLoop.'))
+      if (this.onSystemNotice) this.onSystemNotice(noticeLog ? logText(noticeLog) : loopStop)
     }
     // 2026-09-10 追加：机群战损提示 state.droneLossNotice（无人机可被击落·永久损失制；
     // 战斗结算扣清单后写入，同一通道 toast 一次）
@@ -1486,7 +1487,7 @@ export class GameEngine {
     // 入侵「重复出击」（2026-09-25 船长令）：同一拍推进；出发走手动出击那条路（每场重抽 ＋ 星系覆写）
     if (autoLoopInvasionGalaxy(this.state) !== null) {
       const wasActive = this.state.expedition.active
-      const reason = advanceAutoLoopInvasion(this.state, this.ctx)
+      const reason = advanceAutoLoopInvasion(this.state, this.ctx, this.wallNowOf())
       if (!wasActive && this.state.expedition.active) this.autoSortie = true
       if (reason !== null || (!wasActive && this.state.expedition.active)) this.notify()
     }
@@ -4025,7 +4026,7 @@ export class GameEngine {
    * `galaxyId = null` ⇒ 停；否则 = 被占星系 id。与 `bountyLoopAt` **互斥**（开一边顶掉另一边）。
    */
   invasionLoopAt(galaxyId: string | null): CommandResult {
-    const result = setAutoLoopInvasion(this.state, this.ctx, galaxyId)
+    const result = setAutoLoopInvasion(this.state, this.ctx, galaxyId, this.wallNowOf())
     if (result.ok) {
       void this.persist()
       this.notify()

@@ -49,6 +49,7 @@ export function stopLabel(v: ActivityView): string {
     case 'cancel-deliver-trip':
       return tr('ui.ActivityBar.013')
     case 'stop-loop':
+    case 'stop-invasion-loop':
       return tr('ui.ActivityBar.032')
     case 'stop-hauling':
       return tr('ui.ActivityBar.014')

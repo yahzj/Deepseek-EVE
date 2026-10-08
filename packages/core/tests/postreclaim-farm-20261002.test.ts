@@ -7,7 +7,7 @@
  *
  * 本文件钉五件事（改前全部相反）：
  * ① **夺回不再关门**：`weekendZoneLiveAt`（旧名 `weekendOccupiedLiveAt`）不再要求进度 < 1
- *    ⇒ 夺回后仍可出击、板面仍换成入侵舰队卡、重复出击不再自动停；
+ *    ⇒ 夺回后仍可手动出击、板面仍换成入侵舰队卡；自动循环按2026-10-08确认转去下一处。
  * ② **半量惩罚**：`weekendWreckPenaltyFracOf` —— 已夺回 ⇒ 0.5、未夺回 ⇒ 1（出征注入那条路读它）；
  * ③ **不给其他奖励**：夺回后继续打**不涨进度台账**（`clamp01`）⇒ 结算里没有额外进度收入；
  * ④ **核心满之后"继续刷核心"算普通出击（`assault`），不是旗舰战**（否则每场会按旗舰掉落发稀有残骸）；
@@ -39,6 +39,7 @@ function setup(family = 'H'): { s: ReturnType<typeof createInitialState>; ev: We
   const now = Date.now()
   const s = createInitialState({ nowWallMs: now, seed: 20261002 })
   s.debugQuick = false
+  s.exploredGalaxies = [...ctx.galaxies.keys()]
   const ev: WeekendEventState = { seq: 1, startedAtWallMs: now, coreId: CORE, peripheryIds: [PER], family, contributed: {} }
   s.weekendEvent = ev
   return { s, ev }
@@ -79,12 +80,12 @@ describe('入侵 100% 后仍可继续刷（2026-10-02 船长令）', () => {
     expect(shown[0]!.id, '夺回后仍不是原卡（改前这里回落原卡）').not.toBe(base[0]!.id)
   })
 
-  it('①c 夺回后：重复出击不再自动停（只有"活动结束"这一条停）', () => {
+  it('①c 夺回后：手动可刷，自动循环切到未收复核心（2026-10-08确认）', () => {
     const { s, ev } = setup()
     expect(setAutoLoopInvasion(s, ctx, PER).ok).toBe(true)
     reclaim(ev, PER)
     expect(advanceAutoLoopInvasion(s, ctx), '夺回后不再返回停止原因').toBeNull()
-    expect(s.weekendEvent?.autoLoopGalaxyId, '目标照旧挂着').toBe(PER)
+    expect(s.weekendEvent?.autoLoopGalaxyId, '目标切换未收复核心').toBe(CORE)
   })
 
   it('② 半量惩罚：单点 0.5/1，且出征注入量按它减半', () => {

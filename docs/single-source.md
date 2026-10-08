@@ -89,6 +89,7 @@
 | 视口懒挂载（大列表流式加载） | `ui/LazyMount.tsx` | `industry:lag` 读数 ＋ 人工核 |
 | 活动栏「停止/取消」按钮文案（新版与旧版两套外壳共用） | `panels/activityStopLabel.ts` 的 `stopLabel()` | `arch:guard` F2（2026-09-27 收口 A1：原先两份逐字相同） |
 | 活动栏行「点击去哪」的跳转表（两套外壳共用） | `ui/activityGo.ts` 的 `goFor()` | `arch:guard` **F5 跳转目标契约**（2026-09-27 建：原先两份重复，快递那档跳到已删除的星图页签 ⇒ **空白页**） |
+| 入侵循环下一目标与实际抽卡冷却（在线/离线与活动栏同源） | `autoLoopInvasionPlanOf()` · `core/expedition.ts` | 入侵路线专项：外围顺序、核心后置、只读抽签、等待与进度一致；`arch:guard` F2/F3 |
 | 属性表拼装（装配页/图鉴/蓝图产物/舰队悬停四处） | `ui/shipInfo.tsx` 的行工厂 | `ui:attr-check` 的「同名两行」体检 |
 
 ## 四、工具与文档层（`tools/` · `docs/`）

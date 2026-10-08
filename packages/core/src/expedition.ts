@@ -18,11 +18,11 @@ import { weekendAssaultThreatOf, weekendFoeCardsSelfPriced } from './weekendEven
 /** 入侵「重复出击」（2026-09-25 船长令）：每场重抽一支 ＋ 目标星系覆写（去程/返航照常算） */
 import { weekendAssaultDrawOf, weekendNoteAssaultDispatch, weekendZoneLiveAt } from './weekendBounty'
 /** 已夺回的星系继续打 ⇒ 残骸半量（2026-10-02 船长令；折扣单点） */
-import { weekendWreckPenaltyFracOf } from './weekendEvent'
+import { weekendWreckPenaltyFracOf, weekendProgressAt, weekendClockOf } from './weekendEvent'
 import { rewardMulOf } from './tuning'
 import { bumpFirst } from './firstTasks'
 import { addLog, HOME_GALAXY_ID, shipLockedInWormhole } from './state'
-import { applyActivityGate } from './activityGate'
+import { applyActivityGate, manualSlotOf } from './activityGate'
 import type { CommandResult } from './engine'
 import type { GameState, BattleState } from './state'
 import type { AnomalyDef, SimContext, TravelEventDef } from './types'
@@ -442,7 +442,7 @@ export function bountyRewardFactor(state: GameState): number {
  * 目标数据 / 舰队 / 声望 / 星系探索 / 重复冷却 / 扫描 / 返港行程。
  * 不含"采矿/远征进行中"互斥（由各入口自己裁决）与起点可达性（由各入口按自身起点检查）。
  */
-function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: string): CommandResult {
+function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: string, galaxyId?: string): CommandResult {
   const anomaly = ctx.anomalies.get(anomalyId)
   if (!anomaly) return { ok: false, error: `未知目标：${anomalyId}。`, errorId: 'core.expedition.003', errorParams: { p1: anomalyId } }
   /** ⚠ `wormholePilotHoldReason` 已撤（2026-09-21 统一批）：扫描虫洞 = 可自动停、人在洞里 = 拒，都归 `activityGate` */
@@ -458,8 +458,8 @@ function expeditionPreflight(state: GameState, ctx: SimContext, anomalyId: strin
     }
   }
   // V13 探索封锁：目标星系未点亮（且非母港）→ 拒绝出发
-  const block = actionBlockReason(state, anomaly.galaxyId)
-  if (block) return { ok: false, error: block }
+  const block = actionBlockReason(state, galaxyId ?? anomaly.galaxyId)
+  if (block) return { ok: false, error: block, ...(galaxyId !== undefined ? { errorId: 'core.invasionLoop.008' } : {}) }
   // T8 重复冷却：同悬赏连续完成需要间隔（受该船扫描属性影响）
   const cd = bountyCooldownRemainingMs(state, anomalyId)
   if (cd > 0) {
@@ -482,7 +482,7 @@ export function startExpedition(
   ctx: SimContext,
   opts?: { desireM?: number; lairTier?: LairTier; foeGalaxyId?: string; rewardIskOverride?: number },
 ): CommandResult {
-  const pre = expeditionPreflight(state, ctx, anomalyId)
+  const pre = expeditionPreflight(state, ctx, anomalyId, opts?.foeGalaxyId)
   if (!pre.ok) return pre
   const anomaly = ctx.anomalies.get(anomalyId)!
   // 窝点校验：目标必须可作窝点（有核心词、非隐藏、非 B 族）。
@@ -514,7 +514,8 @@ export function startExpedition(
    * （2026-09-21 统一批顺手修正：原先它在航路校验之前清标记，校验失败也照清）。
    */
   const from = originGalaxyOf(state, ctx)
-  const outMinutes = shortestTravelMinutes(ctx, from, anomaly.galaxyId)
+  const targetGalaxy = opts?.foeGalaxyId ?? anomaly.galaxyId
+  const outMinutes = shortestTravelMinutes(ctx, from, targetGalaxy)
   if (!Number.isFinite(outMinutes)) return { ok: false, error: '目标星系不在已知航路内。', errorId: 'core.expedition.024' }
   const fromName = ctx.galaxies.get(from)?.name ?? from
   state.awayGalaxy = null
@@ -553,7 +554,7 @@ export function startExpedition(
   // 目标距离：本次显式传入 → 写进**目标星系**的设定；否则开战时读该星系的已有设定，
   // 该星系没设过则回落"主武器有效射程中点"（船长 2026-09-11：「如果没有，采用射程中段距离」）
   if (opts?.desireM !== undefined) {
-    setDesirePrefOf(state, anomaly.galaxyId, Math.max(ctx.balance.battle.minDistanceM, Math.round(opts.desireM)))
+    setDesirePrefOf(state, targetGalaxy, Math.max(ctx.balance.battle.minDistanceM, Math.round(opts.desireM)))
   }
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const outName = opts?.lairTier ? lairNameOf(anomaly, opts.lairTier) : anomaly.name
@@ -642,7 +643,7 @@ export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: stri
    * ⚠ H 族（独立卡）**不传**：它的卡面威胁就是实测价（90 / 108 / 129），覆写 78/120 只会把标签写假
    * （船长 2026-09-25「按照新规对 H 族调整」）；A/C/G 三族仍走 78 / 120 的占位口径。
    */
-  const weekendAssault = weekendBattleInvolvedOf(state, ctx, anomalyId, Date.now())
+  const weekendAssault = weekendBattleInvolvedOf(state, ctx, anomalyId, state.wallMs ?? Date.now())
   const weekendEv = state.weekendEvent
   const weekendThreat =
     weekendAssault && weekendEv && !weekendFoeCardsSelfPriced(weekendEv.family)
@@ -698,7 +699,8 @@ export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: stri
   }
   const anomaly = ctx.anomalies.get(anomalyId)
   // V13 探索：实际到港 → 点亮该星系（去程结束进入交火 = 已抵达）
-  if (anomaly?.galaxyId) markExplored(state, anomaly.galaxyId)
+  const actualGalaxy = exp.foeGalaxyId ?? anomaly?.galaxyId
+  if (actualGalaxy) markExplored(state, actualGalaxy)
   const loaded = battle.ammo.kin + battle.ammo.exp + battle.ammo.pla
   /**
    * **这艘船装了武器吗**（**2026-09-27 玩家报障修复**）：改用全仓单点 `shipHasWeapon` ——
@@ -739,7 +741,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     return
   }
   const won = battle.ended === 'me'
-  const galaxy = ctx.galaxies.get(anomaly.galaxyId)
+  const galaxy = ctx.galaxies.get(exp.foeGalaxyId ?? anomaly.galaxyId)
   // 赏金任务·窝点（2026-09-10）：本场是否打的是派生窝点，档位来自出击时锁定的 exp.lairTier。
   // 战报/奖金/残骸投放/失利维修费统一按"本场实际目标卡"走（窝点 = 主题悬赏按档位强化），
   // 避免"打了窝点却按主题悬赏报账"。普通悬赏 battleCard === anomaly，行为与旧版一致。
@@ -756,7 +758,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
    * 入侵场次**当场一分钱都不给**：收入改在活动结束时按进度统一结算
    * （`WEEKEND_PROGRESS_ISK_PER_PCT`），残骸也改记**独立池**（见下面的注入分支）。
    */
-  const weekendInvolved = weekendBattleInvolvedOf(state, ctx, anomaly.id, Date.now())
+  const weekendInvolved = weekendBattleInvolvedOf(state, ctx, anomaly.id, state.wallMs ?? Date.now())
   const isInvasion = weekendInvolved !== undefined
   const baseRewardIskRaw = isInvasion
     ? 0
@@ -880,7 +882,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
         weekendWreckInjectionOf(
           battleCard,
           state.weekendEvent !== undefined
-            ? weekendWreckPenaltyFracOf(state, state.weekendEvent, wreckGalaxyId, Date.now())
+            ? weekendWreckPenaltyFracOf(state, state.weekendEvent, wreckGalaxyId, state.wallMs ?? Date.now())
             : 1,
         )
       : bountyWreckInjection(wreckInjectThreatOf(battleCard), bountyEnemyCount(battleCard))
@@ -982,7 +984,8 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     exp.factionActive = undefined // 窝点一次性：结算完清档位，重复清剿回到主题悬赏（否则会无限复打窝点）
     exp.eventId = null
     exp.eventFired = false
-    const ret = returnBackMs(state, ctx, anomaly.galaxyId)
+    const targetGalaxy = exp.foeGalaxyId ?? anomaly.galaxyId
+    const ret = returnBackMs(state, ctx, targetGalaxy)
     const rawBackMs = ret.ms > 0 ? ret.ms : exp.outMs * RETURN_LEG_MUL
     /** **跃迁燃料**（2026-09-29）：按**原返航时长**（不含燃料）每秒扣 1 单位，本趟倍率存进 `exp.fuelMul` */
     exp.fuelMul = beginJumpFuelLeg(state, 'expedition', rawBackMs)
@@ -998,7 +1001,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     const endAt = Math.max(battle.startedAtGameMs, battle.lastTickGameMs)
     exp.returnAtGameMs = endAt
     exp.finishAtGameMs = endAt + backMs
-    if (ret.base === anomaly.galaxyId || anomaly.galaxyId === HOME_GALAXY_ID) {
+    if (ret.base === targetGalaxy || targetGalaxy === HOME_GALAXY_ID) {
       // 本地悬赏（2026-09-08 船长定）：目标星系即返航基准 → 固定返港段 120s，防零航程白刷
       addLog(
         state,
@@ -1020,6 +1023,9 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
     // 失利：扣耐久 + 弃船骰 + 维修费（沿用旧机制）；若正处于重复清剿环 → 停环
     if (state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === exp.anomalyId) {
       stopAutoLoopReason(state, '本次出击失利，舰队自动返航（可修整后再开）。')
+    }
+    if (autoLoopInvasionGalaxy(state) !== null && exp.foeGalaxyId !== undefined) {
+      stopAutoLoopInvasion(state, '本次出击失利，舰队自动返航。', 'core.invasionLoop.004')
     }
     const bal = ctx.balance.combat
     const loss = bal.durabilityLossMin + (bal.durabilityLossMax - bal.durabilityLossMin) * nextRandom(state.rng)
@@ -1080,7 +1086,7 @@ export function resolveBattleOutcome(state: GameState, ctx: SimContext): void {
   // 返航计时起点 = 战斗停表时刻（2026-09-09 修复：同胜利路径——离线大步长下不让离线剩余浪费）
   const endAtD = Math.max(battle.startedAtGameMs, battle.lastTickGameMs)
   exp.returnAtGameMs = endAtD
-  const retD = returnBackMs(state, ctx, anomaly.galaxyId)
+  const retD = returnBackMs(state, ctx, exp.foeGalaxyId ?? anomaly.galaxyId)
   const rawBackD = retD.ms > 0 ? retD.ms : exp.outMs * RETURN_LEG_MUL
   /** 跃迁燃料（同胜利路径；失利返航照吃 —— 玩家开的是"这个活动用燃料"，不是"打赢才用"） */
   exp.fuelMul = beginJumpFuelLeg(state, 'expedition', rawBackD)
@@ -1144,7 +1150,7 @@ function settleBattleRetreat(
     if (ev !== undefined && ev.endedAtWallMs === undefined && galaxyId !== undefined) {
       const isFlagship =
         exp.anomalyId !== null && exp.anomalyId === weekendFoeCardOf(ev.family, 'flagship') && galaxyId === ev.coreId
-      weekendApplyBattleOutcome(state, ctx, exp.anomalyId ?? null, false, Date.now(), battle, {
+      weekendApplyBattleOutcome(state, ctx, exp.anomalyId ?? null, false, state.wallMs ?? Date.now(), battle, {
         kind: isFlagship ? 'flagship' : 'assault',
         galaxyId,
         source: 'battle',
@@ -1260,6 +1266,9 @@ function settleBattleRetreat(
     // 2026-09-10 船长定：除事件日志外，玩家在线时弹窗告知（心跳读取即清）
     if (mode === 'auto' || mode === 'cannot-engage') state.autoLoopStopNotice = text
   }
+  if (autoLoopInvasionGalaxy(state) !== null && exp.foeGalaxyId !== undefined) {
+    stopAutoLoopInvasion(state, '本次出击已撤离，修整后可重新开启。', 'core.invasionLoop.005')
+  }
   // 转返航（2026-09-08：基准 = 目标星系最近已建成站；本地 = 固定 120s；沿用失利返回流程）
   exp.battle = null
   exp.lairTier = undefined
@@ -1278,7 +1287,7 @@ function settleBattleRetreat(
     addLog(state, 'combat', '舰队脱离战场，即刻返回最近的空间站。', 'core.expedition.028')
     return
   }
-  const retR = anomaly ? returnBackMs(state, ctx, anomaly.galaxyId) : { ms: 0, base: HOME_GALAXY_ID }
+  const retR = anomaly ? returnBackMs(state, ctx, exp.foeGalaxyId ?? anomaly.galaxyId) : { ms: 0, base: HOME_GALAXY_ID }
   const rawBackR = retR.ms > 0 ? retR.ms : exp.outMs * RETURN_LEG_MUL
   exp.fuelMul = beginJumpFuelLeg(state, 'expedition', rawBackR)
   exp.finishAtGameMs = endAtR + jumpFuelLegMsOf(rawBackR, exp.fuelMul)
@@ -1378,7 +1387,7 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
           ctx,
           state.expedition.anomalyId ?? null,
           state.expedition.battle?.ended === 'me',
-          Date.now(),
+          state.wallMs ?? Date.now(),
           state.expedition.battle, // 2026-09-24：旗舰 BOSS 要按它量"这一场对母舰的伤害"
         )
         resolveBattleOutcome(state, ctx)
@@ -1390,7 +1399,7 @@ export function advanceExpedition(state: GameState, ctx: SimContext, freezeBattl
     // 2026-09-08 船长再定：任何进港时刻自动整仓卸货入仓库）
     if (state.gameMs < exp.finishAtGameMs) return
     const wasVictoryReturn = exp.returnReason === 'victory'
-    const targetGal = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId)?.galaxyId ?? null : null
+    const targetGal = exp.foeGalaxyId ?? (exp.anomalyId ? ctx.anomalies.get(exp.anomalyId)?.galaxyId ?? null : null)
     const base = targetGal !== null ? returnBaseGalaxy(state, ctx, targetGal) : HOME_GALAXY_ID
     landAtReturnBase(state, ctx, base)
     const moved = unloadCargoOfShipToWarehouse(state, ctx, state.shipId) // 进港自动卸货（战利品/残货）
@@ -1684,9 +1693,9 @@ function autoLoopPreflight(
   ctx: SimContext,
   cardName: string,
   lootM3: number,
-): { notice: string; reason: string } | null {
+): { notice: string; reason: string; noticeId?: string; noticeParams?: Record<string, string | number> } | null {
   const fleetShip = state.fleet[state.shipId]
-  if (!fleetShip) return { notice: '舰队里找不到当前舰船。', reason: '舰队里找不到当前舰船' }
+  if (!fleetShip) return { notice: '舰队里找不到当前舰船。', reason: '舰队里找不到当前舰船', noticeId: 'core.shipyard.007' }
   if ((fleetShip.armorPct ?? 1) < 0.5 || fleetShip.durability < 0.5) {
     const rep = repairWithKits(state, ctx, 0.6)
     const fs = state.fleet[state.shipId]
@@ -1696,11 +1705,13 @@ function autoLoopPreflight(
           notice:
             '装甲或结构低于 50%：自动修补需要该船装着船体维修装置（中槽）——装上装置并带够对应组件，或先到空间站付费维修。',
           reason: '耐久不足（装甲或结构低于 50%）且未装船体维修装置',
+          noticeId: 'core.invasionLoop.009',
         }
       }
       return {
         notice: '装甲或结构低于 50% 且货仓修理组件不足——请先到空间站付费维修（或补充修理组件）再开启。',
         reason: '耐久不足（装甲或结构低于 50%）且修理组件耗尽',
+        noticeId: 'core.invasionLoop.010',
       }
     }
   }
@@ -1708,6 +1719,7 @@ function autoLoopPreflight(
     return {
       notice: `货仓剩余空间不足以装载「${cardName}」的缴获——舰船已在母港，请卸货后重新开启讨伐。`,
       reason: '货仓空间不足',
+      noticeId: 'core.invasionLoop.011', noticeParams: { p1: cardName },
     }
   }
   return null
@@ -1723,8 +1735,7 @@ function autoLoopPreflight(
  *   传给 `startExpedition`）⇒ **去程/返航时间照目标星系正常计算**（即船长那句"照常计算返回时间"），
  *   赏金按入侵口径为 0。
  *
- * 落档：目标存在 `state.weekendEvent.autoLoopGalaxyId`（可选字段，**不动存档结构版本**）；
- * 活动结束/换周时整个 `weekendEvent` 被换掉 ⇒ 循环天然结束。
+ * 落档仍只记当前星系；收复后依次切换外围、最后核心，不自动挑战旗舰。
  */
 
 /** 入侵「重复出击」的循环目标（= 被占星系 id；null = 没开） */
@@ -1733,14 +1744,48 @@ export function autoLoopInvasionGalaxy(state: GameState): string | null {
   return typeof gid === 'string' && gid.length > 0 ? gid : null
 }
 
+/** 只读预览下一次实际出击；活动栏与在线/离线驱动共用，不消费抽签。 */
+export function autoLoopInvasionPlanOf(
+  state: GameState,
+  ctx: SimContext,
+  nowWallMs: number = weekendClockOf(state),
+  requestedGalaxyId: string | null = autoLoopInvasionGalaxy(state),
+) {
+  const ev = state.weekendEvent
+  if (requestedGalaxyId === null) return { status: 'off' as const, galaxyId: null }
+  if (!ev || ev.endedAtWallMs !== undefined) return { status: 'ended' as const, galaxyId: null }
+  if (!weekendZoneLiveAt(state, requestedGalaxyId, nowWallMs)) return { status: 'invalid' as const, galaxyId: null }
+  const remaining = ev.peripheryIds.filter(id => weekendProgressAt(state, ev, id, nowWallMs) < 1)
+  const galaxyId = remaining.length > 0
+    ? remaining.includes(requestedGalaxyId) ? requestedGalaxyId : remaining[0]!
+    : weekendProgressAt(state, ev, ev.coreId, nowWallMs) < 1 ? ev.coreId : null
+  if (galaxyId === null) return { status: 'complete' as const, galaxyId: null }
+  const dispatch = weekendAssaultDrawOf(state, ctx, galaxyId, nowWallMs)
+  if (!dispatch) return { status: 'invalid' as const, galaxyId: null }
+  const remainingMs = bountyCooldownRemainingMs(state, dispatch.cardId)
+  const totalMs = Math.max(1, bountyCooldownMsFor(state, ctx))
+  return {
+    status: 'ready' as const,
+    galaxyId,
+    dispatch,
+    remainingMs,
+    percent: remainingMs > 0 ? Math.min(100, Math.max(0, Math.round((1 - remainingMs / totalMs) * 100))) : null,
+    waitFor: autoLoopWaitLabel(state) ?? (manualSlotOf(state) === 'lab' ? '实验室作业' : null),
+  }
+}
+
 /** 停环并记录原因（与 `stopAutoLoopReason` 同款：日志 ＋ 在线一次性提示） */
-function stopAutoLoopInvasion(state: GameState, reason: string): void {
+function stopAutoLoopInvasion(state: GameState, reason: string, reasonId?: string, reasonParams?: Record<string, string | number>): void {
   if (state.weekendEvent) delete state.weekendEvent.autoLoopGalaxyId
   const fs = state.fleet[state.shipId]
   const armorPct = Math.round((fs?.armorPct ?? 1) * 100)
   const structPct = Math.round((fs?.durability ?? 1) * 100)
   const text = `重复出击已暂停：${reason}（当前 装甲 ${armorPct}% / 结构 ${structPct}%）`
-  addLog(state, 'combat', text)
+  addLog(state, 'combat', text, 'core.invasionLoop.006', {
+    p1: reason, p2: armorPct, p3: structPct,
+    ...(reasonId ? { p1Id: reasonId } : {}),
+    ...Object.fromEntries(Object.entries(reasonParams ?? {}).map(([key, value]) => [`p1${key}`, value])),
+  })
   state.autoLoopStopNotice = text
 }
 
@@ -1748,7 +1793,7 @@ function stopAutoLoopInvasion(state: GameState, reason: string): void {
  * 开关：`galaxyId = null` ⇒ 停；否则要求该星系**当前仍被入侵**（活动未结束）。
  * 开启时**清掉常驻悬赏那条环**——两者都要占主控，同一时间只跑一条。
  */
-export function setAutoLoopInvasion(state: GameState, ctx: SimContext, galaxyId: string | null): CommandResult {
+export function setAutoLoopInvasion(state: GameState, ctx: SimContext, galaxyId: string | null, nowWallMs = weekendClockOf(state)): CommandResult {
   const ev = state.weekendEvent
   if (galaxyId === null) {
     if (ev) delete ev.autoLoopGalaxyId
@@ -1758,20 +1803,24 @@ export function setAutoLoopInvasion(state: GameState, ctx: SimContext, galaxyId:
   if (!ev || ev.endedAtWallMs !== undefined) {
     return { ok: false, error: '入侵活动已结束。', errorId: 'core.weekend.030' }
   }
-  if (!weekendZoneLiveAt(state, galaxyId, Date.now())) {
+  if (!weekendZoneLiveAt(state, galaxyId, nowWallMs)) {
     return { ok: false, error: '该星系当前没有被入侵。', errorId: 'core.weekend.031' }
   }
+  const plan = autoLoopInvasionPlanOf(state, ctx, nowWallMs, galaxyId)
+  if (plan.status === 'complete') return { ok: false, error: '外围与核心星系均已收复，旗舰需手动挑战。', errorId: 'core.invasionLoop.007' }
+  if (plan.status !== 'ready') return { ok: false, error: '该星系当前没有被入侵。', errorId: 'core.weekend.031' }
   if (state.autoLoopAnomalyId !== null) {
     state.autoLoopAnomalyId = null
     state.autoLoopDroneFloor = null
     addLog(state, 'combat', '已停止常驻悬赏的重复清剿——改跑入侵重复出击。', 'core.weekend.032')
   }
-  ev.autoLoopGalaxyId = galaxyId
-  const name = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
+  ev.autoLoopGalaxyId = plan.galaxyId
+  const name = ctx.galaxies.get(plan.galaxyId)?.name ?? plan.galaxyId
   addLog(
     state,
     'combat',
-    `重复出击已开启：「${name}」的入侵舰队，每场重抽一支；该星系被夺回或活动结束时自动停止。`,
+    // ⟪文案调整 2026-10-08⟫ 收复后自动切换外围和核心，不自动挑战旗舰。
+    `重复出击已开启，从「${name}」开始；收复后自动切换，先外围、后核心，不自动挑战旗舰。`,
     'core.weekend.033',
     { p1: name },
   )
@@ -1782,20 +1831,40 @@ export function setAutoLoopInvasion(state: GameState, ctx: SimContext, galaxyId:
  * 推进（在线心跳调用）。返回 `null` = 继续等待/已再出发；否则 = 停止原因。
  * 顺序与常驻悬赏那条一致：活动/占领态 → 等待表 → 冷却 → 两道门槛 → 出发。
  */
-export function advanceAutoLoopInvasion(state: GameState, ctx: SimContext): string | null {
-  const galaxyId = autoLoopInvasionGalaxy(state)
-  if (galaxyId === null) return null
+export function advanceAutoLoopInvasion(state: GameState, ctx: SimContext, nowWallMs = weekendClockOf(state)): string | null {
+  const currentGalaxyId = autoLoopInvasionGalaxy(state)
+  if (currentGalaxyId === null) return null
   const ev = state.weekendEvent
   if (!ev || ev.endedAtWallMs !== undefined) {
-    stopAutoLoopInvasion(state, '入侵活动已结束。')
+    stopAutoLoopInvasion(state, '入侵活动已结束。', 'core.weekend.030')
     return '入侵活动已结束'
-  }
-  if (!weekendZoneLiveAt(state, galaxyId, Date.now())) {
-    stopAutoLoopInvasion(state, '该星系已被夺回。')
-    return '该星系已被夺回'
   }
   // 别的作业占着主控 ⇒ 等（判据单点与常驻悬赏那条同源）
   if (autoLoopWaitLabel(state) !== null) return null
+  const plan = autoLoopInvasionPlanOf(state, ctx, nowWallMs)
+  if (plan.status === 'complete') {
+    delete ev.autoLoopGalaxyId
+    const text = '外围与核心星系均已收复，重复出击已停止；旗舰需手动挑战。'
+    addLog(state, 'combat', text, 'core.invasionLoop.002')
+    state.autoLoopStopNotice = text
+    return text
+  }
+  if (plan.status !== 'ready') {
+    stopAutoLoopInvasion(state, '该星系当前没有被入侵。', 'core.weekend.031')
+    return '该星系当前没有被入侵'
+  }
+  if (plan.waitFor !== null) return null
+  const { galaxyId, dispatch } = plan
+  if (galaxyId !== currentGalaxyId) {
+    ev.autoLoopGalaxyId = galaxyId
+    const from = ctx.galaxies.get(currentGalaxyId)?.name ?? currentGalaxyId
+    const to = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
+    const reclaimed = weekendProgressAt(state, ev, currentGalaxyId, nowWallMs) >= 1
+    addLog(state, 'combat', reclaimed
+      ? `「${from}」已收复，重复出击目标改为「${to}」。`
+      : `重复出击先收复外围，目标改为「${to}」。`,
+    reclaimed ? 'core.invasionLoop.001' : 'core.invasionLoop.003', reclaimed ? { p1: from, p2: to } : { p1: to })
+  }
   /**
    * **冷却与缴获体积都按「这一场真正要打的那张卡」判**（**2026-10-02 甲案 · 船长报障修复**）。
    *
@@ -1810,21 +1879,16 @@ export function advanceAutoLoopInvasion(state: GameState, ctx: SimContext): stri
    *   重舰 12.3~13.4s）还短 ⇒ 只要连续两场抽到同一张卡就撞上（**只差 1 秒也照杀**）。
    * - 误等：板面卡在冷却、重抽卡不在 ⇒ 本来能出发却被拦着。
    */
-  const dispatch = weekendAssaultDrawOf(state, ctx, galaxyId, Date.now())
-  if (dispatch === null) {
-    stopAutoLoopInvasion(state, '该星系已被夺回。')
-    return '该星系已被夺回'
-  }
   const drawn = ctx.anomalies.get(dispatch.cardId)
   /** **冷却中 ⇒ 等**（不是停环）：差的那点时间通常只有 1~2 秒（燃料把返航腿压到 12s） */
-  if (bountyCooldownRemainingMs(state, dispatch.cardId) > 0) return null
+  if (plan.remainingMs > 0) return null
   const lootM3 = (drawn?.loot ?? []).reduce((sum, row) => {
     const def = ctx.items.get(row.itemId)
     return sum + row.units * (def ? cargoUnitM3(state, def) : 0)
   }, 0)
   const pre = autoLoopPreflight(state, ctx, drawn?.name ?? galaxyId, lootM3)
   if (pre !== null) {
-    stopAutoLoopInvasion(state, pre.notice)
+    stopAutoLoopInvasion(state, pre.notice, pre.noticeId, pre.noticeParams)
     return pre.reason
   }
   // 出发：星系覆写（与 `engine.startExpeditionAt` 同一条路；卡已在上面的 `dispatch` 抽定）
@@ -1838,7 +1902,7 @@ export function advanceAutoLoopInvasion(state: GameState, ctx: SimContext): stri
      * 同源、只是取值时刻不同 ⇒ 失败时再查一次冷却：仍 >0 就等，**绝不因为"差几秒"把整条循环杀掉**。
      */
     if (bountyCooldownRemainingMs(state, dispatch.cardId) > 0) return null
-    stopAutoLoopInvasion(state, r.error ?? '无法再出发。')
+    stopAutoLoopInvasion(state, r.error ?? '无法再出发。', r.errorId, r.errorParams)
     return r.error ?? '无法再出发'
   }
   weekendNoteAssaultDispatch(state) // 抽过才计数 ⇒ 下一场换一支
@@ -1881,7 +1945,7 @@ export interface ExpeditionView {
 export function expeditionStatus(state: GameState, ctx: SimContext): ExpeditionView {
   const exp = state.expedition
   const anomaly = exp.anomalyId ? ctx.anomalies.get(exp.anomalyId) : undefined
-  const galaxy = anomaly ? ctx.galaxies.get(anomaly.galaxyId) : undefined
+  const galaxy = anomaly ? ctx.galaxies.get(exp.foeGalaxyId ?? anomaly.galaxyId) : undefined
   const base = {
     active: false,
     anomalyId: null as string | null,

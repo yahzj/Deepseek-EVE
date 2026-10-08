@@ -19,7 +19,7 @@ import { manufacturingRunViews } from './manufacturing'
 import { oreAvailable } from './industry'
 import { refineRunViews } from './industry'
 import { labRunViews } from './lab'
-import { expeditionStatus, bountyCooldownRemainingMs, bountyCooldownMsFor, autoLoopWaitLabel } from './expedition'
+import { expeditionStatus, bountyCooldownRemainingMs, bountyCooldownMsFor, autoLoopWaitLabel, autoLoopInvasionPlanOf, autoLoopInvasionGalaxy } from './expedition'
 import { standbyStatus, transitStatus } from './location'
 import { aiTaskView, aiCoreName } from './ai'
 import { shipDisplayName } from './instances'
@@ -47,6 +47,7 @@ export type ActivityKind =
   | 'transit'
   | 'standby'
   | 'loop'
+  | 'invasion-loop'
   | 'wormhole'
   | 'courier'
   | 'hauling'
@@ -75,6 +76,7 @@ export type ActivityStopKind =
   | 'recall-standby'
   | 'cancel-deliver-trip'
   | 'stop-loop'
+  | 'stop-invasion-loop'
   | 'stop-hauling'
   /** 停一条实验线（2026-10-01 接入活动栏；`stopParam` = 线号 `LabRunView.id`） */
   | 'stop-lab'
@@ -360,10 +362,15 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
     // 2026-09-08（船长）：重复清剿中的本趟返航不另开独立活动行——在本次讨伐行内提供
     // 「停止清剿」（胜利返航原本不可召回，但允许停掉后续自动再出击）
     const loopReturning = state.autoLoopAnomalyId !== null && state.autoLoopAnomalyId === ev.anomalyId && ev.phase === 'back'
+    const invasionReturning = autoLoopInvasionGalaxy(state) !== null && state.expedition.foeGalaxyId !== undefined && ev.phase === 'back'
     let sub: string
     let stopable: boolean
     let stop: ActivityStopKind | null
-    if (loopReturning) {
+    if (invasionReturning) {
+      sub = '返航中 · 重复出击中；停止后本趟返航照常完成'
+      stopable = true
+      stop = 'stop-invasion-loop'
+    } else if (loopReturning) {
       sub = '返航中 · 重复清剿中——停止清剿后本趟返航照常完成'
       stopable = true
       stop = 'stop-loop'
@@ -381,6 +388,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
       kind: 'expedition',
       label: ev.anomalyName,
       sub,
+      ...(invasionReturning ? { subId: 'ui.invasionLoop.005' } : {}),
       percent: ev.percent,
       remainingMs: ev.remainingMs,
       stopable,
@@ -458,6 +466,28 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
         stop: 'stop-loop',
       })
     }
+  }
+
+  const invasionPlan = autoLoopInvasionPlanOf(state, ctx)
+  const invasionInFlight = state.expedition.active && state.expedition.foeGalaxyId === autoLoopInvasionGalaxy(state)
+  if (invasionPlan.status === 'ready' && !invasionInFlight) {
+    const name = ctx.galaxies.get(invasionPlan.galaxyId)?.name ?? invasionPlan.galaxyId
+    const waitFor = invasionPlan.waitFor
+    const waitingIds: Record<string, string> = {
+      '本次出击': 'core.busy.013', '采矿': 'core.busy.002', '残骸打捞': 'core.busy.005',
+      '航行': 'ui.invasionLoop.006', '亲自开炉': 'core.activity.002', '亲自开线': 'core.activity.003',
+      '实验室作业': 'core.busy.030',
+    }
+    out.push({
+      id: 'invasion-loop', kind: 'invasion-loop', label: '入侵重复出击', labelId: 'ui.invasionLoop.001',
+      sub: waitFor !== null ? `目标「${name}」；等待${waitFor}结束`
+        : invasionPlan.remainingMs > 0 ? `目标「${name}」；正在扫描新敌人` : `目标「${name}」；即将自动出击`,
+      subId: waitFor !== null ? 'ui.invasionLoop.002' : invasionPlan.remainingMs > 0 ? 'ui.invasionLoop.003' : 'ui.invasionLoop.004',
+      subParams: { p1: name, ...(waitFor !== null ? { p2: waitFor, p2Id: waitingIds[waitFor] } : {}) },
+      percent: waitFor !== null ? null : invasionPlan.percent,
+      remainingMs: waitFor === null && invasionPlan.remainingMs > 0 ? invasionPlan.remainingMs : null,
+      stopable: true, stop: 'stop-invasion-loop',
+    })
   }
 
   // ── AI 副船任务（每条） ──

@@ -110,6 +110,7 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '入侵循环下一目标与真实抽卡冷却', symbol: 'autoLoopInvasionPlanOf', file: 'packages/core/src/expedition.ts', exported: true },
   { concept: '装备负面继承收益权重的逐件参数', symbol: 'fittedPenaltyPartsOf', file: 'packages/core/src/equipment.ts', exported: true },
   { concept: '装备装填与降低属性代价合成', symbol: 'equipmentPenaltiesOf', file: 'packages/core/src/equipment.ts', exported: true },
   { concept: '全战斗主动周期装备代价', symbol: 'equipmentCycleMsOf', file: 'packages/core/src/equipment.ts', exported: true },

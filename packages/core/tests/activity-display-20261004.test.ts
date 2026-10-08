@@ -79,6 +79,7 @@ const STOP_METHODS: Record<ActivityStopKind, { method: string; args: unknown[] }
   'recall-standby': { method: 'recallStandbyNow', args: [] },
   'cancel-deliver-trip': { method: 'cancelDeliverTripNow', args: [] },
   'stop-loop': { method: 'bountyLoopAt', args: [null] },
+  'stop-invasion-loop': { method: 'invasionLoopAt', args: [null] },
   'stop-hauling': { method: 'stopHaulingNow', args: [] },
 }
 describe('两套活动栏停止动作逐项一致', () => {

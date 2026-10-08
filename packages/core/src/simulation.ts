@@ -176,7 +176,7 @@ export function simulateOffline(
       if (remaining > 0) {
         // 两条循环各试一次（互斥 ⇒ 只有一个会真的再出发）；停环原因写进各自的通知字段
         advanceAutoLoopBounty(state, ctx)
-        advanceAutoLoopInvasion(state, ctx)
+        advanceAutoLoopInvasion(state, ctx, wallMs)
       }
     }
   } else {

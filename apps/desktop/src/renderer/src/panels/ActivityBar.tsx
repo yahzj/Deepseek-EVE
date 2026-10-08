@@ -35,6 +35,7 @@ const KIND_ICON: Record<string, string> = {
   return: 'nav-ship',
   transit: 'ico-home',
   loop: 'ico-loop',
+  'invasion-loop': 'ico-loop',
   courier: 'nav-task',
   hauling: 'nav-haul',
   // 虫洞探索（船长 2026-09-13「活动栏显示」）：图标 = 虫洞专属「空间裂隙」（同日船长定案），
@@ -104,6 +105,9 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
       break
     case 'stop-loop':
       run(engine.bountyLoopAt(null), tr("ui.ActivityBar.049"))
+      break
+    case 'stop-invasion-loop':
+      run(engine.invasionLoopAt(null), tr('core.weekend.034'))
       break
     case 'stop-hauling':
       run(engine.stopHaulingNow(), tr("ui.ActivityBar.050"))
@@ -222,7 +226,9 @@ export function ActivityBar({
           ) : null}
           <span className="app-activitybar-time">
             {v.percent !== null ? `${Math.round(v.percent)}%` : ''}
-            {v.remainingMs !== null && v.remainingMs > 0 ? ` · 剩 ${fmtDuration(v.remainingMs)}` : ''}
+            {v.remainingMs !== null && v.remainingMs > 0 ? v.kind === 'invasion-loop'
+              ? ` · ${tr('ui.boost.005', { p1: fmtDuration(v.remainingMs) })}`
+              : ` · 剩 ${fmtDuration(v.remainingMs)}` : ''}
           </span>
         </div>
         {/**
