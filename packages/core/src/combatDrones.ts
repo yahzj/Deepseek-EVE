@@ -229,7 +229,7 @@ export function resolvePointDefense(
   dtMs: number,
 ): void {
   const pools = b.dronePools
-  // 无近防炮调度 = 本场敌舰未达威胁门槛（或本改动前的旧战斗）：不结算
+  // 续战入口按本场门槛补建调度；仍无调度的战斗不结算。
   if (!pools || b.pdCd === undefined) return;
   const period = Math.max(100, Math.round(bal.pdJudgementMs))
   // ⚠ **哨戒机只在射程内可选/可被反击**（船长 2026-09-11 重新定义）
@@ -241,25 +241,11 @@ export function resolvePointDefense(
   // 许可 b：**哨戒机在射程内**（不需令牌）
   const sentryOpen =
     sentryOk && aliveDroneKeys(b, SENTRY_DRONE_IDS, true, true).length > 0
-  /**
-   * 🔴 **冷却推进不受闸门管辖**（**2026-09-27 修**）。
-   *
-   * 原来的顺序是「先判令牌、没令牌就 `return`」⇒ **冷却只在"有令牌的拍"才递减**；而令牌是
-   * **消费制**、只靠"我方无人机再打中一次"刷新（无人机装填好几秒）⇒ 冷却几乎走不动
-   * ⇒ 实际火力退化成"每次令牌开启时**恰好就绪的那一两艘**各一发"。
-   * **实测**（探针 · 60 分钟 · 母舰波在场 4 艘点防舰）：只命中 **13 发** —— 与"每艘每 0.5 秒
-   * 判定一次"的设计差两个数量级。
-   *
-   * 令牌该管的是"**能不能开火**"，不该管"冷却走不走"⇒ 现在冷却照常推进，只关掉判定。
-   */
+  // 船长2026-09-27：冷却独立推进，反击许可只管是否开火。
   const canFire = tokenOpen || sentryOpen
-  // **消费制**（船长 2026-09-11）：一次攻击换一次还手（对每艘点防舰各一次）
-  // ⚠ **本令牌为敌方全队共用、非逐舰**（打到**任意一艘**敌舰 ⇒ 当场所有冷却已就绪的敌点防舰**各还手一次**，
-  //   冷却仍各走各的 `pdCd[fi]`）。这与我方侧**故意不对称**——我方侧 2026-09-16 起是**逐舰令牌**
-  //   （`droneHitAtMeBy`：要打到那艘船它才能反击，见 `pickFoeDroneTarget`）。
-  //   船长 2026-09-16 复核定论「**点防没问题**」⇒ 本条**按现状保留**：不许照"逐舰"把敌方侧也改过去
-  //   （改它＝动玩家无人机在多舰敌卡里的战损口径）。
-  if (tokenOpen) b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: undefined }
+  // 船长2026-10-08确认：全队无人尝试还手时保留共用许可，仍受反击窗口限制。
+  // 实际还手的当拍，所有已就绪舰各一次；不给未就绪舰另存延期机会。
+  let attempted = false
   const focus: Array<string | undefined> = b.pdFocus ? [...b.pdFocus] : []
   for (let fi = 0; fi < foes.length; fi++) {
     if (foes[fi]!.foePointDefenseEnabled === false) continue
@@ -294,6 +280,7 @@ export function resolvePointDefense(
       }
       focus[fi] = key
       const pool = pools[key]!
+      attempted = true // 选到合法目标即算还手，未命中也消费本次机会。
       /**
        * **按族的近防炮覆写**（**船长 2026-09-25 令**：「增强 H 族敌人的近防炮强度：伤害 +50%、命中 +5%」
        * ⇒ `balance.pdFamilyOverride.H = { dmgMul: 1.5, accAdd: 0.05 }`）。
@@ -357,6 +344,7 @@ export function resolvePointDefense(
     }
     b.pdCd[fi] = cd
   }
+  if (tokenOpen && attempted) b.droneHitAt = { ...(b.droneHitAt ?? {}), foe: undefined }
   b.pdFocus = focus
 }
 

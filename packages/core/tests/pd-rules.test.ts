@@ -12,7 +12,7 @@
 import { describe, expect, it } from 'vitest'
 import { ANOMALIES_FLAVORED, buildSimContext } from '@whale/data'
 import { DEFAULT_BALANCE, addShipToFleet, addWare, createInitialState } from '@whale/core'
-import { advanceBattleFor, createFoeSpecs, pdPriorityOf, pdShotOf, startBattleFor, waveGapTotalMs } from '../src/combat'
+import { advanceBattleFor, createFoeSpecs, pdPriorityOf, pdShotOf, startBattleFor } from '../src/combat'
 import type { GameState } from '../src/state'
 import type { SimContext } from '../src/types'
 
@@ -169,7 +169,8 @@ describe('敌方近防炮 · 2026-09-12 船长八条裁决', () => {
       s.expedition.phase = 'battle'
       s.expedition.anomalyId = itemId
       s.expedition.battle = battle
-      s.gameMs = c.balance.battle.maxBattleMs + 5_000 + waveGapTotalMs(c.anomalies.get(itemId), c.balance.battle)
+      // 防空调度修复后长场两组都会全灭；在未饱和的固定窗口比较真实受伤。
+      s.gameMs = 60_000
       advanceBattleFor(s, c, battle, s.shipId, itemId)
       const pools = Object.values(battle.dronePools ?? {})
       const lost = pools.filter((p) => !p.alive).length
@@ -180,10 +181,10 @@ describe('敌方近防炮 · 2026-09-12 船长八条裁决', () => {
     /** 把机型的**闪避拉到最高**（0.55）⇒ 掷骰支的命中会被 `clamp(下限 0.1, 1, 0.7 − 0.55) = 0.15` 压死 */
     const highEvasion: SimContext = {
       ...ctx,
-      items: new Map([...ctx.items].map(([id, def]) => [id, def.kind === 'drone' ? { ...def, evasion: 0.55 } : def])),
+      items: new Map([...ctx.items].map(([id, def]) => [id, def.kind === 'drone' && def.defense ? { ...def, defense: { ...def.defense, evasion: 0.55 } } : def])),
     }
     const hit = run(withCalm(highEvasion), 11, { 'drone-heavy': 0.55, 'drone-sentry': 0.55 })
-    const rolled = run(withCalm(noAutoHit), 11, { 'drone-heavy': 0.55, 'drone-sentry': 0.55 })
+    const rolled = run(withCalm({ ...highEvasion, balance: noAutoHit.balance }), 11, { 'drone-heavy': 0.55, 'drone-sentry': 0.55 })
     console.log(`  [读数] 必中场（R 能量光束近防炮）：击落 ${hit.lost} · ${hit.note}`)
     console.log(`  [读数] 对照场（摘掉必中，同一 R 族卡）：击落 ${rolled.lost} · ${rolled.note}`)
     expect(hit.hp, '必中场必须真的掉血（必中 ⇒ 每次判定都进伤害）').toBeLessThan(rolled.hp)

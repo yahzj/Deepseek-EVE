@@ -3664,6 +3664,10 @@ export function advanceBattleFor(
   const specsOf = (wi: number): UnitSpec[] => activeFoeSpecsOf(anomaly, bal, wi)
   let waveIdx = Math.min(battle.waveIdx ?? 0, lastIdx)
   let curFoes = specsOf(waveIdx)
+  // 近防冷却是运行态，读档后按当前波补建；门槛与新开战斗同源，不重置机群血量。
+  if (battle.pdCd === undefined && pdEnabledFor(foeJudgedThreatOf(anomaly), bal) && Object.keys(battle.dronePools ?? {}).length > 0) {
+    battle.pdCd = curFoes.map(() => Math.max(100, Math.round(bal.pdJudgementMs)))
+  }
   /**
    * **本波敌方的期望距离与钳制上界**（`let`：**换波时按新一波重算**）。
    *
