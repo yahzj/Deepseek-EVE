@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **514** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8037** KB · **62927** 行
-- 状态分布：**未标注** 266 · **已确认/已实现** 170 · **进行中** 53 · **待裁定** 24 · **历史留档** 1
-- 孤儿文档（0 引用）**109** 份 · 状态未标注 **266** 份
+- 文档总数 **515** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8051** KB · **63050** 行
+- 状态分布：**未标注** 266 · **已确认/已实现** 171 · **进行中** 53 · **待裁定** 24 · **历史留档** 1
+- 孤儿文档（0 引用）**110** 份 · 状态未标注 **266** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**350** 份
+- 三、现行设计稿（design）：**351** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**5** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -35,7 +35,7 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 9 KB / 125 行 | 2 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 299 KB / 308 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 90 KB / 908 行 | 95 / 5 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 516 KB / 1074 行 | 227 / 20 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 516 KB / 1074 行 | 228 / 20 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 92 KB / 473 行 | 377 / 26 |
 
 ## 七、评审与体检（review） —— 12 份
@@ -55,7 +55,7 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 350 份
+## 三、现行设计稿（design） —— 351 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -67,6 +67,7 @@
 | `docs/design/fleet-hide-plugs-20261008.md` | 我的舰队隐藏普通舰船插件 | 已确认/已实现（已实现并本地合入） | 2026-10-08 | 4 KB / 38 行 | 1 / 0 |
 | `docs/design/invasion-autoloop-live-test-20261008.md` | 入侵自动路线原生客户端实测 | 未标注（实机测试通过） | 2026-10-08 | 7 KB / 62 行 | 0 / 0 |
 | `docs/design/invasion-autoloop-route-20261008.md` | 入侵自动循环按外围与核心顺序收复 | 已确认/已实现（已实现并本地合入） | 2026-10-08 | 15 KB / 123 行 | 1 / 0 |
+| `docs/design/invasion-drone-defense-audit-20261008.md` | 入侵旗舰战无人机五分钟零损失排查 | 已确认/已实现（已实现、自测通过） | 2026-10-08 | 14 KB / 123 行 | 0 / 0 |
 | `docs/design/stellar-debug-navigation-20261008.md` | 调试导航开放星系入口 | 未标注（已本地合入及复测） | 2026-10-08 | 2 KB / 24 行 | 0 / 0 |
 | `docs/design/stellar-ready-save-20261008.md` | 新星系即用存档 | 未标注（已本地合入并交付） | 2026-10-08 | 2 KB / 23 行 | 0 / 0 |
 | `docs/design/acid-burst-stacking-fx-20261007.md` | 酸液爆虫腐蚀叠加与专属自爆动画 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 53 行 | 2 / 0 |
@@ -584,7 +585,7 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，109 份）
+## 附：孤儿文档（0 引用，110 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
@@ -592,6 +593,7 @@
 - `docs/design/battle-cycles-compact-revision-20261008.md`（2026-10-08 · 7 KB）—— 战斗顶部紧凑化与旧式装填条复用
 - `docs/design/equipment-penalty-stacking-20261008.md`（2026-10-08 · 19 KB）—— 装备惩罚取最大值检查与巨构装填调整
 - `docs/design/invasion-autoloop-live-test-20261008.md`（2026-10-08 · 7 KB）—— 入侵自动路线原生客户端实测
+- `docs/design/invasion-drone-defense-audit-20261008.md`（2026-10-08 · 14 KB）—— 入侵旗舰战无人机五分钟零损失排查
 - `docs/design/stellar-debug-navigation-20261008.md`（2026-10-08 · 2 KB）—— 调试导航开放星系入口
 - `docs/design/stellar-ready-save-20261008.md`（2026-10-08 · 2 KB）—— 新星系即用存档
 - `docs/design/colossal-once-buyback-only-20261007.md`（2026-10-07 · 4 KB）—— 皇带鱼一次性蓝图只收不卖
