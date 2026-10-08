@@ -5,6 +5,7 @@ import { activeFoeSpecsOf, seedUnit } from '../src/foeSpecs'
 import { startFleetBattleFor, advanceBattleFor, battleArcsFor, applyFoeWebDebuff, advanceMyCaptureWebs, createPlayerSpec } from '../src/combat'
 import { alienFixture } from '../../../tools/alien-invasion-fixture'
 import { cleanBattle } from '../src/saveBattleClean'
+import { applyMeJammerDebuff, meJammerNetOf } from '../src/foeRange'
 
 const ctx = buildSimContext()
 function fleet() {
@@ -19,7 +20,7 @@ function fleet() {
   return { state, ships, battle, card, local }
 }
 describe('全编队装填视图与捕获网', () => {
-  it('每舰同型炮逐件一行，不新增冷却；无人机按机型一行', () => {
+  it('每舰同型炮合并数量，不跨舰、不新增冷却；无人机按机型一行', () => {
     const { state, ships, battle } = fleet()
     const units = ships.map((shipId, i) => {
       state.fleet[shipId]!.fitted = { high: ['mod-laser-3', 'mod-laser-3'], mid: [], low: [] }
@@ -30,16 +31,73 @@ describe('全编队装填视图与捕获网', () => {
     })
     battle.ammo.pla = 100
     const before = structuredClone(battle), rows = battleWeaponCyclesOf(battle, units)
-    expect(rows).toHaveLength(12)
-    expect(new Set(rows.map(r => r.id)).size).toBe(12)
-    expect(rows.filter(r => r.src === 'laser')).toHaveLength(8)
+    expect(rows).toHaveLength(8)
+    expect(new Set(rows.map(r => r.id)).size).toBe(8)
+    expect(rows.filter(r => r.src === 'laser')).toHaveLength(4)
+    expect(rows.filter(r => r.src === 'laser').every(r => r.count === 2)).toBe(true)
+    expect(rows.reduce((sum, r) => sum + r.count, 0)).toBe(12)
     expect(rows.every(r => r.percent === 50)).toBe(true)
+    for (const unit of units) {
+      const gun = unit.spec.weapons.find(w => w.src === 'laser')!
+      expect(rows.find(r => r.ownerTag === unit.spec.tag && r.src === 'laser'))
+        .toMatchObject({ minM: gun.minRangeM, maxM: gun.maxRangeM, cycleMs: gun.reloadMs })
+    }
     expect(battle).toEqual(before)
     const drone = { ...units[0]!.spec.weapons[0]!, src: 'drone' as const, artId: 'drone-scout', label: 'Drone', kind: 'fixed' as const, count: undefined }
     units[0]!.spec.weapons = [drone, { ...drone }]
     battle.dronePools = { 'player:0': { alive: false, s: 0, a: 0, h: 0, evasion: 0 }, 'player:1': { alive: true, s: 1, a: 1, h: 1, evasion: 0 } }
     const wing = battleWeaponCyclesOf(battle, units.slice(0, 1))[0]!
     expect(wing.count).toBe(2); expect(wing.aliveCount).toBe(1); expect(wing.state).toBe('reload')
+  })
+  it('同舰相同独立条目只在实际计时和射程相同时合并，不同型号、周期、状态不合并', () => {
+    const { state, ships, battle } = fleet()
+    state.fleet[ships[0]!]!.fitted.high = ['mod-laser-3']
+    const spec = createPlayerSpec(state, ctx, ships[0]!)!
+    const laser = spec.weapons.find(w => w.src === 'laser')!
+    spec.weapons = [{ ...laser }, { ...laser }, { ...laser, moduleId: 'mod-laser-2' },
+      { ...laser, maxRangeM: laser.maxRangeM + 100 }, { ...laser, reloadMs: laser.reloadMs + 100 }]
+    battle.units.player!.weapons = spec.weapons.map(() => 50)
+    battle.ammo.pla = 100
+    const units = [{ spec, shipId: ships[0]!, name: 'Lead' }]
+    const rows = battleWeaponCyclesOf(battle, units, ctx)
+    expect(rows).toHaveLength(4)
+    expect(rows[0]!.count).toBe(2)
+    expect(rows.reduce((sum, row) => sum + row.count, 0)).toBe(5)
+    battle.units.player!.weapons[1] = 0
+    expect(battleWeaponCyclesOf(battle, units, ctx)).toHaveLength(5)
+    expect(battleWeaponCyclesOf(battle, units, ctx)[1]!.state).toBe('ready')
+  })
+  it('武器列表读取各舰真实射程，包含战损、当前波干扰和解除，不借主控数据', () => {
+    const { state, ships } = fleet()
+    for (const [index, uid] of ships.entries()) {
+      state.fleet[uid]!.fitted = { high: [index % 2 ? 'mod-laser-3' : 'mod-turret-kin-3'], mid: [], low: [] }
+    }
+    state.fleet[ships[1]!]!.damagePlugs = ['range']
+    state.warehouse.items['ammo-kinetic-l'] = 10_000
+    state.warehouse.items['ammo-plasma-l'] = 10_000
+    const card = { ...ctx.anomalies.get('ink-main')!, id: 'compact-range-test', waves: undefined,
+      ships: [{ ship: ctx.foeShips!.get('foe-h-ink-jammer')!, count: 1 }] }
+    const local = { ...ctx, anomalies: new Map(ctx.anomalies).set(card.id, card) }
+    const battle = startFleetBattleFor(state, local, ships, card.id, 0)!
+    const foes = activeFoeSpecsOf(card, local.balance.battle, 0)
+    const net = meJammerNetOf(battle, foes)
+    expect(net).toBeGreaterThan(0)
+    const view = () => battleArcsFor(state, local, { battle, anomaly: card, leaderShipId: ships[0]! })!
+    const before = structuredClone(battle)
+    for (const [index, uid] of ships.entries()) {
+      const refs = { weaponRanges: [] as Array<{ baseM: number; bonusMul: number }> }
+      const raw = createPlayerSpec(state, local, uid, undefined, refs)!
+      applyMeJammerDebuff(raw, net, refs.weaponRanges)
+      const owner = index ? `ally-${index}` : 'player'
+      expect(view().weapons.filter(row => row.ownerTag === owner).map(row => [row.minM, row.maxM]))
+        .toEqual(raw.weapons.map(w => [w.minRangeM, w.maxRangeM]))
+    }
+    expect(view().weapons.find(r => r.ownerTag === 'ally-1' && r.src === 'laser')!.maxM)
+      .toBeLessThan(view().weapons.find(r => r.ownerTag === 'ally-3' && r.src === 'laser')!.maxM)
+    expect(battle).toEqual(before)
+    const suppressed = view().weapons.find(r => r.ownerTag === 'player' && r.src === 'turret')!.maxM
+    for (const f of foes) battle.units[f.tag]!.hp = { s: 0, a: 0, h: 0 }
+    expect(view().weapons.find(r => r.ownerTag === 'player' && r.src === 'turret')!.maxM).toBeGreaterThan(suppressed)
   })
   it('动态叠光／连发周期和无弹、全损、沉没有真实状态', () => {
     const { state, ships, battle } = fleet(), spec = createPlayerSpec(state, ctx, ships[0]!)!

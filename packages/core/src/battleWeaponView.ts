@@ -14,6 +14,8 @@ export interface BattleWeaponCycleView {
   src?: WeaponSrc
   count: number
   aliveCount?: number
+  minM: number
+  maxM: number
   cycleMs: number
   remainingMs: number
   percent: number
@@ -21,7 +23,7 @@ export interface BattleWeaponCycleView {
   damageType?: DamageType
 }
 
-/** 每个安装件一行，同组共享实际冷却；无人机按本舰机型归并，不改变攻击节拍。 */
+/** 同舰同型共享冷却的武器合并展示；射程直接读当前规格，不改变攻击节拍。 */
 export function battleWeaponCyclesOf(battle: BattleState,
   units: ReadonlyArray<{ spec: UnitSpec; shipId: string; name: string }>, ctx?: SimContext): BattleWeaponCycleView[] {
   const out: BattleWeaponCycleView[] = []
@@ -42,11 +44,12 @@ export function battleWeaponCyclesOf(battle: BattleState,
         : aliveCount === 0 ? 'lost' : noAmmo ? 'no-ammo' : remainingMs > 0 ? 'reload' : 'ready'
       const row: BattleWeaponCycleView = { id: key, ownerTag: spec.tag, shipId, ownerName: name,
         label: weapon.moduleId && ctx?.modules.get(weapon.moduleId)?.name || weapon.label.replace(/×\d+$/, ''),
-        src: weapon.src, count: 1, cycleMs, remainingMs,
+        src: weapon.src, count: drone ? 1 : Math.max(1, Math.floor(weapon.count ?? 1)),
+        minM: weapon.minRangeM, maxM: weapon.maxRangeM, cycleMs, remainingMs,
         percent: state === 'ready' ? 100 : state === 'reload' ? Math.max(0, Math.min(100, (1 - remainingMs / cycleMs) * 100)) : 0,
         state, ...(damageType ? { damageType } : {}), ...(drone ? { aliveCount } : {}) }
       if (drone) {
-        const model = weapon.artId ?? weapon.label
+        const model = JSON.stringify(['drone', weapon.artId ?? weapon.label, damageType, row.minM, row.maxM, cycleMs])
         const previous = groups.get(model)
         if (previous) {
           previous.count++
@@ -55,7 +58,11 @@ export function battleWeaponCyclesOf(battle: BattleState,
             remainingMs, cycleMs, percent: row.percent, state: row.state })
         } else { groups.set(model, row); out.push(row) }
       } else {
-        for (let piece = 0; piece < Math.max(1, Math.floor(weapon.count ?? 1)); piece++) out.push({ ...row, id: `${key}:${piece}` })
+        const model = JSON.stringify([weapon.moduleId ?? row.label, weapon.src, weapon.kind, damageType,
+          row.minM, row.maxM, cycleMs, remainingMs, state])
+        const previous = groups.get(model)
+        if (previous) previous.count += row.count
+        else { groups.set(model, row); out.push(row) }
       }
     })
   }

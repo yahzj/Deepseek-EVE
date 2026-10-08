@@ -1,9 +1,10 @@
-/** 战斗周期原生验收 v1，2026-10-08；游戏 v0.1.0 / 存档 v31。
+/** 战斗周期紧凑修订原生验收 v2，2026-10-08；游戏 v0.1.0 / 存档 v31。
  * 输入：当前 core/data、apps/desktop/out 构建；仅使用合成四艘 T4 战列舰档。
  * 用法：父侧 npm run build 后 node tools/battle-cycles-native-check.cjs。
  * 可选：--case=classic-zh-desktop（classic/modern x zh/en x desktop/mobile）、
  * --self-test（只跑合法配装、真实四波推进及工具隔离检查，不启动 Electron）、--help。
- * 输出：tools/_ui-artifacts/battle-cycles 的截图、DOM/CSS 读数与隔离清理报告。
+ * 输出：tools/_ui-artifacts/battle-cycles/compact-20261008 的截图、DOM/CSS 读数与隔离清理报告。
+ * 旧 report.json 只读，启动时将带 SHA256 的几何基线快照写入修订目录。
  * 不读个人档、不构建、不改业务文件、不提交；截图及像素仅证实渲染，不作观感结论。
  */
 const assert = require('node:assert/strict')
@@ -16,12 +17,32 @@ const { createHash, randomUUID } = require('node:crypto')
 const { ROOT, JourneyPage, settingsScript, staticServer, sleep } = require('./wormhole-expedition-journey-shared.cjs')
 
 const PREFIX = 'whale-battle-cycles-'
-const OUT = path.join(ROOT, 'tools/_ui-artifacts/battle-cycles')
+const BASELINE = path.join(ROOT, 'tools/_ui-artifacts/battle-cycles/report.json')
+const OUT = path.join(ROOT, 'tools/_ui-artifacts/battle-cycles/compact-20261008')
 const OWNER_FILE = '.battle-cycles-owner.json'
 const SEL = {
-  trigger: '.app-bc-trigger', popup: '.app-bc-popup', weapons: '.app-bc-popup [data-cycle-id]',
+  trigger: '[data-battle-weapons-trigger]', popup: '[data-battle-weapons-popup]', weapons: '[data-battle-weapons-popup] [data-cycle-id]',
   devices: '.app-bc-device-scroll [data-cycle-id]', deviceScroll: '.app-bc-device-scroll',
   screen: '.app-battle-screen', web: '[data-web-from="ally-1"]',
+}
+
+function validateWeaponGroups(view, fleet, label) {
+  assert.equal(new Set(view.weapons.map(row => row.id)).size, view.weapons.length, `${label} 武器组键重复`)
+  const owners = fleet.map(row => row.tag)
+  assert.deepEqual([...new Set(view.weapons.map(row => row.ownerTag))].sort(), owners.slice().sort(), `${label} 漏舰或跨舰合并`)
+  for (const row of view.weapons) {
+    assert.equal(row.shipId, fleet.find(ship => ship.tag === row.ownerTag)?.shipId, `${label} 舰归属错误：${row.id}`)
+    assert(Number.isInteger(row.count) && row.count > 0, `${label} 数量非法：${row.id}`)
+    for (const key of ['minM', 'maxM', 'cycleMs', 'remainingMs', 'percent']) assert(Number.isFinite(row[key]) && row[key] >= 0, `${label} 缺少有效 ${key}：${row.id}`)
+    assert(row.minM <= row.maxM && row.percent <= 100, `${label} 射程或进度非法：${row.id}`)
+    if (row.src === 'drone') assert(Number.isInteger(row.aliveCount) && row.aliveCount >= 0 && row.aliveCount <= row.count, `${label} 存活架数非法：${row.id}`)
+  }
+  return fleet.map(ship => {
+    const rows = view.weapons.filter(row => row.ownerTag === ship.tag)
+    return { owner: ship.tag, shipId: ship.shipId, rows: rows.length,
+      weapons: rows.filter(row => row.src !== 'drone').reduce((n, row) => n + row.count, 0),
+      drones: rows.filter(row => row.src === 'drone').reduce((n, row) => n + row.count, 0) }
+  })
 }
 const CASES = ['classic', 'modern'].flatMap(layout => ['zh', 'en'].flatMap(locale =>
   [false, true].map(mobile => ({ layout, locale, mobile, id: `${layout}-${locale}-${mobile ? 'mobile' : 'desktop'}` }))))
@@ -160,8 +181,13 @@ function makeFixture() {
     galaxyId: ctx.anomalies.get(anomalyId).galaxyId, foeGalaxyId: ctx.anomalies.get(anomalyId).galaxyId, anomalyId, battle }
   const initial = core.loadSaveFile(core.serializeSaveFile(state)).state
   const opening = viewOf(initial, ctx, combat)
-  assert(opening.weapons.length > 16, '四舰武器列表没有足够滚动内容')
-  assert(opening.weapons.every(row => row.state === 'reload' && row.remainingMs > 0), '新战斗并非逐件初始装填')
+  const initialCounts = validateWeaponGroups(opening, initial.expedition.battle.myFleet, '开场')
+  assert(opening.weapons.some(row => row.src !== 'drone' && row.count > 1), '同舰同型炮未合并')
+  assert(opening.weapons.every(row => row.state === 'reload' && row.remainingMs > 0), '新战斗并非全组初始装填')
+  for (const [index, count] of initialCounts.entries()) {
+    assert.equal(count.weapons, index === 0 ? 5 : 4, '基础炮、近防炮与实装激光炮数量不守恒')
+    assert.equal(count.drones, 2, '合法载机数量不守恒')
+  }
   const kinds = [...new Set(opening.devices.map(row => row.kind))]
   for (const kind of ['repair', 'shield-charge', 'shield-field', 'drone-deck', 'thruster', 'web']) assert(kinds.includes(kind), `缺少实际装置：${kind}`)
   assert(!opening.devices.some(row => row.kind === 'web' && row.ownerTag === 'player'), '主控不应出现捕获网')
@@ -183,6 +209,8 @@ function makeFixture() {
   assert(final, `真实推进未到末波投网：${JSON.stringify({ waves, ended: battle.ended, gameMs: state.gameMs, steps })}`)
   assert.deepEqual(waves, [0, 1, 2, 3], '没有连续实际走过全部四波')
   const finalView = viewOf(final, ctx, combat)
+  const finalCounts = validateWeaponGroups(finalView, final.expedition.battle.myFleet, '末波')
+  assert.deepEqual(finalCounts.map(({ rows, ...count }) => count), initialCounts.map(({ rows, ...count }) => count), '推进后武器安装件或机群总数变化')
   const link = finalView.webLinks.find(row => row.from === 'ally-1')
   const web = finalView.devices.find(row => row.kind === 'web' && row.ownerTag === 'ally-1')
   assert.equal(web.state, 'active')
@@ -199,6 +227,9 @@ function makeFixture() {
   return { initial, final, frames, ctx, announcement: data.ANNOUNCEMENTS[0].id,
     evidence: { seed: 1008611, fittings, override, waves, steps, finalGameMs: final.gameMs,
       bossHp: boss.hp, bossHpMax: boss.hpMax, link, kinds,
+      counts: { initial: initialCounts, final: finalCounts,
+        total: initialCounts.reduce((n, row) => n + row.weapons + row.drones, 0),
+        legacyDisplayRows: initialCounts.reduce((n, row) => n + row.weapons + 1, 0) },
       initialWeapons: opening.weapons, initialDevices: opening.devices,
       finalWeapons: finalView.weapons, finalDevices: finalView.devices,
       inputPath: 'startFleetBattleFor -> advanceBattleFor (100ms); no wave/hp/weapon state writes',
@@ -206,6 +237,41 @@ function makeFixture() {
 }
 
 async function writeJson(file, value) { await fs.writeFile(file, JSON.stringify(value, null, 2), 'utf8') }
+
+function baselineReadings(report) {
+  assert(report.ok, '旧几何报告未通过，不能用作紧凑修订基线')
+  return report.reports.flatMap(row => row.readings.filter(reading => reading.viewport && reading.boxes?.dock).map(reading => {
+    const { boxes, root, rotated } = reading
+    const dockHeight = boxes.dock.offsetHeight ?? boxes.dock.clientHeight
+    // 旧版未记录 stage；只回推同轴剩余预算，明确不是旧 stage 实测。
+    const headerHeight = rotated ? boxes.dock.rect.left / (reading.viewport.height / root.width) : boxes.dock.rect.top - boxes.screen.rect.top
+    const stageHeight = boxes.stage?.offsetHeight ?? boxes.screen.clientHeight - headerHeight - dockHeight - boxes.controls.clientHeight
+    return { id: row.id, requested: reading.requested ?? reading.viewport, root, rotated,
+      dockHeight, stageHeight, stageSource: boxes.stage ? 'measured' : 'inferred-remaining-budget', headerHeight,
+      boxes: { dock: boxes.dock, stage: boxes.stage ?? null, screen: boxes.screen, controls: boxes.controls } }
+  }))
+}
+
+async function captureBaseline() {
+  const bytes = await fs.readFile(BASELINE)
+  const report = JSON.parse(bytes.toString('utf8'))
+  const readings = baselineReadings(report)
+  assert.equal(new Set(readings.map(row => row.id)).size, CASES.length, '旧报告未覆盖8组合')
+  assert(readings.every(row => row.dockHeight > 0 && row.stageHeight > 0), '旧几何基线无效')
+  return { source: BASELINE, sha256: createHash('sha256').update(bytes).digest('hex'),
+    sourceStartedAt: report.startedAt, sourceFinishedAt: report.finishedAt, capturedAt: new Date().toISOString(), readings }
+}
+
+function geometryComparison(reading, options, baseline) {
+  const before = baseline.readings.find(row => row.id === options.id && row.requested.width === reading.requested.width && row.requested.height === reading.requested.height)
+  assert(before, `缺少旧几何基线：${options.id}/${JSON.stringify(reading.requested)}`)
+  const dockHeight = reading.boxes.dock.offsetHeight, stageHeight = reading.boxes.stage.offsetHeight
+  const delta = { dockHeight: dockHeight - before.dockHeight, stageHeight: stageHeight - before.stageHeight }
+  assert(delta.dockHeight <= -40, 'dock 占高未明显减少')
+  assert(delta.stageHeight >= 40, '战场剩余预算未明显增加')
+  assert(reading.boxes.controls.offsetHeight >= before.boxes.controls.clientHeight - 2, '底部操作被缩小以挤出空间')
+  return { before, after: { dockHeight, stageHeight }, delta }
+}
 
 async function buildEvidence() {
   const directory = path.join(ROOT, 'apps/desktop/out/renderer')
@@ -217,7 +283,8 @@ async function buildEvidence() {
   assert(assets.length, '构建 assets 为空；请父侧先 build')
   const bundles = await Promise.all(assets.map(name => fs.readFile(path.join(directory, 'assets', name), 'utf8')))
   const joined = bundles.join('\n')
-  for (const key of ['app-bc-trigger', 'app-bc-popup', 'data-owner-tag', 'data-cycle-id', 'data-web-from', 'app-bts-web-status']) {
+  for (const key of ['app-bc-trigger', 'app-bc-popup', 'app-bts-reload-name', 'data-cycle-count', 'data-cycle-ms',
+    'data-remaining-ms', 'data-min-m', 'data-max-m', 'data-owner-tag', 'data-cycle-id', 'data-web-from', 'app-bts-web-status']) {
     assert(joined.includes(key), `构建缺少 ${key}；请父侧完成本批 build 后再跑`)
   }
   const builtAt = Math.max(...await Promise.all(assets.map(name => fs.stat(path.join(directory, 'assets', name)).then(s => s.mtimeMs))))
@@ -237,15 +304,50 @@ async function selfTest() {
   assert.throws(() => checkedProfile(os.tmpdir()))
   assert.throws(() => checkedProfile(path.join(ROOT, PREFIX + 'bad')))
   assert.throws(() => checkedProfile(path.join(os.tmpdir(), PREFIX + 'parent', 'child')))
+  assert(!path.relative(path.dirname(BASELINE), OUT).startsWith('..') && path.dirname(BASELINE) !== OUT, '修订报告必须隔离旧基线目录')
+  const baseline = await captureBaseline()
   const fixture = makeFixture()
+  assert.equal(fixture.evidence.counts.legacyDisplayRows, 21, '旧21展示行的安装件/机群口径不守恒')
+  const { data } = dependencies()
+  for (const locale of ['zh', 'en']) for (const weapon of [true, false]) {
+    const expected = fixture.evidence[weapon ? 'finalWeapons' : 'finalDevices']
+    const rows = expected.map(want => {
+      const state = data.L10N[`ui.battleCycles.${STATE_IDS[want.state]}`][locale]
+      const timed = want.state === 'reload' || want.state === 'cooldown' && (want.cycleMs > 0 || want.remainingMs > 0) || want.state === 'active' && want.remainingMs > 0
+      return { id: want.id, owner: want.ownerTag, ship: want.shipId, kind: want.kind, state: want.state,
+        target: want.targetTag, count: want.count, cycleMs: want.cycleMs, remainingMs: want.remainingMs,
+        minM: want.minM, maxM: want.maxM, compact: true, label: `${want.label} \u00d7${want.count}`,
+        timer: timed ? seconds(want.remainingMs) : state, range: weapon ? `${want.minM.toLocaleString('en')}~${want.maxM.toLocaleString('en')}m` : '',
+        countText: `\u00d7${want.count}`,
+        alive: want.aliveCount === undefined ? undefined : `${want.aliveCount}/${want.count}`,
+        progress: want.cycleMs > 0 && ['reload', 'cooldown', 'ready', 'active'].includes(want.state) && (want.state !== 'active' || want.remainingMs > 0) ? Math.round(want.percent) : null,
+        stateText: timed ? `${state} \u00b7 ${seconds(want.remainingMs)}` : state,
+        title: [want.ownerName, state, seconds(want.cycleMs), want.targetName, want.effectPct].join(' '), text: want.label }
+    })
+    assertCycleRows(rows, expected, weapon, locale, data)
+    for (const key of ['owner', 'ship', 'state', 'count', 'cycleMs', 'remainingMs', ...(weapon ? ['minM', 'maxM', 'range'] : [])]) {
+      const bad = structuredClone(rows)
+      bad[0][key] = typeof bad[0][key] === 'number' ? bad[0][key] + 1 : 'invalid'
+      assert.throws(() => assertCycleRows(bad, expected, weapon, locale, data), `工具放过错误 ${key}`)
+    }
+    assert.throws(() => assertCycleRows(rows.slice(1), expected, weapon, locale, data), '工具放过缺行')
+    assert.throws(() => assertCycleRows([rows[0], ...rows], expected, weapon, locale, data), '工具放过重复行')
+  }
+  for (const before of baseline.readings) {
+    const reading = { requested: before.requested, boxes: { dock: { offsetHeight: 100 }, stage: { offsetHeight: before.stageHeight + before.dockHeight - 100 }, controls: { offsetHeight: before.boxes.controls.clientHeight } } }
+    geometryComparison(reading, before, baseline)
+    assert.throws(() => geometryComparison({ ...reading, boxes: { ...reading.boxes, stage: { offsetHeight: before.stageHeight } } }, before, baseline), '工具放过无战场空间收益')
+  }
   const profile = await fs.mkdtemp(path.join(os.tmpdir(), PREFIX)), token = randomUUID()
   await writeJson(path.join(profile, OWNER_FILE), { profile: path.resolve(profile), token, parentPid: process.pid })
   try { await assert.rejects(verifyOwner(profile, 'wrong-token', process.pid)) }
   finally { await removeOwnedProfile(profile, token) }
   const summary = { ok: true, electronLaunched: false, cases: 8, ships: fixture.evidence.fittings,
     waves: fixture.evidence.waves, finalGameMs: fixture.evidence.finalGameMs, link: fixture.evidence.link,
-    weaponRows: fixture.evidence.initialWeapons.length, deviceRows: fixture.evidence.initialDevices.length,
-    kinds: fixture.evidence.kinds, cleanup: { absolute: profile, removed: true } }
+    weaponRows: fixture.evidence.initialWeapons.length, counts: fixture.evidence.counts, deviceRows: fixture.evidence.initialDevices.length,
+    kinds: fixture.evidence.kinds, assertionSelfTests: ['row-missing/duplicate', 'owner/ship/state/count/cycle/remaining', 'min/max/visible-range', 'stage-budget-gain'],
+    baseline: { source: baseline.source, sha256: baseline.sha256, readings: baseline.readings.length },
+    cleanup: { absolute: profile, removed: true } }
   console.log(JSON.stringify(summary, null, 2))
   return summary
 }
@@ -253,10 +355,11 @@ async function selfTest() {
 async function parent() {
   const cases = selectedCases(process.argv.slice(2))
   await fs.mkdir(OUT, { recursive: true })
-  const build = await buildEvidence(), fixture = makeFixture()
+  const baseline = await captureBaseline(), build = await buildEvidence(), fixture = makeFixture()
   const { core } = dependencies()
   await writeJson(path.join(OUT, 'fixture.json'), fixture.evidence)
-  const report = { startedAt: new Date().toISOString(), build, selected: cases.map(row => row.id), reports: [],
+  await writeJson(path.join(OUT, 'baseline.json'), baseline)
+  const report = { startedAt: new Date().toISOString(), build, baseline, selected: cases.map(row => row.id), reports: [],
     scope: '隐藏隔离原生窗口，真实四舰/四波/僚舰捕获网、鼠标与触屏交互和 DOM/CSS 像素读数；不是观感结论。' }
   try {
     for (const options of cases) {
@@ -270,6 +373,7 @@ async function parent() {
         await fs.writeFile(path.join(profile, 'final.save.json'), core.serializeSaveFile(fixture.final), 'utf8')
         for (const [i, frame] of fixture.frames.entries()) await fs.writeFile(path.join(profile, `frame-${i}.save.json`), core.serializeSaveFile(frame), 'utf8')
         await writeJson(path.join(profile, 'fixture.json'), fixture.evidence)
+        await writeJson(path.join(profile, 'baseline.json'), baseline)
         const served = await staticServer(build.directory, { initialize: settingsScript(fixture.announcement, undefined, { layout: options.layout, locale: options.locale, debug: true, test: true }) })
         server = served.server
         const env = { ...process.env, WHALE_PERF_USERDATA: profile, WHALE_AUTOPERF: '1', ELECTRON_RENDERER_URL: served.url,
@@ -307,7 +411,7 @@ async function parent() {
     await writeJson(path.join(OUT, cases.length === 1 ? `report-${cases[0].id}.json` : 'report.json'), report)
   }
   console.log(JSON.stringify({ ok: report.ok, cases: report.reports.map(row => ({ id: row.id, ok: row.ok, pid: row.pid, cleanup: row.cleanup, failure: row.failure })) }))
-  assert(report.ok, '原生验收未全通过；见 battle-cycles 下结构化报告')
+  assert(report.ok, '原生验收未全通过；见 battle-cycles/compact-20261008 下结构化报告')
 }
 
 async function rect(page, selector) {
@@ -327,11 +431,15 @@ async function escape(page) {
 
 async function geometry(page) {
   return page.js(`(()=>{
-    const selectors=${JSON.stringify({ screen: SEL.screen, trigger: SEL.trigger, popup: SEL.popup, devices: SEL.deviceScroll, controls: '.app-battle-controls', dock: '.app-bts-topdock' })};
-    const boxes=Object.fromEntries(Object.entries(selectors).map(([key,selector])=>{const e=document.querySelector(selector);if(!e)return [key,null];const s=getComputedStyle(e);return [key,{rect:e.getBoundingClientRect().toJSON(),clientWidth:e.clientWidth,clientHeight:e.clientHeight,scrollWidth:e.scrollWidth,scrollHeight:e.scrollHeight,scrollTop:e.scrollTop,overflowX:s.overflowX,overflowY:s.overflowY,position:s.position,display:s.display,zIndex:s.zIndex}]}));
+    const selectors=${JSON.stringify({ screen: SEL.screen, trigger: SEL.trigger, popup: SEL.popup, devices: SEL.deviceScroll, controls: '.app-battle-controls', dock: '.app-bts-topdock', header: '.app-battle-screen-top', stage: '.app-bts-stage', fit: '.app-bts-stage-fit', legends: '.app-bts-topdock .app-bts-legends', cycles: '[data-battle-cycles]', speed: '.app-bts-speedx' })};
+    const logical=e=>{let top=0,left=0;for(let n=e;n&&n!==document.querySelector(selectors.screen);n=n.offsetParent){top+=n.offsetTop;left+=n.offsetLeft}return {top,left,bottom:top+e.offsetHeight,right:left+e.offsetWidth}};
+    const measure=e=>{const s=getComputedStyle(e);return {rect:e.getBoundingClientRect().toJSON(),logical:logical(e),offsetWidth:e.offsetWidth,offsetHeight:e.offsetHeight,clientWidth:e.clientWidth,clientHeight:e.clientHeight,scrollWidth:e.scrollWidth,scrollHeight:e.scrollHeight,scrollTop:e.scrollTop,scrollLeft:e.scrollLeft,overflowX:s.overflowX,overflowY:s.overflowY,position:s.position,display:s.display,zIndex:s.zIndex,transform:s.transform,flexWrap:s.flexWrap}};
+    const boxes=Object.fromEntries(Object.entries(selectors).map(([key,selector])=>{const e=document.querySelector(selector);return [key,e?measure(e):null]}));
     const root=document.querySelector('.app-root');
-    const rows=[...document.querySelectorAll('[data-cycle-id]')].map(e=>({id:e.dataset.cycleId,owner:e.dataset.ownerTag,kind:e.dataset.deviceKind,state:e.dataset.cycleState,target:e.dataset.targetTag??e.querySelector('[data-target-tag]')?.dataset.targetTag,label:e.querySelector('.app-bc-label')?.textContent,color:getComputedStyle(e.querySelector('.app-bc-label')).color,progress:e.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow'),times:[...e.querySelectorAll('.app-bc-time')].map(t=>t.textContent),text:e.textContent}));
-    return {viewport:{width:innerWidth,height:innerHeight},rotated:root.classList.contains('is-mobile-rot'),layout:root.classList.contains('is-layout-modern')?'modern':'classic',layoutStyles:document.querySelector('#whale-layout-style')?.getAttribute('href'),root:{width:root.offsetWidth,height:root.offsetHeight,transform:getComputedStyle(root).transform},boxes,rows,document:{width:document.documentElement.clientWidth,height:document.documentElement.clientHeight,scrollWidth:document.documentElement.scrollWidth,scrollHeight:document.documentElement.scrollHeight},focus:document.activeElement?.className,legacy:document.querySelectorAll('.app-bts-reload').length}
+    const rows=[...document.querySelectorAll('[data-cycle-id]')].map(e=>({id:e.dataset.cycleId,owner:e.dataset.ownerTag,kind:e.dataset.deviceKind,state:e.dataset.cycleState,compact:e.classList.contains('app-bts-reload'),logical:logical(e),height:e.offsetHeight,text:e.textContent}));
+    const dockRows=[...document.querySelector('.app-bts-topdock > .app-bts-dock').children].filter(e=>getComputedStyle(e).display!=='none'&&!e.classList.contains('app-bts-speedx')).map(e=>({class:e.className,...measure(e)}));
+    const controls=[...document.querySelectorAll('.app-battle-controls button,.app-battle-controls input')].map(e=>({tag:e.tagName,disabled:e.disabled,...measure(e)}));
+    return {viewport:{width:innerWidth,height:innerHeight},rotated:root.classList.contains('is-mobile-rot'),layout:root.classList.contains('is-layout-modern')?'modern':'classic',layoutStyles:document.querySelector('#whale-layout-style')?.getAttribute('href'),root:{width:root.offsetWidth,height:root.offsetHeight,transform:getComputedStyle(root).transform},boxes,rows,dockRows,controls,document:{width:document.documentElement.clientWidth,height:document.documentElement.clientHeight,scrollWidth:document.documentElement.scrollWidth,scrollHeight:document.documentElement.scrollHeight},focus:document.activeElement?.className,invalidText:/NaN|Infinity/.test(document.querySelector(selectors.screen).textContent),deviceGroups:document.querySelectorAll('.app-bc-device-scroll [data-device-owner],.app-bc-device-heading').length,oldColumns:document.querySelectorAll('.app-bc-columns').length}
   })()`)
 }
 
@@ -340,9 +448,12 @@ function assertGeometry(reading, options) {
   assert.equal(reading.rotated, options.mobile, '手机没有进入实际旋转口径')
   assert.equal(reading.layout, options.layout, '界面布局与验收组合不一致')
   assert(reading.layoutStyles?.includes(`styles-${options.layout}-`), '没有加载本组合的布局样式')
-  assert.equal(reading.legacy, 0, '旧平铺装填没有移除')
+  assert(reading.rows.every(row => row.compact && row.height <= 44), '周期行未恢复旧式单行紧凑条')
+  assert.equal(reading.deviceGroups, 0, '外部装置仍有逐舰大组标题或独立标题')
+  assert.equal(reading.oldColumns, 0, '武器列表仍有大表头')
+  assert.equal(reading.invalidText, false, '战斗读数出现 NaN/Infinity')
   assert(doc.scrollWidth <= doc.width + 1 && doc.scrollHeight <= doc.height + 1, '一级页面产生溢出')
-  for (const key of ['screen', 'trigger', 'popup', 'devices', 'controls']) {
+  for (const key of ['screen', 'trigger', 'popup', 'devices', 'controls', 'dock', 'stage']) {
     const box = boxes[key]
     assert(box && box.clientWidth > 0 && box.clientHeight > 0, `控件没有可用尺寸：${key}`)
     const b = box.rect
@@ -350,48 +461,153 @@ function assertGeometry(reading, options) {
       `控件越出实际视口：${key}/${JSON.stringify(b)}`)
   }
   assert(['auto', 'scroll'].includes(boxes.popup.overflowY), '武器列表没有内部滚动')
-  assert(boxes.popup.scrollHeight > boxes.popup.clientHeight, '四舰武器未形成滚动列表')
-  assert(['auto', 'scroll'].includes(boxes.devices.overflowY), '装置区没有内部滚动')
-  assert(boxes.devices.scrollHeight > boxes.devices.clientHeight, '四舰装置未形成内部滚动')
+  assert(['auto', 'scroll'].includes(boxes.devices.overflowX), '装置区没有横向内部滚动')
+  assert(boxes.devices.scrollWidth > boxes.devices.clientWidth, '四舰装置未形成横向滚动')
+  assert(boxes.devices.scrollHeight <= boxes.devices.clientHeight + 1 && boxes.devices.scrollTop === 0, '装置区出现竖滚')
   assert.equal(boxes.popup.position, 'absolute', '武器弹层不应挤占战场高度')
+  assert.equal(reading.dockRows.length, 2, 'dock 常驻内容不是敌情/补给与武器/装置两行')
+  assert(boxes.dock.offsetHeight - (boxes.speed?.offsetHeight ?? 0) <= 140, '基本 dock 超过140逻辑px')
+  assert(boxes.legends.scrollHeight <= boxes.legends.clientHeight + 1, '敌情/补给行纵向增长')
+  assert(boxes.cycles.offsetHeight <= boxes.trigger.offsetHeight + boxes.devices.offsetHeight + 8, '武器入口与装置未并为两行')
+  assert(boxes.stage.logical.top >= boxes.dock.logical.bottom - 2 && boxes.stage.logical.bottom <= boxes.controls.logical.top + 2, 'stage 与顶部或底部重叠')
+  for (const key of ['dock', 'controls', 'screen']) assert.equal(boxes[key].transform, 'none', `操作区被二次缩放：${key}`)
+  for (const control of reading.controls) {
+    const b = control.rect
+    assert(b.width > 0 && b.height > 0 && b.left >= -2 && b.top >= -2 && b.right <= viewport.width + 2 && b.bottom <= viewport.height + 2, '底部控制被截断')
+    assert(control.logical.bottom <= boxes.controls.logical.bottom + 1, '底部控制溢出容器')
+  }
+}
+
+function readCycleRows(selector) {
+  return Array.from(document.querySelectorAll(selector), e => {
+    const label = e.querySelector('.app-bts-reload-name'), timer = e.querySelector('.app-bts-reload-ms')
+    const bar = e.querySelector('[role=progressbar]'), range = e.querySelector('.app-bc-range')
+    const number = key => e.dataset[key] === undefined || e.dataset[key] === '' ? null : Number(e.dataset[key])
+    return { id: e.dataset.cycleId, owner: e.dataset.ownerTag, ship: e.dataset.shipId, kind: e.dataset.deviceKind,
+      state: e.dataset.cycleState, target: e.dataset.targetTag, count: number('cycleCount'), cycleMs: number('cycleMs'),
+      remainingMs: number('remainingMs'), minM: number('minM'), maxM: number('maxM'), compact: e.classList.contains('app-bts-reload'),
+      label: label?.textContent, timer: timer?.textContent, range: range?.textContent,
+      alive: e.querySelector('.app-bc-alive')?.textContent, countText: e.querySelector('.app-bc-count')?.textContent,
+      progress: bar ? Number(bar.getAttribute('aria-valuenow')) : null,
+      stateText: bar?.getAttribute('aria-valuetext'), title: [e.title, ...Array.from(e.querySelectorAll('[title]'), n => n.title)].filter(Boolean).join('\n'), text: e.textContent }
+  })
+}
+
+const STATE_IDS = { ready: '006', reload: '007', 'no-ammo': '008', lost: '009', down: '010', active: '011',
+  cooldown: '012', waiting: '013', 'no-stock': '014', stopped: '015', used: '016' }
+const seconds = ms => `${(Math.ceil(ms / 100) / 10).toFixed(1)}s`
+
+function assertCycleRows(rows, expected, weapon, locale, data) {
+  assert.equal(rows.length, expected.length, `${weapon ? '武器' : '装置'}行数与 core 不一致`)
+  assert.equal(new Set(rows.map(row => row.id)).size, rows.length, '周期行键重复')
+  assert.deepEqual(rows.map(row => row.id).sort(), expected.map(row => row.id).sort(), '周期组漏行或键不匹配')
+  for (const want of expected) {
+    const row = rows.find(candidate => candidate.id === want.id)
+    assert(row.compact, `未复用旧装填条：${want.id}`)
+    for (const [key, field] of [['owner', 'ownerTag'], ['ship', 'shipId'], ['state', 'state'], ['count', 'count'], ['cycleMs', 'cycleMs'], ['remainingMs', 'remainingMs']]) {
+      assert.equal(row[key], want[field], `${key} 与 core 不一致：${want.id}`)
+    }
+    const state = data.L10N[`ui.battleCycles.${STATE_IDS[want.state]}`][locale]
+    const timed = want.cycleMs > 0 && ['reload', 'cooldown'].includes(want.state) || want.state === 'active' && want.remainingMs > 0
+    const hasTrack = want.cycleMs > 0 && ['reload', 'active', 'cooldown', 'ready'].includes(want.state) && (weapon || want.state !== 'active' || want.remainingMs > 0)
+    assert.equal(row.timer?.trim(), timed ? `${hasTrack ? '' : `${state} \u00b7 `}${seconds(want.remainingMs)}` : state, `可见倒计时/状态不一致：${want.id}`)
+    // core fixture uses the default Chinese context even for the English renderer;
+    // the owner mark is the locale-independent ownership anchor in that case.
+    const ownerMark = ['player', 'ally-1', 'ally-2', 'ally-3'].indexOf(want.ownerTag) + 1
+    assert(locale === 'zh' ? row.title.includes(want.ownerName) : row.title.includes(`#${ownerMark}`), `详情缺少完整所属舰名：${want.id}`)
+    assert(row.title.includes(state), `详情缺少真实状态：${want.id}`)
+    if (want.cycleMs > 0) assert(row.title.includes(seconds(want.cycleMs)), `详情缺少实际周期：${want.id}`)
+    assert.equal(row.progress !== null, hasTrack, `进度条与真实周期/状态不一致：${want.id}`)
+    if (hasTrack) {
+      const progressing = ['reload', 'active', 'cooldown', 'ready'].includes(want.state)
+      assert.equal(row.progress, progressing ? Math.round(want.percent) : 0, `进度不一致：${want.id}`)
+      assert.equal(row.stateText, timed ? `${state} \u00b7 ${seconds(want.remainingMs)}` : state, `无障碍状态不一致：${want.id}`)
+    }
+    assert(!/NaN|Infinity/.test(row.title + row.text), `非法可见数值：${want.id}`)
+    if (weapon) {
+      for (const key of ['minM', 'maxM']) assert.equal(row[key], want[key], `真实射程不一致：${want.id}/${key}`)
+      const match = row.range?.replaceAll(',', '').match(/([\d.]+)\s*[~\uFF5E\u2013-]\s*([\d.]+)\s*m/)
+      assert(match, `缺少行内有效射程：${want.id}`)
+      assert(Math.abs(Number(match[1]) - want.minM) <= 0.00051, `可见最小射程不一致：${want.id}`)
+      assert(Math.abs(Number(match[2]) - want.maxM) <= 0.00051, `可见最大射程不一致：${want.id}`)
+      if (want.src === 'drone') {
+        const alive = row.alive ?? row.countText ?? row.label
+        assert(alive?.includes(`${want.aliveCount}/${want.count}`), `无人机存活/总数不一致：${want.id}`)
+      } else if (want.count > 1) assert((row.countText ?? row.label)?.includes(`\u00d7${want.count}`), `同舰同型数量未显示：${want.id}`)
+    } else {
+      assert.equal(row.kind, want.kind, `装置种类不一致：${want.id}`)
+      assert.equal(row.target, want.targetTag, `装置目标不一致：${want.id}`)
+      if (want.targetTag) assert(row.title.includes(want.targetName || want.targetTag), `装置目标详情不可读：${want.id}`)
+      if (want.kind === 'web' && want.effectPct !== undefined) assert(row.title.includes(`${Math.round(want.effectPct * 10) / 10}`), `捕获网效果详情丢失：${want.id}`)
+      if (want.cycleMs === 0) assert.equal(row.progress, null, `无真实循环的装置制造了进度条：${want.id}`)
+    }
+  }
 }
 
 async function compareRows(page, expected, weapon, locale, data) {
   const selector = weapon ? SEL.weapons : SEL.devices
-  const rows = await page.js(`Array.from(document.querySelectorAll(${JSON.stringify(selector)}),e=>({id:e.dataset.cycleId,owner:e.dataset.ownerTag,ship:e.dataset.shipId,kind:e.dataset.deviceKind,state:e.dataset.cycleState,target:e.dataset.targetTag??e.querySelector('[data-target-tag]')?.dataset.targetTag,label:e.querySelector('.app-bc-label')?.textContent,times:Array.from(e.querySelectorAll('.app-bc-time'),t=>t.textContent),progress:Number(e.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow')),text:e.textContent}))`)
-  assert.equal(rows.length, expected.length, `${weapon ? '武器' : '装置'}行数与 core 不一致`)
-  assert.equal(new Set(rows.map(row => row.id)).size, rows.length, '周期行键重复')
-  assert.deepEqual(rows.map(row => row.id).sort(), expected.map(row => row.id).sort(), '漏行或重复安装件被合并')
-  for (const want of expected) {
-    const row = rows.find(candidate => candidate.id === want.id)
-    assert.equal(row.owner, want.ownerTag, `归属不一致：${want.id}`)
-    assert.equal(row.ship, want.shipId, `舰船不一致：${want.id}`)
-    assert.equal(row.state, want.state, `状态不一致：${want.id}`)
-    assert.equal(row.progress, Math.round(want.percent), `进度不一致：${want.id}`)
-    assert.equal(row.times[0], want.cycleMs > 0 ? `${(Math.ceil(want.cycleMs / 100) / 10).toFixed(1)}s` : '-', `周期不一致：${want.id}`)
-    if (!weapon) { assert.equal(row.kind, want.kind); assert.equal(row.target, want.targetTag) }
-    if (weapon && want.state === 'reload') assert.equal(row.times[1], `${(Math.ceil(want.remainingMs / 100) / 10).toFixed(1)}s`)
-    // 重复型号逐安装件一行；不能只靠总行数碰巧相等。
-    if (weapon && want.src !== 'drone') assert.equal(row.label.includes('×'), false, '非无人机型号仍合并显示')
+  const rows = await page.js(`(${readCycleRows.toString()})(${JSON.stringify(selector)})`)
+  assertCycleRows(rows, expected, weapon, locale, data)
+  if (weapon) {
+    const groups = await page.js(`Array.from(document.querySelectorAll('[data-weapon-owner]'),e=>e.dataset.weaponOwner)`)
+    assert.deepEqual(groups.sort(), [...new Set(expected.map(row => row.ownerTag))].sort(), '武器逐舰标题不匹配')
   }
-  const groups = await page.js(`Array.from(document.querySelectorAll(${JSON.stringify(weapon ? '[data-weapon-owner]' : '[data-device-owner]')}),e=>e.getAttribute(${JSON.stringify(weapon ? 'data-weapon-owner' : 'data-device-owner')}))`)
-  assert.deepEqual(groups.sort(), [...new Set(expected.map(row => row.ownerTag))].sort())
   assert.equal(await page.js(`document.querySelector(${JSON.stringify(SEL.trigger)}).textContent.trim()`), data.L10N['ui.battleCycles.001'][locale])
-  assert.equal(await page.js(`document.querySelector('.app-bc-device-heading').textContent.trim()`), data.L10N['ui.battleCycles.002'][locale])
+  assert.equal(await page.js(`document.querySelector(${JSON.stringify(SEL.deviceScroll)}).getAttribute('aria-label')`), data.L10N['ui.battleCycles.002'][locale])
   return rows
 }
 
-async function visitRows(page, selector, scroller) {
+async function visitRows(page, selector, scroller, axis) {
   const ids = await page.js(`Array.from(document.querySelectorAll(${JSON.stringify(selector)}),e=>e.dataset.cycleId)`)
   const readings = []
   for (const id of ids) {
     const row = `${selector}[data-cycle-id=${JSON.stringify(id)}]`
-    const visible = await page.js(`(()=>{const e=document.querySelector(${JSON.stringify(row)}),list=document.querySelector(${JSON.stringify(scroller)});e.scrollIntoView({block:'center',inline:'nearest'});const b=e.getBoundingClientRect(),l=list.getBoundingClientRect();const x=Math.max(b.left,l.left)+(Math.min(b.right,l.right)-Math.max(b.left,l.left))/2,y=Math.max(b.top,l.top)+(Math.min(b.bottom,l.bottom)-Math.max(b.top,l.top))/2;const hit=document.elementFromPoint(x,y);return {id:${JSON.stringify(id)},reachable:!!hit&&(hit===e||e.contains(hit)),scrollTop:list.scrollTop}})()`)
+    const visible = await page.js(`(()=>{const e=document.querySelector(${JSON.stringify(row)}),list=document.querySelector(${JSON.stringify(scroller)});e.scrollIntoView({block:${JSON.stringify(axis === 'y' ? 'center' : 'nearest')},inline:${JSON.stringify(axis === 'x' ? 'center' : 'nearest')},behavior:'instant'});const b=e.getBoundingClientRect(),l=list.getBoundingClientRect();const left=Math.max(0,b.left,l.left),right=Math.min(innerWidth,b.right,l.right),top=Math.max(0,b.top,l.top),bottom=Math.min(innerHeight,b.bottom,l.bottom);const x=(left+right)/2,y=(top+bottom)/2,hit=document.elementFromPoint(x,y);return {id:${JSON.stringify(id)},reachable:right>left&&bottom>top&&!!hit&&(hit===e||e.contains(hit)),scrollTop:list.scrollTop,scrollLeft:list.scrollLeft}})()`)
     assert(visible.reachable, `周期行滚动后被遮挡：${id}`)
     readings.push(visible)
   }
-  assert(readings.some(row => row.scrollTop > 0), '没有实际滚到列表底部')
+  const overflow = await page.js(`(()=>{const e=document.querySelector(${JSON.stringify(scroller)});return ${axis === 'x' ? 'e.scrollWidth-e.clientWidth' : 'e.scrollHeight-e.clientHeight'}})()`)
+  if (overflow > 1) assert(readings.some(row => row[axis === 'x' ? 'scrollLeft' : 'scrollTop'] > 0), '有溢出但未实际滚动到远端行')
+  if (axis === 'x') assert(readings.every(row => row.scrollTop === 0), '装置横滚带出了竖滚')
   return readings
+}
+
+async function nativeScroll(page, selector, axis, mobile) {
+  const setup = await page.js(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});e.scrollTo({left:0,top:0,behavior:'instant'});e.focus({preventScroll:true});const b=e.getBoundingClientRect(),m=new DOMMatrix(getComputedStyle(document.querySelector('.app-root')).transform);window.__battleCyclesScrollEvents=[];const probe=event=>window.__battleCyclesScrollEvents.push({type:event.type,trusted:event.isTrusted});e.addEventListener('wheel',probe,{once:true,passive:true});e.addEventListener('touchmove',probe,{once:true,passive:true});return {left:Math.max(0,b.left),right:Math.min(innerWidth,b.right),top:Math.max(0,b.top),bottom:Math.min(innerHeight,b.bottom),overflow:${axis === 'x' ? 'e.scrollWidth-e.clientWidth' : 'e.scrollHeight-e.clientHeight'},vector:${axis === 'x' ? '{x:m.a,y:m.b}' : '{x:m.c,y:m.d}'}}})()`)
+  if (setup.overflow <= 1) return { axis, overflow: setup.overflow, required: false, reason: 'all-rows-fit' }
+  const center = { x: (setup.left + setup.right) / 2, y: (setup.top + setup.bottom) / 2 }
+  if (mobile) {
+    const magnitude = Math.hypot(setup.vector.x, setup.vector.y)
+    assert(magnitude > 0, '触摸滚动轴变换无效')
+    const vector = { x: setup.vector.x / magnitude, y: setup.vector.y / magnitude }
+    const room = Math.abs(vector.x) > 0.5 ? setup.right - setup.left : setup.bottom - setup.top
+    const distance = Math.min(180, room * 0.65)
+    assert(distance > 12, '滚动触区过窄')
+    const start = { x: center.x + vector.x * distance / 2, y: center.y + vector.y * distance / 2 }
+    await page.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...start, id: 1 }] })
+    for (let step = 1; step <= 12; step++) {
+      await page.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: start.x - vector.x * distance * step / 12, y: start.y - vector.y * distance * step / 12, id: 1 }] })
+      await sleep(18)
+    }
+    await page.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  } else {
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...center })
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseWheel', ...center, deltaX: 0, deltaY: 260 })
+  }
+  await page.wait(`document.querySelector(${JSON.stringify(selector)}).${axis === 'x' ? 'scrollLeft' : 'scrollTop'}>1`, 5000)
+  await sleep(350)
+  const result = await page.js(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});return {scrollLeft:e.scrollLeft,scrollTop:e.scrollTop,events:window.__battleCyclesScrollEvents}})()`)
+  assert(result.events.some(event => event.trusted && event.type === (mobile ? 'touchmove' : 'wheel')), '未收到真实原生滚动事件')
+  if (axis === 'x') assert.equal(result.scrollTop, 0, '真实横向滑动导致装置竖滚')
+  return { axis, overflow: setup.overflow, method: mobile ? 'cdp-touch-swipe' : 'cdp-wheel', ...result }
+}
+
+async function keyboardScroll(page) {
+  await page.js(`(()=>{const e=document.querySelector(${JSON.stringify(SEL.deviceScroll)});e.scrollTo({left:0,top:0,behavior:'instant'});e.focus({preventScroll:true})})()`)
+  await page.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 })
+  await page.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 })
+  await page.wait(`document.querySelector(${JSON.stringify(SEL.deviceScroll)}).scrollLeft>0`, 5000)
+  return page.js(`(()=>{const e=document.querySelector(${JSON.stringify(SEL.deviceScroll)});return {focused:document.activeElement===e,scrollLeft:e.scrollLeft,scrollTop:e.scrollTop}})()`)
 }
 
 async function screenshot(win, file) {
@@ -411,6 +627,7 @@ async function child() {
   const profile = await verifyOwner(process.env.WHALE_PERF_USERDATA, process.env.BATTLE_CYCLES_TOKEN, Number(process.env.BATTLE_CYCLES_PARENT))
   const { core, data, combat } = dependencies(), ctx = data.buildSimContext()
   const fixture = JSON.parse(await fs.readFile(path.join(profile, 'fixture.json'), 'utf8'))
+  const baseline = JSON.parse(await fs.readFile(path.join(profile, 'baseline.json'), 'utf8'))
   const report = { ...options, pid: process.pid, profile, ok: false, interactions: [], screenshots: [], readings: [], errors: [] }
   let win, page
   try {
@@ -463,7 +680,7 @@ async function child() {
     await sleep(400)
     assert.equal((await page.snapshot()).gameMs, initialSnap.gameMs, '测试心跳未冻结')
     assert.equal(await page.js(`document.querySelector(${JSON.stringify(SEL.popup)}).hidden`), true, '武器列表初始应收起')
-    assert(await page.js('!!document.querySelector(".app-bc-device-heading")'), '装置区不常驻')
+    assert(await page.js(`!!document.querySelector(${JSON.stringify(SEL.deviceScroll)})`), '装置条不常驻')
     await page.tap(SEL.trigger)
     await page.wait(`!document.querySelector(${JSON.stringify(SEL.popup)}).hidden`)
     report.interactions.push(options.mobile ? 'real-touch-start/end-opens' : 'mouse-click-pins')
@@ -527,22 +744,41 @@ async function child() {
     for (const [width, height] of widths) {
       if (!options.mobile) win.setContentSize(width, height)
       await sleep(250)
-      const reading = await geometry(page)
+      let reading = await geometry(page)
       reading.requested = { width, height }
       assert.equal(reading.viewport.width, width)
       assert.equal(reading.viewport.height, height)
       report.readings.push(reading)
+      if (await page.js(closed)) { await page.tap(SEL.trigger); await page.wait(opened) }
+      const openedReading = await geometry(page)
+      openedReading.requested = { width, height }
+      report.readings.push(openedReading)
+      reading = openedReading
       assertGeometry(reading, options)
+      reading.comparison = geometryComparison(reading, options, baseline)
       await compareRows(page, fixture.finalWeapons, true, options.locale, data)
       await compareRows(page, fixture.finalDevices, false, options.locale, data)
       if (await page.js(closed)) { await page.tap(SEL.trigger); await page.wait(opened) }
-      report.interactions.push({ weaponRowsReachable: await visitRows(page, SEL.weapons, SEL.popup), viewport: [width, height] })
+      report.interactions.push({ weaponNativeScroll: await nativeScroll(page, SEL.popup, 'y', options.mobile), viewport: [width, height] })
+      report.interactions.push({ weaponRowsReachable: await visitRows(page, SEL.weapons, SEL.popup, 'y'), viewport: [width, height] })
       // 下拉窗口覆盖下方装置属正常叠层；收起后逐行验证常驻区可达。
       await escape(page)
       await page.wait(closed)
-      report.interactions.push({ deviceRowsReachable: await visitRows(page, SEL.devices, SEL.deviceScroll), viewport: [width, height] })
+      report.interactions.push({ deviceNativeScroll: await nativeScroll(page, SEL.deviceScroll, 'x', options.mobile), viewport: [width, height] })
+      const keyboard = await keyboardScroll(page)
+      assert(keyboard.focused && keyboard.scrollLeft > 0 && keyboard.scrollTop === 0, '装置键盘横滚不可达')
+      report.interactions.push({ deviceKeyboardScroll: keyboard, deviceRowsReachable: await visitRows(page, SEL.devices, SEL.deviceScroll, 'x'), viewport: [width, height] })
+      const closedReading = await geometry(page)
+      const stable = [closedReading]
+      for (let sample = 0; sample < 3; sample++) { await sleep(120); stable.push(await geometry(page)) }
+      for (const sample of stable) for (const key of ['dock', 'stage', 'controls']) {
+        assert(Math.abs(sample.boxes[key].offsetHeight - reading.boxes[key].offsetHeight) <= 1, `展开/收起或空闲刷新改变${key}高度`)
+      }
+      assert.equal(new Set(stable.map(sample => sample.boxes.fit.transform)).size, 1, '战场缩放发生振荡')
+      report.readings.push({ requested: { width, height }, closedGeometry: closedReading,
+        stability: stable.map(sample => ({ dock: sample.boxes.dock.offsetHeight, stage: sample.boxes.stage.offsetHeight, controls: sample.boxes.controls.offsetHeight, fit: sample.boxes.fit.transform })) })
       const webSelector = `${SEL.devices}[data-owner-tag="ally-1"][data-device-kind="web"]`
-      await page.js(`document.querySelector(${JSON.stringify(webSelector)}).scrollIntoView({block:'nearest'})`)
+      await page.js(`document.querySelector(${JSON.stringify(webSelector)}).scrollIntoView({block:'nearest',inline:'center',behavior:'instant'})`)
       const link = fixture.link
       const webEvidence = await page.js(`(()=>{const row=document.querySelector(${JSON.stringify(webSelector)}),line=document.querySelector(${JSON.stringify(`[data-web-from="ally-1"][data-web-to=${JSON.stringify(link.to)}]`)}),badge=document.querySelector(${JSON.stringify(`.app-bts-unit[data-tag=${JSON.stringify(link.to)}] .app-bts-web-status`)});return {row:{owner:row.dataset.ownerTag,state:row.dataset.cycleState,target:row.dataset.targetTag??row.querySelector('[data-target-tag]')?.dataset.targetTag,text:row.textContent},line:line?{from:line.dataset.webFrom,to:line.dataset.webTo,bar:line.querySelector('.app-bts-web-bar').getBoundingClientRect().toJSON(),title:line.title}:null,badge:badge?{text:badge.textContent,rect:badge.getBoundingClientRect().toJSON()}:null}})()`)
       assert.equal(webEvidence.row.owner, 'ally-1')
@@ -551,19 +787,28 @@ async function child() {
       assert(webEvidence.line && webEvidence.line.bar.width > 0 && webEvidence.line.bar.height > 0, '僚舰网链接没有渲染')
       assert(webEvidence.badge && webEvidence.badge.rect.width > 0, '被网敌舰缺少 badge')
       assert.equal(webEvidence.badge.text, data.L10N['ui.battleCycles.022'][options.locale])
+      assert(webEvidence.line.title.includes(fixture.link.fromName) && webEvidence.line.title.includes(fixture.link.toName), '捕获网线详情丢失舰归属')
+      const badgeSelector = `.app-bts-unit[data-tag=${JSON.stringify(link.to)}] .app-bts-web-status`
+      const badgeReachable = await page.js(`(()=>{const e=document.querySelector(${JSON.stringify(badgeSelector)}),b=e.getBoundingClientRect(),hit=document.elementFromPoint(b.x+b.width/2,b.y+b.height/2);return {reachable:!!hit&&(hit===e||e.contains(hit)),rect:b.toJSON()}})()`)
+      assert(badgeReachable.reachable, '被网敌舰 badge 被遮挡或不可达')
+      if (options.mobile) await page.tap(badgeSelector)
+      else await move(page, badgeSelector)
+      await page.wait(`Array.from(document.querySelectorAll('.app-tip'),e=>e.textContent).some(text=>text.includes(${JSON.stringify(fixture.link.fromName)})&&text.includes(${JSON.stringify(fixture.link.toName)}))`)
+      report.interactions.push({ webBadgeReachable: badgeReachable, viewport: [width, height] })
       report.readings.push({ requested: { width, height }, web: webEvidence })
       report.screenshots.push(await screenshot(win, path.join(OUT, `${options.id}-${width}x${height}-final.png`)))
-      console.log(`${options.id} ${width}x${height} 周期行/僚舰网/几何通过`)
-      await page.tap(SEL.trigger)
-      await page.wait(opened)
+      console.log(`${options.id} ${width}x${height} 周期组/横滚/僚舰网/几何通过 dock=${reading.boxes.dock.offsetHeight} stage=${reading.boxes.stage.offsetHeight} delta=${reading.comparison.delta.stageHeight}`)
+      if (await page.js(opened)) { await page.tap(SEL.trigger); await page.wait(closed) }
     }
+    if (await page.js(closed)) { await page.tap(SEL.trigger); await page.wait(opened) }
     await page.tap('.app-bts-topdock .app-bts-legends')
     await page.wait(closed)
-    assert(await page.js('!!document.querySelector(".app-bc-device-heading")'), '关闭武器列表连带隐藏装置')
+    assert(await page.js(`!!document.querySelector(${JSON.stringify(SEL.deviceScroll)})`), '关闭武器列表连带隐藏装置')
     report.interactions.push('outside-closes-devices-stay')
     await page.tap(SEL.trigger)
     await page.wait(opened)
     await page.tap(SEL.popup)
+    if (options.mobile) await page.js(`document.querySelector(${JSON.stringify(SEL.popup)}).focus()`)
     assert(await page.js(`document.activeElement===document.querySelector(${JSON.stringify(SEL.popup)})`), '可滚动武器列表没有获得焦点')
     const scroll = await page.js(`document.querySelector(${JSON.stringify(SEL.popup)}).scrollTop`)
     const ids = await page.js(`Array.from(document.querySelectorAll(${JSON.stringify(SEL.weapons)}),e=>e.dataset.cycleId)`)
@@ -617,7 +862,7 @@ async function child() {
   }
 }
 
-module.exports = { selectedCases, checkedProfile, makeFixture, selfTest }
+module.exports = { selectedCases, checkedProfile, makeFixture, selfTest, baselineReadings, geometryComparison, assertCycleRows }
 if (process.argv.includes('--child')) {
   const { app } = require('electron')
   const profile = checkedProfile(process.env.WHALE_PERF_USERDATA)
@@ -625,7 +870,7 @@ if (process.argv.includes('--child')) {
   app.setPath('sessionData', profile)
   child().catch(error => { console.error(error); app.exit(1) })
 } else if (require.main === module) {
-  if (process.argv.includes('--help')) console.log('父侧先 build；node tools/battle-cycles-native-check.cjs [--case=classic-zh-desktop] [--self-test]；8 组合：' + CASES.map(row => row.id).join(', '))
+  if (process.argv.includes('--help')) console.log('父侧先 build；node tools/battle-cycles-native-check.cjs [--case=classic-zh-desktop] [--self-test]；只读旧基线，输出 tools/_ui-artifacts/battle-cycles/compact-20261008；8 组合：' + CASES.map(row => row.id).join(', '))
   else if (process.argv.includes('--self-test')) selfTest().catch(error => { console.error(error); process.exitCode = 1 })
   else parent().catch(error => { console.error(error); process.exitCode = 1 })
 }

@@ -17,6 +17,25 @@ function evaluate(source: string, globals: Record<string, unknown>) {
   return scope.result as unknown
 }
 describe('战斗挂载行、手册机动和双向网线', () => {
+  it('顶部不重复玩家射程，敌挂载只留短标识，完整详情仍在', () => {
+    const source = file('BattleScreen.tsx')
+    const ast = ts.createSourceFile('battle.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    let legend: ts.JsxElement | undefined
+    function visit(node: ts.Node) {
+      if (ts.isJsxElement(node) && node.openingElement.attributes.properties.some(p =>
+        ts.isJsxAttribute(p) && p.name.getText(ast) === 'className' && p.initializer?.getText(ast) === '"app-bts-legends"')) legend = node
+      ts.forEachChild(node, visit)
+    }
+    visit(ast)
+    expect(legend).toBeDefined()
+    const code = legend!.getText(ast)
+    expect(code).not.toContain('arcs.me.map')
+    expect(code).not.toContain('mountNamesTextOf')
+    expect(code).toContain('arcs.foeMounts.length')
+    expect(code).toContain('<BattleMountLines names={arcs.foeMounts}')
+    expect(source).toContain('<BattleCycles weapons={arcs.weapons} devices={arcs.devices}')
+  })
+
   it.each(['zh', 'en'] as const)('%s每件挂载独立且名称着色，效果正文不重复名称', locale => {
     const source = ts.createSourceFile('mounts.tsx', file('battleMounts.tsx'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
     const declaration = source.statements.find(n => ts.isFunctionDeclaration(n))!

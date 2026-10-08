@@ -164,7 +164,8 @@ describe('开场装填专项（2026-10-08）', () => {
       expect(w.battle.dronePools?.[`${spec.tag}:5`]?.alive).toBe(true)
     }
     const rows = battleWeaponCyclesOf(w.battle, w.entries)
-    expect(rows).toHaveLength(28)
+    expect(rows).toHaveLength(20)
+    expect(rows.reduce((sum, row) => sum + row.count, 0)).toBe(32)
     expect(rows.every(row => row.state === 'reload' && row.percent === 0)).toBe(true)
     expect(new Set(rows.filter(row => row.src === 'drone').map(row => row.ownerTag)).size).toBe(4)
     const earliest = Math.min(...w.entries.flatMap(entry => entry.spec.weapons.map(p => p.reloadMs)))

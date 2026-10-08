@@ -2363,7 +2363,7 @@ const meSpeedRef = useRef(200)
         </span>
       </div>
       {/* **顶部读数区**（**2026-09-30 船长令**：「将所有炮和冷却相关的放到屏幕上方」）——
-          倍速（仅虫洞出现）→ 图例 chip（我方武器/无人机 ＋ 敌方射程带/挂载件 ＋ 弹药/修理）
+          倍速（仅虫洞出现）→ 敌方射程带/挂载件 ＋ 弹药/修理
           → 武器下拉与逐舰装置周期；整块**不在等比缩放层里**（读数与触控不跟着战场缩，
           口径同 2026-09-26 船长令，见 `ui/battleFit.ts`）。 */}
       <div className="app-bts-topdock">
@@ -2391,49 +2391,7 @@ const meSpeedRef = useRef(200)
             </div>
           ) : null}
           <div className="app-bts-legends">
-            {/**
-             * **图例 chip：射程数字 2026-09-30 回到明文**（**船长令**：「战斗画面中，我方武器和无人机的
-             * 射程不显示了」）——2026-09-26 那批按船长当时的令把它收进了"点按/悬停"卡
-             *（原话：「逐武器射程数字收进点按/悬停详情——可以」），现按新令**写回 chip**：
-             * `名称 400~1,200m · 弹种`（无人机条目同款：机型×N 后面同样带射程）。
-             * ⚠ 悬停卡**保留**：卡面 = 武器名 ＋ 有效射程带回读（`ui.BattleScreen.087`）＋ 伤害类型；
-             * 卡片走全站统一的 `hoverTipProps`（`ui/Tooltip.tsx`）：**桌面悬停、手机点按即看**
-             *（触屏由浏览器合成 enter 事件触发，见该文件头注）；同一元素**不再挂原生 `title`**（契约要求）。
-             */}
-            {arcs.me.map((w, wi) => (
-              <span
-                key={`lg${wi}`}
-                className="app-bts-chip"
-                {...hoverTipProps(
-                  <>
-                    <span className="app-ship-hover-title">{w.label}</span>
-                    <div className="app-info-note">
-                      {w.kind === 'gun' && !w.type
-                        ? tr("ui.BattleScreen.057")
-                        : tr("ui.BattleScreen.087", {
-                            p1: w.minM.toLocaleString('zh-CN'),
-                            p2: w.maxM.toLocaleString('zh-CN'),
-                          })}
-                      {w.kind === 'gun'
-                        ? w.type
-                          ? ` · ${DMG_LABEL[w.type]}${tr("ui.BattleScreen.003")}`
-                          : ` · ${tr('ui.BattleScreen.102')}`
-                        : ''}
-                    </div>
-                  </>,
-                )}
-              >
-                <i style={{ background: w.type ? DMG_COLOR[w.type] : 'rgb(var(--wui-dim))' }} />
-                {w.label} {w.minM.toLocaleString('zh-CN')}~{w.maxM.toLocaleString('zh-CN')}m
-                {w.kind === 'gun' ? (
-                  w.type ? (
-                    <span className={`app-a-chip app-a-${w.type}`}>{DMG_LABEL[w.type]}{tr("ui.BattleScreen.003")}</span>
-                  ) : (
-                    tr('ui.BattleScreen.102')
-                  )
-                ) : null}
-              </span>
-            ))}
+            {/* 船长2026-10-08实测修订：玩家射程和装填同在武器列表，外部不重复占位。 */}
             {/* 敌方射程（2026-09-11 船长：「敌方的舰船射程不一致，只会显示其中一个的射程」）：
                 按**射程带**逐条出 chip（与我方逐武器一条同款），多条带时补「×N 艘」与逐舰悬停说明；
                 只有一条带时文本与旧版完全一致（「敌方 X~Ym」）。 */}
@@ -2487,7 +2445,7 @@ const meSpeedRef = useRef(200)
                 )}
               >
                 <i /> {tr("ui.BattleScreen.061")}
-                {mountNamesTextOf(arcs.foeMounts, arcs.foeMountNamePairs).join(tr("ui.MatterTechTab.017"))}
+                {` ×${arcs.foeMounts.length}`}
               </span>
             ) : null}
             {ammoChips.length > 0 ? (

@@ -17,7 +17,7 @@ for (const statement of tooltip.statements) if (ts.isVariableStatement(statement
 type Row = {
   id: string; ownerTag: string; shipId: string; ownerName: string; label: string; count: number
   cycleMs: number; remainingMs: number; percent: number; state: string; src?: string; aliveCount?: number
-  kind?: string; targetTag?: string; targetName?: string; effectPct?: number; damageType?: string
+  kind?: string; targetTag?: string; targetName?: string; effectPct?: number; damageType?: string; minM?: number; maxM?: number
 }
 type Props = { weapons: Row[]; devices: Row[] }
 type VNode = { type: string; props: Record<string, any>; children: unknown[]; host?: Host }
@@ -26,7 +26,7 @@ const nodes = (value: unknown): VNode[] => Array.isArray(value) ? value.flatMap(
 const text = (value: unknown): string => typeof value === 'string' || typeof value === 'number' ? String(value)
   : Array.isArray(value) ? value.map(text).join('') : value && typeof value === 'object' && 'children' in value ? text((value as VNode).children) : ''
 const weapon = (patch: Partial<Row> = {}): Row => ({ id: 'me:gun:0', ownerTag: 'me', shipId: 's1', ownerName: 'Leader', label: 'Railgun',
-  src: 'turret', count: 1, cycleMs: 2400, remainingMs: 1200, percent: 50, state: 'reload', damageType: 'kinetic', ...patch })
+  src: 'turret', count: 1, minM: 0, maxM: 4000, cycleMs: 2400, remainingMs: 1200, percent: 50, state: 'reload', damageType: 'kinetic', ...patch })
 const device = (patch: Partial<Row> = {}): Row => ({ id: 'escort:web:0', ownerTag: 'escort', shipId: 's2', ownerName: 'Escort', label: 'Snare Net',
   kind: 'web', count: 1, cycleMs: 8000, remainingMs: 3000, percent: 62.5, state: 'active', targetTag: 'foe:2', targetName: 'Broodmother', effectPct: 50, ...patch })
 
@@ -40,6 +40,8 @@ class Host {
   scrollLeft = 0
   focused = 0
   connected = true
+  addEventListener = (_name: string, _fn: (event: unknown) => void, _options?: unknown): void => {}
+  removeEventListener = (_name: string, _fn: (event: unknown) => void, _options?: unknown): void => {}
   vars = new Map<string, string>()
   style = { getPropertyValue: (key: string) => this.vars.get(key) ?? '', setProperty: (key: string, value: string) => this.vars.set(key, value) }
   contains(value: Host | null): boolean {
@@ -123,7 +125,7 @@ function harness(locale: 'zh' | 'en' = 'zh') {
     const name = node.props.className ?? ''
     const host = name === 'app-battle-cycles' ? hosts.root : name === 'app-bc-weapons' ? hosts.scope
       : name.includes('app-bc-trigger') ? hosts.trigger : name === 'app-bc-popup' ? hosts.panel
-        : name === 'app-bc-device-scroll' ? hosts.scroll : new Host()
+        : name.includes('app-bc-device-scroll') ? hosts.scroll : new Host()
     host.parent = parent; node.host = host
     if (node.props.ref) node.props.ref.current = host
     node.children.forEach(child => bind(child, host))
@@ -260,10 +262,12 @@ describe('战斗周期真实组件交互', () => {
     expect(view.hosts.panel.focused).toBe(focusCount)
     expect([view.hosts.panel.scrollTop, view.hosts.panel.scrollLeft]).toEqual([96, 32])
     const row = content.find(n => n.props['data-cycle-id'] === 'me:gun:0')!
-    expect(nodes(row).filter(n => n.props.className === 'app-bc-time').map(text)).toEqual(['0.8s', '0.2s'])
-    expect(nodes(row).find(n => n.props.className === 'app-bc-fill')!.props.style.width).toBe('81.25%')
-    expect(text(content)).toContain(view.tr('ui.battleCycles.017', { p1: 'Worker' }))
-    expect(text(content)).toContain(view.tr('ui.battleCycles.018', { p1: 25 }))
+    const deviceRow = content.find(n => n.props['data-battle-device-cycle'] === 'escort:web:0')!
+    expect(row.props['data-cycle-ms']).toBe(800)
+    expect(row.props['data-remaining-ms']).toBe(150)
+    expect(nodes(row).find(n => n.props.className === 'app-bts-reload-fill')!.props.style.width).toBe('81.25%')
+    expect(deviceRow.props.title).toContain(view.tr('ui.battleCycles.017', { p1: 'Worker' }))
+    expect(deviceRow.props.title).toContain(view.tr('ui.battleCycles.018', { p1: 25 }))
     expect(view.listeners.get('keydown')?.size).toBe(1)
     expect(view.listeners.get('pointerdown')?.size).toBe(1)
     expect(view.observers).toHaveLength(1)
@@ -310,10 +314,10 @@ describe('战斗周期真实组件读数与局部布局', () => {
     expect(content.filter(n => n.props['data-weapon-owner']).map(n => n.props['data-weapon-owner'])).toEqual(['me', 'escort'])
     expect(content.filter(n => n.props['data-cycle-id'])).toHaveLength(4)
     expect(text(content)).toContain(view.tr('ui.battleCycles.019', { p1: 2, p2: 4 }))
-    expect(text(content)).toContain('2.4s')
+    expect(content.filter(n => n.props['data-cycle-id']).some(row => text(row).includes('1.2s'))).toBe(true)
     const blocked = content.find(n => n.props['data-cycle-id'] === 'other')!
     expect(text(blocked)).toContain(view.tr('ui.battleCycles.008'))
-    expect(nodes(blocked).find(n => n.props.role === 'progressbar')!.props['aria-valuenow']).toBe(0)
+    expect(nodes(blocked).find(n => n.props.role === 'progressbar')).toBeUndefined()
     expect(view.render({ weapons: [], devices: [] }).some(n => text(n) === view.tr('ui.battleCycles.020'))).toBe(true)
   })
 
@@ -325,11 +329,12 @@ describe('战斗周期真实组件读数与局部布局', () => {
       devices: deviceStates.map(state => device({ id: `d:${state}`, state, percent: 100, remainingMs: 9000 })) })
     for (const row of content.filter(n => n.props['data-cycle-id'])) {
       const state = row.props['data-cycle-state']
-      const progress = nodes(row).find(n => n.props.role === 'progressbar')!
-      expect(progress.props['aria-valuetext']).not.toMatch(/ui\./)
-      expect(text(row)).toContain(progress.props['aria-valuetext'])
+      const progress = nodes(row).find(n => n.props.role === 'progressbar')
+      if (progress) {
+        expect(progress.props['aria-valuetext']).not.toMatch(/ui\./)
+      }
       const timed = ['ready', 'reload', 'active', 'cooldown'].includes(state)
-      expect(progress.props['aria-valuenow']).toBe(timed ? 100 : 0)
+      if (progress) expect(progress.props['aria-valuenow']).toBe(timed ? 100 : 0)
       if (!timed) expect(text(row)).not.toContain('9.0s')
     }
     expect(text(content)).not.toMatch(/\{p\d+\}|ui\.battleCycles\./)
@@ -341,12 +346,13 @@ describe('战斗周期真实组件读数与局部布局', () => {
       weapon({ id: 'bad', percent: NaN, cycleMs: Infinity, remainingMs: NaN }), weapon({ id: 'zero', remainingMs: 0, percent: 37 })],
       devices: [device({ targetName: undefined, targetTag: 'foe:real', effectPct: 0, count: 3 })] })
     const rows = content.filter(n => n.props['data-cycle-id'])
-    expect(rows.slice(0, 4).map(row => nodes(row).find(n => n.props.role === 'progressbar')!.props['aria-valuenow'])).toEqual([0, 100, 0, 37])
+    expect(rows.slice(0, 4).map(row => nodes(row).find(n => n.props.role === 'progressbar')?.props['aria-valuenow'] ?? null)).toEqual([0, 100, null, 37])
     expect(text(content)).not.toMatch(/NaN|Infinity/)
-    expect(text(rows[3])).toContain(view.tr('ui.battleCycles.007'))
-    expect(text(content)).toContain(view.tr('ui.battleCycles.017', { p1: 'foe:real' }))
-    expect(text(content)).toContain(view.tr('ui.battleCycles.018', { p1: 0 }))
-    expect(text(content)).toContain('Snare Net ×3')
+    expect(rows[3]!.props['data-cycle-state']).toBe('reload')
+    const deviceRow = content.find(n => n.props['data-battle-device-cycle'] === 'escort:web:0')!
+    expect(deviceRow.props.title).toContain(view.tr('ui.battleCycles.017', { p1: 'foe:real' }))
+    expect(deviceRow.props.title).toContain(view.tr('ui.battleCycles.018', { p1: 0 }))
+    expect(text(content)).toContain('Snare Net×3')
     expect(content.find(n => n.props['data-target-tag'] === 'foe:real')).toBeDefined()
   })
 
@@ -360,7 +366,7 @@ describe('战斗周期真实组件读数与局部布局', () => {
     expect(view.find('app-bc-trigger').props['data-battle-weapons-trigger']).toBe(true)
     expect(view.find('app-bc-popup').props['data-battle-weapons-popup']).toBe(true)
     const web = content.find(n => n.props['data-battle-device-cycle'] === 'escort:web:0')!
-    expect(text(web)).toContain(view.tr('ui.battleCycles.018', { p1: 50 }))
+    expect(web.props.title).toContain(view.tr('ui.battleCycles.018', { p1: 50 }))
     expect(text(web)).not.toContain('0.0s')
     expect(web.props['data-target-tag']).toBe('foe:2')
     expect(web.props['data-owner-tag']).toBe('escort')
@@ -375,23 +381,22 @@ describe('战斗周期真实组件读数与局部布局', () => {
     const view = harness()
     const devices = Array.from({ length: 48 }, (_, i) => device({ id: `d${i}`, ownerTag: `u${i % 4}`, targetName: undefined, targetTag: undefined, effectPct: undefined }))
     const content = view.render({ weapons: [weapon()], devices })
-    expect(content.filter(n => n.props['data-device-owner'])).toHaveLength(4)
+    expect(content.filter(n => n.props['data-device-owner'])).toHaveLength(0)
     expect(content.filter(n => n.props['data-device-kind'])).toHaveLength(48)
-    expect(content.filter(n => n.props.className === 'app-bc-target')).toHaveLength(48)
     expect(view.hosts.root.style.getPropertyValue('--bc-popup-height')).toBe('300px')
-    expect(view.hosts.root.style.getPropertyValue('--bc-device-height')).toBe('96px')
     view.hosts.screen.clientHeight = 320; view.hosts.controls.offsetTop = 270
     view.observers[0].callback()
     expect(view.hosts.root.style.getPropertyValue('--bc-popup-height')).toBe('142px')
-    expect(view.hosts.root.style.getPropertyValue('--bc-device-height')).toBe('51.2px')
     view.hosts.trigger.offsetHeight = 44; view.observers[0].callback()
     expect(view.hosts.root.style.getPropertyValue('--bc-popup-height')).toBe('134px')
     expect(css).toContain('overflow: auto')
     expect(css).toMatch(/\.app-battle-screen \.app-bts-topdock\s*\{[^}]*position:\s*relative;[^}]*z-index:\s*10;/)
-    expect(css).toMatch(/\.app-battle-screen \.app-bts-topdock \.app-bts-legends\s*\{[^}]*max-height:\s*88px;[^}]*overflow:\s*auto;/)
+    expect(css).toMatch(/\.app-battle-screen \.app-bts-topdock \.app-bts-legends\s*\{[^}]*height:\s*32px;[^}]*overflow-x:\s*auto;/)
+    expect(css).toContain('touch-action: none')
     expect(css).toContain('.app-battle-cycles[data-battle-cycles] .app-btn.app-bc-trigger')
     expect(css).toContain('.app-root.is-mobile-rot .app-battle-cycles[data-battle-cycles]')
     expect(css).not.toMatch(/\d(?:vw|vh)\b|letter-spacing:\s*-/)
     expect(source).not.toMatch(/innerWidth|innerHeight|getBoundingClientRect|setInterval|aria-modal/)
+    expect(source).toContain('app-bts-reload')
   })
 })
