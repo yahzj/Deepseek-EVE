@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **530** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8144** KB · **63865** 行
-- 状态分布：**未标注** 272 · **已确认/已实现** 180 · **进行中** 53 · **待裁定** 24 · **历史留档** 1
-- 孤儿文档（0 引用）**120** 份 · 状态未标注 **272** 份
+- 文档总数 **529** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8144** KB · **63845** 行
+- 状态分布：**未标注** 272 · **已确认/已实现** 179 · **进行中** 53 · **待裁定** 24 · **历史留档** 1
+- 孤儿文档（0 引用）**119** 份 · 状态未标注 **272** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**366** 份
+- 三、现行设计稿（design）：**365** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**5** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 299 KB / 308 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 90 KB / 908 行 | 95 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 516 KB / 1080 行 | 228 / 22 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 95 KB / 479 行 | 377 / 28 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 481 行 | 377 / 28 |
 
 ## 七、评审与体检（review） —— 12 份
 
@@ -55,7 +55,7 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 366 份
+## 三、现行设计稿（design） —— 365 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -84,7 +84,6 @@
 | `docs/design/startup-win-cache-audit-20261008.md` | 启动卡顿与胜率预热排查 | 已确认/已实现（已实现并以85580256本地合入m） | 2026-10-08 | 8 KB / 69 行 | 1 / 0 |
 | `docs/design/stellar-debug-navigation-20261008.md` | 调试导航开放星系入口 | 未标注（已本地合入及复测） | 2026-10-08 | 2 KB / 24 行 | 0 / 0 |
 | `docs/design/stellar-ready-save-20261008.md` | 新星系即用存档 | 未标注（已本地合入并交付） | 2026-10-08 | 2 KB / 23 行 | 0 / 0 |
-| `docs/design/wave-cadence-20261008.md` | 换波装填节奏修复 | 已确认/已实现（已实现、自测通过） | 2026-10-08 | 3 KB / 32 行 | 0 / 0 |
 | `docs/design/acid-burst-stacking-fx-20261007.md` | 酸液爆虫腐蚀叠加与专属自爆动画 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 53 行 | 2 / 0 |
 | `docs/design/announcement-draft-alien-invasion-20261007.md` | 异形入侵公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 26 行 | 3 / 0 |
 | `docs/design/announcement-draft-shield-field-20261007.md` | 护盾力场、装备代价与一次性舰船蓝图调整公告待审 | 未标注（已按船长要求整合） | 2026-10-07 | 5 KB / 42 行 | 1 / 0 |
@@ -356,7 +355,7 @@
 | `docs/design/hull-repair-module-20260909.md` | 船体维修装置（中槽自动修复装甲/结构）——设计定稿 | 已确认/已实现（已确认） | 2026-09-09 | 10 KB / 103 行 | 9 / 0 |
 | `docs/design/market-rarity-tier-20260909.md` | 市场数字稀有度（隐藏档 · 稀有订单分层）设计稿 | 已确认/已实现（已确认并落地） | 2026-09-09 | 5 KB / 65 行 | 3 / 0 |
 | `docs/design/salvage-autoloop-20260909.md` | 打捞自动循环(主控 + AI)(状态:已确认,2026-09-09 船长拍板;二号实现) | 已确认/已实现（已确认） | 2026-09-09 | 3 KB / 39 行 | 0 / 0 |
-| `docs/design/wave-battles-20260909.md` | 多波次敌人设定(低安顶段悬赏)设计稿(2026-09-09;已确认并实现·待验收/待发布) | 未标注 | 2026-09-09 | 10 KB / 121 行 | 6 / 5 |
+| `docs/design/wave-battles-20260909.md` | 多波次敌人设定(低安顶段悬赏)设计稿(2026-09-09;已确认并实现·待验收/待发布) | 未标注 | 2026-09-09 | 12 KB / 131 行 | 7 / 5 |
 | `docs/design/ai-design.md` | V8 设计文档：AI 核心系统（玩家分身） | 未标注 | — | 7 KB / 93 行 | 3 / 0 |
 | `docs/design/b1-lowsec-encounters.md` | B1 安全等级玩法化：低安遭遇 / 伏击（状态：已确认，实现中；2026-09-06 暴露面收敛） | 已确认/已实现（已确认） | — | 13 KB / 123 行 | 12 / 0 |
 | `docs/design/b3-flavor-content.md` | B3.1 星系/敌群特色残骸产出 · 数值表（2026-09-08 已确认，收尾归档） | 已确认/已实现（已收尾归档） | — | 7 KB / 82 行 | 6 / 1 |
@@ -600,7 +599,7 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，120 份）
+## 附：孤儿文档（0 引用，119 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
@@ -621,7 +620,6 @@
 - `docs/design/remaining-work-merge-20261008.md`（2026-10-08 · 5 KB）—— 剩余工作裁定与分批合入
 - `docs/design/stellar-debug-navigation-20261008.md`（2026-10-08 · 2 KB）—— 调试导航开放星系入口
 - `docs/design/stellar-ready-save-20261008.md`（2026-10-08 · 2 KB）—— 新星系即用存档
-- `docs/design/wave-cadence-20261008.md`（2026-10-08 · 3 KB）—— 换波装填节奏修复
 - `docs/design/colossal-once-buyback-only-20261007.md`（2026-10-07 · 4 KB）—— 皇带鱼一次性蓝图只收不卖
 - `docs/design/ship-acceleration-fx-20261007.md`（2026-10-07 · 5 KB）—— 推进器点火与敌舰冲锋的逐舰特效
 - `docs/design/single-use-ship-bp-price-20261007.md`（2026-10-07 · 5 KB）—— 一次性舰船蓝图降价与皇带鱼停售范围核对
