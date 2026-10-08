@@ -35,6 +35,7 @@ import type { SimContext } from './types'
 import { fleetDefOf } from './instances'
 import { moduleAllowedOnShip } from './shipFitting'
 import { wormholeSupplyForBattle } from './wormholeSupplies'
+import { equipmentCycleMsOf } from './equipment'
 
 /** 该舰装了几件储备甲板、各件周期毫秒（**升序** ⇒ 下标 0 = 最快的那件） */
 export function droneReviveCyclesOf(state: GameState, ctx: SimContext, shipId: string): number[] {
@@ -45,7 +46,7 @@ export function droneReviveCyclesOf(state: GameState, ctx: SimContext, shipId: s
     const mod = ctx.modules.get(modId)
     if (!mod || !moduleAllowedOnShip(fleetDefOf(state, ctx, shipId), mod)) continue
     const ms = mod.droneReviveCycleMs
-    if (typeof ms === 'number' && ms > 0) out.push(ms)
+    if (typeof ms === 'number' && ms > 0) out.push(equipmentCycleMsOf(state, ctx, shipId, ms))
   }
   return out.sort((a, b) => a - b)
 }
@@ -205,10 +206,12 @@ export function droneReviveNoteLoss(state: GameState, battle: BattleState, poolK
  * ⚠ **本舰被击毁 / 战斗结束 ⇒ 调用方停调本函数**（周期就此停住，**不做半格折算**）。
  */
 export function resolveDroneRevive(state: GameState, ctx: SimContext, battle: BattleState, nowMs: number): void {
-  void ctx
   const book = battle.droneRevive
   if (!book) return
   for (const e of Object.values(book)) {
+    // 在途截止时刻不重置；后续新周期采用当前装备参数，不重复乘快照。
+    const cycles = droneReviveCyclesOf(state, ctx, e.shipId)
+    if (cycles.length === e.c.length) e.c = cycles
     for (let k = 0; k < e.t.length; k++) {
       let at = e.t[k]
       if (at === undefined) continue

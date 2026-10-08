@@ -45,11 +45,12 @@ describe('物品装备说明双语与数据守恒', () => {
     expect(ITEMS.filter(item => added.has(item.id)).map(item => item.id).sort()).toEqual([...added].sort())
     expect(strip(ITEMS.filter(item => !added.has(item.id)))).toEqual(strip(adjusted))
   })
-  it('170 件装备含插件，除 description 外所有字段逐项不变', () => {
+  it('170 件装备含插件，除说明与已确认的巨构8%代价外所有字段逐项不变', () => {
     const plugs = historical<typeof MODULES>('packages/data/src/plugs.ts', 'SHIP_PLUGS')
     const before = historical<typeof MODULES>('packages/data/src/modules.ts', 'MODULES', { SHIP_PLUGS: plugs })
     const strip = (entries: typeof MODULES) => entries.map(({ description: _description, ...rest }) => rest)
-    expect(strip(MODULES)).toEqual(strip(before))
+    const adjusted = before.map(mod => mod.id === 'mod-wh-e-cpu' ? { ...mod, reloadPenaltyPct: .08 } : mod)
+    expect(strip(MODULES)).toEqual(strip(adjusted))
   })
   it.each(ITEMS)('$id 物品说明中英唯一表接线一致，名称不变', (item) => {
     const pair = Object.entries(L10N).find(([id, entry]) => (id.startsWith('item.copy.') || id.startsWith('item.signalSpace.') || id.startsWith('item.ammoMk3.') || id.startsWith('item.alien.') || id === 'ui.stellar.002') && entry.zh === item.description)
@@ -91,13 +92,33 @@ const bindings = {
   MODULE_SUBS: [], moduleSubKeyOf: () => '', subText: () => '',
 }
 runInNewContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText, bindings)
-const display = bindings.exports as { itemInfoLines: (item: (typeof ITEMS)[number]) => Row[]; moduleInfoLines: (module: (typeof MODULES)[number]) => Row[] }
+const display = bindings.exports as { itemInfoLines: (item: (typeof ITEMS)[number]) => Row[]; moduleInfoLines: (module: (typeof MODULES)[number], engine?: unknown, shipId?: string, ordinal?: number) => Row[] }
 function textOf(value: unknown): string {
   if (Array.isArray(value)) return value.map(textOf).join('')
   if (value && typeof value === 'object' && 'children' in value) return textOf((value as { children: unknown[] }).children)
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 }
 describe('真实参数行承接说明数字', () => {
+  it('中英已装周期与负面值均从真实核心读取，不漏槽或保留最大值旧提示', () => {
+    const ctx = buildSimContext()
+    const state = core.createInitialState({ nowWallMs: 0, seed: 12 })
+    const uid = core.addShipToFleet(state, 'sh-megalodon')
+    state.shipId = uid
+    state.fleet[uid]!.fitted = { high: ['mod-shieldfield-2'], mid: ['mod-prop-3', 'mod-prop-3'], low: ['mod-wh-e-cpu', 'mod-wh-e-cpu', 'mod-wh-a-coat', 'mod-wh-a-coat'] }
+    const engine = { state, ctx }
+    for (const locale of ['zh', 'en'] as const) {
+      language.value = locale
+      const rows = display.moduleInfoLines(ctx.modules.get('mod-shieldfield-2')!, engine, uid)
+      const cycle = rows.find(row => row.k === L10N['ui.equipmentPenalty.001']![locale])!
+      expect(textOf(cycle.v)).toContain('11.664')
+      for (const [id, ordinal] of [['mod-prop-3', 2], ['mod-wh-a-coat', 2], ['mod-wh-e-cpu', 2]] as const) {
+        const values = display.moduleInfoLines(ctx.modules.get(id)!, engine, uid, ordinal).map(row => textOf(row.v)).join('|')
+        expect(values).not.toMatch(/\{p\d+\}|只取最重|heaviest of several|下限 0|floor 0/)
+        if (id === 'mod-wh-a-coat') expect(values).toContain('11%')
+        if (id === 'mod-wh-e-cpu') expect(values).toContain('8%')
+      }
+    }
+  })
   it('护盾力场费用与结算常量同源，装备/图纸中英都排除自身', () => {
     for (const locale of ['zh', 'en'] as const) {
       language.value = locale

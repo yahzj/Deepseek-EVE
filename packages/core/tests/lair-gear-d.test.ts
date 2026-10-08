@@ -121,7 +121,7 @@ describe('D 族守墓古舰专属装备（2026-09-10 船长）', () => {
     )
   })
 
-  it('D3 机动代价：战斗速度 ×0.75；多件不叠加、取最重一件', () => {
+  it('D3 机动代价：每件战斗速度乘0.75', () => {
     const plain = createPlayerSpec(makeState(), ctx, SHIP)!
     const one = createPlayerSpec(makeState([], [], ['mod-lair-armor-d']), ctx, SHIP)!
     expect(plain.speedMps).toBe(300) // 灰鲭鲨裸速（无技能）
@@ -130,7 +130,7 @@ describe('D 族守墓古舰专属装备（2026-09-10 船长）', () => {
     const two = makeState([], [], ['mod-lair-armor-d'])
     two.fleet[two.shipId]!.fitted.low[1] = 'mod-lair-armor-d'
     const twoSpec = createPlayerSpec(two, ctx, two.shipId)!
-    expect(twoSpec.speedMps / plain.speedMps).toBeCloseTo(0.75, 6)
+    expect(twoSpec.speedMps / plain.speedMps).toBeCloseTo(0.75 ** 2, 6)
     // 与推进器共存：先乘推进加成、再打折（顺序无关，均为乘算）
     const withProp = createPlayerSpec(makeState([], [], ['mod-lair-armor-d', 'mod-prop-1']), ctx, SHIP)!
     const propOnly = createPlayerSpec(makeState([], [], ['mod-prop-1']), ctx, SHIP)!

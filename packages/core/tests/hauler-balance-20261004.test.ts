@@ -203,7 +203,7 @@ describe('纯货舰修订', () => {
     const value = bp.materials.reduce((sum, m) => sum + m.count * ctx.items.get(m.itemId)!.baseSellPriceIsk, 0)
     expect(value).toBe(6_750_000 * 0.45)
     expect(bp.priceIsk).toBe(27_000_000)
-    expect(once.priceIsk).toBe(3_375_000)
+    expect(once.priceIsk).toBe(675_000)
     expect(EN_SHIPS['sh-manatee']!.name).toBe('Manatee-class Freighter')
     expect(EN_SHIP_BLUEPRINTS['sbp-manatee']!.description).toBeTruthy()
     expect(EN_SHIP_BLUEPRINTS['sbp-once-manatee']!.description).toBe(EN_SHIP_BLUEPRINTS['sbp-manatee']!.description)

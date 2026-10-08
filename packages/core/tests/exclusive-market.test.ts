@@ -92,7 +92,7 @@ describe('专属内容上市场（2026-09-14 船长「允许玩家挂卖」批�
     expect(priceOf('drone-exile-bee')).toBe(24_000)
     expect(priceOf('drone-wh-e-sentry')).toBe(88_000)
     // 舰船图纸：舰价 ×0.5（09-14 一次性舰船蓝图规则）
-    expect(priceOf('sbp-wh-a-frigate')).toBe(round500(priceOf('sh-wh-a-frigate') * 0.5))
+    expect(priceOf('sbp-wh-a-frigate')).toBe(Math.round(priceOf('sh-wh-a-frigate') * 0.1))
     // 两处同值（blueprints.ts priceIsk = 市场行）——硬契约在 content:check 里也有一条
     expect(BLUEPRINTS.find((b) => b.id === 'bp-wh-a-frag')?.priceIsk).toBe(priceOf('bp-wh-a-frag'))
     expect(SHIP_BLUEPRINTS.find((b) => b.id === 'sbp-wh-a-frigate')?.priceIsk).toBe(priceOf('sbp-wh-a-frigate'))

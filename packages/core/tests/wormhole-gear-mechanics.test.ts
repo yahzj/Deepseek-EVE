@@ -126,7 +126,7 @@ describe('虫洞装备新机制（2026-09-13）', () => {
     expect(b2.kinetic).toBe((b1.kinetic ?? 0) * 2)
   })
 
-  it('③ 全武器射程削减：单件 −25% 生效，多件只取最重一件', () => {
+  it('③ 舰载武器射程削减：各件保留比例相乘', () => {
     const single = world([gun('mod-g'), SUPPORT('mod-cut', { rangeCutPct: 0.25 })], {
       high: ['mod-g', null, null, null],
       mid: ['mod-cut', null, null, null],
@@ -136,8 +136,7 @@ describe('虫洞装备新机制（2026-09-13）', () => {
       high: ['mod-g', null, null, null],
       mid: ['mod-cut', 'mod-cut2', null, null],
     })
-    // 取最重一件（0.25）而不是相加（0.40）
-    expect(specOf(both.state, both.ctx).weapons.find((w) => w.kind === 'gun')!.maxRangeM).toBe(2_250)
+    expect(specOf(both.state, both.ctx).weapons.find((w) => w.kind === 'gun')!.maxRangeM).toBe(Math.round(3000 * (.75 * .85)))
   })
 
   it('④ 按系射程加成：只喂指定弹型（动能 +22%，等离子不动）', () => {
@@ -163,7 +162,7 @@ describe('虫洞装备新机制（2026-09-13）', () => {
     expect(shot(plus)).toBe(Math.round(a * 1.06))
   })
 
-  it('⑥ 装填惩罚：装填 ×1.12（多件取最重一件）', () => {
+  it('⑥ 装填惩罚：读取实际参数，逐件相乘', () => {
     const w = world([gun('mod-g'), moduleDef('mod-cpu', 'cpu', 0, { rack: 'low', cpuUse: 0, cpuBonus: 90, reloadPenaltyPct: 0.12 })], {
       high: ['mod-g', null, null, null],
       low: ['mod-cpu', null, null, null],

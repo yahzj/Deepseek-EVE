@@ -15,7 +15,7 @@
  */
 import type { ElementType, ReactNode } from 'react'
 import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
-import { DEFAULT_BALANCE, DC_LOCK_MS, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, beamPowerFactor, thrusterCycleNote, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules, fittedEffectParamsOf, WEB_BREAK_DIST_M } from '@whale/core'
+import { DEFAULT_BALANCE, DC_LOCK_MS, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, beamPowerFactor, thrusterCycleNote, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules, fittedEffectParamsOf, WEB_BREAK_DIST_M, equipmentCycleMsOf } from '@whale/core'
 import { HIGH_SEC_PENALTY, JUMP_FUEL_SPEED_MUL, SHIELD_FIELD_COST_PCT, SYNAPTIC_ACCELERANT_MS, SYNAPTIC_ACCELERANT_MUL, wormholeIsShapedItem, wormholeShapeOf } from '@whale/core'
 /** 引擎类型（"装上船之后的实修值"那一行要现算 —— 2026-09-29 船长令） */
 import type { GameEngine } from '../game/engine'
@@ -393,7 +393,7 @@ function fittedDecayLine(engine: GameEngine, shipId: string, mod: ModuleDef, ord
   const parts = params.map((p) => {
     const name = tr(EFF_PARAM_LABEL[p.key] ?? 'ui.shipInfo.218')
     const eff = pct(p.eff)
-    const raw = isGap ? tr('ui.shipInfo.220', { p1: pct(p.raw) }) : tr('ui.shipInfo.221', { p1: pct(p.raw) })
+    const raw = isGap && !p.key.endsWith('Penalty') ? tr('ui.shipInfo.220', { p1: pct(p.raw) }) : tr('ui.shipInfo.221', { p1: pct(p.raw) })
     return `${name} ${eff}${raw}`
   })
   return { k: tr('ui.shipInfo.222'), v: parts.join(' · ') }
@@ -409,6 +409,11 @@ const EFF_PARAM_LABEL: Record<string, string> = {
   lock: 'ui.shipInfo.228',
   warp: 'ui.shipInfo.229',
   ecmRangeCut: 'ui.shipInfo.230',
+  reloadPenalty: 'ui.shipInfo.072',
+  speedPenalty: 'ui.shipInfo.075',
+  rangePenalty: 'ui.shipInfo.070',
+  hitPenalty: 'ui.shipInfo.021',
+  resistPenalty: 'ui.shipInfo.073',
   evasion: 'ui.shipInfo.231',
   'resistShield:kinetic': 'ui.shipInfo.232',
   'resistShield:explosive': 'ui.shipInfo.233',
@@ -1438,7 +1443,7 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   if ((mod.allResistPenaltyPct ?? 0) > 0) {
     lines.push({
       k: tr("ui.shipInfo.073"),
-      v: tr("ui.shipInfo.166", { p1: pct(mod.allResistPenaltyPct ?? 0) }),
+      v: tr("ui.shipInfo.166", { p1: fmt((mod.allResistPenaltyPct ?? 0) * 100) }),
     })
   }
   if ((mod.droneCycleCutPct ?? 0) > 0) {
@@ -1529,6 +1534,12 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   if (shipId !== undefined && engine !== undefined) {
     const dec = fittedDecayLine(engine, shipId, mod, ordinal)
     if (dec) lines.push(dec)
+    const baseCycle = mod.shieldFieldMs ?? (mod.shieldPulsePct ? SHIELD_PULSE_MS : undefined) ??
+      ((mod.repairArmorHp ?? 0) > 0 || (mod.repairHullHp ?? 0) > 0 ? mod.repairIntervalMs ?? 5000 : undefined) ??
+      mod.captureWebCycleMs ?? mod.droneReviveCycleMs
+    if (baseCycle !== undefined) lines.push({ k: tr('ui.equipmentPenalty.001'), v: tr('ui.equipmentPenalty.002', {
+      p1: equipmentCycleMsOf(engine.state, engine.ctx, shipId, baseCycle) / 1000, p2: baseCycle / 1000,
+    }) })
   }
   return lines
 }

@@ -289,7 +289,7 @@ describe('V18.1 装配与战斗集成', () => {
     // 2026-09-10 船长：推进器改周期点火——基础速度不变，加成作用在**爆发倍率**上
     // 2026-09-20 船长：多件改「折权加算」⇒ +50% 与 +15% 两件 = 0.5 + 0.15×0.869 = **+63.0%**（旧 EVE 曲线给 +69.6%）
     expect(1 + (spec.thrusterBoost ?? 0)).toBeCloseTo(1 + 0.5 * stackWeight(1) + 0.15 * stackWeight(2), 6)
-    expect(spec.hitMul).toBeCloseTo(0.8, 9) // 最重代价 0.2，而非 0.95×0.8
+    expect(spec.hitMul).toBeCloseTo(.8 * (1 - .05 * stackWeight(2)), 9)
   })
 
   it('sameKindCount：命中件第 2 件计数（装配提示用）', () => {

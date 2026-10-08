@@ -9,7 +9,7 @@ import type { GameState } from './state'
 import type { DamageResists, DamageType, ModuleDef, SimContext } from './types'
 import { clamp, RESIST_FLOOR } from './combatMath'
 import type { Hp3 } from './combatMath'
-import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, weightedSum } from './equipment'
+import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, weightedSum, equipmentPenaltiesOf } from './equipment'
 import { moduleAllowedOnShip } from './shipFitting'
 import { fleetDefOf } from './instances'
 import { shipCategoryKeyOf } from './labels'
@@ -168,10 +168,12 @@ export function createPlayerSpec(
    * **墨潮捕获网的周期**（**船长 2026-09-26**）：取所装件里**最短**的一件（缺省 0 = 本舰不带网）。
    * 与隐身取最长相反 —— 这是攻击性装置，重叠装没有收益。消费见 `advanceMyCaptureWebs`。
    */
-  const webCycleMs = allFittedModules(fitted, ctx).reduce<number>(
+  const penalties = equipmentPenaltiesOf(state, ctx, shipId, fitted)
+  const webCycleBaseMs = allFittedModules(fitted, ctx).reduce<number>(
     (m, d) => (d.captureWebCycleMs === undefined ? m : m === 0 ? d.captureWebCycleMs : Math.min(m, d.captureWebCycleMs)),
     0,
   )
+  const webCycleMs = Math.round(webCycleBaseMs * penalties.reload)
   /**
    * **墨潮捕获网的三项读数**（**2026-09-29 船长令**：「将一些关键属性（比如射程，减速幅度）放进属性里」）：
    * 投网射程 / 断开距离 / 减速倍率改为**从件上取**（多件取**最有利**的一件：射程取最长、断开取最远、
@@ -346,15 +348,8 @@ export function createPlayerSpec(
     if (p.targetWeightMul !== undefined) plugTargetWeight *= p.targetWeightMul
     plugRangeBonus += p.plugRangeBonusPct ?? 0
   }
-  /** 装填惩罚（巨构协处理器 +12%）：多件只取最重一件 */
-  const reloadPen = Math.max(0, ...allDefs.map((m) => m.reloadPenaltyPct ?? 0))
-  /** 全层抗性削减（掠袭折射涂层 −15）：多件只取最重一件，下限 0 */
-  const resistPen = Math.max(0, ...allDefs.map((m) => m.allResistPenaltyPct ?? 0))
-  /** 全武器射程削减（掠袭者护盾笼 −25% / 赃物扫描阵 −15%）：多件只取最重一件。
-   *  ⚠ **2026-09-26 插件批**：**本行逐字未动**（只认既有装备件的正值"取最重"）——
-   *  射程插件的 +25% **不并进这里**（并进来会改变既有"多件只取最重"的语义），
-   *  改在下面的 `rangeOf` 里作为**独立倍率**相乘。两条互不干扰。 */
-  const rangeCut = Math.max(0, ...allDefs.map((m) => m.rangeCutPct ?? 0))
+  // 2026-10-08船长确认：负面继承收益权重，百分比相乘、抗性百分点相减。
+  const resistPen = penalties.resist
   /** 按系射程加成（幽灵弹道校正器「动能武器射程 +22%」）：按系加算 */
   const rangeBonus: Record<DamageType, number> = { kinetic: 0, explosive: 0, plasma: 0 }
   for (const m of allDefs) {
@@ -365,7 +360,7 @@ export function createPlayerSpec(
   /** 武器**基准射程** = 装备自带射程 × (1−削减)；下限 500 m（不许被压成 0）。
    *  ⚠ 与"实际射程"分家只为**干扰压制**：船长的加法口径要按"基准 + 加成"拆开算
    *  （见 `meRangeMulOf`；`refs.weaponRanges` 记的就是这两份数）。 */
-  const rangeBase = (base: number): number => Math.max(500, Math.round(base * (1 - Math.min(0.9, rangeCut))))
+  const rangeBase = (base: number): number => Math.max(500, Math.round(base * Math.max(.1, penalties.range)))
   /**
    * 🔴 **射程插件的 +25% 并进"战前射程加成池"**（**2026-09-26 船长令**：「**射程插件和增加射程的装备，
    * 应该提高的是战斗前的数据，电子舰和战斗中触发的射程增加减少是独立的加减算法的乘区**」）。
@@ -397,7 +392,7 @@ export function createPlayerSpec(
     }
   }
 
-  // 推进器（V18.1 多件）：速度加成 EVE 曲线收敛；开火失稳只取最重一件
+  // 速度收益折权加算；命中代价使用对应收益权重后相乘。
   // 2026-09-13 虫洞专属（生体脉搏加速器）：速度加成**不再只认推进器槽**——任意槽位携带
   // `speedBonusPct` 都计入（与 speedPenaltyPct / hitPenalty 的"全件扫描"同口径）；
   // 既有装备只有推进器带本字段 ⇒ 行为零变化。
@@ -412,7 +407,6 @@ export function createPlayerSpec(
    * ⚠ 命中 / 跃迁速度 / 目标锁定**仍是 EVE 曲线**（本裁定只动速度）。
    */
   const speedEq = 1 + weightedSum(propSpeeds)
-  const worstPen = Math.max(0, ...propDefs.map((p) => p.hitPenalty ?? 0))
   /**
    * **本单位推进器的点火周期**（2026-09-14 船长新增「微型跃迁引擎」：点火 10 秒 / 冷却 60 秒）。
    * 取**装配里点火最短的那件**（同长再取冷却更短的那件）——没有覆盖件的装配 ⇒ `cycle` 与全局值相同
@@ -427,8 +421,6 @@ export function createPlayerSpec(
   const cycleOverridden =
     propCycle !== undefined &&
     (propCycle.boostMs !== bal.thrusterBoostMs || propCycle.cooldownMs !== bal.thrusterCooldownMs)
-  // 装甲件常驻速度代价（2026-09-10 船长：陵寝装甲层 −25%）——多件取最重一件（与上面的失稳同口径）
-  const worstSpeedPen = Math.max(0, ...allFittedModules(fitted, ctx).map((m) => m.speedPenaltyPct ?? 0))
   // 锁定装置（2026-09-09 船长拍板：集火 + 被锁目标受击加深 8/12/20% 档；多件 EVE 曲线收敛）
   const lockEq = curveMult(targetLockDefs.map((m) => m.lockDmgBonus ?? 0))
 
@@ -464,7 +456,7 @@ export function createPlayerSpec(
     minRangeM: 0,
     hitRate: 0.5,
     falloff: 0.3,
-    reloadMs: 3500,
+    reloadMs: Math.round(3500 * penalties.reload),
   })
   // 同型仍合并展示/装填/弹药账，伤害字段为该组总量；开火时逐门独立命中。
   const gunGroups = new Map<string, ModuleDef[]>()
@@ -516,14 +508,14 @@ export function createPlayerSpec(
      * 衰减再乘一次 ⇒ 满级实测只值 **+3.3pp**（探针实测）；改到这里后它才真正是"炮台命中"。
      */
     const targetMult = 1 + bal.hitPerLevel * Math.min(5, state.skills.trained[bal.hitSkillId] ?? 0)
-    // 2026-09-13 虫洞专属：装填惩罚 ×(1+reloadPen)（与射速计算机的"÷(1+x)"是两件事）
+    // 装填代价独立乘区，动态装填的步长与下限同乘，不能绕过代价。
     const reload = Math.max(
       100,
       Math.round(
         (turret.reloadMs / reloadDiv) *
           (1 - 0.04 * Math.min(5, state.skills.trained['reload-drills'] ?? 0)) *
           reloadUpgradeMult(state) *
-          (1 + reloadPen),
+          penalties.reload,
       ),
     )
     if (turret.slot === 'laser') {
@@ -543,7 +535,10 @@ export function createPlayerSpec(
         falloff: turret.falloff ?? 0.3,
         reloadMs: reload,
         // **叠光同款 · 装填自加速**（船长 2026-10-01 令）：只有带该字段的件（R 族叠光激光炮）才写
-        ...(turret.overlayDrive !== undefined ? { overlayDrive: turret.overlayDrive } : {}),
+        ...(turret.overlayDrive !== undefined ? { overlayDrive: {
+          stepMs: turret.overlayDrive.stepMs * penalties.reload,
+          floorMs: Math.round(turret.overlayDrive.floorMs * penalties.reload),
+        } } : {}),
         // **三连射**（船长 2026-10-03 令）：只有带该字段的件（R 族三叉戟光束炮）才写；
         // 消费点 = 我方开火环（`combat.meBurstReloadOf`，与敌方旗舰那把同款排期）。
         ...(turret.burst !== undefined ? { burst: turret.burst } : {}),
@@ -646,7 +641,7 @@ export function createPlayerSpec(
       (def.reloadMs ?? 4400) *
         (1 - 0.04 * Math.min(5, state.skills.trained['drone-servicing'] ?? 0)) *
         droneReloadUpgradeMult(state) *
-        (1 - droneCycleCut),
+        (1 - droneCycleCut) * penalties.reload,
     )
   if (bayLimit > 0 && cpuLeft > 0) {
     for (const [droneId, want] of Object.entries(droneLoad)) {
@@ -749,20 +744,19 @@ export function createPlayerSpec(
     // ⇒ 这里恢复成**纯静态舰船值**（装配台那一行「命中加成 +N%」自此与实际完全一致）。
     // 2026-09-22 舰种操作：驱逐舰操作加**百分点**（+2pp/级）——与敌方闪避同处那条减法式（船长裁定「加百分点」）
     hitBonus: (ship.hitBonus ?? 0) + 0.02 * destroyerOpsLv,
-    // V17.1 失稳（多件只取最重一件；V18.1 索敌命中乘子走炮台条目 eqHitMul，不在此）
+    // 装备命中代价逐件折权相乘；索敌收益仍走炮台条目eqHitMul。
     // 2026-09-10 船长：本值 = **点火期**的命中乘子；冷却期不开火失稳（stepBattle 用 meAtk 置 1）
-    hitMul: 1 - worstPen,
+    hitMul: penalties.hit,
     signatureM: ship.signatureM ?? 80,
     scanResMm: ship.scanResMm ?? 500,
     // V17 矢量推进器 = 加力推进；V18.1 多件速度加成 EVE 曲线收敛；矢量机动操作（舰船）再乘 +5%/级
-    // 2026-09-10 船长：装甲件的**常驻速度代价**（如陵寝装甲层 −25%）——多件只取最重一件
-    // （与推进器失稳 hitPenalty 同口径：重甲不会叠成静止），钳制到 [0.1, 1]
+    // 常驻速度代价逐件相乘，保留原安全下限。
     // 2026-09-10 船长（推进器周期化）：**基础速度不含推进器**——推进器改走 thrusterBoost，
     // 只在爆发窗口内生效（见 thrusterPhase），冷却期回到本值。
     speedMps:
       ((ship.maxSpeedMps ?? 200) + plugSpeedMps) *
       (1 + bal.speedPerLevel * Math.min(5, state.skills.trained[bal.speedSkillId] ?? 0)) *
-      Math.max(0.1, 1 - worstSpeedPen) * damage.speed,
+      Math.max(0.1, penalties.speed) * damage.speed,
     // 推进器爆发倍率（多件 EVE 曲线收敛后的合成值 − 1）：0 = 未装；爆发窗口内才乘上去
     ...(speedEq > 1 ? { thrusterBoost: speedEq - 1 } : {}),
     // 本单位自己的点火周期（只在有覆盖件时写；没写 = 全局 60/60，见 `unitThrusterCycle`）

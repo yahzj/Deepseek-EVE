@@ -49,8 +49,8 @@ describe('鲸王级价目对齐（2026-09-29 船长裁决「甲」）', () => {
   it('③ 图纸：永久 = 锚价 ×4 = 400M · 一次性 = 锚价 ×50% = 50M', () => {
     expect(bpOf('sbp-whale-king').priceIsk).toBe(400_000_000)
     expect(goodOf('sbp-whale-king')?.basePrice).toBe(400_000_000)
-    expect(bpOf('sbp-once-whale-king').priceIsk).toBe(50_000_000)
-    expect(goodOf('sbp-once-whale-king')?.basePrice).toBe(50_000_000)
+    expect(bpOf('sbp-once-whale-king').priceIsk).toBe(10_000_000)
+    expect(goodOf('sbp-once-whale-king')?.basePrice).toBe(10_000_000)
     expect(bpOf('sbp-once-whale-king').singleUse).toBe(true)
   })
 

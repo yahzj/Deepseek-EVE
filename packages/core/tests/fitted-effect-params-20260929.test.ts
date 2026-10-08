@@ -45,7 +45,7 @@ describe('多装递减装备 · 装上后的「有效值（原值）」', () => 
     const mod = ctx.modules.get('mod-mwd-3')!
     const p = fittedEffectParamsOf(state, ctx, uid, mod, 1)
     expect(p.find((x) => x.key === 'speed')!.eff).toBeCloseTo(2.5, 10)
-    expect(p.find((x) => x.key === 'hitPenalty'), '命中代价不在本表（只报会衰减的加成项）').toBeUndefined()
+    expect(p.find((x) => x.key === 'hitPenalty')!.eff, '负面同样显示实际有效值').toBeCloseTo(.4, 10)
   })
 
   it('**缺口族报"装上后的合成值"**：护盾动能增强 +50%，本舰实际护盾动能抗性 ≥ 本件原值', () => {

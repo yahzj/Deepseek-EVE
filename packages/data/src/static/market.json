@@ -3427,7 +3427,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-pioneer",
         "rarity": "rare",
-        "basePrice": 4000000,
+        "basePrice": 800000,
         "demandMultiplier": 0.65,
         "standingReq": 15
       },
@@ -3436,7 +3436,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-sailfish",
         "rarity": "rare",
-        "basePrice": 1200000,
+        "basePrice": 240000,
         "demandMultiplier": 0.65,
         "standingReq": 15
       },
@@ -3445,7 +3445,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-manatee",
         "rarity": "rare",
-        "basePrice": 3375000,
+        "basePrice": 675000,
         "demandMultiplier": 0.65,
         "standingReq": 15
       },
@@ -3454,7 +3454,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-sentinel",
         "rarity": "rare",
-        "basePrice": 1300000,
+        "basePrice": 260000,
         "demandMultiplier": 0.65,
         "standingReq": 15
       },
@@ -3463,7 +3463,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-hawksbill",
         "rarity": "rare",
-        "basePrice": 3000000,
+        "basePrice": 600000,
         "demandMultiplier": 0.65,
         "standingReq": 15
       },
@@ -3472,7 +3472,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-humpback",
         "rarity": "rare",
-        "basePrice": 45000000,
+        "basePrice": 9000000,
         "demandMultiplier": 0.65,
         "standingReq": 15
       },
@@ -3481,7 +3481,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-thresher",
         "rarity": "rare",
-        "basePrice": 4500000,
+        "basePrice": 900000,
         "demandMultiplier": 0.65,
         "standingReq": 8
       },
@@ -3490,7 +3490,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-nautilus",
         "rarity": "rare",
-        "basePrice": 4500000,
+        "basePrice": 900000,
         "demandMultiplier": 0.65,
         "standingReq": 8
       },
@@ -3499,7 +3499,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-hammerhead",
         "rarity": "rare",
-        "basePrice": 5500000,
+        "basePrice": 1100000,
         "demandMultiplier": 0.65,
         "standingReq": 8
       },
@@ -3508,7 +3508,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-whale-king",
         "rarity": "rare",
-        "basePrice": 50000000,
+        "basePrice": 10000000,
         "demandMultiplier": 0.65,
         "standingReq": 15
       },
@@ -3517,7 +3517,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-bullshark",
         "rarity": "rare",
-        "basePrice": 6500000,
+        "basePrice": 1300000,
         "demandMultiplier": 0.65,
         "standingReq": 8
       },
@@ -3526,7 +3526,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-electricray",
         "rarity": "rare",
-        "basePrice": 7500000,
+        "basePrice": 1500000,
         "demandMultiplier": 0.65,
         "standingReq": 8
       },
@@ -3535,7 +3535,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-swordfish",
         "rarity": "rare",
-        "basePrice": 12000000,
+        "basePrice": 2400000,
         "demandMultiplier": 0.65,
         "standingReq": 25
       },
@@ -3544,7 +3544,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-bowhead",
         "rarity": "rare",
-        "basePrice": 33750000,
+        "basePrice": 6750000,
         "demandMultiplier": 0.65,
         "standingReq": 25
       },
@@ -3553,7 +3553,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-xuanwu",
         "rarity": "exotic",
-        "basePrice": 112500000,
+        "basePrice": 22500000,
         "demandMultiplier": 1,
         "standingReq": 25
       },
@@ -3562,7 +3562,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-megalodon",
         "rarity": "exotic",
-        "basePrice": 112500000,
+        "basePrice": 22500000,
         "demandMultiplier": 1,
         "standingReq": 25
       },
@@ -3571,7 +3571,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-orca",
         "rarity": "exotic",
-        "basePrice": 112500000,
+        "basePrice": 22500000,
         "demandMultiplier": 1,
         "standingReq": 25
       },
@@ -3580,7 +3580,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-helicoprion",
         "rarity": "exotic",
-        "basePrice": 112500000,
+        "basePrice": 22500000,
         "demandMultiplier": 1,
         "standingReq": 25
       },
@@ -3589,7 +3589,7 @@
         "kind": "blueprint",
         "refId": "sbp-once-colossal",
         "rarity": "exotic",
-        "basePrice": 320000000,
+        "basePrice": 64000000,
         "demandMultiplier": 1,
         "standingReq": 40,
         "playerBuyable": false
@@ -3662,7 +3662,7 @@
         "kind": "blueprint",
         "refId": "sbp-wh-a-frigate",
         "rarity": "exotic",
-        "basePrice": 1153000,
+        "basePrice": 230600,
         "demandMultiplier": 1,
         "playerBuyable": false
       },
@@ -3671,7 +3671,7 @@
         "kind": "blueprint",
         "refId": "sbp-wh-a-destroyer",
         "rarity": "exotic",
-        "basePrice": 2555000,
+        "basePrice": 510950,
         "demandMultiplier": 1,
         "playerBuyable": false
       },
@@ -3680,7 +3680,7 @@
         "kind": "blueprint",
         "refId": "sbp-wh-a-cruiser",
         "rarity": "exotic",
-        "basePrice": 4942000,
+        "basePrice": 988450,
         "demandMultiplier": 1,
         "playerBuyable": false
       },
@@ -3689,7 +3689,7 @@
         "kind": "blueprint",
         "refId": "sbp-wh-c-frigate",
         "rarity": "exotic",
-        "basePrice": 1307000,
+        "basePrice": 261350,
         "demandMultiplier": 1,
         "playerBuyable": false
       },
@@ -3698,7 +3698,7 @@
         "kind": "blueprint",
         "refId": "sbp-wh-c-destroyer",
         "rarity": "exotic",
-        "basePrice": 2822000,
+        "basePrice": 564450,
         "demandMultiplier": 1,
         "playerBuyable": false
       },
@@ -3707,7 +3707,7 @@
         "kind": "blueprint",
         "refId": "sbp-wh-c-cruiser",
         "rarity": "exotic",
-        "basePrice": 5680000,
+        "basePrice": 1136000,
         "demandMultiplier": 1,
         "playerBuyable": false
       },
@@ -3716,7 +3716,7 @@
         "kind": "blueprint",
         "refId": "sbp-wh-d-frigate",
         "rarity": "exotic",
-        "basePrice": 1536500,
+        "basePrice": 307300,
         "demandMultiplier": 1,
         "playerBuyable": false
       },
@@ -3725,7 +3725,7 @@
         "kind": "blueprint",
         "refId": "sbp-wh-d-destroyer",
         "rarity": "exotic",
-        "basePrice": 3722000,
+        "basePrice": 744350,
         "demandMultiplier": 1,
         "playerBuyable": false
       },
@@ -3734,7 +3734,7 @@
         "kind": "blueprint",
         "refId": "sbp-wh-d-cruiser",
         "rarity": "exotic",
-        "basePrice": 7680000,
+        "basePrice": 1536000,
         "demandMultiplier": 1,
         "playerBuyable": false
       },
@@ -3743,7 +3743,7 @@
         "kind": "blueprint",
         "refId": "sbp-wh-e-frigate",
         "rarity": "exotic",
-        "basePrice": 1437000,
+        "basePrice": 287450,
         "demandMultiplier": 1,
         "playerBuyable": false
       },
@@ -3752,7 +3752,7 @@
         "kind": "blueprint",
         "refId": "sbp-wh-e-destroyer",
         "rarity": "exotic",
-        "basePrice": 3107000,
+        "basePrice": 621350,
         "demandMultiplier": 1,
         "playerBuyable": false
       },
@@ -3761,7 +3761,7 @@
         "kind": "blueprint",
         "refId": "sbp-wh-e-carrier",
         "rarity": "exotic",
-        "basePrice": 7172500,
+        "basePrice": 1434500,
         "demandMultiplier": 1,
         "playerBuyable": false
       },
@@ -3770,7 +3770,7 @@
         "kind": "blueprint",
         "refId": "sbp-wh-g-frigate",
         "rarity": "exotic",
-        "basePrice": 1515000,
+        "basePrice": 303000,
         "demandMultiplier": 1,
         "playerBuyable": false
       },
@@ -3779,7 +3779,7 @@
         "kind": "blueprint",
         "refId": "sbp-wh-g-destroyer",
         "rarity": "exotic",
-        "basePrice": 3335000,
+        "basePrice": 667000,
         "demandMultiplier": 1,
         "playerBuyable": false
       },
@@ -3788,7 +3788,7 @@
         "kind": "blueprint",
         "refId": "sbp-wh-g-cruiser",
         "rarity": "exotic",
-        "basePrice": 6693000,
+        "basePrice": 1338650,
         "demandMultiplier": 1,
         "playerBuyable": false
       },

@@ -372,6 +372,68 @@ export function stackWeight(n: number): number {
   return Math.exp(-(k * k))
 }
 
+/** 按正向收益排位；负面沿用同件权重，缺口族按先前装备剩余缺口折减。 */
+export function fittedPenaltyPartsOf(state: GameState, ctx: SimContext, shipId: string, fittedOverride?: FittedModules) {
+  const hull = fleetDefOf(state, ctx, shipId)
+  const fitted = fittedOverride ?? state.fleet[shipId]?.fitted
+  const defs = fitted ? allFittedModules(fitted, ctx).filter(d => moduleAllowedOnShip(hull, d)) : []
+  const pools = new Map<string, Array<{ mod: ModuleDef; index: number; ordinal: number; value: number }>>()
+  const strength = (d: ModuleDef, kind: string): number => {
+    if (kind === 'evasion') return d.evasionGapPct ?? 0
+    if (kind === 'hit') return d.hitBonusPct ?? 0
+    if (kind === 'speed') return d.speedBonusPct ?? 0
+    if (kind === 'warp') return d.warpSpeedBonusPct ?? 0
+    if (kind === 'lock') return d.lockDmgBonus ?? 0
+    if (kind === 'drone-relay') return d.droneRangeBonusPct ?? 0
+    if (kind === 'drone-hit') return d.droneHitGapPct ?? 0
+    if (kind === 'ecm') return d.foeRangeDebuffPct ?? 0
+    if (kind === 'shield-field') return d.shieldFieldPct ?? 0
+    if (kind === 'shield-charge') return d.shieldPulsePct ?? 0
+    if (kind === 'repair') return (d.repairArmorHp ?? 0) + (d.repairHullHp ?? 0)
+    for (const [prefix, values] of [['shield-', d.shieldResistAdd], ['armor-', d.armorResistAdd], ['hull-', d.hullResistAdd]] as const) {
+      if (kind.startsWith(prefix)) return values?.[kind.slice(prefix.length) as DamageType] ?? 0
+    }
+    return 0
+  }
+  const out = defs.map((mod, index) => {
+    const st = stackingOf(mod)
+    const pool = pools.get(st.kind) ?? []
+    const part = { mod, index, ordinal: pool.length + 1, value: strength(mod, st.kind), weight: 1 }
+    pool.push(part)
+    pools.set(st.kind, pool)
+    return part
+  })
+  for (const pool of pools.values()) {
+    const sorted = [...pool].sort((a, b) => b.value - a.value || a.index - b.index)
+    let remain = 1, rank = 0
+    for (const part of sorted) {
+      const group = stackingOf(part.mod).group
+      if (part.value <= 0 || group === 'flat' || group === 'max') continue
+      out[part.index]!.weight = group === 'gap' ? remain : stackWeight(++rank)
+      if (group === 'gap') remain *= 1 - Math.min(.9, Math.max(0, part.value))
+    }
+  }
+  return out
+}
+
+/** 装填增加与百分比降低逐件相乘；抗性按有效百分点相减。 */
+export function equipmentPenaltiesOf(state: GameState, ctx: SimContext, shipId: string, fittedOverride?: FittedModules) {
+  const result = { reload: 1, speed: 1, range: 1, hit: 1, resist: 0 }
+  for (const { mod, weight } of fittedPenaltyPartsOf(state, ctx, shipId, fittedOverride)) {
+    result.reload *= 1 + Math.max(0, mod.reloadPenaltyPct ?? 0) * weight
+    result.speed *= 1 - Math.min(.9, Math.max(0, mod.speedPenaltyPct ?? 0)) * weight
+    result.range *= 1 - Math.min(.9, Math.max(0, mod.rangeCutPct ?? 0)) * weight
+    result.hit *= 1 - Math.min(.9, Math.max(0, mod.hitPenalty ?? 0)) * weight
+    result.resist += Math.max(0, mod.allResistPenaltyPct ?? 0) * weight
+  }
+  return result
+}
+
+/** 周期仅在各自取数入口乘一次，已走计时不重置。 */
+export function equipmentCycleMsOf(state: GameState, ctx: SimContext, shipId: string, baseMs: number): number {
+  return Math.max(1, Math.round(baseMs * equipmentPenaltiesOf(state, ctx, shipId).reload))
+}
+
 /**
  * EVE 曲线多件合成系数：单件加成按"从强到弱"排位后
  * 总系数 = Π(1 + pᵢ × wᵢ)（EVE stacking penalty 标准形）。

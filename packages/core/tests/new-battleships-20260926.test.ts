@@ -118,7 +118,7 @@ describe('两艘的渠道 / 图纸 / 图形挂点', () => {
     }
   })
 
-  it('图纸四条齐备：永久 + 一次性（价 = 行价 ×50%）· 都在奇货', () => {
+  it('图纸四条齐备：永久与一次性，现行一次性价为舰价10%，仍在奇货', () => {
     for (const [bpId, shipId] of [
       ['sbp-orca', 'sh-orca'],
       ['sbp-helicoprion', 'sh-helicoprion'],
@@ -136,8 +136,8 @@ describe('两艘的渠道 / 图纸 / 图形挂点', () => {
     ] as const) {
       expect(bp(bpId).shipId).toBe(shipId)
       expect(bp(bpId).singleUse).toBe(true)
-      // 2026-09-29：一次性 = 锚价 2.25 亿 ×50% = 1.125 亿（两艘同值；原 7,500 万 / 4,500 万作废）
-      expect(good(bpId)!.basePrice).toBe(112_500_000)
+      // 2026-10-08船长令：一次性舰船图纸为对应舰价10%。
+      expect(good(bpId)!.basePrice).toBe(22_500_000)
     }
   })
 

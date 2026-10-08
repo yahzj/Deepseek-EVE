@@ -11,7 +11,7 @@ import type { GameState } from './state'
 import type { DamageType, ModuleDef, SimContext } from './types'
 import type { UnitSpec, WeaponSpec } from './combat'
 import { createPlayerSpec } from './playerSpec'
-import { allFittedModules, stackingOf, stackWeight, WEIGHTED_GAP_FLEET_CAP, weightedGap } from './equipment'
+import { allFittedModules, stackingOf, stackWeight, WEIGHTED_GAP_FLEET_CAP, weightedGap, fittedPenaltyPartsOf } from './equipment'
 import { distFactor } from './combatMath'
 import { coronaFocusBonusOf } from './coronaFocus'
 import { moduleAllowedOnShip } from './shipFitting'
@@ -79,7 +79,9 @@ export function fittedEffectParamsOf(
 ): Array<{ key: string; raw: number; eff: number }> {
   const out: Array<{ key: string; raw: number; eff: number }> = []
   const group = stackingOf(mod).group
-  const w = group === 'flat' || group === 'max' ? 1 : stackWeight(Math.max(1, ordinal))
+  const part = fittedPenaltyPartsOf(state, ctx, shipId).find(p => p.mod.id === mod.id && p.ordinal === ordinal)
+  const sortedBenefit = group === 'curve' || stackingOf(mod).kind === 'speed' || stackingOf(mod).kind === 'drone-relay'
+  const w = sortedBenefit && part ? part.weight : group === 'flat' || group === 'max' ? 1 : stackWeight(Math.max(1, ordinal))
   /** 折权族：本件自己那一份（`raw × 曲线权重`） */
   const folded = (key: string, raw: number | undefined): void => {
     if (raw === undefined || raw === 0) return
@@ -93,6 +95,10 @@ export function fittedEffectParamsOf(
   folded('lock', mod.lockDmgBonus)
   folded('warp', mod.warpSpeedBonusPct)
   folded('ecmRangeCut', mod.foeRangeDebuffPct)
+  for (const [key, raw] of [['reloadPenalty', mod.reloadPenaltyPct], ['speedPenalty', mod.speedPenaltyPct],
+    ['rangePenalty', mod.rangeCutPct], ['hitPenalty', mod.hitPenalty], ['resistPenalty', mod.allResistPenaltyPct]] as const) {
+    if (raw !== undefined && raw > 0) out.push({ key, raw, eff: raw * (part?.weight ?? w) })
+  }
   /** 缺口族：报装上后的**合成值**（`createPlayerSpec` = 引擎同一份规格） */
   if (group === 'gap') {
     const spec = createPlayerSpec(state, ctx, shipId)

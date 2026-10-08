@@ -62,6 +62,7 @@ export { battleVerdictOf, captureBattleReport, spreadWinChance, sunkShipIdsOfBat
 export type { BattleVerdict } from './combatReport'
 // 战斗演出层（2026-10-02 批次 4c 拆到 combatFx.ts）；本文件借回使用并再导出
 import { BATTLE_ARRIVAL_STAGGER_MS, pushBattleFx, pushBattleNotice, WORMHOLE_FOE_VOLLEY_STAGGER_MS } from './combatFx'
+import { equipmentCycleMsOf } from './equipment'
 export { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, pushBattleFx, stampFoeArrivalFx, WORMHOLE_FOE_VOLLEY_STAGGER_MS } from './combatFx'
 // 敌卡档案（2026-10-02 批次 4d 拆到 foeCard.ts）；本文件只再导出
 export { FOE_LIGHT_WORD, FOE_ELITE_WORD, FOE_SUPPORT_TAG_RE, baseFoeTag, foeCardShipIdOf, foeClassName, foeMainTagOf, foeShipEliteOf, foeShipIdOfTag, foeShipTierOf, foeUnitNameOf } from './foeCard'
@@ -75,7 +76,7 @@ export { foeLayerSplit, foeMainDamageType, splitShotByComposition } from './worm
 import { AMMO_IDS, createPlayerSpec, DRONE_SKILL, droneSkillLv, WEB_BREAK_DIST_M } from './playerSpec'
 export { DRONE_SKILL, MY_WEB_RANGE_M, WEB_BREAK_DIST_M, createPlayerSpec, damageUpgradeMult, droneReloadUpgradeMult, familyUpgradeMult, familyUpgradeSkillIdOf, hitUpgradeMult, mergeResist, playerAmmoType, reloadUpgradeMult } from './playerSpec'
 // 维修与护盾脉冲（2026-10-02 批次 4h 拆到 combatRepair.ts）；本文件借回使用并再导出
-import { preloadRepairFor, preloadShieldChargeFor, preloadShieldFieldFor, pulseRepairsFor, pulseShieldChargeFor, pulseShieldFieldFor, REPAIR_PULSE_MS, repairLedgersOf, SHIELD_REGEN_FLOOR_PCT, shieldChargeLedgersOf, shieldChargeStreamsOf } from './combatRepair'
+import { preloadRepairFor, preloadShieldChargeFor, preloadShieldFieldFor, pulseRepairsFor, pulseShieldChargeFor, pulseShieldFieldFor, REPAIR_PULSE_MS, repairLedgersOf, SHIELD_REGEN_FLOOR_PCT, shieldChargeLedgersOf, shieldChargeStreamsOf, shieldFieldStreamsOf } from './combatRepair'
 export { REPAIR_PULSE_MS, SHIELD_PULSE_MS, SHIELD_FIELD_COST_PCT, SHIELD_REGEN_FLOOR_PCT, fittedRepairModules, preloadRepairFor, preloadShieldChargeFor, preloadShieldFieldFor, pulseShieldCharge, pulseShieldChargeFor, pulseShieldFieldFor, refundRepairKits, refundRepairKitsAll, repairKitAvailableOf, repairLedgersOf, repairStatsFor, repairStreamsOf, repairUsageText, shieldChargeLedgersOf, shieldChargeStreamsOf, shieldFieldOf, shieldFieldStreamsOf, shieldPulsePctOf } from './combatRepair'
 // 战斗弹药装载（2026-10-02 批次 4i 拆到 combatAmmo.ts）；本文件借回使用并再导出
 import { ammoKeyOf, ammoLoadTotals, ammoTierFallbackLog, loadAmmoTier, battleAmmoIdsFor, battleAmmoAvailable, consumeBattleAmmo, loadWormholeBattleAmmo, wormholeAmmoIdsForSpec } from './combatAmmo'
@@ -2188,9 +2189,9 @@ export function startBattleFor(
     // **逐台排首跳**（2026-09-21 逐型号独立回转）：每台各带自己的计时器，开战 5 秒后第一跳
     for (const u of repair.units) {
       if (u.stopped) continue
-      u.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
+      u.nextPulseAtMs = battle.startedAtGameMs + equipmentCycleMsOf(state, ctx, shipId, REPAIR_PULSE_MS)
     }
-    if (ready.length > 0) repair.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
+    if (ready.length > 0) repair.nextPulseAtMs = battle.startedAtGameMs + equipmentCycleMsOf(state, ctx, shipId, REPAIR_PULSE_MS)
     battle.repair = repair
   }
   // 护盾充能装置（2026-09-14）：**独立 15 秒计时**（与维修装置的 5 秒互不干扰），开战 15 秒后第一跳；
@@ -2626,9 +2627,9 @@ export function startFleetBattleFor(
        */
       for (const u of r.units) {
         if (u.stopped) continue
-        u.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
+        u.nextPulseAtMs = battle.startedAtGameMs + equipmentCycleMsOf(state, ctx, e.shipId, REPAIR_PULSE_MS)
       }
-      if (ready.length > 0) r.nextPulseAtMs = battle.startedAtGameMs + REPAIR_PULSE_MS
+      if (ready.length > 0) r.nextPulseAtMs = battle.startedAtGameMs + equipmentCycleMsOf(state, ctx, e.shipId, REPAIR_PULSE_MS)
       repairBy[e.tag] = r
     }
     const sc = preloadShieldChargeFor(state, ctx, e.shipId)
@@ -3844,6 +3845,8 @@ export function advanceBattleFor(
         if (battle.ended) break
         const spec = specByTag.get(tag)
         if (!spec) continue // 该舰已不在这场（沉了/被摘）⇒ 它的账本不跳
+        const owner = battle.myFleet?.find(e => e.tag === tag)?.shipId ?? shipId
+        const interval = equipmentCycleMsOf(state, ctx, owner, REPAIR_PULSE_MS)
         /** 逐台：own = 本台自己的计时器；旧档（无逐台字段）⇒ 借账本的统一计时器（本拍只判一次到期） */
         const hasPerUnit = ledger.units.some((u) => u.nextPulseAtMs !== undefined)
         if (!hasPerUnit) {
@@ -3885,7 +3888,7 @@ export function advanceBattleFor(
               if (!ledger.units.some((u) => !u.stopped)) ledger.nextPulseAtMs = undefined
               break
             }
-            unit.nextPulseAtMs = (unit.nextPulseAtMs ?? battle.lastTickGameMs) + REPAIR_PULSE_MS
+            unit.nextPulseAtMs = (unit.nextPulseAtMs ?? battle.lastTickGameMs) + interval
             guardR++
           }
         }
@@ -3948,7 +3951,11 @@ export function advanceBattleFor(
         if (battle.ended) break
         const spec = specByTag.get(tag)
         if (!spec) continue
+        const owner = battle.myFleet?.find(e => e.tag === tag)?.shipId ?? shipId
+        const currentStreams = shieldChargeStreamsOf(state, ctx, owner)
         for (const stream of ledger.streams) {
+          stream.ms = currentStreams.find(s => s.modelId === stream.modelId)?.ms ??
+            (stream.modelId === '' && currentStreams.length > 0 ? Math.min(...currentStreams.map(s => s.ms)) : stream.ms)
           if (battle.ended) break
           if (stream.nextPulseAtMs === undefined || stream.nextPulseAtMs > battle.lastTickGameMs) continue
           let guardS = 0
@@ -3986,7 +3993,11 @@ export function advanceBattleFor(
       for (const [tag, ledger] of Object.entries(battle.shieldFieldBy!)) {
         if (battle.ended) break
         if (!specByTagF.get(tag) || !isAlive(battle, tag)) continue
+        const owner = battle.myFleet?.find(e => e.tag === tag)?.shipId ?? shipId
+        const currentStreams = shieldFieldStreamsOf(state, ctx, owner)
         for (const stream of ledger.streams) {
+          stream.ms = currentStreams.find(s => s.modelId === stream.modelId)?.ms ??
+            (stream.modelId === '' && currentStreams.length > 0 ? Math.min(...currentStreams.map(s => s.ms)) : stream.ms)
           if (battle.ended) break
           if (stream.nextPulseAtMs === undefined || stream.nextPulseAtMs > battle.lastTickGameMs) continue
           let guardF = 0

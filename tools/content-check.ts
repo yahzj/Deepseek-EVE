@@ -6952,20 +6952,18 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
       )
       driftPrice += 1
     }
-    // 2026-09-13 船长：T3/T4/T5 各有一张**一次性蓝图**；**2026-09-14 船长改判价格口径**
-    // （原话「将一次性蓝图的价格下调到舰船的0.5倍」，旧口径"行价 ×100%"作废）⇒
-    // 一次性那张核 **= 行价 ×50%**、普通那张仍核 ×档位系数。
+    // 2026-10-08船长令：一次性舰船图纸核对舰价10%，永久图纸仍核档位系数。
     const bps = SHIP_BLUEPRINTS.filter((b) => b.shipId === ship.id)
     if (bps.length === 0) continue
-    // 定制船只有一次性图纸时：它的价也是"行价 ×50%"（行价 = 只收不卖的市场基准价）⇒ 仍按 ×0.5 核
+    // 定制船同样取只收不卖市场行的舰价为锚，不取船体0元占位值。
     const market = (good?.basePrice ?? 0) || ship.priceIsk
     for (const bp of bps) {
       if (bp.singleUse === true) {
-        const expectOnce = Math.round(market * 0.5)
+        const expectOnce = Math.round(market * 0.1)
         if (market > 0 && Math.abs(bp.priceIsk - expectOnce) > 10_000) {
           warn.push(
             `一次性舰船蓝图价格口径：${ship.name}（${ship.id}）${bp.id} 价 = ${bp.priceIsk.toLocaleString('zh-CN')}，` +
-              `按船长口径「**舰船价格的 0.5 倍**」应为 ${expectOnce.toLocaleString('zh-CN')}（±1 万取整余量内视为达标）`,
+              `按船长口径「舰船价格10%」应为 ${expectOnce.toLocaleString('zh-CN')}（±1 万取整余量内视为达标）`,
           )
           driftBp += 1
         }

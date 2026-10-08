@@ -9,7 +9,7 @@
 import type { GameState } from './state'
 import type { ModuleDef, SimContext } from './types'
 import { isAlive } from './combatMath'
-import { allFittedModules, pulseStreamOf, stackWeight } from './equipment'
+import { allFittedModules, pulseStreamOf, stackWeight, equipmentCycleMsOf } from './equipment'
 import { fleetDefOf } from './instances'
 import { moduleAllowedOnShip } from './shipFitting'
 import { addWare, cargoOfShip, countWare, removeCargoOfShip, removeWare } from './inventory'
@@ -113,7 +113,7 @@ export function repairStatsFor(
   if (units.length === 0) return null
   return {
     units: units.map(({ moduleId, armorPerPulse, hullPerPulse, free }) => ({ moduleId, armorPerPulse, hullPerPulse, free })),
-    intervalMs: REPAIR_PULSE_MS,
+    intervalMs: equipmentCycleMsOf(state, ctx, shipId, REPAIR_PULSE_MS),
   }
 }
 
@@ -329,19 +329,19 @@ function fittedPulseParts(
       out.push({
         modelId: d.id,
         pct: d.shieldFieldPct ?? 0,
-        ms: Math.max(1, d.shieldFieldMs ?? SHIELD_PULSE_MS),
+        ms: equipmentCycleMsOf(state, ctx, shipId, d.shieldFieldMs ?? SHIELD_PULSE_MS),
         armorHp: 0,
         hullHp: 0,
       })
     } else if (kind === 'shield-charge') {
       // 本族暂无"逐型号间隔"的件 ⇒ 三档一律 30 秒（日后某档要错开，加个字段即可，本层与调度都不用动）
-      out.push({ modelId: d.id, pct: d.shieldPulsePct ?? 0, ms: SHIELD_PULSE_MS, armorHp: 0, hullHp: 0 })
+      out.push({ modelId: d.id, pct: d.shieldPulsePct ?? 0, ms: equipmentCycleMsOf(state, ctx, shipId, SHIELD_PULSE_MS), armorHp: 0, hullHp: 0 })
     } else {
       // 维修：间隔由本族常量定（`REPAIR_PULSE_MS` 5 秒），逐台独立计时在 `BattleRepairUnit.nextPulseAtMs`
       out.push({
         modelId: d.id,
         pct: 0,
-        ms: REPAIR_PULSE_MS,
+        ms: equipmentCycleMsOf(state, ctx, shipId, REPAIR_PULSE_MS),
         armorHp: d.repairArmorHp ?? 0,
         hullHp: d.repairHullHp ?? 0,
       })
@@ -592,7 +592,6 @@ export function pulseRepairsFor(
    */
   only?: import('./state').BattleRepairUnit,
 ): boolean {
-  void ctx
   const meRt = b.units[spec.tag]
   if (!meRt) return false
   if (!isAlive(b, spec.tag)) {
@@ -727,6 +726,9 @@ export function pulseRepairsFor(
    * 驱动调度（调度走 `units[].nextPulseAtMs`），这里只为兼容旧档迁移与外部读法把它一并前移。
    */
   if (!stillActive) r.nextPulseAtMs = undefined // 全部停机：停调度
-  else if (r.nextPulseAtMs !== undefined) r.nextPulseAtMs += REPAIR_PULSE_MS
+  else if (r.nextPulseAtMs !== undefined) {
+    const owner = b.myFleet?.find(e => e.tag === spec.tag)?.shipId ?? state.shipId
+    r.nextPulseAtMs += equipmentCycleMsOf(state, ctx, owner, REPAIR_PULSE_MS)
+  }
   return true
 }
