@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **511** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7990** KB · **62553** 行
-- 状态分布：**未标注** 266 · **已确认/已实现** 168 · **进行中** 53 · **待裁定** 23 · **历史留档** 1
-- 孤儿文档（0 引用）**121** 份 · 状态未标注 **266** 份
+- 文档总数 **513** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8030** KB · **62872** 行
+- 状态分布：**未标注** 266 · **已确认/已实现** 169 · **进行中** 53 · **待裁定** 24 · **历史留档** 1
+- 孤儿文档（0 引用）**108** 份 · 状态未标注 **266** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**347** 份
+- 三、现行设计稿（design）：**349** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**5** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -55,51 +55,53 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 347 份
+## 三、现行设计稿（design） —— 349 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/battle-mount-readiness-speed-20261008.md` | 战斗挂载件、开场装填与敌速核查 | 已确认/已实现（已实现并本地合入主树） | 2026-10-08 | 15 KB / 107 行 | 0 / 0 |
+| `docs/design/activity-invasion-badge-20261008.md` | 活动栏入侵标签试做 | 已确认/已实现（试做已实现并本地合入） | 2026-10-08 | 8 KB / 67 行 | 1 / 0 |
+| `docs/design/announcement-draft-release-consolidated-20261008.md` | 待发公告整合与遗漏核对 | 待裁定（待船长审核） | 2026-10-08 | 32 KB / 252 行 | 0 / 0 |
+| `docs/design/battle-mount-readiness-speed-20261008.md` | 战斗挂载件、开场装填与敌速核查 | 已确认/已实现（已实现并本地合入主树） | 2026-10-08 | 15 KB / 107 行 | 1 / 0 |
 | `docs/design/equipment-penalty-stacking-20261008.md` | 装备惩罚取最大值检查与巨构装填调整 | 已确认/已实现（已实现并本地合入） | 2026-10-08 | 19 KB / 170 行 | 0 / 0 |
-| `docs/design/fleet-hide-plugs-20261008.md` | 我的舰队隐藏普通舰船插件 | 已确认/已实现（已实现并本地合入） | 2026-10-08 | 4 KB / 38 行 | 0 / 0 |
+| `docs/design/fleet-hide-plugs-20261008.md` | 我的舰队隐藏普通舰船插件 | 已确认/已实现（已实现并本地合入） | 2026-10-08 | 4 KB / 38 行 | 1 / 0 |
 | `docs/design/invasion-autoloop-live-test-20261008.md` | 入侵自动路线原生客户端实测 | 未标注（实机测试通过） | 2026-10-08 | 7 KB / 62 行 | 0 / 0 |
-| `docs/design/invasion-autoloop-route-20261008.md` | 入侵自动循环按外围与核心顺序收复 | 已确认/已实现（已实现并本地合入） | 2026-10-08 | 15 KB / 123 行 | 0 / 0 |
+| `docs/design/invasion-autoloop-route-20261008.md` | 入侵自动循环按外围与核心顺序收复 | 已确认/已实现（已实现并本地合入） | 2026-10-08 | 15 KB / 123 行 | 1 / 0 |
 | `docs/design/stellar-debug-navigation-20261008.md` | 调试导航开放星系入口 | 未标注（已本地合入及复测） | 2026-10-08 | 2 KB / 24 行 | 0 / 0 |
 | `docs/design/stellar-ready-save-20261008.md` | 新星系即用存档 | 未标注（已本地合入并交付） | 2026-10-08 | 2 KB / 23 行 | 0 / 0 |
-| `docs/design/acid-burst-stacking-fx-20261007.md` | 酸液爆虫腐蚀叠加与专属自爆动画 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 53 行 | 0 / 0 |
-| `docs/design/announcement-draft-alien-invasion-20261007.md` | 异形入侵公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 26 行 | 2 / 0 |
-| `docs/design/announcement-draft-shield-field-20261007.md` | 护盾力场、装备代价与一次性舰船蓝图调整公告待审 | 未标注（已按船长要求整合） | 2026-10-07 | 5 KB / 42 行 | 0 / 0 |
-| `docs/design/announcement-draft-wreck-loot-buy-20261007.md` | 残骸回收与装备收购公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 23 行 | 1 / 0 |
+| `docs/design/acid-burst-stacking-fx-20261007.md` | 酸液爆虫腐蚀叠加与专属自爆动画 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 53 行 | 2 / 0 |
+| `docs/design/announcement-draft-alien-invasion-20261007.md` | 异形入侵公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 26 行 | 3 / 0 |
+| `docs/design/announcement-draft-shield-field-20261007.md` | 护盾力场、装备代价与一次性舰船蓝图调整公告待审 | 未标注（已按船长要求整合） | 2026-10-07 | 5 KB / 42 行 | 1 / 0 |
+| `docs/design/announcement-draft-wreck-loot-buy-20261007.md` | 残骸回收与装备收购公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 23 行 | 2 / 0 |
 | `docs/design/colossal-once-buyback-only-20261007.md` | 皇带鱼一次性蓝图只收不卖 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 4 KB / 31 行 | 0 / 0 |
-| `docs/design/invasion-wreck-ordinary-decrement-20261007.md` | 入侵稀有残骸清空后普通残骸不减量排查 | 未标注（已修复并本地合入） | 2026-10-07 | 4 KB / 45 行 | 0 / 0 |
-| `docs/design/missile-hulk-mount-copy-20261007.md` | 导弹残段独立挂载件文案与战斗提示修正 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 8 KB / 84 行 | 0 / 0 |
+| `docs/design/invasion-wreck-ordinary-decrement-20261007.md` | 入侵稀有残骸清空后普通残骸不减量排查 | 未标注（已修复并本地合入） | 2026-10-07 | 4 KB / 45 行 | 1 / 0 |
+| `docs/design/missile-hulk-mount-copy-20261007.md` | 导弹残段独立挂载件文案与战斗提示修正 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 8 KB / 84 行 | 1 / 0 |
 | `docs/design/planetary-habitation-20261007.md` | 星球勘探、改造与人类家园建设方案 | 已确认/已实现（完整隐藏系统已实现并验证） | 2026-10-07 | 39 KB / 398 行 | 2 / 0 |
 | `docs/design/planetary-system-search-20261007.md` | 深空星系搜索与种子坐标方案 | 未标注（已本地合入与复测） | 2026-10-07 | 24 KB / 235 行 | 1 / 0 |
 | `docs/design/shield-field-transfer-20261007.md` | 护盾充能力场排除自身并支付护盾代价 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 44 行 | 1 / 0 |
 | `docs/design/ship-acceleration-fx-20261007.md` | 推进器点火与敌舰冲锋的逐舰特效 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 48 行 | 0 / 0 |
-| `docs/design/ship-damage-inline-display-20261007.md` | 战损插件并入现有插件展示区 | 未标注（已本地合入与复测） | 2026-10-07 | 6 KB / 49 行 | 1 / 0 |
-| `docs/design/ship-wreck-recovery-20261007.md` | 玩家舰船整船回收与战损插件 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 7 KB / 62 行 | 1 / 0 |
+| `docs/design/ship-damage-inline-display-20261007.md` | 战损插件并入现有插件展示区 | 未标注（已本地合入与复测） | 2026-10-07 | 6 KB / 49 行 | 2 / 0 |
+| `docs/design/ship-wreck-recovery-20261007.md` | 玩家舰船整船回收与战损插件 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 7 KB / 62 行 | 2 / 0 |
 | `docs/design/single-use-ship-bp-price-20261007.md` | 一次性舰船蓝图降价与皇带鱼停售范围核对 | 未标注（已按舰价10%实现并本地合入） | 2026-10-07 | 5 KB / 48 行 | 0 / 0 |
-| `docs/design/squad-memory-auto-gate-20261007.md` | 自动探索主控忙态误拦与五类准备阵容记忆 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 7 KB / 63 行 | 0 / 0 |
-| `docs/design/wreck-fit-repeat-plugs-20261007.md` | 重复插件与沉船装配复用 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 43 行 | 0 / 0 |
+| `docs/design/squad-memory-auto-gate-20261007.md` | 自动探索主控忙态误拦与五类准备阵容记忆 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 7 KB / 63 行 | 1 / 0 |
+| `docs/design/wreck-fit-repeat-plugs-20261007.md` | 重复插件与沉船装配复用 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 43 行 | 1 / 0 |
 | `docs/design/wreck-loot-price-audit-20261007.md` | 残骸掉落与装备价格审查 | 已确认/已实现（已确认/已实现） | 2026-10-07 | 16 KB / 137 行 | 0 / 0 |
-| `docs/design/ammo-mk3-black-market-20261006.md` | 黑市独占MK3弹药生产线 | 已确认/已实现（已实现并本地合入） | 2026-10-06 | 7 KB / 63 行 | 0 / 0 |
-| `docs/design/announcement-draft-signal-space-20261006.md` | 信号空间公告待审稿 | 待裁定（待船长明确批准） | 2026-10-06 | 1 KB / 26 行 | 1 / 0 |
+| `docs/design/ammo-mk3-black-market-20261006.md` | 黑市独占MK3弹药生产线 | 已确认/已实现（已实现并本地合入） | 2026-10-06 | 7 KB / 63 行 | 1 / 0 |
+| `docs/design/announcement-draft-signal-space-20261006.md` | 信号空间公告待审稿 | 待裁定（待船长明确批准） | 2026-10-06 | 1 KB / 26 行 | 2 / 0 |
 | `docs/design/black-market-android-merchant-20261006.md` | 触手发束与机械副官风格商人 | 已确认/已实现（已实现） | 2026-10-06 | 6 KB / 57 行 | 0 / 0 |
 | `docs/design/black-market-cards-rework-20261006.md` | 黑市商品卡详情统一与商人重绘 | 已确认/已实现（已实现） | 2026-10-06 | 12 KB / 95 行 | 0 / 0 |
 | `docs/design/black-market-comms-avatar-20261006.md` | 黑市复用通讯章鱼人头像 | 已确认/已实现（已实现） | 2026-10-06 | 5 KB / 54 行 | 0 / 0 |
-| `docs/design/black-market-drone-lots-20261006.md` | 黑市无人机按组出售 | 已确认/已实现（已实现并本地合入） | 2026-10-06 | 5 KB / 47 行 | 0 / 0 |
+| `docs/design/black-market-drone-lots-20261006.md` | 黑市无人机按组出售 | 已确认/已实现（已实现并本地合入） | 2026-10-06 | 5 KB / 47 行 | 1 / 0 |
 | `docs/design/black-market-monitor-20261006.md` | 黑市紧凑货架与商人监视器 | 已确认/已实现（已实现） | 2026-10-06 | 8 KB / 68 行 | 0 / 0 |
 | `docs/design/black-market-speech-name-20261006.md` | 黑市对白下方重复商品名移除 | 已确认/已实现（已实现） | 2026-10-06 | 3 KB / 42 行 | 0 / 0 |
-| `docs/design/market-limited-supply-20261006.md` | 限额慢补货与虚空晶应急供应 | 已确认/已实现（已实现并本地合入） | 2026-10-06 | 7 KB / 80 行 | 0 / 0 |
+| `docs/design/market-limited-supply-20261006.md` | 限额慢补货与虚空晶应急供应 | 已确认/已实现（已实现并本地合入） | 2026-10-06 | 7 KB / 80 行 | 1 / 0 |
 | `docs/design/drone-launch-preview-20261005.md` | 无人机队列出击隔离预演 | 待裁定（待船长审查） | 2026-10-05 | 5 KB / 67 行 | 0 / 0 |
 | `docs/design/market-pool-capacity-20261005.md` | 七种商品目标池容量调整 | 已确认/已实现（已实现并本地合入） | 2026-10-05 | 4 KB / 46 行 | 0 / 0 |
-| `docs/design/per-gun-volley-20261005.md` | 逐炮命中与敌方炮数 | 已确认/已实现（已实现并本地合入） | 2026-10-05 | 7 KB / 64 行 | 0 / 0 |
+| `docs/design/per-gun-volley-20261005.md` | 逐炮命中与敌方炮数 | 已确认/已实现（已实现并本地合入） | 2026-10-05 | 7 KB / 64 行 | 1 / 0 |
 | `docs/design/real-playthrough-bug-test-20261005.md` | 三目标实机式全流程BUG测试 | 未标注（已按船长要求挂起） | 2026-10-05 | 5 KB / 43 行 | 0 / 0 |
 | `docs/design/small-ship-preview-20261005.md` | 插件小船混编与命中曲线隔离预演 | 待裁定（待船长审查） | 2026-10-05 | 11 KB / 100 行 | 0 / 0 |
 | `docs/design/small-ship-survival-proposal-20261005.md` | 势力护卫与驱逐舰的生存优化方案 | 待裁定（待船长确认） | 2026-10-05 | 5 KB / 49 行 | 1 / 0 |
 | `docs/design/activity-mobile-audit-20261004.md` | 主控活动切换、显示与手机适配核查 | 未标注（第一轮实现与验证完成） | 2026-10-04 | 9 KB / 78 行 | 1 / 0 |
-| `docs/design/black-market-page-20261004.md` | 独立黑市页面与ASCII商人 | 已确认/已实现（已实现） | 2026-10-04 | 12 KB / 107 行 | 0 / 0 |
+| `docs/design/black-market-page-20261004.md` | 独立黑市页面与ASCII商人 | 已确认/已实现（已实现） | 2026-10-04 | 12 KB / 107 行 | 1 / 0 |
 | `docs/design/classic-nav-footer-20261004.md` | 旧版导航底部开关与矮窗口布局 | 已确认/已实现（已确认） | 2026-10-04 | 5 KB / 37 行 | 0 / 0 |
 | `docs/design/classic-navigation-touch-20261004.md` | 旧版导航单指拖动 | 已确认/已实现（已确认） | 2026-10-04 | 3 KB / 23 行 | 0 / 0 |
 | `docs/design/classic-sidebar-collapse-20261004.md` | 旧版导航收窄与事件日志收起 | 已确认/已实现（已确认） | 2026-10-04 | 6 KB / 47 行 | 0 / 0 |
@@ -581,41 +583,28 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，121 份）
+## 附：孤儿文档（0 引用，108 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/battle-mount-readiness-speed-20261008.md`（2026-10-08 · 15 KB）—— 战斗挂载件、开场装填与敌速核查
+- `docs/design/announcement-draft-release-consolidated-20261008.md`（2026-10-08 · 32 KB）—— 待发公告整合与遗漏核对
 - `docs/design/equipment-penalty-stacking-20261008.md`（2026-10-08 · 19 KB）—— 装备惩罚取最大值检查与巨构装填调整
-- `docs/design/fleet-hide-plugs-20261008.md`（2026-10-08 · 4 KB）—— 我的舰队隐藏普通舰船插件
 - `docs/design/invasion-autoloop-live-test-20261008.md`（2026-10-08 · 7 KB）—— 入侵自动路线原生客户端实测
-- `docs/design/invasion-autoloop-route-20261008.md`（2026-10-08 · 15 KB）—— 入侵自动循环按外围与核心顺序收复
 - `docs/design/stellar-debug-navigation-20261008.md`（2026-10-08 · 2 KB）—— 调试导航开放星系入口
 - `docs/design/stellar-ready-save-20261008.md`（2026-10-08 · 2 KB）—— 新星系即用存档
-- `docs/design/acid-burst-stacking-fx-20261007.md`（2026-10-07 · 5 KB）—— 酸液爆虫腐蚀叠加与专属自爆动画
-- `docs/design/announcement-draft-shield-field-20261007.md`（2026-10-07 · 5 KB）—— 护盾力场、装备代价与一次性舰船蓝图调整公告待审
 - `docs/design/colossal-once-buyback-only-20261007.md`（2026-10-07 · 4 KB）—— 皇带鱼一次性蓝图只收不卖
-- `docs/design/invasion-wreck-ordinary-decrement-20261007.md`（2026-10-07 · 4 KB）—— 入侵稀有残骸清空后普通残骸不减量排查
-- `docs/design/missile-hulk-mount-copy-20261007.md`（2026-10-07 · 8 KB）—— 导弹残段独立挂载件文案与战斗提示修正
 - `docs/design/ship-acceleration-fx-20261007.md`（2026-10-07 · 5 KB）—— 推进器点火与敌舰冲锋的逐舰特效
 - `docs/design/single-use-ship-bp-price-20261007.md`（2026-10-07 · 5 KB）—— 一次性舰船蓝图降价与皇带鱼停售范围核对
-- `docs/design/squad-memory-auto-gate-20261007.md`（2026-10-07 · 7 KB）—— 自动探索主控忙态误拦与五类准备阵容记忆
-- `docs/design/wreck-fit-repeat-plugs-20261007.md`（2026-10-07 · 5 KB）—— 重复插件与沉船装配复用
 - `docs/design/wreck-loot-price-audit-20261007.md`（2026-10-07 · 16 KB）—— 残骸掉落与装备价格审查
-- `docs/design/ammo-mk3-black-market-20261006.md`（2026-10-06 · 7 KB）—— 黑市独占MK3弹药生产线
 - `docs/design/black-market-android-merchant-20261006.md`（2026-10-06 · 6 KB）—— 触手发束与机械副官风格商人
 - `docs/design/black-market-cards-rework-20261006.md`（2026-10-06 · 12 KB）—— 黑市商品卡详情统一与商人重绘
 - `docs/design/black-market-comms-avatar-20261006.md`（2026-10-06 · 5 KB）—— 黑市复用通讯章鱼人头像
-- `docs/design/black-market-drone-lots-20261006.md`（2026-10-06 · 5 KB）—— 黑市无人机按组出售
 - `docs/design/black-market-monitor-20261006.md`（2026-10-06 · 8 KB）—— 黑市紧凑货架与商人监视器
 - `docs/design/black-market-speech-name-20261006.md`（2026-10-06 · 3 KB）—— 黑市对白下方重复商品名移除
-- `docs/design/market-limited-supply-20261006.md`（2026-10-06 · 7 KB）—— 限额慢补货与虚空晶应急供应
 - `docs/design/drone-launch-preview-20261005.md`（2026-10-05 · 5 KB）—— 无人机队列出击隔离预演
 - `docs/design/market-pool-capacity-20261005.md`（2026-10-05 · 4 KB）—— 七种商品目标池容量调整
-- `docs/design/per-gun-volley-20261005.md`（2026-10-05 · 7 KB）—— 逐炮命中与敌方炮数
 - `docs/design/real-playthrough-bug-test-20261005.md`（2026-10-05 · 5 KB）—— 三目标实机式全流程BUG测试
 - `docs/design/small-ship-preview-20261005.md`（2026-10-05 · 11 KB）—— 插件小船混编与命中曲线隔离预演
-- `docs/design/black-market-page-20261004.md`（2026-10-04 · 12 KB）—— 独立黑市页面与ASCII商人
 - `docs/design/classic-nav-footer-20261004.md`（2026-10-04 · 5 KB）—— 旧版导航底部开关与矮窗口布局
 - `docs/design/classic-navigation-touch-20261004.md`（2026-10-04 · 3 KB）—— 旧版导航单指拖动
 - `docs/design/classic-sidebar-collapse-20261004.md`（2026-10-04 · 6 KB）—— 旧版导航收窄与事件日志收起
