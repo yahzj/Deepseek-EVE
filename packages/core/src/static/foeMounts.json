@@ -1,0 +1,140 @@
+{
+  "format": "whale-static-data",
+  "version": 1,
+  "table": "foeMounts",
+  "groups": {
+    "parameters": [
+      {
+        "id": "foe-mount-c-acid-charge",
+        "charge_mul": 5,
+        "charge_cooldownMs": 10000
+      },
+      {
+        "id": "foe-mount-c-hiveback-charge",
+        "charge_mul": 1.5,
+        "charge_cooldownMs": 10000
+      },
+      {
+        "id": "foe-mount-c-broodmother-charge",
+        "charge_mul": 1.25,
+        "charge_cooldownMs": 10000
+      },
+      {
+        "id": "foe-mount-c-brood-control",
+        "broodControl_gunDmgMul": 0.4,
+        "broodControl_droneDmgMul": 1.5,
+        "broodControl_droneRangeBonusPct": 0.5
+      },
+      {
+        "id": "foe-mount-c-hiveback-hatchery",
+        "hatchery_cycleMs": 12000,
+        "hatchery_stock": 32
+      },
+      {
+        "id": "foe-mount-c-broodmother-hatchery",
+        "hatchery_cycleMs": 9000,
+        "summonEscort_everyMs": 30000,
+        "summonEscort_count": 3,
+        "fleetSpeedRamp_rampMs": 120000,
+        "fleetSpeedRamp_maxBonusPct": 1.8
+      },
+      {
+        "id": "foe-mount-charge-pirate",
+        "charge_mul": 1.6,
+        "charge_cooldownMs": 30000
+      },
+      {
+        "id": "foe-mount-charge-swarm-t1",
+        "charge_mul": 1.5,
+        "charge_cooldownMs": 10000
+      },
+      {
+        "id": "foe-mount-charge-swarm-t2",
+        "charge_mul": 2,
+        "charge_cooldownMs": 10000
+      },
+      {
+        "id": "foe-mount-charge-swarm-t3",
+        "charge_mul": 2.5,
+        "charge_cooldownMs": 10000
+      },
+      {
+        "id": "foe-mount-charge-swarm-t4",
+        "charge_mul": 3,
+        "charge_cooldownMs": 10000
+      },
+      {
+        "id": "foe-mount-drone-range-x4",
+        "droneRangeOnHit_mul": 4
+      },
+      {
+        "id": "foe-mount-capture-web",
+        "web_slowMul": 0.1,
+        "web_rangeDownM": 500
+      },
+      {
+        "id": "foe-mount-gun-range-x1-5",
+        "gunRangeOnHit_mul": 1.5
+      },
+      {
+        "id": "foe-mount-titan-range-x1-5",
+        "gunRangeOnHit_mul": 1.5
+      },
+      {
+        "id": "foe-mount-support-call",
+        "supportCall_delaySec": 20,
+        "supportCall_threatMul": 1.1
+      },
+      {
+        "id": "foe-mount-gyro-stabilizer",
+        "evasionBonus_add": 0.1
+      },
+      {
+        "id": "foe-mount-hull-repair",
+        "repairPulse_everyMs": 5000,
+        "repairPulse_armor": 15,
+        "repairPulse_hull": 15
+      },
+      {
+        "id": "foe-mount-revive-escort",
+        "reviveEscort_everyMs": 60000,
+        "reviveEscort_count": 2
+      },
+      {
+        "id": "foe-mount-ink-range-debuff",
+        "rangeDebuff_pct": 0.5
+      },
+      {
+        "id": "foe-mount-corona-blink",
+        "blink_distanceM": 2000,
+        "blink_cooldownMs": 12000
+      },
+      {
+        "id": "foe-mount-corona-overlay-drive",
+        "overlayDrive_stepMs": 400,
+        "overlayDrive_floorMs": 500,
+        "overlayDrive_dmgMul": 0.3
+      },
+      {
+        "id": "foe-mount-corona-flash-overload",
+        "flashOverload_hullCostPct": 0.05
+      },
+      {
+        "id": "foe-mount-corona-standby-shield",
+        "standbyShield_resistPct": 0.5,
+        "standbyShield_delayMs": 1000
+      },
+      {
+        "id": "foe-mount-corona-focus-array",
+        "focusArray_rampMs": 120000,
+        "focusArray_rangeBonusPct": 2,
+        "focusArray_antiDroneBonusPct": 2
+      },
+      {
+        "id": "foe-mount-corona-overlay-beacon",
+        "summonEscort_everyMs": 60000,
+        "summonEscort_count": 1
+      }
+    ]
+  }
+}

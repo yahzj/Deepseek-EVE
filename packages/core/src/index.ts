@@ -2201,5 +2201,6 @@ export { wormholeGroundBoard, wormholeGroundKey } from './wormholeGround'
 export { wormholeLeaveHoldPiece, wormholeLeaveSupply } from './wormholeSalvage'
 export { wormholeExtractionPlan, wormholeConfirmExtraction } from './wormholeExtraction'
 export type { WormholeExtractionRequest, WormholeExtractionPlan } from './wormholeExtraction'
+export { enemyParameterOf } from './enemyParameters'
 
 

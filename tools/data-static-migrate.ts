@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import ts from 'typescript'
-import type { DataDocument, DataRow, DataTable } from './data-editor-contract'
+import type { DataDocument, DataRow, BaseDataTable as DataTable } from './data-editor-contract'
 
 const TABLES: Record<DataTable, { file: string; type: string; names: string[] }> = {
   ships: { file: 'ships.ts', type: 'ShipDef', names: ['SHIPS'] },

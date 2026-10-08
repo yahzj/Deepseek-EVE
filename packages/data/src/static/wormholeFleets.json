@@ -1,0 +1,200 @@
+{
+  "format": "whale-static-data",
+  "version": 1,
+  "table": "wormholeFleets",
+  "groups": {
+    "parameters": [
+      {
+        "id": "wh-pirate-scout",
+        "foeTargetingChance": 0.4,
+        "dmgMix_kinetic": 8,
+        "dmgMix_explosive": 2,
+        "ships_0_count": 2,
+        "standingReq": 0,
+        "standingGain": 0,
+        "rewardIsk": 0,
+        "combatSeconds": 40
+      },
+      {
+        "id": "wh-alien-swarm",
+        "foeTargetingChance": 0.4,
+        "dmgMix_plasma": 8,
+        "dmgMix_explosive": 2,
+        "ships_0_count": 3,
+        "ships_0_dmgMul": 1.4,
+        "standingReq": 0,
+        "standingGain": 0,
+        "rewardIsk": 0,
+        "combatSeconds": 40
+      },
+      {
+        "id": "wh-grave-watch",
+        "foeTargetingChance": 0.4,
+        "dmgMix_plasma": 8,
+        "dmgMix_kinetic": 2,
+        "ships_0_count": 2,
+        "ships_0_dmgMul": 0.5,
+        "standingReq": 0,
+        "standingGain": 0,
+        "rewardIsk": 0,
+        "combatSeconds": 50
+      },
+      {
+        "id": "wh-exile-blockade",
+        "dmgMix_kinetic": 8,
+        "dmgMix_explosive": 2,
+        "ships_0_count": 3,
+        "standingReq": 0,
+        "standingGain": 0,
+        "rewardIsk": 0,
+        "combatSeconds": 40
+      },
+      {
+        "id": "wh-titan-echo",
+        "dmgMix_explosive": 6,
+        "dmgMix_kinetic": 4,
+        "ships_0_count": 1,
+        "ships_0_dmgMul": 0.9,
+        "standingReq": 0,
+        "standingGain": 0,
+        "rewardIsk": 0,
+        "combatSeconds": 60
+      },
+      {
+        "id": "wh-pirate-hunt",
+        "foeTargetingChance": 0.4,
+        "dmgMix_kinetic": 8,
+        "dmgMix_explosive": 2,
+        "ships_0_count": 2,
+        "ships_1_count": 1,
+        "ships_1_dmgMix_kinetic": 8,
+        "ships_1_dmgMix_explosive": 2,
+        "standingReq": 0,
+        "standingGain": 0,
+        "rewardIsk": 0,
+        "combatSeconds": 50
+      },
+      {
+        "id": "wh-pirate-warband",
+        "foeTargetingChance": 0.4,
+        "dmgMix_kinetic": 8,
+        "dmgMix_explosive": 2,
+        "ships_0_count": 1,
+        "ships_1_count": 1,
+        "ships_2_count": 2,
+        "ships_2_dmgMix_kinetic": 8,
+        "ships_2_dmgMix_explosive": 2,
+        "standingReq": 0,
+        "standingGain": 0,
+        "rewardIsk": 0,
+        "combatSeconds": 60
+      },
+      {
+        "id": "wh-alien-brood",
+        "foeTargetingChance": 0.4,
+        "dmgMix_plasma": 8,
+        "dmgMix_explosive": 2,
+        "ships_0_count": 1,
+        "ships_0_dmgMul": 1.15,
+        "ships_1_count": 2,
+        "ships_1_dmgMul": 1.15,
+        "standingReq": 0,
+        "standingGain": 0,
+        "rewardIsk": 0,
+        "combatSeconds": 50
+      },
+      {
+        "id": "wh-alien-hive",
+        "foeTargetingChance": 0.4,
+        "dmgMix_plasma": 8,
+        "dmgMix_explosive": 2,
+        "ships_0_count": 1,
+        "ships_0_dmgMul": 0.94,
+        "ships_1_count": 2,
+        "ships_1_dmgMul": 0.94,
+        "standingReq": 0,
+        "standingGain": 0,
+        "rewardIsk": 0,
+        "combatSeconds": 60
+      },
+      {
+        "id": "wh-grave-sentry",
+        "foeTargetingChance": 0.4,
+        "dmgMix_plasma": 8,
+        "dmgMix_kinetic": 2,
+        "ships_0_count": 1,
+        "ships_0_dmgMul": 0.5,
+        "ships_1_count": 1,
+        "ships_1_dmgMul": 0.5,
+        "standingReq": 0,
+        "standingGain": 0,
+        "rewardIsk": 0,
+        "combatSeconds": 50
+      },
+      {
+        "id": "wh-grave-throne",
+        "foeTargetingChance": 0.4,
+        "dmgMix_plasma": 6,
+        "dmgMix_kinetic": 4,
+        "ships_0_count": 1,
+        "ships_0_hpMul": 0.68,
+        "ships_0_dmgMul": 0.43,
+        "ships_1_count": 2,
+        "ships_1_hpMul": 0.68,
+        "ships_1_dmgMul": 0.44,
+        "ships_1_enterAt_sec": 20,
+        "ships_2_count": 2,
+        "ships_2_hpMul": 0.25,
+        "ships_2_dmgMul": 0.19,
+        "ships_2_enterAt_sec": 20,
+        "standingReq": 0,
+        "standingGain": 0,
+        "rewardIsk": 0,
+        "combatSeconds": 60
+      },
+      {
+        "id": "wh-titan-missile",
+        "dmgMix_explosive": 10,
+        "ships_0_count": 1,
+        "standingReq": 0,
+        "standingGain": 0,
+        "rewardIsk": 0,
+        "combatSeconds": 60
+      },
+      {
+        "id": "wh-titan-hulk",
+        "dmgMix_explosive": 6,
+        "dmgMix_kinetic": 4,
+        "ships_0_count": 1,
+        "standingReq": 0,
+        "standingGain": 0,
+        "rewardIsk": 0,
+        "combatSeconds": 60
+      },
+      {
+        "id": "wh-exile-swarm",
+        "dmgMix_kinetic": 8,
+        "dmgMix_explosive": 2,
+        "ships_0_count": 2,
+        "standingReq": 0,
+        "standingGain": 0,
+        "rewardIsk": 0,
+        "combatSeconds": 50
+      },
+      {
+        "id": "wh-exile-line",
+        "dmgMix_kinetic": 8,
+        "dmgMix_explosive": 2,
+        "ships_0_count": 1,
+        "standingReq": 0,
+        "standingGain": 0,
+        "rewardIsk": 0,
+        "combatSeconds": 60
+      },
+      {
+        "id": "wormhole-anchor",
+        "threat": 45
+      }
+    ]
+  }
+}

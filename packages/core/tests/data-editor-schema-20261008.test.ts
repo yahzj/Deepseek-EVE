@@ -1,15 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import ships from '../../../packages/data/src/static/ships.json'
-import modules from '../../../packages/data/src/static/modules.json'
-import plugs from '../../../packages/data/src/static/plugs.json'
-import items from '../../../packages/data/src/static/items.json'
-import market from '../../../packages/data/src/static/market.json'
+import ships from '../../data/src/static/ships.json'
+import modules from '../../data/src/static/modules.json'
+import plugs from '../../data/src/static/plugs.json'
+import items from '../../data/src/static/items.json'
+import market from '../../data/src/static/market.json'
 import { planDocuments, rowsOf, validateDocument } from '../../../tools/data-editor-schema'
-import { staticDataGroup, staticDocumentIssues } from '../../../packages/data/src/staticData'
+import { staticDataGroup, staticDocumentIssues } from '../../data/src/staticData'
+import { normalizeHead, tableOf } from '../../../tools/content-schema'
 import type { DataDocument, DataTable } from '../../../tools/data-editor-contract'
 const documents = { ships, modules, plugs, items, market } as unknown as Record<DataTable, DataDocument>
 
 describe('静态字段契约与数值编辑计划', () => {
+  it('跨类型速度字段不标为推进专用，旧工作簿表头仍映射同一字段', () => {
+    const current = tableOf('modules')!.cols.find(column => column.p === 'speedBonusPct')!
+    expect(current.head).toBe('速度加成speedBonusPct(战斗机动)')
+    expect(normalizeHead('速度加成speedBonusPct(推进)')).toBe(current.head)
+    for (const [id, slot] of [['mod-wh-c-frame', 'armor'], ['mod-wh-c-pulse', 'support']] as const) {
+      const row = rowsOf('modules', documents.modules).find(row => row.id === id)!
+      expect(row.category).toBe(slot)
+      expect(row.fields.find(field => field.path === 'speedBonusPct')!.label).toBe('战斗速度加成')
+      expect(row.fields.find(field => field.path === 'speedBonusPct')!.percent).toBe(true)
+    }
+  })
   it('所有迁移数据都合法，范围校验与原0值不混用', () => {
     for (const table of Object.keys(documents) as DataTable[]) expect(validateDocument(documents[table], table)).toEqual([])
     const sandcat = rowsOf('ships', documents.ships).find(row => row.id === 'sandcat')!

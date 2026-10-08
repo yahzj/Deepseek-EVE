@@ -95,6 +95,12 @@ import staticModules from '../packages/data/src/static/modules.json'
 import staticPlugs from '../packages/data/src/static/plugs.json'
 import staticItems from '../packages/data/src/static/items.json'
 import staticMarket from '../packages/data/src/static/market.json'
+import staticFoeShips from '../packages/data/src/static/foeShips.json'
+import staticFoeDrones from '../packages/data/src/static/foeDrones.json'
+import staticFoeMounts from '../packages/core/src/static/foeMounts.json'
+import staticBounties from '../packages/data/src/static/bounties.json'
+import staticInvasion from '../packages/data/src/static/invasionFleets.json'
+import staticWormhole from '../packages/data/src/static/wormholeFleets.json'
 import { validateDocument } from './data-editor-schema'
 // ⚠ **跨层 import（有意为之）**：装配页卡片正文由渲染层 `moduleShortEffect` 生成，而 `apps/desktop`
 //   **没有测试运行器** ⇒ 这条口径只能由体检兜住（见下方「装备卡片说明契约」）。
@@ -8704,7 +8710,7 @@ checkPlugEffectWiring()
   for (const key of groups) check(WRECK_GROUPS.find(group => group.key === key)?.rareTheme !== undefined, `稀有主题池缺失：${key}`)
 }
 
-for (const [table, document] of Object.entries({ ships: staticShips, modules: staticModules, plugs: staticPlugs, items: staticItems, market: staticMarket })) {
+for (const [table, document] of Object.entries({ ships: staticShips, modules: staticModules, plugs: staticPlugs, items: staticItems, market: staticMarket, foeShips: staticFoeShips, foeDrones: staticFoeDrones, foeMounts: staticFoeMounts, bounties: staticBounties, invasionFleets: staticInvasion, wormholeFleets: staticWormhole })) {
   for (const issue of validateDocument(document, table as import('./data-editor-contract').DataTable)) check(false, `静态数据${table}/${issue.id ?? ''}/${issue.path ?? ''}：${issue.message}`)
 }
 

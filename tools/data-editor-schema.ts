@@ -7,8 +7,10 @@ import market from '../packages/data/src/static/market.json'
 import { staticDocumentIssues } from '../packages/data/src/staticData'
 import type { StaticFieldTypes } from '../packages/data/src/staticData'
 import type { DataDocument, DataRow, DataTable, EditorChange, EditorIssue, EditorRow, NumericEdit, NumericField } from './data-editor-contract'
+import { ENEMY_FILES, isEnemyTable, enemyRowsOf, enemyDocumentIssues } from './data-editor-enemy-schema'
 
-export const TABLE_FILES: Record<DataTable, string> = Object.fromEntries(['ships', 'modules', 'plugs', 'items', 'market'].map(table => [table, `packages/data/src/static/${table}.json`])) as Record<DataTable, string>
+export const BASE_TABLES = ['ships', 'modules', 'plugs', 'items', 'market'] as const
+export const TABLE_FILES: Record<DataTable, string> = { ...Object.fromEntries(BASE_TABLES.map(table => [table, `packages/data/src/static/${table}.json`])), ...ENEMY_FILES } as Record<DataTable, string>
 const TITLES: Record<string, string> = {
   tier: '舰船级别', cargoM3: '货仓容量', cycleSeconds: '采集周期', oreUnitsPerCycle: '每周期产量', priceIsk: '定义价格', agility: '动力',
   powerBonus: '武器伤害加成', shieldHp: '护盾', armorHp: '装甲', hullHp: '结构', cpu: 'CPU总量', cpuUse: 'CPU占用',
@@ -52,6 +54,8 @@ function fieldOf(table: DataTable, path: string): NumericField {
     max: column?.max, integer: column?.int ?? /slots\.|Slots|gunCount|Ms$/.test(path), writable: path !== 'tier' && path !== 'plugSlots' }
 }
 export function rowsOf(table: DataTable, document: DataDocument): EditorRow[] {
+  if (!document) return []
+  if (isEnemyTable(table)) return enemyRowsOf(table, document)
   return Object.entries(document.groups).flatMap(([group, rows]) => rows.map(row => ({
     table, group, id: String(row.id ?? row.key), name: String(row.name ?? row.id ?? row.key), tier: typeof row.tier === 'number' ? row.tier : undefined,
     category: String(row.role ?? row.slot ?? row.kind ?? group), values: row,
@@ -59,6 +63,7 @@ export function rowsOf(table: DataTable, document: DataDocument): EditorRow[] {
   })))
 }
 export function validateDocument(value: unknown, table: DataTable, contract?: StaticFieldTypes): EditorIssue[] {
+  if (isEnemyTable(table)) return enemyDocumentIssues(value, table)
   const issues: EditorIssue[] = staticDocumentIssues(value, contract).map(message => ({ message, table }))
   const issue = (message: string, id?: string, path?: string) => issues.push({ message, table, id, path })
   if (!value || typeof value !== 'object' || Array.isArray(value)) return [{ message: '数据文件必须是对象', table }]

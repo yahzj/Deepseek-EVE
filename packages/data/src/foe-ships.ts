@@ -81,6 +81,8 @@
  * B 族三卡本轮补上同形态的倍率（原先靠'舰级值即卡值'）。
  */
 
+import foeShipsParameters from './static/foeShips.json'
+import { enemyParameterOf } from '@whale/core'
 import { FOE_MOUNT_IDS } from '@whale/core'
 import type { FoeShipDef } from '@whale/core'
 import { L10N } from './l10n/table'
@@ -92,22 +94,22 @@ import { FOE_DRONE_C_SPORE, FOE_DRONE_E_ALERT, FOE_DRONE_G_BEE_EXP, FOE_DRONE_G_
  * 射程 −15%：`1 ×0.85 → 1` / `2215 ×0.85 = 1882.75 → 1883`。 */
 export const FOE_SHIP_PIRATE_SKIFF: FoeShipDef = {
   id: 'foe-pirate-skiff',
-  gunCount: 2,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "gunCount"),
   name: '海盗快艇',
   family: 'A',
-  evasion: 0.22, // 2026-09-24 船长令：A 族**除电子舰外** +10% 闪避（缺省 0.12 → 0.22）
-  hullClassTier: 1, // 护卫舰
-  speedRatio: 1.15, // = 391 / 340
-  hp: 156, // 按档重排（甲案）：T1 档基线 260 × 角色 0.60（数量型小艇）= **156**；原 150（卡锚）
-  split: { s: 0.2, a: 0.55, h: 0.25 },
-  shotDmg: 28, // T1 档基线 39.5 × 角色 0.71 = 28.05 → **28**（原 28）
-  hitRate: 0.85,
-  reloadMs: 4000,
-  rangeMinM: 1, // 1 ×0.85 = 0.85 → 1（保留下限 1）
-  rangeMaxM: 2600, // 2026-09-11 船长定「**低威胁卡敌人射程延长到 2600**」（原 1883 = 2215 ×0.85 射程 −15% 值）
-  falloff: 0.3,
-  blindDmgMul: 0.3,
-  dmgMix: { explosive: 8, kinetic: 2 },
+  evasion: enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "evasion"), // 2026-09-24 船长令：A 族**除电子舰外** +10% 闪避（缺省 0.12 → 0.22）
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 护卫舰
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "speedRatio"), // = 391 / 340
+  hp: enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "hp"), // 按档重排（甲案）：T1 档基线 260 × 角色 0.60（数量型小艇）= **156**；原 150（卡锚）
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "split_h") },
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "shotDmg"), // T1 档基线 39.5 × 角色 0.71 = 28.05 → **28**（原 28）
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "hitRate"),
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "rangeMinM"), // 1 ×0.85 = 0.85 → 1（保留下限 1）
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "rangeMaxM"), // 2026-09-11 船长定「**低威胁卡敌人射程延长到 2600**」（原 1883 = 2215 ×0.85 射程 −15% 值）
+  falloff: enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "blindDmgMul"),
+  dmgMix: { explosive: enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "dmgMix_explosive"), kinetic: enemyParameterOf(foeShipsParameters, "foe-pirate-skiff", "dmgMix_kinetic") },
   tactic: 'brawl',
 }
 
@@ -118,22 +120,22 @@ export const FOE_SHIP_PIRATE_SKIFF: FoeShipDef = {
  * 全族贴脸，武器死区下沿取消；原按 −15% 推导为 `383 ×0.85 = 326`，该推导现在只对上限生效）。 */
 export const FOE_SHIP_PIRATE_CORVETTE: FoeShipDef = {
   id: 'foe-pirate-corvette',
-  gunCount: 3,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "gunCount"),
   name: '劫掠护卫舰',
   family: 'A',
-  evasion: 0.22, // 2026-09-24 船长令：A 族**除电子舰外** +10% 闪避（缺省 0.12 → 0.22）
-  hullClassTier: 1, // 护卫舰（2026-09-11 追加裁决：本舰级**下落一档**到护卫舰，名与档一致）
-  speedRatio: 1.1, // = 374 / 340
-  hp: 364, // 按档重排（甲案）：T1 260 × 角色 1.40（标准护卫）= **364**；原 365（卡锚）
-  split: { s: 0.34, a: 0.33, h: 0.33 },
-  shotDmg: 51, // T1 39.5 × 角色 1.29 = 50.96 → **51**（原 51）
-  hitRate: 0.85,
-  reloadMs: 4000,
-  rangeMinM: 1, // 船长 2026-09-20「除劫掠狙击舰外，A 族最小射程改为 1」（原 −15% 推导值 326）
-  rangeMaxM: 4275, // 5029 ×0.85 = 4274.65 → 4275
-  falloff: 0.3,
-  blindDmgMul: 0.3,
-  dmgMix: { kinetic: 8, explosive: 2 },
+  evasion: enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "evasion"), // 2026-09-24 船长令：A 族**除电子舰外** +10% 闪避（缺省 0.12 → 0.22）
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 护卫舰（2026-09-11 追加裁决：本舰级**下落一档**到护卫舰，名与档一致）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "speedRatio"), // = 374 / 340
+  hp: enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "hp"), // 按档重排（甲案）：T1 260 × 角色 1.40（标准护卫）= **364**；原 365（卡锚）
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "split_h") },
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "shotDmg"), // T1 39.5 × 角色 1.29 = 50.96 → **51**（原 51）
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "hitRate"),
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "rangeMinM"), // 船长 2026-09-20「除劫掠狙击舰外，A 族最小射程改为 1」（原 −15% 推导值 326）
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "rangeMaxM"), // 5029 ×0.85 = 4274.65 → 4275
+  falloff: enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "blindDmgMul"),
+  dmgMix: { kinetic: enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "dmgMix_kinetic"), explosive: enemyParameterOf(foeShipsParameters, "foe-pirate-corvette", "dmgMix_explosive") },
   tactic: 'orbit',
 }
 
@@ -142,22 +144,22 @@ export const FOE_SHIP_PIRATE_CORVETTE: FoeShipDef = {
  * 射程 −15%：`1476 ×0.85 = 1254.6 → 1255` / `11316 ×0.85 = 9618.6 → 9619`。 */
 export const FOE_SHIP_PIRATE_SNIPER: FoeShipDef = {
   id: 'foe-pirate-sniper',
-  gunCount: 2,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "gunCount"),
   name: '劫掠狙击舰',
   family: 'A',
-  evasion: 0.22, // 2026-09-24 船长令：A 族**除电子舰外** +10% 闪避（缺省 0.12 → 0.22）
-  hullClassTier: 2, // 驱逐舰（2026-09-11 追加裁决：本舰级**下落一档**到驱逐舰）
-  speedRatio: 1.1, // = 325 / 295
-  hp: 480, // 按档重排（甲案）：T2 档基线 480 × 角色 1.00（远程狙击）= **480**；原 268.75（卡锚）
-  split: { s: 0.5, a: 0.25, h: 0.25 },
-  shotDmg: 60, // T2 68 × 角色 0.88（远射程换单发）= 59.84 → **60**；原 41
-  hitRate: 0.85,
-  reloadMs: 4000,
-  rangeMinM: 1255, // 1476 ×0.85 = 1254.6 → 1255
-  rangeMaxM: 9619, // 11316 ×0.85 = 9618.6 → 9619
-  falloff: 0.3,
-  blindDmgMul: 0.3,
-  dmgMix: { explosive: 8, kinetic: 2 },
+  evasion: enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "evasion"), // 2026-09-24 船长令：A 族**除电子舰外** +10% 闪避（缺省 0.12 → 0.22）
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 驱逐舰（2026-09-11 追加裁决：本舰级**下落一档**到驱逐舰）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "speedRatio"), // = 325 / 295
+  hp: enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "hp"), // 按档重排（甲案）：T2 档基线 480 × 角色 1.00（远程狙击）= **480**；原 268.75（卡锚）
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "split_h") },
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "shotDmg"), // T2 68 × 角色 0.88（远射程换单发）= 59.84 → **60**；原 41
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "hitRate"),
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "rangeMinM"), // 1476 ×0.85 = 1254.6 → 1255
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "rangeMaxM"), // 11316 ×0.85 = 9618.6 → 9619
+  falloff: enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "blindDmgMul"),
+  dmgMix: { explosive: enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "dmgMix_explosive"), kinetic: enemyParameterOf(foeShipsParameters, "foe-pirate-sniper", "dmgMix_kinetic") },
   tactic: 'kite',
 }
 
@@ -172,22 +174,22 @@ export const FOE_SHIP_PIRATE_SNIPER: FoeShipDef = {
  */
 export const FOE_SHIP_PIRATE_WARLORD: FoeShipDef = {
   id: 'foe-pirate-warlord',
-  gunCount: 4,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "gunCount"),
   name: '海盗头目舰',
   family: 'A',
-  evasion: 0.22, // 2026-09-24 船长令：A 族**除电子舰外** +10% 闪避（缺省 0.12 → 0.22）
-  hullClassTier: 3, // 巡洋舰（海盗族顶格）
-  speedRatio: 1.45, // = 374 / 258
-  hp: 900, // 按档重排（甲案）：T3 档基线 900 × 角色 1.00（精锐主力）= **900**；原 360（卡锚 ⇒ 与护卫舰同强）
-  split: { s: 0.2, a: 0.55, h: 0.25 },
-  shotDmg: 135, // T3 124 × 角色 1.09 = 135.2 → **135**；原 56
-  hitRate: 0.9,
-  reloadMs: 4000,
-  rangeMinM: 1, // 1 ×0.85 → 1
-  rangeMaxM: 2210, // 2600 ×0.85 = 2210
-  falloff: 0.3,
-  blindDmgMul: 0.3,
-  dmgMix: { kinetic: 8, explosive: 2 },
+  evasion: enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "evasion"), // 2026-09-24 船长令：A 族**除电子舰外** +10% 闪避（缺省 0.12 → 0.22）
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 巡洋舰（海盗族顶格）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "speedRatio"), // = 374 / 258
+  hp: enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "hp"), // 按档重排（甲案）：T3 档基线 900 × 角色 1.00（精锐主力）= **900**；原 360（卡锚 ⇒ 与护卫舰同强）
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "split_h") },
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "shotDmg"), // T3 124 × 角色 1.09 = 135.2 → **135**；原 56
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "hitRate"),
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "rangeMinM"), // 1 ×0.85 → 1
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "rangeMaxM"), // 2600 ×0.85 = 2210
+  falloff: enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "blindDmgMul"),
+  dmgMix: { kinetic: enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "dmgMix_kinetic"), explosive: enemyParameterOf(foeShipsParameters, "foe-pirate-warlord", "dmgMix_explosive") },
   tactic: 'brawl',
   elite: true,
 }
@@ -213,21 +215,21 @@ export const FOE_SHIP_PIRATE_WARLORD: FoeShipDef = {
  * 速度 = 1 护卫舰基准 340 × **`0.80`** = **272**（船长「速度偏慢」→ 2026-09-11 裁决「B 族速落实 0.8」）。 */
 export const FOE_SCAV_SKIFF: FoeShipDef = {
   id: 'foe-scav-skiff',
-  gunCount: 2,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-scav-skiff", "gunCount"),
   name: '拾荒武装艇',
   family: 'B',
-  hullClassTier: 1, // 护卫舰（新手过渡族只用 1/2 两档）
-  speedRatio: 0.8, // = 272 / 340（< 1 = 比本档基准慢；船长 2026-09-11「B 族速落实 0.8」）
-  hp: 156, // 按档重排（甲案）：T1 260 × 角色 0.60（数量型小艇）= **156**；原 22（卡锚，改由卡片倍率表达）
-  split: { s: 0.34, a: 0.33, h: 0.33 }, // 均衡型（基准卡 = 教学卡）
-  shotDmg: 28, // T1 39.5 × 角色 0.71 = 28.05 → **28**；原 14
-  hitRate: 0.85,
-  reloadMs: 4000,
-  rangeMinM: 1,
-  rangeMaxM: 2200,
-  falloff: 0.3,
-  blindDmgMul: 0.3,
-  dmgMix: { kinetic: 10 }, // **纯动能**（教学卡为纯系；新港护航卡在条目上覆写 8:2 混伤）
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-scav-skiff", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 护卫舰（新手过渡族只用 1/2 两档）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-scav-skiff", "speedRatio"), // = 272 / 340（< 1 = 比本档基准慢；船长 2026-09-11「B 族速落实 0.8」）
+  hp: enemyParameterOf(foeShipsParameters, "foe-scav-skiff", "hp"), // 按档重排（甲案）：T1 260 × 角色 0.60（数量型小艇）= **156**；原 22（卡锚，改由卡片倍率表达）
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-scav-skiff", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-scav-skiff", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-scav-skiff", "split_h") }, // 均衡型（基准卡 = 教学卡）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-scav-skiff", "shotDmg"), // T1 39.5 × 角色 0.71 = 28.05 → **28**；原 14
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-scav-skiff", "hitRate"),
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-scav-skiff", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-scav-skiff", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-scav-skiff", "rangeMaxM"),
+  falloff: enemyParameterOf(foeShipsParameters, "foe-scav-skiff", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-scav-skiff", "blindDmgMul"),
+  dmgMix: { kinetic: enemyParameterOf(foeShipsParameters, "foe-scav-skiff", "dmgMix_kinetic") }, // **纯动能**（教学卡为纯系；新港护航卡在条目上覆写 8:2 混伤）
   tactic: 'orbit',
 }
 
@@ -238,21 +240,21 @@ export const FOE_SCAV_SKIFF: FoeShipDef = {
  * ⚠ **乱射（命中 0.55）不写在这里**——那是占港那张卡的**单卡特征**，写在卡的条目 `hitRate` 上。 */
 export const FOE_SCAV_ARMED: FoeShipDef = {
   id: 'foe-scav-armed',
-  gunCount: 3,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-scav-armed", "gunCount"),
   name: '拾荒火力舰',
   family: 'B',
-  hullClassTier: 2, // 驱逐舰（B 族顶格）
-  speedRatio: 0.8, // = 236 / 295（船长 2026-09-11「B 族速落实 0.8」）
-  hp: 480, // 按档重排（甲案）：T2 480 × 角色 1.00（中距火力舰）= **480**；原 292（卡锚，改由卡片倍率表达）
-  split: { s: 0.34, a: 0.33, h: 0.33 }, // 均衡型（基准卡 = 占港卡）
-  shotDmg: 65, // T2 68 × 角色 0.95 = 64.6 → **65**；原 58
-  hitRate: 0.85, // 族缺省；「乱射」是单卡特征（见上）
-  reloadMs: 4000,
-  rangeMinM: 366,
-  rangeMaxM: 4815,
-  falloff: 0.3,
-  blindDmgMul: 0.3,
-  dmgMix: { kinetic: 8, explosive: 2 },
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-scav-armed", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 驱逐舰（B 族顶格）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-scav-armed", "speedRatio"), // = 236 / 295（船长 2026-09-11「B 族速落实 0.8」）
+  hp: enemyParameterOf(foeShipsParameters, "foe-scav-armed", "hp"), // 按档重排（甲案）：T2 480 × 角色 1.00（中距火力舰）= **480**；原 292（卡锚，改由卡片倍率表达）
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-scav-armed", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-scav-armed", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-scav-armed", "split_h") }, // 均衡型（基准卡 = 占港卡）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-scav-armed", "shotDmg"), // T2 68 × 角色 0.95 = 64.6 → **65**；原 58
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-scav-armed", "hitRate"), // 族缺省；「乱射」是单卡特征（见上）
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-scav-armed", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-scav-armed", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-scav-armed", "rangeMaxM"),
+  falloff: enemyParameterOf(foeShipsParameters, "foe-scav-armed", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-scav-armed", "blindDmgMul"),
+  dmgMix: { kinetic: enemyParameterOf(foeShipsParameters, "foe-scav-armed", "dmgMix_kinetic"), explosive: enemyParameterOf(foeShipsParameters, "foe-scav-armed", "dmgMix_explosive") },
   tactic: 'orbit',
 }
 
@@ -412,9 +414,9 @@ export const ALIEN_SLOW_SHIP_IDS: readonly string[] = ['foe-alien-spore-hive']
  * 实际 = `1.5 × 0.75 = 1.125`（仍是三系里最高的，只是不再"破甲碾压"）。
  */
 const C_FAMILY_RESISTS: Pick<FoeShipDef, 'shieldResist' | 'armorResist' | 'hullResist'> = {
-  shieldResist: { explosive: 0.25 },
-  armorResist: { explosive: 0.25 },
-  hullResist: { explosive: 0.25 },
+  shieldResist: { explosive: enemyParameterOf(foeShipsParameters, "c-family-resists", "shieldResist_explosive") },
+  armorResist: { explosive: enemyParameterOf(foeShipsParameters, "c-family-resists", "armorResist_explosive") },
+  hullResist: { explosive: enemyParameterOf(foeShipsParameters, "c-family-resists", "hullResist_explosive") },
 }
 
 /**
@@ -446,35 +448,35 @@ export const ALIEN_FAST_SHIP_IDS: readonly string[] = ['foe-alien-acid-burster']
 
 export const FOE_ALIEN_ACID_BURSTER: FoeShipDef = {
   id: 'foe-alien-acid-burster', name: L10N['ship.alien.001']!.zh, family: 'C',
-  hullClassTier: 1, speedRatio: 714 / 340, hp: 130, split: { s: .2, a: .55, h: .25 },
-  ...C_FAMILY_RESISTS, shotDmg: 0, gunCount: 1, hitRate: 1, reloadMs: 4000,
-  rangeMinM: 1, rangeMaxM: 250, falloff: 1, dmgMix: { kinetic: 1 }, tactic: 'brawl',
-  acidBurst: { attackRangeM: 250, deathRangeM: 300, corrosionPct: .15, damage: 300, hitRate: .95 }, mounts: [FOE_MOUNT_IDS.acidCharge],
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "hullClassTier") as 1 | 2 | 3 | 4 | 5), speedRatio: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "speedRatio_input0") / enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "speedRatio_input1"), hp: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "hp"), split: { s: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "split_h") },
+  ...C_FAMILY_RESISTS, shotDmg: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "shotDmg"), gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "gunCount"), hitRate: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "hitRate"), reloadMs: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "rangeMinM"), rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "rangeMaxM"), falloff: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "falloff"), dmgMix: { kinetic: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "dmgMix_kinetic") }, tactic: 'brawl',
+  acidBurst: { attackRangeM: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "acidBurst_attackRangeM"), deathRangeM: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "acidBurst_deathRangeM"), corrosionPct: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "acidBurst_corrosionPct"), damage: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "acidBurst_damage"), hitRate: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "acidBurst_hitRate") }, mounts: [FOE_MOUNT_IDS.acidCharge],
 }
 export const FOE_ALIEN_BROOD_WORKER: FoeShipDef = {
   id: 'foe-alien-brood-worker', name: L10N['ship.alien.002']!.zh, family: 'C',
-  hullClassTier: 3, speedRatio: 387 / 258, hp: 1080, split: { s: .2, a: .55, h: .25 },
-  ...C_FAMILY_RESISTS, shotDmg: 124, gunCount: 4, hitRate: .95, reloadMs: 4000,
-  rangeMinM: 1, rangeMaxM: 2700, falloff: .5, blindDmgMul: .3,
-  dmgMix: { plasma: 8, explosive: 2 }, energyForm: 'spit', tactic: 'brawl', repairPct: .5,
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "hullClassTier") as 1 | 2 | 3 | 4 | 5), speedRatio: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "speedRatio_input0") / enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "speedRatio_input1"), hp: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "hp"), split: { s: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "split_h") },
+  ...C_FAMILY_RESISTS, shotDmg: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "shotDmg"), gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "gunCount"), hitRate: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "hitRate"), reloadMs: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "rangeMinM"), rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "rangeMaxM"), falloff: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "falloff"), blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "dmgMix_plasma"), explosive: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "dmgMix_explosive") }, energyForm: 'spit', tactic: 'brawl', repairPct: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "repairPct"),
   mounts: [FOE_MOUNT_IDS.chargeSwarmT3],
 }
 export const FOE_ALIEN_HIVEBACK: FoeShipDef = {
   id: 'foe-alien-hiveback', name: L10N['ship.alien.003']!.zh, family: 'C',
-  hullClassTier: 4, speedRatio: 287 / 205, hp: 2080, split: { s: .2, a: .55, h: .25 },
-  ...C_FAMILY_RESISTS, shotDmg: 192, gunCount: 1, hitRate: .95, reloadMs: 4000,
-  rangeMinM: 1, rangeMaxM: 6000, falloff: .5, blindDmgMul: .3,
-  dmgMix: { plasma: 8, explosive: 2 }, energyForm: 'spit', tactic: 'brawl',
-  drones: [{ drone: FOE_DRONE_C_JAWCLAW, count: 8 }], droneFireShare: .6,
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "hullClassTier") as 1 | 2 | 3 | 4 | 5), speedRatio: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "speedRatio_input0") / enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "speedRatio_input1"), hp: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "hp"), split: { s: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "split_h") },
+  ...C_FAMILY_RESISTS, shotDmg: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "shotDmg"), gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "gunCount"), hitRate: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "hitRate"), reloadMs: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "rangeMinM"), rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "rangeMaxM"), falloff: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "falloff"), blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "dmgMix_plasma"), explosive: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "dmgMix_explosive") }, energyForm: 'spit', tactic: 'brawl',
+  drones: [{ drone: FOE_DRONE_C_JAWCLAW, count: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "drones_0_count") }], droneFireShare: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "droneFireShare"),
   mounts: [FOE_MOUNT_IDS.hivebackCharge, FOE_MOUNT_IDS.broodControl, FOE_MOUNT_IDS.hivebackHatchery],
 }
 export const FOE_ALIEN_BROODMOTHER: FoeShipDef = {
   id: 'foe-alien-broodmother', name: L10N['ship.alien.004']!.zh, family: 'C',
-  hullClassTier: 5, speedRatio: 240 / 155, hp: 3640, split: { s: .2, a: .55, h: .25 },
-  ...C_FAMILY_RESISTS, shotDmg: 504, gunCount: 2, hitRate: .95, reloadMs: 4000,
-  rangeMinM: 1, rangeMaxM: 6000, falloff: .5, blindDmgMul: .3,
-  dmgMix: { plasma: 8, explosive: 2 }, energyForm: 'spit', tactic: 'brawl',
-  drones: [{ drone: FOE_DRONE_C_JAWCLAW, count: 12 }], droneFireShare: .5,
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "hullClassTier") as 1 | 2 | 3 | 4 | 5), speedRatio: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "speedRatio_input0") / enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "speedRatio_input1"), hp: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "hp"), split: { s: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "split_h") },
+  ...C_FAMILY_RESISTS, shotDmg: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "shotDmg"), gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "gunCount"), hitRate: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "hitRate"), reloadMs: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "rangeMinM"), rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "rangeMaxM"), falloff: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "falloff"), blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "dmgMix_plasma"), explosive: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "dmgMix_explosive") }, energyForm: 'spit', tactic: 'brawl',
+  drones: [{ drone: FOE_DRONE_C_JAWCLAW, count: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "drones_0_count") }], droneFireShare: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "droneFireShare"),
   mounts: [FOE_MOUNT_IDS.broodmotherCharge, FOE_MOUNT_IDS.broodControl, FOE_MOUNT_IDS.broodmotherHatchery],
 }
 
@@ -496,24 +498,24 @@ export const FOE_ALIEN_BROODMOTHER: FoeShipDef = {
  * 倍率 = **1.5**（本舰 T1 ⇒ 按档阶梯 `ALIEN_CHARGE_MUL_BY_TIER`；2026-09-16 全族按档口径，值不变）。 */
 export const FOE_ALIEN_RIFT: FoeShipDef = {
   id: 'foe-alien-rift-larva',
-  gunCount: 2,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "gunCount"),
   name: '畸变幼虫',
   family: 'C',
   ...C_FAMILY_RESISTS, // C 族族抗性：三层各 25% 爆炸抗（船长 2026-09-15，见常量注释）
-  hullClassTier: 1, // 护卫舰（**由 T3 巡洋下落一档**）
-  speedRatio: 1.6, // = 544 / 340（船长「两种幼虫提速倍率 1.6」）
-  hp: 260, // 按档重排：T1 档基线 260 × 角色 1.00（标准近战虫）= **260**
-  split: { s: 0.34, a: 0.33, h: 0.33 }, // 均衡型（= 裂谷卡 defProfile balanced）
-  shotDmg: 43, // T1 档基线 39.5 × 角色 1.10 = 43.45 → **43**
-  hitRate: 0.95,
-  reloadMs: 4000,
-  rangeMinM: 1,
-  rangeMaxM: 2552, // 缺省 = 裂谷卡的带；噬口卡的条目覆写为 1~2713
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 护卫舰（**由 T3 巡洋下落一档**）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "speedRatio"), // = 544 / 340（船长「两种幼虫提速倍率 1.6」）
+  hp: enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "hp"), // 按档重排：T1 档基线 260 × 角色 1.00（标准近战虫）= **260**
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "split_h") }, // 均衡型（= 裂谷卡 defProfile balanced）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "shotDmg"), // T1 档基线 39.5 × 角色 1.10 = 43.45 → **43**
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "hitRate"),
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "rangeMaxM"), // 缺省 = 裂谷卡的带；噬口卡的条目覆写为 1~2713
   //   ⚠ 沿革：2026-09-14 曾「全族 +1000 射程」（→ 3552），同日**船长又令回滚**（「可以回滚C族敌人射程增加的修改」）
   //   ⇒ 回到本值；卡的条目覆写与 `desireRangeM` 钉子一并撤回
-  falloff: 0.5,
-  blindDmgMul: 0.3,
-  dmgMix: { plasma: 8, explosive: 2 }, // 主系**等离子**（C 族酸液签名）
+  falloff: enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "dmgMix_plasma"), explosive: enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "dmgMix_explosive") }, // 主系**等离子**（C 族酸液签名）
   energyForm: 'spit', // 能量·掷命中（裁定⑤）
   tactic: 'brawl',
   // **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：小虫也吃冲锋，倍率 1.5
@@ -536,23 +538,23 @@ export const FOE_ALIEN_RIFT: FoeShipDef = {
  * 倍率 = **1.5**（本舰 T1 ⇒ 按档阶梯 `ALIEN_CHARGE_MUL_BY_TIER`；2026-09-16 全族按档口径，值不变）。 */
 export const FOE_ALIEN_STARCORE: FoeShipDef = {
   id: 'foe-alien-starcore-larva',
-  gunCount: 2,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "gunCount"),
   name: '星髓幼虫',
   family: 'C',
   ...C_FAMILY_RESISTS, // C 族族抗性：三层各 25% 爆炸抗（船长 2026-09-15，见常量注释）
-  hullClassTier: 1, // 护卫舰（**由 T3 巡洋下落一档**）
-  speedRatio: 1.6, // = 544 / 340（船长「两种幼虫提速倍率 1.6」）
-  hp: 208, // 按档重排：T1 档基线 260 × 角色 0.80（群袭脆虫）= **208**
-  split: { s: 0.2, a: 0.55, h: 0.25 }, // 装甲型（= 星髓卡 defProfile armor；深渊之门卡条目覆写为护盾）
-  shotDmg: 32, // T1 档基线 39.5 × 角色 0.80 = 31.6 → **32**
-  hitRate: 0.95, // 掷命中（C 族不保留光束必中）
-  reloadMs: 4000,
-  rangeMinM: 1,
-  rangeMaxM: 2655, // 缺省 = 星髓卡的带；深渊之门卡条目覆写为 1~2600
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 护卫舰（**由 T3 巡洋下落一档**）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "speedRatio"), // = 544 / 340（船长「两种幼虫提速倍率 1.6」）
+  hp: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "hp"), // 按档重排：T1 档基线 260 × 角色 0.80（群袭脆虫）= **208**
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "split_h") }, // 装甲型（= 星髓卡 defProfile armor；深渊之门卡条目覆写为护盾）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "shotDmg"), // T1 档基线 39.5 × 角色 0.80 = 31.6 → **32**
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "hitRate"), // 掷命中（C 族不保留光束必中）
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "rangeMaxM"), // 缺省 = 星髓卡的带；深渊之门卡条目覆写为 1~2600
   //   ⚠ 沿革：2026-09-14 曾「全族 +1000」（→ 3655），同日**船长又令回滚** ⇒ 回到本值
-  falloff: 0.5,
-  blindDmgMul: 0.3,
-  dmgMix: { plasma: 8, explosive: 2 }, // 等离子主
+  falloff: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "dmgMix_plasma"), explosive: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "dmgMix_explosive") }, // 等离子主
   energyForm: 'spit',
   tactic: 'brawl',
   // **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：星髓幼虫同样吃冲锋、倍率 1.5
@@ -583,23 +585,23 @@ export const FOE_ALIEN_STARCORE: FoeShipDef = {
  * 血型均衡（噬口卡 `defProfile` 未写 = 缺省）；主系**等离子** 8:2。形态 = `'spit'`。 */
 export const FOE_ALIEN_MAW: FoeShipDef = {
   id: 'foe-alien-maw',
-  gunCount: 6,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-maw", "gunCount"),
   name: '噬口巨兽',
   family: 'C',
   ...C_FAMILY_RESISTS, // C 族族抗性：三层各 25% 爆炸抗（船长 2026-09-15，见常量注释）
-  hullClassTier: 4, // 战列舰（**巨兽档**：须登记在 ALIEN_BEAST_SHIP_IDS，契约守卫）
-  speedRatio: 297 / 205, // = **297**（船长 2026-09-11「将首领速度**单独上调 20 点**」：277 → 297；T4 仍是族内唯一破例的慢档）
-  hp: 1600, // 按档重排：T4 档基线 1600 × 角色 1.00（稀有巨兽）= **1600**
-  split: { s: 0.34, a: 0.33, h: 0.33 }, // 均衡型（卡面未写 defProfile = 缺省）
-  shotDmg: 240, // T4 档基线 240 × 角色 1.00 = **240**
-  hitRate: 0.95,
-  reloadMs: 4000,
-  rangeMinM: 1,
-  rangeMaxM: 2713, // 沿革：曾令「巨兽射程增加」（4000）→ 实测后**「回收射程加成」**回 2713（不再覆盖标准站位 3,220m）
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-alien-maw", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 战列舰（**巨兽档**：须登记在 ALIEN_BEAST_SHIP_IDS，契约守卫）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-alien-maw", "speedRatio_input0") / enemyParameterOf(foeShipsParameters, "foe-alien-maw", "speedRatio_input1"), // = **297**（船长 2026-09-11「将首领速度**单独上调 20 点**」：277 → 297；T4 仍是族内唯一破例的慢档）
+  hp: enemyParameterOf(foeShipsParameters, "foe-alien-maw", "hp"), // 按档重排：T4 档基线 1600 × 角色 1.00（稀有巨兽）= **1600**
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-alien-maw", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-alien-maw", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-alien-maw", "split_h") }, // 均衡型（卡面未写 defProfile = 缺省）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-alien-maw", "shotDmg"), // T4 档基线 240 × 角色 1.00 = **240**
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-alien-maw", "hitRate"),
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-alien-maw", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-alien-maw", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-alien-maw", "rangeMaxM"), // 沿革：曾令「巨兽射程增加」（4000）→ 实测后**「回收射程加成」**回 2713（不再覆盖标准站位 3,220m）
   //   → 2026-09-14 曾「全族 +1000」（3713）→ **同日船长又令回滚**（「可以回滚C族敌人射程增加的修改」）⇒ 回到本值
-  falloff: 0.5,
-  blindDmgMul: 0.3,
-  dmgMix: { plasma: 8, explosive: 2 },
+  falloff: enemyParameterOf(foeShipsParameters, "foe-alien-maw", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-alien-maw", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-alien-maw", "dmgMix_plasma"), explosive: enemyParameterOf(foeShipsParameters, "foe-alien-maw", "dmgMix_explosive") },
   energyForm: 'spit',
   tactic: 'brawl',
   elite: true, // 全族唯一的稀有头目（显示名「精锐噬口巨兽」）
@@ -623,23 +625,23 @@ export const FOE_ALIEN_MAW: FoeShipDef = {
  * **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：`foeCanCharge` + `foeChargeMul: 1.5`。 */
 export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
   id: 'foe-alien-starcore-adult',
-  gunCount: 3,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "gunCount"),
   name: '星髓成虫',
   family: 'C',
   ...C_FAMILY_RESISTS, // C 族族抗性：三层各 25% 爆炸抗（船长 2026-09-15，见常量注释）
-  hullClassTier: 2, // 驱逐舰（C 族唯一的驱逐档）
-  speedRatio: 1.35, // = 398 / 295（船长「提速倍率 1.35」；高于 A 族同档 325）
-  hp: 624, // 按档重排：T2 档基线 480 × 角色 1.30（中坚成虫）= **624**
-  split: { s: 0.2, a: 0.55, h: 0.25 }, // 装甲型（= 星髓卡 defProfile armor）
-  shotDmg: 56, // T2 档基线 68 × 角色 0.82 = 55.76 → **56**
-  hitRate: 0.95,
-  reloadMs: 4000,
-  rangeMinM: 1,
-  rangeMaxM: 2655,
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 驱逐舰（C 族唯一的驱逐档）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "speedRatio"), // = 398 / 295（船长「提速倍率 1.35」；高于 A 族同档 325）
+  hp: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "hp"), // 按档重排：T2 档基线 480 × 角色 1.30（中坚成虫）= **624**
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "split_h") }, // 装甲型（= 星髓卡 defProfile armor）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "shotDmg"), // T2 档基线 68 × 角色 0.82 = 55.76 → **56**
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "hitRate"),
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "rangeMaxM"),
   //   ⚠ 沿革：2026-09-14 曾「全族 +1000」（→ 3655），同日**船长又令回滚** ⇒ 回到本值
-  falloff: 0.5,
-  blindDmgMul: 0.3,
-  dmgMix: { plasma: 8, explosive: 2 },
+  falloff: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "dmgMix_plasma"), explosive: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "dmgMix_explosive") },
   energyForm: 'spit',
   tactic: 'brawl',
   // **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：星髓成虫同样吃冲锋；
@@ -667,29 +669,29 @@ export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
  * ⚠ **不是"多一条 C 族卡"那么简单**：它是 C 族**唯一带机群**的舰级，也是洞内 C 族深层卡的主体。 */
 export const FOE_ALIEN_SPORE_HIVE: FoeShipDef = {
   id: 'foe-alien-spore-hive',
-  gunCount: 4,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "gunCount"),
   name: '孢群异虫',
   family: 'C',
-  hullClassTier: 3, // 巡洋舰
-  speedRatio: 300 / 258, // = **300 m/s**（船长 2026-09-16「孢群异虫速度削减到300」；改前 1.55 = 400）
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 巡洋舰
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "speedRatio_input0") / enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "speedRatio_input1"), // = **300 m/s**（船长 2026-09-16「孢群异虫速度削减到300」；改前 1.55 = 400）
   //   ⚠ **C 族唯一的"允许慢"例外**（登记在 `ALIEN_SLOW_SHIP_IDS`）：族格口径要求"同档实速高于 A 族
   //   最快（海盗头目舰 374）"，本舰按船长裁定不适用——理由见该白名单的注释（无人机母舰不追人）。
-  hp: 1125, // T3 档基线 900 × 角色 1.25
-  split: { s: 0.34, a: 0.33, h: 0.33 }, // 均衡型
-  shotDmg: 87, // T3 档基线 124 × 角色 0.70（近战副炮，主力在机群）
-  hitRate: 0.95,
-  reloadMs: 4000,
-  rangeMinM: 1,
-  rangeMaxM: 2700, // C 族贴脸口径（畸变幼虫 2552 / 星髓系 2655）
-  falloff: 0.5,
-  blindDmgMul: 0.3,
-  dmgMix: { plasma: 8, explosive: 2 }, // C 族签名（酸液 / 孢子）
+  hp: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "hp"), // T3 档基线 900 × 角色 1.25
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "split_h") }, // 均衡型
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "shotDmg"), // T3 档基线 124 × 角色 0.70（近战副炮，主力在机群）
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "hitRate"),
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "rangeMaxM"), // C 族贴脸口径（畸变幼虫 2552 / 星髓系 2655）
+  falloff: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "dmgMix_plasma"), explosive: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "dmgMix_explosive") }, // C 族签名（酸液 / 孢子）
   tactic: 'brawl', // 船长「炮台同样是近战」
   energyForm: 'spit', // C 族四档一律"能量·掷命中"
   ...C_FAMILY_RESISTS, // C 族族抗性：三层各 25% 爆炸抗（船长 2026-09-15；本舰 2026-09-15 批 2 加入 ⇒ 同族同口径）
   // **释放孢群机**（3 架、无后备）；`droneFireShare` = 机群占总火力 60%（A5 守恒，见舰级注释）
-  drones: [{ drone: FOE_DRONE_C_SPORE, count: 3 }],
-  droneFireShare: 0.6,
+  drones: [{ drone: FOE_DRONE_C_SPORE, count: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "drones_0_count") }],
+  droneFireShare: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "droneFireShare"),
   // **冲锋**（船长 2026-09-16：「C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4」）：
   // 本舰 T3 ⇒ 按档阶梯 `ALIEN_CHARGE_MUL_BY_TIER` 取 **2.5**（此前是族内唯一**不**具冲锋资格的舰级）。
   // ⚠ 它的 400 m/s 是全族最快（`speedRatio 1.55`）⇒ 冲锋期 **1,000 m/s**，是洞内"想拉开距离"最硬的一堵墙。
@@ -729,22 +731,22 @@ export const FOE_ALIEN_SPORE_HIVE: FoeShipDef = {
  * 形态 = **`beam` 光束必中**（「靠必中与射程立身」；本族**保留必中**，不走 C 族那套掷命中）。 */
 export const FOE_D_GHOST: FoeShipDef = {
   id: 'foe-d-ghost',
-  gunCount: 3,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-d-ghost", "gunCount"),
   name: '幽灵舰',
   family: 'D',
-  hullClassTier: 2, // 驱逐舰（船长「1 驱逐 2 巡洋」里的那个"1"）
-  speedRatio: 1.1, // = 325 / 295（船长「幽灵舰提速到 110%」）
-  hp: 432, // T2 档基线 480 × 角色 0.90（巡哨残影）= 432
-  split: { s: 0.5, a: 0.25, h: 0.25 }, // 护盾型（= 幽灵舰信号卡面 defProfile）
-  shotDmg: 48, // T2 档基线 68 × 角色 0.70 = 47.6 → 48
-  hitRate: 1, // 光束必中（舰级路径下不消费本字段，写 1 表意）
-  reloadMs: 4000,
-  rangeMinM: 562, // 族统一下限（避免"贴脸安全区"——见设计稿 §二 口径 4）
-  rangeMaxM: 7000,
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-d-ghost", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 驱逐舰（船长「1 驱逐 2 巡洋」里的那个"1"）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-d-ghost", "speedRatio"), // = 325 / 295（船长「幽灵舰提速到 110%」）
+  hp: enemyParameterOf(foeShipsParameters, "foe-d-ghost", "hp"), // T2 档基线 480 × 角色 0.90（巡哨残影）= 432
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-d-ghost", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-d-ghost", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-d-ghost", "split_h") }, // 护盾型（= 幽灵舰信号卡面 defProfile）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-d-ghost", "shotDmg"), // T2 档基线 68 × 角色 0.70 = 47.6 → 48
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-d-ghost", "hitRate"), // 光束必中（舰级路径下不消费本字段，写 1 表意）
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-d-ghost", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-d-ghost", "rangeMinM"), // 族统一下限（避免"贴脸安全区"——见设计稿 §二 口径 4）
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-d-ghost", "rangeMaxM"),
   // **2026-09-19 船长「将D族单独调整，远端改为 0.2」**：D 族四条舰级 0.5 → 0.2（全族一齐改，卡面自动跟随）
-  falloff: 0.2,
-  blindDmgMul: 0.3,
-  dmgMix: { plasma: 8, kinetic: 2 }, // 主系**等离子（能量）**：设定「以能量武器为主」
+  falloff: enemyParameterOf(foeShipsParameters, "foe-d-ghost", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-d-ghost", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-d-ghost", "dmgMix_plasma"), kinetic: enemyParameterOf(foeShipsParameters, "foe-d-ghost", "dmgMix_kinetic") }, // 主系**等离子（能量）**：设定「以能量武器为主」
   energyForm: 'beam',
   tactic: 'orbit', // 中程（船长定）
 }
@@ -757,21 +759,21 @@ export const FOE_D_GHOST: FoeShipDef = {
  * 血型默认**装甲型**（= 坟场守墓者卡面）；虚海守望者卡的条目覆写为**均衡**（其卡面本是均衡）。 */
 export const FOE_D_LONGSHIP: FoeShipDef = {
   id: 'foe-d-longship',
-  gunCount: 4,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-d-longship", "gunCount"),
   name: '守墓长舰',
   family: 'D',
-  hullClassTier: 3, // 巡洋舰
-  speedRatio: 0.9, // = **232** / 258（船长 2026-09-11「将守墓长舰速度下调至 **0.9** 倍率」；原 1.00 = 258）
-  hp: 1080, // T3 档基线 900 × 角色 1.20（陵区守卫主力）= 1080
-  split: { s: 0.2, a: 0.55, h: 0.25 }, // 装甲型（= 坟场守墓者卡面；虚海卡条目覆写为均衡）
-  shotDmg: 105, // T3 档基线 124 × 角色 0.85 = 105.4 → 105
-  hitRate: 1, // 光束必中
-  reloadMs: 4000,
-  rangeMinM: 1062, // 船长 2026-09-11「守墓长舰的最短射程 +500」（562 → **1,062**）：古舰不贴脸
-  rangeMaxM: 7391, // 沿用现状上限（零变化）
-  falloff: 0.2, // 2026-09-19 船长：D 族远端统一 0.2（原 0.5）
-  blindDmgMul: 0.3,
-  dmgMix: { plasma: 8, kinetic: 2 },
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-d-longship", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 巡洋舰
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-d-longship", "speedRatio"), // = **232** / 258（船长 2026-09-11「将守墓长舰速度下调至 **0.9** 倍率」；原 1.00 = 258）
+  hp: enemyParameterOf(foeShipsParameters, "foe-d-longship", "hp"), // T3 档基线 900 × 角色 1.20（陵区守卫主力）= 1080
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-d-longship", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-d-longship", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-d-longship", "split_h") }, // 装甲型（= 坟场守墓者卡面；虚海卡条目覆写为均衡）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-d-longship", "shotDmg"), // T3 档基线 124 × 角色 0.85 = 105.4 → 105
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-d-longship", "hitRate"), // 光束必中
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-d-longship", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-d-longship", "rangeMinM"), // 船长 2026-09-11「守墓长舰的最短射程 +500」（562 → **1,062**）：古舰不贴脸
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-d-longship", "rangeMaxM"), // 沿用现状上限（零变化）
+  falloff: enemyParameterOf(foeShipsParameters, "foe-d-longship", "falloff"), // 2026-09-19 船长：D 族远端统一 0.2（原 0.5）
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-d-longship", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-d-longship", "dmgMix_plasma"), kinetic: enemyParameterOf(foeShipsParameters, "foe-d-longship", "dmgMix_kinetic") },
   energyForm: 'beam',
   tactic: 'orbit', // 中程（沿用现状）
 }
@@ -785,27 +787,27 @@ export const FOE_D_LONGSHIP: FoeShipDef = {
  * 不是'你贴上来它不打你'——「越界即清除」在射程上就该是'任何距离都打得到'。 */
 export const FOE_D_STASIS: FoeShipDef = {
   id: 'foe-d-stasis',
-  gunCount: 4,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-d-stasis", "gunCount"),
   name: '静滞卫舰',
   family: 'D',
-  hullClassTier: 3, // 巡洋舰
-  speedRatio: 0.5, // = 129 / 258（船长「静滞卫舰速度只有正常的 50%」）
-  hp: 1170, // T3 档基线 900 × 角色 1.30（静滞陵寝的守誓者）= 1170
-  split: { s: 0.34, a: 0.33, h: 0.33 }, // 均衡型（= 穹顶守卫卡面）
-  shotDmg: 124, // T3 档基线 124 × 角色 1.00 = 124
-  hitRate: 1, // 光束必中
-  reloadMs: 4400, // 船长 2026-09-11「静滞卫舰的攻击间隔**延长 10%**」：4000 → **4400ms**（单发 190 不变 ⇒ 实收 dps −9.1%）
-  rangeMinM: 2062, // 船长 2026-09-11「穹顶守卫最短射程 +1,500」（562 → **2,062**）：族内**最不贴脸**的一档
-  rangeMaxM: 12_000, // 远程档最长（守墓者长炮）
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-d-stasis", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 巡洋舰
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-d-stasis", "speedRatio"), // = 129 / 258（船长「静滞卫舰速度只有正常的 50%」）
+  hp: enemyParameterOf(foeShipsParameters, "foe-d-stasis", "hp"), // T3 档基线 900 × 角色 1.30（静滞陵寝的守誓者）= 1170
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-d-stasis", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-d-stasis", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-d-stasis", "split_h") }, // 均衡型（= 穹顶守卫卡面）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-d-stasis", "shotDmg"), // T3 档基线 124 × 角色 1.00 = 124
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-d-stasis", "hitRate"), // 光束必中
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-d-stasis", "reloadMs"), // 船长 2026-09-11「静滞卫舰的攻击间隔**延长 10%**」：4000 → **4400ms**（单发 190 不变 ⇒ 实收 dps −9.1%）
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-d-stasis", "rangeMinM"), // 船长 2026-09-11「穹顶守卫最短射程 +1,500」（562 → **2,062**）：族内**最不贴脸**的一档
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-d-stasis", "rangeMaxM"), // 远程档最长（守墓者长炮）
   // **受击增程（炮台）**（2026-09-12 船长：「给 D 族静滞卫舰加入类似 E 族挨打加炮台射程的效果，
   // 不过仅影响所有静滞卫舰。挨打后射程增加 50%」）：挨打一次 ⇒ 本场所有静滞卫舰最远射程 ×1.5
   // ⇒ **12,000 → 18,000m**（近界 2,062 不动）。⚠ 与 E 族的机群增程是**两套独立机制**：
   // 那条是"整支敌队的机群 ×4"，本条**只作用于静滞卫舰自己**（同场的守墓长舰不受影响）。
   // 衰减口径（船长选乙）：原射程内读数一字不变，12 km 以外按同斜率继续衰减（18 km 处 ≈ ×0.20）。
     mounts: [FOE_MOUNT_IDS.gunRangeX15], // 炮台受击增程（2026-09-16 迁成挂载件：×1.5）
-  falloff: 0.2, // 2026-09-19 船长：D 族远端统一 0.2（原 0.5）
-  blindDmgMul: 0.3,
-  dmgMix: { plasma: 8, kinetic: 2 },
+  falloff: enemyParameterOf(foeShipsParameters, "foe-d-stasis", "falloff"), // 2026-09-19 船长：D 族远端统一 0.2（原 0.5）
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-d-stasis", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-d-stasis", "dmgMix_plasma"), kinetic: enemyParameterOf(foeShipsParameters, "foe-d-stasis", "dmgMix_kinetic") },
   energyForm: 'beam',
   tactic: 'kite', // 远程（船长定）
 }
@@ -834,21 +836,21 @@ export const FOE_D_STASIS: FoeShipDef = {
  * 两支到场单位写在**那张卡的条目**上（`enterAt` ＋ `enterBranch`）。 */
 export const FOE_D_THRONE: FoeShipDef = {
   id: 'foe-d-throne',
-  gunCount: 6,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-d-throne", "gunCount"),
   name: '守墓王座舰',
   family: 'D',
-  hullClassTier: 4, // 战列舰（D 族新档）
-  speedRatio: 0.6, // = 123 / 205（族格"越往里越慢"的新终点）
-  hp: 1840, // T4 档基线 1,600 × 角色 1.15
-  split: { s: 0.5, a: 0.25, h: 0.25 }, // **护盾型**（船长「D组不应该是以护盾为主吗」）
-  shotDmg: 252, // T4 档基线 240 × 角色 1.05
-  hitRate: 1, // 光束必中（舰级路径下不消费本字段，写 1 表意）
-  reloadMs: 4000,
-  rangeMinM: 1400, // 古舰不贴脸（逐档抬升 562 / 1062 / 1400 / 2062）
-  rangeMaxM: 9600,
-  falloff: 0.2, // 2026-09-19 船长：D 族远端统一 0.2（原 0.5）
-  blindDmgMul: 0.3,
-  dmgMix: { plasma: 6, kinetic: 4 }, // 船长「50%动能+50%能量的混合炮台」→ 改判「按乙调整为 6:4」
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-d-throne", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 战列舰（D 族新档）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-d-throne", "speedRatio"), // = 123 / 205（族格"越往里越慢"的新终点）
+  hp: enemyParameterOf(foeShipsParameters, "foe-d-throne", "hp"), // T4 档基线 1,600 × 角色 1.15
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-d-throne", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-d-throne", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-d-throne", "split_h") }, // **护盾型**（船长「D组不应该是以护盾为主吗」）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-d-throne", "shotDmg"), // T4 档基线 240 × 角色 1.05
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-d-throne", "hitRate"), // 光束必中（舰级路径下不消费本字段，写 1 表意）
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-d-throne", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-d-throne", "rangeMinM"), // 古舰不贴脸（逐档抬升 562 / 1062 / 1400 / 2062）
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-d-throne", "rangeMaxM"),
+  falloff: enemyParameterOf(foeShipsParameters, "foe-d-throne", "falloff"), // 2026-09-19 船长：D 族远端统一 0.2（原 0.5）
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-d-throne", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-d-throne", "dmgMix_plasma"), kinetic: enemyParameterOf(foeShipsParameters, "foe-d-throne", "dmgMix_kinetic") }, // 船长「50%动能+50%能量的混合炮台」→ 改判「按乙调整为 6:4」
   energyForm: 'beam', // 主系仍是等离子 ⇒ 保留必中（D 族族格）
   tactic: 'orbit',
   // 支援呼叫装置（2026-09-19 船长）：开战 20 秒后按距离呼叫一支支援军（幽灵舰 / 静滞卫舰，见卡面条目）
@@ -881,21 +883,21 @@ export const FOE_D_THRONE: FoeShipDef = {
  * `falloff: 1`（命中不随距离衰减）**保留不动**。 */
 export const FOE_MISSILE_HULK: FoeShipDef = {
   id: 'foe-missile-hulk',
-  gunCount: 4,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-missile-hulk", "gunCount"),
   name: '导弹残段',
   family: 'E',
-  hullClassTier: 3, // 巡洋舰
-  speedRatio: 0, // 族格：巨构不讲机动（静物残骸）
-  hp: 990, // T3 档基线 900 × 角色 1.10
-  split: { s: 0.2, a: 0.55, h: 0.25 }, // 装甲型（E 族统一）
-  shotDmg: 161, // T3 档基线 124 × 角色 1.30（导弹齐射：单发重）
-  hitRate: 0.85, // 制导修正（船长「④按0.85给」）
-  reloadMs: 5000, // 比炮台（4,000ms）慢：导弹"一发顶几发"
-  rangeMinM: 3000, // 2026-09-19 船长「射程下限改为 3000 米」（只给导弹残段；原 100）
-  rangeMaxM: 11_000, // 2026-09-19 船长「**将导弹残段的基础射程降低为 11000**」（原 15,000；导弹仍是最远射程的敌型之一）
-  falloff: 1, // **导弹：命中不随距离衰减**（2026-09-19 保留不动）
-  blindDmgMul: 0.3, // 2026-09-19 船长「E 族四条统一近盲 0.3」（原 1 = 导弹无视近盲，已作废）
-  dmgMix: { explosive: 10 }, // 船长「伤害为100%纯爆炸」（2026-09-19 复核：依旧是 100% 爆炸）
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-missile-hulk", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 巡洋舰
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-missile-hulk", "speedRatio"), // 族格：巨构不讲机动（静物残骸）
+  hp: enemyParameterOf(foeShipsParameters, "foe-missile-hulk", "hp"), // T3 档基线 900 × 角色 1.10
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-missile-hulk", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-missile-hulk", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-missile-hulk", "split_h") }, // 装甲型（E 族统一）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-missile-hulk", "shotDmg"), // T3 档基线 124 × 角色 1.30（导弹齐射：单发重）
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-missile-hulk", "hitRate"), // 制导修正（船长「④按0.85给」）
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-missile-hulk", "reloadMs"), // 比炮台（4,000ms）慢：导弹"一发顶几发"
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-missile-hulk", "rangeMinM"), // 2026-09-19 船长「射程下限改为 3000 米」（只给导弹残段；原 100）
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-missile-hulk", "rangeMaxM"), // 2026-09-19 船长「**将导弹残段的基础射程降低为 11000**」（原 15,000；导弹仍是最远射程的敌型之一）
+  falloff: enemyParameterOf(foeShipsParameters, "foe-missile-hulk", "falloff"), // **导弹：命中不随距离衰减**（2026-09-19 保留不动）
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-missile-hulk", "blindDmgMul"), // 2026-09-19 船长「E 族四条统一近盲 0.3」（原 1 = 导弹无视近盲，已作废）
+  dmgMix: { explosive: enemyParameterOf(foeShipsParameters, "foe-missile-hulk", "dmgMix_explosive") }, // 船长「伤害为100%纯爆炸」（2026-09-19 复核：依旧是 100% 爆炸）
   tactic: 'orbit',
   /**
    * **受击增程挂载件**（船长 2026-09-19：「**并挂载类似静滞卫舰的挨打后对方在射程外就增加射程的挂载件**」）：
@@ -955,34 +957,34 @@ export const FOE_SHIP_MIX_AUTHORITY_IDS: readonly string[] = [
  * 也是据点词「**警戒机群**」承诺的第二套火力。 */
 export const FOE_SHIP_TITAN_HULK: FoeShipDef = {
   id: 'foe-titan-hulk',
-  gunCount: 6,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "gunCount"),
   name: '巨构残段',
   family: 'E',
-  hullClassTier: 4, // 战列舰（"泰坦级巨构"的档位）
-  speedRatio: 0, // **0**（船长 2026-09-11：「族速度倍率设为 0。**依靠无人机攻击炮台范围外敌人**」）——
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 战列舰（"泰坦级巨构"的档位）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "speedRatio"), // **0**（船长 2026-09-11：「族速度倍率设为 0。**依靠无人机攻击炮台范围外敌人**」）——
   // 巨构是**静物残骸**：它不机动、不追人，只靠**警戒机群**打它炮台够不着的目标（"巨构不讲机动"的极致落点）
-  hp: 1600, // T4 档基线 1600 × 角色 1.00
-  split: { s: 0.2, a: 0.55, h: 0.25 }, // 装甲型（= 泰坦残骸勘探卡面）
-  shotDmg: 228, // T4 档基线 240 × 角色 0.95
-  hitRate: 0.65, // **老化自动炮台**（族格；沿用现状卡面值 ⇒ 实收不变）
-  reloadMs: 4000,
-  rangeMinM: 100, // **族级最低 100**（船长 2026-09-11：「E 族射程按照最低 100」；原 1）
-  rangeMaxM: 8500, // **族级最高 8,500**（船长：最高按 7,000~10,000 设定；族内中档）
-  falloff: 0.3, // 2026-09-12 船长「衰减降低为 0.3」（原 0.5；机群受击增程后的远距火力也一起吃这层收束）
-  blindDmgMul: 0.3,
+  hp: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "hp"), // T4 档基线 1600 × 角色 1.00
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "split_h") }, // 装甲型（= 泰坦残骸勘探卡面）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "shotDmg"), // T4 档基线 240 × 角色 0.95
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "hitRate"), // **老化自动炮台**（族格；沿用现状卡面值 ⇒ 实收不变）
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "rangeMinM"), // **族级最低 100**（船长 2026-09-11：「E 族射程按照最低 100」；原 1）
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "rangeMaxM"), // **族级最高 8,500**（船长：最高按 7,000~10,000 设定；族内中档）
+  falloff: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "falloff"), // 2026-09-12 船长「衰减降低为 0.3」（原 0.5；机群受击增程后的远距火力也一起吃这层收束）
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "blindDmgMul"),
   // **爆炸 60% + 动能 40%**（船长 2026-09-19：「所有E族的默认伤害比改为爆炸60%，动能40%」；
   // 原 2026-09-11 的 50:50 作废 ⇒ 主系由动能变**爆炸**）
-  dmgMix: { explosive: 6, kinetic: 4 },
+  dmgMix: { explosive: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "dmgMix_explosive"), kinetic: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "dmgMix_kinetic") },
   // **中距为主**（族规）——2026-09-11 射程既定 ⇒ **解除期望距离钉住**，交距回归 orbit 口径
   // （8,500 × 0.55 = **4,675m**；此前"射程未定"时曾用 `desireRangeM 513` 钉住旧值，已撤）
   tactic: 'orbit',
-  drones: [{ drone: FOE_DRONE_E_ALERT, count: 7 }], // **常态出击 7 架**（船长 2026-09-12：按舰种档——
+  drones: [{ drone: FOE_DRONE_E_ALERT, count: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "drones_0_count") }], // **常态出击 7 架**（船长 2026-09-12：按舰种档——
   // 巡洋 5 / **战列 7** / 旗舰 10）
     mounts: [FOE_MOUNT_IDS.droneRangeX4], // 机群受击增程（2026-09-16 迁成挂载件：×4）
   // **备用机库**（船长 2026-09-12：「损坏后补充敌机」+「**备用机库为出击数量的 100%**」）：+7 架备用
   // （总库存 14），战损后 **10s** 满血补位（母舰阵亡则整群停，含备用机）。
   // ⚠ **甲（单次出击上限 `droneLaunch`）本轮不采用** —— 机制已实现，**留作后续其他机制**（缺省不写）。
-  droneReserve: { count: 7, respawnMs: 10000 },
+  droneReserve: { count: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "droneReserve_count"), respawnMs: enemyParameterOf(foeShipsParameters, "foe-titan-hulk", "droneReserve_respawnMs") },
 }
 
 /** E 族 · 二档「**奥罗残骸段**」——**被风暴反复激活的武装残骸**（服务：奥罗武装残骸群 62）。
@@ -995,26 +997,26 @@ export const FOE_SHIP_TITAN_HULK: FoeShipDef = {
  * **机群**：警戒机 ×2——与巨构残段同款'第二套火力'。 */
 export const FOE_SHIP_AURO_HULK: FoeShipDef = {
   id: 'foe-auro-hulk',
-  gunCount: 4,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "gunCount"),
   name: '奥罗残骸段',
   family: 'E',
-  hullClassTier: 3, // 巡洋舰
-  speedRatio: 0, // 全族 0（船长：族速度倍率设为 0）
-  hp: 990, // T3 档基线 900 × 角色 1.10
-  split: { s: 0.2, a: 0.55, h: 0.25 }, // 装甲型（= 奥罗武装残骸群卡面）
-  shotDmg: 124, // T3 档基线 124 × 角色 1.00
-  hitRate: 0.75, // 2026-09-19 船长「奥罗残骸段的命中率降低为 0.75」（原 0.95）
-  reloadMs: 4000,
-  rangeMinM: 100, // 族级最低 100
-  rangeMaxM: 7000, // **族级最低档 7,000**（族内最"旧"的一截，射程也最短）
-  falloff: 0.3, // 2026-09-12 船长「衰减降低为 0.3」（原 0.5）
-  blindDmgMul: 0.3,
-  dmgMix: { explosive: 6, kinetic: 4 }, // 爆炸 60% + 动能 40%（船长 2026-09-19 全族改判）
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 巡洋舰
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "speedRatio"), // 全族 0（船长：族速度倍率设为 0）
+  hp: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "hp"), // T3 档基线 900 × 角色 1.10
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "split_h") }, // 装甲型（= 奥罗武装残骸群卡面）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "shotDmg"), // T3 档基线 124 × 角色 1.00
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "hitRate"), // 2026-09-19 船长「奥罗残骸段的命中率降低为 0.75」（原 0.95）
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "rangeMinM"), // 族级最低 100
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "rangeMaxM"), // **族级最低档 7,000**（族内最"旧"的一截，射程也最短）
+  falloff: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "falloff"), // 2026-09-12 船长「衰减降低为 0.3」（原 0.5）
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "blindDmgMul"),
+  dmgMix: { explosive: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "dmgMix_explosive"), kinetic: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "dmgMix_kinetic") }, // 爆炸 60% + 动能 40%（船长 2026-09-19 全族改判）
   tactic: 'orbit',
   // 交距 = 7,000 × 0.55 = **3,850m**（射程既定后解除钉住；旧钉值 516 已撤）
-  drones: [{ drone: FOE_DRONE_E_ALERT, count: 5 }], // **常态出击 5 架**（船长：巡洋 **5** / 战列 7 / 旗舰 10）
+  drones: [{ drone: FOE_DRONE_E_ALERT, count: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "drones_0_count") }], // **常态出击 5 架**（船长：巡洋 **5** / 战列 7 / 旗舰 10）
     mounts: [FOE_MOUNT_IDS.droneRangeX4], // 机群受击增程（2026-09-16 迁成挂载件：×4）
-  droneReserve: { count: 5, respawnMs: 10000 }, // 备用机库 = 出击数的 **100%**（+5，总 10），10s 满血补位
+  droneReserve: { count: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "droneReserve_count"), respawnMs: enemyParameterOf(foeShipsParameters, "foe-auro-hulk", "droneReserve_respawnMs") }, // 备用机库 = 出击数的 **100%**（+5，总 10），10s 满血补位
 }
 
 /** E 族 · 三档「**核心舱段**」——**一具接近完好的巨构**（族内最高级目标，船长裁定 8「核心舱段级代表位」）。
@@ -1030,28 +1032,28 @@ export const FOE_SHIP_AURO_HULK: FoeShipDef = {
  * **`elite`**（显示名加「精锐」前缀）——「接近完好」＝族内唯一精锐档。 */
 export const FOE_SHIP_CORE_SECTION: FoeShipDef = {
   id: 'foe-core-section',
-  gunCount: 8,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-core-section", "gunCount"),
   name: '核心舱段',
   family: 'E',
-  hullClassTier: 5, // **旗舰**（船长 2026-09-12「调为旗舰级」）
-  speedRatio: 0,
-  hp: 3920, // 按档重排：T5 档基线 2,800 × 角色 1.40 = **3,920**（原 T4 口径 2,240）
-  split: { s: 0.2, a: 0.55, h: 0.25 },
-  shotDmg: 546, // T5 档基线 420 × 角色 1.30 = **546**（原 T4 口径 312）
-  hitRate: 0.65, // 老化自动炮台（族格，与巨构残段同口径）
-  reloadMs: 4000,
-  rangeMinM: 100, // 族级最低 100
-  rangeMaxM: 10000, // **族级最高档 10,000**（"接近完好的巨构"＝族内最远的一门；与玩家侧 E 族专属件
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-core-section", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // **旗舰**（船长 2026-09-12「调为旗舰级」）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-core-section", "speedRatio"),
+  hp: enemyParameterOf(foeShipsParameters, "foe-core-section", "hp"), // 按档重排：T5 档基线 2,800 × 角色 1.40 = **3,920**（原 T4 口径 2,240）
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-core-section", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-core-section", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-core-section", "split_h") },
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-core-section", "shotDmg"), // T5 档基线 420 × 角色 1.30 = **546**（原 T4 口径 312）
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-core-section", "hitRate"), // 老化自动炮台（族格，与巨构残段同口径）
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-core-section", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-core-section", "rangeMinM"), // 族级最低 100
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-core-section", "rangeMaxM"), // **族级最高档 10,000**（"接近完好的巨构"＝族内最远的一门；与玩家侧 E 族专属件
   // 「巨构残骸炮 9,600m」同档 —— 主题自洽；代价：纯动能玩家（上限 7,350）须换激光/导弹/该专属件才能对射）
-  falloff: 0.3, // 2026-09-12 船长「衰减降低为 0.3」（原 0.5）
-  blindDmgMul: 0.3,
-  dmgMix: { explosive: 6, kinetic: 4 }, // 爆炸 60% + 动能 40%（船长 2026-09-19 全族改判）
+  falloff: enemyParameterOf(foeShipsParameters, "foe-core-section", "falloff"), // 2026-09-12 船长「衰减降低为 0.3」（原 0.5）
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-core-section", "blindDmgMul"),
+  dmgMix: { explosive: enemyParameterOf(foeShipsParameters, "foe-core-section", "dmgMix_explosive"), kinetic: enemyParameterOf(foeShipsParameters, "foe-core-section", "dmgMix_kinetic") }, // 爆炸 60% + 动能 40%（船长 2026-09-19 全族改判）
   tactic: 'orbit',
   // 交距 = 10,000 × 0.55 = **5,545m**（射程既定后解除钉住；旧钉值 513 已撤）
   elite: true, // 「精锐核心舱段」
-  drones: [{ drone: FOE_DRONE_E_ALERT, count: 10 }], // **常态出击 10 架**（船长：旗舰 **10**；族内最多）
+  drones: [{ drone: FOE_DRONE_E_ALERT, count: enemyParameterOf(foeShipsParameters, "foe-core-section", "drones_0_count") }], // **常态出击 10 架**（船长：旗舰 **10**；族内最多）
     mounts: [FOE_MOUNT_IDS.droneRangeX4], // 机群受击增程（2026-09-16 迁成挂载件：×4）
-  droneReserve: { count: 10, respawnMs: 12000 }, // 备用机库 = 出击数的 **100%**（+10，总 20），12s 满血补位
+  droneReserve: { count: enemyParameterOf(foeShipsParameters, "foe-core-section", "droneReserve_count"), respawnMs: enemyParameterOf(foeShipsParameters, "foe-core-section", "droneReserve_respawnMs") }, // 备用机库 = 出击数的 **100%**（+10，总 20），12s 满血补位
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════════════════
@@ -1095,63 +1097,63 @@ export const FOE_SHIP_CORE_SECTION: FoeShipDef = {
 /** G 族 · 一档「围攻残兵舰」——orbit 环绕（层次词「外围围攻军」；数量型小艇）。 */
 export const FOE_G_SWARM_SKIFF: FoeShipDef = {
   id: 'foe-g-swarm-skiff',
-  gunCount: 3,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-g-swarm-skiff", "gunCount"),
   name: '围攻残兵舰',
   family: 'G',
-  hullClassTier: 1, // 护卫舰
-  speedRatio: 1.05, // 船长定值（全族一致）= 357 / 340
-  hp: 156, // 按档重排：T1 档基线 260 × 角色 0.60（数量型小艇）
-  split: { s: 0.34, a: 0.33, h: 0.33 }, // 均衡型（= 迁移前实建比例）
-  shotDmg: 28, // T1 档基线 39.5 × 角色 0.71 = 28.05 → 28
-  hitRate: 0.85,
-  reloadMs: 4000,
-  rangeMinM: 437, // = 烬火围攻战迁移前射程带（守恒）
-  rangeMaxM: 5745,
-  falloff: 0.5, // 守恒（迁移前实建 0.5）
-  blindDmgMul: 0.3,
-  dmgMix: { kinetic: 8, explosive: 2 },
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-g-swarm-skiff", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 护卫舰
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-g-swarm-skiff", "speedRatio"), // 船长定值（全族一致）= 357 / 340
+  hp: enemyParameterOf(foeShipsParameters, "foe-g-swarm-skiff", "hp"), // 按档重排：T1 档基线 260 × 角色 0.60（数量型小艇）
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-g-swarm-skiff", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-g-swarm-skiff", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-g-swarm-skiff", "split_h") }, // 均衡型（= 迁移前实建比例）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-g-swarm-skiff", "shotDmg"), // T1 档基线 39.5 × 角色 0.71 = 28.05 → 28
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-g-swarm-skiff", "hitRate"),
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-g-swarm-skiff", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-g-swarm-skiff", "rangeMinM"), // = 烬火围攻战迁移前射程带（守恒）
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-g-swarm-skiff", "rangeMaxM"),
+  falloff: enemyParameterOf(foeShipsParameters, "foe-g-swarm-skiff", "falloff"), // 守恒（迁移前实建 0.5）
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-g-swarm-skiff", "blindDmgMul"),
+  dmgMix: { kinetic: enemyParameterOf(foeShipsParameters, "foe-g-swarm-skiff", "dmgMix_kinetic"), explosive: enemyParameterOf(foeShipsParameters, "foe-g-swarm-skiff", "dmgMix_explosive") },
   tactic: 'orbit',
 }
 
 /** G 族 · 二档「残响残舰」——orbit 环绕（层次词「残响残舰」）。 */
 export const FOE_G_ECHO_REMNANT: FoeShipDef = {
   id: 'foe-g-echo-remnant',
-  gunCount: 4,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-g-echo-remnant", "gunCount"),
   name: '残响残舰',
   family: 'G',
-  hullClassTier: 2, // 驱逐舰
-  speedRatio: 1.05, // = 310 / 295
-  hp: 432, // T2 档基线 480 × 角色 0.90（中坚残舰）
-  split: { s: 0.34, a: 0.33, h: 0.33 },
-  shotDmg: 48, // T2 档基线 68 × 角色 0.70 = 47.6 → 48
-  hitRate: 0.85,
-  reloadMs: 4000,
-  rangeMinM: 464, // = 回音残舰迁移前射程带（守恒）
-  rangeMaxM: 6103,
-  falloff: 0.5,
-  blindDmgMul: 0.3,
-  dmgMix: { kinetic: 8, explosive: 2 },
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-g-echo-remnant", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 驱逐舰
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-g-echo-remnant", "speedRatio"), // = 310 / 295
+  hp: enemyParameterOf(foeShipsParameters, "foe-g-echo-remnant", "hp"), // T2 档基线 480 × 角色 0.90（中坚残舰）
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-g-echo-remnant", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-g-echo-remnant", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-g-echo-remnant", "split_h") },
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-g-echo-remnant", "shotDmg"), // T2 档基线 68 × 角色 0.70 = 47.6 → 48
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-g-echo-remnant", "hitRate"),
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-g-echo-remnant", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-g-echo-remnant", "rangeMinM"), // = 回音残舰迁移前射程带（守恒）
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-g-echo-remnant", "rangeMaxM"),
+  falloff: enemyParameterOf(foeShipsParameters, "foe-g-echo-remnant", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-g-echo-remnant", "blindDmgMul"),
+  dmgMix: { kinetic: enemyParameterOf(foeShipsParameters, "foe-g-echo-remnant", "dmgMix_kinetic"), explosive: enemyParameterOf(foeShipsParameters, "foe-g-echo-remnant", "dmgMix_explosive") },
   tactic: 'orbit',
 }
 
 /** G 族 · 三档「天底封锁舰」——orbit 环绕（层次词「最后据点」）；**族内唯一挂蜂群机的舰级**。 */
 export const FOE_G_NADIR_LOCK: FoeShipDef = {
   id: 'foe-g-nadir-lock',
-  gunCount: 4,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "gunCount"),
   name: '天底封锁舰',
   family: 'G',
-  hullClassTier: 3, // 巡洋舰
-  speedRatio: 1.05, // = 271 / 258
-  hp: 1080, // T3 档基线 900 × 角色 1.20（据点主力）
-  split: { s: 0.34, a: 0.33, h: 0.33 },
-  shotDmg: 105, // T3 档基线 124 × 角色 0.85 = 105.4 → 105
-  hitRate: 0.95, // 低安命中 +0.1（= 迁移前本卡实建命中，守恒）
-  reloadMs: 4000,
-  rangeMinM: 502, // = 天底静区封锁迁移前射程带（守恒）
-  rangeMaxM: 6604,
-  falloff: 0.5,
-  blindDmgMul: 0.3,
-  dmgMix: { kinetic: 8, explosive: 2 },
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 巡洋舰
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "speedRatio"), // = 271 / 258
+  hp: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "hp"), // T3 档基线 900 × 角色 1.20（据点主力）
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "split_h") },
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "shotDmg"), // T3 档基线 124 × 角色 0.85 = 105.4 → 105
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "hitRate"), // 低安命中 +0.1（= 迁移前本卡实建命中，守恒）
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "rangeMinM"), // = 天底静区封锁迁移前射程带（守恒）
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "rangeMaxM"),
+  falloff: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "blindDmgMul"),
+  dmgMix: { kinetic: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "dmgMix_kinetic"), explosive: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "dmgMix_explosive") },
   tactic: 'orbit',
   // **蜂群机 2 架**（船长「挂在巡洋舰上。2 架。无后备」）——**P-20a 收口（2026-09-12 船长选「丙」：换系）**：
   // 两个机位 = **动能 + 等离子**（等离子机型 `foe-drone-g-bee-pla` 由"已备未挂"转为**实挂**，
@@ -1159,8 +1161,8 @@ export const FOE_G_NADIR_LOCK: FoeShipDef = {
   // **爆炸系改由母舰炮台承担**（本卡 `dmgMix { kinetic 8, explosive 2 }` 未动 ⇒ 卡整体三系齐备）；
   // 爆炸机型 `-exp` 转为已备未挂（体检汇总行列出）。
   drones: [
-    { drone: FOE_DRONE_G_BEE_KIN, count: 1 },
-    { drone: FOE_DRONE_G_BEE_PLA, count: 1 },
+    { drone: FOE_DRONE_G_BEE_KIN, count: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "drones_0_count") },
+    { drone: FOE_DRONE_G_BEE_PLA, count: enemyParameterOf(foeShipsParameters, "foe-g-nadir-lock", "drones_1_count") },
   ],
   // ⚠ **不写 `droneReserve`** ⇒ 无后备机库（船长「无后备」）。
 }
@@ -1181,27 +1183,27 @@ export const FOE_G_NADIR_LOCK: FoeShipDef = {
  * （三种机型终于全有挂载点——G 族"三系无人机"的族格由本条兑现）。 */
 export const FOE_G_EXILE_BATTLESHIP: FoeShipDef = {
   id: 'foe-g-exile-battleship',
-  gunCount: 6,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "gunCount"),
   name: '亡军战列舰',
   family: 'G',
-  hullClassTier: 4, // 战列舰（2026-09-15 起**已启用**，不再是空置壳体）
-  speedRatio: 1.05, // = 215 / 205
-  hp: 1760, // T4 档基线 1,600 × 角色 1.10
-  split: { s: 0.34, a: 0.33, h: 0.33 },
-  shotDmg: 216, // T4 档基线 240 × 角色 0.90
-  hitRate: 0.85,
-  reloadMs: 4000,
-  rangeMinM: 600,
-  rangeMaxM: 7200,
-  falloff: 0.5,
-  blindDmgMul: 0.3,
-  dmgMix: { kinetic: 8, explosive: 2 }, // 船长「动能伤害为主」——与壳体原值一致，未动
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 战列舰（2026-09-15 起**已启用**，不再是空置壳体）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "speedRatio"), // = 215 / 205
+  hp: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "hp"), // T4 档基线 1,600 × 角色 1.10
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "split_h") },
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "shotDmg"), // T4 档基线 240 × 角色 0.90
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "hitRate"),
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "rangeMaxM"),
+  falloff: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "blindDmgMul"),
+  dmgMix: { kinetic: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "dmgMix_kinetic"), explosive: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "dmgMix_explosive") }, // 船长「动能伤害为主」——与壳体原值一致，未动
   tactic: 'orbit',
   // **蜂群机 ×3（三系齐备、无后备）**：船长 2026-09-15「挂」
   drones: [
-    { drone: FOE_DRONE_G_BEE_KIN, count: 1 },
-    { drone: FOE_DRONE_G_BEE_PLA, count: 1 }, // P-20a：G 族挂机群必须含等离子系
-    { drone: FOE_DRONE_G_BEE_EXP, count: 1 }, // 原"已备未挂"⇒ 本批挂上，体检警告随之消失
+    { drone: FOE_DRONE_G_BEE_KIN, count: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "drones_0_count") },
+    { drone: FOE_DRONE_G_BEE_PLA, count: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "drones_1_count") }, // P-20a：G 族挂机群必须含等离子系
+    { drone: FOE_DRONE_G_BEE_EXP, count: enemyParameterOf(foeShipsParameters, "foe-g-exile-battleship", "drones_2_count") }, // 原"已备未挂"⇒ 本批挂上，体检警告随之消失
   ],
 }
 
@@ -1225,24 +1227,24 @@ export const FOE_G_EXILE_BATTLESHIP: FoeShipDef = {
  */
 export const FOE_G_REMNANT_TENDER: FoeShipDef = {
   id: 'foe-g-remnant-tender',
-  gunCount: 2,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "gunCount"),
   name: '残军补给舰',
   family: 'G',
-  hullClassTier: 3, // 巡洋舰（船长 2026-09-16：「T3巡洋」）
-  speedRatio: 1.05, // G 族族定值（实速 = 258 × 1.05 = 271）
-  hp: 1080, // T3 档基线 900 × 角色 1.20（支援型要活下来）
-  split: { s: 0.34, a: 0.33, h: 0.33 },
-  shotDmg: 62, // T3 档基线 124 × 角色 0.50（火力让位给修理）
-  hitRate: 0.85, // 后勤不靠命中（族内 T3 的 0.95 属那张卡的迁移守恒值）
-  reloadMs: 4000,
-  rangeMinM: 502, // 与同族同档（天底封锁舰）同带
-  rangeMaxM: 6604,
-  falloff: 0.5,
-  blindDmgMul: 0.3,
-  dmgMix: { kinetic: 8, explosive: 2 }, // 族格：G 族动能伤害为主
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 巡洋舰（船长 2026-09-16：「T3巡洋」）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "speedRatio"), // G 族族定值（实速 = 258 × 1.05 = 271）
+  hp: enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "hp"), // T3 档基线 900 × 角色 1.20（支援型要活下来）
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "split_h") },
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "shotDmg"), // T3 档基线 124 × 角色 0.50（火力让位给修理）
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "hitRate"), // 后勤不靠命中（族内 T3 的 0.95 属那张卡的迁移守恒值）
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "rangeMinM"), // 与同族同档（天底封锁舰）同带
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "rangeMaxM"),
+  falloff: enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "blindDmgMul"),
+  dmgMix: { kinetic: enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "dmgMix_kinetic"), explosive: enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "dmgMix_explosive") }, // 族格：G 族动能伤害为主
   tactic: 'orbit',
   // **敌方后勤舰**：50% 名义 DPS 转修理（见字段注释与 `types.ts` 的 `FoeShipDef.repairPct`）
-  repairPct: 0.5,
+  repairPct: enemyParameterOf(foeShipsParameters, "foe-g-remnant-tender", "repairPct"),
 }
 
 /** A 族 · **新舰「劫掠电子舰」**（船长 2026-09-16：「新增A族敌人劫掠电子舰…护卫舰档位，**闪避提高，血量降低**」）
@@ -1256,23 +1258,23 @@ export const FOE_G_REMNANT_TENDER: FoeShipDef = {
  * ⚠ 有效挂载是 `条目 ?? 舰级`（**替换**不是叠加）⇒ 条目必须**两件都写**，只写一件会顶掉另一件。 */
 export const FOE_SHIP_PIRATE_RAIDER: FoeShipDef = {
   id: 'foe-pirate-raider',
-  gunCount: 2,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "gunCount"),
   name: '劫掠电子舰',
   family: 'A',
-  hullClassTier: 1, // 护卫舰
-  speedRatio: 1.1, // = 374 / 340
-  hp: 182, // 档基线 260 × 角色 0.70 = 182（船长「血量降低」⇒ 低于标准护卫 364、略高于数量型小艇 156）
-  split: { s: 0.34, a: 0.33, h: 0.33 },
-  shotDmg: 30, // 档基线 39.5 × 角色 0.76 = 30.02 → **30**（支援型，火力不是它的活）
-  hitRate: 0.85,
-  reloadMs: 4000,
-  rangeMinM: 1, // 船长 2026-09-20「除劫掠狙击舰外，A 族最小射程改为 1」（原沿用护卫舰的 −15% 值 326）
-  rangeMaxM: 4275,
-  falloff: 0.3,
-  blindDmgMul: 0.3,
-  dmgMix: { kinetic: 8, explosive: 2 },
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 护卫舰
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "speedRatio"), // = 374 / 340
+  hp: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "hp"), // 档基线 260 × 角色 0.70 = 182（船长「血量降低」⇒ 低于标准护卫 364、略高于数量型小艇 156）
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "split_h") },
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "shotDmg"), // 档基线 39.5 × 角色 0.76 = 30.02 → **30**（支援型，火力不是它的活）
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "hitRate"),
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "rangeMinM"), // 船长 2026-09-20「除劫掠狙击舰外，A 族最小射程改为 1」（原沿用护卫舰的 −15% 值 326）
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "rangeMaxM"),
+  falloff: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "blindDmgMul"),
+  dmgMix: { kinetic: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "dmgMix_kinetic"), explosive: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "dmgMix_explosive") },
   tactic: 'orbit',
-  evasion: 0.3, // **闪避提高**（舰级覆写；族内其余舰级缺省 0.12）
+  evasion: enemyParameterOf(foeShipsParameters, "foe-pirate-raider", "evasion"), // **闪避提高**（舰级覆写；族内其余舰级缺省 0.12）
   // 挂载件（冲锋 + 捕获网）**一律写在深层「海盗战团」的条目上**——见上方注释与船长的 2026-09-19 裁定
 }
 
@@ -1302,24 +1304,24 @@ export const FOE_SHIP_PIRATE_RAIDER: FoeShipDef = {
  */
 export const FOE_H_INK_JAMMER: FoeShipDef = {
   id: 'foe-h-ink-jammer',
-  gunCount: 3,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "gunCount"),
   name: '墨潮干扰舰',
   family: 'H',
-  evasion: 0.18,
-  hullClassTier: 3, // 巡洋舰（船长 2026-09-24：「档位改为T3巡洋舰」）
-  speedRatio: 1.3, // 258 × 1.3 = 335 m/s（船长 2026-09-24：「其他敌方舰船按照1.3」；1.14× 在族格带内）
-  hp: 900, // T3 档基线 900 × 角色 1.00
-  split: { s: 0.5, a: 0.25, h: 0.25 }, // 护盾 0.5（船长 2026-09-24）
-  shotDmg: 105, // T3 档基线 124 × 角色 0.85（"干扰舰"把单发让给特性）
+  evasion: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "evasion"),
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 巡洋舰（船长 2026-09-24：「档位改为T3巡洋舰」）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "speedRatio"), // 258 × 1.3 = 335 m/s（船长 2026-09-24：「其他敌方舰船按照1.3」；1.14× 在族格带内）
+  hp: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "hp"), // T3 档基线 900 × 角色 1.00
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "split_h") }, // 护盾 0.5（船长 2026-09-24）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "shotDmg"), // T3 档基线 124 × 角色 0.85（"干扰舰"把单发让给特性）
   // 命中 1.1（**船长 2026-09-25 Excel 微调 · 命中方面**）：>1 = 贴脸时按 `hitMax` 封顶必中，
   // 只有目标闪避与距离衰减能把它压回来（有效命中 = clamp(0, 1, (命中 + 命中加成 − 目标闪避) × 衰减)）
-  hitRate: 1.1,
-  reloadMs: 4000,
-  rangeMinM: 1,
-  rangeMaxM: 4275,
-  falloff: 0.3,
-  blindDmgMul: 0.3,
-  dmgMix: { kinetic: 6, explosive: 4 }, // 船长 2026-09-24：突击舰与干扰舰改「6 动能 : 4 爆炸」
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "hitRate"),
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "rangeMaxM"),
+  falloff: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "blindDmgMul"),
+  dmgMix: { kinetic: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "dmgMix_kinetic"), explosive: enemyParameterOf(foeShipsParameters, "foe-h-ink-jammer", "dmgMix_explosive") }, // 船长 2026-09-24：突击舰与干扰舰改「6 动能 : 4 爆炸」
   tactic: 'orbit',
   /**
    * **劫掠捕获网**（**船长 2026-09-25 令**：「**给墨潮干扰舰添加一个网子**」）——
@@ -1345,7 +1347,7 @@ export const FOE_H_INK_JAMMER: FoeShipDef = {
  */
 export const FOE_H_INK_CORVETTE: FoeShipDef = {
   id: 'foe-h-ink-corvette',
-  gunCount: 3,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "gunCount"),
   name: '墨潮突击舰',
   family: 'H',
   /**
@@ -1354,20 +1356,20 @@ export const FOE_H_INK_CORVETTE: FoeShipDef = {
    * ⚠ 破既有闪避带的话在 `content:check` 的族格白名单里按同款口径记一笔（见 `INK_SPEED_EXEMPT_SHIP_IDS` 那一族的写法）。
    * **→ 0.59**（**同日 Excel 微调批**：与本文件的命中一起调，见下）。
    */
-  evasion: 0.59,
-  hullClassTier: 1, // 护卫舰
-  speedRatio: 1.6, // 340 × 1.6 = 544 m/s（船长 2026-09-24：「突击舰速度过慢，按照1.6修正」；1.86× 破族格带 ⇒ INK_SPEED_EXEMPT_SHIP_IDS）
-  hp: 364,
-  split: { s: 0.5, a: 0.25, h: 0.25 }, // 护盾 0.5（船长 2026-09-24：「除了旗舰外所有敌舰护盾血量占0.5」）
-  shotDmg: 51,
+  evasion: enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "evasion"),
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 护卫舰
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "speedRatio"), // 340 × 1.6 = 544 m/s（船长 2026-09-24：「突击舰速度过慢，按照1.6修正」；1.86× 破族格带 ⇒ INK_SPEED_EXEMPT_SHIP_IDS）
+  hp: enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "hp"),
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "split_h") }, // 护盾 0.5（船长 2026-09-24：「除了旗舰外所有敌舰护盾血量占0.5」）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "shotDmg"),
   // 命中 1.25（**船长 2026-09-25 Excel 微调**）：>1 时按 `hitMax` 封顶 ⇒ 贴脸必中，靠闪避/衰减压制
-  hitRate: 1.25,
-  reloadMs: 4000,
-  rangeMinM: 1,
-  rangeMaxM: 4275,
-  falloff: 0.3,
-  blindDmgMul: 0.3,
-  dmgMix: { kinetic: 6, explosive: 4 }, // 船长 2026-09-24：突击舰与干扰舰改「6 动能 : 4 爆炸」
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "hitRate"),
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "rangeMaxM"),
+  falloff: enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "blindDmgMul"),
+  dmgMix: { kinetic: enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "dmgMix_kinetic"), explosive: enemyParameterOf(foeShipsParameters, "foe-h-ink-corvette", "dmgMix_explosive") }, // 船长 2026-09-24：突击舰与干扰舰改「6 动能 : 4 爆炸」
   tactic: 'orbit',
   // **网子 + 冲锋**（船长 2026-09-24「A族洞内电子舰同款」）：两件都写在舰级上 ⇒ 引用它的卡都带
   mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.captureWeb],
@@ -1389,23 +1391,23 @@ export const FOE_H_INK_CORVETTE: FoeShipDef = {
  */
 export const FOE_H_INK_TORPEDO: FoeShipDef = {
   id: 'foe-h-ink-torpedo',
-  gunCount: 4,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "gunCount"),
   name: '墨潮鱼雷舰',
   family: 'H',
-  evasion: 0.18,
-  hullClassTier: 2, // 驱逐舰（原「墨潮狙击舰」的档位；船长 2026-09-24 追问后回调）
-  speedRatio: 1.3, // 295 × 1.3 = 384 m/s（船长第二轮令「其他敌方舰船按照1.3」；1.31× 在族格带内）
-  hp: 360, // 高攻低血（船长 2026-09-24）：T2 档基线 480 × 0.75
-  split: { s: 0.5, a: 0.25, h: 0.25 }, // 护盾 0.5（船长 2026-09-24）
-  shotDmg: 90, // 高攻（船长 2026-09-24）：T2 档基线 68 × 角色 1.32
+  evasion: enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "evasion"),
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 驱逐舰（原「墨潮狙击舰」的档位；船长 2026-09-24 追问后回调）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "speedRatio"), // 295 × 1.3 = 384 m/s（船长第二轮令「其他敌方舰船按照1.3」；1.31× 在族格带内）
+  hp: enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "hp"), // 高攻低血（船长 2026-09-24）：T2 档基线 480 × 0.75
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "split_h") }, // 护盾 0.5（船长 2026-09-24）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "shotDmg"), // 高攻（船长 2026-09-24）：T2 档基线 68 × 角色 1.32
   // 命中 1（**船长 2026-09-25 Excel 微调**）：导弹线 `falloff: 1`（命中不随距离衰减）⇒ 1 即"必中"
-  hitRate: 1,
-  reloadMs: 5600, // 导弹节奏（远而慢）
-  rangeMinM: 1000,
-  rangeMaxM: 12000,
-  falloff: 1, // 导弹口径：命中不随距离衰减
-  blindDmgMul: 0.3, // 近盲带 ×0.3（船长 2026-09-24 选「与 E 族口径统一」；E 族 2026-09-19「四条统一近盲 0.3」）
-  dmgMix: { explosive: 8, kinetic: 2 }, // 鱼雷 = 爆炸系（与 H 族导弹线同源；船长第二轮只改突击舰与干扰舰）
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "hitRate"),
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "reloadMs"), // 导弹节奏（远而慢）
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "rangeMaxM"),
+  falloff: enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "falloff"), // 导弹口径：命中不随距离衰减
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "blindDmgMul"), // 近盲带 ×0.3（船长 2026-09-24 选「与 E 族口径统一」；E 族 2026-09-19「四条统一近盲 0.3」）
+  dmgMix: { explosive: enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "dmgMix_explosive"), kinetic: enemyParameterOf(foeShipsParameters, "foe-h-ink-torpedo", "dmgMix_kinetic") }, // 鱼雷 = 爆炸系（与 H 族导弹线同源；船长第二轮只改突击舰与干扰舰）
   tactic: 'kite',
 }
 
@@ -1421,24 +1423,24 @@ export const FOE_H_INK_TORPEDO: FoeShipDef = {
  */
 export const FOE_H_INK_BATTLECRUISER: FoeShipDef = {
   id: 'foe-h-ink-battlecruiser',
-  gunCount: 6,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "gunCount"),
   name: '墨潮战列巡洋舰',
   family: 'H',
-  evasion: 0.12,
-  hullClassTier: 4, // 战列巡洋舰（战列档）
-  speedRatio: 1.3, // 205 × 1.3 = 266 m/s（船长第二轮令「其他敌方舰船按照1.3」；0.91× 低于族格带下限 ⇒ 白名单破例）
-  hp: 2800, // T4 档基线 2,800 × 角色 1.00
-  split: { s: 0.5, a: 0.25, h: 0.25 }, // 护盾 0.5（船长 2026-09-24）
-  shotDmg: 399, // T4 档基线 420 × 角色 0.95（单发让一点给机群）
-  hitRate: 0.9, // 命中 0.85 → **0.9**（船长 2026-09-25 Excel 微调）
-  reloadMs: 6000,
-  rangeMinM: 1000,
-  rangeMaxM: 11000,
-  falloff: 1,
-  blindDmgMul: 0.3, // 船长 2026-09-24：与 E 族口径统一（原先沿用 E 族旧口径的"无视近盲 1"）
-  dmgMix: { explosive: 8, kinetic: 2 }, // 导弹线 = 爆炸系
+  evasion: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "evasion"),
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 战列巡洋舰（战列档）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "speedRatio"), // 205 × 1.3 = 266 m/s（船长第二轮令「其他敌方舰船按照1.3」；0.91× 低于族格带下限 ⇒ 白名单破例）
+  hp: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "hp"), // T4 档基线 2,800 × 角色 1.00
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "split_h") }, // 护盾 0.5（船长 2026-09-24）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "shotDmg"), // T4 档基线 420 × 角色 0.95（单发让一点给机群）
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "hitRate"), // 命中 0.85 → **0.9**（船长 2026-09-25 Excel 微调）
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "rangeMaxM"),
+  falloff: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "blindDmgMul"), // 船长 2026-09-24：与 E 族口径统一（原先沿用 E 族旧口径的"无视近盲 1"）
+  dmgMix: { explosive: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "dmgMix_explosive"), kinetic: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "dmgMix_kinetic") }, // 导弹线 = 爆炸系
   tactic: 'kite',
-  drones: [{ drone: FOE_DRONE_H_HEAVY, count: 1 }], // 一架，属性极高（船长 2026-09-24）
+  drones: [{ drone: FOE_DRONE_H_HEAVY, count: enemyParameterOf(foeShipsParameters, "foe-h-ink-battlecruiser", "drones_0_count") }], // 一架，属性极高（船长 2026-09-24）
 }
 
 /**
@@ -1452,12 +1454,12 @@ export const FOE_H_INK_BATTLECRUISER: FoeShipDef = {
  */
 export const FOE_H_INK_FLAGSHIP: FoeShipDef = {
   id: 'foe-h-ink-flagship',
-  gunCount: 8,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "gunCount"),
   name: '墨潮入侵母舰',
   family: 'H',
-  evasion: 0.1,
-  hullClassTier: 5, // 旗舰（本族唯一 T5，须登记在 H 族旗舰白名单）
-  speedRatio: 2.0, // 155 × 2.0 = 310 m/s
+  evasion: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "evasion"),
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 旗舰（本族唯一 T5，须登记在 H 族旗舰白名单）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "speedRatio"), // 155 × 2.0 = 310 m/s
   /**
    * **3,920 → 39,200（×10 · 船长 2026-09-25 指定）**：原值 = T5 档基线 2,800 × 角色 1.40
    * ⇒ 现值**脱离档基线 10×**（没有硬契约拦，按船长指定落，注明于此）。
@@ -1465,18 +1467,18 @@ export const FOE_H_INK_FLAGSHIP: FoeShipDef = {
    * （`weekendLaunch` 传 `FoeOverride.bossHp`：满血 = 池子剩余，池子 = 固定 150,000 起算）；
    * 这里的 39,200 是**卡面基准**（池子立起前的读数，以及"母舰占全卡血量多少"的口径）。
    */
-  hp: 39_200,
-  split: { s: 0.2, a: 0.55, h: 0.25 },
-  shotDmg: 491, // T5 档基线 420 × 角色 1.30 × 0.90（机群让位）
-  hitRate: 1, // 命中 0.85 → **1**（船长 2026-09-25 Excel 微调）：母舰导弹线 `falloff: 1` ⇒ 1 即"必中"
-  reloadMs: 6000,
-  rangeMinM: 1000,
-  rangeMaxM: 12000,
-  falloff: 1,
-  blindDmgMul: 0.3, // 船长 2026-09-24：与 E 族口径统一（原先沿用 E 族旧口径的"无视近盲 1"）
-  dmgMix: { explosive: 8, kinetic: 2 },
+  hp: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "hp"),
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "split_h") },
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "shotDmg"), // T5 档基线 420 × 角色 1.30 × 0.90（机群让位）
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "hitRate"), // 命中 0.85 → **1**（船长 2026-09-25 Excel 微调）：母舰导弹线 `falloff: 1` ⇒ 1 即"必中"
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "rangeMaxM"),
+  falloff: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "falloff"),
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "blindDmgMul"), // 船长 2026-09-24：与 E 族口径统一（原先沿用 E 族旧口径的"无视近盲 1"）
+  dmgMix: { explosive: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "dmgMix_explosive"), kinetic: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "dmgMix_kinetic") },
   tactic: 'kite',
-  drones: [{ drone: FOE_DRONE_H_HEAVY, count: 2 }], // 两架，属性极高（船长 2026-09-24）
+  drones: [{ drone: FOE_DRONE_H_HEAVY, count: enemyParameterOf(foeShipsParameters, "foe-h-ink-flagship", "drones_0_count") }], // 两架，属性极高（船长 2026-09-24）
   elite: true, // 显示名挂「精锐」前缀
 }
 
@@ -1516,7 +1518,7 @@ export const FOE_H_INK_FLAGSHIP: FoeShipDef = {
  */
 export const FOE_R_CORONA_GLINT: FoeShipDef = {
   id: 'foe-r-corona-glint',
-  gunCount: 2,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "gunCount"),
   name: '粼光级',
   family: 'R',
   /**
@@ -1530,22 +1532,22 @@ export const FOE_R_CORONA_GLINT: FoeShipDef = {
    * - 「**将入侵的回响级，闪避率改为 0.**」⇒ 回响级归零；
    * - 「**粼光级闪避率下调到41%**」⇒ 本舰 **0.50 → 0.41**（**本舰现为族内闪避最高**，其余四档见各自定义）。
    */
-  evasion: 0.41,
-  hullClassTier: 1, // 护卫舰
-  speedRatio: 1.24, // 🔴 **船长 2026-10-03 令「放宽 R 族速带到1.45，粼光级速度就按1.45倍率」**——
+  evasion: enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "evasion"),
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 护卫舰
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "speedRatio"), // 🔴 **船长 2026-10-03 令「放宽 R 族速带到1.45，粼光级速度就按1.45倍率」**——
   // 「1.45」指的是 `content:check` 报的那个**比率**（实速 ÷ 基准），不是本字段本身：
   // 实测 `speedRatio 1.45` ⇒ 实速 493 ⇒ 比率 **1.68×**（仍越带）；本字段 ×1.16 ≈ 比率
   // ⇒ 取 **1.25** ⇒ 实速 340 × 1.25 = **425 m/s**、比率 ≈ **1.45**（正好压在放宽后的上沿）。原 1.1 = 374 m/s。
-  hp: 199, // **船长 2026-10-01 令「拥有一个 0.9 倍血量的修正（这个修正不计入预算内）」**：原 221 × 0.9（⚠ 该折减**不进威胁预算** —— 预算只由卡面 threat 决定，见 roster 表的「总血」列）
-  split: { s: 0.65, a: 0.2, h: 0.15 }, // **护盾特化**（船长的族格第一条）
-  shotDmg: 40, // T1 档基线 39.5 × 角色 1.00
-  hitRate: 1, // 光束必中（舰级路径下不消费本字段，写 1 表意；与 D 族同款写法）
-  reloadMs: 4000,
-  rangeMinM: 1,
-  rangeMaxM: 9000, // 激光·风筝线：上限拉长才有「风筝」可言（2026-10-01 船长令「非常擅长风筝战术」）＋ **同日令「给非中枢的R族船添加3000的基础射程」**（6000 → 9000）
-  falloff: 0.2, // 与 D 族同款（船长 2026-09-19「将D族单独调整，远端改为 0.2」）；风筝流要保住远端威力
-  blindDmgMul: 0.3,
-  dmgMix: { plasma: 8, kinetic: 2 }, // 能量线为主（族格第二条）
+  hp: enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "hp"), // **船长 2026-10-01 令「拥有一个 0.9 倍血量的修正（这个修正不计入预算内）」**：原 221 × 0.9（⚠ 该折减**不进威胁预算** —— 预算只由卡面 threat 决定，见 roster 表的「总血」列）
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "split_h") }, // **护盾特化**（船长的族格第一条）
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "shotDmg"), // T1 档基线 39.5 × 角色 1.00
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "hitRate"), // 光束必中（舰级路径下不消费本字段，写 1 表意；与 D 族同款写法）
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "rangeMaxM"), // 激光·风筝线：上限拉长才有「风筝」可言（2026-10-01 船长令「非常擅长风筝战术」）＋ **同日令「给非中枢的R族船添加3000的基础射程」**（6000 → 9000）
+  falloff: enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "falloff"), // 与 D 族同款（船长 2026-09-19「将D族单独调整，远端改为 0.2」）；风筝流要保住远端威力
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "dmgMix_plasma"), kinetic: enemyParameterOf(foeShipsParameters, "foe-r-corona-glint", "dmgMix_kinetic") }, // 能量线为主（族格第二条）
   energyForm: 'beam', // 激光（能量·必中）—— 船长 2026-10-01「使用以激光为主的武器」；全仓另一族是 D 守墓古舰
   // **闪现跃迁仪**（**船长 2026-10-01 令**：「激光武器+闪现效果的挂载件」，选「乙：五档全带」）：
   // 本体被命中时拉开交战距离 2,000 m、冷却 **12 秒**（参数选「甲」；冷却经 2026-10-01「下调到5秒」后，**2026-10-03 船长令「将敌人的闪现冷却时间延长到12秒」⇒ 现行 12 秒**）—— 与「风筝」配套：被近身就闪开、重建射程优势。
@@ -1566,7 +1568,7 @@ export const FOE_R_CORONA_GLINT: FoeShipDef = {
  */
 export const FOE_R_CORONA_ECHO: FoeShipDef = {
   id: 'foe-r-corona-echo',
-  gunCount: 3,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "gunCount"),
   name: '回响级',
   family: 'R',
   /**
@@ -1574,10 +1576,10 @@ export const FOE_R_CORONA_ECHO: FoeShipDef = {
    * 沿革：2026-10-01「回响级闪避上调到0.5」→ 2026-10-03「粼光级与回响级回避率互换」⇒ 0.5 给粼光、本舰 0.30
    * → **本令归零**。
    */
-  evasion: 0,
-  hullClassTier: 2, // 驱逐舰
-  speedRatio: 1.1, // **船长 2026-10-01 令「敌人速度按照标准同级舰 1.1 的速度定」**：295 × 1.1 = 324.5 → **325** m/s
-  hp: 367, // **船长 2026-10-01 令「拥有一个 0.9 倍血量的修正（这个修正不计入预算内）」**：原 408 × 0.9（⚠ 该折减**不进威胁预算** —— 预算只由卡面 threat 决定，见 roster 表的「总血」列）
+  evasion: enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "evasion"),
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 驱逐舰
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "speedRatio"), // **船长 2026-10-01 令「敌人速度按照标准同级舰 1.1 的速度定」**：295 × 1.1 = 324.5 → **325** m/s
+  hp: enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "hp"), // **船长 2026-10-01 令「拥有一个 0.9 倍血量的修正（这个修正不计入预算内）」**：原 408 × 0.9（⚠ 该折减**不进威胁预算** —— 预算只由卡面 threat 决定，见 roster 表的「总血」列）
   /**
    * **三层血型 33/33/34**（**2026-10-02 船长令**：「**并且将回响级的血量调整为33/33/34**」）
    * ⇒ 原 0.65 / 0.20 / 0.15（与粼光级同为"护盾特化"档）改成**三层近乎均分**。
@@ -1586,15 +1588,15 @@ export const FOE_R_CORONA_ECHO: FoeShipDef = {
    * 四档）—— 与同日那条「**闪避率改为 0**」合起来看：本舰从"最难打中的护盾舰"变成
    * "**必中、但三层血均衡**"的承伤位（仍挂闪烁过载：每次闪跃回满护盾、结构上限 −5%）。
    */
-  split: { s: 0.33, a: 0.33, h: 0.34 },
-  shotDmg: 71, // T2 档基线 68 × 角色 1.05
-  hitRate: 1, // 光束必中（舰级路径下不消费本字段，写 1 表意；与 D 族同款写法）
-  reloadMs: 4000,
-  rangeMinM: 1,
-  rangeMaxM: 10000, // 激光·风筝线：上限拉长才有「风筝」可言（2026-10-01 船长令「非常擅长风筝战术」）＋ **同日令「给非中枢的R族船添加3000的基础射程」**（7000 → 10000）
-  falloff: 0.2, // 与 D 族同款（船长 2026-09-19「将D族单独调整，远端改为 0.2」）；风筝流要保住远端威力
-  blindDmgMul: 0.3,
-  dmgMix: { plasma: 8, kinetic: 2 },
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "split_h") },
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "shotDmg"), // T2 档基线 68 × 角色 1.05
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "hitRate"), // 光束必中（舰级路径下不消费本字段，写 1 表意；与 D 族同款写法）
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "rangeMaxM"), // 激光·风筝线：上限拉长才有「风筝」可言（2026-10-01 船长令「非常擅长风筝战术」）＋ **同日令「给非中枢的R族船添加3000的基础射程」**（7000 → 10000）
+  falloff: enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "falloff"), // 与 D 族同款（船长 2026-09-19「将D族单独调整，远端改为 0.2」）；风筝流要保住远端威力
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "dmgMix_plasma"), kinetic: enemyParameterOf(foeShipsParameters, "foe-r-corona-echo", "dmgMix_kinetic") },
   energyForm: 'beam', // 激光（能量·必中）—— 船长 2026-10-01「使用以激光为主的武器」；全仓另一族是 D 守墓古舰
   // **闪现跃迁仪**（**船长 2026-10-01 令**：「激光武器+闪现效果的挂载件」，选「乙：五档全带」）：
   // 本体被命中时拉开交战距离 2,000 m、冷却 **12 秒**（参数选「甲」；冷却经 2026-10-01「下调到5秒」后，**2026-10-03 船长令「将敌人的闪现冷却时间延长到12秒」⇒ 现行 12 秒**）—— 与「风筝」配套：被近身就闪开、重建射程优势。
@@ -1613,22 +1615,22 @@ export const FOE_R_CORONA_ECHO: FoeShipDef = {
  */
 export const FOE_R_CORONA_OVERLAY: FoeShipDef = {
   id: 'foe-r-corona-overlay',
-  gunCount: 4,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "gunCount"),
   name: '叠光级',
   family: 'R',
-  evasion: 0.18,
-  hullClassTier: 3, // 巡洋舰
-  speedRatio: 1.1, // **船长 2026-10-01 令「敌人速度按照标准同级舰 1.1 的速度定」**：258 × 1.1 = 284 m/s
-  hp: 729, // **船长 2026-10-01 令「拥有一个 0.9 倍血量的修正（这个修正不计入预算内）」**：原 810 × 0.9（⚠ 该折减**不进威胁预算** —— 预算只由卡面 threat 决定，见 roster 表的「总血」列）
-  split: { s: 0.6, a: 0.22, h: 0.18 },
-  shotDmg: 124, // T3 档基线 124 × 角色 1.00
-  hitRate: 1, // 光束必中（舰级路径下不消费本字段，写 1 表意；与 D 族同款写法）
-  reloadMs: 4500,
-  rangeMinM: 1,
-  rangeMaxM: 11000, // 激光·风筝线：上限拉长才有「风筝」可言（2026-10-01 船长令「非常擅长风筝战术」）＋ **同日令「给非中枢的R族船添加3000的基础射程」**（8000 → 11000）
-  falloff: 0.2, // 与 D 族同款（船长 2026-09-19「将D族单独调整，远端改为 0.2」）；风筝流要保住远端威力
-  blindDmgMul: 0.3,
-  dmgMix: { plasma: 8, kinetic: 2 },
+  evasion: enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "evasion"),
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 巡洋舰
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "speedRatio"), // **船长 2026-10-01 令「敌人速度按照标准同级舰 1.1 的速度定」**：258 × 1.1 = 284 m/s
+  hp: enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "hp"), // **船长 2026-10-01 令「拥有一个 0.9 倍血量的修正（这个修正不计入预算内）」**：原 810 × 0.9（⚠ 该折减**不进威胁预算** —— 预算只由卡面 threat 决定，见 roster 表的「总血」列）
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "split_h") },
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "shotDmg"), // T3 档基线 124 × 角色 1.00
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "hitRate"), // 光束必中（舰级路径下不消费本字段，写 1 表意；与 D 族同款写法）
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "rangeMaxM"), // 激光·风筝线：上限拉长才有「风筝」可言（2026-10-01 船长令「非常擅长风筝战术」）＋ **同日令「给非中枢的R族船添加3000的基础射程」**（8000 → 11000）
+  falloff: enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "falloff"), // 与 D 族同款（船长 2026-09-19「将D族单独调整，远端改为 0.2」）；风筝流要保住远端威力
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "dmgMix_plasma"), kinetic: enemyParameterOf(foeShipsParameters, "foe-r-corona-overlay", "dmgMix_kinetic") },
   energyForm: 'beam', // 激光（能量·必中）—— 船长 2026-10-01「使用以激光为主的武器」；全仓另一族是 D 守墓古舰
   // **闪现跃迁仪**（**船长 2026-10-01 令**：「激光武器+闪现效果的挂载件」，选「乙：五档全带」）：
   // 本体被命中时拉开交战距离 2,000 m、冷却 **12 秒**（参数选「甲」；冷却经 2026-10-01「下调到5秒」后，**2026-10-03 船长令「将敌人的闪现冷却时间延长到12秒」⇒ 现行 12 秒**）—— 与「风筝」配套：被近身就闪开、重建射程优势。
@@ -1649,22 +1651,22 @@ export const FOE_R_CORONA_OVERLAY: FoeShipDef = {
  */
 export const FOE_R_CORONA_DUSK: FoeShipDef = {
   id: 'foe-r-corona-dusk',
-  gunCount: 6,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "gunCount"),
   name: '垂暮级',
   family: 'R',
-  evasion: 0.12,
-  hullClassTier: 4, // 战列舰
-  speedRatio: 1.1, // **船长 2026-10-01 令「敌人速度按照标准同级舰 1.1 的速度定」**：205 × 1.1 = 226 m/s
-  hp: 1368, // **船长 2026-10-01 令「拥有一个 0.9 倍血量的修正（这个修正不计入预算内）」**：原 1520 × 0.9（⚠ 该折减**不进威胁预算** —— 预算只由卡面 threat 决定，见 roster 表的「总血」列）
-  split: { s: 0.55, a: 0.25, h: 0.2 },
-  shotDmg: 240, // T4 档基线 240 × 角色 1.00
-  hitRate: 1, // 光束必中（舰级路径下不消费本字段，写 1 表意；与 D 族同款写法）
-  reloadMs: 5000,
-  rangeMinM: 1,
-  rangeMaxM: 12500, // 激光·风筝线：上限拉长才有「风筝」可言（2026-10-01 船长令「非常擅长风筝战术」）＋ **同日令「给非中枢的R族船添加3000的基础射程」**（9500 → 12500）
-  falloff: 0.2, // 与 D 族同款（船长 2026-09-19「将D族单独调整，远端改为 0.2」）；风筝流要保住远端威力
-  blindDmgMul: 0.3,
-  dmgMix: { plasma: 8, kinetic: 2 },
+  evasion: enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "evasion"),
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 战列舰
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "speedRatio"), // **船长 2026-10-01 令「敌人速度按照标准同级舰 1.1 的速度定」**：205 × 1.1 = 226 m/s
+  hp: enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "hp"), // **船长 2026-10-01 令「拥有一个 0.9 倍血量的修正（这个修正不计入预算内）」**：原 1520 × 0.9（⚠ 该折减**不进威胁预算** —— 预算只由卡面 threat 决定，见 roster 表的「总血」列）
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "split_h") },
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "shotDmg"), // T4 档基线 240 × 角色 1.00
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "hitRate"), // 光束必中（舰级路径下不消费本字段，写 1 表意；与 D 族同款写法）
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "reloadMs"),
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "rangeMaxM"), // 激光·风筝线：上限拉长才有「风筝」可言（2026-10-01 船长令「非常擅长风筝战术」）＋ **同日令「给非中枢的R族船添加3000的基础射程」**（9500 → 12500）
+  falloff: enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "falloff"), // 与 D 族同款（船长 2026-09-19「将D族单独调整，远端改为 0.2」）；风筝流要保住远端威力
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "dmgMix_plasma"), kinetic: enemyParameterOf(foeShipsParameters, "foe-r-corona-dusk", "dmgMix_kinetic") },
   energyForm: 'beam', // 激光（能量·必中）—— 船长 2026-10-01「使用以激光为主的武器」；全仓另一族是 D 守墓古舰
   // **闪现跃迁仪**（**船长 2026-10-01 令**：「激光武器+闪现效果的挂载件」，选「乙：五档全带」）：
   // 本体被命中时拉开交战距离 2,000 m、冷却 **12 秒**（参数选「甲」；冷却经 2026-10-01「下调到5秒」后，**2026-10-03 船长令「将敌人的闪现冷却时间延长到12秒」⇒ 现行 12 秒**）—— 与「风筝」配套：被近身就闪开、重建射程优势。
@@ -1689,14 +1691,14 @@ export const FOE_R_CORONA_DUSK: FoeShipDef = {
  */
 export const FOE_R_CORONA_NEXUS: FoeShipDef = {
   id: 'foe-r-corona-nexus',
-  gunCount: 8,
+  gunCount: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "gunCount"),
   name: '光环中枢',
   family: 'R',
-  evasion: 0.10,
-  hullClassTier: 5, // 旗舰（本族唯一 T5）
-  speedRatio: 1.1, // **船长 2026-10-01 令「敌人速度按照标准同级舰 1.1 的速度定」**：155 × 1.1 = 170.5 → **171** m/s
-  hp: 35_280, // **船长 2026-10-01 令「拥有一个 0.9 倍血量的修正（这个修正不计入预算内）」**：原 39200 × 0.9（⚠ 该折减**不进威胁预算** —— 预算只由卡面 threat 决定，见 roster 表的「总血」列）
-  split: { s: 0.5, a: 0.3, h: 0.2 }, // 旗舰护盾占比回到 0.5（与 H 族旗舰同值，便于两族 BOSS 可比）
+  evasion: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "evasion"),
+  hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "hullClassTier") as 1 | 2 | 3 | 4 | 5), // 旗舰（本族唯一 T5）
+  speedRatio: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "speedRatio"), // **船长 2026-10-01 令「敌人速度按照标准同级舰 1.1 的速度定」**：155 × 1.1 = 170.5 → **171** m/s
+  hp: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "hp"), // **船长 2026-10-01 令「拥有一个 0.9 倍血量的修正（这个修正不计入预算内）」**：原 39200 × 0.9（⚠ 该折减**不进威胁预算** —— 预算只由卡面 threat 决定，见 roster 表的「总血」列）
+  split: { s: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "split_h") }, // 旗舰护盾占比回到 0.5（与 H 族旗舰同值，便于两族 BOSS 可比）
   /**
    * 🔴 **旗舰武器改判**（**船长 2026-10-02 两句令**，原话照抄）：
    *
@@ -1707,20 +1709,20 @@ export const FOE_R_CORONA_NEXUS: FoeShipDef = {
    * **一轮三连总伤 = 156 × 3 = 468 = 原单发 × 0.9**（净砍 10%，同时把"一发一大块"摊成三小发）。
    * 连发排期与逐发选靶见 `FoeShipDef.burst`（本卡 `foeTargeting: 'random'` ⇒ 每发独立重抽）。
    */
-  shotDmg: 156, // T5 档基线 420 × 角色 1.30 × 0.95（机群让位）= 519 ⇒ **改判后每发 ×0.3**
-  hitRate: 1, // 光束必中（舰级路径下不消费本字段，写 1 表意；与 D 族同款写法）
-  reloadMs: 5000,
+  shotDmg: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "shotDmg"), // T5 档基线 420 × 角色 1.30 × 0.95（机群让位）= 519 ⇒ **改判后每发 ×0.3**
+  hitRate: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "hitRate"), // 光束必中（舰级路径下不消费本字段，写 1 表意；与 D 族同款写法）
+  reloadMs: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "reloadMs"),
   /**
    * **三连发**（船长 2026-10-02 令，见上面 `shotDmg` 的引文）：一轮装填打 **3** 发、发间隔 **100 ms**，
    * **逐发独立随机选靶**（卡上 `foeTargeting: 'random'`）。落码 = `WeaponSpec.burst`
    * ＋ `combat` 敌方开火段（前两发之后装填重置为 100ms、第三发之后才回 5000ms）。
    */
-  burst: { shots: 3, gapMs: 100 },
-  rangeMinM: 1,
-  rangeMaxM: 13500, // 激光·风筝线：上限拉长才有「风筝」可言（2026-10-01 船长令「非常擅长风筝战术」）＋ **同日令「中枢添加5000」**（10500 → 13500）
-  falloff: 0.2, // 与 D 族同款（船长 2026-09-19「将D族单独调整，远端改为 0.2」）；风筝流要保住远端威力
-  blindDmgMul: 0.3,
-  dmgMix: { plasma: 8, kinetic: 2 },
+  burst: { shots: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "burst_shots"), gapMs: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "burst_gapMs") },
+  rangeMinM: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "rangeMinM"),
+  rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "rangeMaxM"), // 激光·风筝线：上限拉长才有「风筝」可言（2026-10-01 船长令「非常擅长风筝战术」）＋ **同日令「中枢添加5000」**（10500 → 13500）
+  falloff: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "falloff"), // 与 D 族同款（船长 2026-09-19「将D族单独调整，远端改为 0.2」）；风筝流要保住远端威力
+  blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "blindDmgMul"),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "dmgMix_plasma"), kinetic: enemyParameterOf(foeShipsParameters, "foe-r-corona-nexus", "dmgMix_kinetic") },
   energyForm: 'beam', // 激光（能量·必中）—— 船长 2026-10-01「使用以激光为主的武器」；全仓另一族是 D 守墓古舰
   // **闪现跃迁仪**（**船长 2026-10-01 令**：「激光武器+闪现效果的挂载件」，选「乙：五档全带」）：
   // 本体被命中时拉开交战距离 2,000 m、冷却 **12 秒**（参数选「甲」；冷却经 2026-10-01「下调到5秒」后，**2026-10-03 船长令「将敌人的闪现冷却时间延长到12秒」⇒ 现行 12 秒**）—— 与「风筝」配套：被近身就闪开、重建射程优势。

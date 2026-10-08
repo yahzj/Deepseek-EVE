@@ -20,6 +20,8 @@
  * D/E 的受击增程件。「洞外零冲锋」的守卫因此按**有效挂载**（`slot.mounts ?? ship.mounts`，
  * **替换**不是叠加）判，见 `content-check` 敌方挂载件契约 ③。
  */
+import foeMountsParameters from './static/foeMounts.json'
+import { enemyParameterOf } from './enemyParameters'
 import type { FoeMountDef, FoeMountId } from './types'
 
 /** id 常量表（数据侧引用它，写错当场编译不过） */
@@ -101,16 +103,16 @@ export const FOE_MOUNT_IDS = {
 
 /** 全部挂载件（键 = id；`FoeMountId` 联合类型保证穷尽） */
 export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
-  'foe-mount-c-acid-charge': { id: 'foe-mount-c-acid-charge', name: '爆虫冲锋器', en: 'Acid Burster Charger', charge: { mul: 5, cooldownMs: 10_000, webImmune: true } },
-  'foe-mount-c-hiveback-charge': { id: 'foe-mount-c-hiveback-charge', name: '背巢缓冲锋器', en: 'Hiveback Charger', charge: { mul: 1.5, cooldownMs: 10_000, webImmune: true } },
-  'foe-mount-c-broodmother-charge': { id: 'foe-mount-c-broodmother-charge', name: '巢母缓冲锋器', en: 'Broodmother Charger', charge: { mul: 1.25, cooldownMs: 10_000, webImmune: true } },
-  'foe-mount-c-brood-control': { id: 'foe-mount-c-brood-control', name: '巢群导控腔', en: 'Brood Control Chamber', broodControl: { gunDmgMul: 0.4, droneDmgMul: 1.5, droneRangeBonusPct: 0.5 } },
-  'foe-mount-c-hiveback-hatchery': { id: 'foe-mount-c-hiveback-hatchery', name: '虫群孵化巢', en: 'Brood Hatchery', hatchery: { cycleMs: 12_000, stock: 32, fleet: true } },
+  'foe-mount-c-acid-charge': { id: 'foe-mount-c-acid-charge', name: '爆虫冲锋器', en: 'Acid Burster Charger', charge: { mul: enemyParameterOf(foeMountsParameters, "foe-mount-c-acid-charge", "charge_mul"), cooldownMs: enemyParameterOf(foeMountsParameters, "foe-mount-c-acid-charge", "charge_cooldownMs"), webImmune: true } },
+  'foe-mount-c-hiveback-charge': { id: 'foe-mount-c-hiveback-charge', name: '背巢缓冲锋器', en: 'Hiveback Charger', charge: { mul: enemyParameterOf(foeMountsParameters, "foe-mount-c-hiveback-charge", "charge_mul"), cooldownMs: enemyParameterOf(foeMountsParameters, "foe-mount-c-hiveback-charge", "charge_cooldownMs"), webImmune: true } },
+  'foe-mount-c-broodmother-charge': { id: 'foe-mount-c-broodmother-charge', name: '巢母缓冲锋器', en: 'Broodmother Charger', charge: { mul: enemyParameterOf(foeMountsParameters, "foe-mount-c-broodmother-charge", "charge_mul"), cooldownMs: enemyParameterOf(foeMountsParameters, "foe-mount-c-broodmother-charge", "charge_cooldownMs"), webImmune: true } },
+  'foe-mount-c-brood-control': { id: 'foe-mount-c-brood-control', name: '巢群导控腔', en: 'Brood Control Chamber', broodControl: { gunDmgMul: enemyParameterOf(foeMountsParameters, "foe-mount-c-brood-control", "broodControl_gunDmgMul"), droneDmgMul: enemyParameterOf(foeMountsParameters, "foe-mount-c-brood-control", "broodControl_droneDmgMul"), droneRangeBonusPct: enemyParameterOf(foeMountsParameters, "foe-mount-c-brood-control", "broodControl_droneRangeBonusPct") } },
+  'foe-mount-c-hiveback-hatchery': { id: 'foe-mount-c-hiveback-hatchery', name: '虫群孵化巢', en: 'Brood Hatchery', hatchery: { cycleMs: enemyParameterOf(foeMountsParameters, "foe-mount-c-hiveback-hatchery", "hatchery_cycleMs"), stock: enemyParameterOf(foeMountsParameters, "foe-mount-c-hiveback-hatchery", "hatchery_stock"), fleet: true } },
   'foe-mount-c-broodmother-hatchery': {
     id: 'foe-mount-c-broodmother-hatchery', name: '巢母孵化巢', en: 'Broodmother Hatchery',
-    hatchery: { cycleMs: 9_000, stock: 'unlimited', fleet: true },
-    summonEscort: { everyMs: 30_000, count: 3, shipId: 'foe-alien-starcore-adult', activeClock: true },
-    fleetSpeedRamp: { rampMs: 120_000, maxBonusPct: 1.8 },
+    hatchery: { cycleMs: enemyParameterOf(foeMountsParameters, "foe-mount-c-broodmother-hatchery", "hatchery_cycleMs"), stock: 'unlimited', fleet: true },
+    summonEscort: { everyMs: enemyParameterOf(foeMountsParameters, "foe-mount-c-broodmother-hatchery", "summonEscort_everyMs"), count: enemyParameterOf(foeMountsParameters, "foe-mount-c-broodmother-hatchery", "summonEscort_count"), shipId: 'foe-alien-starcore-adult', activeClock: true },
+    fleetSpeedRamp: { rampMs: enemyParameterOf(foeMountsParameters, "foe-mount-c-broodmother-hatchery", "fleetSpeedRamp_rampMs"), maxBonusPct: enemyParameterOf(foeMountsParameters, "foe-mount-c-broodmother-hatchery", "fleetSpeedRamp_maxBonusPct") },
   },
   [FOE_MOUNT_IDS.chargePirate]: {
     id: FOE_MOUNT_IDS.chargePirate,
@@ -118,7 +120,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     // 2026-09-26 三号补英文名（交接项「敌方挂载件英文译名」）：`glossary-en.md` §一 命名规则
     // 第 4 条「掠袭 → Raider」＋ 直译；效果说明本身中英齐备（`ui.foeIntro.107`），这里只给"装置叫什么"。
     en: 'Raider Charge Thruster',
-    charge: { mul: 1.6, cooldownMs: 30_000 },
+    charge: { mul: enemyParameterOf(foeMountsParameters, "foe-mount-charge-pirate", "charge_mul"), cooldownMs: enemyParameterOf(foeMountsParameters, "foe-mount-charge-pirate", "charge_cooldownMs") },
     note:
       '船长 2026-09-16：「给A族虫洞内的海盗添加冲锋…冲锋倍率为1.6，冷却30秒」⇒ 只挂洞内三张 A 族卡的条目' +
       '（劫掠支队 / 劫掠围猎 / 海盗战团）；三条舰级洞外（低安遭遇 / 悬赏）也在用 ⇒ 洞外不冲锋。',
@@ -129,28 +131,28 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     en: 'Hiveswarm Charger T1', // 族系前缀照译：巢群/虫群 = `Hiveswarm`；档位照抄（命名规则第 3 条）
     // **C 族族设定**（船长 2026-09-30：「给C族添加族设定，他们的冲锋不会被网子解除」；追问取甲）：
     // 网子的「关推进器」对本族无效 ⇒ 四件虫群冲锋器一律 `webImmune`（A 族那件**不带**）。
-    charge: { mul: 1.5, cooldownMs: 10_000, webImmune: true },
+    charge: { mul: enemyParameterOf(foeMountsParameters, "foe-mount-charge-swarm-t1", "charge_mul"), cooldownMs: enemyParameterOf(foeMountsParameters, "foe-mount-charge-swarm-t1", "charge_cooldownMs"), webImmune: true },
     note: 'C 族 T1（畸变幼虫 / 星髓幼虫）：船长 2026-09-14「给小虫子添加冲锋，倍率为1.5」。',
   },
   [FOE_MOUNT_IDS.chargeSwarmT2]: {
     id: FOE_MOUNT_IDS.chargeSwarmT2,
     name: '虫群冲锋器 T2',
     en: 'Hiveswarm Charger T2',
-    charge: { mul: 2, cooldownMs: 10_000, webImmune: true },
+    charge: { mul: enemyParameterOf(foeMountsParameters, "foe-mount-charge-swarm-t2", "charge_mul"), cooldownMs: enemyParameterOf(foeMountsParameters, "foe-mount-charge-swarm-t2", "charge_cooldownMs"), webImmune: true },
     note: 'C 族 T2（星髓成虫）：船长 2026-09-16「C族全部添加冲锋，按照级别分别为1.5/2/2.5/3/4」。',
   },
   [FOE_MOUNT_IDS.chargeSwarmT3]: {
     id: FOE_MOUNT_IDS.chargeSwarmT3,
     name: '虫群冲锋器 T3',
     en: 'Hiveswarm Charger T3',
-    charge: { mul: 2.5, cooldownMs: 10_000, webImmune: true },
+    charge: { mul: enemyParameterOf(foeMountsParameters, "foe-mount-charge-swarm-t3", "charge_mul"), cooldownMs: enemyParameterOf(foeMountsParameters, "foe-mount-charge-swarm-t3", "charge_cooldownMs"), webImmune: true },
     note: 'C 族 T3（孢群异虫）：同上按档口径（2026-09-16 前它是族内唯一不具冲锋资格的舰级）。',
   },
   [FOE_MOUNT_IDS.chargeSwarmT4]: {
     id: FOE_MOUNT_IDS.chargeSwarmT4,
     name: '虫群冲锋器 T4',
     en: 'Hiveswarm Charger T4',
-    charge: { mul: 3, cooldownMs: 10_000, webImmune: true },
+    charge: { mul: enemyParameterOf(foeMountsParameters, "foe-mount-charge-swarm-t4", "charge_mul"), cooldownMs: enemyParameterOf(foeMountsParameters, "foe-mount-charge-swarm-t4", "charge_cooldownMs"), webImmune: true },
     note: 'C 族 T4（噬口巨兽）：船长 2026-09-14「大虫子的冲锋倍率改为3」。',
   },
   [FOE_MOUNT_IDS.droneRangeX4]: {
@@ -159,7 +161,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     // 「机巢」按同族既有译法 `Hive Dock`（`mod-wh-g-hangar` 亡军蜂巢坞）取 `Drone Nest`，
     // 「增程」= `Range`、阵列 = `Array`（与 `Tracking Array` 同族写法）
     en: 'Drone Nest Range Array',
-    droneRangeOnHit: { mul: 4 },
+    droneRangeOnHit: { mul: enemyParameterOf(foeMountsParameters, "foe-mount-drone-range-x4", "droneRangeOnHit_mul") },
     note:
       'E 族三舰（巨构残段 / 奥罗残骸段 / 巨构核心段）：本体被命中 ⇒ 整队机群射程 ×4（迁移前 droneRangeMulOnHit: 4）。' +
       '船长 2026-09-16：作用面保持「整队标量」、零行为变化。',
@@ -169,7 +171,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     name: '劫掠捕获网',
     // 「捕获网」在英文表里没有冻结词条 ⇒ 取 `Snare Net`（机制句 `ui.foeIntro.102` 英文侧用的也是 snare net）
     en: 'Raider Snare Net',
-    web: { slowMul: 0.1, noThruster: true, noEvasion: true, rangeDownM: 500 },
+    web: { slowMul: enemyParameterOf(foeMountsParameters, "foe-mount-capture-web", "web_slowMul"), noThruster: true, noEvasion: true, rangeDownM: enemyParameterOf(foeMountsParameters, "foe-mount-capture-web", "web_rangeDownM") },
     note:
       '船长 2026-09-16：「劫掠捕获网：降低目标90%移动速度，并关闭所有类型推进器。在自身第一次开火时发动。' +
       '动画效果为一根蓝色的光速连着命中舰船」＋补充「还会让目标闪避强制为0，射程降低500米」。' +
@@ -182,7 +184,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     name: '守墓远距观瞄',
     // 「观瞄」= `Optics`；族名按 §一 第 4 条与既有表：守墓 = `Gravekeeper`
     en: 'Gravekeeper Long-range Optics',
-    gunRangeOnHit: { mul: 1.5, noticeTextId: 'core.combat.013' },
+    gunRangeOnHit: { mul: enemyParameterOf(foeMountsParameters, "foe-mount-gun-range-x1-5", "gunRangeOnHit_mul"), noticeTextId: 'core.combat.013' },
     note:
       'D 族静滞卫舰：从它射程之外被命中 ⇒ 本舰炮台射程 ×1.5（迁移前 gunRangeMulOnHit: 1.5）。' +
       '「只允许静滞卫舰」的约束改由 content:check 的挂载件契约守。',
@@ -193,7 +195,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     // 与 D 族那件**刻意不同名**（该件 note 明写"名字要不同"）⇒ 取「齐射」= `Salvo`
     en: 'Megastructure Salvo Optics',
     // ⟪文案调整 2026-10-07⟫ 导弹件说明与触发提示独立，不复用静滞卫舰文本。
-    gunRangeOnHit: { mul: 1.5, effectTextId: 'ui.foeIntro.114', noticeTextId: 'core.combat.012' },
+    gunRangeOnHit: { mul: enemyParameterOf(foeMountsParameters, "foe-mount-titan-range-x1-5", "gunRangeOnHit_mul"), effectTextId: 'ui.foeIntro.114', noticeTextId: 'core.combat.012' },
     note:
       '船长 2026-09-19：「并挂载类似静滞卫舰的挨打后对方在射程外就增加射程的挂载件」＋同日澄清' +
       '「只是采用类似的效果的挂载件，并不是真的是静滞卫舰的挂载件（因此名字要不同）」' +
@@ -204,7 +206,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     id: FOE_MOUNT_IDS.supportCall,
     name: '支援呼叫装置',
     en: 'Support Call Device',
-    supportCall: { delaySec: 20, threatMul: 1.1 },
+    supportCall: { delaySec: enemyParameterOf(foeMountsParameters, "foe-mount-support-call", "supportCall_delaySec"), threatMul: enemyParameterOf(foeMountsParameters, "foe-mount-support-call", "supportCall_threatMul") },
     note:
       '船长 2026-09-19：「战斗开始20秒后，增援2艘幽灵舰。如果对方在自己最远射程之外时，增援2艘静滞卫舰。」' +
       '＋「因为延迟到场，所以需要一定补偿。卡计算的实际威胁要*1.1」⇒ 只挂 D 族守墓王座舰' +
@@ -215,7 +217,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     id: FOE_MOUNT_IDS.gyroStabilizer,
     name: '姿态陀螺仪',
     en: 'Attitude Gyro',
-    evasionBonus: { add: 0.1 },
+    evasionBonus: { add: enemyParameterOf(foeMountsParameters, "foe-mount-gyro-stabilizer", "evasionBonus_add") },
     note:
       '船长 2026-09-24：「我调整了A族的闪避，并且希望在虫洞内，A族添加一个挂载件：姿态陀螺仪：增加10%闪避」' +
       '＋「我的改动是A给A族除电子舰外的其他敌人加10%闪避」＋「你先提高A族闪避，提高后再挂载，电子舰也要挂」；' +
@@ -228,7 +230,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     id: FOE_MOUNT_IDS.hullRepair,
     name: '船体修理装置',
     en: 'Hull Repair Unit',
-    repairPulse: { everyMs: 5_000, armor: 15, hull: 15 },
+    repairPulse: { everyMs: enemyParameterOf(foeMountsParameters, "foe-mount-hull-repair", "repairPulse_everyMs"), armor: enemyParameterOf(foeMountsParameters, "foe-mount-hull-repair", "repairPulse_armor"), hull: enemyParameterOf(foeMountsParameters, "foe-mount-hull-repair", "repairPulse_hull") },
     note:
       '船长 2026-09-24：「给G族添加挂载件：船体修理装置。每5秒恢复5装甲和5结构，会吃威胁的加成。」；' +
       '追问裁定 = 修理量乘层威胁倍率（甲；归一基准「不改动」= 层 1 的 k = 1.00）⇒ 实数 = 基数 × k。' +
@@ -250,7 +252,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
      * 池子/上限/满血/入场表现四条口径不变（见 `combat.resolveFoeRevive`）。
      */
     // ⚠ `'foe-h-ink-jammer'` = 墨潮干扰舰（`data/foe-ships.ts`）；core 侧不 import data ⇒ 写字面量
-    reviveEscort: { everyMs: 60_000, count: 2, priorityShipIds: ['foe-h-ink-jammer'] },
+    reviveEscort: { everyMs: enemyParameterOf(foeMountsParameters, "foe-mount-revive-escort", "reviveEscort_everyMs"), count: enemyParameterOf(foeMountsParameters, "foe-mount-revive-escort", "reviveEscort_count"), priorityShipIds: ['foe-h-ink-jammer'] },
     note:
       '船长 2026-09-25：「给入侵母舰添加类似D族挂载件的独立挂载件，只不过改为复活被摧毁的友军' +
       '（但是表现形式上为敌方支援舰船入场），增援时间是60秒，每次随机复活一艘。」' +
@@ -265,7 +267,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     id: FOE_MOUNT_IDS.inkRangeDebuff,
     name: '墨潮干扰阵列',
     en: 'Ink Tide Jammer Array',
-    rangeDebuff: { pct: 0.5 },
+    rangeDebuff: { pct: enemyParameterOf(foeMountsParameters, "foe-mount-ink-range-debuff", "rangeDebuff_pct") },
     note:
       '船长 2026-09-26：「敌人的射程压制挂载件好像也还没有命名？」⇒ 选甲：把 H 族「墨潮干扰舰」' +
       '原先写在舰级字段上的 `foeRangeDebuffPct = 0.5` 迁成具名挂载件（数值一字不变）——' +
@@ -283,7 +285,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     // 🔴 `distanceM` = **单次位移上限**（**船长同日第三句**：「**闪现之前不是设定每次闪现最多2000米吗**」）：
     //   朝"它自己的期望交战距离"走一跳、一跳最多 2 公里 ⇒ 差得远就要多闪几次（船长选「乙：可扣死自毁」
     //   ⇒ 每闪一次扣结构上限 5%，代价按次计）。
-    blink: { distanceM: 2_000, cooldownMs: 12_000 },
+    blink: { distanceM: enemyParameterOf(foeMountsParameters, "foe-mount-corona-blink", "blink_distanceM"), cooldownMs: enemyParameterOf(foeMountsParameters, "foe-mount-corona-blink", "blink_cooldownMs") },
     note:
       '船长 2026-10-01：「激光武器+闪现效果的挂载件」——R 族（光环科技 / Corona Systems）' +
       '五档壳体逐档常挂（船长选「乙：五档全带」；距离与触发选「甲：一次 2,000m / 被命中触发」）。' +
@@ -300,7 +302,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     // 「叠光」按舰级译名 `Overlay`（l10n 的 `Corona Overlay`）⇒ 本件取 `Corona Overlay Drive`
     en: 'Corona Overlay Drive',
     // 船长 2026-10-03 改判：步长 400ms、初始装填 4500ms（舰级定义）、下限 500ms、伤害 ×0.3。
-    overlayDrive: { stepMs: 400, floorMs: 500, dmgMul: 0.3 },
+    overlayDrive: { stepMs: enemyParameterOf(foeMountsParameters, "foe-mount-corona-overlay-drive", "overlayDrive_stepMs"), floorMs: enemyParameterOf(foeMountsParameters, "foe-mount-corona-overlay-drive", "overlayDrive_floorMs"), dmgMul: enemyParameterOf(foeMountsParameters, "foe-mount-corona-overlay-drive", "overlayDrive_dmgMul") },
     note:
       '船长 2026-10-01：「添加叠光装置：效果是每次攻击或者闪现后，攻击间隔缩短，最多缩短至0.5秒攻击间隔。' +
       '伤害给予一个0.3的倍率。」⇒ 只挂 R 族 T3 叠光级。三条追问的裁定：伤害 ×0.3 = 该舰全部伤害 ×0.3（甲）；' +
@@ -314,7 +316,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     name: '闪烁过载装置',
     en: 'Corona Flash Overload',
     // 船长 2026-10-01 定案：护盾全回、结构按上限 5% 扣（选「甲」）、可扣死自毁（选「乙」）
-    flashOverload: { healShield: true, hullCostPct: 0.05 },
+    flashOverload: { healShield: true, hullCostPct: enemyParameterOf(foeMountsParameters, "foe-mount-corona-flash-overload", "flashOverload_hullCostPct") },
     note:
       '船长 2026-10-01：「粼光添加闪烁过载装置，效果是每次触发闪现后，恢复所有护盾值。但是会损失最大结构值5%的结构。」' +
       '⇒ 只挂 R 族 T1 粼光级。两条追问的裁定：5% = 结构上限的 5%（甲，粼光级结构上限 29.85 ⇒ 每次扣 1.49）；' +
@@ -327,7 +329,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     // 命名规则第 4 条（族系前缀照译）：R 族五件一律 `Corona …`；本件取直译 `Standby Shield Array`
     en: 'Standby Shield Array',
     // 船长 2026-10-02 定案：50% 写死在件上（与闪烁过载的 hullCostPct 同款）、只护盾层、与闪现共用冷却
-    standbyShield: { resistPct: 0.5, delayMs: 1_000 },
+    standbyShield: { resistPct: enemyParameterOf(foeMountsParameters, "foe-mount-corona-standby-shield", "standbyShield_resistPct"), delayMs: enemyParameterOf(foeMountsParameters, "foe-mount-corona-standby-shield", "standbyShield_delayMs") },
     note:
       '船长 2026-10-02：「垂暮级添加挂载件，触发闪现时，触发的那次齐射受到的伤害减半。」' +
       '⇒ 我追问时点后船长改口径：「或者换个说法，闪现未处于冷却中的时候，护盾拥有全伤害50%的抗性。」' +
@@ -338,7 +340,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     name: '聚焦阵列',
     en: 'Focus Array',
     // 船长 2026-10-02 定案：120 秒爬到 1.0、随波重置（同日改判"整场计时"）
-    focusArray: { rampMs: 120_000, rangeBonusPct: 2, antiDroneBonusPct: 2 },
+    focusArray: { rampMs: enemyParameterOf(foeMountsParameters, "foe-mount-corona-focus-array", "focusArray_rampMs"), rangeBonusPct: enemyParameterOf(foeMountsParameters, "foe-mount-corona-focus-array", "focusArray_rangeBonusPct"), antiDroneBonusPct: enemyParameterOf(foeMountsParameters, "foe-mount-corona-focus-array", "focusArray_antiDroneBonusPct") },
     note:
       '船长 2026-10-02：「然后给R族的入侵旗舰添加一个挂载件，武器的远端衰减，随时间提高到1（就是无衰减）。」' +
       '⇒ 只挂 R 族 T5 光环中枢（周末入侵旗舰战的 BOSS 本体）。' +
@@ -350,7 +352,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     id: FOE_MOUNT_IDS.coronaOverlayBeacon,
     name: '叠光支援信标',
     en: 'Overlay Support Beacon',
-    summonEscort: { everyMs: 60_000, count: 1, shipId: 'foe-r-corona-overlay', formationSlots: true },
+    summonEscort: { everyMs: enemyParameterOf(foeMountsParameters, "foe-mount-corona-overlay-beacon", "summonEscort_everyMs"), count: enemyParameterOf(foeMountsParameters, "foe-mount-corona-overlay-beacon", "summonEscort_count"), shipId: 'foe-r-corona-overlay', formationSlots: true },
     note: '船长2026-10-08确认：每60秒检查当前波空位，满血召唤一艘叠光级；不超原编成，满员跳过不累计，中枢被毁后停止。',
   },
 }

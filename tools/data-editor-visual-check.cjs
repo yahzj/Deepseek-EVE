@@ -1,16 +1,19 @@
 /** 隐藏Electron实际窗口几何与capturePage，独立于保存测试，不访问游戏个人档。 */
 const fs = require('node:fs/promises')
+const { existsSync } = require('node:fs')
 const path = require('node:path')
 const os = require('node:os')
 const assert = require('node:assert/strict')
 const { spawn } = require('node:child_process')
 const { JourneyPage, sleep } = require('./wormhole-expedition-journey-shared.cjs')
 const ROOT = path.resolve(__dirname, '..')
+const LOCAL_EDITOR = path.join(ROOT, 'apps/data-editor')
+const EDITOR = existsSync(path.join(LOCAL_EDITOR, 'package.json')) ? LOCAL_EDITOR : path.resolve(ROOT, '../数据编辑器')
 const OUT = path.join(ROOT, 'tools/_ui-artifacts')
 async function child() {
   const { app, BrowserWindow } = require('electron')
   BrowserWindow.prototype.show = function () {}
-  require(path.join(ROOT, 'apps/data-editor/out/main/index.js'))
+  require(path.join(EDITOR, 'out/main/index.js'))
   await app.whenReady()
   const win = BrowserWindow.getAllWindows()[0]
   win.webContents.debugger.attach('1.3')

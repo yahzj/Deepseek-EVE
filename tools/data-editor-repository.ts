@@ -8,14 +8,15 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'nod
 import { promisify } from 'node:util'
 import ts from 'typescript'
 import type {
-  DataDocument, DataEditorApi, DataTable, EditorChange, EditorIssue, EditorPlan, EditorProject, EditorResult, NumericEdit,
+  BaseDataTable, DataDocument, DataEditorApi, DataTable, EditorChange, EditorIssue, EditorPlan, EditorProject, EditorResult, NumericEdit, EnemyPreviewRequest, EnemyPreviewResult,
 } from './data-editor-contract'
-import { TABLE_FILES, planDocuments, rowsOf, validateDocument } from './data-editor-schema'
+import { BASE_TABLES, TABLE_FILES, planDocuments, rowsOf, validateDocument } from './data-editor-schema'
+import { ENEMY_FIELDS, ENEMY_TABLES, isEnemyTable } from './data-editor-enemy-schema'
 import type { StaticFieldTypes } from '../packages/data/src/staticData'
 
 const gitExec = promisify(execFile)
-const TABLES: DataTable[] = ['ships', 'modules', 'plugs', 'items', 'market']
-const TEXT_FILES: Record<DataTable, string> = {
+const TABLES: DataTable[] = [...BASE_TABLES, ...ENEMY_TABLES]
+const TEXT_FILES: Record<BaseDataTable, string> = {
   ships: 'packages/data/src/ships.ts', modules: 'packages/data/src/modules.ts', plugs: 'packages/data/src/plugs.ts',
   items: 'packages/data/src/items.ts', market: 'packages/data/src/marketCatalog.ts',
 }
@@ -135,7 +136,7 @@ function fieldContract(value: unknown): StaticFieldTypes {
   const contract = value as StaticFieldTypes
   const types = new Set(['object', 'array', 'number', 'string', 'boolean'])
   if (Object.keys(contract).some(table => !TABLES.includes(table as DataTable))) throw new Error('静态字段契约包含未知表')
-  for (const table of TABLES) {
+  for (const table of BASE_TABLES) {
     const shape = contract[table]
     if (!shape || typeof shape !== 'object' || Array.isArray(shape) || shape[''] !== 'object') throw new Error(`静态字段契约缺少表或对象根：${table}`)
     for (const [field, type] of Object.entries(shape)) {
@@ -270,14 +271,14 @@ async function replace(root: string, file: string, bytes: Buffer, expected: stri
 }
 
 /** 仅由main持有，preview令牌和候选数据不从renderer回传。 */
-export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' | 'preview' | 'save' | 'restore' | 'check' | 'build'> {
+export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' | 'preview' | 'save' | 'restore' | 'check' | 'build' | 'enemyPreview'> {
   private readonly options: DataEditorRepositoryOptions
   private readonly plans = new Map<string, Plan>()
   constructor(options: DataEditorRepositoryOptions = {}) {
     if ((options.checker || options.fault) && process.env.VITEST !== 'true') throw new Error('生产环境禁止注入检查器或故障钩子')
     this.options = options
     for (const table of TABLES) {
-      if (TABLE_FILES[table] !== `packages/data/src/static/${table}.json`) throw new Error(`不支持的JSON路径：${table}`)
+      if (TABLE_FILES[table] !== (table === 'foeMounts' ? 'packages/core/src/static/foeMounts.json' : `packages/data/src/static/${table}.json`)) throw new Error(`不支持的JSON路径：${table}`)
     }
   }
 
@@ -336,11 +337,17 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
     }
     for (const table of TABLES) {
       const file = TABLE_FILES[table]
-      const data = await read(identity.root, file)
+      let data: Buffer
+      try { data = await read(identity.root, file) }
+      catch (error) { if (isEnemyTable(table) && (error as NodeJS.ErrnoException).code === 'ENOENT') continue; throw error }
       const document = json(data, file)
       issues.push(...validateDocument(document, table, fieldTypes))
       documents[table] = document as DataDocument
       raw.set(file, data)
+      if (isEnemyTable(table)) {
+        rows.push(...rowsOf(table, documents[table]))
+        continue
+      }
       const binding = await read(identity.root, TEXT_FILES[table])
       raw.set(TEXT_FILES[table], binding)
       const labels = names(binding, TEXT_FILES[table], localized)
@@ -366,6 +373,15 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
         })))
       }
     }
+    const enemyCount = ENEMY_TABLES.filter(table => documents[table]).length
+    if (enemyCount && enemyCount !== ENEMY_TABLES.length) issues.push({ message: '敌人参数六张表须完整迁移，不接受部分接入' })
+    if (enemyCount) {
+      for (const file of ['packages/data/src/static/enemyFields.json', 'packages/data/src/foe-ships.ts', 'packages/data/src/foe-drones.ts', 'packages/data/src/anomalies.ts', 'packages/data/src/wormholeFoes.ts', 'packages/core/src/foeMounts.ts', 'packages/core/src/enemyParameters.ts']) raw.set(file, await read(identity.root, file))
+      const metadata = json(raw.get('packages/data/src/static/enemyFields.json')!, 'enemyFields.json') as typeof ENEMY_FIELDS
+      for (const table of ENEMY_TABLES) {
+        if (!Array.isArray(metadata?.[table]) || JSON.stringify(metadata[table].map(row => [row.id, row.fields])) !== JSON.stringify(ENEMY_FIELDS[table].map(row => [row.id, row.fields]))) issues.push({ table, message: '敌人字段来源契约与此编辑器不匹配，请更新编辑器；不会忽略未知字段' })
+      }
+    }
     if (issues.length) throw new RepositoryError(`数据契约失败：${issues.map(issue => issue.message).join('；')}`, issues)
     for (const row of rows.filter(row => row.table === 'market')) {
       const ownName = bindings.get('market')?.get(row.id)?.name
@@ -379,7 +395,7 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
     const fingerprint = hash(JSON.stringify({ head: identity.head, branch: identity.branch, files: [...raw].map(([file, bytes]) => [file, hash(bytes)]) }))
     const project: EditorProject = {
       root: identity.root, branch: identity.branch, head: identity.head, writable: identity.writable, fingerprint, rows,
-      warnings: identity.writable ? [] : ['主树、main/master分支或游离HEAD只读，不能保存、恢复或运行检查构建。'],
+      warnings: [...(identity.writable ? [] : ['主树、main/master分支或游离HEAD只读，不能保存、恢复或运行检查构建。']), ...(enemyCount ? [] : ['此工作区尚未接入敌人参数迁移，敌人表不可编辑。'])],
     }
     return { identity, raw, documents, fingerprint, project, ...(fieldTypes ? { fieldTypes } : {}) }
   }
@@ -449,7 +465,7 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
       try { bytes = await read(root, `${AREA}/backups/${entry.name}/journal.json`) }
       catch (e) { if ((e as NodeJS.ErrnoException).code === 'ENOENT') continue; throw e }
       const j = json(bytes, 'journal.json') as Journal
-      if (!j || j.version !== 1 || j.id !== entry.name || j.root !== root || !/^[0-9a-f]{40,64}$/.test(j.head) || !Array.isArray(j.files) || !j.files.length || j.files.length > 5 ||
+      if (!j || j.version !== 1 || j.id !== entry.name || j.root !== root || !/^[0-9a-f]{40,64}$/.test(j.head) || !Array.isArray(j.files) || !j.files.length || j.files.length > TABLES.length ||
           !['prepared', 'writing', 'committed', 'rolling-back', 'rolled-back', 'restoring', 'restored', 'blocked'].includes(j.state) || !Number.isFinite(Date.parse(j.created))) throw new Error('事务日志格式错误，停止恢复')
       const seen = new Set<string>()
       for (const file of j.files) {
@@ -505,13 +521,13 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
     if (!Array.isArray(edits) || edits.length > 10_000) throw new Error('编辑请求格式错误或超过批量上限')
     for (const edit of edits) {
       if (!edit || !TABLES.includes(edit.table) || typeof edit.id !== 'string' || typeof edit.path !== 'string' || typeof edit.value !== 'number' || !Number.isFinite(edit.value)) throw new Error('只接受合法表名、主键和有限数值')
-      const binding = names(snapshot.raw.get(TEXT_FILES[edit.table])!, TEXT_FILES[edit.table]).get(edit.id)
+      const binding = isEnemyTable(edit.table) ? undefined : names(snapshot.raw.get(TEXT_FILES[edit.table])!, TEXT_FILES[edit.table]).get(edit.id)
       if (binding?.codePaths.has(edit.path)) return { token: '', changes: [], warnings: [], issues: [{ message: 'readonly code expression', table: edit.table, id: edit.id, path: edit.path }] }
     }
     const plan = planDocuments(structuredClone(snapshot.documents), structuredClone(edits), snapshot.fieldTypes)
     const token = randomUUID()
     const issues = [...plan.issues]
-    for (const table of TABLES) issues.push(...validateDocument(plan.documents[table], table, snapshot.fieldTypes))
+    for (const table of Object.keys(plan.documents) as DataTable[]) issues.push(...validateDocument(plan.documents[table], table, snapshot.fieldTypes))
     if (!snapshot.identity.writable) issues.push({ message: '项目只读，不能保存' })
     for (const [key, value] of this.plans) if (value.expires < Date.now()) this.plans.delete(key)
     if (!issues.length && plan.changes.length) this.plans.set(token, {
@@ -583,6 +599,10 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
     }
     await fs.mkdir(join(dest, '@whale'))
     for (const [name, path] of Object.entries({ core: 'packages/core', data: 'packages/data', ui: 'packages/ui', desktop: 'apps/desktop', 'data-editor': 'apps/data-editor' })) {
+      if (name === 'data-editor') {
+        try { await fs.access(join(candidate, path, 'tsconfig.json')) }
+        catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue; throw error }
+      }
       const source = join(candidate, path)
       await fs.symlink(source, join(dest, '@whale', name), process.platform === 'win32' ? 'junction' : 'dir')
     }
@@ -595,7 +615,7 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
     await git(candidate, ['config', '--local', 'core.fsmonitor', 'false'])
     await git(candidate, ['read-tree', identity.head])
   }
-  private async command(identity: Identity, candidate: string, dependency: string, args: string[], cwd = candidate): Promise<void> {
+  private async command(identity: Identity, candidate: string, dependency: string, args: string[], cwd = candidate): Promise<string> {
     const modules = await this.dependencyRoot(identity)
     const executable = lexical(candidate, `node_modules/${dependency}`)
     const actual = await fs.realpath(executable)
@@ -603,15 +623,15 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
     const runtime = this.options.runtime?.execPath ?? process.execPath
     if (!isAbsolute(runtime)) throw new Error('运行时必须为可信绝对路径')
     const env = { ...process.env, NODE_OPTIONS: '', NODE_PATH: '', ELECTRON_RUN_AS_NODE: this.options.runtime?.electronRunAsNode === false ? '' : '1' }
-    await new Promise<void>((accept, reject) => {
+    return await new Promise<string>((accept, reject) => {
       // 保留候选依赖路径，tsx/CLI内部的workspace解析不能落回共享依赖所属的零号源码。
       const child = spawn(runtime, ['--preserve-symlinks', '--preserve-symlinks-main', executable, ...args], { cwd, env, shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
       let output = ''
-      const keep = (data: Buffer): void => { output = (output + data.toString('utf8')).slice(-20_000) }
+      const keep = (data: Buffer): void => { output = (output + data.toString('utf8')).slice(-MAX_BYTES) }
       child.stdout.on('data', keep); child.stderr.on('data', keep)
       const timeout = setTimeout(() => { child.kill(); reject(new Error(`检查超时：${dependency}`)) }, 10 * 60_000)
       child.once('error', e => { clearTimeout(timeout); reject(e) })
-      child.once('close', code => { clearTimeout(timeout); code === 0 ? accept() : reject(new Error(`检查失败：${dependency}\n${output}`)) })
+      child.once('close', code => { clearTimeout(timeout); code === 0 ? accept(output) : reject(new Error(`检查失败：${dependency}\n${output.slice(-20_000)}`)) })
     })
   }
   private async retainBuild(snapshot: Snapshot, candidate: string): Promise<string> {
@@ -657,7 +677,7 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
     }
   }
   private async validateCandidate(snapshot: Snapshot, documents: Record<DataTable, DataDocument>, mode: Mode): Promise<{ source: Map<string, Buffer>; output?: string }> {
-    for (const table of TABLES) {
+    for (const table of Object.keys(documents) as DataTable[]) {
       const issues = validateDocument(documents[table], table, snapshot.fieldTypes)
       if (issues.length) throw new RepositoryError(`候选数据契约失败：${issues.map(issue => issue.message).join('；')}`, issues)
     }
@@ -671,7 +691,7 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
         if (parent) await directory(candidate, parent)
         await fs.writeFile(lexical(candidate, file), bytes, { flag: 'wx' })
       }
-      for (const table of TABLES) await fs.writeFile(lexical(candidate, TABLE_FILES[table]), format(documents[table], snapshot.raw.get(TABLE_FILES[table])!))
+      for (const table of Object.keys(documents) as DataTable[]) await fs.writeFile(lexical(candidate, TABLE_FILES[table]), format(documents[table], snapshot.raw.get(TABLE_FILES[table])!))
       if (this.options.checker) {
         const result = await this.options.checker({ root: candidate, mode, documents: structuredClone(documents) })
         if (result && !result.ok) throw new RepositoryError(result.message || '候选检查失败', result.issues)
@@ -697,6 +717,37 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
       }
       return { source, ...(mode === 'build' ? { output: await this.retainBuild(snapshot, candidate) } : {}) }
     } finally { await this.removeCandidate(snapshot.identity.root, candidate) }
+  }
+
+  async enemyPreview(root: string, fingerprint: string, edits: NumericEdit[], request: EnemyPreviewRequest): Promise<EnemyPreviewResult> {
+    const snapshot = await this.snapshot(root)
+    if (snapshot.fingerprint !== fingerprint) throw new Error('项目已被外部修改，请重新载入后预览')
+    if (!request || !isEnemyTable(request.table) || !snapshot.documents[request.table] || !Array.isArray(edits) || edits.length > 10_000) throw new Error('敌人预览请求或参数表无效')
+    // 旧主树无敌人参数时不执行；只读项目的预览不在该树创建目录。
+    if (!snapshot.identity.writable) throw new Error('主树只读，请在附属工作树运行引擎预览')
+    const plan = planDocuments(snapshot.documents, edits, snapshot.fieldTypes)
+    if (plan.issues.length) throw new RepositoryError('草稿未通过敌人参数校验', plan.issues)
+    return this.locked(snapshot.identity, async () => {
+      const source = await this.sources(root)
+      const parent = await directory(root, `${AREA}/candidates`)
+      const candidate = join(parent, randomUUID())
+      await fs.mkdir(candidate)
+      try {
+        for (const [file, bytes] of source) {
+          if (file.includes('/')) await directory(candidate, file.slice(0, file.lastIndexOf('/')))
+          await fs.writeFile(lexical(candidate, file), bytes, { flag: 'wx' })
+        }
+        for (const table of Object.keys(plan.documents) as DataTable[]) await fs.writeFile(lexical(candidate, TABLE_FILES[table]), format(plan.documents[table], snapshot.raw.get(TABLE_FILES[table])!))
+        await fs.writeFile(join(candidate, 'enemy-preview-request.json'), JSON.stringify(request), { flag: 'wx' })
+        await this.dependencies(snapshot.identity, candidate)
+        const output = await this.command(snapshot.identity, candidate, 'tsx/dist/cli.mjs', ['tools/data-editor-enemy-preview.ts'])
+        await this.unchangedSources(root, source)
+        if ((await this.snapshot(root)).fingerprint !== fingerprint) throw new Error('预览期间项目已变化，请重新加载')
+        const line = output.split(/\r?\n/).find(line => line.startsWith('WHALE_ENEMY_PREVIEW='))
+        if (!line) throw new Error('引擎预览未返回完整读数')
+        return JSON.parse(line.slice('WHALE_ENEMY_PREVIEW='.length)) as EnemyPreviewResult
+      } finally { await this.removeCandidate(root, candidate) }
+    })
   }
 
   async save(root: string, token: string): Promise<EditorResult> {

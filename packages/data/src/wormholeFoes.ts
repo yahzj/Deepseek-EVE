@@ -34,6 +34,9 @@
  * ⚠ **待 F 批收益校准**：编成取"舰级自然值"（不写 `hpMul`/`dmgMul`，即 1×），
  * 层内难度是否合适要看 `tools/wormhole-econ.ts` 的实测读数再定。
  */
+import wormholeFleetsParameters from './static/wormholeFleets.json'
+import invasionFleetsParameters from './static/invasionFleets.json'
+import { enemyParameterOf } from '@whale/core'
 import { FOE_MOUNT_IDS } from '@whale/core'
 import type { AnomalyDef } from '@whale/core'
 import type { FoeShipDef, FoeShipSlot } from '@whale/core'
@@ -70,7 +73,7 @@ import {
 } from './foe-ships'
 
 /** 洞内敌卡的缩放锚点威胁（= core `WORMHOLE_THREAT_BASE`，第 1 层基准） */
-const ANCHOR_THREAT = 45
+const ANCHOR_THREAT = enemyParameterOf(wormholeFleetsParameters, "wormhole-anchor", "threat")
 
 export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
   {
@@ -85,10 +88,10 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // **选靶倾向概率**（船长 2026-09-14「虫洞敌人的攻击倾向，加一个概率」→ 先定 60%，同日改 40%）：
     // 每发开火前掷一次——四成按"抢货船"挑，六成这一发乱了（等权随机）。
     // ⚠ 这是**性格强度**、不是难度旋钮：要调难度请动 `dmgMul`/`hpMul` 或层威胁曲线（2026-09-13 口径）。
-    foeTargetingChance: 0.4,
+    foeTargetingChance: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-scout", "foeTargetingChance"),
     // 混伤 8:2（主动能 / 副爆炸 = 劫掠护卫舰本体的构成；与编成条目的有效构成必须一致，
     // 见 `content:check`「舰级契约」的卡面/编成一致性断言）
-    dmgMix: { kinetic: 8, explosive: 2 },
+    dmgMix: { kinetic: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-scout", "dmgMix_kinetic"), explosive: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-scout", "dmgMix_explosive") },
     // 编成 = 劫掠护卫舰 ×2（T1；`speedMul 0.9` 把实速 374 → **337**，落在 orbit 常规带 0.9~1.25× 内
     // ——隐藏模板也要过「敌速口径契约」，这条与 `enc-pirate-*` 用 `speedMul` 反算实速同款）
     // **冲锋挂载件只挂本卡条目**（2026-09-16 船长：「给A族虫洞内的海盗添加冲锋…冲锋倍率为1.6，冷却30秒」）：
@@ -97,12 +100,12 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // 本档基准之下（340 × 1.10 × 0.9 = 337 < 340）——违反船长 2026-09-11「A 族速度都快…每档都必须高于基准」。
     // 旧值 0.9 的来历：当年体检把 hidden 卡**整类**豁免，而洞内三张卡恰好都是 hidden ⇒ 一直没被查到；
     // 现契约收窄成只豁免迁移守恒反算的 `enc-pirate-*` 旧模板，本卡按 **374 m/s（1.28×）** 过线。
-    ships: [{ ship: FOE_SHIP_PIRATE_CORVETTE, count: 2, mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.gyroStabilizer] }],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    ships: [{ ship: FOE_SHIP_PIRATE_CORVETTE, count: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-scout", "ships_0_count"), mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.gyroStabilizer] }],
+    standingReq: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-scout", "standingReq"),
+    standingGain: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-scout", "standingGain"),
+    rewardIsk: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-scout", "rewardIsk"),
     loot: [], // 洞内收益一律走背包拾取（§5.4），卡上不给战利品
-    combatSeconds: 40,
+    combatSeconds: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-scout", "combatSeconds"),
     hidden: true,
     description: '虫洞内遭遇：小股劫掠支队（隐藏卡，只由虫洞生成）。',
   },
@@ -116,9 +119,9 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // 异形捕食弱者 ⇒ 打**最小的**（按舰种档）——**族定选靶**（船长 2026-09-15「选靶按照族限定」）
     foeTargeting: 'smallest',
     // 倾向概率 0.4（同批：四成盯着最小的那艘，六成乱咬）
-    foeTargetingChance: 0.4,
+    foeTargetingChance: enemyParameterOf(wormholeFleetsParameters, "wh-alien-swarm", "foeTargetingChance"),
     // 混伤 8:2（主等离子 = C 族酸液签名 / 副爆炸）
-    dmgMix: { plasma: 8, explosive: 2 },
+    dmgMix: { plasma: enemyParameterOf(wormholeFleetsParameters, "wh-alien-swarm", "dmgMix_plasma"), explosive: enemyParameterOf(wormholeFleetsParameters, "wh-alien-swarm", "dmgMix_explosive") },
     // 编成 = **星髓成虫 ×3**（船长 2026-09-16：「C族，浅层改为3只星髓成虫」——由 T1 星髓幼虫 ×4 换成 T2 成虫 ×3）
     // `dmgMul 1.40` = 船长 2026-09-16 裁「**C 族先折中，其他保持不变**」。**引擎真实口径**（普查后更正）：
     // `wormholeAnomalyOf` 的 `scaleDmg = 层血预算 ÷ 卡的自然总血` **同乘在单发上** ⇒ 卡的实际火力 ∝ 火力密度
@@ -126,12 +129,12 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     //（改前浅层：A 0.0467 · C 0.0615 · D 0.0185 · G 0.0673 · E 0.0540）。
     // ⚠ 本卡早前那版注释里的"Σ单发守恒"算式**是错的**（漏了 `scaleDmg` 这一层），已作废；
     //   普查与口径见 `docs/design/wh-c-cards-20260916.md` §四。
-    ships: [{ ship: FOE_ALIEN_STARCORE_ADULT, count: 3, dmgMul: 1.4 }],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    ships: [{ ship: FOE_ALIEN_STARCORE_ADULT, count: enemyParameterOf(wormholeFleetsParameters, "wh-alien-swarm", "ships_0_count"), dmgMul: enemyParameterOf(wormholeFleetsParameters, "wh-alien-swarm", "ships_0_dmgMul") }],
+    standingReq: enemyParameterOf(wormholeFleetsParameters, "wh-alien-swarm", "standingReq"),
+    standingGain: enemyParameterOf(wormholeFleetsParameters, "wh-alien-swarm", "standingGain"),
+    rewardIsk: enemyParameterOf(wormholeFleetsParameters, "wh-alien-swarm", "rewardIsk"),
     loot: [],
-    combatSeconds: 40,
+    combatSeconds: enemyParameterOf(wormholeFleetsParameters, "wh-alien-swarm", "combatSeconds"),
     hidden: true,
     description: '虫洞内遭遇：成群的星髓成虫游猎队（隐藏卡，只由虫洞生成）。',
   },
@@ -145,18 +148,18 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // 守墓者按残余自动化程序压制火力 ⇒ 打**输出最高的**
     foeTargeting: 'top-output',
     // 倾向概率 0.4（同批：压制程序四成能锁对火力最高的那艘，六成判定失准 ⇒ 乱打）
-    foeTargetingChance: 0.4,
+    foeTargetingChance: enemyParameterOf(wormholeFleetsParameters, "wh-grave-watch", "foeTargetingChance"),
     // 混伤 8:2（主等离子 = D 族「以能量武器为主」/ 副动能）
-    dmgMix: { plasma: 8, kinetic: 2 },
+    dmgMix: { plasma: enemyParameterOf(wormholeFleetsParameters, "wh-grave-watch", "dmgMix_plasma"), kinetic: enemyParameterOf(wormholeFleetsParameters, "wh-grave-watch", "dmgMix_kinetic") },
     // 编成 = **幽灵舰 ×2**（船长 2026-09-15：「**D族浅层改为幽灵*2**」，T2 中程光束快船）
     // ⚠ **伤害系数 0.5**（F 批逐卡配平 · 2026-09-13）：本族主炮是**光束（必中）**，同一血预算下
     // 实收远高于掷命中的卡 ⇒ 用 `dmgMul` 把"血/火力比"压回来；总血仍由 core 的按层预算（按卡归一）说了算。
-    ships: [{ ship: FOE_D_GHOST, count: 2, dmgMul: 0.5 }],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    ships: [{ ship: FOE_D_GHOST, count: enemyParameterOf(wormholeFleetsParameters, "wh-grave-watch", "ships_0_count"), dmgMul: enemyParameterOf(wormholeFleetsParameters, "wh-grave-watch", "ships_0_dmgMul") }],
+    standingReq: enemyParameterOf(wormholeFleetsParameters, "wh-grave-watch", "standingReq"),
+    standingGain: enemyParameterOf(wormholeFleetsParameters, "wh-grave-watch", "standingGain"),
+    rewardIsk: enemyParameterOf(wormholeFleetsParameters, "wh-grave-watch", "rewardIsk"),
     loot: [],
-    combatSeconds: 50,
+    combatSeconds: enemyParameterOf(wormholeFleetsParameters, "wh-grave-watch", "combatSeconds"),
     hidden: true,
     description: '虫洞内遭遇：守墓者留下的巡哨编队（隐藏卡，只由虫洞生成）。',
   },
@@ -171,14 +174,14 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     foeTargeting: 'random',
     // ⚠ 本卡**刻意不写** `foeTargetingChance`：模式已随机，概率对它无意义（写了也按 1 处理、不掷骰）
     // 混伤 8:2（主动能 / 副爆炸 = G 族蜂群炮台构成）
-    dmgMix: { kinetic: 8, explosive: 2 },
+    dmgMix: { kinetic: enemyParameterOf(wormholeFleetsParameters, "wh-exile-blockade", "dmgMix_kinetic"), explosive: enemyParameterOf(wormholeFleetsParameters, "wh-exile-blockade", "dmgMix_explosive") },
     // 编成 = **围攻残兵舰 ×3**（船长 2026-09-15：「**G浅层为围攻残兵舰*3**」，T1 蜂群压制）
-    ships: [{ ship: FOE_G_SWARM_SKIFF, count: 3, mounts: [FOE_MOUNT_IDS.hullRepair] }],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    ships: [{ ship: FOE_G_SWARM_SKIFF, count: enemyParameterOf(wormholeFleetsParameters, "wh-exile-blockade", "ships_0_count"), mounts: [FOE_MOUNT_IDS.hullRepair] }],
+    standingReq: enemyParameterOf(wormholeFleetsParameters, "wh-exile-blockade", "standingReq"),
+    standingGain: enemyParameterOf(wormholeFleetsParameters, "wh-exile-blockade", "standingGain"),
+    rewardIsk: enemyParameterOf(wormholeFleetsParameters, "wh-exile-blockade", "rewardIsk"),
     loot: [],
-    combatSeconds: 40,
+    combatSeconds: enemyParameterOf(wormholeFleetsParameters, "wh-exile-blockade", "combatSeconds"),
     hidden: true,
     description: '虫洞内遭遇：鱿鱼亡军的封锁小队（隐藏卡，只由虫洞生成）。',
   },
@@ -193,7 +196,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     foeTargeting: 'random',
     // ⚠ 本卡**刻意不写** `foeTargetingChance`（同 G 卡：随机模式下该字段无意义）
     // 混伤 **爆炸 60% + 动能 40%**（船长 2026-09-19「所有E族的默认伤害比改为爆炸60%，动能40%」；E 族族格）
-    dmgMix: { explosive: 6, kinetic: 4 },
+    dmgMix: { explosive: enemyParameterOf(wormholeFleetsParameters, "wh-titan-echo", "dmgMix_explosive"), kinetic: enemyParameterOf(wormholeFleetsParameters, "wh-titan-echo", "dmgMix_kinetic") },
     // 编成 = 奥罗残骸段 ×1（T3 静物残骸 + **警戒机群 5 架**；族内最"旧"最轻的一截）
     // ⚠ **`dmgMul = 0.9` 是逐卡读数配出来的，别照抄其它卡的 0.5**——本卡是洞内**唯一带机群**的卡：
     // 机群**发数多、单发轻**，同一条 `dmgMul` 下实收远低于其它卡。实测
@@ -203,12 +206,12 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // `0.9`  ⇒ 层 1 节点 82% · 层 3 节点 71% · 层 5 节点 39% · 层 5 守卫 0%。
     // 同深度对照（老卡：层 3 节点 A 86 / C 100 / D 72 / G 65；层 5 节点 A 70 / C 60 / D 15 / G 0）
     // ⇒ **0.9 落在四张老卡的正中间**，采用。E 族洞内只此一张 ⇒ 它同时是 E 族掉落池的唯一来源。
-    ships: [{ ship: FOE_SHIP_AURO_HULK, count: 1, dmgMul: 0.9 }],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    ships: [{ ship: FOE_SHIP_AURO_HULK, count: enemyParameterOf(wormholeFleetsParameters, "wh-titan-echo", "ships_0_count"), dmgMul: enemyParameterOf(wormholeFleetsParameters, "wh-titan-echo", "ships_0_dmgMul") }],
+    standingReq: enemyParameterOf(wormholeFleetsParameters, "wh-titan-echo", "standingReq"),
+    standingGain: enemyParameterOf(wormholeFleetsParameters, "wh-titan-echo", "standingGain"),
+    rewardIsk: enemyParameterOf(wormholeFleetsParameters, "wh-titan-echo", "rewardIsk"),
     loot: [],
-    combatSeconds: 60,
+    combatSeconds: enemyParameterOf(wormholeFleetsParameters, "wh-titan-echo", "combatSeconds"),
     hidden: true,
     description: '虫洞内遭遇：一截仍在放电的巨构残骸及其警戒机群（隐藏卡，只由虫洞生成）。',
   },
@@ -225,9 +228,9 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     threat: ANCHOR_THREAT,
     // **选靶按族限定**（船长 2026-09-15）：A 族一律「抢非战斗船」——同族三张卡同模式同概率
     foeTargeting: 'noncombat',
-    foeTargetingChance: 0.4,
+    foeTargetingChance: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-hunt", "foeTargetingChance"),
     // 卡面构成 = 主系动能 8 : 副系爆炸 2（A 族签名）
-    dmgMix: { kinetic: 8, explosive: 2 },
+    dmgMix: { kinetic: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-hunt", "dmgMix_kinetic"), explosive: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-hunt", "dmgMix_explosive") },
     // 编成 = 劫掠护卫舰 ×2（orbit 环绕，speedMul 0.9 与浅层卡同口径）+ 海盗快艇 ×1（brawl 贴脸扑上来）
     // ⚠ **为什么不用劫掠狙击舰**：狙击舰是 `kite`（实速 325 ⇒ 比率 1.11×），而**隐藏卡**在体检里
     //   走的是**战术带**（kite 0.60~0.85）而不是 A 族全族提速带 ⇒ 必红；要留它就得给它压 `speedMul`
@@ -238,7 +241,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     //   （这正是「想配异质编成时写条目覆写、不让卡面失真」的既有正解）。
     // **冲锋挂载件**（2026-09-16 船长：A 族洞内海盗 ×1.6 / 冷却 30 秒）——只挂本卡条目，洞外同一舰级不冲
     ships: [
-      { ship: FOE_SHIP_PIRATE_CORVETTE, count: 2, mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.gyroStabilizer] }, // 同上：不给护卫舰压 speedMul
+      { ship: FOE_SHIP_PIRATE_CORVETTE, count: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-hunt", "ships_0_count"), mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.gyroStabilizer] }, // 同上：不给护卫舰压 speedMul
       /**
        * ⟪2026-09-24 船长令⟫「**你将这两张卡单独改为 orbit，其他不要调整**」——**条目级覆盖**（`tactic` 的层级
        * 是「条目 > 舰级」，卡面不参与，见 `combat.foeTactic` 解析）：本卡的快艇按 **orbit** 打，
@@ -247,13 +250,13 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
        * 开局被绑到玩家的中距离，长射程配装下会落在海盗射程之外——船长 2026-09-24 报障现场）。
        * ⚠ **冲锋挂载件保留**（`chargePirate`）⇒「进去就得挨打」的张力不丢。
        */
-      { ship: FOE_SHIP_PIRATE_SKIFF, count: 1, tactic: 'orbit', dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.gyroStabilizer] },
+      { ship: FOE_SHIP_PIRATE_SKIFF, count: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-hunt", "ships_1_count"), tactic: 'orbit', dmgMix: { kinetic: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-hunt", "ships_1_dmgMix_kinetic"), explosive: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-hunt", "ships_1_dmgMix_explosive") }, mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.gyroStabilizer] },
     ],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    standingReq: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-hunt", "standingReq"),
+    standingGain: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-hunt", "standingGain"),
+    rewardIsk: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-hunt", "rewardIsk"),
     loot: [],
-    combatSeconds: 50,
+    combatSeconds: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-hunt", "combatSeconds"),
     hidden: true,
     description: '虫洞内遭遇：一近一远互相掩护的劫掠围猎队（隐藏卡，只由虫洞生成）。',
   },
@@ -265,15 +268,15 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     galaxyId: 'galaxy-hub',
     threat: ANCHOR_THREAT,
     foeTargeting: 'noncombat',
-    foeTargetingChance: 0.4,
-    dmgMix: { kinetic: 8, explosive: 2 },
+    foeTargetingChance: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-warband", "foeTargetingChance"),
+    dmgMix: { kinetic: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-warband", "dmgMix_kinetic"), explosive: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-warband", "dmgMix_explosive") },
     // 编成 = 海盗头目舰 ×1（brawl 精锐）+ **劫掠电子舰 ×1** + 海盗快艇 ×2（brawl 贴脸）——
     // A 族悬赏线的经典"头目 + 杂鱼"，电子舰于 2026-09-16 换下一条快艇（单位数仍 4）
     // ⚠ 快艇舰级自带「爆炸 8 : 动能 2」⇒ 同前，条目覆写回本卡签名构成
     // **冲锋挂载件**（2026-09-16 船长：A 族洞内海盗 ×1.6 / 冷却 30 秒）——只挂本卡条目，洞外同一舰级不冲
     ships: [
       // ⟪2026-09-24 船长令⟫ 本卡同样**条目级**改为 orbit（头目与快艇两条），只动本卡；见上层卡同款注释
-      { ship: FOE_SHIP_PIRATE_WARLORD, count: 1, tactic: 'orbit', mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.gyroStabilizer] },
+      { ship: FOE_SHIP_PIRATE_WARLORD, count: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-warband", "ships_0_count"), tactic: 'orbit', mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.gyroStabilizer] },
       // **新舰「劫掠电子舰」×1**（船长 2026-09-16）——改编成 头目×1 + 电子舰×1 + 快艇×2：
       // 单位数仍 4 ⇒ 本层本档的**总威胁预算不变**，只是把一条快艇换成电子战支援舰。
       // ⚠ **两件挂载件都写在本条目上**（2026-09-19 船长：「海盗电子舰的冲锋也移除，只在洞内单独挂载」）：
@@ -281,14 +284,14 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
       // 只写冲锋会顶掉捕获网。
       // ⚠ **三件都在这一条上**（2026-09-24 加姿态陀螺仪，船长「**电子舰也要挂**」）——同款理由：
       // 漏写任一件就等于把那件从这条编成里删掉（条目**替换**舰级，不是叠加）。洞内该舰 ⇒ 闪避 0.30 → **0.40**。
-      { ship: FOE_SHIP_PIRATE_RAIDER, count: 1, mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.captureWeb, FOE_MOUNT_IDS.gyroStabilizer] },
-      { ship: FOE_SHIP_PIRATE_SKIFF, count: 2, tactic: 'orbit', dmgMix: { kinetic: 8, explosive: 2 }, mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.gyroStabilizer] },
+      { ship: FOE_SHIP_PIRATE_RAIDER, count: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-warband", "ships_1_count"), mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.captureWeb, FOE_MOUNT_IDS.gyroStabilizer] },
+      { ship: FOE_SHIP_PIRATE_SKIFF, count: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-warband", "ships_2_count"), tactic: 'orbit', dmgMix: { kinetic: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-warband", "ships_2_dmgMix_kinetic"), explosive: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-warband", "ships_2_dmgMix_explosive") }, mounts: [FOE_MOUNT_IDS.chargePirate, FOE_MOUNT_IDS.gyroStabilizer] },
     ],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    standingReq: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-warband", "standingReq"),
+    standingGain: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-warband", "standingGain"),
+    rewardIsk: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-warband", "rewardIsk"),
     loot: [],
-    combatSeconds: 60,
+    combatSeconds: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-warband", "combatSeconds"),
     hidden: true,
     description: '虫洞内遭遇：头目亲自压阵的海盗战团（隐藏卡，只由虫洞生成）。',
   },
@@ -301,8 +304,8 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     galaxyId: 'galaxy-hub',
     threat: ANCHOR_THREAT,
     foeTargeting: 'smallest',
-    foeTargetingChance: 0.4,
-    dmgMix: { plasma: 8, explosive: 2 },
+    foeTargetingChance: enemyParameterOf(wormholeFleetsParameters, "wh-alien-brood", "foeTargetingChance"),
+    dmgMix: { plasma: enemyParameterOf(wormholeFleetsParameters, "wh-alien-brood", "dmgMix_plasma"), explosive: enemyParameterOf(wormholeFleetsParameters, "wh-alien-brood", "dmgMix_explosive") },
     // 编成 = **孢群异虫 ×1**（T3：近战母舰炮台 + 孢群机 ×3、`droneFireShare 0.6` 炮台让位给机群）
     //      + **星髓成虫 ×2**（T2 中坚）——船长 2026-09-16：「中层为孢群异虫 ×1+星髓成虫 ×2」
     // ⚠ **机群自本批起在层 2~3 出现**（孢群异虫由深档挪来 ⇒ 这两层开始需要防空属性武器）；
@@ -310,14 +313,14 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // `dmgMul 1.15` = 船长裁「C 族先折中」⇒ DPS 密度 **0.0406**（改前中层：A 0.0551 · C 0.0465 ·
     // D 0.0161 · G 0.0370 · E 0.0325）⇒ 落族间中位偏上。
     ships: [
-      { ship: FOE_ALIEN_SPORE_HIVE, count: 1, dmgMul: 1.15 },
-      { ship: FOE_ALIEN_STARCORE_ADULT, count: 2, dmgMul: 1.15 },
+      { ship: FOE_ALIEN_SPORE_HIVE, count: enemyParameterOf(wormholeFleetsParameters, "wh-alien-brood", "ships_0_count"), dmgMul: enemyParameterOf(wormholeFleetsParameters, "wh-alien-brood", "ships_0_dmgMul") },
+      { ship: FOE_ALIEN_STARCORE_ADULT, count: enemyParameterOf(wormholeFleetsParameters, "wh-alien-brood", "ships_1_count"), dmgMul: enemyParameterOf(wormholeFleetsParameters, "wh-alien-brood", "ships_1_dmgMul") },
     ],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    standingReq: enemyParameterOf(wormholeFleetsParameters, "wh-alien-brood", "standingReq"),
+    standingGain: enemyParameterOf(wormholeFleetsParameters, "wh-alien-brood", "standingGain"),
+    rewardIsk: enemyParameterOf(wormholeFleetsParameters, "wh-alien-brood", "rewardIsk"),
     loot: [],
-    combatSeconds: 50,
+    combatSeconds: enemyParameterOf(wormholeFleetsParameters, "wh-alien-brood", "combatSeconds"),
     hidden: true,
     description: '虫洞内遭遇：孢群异虫领着星髓成虫压上（隐藏卡，只由虫洞生成）。',
   },
@@ -329,22 +332,22 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     galaxyId: 'galaxy-hub',
     threat: ANCHOR_THREAT,
     foeTargeting: 'smallest',
-    foeTargetingChance: 0.4,
-    dmgMix: { plasma: 8, explosive: 2 },
+    foeTargetingChance: enemyParameterOf(wormholeFleetsParameters, "wh-alien-hive", "foeTargetingChance"),
+    dmgMix: { plasma: enemyParameterOf(wormholeFleetsParameters, "wh-alien-hive", "dmgMix_plasma"), explosive: enemyParameterOf(wormholeFleetsParameters, "wh-alien-hive", "dmgMix_explosive") },
     // 编成 = **噬口巨兽 ×1**（T4 巨兽档：血 1600 / 单发 240 / 近战；`ALIEN_BEAST_SHIP_IDS` 白名单内 ⇒ 敌速契约豁免）
     //      + **星髓成虫 ×2**（T2 中坚）——船长 2026-09-16：「深层为噬口巨兽+2星髓成虫」；
     //      **同波上场**（船长同日裁「不做变化」= 不拆压轴波；洞内卡本就不自带波表、波次由层派生）
     // `dmgMul 0.94` = 船长裁「C 族先折中」⇒ DPS 密度 **0.0436**（改前深层：A 0.0640 · C 0.0450 ·
     // D 0.0342 · G 0.0338 · E 0.0605）⇒ 落族间中位（巨兽单发 240 本就重）。
     ships: [
-      { ship: FOE_ALIEN_MAW, count: 1, dmgMul: 0.94 },
-      { ship: FOE_ALIEN_STARCORE_ADULT, count: 2, dmgMul: 0.94 },
+      { ship: FOE_ALIEN_MAW, count: enemyParameterOf(wormholeFleetsParameters, "wh-alien-hive", "ships_0_count"), dmgMul: enemyParameterOf(wormholeFleetsParameters, "wh-alien-hive", "ships_0_dmgMul") },
+      { ship: FOE_ALIEN_STARCORE_ADULT, count: enemyParameterOf(wormholeFleetsParameters, "wh-alien-hive", "ships_1_count"), dmgMul: enemyParameterOf(wormholeFleetsParameters, "wh-alien-hive", "ships_1_dmgMul") },
     ],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    standingReq: enemyParameterOf(wormholeFleetsParameters, "wh-alien-hive", "standingReq"),
+    standingGain: enemyParameterOf(wormholeFleetsParameters, "wh-alien-hive", "standingGain"),
+    rewardIsk: enemyParameterOf(wormholeFleetsParameters, "wh-alien-hive", "rewardIsk"),
     loot: [],
-    combatSeconds: 60,
+    combatSeconds: enemyParameterOf(wormholeFleetsParameters, "wh-alien-hive", "combatSeconds"),
     hidden: true,
     description: '虫洞内遭遇：噬口巨兽盘踞的深巢（隐藏卡，只由虫洞生成）。',
   },
@@ -357,20 +360,20 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     galaxyId: 'galaxy-hub',
     threat: ANCHOR_THREAT,
     foeTargeting: 'top-output',
-    foeTargetingChance: 0.4,
+    foeTargetingChance: enemyParameterOf(wormholeFleetsParameters, "wh-grave-sentry", "foeTargetingChance"),
     // 两条舰级的有效构成都是等离子 8:2（D 族签名）⇒ **卡面与条目一致，无需覆写**
-    dmgMix: { plasma: 8, kinetic: 2 },
+    dmgMix: { plasma: enemyParameterOf(wormholeFleetsParameters, "wh-grave-sentry", "dmgMix_plasma"), kinetic: enemyParameterOf(wormholeFleetsParameters, "wh-grave-sentry", "dmgMix_kinetic") },
     // 编成 = 守墓长舰 ×1（T3 中程光束）+ 静滞卫舰 ×1（T3 远程 kite · 12,000m · 挨打后 ×1.5）
     // ⚠ 同为**必中光束**族 ⇒ 沿用 0.5 的配平系数（待逐卡读数复核）
     ships: [
-      { ship: FOE_D_LONGSHIP, count: 1, dmgMul: 0.5 },
-      { ship: FOE_D_STASIS, count: 1, dmgMul: 0.5 },
+      { ship: FOE_D_LONGSHIP, count: enemyParameterOf(wormholeFleetsParameters, "wh-grave-sentry", "ships_0_count"), dmgMul: enemyParameterOf(wormholeFleetsParameters, "wh-grave-sentry", "ships_0_dmgMul") },
+      { ship: FOE_D_STASIS, count: enemyParameterOf(wormholeFleetsParameters, "wh-grave-sentry", "ships_1_count"), dmgMul: enemyParameterOf(wormholeFleetsParameters, "wh-grave-sentry", "ships_1_dmgMul") },
     ],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    standingReq: enemyParameterOf(wormholeFleetsParameters, "wh-grave-sentry", "standingReq"),
+    standingGain: enemyParameterOf(wormholeFleetsParameters, "wh-grave-sentry", "standingGain"),
+    rewardIsk: enemyParameterOf(wormholeFleetsParameters, "wh-grave-sentry", "rewardIsk"),
     loot: [],
-    combatSeconds: 50,
+    combatSeconds: enemyParameterOf(wormholeFleetsParameters, "wh-grave-sentry", "combatSeconds"),
     hidden: true,
     description: '虫洞内遭遇：一近一远两段静滞哨链（隐藏卡，只由虫洞生成）。',
   },
@@ -382,10 +385,10 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     galaxyId: 'galaxy-hub',
     threat: ANCHOR_THREAT,
     foeTargeting: 'top-output',
-    foeTargetingChance: 0.4,
+    foeTargetingChance: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "foeTargetingChance"),
     // **卡面构成 = 主体舰级的自有口径**（等离子 6 : 动能 4，船长「按乙调整为 6:4」）
     // ⇒ 已在 `FOE_SHIP_MIX_AUTHORITY_IDS` 登记（"舰级口径优先"白名单），体检不再套通用 8:2。
-    dmgMix: { plasma: 6, kinetic: 4 },
+    dmgMix: { plasma: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "dmgMix_plasma"), kinetic: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "dmgMix_kinetic") },
     // 编成 = **守墓王座舰 ×1**（船长 2026-09-15：「**深层是守墓王座舰×1**」；单舰 ⇒ 无条目覆写需要）
     // ＋ **支援呼叫装置的两支**（船长 2026-09-19：「**战斗开始20秒后，增援2艘幽灵舰。如果对方在自己
     // 最远射程之外时，增援2艘静滞卫舰。**」）：
@@ -401,31 +404,31 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // - **延迟补偿**：本卡派生时**实际威胁 ×1.1**（由「支援呼叫装置」的 `threatMul` 带来；
     //   该链上血与火力各 ×约 1.16）——船长 2026-09-19：「因为延迟到场，所以需要一定补偿」。
     ships: [
-      { ship: FOE_D_THRONE, count: 1, hpMul: 0.68, dmgMul: 0.43 },
+      { ship: FOE_D_THRONE, count: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "ships_0_count"), hpMul: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "ships_0_hpMul"), dmgMul: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "ships_0_dmgMul") },
       // 幽灵舰那一支（玩家在射程内 ⇒ 咬上来）：分支量记号见左
       {
         ship: FOE_D_GHOST,
-        count: 2,
-        hpMul: 0.68,
-        dmgMul: 0.44,
-        enterAt: { sec: 20 },
+        count: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "ships_1_count"),
+        hpMul: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "ships_1_hpMul"),
+        dmgMul: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "ships_1_dmgMul"),
+        enterAt: { sec: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "ships_1_enterAt_sec") },
         enterBranch: 'inside',
       },
       // 静滞卫舰那一支（玩家在射程外放风筝 ⇒ 换远火压回去）
       {
         ship: FOE_D_STASIS,
-        count: 2,
-        hpMul: 0.25,
-        dmgMul: 0.19,
-        enterAt: { sec: 20 },
+        count: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "ships_2_count"),
+        hpMul: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "ships_2_hpMul"),
+        dmgMul: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "ships_2_dmgMul"),
+        enterAt: { sec: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "ships_2_enterAt_sec") },
         enterBranch: 'outside',
       },
     ],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    standingReq: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "standingReq"),
+    standingGain: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "standingGain"),
+    rewardIsk: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "rewardIsk"),
     loot: [],
-    combatSeconds: 60,
+    combatSeconds: enemyParameterOf(wormholeFleetsParameters, "wh-grave-throne", "combatSeconds"),
     hidden: true,
     description: '虫洞内遭遇：陵寝最深处的王座守卫（隐藏卡，只由虫洞生成）。',
   },
@@ -441,16 +444,16 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     foeTargeting: 'random',
     // **卡面构成 = 主体舰级的自有口径**（纯爆炸，船长「伤害为100%纯爆炸」）
     // ⇒ 已在 `FOE_SHIP_MIX_AUTHORITY_IDS` 登记（"舰级口径优先"白名单），体检不套 E 族 5:5。
-    dmgMix: { explosive: 10 },
+    dmgMix: { explosive: enemyParameterOf(wormholeFleetsParameters, "wh-titan-missile", "dmgMix_explosive") },
     // 编成 = **导弹残段 ×1**（T3 静物导弹平台：**3,000~11,000m** · 近盲带伤害 ×0.3 · 命中不随距离衰减；
     // 2026-09-19 船长：「将导弹残段的基础射程降低为 11000」＋「挂载类似静滞卫舰的挨打后对方在射程外
     // 就增加射程的挂载件」⇒ 该舰级带 `foe-mount-gun-range-x1-5`（挨打 ×1.5 ⇒ 16,500m））
-    ships: [{ ship: FOE_MISSILE_HULK, count: 1 }],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    ships: [{ ship: FOE_MISSILE_HULK, count: enemyParameterOf(wormholeFleetsParameters, "wh-titan-missile", "ships_0_count") }],
+    standingReq: enemyParameterOf(wormholeFleetsParameters, "wh-titan-missile", "standingReq"),
+    standingGain: enemyParameterOf(wormholeFleetsParameters, "wh-titan-missile", "standingGain"),
+    rewardIsk: enemyParameterOf(wormholeFleetsParameters, "wh-titan-missile", "rewardIsk"),
     loot: [],
-    combatSeconds: 60,
+    combatSeconds: enemyParameterOf(wormholeFleetsParameters, "wh-titan-missile", "combatSeconds"),
     hidden: true,
     description: '虫洞内遭遇：一截仍在齐射的导弹残段（隐藏卡，只由虫洞生成）。',
   },
@@ -463,15 +466,15 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     threat: ANCHOR_THREAT,
     foeTargeting: 'random',
     // 卡面与主体一致（巨构残段 = 爆炸 6 : 动能 4，E 族全族口径）⇒ 无需覆写
-    dmgMix: { explosive: 6, kinetic: 4 },
+    dmgMix: { explosive: enemyParameterOf(wormholeFleetsParameters, "wh-titan-hulk", "dmgMix_explosive"), kinetic: enemyParameterOf(wormholeFleetsParameters, "wh-titan-hulk", "dmgMix_kinetic") },
     // 编成 = **巨构残段 ×1**（船长 2026-09-15：「**E族浅层为奥罗残骸段，深层为巨构残骸段。**」；
     // T4 · 机群 7 架 · 受击增程 ×4）——本卡把"悬赏专属"的巨构残段接进洞内深层。
-    ships: [{ ship: FOE_SHIP_TITAN_HULK, count: 1 }],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    ships: [{ ship: FOE_SHIP_TITAN_HULK, count: enemyParameterOf(wormholeFleetsParameters, "wh-titan-hulk", "ships_0_count") }],
+    standingReq: enemyParameterOf(wormholeFleetsParameters, "wh-titan-hulk", "standingReq"),
+    standingGain: enemyParameterOf(wormholeFleetsParameters, "wh-titan-hulk", "standingGain"),
+    rewardIsk: enemyParameterOf(wormholeFleetsParameters, "wh-titan-hulk", "rewardIsk"),
     loot: [],
-    combatSeconds: 60,
+    combatSeconds: enemyParameterOf(wormholeFleetsParameters, "wh-titan-hulk", "combatSeconds"),
     hidden: true,
     description: '虫洞内遭遇：一整段巨构残骸与其警戒机群（隐藏卡，只由虫洞生成）。',
   },
@@ -485,14 +488,14 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     threat: ANCHOR_THREAT,
     // G 族族格 = 蜂群乱战 ⇒ random（不写概率字段）
     foeTargeting: 'random',
-    dmgMix: { kinetic: 8, explosive: 2 },
+    dmgMix: { kinetic: enemyParameterOf(wormholeFleetsParameters, "wh-exile-swarm", "dmgMix_kinetic"), explosive: enemyParameterOf(wormholeFleetsParameters, "wh-exile-swarm", "dmgMix_explosive") },
     // 编成 = **残响残舰 ×2**（船长 2026-09-15：「**中层为残响残舰*2**」，T2 orbit 环绕）
-    ships: [{ ship: FOE_G_ECHO_REMNANT, count: 2, mounts: [FOE_MOUNT_IDS.hullRepair] }],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    ships: [{ ship: FOE_G_ECHO_REMNANT, count: enemyParameterOf(wormholeFleetsParameters, "wh-exile-swarm", "ships_0_count"), mounts: [FOE_MOUNT_IDS.hullRepair] }],
+    standingReq: enemyParameterOf(wormholeFleetsParameters, "wh-exile-swarm", "standingReq"),
+    standingGain: enemyParameterOf(wormholeFleetsParameters, "wh-exile-swarm", "standingGain"),
+    rewardIsk: enemyParameterOf(wormholeFleetsParameters, "wh-exile-swarm", "rewardIsk"),
     loot: [],
-    combatSeconds: 50,
+    combatSeconds: enemyParameterOf(wormholeFleetsParameters, "wh-exile-swarm", "combatSeconds"),
     hidden: true,
     description: '虫洞内遭遇：两艘残响残舰结成的蜂群（隐藏卡，只由虫洞生成）。',
   },
@@ -504,15 +507,15 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     galaxyId: 'galaxy-hub',
     threat: ANCHOR_THREAT,
     foeTargeting: 'random',
-    dmgMix: { kinetic: 8, explosive: 2 },
+    dmgMix: { kinetic: enemyParameterOf(wormholeFleetsParameters, "wh-exile-line", "dmgMix_kinetic"), explosive: enemyParameterOf(wormholeFleetsParameters, "wh-exile-line", "dmgMix_explosive") },
     // 编成 = **亡军战列舰 ×1**（船长 2026-09-15：「**高层为亡军战列舰*1**」＋「G族战列可以添加机群」→「挂」）
     // 该舰级本批**由"空置壳体"转为启用**，并挂蜂群机 ×3（动能 + 等离子 + 爆炸，三系齐备、无后备）。
-    ships: [{ ship: FOE_G_EXILE_BATTLESHIP, count: 1, mounts: [FOE_MOUNT_IDS.hullRepair] }],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    ships: [{ ship: FOE_G_EXILE_BATTLESHIP, count: enemyParameterOf(wormholeFleetsParameters, "wh-exile-line", "ships_0_count"), mounts: [FOE_MOUNT_IDS.hullRepair] }],
+    standingReq: enemyParameterOf(wormholeFleetsParameters, "wh-exile-line", "standingReq"),
+    standingGain: enemyParameterOf(wormholeFleetsParameters, "wh-exile-line", "standingGain"),
+    rewardIsk: enemyParameterOf(wormholeFleetsParameters, "wh-exile-line", "rewardIsk"),
     loot: [],
-    combatSeconds: 60,
+    combatSeconds: enemyParameterOf(wormholeFleetsParameters, "wh-exile-line", "combatSeconds"),
     hidden: true,
     description: '虫洞内遭遇：亡军最后的战列线与其蜂群护航（隐藏卡，只由虫洞生成）。',
   },
@@ -587,15 +590,15 @@ export const WEEKEND_INK_HARASS_CARD: AnomalyDef = {
   // 2026-09-26 船长令「**将G族和H族残骸价格提高到和D族差不多的位置**」⇒ 卡级回收档覆写 **危档**：
   // 缺省会按锚星系 `galaxy-hub` 的基础密度 58 现算成常档，那样组池/组档都会与保值契约对不上。
   wreckTier: 'dire',
-  threat: 90,
+  threat: enemyParameterOf(invasionFleetsParameters, "ink-harass", "threat"),
   foeTargeting: 'random',
-  dmgMix: { kinetic: 6, explosive: 4 }, // 全卡都是突击舰（船长 2026-09-24 第二轮令：突击舰改 6 动能 : 4 爆炸）
-  ships: [{ ship: FOE_H_INK_CORVETTE, count: 4, hpMul: 2.2842, dmgMul: 1.4276 }],
-  standingReq: 0,
-  standingGain: 0,
-  rewardIsk: 0,
+  dmgMix: { kinetic: enemyParameterOf(invasionFleetsParameters, "ink-harass", "dmgMix_kinetic"), explosive: enemyParameterOf(invasionFleetsParameters, "ink-harass", "dmgMix_explosive") }, // 全卡都是突击舰（船长 2026-09-24 第二轮令：突击舰改 6 动能 : 4 爆炸）
+  ships: [{ ship: FOE_H_INK_CORVETTE, count: enemyParameterOf(invasionFleetsParameters, "ink-harass", "ships_0_count"), hpMul: enemyParameterOf(invasionFleetsParameters, "ink-harass", "ships_0_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "ink-harass", "ships_0_dmgMul") }],
+  standingReq: enemyParameterOf(invasionFleetsParameters, "ink-harass", "standingReq"),
+  standingGain: enemyParameterOf(invasionFleetsParameters, "ink-harass", "standingGain"),
+  rewardIsk: enemyParameterOf(invasionFleetsParameters, "ink-harass", "rewardIsk"),
   loot: [],
-  combatSeconds: 50,
+  combatSeconds: enemyParameterOf(invasionFleetsParameters, "ink-harass", "combatSeconds"),
   hidden: true,
   description: '周末入侵：墨潮帮的骚扰舰队（隐藏卡，只由入侵活动生成）。',
 }
@@ -621,22 +624,22 @@ export const WEEKEND_INK_RAID_CARD: AnomalyDef = {
   galaxyId: 'galaxy-hub',
   region: 'inv', // 2026-09-26 船长令：H 族残骸统一为「入侵」类（与组 h-hi 的 region 一致）
   wreckTier: 'dire', // 2026-09-26 船长令：G/H 残骸价提到 D 族水平（卡级回收档覆写危档）
-  threat: 108,
+  threat: enemyParameterOf(invasionFleetsParameters, "ink-raid", "threat"),
   foeTargeting: 'random',
-  dmgMix: { explosive: 8, kinetic: 2 }, // 主体（鱼雷舰 ×3）是导弹/爆炸系
+  dmgMix: { explosive: enemyParameterOf(invasionFleetsParameters, "ink-raid", "dmgMix_explosive"), kinetic: enemyParameterOf(invasionFleetsParameters, "ink-raid", "dmgMix_kinetic") }, // 主体（鱼雷舰 ×3）是导弹/爆炸系
   waves: [
-    { units: 2, hpShare: 0.5 },
-    { units: 3, hpShare: 0.5 },
+    { units: enemyParameterOf(invasionFleetsParameters, "ink-raid", "waves_0_units"), hpShare: enemyParameterOf(invasionFleetsParameters, "ink-raid", "waves_0_hpShare") },
+    { units: enemyParameterOf(invasionFleetsParameters, "ink-raid", "waves_1_units"), hpShare: enemyParameterOf(invasionFleetsParameters, "ink-raid", "waves_1_hpShare") },
   ],
   ships: [
-    { ship: FOE_H_INK_CORVETTE, count: 2, wave: 0, hpMul: 2.8281, dmgMul: 1.6969, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_TORPEDO, count: 3, wave: 1, hpMul: 2.8281, dmgMul: 1.6969 },
+    { ship: FOE_H_INK_CORVETTE, count: enemyParameterOf(invasionFleetsParameters, "ink-raid", "ships_0_count"), wave: enemyParameterOf(invasionFleetsParameters, "ink-raid", "ships_0_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "ink-raid", "ships_0_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "ink-raid", "ships_0_dmgMul"), dmgMix: { explosive: enemyParameterOf(invasionFleetsParameters, "ink-raid", "ships_0_dmgMix_explosive"), kinetic: enemyParameterOf(invasionFleetsParameters, "ink-raid", "ships_0_dmgMix_kinetic") } },
+    { ship: FOE_H_INK_TORPEDO, count: enemyParameterOf(invasionFleetsParameters, "ink-raid", "ships_1_count"), wave: enemyParameterOf(invasionFleetsParameters, "ink-raid", "ships_1_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "ink-raid", "ships_1_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "ink-raid", "ships_1_dmgMul") },
   ],
-  standingReq: 0,
-  standingGain: 0,
-  rewardIsk: 0,
+  standingReq: enemyParameterOf(invasionFleetsParameters, "ink-raid", "standingReq"),
+  standingGain: enemyParameterOf(invasionFleetsParameters, "ink-raid", "standingGain"),
+  rewardIsk: enemyParameterOf(invasionFleetsParameters, "ink-raid", "rewardIsk"),
   loot: [],
-  combatSeconds: 60,
+  combatSeconds: enemyParameterOf(invasionFleetsParameters, "ink-raid", "combatSeconds"),
   hidden: true,
   description: '周末入侵：墨潮帮的袭击舰队（隐藏卡，只由入侵活动生成）。',
 }
@@ -665,13 +668,13 @@ export const WEEKEND_INK_MAIN_CARD: AnomalyDef = {
   galaxyId: 'galaxy-hub',
   region: 'inv', // 2026-09-26 船长令：H 族残骸统一为「入侵」类（与组 h-hi 的 region 一致）
   wreckTier: 'dire', // 2026-09-26 船长令：G/H 残骸价提到 D 族水平（卡级回收档覆写危档）
-  threat: 132, // **2026-09-25 无人机微调后重算的实测价**（129 → 132：战巡那架重袭机调强了）
+  threat: enemyParameterOf(invasionFleetsParameters, "ink-main", "threat"), // **2026-09-25 无人机微调后重算的实测价**（129 → 132：战巡那架重袭机调强了）
   /**
    * ⚠ **回收口径的冻结值**（船长 2026-09-25「**冻结残骸经济**」，与 `anomalies.ts` 同一条纪律）：
    * 本卡的**战力标签**刚从 129 涨到 132，但**残骸侧一律不动** ⇒ 用 `wreckThreat` 把它钉在 129
    * （否则 H 残骸组的代表威胁会从 124 跟着漂到 125，牵动回收画像与碎片门槛）。
    */
-  wreckThreat: 129,
+  wreckThreat: enemyParameterOf(invasionFleetsParameters, "ink-main", "wreckThreat"),
   /**
    * **打赢本卡掉 1 件稀有残骸**（**2026-09-27 船长令**：「**主力舰队添加一个稀有残骸掉落**」＋
    * 追问落点答「**进残骸场**」）。
@@ -681,30 +684,30 @@ export const WEEKEND_INK_MAIN_CARD: AnomalyDef = {
    * （主动出击全歼 / 遇袭击退）；文字结算与失利不算。**不设每场上限**（船长同日令）。
    * 主力舰队是四张卡里唯一写本字段的 —— 骚扰/袭击/旗舰的掉落口径不动（旗舰走它自己那 3 件）。
    */
-  rareWreckDrop: 1,
+  rareWreckDrop: enemyParameterOf(invasionFleetsParameters, "ink-main", "rareWreckDrop"),
   foeTargeting: 'random',
-  dmgMix: { explosive: 8, kinetic: 2 },
+  dmgMix: { explosive: enemyParameterOf(invasionFleetsParameters, "ink-main", "dmgMix_explosive"), kinetic: enemyParameterOf(invasionFleetsParameters, "ink-main", "dmgMix_kinetic") },
   waves: [
-    { units: 3, hpShare: 0.5 },
-    { units: 4, hpShare: 0.5 },
+    { units: enemyParameterOf(invasionFleetsParameters, "ink-main", "waves_0_units"), hpShare: enemyParameterOf(invasionFleetsParameters, "ink-main", "waves_0_hpShare") },
+    { units: enemyParameterOf(invasionFleetsParameters, "ink-main", "waves_1_units"), hpShare: enemyParameterOf(invasionFleetsParameters, "ink-main", "waves_1_hpShare") },
   ],
   ships: [
-    { ship: FOE_H_INK_CORVETTE, count: 3, wave: 0, hpMul: 1.3004, dmgMul: 0.7431, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_CORVETTE, count: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_0_count"), wave: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_0_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_0_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_0_dmgMul"), dmgMix: { explosive: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_0_dmgMix_explosive"), kinetic: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_0_dmgMix_kinetic") } },
     /**
      * ⚠ **条目顺序 = 本波"敌方期望距离"的取数依据**（`foeDesiredRange` 取 `foes[0]`）——
      * 2026-09-25 船长令「甲：改卡面条目顺序」：本波主体（**战列巡洋舰 11 km ＋ 鱼雷舰 ×2 12 km**）
      * 排在**干扰舰之前** ⇒ 本波期望距离 = 战巡的 **9,500 m**（改前干扰舰排第一 ⇒ 整波被拖到 2,352，
      * 而战巡/鱼雷舰的近盲带 ×0.3 正在那个距离上）。
      */
-    { ship: FOE_H_INK_BATTLECRUISER, count: 1, wave: 1, hpMul: 1.3004, dmgMul: 0.7431 },
-    { ship: FOE_H_INK_TORPEDO, count: 2, wave: 1, hpMul: 1.3004, dmgMul: 0.7431 },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 1.3004, dmgMul: 0.7431, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_BATTLECRUISER, count: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_1_count"), wave: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_1_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_1_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_1_dmgMul") },
+    { ship: FOE_H_INK_TORPEDO, count: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_2_count"), wave: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_2_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_2_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_2_dmgMul") },
+    { ship: FOE_H_INK_JAMMER, count: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_3_count"), wave: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_3_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_3_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_3_dmgMul"), dmgMix: { explosive: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_3_dmgMix_explosive"), kinetic: enemyParameterOf(invasionFleetsParameters, "ink-main", "ships_3_dmgMix_kinetic") } },
   ],
-  standingReq: 0,
-  standingGain: 0,
-  rewardIsk: 0,
+  standingReq: enemyParameterOf(invasionFleetsParameters, "ink-main", "standingReq"),
+  standingGain: enemyParameterOf(invasionFleetsParameters, "ink-main", "standingGain"),
+  rewardIsk: enemyParameterOf(invasionFleetsParameters, "ink-main", "rewardIsk"),
   loot: [],
-  combatSeconds: 70,
+  combatSeconds: enemyParameterOf(invasionFleetsParameters, "ink-main", "combatSeconds"),
   hidden: true,
   description: '周末入侵：墨潮帮的主力舰队（隐藏卡，只由入侵活动生成）。',
 }
@@ -736,19 +739,19 @@ export const WEEKEND_INK_FLAGSHIP_CARD: AnomalyDef = {
   galaxyId: 'galaxy-hub', // 只作日志/展示归属；本卡不进任何星系目录（hidden）
   region: 'inv', // 2026-09-26 船长令：H 族残骸统一为「入侵」类（原与本卡注释里的洞内口径一致，现独立成类）
   wreckTier: 'dire', // 2026-09-26 船长令：G/H 残骸价提到 D 族水平（卡级回收档覆写危档）
-  threat: 170, // 2026-09-25 船长令：卡面威胁 = 实测价（旗舰战不再覆写 120）
+  threat: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "threat"), // 2026-09-25 船长令：卡面威胁 = 实测价（旗舰战不再覆写 120）
   foeTargeting: 'random',
-  dmgMix: { explosive: 8, kinetic: 2 },
+  dmgMix: { explosive: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "dmgMix_explosive"), kinetic: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "dmgMix_kinetic") },
   waves: [
-    { units: 4, hpShare: 0.2 },
-    { units: 4, hpShare: 0.25 },
-    { units: 3, hpShare: 0.25 },
-    { units: 4, hpShare: 0.3 }, // ⚠ 原写 3：与 `ships` 里第 3 波的 4 条条目不符（船长 2026-09-24 追问后改齐）
+    { units: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "waves_0_units"), hpShare: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "waves_0_hpShare") },
+    { units: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "waves_1_units"), hpShare: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "waves_1_hpShare") },
+    { units: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "waves_2_units"), hpShare: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "waves_2_hpShare") },
+    { units: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "waves_3_units"), hpShare: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "waves_3_hpShare") }, // ⚠ 原写 3：与 `ships` 里第 3 波的 4 条条目不符（船长 2026-09-24 追问后改齐）
   ],
   ships: [
-    { ship: FOE_H_INK_CORVETTE, count: 4, wave: 0, hpMul: 1.7753, dmgMul: 0.9468, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_TORPEDO, count: 3, wave: 1, hpMul: 1.7753, dmgMul: 0.9468 },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 1, hpMul: 1.7753, dmgMul: 0.9468, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_CORVETTE, count: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_0_count"), wave: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_0_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_0_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_0_dmgMul"), dmgMix: { explosive: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_0_dmgMix_explosive"), kinetic: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_0_dmgMix_kinetic") } },
+    { ship: FOE_H_INK_TORPEDO, count: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_1_count"), wave: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_1_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_1_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_1_dmgMul") },
+    { ship: FOE_H_INK_JAMMER, count: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_2_count"), wave: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_2_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_2_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_2_dmgMul"), dmgMix: { explosive: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_2_dmgMix_explosive"), kinetic: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_2_dmgMix_kinetic") } },
     /**
      * ⚠⚠ **条目顺序 = 本波"敌方期望距离"的取数依据**（`combat.foeDesiredRange` 取 `foes[0]` =
      * 该波卡面顺序**第 1 条**）⇒ **本波主体必须排在前**（2026-09-25 船长令「甲：改卡面条目顺序」）。
@@ -758,23 +761,23 @@ export const WEEKEND_INK_FLAGSHIP_CARD: AnomalyDef = {
      * （`1,000 + 0.85 × (11,000 − 1,000)`）。同理：鱼雷舰那一波（第 2 波）与母舰那一波（第 4 波）
      * 本来就是主体排第一，未动。
      */
-    { ship: FOE_H_INK_BATTLECRUISER, count: 2, wave: 2, hpMul: 1.7753, dmgMul: 0.9468 },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 2, hpMul: 1.7753, dmgMul: 0.9468, dmgMix: { explosive: 8, kinetic: 2 } },
+    { ship: FOE_H_INK_BATTLECRUISER, count: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_3_count"), wave: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_3_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_3_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_3_dmgMul") },
+    { ship: FOE_H_INK_JAMMER, count: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_4_count"), wave: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_4_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_4_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_4_dmgMul"), dmgMix: { explosive: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_4_dmgMix_explosive"), kinetic: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_4_dmgMix_kinetic") } },
     // ⚠ **母舰挂「支援舰船召唤装置」**（**船长 2026-09-25**：「给入侵母舰添加类似D族挂载件的独立挂载件，
     //   只不过改为复活被摧毁的友军（但是表现形式上为敌方支援舰船入场），增援时间是60秒，每次随机复活一艘」）
     // **2026-09-26 船长改判**：「入侵活动中，H族入侵母舰的挂载件复活效果，改为每60秒复活2艘船。
     //   且必定会复活干扰舰」⇒ 挂载件参数加了 count: 2 与干扰舰优先名单（见 core/foeMounts.ts）
     //   ⇒ 每 60 秒把**本波（第 4 波）已阵亡**的一艘僚舰满血复活入场（上限 = 不超本波编成 4 艘）。
-    { ship: FOE_H_INK_FLAGSHIP, count: 1, wave: 3, hpMul: 1.7753, dmgMul: 0.9468, mounts: [FOE_MOUNT_IDS.reviveEscort] },
-    { ship: FOE_H_INK_JAMMER, count: 1, wave: 3, hpMul: 1.7753, dmgMul: 0.9468, dmgMix: { explosive: 8, kinetic: 2 } },
-    { ship: FOE_H_INK_BATTLECRUISER, count: 1, wave: 3, hpMul: 1.7753, dmgMul: 0.9468 },
-    { ship: FOE_H_INK_TORPEDO, count: 1, wave: 3, hpMul: 1.7753, dmgMul: 0.9468 },
+    { ship: FOE_H_INK_FLAGSHIP, count: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_5_count"), wave: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_5_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_5_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_5_dmgMul"), mounts: [FOE_MOUNT_IDS.reviveEscort] },
+    { ship: FOE_H_INK_JAMMER, count: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_6_count"), wave: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_6_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_6_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_6_dmgMul"), dmgMix: { explosive: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_6_dmgMix_explosive"), kinetic: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_6_dmgMix_kinetic") } },
+    { ship: FOE_H_INK_BATTLECRUISER, count: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_7_count"), wave: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_7_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_7_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_7_dmgMul") },
+    { ship: FOE_H_INK_TORPEDO, count: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_8_count"), wave: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_8_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_8_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "ships_8_dmgMul") },
   ],
-  standingReq: 0,
-  standingGain: 0,
-  rewardIsk: 0,
+  standingReq: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "standingReq"),
+  standingGain: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "standingGain"),
+  rewardIsk: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "rewardIsk"),
   loot: [], // 奖励由入侵侧发（黑匣 ＋ 稀有残骸；卡上不给）
-  combatSeconds: 90,
+  combatSeconds: enemyParameterOf(invasionFleetsParameters, "ink-flagship", "combatSeconds"),
   hidden: true,
   description: '周末入侵：墨潮帮的旗舰部队（隐藏卡，只由入侵活动生成）。',
 }
@@ -806,19 +809,19 @@ export const WEEKEND_CORONA_DRIFT_CARD: AnomalyDef = {
   galaxyId: 'galaxy-hub', // 只作日志/展示归属（与 H 族四张卡同款；本卡 hidden、不进星系目录）
   region: 'inv', // 与 H 族同口径：入侵族的残骸走「入侵」类
   wreckTier: 'dire', // 与 H 族同口径：残骸价提到 D 族水平（卡级回收档覆写危档）
-  threat: 90,
+  threat: enemyParameterOf(invasionFleetsParameters, "corona-drift", "threat"),
   foeTargeting: 'random',
   // **卡级战术登记**（2026-10-01 加）：与五档舰级的 	actic: 'kite' 对齐 ——
   // 引擎的实际口径是 slot.tactic ?? ship.tactic（本卡不覆写 ⇒ 取舰级），本行只让**卡级登记值**与之一致
   // （attle:calibrate 的「敌方虚拟装配校验」段按卡级字段显示战术，缺省会显示成 orbit）。
   tactic: 'kite',
-  dmgMix: { plasma: 8, kinetic: 2 },
-  ships: [{ ship: FOE_R_CORONA_GLINT, count: 5, hpMul: 3.0, dmgMul: 1.875 }],
-  standingReq: 0,
-  standingGain: 0,
-  rewardIsk: 0,
+  dmgMix: { plasma: enemyParameterOf(invasionFleetsParameters, "corona-drift", "dmgMix_plasma"), kinetic: enemyParameterOf(invasionFleetsParameters, "corona-drift", "dmgMix_kinetic") },
+  ships: [{ ship: FOE_R_CORONA_GLINT, count: enemyParameterOf(invasionFleetsParameters, "corona-drift", "ships_0_count"), hpMul: enemyParameterOf(invasionFleetsParameters, "corona-drift", "ships_0_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "corona-drift", "ships_0_dmgMul") }],
+  standingReq: enemyParameterOf(invasionFleetsParameters, "corona-drift", "standingReq"),
+  standingGain: enemyParameterOf(invasionFleetsParameters, "corona-drift", "standingGain"),
+  rewardIsk: enemyParameterOf(invasionFleetsParameters, "corona-drift", "rewardIsk"),
   loot: [],
-  combatSeconds: 50,
+  combatSeconds: enemyParameterOf(invasionFleetsParameters, "corona-drift", "combatSeconds"),
   hidden: true,
   description: '周末入侵：光环的游弋集群（隐藏卡，只由入侵活动生成）。',
 }
@@ -835,26 +838,26 @@ export const WEEKEND_CORONA_SPLIT_CARD: AnomalyDef = {
   galaxyId: 'galaxy-hub',
   region: 'inv',
   wreckTier: 'dire',
-  threat: 108,
+  threat: enemyParameterOf(invasionFleetsParameters, "corona-split", "threat"),
   foeTargeting: 'random',
   // **卡级战术登记**（2026-10-01 加）：与五档舰级的 	actic: 'kite' 对齐 ——
   // 引擎的实际口径是 slot.tactic ?? ship.tactic（本卡不覆写 ⇒ 取舰级），本行只让**卡级登记值**与之一致
   // （attle:calibrate 的「敌方虚拟装配校验」段按卡级字段显示战术，缺省会显示成 orbit）。
   tactic: 'kite',
-  dmgMix: { plasma: 8, kinetic: 2 },
+  dmgMix: { plasma: enemyParameterOf(invasionFleetsParameters, "corona-split", "dmgMix_plasma"), kinetic: enemyParameterOf(invasionFleetsParameters, "corona-split", "dmgMix_kinetic") },
   waves: [
-    { units: 3, hpShare: 0.5 },
-    { units: 3, hpShare: 0.5 },
+    { units: enemyParameterOf(invasionFleetsParameters, "corona-split", "waves_0_units"), hpShare: enemyParameterOf(invasionFleetsParameters, "corona-split", "waves_0_hpShare") },
+    { units: enemyParameterOf(invasionFleetsParameters, "corona-split", "waves_1_units"), hpShare: enemyParameterOf(invasionFleetsParameters, "corona-split", "waves_1_hpShare") },
   ],
   ships: [
-    { ship: FOE_R_CORONA_GLINT, count: 3, wave: 0, hpMul: 3.5, dmgMul: 2.1 },
-    { ship: FOE_R_CORONA_ECHO, count: 3, wave: 1, hpMul: 3.5, dmgMul: 2.1 },
+    { ship: FOE_R_CORONA_GLINT, count: enemyParameterOf(invasionFleetsParameters, "corona-split", "ships_0_count"), wave: enemyParameterOf(invasionFleetsParameters, "corona-split", "ships_0_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "corona-split", "ships_0_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "corona-split", "ships_0_dmgMul") },
+    { ship: FOE_R_CORONA_ECHO, count: enemyParameterOf(invasionFleetsParameters, "corona-split", "ships_1_count"), wave: enemyParameterOf(invasionFleetsParameters, "corona-split", "ships_1_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "corona-split", "ships_1_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "corona-split", "ships_1_dmgMul") },
   ],
-  standingReq: 0,
-  standingGain: 0,
-  rewardIsk: 0,
+  standingReq: enemyParameterOf(invasionFleetsParameters, "corona-split", "standingReq"),
+  standingGain: enemyParameterOf(invasionFleetsParameters, "corona-split", "standingGain"),
+  rewardIsk: enemyParameterOf(invasionFleetsParameters, "corona-split", "rewardIsk"),
   loot: [],
-  combatSeconds: 60,
+  combatSeconds: enemyParameterOf(invasionFleetsParameters, "corona-split", "combatSeconds"),
   hidden: true,
   description: '周末入侵：光环的分光集群（隐藏卡，只由入侵活动生成）。',
 }
@@ -873,33 +876,33 @@ export const WEEKEND_CORONA_CONVERGE_CARD: AnomalyDef = {
   galaxyId: 'galaxy-hub',
   region: 'inv',
   wreckTier: 'dire',
-  threat: 129,
+  threat: enemyParameterOf(invasionFleetsParameters, "corona-converge", "threat"),
   /**
    * **打赢本卡掉 1 件稀有残骸**（与 H 族主力卡同款；船长 2026-09-27 令「主力舰队添加一个稀有残骸掉落」
    * ＋ 追问落点答「进残骸场」）。落点 = 该星系的入侵残骸场，打捞时稀有池优先、本轮必出一件。
    */
-  rareWreckDrop: 1,
+  rareWreckDrop: enemyParameterOf(invasionFleetsParameters, "corona-converge", "rareWreckDrop"),
   foeTargeting: 'random',
   // **卡级战术登记**（2026-10-01 加）：与五档舰级的 	actic: 'kite' 对齐 ——
   // 引擎的实际口径是 slot.tactic ?? ship.tactic（本卡不覆写 ⇒ 取舰级），本行只让**卡级登记值**与之一致
   // （attle:calibrate 的「敌方虚拟装配校验」段按卡级字段显示战术，缺省会显示成 orbit）。
   tactic: 'kite',
-  dmgMix: { plasma: 8, kinetic: 2 },
+  dmgMix: { plasma: enemyParameterOf(invasionFleetsParameters, "corona-converge", "dmgMix_plasma"), kinetic: enemyParameterOf(invasionFleetsParameters, "corona-converge", "dmgMix_kinetic") },
   waves: [
-    { units: 3, hpShare: 0.5 },
-    { units: 4, hpShare: 0.5 },
+    { units: enemyParameterOf(invasionFleetsParameters, "corona-converge", "waves_0_units"), hpShare: enemyParameterOf(invasionFleetsParameters, "corona-converge", "waves_0_hpShare") },
+    { units: enemyParameterOf(invasionFleetsParameters, "corona-converge", "waves_1_units"), hpShare: enemyParameterOf(invasionFleetsParameters, "corona-converge", "waves_1_hpShare") },
   ],
   ships: [
-    { ship: FOE_R_CORONA_ECHO, count: 3, wave: 0, hpMul: 1.7, dmgMul: 0.9714 },
-    { ship: FOE_R_CORONA_DUSK, count: 1, wave: 1, hpMul: 1.7, dmgMul: 0.9714 },
-    { ship: FOE_R_CORONA_OVERLAY, count: 1, wave: 1, hpMul: 1.7, dmgMul: 0.9714 },
-    { ship: FOE_R_CORONA_ECHO, count: 2, wave: 1, hpMul: 1.7, dmgMul: 0.9714 },
+    { ship: FOE_R_CORONA_ECHO, count: enemyParameterOf(invasionFleetsParameters, "corona-converge", "ships_0_count"), wave: enemyParameterOf(invasionFleetsParameters, "corona-converge", "ships_0_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "corona-converge", "ships_0_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "corona-converge", "ships_0_dmgMul") },
+    { ship: FOE_R_CORONA_DUSK, count: enemyParameterOf(invasionFleetsParameters, "corona-converge", "ships_1_count"), wave: enemyParameterOf(invasionFleetsParameters, "corona-converge", "ships_1_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "corona-converge", "ships_1_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "corona-converge", "ships_1_dmgMul") },
+    { ship: FOE_R_CORONA_OVERLAY, count: enemyParameterOf(invasionFleetsParameters, "corona-converge", "ships_2_count"), wave: enemyParameterOf(invasionFleetsParameters, "corona-converge", "ships_2_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "corona-converge", "ships_2_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "corona-converge", "ships_2_dmgMul") },
+    { ship: FOE_R_CORONA_ECHO, count: enemyParameterOf(invasionFleetsParameters, "corona-converge", "ships_3_count"), wave: enemyParameterOf(invasionFleetsParameters, "corona-converge", "ships_3_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "corona-converge", "ships_3_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "corona-converge", "ships_3_dmgMul") },
   ],
-  standingReq: 0,
-  standingGain: 0,
-  rewardIsk: 0,
+  standingReq: enemyParameterOf(invasionFleetsParameters, "corona-converge", "standingReq"),
+  standingGain: enemyParameterOf(invasionFleetsParameters, "corona-converge", "standingGain"),
+  rewardIsk: enemyParameterOf(invasionFleetsParameters, "corona-converge", "rewardIsk"),
   loot: [],
-  combatSeconds: 70,
+  combatSeconds: enemyParameterOf(invasionFleetsParameters, "corona-converge", "combatSeconds"),
   hidden: true,
   description: '周末入侵：光环的汇聚集群（隐藏卡，只由入侵活动生成）。',
 }
@@ -921,35 +924,35 @@ export const WEEKEND_CORONA_NEXUS_CARD: AnomalyDef = {
   galaxyId: 'galaxy-hub',
   region: 'inv',
   wreckTier: 'dire',
-  threat: 170,
+  threat: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "threat"),
   foeTargeting: 'random',
   // **卡级战术登记**（2026-10-01 加）：与五档舰级的 	actic: 'kite' 对齐 ——
   // 引擎的实际口径是 slot.tactic ?? ship.tactic（本卡不覆写 ⇒ 取舰级），本行只让**卡级登记值**与之一致
   // （attle:calibrate 的「敌方虚拟装配校验」段按卡级字段显示战术，缺省会显示成 orbit）。
   tactic: 'kite',
-  dmgMix: { plasma: 8, kinetic: 2 },
+  dmgMix: { plasma: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "dmgMix_plasma"), kinetic: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "dmgMix_kinetic") },
   waves: [
-    { units: 4, hpShare: 0.2 },
-    { units: 4, hpShare: 0.25 },
-    { units: 3, hpShare: 0.25 },
-    { units: 4, hpShare: 0.3 },
+    { units: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "waves_0_units"), hpShare: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "waves_0_hpShare") },
+    { units: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "waves_1_units"), hpShare: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "waves_1_hpShare") },
+    { units: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "waves_2_units"), hpShare: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "waves_2_hpShare") },
+    { units: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "waves_3_units"), hpShare: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "waves_3_hpShare") },
   ],
   ships: [
-    { ship: FOE_R_CORONA_GLINT, count: 4, wave: 0, hpMul: 2.2, dmgMul: 1.1733 },
-    { ship: FOE_R_CORONA_ECHO, count: 3, wave: 1, hpMul: 2.2, dmgMul: 1.1733 },
-    { ship: FOE_R_CORONA_OVERLAY, count: 1, wave: 1, hpMul: 2.2, dmgMul: 1.1733 },
-    { ship: FOE_R_CORONA_DUSK, count: 2, wave: 2, hpMul: 2.2, dmgMul: 1.1733 },
-    { ship: FOE_R_CORONA_OVERLAY, count: 1, wave: 2, hpMul: 2.2, dmgMul: 1.1733 },
-    { ship: FOE_R_CORONA_NEXUS, count: 1, wave: 3, hpMul: 2.2, dmgMul: 1.1733 },
-    { ship: FOE_R_CORONA_OVERLAY, count: 1, wave: 3, hpMul: 2.2, dmgMul: 1.1733 },
-    { ship: FOE_R_CORONA_DUSK, count: 1, wave: 3, hpMul: 2.2, dmgMul: 1.1733 },
-    { ship: FOE_R_CORONA_ECHO, count: 1, wave: 3, hpMul: 2.2, dmgMul: 1.1733 },
+    { ship: FOE_R_CORONA_GLINT, count: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_0_count"), wave: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_0_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_0_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_0_dmgMul") },
+    { ship: FOE_R_CORONA_ECHO, count: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_1_count"), wave: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_1_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_1_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_1_dmgMul") },
+    { ship: FOE_R_CORONA_OVERLAY, count: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_2_count"), wave: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_2_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_2_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_2_dmgMul") },
+    { ship: FOE_R_CORONA_DUSK, count: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_3_count"), wave: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_3_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_3_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_3_dmgMul") },
+    { ship: FOE_R_CORONA_OVERLAY, count: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_4_count"), wave: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_4_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_4_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_4_dmgMul") },
+    { ship: FOE_R_CORONA_NEXUS, count: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_5_count"), wave: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_5_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_5_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_5_dmgMul") },
+    { ship: FOE_R_CORONA_OVERLAY, count: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_6_count"), wave: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_6_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_6_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_6_dmgMul") },
+    { ship: FOE_R_CORONA_DUSK, count: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_7_count"), wave: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_7_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_7_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_7_dmgMul") },
+    { ship: FOE_R_CORONA_ECHO, count: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_8_count"), wave: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_8_wave"), hpMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_8_hpMul"), dmgMul: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "ships_8_dmgMul") },
   ],
-  standingReq: 0,
-  standingGain: 0,
-  rewardIsk: 0,
+  standingReq: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "standingReq"),
+  standingGain: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "standingGain"),
+  rewardIsk: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "rewardIsk"),
   loot: [], // 奖励由入侵侧发（中枢匣 ＋ 稀有残骸；卡上不给）
-  combatSeconds: 90,
+  combatSeconds: enemyParameterOf(invasionFleetsParameters, "corona-nexus", "combatSeconds"),
   hidden: true,
   description: '周末入侵：光环的中枢卫队（隐藏卡，只由入侵活动生成）。',
 }
@@ -984,40 +987,40 @@ function alienInvasionCard(id: string, nameId: string, scale: number, wreckThrea
   const count = waves.reduce((n, wave) => n + wave.reduce((m, [, size]) => m + size, 0), 0)
   const comp = 2 * count / (count + 1)
   const ships: FoeShipSlot[] = waves.flatMap((wave, index) => wave.map(([ship, size]) => ({
-    ship, count: size, wave: index, hpMul: ship === FOE_ALIEN_BROODMOTHER ? 20 : scale,
+    ship, count: size, wave: index, hpMul: ship === FOE_ALIEN_BROODMOTHER ? enemyParameterOf(invasionFleetsParameters, "alien-common", "motherHpMul") : scale,
     dmgMul: scale / comp,
-    ...(ship === FOE_ALIEN_HIVEBACK ? { firepowerAnchor: Math.round(228 * scale * size) } : {}),
-    ...(ship === FOE_ALIEN_BROODMOTHER ? { firepowerAnchor: Math.round(558 * scale * size) } : {}),
+    ...(ship === FOE_ALIEN_HIVEBACK ? { firepowerAnchor: Math.round(enemyParameterOf(invasionFleetsParameters, "alien-common", "hivebackFirepowerAnchor") * scale * size) } : {}),
+    ...(ship === FOE_ALIEN_BROODMOTHER ? { firepowerAnchor: Math.round(enemyParameterOf(invasionFleetsParameters, "alien-common", "motherFirepowerAnchor") * scale * size) } : {}),
   })))
   return {
     id, name: L10N[nameId]!.zh, description: L10N['ano.alien.005']!.zh,
     galaxyId: 'galaxy-hub', foeFamily: 'C', region: 'inv', wreckTier: 'dire', wreckThreat,
-    threat: ({ 'alien-vanguard': 90, 'alien-escort': 108, 'alien-main': 129, 'alien-broodmother': 170 } as Record<string, number>)[id]!, threatJudged: wreckThreat,
-    ...(id === 'alien-main' ? { rareWreckDrop: 1 } : {}), foeTargeting: 'smallest', foeTargetingChance: .4,
-    dmgMix: { plasma: 8, explosive: 2 }, ships,
+    threat: ({ 'alien-vanguard': enemyParameterOf(invasionFleetsParameters, "alien-vanguard", "threat"), 'alien-escort': enemyParameterOf(invasionFleetsParameters, "alien-escort", "threat"), 'alien-main': enemyParameterOf(invasionFleetsParameters, "alien-main", "threat"), 'alien-broodmother': enemyParameterOf(invasionFleetsParameters, "alien-broodmother", "threat") } as Record<string, number>)[id]!, threatJudged: wreckThreat,
+    ...(id === 'alien-main' ? { rareWreckDrop: 1 } : {}), foeTargeting: 'smallest', foeTargetingChance: enemyParameterOf(invasionFleetsParameters, "alien-common", "foeTargetingChance"),
+    dmgMix: { plasma: enemyParameterOf(invasionFleetsParameters, "alien-common", "dmgMix_plasma"), explosive: enemyParameterOf(invasionFleetsParameters, "alien-common", "dmgMix_explosive") }, ships,
     waves: waves.map(wave => ({ units: wave.reduce((n, [, size]) => n + size, 0), hpShare: 1 / waves.length })),
-    standingReq: 0, standingGain: 0, rewardIsk: 0, loot: [], combatSeconds: 60, hidden: true,
+    standingReq: 0, standingGain: 0, rewardIsk: 0, loot: [], combatSeconds: enemyParameterOf(invasionFleetsParameters, "alien-common", "combatSeconds"), hidden: true,
   }
 }
 
 export const WEEKEND_ALIEN_CARDS: readonly AnomalyDef[] = [
-  alienInvasionCard('alien-vanguard', 'ano.alien.001', 1.19, 90, [
-    [[FOE_ALIEN_ACID_BURSTER, 5]],
-    [[FOE_ALIEN_STARCORE_ADULT, 5]],
+  alienInvasionCard('alien-vanguard', 'ano.alien.001', enemyParameterOf(invasionFleetsParameters, "alien-vanguard", "scale"), enemyParameterOf(invasionFleetsParameters, "alien-vanguard", "wreckThreat"), [
+    [[FOE_ALIEN_ACID_BURSTER, enemyParameterOf(invasionFleetsParameters, "alien-vanguard", "ships_0_count")]],
+    [[FOE_ALIEN_STARCORE_ADULT, enemyParameterOf(invasionFleetsParameters, "alien-vanguard", "ships_1_count")]],
   ]),
-  alienInvasionCard('alien-escort', 'ano.alien.002', 1.49, 108, [
-    [[FOE_ALIEN_ACID_BURSTER, 4]],
-    [[FOE_ALIEN_SPORE_HIVE, 2], [FOE_ALIEN_BROOD_WORKER, 1]],
+  alienInvasionCard('alien-escort', 'ano.alien.002', enemyParameterOf(invasionFleetsParameters, "alien-escort", "scale"), enemyParameterOf(invasionFleetsParameters, "alien-escort", "wreckThreat"), [
+    [[FOE_ALIEN_ACID_BURSTER, enemyParameterOf(invasionFleetsParameters, "alien-escort", "ships_0_count")]],
+    [[FOE_ALIEN_SPORE_HIVE, enemyParameterOf(invasionFleetsParameters, "alien-escort", "ships_1_count")], [FOE_ALIEN_BROOD_WORKER, enemyParameterOf(invasionFleetsParameters, "alien-escort", "ships_2_count")]],
   ]),
-  alienInvasionCard('alien-main', 'ano.alien.003', 1.02, 129, [
-    [[FOE_ALIEN_ACID_BURSTER, 4]],
-    [[FOE_ALIEN_HIVEBACK, 1], [FOE_ALIEN_SPORE_HIVE, 2], [FOE_ALIEN_BROOD_WORKER, 2]],
+  alienInvasionCard('alien-main', 'ano.alien.003', enemyParameterOf(invasionFleetsParameters, "alien-main", "scale"), enemyParameterOf(invasionFleetsParameters, "alien-main", "wreckThreat"), [
+    [[FOE_ALIEN_ACID_BURSTER, enemyParameterOf(invasionFleetsParameters, "alien-main", "ships_0_count")]],
+    [[FOE_ALIEN_HIVEBACK, enemyParameterOf(invasionFleetsParameters, "alien-main", "ships_1_count")], [FOE_ALIEN_SPORE_HIVE, enemyParameterOf(invasionFleetsParameters, "alien-main", "ships_2_count")], [FOE_ALIEN_BROOD_WORKER, enemyParameterOf(invasionFleetsParameters, "alien-main", "ships_3_count")]],
   ]),
-  alienInvasionCard('alien-broodmother', 'ano.alien.004', 1.5, 170, [
-    [[FOE_ALIEN_ACID_BURSTER, 4]],
-    [[FOE_ALIEN_MAW, 1], [FOE_ALIEN_STARCORE_ADULT, 2]],
-    [[FOE_ALIEN_HIVEBACK, 2], [FOE_ALIEN_BROOD_WORKER, 1]],
-    [[FOE_ALIEN_BROODMOTHER, 1], [FOE_ALIEN_HIVEBACK, 1], [FOE_ALIEN_BROOD_WORKER, 2]],
+  alienInvasionCard('alien-broodmother', 'ano.alien.004', enemyParameterOf(invasionFleetsParameters, "alien-broodmother", "scale"), enemyParameterOf(invasionFleetsParameters, "alien-broodmother", "wreckThreat"), [
+    [[FOE_ALIEN_ACID_BURSTER, enemyParameterOf(invasionFleetsParameters, "alien-broodmother", "ships_0_count")]],
+    [[FOE_ALIEN_MAW, enemyParameterOf(invasionFleetsParameters, "alien-broodmother", "ships_1_count")], [FOE_ALIEN_STARCORE_ADULT, enemyParameterOf(invasionFleetsParameters, "alien-broodmother", "ships_2_count")]],
+    [[FOE_ALIEN_HIVEBACK, enemyParameterOf(invasionFleetsParameters, "alien-broodmother", "ships_3_count")], [FOE_ALIEN_BROOD_WORKER, enemyParameterOf(invasionFleetsParameters, "alien-broodmother", "ships_4_count")]],
+    [[FOE_ALIEN_BROODMOTHER, enemyParameterOf(invasionFleetsParameters, "alien-broodmother", "ships_5_count")], [FOE_ALIEN_HIVEBACK, enemyParameterOf(invasionFleetsParameters, "alien-broodmother", "ships_6_count")], [FOE_ALIEN_BROOD_WORKER, enemyParameterOf(invasionFleetsParameters, "alien-broodmother", "ships_7_count")]],
   ]),
 ]
 

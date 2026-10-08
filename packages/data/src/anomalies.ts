@@ -12,6 +12,8 @@
  * **保留不动**，方便日后给新卡挂附赠；现值一律为空数组。
  */
 
+import bountiesParameters from './static/bounties.json'
+import { enemyParameterOf } from '@whale/core'
 import type { AnomalyDef, FoeShipSlot } from '@whale/core'
 import { foeLayerSplit } from '@whale/core'
 import { WEEKEND_FOE_CARDS, WORMHOLE_FOE_CARDS } from './wormholeFoes'
@@ -172,24 +174,24 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     // 速度：旧绝对 322 → **306**（舰级 `speedRatio 0.90`，船长「速度偏慢」——**有意改慢**）。
     // ⚠ 舰级按档重排（2026-09-11 甲案）后，舰级值是**档基线**（拾荒武装艇 = T1 156/28），
     // 卡片自己的目标值由倍率表达 ⇒ 本卡仍是 **血 22 / 单发 14**（船长「新手过渡族」的小艇）。
-    ships: [{ ship: FOE_SCAV_SKIFF, hpMul: 22 / 156, dmgMul: 14 / 28 }],
+    ships: [{ ship: FOE_SCAV_SKIFF, hpMul: enemyParameterOf(bountiesParameters, "ano-training", "ships_0_hpMul_input0") / enemyParameterOf(bountiesParameters, "ano-training", "ships_0_hpMul_input1"), dmgMul: enemyParameterOf(bountiesParameters, "ano-training", "ships_0_dmgMul_input0") / enemyParameterOf(bountiesParameters, "ano-training", "ships_0_dmgMul_input1") }],
     galaxyId: 'galaxy-hub',
-    threat: 5,
-    wreckThreat: 6, // 回收口径（冻结值，见本表头注）
+    threat: enemyParameterOf(bountiesParameters, "ano-training", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-training", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 船长：B 族战术统一 orbit（原 brawl）
     defProfile: 'balanced',
-    standingReq: 0,
-    standingGain: 1,
-    rewardIsk: 3_600, // 本地悬赏（2026-09-08 船长定）：胜利返港固定 2 分钟（120s）后，奖励按新港每分钟费率对齐：3,600÷(交火2min+返港2min)=900 信用点/min ≈ 新港 6,400÷7min≈914（取整百略留教学利差）；防零航程白刷（旧 1,000@0返航=30k/h 压到教学水平的口径随返航段同步退出）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-training", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-training", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-training", "rewardIsk"), // 本地悬赏（2026-09-08 船长定）：胜利返港固定 2 分钟（120s）后，奖励按新港每分钟费率对齐：3,600÷(交火2min+返港2min)=900 信用点/min ≈ 新港 6,400÷7min≈914（取整百略留教学利差）；防零航程白刷（旧 1,000@0返航=30k/h 压到教学水平的口径随返航段同步退出）
     loot: [],
-    combatSeconds: 20,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-training", "combatSeconds"),
     description: '深空工业协会的例行清场令：拾荒船常年在演习场边缘翻捡演习残骸，协会按次悬赏驱逐。悬赏常设、可反复接取——新手的第一张长期单。',
   },
   {
     id: 'ano-pirate-post',
     foeFamily: 'A', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '边境海盗', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：族内最弱的近处图，柯尔边境是高安、日板不派发（档位上限仅作档案）
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-pirate-post", "lairLevel"), // 窝点地图级别（1 = 只出外围档）：族内最弱的近处图，柯尔边境是高安、日板不派发（档位上限仅作档案）
     name: '边境海盗前哨',
     // ★ 2026-09-11 船长两条裁定后重编（「边境海盗前哨 T12 减少为 1+2」+「**设定无首领**」）：
     //   **无首领** ⇒ 全队同一舰级（海盗快艇，卡面装甲型 + 爆炸 8:2 与舰级本体一致，**无需任何覆写**）；
@@ -199,34 +201,34 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_SHIP_PIRATE_SKIFF,
-        count: 1,
-        wave: 0,
-        hpMul: 50 / FOE_SHIP_PIRATE_SKIFF.hp, // = 50/156（总血 150 的三分之一）
-        dmgMul: 15 / (FOE_SHIP_PIRATE_SKIFF.shotDmg * 1.5), // = 首波单发 15
+        count: enemyParameterOf(bountiesParameters, "ano-pirate-post", "ships_0_count"),
+        wave: enemyParameterOf(bountiesParameters, "ano-pirate-post", "ships_0_wave"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-pirate-post", "ships_0_hpMul_input0") / FOE_SHIP_PIRATE_SKIFF.hp, // = 50/156（总血 150 的三分之一）
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-pirate-post", "ships_0_dmgMul_input0") / (FOE_SHIP_PIRATE_SKIFF.shotDmg * enemyParameterOf(bountiesParameters, "ano-pirate-post", "ships_0_dmgMul_input1")), // = 首波单发 15
       },
       {
         ship: FOE_SHIP_PIRATE_SKIFF,
-        count: 2,
-        wave: 1,
-        hpMul: 50 / FOE_SHIP_PIRATE_SKIFF.hp,
-        dmgMul: 14 / (FOE_SHIP_PIRATE_SKIFF.shotDmg * 1.5), // = 次波单发 14（两艘合计 28）
+        count: enemyParameterOf(bountiesParameters, "ano-pirate-post", "ships_1_count"),
+        wave: enemyParameterOf(bountiesParameters, "ano-pirate-post", "ships_1_wave"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-pirate-post", "ships_1_hpMul_input0") / FOE_SHIP_PIRATE_SKIFF.hp,
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-pirate-post", "ships_1_dmgMul_input0") / (FOE_SHIP_PIRATE_SKIFF.shotDmg * enemyParameterOf(bountiesParameters, "ano-pirate-post", "ships_1_dmgMul_input1")), // = 次波单发 14（两艘合计 28）
       },
     ],
     waves: [
-      { units: 1, hpShare: 1 / 3 },
-      { units: 2, hpShare: 2 / 3 },
+      { units: enemyParameterOf(bountiesParameters, "ano-pirate-post", "waves_0_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-pirate-post", "waves_0_hpShare_input0") / enemyParameterOf(bountiesParameters, "ano-pirate-post", "waves_0_hpShare_input1") },
+      { units: enemyParameterOf(bountiesParameters, "ano-pirate-post", "waves_1_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-pirate-post", "waves_1_hpShare_input0") / enemyParameterOf(bountiesParameters, "ano-pirate-post", "waves_1_hpShare_input1") },
     ],
     galaxyId: 'galaxy-kor',
-    threat: 17,
-    wreckThreat: 12, // 回收口径（冻结值，见本表头注）
+    threat: enemyParameterOf(bountiesParameters, "ano-pirate-post", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-pirate-post", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'brawl',
     defProfile: 'armor',
-    dmgMix: { explosive: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
-    standingReq: 1,
-    standingGain: 1,
-    rewardIsk: 12_000,
+    dmgMix: { explosive: enemyParameterOf(bountiesParameters, "ano-pirate-post", "dmgMix_explosive"), kinetic: enemyParameterOf(bountiesParameters, "ano-pirate-post", "dmgMix_kinetic") }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-pirate-post", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-pirate-post", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-pirate-post", "rewardIsk"),
     loot: [],
-    combatSeconds: 20,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-pirate-post", "combatSeconds"),
     description: '通缉册上的老面孔：柯尔边境的前哨海盗团长期袭扰新手商路。悬赏常设，击溃即结算，可反复接取。',
   },
   {
@@ -246,29 +248,29 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_SCAV_ARMED,
-        hitRate: 0.55,
-        hpMul: 292 / 480,
-        dmgMul: 58 / 65,
+        hitRate: enemyParameterOf(bountiesParameters, "ano-abandoned-platform", "ships_0_hitRate"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-abandoned-platform", "ships_0_hpMul_input0") / enemyParameterOf(bountiesParameters, "ano-abandoned-platform", "ships_0_hpMul_input1"),
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-abandoned-platform", "ships_0_dmgMul_input0") / enemyParameterOf(bountiesParameters, "ano-abandoned-platform", "ships_0_dmgMul_input1"),
       },
     ],
     galaxyId: 'galaxy-dust',
-    threat: 24,
-    wreckThreat: 16, // 回收口径（冻结值，见本表头注）
+    threat: enemyParameterOf(bountiesParameters, "ano-abandoned-platform", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-abandoned-platform", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 船长：B 族战术统一 orbit（本卡原即 orbit）
     defProfile: 'balanced',
-    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
-    standingReq: 2,
-    standingGain: 1,
-    rewardIsk: 20_000,
+    dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "ano-abandoned-platform", "dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "ano-abandoned-platform", "dmgMix_explosive") }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-abandoned-platform", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-abandoned-platform", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-abandoned-platform", "rewardIsk"),
     loot: [],
-    combatSeconds: 20,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-abandoned-platform", "combatSeconds"),
     description: '长期通缉：武装拾荒者盘踞废弃采掘平台多年，协会悬赏清除其火力点。',
   },
   {
     id: 'ano-redring-raiders',
     foeFamily: 'A', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '赤潮劫掠团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 3, // 窝点地图级别（3 = 全档）：A 族次强（红环航道）
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "lairLevel"), // 窝点地图级别（3 = 全档）：A 族次强（红环航道）
     name: '赤潮劫掠舰队',
     // A 族数值落地批（2026-09-11）：编成 = **头目舰 ×1 + 劫掠狙击舰 ×3**。
     // 头目舰缺省 brawl、本卡 kite → `tactic: 'kite'` 覆写；主系覆写为**能量**（缴获改装的能量炮）⇒
@@ -287,44 +289,44 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_SHIP_PIRATE_WARLORD,
-        hpMul: (340 * 3) / 5 / FOE_SHIP_PIRATE_WARLORD.hp, // = 204/360
-        dmgMul: 21 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // ×1.2 锚 = 21/(56×1.6)
+        hpMul: (enemyParameterOf(bountiesParameters, "ano-redring-raiders", "ships_0_hpMul_input0") * enemyParameterOf(bountiesParameters, "ano-redring-raiders", "ships_0_hpMul_input1")) / enemyParameterOf(bountiesParameters, "ano-redring-raiders", "ships_0_hpMul_input2") / FOE_SHIP_PIRATE_WARLORD.hp, // = 204/360
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "ships_0_dmgMul_input0") / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // ×1.2 锚 = 21/(56×1.6)
         split: foeLayerSplit('shield'), // 血型随卡走（船长裁决①）：卡面护盾 → 头目也护盾
         // 射程多重方案（船长裁决③）：头目原 1~2210m 在本卡 3312m 交战距离下 0 次开火（探针实测）
         // ⇒ 同卡同带（与杂鱼同式的变体倍率推导，**不手抄数字**）
         rangeMinM: Math.round(FOE_SHIP_PIRATE_SNIPER.rangeMinM * REDRING_RANGE_MUL),
         rangeMaxM: Math.round(FOE_SHIP_PIRATE_SNIPER.rangeMaxM * REDRING_RANGE_MUL),
         tactic: 'kite',
-        dmgMix: { plasma: 8, kinetic: 2 },
+        dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "ships_0_dmgMix_plasma"), kinetic: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "ships_0_dmgMix_kinetic") },
       },
       {
         ship: FOE_SHIP_PIRATE_SNIPER,
-        count: 3,
-        hpMul: (340 * 2) / 15 / FOE_SHIP_PIRATE_SNIPER.hp, // = 45.3333/268.75
-        dmgMul: 5 / (FOE_SHIP_PIRATE_SNIPER.shotDmg * A_MULTI_SHIP_COMP), // ×1.2 锚 = 5/(41×1.6)
-        speedMul: 204 / 201,
+        count: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "ships_1_count"),
+        hpMul: (enemyParameterOf(bountiesParameters, "ano-redring-raiders", "ships_1_hpMul_input0") * enemyParameterOf(bountiesParameters, "ano-redring-raiders", "ships_1_hpMul_input1")) / enemyParameterOf(bountiesParameters, "ano-redring-raiders", "ships_1_hpMul_input2") / FOE_SHIP_PIRATE_SNIPER.hp, // = 45.3333/268.75
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "ships_1_dmgMul_input0") / (FOE_SHIP_PIRATE_SNIPER.shotDmg * A_MULTI_SHIP_COMP), // ×1.2 锚 = 5/(41×1.6)
+        speedMul: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "ships_1_speedMul_input0") / enemyParameterOf(bountiesParameters, "ano-redring-raiders", "ships_1_speedMul_input1"),
         rangeMul: REDRING_RANGE_MUL,
-        dmgMix: { plasma: 8, kinetic: 2 },
+        dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "ships_1_dmgMix_plasma"), kinetic: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "ships_1_dmgMix_kinetic") },
       },
     ],
     galaxyId: 'galaxy-redring',
-    threat: 26,
-    wreckThreat: 34, // 回收口径（冻结值，见本表头注）
+    threat: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'kite',
     defProfile: 'shield',
-    dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
-    standingReq: 3,
-    standingGain: 1,
-    rewardIsk: 75000,
+    dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "dmgMix_plasma"), kinetic: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "dmgMix_kinetic") }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "rewardIsk"),
     loot: [],
-    combatSeconds: 70,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-redring-raiders", "combatSeconds"),
     description: '红环航道的老牌劫掠舰队，通缉令在协会悬赏板上挂了五年——击退其主力即可结算，可反复接取。',
   },
   {
     id: 'ano-gravekeeper',
     foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '坟场守墓者', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：暗星坟场（威胁 87、奖金 110 万）
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-gravekeeper", "lairLevel"), // 窝点地图级别（2 = 到核心档）：暗星坟场（威胁 87、奖金 110 万）
     name: '坟场守墓者', // 2026-09-11 船长批「卡名可以更换」：坟场守墓人 → **坟场守墓者**（与窝点词 lairCore 统一；P-30 收口）
     // D 族落码批（2026-09-11 船长「对悬赏进行敌人配置」）：迁入**舰级路径**（守墓长舰 = T3 巡洋·中程）。
     // 船长三定：档位「1 驱逐 2 巡洋」· 战法「守墓长舰按中程」（沿用 orbit）· 速度「按正常算」= **258**。
@@ -342,31 +344,31 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_D_LONGSHIP,
-        count: 2,
-        hpMul: 1980 / FOE_D_LONGSHIP.hp, // 每艘 1,980（与削减前同值）
-        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * COMP_MUL(2)), // 每艘单发 175
+        count: enemyParameterOf(bountiesParameters, "ano-gravekeeper", "ships_0_count"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-gravekeeper", "ships_0_hpMul_input0") / FOE_D_LONGSHIP.hp, // 每艘 1,980（与削减前同值）
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-gravekeeper", "ships_0_dmgMul_input0") / (FOE_D_LONGSHIP.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-gravekeeper", "ships_0_dmgMul_input1"))), // 每艘单发 175
       },
     ],
-    waves: [{ units: 2, hpShare: 1 }], // 单波；⚠ `units` 之和 3 → **2** ⇒ 该星系残骸注入量的
+    waves: [{ units: enemyParameterOf(bountiesParameters, "ano-gravekeeper", "waves_0_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-gravekeeper", "waves_0_hpShare") }], // 单波；⚠ `units` 之和 3 → **2** ⇒ 该星系残骸注入量的
     //   敌人数因子 1.6 → 1.4（−12.5%）—— 这是"削减编成"的**必然连带**，已登记（回收池若需重标另议）
     galaxyId: 'galaxy-grave',
-    threat: 87,
-    wreckThreat: 88, // 回收口径（冻结值，见本表头注）
+    threat: enemyParameterOf(bountiesParameters, "ano-gravekeeper", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-gravekeeper", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 中程（2026-09-10 船长族系改判 brawl → orbit；本次沿用）
     defProfile: 'armor',
-    dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2：**主系能量**（2026-09-11 对齐设定「以能量武器为主」）
-    standingReq: 12,
-    standingGain: 4,
-    rewardIsk: 1100000,
+    dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-gravekeeper", "dmgMix_plasma"), kinetic: enemyParameterOf(bountiesParameters, "ano-gravekeeper", "dmgMix_kinetic") }, // 混伤 8:2：**主系能量**（2026-09-11 对齐设定「以能量武器为主」）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-gravekeeper", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-gravekeeper", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-gravekeeper", "rewardIsk"),
     loot: [],
-    combatSeconds: 60,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-gravekeeper", "combatSeconds"),
     description: '暗星坟场的守墓舰队从不轮换，协会对它的通缉令也从未撤销：击退一次，结算一次。',
   },
   {
     id: 'ano-ghost-signal',
     foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '幽灵舰', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：D 族最弱（红环航道，奖金 16.5 万）
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-ghost-signal", "lairLevel"), // 窝点地图级别（1 = 只出外围档）：D 族最弱（红环航道，奖金 16.5 万）
     // 注：同星系的 A 族「赤潮劫掠舰队」为 3 级，日板按"同星系取级别最高"进池（本卡会被顶掉）
     name: '幽灵舰信号',
     // D 族落码批（2026-09-11 船长「对悬赏进行敌人配置」）：迁入**舰级路径**（幽灵舰 = T2 驱逐）。
@@ -380,33 +382,33 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_D_GHOST,
-        hpMul: 346.875 / FOE_D_GHOST.hp,
-        dmgMul: 64 / (FOE_D_GHOST.shotDmg * COMP_MUL(2)),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-ghost-signal", "ships_0_hpMul_input0") / FOE_D_GHOST.hp,
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-ghost-signal", "ships_0_dmgMul_input0") / (FOE_D_GHOST.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-ghost-signal", "ships_0_dmgMul_input1"))),
       },
       {
         ship: FOE_D_GHOST,
-        hpMul: 208.125 / FOE_D_GHOST.hp,
-        dmgMul: 38 / (FOE_D_GHOST.shotDmg * COMP_MUL(2)),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-ghost-signal", "ships_1_hpMul_input0") / FOE_D_GHOST.hp,
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-ghost-signal", "ships_1_dmgMul_input0") / (FOE_D_GHOST.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-ghost-signal", "ships_1_dmgMul_input1"))),
       },
     ],
     galaxyId: 'galaxy-redring',
-    threat: 38,
-    wreckThreat: 46, // 回收口径（冻结值，见本表头注）
+    threat: enemyParameterOf(bountiesParameters, "ano-ghost-signal", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-ghost-signal", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 中程（船长「幽灵舰为中程」；原 kite）
     defProfile: 'shield',
-    dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2：**主系能量**（2026-09-11 对齐设定「以能量武器为主」）
-    standingReq: 5,
-    standingGain: 2,
-    rewardIsk: 165000,
+    dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-ghost-signal", "dmgMix_plasma"), kinetic: enemyParameterOf(bountiesParameters, "ano-ghost-signal", "dmgMix_kinetic") }, // 混伤 8:2：**主系能量**（2026-09-11 对齐设定「以能量武器为主」）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-ghost-signal", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-ghost-signal", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-ghost-signal", "rewardIsk"),
     loot: [],
-    combatSeconds: 90,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-ghost-signal", "combatSeconds"),
     description: '一桩悬了许久的疑案：幽灵舰定期在红环深处现身又消失。协会对每一次成功接触都发放调查赏金——它到底是什么，至今没人说清。',
   },
   {
     id: 'ano-abyss-guard',
     foeFamily: 'C', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '深渊潜伏群', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：C 族最弱（深渊之门，奖金 16 万）
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "lairLevel"), // 窝点地图级别（1 = 只出外围档）：C 族最弱（深渊之门，奖金 16 万）
     // 注：同星系的 E 族「泰坦残骸勘探」为 3 级，日板按"同星系取级别最高"进池（本卡会被顶掉）
     name: '深渊之门卫队',
     // C 族第二批（2026-09-11 船长「虫群编成」+ 族级结构修正）：编成改 **星髓幼虫 ×6 / 2 波（3+3）**。
@@ -419,53 +421,53 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_ALIEN_STARCORE,
-        count: 3,
-        wave: 0,
-        hpMul: 1000 / (6 * FOE_ALIEN_STARCORE.hp), // = 166.667/208（总血 1,000 的六分之一）
-        dmgMul: 19 / (FOE_ALIEN_STARCORE.shotDmg * COMP_MUL(6)), // 每只单发 19
+        count: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_0_count"),
+        wave: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_0_wave"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_0_hpMul_input0") / (enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_0_hpMul_input1") * FOE_ALIEN_STARCORE.hp), // = 166.667/208（总血 1,000 的六分之一）
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_0_dmgMul_input0") / (FOE_ALIEN_STARCORE.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_0_dmgMul_input1"))), // 每只单发 19
         split: foeLayerSplit('shield'), // 血型随卡走（舰级缺省是装甲）
-        hitRate: 0.9, // 掷命中（原光束必中；本卡的单卡特征，不升格为舰级）
-        dmgMix: { plasma: 10 }, // 纯等离子（C 族唯一纯能量卡）
-        rangeMaxM: 2600, // 卡带（舰级缺省 2655）
+        hitRate: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_0_hitRate"), // 掷命中（原光束必中；本卡的单卡特征，不升格为舰级）
+        dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_0_dmgMix_plasma") }, // 纯等离子（C 族唯一纯能量卡）
+        rangeMaxM: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_0_rangeMaxM"), // 卡带（舰级缺省 2655）
       },
       {
         ship: FOE_ALIEN_STARCORE,
-        count: 3,
-        wave: 1,
-        hpMul: 1000 / (6 * FOE_ALIEN_STARCORE.hp),
-        dmgMul: 19 / (FOE_ALIEN_STARCORE.shotDmg * COMP_MUL(6)),
+        count: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_1_count"),
+        wave: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_1_wave"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_1_hpMul_input0") / (enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_1_hpMul_input1") * FOE_ALIEN_STARCORE.hp),
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_1_dmgMul_input0") / (FOE_ALIEN_STARCORE.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_1_dmgMul_input1"))),
         split: foeLayerSplit('shield'),
-        hitRate: 0.9,
-        dmgMix: { plasma: 10 },
-        rangeMaxM: 2600,
+        hitRate: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_1_hitRate"),
+        dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_1_dmgMix_plasma") },
+        rangeMaxM: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "ships_1_rangeMaxM"),
       },
     ],
     waves: [
-      { units: 3, hpShare: 0.5 },
-      { units: 3, hpShare: 0.5 },
+      { units: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "waves_0_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "waves_0_hpShare") },
+      { units: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "waves_1_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "waves_1_hpShare") },
     ],
     galaxyId: 'galaxy-abyss',
-    threat: 81,
+    threat: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "threat"),
     /* ⟪2026-10-02 判据回钉⟫（船长令「两个都同意」之乙）：09-25 重定标改了标签时翻了近防炮门槛 ⇒ PD/修理判据回钉到**重定标前**旧标签 */
-    threatJudged: 45, // 判据威胁（PD 门槛 ≥60 / 敌修理 k 读它；见 AnomalyDef.threatJudged）
-    wreckThreat: 45, // 回收口径（冻结值，见本表头注）
+    threatJudged: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "threatJudged"), // 判据威胁（PD 门槛 ≥60 / 敌修理 k 读它；见 AnomalyDef.threatJudged）
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'brawl', // 船长裁定①：**kite → brawl**（射程同时收进近战带）
     defProfile: 'shield',
-    dmgMix: { plasma: 10 }, // **纯能量**（C 族唯一纯能量卡；收束旋钮 = 命中 0.90 + 远端命中衰减 0.5）
-    standingReq: 6,
-    standingGain: 2,
-    rewardIsk: 160_000,
+    dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "dmgMix_plasma") }, // **纯能量**（C 族唯一纯能量卡；收束旋钮 = 命中 0.90 + 远端命中衰减 0.5）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "rewardIsk"),
     loot: [],
-    combatSeconds: 75,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-abyss-guard", "combatSeconds"),
     description: '深渊之门常年有人值守，也常年需要民间火力分担防务。协会常驻悬赏：按次结算，声望仅首胜授予。',
   },
   {
     id: 'ano-titan-wreck',
     // **爆炸 60% + 动能 40%**（船长 2026-09-19「所有E族的默认伤害比改为爆炸60%，动能40%」；与舰级同值）
-    dmgMix: { explosive: 6, kinetic: 4 },
+    dmgMix: { explosive: enemyParameterOf(bountiesParameters, "ano-titan-wreck", "dmgMix_explosive"), kinetic: enemyParameterOf(bountiesParameters, "ano-titan-wreck", "dmgMix_kinetic") },
     foeFamily: 'E', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '泰坦残骸', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 3, // 窝点地图级别（3 = 全档）：船长 2026-09-10 定「E 族两张都设为 3」
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-titan-wreck", "lairLevel"), // 窝点地图级别（3 = 全档）：船长 2026-09-10 定「E 族两张都设为 3」
     name: '泰坦残骸勘探',
     // **2026-09-11 机群批 S3**（船长「我记得巨构需要制作敌方无人机系统」⇒ 甲案）：
     // 本卡由**旧威胁推导路径**迁入**舰级路径**，并挂上「**警戒机群**」（＝据点词承诺的第二套火力）。
@@ -484,38 +486,38 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_SHIP_TITAN_HULK,
-        count: 1,
-        hpMul: 1585 / FOE_SHIP_TITAN_HULK.hp, // = 1585/1600（原两条 990.625 + 594.375 合并）
+        count: enemyParameterOf(bountiesParameters, "ano-titan-wreck", "ships_0_count"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-titan-wreck", "ships_0_hpMul_input0") / FOE_SHIP_TITAN_HULK.hp, // = 1585/1600（原两条 990.625 + 594.375 合并）
         // 旧口径 T = round(228×0.779) + 2×round(25×0.779) = 178 + 38 = **216**（+20%）
         // ⇒ 按 0.6 拆成 炮台 86 / 机群 2 架 ×65
-        dmgMul: 0.779,
-        droneFireShare: 0.6,
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-titan-wreck", "ships_0_dmgMul"),
+        droneFireShare: enemyParameterOf(bountiesParameters, "ano-titan-wreck", "ships_0_droneFireShare"),
         // **总火力锚点 216**（船长 2026-09-12：「架数变多、**总火力不动**」）——常态出击数上到 7 架后，
         // 总量仍钉在 **216**（炮台 86 / 机群 7 架 ×19~18）；不写锚点的话架数会把总量推到 311。
-        firepowerAnchor: 216,
+        firepowerAnchor: enemyParameterOf(bountiesParameters, "ano-titan-wreck", "ships_0_firepowerAnchor"),
       },
     ],
     // 2026-09-12 船长「**将所有巨构移动到奥罗荒环**」：E 族三卡**全部集中**到奥罗荒环
     //（原在深渊之门；深渊之门恢复为纯 C 族异形星系——其 lore「古老跃迁门…守卫森严」不涉巨构，故无需改文案）。
     // ⚠ 连带：同星系日板"取级别最高（并列取奖金最高）"⇒ 见卡表 §11.6 的派发口径备注。
     galaxyId: 'galaxy-auro',
-    threat: 87,
-    wreckThreat: 60, // 回收口径（冻结值，见本表头注）
+    threat: enemyParameterOf(bountiesParameters, "ano-titan-wreck", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-titan-wreck", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     // **族规「中距为主」（P-12 对齐）**——⚠ 作战距离**不变**：舰级上写了 `desireRangeM` 钉住现状值
     tactic: 'orbit',
     defProfile: 'armor',
-    standingReq: 8,
-    standingGain: 3,
-    rewardIsk: 300_000,
+    standingReq: enemyParameterOf(bountiesParameters, "ano-titan-wreck", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-titan-wreck", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-titan-wreck", "rewardIsk"),
     loot: [],
-    combatSeconds: 90,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-titan-wreck", "combatSeconds"),
     description: '一具远古泰坦残骸静卧深渊航道，协会长期征集武装护航下的勘探与清剿——击退残骸守备，赏金照发。',
   },
   {
     id: 'ano-auro-raiders',
     foeFamily: 'E', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '奥罗武装残骸', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 3, // 窝点地图级别（3 = 全档）：船长 2026-09-10 定「E 族两张都设为 3」
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "lairLevel"), // 窝点地图级别（3 = 全档）：船长 2026-09-10 定「E 族两张都设为 3」
     name: '奥罗武装残骸群',
     // **2026-09-11 E 族收尾批**（船长：「**E 族单独调整，包括 E 族赏金任务的伤害比例**」+「其余没有异议」）：
     // 本卡由**旧威胁推导路径**迁入**舰级路径**（舰级 = 「奥罗残骸段」T3），与「泰坦残骸勘探」同款处理：
@@ -534,52 +536,52 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_SHIP_AURO_HULK, // 主体：原「武装残骸」主体
-        count: 1,
-        hpMul: (1740 * (5 / 11)) / FOE_SHIP_AURO_HULK.hp, // = 790.909/990
+        count: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "ships_0_count"),
+        hpMul: (enemyParameterOf(bountiesParameters, "ano-auro-raiders", "ships_0_hpMul_input0") * (enemyParameterOf(bountiesParameters, "ano-auro-raiders", "ships_0_hpMul_input1") / enemyParameterOf(bountiesParameters, "ano-auro-raiders", "ships_0_hpMul_input2"))) / FOE_SHIP_AURO_HULK.hp, // = 790.909/990
         // **火力 +20%（2026-09-12 船长「三个悬赏整体火力上调 20%」）**：本条目旧口径 T = 72
         // ⇒ 按 0.5 拆成 炮台 36 / 机群 2 架 ×18（卡合计 128 → **154**）
-        dmgMul: 0.3,
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "ships_0_dmgMul"),
         // **总火力锚点 72**（架数 5 架后总量不动：炮台 36 / 机群 5 架 ×8~7）
-        firepowerAnchor: 72,
+        firepowerAnchor: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "ships_0_firepowerAnchor"),
         // **机群 50%**（首版取值）：奥罗命中 0.95（老化比泰坦级轻）⇒ 炮台仍可用，故主体"机炮各半"；
         // 总单发守恒（比例只改构成）。
-        droneFireShare: 0.5,
+        droneFireShare: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "ships_0_droneFireShare"),
       },
       {
         ship: FOE_SHIP_AURO_HULK, // 僚机位 ×2：原「轻装武装残骸」
-        count: 2,
+        count: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "ships_1_count"),
         escort: true,
-        hpMul: (1740 * (3 / 11)) / FOE_SHIP_AURO_HULK.hp, // = 474.545/990
+        hpMul: (enemyParameterOf(bountiesParameters, "ano-auro-raiders", "ships_1_hpMul_input0") * (enemyParameterOf(bountiesParameters, "ano-auro-raiders", "ships_1_hpMul_input1") / enemyParameterOf(bountiesParameters, "ano-auro-raiders", "ships_1_hpMul_input2"))) / FOE_SHIP_AURO_HULK.hp, // = 474.545/990
         // 火力 +20%：本条目旧口径 T = 82（每单位 41）⇒ 按 0.7 拆成 炮台 12 / 机群 2 架 ×15·14
-        dmgMul: 0.175,
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "ships_1_dmgMul"),
         // **总火力锚点 82**（架数 5 架后总量不动：炮台 25 / 机群 10 架 ×6~5）
-        firepowerAnchor: 82,
+        firepowerAnchor: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "ships_1_firepowerAnchor"),
         // **轻装机群 70%**（首版取值）：同一截残骸的**轻装规格**（血量只有主体的六成）⇒ 更"残"、
         // 炮更不可用 ⇒ 更依赖机群；同时演示**条目级旋钮**（同卡两条目可各写各的）。
-        droneFireShare: 0.7,
+        droneFireShare: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "ships_1_droneFireShare"),
       },
     ],
     galaxyId: 'galaxy-auro',
-    threat: 59,
+    threat: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "threat"),
     /* ⟪2026-10-02 判据回钉⟫（船长令「两个都同意」之乙）：09-25 重定标把标签 62 → 62 时翻了近防炮门槛 ⇒ PD/修理判据回钉到**重定标前**旧标签 */
-    threatJudged: 62, // 判据威胁（PD 门槛 ≥60 / 敌修理 k 读它；见 AnomalyDef.threatJudged）
-    wreckThreat: 62, // 回收口径（冻结值，见本表头注）
+    threatJudged: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "threatJudged"), // 判据威胁（PD 门槛 ≥60 / 敌修理 k 读它；见 AnomalyDef.threatJudged）
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     // **族规「中距为主」（P-12 对齐）**——⚠ 作战距离**不变**：舰级上写了 `desireRangeM` 钉住现状值
     tactic: 'orbit',
     defProfile: 'armor',
-    dmgMix: { explosive: 6, kinetic: 4 }, // **爆炸 60% + 动能 40%**（E 族族格；船长 2026-09-19 改判，原 50:50）
-    standingReq: 8,
-    standingGain: 3,
-    rewardIsk: 310000,
+    dmgMix: { explosive: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "dmgMix_explosive"), kinetic: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "dmgMix_kinetic") }, // **爆炸 60% + 动能 40%**（E 族族格；船长 2026-09-19 改判，原 50:50）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "rewardIsk"),
     loot: [],
-    combatSeconds: 100,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-auro-raiders", "combatSeconds"),
     description: '奥罗荒环的武装残骸会被风暴反复激活，协会的猎杀令因此常年有效：按次结算，可反复接取。',
   },
   {
     id: 'ano-core-section',
     foeFamily: 'E', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '巨构核心', // 赏金任务·窝点名的核心词（⇒「巨构核心·外围/核心/深层」；避开据点档位词本身）
-    lairLevel: 3, // 窝点地图级别（3 = 全档）：**E 族代表位**（族内最高级目标）
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-core-section", "lairLevel"), // 窝点地图级别（3 = 全档）：**E 族代表位**（族内最高级目标）
     // ⚠ 2026-09-12 过档留档：本字段当天曾按船长「把核心卡降为 L1」改为 1，同日船长「好像是我理解错误了，
     //   先回档为 L3」**回档到 3**；"不顶掉同域另外两张"的目标改由**派发规则**解决（代表位改**随机抽取**，
     //   见 `core/sideTasks.ts`）。
@@ -595,28 +597,28 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_SHIP_CORE_SECTION, // 单舰：一具接近完好的巨构（**旗舰档**精锐位）
-        count: 1,
-        hpMul: 3400 / FOE_SHIP_CORE_SECTION.hp, // = 3400/3920（T5 舰级基线 3,920 ⇒ 卡面实收仍是 3,400）
+        count: enemyParameterOf(bountiesParameters, "ano-core-section", "ships_0_count"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-core-section", "ships_0_hpMul_input0") / FOE_SHIP_CORE_SECTION.hp, // = 3400/3920（T5 舰级基线 3,920 ⇒ 卡面实收仍是 3,400）
         // **火力 +20%（2026-09-12 船长）**：旧口径 T = round(546×1.082) + 3×round(25×1.082) = 591 + 81
         // = **672**（原 560）⇒ 按 0.6 拆成 炮台 269 / 机群 3 架 ×135·134·134
-        dmgMul: 1.082,
-        droneFireShare: 0.6,
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-core-section", "ships_0_dmgMul"),
+        droneFireShare: enemyParameterOf(bountiesParameters, "ano-core-section", "ships_0_droneFireShare"),
         // **总火力锚点 672**（船长 2026-09-12「架数变多、总火力不动」）——常态出击数上到 10 架后，
         // 总量仍钉在 **672**（炮台 269 / 机群 10 架 ×41~40）；不写锚点的话架数会把总量推到 861。
-        firepowerAnchor: 672,
+        firepowerAnchor: enemyParameterOf(bountiesParameters, "ano-core-section", "ships_0_firepowerAnchor"),
       },
     ],
     galaxyId: 'galaxy-auro', // 奥罗荒环（2026-09-12 船长「将所有巨构移动到奥罗荒环」⇒ E 族三卡同域）
-    threat: 115,
-    wreckThreat: 84, // 回收口径（冻结值，见本表头注）
+    threat: enemyParameterOf(bountiesParameters, "ano-core-section", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-core-section", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 族规「中距为主」（舰级已解除期望距离钉住 ⇒ 交距 = 带内插值 0.55 × 10,000 ≈ 5,545m）
     defProfile: 'armor',
-    dmgMix: { explosive: 6, kinetic: 4 }, // 爆炸 60% + 动能 40%（E 族族格；船长 2026-09-19 改判）
-    standingReq: 11, // 与 噬口猎杀令（80）同档；低于 坟场守墓者 / 虚海守望者（88，12）
-    standingGain: 4,
-    rewardIsk: 1_000_000, // 威胁 115 段：介于 噬口 850,000（87）与 坟场 1,100,000（87）之间
+    dmgMix: { explosive: enemyParameterOf(bountiesParameters, "ano-core-section", "dmgMix_explosive"), kinetic: enemyParameterOf(bountiesParameters, "ano-core-section", "dmgMix_kinetic") }, // 爆炸 60% + 动能 40%（E 族族格；船长 2026-09-19 改判）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-core-section", "standingReq"), // 与 噬口猎杀令（80）同档；低于 坟场守墓者 / 虚海守望者（88，12）
+    standingGain: enemyParameterOf(bountiesParameters, "ano-core-section", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-core-section", "rewardIsk"), // 威胁 115 段：介于 噬口 850,000（87）与 坟场 1,100,000（87）之间
     loot: [],
-    combatSeconds: 150,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-core-section", "combatSeconds"),
     description:
       '深渊航道最深处立着一具几乎完好的巨构——残存的自动程序仍在运转，警戒机群仍在巡逻。协会为能拆开它的人开出了长期悬赏。',
   },
@@ -624,7 +626,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     id: 'ano-starcore-boss',
     foeFamily: 'C', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '星髓虫群', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 3, // 窝点地图级别（3 = 全档）：C 族次强（星髓迷宫）
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "lairLevel"), // 窝点地图级别（3 = 全档）：C 族次强（星髓迷宫）
     name: '星髓虫群', // 2026-09-10 船长：与 C 族窝点档位词（虫巢/隐秘孵化地）冲突，改名（id 不变）
     // C 族第二批（2026-09-11 船长「虫群编成」+ 族级结构修正）：编成改
     // **星髓幼虫 ×7（波 1 ×4、波 2 ×3）+ 星髓成虫 ×3（第 3 波）**，共 10 只 / 3 波。
@@ -639,55 +641,55 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_ALIEN_STARCORE,
-        count: 4,
-        wave: 0,
+        count: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_0_count"),
+        wave: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_0_wave"),
         hpMul:
-          1530 / (7 * FOE_ALIEN_STARCORE.hp + 3 * FOE_ALIEN_STARCORE_ADULT.hp), // 幼虫 95.625
-        dmgMul: 23 / (FOE_ALIEN_STARCORE.shotDmg * COMP_MUL(10)), // 每只单发 23
+          enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_0_hpMul_input0") / (enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_0_hpMul_input1") * FOE_ALIEN_STARCORE.hp + enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_0_hpMul_input2") * FOE_ALIEN_STARCORE_ADULT.hp), // 幼虫 95.625
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_0_dmgMul_input0") / (FOE_ALIEN_STARCORE.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_0_dmgMul_input1"))), // 每只单发 23
       },
       {
         ship: FOE_ALIEN_STARCORE,
-        count: 3,
-        wave: 1,
+        count: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_1_count"),
+        wave: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_1_wave"),
         hpMul:
-          1530 / (7 * FOE_ALIEN_STARCORE.hp + 3 * FOE_ALIEN_STARCORE_ADULT.hp),
-        dmgMul: 23 / (FOE_ALIEN_STARCORE.shotDmg * COMP_MUL(10)),
+          enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_1_hpMul_input0") / (enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_1_hpMul_input1") * FOE_ALIEN_STARCORE.hp + enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_1_hpMul_input2") * FOE_ALIEN_STARCORE_ADULT.hp),
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_1_dmgMul_input0") / (FOE_ALIEN_STARCORE.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_1_dmgMul_input1"))),
       },
       {
         ship: FOE_ALIEN_STARCORE_ADULT, // 末波：成虫 ×3（单个血量 = 幼虫 ×3）
-        count: 3,
-        wave: 2,
+        count: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_2_count"),
+        wave: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_2_wave"),
         hpMul:
-          1530 / (7 * FOE_ALIEN_STARCORE.hp + 3 * FOE_ALIEN_STARCORE_ADULT.hp), // 成虫 286.875
-        dmgMul: 23 / (FOE_ALIEN_STARCORE_ADULT.shotDmg * COMP_MUL(10)),
+          enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_2_hpMul_input0") / (enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_2_hpMul_input1") * FOE_ALIEN_STARCORE.hp + enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_2_hpMul_input2") * FOE_ALIEN_STARCORE_ADULT.hp), // 成虫 286.875
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_2_dmgMul_input0") / (FOE_ALIEN_STARCORE_ADULT.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-starcore-boss", "ships_2_dmgMul_input1"))),
       },
     ],
     waves: [
-      { units: 4, hpShare: 0.25 }, // 幼虫 ×4 = 382.5
-      { units: 3, hpShare: 0.1875 }, // 幼虫 ×3 = 286.875
-      { units: 3, hpShare: 0.5625 }, // 成虫 ×3 = 860.625（末波重头）
+      { units: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "waves_0_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "waves_0_hpShare") }, // 幼虫 ×4 = 382.5
+      { units: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "waves_1_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "waves_1_hpShare") }, // 幼虫 ×3 = 286.875
+      { units: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "waves_2_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "waves_2_hpShare") }, // 成虫 ×3 = 860.625（末波重头）
     ],
     galaxyId: 'galaxy-starcore',
-    threat: 67,
-    wreckThreat: 72, // 回收口径（冻结值，见本表头注）
+    threat: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'brawl',
     defProfile: 'armor',
-    dmgMix: { plasma: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
-    standingReq: 10,
-    standingGain: 3,
-    rewardIsk: 490000,
+    dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "dmgMix_plasma"), explosive: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "dmgMix_explosive") }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "rewardIsk"),
     loot: [],
-    combatSeconds: 100,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "combatSeconds"),
     description: '星髓迷宫深处有东西在筑巢。协会将它列入最高级长期悬赏：进去的人要自己数着命回来。',
   },
 
   // ── 星图拓展（V12 深空悬赏：20 星系网络的远端目标） ──
   {
     id: 'ano-cinder-siege',
-    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "ano-cinder-siege", "dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "ano-cinder-siege", "dmgMix_explosive") }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'G', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '烬火围攻军', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：G 族最弱（烬火星区，威胁 44、奖金 15 万）
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-cinder-siege", "lairLevel"), // 窝点地图级别（1 = 只出外围档）：G 族最弱（烬火星区，威胁 44、奖金 15 万）
     name: '烬火围攻战',
     // ═══ 2026-09-12 迁入**舰级路径**（船长「G 组分 5 档…」＋「**烬火围攻战按 2 护卫舰**」）═══
     // 旧路径三字段随迁移撤下（原值留档）：`foeHpOverride: 1585` · `foeHitRate: 0.85` · `foeSpeedMps: 307`。
@@ -699,33 +701,33 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_G_SWARM_SKIFF,
-        count: 2,
-        hpMul: 1585 / (2 * FOE_G_SWARM_SKIFF.hp), // = 792.5 / 156 ⇒ 合计 1,585
-        dmgMul: 49 / (FOE_G_SWARM_SKIFF.shotDmg * (4 / 3)), // = 每艘 49 ⇒ 合计 98
+        count: enemyParameterOf(bountiesParameters, "ano-cinder-siege", "ships_0_count"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-cinder-siege", "ships_0_hpMul_input0") / (enemyParameterOf(bountiesParameters, "ano-cinder-siege", "ships_0_hpMul_input1") * FOE_G_SWARM_SKIFF.hp), // = 792.5 / 156 ⇒ 合计 1,585
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-cinder-siege", "ships_0_dmgMul_input0") / (FOE_G_SWARM_SKIFF.shotDmg * (enemyParameterOf(bountiesParameters, "ano-cinder-siege", "ships_0_dmgMul_input1") / enemyParameterOf(bountiesParameters, "ano-cinder-siege", "ships_0_dmgMul_input2"))), // = 每艘 49 ⇒ 合计 98
       },
     ],
     galaxyId: 'galaxy-cinder',
     // 2026-09-26 船长令「将G族和H族残骸价格提高到和D族差不多的位置」⇒ 卡级回收档覆写**危档**
     // （单点 `salvage.wreckCardTierOf`）：本卡星系密度 403 会现算成常档 ⇒ G 低安组价上不去。
     wreckTier: 'dire',
-    threat: 64,
+    threat: enemyParameterOf(bountiesParameters, "ano-cinder-siege", "threat"),
     /* ⟪2026-10-02 判据回钉⟫（船长令「两个都同意」之乙）：09-25 重定标把标签 42 → 42 时翻了近防炮门槛 ⇒ PD/修理判据回钉到**重定标前**旧标签 */
-    threatJudged: 42, // 判据威胁（PD 门槛 ≥60 / 敌修理 k 读它；见 AnomalyDef.threatJudged）
-    wreckThreat: 42, // 回收口径（冻结值，见本表头注）
+    threatJudged: enemyParameterOf(bountiesParameters, "ano-cinder-siege", "threatJudged"), // 判据威胁（PD 门槛 ≥60 / 敌修理 k 读它；见 AnomalyDef.threatJudged）
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-cinder-siege", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 2026-09-11 显式化：原靠 `anomaly.tactic ?? 'orbit'` 缺省值生效——那是个静默陷阱（谁动默认值，这几张卡会集体静默变战术）
-    standingReq: 6,
-    standingGain: 2,
-    rewardIsk: 150_000,
+    standingReq: enemyParameterOf(bountiesParameters, "ano-cinder-siege", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-cinder-siege", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-cinder-siege", "rewardIsk"),
     loot: [],
-    combatSeconds: 85,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-cinder-siege", "combatSeconds"),
     description: '烬火星区的防线战事常年不断，协会长期悬赏民间火力增援——击退一次围攻编队，结算一次赏金。',
   },
   {
     id: 'ano-echo-haunt',
-    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "ano-echo-haunt", "dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "ano-echo-haunt", "dmgMix_explosive") }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'G', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '回音残舰', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：回音荒区
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-echo-haunt", "lairLevel"), // 窝点地图级别（2 = 到核心档）：回音荒区
     name: '回音残舰',
     // ═══ 2026-09-12 迁入舰级路径（船长「**残响残舰按 1 驱逐 2 护卫**」）═══
     // 旧路径两字段随迁移撤下（原值留档）：`foeHpOverride: 2035` · `foeSpeedMps: 316`（命中迁移前即缺省 0.85）。
@@ -736,36 +738,36 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_G_ECHO_REMNANT,
-        hpMul: (2035 * 480) / (1000 * FOE_G_ECHO_REMNANT.hp), // = 976.8 / 432（T2 权重 480/1000）
-        dmgMul: 59 / (FOE_G_ECHO_REMNANT.shotDmg * 1.5), // = 主舰单发 59
+        hpMul: (enemyParameterOf(bountiesParameters, "ano-echo-haunt", "ships_0_hpMul_input0") * enemyParameterOf(bountiesParameters, "ano-echo-haunt", "ships_0_hpMul_input1")) / (enemyParameterOf(bountiesParameters, "ano-echo-haunt", "ships_0_hpMul_input2") * FOE_G_ECHO_REMNANT.hp), // = 976.8 / 432（T2 权重 480/1000）
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-echo-haunt", "ships_0_dmgMul_input0") / (FOE_G_ECHO_REMNANT.shotDmg * enemyParameterOf(bountiesParameters, "ano-echo-haunt", "ships_0_dmgMul_input1")), // = 主舰单发 59
       },
       {
         ship: FOE_G_SWARM_SKIFF,
-        count: 2,
-        hpMul: (2035 * 260) / (1000 * FOE_G_SWARM_SKIFF.hp), // = 529.1 / 156（每艘；T1 权重 260/1000）
-        dmgMul: 31 / (FOE_G_SWARM_SKIFF.shotDmg * 1.5), // = 每艘 31 ⇒ 两艘 62
-        rangeMinM: 464, // 僚位射程带覆写（守恒）
-        rangeMaxM: 6103,
+        count: enemyParameterOf(bountiesParameters, "ano-echo-haunt", "ships_1_count"),
+        hpMul: (enemyParameterOf(bountiesParameters, "ano-echo-haunt", "ships_1_hpMul_input0") * enemyParameterOf(bountiesParameters, "ano-echo-haunt", "ships_1_hpMul_input1")) / (enemyParameterOf(bountiesParameters, "ano-echo-haunt", "ships_1_hpMul_input2") * FOE_G_SWARM_SKIFF.hp), // = 529.1 / 156（每艘；T1 权重 260/1000）
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-echo-haunt", "ships_1_dmgMul_input0") / (FOE_G_SWARM_SKIFF.shotDmg * enemyParameterOf(bountiesParameters, "ano-echo-haunt", "ships_1_dmgMul_input1")), // = 每艘 31 ⇒ 两艘 62
+        rangeMinM: enemyParameterOf(bountiesParameters, "ano-echo-haunt", "ships_1_rangeMinM"), // 僚位射程带覆写（守恒）
+        rangeMaxM: enemyParameterOf(bountiesParameters, "ano-echo-haunt", "ships_1_rangeMaxM"),
       },
     ],
     galaxyId: 'galaxy-echo',
     wreckTier: 'dire', // 2026-09-26 船长令：G 族残骸价提到 D 族水平（卡级回收档覆写危档）
-    threat: 51,
-    wreckThreat: 52, // 回收口径（冻结值，见本表头注）
+    threat: enemyParameterOf(bountiesParameters, "ano-echo-haunt", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-echo-haunt", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
-    standingReq: 6,
-    standingGain: 2,
-    rewardIsk: 170000,
+    standingReq: enemyParameterOf(bountiesParameters, "ano-echo-haunt", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-echo-haunt", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-echo-haunt", "rewardIsk"),
     loot: [],
-    combatSeconds: 110,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-echo-haunt", "combatSeconds"),
     description: '回音荒区的残舰群会不断“复活”，协会认为是残余自动化程序作祟。长期清剿令按次结算。',
   },
   {
     id: 'ano-nadir-static',
-    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "ano-nadir-static", "dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "ano-nadir-static", "dmgMix_explosive") }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'G', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '天底封锁军', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 3, // 窝点地图级别（3 = 全档）：G 族最强（天底静区，威胁 55、奖金 35 万）
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-nadir-static", "lairLevel"), // 窝点地图级别（3 = 全档）：G 族最强（天底静区，威胁 55、奖金 35 万）
     name: '天底静区封锁',
     // ═══ 2026-09-12 迁入舰级路径（船长「**天底封锁舰按 1 巡洋 2 驱逐**」＋「**蜂群挂在巡洋舰上。2 架。无后备**」）═══
     // 旧路径三字段随迁移撤下（原值留档）：`foeHpOverride: 2040` · `foeHitRate: 0.95` · `foeSpeedMps: 327`。
@@ -782,41 +784,41 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_G_NADIR_LOCK,
-        hpMul: (2040 * 900) / (1860 * FOE_G_NADIR_LOCK.hp), // = 987.1 / 1080（T3 权重 900/1860）
+        hpMul: (enemyParameterOf(bountiesParameters, "ano-nadir-static", "ships_0_hpMul_input0") * enemyParameterOf(bountiesParameters, "ano-nadir-static", "ships_0_hpMul_input1")) / (enemyParameterOf(bountiesParameters, "ano-nadir-static", "ships_0_hpMul_input2") * FOE_G_NADIR_LOCK.hp), // = 987.1 / 1080（T3 权重 900/1860）
         // 旧口径（**未写占比时**）本条目 = 炮 76 ＋ 机 4 = **80** ⇒ 锚点取 80 与之相等
         // （口径：占比只改"机群 / 炮台"的**构成**，**总量不动**）；写成 12/25 = 0.48 使
         // `round(105 × 0.48 × 1.5)` = 76、`2 × round(4 × 0.48)` = 2×2 = 4。
-        dmgMul: 12 / 25,
-        droneFireShare: 0.3, // 机群拿 30%（船长「G族无人机仅占30%」）：`round(80 × 0.30)` = **24**（2 架各 12）
-        firepowerAnchor: 80, // 本**条目**实收总单发钉住 = 56（炮）＋ 24（机）
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-nadir-static", "ships_0_dmgMul_input0") / enemyParameterOf(bountiesParameters, "ano-nadir-static", "ships_0_dmgMul_input1"),
+        droneFireShare: enemyParameterOf(bountiesParameters, "ano-nadir-static", "ships_0_droneFireShare"), // 机群拿 30%（船长「G族无人机仅占30%」）：`round(80 × 0.30)` = **24**（2 架各 12）
+        firepowerAnchor: enemyParameterOf(bountiesParameters, "ano-nadir-static", "ships_0_firepowerAnchor"), // 本**条目**实收总单发钉住 = 56（炮）＋ 24（机）
       },
       {
         ship: FOE_G_ECHO_REMNANT,
-        count: 2,
-        hpMul: (2040 * 480) / (1860 * FOE_G_ECHO_REMNANT.hp), // = 526.45 / 432（每艘；T2 权重 480/1860）
-        dmgMul: 29 / (FOE_G_ECHO_REMNANT.shotDmg * 1.5), // = 每艘 29 ⇒ 两艘 58
-        hitRate: 0.95, // 命中随卡走（迁移前全卡 0.95）
-        rangeMinM: 502,
-        rangeMaxM: 6604,
+        count: enemyParameterOf(bountiesParameters, "ano-nadir-static", "ships_1_count"),
+        hpMul: (enemyParameterOf(bountiesParameters, "ano-nadir-static", "ships_1_hpMul_input0") * enemyParameterOf(bountiesParameters, "ano-nadir-static", "ships_1_hpMul_input1")) / (enemyParameterOf(bountiesParameters, "ano-nadir-static", "ships_1_hpMul_input2") * FOE_G_ECHO_REMNANT.hp), // = 526.45 / 432（每艘；T2 权重 480/1860）
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-nadir-static", "ships_1_dmgMul_input0") / (FOE_G_ECHO_REMNANT.shotDmg * enemyParameterOf(bountiesParameters, "ano-nadir-static", "ships_1_dmgMul_input1")), // = 每艘 29 ⇒ 两艘 58
+        hitRate: enemyParameterOf(bountiesParameters, "ano-nadir-static", "ships_1_hitRate"), // 命中随卡走（迁移前全卡 0.95）
+        rangeMinM: enemyParameterOf(bountiesParameters, "ano-nadir-static", "ships_1_rangeMinM"),
+        rangeMaxM: enemyParameterOf(bountiesParameters, "ano-nadir-static", "ships_1_rangeMaxM"),
       },
     ],
     galaxyId: 'galaxy-nadir',
     wreckTier: 'dire', // 2026-09-26 船长令：G 族残骸价提到 D 族水平（卡级回收档覆写危档）
-    threat: 89,
-    wreckThreat: 66, // 回收口径（冻结值，见本表头注）
+    threat: enemyParameterOf(bountiesParameters, "ano-nadir-static", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-nadir-static", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 2026-09-11 显式化（原靠缺省值生效）
-    standingReq: 9,
-    standingGain: 3,
-    rewardIsk: 350000,
+    standingReq: enemyParameterOf(bountiesParameters, "ano-nadir-static", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-nadir-static", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-nadir-static", "rewardIsk"),
     loot: [],
-    combatSeconds: 100,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-nadir-static", "combatSeconds"),
     description: '天底是条死胡同，也是鱿鱼亡军最后的据点。协会长年封锁此区，悬赏每一次突破防线的清剿。',
   },
   {
     id: 'ano-maw-hunt',
     foeFamily: 'C', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '噬口猎食群', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 3, // 窝点地图级别（3 = 全档）：C 族最强（星噬之口，威胁 87、奖金 85 万）
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "lairLevel"), // 窝点地图级别（3 = 全档）：C 族最强（星噬之口，威胁 87、奖金 85 万）
     name: '噬口猎杀令',
     // C 族第二批（2026-09-11 船长「虫群编成 + 稀有头目」）：编成改
     // **畸变幼虫 ×10（波 1 ×4、波 2 ×3、波 3 ×3）+ 噬口巨兽 ×1（第 3 波，精锐）**，共 11 单位 / 3 波。
@@ -846,68 +848,68 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_ALIEN_RIFT,
-        count: 4,
-        wave: 0,
+        count: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "ships_0_count"),
+        wave: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "ships_0_wave"),
         hpMul: (MAW_TOTAL_HP * MAW_MINION_SHARE) / FOE_ALIEN_RIFT.hp, // 每只小虫 96.81（3.5%）
         dmgMul:
           (MAW_TOTAL_DMG * MAW_MINION_SHARE) /
-          (FOE_ALIEN_RIFT.shotDmg * COMP_MUL(11)), // 每只 17.5
-        rangeMaxM: 2713, // 卡带（锚定期望交距 543 m 与开战距离；舰级缺省 2552）
+          (FOE_ALIEN_RIFT.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-maw-hunt", "ships_0_dmgMul_input0"))), // 每只 17.5
+        rangeMaxM: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "ships_0_rangeMaxM"), // 卡带（锚定期望交距 543 m 与开战距离；舰级缺省 2552）
       },
       {
         ship: FOE_ALIEN_RIFT,
-        count: 3,
-        wave: 1,
+        count: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "ships_1_count"),
+        wave: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "ships_1_wave"),
         hpMul: (MAW_TOTAL_HP * MAW_MINION_SHARE) / FOE_ALIEN_RIFT.hp,
         dmgMul:
           (MAW_TOTAL_DMG * MAW_MINION_SHARE) /
-          (FOE_ALIEN_RIFT.shotDmg * COMP_MUL(11)),
-        rangeMaxM: 2713,
+          (FOE_ALIEN_RIFT.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-maw-hunt", "ships_1_dmgMul_input0"))),
+        rangeMaxM: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "ships_1_rangeMaxM"),
       },
       {
         ship: FOE_ALIEN_RIFT,
-        count: 3,
-        wave: 2,
+        count: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "ships_2_count"),
+        wave: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "ships_2_wave"),
         hpMul: (MAW_TOTAL_HP * MAW_MINION_SHARE) / FOE_ALIEN_RIFT.hp,
         dmgMul:
           (MAW_TOTAL_DMG * MAW_MINION_SHARE) /
-          (FOE_ALIEN_RIFT.shotDmg * COMP_MUL(11)),
-        rangeMaxM: 2713,
+          (FOE_ALIEN_RIFT.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-maw-hunt", "ships_2_dmgMul_input0"))),
+        rangeMaxM: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "ships_2_rangeMaxM"),
       },
       {
         ship: FOE_ALIEN_MAW, // 稀有头目（**全族唯一** · 显示名「精锐噬口巨兽」）
-        wave: 2,
+        wave: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "ships_3_wave"),
         hpMul: (MAW_TOTAL_HP * MAW_BOSS_SHARE) / FOE_ALIEN_MAW.hp, // 首领血 1,797.9（65%）
         dmgMul:
           (MAW_TOTAL_DMG * MAW_BOSS_SHARE) /
-          (FOE_ALIEN_MAW.shotDmg * COMP_MUL(11)), // 首领单发 325.7
+          (FOE_ALIEN_MAW.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-maw-hunt", "ships_3_dmgMul_input0"))), // 首领单发 325.7
       },
     ],
     waves: [
-      { units: 4, hpShare: 0.08 }, // 小虫 ×4 = 221.28
-      { units: 3, hpShare: 0.06 }, // 小虫 ×3 = 165.96
-      { units: 4, hpShare: 0.86 }, // 头目 + 小虫 ×3 = 2,378.76
+      { units: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "waves_0_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "waves_0_hpShare") }, // 小虫 ×4 = 221.28
+      { units: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "waves_1_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "waves_1_hpShare") }, // 小虫 ×3 = 165.96
+      { units: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "waves_2_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "waves_2_hpShare") }, // 头目 + 小虫 ×3 = 2,378.76
     ], // 多波次（2026-09-09 船长拍板首批：低安顶段 90~150s 无喘息；docs/design/wave-battles-20260909.md）
     // ⚠ 舰级路径下**血量不由 `hpShare` 决定**（走 `slot.hpMul` 的绝对值），本表在本卡只负责**排波次**；
     //   `units` 与编成条目一一对应（4 + 3 + 3 + 1）仅作可读性，改它不会改血量。
     //   **小虫必须排在巨兽之前**：`foes[0]`（波 0 首个主体单位）= 期望交距 / 开战距离的来源。
     galaxyId: 'galaxy-maw',
-    threat: 109,
-    wreckThreat: 80, // 回收口径（冻结值，见本表头注）
+    threat: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'brawl', // 2026-09-10 船长（族系改判）：**orbit（原缺省）→ brawl**（C 族＝螯颚/酸液喷吐的贴脸生物）
-    dmgMix: { plasma: 8, explosive: 2 }, // 主系**等离子**（原动能主）
-    standingReq: 11,
-    standingGain: 4,
-    rewardIsk: 850000,
+    dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "dmgMix_plasma"), explosive: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "dmgMix_explosive") }, // 主系**等离子**（原动能主）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "rewardIsk"),
     loot: [],
-    combatSeconds: 160,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "combatSeconds"),
     description: '星噬之口吞噬过太多舰队。协会悬赏一切能削弱其守军的行动——常设令，可反复接取。',
   },
   {
     id: 'ano-vault-sentinel',
     foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '穹顶守卫', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 3, // 窝点地图级别（3 = 全档）：D 族最强（穹顶墓园，威胁 110、奖金 150 万）
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "lairLevel"), // 窝点地图级别（3 = 全档）：D 族最强（穹顶墓园，威胁 110、奖金 150 万）
     name: '穹顶守卫',
     // D 族落码批（2026-09-11 船长「对悬赏进行敌人配置」）：迁入**舰级路径**（静滞卫舰 = T3 巡洋·**远程**）。
     // 船长三定：档位「1 驱逐 2 巡洋」· 战法「**静滞卫舰改为远程**」（**orbit → kite**）· 速度「只有正常的 50%」= **129**
@@ -926,32 +928,32 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_D_STASIS,
-        count: 2,
-        hpMul: 1960 / FOE_D_STASIS.hp, // 每艘 1,960（与削减前同值）
-        dmgMul: 190 / (FOE_D_STASIS.shotDmg * COMP_MUL(3)), // 每艘单发 190
+        count: enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "ships_0_count"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "ships_0_hpMul_input0") / FOE_D_STASIS.hp, // 每艘 1,960（与削减前同值）
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "ships_0_dmgMul_input0") / (FOE_D_STASIS.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "ships_0_dmgMul_input1"))), // 每艘单发 190
       },
       {
         ship: FOE_D_LONGSHIP,
-        count: 1,
+        count: enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "ships_1_count"),
         // 同一条"卡片血量倍率" k = 1960/1170 ⇒ 1,080 × k = 1,809.23（各舰级按自己的档案锚成比例）
-        hpMul: (1080 * (1960 / FOE_D_STASIS.hp)) / FOE_D_LONGSHIP.hp,
-        dmgMul: 161 / (FOE_D_LONGSHIP.shotDmg * COMP_MUL(3)), // 每艘单发 161（= 105 × 190/124）
+        hpMul: (enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "ships_1_hpMul_input0") * (enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "ships_1_hpMul_input1") / FOE_D_STASIS.hp)) / FOE_D_LONGSHIP.hp,
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "ships_1_dmgMul_input0") / (FOE_D_LONGSHIP.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "ships_1_dmgMul_input1"))), // 每艘单发 161（= 105 × 190/124）
         split: foeLayerSplit('balanced'), // 血型随卡走（守墓长舰舰级缺省是装甲型）
         tactic: 'kite', // 随卡走（本卡是远程档；守墓长舰舰级缺省为 orbit）
       },
     ],
-    waves: [{ units: 3, hpShare: 1 }], // 单波；⚠ `units` 之和 5 → 3 ⇒ 该星系注入量的敌人数因子 2.0 → 1.6（−20%）
+    waves: [{ units: enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "waves_0_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "waves_0_hpShare") }], // 单波；⚠ `units` 之和 5 → 3 ⇒ 该星系注入量的敌人数因子 2.0 → 1.6（−20%）
     galaxyId: 'galaxy-vault',
-    threat: 110,
-    wreckThreat: 96, // 回收口径（冻结值，见本表头注）
+    threat: enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'kite', // 远程（船长「静滞卫舰改为远程」；原 orbit）
     defProfile: 'balanced', // 显式化（原缺省值生效）
-    dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2：**主系能量**（2026-09-11 对齐设定）
-    standingReq: 13,
-    standingGain: 4,
-    rewardIsk: 1500000,
+    dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "dmgMix_plasma"), kinetic: enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "dmgMix_kinetic") }, // 混伤 8:2：**主系能量**（2026-09-11 对齐设定）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "rewardIsk"),
     loot: [],
-    combatSeconds: 55,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-vault-sentinel", "combatSeconds"),
     description: '穹顶墓园的守墓舰队是现存最古老的武装力量，协会将其列为全星域最高悬赏——无人知晓它们为何仍在巡弋。',
   },
   {
@@ -968,34 +970,34 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_D_LONGSHIP,
-        count: 3,
-        hpMul: 1505 / FOE_D_LONGSHIP.hp, // 每艘 1,505（与削减前同值）
-        dmgMul: 175 / (FOE_D_LONGSHIP.shotDmg * COMP_MUL(3)), // 每艘单发 175
+        count: enemyParameterOf(bountiesParameters, "ano-voidedge-warden", "ships_0_count"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-voidedge-warden", "ships_0_hpMul_input0") / FOE_D_LONGSHIP.hp, // 每艘 1,505（与削减前同值）
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-voidedge-warden", "ships_0_dmgMul_input0") / (FOE_D_LONGSHIP.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-voidedge-warden", "ships_0_dmgMul_input1"))), // 每艘单发 175
         split: foeLayerSplit('balanced'), // 血型随卡走（舰级缺省是装甲型）
       },
     ],
-    waves: [{ units: 3, hpShare: 1 }], // 单波；⚠ `units` 之和 5 → 3 ⇒ 该星系注入量的敌人数因子 2.0 → 1.6（−20%）
+    waves: [{ units: enemyParameterOf(bountiesParameters, "ano-voidedge-warden", "waves_0_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-voidedge-warden", "waves_0_hpShare") }], // 单波；⚠ `units` 之和 5 → 3 ⇒ 该星系注入量的敌人数因子 2.0 → 1.6（−20%）
     foeFamily: 'D', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '虚海守望者', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：虚海边缘（威胁 103、奖金 110 万）
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-voidedge-warden", "lairLevel"), // 窝点地图级别（2 = 到核心档）：虚海边缘（威胁 103、奖金 110 万）
     name: '虚海守望者',
     galaxyId: 'galaxy-voidedge',
-    threat: 103,
-    wreckThreat: 88, // 回收口径（冻结值，见本表头注）
+    threat: enemyParameterOf(bountiesParameters, "ano-voidedge-warden", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-voidedge-warden", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 中程（族规全远程；本卡沿用）
     defProfile: 'balanced', // 显式化（原缺省值生效）
-    dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2：**主系能量**（2026-09-11 对齐设定）
-    standingReq: 12,
-    standingGain: 4,
-    rewardIsk: 1100000,
+    dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-voidedge-warden", "dmgMix_plasma"), kinetic: enemyParameterOf(bountiesParameters, "ano-voidedge-warden", "dmgMix_kinetic") }, // 混伤 8:2：**主系能量**（2026-09-11 对齐设定）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-voidedge-warden", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-voidedge-warden", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-voidedge-warden", "rewardIsk"),
     loot: [],
-    combatSeconds: 60,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-voidedge-warden", "combatSeconds"),
     description: '虚海边缘的守望者只对强敌回应。协会常年保留这份最高级通缉，等待能活着带回战报的人。',
   },
   // ══════════ V16.1 内容补充：为空缺星系添加的长期悬赏 ══════════
   {
     id: 'ano-harbor-escort',
-    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "ano-harbor-escort", "dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "ano-harbor-escort", "dmgMix_explosive") }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     foeFamily: 'B', // 敌族（与美术层 FOE_ART 族字母同源）
     // ⚠ **`lairCore` 已退役（2026-09-11 船长裁决「B 族没有窝点、排除出赏金范围」）**：
     // 本卡曾带 `lairCore: '新港拾荒团'`，按"方案 2"删除字段（数据层干净）——
@@ -1009,29 +1011,29 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_SCAV_SKIFF,
-        hpMul: 75 / 156, // 目标血 75（舰级按档重排后：拾荒武装艇 T1 档基线 156）
-        dmgMul: 23 / 28, // 目标单发 23（kinetic 18 + explosive 5）
+        hpMul: enemyParameterOf(bountiesParameters, "ano-harbor-escort", "ships_0_hpMul_input0") / enemyParameterOf(bountiesParameters, "ano-harbor-escort", "ships_0_hpMul_input1"), // 目标血 75（舰级按档重排后：拾荒武装艇 T1 档基线 156）
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-harbor-escort", "ships_0_dmgMul_input0") / enemyParameterOf(bountiesParameters, "ano-harbor-escort", "ships_0_dmgMul_input1"), // 目标单发 23（kinetic 18 + explosive 5）
         split: foeLayerSplit('armor'), // 卡面装甲型（舰级基准是均衡型）
-        dmgMix: { kinetic: 8, explosive: 2 }, // 本卡 8:2（舰级基准是纯动能）
+        dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "ano-harbor-escort", "ships_0_dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "ano-harbor-escort", "ships_0_dmgMix_explosive") }, // 本卡 8:2（舰级基准是纯动能）
       },
     ],
     galaxyId: 'galaxy-harbor',
-    threat: 10,
-    wreckThreat: 10, // 回收口径（冻结值，见本表头注）
+    threat: enemyParameterOf(bountiesParameters, "ano-harbor-escort", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-harbor-escort", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'orbit', // 船长：B 族战术统一 orbit（原 brawl）
     defProfile: 'armor',
-    standingReq: 1,
-    standingGain: 1,
-    rewardIsk: 6_400, // 2026-09-06 船长复核：8,000→6,400（−20%，新手区第二张单收益收口）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-harbor-escort", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-harbor-escort", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-harbor-escort", "rewardIsk"), // 2026-09-06 船长复核：8,000→6,400（−20%，新手区第二张单收益收口）
     loot: [],
-    combatSeconds: 20,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-harbor-escort", "combatSeconds"),
     description: '新港走廊的商路劫案从未断过。协会长期悬赏护航协防：击退小型劫掠艇按次结算——新手练兵的第一张常驻单。',
   },
   {
     id: 'ano-shard-bandits',
     foeFamily: 'A', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '碎晶劫匪', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 1, // 窝点地图级别（1 = 只出外围档）：A 族第二弱的近处图（碎晶带）
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "lairLevel"), // 窝点地图级别（1 = 只出外围档）：A 族第二弱的近处图（碎晶带）
     name: '碎晶带劫匪通缉',
     // A 族数值落地批（2026-09-11）：编成 = **头目舰 ×1 + 海盗快艇 ×3**（本卡的快艇是"提速变体"，
     // 保留试点期的 `speedMul 377/351` 与 `rangeMul 2273/2215`：它们乘在新的 −15% 基准与 1.15 基准之上）。
@@ -1042,49 +1044,49 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_SHIP_PIRATE_SKIFF,
-        count: 2,
-        wave: 0,
-        hpMul: 71.25 / FOE_SHIP_PIRATE_SKIFF.hp, // = 71.25/156
-        dmgMul: 18 / (FOE_SHIP_PIRATE_SKIFF.shotDmg * A_MULTI_SHIP_COMP), // = 18/(28×1.6)
-        speedMul: 377 / 351,
+        count: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "ships_0_count"),
+        wave: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "ships_0_wave"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "ships_0_hpMul_input0") / FOE_SHIP_PIRATE_SKIFF.hp, // = 71.25/156
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "ships_0_dmgMul_input0") / (FOE_SHIP_PIRATE_SKIFF.shotDmg * A_MULTI_SHIP_COMP), // = 18/(28×1.6)
+        speedMul: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "ships_0_speedMul_input0") / enemyParameterOf(bountiesParameters, "ano-shard-bandits", "ships_0_speedMul_input1"),
         // rangeMul 退役（2026-09-11 船长「低威胁卡敌人射程延长到 2600」）：统一走舰级带，
         // 不再用 2273/2215 的微调——两处 rangeMul 一并撤下，本卡快艇射程带 = 舰级 1~2600
-        dmgMix: { kinetic: 8, explosive: 2 },
+        dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "ships_0_dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "ships_0_dmgMix_explosive") },
       },
       {
         ship: FOE_SHIP_PIRATE_SKIFF,
-        count: 2,
-        wave: 1,
-        hpMul: 71.25 / FOE_SHIP_PIRATE_SKIFF.hp,
-        dmgMul: 18 / (FOE_SHIP_PIRATE_SKIFF.shotDmg * A_MULTI_SHIP_COMP),
-        speedMul: 377 / 351,
+        count: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "ships_1_count"),
+        wave: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "ships_1_wave"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "ships_1_hpMul_input0") / FOE_SHIP_PIRATE_SKIFF.hp,
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "ships_1_dmgMul_input0") / (FOE_SHIP_PIRATE_SKIFF.shotDmg * A_MULTI_SHIP_COMP),
+        speedMul: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "ships_1_speedMul_input0") / enemyParameterOf(bountiesParameters, "ano-shard-bandits", "ships_1_speedMul_input1"),
         // rangeMul 退役（2026-09-11 船长「低威胁卡敌人射程延长到 2600」）：统一走舰级带，
         // 不再用 2273/2215 的微调——两处 rangeMul 一并撤下，本卡快艇射程带 = 舰级 1~2600
-        dmgMix: { kinetic: 8, explosive: 2 },
+        dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "ships_1_dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "ships_1_dmgMix_explosive") },
       },
     ],
     waves: [
-      { units: 2, hpShare: 0.5 },
-      { units: 2, hpShare: 0.5 },
+      { units: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "waves_0_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "waves_0_hpShare") },
+      { units: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "waves_1_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "waves_1_hpShare") },
     ],
     galaxyId: 'galaxy-shard',
-    threat: 36,
-    wreckThreat: 20, // 回收口径（冻结值，见本表头注）
-    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    threat: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "wreckThreat"), // 回收口径（冻结值，见本表头注）
+    dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "dmgMix_explosive") }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     tactic: 'brawl',
     defProfile: 'armor',
-    standingReq: 2,
-    standingGain: 1,
-    rewardIsk: 25_000,
+    standingReq: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "rewardIsk"),
     loot: [],
-    combatSeconds: 25,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-shard-bandits", "combatSeconds"),
     description: '碎晶带的晶尘里藏着一伙专劫曦棱晶货船的惯匪。通缉长期有效，可反复接取。',
   },
   {
     id: 'ano-lantern-saboteurs',
     foeFamily: 'A', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '信标猎手', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：灯塔长廊
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "lairLevel"), // 窝点地图级别（2 = 到核心档）：灯塔长廊
     name: '信标猎手悬赏',
     // A 族数值落地批（2026-09-11）：编成 = **头目舰 ×1 + 劫掠护卫舰 ×3**。
     // 头目舰缺省是 brawl 贴脸，本卡是 orbit 环绕 → 用条目 `tactic` **覆写**（船长「头目可配多战术」）。
@@ -1100,41 +1102,41 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_SHIP_PIRATE_CORVETTE,
-        count: 2,
-        wave: 0,
-        hpMul: 91.25 / FOE_SHIP_PIRATE_CORVETTE.hp, // = 91.25/364
-        dmgMul: 20 / (FOE_SHIP_PIRATE_CORVETTE.shotDmg * A_MULTI_SHIP_COMP), // = 20/(51×1.6)
+        count: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "ships_0_count"),
+        wave: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "ships_0_wave"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "ships_0_hpMul_input0") / FOE_SHIP_PIRATE_CORVETTE.hp, // = 91.25/364
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "ships_0_dmgMul_input0") / (FOE_SHIP_PIRATE_CORVETTE.shotDmg * A_MULTI_SHIP_COMP), // = 20/(51×1.6)
       },
       {
         ship: FOE_SHIP_PIRATE_CORVETTE,
-        count: 2,
-        wave: 1,
-        hpMul: 91.25 / FOE_SHIP_PIRATE_CORVETTE.hp,
-        dmgMul: 20 / (FOE_SHIP_PIRATE_CORVETTE.shotDmg * A_MULTI_SHIP_COMP),
+        count: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "ships_1_count"),
+        wave: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "ships_1_wave"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "ships_1_hpMul_input0") / FOE_SHIP_PIRATE_CORVETTE.hp,
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "ships_1_dmgMul_input0") / (FOE_SHIP_PIRATE_CORVETTE.shotDmg * A_MULTI_SHIP_COMP),
       },
     ],
     waves: [
-      { units: 2, hpShare: 0.5 },
-      { units: 2, hpShare: 0.5 },
+      { units: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "waves_0_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "waves_0_hpShare") },
+      { units: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "waves_1_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "waves_1_hpShare") },
     ],
     galaxyId: 'galaxy-lantern',
-    threat: 30,
-    wreckThreat: 22, // 回收口径（冻结值，见本表头注）
-    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    threat: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "wreckThreat"), // 回收口径（冻结值，见本表头注）
+    dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "dmgMix_explosive") }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     tactic: 'orbit',
     defProfile: 'balanced',
-    standingReq: 2,
-    standingGain: 1,
-    rewardIsk: 30_000,
+    standingReq: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "rewardIsk"),
     loot: [],
-    combatSeconds: 20,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-lantern-saboteurs", "combatSeconds"),
     description: '灯塔长廊的信标阵列屡遭破坏，修复费用高昂。协会悬赏猎杀破坏信标的惯犯——本单长期有效。',
   },
   {
     id: 'ano-haze-ambush',
     foeFamily: 'A', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '灰霾伏击团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：灰霾带
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-haze-ambush", "lairLevel"), // 窝点地图级别（2 = 到核心档）：灰霾带
     name: '灰霾伏击团清剿令',
     // A 族数值落地批（2026-09-11）：编成 = **头目舰 ×1 + 劫掠狙击舰 ×3**。
     // 原 `escorts: 1` 的**僚机条目取消**（船长 ①：灰霾/蜃影的 escort 条目改为上述编成）——
@@ -1147,41 +1149,41 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_SHIP_PIRATE_WARLORD,
-        hpMul: (430 * 3) / 5 / FOE_SHIP_PIRATE_WARLORD.hp, // = 258/360
-        dmgMul: 59 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // = 59/(56×1.6)
+        hpMul: (enemyParameterOf(bountiesParameters, "ano-haze-ambush", "ships_0_hpMul_input0") * enemyParameterOf(bountiesParameters, "ano-haze-ambush", "ships_0_hpMul_input1")) / enemyParameterOf(bountiesParameters, "ano-haze-ambush", "ships_0_hpMul_input2") / FOE_SHIP_PIRATE_WARLORD.hp, // = 258/360
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-haze-ambush", "ships_0_dmgMul_input0") / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // = 59/(56×1.6)
         split: foeLayerSplit('shield'), // 血型随卡走（船长裁决①）：卡面护盾 → 头目也护盾
         // 射程多重方案（船长裁决③）：头目原 1~2210m 在本卡 3238m 交战距离下 0 次开火（探针实测）
         // ⇒ 同卡同带：覆写为杂鱼（劫掠狙击舰）射程带
         rangeMinM: FOE_SHIP_PIRATE_SNIPER.rangeMinM,
         rangeMaxM: FOE_SHIP_PIRATE_SNIPER.rangeMaxM,
         tactic: 'kite',
-        dmgMix: { explosive: 8, kinetic: 2 },
+        dmgMix: { explosive: enemyParameterOf(bountiesParameters, "ano-haze-ambush", "ships_0_dmgMix_explosive"), kinetic: enemyParameterOf(bountiesParameters, "ano-haze-ambush", "ships_0_dmgMix_kinetic") },
       },
       {
         ship: FOE_SHIP_PIRATE_SNIPER,
-        count: 3,
-        hpMul: (430 * 2) / 15 / FOE_SHIP_PIRATE_SNIPER.hp, // = 57.3333/268.75
-        dmgMul: 14 / (FOE_SHIP_PIRATE_SNIPER.shotDmg * A_MULTI_SHIP_COMP), // = 14/(41×1.6)
+        count: enemyParameterOf(bountiesParameters, "ano-haze-ambush", "ships_1_count"),
+        hpMul: (enemyParameterOf(bountiesParameters, "ano-haze-ambush", "ships_1_hpMul_input0") * enemyParameterOf(bountiesParameters, "ano-haze-ambush", "ships_1_hpMul_input1")) / enemyParameterOf(bountiesParameters, "ano-haze-ambush", "ships_1_hpMul_input2") / FOE_SHIP_PIRATE_SNIPER.hp, // = 57.3333/268.75
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-haze-ambush", "ships_1_dmgMul_input0") / (FOE_SHIP_PIRATE_SNIPER.shotDmg * A_MULTI_SHIP_COMP), // = 14/(41×1.6)
       },
     ],
     galaxyId: 'galaxy-haze',
-    threat: 34,
-    wreckThreat: 28, // 回收口径（冻结值，见本表头注）
+    threat: enemyParameterOf(bountiesParameters, "ano-haze-ambush", "threat"),
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-haze-ambush", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'kite',
     defProfile: 'shield',
-    dmgMix: { explosive: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
-    standingReq: 3,
-    standingGain: 1,
-    rewardIsk: 60_000,
+    dmgMix: { explosive: enemyParameterOf(bountiesParameters, "ano-haze-ambush", "dmgMix_explosive"), kinetic: enemyParameterOf(bountiesParameters, "ano-haze-ambush", "dmgMix_kinetic") }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-haze-ambush", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-haze-ambush", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-haze-ambush", "rewardIsk"),
     loot: [],
-    combatSeconds: 70,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-haze-ambush", "combatSeconds"),
     description: '灰霾带的电离云是天然的伏击场——一伙劫掠团常年盘踞环心航路。协会发布长期清剿令，按次结算。',
   },
   {
     id: 'ano-mirage-hijackers',
     foeFamily: 'A', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '蜃影劫持团', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 3, // 窝点地图级别（3 = 全档）：A 族最强（蜃影星系，威胁 30、奖金 19 万）
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "lairLevel"), // 窝点地图级别（3 = 全档）：A 族最强（蜃影星系，威胁 30、奖金 19 万）
     name: '蜃影导航劫持令',
     // A 族数值落地批（2026-09-11）：编成 = **头目舰 ×1 + 劫掠狙击舰 ×3**（本卡是三档的"最强变体"，
     // 保留 `speedMul 235/201` 与 `rangeMul 13667/11316`；原 `escorts: 1` 僚机条目**取消**）。
@@ -1199,46 +1201,46 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_SHIP_PIRATE_WARLORD,
-        hpMul: (560 * 3) / 5 / FOE_SHIP_PIRATE_WARLORD.hp, // = 336/360
-        dmgMul: 33 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // ×1.2 锚 = 33/(56×1.6)
+        hpMul: (enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "ships_0_hpMul_input0") * enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "ships_0_hpMul_input1")) / enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "ships_0_hpMul_input2") / FOE_SHIP_PIRATE_WARLORD.hp, // = 336/360
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "ships_0_dmgMul_input0") / (FOE_SHIP_PIRATE_WARLORD.shotDmg * A_MULTI_SHIP_COMP), // ×1.2 锚 = 33/(56×1.6)
         split: foeLayerSplit('shield'), // 血型随卡走（船长裁决①）：卡面护盾 → 头目也护盾
         // 射程多重方案（船长裁决③）：头目原 1~2210m 在本卡 3809m 交战距离下 0 次开火（探针实测）
         // ⇒ 同卡同带（与杂鱼同式的变体倍率推导，**不手抄数字**）
         rangeMinM: Math.round(FOE_SHIP_PIRATE_SNIPER.rangeMinM * MIRAGE_RANGE_MUL),
         rangeMaxM: Math.round(FOE_SHIP_PIRATE_SNIPER.rangeMaxM * MIRAGE_RANGE_MUL),
         tactic: 'kite',
-        dmgMix: { plasma: 8, kinetic: 2 },
+        dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "ships_0_dmgMix_plasma"), kinetic: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "ships_0_dmgMix_kinetic") },
       },
       {
         ship: FOE_SHIP_PIRATE_SNIPER,
-        count: 3,
-        hpMul: (560 * 2) / 15 / FOE_SHIP_PIRATE_SNIPER.hp, // = 74.6667/268.75
-        dmgMul: 7 / (FOE_SHIP_PIRATE_SNIPER.shotDmg * A_MULTI_SHIP_COMP), // ×1.2 锚 = 7/(41×1.6)
-        speedMul: 235 / 201,
+        count: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "ships_1_count"),
+        hpMul: (enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "ships_1_hpMul_input0") * enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "ships_1_hpMul_input1")) / enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "ships_1_hpMul_input2") / FOE_SHIP_PIRATE_SNIPER.hp, // = 74.6667/268.75
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "ships_1_dmgMul_input0") / (FOE_SHIP_PIRATE_SNIPER.shotDmg * A_MULTI_SHIP_COMP), // ×1.2 锚 = 7/(41×1.6)
+        speedMul: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "ships_1_speedMul_input0") / enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "ships_1_speedMul_input1"),
         rangeMul: MIRAGE_RANGE_MUL,
-        dmgMix: { plasma: 8, kinetic: 2 },
+        dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "ships_1_dmgMix_plasma"), kinetic: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "ships_1_dmgMix_kinetic") },
       },
     ],
     galaxyId: 'galaxy-mirage',
-    threat: 68,
+    threat: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "threat"),
     /* ⟪2026-10-02 判据回钉⟫（船长令「两个都同意」之乙）：09-25 重定标把标签 48 → 48 时翻了近防炮门槛 ⇒ PD/修理判据回钉到**重定标前**旧标签 */
-    threatJudged: 48, // 判据威胁（PD 门槛 ≥60 / 敌修理 k 读它；见 AnomalyDef.threatJudged）
-    wreckThreat: 48, // 回收口径（冻结值，见本表头注）
+    threatJudged: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "threatJudged"), // 判据威胁（PD 门槛 ≥60 / 敌修理 k 读它；见 AnomalyDef.threatJudged）
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'kite',
     defProfile: 'shield',
-    dmgMix: { plasma: 8, kinetic: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
-    standingReq: 5,
-    standingGain: 2,
-    rewardIsk: 190_000,
+    dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "dmgMix_plasma"), kinetic: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "dmgMix_kinetic") }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "rewardIsk"),
     loot: [],
-    combatSeconds: 100,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-mirage-hijackers", "combatSeconds"),
     description: '蜃影的引力透镜是天然的埋伏场，海盗借此劫持迷航商船。协会长期悬赏清除这些导航劫持者。',
   },
   {
     id: 'ano-chasm-aberrations',
     foeFamily: 'C', // 敌族（与美术层 FOE_ART 族字母同源）
     lairCore: '裂谷畸变群', // 赏金任务·窝点名的核心词（有值 = 可作为窝点目标）
-    lairLevel: 2, // 窝点地图级别（2 = 到核心档）：裂谷深带
+    lairLevel: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "lairLevel"), // 窝点地图级别（2 = 到核心档）：裂谷深带
     name: '裂谷畸变体猎杀令',
     // C 族第二批（2026-09-11 船长「虫群编成」+ 族级结构修正）：编成改 **畸变幼虫 ×8 / 2 波（4+4）**。
     // 舰级由 T3「裂谷畸变体」换成 **畸变幼虫**（T1 护卫舰 544 m/s；船长「护卫舰级应该有 2 种，
@@ -1250,36 +1252,36 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_ALIEN_RIFT,
-        count: 4,
-        wave: 0,
-        hpMul: 1815 / (8 * FOE_ALIEN_RIFT.hp), // = 226.875/260（总血 1,815 的八分之一）
-        dmgMul: 15 / (FOE_ALIEN_RIFT.shotDmg * COMP_MUL(8)), // 每只单发 15
+        count: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "ships_0_count"),
+        wave: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "ships_0_wave"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "ships_0_hpMul_input0") / (enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "ships_0_hpMul_input1") * FOE_ALIEN_RIFT.hp), // = 226.875/260（总血 1,815 的八分之一）
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "ships_0_dmgMul_input0") / (FOE_ALIEN_RIFT.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "ships_0_dmgMul_input1"))), // 每只单发 15
       },
       {
         ship: FOE_ALIEN_RIFT,
-        count: 4,
-        wave: 1,
-        hpMul: 1815 / (8 * FOE_ALIEN_RIFT.hp),
-        dmgMul: 15 / (FOE_ALIEN_RIFT.shotDmg * COMP_MUL(8)),
+        count: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "ships_1_count"),
+        wave: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "ships_1_wave"),
+        hpMul: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "ships_1_hpMul_input0") / (enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "ships_1_hpMul_input1") * FOE_ALIEN_RIFT.hp),
+        dmgMul: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "ships_1_dmgMul_input0") / (FOE_ALIEN_RIFT.shotDmg * COMP_MUL(enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "ships_1_dmgMul_input1"))),
       },
     ],
     waves: [
-      { units: 4, hpShare: 0.5 },
-      { units: 4, hpShare: 0.5 },
+      { units: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "waves_0_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "waves_0_hpShare") },
+      { units: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "waves_1_units"), hpShare: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "waves_1_hpShare") },
     ],
     galaxyId: 'galaxy-chasm',
-    threat: 77,
+    threat: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "threat"),
     /* ⟪2026-10-02 判据回钉⟫（船长令「两个都同意」之乙）：09-25 重定标改了标签时翻了近防炮门槛 ⇒ PD/修理判据回钉到**重定标前**旧标签 */
-    threatJudged: 58, // 判据威胁（PD 门槛 ≥60 / 敌修理 k 读它；见 AnomalyDef.threatJudged）
-    wreckThreat: 58, // 回收口径（冻结值，见本表头注）
+    threatJudged: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "threatJudged"), // 判据威胁（PD 门槛 ≥60 / 敌修理 k 读它；见 AnomalyDef.threatJudged）
+    wreckThreat: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'brawl',
     defProfile: 'balanced',
-    dmgMix: { plasma: 8, explosive: 2 }, // 主系**等离子**（原动能主；副系 = C 族签名 爆炸）
-    standingReq: 7,
-    standingGain: 3,
-    rewardIsk: 250_000,
+    dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "dmgMix_plasma"), explosive: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "dmgMix_explosive") }, // 主系**等离子**（原动能主；副系 = C 族签名 爆炸）
+    standingReq: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "rewardIsk"),
     loot: [],
-    combatSeconds: 100,
+    combatSeconds: enemyParameterOf(bountiesParameters, "ano-chasm-aberrations", "combatSeconds"),
     description: '裂谷深带的引力畸变催生出集群异形，威胁深层矿道。协会将其列为长期高危猎杀令。',
   },
 
@@ -1287,10 +1289,10 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
   {
     id: 'enc-pirate-1',
     foeFamily: 'A', // 敌族（2026-09-11 船长「废弃F族，将F族融合进A族」：本卡由"未登族 → 兜底 F 形"改为**显式登记 A 族**；签名表本就是 A 口径）
-    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "enc-pirate-1", "dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "enc-pirate-1", "dmgMix_explosive") }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     name: '流窜海盗快艇',
     galaxyId: 'galaxy-hub',
-    threat: 10,
+    threat: enemyParameterOf(bountiesParameters, "enc-pirate-1", "threat"),
     // ═══ 2026-09-12 迁入舰级路径（船长「**隐藏模板迁**」）═══
     // 迁移守恒（逐项对照迁移前实建值）：总血 **12** · 炮台单发 **23** · 射程带 **350~4,600** ·
     // 实速 **281**（`speedMul` 反算）· 命中 0.85。舰级 = **海盗快艇（T1）**（原为"未录族 → 兜底 F 形"）。
@@ -1300,23 +1302,23 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_SHIP_PIRATE_SKIFF,
-        hpMul: 12 / FOE_SHIP_PIRATE_SKIFF.hp, // = 12 / 156
-        dmgMul: 23 / FOE_SHIP_PIRATE_SKIFF.shotDmg, // = 23 / 28（N = 1 ⇒ 补偿 = 1）
-        split: { s: 0.34, a: 0.33, h: 0.33 }, // 三层比例随卡走（迁移前 = 均衡，守恒）
+        hpMul: enemyParameterOf(bountiesParameters, "enc-pirate-1", "ships_0_hpMul_input0") / FOE_SHIP_PIRATE_SKIFF.hp, // = 12 / 156
+        dmgMul: enemyParameterOf(bountiesParameters, "enc-pirate-1", "ships_0_dmgMul_input0") / FOE_SHIP_PIRATE_SKIFF.shotDmg, // = 23 / 28（N = 1 ⇒ 补偿 = 1）
+        split: { s: enemyParameterOf(bountiesParameters, "enc-pirate-1", "ships_0_split_s"), a: enemyParameterOf(bountiesParameters, "enc-pirate-1", "ships_0_split_a"), h: enemyParameterOf(bountiesParameters, "enc-pirate-1", "ships_0_split_h") }, // 三层比例随卡走（迁移前 = 均衡，守恒）
         tactic: 'orbit',
-        dmgMix: { kinetic: 8, explosive: 2 },
-        hitRate: 0.85, // 迁移前缺省命中，守恒
-        falloff: 0.5, // 迁移前 `foeFalloff` 缺省 0.5（舰级本体 0.3）⇒ 逐条目覆写，守恒
-        rangeMinM: 1, // ⚠ 2026-09-20 船长「A 族（除狙击舰）最小射程改为 1」⇒ 本卡近界不再守恒（原 350）；上限仍守恒 4600
-        rangeMaxM: 4600,
-        speedMul: 281 / (340 * 1.15), // 舰级 T1 实速 391 ⇒ 覆写回 281
+        dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "enc-pirate-1", "ships_0_dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "enc-pirate-1", "ships_0_dmgMix_explosive") },
+        hitRate: enemyParameterOf(bountiesParameters, "enc-pirate-1", "ships_0_hitRate"), // 迁移前缺省命中，守恒
+        falloff: enemyParameterOf(bountiesParameters, "enc-pirate-1", "ships_0_falloff"), // 迁移前 `foeFalloff` 缺省 0.5（舰级本体 0.3）⇒ 逐条目覆写，守恒
+        rangeMinM: enemyParameterOf(bountiesParameters, "enc-pirate-1", "ships_0_rangeMinM"), // ⚠ 2026-09-20 船长「A 族（除狙击舰）最小射程改为 1」⇒ 本卡近界不再守恒（原 350）；上限仍守恒 4600
+        rangeMaxM: enemyParameterOf(bountiesParameters, "enc-pirate-1", "ships_0_rangeMaxM"),
+        speedMul: enemyParameterOf(bountiesParameters, "enc-pirate-1", "ships_0_speedMul_input0") / (enemyParameterOf(bountiesParameters, "enc-pirate-1", "ships_0_speedMul_input1") * enemyParameterOf(bountiesParameters, "enc-pirate-1", "ships_0_speedMul_input2")), // 舰级 T1 实速 391 ⇒ 覆写回 281
       },
     ],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    standingReq: enemyParameterOf(bountiesParameters, "enc-pirate-1", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "enc-pirate-1", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "enc-pirate-1", "rewardIsk"),
     loot: [],
-    combatSeconds: 20,
+    combatSeconds: enemyParameterOf(bountiesParameters, "enc-pirate-1", "combatSeconds"),
     tactic: 'orbit',
     hidden: true,
     description: '低安遭遇模板：小股流窜海盗（隐藏，不出现在悬赏目录）。',
@@ -1324,10 +1326,10 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
   {
     id: 'enc-pirate-2',
     foeFamily: 'A', // 敌族（2026-09-11 船长「废弃F族，将F族融合进A族」：显式登记 A 族）
-    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "enc-pirate-2", "dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "enc-pirate-2", "dmgMix_explosive") }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     name: '伏击劫掠队',
     galaxyId: 'galaxy-hub',
-    threat: 22,
+    threat: enemyParameterOf(bountiesParameters, "enc-pirate-2", "threat"),
     // ═══ 2026-09-12 迁入舰级路径（船长「隐藏模板迁」）═══
     // 守恒：总血 **100**（主 62.5 ＋ 僚 37.5）· 炮台单发 **51**（32 ＋ 19）· 射程带 **383~5,029** ·
     // 实速 **291**（`speedMul` 反算）· 命中 0.85。舰级 = **劫掠护卫舰（T1）**——本体即 orbit ＋ 动能 8:2
@@ -1336,32 +1338,32 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_SHIP_PIRATE_CORVETTE,
-        hpMul: 62.5 / FOE_SHIP_PIRATE_CORVETTE.hp, // = 62.5 / 364（主）
-        dmgMul: 32 / (FOE_SHIP_PIRATE_CORVETTE.shotDmg * (4 / 3)), // = 32
-        split: { s: 0.34, a: 0.33, h: 0.33 }, // 迁移前均衡（舰级本体同值 ⇒ 显式写出以防漂移）
-        hitRate: 0.85,
-        falloff: 0.5, // 迁移前缺省 0.5（舰级本体 0.3）⇒ 覆写守恒
-        rangeMinM: 1, // ⚠ 2026-09-20 船长「A 族（除狙击舰）最小射程改为 1」⇒ 近界不再守恒（原 383）；上限仍守恒 5029
-        rangeMaxM: 5029,
-        speedMul: 291 / (340 * 1.1), // 舰级 T1 实速 374 ⇒ 覆写回 291
+        hpMul: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_0_hpMul_input0") / FOE_SHIP_PIRATE_CORVETTE.hp, // = 62.5 / 364（主）
+        dmgMul: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_0_dmgMul_input0") / (FOE_SHIP_PIRATE_CORVETTE.shotDmg * (enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_0_dmgMul_input1") / enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_0_dmgMul_input2"))), // = 32
+        split: { s: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_0_split_s"), a: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_0_split_a"), h: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_0_split_h") }, // 迁移前均衡（舰级本体同值 ⇒ 显式写出以防漂移）
+        hitRate: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_0_hitRate"),
+        falloff: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_0_falloff"), // 迁移前缺省 0.5（舰级本体 0.3）⇒ 覆写守恒
+        rangeMinM: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_0_rangeMinM"), // ⚠ 2026-09-20 船长「A 族（除狙击舰）最小射程改为 1」⇒ 近界不再守恒（原 383）；上限仍守恒 5029
+        rangeMaxM: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_0_rangeMaxM"),
+        speedMul: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_0_speedMul_input0") / (enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_0_speedMul_input1") * enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_0_speedMul_input2")), // 舰级 T1 实速 374 ⇒ 覆写回 291
       },
       {
         ship: FOE_SHIP_PIRATE_CORVETTE, // 僚位 ×1
-        hpMul: 37.5 / FOE_SHIP_PIRATE_CORVETTE.hp, // = 37.5 / 364
-        dmgMul: 19 / (FOE_SHIP_PIRATE_CORVETTE.shotDmg * (4 / 3)), // = 19
-        split: { s: 0.34, a: 0.33, h: 0.33 },
-        hitRate: 0.85,
-        falloff: 0.5,
-        rangeMinM: 1, // 同上（近界 383 → 1）
-        rangeMaxM: 5029,
-        speedMul: 291 / (340 * 1.1),
+        hpMul: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_1_hpMul_input0") / FOE_SHIP_PIRATE_CORVETTE.hp, // = 37.5 / 364
+        dmgMul: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_1_dmgMul_input0") / (FOE_SHIP_PIRATE_CORVETTE.shotDmg * (enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_1_dmgMul_input1") / enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_1_dmgMul_input2"))), // = 19
+        split: { s: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_1_split_s"), a: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_1_split_a"), h: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_1_split_h") },
+        hitRate: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_1_hitRate"),
+        falloff: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_1_falloff"),
+        rangeMinM: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_1_rangeMinM"), // 同上（近界 383 → 1）
+        rangeMaxM: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_1_rangeMaxM"),
+        speedMul: enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_1_speedMul_input0") / (enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_1_speedMul_input1") * enemyParameterOf(bountiesParameters, "enc-pirate-2", "ships_1_speedMul_input2")),
       },
     ],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    standingReq: enemyParameterOf(bountiesParameters, "enc-pirate-2", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "enc-pirate-2", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "enc-pirate-2", "rewardIsk"),
     loot: [],
-    combatSeconds: 30,
+    combatSeconds: enemyParameterOf(bountiesParameters, "enc-pirate-2", "combatSeconds"),
     tactic: 'orbit',
     // 原 `escorts: 1`（旧路径僚机数）已由上方 `ships` 编成表达——**舰级路径不读该字段**。
     hidden: true,
@@ -1370,10 +1372,10 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
   {
     id: 'enc-pirate-3',
     foeFamily: 'A', // 敌族（2026-09-11 船长「废弃F族，将F族融合进A族」：显式登记 A 族）
-    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "enc-pirate-3", "dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "enc-pirate-3", "dmgMix_explosive") }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     name: '狂徒巡逻编队',
     galaxyId: 'galaxy-hub',
-    threat: 40,
+    threat: enemyParameterOf(bountiesParameters, "enc-pirate-3", "threat"),
     // ═══ 2026-09-12 迁入舰级路径（船长「隐藏模板迁」）═══
     // 守恒：总血 **222**（主 5/11 ＋ 僚 3/11 ×2）· 炮台单发 **92**（42 ＋ 25×2）· 射程带 **1~2,420** ·
     // 实速 **394**（`speedMul` 反算）· 命中 0.85。舰级 = **劫掠狙击舰（T2）**——本体是 kite ＋ 爆炸 8:2
@@ -1382,37 +1384,37 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_SHIP_PIRATE_SNIPER,
-        hpMul: (222 * 5) / 11 / FOE_SHIP_PIRATE_SNIPER.hp, // 主：总血 222 的 5/11 = 100.909…
-        dmgMul: 42 / (FOE_SHIP_PIRATE_SNIPER.shotDmg * 1.5), // = 42
-        split: { s: 0.34, a: 0.33, h: 0.33 }, // 迁移前均衡（舰级本体是护盾型）⇒ 覆写守恒
+        hpMul: (enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_hpMul_input0") * enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_hpMul_input1")) / enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_hpMul_input2") / FOE_SHIP_PIRATE_SNIPER.hp, // 主：总血 222 的 5/11 = 100.909…
+        dmgMul: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_dmgMul_input0") / (FOE_SHIP_PIRATE_SNIPER.shotDmg * enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_dmgMul_input1")), // = 42
+        split: { s: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_split_s"), a: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_split_a"), h: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_split_h") }, // 迁移前均衡（舰级本体是护盾型）⇒ 覆写守恒
         tactic: 'brawl',
-        dmgMix: { kinetic: 8, explosive: 2 },
-        hitRate: 0.85,
-        falloff: 0.5, // 迁移前缺省 0.5（舰级本体 0.3）⇒ 覆写守恒
-        rangeMinM: 1,
-        rangeMaxM: 2420,
-        speedMul: 394 / (295 * 1.1), // 舰级 T2 实速 324.5 ⇒ 覆写回 394
+        dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_dmgMix_explosive") },
+        hitRate: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_hitRate"),
+        falloff: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_falloff"), // 迁移前缺省 0.5（舰级本体 0.3）⇒ 覆写守恒
+        rangeMinM: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_rangeMinM"),
+        rangeMaxM: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_rangeMaxM"),
+        speedMul: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_speedMul_input0") / (enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_speedMul_input1") * enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_0_speedMul_input2")), // 舰级 T2 实速 324.5 ⇒ 覆写回 394
       },
       {
         ship: FOE_SHIP_PIRATE_SNIPER, // 僚位 ×2
-        count: 2,
-        hpMul: (222 * 3) / 11 / FOE_SHIP_PIRATE_SNIPER.hp, // 僚：总血 222 的 3/11 = 60.545…（每艘）
-        dmgMul: 25 / (FOE_SHIP_PIRATE_SNIPER.shotDmg * 1.5), // = 每艘 25 ⇒ 两艘 50
-        split: { s: 0.34, a: 0.33, h: 0.33 },
+        count: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_count"),
+        hpMul: (enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_hpMul_input0") * enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_hpMul_input1")) / enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_hpMul_input2") / FOE_SHIP_PIRATE_SNIPER.hp, // 僚：总血 222 的 3/11 = 60.545…（每艘）
+        dmgMul: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_dmgMul_input0") / (FOE_SHIP_PIRATE_SNIPER.shotDmg * enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_dmgMul_input1")), // = 每艘 25 ⇒ 两艘 50
+        split: { s: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_split_s"), a: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_split_a"), h: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_split_h") },
         tactic: 'brawl',
-        dmgMix: { kinetic: 8, explosive: 2 },
-        hitRate: 0.85,
-        falloff: 0.5,
-        rangeMinM: 1,
-        rangeMaxM: 2420,
-        speedMul: 394 / (295 * 1.1),
+        dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_dmgMix_explosive") },
+        hitRate: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_hitRate"),
+        falloff: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_falloff"),
+        rangeMinM: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_rangeMinM"),
+        rangeMaxM: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_rangeMaxM"),
+        speedMul: enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_speedMul_input0") / (enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_speedMul_input1") * enemyParameterOf(bountiesParameters, "enc-pirate-3", "ships_1_speedMul_input2")),
       },
     ],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    standingReq: enemyParameterOf(bountiesParameters, "enc-pirate-3", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "enc-pirate-3", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "enc-pirate-3", "rewardIsk"),
     loot: [],
-    combatSeconds: 40,
+    combatSeconds: enemyParameterOf(bountiesParameters, "enc-pirate-3", "combatSeconds"),
     tactic: 'brawl',
     // 原 `escorts: 2`（旧路径僚机数）已由上方 `ships` 编成表达——**舰级路径不读该字段**。
     hidden: true,
@@ -1421,10 +1423,10 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
   {
     id: 'enc-pirate-4',
     foeFamily: 'A', // 敌族（2026-09-11 船长「废弃F族，将F族融合进A族」：显式登记 A 族）
-    dmgMix: { kinetic: 8, explosive: 2 }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
+    dmgMix: { kinetic: enemyParameterOf(bountiesParameters, "enc-pirate-4", "dmgMix_kinetic"), explosive: enemyParameterOf(bountiesParameters, "enc-pirate-4", "dmgMix_explosive") }, // 混伤 8:2（2026-09-10 船长：主系 80% + 副系 20%，副系按族签名）
     name: '深空屠夫舰队',
     galaxyId: 'galaxy-hub',
-    threat: 70,
+    threat: enemyParameterOf(bountiesParameters, "enc-pirate-4", "threat"),
     // ═══ 2026-09-12 迁入舰级路径（船长「隐藏模板迁」）═══
     // 守恒：总血 **695**（主 5/11 ＋ 僚 3/11 ×2）· 炮台单发 **164**（74 ＋ 45×2）· 射程带 **1~2,640** ·
     // 实速 **418**（`speedMul` 反算）· 命中 0.85。舰级 = **海盗头目舰（T3）**——本体即 brawl ＋ 动能 8:2
@@ -1433,33 +1435,33 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ships: [
       {
         ship: FOE_SHIP_PIRATE_WARLORD,
-        hpMul: (695 * 5) / 11 / FOE_SHIP_PIRATE_WARLORD.hp, // 主：总血 695 的 5/11 = 315.909…
-        dmgMul: 74 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * 1.5), // = 74
-        split: { s: 0.34, a: 0.33, h: 0.33 }, // 迁移前均衡（舰级本体是装甲型）⇒ 覆写守恒
-        hitRate: 0.85, // 迁移前缺省 0.85（舰级本体 0.9）⇒ 覆写守恒
-        falloff: 0.5, // 迁移前缺省 0.5（舰级本体 0.3）⇒ 覆写守恒
-        rangeMinM: 1,
-        rangeMaxM: 2640,
-        speedMul: 418 / (258 * 1.45), // 舰级 T3 实速 374.1 ⇒ 覆写回 418
+        hpMul: (enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_0_hpMul_input0") * enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_0_hpMul_input1")) / enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_0_hpMul_input2") / FOE_SHIP_PIRATE_WARLORD.hp, // 主：总血 695 的 5/11 = 315.909…
+        dmgMul: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_0_dmgMul_input0") / (FOE_SHIP_PIRATE_WARLORD.shotDmg * enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_0_dmgMul_input1")), // = 74
+        split: { s: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_0_split_s"), a: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_0_split_a"), h: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_0_split_h") }, // 迁移前均衡（舰级本体是装甲型）⇒ 覆写守恒
+        hitRate: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_0_hitRate"), // 迁移前缺省 0.85（舰级本体 0.9）⇒ 覆写守恒
+        falloff: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_0_falloff"), // 迁移前缺省 0.5（舰级本体 0.3）⇒ 覆写守恒
+        rangeMinM: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_0_rangeMinM"),
+        rangeMaxM: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_0_rangeMaxM"),
+        speedMul: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_0_speedMul_input0") / (enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_0_speedMul_input1") * enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_0_speedMul_input2")), // 舰级 T3 实速 374.1 ⇒ 覆写回 418
       },
       {
         ship: FOE_SHIP_PIRATE_WARLORD, // 僚位 ×2
-        count: 2,
-        hpMul: (695 * 3) / 11 / FOE_SHIP_PIRATE_WARLORD.hp, // 僚：总血 695 的 3/11 = 189.545…（每艘）
-        dmgMul: 45 / (FOE_SHIP_PIRATE_WARLORD.shotDmg * 1.5), // = 每艘 45 ⇒ 两艘 90
-        split: { s: 0.34, a: 0.33, h: 0.33 },
-        hitRate: 0.85,
-        falloff: 0.5,
-        rangeMinM: 1,
-        rangeMaxM: 2640,
-        speedMul: 418 / (258 * 1.45),
+        count: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_1_count"),
+        hpMul: (enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_1_hpMul_input0") * enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_1_hpMul_input1")) / enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_1_hpMul_input2") / FOE_SHIP_PIRATE_WARLORD.hp, // 僚：总血 695 的 3/11 = 189.545…（每艘）
+        dmgMul: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_1_dmgMul_input0") / (FOE_SHIP_PIRATE_WARLORD.shotDmg * enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_1_dmgMul_input1")), // = 每艘 45 ⇒ 两艘 90
+        split: { s: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_1_split_s"), a: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_1_split_a"), h: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_1_split_h") },
+        hitRate: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_1_hitRate"),
+        falloff: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_1_falloff"),
+        rangeMinM: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_1_rangeMinM"),
+        rangeMaxM: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_1_rangeMaxM"),
+        speedMul: enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_1_speedMul_input0") / (enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_1_speedMul_input1") * enemyParameterOf(bountiesParameters, "enc-pirate-4", "ships_1_speedMul_input2")),
       },
     ],
-    standingReq: 0,
-    standingGain: 0,
-    rewardIsk: 0,
+    standingReq: enemyParameterOf(bountiesParameters, "enc-pirate-4", "standingReq"),
+    standingGain: enemyParameterOf(bountiesParameters, "enc-pirate-4", "standingGain"),
+    rewardIsk: enemyParameterOf(bountiesParameters, "enc-pirate-4", "rewardIsk"),
     loot: [],
-    combatSeconds: 60,
+    combatSeconds: enemyParameterOf(bountiesParameters, "enc-pirate-4", "combatSeconds"),
     tactic: 'brawl',
     // 原 `escorts: 2`（旧路径僚机数）已由上方 `ships` 编成表达——**舰级路径不读该字段**。
     hidden: true,

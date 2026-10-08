@@ -1,4 +1,6 @@
-export type DataTable = 'ships' | 'modules' | 'plugs' | 'items' | 'market'
+export type BaseDataTable = 'ships' | 'modules' | 'plugs' | 'items' | 'market'
+export type EnemyDataTable = 'foeShips' | 'foeDrones' | 'foeMounts' | 'bounties' | 'invasionFleets' | 'wormholeFleets'
+export type DataTable = BaseDataTable | EnemyDataTable
 export type DataRow = Record<string, unknown>
 export interface DataDocument {
   format: 'whale-static-data'
@@ -27,7 +29,12 @@ export interface EditorRow {
   group: string
   values: DataRow
   fields: NumericField[]
+  references?: Array<{ table: EnemyDataTable; id: string; name: string }>
+  notes?: string[]
 }
+export interface EnemyPreviewRequest { table: EnemyDataTable; id: string; mode: 'base' | 'assault' | 'ambush' | 'flagship' | 'signal' | 'wormhole'; depth: number; role: 'ordinary' | 'elite' | 'guard' | 'patrol' | 'event'; kind?: 'node' | 'boss' | 'extract' | 'ruins' | 'spawn' }
+export interface EnemyPreviewRow { name: string; wave: number; units: number; hp: number; dps: number; speed: string; range: string }
+export interface EnemyPreviewResult { ok: boolean; message: string; rows: EnemyPreviewRow[]; notes: string[]; references: Array<{ table: EnemyDataTable; id: string; name: string }>; entries?: Array<{ name: string; source: string; values: string }> }
 export interface EditorProject {
   root: string
   branch: string
@@ -57,4 +64,5 @@ export interface DataEditorApi {
   build(root: string): Promise<EditorResult>
   exportChanges(changes: EditorChange[]): Promise<boolean>
   setDirty(dirty: boolean): void
+  enemyPreview?(root: string, fingerprint: string, edits: NumericEdit[], request: EnemyPreviewRequest): Promise<EnemyPreviewResult>
 }

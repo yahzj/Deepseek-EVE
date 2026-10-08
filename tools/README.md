@@ -32,6 +32,10 @@
 
 | 工具 | npm script | 挂牌状态 |
 |---|---|---|
+| `battle-step-preview.ts` / `battle-step-preview-worker.ts` | `npx tsx tools/battle-step-preview.ts`，worker仅由父工具打包 | v31；100/50/10ms步长及补算预算、装填/齐射/回充/机动与5场景多种子对照；内存注入，不改源码或个人档，前后校验哈希 |
+| `data-editor-enemy-schema.ts` / `data-editor-enemy-preview.ts` | 编辑器服务调用，预览CLI由候选服务执行 | v31；六类敌人源数字字段、范围、来源和当前core派生预览；不复制战斗算法，不倒写派生值 |
+| `data-enemy-migrate.ts` / `data-enemy-alien-migrate.ts` / `data-enemy-metadata.ts` | `npx tsx tools/data-enemy-migrate.ts --baseline`及显式迁移/来源登记 | v31；一次性AST源数字迁移，已迁移源码拒绝重写，六表权威数字与TS公式/引用分离；不得用于日常参数覆盖 |
+| `data-editor-native-check.cjs` / `data-editor-visual-check.cjs` | `node tools/data-editor-native-check.cjs --portable`，可选蓝图/速度/六表专项 | v31；迁出目录0.1.2真实程序、同仓隔离保存/恢复与隐藏窗口，依赖必须来自已验证工作树；不读取个人档、不将几何当观感 |
 | `wreck-loot-price-audit.ts` | `npx tsx tools/wreck-loot-price-audit.ts`，可调`--batches`/`--rare` | v31；全残骸普通/稀有/完好抽样、可重复装备买价、实际回收/挂售及托管补缺回归；只用合成档，不改正式值/个人档，强制完好命中不代表自然频率 |
 | `alien-invasion-check.ts` / `alien-invasion-fixture.ts` | `npx tsx tools/alien-invasion-check.ts --seeds=8`，`--save`生成合成档，`--audit`导出逐舰输出 | v31；新波次/爆虫一次性动能/巢母无限补机与指挥校准，标准A0~A3及高阶合法配装、三族对照；审核分别列循环射击、爆发、护理与后备；无个人档，不改正式数值；审核模式不覆盖校准报告 |
 | `alien-invasion-ui-check.cjs` | 构建后`node tools/alien-invasion-ui-check.cjs` | v31；自建隐藏Electron和隔离userData，合成末波检查两布局/两视口；不当观感验收，关闭自有PID |

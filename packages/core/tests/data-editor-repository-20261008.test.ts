@@ -2,11 +2,14 @@ import { execFileSync } from 'node:child_process'
 import * as fs from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, relative, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { BLUEPRINTS, SHIP_BLUEPRINTS } from '../../../packages/data/src/index'
+import { BLUEPRINTS, SHIP_BLUEPRINTS } from '@whale/data'
 import { DataEditorRepository, type DataEditorRepositoryOptions } from '../../../tools/data-editor-repository'
 import { TABLE_FILES } from '../../../tools/data-editor-schema'
 import type { DataDocument, DataRow, DataTable, NumericEdit } from '../../../tools/data-editor-contract'
+import fieldTypes from '../../data/src/staticFieldTypes.json'
+import { ENEMY_TABLES, ENEMY_FILES } from '../../../tools/data-editor-enemy-schema'
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 })
 
@@ -77,7 +80,7 @@ beforeEach(async () => {
   await write(primary, 'package.json', JSON.stringify({ name: 'whale-eve-idle', scripts: { 'content:check': 'must-not-run', build: 'must-not-run' } }))
   await write(primary, 'packages/core/package.json', '{"name":"@whale/core"}')
   await write(primary, 'packages/data/package.json', '{"name":"@whale/data"}')
-  const rows: Record<DataTable, DataRow[]> = {
+  const rows: Partial<Record<DataTable, DataRow[]>> = {
     ships: [{ id: 'ship-a', tier: 1, role: 'industrial', cargoM3: 800, cycleSeconds: 12, oreUnitsPerCycle: 10, agility: 0.6, shieldHp: 10, priceIsk: 100 }],
     modules: [{ id: 'mod-a', slot: 'miner', cpuUse: 10 }],
     plugs: [{ id: 'plug-a', slot: 'plug', cpuUse: 1 }],
@@ -85,10 +88,10 @@ beforeEach(async () => {
     market: [{ key: 'ship-a', kind: 'ship', refId: 'ship-a', rarity: 'common', basePrice: 100 }],
   }
   for (const table of tables) {
-    const document: DataDocument = { format: 'whale-static-data', version: 1, table, groups: { test: rows[table] } }
+    const document: DataDocument = { format: 'whale-static-data', version: 1, table, groups: { test: rows[table]! } }
     await write(primary, TABLE_FILES[table], JSON.stringify(document, null, 2) + '\n')
     const text = table === 'market' ? 'marketCatalog' : table
-    await write(primary, `packages/data/src/${text}.ts`, `export const ${table.toUpperCase()}_TEXT_BINDINGS = { '${rows[table][0].id ?? rows[table][0].key}': { name: '测试${table}' } } as const\n`)
+    await write(primary, `packages/data/src/${text}.ts`, `export const ${table.toUpperCase()}_TEXT_BINDINGS = { '${rows[table]![0].id ?? rows[table]![0].key}': { name: '测试${table}' } } as const\n`)
   }
   await write(primary, 'packages/core/src/wip.ts', 'export const original = 1\n')
   await write(primary, 'docs/test-saves/user-backup-secret.json', '{"private":"do not copy"}')
@@ -104,6 +107,68 @@ afterEach(async () => {
 })
 
 describe('JSON仓库服务 · 身份与计划', () => {
+  it('读取可信项目新字段契约，不与先后打开的旧项目串用；契约变化阻止过期计划', async () => {
+    const contract = structuredClone(fieldTypes)
+    const doc = JSON.parse((await bytes('market')).toString())
+    doc.groups.test[0].playerSellable = true
+    doc.groups.test[0].blackMarketBuyable = false
+    await write(root, TABLE_FILES.market, JSON.stringify(doc))
+    await write(root, 'packages/data/src/staticFieldTypes.json', JSON.stringify(contract))
+    const opened = await repo.openProject(root)
+    expect(opened.rows.find(row => row.table === 'market')!.values.playerSellable).toBe(true)
+    expect((await repo.openProject(primary)).writable).toBe(false)
+    const plan = await repo.preview(root, opened.fingerprint, edits)
+    expect(plan.issues).toEqual([])
+    await write(root, 'packages/data/src/staticFieldTypes.json', JSON.stringify(contract, null, 2))
+    expect((await repo.save(root, plan.token)).message).toContain('项目已变化')
+    expect(JSON.parse((await bytes('ships')).toString()).groups.test[0].priceIsk).toBe(100)
+    const refreshed = await repo.openProject(root)
+    expect(refreshed.fingerprint).not.toBe(opened.fingerprint)
+    expect((await repo.preview(root, refreshed.fingerprint, edits)).issues).toEqual([])
+  })
+
+  it('项目契约不吞非法字段或类型，重复键／缺表／危险路径均拒绝', async () => {
+    const file = 'packages/data/src/staticFieldTypes.json'
+    const original = await bytes('market')
+    for (const extra of ['"unknownTradeFlag": true', '"playerSellable": 2']) {
+      await write(root, file, JSON.stringify(fieldTypes))
+      await write(root, TABLE_FILES.market, original.toString().replace('"basePrice": 100', `"basePrice": 100, ${extra}`))
+      await expect(repo.openProject(root)).rejects.toThrow('数据契约失败')
+    }
+    await fs.writeFile(join(root, TABLE_FILES.market), original)
+    for (const broken of [
+      JSON.stringify(fieldTypes).replace('"playerSellable":"boolean"', '"playerSellable":"boolean","playerSellable":"number"'),
+      JSON.stringify({ ships: fieldTypes.ships }),
+      JSON.stringify({ ...fieldTypes, market: { ...fieldTypes.market, 'constructor.number': 'number' } }),
+      JSON.stringify({ ...fieldTypes, market: { ...fieldTypes.market, unsafe: 'null' } }),
+    ]) {
+      await write(root, file, broken)
+      await expect(repo.openProject(root)).rejects.toThrow(/契约|重复键/)
+    }
+  })
+
+  it('项目字段契约在完整检查期间被改动时目标JSON零写入', async () => {
+    await write(root, 'packages/data/src/staticFieldTypes.json', JSON.stringify(fieldTypes))
+    const original = await allBytes()
+    const instance = service({ checker: async () => {
+      await write(root, 'packages/data/src/staticFieldTypes.json', JSON.stringify(fieldTypes, null, 2))
+    } })
+    expect((await instance.save(root, (await preview(instance)).token)).ok).toBe(false)
+    expect(await allBytes()).toEqual(original)
+  })
+
+  it('最新实际主树可以只读加载，合法新增商品开关不误报，主树JSON不变', async () => {
+    const actual = fileURLToPath(new URL('../../../', import.meta.url))
+    const primaryRoot = git(actual, 'worktree', 'list', '--porcelain').split('\n').find(line => line.startsWith('worktree '))!.slice('worktree '.length)
+    const before = await Promise.all(tables.map(table => fs.readFile(join(primaryRoot, TABLE_FILES[table]))))
+    const project = await new DataEditorRepository({ trustedRepository: actual }).openProject(primaryRoot)
+    expect(project.writable).toBe(false)
+    expect(project.rows.length).toBeGreaterThan(800)
+    expect(project.rows.some(row => row.table === 'market' && typeof row.values.blackMarketBuyable === 'boolean')).toBe(true)
+    expect(project.rows.some(row => row.table === 'market' && typeof row.values.playerSellable === 'boolean')).toBe(true)
+    expect(await Promise.all(tables.map(table => fs.readFile(join(primaryRoot, TABLE_FILES[table]))))).toEqual(before)
+  })
+
   it('读真实JSON与AST名称，主树或main分支只读，未知仓库和非Git目录拒绝', async () => {
     const project = await repo.openProject(root)
     expect(project.writable).toBe(true)
@@ -425,10 +490,14 @@ describe('JSON仓库服务 · 隔离检查与落盘', () => {
 })
 
 describe('JSON仓库服务 · 崩溃恢复与生产限制', () => {
-  it('可信同仓工作树依赖可复用，固定CLI解析workspace仍取候选JSON和WIP', async () => {
+  it.each([false, true])('可信同仓依赖检查游戏四包，编辑器在库=%s时按实际目录检查', async hasEditor => {
     const trusted = join(base, '可信零号')
     git(primary, 'worktree', 'add', '-qb', 'editor/trusted', trusted)
+    const checks = join(base, 'checks.jsonl')
+    for (const pkg of ['packages/core', 'packages/data', 'packages/ui', 'apps/desktop']) await write(root, `${pkg}/tsconfig.json`, '{}')
+    if (hasEditor) await write(root, 'apps/data-editor/tsconfig.json', '{}')
     const cli = `const fs = require('node:fs'); const path = require('node:path');
+      if (process.argv.includes('--noEmit')) fs.appendFileSync(${JSON.stringify(checks)}, JSON.stringify(process.argv.at(-1)) + '\\n');
       const resolved = require.resolve('@whale/data');
       if (!resolved.includes('_data-editor' + path.sep + 'candidates')) throw new Error('workspace resolved outside candidate: ' + resolved);
       const data = JSON.parse(fs.readFileSync(path.join(path.dirname(resolved), 'src/static/ships.json'), 'utf8'));
@@ -449,6 +518,8 @@ describe('JSON仓库服务 · 崩溃恢复与生产限制', () => {
     const plan = await preview(production)
     const result = await production.save(root, plan.token)
     expect(result.ok, result.message).toBe(true)
+    const expected = ['packages/core', 'packages/data', 'packages/ui', 'apps/desktop', ...(hasEditor ? ['apps/data-editor'] : [])]
+    expect((await fs.readFile(checks, 'utf8')).trim().split('\n').map(line => JSON.parse(line))).toEqual(expected.map(pkg => `${pkg}/tsconfig.json`))
     expect(JSON.parse((await bytes('ships')).toString()).groups.test[0].priceIsk).toBe(120)
     expect((await production.restore(root)).ok).toBe(true)
     expect(JSON.parse((await bytes('ships')).toString()).groups.test[0].priceIsk).toBe(100)
@@ -505,5 +576,57 @@ describe('JSON仓库服务 · 崩溃恢复与生产限制', () => {
     const before = await allBytes()
     expect((await production.check(root)).message).toContain('缺少项目node_modules')
     expect(await allBytes()).toEqual(before)
+  })
+})
+
+async function enemyFixture(): Promise<void> {
+  for (const file of [...Object.values(ENEMY_FILES), 'packages/data/src/static/enemyFields.json', 'packages/data/src/foe-ships.ts', 'packages/data/src/foe-drones.ts', 'packages/data/src/anomalies.ts', 'packages/data/src/wormholeFoes.ts', 'packages/core/src/foeMounts.ts', 'packages/core/src/enemyParameters.ts']) {
+    await write(root, file, await fs.readFile(new URL(`../../../${file}`, import.meta.url)))
+  }
+}
+describe('六类敌人参数 · 事务范围', () => {
+  it('读取全部敌人表与具名编队；六表一次保存、原文备份与恢复，core挂载文件同受保护', async () => {
+    await enemyFixture()
+    const project = await repo.openProject(root)
+    const incoming: NumericEdit[] = []
+    const originals = await Promise.all(ENEMY_TABLES.map(table => bytes(table)))
+    for (const table of ENEMY_TABLES) {
+      const row = project.rows.find(row => row.table === table && row.fields.some(field => field.writable && !field.percent && !field.integer && field.path !== 'speedRatio'))!
+      const field = row.fields.find(field => field.writable && !field.percent && !field.integer && field.path !== 'speedRatio')!
+      incoming.push({ table, id: row.id, path: field.path, value: Number(row.values[field.path]) * 1.01 })
+      expect(row.name).not.toBe(row.id)
+    }
+    const plan = await repo.preview(root, project.fingerprint, incoming)
+    expect(plan.issues).toEqual([])
+    expect(plan.changes).toHaveLength(6)
+    const saved = await repo.save(root, plan.token)
+    expect(saved.ok, saved.message).toBe(true)
+    expect((await journals())[0].value.files).toHaveLength(6)
+    expect((await journals())[0].value.files.some((file: { file: string }) => file.file === ENEMY_FILES.foeMounts)).toBe(true)
+    expect((await repo.restore(root)).ok).toBe(true)
+    expect(await Promise.all(ENEMY_TABLES.map(table => bytes(table)))).toEqual(originals)
+  })
+  it('未知字段、非法波次和来源契约变化均拒绝，不静默兼容', async () => {
+    await enemyFixture()
+    const project = await repo.openProject(root)
+    const row = project.rows.find(row => row.table === 'invasionFleets' && row.fields.some(field => field.path === 'ships_0_wave'))!
+    const plan = await repo.preview(root, project.fingerprint, [{ table: 'invasionFleets', id: row.id, path: 'ships_0_wave', value: 31 }])
+    expect(plan.issues.length).toBeGreaterThan(0)
+    const file = 'packages/data/src/static/enemyFields.json'
+    const metadata = JSON.parse(await fs.readFile(join(root, file), 'utf8'))
+    metadata.foeShips[0].fields[0].expression = '999'
+    await write(root, file, JSON.stringify(metadata))
+    await expect(repo.openProject(root)).rejects.toThrow('来源契约')
+  })
+  it('完整检查失败不写任一敌人目标，拒绝保留编辑草稿', async () => {
+    await enemyFixture()
+    const instance = service({ checker: async () => ({ ok: false, message: '完整技术检查失败' }) })
+    const project = await instance.openProject(root)
+    const row = project.rows.find(row => row.table === 'foeShips' && row.values.hp !== undefined)!
+    const originals = await Promise.all(ENEMY_TABLES.map(table => bytes(table)))
+    const plan = await instance.preview(root, project.fingerprint, [{ table: 'foeShips', id: row.id, path: 'hp', value: Number(row.values.hp) + 1 }])
+    expect(plan.issues).toEqual([])
+    expect((await instance.save(root, plan.token)).message).toContain('完整技术检查失败')
+    expect(await Promise.all(ENEMY_TABLES.map(table => bytes(table)))).toEqual(originals)
   })
 })
