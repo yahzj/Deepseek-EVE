@@ -12,9 +12,9 @@
 
 ## 统计
 
-- 文档总数 **529** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8152** KB · **63860** 行
-- 状态分布：**未标注** 272 · **已确认/已实现** 178 · **进行中** 53 · **待裁定** 25 · **历史留档** 1
-- 孤儿文档（0 引用）**120** 份 · 状态未标注 **272** 份
+- 文档总数 **529** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8141** KB · **63833** 行
+- 状态分布：**未标注** 272 · **已确认/已实现** 179 · **进行中** 53 · **待裁定** 24 · **历史留档** 1
+- 孤儿文档（0 引用）**119** 份 · 状态未标注 **272** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
 - 三、现行设计稿（design）：**365** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 299 KB / 308 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 90 KB / 908 行 | 95 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 516 KB / 1080 行 | 228 / 22 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 93 KB / 475 行 | 377 / 28 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 95 KB / 479 行 | 377 / 28 |
 
 ## 七、评审与体检（review） —— 12 份
 
@@ -62,7 +62,6 @@
 | `docs/design/activity-invasion-badge-20261008.md` | 活动栏入侵标签试做 | 已确认/已实现（试做已实现并本地合入） | 2026-10-08 | 8 KB / 67 行 | 1 / 0 |
 | `docs/design/announcement-draft-corona-reinforcement-20261008.md` | 公告待审稿：光环中枢增援与装置调整 | 待裁定（待船长审字） | 2026-10-08 | 1 KB / 23 行 | 2 / 0 |
 | `docs/design/announcement-draft-release-consolidated-20261008.md` | 待发公告整合与遗漏核对 | 待裁定（待船长审核） | 2026-10-08 | 32 KB / 252 行 | 0 / 0 |
-| `docs/design/announcement-draft-two-release-20261008.md` | 待发公告两篇整合稿 | 待裁定（待船长审核） | 2026-10-08 | 21 KB / 101 行 | 0 / 0 |
 | `docs/design/battle-cycle-timer-wrap-20261008.md` | 战斗读秒回到进度条与装置自动换行 | 已确认/已实现（已实现、自测通过并本地合入） | 2026-10-08 | 5 KB / 33 行 | 0 / 0 |
 | `docs/design/battle-cycles-compact-revision-20261008.md` | 战斗顶部紧凑化与旧式装填条复用 | 已确认/已实现（已实现） | 2026-10-08 | 7 KB / 55 行 | 0 / 0 |
 | `docs/design/battle-mount-readiness-speed-20261008.md` | 战斗挂载件、开场装填与敌速核查 | 已确认/已实现（已实现并本地合入主树） | 2026-10-08 | 15 KB / 107 行 | 1 / 0 |
@@ -82,6 +81,7 @@
 | `docs/design/remaining-editor-merge-20261008.md` | 敌人参数编辑接线与独立编辑器收口 | 未标注（已以5132f86d本地合入main） | 2026-10-08 | 4 KB / 33 行 | 1 / 0 |
 | `docs/design/remaining-ui-merge-20261008.md` | 书架市场入口与速度误标合入 | 未标注（已以61fde31d本地合入main） | 2026-10-08 | 2 KB / 22 行 | 0 / 0 |
 | `docs/design/remaining-work-merge-20261008.md` | 剩余工作裁定与分批合入 | 未标注（实现已全部本地合入main） | 2026-10-08 | 5 KB / 48 行 | 0 / 0 |
+| `docs/design/startup-win-cache-audit-20261008.md` | 启动卡顿与胜率预热排查 | 已确认/已实现（已实现并以85580256本地合入m） | 2026-10-08 | 8 KB / 69 行 | 1 / 0 |
 | `docs/design/stellar-debug-navigation-20261008.md` | 调试导航开放星系入口 | 未标注（已本地合入及复测） | 2026-10-08 | 2 KB / 24 行 | 0 / 0 |
 | `docs/design/stellar-ready-save-20261008.md` | 新星系即用存档 | 未标注（已本地合入并交付） | 2026-10-08 | 2 KB / 23 行 | 0 / 0 |
 | `docs/design/acid-burst-stacking-fx-20261007.md` | 酸液爆虫腐蚀叠加与专属自爆动画 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 53 行 | 2 / 0 |
@@ -473,7 +473,7 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 27 / 18 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 19 KB / 124 行 | 21 / 7 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 19 KB / 125 行 | 21 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -599,12 +599,11 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，120 份）
+## 附：孤儿文档（0 引用，119 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/announcement-draft-release-consolidated-20261008.md`（2026-10-08 · 32 KB）—— 待发公告整合与遗漏核对
-- `docs/design/announcement-draft-two-release-20261008.md`（2026-10-08 · 21 KB）—— 待发公告两篇整合稿
 - `docs/design/battle-cycle-timer-wrap-20261008.md`（2026-10-08 · 5 KB）—— 战斗读秒回到进度条与装置自动换行
 - `docs/design/battle-cycles-compact-revision-20261008.md`（2026-10-08 · 7 KB）—— 战斗顶部紧凑化与旧式装填条复用
 - `docs/design/broodmother-summon-handbook-20261008.md`（2026-10-08 · 5 KB）—— 巢母召唤成虫与手册实际挂载
