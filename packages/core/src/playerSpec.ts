@@ -524,6 +524,7 @@ export function createPlayerSpec(
       refs?.weaponRanges?.push({ baseM: rangeBase(turret.maxRangeM), bonusMul: 1 + rangeBonus['plasma'] })
       weapons.push({
         label: count > 1 ? `${turret.name}×${count}` : turret.name,
+        moduleId: turret.id,
         kind: 'beam',
         src: 'laser',
         fixedType: 'plasma',
@@ -562,6 +563,7 @@ export function createPlayerSpec(
     refs?.weaponRanges?.push({ baseM: rangeBase(turret.maxRangeM), bonusMul: 1 + rangeBonus[type] })
     weapons.push({
       label: count > 1 ? `${turret.name}×${count}` : turret.name,
+      moduleId: turret.id,
       kind: 'gun',
       src: turret.slot === 'missile' ? 'missile' : 'turret',
       shotsByType,

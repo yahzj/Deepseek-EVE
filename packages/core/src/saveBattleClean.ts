@@ -446,7 +446,7 @@ export function cleanBattle(raw: unknown): BattleState | null {
   /**
    * **我方捕获网两份账本**（2026-09-26）：
    * - `myWebs`（键 = 携带者 tag）：只收 `{ targetTag?: 非空字符串, cooldownUntilMs: 有限非负数 }`；
-   * - `foeWebDebuffs`（键 = 被钉敌舰 tag）：`byTag` 必须是非空字符串，三层效果按常量重写（不信档里的数）。
+   * - `foeWebDebuffs`（键 = 被钉敌舰 tag）：保留合法我方捕获网减速；运行时按网手装备复核。
    * 坏值整条丢（与其余账本同款口径）。
    */
   const myWebs = cleanLedgerMap(b.myWebs, (raw) => {
@@ -462,7 +462,7 @@ export function cleanBattle(raw: unknown): BattleState | null {
     if (typeof byTag !== 'string' || byTag.length === 0) return undefined
     return {
       byTag,
-      slowMul: 0.1,
+      slowMul: typeof r.slowMul === 'number' && Number.isFinite(r.slowMul) && r.slowMul > 0 && r.slowMul <= 1 ? r.slowMul : 0.5,
       noThruster: true as const,
       noEvasion: true as const,
       atMs: Math.max(0, numf(r.atMs, 0)),

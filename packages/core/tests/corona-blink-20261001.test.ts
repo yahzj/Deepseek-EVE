@@ -117,7 +117,10 @@ describe('光环科技 · 闪现：真实战斗里的触发与冷却', () => {
         // 冷却戳必须是「某个 500ms 整数拍的 lastTickGameMs + 12,000」
         // ⚠ 沿革：2026-10-01 令把间隔由 12 秒下调到 5 秒（本行当时随之改成 5,000）；
         //   🔴 **2026-10-03 船长令「将敌人的闪现冷却时间延长到12秒」⇒ 判据随令改回 12,000**。
-        for (const v of stamps) expect((v - 12_000) % 500, '冷却戳 = 触发时刻 + 12 秒').toBe(0)
+        for (const [tag, v] of Object.entries(b.foeBlinks!)) {
+          const event = b.fx.find(fx => fx.blink && fx.tag === tag && fx.atMs === v - 12000)
+          expect(event, '冷却戳对应真实触发时刻＋12秒，不取采样拍边界').toBeDefined()
+        }
         break
       }
     }

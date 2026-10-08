@@ -3,6 +3,11 @@
  * 其他包（data / ui / desktop / 未来服务端）只允许从这里 import。
  */
 
+export { battleWeaponCyclesOf } from './battleWeaponView'
+export type { BattleWeaponCycleView } from './battleWeaponView'
+export { battleDeviceCyclesOf } from './battleDeviceView'
+export type { BattleDeviceCycleView } from './battleDeviceView'
+
 export type {
   SkillDef,
   SkillCatalog,

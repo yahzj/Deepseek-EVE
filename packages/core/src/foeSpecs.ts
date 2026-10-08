@@ -1492,7 +1492,8 @@ export function createBattleState(
       hpMax: { s: spec.hp.s, a: spec.hp.a, h: spec.hp.h },
       // **舰级 id**（2026-09-24）：首波内联播种同样要带上（`flagshipBattleLedger` 认母舰靠它）
       ...(spec.foeShipId !== undefined ? { foeShipId: spec.foeShipId } : {}),
-      weapons: spec.weapons.map(() => 0),
+      // 船长2026-10-08：新战斗玩家武器先完成一轮实际装填，敌方首波不变。
+      weapons: spec.weapons.map(w => spec.side === 'me' ? Math.max(1, w.reloadMs) : 0),
       /**
        * **隐秘行动装置**（2026-09-15 船长）：开战那一刻起窗——`stealthMs` 由 `createPlayerSpec` 写
        * （装了装置**且未装推进器**才有值）。**只有装了装置的那一艘写本字段**（Q3 甲）⇒

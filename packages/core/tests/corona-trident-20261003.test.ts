@@ -137,6 +137,7 @@ describe('三叉戟光束炮：真实战斗里的三连射节拍', () => {
     const allKeys: string[] = []
     let prevFired: number | undefined
     let prevPla = b.ammo.pla
+    const initialPla = prevPla
     for (let t = 100; t <= 120_000 && b.ended === null; t += 100) {
       tick(t)
       const fired = b.meBurstFired?.[key]
@@ -169,9 +170,11 @@ describe('三叉戟光束炮：真实战斗里的三连射节拍', () => {
      * **每轮恰扣 3 发能量弹**（`roundsPerVolley = 1` ⇒ 每发扣 1）：本场只有这门武器吃能量弹
      * ⇒ 总扣弹量必是 3 的整数倍。
      */
-    const dropped = ammoMarks.length > 0 ? ammoMarks[0]!.pla - ammoMarks.at(-1)!.pla : 0
+    const dropped = initialPla - b.ammo.pla
     expect(dropped, '应真的扣了弹').toBeGreaterThan(0)
-    expect(dropped % 3, `总扣弹 ${dropped} 应是 3 的整数倍（三连射每轮 3 发）`).toBe(0)
+    // 采样终点可能停在半轮，剔除各舰真实在途发数后才是完整三连周期。
+    const partial = Object.values(b.meBurstFired ?? {}).reduce((sum, fired) => sum + fired, 0)
+    expect((dropped - partial) % 3, '完整轮次每轮消耗3发；在途发数按逐舰账本扣除').toBe(0)
     /**
      * **逐舰记账**（**2026-10-03 修**）：登记表的键按设计是 `舰tag#炮位` —— 八条船都装了这门，
      * 每艘各有一份连发账（改前传的是主控 tag ⇒ 僚舰全挤在 `player#` 上、读数互相踩）。

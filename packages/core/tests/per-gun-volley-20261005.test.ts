@@ -145,7 +145,7 @@ describe('逐炮齐射守恒与独立命中', () => {
     run.card.ships = [{ ship: run.foe, count: 2 }]
     const battle = startBattleFor(run.state, run.ctx, run.state.shipId, run.card.id, 0)!
     run.battle = battle
-    const hits = collect(run, 2000, 6000).filter((fx) => fx.side === 'me' && fx.src === 'turret' && fx.hit)
+    const hits = collect(run, 2100, 6000).filter((fx) => fx.side === 'me' && fx.src === 'turret' && fx.hit)
     expect(new Set(hits.map((fx) => fx.to)).size).toBe(2)
   })
   it('合并近防炮同轮打落后接力下一架，不因反击令牌消费丢掉剩余炮', () => {
@@ -159,7 +159,7 @@ describe('逐炮齐射守恒与独立命中', () => {
     run.battle = startBattleFor(run.state, run.ctx, run.state.shipId, run.card.id, 0)!
     run.battle.droneHitAt = { me: 0 }
     const loaded = run.battle.ammo.kin
-    const events = collect(run, 2000, 6000)
+    const events = collect(run, 2100, 6000)
     expect(run.battle.foeDronePools!['foe-0']!.filter((p) => !p.alive)).toHaveLength(2)
     expect(events.filter((e) => e.side === 'me' && e.pd)).toHaveLength(2)
     expect(loaded - run.battle.ammo.kin).toBe(5)

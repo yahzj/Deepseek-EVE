@@ -63,6 +63,8 @@ export type { BattleVerdict } from './combatReport'
 // 战斗演出层（2026-10-02 批次 4c 拆到 combatFx.ts）；本文件借回使用并再导出
 import { BATTLE_ARRIVAL_STAGGER_MS, pushBattleFx, pushBattleNotice, WORMHOLE_FOE_VOLLEY_STAGGER_MS } from './combatFx'
 import { equipmentCycleMsOf } from './equipment'
+import { battleWeaponCyclesOf, type BattleWeaponCycleView } from './battleWeaponView'
+import { battleDeviceCyclesOf, type BattleDeviceCycleView } from './battleDeviceView'
 export { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, pushBattleFx, stampFoeArrivalFx, WORMHOLE_FOE_VOLLEY_STAGGER_MS } from './combatFx'
 // 敌卡档案（2026-10-02 批次 4d 拆到 foeCard.ts）；本文件只再导出
 export { FOE_LIGHT_WORD, FOE_ELITE_WORD, FOE_SUPPORT_TAG_RE, baseFoeTag, foeCardShipIdOf, foeClassName, foeMainTagOf, foeShipEliteOf, foeShipIdOfTag, foeShipTierOf, foeUnitNameOf } from './foeCard'
@@ -106,6 +108,8 @@ export type WeaponSrc = 'turret' | 'missile' | 'laser' | 'drone' | 'base'
 /** 静态武器卡 */
 export interface WeaponSpec {
   foeDroneRangeBonusPct?: number
+  /** 运行规格中的装配型号，仅用于逐件列表，不新增随档字段。 */
+  moduleId?: string
   label: string
   /** gun = 我方炮台/导弹架（吃弹药，按 shotsByType 给单发伤害）；beam = 激光炮（必中、
    * 逐发扣能量弹药、威力随距离衰减）；fixed = 固定单发（基础舰炮/无人机/敌方） */
@@ -1343,6 +1347,7 @@ export function applyFoeWebDebuff<T extends UnitSpec>(
   spec: T,
   d: import('./state').BattleFoeWebDebuff,
 ): T {
+  if (!foeWebBases.has(spec)) foeWebBases.set(spec, { speedMps: spec.speedMps, evasion: spec.evasion, thrusterBoost: spec.thrusterBoost })
   spec.speedMps = Math.max(20, spec.speedMps * d.slowMul)
   /**
    * **C 族族设定**（**船长 2026-09-30**：「给C族添加族设定，**他们的冲锋不会被网子解除**」；
@@ -1353,6 +1358,20 @@ export function applyFoeWebDebuff<T extends UnitSpec>(
   if (d.noThruster && spec.foeChargeWebImmune !== true) spec.thrusterBoost = 0
   if (d.noEvasion) spec.evasion = 0
   return spec
+}
+
+// 长步会复用本波规格；恢复网修改的字段，不能把上个时间片的减速作为新基准。
+const foeWebBases = new WeakMap<UnitSpec, Pick<UnitSpec, 'speedMps' | 'evasion' | 'thrusterBoost'>>()
+
+function restoreFoeWebSpecs(foes: readonly UnitSpec[]): void {
+  for (const foe of foes) {
+    const base = foeWebBases.get(foe)
+    if (!base) continue
+    foe.speedMps = base.speedMps
+    foe.evasion = base.evasion
+    if (base.thrusterBoost === undefined) delete foe.thrusterBoost
+    else foe.thrusterBoost = base.thrusterBoost
+  }
 }
 
 /**
@@ -1379,6 +1398,7 @@ export function advanceMyCaptureWebs(
   myUnits: readonly UnitSpec[],
   foes: readonly UnitSpec[],
 ): void {
+  restoreFoeWebSpecs(foes)
   const webs = b.myWebs
   const debuffs = b.foeWebDebuffs
   const carriers = myUnits.filter((u) => (u.myCaptureWeb?.cycleMs ?? 0) > 0)
@@ -1412,6 +1432,10 @@ export function advanceMyCaptureWebs(
     const webRangeM = me.myCaptureWeb!.rangeM
     const webBreakM = me.myCaptureWeb!.breakM
     const webSlowMul = me.myCaptureWeb!.slowMul
+    const existingTarget = b.myWebs?.[me.tag]?.targetTag
+    if (existingTarget && b.foeWebDebuffs?.[existingTarget]?.byTag === me.tag) {
+      b.foeWebDebuffs[existingTarget]!.slowMul = webSlowMul
+    }
     b.myWebs = { ...(b.myWebs ?? {}) }
     const st = (b.myWebs[me.tag] ??= { cooldownUntilMs: 0 })
     // ② 目标已死/已不在本波 ⇒ 清目标并进冷却
@@ -2766,6 +2790,8 @@ export function battleArcsFor(
   }>
   /** 我方各武器当前装填剩余毫秒（与 me 同序；0 = 可开火；战斗单位缺失时为空数组） */
   meReload: number[]
+  weapons: BattleWeaponCycleView[]
+  devices: BattleDeviceCycleView[]
   /** **我方编队逐舰读数**（F 批「4 条舰影 + 血条」；单船路径 = 一条 = 主控） */
   myUnits: Array<{
     tag: string
@@ -2833,7 +2859,7 @@ export function battleArcsFor(
    * **捕获网连线**（船长 2026-09-16）：每条形如 `{ from: 施放者 tag, to: 被钉舰 tag }`；
    * 渲染层画一条蓝色光束、**持续到解除**（击杀发动者即消失）。缺省 = 本场没有网。
    */
-  webLinks?: Array<{ from: string; to: string }>
+  webLinks?: Array<{ from: string; to: string; fromName: string; toName: string; slowPct: number }>
   /** **敌方机群**（2026-09-11 机群批 S5）——按敌单位 tag 汇总：机型 id / 机库存量 / **现存架数**。
    *  表现层据此在**敌舰旁**画出警戒机群（与我方机群层共用 `droneArt` 的机体资产）。
    *  **缺省 = 本场没有敌机**（既有战斗零行为变化）。 */
@@ -3165,6 +3191,10 @@ export function battleArcsFor(
       })(),
     }
   })
+  const cycleUnits = myUnits.flatMap(unit => {
+    const spec = mySpecs.get(unit.tag)
+    return spec ? [{ spec, shipId: unit.shipId, name: unit.name }] : []
+  })
   return {
     nearM: bal.minDistanceM,
     openM,
@@ -3179,6 +3209,9 @@ export function battleArcsFor(
     ...(Object.keys(ammoNames).length > 0 ? { ammoNames } : {}),
     me: meArcs,
     meReload,
+    weapons: battleWeaponCyclesOf(battle, cycleUnits, ctx),
+    devices: battleDeviceCyclesOf(state, ctx, battle, cycleUnits,
+      spec => thrusterPhase(battle, bal, unitThrusterCycle(spec, bal))),
     myUnits,
     foe: { minM: foeMin, maxM: foeMax, type: foeType },
     foeBands,
@@ -3202,9 +3235,10 @@ export function battleArcsFor(
     //   墨潮捕获网）——同一份 `webLinks` 结构，渲染层一行不用改。
     ...(() => {
       const links = [
-        ...Object.entries(battle.meWebDebuffs ?? {}).map(([to, d]) => ({ from: d.byTag, to })),
-        ...Object.entries(battle.foeWebDebuffs ?? {}).map(([to, d]) => ({ from: d.byTag, to })),
-      ]
+        ...Object.entries(battle.meWebDebuffs ?? {}).map(([to, d]) => ({ from: d.byTag, to, slowPct: 1 - d.slowMul })),
+        ...Object.entries(battle.foeWebDebuffs ?? {}).map(([to, d]) => ({ from: d.byTag, to, slowPct: 1 - d.slowMul })),
+      ].filter(link => isAlive(battle, link.from) && isAlive(battle, link.to)).map(link => ({ ...link,
+        fromName: battle.units[link.from]?.name ?? link.from, toName: battle.units[link.to]?.name ?? link.to }))
       return links.length > 0 ? { webLinks: links } : {}
     })(),
     // **敌方挂载件**（去重展示名）——界面/战报同源；空 = 本场敌人没挂件（老档同样缺省）
@@ -3663,6 +3697,7 @@ export function advanceBattleFor(
   let guard = 0
   while (nowMs() > battle.lastTickGameMs && !battle.ended && guard < BATTLE_MAX_STEPS) {
     guard++
+    restoreFoeWebSpecs(curFoes)
     // 切波：当前波全灭且还有后续波 → 先走演出窗口（爆炸/残骸播完），窗口结束才续刷下一波。
     // 窗口语义（2026-09-09 船长反馈"切换突兀/爆炸未播完就刷下一波"）：
     // - 清空瞬间记 waveClearAt = 战斗时钟 + waveEnterGapMs；窗口内本拍只停表等待

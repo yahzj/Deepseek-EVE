@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **504** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7919** KB · **61960** 行
-- 状态分布：**未标注** 263 · **已确认/已实现** 164 · **进行中** 53 · **待裁定** 23 · **历史留档** 1
-- 孤儿文档（0 引用）**115** 份 · 状态未标注 **263** 份
+- 文档总数 **511** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7989** KB · **62546** 行
+- 状态分布：**未标注** 266 · **已确认/已实现** 168 · **进行中** 53 · **待裁定** 23 · **历史留档** 1
+- 孤儿文档（0 引用）**121** 份 · 状态未标注 **266** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
-- 三、现行设计稿（design）：**340** 份
+- 三、现行设计稿（design）：**347** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
 - 二、其它（docs 根目录）：**5** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -55,24 +55,31 @@
 | `docs/review/A1-bounty-review.md` | A1 · 悬赏通读走查表（22 张） | 未标注 | — | 7 KB / 98 行 | 5 / 0 |
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 
-## 三、现行设计稿（design） —— 340 份
+## 三、现行设计稿（design） —— 347 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/battle-mount-readiness-speed-20261008.md` | 战斗挂载件、开场装填与敌速核查 | 已确认/已实现（已实现） | 2026-10-08 | 14 KB / 100 行 | 0 / 0 |
+| `docs/design/equipment-penalty-stacking-20261008.md` | 装备惩罚取最大值检查与巨构装填调整 | 已确认/已实现（已实现并本地合入） | 2026-10-08 | 19 KB / 170 行 | 0 / 0 |
+| `docs/design/fleet-hide-plugs-20261008.md` | 我的舰队隐藏普通舰船插件 | 已确认/已实现（已实现并本地合入） | 2026-10-08 | 4 KB / 38 行 | 0 / 0 |
+| `docs/design/invasion-autoloop-live-test-20261008.md` | 入侵自动路线原生客户端实测 | 未标注（实机测试通过） | 2026-10-08 | 7 KB / 62 行 | 0 / 0 |
+| `docs/design/invasion-autoloop-route-20261008.md` | 入侵自动循环按外围与核心顺序收复 | 已确认/已实现（已实现并本地合入） | 2026-10-08 | 15 KB / 123 行 | 0 / 0 |
 | `docs/design/stellar-debug-navigation-20261008.md` | 调试导航开放星系入口 | 未标注（已本地合入及复测） | 2026-10-08 | 2 KB / 24 行 | 0 / 0 |
 | `docs/design/stellar-ready-save-20261008.md` | 新星系即用存档 | 未标注（已本地合入并交付） | 2026-10-08 | 2 KB / 23 行 | 0 / 0 |
 | `docs/design/acid-burst-stacking-fx-20261007.md` | 酸液爆虫腐蚀叠加与专属自爆动画 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 53 行 | 0 / 0 |
 | `docs/design/announcement-draft-alien-invasion-20261007.md` | 异形入侵公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 26 行 | 2 / 0 |
+| `docs/design/announcement-draft-shield-field-20261007.md` | 护盾力场、装备代价与一次性舰船蓝图调整公告待审 | 未标注（已按船长要求整合） | 2026-10-07 | 5 KB / 42 行 | 0 / 0 |
 | `docs/design/announcement-draft-wreck-loot-buy-20261007.md` | 残骸回收与装备收购公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 23 行 | 1 / 0 |
 | `docs/design/colossal-once-buyback-only-20261007.md` | 皇带鱼一次性蓝图只收不卖 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 4 KB / 31 行 | 0 / 0 |
 | `docs/design/invasion-wreck-ordinary-decrement-20261007.md` | 入侵稀有残骸清空后普通残骸不减量排查 | 未标注（已修复并本地合入） | 2026-10-07 | 4 KB / 45 行 | 0 / 0 |
 | `docs/design/missile-hulk-mount-copy-20261007.md` | 导弹残段独立挂载件文案与战斗提示修正 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 8 KB / 84 行 | 0 / 0 |
 | `docs/design/planetary-habitation-20261007.md` | 星球勘探、改造与人类家园建设方案 | 已确认/已实现（完整隐藏系统已实现并验证） | 2026-10-07 | 39 KB / 398 行 | 2 / 0 |
 | `docs/design/planetary-system-search-20261007.md` | 深空星系搜索与种子坐标方案 | 未标注（已本地合入与复测） | 2026-10-07 | 24 KB / 235 行 | 1 / 0 |
-| `docs/design/shield-field-transfer-20261007.md` | 护盾充能力场排除自身并支付护盾代价 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 44 行 | 0 / 0 |
+| `docs/design/shield-field-transfer-20261007.md` | 护盾充能力场排除自身并支付护盾代价 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 44 行 | 1 / 0 |
 | `docs/design/ship-acceleration-fx-20261007.md` | 推进器点火与敌舰冲锋的逐舰特效 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 48 行 | 0 / 0 |
 | `docs/design/ship-damage-inline-display-20261007.md` | 战损插件并入现有插件展示区 | 未标注（已本地合入与复测） | 2026-10-07 | 6 KB / 49 行 | 1 / 0 |
 | `docs/design/ship-wreck-recovery-20261007.md` | 玩家舰船整船回收与战损插件 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 7 KB / 62 行 | 1 / 0 |
+| `docs/design/single-use-ship-bp-price-20261007.md` | 一次性舰船蓝图降价与皇带鱼停售范围核对 | 未标注（已按舰价10%实现并本地合入） | 2026-10-07 | 5 KB / 48 行 | 0 / 0 |
 | `docs/design/squad-memory-auto-gate-20261007.md` | 自动探索主控忙态误拦与五类准备阵容记忆 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 7 KB / 63 行 | 0 / 0 |
 | `docs/design/wreck-fit-repeat-plugs-20261007.md` | 重复插件与沉船装配复用 | 已确认/已实现（已实现并本地合入） | 2026-10-07 | 5 KB / 43 行 | 0 / 0 |
 | `docs/design/wreck-loot-price-audit-20261007.md` | 残骸掉落与装备价格审查 | 已确认/已实现（已确认/已实现） | 2026-10-07 | 16 KB / 137 行 | 0 / 0 |
@@ -269,7 +276,7 @@
 | `docs/design/price-ladder-20260913.md` | 舰船价位阶梯重排（T3 起非战斗线 + 装甲线）· T5 旗舰基准 · 声望按档（2026-09-13 · 二号 · d2） | 已确认/已实现（已确认 · 已落码） | 2026-09-13 | 14 KB / 211 行 | 8 / 0 |
 | `docs/design/scout-cruiser-20260913.md` | 鹦鹉螺级测绘巡洋舰（协会测绘处 · T3 侦察舰）· 设计稿（2026-09-13 · 二号 · d2） | 已确认/已实现（已确认 · 已落码） | 2026-09-13 | 11 KB / 147 行 | 2 / 1 |
 | `docs/design/t4-battleship-20260913.md` | T4 战列舰「巨齿鲨级」定案 + T4 档价位与全舰工期阶梯重排（2026-09-13 · 二号 · d2） | 已确认/已实现（已确认 · 已落码） | 2026-09-13 | 16 KB / 216 行 | 3 / 1 |
-| `docs/design/wormhole-exclusive-20260913.md` | 终局玩法「虫洞」· 掉落物设计（虫洞专属装备 / 舰船 / 一次性图纸）· 设计稿 | 未标注（设计稿 · 船长逐条裁定已并入 §0） | 2026-09-13 | 74 KB / 793 行 | 15 / 3 |
+| `docs/design/wormhole-exclusive-20260913.md` | 终局玩法「虫洞」· 掉落物设计（虫洞专属装备 / 舰船 / 一次性图纸）· 设计稿 | 未标注（设计稿 · 船长逐条裁定已并入 §0） | 2026-09-13 | 74 KB / 793 行 | 16 / 3 |
 | `docs/design/wormhole-family-review-20260913.md` | 虫洞族专属内容 · 按族总览（装备 + 舰船） | 未标注（2026-09-13 全部已落码） | 2026-09-13 | 17 KB / 111 行 | 2 / 2 |
 | `docs/design/wormhole-fleet-optimum-20260913.md` | 虫洞 · 最优配置探索（2026-09-13 · 二号） | 未标注 | 2026-09-13 | 34 KB / 494 行 | 8 / 0 |
 | `docs/design/wormhole-grid-plan-nebula-20260913.md` | 虫洞 · 层间盘面（遗迹下限 / 空占比随层降）+ 星云机制（2026-09-13 · 二号） | 未标注（已按船长三条裁定落码） | 2026-09-13 | 13 KB / 168 行 | 2 / 0 |
@@ -448,7 +455,7 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 27 / 18 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 17 KB / 114 行 | 20 / 7 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 18 KB / 117 行 | 20 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -574,18 +581,24 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 59 / 14 |
 
-## 附：孤儿文档（0 引用，115 份）
+## 附：孤儿文档（0 引用，121 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/battle-mount-readiness-speed-20261008.md`（2026-10-08 · 14 KB）—— 战斗挂载件、开场装填与敌速核查
+- `docs/design/equipment-penalty-stacking-20261008.md`（2026-10-08 · 19 KB）—— 装备惩罚取最大值检查与巨构装填调整
+- `docs/design/fleet-hide-plugs-20261008.md`（2026-10-08 · 4 KB）—— 我的舰队隐藏普通舰船插件
+- `docs/design/invasion-autoloop-live-test-20261008.md`（2026-10-08 · 7 KB）—— 入侵自动路线原生客户端实测
+- `docs/design/invasion-autoloop-route-20261008.md`（2026-10-08 · 15 KB）—— 入侵自动循环按外围与核心顺序收复
 - `docs/design/stellar-debug-navigation-20261008.md`（2026-10-08 · 2 KB）—— 调试导航开放星系入口
 - `docs/design/stellar-ready-save-20261008.md`（2026-10-08 · 2 KB）—— 新星系即用存档
 - `docs/design/acid-burst-stacking-fx-20261007.md`（2026-10-07 · 5 KB）—— 酸液爆虫腐蚀叠加与专属自爆动画
+- `docs/design/announcement-draft-shield-field-20261007.md`（2026-10-07 · 5 KB）—— 护盾力场、装备代价与一次性舰船蓝图调整公告待审
 - `docs/design/colossal-once-buyback-only-20261007.md`（2026-10-07 · 4 KB）—— 皇带鱼一次性蓝图只收不卖
 - `docs/design/invasion-wreck-ordinary-decrement-20261007.md`（2026-10-07 · 4 KB）—— 入侵稀有残骸清空后普通残骸不减量排查
 - `docs/design/missile-hulk-mount-copy-20261007.md`（2026-10-07 · 8 KB）—— 导弹残段独立挂载件文案与战斗提示修正
-- `docs/design/shield-field-transfer-20261007.md`（2026-10-07 · 5 KB）—— 护盾充能力场排除自身并支付护盾代价
 - `docs/design/ship-acceleration-fx-20261007.md`（2026-10-07 · 5 KB）—— 推进器点火与敌舰冲锋的逐舰特效
+- `docs/design/single-use-ship-bp-price-20261007.md`（2026-10-07 · 5 KB）—— 一次性舰船蓝图降价与皇带鱼停售范围核对
 - `docs/design/squad-memory-auto-gate-20261007.md`（2026-10-07 · 7 KB）—— 自动探索主控忙态误拦与五类准备阵容记忆
 - `docs/design/wreck-fit-repeat-plugs-20261007.md`（2026-10-07 · 5 KB）—— 重复插件与沉船装配复用
 - `docs/design/wreck-loot-price-audit-20261007.md`（2026-10-07 · 16 KB）—— 残骸掉落与装备价格审查
@@ -694,14 +707,17 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（263 份，待补一行 `状态：…`）
+## 附：状态未标注（266 份，待补一行 `状态：…`）
 
+- `docs/design/invasion-autoloop-live-test-20261008.md`（2026-10-08）—— 入侵自动路线原生客户端实测
 - `docs/design/stellar-debug-navigation-20261008.md`（2026-10-08）—— 调试导航开放星系入口
 - `docs/design/stellar-ready-save-20261008.md`（2026-10-08）—— 新星系即用存档
 - `docs/test-saves/stellar-ready-20261008.md`（2026-10-08）—— 新星系即用档
+- `docs/design/announcement-draft-shield-field-20261007.md`（2026-10-07）—— 护盾力场、装备代价与一次性舰船蓝图调整公告待审
 - `docs/design/invasion-wreck-ordinary-decrement-20261007.md`（2026-10-07）—— 入侵稀有残骸清空后普通残骸不减量排查
 - `docs/design/planetary-system-search-20261007.md`（2026-10-07）—— 深空星系搜索与种子坐标方案
 - `docs/design/ship-damage-inline-display-20261007.md`（2026-10-07）—— 战损插件并入现有插件展示区
+- `docs/design/single-use-ship-bp-price-20261007.md`（2026-10-07）—— 一次性舰船蓝图降价与皇带鱼停售范围核对
 - `docs/test-saves/planetary-20261007.md`（2026-10-07）—— 星球第一批规则原型验收
 - `docs/test-saves/planetary-runtime-20261007.md`（2026-10-07）—— 星球建设完整运行验收
 - `docs/test-saves/alien-invasion-20261006.md`（2026-10-06）—— 异形入侵验收档
