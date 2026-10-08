@@ -5,6 +5,7 @@ import plugs from '../packages/data/src/static/plugs.json'
 import items from '../packages/data/src/static/items.json'
 import market from '../packages/data/src/static/market.json'
 import { staticDocumentIssues } from '../packages/data/src/staticData'
+import type { StaticFieldTypes } from '../packages/data/src/staticData'
 import type { DataDocument, DataRow, DataTable, EditorChange, EditorIssue, EditorRow, NumericEdit, NumericField } from './data-editor-contract'
 
 export const TABLE_FILES: Record<DataTable, string> = Object.fromEntries(['ships', 'modules', 'plugs', 'items', 'market'].map(table => [table, `packages/data/src/static/${table}.json`])) as Record<DataTable, string>
@@ -20,6 +21,7 @@ const TITLES: Record<string, string> = {
   'defense.shieldHp': '机体护盾', 'defense.armorHp': '机体装甲', 'defense.hullHp': '机体结构', 'defense.evasion': '机体闪避',
   workEfficiency: '作业效率加成', shieldHpAdd: '护盾固定增加', armorHpAdd: '装甲固定增加', hullHpAdd: '结构固定增加',
   speedPenaltyMps: '速度降低', speedAddMps: '速度固定增加', plugSlots: '插件槽', gunCount: '炮数',
+  speedBonusPct: '战斗速度加成',
   rareQtyMul: '稀有订单批量倍率', rareWeightMul: '稀有订单权重倍率', absorbQtyPerWindow: '每窗吸收量',
   stealthCpuMul: '隐秘装置CPU倍率', foeRangeDebuffPct: '敌方射程削减', weaponRangeBonusPct: '武器射程加成', fleetDamageBonusPct: '编队伤害加成',
 }
@@ -56,8 +58,8 @@ export function rowsOf(table: DataTable, document: DataDocument): EditorRow[] {
     fields: [...new Set(numbersOf(row))].map(path => ({ ...fieldOf(table, path), writable: fieldOf(table, path).writable && typeof getValue(row, path) === 'number' })),
   })))
 }
-export function validateDocument(value: unknown, table: DataTable): EditorIssue[] {
-  const issues: EditorIssue[] = staticDocumentIssues(value).map(message => ({ message, table }))
+export function validateDocument(value: unknown, table: DataTable, contract?: StaticFieldTypes): EditorIssue[] {
+  const issues: EditorIssue[] = staticDocumentIssues(value, contract).map(message => ({ message, table }))
   const issue = (message: string, id?: string, path?: string) => issues.push({ message, table, id, path })
   if (!value || typeof value !== 'object' || Array.isArray(value)) return [{ message: '数据文件必须是对象', table }]
   const doc = value as DataDocument
@@ -97,7 +99,7 @@ export function validateDocument(value: unknown, table: DataTable): EditorIssue[
   }
   return issues
 }
-export function planDocuments(documents: Record<DataTable, DataDocument>, edits: NumericEdit[]): { documents: Record<DataTable, DataDocument>; changes: EditorChange[]; issues: EditorIssue[]; warnings: string[] } {
+export function planDocuments(documents: Record<DataTable, DataDocument>, edits: NumericEdit[], contract?: StaticFieldTypes): { documents: Record<DataTable, DataDocument>; changes: EditorChange[]; issues: EditorIssue[]; warnings: string[] } {
   const next = structuredClone(documents), issues: EditorIssue[] = [], changes: EditorChange[] = [], warnings: string[] = []
   const targets = new Set<string>()
   for (const edit of edits) {
@@ -136,6 +138,6 @@ export function planDocuments(documents: Record<DataTable, DataDocument>, edits:
     if (change.table === 'market' && market?.values.kind === 'blueprint') issues.push({ ...change, message: '蓝图书价尚在代码中，不能只改市场一处；须同时按现有蓝图规则处理' })
     warnings.push(`${change.id}：基准价不是实时成交价；配方/书价与既有标定仍须通过内容检查`)
   }
-  for (const table of Object.keys(next) as DataTable[]) issues.push(...validateDocument(next[table], table))
+  for (const table of Object.keys(next) as DataTable[]) issues.push(...validateDocument(next[table], table, contract))
   return { documents: next, changes, issues, warnings: [...new Set(warnings)] }
 }

@@ -89,6 +89,7 @@ const col = (
  * 只在真的用到时打印一句提示，引导重新 export。
  */
 export const HEAD_ALIASES: Readonly<Record<string, string>> = {
+  '速度加成speedBonusPct(推进)': '速度加成speedBonusPct(战斗机动)',
   'kind(ore矿石/mineral矿物/gas气体/ice冰矿/ammo弹药/drone无人机)': ITEM_KIND_HEAD,
   'kind(ore原矿/mineral原材料/gas气体/ice冰矿/ammo弹药/drone无人机)': ITEM_KIND_HEAD,
   空间站收购价ISK: '空间站收购价信用点',
@@ -187,7 +188,7 @@ export const TABLES: readonly TableSpec[] = [
       col('装甲抗性动能armorResistAdd.kinetic', 'armorResistAdd.kinetic', 'obj', { min: 0, max: 0.9 }),
       col('装甲抗性高爆armorResistAdd.explosive', 'armorResistAdd.explosive', 'obj', { min: 0, max: 0.9 }),
       col('装甲抗性能量armorResistAdd.plasma', 'armorResistAdd.plasma', 'obj', { min: 0, max: 0.9 }),
-      col('速度加成speedBonusPct(推进)', 'speedBonusPct', 'num', { min: 0, max: 5 }),
+      col('速度加成speedBonusPct(战斗机动)', 'speedBonusPct', 'num', { min: 0, max: 5 }),
       col('开火失稳命中削减hitPenalty(0~0.5)', 'hitPenalty', 'num', { min: 0, max: 0.5 }),
       col('弹种damageType(kinetic/explosive/plasma)', 'damageType', 'enum', { vals: ['kinetic', 'explosive', 'plasma'] }),
       col('最大射程m', 'maxRangeM', 'num', { min: 1 }),

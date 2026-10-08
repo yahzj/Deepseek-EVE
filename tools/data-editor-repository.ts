@@ -11,6 +11,7 @@ import type {
   DataDocument, DataEditorApi, DataTable, EditorChange, EditorIssue, EditorPlan, EditorProject, EditorResult, NumericEdit,
 } from './data-editor-contract'
 import { TABLE_FILES, planDocuments, rowsOf, validateDocument } from './data-editor-schema'
+import type { StaticFieldTypes } from '../packages/data/src/staticData'
 
 const gitExec = promisify(execFile)
 const TABLES: DataTable[] = ['ships', 'modules', 'plugs', 'items', 'market']
@@ -22,6 +23,7 @@ const BLUEPRINT_TEXT_FILES = ['packages/data/src/blueprints.ts', 'packages/data/
 const TRUSTED_REPOSITORY = 'H:/大鲸鱼/Deepseek-EVE-zero'
 const AREA = 'tools/_data-editor'
 const MAX_BYTES = 32 * 1024 * 1024
+const FIELD_TYPES_FILE = 'packages/data/src/staticFieldTypes.json'
 const active = new Set<string>()
 type Mode = 'check' | 'build'
 type State = 'prepared' | 'writing' | 'committed' | 'rolling-back' | 'rolled-back' | 'restoring' | 'restored' | 'blocked'
@@ -43,6 +45,7 @@ interface Snapshot {
   raw: Map<string, Buffer>
   fingerprint: string
   project: EditorProject
+  fieldTypes?: StaticFieldTypes
 }
 interface Plan { root: string; fingerprint: string; expires: number; documents: Record<DataTable, DataDocument>; changes: EditorChange[] }
 interface Entry { file: string; before: string; after: string; mode: number }
@@ -126,6 +129,24 @@ function format(document: DataDocument, original: Buffer): Buffer {
   let text = JSON.stringify(document, null, indent)
   if (crlf) text = text.replace(/\n/g, '\r\n')
   return Buffer.from(bom + text + ending, 'utf8')
+}
+function fieldContract(value: unknown): StaticFieldTypes {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('静态字段契约必须为对象')
+  const contract = value as StaticFieldTypes
+  const types = new Set(['object', 'array', 'number', 'string', 'boolean'])
+  if (Object.keys(contract).some(table => !TABLES.includes(table as DataTable))) throw new Error('静态字段契约包含未知表')
+  for (const table of TABLES) {
+    const shape = contract[table]
+    if (!shape || typeof shape !== 'object' || Array.isArray(shape) || shape[''] !== 'object') throw new Error(`静态字段契约缺少表或对象根：${table}`)
+    for (const [field, type] of Object.entries(shape)) {
+      if (typeof type !== 'string' || !types.has(type) || field !== '' &&
+        (!/^[A-Za-z][A-Za-z0-9_]*(?:\[\])?(?:\.[A-Za-z][A-Za-z0-9_]*(?:\[\])?)*$/.test(field) ||
+          field.split('.').some(part => ['__proto__', 'prototype', 'constructor'].includes(part.replace(/\[\]$/, ''))))) {
+        throw new Error(`静态字段契约字段或类型无效：${table}/${field}`)
+      }
+    }
+  }
+  return contract
 }
 async function git(root: string, args: string[]): Promise<string> {
   const result = await gitExec('git', ['-c', 'core.fsmonitor=false', '-C', root, ...args], {
@@ -292,6 +313,12 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
     const documents = {} as Record<DataTable, DataDocument>
     const rows: EditorProject['rows'] = []
     const issues: EditorIssue[] = []
+    let fieldTypes: StaticFieldTypes | undefined
+    try {
+      const bytes = await read(identity.root, FIELD_TYPES_FILE)
+      fieldTypes = fieldContract(json(bytes, FIELD_TYPES_FILE))
+      raw.set(FIELD_TYPES_FILE, bytes)
+    } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
     const bindings = new Map<DataTable, Map<string, TextBinding>>()
     const blueprintBindings = new Map<string, TextBinding>()
     let localized = new Map<string, string>()
@@ -311,7 +338,7 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
       const file = TABLE_FILES[table]
       const data = await read(identity.root, file)
       const document = json(data, file)
-      issues.push(...validateDocument(document, table))
+      issues.push(...validateDocument(document, table, fieldTypes))
       documents[table] = document as DataDocument
       raw.set(file, data)
       const binding = await read(identity.root, TEXT_FILES[table])
@@ -354,7 +381,7 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
       root: identity.root, branch: identity.branch, head: identity.head, writable: identity.writable, fingerprint, rows,
       warnings: identity.writable ? [] : ['主树、main/master分支或游离HEAD只读，不能保存、恢复或运行检查构建。'],
     }
-    return { identity, raw, documents, fingerprint, project }
+    return { identity, raw, documents, fingerprint, project, ...(fieldTypes ? { fieldTypes } : {}) }
   }
 
   private async locked<T>(identity: Identity, operation: () => Promise<T>): Promise<T> {
@@ -481,10 +508,10 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
       const binding = names(snapshot.raw.get(TEXT_FILES[edit.table])!, TEXT_FILES[edit.table]).get(edit.id)
       if (binding?.codePaths.has(edit.path)) return { token: '', changes: [], warnings: [], issues: [{ message: 'readonly code expression', table: edit.table, id: edit.id, path: edit.path }] }
     }
-    const plan = planDocuments(structuredClone(snapshot.documents), structuredClone(edits))
+    const plan = planDocuments(structuredClone(snapshot.documents), structuredClone(edits), snapshot.fieldTypes)
     const token = randomUUID()
     const issues = [...plan.issues]
-    for (const table of TABLES) issues.push(...validateDocument(plan.documents[table], table))
+    for (const table of TABLES) issues.push(...validateDocument(plan.documents[table], table, snapshot.fieldTypes))
     if (!snapshot.identity.writable) issues.push({ message: '项目只读，不能保存' })
     for (const [key, value] of this.plans) if (value.expires < Date.now()) this.plans.delete(key)
     if (!issues.length && plan.changes.length) this.plans.set(token, {
@@ -631,7 +658,7 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
   }
   private async validateCandidate(snapshot: Snapshot, documents: Record<DataTable, DataDocument>, mode: Mode): Promise<{ source: Map<string, Buffer>; output?: string }> {
     for (const table of TABLES) {
-      const issues = validateDocument(documents[table], table)
+      const issues = validateDocument(documents[table], table, snapshot.fieldTypes)
       if (issues.length) throw new RepositoryError(`候选数据契约失败：${issues.map(issue => issue.message).join('；')}`, issues)
     }
     const source = await this.sources(snapshot.identity.root)
@@ -652,6 +679,8 @@ export class DataEditorRepository implements Pick<DataEditorApi, 'openProject' |
         await this.dependencies(snapshot.identity, candidate)
         await this.candidateGit(snapshot.identity, candidate)
         for (const path of ['packages/core', 'packages/data', 'packages/ui', 'apps/desktop', 'apps/data-editor']) {
+          try { await regular(candidate, `${path}/tsconfig.json`) }
+          catch (error) { if (path === 'apps/data-editor' && (error as NodeJS.ErrnoException).code === 'ENOENT') continue; throw error }
           await this.command(snapshot.identity, candidate, 'typescript/bin/tsc', ['--noEmit', '-p', `${path}/tsconfig.json`])
         }
         await this.command(snapshot.identity, candidate, 'tsx/dist/cli.mjs', ['tools/content-check.ts'])

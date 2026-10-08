@@ -1,10 +1,12 @@
 import type { DataDocument, DataRow } from '../../../tools/data-editor-contract'
 import fieldTypes from './staticFieldTypes.json'
 
-export function staticDocumentIssues(document: unknown): string[] {
+export type StaticFieldTypes = Record<string, Record<string, string>>
+
+export function staticDocumentIssues(document: unknown, contract: StaticFieldTypes = fieldTypes): string[] {
   if (!document || typeof document !== 'object' || Array.isArray(document)) return ['静态数据必须为对象']
   const doc = document as DataDocument
-  const shape = (fieldTypes as Record<string, Record<string, string>>)[doc.table]
+  const shape = contract[doc.table]
   if (!shape || doc.format !== 'whale-static-data' || doc.version !== 1 || !doc.groups || typeof doc.groups !== 'object' || Array.isArray(doc.groups)) return ['静态数据格式或版本不支持']
   const issues: string[] = [], ids = new Set<string>()
   const required: Record<string, string[]> = {
