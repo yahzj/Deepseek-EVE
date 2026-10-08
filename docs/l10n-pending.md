@@ -7,7 +7,7 @@
 ## 综合机制公告短句
 
 目标：`ann-balance-mechanics-summary-20261008`的38个短句，仅正文待译，原英文标题/类别保留。
-中文权威：`packages/data/src/l10n/table.ts`；批准依据：船长确认本轮短稿，来源`docs/design/announcement-mechanics-brief-20261009.md`（归档后查Git历史）。早先草稿中的英文不采用、不完善、不写入；新增英文工作尚未启动。
+中文权威：`packages/data/src/l10n/table.ts`；批准依据：船长确认本轮短稿，实现`d581aef8`；原讨论稿从该提交Git历史读取。早先草稿中的英文不采用、不完善、不写入；新增英文工作尚未启动。
 
 | id | 改动点 | 状态 |
 |---|---|---|

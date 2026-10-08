@@ -12,14 +12,14 @@
 
 ## 统计
 
-- 文档总数 **529** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8144** KB · **63845** 行
-- 状态分布：**未标注** 272 · **已确认/已实现** 179 · **进行中** 53 · **待裁定** 24 · **历史留档** 1
-- 孤儿文档（0 引用）**119** 份 · 状态未标注 **272** 份
+- 文档总数 **530** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **8153** KB · **63910** 行
+- 状态分布：**未标注** 273 · **已确认/已实现** 179 · **进行中** 53 · **待裁定** 24 · **历史留档** 1
+- 孤儿文档（0 引用）**119** 份 · 状态未标注 **273** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**12** 份
 - 三、现行设计稿（design）：**365** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**35** 份
-- 二、其它（docs 根目录）：**5** 份
+- 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
 - 八、测试档说明（test-saves）：**13** 份
 - 六、专题：舰船美术（design/ship-battle-art）：**7** 份
@@ -31,12 +31,12 @@
 |---|---|---|---|---|---|
 | `AGENTS.md` | AGENTS.md — 大鲸鱼-深空放置 · 仓库级 AI 工作约定 | 未标注 | — | 8 KB / 97 行 | 221 / 10 |
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 26 KB / 238 行 | 32 / 1 |
-| `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 6 KB / 63 行 | 33 / 3 |
+| `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 6 KB / 64 行 | 33 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 9 KB / 125 行 | 2 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 299 KB / 308 行 | 17 / 3 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 90 KB / 908 行 | 95 / 5 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 300 KB / 309 行 | 17 / 3 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 92 KB / 911 行 | 95 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 516 KB / 1080 行 | 228 / 22 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 96 KB / 481 行 | 377 / 28 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 97 KB / 483 行 | 378 / 28 |
 
 ## 七、评审与体检（review） —— 12 份
 
@@ -465,7 +465,7 @@
 | `docs/archive/roadmap-2026-09-29.md` | 封存卷 · roadmap 批次条目 2026-09-29 | 未标注 | — | 7 KB / 18 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-30.md` | 封存卷 · roadmap 批次条目 2026-09-30 | 未标注 | — | 11 KB / 16 行 | 2 / 0 |
 
-## 二、其它（docs 根目录） —— 5 份
+## 二、其它（docs 根目录） —— 6 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -473,7 +473,8 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 27 / 18 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 19 KB / 125 行 | 21 / 7 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注（仅登记） | — | 4 KB / 57 行 | 4 / 3 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 20 KB / 126 行 | 21 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -723,7 +724,7 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（272 份，待补一行 `状态：…`）
+## 附：状态未标注（273 份，待补一行 `状态：…`）
 
 - `docs/design/cpu-plug-slot-value-20261008.md`（2026-10-08）—— 协处理插件与低槽扩展的收益比较
 - `docs/design/data-editor-field-compat-20261008.md`（2026-10-08）—— 独立编辑器读取新字段兼容修复
@@ -992,6 +993,7 @@
 - `docs/git-gate-approval.md`（无日期）—— Git提交审批放行
 - `docs/glossary-en.md`（无日期）—— 英文术语与专名译名表（English Glossary & Naming Table）
 - `docs/glossary.md`（无日期）—— 术语词典（Glossary）
+- `docs/l10n-pending.md`（无日期）—— 待英文本地化记录
 - `docs/review/A1-bounty-review.md`（无日期）—— A1 · 悬赏通读走查表（22 张）
 - `docs/review/A2-density-review.md`（无日期）—— A2 · 界面信息密度走查（第 1 轮，待船长批注）
 - `docs/roadmap.md`（无日期）—— 后续工作流备忘（Roadmap / Backlog）
