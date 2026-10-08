@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
-import { buildSimContext, L10N } from '@whale/data'
+import { buildSimContext, L10N, l10nEntryText } from '@whale/data'
 import { addLog, createInitialState } from '../src/state'
 import { signalSpaceTextId, SIGNAL_SPACE_TEXT_IDS } from '../src/explorationText'
 import { wormholeEnter } from '../src/wormhole'
@@ -142,7 +142,7 @@ describe('信号空间旧来源与未来虫洞身份隔离', () => {
     const source = readFileSync(new URL(`../../../${path}`, import.meta.url), 'utf8')
     const ast = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
     const body = ast.statements.filter(n => !ts.isImportDeclaration(n)).map(n => n.getText(ast)).join('\n')
-    const scope: Record<string, any> = { exports: {}, L10N, signalSpaceTextId,
+    const scope: Record<string, any> = { exports: {}, L10N, l10nEntryText, signalSpaceTextId,
       localStorage: { getItem: () => locale }, navigator: { languages: [locale], language: locale },
       createContext: () => ({}), useContext: () => ({}), window: {} }
     runInNewContext(ts.transpileModule(body, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React } }).outputText, scope)

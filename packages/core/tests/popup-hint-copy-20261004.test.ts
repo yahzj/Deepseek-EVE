@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
-import { buildSimContext, BLUEPRINTS, L10N } from '@whale/data'
+import { buildSimContext, BLUEPRINTS, L10N, l10nEntryText } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { gateMainActivity, ACTIVITY_LABEL_ID, HALT_COST_ID } from '../src/activityGate'
 import { fitModule, swapModuleAt } from '../src/equipment'
@@ -18,7 +18,7 @@ const names = new Set(['interpolate', 'textOf', 'tr', 'futureTr', 'paramText', '
 const code = source.statements.filter((n) => ts.isFunctionDeclaration(n) && names.has(n.name?.text ?? ''))
   .map((n) => n.getText(source)).join('\n')
 function renderer(locale: 'zh' | 'en') {
-  const bindings = { L10N, signalSpaceTextId, activeLocale: locale, exports: {} }
+  const bindings = { L10N, l10nEntryText, signalSpaceTextId, activeLocale: locale, exports: {} }
   runInNewContext(ts.transpileModule(code, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, bindings)
   return bindings.exports as { cmdText: (r: any) => string; paramText: (v: string | number | undefined) => string }
 }

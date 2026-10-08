@@ -5496,6 +5496,7 @@ const STALE_COPY_FILE_ALLOW: ReadonlyArray<readonly [string, RegExp, string]> = 
 /** 陈旧术语**白名单**（逐条写明理由；只有确属叙事专名的才可登记） */
 const STALE_COPY_ALLOW: ReadonlyArray<readonly [RegExp, string]> = [
   [/隐蔽船坞/, '敌方窝点叙事专名（D 族据点名，非设施旧称）'],
+  [/MK3弹药蓝图不可转售/, '船长确认的具体MK3商品说明，非旧类别标签；只豁免这一句中的商品称谓'],
 ]
 
 /**

@@ -14,9 +14,55 @@ export interface L10nEntry {
   readonly zh: string
   /** 英文译文 */
   readonly en: string
+  /** 船长要求英文工作延期，空英文只在待本地化文档登记后放行。 */
+  readonly enDeferred?: true
+}
+
+/** 仅已登记待译条目回退中文；现有英文不受影响。 */
+export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
+  return locale === 'en' && entry.enDeferred !== true ? entry.en : entry.zh
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  // ⟪文案调整 2026-10-09⟫ 船长确认逐点短句、移除光环段，英文只登记待办。
+  'ano.mechanicsBrief.001': { zh: '玩家可在普通星系打捞沉船，整船回收基础成功率为25%。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.002': { zh: '新增三项舰体打捞与装备保全工程技能，提高整船回收率和装备保全率。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.003': { zh: '成功回收舰船时，普通装备基础保全率为80%，满级装备保全技能可提高至100%。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.004': { zh: '回收舰船有50%概率新增战损插件，随机属性降低15%，最多保留三个。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.005': { zh: '普通舰船插件允许重复安装，中槽扩展和低槽扩展各限一件。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.006': { zh: '多余扩槽插件、被挤出的装备和超量无人机免费退回库存。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.007': { zh: '玩家可将沉船装配保存为对应船型的装配方案。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.008': { zh: '主动拆船回收返还50%的制造材料，并退回装备、普通插件、无人机和货物。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.009': { zh: '玩家与敌舰的齐射改为逐门判定命中，敌舰齐射总伤害保持不变。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.010': { zh: '新战斗中的玩家武器和无人机先完成一轮装填再开火。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.011': { zh: '修复读档后敌方近防炮失效的问题。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.012': { zh: '修复捕获网减速异常的问题。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.013': { zh: '护盾充能力场不再恢复自身，每次有效发动消耗自身最大护盾的10%。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.014': { zh: '巨构协处理器的装填代价降至8%，多件相乘并影响武器、无人机和战斗主动装置周期。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.015': { zh: '装备的速度、射程和命中代价改为乘法叠加，抗性代价按百分点相减。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.016': { zh: '装备多装递减时，负面效果也随该件收益递减。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.017': { zh: '无人机储备甲板MK1、MK2、MK3的基础补机周期调整为14、12、9秒。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.018': { zh: '无人机护盾投射仪MK2、MK3的机群护盾加成调整为70%、100%。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.019': { zh: '鲸王级采矿艇调整为4高、3中、3低槽，CPU230，跃迁速度3.5AU/s。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.020': { zh: '黑市在累计100点协会声望后开放，每日刷新最多九种商品，售罄当天不补货。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.021': { zh: '黑市商品报价为基础价的30至100倍。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.022': { zh: '黑市无人机成品改为每组50架出售。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.023': { zh: '黑市新增三系MK3弹药永久蓝图，基础价为对应MK2图纸的19倍。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.024': { zh: 'MK3弹药蓝图不可转售，制造不消耗虚空晶，成品弹药仍可出售。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.025': { zh: '一次性舰船蓝图基础价由舰价的50%降至10%。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.026': { zh: '皇带鱼级一次性蓝图改为只收不卖，已有图纸仍可制造或出售。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.027': { zh: '势力与信号空间专属装备的基础收购价降至原来的25%，购买价不变。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.028': { zh: '护盾充能力场MK2、MK3的基础收购价调整为200万信用点，购买价不变。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.029': { zh: '隐秘行动装置MK3、损伤管制装置MK3和跃迁计算机MK3的基础收购价调整为200万信用点，购买价不变。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.030': { zh: '打捞发现的完好舰体装备改为从民用、MK1和特色装备中随机抽取。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.031': { zh: '扩充入侵和守墓者高安稀有残骸的通用装备池。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.032': { zh: '信号空间稀有残骸未出专属装备时，按1:0.25权重抽取MK2或MK3装备组。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.033': { zh: '挂售中的专属装备计入持有量，不再因未成交触发优先补发。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.034': { zh: '市场虚空晶库存上限为3000枚，库存不足时每6分钟补回1枚。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.035': { zh: '原虫洞探索与虫洞谜质更名为信号空间与信号谜质，已有资产和进度保留。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.036': { zh: '入侵重复出击按外围、核心顺序自动切换星系，全部收复后停止，旗舰仍需手动挑战。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.037': { zh: '修复入侵普通残骸打捞后库存不扣减的问题。', en: '', enDeferred: true },
+  'ano.mechanicsBrief.038': { zh: '独立小队自动探索不再被主控正在作业误挡。', en: '', enDeferred: true },
   'ano.incursionRelease.001': { zh: '异形虫群入侵', en: 'Alien Swarm Incursion' },
   'ano.incursionRelease.002': { zh: '内容', en: 'Content' },
   'ano.incursionRelease.003': { zh: '玩家将在10月9日20:00开始的入侵中迎战异形虫群，活动时间按设备本地时间计算。常规入侵势力按光环科技、异形生物、墨潮帮轮换；信号发射器也可能召来异形入侵。', en: "Players will face alien swarms in the incursion starting at 20:00 on October 9, using the device's local time. Regular incursions rotate through Corona Systems, Alien Lifeforms and the Ink Tide Gang. Signal Emitters can also summon alien incursions." },

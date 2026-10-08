@@ -15,7 +15,7 @@
  * （批量接线与造 id 由 `tools/l10n-wrap.ts` 代劳，`npm run l10n:wrap`）。
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { L10N } from '@whale/data'
+import { L10N, l10nEntryText } from '@whale/data'
 import { signalSpaceTextId } from '@whale/core'
 
 export type Locale = 'zh' | 'en'
@@ -82,11 +82,11 @@ export function isEn(): boolean {
   return activeLocale === 'en'
 }
 
-/** 按 id 取文本：`locale === 'zh'` 取 `zh` 列，否则取 `en` 列；**缺 id ⇒ 返回 id 本身**（便于定位漏登记） */
+/** 按id取词，明确待译的英文回退中文；缺id仍返回id本身以便检查接线。 */
 export function textOf(id: string, locale: Locale): string {
   const entry = L10N[id]
   if (!entry) return id
-  return locale === 'zh' ? entry.zh : entry.en
+  return l10nEntryText(entry, locale)
 }
 
 /** 组件外也能用的翻译（读模块级语言；组件内请用 `useL10n().t` 以获得重渲染） */
@@ -214,7 +214,7 @@ function composeParts(
         const extra = Array.isArray(itemParams) ? (itemParams[i] as Record<string, string | number> | undefined) : undefined
         const inner: Record<string, string | number> = { ...(extra ?? {}) }
         if (inner.p1 === undefined) inner.p1 = v
-        return interpolate(tpl[activeLocale], inner)
+        return interpolate(l10nEntryText(tpl, activeLocale), inner)
       })
       .join(textOf(LIST_SEP_ID, activeLocale))
   }
@@ -299,7 +299,7 @@ function composeParts(
          * （体检用例会点名），也不许悄悄改掉中文。
          */
         delete out[slot]
-        out[slot] = interpolate(tpl[activeLocale], deep)
+        out[slot] = interpolate(l10nEntryText(tpl, activeLocale), deep)
       }
       /** **列表槽**（`p{n}List` ⇒ 按语言分隔符拼接；见上面 `listTextOf` 头注）—— 放在槽译文之后，后写者胜 */
       for (const k of Object.keys(rawParams ?? {})) {

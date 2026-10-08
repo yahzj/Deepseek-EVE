@@ -11,8 +11,9 @@
  *   ② **调用点不得再传中文**（旧「中文源串当 key」的写法已废，传了英文界面就漏中文）；
  *   ③ **死引用**：`t('id')` / `tr('id')` 用到的 id 必须能在表里查到；
  *   ④ **英文值禁残留中日韩字符**（唯一放行：**语言自称** `en === zh`，如「中文」；另有 `CJK_ALLOW` 白名单备用）；
- *   ⑤ **占位符对齐**：`zh` 与 `en` 的 `{名字}` 集合必须逐个相同（缺/多都红）；
- *   ⑥ **值形态**：两列非空、首尾无空白。
+ *   ⑤ **占位符对齐**：已准备英文的`zh`与`en`槽集合必须相同；
+ *   ⑥ **值形态**：中文有效，英文仅已登记延期条目允许空值，其余两列非空。
+ *   ⑦ **延期登记**：2026-10-09船长要求英文显式启动，标记、空英文和待本地化文档必须成对。
  *
  * 另出**报告读数**（不红，供分批推进时看还差多少）：
  *   · 未接线条目（表里有、源码还没用上——P3/P5 会逐步消化，也可能是改文案后的遗留）；
@@ -34,6 +35,7 @@ import ts from 'typescript'
 import { L10N } from '../packages/data/src/l10n/table'
 // 2026-10-02：剥注释 + 抠 id 字面量（与 `l10n:core-zh` 共用一份实现，见 `tools/text-scan.ts`）
 import { idLiteralsIn, stripComments } from './text-scan'
+import { deferredL10nIssues } from './l10n-deferred-check'
 
 /**
  * **扫描根**（2026-09-20 扩容）：原来只有渲染层，导致 `main/` 与 `preload/` 是**盲区**——
@@ -193,6 +195,8 @@ function placeholders(text: string): string[] {
 const scans = walk(ROOT).map(scanFile)
 const entries = Object.entries(L10N)
 const ids = new Set(entries.map(([id]) => id))
+const deferredIssues = deferredL10nIssues(L10N, readFileSync(join(process.cwd(), 'docs/l10n-pending.md'), 'utf8'))
+check(deferredIssues.length === 0, `延期英文登记错误：${deferredIssues.join(' · ')}`)
 
 /**
  * **重键体检**（**2026-09-30 加**；起因 = 一号与二号两批**同日各写了一条 `core.combat.004`**，
@@ -271,11 +275,11 @@ const badShape: string[] = []
 for (const [id, e] of entries) {
   const a = placeholders(e.zh)
   const b = placeholders(e.en)
-  if (a.join('|') !== b.join('|')) badPh.push(`「${id}」中 ${a.join(',') || '无'} / 英 ${b.join(',') || '无'}`)
+  if (e.enDeferred !== true && a.join('|') !== b.join('|')) badPh.push(`「${id}」中 ${a.join(',') || '无'} / 英 ${b.join(',') || '无'}`)
   if (CJK.test(e.en) && e.en !== e.zh && !CJK_ALLOW.has(id)) badCjk.push(`「${id}」→「${e.en}」`)
   // 形态：非空 · 不许制表符与 `\r` · 首尾**至多一个空格**（JSX 文本片段与相邻 `{表达式}` 之间要靠这个空格排版，
   // 如 `{n}（结构 500）` ⇒ `{n} (structure 500)`；多余空白仍是错的）。`\n` 放行（多行悬浮提示）。
-  if (e.zh.trim() === '' || e.en.trim() === '' || /[\r\t]/.test(e.zh + e.en) || /^ {2,}| {2,}$/.test(e.zh) || /^ {2,}| {2,}$/.test(e.en)) badShape.push(`「${id}」`)
+  if (e.zh.trim() === '' || (e.enDeferred !== true && e.en.trim() === '') || /[\r\t]/.test(e.zh + e.en) || /^ {2,}| {2,}$/.test(e.zh) || /^ {2,}| {2,}$/.test(e.en)) badShape.push(`「${id}」`)
 }
 check(badPh.length === 0, `占位符不对齐 ${badPh.length} 条：${badPh.slice(0, 6).join(' · ')}${badPh.length > 6 ? ' …' : ''}`)
 check(badCjk.length === 0, `英文值残留中日韩字符 ${badCjk.length} 条：${badCjk.slice(0, 6).join(' · ')}${badCjk.length > 6 ? ' …' : ''}`)
@@ -333,6 +337,7 @@ const byDomain = new Map<string, number>()
 for (const [id] of entries) byDomain.set(id.split('.')[0]!, (byDomain.get(id.split('.')[0]!) ?? 0) + 1)
 
 console.log(`· 表：**${entries.length}** 条（${[...byDomain].map(([d, n]) => `${d} ${n}`).join(' · ')}）· 源码引用 **${used.size}** 个 id`)
+console.log(`· 已登记待英文本地化：${entries.filter(([, entry]) => entry.enDeferred === true).length} 条；未获明确开始准备指令，不生成英文。`)
 console.log(`· 重键体检（源码文本层）：**${dupKeys.length}** 个重复 id${dupKeys.length > 0 ? '（见下方红字）' : ' —— 无静默覆盖'}`)
 console.log(`· 接线：渲染层 \`t()\`/\`tr()\` 调用点 **${callTotal}** 处 · 扫描 ${scans.length} 个源文件`)
 console.log(`· core 文案 id（甲案）：**${coreRefs.length}** 处引用（\`textId\` / \`errorId\`）——全部在表内、形态合规`)

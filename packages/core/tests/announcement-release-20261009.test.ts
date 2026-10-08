@@ -3,7 +3,8 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
-import { ANNOUNCEMENTS, L10N } from '@whale/data'
+import { ANNOUNCEMENTS, L10N, l10nEntryText } from '@whale/data'
+import { MECHANICS_APPROVED_ZH } from './fixtures/announcement-mechanics-brief-20261009'
 import { weekendFamilyForWindow } from '../src/weekendEvent'
 
 const root = new URL('../../../', import.meta.url)
@@ -38,16 +39,17 @@ function text(value: unknown): string {
 }
 
 describe('船长获批两篇公告发布', () => {
-  it.each(releases)('$id中英文逐字等于获批稿，各五条并走唯一表', release => {
+  it.each(releases)('$id按原获批稿或船长本次短句裁定接线', release => {
     const announcement = ANNOUNCEMENTS.find(row => row.id === release.id)!
     expect(announcement).toBeDefined()
     expect(announcement.date).toBe('2026-10-09')
-    expect(announcement.bulletIds).toHaveLength(5)
-    expect(announcement.bullets).toHaveLength(5)
+    const mechanics = release.id === 'ann-balance-mechanics-summary-20261008'
+    expect(announcement.bulletIds).toHaveLength(mechanics ? 38 : 5)
+    expect(announcement.bullets).toHaveLength(mechanics ? 38 : 5)
     for (const language of ['zh', 'en'] as const) {
       expect(L10N[announcement.titleId!]![language]).toBe(release.title[language])
       expect(L10N[announcement.tagId!]![language]).toBe(release.tag[language])
-      expect(announcement.bulletIds!.map(id => L10N[id]![language])).toEqual(section(release.heading, language))
+      expect(announcement.bulletIds!.map(id => l10nEntryText(L10N[id]!, language))).toEqual(mechanics ? [...MECHANICS_APPROVED_ZH] : section(release.heading, language))
     }
     expect(announcement.title).toBe(L10N[announcement.titleId!]!.zh)
     expect(announcement.tag).toBe(L10N[announcement.tagId!]!.zh)
@@ -69,7 +71,7 @@ describe('船长获批两篇公告发布', () => {
     expect(text).not.toMatch(/数据编辑器|测试档|待审|待验收|主树|Worker|深空探测机|星球建设|动态星图|CPU插件.*120/)
     expect(text).toContain('每次爆发')
     expect(text).toContain('只收不卖')
-    expect(text).toContain('其他存活队友')
+    expect(text).toContain('不再恢复自身')
     expect(text).toContain('10月9日20:00')
   })
   it.each(['zh', 'en'] as const)('%s实际公告组件通过已有按钮显示两篇完整正文，不重写已读状态机制', language => {
@@ -77,7 +79,7 @@ describe('船长获批两篇公告发布', () => {
     const code = source.statements.filter(node => !ts.isImportDeclaration(node)).map(node => node.getText(source)).join('\n')
     const slots: unknown[] = [], seen = new Map([['whale-idle:announce-seen', ANNOUNCEMENTS[0]!.id]])
     let cursor = 0
-    const tr = (id: string) => L10N[id]![language]
+    const tr = (id: string) => l10nEntryText(L10N[id]!, language)
     const scope = { exports: {} as { AnnouncementHub: (props: unknown) => unknown }, ANNOUNCEMENTS, tr,
       weekendFlagshipBattleActive: () => false, localStorage: { getItem: (key: string) => seen.get(key), setItem: (key: string, value: string) => seen.set(key, value) },
       React: { createElement: (type: string, props: object, ...children: unknown[]) => ({ type, props: props ?? {}, children }) },
@@ -94,7 +96,7 @@ describe('船长获批两篇公告发布', () => {
       const item = items[index]!
       expect(text(item)).toContain(release.title[language])
       expect(text(item)).toContain('2026-10-09')
-      expect(nodes(item).filter(node => node.type === 'li').map(text)).toEqual(section(release.heading, language))
+      expect(nodes(item).filter(node => node.type === 'li').map(text)).toEqual(release.id === 'ann-balance-mechanics-summary-20261008' ? [...MECHANICS_APPROVED_ZH] : section(release.heading, language))
     }
     expect(seen.get('whale-idle:announce-seen')).toBe(ANNOUNCEMENTS[0]!.id)
   })

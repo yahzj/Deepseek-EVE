@@ -21,6 +21,19 @@ export interface AnnouncementDef {
   bulletIds?: readonly string[]
 }
 
+const MECHANICS_BRIEF_IDS = [
+  'ano.mechanicsBrief.001', 'ano.mechanicsBrief.002', 'ano.mechanicsBrief.003', 'ano.mechanicsBrief.004',
+  'ano.mechanicsBrief.005', 'ano.mechanicsBrief.006', 'ano.mechanicsBrief.007', 'ano.mechanicsBrief.008',
+  'ano.mechanicsBrief.009', 'ano.mechanicsBrief.010', 'ano.mechanicsBrief.011', 'ano.mechanicsBrief.012',
+  'ano.mechanicsBrief.013', 'ano.mechanicsBrief.014', 'ano.mechanicsBrief.015', 'ano.mechanicsBrief.016',
+  'ano.mechanicsBrief.017', 'ano.mechanicsBrief.018', 'ano.mechanicsBrief.019', 'ano.mechanicsBrief.020',
+  'ano.mechanicsBrief.021', 'ano.mechanicsBrief.022', 'ano.mechanicsBrief.023', 'ano.mechanicsBrief.024',
+  'ano.mechanicsBrief.025', 'ano.mechanicsBrief.026', 'ano.mechanicsBrief.027', 'ano.mechanicsBrief.028',
+  'ano.mechanicsBrief.029', 'ano.mechanicsBrief.030', 'ano.mechanicsBrief.031', 'ano.mechanicsBrief.032',
+  'ano.mechanicsBrief.033', 'ano.mechanicsBrief.034', 'ano.mechanicsBrief.035', 'ano.mechanicsBrief.036',
+  'ano.mechanicsBrief.037', 'ano.mechanicsBrief.038',
+] as const
+
 /** 全量公告（新的放最上方） */
 export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
   {
@@ -41,20 +54,15 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
     bulletIds: ['ano.incursionRelease.003', 'ano.incursionRelease.004', 'ano.incursionRelease.005', 'ano.incursionRelease.006', 'ano.incursionRelease.007'],
   },
   {
+    // ⟪文案调整 2026-10-09⟫ 船长确认逐点一句并移除光环，英文只登记待译。
     id: 'ann-balance-mechanics-summary-20261008',
     title: L10N['ano.mechanicsRelease.001']!.zh,
     titleId: 'ano.mechanicsRelease.001',
     date: '2026-10-09',
     tag: L10N['ano.mechanicsRelease.002']!.zh,
     tagId: 'ano.mechanicsRelease.002',
-    bullets: [
-      L10N['ano.mechanicsRelease.003']!.zh,
-      L10N['ano.mechanicsRelease.004']!.zh,
-      L10N['ano.mechanicsRelease.005']!.zh,
-      L10N['ano.mechanicsRelease.006']!.zh,
-      L10N['ano.mechanicsRelease.007']!.zh,
-    ],
-    bulletIds: ['ano.mechanicsRelease.003', 'ano.mechanicsRelease.004', 'ano.mechanicsRelease.005', 'ano.mechanicsRelease.006', 'ano.mechanicsRelease.007'],
+    bullets: MECHANICS_BRIEF_IDS.map(id => L10N[id]!.zh),
+    bulletIds: MECHANICS_BRIEF_IDS,
   },
   {
     // 2026-10-04 船长「确认没问题」：纯货舰数值、能力边界、材料工时与中英公告通过。

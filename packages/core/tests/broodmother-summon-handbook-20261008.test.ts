@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
-import { buildSimContext, FOE_SHIPS, L10N } from '@whale/data'
+import { buildSimContext, FOE_SHIPS, L10N, l10nEntryText } from '@whale/data'
 import { activeFoeSpecsOf, createBattleState, foesWithSupport, resolveFoeRevive, seedUnit } from '../src/foeSpecs'
 import { advanceBattleFor, applyFoeOverride, battleArcsFor, createPlayerSpec } from '../src/combat'
 import { foeShipIdOfTag, foeShipTierOf, foeUnitNameOf } from '../src/foeCard'
@@ -37,7 +37,7 @@ function renderer(locale: 'zh' | 'en') {
     const ast = ts.createSourceFile(path, sourceOf(path), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
     return ast.statements.filter(node => !ts.isImportDeclaration(node)).map(node => node.getText(ast)).join('\n')
   }
-  const scope: Record<string, any> = { exports: {}, L10N, FOE_MOUNTS, FOE_SHIPS, WEB_BREAK_DIST_M: 4500,
+  const scope: Record<string, any> = { exports: {}, L10N, l10nEntryText, FOE_MOUNTS, FOE_SHIPS, WEB_BREAK_DIST_M: 4500,
     signalSpaceTextId: (id: string) => id, localStorage: { getItem: () => locale }, navigator: { language: locale },
     createContext: () => ({ Provider: 'Provider' }) }
   const execute = (source: string): void => { runInNewContext(ts.transpileModule(source, {

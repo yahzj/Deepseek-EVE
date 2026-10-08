@@ -114,7 +114,7 @@ export type { FactionCodexEntry } from './factionCodex'
 // 2026-09-20 成就徽章（船长「继续之前的成就系统」· 两批共 81 枚：任务 13 ＋ 链 50 ＋ 里程碑 18）
 export { ACHIEVEMENTS, achievementOf, achievementsOfChain } from './achievements'
 // 2026-09-19 英语本地化（船长令）：**唯一本地化表** `L10N`（id → {zh,en}，一处改全局换语言）
-export { L10N, type L10nEntry } from './l10n/table'
+export { L10N, l10nEntryText, type L10nEntry } from './l10n/table'
 // 2026-09-19 英语本地化（船长令）：按 id 索引的英文覆盖层 + 语言类型（口径见 docs/glossary-en.md）
 export {
   localizeCtx,

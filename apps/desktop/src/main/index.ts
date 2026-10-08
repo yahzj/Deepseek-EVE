@@ -7,7 +7,7 @@
 import { app, BrowserWindow, dialog, ipcMain, screen } from 'electron'
 import { constants, promises as fs } from 'node:fs'
 import { join } from 'node:path'
-import { L10N } from '@whale/data'
+import { L10N, l10nEntryText } from '@whale/data'
 import { createSaveQueue } from '../shared/saveQueue'
 import { atomicSaveWrite } from './atomicSaveWrite'
 
@@ -24,7 +24,7 @@ let mainLocale: 'zh' | 'en' = 'zh'
 /** 主进程取文案（缺 id ⇒ 返回 id 本身，与渲染层同口径） */
 function t(id: string, params?: Record<string, string | number>): string {
   const e = L10N[id]
-  const raw = e ? (mainLocale === 'zh' ? e.zh : e.en) : id
+  const raw = e ? l10nEntryText(e, mainLocale) : id
   if (!params) return raw
   return raw.replace(/\{(\w+)\}/g, (m, k: string) => (k in params ? String(params[k]) : m))
 }

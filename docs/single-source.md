@@ -74,6 +74,7 @@
 |---|---|---|
 | 仿真上下文（页面取数的唯一入口） | `buildSimContext()` · `context.ts` | `arch:guard` F1/F4 |
 | 玩家可见文案唯一表（`id → { zh, en }`） | `L10N` · `l10n/table.ts` | `npm run l10n:check` ＋ `l10n:list` |
+| 已登记待译条目的中文回退 | `l10nEntryText()` · `l10n/table.ts`；界面`textOf`及主进程`t`调用 | 待译标记/文档登记成对、非待译空值仍拒绝、同入口占位符与中英渲染专项 |
 | 内容名/说明的英文覆盖层 | `packages/data/src/l10n.ts`（`EN_*` ＋ `overlay*`） | `l10n:check` ＋ core `l10n-overlay.test.ts` |
 | 势力族色 | `FOE_ACCENT` · `ui/tones.ts` | 与星图族标签/战场敌舰/图鉴族徽同源（人工核） |
 | 物品稀有度分档 | `itemRarityTierOf()` · `rarityTier.ts` | `content:check` 稀有度契约 |

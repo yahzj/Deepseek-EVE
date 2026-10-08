@@ -76,7 +76,7 @@ async function loadRenderer(): Promise<Record<string, unknown>> {
           b.onLoad({ filter: /.*/, namespace: 'stub' }, (args) => {
             if (args.path === 'data') {
               // `resolveDir` 指到仓库根，相对路径才解析得到
-              return { contents: `export { L10N } from './packages/data/src/l10n/table.ts'`, loader: 'js', resolveDir: process.cwd() }
+              return { contents: `export { L10N, l10nEntryText } from './packages/data/src/l10n/table.ts'`, loader: 'js', resolveDir: process.cwd() }
             }
             if (args.path === 'jsx') {
               // JSX 只为 Provider 组件服务（本工具只用纯函数）⇒ 返回 dummy 元素即可

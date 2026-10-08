@@ -32,6 +32,7 @@
 
 | 工具 | npm script | 挂牌状态 |
 |---|---|---|
+| `l10n-deferred-check.ts` | `l10n:check`内部调用 | v31；只核对英文延期标记/空值与待本地化文档成对，不生成英文、不放宽普通漏译/占位符护栏 |
 | `startup-win-worker-check.cjs` | 双端构建后`node tools/startup-win-worker-check.cjs` | v31；隐藏隔离Electron加载桌面file/网页HTTP，合法合成16架机群、真实Worker每卡30局/单实例/输入延迟/长任务与停止清理；不读个人档，不冒称手机性能或观感 |
 | `battle-step-preview.ts` / `battle-step-preview-worker.ts` | `npx tsx tools/battle-step-preview.ts`，worker仅由父工具打包 | v31；100/50/10ms步长及补算预算、装填/齐射/回充/机动与5场景多种子对照；内存注入，不改源码或个人档，前后校验哈希 |
 | `data-editor-enemy-schema.ts` / `data-editor-enemy-preview.ts` | 编辑器服务调用，预览CLI由候选服务执行 | v31；六类敌人源数字字段、范围、来源和当前core派生预览；不复制战斗算法，不倒写派生值 |

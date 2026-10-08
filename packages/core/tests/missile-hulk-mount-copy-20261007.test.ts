@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
-import { buildSimContext, FOE_SHIPS, L10N } from '@whale/data'
+import { buildSimContext, FOE_SHIPS, L10N, l10nEntryText } from '@whale/data'
 import { addShipToFleet, addWare, createInitialState } from '../src/index'
 import { advanceBattleFor, startBattleFor, startFleetBattleFor, createFoeSpecs } from '../src/combat'
 import { announceFoeGunRangeBuff } from '../src/foeRange'
@@ -24,7 +24,7 @@ function renderer(locale: 'zh' | 'en') {
     return ast.statements.filter(n => !ts.isImportDeclaration(n)).map(n => n.getText(ast)).join('\n')
   }
   const scope: Record<string, any> = {
-    exports: {}, L10N, FOE_MOUNTS, WEB_BREAK_DIST_M: 4500, signalSpaceTextId: (id: string) => id,
+    exports: {}, L10N, l10nEntryText, FOE_MOUNTS, WEB_BREAK_DIST_M: 4500, signalSpaceTextId: (id: string) => id,
     localStorage: { getItem: () => locale }, navigator: { language: locale },
     createContext: () => ({ Provider: 'Provider' }),
   }

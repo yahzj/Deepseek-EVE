@@ -2,14 +2,14 @@ import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
-import { FOE_SHIPS, L10N } from '@whale/data'
+import { FOE_SHIPS, L10N, l10nEntryText } from '@whale/data'
 import { FOE_MOUNTS, FOE_MOUNT_IDS } from '../src/foeMounts'
 import type { FoeShipDef } from '../src/types'
 
 // 沿用导弹残段文案测试的真实源码执行夹具，不把界面编译配置带进核心包。
 function renderer(locale: 'zh' | 'en') {
   const scope: Record<string, unknown> = {
-    exports: {}, L10N, FOE_MOUNTS, WEB_BREAK_DIST_M: 4500, signalSpaceTextId: (id: string) => id,
+    exports: {}, L10N, l10nEntryText, FOE_MOUNTS, WEB_BREAK_DIST_M: 4500, signalSpaceTextId: (id: string) => id,
     localStorage: { getItem: () => locale }, navigator: { language: locale }, createContext: () => ({ Provider: 'Provider' }),
   }
   const execute = (path: string) => {

@@ -14,6 +14,7 @@
 - `docs/development-conventions-changelog.md` — 约定与 AGENTS.md 的历次变更记录（最新在前；干活不必读）。
 - `docs/architecture.md` — 架构与模块边界。
 - `docs/glossary.md` — **术语权威**；新术语先登记再用（词条登记属"例外清单"，可随时写）。
+- `docs/l10n-pending.md` — 待英文本地化登记；未获船长明确开始准备指令时只记录，不起草或写入新译文。
 - `docs/roadmap.md` — 路线图：**待办活面** ＋ **最近批次滚动窗口** ＋ **封存卷索引**（更早批次在 `docs/archive/`）。
 - `docs/INDEX.md` — 全仓文档清册（机器生成，禁手改）；`docs/archive/` — 封存卷（冻结件，只读不改）。
 - `docs/design/*` — 各系统设计稿（以 `docs/INDEX.md` 为准）＋ 公告待审稿 `announcement-draft-*.md` ＋ 交接件 `handoff-*.md` / `handover-*.md`。
