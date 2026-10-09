@@ -6,14 +6,14 @@
     "parameters": [
       {
         "id": "foe-drone-c-jawclaw",
-        "defense_shieldHp": 6,
-        "defense_armorHp": 12,
-        "defense_hullHp": 20,
-        "defense_evasion": 0.45,
-        "dmg": 6,
-        "hitRate": 0.89,
+        "defense_shieldHp": 12,
+        "defense_armorHp": 30,
+        "defense_hullHp": 48,
+        "defense_evasion": 0.25,
+        "dmg": 10,
+        "hitRate": 0.85,
         "falloff": 1,
-        "maxRangeM": 6000,
+        "maxRangeM": 5000,
         "reloadMs": 4400
       },
       {

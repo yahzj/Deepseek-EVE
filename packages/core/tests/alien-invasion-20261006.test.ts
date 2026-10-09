@@ -42,7 +42,7 @@ describe('异形入侵真实接线', () => {
       const drones = unit.weapons.filter(w => w.src === 'drone')
       expect(drones).toHaveLength(count)
       expect(drones.reduce((n, w) => n + w.shotDmg!, 0)).toBe(droneDmg)
-      expect(drones[0]).toMatchObject({ fixedType: 'kinetic', hitRate: .89, maxRangeM: 6000, foeDroneRangeBonusPct: .5 })
+      expect(drones[0]).toMatchObject({ fixedType: 'kinetic', hitRate: .85, maxRangeM: 5000, foeDroneRangeBonusPct: .5 })
       expect(unit.foeHatchery).toEqual({ cycleMs: cycle, stock, fleet: true })
       expect(unit.foeChargeMul).toBe(charge)
     }

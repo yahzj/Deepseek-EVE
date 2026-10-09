@@ -70,7 +70,7 @@ describe('入侵装备数据与独立掉落', () => {
     expect(ctx.modules.get(acidId)!).toMatchObject({ maxRangeM: 10000, dmgMult: 12 })
     expect(ctx.modules.get(acidId)!.cpuUse).toBe(60)
     expect(ctx.modules.get(speedId)!).toMatchObject({ rack: 'low', cpuUse: 30, speedBonusPct: .05, speedRamp: { rampMs: 60000, maxBonusPct: .25 } })
-    expect(ctx.items.get('drone-jawclaw')!).toMatchObject({ name: '颚钳无人机', dmg: 6, cpuUse: 5, hitRate: .89, maxRangeM: 6000, unitM3: 5 })
+    expect(ctx.items.get('drone-jawclaw')!).toMatchObject({ name: '颚钳无人机', droneClass: 'combat', dmg: 10, cpuUse: 8, hitRate: .85, maxRangeM: 5000, unitM3: 10 })
     for (const id of [acidId, speedId]) {
       expect([...ctx.blueprints.values()].some(bp => bp.moduleId === id)).toBe(false)
       expect(ctx.marketGoods.get(id)).toMatchObject({ rarity: 'exotic', playerBuyable: false })

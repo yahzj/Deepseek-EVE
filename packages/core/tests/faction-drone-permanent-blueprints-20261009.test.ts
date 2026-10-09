@@ -154,25 +154,29 @@ describe('五种势力无人机永久图纸', () => {
       }
       expect(copy).toEqual(legacy)
     }
-    expect(JSON.parse(readFileSync(new URL('packages/data/src/static/foeDrones.json', root), 'utf8'))).toEqual(JSON.parse(old('packages/data/src/static/foeDrones.json')))
+    const oldFoes = JSON.parse(old('packages/data/src/static/foeDrones.json'))
+    Object.assign(oldFoes.groups.parameters.find((drone: { id: string }) => drone.id === 'foe-drone-c-jawclaw'), {
+      defense_shieldHp: 12, defense_armorHp: 30, defense_hullHp: 48, defense_evasion: .25, dmg: 10, hitRate: .85, maxRangeM: 5000,
+    })
+    expect(JSON.parse(readFileSync(new URL('packages/data/src/static/foeDrones.json', root), 'utf8'))).toEqual(oldFoes)
     for (const id of ['bp-lair-g-drone', 'bp-wh-c-drone', 'bp-wh-e-drone']) expect(ctx.blueprints.get(id)!.singleUse).toBe(true)
   })
 
   it('颚钳玩家物品裸值、CPU/体积与真放飞规格一致，不复制敌载体加成', () => {
     const item = ctx.items.get('drone-jawclaw')!
-    expect(item).toMatchObject({ kind: 'drone', droneClass: 'scout', damageType: 'kinetic', dmg: 6, hitRate: .89,
-      falloff: 1, maxRangeM: 6000, unitM3: 5, cpuUse: 5, baseSellPriceIsk: 24000,
-      defense: { shieldHp: 6, armorHp: 12, hullHp: 20, evasion: .45 } })
+    expect(item).toMatchObject({ kind: 'drone', droneClass: 'combat', damageType: 'kinetic', dmg: 10, hitRate: .85,
+      falloff: 1, maxRangeM: 5000, unitM3: 10, cpuUse: 8, baseSellPriceIsk: 24000,
+      defense: { shieldHp: 12, armorHp: 30, hullHp: 48, evasion: .25 } })
     const state = world(), shipId = addShipToFleet(state, 'sh-wh-c-cruiser')
     state.shipId = shipId
     state.warehouse.items['drone-jawclaw'] = 10
-    expect(adjustDroneLoad(state, ctx, 'drone-jawclaw', 10, shipId).ok).toBe(true)
-    expect(droneCpuUsed(state.fleet[shipId]!.droneLoad, ctx)).toBe(50)
+    expect(adjustDroneLoad(state, ctx, 'drone-jawclaw', 5, shipId).ok).toBe(true)
+    expect(droneCpuUsed(state.fleet[shipId]!.droneLoad, ctx)).toBe(40)
     const spec = createPlayerSpec(state, ctx, shipId)!
     const drones = spec.weapons.filter(weapon => weapon.src === 'drone')
-    expect(drones).toHaveLength(10)
+    expect(drones).toHaveLength(5)
     // 玩家出击周期的既有伤害×2照常作用，不复制敌方C族/导控腔修正。
-    expect(drones[0]).toMatchObject({ artId: item.id, shotDmg: item.dmg! * 2, fixedType: 'kinetic', hitRate: .89, reloadMs: 4400, maxRangeM: 6000 })
+    expect(drones[0]).toMatchObject({ artId: item.id, shotDmg: item.dmg! * 2, fixedType: 'kinetic', hitRate: .85, reloadMs: 4400, maxRangeM: 5000 })
     const battle = startBattleFor(state, ctx, shipId, 'ano-pirate-post', 0, 2000)
     expect(battle).not.toBeNull()
     if (!battle) throw new Error('未创建战斗')
@@ -181,12 +185,12 @@ describe('五种势力无人机永久图纸', () => {
     expect(battle.stats.meShots).toBeGreaterThan(0)
     expect(Object.values(battle.dronePools ?? {}).some(pool => pool.artId === item.id)).toBe(true)
     const pools = Object.values(battle.dronePools ?? {}).filter(pool => pool.artId === item.id)
-    expect(pools).toHaveLength(10)
-    expect(pools[0]).toMatchObject({ maxS: 6, maxA: 12, maxH: 20, evasion: .45 })
+    expect(pools).toHaveLength(5)
+    expect(pools[0]).toMatchObject({ maxS: 12, maxA: 30, maxH: 48, evasion: .25 })
     state.expedition = { ...state.expedition, active: true, phase: 'battle', anomalyId: 'ano-pirate-post', battle }
     const loaded = loadSaveFile(serializeSaveFile(state, now)).state
-    expect(loaded.fleet[shipId]!.droneLoad).toEqual({ 'drone-jawclaw': 10 })
-    expect(Object.values(loaded.expedition.battle!.dronePools ?? {}).filter(pool => pool.artId === item.id)).toHaveLength(10)
+    expect(loaded.fleet[shipId]!.droneLoad).toEqual({ 'drone-jawclaw': 5 })
+    expect(Object.values(loaded.expedition.battle!.dronePools ?? {}).filter(pool => pool.artId === item.id)).toHaveLength(5)
   })
 
   it.each(['zh', 'en'] as const)('%s新名称/说明严格回退已批准中文，旧英文保留、待译登记完整', locale => {

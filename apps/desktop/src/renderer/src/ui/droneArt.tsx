@@ -192,13 +192,13 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
     art: SPORE_DRONE_ART,
   },
   'foe-drone-c-jawclaw': {
-    name: tr('item.alien.001'), tint: FOE_ACCENT.C, slots: SLOTS_HIGH(-26),
-    bolt: { style: 'dot', len: 8, width: 1.8, tail: false },
+    name: tr('item.alien.001'), tint: FOE_ACCENT.C, slots: SLOTS_HIGH(-46),
+    bolt: { style: 'dot', len: 10, width: 2.2, tail: false },
     art: JAWCLAW_DRONE_ART,
   },
   'drone-jawclaw': {
-    name: tr('item.jawclaw.001'), tint: FOE_ACCENT.C, slots: SLOTS_HIGH(-26),
-    bolt: { style: 'dot', len: 8, width: 1.8, tail: false },
+    name: tr('item.jawclaw.001'), tint: FOE_ACCENT.C, slots: SLOTS_HIGH(-46),
+    bolt: { style: 'dot', len: 10, width: 2.2, tail: false },
     art: JAWCLAW_DRONE_ART,
   },
   /* ══════════ **专属无人机**（2026-09-26 船长报障「**玩家的构件哨戒无人机不会出现在战斗场景中**」） ══════════

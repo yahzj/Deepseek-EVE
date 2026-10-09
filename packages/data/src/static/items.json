@@ -767,20 +767,20 @@
       {
         "id": "drone-jawclaw",
         "kind": "drone",
-        "unitM3": 5,
+        "unitM3": 10,
         "baseSellPriceIsk": 24000,
         "damageType": "kinetic",
-        "dmg": 6,
-        "cpuUse": 5,
-        "maxRangeM": 6000,
-        "droneClass": "scout",
-        "hitRate": 0.89,
+        "dmg": 10,
+        "cpuUse": 8,
+        "maxRangeM": 5000,
+        "droneClass": "combat",
+        "hitRate": 0.85,
         "falloff": 1,
         "defense": {
-          "shieldHp": 6,
-          "armorHp": 12,
-          "hullHp": 20,
-          "evasion": 0.45
+          "shieldHp": 12,
+          "armorHp": 30,
+          "hullHp": 48,
+          "evasion": 0.25
         },
         "exclusive": true
       }

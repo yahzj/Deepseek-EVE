@@ -23,7 +23,7 @@ import type { FoeDroneDef } from "@whale/core";
 import { L10N } from './l10n/table'
 
 export const FOE_DRONE_C_JAWCLAW: FoeDroneDef = {
-  id: 'foe-drone-c-jawclaw', name: L10N['item.alien.001']!.zh, family: 'C', role: 'scout',
+  id: 'foe-drone-c-jawclaw', name: L10N['item.alien.001']!.zh, family: 'C', role: 'combat',
   defense: { shieldHp: enemyParameterOf(foeDronesParameters, "foe-drone-c-jawclaw", "defense_shieldHp"), armorHp: enemyParameterOf(foeDronesParameters, "foe-drone-c-jawclaw", "defense_armorHp"), hullHp: enemyParameterOf(foeDronesParameters, "foe-drone-c-jawclaw", "defense_hullHp"), evasion: enemyParameterOf(foeDronesParameters, "foe-drone-c-jawclaw", "defense_evasion") },
   dmg: enemyParameterOf(foeDronesParameters, "foe-drone-c-jawclaw", "dmg"), damageType: 'kinetic', hitRate: enemyParameterOf(foeDronesParameters, "foe-drone-c-jawclaw", "hitRate"), falloff: enemyParameterOf(foeDronesParameters, "foe-drone-c-jawclaw", "falloff"), maxRangeM: enemyParameterOf(foeDronesParameters, "foe-drone-c-jawclaw", "maxRangeM"), reloadMs: enemyParameterOf(foeDronesParameters, "foe-drone-c-jawclaw", "reloadMs"),
 }

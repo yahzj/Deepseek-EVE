@@ -47,6 +47,6 @@ describe('新异形资产真实表覆盖', () => {
     expect(model.svg).toContain('<path')
     expect(assets.playerDrone.svg).toBe(model.svg)
     expect(assets.playerDrone.slots).toEqual(model.slots)
-    expect(assets.playerDrone.bolt).toMatchObject({ style: 'dot', len: 8, width: 1.8, tail: false })
+    expect(assets.playerDrone.bolt).toMatchObject({ style: 'dot', len: 10, width: 2.2, tail: false })
   })
 })

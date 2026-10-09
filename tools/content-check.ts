@@ -8712,7 +8712,7 @@ checkPlugEffectWiring()
     if (slot.ship.acidBurst) check(card.region === 'inv' && slot.ship.shotDmg === 0, `混伤状态例外不合法：${card.id}`)
   }
   const drone = FOE_DRONES.find(d => d.id === 'foe-drone-c-jawclaw')!
-  check(drone.role === 'scout' && drone.hitRate === .89 && drone.damageType === 'kinetic', '颚钳契约：侦察/动能/89%基础命中')
+  check(drone.role === 'combat' && drone.hitRate === .85 && drone.damageType === 'kinetic', '颚钳契约：战斗/动能/85%基础命中')
 }
 
 // 2026-10-07船长批准：稀有专用池与普通主题分离，只登记本批四组通用MK2。

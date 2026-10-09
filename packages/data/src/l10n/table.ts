@@ -52,7 +52,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.launchCalibration.005': { zh: '激光远端保留增量', en: '', enDeferred: true },
   // ⟪文案调整 2026-10-09⟫ 船长确认玩家机定名，敌方虫群保留原名。
   'item.jawclaw.001': { zh: '颚钳无人机', en: '', enDeferred: true },
-  'item.jawclaw.002': { zh: '动能侦察无人机，适合追击与持续攻击。', en: '', enDeferred: true },
+  // ⟪文案调整 2026-10-09⟫ 船长确认颚钳敌我机型改为战斗机。
+  'item.jawclaw.002': { zh: '动能战斗无人机，适合中距离交战与持续攻击。', en: '', enDeferred: true },
   'bp.factionDrone.001': { zh: '鱿蜂无人机永久蓝图', en: '', enDeferred: true },
   'bp.factionDrone.002': { zh: '巢卫攻坚无人机永久蓝图', en: '', enDeferred: true },
   'bp.factionDrone.003': { zh: '构件哨戒无人机永久蓝图', en: '', enDeferred: true },
