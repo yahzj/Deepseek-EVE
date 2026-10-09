@@ -42,6 +42,8 @@
 
 六类敌人源参数在`packages/data/src/static/{foeShips,foeDrones,bounties,invasionFleets,wormholeFleets}.json`及`packages/core/src/static/foeMounts.json`，由原TS工厂和统一字段契约装配，不另保存编队快照。独立编辑器开发源码仍引用零号来源树的共享工具；该路径依赖尚在，不能把迁出Git理解为完全独立于游戏源码。便携EXE按所选可信项目读取候选，操作限制与检查保持。
 
+2026-10-09C族调参新增9舰evasion来源字段及星髓/噬口两条threatJudged来源字段，游戏与共享字段契约已同步，相关编辑器校验专项通过；旧0.1.2EXE内置的来源契约尚未更新，会按安全规则拒载新版项目，须更新构建后才能编辑，不能忽略未知字段或放宽校验。本轮没有修改独立编辑器目录、零号来源树或重打便携程序。随后10%选靶调整只改已有字段数值，未再改变契约形状。
+
 ## 验证入口
 
 - `npm run data:migration-check`：固定`f30834cf`原始表与中英文完整目录等价，含次序/缺省/过滤/派生及旧CLI回归，仅用于迁移验收；后续有意调参不应期望旧全值相同。
