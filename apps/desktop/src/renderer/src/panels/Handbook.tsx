@@ -60,6 +60,7 @@ import { crestLabelOf } from '../ui/labelsText'
 import { ShipSprite } from '../ui/ShipSprite'
 // 2026-10-02 批次 4s：详情域（卡片构造器/详情窗/GroupSection/宽类型标签助手）已拆到 ./handbookDetail，本文件借回使用
 import { slotName, roleName, CellDetail, GroupSection, moduleCellOf, shipCellOf, itemCellOf, blueprintCellOf, shipBlueprintCellOf } from './handbookDetail'
+import { handbookContentOrderOf } from '../ui/handbookOrder'
 
 type Tab = 'guide' | 'rules' | 'items' | 'modules' | 'ships' | 'blueprints' | 'skills' | 'factions'
 /**
@@ -145,7 +146,7 @@ function FactionDetailPanel({ engine, family }: { engine: GameEngine; family: st
    * 原先只 `ctx.modules.get(id)` ⇒ 那架机被静默丢掉（小节计数 3 件、只画 2 张卡）。
    * 现在逐 id 先查模块、再查物品，两件型都进同一网格（计数口径 = `card.modules.length`，与卡片数一致）。
    */
-  const exclusiveModuleCells: GridCell[] = card.modules.flatMap((id) => {
+  const exclusiveModuleCells: GridCell[] = handbookContentOrderOf(card.modules, id => id).flatMap((id) => {
     const mod = engine.ctx.modules.get(id)
     if (mod !== undefined) return [moduleCellOf(mod)]
     const item = engine.ctx.items.get(id)
@@ -1053,11 +1054,13 @@ export function Handbook({
   /* ── 网格单元（glyph 名即色调键；raw 带完整数据供详情窗） ──
    *  ⚠ 物品图鉴走**玩家可见目录**（`visibleItemDefs`）：未上线物品（标 `ItemDef.unreleased`）
    *  不进图鉴——首版直接遍历 `engine.items` 全目录，未上线矿会连名字带描述一起被搜出来（2026-09-13 实测）。 */
-  const itemCells: GridCell[] = visibleItemDefs(engine.ctx).map((item) => itemCellOf(item))
+  const orderedItems = handbookContentOrderOf(visibleItemDefs(engine.ctx), item => item.id)
+  const orderedModules = handbookContentOrderOf(engine.modules, mod => mod.id)
+  const itemCells: GridCell[] = orderedItems.map((item) => itemCellOf(item))
   /** **道具逐件档的档名解析器**（2026-10-02 船长令：消耗品桶里每件道具自成一档）：档名 = 那件道具
    *  自己的名字，从物品表单点取（`subText` 的第二个参数），不在分类表里再抄一份名字。 */
   const itemNameOf = (id: string): string | undefined => engine.ctx.items.get(id)?.name
-  const moduleCells: GridCell[] = engine.modules.map((mod) => moduleCellOf(mod))
+  const moduleCells: GridCell[] = orderedModules.map((mod) => moduleCellOf(mod))
   const shipCells: GridCell[] = engine.ships.map((ship) => shipCellOf(ship))
   const bpCells: GridCell[] = [
     ...engine.blueprints.map((bp) => blueprintCellOf(engine, bp)),
@@ -1342,7 +1345,7 @@ export function Handbook({
     if (tab === 'items') {
       return (
         <ul className="app-hand-list">
-          {engine.items
+          {orderedItems
             .filter((item) => ids.has(item.id))
             .map((item) => {
               const refine = (item.refine ?? [])
@@ -1373,7 +1376,7 @@ export function Handbook({
     if (tab === 'modules') {
       return (
         <ul className="app-hand-list">
-          {engine.modules
+          {orderedModules
             .filter((mod) => ids.has(mod.id))
             .map((mod) => (
               <ModuleHover key={mod.id} as="li" mod={mod} className="app-hand-entry">

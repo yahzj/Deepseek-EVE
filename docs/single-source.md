@@ -17,6 +17,7 @@
 ## 一、core 引擎层（`packages/core/src`）
 
 | 关注点 | 唯一实现 | 护栏 |
+| 手册新入侵装备与无人机显示顺序 | `handbookContentOrderOf()` · `ui/handbookOrder.ts` | 只变视图，原条目顺序与目录守恒，图标/列表/势力入口统一专项；F2/F3 |
 | 酸蚀有效抗性与渐增速度 | `acidResistsOf()` / `battleSpeedBonusOf()` / `foeAcidRowsOf()` · `alienEquipment.ts` | 逐层到期、触底恢复、跨波/读档、混装重新排序与周期专项；F2/F3 |
 | 激光校准远端威力保留 | `laserFalloffOf` · `equipment.ts`，只在玩家激光建档消费 | 混装折权加算、上限1、其他武器不变专项；`arch:guard` F2/F3 |
 | 敌方族格最终血量倍率 | `foeFamilyHpMulOf()` · `foePower.ts` | C族三层最终+30%、非C不变、舰体/机型独立判定、共享旗舰绝对血覆盖与预算不抵消专项 |

@@ -110,6 +110,7 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '手册入侵新内容稳定后排', symbol: 'handbookContentOrderOf', file: 'apps/desktop/src/renderer/src/ui/handbookOrder.ts', exported: true },
   { concept: '酸蚀层独立期限与有效抗性', symbol: 'acidResistsOf', file: 'packages/core/src/alienEquipment.ts', exported: true },
   { concept: '酸蚀有效层数与下次到期显示', symbol: 'foeAcidRowsOf', file: 'packages/core/src/alienEquipment.ts', exported: true },
   { concept: '战斗渐增速度同池折权', symbol: 'battleSpeedBonusOf', file: 'packages/core/src/alienEquipment.ts', exported: true },
