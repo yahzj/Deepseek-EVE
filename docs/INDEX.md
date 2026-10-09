@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **445** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7592** KB · **58194** 行
+- 文档总数 **445** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7595** KB · **58210** 行
 - 状态分布：**未标注** 242 · **已确认/已实现** 141 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
 - 孤儿文档（0 引用）**70** 份 · 状态未标注 **242** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -33,10 +33,10 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 28 KB / 254 行 | 32 / 2 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 7 KB / 65 行 | 33 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 9 KB / 125 行 | 2 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 300 KB / 309 行 | 17 / 3 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 300 KB / 310 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 92 KB / 911 行 | 94 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 516 KB / 1080 行 | 226 / 22 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 78 KB / 462 行 | 379 / 28 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 77 KB / 462 行 | 379 / 28 |
 
 ## 七、评审与体检（review） —— 13 份
 
@@ -335,7 +335,7 @@
 | `docs/design/v7-design.md` | V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版 | 未标注 | — | 7 KB / 117 行 | 0 / 0 |
 | `docs/design/v9-market.md` | V9 设计：市场系统（已实现） | 未标注 | — | 21 KB / 192 行 | 17 / 0 |
 | `docs/design/weapon-skill-batch.md` | 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四） | 未标注 | — | 8 KB / 100 行 | 4 / 0 |
-| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 47 KB / 357 行 | 23 / 14 |
+| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 49 KB / 370 行 | 24 / 14 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 5 KB / 56 行 | 5 / 0 |
 
 ## 九、封存卷（archive · 冻结件，只读不改） —— 37 份
@@ -378,7 +378,7 @@
 | `docs/archive/roadmap-2026-09-29.md` | 封存卷 · roadmap 批次条目 2026-09-29 | 未标注 | — | 7 KB / 18 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-30.md` | 封存卷 · roadmap 批次条目 2026-09-30 | 未标注 | — | 24 KB / 28 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-10-01.md` | 封存卷 · roadmap 批次条目 2026-10-01 | 未标注 | — | 3 KB / 10 行 | 2 / 0 |
-| `docs/archive/roadmap-2026-10-02.md` | 封存卷 · roadmap 批次条目 2026-10-02 | 未标注 | — | 6 KB / 20 行 | 2 / 0 |
+| `docs/archive/roadmap-2026-10-02.md` | 封存卷 · roadmap 批次条目 2026-10-02 | 未标注 | — | 8 KB / 22 行 | 2 / 0 |
 
 ## 二、其它（docs 根目录） —— 6 份
 
