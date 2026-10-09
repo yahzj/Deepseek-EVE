@@ -1,0 +1,50 @@
+[
+  {
+    "id": "rocky",
+    "size": [
+      288,
+      288
+    ],
+    "visibleBounds": [
+      17,
+      17,
+      272,
+      272
+    ],
+    "bytes": 4593,
+    "transparentPixels": 31515,
+    "repeatPixelsEqual": true
+  },
+  {
+    "id": "ocean",
+    "size": [
+      288,
+      288
+    ],
+    "visibleBounds": [
+      16,
+      16,
+      272,
+      272
+    ],
+    "bytes": 9585,
+    "transparentPixels": 31513,
+    "repeatPixelsEqual": true
+  },
+  {
+    "id": "gas",
+    "size": [
+      800,
+      800
+    ],
+    "visibleBounds": [
+      162,
+      133,
+      645,
+      674
+    ],
+    "bytes": 19414,
+    "transparentPixels": 566134,
+    "repeatPixelsEqual": true
+  }
+]

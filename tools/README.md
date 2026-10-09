@@ -1,5 +1,12 @@
 # 工具区台账（tools/）
 
+## 星系天体样片（2026-10-09 · Godot3.5 / v0.1.0 / 档v31）
+
+- `node tools/pixel-planets-samples.cjs [本机EXE绝对路径] [不存在的独立输出目录绝对路径]`：核验程序SHA256，用原生PixelPlanets场景/shader渲染三类透明PNG；默认输出`docs/design/assets/stellar-samples-20261009`，拒绝覆盖，游戏运行不依赖此工具。
+- `pixel-planets-export.gd`：通过本机程序`--no-window --script`执行，固定种子/颜色/光源/冻结时间，RGBA透明视口导出，不手写球体算法。
+- `python tools/pixel-planets-review.py <样片目录> [复现目录]`：已有Pillow/系统字体制作深浅底及小尺寸审查板，核验透明度/留白/像素复现；不安装依赖、不读写个人档。
+- 来源/许可和参数见`docs/design/assets/stellar-samples-20261009/README.md`；样片未接入游戏，风格与完整星图方案待船长审查。
+
 ## 装配靶场验收（2026-10-09 · v0.1.0 / 档v31）
 
 - `npx tsx tools/fitting-range-fixture.ts <独立绝对输出路径>`：生成无个人档输入的验收档，真实航母、激光/酸蚀炮/颚钳无人机/加速器/增压腔，不代开靶场。

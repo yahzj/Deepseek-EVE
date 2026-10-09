@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **460** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7749** KB · **59580** 行
-- 状态分布：**未标注** 247 · **已确认/已实现** 151 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
-- 孤儿文档（0 引用）**81** 份 · 状态未标注 **247** 份
+- 文档总数 **462** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7758** KB · **59657** 行
+- 状态分布：**未标注** 248 · **已确认/已实现** 152 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
+- 孤儿文档（0 引用）**82** 份 · 状态未标注 **248** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
-- 三、现行设计稿（design）：**290** 份
+- 三、现行设计稿（design）：**292** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -33,8 +33,8 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 28 KB / 254 行 | 32 / 2 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 7 KB / 65 行 | 34 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 9 KB / 125 行 | 2 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 301 KB / 311 行 | 17 / 3 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 92 KB / 912 行 | 95 / 5 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 302 KB / 312 行 | 17 / 3 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 93 KB / 919 行 | 95 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 518 KB / 1094 行 | 226 / 22 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 71 KB / 445 行 | 379 / 28 |
 
@@ -56,7 +56,7 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 290 份
+## 三、现行设计稿（design） —— 292 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -70,6 +70,7 @@
 | `docs/design/raider-fragment-ammo-audit-20261009.md` | 掠袭破片炮弹药显示检查 | 未标注（已修复并合入主树） | 2026-10-09 | 5 KB / 47 行 | 0 / 0 |
 | `docs/design/ship-cpu-audit-20261009.md` | 全船CPU预算检查 | 未标注（四舰CPU已调整并完成自测） | 2026-10-09 | 7 KB / 81 行 | 0 / 0 |
 | `docs/design/stellar-map-ui-20261009.md` | 星系星图UI优化：探索指挥台 | 已确认/已实现（布局已实现、自测通过） | 2026-10-09 | 15 KB / 103 行 | 1 / 0 |
+| `docs/design/stellar-planet-samples-20261009.md` | 星系天体位图样片 | 已确认/已实现（样片已完成） | 2026-10-09 | 5 KB / 40 行 | 0 / 0 |
 | `docs/design/stellar-ui-finish-20261009.md` | 星系探索界面收尾 | 已确认/已实现（已实现） | 2026-10-09 | 4 KB / 39 行 | 0 / 0 |
 | `docs/design/synaptic-accelerant-audit-20261009.md` | 突触加速剂玩家报障检查 | 已确认/已实现（核心修复已合入主树并复测） | 2026-10-09 | 21 KB / 201 行 | 0 / 0 |
 | `docs/design/zero-integration-20261009.md` | 零号技能与装配修复整合 | 已确认/已实现（已合入主树并完成主树专项/构建） | 2026-10-09 | 5 KB / 41 行 | 2 / 0 |
@@ -283,6 +284,7 @@
 | `docs/design/salvage-autoloop-20260909.md` | 打捞自动循环(主控 + AI)(状态:已确认,2026-09-09 船长拍板;二号实现) | 已确认/已实现（已确认） | 2026-09-09 | 3 KB / 39 行 | 0 / 0 |
 | `docs/design/wave-battles-20260909.md` | 多波次敌人设定(低安顶段悬赏)设计稿(2026-09-09;已确认并实现·待验收/待发布) | 未标注 | 2026-09-09 | 12 KB / 131 行 | 8 / 5 |
 | `docs/design/ai-design.md` | V8 设计文档：AI 核心系统（玩家分身） | 未标注 | — | 7 KB / 93 行 | 3 / 0 |
+| `docs/design/assets/stellar-samples-20261009/README.md` | PixelPlanets 三类天体样片 | 未标注（仅样片） | — | 2 KB / 29 行 | 61 / 14 |
 | `docs/design/b1-lowsec-encounters.md` | B1 安全等级玩法化：低安遭遇 / 伏击（状态：已确认，实现中；2026-09-06 暴露面收敛） | 已确认/已实现（已确认） | — | 13 KB / 123 行 | 12 / 0 |
 | `docs/design/b3-flavor-content.md` | B3.1 星系/敌群特色残骸产出 · 数值表（2026-09-08 已确认，收尾归档） | 已确认/已实现（已收尾归档） | — | 7 KB / 82 行 | 6 / 1 |
 | `docs/design/b3-salvage.md` | B3 残骸打捞与回收系统（设计总结 · 已实现，2026-09-05 全链落地） | 未标注 | — | 12 KB / 120 行 | 14 / 4 |
@@ -530,7 +532,7 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 61 / 14 |
 
-## 附：孤儿文档（0 引用，81 份）
+## 附：孤儿文档（0 引用，82 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
@@ -542,6 +544,7 @@
 - `docs/design/push-regression-contract-20261009.md`（2026-10-09 · 4 KB）—— 推送前回归契约修正
 - `docs/design/raider-fragment-ammo-audit-20261009.md`（2026-10-09 · 5 KB）—— 掠袭破片炮弹药显示检查
 - `docs/design/ship-cpu-audit-20261009.md`（2026-10-09 · 7 KB）—— 全船CPU预算检查
+- `docs/design/stellar-planet-samples-20261009.md`（2026-10-09 · 5 KB）—— 星系天体位图样片
 - `docs/design/stellar-ui-finish-20261009.md`（2026-10-09 · 4 KB）—— 星系探索界面收尾
 - `docs/design/synaptic-accelerant-audit-20261009.md`（2026-10-09 · 21 KB）—— 突触加速剂玩家报障检查
 - `docs/test-saves/alien-loot-20261009.md`（2026-10-09 · 1 KB）—— 异形入侵装备验收档
@@ -616,7 +619,7 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（247 份，待补一行 `状态：…`）
+## 附：状态未标注（248 份，待补一行 `状态：…`）
 
 - `docs/design/pressure-chamber-cycle-fix-20261009.md`（2026-10-09）—— 增压加速腔误接推进周期
 - `docs/design/raider-fragment-ammo-audit-20261009.md`（2026-10-09）—— 掠袭破片炮弹药显示检查
@@ -833,6 +836,7 @@
 - `docs/design/archive/handoff-b3-skills.md`（无日期）—— B3 技能挂接（2026-09-05 船长拍板：打捞相关技能一并完成 → 已实施）
 - `docs/design/archive/handoff-weapon-skills.md`（无日期）—— 交接：V18B 武器体系 → 战斗线技能填充（一号）
 - `docs/design/archive/README.md`（无日期）—— 归档区说明（docs/design/archive/）
+- `docs/design/assets/stellar-samples-20261009/README.md`（无日期）—— PixelPlanets 三类天体样片
 - `docs/design/b3-salvage.md`（无日期）—— B3 残骸打捞与回收系统（设计总结 · 已实现，2026-09-05 全链落地）
 - `docs/design/copy-cleanup-pending.md`（无日期）—— 页面文案归位（说明书式介绍 → 手册玩法速览）— 执行记录与待办
 - `docs/design/copy-sweep-candidates.md`（无日期）—— 页面文案巡检候选清单（全部页面，2026-09-08）

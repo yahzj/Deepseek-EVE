@@ -1,0 +1,78 @@
+[
+  {
+    "id": "rocky",
+    "scene": "NoAtmosphere/NoAtmosphere",
+    "seed": 127,
+    "colors": [
+      "b4b7c2",
+      "757b92",
+      "363c56",
+      "757b92",
+      "363c56"
+    ],
+    "pixels": 256,
+    "padding": 16,
+    "width": 288,
+    "height": 288,
+    "light": [
+      0.25,
+      0.25
+    ],
+    "rotation": 0.15,
+    "time": 0.17,
+    "dither": true
+  },
+  {
+    "id": "ocean",
+    "scene": "LandMasses/LandMasses",
+    "seed": 583,
+    "colors": [
+      "7acbd5",
+      "3172a3",
+      "172946",
+      "a4c99b",
+      "6f9980",
+      "3b6964",
+      "1a3542",
+      "e8edf0",
+      "bdcddc",
+      "637e9c",
+      "374861"
+    ],
+    "pixels": 256,
+    "padding": 16,
+    "width": 288,
+    "height": 288,
+    "light": [
+      0.25,
+      0.25
+    ],
+    "rotation": 0.15,
+    "time": 0.17,
+    "dither": true
+  },
+  {
+    "id": "gas",
+    "scene": "GasPlanetLayers/GasPlanetLayers",
+    "seed": 846,
+    "colors": [
+      "edcc9b",
+      "c18d82",
+      "796782",
+      "856578",
+      "51435f",
+      "292c47"
+    ],
+    "pixels": 256,
+    "padding": 16,
+    "width": 800,
+    "height": 800,
+    "light": [
+      0.25,
+      0.25
+    ],
+    "rotation": 0.15,
+    "time": 0.17,
+    "dither": true
+  }
+]
