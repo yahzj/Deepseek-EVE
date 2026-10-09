@@ -12,10 +12,9 @@ import { addLog, MAX_SKILL_LEVEL } from './state'
 import type { SimContext, SkillCatalog, SkillDef } from './types'
 import type { CommandResult } from './engine'
 import { composeLog, logParamsOf } from './logParts'
-import { skillLevelTimeMs, trainingTimeFactor } from './training'
-import { tuningMul } from './tuning'
+import { normalizeTrainingProgress, trainingLevelProgress } from './training'
 import { skillLicenseMissing, skillLicensePriceOf } from './skillLicense'
-import { syncBoostRenew } from './consumables'
+import { syncBoostRenew, SYNAPTIC_ACCELERANT_RENEW_TAIL_MS } from './consumables'
 import { DEEP_SPACE_SKILL_IDS, probeManufacturingUnlocked } from './probeManufacturing'
 
 /** 界面隐藏且不可训练的技能 id（2026-09-05 批次三起战斗占位全部开放，当前为空；
@@ -23,97 +22,81 @@ import { DEEP_SPACE_SKILL_IDS, probeManufacturingUnlocked } from './probeManufac
  * （2026-10-02 批次 4n 从 engine.ts 迁来） */
 export const HIDDEN_SKILL_IDS: readonly string[] = []
 
-/** 技能队列推进（内部函数，不对外）
- *
- * ⚠ **2026-10-01（技能加速自动续用）**：第三参由 `SkillCatalog` 改成整个 `ctx` —— 因为"续用"判据要
- * 与这里的训练时长**同一套乘区**（`skillLevelTimeMs × trainingTimeFactor × tuningMul`），
- * 而那条判据住在 `consumables.syncBoostRenew`（自动补用的**唯一实现**）。改签名只影响本函数内部。 */
+/** 技能域事件推进：续用、药效到期和等级完成共用一条时间轴；调用方已将时钟推进到本拍结束。 */
 export function advanceSkillQueue(state: GameState, deltaMs: number, ctx: SimContext): void {
   const catalog = ctx.skills
+  const endGameMs = state.gameMs
+  const endWallMs = state.wallMs
   let remaining = deltaMs
-  while (remaining > 0 && state.skills.queue.length > 0) {
-    /**
-     * **技能加速自动续用**（**2026-10-01 船长令**）：逐级检查一次 —— 放在"取队首"之后、
-     * 算本级时长之前 ⇒ 补用的那一枚从**本级**就生效（无缝），在线每拍与离线大推进/分片同一条路径。
-     * 开关关着 / 没料 / 还在生效期内 ⇒ 函数内部一步返回（零行为变化、零开销）。
-     */
-    syncBoostRenew(state, ctx)
-    const item = state.skills.queue[0]!
-    const def = catalog.get(item.skillId)
-    // 数据表里没有这个技能：不阻塞队列，直接丢弃并警告
-    if (!def) {
-      state.skills.queue.shift()
-      addLog(
-        state,
-        'warn',
-        `队列中发现未知技能「${item.skillId}」，已自动移除。`,
-        'core.engine.001',
-        { p1: item.skillId },
-      )
-      continue
-    }
-    const current = state.skills.trained[item.skillId] ?? 0
-    // 目标早已达到（正常流程中不会出现，属兜底）：出队
-    if (current >= item.targetLevel) {
-      state.skills.queue.shift()
-      addLog(state, 'levelup', `训练完成：${def.name} 已达 Lv${item.targetLevel}。`, 'core.engine.002', {
-        p1: def.name,
-        p2: item.targetLevel,
-      })
-      continue
-    }
-    // 技能上限纵深防御（2026-09-10 玩家反馈"AI 核心调度学能升到 LV6"排查）：入队口与读档都已限制
-    // ≤ MAX_SKILL_LEVEL，这里再夹一道——将来任何新增写入路径塞进超限目标时，等级也只停在 5 并出队，
-    // 不会出现 Lv6（效果公式另有 Math.min(5, …)，见 ai.ts）。
-    if (current >= MAX_SKILL_LEVEL) {
-      state.skills.queue.shift()
-      addLog(
-        state,
-        'warn',
-        `${def.name} 已是 Lv${MAX_SKILL_LEVEL}（技能上限），队列中该项已自动移除。`,
-        'core.engine.003',
-        { p1: def.name, p2: MAX_SKILL_LEVEL },
-      )
-      continue
-    }
-    // 冲当前这一级还差多久（调试模式 debugQuick：每级固定 1 秒；高效学习法缩时）
-    const levelMs = state.debugQuick
-      ? 1000
-      : Math.max(1, Math.round(skillLevelTimeMs(def, current + 1) * trainingTimeFactor(state) * tuningMul(state, 'skillTrainMs')))
-    const needMs = Math.max(0, levelMs - item.progressMs)
-    if (remaining < needMs) {
-      // 时间不够升一级：只记下这级练到一半的进度
-      item.progressMs += remaining
-      remaining = 0
-    } else {
-      // 时间足够：升一级
-      remaining -= needMs
-      item.progressMs = 0
-      const newLevel = current + 1
-      state.skills.trained[item.skillId] = newLevel
-      addLog(state, 'levelup', `${def.name} 提升至 Lv${newLevel}！`, 'core.engine.004', { p1: def.name, p2: newLevel })
-      if (newLevel >= item.targetLevel) {
-        // 已达队列目标：立即出队；富余时间继续给后面的队列项（不浪费）
+  state.gameMs = endGameMs - deltaMs
+  try {
+    normalizeTrainingProgress(state)
+    for (;;) {
+      if (endWallMs !== undefined) state.wallMs = endWallMs - remaining
+      syncBoostRenew(state, ctx)
+      if (remaining <= 0) break
+      const boostRemainMs = Math.max(0, (state.skillBoostUntilMs ?? 0) - state.gameMs)
+      let step = remaining
+      if (boostRemainMs > 0) {
+        step = Math.min(step, boostRemainMs)
+        if (state.boostAutoRenew === true && boostRemainMs > SYNAPTIC_ACCELERANT_RENEW_TAIL_MS) {
+          step = Math.min(step, boostRemainMs - SYNAPTIC_ACCELERANT_RENEW_TAIL_MS)
+        }
+      }
+      if (state.skills.queue.length === 0) {
+        state.gameMs += step
+        remaining -= step
+        continue
+      }
+      const item = state.skills.queue[0]!
+      const def = catalog.get(item.skillId)
+      if (!def) {
+        state.skills.queue.shift()
+        addLog(state, 'warn', `队列中发现未知技能「${item.skillId}」，已自动移除。`, 'core.engine.001', { p1: item.skillId })
+        continue
+      }
+      const current = state.skills.trained[item.skillId] ?? 0
+      if (current >= item.targetLevel) {
         state.skills.queue.shift()
         addLog(state, 'levelup', `训练完成：${def.name} 已达 Lv${item.targetLevel}。`, 'core.engine.002', {
           p1: def.name,
           p2: item.targetLevel,
         })
+        continue
+      }
+      if (current >= MAX_SKILL_LEVEL) {
+        state.skills.queue.shift()
+        addLog(state, 'warn', `${def.name} 已是 Lv${MAX_SKILL_LEVEL}（技能上限），队列中该项已自动移除。`,
+          'core.engine.003', { p1: def.name, p2: MAX_SKILL_LEVEL })
+        continue
+      }
+      const progress = trainingLevelProgress(state, def, current + 1, item.progressMs)
+      const needMs = progress.remainingMs
+      step = Math.min(step, needMs)
+      state.gameMs += step
+      remaining -= step
+      if (endWallMs !== undefined) state.wallMs = endWallMs - remaining
+      if (step + 1e-7 < needMs) {
+        item.progressMs = Math.min(progress.totalWorkMs, item.progressMs + step * progress.workPerMs)
+      } else {
+        item.progressMs = 0
+        const newLevel = current + 1
+        state.skills.trained[item.skillId] = newLevel
+        addLog(state, 'levelup', `${def.name} 提升至 Lv${newLevel}！`, 'core.engine.004', { p1: def.name, p2: newLevel })
+        if (newLevel >= item.targetLevel) {
+          state.skills.queue.shift()
+          addLog(state, 'levelup', `训练完成：${def.name} 已达 Lv${item.targetLevel}。`, 'core.engine.002', {
+            p1: def.name,
+            p2: item.targetLevel,
+          })
+        }
       }
     }
-    /**
-     * **本级练完后再查一次**（2026-10-01）：队列可能刚刚被练空 —— 那样 `while` 条件会立刻跳出、
-     * 前面那次 `syncBoostRenew` 就成了本拍唯一一次机会。"料尽 ⇒ 关开关"的判定要能落在
-     * **队列清空的那一刻**（真档实测：离线一趟把队列练空后，开关会一直亮着）。
-     */
-    syncBoostRenew(state, ctx)
+  } finally {
+    // 技能域内部使用真实事件时点，其他系统继续看到本拍结束时刻。
+    state.gameMs = endGameMs
+    state.wallMs = endWallMs
   }
-  /**
-   * **循环外的收尾检查**：本拍队列**本来就是空的**（或刚刚清空且上面那一拍没走到）时，
-   * `while` 一次都不进 ⇒ 仍需一次判定，否则"开着开关、没料了"会一直亮着。
-   * 队列空着且**还有料**时这里什么都不做（`syncBoostRenew` 内部只在"料尽"或"确实该补"时动手）。
-   */
-  syncBoostRenew(state, ctx)
 }
 
 /** 队列里已排入的"同技能条目数"（含队首；正在练的这一级也算已占位） */
@@ -361,6 +344,7 @@ export function enqueueSkill(
   targetLevel: number,
   catalog: SkillCatalog,
 ): CommandResult {
+  normalizeTrainingProgress(state)
   const def = catalog.get(skillId)
   if (!def) return { ok: false, error: `未知技能：${skillId}（数据表里没有）。`, errorId: 'core.engine.005', errorParams: { p1: skillId } }
   if (DEEP_SPACE_SKILL_IDS.includes(skillId) && !probeManufacturingUnlocked(state)) return { ok: false, error: '深空搜索尚未解锁。', errorId: 'ui.stellar.059' }
@@ -442,10 +426,8 @@ export function enqueueSkill(
     // 有被取消后暂存的本级进度 → 附着上去，等它成为队首时自动续接
     const saved = state.skills.savedProgress[skillId]
     if (typeof saved === 'number' && saved > 0) {
-      const levelMs = state.debugQuick
-        ? 1000
-        : Math.max(1, Math.round(skillLevelTimeMs(def, targetLevel) * trainingTimeFactor(state) * tuningMul(state, 'skillTrainMs')))
-      item.progressMs = Math.min(saved, Math.max(0, levelMs - 1))
+      const totalWorkMs = trainingLevelProgress(state, def, targetLevel, 0).totalWorkMs
+      item.progressMs = Math.min(saved, Math.max(0, totalWorkMs - 1))
       delete state.skills.savedProgress[skillId]
     }
   }
@@ -475,6 +457,7 @@ export function enqueueSkill(
  * 传 `catalog` 缺省 = 不级联（老调用点与单测行为不变）。界面先用 `skillCancelImpact` 列出清单。
  */
 export function removeQueueAt(state: GameState, index: number, catalog?: SkillCatalog): boolean {
+  normalizeTrainingProgress(state)
   if (!Number.isInteger(index) || index < 0 || index >= state.skills.queue.length) return false
   const queue = state.skills.queue
   /**
@@ -630,6 +613,7 @@ export function moveQueueItem(
   toIndex: number,
   catalog?: SkillCatalog,
 ): boolean {
+  normalizeTrainingProgress(state)
   const queue = state.skills.queue
   if (!Number.isInteger(fromIndex) || !Number.isInteger(toIndex)) return false
   if (fromIndex === toIndex) return true
@@ -712,6 +696,7 @@ export function queueMovePlan(
 
 /** 玩家指令：清空整个训练队列，返回移除了几项（队首进度保留，可续接） */
 export function clearSkillQueue(state: GameState): number {
+  normalizeTrainingProgress(state)
   const count = state.skills.queue.length
   if (count > 0) {
     const head = state.skills.queue[0]!
@@ -751,7 +736,7 @@ export interface HeadTrainingInfo {
   intoLevel: number
   /** 冲击该级所需总毫秒 */
   levelTimeMs: number
-  /** 该级已练毫秒 */
+  /** 已完成工作按当前倍率折算的等效毫秒；与 levelTimeMs 同单位。 */
   progressMs: number
   /** 距该级完成还差毫秒 */
   remainingMs: number

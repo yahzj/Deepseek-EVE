@@ -37,12 +37,6 @@ import { advanceWormholeAuto } from './wormholeAuto'
 import { advanceHauling } from './hauling'
 import { advanceWreckDrift } from './salvage'
 import type { SettleStats } from './settleStats'
-/**
- * **技能加速自动续用**（2026-10-01 船长令）：本函数在 `advanceSkillQueue` 的每一级调用。
- * ⚠ **循环依赖是安全的**：`consumables.ts` 只 `import type { CommandResult } from './engine'`（类型侧，
- * 编译后不留运行时引用）⇒ 运行时的边是**单向**的 engine → consumables，不会出现 TDZ。
- */
-import { syncBoostRenew } from './consumables'
 import { advanceSalvageOp, retireSalvageShip } from './salvaging'
 import { advanceFindHumans, publishFindHumansWhenReady } from './onboarding'
 import { advanceComms } from './comms'
@@ -217,15 +211,7 @@ function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opt
   if (opts?.nowWallMs !== undefined && Number.isFinite(opts.nowWallMs)) state.wallMs = opts.nowWallMs
   // V13 探索：在途作业的星系视为已探明（读档/迁移恢复兜底）
   ensureTransitExplored(state, ctx)
-  /**
-   * **技能加速自动续用 · 每拍第一件事**（**2026-10-01 船长令**）。
-   *
-   * ⚠ **为什么放在这里、而不是只放在 `advanceSkillQueue` 里**：那条函数**队列空着时一次都不进循环**
-   * （`while (remaining > 0 && queue.length > 0)`）⇒ 一旦队列被练空，"料尽 ⇒ 关掉开关"这一步就再也
-   * 没有执行机会，开关会一直亮着骗玩家（本批用例实测到的形态）。挂在这里 ⇒ **队列有没有都必查一次**。
-   * 函数内部自己早退（开关关着 / 还有料且不缺），零行为变化、零可感开销。
-   */
-  syncBoostRenew(state, ctx)
+  // 技能队列单独处理续用和药效边界，含空队列；不在本拍结束时提前补药。
   advanceSkillQueue(state, d, ctx)
   /**
    * 🔴 **兑现"切活动自动停作业"的返航账本**（**船长 2026-10-02 报障**：「**正在采矿的舰船会自动

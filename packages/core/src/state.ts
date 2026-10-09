@@ -155,20 +155,22 @@ export interface RngState {
 export interface TrainingItem {
   skillId: string
   targetLevel: number
-  /** 当前等级的已训练进度（毫秒）。只记"当前这一级"的进度，升一级清零重计 */
+  /** 当前等级已完成的基础工作毫秒，不随倍率改变；升一级清零重计。 */
   progressMs: number
 }
 
 /** 技能相关的状态 */
 export interface SkillsState {
+  /** 1 = 稳定基础工作量；旧档缺失由训练单点换算一次。 */
+  progressVersion?: 1
   /** 已学等级：技能编号 -> 等级 */
   trained: Record<string, number>
   /** 训练队列：队首 = 正在训练，后面的按顺序排队 */
   queue: TrainingItem[]
   /**
-   * 暂存进度（T2）：取消队首训练时把"本级已练毫秒"存到这里，
+   * 暂存进度（T2）：取消队首训练时把本级已完成基础工作毫秒存到这里，
    * 之后重新把该技能排为队首（练同一级）时自动续接。
-   * 键 = 技能编号，值 = 本级已练毫秒（0 < 值 < 该级总时长）。
+   * 键 = 技能编号，值 = 本级已完成基础工作毫秒，可含小数，不按一天截断。
    */
   savedProgress: Record<string, number>
   /**
@@ -3033,9 +3035,9 @@ export type GameState = GameStateV31 & {
   /** 实验室台号分配（同 `refineSeq` 口径） */
   labSeq?: number
   /**
-   * **突触加速剂生效截止（游戏时刻 ms）**（**2026-09-30 船长令**「技能加速剂」· 口径：使用后 24 小时内
-   * 训练时长 ×0.5 · 不可叠用）。缺省/0/已过期 = 无加成 ⇒ 老档零迁移、既有读数逐字不变。
-   * ⚠ 时间基准 = `state.gameMs`（游戏时钟，与限时快递/限时倍率同源；离线补时也会照常走完 24 小时）。
+   * 突触加速剂生效截止（游戏时刻 ms）：训练时长 ×0.5。
+   * 船长 2026-10-09 裁定：每次使用累加 24 小时有效时间，不叠加倍率。
+   * 缺省/0/已过期 = 无加成；时间基准为 `state.gameMs`，离线期间同样递减。
    */
   skillBoostUntilMs?: number
   /**
@@ -3818,6 +3820,7 @@ export function createInitialState(opts?: {
       count: 0,
     },
     skills: {
+      progressVersion: 1,
       trained: {},
       queue: [],
       savedProgress: {},

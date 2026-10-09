@@ -26,9 +26,10 @@
 import type { SkillDef } from './types'
 import type { GameState } from './state'
 import { ironmanTrainingMul } from './ironman'
+import { tuningMul } from './tuning'
 
-/** 突触加速剂：效果时长 **24 小时** · 训练时长乘区 **×0.5**（**2026-09-30 船长令**：「技能加速剂」·
- *   口径「使用后 24 小时内训练时长减半 · 同一时间内只能生效一剂」）。 */
+/** 突触加速剂：每枚增加 24 小时有效时间，训练时长乘区 ×0.5；重复使用只累加时间。
+ * 船长 2026-10-09 裁定，替代原生效期间禁止手动重复使用的规则。 */
 export const SYNAPTIC_ACCELERANT_MS = 24 * 60 * 60 * 1000
 export const SYNAPTIC_ACCELERANT_MUL = 0.5
 
@@ -45,6 +46,33 @@ export function trainingTimeFactor(state: GameState): number {
   const lv = Math.min(5, state.skills.trained['accelerated-learning'] ?? 0)
   const boost = synapticAccelerantActive(state) ? SYNAPTIC_ACCELERANT_MUL : 1
   return (1 - 0.04 * lv) * ironmanTrainingMul(state) * boost
+}
+
+/** 旧档只按载入时倍率换算一次，保留当时可见比例，不推测历史药效区间。 */
+export function normalizeTrainingProgress(state: GameState): void {
+  if (state.skills.progressVersion === 1) return
+  const factor = state.debugQuick ? 1 : trainingTimeFactor(state) * tuningMul(state, 'skillTrainMs')
+  for (const item of state.skills.queue) item.progressMs /= factor
+  for (const id of Object.keys(state.skills.savedProgress)) state.skills.savedProgress[id]! /= factor
+  state.skills.progressVersion = 1
+}
+
+/** 推进、续用判据与视图共用：基础工作量固定，当前倍率只决定完成速率。 */
+export function trainingLevelProgress(state: GameState, def: SkillDef, level: number, workMs: number) {
+  const totalWorkMs = state.debugQuick ? 1000 : Math.max(1, skillLevelTimeMs(def, level))
+  const levelTimeMs = state.debugQuick ? 1000 : Math.max(1, Math.round(
+    totalWorkMs * trainingTimeFactor(state) * tuningMul(state, 'skillTrainMs'),
+  ))
+  const progressWorkMs = Math.min(totalWorkMs, Math.max(0, workMs))
+  const workPerMs = totalWorkMs / levelTimeMs
+  return {
+    totalWorkMs,
+    workPerMs,
+    levelTimeMs,
+    progressMs: progressWorkMs / workPerMs,
+    remainingMs: (totalWorkMs - progressWorkMs) / workPerMs,
+    percent: progressWorkMs / totalWorkMs * 100,
+  }
 }
 
 /** 默认单级基础时长：60 秒（毫秒）——rank 1 档（低档快，保持上手节奏） */

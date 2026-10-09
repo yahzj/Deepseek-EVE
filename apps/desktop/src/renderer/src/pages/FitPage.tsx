@@ -1302,13 +1302,9 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
    （旧口径「库存不足整族回退基础弹」已作废）；连打/离线同源。未设 = 基础弹；
    本区显示的"本场预载"走 core `resolveAmmoTier`（与开战装载同一函数）） ═══════════════ */
 
-const AMMO_SLOT_TYPES: Array<{ slot: 'turret' | 'missile' | 'laser'; type: DamageType }> = [
-  { slot: 'turret', type: 'kinetic' },
-  { slot: 'missile', type: 'explosive' },
-  { slot: 'laser', type: 'plasma' },
-]
+const AMMO_TYPES: readonly DamageType[] = ['kinetic', 'explosive', 'plasma']
 
-/** 弹药档位区：只显示装了对应武器（炮台/导弹架/激光炮）的弹族 */
+/** 弹药档位区：按真实预载需求显示弹族，不按武器槽位猜弹种。 */
 function AmmoTierSection({
   engine,
   onToast,
@@ -1321,16 +1317,15 @@ function AmmoTierSection({
   const state = engine.state
   const ctx = engine.ctx
   const ship = state.fleet[target]
-  const highIds = new Set((ship?.fitted?.high ?? []).filter((id): id is string => typeof id === 'string'))
   /**
    * **本场预载需求**（与引擎开战装载同一函数 `ammoLoadTotals`）——界面要拿它算"这一档够不够装"。
    * ⚠ 与开战口径同源：同一 `createPlayerSpec` + 同一 `ammoLoadTotals`（技能/装配一变就跟着变）。
    */
   const spec = ship ? createPlayerSpec(state, ctx, target) : null
   const totals = spec ? ammoLoadTotals(spec, ctx.balance.battle, state) : {}
-  const rows = AMMO_SLOT_TYPES.map(({ slot, type }) => {
-    const hasWeapon = [...highIds].some((id) => ctx.modules.get(id)?.slot === slot)
-    if (!hasWeapon) return null
+  const rows = AMMO_TYPES.map((type) => {
+    const need = totals[type] ?? 0
+    if (need <= 0) return null
     const tiers = ammoTiersOf(ctx, type)
     const base = ctx.items.get(`ammo-${type}-l`)
     const baseName = base?.name ?? DMG_LABEL[type]
@@ -1340,7 +1335,6 @@ function AmmoTierSection({
      * **本场实际会装哪一档**（船长 2026-09-16「甲」口径：同族取"能装得最多"的那一档）——
      * 走 core 的 `resolveAmmoTier`（**与开战预载同一函数** ⇒ 界面显示 = 实战结果，不各写一套）。
      */
-    const need = totals[type] ?? 0
     const eff = resolveAmmoTier(state, ctx, target, type, need)
     const effName = ctx.items.get(eff.id)?.name ?? eff.id
     const noneLeft = eff.can <= 0 && need > 0

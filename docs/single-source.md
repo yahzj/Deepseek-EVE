@@ -22,6 +22,7 @@
 | 战斗演出跨场与读档续播 | `battleFxArrivals()` · `apps/desktop/src/renderer/src/ui/battleFxCursor.ts` | 绑定战斗对象、序号回退、陈旧事件与连续战斗专项 |
 | 静态JSON参数与文本/派生绑定、数值编辑计划 | `staticDataGroup()` · `packages/data/src/staticData.ts`；`planDocuments()` · `tools/data-editor-schema.ts` | 固定基线目录等价、编辑事务与字段校验；JSON权威静态参数，公式/文本留代码 |
 |---|---|---|
+| 技能工作量、倍率切换与旧进度兼容 | `trainingLevelProgress()` / `normalizeTrainingProgress()` · `training.ts`；技能时点推进在 `skillQueue.ts` | 技能加速/离线专项、存档往返；`arch:guard` F2/F3 |
 | 武器齐射整数扣弹与预付余额 | `battleWeaponAmmoCost()` · `combatAmmo.ts` | 半发不跨舰／组／弹种、读档不断额度、整数弹库存守恒 |
 | 首次无人机出击间隔 | `droneLaunchGapMsOf()` · `droneLaunch.ts` | 每舰500毫秒、掠袭机库逐件缩短、复活重排、旧档续战；队列专项 |
 | 扩槽插件同类型限制 | `plugSlotExpansionKindOf()` / `plugSlotExpansionBlockedOf()` / `normalizePlugSlotExpansions()` · `plugs.ts`；`repairSlotExpansionPlugs()` · `equipment.ts` | 中低两类分别限一件、普通重复件保留、免费退库与幂等；F2/F3 |

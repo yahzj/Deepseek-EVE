@@ -148,7 +148,6 @@ function SkillBoostBlock({ engine, onToast }: { engine: GameEngine; onToast: (m:
             <div className="app-inv-btns">
               <button
                 className="app-btn is-small is-warn"
-                aria-disabled={remainMs > 0 ? 'true' : undefined}
                 title={tr('ui.ItemsPage.054')}
                 onClick={() => {
                   const r = engine.useSynapticAccelerantNow()

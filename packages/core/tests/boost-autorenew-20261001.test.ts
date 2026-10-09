@@ -109,7 +109,7 @@ describe('技能加速自动续用 · 无缝补用（在线）', () => {
     advanceGame(s, 1_000, ctx)
     expect(synapticAccelerantActive(s), '第一拍就该补上了（原本没有生效中的加速剂）').toBe(true)
     expect(countWare(s, SYNAPTIC_ACCELERANT_ITEM_ID)).toBe(2)
-    expect(s.skillBoostUntilMs).toBe(s.gameMs + SYNAPTIC_ACCELERANT_MS)
+    expect(s.skillBoostUntilMs, '本拍开始时补用，已过去的一秒应从药效中扣除').toBe(s.gameMs - 1000 + SYNAPTIC_ACCELERANT_MS)
   })
 
   it('无缝：生效时间不足以练完当前这一级时就补，不等它过期', () => {
