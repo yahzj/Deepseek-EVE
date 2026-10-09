@@ -145,6 +145,7 @@ export function applyDamage(
   resists: { shield?: DamageResists; armor?: DamageResists; hull?: DamageResists },
   dmg: number,
   type: DamageType,
+  shieldDamageMul = 1,
 ): { hp: Hp3; dealt: number } {
   const next = { s: hp.s, a: hp.a, h: hp.h }
   const rest0 = Math.max(0, dmg)
@@ -194,10 +195,14 @@ export function applyDamage(
   let rest = rest0
   for (let i = 0; i < 3 && rest > 0; i++) {
     const res = resists[layerName[i]!]?.[type] ?? 0
+    // 船长2026-10-09确认：额外破盾乘区只消费护盾，余量仍用原始伤害尺度向下传。
+    const layerCoef = coef * (i === 0 ? shieldDamageMul : 1)
     /** 本层"在原始伤害尺度上"能吃掉多少：层血量 ÷ 系数 ÷(1−抗性)（系数与抗性都折算回原始尺度） */
-    const layerDamage = next[layerKey[i]!] / Math.max(1e-9, coef * (1 - clamp(RESIST_FLOOR, 0.9, res)))
+    const layerDamage = next[layerKey[i]!] / Math.max(1e-9, layerCoef * (1 - clamp(RESIST_FLOOR, 0.9, res)))
     const absorbedRaw = Math.min(rest, layerDamage)
-    next[layerKey[i]!] -= Math.min(next[layerKey[i]!], absorbedRaw * coef * (1 - clamp(RESIST_FLOOR, 0.9, res)))
+    // 新乘区结算的全层原伤已消费完时明确归零，避免浮点残血让损管漏判；默认路径不改。
+    next[layerKey[i]!] = shieldDamageMul !== 1 && absorbedRaw >= layerDamage ? 0
+      : next[layerKey[i]!] - Math.min(next[layerKey[i]!], absorbedRaw * layerCoef * (1 - clamp(RESIST_FLOOR, 0.9, res)))
     rest -= absorbedRaw
   }
   const after = next.s + next.a + next.h

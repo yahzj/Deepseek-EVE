@@ -356,7 +356,7 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     }
     return {
       tag: u.tag,
-      ...(ship.acidBurst ? { acidBurst: { ...ship.acidBurst, ...(ship.acidBurst.damage !== undefined ? { damage: Math.round(ship.acidBurst.damage * (u.slot.dmgMul ?? 1) * comp) } : {}) } } : {}),
+      ...(ship.acidBurst ? { acidBurst: { ...ship.acidBurst, ...(ship.acidBurst.damage !== undefined ? { damage: Math.round(ship.acidBurst.damage * (u.slot.dmgMul ?? 1) * comp) } : {}), ...(mount.acidShieldDamageMul !== undefined ? { shieldDamageMul: mount.acidShieldDamageMul } : {}) } } : {}),
       ...(mount.hatchery ? { foeHatchery: { ...mount.hatchery } } : {}),
       ...(mount.fleetSpeedRamp ? { foeFleetSpeedRamp: { ...mount.fleetSpeedRamp } } : {}),
       name,

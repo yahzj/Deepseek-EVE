@@ -37,7 +37,7 @@ const MECHANICS_BRIEF_IDS = [
 /** 全量公告（新的放最上方） */
 export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
   {
-    // 船长批准两篇整合正文，正式发布日期按本次落库日记。
+    // ⟪文案调整 2026-10-09⟫ 船长确认敌人介绍只留概述，酸液爆虫介绍使用船长原文；英文只登记待译。
     id: 'ann-alien-invasion-20261007',
     title: L10N['ano.incursionRelease.001']!.zh,
     titleId: 'ano.incursionRelease.001',
@@ -46,12 +46,12 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
     tagId: 'ano.incursionRelease.002',
     bullets: [
       L10N['ano.incursionRelease.003']!.zh,
-      L10N['ano.incursionRelease.004']!.zh,
-      L10N['ano.incursionRelease.005']!.zh,
-      L10N['ano.incursionRelease.006']!.zh,
+      L10N['ano.incursionBrief.001']!.zh,
+      L10N['ano.incursionBrief.002']!.zh,
+      L10N['ano.incursionBrief.003']!.zh,
       L10N['ano.incursionRelease.007']!.zh,
     ],
-    bulletIds: ['ano.incursionRelease.003', 'ano.incursionRelease.004', 'ano.incursionRelease.005', 'ano.incursionRelease.006', 'ano.incursionRelease.007'],
+    bulletIds: ['ano.incursionRelease.003', 'ano.incursionBrief.001', 'ano.incursionBrief.002', 'ano.incursionBrief.003', 'ano.incursionRelease.007'],
   },
   {
     // ⟪文案调整 2026-10-09⟫ 船长确认逐点一句并移除光环，英文只登记待译。

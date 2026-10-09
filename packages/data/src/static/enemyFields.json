@@ -13567,6 +13567,28 @@
   ],
   "foeMounts": [
     {
+      "id": "foe-mount-c-acid-shield",
+      "name": "酸液破盾腔",
+      "category": "挂载件",
+      "source": "packages/core/src/foeMounts.ts",
+      "fields": [
+        {
+          "key": "acidShieldDamageMul",
+          "sourcePath": "acidShieldDamageMul",
+          "expression": "2",
+          "source": "packages/core/src/foeMounts.ts"
+        }
+      ],
+      "entries": [],
+      "references": [
+        { "table": "invasionFleets", "id": "alien-vanguard", "name": "虫群前锋" },
+        { "table": "invasionFleets", "id": "alien-escort", "name": "育群护卫" },
+        { "table": "invasionFleets", "id": "alien-main", "name": "背巢虫群" },
+        { "table": "invasionFleets", "id": "alien-broodmother", "name": "巢母卫群" }
+      ],
+      "notes": []
+    },
+    {
       "id": "foe-mount-c-acid-charge",
       "name": "爆虫冲锋器",
       "category": "挂载件",

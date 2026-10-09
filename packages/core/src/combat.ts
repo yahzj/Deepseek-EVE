@@ -242,7 +242,7 @@ export function beamPowerVsTargetOf(
 export interface UnitSpec {
   /** 玩家无人机首次出击间隔；缺省为500ms。 */
   droneLaunchGapMs?: number
-  acidBurst?: import('./types').FoeShipDef['acidBurst']
+  acidBurst?: import('./types').FoeShipDef['acidBurst'] & { shieldDamageMul?: number }
   foeHatchery?: import('./types').FoeMountDef['hatchery']
   foeFleetSpeedRamp?: import('./types').FoeMountDef['fleetSpeedRamp']
   corrosionAppliedPct?: number
@@ -5116,8 +5116,9 @@ function stepBattle(
       b.stats.foeShots += 1
       if (hit) {
         b.stats.foeHits += 1
-        const raw = applyDcGuard(state, b, target.tag, target, rt.hp, cappedFoeDamage(b, target.tag, target, acid.damage ?? 0), 'kinetic')
-        const result = applyDamage(rt.hp, target.resists, raw, 'kinetic')
+        const apply = (raw: number) => applyDamage(rt.hp, target.resists, raw, 'kinetic', acid.shieldDamageMul)
+        const raw = applyDcGuard(state, b, target.tag, target, rt.hp, cappedFoeDamage(b, target.tag, target, acid.damage ?? 0), 'kinetic', raw => apply(raw).hp)
+        const result = apply(raw)
         rt.hp = result.hp
         dealt = result.dealt
       }

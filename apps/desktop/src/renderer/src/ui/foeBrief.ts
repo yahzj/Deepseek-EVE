@@ -49,6 +49,7 @@ function dmgText(t: string): string {
 export function mountEffectText(id: string): string | null {
   const def = FOE_MOUNTS[id as keyof typeof FOE_MOUNTS]
   if (!def) return null
+  if (def.acidShieldDamageMul !== undefined) return tr('ui.acidShield.001')
   const pct = (v: number) => String(Math.round(v * 100))
   // ⟪文案调整 2026-10-09⟫ 取消炮台惩罚，旧英文条目留档，新说明只登记待译。
   if (def.broodControl) return tr('ui.alien.008', { p1: pct(def.broodControl.droneDmgMul - 1), p2: pct(def.broodControl.droneRangeBonusPct) })

@@ -26,6 +26,7 @@ import type { FoeMountDef, FoeMountId } from './types'
 
 /** id 常量表（数据侧引用它，写错当场编译不过） */
 export const FOE_MOUNT_IDS = {
+  acidShield: 'foe-mount-c-acid-shield',
   acidCharge: 'foe-mount-c-acid-charge',
   hivebackCharge: 'foe-mount-c-hiveback-charge',
   broodmotherCharge: 'foe-mount-c-broodmother-charge',
@@ -103,6 +104,8 @@ export const FOE_MOUNT_IDS = {
 
 /** 全部挂载件（键 = id；`FoeMountId` 联合类型保证穷尽） */
 export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
+  // 船长2026-10-09确认件名与护盾独立乘区；沿用敌挂载件内容名接口，英文暂回退中文。
+  'foe-mount-c-acid-shield': { id: 'foe-mount-c-acid-shield', name: '酸液破盾腔', acidShieldDamageMul: enemyParameterOf(foeMountsParameters, 'foe-mount-c-acid-shield', 'acidShieldDamageMul') },
   'foe-mount-c-acid-charge': { id: 'foe-mount-c-acid-charge', name: '爆虫冲锋器', en: 'Acid Burster Charger', charge: { mul: enemyParameterOf(foeMountsParameters, "foe-mount-c-acid-charge", "charge_mul"), cooldownMs: enemyParameterOf(foeMountsParameters, "foe-mount-c-acid-charge", "charge_cooldownMs"), webImmune: true } },
   'foe-mount-c-hiveback-charge': { id: 'foe-mount-c-hiveback-charge', name: '背巢缓冲锋器', en: 'Hiveback Charger', charge: { mul: enemyParameterOf(foeMountsParameters, "foe-mount-c-hiveback-charge", "charge_mul"), cooldownMs: enemyParameterOf(foeMountsParameters, "foe-mount-c-hiveback-charge", "charge_cooldownMs"), webImmune: true } },
   'foe-mount-c-broodmother-charge': { id: 'foe-mount-c-broodmother-charge', name: '巢母缓冲锋器', en: 'Broodmother Charger', charge: { mul: enemyParameterOf(foeMountsParameters, "foe-mount-c-broodmother-charge", "charge_mul"), cooldownMs: enemyParameterOf(foeMountsParameters, "foe-mount-c-broodmother-charge", "charge_cooldownMs"), webImmune: true } },
@@ -364,6 +367,7 @@ export function foeMountOf(id: string): FoeMountDef | undefined {
 
 /** 挂载件解析结果 = 运行时字段（`UnitSpec` 上那几个可选字段的同名子集）＋ 展示名 */
 export interface ResolvedFoeMounts {
+  acidShieldDamageMul?: number
   broodControl?: FoeMountDef['broodControl']
   hatchery?: FoeMountDef['hatchery']
   fleetSpeedRamp?: FoeMountDef['fleetSpeedRamp']
@@ -451,6 +455,7 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
       continue
     }
     out.names.push(def.name)
+    if (def.acidShieldDamageMul !== undefined) out.acidShieldDamageMul = def.acidShieldDamageMul
     if (def.broodControl) out.broodControl = { ...def.broodControl }
     if (def.hatchery) out.hatchery = { ...def.hatchery }
     if (def.fleetSpeedRamp) out.fleetSpeedRamp = { ...def.fleetSpeedRamp }

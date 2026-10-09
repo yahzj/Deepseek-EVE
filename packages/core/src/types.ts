@@ -353,6 +353,7 @@ export type FoeMountId =
   | 'foe-mount-corona-focus-array'
   | 'foe-mount-corona-overlay-beacon'
   | 'foe-mount-c-acid-charge'
+  | 'foe-mount-c-acid-shield'
   | 'foe-mount-c-hiveback-charge'
   | 'foe-mount-c-broodmother-charge'
   | 'foe-mount-c-brood-control'
@@ -373,6 +374,8 @@ export type FoeMountId =
  * 多件同类效果相撞时按 `resolveFoeMounts` 的"后写覆盖先写"聚合；`note` 写设计备注。
  */
 export interface FoeMountDef {
+  /** 仅爆虫自爆的护盾层独立乘区，不改变基础伤害系数或后续血层。 */
+  acidShieldDamageMul?: number
   /** 仅携带者的舰炮/机群修正；机群增程保留基础值供电子压制加算。 */
   broodControl?: { gunDmgMul: number; droneDmgMul: number; droneRangeBonusPct: number }
   /** 战损后补回当前波的损失机位；无限后备采用可序列化标识。 */

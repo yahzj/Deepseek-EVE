@@ -5,6 +5,7 @@ import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { ANNOUNCEMENTS, L10N, l10nEntryText } from '@whale/data'
 import { MECHANICS_APPROVED_ZH } from './fixtures/announcement-mechanics-brief-20261009'
+import { INCURSION_APPROVED_BRIEF } from './fixtures/announcement-incursion-brief-20261009'
 import { weekendFamilyForWindow } from '../src/weekendEvent'
 
 const root = new URL('../../../', import.meta.url)
@@ -17,6 +18,10 @@ function section(heading: string, language: 'zh' | 'en') {
   const text = draft.split(heading)[1]!.split('\n## ')[0]!
   const body = text.split(language === 'zh' ? '### 中文正文' : '### English')[1]!.split('\n### ')[0]!
   return body.split(/\r?\n/).flatMap(line => /^\d+\. /.test(line) ? [line.replace(/^\d+\. /, '')] : [])
+}
+function expectedIncursion(language: 'zh' | 'en') {
+  const original = section(releases[0]!.heading, language)
+  return [original[0]!, ...INCURSION_APPROVED_BRIEF, original[4]!]
 }
 const releases = [
   { id: 'ann-alien-invasion-20261007', heading: '## 二、公告一：异形虫群入侵',
@@ -49,7 +54,7 @@ describe('船长获批两篇公告发布', () => {
     for (const language of ['zh', 'en'] as const) {
       expect(L10N[announcement.titleId!]![language]).toBe(release.title[language])
       expect(L10N[announcement.tagId!]![language]).toBe(release.tag[language])
-      expect(announcement.bulletIds!.map(id => l10nEntryText(L10N[id]!, language))).toEqual(mechanics ? [...MECHANICS_APPROVED_ZH] : section(release.heading, language))
+      expect(announcement.bulletIds!.map(id => l10nEntryText(L10N[id]!, language))).toEqual(mechanics ? [...MECHANICS_APPROVED_ZH] : expectedIncursion(language))
     }
     expect(announcement.title).toBe(L10N[announcement.titleId!]!.zh)
     expect(announcement.tag).toBe(L10N[announcement.tagId!]!.zh)
@@ -69,7 +74,8 @@ describe('船长获批两篇公告发布', () => {
     expect(weekendFamilyForWindow(new Date(2026, 9, 9, 20).getTime())).toBe('C')
     const text = ANNOUNCEMENTS.slice(0, 2).flatMap(row => row.bullets).join('\n')
     expect(text).not.toMatch(/数据编辑器|测试档|待审|待验收|主树|Worker|深空探测机|星球建设|动态星图|CPU插件.*120/)
-    expect(text).toContain('每次爆发')
+    expect(text).toContain(INCURSION_APPROVED_BRIEF[0])
+    expect(INCURSION_APPROVED_BRIEF.join('')).not.toMatch(/\d|百分|百分点|双倍/)
     expect(text).toContain('只收不卖')
     expect(text).toContain('不再恢复自身')
     expect(text).toContain('10月9日20:00')
@@ -96,7 +102,7 @@ describe('船长获批两篇公告发布', () => {
       const item = items[index]!
       expect(text(item)).toContain(release.title[language])
       expect(text(item)).toContain('2026-10-09')
-      expect(nodes(item).filter(node => node.type === 'li').map(text)).toEqual(release.id === 'ann-balance-mechanics-summary-20261008' ? [...MECHANICS_APPROVED_ZH] : section(release.heading, language))
+      expect(nodes(item).filter(node => node.type === 'li').map(text)).toEqual(release.id === 'ann-balance-mechanics-summary-20261008' ? [...MECHANICS_APPROVED_ZH] : expectedIncursion(language))
     }
     expect(seen.get('whale-idle:announce-seen')).toBe(ANNOUNCEMENTS[0]!.id)
   })
