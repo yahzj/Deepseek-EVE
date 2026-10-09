@@ -14,6 +14,7 @@ const { injectStellarSearchTestState, injectStellarReadyTestState } = require('.
 const { JourneyPage, sleep } = require('./wormhole-expedition-journey-shared.cjs')
 const ROOT = path.resolve(__dirname, '..'), PREFIX = 'whale-stellar-native-'
 const OUT = path.join(ROOT, 'tools/_ui-artifacts/stellar')
+const dynamicOnly = process.argv.includes('--dynamic-only')
 async function parent() {
   fs.mkdirSync(OUT, { recursive: true })
   const directory = path.join(ROOT, 'apps/desktop/out/renderer')
@@ -34,17 +35,23 @@ async function parent() {
       const profile = fs.mkdtempSync(path.join(os.tmpdir(), PREFIX))
       try {
         const state = core.createInitialState({ seed: 7, nowWallMs: Date.now() });
-        if (process.argv.includes('--scene-only')) injectStellarReadyTestState(state)
+        if (dynamicOnly) {
+          injectStellarReadyTestState(state)
+          const generated = core.generateStellarSystem(3)
+          state.planetary.stellar.systems = { [generated.system.id]: generated.system }
+          for (const planet of generated.planets) { state.planetary.planets[planet.id] = planet; core.surveyPlanet(state, data.buildPlanetCatalog(), planet.id, 3) }
+        }
+        else if (process.argv.includes('--scene-only')) injectStellarReadyTestState(state)
         else injectStellarSearchTestState(state)
         fs.writeFileSync(path.join(profile, 'save.json'), core.serializeSaveFile(state), 'utf8')
-        const env = { ...process.env, WHALE_PERF_USERDATA: profile, ELECTRON_RENDERER_URL: url, STELLAR_UI_CASE: JSON.stringify({ layout, locale, mobile, sceneOnly: process.argv.includes('--scene-only'), stellarOnly: process.argv.includes('--stellar-only'), kind: process.argv.find(arg => arg.startsWith('--kind='))?.slice(7) }) }
+        const env = { ...process.env, WHALE_PERF_USERDATA: profile, ELECTRON_RENDERER_URL: url, STELLAR_UI_CASE: JSON.stringify({ layout, locale, mobile, dynamicOnly, noGpu: process.argv.includes('--no-gpu'), sceneOnly: process.argv.includes('--scene-only'), stellarOnly: process.argv.includes('--stellar-only'), kind: process.argv.find(arg => arg.startsWith('--kind='))?.slice(7) }) }
         delete env.ELECTRON_RUN_AS_NODE
         const p = spawn(require('electron'), [__filename, '--child'], { cwd: ROOT, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
         let errors = ''; p.stdout.on('data', b => process.stdout.write(b)); p.stderr.on('data', b => { errors += b; process.stderr.write(b) })
         const timer = setTimeout(() => p.kill(), process.argv.includes('--scene-only') ? 360000 : 180000), [status] = await once(p, 'exit'); clearTimeout(timer)
         assert.equal(status, 0, errors)
         const saved = core.loadSaveFile(fs.readFileSync(path.join(profile, 'save.json'), 'utf8')).state
-        if (!process.argv.includes('--scene-only')) assert.equal(saved.planetary.stellar.systems['system-v1-7'].seed, 7)
+        if (!process.argv.includes('--scene-only') && !dynamicOnly) assert.equal(saved.planetary.stellar.systems['system-v1-7'].seed, 7)
         assert(saved.fleet[state.shipId].damagePlugs.length === 3)
         reports.push({ layout, locale, mobile, ok: true })
       } finally {
@@ -69,7 +76,7 @@ async function child() {
   page.tap = async (selector, config) => {
     try {
       // 只撤回合成档新到达的通讯，不改玩家默认设置或绕过目标控件。
-      const notice = await page.js(`(()=>{const el=[...document.querySelectorAll('.app-ann-mask button')].find(button=>button.textContent.trim()===${JSON.stringify(data.L10N['ui.App.100'][options.locale])});if(!el)return false;el.setAttribute('data-stellar-smoke-dismiss','1');return true})()`)
+      const notice = await page.js(`(()=>{for(const old of document.querySelectorAll('[data-stellar-smoke-dismiss]'))old.removeAttribute('data-stellar-smoke-dismiss');const el=[...document.querySelectorAll('.app-ann-mask button')].find(button=>button.textContent.trim()===${JSON.stringify(data.L10N['ui.App.100'][options.locale])});if(!el)return false;const b=el.getBoundingClientRect(),hit=document.elementFromPoint(b.x+b.width/2,b.y+b.height/2);if(!hit||!el.contains(hit))return false;el.setAttribute('data-stellar-smoke-dismiss','1');return true})()`)
       if (notice) await tap('[data-stellar-smoke-dismiss]')
       return await tap(selector, config)
     } catch (error) {
@@ -83,6 +90,7 @@ async function child() {
   await page.send('Runtime.enable'); await page.send('Page.enable')
   const init = `localStorage.setItem('whale-idle:layout',${JSON.stringify(options.layout)});localStorage.setItem('whale-idle:layout-set','1');localStorage.setItem('whale-idle:locale',${JSON.stringify(options.locale)});localStorage.setItem('whale-idle:debug','1');localStorage.setItem('whale-idle:announce-seen',${JSON.stringify(data.ANNOUNCEMENTS[0].id)})`
   await page.send('Page.addScriptToEvaluateOnNewDocument', { source: init })
+  if (options.dynamicOnly) await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.__stellarGlCanvases=[];const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){if(${!!options.noGpu}&&type==='webgl')return null;const value=original.call(this,type,...args);if(type==='webgl'&&value&&!window.__stellarGlCanvases.includes(this))window.__stellarGlCanvases.push(this);return value}` })
   if (options.mobile) {
     await page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 740, deviceScaleFactor: 1, mobile: true, screenWidth: 390, screenHeight: 740, screenOrientation: { type: 'portraitPrimary', angle: 0 } })
     await page.send('Emulation.setUserAgentOverride', { userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36' })
@@ -118,6 +126,77 @@ async function child() {
     assert(readings.colors > 8 && readings.width > 200 && readings.height > 100, JSON.stringify(readings))
     assert(readings.scaleDelta < .01 && readings.xDelta < 1 && readings.yDelta < 1, JSON.stringify(readings))
     return readings
+  }
+  if (options.dynamicOnly) {
+    await openStellar()
+    if (options.noGpu) {
+      await page.wait('document.querySelector(".app-stellar-motion-layer")?.dataset.renderMode==="static"')
+      assert(await page.js('document.querySelector("[data-motion-pause]").disabled && !!document.querySelector("[data-motion-fallback]")'))
+      const time = await page.js('document.querySelector(".app-stellar-motion-layer").dataset.motionMs')
+      await sleep(500); assert.equal(await page.js('document.querySelector(".app-stellar-motion-layer").dataset.motionMs'), time)
+      await page.tap('[data-stellar-body="system-v1-3-p3"]')
+      await page.wait('!!document.querySelector(".app-stellar-dynamic-preview .app-stellar-planet-preview")')
+      assert.equal(errors.length, 0, JSON.stringify(errors))
+      console.log(JSON.stringify({ ...options, ok:true, fallback:true })); app.exit(0); return
+    }
+    await page.wait('document.querySelector(".app-stellar-motion-layer")?.dataset.renderMode==="dynamic"')
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 })
+    const before = await snap()
+    const phase = () => page.js('Number(document.querySelector(".app-stellar-motion-layer").dataset.motionMs)')
+    const transform = () => page.js('document.querySelector("[data-stellar-body=system-v1-3-p1]").getAttribute("transform")')
+    const firstTime = await phase(), firstPosition = await transform()
+    await sleep(1500)
+    assert(await phase() > firstTime); assert.notEqual(await transform(), firstPosition)
+    await page.tap('[data-stellar-body="system-v1-3-p3"]')
+    await page.wait('!!document.querySelector("[data-dynamic-preview]")')
+    if (!options.mobile) {
+      const hover = await phase(); await sleep(250); assert.equal(await phase(), hover)
+    }
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 })
+    await page.js('document.querySelector("[data-motion-pause]").click();true')
+    await page.wait('!!document.querySelector("[data-motion-pause] .lucide-play")')
+    const paused = await phase(), position = await transform()
+    await sleep(500); assert.equal(await phase(), paused); assert.equal(await transform(), position)
+    assert.equal(await page.js('Number(document.querySelector("[data-dynamic-preview]").dataset.motionMs)'), paused)
+    await page.tap(`.app-stellar-map-tool[aria-label=${JSON.stringify(t('ui.stellar.050'))}]`)
+    await sleep(100)
+    assert.equal(await phase(), paused)
+    await page.tap(`.app-stellar-map-tool[aria-label=${JSON.stringify(t('ui.stellar.052'))}]`)
+    const shape = await page.js(`(()=>{const c=document.querySelector('.app-stellar-motion-layer'),p=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let n=0;for(let i=3;i<p.length;i+=4)if(p[i])n++;return {painted:n,width:c.width,height:c.height}})()`)
+    assert(shape.painted > 100, JSON.stringify(shape))
+    // 隔离像素读数使用同一真实shader函数，不加入生产测试接口。
+    const ts = require('typescript'), shaderSource = fs.readFileSync(path.join(ROOT, 'apps/desktop/src/renderer/src/ui/stellarPlanetShader.ts'), 'utf8')
+    const shaderCode = ts.transpileModule(shaderSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
+    const pixel = await page.js(`(()=>{const exports={};${shaderCode};const c=document.createElement('canvas');c.width=128;c.height=128;const render=exports.createStellarPlanetRenderer(c);if(!render)throw Error('WebGL unavailable');const gl=c.getContext('webgl');function image(light,time){render.draw(light,time,3,true);const p=new Uint8Array(128*128*4);gl.readPixels(0,0,128,128,gl.RGBA,gl.UNSIGNED_BYTE,p);return p}function sides(p){let left=0,right=0,n=0;for(let y=32;y<96;y++)for(let x=20;x<50;x++){const a=(y*128+x)*4,b=(y*128+127-x)*4;left+=p[a]+p[a+1]+p[a+2];right+=p[b]+p[b+1]+p[b+2];n++}return {left:left/n,right:right/n}}const a=image([-1,0,.35],0),b=image([1,0,.35],0),d=image([-1,0,.35],10000);let changed=0;for(let i=0;i<a.length;i+=4)if(a[i]!==d[i]||a[i+1]!==d[i+1])changed++;const result={leftLight:sides(a),rightLight:sides(b),rotated:sides(d),changed};render.dispose();return result})()`)
+    assert(pixel.leftLight.left > pixel.leftLight.right * 1.5, JSON.stringify(pixel))
+    assert(pixel.rightLight.right > pixel.rightLight.left * 1.5, JSON.stringify(pixel))
+    assert(pixel.rotated.left > pixel.rotated.right * 1.5 && pixel.changed > 500, JSON.stringify(pixel))
+    for (const theme of ['deepspace','daylight']) {
+      await page.js(`document.documentElement.dataset.theme=${JSON.stringify(theme)};true`); await sleep(100)
+      const image = await page.send('Page.captureScreenshot', { format: 'png' })
+      fs.writeFileSync(path.join(OUT, `${options.layout}-${options.locale}-${options.mobile ? 'mobile' : 'desktop'}-dynamic-${theme}.png`), Buffer.from(image.data,'base64'))
+    }
+    await page.send('Emulation.setEmulatedMedia', { features: [{ name:'prefers-reduced-motion',value:'reduce' }] })
+    await page.js('document.querySelector("[data-motion-pause]").click();true'); await sleep(100)
+    const reduced = await phase(); await sleep(500); assert.equal(await phase(), reduced)
+    await page.send('Emulation.setEmulatedMedia', { features: [{ name:'prefers-reduced-motion',value:'no-preference' }] })
+    await page.wait('Number(document.querySelector(".app-stellar-motion-layer").dataset.motionMs)>'+reduced)
+    await page.js('document.querySelector("[data-motion-pause]").click();true'); await sleep(100)
+    const mapGpu = await page.js('window.__stellarGlCanvases.findIndex(c=>!c.isConnected)')
+    assert(mapGpu >= 0)
+    await page.js(`window.__stellarLost=window.__stellarGlCanvases[${mapGpu}].getContext('webgl').getExtension('WEBGL_lose_context');window.__stellarLost.loseContext();true`)
+    await page.wait('document.querySelector(".app-stellar-motion-layer").dataset.renderMode==="static" && document.querySelector("[data-motion-pause]").disabled')
+    await page.js('window.__stellarLost.restoreContext();true')
+    await page.wait('document.querySelector(".app-stellar-motion-layer").dataset.renderMode==="dynamic" && !document.querySelector("[data-motion-pause]").disabled')
+    const returningPhase = await phase()
+    await page.tap('[data-open-surface]'); await page.wait('!!document.querySelector(".app-planet-modal")')
+    await page.tap('.app-planet-close'); await page.wait('!!document.querySelector(".app-stellar-modal")')
+    await page.wait('document.querySelector(".app-stellar-motion-layer")?.dataset.motionMs!==undefined')
+    assert.equal(await phase(), returningPhase)
+    await page.js('window.__whalePlanetaryTest.persist();true'); await sleep(150)
+    assert.deepEqual((await snap()).planetary.stellar.systems, before.planetary.stellar.systems)
+    assert.equal(errors.length, 0, JSON.stringify(errors))
+    console.log(JSON.stringify({ ...options, ok:true, pixel, shape, time:await phase() })); app.exit(0); return
   }
   if (options.sceneOnly) {
     await openStellar()

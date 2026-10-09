@@ -24,6 +24,7 @@ export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  'ui.stellarMotion.001': { zh: '动态着色不可用，当前为静态显示。', en: '', enDeferred: true },
   'ui.fittingRange.001': { zh: '进入靶场', en: '', enDeferred: true },
   'ui.fittingRange.002': { zh: '靶机', en: '', enDeferred: true },
   'ui.fittingRange.003': { zh: '交战距离', en: '', enDeferred: true },
