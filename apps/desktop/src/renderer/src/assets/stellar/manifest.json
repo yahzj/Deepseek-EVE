@@ -1,0 +1,327 @@
+{
+  "engine": "3.5.stable.official.991bb6ac7",
+  "executableSha256": "7f3fed02dd20d21e36c159883b9cface6bc63f0797e53f3828a83fce67153538",
+  "sourceRepository": "https://github.com/Deep-Fold/PixelPlanets",
+  "sourceCommit": "a712f460077119aeb5f3b688c0785021df8cabb3",
+  "samples": [
+    {
+      "id": "rocky",
+      "scene": "NoAtmosphere/NoAtmosphere",
+      "seed": 127,
+      "colors": [
+        "b4b7c2",
+        "757b92",
+        "363c56",
+        "757b92",
+        "363c56"
+      ],
+      "pixels": 256,
+      "padding": 16,
+      "width": 288,
+      "height": 288,
+      "light": [
+        0.25,
+        0.25
+      ],
+      "rotation": 0.15,
+      "time": 0.17,
+      "dither": true,
+      "sha256": "99a51aece5a265347b9323c80a28e81adeb210449c2485a5421b19560aa657fc"
+    },
+    {
+      "id": "ocean",
+      "scene": "LandMasses/LandMasses",
+      "seed": 583,
+      "colors": [
+        "7acbd5",
+        "3172a3",
+        "172946",
+        "a4c99b",
+        "6f9980",
+        "3b6964",
+        "1a3542",
+        "e8edf0",
+        "bdcddc",
+        "637e9c",
+        "374861"
+      ],
+      "pixels": 256,
+      "padding": 16,
+      "width": 288,
+      "height": 288,
+      "light": [
+        0.25,
+        0.25
+      ],
+      "rotation": 0.15,
+      "time": 0.17,
+      "dither": true,
+      "sha256": "e904709b3cb2b43b24c5c7af0374ae41cd318820fdf332a88273ab5711dbb653"
+    },
+    {
+      "id": "gas",
+      "scene": "GasPlanetLayers/GasPlanetLayers",
+      "seed": 846,
+      "colors": [
+        "edcc9b",
+        "c18d82",
+        "796782",
+        "856578",
+        "51435f",
+        "292c47"
+      ],
+      "pixels": 256,
+      "padding": 16,
+      "width": 800,
+      "height": 800,
+      "light": [
+        0.25,
+        0.25
+      ],
+      "rotation": 0.15,
+      "time": 0.17,
+      "dither": true,
+      "sha256": "dfec7e04c5fd93b3e9072aa063724589a8f5852d88d35131e6f33e489db2ca69"
+    },
+    {
+      "id": "desert",
+      "scene": "DryTerran/DryTerran",
+      "seed": 391,
+      "colors": [
+        "ff8933",
+        "e64539",
+        "ad2f45",
+        "52333f",
+        "3d2936"
+      ],
+      "pixels": 256,
+      "padding": 16,
+      "width": 288,
+      "height": 288,
+      "light": [
+        0.25,
+        0.25
+      ],
+      "rotation": 0.15,
+      "time": 0.17,
+      "dither": true,
+      "sha256": "e444d84304171dc41cdb69285cab02b4da23cad1b04d81973edc519f3b65f7ab"
+    },
+    {
+      "id": "ice",
+      "scene": "IceWorld/IceWorld",
+      "seed": 219,
+      "colors": [
+        "eef5fa",
+        "accee0",
+        "56738d",
+        "74bed6",
+        "3c7b9b",
+        "1b3752",
+        "f1f5fa",
+        "c9dce9",
+        "68879e",
+        "3a536f"
+      ],
+      "pixels": 256,
+      "padding": 16,
+      "width": 288,
+      "height": 288,
+      "light": [
+        0.25,
+        0.25
+      ],
+      "rotation": 0.15,
+      "time": 0.17,
+      "dither": true,
+      "sha256": "eba22361ec4dcfb32a9e382e03137fe7687a5fb86b3baf1af3b6cd6b635b2ac1"
+    },
+    {
+      "id": "lava",
+      "scene": "LavaWorld/LavaWorld",
+      "seed": 672,
+      "colors": [
+        "705b65",
+        "3e354b",
+        "231e34",
+        "3e354b",
+        "231e34",
+        "ffbc67",
+        "f46946",
+        "a63740"
+      ],
+      "pixels": 256,
+      "padding": 16,
+      "width": 288,
+      "height": 288,
+      "light": [
+        0.25,
+        0.25
+      ],
+      "rotation": 0.15,
+      "time": 0.17,
+      "dither": true,
+      "sha256": "18819ee2d3d5c9d736e15144ee977c9e9ea63682194d6984d273074f86b6e883"
+    },
+    {
+      "id": "temperate",
+      "scene": "Rivers/Rivers",
+      "seed": 328,
+      "colors": [
+        "9bbb80",
+        "63886a",
+        "3d6058",
+        "213b42",
+        "8cb8cd",
+        "3e7596",
+        "eef1e4",
+        "bcc9bc",
+        "7a968c",
+        "4c6269"
+      ],
+      "pixels": 256,
+      "padding": 16,
+      "width": 288,
+      "height": 288,
+      "light": [
+        0.25,
+        0.25
+      ],
+      "rotation": 0.15,
+      "time": 0.17,
+      "dither": true,
+      "sha256": "ec0c65ab24844b3ddb7ab9babe2bbf7f1f7ed2273af18a14804e964c7840fb48"
+    },
+    {
+      "id": "star-yellow",
+      "scene": "Star/Star",
+      "seed": 420,
+      "colors": [
+        "fff4bf",
+        "fff4bf",
+        "ffd26e",
+        "f29453",
+        "9c4844",
+        "ffd26e",
+        "fff4bf"
+      ],
+      "pixels": 256,
+      "padding": 16,
+      "width": 544,
+      "height": 544,
+      "light": [
+        0.25,
+        0.25
+      ],
+      "rotation": 0.15,
+      "time": 0.17,
+      "dither": true,
+      "sha256": "196c024d8da4f140d862f1c1e02ef8339a3890336793e35fa3bf479341805569"
+    },
+    {
+      "id": "star-red",
+      "scene": "Star/Star",
+      "seed": 521,
+      "colors": [
+        "ffd9b2",
+        "ffe4c7",
+        "fba071",
+        "dc6557",
+        "832f44",
+        "fba071",
+        "ffe4c7"
+      ],
+      "pixels": 256,
+      "padding": 16,
+      "width": 544,
+      "height": 544,
+      "light": [
+        0.25,
+        0.25
+      ],
+      "rotation": 0.15,
+      "time": 0.17,
+      "dither": true,
+      "sha256": "d8af573cda0f18c5666f6cb52c36105ca5e2bf0c5640fc42c6563a1a84e14206"
+    },
+    {
+      "id": "star-blue",
+      "scene": "Star/Star",
+      "seed": 623,
+      "colors": [
+        "deefff",
+        "f2f7ff",
+        "a1d3ed",
+        "5a91c5",
+        "355b94",
+        "a1d3ed",
+        "f2f7ff"
+      ],
+      "pixels": 256,
+      "padding": 16,
+      "width": 544,
+      "height": 544,
+      "light": [
+        0.25,
+        0.25
+      ],
+      "rotation": 0.15,
+      "time": 0.17,
+      "dither": true,
+      "sha256": "f6b7210d2727030aad44b0bee8eb087f941928f744de1ac2f030c658b6664c3a"
+    },
+    {
+      "id": "star-white",
+      "scene": "Star/Star",
+      "seed": 729,
+      "colors": [
+        "f3f3ec",
+        "ffffff",
+        "e4e8e2",
+        "9eacc8",
+        "566d92",
+        "e4e8e2",
+        "ffffff"
+      ],
+      "pixels": 256,
+      "padding": 16,
+      "width": 544,
+      "height": 544,
+      "light": [
+        0.25,
+        0.25
+      ],
+      "rotation": 0.15,
+      "time": 0.17,
+      "dither": true,
+      "sha256": "ef0c9a4825e4f80bc05d1883693911b5bb8ab19395ce5c5296dcbb5a82173dc6"
+    },
+    {
+      "id": "black-hole",
+      "scene": "BlackHole/BlackHole",
+      "seed": 915,
+      "colors": [
+        "272736",
+        "ffffeb",
+        "ed7b39",
+        "ffffeb",
+        "fff540",
+        "ffb84a",
+        "ed7b39",
+        "bd4035"
+      ],
+      "pixels": 256,
+      "padding": 16,
+      "width": 544,
+      "height": 544,
+      "light": [
+        0.25,
+        0.25
+      ],
+      "rotation": 0.15,
+      "time": 0.17,
+      "dither": true,
+      "sha256": "ff40e30aacb909a52805b25f8df19f2924e3b409a449e9abf3f5636860bc0b62"
+    }
+  ]
+}

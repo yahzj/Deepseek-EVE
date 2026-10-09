@@ -4,6 +4,8 @@ import type { StellarSystem } from '@whale/core'
 import { tr } from '../i18n/locale'
 import { Glyph } from '../ui/Glyphs'
 import { StellarPlanetArt, STELLAR_PLANET_KIND_IDS } from '../ui/stellarArt'
+import { stellarDisplayRadius, STELLAR_PLANET_ASSETS } from '../ui/stellarAssets'
+import { StellarScene } from './StellarScene'
 import {
   STELLAR_MAP_CENTER, STELLAR_ZOOM_MAX, STELLAR_ZOOM_MIN,
   beginStellarGesture, clampStellarView, inverseMapMatrix, locateStellarView, mapInverseScale, mapPointThrough,
@@ -47,7 +49,7 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
   const pressedBody = useRef<string | undefined>()
   const handledPointerClick = useRef(false)
   const [panning, setPanning] = useState(false)
-  const [metrics, setMetrics] = useState({ hit: 20, unit: 1 })
+  const [metrics, setMetrics] = useState({ hit: 20, unit: 1, artUnit: 1 })
   const refreshMetrics = useRef<() => void>(() => {})
   const selected = system.bodies.find(body => body.planetId === session.selectedId)
   const box = stellarViewBox(session)
@@ -91,7 +93,8 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
       const logicalInverse = local ? inverseMapMatrix(local) : null
       const hit = stellarHitRadius(inverse, logicalInverse)
       const unit = Math.max(mapInverseScale(inverse), logicalInverse ? mapInverseScale(logicalInverse) : 0)
-      setMetrics(old => Math.abs(old.hit - hit) < 0.01 && Math.abs(old.unit - unit) < 0.001 ? old : { hit, unit })
+      const artUnit = logicalInverse ? mapInverseScale(logicalInverse) : mapInverseScale(inverse)
+      setMetrics(old => Math.abs(old.hit - hit) < 0.01 && Math.abs(old.unit - unit) < 0.001 && Math.abs(old.artUnit - artUnit) < .001 ? old : { hit, unit, artUnit })
     }
     refreshMetrics.current = measure
     measure()
@@ -130,6 +133,11 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
     commit({ ...current.current, selectedId: id })
     onSelect(id)
   }
+  function displayRadius(body: Body, unit = metrics.artUnit): number {
+    const nearest = Math.min(...system.bodies.filter(other => other !== body).map(other => Math.hypot(other.x - body.x, other.y - body.y)),
+      ...system.stars.map(star => Math.hypot(star.x - body.x, star.y - body.y)))
+    return Math.min(stellarDisplayRadius(body.kind, unit), nearest * .38)
+  }
 
   function zoomBy(factor: number): void {
     const view = current.current
@@ -160,8 +168,10 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
       handledPointerClick.current = false
       // 透明命中圆可能重叠；按最近的世界坐标选取，不按 SVG 后绘制者优先。
       const local = event.currentTarget.getCTM()
-      const radius = stellarHitRadius(inverse, local ? inverseMapMatrix(local) : null)
-      pressedBody.current = stellarBodyAt(system.bodies.map(body => ({ ...body, radius: body.kind === 'gas' ? 13 : 10 })),
+      const logicalInverse = local ? inverseMapMatrix(local) : null
+      const radius = stellarHitRadius(inverse, logicalInverse)
+      const unit = logicalInverse ? mapInverseScale(logicalInverse) : mapInverseScale(inverse)
+      pressedBody.current = stellarBodyAt(system.bodies.map(body => ({ ...body, radius: displayRadius(body, unit) })),
         mapPointThrough({ x: event.clientX, y: event.clientY }, inverse), radius)
       event.currentTarget.focus({ preventScroll: true })
     }
@@ -243,7 +253,7 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
   }, [system.bodies])
 
   const labels = stellarOrdinalLabels(system.bodies.map(body => ({ ...body,
-    radius: body.planetId === session.selectedId ? Math.max(18, metrics.hit * 0.65) : body.kind === 'gas' ? 17 : 10,
+    radius: Math.max(body.planetId === session.selectedId ? metrics.hit * 0.65 : 0, displayRadius(body) * (body.kind === 'gas' ? STELLAR_PLANET_ASSETS.gas.span : 1.15)),
   })), box, metrics.unit, session.selectedId, system.kind === 'rogue' ? [] : system.stars)
 
   return <div className="app-stellar-map" data-stellar-system={system.id}>
@@ -270,6 +280,7 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
       </span>
     </div>
     <div className="app-stellar-map-frame">
+      <StellarScene system={system} view={session} selectedId={session.selectedId} />
       <svg ref={svgRef} className={`app-stellar-map-svg${panning ? ' is-panning' : ''}`}
         viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`} preserveAspectRatio="xMidYMid meet"
         role="group" aria-label={tr('ui.stellar.054')} tabIndex={0} onKeyDown={keyDown}
@@ -278,42 +289,20 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
         onClickCapture={event => {
           if (handledPointerClick.current) { event.preventDefault(); event.stopPropagation() }
         }}>
-        <g className="app-stellar-map-orbits" aria-hidden="true">
-          {system.kind !== 'rogue' && [...new Set(system.bodies.map(body => body.orbit))].map(orbit =>
-            <circle key={orbit} cx={500} cy={350} r={orbit} />)}
-        </g>
-        <g className={`app-stellar-map-stars is-${system.kind} is-star-${system.starClass}`} aria-hidden="true">
-          {system.kind !== 'rogue' && system.stars.map((star, index) =>
-            <g key={index} transform={`translate(${star.x} ${star.y})`}>
-              {system.kind === 'black-hole' ? <>
-                <ellipse className="app-stellar-map-accretion" rx={star.radius * 2.2} ry={star.radius * 0.75} transform="rotate(-25)" />
-                <circle className="app-stellar-map-horizon" r={star.radius} />
-                <circle className="app-stellar-map-star-ring" r={star.radius * 1.3} />
-              </> : system.kind === 'neutron' ? <>
-                <path className="app-stellar-map-beam" d={`M0 ${-star.radius * 4}V${star.radius * 4}`} transform="rotate(-25)" />
-                <circle className="app-stellar-map-star-ring" r={star.radius * 1.8} />
-                <circle className="app-stellar-map-star" r={star.radius} />
-              </> : <>
-                <circle className="app-stellar-map-star-ring" r={star.radius * 1.4} />
-                <circle className="app-stellar-map-star" r={star.radius} />
-                <path d={`M${-star.radius * 0.5} 0H${star.radius * 0.5}M0 ${-star.radius * 0.5}V${star.radius * 0.5}`} />
-              </>}
-            </g>)}
-        </g>
         {system.bodies.map(body => {
           const active = body.planetId === session.selectedId
           const status = bodyStates?.[body.planetId]
           const statusText = status?.developed ? tr('ui.stellar.016') : status && status.survey > 0 ? tr(['ui.stellar.055', 'ui.planet.059', 'ui.planet.060', 'ui.planet.061'][status.survey] ?? 'ui.stellar.055') : tr('ui.stellar.055')
-          const radius = body.kind === 'gas' ? 13 : 10
+          const radius = displayRadius(body)
           return <g key={body.planetId} className={`app-map-node app-stellar-map-body${active ? ' is-selected' : ''}${body.kind === 'gas' ? ' is-gas' : ''}`}
             transform={`translate(${body.x} ${body.y})`} data-stellar-body={body.planetId}
             role="button" tabIndex={0} aria-label={`${bodyName(body)}, ${tr(STELLAR_PLANET_KIND_IDS[body.kind])}, ${statusText}`}
             aria-pressed={active} data-tip={`${bodyName(body)} · ${tr(STELLAR_PLANET_KIND_IDS[body.kind])} · ${statusText}`}
             onClick={() => { if (!handledPointerClick.current) select(body.planetId) }}>
-            <StellarPlanetArt kind={body.kind} />
-            {status?.developed ? <path className="app-stellar-map-state is-developed" d="M12-12l3 3 5-6" />
-              : status && status.survey >= 2 ? <path className="app-stellar-map-state is-surveyed" d="M14-16v6m-3-3h6" /> : null}
-            <circle className="app-stellar-map-selection" r={Math.max(18, metrics.hit * 0.65)} />
+            <g transform={`scale(${radius / 10})`}><StellarPlanetArt kind={body.kind} /></g>
+            {status?.developed ? <path className="app-stellar-map-state is-developed" transform={`translate(${radius - 10} ${10 - radius})`} d="M12-12l3 3 5-6" />
+              : status && status.survey >= 2 ? <path className="app-stellar-map-state is-surveyed" transform={`translate(${radius - 10} ${10 - radius})`} d="M14-16v6m-3-3h6" /> : null}
+            <circle className="app-stellar-map-selection" r={Math.max(radius + 5, metrics.hit * 0.65)} />
             <circle className="app-map-hit app-stellar-map-hit" r={Math.max(metrics.hit, radius)} />
           </g>
         })}

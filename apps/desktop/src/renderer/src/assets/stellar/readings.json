@@ -1,0 +1,194 @@
+[
+  {
+    "id": "rocky",
+    "size": [
+      288,
+      288
+    ],
+    "visibleBounds": [
+      17,
+      17,
+      272,
+      272
+    ],
+    "bytes": 4593,
+    "transparentPixels": 31515,
+    "repeatPixelsEqual": true
+  },
+  {
+    "id": "ocean",
+    "size": [
+      288,
+      288
+    ],
+    "visibleBounds": [
+      16,
+      16,
+      272,
+      272
+    ],
+    "bytes": 9585,
+    "transparentPixels": 31513,
+    "repeatPixelsEqual": true
+  },
+  {
+    "id": "gas",
+    "size": [
+      800,
+      800
+    ],
+    "visibleBounds": [
+      162,
+      133,
+      645,
+      674
+    ],
+    "bytes": 19414,
+    "transparentPixels": 566134,
+    "repeatPixelsEqual": true
+  },
+  {
+    "id": "desert",
+    "size": [
+      288,
+      288
+    ],
+    "visibleBounds": [
+      17,
+      17,
+      272,
+      272
+    ],
+    "bytes": 7410,
+    "transparentPixels": 31515,
+    "repeatPixelsEqual": true
+  },
+  {
+    "id": "ice",
+    "size": [
+      288,
+      288
+    ],
+    "visibleBounds": [
+      17,
+      16,
+      272,
+      272
+    ],
+    "bytes": 7873,
+    "transparentPixels": 31514,
+    "repeatPixelsEqual": true
+  },
+  {
+    "id": "lava",
+    "size": [
+      288,
+      288
+    ],
+    "visibleBounds": [
+      17,
+      17,
+      272,
+      272
+    ],
+    "bytes": 5225,
+    "transparentPixels": 31515,
+    "repeatPixelsEqual": true
+  },
+  {
+    "id": "temperate",
+    "size": [
+      288,
+      288
+    ],
+    "visibleBounds": [
+      17,
+      17,
+      272,
+      272
+    ],
+    "bytes": 11077,
+    "transparentPixels": 31515,
+    "repeatPixelsEqual": true
+  },
+  {
+    "id": "star-yellow",
+    "size": [
+      544,
+      544
+    ],
+    "visibleBounds": [
+      137,
+      123,
+      419,
+      422
+    ],
+    "bytes": 17645,
+    "transparentPixels": 243757,
+    "repeatPixelsEqual": true
+  },
+  {
+    "id": "star-red",
+    "size": [
+      544,
+      544
+    ],
+    "visibleBounds": [
+      96,
+      145,
+      439,
+      408
+    ],
+    "bytes": 17608,
+    "transparentPixels": 243317,
+    "repeatPixelsEqual": true
+  },
+  {
+    "id": "star-blue",
+    "size": [
+      544,
+      544
+    ],
+    "visibleBounds": [
+      135,
+      145,
+      413,
+      413
+    ],
+    "bytes": 17325,
+    "transparentPixels": 243428,
+    "repeatPixelsEqual": true
+  },
+  {
+    "id": "star-white",
+    "size": [
+      544,
+      544
+    ],
+    "visibleBounds": [
+      105,
+      130,
+      440,
+      435
+    ],
+    "bytes": 18615,
+    "transparentPixels": 242402,
+    "repeatPixelsEqual": true
+  },
+  {
+    "id": "black-hole",
+    "size": [
+      544,
+      544
+    ],
+    "visibleBounds": [
+      99,
+      72,
+      445,
+      474
+    ],
+    "bytes": 11347,
+    "transparentPixels": 258542,
+    "repeatPixelsEqual": true
+  }
+]

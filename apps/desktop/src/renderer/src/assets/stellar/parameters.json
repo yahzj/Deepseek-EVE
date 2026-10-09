@@ -1,0 +1,309 @@
+[
+  {
+    "id": "rocky",
+    "scene": "NoAtmosphere/NoAtmosphere",
+    "seed": 127,
+    "colors": [
+      "b4b7c2",
+      "757b92",
+      "363c56",
+      "757b92",
+      "363c56"
+    ],
+    "pixels": 256,
+    "padding": 16,
+    "width": 288,
+    "height": 288,
+    "light": [
+      0.25,
+      0.25
+    ],
+    "rotation": 0.15,
+    "time": 0.17,
+    "dither": true
+  },
+  {
+    "id": "ocean",
+    "scene": "LandMasses/LandMasses",
+    "seed": 583,
+    "colors": [
+      "7acbd5",
+      "3172a3",
+      "172946",
+      "a4c99b",
+      "6f9980",
+      "3b6964",
+      "1a3542",
+      "e8edf0",
+      "bdcddc",
+      "637e9c",
+      "374861"
+    ],
+    "pixels": 256,
+    "padding": 16,
+    "width": 288,
+    "height": 288,
+    "light": [
+      0.25,
+      0.25
+    ],
+    "rotation": 0.15,
+    "time": 0.17,
+    "dither": true
+  },
+  {
+    "id": "gas",
+    "scene": "GasPlanetLayers/GasPlanetLayers",
+    "seed": 846,
+    "colors": [
+      "edcc9b",
+      "c18d82",
+      "796782",
+      "856578",
+      "51435f",
+      "292c47"
+    ],
+    "pixels": 256,
+    "padding": 16,
+    "width": 800,
+    "height": 800,
+    "light": [
+      0.25,
+      0.25
+    ],
+    "rotation": 0.15,
+    "time": 0.17,
+    "dither": true
+  },
+  {
+    "id": "desert",
+    "scene": "DryTerran/DryTerran",
+    "seed": 391,
+    "colors": [
+      "ff8933",
+      "e64539",
+      "ad2f45",
+      "52333f",
+      "3d2936"
+    ],
+    "pixels": 256,
+    "padding": 16,
+    "width": 288,
+    "height": 288,
+    "light": [
+      0.25,
+      0.25
+    ],
+    "rotation": 0.15,
+    "time": 0.17,
+    "dither": true
+  },
+  {
+    "id": "ice",
+    "scene": "IceWorld/IceWorld",
+    "seed": 219,
+    "colors": [
+      "eef5fa",
+      "accee0",
+      "56738d",
+      "74bed6",
+      "3c7b9b",
+      "1b3752",
+      "f1f5fa",
+      "c9dce9",
+      "68879e",
+      "3a536f"
+    ],
+    "pixels": 256,
+    "padding": 16,
+    "width": 288,
+    "height": 288,
+    "light": [
+      0.25,
+      0.25
+    ],
+    "rotation": 0.15,
+    "time": 0.17,
+    "dither": true
+  },
+  {
+    "id": "lava",
+    "scene": "LavaWorld/LavaWorld",
+    "seed": 672,
+    "colors": [
+      "705b65",
+      "3e354b",
+      "231e34",
+      "3e354b",
+      "231e34",
+      "ffbc67",
+      "f46946",
+      "a63740"
+    ],
+    "pixels": 256,
+    "padding": 16,
+    "width": 288,
+    "height": 288,
+    "light": [
+      0.25,
+      0.25
+    ],
+    "rotation": 0.15,
+    "time": 0.17,
+    "dither": true
+  },
+  {
+    "id": "temperate",
+    "scene": "Rivers/Rivers",
+    "seed": 328,
+    "colors": [
+      "9bbb80",
+      "63886a",
+      "3d6058",
+      "213b42",
+      "8cb8cd",
+      "3e7596",
+      "eef1e4",
+      "bcc9bc",
+      "7a968c",
+      "4c6269"
+    ],
+    "pixels": 256,
+    "padding": 16,
+    "width": 288,
+    "height": 288,
+    "light": [
+      0.25,
+      0.25
+    ],
+    "rotation": 0.15,
+    "time": 0.17,
+    "dither": true
+  },
+  {
+    "id": "star-yellow",
+    "scene": "Star/Star",
+    "seed": 420,
+    "colors": [
+      "fff4bf",
+      "fff4bf",
+      "ffd26e",
+      "f29453",
+      "9c4844",
+      "ffd26e",
+      "fff4bf"
+    ],
+    "pixels": 256,
+    "padding": 16,
+    "width": 544,
+    "height": 544,
+    "light": [
+      0.25,
+      0.25
+    ],
+    "rotation": 0.15,
+    "time": 0.17,
+    "dither": true
+  },
+  {
+    "id": "star-red",
+    "scene": "Star/Star",
+    "seed": 521,
+    "colors": [
+      "ffd9b2",
+      "ffe4c7",
+      "fba071",
+      "dc6557",
+      "832f44",
+      "fba071",
+      "ffe4c7"
+    ],
+    "pixels": 256,
+    "padding": 16,
+    "width": 544,
+    "height": 544,
+    "light": [
+      0.25,
+      0.25
+    ],
+    "rotation": 0.15,
+    "time": 0.17,
+    "dither": true
+  },
+  {
+    "id": "star-blue",
+    "scene": "Star/Star",
+    "seed": 623,
+    "colors": [
+      "deefff",
+      "f2f7ff",
+      "a1d3ed",
+      "5a91c5",
+      "355b94",
+      "a1d3ed",
+      "f2f7ff"
+    ],
+    "pixels": 256,
+    "padding": 16,
+    "width": 544,
+    "height": 544,
+    "light": [
+      0.25,
+      0.25
+    ],
+    "rotation": 0.15,
+    "time": 0.17,
+    "dither": true
+  },
+  {
+    "id": "star-white",
+    "scene": "Star/Star",
+    "seed": 729,
+    "colors": [
+      "f3f3ec",
+      "ffffff",
+      "e4e8e2",
+      "9eacc8",
+      "566d92",
+      "e4e8e2",
+      "ffffff"
+    ],
+    "pixels": 256,
+    "padding": 16,
+    "width": 544,
+    "height": 544,
+    "light": [
+      0.25,
+      0.25
+    ],
+    "rotation": 0.15,
+    "time": 0.17,
+    "dither": true
+  },
+  {
+    "id": "black-hole",
+    "scene": "BlackHole/BlackHole",
+    "seed": 915,
+    "colors": [
+      "272736",
+      "ffffeb",
+      "ed7b39",
+      "ffffeb",
+      "fff540",
+      "ffb84a",
+      "ed7b39",
+      "bd4035"
+    ],
+    "pixels": 256,
+    "padding": 16,
+    "width": 544,
+    "height": 544,
+    "light": [
+      0.25,
+      0.25
+    ],
+    "rotation": 0.15,
+    "time": 0.17,
+    "dither": true
+  }
+]
