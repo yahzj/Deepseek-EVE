@@ -27,7 +27,7 @@ import { nextInt } from './rng'
 import { resolveFoeMounts } from './foeMounts'
 import { baseFoeTag, enumerateShipUnits, FOE_SUPPORT_TAG_RE, foeUnitNameOf, shipWaveIndexOf, supportFoeModelTagOf } from './foeCard'
 import { syncCoronaFleetFocus } from './coronaFocus'
-import { foeHpOfThreat, foeJudgedThreatOf, foeMultiShipCompMul, foeRefSpeedMps, foeSpeedBase, foeThreatRatingOf, TACTIC_RANGE } from './foePower'
+import { foeFamilyHpMulOf, foeHpOfThreat, foeJudgedThreatOf, foeMultiShipCompMul, foeRefSpeedMps, foeSpeedBase, foeThreatRatingOf, TACTIC_RANGE } from './foePower'
 import { compositionOfMix, foeDamageComposition, pickTopType, PROFILE_SPLIT, WORMHOLE_THREAT_BASE } from './wormholeFoes'
 import { foeDroneRangeOf, foeGunMaxRangeOf, foeRangeWithDebuff } from './foeRange'
 import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, pushBattleNotice, WORMHOLE_FOE_VOLLEY_STAGGER_MS } from './combatFx'
@@ -266,7 +266,10 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     // 血型（三层比例）：**有效 split = 条目覆写 ?? 舰级**（2026-09-11 船长裁决①「头目血型随卡片走」）——
     // 同一条舰级在不同卡上可按卡面 `defProfile` 建档（A 族鱼龙混杂 ⇒ 什么血型都有，无族级约束）。
     const split = u.slot.split ?? ship.split
-    const hp: Hp3 = { s: totalHp * split.s, a: totalHp * split.a, h: totalHp * split.h }
+    const hpMul = foeFamilyHpMulOf(ship.family)
+    const hp: Hp3 = u.slot.hpOverride ? { ...u.slot.hpOverride } : {
+      s: totalHp * split.s * hpMul, a: totalHp * split.a * hpMul, h: totalHp * split.h * hpMul,
+    }
     // 炮台单发：写了比例 ⇒ 取拆分后的 G 摊分结果（Σ 与旧口径守恒），否则逐字沿用旧算法；
     // 之后再乘**舰体火力越线折扣**（越线才 <1；`fireSplit` 非空的条目缩放 = 1，见 `foeDpsCapScaleOf`）
     const rawShotDmg = sp
@@ -1080,7 +1083,8 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
     const baseHp = (anomaly.foeHpOverride ?? foeHpOfThreat(anomaly.threat, bal)) * hpShare
     const unitHp = (baseHp * uThreat) / Math.max(1, anomaly.threat)
     const totalHp = unitHp
-    const hp: Hp3 = { s: totalHp * split.s, a: totalHp * split.a, h: totalHp * split.h }
+    const hpMul = foeFamilyHpMulOf(anomaly.foeFamily)
+    const hp: Hp3 = { s: totalHp * split.s * hpMul, a: totalHp * split.a * hpMul, h: totalHp * split.h * hpMul }
     const dps = uThreat * bal.foeDpsPerThreat
     // 2026-09-08（船长定：能量=光束必中；动能/爆炸普遍高命中 0.85 + 逐卡低命中特例）：
     // 非能量单发 = DPS×装填 ÷ 有效命中 × foeHitCompMul（回避>0 期望上升的等效补偿，方案 A）；
@@ -1716,18 +1720,21 @@ export function initFoeDronePools(
     if (!slots || slots.length === 0) continue
     const list: import('./state').DronePoolEntry[] = []
     const mk = (
-      d: (typeof slots)[number]['drone']['defense'],
+      drone: (typeof slots)[number]['drone'],
       artId: string,
       inHangar: boolean,
     ): import('./state').DronePoolEntry => {
+      const d = drone.defense
+      const hpMul = foeFamilyHpMulOf(drone.family)
       const resists = {
         ...(d.shieldResist ? { shield: d.shieldResist } : {}),
         ...(d.armorResist ? { armor: d.armorResist } : {}),
         ...(d.hullResist ? { hull: d.hullResist } : {}),
       }
-      const s = Math.max(1, Math.round(d.shieldHp))
-      const a = Math.max(1, Math.round(d.armorHp))
-      const h = Math.max(1, Math.round(d.hullHp))
+      const hpOf = (value: number): number => hpMul === 1 ? Math.max(1, Math.round(value)) : Math.max(1, value * hpMul)
+      const s = hpOf(d.shieldHp)
+      const a = hpOf(d.armorHp)
+      const h = hpOf(d.hullHp)
       return {
         s,
         a,
@@ -1745,13 +1752,13 @@ export function initFoeDronePools(
     }
     for (const ds of slots)
       for (let k = 0; k < Math.max(0, Math.round(ds.count)); k++)
-        list.push(mk(ds.drone.defense, ds.drone.id, false))
+        list.push(mk(ds.drone, ds.drone.id, false))
     // **备用机库**（2026-09-12）：同机型的额外条目，开局全部在库（不出战、不开火、不计存活架数）
     const reserve = f.foeDroneReserve
     const reserveModel = slots[0]?.drone
     if (reserve && reserveModel)
       for (let k = 0; k < Math.max(0, Math.round(reserve.count)); k++)
-        list.push(mk(reserveModel.defense, reserveModel.id, true))
+        list.push(mk(reserveModel, reserveModel.id, true))
     if (list.length > 0) pools[f.tag] = list
   }
   if (Object.keys(pools).length > 0) b.foeDronePools = pools

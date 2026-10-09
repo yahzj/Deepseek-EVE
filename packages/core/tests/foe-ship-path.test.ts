@@ -993,9 +993,9 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(u).toHaveLength(6)
     expectHpClose(
       u.map(hpOf),
-      Array.from({ length: 6 }, () => 3128.3 / 6),
+      Array.from({ length: 6 }, () => 3128.3 / 6 * 1.3),
     ); // 2026-09-25 重定价 ×3.1283（原总血 1,000）
-    expect(sum(u.map(hpOf))).toBeCloseTo(3128.3, 6)
+    expect(sum(u.map(hpOf))).toBeCloseTo(3128.3 * 1.3, 6)
     expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(
       Array.from({ length: 6 }, () => 59),
     ); // 354/6 = 59（重定价后）
@@ -1022,9 +1022,9 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(u).toHaveLength(8)
     expectHpClose(
       u.map(hpOf),
-      Array.from({ length: 8 }, () => 3790.2645 / 8),
+      Array.from({ length: 8 }, () => 3790.2645 / 8 * 1.3),
     ); // = 473.7831（2026-09-25 重定价 ×2.0883，原 226.875）
-    expect(sum(u.map(hpOf))).toBeCloseTo(3790.2645, 6)
+    expect(sum(u.map(hpOf))).toBeCloseTo(3790.2645 * 1.3, 6)
     expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(
       Array.from({ length: 8 }, () => 31),
     ); // 248/8 = 31（重定价后）
@@ -1049,8 +1049,8 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
       377.8430625,
       377.8430625,
       377.8430625,
-    ])
-    expect(sum(u.map(hpOf))).toBeCloseTo(2015.163, 6)
+    ].map(value => value * 1.3))
+    expect(sum(u.map(hpOf))).toBeCloseTo(2015.163 * 1.3, 6)
     expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(
       Array.from({ length: 10 }, () => 30),
     ); // 300/10 = 30（重定价后）
@@ -1076,12 +1076,12 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     expect(boss).toBeTruthy()
     const minions = u.filter((x) => x !== boss)
     expect(minions).toHaveLength(10)
-    expectHpClose([hpOf(boss)], [3994.104 * 0.65]); // 首领 2,596.1676（65%；2026-09-25 船长令「将巨兽的占比下调到 65%」＋重定价 k=1.444）
+    expectHpClose([hpOf(boss)], [3994.104 * 0.65 * 1.3]); // 首领占比不变，最终族格血量增加30%。
     expectHpClose(
       minions.map(hpOf),
-      Array.from({ length: 10 }, () => 3994.104 * 0.035),
+      Array.from({ length: 10 }, () => 3994.104 * 0.035 * 1.3),
     ); // 每只小虫 139.7936（3.5%）
-    expect(sum(u.map(hpOf))).toBeCloseTo(3994.104, 6); // 2026-09-25 重定价后总血（原 2,766）
+    expect(sum(u.map(hpOf))).toBeCloseTo(3994.104 * 1.3, 6); // 裸血锚不改，最终族格增加30%。
     expect(boss.weapons[0]!.shotDmg).toBe(470); // 首领 65%（原 80% ⇒ 577；重定价后逐项取整）
     expect(minions.map((x) => x.weapons[0]!.shotDmg)).toEqual(
       Array.from({ length: 10 }, () => 25),

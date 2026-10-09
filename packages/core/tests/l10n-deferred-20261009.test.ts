@@ -21,7 +21,7 @@ describe('综合公告短句与英文显式延期', () => {
   })
   it('全部新正文只记待译，不准备英文，不用中文或占位伪填英文列', () => {
     expect(deferredL10nIssues(L10N, backlog)).toEqual([])
-    expect(Object.values(L10N).filter(entry => entry.enDeferred === true)).toHaveLength(38)
+    expect(Object.entries(L10N).filter(([id, entry]) => id.startsWith('ano.mechanicsBrief.') && entry.enDeferred === true)).toHaveLength(38)
     for (const id of brief.bulletIds!) {
       expect(L10N[id]).toMatchObject({ en: '', enDeferred: true })
       expect(backlog).toContain(`| \`${id}\` |`)

@@ -17,6 +17,7 @@
 ## 一、core 引擎层（`packages/core/src`）
 
 | 关注点 | 唯一实现 | 护栏 |
+| 敌方族格最终血量倍率 | `foeFamilyHpMulOf()` · `foePower.ts` | C族三层最终+30%、非C不变、舰体/机型独立判定、共享旗舰绝对血覆盖与预算不抵消专项 |
 | 悬赏后台预热任务与缓存代次 | `BountyWinCache` · `game/bountyWinCache.ts`；真实评估仍为core `estimateBountyWinOn` | 单worker/每卡30局、失效取消/战斗让路、结果等价与双端真实worker响应专项 |
 | 敌舰/机群/挂载/编队源数字参数读取 | `enemyParameterOf()` · `packages/core/src/enemyParameters.ts` | 六表字段契约、迁移前完整目录逐值相等及真实引擎预览专项；公式与引用留TS |
 | 战斗演出跨场与读档续播 | `battleFxArrivals()` · `apps/desktop/src/renderer/src/ui/battleFxCursor.ts` | 绑定战斗对象、序号回退、陈旧事件与连续战斗专项 |

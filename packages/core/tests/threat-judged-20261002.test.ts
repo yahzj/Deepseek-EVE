@@ -76,31 +76,33 @@ describe('威胁价目表 ↔ 判据分离（2026-10-02 船长令取「乙」）
     }
   })
 
-  it('⑤ 甲已撤（读数纠错）：那 6 张的标签**保持 09-25 定价式的原值**，判据行不进数据', () => {
+  it('⑤ 保留原定价口径，C族已批准加血后只重算标签并冻结判据', () => {
     /**
      * ⚠ 本批原打算按「单舰 ×3」定价式重锚 6 张标签（船长取「甲」），落码后既有契约
      * `foe-threat-pricing.test.ts` 报红 ⇒ 查明：**仓库里有两套 X 算法**——
      * ① 那条契约的 `xOf`（逐 `card.waves` 建档 ＋ **各波 DPS 求和**）＝ 09-25 定标签时的口径；
      * ② `foeStrengthOf`（按 `slot.wave` 建档 ＋ **取各波 DPS 最大**）＝ `foeThreatOfAnomaly` 用的那套。
      * 两套对这 6 张差 4~17 点，**甲是基于 ② 的误读** ⇒ 已整段回滚（标签一字未动），只保留「乙」。
-     * 这条用例把"回滚"钉住：这 6 张的标签就是 09-25 的值，且**没有** threatJudged（判据 = 标签）。
+     * C族2026-10-09已批准最终血量+30%，标签沿原口径重算，PD判据仍保留旧值；非C不变。
      */
     const labels: ReadonlyArray<readonly [string, number]> = [
-      ['ano-abyss-guard', 81],
-      ['ano-starcore-boss', 67],
-      ['ano-maw-hunt', 109],
-      ['ano-chasm-aberrations', 77],
+      ['ano-abyss-guard', 88],
+      ['ano-starcore-boss', 73],
+      ['ano-maw-hunt', 119],
+      ['ano-chasm-aberrations', 84],
       ['ano-shard-bandits', 36],
       ['ano-lantern-saboteurs', 30],
     ]
     for (const [id, want] of labels) {
       const a = cardOf(id)
-      expect(a.threat, `${id} 标签保持 09-25 原值`).toBe(want)
+      expect(a.threat, `${id} 标签随已批准属性重算，非C族不变`).toBe(want)
     }
-    /** 其中两张同时是「乙」那批的**回钉**对象（09-25 改标签时翻过 PD 门槛）⇒ 它们有判据行；其余四张没有 */
+    /** 既有两张回钉保持，星髓/噬口新增判据冻结；两张A族仍没有判据行。 */
     expect(cardOf('ano-abyss-guard').threatJudged, '深渊之门卫队：回钉到重定标前 45').toBe(45)
     expect(cardOf('ano-chasm-aberrations').threatJudged, '裂谷畸变体猎杀令：回钉到重定标前 58').toBe(58)
-    for (const id of ['ano-starcore-boss', 'ano-maw-hunt', 'ano-shard-bandits', 'ano-lantern-saboteurs']) {
+    expect(cardOf('ano-starcore-boss').threatJudged).toBe(67)
+    expect(cardOf('ano-maw-hunt').threatJudged).toBe(109)
+    for (const id of ['ano-shard-bandits', 'ano-lantern-saboteurs']) {
       expect(cardOf(id).threatJudged, `${id} 不在回钉名单里 ⇒ 无判据行`).toBeUndefined()
     }
   })

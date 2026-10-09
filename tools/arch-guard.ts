@@ -110,6 +110,7 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '敌方族格最终血量倍率', symbol: 'foeFamilyHpMulOf', file: 'packages/core/src/foePower.ts', exported: true },
   { concept: '悬赏后台预热任务与缓存代次', symbol: 'BountyWinCache', file: 'apps/desktop/src/renderer/src/game/bountyWinCache.ts', exported: true },
   { concept: '敌人源数字参数读取', symbol: 'enemyParameterOf', file: 'packages/core/src/enemyParameters.ts', exported: true },
   { concept: '战斗演出事件按场续播', symbol: 'battleFxArrivals', file: 'apps/desktop/src/renderer/src/ui/battleFxCursor.ts', exported: true },

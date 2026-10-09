@@ -129,6 +129,7 @@
       },
       {
         "id": "foe-alien-acid-burster",
+        "evasion": 0.55,
         "hullClassTier": 1,
         "speedRatio_input0": 714,
         "speedRatio_input1": 340,
@@ -152,6 +153,7 @@
       },
       {
         "id": "foe-alien-brood-worker",
+        "evasion": 0.18,
         "hullClassTier": 3,
         "speedRatio_input0": 387,
         "speedRatio_input1": 258,
@@ -173,6 +175,7 @@
       },
       {
         "id": "foe-alien-hiveback",
+        "evasion": 0.12,
         "hullClassTier": 4,
         "speedRatio_input0": 287,
         "speedRatio_input1": 205,
@@ -195,6 +198,7 @@
       },
       {
         "id": "foe-alien-broodmother",
+        "evasion": 0.1,
         "hullClassTier": 5,
         "speedRatio_input0": 240,
         "speedRatio_input1": 155,
@@ -217,6 +221,7 @@
       },
       {
         "id": "foe-alien-rift-larva",
+        "evasion": 0.22,
         "gunCount": 2,
         "hullClassTier": 1,
         "speedRatio": 1.6,
@@ -236,6 +241,7 @@
       },
       {
         "id": "foe-alien-starcore-larva",
+        "evasion": 0.22,
         "gunCount": 2,
         "hullClassTier": 1,
         "speedRatio": 1.6,
@@ -255,6 +261,7 @@
       },
       {
         "id": "foe-alien-maw",
+        "evasion": 0.12,
         "gunCount": 6,
         "hullClassTier": 4,
         "speedRatio_input0": 297,
@@ -275,6 +282,7 @@
       },
       {
         "id": "foe-alien-starcore-adult",
+        "evasion": 0.18,
         "gunCount": 3,
         "hullClassTier": 2,
         "speedRatio": 1.35,
@@ -294,6 +302,7 @@
       },
       {
         "id": "foe-alien-spore-hive",
+        "evasion": 0.18,
         "gunCount": 4,
         "hullClassTier": 3,
         "speedRatio_input0": 300,

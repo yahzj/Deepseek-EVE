@@ -2490,6 +2490,8 @@ export interface FoeDroneSlot {
 export interface FoeShipSlot {
   /** 引用的舰级（直接引用配置表里的对象，保证"改一艘船只有一处"） */
   ship: FoeShipDef;
+  /** 派生战斗卡的绝对三层血量；共享旗舰池覆盖最终族格加成，不写静态参数或个人存档。 */
+  hpOverride?: { s: number; a: number; h: number };
   /** **期望作战距离覆写**（米；条目级优先于舰级，见 `FoeShipDef.desireRangeM`） */
   desireRangeM?: number;
   /**

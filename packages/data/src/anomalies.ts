@@ -671,6 +671,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     ],
     galaxyId: 'galaxy-starcore',
     threat: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "threat"),
+    threatJudged: enemyParameterOf(bountiesParameters, 'ano-starcore-boss', 'threatJudged'),
     wreckThreat: enemyParameterOf(bountiesParameters, "ano-starcore-boss", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'brawl',
     defProfile: 'armor',
@@ -895,6 +896,7 @@ const ANOMALIES_BASE: readonly AnomalyDef[] = [
     //   **小虫必须排在巨兽之前**：`foes[0]`（波 0 首个主体单位）= 期望交距 / 开战距离的来源。
     galaxyId: 'galaxy-maw',
     threat: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "threat"),
+    threatJudged: enemyParameterOf(bountiesParameters, 'ano-maw-hunt', 'threatJudged'),
     wreckThreat: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "wreckThreat"), // 回收口径（冻结值，见本表头注）
     tactic: 'brawl', // 2026-09-10 船长（族系改判）：**orbit（原缺省）→ brawl**（C 族＝螯颚/酸液喷吐的贴脸生物）
     dmgMix: { plasma: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "dmgMix_plasma"), explosive: enemyParameterOf(bountiesParameters, "ano-maw-hunt", "dmgMix_explosive") }, // 主系**等离子**（原动能主）

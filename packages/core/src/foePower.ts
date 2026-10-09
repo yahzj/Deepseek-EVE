@@ -7,7 +7,12 @@
  * `TACTIC_RANGE` / `foeSpeedBase` / `foeMultiShipCompMul` 原为模块私有，因 `createFoeSpecs`
  * 仍要用而转公开（不进 combat 公开面）。
  */
-import type { AnomalyDef, BattleBalance, FoeTactic } from './types'
+import type { AnomalyDef, BattleBalance, FoeFamily, FoeTactic } from './types'
+
+/** 族格加血只在最终建档消费，不改变裸血预算或信号半径。 */
+export function foeFamilyHpMulOf(family: FoeFamily | undefined): number {
+  return family === 'C' ? 1.3 : 1
+}
 
 /** 敌方战术 → 武器射程带（贴合作战风格）：
  * brawl 贴脸肉搏 = 无最小射程的近身喷子；orbit 环绕 = 中距小炮；kite 放风筝 = 高最小射程的远距炮。

@@ -265,7 +265,7 @@
         "wreckThreat": 90,
         "ships_0_count": 5,
         "ships_1_count": 5,
-        "threat": 95
+        "threat": 104
       },
       {
         "id": "alien-escort",
@@ -274,7 +274,7 @@
         "ships_0_count": 4,
         "ships_1_count": 2,
         "ships_2_count": 1,
-        "threat": 113
+        "threat": 123
       },
       {
         "id": "alien-main",
@@ -284,7 +284,7 @@
         "ships_1_count": 1,
         "ships_2_count": 2,
         "ships_3_count": 2,
-        "threat": 135
+        "threat": 150
       },
       {
         "id": "alien-broodmother",
@@ -298,7 +298,7 @@
         "ships_5_count": 1,
         "ships_6_count": 1,
         "ships_7_count": 2,
-        "threat": 179
+        "threat": 207
       },
       {
         "id": "alien-common",

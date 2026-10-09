@@ -1994,7 +1994,7 @@ export function applyFoeOverride<T>(anomaly: T, override?: FoeOverride): T {
     const ships = next.ships
     if (Array.isArray(ships)) {
       next.ships = ships.map((raw) => {
-        const slot = raw as { ship?: { id?: string; hp?: number } }
+        const slot = raw as { ship?: { id?: string; hp?: number; split?: Hp3 }; split?: Hp3 }
         if (slot.ship?.id !== bossShipId) return raw
         const classHp = Math.max(1, slot.ship.hp ?? 1)
         /**
@@ -2006,7 +2006,11 @@ export function applyFoeOverride<T>(anomaly: T, override?: FoeOverride): T {
           layers !== undefined
             ? { s: Math.max(0, layers.s) / bossHp, a: Math.max(0, layers.a) / bossHp, h: Math.max(0, layers.h) / bossHp }
             : undefined
-        return { ...(raw as object), hpMul: bossHp / classHp, ...(layerSplit !== undefined ? { split: layerSplit } : {}) }
+        const split = slot.split ?? slot.ship?.split ?? { s: 0.2, a: 0.55, h: 0.25 }
+        const hpOverride = layers !== undefined
+          ? { s: Math.max(0, layers.s), a: Math.max(0, layers.a), h: Math.max(0, layers.h) }
+          : { s: bossHp * split.s, a: bossHp * split.a, h: bossHp * split.h }
+        return { ...(raw as object), hpMul: bossHp / classHp, hpOverride, ...(layerSplit !== undefined ? { split: layerSplit } : {}) }
       })
     }
   }

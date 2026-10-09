@@ -7,6 +7,7 @@ import { activeFoeSpecsOf, createBattleState, foesWithSupport, resolveFoeRevive,
 import { advanceBattleFor, applyFoeOverride, battleArcsFor, createPlayerSpec } from '../src/combat'
 import { foeShipIdOfTag, foeShipTierOf, foeUnitNameOf } from '../src/foeCard'
 import { isAlive } from '../src/combatMath'
+import { foeFamilyHpMulOf } from '../src/foePower'
 import { FOE_MOUNTS, FOE_MOUNT_IDS } from '../src/foeMounts'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { alienFixture } from '../../../tools/alien-invasion-fixture'
@@ -37,7 +38,7 @@ function renderer(locale: 'zh' | 'en') {
     const ast = ts.createSourceFile(path, sourceOf(path), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
     return ast.statements.filter(node => !ts.isImportDeclaration(node)).map(node => node.getText(ast)).join('\n')
   }
-  const scope: Record<string, any> = { exports: {}, L10N, l10nEntryText, FOE_MOUNTS, FOE_SHIPS, WEB_BREAK_DIST_M: 4500,
+  const scope: Record<string, any> = { exports: {}, L10N, l10nEntryText, FOE_MOUNTS, FOE_SHIPS, foeFamilyHpMulOf, WEB_BREAK_DIST_M: 4500,
     signalSpaceTextId: (id: string) => id, localStorage: { getItem: () => locale }, navigator: { language: locale },
     createContext: () => ({ Provider: 'Provider' }) }
   const execute = (source: string): void => { runInNewContext(ts.transpileModule(source, {
@@ -57,11 +58,11 @@ function renderer(locale: 'zh' | 'en') {
 }
 
 describe('巢母主动召唤星髓成虫', () => {
-  it('保留9秒无限补机与加速，30秒最多3架；无随机消费、不要求成虫或工虫尸体', () => {
+  it('15秒无限补机与加速，30秒最多3架；无随机消费、不要求成虫或工虫尸体', () => {
     const w = world()
     expect(w.mother.foeReviveEscort).toBeUndefined()
     expect(w.mother.foeSummonEscort).toEqual({ everyMs: 30000, count: 3, shipId: ADULT, activeClock: true })
-    expect(w.mother.foeHatchery).toEqual({ cycleMs: 9000, stock: 'unlimited', fleet: true })
+    expect(w.mother.foeHatchery).toEqual({ cycleMs: 15000, stock: 'unlimited', fleet: true })
     expect(w.mother.foeFleetSpeedRamp).toEqual({ rampMs: 120000, maxBonusPct: 1.8 })
     for (const f of w.foes.slice(1)) delete w.battle.units[f.tag]
     const rng = structuredClone(w.state.rng)
@@ -100,7 +101,7 @@ describe('巢母主动召唤星髓成虫', () => {
     const fresh = foesWithSupport(w.battle, w.foes).filter(f => f.tag.startsWith('sup'))
     for (const spec of fresh) {
       expect(spec.hp).toEqual(original.hp)
-      expect(spec.hp.s + spec.hp.a + spec.hp.h).toBeCloseTo(1085.136 * strength)
+      expect(spec.hp.s + spec.hp.a + spec.hp.h).toBeCloseTo(1410.6768 * strength)
       expect(spec.weapons).toEqual(original.weapons)
       expect(spec.speedMps).toBe(398)
       expect(spec.foeChargeMul).toBe(2)

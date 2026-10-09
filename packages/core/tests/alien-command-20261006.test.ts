@@ -47,12 +47,16 @@ describe('新波次和全队补损', () => {
     lose(battle, mother.tag, 0); lose(battle, back.tag, 0)
     battle.foeDronePools![back.tag]![1]!.h = 5
     advanceFoeHatcheries(battle, foes, 0)
-    advanceFoeHatcheries(battle, foes, 8999)
+    advanceFoeHatcheries(battle, foes, 14999)
     expect(battle.foeDronePools![back.tag]![0]!.alive).toBe(false)
-    advanceFoeHatcheries(battle, foes, 9000)
+    advanceFoeHatcheries(battle, foes, 15000)
     expect(battle.foeHatcheries![mother.tag]).toMatchObject({ left: 'unlimited', revived: 2 })
     expect(battle.foeHatcheries![back.tag]).toMatchObject({ left: 32, revived: 0 })
-    expect(battle.foeDronePools![back.tag]![0]).toMatchObject({ alive: true, s: 6, a: 12, h: 20 })
+    const restored = battle.foeDronePools![back.tag]![0]!
+    expect(restored.alive).toBe(true)
+    expect(restored.s).toBeCloseTo(7.8, 10)
+    expect(restored.a).toBeCloseTo(15.6, 10)
+    expect(restored.h).toBe(26)
     expect(battle.foeDronePools![back.tag]![1]!.h).toBe(5)
     expect(battle.foeDronePools![mother.tag]).toHaveLength(12)
   })
@@ -64,7 +68,9 @@ describe('新波次和全队补损', () => {
     battle.foeHatcheries![foes[1]!.tag]!.left = 3
     const loaded = cleanBattle(JSON.parse(JSON.stringify(battle)))!
     expect(loaded.foeHatcheries).toEqual(battle.foeHatcheries)
-    advanceFoeHatcheries(loaded, foes, 12000)
+    advanceFoeHatcheries(loaded, foes, 19999)
+    expect(Object.values(loaded.foeHatcheries!).map(l => l.left)).toEqual([2, 3])
+    advanceFoeHatcheries(loaded, foes, 20000)
     expect(Object.values(loaded.foeHatcheries!).map(l => l.left)).toEqual([0, 0])
     expect(Object.values(loaded.foeDronePools!).flat().filter(p => p.alive)).toHaveLength(5)
     expect(Object.values(loaded.foeHatcheries!).reduce((n, l) => n + l.revived, 0)).toBe(5)
@@ -72,8 +78,8 @@ describe('新波次和全队补损', () => {
     const full = wave()
     lose(full.battle, full.foes[1]!.tag, 0)
     advanceFoeHatcheries(full.battle, full.foes, 0)
-    full.battle.foeHatcheries![full.foes[1]!.tag]!.nextAtMs = 9000
-    advanceFoeHatcheries(full.battle, [...full.foes].reverse(), 9000)
+    full.battle.foeHatcheries![full.foes[1]!.tag]!.nextAtMs = 15000
+    advanceFoeHatcheries(full.battle, [...full.foes].reverse(), 15000)
     expect(full.battle.foeHatcheries![full.foes[1]!.tag]!.left).toBe(32)
   })
   it('载体死亡、换波和旧尸体机群不补；无限模式随档保留', () => {
