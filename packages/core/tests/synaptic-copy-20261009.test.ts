@@ -44,7 +44,15 @@ describe('突触加速剂已批准中文与延期英文', () => {
     const old = execFileSync('git', ['show', 'd32bf55b:packages/data/src/l10n/table.ts'], { cwd: root, encoding: 'utf8', windowsHide: true })
     const scope = { exports: {} as { L10N: typeof L10N } }
     runInNewContext(ts.transpileModule(old, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, scope)
-    for (const [id, row] of Object.entries(scope.exports.L10N)) expect(L10N[id], id).toEqual(row)
+    // 2026-10-09 已批准启动时间改名；不放宽旧英文或其他中文的守恒检查。
+    const renamed: Record<string, string> = {
+      'mod.copy.070': '扩展无人机舱，并缩短本舰无人机启动时间。',
+      'ui.shipInfo.074': '无人机启动时间',
+      'ui.shipInfo.167': '无人机启动时间 −{p1}',
+    }
+    for (const [id, row] of Object.entries(scope.exports.L10N)) {
+      expect(L10N[id], id).toEqual({ ...row, zh: renamed[id] ?? row.zh })
+    }
     const backlog = readFileSync(new URL('docs/l10n-pending.md', root), 'utf8')
     expect(deferredL10nIssues(L10N, backlog)).toEqual([])
     for (const id of [copy, 'ui.boost.012', 'ui.boost.013', 'core.consumable.017', ...[1, 2, 3, 4, 5].map(n => `ui.battleAmmo.00${n}`)]) {

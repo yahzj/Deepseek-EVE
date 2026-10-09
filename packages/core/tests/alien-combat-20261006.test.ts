@@ -44,7 +44,7 @@ describe('酸液爆虫与腐蚀', () => {
     triggerAcidBurst(battle, { ...acid, tag: 'foe-1' }, 'attack', 102)
     expect(battle.alienCorrosion).toBe(.3)
   })
-  it('装甲结构全抗减少，不影响盾；同一规格重复施加不累扣', () => {
+  it('仅装甲全抗减少，不影响盾和结构；同一规格重复施加不累扣', () => {
     const { player } = world()
     player.resists = { shield: { kinetic: .5 }, armor: { kinetic: .4 }, hull: { explosive: -.85 } }
     applyAlienCorrosion(player, .15)
@@ -52,7 +52,7 @@ describe('酸液爆虫与腐蚀', () => {
     expect(player.resists.shield?.kinetic).toBe(.5)
     expect(player.resists.armor?.kinetic).toBeCloseTo(.25)
     expect(player.resists.armor?.plasma).toBe(-.15)
-    expect(player.resists.hull?.explosive).toBe(-.9)
+    expect(player.resists.hull).toEqual({ explosive: -.85 })
   })
   it('腐蚀和死亡原因存档往返保留', () => {
     const { battle } = world()
