@@ -54,17 +54,21 @@ describe('洞内伤害口径（甲案 · 威胁预算）：船长 2026-09-16', (
     expect(WORMHOLE_FOE_VOLLEY_STAGGER_MS).toBe(900)
   })
 
-  it('**同层同档"血 × 火力"恒等**（层 1 浅档 · 五族）：血与火力都随卡的性格浮动', () => {
+  it('同层同档族格前预算恒等；C族最终加血30%，其他四族不变', () => {
     const rows = (['A', 'C', 'D', 'E', 'G'] as const).map((f) => {
       const id = WORMHOLE_FAMILY_CARDS[f].shallow!
       return { f, ...derived(id, 1) }
     })
-    const threats = rows.map((r) => r.hp * r.dps)
+    const threats = rows.map((r) => r.hp * r.dps / (r.f === 'C' ? 1.3 : 1))
     const min = Math.min(...threats)
     const max = Math.max(...threats)
     // ⚠ ±5% 容差：派生是"逐条 `hpMul/dmgMul` ×系数 → 每门单发取整 → 再叠舰体火力越线折扣（超 150 的部分
     //   打折，非线性）"⇒ 实测极差约 2.8%，结构上（条目层面）是恒等的。
-    expect(max / min, `五族威胁极差（结构恒等，取整后 ≤5%）`).toBeLessThan(1.05)
+    expect(max / min, '族格前预算极差仍≤5%，不扩大原取整容差').toBeLessThan(1.05)
+    const alien = rows.find(r => r.f === 'C')!
+    const ordinary = rows.filter(r => r.f !== 'C').map(r => r.hp * r.dps)
+    expect(alien.hp * alien.dps / Math.min(...ordinary)).toBeGreaterThan(1.25)
+    expect(alien.hp * alien.dps / Math.max(...ordinary)).toBeLessThan(1.35)
     // 血不再是同一个数（旧口径五族同为 3,490）
     expect(new Set(rows.map((r) => Math.round(r.hp))).size).toBeGreaterThan(1)
     // D 族最厚、E 族最薄（自然比使然）；火力反过来

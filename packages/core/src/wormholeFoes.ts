@@ -643,9 +643,10 @@ export function wormholeCardIdOfFamily(family: WormholeFamily | undefined, seed:
  * 同日二次改判「**概率降为40%试一下**」）——BOSS 的**模式**仍是「打最大的」（2026-09-13 定的分流），
  * 变的只是"不再每发都精准"：每发开火前掷一次，没掷中 ⇒ 退回随机。
  *
- * ⚠ 普通节点/撤离战用**卡上**的 `foeTargetingChance`（本次也是 0.4）；这一个常量只管 BOSS。
+ * 2026-10-09船长指定倾向降低到10%；未命中倾向时按插件权重随机选靶。
+ * 普通节点/撤离战用族定概率，这一个常量只管 BOSS。
  */
-export const WORMHOLE_BOSS_TARGETING_CHANCE = 0.4
+export const WORMHOLE_BOSS_TARGETING_CHANCE = 0.1
 
 /**
  * **族定选靶**（船长 2026-09-15：「选靶按照族限定。」）——**同族各卡一律用族定模式**，
@@ -670,8 +671,8 @@ export const WORMHOLE_FAMILY_TARGETING: Readonly<Record<WormholeFamily, FoeTarge
   G: 'random',
 }
 
-/** 族定选靶的**倾向概率**（只有非随机模式消费；沿用船长 2026-09-14 定的 0.4） */
-export const WORMHOLE_FAMILY_TARGETING_CHANCE = 0.4
+/** 族定选靶的倾向概率，2026-10-09改为10%；只有非随机模式消费。 */
+export const WORMHOLE_FAMILY_TARGETING_CHANCE = 0.1
 
 /**
  * **把洞内敌卡按层派生**（不改数据文件，与窝点派生 `lairAnomalyOf` 同款做法）：
@@ -683,7 +684,7 @@ export const WORMHOLE_FAMILY_TARGETING_CHANCE = 0.4
  *   （总战力守恒，与设计稿 §3 表"同一威胁带里分几波"一致）；
  * - **选靶模式**（船长 2026-09-13 定，**2026-09-15 改为「按族限定」**）：普通用途一律取**族定模式**
  *   （`WORMHOLE_FAMILY_TARGETING`；卡面字段只作展示与体检断言）；**BOSS 一律「打最大的」**；
- * - **选靶倾向概率**（船长 2026-09-14 定 0.4）：非随机族取 `WORMHOLE_FAMILY_TARGETING_CHANCE`（0.4），
+ * - **选靶倾向概率**：非随机族取 `WORMHOLE_FAMILY_TARGETING_CHANCE`（0.1），
  *   随机族不掷骰（恒 1）；BOSS 取 `WORMHOLE_BOSS_TARGETING_CHANCE`。
  * 旧路径卡（没写 `ships`）不缩放条目，只改 `threat`（曲线自己会算血与火力）。
  */

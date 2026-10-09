@@ -863,6 +863,12 @@
       "source": "packages/data/src/foe-ships.ts",
       "fields": [
         {
+          "key": "evasion",
+          "sourcePath": "evasion",
+          "expression": "0.55",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
           "key": "hullClassTier",
           "sourcePath": "hullClassTier",
           "expression": "1",
@@ -1015,6 +1021,12 @@
       "source": "packages/data/src/foe-ships.ts",
       "fields": [
         {
+          "key": "evasion",
+          "sourcePath": "evasion",
+          "expression": "0.18",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
           "key": "hullClassTier",
           "sourcePath": "hullClassTier",
           "expression": "3",
@@ -1149,6 +1161,12 @@
       "category": "C",
       "source": "packages/data/src/foe-ships.ts",
       "fields": [
+        {
+          "key": "evasion",
+          "sourcePath": "evasion",
+          "expression": "0.12",
+          "source": "packages/data/src/foe-ships.ts"
+        },
         {
           "key": "hullClassTier",
           "sourcePath": "hullClassTier",
@@ -1294,6 +1312,12 @@
       "source": "packages/data/src/foe-ships.ts",
       "fields": [
         {
+          "key": "evasion",
+          "sourcePath": "evasion",
+          "expression": "0.1",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
           "key": "hullClassTier",
           "sourcePath": "hullClassTier",
           "expression": "5",
@@ -1433,6 +1457,12 @@
       "source": "packages/data/src/foe-ships.ts",
       "fields": [
         {
+          "key": "evasion",
+          "sourcePath": "evasion",
+          "expression": "0.22",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
           "key": "gunCount",
           "sourcePath": "gunCount",
           "expression": "2",
@@ -1551,6 +1581,12 @@
       "source": "packages/data/src/foe-ships.ts",
       "fields": [
         {
+          "key": "evasion",
+          "sourcePath": "evasion",
+          "expression": "0.22",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
           "key": "gunCount",
           "sourcePath": "gunCount",
           "expression": "2",
@@ -1668,6 +1704,12 @@
       "category": "C",
       "source": "packages/data/src/foe-ships.ts",
       "fields": [
+        {
+          "key": "evasion",
+          "sourcePath": "evasion",
+          "expression": "0.12",
+          "source": "packages/data/src/foe-ships.ts"
+        },
         {
           "key": "gunCount",
           "sourcePath": "gunCount",
@@ -1797,6 +1839,12 @@
       "category": "C",
       "source": "packages/data/src/foe-ships.ts",
       "fields": [
+        {
+          "key": "evasion",
+          "sourcePath": "evasion",
+          "expression": "0.18",
+          "source": "packages/data/src/foe-ships.ts"
+        },
         {
           "key": "gunCount",
           "sourcePath": "gunCount",
@@ -1935,6 +1983,12 @@
       "category": "C",
       "source": "packages/data/src/foe-ships.ts",
       "fields": [
+        {
+          "key": "evasion",
+          "sourcePath": "evasion",
+          "expression": "0.18",
+          "source": "packages/data/src/foe-ships.ts"
+        },
         {
           "key": "gunCount",
           "sourcePath": "gunCount",
@@ -7144,6 +7198,12 @@
       "source": "packages/data/src/anomalies.ts",
       "fields": [
         {
+          "key": "threatJudged",
+          "sourcePath": "threatJudged",
+          "expression": "67",
+          "source": "packages/data/src/anomalies.ts"
+        },
+        {
           "key": "lairLevel",
           "sourcePath": "lairLevel",
           "expression": "3",
@@ -7841,6 +7901,12 @@
       "category": "C",
       "source": "packages/data/src/anomalies.ts",
       "fields": [
+        {
+          "key": "threatJudged",
+          "sourcePath": "threatJudged",
+          "expression": "109",
+          "source": "packages/data/src/anomalies.ts"
+        },
         {
           "key": "lairLevel",
           "sourcePath": "lairLevel",

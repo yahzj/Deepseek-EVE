@@ -14,7 +14,7 @@
  * 不需要额外的表，也不需要反向 import data 包。
  */
 import type { AnomalyDef, FoeShipDef } from '@whale/core'
-import { FOE_MOUNTS, WEB_BREAK_DIST_M } from '@whale/core'
+import { FOE_MOUNTS, WEB_BREAK_DIST_M, foeFamilyHpMulOf } from '@whale/core'
 import { isEn, tr } from '../i18n/locale'
 
 
@@ -50,8 +50,9 @@ export function mountEffectText(id: string): string | null {
   const def = FOE_MOUNTS[id as keyof typeof FOE_MOUNTS]
   if (!def) return null
   const pct = (v: number) => String(Math.round(v * 100))
-  if (def.broodControl) return tr('ui.alien.002', { p1: def.broodControl.gunDmgMul, p2: pct(def.broodControl.droneDmgMul - 1), p3: pct(def.broodControl.droneRangeBonusPct) })
-  // ⟪文案调整 2026-10-08⟫ 巢母30秒召唤成虫；9秒补机与全队加速保留，三处说明同源。
+  // ⟪文案调整 2026-10-09⟫ 取消炮台惩罚，旧英文条目留档，新说明只登记待译。
+  if (def.broodControl) return tr('ui.alien.008', { p1: pct(def.broodControl.droneDmgMul - 1), p2: pct(def.broodControl.droneRangeBonusPct) })
+  // ⟪文案调整 2026-10-09⟫ 孵化等待读取新参数，召唤与加速说明同源。
   if (def.hatchery) {
     if (def.hatchery.stock === 'unlimited' && def.summonEscort && def.fleetSpeedRamp) return tr('ui.alien.007', { p1: def.hatchery.cycleMs / 1000, p2: def.summonEscort.everyMs / 1000, p3: def.fleetSpeedRamp.rampMs / 1000, p4: pct(def.fleetSpeedRamp.maxBonusPct), p5: def.summonEscort.count })
     return tr('ui.alien.003', { p1: def.hatchery.cycleMs / 1000, p2: def.hatchery.stock })
@@ -235,6 +236,8 @@ function bitsOf(ship: FoeShipDef, out: { mounts?: FoeMountLine[] }): string[] {
   if ((ship.foeRangeDebuffPct ?? 0) > 0) mech.push({ name: '', effect: tr('ui.foeIntro.051') })
   if (mech.length > 0) out.mounts = mech
   if (ship.elite === true) bits.push(tr('ui.foeIntro.070'))
+  // ⟪文案调整 2026-10-09⟫ 手册和卡片悬停共用族格说明，不改变原有战术行顺序。
+  if (ship.family === 'C') bits.push(tr('ui.alien.009', { p1: Math.round((foeFamilyHpMulOf(ship.family) - 1) * 100) }))
   return bits
 }
 

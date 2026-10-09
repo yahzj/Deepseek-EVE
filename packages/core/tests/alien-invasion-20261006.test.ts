@@ -32,8 +32,8 @@ describe('异形入侵真实接线', () => {
   })
   it('两载体炮数/火力/机群加成与孵化挂载真实消费', () => {
     for (const [id, guns, gunDmg, count, droneDmg, cycle, stock, charge] of [
-      ['foe-alien-hiveback', 1, 36, 8, 209, 12000, 32, 1.5],
-      ['foe-alien-broodmother', 2, 112, 12, 423, 9000, 'unlimited', 1.25],
+      ['foe-alien-hiveback', 1, 91, 8, 209, 20000, 32, 1.5],
+      ['foe-alien-broodmother', 2, 279, 12, 423, 15000, 'unlimited', 1.25],
     ] as const) {
       const ship = ctx.foeShips!.get(id)!
       const base = { ...ctx.anomalies.get('alien-vanguard')!, ships: [{ ship, count: 1, firepowerAnchor: id.endsWith('hiveback') ? 228 : 558 }] }
@@ -95,9 +95,10 @@ describe('异形入侵真实接线', () => {
     const battle = startBattleFor(state, local, state.shipId, card.id, 0, 10000)!
     const pool = battle.foeDronePools!['foe-0']![0]!
     pool.alive = false; pool.s = pool.a = pool.h = 0
-    for (let time = 100; time <= 12300; time += 100) {
+    for (let time = 100; time <= 20300; time += 100) {
       state.gameMs = time
       advanceBattleFor(state, local, battle, state.shipId, card.id)
+      if (time < 20000) expect(battle.foeHatcheries?.['foe-0']?.revived ?? 0).toBe(0)
     }
     expect(battle.foeHatcheries?.['foe-0']?.revived).toBe(1)
     expect(battle.foeHatcheries?.['foe-0']?.left).toBe(31)

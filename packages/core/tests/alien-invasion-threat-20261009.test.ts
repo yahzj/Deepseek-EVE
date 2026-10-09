@@ -14,6 +14,9 @@ const cases = [
   ['alien-main', 129, 135, 1.02, 1.1085],
   ['alien-broodmother', 170, 179, 1.5, 1.739],
 ] as const
+const currentThreats: Readonly<Record<string, number>> = {
+  'alien-vanguard': 104, 'alien-escort': 123, 'alien-main': 150, 'alien-broodmother': 207,
+}
 
 function previousCard(card: AnomalyDef, threat: number, scale: number): AnomalyDef {
   const count = card.ships!.reduce((n, slot) => n + (slot.count ?? 1), 0)
@@ -35,7 +38,8 @@ function previousCard(card: AnomalyDef, threat: number, scale: number): AnomalyD
 describe('C族入侵平均威胁提高5%', () => {
   it('四卡整数取整后的平均威胁提高约5%，回收体量不变', () => {
     const before = cases.reduce((n, [, value]) => n + value, 0) / cases.length
-    const after = cases.reduce((n, [id]) => n + ctx.anomalies.get(id)!.threat, 0) / cases.length
+    // +5%批次预算保留；随后族格加血/炮伤调整单独重算显示威胁。
+    const after = cases.reduce((n, [, , target]) => n + target, 0) / cases.length
     expect(before).toBe(124.25)
     expect(after).toBe(130.5)
     expect(after / before).toBeCloseTo(1.05, 3)
@@ -46,13 +50,13 @@ describe('C族入侵平均威胁提高5%', () => {
     const card = ctx.anomalies.get(id)!
     const old = previousCard(card, oldThreat, oldScale)
     const design = id === 'alien-broodmother' ? 10 : 3
-    expect(card.threat).toBe(Math.round(oldThreat * 1.05))
-    expect(card.threat).toBe(target)
-    expect(foeThreatOfAnomaly(card, design, bal)).toBe(target)
-    expect(foeThreatOfAnomaly(old, design, bal)).toBe(oldThreat)
+    expect(target).toBe(Math.round(oldThreat * 1.05))
+    expect(card.threat).toBe(currentThreats[id])
+    expect(foeThreatOfAnomaly(card, design, bal)).toBe(card.threat)
+    expect(foeThreatOfAnomaly(old, design, bal)).toBeLessThan(card.threat)
     const budget = 5 * foeStrengthOf(card, bal).x / design
-    expect(budget).toBeLessThanOrEqual(foeHpOfThreat(target, bal))
-    expect(budget).toBeGreaterThan(foeHpOfThreat(target - 1, bal))
+    expect(budget).toBeLessThanOrEqual(foeHpOfThreat(card.threat, bal))
+    expect(budget).toBeGreaterThan(foeHpOfThreat(card.threat - 1, bal))
     expect(card.wreckThreat).toBe(oldThreat)
     expect(card.threatJudged).toBe(oldThreat)
     for (const slot of card.ships!) {

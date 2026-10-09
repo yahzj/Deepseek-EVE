@@ -448,6 +448,7 @@ export const ALIEN_FAST_SHIP_IDS: readonly string[] = ['foe-alien-acid-burster']
 
 export const FOE_ALIEN_ACID_BURSTER: FoeShipDef = {
   id: 'foe-alien-acid-burster', name: L10N['ship.alien.001']!.zh, family: 'C',
+  evasion: enemyParameterOf(foeShipsParameters, 'foe-alien-acid-burster', 'evasion'),
   hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "hullClassTier") as 1 | 2 | 3 | 4 | 5), speedRatio: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "speedRatio_input0") / enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "speedRatio_input1"), hp: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "hp"), split: { s: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "split_h") },
   ...C_FAMILY_RESISTS, shotDmg: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "shotDmg"), gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "gunCount"), hitRate: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "hitRate"), reloadMs: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "reloadMs"),
   rangeMinM: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "rangeMinM"), rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "rangeMaxM"), falloff: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "falloff"), dmgMix: { kinetic: enemyParameterOf(foeShipsParameters, "foe-alien-acid-burster", "dmgMix_kinetic") }, tactic: 'brawl',
@@ -455,6 +456,7 @@ export const FOE_ALIEN_ACID_BURSTER: FoeShipDef = {
 }
 export const FOE_ALIEN_BROOD_WORKER: FoeShipDef = {
   id: 'foe-alien-brood-worker', name: L10N['ship.alien.002']!.zh, family: 'C',
+  evasion: enemyParameterOf(foeShipsParameters, 'foe-alien-brood-worker', 'evasion'),
   hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "hullClassTier") as 1 | 2 | 3 | 4 | 5), speedRatio: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "speedRatio_input0") / enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "speedRatio_input1"), hp: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "hp"), split: { s: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "split_h") },
   ...C_FAMILY_RESISTS, shotDmg: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "shotDmg"), gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "gunCount"), hitRate: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "hitRate"), reloadMs: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "reloadMs"),
   rangeMinM: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "rangeMinM"), rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "rangeMaxM"), falloff: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "falloff"), blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-alien-brood-worker", "blindDmgMul"),
@@ -463,6 +465,7 @@ export const FOE_ALIEN_BROOD_WORKER: FoeShipDef = {
 }
 export const FOE_ALIEN_HIVEBACK: FoeShipDef = {
   id: 'foe-alien-hiveback', name: L10N['ship.alien.003']!.zh, family: 'C',
+  evasion: enemyParameterOf(foeShipsParameters, 'foe-alien-hiveback', 'evasion'),
   hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "hullClassTier") as 1 | 2 | 3 | 4 | 5), speedRatio: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "speedRatio_input0") / enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "speedRatio_input1"), hp: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "hp"), split: { s: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "split_h") },
   ...C_FAMILY_RESISTS, shotDmg: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "shotDmg"), gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "gunCount"), hitRate: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "hitRate"), reloadMs: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "reloadMs"),
   rangeMinM: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "rangeMinM"), rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "rangeMaxM"), falloff: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "falloff"), blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-alien-hiveback", "blindDmgMul"),
@@ -472,6 +475,7 @@ export const FOE_ALIEN_HIVEBACK: FoeShipDef = {
 }
 export const FOE_ALIEN_BROODMOTHER: FoeShipDef = {
   id: 'foe-alien-broodmother', name: L10N['ship.alien.004']!.zh, family: 'C',
+  evasion: enemyParameterOf(foeShipsParameters, 'foe-alien-broodmother', 'evasion'),
   hullClassTier: (enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "hullClassTier") as 1 | 2 | 3 | 4 | 5), speedRatio: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "speedRatio_input0") / enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "speedRatio_input1"), hp: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "hp"), split: { s: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "split_s"), a: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "split_a"), h: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "split_h") },
   ...C_FAMILY_RESISTS, shotDmg: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "shotDmg"), gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "gunCount"), hitRate: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "hitRate"), reloadMs: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "reloadMs"),
   rangeMinM: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "rangeMinM"), rangeMaxM: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "rangeMaxM"), falloff: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "falloff"), blindDmgMul: enemyParameterOf(foeShipsParameters, "foe-alien-broodmother", "blindDmgMul"),
@@ -498,6 +502,7 @@ export const FOE_ALIEN_BROODMOTHER: FoeShipDef = {
  * 倍率 = **1.5**（本舰 T1 ⇒ 按档阶梯 `ALIEN_CHARGE_MUL_BY_TIER`；2026-09-16 全族按档口径，值不变）。 */
 export const FOE_ALIEN_RIFT: FoeShipDef = {
   id: 'foe-alien-rift-larva',
+  evasion: enemyParameterOf(foeShipsParameters, 'foe-alien-rift-larva', 'evasion'),
   gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-rift-larva", "gunCount"),
   name: '畸变幼虫',
   family: 'C',
@@ -538,6 +543,7 @@ export const FOE_ALIEN_RIFT: FoeShipDef = {
  * 倍率 = **1.5**（本舰 T1 ⇒ 按档阶梯 `ALIEN_CHARGE_MUL_BY_TIER`；2026-09-16 全族按档口径，值不变）。 */
 export const FOE_ALIEN_STARCORE: FoeShipDef = {
   id: 'foe-alien-starcore-larva',
+  evasion: enemyParameterOf(foeShipsParameters, 'foe-alien-starcore-larva', 'evasion'),
   gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-larva", "gunCount"),
   name: '星髓幼虫',
   family: 'C',
@@ -585,6 +591,7 @@ export const FOE_ALIEN_STARCORE: FoeShipDef = {
  * 血型均衡（噬口卡 `defProfile` 未写 = 缺省）；主系**等离子** 8:2。形态 = `'spit'`。 */
 export const FOE_ALIEN_MAW: FoeShipDef = {
   id: 'foe-alien-maw',
+  evasion: enemyParameterOf(foeShipsParameters, 'foe-alien-maw', 'evasion'),
   gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-maw", "gunCount"),
   name: '噬口巨兽',
   family: 'C',
@@ -625,6 +632,7 @@ export const FOE_ALIEN_MAW: FoeShipDef = {
  * **冲锋**（2026-09-14 船长：「给小虫子添加冲锋，倍率为 1.5」）：`foeCanCharge` + `foeChargeMul: 1.5`。 */
 export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
   id: 'foe-alien-starcore-adult',
+  evasion: enemyParameterOf(foeShipsParameters, 'foe-alien-starcore-adult', 'evasion'),
   gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-starcore-adult", "gunCount"),
   name: '星髓成虫',
   family: 'C',
@@ -669,6 +677,7 @@ export const FOE_ALIEN_STARCORE_ADULT: FoeShipDef = {
  * ⚠ **不是"多一条 C 族卡"那么简单**：它是 C 族**唯一带机群**的舰级，也是洞内 C 族深层卡的主体。 */
 export const FOE_ALIEN_SPORE_HIVE: FoeShipDef = {
   id: 'foe-alien-spore-hive',
+  evasion: enemyParameterOf(foeShipsParameters, 'foe-alien-spore-hive', 'evasion'),
   gunCount: enemyParameterOf(foeShipsParameters, "foe-alien-spore-hive", "gunCount"),
   name: '孢群异虫',
   family: 'C',

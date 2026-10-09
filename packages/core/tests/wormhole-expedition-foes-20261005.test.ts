@@ -77,7 +77,7 @@ describe('新趟敌卡单点：确定性、共享表及同族', () => {
         expect(first.foeFamily).toBe(family)
         expect(first.ships!.every((slot) => slot.ship.family === family)).toBe(true)
         expect(first.foeTargeting).toBe(role === 'guard' ? 'largest' : WORMHOLE_FAMILY_TARGETING[family])
-        expect(first.foeTargetingChance).toBe(first.foeTargeting === 'random' ? 1 : 0.4)
+        expect(first.foeTargetingChance).toBe(first.foeTargeting === 'random' ? 1 : 0.1)
         first.ships![0]!.ship.hp = 1
         first.ships![0]!.ship.split.h = 1
         expect(wormholeExpeditionCard(frozen, family, 10, role).ships![0]!.ship.hp).not.toBe(1)
@@ -123,7 +123,7 @@ describe('新趟HP/DPS：首层现行预算与线性总量', () => {
     it(`${family}族普通不换重机制；五种用途HP/DPS共用首层浅卡自然比`, () => {
       const first = wormholeExpeditionCard(ctx, family, 1, 'ordinary')
       const baseline = foeHpOfThreat(45, bal) * 10
-      expect(first.expeditionFoe.budget.x).toBeCloseTo(baseline / 5, 8)
+      expect(first.expeditionFoe.budget.x).toBeCloseTo(baseline / 5 * Math.sqrt(family === 'C' ? 1.3 : 1), 8)
       const shape = first.ships!.map((slot) => ({ id: slot.ship.id, count: slot.count, mounts: slot.mounts, drones: slot.ship.drones }))
       for (const depth of [1, 2, 3, 4, 7, 10, 30, 100]) {
         const ordinary = wormholeExpeditionCard(ctx, family, depth, 'ordinary')

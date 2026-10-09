@@ -518,6 +518,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.alien.006': { zh: '无限', en: 'Unlimited' },
   // ⟪文案调整 2026-10-08⟫ 船长确认巢母改为召唤成虫，满编不召唤。
   'ui.alien.007': { zh: '无人机战损后，等待{p1}秒满血补回本波存活舰船的全部损失机位，后备无限；每{p2}秒召唤最多{p5}架星髓成虫，满编时不召唤，不超过本波原编制。存活时全队速度每秒增加，{p3}秒达到+{p4}%；被击毁后补机、召唤和加速均停止。', en: 'After drone losses, waits {p1} seconds before restoring all lost slots of surviving ships in this wave at full health, with unlimited reserves. Summons up to {p5} Starcore Adults every {p2} seconds, within this wave\'s original formation limit; no summons when full. While alive, increases fleet speed each second, reaching +{p4}% after {p3} seconds. Drone replacement, summoning and the speed bonus end when destroyed.' },
+  // ⟪文案调整 2026-10-09⟫ 独立调整已批准，英文未授权准备。
+  'ui.alien.008': { zh: '本舰无人机伤害增加{p1}%，射程增加{p2}%。', en: '', enDeferred: true },
+  'ui.alien.009': { zh: '异形单位最终血量增加{p1}%；入侵旗舰的共享血量不受影响。', en: '', enDeferred: true },
   "core.explorationStatus.001": { zh: "发现一处信号空间：{p1}，已记录{p2}/{p3}处。", en: "Signal Space discovered: {p1}; {p2}/{p3} sites recorded." },
   "core.explorationStatus.002": { zh: "测绘处标记了{p1}处信号空间，当前共{p2}处。", en: "The Survey Office marked {p1} Signal Spaces; {p2} sites are now recorded." },
   "core.explorationStatus.003": { zh: "扫描已暂停：信号空间坐标达到上限{p1}处。", en: "Scanning paused: the Signal Space coordinate limit of {p1} has been reached." },

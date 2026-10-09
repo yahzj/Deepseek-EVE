@@ -7224,7 +7224,7 @@ const MATERIAL_RATIO_REGISTERED: Readonly<Record<string, string>> = {
               }
             } else if (card.foeTargetingChance !== WORMHOLE_FAMILY_TARGETING_CHANCE) {
               errors.push(
-                `族定选靶：卡 ${id} 的倾向概率 ${String(card.foeTargetingChance)} ≠ ${WORMHOLE_FAMILY_TARGETING_CHANCE}（船长 2026-09-14 定的 0.4）`,
+                `族定选靶：卡 ${id} 的倾向概率 ${String(card.foeTargetingChance)} ≠ ${WORMHOLE_FAMILY_TARGETING_CHANCE}（船长2026-10-09指定10%）`,
               )
             }
           }
@@ -8677,8 +8677,8 @@ checkPlugEffectWiring()
       const count = ship.drones?.reduce((n, ds) => n + ds.count, 0)
       const isBack = ship.id === 'foe-alien-hiveback'
       check(ship.gunCount === (isBack ? 1 : 2) && ship.rangeMaxM === 6000 && count === (isBack ? 8 : 12), `载体配置错位：${ship.id}`)
-      check(mount.broodControl?.gunDmgMul === .4 && mount.broodControl.droneDmgMul === 1.5 && mount.broodControl.droneRangeBonusPct === .5, `载体加成缺失：${ship.id}`)
-      check(mount.hatchery?.stock === (isBack ? 32 : 'unlimited') && mount.hatchery.cycleMs === (isBack ? 12000 : 9000) && mount.hatchery.fleet === true, `孵化额度或周期错位：${ship.id}`)
+      check(mount.broodControl?.gunDmgMul === 1 && mount.broodControl.droneDmgMul === 1.5 && mount.broodControl.droneRangeBonusPct === .5, `载体加成缺失：${ship.id}`)
+      check(mount.hatchery?.stock === (isBack ? 32 : 'unlimited') && mount.hatchery.cycleMs === (isBack ? 20000 : 15000) && mount.hatchery.fleet === true, `孵化额度或周期错位：${ship.id}`)
       if (!isBack) {
         check(mount.foeReviveEscort === undefined && mount.foeSummonEscort?.everyMs === 30000 && mount.foeSummonEscort.count === 3 && mount.foeSummonEscort.shipId === 'foe-alien-starcore-adult' && mount.foeSummonEscort.activeClock === true, '巢母仅30秒召唤最多3架星髓成虫，不复活工虫')
         check(mount.fleetSpeedRamp?.rampMs === 120000 && mount.fleetSpeedRamp.maxBonusPct === 1.8, '巢母120秒全队速度增加180%')

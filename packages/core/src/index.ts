@@ -4,6 +4,7 @@
  */
 
 export { battleWeaponCyclesOf } from './battleWeaponView'
+export { foeFamilyHpMulOf } from './foePower'
 export type { BattleWeaponCycleView } from './battleWeaponView'
 export { battleDeviceCyclesOf } from './battleDeviceView'
 export type { BattleDeviceCycleView } from './battleDeviceView'

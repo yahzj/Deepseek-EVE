@@ -21,18 +21,18 @@
       },
       {
         "id": "foe-mount-c-brood-control",
-        "broodControl_gunDmgMul": 0.4,
+        "broodControl_gunDmgMul": 1,
         "broodControl_droneDmgMul": 1.5,
         "broodControl_droneRangeBonusPct": 0.5
       },
       {
         "id": "foe-mount-c-hiveback-hatchery",
-        "hatchery_cycleMs": 12000,
+        "hatchery_cycleMs": 20000,
         "hatchery_stock": 32
       },
       {
         "id": "foe-mount-c-broodmother-hatchery",
-        "hatchery_cycleMs": 9000,
+        "hatchery_cycleMs": 15000,
         "summonEscort_everyMs": 30000,
         "summonEscort_count": 3,
         "fleetSpeedRamp_rampMs": 120000,
