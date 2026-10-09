@@ -1705,6 +1705,11 @@ export interface ModuleDef {
    * V18.1：多件推进器速度加成走 EVE 曲线（Π(1+pᵢ·wᵢ)）。
    */
   speedBonusPct?: number
+  /** 本舰战斗速度收益线性爬升；与静态速度件同池折权。 */
+  speedRamp?: { rampMs: number; maxBonusPct: number }
+  /** 逐次命中敌舰后降低装甲/结构抗性，各层独立到期。 */
+  acidOnHit?: { cutPct: number; durationMs: number }
+  blindDmgMul?: number
   /** 推进器开火失稳：命中削减量（0.05 = 我方武器命中 ×0.95；界 [0, 0.5]，缺省 0；
    * 常驻生效并进胜率预估同源口径，见 combat.hitChance 的 hitMul）。
    * 多件命中代价沿用速度收益权重，逐件乘保留比例；只在点火期生效。 */

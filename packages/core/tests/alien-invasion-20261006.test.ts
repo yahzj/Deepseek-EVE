@@ -156,7 +156,7 @@ describe('异形入侵真实接线', () => {
     const ordinary = recycleProfileOf(ctx, 'wreck-c-inv')!
     expect(ordinary.lairGear).toBeUndefined()
     expect(ordinary.theme.modules).toEqual(['mod-armor-plate-2'])
-    expect(recycleProfileOf(ctx, 'wreck-rare-c-inv')!.lairGear).toEqual(['mod-lair-armor-c', 'mod-lair-dc-c', 'mod-lair-laser-c'])
+    expect(recycleProfileOf(ctx, 'wreck-rare-c-inv')!.lairGear).toEqual(['mod-alien-acid-launcher', 'mod-alien-pressure-chamber', 'drone-jawclaw'])
     for (let i = 0; i < 100; i++) expect(rollRecycleCoreGain('wreck-rare-c-inv', i)).toBeUndefined()
     expect(WRECK_GROUP_BY_KEY.get('c-wh')?.members).not.toContain('alien-main')
   })

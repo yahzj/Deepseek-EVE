@@ -60,6 +60,13 @@
     "repairPulseTargetsFleet": "boolean"
   },
   "modules": {
+    "acidOnHit": "object",
+    "acidOnHit.cutPct": "number",
+    "acidOnHit.durationMs": "number",
+    "speedRamp": "object",
+    "speedRamp.rampMs": "number",
+    "speedRamp.maxBonusPct": "number",
+    "blindDmgMul": "number",
     "droneLaunchCutPct": "number",
     "laserFalloffBonus": "number",
     "": "object",

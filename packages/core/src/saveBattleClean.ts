@@ -30,6 +30,7 @@ export function asRaw(value: unknown): RawState {
 type BattleFieldSpec = { kind: 'persist' } | { kind: 'runtime'; why: string }
 
 const BATTLE_FIELDS = {
+  foeAcidLayers: { kind: 'persist' },
   alienCorrosion: { kind: 'persist' },
   acidBursts: { kind: 'persist' },
   foeAbilityClocks: { kind: 'persist' },
@@ -500,6 +501,20 @@ export function cleanBattle(raw: unknown): BattleState | null {
   /** **本场 BOSS 阵亡时刻**（2026-09-27 船长令）：只收非负有限数；坏值/缺省 ⇒ 不写（零迁移） */
   const bossDownAtMs = cleanPosNum(b.bossDownAtMs)
   const cleaned: Partial<Record<keyof BattleState, unknown>> = {
+    ...(() => {
+      const now = Math.max(0, numf(b.lastTickGameMs, 0))
+      const foeAcidLayers = cleanLedgerMap(b.foeAcidLayers, (raw) => {
+        if (!Array.isArray(raw)) return undefined
+        const layers = raw.flatMap(value => {
+          const layer = asRaw(value)
+          return typeof layer.cutPct === 'number' && Number.isFinite(layer.cutPct) && layer.cutPct > 0 && layer.cutPct <= 1 &&
+            typeof layer.untilMs === 'number' && Number.isFinite(layer.untilMs) && layer.untilMs > now
+            ? [{ cutPct: layer.cutPct, untilMs: layer.untilMs }] : []
+        })
+        return layers.length ? layers : undefined
+      })
+      return foeAcidLayers === undefined ? {} : { foeAcidLayers }
+    })(),
     startedAtGameMs: Math.max(0, Math.floor(numf(b.startedAtGameMs, 0))),
     ...(foeOverride !== undefined ? { foeOverride } : {}),
     lastTickGameMs: Math.max(0, Math.floor(numf(b.lastTickGameMs, 0))),

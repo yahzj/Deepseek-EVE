@@ -51,6 +51,8 @@ import type { DataDocument } from '../../../tools/data-editor-contract'
 import { staticDataGroup } from './staticData'
 
 const MODULES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  'mod-alien-acid-launcher': { name: L10N['mod.alienLoot.001']!.zh, description: L10N['mod.alienLoot.002']!.zh },
+  'mod-alien-pressure-chamber': { name: L10N['mod.alienLoot.003']!.zh, description: L10N['mod.alienLoot.004']!.zh },
   'mod-drone-launch-1': { name: L10N['mod.launchCalibration.001']!.zh, description: L10N['mod.launchCalibration.006']!.zh },
   'mod-drone-launch-2': { name: L10N['mod.launchCalibration.002']!.zh, description: L10N['mod.launchCalibration.006']!.zh },
   'mod-drone-launch-3': { name: L10N['mod.launchCalibration.003']!.zh, description: L10N['mod.launchCalibration.006']!.zh },

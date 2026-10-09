@@ -569,6 +569,7 @@ export function createPlayerSpec(
       src: turret.slot === 'missile' ? 'missile' : 'turret',
       shotsByType,
       count,
+      ...(turret.acidOnHit ? { acidOnHit: turret.acidOnHit, blindDmgMul: turret.blindDmgMul } : {}),
       eqHitMul: (hitEq * plugHitMul) > 1 ? hitEq * plugHitMul : undefined,
       maxRangeM: rangeOf(turret.maxRangeM, type),
       minRangeM: turret.minRangeM ?? 0,
@@ -757,6 +758,7 @@ export function createPlayerSpec(
       Math.max(0.1, penalties.speed) * damage.speed,
     // 推进器爆发倍率（多件 EVE 曲线收敛后的合成值 − 1）：0 = 未装；爆发窗口内才乘上去
     ...(speedEq > 1 ? { thrusterBoost: speedEq - 1 } : {}),
+    ...(allDefs.some(mod => mod.speedRamp) ? { speedBonusModules: allDefs.filter(mod => (mod.speedBonusPct ?? 0) > 0) } : {}),
     // 本单位自己的点火周期（只在有覆盖件时写；没写 = 全局 60/60，见 `unitThrusterCycle`）
     ...(cycleOverridden ? { thrusterBoostMs: propCycle!.boostMs, thrusterCooldownMs: propCycle!.cooldownMs } : {}),
     /**

@@ -2809,6 +2809,8 @@ for (const m of MODULES) {
     const hasHit = m.hitBonusPct !== undefined
     const hasEva = m.evasionGapPct !== undefined
     const hasCalibration = m.laserFalloffBonus !== undefined
+    const hasSpeedRamp = m.speedRamp !== undefined
+    if (hasSpeedRamp) check(m.speedRamp!.rampMs > 0 && Number.isInteger(m.speedRamp!.rampMs) && m.speedRamp!.maxBonusPct >= (m.speedBonusPct ?? 0) && (m.speedBonusPct ?? 0) > 0, `支援件 ${m.id} 渐增速度参数非法`)
     // 2026-09-14 跃迁计算机：**跃迁**成为支援件的第六类效果（低槽；只缩短星系际航行时间）
     const hasWarp = m.warpSpeedBonusPct !== undefined
     // 2026-09-15 隐秘行动装置：**隐身**成为支援件的第七类效果（**高槽**；开火前隐身 20/30 秒）
@@ -2829,7 +2831,7 @@ for (const m of MODULES) {
      */
     const hasDc = m.hullSaveKit !== undefined
     const kinds =
-      (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0) + (hasStealth ? 1 : 0) + (hasEcm ? 1 : 0) + (hasWeb ? 1 : 0) + (hasDc ? 1 : 0) + (hasCalibration ? 1 : 0)
+      (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0) + (hasStealth ? 1 : 0) + (hasEcm ? 1 : 0) + (hasWeb ? 1 : 0) + (hasDc ? 1 : 0) + (hasCalibration ? 1 : 0) + (hasSpeedRamp ? 1 : 0)
     check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复/跃迁/隐身/射程压制/捕获网/损管）`)
     if (hasRepair) {
       // 修复系：装甲/结构修复值 ∈ [1, 100]、周期缺省 5 秒（2000~60_000 毫秒）、必须指明消耗的修理组件
@@ -3238,7 +3240,8 @@ for (const m of MODULES) {
       check(bad.length === 0, `残骸组契约：${g.key} 的 theme.${key} 与成员卡并集不一致（差异：${bad.join(' / ')}）`)
     }
     // 2026-10-04 回调契约：普通残骸主题件不得收录稀有专属势力装备。
-    const factionGearIds = new Set(Object.values(FOE_LAIR_GEAR).flat())
+    const factionGearIds = new Set([...Object.values(FOE_LAIR_GEAR).flat(), ...WRECK_GROUPS.flatMap(group => group.lairGear ?? [])])
+    for (const id of g.lairGear ?? []) check(ctx.modules.has(id) || ctx.items.has(id), `残骸组契约：${g.key} 专属池 ${id} 未登记`)
     for (const id of [...(g.theme.modules ?? []), ...(g.theme.mk2 ?? [])]) {
       check(!factionGearIds.has(id), `残骸组契约：${g.key} 的普通主题件 ${id} 是势力专属件，应仅在稀有专属池`)
     }
@@ -5944,7 +5947,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
    * （玩家可挂卖，市场不出售现货）；②「专属无人机出一次性蓝图（每次制造50架）」⇒
    * 允许**一次性蓝图**存在，但**只许 `singleUse`**（普通蓝图仍禁——那等于开一条制造渠道）。 */
   {
-    const lairGearIds = new Set<string>(Object.values(FOE_LAIR_GEAR).flat())
+    const lairGearIds = new Set<string>([...Object.values(FOE_LAIR_GEAR).flat(), ...WRECK_GROUPS.flatMap(group => group.lairGear ?? [])])
     const bpByModule = new Map<string, string>()
     for (const bp of BLUEPRINTS) if (bp.moduleId) bpByModule.set(bp.moduleId, bp.id)
     let marketCards = 0
@@ -5977,6 +5980,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
           const permanentDroneBooks: Readonly<Record<string, string>> = {
             'drone-exile-bee': 'bp-faction-drone-bee',
             'drone-ink-heavy': 'bp-faction-drone-ink',
+            'drone-jawclaw': 'bp-faction-drone-jawclaw',
           }
           for (const bp of BLUEPRINTS) {
             if (bp.itemId !== id) continue
@@ -6670,6 +6674,7 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     'mod-dc-3:hullResistAdd',
     // 2026-09-13 虫洞专属（船长逐条给定）：
     'mod-wh-c-pulse:speedBonusPct', // 生体脉搏加速器（支援槽 + 舰船速度 +10%）→ 界面「航速」
+    'mod-alien-pressure-chamber:speedBonusPct', // 已确认低槽渐增速度，详情显示初值与峰值。
     'mod-wh-a-coat:evasionGapPct', // 掠袭折射涂层（装甲槽 + 闪避缺口）→ 界面「闪避」；**2026-09-17 起引擎也真的算它**（原先闪避缺口只在支援槽件里收）
     'mod-wh-a-scan:rangeCutPct', // 赃物扫描阵（支援槽 + 武器射程 −15%）→ 界面「射程代价」
     'mod-wh-a-shield:rangeCutPct', // 掠袭者护盾笼（护盾槽 + 武器射程 −25%）→ 界面「射程代价」

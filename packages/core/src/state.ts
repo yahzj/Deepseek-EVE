@@ -951,6 +951,7 @@ export interface BlinkSeg {
 
 /** V12 实时战斗持久状态（确定性事件步进；只存动态量） */
 export interface BattleState {
+  foeAcidLayers?: Record<string, Array<{ cutPct: number; untilMs: number }>>
   /** 本场逐次累计腐蚀与爆虫触发去重，跨波保留、战后随战斗销毁。 */
   alienCorrosion?: number
   acidBursts?: Record<string, { cause: 'attack' | 'killed'; atMs: number; resolved?: boolean }>

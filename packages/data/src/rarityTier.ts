@@ -28,6 +28,7 @@
  * 升档后**档位与价格解耦**：日后调价不再自动触发改档，档位是人审结果。
  */
 export const RARITY_TIER: Readonly<Record<string, number>> = {
+  'mod-alien-acid-launcher': 4, 'mod-alien-pressure-chamber': 4,
   'mod-drone-launch-1': 1, 'mod-drone-launch-2': 2, 'mod-drone-launch-3': 4,
   'bp-drone-launch-1': 1, 'bp-drone-launch-2': 2, 'bp-drone-launch-3': 4,
   'mod-laser-calibration-2': 2, 'mod-laser-calibration-3': 4,

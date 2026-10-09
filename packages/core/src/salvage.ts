@@ -1079,7 +1079,7 @@ export function recycleProfileOf(ctx: SimContext, wreckItemId: string): RecycleP
     // 稀有残骸（2026-09-10）：保底照常，另走"必定额外掉落"的高级箱；专属装备池按**族**取（与合并前同源）
     ...(isRareWreck(wreckItemId)
       ? (() => {
-          const gear = FOE_LAIR_GEAR[group.family] ?? []
+          const gear = group.lairGear ?? FOE_LAIR_GEAR[group.family] ?? []
           return {
             rare: true as const,
             ...(gear.length > 0 ? { lairGear: gear } : {}),

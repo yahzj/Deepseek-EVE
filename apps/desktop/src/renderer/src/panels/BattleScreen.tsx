@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, battleArcsFor, battleFoeAnomaly, battleShowWindowMs, battleTacticDesire, battleVerdictOf, createPlayerSpec, expeditionStatus, fleetDefOf, foeChargeCount, foeMainTagOf, foeShipTierOf, foeUnitNameOf, repairKitAvailableOf, repairLedgersOf, thrusterPhase, weekendFlagshipBattleViewOf, wormholeBattleViewOf, foeShipIdOfTag } from '@whale/core'
 import type { BattleReportRecord, BattleVerdict, DamageType, DroneLossReport, ShipRole } from '@whale/core'
+import { foeAcidRowsOf } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import type { ToastFn } from '../pages/common'
 import { BattleShipSprite } from './battleShipFx'
@@ -2146,7 +2147,9 @@ const meSpeedRef = useRef(200)
      现只切换 class（is-corpse）与淡出透明度，舰体矢量始终不被重建。 */
   /** 敌方机群（2026-09-11 机群批 S5）：按敌单位 tag 取该舰的警戒机群（机型 / 机库 / 现存架数）＋
    *  **逐舰体积/血条几何**（主树 2026-09-11 舰种体积 + 血条跟舰；2026-09-12 斜向菱形阵形） */
+  const acidRows = new Map(foeAcidRowsOf(battle).map(row => [row.tag, row]))
   const foeUnitEls = foeRowTags.map((tag, rowIdx) => {
+    const acid = acidRows.get(tag)
     const isMain = isFoeMainTag(tag)
     /** 该舰体积（px；2026-09-11 舰种体积 = 舰级档阶梯，旧路径卡回落 170/90） */
     const size = lay.sizes[rowIdx] ?? LAY.MAIN
@@ -2254,10 +2257,10 @@ const meSpeedRef = useRef(200)
             {hangarBadgeOf(tag)}
           </span>
         ) : null}
-        {(arcs.webLinks ?? []).some(link => link.to === tag) ? <span className="app-bts-web-status"
-          {...hoverTipProps(<>{(arcs.webLinks ?? []).filter(link => link.to === tag).map(link => <div key={link.from}>
+        {acid || (arcs.webLinks ?? []).some(link => link.to === tag) ? <span className="app-bts-web-status"
+          {...hoverTipProps(<>{acid ? <div>{tr('ui.alienLoot.005', { p1: acid.name, p2: acid.count, p3: acid.nextSeconds })}</div> : null}{(arcs.webLinks ?? []).filter(link => link.to === tag).map(link => <div key={link.from}>
             {tr('ui.battleCycles.021', { from: link.fromName, to: link.toName, pct: Math.round(link.slowPct * 100) })}
-          </div>)}</>)}>{tr('ui.battleCycles.022')}</span> : null}
+          </div>)}</>)}>{acid ? tr('ui.alienLoot.001') : tr('ui.battleCycles.022')}</span> : null}
         {/* 血条（2026-09-11 船长③）：贴在本舰正下方（绝对定位，不参与行内布局）；
             尸骸不显示血条（与改造前"只给存活单位画条"一致） */}
         {!corpseOn ? (

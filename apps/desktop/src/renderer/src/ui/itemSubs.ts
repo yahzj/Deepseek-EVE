@@ -281,6 +281,7 @@ export const SUPPORT_MODULE_KEYS: Record<string, readonly string[]> = {
   ],
   /** 辅助支援件：航行、后勤与作业面（不直接改变交火读数） */
   'support-aux': [
+    'mod-alien-pressure-chamber',
     'mod-warpcomp-2', 'mod-warpcomp-3', // 跃迁计算机（星系际航行速度）
     'mod-wh-c-pulse', // 生体脉搏加速器（装填 −6%）
   ],

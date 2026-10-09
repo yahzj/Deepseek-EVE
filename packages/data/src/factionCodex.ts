@@ -67,7 +67,7 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
     nameId: 'ui.Handbook.335', // 异形生物
     glyph: 'fam-c',
     // `drone-wh-c-heavy` = 巢卫攻坚无人机（C 族专属消耗品；一次性图纸 `bp-wh-c-drone` 见 blueprints）
-    modules: ['mod-wh-c-frame', 'mod-wh-c-laser', 'mod-wh-c-missile', 'mod-wh-c-prism', 'mod-wh-c-pulse', 'drone-wh-c-heavy', 'drone-jawclaw'],
+    modules: ['mod-wh-c-frame', 'mod-wh-c-laser', 'mod-wh-c-missile', 'mod-wh-c-prism', 'mod-wh-c-pulse', 'drone-wh-c-heavy', 'drone-jawclaw', 'mod-alien-acid-launcher', 'mod-alien-pressure-chamber'],
     ships: ['sh-wh-c-frigate', 'sh-wh-c-destroyer', 'sh-wh-c-cruiser'],
     blueprints: ['bp-wh-c-frame', 'bp-wh-c-laser', 'bp-wh-c-missile', 'bp-wh-c-prism', 'bp-wh-c-pulse', 'bp-wh-c-drone',
       'sbp-wh-c-frigate', 'sbp-wh-c-destroyer', 'sbp-wh-c-cruiser', 'bp-faction-drone-hiveguard', 'bp-faction-drone-jawclaw'],

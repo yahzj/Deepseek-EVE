@@ -2206,5 +2206,6 @@ export { wormholeExtractionPlan, wormholeConfirmExtraction } from './wormholeExt
 export type { WormholeExtractionRequest, WormholeExtractionPlan } from './wormholeExtraction'
 export { enemyParameterOf } from './enemyParameters'
 export { laserFalloffOf } from './equipment'
+export { acidResistsOf, battleSpeedBonusOf, foeAcidRowsOf } from './alienEquipment'
 
 

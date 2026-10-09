@@ -81,6 +81,8 @@ export interface WreckGroupDef {
   theme: { modules?: readonly string[]; mk2?: readonly string[] }
   /** 稀有箱未出专属时的独立兜底池；不扩张普通残骸主题池。 */
   rareTheme?: readonly string[]
+  /** 组专属池覆盖；未设置时沿用族池，其他渠道不变。 */
+  lairGear?: readonly string[]
   /** 隶属该组的**全部卡 id**（含隐藏遭遇模板与洞内卡；存档迁移的映射依据） */
   members: readonly string[]
 }
@@ -93,6 +95,7 @@ export interface WreckGroupDef {
 export const WRECK_GROUPS: readonly WreckGroupDef[] = [
   {
     key: 'c-inv', family: 'C', region: 'inv', name: '异形生物残骸（入侵）', rareName: '异形生物稀有残骸（入侵）',
+    lairGear: ['mod-alien-acid-launcher', 'mod-alien-pressure-chamber', 'drone-jawclaw'],
     tier: 'dire', pool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
     note: '异形生物残骸（入侵）：星髓晶与重钨合金为主，夹结构料', threat: 124,
     theme: { modules: ['mod-armor-plate-2'] },

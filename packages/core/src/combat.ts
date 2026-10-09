@@ -53,6 +53,7 @@ import { droneRevivedCount, droneRevivedOf, initDroneRevive, initDroneReviveStoc
 // 命中与伤害数学（2026-10-02 批次 4a 拆到 combatMath.ts）；本文件借回使用并再导出，既有引用零改动
 import { applyDamage, battleClockNowMs, clamp, distFactor, droneHitChance, hitChance, inRange, isAlive, typeLayerMult } from './combatMath'
 import { triggerAcidBurst, applyAlienCorrosion, advanceFoeHatcheries, advanceFoeAbilityClocks, foeFleetSpeedMulOf } from './alienCombat'
+import { acidResistsOf, addFoeAcidLayer, expireFoeAcidLayers, battleSpeedBonusOf } from './alienEquipment'
 import type { Hp3 } from './combatMath'
 export { applyDamage, battleClockNowMs, battleShowWindowMs, battleSpeedOf, distFactor, droneHitChance, hitChance, inRange, typeLayerMult, waveGapTotalMs } from './combatMath'
 export type { Hp3 } from './combatMath'
@@ -111,6 +112,7 @@ export type WeaponSrc = 'turret' | 'missile' | 'laser' | 'drone' | 'base'
 
 /** 静态武器卡 */
 export interface WeaponSpec {
+  acidOnHit?: import('./types').ModuleDef['acidOnHit']
   foeDroneRangeBonusPct?: number
   /** 运行规格中的装配型号，仅用于逐件列表，不新增随档字段。 */
   moduleId?: string
@@ -240,6 +242,7 @@ export function beamPowerVsTargetOf(
 
 /** 静态单位卡（构建后不进存档） */
 export interface UnitSpec {
+  speedBonusModules?: Array<Pick<import('./types').ModuleDef, 'speedBonusPct' | 'speedRamp'>>
   /** 玩家无人机首次出击间隔；缺省为500ms。 */
   droneLaunchGapMs?: number
   /** 复活入队的旧机库等待，不叠加首发新装备或船体特性。 */
@@ -617,6 +620,7 @@ export function foeStandbyReadyOf(
 function foeResistsNow(
   b: {
     lastTickGameMs?: number
+    foeAcidLayers?: import('./state').BattleState['foeAcidLayers']
     foeBlinks?: Record<string, number>
     foeStandbyTick?: Record<string, { atMs: number; ready: boolean }>
   },
@@ -627,10 +631,10 @@ function foeResistsNow(
     foeBlink?: UnitSpec['foeBlink']
   },
 ): UnitSpec['resists'] {
-  if (foe.foeStandbyShield === undefined) return foe.resists ?? {}
-  return foeStandbyReadyOf(b, foe)
+  const base = foe.foeStandbyShield !== undefined && foeStandbyReadyOf(b, foe)
     ? withStandbyShield(foe.resists ?? {}, foe.foeStandbyShield.resistPct)
     : (foe.resists ?? {})
+  return b.foeAcidLayers ? acidResistsOf(b, foe.tag, base) : base
 }
 
 /**
@@ -665,6 +669,7 @@ function applyFoeUnitDamage(
     distanceM?: number
     alienCorrosion?: number
     acidBursts?: import('./state').BattleState['acidBursts']
+    foeAcidLayers?: import('./state').BattleState['foeAcidLayers']
     units: Record<string, { hp: Hp3; foeShipId?: string; downAtMs?: number }>
     foeOverride?: { bossShipId?: string }
     lastTickGameMs?: number
@@ -747,6 +752,7 @@ export function rawDamageToKill(hp: Hp3, resists: UnitSpec['resists'], type: Dam
  */
 export function carryVolleyOverflow(
   b: {
+    foeAcidLayers?: import('./state').BattleState['foeAcidLayers']
     distanceM?: number
     alienCorrosion?: number
     acidBursts?: import('./state').BattleState['acidBursts']
@@ -1209,7 +1215,10 @@ export function noteFoeShipsSeen(state: GameState, anomaly: AnomalyDef): void {
 
 export function applyMeWebDebuff<T extends UnitSpec>(spec: T, d: import('./state').BattleWebDebuff): T {
   spec.speedMps = Math.max(20, spec.speedMps * d.slowMul)
-  if (d.noThruster) spec.thrusterBoost = 0
+  if (d.noThruster) {
+    spec.thrusterBoost = 0
+    spec.speedBonusModules = undefined
+  }
   if (d.noEvasion) spec.evasion = 0
   if (d.rangeDownM > 0) {
     spec.weapons = spec.weapons.map((w) => {
@@ -1583,7 +1592,7 @@ function unitSpeedMulOf(
 ): number {
   if (side === 'me') {
     const boosting = thrusterPhase(b, bal, unitThrusterCycle(u, bal)).boosting
-    return 1 + (boosting ? (u.thrusterBoost ?? 0) : 0)
+    return 1 + (boosting ? battleSpeedBonusOf(u, b) : 0)
   }
   if (b.foeCharges?.[u.tag]?.on !== true) return 1
   return u.foeChargeMul ?? bal.foeChargeMul
@@ -4580,6 +4589,7 @@ function stepBattle(
   const dtSec = dtMs / 1000
   syncCoronaFleetFocus(b, foes)
   advanceFoeHatcheries(b, foes, b.lastTickGameMs)
+  expireFoeAcidLayers(b)
   // 齐射承伤仍按原100ms归组，不能随内部步长缩小而拆开保险。
   const volleyWindow = Math.floor((b.lastTickGameMs - b.startedAtGameMs) / BATTLE_VOLLEY_WINDOW_MS)
   if (b.meVolleyWindow !== volleyWindow) {
@@ -4762,7 +4772,7 @@ function stepBattle(
       let droneHit = w.canHitDrones
         ? pickFoeDroneTarget(state, b, foes, b.distanceM, w, wi, unit.tag)
         : null
-      if (!droneHit && !inRange(b.distanceM, w)) continue;
+      if (!droneHit && !(w.acidOnHit ? b.distanceM <= w.maxRangeM : inRange(b.distanceM, w))) continue;
       if (w.src === 'drone' && (!foes.some(f => isFoeEngageable(b, f.tag)) || !releaseDroneLaunch(b, unit, wi))) continue
       // V18B 随机目标（船长 2026-09-05）：每发武器在开火瞬间从存活敌人中独立抽取
       // （确定性 rng 种子，可复现；齐射可分散到不同目标）。目标死亡即时换人。
@@ -4825,7 +4835,7 @@ function stepBattle(
         if (gun > 0 && droneHit && !droneHit.pool.alive) {
           droneHit = pickFoeDroneTarget(state, b, foes, b.distanceM, w, wi, unit.tag, true)
           if (!droneHit) {
-            if (!inRange(b.distanceM, w)) break
+            if (!(w.acidOnHit ? b.distanceM <= w.maxRangeM : inRange(b.distanceM, w))) break
             foeTarget = unit.lockedDmgBonus ? firstAliveFoe(foes, b) : randomAliveFoe(state, b, foes)
             if (!foeTarget) break
           }
@@ -4838,6 +4848,8 @@ function stepBattle(
           ? Math.round(Math.max(1, Math.round(rawBeam * beamPowerVsTargetOf(b.distanceM, w, droneHit !== null))) * (droneHit ? w.antiDroneMul ?? 1 : 1))
           : droneHit ? volleyDmg : (w.kind === 'gun' ? w.shotsByType?.[type] ?? 0 : w.shotDmg ?? 0)
         dmg = volleyDamageShareOf(targetVolleyDmg, gunCount, gun)
+        const blindMul = !droneHit && w.acidOnHit && b.distanceM < w.minRangeM ? w.blindDmgMul ?? 0.3 : 1
+        dmg = Math.round(dmg * blindMul)
         b.stats.meShots += 1;
         // **隐秘行动：开火即现形**（2026-09-15 船长 Q1 甲）——本舰任一门武器打出第一发时窗口清空；
         // 同一拍稍后的敌方开火段因此已经"看得见"它（现实语义亦然：枪口一闪就暴露了）。
@@ -4924,11 +4936,12 @@ function stepBattle(
             const hpBefore = { ...rt.hp }
             // 锁定装置：被锁目标受本舰伤害加深（对锁定目标的任意命中都乘入；2026-09-09）
             const volleyLocked = unit.lockedDmgBonus ? Math.round(targetVolleyDmg * (1 + unit.lockedDmgBonus)) : targetVolleyDmg
-            const dmgLocked = volleyDamageShareOf(volleyLocked, gunCount, gun)
+            const dmgLocked = Math.round(volleyDamageShareOf(volleyLocked, gunCount, gun) * blindMul)
             /** 主段：走**敌舰伤害唯一收口**（血写回 ＋ 死亡观测；算术与消费顺序一字不变） */
             const r = applyFoeUnitDamage(b, foeTarget!, dmgLocked, type, b.lastTickGameMs + dtMs)
             b.stats.meDmg += r.dealt
             selfDealt = r.dealt
+            if (w.acidOnHit) addFoeAcidLayer(b, foeTarget!.tag, w.acidOnHit, b.lastTickGameMs)
             /**
              * **谜质「齐射协调仪」：溢出火力转移**（F3c B2 · 船长 2026-09-13：
              * 「齐射协调仪改为溢出火力会转移到其他敌舰」）——目标被这一发打空后，把超出
@@ -5491,17 +5504,23 @@ function stepBattle(
   }
 
   // ── 结束判定 ──
+  // 溢火结算读完致死前层抗后，再清掉死亡目标的酸蚀。
+  expireFoeAcidLayers(b)
   // **判负 = 我方全灭**（虫洞 D 批 · 船长 2026-09-13 定）：主控沉了僚舰继续打；
   // 单船路径下"全灭"与"主控沉"等价 ⇒ 与改动前逐字一致。
   const meAlive = isAliveAnyOf(b, myUnits)
   const foeAlive = foes.some((f) => isAlive(b, f.tag))
   if (!meAlive) {
     b.ended = 'foe'
+    expireFoeAcidLayers(b)
     return
   }
   if (!foeAlive) {
     // 多波未完：本波清空不判胜（推进方下一拍切波续刷）；末波清空 = 胜利
-    if (!hasMoreWaves) b.ended = 'me'
+    if (!hasMoreWaves) {
+      b.ended = 'me'
+      expireFoeAcidLayers(b)
+    }
     return
   }
   // **无法交战 ⇒ 提前脱战**（2026-09-11 船长裁定「乙2 · 事件为 120 秒」）：
@@ -5538,6 +5557,7 @@ function stepBattle(
     b.autoEscaped = true
     b.escapeReason = 'timeout'
   }
+  if (b.ended) expireFoeAcidLayers(b)
 }
 
 /**

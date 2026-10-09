@@ -4761,6 +4761,14 @@
         "rarity": "exotic",
         "basePrice": 10400000,
         "demandMultiplier": 0.75
+      },
+      {
+        "key": "mod-alien-acid-launcher", "kind": "module", "refId": "mod-alien-acid-launcher",
+        "rarity": "exotic", "basePrice": 4800000, "demandMultiplier": 0.25, "playerBuyable": false, "blackMarketBuyable": false
+      },
+      {
+        "key": "mod-alien-pressure-chamber", "kind": "module", "refId": "mod-alien-pressure-chamber",
+        "rarity": "exotic", "basePrice": 2800000, "demandMultiplier": 0.25, "playerBuyable": false, "blackMarketBuyable": false
       }
     ]
   }

@@ -1288,6 +1288,7 @@ const MARKET_GOODS_RAW_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> 
 }
 
 const MARKET_GOODS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  'mod-alien-acid-launcher': {}, 'mod-alien-pressure-chamber': {},
   "sbp-wh-a-frigate": {
 
   },
@@ -1787,6 +1788,6 @@ export const MARKET_GOODS: readonly MarketGoodDef[] = [
 export function buildMarketGoodsCatalog(): ReadonlyMap<string, MarketGoodDef> {
   return new Map(MARKET_GOODS.filter((g) => g.unreleased !== true).map((g) => [g.key, {
     ...g, rarityTier: rarityTierOf(g.refId),
-    ...(g.playerBuyable === false && BLACK_MARKET_EXCLUSIVE_REFS.has(g.refId) ? { blackMarketBuyable: true } : {}),
+    ...(g.playerBuyable === false && g.blackMarketBuyable !== false && BLACK_MARKET_EXCLUSIVE_REFS.has(g.refId) ? { blackMarketBuyable: true } : {}),
   }]))
 }

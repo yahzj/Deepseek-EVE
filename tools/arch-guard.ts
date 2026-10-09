@@ -110,6 +110,9 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '酸蚀层独立期限与有效抗性', symbol: 'acidResistsOf', file: 'packages/core/src/alienEquipment.ts', exported: true },
+  { concept: '酸蚀有效层数与下次到期显示', symbol: 'foeAcidRowsOf', file: 'packages/core/src/alienEquipment.ts', exported: true },
+  { concept: '战斗渐增速度同池折权', symbol: 'battleSpeedBonusOf', file: 'packages/core/src/alienEquipment.ts', exported: true },
   { concept: '激光校准远端保留合成', symbol: 'laserFalloffOf', file: 'packages/core/src/equipment.ts', exported: true },
   { concept: '战前逐舰实际预载缺口', symbol: 'battleAmmoPreloadPlan', file: 'packages/core/src/battleAmmoPreflight.ts', exported: true },
   { concept: '技能训练工作量与实时进度换算', symbol: 'trainingLevelProgress', file: 'packages/core/src/training.ts', exported: true },

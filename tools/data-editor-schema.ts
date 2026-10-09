@@ -24,6 +24,8 @@ const TITLES: Record<string, string> = {
   workEfficiency: '作业效率加成', shieldHpAdd: '护盾固定增加', armorHpAdd: '装甲固定增加', hullHpAdd: '结构固定增加',
   speedPenaltyMps: '速度降低', speedAddMps: '速度固定增加', plugSlots: '插件槽', gunCount: '炮数',
   speedBonusPct: '战斗速度加成',
+  'speedRamp.rampMs': '增压达到峰值时间', 'speedRamp.maxBonusPct': '峰值速度加成',
+  'acidOnHit.cutPct': '酸蚀抗性降低', 'acidOnHit.durationMs': '酸蚀持续时间', blindDmgMul: '近盲区伤害倍率',
   rareQtyMul: '稀有订单批量倍率', rareWeightMul: '稀有订单权重倍率', absorbQtyPerWindow: '每窗吸收量',
   stealthCpuMul: '隐秘装置CPU倍率', foeRangeDebuffPct: '敌方射程削减', weaponRangeBonusPct: '武器射程加成', fleetDamageBonusPct: '编队伤害加成',
 }

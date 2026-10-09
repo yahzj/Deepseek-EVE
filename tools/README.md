@@ -1,5 +1,11 @@
 # 工具区台账（tools/）
 
+## 异形装备验收（2026-10-09 · v0.1.0 / 档v31）
+
+- `alien-loot-test-fixture.ts`：全新合成档，真实装配与稳定靶舰，不读取个人档。
+- `npx tsx tools/make-alien-loot-save.ts`：生成独立验收档，说明见 `docs/test-saves/alien-loot-20261009.md`。
+- `node tools/alien-loot-desktop-smoke.cjs`：先构建；隐藏独立Electron窗口、真实IPC存盘/重载与酸蚀状态显示，不作观感结论。
+
 > 本文件是工具区的**索引 + 版本自检台账**。新增工具请两处登记：**本文件** + 工具自己的头注释
 > （头注释写"用途 / 运行 / 口径 / 版本自检"四段，体例见 `pd-vs-foe-drone.ts`）。
 

@@ -5,6 +5,16 @@
   "groups": {
     "MODULES_0": [
       {
+        "id": "mod-alien-acid-launcher", "slot": "turret", "rack": "high", "damageType": "explosive",
+        "cpuUse": 60, "maxRangeM": 10000, "minRangeM": 1800, "reloadMs": 9100,
+        "hitRate": 0.8, "falloff": 0.5, "dmgMult": 12, "ammoPerEngagement": 12, "blindDmgMul": 0.3,
+        "acidOnHit": { "cutPct": 0.1, "durationMs": 15000 }
+      },
+      {
+        "id": "mod-alien-pressure-chamber", "slot": "support", "rack": "low", "cpuUse": 30,
+        "speedBonusPct": 0.05, "speedRamp": { "rampMs": 60000, "maxBonusPct": 0.25 }
+      },
+      {
         "id": "mod-miner-civ",
         "slot": "miner",
         "workEfficiency": 0,
