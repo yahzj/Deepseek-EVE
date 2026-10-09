@@ -261,34 +261,34 @@
       },
       {
         "id": "alien-vanguard",
-        "scale": 1.19,
+        "scale": 1.325,
         "wreckThreat": 90,
         "ships_0_count": 5,
         "ships_1_count": 5,
-        "threat": 90
+        "threat": 95
       },
       {
         "id": "alien-escort",
-        "scale": 1.49,
+        "scale": 1.6289,
         "wreckThreat": 108,
         "ships_0_count": 4,
         "ships_1_count": 2,
         "ships_2_count": 1,
-        "threat": 108
+        "threat": 113
       },
       {
         "id": "alien-main",
-        "scale": 1.02,
+        "scale": 1.1085,
         "wreckThreat": 129,
         "ships_0_count": 4,
         "ships_1_count": 1,
         "ships_2_count": 2,
         "ships_3_count": 2,
-        "threat": 129
+        "threat": 135
       },
       {
         "id": "alien-broodmother",
-        "scale": 1.5,
+        "scale": 1.739,
         "wreckThreat": 170,
         "ships_0_count": 4,
         "ships_1_count": 1,
@@ -298,7 +298,7 @@
         "ships_5_count": 1,
         "ships_6_count": 1,
         "ships_7_count": 2,
-        "threat": 170
+        "threat": 179
       },
       {
         "id": "alien-common",

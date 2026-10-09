@@ -100,7 +100,7 @@ describe('巢母主动召唤星髓成虫', () => {
     const fresh = foesWithSupport(w.battle, w.foes).filter(f => f.tag.startsWith('sup'))
     for (const spec of fresh) {
       expect(spec.hp).toEqual(original.hp)
-      expect(spec.hp.s + spec.hp.a + spec.hp.h).toBeCloseTo(936 * strength)
+      expect(spec.hp.s + spec.hp.a + spec.hp.h).toBeCloseTo(1085.136 * strength)
       expect(spec.weapons).toEqual(original.weapons)
       expect(spec.speedMps).toBe(398)
       expect(spec.foeChargeMul).toBe(2)

@@ -170,10 +170,10 @@ describe('敌血量钳制解除（船长 2026-09-12「解除血量钳制，改�
     //   **巨构核心勘探令（84 → 115）成为首张越过 96 的现表卡**（有意，非误写）；
     //   同日 H 族三张入侵卡按船长给定的 90 / 108 / 129 重定价 ⇒ 全表上界抬到 **170**（旗舰部队卡，同日晚旗舰轮）。
     const cards = ANOMALIES.filter((a) => typeof a.threat === 'number')
-    expect(Math.max(...cards.map((a) => a.threat))).toBe(170)
-    // 新巢母与墨潮旗舰同为170，不能把表顺序当作唯一旗舰身份。
+    // C族入侵预算提高5%后巢母179，其他族旗舰仍170。
+    expect(Math.max(...cards.map((a) => a.threat))).toBe(179)
     expect(ANOMALIES.find((a) => a.id === 'ink-flagship')!.threat).toBe(170)
-    expect(ANOMALIES.find((a) => a.id === 'alien-broodmother')!.threat).toBe(170)
+    expect(ANOMALIES.find((a) => a.id === 'alien-broodmother')!.threat).toBe(179)
     // 派生档仍以基础卡的曲线值为基准 ⇒ 基础卡曲线值零变化就保证了派生档零变化
     expect(foeHpOfThreat(96, bal)).toBe(1152)
   })
@@ -189,7 +189,7 @@ describe('敌血量钳制解除（船长 2026-09-12「解除血量钳制，改�
     const cards = ANOMALIES.filter((a) => typeof a.threat === 'number')
     expect(cards.length).toBe(54) // 本批新增4张独立异形入侵卡。
     // ⚠ 2026-09-25：全表上界 = 129（H 族「墨潮帮主力舰队」，船长给定威胁）；速度/射程曲线本身未被本次改动触碰
-    expect(Math.max(...cards.map((a) => a.threat))).toBe(170)
+    expect(Math.max(...cards.map((a) => a.threat))).toBe(179)
   })
 })
 
