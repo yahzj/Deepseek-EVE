@@ -1,6 +1,6 @@
 /**
  * 战前弹药预警与技能续时文案外壳回归：构建后node tools/battle-ammo-warning-desktop-check.cjs。
- * 合成档、隔离userData、隐藏自建Electron；两套布局/中文与待译英文回退，首次无写入、二击出战。
+ * 合成档、隔离userData、隐藏自建Electron；两套布局/中文与待译英文回退、桌面与手机旋转，首击不写/二击出战。
  * 版本自检：游戏v0.1.0 · 存档v31 · 核对/运行2026-10-09。不访问个人档，不代替观感验收。
  */
 const assert = require('node:assert/strict')
@@ -15,7 +15,8 @@ if (!process.argv.includes('--child')) {
   require('tsx/cjs')
   const core = require('../packages/core/src/index.ts')
   const data = require('../packages/data/src/index.ts')
-  for (const layout of ['classic', 'modern']) for (const locale of ['zh', 'en']) {
+  const portraitOnly = process.argv.includes('--portrait-only')
+  for (const layout of ['classic', 'modern']) for (const locale of ['zh', 'en']) for (const mode of portraitOnly ? ['portrait'] : ['desktop', 'portrait']) {
     const profile = fs.mkdtempSync(path.join(os.tmpdir(), PREFIX))
     try {
       const now = Date.now(), ctx = data.buildSimContext()
@@ -32,7 +33,7 @@ if (!process.argv.includes('--child')) {
       s.commsDelivered = Object.fromEntries(data.COMMS_MESSAGES.map(m => [m.id, 1]))
       fs.writeFileSync(path.join(profile, 'save.json'), core.serializeSaveFile(s, now), 'utf8')
       const env = { ...process.env, WHALE_PERF_USERDATA: profile, AMMO_WARNING_CASE: JSON.stringify({
-        layout, locale, ammoName: data.buildSimContext(locale).items.get('ammo-explosive-l').name,
+        layout, locale, mode, ammoName: data.buildSimContext(locale).items.get('ammo-explosive-l').name,
         skillsName: data.L10N['ui.App.007'][locale], mapName: data.L10N['ui.App.001'][locale],
       }) }
       for (const key of ['ELECTRON_RUN_AS_NODE', 'ELECTRON_RENDERER_URL', 'WHALE_AUTOPERF']) delete env[key]
@@ -65,6 +66,17 @@ if (!process.argv.includes('--child')) {
     const errors = []
     win.webContents.on('console-message', (_event, level, message) => { if (level >= 3) errors.push(message) })
     await wait('!!document.querySelector(".app-root")')
+    if (data.mode === 'portrait') {
+      win.webContents.debugger.attach('1.3')
+      await win.webContents.debugger.sendCommand('Emulation.setDeviceMetricsOverride', {
+        width: 390, height: 844, screenWidth: 390, screenHeight: 844, deviceScaleFactor: 1, mobile: true,
+        screenOrientation: { type: 'portraitPrimary', angle: 0 },
+      })
+      await win.webContents.debugger.sendCommand('Emulation.setUserAgentOverride', {
+        userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
+      })
+      await win.webContents.debugger.sendCommand('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 })
+    }
     await js(`localStorage.setItem('whale-idle:layout',${JSON.stringify(data.layout)});localStorage.setItem('whale-idle:layout-set','1');localStorage.setItem('whale-idle:locale',${JSON.stringify(data.locale)});localStorage.setItem('whale-idle:announce-seen','ann-alien-invasion-20261007');true`)
     const loaded = new Promise(resolve => win.webContents.once('did-finish-load', resolve))
     win.webContents.reload()
@@ -104,10 +116,11 @@ if (!process.argv.includes('--child')) {
     const first = await read()
     assert.equal(first.expedition.active, false)
     assert.deepEqual(first.warehouse.items, beforeFight.warehouse.items)
-    const geometry = await js(`(()=>{const e=document.querySelector('.app-toast'),r=e.getBoundingClientRect(),s=getComputedStyle(e);return {width:r.width,height:r.height,whiteSpace:s.whiteSpace,overflow:s.overflowY,windowHeight:innerHeight}})()`)
+    const geometry = await js(`(()=>{const e=document.querySelector('.app-toast'),r=e.getBoundingClientRect(),s=getComputedStyle(e),root=document.querySelector('.app-root');return {width:r.width,height:r.height,whiteSpace:s.whiteSpace,overflow:s.overflowY,windowHeight:innerHeight,maxHeight:parseFloat(s.maxHeight),rotated:root.classList.contains('is-mobile-rot'),clientHeight:e.clientHeight}})()`)
     assert.equal(geometry.whiteSpace, 'pre-line')
     assert.equal(geometry.overflow, 'auto')
-    assert(geometry.height > 0 && geometry.height < geometry.windowHeight)
+    assert(geometry.height > 0 && geometry.clientHeight <= geometry.maxHeight)
+    if (data.mode === 'portrait') assert(geometry.rotated)
     await js(`document.querySelector('.app-ano-btns button.is-primary:not([disabled])').click()`)
     for (let i = 0; i < 100 && !(await read()).expedition.active; i++) await sleep(100)
     assert.equal((await read()).expedition.active, true)

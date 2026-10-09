@@ -32,7 +32,7 @@
 
 | 工具 | npm script | 挂牌状态 |
 |---|---|---|
-| `battle-ammo-warning-desktop-check.cjs` | 构建后 `node tools/battle-ammo-warning-desktop-check.cjs` | 合成档/隔离userData/隐藏Electron，两布局与英文延期回退，技能连用与缺弹首击不写/二击开战；v31，2026-10-09，不作观感结论 |
+| `battle-ammo-warning-desktop-check.cjs` | 构建后 `node tools/battle-ammo-warning-desktop-check.cjs`，`--portrait-only`仅查手机旋转 | 合成档/隔离userData/隐藏Electron，两布局双语回退、桌面/手机旋转，技能连用与缺弹首击不写/二击开战；v31，2026-10-09，不作观感结论 |
 | `synaptic-accelerant-check.ts` | 直接 `npx tsx tools/synaptic-accelerant-check.ts` | 合成状态检查手动续时、训练切换及离线8/32/64h；v31，核对/运行2026-10-09，诊断不符退出1，不读个人档 |
 | `synaptic-accelerant-desktop-smoke.cjs` | 构建后 `node tools/synaptic-accelerant-desktop-smoke.cjs` | 隔离userData、隐藏Electron，合成旧档32h离线及IPC重载；v31，2026-10-09，不作观感结论 |
 | `l10n-deferred-check.ts` | `l10n:check`内部调用 | v31；只核对英文延期标记/空值与待本地化文档成对，不生成英文、不放宽普通漏译/占位符护栏 |
