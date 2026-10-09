@@ -542,7 +542,8 @@ const CONSUMABLES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
   "synaptic-accelerant": {
     name: '突触加速剂',
     description:
-      L10N['item.copy.111']!.zh,
+      // ⟪文案调整 2026-10-09⟫ 允许手动重复续时，不叠加倍率。
+      L10N['item.synaptic.001']!.zh,
   },
 }
 

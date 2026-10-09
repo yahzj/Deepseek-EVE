@@ -7,7 +7,7 @@
  * ③ **覆盖表的 id 必须真实存在**（写错的 id 悄悄无效 ⇒ 英文界面里冒中文，本用例点名）。
  */
 import { buildSimContext } from '@whale/data'
-import { EN_ANOMALIES, EN_BELTS, EN_COMMS_FACTIONS, EN_FOE_SHIPS, EN_GALAXIES, EN_ITEMS, EN_MATTER_TECH, EN_MATTER_TECH_NOTES, EN_MODULES, EN_SHIPS, EN_SKILLS, EN_STATIONS, EN_STATION_TIERS, EN_TRAVEL_EVENTS,  ITEMS,  SHIPS, SKILLS, overlayList } from '@whale/data'
+import { EN_ANOMALIES, EN_BELTS, EN_COMMS_FACTIONS, EN_FOE_SHIPS, EN_GALAXIES, EN_ITEMS, EN_MATTER_TECH, EN_MATTER_TECH_NOTES, EN_MODULES, EN_SHIPS, EN_SKILLS, EN_STATIONS, EN_STATION_TIERS, EN_TRAVEL_EVENTS, ITEMS, SHIPS, SKILLS, overlayList, L10N, l10nEntryText } from '@whale/data'
 import { describe, expect, it } from 'vitest'
 
 const zh = buildSimContext()
@@ -319,7 +319,11 @@ describe('英文覆盖层（P2）', () => {
         noDesc.push(it.id)
         continue
       }
-      expect(cjk.test(other.description), `${it.id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
+      if (it.id === 'synaptic-accelerant' && L10N['item.synaptic.001']!.enDeferred === true) {
+        expect(other.description).toBe(l10nEntryText(L10N['item.synaptic.001']!, 'en'))
+      } else {
+        expect(cjk.test(other.description), `${it.id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
+      }
     }
     expect(noDesc, `这些物品还没有英文说明：${noDesc.slice(0, 8).join(', ')}`).toEqual([])
     expect(en.items.get('min-tritanium')?.description).toBe('Refined material used in hulls, armor and industrial parts.')

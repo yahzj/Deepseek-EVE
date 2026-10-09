@@ -8,6 +8,7 @@
  * 3. 状态一变就通知界面刷新（subscribe）。
  */
 import { blackMarketBuy, ensureBlackMarket } from '@whale/core'
+import { battleAmmoPreloadPlan, weekendPrepSquadOf, weekendSanitizeFlagshipSquad } from '@whale/core'
 import {
   MAX_SKILL_LEVEL,
   preparationSquadOf,
@@ -808,6 +809,39 @@ export class GameEngine {
    * 记录的是**哪一颗按钮**＋时间窗（`SWITCH_ASK_MS`），换一颗按钮会重新走一次警告。
    */
   private switchAsk: { key: string; at: number } | null = null
+  private ammoAsk: { state: GameState; signature: string; at: number } | null = null
+
+  /** 手动开战软确认；首次不动活动/库存，同一缺口再次点击才继续，自动core路径不弹窗。 */
+  private withBattleAmmoWarning(key: string, ships: readonly string[], run: () => CommandResult, supplies?: Readonly<Record<string, number>>, preflight?: (snapshot: GameState) => CommandResult, inWormhole = false): CommandResult {
+    const plan = battleAmmoPreloadPlan(this.state, this.ctx, ships, supplies, inWormhole)
+    const short = plan.rows.filter(row => row.missing > 0)
+    if (!short.length) { this.ammoAsk = null; return run() }
+    if (preflight) {
+      const checked = preflight(structuredClone(this.state))
+      if (!checked.ok && checked.errorId !== ACTIVITY_CONFIRM_ID) { this.ammoAsk = null; return run() }
+    }
+    const ammoStock = (stock: Readonly<Record<string, number>>) => Object.entries(stock)
+      .filter(([id]) => this.ctx.items.get(id)?.kind === 'ammo').sort(([a], [b]) => a.localeCompare(b))
+    const supplySignature = supplies ? ammoStock(supplies) : this.state.resupplyFromWarehouse !== false
+      ? ammoStock(this.state.warehouse.items) : ships.map(id => ammoStock(this.state.fleet[id]?.cargo ?? {}))
+    const signature = JSON.stringify([key, ships, plan, supplySignature, ships.map(id => {
+      const ship = this.state.fleet[id]
+      if (!ship) return null
+      return { defId: ship.defId, fitted: ship.fitted, ammoPref: ship.ammoPref, droneLoad: ship.droneLoad, plugs: ship.plugs }
+    }), this.state.skills.trained, inWormhole ? this.state.wormhole.run?.hold : null])
+    const now = Date.now()
+    if (this.ammoAsk?.state === this.state && this.ammoAsk.signature === signature && now >= this.ammoAsk.at && now - this.ammoAsk.at <= 30_000) {
+      const result = run()
+      if (result.errorId !== ACTIVITY_CONFIRM_ID) this.ammoAsk = null
+      return result
+    }
+    this.ammoAsk = { state: this.state, signature, at: now }
+    const source = tr(plan.source === 'warehouse' ? 'ui.battleAmmo.003' : plan.source === 'cargo' ? 'ui.battleAmmo.004' : 'ui.battleAmmo.005')
+    const details = short.map(row => tr('ui.battleAmmo.002', { ship: shipDisplayName(this.state, this.ctx, row.shipId),
+      ammo: this.ctx.items.get(row.itemId)?.name ?? row.itemId, can: row.can, need: row.need, missing: row.missing })).join('\n')
+    const errorParams = { source, details }
+    return { ok: false, error: tr('ui.battleAmmo.001', errorParams), errorId: 'ui.battleAmmo.001', errorParams }
+  }
 
   /** 活动切换的两段确认外包装（见 `switchAsk` 的说明）；`key` = 发起切换的那颗按钮 */
   private withActivitySwitch(key: string, run: () => CommandResult): CommandResult {
@@ -1795,6 +1829,14 @@ export class GameEngine {
    * 战后由 `encounters.settleFight` 调 `weekendApplyBattleOutcome` ⇒ 击毁旗舰、黑匣、贡献结算自动闭环。
    */
   challengeWeekendFlagship(squad?: readonly string[]): CommandResult {
+    const clean = squad !== undefined ? weekendSanitizeFlagshipSquad(this.state, squad) : []
+    const ships = clean.length ? clean : weekendPrepSquadOf(this.state)
+    const now = Date.now()
+    return this.withBattleAmmoWarning(`flagship:${ships.join(',')}`, ships, () => this.challengeWeekendFlagshipReady(squad), undefined,
+      snapshot => ({ ok: !!weekendStartFlagshipBattle(snapshot, this.ctx, now, squad) }))
+  }
+
+  private challengeWeekendFlagshipReady(squad?: readonly string[]): CommandResult {
     const now = Date.now()
     const spec = weekendFlagshipSpecOf(this.state, this.ctx, now)
     if (!spec) return { ok: false, error: tr('ui.weekend.015') }
@@ -2843,6 +2885,11 @@ export class GameEngine {
    * `foeGalaxyId` = **界面上被点的那一行的星系**（常驻悬赏/星图列表都要传；不传 = 老口径按卡 id 反查）。
    */
   startExpeditionAt(anomalyId: string, foeGalaxyId?: string): CommandResult {
+    return this.withBattleAmmoWarning(`expedition:${anomalyId}:${foeGalaxyId ?? ''}`, [this.state.shipId], () => this.startExpeditionReady(anomalyId, foeGalaxyId), undefined,
+      snapshot => startExpedition(snapshot, this.weekendDispatchOf(anomalyId, foeGalaxyId).cardId, this.ctx, { foeGalaxyId: this.foeGalaxyOf(anomalyId, foeGalaxyId) }))
+  }
+
+  private startExpeditionReady(anomalyId: string, foeGalaxyId?: string): CommandResult {
     return this.withActivitySwitch('expedition', () => {
       const galaxyId = this.foeGalaxyOf(anomalyId, foeGalaxyId)
       const dispatch = this.weekendDispatchOf(anomalyId, foeGalaxyId)
@@ -2862,6 +2909,11 @@ export class GameEngine {
 
   /** T4 延后项：采矿中直接转战悬赏（UI 两步确认后调用；采矿终止、货随船、从矿带星系出发） */
   startExpeditionFromMiningAt(anomalyId: string, foeGalaxyId?: string): CommandResult {
+    return this.withBattleAmmoWarning(`mining-expedition:${anomalyId}:${foeGalaxyId ?? ''}`, [this.state.shipId], () => this.startExpeditionFromMiningReady(anomalyId, foeGalaxyId), undefined,
+      snapshot => startExpeditionFromMining(snapshot, anomalyId, this.ctx, { foeGalaxyId: this.foeGalaxyOf(anomalyId, foeGalaxyId) }))
+  }
+
+  private startExpeditionFromMiningReady(anomalyId: string, foeGalaxyId?: string): CommandResult {
     const result = startExpeditionFromMining(this.state, anomalyId, this.ctx, {
       foeGalaxyId: this.foeGalaxyOf(anomalyId, foeGalaxyId),
     })
@@ -2875,6 +2927,11 @@ export class GameEngine {
   /** 赏金任务·窝点出击（2026-09-10 船长定）：目标 = 派生窝点，档位随任务锁定
    *  （威胁/波次/僚机按档位强化、胜利后按窝点口径结算酬金与稀有残骸）。 */
   startLairExpeditionAt(anomalyId: string, lairTier: LairTier, fromMining = false): CommandResult {
+    return this.withBattleAmmoWarning(`lair:${anomalyId}:${lairTier}:${fromMining}`, [this.state.shipId], () => this.startLairExpeditionReady(anomalyId, lairTier, fromMining), undefined,
+      snapshot => (fromMining ? startExpeditionFromMining : startExpedition)(snapshot, anomalyId, this.ctx, { lairTier, foeGalaxyId: this.foeGalaxyOf(anomalyId) }))
+  }
+
+  private startLairExpeditionReady(anomalyId: string, lairTier: LairTier, fromMining = false): CommandResult {
     return this.withActivitySwitch('expedition', () => {
       const result = fromMining
         ? startExpeditionFromMining(this.state, anomalyId, this.ctx, { lairTier, foeGalaxyId: this.foeGalaxyOf(anomalyId) })
@@ -3436,6 +3493,15 @@ export class GameEngine {
    * 玩家点「开战」才进战斗（与遗迹守备同一套确认语言）。工具/用例不传 ⇒ 到达即开打（原行为）。
    */
   wormholeTravel(q: number, r: number, confirmUnknown = false, confirmIntercept = false, confirmLeaveCargo = false): CommandResult {
+    const snapshot = structuredClone(this.state)
+    const preview = wormholeTravelTo(snapshot, this.ctx, { q, r }, { confirmUnknown, confirmIntercept, deferAmbush: true, confirmLeaveCargo })
+    if (preview.ok && snapshot.wormhole.run?.battle && !this.state.wormhole.run?.battle) {
+      return this.withWormholeAmmoWarning(`travel:${q}:${r}:${confirmUnknown}:${confirmIntercept}:${confirmLeaveCargo}`, () => this.wormholeTravelReady(q, r, confirmUnknown, confirmIntercept, confirmLeaveCargo))
+    }
+    return this.wormholeTravelReady(q, r, confirmUnknown, confirmIntercept, confirmLeaveCargo)
+  }
+
+  private wormholeTravelReady(q: number, r: number, confirmUnknown: boolean, confirmIntercept: boolean, confirmLeaveCargo: boolean): CommandResult {
     const res = wormholeTravelTo(
       this.state,
       this.ctx,
@@ -3466,6 +3532,15 @@ export class GameEngine {
    * 免得两条路各写一遍回合/回滚规则）。返回值里的 `taken` = 本次回收了几堆。
    */
   wormholeActivate(): CommandResult {
+    const snapshot = structuredClone(this.state)
+    const preview = wormholeActivateAt(snapshot, this.ctx, undefined, { deferRuinsBattle: true })
+    if (preview.ok && snapshot.wormhole.run?.battle && !this.state.wormhole.run?.battle) {
+      return this.withWormholeAmmoWarning('activate', () => this.wormholeActivateReady())
+    }
+    return this.wormholeActivateReady()
+  }
+
+  private wormholeActivateReady(): CommandResult {
     // 遗迹收尾战**先提示、玩家确认后再开打**（船长 2026-09-13）⇒ 界面这条走 defer
     const r = wormholeActivateAt(this.state, this.ctx, undefined, { deferRuinsBattle: true })
     if (r.ok) {
@@ -3781,6 +3856,16 @@ export class GameEngine {
    * 老档里**已经在打**的那一场由 `settleWormholeBattle` 收口，不需要重新开战）。
    */
   wormholeFight(kind: 'node' | 'boss' | 'ruins'): CommandResult {
+    return this.withWormholeAmmoWarning(`fight:${kind}`, () => this.wormholeFightReady(kind), snapshot => wormholeStartBattle(snapshot, this.ctx, kind))
+  }
+
+  private withWormholeAmmoWarning(key: string, action: () => CommandResult, preflight?: (snapshot: GameState) => CommandResult): CommandResult {
+    const run = this.state.wormhole.run
+    const supplies = run?.supplyVersion === 1 ? run.supplies?.items ?? {} : undefined
+    return this.withBattleAmmoWarning(`wormhole:${run?.seed ?? ''}:${run?.depth ?? 0}:${JSON.stringify(run?.grid?.pos)}:${key}`, run?.fleet ?? [], action, supplies, preflight, true)
+  }
+
+  private wormholeFightReady(kind: 'node' | 'boss' | 'ruins'): CommandResult {
     const r = wormholeStartBattle(this.state, this.ctx, kind)
     if (r.ok) {
       void this.persist()
@@ -3966,6 +4051,11 @@ export class GameEngine {
   }
   /** B1 低安遭遇：迎战（进入实时战斗，自动打完） */
   fightEncounterNow(): CommandResult {
+    return this.withBattleAmmoWarning(`encounter:${this.state.encounter.invitedAtGameMs}`, [this.state.encounter.shipId ?? this.state.shipId], () => this.fightEncounterReady(), undefined,
+      snapshot => fightEncounter(snapshot, this.ctx))
+  }
+
+  private fightEncounterReady(): CommandResult {
     const result = fightEncounter(this.state, this.ctx)
     if (result.ok) {
       void this.persist()
@@ -4003,6 +4093,12 @@ export class GameEngine {
 
   /** T8：悬赏重复清剿开关（落档）；null = 停止 */
   bountyLoopAt(anomalyId: string | null): CommandResult {
+    if (anomalyId === null) return this.bountyLoopReady(null)
+    return this.withBattleAmmoWarning(`bounty-loop:${anomalyId}`, [this.state.shipId], () => this.bountyLoopReady(anomalyId), undefined,
+      snapshot => setAutoLoopBounty(snapshot, this.ctx, anomalyId))
+  }
+
+  private bountyLoopReady(anomalyId: string | null): CommandResult {
     const result = setAutoLoopBounty(this.state, this.ctx, anomalyId)
     if (result.ok) {
       void this.persist()
@@ -4016,6 +4112,12 @@ export class GameEngine {
    * `galaxyId = null` ⇒ 停；否则 = 被占星系 id。与 `bountyLoopAt` **互斥**（开一边顶掉另一边）。
    */
   invasionLoopAt(galaxyId: string | null): CommandResult {
+    if (galaxyId === null) return this.invasionLoopReady(null)
+    return this.withBattleAmmoWarning(`invasion-loop:${galaxyId}`, [this.state.shipId], () => this.invasionLoopReady(galaxyId), undefined,
+      snapshot => setAutoLoopInvasion(snapshot, this.ctx, galaxyId, this.wallNowOf()))
+  }
+
+  private invasionLoopReady(galaxyId: string | null): CommandResult {
     const result = setAutoLoopInvasion(this.state, this.ctx, galaxyId, this.wallNowOf())
     if (result.ok) {
       void this.persist()
@@ -4461,6 +4563,11 @@ export class GameEngine {
   /** 指派 AI 远征任务（软下线 2026-09-05 船长定：引擎一律拒绝；UI 入口已于 2026-09-08 隐藏——
    * 本方法保留供恢复；恢复 = 加回 ShipPage 指派选项即可） */
   assignAiExpeditionAt(shipId: string, coreType: AiCoreType, anomalyId: string): CommandResult {
+    return this.withBattleAmmoWarning(`ai-expedition:${shipId}:${coreType}:${anomalyId}`, [shipId], () => this.assignAiExpeditionReady(shipId, coreType, anomalyId), undefined,
+      snapshot => assignAiExpedition(snapshot, shipId, coreType, anomalyId, this.ctx))
+  }
+
+  private assignAiExpeditionReady(shipId: string, coreType: AiCoreType, anomalyId: string): CommandResult {
     const result = assignAiExpedition(this.state, shipId, coreType, anomalyId, this.ctx)
     if (result.ok) {
       void this.persist()

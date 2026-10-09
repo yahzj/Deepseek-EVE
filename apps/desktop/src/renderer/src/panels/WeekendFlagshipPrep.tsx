@@ -165,7 +165,7 @@ export function WeekendFlagshipPrepModal({ engine, onClose }: { engine: GameEngi
             })}
           </ul>
           {short ? <div className="app-warn app-wh-gate">{tr('ui.weekend.072', { p1: String(WEEKEND_FLAGSHIP_MAX_SHIPS) })}</div> : null}
-          {err !== '' ? <div className="app-warn app-wh-gate">{err}</div> : null}
+          {err !== '' ? <div className="app-warn app-wh-gate app-battle-ammo-warning" role="alert">{err}</div> : null}
           <div className="app-wh-actions">
             <button
               className="app-btn is-small"

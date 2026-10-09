@@ -18,7 +18,7 @@ import type { FoeMountId, MatterTechNodeDef, SimContext, StationSiteDef, TravelE
 import { WRECK_GROUPS, resolveFoeMounts, wreckGroupOfItemId } from '@whale/core'
 import { BLUEPRINTS } from './blueprints'
 import { SHIP_BLUEPRINTS } from './shipBlueprints'
-import { L10N } from './l10n/table'
+import { L10N, l10nEntryText } from './l10n/table'
 
 export type Locale = 'zh' | 'en'
 
@@ -494,7 +494,8 @@ export const EN_ITEMS: EnTable = {
   // ⟪文案调整 2026-09-30⟫ 与中文同步补两条真规则：母港/已建成副站点不着 · 高安启动付 10 点声望
   'invasion-beacon': { name: 'Signal Beacon', description: L10N['item.copy.110']!.en },
   // ⟪文案调整 2026-10-02⟫ 与中文同批：使用去处补上技能页「技能加速」（三处同源；`Skill Boost` 取 `ui.boost.001` 的冻结译名）
-  'synaptic-accelerant': { name: 'Synaptic Accelerant', description: L10N['item.copy.111']!.en },
+  // ⟪文案调整 2026-10-09⟫ 新说明待译时走共享回退，不继续显示旧英文禁用规则。
+  'synaptic-accelerant': { name: 'Synaptic Accelerant', description: l10nEntryText(L10N['item.synaptic.001']!, 'en') },
   'deep-space-probe': { name: L10N['ui.stellar.001']!.en, description: L10N['ui.stellar.002']!.en },
   // 零件（2026-09-20 零件体系：基础 7 直接可造 / 高级 7 需蓝图）
   'part-circuit': { name: 'Circuit Board', description: L10N['item.copy.020']!.en },

@@ -24,6 +24,16 @@ export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  // ⟪文案调整 2026-10-09⟫ 船长批准更新续时说明；保留旧ID英文，新ID仅中文、登记待译。
+  'item.synaptic.001': { zh: '技能训练加速消耗品，每枚增加24小时有效时间；可重复使用，训练速度倍率不叠加。可在物品、货仓或技能加速窗口使用，自动续用需另行开启。', en: '', enDeferred: true },
+  'ui.boost.012': { zh: '使用：技能加速有效时间增加24小时，倍率不叠加', en: '', enDeferred: true },
+  'ui.boost.013': { zh: '突触加速剂已使用：有效时间增加24小时。', en: '', enDeferred: true },
+  'core.consumable.017': { zh: '✦ 突触加速剂已使用：技能加速有效时间增加{p1}小时。', en: '', enDeferred: true },
+  'ui.battleAmmo.001': { zh: '弹药预载不足（取用：{source}）：\n{details}\n再次点击同一开战按钮仍可出战。', en: '', enDeferred: true },
+  'ui.battleAmmo.002': { zh: '{ship} · {ammo}：可装 {can} / 需 {need}，缺 {missing} 发', en: '', enDeferred: true },
+  'ui.battleAmmo.003': { zh: '物品仓库', en: '', enDeferred: true },
+  'ui.battleAmmo.004': { zh: '舰队货仓', en: '', enDeferred: true },
+  'ui.battleAmmo.005': { zh: '本趟物资', en: '', enDeferred: true },
   // ⟪文案调整 2026-10-09⟫ 船长确认逐点短句、移除光环段，英文只登记待办。
   'ano.mechanicsBrief.001': { zh: '玩家可在普通星系打捞沉船，整船回收基础成功率为25%。', en: '', enDeferred: true },
   'ano.mechanicsBrief.002': { zh: '新增三项舰体打捞与装备保全工程技能，提高整船回收率和装备保全率。', en: '', enDeferred: true },

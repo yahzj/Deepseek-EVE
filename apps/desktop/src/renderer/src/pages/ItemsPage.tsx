@@ -470,15 +470,15 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                       <div className="app-inv-btns">
                         {/* **2026-09-30 船长令**（实验室后续内容）：**能"用"的道具**给一颗「使用」按钮
                             —— 目前只有突触加速剂（判据 = core 的 id 常量单点，不在页面里写死字面量）；
-                            生效中再点会被 core 拒绝并回「还剩 N 分钟」，物品不消耗。 */}
+                            每次使用消耗一枚并累加有效时间，不叠加速度倍率。 */}
                         {id === SYNAPTIC_ACCELERANT_ITEM_ID ? (
                           <button
                             className="app-btn is-small is-warn"
-                            title={tr('ui.ItemsPage.054')}
+                            title={tr('ui.boost.012')}
                             onClick={() => {
                               const r = engine.useSynapticAccelerantNow()
-                              if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.054'), true)
-                              else onToast(tr('ui.ItemsPage.055'))
+                              if (!r.ok) onToast(cmdText(r) || tr('ui.boost.012'), true)
+                              else onToast(tr('ui.boost.013'))
                             }}
                           >
                             {tr('ui.ItemsPage.056')}
@@ -708,13 +708,13 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                 {pickItem === SYNAPTIC_ACCELERANT_ITEM_ID ? (
                   <button
                     className="app-btn is-small is-warn"
-                    title={tr('ui.ItemsPage.054')}
+                    title={tr('ui.boost.012')}
                     onClick={() => {
                       const r = engine.useSynapticAccelerantNow()
-                      if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.054'), true)
+                      if (!r.ok) onToast(cmdText(r) || tr('ui.boost.012'), true)
                       else {
                         setPickItem(null)
-                        onToast(tr('ui.ItemsPage.055'))
+                        onToast(tr('ui.boost.013'))
                       }
                     }}
                   >

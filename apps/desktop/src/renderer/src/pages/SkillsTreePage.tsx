@@ -148,11 +148,11 @@ function SkillBoostBlock({ engine, onToast }: { engine: GameEngine; onToast: (m:
             <div className="app-inv-btns">
               <button
                 className="app-btn is-small is-warn"
-                title={tr('ui.ItemsPage.054')}
+                title={tr('ui.boost.012')}
                 onClick={() => {
                   const r = engine.useSynapticAccelerantNow()
-                  if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.054'), true)
-                  else onToast(tr('ui.ItemsPage.055'))
+                  if (!r.ok) onToast(cmdText(r) || tr('ui.boost.012'), true)
+                  else onToast(tr('ui.boost.013'))
                 }}
               >
                 {tr('ui.ItemsPage.056')}

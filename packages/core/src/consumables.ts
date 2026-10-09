@@ -103,14 +103,9 @@ export function useSynapticAccelerant(state: GameState): CommandResult {
   addLog(
     state,
     'industry',
-    /**
-     * ⟪文案调整 2026-10-02⟫ 正文与表文（`core.consumable.003`）对齐：原正文多写一句
-     * 「（至 24 小时后失效）」——与前半句的 24 小时**同一件事**（都是 `SYNAPTIC_ACCELERANT_MS`），
-     * 属重复；界面按 id 渲染，玩家本来也看不到它 ⇒ 去掉，正文与表文逐字一致。
-     * 查证方式见工作文档 `docs/design/return-log-copy-20261002.md` §6 的同类普查。
-     */
-    `✦ 突触加速剂生效：未来 ${Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000)} 小时内技能训练时长减半。`,
-    'core.consumable.003',
+    // ⟪文案调整 2026-10-09⟫ 每次增加有效时间，不将累计药效表述为重置24小时。
+    `✦ 突触加速剂已使用：技能加速有效时间增加${Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000)}小时。`,
+    'core.consumable.017',
     { p1: Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000) },
   )
   return { ok: true }

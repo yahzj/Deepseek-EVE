@@ -50,7 +50,7 @@ describe('突触加速剂 · 使用与效果', () => {
     expect(synapticAccelerantActive(s)).toBe(true)
     expect(trainingTimeFactor(s), '训练时长乘区 ×0.5').toBeCloseTo(base * SYNAPTIC_ACCELERANT_MUL, 10)
     expect(synapticAccelerantRemainMs(s)).toBe(SYNAPTIC_ACCELERANT_MS)
-    expect(s.logs.some((l) => l.textId === 'core.consumable.003'), '生效日志').toBe(true)
+    expect(s.logs.some((l) => l.textId === 'core.consumable.017'), '增加有效时间日志').toBe(true)
   })
 
   it('生效期间重复使用：保留剩余时间并增加一剂时长，不叠加倍率', () => {

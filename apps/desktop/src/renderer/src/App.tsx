@@ -643,7 +643,7 @@ async function applyLayoutAndReload(): Promise<void> {
   const showToast: ToastFn = (text, warn = false) => {
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current)
     setToast({ text, warn })
-    toastTimer.current = window.setTimeout(() => setToast(null), 3200)
+    toastTimer.current = window.setTimeout(() => setToast(null), warn && text.includes('\n') ? 15_000 : 3200)
   }
   /**
    * **点击底部提示条立即关闭**（2026-09-13 船长：「屏幕下方的错误提示，允许玩家通过点击快速关闭。」）——
