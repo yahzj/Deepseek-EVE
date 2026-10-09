@@ -1626,6 +1626,12 @@ const MARKET_GOODS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
   "drone-ink-heavy": {
 
   },
+  'drone-jawclaw': {},
+  'bp-faction-drone-bee': {},
+  'bp-faction-drone-hiveguard': {},
+  'bp-faction-drone-construct': {},
+  'bp-faction-drone-ink': {},
+  'bp-faction-drone-jawclaw': {},
   "bp-lair-g-drone": {
 
   },

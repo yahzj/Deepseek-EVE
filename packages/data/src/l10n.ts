@@ -434,6 +434,10 @@ export const EN_MODULES: EnTable = {
  * 物品英文名称保持冻结译名；说明与中文共用唯一表 id。
  */
 export const EN_ITEMS: EnTable = {
+  'drone-jawclaw': {
+    name: l10nEntryText(L10N['item.jawclaw.001']!, 'en'),
+    description: l10nEntryText(L10N['item.jawclaw.002']!, 'en'),
+  },
   // 原矿
   'ore-veldspar': { name: 'Peridotite', description: L10N['item.copy.001']!.en },
   'ore-scorched': { name: 'Gabbro', description: L10N['item.copy.002']!.en },
@@ -1391,8 +1395,16 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
 }
 
 export const EN_BLUEPRINTS: EnTable = (() => {
-  const out: Record<string, EnText> = {}
+  // 船长2026-10-09确认中文名称/说明，英文未准备时回退中文，不自动生成新译名。
+  const out: Record<string, EnText> = {
+    'bp-faction-drone-bee': { name: l10nEntryText(L10N['bp.factionDrone.001']!, 'en'), description: l10nEntryText(L10N['bp.factionDrone.006']!, 'en') },
+    'bp-faction-drone-hiveguard': { name: l10nEntryText(L10N['bp.factionDrone.002']!, 'en'), description: l10nEntryText(L10N['bp.factionDrone.007']!, 'en') },
+    'bp-faction-drone-construct': { name: l10nEntryText(L10N['bp.factionDrone.003']!, 'en'), description: l10nEntryText(L10N['bp.factionDrone.008']!, 'en') },
+    'bp-faction-drone-ink': { name: l10nEntryText(L10N['bp.factionDrone.004']!, 'en'), description: l10nEntryText(L10N['bp.factionDrone.009']!, 'en') },
+    'bp-faction-drone-jawclaw': { name: l10nEntryText(L10N['bp.factionDrone.005']!, 'en'), description: l10nEntryText(L10N['bp.factionDrone.010']!, 'en') },
+  }
   for (const bp of BLUEPRINTS) {
+    if (out[bp.id]) continue
     const product = bp.moduleId ? EN_MODULES[bp.moduleId]?.name : bp.itemId ? EN_ITEMS_ALL[bp.itemId]?.name : undefined
     if (!product) continue
     const desc = BP_DESC_EN[bp.id]

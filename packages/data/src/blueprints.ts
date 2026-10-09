@@ -50,6 +50,11 @@ export const BLUEPRINT_PRICE_STEP = 500
  * 修理组件蓝图与之无关（船长：「其他保持不变」⇒ 走系数默认值）。
  */
 export const BLUEPRINT_PRICE_OVERRIDES: Readonly<Record<string, { price: number; reason: string }>> = {
+  'bp-faction-drone-bee': { price: 2_400_000, reason: '2026-10-09船长确认：势力无人机永久图纸基价为50架批次货值×2，黑市独占' },
+  'bp-faction-drone-hiveguard': { price: 4_800_000, reason: '2026-10-09船长确认：势力无人机永久图纸基价为50架批次货值×2，黑市独占' },
+  'bp-faction-drone-construct': { price: 8_800_000, reason: '2026-10-09船长确认：势力无人机永久图纸基价为50架批次货值×2，黑市独占' },
+  'bp-faction-drone-ink': { price: 4_800_000, reason: '2026-10-09船长确认：势力无人机永久图纸基价为50架批次货值×2，黑市独占' },
+  'bp-faction-drone-jawclaw': { price: 2_400_000, reason: '2026-10-09船长确认：势力无人机永久图纸基价为50架批次货值×2，黑市独占' },
   // 基础弹（民用档）：2026-09-09 原值
   'bp-ammo-kinetic': { price: 1_350, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
   'bp-ammo-explosive': { price: 1_650, reason: '弹药线维持 2026-09-09 补给线「×1.5」口径原值（船长 2026-09-11 复核）' },
@@ -93,7 +98,79 @@ export function blueprintBookPriceOf(bpId: string, productPrice: number, rarity:
   return Math.round((productPrice * blueprintTierCoefOf(bpId, rarity).coef) / BLUEPRINT_PRICE_STEP) * BLUEPRINT_PRICE_STEP
 }
 
+// 船长2026-10-09确认：旧一次性料单/工期不改，新增永久书与同成本型号复用这些源参数。
+const FACTION_DRONE_RECIPES = {
+  scout: {
+    materials: [
+      { itemId: 'min-tritanium', count: 20_000 },
+      { itemId: 'min-pyerite', count: 6_000 },
+      { itemId: 'min-mexallon', count: 5_000 },
+      { itemId: 'min-voidcrystal', count: 115 },
+      { itemId: 'part-qchip', count: 532 },
+      { itemId: 'part-circuit', count: 6 },
+    ],
+    buildSeconds: 180,
+  },
+  heavy: {
+    materials: [
+      { itemId: 'min-voidcrystal', count: 86 },
+      { itemId: 'min-mexallon', count: 6_609 },
+      { itemId: 'min-tritanium', count: 15_080 },
+      { itemId: 'part-frame', count: 2_776 },
+      { itemId: 'part-armor-plate', count: 805 },
+      { itemId: 'part-cable', count: 974 },
+      { itemId: 'part-circuit', count: 1_590 },
+      { itemId: 'part-coolant', count: 875 },
+      { itemId: 'part-drone-neural', count: 324 },
+      { itemId: 'part-qchip', count: 335 },
+      { itemId: 'part-shield-gen', count: 132 },
+    ],
+    buildSeconds: 360,
+  },
+  sentry: {
+    materials: [
+      { itemId: 'min-voidcrystal', count: 165 },
+      { itemId: 'min-mexallon', count: 11_793 },
+      { itemId: 'min-tritanium', count: 26_310 },
+      { itemId: 'part-frame', count: 5_153 },
+      { itemId: 'part-armor-plate', count: 1_494 },
+      { itemId: 'part-cable', count: 1_808 },
+      { itemId: 'part-circuit', count: 2_950 },
+      { itemId: 'part-coolant', count: 1_624 },
+      { itemId: 'part-drone-neural', count: 602 },
+      { itemId: 'part-qchip', count: 622 },
+      { itemId: 'part-shield-gen', count: 246 },
+    ],
+    buildSeconds: 540,
+  },
+} as const
+
 export const BLUEPRINTS: readonly BlueprintDef[] = [
+  {
+    id: 'bp-faction-drone-bee', name: L10N['bp.factionDrone.001']!.zh,
+    description: L10N['bp.factionDrone.006']!.zh, itemId: 'drone-exile-bee',
+    outputUnits: 50, ...FACTION_DRONE_RECIPES.scout, buildCostIsk: 0, priceIsk: 2_400_000,
+  },
+  {
+    id: 'bp-faction-drone-hiveguard', name: L10N['bp.factionDrone.002']!.zh,
+    description: L10N['bp.factionDrone.007']!.zh, itemId: 'drone-wh-c-heavy',
+    outputUnits: 50, ...FACTION_DRONE_RECIPES.heavy, buildCostIsk: 0, priceIsk: 4_800_000,
+  },
+  {
+    id: 'bp-faction-drone-construct', name: L10N['bp.factionDrone.003']!.zh,
+    description: L10N['bp.factionDrone.008']!.zh, itemId: 'drone-wh-e-sentry',
+    outputUnits: 50, ...FACTION_DRONE_RECIPES.sentry, buildCostIsk: 0, priceIsk: 8_800_000,
+  },
+  {
+    id: 'bp-faction-drone-ink', name: L10N['bp.factionDrone.004']!.zh,
+    description: L10N['bp.factionDrone.009']!.zh, itemId: 'drone-ink-heavy',
+    outputUnits: 50, ...FACTION_DRONE_RECIPES.heavy, buildCostIsk: 0, priceIsk: 4_800_000,
+  },
+  {
+    id: 'bp-faction-drone-jawclaw', name: L10N['bp.factionDrone.005']!.zh,
+    description: L10N['bp.factionDrone.010']!.zh, itemId: 'drone-jawclaw',
+    outputUnits: 50, ...FACTION_DRONE_RECIPES.scout, buildCostIsk: 0, priceIsk: 2_400_000,
+  },
   {
     id: 'bp-deep-space-probe',
     name: L10N['ui.stellar.003']!.zh,
@@ -2548,15 +2625,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     itemId: 'drone-exile-bee',
     outputUnits: 50,
     singleUse: true,
-            materials: [
-      { itemId: 'min-tritanium', count: 20_000 },
-      { itemId: 'min-pyerite', count: 6_000 },
-      { itemId: 'min-mexallon', count: 5_000 },
-      { itemId: 'min-voidcrystal', count: 115 },
-      { itemId: 'part-qchip', count: 532 },
-      { itemId: 'part-circuit', count: 6 },
-    ],
-    buildSeconds: 180, // 2026-09-14 船长「制造时间可以缩短到10%」：1800 → 180 秒（3 分钟/50 架） // 2026-09-14 船长「制造时间可以缩短到10%」：1800 → 180 秒（3 分钟/50 架）
+    ...FACTION_DRONE_RECIPES.scout,
     buildCostIsk: 0, // 制造费已取消（字段历史遗留）
     priceIsk: 1_200_000, // = 材料 539,000 ÷ 0.45 = 产物价（鱿蜂 24,000 ×50）：**材料按产品价 45% 定**（2026-09-14 船长口径） // = 材料 145,600 ÷ 0.45 ×4（专属 ×4 · 与市场行同值）
     description: '一次开工出 50 架鱿蜂无人机：单发威力是制式侦察机的两倍，机体最飘。',
@@ -2567,20 +2636,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     itemId: 'drone-wh-c-heavy',
     outputUnits: 50,
     singleUse: true,
-    materials: [
-      { itemId: 'min-voidcrystal', count: 86 },
-      { itemId: 'min-mexallon', count: 6_609 },
-      { itemId: 'min-tritanium', count: 15_080 },
-      { itemId: 'part-frame', count: 2_776 },
-      { itemId: 'part-armor-plate', count: 805 },
-      { itemId: 'part-cable', count: 974 },
-      { itemId: 'part-circuit', count: 1_590 },
-      { itemId: 'part-coolant', count: 875 },
-      { itemId: 'part-drone-neural', count: 324 },
-      { itemId: 'part-qchip', count: 335 },
-      { itemId: 'part-shield-gen', count: 132 },
-    ],
-    buildSeconds: 360, // 2026-09-14：3600 → 360 秒（6 分钟/50 架） // 2026-09-14：3600 → 360 秒（6 分钟/50 架）
+    ...FACTION_DRONE_RECIPES.heavy,
     buildCostIsk: 0,
     priceIsk: 2_400_000, // = 材料 1,078,000 ÷ 0.45 = 产物价（巢卫 48,000 ×50） // = 材料 225,600 ÷ 0.45 ×4
     description: '一次开工出 50 架巢卫攻坚无人机：孢子爆裂弹头拆甲，三层血比制式攻坚机更厚。',
@@ -2591,20 +2647,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     itemId: 'drone-wh-e-sentry',
     outputUnits: 50,
     singleUse: true,
-    materials: [
-      { itemId: 'min-voidcrystal', count: 165 },
-      { itemId: 'min-mexallon', count: 11_793 },
-      { itemId: 'min-tritanium', count: 26_310 },
-      { itemId: 'part-frame', count: 5_153 },
-      { itemId: 'part-armor-plate', count: 1_494 },
-      { itemId: 'part-cable', count: 1_808 },
-      { itemId: 'part-circuit', count: 2_950 },
-      { itemId: 'part-coolant', count: 1_624 },
-      { itemId: 'part-drone-neural', count: 602 },
-      { itemId: 'part-qchip', count: 622 },
-      { itemId: 'part-shield-gen', count: 246 },
-    ],
-    buildSeconds: 540, // 2026-09-14：5400 → 540 秒（9 分钟/50 架） // 2026-09-14：5400 → 540 秒（9 分钟/50 架）
+    ...FACTION_DRONE_RECIPES.sentry,
     buildCostIsk: 0,
     priceIsk: 4_400_000, // = 材料 1,976,000 ÷ 0.45 = 产物价（构件 88,000 ×50） // = 材料 315,000 ÷ 0.45 ×4
     description: '一次开工出 50 架构件哨戒无人机：动能长针拆盾，航程与命中都比制式哨戒机更远更高。',

@@ -24,6 +24,18 @@ export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  'item.jawclaw.001': { zh: '颚钳虫群', en: '', enDeferred: true },
+  'item.jawclaw.002': { zh: '动能侦察虫群，适合追击与持续攻击。', en: '', enDeferred: true },
+  'bp.factionDrone.001': { zh: '鱿蜂无人机永久蓝图', en: '', enDeferred: true },
+  'bp.factionDrone.002': { zh: '巢卫攻坚无人机永久蓝图', en: '', enDeferred: true },
+  'bp.factionDrone.003': { zh: '构件哨戒无人机永久蓝图', en: '', enDeferred: true },
+  'bp.factionDrone.004': { zh: '墨潮重袭无人机永久蓝图', en: '', enDeferred: true },
+  'bp.factionDrone.005': { zh: '颚钳虫群永久蓝图', en: '', enDeferred: true },
+  'bp.factionDrone.006': { zh: '学习后可持续制造鱿蜂无人机。', en: '', enDeferred: true },
+  'bp.factionDrone.007': { zh: '学习后可持续制造巢卫攻坚无人机。', en: '', enDeferred: true },
+  'bp.factionDrone.008': { zh: '学习后可持续制造构件哨戒无人机。', en: '', enDeferred: true },
+  'bp.factionDrone.009': { zh: '学习后可持续制造墨潮重袭无人机。', en: '', enDeferred: true },
+  'bp.factionDrone.010': { zh: '学习后可持续制造颚钳虫群。', en: '', enDeferred: true },
   // ⟪文案调整 2026-10-09⟫ 船长批准更新续时说明；保留旧ID英文，新ID仅中文、登记待译。
   'item.synaptic.001': { zh: '技能训练加速消耗品，每枚增加24小时有效时间；可重复使用，训练速度倍率不叠加。可在物品、货仓或技能加速窗口使用，自动续用需另行开启。', en: '', enDeferred: true },
   'ui.boost.012': { zh: '使用：技能加速有效时间增加24小时，倍率不叠加', en: '', enDeferred: true },

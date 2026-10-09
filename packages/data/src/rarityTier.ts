@@ -537,6 +537,12 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'bp-wh-g-prop': 4,
   'bp-wh-g-turret': 4,
   'drone-exile-bee': 4,
+  'drone-jawclaw': 4,
+  'bp-faction-drone-bee': 4,
+  'bp-faction-drone-hiveguard': 4,
+  'bp-faction-drone-construct': 4,
+  'bp-faction-drone-ink': 4,
+  'bp-faction-drone-jawclaw': 4,
   // 2026-09-26 H 族三件（墨潮电子舱 / 墨潮捕获网 / 墨潮重袭无人机）：与其余专属件同档 = 4
   'drone-ink-heavy': 4,
   /* 2026-09-26 舰船插件 12 件：**当前不上市场**（市场卡挂 `unreleased`），但 `ctx.modules` 里是全的

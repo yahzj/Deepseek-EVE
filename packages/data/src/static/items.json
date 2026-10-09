@@ -763,6 +763,26 @@
           "evasion": 0.05
         },
         "exclusive": true
+      },
+      {
+        "id": "drone-jawclaw",
+        "kind": "drone",
+        "unitM3": 5,
+        "baseSellPriceIsk": 24000,
+        "damageType": "kinetic",
+        "dmg": 6,
+        "cpuUse": 5,
+        "maxRangeM": 6000,
+        "droneClass": "scout",
+        "hitRate": 0.89,
+        "falloff": 1,
+        "defense": {
+          "shieldHp": 6,
+          "armorHp": 12,
+          "hullHp": 20,
+          "evasion": 0.45
+        },
+        "exclusive": true
       }
     ],
     "REPAIR_KITS_0": [

@@ -4,7 +4,7 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { runInNewContext } from 'node:vm'
 
-let assets: { ships: Record<string, string>; mounts: Record<string, { muzzles: { x: number; y: number }[] }>; drone: { svg: string; slots: unknown[] } }
+let assets: { ships: Record<string, string>; mounts: Record<string, { muzzles: { x: number; y: number }[] }>; drone: { svg: string; slots: unknown[] }; playerDrone: { svg: string; slots: unknown[]; bolt: unknown } }
 beforeAll(async () => {
   const result = await build({
     stdin: { contents: `import React from 'react'; import {renderToStaticMarkup as render} from 'react-dom/server';
@@ -12,7 +12,8 @@ beforeAll(async () => {
       import {FOE_SHIP_MOUNTS} from './apps/desktop/src/renderer/src/ui/shipMounts';
       import {droneModelOf} from './apps/desktop/src/renderer/src/ui/droneArt';
       export const ships=Object.fromEntries(Object.entries(FOE_SHIP_ART).map(([id,art])=>[id,render(React.createElement('svg',{viewBox:'0 0 240 110'},art))]));
-      export const mounts=FOE_SHIP_MOUNTS;const model=droneModelOf('foe-drone-c-jawclaw');export const drone={svg:render(React.createElement('svg',{},model.art)),slots:model.slots};`,
+      export const mounts=FOE_SHIP_MOUNTS;const model=droneModelOf('foe-drone-c-jawclaw');export const drone={svg:render(React.createElement('svg',{},model.art)),slots:model.slots};
+      const player=droneModelOf('drone-jawclaw');export const playerDrone={svg:render(React.createElement('svg',{},player.art)),slots:player.slots,bolt:player.bolt};`,
       resolveDir: fileURLToPath(new URL('../../../', import.meta.url)), loader: 'tsx' },
     bundle: true, write: false, platform: 'node', format: 'cjs', external: ['react', 'react-dom/server'],
     plugins: [{ name: 'test-locale', setup(api) { api.onLoad({ filter: /[\\/]i18n[\\/]locale\.tsx$/ }, () => ({ contents: "export const tr=(id)=>id;export const isEn=()=>false;", loader: 'js' })) } }],
@@ -44,5 +45,8 @@ describe('新异形资产真实表覆盖', () => {
     expect(model).toBeDefined()
     expect(model.slots.length).toBeGreaterThan(0)
     expect(model.svg).toContain('<path')
+    expect(assets.playerDrone.svg).toBe(model.svg)
+    expect(assets.playerDrone.slots).toEqual(model.slots)
+    expect(assets.playerDrone.bolt).toMatchObject({ style: 'dot', len: 8, width: 1.8, tail: false })
   })
 })

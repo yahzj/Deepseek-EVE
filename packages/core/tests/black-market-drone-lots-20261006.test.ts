@@ -7,7 +7,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 
 const base = buildSimContext()
 const now = new Date(2026, 9, 6, 12).getTime()
-const DRONES = ['drone-exile-bee', 'drone-wh-c-heavy', 'drone-wh-e-sentry', 'drone-ink-heavy']
+const DRONES = ['drone-exile-bee', 'drone-wh-c-heavy', 'drone-wh-e-sentry', 'drone-ink-heavy', 'drone-jawclaw']
 function world(id = DRONES[0]!) {
   const good = base.marketGoods.get(id)!
   const ctx = { ...base, marketGoods: new Map([[id, good]]) }

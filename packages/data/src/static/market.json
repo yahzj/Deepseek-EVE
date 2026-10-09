@@ -4680,6 +4680,36 @@
         "playerBuyable": false
       },
       {
+        "key": "drone-jawclaw", "kind": "item", "refId": "drone-jawclaw",
+        "rarity": "exotic", "basePrice": 24000, "demandMultiplier": 1,
+        "playerBuyable": false, "blackMarketBuyable": true
+      },
+      {
+        "key": "bp-faction-drone-bee", "kind": "blueprint", "refId": "bp-faction-drone-bee",
+        "rarity": "exotic", "basePrice": 2400000, "demandMultiplier": 1,
+        "playerBuyable": false, "blackMarketBuyable": true
+      },
+      {
+        "key": "bp-faction-drone-hiveguard", "kind": "blueprint", "refId": "bp-faction-drone-hiveguard",
+        "rarity": "exotic", "basePrice": 4800000, "demandMultiplier": 1,
+        "playerBuyable": false, "blackMarketBuyable": true
+      },
+      {
+        "key": "bp-faction-drone-construct", "kind": "blueprint", "refId": "bp-faction-drone-construct",
+        "rarity": "exotic", "basePrice": 8800000, "demandMultiplier": 1,
+        "playerBuyable": false, "blackMarketBuyable": true
+      },
+      {
+        "key": "bp-faction-drone-ink", "kind": "blueprint", "refId": "bp-faction-drone-ink",
+        "rarity": "exotic", "basePrice": 4800000, "demandMultiplier": 1,
+        "playerBuyable": false, "blackMarketBuyable": true
+      },
+      {
+        "key": "bp-faction-drone-jawclaw", "kind": "blueprint", "refId": "bp-faction-drone-jawclaw",
+        "rarity": "exotic", "basePrice": 2400000, "demandMultiplier": 1,
+        "playerBuyable": false, "blackMarketBuyable": true
+      },
+      {
         "key": "bp-lair-g-drone",
         "kind": "blueprint",
         "refId": "bp-lair-g-drone",

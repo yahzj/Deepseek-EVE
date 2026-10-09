@@ -367,13 +367,13 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 //   +4（折跃等离子 / 低温跃迁浆 / 曲率凝析物 / 超空间折跃燃料）→ 物品总数 104→**108**、原材料 8→**11**
 // 2026-09-30（实验室后续内容批 · 船长令「信号发射器和技能加速剂」）：+2（信号发射器 / 突触加速剂，
 //   走奇货档 · 施工期 `unreleased`）→ 物品总数 108→**110**
-check(itemDefs.length === 116, `物品总数应为116（含深空探测机），实际 ${itemDefs.length}`)
+check(itemDefs.length === 117, `物品总数应为117（含深空探测机及玩家颚钳虫群），实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 11, `原材料应为 11 种（2026-09-29 跃迁燃料链 +3），实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
 check(ices.length === 3, `冰矿应为 3 种，实际 ${ices.length}`)
 check(ammos.length === 9, `弹药应为 9 种（每族基础弹 + MK2 + MK3），实际 ${ammos.length}`)
-check(drones.length === 8, `无人机应为 8 种（四型制式锚点 + 鱿蜂 + 2 型虫洞族专属 + 墨潮重袭），实际 ${drones.length}`)
+check(drones.length === 9, `无人机应为 9 种（四型制式锚点 + 五种势力机型），实际 ${drones.length}`)
 
 /* ── 市场目录 ── */
 const goodKeys = new Set<string>()
@@ -5972,13 +5972,17 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
             itemDef.exclusive === true,
             `来源唯一契约：窝点专属物品 ${id} 必须标 exclusive（专属型号：渠道唯一、不入常规掉落）`,
           )
-          // 2026-09-14：专属物品**只许一次性蓝图**（船长「专属无人机出一次性蓝图」）；
-          // 普通图纸 = 变相开制造渠道，仍禁
+          // 2026-10-09船长确认五种势力永久书，仅这两张窝点无人机新书例外，不放开其他专属配方。
+          const permanentDroneBooks: Readonly<Record<string, string>> = {
+            'drone-exile-bee': 'bp-faction-drone-bee',
+            'drone-ink-heavy': 'bp-faction-drone-ink',
+          }
           for (const bp of BLUEPRINTS) {
             if (bp.itemId !== id) continue
             check(
-              bp.singleUse === true,
-              `来源唯一契约：窝点专属物品 ${id} 的蓝图 ${bp.id} 必须是 singleUse（一次性）`,
+              bp.singleUse === true || (permanentDroneBooks[id] === bp.id &&
+                lairCtx.marketGoods.get(bp.id)?.playerBuyable === false && lairCtx.marketGoods.get(bp.id)?.blackMarketBuyable === true),
+              `来源唯一契约：窝点专属物品 ${id} 的蓝图 ${bp.id} 必须一次性或为已批准的黑市永久无人机图纸`,
             )
           }
           check(
@@ -7022,6 +7026,12 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
  * `docs/roadmap.md` 2026-10-02「本地化尾巴清场」那条（逐条来路见下面的登记表）。
  */
 const MATERIAL_RATIO_REGISTERED: Readonly<Record<string, string>> = {
+  // 船长2026-10-09确认沿用旧势力料单，不调整成本制造价差；新永久书只消除重复书消耗。
+  'bp-faction-drone-bee': '复用原鱿蜂50架料单，船长确认保留现有成本',
+  'bp-faction-drone-hiveguard': '复用原巢卫50架料单，船长确认保留现有成本',
+  'bp-faction-drone-construct': '复用原构件50架料单，船长确认保留现有成本',
+  'bp-faction-drone-ink': '船长确认墨潮沿用同价位巢卫50架料单',
+  'bp-faction-drone-jawclaw': '船长确认颚钳沿用同价位鱿蜂50架料单',
   'bp-part-drone-neural': '高级零件线口径：产物价 = 材料成本 ×1.5（items.ts 行内注释）⇒ 料/价 ≈ 66.7%',
   'bp-part-shield-gen': '高级零件线口径：产物价 = 材料成本 ×1.5 ⇒ 料/价 ≈ 66.7%',
   'bp-part-jet-array': '高级零件线口径：产物价 = 材料成本 ×1.5 ⇒ 料/价 ≈ 66.7%',

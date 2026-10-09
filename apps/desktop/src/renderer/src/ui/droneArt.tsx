@@ -53,6 +53,8 @@ const SPORE_DRONE_ART: ReactNode = (
   </g>
 )
 
+const JAWCLAW_DRONE_ART: ReactNode = <><path d="M-12 0 Q-6-8 2-5 L10-9 L7-2 L13 0 L7 2 L10 9 L2 5 Q-6 8-12 0 Z" /><path d="M-5-5 L-10-9 M-5 5 L-10 9 M0-4 L4 0 L0 4" /></>
+
 /** 编队位（母舰上侧，按机型分三层避免叠在一起） */
 const SLOTS_HIGH = (y: number): DroneSlot[] => [
   { x: -52, y },
@@ -192,7 +194,12 @@ export const DRONE_MODELS: Record<string, DroneModel> = {
   'foe-drone-c-jawclaw': {
     name: tr('item.alien.001'), tint: FOE_ACCENT.C, slots: SLOTS_HIGH(-26),
     bolt: { style: 'dot', len: 8, width: 1.8, tail: false },
-    art: <><path d="M-12 0 Q-6-8 2-5 L10-9 L7-2 L13 0 L7 2 L10 9 L2 5 Q-6 8-12 0 Z" /><path d="M-5-5 L-10-9 M-5 5 L-10 9 M0-4 L4 0 L0 4" /></>,
+    art: JAWCLAW_DRONE_ART,
+  },
+  'drone-jawclaw': {
+    name: tr('item.jawclaw.001'), tint: FOE_ACCENT.C, slots: SLOTS_HIGH(-26),
+    bolt: { style: 'dot', len: 8, width: 1.8, tail: false },
+    art: JAWCLAW_DRONE_ART,
   },
   /* ══════════ **专属无人机**（2026-09-26 船长报障「**玩家的构件哨戒无人机不会出现在战斗场景中**」） ══════════
    *

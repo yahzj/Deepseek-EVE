@@ -13,6 +13,10 @@ import { describe, expect, it } from 'vitest'
 const zh = buildSimContext()
 const zhExplicit = buildSimContext('zh')
 const en = buildSimContext('en')
+const deferredDroneBooks: Readonly<Record<string, number>> = {
+  'bp-faction-drone-bee': 1, 'bp-faction-drone-hiveguard': 2, 'bp-faction-drone-construct': 3,
+  'bp-faction-drone-ink': 4, 'bp-faction-drone-jawclaw': 5,
+}
 
 describe('英文覆盖层（P2）', () => {
   it('zh 缺省 = 显式 zh：名称逐字相同（工具/测试/模拟读数不受影响）', () => {
@@ -164,7 +168,16 @@ describe('英文覆盖层（P2）', () => {
     // 舰船蓝图：<舰级段> Blueprint
     expect(en.shipBlueprints.get('sbp-pioneer')?.name).toBe('Narwhal-class Blueprint')
     // 派生覆盖率：能反查到产物的蓝图都必须有英文名（否则说明产物表缺名）
-    const noEn = [...zh.blueprints.values()].filter((bp) => !en.blueprints.get(bp.id)?.name.includes('Blueprint'))
+    const noEn = [...zh.blueprints.values()].filter((bp) => {
+      const index = deferredDroneBooks[bp.id]
+      if (index !== undefined) {
+        const entry = L10N[`bp.factionDrone.${String(index).padStart(3, '0')}`]!
+        expect(entry.enDeferred).toBe(true)
+        expect(en.blueprints.get(bp.id)?.name).toBe(l10nEntryText(entry, 'en'))
+        return false
+      }
+      return !en.blueprints.get(bp.id)?.name.includes('Blueprint')
+    })
     expect(noEn.slice(0, 5).map((bp) => bp.id), '这些蓝图没派生到英文名').toEqual([])
     const strip = (d: object): string => {
       const rest: Record<string, unknown> = { ...(d as Record<string, unknown>) }
@@ -321,6 +334,9 @@ describe('英文覆盖层（P2）', () => {
       }
       if (it.id === 'synaptic-accelerant' && L10N['item.synaptic.001']!.enDeferred === true) {
         expect(other.description).toBe(l10nEntryText(L10N['item.synaptic.001']!, 'en'))
+      } else if (it.id === 'drone-jawclaw') {
+        expect(L10N['item.jawclaw.002']!.enDeferred).toBe(true)
+        expect(other.description).toBe(l10nEntryText(L10N['item.jawclaw.002']!, 'en'))
       } else {
         expect(cjk.test(other.description), `${it.id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
       }
@@ -419,7 +435,14 @@ describe('英文覆盖层（P2）', () => {
         noDesc.push(id)
         continue
       }
-      expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
+      const index = deferredDroneBooks[id]
+      if (index !== undefined) {
+        const entry = L10N[`bp.factionDrone.${String(index + 5).padStart(3, '0')}`]!
+        expect(entry.enDeferred).toBe(true)
+        expect(other.description).toBe(l10nEntryText(entry, 'en'))
+      } else {
+        expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
+      }
     }
     expect(noDesc, `这些蓝图还没有英文说明：${noDesc.slice(0, 8).join(', ')}`).toEqual([])
     expect(en.blueprints.get('bp-miner-1')?.description).toContain('Tritanium Alloy')

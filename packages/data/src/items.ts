@@ -217,6 +217,10 @@ const AMMO_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
 }
 
 const DRONES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  'drone-jawclaw': {
+    name: L10N['item.jawclaw.001']!.zh,
+    description: L10N['item.jawclaw.002']!.zh,
+  },
   "drone-scout": {
     name: '蜂鸟侦察无人机',
     description: L10N['item.copy.047']!.zh,

@@ -67,10 +67,10 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
     nameId: 'ui.Handbook.335', // 异形生物
     glyph: 'fam-c',
     // `drone-wh-c-heavy` = 巢卫攻坚无人机（C 族专属消耗品；一次性图纸 `bp-wh-c-drone` 见 blueprints）
-    modules: ['mod-wh-c-frame', 'mod-wh-c-laser', 'mod-wh-c-missile', 'mod-wh-c-prism', 'mod-wh-c-pulse', 'drone-wh-c-heavy'],
+    modules: ['mod-wh-c-frame', 'mod-wh-c-laser', 'mod-wh-c-missile', 'mod-wh-c-prism', 'mod-wh-c-pulse', 'drone-wh-c-heavy', 'drone-jawclaw'],
     ships: ['sh-wh-c-frigate', 'sh-wh-c-destroyer', 'sh-wh-c-cruiser'],
     blueprints: ['bp-wh-c-frame', 'bp-wh-c-laser', 'bp-wh-c-missile', 'bp-wh-c-prism', 'bp-wh-c-pulse', 'bp-wh-c-drone',
-      'sbp-wh-c-frigate', 'sbp-wh-c-destroyer', 'sbp-wh-c-cruiser'],
+      'sbp-wh-c-frigate', 'sbp-wh-c-destroyer', 'sbp-wh-c-cruiser', 'bp-faction-drone-hiveguard', 'bp-faction-drone-jawclaw'],
   },
   /* ── D 守墓古舰（Gravekeeper）──
      依据：`modules.ts`「D 族」段六件（陵卫连装炮 / 陵墓护盾芯 / 守墓者丧钟 / 陵寝棱镜炮 /
@@ -95,7 +95,7 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
     // `drone-wh-e-sentry` = 构件哨戒无人机（E 族专属消耗品；一次性图纸 `bp-wh-e-drone` 见 blueprints）
     modules: ['mod-wh-e-cpu', 'mod-wh-e-dc', 'mod-wh-e-pd', 'mod-wh-e-shield', 'mod-wh-e-tac', 'drone-wh-e-sentry'],
     ships: ['sh-wh-e-frigate', 'sh-wh-e-destroyer', 'sh-wh-e-carrier'],
-    blueprints: ['bp-wh-e-cpu', 'bp-wh-e-dc', 'bp-wh-e-pd', 'bp-wh-e-shield', 'bp-wh-e-tac', 'bp-wh-e-drone',
+    blueprints: ['bp-wh-e-cpu', 'bp-wh-e-dc', 'bp-wh-e-pd', 'bp-wh-e-shield', 'bp-wh-e-tac', 'bp-wh-e-drone', 'bp-faction-drone-construct',
       'sbp-wh-e-frigate', 'sbp-wh-e-destroyer', 'sbp-wh-e-carrier'],
   },
   /* ── G 鱿鱼亡军（Deadarmy）──
@@ -109,14 +109,14 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
     // `drone-exile-bee` = 鱿蜂无人机（G 族窝点链产物；一次性图纸 `bp-lair-g-drone` 在 core `FOE_LAIR_GEAR.G` 名下单列）
     modules: ['mod-wh-g-ballistic', 'mod-wh-g-fcs', 'mod-wh-g-hangar', 'mod-wh-g-hull', 'mod-wh-g-prop', 'mod-wh-g-turret', 'drone-exile-bee'],
     ships: ['sh-wh-g-frigate', 'sh-wh-g-destroyer', 'sh-wh-g-cruiser'],
-    blueprints: ['bp-wh-g-ballistic', 'bp-wh-g-fcs', 'bp-wh-g-hangar', 'bp-wh-g-hull', 'bp-wh-g-prop', 'bp-wh-g-turret',
+    blueprints: ['bp-wh-g-ballistic', 'bp-wh-g-fcs', 'bp-wh-g-hangar', 'bp-wh-g-hull', 'bp-wh-g-prop', 'bp-wh-g-turret', 'bp-faction-drone-bee',
       'sbp-wh-g-frigate', 'sbp-wh-g-destroyer', 'sbp-wh-g-cruiser'],
   },
   /* ── H 墨潮帮（Ink Tide）──
      依据：2026-09-26 势力装备批 —— **两件模块**（墨潮电子舱 `mod-lair-ecm-h` / 墨潮捕获网 `mod-lair-web-h`，
      均在 core `FOE_LAIR_GEAR.H`）＋ **专属无人机**（墨潮重袭无人机 `drone-ink-heavy`，`exclusive: true`）。
      ⚠ **H 没有专属舰船**（数据侧无 `sh-wh-h-*`）⇒ 界面按船长 2026-09-26 选定（甲案）在该栏明写「暂无专属舰船」。
-     ⚠ 两件模块与无人机都是窝点/残骸链产物、**无蓝图**（`exclusive`：无图纸、不上市场）⇒ 图纸一栏为空。 */
+     2026-10-09船长确认墨潮重袭新增黑市永久图纸；两件模块和原成品掉落链不改。 */
   H: {
     family: 'H',
     nameId: 'ui.Handbook.371', // 墨潮帮
@@ -124,7 +124,7 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
     // `drone-ink-heavy` = 墨潮重袭无人机（H 族专属消耗品，残骸链一次 ×10 架）
     modules: ['mod-lair-ecm-h', 'mod-lair-web-h', 'drone-ink-heavy'],
     ships: [],
-    blueprints: [],
+    blueprints: ['bp-faction-drone-ink'],
   },
   /* ── R 光环（Corona Systems）──
      依据：**2026-10-01 船长令建族**（「是新势力：余晖，你可以查阅下远行星号中的无人机敌对势力余晖，
