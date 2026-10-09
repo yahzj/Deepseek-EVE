@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **448** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7619** KB · **58452** 行
-- 状态分布：**未标注** 243 · **已确认/已实现** 143 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
-- 孤儿文档（0 引用）**71** 份 · 状态未标注 **243** 份
+- 文档总数 **446** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7608** KB · **58302** 行
+- 状态分布：**未标注** 242 · **已确认/已实现** 141 · **进行中** 43 · **待裁定** 19 · **历史留档** 1
+- 孤儿文档（0 引用）**70** 份 · 状态未标注 **242** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
-- 三、现行设计稿（design）：**280** 份
+- 三、现行设计稿（design）：**278** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 300 KB / 310 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 92 KB / 911 行 | 94 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 516 KB / 1080 行 | 226 / 22 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 77 KB / 462 行 | 379 / 28 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 76 KB / 462 行 | 379 / 28 |
 
 ## 七、评审与体检（review） —— 13 份
 
@@ -56,13 +56,11 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 280 份
+## 三、现行设计稿（design） —— 278 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/alien-hatchery-evasion-20261009.md` | 异形虫群孵化等待、回避率与族格血量调整 | 已确认/已实现（已实现） | 2026-10-09 | 15 KB / 143 行 | 1 / 0 |
-| `docs/design/enemy-targeting-chance-20261009.md` | 敌方选靶倾向降低到10% | 已确认/已实现（已实现） | 2026-10-09 | 4 KB / 38 行 | 1 / 0 |
-| `docs/design/target-beacon-audit-20261009.md` | 靶标插件运行核查 | 未标注（核查完成） | 2026-10-09 | 5 KB / 49 行 | 0 / 0 |
+| `docs/design/announcement-draft-alien-tuning-20261009.md` | 异形调整与选靶公告待审 | 待裁定（仅中文短稿待船长审核） | 2026-10-09 | 1 KB / 18 行 | 1 / 0 |
 | `docs/design/announcement-draft-corona-reinforcement-20261008.md` | 公告待审稿：光环中枢增援与装置调整 | 待裁定（待船长审字） | 2026-10-08 | 1 KB / 23 行 | 2 / 0 |
 | `docs/design/announcement-draft-shield-field-20261007.md` | 护盾力场、装备代价与一次性舰船蓝图调整公告待审 | 未标注（已按船长要求整合） | 2026-10-07 | 5 KB / 42 行 | 0 / 0 |
 | `docs/design/announcement-draft-wreck-loot-buy-20261007.md` | 残骸回收与装备收购公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 23 行 | 0 / 0 |
@@ -149,7 +147,7 @@
 | `docs/design/ecm-stacking-copy-20260926.md` | 报障修正：墨潮电子舱卡面「全额叠加」＋ 缺最短射程 3,000 m（2026-09-26 · 二号 · d2） | 待裁定（已实现 · 待船长验收） | 2026-09-26 | 4 KB / 48 行 | 2 / 0 |
 | `docs/design/industry-ui-opt-20260926.md` | 工业界面优化批 ＋ 组装机/造船厂筛选合并（2026-09-26 · 二号 · d2） | 已确认/已实现（已实现并合入的界面规则保留为现行入口） | 2026-09-26 | 9 KB / 95 行 | 2 / 0 |
 | `docs/design/plug-cargo-and-fit-slot-20260926.md` | 报障两条：插件装货仓再卸货「不见了」＋ 所有船的插件显示成同一套（2026-09-26 · 二号 · d2） | 待裁定（已实现 · 待船长验收） | 2026-09-26 | 5 KB / 65 行 | 2 / 0 |
-| `docs/design/ship-plug-20260926.md` | 舰船插件（2026-09-26） | 已确认/已实现（已实现并合入） | 2026-09-26 | 8 KB / 106 行 | 4 / 11 |
+| `docs/design/ship-plug-20260926.md` | 舰船插件（2026-09-26） | 已确认/已实现（已实现并合入） | 2026-09-26 | 10 KB / 116 行 | 5 / 11 |
 | `docs/design/ship-wreck-20260926.md` | 玩家舰船残骸（含加固结构插件回收接口）（2026-09-26） | 已确认/已实现（已实现并合入） | 2026-09-26 | 11 KB / 138 行 | 4 / 4 |
 | `docs/design/standing-clawback-blackbox-20260926.md` | 声望账本回正 ＋ 入侵黑匣补发（2026-09-26 晚 · 二号 · d2） | 待裁定（已实现 · 待船长验收） | 2026-09-26 | 9 KB / 121 行 | 2 / 0 |
 | `docs/design/spore-allfoes-gate-20260925.md` | 孢子导弹巢「全体攻击」：主目标未命中不再阻断副目标（2026-09-25） | 进行中（进行中 —— 改动已落码、六道闸门待） | 2026-09-25 | 4 KB / 67 行 | 0 / 0 |
@@ -217,7 +215,7 @@
 | `docs/design/wormhole-ships-review-20260913.md` | 虫洞专属舰船 · 数值审查表（15 艘） | 未标注（数据上桌） | 2026-09-13 | 18 KB / 162 行 | 1 / 2 |
 | `docs/design/haul-security-and-ambush-repair-20260912.md` | 低安运输批：长途运输报酬重标 + 遇袭后自动维修（2026-09-12 · 二号） | 已确认/已实现（已确认并实现） | 2026-09-12 | 10 KB / 124 行 | 4 / 0 |
 | `docs/design/p0-ai-cargo-capacity-20260912.md` | P0 结案：采矿船「货仓没满就返航」——AI 副船满舱判定的漏技能副本（2026-09-12 · 二号） | 已确认/已实现（已确认） | 2026-09-12 | 5 KB / 60 行 | 1 / 0 |
-| `docs/design/wormhole-extraction-endgame-20260912.md` | 终局玩法「虫洞」（搜打撤底层）· 设计稿 | 未标注 | 2026-09-12 | 195 KB / 1908 行 | 35 / 7 |
+| `docs/design/wormhole-extraction-endgame-20260912.md` | 终局玩法「虫洞」（搜打撤底层）· 设计稿 | 未标注 | 2026-09-12 | 197 KB / 1918 行 | 36 / 7 |
 | `docs/design/comms-20260911.md` | 通讯（通讯录）系统 · 设计稿（2026-09-11） | 已确认/已实现（已确认） | 2026-09-11 | 64 KB / 652 行 | 12 / 4 |
 | `docs/design/cpu-coprocessor-20260911.md` | 协处理器（低槽 CPU 预算扩容件）· 2026-09-11 | 已确认/已实现（已确认并已实现） | 2026-09-11 | 10 KB / 121 行 | 4 / 0 |
 | `docs/design/foe-baseline-audit-20260911.md` | 敌人数值复核：多装配对照 + 标准复核配置集（2026-09-11 · 已确认口径） | 未标注（纯测量批 · 未改任何数值） | 2026-09-11 | 16 KB / 205 行 | 17 / 3 |
@@ -225,7 +223,7 @@
 | `docs/design/foe-faction-a-numbers-20260911.md` | A 族数值落地方案（2026-09-11 · 已确认） | 未标注 | 2026-09-11 | 58 KB / 683 行 | 22 / 2 |
 | `docs/design/foe-faction-a-pirate-20260911.md` | A 族「海盗舰系」族特色 · 对账与调整方案（2026-09-11 · 讨论中） | 未标注 | 2026-09-11 | 7 KB / 99 行 | 0 / 0 |
 | `docs/design/foe-faction-b-scavenger-20260911.md` | B 族设定卡 · 武装拾荒者（2026-09-11 · 已确认） | 已确认/已实现（已确认 · 已落码） | 2026-09-11 | 25 KB / 278 行 | 28 / 2 |
-| `docs/design/foe-faction-c-alien-20260911.md` | C 族「异形生物」族格 · 现状对账与待裁清单（2026-09-11 · 第一步 + 第二批均已落码） | 未标注 | 2026-09-11 | 48 KB / 509 行 | 16 / 2 |
+| `docs/design/foe-faction-c-alien-20260911.md` | C 族「异形生物」族格 · 现状对账与待裁清单（2026-09-11 · 第一步 + 第二批均已落码） | 未标注 | 2026-09-11 | 51 KB / 531 行 | 17 / 2 |
 | `docs/design/foe-faction-d-gravekeeper-20260911.md` | D 族「守墓古舰」设定卡（2026-09-11 · 已确认） | 未标注 | 2026-09-11 | 16 KB / 207 行 | 8 / 1 |
 | `docs/design/foe-faction-d-ships-20260911.md` | D 族「守墓古舰」舰船（舰级）设定稿（2026-09-11 · 已确认 · 已落码 · 已验收） | 未标注 | 2026-09-11 | 31 KB / 396 行 | 5 / 1 |
 | `docs/design/foe-faction-e-titan-20260911.md` | E 族「泰坦巨构」设定卡（2026-09-11 · 已确认） | 未标注 | 2026-09-11 | 29 KB / 329 行 | 6 / 1 |
@@ -338,7 +336,7 @@
 | `docs/design/v7-design.md` | V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版 | 未标注 | — | 7 KB / 117 行 | 0 / 0 |
 | `docs/design/v9-market.md` | V9 设计：市场系统（已实现） | 未标注 | — | 21 KB / 192 行 | 17 / 0 |
 | `docs/design/weapon-skill-batch.md` | 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四） | 未标注 | — | 8 KB / 100 行 | 4 / 0 |
-| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 49 KB / 370 行 | 25 / 14 |
+| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 53 KB / 384 行 | 28 / 14 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 5 KB / 56 行 | 5 / 0 |
 
 ## 九、封存卷（archive · 冻结件，只读不改） —— 37 份
@@ -381,17 +379,17 @@
 | `docs/archive/roadmap-2026-09-29.md` | 封存卷 · roadmap 批次条目 2026-09-29 | 未标注 | — | 7 KB / 18 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-30.md` | 封存卷 · roadmap 批次条目 2026-09-30 | 未标注 | — | 24 KB / 28 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-10-01.md` | 封存卷 · roadmap 批次条目 2026-10-01 | 未标注 | — | 3 KB / 10 行 | 2 / 0 |
-| `docs/archive/roadmap-2026-10-02.md` | 封存卷 · roadmap 批次条目 2026-10-02 | 未标注 | — | 8 KB / 22 行 | 2 / 0 |
+| `docs/archive/roadmap-2026-10-02.md` | 封存卷 · roadmap 批次条目 2026-10-02 | 未标注 | — | 9 KB / 24 行 | 2 / 0 |
 
 ## 二、其它（docs 根目录） —— 6 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/data-editor.md` | 大鲸鱼数据编辑器 | 未标注 | — | 9 KB / 65 行 | 7 / 0 |
+| `docs/data-editor.md` | 大鲸鱼数据编辑器 | 未标注 | — | 9 KB / 67 行 | 8 / 0 |
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 26 / 18 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注（仅登记） | — | 4 KB / 68 行 | 7 / 3 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注（仅登记） | — | 5 KB / 70 行 | 6 / 3 |
 | `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 20 KB / 127 行 | 18 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
@@ -518,11 +516,10 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 58 / 14 |
 
-## 附：孤儿文档（0 引用，71 份）
+## 附：孤儿文档（0 引用，70 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/target-beacon-audit-20261009.md`（2026-10-09 · 5 KB）—— 靶标插件运行核查
 - `docs/design/announcement-draft-shield-field-20261007.md`（2026-10-07 · 5 KB）—— 护盾力场、装备代价与一次性舰船蓝图调整公告待审
 - `docs/design/announcement-draft-wreck-loot-buy-20261007.md`（2026-10-07 · 2 KB）—— 残骸回收与装备收购公告待审
 - `docs/design/announcement-draft-signal-space-20261006.md`（2026-10-06 · 1 KB）—— 信号空间公告待审稿
@@ -594,9 +591,8 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（243 份，待补一行 `状态：…`）
+## 附：状态未标注（242 份，待补一行 `状态：…`）
 
-- `docs/design/target-beacon-audit-20261009.md`（2026-10-09）—— 靶标插件运行核查
 - `docs/test-saves/stellar-ready-20261008.md`（2026-10-08）—— 新星系即用档
 - `docs/design/announcement-draft-shield-field-20261007.md`（2026-10-07）—— 护盾力场、装备代价与一次性舰船蓝图调整公告待审
 - `docs/test-saves/planetary-20261007.md`（2026-10-07）—— 星球第一批规则原型验收
