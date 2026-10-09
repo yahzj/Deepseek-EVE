@@ -1165,12 +1165,12 @@
         "rack": "high",
         "damageType": "plasma",
         "ammoPerEngagement": 250,
-        "maxRangeM": 7000,
+        "maxRangeM": 6000,
         "minRangeM": 0,
         "hitRate": 1,
         "falloff": 0.1,
         "reloadMs": 4400,
-        "dmgMult": 1.26,
+        "dmgMult": 2.1,
         "overlayDrive": {
           "stepMs": 300,
           "floorMs": 600

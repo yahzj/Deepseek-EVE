@@ -70,7 +70,7 @@ export const FOE_MOUNT_IDS = {
   /**
    * **叠光装置**（**船长 2026-10-01 令**：「**添加叠光装置：效果是每次攻击或者闪现后，攻击间隔缩短，
    * 最多缩短至0.5秒攻击间隔。伤害给予一个0.3的倍率。**」）—— R 族 T3 **叠光级**专属。
-   * 效果 = 装填自加速（每次攻击/闪现 −400ms，下限 500ms）＋ 该舰全部伤害 ×0.3。
+   * 效果 = 装填自加速（每次攻击/闪现 −400ms，下限 500ms）＋ 伤害修正取挂件静态参数；2026-10-09船长提高到0.5。
    */
   coronaOverlayDrive: 'foe-mount-corona-overlay-drive',
   /**
@@ -304,7 +304,7 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     name: '叠光装置',
     // 「叠光」按舰级译名 `Overlay`（l10n 的 `Corona Overlay`）⇒ 本件取 `Corona Overlay Drive`
     en: 'Corona Overlay Drive',
-    // 船长 2026-10-03 改判：步长 400ms、初始装填 4500ms（舰级定义）、下限 500ms、伤害 ×0.3。
+    // 步长、下限及伤害修正取静态参数；初始装填取舰级定义，2026-10-09伤害修正单独调整。
     overlayDrive: { stepMs: enemyParameterOf(foeMountsParameters, "foe-mount-corona-overlay-drive", "overlayDrive_stepMs"), floorMs: enemyParameterOf(foeMountsParameters, "foe-mount-corona-overlay-drive", "overlayDrive_floorMs"), dmgMul: enemyParameterOf(foeMountsParameters, "foe-mount-corona-overlay-drive", "overlayDrive_dmgMul") },
     note:
       '船长 2026-10-01：「添加叠光装置：效果是每次攻击或者闪现后，攻击间隔缩短，最多缩短至0.5秒攻击间隔。' +

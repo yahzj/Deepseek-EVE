@@ -36,7 +36,7 @@ describe('光环四件说明共用出口', () => {
     const cases = [
       [FOE_MOUNT_IDS.coronaStandbyShield, '待机护盾阵列', 'ui.foeIntro.112', { p1: 50, p2: 1 }],
       [FOE_MOUNT_IDS.coronaFocusArray, '聚焦阵列', 'ui.foeIntro.113', { p1: 120, p2: 200, p3: 200 }],
-      [FOE_MOUNT_IDS.coronaOverlayDrive, '叠光装置', 'ui.foeIntro.115', { p1: 0.4, p2: 0.5, p3: 0.3 }],
+      [FOE_MOUNT_IDS.coronaOverlayDrive, '叠光装置', 'ui.foeIntro.115', { p1: 0.4, p2: 0.5, p3: 0.5 }],
       [FOE_MOUNT_IDS.coronaOverlayBeacon, '叠光支援信标', 'ui.foeIntro.116', { p1: 60 }],
     ] as const
     for (const [id, name, textId, params] of cases) {

@@ -9,7 +9,8 @@
  * - AI 核心：2026-10-04 限定为光环稀有残骸回收 · 产出率 **10%/批** ＋ **60/30/10**保持 ·
  *   **只在回收炉出**（甲）· **直接入核心账本**（船长答「如果是〔回收时抽中〕，**直接入账**」）；
  * - 激光武器：只做**一档**、势力特色、**放入残骸回收的奖励池**（甲 ＋ 追加「将AI核心也放进这个池子」）；
- *   曲线「单发 = 正常 MK3 的 30%」· 步长 **−300ms** · 下限 **600ms** · 射程 **7,000m** ·
+ *   初版曲线「单发 = 正常 MK3 的 30%」、射程7,000m；2026-10-09确认改为50%、6,000m。
+ *   步长 **−300ms** · 下限 **600ms** ·
  *   CPU **40** · 弹药 **250 发/场**；
  * - 闪现装置：**中槽单件**（甲）· 拉开 **2,000m**（甲）· 冷却 **12 秒** · **照搬敌方闪现动画**（甲）。
  *
@@ -26,6 +27,7 @@ import {
 } from '../src/index'
 import { advanceBattleFor } from '../src/combat'
 import { rollRecycleCoreGain, RECYCLE_CORE_SHARE, RECYCLE_CORE_WEIGHTS } from '../src/salvage'
+import { createFittingRange, advanceFittingRange, fittingRangeStats } from '../src/fittingRange'
 
 const ctx = buildSimContext()
 const LASER = 'mod-lair-laser-r'
@@ -52,31 +54,46 @@ function freshState(ships: number, fitted: { high?: string[]; mid?: string[]; lo
 }
 
 describe('R 族势力特色装备：件定义', () => {
-  it('① 叠光激光炮 = 船长定案（单发 30% MK3 · −300ms/发 · 下限 600ms · 7,000m · CPU 40 · 250 发）', () => {
+  it('叠光激光炮在新6000米边界内开火，6001米及旧射程段不再开火', () => {
+    const { state, ids } = freshState(1, { high: [LASER] })
+    for (const distance of [5900, 6000, 6001, 7000]) {
+      const range = createFittingRange(state, ctx, ids[0]!, '测试靶', distance, 'a')!
+      expect(range).not.toBeNull()
+      advanceFittingRange(range, 10000)
+      const weapon = fittingRangeStats(range).weapons.find(row => row.moduleId === LASER)
+      if (distance <= 6000) {
+        expect(weapon!.shots).toBeGreaterThan(0)
+        expect(weapon!.damage).toBeGreaterThan(0)
+      } else {
+        expect(weapon?.shots ?? 0).toBe(0)
+      }
+    }
+  })
+  it('① 叠光激光炮 = 船长定案（单发 50% MK3 · −300ms/发 · 下限 600ms · 6,000m · CPU 40 · 250 发）', () => {
     const m = modOf(LASER)!
     expect(m, '件应在装备目录里').toBeTruthy()
     expect(m.slot, '高槽激光炮').toBe('laser')
     expect(m.rack).toBe('high')
     expect(m.damageType).toBe('plasma')
-    expect(m.maxRangeM, '船长：射程可以降低到7000米').toBe(7000)
+    expect(m.maxRangeM, '船长：射程降低1000米后为6000米').toBe(6000)
     expect(m.cpuUse, '船长：CPU按照正常势力武器的量给').toBe(40)
     expect(m.ammoPerEngagement, '船长：弹药取一个中间值，250发').toBe(250)
     expect(m.reloadMs, '船长定的起步装填').toBe(4400)
     expect(m.overlayDrive, '叠光同款叠加攻速').toEqual({ stepMs: 300, floorMs: 600 })
-    // 单发 = 正常 MK3 的 30%：T3 激光（mod-laser-3）的 dmgMult 4.2 × 0.3
+    // 单发 = 正常 MK3 的 50%：T3 激光（mod-laser-3）的 dmgMult 4.2 × 0.5
     const mk3 = modOf('mod-laser-3')!
-    expect(m.dmgMult, 'dmgMult = MK3 激光 × 30%').toBeCloseTo((mk3.dmgMult ?? 0) * 0.3, 5)
-    // **"单发 = 正常 MK3 的 30%"的实测**：同一套装配下各建一次档，比两门激光的单发
+    expect(m.dmgMult, 'dmgMult = MK3 激光 × 50%').toBeCloseTo((mk3.dmgMult ?? 0) * 0.5, 5)
+    // **"单发 = 正常 MK3 的 50%"的实测**：同一套装配下各建一次档，比两门激光的单发
     const { state: sNew, ids: iNew } = freshState(1, { high: [LASER] })
     const { state: sMk3, ids: iMk3 } = freshState(1, { high: ['mod-laser-3'] })
     const shotOf = (s: typeof sNew, id: string): number =>
       createPlayerSpec(s, ctx, id)?.weapons.find((w) => w.src === 'laser')?.shotDmg ?? 0
     const shotNew = shotOf(sNew, iNew[0]!)
     const shotMk3 = shotOf(sMk3, iMk3[0]!)
-    expect(shotNew, `单发 ${shotNew} 应是 MK3 激光 ${shotMk3} 的 30%`).toBe(Math.max(1, Math.round(shotMk3 * 0.3)))
+    expect(shotNew, `单发 ${shotNew} 应是 MK3 激光 ${shotMk3} 的 50%`).toBe(Math.max(1, Math.round(shotMk3 * 0.5)))
     console.log(`  [读数] 单发实测：叠光激光炮 ${shotNew} vs 同装配 MK3 激光 ${shotMk3}（= ${((shotNew / shotMk3) * 100).toFixed(0)}%）`)
     console.log(
-      `  [读数] 叠光激光炮：dmgMult ${m.dmgMult}（MK3 激光 ${mk3.dmgMult} 的 30%）· ` +
+      `  [读数] 叠光激光炮：dmgMult ${m.dmgMult}（MK3 激光 ${mk3.dmgMult} 的 50%）· ` +
         `装填 ${m.reloadMs}ms → 下限 ${m.overlayDrive!.floorMs}ms（每发 −${m.overlayDrive!.stepMs}ms）· ` +
         `${m.maxRangeM}m · CPU ${m.cpuUse} · 弹药 ${m.ammoPerEngagement} 发`,
     )

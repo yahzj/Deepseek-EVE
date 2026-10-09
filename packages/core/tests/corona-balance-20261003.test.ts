@@ -123,10 +123,10 @@ describe('垂暮：冷却满1秒后至冷却结束生效', () => {
   })
 })
 
-it('叠光敌舰 4500ms 起步、步长 400ms；玩家武器不变', () => {
+it('叠光敌舰 4500ms 起步、步长 400ms、伤害修正0.5；玩家加速规格不变', () => {
   expect(FOE_SHIPS.find((s) => s.id === 'foe-r-corona-overlay')!.reloadMs).toBe(4_500)
   expect(activeFoeSpecsOf(ctx.anomalies.get('corona-converge')!, bal, 1)
     .find((f) => f.foeShipId === 'foe-r-corona-overlay')!.foeOverlayDrive)
-    .toEqual({ stepMs: 400, floorMs: 500, dmgMul: 0.3 })
+    .toEqual({ stepMs: 400, floorMs: 500, dmgMul: 0.5 })
   expect(ctx.modules.get('mod-lair-laser-r')!.overlayDrive).toEqual({ stepMs: 300, floorMs: 600 })
 })

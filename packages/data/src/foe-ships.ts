@@ -1646,7 +1646,7 @@ export const FOE_R_CORONA_OVERLAY: FoeShipDef = {
   // **叠光装置**（**船长 2026-10-01 令**：「添加叠光装置：效果是每次攻击或者闪现后，攻击间隔缩短，
   // 最多缩短至0.5秒攻击间隔。伤害给予一个0.3的倍率。」）：本舰每开一火 / 每闪一次 ⇒ 装填间隔
   // 2026-10-03 改判：−400ms（4500 → 下限 500ms）；攻击与闪现各推进一格，耗时由实际触发次数决定。
-  // 对价 = **该舰全部伤害 ×0.3**（船长选「甲」；收口在 `combat.foeRepairDiscountedShot`，光束与实弹都过）。
+  // 对价 = **该舰全部伤害 ×0.5**（收口在 `combat.foeRepairDiscountedShot`，光束与实弹都过）。
   mounts: [FOE_MOUNT_IDS.coronaBlink, FOE_MOUNT_IDS.coronaOverlayDrive],
   tactic: 'kite', // 船长令「非常擅长风筝战术」⇒ 全档 kite（改前 T1~T3 是 orbit）
 

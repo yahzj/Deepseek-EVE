@@ -55,13 +55,13 @@ function battleOf(card: string, ships: number, foeOverride?: { strengthMul?: num
 }
 
 describe('叠光装置 / 闪烁过载装置：件定义与解析', () => {
-  it('① 两件参数 = 船长定案（400ms 步长 · 500ms 下限 · 伤害 ×0.3 / 护盾全回 · 结构上限 5%）', () => {
+  it('① 两件参数 = 船长定案（400ms 步长 · 500ms 下限 · 伤害 ×0.5 / 护盾全回 · 结构上限 5%）', () => {
     const ov = resolveFoeMounts([FOE_MOUNT_IDS.coronaOverlayDrive])
     expect(ov.unknown, '件 id 必须已登记（否则体检判红）').toEqual([])
     expect(ov.foeOverlayDrive, '叠光参数应原样带给单位').toEqual({
       stepMs: 400,
       floorMs: 500,
-      dmgMul: 0.3,
+      dmgMul: 0.5,
     })
     const fo = resolveFoeMounts([FOE_MOUNT_IDS.coronaFlashOverload])
     expect(fo.unknown).toEqual([])
@@ -142,7 +142,7 @@ describe('叠光装置 / 闪烁过载装置：挂载面（只挂各自主人）'
       expect(sp.foeOverlayDrive, '叠光级应带叠光参数').toEqual({
         stepMs: 400,
         floorMs: 500,
-        dmgMul: 0.3,
+        dmgMul: 0.5,
       })
       expect(sp.foeFlashOverload, '叠光级不得带闪烁过载').toBeUndefined()
     }
@@ -155,8 +155,8 @@ describe('叠光装置 / 闪烁过载装置：挂载面（只挂各自主人）'
   })
 })
 
-describe('叠光装置：伤害 ×0.3 落在每一发单发上', () => {
-  it('⑤ 同一发单发：挂叠光 ⇒ ×0.3；摘掉 ⇒ 原值（收口是开火链上那一个）', () => {
+describe('叠光装置：伤害 ×0.5 落在每一发单发上', () => {
+  it('⑤ 同一发单发：挂叠光 ⇒ ×0.5；摘掉 ⇒ 原值（收口是开火链上那一个）', () => {
     const derived = wormholeDerivedAnomaly(ctx, ctx.anomalies.get(CARD_T3)!, {
       depth: 4,
       kind: 'node',
@@ -168,8 +168,8 @@ describe('叠光装置：伤害 ×0.3 落在每一发单发上', () => {
     const withMount = foeRepairDiscountedShot(spec, shot)
     const without = foeRepairDiscountedShot({ ...spec, foeOverlayDrive: undefined }, shot)
     expect(without, '不挂件 ⇒ 与单发面板一字不差').toBe(shot)
-    expect(withMount, '挂件 ⇒ 单发 ×0.3').toBe(Math.max(1, Math.round(shot * 0.3)))
-    console.log(`  [读数] 叠光级单发 ${shot} ⇒ 挂件后 ${withMount}（×0.3）；摘件对照 ${without}`)
+    expect(withMount, '挂件 ⇒ 单发 ×0.5').toBe(Math.max(1, Math.round(shot * 0.5)))
+    console.log(`  [读数] 叠光级单发 ${shot} ⇒ 挂件后 ${withMount}（×0.5）；摘件对照 ${without}`)
   })
 })
 

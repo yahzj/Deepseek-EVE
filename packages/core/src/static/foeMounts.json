@@ -117,7 +117,7 @@
         "id": "foe-mount-corona-overlay-drive",
         "overlayDrive_stepMs": 400,
         "overlayDrive_floorMs": 500,
-        "overlayDrive_dmgMul": 0.3
+        "overlayDrive_dmgMul": 0.5
       },
       {
         "id": "foe-mount-corona-flash-overload",
