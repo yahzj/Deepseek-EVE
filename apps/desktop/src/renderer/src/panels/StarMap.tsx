@@ -1943,8 +1943,9 @@ export function GalaxyActions({
               >
                 {tr('ui.ItemsPage.056')}
               </button>
+              {/* ⟪文案调整 2026-10-09⟫ 取消按钮误用了副站投送说明，复用发射器警告的取消词条。 */}
               <button className="app-btn is-small" onClick={() => setBeaconAsk(null)}>
-                {tr('ui.Expedition.108')}
+                {tr('ui.beacon.008')}
               </button>
             </>
           ) : (

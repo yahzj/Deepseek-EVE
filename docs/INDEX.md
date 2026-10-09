@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **449** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7648** KB · **58648** 行
+- 文档总数 **449** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7649** KB · **58652** 行
 - 状态分布：**未标注** 243 · **已确认/已实现** 144 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
 - 孤儿文档（0 引用）**72** 份 · 状态未标注 **243** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 300 KB / 310 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 92 KB / 911 行 | 95 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 516 KB / 1080 行 | 226 / 22 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 77 KB / 462 行 | 379 / 28 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 74 KB / 462 行 | 379 / 28 |
 
 ## 七、评审与体检（review） —— 13 份
 
@@ -60,7 +60,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/boost-copy-ammo-warning-20261009.md` | 加速剂文案与战前弹药预警收口 | 已确认/已实现（已实现、提交且专项通过） | 2026-10-09 | 8 KB / 56 行 | 1 / 0 |
+| `docs/design/boost-copy-ammo-warning-20261009.md` | 加速剂文案与战前弹药预警收口 | 已确认/已实现（已实现、提交且专项通过） | 2026-10-09 | 8 KB / 58 行 | 1 / 0 |
 | `docs/design/raider-fragment-ammo-audit-20261009.md` | 掠袭破片炮弹药显示检查 | 未标注（已修复并合入主树） | 2026-10-09 | 5 KB / 47 行 | 0 / 0 |
 | `docs/design/synaptic-accelerant-audit-20261009.md` | 突触加速剂玩家报障检查 | 已确认/已实现（核心修复已合入主树并复测） | 2026-10-09 | 21 KB / 201 行 | 0 / 0 |
 | `docs/design/zero-integration-20261009.md` | 零号技能与装配修复整合 | 已确认/已实现（已合入主树并完成主树专项/构建） | 2026-10-09 | 5 KB / 41 行 | 2 / 0 |
@@ -382,7 +382,7 @@
 | `docs/archive/roadmap-2026-09-29.md` | 封存卷 · roadmap 批次条目 2026-09-29 | 未标注 | — | 7 KB / 18 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-30.md` | 封存卷 · roadmap 批次条目 2026-09-30 | 未标注 | — | 24 KB / 28 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-10-01.md` | 封存卷 · roadmap 批次条目 2026-10-01 | 未标注 | — | 3 KB / 10 行 | 2 / 0 |
-| `docs/archive/roadmap-2026-10-02.md` | 封存卷 · roadmap 批次条目 2026-10-02 | 未标注 | — | 9 KB / 24 行 | 2 / 0 |
+| `docs/archive/roadmap-2026-10-02.md` | 封存卷 · roadmap 批次条目 2026-10-02 | 未标注 | — | 13 KB / 26 行 | 2 / 0 |
 
 ## 二、其它（docs 根目录） —— 6 份
 
