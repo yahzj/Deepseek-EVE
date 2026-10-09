@@ -398,6 +398,7 @@ export function createPlayerSpec(
   // `speedBonusPct` 都计入（与 speedPenaltyPct / hitPenalty 的"全件扫描"同口径）；
   // 既有装备只有推进器带本字段 ⇒ 行为零变化。
   const propSpeeds = allFittedModules(fitted, ctx)
+    .filter(m => !m.speedRamp)
     .map((m) => m.speedBonusPct ?? 0)
     .filter((v) => v > 0)
   /**

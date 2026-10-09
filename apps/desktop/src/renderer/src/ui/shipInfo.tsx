@@ -14,6 +14,7 @@
  * - 无人机生存包等未落地内容仍标注"契约"。
  */
 import type { ElementType, ReactNode } from 'react'
+import { battleSpeedBonusOf } from '@whale/core'
 import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
 import { DEFAULT_BALANCE, DC_LOCK_MS, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, beamPowerFactor, thrusterCycleNote, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules, fittedEffectParamsOf, WEB_BREAK_DIST_M, equipmentCycleMsOf } from '@whale/core'
 import { HIGH_SEC_PENALTY, JUMP_FUEL_SPEED_MUL, SHIELD_FIELD_COST_PCT, SYNAPTIC_ACCELERANT_MS, SYNAPTIC_ACCELERANT_MUL, wormholeIsShapedItem, wormholeShapeOf } from '@whale/core'
@@ -78,12 +79,12 @@ export function fittedSpeedLine(spec: Pick<UnitSpec, 'speedMps'> & Partial<UnitS
     k: tr("ui.FitPage.049"),
     v: (
       <>
-        {`${fmt(Math.round(spec.speedMps))} m/s`}
+        {`${fmt(Math.round(spec.speedMps * (1 + battleSpeedBonusOf(spec, { startedAtGameMs: 0, lastTickGameMs: 0 }, false))))} m/s`}
         {spec.thrusterBoost !== undefined && spec.thrusterBoost > 0 ? (
           <span className="app-dim">
             {/* 点火周期按语言（2026-09-30 批 5）：`thrusterCycleNote` 给 { textId, params }，原来直接把中文串喂进 {p2} */}
             {tr("ui.FitPage.145", {
-              p1: fmt(Math.round(spec.speedMps * (1 + spec.thrusterBoost))),
+              p1: fmt(Math.round(spec.speedMps * (1 + battleSpeedBonusOf(spec, { startedAtGameMs: 0, lastTickGameMs: 0 })))),
               p2: (() => {
                 const note = thrusterCycleNote(battle, { boostMs: spec.thrusterBoostMs, cooldownMs: spec.thrusterCooldownMs })
                 return tr(note.textId, note.params)
@@ -1052,7 +1053,9 @@ function crossFamilyShort(mod: ModuleDef): string {
   }
   if (foreign('shield') && mod.shieldHpBonus !== undefined) parts.push(tr("ui.shipInfo.102", { p1: pct(mod.shieldHpBonus) }))
   if (foreign('propulsion')) {
-    if (mod.speedBonusPct !== undefined)
+    if (mod.speedRamp)
+      parts.push(tr('ui.alienLoot.004', { p1: (mod.speedBonusPct ?? 0) * 100, p2: mod.speedRamp.maxBonusPct * 100, p3: mod.speedRamp.rampMs / 1000 }))
+    else if (mod.speedBonusPct !== undefined)
       parts.push(tr("ui.shipInfo.107", { p1: pct(mod.speedBonusPct), p2: thrusterCycleShort(mod) }))
     if ((mod.hitPenalty ?? 0) > 0) parts.push(tr("ui.shipInfo.108", { p1: (1 - (mod.hitPenalty ?? 0)).toFixed(2) }))
   }
@@ -1453,7 +1456,7 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   if (mod.laserFalloffBonus !== undefined) lines.push({ k: tr('ui.launchCalibration.005'), v: `+${mod.laserFalloffBonus}` })
   if (mod.acidOnHit) lines.push({ k: tr('ui.alienLoot.001'), v: tr('ui.alienLoot.002', { p1: mod.acidOnHit.cutPct * 100, p2: mod.acidOnHit.durationMs / 1000 }) })
   if (mod.speedRamp) lines.push({ k: tr('ui.alienLoot.003'), v: tr('ui.alienLoot.004', { p1: (mod.speedBonusPct ?? 0) * 100, p2: mod.speedRamp.maxBonusPct * 100, p3: mod.speedRamp.rampMs / 1000 }) })
-  if ((mod.speedBonusPct ?? 0) > 0 && mod.slot !== 'propulsion') {
+  if ((mod.speedBonusPct ?? 0) > 0 && mod.slot !== 'propulsion' && !mod.speedRamp) {
     lines.push({ k: tr("ui.shipInfo.075"), v: tr("ui.shipInfo.168", { p1: pct(mod.speedBonusPct ?? 0) }) })
   }
   // 跨族加成（2026-09-11 修复：槽位族之外的加成原先一律不显示——见 crossFamilyLines 注释）

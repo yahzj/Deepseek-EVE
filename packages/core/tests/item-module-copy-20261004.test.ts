@@ -146,6 +146,16 @@ describe('真实参数行承接说明数字', () => {
       const afterburner = rows.filter(row => row.k === L10N['ui.shipInfo.020']![locale])
       const speed = rows.filter(row => row.k === L10N['ui.shipInfo.075']![locale])
       expect(afterburner, module.id).toHaveLength(module.slot === 'propulsion' ? 1 : 0)
+      if (module.speedRamp) {
+        expect(speed, module.id).toHaveLength(0)
+        const ramp = rows.find(row => row.k === l10nEntryText(L10N['ui.alienLoot.003']!, locale))!
+        expect(ramp).toBeDefined()
+        expect(textOf(ramp.v)).toContain('+5% → +25%，60秒达到峰值')
+        expect(display.moduleShortEffect(module)).toContain('+5% → +25%，60秒达到峰值')
+        expect(rows.map(row => textOf(row.v)).join('|')).not.toMatch(/点火|冷却|burning|cooldown/i)
+        expect(display.moduleShortEffect(module)).not.toMatch(/点火|冷却|burning|cooldown/i)
+        continue
+      }
       expect(speed, module.id).toHaveLength(module.slot === 'propulsion' ? 0 : 1)
       const value = textOf((speed[0] ?? afterburner[0])!.v)
       const pct = `${Math.round(module.speedBonusPct! * 100)}%`

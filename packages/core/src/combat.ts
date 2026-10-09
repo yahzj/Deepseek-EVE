@@ -1217,7 +1217,7 @@ export function applyMeWebDebuff<T extends UnitSpec>(spec: T, d: import('./state
   spec.speedMps = Math.max(20, spec.speedMps * d.slowMul)
   if (d.noThruster) {
     spec.thrusterBoost = 0
-    spec.speedBonusModules = undefined
+    if (spec.speedBonusModules) spec.speedBonusModules = spec.speedBonusModules.filter(mod => mod.speedRamp)
   }
   if (d.noEvasion) spec.evasion = 0
   if (d.rangeDownM > 0) {
@@ -1592,7 +1592,7 @@ function unitSpeedMulOf(
 ): number {
   if (side === 'me') {
     const boosting = thrusterPhase(b, bal, unitThrusterCycle(u, bal)).boosting
-    return 1 + (boosting ? battleSpeedBonusOf(u, b) : 0)
+    return 1 + battleSpeedBonusOf(u, b, boosting)
   }
   if (b.foeCharges?.[u.tag]?.on !== true) return 1
   return u.foeChargeMul ?? bal.foeChargeMul
@@ -3175,7 +3175,7 @@ export function battleArcsFor(
       hp: u ? { ...u.hp } : { s: 0, a: 0, h: 0 },
       hpMax: u?.hpMax ?? { s: 0, a: 0, h: 0 },
       alive: !!u && u.hp.s + u.hp.a + u.hp.h > 0,
-      boosting: battle.ended === null && isAlive(battle, e.tag) && !!spec && unitSpeedMulOf(spec, battle, bal, 'me') > 1,
+      boosting: battle.ended === null && isAlive(battle, e.tag) && !!spec && (spec.thrusterBoost ?? 0) > 0 && thrusterPhase(battle, bal, unitThrusterCycle(spec, bal)).boosting,
       ...(battle.expeditionAmmo ? { ammoIds: battleAmmoIdsFor(battle, e.tag) } : {}),
       /** 逐舰机群机体清单（见上方类型注释；只算**该舰存活**的池条目） */
       drones: (() => {

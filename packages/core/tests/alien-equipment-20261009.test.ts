@@ -173,6 +173,15 @@ describe('酸蚀独立期限与恢复', () => {
 })
 
 describe('增压速度同池折权', () => {
+  it('周期冷却移除普通速度件后重新排序，增压腔保留，不影响未装增压件的周期', () => {
+    const spec = { thrusterBoost: .6, speedBonusModules: [ctx.modules.get(speedId)!, ctx.modules.get(speedId)!, ctx.modules.get('mod-prop-2')!] }
+    const clock = { startedAtGameMs: 1000, lastTickGameMs: 61000 }
+    expect(battleSpeedBonusOf(spec, clock, true)).toBeCloseTo(weightedSum([.6, .25, .25]))
+    expect(battleSpeedBonusOf(spec, clock, false)).toBeCloseTo(weightedSum([.25, .25]))
+    expect(battleSpeedBonusOf({ thrusterBoost: .6 }, clock, false)).toBe(0)
+    expect(battleSpeedBonusOf({ thrusterBoost: .6 }, clock, true)).toBe(.6)
+    expect(battleSpeedBonusOf(spec, { ...clock, lastTickGameMs: 31000 }, false)).toBeCloseTo(weightedSum([.15, .15]))
+  })
   it.each([[0, .05], [30000, .15], [60000, .25], [90000, .25]])('时间%sms加成%s', (now, expected) => {
     const { spec, battle } = player([], [speedId])
     battle.lastTickGameMs = now
@@ -196,12 +205,14 @@ describe('增压速度同池折权', () => {
     expect(rows.some(row => row.key === 'speedPeak')).toBe(false)
     expect(battleSpeedBonusOf({ thrusterBoost: .6 }, w.battle)).toBe(.6)
   })
-  it('捕获网关闭推进器时不得绕过禁用，重建规格后恢复', () => {
+  it('捕获网关闭推进器不关闭增压腔，整体减速仍生效', () => {
     const w = player([], [speedId])
     w.battle.lastTickGameMs = 60000
     applyMeWebDebuff(w.spec, { byTag: 'foe-0', slowMul: .5, noThruster: true, noEvasion: true, rangeDownM: 0, atMs: 0 })
-    expect(battleSpeedBonusOf(w.spec, w.battle)).toBe(0)
+    expect(battleSpeedBonusOf(w.spec, w.battle, false)).toBeCloseTo(.25)
+    expect(w.spec.speedMps).toBeLessThan(createPlayerSpec(w.state, ctx, w.uid)!.speedMps)
     expect(battleSpeedBonusOf(createPlayerSpec(w.state, ctx, w.uid)!, w.battle)).toBeCloseTo(.25)
+    expect(w.spec.thrusterBoost).toBe(0)
   })
 })
 
@@ -269,7 +280,7 @@ describe('真引擎命中与速度路径', () => {
     expect(w.battle.units).toEqual(loaded.units)
     expect(w.battle.distanceM).toBeCloseTo(loaded.distanceM)
   })
-  it('实战速度在点火窗口随时钟增长，冷却仍遵守既有周期', () => {
+  it('未装推进器时增压腔持续增长，60秒后保持，不进入冷却', () => {
     const w = combatWorld()
     const advance = (now: number) => {
       w.battle.lastTickGameMs = now
@@ -281,9 +292,13 @@ describe('真引擎命中与速度路径', () => {
     const first = advance(0), mid = advance(30000)
     expect(mid).toBeGreaterThan(first!)
     const cooldown = advance(61000)
-    expect(cooldown).toBeLessThan(first!)
+    expect(cooldown).toBeGreaterThan(mid!)
     const full = advance(120000)
     expect(full).toBeGreaterThan(mid!)
-    expect(battleArcsFor(w.state, w.ctx, { battle: w.battle, anomaly: w.ctx.anomalies.get('acid-test')!, leaderShipId: w.uid })).not.toBeNull()
+    expect(full).toBe(cooldown)
+    const arcs = battleArcsFor(w.state, w.ctx, { battle: w.battle, anomaly: w.ctx.anomalies.get('acid-test')!, leaderShipId: w.uid })!
+    expect(arcs.myUnits[0]!.boosting).toBe(false)
+    const saved = cleanBattle(JSON.parse(JSON.stringify(w.battle)))!
+    expect(battleSpeedBonusOf(w.spec, saved, false)).toBeCloseTo(.25)
   })
 })
