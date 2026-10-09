@@ -1454,6 +1454,7 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   }
   if (mod.droneLaunchCutPct !== undefined) lines.push({ k: tr('ui.launchCalibration.004'), v: tr('ui.launchCalibration.001', { p1: Math.round(mod.droneLaunchCutPct * 100) }) })
   if (mod.laserFalloffBonus !== undefined) lines.push({ k: tr('ui.launchCalibration.005'), v: `+${mod.laserFalloffBonus}` })
+  // ⟪文案调整 2026-10-09⟫ 酸蚀规格只显示装甲减抗。
   if (mod.acidOnHit) lines.push({ k: tr('ui.alienLoot.001'), v: tr('ui.alienLoot.002', { p1: mod.acidOnHit.cutPct * 100, p2: mod.acidOnHit.durationMs / 1000 }) })
   if (mod.speedRamp) lines.push({ k: tr('ui.alienLoot.003'), v: tr('ui.alienLoot.004', { p1: (mod.speedBonusPct ?? 0) * 100, p2: mod.speedRamp.maxBonusPct * 100, p3: mod.speedRamp.rampMs / 1000 }) })
   if ((mod.speedBonusPct ?? 0) > 0 && mod.slot !== 'propulsion' && !mod.speedRamp) {

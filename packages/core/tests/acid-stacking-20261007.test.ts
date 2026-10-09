@@ -27,22 +27,24 @@ function acidBattle(count = 8) {
 }
 
 describe('爆虫腐蚀逐只累加与负抗性', () => {
-  it('按百分点叠加，只补新增差值，盾不变，低于零后实际增伤', () => {
+  it('按百分点叠加，只补新增差值，仅装甲减抗且低于零后实际增伤', () => {
     const { state, local } = acidBattle()
     const spec = createPlayerSpec(state, local, state.shipId)!
-    spec.resists = { shield: { kinetic: .5 }, armor: { kinetic: .4 }, hull: { kinetic: 0 } }
+    spec.resists = { shield: { kinetic: .5, explosive: .2, plasma: .3 }, armor: { kinetic: .4 }, hull: { kinetic: .3, explosive: -.4, plasma: .6 } }
+    const shield = structuredClone(spec.resists.shield)
+    const hull = structuredClone(spec.resists.hull)
     applyAlienCorrosion(spec, .15)
     applyAlienCorrosion(spec, .6)
     applyAlienCorrosion(spec, .6)
     expect(spec.resists.shield!.kinetic).toBe(.5)
     expect(spec.resists.armor!.kinetic).toBeCloseTo(-.2)
-    expect(spec.resists.hull!.kinetic).toBeCloseTo(-.6)
+    expect(spec.resists.hull).toEqual(hull)
     expect(applyDamage({ s: 0, a: 1000, h: 1000 }, spec.resists, 100, 'kinetic').dealt).toBeCloseTo(90)
     applyAlienCorrosion(spec, 3)
-    for (const layer of ['armor', 'hull'] as const) {
-      for (const type of ['kinetic', 'explosive', 'plasma'] as const) expect(spec.resists[layer]![type]).toBe(RESIST_FLOOR)
-    }
-    expect(applyDamage({ s: 0, a: 0, h: 1000 }, spec.resists, 100, 'kinetic').dealt).toBeCloseTo(190)
+    for (const type of ['kinetic', 'explosive', 'plasma'] as const) expect(spec.resists.armor![type]).toBe(RESIST_FLOOR)
+    expect(spec.resists.shield).toEqual(shield)
+    expect(spec.resists.hull).toEqual(hull)
+    expect(applyDamage({ s: 0, a: 0, h: 1000 }, spec.resists, 100, 'kinetic').dealt).toBeCloseTo(70)
   })
 
   it('纯状态入口逐只叠加，主动/死亡触发去重，累计超过90个百分点可重载', () => {
@@ -92,6 +94,24 @@ describe('爆虫腐蚀逐只累加与负抗性', () => {
     expect(loaded.alienCorrosion).toBeCloseTo(1.2)
   })
 
+  it('多爆虫连续命中纯结构舰时实际承伤保持基础结构抗性，累计腐蚀不增伤', () => {
+    const { state, local, card, battle } = acidBattle()
+    const base = createPlayerSpec(state, local, state.shipId)!
+    const foes = createFoeSpecs(card, local.balance.battle)
+    let expected = { s: 0, a: 0, h: battle.units.player!.hp.h }
+    battle.units.player!.hp = { ...expected }
+    state.gameMs = 100
+    advanceBattleFor(state, local, battle, state.shipId, card.id)
+    const events = battle.fx.filter(fx => fx.acidBurst)
+    expect(events).toHaveLength(8)
+    expect(events.some(event => event.hit)).toBe(true)
+    for (const event of events) {
+      if (event.hit) expected = applyDamage(expected, base.resists, foes.find(foe => foe.tag === event.tag)!.acidBurst!.damage!, 'kinetic').hp
+    }
+    expect(battle.units.player!.hp).toEqual(expected)
+    expect(battle.alienCorrosion).toBeCloseTo(1.2)
+  })
+
   it('近距被击杀与主动自毁均叠加，新战斗清除', () => {
     const { state, local, card, battle } = acidBattle(4)
     const foes = createFoeSpecs(card, local.balance.battle)
@@ -133,10 +153,11 @@ describe('爆虫腐蚀逐只累加与负抗性', () => {
     for (const shipId of ships) {
       const spec = createPlayerSpec(state, context, shipId)!
       const shield = structuredClone(spec.resists.shield)
+      const hull = structuredClone(spec.resists.hull)
       applyAlienCorrosion(spec, loaded.alienCorrosion!)
       expect(spec.resists.shield).toEqual(shield)
       expect(spec.resists.armor!.kinetic).toBe(RESIST_FLOOR)
-      expect(spec.resists.hull!.kinetic).toBe(RESIST_FLOOR)
+      expect(spec.resists.hull).toEqual(hull)
     }
   })
 

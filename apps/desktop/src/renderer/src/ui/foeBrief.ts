@@ -216,7 +216,8 @@ function bitsOf(ship: FoeShipDef, out: { mounts?: FoeMountLine[] }): string[] {
     bits.push(tr('ui.foeIntro.040', { p1: String(drones.reduce((n, d) => n + (d.count ?? 1), 0)) }))
   }
   const mech: FoeMountLine[] = []
-  if (ship.acidBurst) mech.push({ name: '', effect: tr('ui.alien.001', { p1: ship.acidBurst.attackRangeM, p2: ship.acidBurst.deathRangeM, p3: ship.acidBurst.corrosionPct * 100, p4: ship.acidBurst.damage ?? 0, p5: Math.round((ship.acidBurst.hitRate ?? .95) * 100) }) })
+  // ⟪文案调整 2026-10-09⟫ 船长确认仅装甲减抗，保留爆发与未命中腐蚀规则。
+  if (ship.acidBurst) mech.push({ name: '', effect: tr('ui.alienArmor.001', { p1: ship.acidBurst.attackRangeM, p2: ship.acidBurst.deathRangeM, p3: ship.acidBurst.corrosionPct * 100, p4: ship.acidBurst.damage ?? 0, p5: Math.round((ship.acidBurst.hitRate ?? .95) * 100) }) })
   for (const id of ship.mounts ?? []) {
     const eff = mountEffectText(id)
     if (!eff) continue

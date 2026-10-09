@@ -37,11 +37,12 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ui.stellarHud.002': { zh: '目标详情', en: '', enDeferred: true },
   'ui.stellarHud.003': { zh: '探测机生产', en: '', enDeferred: true },
   'mod.alienLoot.001': { zh: '酸蚀弹射器', en: '', enDeferred: true },
-  'mod.alienLoot.002': { zh: '发射爆炸酸蚀弹，命中后暂时降低目标的装甲与结构抗性。酸蚀可叠加，每层独立消退。不可制造。', en: '', enDeferred: true },
+  // ⟪文案调整 2026-10-09⟫ 船长确认酸液减抗仅作用装甲；英文只登记待译。
+  'mod.alienLoot.002': { zh: '发射爆炸酸蚀弹，命中后暂时降低目标的装甲抗性。酸蚀可叠加，每层独立消退。不可制造。', en: '', enDeferred: true },
   'mod.alienLoot.003': { zh: '增压加速腔', en: '', enDeferred: true },
   'mod.alienLoot.004': { zh: '提高机动速度，进入战斗后加成逐渐提高，达到峰值后保持。多装递减。不可制造。', en: '', enDeferred: true },
   'ui.alienLoot.001': { zh: '酸蚀', en: '', enDeferred: true },
-  'ui.alienLoot.002': { zh: '装甲和结构全抗性 −{p1}个百分点，每层{p2}秒，独立到期', en: '', enDeferred: true },
+  'ui.alienLoot.002': { zh: '装甲全抗性 −{p1}个百分点，每层{p2}秒，独立到期', en: '', enDeferred: true },
   'ui.alienLoot.003': { zh: '渐增机动', en: '', enDeferred: true },
   'ui.alienLoot.004': { zh: '+{p1}% → +{p2}%，{p3}秒达到峰值', en: '', enDeferred: true },
   'ui.alienLoot.005': { zh: '{p1}：{p2}层，下一层{p3}秒后消退', en: '', enDeferred: true },
@@ -582,6 +583,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // ⟪文案调整 2026-10-06⟫ 群体补损仍逐架消耗有限储备。
   'ui.alien.003': { zh: '无人机战损后，等待{p1}秒满血补回本波存活舰船损失的机位；本场储备{p2}架，用完或载体被击毁后停止。', en: 'After drone losses, waits {p1} seconds before restoring lost slots of surviving ships in this wave at full health. Has {p2} reserve drones for this battle; stops when reserves run out or the carrier is destroyed.' },
   'ui.alien.004': { zh: '腐蚀：装甲和结构全抗性 −{p1}个百分点', en: 'Corrosion: armor and hull resistances −{p1} percentage points' },
+  // ⟪文案调整 2026-10-09⟫ 装甲限定说明另取ID，既有英文与历史公告不追改。
+  'ui.alienArmor.001': { zh: '在{p1}米内攻击并自毁，在{p2}米内被击杀也会爆发；对一艘舰船造成基础{p4}点动能伤害，基础命中{p5}%。每次爆发使玩家全队装甲全抗性降低{p3}个百分点，可叠加，抗性可降至负数；未命中仍施加腐蚀。', en: '', enDeferred: true },
+  'ui.alienArmor.002': { zh: '腐蚀：装甲全抗性 −{p1}个百分点', en: '', enDeferred: true },
   'ui.alien.005': { zh: '孵化储备剩余：{p1}；已补回：{p2}', en: 'Hatchery reserves remaining: {p1}; replacements deployed: {p2}' },
   'ui.alien.006': { zh: '无限', en: 'Unlimited' },
   // ⟪文案调整 2026-10-08⟫ 船长确认巢母改为召唤成虫，满编不召唤。

@@ -14,6 +14,7 @@ import { FOE_LAIR_GEAR } from '../src/lairs'
 import { fittedEffectParamsOf } from '../src/foeRange'
 import { makeTestCtx, ship, anomaly } from './helpers'
 import type { FoeShipDef } from '../src/types'
+import { applyDamage } from '../src/combatMath'
 
 const ctx = buildSimContext()
 const acidId = 'mod-alien-acid-launcher', speedId = 'mod-alien-pressure-chamber'
@@ -117,12 +118,36 @@ describe('酸蚀独立期限与恢复', () => {
     const a = acidResistsOf(battle, 'foe-0', base, 15000)
     expect(a.armor!.kinetic).toBeCloseTo(.2)
     expect(a.armor!.plasma).toBeCloseTo(-.2)
-    expect(a.hull!.explosive).toBe(-.9)
+    expect(a.hull).toBe(base.hull)
     expect(a.shield).toBe(base.shield)
     expect(acidResistsOf(battle, 'foe-0', base, 16000).armor!.kinetic).toBeCloseTo(.3)
     expect(acidResistsOf(battle, 'foe-0', base, 20000)).toBe(base)
     expect(base.hull.explosive).toBe(-.85)
     for (let i = 0; i < 100; i++) expect(acidResistsOf(battle, 'foe-0', base, 16000).armor!.kinetic).toBeCloseTo(.3)
+  })
+  it('大量叠层触底及重载后仅装甲减抗，三系护盾和结构实际承伤不变', () => {
+    const { battle } = player()
+    const base = {
+      shield: { kinetic: .2, explosive: .4, plasma: .6 },
+      armor: { kinetic: .3, explosive: .5, plasma: .7 },
+      hull: { kinetic: .1, explosive: -.2, plasma: .8 },
+    }
+    for (let i = 0; i < 20; i++) addFoeAcidLayer(battle, 'foe-0', effect, i * 100)
+    battle.lastTickGameMs = 10000
+    const loaded = cleanBattle(JSON.parse(JSON.stringify(battle)))!
+    for (const current of [battle, loaded]) {
+      const a = acidResistsOf(current, 'foe-0', base)
+      expect(a.shield).toBe(base.shield)
+      expect(a.hull).toBe(base.hull)
+      for (const type of ['kinetic', 'explosive', 'plasma'] as const) {
+        expect(a.armor![type]).toBe(-.9)
+        for (const hp of [{ s: 1000, a: 1000, h: 1000 }, { s: 0, a: 0, h: 1000 }]) {
+          expect(applyDamage(hp, a, 100, type)).toEqual(applyDamage(hp, base, 100, type))
+        }
+      }
+      expect(acidResistsOf(current, 'foe-0', base, 17000)).toBe(base)
+      expect(acidResistsOf(current, 'w1-foe-0', base)).toBe(base)
+    }
   })
   it('死亡/结束清理，不转移到新目标或其他波tag', () => {
     const { battle } = player()
@@ -236,6 +261,18 @@ function combatWorld(count = 1, range = 2000, hit = 2) {
 }
 
 describe('真引擎命中与速度路径', () => {
+  it('纯结构目标连续命中三门酸液不叠增伤，酸蚀账仍逐门记录', () => {
+    const w = combatWorld(3)
+    w.battle.units['foe-0']!.hp = { s: 0, a: 0, h: 1e8 }
+    w.state.gameMs = 10
+    advanceBattleFor(w.state, w.ctx, w.battle, w.uid, 'acid-test')
+    const shots = w.battle.fx.filter(f => f.side === 'me' && f.hit)
+    expect(shots).toHaveLength(3)
+    expect(shots[0]!.dmg).toBeGreaterThan(0)
+    expect(shots[1]!.dmg).toBeCloseTo(shots[0]!.dmg!)
+    expect(shots[2]!.dmg).toBeCloseTo(shots[0]!.dmg!)
+    expect(w.battle.foeAcidLayers!['foe-0']).toHaveLength(3)
+  })
   it('合并三门分别命中并叠三层，后门伤害吃前门破抗，射失零层', () => {
     const w = combatWorld(3)
     w.state.gameMs = 10

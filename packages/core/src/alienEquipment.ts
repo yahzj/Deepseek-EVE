@@ -22,11 +22,10 @@ export function acidResistsOf(battle: Pick<AcidState, 'foeAcidLayers' | 'lastTic
   const cut = layers.reduce((sum, layer) => sum + layer.cutPct, 0)
   if (cut <= 0) return base
   const resists = { ...base }
-  for (const layer of ['armor', 'hull'] as const) {
-    resists[layer] = { ...base[layer] }
-    for (const type of ['kinetic', 'explosive', 'plasma'] as const) {
-      resists[layer]![type] = Math.max(RESIST_FLOOR, (base[layer]?.[type] ?? 0) - cut)
-    }
+  // 2026-10-09 船长确认：玩家酸蚀只削减目标装甲抗性。
+  resists.armor = { ...base.armor }
+  for (const type of ['kinetic', 'explosive', 'plasma'] as const) {
+    resists.armor[type] = Math.max(RESIST_FLOOR, (base.armor?.[type] ?? 0) - cut)
   }
   return resists
 }

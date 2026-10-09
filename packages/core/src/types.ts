@@ -1707,7 +1707,7 @@ export interface ModuleDef {
   speedBonusPct?: number
   /** 本舰战斗速度收益线性爬升；与静态速度件同池折权。 */
   speedRamp?: { rampMs: number; maxBonusPct: number }
-  /** 逐次命中敌舰后降低装甲/结构抗性，各层独立到期。 */
+  /** 逐次命中敌舰后降低装甲抗性，各酸蚀层独立到期。 */
   acidOnHit?: { cutPct: number; durationMs: number }
   blindDmgMul?: number
   /** 推进器开火失稳：命中削减量（0.05 = 我方武器命中 ×0.95；界 [0, 0.5]，缺省 0；

@@ -35,13 +35,12 @@ export function triggerAcidBurst(
 export function applyAlienCorrosion(spec: UnitSpec, pct: number): void {
   const delta = pct - (spec.corrosionAppliedPct ?? 0)
   if (!(delta > 0)) return
-  for (const layer of ['armor', 'hull'] as const) {
-    const current = spec.resists[layer]
-    spec.resists[layer] = {
-      kinetic: Math.max(RESIST_FLOOR, (current?.kinetic ?? 0) - delta),
-      explosive: Math.max(RESIST_FLOOR, (current?.explosive ?? 0) - delta),
-      plasma: Math.max(RESIST_FLOOR, (current?.plasma ?? 0) - delta),
-    }
+  // 2026-10-09 船长确认：酸液腐蚀只削减装甲抗性。
+  const current = spec.resists.armor
+  spec.resists.armor = {
+    kinetic: Math.max(RESIST_FLOOR, (current?.kinetic ?? 0) - delta),
+    explosive: Math.max(RESIST_FLOOR, (current?.explosive ?? 0) - delta),
+    plasma: Math.max(RESIST_FLOOR, (current?.plasma ?? 0) - delta),
   }
   spec.corrosionAppliedPct = pct
 }

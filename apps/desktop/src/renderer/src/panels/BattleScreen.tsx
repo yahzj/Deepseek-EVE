@@ -1676,7 +1676,8 @@ const meSpeedRef = useRef(200)
    */
   const NOTICE_LIFE_MS = 12_000
   const noticeItems: Array<{ key: string; text: string }> = []
-  if (battle.alienCorrosion) noticeItems.push({ key: 'corrosion', text: tr('ui.alien.004', { p1: Math.round(battle.alienCorrosion * 100) }) })
+  // ⟪文案调整 2026-10-09⟫ 腐蚀累计提示只指装甲，既有英文不追改。
+  if (battle.alienCorrosion) noticeItems.push({ key: 'corrosion', text: tr('ui.alienArmor.002', { p1: Math.round(battle.alienCorrosion * 100) }) })
   if (wavePending)
     noticeItems.push({
       key: 'wave',
