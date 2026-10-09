@@ -12,9 +12,9 @@
 
 ## 统计
 
-- 文档总数 **451** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7649** KB · **58732** 行
-- 状态分布：**未标注** 246 · **已确认/已实现** 143 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
-- 孤儿文档（0 引用）**73** 份 · 状态未标注 **246** 份
+- 文档总数 **451** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7650** KB · **58742** 行
+- 状态分布：**未标注** 244 · **已确认/已实现** 145 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
+- 孤儿文档（0 引用）**73** 份 · 状态未标注 **244** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
 - 三、现行设计稿（design）：**283** 份
@@ -62,10 +62,10 @@
 |---|---|---|---|---|---|
 | `docs/design/alien-hatchery-evasion-20261009.md` | 异形虫群孵化等待、回避率与族格血量调整 | 已确认/已实现（已实现） | 2026-10-09 | 15 KB / 143 行 | 1 / 0 |
 | `docs/design/enemy-targeting-chance-20261009.md` | 敌方选靶倾向降低到10% | 已确认/已实现（已实现） | 2026-10-09 | 4 KB / 38 行 | 1 / 0 |
-| `docs/design/raider-fragment-ammo-audit-20261009.md` | 掠袭破片炮弹药显示检查 | 未标注（修复获批） | 2026-10-09 | 5 KB / 47 行 | 0 / 0 |
-| `docs/design/synaptic-accelerant-audit-20261009.md` | 突触加速剂玩家报障检查 | 未标注（核心修复完成） | 2026-10-09 | 21 KB / 201 行 | 0 / 0 |
+| `docs/design/raider-fragment-ammo-audit-20261009.md` | 掠袭破片炮弹药显示检查 | 未标注（已修复并合入主树） | 2026-10-09 | 5 KB / 47 行 | 0 / 0 |
+| `docs/design/synaptic-accelerant-audit-20261009.md` | 突触加速剂玩家报障检查 | 已确认/已实现（核心修复已合入主树并复测） | 2026-10-09 | 21 KB / 201 行 | 0 / 0 |
 | `docs/design/target-beacon-audit-20261009.md` | 靶标插件运行核查 | 未标注（核查完成） | 2026-10-09 | 5 KB / 49 行 | 0 / 0 |
-| `docs/design/zero-integration-20261009.md` | 零号技能与装配修复整合 | 未标注（实现及专项验证完成） | 2026-10-09 | 4 KB / 31 行 | 2 / 0 |
+| `docs/design/zero-integration-20261009.md` | 零号技能与装配修复整合 | 已确认/已实现（已合入主树并完成主树专项/构建） | 2026-10-09 | 5 KB / 41 行 | 2 / 0 |
 | `docs/design/announcement-draft-corona-reinforcement-20261008.md` | 公告待审稿：光环中枢增援与装置调整 | 待裁定（待船长审字） | 2026-10-08 | 1 KB / 23 行 | 2 / 0 |
 | `docs/design/announcement-draft-shield-field-20261007.md` | 护盾力场、装备代价与一次性舰船蓝图调整公告待审 | 未标注（已按船长要求整合） | 2026-10-07 | 5 KB / 42 行 | 0 / 0 |
 | `docs/design/announcement-draft-wreck-loot-buy-20261007.md` | 残骸回收与装备收购公告待审 | 待裁定（待船长审核） | 2026-10-07 | 2 KB / 23 行 | 0 / 0 |
@@ -599,12 +599,10 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（246 份，待补一行 `状态：…`）
+## 附：状态未标注（244 份，待补一行 `状态：…`）
 
 - `docs/design/raider-fragment-ammo-audit-20261009.md`（2026-10-09）—— 掠袭破片炮弹药显示检查
-- `docs/design/synaptic-accelerant-audit-20261009.md`（2026-10-09）—— 突触加速剂玩家报障检查
 - `docs/design/target-beacon-audit-20261009.md`（2026-10-09）—— 靶标插件运行核查
-- `docs/design/zero-integration-20261009.md`（2026-10-09）—— 零号技能与装配修复整合
 - `docs/test-saves/stellar-ready-20261008.md`（2026-10-08）—— 新星系即用档
 - `docs/design/announcement-draft-shield-field-20261007.md`（2026-10-07）—— 护盾力场、装备代价与一次性舰船蓝图调整公告待审
 - `docs/test-saves/planetary-20261007.md`（2026-10-07）—— 星球第一批规则原型验收
