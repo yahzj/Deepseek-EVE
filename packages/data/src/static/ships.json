@@ -433,6 +433,7 @@
       },
       {
         "id": "sh-swarm",
+        "droneLaunchCutPct": 0.3,
         "role": "armed",
         "slots": {
           "high": 3,
@@ -462,6 +463,7 @@
       },
       {
         "id": "sh-sentinel",
+        "droneLaunchCutPct": 0.3,
         "role": "armed",
         "slots": {
           "high": 4,
@@ -1362,6 +1364,7 @@
       },
       {
         "id": "sh-wh-e-destroyer",
+        "droneLaunchCutPct": 0.3,
         "role": "armed",
         "subClass": "无人机作战舰",
         "slots": {
