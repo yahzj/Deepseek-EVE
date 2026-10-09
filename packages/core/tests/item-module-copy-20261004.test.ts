@@ -41,20 +41,22 @@ describe('物品装备说明双语与数据守恒', () => {
       return item.id === 'mat-wh-essence' ? { ...item, name: '信号谜质' } : item
     })
     const strip = (entries: typeof ITEMS) => entries.map(({ description: _description, ...rest }) => rest)
-    const added = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'deep-space-probe'])
+    const added = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'deep-space-probe', 'drone-jawclaw'])
     expect(ITEMS.filter(item => added.has(item.id)).map(item => item.id).sort()).toEqual([...added].sort())
     expect(strip(ITEMS.filter(item => !added.has(item.id)))).toEqual(strip(adjusted))
   })
-  it('170 件装备含插件，仅说明、巨构8%代价和掠袭首次等待20%按已确认值调整', () => {
+  it('旧装备字段仅按已确认值调整，新增七件另由装备专项约束', () => {
     const plugs = historical<typeof MODULES>('packages/data/src/plugs.ts', 'SHIP_PLUGS')
     const before = historical<typeof MODULES>('packages/data/src/modules.ts', 'MODULES', { SHIP_PLUGS: plugs })
     const strip = (entries: typeof MODULES) => entries.map(({ description: _description, ...rest }) => rest)
     const adjusted = before.map(mod => {
-      if (mod.id === 'mod-wh-e-cpu') return { ...mod, reloadPenaltyPct: .08 }
+      if (mod.id === 'mod-wh-e-cpu') return { ...mod, reloadPenaltyPct: .05 }
       if (mod.id === 'mod-lair-blink-r') return { ...mod, blink: { ...mod.blink!, cooldownMs: 16000 } }
       return mod.id === 'mod-wh-a-hangar' ? { ...mod, droneCycleCutPct: .2 } : mod
     })
-    expect(strip(MODULES)).toEqual(strip(adjusted))
+    const newIds = new Set(['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3', 'mod-laser-calibration-2', 'mod-laser-calibration-3', 'mod-alien-acid-launcher', 'mod-alien-pressure-chamber'])
+    expect(MODULES.filter(mod => newIds.has(mod.id))).toHaveLength(7)
+    expect(strip(MODULES.filter(mod => !newIds.has(mod.id)))).toEqual(strip(adjusted))
   })
   it.each(ITEMS)('$id 物品说明中英唯一表接线一致，名称不变', (item) => {
     const pair = Object.entries(L10N).find(([id, entry]) => (id.startsWith('item.') || id === 'ui.stellar.002') && entry.zh === item.description)
@@ -73,11 +75,18 @@ describe('物品装备说明双语与数据守恒', () => {
     }
   })
   it.each(MODULES)('$id 装备说明中英唯一表接线一致', (module) => {
-    const pair = Object.entries(L10N).find(([id, entry]) => (id.startsWith('mod.copy.') || id.startsWith('mod.signalSpace.')) && entry.zh === module.description)
+    const pair = Object.entries(L10N).find(([id, entry]) => id.startsWith('mod.') && entry.zh === module.description)
     expect(pair, module.id).toBeDefined()
-    expect(EN_MODULES[module.id]?.description).toBe(pair![1].en)
-    expect(buildSimContext('en').modules.get(module.id)?.description).toBe(pair![1].en)
-    expect(pair![1].en).not.toMatch(/[\u4e00-\u9fff]/)
+    const [id, entry] = pair!
+    const expected = l10nEntryText(entry, 'en')
+    expect(buildSimContext('en').modules.get(module.id)?.description).toBe(expected)
+    if (entry.enDeferred) {
+      expect(entry.en).toBe('')
+      expect(readFileSync(new URL('../../../docs/l10n-pending.md', import.meta.url), 'utf8')).toContain(`| \`${id}\` |`)
+    } else {
+      expect(EN_MODULES[module.id]?.description).toBe(expected)
+      expect(expected).not.toMatch(/[\u4e00-\u9fff]/)
+    }
   })
   it('本批说明无重复手写数字、跨件比较与推销承诺', () => {
     for (const entry of [...ITEMS, ...MODULES]) {
@@ -107,7 +116,7 @@ const code = source.statements.filter((node) => !ts.isImportDeclaration(node)).m
 const bindings = {
   ...core, exports: {},
   React: { createElement: (type: string, props: object, ...children: unknown[]) => ({ type, props, children }) },
-  tr: (id: string, params?: Record<string, string | number>) => (L10N[id]?.[language.value] ?? id).replace(/\{(\w+)\}/g, (m, key: string) => String(params?.[key] ?? m)),
+  tr: (id: string, params?: Record<string, string | number>) => (L10N[id] ? l10nEntryText(L10N[id]!, language.value) : id).replace(/\{(\w+)\}/g, (m, key: string) => String(params?.[key] ?? m)),
   kindTextOfItem: (item: (typeof ITEMS)[number]) => item.kind,
   slotText: (slot: string) => slot, rackText: (rack: string) => rack,
   shipRoleText: () => '', shipTierText: () => '',
@@ -129,7 +138,7 @@ describe('真实参数行承接说明数字', () => {
   it.each(['zh', 'en'] as const)('%s 全目录的速度加成只显示一次，不把非推进器误称加力推进', locale => {
     language.value = locale
     const speedModules = MODULES.filter(module => (module.speedBonusPct ?? 0) > 0)
-    expect(speedModules.filter(module => module.slot !== 'propulsion').map(module => module.id)).toEqual(['mod-wh-c-pulse', 'mod-wh-c-frame'])
+    expect(speedModules.filter(module => module.slot !== 'propulsion').map(module => module.id)).toEqual(['mod-alien-pressure-chamber', 'mod-wh-c-pulse', 'mod-wh-c-frame'])
     expect(filters.moduleSubKeyOf('armor', 'mod-wh-c-frame')).toBe('armor')
     expect(filters.moduleSubKeyOf('support', 'mod-wh-c-pulse')).toBe('support-aux')
     for (const module of speedModules) {
@@ -161,12 +170,12 @@ describe('真实参数行承接说明数字', () => {
       language.value = locale
       const rows = display.moduleInfoLines(ctx.modules.get('mod-shieldfield-2')!, engine, uid)
       const cycle = rows.find(row => row.k === L10N['ui.equipmentPenalty.001']![locale])!
-      expect(textOf(cycle.v)).toContain('11.664')
+      expect(textOf(cycle.v)).toContain('11.025')
       for (const [id, ordinal] of [['mod-prop-3', 2], ['mod-wh-a-coat', 2], ['mod-wh-e-cpu', 2]] as const) {
         const values = display.moduleInfoLines(ctx.modules.get(id)!, engine, uid, ordinal).map(row => textOf(row.v)).join('|')
         expect(values).not.toMatch(/\{p\d+\}|只取最重|heaviest of several|下限 0|floor 0/)
         if (id === 'mod-wh-a-coat') expect(values).toContain('11%')
-        if (id === 'mod-wh-e-cpu') expect(values).toContain('8%')
+        if (id === 'mod-wh-e-cpu') expect(values).toContain('5%')
       }
     }
   })

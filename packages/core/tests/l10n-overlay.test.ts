@@ -18,6 +18,8 @@ const deferredDroneBooks: Readonly<Record<string, number>> = {
   'bp-faction-drone-ink': 4, 'bp-faction-drone-jawclaw': 5,
 }
 const deferredCalibration: Readonly<Record<string, { name: string; description: string }>> = {
+  'mod-alien-acid-launcher': { name: 'mod.alienLoot.001', description: 'mod.alienLoot.002' },
+  'mod-alien-pressure-chamber': { name: 'mod.alienLoot.003', description: 'mod.alienLoot.004' },
   'mod-drone-launch-1': { name: 'mod.launchCalibration.001', description: 'mod.launchCalibration.006' },
   'mod-drone-launch-2': { name: 'mod.launchCalibration.002', description: 'mod.launchCalibration.006' },
   'mod-drone-launch-3': { name: 'mod.launchCalibration.003', description: 'mod.launchCalibration.006' },
@@ -98,7 +100,13 @@ describe('英文覆盖层（P2）', () => {
   })
 
   it('装备覆盖完整且生效：142 条全覆盖；英文名生效；碎片名跟着装备名走', () => {
-    const missing = [...zh.modules.keys()].filter((id) => !(id in EN_MODULES))
+    const missing = [...zh.modules.keys()].filter((id) => !(id in EN_MODULES) && !(id in deferredCalibration))
+    for (const [id, pending] of Object.entries(deferredCalibration)) {
+      if (!zh.modules.has(id)) continue
+      expect(L10N[pending.name]!.enDeferred, id).toBe(true)
+      expect(L10N[pending.name]!.en, id).toBe('')
+      expect(en.modules.get(id)!.name, id).toBe(l10nEntryText(L10N[pending.name]!, 'en'))
+    }
     expect(missing, `这些装备还没有英文名：${missing.slice(0, 8).join(', ')}`).toEqual([])
     expect(en.modules.get('mod-turret-kin-1')?.name).toBe('Light Turret MK1 · Kinetic')
     expect(en.modules.get('mod-wh-e-dc')?.name).toBe('Megastructure Damage Control Array')

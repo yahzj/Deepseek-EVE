@@ -100,7 +100,9 @@ describe('组装机卡片排序（2026-09-14 船长：一次性图纸和原图�
      * ⇒ 它们的 `mate` 找不到，本就进不了"紧邻"计数；能配对的 **15** 张（原 14 + 鹦鹉螺级，
      * 它同时有永久图纸 `sbp-nautilus`）照旧必须全部紧邻。
      */
-    expect(adjacentPairs(next).adjacent).toBe(19) // 2026-10-04：新增海牛孪生图纸
+    const paired = rows.filter(row => row.singleUse && rows.some(other => !other.singleUse && other.productKey === row.productKey)).length
+    expect(adjacentPairs(next).adjacent).toBe(paired)
+    expect(paired).toBe(22) // 船长确认永久无人机书后新增三组可配对图纸。
   })
 
   it('② 真实目录：**非一次性卡**的相对位次与 09-08 口径逐格一致（新口径只搬一次性卡）', () => {

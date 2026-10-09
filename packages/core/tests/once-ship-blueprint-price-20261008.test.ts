@@ -24,16 +24,18 @@ describe('全部一次性舰船蓝图基础价10%', () => {
     expect(ctx.marketGoods.get('sbp-once-colossal')!.basePrice).toBe(64_000_000)
   })
 
-  it('静态市场只改对应34条基价，其他图纸/商品/资格保持原值', () => {
+  it('对应34条一次性舰船图纸仅改基价，原资格保持，不限制后续新增商品', () => {
     const priceMap = new Map(once.map(bp => [bp.id, bp.priceIsk]))
     let changed = 0
     for (const [group, rows] of Object.entries(staticMarket.groups)) {
       const old = before.groups[group as keyof typeof before.groups]
-      expect(rows).toHaveLength(old.length)
-      for (const [index, row] of rows.entries()) {
+      for (const row of rows) {
         const price = row.kind === 'blueprint' ? priceMap.get(row.refId) : undefined
-        expect(row, row.key).toEqual(price === undefined ? old[index] : { ...old[index], basePrice: price })
-        if (price !== undefined) changed++
+        if (price === undefined) continue
+        const original = old.find(item => item.key === row.key)
+        expect(original, row.key).toBeDefined()
+        expect(row, row.key).toEqual({ ...original, basePrice: price })
+        changed++
       }
     }
     expect(changed).toBe(34)

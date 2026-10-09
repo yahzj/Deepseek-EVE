@@ -3283,6 +3283,13 @@ const BASE_BLUEPRINTS: readonly BlueprintDef[] = [
 
 
 // 新件沿获批参照配方取料单和工期，旧配方保持单一来源和原顺序。
+const BLUEPRINT_NAME_TEXT_BINDINGS = {
+  'bp-drone-launch-1': { name: L10N['bp.launchCalibration.001']!.zh },
+  'bp-drone-launch-2': { name: L10N['bp.launchCalibration.002']!.zh },
+  'bp-drone-launch-3': { name: L10N['bp.launchCalibration.003']!.zh },
+  'bp-laser-calibration-2': { name: L10N['bp.launchCalibration.004']!.zh },
+  'bp-laser-calibration-3': { name: L10N['bp.launchCalibration.005']!.zh },
+} as const
 export const BLUEPRINTS: readonly BlueprintDef[] = [
   ...BASE_BLUEPRINTS,
   ...[
@@ -3294,7 +3301,7 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
   ].map(([id, moduleId, sourceId, nameId]) => {
     const source = BASE_BLUEPRINTS.find(bp => bp.id === sourceId)!
     const priceIsk = id === 'bp-drone-launch-3' ? 8_160_000 : id === 'bp-laser-calibration-3' ? 9_440_000 : source.priceIsk
-    return { ...source, id: id!, moduleId: moduleId!, name: L10N[nameId!]!.zh, priceIsk,
+    return { ...source, id: id!, moduleId: moduleId!, name: BLUEPRINT_NAME_TEXT_BINDINGS[id as keyof typeof BLUEPRINT_NAME_TEXT_BINDINGS].name, priceIsk,
       description: L10N[moduleId!.startsWith('mod-drone-launch') ? 'mod.launchCalibration.006' : 'mod.launchCalibration.007']!.zh }
   }),
 ]

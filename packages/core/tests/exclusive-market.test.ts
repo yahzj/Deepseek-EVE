@@ -84,7 +84,8 @@ describe('专属内容上市场（2026-09-14 船长「允许玩家挂卖」批�
             g.kind === 'module' &&
             ctx.modules.get(g.refId)?.slot === slot &&
             !g.refId.includes('-wh-') &&
-            !g.refId.startsWith('mod-lair-'),
+            !g.refId.startsWith('mod-lair-') &&
+            g.playerBuyable !== false,
         ).map((g) => g.basePrice ?? 0),
       )
     expect(priceOf('mod-lair-turret-a')).toBe(round500(normalTop('turret') * 4))

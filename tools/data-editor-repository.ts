@@ -224,7 +224,7 @@ function names(bytes: Buffer, file: string, localized = new Map<string, string>(
     for (const decl of statement.declarationList.declarations) {
       if (!ts.isIdentifier(decl.name) || !decl.initializer) continue
       const object = unwrap(decl.initializer)
-      if (['BLUEPRINTS', 'SHIP_BLUEPRINTS'].includes(decl.name.text) && ts.isArrayLiteralExpression(object)) {
+      if (['BASE_BLUEPRINTS', 'BLUEPRINTS', 'SHIP_BLUEPRINTS'].includes(decl.name.text) && ts.isArrayLiteralExpression(object)) {
         for (const entry of object.elements) {
           if (!ts.isObjectLiteralExpression(entry)) continue
           const id = entry.properties.find((field): field is ts.PropertyAssignment => ts.isPropertyAssignment(field) && propertyName(field.name) === 'id')

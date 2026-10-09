@@ -123,7 +123,13 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
   })
 
   it('四艘扫描舰只改说明：全部舰船数据与来源一致，半径仍按编队相加', () => {
-    sameData(SHIPS, baseShips, ['description'])
+    // 后续船长确认四舰CPU与航母首发特性；其余旧字段仍按固定来源逐项比较。
+    const approvedCpu: Record<string, number> = { pioneer: 240, 'sh-humpback': 260, 'sh-wh-c-cruiser': 360, 'sh-wh-d-cruiser': 350 }
+    const expectedShips = baseShips.map(row => ({ ...row,
+      ...(approvedCpu[row.id] !== undefined ? { cpu: approvedCpu[row.id] } : {}),
+      ...(row.id === 'sh-wh-e-carrier' ? { droneLaunchCutPct: .3 } : {}),
+    }))
+    sameData(SHIPS, expectedShips, ['description'])
     expect(SHIPS.filter((row, i) => row.description !== baseShips[i]!.description).map((row) => row.id)).toEqual(shipIds)
     for (const id of shipIds) {
       expect(zh.ships.get(id)!.wormholeScanRadiusBonus).toBe(1)
@@ -181,7 +187,7 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
   })
 
   it('旧资产数值与配方不变；模块及谜质装置说明取新ID，历史正文仍可读取', () => {
-    const addedItems = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'deep-space-probe'])
+    const addedItems = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'deep-space-probe', 'drone-jawclaw'])
     expect(ITEMS.filter(item => addedItems.has(item.id)).map(item => item.id).sort()).toEqual([...addedItems].sort())
     sameData(ITEMS.filter(item => !addedItems.has(item.id)), baseItems, ['name', 'description'])
     expect(EN_ITEMS['mat-wh-essence']!.name).toBe('Signal Enigma')
@@ -189,7 +195,11 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
       if (addedItems.has(id)) continue
       expect(text.name, id).toBe(id === 'mat-wh-essence' ? 'Signal Enigma' : baseEn.EN_ITEMS[id]!.name)
     }
-    for (const [id, text] of Object.entries(EN_MODULES)) expect(text.name, id).toBe(baseEn.EN_MODULES[id]!.name)
+    const approvedNewModules = new Set(['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3', 'mod-laser-calibration-2', 'mod-laser-calibration-3'])
+    for (const [id, text] of Object.entries(EN_MODULES)) {
+      if (approvedNewModules.has(id)) continue
+      expect(text.name, id).toBe(baseEn.EN_MODULES[id]!.name)
+    }
     for (const id of ['mod.copy.001', 'mod.copy.002', 'mod.copy.044', 'item.copy.008']) {
       expect(L10N[id]!.en).toMatch(/wormhole/i)
       expect(L10N[signalSpaceTextId(id)]!.en).toContain('Signal Space')
