@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **462** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7758** KB · **59657** 行
-- 状态分布：**未标注** 248 · **已确认/已实现** 152 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
+- 文档总数 **463** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7763** KB · **59694** 行
+- 状态分布：**未标注** 248 · **已确认/已实现** 153 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
 - 孤儿文档（0 引用）**82** 份 · 状态未标注 **248** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
-- 三、现行设计稿（design）：**292** 份
+- 三、现行设计稿（design）：**293** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -56,7 +56,7 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 292 份
+## 三、现行设计稿（design） —— 293 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -70,7 +70,8 @@
 | `docs/design/raider-fragment-ammo-audit-20261009.md` | 掠袭破片炮弹药显示检查 | 未标注（已修复并合入主树） | 2026-10-09 | 5 KB / 47 行 | 0 / 0 |
 | `docs/design/ship-cpu-audit-20261009.md` | 全船CPU预算检查 | 未标注（四舰CPU已调整并完成自测） | 2026-10-09 | 7 KB / 81 行 | 0 / 0 |
 | `docs/design/stellar-map-ui-20261009.md` | 星系星图UI优化：探索指挥台 | 已确认/已实现（布局已实现、自测通过） | 2026-10-09 | 15 KB / 103 行 | 1 / 0 |
-| `docs/design/stellar-planet-samples-20261009.md` | 星系天体位图样片 | 已确认/已实现（样片已完成） | 2026-10-09 | 5 KB / 40 行 | 0 / 0 |
+| `docs/design/stellar-planet-samples-20261009.md` | 星系天体位图样片 | 已确认/已实现（样片已完成） | 2026-10-09 | 5 KB / 40 行 | 1 / 0 |
+| `docs/design/stellar-scene-20261009.md` | 星系中央场景重绘 | 已确认/已实现（已实现） | 2026-10-09 | 5 KB / 37 行 | 0 / 0 |
 | `docs/design/stellar-ui-finish-20261009.md` | 星系探索界面收尾 | 已确认/已实现（已实现） | 2026-10-09 | 4 KB / 39 行 | 0 / 0 |
 | `docs/design/synaptic-accelerant-audit-20261009.md` | 突触加速剂玩家报障检查 | 已确认/已实现（核心修复已合入主树并复测） | 2026-10-09 | 21 KB / 201 行 | 0 / 0 |
 | `docs/design/zero-integration-20261009.md` | 零号技能与装配修复整合 | 已确认/已实现（已合入主树并完成主树专项/构建） | 2026-10-09 | 5 KB / 41 行 | 2 / 0 |
@@ -544,7 +545,7 @@
 - `docs/design/push-regression-contract-20261009.md`（2026-10-09 · 4 KB）—— 推送前回归契约修正
 - `docs/design/raider-fragment-ammo-audit-20261009.md`（2026-10-09 · 5 KB）—— 掠袭破片炮弹药显示检查
 - `docs/design/ship-cpu-audit-20261009.md`（2026-10-09 · 7 KB）—— 全船CPU预算检查
-- `docs/design/stellar-planet-samples-20261009.md`（2026-10-09 · 5 KB）—— 星系天体位图样片
+- `docs/design/stellar-scene-20261009.md`（2026-10-09 · 5 KB）—— 星系中央场景重绘
 - `docs/design/stellar-ui-finish-20261009.md`（2026-10-09 · 4 KB）—— 星系探索界面收尾
 - `docs/design/synaptic-accelerant-audit-20261009.md`（2026-10-09 · 21 KB）—— 突触加速剂玩家报障检查
 - `docs/test-saves/alien-loot-20261009.md`（2026-10-09 · 1 KB）—— 异形入侵装备验收档

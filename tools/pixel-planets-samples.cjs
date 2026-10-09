@@ -1,13 +1,14 @@
 /** PixelPlanets本机原生shader透明样片导出，不调用图片API、不读取玩家档。
  * 用法：node tools/pixel-planets-samples.cjs [EXE绝对路径] [独立输出目录绝对路径]。
  * 默认输出docs/design/assets/stellar-samples-20261009；不覆盖已有样片。
+ * 末尾--scene-set导出七类星球、四色恒星和黑洞共12张，默认三类样片保持不变。
  * 版本自检：Godot3.5 / 游戏v0.1.0 / 档v31，2026-10-09核对。
  */
 const assert = require('node:assert/strict')
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto')
 const { spawnSync } = require('node:child_process')
 const ROOT = path.resolve(__dirname, '..')
-for (const argument of process.argv.slice(2)) assert(path.isAbsolute(argument), '显式输入须为绝对路径')
+for (const argument of process.argv.slice(2).filter(value => value !== '--scene-set')) assert(path.isAbsolute(argument), '显式输入须为绝对路径')
 const exe = path.resolve(process.argv[2] ?? path.join(ROOT, '../PixelPlanetsWindows.exe'))
 const output = path.resolve(process.argv[3] ?? path.join(ROOT, 'docs/design/assets/stellar-samples-20261009'))
 const sha = crypto.createHash('sha256').update(fs.readFileSync(exe)).digest('hex')
@@ -18,7 +19,7 @@ const version = spawnSync(exe, ['--version'], { encoding: 'utf8', windowsHide: t
 assert.equal(version.status, 0)
 assert(version.stdout.includes('3.5.stable'))
 const run = spawnSync(exe, ['--no-window', '--audio-driver', 'Dummy', '--video-driver', 'GLES2', '--script', path.join(ROOT, 'tools/pixel-planets-export.gd')], {
-  cwd: output, env: { ...process.env, WHALE_PLANET_SAMPLE_OUT: output }, encoding: 'utf8', windowsHide: true, timeout: 60000,
+  cwd: output, env: { ...process.env, WHALE_PLANET_SAMPLE_OUT: output, WHALE_PLANET_SCENE_SET: process.argv.includes('--scene-set') ? '1' : '0' }, encoding: 'utf8', windowsHide: true, timeout: 60000,
 })
 console.log(run.stdout)
 if (run.error) throw run.error

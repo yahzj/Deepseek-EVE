@@ -7,7 +7,11 @@ const scope = { exports: {} as {
   StellarPlanetArt: (props: { kind: Kind }) => { props: { children: any[] } },
   StellarPlanetPreview: (props: { kind: Kind }) => unknown,
   STELLAR_KIND_IDS: Record<string, string>, STELLAR_PLANET_KIND_IDS: Record<Kind, string>,
-}, require: () => ({ jsx, jsxs, Fragment }) }
+}, require: (id: string) => {
+  if (id === 'react') return { useState: (initial: unknown) => [initial, () => {}] }
+  if (id === './stellarAssets') return { STELLAR_PLANET_ASSETS: Object.fromEntries(['rocky', 'desert', 'ice', 'ocean', 'lava', 'temperate', 'gas'].map(kind => [kind, { url: `${kind}.png`, span: kind === 'gas' ? 800 / 256 : 288 / 256 }])) }
+  return { jsx, jsxs, Fragment }
+} }
 const file = new URL('../../../../apps/desktop/src/renderer/src/ui/stellarArt.tsx', import.meta.url)
 runInNewContext(ts.transpileModule(readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText, scope)
 export const { StellarPlanetArt, StellarPlanetPreview, STELLAR_KIND_IDS, STELLAR_PLANET_KIND_IDS } = scope.exports

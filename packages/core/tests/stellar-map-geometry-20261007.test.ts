@@ -230,6 +230,8 @@ function componentHarness() {
       if (name === 'lucide-react') return { ZoomIn: 'zoom-in', ZoomOut: 'zoom-out' }
       if (name === '../ui/Glyphs') return { Glyph: 'glyph' }
       if (name === '../ui/stellarArt') return { StellarPlanetArt, STELLAR_PLANET_KIND_IDS }
+      if (name === '../ui/stellarAssets') return { stellarDisplayRadius: (kind: string, unit: number) => Math.max(kind === 'gas' ? 22 : 18, (kind === 'gas' ? 18 : 14) * unit), STELLAR_PLANET_ASSETS: { gas: { span: 800 / 256 } } }
+      if (name === './StellarScene') return { StellarScene: 'stellar-scene' }
       if (name === './stellarMapView') return { beginStellarGesture, clampStellarView, inverseMapMatrix, locateStellarView,
         mapInverseScale: (inv: MapMatrix) => stellarHitRadius(inv) / 20, mapPointThrough, moveStellarGesture, nextStellarBodyId,
         reframeMapInverse, stellarBodyAt, stellarHitRadius, stellarOrdinalLabels, stellarViewBox, zoomStellarView,
@@ -393,24 +395,33 @@ describe('真组件事件与会话记忆', () => {
     const host = componentHarness(), onSelect = vi.fn()
     const system = { ...makeSystem('rogue'), kind: 'rogue' }
     host.render({ system, onSelect })
-    const stars = host.find(node => node.props.className?.startsWith('app-stellar-map-stars'))
-    const orbits = host.find(node => node.props.className === 'app-stellar-map-orbits')
-    expect(stars.props.children).toBe(false)
-    expect(orbits.props.children).toBe(false)
+    expect(host.find(node => node.type === 'stellar-scene').props.system.kind).toBe('rogue')
     expect(host.find(node => (node.type as unknown) === StellarPlanetArt && node.props.kind === 'gas')).toBeDefined()
-    expect(StellarPlanetArt({ kind: 'gas' }).props.children.some((node: any) => node?.props?.className === 'planet-ring' || node?.props?.children?.some?.((inner: any) => inner?.props?.className === 'planet-ring'))).toBe(true)
+    const image = StellarPlanetArt({ kind: 'gas' }).props.children as any
+    expect(image.props.href).toBe('gas.png')
+    expect(image.props.width).toBe(62.5)
     const source = readFileSync(fileURLToPath(new URL('../../../apps/desktop/src/renderer/src/panels/StellarMap.tsx', import.meta.url)), 'utf8')
     expect(source).not.toMatch(/trait|habitability|resource|planetSurvey/)
+  })
+  it('相邻本体按公开坐标间距限幅，最小可读尺度不强行覆盖邻星', () => {
+    const host = componentHarness(), system = makeSystem('close')
+    system.bodies[1]!.x = 680
+    host.render({ system, onSelect: vi.fn() })
+    const first = host.find(node => node.props['data-stellar-body'] === 'close-a')
+    const art = (Array.isArray(first.props.children) ? first.props.children : [first.props.children]).find(node => node?.type === 'g')
+    expect(art.props.transform).toBe('scale(0.38)')
+    const second = host.find(node => node.props['data-stellar-body'] === 'close-b')
+    const secondArt = (Array.isArray(second.props.children) ? second.props.children : [second.props.children]).find(node => node?.type === 'g')
+    expect(secondArt.props.transform).toBe('scale(0.38)')
   })
   it.each(['single', 'binary', 'white-dwarf', 'neutron', 'black-hole'])('星系图示支持 %s 且不改写恒星坐标', kind => {
     const host = componentHarness(), system = { ...makeSystem(kind), kind }
     if (kind === 'binary') system.stars = [{ x: 470, y: 350, radius: 18 }, { x: 530, y: 350, radius: 14 }]
     const before = structuredClone(system)
     host.render({ system, onSelect: vi.fn() })
-    const stars = host.find(node => node.props.className?.startsWith('app-stellar-map-stars'))
-    expect(stars.props.children).toHaveLength(kind === 'binary' ? 2 : 1)
-    if (kind === 'black-hole') expect(host.find(node => node.props.className === 'app-stellar-map-horizon')).toBeDefined()
-    if (kind === 'neutron') expect(host.find(node => node.props.className === 'app-stellar-map-beam')).toBeDefined()
+    const scene = host.find(node => node.type === 'stellar-scene')
+    expect(scene.props.system.stars).toHaveLength(kind === 'binary' ? 2 : 1)
+    expect(scene.props.system.kind).toBe(kind)
     expect(system).toEqual(before)
   })
   it('布局只使用百分比和逻辑尺寸，视口内部裁切且保留触屏按钮尺寸', () => {

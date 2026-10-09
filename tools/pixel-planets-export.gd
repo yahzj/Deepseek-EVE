@@ -16,6 +16,18 @@ func export_samples():
 		{"id": "ocean", "scene": "LandMasses/LandMasses", "seed": 583, "colors": ["7acbd5", "3172a3", "172946", "a4c99b", "6f9980", "3b6964", "1a3542", "e8edf0", "bdcddc", "637e9c", "374861"]},
 		{"id": "gas", "scene": "GasPlanetLayers/GasPlanetLayers", "seed": 846, "colors": ["edcc9b", "c18d82", "796782", "856578", "51435f", "292c47"]}
 	]
+	if OS.get_environment("WHALE_PLANET_SCENE_SET") == "1":
+		definitions += [
+			{"id": "desert", "scene": "DryTerran/DryTerran", "seed": 391, "colors": []},
+			{"id": "ice", "scene": "IceWorld/IceWorld", "seed": 219, "colors": ["eef5fa", "accee0", "56738d", "74bed6", "3c7b9b", "1b3752", "f1f5fa", "c9dce9", "68879e", "3a536f"]},
+			{"id": "lava", "scene": "LavaWorld/LavaWorld", "seed": 672, "colors": ["705b65", "3e354b", "231e34", "3e354b", "231e34", "ffbc67", "f46946", "a63740"]},
+			{"id": "temperate", "scene": "Rivers/Rivers", "seed": 328, "colors": ["9bbb80", "63886a", "3d6058", "213b42", "8cb8cd", "3e7596", "eef1e4", "bcc9bc", "7a968c", "4c6269"]},
+			{"id": "star-yellow", "scene": "Star/Star", "seed": 420, "colors": ["fff4bf", "fff4bf", "ffd26e", "f29453", "9c4844", "ffd26e", "fff4bf"]},
+			{"id": "star-red", "scene": "Star/Star", "seed": 521, "colors": ["ffd9b2", "ffe4c7", "fba071", "dc6557", "832f44", "fba071", "ffe4c7"]},
+			{"id": "star-blue", "scene": "Star/Star", "seed": 623, "colors": ["deefff", "f2f7ff", "a1d3ed", "5a91c5", "355b94", "a1d3ed", "f2f7ff"]},
+			{"id": "star-white", "scene": "Star/Star", "seed": 729, "colors": ["f3f3ec", "ffffff", "e4e8e2", "9eacc8", "566d92", "e4e8e2", "ffffff"]},
+			{"id": "black-hole", "scene": "BlackHole/BlackHole", "seed": 915, "colors": []}
+		]
 	var manifest = []
 	for definition in definitions:
 		seed(definition.seed)
@@ -45,7 +57,11 @@ func export_samples():
 		var colors = []
 		for hex in definition.colors:
 			colors.append(Color(hex))
-		planet.set_colors(colors)
+		if colors.size() > 0:
+			planet.set_colors(colors)
+		else:
+			for color in planet.get_colors():
+				definition.colors.append(color.to_html(false))
 		planet.set_custom_time(0.17)
 		for _frame in range(3):
 			yield(self, "idle_frame")
