@@ -25,7 +25,8 @@ const alias = {
 export default defineConfig({
   base: './',
   plugins: [react()],
-  resolve: { alias },
+  // 共享源码位于 web 外，第三方渲染依赖统一从 web 根解析，不借用桌面工作区安装。
+  resolve: { alias, dedupe: ['react', 'react-dom', 'lucide-react'] },
   /** **2026-10-02 船长令**（「否则无法判断玩家当前版本」）：构建时把版本注入界面（设置页最上方那一行） */
   define: buildInfoDefine(),
   build: {
