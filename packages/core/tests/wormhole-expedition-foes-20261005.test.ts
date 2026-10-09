@@ -77,7 +77,7 @@ describe('新趟敌卡单点：确定性、共享表及同族', () => {
         expect(first.foeFamily).toBe(family)
         expect(first.ships!.every((slot) => slot.ship.family === family)).toBe(true)
         expect(first.foeTargeting).toBe(role === 'guard' ? 'largest' : WORMHOLE_FAMILY_TARGETING[family])
-        expect(first.foeTargetingChance).toBe(first.foeTargeting === 'random' ? 1 : 0.4)
+        expect(first.foeTargetingChance).toBe(first.foeTargeting === 'random' ? 1 : 0.1)
         first.ships![0]!.ship.hp = 1
         first.ships![0]!.ship.split.h = 1
         expect(wormholeExpeditionCard(frozen, family, 10, role).ships![0]!.ship.hp).not.toBe(1)

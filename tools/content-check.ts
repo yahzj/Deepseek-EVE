@@ -7224,7 +7224,7 @@ const MATERIAL_RATIO_REGISTERED: Readonly<Record<string, string>> = {
               }
             } else if (card.foeTargetingChance !== WORMHOLE_FAMILY_TARGETING_CHANCE) {
               errors.push(
-                `族定选靶：卡 ${id} 的倾向概率 ${String(card.foeTargetingChance)} ≠ ${WORMHOLE_FAMILY_TARGETING_CHANCE}（船长 2026-09-14 定的 0.4）`,
+                `族定选靶：卡 ${id} 的倾向概率 ${String(card.foeTargetingChance)} ≠ ${WORMHOLE_FAMILY_TARGETING_CHANCE}（船长2026-10-09指定10%）`,
               )
             }
           }

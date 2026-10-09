@@ -305,7 +305,7 @@
         "motherHpMul": 20,
         "hivebackFirepowerAnchor": 228,
         "motherFirepowerAnchor": 558,
-        "foeTargetingChance": 0.4,
+        "foeTargetingChance": 0.1,
         "dmgMix_plasma": 8,
         "dmgMix_explosive": 2,
         "combatSeconds": 60

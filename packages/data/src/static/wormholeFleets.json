@@ -6,7 +6,7 @@
     "parameters": [
       {
         "id": "wh-pirate-scout",
-        "foeTargetingChance": 0.4,
+        "foeTargetingChance": 0.1,
         "dmgMix_kinetic": 8,
         "dmgMix_explosive": 2,
         "ships_0_count": 2,
@@ -17,7 +17,7 @@
       },
       {
         "id": "wh-alien-swarm",
-        "foeTargetingChance": 0.4,
+        "foeTargetingChance": 0.1,
         "dmgMix_plasma": 8,
         "dmgMix_explosive": 2,
         "ships_0_count": 3,
@@ -29,7 +29,7 @@
       },
       {
         "id": "wh-grave-watch",
-        "foeTargetingChance": 0.4,
+        "foeTargetingChance": 0.1,
         "dmgMix_plasma": 8,
         "dmgMix_kinetic": 2,
         "ships_0_count": 2,
@@ -62,7 +62,7 @@
       },
       {
         "id": "wh-pirate-hunt",
-        "foeTargetingChance": 0.4,
+        "foeTargetingChance": 0.1,
         "dmgMix_kinetic": 8,
         "dmgMix_explosive": 2,
         "ships_0_count": 2,
@@ -76,7 +76,7 @@
       },
       {
         "id": "wh-pirate-warband",
-        "foeTargetingChance": 0.4,
+        "foeTargetingChance": 0.1,
         "dmgMix_kinetic": 8,
         "dmgMix_explosive": 2,
         "ships_0_count": 1,
@@ -91,7 +91,7 @@
       },
       {
         "id": "wh-alien-brood",
-        "foeTargetingChance": 0.4,
+        "foeTargetingChance": 0.1,
         "dmgMix_plasma": 8,
         "dmgMix_explosive": 2,
         "ships_0_count": 1,
@@ -105,7 +105,7 @@
       },
       {
         "id": "wh-alien-hive",
-        "foeTargetingChance": 0.4,
+        "foeTargetingChance": 0.1,
         "dmgMix_plasma": 8,
         "dmgMix_explosive": 2,
         "ships_0_count": 1,
@@ -119,7 +119,7 @@
       },
       {
         "id": "wh-grave-sentry",
-        "foeTargetingChance": 0.4,
+        "foeTargetingChance": 0.1,
         "dmgMix_plasma": 8,
         "dmgMix_kinetic": 2,
         "ships_0_count": 1,
@@ -133,7 +133,7 @@
       },
       {
         "id": "wh-grave-throne",
-        "foeTargetingChance": 0.4,
+        "foeTargetingChance": 0.1,
         "dmgMix_plasma": 6,
         "dmgMix_kinetic": 4,
         "ships_0_count": 1,

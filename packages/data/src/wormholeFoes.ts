@@ -23,9 +23,9 @@
  *
  * **选靶倾向概率**（船长 2026-09-14：「**虫洞敌人的攻击倾向，加一个概率**」→ 先定 60%，
  * 同日二次改判「**概率降为40%试一下**」）：
- * 本文件里**写了 `foeTargeting` 的三张卡**（A/C/D）各挂 `foeTargetingChance: 0.4`——每发开火前掷一次，
- * 没掷中 ⇒ 这一发退回等权随机；**G/E 两张本来就是 `random` 模式 ⇒ 不写该字段**
- * （`random` 下它无意义，写了也按 1 处理）。层末守卫的 0.4 在 core 侧
+ * 2026-10-09船长将所有敌人的倾向降低到10%；A/C/D非随机卡各挂0.1，每次选靶前掷一次，
+ * 未命中倾向时在合法目标池按插件权重随机；G/E普通卡仍为random，不写概率字段。
+ * random下不掷倾向骰；层末守卫的0.1在core侧
  * （`WORMHOLE_BOSS_TARGETING_CHANCE`，模式仍是"打最大的"）。
  *
  * ⚠ **施工期对玩家不可见**：五张卡一律 `hidden: true`（不进悬赏目录、不被派发、不参与族级设计契约），
@@ -86,7 +86,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     // **选靶模式**（船长 2026-09-13「虫洞内敌人的目标选择机制」）：海盗抢货船 ⇒ 专挑**非战斗船**
     foeTargeting: 'noncombat',
     // **选靶倾向概率**（船长 2026-09-14「虫洞敌人的攻击倾向，加一个概率」→ 先定 60%，同日改 40%）：
-    // 每发开火前掷一次——四成按"抢货船"挑，六成这一发乱了（等权随机）。
+    // 现行10%按"抢货船"挑，90%在全部合法目标内按插件权重抽取。
     // ⚠ 这是**性格强度**、不是难度旋钮：要调难度请动 `dmgMul`/`hpMul` 或层威胁曲线（2026-09-13 口径）。
     foeTargetingChance: enemyParameterOf(wormholeFleetsParameters, "wh-pirate-scout", "foeTargetingChance"),
     // 混伤 8:2（主动能 / 副爆炸 = 劫掠护卫舰本体的构成；与编成条目的有效构成必须一致，
@@ -118,7 +118,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     threat: ANCHOR_THREAT,
     // 异形捕食弱者 ⇒ 打**最小的**（按舰种档）——**族定选靶**（船长 2026-09-15「选靶按照族限定」）
     foeTargeting: 'smallest',
-    // 倾向概率 0.4（同批：四成盯着最小的那艘，六成乱咬）
+    // 倾向概率10%，其余按插件权重随机。
     foeTargetingChance: enemyParameterOf(wormholeFleetsParameters, "wh-alien-swarm", "foeTargetingChance"),
     // 混伤 8:2（主等离子 = C 族酸液签名 / 副爆炸）
     dmgMix: { plasma: enemyParameterOf(wormholeFleetsParameters, "wh-alien-swarm", "dmgMix_plasma"), explosive: enemyParameterOf(wormholeFleetsParameters, "wh-alien-swarm", "dmgMix_explosive") },
@@ -147,7 +147,7 @@ export const WORMHOLE_FOE_CARDS: readonly AnomalyDef[] = [
     threat: ANCHOR_THREAT,
     // 守墓者按残余自动化程序压制火力 ⇒ 打**输出最高的**
     foeTargeting: 'top-output',
-    // 倾向概率 0.4（同批：压制程序四成能锁对火力最高的那艘，六成判定失准 ⇒ 乱打）
+    // 倾向概率10%，保留压制最高输出的偏好类型。
     foeTargetingChance: enemyParameterOf(wormholeFleetsParameters, "wh-grave-watch", "foeTargetingChance"),
     // 混伤 8:2（主等离子 = D 族「以能量武器为主」/ 副动能）
     dmgMix: { plasma: enemyParameterOf(wormholeFleetsParameters, "wh-grave-watch", "dmgMix_plasma"), kinetic: enemyParameterOf(wormholeFleetsParameters, "wh-grave-watch", "dmgMix_kinetic") },
