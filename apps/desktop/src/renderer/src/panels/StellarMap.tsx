@@ -7,7 +7,7 @@ import { StellarPlanetArt, STELLAR_PLANET_KIND_IDS } from '../ui/stellarArt'
 import { stellarDisplayRadius, STELLAR_PLANET_ASSETS } from '../ui/stellarAssets'
 import { StellarScene } from './StellarScene'
 import { StellarMotionLayer } from './StellarMotionLayer'
-import { stellarDynamicBody, stellarMotionBodies, stellarMotionSession, notifyStellarMotion } from './stellarMotion'
+import { stellarDynamicBody, stellarMotionBodies, stellarMotionStars, stellarMotionSession, notifyStellarMotion } from './stellarMotion'
 import {
   STELLAR_MAP_CENTER, STELLAR_ZOOM_MAX, STELLAR_ZOOM_MIN,
   beginStellarGesture, clampStellarView, inverseMapMatrix, locateStellarView, mapInverseScale, mapPointThrough,
@@ -148,7 +148,7 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates, motionBl
   }
   function displayRadius(body: Body, unit = metrics.artUnit, bodies = displayBodies()): number {
     const nearest = Math.min(...bodies.filter(other => other.planetId !== body.planetId).map(other => Math.hypot(other.x - body.x, other.y - body.y)),
-      ...system.stars.map(star => Math.hypot(star.x - body.x, star.y - body.y)))
+      ...stellarMotionStars(system, motion.elapsedMs).map(star => Math.hypot(star.x - body.x, star.y - body.y)))
     return Math.min(stellarDisplayRadius(body.kind, unit), nearest * .38)
   }
 
@@ -271,7 +271,7 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates, motionBl
   const shownBodies = displayBodies()
   const labels = stellarOrdinalLabels(shownBodies.map(body => ({ ...body,
     radius: Math.max(body.planetId === session.selectedId ? metrics.hit * 0.65 : 0, displayRadius(body) * (body.kind === 'gas' ? STELLAR_PLANET_ASSETS.gas.span : 1.15)),
-  })), box, metrics.unit, session.selectedId, system.kind === 'rogue' ? [] : system.stars)
+  })), box, metrics.unit, session.selectedId, stellarMotionStars(system, motion.elapsedMs))
 
   return <div className="app-stellar-map" data-stellar-system={system.id}>
     <div className="app-stellar-map-bar">
@@ -301,7 +301,7 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates, motionBl
       </span>
     </div>
     <div className="app-stellar-map-frame">
-      <StellarScene system={system} view={session} selectedId={session.selectedId} />
+      <StellarScene system={system} view={session} selectedId={session.selectedId} animatedStars={gpuReady} />
       {trial ? <StellarMotionLayer system={system} view={session} selectedId={session.selectedId} svg={svgRef}
         radiusOf={(body, bodies) => displayRadius(body, metrics.artUnit, bodies)} unit={metrics.unit} onReady={setGpuReady} /> : null}
       <svg ref={svgRef} className={`app-stellar-map-svg${panning ? ' is-panning' : ''}`}

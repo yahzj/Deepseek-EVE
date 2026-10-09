@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **466** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7780** KB · **59837** 行
-- 状态分布：**未标注** 249 · **已确认/已实现** 155 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
-- 孤儿文档（0 引用）**83** 份 · 状态未标注 **249** 份
+- 文档总数 **467** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7787** KB · **59884** 行
+- 状态分布：**未标注** 249 · **已确认/已实现** 156 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
+- 孤儿文档（0 引用）**84** 份 · 状态未标注 **249** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
-- 三、现行设计稿（design）：**296** 份
+- 三、现行设计稿（design）：**297** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -33,8 +33,8 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 28 KB / 254 行 | 32 / 2 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 7 KB / 65 行 | 34 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 9 KB / 125 行 | 2 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 302 KB / 313 行 | 17 / 3 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 94 KB / 922 行 | 95 / 5 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 303 KB / 314 行 | 17 / 3 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 94 KB / 924 行 | 95 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 518 KB / 1094 行 | 226 / 22 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 72 KB / 447 行 | 379 / 28 |
 
@@ -56,7 +56,7 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 296 份
+## 三、现行设计稿（design） —— 297 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -73,6 +73,7 @@
 | `docs/design/ship-cpu-audit-20261009.md` | 全船CPU预算检查 | 未标注（四舰CPU已调整并完成自测） | 2026-10-09 | 7 KB / 81 行 | 0 / 0 |
 | `docs/design/stellar-dynamic-light-motion-20261009.md` | 星系天体动态光照与运动 | 已确认/已实现（单星岩质/海洋试作已实现并自检） | 2026-10-09 | 8 KB / 57 行 | 0 / 0 |
 | `docs/design/stellar-map-ui-20261009.md` | 星系星图UI优化：探索指挥台 | 已确认/已实现（布局已实现、自测通过） | 2026-10-09 | 15 KB / 103 行 | 1 / 0 |
+| `docs/design/stellar-motion-full-20261009.md` | 星系动态表现完整接入 | 已确认/已实现（已实现并自检） | 2026-10-09 | 6 KB / 44 行 | 0 / 0 |
 | `docs/design/stellar-planet-samples-20261009.md` | 星系天体位图样片 | 已确认/已实现（样片已完成） | 2026-10-09 | 5 KB / 40 行 | 1 / 0 |
 | `docs/design/stellar-scene-20261009.md` | 星系中央场景重绘 | 已确认/已实现（已实现） | 2026-10-09 | 5 KB / 37 行 | 0 / 0 |
 | `docs/design/stellar-ui-finish-20261009.md` | 星系探索界面收尾 | 已确认/已实现（已实现） | 2026-10-09 | 4 KB / 39 行 | 0 / 0 |
@@ -536,7 +537,7 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 61 / 14 |
 
-## 附：孤儿文档（0 引用，83 份）
+## 附：孤儿文档（0 引用，84 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
@@ -549,6 +550,7 @@
 - `docs/design/raider-fragment-ammo-audit-20261009.md`（2026-10-09 · 5 KB）—— 掠袭破片炮弹药显示检查
 - `docs/design/ship-cpu-audit-20261009.md`（2026-10-09 · 7 KB）—— 全船CPU预算检查
 - `docs/design/stellar-dynamic-light-motion-20261009.md`（2026-10-09 · 8 KB）—— 星系天体动态光照与运动
+- `docs/design/stellar-motion-full-20261009.md`（2026-10-09 · 6 KB）—— 星系动态表现完整接入
 - `docs/design/stellar-scene-20261009.md`（2026-10-09 · 5 KB）—— 星系中央场景重绘
 - `docs/design/stellar-ui-finish-20261009.md`（2026-10-09 · 4 KB）—— 星系探索界面收尾
 - `docs/design/synaptic-accelerant-audit-20261009.md`（2026-10-09 · 21 KB）—— 突触加速剂玩家报障检查

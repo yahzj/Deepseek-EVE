@@ -14,10 +14,10 @@
 
 ## 星系探索HUD取证（2026-10-09 · v0.1.0 / 档v31）
 
-- `node tools/stellar-native-check.cjs --dynamic-only --case=modern-zh-desktop`：单星种子3、岩质/海洋动态试作。显卡shader真实像素检验光向翻转/自转不带动阴影，公转/暂停/减少动态/缩放/上下文丢失恢复/地表往返相位与核心坐标守恒；深浅主题截图保留，不读取个人档。手机可用`--case=classic-en-mobile`，不将仿真读数当实体手机性能。
+- `node tools/stellar-native-check.cjs --dynamic-only --case=modern-zh-desktop`：种子3实际动态场景；七类材质/恒星/黑洞真实shader像素检查，近/远/无光源亮度递减、光向与自转分离、真实拖动第一帧投影误差、公转/暂停/减少动态/上下文丢失恢复/地表返回和原坐标守恒。手机可用`--case=classic-en-mobile`；加`--no-gpu`检查降级，深浅主题截图不作观感或实体手机性能结论。
 
 - `node tools/stellar-native-check.cjs`：先构建。两布局×中英文×桌面/手机旋转，真实制造/搜索/暂停/继续/地图手势/地表往返/IPC保存与运行错误检查；补取消/丢弃确认、六套主题底色、确认焦点约束及地表返回焦点/视口/选择检查。`--case=modern-zh-desktop`可单场复跑。
-- `node tools/stellar-native-check.cjs --scene-only --locale=zh`：六类合成星系×两布局×桌面/手机，深浅主题/减少动态、PNG解码/恒星加载、Canvas非空像素及与SVG投影一致检查，缩放后重复核对；读数与截图不是观感验收。可加`--case`单场复跑。
+- `node tools/stellar-native-check.cjs --scene-only --locale=zh`：六类合成星系×两布局×桌面/手机，深浅主题/减少动态、PNG兼容资产解码/动态加载、Canvas非空像素与SVG投影一致、双星真实运动保持间距和无恒星底色暗化；缩放后重复核对，可加`--case`或`--kind`单场复跑。
 - `--stellar-only`仅跑星系制造/搜索/地图/地表往返/保存，跳过无关战损前置；`--kind=neutron`配`--scene-only --case=...`只复测指定公开类型。隐藏窗口触控送达与启动通讯可能波动，工具核对导航实际落页后最多重试3次，不改玩家路径。
 - 仅隐藏自建Electron、独立合成档和临时userData、随机回环端口；产物`tools/_ui-artifacts/stellar/`，不是观感验收或实体手机性能结论。
 

@@ -10,15 +10,21 @@ export function stellarSceneProjection(view: StellarMapView, width: number, heig
 }
 
 interface SceneColors { background: string; star: string; orbit: string; accent: string; text: string }
+function darkSceneColor(color: string): string {
+  const values = color.match(/\d+(?:\.\d+)?/g)?.map(Number)
+  if (values && values.length >= 3 && color.startsWith('rgb')) return `rgb(${values.slice(0,3).map(value=>Math.round(value*.3)).join(' ')})`
+  return color
+}
 /** 场景只读公开坐标/类型；不依赖引擎随机数、资源或勘探真值。 */
 export function drawStellarScene(context: CanvasRenderingContext2D, system: StellarSystem, view: StellarMapView,
   selectedId: string | undefined, width: number, height: number, colors: SceneColors,
-  texture?: HTMLImageElement, star?: { image: HTMLImageElement; span: number }) {
+  texture?: HTMLImageElement, star?: { image: HTMLImageElement; span: number }, drawStars = true) {
+  const dark = system.kind === 'rogue' || system.starClass === 'none'
   context.clearRect(0, 0, width, height)
-  context.fillStyle = colors.background
+  context.fillStyle = dark ? darkSceneColor(colors.background) : colors.background
   context.fillRect(0, 0, width, height)
   if (texture) {
-    context.globalAlpha = .12
+    context.globalAlpha = dark ? .025 : .12
     const scale = Math.max(width / texture.width, height / texture.height)
     context.drawImage(texture, (width - texture.width * scale) / 2, (height - texture.height * scale) / 2, texture.width * scale, texture.height * scale)
     context.globalAlpha = 1
@@ -28,7 +34,7 @@ export function drawStellarScene(context: CanvasRenderingContext2D, system: Stel
   for (let i = 0; i < 74; i++) {
     const x = ((i * 317 + system.seed % 997) % 1009) / 1009 * width
     const y = ((i * 173 + system.seed % 613) % 709) / 709 * height
-    context.globalAlpha = i % 7 === 0 ? .42 : .18
+    context.globalAlpha = (i % 7 === 0 ? .42 : .18) * (dark ? .4 : 1)
     context.fillRect(x, y, i % 7 === 0 ? 1.6 : .8, i % 7 === 0 ? 1.6 : .8)
   }
   context.globalAlpha = 1
@@ -62,7 +68,7 @@ export function drawStellarScene(context: CanvasRenderingContext2D, system: Stel
       context.beginPath(); context.arc(500, 350, orbit, -Math.PI * .86, -Math.PI * .44); context.stroke()
     }
     context.globalAlpha = 1
-    for (const body of system.stars) {
+    for (const body of drawStars ? system.stars : []) {
       context.save(); context.translate(body.x, body.y)
       const nearest = Math.min(...system.stars.filter(other => other !== body).map(other => Math.hypot(other.x - body.x, other.y - body.y)))
       const radius = Math.min(Math.max(body.radius, (system.kind === 'neutron' ? 10 : 15) * unit), nearest * .42)

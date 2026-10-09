@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { StellarSystem } from '@whale/core'
-import { stellarMotionSession, stellarMotionBodies, stellarLightDirection } from '../panels/stellarMotion'
+import { stellarMotionSession, stellarMotionBodies, stellarIllumination } from '../panels/stellarMotion'
 import { createStellarPlanetRenderer } from './stellarPlanetShader'
 import { StellarPlanetPreview } from './stellarArt'
 import { tr } from '../i18n/locale'
@@ -22,7 +22,7 @@ export function StellarDynamicPreview({ system, bodyId }: { system: StellarSyste
       const key = String(session.elapsedMs)
       if (last === key) return
       last = key
-      renderer.draw(stellarLightDirection(system.stars[0]!, body), session.elapsedMs, system.seed + body.ordinal * 127, body.kind === 'ocean')
+      renderer.drawPlanet(stellarIllumination(system,body,session.elapsedMs), session.elapsedMs, system.seed + body.ordinal * 127, body.kind)
       element.dataset.motionMs = key
     }
     const lost = (event: Event) => { event.preventDefault(); renderer?.dispose(); renderer = null; setReady(false) }
@@ -33,7 +33,7 @@ export function StellarDynamicPreview({ system, bodyId }: { system: StellarSyste
   }, [system, bodyId])
   const body = system.bodies.find(value => value.planetId === bodyId)!
   return <div className="app-stellar-dynamic-preview" title={!ready ? tr('ui.stellarMotion.001') : undefined}>
-    <canvas ref={canvas} width={192} height={192} aria-hidden="true" data-dynamic-preview hidden={!ready} />
+    <canvas ref={canvas} width={192} height={192} aria-hidden="true" data-dynamic-preview hidden={!ready} style={{ width: body.kind === 'gas' ? 116 : 96, height: body.kind === 'gas' ? 116 : 96 }} />
     {!ready ? <StellarPlanetPreview kind={body.kind} /> : null}
   </div>
 }

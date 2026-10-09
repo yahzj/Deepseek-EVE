@@ -119,7 +119,7 @@ async function child() {
   }
   async function sceneReadings() {
     await page.wait('document.querySelector(".app-stellar-scene")?.dataset.sceneReady==="true"')
-    await page.wait('["loaded","none"].includes(document.querySelector(".app-stellar-scene")?.dataset.starReady)')
+    await page.wait('["loaded","none","dynamic"].includes(document.querySelector(".app-stellar-scene")?.dataset.starReady)')
     const images = await page.js(`Promise.all([...document.querySelectorAll('[data-stellar-asset]')].map(async el=>{const image=new Image();image.src=el.getAttribute('href');await image.decode();return {kind:el.getAttribute('data-stellar-asset'),width:image.naturalWidth}}))`)
     assert(images.length > 0 && images.every(row => row.width > 0))
     const readings = await page.js(`(()=>{const c=document.querySelector('.app-stellar-scene'),svg=document.querySelector('.app-stellar-map-svg'),box=svg.viewBox.baseVal,m=svg.getCTM(),s=Math.min(c.clientWidth/box.width,c.clientHeight/box.height),x=(c.clientWidth-box.width*s)/2-box.x*s,y=(c.clientHeight-box.height*s)/2-box.y*s,p=c.getContext('2d').getImageData(0,0,c.width,c.height).data;const colors=new Set();for(let i=0;i<p.length;i+=64)colors.add(p[i]+','+p[i+1]+','+p[i+2]);return {colors:colors.size,scaleDelta:Math.abs(m.a-s),xDelta:Math.abs(m.e-x),yDelta:Math.abs(m.f-y),width:c.width,height:c.height}})()`)
@@ -159,7 +159,24 @@ async function child() {
     await sleep(500); assert.equal(await phase(), paused); assert.equal(await transform(), position)
     assert.equal(await page.js('Number(document.querySelector("[data-dynamic-preview]").dataset.motionMs)'), paused)
     await page.tap(`.app-stellar-map-tool[aria-label=${JSON.stringify(t('ui.stellar.050'))}]`)
-    await sleep(100)
+    const immediateView = await page.js(`(()=>{const b=document.querySelector('.app-stellar-map-svg').viewBox.baseVal,z=1000/b.width,key=[z,b.x+b.width/2-500,b.y+b.height/2-350].join(',');return {key,motion:document.querySelector('.app-stellar-motion-layer').dataset.renderedView,background:document.querySelector('.app-stellar-scene').dataset.renderedView}})()`)
+    for (const id of ['motion','background']) {
+      const actual = immediateView[id].split(',').map(Number), expected = immediateView.key.split(',').map(Number)
+      assert(actual.every((value,index)=>Math.abs(value-expected[index])<.01),JSON.stringify(immediateView))
+    }
+    const dragPoint = await page.js(`(()=>{const e=document.querySelector('.app-stellar-map-svg'),b=e.getBoundingClientRect();return {x:b.x+b.width*.7,y:b.y+b.height*.35}})()`)
+    const dragReadings=[]
+    if(options.mobile) await page.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[dragPoint]})
+    else await page.send('Input.dispatchMouseEvent',{type:'mousePressed',...dragPoint,button:'left',clickCount:1})
+    for (const offset of [12,24,36]) {
+      const point={x:dragPoint.x+offset,y:dragPoint.y+offset*.3}
+      if(options.mobile) await page.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[point]})
+      else await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',...point,buttons:1})
+      const reading=await page.js(`new Promise(resolve=>requestAnimationFrame(()=>{const e=document.querySelector('.app-stellar-map-svg'),b=e.viewBox.baseVal,z=1000/b.width,expected=[z,b.x+b.width/2-500,b.y+b.height/2-350],value=document.querySelector('.app-stellar-motion-layer').dataset.renderedView.split(',').map(Number);resolve({delta:Math.max(...value.map((n,i)=>Math.abs(n-expected[i]))),view:expected})}))`)
+      assert(reading.delta<.01,JSON.stringify(reading));dragReadings.push(reading)
+    }
+    if(options.mobile) await page.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
+    else await page.send('Input.dispatchMouseEvent',{type:'mouseReleased',x:dragPoint.x+36,y:dragPoint.y+10.8,button:'left',clickCount:1})
     assert.equal(await phase(), paused)
     await page.tap(`.app-stellar-map-tool[aria-label=${JSON.stringify(t('ui.stellar.052'))}]`)
     const shape = await page.js(`(()=>{const c=document.querySelector('.app-stellar-motion-layer'),p=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let n=0;for(let i=3;i<p.length;i+=4)if(p[i])n++;return {painted:n,width:c.width,height:c.height}})()`)
@@ -171,6 +188,10 @@ async function child() {
     assert(pixel.leftLight.left > pixel.leftLight.right * 1.5, JSON.stringify(pixel))
     assert(pixel.rightLight.right > pixel.rightLight.left * 1.5, JSON.stringify(pixel))
     assert(pixel.rotated.left > pixel.rotated.right * 1.5 && pixel.changed > 500, JSON.stringify(pixel))
+    const fullPixel = await page.js(`(()=>{const exports={};${shaderCode};const c=document.createElement('canvas');c.width=128;c.height=128;const renderer=exports.createStellarPlanetRenderer(c),gl=c.getContext('webgl');function read(){const p=new Uint8Array(128*128*4);gl.readPixels(0,0,128,128,gl.RGBA,gl.UNSIGNED_BYTE,p);return p}function stats(p){let sum=0,n=0;for(let i=0;i<p.length;i+=4)if(p[i+3]){sum+=p[i]+p[i+1]+p[i+2];n++}return {painted:n,brightness:sum/Math.max(1,n)}}const light=strength=>({directions:[[-1,0,.35]],strengths:[strength],tint:[1,1,1],ambient:.14});const materials=[];for(const kind of ['rocky','ocean','desert','ice','lava','temperate','gas']){renderer.drawPlanet(light(.8),0,17,kind);const a=read();renderer.drawPlanet(light(.8),10000,17,kind);const b=read();let changed=0;for(let i=0;i<a.length;i+=4)if(a[i]!==b[i]||a[i+1]!==b[i+1])changed++;materials.push({kind,...stats(a),changed})}renderer.drawPlanet(light(.8),0,17,'rocky');const near=stats(read());renderer.drawPlanet(light(.18),0,17,'rocky');const far=stats(read());renderer.drawPlanet({directions:[],strengths:[],tint:[1,1,1],ambient:.09},0,17,'rocky');const rogue=stats(read());const stars=[];for(const kind of ['yellow','red','blue','white','neutron','black-hole']){renderer.drawStar(0,13,kind);const a=read();renderer.drawStar(15000,13,kind);const b=read();let changed=0;for(let i=0;i<a.length;i+=4)if(a[i]!==b[i]||a[i+1]!==b[i+1])changed++;stars.push({kind,...stats(a),changed})}renderer.dispose();return {materials,stars,near,far,rogue,error:gl.getError()}})()`)
+    assert(fullPixel.error===0 && fullPixel.materials.every(row=>row.painted>500&&row.changed>50),JSON.stringify(fullPixel))
+    assert(fullPixel.stars.every(row=>row.painted>500&&row.changed>50),JSON.stringify(fullPixel))
+    assert(fullPixel.near.brightness>fullPixel.far.brightness*1.4 && fullPixel.far.brightness>fullPixel.rogue.brightness,JSON.stringify(fullPixel))
     for (const theme of ['deepspace','daylight']) {
       await page.js(`document.documentElement.dataset.theme=${JSON.stringify(theme)};true`); await sleep(100)
       const image = await page.send('Page.captureScreenshot', { format: 'png' })
@@ -196,7 +217,7 @@ async function child() {
     await page.js('window.__whalePlanetaryTest.persist();true'); await sleep(150)
     assert.deepEqual((await snap()).planetary.stellar.systems, before.planetary.stellar.systems)
     assert.equal(errors.length, 0, JSON.stringify(errors))
-    console.log(JSON.stringify({ ...options, ok:true, pixel, shape, time:await phase() })); app.exit(0); return
+    console.log(JSON.stringify({ ...options, ok:true, pixel, fullPixel, immediateView, dragReadings, shape, time:await phase() })); app.exit(0); return
   }
   if (options.sceneOnly) {
     await openStellar()
@@ -210,8 +231,21 @@ async function child() {
       // 合成目录切换使用原生选择控件事件；地图选中和手势仍走真实点击。
       await page.js(`(()=>{const s=document.querySelector('[data-system-select]');s.value=${JSON.stringify(system.id)};s.dispatchEvent(new Event('change',{bubbles:true}))})()`)
       await page.wait(`document.querySelector('[data-stellar-system]')?.getAttribute('data-stellar-system')===${JSON.stringify(system.id)}`)
+      await page.wait('document.querySelector(".app-stellar-motion-layer")?.dataset.renderMode==="dynamic"')
+      if (await page.js('!!document.querySelector("[data-motion-pause] .lucide-pause")')) await page.js('document.querySelector("[data-motion-pause]").click();true')
       await page.tap(`[data-stellar-body="${system.bodies[0].planetId}"]`)
       const readings = await sceneReadings()
+      const sceneBrightness=await page.js(`(()=>{const c=document.querySelector('.app-stellar-scene'),p=c.getContext('2d').getImageData(0,0,40,40).data;let sum=0;for(let i=0;i<p.length;i+=4)sum+=p[i]+p[i+1]+p[i+2];return sum/(p.length/4)})()`)
+      if(system.kind==='binary'){
+        const original=await page.js('document.querySelector(".app-stellar-motion-layer").dataset.starPositions')
+        await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:1,y:1})
+        await page.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'no-preference'}]})
+        await page.js('document.querySelector("[data-motion-pause]").click();true')
+        await page.wait(`document.querySelector('.app-stellar-motion-layer').dataset.starPositions!==${JSON.stringify(original)}`)
+        await page.js('document.querySelector("[data-motion-pause]").click();true')
+        const moved=await page.js('JSON.parse(document.querySelector(".app-stellar-motion-layer").dataset.starPositions)')
+        assert(Math.abs(Math.hypot(moved[0][0]-moved[1][0],moved[0][1]-moved[1][1])-50)<.01,JSON.stringify(moved))
+      }
       await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
       for (const theme of ['deepspace', 'daylight']) {
         await page.js(`document.documentElement.dataset.theme=${JSON.stringify(theme)};true`); await sleep(150)
@@ -222,7 +256,7 @@ async function child() {
       await page.js('delete document.documentElement.dataset.theme;true')
       await page.tap(`.app-stellar-map-tool[aria-label=${JSON.stringify(t('ui.stellar.050'))}]`); await sleep(150); await sceneReadings()
       await page.tap(`.app-stellar-map-tool[aria-label=${JSON.stringify(t('ui.stellar.052'))}]`)
-      console.log(JSON.stringify({ ...options, kind: system.kind, ok: true, readings }))
+      console.log(JSON.stringify({ ...options, kind: system.kind, ok: true, sceneBrightness, readings }))
     }
     assert.equal(errors.length, 0, JSON.stringify(errors)); app.exit(0); return
   }
