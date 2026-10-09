@@ -1,8 +1,8 @@
 /**
  * **突触加速剂**（**2026-09-30 船长令**「技能加速剂」）用例。
  *
- * 口径（船长批「按你推荐」）：**使用后 24 小时内技能训练时长 ×0.5** · **不可叠用**（生效期内再点直接拒绝、
- * **不消耗**）· 时间基准 = 游戏时钟 `state.gameMs` · 效果从**唯一乘区入口** `trainingTimeFactor` 出去
+ * 船长 2026-10-09 裁定：每枚增加 24 小时有效时间，允许重复使用，倍率不叠加。
+ * 时间基准 = 游戏时钟 `state.gameMs` · 效果从唯一乘区入口 `trainingTimeFactor` 出去
  * （推进/预估/界面显示同源）。
  */
 import { describe, expect, it } from 'vitest'
@@ -53,16 +53,41 @@ describe('突触加速剂 · 使用与效果', () => {
     expect(s.logs.some((l) => l.textId === 'core.consumable.003'), '生效日志').toBe(true)
   })
 
-  it('不可叠用：生效期内再点被拒、且**不消耗**第二枚（core.consumable.002）', () => {
+  it('生效期间重复使用：保留剩余时间并增加一剂时长，不叠加倍率', () => {
     const s = stateWithOne()
     expect(useSynapticAccelerant(s).ok).toBe(true)
     addWare(s, SYNAPTIC_ACCELERANT_ITEM_ID, 1)
-    const until = s.skillBoostUntilMs
+    s.gameMs += 2 * 3_600_000
+    const before = synapticAccelerantRemainMs(s)
+    const factor = trainingTimeFactor(s)
     const r = useSynapticAccelerant(s)
-    expect(r.ok).toBe(false)
-    expect(r.errorId).toBe('core.consumable.002')
-    expect(countWare(s, SYNAPTIC_ACCELERANT_ITEM_ID), '第二枚原封不动').toBe(1)
-    expect(s.skillBoostUntilMs, '截止时刻不被延长').toBe(until)
+    expect(r.ok).toBe(true)
+    expect(countWare(s, SYNAPTIC_ACCELERANT_ITEM_ID), '第二枚扣掉').toBe(0)
+    expect(synapticAccelerantRemainMs(s)).toBe(before + SYNAPTIC_ACCELERANT_MS)
+    expect(trainingTimeFactor(s)).toBe(factor)
+  })
+
+  it('连续使用每次只扣一枚、增加一剂时长，库存耗尽后不改到期时间', () => {
+    const s = stateWithOne()
+    addWare(s, SYNAPTIC_ACCELERANT_ITEM_ID, 2)
+    for (let i = 1; i <= 3; i++) {
+      expect(useSynapticAccelerant(s).ok).toBe(true)
+      expect(countWare(s, SYNAPTIC_ACCELERANT_ITEM_ID)).toBe(3 - i)
+      expect(synapticAccelerantRemainMs(s)).toBe(i * SYNAPTIC_ACCELERANT_MS)
+      expect(trainingTimeFactor(s)).toBe(SYNAPTIC_ACCELERANT_MUL)
+    }
+    const until = s.skillBoostUntilMs
+    expect(useSynapticAccelerant(s).errorId).toBe('core.consumable.001')
+    expect(s.skillBoostUntilMs).toBe(until)
+  })
+
+  it.each([0, 1])('到期或已过期 %i 毫秒：从当前游戏时刻开始一剂，不扣除过期时间', (pastMs) => {
+    const s = stateWithOne()
+    s.gameMs = SYNAPTIC_ACCELERANT_MS + pastMs
+    s.skillBoostUntilMs = SYNAPTIC_ACCELERANT_MS
+    expect(useSynapticAccelerant(s).ok).toBe(true)
+    expect(s.skillBoostUntilMs).toBe(s.gameMs + SYNAPTIC_ACCELERANT_MS)
+    expect(synapticAccelerantRemainMs(s)).toBe(SYNAPTIC_ACCELERANT_MS)
   })
 
   it('过期即失效：时间走过 24 小时后乘区回到基数', () => {
@@ -107,5 +132,11 @@ describe('突触加速剂 · 存档与配方闸门', () => {
     const back = loadSaveFile(text).state
     expect(back.skillBoostUntilMs).toBe(s.skillBoostUntilMs)
     expect(synapticAccelerantActive(back)).toBe(true)
+    addWare(back, SYNAPTIC_ACCELERANT_ITEM_ID, 1)
+    expect(useSynapticAccelerant(back).ok).toBe(true)
+    expect(back.skillBoostUntilMs).toBe(s.skillBoostUntilMs! + SYNAPTIC_ACCELERANT_MS)
+    const again = loadSaveFile(serializeSaveFile(back, 0)).state
+    expect(again.skillBoostUntilMs).toBe(back.skillBoostUntilMs)
+    expect(trainingTimeFactor(again)).toBe(SYNAPTIC_ACCELERANT_MUL)
   })
 })

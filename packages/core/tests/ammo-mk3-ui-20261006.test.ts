@@ -27,7 +27,7 @@ describe('三档弹药真实装配组件', () => {
     for (const type of ['kinetic', 'explosive', 'plasma']) state.warehouse.items[`ammo-${type}-3`] = 1000
     const tr = (id: string, params?: Record<string, unknown>) => (L10N[id]?.[locale] ?? id).replace(/\{(\w+)\}/g, (m, key: string) => String(params?.[key] ?? m))
     const view = load('pages/FitPage.tsx', 'AmmoTierSection', { ...core, React: jsx, tr, cmdText: () => '', fmt: String, DmgChip: 'DmgChip', DMG_LABEL: {},
-      AMMO_SLOT_TYPES: [{ slot: 'turret', type: 'kinetic' }, { slot: 'missile', type: 'explosive' }, { slot: 'laser', type: 'plasma' }] })
+      AMMO_TYPES: ['kinetic', 'explosive', 'plasma'] })
     const engine = { state, ctx, setAmmoTierAt: (type: core.DamageType, id: string | null, ship: string) => core.setAmmoTier(state, ctx, type, id, ship) }
     const render = () => nodes(view({ engine, target: state.shipId, onToast: () => {} }))
     expect(render().filter(n => n.props.className?.includes('app-fit-ammotier-opt') && n.type === 'button')).toHaveLength(9)

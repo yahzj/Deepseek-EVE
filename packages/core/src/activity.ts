@@ -8,8 +8,7 @@
 import type { GameState, TrainingItem } from './state'
 import { busyLabel, type BusyLabel } from './busyLabels'
 import type { SimContext, SkillCatalog } from './types'
-import { skillLevelTimeMs, trainingTimeFactor } from './training'
-import { tuningMul } from './tuning'
+import { trainingLevelProgress } from './training'
 import type { HeadTrainingInfo, QueueView } from './engine'
 import { miningStatus, shipInReturn } from './mining'
 import { wormholeScanWindowMs, wormholeStockFull, wormholeStockMaxOf, wormholeStockOf } from './wormholeScan'
@@ -749,9 +748,10 @@ export function skillQueueStatus(state: GameState, catalog: SkillCatalog): Queue
   const def = catalog.get(item.skillId)
   const currentLevel = state.skills.trained[item.skillId] ?? 0
   const intoLevel = currentLevel + 1
-  const levelTimeMs = def ? Math.max(1, Math.round(skillLevelTimeMs(def, intoLevel) * trainingTimeFactor(state) * tuningMul(state, 'skillTrainMs'))) : 0
-  const remainingMs = Math.max(0, levelTimeMs - item.progressMs)
-  const percent = levelTimeMs > 0 ? Math.min(100, Math.max(0, (item.progressMs / levelTimeMs) * 100)) : 0
+  const progress = def ? trainingLevelProgress(state, def, intoLevel, item.progressMs) : null
+  const levelTimeMs = progress?.levelTimeMs ?? 0
+  const remainingMs = progress?.remainingMs ?? 0
+  const percent = progress?.percent ?? 0
   const head: HeadTrainingInfo = {
     skillId: item.skillId,
     skillName: def ? def.name : `未知技能「${item.skillId}」`,
@@ -759,7 +759,7 @@ export function skillQueueStatus(state: GameState, catalog: SkillCatalog): Queue
     currentLevel,
     intoLevel,
     levelTimeMs,
-    progressMs: item.progressMs,
+    progressMs: progress?.progressMs ?? 0,
     remainingMs,
     percent,
   }
@@ -767,8 +767,9 @@ export function skillQueueStatus(state: GameState, catalog: SkillCatalog): Queue
   let cursorMs = remainingMs
   const pending = queue.slice(1).map((p: TrainingItem, i) => {
     const pDef = catalog.get(p.skillId)
-    const levelMs = pDef ? Math.max(1, Math.round(skillLevelTimeMs(pDef, p.targetLevel) * trainingTimeFactor(state) * tuningMul(state, 'skillTrainMs'))) : 0
-    const progressMs = Math.min(Math.max(0, p.progressMs), Math.max(0, levelMs - 1))
+    const progress = pDef ? trainingLevelProgress(state, pDef, p.targetLevel, p.progressMs) : null
+    const levelMs = progress?.levelTimeMs ?? 0
+    const progressMs = progress?.progressMs ?? 0
     /** 前缀和：累到这一条之前的所有剩余 ⇒ 这条的"轮到还需" */
     const etaMs = cursorMs
     cursorMs += levelMs - progressMs

@@ -32,6 +32,8 @@
 
 | 工具 | npm script | 挂牌状态 |
 |---|---|---|
+| `synaptic-accelerant-check.ts` | 直接 `npx tsx tools/synaptic-accelerant-check.ts` | 合成状态检查手动续时、训练切换及离线8/32/64h；v31，核对/运行2026-10-09，诊断不符退出1，不读个人档 |
+| `synaptic-accelerant-desktop-smoke.cjs` | 构建后 `node tools/synaptic-accelerant-desktop-smoke.cjs` | 隔离userData、隐藏Electron，合成旧档32h离线及IPC重载；v31，2026-10-09，不作观感结论 |
 | `l10n-deferred-check.ts` | `l10n:check`内部调用 | v31；只核对英文延期标记/空值与待本地化文档成对，不生成英文、不放宽普通漏译/占位符护栏 |
 | `startup-win-worker-check.cjs` | 双端构建后`node tools/startup-win-worker-check.cjs` | v31；隐藏隔离Electron加载桌面file/网页HTTP，合法合成16架机群、真实Worker每卡30局/单实例/输入延迟/长任务与停止清理；不读个人档，不冒称手机性能或观感 |
 | `battle-step-preview.ts` / `battle-step-preview-worker.ts` | `npx tsx tools/battle-step-preview.ts`，worker仅由父工具打包 | v31；100/50/10ms步长及补算预算、装填/齐射/回充/机动与5场景多种子对照；内存注入，不改源码或个人档，前后校验哈希 |

@@ -52,6 +52,7 @@ import { weekendFlagshipWindowMs } from './weekendEvent'
 import { isBlackboxItem } from './blackbox'
 import { normalizeWeekendWreckRecord } from './weekendWreckLedger'
 import { cleanPlanetaryState } from './planetSave'
+import { normalizeTrainingProgress } from './training'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
 export const SAVE_FORMAT = 'whale-idle-save'
@@ -428,18 +429,20 @@ function normalizeState(raw: unknown): GameState {
           : 1
       const progressMs =
         typeof item.progressMs === 'number' && Number.isFinite(item.progressMs)
-          ? Math.max(0, Math.floor(item.progressMs))
+          ? Math.max(0, skillsRaw.progressVersion === 1 ? item.progressMs : Math.floor(item.progressMs))
           : 0
       queue.push({ skillId, targetLevel, progressMs })
     }
   }
-  // T2 兼容字段（v16.1）：技能暂存进度——只收正数毫秒、非负整数、上限一天（正常单级最长约 1 小时，留足余量）
+  // 旧口径按原规则清洗；稳定工作量保留小数和长技能进度，避免一天上限截断已练工作。
   const savedProgress: Record<string, number> = {}
   const savedProgressRaw = asRaw(skillsRaw.savedProgress)
   for (const [key, value] of Object.entries(savedProgressRaw)) {
     if (key.length === 0) continue
     if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-      savedProgress[key] = Math.min(24 * 60 * 60 * 1000, Math.floor(value))
+      savedProgress[key] = skillsRaw.progressVersion === 1
+        ? Math.min(Number.MAX_SAFE_INTEGER, value)
+        : Math.min(24 * 60 * 60 * 1000, Math.floor(value))
     }
   }
 
@@ -3386,7 +3389,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     logCap,
     character,
     rng,
-    skills: { trained, queue, savedProgress, licenses },
+    skills: { trained, queue, savedProgress, licenses, ...(skillsRaw.progressVersion === 1 ? { progressVersion: 1 as const } : {}) },
     wallet,
     shipId,
     fleet,
@@ -3526,6 +3529,7 @@ for (const [key, value] of Object.entries(licensesRaw)) {
   }
   // 玩家标记收尾：去重 + 剪掉已不在舰队的船（fleet 此时已建好）
   pruneMarks(normalized)
+  normalizeTrainingProgress(normalized)
   return normalized
 }
 

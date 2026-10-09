@@ -88,9 +88,6 @@ export function simulateOffline(
 ): void {
   const rawGap = nowWallMs - lastSavedWallMs
   if (rawGap <= 0) return
-  /* 技能加速「自动续用」（**2026-10-01 船长令**）：整段离线**开始时**开记账 —— 离线期间逐枚不写日志，
-     只累计枚数，下面"离线结算完成"那一句汇总交代（与"离线采集 …"同款口径）。*/
-  setOfflineBoostTally(true)
   // 离线结算上限（双技能加算）——与"超出上限"读数同源，见 `offlineCapMsOf`
   const capEff = offlineCapMsOf(state, capMs)
   const { deltaMs, overflowMs } = offlineSplit(rawGap, capEff)
@@ -143,9 +140,12 @@ export function simulateOffline(
   const driveLoop =
     !opts?.freezeBattle &&
     (state.autoLoopAnomalyId !== null || autoLoopInvasionGalaxy(state) !== null)
-  if (driveLoop) {
-    let remaining = deltaMs
-    let guard = 0
+  let boostN = 0
+  setOfflineBoostTally(true)
+  try {
+    if (driveLoop) {
+      let remaining = deltaMs
+      let guard = 0
     /**
      * **墙钟跟着片走（2026-09-22 船长选「甲」）**——分片这一路上会**在离线期间不停地再出发**
      * （`advanceAutoLoopBounty`），而"这一场吃不吃敌对派系活跃加成"是在**出发那一刻**按当时那一版活跃
@@ -166,21 +166,25 @@ export function simulateOffline(
      * 资源/快递板只按末窗刷一次"（船长 2026-09-05 定）从 1 次变成 2~3 次。
      * 将来若那条路也能在离线中再出发，这里要一起改。
      */
-    let wallMs = lastSavedWallMs
-    while (remaining > 0) {
-      if (++guard > 200_000) break // 防失控（30s 片 × 8h ≈ 960 片，余量充足）
-      const step = Math.min(remaining, OFFLINE_LOOP_CHUNK_MS)
-      wallMs += step
-      advanceGame(state, step, ctx, { ...advOpts, nowWallMs: wallMs })
-      remaining -= step
-      if (remaining > 0) {
-        // 两条循环各试一次（互斥 ⇒ 只有一个会真的再出发）；停环原因写进各自的通知字段
-        advanceAutoLoopBounty(state, ctx)
-        advanceAutoLoopInvasion(state, ctx, wallMs)
+      let wallMs = lastSavedWallMs
+      while (remaining > 0) {
+        if (++guard > 200_000) break // 防失控（30s 片 × 8h ≈ 960 片，余量充足）
+        const step = Math.min(remaining, OFFLINE_LOOP_CHUNK_MS)
+        wallMs += step
+        advanceGame(state, step, ctx, { ...advOpts, nowWallMs: wallMs })
+        remaining -= step
+        if (remaining > 0) {
+          // 两条循环各试一次（互斥 ⇒ 只有一个会真的再出发）；停环原因写进各自的通知字段
+          advanceAutoLoopBounty(state, ctx)
+          advanceAutoLoopInvasion(state, ctx, wallMs)
+        }
       }
+    } else {
+      advanceGame(state, deltaMs, ctx, advOpts)
     }
-  } else {
-    advanceGame(state, deltaMs, ctx, advOpts)
+    boostN = offlineBoostRenewCount()
+  } finally {
+    setOfflineBoostTally(false)
   }
   // 事件数 = 总新增 - 1（减去"离线归来"本身）
   const eventCount = state.logs.length - before - 1
@@ -204,8 +208,6 @@ export function simulateOffline(
    * **技能加速自动续用的汇总**（**2026-10-01 船长令** 裁定④「在线逐枚写，离线只在汇总里写一句」）：
    * 整段离线里补了几枚就在这句里交代几枚 —— 玩家上线时既知道"训练一直在加速"、也知道"料少了多少"。
    */
-  const boostN = offlineBoostRenewCount()
-  setOfflineBoostTally(false)
   const boostText = boostN > 0 ? `；自动续用突触加速剂 ×${boostN}` : ''
   const overflowTxt = formatDurationMs(overflowMs)
   const tail = overflowMs > 0 ? `；超出上限的 ${overflowTxt} 未结算` : ''

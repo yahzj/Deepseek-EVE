@@ -13,8 +13,7 @@ import type { CommandResult } from './engine'
 import type { SimContext } from './types'
 import { countItem, countWare, removeItem, removeWare } from './inventory'
 import { HOME_GALAXY_ID, addLog } from './state'
-import { SYNAPTIC_ACCELERANT_MS, synapticAccelerantActive, skillLevelTimeMs, trainingTimeFactor } from './training'
-import { tuningMul } from './tuning'
+import { SYNAPTIC_ACCELERANT_MS, normalizeTrainingProgress, trainingLevelProgress } from './training'
 import { securityZoneOf } from './securityZone'
 import { DSI_FACTION_ID, spendableStandingOf } from './expedition'
 import {
@@ -91,26 +90,16 @@ function takeOne(state: GameState, itemId: string): void {
 }
 
 /**
- * **使用一枚突触加速剂**：24 小时内训练时长 ×0.5。
- *
- * 校验顺序（与 `useOneRepairKit` 同款：先判"用了有没有意义"，再扣东西）：
- * ① 库存里有 ≥1 枚；② **当前没有生效中的加速剂**（**不可叠用** —— 船长口径「同一时间内只能生效一剂」；
- * 生效期内再点直接拒绝、**不消耗**，避免白扔 2,000 虚空晶）。
+ * 使用一枚突触加速剂：先校验库存，再扣料并增加有效时间。
+ * 船长 2026-10-09 裁定：允许重复使用，每枚在剩余有效时间上增加 24 小时，倍率不叠加。
  */
 export function useSynapticAccelerant(state: GameState): CommandResult {
   if (consumableStockOf(state, SYNAPTIC_ACCELERANT_ITEM_ID) <= 0) {
     return { ok: false, error: '仓库里没有突触加速剂。', errorId: 'core.consumable.001' }
   }
-  if (synapticAccelerantActive(state)) {
-    return {
-      ok: false,
-      error: '突触加速剂正在生效中：同一时间内只能生效一剂。',
-      errorId: 'core.consumable.002',
-      errorParams: { p1: Math.max(0, Math.round(((state.skillBoostUntilMs ?? 0) - state.gameMs) / 60_000)) },
-    }
-  }
+  normalizeTrainingProgress(state)
   takeOne(state, SYNAPTIC_ACCELERANT_ITEM_ID)
-  state.skillBoostUntilMs = state.gameMs + SYNAPTIC_ACCELERANT_MS
+  state.skillBoostUntilMs = Math.max(state.gameMs, state.skillBoostUntilMs ?? 0) + SYNAPTIC_ACCELERANT_MS
   addLog(
     state,
     'industry',
@@ -160,60 +149,39 @@ export const SYNAPTIC_ACCELERANT_RENEW_TAIL_MS = 60_000
  */
 export function syncBoostRenew(state: GameState, ctx: SimContext): void {
   if (state.boostAutoRenew !== true) return
-  /**
-   * ② **没料 ⇒ 自动关掉开关**（船长选案）。
-   *
-   * ⚠ 这一判据排在"是否还在生效"**之前**：走到这里＝开关开着，此时**没有库存**就注定补不出下一枚
-   * ——当场关掉并提示最直白（排在后面的话，最后一剂快用完时开关还会亮很久，玩家以为循环还在跑）。
-   * 因为开关已被置回 false，本分支天然只写一次提示（不需要额外的去重字段）。
-   */
-  if (consumableStockOf(state, SYNAPTIC_ACCELERANT_ITEM_ID) <= 0) {
-    state.boostAutoRenew = false
-    addLog(state, 'warn', '⚠ 技能加速自动续用已关闭：突触加速剂用光了。', 'core.consumable.015')
-    return
-  }
-  /**
-   * ③ **无缝续用**：判据 = "剩下的生效时间 **不足以练完当前这一级**" 才补 —— **不是**"有没有在生效"
-   * 那个二元判断（⚠ 2026-10-01 实现时在这里踩过一次：写成 `synapticAccelerantActive` 早退，
-   * 于是"快到期但还在生效"时永远不补，无缝语义直接失效，被本批用例当场逮住）。
-   */
-  const head = state.skills.queue[0]
-  let needMs = SYNAPTIC_ACCELERANT_RENEW_TAIL_MS
-  if (head !== undefined) {
-    const def = ctx.skills.get(head.skillId)
-    if (def !== undefined) {
-      const levelMs = Math.max(
-        1,
-        Math.round(skillLevelTimeMs(def, (state.skills.trained[head.skillId] ?? 0) + 1) * trainingTimeFactor(state) * tuningMul(state, 'skillTrainMs')),
-      )
-      needMs = Math.max(SYNAPTIC_ACCELERANT_RENEW_TAIL_MS, levelMs - Math.max(0, head.progressMs))
+  normalizeTrainingProgress(state)
+  // 同一时点补够当前一级的覆盖量；只累加药效，不把多个检查当成不同的用药时点。
+  for (;;) {
+    // 料尽先关闭；警告只写一次，不等待最后一剂到期。
+    if (consumableStockOf(state, SYNAPTIC_ACCELERANT_ITEM_ID) <= 0) {
+      state.boostAutoRenew = false
+      addLog(state, 'warn', '⚠ 技能加速自动续用已关闭：突触加速剂用光了。', 'core.consumable.015')
+      return
     }
+    const head = state.skills.queue[0]
+    let needMs = SYNAPTIC_ACCELERANT_RENEW_TAIL_MS
+    if (head !== undefined) {
+      const def = ctx.skills.get(head.skillId)
+      if (def !== undefined) {
+        needMs = Math.max(SYNAPTIC_ACCELERANT_RENEW_TAIL_MS,
+          trainingLevelProgress(state, def, (state.skills.trained[head.skillId] ?? 0) + 1, head.progressMs).remainingMs)
+      }
+    }
+    if (synapticAccelerantRemainMs(state) > needMs) return
+    takeOne(state, SYNAPTIC_ACCELERANT_ITEM_ID)
+    state.skillBoostUntilMs = Math.max(state.gameMs, state.skillBoostUntilMs ?? 0) + SYNAPTIC_ACCELERANT_MS
+    if (offlineRenewTally !== null) {
+      offlineRenewTally += 1
+      continue
+    }
+    addLog(
+      state,
+      'industry',
+      `✦ 突触加速剂自动续用：接下来 ${Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000)} 小时训练时长继续减半。`,
+      'core.consumable.013',
+      { p1: Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000) },
+    )
   }
-  if (synapticAccelerantRemainMs(state) > needMs) return
-  /* 扣料并落效果：与手动「使用」**同一笔语义**（货仓优先）。
-     ⚠ "不可叠用"仍成立：走到这里时剩余时间**已经不足以练完当前这一级**，补的这一枚是**接续**，
-     不是叠加（还剩很久时上面那行就早退了）。 */
-  takeOne(state, SYNAPTIC_ACCELERANT_ITEM_ID)
-  /**
-   * **累加，不重置**（**2026-10-02 修 · 船长报障「点自动续用的时候会无视当前剩余时间直接使用一个新的」**）：
-   * 补的这一枚**接在剩余之上**（还剩 2 小时 ⇒ 变 26 小时）。原先写的是 `state.gameMs + MS` ⇒
-   * **玩家手上那一段剩余被白白丢掉**（真档里剩十几小时又碰上长技能时最刺眼）。
-   * ⚠ 已经过期 / 本来就没生效时 `max(...)` 取 `gameMs` ⇒ 仍是"从此刻起 24 小时"，与旧行为**同值**；
-   * 触发判据（③ 剩余不足以练完当前这一级）也一字未动 ⇒ 只有"还剩着就补"的那一档变了。
-   */
-  state.skillBoostUntilMs = Math.max(state.gameMs, state.skillBoostUntilMs ?? 0) + SYNAPTIC_ACCELERANT_MS
-  if (offlineRenewTally !== null) {
-    /* ④ 离线期间**逐枚不写日志**（船长选案）：只记账，上线时由"离线结算完成"那一句汇总交代 */
-    offlineRenewTally += 1
-    return
-  }
-  addLog(
-    state,
-    'industry',
-    `✦ 突触加速剂自动续用：接下来 ${Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000)} 小时训练时长继续减半。`,
-    'core.consumable.013',
-    { p1: Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000) },
-  )
 }
 
 /**
