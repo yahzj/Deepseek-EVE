@@ -678,6 +678,7 @@ export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: stri
     arrivalGameMs,
     desirePref,
     weekendThreat !== undefined ? { threat: weekendThreat } : undefined,
+    weekendAssault !== undefined,
   )
   if (!battle) return false
   const exp = state.expedition

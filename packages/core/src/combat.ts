@@ -2047,6 +2047,8 @@ export function startBattleFor(
   desireM?: number | null,
   /** **敌群强度覆写**（2026-09-23 入侵用：伏击 39/60；缺省 = 原行为，一字不变） */
   foeOverride?: FoeOverride,
+  /** 入侵保留跨场目标；实际距离仍由当前波战场上限约束。 */
+  preserveDesire = false,
 ): import('./state').BattleState | null {
   if (!anomalyId) return null
   const anomaly = applyFoeOverride(battleAnomalyOf(ctx, anomalyId, state.expedition.lairTier, state.expedition.factionActive), foeOverride)
@@ -2085,14 +2087,14 @@ export function startBattleFor(
   // 期望距离：显式传入（出发时的偏好/战术）优先；`null` = 强制默认档（AI 副船）；否则用
   // **该星系的目标距离**；该星系没设过 → **默认档 = 主武器射程带 0.8 处**（2026-09-15 船长裁定，
   // 旧"射程中段"作废：远程武器默认要站远端，见 `balance.battle.desireBandMid`；星图与洞内同值）。
-  // 记忆可能来自更远射程的战斗：一律钳到本次开战距离内。
+  // 普通战斗将记忆钳到本次开战距离；入侵保留跨波目标，实际距离仍受逐拍上限约束。
   const rawDesire =
     desireM === null
       ? desiredRangeFor(me, 'mid', bal)
       : desireM !== undefined && desireM > 0
         ? Math.round(desireM)
         : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
-  const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
+  const desire = Math.max(bal.minDistanceM, preserveDesire ? rawDesire : Math.min(openM, rawDesire))
   /**
    * 🔴 **R 族族格：以"玩家的射程盲区"为期望距离**（**船长 2026-10-01 三次澄清 · 正解**，原话照抄）：
    *
@@ -2402,6 +2404,8 @@ export function startFleetBattleFor(
   },
   /** **敌群强度覆写**（2026-09-23 入侵旗舰用：120 威胁 · 4 波；缺省 = 原行为） */
   foeOverride?: FoeOverride,
+  /** 入侵旗舰沿用核心星系目标，不因首波射程而缩小。 */
+  preserveDesire = false,
 ): import('./state').BattleState | null {
   if (!anomalyId || shipIds.length === 0) return null
   // 虫洞内的敌卡取**原卡**（不套窝点派生/派系活跃——那是悬赏线的口径），再按层派生
@@ -2510,7 +2514,7 @@ export function startFleetBattleFor(
       : desireM !== undefined && desireM > 0
         ? Math.round(desireM)
         : (desirePrefOf(state, anomaly.galaxyId) ?? desiredRangeFor(me, 'mid', bal))
-  const desire = Math.min(openM, Math.max(bal.minDistanceM, rawDesire))
+  const desire = Math.max(bal.minDistanceM, preserveDesire ? rawDesire : Math.min(openM, rawDesire))
   const battle = createBattleState(me, foes, atGameMs, desire, specs.slice(1))
   // **敌群覆写照原样存下**（2026-09-25 修）：后续波由 `advanceBattleFor` 从 `ctx` 重建敌卡，不存就只有第 0 波吃到覆写
   if (foeOverride !== undefined) battle.foeOverride = foeOverride

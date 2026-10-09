@@ -3035,7 +3035,7 @@ const meSpeedRef = useRef(200)
               </div>
             </div>
             {!rangeMode && <span className="app-gold app-bts-desire">
-              {tr("ui.BattleScreen.072")} {sliderToDesire(sliderV).toLocaleString('zh-CN')}m
+              {tr("ui.BattleScreen.072")} {(dragV === null ? Math.round(combat.myDesireM) : sliderToDesire(sliderV)).toLocaleString('zh-CN')}m
             </span>}
           </div>
           {!rangeMode && <div className="app-bts-ops">

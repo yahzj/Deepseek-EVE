@@ -276,7 +276,7 @@ export function weekendStartFlagshipBattle(
    * `undefined` 会掉回上面那个"按卡星系读"的回落（`desirePrefOf` 未命中本来就返回 `null` ⇒ 直传即可）。
    */
   const desire = desirePrefOf(state, state.weekendEvent?.coreId)
-  return startFleetBattleFor(state, ctx, use, spec.cardId, state.gameMs, desire, undefined, override)
+  return startFleetBattleFor(state, ctx, use, spec.cardId, state.gameMs, desire, undefined, override, true)
 }
 
 /* ═══════════════ 旗舰战的"战斗宿主"解析（界面侧） ═══════════════
