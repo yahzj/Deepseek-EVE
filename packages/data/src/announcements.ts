@@ -49,9 +49,10 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
       L10N['ano.incursionBrief.001']!.zh,
       L10N['ano.incursionBrief.002']!.zh,
       L10N['ano.incursionBrief.003']!.zh,
-      L10N['ano.incursionRelease.007']!.zh,
+      // ⟪文案调整 2026-10-09⟫ 船长要求参考其他入侵残骸，战利品改为C族入侵新三件。
+      L10N['ano.incursionLoot.001']!.zh,
     ],
-    bulletIds: ['ano.incursionRelease.003', 'ano.incursionBrief.001', 'ano.incursionBrief.002', 'ano.incursionBrief.003', 'ano.incursionRelease.007'],
+    bulletIds: ['ano.incursionRelease.003', 'ano.incursionBrief.001', 'ano.incursionBrief.002', 'ano.incursionBrief.003', 'ano.incursionLoot.001'],
   },
   {
     // ⟪文案调整 2026-10-09⟫ 船长确认逐点一句并移除光环，英文只登记待译。

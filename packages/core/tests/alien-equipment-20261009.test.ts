@@ -7,7 +7,9 @@ import { createPlayerSpec, createFoeSpecs, createBattleState, advanceBattleFor, 
 import { acidResistsOf, addFoeAcidLayer, expireFoeAcidLayers, battleSpeedBonusOf, foeAcidRowsOf } from '../src/alienEquipment'
 import { cleanBattle } from '../src/saveBattleClean'
 import { loadSaveFile, serializeSaveFile } from '../src/save'
-import { recycleProfileOf, rollRareBoxExtra } from '../src/salvage'
+import { recycleProfileOf, rollRareBoxExtra, RARE_WRECK_VOLUME_M3, RECYCLE_CYCLE_MS, RARE_BOX_GEAR_CHANCE } from '../src/salvage'
+import { advanceRefining, startRecycleRun } from '../src/industry'
+import { addWare, countWare } from '../src/inventory'
 import { FOE_LAIR_GEAR } from '../src/lairs'
 import { fittedEffectParamsOf } from '../src/foeRange'
 import { makeTestCtx, ship, anomaly } from './helpers'
@@ -33,6 +35,32 @@ function player(high: string[] = [], low: string[] = []) {
 }
 
 describe('入侵装备数据与独立掉落', () => {
+  it('参考H/R入侵混池：真回收炉产出新三件、通用兜底与原材料，不出旧C族件或永久图纸', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 20261009 })
+    const profile = recycleProfileOf(ctx, 'wreck-rare-c-inv')!
+    for (const id of ['wreck-rare-h-hi', 'wreck-rare-r-inv']) {
+      expect(recycleProfileOf(ctx, id)!.tier).toBe(profile.tier)
+      expect(recycleProfileOf(ctx, id)!.pool).toEqual(profile.pool)
+    }
+    expect(RARE_BOX_GEAR_CHANCE[profile.tier]).toBe(.1)
+    const boxes = 400
+    addWare(state, 'wreck-rare-c-inv', boxes * RARE_WRECK_VOLUME_M3)
+    expect(startRecycleRun(state, 'wreck-rare-c-inv', 'pilot', ctx).ok).toBe(true)
+    for (let i = 0; i < boxes + 5 && state.refineRuns.length; i++) {
+      state.gameMs += RECYCLE_CYCLE_MS
+      advanceRefining(state, ctx)
+    }
+    expect(countWare(state, 'wreck-rare-c-inv')).toBe(0)
+    expect(state.rareBoxesOpened['wreck-rare-c-inv']).toBe(boxes)
+    expect(state.moduleBay[acidId]).toBeGreaterThan(0)
+    expect(state.moduleBay[speedId]).toBeGreaterThan(0)
+    expect(countWare(state, 'drone-jawclaw')).toBeGreaterThan(0)
+    expect(countWare(state, 'drone-jawclaw') % 10).toBe(0)
+    expect(profile.rareTheme!.some(id => (state.moduleBay[id] ?? 0) > 0)).toBe(true)
+    expect(countWare(state, 'min-tritanium')).toBeGreaterThan(0)
+    for (const id of FOE_LAIR_GEAR.C) expect(state.moduleBay[id] ?? 0).toBe(0)
+    expect(state.blueprintStock['bp-faction-drone-jawclaw'] ?? 0).toBe(0)
+  })
   it('确认参数、炮台技能族和同型合并规格', () => {
     const { spec } = player([acidId, acidId], [speedId])
     const weapon = spec.weapons.find(w => w.moduleId === acidId)!

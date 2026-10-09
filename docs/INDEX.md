@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **455** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7706** KB · **59231** 行
+- 文档总数 **455** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7707** KB · **59240** 行
 - 状态分布：**未标注** 245 · **已确认/已实现** 148 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
 - 孤儿文档（0 引用）**78** 份 · 状态未标注 **245** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -60,7 +60,7 @@
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/alien-invasion-loot-20261009.md` | 异形入侵掉落装备设计 | 已确认/已实现（已实现） | 2026-10-09 | 13 KB / 155 行 | 0 / 0 |
+| `docs/design/alien-invasion-loot-20261009.md` | 异形入侵掉落装备设计 | 已确认/已实现（已实现） | 2026-10-09 | 14 KB / 163 行 | 0 / 0 |
 | `docs/design/boost-copy-ammo-warning-20261009.md` | 加速剂文案与战前弹药预警收口 | 已确认/已实现（已合入主树） | 2026-10-09 | 10 KB / 68 行 | 1 / 0 |
 | `docs/design/drone-launch-laser-calibration-20261009.md` | 无人机出击加速与激光校准 | 已确认/已实现（完整补充方案已实现并自测完成） | 2026-10-09 | 8 KB / 69 行 | 0 / 0 |
 | `docs/design/faction-drone-permanent-blueprints-20261009.md` | 势力无人机永久蓝图报价 | 已确认/已实现（五种完整方案已实现并自测完成） | 2026-10-09 | 10 KB / 114 行 | 0 / 0 |
@@ -397,7 +397,7 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 26 / 18 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注（仅登记） | — | 11 KB / 162 行 | 8 / 8 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注（仅登记） | — | 11 KB / 163 行 | 8 / 8 |
 | `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 21 KB / 131 行 | 19 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
@@ -529,7 +529,7 @@
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/alien-invasion-loot-20261009.md`（2026-10-09 · 13 KB）—— 异形入侵掉落装备设计
+- `docs/design/alien-invasion-loot-20261009.md`（2026-10-09 · 14 KB）—— 异形入侵掉落装备设计
 - `docs/design/drone-launch-laser-calibration-20261009.md`（2026-10-09 · 8 KB）—— 无人机出击加速与激光校准
 - `docs/design/faction-drone-permanent-blueprints-20261009.md`（2026-10-09 · 10 KB）—— 势力无人机永久蓝图报价
 - `docs/design/push-regression-contract-20261009.md`（2026-10-09 · 4 KB）—— 推送前回归契约修正

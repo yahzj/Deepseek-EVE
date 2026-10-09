@@ -106,6 +106,7 @@
 | `ano.incursionBrief.001` | 酸液爆虫近距自爆、大量护盾伤害与装甲/结构腐蚀，使用船长原文 | 待本地化 |
 | `ano.incursionBrief.002` | 工虫修复、背巢/巢母依靠虫群作战并补充战损 | 待本地化 |
 | `ano.incursionBrief.003` | 巢母召唤与加速、击毁后支援停止 | 待本地化 |
+| `ano.incursionLoot.001` | C族入侵稀有残骸新三件与原旗舰黑匣说明 | 待本地化 |
 | `ui.acidShield.001` | 自爆对护盾造成的伤害翻倍 | 待本地化 |
 
 敌方挂载件内容名`foe-mount-c-acid-shield`「酸液破盾腔」沿用`FoeMountDef.name/en`接口，`en`未准备、不伪填中文，英文名暂按既有接口回退中文。无英文草稿。

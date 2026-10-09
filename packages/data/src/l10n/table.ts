@@ -113,6 +113,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   'ano.mechanicsBrief.037': { zh: '修复入侵普通残骸打捞后库存不扣减的问题。', en: '', enDeferred: true },
   'ano.mechanicsBrief.038': { zh: '独立小队自动探索不再被主控正在作业误挡。', en: '', enDeferred: true },
   'ano.incursionRelease.001': { zh: '异形虫群入侵', en: 'Alien Swarm Incursion' },
+  'ano.incursionLoot.001': { zh: '玩家可打捞异形入侵的普通、稀有残骸。稀有残骸用回收炉解体有机会获得酸蚀弹射器、增压加速腔和颚钳无人机；玩家亲手击沉巢母可获得异形旗舰黑匣，用于制造舰船插件。', en: '', enDeferred: true },
   'ano.incursionBrief.001': { zh: '酸液爆虫会冲到近处自爆，对护盾造成大量伤害，并以酸液腐蚀玩家编队的装甲与结构。', en: '', enDeferred: true },
   'ano.incursionBrief.002': { zh: '哺育工虫能够修复同伴；背巢巨兽与巢母巨兽依靠颚钳虫群作战，并持续补充战损虫群。', en: '', enDeferred: true },
   'ano.incursionBrief.003': { zh: '巢母会召唤星髓成虫，并使虫群不断加速；击毁巢母可终止这些支援。', en: '', enDeferred: true },

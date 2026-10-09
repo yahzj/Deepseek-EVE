@@ -5,7 +5,7 @@ import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { ANNOUNCEMENTS, L10N, l10nEntryText } from '@whale/data'
 import { MECHANICS_APPROVED_ZH } from './fixtures/announcement-mechanics-brief-20261009'
-import { INCURSION_APPROVED_BRIEF } from './fixtures/announcement-incursion-brief-20261009'
+import { INCURSION_APPROVED_BRIEF, INCURSION_APPROVED_LOOT } from './fixtures/announcement-incursion-brief-20261009'
 import { weekendFamilyForWindow } from '../src/weekendEvent'
 
 const root = new URL('../../../', import.meta.url)
@@ -21,7 +21,7 @@ function section(heading: string, language: 'zh' | 'en') {
 }
 function expectedIncursion(language: 'zh' | 'en') {
   const original = section(releases[0]!.heading, language)
-  return [original[0]!, ...INCURSION_APPROVED_BRIEF, original[4]!]
+  return [original[0]!, ...INCURSION_APPROVED_BRIEF, INCURSION_APPROVED_LOOT]
 }
 const releases = [
   { id: 'ann-alien-invasion-20261007', heading: '## 二、公告一：异形虫群入侵',
