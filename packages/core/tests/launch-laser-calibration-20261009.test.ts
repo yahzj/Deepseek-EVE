@@ -24,9 +24,9 @@ const ctx = buildSimContext(), root = new URL('../../../', import.meta.url)
 const cases = [
   { id: 'mod-drone-launch-1', cut: .3, cpu: 8, price: 18000, book: 36000, source: 'bp-drone-tac-1' },
   { id: 'mod-drone-launch-2', cut: .35, cpu: 20, price: 455000, book: 1137500, source: 'bp-drone-tac-2' },
-  { id: 'mod-drone-launch-3', cut: .4, cpu: 45, price: 2040000, book: 6120000, source: 'bp-drone-tac-3' },
+  { id: 'mod-drone-launch-3', cut: .4, cpu: 45, price: 2040000, book: 8160000, source: 'bp-drone-tac-3' },
   { id: 'mod-laser-calibration-2', cut: .1, cpu: 15, price: 481000, book: 1202500, source: 'bp-stab-pla-2' },
-  { id: 'mod-laser-calibration-3', cut: .13, cpu: 40, price: 2360000, book: 7080000, source: 'bp-stab-pla-3' },
+  { id: 'mod-laser-calibration-3', cut: .13, cpu: 40, price: 2360000, book: 9440000, source: 'bp-stab-pla-3' },
 ] as const
 function world(ship = 'sh-megalodon', high: string[] = [], low: string[] = []) {
   const state = createInitialState({ nowWallMs: 0, seed: 19 })
@@ -64,8 +64,10 @@ describe('出击加速、激光校准与协处理器5%', () => {
     expect(bp.buildSeconds).toBe(ref.buildSeconds)
     expect(bp.singleUse).not.toBe(true)
     if (row.id.endsWith('-3')) {
-      expect(ctx.marketGoods.get(row.id)!.bmStanding).toBe(11)
-      expect(ctx.marketGoods.get(bpId)!.bmStanding).toBe(11)
+      expect(ctx.marketGoods.get(row.id)!.rarity).toBe('exotic')
+      expect(ctx.marketGoods.get(bpId)!.rarity).toBe('exotic')
+      expect(ctx.marketGoods.get(row.id)!.bmStanding).toBeUndefined()
+      expect(ctx.marketGoods.get(bpId)!.bmStanding).toBeUndefined()
       expect(ctx.marketGoods.get(bpId)!.standingReq).toBe(4)
     }
     const state = createInitialState({ nowWallMs: 0, seed: 19 })

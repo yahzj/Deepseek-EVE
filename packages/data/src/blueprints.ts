@@ -50,6 +50,8 @@ export const BLUEPRINT_PRICE_STEP = 500
  * 修理组件蓝图与之无关（船长：「其他保持不变」⇒ 走系数默认值）。
  */
 export const BLUEPRINT_PRICE_OVERRIDES: Readonly<Record<string, { price: number; reason: string }>> = {
+  'bp-drone-launch-3': { price: 8_160_000, reason: '2026-10-09船长确认：MK3迁入奇货，永久蓝图按奇货×4' },
+  'bp-laser-calibration-3': { price: 9_440_000, reason: '2026-10-09船长确认：MK3迁入奇货，永久蓝图按奇货×4' },
   'bp-faction-drone-bee': { price: 2_400_000, reason: '2026-10-09船长确认：势力无人机永久图纸基价为50架批次货值×2，黑市独占' },
   'bp-faction-drone-hiveguard': { price: 4_800_000, reason: '2026-10-09船长确认：势力无人机永久图纸基价为50架批次货值×2，黑市独占' },
   'bp-faction-drone-construct': { price: 8_800_000, reason: '2026-10-09船长确认：势力无人机永久图纸基价为50架批次货值×2，黑市独占' },
@@ -3291,7 +3293,8 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
     ['bp-laser-calibration-3', 'mod-laser-calibration-3', 'bp-stab-pla-3', 'bp.launchCalibration.005'],
   ].map(([id, moduleId, sourceId, nameId]) => {
     const source = BASE_BLUEPRINTS.find(bp => bp.id === sourceId)!
-    return { ...source, id: id!, moduleId: moduleId!, name: L10N[nameId!]!.zh,
+    const priceIsk = id === 'bp-drone-launch-3' ? 8_160_000 : id === 'bp-laser-calibration-3' ? 9_440_000 : source.priceIsk
+    return { ...source, id: id!, moduleId: moduleId!, name: L10N[nameId!]!.zh, priceIsk,
       description: L10N[moduleId!.startsWith('mod-drone-launch') ? 'mod.launchCalibration.006' : 'mod.launchCalibration.007']!.zh }
   }),
 ]

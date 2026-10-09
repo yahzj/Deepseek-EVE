@@ -1670,7 +1670,6 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
  * 原型（proto）与顶船维持原 standingReq 纯硬拦，不加暗市。
  */
 const BM_MK3_KEYS = new Set([
-  'mod-drone-launch-3', 'bp-drone-launch-3', 'mod-laser-calibration-3', 'bp-laser-calibration-3',
   'mod-turret-kin-3', 'mod-laser-3', 'mod-missile-3',
   'mod-drone-rack-3', 'mod-drone-tac-3',
   'mod-shield-kin-3', 'mod-shield-exp-3', 'mod-shield-pla-3', 'mod-shield-ext-3',
