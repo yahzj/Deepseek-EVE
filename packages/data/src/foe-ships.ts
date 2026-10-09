@@ -442,7 +442,7 @@ export const ALIEN_CHARGE_MUL_BY_TIER: Readonly<Record<number, number>> = { 1: 1
 
 /** 船长确认的入侵用途例外，不放宽既有 C 舰级。 */
 export const ALIEN_INVASION_CHARGE_MUL: Readonly<Record<string, number>> = {
-  'foe-alien-acid-burster': 5, 'foe-alien-hiveback': 1.5, 'foe-alien-broodmother': 1.25,
+  'foe-alien-acid-burster': 2.5, 'foe-alien-hiveback': 1.5, 'foe-alien-broodmother': 1.25,
 }
 export const ALIEN_FAST_SHIP_IDS: readonly string[] = ['foe-alien-acid-burster']
 

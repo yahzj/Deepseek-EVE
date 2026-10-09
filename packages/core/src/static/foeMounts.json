@@ -10,7 +10,7 @@
       },
       {
         "id": "foe-mount-c-acid-charge",
-        "charge_mul": 5,
+        "charge_mul": 2.5,
         "charge_cooldownMs": 10000
       },
       {
