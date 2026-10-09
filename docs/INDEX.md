@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **450** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7656** KB · **58695** 行
+- 文档总数 **450** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7661** KB · **58722** 行
 - 状态分布：**未标注** 243 · **已确认/已实现** 145 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
 - 孤儿文档（0 引用）**73** 份 · 状态未标注 **243** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -33,10 +33,10 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 28 KB / 254 行 | 32 / 2 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 7 KB / 65 行 | 34 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 9 KB / 125 行 | 2 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 300 KB / 310 行 | 17 / 3 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 92 KB / 911 行 | 95 / 5 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 516 KB / 1080 行 | 226 / 22 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 73 KB / 462 行 | 379 / 28 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 301 KB / 311 行 | 17 / 3 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 92 KB / 912 行 | 95 / 5 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 517 KB / 1084 行 | 226 / 22 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 70 KB / 441 行 | 379 / 28 |
 
 ## 七、评审与体检（review） —— 13 份
 
@@ -340,7 +340,7 @@
 | `docs/design/v7-design.md` | V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版 | 未标注 | — | 7 KB / 117 行 | 0 / 0 |
 | `docs/design/v9-market.md` | V9 设计：市场系统（已实现） | 未标注 | — | 21 KB / 192 行 | 17 / 0 |
 | `docs/design/weapon-skill-batch.md` | 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四） | 未标注 | — | 8 KB / 100 行 | 4 / 0 |
-| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 53 KB / 385 行 | 27 / 14 |
+| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 55 KB / 391 行 | 27 / 14 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 5 KB / 56 行 | 5 / 0 |
 
 ## 九、封存卷（archive · 冻结件，只读不改） —— 37 份
@@ -383,7 +383,7 @@
 | `docs/archive/roadmap-2026-09-29.md` | 封存卷 · roadmap 批次条目 2026-09-29 | 未标注 | — | 7 KB / 18 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-09-30.md` | 封存卷 · roadmap 批次条目 2026-09-30 | 未标注 | — | 24 KB / 28 行 | 2 / 0 |
 | `docs/archive/roadmap-2026-10-01.md` | 封存卷 · roadmap 批次条目 2026-10-01 | 未标注 | — | 3 KB / 10 行 | 2 / 0 |
-| `docs/archive/roadmap-2026-10-02.md` | 封存卷 · roadmap 批次条目 2026-10-02 | 未标注 | — | 15 KB / 28 行 | 2 / 0 |
+| `docs/archive/roadmap-2026-10-02.md` | 封存卷 · roadmap 批次条目 2026-10-02 | 未标注 | — | 18 KB / 51 行 | 2 / 0 |
 
 ## 二、其它（docs 根目录） —— 6 份
 
@@ -393,7 +393,7 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 26 / 18 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注（仅登记） | — | 6 KB / 86 行 | 7 / 5 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注（仅登记） | — | 7 KB / 99 行 | 8 / 6 |
 | `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 20 KB / 129 行 | 19 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
