@@ -110,6 +110,8 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '星球已开发标记与星系开发状态', symbol: 'stellarPlanetDeveloped', file: 'packages/core/src/stellarSearch.ts', exported: true },
+  { concept: '星图与目标预览公开类型外形', symbol: 'StellarPlanetArt', file: 'apps/desktop/src/renderer/src/ui/stellarArt.tsx', exported: true },
   { concept: '手册入侵新内容稳定后排', symbol: 'handbookContentOrderOf', file: 'apps/desktop/src/renderer/src/ui/handbookOrder.ts', exported: true },
   { concept: '酸蚀层独立期限与有效抗性', symbol: 'acidResistsOf', file: 'packages/core/src/alienEquipment.ts', exported: true },
   { concept: '酸蚀有效层数与下次到期显示', symbol: 'foeAcidRowsOf', file: 'packages/core/src/alienEquipment.ts', exported: true },

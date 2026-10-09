@@ -1,5 +1,5 @@
 /** 动态星系与战损原生验收，先build再node tools/stellar-native-check.cjs。
- * v0.1.0/存档v31，合成档、隐藏Electron、随机端口，2026-10-07。
+ * v0.1.0/存档v31，合成档、隐藏Electron、随机端口；2026-10-09更新探索HUD控制区与几何取证。
  */
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -106,11 +106,11 @@ async function child() {
   await step(1000)
   assert(await page.js(`document.activeElement===document.querySelector('[data-system-seed]') && document.activeElement.value==='7'`))
   await page.tap('[data-search-launch]'); assert.equal((await snap()).warehouse.items['deep-space-probe'], 0)
-  await page.text('.app-stellar-sidebar', t('ui.stellar.010'))
+  await page.tap(`.app-stellar-taskdock button[aria-label=${JSON.stringify(t('ui.stellar.010'))}]`)
   const pausedAt = (await snap()).planetary.stellar.search.progressMs
   await step(60000)
   assert.equal((await snap()).planetary.stellar.search.progressMs, pausedAt)
-  await page.text('.app-stellar-sidebar', t('ui.stellar.011')); await step(6 * 3600000)
+  await page.tap(`.app-stellar-taskdock button[aria-label=${JSON.stringify(t('ui.stellar.011'))}]`); await step(6 * 3600000)
   await page.wait('!!document.querySelector("[data-stellar-body]")')
   const s = (await snap()).planetary.stellar.systems['system-v1-7']
   const body = s.bodies.find(b => b.kind !== 'gas')
@@ -144,7 +144,13 @@ async function child() {
   await page.tap(`.app-stellar-map-tool[title=${JSON.stringify(t('ui.stellar.052'))}]`)
   assert.equal(await page.js('document.querySelector(".app-stellar-map-svg").getAttribute("viewBox")'), before)
   console.log('缩放、拖动、拖后不误选与全图恢复通过')
-  await page.text('.app-stellar-sidebar', t('ui.stellar.022')); await page.tap('[data-open-surface]'); await page.wait('!!document.querySelector(".app-planet-modal")')
+  await page.text('.app-stellar-sidebar', t('ui.stellar.022'))
+  const selectedImage = await page.send('Page.captureScreenshot', { format: 'png' })
+  fs.writeFileSync(path.join(OUT, `${options.layout}-${options.locale}-${options.mobile ? 'mobile' : 'desktop'}-selected.png`), Buffer.from(selectedImage.data, 'base64'))
+  const targetGeometry = await page.js(`(()=>{const e=document.querySelector('.app-stellar-modal'),workspace=document.querySelector('.app-stellar-workspace'),map=document.querySelector('.app-stellar-mapcolumn'),dock=document.querySelector('.app-stellar-taskdock'),footer=document.querySelector('.app-stellar-footer');return {verticalOverflow:e.scrollHeight>e.clientHeight+1,mapHeight:map.offsetHeight,dockOverlap:workspace.offsetTop+workspace.offsetHeight>dock.offsetTop+1,footerOutside:footer.offsetTop+footer.offsetHeight>e.clientHeight+1}})()`)
+  assert(!targetGeometry.verticalOverflow && !targetGeometry.dockOverlap && !targetGeometry.footerOutside, JSON.stringify(targetGeometry))
+  assert(targetGeometry.mapHeight >= 180)
+  await page.tap('[data-open-surface]'); await page.wait('!!document.querySelector(".app-planet-modal")')
   assert.equal(await page.js('document.querySelectorAll("[data-planet-cell]").length'), (await snap()).planetary.planets[body.planetId].size ** 2)
   await page.tap('.app-planet-close'); await page.wait('!!document.querySelector(".app-stellar-modal")')
   await page.js('window.__whalePlanetaryTest.persist()'); await page.send('Page.reload'); await page.wait('!!window.__whalePlanetaryTest')

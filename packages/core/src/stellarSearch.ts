@@ -1,5 +1,5 @@
 import type { GameState } from './state'
-import type { PlanetActionResult } from './planetTypes'
+import type { PlanetActionResult, PlanetState } from './planetTypes'
 import { hashSeed, nextInt } from './rng'
 import { generateStellarSystem, parseStellarSeed, stellarSystemId } from './stellarGeneration'
 import type { StellarState } from './stellarTypes'
@@ -16,9 +16,12 @@ export function stellarSearchDuration(state: GameState): number {
     - STELLAR_SEARCH_SKILL.advancedPerLevel * level(state, STELLAR_SEARCH_SKILL.advancedId)))
 }
 export function stellarCapacity(state: GameState): number { return 5 + STELLAR_SEARCH_SKILL.archivePerLevel * level(state, STELLAR_SEARCH_SKILL.archiveId) }
+export function stellarPlanetDeveloped(planet: PlanetState | undefined): boolean {
+  return planet?.cells.some(cell => cell.building?.id === 'base' && cell.building.status === 'ready') ?? false
+}
 export function stellarSystemDeveloped(state: GameState, id: string): boolean {
   return state.planetary?.stellar?.systems[id]?.developed === true || Object.values(state.planetary?.planets ?? {}).some(p => p.systemId === id
-    && p.cells.some(cell => cell.building?.id === 'base' && cell.building.status === 'ready'))
+    && stellarPlanetDeveloped(p))
 }
 export function stellarCandidateCount(state: GameState): number {
   return Object.keys(state.planetary?.stellar?.systems ?? {}).filter(id => !stellarSystemDeveloped(state, id)).length

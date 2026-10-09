@@ -3,6 +3,7 @@ import { ZoomIn, ZoomOut } from 'lucide-react'
 import type { StellarSystem } from '@whale/core'
 import { tr } from '../i18n/locale'
 import { Glyph } from '../ui/Glyphs'
+import { StellarPlanetArt, STELLAR_PLANET_KIND_IDS } from '../ui/stellarArt'
 import {
   STELLAR_MAP_CENTER, STELLAR_ZOOM_MAX, STELLAR_ZOOM_MIN,
   beginStellarGesture, clampStellarView, inverseMapMatrix, locateStellarView, mapInverseScale, mapPointThrough,
@@ -15,6 +16,7 @@ export interface StellarMapProps {
   system: StellarSystem
   selectedId?: string
   onSelect: (planetId: string) => void
+  bodyStates?: Readonly<Record<string, { survey: number; developed: boolean }>>
 }
 
 interface MapSession extends StellarMapView { selectedId?: string }
@@ -36,7 +38,7 @@ function screenInverse(svg: SVGSVGElement): MapMatrix | null {
   return matrix.inverse()
 }
 
-function StellarMapViewport({ system, selectedId, onSelect }: StellarMapProps) {
+function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: StellarMapProps) {
   const [session, setSession] = useState(() => initialSession(system, selectedId))
   const current = useRef(session)
   const svgRef = useRef<SVGSVGElement>(null)
@@ -300,15 +302,17 @@ function StellarMapViewport({ system, selectedId, onSelect }: StellarMapProps) {
         </g>
         {system.bodies.map(body => {
           const active = body.planetId === session.selectedId
+          const status = bodyStates?.[body.planetId]
+          const statusText = status?.developed ? tr('ui.stellar.016') : status && status.survey > 0 ? tr(['ui.stellar.055', 'ui.planet.059', 'ui.planet.060', 'ui.planet.061'][status.survey] ?? 'ui.stellar.055') : tr('ui.stellar.055')
           const radius = body.kind === 'gas' ? 13 : 10
           return <g key={body.planetId} className={`app-map-node app-stellar-map-body${active ? ' is-selected' : ''}${body.kind === 'gas' ? ' is-gas' : ''}`}
             transform={`translate(${body.x} ${body.y})`} data-stellar-body={body.planetId}
-            role="button" tabIndex={0} aria-label={`${bodyName(body)}, ${tr(body.kind === 'gas' ? 'ui.stellar.057' : 'ui.stellar.058')}`}
-            aria-pressed={active} data-tip={bodyName(body)}
+            role="button" tabIndex={0} aria-label={`${bodyName(body)}, ${tr(STELLAR_PLANET_KIND_IDS[body.kind])}, ${statusText}`}
+            aria-pressed={active} data-tip={`${bodyName(body)} · ${tr(STELLAR_PLANET_KIND_IDS[body.kind])} · ${statusText}`}
             onClick={() => { if (!handledPointerClick.current) select(body.planetId) }}>
-            <circle className={`app-map-dot app-stellar-map-planet${active ? ' is-sel' : ''}`} r={radius} />
-            {body.kind === 'gas' ? <ellipse className="app-stellar-map-gas-ring" rx={21} ry={7} transform="rotate(-25)" />
-              : <path className="app-stellar-map-solid-mark" d="M-4 3L0-4L4 3Z" />}
+            <StellarPlanetArt kind={body.kind} />
+            {status?.developed ? <path className="app-stellar-map-state is-developed" d="M12-12l3 3 5-6" />
+              : status && status.survey >= 2 ? <path className="app-stellar-map-state is-surveyed" d="M14-16v6m-3-3h6" /> : null}
             <circle className="app-stellar-map-selection" r={Math.max(18, metrics.hit * 0.65)} />
             <circle className="app-map-hit app-stellar-map-hit" r={Math.max(metrics.hit, radius)} />
           </g>

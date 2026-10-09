@@ -4,7 +4,7 @@
   width: 100%;
   height: 100%;
   min-width: 0;
-  min-height: 280px;
+  min-height: 0;
   box-sizing: border-box;
   color: rgb(var(--wui-text));
   letter-spacing: 0;
@@ -125,3 +125,18 @@
 .app-stellar-map-body:focus { outline: none; }
 .app-stellar-map-hit { fill: transparent; pointer-events: all; }
 .app-stellar-map-labels text { letter-spacing: 0; }
+
+.app-stellar-planet-art { color: rgb(var(--wui-text)); fill: none; stroke: currentColor; stroke-width: .7; pointer-events: none; }
+.app-stellar-planet-art .planet-disc { fill: currentColor; fill-opacity: .13; stroke-width: 1.2; }
+.app-stellar-planet-art .planet-night { stroke-width: 1.4; opacity: .4; }
+.app-stellar-planet-art .planet-thin { opacity: .5; stroke-width: .5; }
+.app-stellar-planet-art.is-desert { color: rgb(var(--wui-gold)); }
+.app-stellar-planet-art.is-ice,.app-stellar-planet-art.is-ocean { color: rgb(var(--wui-accent)); }
+.app-stellar-planet-art.is-lava { color: rgb(var(--wui-danger-map)); }
+.app-stellar-planet-art.is-temperate { color: rgb(var(--wui-green)); }
+.app-stellar-planet-art.is-gas { color: rgb(var(--wui-gold)); }
+.app-stellar-planet-art .planet-hot { fill: currentColor; }
+.app-stellar-map-body.is-selected .planet-disc { stroke: rgb(var(--wui-accent)); stroke-width: 1.8; }
+.app-stellar-map-state { fill: none; stroke-width: 1.4; pointer-events: none; }
+.app-stellar-map-state.is-developed { stroke: rgb(var(--wui-green)); }
+.app-stellar-map-state.is-surveyed { stroke: rgb(var(--wui-accent)); }

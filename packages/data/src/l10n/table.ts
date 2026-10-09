@@ -24,6 +24,9 @@ export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  'ui.stellarHud.001': { zh: '探索任务', en: '', enDeferred: true },
+  'ui.stellarHud.002': { zh: '目标详情', en: '', enDeferred: true },
+  'ui.stellarHud.003': { zh: '探测机生产', en: '', enDeferred: true },
   'mod.alienLoot.001': { zh: '酸蚀弹射器', en: '', enDeferred: true },
   'mod.alienLoot.002': { zh: '发射爆炸酸蚀弹，命中后暂时降低目标的装甲与结构抗性。酸蚀可叠加，每层独立消退。不可制造。', en: '', enDeferred: true },
   'mod.alienLoot.003': { zh: '增压加速腔', en: '', enDeferred: true },

@@ -95,7 +95,7 @@ export { dispatchPlanetDelivery, convertPlanetSupplies } from './planetLogistics
 export { PLANET_TEXT_IDS } from './planetTextIds'
 export type { StellarBody, StellarSystem, StellarSystemKind, StellarPlanetKind, StellarSearch, StellarState, GeneratedStellarSystem } from './stellarTypes'
 export { generateStellarSystem, stellarSystemId, parseStellarSeed, stellarPlanetCatalog } from './stellarGeneration'
-export { DEEP_SPACE_PROBE_ID, STELLAR_SEARCH_SKILL, stellarSearchDuration, stellarCapacity, stellarCandidateCount, stellarSystemDeveloped, beginStellarSearch, pauseStellarSearch, cancelStellarSearch, setStellarAutoSearch, discardStellarSystem, advanceStellarSearch } from './stellarSearch'
+export { DEEP_SPACE_PROBE_ID, STELLAR_SEARCH_SKILL, stellarSearchDuration, stellarCapacity, stellarCandidateCount, stellarSystemDeveloped, stellarPlanetDeveloped, beginStellarSearch, pauseStellarSearch, cancelStellarSearch, setStellarAutoSearch, discardStellarSystem, advanceStellarSearch } from './stellarSearch'
 export { DEEP_SPACE_PROBE_BLUEPRINT_ID, DEEP_SPACE_SKILL_IDS, PROBE_MATERIAL_PER_LEVEL, probeMaterialFactor, probeManufacturingUnlocked } from './probeManufacturing'
 export { planetNeighborIndices, planetConstructionCheck, planetClearanceCheck, planetBuildingOperational, planetAdjacencyOf, planetBuildingOutputMul } from './planetGrid'
 export type { PlanetConstructionCheck } from './planetGrid'

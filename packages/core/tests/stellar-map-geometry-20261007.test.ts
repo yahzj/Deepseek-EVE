@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { runInNewContext } from 'node:vm'
 import { jsx, jsxs } from 'react/jsx-runtime'
 import { Fragment } from 'react'
+import { StellarPlanetArt, STELLAR_PLANET_KIND_IDS } from './fixtures/stellar-art'
 import ts from 'typescript'
 import { describe, expect, it, vi } from 'vitest'
 import {
@@ -228,6 +229,7 @@ function componentHarness() {
       if (name === '../i18n/locale') return { tr: (id: string) => id }
       if (name === 'lucide-react') return { ZoomIn: 'zoom-in', ZoomOut: 'zoom-out' }
       if (name === '../ui/Glyphs') return { Glyph: 'glyph' }
+      if (name === '../ui/stellarArt') return { StellarPlanetArt, STELLAR_PLANET_KIND_IDS }
       if (name === './stellarMapView') return { beginStellarGesture, clampStellarView, inverseMapMatrix, locateStellarView,
         mapInverseScale: (inv: MapMatrix) => stellarHitRadius(inv) / 20, mapPointThrough, moveStellarGesture, nextStellarBodyId,
         reframeMapInverse, stellarBodyAt, stellarHitRadius, stellarOrdinalLabels, stellarViewBox, zoomStellarView,
@@ -395,7 +397,8 @@ describe('真组件事件与会话记忆', () => {
     const orbits = host.find(node => node.props.className === 'app-stellar-map-orbits')
     expect(stars.props.children).toBe(false)
     expect(orbits.props.children).toBe(false)
-    expect(host.find(node => node.props.className === 'app-stellar-map-gas-ring')).toBeDefined()
+    expect(host.find(node => (node.type as unknown) === StellarPlanetArt && node.props.kind === 'gas')).toBeDefined()
+    expect(StellarPlanetArt({ kind: 'gas' }).props.children.some((node: any) => node?.props?.className === 'planet-ring' || node?.props?.children?.some?.((inner: any) => inner?.props?.className === 'planet-ring'))).toBe(true)
     const source = readFileSync(fileURLToPath(new URL('../../../apps/desktop/src/renderer/src/panels/StellarMap.tsx', import.meta.url)), 'utf8')
     expect(source).not.toMatch(/trait|habitability|resource|planetSurvey/)
   })
@@ -413,7 +416,7 @@ describe('真组件事件与会话记忆', () => {
   it('布局只使用百分比和逻辑尺寸，视口内部裁切且保留触屏按钮尺寸', () => {
     const css = readFileSync(fileURLToPath(new URL('../../../apps/desktop/src/renderer/src/styles-stellar-map.css', import.meta.url)), 'utf8')
     expect(css).not.toMatch(/\b\d+(?:\.\d+)?(?:vw|vh)\b/)
-    expect(css).toContain('min-height: 280px')
+    expect(css).toContain('min-height: 0')
     expect(css).toContain('touch-action: none')
     expect(css).toContain('width: 44px')
     expect(css).toContain('height: 44px')

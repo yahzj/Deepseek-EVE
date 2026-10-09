@@ -1,5 +1,10 @@
 # 工具区台账（tools/）
 
+## 星系探索HUD取证（2026-10-09 · v0.1.0 / 档v31）
+
+- `node tools/stellar-native-check.cjs`：先构建。两布局×中英文×桌面/手机旋转，真实制造/搜索/暂停/继续/地图手势/地表往返/IPC保存与运行错误检查；本轮更新任务区图标选择器，补选中目标截图及逻辑轴垂直几何。`--case=modern-zh-desktop`可单场复跑。
+- 仅隐藏自建Electron、独立合成档和临时userData、随机回环端口；产物`tools/_ui-artifacts/stellar/`，不是观感验收或实体手机性能结论。
+
 ## 异形装备验收（2026-10-09 · v0.1.0 / 档v31）
 
 - `alien-loot-test-fixture.ts`：全新合成档，真实装配与稳定靶舰，不读取个人档。

@@ -17,6 +17,8 @@
 ## 一、core 引擎层（`packages/core/src`）
 
 | 关注点 | 唯一实现 | 护栏 |
+| 星球已开发标记 | `stellarPlanetDeveloped` · `stellarSearch.ts`；星系状态仍由`stellarSystemDeveloped`读取 | 已建成基地才标记，准备殖民状态不误报；星系容量原行为守恒专项 |
+| 星系星图与选中目标外形 | `StellarPlanetArt` · `ui/stellarArt.tsx` | 只读公开kind、七类外形复用，不能依据隐藏资源；星图几何/焦点与功能专项 |
 | 手册新入侵装备与无人机显示顺序 | `handbookContentOrderOf()` · `ui/handbookOrder.ts` | 只变视图，原条目顺序与目录守恒，图标/列表/势力入口统一专项；F2/F3 |
 | 酸蚀有效抗性与渐增速度 | `acidResistsOf()` / `battleSpeedBonusOf()` / `foeAcidRowsOf()` · `alienEquipment.ts` | 逐层到期、触底恢复、跨波/读档、常驻渐增与当前周期收益混装排序、捕获网专项；F2/F3 |
 | 激光校准远端威力保留 | `laserFalloffOf` · `equipment.ts`，只在玩家激光建档消费 | 混装折权加算、上限1、其他武器不变专项；`arch:guard` F2/F3 |
