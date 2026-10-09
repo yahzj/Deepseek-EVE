@@ -17,6 +17,7 @@ function harness(locale: 'zh' | 'en' = 'zh', empty = false) {
   const values: any[] = [], refs: any[] = []
   let cursor = 0, refCursor = 0
   const commands = vi.fn(() => ({ ok: true as const }))
+  const onClose = vi.fn()
   const tr = (id: string) => L10N[id] ? l10nEntryText(L10N[id]!, locale) : id
   const scope = { exports: {} as { StellarExplorer: (props: any) => Node }, require: (id: string): any => {
     if (id === 'react') return { useState: (initial: any) => { const i = cursor++; if (!(i in values)) values[i] = typeof initial === 'function' ? initial() : initial; return [values[i], (value: any) => { values[i] = typeof value === 'function' ? value(values[i]) : value }] }, useRef: (initial: any) => { const i = refCursor++; return refs[i] ?? (refs[i] = { current: initial }) }, useEffect: () => {} }
@@ -35,14 +36,38 @@ function harness(locale: 'zh' | 'en' = 'zh', empty = false) {
   const source = readFileSync(new URL('apps/desktop/src/renderer/src/panels/StellarExplorer.tsx', root), 'utf8')
   runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText, scope)
   let tree: Node
-  const render = () => { cursor = 0; refCursor = 0; tree = scope.exports.StellarExplorer({ engine: { state, ctx }, catalog: ctx.planetary!, onCommand: commands, onClose: vi.fn() }); return tree }
+  const render = () => { cursor = 0; refCursor = 0; tree = scope.exports.StellarExplorer({ engine: { state, ctx }, catalog: ctx.planetary!, onCommand: commands, onClose }); return tree }
   render()
   const find = (predicate: (node: Node) => boolean) => nodes(tree).find(predicate)!
   const button = (id: string) => find(node => node.type === 'button' && node.props['aria-label'] === tr(id))
-  return { state, ctx, render, find, button, commands, tr, all: () => nodes(tree) }
+  return { state, ctx, render, find, button, commands, onClose, tr, all: () => nodes(tree) }
 }
 
 describe('星系星图探索指挥台', () => {
+  it('确认期间背景点击不能关闭星图，撤销确认后恢复正常关闭', () => {
+    const h = harness()
+    const original = Object.values(h.state.planetary!.stellar!.systems).find(system => !core.stellarSystemDeveloped(h.state, system.id))!
+    h.find(node => node.props['data-system-select'] !== undefined).props.onChange({ target: { value: original.id } }); h.render()
+    h.button('ui.stellar.019').props.onClick(); h.render()
+    const alert = h.find(node => node.props.role === 'alertdialog')
+    expect(alert.props['aria-modal']).toBe('true')
+    h.find(node => node.props.className === 'app-modal-mask app-stellar-mask').props.onClick()
+    expect(h.onClose).not.toHaveBeenCalled()
+    const buttons = nodes(alert).filter(node => node.type === 'button')
+    expect(buttons[1]!.props.children).toBe(h.tr('ui.beacon.008'))
+    buttons[1]!.props.onClick(); h.render()
+    h.find(node => node.props.className === 'app-modal-mask app-stellar-mask').props.onClick()
+    expect(h.onClose).toHaveBeenCalledOnce()
+    expect(h.commands).not.toHaveBeenCalled()
+  })
+  it('星系/地表字号与确认/黑洞底色全部使用已定义主题变量', () => {
+    const palette = readFileSync(new URL('packages/ui/src/index.css', root), 'utf8')
+    const defined = new Set([...palette.matchAll(/^\s*(--wui[\w-]+)\s*:/gm)].map(match => match[1]))
+    for (const name of ['styles-stellar-explorer.css', 'styles-stellar-map.css', 'styles-planetary.css']) {
+      const css = readFileSync(new URL(`apps/desktop/src/renderer/src/${name}`, root), 'utf8')
+      for (const match of css.matchAll(/var\((--wui[\w-]+)\)/g)) expect(defined.has(match[1]!), `${name}: ${match[1]}`).toBe(true)
+    }
+  })
   it('已开发标记只认已建成基地，不把准备殖民状态误报为开发完成', () => {
     const h = harness(), planet = h.state.planetary!.planets['system-v1-0-p2']!
     expect(core.stellarPlanetDeveloped(planet)).toBe(true)

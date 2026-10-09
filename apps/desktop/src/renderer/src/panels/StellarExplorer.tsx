@@ -28,6 +28,7 @@ export function StellarExplorer({ engine, catalog, onClose, onCommand }: {
   const [confirm, setConfirm] = useState<{ kind: 'cancel'; seq: number } | { kind: 'discard'; systemId: string } | null>(null)
   const dialog = useRef<HTMLDivElement>(null)
   const close = useRef<HTMLButtonElement>(null)
+  const returningFromSurface = useRef(false)
   const closeAction = useRef(onClose)
   const confirmState = useRef(confirm)
   confirmState.current = confirm
@@ -36,18 +37,27 @@ export function StellarExplorer({ engine, catalog, onClose, onCommand }: {
   useEffect(() => {
     if (surface || legacy) return
     const previous = document.activeElement as HTMLElement | null
-    close.current?.focus()
+    if (returningFromSurface.current) {
+      dialog.current?.querySelector<HTMLButtonElement>('[data-open-surface]')?.focus()
+      returningFromSurface.current = false
+    } else close.current?.focus()
+    const focusRoot = () => dialog.current?.querySelector<HTMLElement>('.app-stellar-confirm') ?? dialog.current
+    const focusables = () => [...focusRoot()?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),[tabindex="0"]') ?? []].filter(el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden')
     const key = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') { e.preventDefault(); if (confirmState.current) setConfirm(null); else closeAction.current() }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (confirmState.current) setConfirm(null); else closeAction.current() }
       if (e.key !== 'Tab') return
-      const root = dialog.current?.querySelector('.app-stellar-confirm') ?? dialog.current
-      const controls = [...root?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select,[tabindex="0"]') ?? []].filter(el => el.getClientRects().length > 0)
+      const controls = focusables()
       const at = controls.indexOf(document.activeElement as HTMLElement)
       if (e.shiftKey && at <= 0) { e.preventDefault(); controls.at(-1)?.focus() }
-      else if (!e.shiftKey && at === controls.length - 1) { e.preventDefault(); controls[0]?.focus() }
+      else if (!e.shiftKey && (at < 0 || at === controls.length - 1)) { e.preventDefault(); controls[0]?.focus() }
+    }
+    const focus = (e: FocusEvent) => {
+      const root = focusRoot()
+      if (root && e.target instanceof Node && !root.contains(e.target)) focusables()[0]?.focus()
     }
     document.addEventListener('keydown', key)
-    return () => { document.removeEventListener('keydown', key); if (previous?.isConnected) previous.focus() }
+    document.addEventListener('focusin', focus)
+    return () => { document.removeEventListener('keydown', key); document.removeEventListener('focusin', focus); if (previous?.isConnected) previous.focus() }
   }, [surface, legacy])
   useEffect(() => {
     if (!confirm) return
@@ -74,8 +84,8 @@ export function StellarExplorer({ engine, catalog, onClose, onCommand }: {
     setConfirm(null); refresh(n => n + 1)
   }
   if (surface || legacy) return <PlanetaryPanel key={surface ?? 'legacy'} engine={engine} catalog={surface ? dynamicCatalog : catalog}
-    initialPlanetId={surface ?? undefined} onClose={() => { setSurface(null); setLegacy(false) }} onCommand={onCommand} />
-  return <div className="app-modal-mask app-stellar-mask" onClick={onClose}>
+    initialPlanetId={surface ?? undefined} onClose={() => { returningFromSurface.current = !!surface; setSurface(null); setLegacy(false) }} onCommand={onCommand} />
+  return <div className="app-modal-mask app-stellar-mask" onClick={() => { if (!confirm) onClose() }}>
     <div ref={dialog} className="app-modal app-stellar-modal" role="dialog" aria-modal="true" aria-label={tr('ui.stellar.054')} onClick={e => e.stopPropagation()}>
       <div className="app-modal-head"><Radar size={20} aria-hidden="true" /><strong>{tr('ui.stellar.054')}</strong><select className="app-select" data-system-select aria-label={tr('ui.stellar.054')} value={selected?.id ?? ''}
         onChange={e => { setSystemId(e.target.value); setBodyId(''); setMessage('') }}>
@@ -120,7 +130,8 @@ export function StellarExplorer({ engine, catalog, onClose, onCommand }: {
         <section className="app-stellar-production" aria-label={tr('ui.stellarHud.003')}><div className="app-stellar-taskhead"><h3><Factory size={16} />{tr('ui.stellarHud.003')}</h3><button className="app-btn app-stellar-icon" data-probe-manufacture title={tr('ui.stellar.047')} aria-label={tr('ui.stellar.047')} onClick={() => command('manufactureProbe', [])}><Factory size={17} /></button></div><div className="app-stellar-productionlist">{manufacture.length ? manufacture.map(run => <div key={run.id} data-probe-production><div className="app-stellar-productionrow"><span>{run.productName}</span><strong>{fmtDuration(run.remainingMs)}</strong></div><progress aria-label={run.productName} max={100} value={run.percent} /></div>) : <div className="app-dim">{tr('ui.battleCycles.013')}</div>}</div></section>
       </div>
       <div className="app-stellar-footer"><div className="app-stellar-feedback" role="status">{message || (stellar?.stoppedReason ? tr(reasonIds[stellar.stoppedReason]!) : '')}</div><button className="app-btn is-small" onClick={() => setLegacy(true)}>{tr('ui.stellar.038')}</button></div>
-      {confirm ? <div className="app-stellar-confirm" role="alertdialog" aria-label={tr(confirm.kind === 'cancel' ? 'ui.stellar.012' : 'ui.stellar.019')}><div><strong>{tr(confirm.kind === 'cancel' ? 'ui.stellar.012' : 'ui.stellar.019')}</strong><p>{confirm.kind === 'cancel' ? tr('ui.stellar.013') : stellar?.systems[confirm.systemId]?.seed ?? tr('ui.stellar.044')}</p><div className="app-stellar-actions"><button className="app-btn" disabled={!confirmValid} onClick={() => { if (confirmValid) command(confirm.kind === 'cancel' ? 'searchCancel' : 'discardSystem', confirm.kind === 'cancel' ? [] : [confirm.systemId]) }}>{pt('confirm')}</button><button className="app-btn" onClick={() => setConfirm(null)}>{pt('cancel')}</button></div></div></div> : null}
+      {/* ⟪文案调整 2026-10-09⟫ 探测/坐标确认撤销复用通用取消，不误用施工取消。 */}
+      {confirm ? <div className="app-stellar-confirm" role="alertdialog" aria-modal="true" aria-label={tr(confirm.kind === 'cancel' ? 'ui.stellar.012' : 'ui.stellar.019')}><div><strong>{tr(confirm.kind === 'cancel' ? 'ui.stellar.012' : 'ui.stellar.019')}</strong><p>{confirm.kind === 'cancel' ? tr('ui.stellar.013') : stellar?.systems[confirm.systemId]?.seed ?? tr('ui.stellar.044')}</p><div className="app-stellar-actions"><button className="app-btn" disabled={!confirmValid} onClick={() => { if (confirmValid) command(confirm.kind === 'cancel' ? 'searchCancel' : 'discardSystem', confirm.kind === 'cancel' ? [] : [confirm.systemId]) }}>{pt('confirm')}</button><button className="app-btn" onClick={() => setConfirm(null)}>{tr('ui.beacon.008')}</button></div></div></div> : null}
     </div>
   </div>
 }

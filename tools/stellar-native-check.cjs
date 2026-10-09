@@ -1,5 +1,5 @@
 /** 动态星系与战损原生验收，先build再node tools/stellar-native-check.cjs。
- * v0.1.0/存档v31，合成档、隐藏Electron、随机端口；2026-10-09更新探索HUD控制区与几何取证。
+ * v0.1.0/存档v31，合成档、隐藏Electron、随机端口；2026-10-09补确认主题、焦点与地表返回取证。
  */
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -57,6 +57,7 @@ async function child() {
   assert(profile.startsWith(path.resolve(os.tmpdir()) + path.sep) && path.basename(profile).startsWith(PREFIX))
   BrowserWindow.prototype.show = function () {}; require(path.join(ROOT, 'apps/desktop/out/main/index.js')); await app.whenReady()
   const win = BrowserWindow.getAllWindows()[0], options = JSON.parse(process.env.STELLAR_UI_CASE)
+  win.webContents.setBackgroundThrottling(false)
   win.setContentSize(1366, 768); win.webContents.debugger.attach('1.3')
   const page = new JourneyPage((m, p = {}) => win.webContents.debugger.sendCommand(m, p), { touch: options.mobile })
   const tap = page.tap.bind(page)
@@ -110,6 +111,26 @@ async function child() {
   const pausedAt = (await snap()).planetary.stellar.search.progressMs
   await step(60000)
   assert.equal((await snap()).planetary.stellar.search.progressMs, pausedAt)
+  await page.tap(`.app-stellar-taskdock button[aria-label=${JSON.stringify(t('ui.stellar.012'))}]`)
+  await page.wait('!!document.querySelector(".app-stellar-confirm")')
+  for (const theme of ['deepspace', 'daylight', 'contrast', 'warm', 'night', 'cb']) {
+    await page.js(`document.documentElement.dataset.theme=${JSON.stringify(theme)};true`)
+    const colors = await page.js(`(()=>{const mask=getComputedStyle(document.querySelector('.app-stellar-confirm')),panel=getComputedStyle(document.querySelector('.app-stellar-confirm > div'));return {mask:mask.backgroundColor,panel:panel.backgroundColor,focus:document.activeElement.closest('.app-stellar-confirm')!==null}})()`)
+    assert.notEqual(colors.panel, 'rgba(0, 0, 0, 0)'); assert.notEqual(colors.mask, 'rgba(0, 0, 0, 0)'); assert(colors.focus, JSON.stringify(colors))
+  }
+  await page.js('delete document.documentElement.dataset.theme;true')
+  const confirmationImage = await page.send('Page.captureScreenshot', { format: 'png' })
+  fs.writeFileSync(path.join(OUT, `${options.layout}-${options.locale}-${options.mobile ? 'mobile' : 'desktop'}-confirm.png`), Buffer.from(confirmationImage.data, 'base64'))
+  await page.js('document.querySelector("[data-system-select]").focus();true')
+  assert(await page.js('!!document.activeElement.closest(".app-stellar-confirm")'))
+  await page.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 })
+  assert(await page.js('!!document.activeElement.closest(".app-stellar-confirm")'))
+  await page.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 })
+  await page.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
+  await page.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
+  await page.wait('!document.querySelector(".app-stellar-confirm") && !!document.querySelector(".app-stellar-modal")')
+  assert.equal((await snap()).planetary.stellar.search.progressMs, pausedAt)
+  assert(await page.js(`document.activeElement===document.querySelector('.app-stellar-taskdock button[aria-label=${JSON.stringify(t('ui.stellar.012'))}]')`))
   await page.tap(`.app-stellar-taskdock button[aria-label=${JSON.stringify(t('ui.stellar.011'))}]`); await step(6 * 3600000)
   await page.wait('!!document.querySelector("[data-stellar-body]")')
   const s = (await snap()).planetary.stellar.systems['system-v1-7']
@@ -153,6 +174,15 @@ async function child() {
   await page.tap('[data-open-surface]'); await page.wait('!!document.querySelector(".app-planet-modal")')
   assert.equal(await page.js('document.querySelectorAll("[data-planet-cell]").length'), (await snap()).planetary.planets[body.planetId].size ** 2)
   await page.tap('.app-planet-close'); await page.wait('!!document.querySelector(".app-stellar-modal")')
+  assert(await page.js('document.activeElement===document.querySelector("[data-open-surface]")'))
+  assert.equal(await page.js('document.querySelector("[data-stellar-body].is-selected").getAttribute("data-stellar-body")'), selection)
+  assert.equal(await page.js('document.querySelector(".app-stellar-map-svg").getAttribute("viewBox")'), before)
+  await page.tap(`.app-stellar-systemtools button[aria-label=${JSON.stringify(t('ui.stellar.019'))}]`)
+  await page.wait('!!document.querySelector(".app-stellar-confirm")')
+  assert.equal(await page.js('document.querySelector(".app-stellar-confirm p").textContent'), '7')
+  await page.text('.app-stellar-confirm', t('ui.beacon.008'))
+  await page.wait('!document.querySelector(".app-stellar-confirm")')
+  assert((await snap()).planetary.stellar.systems['system-v1-7'])
   await page.js('window.__whalePlanetaryTest.persist()'); await page.send('Page.reload'); await page.wait('!!window.__whalePlanetaryTest')
   assert.equal((await snap()).planetary.stellar.systems['system-v1-7'].seed, 7)
   await page.text('.app-nav-side', t('ui.stellar.054')); await page.wait('!!document.querySelector(".app-stellar-modal")')

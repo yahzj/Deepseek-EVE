@@ -30,7 +30,7 @@
 .app-planet-modal .app-modal-head > .app-report-title {
   flex: 0 1 auto;
   min-width: 0;
-  font-size: var(--wui-fs-m);
+  font-size: var(--wui-fs-lg);
   overflow-wrap: anywhere;
 }
 

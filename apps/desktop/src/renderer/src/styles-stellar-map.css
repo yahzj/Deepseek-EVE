@@ -110,7 +110,7 @@
 .app-stellar-map-stars.is-black-hole { color: rgb(var(--wui-gold)); }
 .app-stellar-map-star { fill: currentColor; fill-opacity: 0.25; }
 .app-stellar-map-star-ring { opacity: 0.55; }
-.app-stellar-map-horizon { fill: rgb(var(--wui-bg)); }
+.app-stellar-map-horizon { fill: rgb(var(--wui-bg-deep)); }
 .app-stellar-map-accretion { stroke-width: 2; }
 .app-stellar-map-beam { stroke-width: 2; stroke-dasharray: 5 3; }
 

@@ -4,7 +4,7 @@
 .app-modal.app-stellar-modal { width: 96%; height: 94%; max-width: 1300px; max-height: 850px; min-width: 0; min-height: 0; border-radius: 8px; overflow: hidden; box-sizing: border-box; }
 .app-stellar-modal { display: flex; flex-direction: column; position: relative; letter-spacing: 0; }
 .app-stellar-modal .app-modal-head { display: flex; align-items: center; gap: 12px; flex-shrink: 0; min-height: 48px; }
-.app-stellar-modal .app-modal-head strong { font-size: var(--wui-fs-m); white-space: nowrap; }
+.app-stellar-modal .app-modal-head strong { font-size: var(--wui-fs-lg); white-space: nowrap; }
 .app-stellar-modal .app-modal-head select { margin-left: auto; width: 330px; max-width: 50%; }
 .app-stellar-workspace { display: grid; grid-template-columns: minmax(0,1fr) 320px; flex: 1; min-height: 180px; min-width: 0; overflow: hidden; }
 .app-stellar-mapcolumn { min-width: 0; min-height: 0; display: flex; overflow: hidden; }
@@ -26,13 +26,13 @@
 .app-stellar-empty { min-height: 150px; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; padding: 16px; box-sizing: border-box; color: rgb(var(--wui-dim)); text-align: center; }
 .app-stellar-target { display: grid; grid-template-columns: 116px minmax(0,1fr); align-items: center; gap: 6px; margin: 16px 0; }
 .app-stellar-target > div { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; font-size: var(--wui-fs-s); overflow-wrap: anywhere; }
-.app-stellar-target strong { font-size: var(--wui-fs-m); }
+.app-stellar-target strong { font-size: var(--wui-fs-lg); }
 .app-stellar-planet-preview { width: 116px; height: 116px; }
 .preview-cross,.preview-orbit { fill: none; stroke: rgb(var(--wui-map-minor)); stroke-width: .3; }
 .preview-orbit { stroke-dasharray: 1 2; }
 .app-stellar-facts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin: 12px 0 16px; padding: 12px 0; border-top: 1px solid rgb(var(--wui-border)); border-bottom: 1px solid rgb(var(--wui-border)); }
 .app-stellar-facts dt { font-size: var(--wui-fs-xs); color: rgb(var(--wui-dim)); }
-.app-stellar-facts dd { margin: 4px 0 0; font-size: var(--wui-fs-m); font-variant-numeric: tabular-nums; }
+.app-stellar-facts dd { margin: 4px 0 0; font-size: var(--wui-fs-lg); font-variant-numeric: tabular-nums; }
 .app-stellar-targetactions { display: grid; grid-template-columns: minmax(0,1fr); gap: 8px; margin-top: 20px; }
 .app-stellar-targetactions .app-btn,.app-stellar-taskcontrols > .app-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; }
 .app-stellar-taskdock { display: grid; grid-template-columns: minmax(0,1fr) 320px; flex-shrink: 0; min-height: 172px; height: 172px; border-top: 1px solid rgb(var(--wui-border)); background: rgb(var(--wui-bg-hover) / .25); box-sizing: border-box; }
@@ -58,8 +58,8 @@
 .app-stellar-productionrow span { overflow-wrap: anywhere; }
 .app-stellar-productionrow strong { flex-shrink: 0; font-weight: 500; }
 .app-stellar-footer { display: flex; align-items: center; gap: 12px; min-height: 38px; flex-shrink: 0; padding: 5px 14px; border-top: 1px solid rgb(var(--wui-border)); }
-.app-stellar-confirm { position: absolute; inset: 0; background: rgb(var(--wui-bg) / .85); display: grid; place-items: center; z-index: 5; padding: 20px; }
-.app-stellar-confirm > div { width: min(360px,100%); padding: 20px; border: 1px solid rgb(var(--wui-border)); background: rgb(var(--wui-bg)); border-radius: 6px; box-sizing: border-box; }
+.app-stellar-confirm { position: absolute; inset: 0; background: rgb(var(--wui-bg-deep) / .85); display: grid; place-items: center; z-index: 5; padding: 20px; }
+.app-stellar-confirm > div { width: min(360px,100%); padding: 20px; border: 1px solid rgb(var(--wui-border)); background: rgb(var(--wui-bg-panel)); border-radius: 6px; box-sizing: border-box; }
 .app-stellar-confirm p { overflow-wrap: anywhere; }
 @media (max-width: 700px) {
   .app-root:not(.is-mobile-rot) .app-stellar-workspace { grid-template-columns: minmax(0,1fr) 240px; min-height: 180px; }
