@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **457** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7715** KB · **59304** 行
-- 状态分布：**未标注** 245 · **已确认/已实现** 150 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
-- 孤儿文档（0 引用）**80** 份 · 状态未标注 **245** 份
+- 文档总数 **455** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7712** KB · **59270** 行
+- 状态分布：**未标注** 245 · **已确认/已实现** 148 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
+- 孤儿文档（0 引用）**78** 份 · 状态未标注 **245** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
-- 三、现行设计稿（design）：**288** 份
+- 三、现行设计稿（design）：**286** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 301 KB / 311 行 | 17 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 92 KB / 912 行 | 95 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 518 KB / 1094 行 | 226 / 22 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 70 KB / 441 行 | 379 / 28 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 71 KB / 445 行 | 379 / 28 |
 
 ## 七、评审与体检（review） —— 13 份
 
@@ -56,7 +56,7 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 288 份
+## 三、现行设计稿（design） —— 286 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
@@ -64,8 +64,6 @@
 | `docs/design/boost-copy-ammo-warning-20261009.md` | 加速剂文案与战前弹药预警收口 | 已确认/已实现（已合入主树） | 2026-10-09 | 10 KB / 68 行 | 1 / 0 |
 | `docs/design/drone-launch-laser-calibration-20261009.md` | 无人机出击加速与激光校准 | 已确认/已实现（完整补充方案已实现并自测完成） | 2026-10-09 | 8 KB / 69 行 | 0 / 0 |
 | `docs/design/faction-drone-permanent-blueprints-20261009.md` | 势力无人机永久蓝图报价 | 已确认/已实现（五种完整方案已实现并自测完成） | 2026-10-09 | 10 KB / 114 行 | 0 / 0 |
-| `docs/design/handbook-alien-order-20261009.md` | 手册异形新装备顺序修复 | 已确认/已实现（已实现并自测） | 2026-10-09 | 2 KB / 22 行 | 0 / 0 |
-| `docs/design/jawclaw-combat-class-20261009.md` | 颚钳敌我机型改为战斗机 | 已确认/已实现（已实现） | 2026-10-09 | 4 KB / 29 行 | 0 / 0 |
 | `docs/design/push-regression-contract-20261009.md` | 推送前回归契约修正 | 已确认/已实现（修正已合入） | 2026-10-09 | 4 KB / 31 行 | 0 / 0 |
 | `docs/design/raider-fragment-ammo-audit-20261009.md` | 掠袭破片炮弹药显示检查 | 未标注（已修复并合入主树） | 2026-10-09 | 5 KB / 47 行 | 0 / 0 |
 | `docs/design/ship-cpu-audit-20261009.md` | 全船CPU预算检查 | 未标注（四舰CPU已调整并完成自测） | 2026-10-09 | 7 KB / 81 行 | 0 / 0 |
@@ -346,7 +344,7 @@
 | `docs/design/v7-design.md` | V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版 | 未标注 | — | 7 KB / 117 行 | 0 / 0 |
 | `docs/design/v9-market.md` | V9 设计：市场系统（已实现） | 未标注 | — | 21 KB / 192 行 | 17 / 0 |
 | `docs/design/weapon-skill-batch.md` | 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四） | 未标注 | — | 8 KB / 100 行 | 4 / 0 |
-| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 55 KB / 391 行 | 27 / 14 |
+| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 57 KB / 404 行 | 29 / 14 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 5 KB / 56 行 | 5 / 0 |
 
 ## 九、封存卷（archive · 冻结件，只读不改） —— 37 份
@@ -527,15 +525,13 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 61 / 14 |
 
-## 附：孤儿文档（0 引用，80 份）
+## 附：孤儿文档（0 引用，78 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/alien-invasion-loot-20261009.md`（2026-10-09 · 16 KB）—— 异形入侵掉落装备设计
 - `docs/design/drone-launch-laser-calibration-20261009.md`（2026-10-09 · 8 KB）—— 无人机出击加速与激光校准
 - `docs/design/faction-drone-permanent-blueprints-20261009.md`（2026-10-09 · 10 KB）—— 势力无人机永久蓝图报价
-- `docs/design/handbook-alien-order-20261009.md`（2026-10-09 · 2 KB）—— 手册异形新装备顺序修复
-- `docs/design/jawclaw-combat-class-20261009.md`（2026-10-09 · 4 KB）—— 颚钳敌我机型改为战斗机
 - `docs/design/push-regression-contract-20261009.md`（2026-10-09 · 4 KB）—— 推送前回归契约修正
 - `docs/design/raider-fragment-ammo-audit-20261009.md`（2026-10-09 · 5 KB）—— 掠袭破片炮弹药显示检查
 - `docs/design/ship-cpu-audit-20261009.md`（2026-10-09 · 7 KB）—— 全船CPU预算检查

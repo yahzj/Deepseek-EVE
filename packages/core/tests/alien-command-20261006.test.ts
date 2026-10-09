@@ -54,9 +54,9 @@ describe('新波次和全队补损', () => {
     expect(battle.foeHatcheries![back.tag]).toMatchObject({ left: 32, revived: 0 })
     const restored = battle.foeDronePools![back.tag]![0]!
     expect(restored.alive).toBe(true)
-    expect(restored.s).toBeCloseTo(7.8, 10)
-    expect(restored.a).toBeCloseTo(15.6, 10)
-    expect(restored.h).toBe(26)
+    expect(restored.s).toBeCloseTo(15.6, 10)
+    expect(restored.a).toBeCloseTo(39, 10)
+    expect(restored.h).toBeCloseTo(62.4, 10)
     expect(battle.foeDronePools![back.tag]![1]!.h).toBe(5)
     expect(battle.foeDronePools![mother.tag]).toHaveLength(12)
   })
