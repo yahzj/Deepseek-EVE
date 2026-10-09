@@ -12,7 +12,7 @@
  *   ⇒ ① 每卡每档**严格高于主题卡**（绝对定价那条会有 6 张倒挂，故船长没取）；
  * - **属性一个字不动**：`scale` 仍是 `round(主题威胁 × 倍率) / 主题威胁`；
  * - **残骸线不受影响**：读 `wreckThreat ?? threat`，而候选卡全写了 `wreckThreat`（冻结值）；
- * - **尺子对齐**：最深档的上限落回入侵旗舰那一档（回归钉）。
+ * - 船长2026-10-09授权放宽窝点威胁，取消固定旗舰余量上限，仍验证曲线最小反解。
  */
 import { describe, expect, it } from 'vitest'
 import { ANOMALIES_FLAVORED, buildSimContext } from '@whale/data'
@@ -106,11 +106,16 @@ describe('窝点威胁「相对重锚」（2026-10-02 船长令取甲）', () =>
     }
   })
 
-  it('④ 尺子对齐（回归钉）：最深档的上限落回入侵旗舰那一档，不再高出一截', () => {
+  it('④ 深层最高标签按最大曲线预算反解，不再受固定旗舰余量限制', () => {
     const flagship = ctx.anomalies.get(weekendFoeCardOf('H', 'flagship'))
     expect(flagship, 'H 族旗舰卡在场').toBeDefined()
     const maxDeep = Math.max(...cards.map((c) => lairAnomalyOf(c, 3, bal).threat))
-    /** 旧口径下这里是 230（= 115 × 2），比旗舰 170 还高 —— 重锚后应落在同一档（留 10 点余量） */
-    expect(maxDeep, `最深档上限 ${maxDeep} vs 旗舰威胁 ${flagship!.threat}`).toBeLessThanOrEqual(flagship!.threat + 10)
+    const maxBudget = Math.max(...cards.map(c =>
+      Math.round(c.threat * LAIR_THREAT_MUL[3]) / Math.max(1, c.threat) * foeHpOfThreat(c.threat, bal),
+    ))
+    expect(Number.isSafeInteger(maxDeep)).toBe(true)
+    expect(foeHpOfThreat(maxDeep, bal), '最高标签必须覆盖最高预算').toBeGreaterThanOrEqual(maxBudget)
+    expect(foeHpOfThreat(maxDeep - 1, bal), '最高标签仍为预算的最小反解，不能任意抬高').toBeLessThan(maxBudget)
+    console.log('[深层威胁读数]', { maxDeep, flagship: flagship!.threat, maxBudget })
   })
 })

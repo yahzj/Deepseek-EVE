@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **449** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7651** KB · **58662** 行
-- 状态分布：**未标注** 243 · **已确认/已实现** 144 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
-- 孤儿文档（0 引用）**72** 份 · 状态未标注 **243** 份
+- 文档总数 **450** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7654** KB · **58686** 行
+- 状态分布：**未标注** 243 · **已确认/已实现** 145 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
+- 孤儿文档（0 引用）**73** 份 · 状态未标注 **243** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
-- 三、现行设计稿（design）：**281** 份
+- 三、现行设计稿（design）：**282** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -56,11 +56,12 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 281 份
+## 三、现行设计稿（design） —— 282 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/boost-copy-ammo-warning-20261009.md` | 加速剂文案与战前弹药预警收口 | 已确认/已实现（已合入主树） | 2026-10-09 | 10 KB / 68 行 | 1 / 0 |
+| `docs/design/push-regression-contract-20261009.md` | 推送前回归契约修正 | 已确认/已实现（已确认） | 2026-10-09 | 3 KB / 24 行 | 0 / 0 |
 | `docs/design/raider-fragment-ammo-audit-20261009.md` | 掠袭破片炮弹药显示检查 | 未标注（已修复并合入主树） | 2026-10-09 | 5 KB / 47 行 | 0 / 0 |
 | `docs/design/synaptic-accelerant-audit-20261009.md` | 突触加速剂玩家报障检查 | 已确认/已实现（核心修复已合入主树并复测） | 2026-10-09 | 21 KB / 201 行 | 0 / 0 |
 | `docs/design/zero-integration-20261009.md` | 零号技能与装配修复整合 | 已确认/已实现（已合入主树并完成主树专项/构建） | 2026-10-09 | 5 KB / 41 行 | 2 / 0 |
@@ -392,7 +393,7 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 26 / 18 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注（仅登记） | — | 6 KB / 86 行 | 7 / 4 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注（仅登记） | — | 6 KB / 86 行 | 7 / 5 |
 | `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 20 KB / 129 行 | 19 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
@@ -519,10 +520,11 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 60 / 14 |
 
-## 附：孤儿文档（0 引用，72 份）
+## 附：孤儿文档（0 引用，73 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/push-regression-contract-20261009.md`（2026-10-09 · 3 KB）—— 推送前回归契约修正
 - `docs/design/raider-fragment-ammo-audit-20261009.md`（2026-10-09 · 5 KB）—— 掠袭破片炮弹药显示检查
 - `docs/design/synaptic-accelerant-audit-20261009.md`（2026-10-09 · 21 KB）—— 突触加速剂玩家报障检查
 - `docs/design/announcement-draft-shield-field-20261007.md`（2026-10-07 · 5 KB）—— 护盾力场、装备代价与一次性舰船蓝图调整公告待审

@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
-import { ITEMS, MODULES, L10N, EN_ITEMS_ALL, EN_MODULES, EN_BLUEPRINTS, buildSimContext } from '@whale/data'
+import { ITEMS, MODULES, L10N, EN_ITEMS_ALL, EN_MODULES, EN_BLUEPRINTS, buildSimContext, l10nEntryText } from '@whale/data'
 import * as core from '../src/index'
 import { idLiteralsIn, stripComments } from '../../../tools/text-scan'
 
@@ -57,11 +57,20 @@ describe('物品装备说明双语与数据守恒', () => {
     expect(strip(MODULES)).toEqual(strip(adjusted))
   })
   it.each(ITEMS)('$id 物品说明中英唯一表接线一致，名称不变', (item) => {
-    const pair = Object.entries(L10N).find(([id, entry]) => (id.startsWith('item.copy.') || id.startsWith('item.signalSpace.') || id.startsWith('item.ammoMk3.') || id.startsWith('item.alien.') || id === 'ui.stellar.002') && entry.zh === item.description)
+    const pair = Object.entries(L10N).find(([id, entry]) => (id.startsWith('item.') || id === 'ui.stellar.002') && entry.zh === item.description)
     expect(pair, item.id).toBeDefined()
-    expect(EN_ITEMS_ALL[item.id]?.description).toBe(pair![1].en)
-    expect(buildSimContext('en').items.get(item.id)?.description).toBe(pair![1].en)
-    expect(pair![1].en).not.toMatch(/[\u4e00-\u9fff]/)
+    const [id, entry] = pair!
+    const expected = l10nEntryText(entry, 'en')
+    expect(EN_ITEMS_ALL[item.id]?.description).toBe(expected)
+    expect(buildSimContext('en').items.get(item.id)?.description).toBe(expected)
+    if (entry.enDeferred === true) {
+      expect(entry.en).toBe('')
+      const backlog = readFileSync(new URL('../../../docs/l10n-pending.md', import.meta.url), 'utf8')
+      expect(backlog).toContain(`| \`${id}\` |`)
+      expect(expected).toBe(entry.zh)
+    } else {
+      expect(expected).not.toMatch(/[\u4e00-\u9fff]/)
+    }
   })
   it.each(MODULES)('$id 装备说明中英唯一表接线一致', (module) => {
     const pair = Object.entries(L10N).find(([id, entry]) => (id.startsWith('mod.copy.') || id.startsWith('mod.signalSpace.')) && entry.zh === module.description)
@@ -72,7 +81,16 @@ describe('物品装备说明双语与数据守恒', () => {
   })
   it('本批说明无重复手写数字、跨件比较与推销承诺', () => {
     for (const entry of [...ITEMS, ...MODULES]) {
-      expect(entry.description).not.toMatch(/[0-9]|全宇宙|必备|正解|一舱.*船|稳赚|比制式|比.*MK\d/)
+      let description = entry.description
+      // 船长2026-10-09批准该说明明确每剂持续时间，仅为这一项核验后放行数字。
+      if (entry.id === 'synaptic-accelerant') {
+        expect(description).toBe(L10N['item.synaptic.001']!.zh)
+        const hours = String(core.SYNAPTIC_ACCELERANT_MS / 3_600_000)
+        expect(description.match(/[0-9]+/g)).toEqual([hours])
+        expect(description).toContain(`每枚增加${hours}小时有效时间`)
+        description = description.replace(hours, '')
+      }
+      expect(description, entry.id).not.toMatch(/[0-9]|全宇宙|必备|正解|一舱.*船|稳赚|比制式|比.*MK\d/)
     }
   })
   it('id 扫描认 item/mod，注释和动态模板不当静态引用', () => {
