@@ -135,6 +135,18 @@ function textOf(value: unknown): string {
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 }
 describe('真实参数行承接说明数字', () => {
+  it('无人机启动提示保留多装递减、不误套全队60%封顶；电子压制提示保持', () => {
+    language.value = 'zh'
+    for (const id of ['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3']) {
+      const text = display.moduleInfoLines(MODULES.find(mod => mod.id === id)!).map(row => `${row.k}${textOf(row.v)}`).join('|')
+      expect(text).toContain('无人机启动时间')
+      expect(text).toContain('多装递减')
+      expect(text).not.toMatch(/60%|上限|封顶|首次出击/)
+    }
+    const ecm = MODULES.find(mod => core.stackingOf(mod).kind === 'ecm')!
+    expect(ecm).toBeDefined()
+    expect(display.moduleInfoLines(ecm).map(row => textOf(row.v)).join('|')).toContain('60%')
+  })
   it.each(['zh', 'en'] as const)('%s 全目录的速度加成只显示一次，不把非推进器误称加力推进', locale => {
     language.value = locale
     const speedModules = MODULES.filter(module => (module.speedBonusPct ?? 0) > 0)
@@ -150,8 +162,8 @@ describe('真实参数行承接说明数字', () => {
         expect(speed, module.id).toHaveLength(0)
         const ramp = rows.find(row => row.k === l10nEntryText(L10N['ui.alienLoot.003']!, locale))!
         expect(ramp).toBeDefined()
-        expect(textOf(ramp.v)).toContain('+5% → +25%，60秒达到峰值')
-        expect(display.moduleShortEffect(module)).toContain('+5% → +25%，60秒达到峰值')
+        expect(textOf(ramp.v)).toContain('+5% → +35%，60秒达到峰值')
+        expect(display.moduleShortEffect(module)).toContain('+5% → +35%，60秒达到峰值')
         expect(rows.map(row => textOf(row.v)).join('|')).not.toMatch(/点火|冷却|burning|cooldown/i)
         expect(display.moduleShortEffect(module)).not.toMatch(/点火|冷却|burning|cooldown/i)
         continue

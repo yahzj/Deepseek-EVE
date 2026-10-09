@@ -12,16 +12,16 @@
 
 ## 统计
 
-- 文档总数 **457** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7731** KB · **59422** 行
-- 状态分布：**未标注** 246 · **已确认/已实现** 149 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
-- 孤儿文档（0 引用）**80** 份 · 状态未标注 **246** 份
+- 文档总数 **459** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7745** KB · **59541** 行
+- 状态分布：**未标注** 247 · **已确认/已实现** 150 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
+- 孤儿文档（0 引用）**81** 份 · 状态未标注 **247** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
-- 三、现行设计稿（design）：**288** 份
+- 三、现行设计稿（design）：**289** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
-- 八、测试档说明（test-saves）：**14** 份
+- 八、测试档说明（test-saves）：**15** 份
 - 六、专题：舰船美术（design/ship-battle-art）：**7** 份
 - 四、已归档设计稿（design/archive）：**83** 份
 
@@ -56,13 +56,14 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 288 份
+## 三、现行设计稿（design） —— 289 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/alien-invasion-loot-20261009.md` | 异形入侵掉落装备设计 | 已确认/已实现（已实现） | 2026-10-09 | 16 KB / 173 行 | 0 / 0 |
 | `docs/design/boost-copy-ammo-warning-20261009.md` | 加速剂文案与战前弹药预警收口 | 已确认/已实现（已合入主树） | 2026-10-09 | 10 KB / 68 行 | 1 / 0 |
 | `docs/design/drone-launch-laser-calibration-20261009.md` | 无人机出击加速与激光校准 | 已确认/已实现（完整补充方案已实现并自测完成） | 2026-10-09 | 8 KB / 69 行 | 0 / 0 |
+| `docs/design/drone-start-damage-range-20261009.md` | 无人机启动时间、伤害飘字与装配靶场 | 已确认/已实现（已实现） | 2026-10-09 | 10 KB / 82 行 | 0 / 0 |
 | `docs/design/faction-drone-permanent-blueprints-20261009.md` | 势力无人机永久蓝图报价 | 已确认/已实现（五种完整方案已实现并自测完成） | 2026-10-09 | 10 KB / 114 行 | 0 / 0 |
 | `docs/design/pressure-chamber-cycle-fix-20261009.md` | 增压加速腔误接推进周期 | 未标注（已修正） | 2026-10-09 | 4 KB / 37 行 | 0 / 0 |
 | `docs/design/push-regression-contract-20261009.md` | 推送前回归契约修正 | 已确认/已实现（修正已合入） | 2026-10-09 | 4 KB / 31 行 | 0 / 0 |
@@ -399,8 +400,8 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 26 / 18 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注（仅登记） | — | 11 KB / 175 行 | 8 / 9 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 21 KB / 134 行 | 19 / 7 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注（仅登记） | — | 12 KB / 193 行 | 8 / 9 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 22 KB / 135 行 | 19 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -408,11 +409,12 @@
 |---|---|---|---|---|---|
 | `docs/design/battle-data/p41-drone-readings-20260912.md` | P-41 机群批标定轮 · 读数（2026-09-12 · 二号 d2） | 未标注 | 2026-09-12 | 7 KB / 88 行 | 3 / 0 |
 
-## 八、测试档说明（test-saves） —— 14 份
+## 八、测试档说明（test-saves） —— 15 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/test-saves/alien-loot-20261009.md` | 异形入侵装备验收档 | 未标注 | 2026-10-09 | 1 KB / 15 行 | 0 / 0 |
+| `docs/test-saves/fitting-range-20261009.md` | 装配靶场验收 | 未标注 | 2026-10-09 | 1 KB / 14 行 | 1 / 0 |
 | `docs/test-saves/stellar-ready-20261008.md` | 新星系即用档 | 未标注 | 2026-10-08 | 2 KB / 33 行 | 1 / 0 |
 | `docs/test-saves/planetary-20261007.md` | 星球第一批规则原型验收 | 未标注（核心规则原型） | 2026-10-07 | 1 KB / 16 行 | 1 / 0 |
 | `docs/test-saves/planetary-runtime-20261007.md` | 星球建设完整运行验收 | 未标注（隐藏实验系统） | 2026-10-07 | 2 KB / 30 行 | 2 / 0 |
@@ -425,7 +427,7 @@
 | `docs/test-saves/black-market-20261004.md` | 黑市页面验收档 | 待裁定（随功能待船长验收） | 2026-10-04 | 1 KB / 15 行 | 1 / 0 |
 | `docs/test-saves/hauler-20261004.md` | 纯货舰修订验收档 | 未标注（已验收） | 2026-10-04 | 2 KB / 25 行 | 3 / 0 |
 | `docs/test-saves/whexpedition-20261004.md` | 虫洞第一批合成测试档 | 未标注（未来虫洞整备/事件/警戒的隔离验收材） | 2026-10-04 | 10 KB / 78 行 | 2 / 0 |
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 75 KB / 758 行 | 61 / 14 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 76 KB / 762 行 | 61 / 14 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -527,12 +529,13 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 61 / 14 |
 
-## 附：孤儿文档（0 引用，80 份）
+## 附：孤儿文档（0 引用，81 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/alien-invasion-loot-20261009.md`（2026-10-09 · 16 KB）—— 异形入侵掉落装备设计
 - `docs/design/drone-launch-laser-calibration-20261009.md`（2026-10-09 · 8 KB）—— 无人机出击加速与激光校准
+- `docs/design/drone-start-damage-range-20261009.md`（2026-10-09 · 10 KB）—— 无人机启动时间、伤害飘字与装配靶场
 - `docs/design/faction-drone-permanent-blueprints-20261009.md`（2026-10-09 · 10 KB）—— 势力无人机永久蓝图报价
 - `docs/design/pressure-chamber-cycle-fix-20261009.md`（2026-10-09 · 4 KB）—— 增压加速腔误接推进周期
 - `docs/design/push-regression-contract-20261009.md`（2026-10-09 · 4 KB）—— 推送前回归契约修正
@@ -612,12 +615,13 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（246 份，待补一行 `状态：…`）
+## 附：状态未标注（247 份，待补一行 `状态：…`）
 
 - `docs/design/pressure-chamber-cycle-fix-20261009.md`（2026-10-09）—— 增压加速腔误接推进周期
 - `docs/design/raider-fragment-ammo-audit-20261009.md`（2026-10-09）—— 掠袭破片炮弹药显示检查
 - `docs/design/ship-cpu-audit-20261009.md`（2026-10-09）—— 全船CPU预算检查
 - `docs/test-saves/alien-loot-20261009.md`（2026-10-09）—— 异形入侵装备验收档
+- `docs/test-saves/fitting-range-20261009.md`（2026-10-09）—— 装配靶场验收
 - `docs/test-saves/stellar-ready-20261008.md`（2026-10-08）—— 新星系即用档
 - `docs/design/announcement-draft-shield-field-20261007.md`（2026-10-07）—— 护盾力场、装备代价与一次性舰船蓝图调整公告待审
 - `docs/test-saves/planetary-20261007.md`（2026-10-07）—— 星球第一批规则原型验收

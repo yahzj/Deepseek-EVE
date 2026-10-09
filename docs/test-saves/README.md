@@ -34,6 +34,10 @@ case 名（即该档服务的唯一测试用途），格式固定为 `test-save-
 
 ## 档案清单
 
+### 装配靶场（fitting-range）
+- `npx tsx tools/make-test-save.ts fitting-range`：全新合成档，不读取或覆盖个人档，不代开靶场。
+- 文件：`test-save-fitting-range-20261009.json`；巨构无人机作战舰、激光/酸蚀炮、颚钳无人机、启动加速器与增压腔。加载和验收见`fitting-range-20261009.md`。
+
 ### 新星系即用档（stellar-ready）
 - 生成：`npx tsx tools/make-test-save.ts stellar-ready`，全新合成档，不读取个人档。
 - 文件：`test-save-stellar-ready-20261008.json`，六类星系、30架探测机、满级专属技能、生存基地与两艘运输舰。

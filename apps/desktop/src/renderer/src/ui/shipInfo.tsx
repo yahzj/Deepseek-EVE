@@ -1505,7 +1505,8 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
      * 那条下 4 舰各 3 件就到 90.8%、把敌人射程一路压到地板 3,000 m（玩家报障）。
      * 现口径 = 整队所有来源拉平进一个池、按 EVE 曲线逐件递减再乘法 ⇒ 渐近上限 ≈ 36.7%。
      */
-    lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.201") })
+    // ⟪文案调整 2026-10-09⟫ 启动加速仅本舰递减，不能套用电子压制60%封顶说明。
+    lines.push({ k: tr("ui.shipInfo.076"), v: tr(st.kind === 'drone-launch' ? 'ui.shipInfo.079' : 'ui.shipInfo.201') })
   } else {
     lines.push({ k: tr("ui.shipInfo.076"), v: tr("ui.shipInfo.079") })
   }

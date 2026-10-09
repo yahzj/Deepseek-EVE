@@ -216,7 +216,7 @@ describe('出击加速、激光校准与协处理器5%', () => {
       fmt: String, shipRoleText: () => '', shipCategoryKeyOf: () => '', shipTierText: () => '', DMG_LABEL: {}, shipSlotsOf: (ship: any) => ship.slots,
       pct: (v: number) => `${Math.round(v * 100)}%`, resistsText: () => '', shipCategoryLabelOf: () => '', slotListText: () => '' }
     runInNewContext(ts.transpileModule(fn.getText(source), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React }, fileName: 'shipInfo.tsx' }).outputText, scope)
-    expect(scope.exports.shipInfoLines(ctx.ships.get('sh-wh-e-carrier')).some(row => row.v.includes('无人机首次出击等待 −30%'))).toBe(true)
+    expect(scope.exports.shipInfoLines(ctx.ships.get('sh-wh-e-carrier')).some(row => row.v.includes('无人机启动时间 −30%'))).toBe(true)
     expect(deferredL10nIssues(L10N, readFileSync(new URL('docs/l10n-pending.md', root), 'utf8'))).toEqual([])
     for (const row of cases) expect(buildSimContext('en').modules.get(row.id)!.name).toBe(ctx.modules.get(row.id)!.name)
   })

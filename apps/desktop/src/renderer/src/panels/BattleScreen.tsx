@@ -80,8 +80,10 @@ export function BattleScreen({
   visible = true,
   onReport,
   onDone,
+  rangeMode = false,
+  simulationPaused = false,
 }: {
-  engine: GameEngine
+  engine: Pick<GameEngine, 'state' | 'ctx' | 'wormholeSpeedActive' | 'wormholeSpeedOptions' | 'setWormholeSpeed' | 'battleSetDesireAt' | 'retreatNow'>
   onToast: ToastFn
   /**
    * **隐藏观战屏**（2026-09-22）：只把屏收起来，**不动宿主对本组件的挂载** ——
@@ -106,7 +108,11 @@ export function BattleScreen({
    * 通知宿主**可以卸载**本组件（宿主据此撤销挂载）。不传就回落到 `onClose`（老调用方行为不变）。
    */
   onDone?: () => void
+  rangeMode?: boolean
+  simulationPaused?: boolean
 }) {
+  const pausedRef = useRef(simulationPaused)
+  pausedRef.current = simulationPaused
   const state = engine.state
   const tr = state.wormhole.run?.expeditionRules === 2 ? futureTr : normalTr
   /** 洞内战斗视图（F2 · 2026-09-13）：有它就用它，否则照旧走远征口径 */
@@ -242,7 +248,7 @@ const meSpeedRef = useRef(200)
    * 生命期用**战斗时钟** `now`（与弹道同一把尺，见下方 filter），不用墙钟 ⇒ 倍速跟着快、暂停即冻结。
    */
   const popupsRef = useRef<
-    Array<{ key: number; x: number; y: number; born: number; amount: number; type: DamageType; miss: boolean }>
+    Array<{ key: number; target: string; slot: number; x: number; y: number; born: number; amount: number; type: DamageType; miss: boolean }>
   >([])
   /** 同一拍内按目标聚合（key = 目标 tag）——每拍末尾一次性落成飘字（甲②：累加成一个数字） */
   const popupAccRef = useRef<Map<string, { x: number; y: number; amount: number; type: DamageType; miss: boolean }>>(
@@ -543,6 +549,7 @@ const meSpeedRef = useRef(200)
       const b = battleRef.current
       const now = performance.now()
       if (!b) return
+      if (pausedRef.current) return
       // **换了战斗**（开战/换节点/换层）：清视觉账本，并同步星场速率的基准船速（洞内 = 编队首舰）
       if (b.startedAtGameMs !== battleStartRef.current) {
         battleStartRef.current = b.startedAtGameMs
@@ -639,7 +646,7 @@ const meSpeedRef = useRef(200)
     const drive = (): void => {
       if (!alive) return
       const d = droneDriveRef.current
-      if (d.wings.length > 0) {
+      if (!pausedRef.current && d.wings.length > 0) {
         const layLoop = layout(dimsRef.current, d.foeSizes, visDistRef.current, d.farM, d.nearM, d.meSize)
         const box = droneBoxRef.current
         const w0 = droneWritesRef.current
@@ -945,6 +952,7 @@ const meSpeedRef = useRef(200)
   const realDist = battle.distanceM // 引擎实时距离（交火中每 ~100ms 更新）
   const visM = !fxRead.reset && smoothM !== null ? smoothM : realDist // 换场首帧不借上一场插值位置。
   const now = performance.now()
+  const popupClock = battle.lastTickGameMs
   const pct = (m: number): number => approachOf(m, farM, nearM) * 100
 
   /* ── 敌方"视觉行"与演出期尸骸（2026-09-09 二轮，船长反馈"切换突兀/爆炸未播完/边爆边换位"）：
@@ -1443,17 +1451,24 @@ const meSpeedRef = useRef(200)
   /**
    * **伤害飘字：每拍把累加结果落成一条飘字**（甲②：同一拍对同一目标只出一个数字）。
    * `popupAccRef` 在本拍的开火循环里累加（key = 目标 tag），这里一次性消费并清空 ⇒ 下一拍重新累计。
-   * 生命期同样用战斗时钟 `now`（`POPUP_LIFE`），倍速下跟着快、暂停即冻结（甲④）。
+   * 生命期读引擎战斗时钟，倍速下跟着快、暂停即冻结；弹道仍沿用原墙钟。
    */
+  popupsRef.current = popupsRef.current.filter((p) => popupClock - p.born < POPUP_LIFE)
   if (popupAccRef.current.size > 0) {
-    for (const acc of popupAccRef.current.values()) {
+    for (const [target, acc] of popupAccRef.current) {
       // **零伤且非未命中 ⇒ 不落飘字**（无伤事件不出「-0」，见上面累加处的口径）
       if (acc.amount <= 0 && !acc.miss) continue
+      const occupied = new Set(popupsRef.current.filter(p => p.target === target).map(p => p.slot))
+      const slot = Array.from({ length: 9 }, (_, i) => i).find(i => !occupied.has(i)) ?? 0
+      // 同一目标占满时替换最早一格，避免延长寿命后重叠或无限积累。
+      popupsRef.current = popupsRef.current.filter(p => p.target !== target || p.slot !== slot)
       popupsRef.current.push({
         key: keyRef.current++,
+        target,
+        slot,
         x: acc.x,
         y: acc.y,
-        born: now,
+        born: popupClock,
         amount: Math.round(acc.amount),
         type: acc.type,
         miss: acc.amount <= 0,
@@ -1461,7 +1476,7 @@ const meSpeedRef = useRef(200)
     }
     popupAccRef.current.clear()
   }
-  popupsRef.current = popupsRef.current.filter((p) => now - p.born < POPUP_LIFE)
+  popupsRef.current = popupsRef.current.filter((p) => popupClock - p.born < POPUP_LIFE).slice(-160)
   // 击落坠落演出：CSS 演完即清（不留常驻 DOM，也不做逐帧 JS 动画）
   if (droneDownRef.current.length > 0) {
     droneDownRef.current = droneDownRef.current.filter(
@@ -1862,13 +1877,15 @@ const meSpeedRef = useRef(200)
     return (
       <span
         key={`pop-${p.key}`}
-        className="app-bts-pop"
+        className={`app-bts-pop${miss ? ' is-miss' : ''}`}
         style={{
-          left: `${p.x}px`,
-          top: `${p.y}px`,
+          left: `${Math.max(60, Math.min(dims.W - 60, p.x + ((p.slot % 3) - 1) * 100))}px`,
+          top: `${Math.max(24, p.y - 76 - Math.floor(p.slot / 3) * 34)}px`,
           // 甲③：伤害数字用**伤害类型色**（与弹点同色），MISS 用灰色（--wui-dim，不新造色）
           color: miss ? 'rgb(var(--wui-dim))' : DMG_COLOR[p.type],
           animationDuration: `${POPUP_LIFE}ms`,
+          animationDelay: `-${Math.max(0, popupClock - p.born)}ms`,
+          animationPlayState: 'paused',
         }}
       >
         {miss ? tr('ui.BattleScreen.107') : `-${p.amount.toLocaleString('zh-CN')}`}
@@ -2322,7 +2339,7 @@ const meSpeedRef = useRef(200)
      * 已封存到分支 `archive/window-embed-20260922`，说明见 `docs/design/archived-window-embed-20260922.md`。
      * ⚠ 保留：慢镜/战报的挂载语义（`App.tsx` 里"打完但战报还没弹"的窗口期必须继续挂着）。
      */
-    <div className="app-battle-screen" ref={screenRef}>
+    <div className={`app-battle-screen${rangeMode ? ' is-fitting-range' : ''}`} ref={screenRef}>
       {/**
        * **装不下就等比缩放**（2026-09-25 船长令 · 方案甲；**2026-09-26 改成只缩战场**）：
        * 顶栏／战场／底栏三段现在各自独立——**只有战场**（距离尺 ＋ 车道）按剩余高度缩放
@@ -2413,7 +2430,7 @@ const meSpeedRef = useRef(200)
               ))}
             </div>
           ) : null}
-          <div className="app-bts-legends">
+          {!rangeMode && <div className="app-bts-legends">
             {/* 船长2026-10-08实测修订：玩家射程和装填同在武器列表，外部不重复占位。 */}
             {/* 敌方射程（2026-09-11 船长：「敌方的舰船射程不一致，只会显示其中一个的射程」）：
                 按**射程带**逐条出 chip（与我方逐武器一条同款），多条带时补「×N 艘」与逐舰悬停说明；
@@ -2494,7 +2511,7 @@ const meSpeedRef = useRef(200)
                 <span className="app-dim">{tr("ui.BattleScreen.066")}{repairTotal.toLocaleString('zh-CN')}</span>
               </span>
             ) : null}
-          </div>
+          </div>}
           <BattleCycles weapons={arcs.weapons} devices={arcs.devices} />
         </div>
       </div>
@@ -2545,20 +2562,20 @@ const meSpeedRef = useRef(200)
           <svg className="app-bts-arcs" width="100%" height="100%" aria-hidden="true">
             {/* attribute transform（在无 viewBox/CSS-transform 兼容性问题上最可靠）；平滑由 33ms 视觉插值提供 */}
             <g transform={`translate(${meGunX} ${lay.me.y})`}>{meArcEls}</g>
-            <g transform={`translate(${foeGunX} ${lay.foe[0]?.y ?? 0}) scale(-1 1)`} opacity={foeInBand ? 0.25 : 1}>
+            {!rangeMode && <g transform={`translate(${foeGunX} ${lay.foe[0]?.y ?? 0}) scale(-1 1)`} opacity={foeInBand ? 0.25 : 1}>
               <path d={fanPath(foeR0, foeR1)} style={{ fill: foeColor }} fillOpacity={0.16} />
               <path d={ringPath(foeR1)} fill="none" style={{ stroke: foeColor }} strokeWidth={2.4} strokeOpacity={0.9} />
               {arcs.foe.minM > 0 ? <path d={ringPath(foeR0)} fill="none" style={{ stroke: foeColor }} strokeWidth={1} strokeDasharray="3 5" strokeOpacity={0.5} /> : null}
-            </g>
+            </g>}
             {/* 弧端米数刻度：弧长与面板/图例数字一一对应（敌方标签置于组外避免镜像反转） */}
             {mainMeArc && meMainR1 > 0 ? (
               <text className="app-bts-arc-label" x={meGunX + meMainR1 + 4} y={lay.me.y + 4} textAnchor="start">
                 {mainMeArc.maxM.toLocaleString('zh-CN')}m
               </text>
             ) : null}
-            <text className="app-bts-arc-label" x={foeGunX - foeR1 - 4} y={(lay.foe[0]?.y ?? lay.me.y) + 4} textAnchor="end">
+            {!rangeMode && <text className="app-bts-arc-label" x={foeGunX - foeR1 - 4} y={(lay.foe[0]?.y ?? lay.me.y) + 4} textAnchor="end">
               {arcs.foe.maxM.toLocaleString('zh-CN')}m
-            </text>
+            </text>}
           </svg>
 
           {/* 我方舰列 —— 单船（远征 / 遭遇 / 教学）与 **4 舰同屏**（虫洞 F2b）共用这一支。
@@ -2998,7 +3015,7 @@ const meSpeedRef = useRef(200)
                     * 1 ⇒ 1001 个落点（约 5m/格），拖动与读数都跟手。
                     */
                   step={1}
-                  disabled={ended}
+                  disabled={ended || rangeMode}
                   value={Math.min(1000, Math.max(0, sliderV))}
                   onChange={(e) => {
                     const v = Number(e.target.value)
@@ -3016,11 +3033,11 @@ const meSpeedRef = useRef(200)
                 />
               </div>
             </div>
-            <span className="app-gold app-bts-desire">
+            {!rangeMode && <span className="app-gold app-bts-desire">
               {tr("ui.BattleScreen.072")} {sliderToDesire(sliderV).toLocaleString('zh-CN')}m
-            </span>
+            </span>}
           </div>
-          <div className="app-bts-ops">
+          {!rangeMode && <div className="app-bts-ops">
             <span className="app-battle-tacs">
               <button className="app-btn is-small" disabled={ended} onClick={() => applyTactic('assault')}>{tr("ui.BattleScreen.073")}</button>
               <button className="app-btn is-small" disabled={ended} onClick={() => applyTactic('mid')}>{tr("ui.BattleScreen.074")}</button>
@@ -3031,7 +3048,7 @@ const meSpeedRef = useRef(200)
                 ? tr("ui.BattleScreen.076")
                 : tr("ui.BattleScreen.077")}
             </span>
-          </div>
+          </div>}
         </div>
       </div>
       {/* /app-battle-screen 收口（2026-09-26：整屏等比缩放已撤，改成只缩战场 `.app-bts-stage-fit`） */}

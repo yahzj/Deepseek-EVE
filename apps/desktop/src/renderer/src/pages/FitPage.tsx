@@ -78,6 +78,8 @@ import { ShipSprite } from '../ui/ShipSprite'
 import { rackText, slotText } from '../ui/labelsText'
 import type { PageProps } from './common'
 import { tr, cmdText } from '../i18n/locale'
+import { Crosshair } from 'lucide-react'
+import { FittingRange } from '../panels/FittingRange'
 
 
 /** 槽类可装家族简述（空位引导文案；V18.1 支援件：伤害/射速 = 低槽，命中/闪避 = 中槽；
@@ -361,6 +363,7 @@ function CpuStrip({ used, total }: { used: number; total: number }): ReactNode {
 }
 
 export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fitShipId?: string | null }) {
+  const [rangeOpen, setRangeOpen] = useState(false)
   const state = engine.state
   // 装配目标船（船长 2026-09-05：入口在舰船页舰队卡片——onGotoFit 带入目标船；直接进入默认当前驾驶船）
   const piloted = state.shipId
@@ -716,6 +719,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
 
   return (
     <div className="page-stack page-fill">
+      {rangeOpen ? <FittingRange engine={engine} shipId={effectiveTarget} onClose={() => setRangeOpen(false)} /> : null}
       <Panel className="is-fill" title={tr("ui.FitPage.024")} right={<span className="app-dim">{tr("ui.FitPage.025")}</span>}>
         {/* 装配目标（船长 2026-09-05：醒目左置；入口在舰船页卡片，本页不再切换目标） */}
         <div className="app-fit-target">
@@ -724,6 +728,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
             {isPiloted ? <em className="app-belt-flag is-run">{tr("ui.FitPage.027")}</em> : <em className="app-belt-flag">{tr("ui.FitPage.028")}</em>}
           </span>
           <span className="app-fit-target-ship">{shipName}</span>
+          <button className="app-btn is-small" data-fitting-range onClick={() => setRangeOpen(true)} disabled={!shipDef}><Crosshair size={16} aria-hidden="true" />{tr('ui.fittingRange.001')}</button>
           <span className="app-dim app-fit-target-hint">
             {isPiloted
               ? tr("ui.FitPage.029")

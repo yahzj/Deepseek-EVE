@@ -7,6 +7,7 @@
  *  - 产物落 docs/test-saves/test-save-<feature>-<stamp>.json，加载方法见 docs/test-saves/README.md。
  *
  * 功能 case 注册制（扩展在此追加）：
+ *  - fitting-range 装配靶场、启动加速器与增压腔验收：全新合成档，不读取个人档。
  *  - stellar-ready 新星系即用档：六类坐标、探测机、技能、基地与运输舰，不读取个人档。
  *  - stellar-search 种子星系、探测机制造和并列战损验收：全新合成档，不读取个人档。
  *  - planetary-runtime 完整隐藏星球建设、生存、运输和改造验收，不读取个人档。
@@ -126,6 +127,7 @@ import { injectShipRecoveryTestState } from './ship-recovery-test-fixture'
 import { injectPlanetaryTestState } from './planetary-test-fixture'
 import { injectPlanetaryRuntimeTestState } from './planetary-runtime-fixture'
 import { injectStellarSearchTestState, injectStellarReadyTestState } from './stellar-search-fixture'
+import { fittingRangeFixture } from './fitting-range-fixture'
 // 满池常量（旗舰 BOSS 血池；`@whale/core` 未转出 ⇒ 走深路径，与本文件既有做法一致）
 import { WEEKEND_FLAGSHIP_POOL_HP } from '../packages/core/src/weekendEvent'
 import { FACTION_CODEX_ORDER, FOE_SHIPS, GALAXIES, ITEMS, MODULES, SHIPS, SHIP_BLUEPRINTS, buildSimContext } from '@whale/data'
@@ -3596,6 +3598,10 @@ function injectShipWreck(state: GameState): string[] {
 }
 
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
+  'fitting-range': state => {
+    Object.assign(state, loadSaveFile(fittingRangeFixture()).state)
+    return ['装配→进入靶场；可改交距/测试层、暂停、重置及退出；模拟不扣真实库存。']
+  },
   'stellar-search': injectStellarSearchTestState,
   'stellar-ready': injectStellarReadyTestState,
   planetary: injectPlanetaryTestState,
@@ -3799,6 +3805,16 @@ function main(): void {
   if (!feature || feature === 'help' || !(feature in INJECTORS)) {
     console.log(`用法：npx tsx tools/make-test-save.ts <feature> [--keep-ironman]\n已注册功能：${Object.keys(INJECTORS).join(' / ')}`)
     process.exit(feature ? 1 : 0)
+  }
+  if (feature === 'fitting-range') {
+    const state = createInitialState({ nowWallMs: Date.now() })
+    const notes = INJECTORS[feature]!(state)
+    mkdirSync(OUT_DIR, { recursive: true })
+    const target = join(OUT_DIR, 'test-save-fitting-range-20261009.json')
+    writeFileSync(target, serializeSaveFile(state), { encoding: 'utf8', flag: 'wx' })
+    console.log(`已生成独立合成档：${target}；未读取或覆盖个人档。`)
+    for (const note of notes) console.log(note)
+    return
   }
   if (feature === 'hauler' || feature === 'ammo-mk3' || feature === 'wreck-fit' || feature === 'ship-recovery' || feature === 'planetary' || feature === 'planetary-runtime' || feature === 'stellar-search' || feature === 'stellar-ready') {
     const state = createInitialState({ name: feature === 'planetary-runtime' ? '星球建设验收' : feature === 'planetary' ? '星球规则验收' : feature === 'hauler' ? '货舰验收' : 'MK3弹药验收', seed: 7, nowWallMs: Date.now() })

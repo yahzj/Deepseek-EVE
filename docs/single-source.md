@@ -17,6 +17,7 @@
 ## 一、core 引擎层（`packages/core/src`）
 
 | 关注点 | 唯一实现 | 护栏 |
+| 装配靶场 | `createFittingRange` / `advanceFittingRange` / `fittingRangeStats` · `fittingRange.ts` | 独立state/资源，真实战斗固定距离与层，原状态逐键守恒及实际伤害统计专项 |
 | 星球已开发标记 | `stellarPlanetDeveloped` · `stellarSearch.ts`；星系状态仍由`stellarSystemDeveloped`读取 | 已建成基地才标记，准备殖民状态不误报；星系容量原行为守恒专项 |
 | 星系星图与选中目标外形 | `StellarPlanetArt` · `ui/stellarArt.tsx` | 只读公开kind、七类外形复用，不能依据隐藏资源；星图几何/焦点与功能专项 |
 | 手册新入侵装备与无人机显示顺序 | `handbookContentOrderOf()` · `ui/handbookOrder.ts` | 只变视图，原条目顺序与目录守恒，图标/列表/势力入口统一专项；F2/F3 |

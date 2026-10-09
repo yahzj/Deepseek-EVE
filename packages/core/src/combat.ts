@@ -102,6 +102,12 @@ import { activeFoeSpecsOf, announceStealthStart, announceSupportCallStart, battl
 
 /** 战斗基本步长（毫秒） */
 export const BATTLE_STEP_MS = 10
+/** 仅隔离靶场传入，不入真实状态或存档。伤害仍走实战命中与分层结算。 */
+export interface BattleSimulationOptions {
+  distanceM: number
+  layer: 's' | 'a' | 'h'
+  onShot?: (shot: { index: number; weapon: WeaponSpec; hit: boolean; damage: number }) => void
+}
 /** 步数守卫上限（防失控循环） */
 export const BATTLE_MAX_STEPS = 400_000
 /** 护盾抗性保持原100毫秒齐射快照，独立于内部步长。 */
@@ -3598,7 +3604,7 @@ export function advanceBattleFor(
   favorAdv: number | null = null,
   lairTier?: LairTier,
   factionActive?: boolean,
-  opts?: { battleSpeedX?: number },
+  opts?: { battleSpeedX?: number; simulation?: BattleSimulationOptions },
 ): void {
   if (!battle || battle.ended) return
   // **倍速时间轴**（2026-09-19 · 谜质科技「时间压缩矩阵」）：先解析本拍生效倍速并写进战斗
@@ -3857,6 +3863,7 @@ export function advanceBattleFor(
       anomaly.foeTargeting ?? 'random',
       // 倾向概率（2026-09-14 船长定 0.6；缺省 1 = 铁律 ⇒ 洞外场次连一次骰都不掷）
       anomaly.foeTargetingChance ?? 1,
+      opts?.simulation,
     )
     battle.lastTickGameMs += dt
     // 连续作战保险（2026-09-08 船长定，仅巡回场次 battle.hullEscapeFrac 有值）：
@@ -4585,7 +4592,15 @@ function stepBattle(
    * `1` = 铁律（缺省，不掷骰）· `<1` ⇒ 每发开火前掷一次，没掷中退回随机（见 `pickMyUnitTarget`）。
    */
   foeTargetingChance = 1,
+  simulation?: BattleSimulationOptions,
 ): void {
+  if (simulation) {
+    b.distanceM = simulation.distanceM
+    for (const foe of foes) {
+      const rt = b.units[foe.tag]
+      if (rt) rt.hp = { s: simulation.layer === 's' ? 1e12 : 0, a: simulation.layer === 'a' ? 1e12 : 0, h: simulation.layer === 'h' ? 1e12 : 0 }
+    }
+  }
   const dtSec = dtMs / 1000
   syncCoronaFleetFocus(b, foes)
   advanceFoeHatcheries(b, foes, b.lastTickGameMs)
@@ -4701,6 +4716,7 @@ function stepBattle(
    * 放在走位之后、开火之前：本拍换好 ⇒ 后面的开火/命中判定与画面严格同拍。
    */
   settleBlinkQueue(b)
+  if (simulation) b.distanceM = simulation.distanceM
 
   // ── 我方开火（主炮 + 无人机条目）——**逐舰结算**（单船路径 = 只循环一次，逐字等价）──
   // 开火失稳代价只在点火期生效（2026-09-10 船长：没点火就不失稳）——每次开火取当前有效乘子，
@@ -5107,6 +5123,7 @@ function stepBattle(
           // **打的是机群**（船长 2026-09-11：「炮在攻击无人机时**不显示弹道**」）——UI 只出炮口闪光。
           ...(droneHit ? { pd: true } : {}),
         })
+        simulation?.onShot?.({ index: wi, weapon: w, hit, damage: selfDealt })
       }
     }
   }
@@ -5504,6 +5521,10 @@ function stepBattle(
   }
 
   // ── 结束判定 ──
+  if (simulation) for (const foe of foes) {
+    const rt = b.units[foe.tag]
+    if (rt) rt.hp = { s: simulation.layer === 's' ? 10000 : 0, a: simulation.layer === 'a' ? 10000 : 0, h: simulation.layer === 'h' ? 10000 : 0 }
+  }
   // 溢火结算读完致死前层抗后，再清掉死亡目标的酸蚀。
   expireFoeAcidLayers(b)
   // **判负 = 我方全灭**（虫洞 D 批 · 船长 2026-09-13 定）：主控沉了僚舰继续打；

@@ -1,5 +1,10 @@
 # 工具区台账（tools/）
 
+## 装配靶场验收（2026-10-09 · v0.1.0 / 档v31）
+
+- `npx tsx tools/fitting-range-fixture.ts <独立绝对输出路径>`：生成无个人档输入的验收档，真实航母、激光/酸蚀炮/颚钳无人机/加速器/增压腔，不代开靶场。
+- `node tools/fitting-range-native-check.cjs`：先构建；两布局×桌面/手机逻辑旋转，按钮、输出、暂停、重置、退出、飘字字号/寿命/减少动态、几何与真实存盘资源守恒；独立隐藏Electron，产物在`tools/_ui-artifacts/fitting-range/`，不是观感验收。
+
 ## 星系探索HUD取证（2026-10-09 · v0.1.0 / 档v31）
 
 - `node tools/stellar-native-check.cjs`：先构建。两布局×中英文×桌面/手机旋转，真实制造/搜索/暂停/继续/地图手势/地表往返/IPC保存与运行错误检查；本轮更新任务区图标选择器，补选中目标截图及逻辑轴垂直几何。`--case=modern-zh-desktop`可单场复跑。

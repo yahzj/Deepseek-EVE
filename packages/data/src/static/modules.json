@@ -12,7 +12,7 @@
       },
       {
         "id": "mod-alien-pressure-chamber", "slot": "support", "rack": "low", "cpuUse": 30,
-        "speedBonusPct": 0.05, "speedRamp": { "rampMs": 60000, "maxBonusPct": 0.25 }
+        "speedBonusPct": 0.05, "speedRamp": { "rampMs": 60000, "maxBonusPct": 0.35 }
       },
       {
         "id": "mod-miner-civ",
