@@ -639,6 +639,8 @@ export type ShipSubClass =
 
 /** 舰船定义 */
 export interface ShipDef {
+  /** 船体固有首次无人机队列等待缩短；不作用于复活入队或攻击装填。 */
+  droneLaunchCutPct?: number
   id: string
   name: string
   /** 档次 1/2/3/4，仅用于展示排序 */
@@ -1538,6 +1540,7 @@ export type ModuleSlot =
   | 'drone-rack'
   | 'drone-tac'
   | 'drone-relay'
+  | 'drone-launch'
   /**
    * **无人机储备甲板**（**2026-09-27 船长令**：高槽件 —— 无人机被击落后按周期从库存补回一架，
    * 补回的那架立刻重新加入战斗；见 `ModuleDef.droneReviveCycleMs`）。
@@ -1593,6 +1596,10 @@ export type FittedModules = {
 
 /** 装备定义（造出来装到船上的模块） */
 export interface ModuleDef {
+  /** 新出击加速器首次等待削减，跨型号折权乘算；旧机库字段保持独立。 */
+  droneLaunchCutPct?: number
+  /** 激光远端威力保留增量，跨型号折权加算，实际falloff不超过1。 */
+  laserFalloffBonus?: number
   id: string
   name: string
   /** 家族（装配/引擎构建/UI 徽标用；V18.1 起无唯一约束，多件收敛靠合成机制） */
@@ -2017,7 +2024,7 @@ export interface ModuleDef {
   /** **通用单发伤害加成**（亡军火控「伤害 +6%」）：与按系 damageTypeBonusPct 同链（**只进炮台/光束**，
    *  不喂无人机——无人机归战术导控）；多件加算。缺省 0。 */
   damageBonusPct?: number
-  /** 装填及战斗主动周期代价：逐件按收益权重折减后乘(1+值)，巨构单件8%。缺省0。 */
+  /** 装填及战斗主动周期代价：逐件按收益权重折减后乘(1+值)，数值读取装备参数。缺省0。 */
   reloadPenaltyPct?: number
   /** 全层抗性代价：按收益权重折减后逐件减百分点，允许负抗性，受核心抗性下限约束。 */
   allResistPenaltyPct?: number

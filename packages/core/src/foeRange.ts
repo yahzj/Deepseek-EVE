@@ -80,7 +80,7 @@ export function fittedEffectParamsOf(
   const out: Array<{ key: string; raw: number; eff: number }> = []
   const group = stackingOf(mod).group
   const part = fittedPenaltyPartsOf(state, ctx, shipId).find(p => p.mod.id === mod.id && p.ordinal === ordinal)
-  const sortedBenefit = group === 'curve' || stackingOf(mod).kind === 'speed' || stackingOf(mod).kind === 'drone-relay'
+  const sortedBenefit = group === 'curve' || ['speed', 'drone-relay', 'drone-launch', 'laser-calibration'].includes(stackingOf(mod).kind)
   const w = sortedBenefit && part ? part.weight : group === 'flat' || group === 'max' ? 1 : stackWeight(Math.max(1, ordinal))
   /** 折权族：本件自己那一份（`raw × 曲线权重`） */
   const folded = (key: string, raw: number | undefined): void => {
@@ -89,6 +89,8 @@ export function fittedEffectParamsOf(
   }
   folded('speed', mod.speedBonusPct)
   folded('droneRange', mod.droneRangeBonusPct)
+  folded('droneLaunch', mod.droneLaunchCutPct)
+  folded('laserFalloff', mod.laserFalloffBonus)
   folded('shieldPulse', mod.shieldPulsePct)
   folded('shieldField', mod.shieldFieldPct)
   folded('hit', mod.hitBonusPct)

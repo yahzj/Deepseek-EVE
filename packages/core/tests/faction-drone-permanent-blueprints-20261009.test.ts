@@ -141,7 +141,9 @@ describe('五种势力无人机永久图纸', () => {
     const source = ts.createSourceFile('old.ts', old('packages/data/src/blueprints.ts'), ts.ScriptTarget.Latest, true)
     const scope = { exports: {} as { BLUEPRINTS: typeof BLUEPRINTS }, L10N, require: () => ({ L10N }) }
     runInNewContext(ts.transpileModule(source.getText(), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, scope)
-    expect(BLUEPRINTS.filter(bp => !cases.some(row => row.id === bp.id))).toEqual(scope.exports.BLUEPRINTS)
+    // 后续获批新增不改变本批前已有蓝图，只检查原ID集合与相对顺序。
+    const legacyIds = new Set(scope.exports.BLUEPRINTS.map(bp => bp.id))
+    expect(BLUEPRINTS.filter(bp => legacyIds.has(bp.id))).toEqual(scope.exports.BLUEPRINTS)
     for (const [file, document] of [['packages/data/src/static/items.json', itemData], ['packages/data/src/static/market.json', marketData]] as const) {
       const legacy = JSON.parse(old(file)) as typeof document
       const copy = structuredClone(document)

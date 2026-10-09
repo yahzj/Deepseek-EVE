@@ -24,6 +24,23 @@ export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  'mod.launchCalibration.001': { zh: '无人机出击加速器 MK1', en: '', enDeferred: true },
+  'mod.launchCalibration.002': { zh: '无人机出击加速器 MK2', en: '', enDeferred: true },
+  'mod.launchCalibration.003': { zh: '无人机出击加速器 MK3', en: '', enDeferred: true },
+  'mod.launchCalibration.004': { zh: '激光校准仪 MK2', en: '', enDeferred: true },
+  'mod.launchCalibration.005': { zh: '激光校准仪 MK3', en: '', enDeferred: true },
+  'mod.launchCalibration.006': { zh: '缩短本舰无人机首次出击的等待时间，多装递减。', en: '', enDeferred: true },
+  'mod.launchCalibration.007': { zh: '改善本舰激光武器的远距离威力保留，多装递减。', en: '', enDeferred: true },
+  'bp.launchCalibration.001': { zh: '无人机出击加速器 MK1蓝图', en: '', enDeferred: true },
+  'bp.launchCalibration.002': { zh: '无人机出击加速器 MK2蓝图', en: '', enDeferred: true },
+  'bp.launchCalibration.003': { zh: '无人机出击加速器 MK3蓝图', en: '', enDeferred: true },
+  'bp.launchCalibration.004': { zh: '激光校准仪 MK2蓝图', en: '', enDeferred: true },
+  'bp.launchCalibration.005': { zh: '激光校准仪 MK3蓝图', en: '', enDeferred: true },
+  'ui.launchCalibration.001': { zh: '无人机首次出击等待 −{p1}%', en: '', enDeferred: true },
+  'ui.launchCalibration.002': { zh: '激光远端威力保留 +{p1}', en: '', enDeferred: true },
+  'ui.launchCalibration.003': { zh: '无人机出击加速器', en: '', enDeferred: true },
+  'ui.launchCalibration.004': { zh: '首次出击等待削减', en: '', enDeferred: true },
+  'ui.launchCalibration.005': { zh: '激光远端保留增量', en: '', enDeferred: true },
   'item.jawclaw.001': { zh: '颚钳虫群', en: '', enDeferred: true },
   'item.jawclaw.002': { zh: '动能侦察虫群，适合追击与持续攻击。', en: '', enDeferred: true },
   'bp.factionDrone.001': { zh: '鱿蜂无人机永久蓝图', en: '', enDeferred: true },

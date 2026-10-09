@@ -740,6 +740,7 @@ function cleanDronePoolEntry(raw: unknown): NonNullable<BattleState['dronePools'
     h,
     alive: e.alive === true,
     ...(typeof e.launched === 'boolean' ? { launched: e.launched } : {}),
+    ...(e.launchRequeued === true ? { launchRequeued: true as const } : {}),
     ...(artId !== undefined ? { artId } : {}),
     ...(owner !== undefined ? { owner } : {}),
     evasion: cleanPosNum(e.evasion) ?? 0,
@@ -762,7 +763,9 @@ function cleanDroneLaunchBy(raw: unknown): BattleState['droneLaunchBy'] {
     const row = asRaw(value)
     const nextAtMs = cleanPosNum(row.nextAtMs), gapMs = cleanPosNum(row.gapMs)
     if (!Array.isArray(row.q) || nextAtMs === undefined || gapMs === undefined) continue
-    out[tag] = { q: [...new Set(row.q.filter((k): k is string => typeof k === 'string' && k.startsWith(`${tag}:`) && /^\d+$/.test(k.slice(tag.length + 1))))], nextAtMs, gapMs: Math.max(10, gapMs) }
+    const reviveGapMs = cleanPosNum(row.reviveGapMs)
+    out[tag] = { q: [...new Set(row.q.filter((k): k is string => typeof k === 'string' && k.startsWith(`${tag}:`) && /^\d+$/.test(k.slice(tag.length + 1))))], nextAtMs, gapMs: Math.max(10, gapMs),
+      ...(reviveGapMs !== undefined ? { reviveGapMs: Math.max(10, reviveGapMs) } : {}) }
   }
   return Object.keys(out).length > 0 ? out : undefined
 }

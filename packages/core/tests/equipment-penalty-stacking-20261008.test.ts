@@ -44,17 +44,17 @@ describe('装备负面累计与收益递减', () => {
     expect(state.fleet[uid]!.fitted.low).toEqual([null, ...Array(5).fill(CPU)])
     expect(state.fleet[uid]!.plugs ?? []).toEqual([])
     expect(cpuBudgetOf(state, ctx, uid)).toBe(base + 450)
-    expect(equipmentPenaltiesOf(state, ctx, uid).reload).toBeCloseTo(1.08 ** 5, 12)
+    expect(equipmentPenaltiesOf(state, ctx, uid).reload).toBeCloseTo(1.05 ** 5, 12)
     const back = loadSaveFile(serializeSaveFile(state, 0)).state
     expect(equipmentPenaltiesOf(back, ctx, uid)).toEqual(equipmentPenaltiesOf(state, ctx, uid))
     expect(back.fleet[uid]!.fitted.low).toEqual(state.fleet[uid]!.fitted.low)
     expect(back.fleet[uid]!.plugs ?? []).toEqual([])
     expect(cpuBudgetOf(back, ctx, uid)).toBe(base + 450)
   })
-  it.each([0, 1, 2, 3, 5])('%s件巨构：8%逐件相乘，武器/基础炮/无人机/动态下限都生效', n => {
+  it.each([0, 1, 2, 3, 5])('%s件巨构：5%逐件相乘，武器/基础炮/无人机/动态下限都生效', n => {
     const high = ['mod-turret-kin-2', 'mod-missile-2', 'mod-lair-laser-r']
     const a = world(high), b = world(high, [], Array(n).fill(CPU))
-    const factor = 1.08 ** n
+    const factor = 1.05 ** n
     expect(equipmentPenaltiesOf(b.state, b.local, b.uid).reload).toBeCloseTo(factor, 12)
     expect(cpuBudgetOf(b.state, b.local, b.uid) - cpuBudgetOf(a.state, a.local, a.uid)).toBe(n * 90)
     for (const [i, w] of a.spec().weapons.entries()) {
@@ -73,7 +73,7 @@ describe('装备负面累计与收益递减', () => {
     for (const s of [a.state, b.state]) { s.skills.trained['reload-drills'] = 5; s.skills.trained['drone-servicing'] = 5 }
     expect(equipmentPenaltiesOf(a.state, a.local, a.uid).reload).toBe(1)
     const gun = (w: typeof a) => w.spec().weapons.find(p => p.src === 'turret')!
-    expect(gun(b).reloadMs).toBe(Math.round(gun(a).reloadMs * 1.08 ** 2))
+    expect(gun(b).reloadMs).toBe(Math.round(gun(a).reloadMs * 1.05 ** 2))
   })
 
   it('全额容量族速度/射程负面逐件相乘，不新增收益递减', () => {
@@ -135,7 +135,7 @@ describe('装备负面累计与收益递减', () => {
 describe('全战斗主动周期和在途计时', () => {
   it.each([1, 2])('%s件巨构：充能/力场/维修/捕获网/储备甲板均乘一次', n => {
     const w = world(['mod-shieldfield-2', 'mod-drone-deck-3'], ['mod-shieldchg-2', 'mod-hullrep-2', 'mod-lair-web-h'], Array(n).fill(CPU))
-    const factor = 1.08 ** n
+    const factor = 1.05 ** n
     expect(repairStatsFor(w.state, w.local, w.uid)!.intervalMs).toBe(Math.round(5000 * factor))
     expect(shieldFieldStreamsOf(w.state, w.local, w.uid)[0]!.ms).toBe(Math.round(10000 * factor))
     expect(shieldChargeStreamsOf(w.state, w.local, w.uid)[0]!.ms).toBe(Math.round(SHIELD_PULSE_MS * factor))
@@ -148,8 +148,8 @@ describe('全战斗主动周期和在途计时', () => {
     const other = addShipToFleet(w.state, 'sh-megalodon')
     w.state.fleet[other]!.fitted = { high: ['mod-shieldfield-2'], mid: ['mod-hullrep-2'], low: [] }
     const b = startFleetBattleFor(w.state, w.local, [w.uid, other], 'ano-training', 0, 5000)!
-    expect(b.repairBy!.player!.units[0]!.nextPulseAtMs).toBe(5832)
-    expect(b.shieldFieldBy!.player!.streams[0]!.nextPulseAtMs).toBe(11664)
+    expect(b.repairBy!.player!.units[0]!.nextPulseAtMs).toBe(5513)
+    expect(b.shieldFieldBy!.player!.streams[0]!.nextPulseAtMs).toBe(11025)
     const allyTag = b.myFleet!.find(e => e.shipId === other)!.tag
     expect(b.repairBy![allyTag]!.units[0]!.nextPulseAtMs).toBe(5000)
     for (const u of Object.values(b.units)) u.weapons = u.weapons.map(() => 100_000)
@@ -157,14 +157,14 @@ describe('全战斗主动周期和在途计时', () => {
     w.state.gameMs = 6000
     advanceBattleFor(w.state, w.local, b, w.uid, 'ano-training')
     const at = b.repairBy!.player!.units[0]!.nextPulseAtMs
-    expect(at).toBe(11664)
+    expect(at).toBe(11026) // 每跳5513毫秒，逐跳取整而不是整段取整。
     const loaded = loadSaveFile(serializeSaveFile(w.state, 0)).state
     const bb = loaded.expedition.battle!
     expect(bb.repairBy!.player!.units[0]!.nextPulseAtMs).toBe(at)
     loaded.gameMs = 12_000
     advanceBattleFor(loaded, w.local, bb, w.uid, 'ano-training')
-    expect(bb.repairBy!.player!.units[0]!.nextPulseAtMs).toBe(17496)
-    expect(bb.shieldFieldBy!.player!.streams[0]!.ms).toBe(11664)
+    expect(bb.repairBy!.player!.units[0]!.nextPulseAtMs).toBe(16539)
+    expect(bb.shieldFieldBy!.player!.streams[0]!.ms).toBe(11025)
   })
 
   it('旧在途护盾截止时刻保留，只将后续间隔更新到当前参数', () => {
@@ -176,10 +176,10 @@ describe('全战斗主动周期和在途计时', () => {
     w.state.gameMs = 5000
     advanceBattleFor(w.state, w.local, b, w.uid, 'ano-training')
     expect(stream.nextPulseAtMs).toBe(10000)
-    expect(stream.ms).toBe(10800)
+    expect(stream.ms).toBe(10500)
     w.state.gameMs = 10_000
     advanceBattleFor(w.state, w.local, b, w.uid, 'ano-training')
-    expect(stream.nextPulseAtMs).toBe(20800)
+    expect(stream.nextPulseAtMs).toBe(20500)
   })
 
   it('储备甲板在途周期截止时刻不重置，新周期读当前代价且往返不再放大', () => {
@@ -196,16 +196,16 @@ describe('全战斗主动周期和在途计时', () => {
     }
     e.c = [9000]; e.t = [9000]
     resolveDroneRevive(w.state, w.local, b, 4000)
-    expect(e.c).toEqual([10498])
+    expect(e.c).toEqual([9923])
     expect(e.t).toEqual([9000])
     resolveDroneRevive(w.state, w.local, b, 9000)
     expect(e.v['drone-exile-bee']).toBe(1)
-    expect(e.t).toEqual([19498])
+    expect(e.t).toEqual([18923])
     w.state.expedition = { ...w.state.expedition, active: true, phase: 'battle', anomalyId: 'ano-training', battle: b }
     const loaded = loadSaveFile(serializeSaveFile(w.state, 0)).state
     const bb = loaded.expedition.battle!
-    resolveDroneRevive(loaded, w.local, bb, 19498)
-    expect(bb.droneRevive!.player!.c).toEqual([10498])
+    resolveDroneRevive(loaded, w.local, bb, 18923)
+    expect(bb.droneRevive!.player!.c).toEqual([9923])
     expect(bb.droneRevive!.player!.v['drone-exile-bee']).toBe(2)
     expect(bb.droneRevive!.player!.t).toEqual([undefined])
     expect(loaded.warehouse.items['drone-exile-bee']).toBe(2)
@@ -221,7 +221,7 @@ describe('全战斗主动周期和在途计时', () => {
     w.local.anomalies = new Map([...w.local.anomalies, [card.id, card]])
     const b = startFleetBattleFor(w.state, w.local, [w.uid], card.id, 0, 2500)!
     for (let t = 100; t <= 120_000; t += 100) { w.state.gameMs = t; advanceBattleFor(w.state, w.local, b, w.uid, card.id) }
-    expect(Object.values(b.meOverlayReload ?? {}).some(v => v.r === Math.round(600 * 1.08 ** 2))).toBe(true)
+    expect(Object.values(b.meOverlayReload ?? {}).some(v => v.r === Math.round(600 * 1.05 ** 2))).toBe(true)
     expect(w.spec().weapons.find(p => p.burst)!.burst!.gapMs).toBe(ctx.modules.get('mod-lair-beam-r')!.burst!.gapMs)
     expect(w.spec().thrusterCooldownMs).toBe(ctx.modules.get('mod-mwd-3')!.thrusterCooldownMs)
   })

@@ -522,6 +522,12 @@ const SHAPES: Record<string, ReactNode> = {
       <path d="M15.2 10.6c1.1.7 1.1 2.5 0 3.2" fill="none" />
     </g>
   ),
+  'drone-launch': (
+    <g>
+      <rect x="7" y="7" width="10" height="10" rx="1.7" />
+      <path d="M9 14l3-4 3 4M12 10v6M9 9h6" />
+    </g>
+  ),
   /* 2026-09-27 无人机储备甲板（方框徽：停机格 + 复位上行箭头 —— "从储备里补回一架"） */
   'drone-deck': (
     <g>

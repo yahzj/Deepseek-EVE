@@ -17,6 +17,18 @@ const deferredDroneBooks: Readonly<Record<string, number>> = {
   'bp-faction-drone-bee': 1, 'bp-faction-drone-hiveguard': 2, 'bp-faction-drone-construct': 3,
   'bp-faction-drone-ink': 4, 'bp-faction-drone-jawclaw': 5,
 }
+const deferredCalibration: Readonly<Record<string, { name: string; description: string }>> = {
+  'mod-drone-launch-1': { name: 'mod.launchCalibration.001', description: 'mod.launchCalibration.006' },
+  'mod-drone-launch-2': { name: 'mod.launchCalibration.002', description: 'mod.launchCalibration.006' },
+  'mod-drone-launch-3': { name: 'mod.launchCalibration.003', description: 'mod.launchCalibration.006' },
+  'mod-laser-calibration-2': { name: 'mod.launchCalibration.004', description: 'mod.launchCalibration.007' },
+  'mod-laser-calibration-3': { name: 'mod.launchCalibration.005', description: 'mod.launchCalibration.007' },
+  'bp-drone-launch-1': { name: 'bp.launchCalibration.001', description: 'mod.launchCalibration.006' },
+  'bp-drone-launch-2': { name: 'bp.launchCalibration.002', description: 'mod.launchCalibration.006' },
+  'bp-drone-launch-3': { name: 'bp.launchCalibration.003', description: 'mod.launchCalibration.006' },
+  'bp-laser-calibration-2': { name: 'bp.launchCalibration.004', description: 'mod.launchCalibration.007' },
+  'bp-laser-calibration-3': { name: 'bp.launchCalibration.005', description: 'mod.launchCalibration.007' },
+}
 
 describe('英文覆盖层（P2）', () => {
   it('zh 缺省 = 显式 zh：名称逐字相同（工具/测试/模拟读数不受影响）', () => {
@@ -169,6 +181,12 @@ describe('英文覆盖层（P2）', () => {
     expect(en.shipBlueprints.get('sbp-pioneer')?.name).toBe('Narwhal-class Blueprint')
     // 派生覆盖率：能反查到产物的蓝图都必须有英文名（否则说明产物表缺名）
     const noEn = [...zh.blueprints.values()].filter((bp) => {
+      const pending = deferredCalibration[bp.id]
+      if (pending) {
+        expect(L10N[pending.name]!.enDeferred).toBe(true)
+        expect(en.blueprints.get(bp.id)?.name).toBe(l10nEntryText(L10N[pending.name]!, 'en'))
+        return false
+      }
       const index = deferredDroneBooks[bp.id]
       if (index !== undefined) {
         const entry = L10N[`bp.factionDrone.${String(index).padStart(3, '0')}`]!
@@ -356,7 +374,11 @@ describe('英文覆盖层（P2）', () => {
         noDesc.push(id)
         continue
       }
-      expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
+      const pending = deferredCalibration[id]
+      if (pending) {
+        expect(L10N[pending.description]!.enDeferred).toBe(true)
+        expect(other.description).toBe(l10nEntryText(L10N[pending.description]!, 'en'))
+      } else expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
     }
     expect(noDesc, `这些装备还没有英文说明：${noDesc.slice(0, 8).join(', ')}`).toEqual([])
     expect(en.modules.get('mod-turret-kin-1')?.description).toContain('rapid kinetic cannon')
@@ -433,6 +455,12 @@ describe('英文覆盖层（P2）', () => {
       const other = en.blueprints.get(id)!
       if (!other.description) {
         noDesc.push(id)
+        continue
+      }
+      const pending = deferredCalibration[id]
+      if (pending) {
+        expect(L10N[pending.description]!.enDeferred).toBe(true)
+        expect(other.description).toBe(l10nEntryText(L10N[pending.description]!, 'en'))
         continue
       }
       const index = deferredDroneBooks[id]

@@ -263,6 +263,7 @@ export const MODULE_SUBS: SubOption[] = [
 export const SUPPORT_MODULE_KEYS: Record<string, readonly string[]> = {
   /** 战斗支援件：直接提升开火侧或生存侧的战斗表现（伤害/射速/命中/回避/干扰） */
   'support-combat': [
+    'mod-laser-calibration-2', 'mod-laser-calibration-3',
     'mod-stab-kin-1', 'mod-stab-kin-2', 'mod-stab-kin-3',
     'mod-stab-exp-1', 'mod-stab-exp-2', 'mod-stab-exp-3',
     'mod-stab-pla-1', 'mod-stab-pla-2', 'mod-stab-pla-3',
@@ -299,7 +300,7 @@ export const MODULE_SUB_SLOTS: Record<string, readonly string[]> = {
   shield: ['shield', 'shield-field'],
   armor: ['armor'],
   prop: ['propulsion'],
-  drone: ['drone-rack', 'drone-tac', 'drone-relay', 'drone-shield', 'drone-deck'],
+  drone: ['drone-rack', 'drone-tac', 'drone-relay', 'drone-launch', 'drone-shield', 'drone-deck'],
   // 三档支援件**都来自同一个槽**（`support`）——逐件归属见 `SUPPORT_MODULE_KEYS`
   'support-combat': ['support'],
   'support-aux': ['support'],

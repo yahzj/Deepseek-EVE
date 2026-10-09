@@ -1,5 +1,6 @@
 {
   "ships": {
+    "droneLaunchCutPct": "number",
     "": "object",
     "id": "string",
     "role": "string",
@@ -59,6 +60,8 @@
     "repairPulseTargetsFleet": "boolean"
   },
   "modules": {
+    "droneLaunchCutPct": "number",
+    "laserFalloffBonus": "number",
     "": "object",
     "id": "string",
     "slot": "string",

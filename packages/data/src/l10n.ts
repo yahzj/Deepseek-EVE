@@ -238,6 +238,11 @@ export const EN_SHIPS: EnTable = {
  * 多装递减 = `stacks with diminishing returns` · 窝点/族专属 = `Lair-exclusive` / family-exclusive。
  */
 export const EN_MODULES: EnTable = {
+  'mod-drone-launch-1': { name: l10nEntryText(L10N['mod.launchCalibration.001']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },
+  'mod-drone-launch-2': { name: l10nEntryText(L10N['mod.launchCalibration.002']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },
+  'mod-drone-launch-3': { name: l10nEntryText(L10N['mod.launchCalibration.003']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },
+  'mod-laser-calibration-2': { name: l10nEntryText(L10N['mod.launchCalibration.004']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.007']!, 'en') },
+  'mod-laser-calibration-3': { name: l10nEntryText(L10N['mod.launchCalibration.005']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.007']!, 'en') },
   /* 舰船插件（2026-09-26 船长令）：装上去拆不下来的固定件，走独立插件槽。
      ⚠ 英文名要与 `docs/glossary-en.md` 的命名规则一致（直译优先、档位照抄）；本批为初稿。 */
   'plug-shield-plate': { name: 'Shield Reinforcement Plate', description: L10N['mod.copy.097']!.en },
@@ -1397,6 +1402,11 @@ const BP_DESC_EN: Readonly<Record<string, string>> = {
 export const EN_BLUEPRINTS: EnTable = (() => {
   // 船长2026-10-09确认中文名称/说明，英文未准备时回退中文，不自动生成新译名。
   const out: Record<string, EnText> = {
+    'bp-drone-launch-1': { name: l10nEntryText(L10N['bp.launchCalibration.001']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },
+    'bp-drone-launch-2': { name: l10nEntryText(L10N['bp.launchCalibration.002']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },
+    'bp-drone-launch-3': { name: l10nEntryText(L10N['bp.launchCalibration.003']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },
+    'bp-laser-calibration-2': { name: l10nEntryText(L10N['bp.launchCalibration.004']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.007']!, 'en') },
+    'bp-laser-calibration-3': { name: l10nEntryText(L10N['bp.launchCalibration.005']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.007']!, 'en') },
     'bp-faction-drone-bee': { name: l10nEntryText(L10N['bp.factionDrone.001']!, 'en'), description: l10nEntryText(L10N['bp.factionDrone.006']!, 'en') },
     'bp-faction-drone-hiveguard': { name: l10nEntryText(L10N['bp.factionDrone.002']!, 'en'), description: l10nEntryText(L10N['bp.factionDrone.007']!, 'en') },
     'bp-faction-drone-construct': { name: l10nEntryText(L10N['bp.factionDrone.003']!, 'en'), description: l10nEntryText(L10N['bp.factionDrone.008']!, 'en') },

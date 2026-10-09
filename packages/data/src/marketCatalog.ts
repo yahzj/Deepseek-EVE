@@ -20,6 +20,10 @@ import type { DataDocument } from '../../../tools/data-editor-contract'
 import { staticDataGroup } from './staticData'
 
 const MARKET_GOODS_RAW_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  'mod-drone-launch-1': {}, 'mod-drone-launch-2': {}, 'mod-drone-launch-3': {},
+  'mod-laser-calibration-2': {}, 'mod-laser-calibration-3': {},
+  'bp-drone-launch-1': {}, 'bp-drone-launch-2': {}, 'bp-drone-launch-3': {},
+  'bp-laser-calibration-2': {}, 'bp-laser-calibration-3': {},
   "ore-veldspar": {
 
   },
@@ -1666,6 +1670,7 @@ export const MARKET_GOODS_RAW: readonly MarketGoodDef[] = [
  * 原型（proto）与顶船维持原 standingReq 纯硬拦，不加暗市。
  */
 const BM_MK3_KEYS = new Set([
+  'mod-drone-launch-3', 'bp-drone-launch-3', 'mod-laser-calibration-3', 'bp-laser-calibration-3',
   'mod-turret-kin-3', 'mod-laser-3', 'mod-missile-3',
   'mod-drone-rack-3', 'mod-drone-tac-3',
   'mod-shield-kin-3', 'mod-shield-exp-3', 'mod-shield-pla-3', 'mod-shield-ext-3',

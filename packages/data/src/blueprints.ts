@@ -145,7 +145,7 @@ const FACTION_DRONE_RECIPES = {
   },
 } as const
 
-export const BLUEPRINTS: readonly BlueprintDef[] = [
+const BASE_BLUEPRINTS: readonly BlueprintDef[] = [
   {
     id: 'bp-faction-drone-bee', name: L10N['bp.factionDrone.001']!.zh,
     description: L10N['bp.factionDrone.006']!.zh, itemId: 'drone-exile-bee',
@@ -3279,6 +3279,22 @@ export const BLUEPRINTS: readonly BlueprintDef[] = [
   },
 ]
 
+
+// 新件沿获批参照配方取料单和工期，旧配方保持单一来源和原顺序。
+export const BLUEPRINTS: readonly BlueprintDef[] = [
+  ...BASE_BLUEPRINTS,
+  ...[
+    ['bp-drone-launch-1', 'mod-drone-launch-1', 'bp-drone-tac-1', 'bp.launchCalibration.001'],
+    ['bp-drone-launch-2', 'mod-drone-launch-2', 'bp-drone-tac-2', 'bp.launchCalibration.002'],
+    ['bp-drone-launch-3', 'mod-drone-launch-3', 'bp-drone-tac-3', 'bp.launchCalibration.003'],
+    ['bp-laser-calibration-2', 'mod-laser-calibration-2', 'bp-stab-pla-2', 'bp.launchCalibration.004'],
+    ['bp-laser-calibration-3', 'mod-laser-calibration-3', 'bp-stab-pla-3', 'bp.launchCalibration.005'],
+  ].map(([id, moduleId, sourceId, nameId]) => {
+    const source = BASE_BLUEPRINTS.find(bp => bp.id === sourceId)!
+    return { ...source, id: id!, moduleId: moduleId!, name: L10N[nameId!]!.zh,
+      description: L10N[moduleId!.startsWith('mod-drone-launch') ? 'mod.launchCalibration.006' : 'mod.launchCalibration.007']!.zh }
+  }),
+]
 
 /** 构建"蓝图 id → 定义"目录 */
 export function buildBlueprintCatalog(): ReadonlyMap<string, BlueprintDef> {

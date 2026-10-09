@@ -110,6 +110,7 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '激光校准远端保留合成', symbol: 'laserFalloffOf', file: 'packages/core/src/equipment.ts', exported: true },
   { concept: '战前逐舰实际预载缺口', symbol: 'battleAmmoPreloadPlan', file: 'packages/core/src/battleAmmoPreflight.ts', exported: true },
   { concept: '技能训练工作量与实时进度换算', symbol: 'trainingLevelProgress', file: 'packages/core/src/training.ts', exported: true },
   { concept: '旧技能进度一次性工作量兼容', symbol: 'normalizeTrainingProgress', file: 'packages/core/src/training.ts', exported: true },

@@ -1436,7 +1436,7 @@ export interface BattleState {
    *  缺省 = 本次改动前已在进行的战斗（照旧打完，不折损） */
   dronePools?: Record<string, DronePoolEntry>;
   /** 每舰首次出击队列；缺省表示旧战斗中机体按已放飞处理。 */
-  droneLaunchBy?: Record<string, { q: string[]; nextAtMs: number; gapMs: number }>
+  droneLaunchBy?: Record<string, { q: string[]; nextAtMs: number; gapMs: number; reviveGapMs?: number }>
   /** **敌机机群生存池**（2026-09-11 机群批）——键 = **敌单位 tag**，值 = 与该单位 `src:'drone'`
    *  武器条目**同序**的逐架池（每架一条）；三层血/抗性/回避取自机型表（`FoeDroneDef.defense`）。
    *  开战与每次换波由 `combat.initFoeDronePools` 重建。
@@ -1691,6 +1691,8 @@ export interface BattleReportRecord {
 export interface DronePoolEntry {
   /** 首次放飞标记；缺省按旧档已放飞处理。 */
   launched?: boolean
+  /** 复活重新入队，用旧等待路径；缺省为原始入场队列。 */
+  launchRequeued?: true
   /** **所属舰的 tag**（`player` / `ally-1`…；2026-09-14 船长「逐舰机群」）——与池键前缀同源，
    *  冗余存一份便于按舰分组（点防选靶 / 战报 / 损失归属）。老档缺省 = `player`。 */
   owner?: string

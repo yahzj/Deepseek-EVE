@@ -52,7 +52,14 @@ describe('获批四舰CPU调整', () => {
       expect(row.cpu).toBe(change.old)
       row.cpu = change.next
     }
-    expect(ships).toEqual(expected)
+    // 后续船长确认航母首发特性；只允许这一已批准字段，不放开其他静态变化。
+    const current = structuredClone(ships)
+    const carrier = Object.values(current.groups).flat().find(row => row.id === 'sh-wh-e-carrier')!
+    if ('droneLaunchCutPct' in carrier) {
+      expect(carrier.droneLaunchCutPct).toBe(.3)
+      delete (carrier as unknown as Record<string, unknown>).droneLaunchCutPct
+    }
+    expect(current).toEqual(expected)
     expect([...ctx.ships]).toHaveLength(46)
   })
 

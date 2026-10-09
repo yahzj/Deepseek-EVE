@@ -9,7 +9,7 @@ import type { GameState } from './state'
 import type { DamageResists, DamageType, ModuleDef, SimContext } from './types'
 import { clamp, RESIST_FLOOR } from './combatMath'
 import type { Hp3 } from './combatMath'
-import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, weightedSum, equipmentPenaltiesOf } from './equipment'
+import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, weightedSum, equipmentPenaltiesOf, laserFalloffOf } from './equipment'
 import { moduleAllowedOnShip } from './shipFitting'
 import { fleetDefOf } from './instances'
 import { shipCategoryKeyOf } from './labels'
@@ -534,7 +534,7 @@ export function createPlayerSpec(
         maxRangeM: rangeOf(turret.maxRangeM, 'plasma'),
         minRangeM: turret.minRangeM ?? 0,
         hitRate: 1,
-        falloff: turret.falloff ?? 0.3,
+        falloff: laserFalloffOf(turret.falloff ?? 0.3, allFittedModules(fitted, ctx)),
         reloadMs: reload,
         // **叠光同款 · 装填自加速**（船长 2026-10-01 令）：只有带该字段的件（R 族叠光激光炮）才写
         ...(turret.overlayDrive !== undefined ? { overlayDrive: {
@@ -775,7 +775,8 @@ export function createPlayerSpec(
     })(),
     agility: ship.agility,
     weapons,
-    droneLaunchGapMs: droneLaunchGapMsOf(droneGear),
+    droneLaunchGapMs: droneLaunchGapMsOf(allFittedModules(fitted, ctx), ship.droneLaunchCutPct),
+    droneReviveGapMs: droneLaunchGapMsOf(allFittedModules(fitted, ctx), 0, true),
     // 锁定装置（2026-09-09）：被锁目标受击加深等效比例（>0 同时开启集火模式）
     ...(lockEq > 1 ? { lockedDmgBonus: lockEq - 1 } : {}),
     // **隐秘行动装置**（2026-09-15 船长）：隐身窗口取所装件里**最长**的一件；

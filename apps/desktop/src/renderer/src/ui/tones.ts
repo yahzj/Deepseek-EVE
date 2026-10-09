@@ -103,6 +103,7 @@ export const TONES: Record<string, string> = {
   'drone-rack': toneVar('drone-rack'),
   'drone-tac': toneVar('drone-tac'),
   'drone-relay': toneVar('drone-relay'),
+  'drone-launch': toneVar('drone'),
   /* 2026-09-27 无人机储备甲板（船长令）：**复用无人机通用金** `toneVar('drone')`
      —— 与 `drone-rack` 同款做法（它的 CSS 值与 `drone` 本就相同）⇒ 不新增 CSS 变量、零主题改动。 */
   'drone-deck': toneVar('drone'),

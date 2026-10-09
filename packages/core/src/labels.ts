@@ -23,6 +23,7 @@ export const MODULE_SLOTS: readonly ModuleSlot[] = [
   'drone-rack',
   'drone-tac',
   'drone-relay',
+  'drone-launch',
   // 无人机储备甲板（2026-09-27 船长令）：高槽件，与上两族同槽竞争
   'drone-deck',
   'drone-shield',
@@ -48,6 +49,7 @@ export const SLOT_LABELS: Record<ModuleSlot, string> = {
   'drone-rack': '无人机甲板扩展',
   'drone-tac': '战术导控阵列',
   'drone-relay': '无人机中继天线',
+  'drone-launch': '无人机出击加速器',
   'drone-deck': '无人机储备甲板',
   'drone-shield': '无人机护盾投射仪',
   support: '支援件',
@@ -112,6 +114,7 @@ export function rackOf(def: {
     def.slot === 'laser' ||
     def.slot === 'drone-tac' ||
     def.slot === 'drone-relay' ||
+    def.slot === 'drone-launch' ||
     // 无人机储备甲板（**2026-09-27 船长令**：新需求原话「添加无人机**高槽**装备，无人机储备甲板」）
     def.slot === 'drone-deck' ||
     def.slot === 'target-lock'

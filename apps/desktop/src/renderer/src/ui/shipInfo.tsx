@@ -392,8 +392,9 @@ function fittedDecayLine(engine: GameEngine, shipId: string, mod: ModuleDef, ord
   const isGap = stackingOf(mod).group === 'gap'
   const parts = params.map((p) => {
     const name = tr(EFF_PARAM_LABEL[p.key] ?? 'ui.shipInfo.218')
-    const eff = pct(p.eff)
-    const raw = isGap && !p.key.endsWith('Penalty') ? tr('ui.shipInfo.220', { p1: pct(p.raw) }) : tr('ui.shipInfo.221', { p1: pct(p.raw) })
+    const value = (v: number) => p.key === 'laserFalloff' ? `+${Number(v.toFixed(3))}` : pct(v)
+    const eff = value(p.eff)
+    const raw = isGap && !p.key.endsWith('Penalty') ? tr('ui.shipInfo.220', { p1: value(p.raw) }) : tr('ui.shipInfo.221', { p1: value(p.raw) })
     return `${name} ${eff}${raw}`
   })
   return { k: tr('ui.shipInfo.222'), v: parts.join(' · ') }
@@ -403,6 +404,8 @@ function fittedDecayLine(engine: GameEngine, shipId: string, mod: ModuleDef, ord
 const EFF_PARAM_LABEL: Record<string, string> = {
   speed: 'ui.shipInfo.223',
   droneRange: 'ui.shipInfo.224',
+  droneLaunch: 'ui.launchCalibration.004',
+  laserFalloff: 'ui.launchCalibration.005',
   shieldPulse: 'ui.shipInfo.225',
   shieldField: 'ui.shipInfo.226',
   hit: 'ui.shipInfo.227',
@@ -595,6 +598,9 @@ export function moduleShortEffect(mod: ModuleDef): string {
       // 2026-09-10 无人机中继天线：放飞无人机射程加成
       body = tr("ui.shipInfo.112", { p1: pctOpt(mod.droneRangeBonusPct) })
       break
+    case 'drone-launch':
+      body = tr('ui.launchCalibration.001', { p1: Math.round((mod.droneLaunchCutPct ?? 0) * 100) })
+      break
     case 'drone-deck':
       /**
        * 无人机储备甲板（2026-09-27 船长令）：短行报**复位周期秒数**。
@@ -611,7 +617,9 @@ export function moduleShortEffect(mod: ModuleDef): string {
     case 'support': {
       // V18.1 支援件：效果字段判别（稳定器按系可多件 → 逐系列出）
       const dmg = mod.damageTypeBonusPct
-      if (dmg && Object.keys(dmg).length > 0) {
+      if (mod.laserFalloffBonus !== undefined) {
+        body = tr('ui.launchCalibration.002', { p1: mod.laserFalloffBonus })
+      } else if (dmg && Object.keys(dmg).length > 0) {
         body = Object.entries(dmg)
           .filter(([, v]) => (v ?? 0) > 0)
           .map(([t, v]) => tr("ui.shipInfo.113", { p1: DMG_LABEL[t as DamageType], p2: pct(v ?? 0) }))
@@ -817,6 +825,7 @@ export function shipInfoLines(ship: ShipDef): InfoLine[] {
         .join(' · ')
       if (rangeText) bits.push(rangeText)
       if (ship.civilianFittingOnly === true) bits.push(tr('ui.shipInfo.249'))
+      if (ship.droneLaunchCutPct) bits.push(tr('ui.launchCalibration.001', { p1: Math.round(ship.droneLaunchCutPct * 100) }))
       if (ship.fleetDamageBonusPct) bits.push(tr("ui.shipInfo.124", { p1: Math.round(ship.fleetDamageBonusPct * 100) }))
       if (ship.wormholeScanRadiusBonus) bits.push(tr("ui.shipInfo.125", { p1: ship.wormholeScanRadiusBonus }))
       // 2026-09-16 船长：后勤舰特性进「船体特性」栏（判据已由 `subClass` 改为数据字段，界面与引擎同源）
@@ -1440,6 +1449,8 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
     // ⟪文案调整 2026-10-08⟫
     lines.push({ k: tr("ui.shipInfo.074"), v: tr("ui.shipInfo.167", { p1: pct(mod.droneCycleCutPct ?? 0) }) })
   }
+  if (mod.droneLaunchCutPct !== undefined) lines.push({ k: tr('ui.launchCalibration.004'), v: tr('ui.launchCalibration.001', { p1: Math.round(mod.droneLaunchCutPct * 100) }) })
+  if (mod.laserFalloffBonus !== undefined) lines.push({ k: tr('ui.launchCalibration.005'), v: `+${mod.laserFalloffBonus}` })
   if ((mod.speedBonusPct ?? 0) > 0 && mod.slot !== 'propulsion') {
     lines.push({ k: tr("ui.shipInfo.075"), v: tr("ui.shipInfo.168", { p1: pct(mod.speedBonusPct ?? 0) }) })
   }

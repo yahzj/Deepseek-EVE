@@ -28,6 +28,10 @@
  * 升档后**档位与价格解耦**：日后调价不再自动触发改档，档位是人审结果。
  */
 export const RARITY_TIER: Readonly<Record<string, number>> = {
+  'mod-drone-launch-1': 1, 'mod-drone-launch-2': 2, 'mod-drone-launch-3': 3,
+  'bp-drone-launch-1': 1, 'bp-drone-launch-2': 2, 'bp-drone-launch-3': 3,
+  'mod-laser-calibration-2': 2, 'mod-laser-calibration-3': 3,
+  'bp-laser-calibration-2': 3, 'bp-laser-calibration-3': 3,
   'deep-space-probe': 4,
   'bp-deep-space-probe': 4,
   // 2026-09-15 虫洞战利品与经济扩充（船长确认）：谜质精华 · 奢侈品 · 贵重品/军用备货柜

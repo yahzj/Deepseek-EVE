@@ -113,6 +113,30 @@
 
 现有敌方`item.alien.001`名称和全部已有英文保持，玩家版使用独立条目；覆盖层在英文界面回退新中文，不自动拼英文永久蓝图名。
 
+## 出击加速器与激光校准仪
+
+来源：2026-10-09船长确认完整补充方案，包含新装备、价格/蓝图、巨构航母特性与协处理器代价5%。新增英文未授权，表项空英文并标记待译，覆盖接口回退获批中文；全部旧英文保持。
+
+| id | 中文依据 | 状态 |
+|---|---|---|
+| `mod.launchCalibration.001` | 无人机出击加速器MK1名称 | 待本地化 |
+| `mod.launchCalibration.002` | 无人机出击加速器MK2名称 | 待本地化 |
+| `mod.launchCalibration.003` | 无人机出击加速器MK3名称 | 待本地化 |
+| `mod.launchCalibration.004` | 激光校准仪MK2名称 | 待本地化 |
+| `mod.launchCalibration.005` | 激光校准仪MK3名称 | 待本地化 |
+| `mod.launchCalibration.006` | 缩短首次出击等待，多装递减 | 待本地化 |
+| `mod.launchCalibration.007` | 改善激光远距离威力保留，多装递减 | 待本地化 |
+| `bp.launchCalibration.001` | 出击加速器MK1蓝图名称 | 待本地化 |
+| `bp.launchCalibration.002` | 出击加速器MK2蓝图名称 | 待本地化 |
+| `bp.launchCalibration.003` | 出击加速器MK3蓝图名称 | 待本地化 |
+| `bp.launchCalibration.004` | 激光校准仪MK2蓝图名称 | 待本地化 |
+| `bp.launchCalibration.005` | 激光校准仪MK3蓝图名称 | 待本地化 |
+| `ui.launchCalibration.001` | 参数/舰体特性：首次等待削减百分比 | 待本地化 |
+| `ui.launchCalibration.002` | 激光远端威力保留增量参数 | 待本地化 |
+| `ui.launchCalibration.003` | 新高槽装备家族名 | 待本地化 |
+| `ui.launchCalibration.004` | 有效参数：首次等待削减 | 待本地化 |
+| `ui.launchCalibration.005` | 有效参数：激光远端保留增量 | 待本地化 |
+
 ## 既有搁置项
 
 - 成就卡名/说明、舰种类名、通讯势力简介的早先英文缺口保持原搁置状态，入口见`docs/roadmap.md`，不因建立本记录自动启动。

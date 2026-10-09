@@ -233,6 +233,8 @@ export type StackGroup = 'gap' | 'curve' | 'weighted' | 'max' | 'fleetDecay' | '
  * 却按**型号**各走各的冷却。
  */
 export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } {
+  if (def.droneLaunchCutPct !== undefined) return { group: 'fleetDecay', kind: 'drone-launch' }
+  if (def.laserFalloffBonus !== undefined) return { group: 'weighted', kind: 'laser-calibration' }
   const resistKey = (add: DamageResists | undefined): string | null => {
     for (const [t, v] of Object.entries(add ?? {})) if ((v ?? 0) > 0) return t
     return null
@@ -385,6 +387,8 @@ export function fittedPenaltyPartsOf(state: GameState, ctx: SimContext, shipId: 
     if (kind === 'warp') return d.warpSpeedBonusPct ?? 0
     if (kind === 'lock') return d.lockDmgBonus ?? 0
     if (kind === 'drone-relay') return d.droneRangeBonusPct ?? 0
+    if (kind === 'drone-launch') return d.droneLaunchCutPct ?? 0
+    if (kind === 'laser-calibration') return d.laserFalloffBonus ?? 0
     if (kind === 'drone-hit') return d.droneHitGapPct ?? 0
     if (kind === 'ecm') return d.foeRangeDebuffPct ?? 0
     if (kind === 'shield-field') return d.shieldFieldPct ?? 0
@@ -458,6 +462,11 @@ export function weightedSum(bonuses: number[]): number {
   let sum = 0
   for (let i = 0; i < sorted.length; i++) sum += sorted[i]! * stackWeight(i + 1)
   return sum
+}
+
+/** 激光校准只改远端保留系数，不改射程、命中或近端单发。 */
+export function laserFalloffOf(base: number, modules: readonly ModuleDef[]): number {
+  return Math.min(1, Math.max(0, base + weightedSum(modules.map(m => m.laserFalloffBonus ?? 0))))
 }
 
 /**

@@ -242,6 +242,8 @@ export function beamPowerVsTargetOf(
 export interface UnitSpec {
   /** 玩家无人机首次出击间隔；缺省为500ms。 */
   droneLaunchGapMs?: number
+  /** 复活入队的旧机库等待，不叠加首发新装备或船体特性。 */
+  droneReviveGapMs?: number
   acidBurst?: import('./types').FoeShipDef['acidBurst'] & { shieldDamageMul?: number }
   foeHatchery?: import('./types').FoeMountDef['hatchery']
   foeFleetSpeedRamp?: import('./types').FoeMountDef['fleetSpeedRamp']

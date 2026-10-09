@@ -2808,6 +2808,7 @@ for (const m of MODULES) {
     const hasRof = m.reloadCutPct !== undefined
     const hasHit = m.hitBonusPct !== undefined
     const hasEva = m.evasionGapPct !== undefined
+    const hasCalibration = m.laserFalloffBonus !== undefined
     // 2026-09-14 跃迁计算机：**跃迁**成为支援件的第六类效果（低槽；只缩短星系际航行时间）
     const hasWarp = m.warpSpeedBonusPct !== undefined
     // 2026-09-15 隐秘行动装置：**隐身**成为支援件的第七类效果（**高槽**；开火前隐身 20/30 秒）
@@ -2828,7 +2829,7 @@ for (const m of MODULES) {
      */
     const hasDc = m.hullSaveKit !== undefined
     const kinds =
-      (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0) + (hasStealth ? 1 : 0) + (hasEcm ? 1 : 0) + (hasWeb ? 1 : 0) + (hasDc ? 1 : 0)
+      (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0) + (hasStealth ? 1 : 0) + (hasEcm ? 1 : 0) + (hasWeb ? 1 : 0) + (hasDc ? 1 : 0) + (hasCalibration ? 1 : 0)
     check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复/跃迁/隐身/射程压制/捕获网/损管）`)
     if (hasRepair) {
       // 修复系：装甲/结构修复值 ∈ [1, 100]、周期缺省 5 秒（2000~60_000 毫秒）、必须指明消耗的修理组件
@@ -6654,6 +6655,8 @@ const CROSS_ITEM_COMPARE: readonly RegExp[] = [
     reloadPenaltyPct: 'support', // 装填惩罚（支援件族）
     allResistPenaltyPct: 'armor', // 全层抗性削减（装甲族）
     droneCycleCutPct: 'drone-rack', // 无人机出击周期（甲板扩展族）
+    droneLaunchCutPct: 'drone-launch',
+    laserFalloffBonus: 'support',
   }
   /** 已核过界面呈现的跨族组合（id:字段）——新增组合必须先确认能显示再登记 */
   const REGISTERED: readonly string[] = [
