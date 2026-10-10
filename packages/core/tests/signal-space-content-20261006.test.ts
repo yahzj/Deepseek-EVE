@@ -123,11 +123,11 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
   })
 
   it('四艘扫描舰只改说明：全部舰船数据与来源一致，半径仍按编队相加', () => {
-    // 后续船长确认四舰CPU与航母首发特性；其余旧字段仍按固定来源逐项比较。
+    // 后续船长确认四舰CPU与四艘无人机主力舰启动特性；其余字段按固定来源逐项比较。
     const approvedCpu: Record<string, number> = { pioneer: 240, 'sh-humpback': 260, 'sh-wh-c-cruiser': 360, 'sh-wh-d-cruiser': 350 }
     const expectedShips = baseShips.map(row => ({ ...row,
       ...(approvedCpu[row.id] !== undefined ? { cpu: approvedCpu[row.id] } : {}),
-      ...(row.id === 'sh-wh-e-carrier' ? { droneLaunchCutPct: .3 } : {}),
+      ...(['sh-swarm', 'sh-sentinel', 'sh-wh-e-destroyer', 'sh-wh-e-carrier'].includes(row.id) ? { droneLaunchCutPct: .3 } : {}),
     }))
     sameData(SHIPS, expectedShips, ['description'])
     expect(SHIPS.filter((row, i) => row.description !== baseShips[i]!.description).map((row) => row.id)).toEqual(shipIds)

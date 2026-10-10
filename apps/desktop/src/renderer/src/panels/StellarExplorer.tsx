@@ -10,6 +10,8 @@ import { pt } from '../ui/planetText'
 import { StellarMap } from './StellarMap'
 import { PlanetaryPanel } from './PlanetaryPanel'
 import { STELLAR_KIND_IDS as kindIds, STELLAR_PLANET_KIND_IDS as planetKindIds, StellarPlanetPreview } from '../ui/stellarArt'
+import { StellarDynamicPreview } from '../ui/StellarDynamicPreview'
+import { stellarDynamicBody } from './stellarMotion'
 import '../styles-stellar-explorer.css'
 
 const reasonIds: Record<string, string> = { 'search-busy': 'ui.stellar.039', 'probe-stock': 'ui.stellar.040', capacity: 'ui.stellar.041', 'invalid-seed': 'ui.stellar.042', 'no-search': 'ui.stellar.043', 'unknown-system': 'ui.stellar.044', 'no-surface': 'ui.stellar.037' }
@@ -73,7 +75,8 @@ export function StellarExplorer({ engine, catalog, onClose, onCommand }: {
   const manufacture = manufacturingRunViews(state, engine.ctx).filter(run => run.blueprintId === DEEP_SPACE_PROBE_BLUEPRINT_ID)
   const bodyStates = Object.fromEntries((selected?.bodies ?? []).map(body => {
     const value = state.planetary?.planets[body.planetId]
-    return [body.planetId, { survey: value?.survey ?? 0, developed: stellarPlanetDeveloped(value) }]
+    const publicSize = value ? planetSurveyView(value, catalog)?.size : undefined
+    return [body.planetId, { survey: value?.survey ?? 0, developed: stellarPlanetDeveloped(value), size: publicSize }]
   }))
   const confirmValid = confirm?.kind === 'discard'
     ? !!stellar?.systems[confirm.systemId] && !stellarSystemDeveloped(state, confirm.systemId)
@@ -101,11 +104,11 @@ export function StellarExplorer({ engine, catalog, onClose, onCommand }: {
           : <span className="app-dim">{tr('ui.stellar.017')}</span>}
       </div>
       <div className="app-stellar-workspace">
-        <div className="app-stellar-mapcolumn">{selected ? <StellarMap system={selected} selectedId={bodyId} onSelect={setBodyId} bodyStates={bodyStates} /> : <div className="app-stellar-empty"><Radar size={48} strokeWidth={1} aria-hidden="true" /><strong>{tr('ui.stellar.017')}</strong></div>}</div>
+        <div className="app-stellar-mapcolumn">{selected ? <StellarMap system={selected} selectedId={bodyId} onSelect={setBodyId} bodyStates={bodyStates} motionBlocked={!!confirm} /> : <div className="app-stellar-empty"><Radar size={48} strokeWidth={1} aria-hidden="true" /><strong>{tr('ui.stellar.017')}</strong></div>}</div>
         <aside className="app-stellar-sidebar">
           <div className="app-stellar-scroll">
             <h3><Crosshair size={15} aria-hidden="true" />{tr('ui.stellarHud.002')}</h3>
-            {selectedBody ? <><div className="app-stellar-target"><StellarPlanetPreview kind={selectedBody.kind} /><div><strong>{tr('ui.stellar.056')} {selectedBody.ordinal}</strong><span>{tr(planetKindIds[selectedBody.kind])}</span><span className="app-stellar-phase">{planet ? pt('survey.' + planet.survey) : tr('ui.stellar.055')}</span></div></div>
+            {selectedBody ? <><div className="app-stellar-target">{selected && stellarDynamicBody(selected, selectedBody) ? <StellarDynamicPreview system={selected} bodyId={selectedBody.planetId} /> : <StellarPlanetPreview kind={selectedBody.kind} />}<div><strong>{tr('ui.stellar.056')} {selectedBody.ordinal}</strong><span>{tr(planetKindIds[selectedBody.kind])}</span><span className="app-stellar-phase">{planet ? pt('survey.' + planet.survey) : tr('ui.stellar.055')}</span></div></div>
               {view ? <><dl className="app-stellar-facts"><div><dt>{pt('hazard')}</dt><dd>{view.hazard.min === view.hazard.max ? view.hazard.min : `${view.hazard.min}~${view.hazard.max}`}</dd></div><div><dt>{pt('habitability')}</dt><dd>{view.habitability.min === view.habitability.max ? view.habitability.min : `${view.habitability.min}~${view.habitability.max}`}</dd></div></dl>
                 <div className="app-planet-traits">{view.traitIds.map(id => <span key={id}>{pt('trait.' + id)}</span>)}</div>{view.unknownTraits > 0 ? <div className="app-dim">{pt('unknownTraits')} {view.unknownTraits}</div> : null}</> : null}
               <div className="app-stellar-targetactions"><button className="app-btn" disabled={!planet || planet.survey >= 2} onClick={() => command('survey', [selectedBody.planetId, 2])}><Search size={16} />{tr('ui.stellar.022')}</button>

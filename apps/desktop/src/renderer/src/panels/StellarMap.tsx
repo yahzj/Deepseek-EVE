@@ -1,11 +1,14 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
-import { ZoomIn, ZoomOut } from 'lucide-react'
-import type { StellarSystem } from '@whale/core'
+import { ZoomIn, ZoomOut, Pause, Play, AlertTriangle } from 'lucide-react'
+import type { PlanetSize, StellarSystem } from '@whale/core'
 import { tr } from '../i18n/locale'
 import { Glyph } from '../ui/Glyphs'
 import { StellarPlanetArt, STELLAR_PLANET_KIND_IDS } from '../ui/stellarArt'
-import { stellarDisplayRadius, STELLAR_PLANET_ASSETS } from '../ui/stellarAssets'
+import { STELLAR_PLANET_ASSETS } from '../ui/stellarAssets'
+import { stellarMapBodyRadii } from './stellarBodySize'
 import { StellarScene } from './StellarScene'
+import { StellarMotionLayer } from './StellarMotionLayer'
+import { stellarDynamicBody, stellarMotionBodies, stellarMotionStars, stellarMotionSession, notifyStellarMotion } from './stellarMotion'
 import {
   STELLAR_MAP_CENTER, STELLAR_ZOOM_MAX, STELLAR_ZOOM_MIN,
   beginStellarGesture, clampStellarView, inverseMapMatrix, locateStellarView, mapInverseScale, mapPointThrough,
@@ -18,7 +21,8 @@ export interface StellarMapProps {
   system: StellarSystem
   selectedId?: string
   onSelect: (planetId: string) => void
-  bodyStates?: Readonly<Record<string, { survey: number; developed: boolean }>>
+  bodyStates?: Readonly<Record<string, { survey: number; developed: boolean; size?: PlanetSize }>>
+  motionBlocked?: boolean
 }
 
 interface MapSession extends StellarMapView { selectedId?: string }
@@ -40,10 +44,15 @@ function screenInverse(svg: SVGSVGElement): MapMatrix | null {
   return matrix.inverse()
 }
 
-function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: StellarMapProps) {
+function StellarMapViewport({ system, selectedId, onSelect, bodyStates, motionBlocked }: StellarMapProps) {
   const [session, setSession] = useState(() => initialSession(system, selectedId))
   const current = useRef(session)
   const svgRef = useRef<SVGSVGElement>(null)
+  const motion = stellarMotionSession(system.id)
+  const trial = system.bodies.some(body => stellarDynamicBody(system, body))
+  const [gpuReady, setGpuReady] = useState(false)
+  const [, refreshMotion] = useState(0)
+  const displayBodies = () => trial ? stellarMotionBodies(system, motion.elapsedMs) : system.bodies
   const pointers = useRef(new Map<number, MapPointer>())
   const gesture = useRef<StellarGesture | null>(null)
   const pressedBody = useRef<string | undefined>()
@@ -56,6 +65,11 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
   const renderedBox = useRef(box)
 
   useLayoutEffect(() => { renderedBox.current = box })
+  useLayoutEffect(() => {
+    if (motionBlocked) motion.holds.add('dialog')
+    else motion.holds.delete('dialog')
+    return () => { motion.holds.delete('dialog') }
+  }, [motionBlocked])
 
   useLayoutEffect(() => {
     sessions.set(system.id, current.current)
@@ -133,21 +147,20 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
     commit({ ...current.current, selectedId: id })
     onSelect(id)
   }
-  function displayRadius(body: Body, unit = metrics.artUnit): number {
-    const nearest = Math.min(...system.bodies.filter(other => other !== body).map(other => Math.hypot(other.x - body.x, other.y - body.y)),
-      ...system.stars.map(star => Math.hypot(star.x - body.x, star.y - body.y)))
-    return Math.min(stellarDisplayRadius(body.kind, unit), nearest * .38)
+  const publicSizes = Object.fromEntries(system.bodies.map(body => [body.planetId, bodyStates?.[body.planetId]?.size]))
+  function displayRadii(bodies = displayBodies(), unit = metrics.artUnit): Readonly<Record<string, number>> {
+    return stellarMapBodyRadii(bodies, stellarMotionStars(system, motion.elapsedMs), unit, publicSizes)
   }
 
   function zoomBy(factor: number): void {
     const view = current.current
-    const anchor = system.bodies.find(body => body.planetId === view.selectedId) ?? STELLAR_MAP_CENTER
+    const anchor = displayBodies().find(body => body.planetId === view.selectedId) ?? STELLAR_MAP_CENTER
     commit({ ...view, ...zoomStellarView(view, view.zoom * factor, anchor) })
   }
 
   function reset(): void { commit({ ...current.current, ...fitView() }) }
   function locate(id = current.current.selectedId): void {
-    const body = system.bodies.find(candidate => candidate.planetId === id)
+    const body = displayBodies().find(candidate => candidate.planetId === id)
     if (body) commit({ ...current.current, ...locateStellarView(current.current, body) })
   }
 
@@ -164,6 +177,7 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
     const inverse = screenInverse(event.currentTarget)
     if (!inverse) return
     event.preventDefault()
+    motion.holds.add('pointer')
     if (!pointers.current.size) {
       handledPointerClick.current = false
       // 透明命中圆可能重叠；按最近的世界坐标选取，不按 SVG 后绘制者优先。
@@ -171,7 +185,8 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
       const logicalInverse = local ? inverseMapMatrix(local) : null
       const radius = stellarHitRadius(inverse, logicalInverse)
       const unit = logicalInverse ? mapInverseScale(logicalInverse) : mapInverseScale(inverse)
-      pressedBody.current = stellarBodyAt(system.bodies.map(body => ({ ...body, radius: displayRadius(body, unit) })),
+      const bodies = displayBodies(), radii = displayRadii(bodies, unit)
+      pressedBody.current = stellarBodyAt(bodies.map(body => ({ ...body, radius: radii[body.planetId] })),
         mapPointThrough({ x: event.clientX, y: event.clientY }, inverse), radius)
       event.currentTarget.focus({ preventScroll: true })
     }
@@ -204,6 +219,7 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
     const moved = cancelled || (gesture.current?.moved ?? false)
     const id = pressedBody.current
     pointers.current.delete(event.pointerId)
+    if (!pointers.current.size) motion.holds.delete('pointer')
     handledPointerClick.current = true
     pressedBody.current = undefined
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
@@ -215,6 +231,7 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
 
   function keyDown(event: KeyboardEvent<SVGSVGElement>): void {
     if (event.altKey || event.ctrlKey || event.metaKey) return
+    motion.holdUntil = performance.now() + 1500
     const targetId = (event.target as Element).closest('[data-stellar-body]')?.getAttribute('data-stellar-body')
     switch (event.key) {
       case 'ArrowRight': case 'ArrowDown': case 'ArrowLeft': case 'ArrowUp': {
@@ -252,9 +269,11 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
     return () => svg.removeEventListener('wheel', wheel)
   }, [system.bodies])
 
-  const labels = stellarOrdinalLabels(system.bodies.map(body => ({ ...body,
-    radius: Math.max(body.planetId === session.selectedId ? metrics.hit * 0.65 : 0, displayRadius(body) * (body.kind === 'gas' ? STELLAR_PLANET_ASSETS.gas.span : 1.15)),
-  })), box, metrics.unit, session.selectedId, system.kind === 'rogue' ? [] : system.stars)
+  const shownBodies = displayBodies()
+  const shownRadii = displayRadii(shownBodies)
+  const labels = stellarOrdinalLabels(shownBodies.map(body => ({ ...body,
+    radius: Math.max(body.planetId === session.selectedId ? metrics.hit * 0.65 : 0, shownRadii[body.planetId]! * (body.kind === 'gas' ? STELLAR_PLANET_ASSETS.gas.span : 1.15)),
+  })), box, metrics.unit, session.selectedId, stellarMotionStars(system, motion.elapsedMs))
 
   return <div className="app-stellar-map" data-stellar-system={system.id}>
     <div className="app-stellar-map-bar">
@@ -273,6 +292,10 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
           aria-label={tr('ui.stellar.052')} title={tr('ui.stellar.052')} onClick={reset}><Glyph name="ico-scan" size={20} /></button>
         <button type="button" className="app-map-zoom-btn app-stellar-map-tool" disabled={!selected}
           aria-label={tr('ui.stellar.053')} title={tr('ui.stellar.053')} onClick={() => locate()}><Glyph name="target-lock" size={20} /></button>
+        {trial ? <button type="button" className="app-map-zoom-btn app-stellar-map-tool" data-motion-pause disabled={!gpuReady}
+          aria-label={tr(motion.paused ? 'ui.stellar.011' : 'ui.stellar.010')} title={tr(motion.paused ? 'ui.stellar.011' : 'ui.stellar.010')}
+          onClick={() => { motion.paused = !motion.paused; notifyStellarMotion(motion); refreshMotion(n => n + 1) }}>{motion.paused ? <Play size={18} /> : <Pause size={18} />}</button> : null}
+        {trial && !gpuReady ? <AlertTriangle size={16} data-motion-fallback data-tip={tr('ui.stellarMotion.001')} aria-label={tr('ui.stellarMotion.001')} /> : null}
       </div>
       <span className="app-stellar-map-selected" aria-live="polite" aria-atomic="true">
         {selected ? <><strong>{bodyName(selected)}</strong><span className="app-dim">
@@ -280,7 +303,9 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
       </span>
     </div>
     <div className="app-stellar-map-frame">
-      <StellarScene system={system} view={session} selectedId={session.selectedId} />
+      <StellarScene system={system} view={session} selectedId={session.selectedId} animatedStars={gpuReady} />
+      {trial ? <StellarMotionLayer system={system} view={session} selectedId={session.selectedId} svg={svgRef}
+        radiiOf={bodies => displayRadii(bodies)} unit={metrics.unit} onReady={setGpuReady} /> : null}
       <svg ref={svgRef} className={`app-stellar-map-svg${panning ? ' is-panning' : ''}`}
         viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`} preserveAspectRatio="xMidYMid meet"
         role="group" aria-label={tr('ui.stellar.054')} tabIndex={0} onKeyDown={keyDown}
@@ -289,17 +314,20 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
         onClickCapture={event => {
           if (handledPointerClick.current) { event.preventDefault(); event.stopPropagation() }
         }}>
-        {system.bodies.map(body => {
+        {shownBodies.map(body => {
           const active = body.planetId === session.selectedId
           const status = bodyStates?.[body.planetId]
           const statusText = status?.developed ? tr('ui.stellar.016') : status && status.survey > 0 ? tr(['ui.stellar.055', 'ui.planet.059', 'ui.planet.060', 'ui.planet.061'][status.survey] ?? 'ui.stellar.055') : tr('ui.stellar.055')
-          const radius = displayRadius(body)
+          const radius = shownRadii[body.planetId]!
           return <g key={body.planetId} className={`app-map-node app-stellar-map-body${active ? ' is-selected' : ''}${body.kind === 'gas' ? ' is-gas' : ''}`}
-            transform={`translate(${body.x} ${body.y})`} data-stellar-body={body.planetId}
+            transform={`translate(${body.x} ${body.y})`} data-stellar-body={body.planetId} data-stellar-radius={radius}
             role="button" tabIndex={0} aria-label={`${bodyName(body)}, ${tr(STELLAR_PLANET_KIND_IDS[body.kind])}, ${statusText}`}
             aria-pressed={active} data-tip={`${bodyName(body)} · ${tr(STELLAR_PLANET_KIND_IDS[body.kind])} · ${statusText}`}
+            onPointerEnter={() => { motion.holds.add('hover'); motion.holdUntil = performance.now() + 300 }}
+            onPointerLeave={() => { motion.holds.delete('hover') }}
+            onFocus={() => { motion.holds.add('focus') }} onBlur={() => { motion.holds.delete('focus') }}
             onClick={() => { if (!handledPointerClick.current) select(body.planetId) }}>
-            <g transform={`scale(${radius / 10})`}><StellarPlanetArt kind={body.kind} /></g>
+            <g data-stellar-art-scale transform={`scale(${radius / 10})`} style={{ visibility: gpuReady && stellarDynamicBody(system, body) ? 'hidden' : undefined }}><StellarPlanetArt kind={body.kind} /></g>
             {status?.developed ? <path className="app-stellar-map-state is-developed" transform={`translate(${radius - 10} ${10 - radius})`} d="M12-12l3 3 5-6" />
               : status && status.survey >= 2 ? <path className="app-stellar-map-state is-surveyed" transform={`translate(${radius - 10} ${10 - radius})`} d="M14-16v6m-3-3h6" /> : null}
             <circle className="app-stellar-map-selection" r={Math.max(radius + 5, metrics.hit * 0.65)} />
@@ -307,7 +335,7 @@ function StellarMapViewport({ system, selectedId, onSelect, bodyStates }: Stella
           </g>
         })}
         <g className="app-stellar-map-labels" aria-hidden="true">
-          {labels.map(label => <text key={label.planetId} x={label.x + label.width / 2} y={label.y + label.height * 0.75}
+          {labels.map(label => <text key={label.planetId} data-stellar-label={label.planetId} x={label.x + label.width / 2} y={label.y + label.height * 0.75}
             textAnchor="middle" className={`app-map-label${label.planetId === session.selectedId ? ' is-sel' : ''}`}
             style={{ fontSize: 13 * metrics.unit }}>#{system.bodies.find(body => body.planetId === label.planetId)!.ordinal}</text>)}
         </g>

@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **464** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7768** KB · **59742** 行
-- 状态分布：**未标注** 248 · **已确认/已实现** 154 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
-- 孤儿文档（0 引用）**82** 份 · 状态未标注 **248** 份
+- 文档总数 **470** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7806** KB · **60016** 行
+- 状态分布：**未标注** 250 · **已确认/已实现** 158 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
+- 孤儿文档（0 引用）**87** 份 · 状态未标注 **250** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
-- 三、现行设计稿（design）：**294** 份
+- 三、现行设计稿（design）：**300** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -33,8 +33,8 @@
 | `docs/architecture.md` | 架构文档 | 未标注 | — | 28 KB / 254 行 | 32 / 2 |
 | `docs/catalog.md` | 文档目录（指路 · 开工先读） | 未标注 | — | 7 KB / 65 行 | 34 / 3 |
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 9 KB / 125 行 | 2 / 2 |
-| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 302 KB / 312 行 | 17 / 3 |
-| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 93 KB / 919 行 | 95 / 5 |
+| `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 303 KB / 314 行 | 17 / 3 |
+| `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 94 KB / 924 行 | 95 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 518 KB / 1094 行 | 226 / 22 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 72 KB / 447 行 | 379 / 28 |
 
@@ -56,21 +56,27 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 294 份
+## 三、现行设计稿（design） —— 300 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/pixel-planets-study-20261010.md` | PixelPlanets原实现研究与高分辨率对照 | 未标注（研究完成） | 2026-10-10 | 8 KB / 51 行 | 0 / 0 |
+| `docs/design/stellar-area-size-20261010.md` | 星图天体大小与地表总面积关联 | 已确认/已实现（已实现并自检） | 2026-10-10 | 5 KB / 34 行 | 0 / 0 |
+| `docs/design/stellar-material-port-20261010.md` | 星系原生材质移植 | 已确认/已实现（已实现并自检） | 2026-10-10 | 6 KB / 45 行 | 0 / 0 |
 | `docs/design/acid-burster-charge-20261009.md` | 酸液爆虫冲锋倍率下调 | 已确认/已实现（已实现） | 2026-10-09 | 2 KB / 31 行 | 0 / 0 |
 | `docs/design/alien-invasion-loot-20261009.md` | 异形入侵掉落装备设计 | 已确认/已实现（已实现） | 2026-10-09 | 16 KB / 175 行 | 1 / 0 |
 | `docs/design/boost-copy-ammo-warning-20261009.md` | 加速剂文案与战前弹药预警收口 | 已确认/已实现（已合入主树） | 2026-10-09 | 10 KB / 68 行 | 1 / 0 |
-| `docs/design/drone-launch-laser-calibration-20261009.md` | 无人机出击加速与激光校准 | 已确认/已实现（完整补充方案已实现并自测完成） | 2026-10-09 | 8 KB / 69 行 | 0 / 0 |
+| `docs/design/drone-hull-start-fix-20261009.md` | 无人机舰固有启动时间补齐 | 未标注（按船长设定修正完成） | 2026-10-09 | 3 KB / 28 行 | 0 / 0 |
+| `docs/design/drone-launch-laser-calibration-20261009.md` | 无人机出击加速与激光校准 | 已确认/已实现（完整补充方案已实现并自测完成） | 2026-10-09 | 8 KB / 69 行 | 1 / 0 |
 | `docs/design/drone-start-damage-range-20261009.md` | 无人机启动时间、伤害飘字与装配靶场 | 已确认/已实现（已实现） | 2026-10-09 | 10 KB / 82 行 | 0 / 0 |
 | `docs/design/faction-drone-permanent-blueprints-20261009.md` | 势力无人机永久蓝图报价 | 已确认/已实现（五种完整方案已实现并自测完成） | 2026-10-09 | 10 KB / 114 行 | 0 / 0 |
 | `docs/design/pressure-chamber-cycle-fix-20261009.md` | 增压加速腔误接推进周期 | 未标注（已修正） | 2026-10-09 | 4 KB / 37 行 | 0 / 0 |
 | `docs/design/push-regression-contract-20261009.md` | 推送前回归契约修正 | 已确认/已实现（修正已合入） | 2026-10-09 | 4 KB / 31 行 | 0 / 0 |
 | `docs/design/raider-fragment-ammo-audit-20261009.md` | 掠袭破片炮弹药显示检查 | 未标注（已修复并合入主树） | 2026-10-09 | 5 KB / 47 行 | 0 / 0 |
 | `docs/design/ship-cpu-audit-20261009.md` | 全船CPU预算检查 | 未标注（四舰CPU已调整并完成自测） | 2026-10-09 | 7 KB / 81 行 | 0 / 0 |
+| `docs/design/stellar-dynamic-light-motion-20261009.md` | 星系天体动态光照与运动 | 已确认/已实现（单星岩质/海洋试作已实现并自检） | 2026-10-09 | 8 KB / 57 行 | 0 / 0 |
 | `docs/design/stellar-map-ui-20261009.md` | 星系星图UI优化：探索指挥台 | 已确认/已实现（布局已实现、自测通过） | 2026-10-09 | 15 KB / 103 行 | 1 / 0 |
+| `docs/design/stellar-motion-full-20261009.md` | 星系动态表现完整接入 | 已确认/已实现（已实现并自检） | 2026-10-09 | 6 KB / 44 行 | 0 / 0 |
 | `docs/design/stellar-planet-samples-20261009.md` | 星系天体位图样片 | 已确认/已实现（样片已完成） | 2026-10-09 | 5 KB / 40 行 | 1 / 0 |
 | `docs/design/stellar-scene-20261009.md` | 星系中央场景重绘 | 已确认/已实现（已实现） | 2026-10-09 | 5 KB / 37 行 | 0 / 0 |
 | `docs/design/stellar-ui-finish-20261009.md` | 星系探索界面收尾 | 已确认/已实现（已实现） | 2026-10-09 | 4 KB / 39 行 | 0 / 0 |
@@ -405,8 +411,8 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 26 / 18 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注（仅登记） | — | 13 KB / 204 行 | 8 / 10 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 22 KB / 135 行 | 19 / 7 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注（仅登记） | — | 13 KB / 210 行 | 8 / 10 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 22 KB / 137 行 | 19 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -534,18 +540,23 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 61 / 14 |
 
-## 附：孤儿文档（0 引用，82 份）
+## 附：孤儿文档（0 引用，87 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
+- `docs/design/pixel-planets-study-20261010.md`（2026-10-10 · 8 KB）—— PixelPlanets原实现研究与高分辨率对照
+- `docs/design/stellar-area-size-20261010.md`（2026-10-10 · 5 KB）—— 星图天体大小与地表总面积关联
+- `docs/design/stellar-material-port-20261010.md`（2026-10-10 · 6 KB）—— 星系原生材质移植
 - `docs/design/acid-burster-charge-20261009.md`（2026-10-09 · 2 KB）—— 酸液爆虫冲锋倍率下调
-- `docs/design/drone-launch-laser-calibration-20261009.md`（2026-10-09 · 8 KB）—— 无人机出击加速与激光校准
+- `docs/design/drone-hull-start-fix-20261009.md`（2026-10-09 · 3 KB）—— 无人机舰固有启动时间补齐
 - `docs/design/drone-start-damage-range-20261009.md`（2026-10-09 · 10 KB）—— 无人机启动时间、伤害飘字与装配靶场
 - `docs/design/faction-drone-permanent-blueprints-20261009.md`（2026-10-09 · 10 KB）—— 势力无人机永久蓝图报价
 - `docs/design/pressure-chamber-cycle-fix-20261009.md`（2026-10-09 · 4 KB）—— 增压加速腔误接推进周期
 - `docs/design/push-regression-contract-20261009.md`（2026-10-09 · 4 KB）—— 推送前回归契约修正
 - `docs/design/raider-fragment-ammo-audit-20261009.md`（2026-10-09 · 5 KB）—— 掠袭破片炮弹药显示检查
 - `docs/design/ship-cpu-audit-20261009.md`（2026-10-09 · 7 KB）—— 全船CPU预算检查
+- `docs/design/stellar-dynamic-light-motion-20261009.md`（2026-10-09 · 8 KB）—— 星系天体动态光照与运动
+- `docs/design/stellar-motion-full-20261009.md`（2026-10-09 · 6 KB）—— 星系动态表现完整接入
 - `docs/design/stellar-scene-20261009.md`（2026-10-09 · 5 KB）—— 星系中央场景重绘
 - `docs/design/stellar-ui-finish-20261009.md`（2026-10-09 · 4 KB）—— 星系探索界面收尾
 - `docs/design/synaptic-accelerant-audit-20261009.md`（2026-10-09 · 21 KB）—— 突触加速剂玩家报障检查
@@ -621,8 +632,10 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（248 份，待补一行 `状态：…`）
+## 附：状态未标注（250 份，待补一行 `状态：…`）
 
+- `docs/design/pixel-planets-study-20261010.md`（2026-10-10）—— PixelPlanets原实现研究与高分辨率对照
+- `docs/design/drone-hull-start-fix-20261009.md`（2026-10-09）—— 无人机舰固有启动时间补齐
 - `docs/design/pressure-chamber-cycle-fix-20261009.md`（2026-10-09）—— 增压加速腔误接推进周期
 - `docs/design/raider-fragment-ammo-audit-20261009.md`（2026-10-09）—— 掠袭破片炮弹药显示检查
 - `docs/design/ship-cpu-audit-20261009.md`（2026-10-09）—— 全船CPU预算检查

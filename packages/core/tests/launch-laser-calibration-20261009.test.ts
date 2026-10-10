@@ -21,6 +21,7 @@ import ships from '../../data/src/static/ships.json'
 import modules from '../../data/src/static/modules.json'
 
 const ctx = buildSimContext(), root = new URL('../../../', import.meta.url)
+const droneHulls = ['sh-swarm', 'sh-sentinel', 'sh-wh-e-destroyer', 'sh-wh-e-carrier']
 const cases = [
   { id: 'mod-drone-launch-1', cut: .3, cpu: 8, price: 18000, book: 36000, source: 'bp-drone-tac-1' },
   { id: 'mod-drone-launch-2', cut: .35, cpu: 20, price: 455000, book: 1137500, source: 'bp-drone-tac-2' },
@@ -91,14 +92,19 @@ describe('出击加速、激光校准与协处理器5%', () => {
     expect(droneLaunchGapMsOf(Array(30).fill(h), .3)).toBe(10)
   })
 
-  it('仅巨构航母固有30%，首次500→350；装备叠乘，不改变攻击装填/伤害', () => {
-    const base = world('sh-wh-e-carrier'), after = world('sh-wh-e-carrier', ['mod-drone-launch-3'])
+  it.each(droneHulls)('%s无人机主力舰固有30%，首次500→350；装备叠乘，不改变攻击装填/伤害', id => {
+    const base = world(id), after = world(id, ['mod-drone-launch-3'])
     expect(base.spec.droneLaunchGapMs).toBe(350)
     expect(after.spec.droneLaunchGapMs).toBe(210)
     expect(after.spec.droneReviveGapMs).toBe(500)
     expect(after.spec.weapons.filter(w => w.src === 'drone')).toEqual(base.spec.weapons.filter(w => w.src === 'drone'))
-    for (const ship of ctx.ships.values()) if (ship.id !== 'sh-wh-e-carrier') expect(ship.droneLaunchCutPct).toBeUndefined()
-    expect(world('sh-wh-e-destroyer').spec.droneLaunchGapMs).toBe(500)
+    expect(ctx.ships.get(id)!.droneLaunchCutPct).toBe(.3)
+  })
+  it('不是有机舱就获得特性，非无人机主力舰保持原启动时间', () => {
+    for (const ship of ctx.ships.values()) if (!droneHulls.includes(ship.id)) {
+      expect(ship.droneLaunchCutPct, ship.id).toBeUndefined()
+      expect(world(ship.id).spec.droneLaunchGapMs, ship.id).toBe(500)
+    }
   })
 
   it('首次/复活混合队列使用各自间隔，重复重排不延长余额，保存往返保持', () => {
@@ -194,10 +200,10 @@ describe('出击加速、激光校准与协处理器5%', () => {
     expect(droneCpuUsed(w.state.fleet[w.uid]!.droneLoad, ctx)).toBe(12)
   })
 
-  it('静态船表仅航母新增特性；旧装备仅巨构代价改5%，其余保持', () => {
+  it('静态船表仅四艘无人机主力舰新增启动特性；旧装备仅巨构代价改5%，其余保持', () => {
     const old = (path: string) => JSON.parse(execFileSync('git', ['show', `26538327:${path}`], { cwd: root, encoding: 'utf8', windowsHide: true }))
     const expectedShips = old('packages/data/src/static/ships.json')
-    ;(Object.values(expectedShips.groups).flat().find((ship: any) => ship.id === 'sh-wh-e-carrier') as any).droneLaunchCutPct = .3
+    for (const id of droneHulls) (Object.values(expectedShips.groups).flat().find((ship: any) => ship.id === id) as any).droneLaunchCutPct = .3
     expect(ships).toEqual(expectedShips)
     const expectedModules = old('packages/data/src/static/modules.json')
     ;(Object.values(expectedModules.groups).flat().find((mod: any) => mod.id === 'mod-wh-e-cpu') as any).reloadPenaltyPct = .05
@@ -216,7 +222,11 @@ describe('出击加速、激光校准与协处理器5%', () => {
       fmt: String, shipRoleText: () => '', shipCategoryKeyOf: () => '', shipTierText: () => '', DMG_LABEL: {}, shipSlotsOf: (ship: any) => ship.slots,
       pct: (v: number) => `${Math.round(v * 100)}%`, resistsText: () => '', shipCategoryLabelOf: () => '', slotListText: () => '' }
     runInNewContext(ts.transpileModule(fn.getText(source), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React }, fileName: 'shipInfo.tsx' }).outputText, scope)
-    expect(scope.exports.shipInfoLines(ctx.ships.get('sh-wh-e-carrier')).some(row => row.v.includes('无人机启动时间 −30%'))).toBe(true)
+    for (const id of droneHulls) {
+      const rows = scope.exports.shipInfoLines(ctx.ships.get(id))
+      expect(rows.filter(row => row.v.includes('无人机启动时间 −30%')), id).toHaveLength(1)
+      expect(rows.some(row => row.v.includes('首次出击')), id).toBe(false)
+    }
     expect(deferredL10nIssues(L10N, readFileSync(new URL('docs/l10n-pending.md', root), 'utf8'))).toEqual([])
     for (const row of cases) expect(buildSimContext('en').modules.get(row.id)!.name).toBe(ctx.modules.get(row.id)!.name)
   })

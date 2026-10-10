@@ -6,6 +6,8 @@ import { Fragment } from 'react'
 import { StellarPlanetArt, STELLAR_PLANET_KIND_IDS } from './fixtures/stellar-art'
 import ts from 'typescript'
 import { describe, expect, it, vi } from 'vitest'
+import * as motion from '../../../apps/desktop/src/renderer/src/panels/stellarMotion'
+import { stellarMapBodyRadii } from '../../../apps/desktop/src/renderer/src/panels/stellarBodySize'
 import {
   beginStellarGesture, clampStellarView, inverseMapMatrix, locateStellarView, mapPointThrough,
   moveStellarGesture, nextStellarBodyId, reframeMapInverse, stellarBodyAt, stellarHitRadius, stellarOrdinalLabels, stellarViewBox, zoomStellarView,
@@ -227,11 +229,14 @@ function componentHarness() {
       if (name === 'react') return hooks
       if (name === 'react/jsx-runtime') return { jsx, jsxs, Fragment }
       if (name === '../i18n/locale') return { tr: (id: string) => id }
-      if (name === 'lucide-react') return { ZoomIn: 'zoom-in', ZoomOut: 'zoom-out' }
+      if (name === 'lucide-react') return { ZoomIn: 'zoom-in', ZoomOut: 'zoom-out', Pause: 'pause', Play: 'play', AlertTriangle: 'alert' }
       if (name === '../ui/Glyphs') return { Glyph: 'glyph' }
       if (name === '../ui/stellarArt') return { StellarPlanetArt, STELLAR_PLANET_KIND_IDS }
-      if (name === '../ui/stellarAssets') return { stellarDisplayRadius: (kind: string, unit: number) => Math.max(kind === 'gas' ? 22 : 18, (kind === 'gas' ? 18 : 14) * unit), STELLAR_PLANET_ASSETS: { gas: { span: 800 / 256 } } }
+      if (name === '../ui/stellarAssets') return { STELLAR_PLANET_ASSETS: { gas: { span: 800 / 256 } } }
+      if (name === './stellarBodySize') return { stellarMapBodyRadii }
       if (name === './StellarScene') return { StellarScene: 'stellar-scene' }
+      if (name === './StellarMotionLayer') return { StellarMotionLayer: 'motion-layer' }
+      if (name === './stellarMotion') return motion
       if (name === './stellarMapView') return { beginStellarGesture, clampStellarView, inverseMapMatrix, locateStellarView,
         mapInverseScale: (inv: MapMatrix) => stellarHitRadius(inv) / 20, mapPointThrough, moveStellarGesture, nextStellarBodyId,
         reframeMapInverse, stellarBodyAt, stellarHitRadius, stellarOrdinalLabels, stellarViewBox, zoomStellarView,
@@ -242,6 +247,7 @@ function componentHarness() {
     ResizeObserver: class { observe() {} disconnect() {} },
     MutationObserver: class { observe() {} disconnect() {} },
     window: { addEventListener() {}, removeEventListener() {} },
+    performance: { now: () => 1000 },
   }
   runInNewContext(ts.transpileModule(source, { compilerOptions: {
     module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022,
@@ -413,6 +419,47 @@ describe('真组件事件与会话记忆', () => {
     const second = host.find(node => node.props['data-stellar-body'] === 'close-b')
     const secondArt = (Array.isArray(second.props.children) ? second.props.children : [second.props.children]).find(node => node?.type === 'g')
     expect(secondArt.props.transform).toBe('scale(0.38)')
+  })
+  it('地表尺寸接入静态图、动态图层和选中圈，刷新不重置视口', () => {
+    const host = componentHarness(), system = makeSystem('area-wire'), onSelect = vi.fn()
+    system.bodies[1]!.kind = 'rocky'
+    const states = { 'area-wire-a': { survey: 1, developed: false, size: 4 }, 'area-wire-b': { survey: 1, developed: false, size: 6 } }
+    host.render({ system, onSelect, bodyStates: states })
+    const first = host.find(node => node.props['data-stellar-body'] === 'area-wire-a')
+    const second = host.find(node => node.props['data-stellar-body'] === 'area-wire-b')
+    expect(first.props['data-stellar-radius']).toBeCloseTo(14.4)
+    expect(second.props['data-stellar-radius']).toBeCloseTo(21.6)
+    const layer = host.find(node => node.type === 'motion-layer')
+    const dynamicRadii = layer.props.radiiOf(system.bodies)
+    expect(dynamicRadii['area-wire-a']).toBeCloseTo(14.4)
+    expect(dynamicRadii['area-wire-b']).toBeCloseTo(21.6)
+    for (const node of [first, second]) {
+      const children = node.props.children as TestNode[]
+      expect(children.find(child => child?.props['data-stellar-art-scale'])?.props.transform).toBe(`scale(${node.props['data-stellar-radius'] / 10})`)
+      expect(children.find(child => child?.props.className === 'app-stellar-map-selection')?.props.r).toBe(node.props['data-stellar-radius'] + 5)
+    }
+    host.clickTool('ui.stellar.050'); host.render()
+    const before = { ...host.viewBox() }
+    host.render({ system, onSelect, bodyStates: { ...states, 'area-wire-a': { ...states['area-wire-a'], survey: 3, developed: true } } })
+    expect(host.viewBox()).toEqual(before)
+    expect(host.find(node => node.props['data-stellar-body'] === 'area-wire-a').props['data-stellar-radius']).toBeCloseTo(14.4)
+  })
+  it('公转后点击与定位取显示坐标，按下期间冻结目标、松手后释放', () => {
+    const host = componentHarness(), system = makeSystem('moving-hit'), onSelect = vi.fn()
+    const clock = motion.stellarMotionSession(system.id)
+    clock.elapsedMs = 45000
+    const body = motion.stellarMotionBodies(system as any, clock.elapsedMs)[0]!
+    host.render({ system, onSelect })
+    host.pointer('onPointerDown', 1, body.x, body.y)
+    expect(clock.holds.has('pointer')).toBe(true)
+    host.pointer('onPointerUp', 1, body.x, body.y)
+    host.render()
+    expect(clock.holds.has('pointer')).toBe(false)
+    expect(onSelect).toHaveBeenCalledWith(body.planetId)
+    host.clickTool('ui.stellar.050'); host.render()
+    host.clickTool('ui.stellar.053'); host.render()
+    expect(host.viewBox().x + host.viewBox().width / 2).toBeCloseTo(body.x)
+    clock.elapsedMs = 0
   })
   it.each(['single', 'binary', 'white-dwarf', 'neutron', 'black-hole'])('星系图示支持 %s 且不改写恒星坐标', kind => {
     const host = componentHarness(), system = { ...makeSystem(kind), kind }

@@ -49,6 +49,20 @@ describe('静态星系场景与素材锚点', () => {
     expect(ctx.rotate).toHaveBeenCalledWith(-.35)
     expect(ctx.globalAlpha).toBe(1)
   })
+  it('无恒星只压暗场景底色，动态恒星由独立层绘制不重复烘焙', () => {
+    const rogue = canvas()
+    drawStellarScene(rogue,{...world,kind:'rogue',stars:[],starClass:'none'},{zoom:1,pan:{x:0,y:0}},undefined,800,300,{...colors,background:'rgb(100 120 140)'})
+    expect(rogue.fillStyle).toBe(colors.text)
+    const seen:Array<string>=[]
+    const dynamic=canvas()
+    Object.defineProperty(dynamic,'fillStyle',{set:value=>seen.push(value)})
+    drawStellarScene(dynamic,{...world,kind:'rogue',stars:[],starClass:'none'},{zoom:1,pan:{x:0,y:0}},undefined,800,300,{...colors,background:'rgb(100 120 140)'})
+    expect(seen[0]).toBe('rgb(30 36 42)')
+    const background=canvas()
+    drawStellarScene(background,world,{zoom:1,pan:{x:0,y:0}},undefined,800,300,colors,undefined,undefined,false)
+    expect(background.translate).not.toHaveBeenCalledWith(475,350)
+    expect(background.translate).not.toHaveBeenCalledWith(525,350)
+  })
   it('七类天体与恒星PNG引用均落本地，指纹/尺寸/本体比例对应真实导出', () => {
     const manifest = JSON.parse(readFileSync(new URL('apps/desktop/src/renderer/src/assets/stellar/manifest.json', root), 'utf8'))
     expect(manifest.samples).toHaveLength(12)

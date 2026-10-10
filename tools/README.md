@@ -5,6 +5,10 @@
 - `node tools/pixel-planets-samples.cjs [本机EXE绝对路径] [不存在的独立输出目录绝对路径]`：核验程序SHA256，用原生PixelPlanets场景/shader渲染三类透明PNG；末尾`--scene-set`导出七类星球/四色恒星/黑洞共12张，默认样片不变。默认输出`docs/design/assets/stellar-samples-20261009`，拒绝覆盖，游戏运行不依赖此工具。
 - `pixel-planets-export.gd`：通过本机程序`--no-window --script`执行，固定种子/颜色/光源/冻结时间，RGBA透明视口导出，不手写球体算法。
 - `python tools/pixel-planets-review.py <样片目录> [复现目录]`：已有Pillow/系统字体制作深浅底及小尺寸审查板，核验透明度/留白/像素复现；不安装依赖、不读写个人档。
+- `node tools/pixel-planets-study.cjs <不存在的本树tools/_ui-artifacts输出目录绝对路径>`：用指纹一致的本机原程序导出GUI全部12预设的128/1024分辨率对照，共26张；记录各层实际pixels/seed/time/尺寸。调用`pixel-planets-study-export.gd`，JSON种子转整数后传入原接口，不覆盖素材或个人档。
+- `python tools/pixel-planets-study-review.py <研究输出目录> [独立复现目录]`：核验RGBA/层尺寸/逐像素复现，用同一缩放方式生成总览和恒星/海洋抖动对照板。依赖已有Pillow；只处理本树忽略目录，原生导出读数不等于游戏帧率或设备观感验收。
+- `node tools/pixel-planets-materials.cjs export <不存在的本树tools/_ui-artifacts输出JSON绝对路径>`：原生透明视口完成绘制后导出16份shader、12预设完整层序/尺度/配色/参数；随后`generate <输出JSON绝对路径>`生成`ui/stellarPixelMaterials.ts`。Godot/WebGL语法适配与光照入口转换在工具内维护，生成文件不手改；游戏运行不依赖EXE、上游仓库或外部服务。
+- `node tools/stellar-material-check.cjs`：独立临时配置/隐藏Electron检查真实WebGL原层编译、七类行星与恒星/黑洞非空和时间变化、光向/地貌隔离、近远/无星亮度。输出`tools/_ui-artifacts/stellar-material-20261010`，像素读数不是船长观感或实体手机性能验收；不加载个人档。`shaderCode()`供已有原生专项复用同一源，无生产测试入口。
 - 来源/许可和参数见`docs/design/assets/stellar-samples-20261009/README.md`；样片未接入游戏，风格与完整星图方案待船长审查。
 
 ## 装配靶场验收（2026-10-09 · v0.1.0 / 档v31）
@@ -14,8 +18,11 @@
 
 ## 星系探索HUD取证（2026-10-09 · v0.1.0 / 档v31）
 
+- `node tools/stellar-native-check.cjs --dynamic-only --case=modern-zh-desktop`：种子3实际动态场景；七类材质/恒星/黑洞真实shader像素检查，近/远/无光源亮度递减、光向与自转分离、真实拖动第一帧投影误差、公转/暂停/减少动态/上下文丢失恢复/地表返回和原坐标守恒。手机可用`--case=classic-en-mobile`；加`--no-gpu`检查降级，深浅主题截图不作观感或实体手机性能结论。
+- 上述动态专项同时核对公开4/5/6地表规格的本体半径、动态图形/PNG缩放、选中圈与点击下限，及实际圆盘像素面积比例（小尺寸边缘采样允许15%误差）；`--no-gpu`仍核对静态面积比例，不读取隐藏资源或个人档。
+
 - `node tools/stellar-native-check.cjs`：先构建。两布局×中英文×桌面/手机旋转，真实制造/搜索/暂停/继续/地图手势/地表往返/IPC保存与运行错误检查；补取消/丢弃确认、六套主题底色、确认焦点约束及地表返回焦点/视口/选择检查。`--case=modern-zh-desktop`可单场复跑。
-- `node tools/stellar-native-check.cjs --scene-only --locale=zh`：六类合成星系×两布局×桌面/手机，深浅主题/减少动态、PNG解码/恒星加载、Canvas非空像素及与SVG投影一致检查，缩放后重复核对；读数与截图不是观感验收。可加`--case`单场复跑。
+- `node tools/stellar-native-check.cjs --scene-only --locale=zh`：六类合成星系×两布局×桌面/手机，深浅主题/减少动态、PNG兼容资产解码/动态加载、Canvas非空像素与SVG投影一致、双星真实运动保持间距和无恒星底色暗化；缩放后重复核对，可加`--case`或`--kind`单场复跑。
 - `--stellar-only`仅跑星系制造/搜索/地图/地表往返/保存，跳过无关战损前置；`--kind=neutron`配`--scene-only --case=...`只复测指定公开类型。隐藏窗口触控送达与启动通讯可能波动，工具核对导航实际落页后最多重试3次，不改玩家路径。
 - 仅隐藏自建Electron、独立合成档和临时userData、随机回环端口；产物`tools/_ui-artifacts/stellar/`，不是观感验收或实体手机性能结论。
 

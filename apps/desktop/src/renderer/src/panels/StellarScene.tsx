@@ -3,12 +3,13 @@ import type { StellarSystem } from '@whale/core'
 import type { StellarMapView } from './stellarMapView'
 import { drawStellarScene } from './stellarSceneDraw'
 import { stellarStarAsset, STELLAR_ASSET_LICENSE_URL } from '../ui/stellarAssets'
+import { stellarMotionStars, stellarMotionSession } from './stellarMotion'
 import starfield from '../assets/space/starfield-06.jpg'
 
-export function StellarScene({ system, view, selectedId }: { system: StellarSystem; view: StellarMapView; selectedId?: string }) {
+export function StellarScene({ system, view, selectedId, animatedStars = false }: { system: StellarSystem; view: StellarMapView; selectedId?: string; animatedStars?: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null)
-  const current = useRef({ system, view, selectedId })
-  current.current = { system, view, selectedId }
+  const current = useRef({ system, view, selectedId, animatedStars })
+  current.current = { system, view, selectedId, animatedStars }
   const repaint = useRef<() => void>(() => {})
   useLayoutEffect(() => {
     const element = canvas.current
@@ -40,23 +41,25 @@ export function StellarScene({ system, view, selectedId }: { system: StellarSyst
       context.setTransform(ratio, 0, 0, ratio, 0, 0)
       const style = getComputedStyle(element)
       const color = (token: string) => `rgb(${style.getPropertyValue(token).trim()})`
-      const { system: value, view: viewport, selectedId: selected } = current.current
+      const { system: value, view: viewport, selectedId: selected, animatedStars: dynamic } = current.current
       const asset = stellarStarAsset(value)
       const image = asset ? request(asset.url) : undefined
-      drawStellarScene(context, value, viewport, selected, width, height, {
+      const rendered = dynamic ? value : { ...value, stars: stellarMotionStars(value, stellarMotionSession(value.id).elapsedMs) }
+      drawStellarScene(context, rendered, viewport, selected, width, height, {
         background: color('--wui-bg-deep'), orbit: color('--wui-map-minor'), accent: color('--wui-accent'), text: color('--wui-text'),
         star: color(value.starClass === 'red' || value.starClass === 'orange' ? '--wui-danger-map' : value.starClass === 'blue' || value.starClass === 'neutron' ? '--wui-accent' : '--wui-gold'),
-      }, request(starfield), image && asset ? { image, span: asset.span } : undefined)
+      }, request(starfield), image && asset ? { image, span: asset.span } : undefined, !dynamic)
       element.dataset.sceneReady = 'true'
-      element.dataset.starReady = !asset ? 'none' : image ? 'loaded' : failed.has(asset.url) ? 'fallback' : 'loading'
+      element.dataset.starReady = dynamic ? 'dynamic' : !asset ? 'none' : image ? 'loaded' : failed.has(asset.url) ? 'fallback' : 'loading'
+      element.dataset.renderedView = `${viewport.zoom},${viewport.pan.x},${viewport.pan.y}`
     }
-    repaint.current = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(paint) }
+    repaint.current = () => { cancelAnimationFrame(frame); paint() }
     repaint.current()
     const sizes = new ResizeObserver(() => repaint.current()); sizes.observe(element)
     const themes = new MutationObserver(() => repaint.current())
     themes.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'style'] })
     return () => { alive = false; cancelAnimationFrame(frame); sizes.disconnect(); themes.disconnect(); for (const image of images.values()) { image.onload = null; image.onerror = null } }
   }, [])
-  useLayoutEffect(() => { repaint.current() }, [system, view.zoom, view.pan.x, view.pan.y, selectedId])
+  useLayoutEffect(() => { repaint.current() }, [system, view.zoom, view.pan.x, view.pan.y, selectedId, animatedStars])
   return <canvas className="app-stellar-scene" ref={canvas} aria-hidden="true" data-asset-license={STELLAR_ASSET_LICENSE_URL} />
 }

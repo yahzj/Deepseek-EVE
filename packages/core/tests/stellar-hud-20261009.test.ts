@@ -7,6 +7,7 @@ import * as core from '../src/index'
 import { buildSimContext, L10N, l10nEntryText } from '@whale/data'
 import { injectStellarReadyTestState } from '../../../tools/stellar-search-fixture'
 import { StellarPlanetArt, StellarPlanetPreview, STELLAR_KIND_IDS, STELLAR_PLANET_KIND_IDS } from './fixtures/stellar-art'
+import { stellarDynamicBody } from '../../../apps/desktop/src/renderer/src/panels/stellarMotion'
 
 const root = new URL('../../../', import.meta.url)
 type Node = { type: any; props: Record<string, any> }
@@ -28,6 +29,8 @@ function harness(locale: 'zh' | 'en' = 'zh', empty = false) {
     if (id === '../i18n/fmt') return { fmtDuration: String, fmtInt: String }
     if (id === '../ui/planetText') return { pt: (key: string) => tr(core.PLANET_TEXT_IDS[key] ?? key) }
     if (id === '../ui/stellarArt') return { StellarPlanetArt, StellarPlanetPreview, STELLAR_KIND_IDS, STELLAR_PLANET_KIND_IDS }
+    if (id === './stellarMotion') return { stellarDynamicBody }
+    if (id === '../ui/StellarDynamicPreview') return { StellarDynamicPreview: 'dynamic-preview' }
     if (id === './StellarMap') return { StellarMap: 'stellar-map' }
     if (id === './PlanetaryPanel') return { PlanetaryPanel: 'planetary-panel' }
     if (id.endsWith('.css')) return {}
@@ -75,6 +78,22 @@ describe('星系星图探索指挥台', () => {
     expect(core.stellarPlanetDeveloped(prepared)).toBe(false)
     expect(core.stellarPlanetDeveloped(undefined)).toBe(false)
   })
+  it('首次发现的公开size送往星图，不发送隐藏地表；建筑和勘探变化不改面积', () => {
+    const h = harness(), map = h.find(node => node.type === 'stellar-map')
+    for (const body of map.props.system.bodies) {
+      const planet = h.state.planetary!.planets[body.planetId]!
+      expect(map.props.bodyStates[body.planetId]).toEqual({ survey: planet.survey, developed: core.stellarPlanetDeveloped(planet), size: core.planetSurveyView(planet, h.ctx.planetary!)?.size })
+    }
+    const body = map.props.system.bodies[0], planet = h.state.planetary!.planets[body.planetId]!
+    const size = planet.size
+    planet.survey = 1; h.render()
+    expect(h.find(node => node.type === 'stellar-map').props.bodyStates[body.planetId].size).toBe(size)
+    planet.survey = 3
+    planet.cells[0]!.building = { id: 'base', status: 'ready', powered: true, staffed: true }; h.render()
+    expect(h.find(node => node.type === 'stellar-map').props.bodyStates[body.planetId].size).toBe(size)
+    delete planet.cells[0]!.building; h.render()
+    expect(h.find(node => node.type === 'stellar-map').props.bodyStates[body.planetId].size).toBe(size)
+  })
   it.each(['zh', 'en'] as const)('%s任务、详情分区与原操作保留，新增词条待译回退', locale => {
     const h = harness(locale)
     for (const id of ['ui.stellarHud.001', 'ui.stellarHud.002', 'ui.stellarHud.003']) {
@@ -91,8 +110,9 @@ describe('星系星图探索指挥台', () => {
     const body = map.props.system.bodies.find((entry: any) => entry.planetId === 'system-v1-0-p2')
     expect(body).toBeDefined()
     map.props.onSelect(body.planetId); h.render()
-    const preview = h.find(node => node.type === StellarPlanetPreview)
-    expect(preview.props).toEqual({ kind: body.kind })
+    const preview = h.find(node => node.type === 'dynamic-preview')
+    expect(preview.props.system.id).toBe(map.props.system.id)
+    expect(preview.props.bodyId).toBe(body.planetId)
     const open = h.find(node => node.props['data-open-surface'] !== undefined)
     expect(open.props.disabled).toBe(false)
     {
