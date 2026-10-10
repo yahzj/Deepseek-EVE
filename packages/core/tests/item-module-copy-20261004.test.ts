@@ -52,6 +52,7 @@ describe('物品装备说明双语与数据守恒', () => {
     const adjusted = before.map(mod => {
       if (mod.id === 'mod-wh-e-cpu') return { ...mod, reloadPenaltyPct: .05 }
       if (mod.id === 'mod-lair-blink-r') return { ...mod, blink: { ...mod.blink!, cooldownMs: 16000 } }
+      if (mod.id === 'mod-lair-laser-r') return { ...mod, dmgMult: 2.1, maxRangeM: 6000 }
       return mod.id === 'mod-wh-a-hangar' ? { ...mod, droneCycleCutPct: .2 } : mod
     })
     const newIds = new Set(['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3', 'mod-laser-calibration-2', 'mod-laser-calibration-3', 'mod-alien-acid-launcher', 'mod-alien-pressure-chamber'])

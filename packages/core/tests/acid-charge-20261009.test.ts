@@ -26,9 +26,10 @@ function world() {
 }
 
 describe('爆虫专属冲锋减速', () => {
-  it('静态挂件只调整爆虫倍率，其余挂件逐字段不变', () => {
+  it('静态挂件仅批准的爆虫冲锋与叠光伤害修正，其余逐字段不变', () => {
     const before = JSON.parse(execFileSync('git', ['show', '22edc1ce:packages/core/src/static/foeMounts.json'], { encoding: 'utf8' }))
     before.groups.parameters.find((row: { id: string }) => row.id === FOE_MOUNT_IDS.acidCharge).charge_mul = 2.5
+    before.groups.parameters.find((row: { id: string }) => row.id === FOE_MOUNT_IDS.coronaOverlayDrive).overlayDrive_dmgMul = 0.5
     expect(parameters).toEqual(before)
     expect(ALIEN_INVASION_CHARGE_MUL).toEqual({ 'foe-alien-acid-burster': 2.5, 'foe-alien-hiveback': 1.5, 'foe-alien-broodmother': 1.25 })
     expect(resolveFoeMounts([FOE_MOUNT_IDS.acidCharge])).toMatchObject({ foeChargeMul: 2.5, foeChargeCooldownMs: 10000, foeChargeWebImmune: true })

@@ -200,13 +200,16 @@ describe('出击加速、激光校准与协处理器5%', () => {
     expect(droneCpuUsed(w.state.fleet[w.uid]!.droneLoad, ctx)).toBe(12)
   })
 
-  it('静态船表仅四艘无人机主力舰新增启动特性；旧装备仅巨构代价改5%，其余保持', () => {
+  it('静态船表仅四艘无人机主力舰新增启动特性；旧装备仅已批准的巨构代价和叠光参数变化', () => {
     const old = (path: string) => JSON.parse(execFileSync('git', ['show', `26538327:${path}`], { cwd: root, encoding: 'utf8', windowsHide: true }))
     const expectedShips = old('packages/data/src/static/ships.json')
     for (const id of droneHulls) (Object.values(expectedShips.groups).flat().find((ship: any) => ship.id === id) as any).droneLaunchCutPct = .3
     expect(ships).toEqual(expectedShips)
     const expectedModules = old('packages/data/src/static/modules.json')
     ;(Object.values(expectedModules.groups).flat().find((mod: any) => mod.id === 'mod-wh-e-cpu') as any).reloadPenaltyPct = .05
+    const overlay = Object.values(expectedModules.groups).flat().find((mod: any) => mod.id === 'mod-lair-laser-r') as any
+    overlay.dmgMult = 2.1
+    overlay.maxRangeM = 6000
     const oldIds = new Set(Object.values(expectedModules.groups).flat().map((mod: any) => mod.id))
     const copy = structuredClone(modules)
     copy.groups.MODULES_0 = copy.groups.MODULES_0.filter(mod => oldIds.has(mod.id))
