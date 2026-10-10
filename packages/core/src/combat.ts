@@ -3322,6 +3322,8 @@ export function settleDroneLosses(
    * 缺省 `'player'`（主控）= 旧口径；老档没有 `droneLostBy` ⇒ 回落到全队合计 `droneLost`（零迁移）。
    */
   ownerTag = 'player',
+  /** 虫洞逐舰收口收集本次结果；不改变扣账或普通战斗的报告写入条件。 */
+  onReport?: (report: import('./state').DroneLossReport) => void,
 ): string | null {
   const byOwner = battle?.droneLostBy
   const lost = byOwner ? byOwner[ownerTag] : ownerTag === 'player' ? battle?.droneLost : undefined
@@ -3400,13 +3402,15 @@ export function settleDroneLosses(
     const refill = refillDroneLoadTo(state, ctx, shipId, startLoad, (id) => deployWormholeSupply(supply, id, 1) === 1 ? 'hold' : null)
     battle!.droneLost = undefined
     if (battle!.droneLostBy) delete battle!.droneLostBy[ownerTag]
-    if (ownerTag === 'player') {
+    if (ownerTag === 'player' || onReport) {
       const back = rows.reduce((n, r) => n + r.back, 0)
-      state.droneLossReport = {
+      const report: import('./state').DroneLossReport = {
         battleStartedAtGameMs: battle!.startedAtGameMs,
         rate, total, recovered: back, gone: total - back, survivors, revived: revivedTotal, returnedToSupply,
         rows: byValue.map((r) => ({ id: r.id, name: r.name, value: r.value, lost: r.lost, back: r.back, gone: r.lost - r.back })),
       }
+      if (ownerTag === 'player') state.droneLossReport = report
+      onReport?.(report)
     }
     const back = rows.reduce((n, r) => n + r.back, 0)
     addLog(state, 'warn', '', 'core.whExpedition.001', { p1: total, p2: back, p3: total - back })
@@ -3544,8 +3548,8 @@ export function settleDroneLosses(
       : `机群战损：${text} 被近防炮击落、共 ${total} 架（回收率 ${ratePct}%，优先回收高价值）${revivedTotal > 0 ? `，战中复活 ${revivedTotal} 架` : ''}——已从无人机舱清单扣除。${refillRows.length > 0 ? `已自动补充 ${refillTxt}。` : ''}${shortTxt.length > 0 ? `仍有 ${shortTxt}。` : ''}`
   // 结构化结果（2026-09-11：战报弹层要显示"回收了哪些、净损失哪些"；与 battle 起手时刻配对，
   // 避免并行会话/AI 战斗的结果串场）——只在**当前驾驶船**的结算里写，AI 副船的损失不进战报
-  if (state.shipId === shipId) {
-    state.droneLossReport = {
+  if (state.shipId === shipId || onReport) {
+    const report: import('./state').DroneLossReport = {
       battleStartedAtGameMs: battle?.startedAtGameMs ?? 0,
       rate,
       total,
@@ -3562,6 +3566,8 @@ export function settleDroneLosses(
         gone: Math.max(0, r.lost - r.back - (revivedMap[r.id] ?? 0)),
       })),
     }
+    if (state.shipId === shipId) state.droneLossReport = report
+    onReport?.({ ...report, revived: revivedTotal })
   }
   return text
 }

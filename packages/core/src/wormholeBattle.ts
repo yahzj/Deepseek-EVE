@@ -9,7 +9,7 @@
  * `state → wormhole → wormholeFoes`、`wormholeBattle → {wormhole, combat, shipyard}`（单向）。
  */
 import type { CommandResult } from './engine'
-import type { BattleState, GameState } from './state'
+import type { BattleState, DroneLossReport, GameState } from './state'
 import { addLog } from './state'
 import type { AnomalyDef, SimContext } from './types'
 import { uidDefId } from './labels'
@@ -676,12 +676,44 @@ function settleWormholeBattle(state: GameState, ctx: SimContext, run: WormholeRu
   // 战损日志），是最便宜的一种白嫖。**2026-09-14 船长「逐舰机群」**：改为**逐舰结算**——每艘编队舰
   // 各自扣各自的机舱清单、各写一条战损日志；老档/旧战斗只有合计账本 ⇒ 回落到主控那一份。
   const fleetForDrones = battle.myFleet
+  // 只汇总本次真实逐舰结算结果，回收取整仍在各舰原路径完成。
+  const droneReports: DroneLossReport[] = []
+  const collectDroneReport = (report: DroneLossReport): void => { droneReports.push(report) }
+  state.droneLossReport = null
   if ((!supply || battle.ended === 'me') && fleetForDrones && fleetForDrones.length > 0) {
     for (const e of fleetForDrones) {
-      settleDroneLosses(state, ctx, e.shipId, battle, matterBuffs.droneRecoveryPct, e.tag)
+      settleDroneLosses(state, ctx, e.shipId, battle, matterBuffs.droneRecoveryPct, e.tag, collectDroneReport)
     }
   } else if ((!supply || battle.ended === 'me') && droneOwner) {
-    settleDroneLosses(state, ctx, droneOwner, battle, matterBuffs.droneRecoveryPct)
+    settleDroneLosses(state, ctx, droneOwner, battle, matterBuffs.droneRecoveryPct, 'player', collectDroneReport)
+  }
+  if (droneReports.length > 0) {
+    const summary: DroneLossReport = {
+      battleStartedAtGameMs: battle.startedAtGameMs,
+      rate: droneReports[0]!.rate,
+      total: 0, recovered: 0, gone: 0, survivors: 0, revived: 0, returnedToSupply: {}, rows: [],
+    }
+    const rowsById = new Map<string, DroneLossReport['rows'][number]>()
+    for (const report of droneReports) {
+      summary.total += report.total
+      summary.recovered += report.recovered
+      summary.gone += report.gone
+      summary.survivors! += report.survivors ?? 0
+      summary.revived! += report.revived ?? 0
+      for (const [id, n] of Object.entries(report.returnedToSupply ?? {})) {
+        summary.returnedToSupply![id] = (summary.returnedToSupply![id] ?? 0) + n
+      }
+      for (const row of report.rows) {
+        const existing = rowsById.get(row.id)
+        if (existing) {
+          existing.lost += row.lost
+          existing.back += row.back
+          existing.gone += row.gone
+        } else rowsById.set(row.id, { ...row })
+      }
+    }
+    summary.rows = [...rowsById.values()].sort((a, b) => b.value - a.value || a.id.localeCompare(b.id))
+    state.droneLossReport = summary
   }
   if (matterBuffs.fieldRepairPct > 0) {
     const pct = matterBuffs.fieldRepairPct
