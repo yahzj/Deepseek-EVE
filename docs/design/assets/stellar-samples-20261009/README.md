@@ -1,6 +1,6 @@
 # PixelPlanets 三类天体样片
 
-状态：仅样片，待船长风格审查，未接入游戏。
+状态：原静态审查样片保留；船长2026-10-10验收星图整批。游戏正常路径已升级原分层二维实时材质，兼容PNG位于`apps/desktop/src/renderer/src/assets/stellar`，本目录不直接被游戏导入。现行结论见`docs/design/planetary-system-search-20261007.md`§十二。
 
 ## 文件
 

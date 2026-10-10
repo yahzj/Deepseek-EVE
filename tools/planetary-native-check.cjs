@@ -1,6 +1,6 @@
 /** 完整星球原生操作：先npm run build，再node tools/planetary-native-check.cjs。
  * 隐藏Electron、随机本机端口、隔离用户目录；操作与几何读数，不是观感结论。
- * v0.1.0 / 存档v31，2026-10-07。
+ * v0.1.0 / 存档v31，2026-10-10补地表图标/状态/固定操作区与64px几何。
  */
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -99,7 +99,7 @@ async function child() {
   const open = async () => {
     await page.js('window.dispatchEvent(new Event("whale-planetary-open"));true')
     await page.wait('!!document.querySelector(".app-stellar-modal")')
-    await page.text('.app-stellar-sidebar', data.L10N['ui.stellar.038'][options.locale])
+    await page.text('.app-stellar-footer', data.L10N['ui.stellar.038'][options.locale])
     await page.wait('!!document.querySelector(".app-planet-modal")')
   }
   await open()
@@ -140,10 +140,10 @@ async function child() {
   await select('.app-planet-detail select', 'power')
   await page.text('.app-planet-detail', text('build'))
   assert((await snap()).planetary.planets[large.id].colony.jobs.length > 0)
-  await page.text('.app-planet-detail .app-planet-jobs', text('pause'))
+  await page.tap(`.app-planet-detail .app-planet-jobs button[aria-label=${JSON.stringify(text('pause'))}]`)
   assert((await snap()).planetary.planets[large.id].colony.jobs[0].paused)
-  await page.text('.app-planet-detail .app-planet-jobs', text('resume'))
-  await page.text('.app-planet-detail .app-planet-jobs', text('cancel'))
+  await page.tap(`.app-planet-detail .app-planet-jobs button[aria-label=${JSON.stringify(text('resume'))}]`)
+  await page.tap(`.app-planet-detail .app-planet-jobs button[aria-label=${JSON.stringify(text('cancel'))}]`)
   assert.equal((await snap()).planetary.planets[large.id].cells[empty.index].building, undefined)
   await page.text('.app-planet-detail', text('build'))
   await step(300000)
@@ -155,8 +155,13 @@ async function child() {
   console.log('阶段：施工与清障')
   assert.equal((await snap()).planetary.planets[large.id].cells[blocked.index].obstacle, undefined)
   await page.tap('[data-planet-cell="35"]')
-  const geometry = await page.js(`(()=>{const m=document.querySelector('.app-planet-modal'),g=document.querySelector('.app-planet-grid');const b=m.getBoundingClientRect(),d=document.querySelector('.app-planet-detail');return {modalWidth:b.width,modalHeight:b.height,tiles:g.querySelectorAll('button').length,gridWidth:g.offsetWidth,detail:d.offsetWidth,bodyOverflow:m.scrollWidth>m.clientWidth+1}})()`)
-  assert.equal(geometry.tiles, 36); assert(geometry.detail >= 280); assert(!geometry.bodyOverflow)
+  await page.wait('document.querySelector(".app-planet-detail-scroll").scrollTop===0')
+  const geometry = await page.js(`(()=>{const m=document.querySelector('.app-planet-modal'),g=document.querySelector('.app-planet-grid'),tile=g.querySelector('button'),scroll=document.querySelector('.app-planet-grid-scroll'),d=document.querySelector('.app-planet-detail'),commands=document.querySelector('.app-planet-detail-commands'),body=document.querySelector('.app-planet-body'),legend=document.querySelector('.app-planet-grid-legend');const y=e=>{let n=0;for(let p=e;p;p=p.offsetParent)n+=p.offsetTop;return n};const b=m.getBoundingClientRect();return {modalWidth:b.width,modalHeight:b.height,tiles:g.querySelectorAll('button').length,tileWidth:tile.offsetWidth,tileHeight:tile.offsetHeight,gap:parseFloat(getComputedStyle(g).gap),gridWidth:g.offsetWidth,detail:d.offsetWidth,bodyOverflow:m.scrollWidth>m.clientWidth+1,verticalOverflow:m.scrollHeight>m.clientHeight+1,lastReachable:scroll.scrollHeight>=y(g)+g.offsetHeight-y(scroll)-2,commandsFixed:y(commands)+commands.offsetHeight<=y(d)+d.offsetHeight+2,legendInside:y(legend)+legend.offsetHeight<=y(body)+body.offsetHeight+2,arts:document.querySelectorAll('.app-planet-tile-art').length,resources:document.querySelectorAll('[data-planet-resource]').length}})()`)
+  const geometryShot=await page.send('Page.captureScreenshot',{format:'png'})
+  fs.writeFileSync(path.join(OUTPUT,`${options.layout}-${options.locale}-${options.mobile?'mobile':'desktop'}-surface.png`),Buffer.from(geometryShot.data,'base64'))
+  assert.equal(geometry.tiles, 36); assert(geometry.detail >= 280); assert(!geometry.bodyOverflow&&!geometry.verticalOverflow)
+  assert.equal(geometry.tileWidth,64);assert.equal(geometry.tileHeight,64);assert.equal(geometry.gap,8)
+  assert(geometry.lastReachable&&geometry.commandsFixed&&geometry.legendInside,JSON.stringify(geometry));assert.equal(geometry.arts,36)
   await page.js('window.__whalePlanetaryTest.persist()')
   await page.send('Page.reload'); await page.wait('!!window.__whalePlanetaryTest')
   assert.equal((await snap()).planetary.planets['planet-prototype-medium'].colony.awake, 4)
@@ -166,6 +171,22 @@ async function child() {
   console.log('阶段：重载通过')
   const shot = await page.send('Page.captureScreenshot', { format: 'png' })
   fs.writeFileSync(path.join(OUTPUT, `${options.layout}-${options.locale}-${options.mobile ? 'mobile' : 'desktop'}.png`), Buffer.from(shot.data, 'base64'))
+  for(const theme of ['deepspace','daylight']){
+    await page.js(`document.documentElement.dataset.theme=${JSON.stringify(theme)};true`);await sleep(100)
+    const readable=await page.js(`(()=>{const m=document.querySelector('.app-planet-modal'),body=document.querySelector('.app-planet-body'),tile=document.querySelector('[data-planet-cell]'),label=document.querySelector('.app-planet-detail-heading');return {overflow:m.scrollWidth>m.clientWidth+1||m.scrollHeight>m.clientHeight+1,bodyHeight:body.clientHeight,tile:tile.offsetWidth,text:getComputedStyle(label).color}})()`)
+    assert(!readable.overflow&&readable.bodyHeight>80&&readable.tile===64,JSON.stringify(readable))
+    const image=await page.send('Page.captureScreenshot',{format:'png'})
+    fs.writeFileSync(path.join(OUTPUT,`${options.layout}-${options.locale}-${options.mobile?'mobile':'desktop'}-${theme}.png`),Buffer.from(image.data,'base64'))
+  }
+  await page.js('delete document.documentElement.dataset.theme;true')
+  const ts=require('typescript'),{runInNewContext}=require('node:vm'),{jsx,jsxs}=require('react/jsx-runtime'),{renderToStaticMarkup}=require('react-dom/server')
+  const scope={exports:{},require:name=>name==='react/jsx-runtime'?{jsx,jsxs}:name==='./itemSubs'?{wreckTierOf:()=> 'ordinary'}:name==='./tones'?{ICO_TONES:{},NAV_TONES:{},SCALARS:{},TONES:{}}:(()=>{throw Error(name)})()}
+  runInNewContext(ts.transpileModule(fs.readFileSync(path.join(ROOT,'apps/desktop/src/renderer/src/ui/Glyphs.tsx'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText,scope)
+  const keys=['base','cryo','power','water','nutrition','housing','farm','mine','rare-extractor','industry','research','maintenance','logistics','empty','rough','ice','corrosion','rubble','food']
+  const glyphs=keys.map(key=>({key,svg:renderToStaticMarkup(scope.exports.Glyph({name:key==='rare-extractor'?'planet-rare':'planet-'+key,size:64})).replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"')}))
+  const atlas=await page.js(`(async()=>{const rows=${JSON.stringify(glyphs)},canvas=document.createElement('canvas');canvas.width=1200;canvas.height=560;const ctx=canvas.getContext('2d');ctx.fillStyle='#09111b';ctx.fillRect(0,0,1200,280);ctx.fillStyle='#eef2f5';ctx.fillRect(0,280,1200,280);const pixels=[];for(let theme=0;theme<2;theme++)for(let index=0;index<rows.length;index++){const row=rows[index],x=index%10*120,y=theme*280+Math.floor(index/10)*132,svg=row.svg.replace('<svg','<svg color="'+(theme?'#31465a':'#dce8f1')+'"');const image=new Image();image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);await image.decode();ctx.drawImage(image,x+28,y+20,64,64);ctx.drawImage(image,x+80,y+72,32,32);ctx.fillStyle=theme?'#31465a':'#dce8f1';ctx.font='12px sans-serif';ctx.fillText(row.key,x+8,y+122);const p=ctx.getImageData(x+28,y+20,64,64).data;const bg=theme?[238,242,245]:[9,17,27];let n=0;for(let i=0;i<p.length;i+=4)if(p[i]!==bg[0]||p[i+1]!==bg[1]||p[i+2]!==bg[2])n++;pixels.push({key:row.key,theme,painted:n})}return {image:canvas.toDataURL('image/png'),pixels}})()`)
+  assert(atlas.pixels.every(row=>row.painted>50),JSON.stringify(atlas.pixels))
+  fs.writeFileSync(path.join(OUTPUT,'glyphs.png'),Buffer.from(atlas.image.split(',')[1],'base64'))
   assert.equal(errors.length, 0, JSON.stringify(errors))
   console.log(JSON.stringify({ ...options, ok: true, geometry, pid: process.pid }))
   app.exit(0)

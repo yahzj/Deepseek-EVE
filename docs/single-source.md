@@ -83,6 +83,7 @@
 
 | 关注点 | 唯一实现 | 护栏 |
 |---|---|---|
+| 地表已公开地块图标与状态 | `planetSurfaceCellView` · `ui/planetSurfaceView.ts` | 网格/详情共用主体、资源、障碍与状态优先级，未知不渲染隐藏信息；设施完整覆盖/状态/真实组件专项 |
 | 仿真上下文（页面取数的唯一入口） | `buildSimContext()` · `context.ts` | `arch:guard` F1/F4 |
 | 玩家可见文案唯一表（`id → { zh, en }`） | `L10N` · `l10n/table.ts` | `npm run l10n:check` ＋ `l10n:list` |
 | 已登记待译条目的中文回退 | `l10nEntryText()` · `l10n/table.ts`；界面`textOf`及主进程`t`调用 | 待译标记/文档登记成对、非待译空值仍拒绝、同入口占位符与中英渲染专项 |

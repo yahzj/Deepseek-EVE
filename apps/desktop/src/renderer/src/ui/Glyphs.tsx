@@ -13,6 +13,26 @@ import { wreckTierOf } from './itemSubs'
 
 /** glyph 名 → 矢量内容（以 <g> 为单位，使用 currentColor 描边） */
 const SHAPES: Record<string, ReactNode> = {
+  /* 地表设施：同一24坐标与线宽，按建筑外形区分，不复用舰船/物品族外框。 */
+  'planet-base': <g><path d="M3 20h18M5 20V10h14v10M9 10V6h6v4M12 6V2m0 1h5M8 14h2m4 0h2M10 20v-3h4v3" /></g>,
+  'planet-cryo': <g><rect x="6" y="3" width="12" height="18" rx="3" /><path d="M9 7h6M9 17h6M12 10v4m-2-3 4 2m-4 0 4-2" /></g>,
+  'planet-power': <g><path d="M3 20h18M5 20V9l4-4h6l4 4v11M13 7l-4 6h4l-2 5 5-7h-4z" /></g>,
+  'planet-water': <g><path d="M3 20h18M5 20V8M19 20V8M5 8h14M7 8V4h10v4M8 17h8M12 10c-2 2-3 3-3 4a3 3 0 0 0 6 0c0-1-1-2-3-4z" /></g>,
+  'planet-nutrition': <g><path d="M3 20h18M5 20V7h14v13M8 7V3h8v4M8 16h8M9 11v2m3-2v2m3-2v2" /></g>,
+  'planet-housing': <g><path d="M3 20h18M5 20V6h6v14M11 10h8v10M7 9h2m-2 4h2m-2 4h2m5-4h2m-2 4h2M5 6V3h6v3" /></g>,
+  'planet-farm': <g><path d="M3 20h18M4 18V9l8-6 8 6v9M4 9h16M8 9v9m8-9v9M12 18v-4m0 1c-3 0-4-2-4-3 3 0 4 1 4 3m0 0c3 0 4-2 4-3-3 0-4 1-4 3" /></g>,
+  'planet-mine': <g><path d="M3 20h18M5 20l4-14h6l4 14M7 14h10M8 10h8M10 3h4v3M12 6v14m-3-3 3 3 3-3" /></g>,
+  'planet-rare': <g><path d="M3 20h18M5 20V7h4m6 0h4v13M12 3l4 5-4 5-4-5zM8 16h8M12 13v3" /></g>,
+  'planet-industry': <g><path d="M3 20h18M4 20V10l5 3v-3l5 3V5h5v15M14 5V2h5v3M7 17h2m3 0h2m3 0h1" /></g>,
+  'planet-research': <g><path d="M3 20h18M5 20v-9h14v9M8 11V7h8v4M12 7V3m-2 0h4M8 16h2m4 0h2" /><circle cx="12" cy="16" r="1" /></g>,
+  'planet-maintenance': <g><path d="M3 20h18M5 20V7h14v13M8 7V3h8v4M9 17l6-6m-1-1 3 3M7 15l3 3" /></g>,
+  'planet-logistics': <g><path d="M3 20h18M4 20V9l8-6 8 6v11M4 9h16M8 20v-8h8v8M8 16h8m-4-4v8M16 5V3h3v4" /></g>,
+  'planet-food': <g><path d="M12 21V8m0 3c-5 0-7-3-7-6 5 0 7 2 7 6m0 4c5 0 7-3 7-6-5 0-7 2-7 6M5 21h14" /></g>,
+  'planet-empty': <g><path d="M4 8V4h4m8 0h4v4m0 8v4h-4m-8 0H4v-4M8 14l4-3 4 3" /></g>,
+  'planet-rough': <g><path d="M2 20l6-12 4 7 3-11 7 16zM6 12l2 2 2-2m3-3 2 2 2-2" /></g>,
+  'planet-ice': <g><path d="M3 20l4-14 5 4 4-7 5 17zM7 6l3 14m2-10 2 10m2-17 2 17M4 16h16" /></g>,
+  'planet-corrosion': <g><path d="M12 3c-4 5-6 7-6 10a6 6 0 0 0 12 0c0-3-2-5-6-10zM3 21h5m8 0h5M9 12l6 4m-6 0 6-4" /></g>,
+  'planet-rubble': <g><path d="M3 20h18M4 17l2-7 5 2 1 8m2 0 1-9 5 3 1 6M8 7l3-3 4 2-1 4M6 14l3 2m8-2 2 3" /></g>,
   /* ── 物品（圆环徽：外环 + 内部几何） ── */
   ore: (
     <g>

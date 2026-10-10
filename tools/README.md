@@ -9,7 +9,12 @@
 - `python tools/pixel-planets-study-review.py <研究输出目录> [独立复现目录]`：核验RGBA/层尺寸/逐像素复现，用同一缩放方式生成总览和恒星/海洋抖动对照板。依赖已有Pillow；只处理本树忽略目录，原生导出读数不等于游戏帧率或设备观感验收。
 - `node tools/pixel-planets-materials.cjs export <不存在的本树tools/_ui-artifacts输出JSON绝对路径>`：原生透明视口完成绘制后导出16份shader、12预设完整层序/尺度/配色/参数；随后`generate <输出JSON绝对路径>`生成`ui/stellarPixelMaterials.ts`。Godot/WebGL语法适配与光照入口转换在工具内维护，生成文件不手改；游戏运行不依赖EXE、上游仓库或外部服务。
 - `node tools/stellar-material-check.cjs`：独立临时配置/隐藏Electron检查真实WebGL原层编译、七类行星与恒星/黑洞非空和时间变化、光向/地貌隔离、近远/无星亮度。输出`tools/_ui-artifacts/stellar-material-20261010`，像素读数不是船长观感或实体手机性能验收；不加载个人档。`shaderCode()`供已有原生专项复用同一源，无生产测试入口。
-- 来源/许可和参数见`docs/design/assets/stellar-samples-20261009/README.md`；样片未接入游戏，风格与完整星图方案待船长审查。
+- 来源/许可和参数见`docs/design/assets/stellar-samples-20261009/README.md`；星图已于2026-10-10验收，正常原层实时材质/静态兼容/光照/运动/面积现行规则见`docs/design/planetary-system-search-20261007.md`§十二，原样片本身不直接被游戏导入。
+
+## 地表界面取证（2026-10-10 · v0.1.0 / 档v31）
+
+- `node tools/planetary-native-check.cjs --case=modern-zh-desktop`：独立合成档/隐藏Electron，调查→运输→唤醒→家园改造→建造/暂停/继续/取消→清障→真实保存重载，补64px网格/8px间距、资源角标/图标/固定操作区/图例/最后一排可达与短高度逻辑几何。手机可用`--case=classic-en-mobile`，只读数不作实体手机性能或观感验收。
+- 同一工具追加真实Glyph图标深浅底/32与64px对照板，输出`tools/_ui-artifacts/planetary/glyphs.png`；图形需有非空像素并保持原24坐标/1.7线稿，不加载个人档、不添加依赖。
 
 ## 装配靶场验收（2026-10-09 · v0.1.0 / 档v31）
 

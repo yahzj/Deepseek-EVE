@@ -1,14 +1,16 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
+import { Check, Circle, CircleHelp, CirclePause, Hammer, HardHat, MoveRight, Play, PowerOff, ShieldAlert, Trash2, UserRound, UsersRound, Wrench, X, Zap, type LucideIcon } from 'lucide-react'
 import {
   planetAdjacencyOf, planetBillOf, planetClearanceCheck, planetColonyView, planetConstructionCheck,
   planetEnvironmentOf, planetNeighborIndices, planetSurveyView, shipDisplayName,
-  type PlanetActionResult, type PlanetBill, type PlanetCatalog, type PlanetGridCell,
+  type PlanetActionResult, type PlanetBill, type PlanetCatalog,
   type PlanetJob, type PlanetState, type PlanetSurveyView,
 } from '@whale/core'
 import type { GameEngine } from '../game/engine'
 import { fmtCredits, fmtDuration, fmtInt, fmtNum } from '../i18n/fmt'
 import { pt } from '../ui/planetText'
 import { Glyph } from '../ui/Glyphs'
+import { PLANET_BUILDING_GLYPHS, PLANET_RESOURCE_GLYPHS, planetSurfaceCellView, type PlanetSurfaceStatus } from '../ui/planetSurfaceView'
 import { InfoTable, infoCardContent } from '../ui/shipInfo'
 import { hoverTipProps } from '../ui/Tooltip'
 import '../styles-planetary.css'
@@ -27,7 +29,8 @@ type ColonyView = ReturnType<typeof planetColonyView>
 const TABS: readonly Tab[] = ['candidates', 'surface', 'population', 'projects']
 const TAB_ICONS: Record<Tab, string> = { candidates: 'nav-map', surface: 'ico-home', population: 'nav-ai', projects: 'ico-crane' }
 const RESOURCES = ['food', 'water', 'medicine', 'metal', 'parts', 'research', 'rare'] as const
-const RESOURCE_ICONS: Record<string, string> = { metal: 'mineral', water: 'ice', food: 'cargo', medicine: 'kit', research: 'nav-skills', rare: 'matter', energy: 'cpu' }
+const STATUS_ICONS: Record<PlanetSurfaceStatus, LucideIcon> = { unknown: CircleHelp, obstacle: ShieldAlert, empty: Circle,
+  construction: HardHat, stopped: CirclePause, unpowered: PowerOff, unstaffed: UserRound, ready: Check }
 const buildingName = (id: string): string => pt('building.' + id)
 const resourceName = (id: string): string => pt('resource.' + id)
 const traitName = (id: string): string => pt('trait.' + id)
@@ -71,15 +74,11 @@ function PlanetFacts({ view, size }: { view?: PlanetSurveyView; size: number }) 
   ]} />
 }
 
-function cellStatus(cell: PlanetGridCell, needsWorker: boolean): string {
-  if (cell.obstacle) return pt('obstacle.' + cell.obstacle)
-  const b = cell.building
-  if (!b) return pt('empty')
-  if (b.status !== 'ready') return pt('status.' + b.status)
-  if (b.enabled === false) return pt('status.stopped')
-  if (!b.powered) return pt('status.unpowered')
-  if (needsWorker && !b.staffed) return pt('status.unstaffed')
-  return pt('status.ready')
+function SurfaceStatus({ status, label, text = false }: { status: PlanetSurfaceStatus; label: string; text?: boolean }) {
+  const Icon = STATUS_ICONS[status]
+  return <span className={`app-planet-status is-${status}`} data-planet-status={status}>
+    <Icon size={14} strokeWidth={1.7} aria-hidden="true" />{text ? <span>{label}</span> : null}
+  </span>
 }
 
 export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPlanetId }: PlanetaryPanelProps): ReactNode {
@@ -104,6 +103,7 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
   const [confirmation, setConfirmation] = useState<'demolish' | null>(null)
   const [, refresh] = useState(0)
   const modalRef = useRef<HTMLDivElement>(null)
+  const detailRef = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const onCloseRef = useRef(onClose)
   const id = useId()
@@ -146,6 +146,7 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
   }, [])
 
   const selectedId = planets[planetId] || catalog.planets.has(planetId) ? planetId : Object.keys(planets)[0] ?? definitions[0]?.id ?? ''
+  useEffect(() => { if (detailRef.current) detailRef.current.scrollTop = 0 }, [selectedId, cellIndex])
   const planet = planets[selectedId]
   const definition = planet ?? catalog.planets.get(selectedId)
   const view = planet ? planetSurveyView(planet, catalog) : undefined
@@ -153,6 +154,7 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
   const colonyView = planet && view?.cells ? planetColonyView(planet, catalog) : undefined
   const cell = view?.cells?.[cellIndex]
   const building = cell?.building ? catalog.buildings.get(cell.building.id) : undefined
+  const cellView = planetSurfaceCellView(cell, building)
   const selectedBuilding = catalog.buildings.get(buildingId)
   const operation = catalog.operations?.get(buildingId)
   const bill = planet && view?.cells && operation ? planetBillOf(planet, catalog, operation.bill) : undefined
@@ -212,22 +214,26 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
         {job.cellIndex !== undefined ? ` #${job.cellIndex + 1}` : ''}{job.targetIndex !== undefined ? ` > #${job.targetIndex + 1}` : ''}</div>
       <progress aria-label={pt('progress')} max={Math.max(1, job.totalMs)} value={Math.max(0, job.totalMs - job.remainingMs)} />
       <div className="app-planet-actions">
-        <button className="app-btn is-small" onClick={() => command('pause', selectedId, job.seq, !job.paused)}>{pt(job.paused ? 'resume' : 'pause')}</button>
-        <button className="app-btn is-small" onClick={() => command('cancel', selectedId, job.seq)}>{pt('cancel')}</button>
+        <button className="app-btn is-small app-planet-tool" title={pt(job.paused ? 'resume' : 'pause')} aria-label={pt(job.paused ? 'resume' : 'pause')} onClick={() => command('pause', selectedId, job.seq, !job.paused)}>{job.paused ? <Play size={16} /> : <CirclePause size={16} />}</button>
+        <button className="app-btn is-small app-planet-tool" title={pt('cancel')} aria-label={pt('cancel')} onClick={() => command('cancel', selectedId, job.seq)}><X size={16} /></button>
       </div>
     </article>)}</div> : <div className="app-note app-dim">{pt('noJobs')}</div>
   }
 
   function summary(value?: ColonyView): ReactNode {
     return <div className="app-planet-summary">
-      <span><Glyph name="cpu" size={18} />{pt('power')} <b>{value ? `${fmtNum(value.powerProduced, 1)} / ${fmtNum(value.powerUsed, 1)}` : '-'}</b></span>
-      <span>{pt('awake')} <b>{fmtInt(colony?.awake ?? 0)}</b></span>
-      <span>{pt('sleeping')} <b>{fmtInt(colony?.sleeping ?? 0)}</b></span>
-      <span>{pt('housing')} <b>{value ? fmtInt(value.housing) : '-'}</b></span>
-      <span className={colony?.crisis && colony.crisis !== 'none' ? 'app-warn' : ''}>{value ? pt('stage.' + value.stage) : pt('undiscovered')}</span>
-      <span>{resourceName('food')} <b>{fmtNum(colony?.supplies.food ?? 0, 1)}</b></span>
-      <span>{resourceName('water')} <b>{fmtNum(colony?.supplies.water ?? 0, 1)}</b></span>
-      <span>{resourceName('medicine')} <b>{fmtNum(colony?.supplies.medicine ?? 0, 1)}</b></span>
+      <div className="app-planet-summary-group">
+        <span className={value && value.powerUsed > value.powerProduced ? 'app-warn' : ''}><Zap size={18} />{pt('power')} <b>{value ? `${fmtNum(value.powerProduced, 1)} / ${fmtNum(value.powerUsed, 1)}` : '-'}</b></span>
+        <span><UsersRound size={18} />{pt('awake')} <b>{fmtInt(colony?.awake ?? 0)}</b></span>
+        <span><Glyph name="planet-cryo" size={18} />{pt('sleeping')} <b>{fmtInt(colony?.sleeping ?? 0)}</b></span>
+        <span><Glyph name="planet-housing" size={18} />{pt('housing')} <b>{value ? fmtInt(value.housing) : '-'}</b></span>
+      </div>
+      <div className="app-planet-summary-group">
+        <span><Glyph name={PLANET_RESOURCE_GLYPHS.food!} size={18} />{resourceName('food')} <b>{fmtNum(colony?.supplies.food ?? 0, 1)}</b></span>
+        <span><Glyph name={PLANET_RESOURCE_GLYPHS.water!} size={18} />{resourceName('water')} <b>{fmtNum(colony?.supplies.water ?? 0, 1)}</b></span>
+        <span><Glyph name={PLANET_RESOURCE_GLYPHS.medicine!} size={18} />{resourceName('medicine')} <b>{fmtNum(colony?.supplies.medicine ?? 0, 1)}</b></span>
+        <span className={`app-planet-stage${colony?.crisis && colony.crisis !== 'none' ? ' app-warn' : ''}`}><Glyph name="planet-base" size={18} />{value ? pt('stage.' + value.stage) : pt('undiscovered')}</span>
+      </div>
     </div>
   }
 
@@ -265,7 +271,7 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
             {definitions.map(def => <option key={def.id} value={def.id}>{planetName(def.id)}</option>)}
             {Object.values(planets).filter(p => !catalog.planets.has(p.id)).map(p => <option key={p.id} value={p.id}>{planetName(p.id)}</option>)}
           </select></label>
-        <button className="app-btn is-small app-planet-close" ref={closeRef} onClick={onClose} aria-label={pt('close')} title={pt('close')}><span aria-hidden="true">X</span></button>
+        <button className="app-btn is-small app-planet-close" ref={closeRef} onClick={onClose} aria-label={pt('close')} title={pt('close')}><X size={18} aria-hidden="true" /></button>
       </div>
       <div className="app-subtabs app-planet-tabs" role="tablist" aria-label={pt('title')}>
         {TABS.map((name, index) => <button key={name} id={`${id}-${name}-tab`} className={`app-subtab${tab === name ? ' is-active' : ''}`}
@@ -281,6 +287,10 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
             setTab(TABS[next])
             modalRef.current?.querySelector<HTMLButtonElement>(`[id="${id}-${TABS[next]}-tab"]`)?.focus()
           }}><Glyph name={TAB_ICONS[name]} size={18} />{pt('' + name)}</button>)}
+      </div>
+      <div className="app-planet-overview">
+        <strong>{planetName(selectedId)}</strong><span>{definition ? `${definition.size} x ${definition.size}` : pt('unknown')}</span>
+        <span className="app-planet-survey">{view ? pt('survey.' + view.survey) : pt('undiscovered')}</span>
       </div>
       {summary(colonyView)}
       <div className={`app-planet-feedback${result && !result.ok ? ' app-warn' : ' app-dim'}`} role={result && !result.ok ? 'alert' : 'status'} aria-live="polite">
@@ -314,25 +324,25 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
           </div>
         </div> : tab === 'surface' ? <div className="app-planet-surface">
           <div className="app-planet-column">
-            <div className="app-planet-grid-head"><strong>{planetName(selectedId)}</strong><span className="app-dim">{definition.size} x {definition.size}</span></div>
+            <div className="app-planet-grid-head"><strong>{pt('surface')}</strong><span className="app-dim">{definition.size ** 2} {pt('tiles')}</span></div>
             <div className="app-planet-scroll app-planet-grid-scroll">
               <div className="app-planet-grid" role="group" aria-label={pt('surface')} style={{ '--planet-columns': definition.size } as CSSProperties}>
                 {Array.from({ length: definition.size * definition.size }, (_, index) => {
                   const tile = view?.cells?.[index]
-                  const legal = planet && tile && selectedBuilding ? planetConstructionCheck(planet, index, buildingId, catalog).ok : false
-                  const title = tile ? [pt('tile') + ` ${index + 1}`, tile.building ? buildingName(tile.building.id) : pt('empty'),
-                    cellStatus(tile, !!tile.building && catalog.buildings.get(tile.building.id)?.worker === 'human'), tile.deposit ? resourceName(tile.deposit.resource) : ''].filter(Boolean).join(' / ') : pt('unknown')
+                  const legal = planet && tile && selectedBuilding && operation && (colony || selectedBuilding.kind === 'base') ? planetConstructionCheck(planet, index, buildingId, catalog).ok : false
+                  const tileView = planetSurfaceCellView(tile, tile?.building ? catalog.buildings.get(tile.building.id) : undefined)
+                  const title = [pt('tile') + ` ${index + 1}`, pt(tileView.nameKey), pt(tileView.textKey), tile?.deposit ? resourceName(tile.deposit.resource) : '', legal ? pt('build') : ''].filter(Boolean).join(' / ')
                   return <button type="button" key={index} data-planet-cell={index} aria-label={title} aria-pressed={index === cellIndex}
                     tabIndex={index === cellIndex ? 0 : -1} title={title}
                     className={`app-planet-tile${index === cellIndex ? ' is-selected' : ''}${legal ? ' is-buildable' : ''}${neighbors.includes(index) ? ' is-neighbor' : ''}${tile?.obstacle ? ' is-obstacle' : ''}`}
                     onClick={() => { setCellIndex(index); setConfirmation(null); setResult(null) }} onKeyDown={event => gridKey(event, index)}>
                     <span className="app-planet-tile-index">{index + 1}</span>
-                    <Glyph name={!tile ? 'ico-scan' : tile.obstacle ? 'wreck' : tile.building ? 'ico-home' : tile.deposit ? RESOURCE_ICONS[tile.deposit.resource] : 'fallback'} size={22} />
-                    <span className="app-planet-tile-mark">{!tile ? '?' : tile.building ? tile.building.status === 'construction' ? '+' : tile.building.enabled === false ? '-' : !tile.building.powered ? '!' : tile.building.staffed ? '1' : '' : tile.obstacle ? '!' : tile.deposit ? '+' : ''}</span>
+                    <Glyph name={tileView.glyph} size={32} className="app-planet-tile-art" />
+                    {tile?.deposit && (tile.building || tile.obstacle) ? <span className="app-planet-tile-resource" data-planet-resource={tile.deposit.resource}><Glyph name={tileView.resourceGlyph!} size={14} /></span> : null}
+                    <span className="app-planet-tile-mark"><SurfaceStatus status={legal && tileView.status === 'empty' ? 'ready' : tileView.status} label={pt(tileView.textKey)} /></span>
                   </button>
                 })}
               </div>
-              <div className="app-planet-grid-legend app-dim"><span>{pt('empty')}</span><span>+ {pt('resource')}</span><span>! {pt('obstacle')}</span></div>
               <Traits view={view} />
               {!view?.cells ? <div className="app-note">{planet && !view ? pt('reason.unsupported') : pt('reason.survey-required')}</div> : null}
               {environment ? <InfoTable lines={[
@@ -343,31 +353,38 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
             </div>
           </div>
           <aside className="app-planet-detail">
-            <div className="app-planet-detail-top"><strong>{pt('tile')} #{cellIndex + 1}</strong><div className="app-planet-actions">
+            <div className="app-planet-detail-top">
+              <Glyph name={cellView.glyph} size={36} />
+              <div className="app-planet-detail-heading"><span className="app-dim">{pt('tile')} #{cellIndex + 1}</span><strong>{pt(cellView.nameKey)}</strong><SurfaceStatus status={cellView.status} label={pt(cellView.textKey)} text /></div>
+            </div>
+            <div className="app-planet-detail-discovery app-planet-actions">
               {!planet ? <button className="app-btn is-small" onClick={() => command('discover', selectedId)}>{pt('discover')}</button> : !view?.cells ? <button className="app-btn is-small" disabled={!view} onClick={() => command('survey', selectedId, 2)}>{pt('survey.2')}</button> : null}
-              <button className="app-btn is-small" disabled={!cell?.obstacle || !planet || !colony || !planetClearanceCheck(planet, cellIndex, catalog).ok} onClick={() => command('clear', selectedId, cellIndex)}>{pt('clear')}</button>
-            </div></div>
-            <div className="app-planet-scroll app-planet-detail-scroll">
+            </div>
+            <div className="app-planet-scroll app-planet-detail-scroll" ref={detailRef}>
               {cell ? <>
-                <div className="app-planet-row"><strong>{cell.building ? buildingName(cell.building.id) : pt('empty')}</strong><span className="app-dim">{cellStatus(cell, building?.worker === 'human')}</span></div>
                 {cell.deposit ? <InfoTable lines={[{ k: pt('resource'), v: resourceName(cell.deposit.resource) }, { k: pt('depositBonus'), v: percent(cell.deposit.bonus) }]} /> : null}
                 {cell.building ? <>
+                  <section className="app-planet-section app-planet-maintenance"><h3><Wrench size={16} />{pt('building')}</h3>
                   <InfoTable lines={[{ k: pt('condition'), v: percent(cell.building.condition ?? 1) },
                     { k: pt('staff'), v: building?.worker === 'human' ? pt(cell.building.staffed ? 'staffed' : 'status.unstaffed') : pt('automatic') }]} />
                   <div className="app-planet-actions">
-                    <button className="app-btn is-small" onClick={() => command('repair', selectedId, cellIndex)} disabled={(cell.building.condition ?? 1) >= 1}>{pt('repair')}</button>
+                    <button className="app-btn is-small" onClick={() => command('repair', selectedId, cellIndex)} disabled={(cell.building.condition ?? 1) >= 1}><Wrench size={16} />{pt('repair')}</button>
                     <label className="app-planet-check"><input type="checkbox" checked={cell.building.enabled !== false} disabled={!colony || cell.building.status === 'construction'} onChange={e => command('toggle', selectedId, cellIndex, e.target.checked)} />{pt('enabled')}</label>
                     {building?.worker === 'human' ? <label className="app-planet-check"><input type="checkbox" checked={cell.building.staffed} disabled={!colony || cell.building.status !== 'ready'} onChange={e => command('staff', selectedId, cellIndex, e.target.checked)} />{pt('staff')}</label> : null}
                   </div>
+                  </section>
+                  <section className="app-planet-section"><h3><MoveRight size={16} />{pt('moveTarget')}</h3>
                   <label className="app-planet-field"><span>{pt('moveTarget')}</span><select className="app-select" value={targetIndex} onChange={e => setTargetIndex(Number(e.target.value))}>
                     {view?.cells?.map(c => <option value={c.index} key={c.index} disabled={c.index === cellIndex || !!c.obstacle || !!c.building}>#{c.index + 1}{c.deposit ? ` / ${resourceName(c.deposit.resource)}` : ''}</option>)}
                   </select></label>
-                  <div className="app-planet-actions"><button className="app-btn is-small" disabled={!colony || targetIndex === cellIndex || !!view?.cells?.[targetIndex]?.building || !!view?.cells?.[targetIndex]?.obstacle || cell.building.status !== 'ready'} onClick={() => command('move', selectedId, cellIndex, targetIndex)}>{pt('move')}</button>
-                    <button className="app-btn is-small" disabled={!colony || cell.building.status === 'construction'} onClick={() => setConfirmation('demolish')}>{pt('demolish')}</button></div>
+                  <div className="app-planet-actions"><button className="app-btn is-small" disabled={!colony || targetIndex === cellIndex || !!view?.cells?.[targetIndex]?.building || !!view?.cells?.[targetIndex]?.obstacle || cell.building.status !== 'ready'} onClick={() => command('move', selectedId, cellIndex, targetIndex)}><MoveRight size={16} />{pt('move')}</button>
+                    <button className="app-btn is-small" disabled={!colony || cell.building.status === 'construction'} onClick={() => setConfirmation('demolish')}><Trash2 size={16} />{pt('demolish')}</button></div>
                   {confirmation ? <div className="app-note"><div>{pt('demolishConfirm')}</div><div className="app-planet-actions">
                     <button className="app-btn is-small" onClick={() => command('demolish', selectedId, cellIndex)}>{pt('confirm')}</button>
                     <button className="app-btn is-small" onClick={() => setConfirmation(null)}>{pt('cancel')}</button></div></div> : null}
+                  </section>
                 </> : <>
+                  <section className="app-planet-section app-planet-construction"><h3><Glyph name={PLANET_BUILDING_GLYPHS[buildingId] ?? 'planet-base'} size={24} />{selectedBuilding ? buildingName(selectedBuilding.id) : pt('building')}</h3>
                   <label className="app-planet-field"><span>{pt('building')}</span><select className="app-select" value={buildingId} onChange={e => { setBuildingId(e.target.value); setResult(null) }}>
                     {[...catalog.buildings.values()].filter(b => !b.requiredTraitId || knownTraits.has(b.requiredTraitId)).map(b => <option value={b.id} key={b.id}>{buildingName(b.id)}</option>)}
                   </select></label>
@@ -378,8 +395,8 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
                     ...(operation.housing ? [{ k: pt('housing'), v: fmtInt(operation.housing) }] : []),
                     ...(operation.cryoCapacity ? [{ k: pt('cryoCapacity'), v: fmtInt(operation.cryoCapacity) }] : []),
                   ]} /> : null}
-                  <button className="app-btn is-primary" disabled={!check?.ok || !operation || (!colony && selectedBuilding?.kind !== 'base')} onClick={() => command('build', selectedId, cellIndex, buildingId)}>{pt('build')}</button>
                   {check && !check.ok ? <div className="app-note app-warn">{pt('reason.' + check.reason)}</div> : !colony && selectedBuilding?.kind !== 'base' ? <div className="app-note app-warn">{pt('reason.base-required')}</div> : null}
+                  </section>
                 </>}
                 <section className="app-planet-section"><h3>{pt('adjacency')}</h3>
                   <InfoTable lines={[{ k: pt('outputBonus'), v: percent(adjacency?.outputAdd ?? preview?.incoming.outputAdd ?? 0) },
@@ -391,7 +408,17 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
                 <section className="app-planet-section"><h3>{pt('jobs')}</h3>{jobRows(colony?.jobs.filter(job => job.cellIndex === cellIndex || job.targetIndex === cellIndex) ?? [])}</section>
               </> : <div className="app-note">{pt('reason.survey-required')}</div>}
             </div>
+            <div className="app-planet-detail-commands">
+              {cell?.building ? null : cell?.obstacle ? <button className="app-btn is-primary" disabled={!planet || !colony || !planetClearanceCheck(planet, cellIndex, catalog).ok} onClick={() => command('clear', selectedId, cellIndex)}><Hammer size={18} />{pt('clear')}</button>
+                : cell ? <button className="app-btn is-primary" disabled={!check?.ok || !operation || (!colony && selectedBuilding?.kind !== 'base')} onClick={() => command('build', selectedId, cellIndex, buildingId)}><HardHat size={18} />{pt('build')}</button> : null}
+            </div>
           </aside>
+          <div className="app-planet-grid-legend app-dim">
+            <span><Glyph name="planet-empty" size={16} />{pt('empty')}</span><span><Glyph name="mineral" size={16} />{pt('resource')}</span>
+            <span><ShieldAlert size={14} />{pt('obstacle')}</span><span><HardHat size={14} />{pt('status.construction')}</span>
+            <span><PowerOff size={14} />{pt('status.unpowered')}</span><span><UserRound size={14} />{pt('status.unstaffed')}</span>
+            <span><CirclePause size={14} />{pt('status.stopped')}</span><span><Check size={14} />{pt('status.ready')}</span>
+          </div>
         </div> : tab === 'population' ? <div className="app-planet-population">
           <div className="app-planet-scroll"><h3>{pt('population')}</h3>
             <InfoTable lines={[
