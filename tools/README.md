@@ -5,6 +5,8 @@
 - `node tools/pixel-planets-samples.cjs [本机EXE绝对路径] [不存在的独立输出目录绝对路径]`：核验程序SHA256，用原生PixelPlanets场景/shader渲染三类透明PNG；末尾`--scene-set`导出七类星球/四色恒星/黑洞共12张，默认样片不变。默认输出`docs/design/assets/stellar-samples-20261009`，拒绝覆盖，游戏运行不依赖此工具。
 - `pixel-planets-export.gd`：通过本机程序`--no-window --script`执行，固定种子/颜色/光源/冻结时间，RGBA透明视口导出，不手写球体算法。
 - `python tools/pixel-planets-review.py <样片目录> [复现目录]`：已有Pillow/系统字体制作深浅底及小尺寸审查板，核验透明度/留白/像素复现；不安装依赖、不读写个人档。
+- `node tools/pixel-planets-study.cjs <不存在的本树tools/_ui-artifacts输出目录绝对路径>`：用指纹一致的本机原程序导出GUI全部12预设的128/1024分辨率对照，共26张；记录各层实际pixels/seed/time/尺寸。调用`pixel-planets-study-export.gd`，JSON种子转整数后传入原接口，不覆盖素材或个人档。
+- `python tools/pixel-planets-study-review.py <研究输出目录> [独立复现目录]`：核验RGBA/层尺寸/逐像素复现，用同一缩放方式生成总览和恒星/海洋抖动对照板。依赖已有Pillow；只处理本树忽略目录，原生导出读数不等于游戏帧率或设备观感验收。
 - 来源/许可和参数见`docs/design/assets/stellar-samples-20261009/README.md`；样片未接入游戏，风格与完整星图方案待船长审查。
 
 ## 装配靶场验收（2026-10-09 · v0.1.0 / 档v31）
