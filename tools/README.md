@@ -7,6 +7,8 @@
 - `python tools/pixel-planets-review.py <样片目录> [复现目录]`：已有Pillow/系统字体制作深浅底及小尺寸审查板，核验透明度/留白/像素复现；不安装依赖、不读写个人档。
 - `node tools/pixel-planets-study.cjs <不存在的本树tools/_ui-artifacts输出目录绝对路径>`：用指纹一致的本机原程序导出GUI全部12预设的128/1024分辨率对照，共26张；记录各层实际pixels/seed/time/尺寸。调用`pixel-planets-study-export.gd`，JSON种子转整数后传入原接口，不覆盖素材或个人档。
 - `python tools/pixel-planets-study-review.py <研究输出目录> [独立复现目录]`：核验RGBA/层尺寸/逐像素复现，用同一缩放方式生成总览和恒星/海洋抖动对照板。依赖已有Pillow；只处理本树忽略目录，原生导出读数不等于游戏帧率或设备观感验收。
+- `node tools/pixel-planets-materials.cjs export <不存在的本树tools/_ui-artifacts输出JSON绝对路径>`：原生透明视口完成绘制后导出16份shader、12预设完整层序/尺度/配色/参数；随后`generate <输出JSON绝对路径>`生成`ui/stellarPixelMaterials.ts`。Godot/WebGL语法适配与光照入口转换在工具内维护，生成文件不手改；游戏运行不依赖EXE、上游仓库或外部服务。
+- `node tools/stellar-material-check.cjs`：独立临时配置/隐藏Electron检查真实WebGL原层编译、七类行星与恒星/黑洞非空和时间变化、光向/地貌隔离、近远/无星亮度。输出`tools/_ui-artifacts/stellar-material-20261010`，像素读数不是船长观感或实体手机性能验收；不加载个人档。`shaderCode()`供已有原生专项复用同一源，无生产测试入口。
 - 来源/许可和参数见`docs/design/assets/stellar-samples-20261009/README.md`；样片未接入游戏，风格与完整星图方案待船长审查。
 
 ## 装配靶场验收（2026-10-09 · v0.1.0 / 档v31）

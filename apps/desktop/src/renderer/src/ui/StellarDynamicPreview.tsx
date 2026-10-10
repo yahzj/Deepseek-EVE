@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { StellarSystem } from '@whale/core'
 import { stellarMotionSession, stellarMotionBodies, stellarIllumination } from '../panels/stellarMotion'
-import { createStellarPlanetRenderer } from './stellarPlanetShader'
+import { createStellarPlanetRenderer, stellarMaterialSpan, stellarTextureSize } from './stellarPlanetShader'
 import { StellarPlanetPreview } from './stellarArt'
 import { tr } from '../i18n/locale'
 
@@ -19,11 +19,13 @@ export function StellarDynamicPreview({ system, bodyId }: { system: StellarSyste
       if (document.hidden || !renderer) return
       const body = stellarMotionBodies(system, session.elapsedMs).find(value => value.planetId === bodyId)
       if (!body) return
-      const key = String(session.elapsedMs)
+      const pixels = stellarTextureSize((body.kind === 'gas' ? 116 / stellarMaterialSpan(body.kind) : 96) * Math.min(2,window.devicePixelRatio||1),stellarMaterialSpan(body.kind))
+      const key = `${session.elapsedMs}:${pixels}`
       if (last === key) return
       last = key
+      if(element.width!==pixels||element.height!==pixels){element.width=pixels;element.height=pixels}
       renderer.drawPlanet(stellarIllumination(system,body,session.elapsedMs), session.elapsedMs, system.seed + body.ordinal * 127, body.kind)
-      element.dataset.motionMs = key
+      element.dataset.motionMs = String(session.elapsedMs)
     }
     const lost = (event: Event) => { event.preventDefault(); renderer?.dispose(); renderer = null; setReady(false) }
     const restored = () => { renderer = createStellarPlanetRenderer(element); setReady(!!renderer); last = ''; draw() }

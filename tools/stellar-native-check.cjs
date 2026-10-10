@@ -182,8 +182,7 @@ async function child() {
     const shape = await page.js(`(()=>{const c=document.querySelector('.app-stellar-motion-layer'),p=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let n=0;for(let i=3;i<p.length;i+=4)if(p[i])n++;return {painted:n,width:c.width,height:c.height}})()`)
     assert(shape.painted > 100, JSON.stringify(shape))
     // 隔离像素读数使用同一真实shader函数，不加入生产测试接口。
-    const ts = require('typescript'), shaderSource = fs.readFileSync(path.join(ROOT, 'apps/desktop/src/renderer/src/ui/stellarPlanetShader.ts'), 'utf8')
-    const shaderCode = ts.transpileModule(shaderSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
+    const shaderCode = require('./stellar-material-check.cjs').shaderCode()
     const pixel = await page.js(`(()=>{const exports={};${shaderCode};const c=document.createElement('canvas');c.width=128;c.height=128;const render=exports.createStellarPlanetRenderer(c);if(!render)throw Error('WebGL unavailable');const gl=c.getContext('webgl');function image(light,time){render.draw(light,time,3,true);const p=new Uint8Array(128*128*4);gl.readPixels(0,0,128,128,gl.RGBA,gl.UNSIGNED_BYTE,p);return p}function sides(p){let left=0,right=0,n=0;for(let y=32;y<96;y++)for(let x=20;x<50;x++){const a=(y*128+x)*4,b=(y*128+127-x)*4;left+=p[a]+p[a+1]+p[a+2];right+=p[b]+p[b+1]+p[b+2];n++}return {left:left/n,right:right/n}}const a=image([-1,0,.35],0),b=image([1,0,.35],0),d=image([-1,0,.35],10000);let changed=0;for(let i=0;i<a.length;i+=4)if(a[i]!==d[i]||a[i+1]!==d[i+1])changed++;const result={leftLight:sides(a),rightLight:sides(b),rotated:sides(d),changed};render.dispose();return result})()`)
     assert(pixel.leftLight.left > pixel.leftLight.right * 1.5, JSON.stringify(pixel))
     assert(pixel.rightLight.right > pixel.rightLight.left * 1.5, JSON.stringify(pixel))

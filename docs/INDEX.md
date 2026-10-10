@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **468** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7795** KB · **59935** 行
-- 状态分布：**未标注** 250 · **已确认/已实现** 156 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
-- 孤儿文档（0 引用）**85** 份 · 状态未标注 **250** 份
+- 文档总数 **469** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7801** KB · **59981** 行
+- 状态分布：**未标注** 250 · **已确认/已实现** 157 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
+- 孤儿文档（0 引用）**86** 份 · 状态未标注 **250** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
-- 三、现行设计稿（design）：**298** 份
+- 三、现行设计稿（design）：**299** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -56,11 +56,12 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 298 份
+## 三、现行设计稿（design） —— 299 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/pixel-planets-study-20261010.md` | PixelPlanets原实现研究与高分辨率对照 | 未标注（研究完成） | 2026-10-10 | 8 KB / 51 行 | 0 / 0 |
+| `docs/design/stellar-material-port-20261010.md` | 星系原生材质移植 | 已确认/已实现（已实现并自检） | 2026-10-10 | 6 KB / 45 行 | 0 / 0 |
 | `docs/design/acid-burster-charge-20261009.md` | 酸液爆虫冲锋倍率下调 | 已确认/已实现（已实现） | 2026-10-09 | 2 KB / 31 行 | 0 / 0 |
 | `docs/design/alien-invasion-loot-20261009.md` | 异形入侵掉落装备设计 | 已确认/已实现（已实现） | 2026-10-09 | 16 KB / 175 行 | 1 / 0 |
 | `docs/design/boost-copy-ammo-warning-20261009.md` | 加速剂文案与战前弹药预警收口 | 已确认/已实现（已合入主树） | 2026-10-09 | 10 KB / 68 行 | 1 / 0 |
@@ -410,7 +411,7 @@
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 26 / 18 |
 | `docs/l10n-pending.md` | 待英文本地化记录 | 未标注（仅登记） | — | 13 KB / 210 行 | 8 / 10 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 22 KB / 135 行 | 19 / 7 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 22 KB / 136 行 | 19 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -538,11 +539,12 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 61 / 14 |
 
-## 附：孤儿文档（0 引用，85 份）
+## 附：孤儿文档（0 引用，86 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/pixel-planets-study-20261010.md`（2026-10-10 · 8 KB）—— PixelPlanets原实现研究与高分辨率对照
+- `docs/design/stellar-material-port-20261010.md`（2026-10-10 · 6 KB）—— 星系原生材质移植
 - `docs/design/acid-burster-charge-20261009.md`（2026-10-09 · 2 KB）—— 酸液爆虫冲锋倍率下调
 - `docs/design/drone-hull-start-fix-20261009.md`（2026-10-09 · 3 KB）—— 无人机舰固有启动时间补齐
 - `docs/design/drone-start-damage-range-20261009.md`（2026-10-09 · 10 KB）—— 无人机启动时间、伤害飘字与装配靶场

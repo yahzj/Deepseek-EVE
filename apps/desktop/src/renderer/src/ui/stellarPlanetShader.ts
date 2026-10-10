@@ -1,122 +1,171 @@
-// PixelPlanets (c) 2020 Deep-Fold, MIT。复用其周期噪声/三次插值/fbm；
-// 球面经纬度驱动表面，法线/逐光源强度独立于纹理时间，星环轴不随本体旋转。
+// PixelPlanets (c) 2020 Deep-Fold，MIT。完整原层由stellarPixelMaterials生成。
 import type { StellarPlanetKind, StellarSystem } from '@whale/core'
 import type { StellarLighting } from '../panels/stellarMotion'
+import { STELLAR_PIXEL_MATERIALS } from './stellarPixelMaterials'
 
-export const STELLAR_MATERIAL_CODES: Record<StellarPlanetKind, number> = { rocky: 0, ocean: 1, desert: 2, ice: 3, lava: 4, temperate: 5, gas: 6 }
-export const stellarMaterialSpan = (kind: StellarPlanetKind): number => kind === 'gas' ? 2 : 1
+export const stellarMaterialSpan = (kind: StellarPlanetKind): number => STELLAR_PIXEL_MATERIALS.presets[kind].span
+export const stellarStarSpan = (): number => 2
+export function stellarTextureSize(bodyPixels: number, span: number): number {
+  const needed = Math.max(64, Math.min(1024, Math.ceil(bodyPixels * 1.5))) * span
+  return Math.min(2048, Math.ceil(needed / 64) * 64)
+}
+
 export const STELLAR_PLANET_VERTEX = `
 attribute vec2 position;
-varying vec2 uv;
-void main(){uv=position*.5+.5;gl_Position=vec4(position,0.,1.);}`
-export const STELLAR_PLANET_FRAGMENT = `
+uniform float layerScale;
+uniform float sceneSpan;
+varying vec2 materialUv;
+varying vec2 bodyUv;
+void main(){
+ materialUv=vec2(position.x,-position.y)*.5+.5;
+ bodyUv=(materialUv-.5)*layerScale+.5;
+ gl_Position=vec4(position*layerScale/sceneSpan,0.,1.);
+}`
+const HEADER = `
 precision highp float;
-varying vec2 uv;
+varying vec2 materialUv;
+varying vec2 bodyUv;
 uniform vec3 lightDirection;
 uniform vec3 lightDirection2;
 uniform vec2 lightStrength;
 uniform vec3 lightTint;
 uniform float ambient;
-uniform float phase;
-uniform float cloudPhase;
-uniform float seed;
-uniform float materialCode;
-uniform float span;
-uniform vec3 starTint;
-uniform float pixels;
-const float PI=3.14159265359;
-float rand(vec2 c){c=mod(c,vec2(16.,8.));return fract(sin(dot(c,vec2(12.9898,78.233)))*15.5453*seed);}
-float noise(vec2 c){vec2 i=floor(c),f=fract(c);float a=rand(i),b=rand(i+vec2(1.,0.)),v=rand(i+vec2(0.,1.)),d=rand(i+vec2(1.,1.));vec2 t=f*f*(3.-2.*f);return mix(a,b,t.x)+(v-a)*t.y*(1.-t.x)+(d-b)*t.x*t.y;}
-float fbm(vec2 c){float value=0.,weight=.5;for(int i=0;i<4;i++){value+=noise(c)*weight;c*=2.;weight*=.5;}return value;}
+uniform float emissive;
+uniform float glowFloor;
+vec4 materialColor;
+vec3 bodyNormal(){vec2 p=(bodyUv-.5)*2.;return normalize(vec3(p.x,-p.y,sqrt(max(0.,1.-dot(p,p)))));}
+float directLight(){vec3 n=bodyNormal();return max(0.,dot(n,normalize(lightDirection)))*lightStrength.x+max(0.,dot(n,normalize(lightDirection2)))*lightStrength.y;}
+float illuminationDistance(){
+ float total=lightStrength.x+lightStrength.y;
+ float diffuse=total>0.?directLight()/total:0.;
+ return mix(.85,.15,clamp(diffuse,0.,1.));
+}
+`
+const FOOTER = `
 void main(){
- vec2 p=((floor(uv*pixels)+.5)/pixels*2.-1.)*span;
- float rr=dot(p,p);
- vec2 ringUv=vec2(p.x*.94+p.y*.34,-p.x*.34+p.y*.94);
- float ringR=length(vec2(ringUv.x,ringUv.y*3.));
- float ringMask=step(1.25,ringR)*step(ringR,1.90);
- if(materialCode<-1.5){
-   float angle=atan(ringUv.y*3.,ringUv.x);
-   float band=.5+.5*sin(ringR*85.+noise(vec2(angle*3.+phase*16.,ringR*9.))*5.);
-   if(rr<.90){gl_FragColor=vec4(.014,.014,.025,1.);return;}
-   if(ringMask<.5)discard;
-   float wave=.65+.35*sin(angle-phase*2.*PI);
-   gl_FragColor=vec4(mix(vec3(.40,.16,.11),vec3(1.,.72,.32),band)*wave,1.);return;
+ materialColor=vec4(0.);materialMain();
+ if(materialColor.a<=0.)discard;
+ if(emissive<.5){
+   float direct=min(1.05,directLight()*1.25);
+   materialColor.rgb*=max(vec3(glowFloor),vec3(ambient)+direct*lightTint);
  }
- bool ring=materialCode>5.5&&ringMask>.5&&(rr>1.||ringUv.y<0.);
- if(rr>1.&&!ring)discard;
- vec3 normal=vec3(p,sqrt(max(0.,1.-rr)));
- if(ring)normal=normalize(vec3(p.x,p.y,.7));
- vec2 surface=vec2(atan(normal.x,normal.z)/(2.*PI)+phase,asin(normal.y)/PI+.5);
- if(ring)surface=vec2(atan(ringUv.y*3.,ringUv.x)/(2.*PI),ringR*.2);
- vec2 terrain=surface*vec2(16.,8.);
- float relief=fbm(terrain);
- if(materialCode<-.5){
-   float granulation=noise(terrain*3.)*.4+relief*.6;
-   vec3 hot=mix(starTint*.58,vec3(1.),smoothstep(.38,.78,granulation));
-   gl_FragColor=vec4(hot*(.7+.3*normal.z),1.);return;
- }
- vec3 rock=mix(vec3(.46,.48,.57),vec3(.71,.72,.77),step(.48,relief));
- vec2 cells=terrain;vec2 cell=floor(cells),local=fract(cells);float h=rand(cell);
- float crater=1.-smoothstep(.14,.24,length(local-vec2(.25+h*.5)));
- rock=mix(rock,rock*.68,crater*step(.61,h));
- vec3 water=mix(vec3(.10,.28,.48),vec3(.22,.58,.68),step(.49,relief));
- vec3 land=mix(vec3(.25,.46,.36),vec3(.62,.73,.50),step(.58,relief));
- vec3 material=rock;
- if(materialCode>.5&&materialCode<1.5)material=mix(water,land,step(.56,relief));
- if(materialCode>1.5&&materialCode<2.5){float dunes=.5+.5*sin(surface.y*60.+relief*8.);material=mix(vec3(.53,.33,.22),vec3(.84,.68,.43),dunes);}
- if(materialCode>2.5&&materialCode<3.5){float cracks=step(.48,relief)*step(relief,.52);material=mix(vec3(.70,.86,.91),vec3(.21,.42,.57),cracks);}
- if(materialCode>3.5&&materialCode<4.5){float lava=step(.49,relief)*step(relief,.53);material=mix(vec3(.31,.24,.33),vec3(.98,.35,.13),lava);}
- if(materialCode>4.5&&materialCode<5.5)material=mix(water,mix(vec3(.22,.42,.30),vec3(.58,.68,.41),step(.62,relief)),step(.47,relief));
- if(materialCode>5.5){float bands=.5+.5*sin(surface.y*95.+relief*7.);material=mix(vec3(.46,.36,.50),vec3(.89,.72,.48),bands);if(ring)material=mix(vec3(.47,.36,.43),vec3(.86,.72,.58),.5+.5*sin(ringR*75.));}
- float clouds=fbm(vec2((surface.x-phase+cloudPhase)*16.,surface.y*8.)+vec2(3.,1.));
- float cloudy=(materialCode>.5&&materialCode<1.5)||(materialCode>4.5&&materialCode<5.5)?1.:0.;
- material=mix(material,vec3(.88,.93,.96),cloudy*step(.67,clouds)*.90);
- float diffuse=max(0.,dot(normal,normalize(lightDirection)));
- float diffuse2=max(0.,dot(normal,normalize(lightDirection2)));
- float direct=min(1.05,(floor(diffuse*5.+.5)/5.*lightStrength.x+floor(diffuse2*5.+.5)/5.*lightStrength.y)*1.25);
- vec3 color=material*(vec3(ambient)+direct*lightTint);
- if(materialCode>3.5&&materialCode<4.5)color+=material*step(.49,relief)*step(relief,.53)*.18;
- gl_FragColor=vec4(color,1.);
+ gl_FragColor=materialColor;
 }`
 
+type Layer = { name: string; shader: number; scale: number; params: Record<string, unknown> }
+type Preset = { span: number; layers: Layer[] }
+type Ramp = { colors: number[][]; offsets: number[] }
+const PRESETS: Record<string, Preset> = STELLAR_PIXEL_MATERIALS.presets
+const unlit: StellarLighting = { directions: [], strengths: [], tint: [1,1,1], ambient: 1 }
+
 export function createStellarPlanetRenderer(canvas: HTMLCanvasElement) {
-  const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: false, preserveDrawingBuffer: true, antialias: false })
+  const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, preserveDrawingBuffer: true, antialias: true })
   if (!gl) return null
-  const shaders: WebGLShader[] = []
-  const program = gl.createProgram(), buffer = gl.createBuffer()
-  function dispose() { for (const shader of shaders) gl!.deleteShader(shader); if (program) gl!.deleteProgram(program); if (buffer) gl!.deleteBuffer(buffer) }
+  const programs = new Map<number, { program: WebGLProgram; uniforms: Map<string, WebGLUniformLocation | null>; types: Map<string,string> }>()
+  const textures = new Map<Ramp, WebGLTexture>()
+  const buffer = gl.createBuffer()
+  let failure = false
+  function dispose() {
+    for (const value of programs.values()) gl!.deleteProgram(value.program)
+    for (const value of textures.values()) gl!.deleteTexture(value)
+    if (buffer) gl!.deleteBuffer(buffer)
+    programs.clear(); textures.clear()
+  }
+  function compile(index: number) {
+    const old = programs.get(index)
+    if (old) return old
+    const program = gl!.createProgram()
+    if (!program) throw Error('WebGL allocation failed')
+    const shaders: WebGLShader[] = []
+    try {
+      for (const [type, source] of [[gl!.VERTEX_SHADER,STELLAR_PLANET_VERTEX],[gl!.FRAGMENT_SHADER,HEADER+STELLAR_PIXEL_MATERIALS.shaders[index]+FOOTER]] as const) {
+        const shader = gl!.createShader(type)
+        if (!shader) throw Error('WebGL shader allocation failed')
+        shaders.push(shader); gl!.shaderSource(shader,source); gl!.compileShader(shader)
+        if (!gl!.getShaderParameter(shader,gl!.COMPILE_STATUS)) throw Error(gl!.getShaderInfoLog(shader) ?? 'Shader failed')
+        gl!.attachShader(program,shader)
+      }
+      gl!.linkProgram(program)
+      if (!gl!.getProgramParameter(program,gl!.LINK_STATUS)) throw Error(gl!.getProgramInfoLog(program) ?? 'Shader link failed')
+      const uniforms = new Map<string,WebGLUniformLocation|null>(), types = new Map<string,string>()
+      for (const match of (HEADER+STELLAR_PIXEL_MATERIALS.shaders[index]+STELLAR_PLANET_VERTEX).matchAll(/uniform\s+(\w+)\s+(\w+)\s*;/g)) {
+        uniforms.set(match[2]!,gl!.getUniformLocation(program,match[2]!));types.set(match[2]!,match[1]!)
+      }
+      const result = { program,uniforms,types };programs.set(index,result);return result
+    } catch (error) { gl!.deleteProgram(program);throw error }
+    finally { for (const shader of shaders) gl!.deleteShader(shader) }
+  }
+  function ramp(value: Ramp) {
+    const old = textures.get(value)
+    if (old) return old
+    const texture = gl!.createTexture()
+    if (!texture) throw Error('WebGL texture allocation failed')
+    const bytes = new Uint8Array(256*4)
+    for (let x=0;x<256;x++) {
+      const at=x/255
+      let end=value.offsets.findIndex(offset=>offset>=at)
+      if(end<0)end=value.offsets.length-1
+      const start=Math.max(0,end-1), from=value.offsets[start]!,to=value.offsets[end]!,weight=to===from?0:(at-from)/(to-from)
+      for(let c=0;c<4;c++)bytes[x*4+c]=Math.round(255*(value.colors[start]![c]!*(1-weight)+value.colors[end]![c]!*weight))
+    }
+    gl!.bindTexture(gl!.TEXTURE_2D,texture)
+    gl!.texImage2D(gl!.TEXTURE_2D,0,gl!.RGBA,256,1,0,gl!.RGBA,gl!.UNSIGNED_BYTE,bytes)
+    gl!.texParameteri(gl!.TEXTURE_2D,gl!.TEXTURE_MIN_FILTER,gl!.LINEAR);gl!.texParameteri(gl!.TEXTURE_2D,gl!.TEXTURE_MAG_FILTER,gl!.LINEAR)
+    gl!.texParameteri(gl!.TEXTURE_2D,gl!.TEXTURE_WRAP_S,gl!.CLAMP_TO_EDGE);gl!.texParameteri(gl!.TEXTURE_2D,gl!.TEXTURE_WRAP_T,gl!.CLAMP_TO_EDGE)
+    textures.set(value,texture);return texture
+  }
+  function draw(preset: Preset, lighting: StellarLighting, timeMs: number, seed: number, emissive: boolean, size = Math.min(canvas.width,canvas.height)) {
+    if (failure) return
+    try {
+      const pixels=Math.min(size,canvas.width,canvas.height),y=canvas.height-pixels
+      gl!.viewport(0,y,pixels,pixels);gl!.enable(gl!.SCISSOR_TEST);gl!.scissor(0,y,pixels,pixels)
+      gl!.clearColor(0,0,0,0);gl!.clear(gl!.COLOR_BUFFER_BIT)
+      gl!.enable(gl!.BLEND);gl!.blendFuncSeparate(gl!.SRC_ALPHA,gl!.ONE_MINUS_SRC_ALPHA,gl!.ONE,gl!.ONE_MINUS_SRC_ALPHA)
+      gl!.bindBuffer(gl!.ARRAY_BUFFER,buffer)
+      for (const layer of preset.layers) {
+        const { program,uniforms,types }=compile(layer.shader)
+        gl!.useProgram(program)
+        const position=gl!.getAttribLocation(program,'position')
+        gl!.enableVertexAttribArray(position);gl!.vertexAttribPointer(position,2,gl!.FLOAT,false,0,0)
+        let sampler=0
+        for(const [name,original] of Object.entries(layer.params)) {
+          let value=original
+          if(name==='pixels')value=1024*layer.scale
+          if(name==='seed')value=Math.max(.01,((Math.trunc(seed)%1000)+1000)%1000/100)
+          if(name==='should_dither')value=false
+          // 原纹理速度/层间差异保留；会话时间共享，循环边界不重置原材质。
+          if(name==='time')value=Number(original)+(timeMs/(layer.name.toLowerCase().includes('cloud')?50000:40000))*(Number(original)/.17)
+          const location=uniforms.get(name)??null,type=types.get(name)
+          if(type==='sampler2D'&&value&&typeof value==='object'&&'colors' in value) {
+            gl!.activeTexture(gl!.TEXTURE0+sampler);gl!.bindTexture(gl!.TEXTURE_2D,ramp(value as Ramp));gl!.uniform1i(location,sampler++)
+          } else if(type==='int'||type==='bool')gl!.uniform1i(location,Number(value)||0)
+          else if(Array.isArray(value)) {
+            if(value.length===2)gl!.uniform2fv(location,value)
+            else if(value.length===4)gl!.uniform4fv(location,value)
+          } else gl!.uniform1f(location,Number(value)||0)
+        }
+        gl!.uniform1f(uniforms.get('layerScale')??null,layer.scale);gl!.uniform1f(uniforms.get('sceneSpan')??null,preset.span)
+        gl!.uniform3fv(uniforms.get('lightDirection')??null,lighting.directions[0]??[0,0,1]);gl!.uniform3fv(uniforms.get('lightDirection2')??null,lighting.directions[1]??[0,0,1])
+        gl!.uniform2fv(uniforms.get('lightStrength')??null,[lighting.strengths[0]??0,lighting.strengths[1]??0])
+        gl!.uniform3fv(uniforms.get('lightTint')??null,lighting.tint);gl!.uniform1f(uniforms.get('ambient')??null,lighting.ambient)
+        gl!.uniform1f(uniforms.get('emissive')??null,Number(emissive))
+        gl!.uniform1f(uniforms.get('glowFloor')??null,layer.name==='LavaRivers'?.18:0)
+        gl!.drawArrays(gl!.TRIANGLES,0,6)
+      }
+    } catch(error) { failure=true;canvas.dataset.shaderError=String(error);throw error }
+    finally { gl!.disable(gl!.SCISSOR_TEST) }
+  }
   try {
-    if (!program || !buffer) throw new Error('WebGL allocation failed')
-    for (const [type, source] of [[gl.VERTEX_SHADER, STELLAR_PLANET_VERTEX], [gl.FRAGMENT_SHADER, STELLAR_PLANET_FRAGMENT]] as const) {
-      const shader = gl.createShader(type)
-      if (!shader) throw new Error('WebGL shader allocation failed')
-      shaders.push(shader); gl.shaderSource(shader, source); gl.compileShader(shader)
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader) ?? 'Shader failed')
-      gl.attachShader(program, shader)
-    }
-    gl.linkProgram(program)
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) ?? 'Shader link failed')
-    gl.useProgram(program); gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]), gl.STATIC_DRAW)
-    const position = gl.getAttribLocation(program, 'position')
-    gl.enableVertexAttribArray(position); gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0)
-    const uniforms = Object.fromEntries(['lightDirection','lightDirection2','lightStrength','lightTint','ambient','phase','cloudPhase','seed','materialCode','pixels','span','starTint'].map(name => [name, gl.getUniformLocation(program, name)]))
-    const drawMaterial = (timeMs: number, value: number, code: number, span: number, lighting: StellarLighting, tint: [number,number,number] = [1,.8,.4]) => {
-      gl.viewport(0, 0, canvas.width, canvas.height); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT)
-      gl.useProgram(program); gl.uniform3fv(uniforms.lightDirection, lighting.directions[0] ?? [0,0,1]); gl.uniform3fv(uniforms.lightDirection2, lighting.directions[1] ?? [0,0,1])
-      gl.uniform2fv(uniforms.lightStrength, [lighting.strengths[0] ?? 0,lighting.strengths[1] ?? 0]); gl.uniform3fv(uniforms.lightTint,lighting.tint); gl.uniform1f(uniforms.ambient,lighting.ambient)
-      gl.uniform1f(uniforms.phase, (timeMs / 40000) % 1); gl.uniform1f(uniforms.cloudPhase, (timeMs / 50000) % 1)
-      gl.uniform1f(uniforms.seed, 1 + (value % 997) / 100); gl.uniform1f(uniforms.materialCode,code); gl.uniform1f(uniforms.pixels,128); gl.uniform1f(uniforms.span,span); gl.uniform3fv(uniforms.starTint,tint)
-      gl.drawArrays(gl.TRIANGLES, 0, 6)
-    }
+    if(!buffer)throw Error('WebGL buffer allocation failed')
+    gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW)
+    // 初始化完整材质集，任何失败都走现有明确静态降级，不显示部分空白天体。
+    for(let index=0;index<STELLAR_PIXEL_MATERIALS.shaders.length;index++)compile(index)
     return { dispose,
-      draw(direction: [number, number, number], timeMs: number, value: number, isOcean: boolean) {
-        drawMaterial(timeMs,value,Number(isOcean),1,{directions:[direction],strengths:[.86],tint:[1,1,1],ambient:.14})
-      },
-      drawPlanet(lighting: StellarLighting,timeMs: number,value: number,kind: StellarPlanetKind) { drawMaterial(timeMs,value,STELLAR_MATERIAL_CODES[kind],stellarMaterialSpan(kind),lighting) },
-      drawStar(timeMs: number,value: number,starClass: StellarSystem['starClass']) {
-        const tint: [number,number,number] = starClass === 'red'||starClass==='orange' ? [1,.46,.28] : starClass==='blue'||starClass==='neutron' ? [.38,.69,1] : starClass==='white' ? [.88,.93,1] : [1,.77,.23]
-        drawMaterial(timeMs,value,starClass==='black-hole'?-2:-1,starClass==='black-hole'?2:1,{directions:[],strengths:[],tint:[1,1,1],ambient:1},tint)
+      draw(direction: [number,number,number], timeMs: number, seed: number, ocean: boolean) { draw(PRESETS[ocean?'ocean':'rocky']!,{directions:[direction],strengths:[.86],tint:[1,1,1],ambient:.14},timeMs,seed,false) },
+      drawPlanet(lighting: StellarLighting,timeMs: number,seed: number,kind: StellarPlanetKind,pixels?:number) { draw(PRESETS[kind]!,lighting,timeMs,seed,false,pixels) },
+      drawStar(timeMs: number,seed: number,starClass: StellarSystem['starClass'],pixels?:number) {
+        const key=starClass==='black-hole'?'black-hole':starClass==='red'||starClass==='orange'?'star-red':starClass==='blue'||starClass==='neutron'?'star-blue':starClass==='white'?'star-white':'star-yellow'
+        draw(PRESETS[key]!,unlit,timeMs,seed,true,pixels)
       } }
-  } catch { dispose(); return null }
+  } catch(error) { canvas.dataset.shaderError=String(error);dispose();return null }
 }
