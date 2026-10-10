@@ -33,7 +33,7 @@ function layerHarness(adaptive=false) {
   },document:{hidden:false,createElement:tile,addEventListener:vi.fn(),removeEventListener:vi.fn()},window:{devicePixelRatio:1},performance:{now:()=>0},matchMedia:()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()}),ResizeObserver:class{observe(){}disconnect(){}},requestAnimationFrame:(cb:(time:number)=>void)=>{callbacks.set(++sequence,cb);return sequence},cancelAnimationFrame:(id:number)=>callbacks.delete(id)}
   const text=readFileSync(new URL('apps/desktop/src/renderer/src/panels/StellarMotionLayer.tsx',root),'utf8')
   runInNewContext(ts.transpileModule(text,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText,scope)
-  let props={system,view:{zoom:1,pan:{x:0,y:0}},svg,radiusOf:()=>18,unit:1,onReady:vi.fn()}
+  let props={system,view:{zoom:1,pan:{x:0,y:0}},svg,radiiOf:()=>Object.fromEntries(system.bodies.map(body=>[body.planetId,18])),unit:1,onReady:vi.fn()}
   const render=(view=props.view)=>{props={...props,view};index=0;const tree=scope.exports.StellarMotionLayer(props);tree.ref.current=surface;for(const run of pending.splice(0))run()}
   render()
   const frame=(time:number)=>{const [id,cb]=callbacks.entries().next().value!;callbacks.delete(id);cb(time)}

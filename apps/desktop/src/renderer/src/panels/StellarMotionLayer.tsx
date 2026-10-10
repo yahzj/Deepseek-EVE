@@ -5,14 +5,14 @@ import { createStellarPlanetRenderer, stellarMaterialSpan, stellarStarSpan, stel
 import { stellarSceneProjection } from './stellarSceneDraw'
 import { stellarViewBox, stellarOrdinalLabels, type StellarMapView } from './stellarMapView'
 
-export function StellarMotionLayer({ system, view, selectedId, svg, radiusOf, unit, onReady }: {
+export function StellarMotionLayer({ system, view, selectedId, svg, radiiOf, unit, onReady }: {
   system: StellarSystem; view: StellarMapView; selectedId?: string; svg: RefObject<SVGSVGElement>
-  radiusOf: (body: StellarBody, bodies: StellarBody[]) => number; unit: number; onReady: (ready: boolean) => void
+  radiiOf: (bodies: StellarBody[]) => Readonly<Record<string, number>>; unit: number; onReady: (ready: boolean) => void
 }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const repaint = useRef<() => void>(() => {})
-  const latest = useRef({ system, view, selectedId, radiusOf, unit, onReady })
-  latest.current = { system, view, selectedId, radiusOf, unit, onReady }
+  const latest = useRef({ system, view, selectedId, radiiOf, unit, onReady })
+  latest.current = { system, view, selectedId, radiiOf, unit, onReady }
   useLayoutEffect(() => {
     const surface = canvas.current
     if (!surface) return
@@ -48,8 +48,9 @@ export function StellarMotionLayer({ system, view, selectedId, svg, radiusOf, un
       return entry.image
     }
     const draw = () => {
-      const { system: value, view: viewport, selectedId: selected, radiusOf: radius, unit: labelUnit } = latest.current
+      const { system: value, view: viewport, selectedId: selected, radiiOf: sizeOf, unit: labelUnit } = latest.current
       const bodies = stellarMotionBodies(value, session.elapsedMs)
+      const radii = sizeOf(bodies)
       const stars = stellarMotionStars(value, session.elapsedMs)
       const width = surface.clientWidth, height = surface.clientHeight, ratio = Math.min(2, window.devicePixelRatio || 1)
       if (!width || !height) return
@@ -75,9 +76,10 @@ export function StellarMotionLayer({ system, view, selectedId, svg, radiusOf, un
         }
       }
       for (const body of bodies) {
-        const r = radius(body, bodies)
+        const r = radii[body.planetId]!
         const node = svg.current?.querySelector<SVGGElement>(`[data-stellar-body="${body.planetId}"]`)
         node?.setAttribute('transform', `translate(${body.x} ${body.y})`)
+        node?.setAttribute('data-stellar-radius', String(r))
         node?.querySelector('[data-stellar-art-scale]')?.setAttribute('transform', `scale(${r / 10})`)
         node?.querySelector('.app-stellar-map-selection')?.setAttribute('r', String(Math.max(r + 5, labelUnit * 13)))
         node?.querySelector('.app-stellar-map-hit')?.setAttribute('r', String(Math.max(r, labelUnit * 20)))
@@ -90,7 +92,7 @@ export function StellarMotionLayer({ system, view, selectedId, svg, radiusOf, un
           ctx.drawImage(image, body.x * projection.scale + projection.x - size / 2, body.y * projection.scale + projection.y - size / 2, size, size)
         }
       }
-      const labels = stellarOrdinalLabels(bodies.map(body => ({ ...body, radius: Math.max(radius(body, bodies) * Math.max(1.15,stellarMaterialSpan(body.kind)), body.planetId === selected ? labelUnit * 13 : 0) })), stellarViewBox(viewport), labelUnit, selected, stars)
+      const labels = stellarOrdinalLabels(bodies.map(body => ({ ...body, radius: Math.max(radii[body.planetId]! * Math.max(1.15,stellarMaterialSpan(body.kind)), body.planetId === selected ? labelUnit * 13 : 0) })), stellarViewBox(viewport), labelUnit, selected, stars)
       for (const label of labels) {
         const node = svg.current?.querySelector(`[data-stellar-label="${label.planetId}"]`)
         node?.setAttribute('x', String(label.x + label.width / 2)); node?.setAttribute('y', String(label.y + label.height * .75))
@@ -126,6 +128,6 @@ export function StellarMotionLayer({ system, view, selectedId, svg, radiusOf, un
       tile.removeEventListener('webglcontextlost', lost); tile.removeEventListener('webglcontextrestored', restored)
     }
   }, [system.id])
-  useLayoutEffect(() => { repaint.current() }, [view.zoom, view.pan.x, view.pan.y, selectedId, unit, radiusOf])
+  useLayoutEffect(() => { repaint.current() }, [view.zoom, view.pan.x, view.pan.y, selectedId, unit, radiiOf])
   return <canvas className="app-stellar-motion-layer" ref={canvas} aria-hidden="true" />
 }

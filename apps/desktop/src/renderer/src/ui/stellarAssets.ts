@@ -22,8 +22,6 @@ export const STELLAR_PLANET_ASSETS: Record<StellarPlanetKind, { url: string; spa
   lava: { url: lava, span: 288 / 256 }, temperate: { url: temperate, span: 288 / 256 },
   gas: { url: gas, span: 800 / 256 },
 }
-export const stellarBodyRadius = (kind: StellarPlanetKind): number => kind === 'gas' ? 22 : 18
-export const stellarDisplayRadius = (kind: StellarPlanetKind, unit: number): number => Math.max(stellarBodyRadius(kind), (kind === 'gas' ? 18 : 14) * unit)
 export function stellarStarAsset(system: Pick<StellarSystem, 'starClass'>) {
   if (system.starClass === 'none') return null
   if (system.starClass === 'black-hole') return { url: blackHole, span: 544 / 256 }

@@ -78,6 +78,22 @@ describe('星系星图探索指挥台', () => {
     expect(core.stellarPlanetDeveloped(prepared)).toBe(false)
     expect(core.stellarPlanetDeveloped(undefined)).toBe(false)
   })
+  it('首次发现的公开size送往星图，不发送隐藏地表；建筑和勘探变化不改面积', () => {
+    const h = harness(), map = h.find(node => node.type === 'stellar-map')
+    for (const body of map.props.system.bodies) {
+      const planet = h.state.planetary!.planets[body.planetId]!
+      expect(map.props.bodyStates[body.planetId]).toEqual({ survey: planet.survey, developed: core.stellarPlanetDeveloped(planet), size: core.planetSurveyView(planet, h.ctx.planetary!)?.size })
+    }
+    const body = map.props.system.bodies[0], planet = h.state.planetary!.planets[body.planetId]!
+    const size = planet.size
+    planet.survey = 1; h.render()
+    expect(h.find(node => node.type === 'stellar-map').props.bodyStates[body.planetId].size).toBe(size)
+    planet.survey = 3
+    planet.cells[0]!.building = { id: 'base', status: 'ready', powered: true, staffed: true }; h.render()
+    expect(h.find(node => node.type === 'stellar-map').props.bodyStates[body.planetId].size).toBe(size)
+    delete planet.cells[0]!.building; h.render()
+    expect(h.find(node => node.type === 'stellar-map').props.bodyStates[body.planetId].size).toBe(size)
+  })
   it.each(['zh', 'en'] as const)('%s任务、详情分区与原操作保留，新增词条待译回退', locale => {
     const h = harness(locale)
     for (const id of ['ui.stellarHud.001', 'ui.stellarHud.002', 'ui.stellarHud.003']) {

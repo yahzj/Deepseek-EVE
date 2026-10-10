@@ -19,6 +19,7 @@
 ## 星系探索HUD取证（2026-10-09 · v0.1.0 / 档v31）
 
 - `node tools/stellar-native-check.cjs --dynamic-only --case=modern-zh-desktop`：种子3实际动态场景；七类材质/恒星/黑洞真实shader像素检查，近/远/无光源亮度递减、光向与自转分离、真实拖动第一帧投影误差、公转/暂停/减少动态/上下文丢失恢复/地表返回和原坐标守恒。手机可用`--case=classic-en-mobile`；加`--no-gpu`检查降级，深浅主题截图不作观感或实体手机性能结论。
+- 上述动态专项同时核对公开4/5/6地表规格的本体半径、动态图形/PNG缩放、选中圈与点击下限，及实际圆盘像素面积比例（小尺寸边缘采样允许15%误差）；`--no-gpu`仍核对静态面积比例，不读取隐藏资源或个人档。
 
 - `node tools/stellar-native-check.cjs`：先构建。两布局×中英文×桌面/手机旋转，真实制造/搜索/暂停/继续/地图手势/地表往返/IPC保存与运行错误检查；补取消/丢弃确认、六套主题底色、确认焦点约束及地表返回焦点/视口/选择检查。`--case=modern-zh-desktop`可单场复跑。
 - `node tools/stellar-native-check.cjs --scene-only --locale=zh`：六类合成星系×两布局×桌面/手机，深浅主题/减少动态、PNG兼容资产解码/动态加载、Canvas非空像素与SVG投影一致、双星真实运动保持间距和无恒星底色暗化；缩放后重复核对，可加`--case`或`--kind`单场复跑。

@@ -129,6 +129,41 @@ async function child() {
   }
   if (options.dynamicOnly) {
     await openStellar()
+    const areaReadings = async () => {
+      const state = await snap(), system = state.planetary.stellar.systems['system-v1-3']
+      const readings = await page.js(`(()=>{
+        const svg=document.querySelector('.app-stellar-map-svg'),inverse=svg.getCTM().inverse(),unit=Math.max(Math.hypot(inverse.a,inverse.b),Math.hypot(inverse.c,inverse.d));
+        const canvas=document.querySelector('.app-stellar-motion-layer'),box=svg.viewBox.baseVal,s=Math.min(canvas.clientWidth/box.width,canvas.clientHeight/box.height),ox=(canvas.clientWidth-box.width*s)/2-box.x*s,oy=(canvas.clientHeight-box.height*s)/2-box.y*s,ratio=canvas.width/canvas.clientWidth;
+        return {unit,mode:canvas.dataset.renderMode,bodies:[...document.querySelectorAll('[data-stellar-body]')].map(node=>{
+          const r=Number(node.dataset.stellarRadius),art=node.querySelector('[data-stellar-art-scale]').transform.baseVal.consolidate().matrix.a,point=node.transform.baseVal.consolidate().matrix;
+          let painted=0;
+          if(canvas.dataset.renderMode==='dynamic'){
+            const cx=(point.e*s+ox)*ratio,cy=(point.f*s+oy)*ratio,pr=r*s*ratio,x=Math.max(0,Math.floor(cx-pr)),y=Math.max(0,Math.floor(cy-pr)),w=Math.min(canvas.width-x,Math.ceil(pr*2)+2),h=Math.min(canvas.height-y,Math.ceil(pr*2)+2);
+            if(w>0&&h>0){const pixels=canvas.getContext('2d').getImageData(x,y,w,h).data;for(let i=3;i<pixels.length;i+=4)if(pixels[i])painted++}
+          }
+          return {id:node.dataset.stellarBody,r,art,painted,selection:node.querySelector('.app-stellar-map-selection').r.baseVal.value,hit:node.querySelector('.app-stellar-map-hit').r.baseVal.value};
+        })};
+      })()`)
+      let normalized
+      for(const reading of readings.bodies){
+        const body=system.bodies.find(body=>body.planetId===reading.id),planet=state.planetary.planets[reading.id]
+        assert(Math.abs(reading.art*10-reading.r)<.001,JSON.stringify(reading))
+        assert(reading.selection>=reading.r && reading.hit>=reading.r && reading.hit/readings.unit>=19.99,JSON.stringify(reading))
+        if(readings.mode==='dynamic')assert(reading.painted>5,JSON.stringify(reading))
+        if(body.kind==='gas')continue
+        const scale=reading.r/planet.size
+        if(normalized!==undefined)assert(Math.abs(scale-normalized)<.00001,JSON.stringify(readings))
+        normalized=scale;reading.size=planet.size
+      }
+      if(readings.mode==='dynamic'){
+        const solid=readings.bodies.filter(body=>body.size)
+        for(const a of solid)for(const b of solid){
+          const expected=(a.size/b.size)**2,actual=a.painted/b.painted
+          assert(Math.abs(actual/expected-1)<.15,JSON.stringify({a,b,expected,actual}))
+        }
+      }
+      return readings
+    }
     if (options.noGpu) {
       await page.wait('document.querySelector(".app-stellar-motion-layer")?.dataset.renderMode==="static"')
       assert(await page.js('document.querySelector("[data-motion-pause]").disabled && !!document.querySelector("[data-motion-fallback]")'))
@@ -137,7 +172,8 @@ async function child() {
       await page.tap('[data-stellar-body="system-v1-3-p3"]')
       await page.wait('!!document.querySelector(".app-stellar-dynamic-preview .app-stellar-planet-preview")')
       assert.equal(errors.length, 0, JSON.stringify(errors))
-      console.log(JSON.stringify({ ...options, ok:true, fallback:true })); app.exit(0); return
+      const areas=await areaReadings()
+      console.log(JSON.stringify({ ...options, ok:true, fallback:true,areas })); app.exit(0); return
     }
     await page.wait('document.querySelector(".app-stellar-motion-layer")?.dataset.renderMode==="dynamic"')
     await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 })
@@ -158,6 +194,7 @@ async function child() {
     const paused = await phase(), position = await transform()
     await sleep(500); assert.equal(await phase(), paused); assert.equal(await transform(), position)
     assert.equal(await page.js('Number(document.querySelector("[data-dynamic-preview]").dataset.motionMs)'), paused)
+    const areaBefore=await areaReadings()
     await page.tap(`.app-stellar-map-tool[aria-label=${JSON.stringify(t('ui.stellar.050'))}]`)
     const immediateView = await page.js(`(()=>{const b=document.querySelector('.app-stellar-map-svg').viewBox.baseVal,z=1000/b.width,key=[z,b.x+b.width/2-500,b.y+b.height/2-350].join(',');return {key,motion:document.querySelector('.app-stellar-motion-layer').dataset.renderedView,background:document.querySelector('.app-stellar-scene').dataset.renderedView}})()`)
     for (const id of ['motion','background']) {
@@ -179,6 +216,7 @@ async function child() {
     else await page.send('Input.dispatchMouseEvent',{type:'mouseReleased',x:dragPoint.x+36,y:dragPoint.y+10.8,button:'left',clickCount:1})
     assert.equal(await phase(), paused)
     await page.tap(`.app-stellar-map-tool[aria-label=${JSON.stringify(t('ui.stellar.052'))}]`)
+    const areas=await areaReadings()
     const shape = await page.js(`(()=>{const c=document.querySelector('.app-stellar-motion-layer'),p=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let n=0;for(let i=3;i<p.length;i+=4)if(p[i])n++;return {painted:n,width:c.width,height:c.height}})()`)
     assert(shape.painted > 100, JSON.stringify(shape))
     // 隔离像素读数使用同一真实shader函数，不加入生产测试接口。
@@ -216,7 +254,7 @@ async function child() {
     await page.js('window.__whalePlanetaryTest.persist();true'); await sleep(150)
     assert.deepEqual((await snap()).planetary.stellar.systems, before.planetary.stellar.systems)
     assert.equal(errors.length, 0, JSON.stringify(errors))
-    console.log(JSON.stringify({ ...options, ok:true, pixel, fullPixel, immediateView, dragReadings, shape, time:await phase() })); app.exit(0); return
+    console.log(JSON.stringify({ ...options, ok:true, pixel, fullPixel, immediateView, dragReadings, areaBefore,areas,shape, time:await phase() })); app.exit(0); return
   }
   if (options.sceneOnly) {
     await openStellar()

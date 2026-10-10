@@ -75,7 +75,8 @@ export function StellarExplorer({ engine, catalog, onClose, onCommand }: {
   const manufacture = manufacturingRunViews(state, engine.ctx).filter(run => run.blueprintId === DEEP_SPACE_PROBE_BLUEPRINT_ID)
   const bodyStates = Object.fromEntries((selected?.bodies ?? []).map(body => {
     const value = state.planetary?.planets[body.planetId]
-    return [body.planetId, { survey: value?.survey ?? 0, developed: stellarPlanetDeveloped(value) }]
+    const publicSize = value ? planetSurveyView(value, catalog)?.size : undefined
+    return [body.planetId, { survey: value?.survey ?? 0, developed: stellarPlanetDeveloped(value), size: publicSize }]
   }))
   const confirmValid = confirm?.kind === 'discard'
     ? !!stellar?.systems[confirm.systemId] && !stellarSystemDeveloped(state, confirm.systemId)
