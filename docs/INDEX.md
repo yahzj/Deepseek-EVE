@@ -12,9 +12,9 @@
 
 ## 统计
 
-- 文档总数 **466** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7782** KB · **59829** 行
-- 状态分布：**未标注** 249 · **已确认/已实现** 154 · **进行中** 44 · **待裁定** 18 · **历史留档** 1
-- 孤儿文档（0 引用）**85** 份 · 状态未标注 **249** 份
+- 文档总数 **466** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7784** KB · **59837** 行
+- 状态分布：**未标注** 250 · **已确认/已实现** 154 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
+- 孤儿文档（0 引用）**85** 份 · 状态未标注 **250** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
 - 三、现行设计稿（design）：**296** 份
@@ -63,7 +63,7 @@
 | `docs/design/planetary-wheel-traits-20261011.md` | 地表建筑配色与轮盘交互、特性标签 | 已确认/已实现（已实现并自检） | 2026-10-11 | 6 KB / 38 行 | 0 / 0 |
 | `docs/design/signal-auto-weight-20261011.md` | 信号空间自动探索超重编队修复 | 已确认/已实现（已实现） | 2026-10-11 | 1 KB / 23 行 | 0 / 0 |
 | `docs/design/stellar-readability-20261011.md` | 星系星图可读性修正 | 已确认/已实现（已实现并自检） | 2026-10-11 | 7 KB / 62 行 | 0 / 0 |
-| `docs/design/workspace-release-20261011.md` | 多工作区合并与推送 | 进行中（进行中） | 2026-10-11 | 2 KB / 27 行 | 0 / 0 |
+| `docs/design/workspace-release-20261011.md` | 多工作区合并与推送 | 未标注（已整合并完成发布验证） | 2026-10-11 | 4 KB / 35 行 | 0 / 0 |
 | `docs/design/planetary-surface-ui-20261010.md` | 地表控制台与设施图标优化 | 已确认/已实现（已实现并自检） | 2026-10-10 | 7 KB / 45 行 | 0 / 0 |
 | `docs/design/acid-burster-charge-20261009.md` | 酸液爆虫冲锋倍率下调 | 已确认/已实现（已实现） | 2026-10-09 | 2 KB / 31 行 | 0 / 0 |
 | `docs/design/alien-invasion-loot-20261009.md` | 异形入侵掉落装备设计 | 已确认/已实现（已实现） | 2026-10-09 | 16 KB / 175 行 | 1 / 0 |
@@ -543,7 +543,7 @@
 - `docs/design/planetary-wheel-traits-20261011.md`（2026-10-11 · 6 KB）—— 地表建筑配色与轮盘交互、特性标签
 - `docs/design/signal-auto-weight-20261011.md`（2026-10-11 · 1 KB）—— 信号空间自动探索超重编队修复
 - `docs/design/stellar-readability-20261011.md`（2026-10-11 · 7 KB）—— 星系星图可读性修正
-- `docs/design/workspace-release-20261011.md`（2026-10-11 · 2 KB）—— 多工作区合并与推送
+- `docs/design/workspace-release-20261011.md`（2026-10-11 · 4 KB）—— 多工作区合并与推送
 - `docs/design/planetary-surface-ui-20261010.md`（2026-10-10 · 7 KB）—— 地表控制台与设施图标优化
 - `docs/design/acid-burster-charge-20261009.md`（2026-10-09 · 2 KB）—— 酸液爆虫冲锋倍率下调
 - `docs/design/drone-hull-start-fix-20261009.md`（2026-10-09 · 3 KB）—— 无人机舰固有启动时间补齐
@@ -626,8 +626,9 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（249 份，待补一行 `状态：…`）
+## 附：状态未标注（250 份，待补一行 `状态：…`）
 
+- `docs/design/workspace-release-20261011.md`（2026-10-11）—— 多工作区合并与推送
 - `docs/design/drone-hull-start-fix-20261009.md`（2026-10-09）—— 无人机舰固有启动时间补齐
 - `docs/design/pressure-chamber-cycle-fix-20261009.md`（2026-10-09）—— 增压加速腔误接推进周期
 - `docs/design/raider-fragment-ammo-audit-20261009.md`（2026-10-09）—— 掠袭破片炮弹药显示检查
