@@ -463,7 +463,9 @@ export function wormholeAutoCandidates(state: GameState, ctx: SimContext, exclud
   const rows: Array<{ shipId: string; name: string; score: number; blocked: CoreBlockReason | null }> = []
   for (const shipId of Object.keys(state.fleet)) {
     if (skip.has(shipId)) continue
-    const blocked = wormholeAutoShipBlockReason(state, shipId)
+    const ownBlock = wormholeAutoShipBlockReason(state, shipId)
+    const singleAdmission = wormholeAdmission(ctx, [shipId])
+    const blocked = ownBlock ?? (singleAdmission.ok ? null : { error: WORMHOLE_ADMISSION_TEXT[singleAdmission.code] })
     rows.push({ shipId, name: shipNameOf(state, ctx, shipId), score: wormholeAutoScore(state, ctx, shipId), blocked })
   }
   rows.sort((a, b) => b.score - a.score || a.shipId.localeCompare(b.shipId))
@@ -484,7 +486,8 @@ export function wormholeAutoCandidates(state: GameState, ctx: SimContext, exclud
         shipId: r.shipId,
         name: r.name,
         picked: false,
-        blocked: { error: WORMHOLE_ADMISSION_TEXT[admission.code] },
+        // 加入推荐队会超重不等于该舰禁用，玩家仍可替换队伍后手动选择。
+        blocked: r.blocked,
       }
     }
     picked += 1

@@ -79,6 +79,52 @@ function stockOne(state: GameState): string {
 }
 
 describe('虫洞 · 自动探索（批次 3）', () => {
+  it('推荐重队跳过的合法舰不置灰，换选四艘轻舰后可出发', () => {
+    const state = fresh({ ships: 0 })
+    const heavy = Array.from({ length: 3 }, () => addShipToFleet(state, 'sh-swordfish'))
+    const light = Array.from({ length: 4 }, () => addShipToFleet(state, 'sh-nautilus'))
+    for (const uid of heavy) state.fleet[uid]!.fitted.high = ['mod-laser-1', 'mod-laser-1', 'mod-laser-1']
+    const before = JSON.stringify(state)
+    const rows = wormholeAutoCandidates(state, ctx)
+    const picked = rows.filter(row => row.picked).map(row => row.shipId)
+    expect(wormholeAdmission(ctx, picked).ok).toBe(true)
+    expect(rows.find(row => row.shipId === heavy[2])!).toMatchObject({ picked: false, blocked: null })
+    for (const uid of light) expect(rows.find(row => row.shipId === uid)!).toMatchObject({ picked: false, blocked: null })
+    expect(JSON.stringify(state)).toBe(before)
+    const stockId = stockOne(state)
+    expect(wormholeAdmission(ctx, light).totalMass).toBe(14000)
+    expect(wormholeAutoBlockReason(state, ctx, stockId, light)).toBeNull()
+    expect(wormholeAutoStart(state, ctx, stockId, light).ok).toBe(true)
+    expect(wormholeAutoRunsOf(state)[0]!.shipIds).toEqual(light)
+  })
+
+  it('默认满四艘后，后排单舰禁入仍禁用而合法舰保持可选', () => {
+    const state = fresh({ ships: 4 })
+    const titan = addShipToFleet(state, 'sh-colossal')
+    state.fleet[titan]!.durability = .1
+    const alternative = addShipToFleet(state, 'sandcat')
+    state.fleet[alternative]!.durability = .1
+    const rows = wormholeAutoCandidates(state, ctx)
+    expect(rows.find(row => row.shipId === titan)!.blocked?.error).toBe(WORMHOLE_ADMISSION_TEXT['tier-too-high'])
+    expect(rows.find(row => row.shipId === titan)!.picked).toBe(false)
+    expect(rows.find(row => row.shipId === alternative)!).toMatchObject({ picked: false, blocked: null })
+  })
+
+  it('未推荐舰仍受在途任务占用限制，超重手动队不消耗库存或切换主控', () => {
+    const state = fresh({ ships: 0 })
+    const heavy = Array.from({ length: 3 }, () => addShipToFleet(state, 'sh-swordfish'))
+    const stockId = stockOne(state)
+    const before = JSON.stringify(state)
+    expect(wormholeAutoStart(state, ctx, stockId, heavy).ok).toBe(false)
+    expect(JSON.stringify(state)).toBe(before)
+    state.aiAssignments[heavy[2]!] = {
+      coreType: 'basic', startedAtGameMs: 0,
+      task: { kind: 'standby', phase: 'outbound', galaxyId: null, finishAtGameMs: 0, legMs: 0 } as never,
+    }
+    const rows = wormholeAutoCandidates(state, ctx)
+    expect(rows.find(row => row.shipId === heavy[2])!.blocked?.errorId).toBe('core.wormholeAuto.007')
+  })
+
   it('自动配置不再选出超过质量上限的小队，手动超重被命令层拒绝，刚好到上限可用', () => {
     const state = fresh({ ships: 0 })
     const heavyA = addShipToFleet(state, 'sh-swordfish')
