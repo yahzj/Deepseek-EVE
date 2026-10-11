@@ -9,6 +9,7 @@ import { fmtDuration, fmtInt } from '../i18n/fmt'
 import { pt } from '../ui/planetText'
 import { StellarMap } from './StellarMap'
 import { PlanetaryPanel } from './PlanetaryPanel'
+import { PlanetTraitTags } from '../ui/PlanetTraitTags'
 import { STELLAR_KIND_IDS as kindIds, STELLAR_PLANET_KIND_IDS as planetKindIds, StellarPlanetPreview } from '../ui/stellarArt'
 import { StellarDynamicPreview } from '../ui/StellarDynamicPreview'
 import { stellarDynamicBody } from './stellarMotion'
@@ -110,7 +111,7 @@ export function StellarExplorer({ engine, catalog, onClose, onCommand }: {
             <h3><Crosshair size={15} aria-hidden="true" />{tr('ui.stellarHud.002')}</h3>
             {selectedBody ? <><div className="app-stellar-target">{selected && stellarDynamicBody(selected, selectedBody) ? <StellarDynamicPreview system={selected} bodyId={selectedBody.planetId} /> : <StellarPlanetPreview kind={selectedBody.kind} />}<div><strong>{tr('ui.stellar.056')} {selectedBody.ordinal}</strong><span>{tr(planetKindIds[selectedBody.kind])}</span><span className="app-stellar-phase">{planet ? pt('survey.' + planet.survey) : tr('ui.stellar.055')}</span></div></div>
               {view ? <><dl className="app-stellar-facts"><div><dt>{pt('hazard')}</dt><dd>{view.hazard.min === view.hazard.max ? view.hazard.min : `${view.hazard.min}~${view.hazard.max}`}</dd></div><div><dt>{pt('habitability')}</dt><dd>{view.habitability.min === view.habitability.max ? view.habitability.min : `${view.habitability.min}~${view.habitability.max}`}</dd></div></dl>
-                <div className="app-planet-traits">{view.traitIds.map(id => <span key={id}>{pt('trait.' + id)}</span>)}</div>{view.unknownTraits > 0 ? <div className="app-dim">{pt('unknownTraits')} {view.unknownTraits}</div> : null}</> : null}
+                <PlanetTraitTags key={view.id} view={view} catalog={dynamicCatalog} /></> : null}
               <div className="app-stellar-targetactions"><button className="app-btn" disabled={!planet || planet.survey >= 2} onClick={() => command('survey', [selectedBody.planetId, 2])}><Search size={16} />{tr('ui.stellar.022')}</button>
                 <button className="app-btn" disabled={!planet || planet.survey >= 3} onClick={() => command('survey', [selectedBody.planetId, 3])}><Crosshair size={16} />{tr('ui.stellar.023')}</button>
                 <button data-open-surface className="app-btn is-primary" disabled={!planet || planet.survey < 2 || planet.surfaceAllowed === false} onClick={() => setSurface(selectedBody.planetId)}><Globe2 size={16} />{tr('ui.stellar.020')}</button></div>

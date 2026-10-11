@@ -38,6 +38,7 @@ describe('完整星系动态表现与独立光照', () => {
     expect(near.strengths[0]!).toBeGreaterThan(middle.strengths[0]!)
     expect(middle.strengths[0]!).toBeGreaterThan(far.strengths[0]!)
     expect(near.ambient).toBe(far.ambient)
+    expect(near.ambient).toBe(.32)
     expect(near.directions).toEqual(far.directions)
     expect(stellarIllumination(system,system.stars[0]!,0).strengths[0]!).toBeLessThanOrEqual(1.2)
     const binary = {...system,kind:'binary' as const,stars:[{x:475,y:350,radius:15},{x:525,y:350,radius:12}]}
@@ -50,6 +51,8 @@ describe('完整星系动态表现与独立光照', () => {
     const body = {x:600,y:350}
     const rogue = stellarIllumination({...system,kind:'rogue',starClass:'none',stars:[]},body,30000)
     expect(rogue.directions).toEqual([]);expect(rogue.strengths).toEqual([])
+    expect(rogue.ambient).toBe(.20)
+    expect(stellarIllumination({...system,kind:'black-hole',starClass:'black-hole'},body,0).ambient).toBe(.24)
     expect(rogue.ambient).toBeLessThan(stellarIllumination(system,body,0).ambient)
     expect(stellarIllumination({...system,kind:'black-hole',starClass:'black-hole'},body,0).strengths[0]!).toBeLessThan(stellarIllumination(system,body,0).strengths[0]!)
   })

@@ -45,7 +45,7 @@ export function stellarIllumination(system: StellarSystem, body: { x: number; y:
     const distance = Math.hypot(star.x - body.x, star.y - body.y)
     const relativeSize = Math.min(1.2, Math.max(.5, star.radius / 20))
     return sourcePower * relativeSize / (1 + (distance / STELLAR_LIGHT_DISTANCE) ** 2)
-  }), tint, ambient: system.kind === 'rogue' || !stars.length ? .09 : system.kind === 'black-hole' ? .10 : .14 }
+  }), tint, ambient: system.kind === 'rogue' || !stars.length ? .20 : system.kind === 'black-hole' ? .24 : .32 }
 }
 
 export function stellarLightDirection(star: { x: number; y: number }, body: { x: number; y: number }): [number, number, number] {

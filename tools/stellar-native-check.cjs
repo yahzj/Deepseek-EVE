@@ -1,5 +1,5 @@
 /** 动态星系与战损原生验收，先build再node tools/stellar-native-check.cjs。
- * v0.1.0/存档v31，合成档、隐藏Electron、随机端口；2026-10-09补确认主题、焦点与地表返回取证。
+ * v0.1.0/存档v31，合成档、隐藏Electron、随机端口；2026-10-11补可读性专项。
  */
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -15,6 +15,7 @@ const { JourneyPage, sleep } = require('./wormhole-expedition-journey-shared.cjs
 const ROOT = path.resolve(__dirname, '..'), PREFIX = 'whale-stellar-native-'
 const OUT = path.join(ROOT, 'tools/_ui-artifacts/stellar')
 const dynamicOnly = process.argv.includes('--dynamic-only')
+const readabilityOnly = process.argv.includes('--readability-only')
 async function parent() {
   fs.mkdirSync(OUT, { recursive: true })
   const directory = path.join(ROOT, 'apps/desktop/out/renderer')
@@ -35,7 +36,7 @@ async function parent() {
       const profile = fs.mkdtempSync(path.join(os.tmpdir(), PREFIX))
       try {
         const state = core.createInitialState({ seed: 7, nowWallMs: Date.now() });
-        if (dynamicOnly) {
+        if (dynamicOnly || readabilityOnly) {
           injectStellarReadyTestState(state)
           const generated = core.generateStellarSystem(3)
           state.planetary.stellar.systems = { [generated.system.id]: generated.system }
@@ -44,14 +45,14 @@ async function parent() {
         else if (process.argv.includes('--scene-only')) injectStellarReadyTestState(state)
         else injectStellarSearchTestState(state)
         fs.writeFileSync(path.join(profile, 'save.json'), core.serializeSaveFile(state), 'utf8')
-        const env = { ...process.env, WHALE_PERF_USERDATA: profile, ELECTRON_RENDERER_URL: url, STELLAR_UI_CASE: JSON.stringify({ layout, locale, mobile, dynamicOnly, noGpu: process.argv.includes('--no-gpu'), sceneOnly: process.argv.includes('--scene-only'), stellarOnly: process.argv.includes('--stellar-only'), kind: process.argv.find(arg => arg.startsWith('--kind='))?.slice(7) }) }
+        const env = { ...process.env, WHALE_PERF_USERDATA: profile, ELECTRON_RENDERER_URL: url, STELLAR_UI_CASE: JSON.stringify({ layout, locale, mobile, dynamicOnly, readabilityOnly, noGpu: process.argv.includes('--no-gpu'), sceneOnly: process.argv.includes('--scene-only'), stellarOnly: process.argv.includes('--stellar-only'), kind: process.argv.find(arg => arg.startsWith('--kind='))?.slice(7) }) }
         delete env.ELECTRON_RUN_AS_NODE
         const p = spawn(require('electron'), [__filename, '--child'], { cwd: ROOT, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
         let errors = ''; p.stdout.on('data', b => process.stdout.write(b)); p.stderr.on('data', b => { errors += b; process.stderr.write(b) })
         const timer = setTimeout(() => p.kill(), process.argv.includes('--scene-only') ? 360000 : 180000), [status] = await once(p, 'exit'); clearTimeout(timer)
         assert.equal(status, 0, errors)
         const saved = core.loadSaveFile(fs.readFileSync(path.join(profile, 'save.json'), 'utf8')).state
-        if (!process.argv.includes('--scene-only') && !dynamicOnly) assert.equal(saved.planetary.stellar.systems['system-v1-7'].seed, 7)
+        if (!process.argv.includes('--scene-only') && !dynamicOnly && !readabilityOnly) assert.equal(saved.planetary.stellar.systems['system-v1-7'].seed, 7)
         assert(saved.fleet[state.shipId].damagePlugs.length === 3)
         reports.push({ layout, locale, mobile, ok: true })
       } finally {
@@ -126,6 +127,67 @@ async function child() {
     assert(readings.colors > 8 && readings.width > 200 && readings.height > 100, JSON.stringify(readings))
     assert(readings.scaleDelta < .01 && readings.xDelta < 1 && readings.yDelta < 1, JSON.stringify(readings))
     return readings
+  }
+  if (options.readabilityOnly) {
+    await openStellar()
+    await page.wait('document.querySelector(".app-stellar-motion-layer")?.dataset.renderMode==="dynamic"')
+    await page.tap('[data-motion-pause]')
+    const state = await snap(), system = state.planetary.stellar.systems['system-v1-3']
+    const body = system.bodies.find(value => value.kind !== 'gas')
+    await page.tap(`[data-stellar-body="${body.planetId}"]`)
+    await page.wait('!!document.querySelector(".app-stellar-sidebar [data-planet-trait]")')
+    const planet = state.planetary.planets[body.planetId], view = core.planetSurveyView(planet, data.buildPlanetCatalog())
+    assert.deepEqual(await page.js('[...document.querySelectorAll(".app-stellar-sidebar [data-planet-trait]")].map(e=>e.dataset.planetTrait)'),view.traitIds)
+    const trait = view.traitIds[0]
+    await page.tap(`[data-planet-trait="${trait}"]`)
+    await page.wait(`!!document.querySelector('[data-planet-trait-details="${trait}"]')`)
+    await page.tap('.app-planet-trait-expanded button')
+    await page.js(`document.querySelector('[data-planet-trait="${trait}"]').focus();true`)
+    await page.send('Input.dispatchKeyEvent',{type:'rawKeyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13})
+    await page.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13})
+    await page.wait(`!!document.querySelector('[data-planet-trait-details="${trait}"]')`)
+    await page.tap('.app-planet-trait-expanded button')
+    console.log('可读性：星图特性标签、点击和键盘详情通过')
+    const readings=[]
+    async function hover(selector) {
+      await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:1,y:1})
+      const point=await page.js(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});e.scrollIntoView({block:'nearest'});const b=e.getBoundingClientRect();return {x:b.x+b.width/2,y:b.y+b.height/2}})()`)
+      await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',...point})
+      await page.wait('!!document.querySelector(".app-tip")')
+      const reading=await page.js(`(()=>{const e=document.querySelector('.app-tip'),root=document.querySelector('.app-root'),rot=root.classList.contains('is-mobile-rot'),w=rot?root.offsetWidth:innerWidth,h=rot?root.offsetHeight:innerHeight;return {x:e.offsetLeft,y:e.offsetTop,width:e.offsetWidth,height:e.offsetHeight,maxWidth:parseFloat(e.style.maxWidth),logicalWidth:w,logicalHeight:h,overflow:e.scrollWidth>e.clientWidth+1,keys:[...e.querySelectorAll('.app-info-key')].map(key=>key.offsetWidth)}})()`)
+      assert(reading.x>=7&&reading.y>=7&&reading.x+reading.width<=reading.logicalWidth-7&&reading.y+reading.height<=reading.logicalHeight-7,JSON.stringify(reading))
+      assert(!reading.overflow,JSON.stringify(reading));readings.push(reading)
+      return reading
+    }
+    await hover(`[data-planet-trait="${trait}"]`)
+    assert(readings.at(-1).keys.every(width=>width===112),JSON.stringify(readings.at(-1)))
+    const longText=Array(10).fill('星球背光面的地貌与环境修正保持可见，长说明不省略，参数可以正常换行。').join(' ')
+    for(const corner of ['top-left','top-right','bottom-left','bottom-right']){
+      await page.js(`(()=>{document.querySelector('[data-tip-readability]')?.remove();const e=document.createElement('button');e.dataset.tipReadability='1';e.textContent='probe';e.title=${JSON.stringify(longText)};Object.assign(e.style,{position:'absolute',width:'32px',height:'32px',zIndex:'2000',left:${corner.endsWith('left')?"'10px'":"'auto'"},right:${corner.endsWith('right')?"'10px'":"'auto'"},top:${corner.startsWith('top')?"'10px'":"'auto'"},bottom:${corner.startsWith('bottom')?"'10px'":"'auto'"}});document.querySelector('.app-root').append(e);return true})()`)
+      const reading=await hover('[data-tip-readability]')
+      assert(reading.width>420&&reading.width<=reading.maxWidth&&reading.maxWidth===(options.mobile?600:560),JSON.stringify(reading))
+    }
+    await page.js(`document.querySelector('[data-tip-readability]').title='短提示';true`)
+    const short=await hover('[data-tip-readability]');assert(short.width<200,JSON.stringify(short))
+    await page.js('document.querySelector("[data-tip-readability]").remove();true')
+    await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:1,y:1})
+    for(const theme of ['deepspace','daylight']){
+      await page.js(`document.documentElement.dataset.theme=${JSON.stringify(theme)};true`)
+      await hover(`[data-planet-trait="${trait}"]`)
+      const image=await page.send('Page.captureScreenshot',{format:'png'})
+      fs.writeFileSync(path.join(OUT,`${options.layout}-${options.locale}-${options.mobile?'mobile':'desktop'}-readability-${theme}.png`),Buffer.from(image.data,'base64'))
+    }
+    if(!options.mobile){
+      // 原生窗口有最小尺寸；窄视口采用CDP仿真，不改变产品窗口约束。
+      await page.send('Emulation.setDeviceMetricsOverride',{width:480,height:360,deviceScaleFactor:1,mobile:false});await sleep(200)
+      await page.js(`(()=>{const e=document.createElement('button');e.dataset.tipReadability='1';e.title=${JSON.stringify(longText)};e.textContent='probe';Object.assign(e.style,{position:'absolute',right:'10px',bottom:'10px',width:'32px',height:'32px',zIndex:'2000'});document.querySelector('.app-root').append(e);return true})()`)
+      const narrow=await hover('[data-tip-readability]');assert(narrow.maxWidth===464,JSON.stringify(narrow))
+      await page.js('document.querySelector("[data-tip-readability]").remove();true')
+    }
+    await page.js('window.__whalePlanetaryTest.persist();true')
+    assert.deepEqual((await snap()).planetary.stellar.systems,state.planetary.stellar.systems)
+    assert.equal(errors.length,0,JSON.stringify(errors))
+    console.log(JSON.stringify({...options,ok:true,readings,pid:process.pid}));app.exit(0);return
   }
   if (options.dynamicOnly) {
     await openStellar()
@@ -225,7 +287,23 @@ async function child() {
     assert(pixel.leftLight.left > pixel.leftLight.right * 1.5, JSON.stringify(pixel))
     assert(pixel.rightLight.right > pixel.rightLight.left * 1.5, JSON.stringify(pixel))
     assert(pixel.rotated.left > pixel.rotated.right * 1.5 && pixel.changed > 500, JSON.stringify(pixel))
-    const fullPixel = await page.js(`(()=>{const exports={};${shaderCode};const c=document.createElement('canvas');c.width=128;c.height=128;const renderer=exports.createStellarPlanetRenderer(c),gl=c.getContext('webgl');function read(){const p=new Uint8Array(128*128*4);gl.readPixels(0,0,128,128,gl.RGBA,gl.UNSIGNED_BYTE,p);return p}function stats(p){let sum=0,n=0;for(let i=0;i<p.length;i+=4)if(p[i+3]){sum+=p[i]+p[i+1]+p[i+2];n++}return {painted:n,brightness:sum/Math.max(1,n)}}const light=strength=>({directions:[[-1,0,.35]],strengths:[strength],tint:[1,1,1],ambient:.14});const materials=[];for(const kind of ['rocky','ocean','desert','ice','lava','temperate','gas']){renderer.drawPlanet(light(.8),0,17,kind);const a=read();renderer.drawPlanet(light(.8),10000,17,kind);const b=read();let changed=0;for(let i=0;i<a.length;i+=4)if(a[i]!==b[i]||a[i+1]!==b[i+1])changed++;materials.push({kind,...stats(a),changed})}renderer.drawPlanet(light(.8),0,17,'rocky');const near=stats(read());renderer.drawPlanet(light(.18),0,17,'rocky');const far=stats(read());renderer.drawPlanet({directions:[],strengths:[],tint:[1,1,1],ambient:.09},0,17,'rocky');const rogue=stats(read());const stars=[];for(const kind of ['yellow','red','blue','white','neutron','black-hole']){renderer.drawStar(0,13,kind);const a=read();renderer.drawStar(15000,13,kind);const b=read();let changed=0;for(let i=0;i<a.length;i+=4)if(a[i]!==b[i]||a[i+1]!==b[i+1])changed++;stars.push({kind,...stats(a),changed})}renderer.dispose();return {materials,stars,near,far,rogue,error:gl.getError()}})()`)
+    const fullPixel = await page.js(`(()=>{const exports={};${shaderCode};const c=document.createElement('canvas');c.width=128;c.height=128;
+      const renderer=exports.createStellarPlanetRenderer(c),gl=c.getContext('webgl');
+      function read(){const p=new Uint8Array(128*128*4);gl.readPixels(0,0,128,128,gl.RGBA,gl.UNSIGNED_BYTE,p);return p}
+      function stats(p){let sum=0,n=0;for(let i=0;i<p.length;i+=4)if(p[i+3]){sum+=p[i]+p[i+1]+p[i+2];n++}return {painted:n,brightness:sum/Math.max(1,n)}}
+      const light=strength=>({directions:[[-1,0,.35]],strengths:[strength],tint:[1,1,1],ambient:.32}),materials=[];
+      for(const kind of ['rocky','ocean','desert','ice','lava','temperate','gas']){
+        renderer.drawPlanet(light(.8),0,17,kind);const a=read();renderer.drawPlanet(light(.8),10000,17,kind);const b=read();
+        let changed=0;for(let i=0;i<a.length;i+=4)if(a[i]!==b[i]||a[i+1]!==b[i+1])changed++;materials.push({kind,...stats(a),changed})
+      }
+      renderer.drawPlanet(light(.8),0,17,'rocky');const near=stats(read());renderer.drawPlanet(light(.18),0,17,'rocky');const far=stats(read());
+      renderer.drawPlanet({directions:[],strengths:[],tint:[1,1,1],ambient:.20},0,17,'rocky');const rogue=stats(read()),stars=[];
+      for(const kind of ['yellow','red','blue','white','neutron','black-hole']){
+        renderer.drawStar(0,13,kind);const a=read();renderer.drawStar(15000,13,kind);const b=read();let changed=0;
+        for(let i=0;i<a.length;i+=4)if(a[i]!==b[i]||a[i+1]!==b[i+1])changed++;stars.push({kind,...stats(a),changed})
+      }
+      renderer.dispose();return {materials,stars,near,far,rogue,error:gl.getError()}
+    })()`)
     assert(fullPixel.error===0 && fullPixel.materials.every(row=>row.painted>500&&row.changed>50),JSON.stringify(fullPixel))
     assert(fullPixel.stars.every(row=>row.painted>500&&row.changed>50),JSON.stringify(fullPixel))
     assert(fullPixel.near.brightness>fullPixel.far.brightness*1.4 && fullPixel.far.brightness>fullPixel.rogue.brightness,JSON.stringify(fullPixel))

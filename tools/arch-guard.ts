@@ -110,6 +110,7 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '共享悬浮窗逻辑尺寸和边缘定位', symbol: 'tooltipLayout', file: 'apps/desktop/src/renderer/src/ui/tooltipGeometry.ts', exported: true },
   { concept: '星球迁移实际账单与界面预览', symbol: 'planetMoveBillOf', file: 'packages/core/src/planetConstruction.ts', exported: true },
   { concept: '星球迁移合法性与选址', symbol: 'planetMoveCheck', file: 'packages/core/src/planetConstruction.ts', exported: true },
   { concept: '地表建筑身份色', symbol: 'planetBuildingTone', file: 'apps/desktop/src/renderer/src/ui/planetSurfaceView.ts', exported: true },
