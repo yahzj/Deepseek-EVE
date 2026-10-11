@@ -34,6 +34,7 @@ import type { SimContext } from './types'
 import type { CommandResult } from './engine'
 import {
   WORMHOLE_ORE_ITEM_ID,
+  WORMHOLE_ADMISSION_TEXT,
   blankShareFactorOf,
   wormholeAdmission,
   wormholeBagSlotsOfFleet,
@@ -474,10 +475,21 @@ export function wormholeAutoCandidates(state: GameState, ctx: SimContext, exclud
    * 一趟收益跟着掉到 1/4 ——"核心少"被错误地转嫁成了"队伍小"。
    */
   const budget = WORMHOLE_AUTO_MAX_SHIPS
+  const pickedIds: string[] = []
   return rows.map((r) => {
-    const ok = r.blocked === null && picked < budget
-    if (ok) picked += 1
-    return { shipId: r.shipId, name: r.name, picked: ok, blocked: r.blocked }
+    if (r.blocked !== null || picked >= budget) return { shipId: r.shipId, name: r.name, picked: false, blocked: r.blocked }
+    const admission = wormholeAdmission(ctx, [...pickedIds, r.shipId])
+    if (!admission.ok) {
+      return {
+        shipId: r.shipId,
+        name: r.name,
+        picked: false,
+        blocked: { error: WORMHOLE_ADMISSION_TEXT[admission.code] },
+      }
+    }
+    picked += 1
+    pickedIds.push(r.shipId)
+    return { shipId: r.shipId, name: r.name, picked: true, blocked: null }
   })
 }
 
@@ -579,6 +591,8 @@ export function wormholeAutoBlockReason(
       }
     }
   }
+  const admission = wormholeAdmission(ctx, pool)
+  if (!admission.ok) return { error: WORMHOLE_ADMISSION_TEXT[admission.code], errorId: 'core.wormholeAuto.015' }
   return wormholeAutoCoreBlock(state, ctx, 1)
 }
 

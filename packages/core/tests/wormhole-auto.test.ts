@@ -28,6 +28,7 @@ import {  aiCoreShipUsed, aiCoreUsed, assignAiMining } from '../src/ai'
 import { shipLockedReason } from '../src/state'
 import { shipBusyLabel } from '../src/activity'
 import { wormholeStockPush, wormholeStockOf } from '../src/wormholeScan'
+import { wormholeAdmission, WORMHOLE_TOTAL_MASS_CAP } from '../src/wormhole'
 import { MATTER_TECH_ESSENCE_ITEM_ID, matterTechNodes, researchMatterTech } from '../src/matterTech'
 import {
   WORMHOLE_AUTO_DAMAGE_MAX,
@@ -78,6 +79,29 @@ function stockOne(state: GameState): string {
 }
 
 describe('虫洞 · 自动探索（批次 3）', () => {
+  it('自动配置不再选出超过质量上限的小队，手动超重被命令层拒绝，刚好到上限可用', () => {
+    const state = fresh({ ships: 0 })
+    const heavyA = addShipToFleet(state, 'sh-swordfish')
+    const heavyB = addShipToFleet(state, 'sh-swordfish')
+    const heavyC = addShipToFleet(state, 'sh-swordfish')
+    const medium = addShipToFleet(state, 'sh-mako')
+    const light = addShipToFleet(state, 'sandcat')
+    const picked = wormholeAutoDefaultShips(state, ctx)
+    expect(wormholeAdmission(ctx, picked).ok).toBe(true)
+    expect(picked).not.toContain(heavyC)
+
+    const overStock = stockOne(state)
+    const over = wormholeAutoStart(state, ctx, overStock, [heavyA, heavyB, heavyC])
+    expect(over.ok).toBe(false)
+    expect(over.error).toContain('质量')
+
+    const exact = wormholeAdmission(ctx, [heavyA, heavyB, medium, light])
+    expect(exact.totalMass).toBe(WORMHOLE_TOTAL_MASS_CAP)
+    expect(exact.ok).toBe(true)
+    const exactStock = stockOne(state)
+    expect(wormholeAutoStart(state, ctx, exactStock, [heavyA, heavyB, medium, light]).ok).toBe(true)
+  })
+
   it('**自动配置参与舰**：最多 4 条、排除主控与已占用船、按武装度排序（不可派的给原因）', () => {
     const state = fresh({ ships: 6 })
     const rows = wormholeAutoCandidates(state, ctx)
