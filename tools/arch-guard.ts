@@ -110,6 +110,13 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '共享悬浮窗逻辑尺寸和边缘定位', symbol: 'tooltipLayout', file: 'apps/desktop/src/renderer/src/ui/tooltipGeometry.ts', exported: true },
+  { concept: '星球迁移实际账单与界面预览', symbol: 'planetMoveBillOf', file: 'packages/core/src/planetConstruction.ts', exported: true },
+  { concept: '星球迁移合法性与选址', symbol: 'planetMoveCheck', file: 'packages/core/src/planetConstruction.ts', exported: true },
+  { concept: '地表建筑身份色', symbol: 'planetBuildingTone', file: 'apps/desktop/src/renderer/src/ui/planetSurfaceView.ts', exported: true },
+  { concept: '已公开星球特性效果详情', symbol: 'planetTraitDetails', file: 'apps/desktop/src/renderer/src/ui/planetTraitDetails.ts', exported: true },
+  { concept: '地表轮盘逻辑边界', symbol: 'planetWheelPosition', file: 'apps/desktop/src/renderer/src/ui/planetWheelGeometry.ts', exported: true },
+  { concept: '地表已公开地块主体/资源/运行状态', symbol: 'planetSurfaceCellView', file: 'apps/desktop/src/renderer/src/ui/planetSurfaceView.ts', exported: true },
   { concept: '独立装配靶场快照与伤害统计', symbol: 'fittingRangeStats', file: 'packages/core/src/fittingRange.ts', exported: true },
   { concept: '星球已开发标记与星系开发状态', symbol: 'stellarPlanetDeveloped', file: 'packages/core/src/stellarSearch.ts', exported: true },
   { concept: '星图与目标预览公开类型外形', symbol: 'StellarPlanetArt', file: 'apps/desktop/src/renderer/src/ui/stellarArt.tsx', exported: true },

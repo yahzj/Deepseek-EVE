@@ -83,6 +83,12 @@
 
 | 关注点 | 唯一实现 | 护栏 |
 |---|---|---|
+| 地表已公开地块图标与状态 | `planetSurfaceCellView` · `ui/planetSurfaceView.ts` | 网格/详情共用主体、资源、障碍与状态优先级，未知不渲染隐藏信息；设施完整覆盖/状态/真实组件专项 |
+| 地表建筑身份色 | `planetBuildingTone` · `ui/planetSurfaceView.ts` | 网格/轮盘/详情统一，状态色独立；13项色表/主题专项 |
+| 星球特性已公开效果详情 | `planetTraitDetails` · `ui/planetTraitDetails.ts` | 仅公开traitIds，直接修正/整星环境分列；富卡/触屏/未知隔离专项 |
+| 星球迁移账单与预览 | `planetMoveBillOf` · `core/planetConstruction.ts` | 原账单值不变，原迁移/轮盘确认共用；费用与状态守恒专项 |
+| 星球迁移合法性与选址 | `planetMoveCheck` · `core/planetConstruction.ts` | 原门禁抽取，实际迁移/高亮/确认共用，资源及保护/预占专项 |
+| 地表轮盘逻辑边界 | `planetWheelPosition` · `ui/planetWheelGeometry.ts` | 逻辑区钳制，不按物理旋转尺寸/字数缩放，键盘/角落/手机专项 |
 | 仿真上下文（页面取数的唯一入口） | `buildSimContext()` · `context.ts` | `arch:guard` F1/F4 |
 | 玩家可见文案唯一表（`id → { zh, en }`） | `L10N` · `l10n/table.ts` | `npm run l10n:check` ＋ `l10n:list` |
 | 已登记待译条目的中文回退 | `l10nEntryText()` · `l10n/table.ts`；界面`textOf`及主进程`t`调用 | 待译标记/文档登记成对、非待译空值仍拒绝、同入口占位符与中英渲染专项 |
@@ -106,6 +112,7 @@
 | 图鉴卡片构造（装备/舰船/物品/蓝图/势力同源） | `itemCellOf()` 等共用 builder · `panels/handbookDetail.tsx`（**2026-10-02 从 `panels/Handbook.tsx` 拆出**） | `ui:attr-check` ＋ `arch:guard` F2 |
 | 取色跨表兜底 | `toneOfAny()` · `ui/tones.ts` | 人工核（约定 §九） |
 | 悬停提示接管层（全站唯一延迟 500ms 与"内层优先"） | `ui/Tooltip.tsx`（`TIP_DELAY_MS`） | `ui:tip-check` ＋ `ui:rot-check` |
+| 悬浮窗逻辑空间限宽与边缘定位 | `tooltipLayout()` · `ui/tooltipGeometry.ts` | 首帧/实测共用，桌面560/旋转600上限与可用区约束，窄窗/四角专项 |
 | 悬停富卡皮肤（模块/物品/舰船参数表） | `ui/shipInfo.tsx`（`infoCardContent` 一族） | 约定 §九之七（人工核） |
 | 视口懒挂载（大列表流式加载） | `ui/LazyMount.tsx` | `industry:lag` 读数 ＋ 人工核 |
 | 活动栏「停止/取消」按钮文案（新版与旧版两套外壳共用） | `panels/activityStopLabel.ts` 的 `stopLabel()` | `arch:guard` F2（2026-09-27 收口 A1：原先两份逐字相同） |

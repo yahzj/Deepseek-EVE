@@ -8,8 +8,13 @@
 - `node tools/pixel-planets-study.cjs <不存在的本树tools/_ui-artifacts输出目录绝对路径>`：用指纹一致的本机原程序导出GUI全部12预设的128/1024分辨率对照，共26张；记录各层实际pixels/seed/time/尺寸。调用`pixel-planets-study-export.gd`，JSON种子转整数后传入原接口，不覆盖素材或个人档。
 - `python tools/pixel-planets-study-review.py <研究输出目录> [独立复现目录]`：核验RGBA/层尺寸/逐像素复现，用同一缩放方式生成总览和恒星/海洋抖动对照板。依赖已有Pillow；只处理本树忽略目录，原生导出读数不等于游戏帧率或设备观感验收。
 - `node tools/pixel-planets-materials.cjs export <不存在的本树tools/_ui-artifacts输出JSON绝对路径>`：原生透明视口完成绘制后导出16份shader、12预设完整层序/尺度/配色/参数；随后`generate <输出JSON绝对路径>`生成`ui/stellarPixelMaterials.ts`。Godot/WebGL语法适配与光照入口转换在工具内维护，生成文件不手改；游戏运行不依赖EXE、上游仓库或外部服务。
-- `node tools/stellar-material-check.cjs`：独立临时配置/隐藏Electron检查真实WebGL原层编译、七类行星与恒星/黑洞非空和时间变化、光向/地貌隔离、近远/无星亮度。输出`tools/_ui-artifacts/stellar-material-20261010`，像素读数不是船长观感或实体手机性能验收；不加载个人档。`shaderCode()`供已有原生专项复用同一源，无生产测试入口。
-- 来源/许可和参数见`docs/design/assets/stellar-samples-20261009/README.md`；样片未接入游戏，风格与完整星图方案待船长审查。
+- `node tools/stellar-material-check.cjs`：独立临时配置/隐藏Electron检查真实WebGL原层编译、七类行星与恒星/黑洞非空和时间变化、光向/地貌隔离、近远/无星亮度；对照`830da494`旧着色器复算暗面提亮及轮廓守恒。输出`tools/_ui-artifacts/stellar-material-20261010`，像素读数不是船长观感或实体手机性能验收；不加载个人档。`shaderCode()`供已有原生专项复用同一源，无生产测试入口。
+- 来源/许可和参数见`docs/design/assets/stellar-samples-20261009/README.md`；星图已于2026-10-10验收，正常原层实时材质/静态兼容/光照/运动/面积现行规则见`docs/design/planetary-system-search-20261007.md`§十二，原样片本身不直接被游戏导入。
+
+## 地表界面取证（2026-10-10 · v0.1.0 / 档v31）
+
+- `node tools/planetary-native-check.cjs --case=modern-zh-desktop`：独立合成档/隐藏Electron，调查→运输→唤醒→家园改造→分页轮盘/建设确认→暂停/继续/取消→启停/迁移/拆除确认/基础设施保护→清障→特性标签悬停与键盘→真实保存重载；核对轮盘四角边界/控件不重叠/焦点与Esc、纯空地留白、64px网格/8px间距和末排可达。手机可用`--case=classic-en-mobile`（有界300秒）；追加`--surface-only`只跳过人口/运输/改造旧旅程，专测地表UI完整链路，不冒称家园旅程覆盖。只作触摸与旋转几何读数，不作实体手机性能或观感验收。
+- 同一工具追加真实Glyph图标深浅底/32与64px对照板，输出`tools/_ui-artifacts/planetary/glyphs.png`；图形需有非空像素并保持原24坐标/1.7线稿，不加载个人档、不添加依赖。
 
 ## 装配靶场验收（2026-10-09 · v0.1.0 / 档v31）
 
@@ -19,6 +24,7 @@
 ## 星系探索HUD取证（2026-10-09 · v0.1.0 / 档v31）
 
 - `node tools/stellar-native-check.cjs --dynamic-only --case=modern-zh-desktop`：种子3实际动态场景；七类材质/恒星/黑洞真实shader像素检查，近/远/无光源亮度递减、光向与自转分离、真实拖动第一帧投影误差、公转/暂停/减少动态/上下文丢失恢复/地表返回和原坐标守恒。手机可用`--case=classic-en-mobile`；加`--no-gpu`检查降级，深浅主题截图不作观感或实体手机性能结论。
+- `node tools/stellar-native-check.cjs --readability-only --case=modern-zh-desktop`：星图实际特性标签、点击/Enter详情与悬浮、参数列尺寸、长/短提示和四角边界、480×360窄窗；手机加`--case=classic-en-mobile`检查旋转逻辑600px限宽。只检查可读性界面与数据守恒，不冒称搜索/人口旧流程回归或观感验收。
 - 上述动态专项同时核对公开4/5/6地表规格的本体半径、动态图形/PNG缩放、选中圈与点击下限，及实际圆盘像素面积比例（小尺寸边缘采样允许15%误差）；`--no-gpu`仍核对静态面积比例，不读取隐藏资源或个人档。
 
 - `node tools/stellar-native-check.cjs`：先构建。两布局×中英文×桌面/手机旋转，真实制造/搜索/暂停/继续/地图手势/地表往返/IPC保存与运行错误检查；补取消/丢弃确认、六套主题底色、确认焦点约束及地表返回焦点/视口/选择检查。`--case=modern-zh-desktop`可单场复跑。

@@ -28,7 +28,7 @@ import {  aiCoreShipUsed, aiCoreUsed, assignAiMining } from '../src/ai'
 import { shipLockedReason } from '../src/state'
 import { shipBusyLabel } from '../src/activity'
 import { wormholeStockPush, wormholeStockOf } from '../src/wormholeScan'
-import { wormholeAdmission, WORMHOLE_TOTAL_MASS_CAP } from '../src/wormhole'
+import { wormholeAdmission, WORMHOLE_TOTAL_MASS_CAP, WORMHOLE_ADMISSION_TEXT } from '../src/wormhole'
 import { MATTER_TECH_ESSENCE_ITEM_ID, matterTechNodes, researchMatterTech } from '../src/matterTech'
 import {
   WORMHOLE_AUTO_DAMAGE_MAX,
@@ -94,6 +94,9 @@ describe('虫洞 · 自动探索（批次 3）', () => {
     const over = wormholeAutoStart(state, ctx, overStock, [heavyA, heavyB, heavyC])
     expect(over.ok).toBe(false)
     expect(over.error).toContain('质量')
+    expect(over.error).toBe(WORMHOLE_ADMISSION_TEXT['mass-over-cap'])
+    expect(over.errorId).toBeUndefined()
+    expect(wormholeAutoBlockReason(state, ctx, overStock, [heavyA, heavyB, heavyC])?.errorId).toBeUndefined()
 
     const exact = wormholeAdmission(ctx, [heavyA, heavyB, medium, light])
     expect(exact.totalMass).toBe(WORMHOLE_TOTAL_MASS_CAP)

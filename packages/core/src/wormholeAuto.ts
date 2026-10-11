@@ -592,7 +592,8 @@ export function wormholeAutoBlockReason(
     }
   }
   const admission = wormholeAdmission(ctx, pool)
-  if (!admission.ok) return { error: WORMHOLE_ADMISSION_TEXT[admission.code], errorId: 'core.wormholeAuto.015' }
+  // 与手动入场同源；整队拒因不能套用需要舰船名参数的单舰模板。
+  if (!admission.ok) return { error: WORMHOLE_ADMISSION_TEXT[admission.code] }
   return wormholeAutoCoreBlock(state, ctx, 1)
 }
 

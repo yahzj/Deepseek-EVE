@@ -420,7 +420,7 @@ html[data-locale='en'] body {
 }
 
 /* 手机：悬浮说明（Tooltip）在横屏局部空间渲染——坐标换算见 ui/Tooltip.tsx；上限改按局部空间、字号加大（2026-09-06 船长） */
-.app-root.is-mobile-rot .app-tip { font-size: var(--wui-fs-base); padding: var(--wui-sp-9) var(--wui-sp-13); max-width: min(420px, 92%); max-height: 62%; }
+.app-root.is-mobile-rot .app-tip { font-size: var(--wui-fs-base); padding: var(--wui-sp-9) var(--wui-sp-13); }
 
 .app-root.is-mobile-rot .app-tip .app-ship-hover-title { font-size: var(--wui-fs-lg); }
 
@@ -8386,6 +8386,7 @@ html[data-locale='en'] body {
 .app-tip {
 
   position: fixed;
+  width: max-content;
 
   /* ⚠ **必须压过全站所有浮层**（2026-09-16 船长报障：「装入和更换界面中，鼠标悬停的悬浮窗会被
      界面遮挡」——根因 = 原值 1000 **低于**换装浮层 `.app-fit-overlay` 的 1100：提示层虽然画在
@@ -8393,18 +8394,8 @@ html[data-locale='en'] body {
      现行 3000 = 全站最高浮层 1100 之上留足余量；**今后新加浮层不得超过本值**。 */
   z-index: 3000;
 
-  /* ⚠ `border-box` 是 2026-09-13 补的（船长：「按钮的鼠标悬浮提示有时候过宽…限制下宽度，允许多几行」）：
-     默认 content-box 时 `max-width` 只限**内容**，加上内边距 11×2 与边框 ⇒ 实际盒子 324px。
-     改为 border-box 后「限宽值」= 外框宽（内容 ≈ 限宽 − 22px，行数相应多一两行，正合"允许多几行"）。
-     ⚠ **2026-09-30 船长令：300 → 380px**（原话「**悬浮窗建议加宽50~100px**」）——起因是工业 HUD 的
-     悬停卡里"需求 ×N · 库存 M"这类长行被折行截断；加宽后单行容得下（技能口径 UX「Text Reflow（Critical）：
-     Don't clip text in fixed-width boxes」与「Essential Text Truncation（Critical）」都指向放宽而非裁字）。
-     ⚠ **必须与 `ui/Tooltip.tsx` 的 `TIP_W` 同步**（那个常量驱动"右边放不下就翻到左边"的定位算法）。 */
+  /* border-box让限宽约束外框；实际宽高与收边统一走ui/tooltipGeometry。 */
   box-sizing: border-box;
-
-  max-width: 380px;
-
-  max-height: 80vh;
 
   overflow-y: auto;
 
@@ -8435,6 +8426,8 @@ html[data-locale='en'] body {
 /* 富内容（舰船/装备说明表）在提示层内的视觉微调 */
 
 .app-tip .app-info-table { margin-top: var(--wui-sp-4); }
+.app-tip .app-info-key { flex: 0 0 112px; width: 112px; }
+.app-tip .app-info-val { flex: 1 1 auto; }
 
 .app-tip .app-info-note { font-size: var(--wui-fs-2xse); opacity: 0.72; margin-top: var(--wui-sp-4); padding-top: var(--wui-sp-3); border-top: 1px dashed rgb(var(--wui-border)); }
 

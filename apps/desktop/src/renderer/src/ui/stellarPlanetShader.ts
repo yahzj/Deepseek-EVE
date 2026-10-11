@@ -41,13 +41,15 @@ float illuminationDistance(){
  return mix(.85,.15,clamp(diffuse,0.,1.));
 }
 `
+// 只提亮背光材质输出，不改变海陆/云层的噪声与透明轮廓。
 const FOOTER = `
 void main(){
  materialColor=vec4(0.);materialMain();
  if(materialColor.a<=0.)discard;
  if(emissive<.5){
    float direct=min(1.05,directLight()*1.25);
-   materialColor.rgb*=max(vec3(glowFloor),vec3(ambient)+direct*lightTint);
+   materialColor.rgb=pow(max(materialColor.rgb,vec3(0.)),vec3(mix(.7,1.,clamp(direct,0.,1.))));
+   materialColor.rgb*=max(vec3(glowFloor),min(vec3(1.05),vec3(ambient)+direct*lightTint));
  }
  gl_FragColor=materialColor;
 }`
@@ -161,7 +163,7 @@ export function createStellarPlanetRenderer(canvas: HTMLCanvasElement) {
     // 初始化完整材质集，任何失败都走现有明确静态降级，不显示部分空白天体。
     for(let index=0;index<STELLAR_PIXEL_MATERIALS.shaders.length;index++)compile(index)
     return { dispose,
-      draw(direction: [number,number,number], timeMs: number, seed: number, ocean: boolean) { draw(PRESETS[ocean?'ocean':'rocky']!,{directions:[direction],strengths:[.86],tint:[1,1,1],ambient:.14},timeMs,seed,false) },
+      draw(direction: [number,number,number], timeMs: number, seed: number, ocean: boolean) { draw(PRESETS[ocean?'ocean':'rocky']!,{directions:[direction],strengths:[.86],tint:[1,1,1],ambient:.32},timeMs,seed,false) },
       drawPlanet(lighting: StellarLighting,timeMs: number,seed: number,kind: StellarPlanetKind,pixels?:number) { draw(PRESETS[kind]!,lighting,timeMs,seed,false,pixels) },
       drawStar(timeMs: number,seed: number,starClass: StellarSystem['starClass'],pixels?:number) {
         const key=starClass==='black-hole'?'black-hole':starClass==='red'||starClass==='orange'?'star-red':starClass==='blue'||starClass==='neutron'?'star-blue':starClass==='white'?'star-white':'star-yellow'

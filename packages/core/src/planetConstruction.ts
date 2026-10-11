@@ -9,6 +9,9 @@ export function planetBillOf(planet: PlanetState, catalog: PlanetCatalog, bill: 
   return { items: Object.fromEntries(Object.entries(bill.items).map(([id, count]) => [id, Math.ceil(count * multiplier)])),
     credits: Math.ceil(bill.credits * multiplier), durationMs: bill.durationMs }
 }
+export function planetMoveBillOf(planet: PlanetState, catalog: PlanetCatalog): PlanetBill {
+  return planetBillOf(planet, catalog, { items: { 'min-tritanium': 20 }, credits: 500, durationMs: 60_000 })
+}
 function enqueue(planet: PlanetState, bill: PlanetBill, job: Omit<PlanetJob, 'seq' | 'remainingMs' | 'totalMs' | 'spentItems' | 'spentCredits' | 'paused'>): PlanetActionResult {
   const c = planet.colony
   if (!c || c.jobs.length >= 12) return { ok: false, reason: 'queue-full' }
@@ -42,14 +45,19 @@ export function startPlanetClear(planet: PlanetState, catalog: PlanetCatalog, in
   if (!planetClearanceCheck(planet, index, catalog).ok || reserved(planet, index)) return { ok: false, reason: 'not-ready' }
   return enqueue(planet, planetBillOf(planet, catalog, { items: { 'min-tritanium': 30 }, credits: 1000, durationMs: 120_000 }), { kind: 'clear', cellIndex: index })
 }
-export function startPlanetMove(planet: PlanetState, catalog: PlanetCatalog, index: number, targetIndex: number): PlanetActionResult {
+export function planetMoveCheck(planet: PlanetState, catalog: PlanetCatalog, index: number, targetIndex: number): PlanetActionResult {
   const b = planet.cells[index]?.building
   if (!Number.isSafeInteger(index) || !b || b.status !== 'ready' || reserved(planet, index) || reserved(planet, targetIndex)) return { ok: false, reason: 'not-ready' }
   const target = planetConstructionCheck({ ...planet, cells: planet.cells.map(c => c.index === index ? { ...c, building: undefined } : c) }, targetIndex, b.id, catalog)
   if (!target.ok) return target
   if (b.id === 'base' || b.id === 'cryo' || b.id === 'housing') return { ok: false, reason: 'protected' }
-  const result = enqueue(planet, planetBillOf(planet, catalog, { items: { 'min-tritanium': 20 }, credits: 500, durationMs: 60_000 }), { kind: 'move', cellIndex: index, targetIndex, buildingId: b.id })
-  if (result.ok) b.enabled = false
+  return { ok: true }
+}
+export function startPlanetMove(planet: PlanetState, catalog: PlanetCatalog, index: number, targetIndex: number): PlanetActionResult {
+  const check = planetMoveCheck(planet, catalog, index, targetIndex)
+  if (!check.ok) return check
+  const result = enqueue(planet, planetMoveBillOf(planet, catalog), { kind: 'move', cellIndex: index, targetIndex, buildingId: planet.cells[index]!.building!.id })
+  if (result.ok) planet.cells[index]!.building!.enabled = false
   return result
 }
 export function cancelPlanetJob(planet: PlanetState, seq: number): PlanetActionResult {

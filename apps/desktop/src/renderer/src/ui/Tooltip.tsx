@@ -20,6 +20,7 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ElementType, MouseEvent, ReactNode } from 'react'
+import { tooltipLayout } from './tooltipGeometry'
 
 interface TipState {
   content: ReactNode
@@ -28,13 +29,9 @@ interface TipState {
   cy: number
   x: number
   y: number
+  maxWidth: number
+  maxHeight: number
 }
-
-/** 预估提示宽度（与实际 CSS max-width 一致；渲染后按实测精修）
- *  ⚠ **2026-09-30 船长令：300 → 380px**（「悬浮窗建议加宽50~100px」）——
- *  必须与 `styles.css` 里 `.app-tip { max-width }` 同步（本常量驱动"右边放不下就翻到左边"的定位）。 */
-const TIP_W = 380
-const PAD = 8
 
 /**
  * **全站统一的悬停延迟**（毫秒）——**所有**提示路径共用这一个数
@@ -202,14 +199,7 @@ function place(content: ReactNode, cx: number, cy: number): void {
     py = lastPt.y
   }
   const lp = toLocal(m, px, py)
-  const estH = 160
-  let x = lp.x + 14
-  let y = lp.y + 16
-  if (x + TIP_W + PAD > m.bw) x = lp.x - TIP_W - 12 // 右侧放不下 → 锚点左侧
-  if (y + estH + PAD > m.bh) y = lp.y - estH - 10 // 下方放不下 → 锚点上方
-  x = Math.max(PAD, Math.min(m.bw - TIP_W - PAD, x))
-  y = Math.max(PAD, Math.min(m.bh - estH - PAD, y))
-  current = { content, cx: lp.x, cy: lp.y, x: Math.round(x), y: Math.round(y) }
+  current = { content, cx: lp.x, cy: lp.y, ...tooltipLayout(m, lp) }
   emit()
 }
 
@@ -352,9 +342,11 @@ export function TooltipLayer(): ReactNode {
     const dismiss = (): void => hideTip()
     window.addEventListener('pointerdown', dismiss)
     window.addEventListener('scroll', dismiss, true)
+    window.addEventListener('resize', dismiss)
     return () => {
       window.removeEventListener('pointerdown', dismiss)
       window.removeEventListener('scroll', dismiss, true)
+      window.removeEventListener('resize', dismiss)
     }
   }, [])
 
@@ -362,7 +354,7 @@ export function TooltipLayer(): ReactNode {
    * ⚠ **原生 title 一律改走自绘提示**（2026-09-13 船长：「按钮的鼠标悬浮提示有时候过宽…
    * 限制下宽度，允许多几行」）——机制：
    * 1. 指针进入有提示的元素、**停够 TIP_DELAY_MS**，才摘掉原生提示源并弹自绘提示
-   *    （`.app-tip`：max-width 300px + `white-space: pre-line` + `overflow-wrap: anywhere`
+   *    （`.app-tip`：宽度走tooltipLayout + `white-space: pre-line` + `overflow-wrap: anywhere`
    *    ⇒ **限宽、可多行**，且 `\n` 仍按行渲染；扫过不弹、停住才弹）；
    * 2. 指针真正离开（`relatedTarget` 不在其内部）⇒ 原生提示源**原样放回**并收起自绘提示
    *    ⇒ 任何读 `title` 的代码（如"点了禁用按钮弹原因"那条链）行为不变；
@@ -637,20 +629,13 @@ export function TooltipLayer(): ReactNode {
     const el = ref.current
     if (!el) return
     const m = viewMetrics()
-    const w = el.offsetWidth
-    const h = el.offsetHeight
-    let x = state.cx + 14
-    let y = state.cy + 16
-    if (x + w + PAD > m.bw) x = state.cx - w - 12
-    if (y + h + PAD > m.bh) y = state.cy - h - 10
-    x = Math.max(PAD, Math.min(m.bw - w - PAD, x))
-    y = Math.max(PAD, Math.min(m.bh - h - PAD, y))
-    setState((s) => (s && s.cx >= 0 ? { ...s, cx: -1, cy: -1, x: Math.round(x), y: Math.round(y) } : s))
+    const layout = tooltipLayout(m, { x: state.cx, y: state.cy }, { width: el.offsetWidth, height: el.offsetHeight })
+    setState((s) => (s && s.cx >= 0 ? { ...s, cx: -1, cy: -1, ...layout } : s))
   }, [state])
 
   if (!state) return null
   return (
-    <div ref={ref} className="app-tip" style={{ left: state.x, top: state.y }}>
+    <div ref={ref} className="app-tip" style={{ left: state.x, top: state.y, maxWidth: state.maxWidth, maxHeight: state.maxHeight }}>
       {state.content}
     </div>
   )

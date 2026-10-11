@@ -33,6 +33,7 @@ function harness(locale: 'zh' | 'en' = 'zh', empty = false) {
     if (id === '../ui/StellarDynamicPreview') return { StellarDynamicPreview: 'dynamic-preview' }
     if (id === './StellarMap') return { StellarMap: 'stellar-map' }
     if (id === './PlanetaryPanel') return { PlanetaryPanel: 'planetary-panel' }
+    if (id === '../ui/PlanetTraitTags') return { PlanetTraitTags: 'planet-trait-tags' }
     if (id.endsWith('.css')) return {}
     throw new Error(id)
   }, navigator: { clipboard: { writeText: vi.fn() } } }
@@ -113,6 +114,9 @@ describe('星系星图探索指挥台', () => {
     const preview = h.find(node => node.type === 'dynamic-preview')
     expect(preview.props.system.id).toBe(map.props.system.id)
     expect(preview.props.bodyId).toBe(body.planetId)
+    const tags = h.find(node => node.type === 'planet-trait-tags')
+    expect(tags.props.view).toEqual(core.planetSurveyView(h.state.planetary!.planets[body.planetId]!, h.ctx.planetary!))
+    expect(tags.props.catalog.traits).toBe(h.ctx.planetary!.traits)
     const open = h.find(node => node.props['data-open-surface'] !== undefined)
     expect(open.props.disabled).toBe(false)
     {
@@ -136,6 +140,21 @@ describe('星系星图探索指挥台', () => {
     expect(yes.props.disabled).toBe(false)
     yes.props.onClick()
     expect(h.commands).toHaveBeenLastCalledWith('discardSystem', [original.id])
+  })
+  it('星图特性标签只收公开视图，切换星球重置详情组件身份', () => {
+    const h = harness(), map = h.find(node => node.type === 'stellar-map'), [first, next] = map.props.system.bodies
+    const planet = h.state.planetary!.planets[first.planetId]!
+    planet.survey = 1
+    map.props.onSelect(first.planetId); h.render()
+    const tags = h.find(node => node.type === 'planet-trait-tags')
+    const view = core.planetSurveyView(planet, h.ctx.planetary!)!
+    expect(tags.props.view.traitIds).toEqual(view.traitIds)
+    expect(tags.props.view.unknownTraits).toBe(view.unknownTraits)
+    expect(tags.props.view.cells).toBeUndefined()
+    expect((tags as any).key).toBe(first.planetId)
+    h.find(node => node.type === 'stellar-map').props.onSelect(next.planetId); h.render()
+    expect((h.find(node => node.type === 'planet-trait-tags') as any).key).toBe(next.planetId)
+    expect(h.commands).not.toHaveBeenCalled()
   })
   it('过期任务确认不能取消新任务，暂停入口仍调用原命令', () => {
     const h = harness()
