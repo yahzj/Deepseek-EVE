@@ -24,6 +24,8 @@ function harness(locale:'zh'|'en'='zh'){
     if(id==='lucide-react')return new Proxy({}, {get:(_target,key)=>String(key)})
     if(id==='../ui/Glyphs')return {Glyph:'glyph'}
     if(id==='../ui/planetSurfaceView')return surface
+    if(id==='../ui/PlanetRadialMenu')return {PlanetRadialMenu:'radial-menu'}
+    if(id==='../ui/PlanetTraitTags')return {PlanetTraitTags:'trait-tags'}
     if(id==='../ui/planetText')return {pt}
     if(id==='../i18n/fmt')return {fmtNum:String,fmtInt:String,fmtCredits:String,fmtDuration:String}
     if(id==='../ui/shipInfo')return {InfoTable:'table',infoCardContent:()=>null}
@@ -36,9 +38,10 @@ function harness(locale:'zh'|'en'='zh'){
   const render=()=>{cursor=0;refCursor=0;tree=scope.exports.PlanetaryPanel({engine:{state,getCtx:()=>ctx},catalog,onCommand:commands,onClose:close,initialPlanetId:'planet-prototype-large'})}
   render()
   const all=()=>nodes(tree),find=(test:(node:Node)=>boolean)=>all().find(test)!
-  const clickCell=(index:number)=>{find(node=>node.props['data-planet-cell']===index).props.onClick();render()}
+  const clickCell=(index:number)=>{find(node=>node.props['data-planet-cell']===index).props.onClick({currentTarget:{offsetLeft:0,offsetTop:0,offsetWidth:64,offsetHeight:64,offsetParent:null,parentElement:null}});render()}
+  const wheelAction=(id:string)=>{find(node=>node.type==='radial-menu').props.items.find((item:any)=>item.id===id).action();render()}
   const button=(key:string)=>find(node=>node.type==='button'&&(node.props['aria-label']===pt(key)||nodes(node).some(child=>child.props.children===pt(key))||(node.props.children as any[])?.includes?.(pt(key))))
-  return {state,catalog,pt,commands,close,all,find,render,clickCell,button,planet:state.planetary!.planets['planet-prototype-large']!}
+  return {state,catalog,pt,commands,close,all,find,render,clickCell,wheelAction,button,planet:state.planetary!.planets['planet-prototype-large']!}
 }
 describe('地表状态与图标单点',()=>{
   it('13栋完整覆盖且外形不同，所有glyph引用真实存在',()=>{
@@ -75,10 +78,10 @@ describe('真实地表组件接线',()=>{
     expect(nodes(tile).some(node=>node.type==='glyph'&&node.props.name==='planet-ice')).toBe(true)
     expect(nodes(tile).some(node=>node.props['data-planet-resource']==='water')).toBe(true)
     expect(tile.props['aria-label']).toContain(h.pt('obstacle.ice'));expect(tile.props['aria-label']).toContain(h.pt('resource.water'))
-    h.button('clear').props.onClick();expect(h.commands).toHaveBeenLastCalledWith('clear',[h.planet.id,0])
-    delete cell.obstacle;h.render()
-    const select=h.find(node=>node.type==='select'&&node.props.value==='base')
-    select.props.onChange({target:{value:'power'}});h.render();h.button('build').props.onClick()
+    h.clickCell(0);h.wheelAction('clear');expect(h.commands).toHaveBeenLastCalledWith('clear',[h.planet.id,0])
+    delete cell.obstacle;h.render();h.clickCell(0);h.wheelAction('power')
+    expect(h.commands).toHaveBeenCalledTimes(1)
+    h.find(node=>node.props['data-wheel-confirm']==='build').props.onClick()
     expect(h.commands).toHaveBeenLastCalledWith('build',[h.planet.id,0,'power'])
   })
   it('详探前不显示隐藏资源/设施，网格编号和键盘选择仍完整',()=>{
@@ -94,17 +97,76 @@ describe('真实地表组件接线',()=>{
   it('维修/岗位/迁移/拆除与施工暂停取消命令不丢，更新不改变格规格',()=>{
     const h=harness(),cell=h.planet.cells[0]!
     delete cell.obstacle;cell.building={id:'research',status:'ready',powered:true,staffed:false,condition:.5};h.render()
-    h.button('repair').props.onClick();expect(h.commands).toHaveBeenLastCalledWith('repair',[h.planet.id,0])
-    const staff=h.find(node=>node.type==='input'&&node.props.type==='checkbox'&&node.props.checked===false)
-    staff.props.onChange({target:{checked:true}});expect(h.commands).toHaveBeenLastCalledWith('staff',[h.planet.id,0,true])
+    h.clickCell(0);h.wheelAction('repair');expect(h.commands).toHaveBeenLastCalledWith('repair',[h.planet.id,0])
+    h.clickCell(0);h.wheelAction('staff');expect(h.commands).toHaveBeenLastCalledWith('staff',[h.planet.id,0,true])
     h.planet.cells[1]!.building=undefined;h.planet.cells[1]!.obstacle=undefined
-    h.find(node=>node.type==='select'&&node.props.value===0).props.onChange({target:{value:'1'}});h.render()
-    expect(h.button('move').props.disabled).toBe(false)
-    h.button('move').props.onClick();expect(h.commands).toHaveBeenLastCalledWith('move',[h.planet.id,0,1])
-    h.button('demolish').props.onClick();h.render();h.button('confirm').props.onClick();expect(h.commands).toHaveBeenLastCalledWith('demolish',[h.planet.id,0])
+    h.clickCell(0);h.wheelAction('move');h.clickCell(1)
+    expect(h.find(node=>node.props['data-wheel-confirm']==='move').props.disabled).toBe(false)
+    h.find(node=>node.props['data-wheel-confirm']==='move').props.onClick();h.render();expect(h.commands).toHaveBeenLastCalledWith('move',[h.planet.id,0,1])
+    h.clickCell(0);h.wheelAction('demolish');h.find(node=>node.props['data-wheel-confirm']==='demolish').props.onClick();h.render();expect(h.commands).toHaveBeenLastCalledWith('demolish',[h.planet.id,0])
     h.planet.colony!.jobs=[{seq:21,kind:'build',cellIndex:0,buildingId:'research',remainingMs:1000,totalMs:2000,spentItems:{},spentCredits:0,paused:false}];h.render()
-    h.button('pause').props.onClick();expect(h.commands).toHaveBeenLastCalledWith('pause',[h.planet.id,21,true])
-    h.button('cancel').props.onClick();expect(h.commands).toHaveBeenLastCalledWith('cancel',[h.planet.id,21])
+    h.clickCell(0);h.wheelAction('pause');expect(h.commands).toHaveBeenLastCalledWith('pause',[h.planet.id,21,true])
+    h.clickCell(0);h.wheelAction('cancel');expect(h.commands).toHaveBeenLastCalledWith('cancel',[h.planet.id,21])
     expect(h.all().filter(node=>node.props['data-planet-cell']!==undefined)).toHaveLength(36)
+  })
+  it('纯空地留白、取消选择不扣款，建筑色完整且旧轮盘过期不渲染',()=>{
+    const h=harness(),cell=h.planet.cells[0]!
+    delete cell.obstacle;delete cell.building;delete cell.deposit;h.render()
+    const tile=h.find(node=>node.props['data-planet-cell']===0)
+    expect(nodes(tile).some(node=>node.props.className==='app-planet-tile-index'||node.props.className==='app-planet-tile-art')).toBe(false)
+    expect(nodes(tile).some(node=>node.props.className==='app-planet-empty-plus')).toBe(true)
+    const before=structuredClone(h.state)
+    h.clickCell(0);h.wheelAction('power');h.find(node=>node.type==='radial-menu').props.onClose();h.render()
+    expect(h.state).toEqual(before);expect(h.commands).not.toHaveBeenCalled()
+    h.clickCell(0);cell.building={id:'power',status:'ready',powered:true,staffed:false};h.render()
+    expect(h.all().some(node=>node.type==='radial-menu')).toBe(false)
+    expect(new Set(Object.keys(surface.PLANET_BUILDING_GLYPHS).map(surface.planetBuildingTone)).size).toBe(13)
+  })
+  it('受保护建筑不能迁拆，施工完成使旧序号菜单失效',()=>{
+    const h=harness(),cell=h.planet.cells[0]!
+    delete cell.obstacle;cell.building={id:'base',status:'ready',powered:true,staffed:false};h.render();h.clickCell(0)
+    const items=h.find(node=>node.type==='radial-menu').props.items
+    expect(items.find((item:any)=>item.id==='move').disabled).toBe(true)
+    expect(items.find((item:any)=>item.id==='demolish').disabled).toBe(true)
+    h.find(node=>node.type==='radial-menu').props.onClose();h.render()
+    cell.building.status='construction';h.planet.colony!.jobs=[{seq:31,kind:'build',cellIndex:0,buildingId:'base',remainingMs:1000,totalMs:1000,spentItems:{},spentCredits:0,paused:false}]
+    h.render();h.clickCell(0);h.planet.colony!.jobs=[];cell.building.status='ready';h.render()
+    expect(h.all().some(node=>node.type==='radial-menu')).toBe(false)
+  })
+  it('旧确认回调不执行替换建筑/取消工程/其他星球的操作',()=>{
+    const h=harness(),cell=h.planet.cells[0]!
+    delete cell.obstacle;cell.building={id:'power',status:'ready',powered:true,staffed:false}
+    h.render();h.clickCell(0);h.wheelAction('demolish')
+    const confirm=h.find(node=>node.props['data-wheel-confirm']==='demolish').props.onClick
+    cell.building={...cell.building,id:'research'};confirm();expect(h.commands).not.toHaveBeenCalled()
+    h.render();h.clickCell(0)
+    const toggle=h.find(node=>node.type==='radial-menu').props.items.find((item:any)=>item.id==='toggle').action
+    h.find(node=>node.props.className==='app-planet-picker').props.children[1].props.onChange({target:{value:'planet-prototype-medium'}});h.render()
+    toggle();expect(h.commands).not.toHaveBeenCalled()
+    h.find(node=>node.props.className==='app-planet-picker').props.children[1].props.onChange({target:{value:h.planet.id}});h.render()
+    h.planet.colony!.jobs=[{seq:30,kind:'build',cellIndex:0,totalMs:1,remainingMs:1,spentCredits:0,spentItems:{},paused:false}]
+    h.clickCell(0);const pause=h.find(node=>node.type==='radial-menu').props.items.find((item:any)=>item.id==='pause').action
+    h.planet.colony!.jobs=[];pause();expect(h.commands).not.toHaveBeenCalled()
+  })
+  it('持续磨损/供电读数不会关闭轮盘，原地不能作为迁移目标',()=>{
+    const h=harness(),cell=h.planet.cells[0]!
+    delete cell.obstacle;cell.building={id:'power',status:'ready',powered:true,staffed:false,condition:.9};h.render();h.clickCell(0)
+    cell.building.condition=.89;cell.building.powered=false;h.render()
+    expect(h.all().some(node=>node.type==='radial-menu')).toBe(true)
+    h.wheelAction('move');h.clickCell(0)
+    expect(h.all().some(node=>node.props['data-wheel-confirm']==='move')).toBe(false)
+    expect(h.commands).not.toHaveBeenCalled()
+  })
+  it('迁移目标遵守资源与预占，源设施被替换后不再出现确认',()=>{
+    const h=harness(),cell=h.planet.cells[0]!,target=h.planet.cells[1]!
+    delete cell.obstacle;delete target.obstacle;delete target.building;delete target.deposit
+    cell.building={id:'mine',status:'ready',powered:true,staffed:false};h.render();h.clickCell(0);h.wheelAction('move')
+    expect(h.find(node=>node.props['data-planet-cell']===1).props.className).not.toContain('is-move-target')
+    h.clickCell(1);expect(h.all().some(node=>node.props['data-wheel-confirm']==='move')).toBe(false)
+    target.deposit={resource:'metal',sourceTraitId:'metal-veins',bonus:.2};h.render()
+    expect(h.find(node=>node.props['data-planet-cell']===1).props.className).toContain('is-move-target')
+    cell.building={...cell.building,status:'construction'};h.render();h.clickCell(1)
+    expect(h.all().some(node=>node.props['data-wheel-confirm']==='move')).toBe(false)
+    expect(h.commands).not.toHaveBeenCalled()
   })
 })

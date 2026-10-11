@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
-import { Check, Circle, CircleHelp, CirclePause, Hammer, HardHat, MoveRight, Play, PowerOff, ShieldAlert, Trash2, UserRound, UsersRound, Wrench, X, Zap, type LucideIcon } from 'lucide-react'
+import { Check, Circle, CircleHelp, CirclePause, Hammer, HardHat, MoveRight, Play, Plus, PowerOff, ShieldAlert, Trash2, UserRound, UsersRound, Wrench, X, Zap, type LucideIcon } from 'lucide-react'
 import {
-  planetAdjacencyOf, planetBillOf, planetClearanceCheck, planetColonyView, planetConstructionCheck,
+  planetAdjacencyOf, planetBillOf, planetMoveBillOf, planetMoveCheck, planetClearanceCheck, planetColonyView, planetConstructionCheck,
   planetEnvironmentOf, planetNeighborIndices, planetSurveyView, shipDisplayName,
   type PlanetActionResult, type PlanetBill, type PlanetCatalog,
   type PlanetJob, type PlanetState, type PlanetSurveyView,
@@ -10,7 +10,9 @@ import type { GameEngine } from '../game/engine'
 import { fmtCredits, fmtDuration, fmtInt, fmtNum } from '../i18n/fmt'
 import { pt } from '../ui/planetText'
 import { Glyph } from '../ui/Glyphs'
-import { PLANET_BUILDING_GLYPHS, PLANET_RESOURCE_GLYPHS, planetSurfaceCellView, type PlanetSurfaceStatus } from '../ui/planetSurfaceView'
+import { PLANET_BUILDING_GLYPHS, PLANET_RESOURCE_GLYPHS, planetBuildingTone, planetSurfaceCellView, type PlanetSurfaceStatus } from '../ui/planetSurfaceView'
+import { PlanetTraitTags } from '../ui/PlanetTraitTags'
+import { PlanetRadialMenu, type PlanetWheelItem } from '../ui/PlanetRadialMenu'
 import { InfoTable, infoCardContent } from '../ui/shipInfo'
 import { hoverTipProps } from '../ui/Tooltip'
 import '../styles-planetary.css'
@@ -58,11 +60,11 @@ function Bill({ bill, itemName }: { bill?: PlanetBill; itemName: (id: string) =>
   ]} /> : <div className="app-note app-dim">{pt('unavailable')}</div>
 }
 
-function Traits({ view }: { view?: PlanetSurveyView }) {
-  return <div className="app-planet-traits">
-    {view?.traitIds.map(id => <span className="app-planet-trait" key={id}>{traitName(id)}</span>)}
-    {view && view.unknownTraits > 0 ? <span className="app-dim">{pt('unknownTraits')} {view.unknownTraits}</span> : null}
-  </div>
+type WheelState = { planetId: string; index: number; sourceId?: string; sourceBuilding?: PlanetState['cells'][number]['building']; sourceFingerprint: string; jobSeq?: number; anchor: { x: number; y: number }; step: 'menu' | 'build' | 'move' | 'demolish'; target?: number }
+
+function planetBuildingFingerprint(building?: PlanetState['cells'][number]['building']): string {
+  // 持续变化的磨损与供电读数不属于操作身份，不能让日常结算打断轮盘。
+  return building ? [building.id, building.status, building.staffed, building.enabled].join('|') : ''
 }
 
 function PlanetFacts({ view, size }: { view?: PlanetSurveyView; size: number }) {
@@ -92,7 +94,6 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
   const [compareId, setCompareId] = useState('')
   const [cellIndex, setCellIndex] = useState(0)
   const [buildingId, setBuildingId] = useState(() => [...catalog.buildings.values()].find(b => b.kind === 'base')?.id ?? '')
-  const [targetIndex, setTargetIndex] = useState(0)
   const [populationCount, setPopulationCount] = useState(1)
   const [shipUid, setShipUid] = useState(() => Object.keys(state.fleet).find(uid => uid !== state.shipId) ?? '')
   const [deliveryItems, setDeliveryItems] = useState<Record<string, number>>({})
@@ -100,19 +101,26 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
   const [deliveryHumans, setDeliveryHumans] = useState(0)
   const [eventChoice, setEventChoice] = useState('dismiss')
   const [result, setResult] = useState<PlanetActionResult | null>(null)
-  const [confirmation, setConfirmation] = useState<'demolish' | null>(null)
+  const [wheel, setWheel] = useState<WheelState | null>(null)
+  const [moving, setMoving] = useState<WheelState | null>(null)
   const [, refresh] = useState(0)
   const modalRef = useRef<HTMLDivElement>(null)
   const detailRef = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const onCloseRef = useRef(onClose)
   const id = useId()
+  const wheelRef = useRef(wheel)
+  const movingRef = useRef(moving)
+  const screenRef = useRef({ planetId, tab })
+  wheelRef.current = wheel
+  movingRef.current = moving
   onCloseRef.current = onClose
 
   useEffect(() => {
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const root = modalRef.current
-    const focusables = (): HTMLElement[] => root ? [...root.querySelectorAll<HTMLElement>(
+    const focusRoot = () => root?.querySelector<HTMLElement>('.app-planet-wheel-dialog') ?? root
+    const focusables = (): HTMLElement[] => focusRoot() ? [...focusRoot()!.querySelectorAll<HTMLElement>(
       'button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex="0"]',
     )].filter(el => el.tabIndex >= 0 && el.getClientRects().length > 0) : []
     closeRef.current?.focus()
@@ -120,21 +128,24 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
       if (event.key === 'Escape') {
         event.preventDefault()
         event.stopPropagation()
-        onCloseRef.current()
+        if (wheelRef.current) setWheel(null)
+        else if (movingRef.current) setMoving(null)
+        else onCloseRef.current()
       } else if (event.key === 'Tab') {
         const list = focusables()
         const first = list[0]
         const last = list[list.length - 1]
         if (!first) { event.preventDefault(); root?.focus(); return }
-        if (event.shiftKey && (document.activeElement === first || !root?.contains(document.activeElement))) {
+        if (event.shiftKey && (document.activeElement === first || !focusRoot()?.contains(document.activeElement))) {
           event.preventDefault(); last?.focus()
-        } else if (!event.shiftKey && (document.activeElement === last || !root?.contains(document.activeElement))) {
+        } else if (!event.shiftKey && (document.activeElement === last || !focusRoot()?.contains(document.activeElement))) {
           event.preventDefault(); first.focus()
         }
       }
     }
     const focusin = (event: FocusEvent) => {
-      if (root && event.target instanceof Node && !root.contains(event.target)) (focusables()[0] ?? root).focus()
+      const active = focusRoot()
+      if (active && event.target instanceof Node && !active.contains(event.target)) (focusables()[0] ?? active).focus()
     }
     document.addEventListener('keydown', keydown, true)
     document.addEventListener('focusin', focusin)
@@ -146,6 +157,7 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
   }, [])
 
   const selectedId = planets[planetId] || catalog.planets.has(planetId) ? planetId : Object.keys(planets)[0] ?? definitions[0]?.id ?? ''
+  screenRef.current = { planetId: selectedId, tab }
   useEffect(() => { if (detailRef.current) detailRef.current.scrollTop = 0 }, [selectedId, cellIndex])
   const planet = planets[selectedId]
   const definition = planet ?? catalog.planets.get(selectedId)
@@ -166,6 +178,20 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
   const deliveryShip = state.fleet[shipUid]
   const shipmentStock = Object.entries(state.warehouse.items).filter(([key, count]) => count > 0 && ctx.items.has(key) && !ctx.items.get(key)?.holdForbidden)
   const knownTraits = new Set(view?.traitIds ?? [])
+  const currentJob = colony?.jobs.find(job => job.cellIndex === cellIndex || job.targetIndex === cellIndex)
+  const sourceCell = wheel ? view?.cells?.[wheel.index] : undefined
+  function sessionValid(session: WheelState): boolean {
+    const current = engine.state.planetary?.planets[session.planetId]
+    const source = current?.cells[session.index]
+    const job = current?.colony?.jobs.find(value => value.cellIndex === session.index || value.targetIndex === session.index)
+    return screenRef.current.planetId === session.planetId && screenRef.current.tab === 'surface'
+      && !!current && !!planetSurveyView(current, catalog)?.cells?.[session.index]
+      && source?.building === session.sourceBuilding && planetBuildingFingerprint(source?.building) === session.sourceFingerprint && source?.building?.id === session.sourceId && job?.seq === session.jobSeq
+  }
+  const wheelValid = !!wheel && sessionValid(wheel)
+  const movingValid = !!moving && sessionValid(moving) && planet?.cells[moving.index]?.building?.status === 'ready'
+  useEffect(() => { if (wheel && !wheelValid) setWheel(null) }, [wheelValid])
+  useEffect(() => { if (moving && !movingValid) { setMoving(null); setWheel(null) } }, [movingValid])
   const projects = [...(catalog.projects?.values() ?? [])].filter(project =>
     (!project.fromTraitId || knownTraits.has(project.fromTraitId)) && (!project.removeTraitId || knownTraits.has(project.removeTraitId)),
   )
@@ -177,16 +203,20 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
       setResult({ ok: false, reason: 'command-failed' })
     }
     refresh(value => value + 1)
-    setConfirmation(null)
+    setWheel(null); setMoving(null)
   }
 
   function selectPlanet(nextId: string): void {
     setPlanetId(nextId)
     setCellIndex(0)
-    setTargetIndex(0)
     setResult(null)
-    setConfirmation(null)
+    setWheel(null); setMoving(null)
     setDeliveryItems({})
+  }
+
+  function wheelCommand(action: string, ...args: unknown[]): void {
+    if (!wheel || wheelRef.current !== wheel || !sessionValid(wheel)) return
+    command(action, ...args)
   }
 
   function gridKey(event: KeyboardEvent<HTMLButtonElement>, index: number): void {
@@ -202,8 +232,29 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
     else return
     event.preventDefault()
     setCellIndex(next)
-    setConfirmation(null)
+    setWheel(null)
     modalRef.current?.querySelector<HTMLButtonElement>(`[data-planet-cell="${next}"]`)?.focus()
+  }
+
+  function openCell(index: number, element: HTMLButtonElement): void {
+    setCellIndex(index); setResult(null)
+    const target = view?.cells?.[index]
+    if (!target) return
+    const modal = modalRef.current
+    const offset = (el: HTMLElement) => { let x = 0, y = 0; for (let node: HTMLElement | null = el; node; node = node.offsetParent as HTMLElement | null) { x += node.offsetLeft; y += node.offsetTop }
+      for (let node = el.parentElement; node && node !== modal; node = node.parentElement) { x -= node.scrollLeft; y -= node.scrollTop }
+      return { x, y } }
+    const at = offset(element), origin = modal ? offset(modal) : { x: 0, y: 0 }
+    const anchor = { x: at.x - origin.x + element.offsetWidth / 2, y: at.y - origin.y + element.offsetHeight / 2 }
+    if (moving) {
+      if (!movingValid || !planet) { setMoving(null); setWheel(null); return }
+      if (index === moving.index) return
+      const allowed = planetMoveCheck(planet, catalog, moving.index, index)
+      if (!allowed.ok) { setResult(allowed); return }
+      setWheel({ ...moving, anchor, step: 'move', target: index }); return
+    }
+    const job = colony?.jobs.find(job => job.cellIndex === index || job.targetIndex === index)
+    setWheel({ planetId: selectedId, index, sourceId: target.building?.id, sourceBuilding: planet?.cells[index]?.building, sourceFingerprint: planetBuildingFingerprint(target.building), jobSeq: job?.seq, anchor, step: 'menu' })
   }
 
   function jobRows(jobs: readonly PlanetJob[]): ReactNode {
@@ -262,7 +313,37 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
       }).filter(row => row.outputAdd > 0 || row.wearCut > 0) }
   }
 
-  return <div className="app-modal-mask app-planet-mask" onClick={event => { if (event.target === event.currentTarget) onClose() }}>
+  const wheelItems: PlanetWheelItem[] = []
+  if (cell && wheel?.step === 'menu') {
+    if (currentJob) {
+      wheelItems.push({ id: 'pause', label: pt(currentJob.paused ? 'resume' : 'pause'), icon: currentJob.paused ? <Play size={24} /> : <CirclePause size={24} />, action: () => wheelCommand('pause', selectedId, currentJob.seq, !currentJob.paused) },
+        { id: 'cancel', label: pt('cancel'), icon: <X size={24} />, action: () => wheelCommand('cancel', selectedId, currentJob.seq) })
+    } else if (cell.obstacle) {
+      wheelItems.push({ id: 'clear', label: pt('clear'), icon: <Hammer size={24} />, disabled: !planet || !colony || !planetClearanceCheck(planet, cellIndex, catalog).ok, action: () => wheelCommand('clear', selectedId, cellIndex) })
+    } else if (!cell.building) {
+      for (const option of catalog.buildings.values()) {
+        if (option.requiredTraitId && !knownTraits.has(option.requiredTraitId)) continue
+        const allowed = planet ? planetConstructionCheck(planet, cellIndex, option.id, catalog) : undefined
+        const reason = !allowed?.ok ? pt('reason.' + (allowed && !allowed.ok ? allowed.reason : 'not-ready'))
+          : !colony && option.kind !== 'base' ? pt('reason.base-required') : !catalog.operations?.has(option.id) ? pt('unavailable') : undefined
+        wheelItems.push({ id: option.id, label: buildingName(option.id), icon: <Glyph name={PLANET_BUILDING_GLYPHS[option.id] ?? 'planet-base'} size={28} />, tone: planetBuildingTone(option.id), disabled: !!reason, reason,
+          action: () => { if (wheelRef.current !== wheel || !sessionValid(wheel)) return; setBuildingId(option.id); setWheel({ ...wheel, step: 'build' }) } })
+      }
+    } else {
+      const b = cell.building, ready = b.status === 'ready', protectedBuilding = ['base', 'cryo', 'housing'].includes(b.id)
+      wheelItems.push({ id: 'repair', label: pt('repair'), icon: <Wrench size={24} />, disabled: !colony || !ready || (b.condition ?? 1) >= 1, action: () => wheelCommand('repair', selectedId, cellIndex) },
+        { id: 'toggle', label: pt(b.enabled === false ? 'enable' : 'disable'), icon: b.enabled === false ? <Play size={24} /> : <PowerOff size={24} />, disabled: !ready, action: () => wheelCommand('toggle', selectedId, cellIndex, b.enabled === false) },
+        { id: 'move', label: pt('move'), icon: <MoveRight size={24} />, disabled: protectedBuilding || !ready, reason: protectedBuilding ? pt('reason.protected') : undefined,
+          action: () => { if (!protectedBuilding && ready && wheelRef.current === wheel && sessionValid(wheel)) { setMoving(wheel); setWheel(null) } } },
+        { id: 'demolish', label: pt('demolish'), icon: <Trash2 size={24} />, tone: 'rgb(var(--wui-danger))', disabled: protectedBuilding || !ready, reason: protectedBuilding ? pt('reason.protected') : undefined,
+          action: () => { if (!protectedBuilding && ready && wheelRef.current === wheel && sessionValid(wheel)) setWheel({ ...wheel, step: 'demolish' }) } })
+      if (building?.worker === 'human') wheelItems.push({ id: 'staff', label: pt(b.staffed ? 'unassign' : 'assign'), icon: <UserRound size={24} />, disabled: !ready, action: () => wheelCommand('staff', selectedId, cellIndex, !b.staffed) })
+    }
+  }
+  const moveCheck = wheel?.step === 'move' && planet && wheel.target !== undefined
+    ? planetMoveCheck(planet, catalog, wheel.index, wheel.target) : undefined
+
+  return <div className="app-modal-mask app-planet-mask" onClick={event => { if (event.target === event.currentTarget) { if (wheel) setWheel(null); else if (moving) setMoving(null); else onClose() } }}>
     <div className="app-modal app-planet-modal" role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} tabIndex={-1} ref={modalRef}>
       <div className="app-modal-head">
         <strong id={`${id}-title`} className="app-report-title">{pt('title')}</strong>
@@ -276,7 +357,7 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
       <div className="app-subtabs app-planet-tabs" role="tablist" aria-label={pt('title')}>
         {TABS.map((name, index) => <button key={name} id={`${id}-${name}-tab`} className={`app-subtab${tab === name ? ' is-active' : ''}`}
           role="tab" aria-selected={tab === name} aria-controls={`${id}-page`} tabIndex={tab === name ? 0 : -1}
-          onClick={() => setTab(name)} onKeyDown={event => {
+          onClick={() => { setTab(name); setWheel(null); setMoving(null) }} onKeyDown={event => {
             let next = index
             if (event.key === 'ArrowRight') next = (index + 1) % TABS.length
             else if (event.key === 'ArrowLeft') next = (index + TABS.length - 1) % TABS.length
@@ -284,7 +365,7 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
             else if (event.key === 'End') next = TABS.length - 1
             else return
             event.preventDefault()
-            setTab(TABS[next])
+            setTab(TABS[next]); setWheel(null); setMoving(null)
             modalRef.current?.querySelector<HTMLButtonElement>(`[id="${id}-${TABS[next]}-tab"]`)?.focus()
           }}><Glyph name={TAB_ICONS[name]} size={18} />{pt('' + name)}</button>)}
       </div>
@@ -316,8 +397,8 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
             <label className="app-planet-field"><span>{pt('compare')}</span><select className="app-select" value={compareId} onChange={e => setCompareId(e.target.value)}>
               <option value="">{pt('none')}</option>{definitions.filter(def => def.id !== selectedId).map(def => <option value={def.id} key={def.id}>{planetName(def.id)}</option>)}
             </select></label>
-            <div className="app-planet-compare-grid"><section><h3>{planetName(selectedId)}</h3><PlanetFacts view={view} size={definition.size} /><Traits view={view} /></section>
-              {comparedDefinition && compareId !== selectedId ? <section><h3>{planetName(compareId)}</h3><PlanetFacts view={comparedView} size={comparedDefinition.size} /><Traits view={comparedView} /></section> : null}</div>
+            <div className="app-planet-compare-grid"><section><h3>{planetName(selectedId)}</h3><PlanetFacts view={view} size={definition.size} /><PlanetTraitTags view={view} catalog={catalog} /></section>
+              {comparedDefinition && compareId !== selectedId ? <section><h3>{planetName(compareId)}</h3><PlanetFacts view={comparedView} size={comparedDefinition.size} /><PlanetTraitTags view={comparedView} catalog={catalog} /></section> : null}</div>
             <div className="app-planet-actions"><button className="app-btn" disabled={!!planet} onClick={() => command('discover', selectedId)}>{pt('discover')}</button>
               <button className="app-btn" disabled={!view || view.survey >= 2} onClick={() => command('survey', selectedId, 2)}>{pt('survey.2')}</button>
               <button className="app-btn" disabled={!view || view.survey >= 3} onClick={() => command('survey', selectedId, 3)}>{pt('survey.3')}</button></div>
@@ -329,21 +410,22 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
               <div className="app-planet-grid" role="group" aria-label={pt('surface')} style={{ '--planet-columns': definition.size } as CSSProperties}>
                 {Array.from({ length: definition.size * definition.size }, (_, index) => {
                   const tile = view?.cells?.[index]
-                  const legal = planet && tile && selectedBuilding && operation && (colony || selectedBuilding.kind === 'base') ? planetConstructionCheck(planet, index, buildingId, catalog).ok : false
+                  const plain = !!tile && !tile.building && !tile.obstacle && !tile.deposit
+                  const legal = !!tile && !tile.building && !tile.obstacle && !colony?.jobs.some(job => job.cellIndex === index || job.targetIndex === index)
                   const tileView = planetSurfaceCellView(tile, tile?.building ? catalog.buildings.get(tile.building.id) : undefined)
                   const title = [pt('tile') + ` ${index + 1}`, pt(tileView.nameKey), pt(tileView.textKey), tile?.deposit ? resourceName(tile.deposit.resource) : '', legal ? pt('build') : ''].filter(Boolean).join(' / ')
                   return <button type="button" key={index} data-planet-cell={index} aria-label={title} aria-pressed={index === cellIndex}
                     tabIndex={index === cellIndex ? 0 : -1} title={title}
-                    className={`app-planet-tile${index === cellIndex ? ' is-selected' : ''}${legal ? ' is-buildable' : ''}${neighbors.includes(index) ? ' is-neighbor' : ''}${tile?.obstacle ? ' is-obstacle' : ''}`}
-                    onClick={() => { setCellIndex(index); setConfirmation(null); setResult(null) }} onKeyDown={event => gridKey(event, index)}>
-                    <span className="app-planet-tile-index">{index + 1}</span>
-                    <Glyph name={tileView.glyph} size={32} className="app-planet-tile-art" />
+                    className={`app-planet-tile${index === cellIndex ? ' is-selected' : ''}${plain ? ' is-plain' : ''}${legal ? ' is-buildable' : ''}${movingValid && planet && index !== moving!.index && planetMoveCheck(planet, catalog, moving!.index, index).ok ? ' is-move-target' : ''}${neighbors.includes(index) ? ' is-neighbor' : ''}${tile?.obstacle ? ' is-obstacle' : ''}`}
+                    aria-haspopup={tile ? 'dialog' : undefined} onClick={event => openCell(index, event.currentTarget)} onKeyDown={event => gridKey(event, index)}>
+                    {!plain ? <span className="app-planet-tile-index">{index + 1}</span> : null}
+                    {!plain ? <Glyph name={tileView.glyph} size={32} className="app-planet-tile-art" color={tile?.building && !tile.obstacle ? planetBuildingTone(tile.building.id) : undefined} /> : legal ? <Plus size={26} className="app-planet-empty-plus" aria-hidden="true" /> : null}
                     {tile?.deposit && (tile.building || tile.obstacle) ? <span className="app-planet-tile-resource" data-planet-resource={tile.deposit.resource}><Glyph name={tileView.resourceGlyph!} size={14} /></span> : null}
-                    <span className="app-planet-tile-mark"><SurfaceStatus status={legal && tileView.status === 'empty' ? 'ready' : tileView.status} label={pt(tileView.textKey)} /></span>
+                    {!plain && tileView.status !== 'empty' ? <span className="app-planet-tile-mark"><SurfaceStatus status={tileView.status} label={pt(tileView.textKey)} /></span> : null}
                   </button>
                 })}
               </div>
-              <Traits view={view} />
+              <PlanetTraitTags view={view} catalog={catalog} />
               {!view?.cells ? <div className="app-note">{planet && !view ? pt('reason.unsupported') : pt('reason.survey-required')}</div> : null}
               {environment ? <InfoTable lines={[
                 { k: pt('hazard'), v: range(view?.hazard) }, { k: pt('habitability'), v: range(view?.habitability) },
@@ -354,7 +436,7 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
           </div>
           <aside className="app-planet-detail">
             <div className="app-planet-detail-top">
-              <Glyph name={cellView.glyph} size={36} />
+              <Glyph name={cellView.glyph} size={36} color={planetBuildingTone(cell?.building?.id)} />
               <div className="app-planet-detail-heading"><span className="app-dim">{pt('tile')} #{cellIndex + 1}</span><strong>{pt(cellView.nameKey)}</strong><SurfaceStatus status={cellView.status} label={pt(cellView.textKey)} text /></div>
             </div>
             <div className="app-planet-detail-discovery app-planet-actions">
@@ -367,27 +449,10 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
                   <section className="app-planet-section app-planet-maintenance"><h3><Wrench size={16} />{pt('building')}</h3>
                   <InfoTable lines={[{ k: pt('condition'), v: percent(cell.building.condition ?? 1) },
                     { k: pt('staff'), v: building?.worker === 'human' ? pt(cell.building.staffed ? 'staffed' : 'status.unstaffed') : pt('automatic') }]} />
-                  <div className="app-planet-actions">
-                    <button className="app-btn is-small" onClick={() => command('repair', selectedId, cellIndex)} disabled={(cell.building.condition ?? 1) >= 1}><Wrench size={16} />{pt('repair')}</button>
-                    <label className="app-planet-check"><input type="checkbox" checked={cell.building.enabled !== false} disabled={!colony || cell.building.status === 'construction'} onChange={e => command('toggle', selectedId, cellIndex, e.target.checked)} />{pt('enabled')}</label>
-                    {building?.worker === 'human' ? <label className="app-planet-check"><input type="checkbox" checked={cell.building.staffed} disabled={!colony || cell.building.status !== 'ready'} onChange={e => command('staff', selectedId, cellIndex, e.target.checked)} />{pt('staff')}</label> : null}
-                  </div>
-                  </section>
-                  <section className="app-planet-section"><h3><MoveRight size={16} />{pt('moveTarget')}</h3>
-                  <label className="app-planet-field"><span>{pt('moveTarget')}</span><select className="app-select" value={targetIndex} onChange={e => setTargetIndex(Number(e.target.value))}>
-                    {view?.cells?.map(c => <option value={c.index} key={c.index} disabled={c.index === cellIndex || !!c.obstacle || !!c.building}>#{c.index + 1}{c.deposit ? ` / ${resourceName(c.deposit.resource)}` : ''}</option>)}
-                  </select></label>
-                  <div className="app-planet-actions"><button className="app-btn is-small" disabled={!colony || targetIndex === cellIndex || !!view?.cells?.[targetIndex]?.building || !!view?.cells?.[targetIndex]?.obstacle || cell.building.status !== 'ready'} onClick={() => command('move', selectedId, cellIndex, targetIndex)}><MoveRight size={16} />{pt('move')}</button>
-                    <button className="app-btn is-small" disabled={!colony || cell.building.status === 'construction'} onClick={() => setConfirmation('demolish')}><Trash2 size={16} />{pt('demolish')}</button></div>
-                  {confirmation ? <div className="app-note"><div>{pt('demolishConfirm')}</div><div className="app-planet-actions">
-                    <button className="app-btn is-small" onClick={() => command('demolish', selectedId, cellIndex)}>{pt('confirm')}</button>
-                    <button className="app-btn is-small" onClick={() => setConfirmation(null)}>{pt('cancel')}</button></div></div> : null}
+                  <InfoTable lines={[{ k: pt('enabled'), v: pt(cell.building.enabled === false ? 'disable' : 'enable') }]} />
                   </section>
                 </> : <>
-                  <section className="app-planet-section app-planet-construction"><h3><Glyph name={PLANET_BUILDING_GLYPHS[buildingId] ?? 'planet-base'} size={24} />{selectedBuilding ? buildingName(selectedBuilding.id) : pt('building')}</h3>
-                  <label className="app-planet-field"><span>{pt('building')}</span><select className="app-select" value={buildingId} onChange={e => { setBuildingId(e.target.value); setResult(null) }}>
-                    {[...catalog.buildings.values()].filter(b => !b.requiredTraitId || knownTraits.has(b.requiredTraitId)).map(b => <option value={b.id} key={b.id}>{buildingName(b.id)}</option>)}
-                  </select></label>
+                  <section className="app-planet-section app-planet-construction"><h3><Glyph name={PLANET_BUILDING_GLYPHS[buildingId] ?? 'planet-base'} size={24} color={planetBuildingTone(buildingId)} />{selectedBuilding ? buildingName(selectedBuilding.id) : pt('building')}</h3>
                   <Bill bill={bill} itemName={itemName} />
                   {operation ? <InfoTable lines={[
                     { k: pt('power'), v: fmtNum(operation.power, 1) },
@@ -402,15 +467,14 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
                   <InfoTable lines={[{ k: pt('outputBonus'), v: percent(adjacency?.outputAdd ?? preview?.incoming.outputAdd ?? 0) },
                     { k: pt('wearReduction'), v: percent(adjacency?.wearCut ?? preview?.incoming.wearCut ?? 0) }]} />
                   {preview ? <div className="app-note app-dim">{pt('adjacencyPreview')}</div> : null}
-                  <div className="app-planet-neighbors">{neighbors.map(index => <button className="app-btn is-small" key={index} onClick={() => { setCellIndex(index); setConfirmation(null) }}>#{index + 1} {view?.cells?.[index]?.building ? buildingName(view.cells[index].building!.id) : pt('empty')}</button>)}</div>
+                  <div className="app-planet-neighbors">{neighbors.map(index => <button className="app-btn is-small" key={index} onClick={() => { setCellIndex(index); setWheel(null) }}>#{index + 1} {view?.cells?.[index]?.building ? buildingName(view.cells[index].building!.id) : pt('empty')}</button>)}</div>
                   {preview?.outgoing.map(row => <div className="app-dim" key={row.index}>#{row.index + 1}: {pt('outputBonus')} +{percent(row.outputAdd)} / {pt('wearReduction')} +{percent(row.wearCut)}</div>)}
                 </section>
                 <section className="app-planet-section"><h3>{pt('jobs')}</h3>{jobRows(colony?.jobs.filter(job => job.cellIndex === cellIndex || job.targetIndex === cellIndex) ?? [])}</section>
               </> : <div className="app-note">{pt('reason.survey-required')}</div>}
             </div>
             <div className="app-planet-detail-commands">
-              {cell?.building ? null : cell?.obstacle ? <button className="app-btn is-primary" disabled={!planet || !colony || !planetClearanceCheck(planet, cellIndex, catalog).ok} onClick={() => command('clear', selectedId, cellIndex)}><Hammer size={18} />{pt('clear')}</button>
-                : cell ? <button className="app-btn is-primary" disabled={!check?.ok || !operation || (!colony && selectedBuilding?.kind !== 'base')} onClick={() => command('build', selectedId, cellIndex, buildingId)}><HardHat size={18} />{pt('build')}</button> : null}
+              {moving ? <><span>{pt('moveTarget')} #{moving.index + 1}</span><button className="app-btn" onClick={() => setMoving(null)}><X size={18} />{pt('cancel')}</button></> : null}
             </div>
           </aside>
           <div className="app-planet-grid-legend app-dim">
@@ -464,7 +528,7 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
             </section>
           </div>
         </div> : <div className="app-planet-projects">
-          <div className="app-planet-scroll"><h3>{pt('projects')}</h3><Traits view={view} />
+          <div className="app-planet-scroll"><h3>{pt('projects')}</h3><PlanetTraitTags view={view} catalog={catalog} />
             {!colony ? <div className="app-note">{pt('noColony')}</div> : null}
             {!projects.length ? <div className="app-note app-dim">{pt('noProjects')}</div> : null}
             {projects.map(project => {
@@ -493,6 +557,23 @@ export function PlanetaryPanel({ engine, catalog, onClose, onCommand, initialPla
           </div>
         </div>}
       </div>
+      {wheel && wheelValid ? <PlanetRadialMenu key={`${wheel.planetId}:${wheel.index}`} title={wheel.step === 'menu' ? `${pt('tile')} #${wheel.index + 1}` : pt(wheel.step)}
+        items={wheelItems} anchor={wheel.anchor} onClose={() => setWheel(null)} restoreFocus={() => modalRef.current?.querySelector<HTMLButtonElement>(`[data-planet-cell="${wheel.index}"]`)?.focus()}
+        onBack={() => { if (wheel.step === 'move') setWheel(null); else setWheel({ ...wheel, step: 'menu', target: undefined }) }}>
+        {wheel.step === 'build' ? <>
+          <h3><Glyph name={PLANET_BUILDING_GLYPHS[buildingId] ?? 'planet-base'} size={28} color={planetBuildingTone(buildingId)} />{buildingName(buildingId)}</h3>
+          <Bill bill={bill} itemName={itemName} />
+          <InfoTable lines={[{ k: pt('power'), v: operation ? fmtNum(operation.power, 1) : '-' }, { k: pt('outputBonus'), v: percent(preview?.incoming.outputAdd ?? 0) }, { k: pt('wearReduction'), v: percent(preview?.incoming.wearCut ?? 0) }]} />
+          {preview?.outgoing.map(value => <div key={value.index}>#{value.index + 1} {pt('outputBonus')} +{percent(value.outputAdd)}</div>)}
+          {check && !check.ok ? <div className="app-note app-warn">{pt('reason.' + check.reason)}</div> : null}
+          <button type="button" className="app-btn is-primary" data-wheel-confirm="build" disabled={!check?.ok || !operation || (!colony && selectedBuilding?.kind !== 'base')} onClick={() => wheelCommand('build', wheel.planetId, wheel.index, buildingId)}><HardHat size={18} />{pt('confirm')}</button>
+        </> : wheel.step === 'demolish' ? <><p>{pt('demolishConfirm')}</p><strong>{sourceCell?.building ? buildingName(sourceCell.building.id) : pt('unknown')}</strong>
+          <button type="button" className="app-btn" data-wheel-confirm="demolish" disabled={!sourceCell?.building || ['base', 'cryo', 'housing'].includes(sourceCell.building.id)} onClick={() => wheelCommand('demolish', wheel.planetId, wheel.index)}><Trash2 size={18} />{pt('confirm')}</button></>
+          : wheel.step === 'move' ? <><h3>{sourceCell?.building ? buildingName(sourceCell.building.id) : pt('unknown')}</h3><p>#{wheel.index + 1} <MoveRight size={16} /> #{(wheel.target ?? 0) + 1}</p>
+            <Bill bill={planet ? planetMoveBillOf(planet, catalog) : undefined} itemName={itemName} />
+            {!moveCheck?.ok ? <p className="app-warn">{pt('reason.' + (moveCheck && !moveCheck.ok ? moveCheck.reason : 'not-ready'))}</p> : null}
+            <button type="button" className="app-btn is-primary" data-wheel-confirm="move" disabled={!moveCheck?.ok} onClick={() => { if (wheel.target !== undefined) wheelCommand('move', wheel.planetId, wheel.index, wheel.target) }}><MoveRight size={18} />{pt('confirm')}</button></> : null}
+      </PlanetRadialMenu> : null}
     </div>
   </div>
 }

@@ -13,7 +13,7 @@
 
 ## 地表界面取证（2026-10-10 · v0.1.0 / 档v31）
 
-- `node tools/planetary-native-check.cjs --case=modern-zh-desktop`：独立合成档/隐藏Electron，调查→运输→唤醒→家园改造→建造/暂停/继续/取消→清障→真实保存重载，补64px网格/8px间距、资源角标/图标/固定操作区/图例/最后一排可达与短高度逻辑几何。手机可用`--case=classic-en-mobile`，只读数不作实体手机性能或观感验收。
+- `node tools/planetary-native-check.cjs --case=modern-zh-desktop`：独立合成档/隐藏Electron，调查→运输→唤醒→家园改造→分页轮盘/建设确认→暂停/继续/取消→启停/迁移/拆除确认/基础设施保护→清障→特性标签悬停与键盘→真实保存重载；核对轮盘四角边界/控件不重叠/焦点与Esc、纯空地留白、64px网格/8px间距和末排可达。手机可用`--case=classic-en-mobile`（有界300秒）；追加`--surface-only`只跳过人口/运输/改造旧旅程，专测地表UI完整链路，不冒称家园旅程覆盖。只作触摸与旋转几何读数，不作实体手机性能或观感验收。
 - 同一工具追加真实Glyph图标深浅底/32与64px对照板，输出`tools/_ui-artifacts/planetary/glyphs.png`；图形需有非空像素并保持原24坐标/1.7线稿，不加载个人档、不添加依赖。
 
 ## 装配靶场验收（2026-10-09 · v0.1.0 / 档v31）

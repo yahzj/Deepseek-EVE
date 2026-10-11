@@ -84,6 +84,11 @@
 | 关注点 | 唯一实现 | 护栏 |
 |---|---|---|
 | 地表已公开地块图标与状态 | `planetSurfaceCellView` · `ui/planetSurfaceView.ts` | 网格/详情共用主体、资源、障碍与状态优先级，未知不渲染隐藏信息；设施完整覆盖/状态/真实组件专项 |
+| 地表建筑身份色 | `planetBuildingTone` · `ui/planetSurfaceView.ts` | 网格/轮盘/详情统一，状态色独立；13项色表/主题专项 |
+| 星球特性已公开效果详情 | `planetTraitDetails` · `ui/planetTraitDetails.ts` | 仅公开traitIds，直接修正/整星环境分列；富卡/触屏/未知隔离专项 |
+| 星球迁移账单与预览 | `planetMoveBillOf` · `core/planetConstruction.ts` | 原账单值不变，原迁移/轮盘确认共用；费用与状态守恒专项 |
+| 星球迁移合法性与选址 | `planetMoveCheck` · `core/planetConstruction.ts` | 原门禁抽取，实际迁移/高亮/确认共用，资源及保护/预占专项 |
+| 地表轮盘逻辑边界 | `planetWheelPosition` · `ui/planetWheelGeometry.ts` | 逻辑区钳制，不按物理旋转尺寸/字数缩放，键盘/角落/手机专项 |
 | 仿真上下文（页面取数的唯一入口） | `buildSimContext()` · `context.ts` | `arch:guard` F1/F4 |
 | 玩家可见文案唯一表（`id → { zh, en }`） | `L10N` · `l10n/table.ts` | `npm run l10n:check` ＋ `l10n:list` |
 | 已登记待译条目的中文回退 | `l10nEntryText()` · `l10n/table.ts`；界面`textOf`及主进程`t`调用 | 待译标记/文档登记成对、非待译空值仍拒绝、同入口占位符与中英渲染专项 |
