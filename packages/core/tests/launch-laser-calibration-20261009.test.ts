@@ -200,7 +200,7 @@ describe('出击加速、激光校准与协处理器5%', () => {
     expect(droneCpuUsed(w.state.fleet[w.uid]!.droneLoad, ctx)).toBe(12)
   })
 
-  it('静态船表仅四艘无人机主力舰新增启动特性；旧装备仅已批准的巨构代价和叠光参数变化', () => {
+  it('静态船表与旧装备仅含已批准的启动特性、巨构代价、叠光与玩家动能远端变化', () => {
     const old = (path: string) => JSON.parse(execFileSync('git', ['show', `26538327:${path}`], { cwd: root, encoding: 'utf8', windowsHide: true }))
     const expectedShips = old('packages/data/src/static/ships.json')
     for (const id of droneHulls) (Object.values(expectedShips.groups).flat().find((ship: any) => ship.id === id) as any).droneLaunchCutPct = .3
@@ -210,6 +210,14 @@ describe('出击加速、激光校准与协处理器5%', () => {
     const overlay = Object.values(expectedModules.groups).flat().find((mod: any) => mod.id === 'mod-lair-laser-r') as any
     overlay.dmgMult = 2.1
     overlay.maxRangeM = 6000
+    const falloffChanges: Readonly<Record<string, number>> = {
+      'mod-turret-civ': .3, 'mod-turret-kin-1': .3, 'mod-turret-kin-2': .3, 'mod-turret-kin-3': .3,
+      'mod-pd-e': .3, 'mod-pd-e-2': .3, 'mod-pd-e-3': .3, 'mod-wh-e-pd': .3,
+      'mod-lair-turret-a': .15, 'mod-wh-d-turret': .2,
+    }
+    for (const mod of Object.values(expectedModules.groups).flat() as Array<{ id: string; falloff?: number }>) {
+      if (falloffChanges[mod.id] !== undefined) mod.falloff = falloffChanges[mod.id]
+    }
     const oldIds = new Set(Object.values(expectedModules.groups).flat().map((mod: any) => mod.id))
     const copy = structuredClone(modules)
     copy.groups.MODULES_0 = copy.groups.MODULES_0.filter(mod => oldIds.has(mod.id))

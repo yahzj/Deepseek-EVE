@@ -49,7 +49,14 @@ describe('物品装备说明双语与数据守恒', () => {
     const plugs = historical<typeof MODULES>('packages/data/src/plugs.ts', 'SHIP_PLUGS')
     const before = historical<typeof MODULES>('packages/data/src/modules.ts', 'MODULES', { SHIP_PLUGS: plugs })
     const strip = (entries: typeof MODULES) => entries.map(({ description: _description, ...rest }) => rest)
+    const falloffChanges: Readonly<Record<string, number>> = {
+      'mod-turret-civ': .3, 'mod-turret-kin-1': .3, 'mod-turret-kin-2': .3, 'mod-turret-kin-3': .3,
+      'mod-pd-e': .3, 'mod-pd-e-2': .3, 'mod-pd-e-3': .3, 'mod-wh-e-pd': .3,
+      'mod-lair-turret-a': .15, 'mod-wh-d-turret': .2,
+    }
     const adjusted = before.map(mod => {
+      // 2026-10-12 船长明确只改玩家动能远端倍率，其他字段继续全值核对。
+      if (falloffChanges[mod.id] !== undefined) return { ...mod, falloff: falloffChanges[mod.id] }
       if (mod.id === 'mod-wh-e-cpu') return { ...mod, reloadPenaltyPct: .05 }
       if (mod.id === 'mod-lair-blink-r') return { ...mod, blink: { ...mod.blink!, cooldownMs: 16000 } }
       if (mod.id === 'mod-lair-laser-r') return { ...mod, dmgMult: 2.1, maxRangeM: 6000 }

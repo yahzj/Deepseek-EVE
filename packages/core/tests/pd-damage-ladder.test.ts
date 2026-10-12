@@ -104,7 +104,8 @@ describe('近防炮攻击口径（船长 2026-09-12 裁定「丙」：短射程 
  */
 describe('打机群不吃距离衰减（船长 2026-09-12「按丁修复」）', () => {
   /** 近防炮 MK1 的武器条目形状（真值取自引擎；命中取基础值、火控技能 0） */
-  const W = { hitRate: 0.9, minRangeM: 1, maxRangeM: 2500, falloff: 0.5 }
+  const pd = real.modules.get('mod-pd-e')!
+  const W = { hitRate: pd.hitRate!, minRangeM: pd.minRangeM!, maxRangeM: pd.maxRangeM!, falloff: pd.falloff! }
 
   it('打机群：命中 = 基础命中 − 机型闪避（与两舰间距无关）', () => {
     const atk = { hitBonus: 0 }
@@ -130,9 +131,9 @@ describe('打机群不吃距离衰减（船长 2026-09-12「按丁修复」）',
     const far = hitChance(W, atk, def, 5_000, real.balance.battle)
     /* ⚠ 2026-09-15 船长改判：回避从**初始命中**里扣、余量再乘衰减
        ⇒ 这里从「`0.9 × 衰减 − 0.18`」改成「`(0.9 − 0.18) × 衰减`」。
-       1,000m：衰减 = 1 − (999/2,499)×0.5（minRange 1 → maxRange 2,500 线性到 falloff 0.5）。 */
-    expect(near).toBeCloseTo((0.9 - 0.18) * (1 - (999 / 2_499) * 0.5), 5)
-    expect(far).toBeCloseTo((0.9 - 0.18) * 0.5, 5) // 5,000m：越出射程 ⇒ 衰减锁在下限 ×0.5
+       1,000m：衰减 = 1 − (999/2,499)×(1−falloff)，端点读取当前近防炮参数。 */
+    expect(near).toBeCloseTo((0.9 - 0.18) * (1 - (999 / 2_499) * (1 - W.falloff)), 5)
+    expect(far).toBeCloseTo((0.9 - 0.18) * W.falloff, 5)
     expect(near).toBeGreaterThan(far)
   })
 })
