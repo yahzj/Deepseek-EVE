@@ -1,5 +1,17 @@
 # 待英文本地化记录
 
+## 黑市开放通讯（2026-10-12确认）
+
+来源：船长确认累计协会声望100时由黑市商人告知市场页入口；中文稿见`docs/design/black-market-unlock-comms-20261012.md`。消息`msg-black-market-unlock`使用下列ID，未授权英文准备，英文界面回退批准中文；旧通讯及英文保持。
+
+| id | 改动点 | 状态 |
+|---|---|---|
+| `ui.commsBlackMarket.001` | 标题：有些货，该给你看看了 | 待本地化 |
+| `ui.commsBlackMarket.002` | 商人认可玩家在协会的名声 | 待本地化 |
+| `ui.commsBlackMarket.003` | 告知从市场页的黑市入口看货 | 待本地化 |
+| `ui.commsBlackMarket.004` | 商人口吻提示先看货再看价 | 待本地化 |
+| `ui.commsBlackMarket.005` | 前往市场跳转提示 | 待本地化 |
+
 ## 星系动态试作（2026-10-09）
 
 | id | 改动点 | 状态 |

@@ -18,7 +18,7 @@
  * 2026-09-26 新增 `msg-blackbox-plug-unlock` 时就是按这条办的（船长亲笔三段，英文也落三段）。
  */
 import { COMMS_DAY_MS } from '@whale/core'
-import { L10N } from '@whale/data'
+import { L10N, l10nEntryText } from '@whale/data'
 import type { CommsEntryView, CommsRewardLine } from '@whale/core'
 import { isEn, paramText, tr } from '../i18n/locale'
 
@@ -98,6 +98,7 @@ const COMMS_SUBJECT_ID: Record<string, string> = {
      ⇒ 改用**专为此写的主题 id** `ui.comms.079`；`ui.comms.072` 回归本职、一字未动。 */
   'msg-blackbox-plug-unlock': 'ui.comms.079', // 首个黑匣解锁插件（2026-09-26 船长令）
   'msg-lab-contraband': 'ui.comms.076', // 首访实验室：黑市的违禁货通讯（2026-09-30 船长令）
+  'msg-black-market-unlock': 'ui.commsBlackMarket.001',
 }
 
 // ⟪文案调整 2026-10-04⟫ 建站弹层和收件箱镜像共用同一组对白 id。
@@ -212,6 +213,7 @@ const COMMS_HINT_ID: Record<string, string> = {
   查看详细奖励: 'ui.comms.070',
   // 2026-09-30 首访实验室（黑市那封）：跳工业页实验室
   '工业页的实验室能造这两样。': 'ui.comms.077',
+  [L10N['ui.commsBlackMarket.005']!.zh]: 'ui.commsBlackMarket.005',
 }
 // l10n-keep-end
 
@@ -247,6 +249,12 @@ export function commsHintText(text: string): string {
  * ⚠ **行数必须与中文逐行对齐**：`commsBodyText()` 在行数不符时**回落到中文**（宁可整段中文，也不许错行串位）。
  */
 const COMMS_BODY_EN: Record<string, readonly string[]> = {
+  // ⟪文案调整 2026-10-12⟫ 新黑市信英文未准备时使用共享待译回退，不显示空正文。
+  'msg-black-market-unlock': [
+    l10nEntryText(L10N['ui.commsBlackMarket.002']!, 'en'),
+    l10nEntryText(L10N['ui.commsBlackMarket.003']!, 'en'),
+    l10nEntryText(L10N['ui.commsBlackMarket.004']!, 'en'),
+  ],
   'first-scan': [
     L10N['ui.firstScan.001']!.en,
     L10N['ui.firstScan.002']!.en,

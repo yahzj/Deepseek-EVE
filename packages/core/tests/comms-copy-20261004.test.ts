@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { COMMS_MESSAGES, DIALOGUES, FIRST_TASK_MESSAGES, L10N } from '@whale/data'
+import { COMMS_MESSAGES, DIALOGUES, FIRST_TASK_MESSAGES, L10N, l10nEntryText } from '@whale/data'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
 import { signalSpaceTextId } from '../src/explorationText'
@@ -22,8 +22,12 @@ if (statements.length !== names.length) throw new Error('通讯取词入口缺�
 const code = statements.map((node) => node.getText(source).replace(/^export\s+/, '')).join('\n') + '\nglobalThis.result = { commsBodyText, commsSubjectText, commsHintText, commsDialogueText }'
 const context = {
   L10N,
+  l10nEntryText,
   isEn: () => language.en,
-  tr: (id: string) => L10N[signalSpaceTextId(id)]?.[language.en ? 'en' : 'zh'] ?? id,
+  tr: (id: string) => {
+    const entry = L10N[signalSpaceTextId(id)]
+    return entry ? l10nEntryText(entry, language.en ? 'en' : 'zh') : id
+  },
   paramText: (value: string | number) => String(value),
   result: undefined,
 }
@@ -80,6 +84,12 @@ describe('其余通讯整批中英接线与行为守恒', () => {
     language.en = true
     const body = commsBodyText(message.id, message.body)
     expect(body).toHaveLength(message.body.length)
+    if (message.id === 'msg-black-market-unlock') {
+      expect(body).toEqual(message.body)
+      expect(commsSubjectText(message.id, message.subject)).toBe(message.subject)
+      expect(commsHintText(message.hint!.text)).toBe(L10N['ui.commsBlackMarket.005']!.zh)
+      return
+    }
     expect(body.join('')).not.toMatch(/[\u4e00-\u9fff]/)
     expect(commsSubjectText(message.id, message.subject)).not.toMatch(/[\u4e00-\u9fff]/)
   })
@@ -106,7 +116,9 @@ describe('其余通讯整批中英接线与行为守恒', () => {
         return { ...rest, hint: jump }
       })
     }
-    expect(policy(COMMS_MESSAGES)).toEqual(policy(bindings.result as unknown as typeof COMMS_MESSAGES))
+    const original = bindings.result as unknown as typeof COMMS_MESSAGES
+    expect(COMMS_MESSAGES).toHaveLength(original.length + 1)
+    expect(policy(COMMS_MESSAGES.filter(message => message.id !== 'msg-black-market-unlock'))).toEqual(policy(original))
     expect(COMMS_MESSAGES.find((message) => message.id === 'msg-wormhole-unlock')!.hint!.text).toBe(L10N['ui.signalSpace.026']!.zh)
   })
   it('建站对白 id、角色、主题、行数与挂靠不变', () => {

@@ -454,6 +454,21 @@ export const COMMS_MESSAGES: readonly CommsMessageDef[] = [
     trigger: { kind: 'labOpened' },
     hint: { text: '工业页的实验室能造这两样。', page: 'industry' },
   },
+  {
+    id: 'msg-black-market-unlock',
+    factionId: 'black-market',
+    deptId: 'dept-contraband',
+    kind: '提示',
+    // ⟪文案调整 2026-10-12⟫ 船长确认：累计声望100开放提醒，老档达标同样只送一次。
+    subject: L10N['ui.commsBlackMarket.001']!.zh,
+    body: [
+      L10N['ui.commsBlackMarket.002']!.zh,
+      L10N['ui.commsBlackMarket.003']!.zh,
+      L10N['ui.commsBlackMarket.004']!.zh,
+    ],
+    trigger: { kind: 'standing', factionId: 'dsi', min: 100 },
+    hint: { text: L10N['ui.commsBlackMarket.005']!.zh, page: 'market' },
+  },
 ]
 
 /** 通讯消息目录（core 判定触发器；按 id 稳定查表） */

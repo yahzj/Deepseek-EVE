@@ -127,6 +127,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import ts from 'typescript'
 import { join } from 'node:path'
 import { tableOf } from './content-schema'
+import { BLACK_MARKET_STANDING_REQ } from '../packages/core/src/events'
 // 说明文案口径单点（船长 2026-09-17 立的文案规则）：长度计数 + 括号原因解释判据
 import { REASON_HINTS, copyEntriesOf, parenSpans } from './copy-len'
 import {
@@ -8122,20 +8123,21 @@ const JUMP_PAGES = new Set(['map', 'ship', 'fit', 'items', 'market', 'industry',
         )
         break
       case 'standing': {
-        /**
-         * 死触发器守卫（2026-09-14 虫洞解锁信）：这封信靠「协会声望 ≥ N」送达，门槛值与 core 的
-         * `WORMHOLE_SCAN_UNLOCK_STANDING` **必须同值** —— 两处不一致时，要么信送了却扫不了、
-         * 要么能扫了却永远收不到信。这里与引擎常量同一出处地核一遍。
-         */
+        // 解锁通讯按消息核对对应引擎门槛，不能将所有协会声望通讯都套成虫洞门槛。
+        const unlockStanding: Readonly<Record<string, number>> = {
+          'msg-wormhole-unlock': WORMHOLE_SCAN_UNLOCK_STANDING,
+          'msg-black-market-unlock': BLACK_MARKET_STANDING_REQ,
+        }
         check(m.trigger.min > 0, `通讯 ${m.id} 的 standing 触发门槛必须为正：${m.trigger.min}`)
         check(
           m.trigger.factionId === DSI_FACTION_ID,
           `通讯 ${m.id} 的 standing 触发指向未知声望势力：${m.trigger.factionId}`,
         )
-        if (m.trigger.factionId === DSI_FACTION_ID) {
+        const expected = unlockStanding[m.id]
+        if (expected !== undefined) {
           check(
-            m.trigger.min === WORMHOLE_SCAN_UNLOCK_STANDING,
-            `通讯 ${m.id} 的 standing 门槛 ${m.trigger.min} 与引擎常量 ${WORMHOLE_SCAN_UNLOCK_STANDING} 不一致`,
+            m.trigger.min === expected,
+            `通讯 ${m.id} 的 standing 门槛 ${m.trigger.min} 与对应解锁门槛 ${expected} 不一致`,
           )
         }
         break

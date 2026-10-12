@@ -24,6 +24,12 @@ export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  // ⟪文案调整 2026-10-12⟫ 船长确认黑市开放通讯，英文仅登记待译。
+  'ui.commsBlackMarket.001': { zh: '有些货，该给你看看了', en: '', enDeferred: true },
+  'ui.commsBlackMarket.002': { zh: '嘿，你在协会那边的名声，我听说了。肯替他们办事的人不少，能做到你这份上的，值得谈点别的生意。', en: '', enDeferred: true },
+  'ui.commsBlackMarket.003': { zh: '到市场页找「黑市」，我把入口留给你了。外面不常见的装备和图纸，这里兴许有。', en: '', enDeferred: true },
+  'ui.commsBlackMarket.004': { zh: '先看货，再看价。东西难弄，价钱可不按协会那套来。', en: '', enDeferred: true },
+  'ui.commsBlackMarket.005': { zh: '前往市场', en: '', enDeferred: true },
   'ui.stellarMotion.001': { zh: '动态着色不可用，当前为静态显示。', en: '', enDeferred: true },
   'ui.fittingRange.001': { zh: '进入靶场', en: '', enDeferred: true },
   'ui.fittingRange.002': { zh: '靶机', en: '', enDeferred: true },
