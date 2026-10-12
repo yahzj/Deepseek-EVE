@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **467** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7791** KB · **59905** 行
-- 状态分布：**未标注** 250 · **已确认/已实现** 155 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
-- 孤儿文档（0 引用）**86** 份 · 状态未标注 **250** 份
+- 文档总数 **466** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7791** KB · **59888** 行
+- 状态分布：**未标注** 250 · **已确认/已实现** 154 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
+- 孤儿文档（0 引用）**85** 份 · 状态未标注 **250** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
-- 三、现行设计稿（design）：**297** 份
+- 三、现行设计稿（design）：**296** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -36,7 +36,7 @@
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 303 KB / 315 行 | 18 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 94 KB / 926 行 | 96 / 5 |
 | `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 519 KB / 1094 行 | 226 / 22 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 76 KB / 458 行 | 380 / 28 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 77 KB / 460 行 | 380 / 28 |
 
 ## 七、评审与体检（review） —— 13 份
 
@@ -56,11 +56,10 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 297 份
+## 三、现行设计稿（design） —— 296 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/weapon-falloff-retune-20261012.md` | 玩家动能武器远端命中倍率调整 | 已确认/已实现（已实现） | 2026-10-12 | 3 KB / 36 行 | 0 / 0 |
 | `docs/design/planetary-wheel-traits-20261011.md` | 地表建筑配色与轮盘交互、特性标签 | 已确认/已实现（已实现并自检） | 2026-10-11 | 6 KB / 38 行 | 0 / 0 |
 | `docs/design/signal-auto-weight-20261011.md` | 信号空间自动探索超重编队修复 | 已确认/已实现（已实现） | 2026-10-11 | 1 KB / 23 行 | 0 / 0 |
 | `docs/design/stellar-readability-20261011.md` | 星系星图可读性修正 | 已确认/已实现（已实现并自检） | 2026-10-11 | 7 KB / 62 行 | 0 / 0 |
@@ -340,7 +339,7 @@
 | `docs/design/v10-content.md` | V10 设计：深空市场大扩容（占位导入） | 已确认/已实现（已确认） | — | 15 KB / 223 行 | 5 / 0 |
 | `docs/design/v10b-combat-data.md` | V10.5 设计：舰船与装备「战斗数值契约」（远行星号伤害体系版） | 已确认/已实现（已确认） | — | 10 KB / 156 行 | 7 / 1 |
 | `docs/design/v11-random-events.md` | V11 设计：随机事件系统（已实现） | 未标注（用户 2026-09-04 逐条拍板） | — | 4 KB / 55 行 | 2 / 0 |
-| `docs/design/v12-combat.md` | V12 设计：实时战斗引擎（统一状态机 · 编队单位模型） | 未标注 | — | 16 KB / 161 行 | 10 / 1 |
+| `docs/design/v12-combat.md` | V12 设计：实时战斗引擎（统一状态机 · 编队单位模型） | 未标注 | — | 18 KB / 178 行 | 11 / 1 |
 | `docs/design/v12a-starmap.md` | V12a 设计：星图 v2 定稿（20 星系 × 27 航线 + 布局编辑器） | 已确认/已实现（已确认） | — | 3 KB / 41 行 | 2 / 0 |
 | `docs/design/v12b-travel-warp.md` | V12b 设计：星图航行跃迁（warp × 航行加速技能族） | 已确认/已实现（已确认） | — | 6 KB / 87 行 | 6 / 0 |
 | `docs/design/v13-exploration.md` | V13 设计：星图探索系统（迷雾 · 点亮 · 扫描探索） | 已确认/已实现（已确认） | — | 7 KB / 97 行 | 6 / 1 |
@@ -537,11 +536,10 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 63 / 14 |
 
-## 附：孤儿文档（0 引用，86 份）
+## 附：孤儿文档（0 引用，85 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/weapon-falloff-retune-20261012.md`（2026-10-12 · 3 KB）—— 玩家动能武器远端命中倍率调整
 - `docs/design/planetary-wheel-traits-20261011.md`（2026-10-11 · 6 KB）—— 地表建筑配色与轮盘交互、特性标签
 - `docs/design/signal-auto-weight-20261011.md`（2026-10-11 · 1 KB）—— 信号空间自动探索超重编队修复
 - `docs/design/stellar-readability-20261011.md`（2026-10-11 · 7 KB）—— 星系星图可读性修正
