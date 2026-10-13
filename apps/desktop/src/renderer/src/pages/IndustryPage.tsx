@@ -55,15 +55,19 @@ import type { AiCoreType, GameState, ItemDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { wreckGroupText } from '@whale/data'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { History } from 'lucide-react'
 import { BlueprintShelfPanel, ManufacturingPanel } from '../panels/Industry'
 import { ShipyardPanel } from '../panels/Shipyard'
 import { setSessionPick, sessionPick, useSessionScrollFrom } from '../ui/sessionView'
 import type { GameEngine } from '../game/engine'
+import type { UnboxBatchRecord } from '../game/unboxLedger'
+import '../styles-unbox-ledger.css'
 import { MarkStar, pinMarked } from '../ui/marks'
 import { AiSlotText } from '../ui/aiSlots'
 import { RowGlyph } from '../ui/itemView'
 /** 产物行的**物品悬停**（2026-10-01 船长令：实验室卡的产物也要有组装机卡那层 title） */
-import { ItemHover } from '../ui/shipInfo'
+import { InfoHover, ItemHover, ModuleHover } from '../ui/shipInfo'
+import { blueprintHoverLines } from '../ui/marketGoodHover'
 /** 材料行尾「这一味料从哪来」的四支判定（2026-10-01：与组装机卡共用一份，见本件头注） */
 import { MatSourceLink } from '../ui/matSourceLink'
 /** 原材料列表折叠（2026-10-01 船长令：味数 > 2 折叠成一行「原材料列表」，点开才拉开）——与组装机卡共用一份 */
@@ -77,7 +81,7 @@ import { itemGlyphName } from '../ui/Glyphs'
 import { WRECK_SUBS, SUB_ALL, presentSubs, wreckTierOf, subText } from '../ui/itemSubs'
 import { isEn, useL10n, cmdText } from '../i18n/locale'
 /** 工期读数（2026-10-01：与组装机卡同款 ⇒ 同一个格式化件） */
-import { fmtDuration } from '../i18n/fmt'
+import { fmtDuration, fmtInt } from '../i18n/fmt'
 import { aiCoreText } from '../ui/labelsText'
 import { HintIcon } from '../ui/Hint'
 import { FlavorTip, mineralRowsOf, recycleFeatureOf } from '../ui/wreckFlavor'
@@ -133,11 +137,42 @@ function manualBusyNote(state: GameState): string | null {
  * 原料不锁定、每批实时扣取——运转中的单位以"名册行"列出（各自批进度条 + 停），
  * 下方按钮可继续加开单位；没有单位的卡保持静态数据与启动区。
  */
+function UnboxLedgerRows({ engine, record }: { engine: GameEngine; record?: UnboxBatchRecord }): ReactNode {
+  const rows = record?.outputs ?? []
+  if (rows.length === 0) return <div className="app-dim app-unbox-ledger-empty">{tr('ui.IndustryPage.150')}</div>
+  return (
+    <ul className="app-inv-list app-unbox-ledger-rows">
+      {rows.map(({ itemId: id, units }) => {
+        const item = engine.ctx.items.get(id)
+        const module = engine.ctx.modules.get(id)
+        const blueprint = engine.ctx.blueprints.get(id) ?? engine.ctx.shipBlueprints.get(id)
+        const label = item?.name ?? module?.name ?? blueprint?.name ?? id
+        const content = item
+          ? <ItemHover item={item} nameOf={(itemId) => engine.ctx.items.get(itemId)?.name}>{label}</ItemHover>
+          : module
+            ? <ModuleHover mod={module}>{label}</ModuleHover>
+            : blueprint
+              ? <InfoHover {...blueprintHoverLines(engine.ctx, blueprint)}>{label}</InfoHover>
+              : <span>{label}</span>
+        return (
+          <li className="app-inv-row app-unbox-ledger-row" key={id}>
+            <span className="app-unbox-ledger-name">{content}</span>
+            <strong className="app-unbox-ledger-qty">×{fmtInt(units)}</strong>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { def: ItemDef; engine: GameEngine; onToast: PageProps['onToast']; highlight?: boolean; onGotoMap?: (tab: 'mine' | 'salvage', ids: string[]) => void }): ReactNode {
   const state = engine.state
   const isWreck = def.kind === 'wreck'
   // F4d：安全货柜走「拆解」（与精炼/回收同一条产线机器，90 秒/件）
   const isBox = def.kind === 'container'
+  const [ledgerOpen, setLedgerOpen] = useState(false)
+  const ledgerId = useId()
+  const unboxRecord = isBox ? engine.unboxLedgerOf(def.id) : undefined
   // 残骸回收画像（威胁/星系危险度/特色池；稀有残骸另有 rare 标记与专属装备池）——卡头徽标与估价共用
   const wreckProfile = isWreck ? recycleProfileOf(engine.ctx, def.id) : null
   const isRareBox = wreckProfile?.rare === true
@@ -387,6 +422,15 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         {/* 卡头右侧：标记星标（2026-09-10 船长） + 去矿带/去打捞跳转 */}
         <span className="app-belt-head-right">
           <MarkStar engine={engine} kind="recipes" id={def.id} />
+          {isBox ? (
+            <button type="button" className="app-btn is-small app-unbox-ledger-toggle"
+              aria-expanded={ledgerOpen} aria-controls={ledgerId}
+              aria-label={tr(ledgerOpen ? 'ui.IndustryPage.151' : 'ui.IndustryPage.149')}
+              title={tr(ledgerOpen ? 'ui.IndustryPage.151' : 'ui.IndustryPage.149')}
+              onClick={() => setLedgerOpen(open => !open)}>
+              <History size={16} aria-hidden="true" />
+            </button>
+          ) : null}
           {gotoTarget && onGotoMap ? (
             <button
               className="app-btn is-small"
@@ -411,6 +455,12 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       </div>
       {isWreck ? <WreckFlavorRow def={def} engine={engine} /> : null}
       <div className="app-belt-ore">{dataLine}</div>
+      {isBox && ledgerOpen ? (
+        <section className="app-unbox-ledger" id={ledgerId} aria-label={tr('ui.IndustryPage.148')}>
+          <div className="app-unbox-ledger-head">{tr('ui.IndustryPage.148')}</div>
+          <UnboxLedgerRows engine={engine} record={unboxRecord} />
+        </section>
+      ) : null}
       {econ}
       <div className="app-belt-actions">
         {/* 运转单位名册（每台一行：劳动者 + 当前批进度条 + 停）——矿带副船名册同款结构 */}
@@ -1117,7 +1167,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
   const boxDefs = [...engine.ctx.items.values()].filter(
     (def) =>
       def.kind === 'container' &&
-      (oreAvailable(state, def.id) > 0 || runViews.some((v) => v.itemId === def.id)),
+      (oreAvailable(state, def.id) > 0 || runViews.some((v) => v.itemId === def.id) || engine.unboxLedgerOf(def.id) !== undefined),
   )
   const runningCount = runViews.length
 

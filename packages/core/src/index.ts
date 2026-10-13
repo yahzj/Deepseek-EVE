@@ -774,7 +774,7 @@ export {
   sellPriceMultiplier,
   buyShip,
 } from './industry'
-export type { RefineRunView, RefineOutputRow, SellResult, FragmentRedeemRow } from './industry'
+export type { RefineRunView, RefineOutputRow, UnboxResultRow, SellResult, FragmentRedeemRow } from './industry'
 /* ═══ 实验室 ＋ 跃迁燃料（**2026-09-29 船长令**：「为工业新增子页面：'实验室'」＋「添加超空间折跃燃料」）═══ */
 export {
   labUnlocked,

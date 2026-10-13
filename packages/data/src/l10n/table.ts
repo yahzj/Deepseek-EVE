@@ -5405,6 +5405,10 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
    */
   "ui.IndustryPage.146": { zh: "将扣除「深空工业协会」声望 {p1} 点，扣除后剩余 {p2}。", en: "This spends {p1} Deepspace Industry Association standing, leaving {p2}." },
   "ui.IndustryPage.147": { zh: "通用黑匣直接存入物品仓库；声望一旦扣除不会退还。", en: "The Universal Black Box goes straight into item storage; spent standing is not refunded." },
+  "ui.IndustryPage.148": { zh: "上一批拆解产物", en: '', enDeferred: true },
+  "ui.IndustryPage.149": { zh: "查看上一批货柜拆解产物", en: '', enDeferred: true },
+  "ui.IndustryPage.150": { zh: "本批尚无产物记录。", en: '', enDeferred: true },
+  "ui.IndustryPage.151": { zh: "收起拆解记录", en: '', enDeferred: true },
   "ui.Expedition.441": { zh: "章鱼人兑换", en: "Octopus Exchange" },
   "ui.Expedition.442": { zh: "前往声望商店兑换", en: "Exchange at the standing shop" },
   "ui.Expedition.443": { zh: "插件装上就拆不下来，也不能上市交易。", en: "A plug cannot be removed once fitted, and cannot be traded on the market." },

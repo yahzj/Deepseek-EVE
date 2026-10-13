@@ -22,6 +22,7 @@ import { formatDurationMs } from './time'
 import type { SettleStats } from './settleStats'
 import { advanceAutoLoopBounty, advanceAutoLoopInvasion, autoLoopInvasionGalaxy } from './expedition'
 import { ironmanOfflineCapBonusMs } from './ironman'
+import type { UnboxResultRow } from './industry'
 /* 技能加速「自动续用」（2026-10-01 船长令）：离线期间逐枚不写日志，只记账 ⇒ 结算那句汇总交代 */
 import { offlineBoostRenewCount, setOfflineBoostTally } from './consumables'
 
@@ -84,7 +85,7 @@ export function simulateOffline(
   nowWallMs: number,
   ctx: SimContext,
   capMs: number = DEFAULT_OFFLINE_CAP_MS,
-  opts?: { freezeBattle?: boolean; stats?: SettleStats },
+  opts?: { freezeBattle?: boolean; stats?: SettleStats; onUnboxResult?: (result: UnboxResultRow) => void },
 ): void {
   const rawGap = nowWallMs - lastSavedWallMs
   if (rawGap <= 0) return
@@ -118,6 +119,7 @@ export function simulateOffline(
   const advOpts = {
     freezeBattle: opts?.freezeBattle,
     settleStats: opts?.stats,
+    onUnboxResult: opts?.onUnboxResult,
     nowWallMs: lastSavedWallMs + deltaMs,
     /**
      * **离线静默模式**（船长 2026-09-21 裁定「乙案」）：

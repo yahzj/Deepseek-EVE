@@ -1,0 +1,42 @@
+.app-belt-card .app-unbox-ledger-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+.app-unbox-ledger-toggle:focus-visible {
+  outline: 2px solid rgb(var(--wui-accent));
+  outline-offset: 2px;
+}
+.app-unbox-ledger {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin-top: var(--wui-sp-4);
+  font-size: var(--wui-fs-xs);
+}
+.app-unbox-ledger-head {
+  flex: 0 0 auto;
+  color: rgb(var(--wui-text-dim));
+  padding-bottom: var(--wui-sp-4);
+}
+.app-unbox-ledger .app-unbox-ledger-rows {
+  height: 144px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.app-unbox-ledger .app-unbox-ledger-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: var(--wui-sp-8);
+  align-items: baseline;
+}
+.app-unbox-ledger-name { min-width: 0; overflow-wrap: anywhere; color: rgb(var(--wui-gold)); }
+.app-unbox-ledger-name > span { cursor: help; }
+.app-unbox-ledger-qty { text-align: right; color: rgb(var(--wui-text)); font-variant-numeric: tabular-nums; }
+.app-unbox-ledger-empty { box-sizing: border-box; height: 144px; padding-top: var(--wui-sp-4); }
+.app-root.is-mobile-rot .app-unbox-ledger-toggle { width: 36px; height: 36px; }

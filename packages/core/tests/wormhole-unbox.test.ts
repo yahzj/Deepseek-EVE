@@ -195,4 +195,19 @@ describe('虫洞 · 两个新货柜的拆解（2026-09-15 船长定 ②④）', 
     const famLine = unboxOnce('box-relic-a')
     expect(famLine, `安全货柜的日志也要带数量：${famLine}`).toMatch(/×\d+/)
   })
+
+  it('拆解结果回调逐项带出实际产物与数量，但不改变存档状态形状', () => {
+    const state = createInitialState({ nowWallMs: 0, seed: 8 })
+    addWare(state, WORMHOLE_MILITARY_BOX_ID, 1)
+    const rows: Array<{ boxItemId: string; grants: readonly { itemId: string; units: number }[] }> = []
+    expect(startUnboxRun(state, ctx, WORMHOLE_MILITARY_BOX_ID, 'pilot').ok).toBe(true)
+    state.gameMs += UNBOX_CYCLE_MS
+    advanceRefining(state, ctx, undefined, (row) => rows.push(row))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.boxItemId).toBe(WORMHOLE_MILITARY_BOX_ID)
+    expect(rows[0]!.grants.length).toBeGreaterThanOrEqual(WORMHOLE_MILITARY_PIECES_MIN)
+    expect(rows[0]!.grants.reduce((sum, grant) => sum + grant.units, 0)).toBeGreaterThanOrEqual(WORMHOLE_MILITARY_PIECES_MIN)
+    expect(rows[0]!.grants.every((grant) => grant.units >= 1)).toBe(true)
+    expect(Object.keys(state).some((key) => key.toLowerCase().includes('unboxresult'))).toBe(false)
+  })
 })

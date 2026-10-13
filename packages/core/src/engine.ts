@@ -20,7 +20,7 @@ import { advanceMining, advanceShipReturns, retireMiningShip } from './mining'
 import { advanceStandby, advanceTransit, reconcileDockSanity } from './location'
 import { reconcilePilotShip } from './shipyard'
 import { advanceManufacturing } from './manufacturing'
-import { advanceRefining } from './industry'
+import { advanceRefining, type UnboxResultRow } from './industry'
 import { advanceLab } from './lab'
 import { advancePlanetary, reconcilePlanetHome } from './planetRuntime'
 import { advanceExpedition } from './expedition'
@@ -176,6 +176,8 @@ export function advanceGame(
      *  起因：离线大推进会把整段离线里到点的事件一次补发（上限 200）⇒ 上线瞬间日志刷屏、
      *  一批订单同生同灭、行情池被线性叠加。详见 `events.advanceEvents` 头注。 */
     offline?: boolean
+    /** 当前渲染会话接收货柜拆解结果；不写入 GameState。 */
+    onUnboxResult?: (result: UnboxResultRow) => void
   },
 ): void {
   let left = Math.floor(deltaMs)
@@ -242,7 +244,7 @@ function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opt
   advanceStandby(state, ctx)
   advanceManufacturing(state, ctx, opts?.settleStats)
   if (ctx.planetary && deferPlanetary) { advancePlanetary(state, d, ctx.planetary, state.gameMs - d); reconcilePlanetHome(state, ctx.planetary) }
-  advanceRefining(state, ctx, opts?.settleStats)
+  advanceRefining(state, ctx, opts?.settleStats, opts?.onUnboxResult)
   /** 实验室（2026-09-29 跃迁燃料批；**2026-10-01 起按组装机那套：一线一批 ＋ 循环开关**） */
   advanceLab(state, ctx, opts?.settleStats)
   /** 谜质科技 T5「虚空母矿汲取」（2026-09-30 船长令）：每小时自动进账虚空母矿，未点该节点零开销 */

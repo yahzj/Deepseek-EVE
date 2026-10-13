@@ -96,6 +96,12 @@ export interface RefineOutputRow {
   units: number
 }
 
+/** 货柜拆解的一件货柜产物；仅供渲染层会话记录，不进入 GameState。 */
+export interface UnboxResultRow {
+  boxItemId: string
+  grants: readonly { itemId: string; units: number }[]
+}
+
 /**
  * **一批精炼的产出（唯一实现）**——**2026-09-30 三号接手批抽出**。
  *
@@ -813,7 +819,12 @@ export function stopRefineRun(state: GameState, ctx: SimContext, runId: number):
  * 同资源多台并行时按数组顺序各自扣料，公平近似。
  * stats = 离线结算统计器（可选；AI 核心驱动的批数与收入见 settleStats.ts）
  */
-export function advanceRefining(state: GameState, ctx: SimContext, stats?: SettleStats): void {
+export function advanceRefining(
+  state: GameState,
+  ctx: SimContext,
+  stats?: SettleStats,
+  onUnboxResult?: (result: UnboxResultRow) => void,
+): void {
   // 倒序遍历：异常/料尽时从数组移除元素不影响尚未推进的其它工位
   for (let i = state.refineRuns.length - 1; i >= 0; i--) {
     const r = state.refineRuns[i]!
@@ -986,12 +997,21 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
            * 目录/图纸类与模块类不看数量（模块按"清单里出现几次"各入装备库一次）。
            */
           const grants = [{ itemId: drawn.itemId, units: drawn.units }, ...(drawn.extra ?? [])]
+          // 记录实际入库增量，不能把抽取数量当成另一套交付规则。
+          const receivedCount = (id: string): number => ctx.modules.has(id) ? state.moduleBay[id] ?? 0
+            : ctx.blueprints.has(id) || ctx.shipBlueprints.has(id) ? state.blueprintStock[id] ?? 0 : countWare(state, id)
+          const beforeGrants = onUnboxResult ? new Map(grants.map(g => [g.itemId, receivedCount(g.itemId)])) : null
           wormholeDeliverRelics(
             state,
             ctx,
             grants.map((g) => g.itemId),
             Object.fromEntries(grants.map((g) => [g.itemId, g.units])),
           )
+          if (beforeGrants) onUnboxResult?.({
+            boxItemId: r.itemId,
+            grants: [...beforeGrants].map(([itemId, before]) => ({ itemId, units: receivedCount(itemId) - before }))
+              .filter(g => g.units > 0),
+          })
           const nameOf = (id: string): string =>
             ctx.modules.get(id)?.name ??
             ctx.blueprints.get(id)?.name ??
@@ -1031,6 +1051,7 @@ export function advanceRefining(state: GameState, ctx: SimContext, stats?: Settl
                     : '（族专属）'
           addLog(state, 'industry', `📦 拆解 ${def.name}：得到 ${drawnName}${srcTag}。`, 'core.industry.035', { p1: def.name, p2: drawnName, p3: srcTag })
         } else {
+          onUnboxResult?.({ boxItemId: r.itemId, grants: [] })
           if (r.worker !== 'pilot') releaseAiCore(state, r.worker)
           state.refineRuns.splice(i, 1)
           addLog(state, 'industry', `📦 拆解 ${def.name}：这批料没有产出，已停这一台。`, 'core.industry.036', { p1: def.name })

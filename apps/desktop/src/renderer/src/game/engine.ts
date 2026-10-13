@@ -353,6 +353,7 @@ import type {
   ModuleSlot,
   RackSlot,
   RefineRunView,
+  UnboxResultRow,
   /** 实验室线视图 ＋ 跃迁燃料活动档（2026-09-29 跃迁燃料批） */
   LabRunView,
   JumpFuelActivity,
@@ -392,6 +393,8 @@ import { DEEP_SPACE_SKILL_IDS, probeManufacturingUnlocked } from '@whale/core'
 import { perfHub } from './perf'
 import type { PerfBucket } from './perf'
 import { BountyWinCache } from './bountyWinCache'
+import { UnboxSessionLedger } from './unboxLedger'
+import type { UnboxBatchRecord } from './unboxLedger'
 import type { BountyWinWorker } from './bountyWinProtocol'
 import { tr, cmdText, paramText, logText } from '../i18n/locale'
 /**
@@ -664,7 +667,7 @@ export class GameEngine {
       command: async (action: string, args: unknown[]) => { const result = this.planetaryCommand(action, args); await this.persist(); return result },
       step: async (duration: number) => {
         if (!planetaryEnabled() || !Number.isSafeInteger(duration) || duration < 0 || duration > 8 * 3600000 || !this.ctx.planetary) return false
-        advanceGame(this.state, duration, this.ctx, { offline: true })
+        advanceGame(this.state, duration, this.ctx, { offline: true, onUnboxResult: this.onUnboxResult })
         this.notify(); await this.persist(); return true
       },
       persist: () => this.persist(),
@@ -760,6 +763,7 @@ export class GameEngine {
   onSystemNotice: ((msg: string) => void) | null = null
 
   private listeners = new Set<Listener>()
+  private unboxLedger = new UnboxSessionLedger()
   private lastRealMs = 0
   private intervalId: number | null = null
   private saveIntervalId: number | null = null
@@ -924,6 +928,14 @@ export class GameEngine {
     }
   }
 
+  unboxLedgerOf(boxItemId: string): UnboxBatchRecord | undefined {
+    return this.unboxLedger.get(this.state, boxItemId)
+  }
+
+  private onUnboxResult = (result: UnboxResultRow): void => {
+    this.unboxLedger.record(this.state, result)
+  }
+
   /**
    * **切语言**（2026-09-19 船长令「希望对游戏进行英语本地化处理」）：
    * 用当前语言**重建**运行上下文与全部目录表（`buildSimContext(locale)` + 覆盖层），
@@ -997,6 +1009,7 @@ export class GameEngine {
       nowWallMs: this.wallNowOf(),
       // 洞内倍速：**只有前台心跳传**（离线结算走 simulateOffline，不经这里 ⇒ 恒 1×）
       battleSpeedX: this.requestedWormholeSpeed(),
+      onUnboxResult: this.onUnboxResult,
     })
     this.drainSystemNotice()
     if (rec) perfHub.recordAdvance(bucket, performance.now() - t0)
@@ -1181,7 +1194,7 @@ export class GameEngine {
       const before = snapshotBasics(this.state)
       const stats = newSettleStats()
       const { overflowMs } = offlineSplit(now - lastSavedWall, offlineCapMsOf(this.state))
-      simulateOffline(this.state, lastSavedWall, now, this.ctx, undefined, { stats })
+      simulateOffline(this.state, lastSavedWall, now, this.ctx, undefined, { stats, onUnboxResult: this.onUnboxResult })
       this.drainSystemNotice()
       this.offlineReport = buildOfflineReport(before, this.state, this.ctx, now - lastSavedWall, overflowMs, stats)
       // 2026-09-08 船长定：日志会话级（写盘剥离 logs）；启动不做强制清空——
@@ -2319,6 +2332,7 @@ export class GameEngine {
     return this.withActivitySwitch('refine', () => {
       const result = startUnboxRun(this.state, this.ctx, boxItemId, worker)
       if (result.ok) {
+        this.unboxLedger.begin(this.state, boxItemId)
         void this.persist()
         this.notify()
       }
@@ -3902,7 +3916,7 @@ export class GameEngine {
     const { overflowMs } = offlineSplit(ms, offlineCapMsOf(this.state))
     // 调试快进：冻结进行中的战斗（低安遭遇战 + 主控远征），不随快进时间跳变而瞬结（船长 2026-09-05）
     const stats = newSettleStats()
-    simulateOffline(this.state, wallBase, wallBase + ms, this.ctx, undefined, { freezeBattle: true, stats })
+    simulateOffline(this.state, wallBase, wallBase + ms, this.ctx, undefined, { freezeBattle: true, stats, onUnboxResult: this.onUnboxResult })
     this.state.savedAtWallMs = wallBase + ms
     /**
      * **把入侵一并推到快进后的时刻**（2026-09-25 修船长报障「打开调试模式，快进后不会刷新入侵」）：
