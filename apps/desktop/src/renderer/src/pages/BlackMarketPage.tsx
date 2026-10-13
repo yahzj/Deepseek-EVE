@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { blackMarketNextRefresh, blackMarketUnlocked, blackMarketOfferQuantity } from '@whale/core'
+import { blackMarketNextRefresh, blackMarketUnlocked, blackMarketOfferQuantity, isBlackMarketBulkResource } from '@whale/core'
 import type { BlackMarketOffer } from '@whale/core'
 import { Glyph } from '../ui/Glyphs'
 import { MarketGoodHover, marketGoodDisplayName, marketGoodInfo } from '../ui/marketGoodHover'
@@ -15,6 +15,11 @@ import { isk } from './common'
 export function BlackMarketPage({ engine, onToast, onBack }: PageProps & { onBack: () => void }) {
   useL10n()
   const board = engine.state.blackMarket
+  // 旧当天货架只隐藏原料，不改原记录、锁价、售罄状态或日界，不补抽。
+  const offers = (board?.offers ?? []).filter(o => {
+    const good = engine.ctx.marketGoods.get(o.goodKey)
+    return good !== undefined && !isBlackMarketBulkResource(engine.ctx, good)
+  })
   const [selected, setSelected] = useState<string | null>(null)
   const [ask, setAsk] = useState<{ offer: BlackMarketOffer; day: number } | null>(null)
   const [deal, setDeal] = useState(false)
@@ -64,7 +69,7 @@ export function BlackMarketPage({ engine, onToast, onBack }: PageProps & { onBac
     <div className="app-bm-split">
       <section className="app-bm-stock" aria-label={tr('ui.blackMarket.003')}>
         <div className="app-bm-cardflow">
-          {board?.offers.map((o) => {
+          {offers.map((o) => {
             const g = engine.ctx.marketGoods.get(o.goodKey)
             if (!g) return null
             const info = marketGoodInfo(engine.ctx, g, true)
@@ -88,13 +93,13 @@ export function BlackMarketPage({ engine, onToast, onBack }: PageProps & { onBac
                 <strong className="app-bm-price"><span className="app-bm-price-amount">{isk(o.price)}</span><span>{tr('ui.blackMarket.021')}</span></strong>
                 <div className="app-bm-card-actions">
                   <button className="app-btn app-bm-detail-button" aria-label={tr('ui.blackMarket.024')} onClick={(e) => { trigger.current = e.currentTarget; setSelected(o.goodKey); setDeal(false); setDetailKey(o.goodKey) }}><Glyph name="ico-hint" size={16} /></button>
-                  <button className="app-btn app-bm-buy" disabled={o.sold} onClick={(e) => { trigger.current = e.currentTarget; setSelected(o.goodKey); setDeal(false); setAsk({ offer: { ...o }, day: board.dayWallMs }) }}>{tr(o.sold ? 'ui.blackMarket.008' : 'ui.blackMarket.009')}</button>
+                  <button className="app-btn app-bm-buy" disabled={o.sold} onClick={(e) => { trigger.current = e.currentTarget; setSelected(o.goodKey); setDeal(false); setAsk({ offer: { ...o }, day: board!.dayWallMs }) }}>{tr(o.sold ? 'ui.blackMarket.008' : 'ui.blackMarket.009')}</button>
                 </div>
               </article>
             </MarketGoodHover>
           })}
         </div>
-        {board?.offers.length ? null : <div className="app-dim">{tr('ui.blackMarket.020')}</div>}
+        {offers.length ? null : <div className="app-dim">{tr('ui.blackMarket.020')}</div>}
       </section>
       <section className="app-bm-merchant" aria-label={tr('ui.blackMarket.013')}>
         <div className="app-bm-sign">{tr('ui.blackMarket.013')}</div>

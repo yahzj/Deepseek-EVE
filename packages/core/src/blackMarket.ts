@@ -39,8 +39,15 @@ function resolvable(ctx: SimContext, good: MarketGoodDef): boolean {
   }
 }
 
+/** 大宗原料走普通市场；货号可以不同于物品ID，按实际目录类型判断。 */
+export function isBlackMarketBulkResource(ctx: SimContext, good: MarketGoodDef): boolean {
+  if (good.kind !== 'item') return false
+  const kind = ctx.items.get(good.refId)?.kind
+  return kind === 'ore' || kind === 'mineral' || kind === 'gas' || kind === 'ice'
+}
+
 export function blackMarketCandidateGoods(ctx: SimContext): MarketGoodDef[] {
-  return [...ctx.marketGoods.values()].filter((g) => !g.unreleased && (g.rarityTier ?? 1) >= 4 &&
+  return [...ctx.marketGoods.values()].filter((g) => !isBlackMarketBulkResource(ctx, g) && !g.unreleased && (g.rarityTier ?? 1) >= 4 &&
     Number.isSafeInteger(g.basePrice) && g.basePrice > 0 && Number.isSafeInteger(g.basePrice * BLACK_MARKET_MAX_MULTIPLIER * blackMarketLotQuantity(ctx, g)) &&
     (g.playerBuyable !== false || g.blackMarketBuyable === true) && resolvable(ctx, g))
     .sort((a, b) => a.key.localeCompare(b.key, 'en'))

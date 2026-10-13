@@ -911,6 +911,7 @@ export {
 } from './market'
 export {
   blackMarketUnlocked, blackMarketCandidateGoods, blackMarketDayStart, blackMarketNextRefresh,
+  isBlackMarketBulkResource,
   blackMarketLotQuantity, blackMarketOfferQuantity,
   ensureBlackMarket, blackMarketBuy, normalizeBlackMarket,
   BLACK_MARKET_OFFER_COUNT, BLACK_MARKET_EXCLUSIVE_COUNT,

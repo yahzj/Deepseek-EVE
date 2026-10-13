@@ -5,7 +5,7 @@ import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext, L10N } from '@whale/data'
 import { createInitialState } from '../src/state'
-import { blackMarketBuy, blackMarketUnlocked, blackMarketNextRefresh, ensureBlackMarket, blackMarketOfferQuantity } from '../src/blackMarket'
+import { blackMarketBuy, blackMarketUnlocked, blackMarketNextRefresh, ensureBlackMarket, blackMarketOfferQuantity, isBlackMarketBulkResource } from '../src/blackMarket'
 import { ROOT } from './helpers/save-shell'
 import { resolve } from 'node:path'
 
@@ -151,7 +151,7 @@ describe('黑市监视器与入口真实组件行为', () => {
     const calls: unknown[][] = []
     const scope = { React: jsx, exports: {}, tr, useL10n: () => {}, useEffect: () => {}, useRef: () => ({ current: null }),
       useState: (initial: unknown) => { const at = cursor++; if (!(at in values)) values[at] = initial; return [values[at], (v: unknown) => values[at] = v] },
-      blackMarketUnlocked, blackMarketNextRefresh, blackMarketOfferQuantity, fmtDuration: String, isk: String, cmdText: () => '',
+      blackMarketUnlocked, blackMarketNextRefresh, blackMarketOfferQuantity, isBlackMarketBulkResource, fmtDuration: String, isk: String, cmdText: () => '',
       marketGoodDisplayName: (_ctx: unknown, key: string) => key,
       marketGoodInfo: (_ctx: unknown, good: { key: string }) => ({ title: good.key, lines: [], note: '说明', category: '类别', glyph: 'blueprint', tone: 'currentColor' }),
       infoCardContent: () => null, crestLabelOf: String, FOE_ACCENT: {},
@@ -193,7 +193,7 @@ describe('黑市监视器与入口真实组件行为', () => {
       .replace(/\{(\w+)\}/g, (match, key: string) => String(params?.[key] ?? match))
     const scope = { React: jsx, exports: {}, tr: trLocal, useL10n: () => {}, useEffect: () => {}, useRef: () => ({ current: null }),
       useState: (initial: unknown) => { const at = cursor++; if (!(at in values)) values[at] = initial; return [values[at], (v: unknown) => values[at] = v] },
-      blackMarketUnlocked, blackMarketNextRefresh, blackMarketOfferQuantity, fmtDuration: String, isk: String, cmdText: () => '',
+      blackMarketUnlocked, blackMarketNextRefresh, blackMarketOfferQuantity, isBlackMarketBulkResource, fmtDuration: String, isk: String, cmdText: () => '',
       marketGoodDisplayName: () => ctx.items.get(good.refId)!.name,
       marketGoodInfo: () => ({ title: ctx.items.get(good.refId)!.name, lines: [], note: '', category: '', glyph: 'drone', tone: 'currentColor' }),
       infoCardContent: () => null, crestLabelOf: String, FOE_ACCENT: {}, Glyph: 'Glyph', MerchantMonitor: 'MerchantMonitor', MarketGoodHover: 'MarketGoodHover', result: undefined }

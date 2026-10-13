@@ -54,6 +54,7 @@
 | 限额慢补货：配置判据、初始化、周期进度、余额与统一核销 | `hasLimitedSupply()` / `ensureLimitedSupply()` / `advanceLimitedSupply()` / `limitedSupplyAvailable()` / `consumeLimitedSupply()` · `marketLimitedSupply.ts`；价格分档在 `market.ts:refreshLimitedSupplyBook()` | 市场限额专项、存档往返；`arch:guard` F2/F3；`content:check` 配置合法性 |
 | 武器组炮数与逐炮守恒分摊 | `volleyGunCountOf()` / `volleyDamageShareOf()` · `combatVolley.ts` | 逐炮齐射专项；`arch:guard` F2/F3 |
 | 黑市入口、候选资格、本地日界与下次刷新 | `blackMarketUnlocked()` / `blackMarketCandidateGoods()` / `blackMarketDayStart()` / `blackMarketNextRefresh()` · `blackMarket.ts` | `black-market-page-20261004.test.ts` · `arch:guard` F2/F3 |
+| 黑市大宗原料排除 | `isBlackMarketBulkResource()` · `blackMarket.ts`，候选/购买和旧货架视图共用真实物品类型 | 原矿/原材料/气体/冰矿候选不进入、旧条目隐藏且拒买、不补抽/不改锁价、普通市场与无人机组货保持专项 |
 | 黑市新货架组数量、锁定交付数与老货架单件兼容 | `blackMarketLotQuantity()` / `blackMarketOfferQuantity()` · `blackMarket.ts` | `black-market-drone-lots-20261006.test.ts`：四机型、总价/库存/售罄守恒、旧报价和读档 |
 | 弹药可选档与设置合法性、普通市场可流通目录 | `ammoTiersOf()` · `ammoTiers.ts`；`marketTradingGoods()` · `market.ts` | MK3三系、设置/装配同源、黑市图纸渠道隔离回归 |
 | 沉船快照保存方案、重复插件参考及覆盖确认 | `saveWreckFitPreset()` / `wreckFitDetailOf()` · `fitPresets.ts`；明细沿用`fitPresetDetailOf()`，插件参考不参与自动安装 | 重复插件/第九格/沉船记录读档、保存纯副作用及套用守恒回归 |
