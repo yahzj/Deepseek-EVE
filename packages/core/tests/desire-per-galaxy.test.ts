@@ -131,7 +131,8 @@ describe('稳态解析预估（派系/窝点卡）同口径：设定距离真的
   function world(): { state: GameState; ctx: SimContext } {
     const ctx = makeTestCtx({
       quietEvents: true,
-      ships: [ship('sandcat', { shieldHp: 400, armorHp: 600, hullHp: 900 })],
+      // 敌血增量与基础炮禁用后保留非饱和窗口，仍精确验证距离引起的承伤变化。
+      ships: [ship('sandcat', { shieldHp: 400, armorHp: 900, hullHp: 900 })],
       modules: [
         moduleDef('gun-wide', 'turret', 0.5, {
           maxRangeM: 4000,

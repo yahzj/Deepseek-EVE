@@ -72,7 +72,7 @@ function warehouse(mode: Mode) {
     itemRarityTierOf: () => undefined, itemBuyQuote: () => undefined,
     itemGlyphName: (_id: string, kind: string) => kind, inventoryItemTone: () => '',
     itemHoverContent: () => '', moduleHoverContent: () => '', crestFamOf: () => undefined,
-    isk: String, m3: String, cmdText: () => '',
+    isk: String, m3: String, cmdText: (result: core.CommandResult) => result.errorId ? tr(result.errorId, result.errorParams) : result.error ?? '',
     result: undefined,
   }
   evaluate(load('apps/desktop/src/renderer/src/pages/ItemsPage.tsx', 'WarehouseView') + '\nglobalThis.result = WarehouseView', scope)
@@ -191,8 +191,12 @@ describe('真实仓库组件点击与两种视图', () => {
       view.state.wormhole.run = { fleet: [view.state.shipId] } as any
       const before = JSON.stringify([view.state.warehouse,view.state.fleet[view.state.shipId]!.cargo])
       const item = view.render().find((n) => n.type === 'ItemHover' && n.props.item.id === id)!
-      nodesOf(item).find((n) => n.type === 'button' && textOf(n.children) === tr('ui.ItemsPage.025'))!.props.onClick()
-      expect(view.notices.at(-1)).toBe(tr('ui.hintAudit.012'))
+      const load = nodesOf(item).find((n) => n.type === 'button' && textOf(n.children) === tr('ui.ItemsPage.025'))!
+      const block = core.shipOperationBlockReason(view.state, view.context, view.state.shipId, 'cargo')!
+      expect(load.props.disabled).toBe(true)
+      expect(load.props.title).toBe(tr(block.errorId!, block.errorParams))
+      load.props.onClick()
+      expect(view.notices.at(-1)).toBe(tr(block.errorId!, block.errorParams))
       expect(JSON.stringify([view.state.warehouse,view.state.fleet[view.state.shipId]!.cargo])).toBe(before)
     } finally { language.value = 'zh' }
   })

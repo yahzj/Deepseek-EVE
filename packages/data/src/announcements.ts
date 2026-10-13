@@ -45,6 +45,7 @@ export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
     tag: L10N['ano.hpStation.002']!.zh,
     tagId: 'ano.hpStation.002',
     bullets: [
+      // ⟪文案调整 2026-10-13⟫ 船长批准直接恢复调参后的首条改稿，编号及其余正文保持。
       L10N['ano.hpStation.003']!.zh,
       L10N['ano.hpStation.004']!.zh,
       L10N['ano.hpStation.005']!.zh,

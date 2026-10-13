@@ -171,10 +171,10 @@ describe('电子舰 CPU +100（船长 2026-09-16）', () => {
   it('只动 CPU：两艘的槽位与三层血与改前一致（防"顺手补偿"）', () => {
     const a = SHIPS.find((s) => s.id === 'sh-wh-a-frigate')!
     expect(a.slots).toEqual({ high: 3, mid: 4, low: 1 })
-    expect([a.shieldHp, a.armorHp, a.hullHp]).toEqual([130, 60, 55])
+    expect([a.shieldHp, a.armorHp, a.hullHp]).toEqual([195, 90, 83])
     const d = SHIPS.find((s) => s.id === 'sh-wh-d-frigate')!
     expect(d.slots).toEqual({ high: 2, mid: 3, low: 3 })
-    expect([d.shieldHp, d.armorHp, d.hullHp]).toEqual([170, 35, 55])
+    expect([d.shieldHp, d.armorHp, d.hullHp]).toEqual([255, 53, 83])
   })
   it('装配面生效：+100 后"三门炮 + 一件高耗设备"能装下（这是本次改动的目的）', () => {
     // 用**真数据**核装配账（本文件的测试替身 ctx 不含正式装备表 ⇒ 直接读 MODULES 的 cpuUse）

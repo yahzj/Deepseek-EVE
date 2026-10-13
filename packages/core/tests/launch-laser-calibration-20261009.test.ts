@@ -204,6 +204,9 @@ describe('出击加速、激光校准与协处理器5%', () => {
     const old = (path: string) => JSON.parse(execFileSync('git', ['show', `26538327:${path}`], { cwd: root, encoding: 'utf8', windowsHide: true }))
     const expectedShips = old('packages/data/src/static/ships.json')
     for (const id of droneHulls) (Object.values(expectedShips.groups).flat().find((ship: any) => ship.id === id) as any).droneLaunchCutPct = .3
+    for (const hull of Object.values(expectedShips.groups).flat() as Array<Record<string, number>>) {
+      for (const field of ['shieldHp', 'armorHp', 'hullHp']) hull[field] = Math.round(hull[field]! * 1.5)
+    }
     expect(ships).toEqual(expectedShips)
     const expectedModules = old('packages/data/src/static/modules.json')
     ;(Object.values(expectedModules.groups).flat().find((mod: any) => mod.id === 'mod-wh-e-cpu') as any).reloadPenaltyPct = .05
@@ -215,8 +218,11 @@ describe('出击加速、激光校准与协处理器5%', () => {
       'mod-pd-e': .3, 'mod-pd-e-2': .3, 'mod-pd-e-3': .3, 'mod-wh-e-pd': .3,
       'mod-lair-turret-a': .15, 'mod-wh-d-turret': .2,
     }
-    for (const mod of Object.values(expectedModules.groups).flat() as Array<{ id: string; falloff?: number }>) {
+    for (const mod of Object.values(expectedModules.groups).flat() as Array<{ id: string; falloff?: number; shieldPulsePct?: number; shieldFieldPct?: number }>) {
       if (falloffChanges[mod.id] !== undefined) mod.falloff = falloffChanges[mod.id]
+      const charge: Record<string, number> = { 'mod-shieldchg-1': .08, 'mod-shieldchg-2': .133, 'mod-shieldchg-3': .213 }
+      if (charge[mod.id] !== undefined) mod.shieldPulsePct = charge[mod.id]
+      if (['mod-shieldfield-2', 'mod-shieldfield-3'].includes(mod.id)) mod.shieldFieldPct = .067
     }
     const oldIds = new Set(Object.values(expectedModules.groups).flat().map((mod: any) => mod.id))
     const copy = structuredClone(modules)

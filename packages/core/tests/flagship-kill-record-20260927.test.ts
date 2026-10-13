@@ -199,21 +199,21 @@ describe('旗舰战留档：玩家亲手击沉（2026-09-27 船长令）', () =>
   it('④ 占比玩家优先：两份相加 ≤ 100%，玩家那份不被挤掉', () => {
     const { ev } = bossWorld(0)
     /** 真档那一场：玩家 97.75% ＋ 章鱼 2.25% ⇒ 相加正好 100% */
-    ev.flagshipHpDone = 146_625
-    ev.octopusHpDone = 3_376
+    ev.flagshipHpDone = WEEKEND_FLAGSHIP_POOL_HP * .9775
+    ev.octopusHpDone = WEEKEND_FLAGSHIP_POOL_HP * .0225 + 1
     const a = weekendFlagshipSharesOf(ev)
-    expect(a.player).toBeCloseTo(146_625 / WEEKEND_FLAGSHIP_POOL_HP, 6)
-    expect(a.octopus).toBeCloseTo(3_375 / WEEKEND_FLAGSHIP_POOL_HP, 6)
+    expect(a.player).toBeCloseTo(.9775, 6)
+    expect(a.octopus).toBeCloseTo(.0225, 6)
     expect(a.player + a.octopus, '相加不超过 100%').toBeLessThanOrEqual(1.0000001)
     /**
      * 两条账**都越线**（玩家 10 万 ＋ 章鱼 6 万 = 16 万 > 池子）：章鱼那份被**挤掉**到 5 万，
      * 玩家那份保持 66.67% —— 这正是船长要的"玩家优先"。
      */
-    ev.flagshipHpDone = 100_000
-    ev.octopusHpDone = 60_000
+    ev.flagshipHpDone = WEEKEND_FLAGSHIP_POOL_HP * 2 / 3
+    ev.octopusHpDone = WEEKEND_FLAGSHIP_POOL_HP * .4
     const b = weekendFlagshipSharesOf(ev)
-    expect(b.player, '玩家那份 = 自己打的 / 池子').toBeCloseTo(100_000 / WEEKEND_FLAGSHIP_POOL_HP, 6)
-    expect(b.octopus, '章鱼那份被挤到"池子 − 玩家那份"').toBeCloseTo(50_000 / WEEKEND_FLAGSHIP_POOL_HP, 6)
+    expect(b.player, '玩家那份 = 自己打的 / 池子').toBeCloseTo(2 / 3, 6)
+    expect(b.octopus, '章鱼那份被挤到"池子 − 玩家那份"').toBeCloseTo(1 / 3, 6)
     expect(b.player + b.octopus, '挤完之后正好 100%').toBeCloseTo(1, 6)
   })
 

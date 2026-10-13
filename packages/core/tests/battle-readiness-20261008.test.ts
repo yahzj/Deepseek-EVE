@@ -161,19 +161,19 @@ describe('开场装填专项（2026-10-08）', () => {
     }
   })
 
-  it('四舰混装：基础炮、同型双炮、双光束、近防和逐架无人机全部独立完成初始装填', () => {
+  it('四舰混装高槽禁基础炮，同型双炮、双光束、近防和逐架无人机独立完成初始装填', () => {
     const w = world('mixed', 4)
     expect(w.battle.myFleet?.map(entry => entry.tag)).toEqual(['player', 'ally-1', 'ally-2', 'ally-3'])
     for (const { spec } of w.entries) {
-      expect(spec.weapons).toHaveLength(6)
-      expect(spec.weapons.map(p => p.src)).toEqual(['base', 'turret', 'turret', 'laser', 'drone', 'drone'])
+      expect(spec.weapons).toHaveLength(5)
+      expect(spec.weapons.map(p => p.src)).toEqual(['turret', 'turret', 'laser', 'drone', 'drone'])
       expect(w.battle.units[spec.tag]!.weapons).toEqual(spec.weapons.map(p => Math.max(1, p.reloadMs)))
+      expect(w.battle.dronePools?.[`${spec.tag}:3`]?.alive).toBe(true)
       expect(w.battle.dronePools?.[`${spec.tag}:4`]?.alive).toBe(true)
-      expect(w.battle.dronePools?.[`${spec.tag}:5`]?.alive).toBe(true)
     }
     const rows = battleWeaponCyclesOf(w.battle, w.entries)
-    expect(rows).toHaveLength(20)
-    expect(rows.reduce((sum, row) => sum + row.count, 0)).toBe(32)
+    expect(rows).toHaveLength(16)
+    expect(rows.reduce((sum, row) => sum + row.count, 0)).toBe(28)
     expect(rows.every(row => row.state === 'reload' && row.percent === 0)).toBe(true)
     expect(new Set(rows.filter(row => row.src === 'drone').map(row => row.ownerTag)).size).toBe(4)
     const earliest = Math.min(...w.entries.flatMap(entry => entry.spec.weapons.map(p => p.reloadMs)))
@@ -193,7 +193,7 @@ describe('开场装填专项（2026-10-08）', () => {
     for (const deadline of deadlines.filter(ms => ms > earliest)) {
       const due = w.entries.flatMap(({ spec }) => spec.weapons.flatMap((weapon, index) =>
         weapon.reloadMs === deadline ? [{ spec, weapon, index }] : []))
-      const expectedDue = due.filter(({ weapon, index }) => weapon.src !== 'drone' || index === 4)
+      const expectedDue = due.filter(({ weapon, index }) => weapon.src !== 'drone' || index === 3)
       w.advance(deadline - 1)
       for (const { spec, index } of due) expect(w.battle.units[spec.tag]!.weapons[index]).toBe(1)
       w.advance(deadline)
@@ -202,7 +202,7 @@ describe('开场装填专项（2026-10-08）', () => {
       w.advance(deadline + 1)
       expect(w.battle.stats.meShots).toBeGreaterThanOrEqual(shots + expectedDue.reduce((n, { weapon }) => n + (weapon.count ?? 1), 0))
       for (const { spec, weapon, index } of due) {
-        if (weapon.src === 'drone' && index === 5) {
+        if (weapon.src === 'drone' && index === 4) {
           expect(w.battle.units[spec.tag]!.weapons[index]).toBe(0)
           expect(w.battle.dronePools?.[`${spec.tag}:${index}`]?.launched).toBe(false)
           continue
@@ -214,7 +214,7 @@ describe('开场装填专项（2026-10-08）', () => {
     }
     for (let time = w.battle.lastTickGameMs + 100; time <= deadlines.at(-1)! + 700; time += 100) w.advance(time)
     for (const { spec } of w.entries) {
-      expect(w.battle.dronePools?.[`${spec.tag}:5`]?.launched).toBe(true)
+      expect(w.battle.dronePools?.[`${spec.tag}:4`]?.launched).toBe(true)
     }
   })
 
@@ -235,7 +235,7 @@ describe('开场装填专项（2026-10-08）', () => {
     const cost = equipmentPenaltiesOf(state, realCtx, uid).reload
     expect(cost).toBeCloseTo((1 + realCtx.modules.get('mod-wh-e-cpu')!.reloadPenaltyPct!) ** 2, 12)
     expect(fittedCpuUsed(fleet.fitted, realCtx, realCtx.ships.get('sh-megalodon')) + droneCpuUsed(fleet.droneLoad, realCtx)).toBeLessThanOrEqual(cpuBudgetOf(state, realCtx, uid))
-    expect(final.weapons).toHaveLength(6)
+    expect(final.weapons).toHaveLength(5)
     for (const [index, weapon] of final.weapons.entries()) {
       const base = raw.weapons[index]!
       expect(skilled.weapons[index]!.reloadMs).toBe(weapon.src === 'base' ? base.reloadMs : Math.round(base.reloadMs * 0.8 * 0.925))
@@ -266,7 +266,9 @@ describe('开场装填专项（2026-10-08）', () => {
       for (const { spec } of w.entries) expect(battle.units[spec.tag]!.weapons).toEqual(pending)
       loaded.gameMs = 5001
       advanceBattleFor(loaded, w.ctx, battle, loaded.shipId, CARD)
-      expect(new Set(myShots(battle).filter(event => event.src === 'base').map(event => event.tag))).toEqual(new Set(w.entries.map(entry => entry.spec.tag)))
+      // 六项旧账本含首项基础炮：禁用占位保留后续武器下标，不射击、不重置旧冷却。
+      expect(myShots(battle).some(event => event.src === 'base')).toBe(false)
+      for (const { spec } of w.entries) expect(battle.units[spec.tag]!.weapons[0]).toBe(0)
       for (const { spec } of w.entries) expect(battle.units[spec.tag]!.weapons[1]).toBe(136)
       loaded.gameMs = 5137
       advanceBattleFor(loaded, w.ctx, battle, loaded.shipId, CARD)
@@ -275,7 +277,7 @@ describe('开场装填专项（2026-10-08）', () => {
       loaded.gameMs = 5138
       advanceBattleFor(loaded, w.ctx, battle, loaded.shipId, CARD)
       expect(battle.ammo.kin).toBe(ammo - 4 * size)
-      for (const { spec } of w.entries) expect(battle.units[spec.tag]!.weapons[1]).toBe(spec.weapons[1]!.reloadMs)
+      for (const { spec } of w.entries) expect(battle.units[spec.tag]!.weapons[1]).toBe(spec.weapons[0]!.reloadMs)
     }
   })
 
@@ -294,9 +296,9 @@ describe('开场装填专项（2026-10-08）', () => {
     for (const [index, { spec }] of w.entries.entries()) {
       expect(w.battle.units[spec.tag]!.weapons).toEqual(before[index]!.map((cd, wi) => cd === 0 ? spec.weapons[wi]!.reloadMs : cd - 1))
     }
-    expect(myShots(w.battle)).toMatchObject([{ tag: 'player', src: 'base', atMs: 101 }])
-    expect(w.battle.stats.meShots).toBe(1)
-    expect(w.battle.ammo).toEqual(ammo)
+    expect(myShots(w.battle)).toMatchObject([{ tag: 'player', src: 'turret', atMs: 101 }, { tag: 'player', src: 'turret', atMs: 101 }])
+    expect(w.battle.stats.meShots).toBe(2)
+    expect(w.battle.ammo).toEqual({ ...ammo, kin: ammo.kin - 4 })
   })
 
   it('正常、虫洞和真实旗舰建档入口共用玩家初始装填，非零开战时刻不提前抵扣', () => {

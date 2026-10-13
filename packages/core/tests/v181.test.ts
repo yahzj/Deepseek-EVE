@@ -220,7 +220,9 @@ describe('V18.1 装配与战斗集成', () => {
     const spec = createPlayerSpec(state, ctx, state.shipId)!
     const gun = spec.weapons.find((w) => w.kind === 'gun')!
     expect(gun.eqHitMul).toBeCloseTo(1.08 * (1 + 0.08 * stackWeight(2)), 6)
-    const base = spec.weapons.find((w) => w.label === '基础舰炮')!
+    expect(spec.weapons.some(w => w.src === 'base')).toBe(false)
+    state.fleet[state.shipId]!.fitted.high = []
+    const base = createPlayerSpec(state, ctx, state.shipId)!.weapons.find((w) => w.src === 'base')!
     expect(base.eqHitMul).toBeUndefined()
   })
 

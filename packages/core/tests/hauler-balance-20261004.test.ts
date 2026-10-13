@@ -54,7 +54,7 @@ describe('纯货舰修订', () => {
     const ship = ctx.ships.get(id as string)!
     expect(ship.cpu).toBe(cpu)
     expect(Object.values(ship.slots!)).toEqual(slots)
-    expect([ship.shieldHp, ship.armorHp, ship.hullHp]).toEqual(hp)
+    expect([ship.shieldHp, ship.armorHp, ship.hullHp]).toEqual((hp as number[]).map(value => Math.round(value * 1.5)))
     expect([ship.maxSpeedMps, ship.warpSpeedAus, ship.agility, ship.evasion]).toEqual(motion)
     expect(ship.droneBayM3).toBe(0)
     expect(ship.civilianFittingOnly).toBe(true)

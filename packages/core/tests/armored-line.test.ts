@@ -36,7 +36,7 @@ describe('装甲线（甲壳族）货舱 −20%（船长 2026-09-15）', () => {
     for (const id of LINE) expect(shipOf(id).role, `${id} 的 role`).toBe('armored')
   })
 
-  it('只动货舱：槽位 / 三层血 / 循环与产量 / CPU / 行价 / 质量 / 甲壳抗性 逐项原值', () => {
+  it('货舱修订后仅叠加已批准1.5倍三层血，其他原值逐项保持', () => {
     const rows: [
       string,
       {
@@ -94,7 +94,7 @@ describe('装甲线（甲壳族）货舱 −20%（船长 2026-09-15）', () => {
     for (const [id, w] of rows) {
       const s = shipOf(id)
       expect(s.slots, `${id} 槽位`).toEqual(w.slots)
-      expect([s.shieldHp, s.armorHp, s.hullHp], `${id} 三层血`).toEqual(w.hp)
+      expect([s.shieldHp, s.armorHp, s.hullHp], `${id} 三层血`).toEqual(w.hp.map(value => Math.round(value * 1.5)))
       expect([s.cycleSeconds, s.oreUnitsPerCycle], `${id} 循环 / 每循环产量`).toEqual([w.cycle, w.units])
       expect(s.cpu, `${id} CPU`).toBe(w.cpu)
       expect(s.priceIsk, `${id} 行价`).toBe(w.price)

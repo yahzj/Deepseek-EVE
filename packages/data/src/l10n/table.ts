@@ -7466,7 +7466,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "core.signalSpace.035": {"zh":"本趟信号空间探索还没收场：先撤离，才能切换主控活动。","en":"This Signal Space run is still open: extract before switching the command-ship activity."},
   "ano.hpStation.001": { zh: "舰船血量提升与作业优化", en: '', enDeferred: true },
   "ano.hpStation.002": { zh: "数值", en: '', enDeferred: true },
-  "ano.hpStation.003": { zh: "玩家与敌方舰船的护盾、装甲和结构血量整体提高约50%，舰船插件的固定血量加成同步提高；无人机血量和常规恢复量保持不变。", en: '', enDeferred: true },
+  "ano.hpStation.003": { zh: "玩家与敌方舰船的护盾、装甲和结构血量整体提高约50%，舰船插件的固定血量加成同步提高；常规护盾恢复比例相应下调，无人机血量、固定维修数值与特殊回满效果不变。", en: '', enDeferred: true },
   "ano.hpStation.004": { zh: "新开启的入侵旗舰共享血池提高至30万；已经锁定的血池保持原值，已累计的伤害与贡献保留。", en: '', enDeferred: true },
   "ano.hpStation.005": { zh: "玩家舰船装配任意有效高槽装备后禁用基础舰炮，拆空高槽后恢复；舰载武器在近盲区内仍可开火，对舰伤害降为正常的30%，无人机与近防对机群的规则不变。", en: '', enDeferred: true },
   "ano.hpStation.006": { zh: "玩家出勤期间可进行仓库交易与逆向研究；装卸货物、出售船上货物和站内维修按目标舰停靠状态检查，空闲副船不受主控位置影响，母港与已建成副站适用相同规则。", en: '', enDeferred: true },

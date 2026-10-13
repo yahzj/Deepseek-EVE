@@ -134,7 +134,8 @@ describe('目标锁定阵列 · 全队生效（2026-09-17 船长）', () => {
     const lead = addShipToFleet(state, 'lead')
     const wing = addShipToFleet(state, 'wing')
     state.shipId = lead
-    state.fleet[lead]!.fitted = { high: [lockOnLeader, null, null, null], mid: [], low: [] }
+    // 对照两边攻击武器完全相同，不让高槽禁基础炮改变每发均值的样本组成。
+    state.fleet[lead]!.fitted = { high: [lockOnLeader, 'mod-laser-3', null, null], mid: [], low: [] }
     state.fleet[wing]!.fitted = { high: [lockOnWing, 'mod-laser-3', 'mod-laser-3', null], mid: [], low: [] }
     if (lockOnLeader) state.moduleBay[lockOnLeader] = 1
     if (lockOnWing) state.moduleBay[lockOnWing] = 1

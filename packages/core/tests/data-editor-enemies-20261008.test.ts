@@ -35,7 +35,7 @@ describe('敌人编辑契约与真实引擎', () => {
     const ambush = enemyEnginePreview(request('invasionFleets', 'corona-nexus', 'ambush'))
     expect(ambush.rows.reduce((n, row) => n + row.hp, 0)).toBeCloseTo(base.rows.reduce((n, row) => n + row.hp, 0) * 0.75)
     const flagship = enemyEnginePreview(request('invasionFleets', 'corona-nexus', 'flagship'))
-    expect(flagship.rows.some(row => row.hp === 150000)).toBe(true)
+    expect(flagship.rows.some(row => row.hp === 300000)).toBe(true)
     expect(flagship.rows.some(row => row.wave === 4)).toBe(true)
   })
   it('三族十二张入侵卡全覆盖，异形工厂卡与共用数字可编辑', () => {
@@ -43,7 +43,7 @@ describe('敌人编辑契约与真实引擎', () => {
     const alien = rowsOf('invasionFleets', docs.invasionFleets).find(row => row.id === 'alien-broodmother')!
     expect(alien.fields.find(field => field.path === 'scale')?.writable).toBe(true)
     expect(alien.fields.find(field => field.path === 'ships_0_count')?.group).toContain('酸液爆虫')
-    expect(enemyEnginePreview(request('invasionFleets', 'alien-broodmother', 'flagship')).rows.some(row => row.hp === 150000)).toBe(true)
+    expect(enemyEnginePreview(request('invasionFleets', 'alien-broodmother', 'flagship')).rows.some(row => row.hp === 300000)).toBe(true)
   })
   it('全部舰级、机群和挂载件均有可追溯参数；共用数值不重复复制', () => {
     expect(FOE_SHIPS.filter(ship => !ENEMY_FIELDS.foeShips.some(row => row.id === ship.id))).toEqual([])

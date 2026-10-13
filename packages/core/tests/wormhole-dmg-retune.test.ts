@@ -129,7 +129,7 @@ describe('洞内伤害口径（甲案 · 威胁预算）：船长 2026-09-16', (
       hp += f.hp.s + f.hp.a + f.hp.h
       for (const w of f.weapons) dps += ((w.shotDmg ?? 0) * (w.count ?? 1) * 1000) / Math.max(1, w.reloadMs)
     }
-    expect(Math.round(hp)).toBe(5729)
+    expect(Math.round(hp)).toBe(8594) // 原始血量不变，最终容量按批准乘1.5。
     expect(Math.round(dps)).toBe(127)
   })
 })

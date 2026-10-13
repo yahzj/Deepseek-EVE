@@ -94,13 +94,13 @@ describe('H 族重定价 · 威胁与属性（船长 2026-09-25：90 / 108 / **1
       const a = card(id)
       const m = foeStrengthOf(a, bal)
       expect(foeThreatRatingOf(m.x, SOLO, bal), `${id} 的实测价 ≠ 卡面威胁`).toBe(a.threat)
-      expect((5 * m.x) / SOLO, `${id} 的达成预算超了`).toBeLessThanOrEqual(foeHpOfThreat(a.threat, bal))
+      expect((5 * m.x) / (SOLO * Math.sqrt(1.5)), `${id} 的归一预算超了`).toBeLessThanOrEqual(foeHpOfThreat(a.threat, bal))
     }
     // 三个具体读数（与探针一致，防止"改注释不改数"）
-    expect(foeStrengthOf(card('ink-harass'), bal).x).toBeCloseTo(621.12, 1)
-    expect(foeStrengthOf(card('ink-raid'), bal).x).toBeCloseTo(835.76, 1)
+    expect(foeStrengthOf(card('ink-harass'), bal).x / Math.sqrt(1.5)).toBeCloseTo(621.12, 1)
+    expect(foeStrengthOf(card('ink-raid'), bal).x / Math.sqrt(1.5)).toBeCloseTo(835.76, 1)
     // 1114.14 → 1152.79：无人机微调批（主力卡带一架重袭机）
-    expect(foeStrengthOf(card('ink-main'), bal).x).toBeCloseTo(1152.79, 1)
+    expect(foeStrengthOf(card('ink-main'), bal).x / Math.sqrt(1.5)).toBeCloseTo(1152.79, 1)
   })
 
   it('**逐舰血÷DPS = 舰级自然比**（船长令「按照敌舰设定的属性比例重定」）· 每艘的绝对值也对得上', () => {
@@ -120,7 +120,7 @@ describe('H 族重定价 · 威胁与属性（船长 2026-09-25：90 / 108 / **1
          *    ⇒ 比值上浮约 1.2%（名义 162.5 DPS → 实收 160.7）。
          */
         expect(gunDpsOf(u), `${cardId}·${s.name} 没有火力`).toBeGreaterThan(0)
-        const ratio = hpOf(u) / gunDpsOf(u) / natural(s.id)
+        const ratio = hpOf(u) / 1.5 / gunDpsOf(u) / natural(s.id)
         expect(
           Math.abs(ratio - 1),
           `${cardId}·${s.name} 的 血÷DPS 偏离舰级比（实测 ${(hpOf(u) / gunDpsOf(u)).toFixed(2)} vs ${natural(s.id).toFixed(2)}）`,
@@ -129,15 +129,15 @@ describe('H 族重定价 · 威胁与属性（船长 2026-09-25：90 / 108 / **1
     }
     // 抽查三条绝对值（骚扰 831.4/116 · 袭击鱼雷舰 1018.1/255 · 主力战巡 3641.1/519 + 机群让位）
     const harass = unitsOf(card('ink-harass'))
-    expect(hpOf(harass[0]!)).toBeCloseTo(831.4, 1)
+    expect(hpOf(harass[0]!) / 1.5).toBeCloseTo(831.4, 1)
     expect(gunShotOf(harass[0]!)).toBe(116)
     const raid = unitsOf(card('ink-raid'))
     const torp = raid.find((u) => u.foeShipId === 'foe-h-ink-torpedo')!
-    expect(hpOf(torp)).toBeCloseTo(1018.1, 1)
+    expect(hpOf(torp) / 1.5).toBeCloseTo(1018.1, 1)
     expect(gunShotOf(torp)).toBe(255)
     const main = unitsOf(card('ink-main'))
     const bc = main.find((u) => u.foeShipId === 'foe-h-ink-battlecruiser')!
-    expect(hpOf(bc)).toBeCloseTo(3641.1, 1)
+    expect(hpOf(bc) / 1.5).toBeCloseTo(3641.1, 1)
     // ⚠ 战巡在**第 2 波**（越 150 线）⇒ 实收单发 = 名义 519 × 折扣 0.9885 ≈ **513**（见下面那条越线用例）
     expect(gunShotOf(bc)).toBe(513)
   })
@@ -146,7 +146,7 @@ describe('H 族重定价 · 威胁与属性（船长 2026-09-25：90 / 108 / **1
     const a = card('ink-flagship')
     const m = foeStrengthOf(a, bal)
     expect(a.threat).toBe(170)
-    expect(m.hp).toBeCloseTo(94439, 0)
+    expect(m.hp / 1.5).toBeCloseTo(94439, 0)
     // 357.7 → 405.2：无人机微调批（母舰 2 架 ＋ 战巡 1 架重袭机：单发 60 → 120 ⇒ 末波机群 DPS +50）
     expect(m.dps).toBeCloseTo(405.2, 1)
   })

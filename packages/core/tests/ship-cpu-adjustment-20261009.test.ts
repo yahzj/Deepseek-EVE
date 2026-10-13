@@ -52,6 +52,9 @@ describe('获批四舰CPU调整', () => {
       expect(row.cpu).toBe(change.old)
       row.cpu = change.next
     }
+    for (const hull of rows) {
+      for (const field of ['shieldHp', 'armorHp', 'hullHp'] as const) hull[field] = Math.round(hull[field] * 1.5)
+    }
     // 船长纠正为四艘无人机主力舰启动特性；只允许已批准字段，不放开其他静态变化。
     const current = structuredClone(ships)
     for (const id of ['sh-swarm', 'sh-sentinel', 'sh-wh-e-destroyer', 'sh-wh-e-carrier']) {

@@ -81,7 +81,7 @@ describe('旋齿鲨级装甲战列舰（T4 装甲线 · 2026-09-26 船长令）'
     expect(s.tier).toBe(4)
     expect(s.role).toBe('armored')
     expect(s.slots).toEqual({ high: 5, mid: 3, low: 6 })
-    expect(totalHp('sh-helicoprion')).toBe(1273)
+    expect(totalHp('sh-helicoprion')).toBe(1910)
     expect(s.armorHp!).toBeGreaterThan(s.shieldHp!) // 甲向（装甲线判据）
     expect(s.armorHp!).toBeGreaterThan(s.hullHp!) // 700 > 373
     expect(s.armorResist?.kinetic).toBeCloseTo(0.35, 6)

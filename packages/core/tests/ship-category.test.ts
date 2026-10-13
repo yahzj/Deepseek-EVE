@@ -71,11 +71,11 @@ describe('舰船类别：装甲舰（船长 2026-09-16）', () => {
     }
     for (const [id, [sh, a, hu]] of Object.entries(want)) {
       const s = shipOf(id)
-      expect([s.shieldHp, s.armorHp, s.hullHp], `${id} 三层血`).toEqual([sh, a, hu])
+      expect([s.shieldHp, s.armorHp, s.hullHp], `${id} 三层血`).toEqual([sh, a, hu].map(value => Math.round(value * 1.5)))
     }
-    // 总血与改前一致（互换不增不减）
-    expect(shipOf('sh-bullshark').shieldHp! + shipOf('sh-bullshark').armorHp! + shipOf('sh-bullshark').hullHp!).toBe(755)
-    expect(shipOf('sh-wh-e-carrier').shieldHp! + shipOf('sh-wh-e-carrier').armorHp! + shipOf('sh-wh-e-carrier').hullHp!).toBe(770)
+    // 互换本身不增减，后续全舰加血按各层1.5倍取整。
+    expect(shipOf('sh-bullshark').shieldHp! + shipOf('sh-bullshark').armorHp! + shipOf('sh-bullshark').hullHp!).toBe(1133)
+    expect(shipOf('sh-wh-e-carrier').shieldHp! + shipOf('sh-wh-e-carrier').armorHp! + shipOf('sh-wh-e-carrier').hullHp!).toBe(1155)
   })
 
   it('**只判类别、不动机制**：转线的 4 艘仍按 `armed` 吃口径（等效质量不折抵 / 舰种档不变）', () => {

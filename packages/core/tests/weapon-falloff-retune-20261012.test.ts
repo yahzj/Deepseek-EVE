@@ -39,6 +39,13 @@ describe('玩家动能武器远端命中倍率调整', () => {
       expect(mod.falloff).toBe(target.before)
       mod.falloff = target.after
     }
+    // 后续2026-10-13批准直接调整护盾恢复，其他字段继续全表逐项核对。
+    for (const row of rows) {
+      if (row.id === 'mod-shieldchg-1') Object.assign(row, { shieldPulsePct: .08 })
+      if (row.id === 'mod-shieldchg-2') Object.assign(row, { shieldPulsePct: .133 })
+      if (row.id === 'mod-shieldchg-3') Object.assign(row, { shieldPulsePct: .213 })
+      if (['mod-shieldfield-2', 'mod-shieldfield-3'].includes(row.id)) Object.assign(row, { shieldFieldPct: .067 })
+    }
     expect(modules).toEqual(expected)
     expect([...ctx.modules.values()].filter(mod => mod.damageType === 'kinetic' && mod.falloff === .5)).toEqual([])
   })

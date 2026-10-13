@@ -106,14 +106,14 @@ describe('T5-B 舰船实例化（v17）', () => {
     expect(shipDisplayName(state, ctx, uid2)).toBe('测试二号')
   })
 
-  it('重复购买（buyShip）：允许同型第二艘；新实例登舰；忙时只入机库不打断作业', () => {
+  it('重复购买允许同型第二艘，始终只入机库，不换驾驶或打断作业', () => {
     const { state, ctx } = world()
     state.wallet.isk = 2_000_000
-    // 供给簿有货（开盘铺单）→ 市价购入并登舰到新实例
+    // 后续停靠规则确认：买船只入机库，不自动换驾驶。
     const r = buyShip(state, 'sandcat', ctx)
     expect(r.ok).toBe(true)
     expect(state.fleet['sandcat#2']).toBeDefined()
-    expect(state.shipId).toBe('sandcat#2')
+    expect(state.shipId).toBe('sandcat')
     // 驾驶船作业中（采矿）再买同型 → 入机库不自动登舰
     state.shipId = 'sandcat'
     delete state.fleet['sandcat#2']

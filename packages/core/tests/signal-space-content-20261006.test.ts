@@ -126,6 +126,9 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
     // 后续船长确认四舰CPU与四艘无人机主力舰启动特性；其余字段按固定来源逐项比较。
     const approvedCpu: Record<string, number> = { pioneer: 240, 'sh-humpback': 260, 'sh-wh-c-cruiser': 360, 'sh-wh-d-cruiser': 350 }
     const expectedShips = baseShips.map(row => ({ ...row,
+      shieldHp: Math.round((row.shieldHp ?? 0) * 1.5),
+      armorHp: Math.round((row.armorHp ?? 0) * 1.5),
+      hullHp: Math.round((row.hullHp ?? 0) * 1.5),
       ...(approvedCpu[row.id] !== undefined ? { cpu: approvedCpu[row.id] } : {}),
       ...(['sh-swarm', 'sh-sentinel', 'sh-wh-e-destroyer', 'sh-wh-e-carrier'].includes(row.id) ? { droneLaunchCutPct: .3 } : {}),
     }))

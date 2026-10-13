@@ -12,7 +12,7 @@
 
 ## 统计
 
-- 文档总数 **471** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7824** KB · **60198** 行
+- 文档总数 **471** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7826** KB · **60210** 行
 - 状态分布：**未标注** 251 · **已确认/已实现** 158 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
 - 孤儿文档（0 引用）**87** 份 · 状态未标注 **251** 份
 - 一、权威文档（开工必读）：**8** 份
@@ -61,7 +61,7 @@
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
 | `docs/design/black-market-bulk-resource-fix-20261013.md` | 黑市单个矿石上架修复 | 已确认/已实现（已实现） | 2026-10-13 | 4 KB / 41 行 | 0 / 0 |
-| `docs/design/shield-recovery-direct-20261013.md` | 护盾恢复直接调参 | 已确认/已实现（已实现） | 2026-10-13 | 6 KB / 57 行 | 0 / 0 |
+| `docs/design/shield-recovery-direct-20261013.md` | 护盾恢复直接调参 | 已确认/已实现（已实现并本地合入main） | 2026-10-13 | 8 KB / 69 行 | 0 / 0 |
 | `docs/design/unbox-result-ledger-20261013.md` | 货柜拆解上一批产物记录 | 已确认/已实现（已实现） | 2026-10-13 | 5 KB / 48 行 | 1 / 0 |
 | `docs/design/planetary-wheel-traits-20261011.md` | 地表建筑配色与轮盘交互、特性标签 | 已确认/已实现（已实现并自检） | 2026-10-11 | 6 KB / 38 行 | 0 / 0 |
 | `docs/design/signal-auto-weight-20261011.md` | 信号空间自动探索超重编队修复 | 已确认/已实现（已实现） | 2026-10-11 | 1 KB / 23 行 | 0 / 0 |
@@ -342,7 +342,7 @@
 | `docs/design/v10-content.md` | V10 设计：深空市场大扩容（占位导入） | 已确认/已实现（已确认） | — | 15 KB / 223 行 | 5 / 0 |
 | `docs/design/v10b-combat-data.md` | V10.5 设计：舰船与装备「战斗数值契约」（远行星号伤害体系版） | 已确认/已实现（已确认） | — | 10 KB / 156 行 | 7 / 1 |
 | `docs/design/v11-random-events.md` | V11 设计：随机事件系统（已实现） | 未标注（用户 2026-09-04 逐条拍板） | — | 4 KB / 55 行 | 2 / 0 |
-| `docs/design/v12-combat.md` | V12 设计：实时战斗引擎（统一状态机 · 编队单位模型） | 未标注 | — | 20 KB / 192 行 | 15 / 1 |
+| `docs/design/v12-combat.md` | V12 设计：实时战斗引擎（统一状态机 · 编队单位模型） | 未标注 | — | 20 KB / 192 行 | 16 / 1 |
 | `docs/design/v12a-starmap.md` | V12a 设计：星图 v2 定稿（20 星系 × 27 航线 + 布局编辑器） | 已确认/已实现（已确认） | — | 3 KB / 41 行 | 2 / 0 |
 | `docs/design/v12b-travel-warp.md` | V12b 设计：星图航行跃迁（warp × 航行加速技能族） | 已确认/已实现（已确认） | — | 6 KB / 87 行 | 6 / 0 |
 | `docs/design/v13-exploration.md` | V13 设计：星图探索系统（迷雾 · 点亮 · 扫描探索） | 已确认/已实现（已确认） | — | 7 KB / 97 行 | 6 / 1 |
@@ -357,7 +357,7 @@
 | `docs/design/v7-design.md` | V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版 | 未标注 | — | 7 KB / 117 行 | 0 / 0 |
 | `docs/design/v9-market.md` | V9 设计：市场系统（已实现） | 未标注 | — | 21 KB / 192 行 | 17 / 0 |
 | `docs/design/weapon-skill-batch.md` | 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四） | 未标注 | — | 8 KB / 100 行 | 4 / 0 |
-| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 59 KB / 407 行 | 33 / 14 |
+| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 59 KB / 407 行 | 34 / 14 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 5 KB / 56 行 | 5 / 0 |
 
 ## 九、封存卷（archive · 冻结件，只读不改） —— 37 份
@@ -546,7 +546,7 @@
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
 - `docs/design/black-market-bulk-resource-fix-20261013.md`（2026-10-13 · 4 KB）—— 黑市单个矿石上架修复
-- `docs/design/shield-recovery-direct-20261013.md`（2026-10-13 · 6 KB）—— 护盾恢复直接调参
+- `docs/design/shield-recovery-direct-20261013.md`（2026-10-13 · 8 KB）—— 护盾恢复直接调参
 - `docs/design/planetary-wheel-traits-20261011.md`（2026-10-11 · 6 KB）—— 地表建筑配色与轮盘交互、特性标签
 - `docs/design/signal-auto-weight-20261011.md`（2026-10-11 · 1 KB）—— 信号空间自动探索超重编队修复
 - `docs/design/stellar-readability-20261011.md`（2026-10-11 · 7 KB）—— 星系星图可读性修正

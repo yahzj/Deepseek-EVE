@@ -306,17 +306,17 @@ describe('隐身期间基础舰炮闭麦（2026-09-17 船长）', () => {
   it('**窗口内一炮未发**：只装装置的船，即使敌人已在基础舰炮射程内也不还击，窗口原样保留', () => {
     const { state, ctx, uid } = world({ stealth: STEALTH_3, weapons: false })
     const b = startBattleFor(state, ctx, uid, CARD, 0)!
-    // 反证前提：这艘船**真的只有兜底那一门**（否则本用例证明不了"基础舰炮被闭麦"）
-    expect(createPlayerSpec(state, ctx, uid)!.weapons.map((w) => w.src)).toEqual(['base'])
+    // 2026-10-13任意高槽装备禁基础炮，仅隐身装置时没有攻击条目。
+    expect(createPlayerSpec(state, ctx, uid)!.weapons).toEqual([])
     loadAll(b)
     pinned(state, ctx, b, uid, 5_000)
     expect(b.stats.meShots, '隐身期间基础舰炮开火了').toBe(0)
     expect(b.units['player']!.stealthUntilMs, '窗口被自己那门炮打掉了').toBe(30_000)
     expect(b.stats.foeShots, '窗口内敌舰开火了').toBe(0)
-    expect(b.units['player']!.weapons[0], '基础舰炮的装填倒计时被推动了').toBe(0)
+    expect(b.units['player']!.weapons).toEqual([])
   })
 
-  it('**到点即恢复**：窗口一到点，同一门基础舰炮立刻开火（不是"永久哑火"）', () => {
+  it('隐身到点现形，但高槽装置仍在，基础炮不因装置窗口结束而恢复', () => {
     const { state, ctx, uid } = world({ stealth: STEALTH_3, weapons: false })
     const b = startBattleFor(state, ctx, uid, CARD, 0)!
     loadAll(b)
@@ -324,22 +324,23 @@ describe('隐身期间基础舰炮闭麦（2026-09-17 船长）', () => {
     expect(b.stats.meShots, '窗口内就开火了').toBe(0)
     pinned(state, ctx, b, uid, 5_000, () => b.stats.meShots > 0)
     expect(b.units['player']!.stealthUntilMs, '到点没现形').toBeUndefined()
-    expect(b.stats.meShots, '到点后基础舰炮仍不开火').toBeGreaterThan(0)
+    expect(b.stats.meShots).toBe(0)
+    expect(b.units['player']!.weapons).toEqual([])
+    expect(b.stats.foeShots).toBeGreaterThan(0)
   })
 
   it('**只闭底座那一门**：外挂武器照常开火并立即现形（同一拍里基础舰炮仍是哑的）', () => {
     const { state, ctx, uid } = world({ stealth: STEALTH_3 }) // 高槽 = 攻坚炮台 MK3 + 隐秘装置
     const b = startBattleFor(state, ctx, uid, CARD, 0)!
-    expect(createPlayerSpec(state, ctx, uid)!.weapons.map((w) => w.src)).toEqual(['base', 'turret'])
+    expect(createPlayerSpec(state, ctx, uid)!.weapons.map((w) => w.src)).toEqual(['turret'])
     loadAll(b)
     b.distanceM = 1000
     state.gameMs += 10
     advanceBattleFor(state, ctx, b, uid, CARD)
     expect(b.stats.meShots, '装的炮台没有开火').toBeGreaterThan(0)
     expect(b.units['player']!.stealthUntilMs, '开火后没有现形').toBeUndefined()
-    // 基础舰炮排第 0 位、在炮台**之前**结算 ⇒ 这一拍它没开火（倒计时仍 0），炮台已进装填
-    expect(b.units['player']!.weapons[0], '基础舰炮在隐身的这一拍开火了').toBe(0)
-    expect(b.units['player']!.weapons[1], '炮台没进装填').toBeGreaterThan(0)
+    expect(b.units['player']!.weapons).toHaveLength(1)
+    expect(b.units['player']!.weapons[0], '炮台没进装填').toBeGreaterThan(0)
   })
 
   it('**对照（旧口径零变化）**：没装装置的船照旧第一拍就用基础舰炮还击', () => {

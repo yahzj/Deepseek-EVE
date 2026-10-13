@@ -134,10 +134,10 @@ describe('E 族巨构三件（2026-09-10 船长逐件过审）', () => {
     const mk3 = createPlayerSpec(makeState([], [], ['mod-armor-plate-3']), ctx, SHIP)!
     const e3 = createPlayerSpec(makeState([], [], ['mod-lair-frame-e']), ctx, SHIP)!
     const d3 = createPlayerSpec(makeState([], [], ['mod-lair-armor-d']), ctx, SHIP)!
-    // 裸船 174/87/105 = 366；MK3（甲 +80%）= 435.6；E3 = 455.1；D3（甲 +110%）= 461.7
-    expect(ehp(mk3)).toBeCloseTo(435.6, 3)
-    expect(ehp(e3)).toBeCloseTo(455.1, 3)
-    expect(ehp(d3)).toBeCloseTo(461.7, 3)
+    // 裸船三层按1.5倍逐层取整：261/131/158；模块百分比保持。
+    expect(ehp(mk3)).toBeCloseTo(654.8, 3)
+    expect(ehp(e3)).toBeCloseTo(684.1, 3)
+    expect(ehp(d3)).toBeCloseTo(694.1, 3)
     expect(ehp(e3)).toBeGreaterThan(ehp(mk3))
     expect(ehp(e3)).toBeLessThan(ehp(d3))
   })

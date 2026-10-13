@@ -56,7 +56,7 @@ describe('鹦鹉螺级测绘巡洋舰（2026-09-13 船长新增）', () => {
     expect(s.wormholeScanRadiusBonus).toBe(1) // 主效果
     expect(s.powerBonus, '2026-09-17 武装舰按档位：T3 = +25%').toBe(0.25)
     expect(s.droneDmgBonus).toBe(0.1)
-    expect((s.shieldHp ?? 0) + (s.armorHp ?? 0) + (s.hullHp ?? 0)).toBe(610)
+    expect((s.shieldHp ?? 0) + (s.armorHp ?? 0) + (s.hullHp ?? 0)).toBe(916)
     expect(s.shieldResist?.kinetic).toBe(0.25) // 0.25 的动能抗不在"50 动能抗"移除范围内（保持）
   })
 

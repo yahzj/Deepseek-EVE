@@ -737,15 +737,15 @@ describe('B1 遇袭受损与撤退（2026-09-11 定；收场口径 2026-09-12 �
     })
     const state = createInitialState({ nowWallMs: 0, seed: 7 })
     state.exploredGalaxies.push('galaxy-far')
-    miningInField(state, ctx)
     addModule(state, 'mod-hullrep-t', 1)
     expect(fitModule(state, 'mod-hullrep-t', ctx).ok).toBe(true)
+    miningInField(state, ctx)
     state.warehouse.items['repairkit-civ'] = 200 // 预载（货舱优先、仓库兜底）
     inject(state, 22)
     expect(fightEncounter(state, ctx).ok).toBe(true)
     // 制造缺口（盾打空、甲受损、结构仍在 50% 以上：避开自动脱离保险，先让修复脉冲跑起来）
     state.encounter.battle!.units['player']!.hp = { s: 0, a: 3_000, h: 4_500 }
-    advanceGame(state, 5 * 60_000, ctx)
+    advanceGame(state, ctx.balance.battle.maxBattleMs + 5000, ctx)
     expect(state.encounter.active).toBe(false)
     const encLogs = state.logs
       .filter((l) => l.text.includes('遭遇战'))

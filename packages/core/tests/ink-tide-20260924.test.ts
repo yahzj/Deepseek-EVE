@@ -176,9 +176,10 @@ describe('H 族 · 墨潮干扰舰（射程压制 · 船长三例定死口径）
     s.fleet[sid]!.fitted = { high: ['mod-turret-kin-3'], mid: [], low: ['mod-wh-g-ballistic'] } as never
     const refs: { weaponRanges?: Array<{ baseM: number; bonusMul: number }> } = { weaponRanges: [] }
     const me = createPlayerSpec(s, ctx, sid, undefined, refs)!
-    /** 基准账与武器条目**逐条对齐**（②的护栏）：条数相等、且基础舰炮那条 base 就是它自己的 2,500 */
+    /** 有效高槽禁基础炮，基准账仍与剩余武器条目逐条对齐。 */
     expect(refs.weaponRanges!.length).toBe(me.weapons.length)
-    expect(refs.weaponRanges![0]).toEqual({ baseM: 2500, bonusMul: 1 }) // 第 0 条 = 基础舰炮（无加成）
+    expect(me.weapons.some(w => w.src === 'base')).toBe(false)
+    expect(refs.weaponRanges![0]).toEqual({ baseM: 7350, bonusMul: 1.22 })
     const turretAt = me.weapons.findIndex((w) => w.src === 'turret')!
     const before = me.weapons[turretAt]!.maxRangeM
     expect(before).toBe(8967) // 7,350 × 1.22（基准 × (1+加成)）
@@ -251,7 +252,7 @@ describe('H 族 · 墨潮干扰舰（射程压制 · 船长三例定死口径）
     const engineCard = battleAnomalyOf(ctx, 'ink-main', ws.expedition.lairTier, ws.expedition.factionActive)!
     const arcsNow = () => battleArcsFor(ws, ctx, { battle: b, anomaly: engineCard, leaderShipId: ew })!
     const base = arcsNow().me.map((m) => m.maxM)
-    expect(base.length).toBeGreaterThanOrEqual(2)
+    expect(base.length).toBe(1)
     expect(b.meFoeRangeDebuff).toBeCloseTo(0.15, 10) // 主控就是电子舰
     /** **干扰舰那一波**的敌阵规格（与引擎同源：同一张卡的同一波、同一 `hpShare`） */
     const wave1 = activeFoeSpecsOf(engineCard, bal, 1)
