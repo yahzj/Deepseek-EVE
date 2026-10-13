@@ -7,7 +7,7 @@
  */
 import type { GameState } from './state'
 import type { DamageResists, DamageType, ModuleDef, SimContext } from './types'
-import { clamp, RESIST_FLOOR, SHIP_HP_UPLIFT_MUL } from './combatMath'
+import { clamp, RESIST_FLOOR } from './combatMath'
 import type { Hp3 } from './combatMath'
 import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, weightedSum, equipmentPenaltiesOf, laserFalloffOf } from './equipment'
 import { moduleAllowedOnShip } from './shipFitting'
@@ -256,17 +256,6 @@ export function createPlayerSpec(
     s: baseHp.s * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv) * (1 + 0.03 * battleshipOpsLv) * damage.shield,
     a: baseHp.a * Math.max(1, armorHpMult) * hullSkillMult * damage.armor,
     h: baseHp.h * Math.max(1, hullHpMult) * hullSkillMult * damage.hull,
-  }
-  // 整数容量先反解旧裸值，避免四舍五入让维修点数漂移。
-  const oldBase = {
-    s: Math.round((ship.shieldHp ?? 0) / SHIP_HP_UPLIFT_MUL),
-    a: Math.round((ship.armorHp ?? 0) / SHIP_HP_UPLIFT_MUL),
-    h: Math.round((ship.hullHp ?? 0) / SHIP_HP_UPLIFT_MUL),
-  }
-  const recoveryHp: Hp3 = {
-    s: (oldBase.s + plugHpAdd.s / SHIP_HP_UPLIFT_MUL) * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv) * (1 + 0.03 * battleshipOpsLv) * damage.shield,
-    a: (oldBase.a + plugHpAdd.a / SHIP_HP_UPLIFT_MUL) * Math.max(1, armorHpMult) * hullSkillMult * damage.armor,
-    h: (oldBase.h + plugHpAdd.h / SHIP_HP_UPLIFT_MUL) * Math.max(1, hullHpMult) * hullSkillMult * damage.hull,
   }
   const shieldRes = mergeResist(ship.shieldResist, undefined)
   for (const m of shieldDefs) applyAdds(shieldRes, m.shieldResistAdd)
@@ -744,8 +733,6 @@ export function createPlayerSpec(
     shipId: ship.id,
     ...(dcKit !== undefined ? { hullSaveKit: dcKit } : {}),
     hp,
-    recoveryHp,
-    repairCapacityAmp: { a: oldBase.a > 0 ? recoveryHp.a / oldBase.a : 1, h: oldBase.h > 0 ? recoveryHp.h / oldBase.h : 1 },
     resists,
     // 本舰无人机结构层加成（模块求和；2026-09-13 船长：鱿蜂结构层「提高无人机 80% 的结构」）
     droneHullBonusPct: allDefs.reduce((s, m) => s + (m.droneHullHpBonusPct ?? 0), 0),

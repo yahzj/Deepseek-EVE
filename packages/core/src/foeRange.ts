@@ -12,7 +12,7 @@ import type { DamageType, ModuleDef, SimContext } from './types'
 import type { UnitSpec, WeaponSpec } from './combat'
 import { createPlayerSpec } from './playerSpec'
 import { allFittedModules, stackingOf, stackWeight, WEIGHTED_GAP_FLEET_CAP, weightedGap, fittedPenaltyPartsOf } from './equipment'
-import { distFactor, shieldRecoveryRatio } from './combatMath'
+import { distFactor } from './combatMath'
 import { coronaFleetRangeBonusOf } from './coronaFocus'
 import { moduleAllowedOnShip } from './shipFitting'
 import { fleetDefOf } from './instances'
@@ -91,10 +91,8 @@ export function fittedEffectParamsOf(
   folded('droneRange', mod.droneRangeBonusPct)
   folded('droneLaunch', mod.droneLaunchCutPct)
   folded('laserFalloff', mod.laserFalloffBonus)
-  const shieldRatio = mod.shieldPulsePct !== undefined || mod.shieldFieldPct !== undefined
-    ? shieldRecoveryRatio(createPlayerSpec(state, ctx, shipId)) : 1
-  folded('shieldPulse', mod.shieldPulsePct === undefined ? undefined : mod.shieldPulsePct * shieldRatio)
-  folded('shieldField', mod.shieldFieldPct === undefined ? undefined : mod.shieldFieldPct * shieldRatio)
+  folded('shieldPulse', mod.shieldPulsePct)
+  folded('shieldField', mod.shieldFieldPct)
   folded('hit', mod.hitBonusPct)
   folded('lock', mod.lockDmgBonus)
   folded('warp', mod.warpSpeedBonusPct)

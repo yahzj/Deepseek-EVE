@@ -16,14 +16,8 @@ export interface Hp3 {
   h: number
 }
 
-/** 2026-10-13船长确认：舰船容量提高，恢复基准与无人机不随之提高。 */
+/** 2026-10-13船长确认：舰船容量提高，无人机不随之提高。 */
 export const SHIP_HP_UPLIFT_MUL = 1.5
-
-/** 把恢复基准的比例换算为当前护盾容量的比例；未装配读数不含舰体取整。 */
-export function shieldRecoveryRatio(spec?: { hp: Hp3; recoveryHp?: Hp3 } | null): number {
-  if (!spec) return 1 / SHIP_HP_UPLIFT_MUL
-  return spec.hp.s > 0 ? (spec.recoveryHp?.s ?? spec.hp.s) / spec.hp.s : 0
-}
 
 /** 舰载武器近盲仍开火；无人机沿用原射程判定。 */
 export function playerWeaponInRange(dist: number, w: { src?: string; minRangeM: number; maxRangeM: number }): boolean {

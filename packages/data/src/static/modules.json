@@ -492,28 +492,28 @@
         "id": "mod-shieldchg-1",
         "slot": "shield",
         "rack": "mid",
-        "shieldPulsePct": 0.12,
+        "shieldPulsePct": 0.08,
         "cpuUse": 25
       },
       {
         "id": "mod-shieldchg-2",
         "slot": "shield",
         "rack": "mid",
-        "shieldPulsePct": 0.2,
+        "shieldPulsePct": 0.133,
         "cpuUse": 45
       },
       {
         "id": "mod-shieldchg-3",
         "slot": "shield",
         "rack": "mid",
-        "shieldPulsePct": 0.32,
+        "shieldPulsePct": 0.213,
         "cpuUse": 70
       },
       {
         "id": "mod-shieldfield-2",
         "slot": "shield-field",
         "rack": "high",
-        "shieldFieldPct": 0.1,
+        "shieldFieldPct": 0.067,
         "shieldFieldMs": 10000,
         "cpuUse": 63
       },
@@ -521,7 +521,7 @@
         "id": "mod-shieldfield-3",
         "slot": "shield-field",
         "rack": "high",
-        "shieldFieldPct": 0.1,
+        "shieldFieldPct": 0.067,
         "shieldFieldMs": 8000,
         "cpuUse": 91
       },

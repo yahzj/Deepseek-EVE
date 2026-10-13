@@ -119,7 +119,7 @@ describe('逐舰装置视图：真实账本和归属', () => {
     expect(view(w).every(row => row.ownerTag === 'player')).toBe(true)
   })
 
-  it('充能与力场保持各流到点时刻，周期使用单点，效果只读本路账本', () => {
+  it('充能与力场保持各流到点时刻，周期和效果读取现行装配参数', () => {
     const w = world([{ high: ['mod-shieldfield-2', 'mod-shieldfield-3'],
       mid: ['mod-shieldchg-1', 'mod-shieldchg-3'], low: ['mod-prop-2'] }])
     w.battle.lastTickGameMs = 2_000
@@ -157,7 +157,9 @@ describe('逐舰装置视图：真实账本和归属', () => {
     const minMs = Math.min(...shieldFieldStreamsOf(w.state, ctx, w.units[0]!.shipId).map(stream => stream.ms))
     expect(rows(w, 'shield-field')).toHaveLength(1)
     expect(rows(w, 'shield-field')[0]).toMatchObject({ count: 2, cycleMs: minMs, remainingMs: 9_000 })
-    expect(rows(w, 'shield-field')[0]!.effectPct).toBeCloseTo(29)
+    const currentPct = shieldFieldStreamsOf(w.state, ctx, w.units[0]!.shipId).reduce((sum, stream) => sum + stream.pct, 0)
+    expect(rows(w, 'shield-field')[0]!.effectPct).toBeCloseTo(currentPct * 100)
+    expect(book.streams[0]!.pct).toBe(.29)
     expect(book.streams[0]!.ms).toBe(99_000)
     expect(book.streams[0]!.nextPulseAtMs).toBe(12_000)
   })
@@ -177,7 +179,8 @@ describe('逐舰装置视图：真实账本和归属', () => {
     expect(field.cycleMs).toBe(shieldFieldStreamsOf(w.state, ctx, w.units[0]!.shipId)[0]!.ms)
     expect(field.cycleMs).toBeGreaterThan(oldMs)
     expect(field.remainingMs).toBe(at)
-    expect(field.effectPct).toBeCloseTo(27)
+    expect(field.effectPct).toBeCloseTo(6.7)
+    expect(w.battle.shieldFieldBy!.player!.streams[0]!.pct).toBe(.27)
     expect(w.battle.shieldFieldBy!.player!.streams[0]!.ms).toBe(oldMs)
     expect(w.battle.shieldFieldBy!.player!.streams[0]!.nextPulseAtMs).toBe(at)
     expect(all.find(row => row.kind === 'drone-deck')).toMatchObject({ cycleMs: deckCycle, remainingMs: 7_000 })

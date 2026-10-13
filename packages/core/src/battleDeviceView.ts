@@ -1,7 +1,7 @@
 import type { UnitSpec } from './combat'
 import type { BattleState, GameState } from './state'
 import type { SimContext } from './types'
-import { isAlive, shieldRecoveryRatio } from './combatMath'
+import { isAlive } from './combatMath'
 import {
   repairKitAvailableOf, repairLedgersOf, repairStatsFor, shieldChargeLedgersOf,
   shieldChargeStreamsOf, shieldFieldStreamsOf, REPAIR_PULSE_MS, SHIELD_FIELD_COST_PCT,
@@ -148,20 +148,22 @@ export function battleDeviceCyclesOf(
         const modelId = stream.modelId || models[0]?.id
         const count = stream.modelId ? models.filter(d => d.id === stream.modelId).length : models.length
         const live = current.find(s => s.modelId === stream.modelId)
+        const effectPct = live?.pct ?? (stream.modelId === '' && current.length > 0
+          ? current.reduce((sum, s) => sum + s.pct, 0) : stream.pct)
         // 旧档合并流的空型号与引擎同口径：用现行最短间隔，但不拆它的单路计时。
         const cycle = positive(live?.ms ?? (stream.modelId === '' && current.length > 0
           ? Math.min(...current.map(s => s.ms)) : stream.ms))
         const at = 'nextPulseAtMs' in stream && finite(stream.nextPulseAtMs) ? stream.nextPulseAtMs : undefined
         let status = pulseState(at, cycle)
         if (kind === 'shield-field' && status === 'ready') {
-          const cap = positive(spec.recoveryHp?.s ?? rt?.hpMax?.s ?? spec.hp.s)
+          const cap = positive(rt?.hpMax?.s ?? spec.hp.s)
           const target = units.some(u => u.spec.tag !== spec.tag && battle.units[u.spec.tag]?.hp
             && isAlive(battle, u.spec.tag)
             && battle.units[u.spec.tag]!.hp.s < positive(battle.units[u.spec.tag]!.hpMax?.s ?? u.spec.hp.s))
           if (cap === 0 || !target || positive(rt?.hp.s) < cap * SHIELD_FIELD_COST_PCT) status = 'waiting'
         }
         add(kind, `${stream.modelId || 'legacy'}:${index}`, modelId, count, cycle, at, status,
-          { effectPct: positive(stream.pct) * shieldRecoveryRatio(spec) * 100 })
+          { effectPct: positive(effectPct) * 100 })
       })
     }
 

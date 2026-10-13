@@ -466,9 +466,8 @@ function kitHealFor(
   caps: { capA: number; capH: number; baseA: number; baseH: number } | null,
 ): { a: number; h: number } {
   const skill = quickRepairFactor(state, ctx)
-  const amp = createPlayerSpec(state, ctx, shipId)?.repairCapacityAmp
-  const aMult = amp?.a ?? (caps && caps.baseA > 0 ? caps.capA / caps.baseA : 1)
-  const hMult = amp?.h ?? (caps && caps.baseH > 0 ? caps.capH / caps.baseH : 1)
+  const aMult = caps && caps.baseA > 0 ? caps.capA / caps.baseA : 1
+  const hMult = caps && caps.baseH > 0 ? caps.capH / caps.baseH : 1
   return { a: Math.max(1, Math.round(baseHp * aMult * skill)), h: Math.max(1, Math.round(baseHp * hMult * skill)) }
 }
 

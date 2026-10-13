@@ -137,7 +137,6 @@ const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; e
   { concept: '敌舰最终容量倍率', symbol: 'foeShipHpMulOf', file: 'packages/core/src/foePower.ts', exported: true },
   { concept: '玩家舰载武器近盲开火', symbol: 'playerWeaponInRange', file: 'packages/core/src/combatMath.ts', exported: true },
   { concept: '玩家舰载武器近盲伤害倍率', symbol: 'playerBlindDamageMul', file: 'packages/core/src/combatMath.ts', exported: true },
-  { concept: '护盾恢复基准占当前容量比例', symbol: 'shieldRecoveryRatio', file: 'packages/core/src/combatMath.ts', exported: true },
   { concept: '目标舰实际停靠', symbol: 'shipActuallyDocked', file: 'packages/core/src/shipActionPolicy.ts', exported: true },
   { concept: '目标舰操作许可', symbol: 'shipOperationBlockReason', file: 'packages/core/src/shipActionPolicy.ts', exported: true },
   { concept: '换驾驶只读许可', symbol: 'changeShipBlockReason', file: 'packages/core/src/shipyard.ts', exported: true },

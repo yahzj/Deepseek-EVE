@@ -5,7 +5,6 @@
 
 export { battleWeaponCyclesOf } from './battleWeaponView'
 export { foeFamilyHpMulOf } from './foePower'
-export { shieldRecoveryRatio } from './combatMath'
 export { shipActuallyDocked, shipOperationBlockReason } from './shipActionPolicy'
 export { changeShipBlockReason } from './shipyard'
 export type { ShipOperation } from './shipActionPolicy'

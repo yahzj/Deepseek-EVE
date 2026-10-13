@@ -55,6 +55,13 @@ describe('物品装备说明双语与数据守恒', () => {
       'mod-lair-turret-a': .15, 'mod-wh-d-turret': .2,
     }
     const adjusted = before.map(mod => {
+      // 2026-10-13船长确认：护盾直接调参及上一轮固定血量插件增量。
+      const shieldChanges: Record<string, number> = { 'mod-shieldchg-1': .08, 'mod-shieldchg-2': .133, 'mod-shieldchg-3': .213 }
+      if (shieldChanges[mod.id] !== undefined) return { ...mod, shieldPulsePct: shieldChanges[mod.id] }
+      if (['mod-shieldfield-2', 'mod-shieldfield-3'].includes(mod.id)) return { ...mod, shieldFieldPct: .067 }
+      if (mod.id === 'plug-shield-plate') return { ...mod, shieldHpAdd: 120 }
+      if (mod.id === 'plug-armor-plate') return { ...mod, armorHpAdd: 210 }
+      if (mod.id === 'plug-hull-plate') return { ...mod, hullHpAdd: 120 }
       // 2026-10-12 船长明确只改玩家动能远端倍率，其他字段继续全值核对。
       if (falloffChanges[mod.id] !== undefined) return { ...mod, falloff: falloffChanges[mod.id] }
       if (mod.id === 'mod-wh-e-cpu') return { ...mod, reloadPenaltyPct: .05 }
@@ -215,7 +222,7 @@ describe('真实参数行承接说明数字', () => {
       for (const tier of [2, 3]) {
         const id = `mod-shieldfield-${tier}`
         const rows = display.moduleInfoLines(MODULES.find(module => module.id === id)!).map(row => textOf(row.v)).join('|')
-        expect(rows).toContain(`${Math.round(core.SHIELD_FIELD_COST_PCT * 100)}%`)
+        expect(rows).toContain(`${(core.SHIELD_FIELD_COST_PCT * 100).toFixed(1)}%`)
         expect(rows).toContain(locale === 'zh' ? '其他存活舰船' : 'other surviving fleet ship')
         expect(rows).not.toMatch(/\{p\d\}/)
         const bp = `bp-shieldfield-${tier}`
@@ -249,9 +256,41 @@ describe('真实参数行承接说明数字', () => {
     expect(rowsOf('mod-lair-blink-r')).toContain('2000 m')
     expect(rowsOf('mod-lair-blink-r')).toContain('16 秒')
     expect(rowsOf('mod-lair-laser-r')).toContain('0.6')
-    expect(rowsOf('mod-shieldchg-2')).toContain('20%')
+    expect(rowsOf('mod-shieldchg-2')).toContain('13.3%')
     expect(rowsOf('mod-shieldfield-3')).toContain('8')
     expect(rowsOf('plug-rangefinder')).toContain('20%')
+  })
+  it('充能和力场比例在中英短行及详情中直接显示1位小数，装后不再另行折算', () => {
+    const ctx = buildSimContext()
+    const state = core.createInitialState({ nowWallMs: 0, seed: 1013 })
+    const uid = core.addShipToFleet(state, 'sh-megalodon')
+    state.shipId = uid
+    state.skills.trained['shield-operation'] = 5
+    state.fleet[uid]!.plugs = ['plug-shield-plate']
+    state.fleet[uid]!.fitted = { high: ['mod-shieldfield-2'], mid: ['mod-shield-ext-3'], low: [] }
+    for (const locale of ['zh', 'en'] as const) {
+      language.value = locale
+      for (const [id, percentage] of [['mod-shieldchg-1', '8.0%'], ['mod-shieldchg-2', '13.3%'],
+        ['mod-shieldchg-3', '21.3%'], ['mod-shieldfield-2', '6.7%'], ['mod-shieldfield-3', '6.7%']] as const) {
+        const mod = ctx.modules.get(id)!
+        const before = structuredClone(state)
+        const plain = display.moduleInfoLines(mod).map(row => textOf(row.v)).join('|')
+        const fitted = display.moduleInfoLines(mod, { state, ctx }, uid).map(row => textOf(row.v)).join('|')
+        for (const text of [plain, fitted, display.moduleShortEffect(mod)]) {
+          expect(text, `${locale}:${id}`).toContain(percentage)
+          expect(text).not.toMatch(/\d+\.\d{2,}%|\{p\d+\}/)
+        }
+        if (mod.shieldFieldPct) {
+          const mechanism = display.moduleInfoLines(mod, { state, ctx }, uid).find(row => row.k === L10N['ui.moduleSpecs.003']![locale])!
+          expect(textOf(mechanism.v).match(/6\.7%/g)).toHaveLength(2)
+        }
+        const decayed = display.moduleInfoLines(mod, { state, ctx }, uid, 2).find(row => row.k === L10N['ui.shipInfo.222']![locale])!
+        const effective = (core.stackWeight(2) * (mod.shieldPulsePct ?? mod.shieldFieldPct ?? 0) * 100).toFixed(1)
+        expect(textOf(decayed.v)).toContain(`${effective}%`)
+        expect(textOf(decayed.v)).toContain(percentage)
+        expect(state).toEqual(before)
+      }
+    }
   })
   it.each(MODULES)('$id 详情参数行标签不重名，避免新行重复旧行', (module) => {
     language.value = 'zh'

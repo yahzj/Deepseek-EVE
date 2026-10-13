@@ -8,9 +8,9 @@ import { addShipToFleet } from '../src/fleetBook'
 import { createPlayerSpec } from '../src/playerSpec'
 import { advanceBattleFor, startBattleFor, battleZonesFor, battleArcsFor, applyFoeOverride } from '../src/combat'
 import { createFoeSpecs } from '../src/foeSpecs'
-import { SHIP_HP_UPLIFT_MUL, playerWeaponInRange, playerBlindDamageMul, shieldRecoveryRatio } from '../src/combatMath'
+import { SHIP_HP_UPLIFT_MUL, playerWeaponInRange, playerBlindDamageMul } from '../src/combatMath'
 import { foeFamilyHpMulOf, foeShipHpMulOf } from '../src/foePower'
-import { pulseShieldChargeFor, pulseShieldFieldFor, repairStatsFor } from '../src/combatRepair'
+import { pulseShieldChargeFor, pulseShieldFieldFor, repairStatsFor, SHIELD_FIELD_COST_PCT, SHIELD_REGEN_FLOOR_PCT } from '../src/combatRepair'
 import { wormholeExpeditionCard } from '../src/wormholeExpeditionFoes'
 import { WEEKEND_FLAGSHIP_POOL_HP } from '../src/weekendEvent'
 import { cleanBattle } from '../src/saveBattleClean'
@@ -31,7 +31,7 @@ function world(high: string[] = []) {
   return { state, uid }
 }
 
-describe('全舰容量与恢复基准', () => {
+describe('全舰容量与直接恢复参数', () => {
   it('46艘舰只改三层血，固定插件只改三个加血值', () => {
     const expected = structuredClone(oldShips)
     for (const row of Object.values(expected.groups).flat()) {
@@ -46,17 +46,18 @@ describe('全舰容量与恢复基准', () => {
     expect(plugs).toEqual(expectedPlugs)
   })
 
-  it.each(oldRows.map(row => row.id))('%s恢复基准保留原裸容量，维修增幅不随容量提高', id => {
+  it.each(oldRows.map(row => row.id))('%s只建当前容量，不再派生旧恢复基准', id => {
     const { state } = world()
     const uid = addShipToFleet(state, id)
     state.fleet[uid]!.fitted = { high: [], mid: [], low: [] }
     const spec = createPlayerSpec(state, ctx, uid)!
     const old = oldRows.find(row => row.id === id)!
-    expect(spec.recoveryHp).toEqual({ s: old.shieldHp, a: old.armorHp, h: old.hullHp })
-    expect(spec.repairCapacityAmp).toEqual({ a: 1, h: 1 })
+    expect(spec.hp).toEqual({ s: Math.round(old.shieldHp * 1.5), a: Math.round(old.armorHp * 1.5), h: Math.round(old.hullHp * 1.5) })
+    expect(spec).not.toHaveProperty('recoveryHp')
+    expect(spec).not.toHaveProperty('repairCapacityAmp')
   })
 
-  it('充能、力场恢复和扣盾均使用旧基准，新容量仍可修满', () => {
+  it('充能、力场恢复和扣盾直接使用当前容量，新容量仍可修满', () => {
     const { state, uid } = world(['mod-shieldfield-2'])
     const ally = addShipToFleet(state, 'sh-megalodon')
     const spec = createPlayerSpec(state, ctx, uid)!
@@ -66,14 +67,16 @@ describe('全舰容量与恢复基准', () => {
     battle.units.player!.hp.s = spec.hp.s / 2
     battle.units[other.tag]!.hp.s = 0
     const before = battle.units.player!.hp.s
-    pulseShieldFieldFor(battle, [spec, other], { pct: .1 }, spec)
-    expect(battle.units.player!.hp.s).toBeCloseTo(before - spec.recoveryHp!.s * .1)
-    expect(battle.units[other.tag]!.hp.s).toBeCloseTo(spec.recoveryHp!.s * .1)
+    const fieldPct = ctx.modules.get('mod-shieldfield-2')!.shieldFieldPct!
+    pulseShieldFieldFor(battle, [spec, other], { pct: fieldPct }, spec)
+    expect(battle.units.player!.hp.s).toBeCloseTo(before - spec.hp.s * SHIELD_FIELD_COST_PCT)
+    expect(battle.units[other.tag]!.hp.s).toBeCloseTo(spec.hp.s * fieldPct)
     battle.units.player!.hp.s = 0
-    pulseShieldChargeFor(battle, spec, { streams: [{ modelId: '', pct: .2, ms: 15000 }], pulses: 0 })
-    expect(battle.units.player!.hp.s).toBeCloseTo(spec.recoveryHp!.s * .2)
+    const charge = { streams: [{ modelId: 'mod-shieldchg-2', pct: ctx.modules.get('mod-shieldchg-2')!.shieldPulsePct!, ms: 15000 }], pulses: 0 }
+    pulseShieldChargeFor(battle, spec, charge)
+    expect(battle.units.player!.hp.s).toBeCloseTo(spec.hp.s * .133)
     battle.units.player!.hp.s = spec.hp.s - 1
-    pulseShieldChargeFor(battle, spec, { streams: [{ modelId: '', pct: .2, ms: 15000 }], pulses: 0 })
+    pulseShieldChargeFor(battle, spec, charge)
     expect(battle.units.player!.hp.s).toBe(spec.hp.s)
   })
 
@@ -86,21 +89,24 @@ describe('全舰容量与恢复基准', () => {
     expect(repairStatsFor(state, ctx, uid)!.units[0]).toMatchObject({ armorPerPulse: 23, hullPerPulse: 23 })
   })
 
-  it('插件、技能和容量件提高血量后，恢复增幅仍与提高前公式一致', () => {
+  it('插件、技能和容量件按当前血量参与原有固定维修增幅', () => {
     const { state, uid } = world()
     const fleet = state.fleet[uid]!
     fleet.plugs = ['plug-armor-plate', 'plug-hull-plate', 'plug-shield-plate']
+    fleet.fitted.mid = ['mod-hullrep-2']
     state.skills.trained['hull-upgrades'] = 5
     state.skills.trained['shield-operation'] = 5
     const spec = createPlayerSpec(state, ctx, uid)!
-    const old = oldRows.find(row => row.id === 'sh-megalodon')!
-    expect(spec.recoveryHp!.s).toBeCloseTo((old.shieldHp + 80) * 1.2)
-    expect(spec.recoveryHp!.a).toBeCloseTo((old.armorHp + 140) * 1.2)
-    expect(spec.repairCapacityAmp!.a).toBeCloseTo((old.armorHp + 140) * 1.2 / old.armorHp)
-    expect(shieldRecoveryRatio(spec)).toBeCloseTo(spec.recoveryHp!.s / spec.hp.s)
+    const def = ctx.ships.get('sh-megalodon')!
+    expect(spec.hp.s).toBeCloseTo((def.shieldHp! + 120) * 1.2)
+    expect(spec.hp.a).toBeCloseTo((def.armorHp! + 210) * 1.2)
+    expect(repairStatsFor(state, ctx, uid)!.units[0]).toMatchObject({
+      armorPerPulse: Math.round(18 * spec.hp.a / def.armorHp!),
+      hullPerPulse: Math.round(18 * spec.hp.h / def.hullHp!),
+    })
   })
 
-  it.each([0, .1, .5, .9])('剩余盾比例%s的被动恢复点数保持原公式', fraction => {
+  it.each([0, .1, .5, .9])('剩余盾比例%s按当前容量与1.2%至0.6%恢复', fraction => {
     const { state, uid } = world()
     const spec = createPlayerSpec(state, ctx, uid)!
     const battle = startBattleFor(state, ctx, uid, 'ano-training', 0, 5000)!
@@ -108,10 +114,12 @@ describe('全舰容量与恢复基准', () => {
     const rt = battle.units.player!
     rt.hp.s = spec.hp.s * fraction
     const before = rt.hp.s
-    const oldRate = fraction > 0 ? Math.max(spec.recoveryHp!.s * fraction * ctx.balance.battle.shieldRegenPerSec, spec.recoveryHp!.s * .01) : 0
+    expect(ctx.balance.battle.shieldRegenPerSec).toBe(.012)
+    expect(SHIELD_REGEN_FLOOR_PCT).toBe(.006)
+    const rate = fraction > 0 ? Math.max(before * .012, spec.hp.s * .006) : 0
     state.gameMs = 10
     advanceBattleFor(state, ctx, battle, uid, 'ano-training')
-    expect(rt.hp.s - before).toBeCloseTo(oldRate * .01, 9)
+    expect(rt.hp.s - before).toBeCloseTo(rate * .01, 9)
   })
 
   it('敌舰最终加血不改变裸舰、无人机族格或输出，绝对共享池不重乘', () => {

@@ -312,9 +312,6 @@ export interface UnitSpec {
   repairPct?: number
   side: 'me' | 'foe'
   hp: Hp3
-  /** 2026-10-13：容量提高前的常规恢复基准，不进存档。 */
-  recoveryHp?: Hp3
-  repairCapacityAmp?: { a: number; h: number }
   resists: { shield?: DamageResists; armor?: DamageResists; hull?: DamageResists }
   /**
    * **本舰无人机结构层加成**（2026-09-13 船长：G 族「鱿蜂结构层」＝残兵结构层改名 ——
@@ -4002,8 +3999,7 @@ export function advanceBattleFor(
     }
     /**
      * 护盾充能装置脉冲（逐舰 · **逐型号** · 2026-09-16 逐舰化 ＋ **2026-09-21 逐型号独立回转**）：
-     * 与维修装置**各按各的计时**（30 秒 vs 5 秒），同样在受伤结算之后补跳（≤1 拍延迟）；
-     * 破盾后它是唯一能把盾点起来的路径。
+     * 与维修装置各按各的计时（15秒与5秒），同样在受伤结算之后补跳。
      *
      * ⚠ **一场一路一跳**：每路按自己的 `nextPulseAtMs` 到点就跳、只补**那一路**的比例
      * （船长令：「不同型号就要独立的回转冷却」）。改前是"一跳补合计值"——MK1 与 MK3 混装会被
@@ -4018,7 +4014,11 @@ export function advanceBattleFor(
         const owner = battle.myFleet?.find(e => e.tag === tag)?.shipId ?? shipId
         const currentStreams = shieldChargeStreamsOf(state, ctx, owner)
         for (const stream of ledger.streams) {
-          stream.ms = currentStreams.find(s => s.modelId === stream.modelId)?.ms ??
+          const current = currentStreams.find(s => s.modelId === stream.modelId)
+          // 在途旧比例跟随现行参数；空型号旧流仍保留合并计时，截止时刻不重排。
+          stream.pct = current?.pct ?? (stream.modelId === '' && currentStreams.length > 0
+            ? currentStreams.reduce((sum, s) => sum + s.pct, 0) : stream.pct)
+          stream.ms = current?.ms ??
             (stream.modelId === '' && currentStreams.length > 0 ? Math.min(...currentStreams.map(s => s.ms)) : stream.ms)
           if (battle.ended) break
           if (stream.nextPulseAtMs === undefined || stream.nextPulseAtMs > battle.lastTickGameMs) continue
@@ -4060,7 +4060,10 @@ export function advanceBattleFor(
         const owner = battle.myFleet?.find(e => e.tag === tag)?.shipId ?? shipId
         const currentStreams = shieldFieldStreamsOf(state, ctx, owner)
         for (const stream of ledger.streams) {
-          stream.ms = currentStreams.find(s => s.modelId === stream.modelId)?.ms ??
+          const current = currentStreams.find(s => s.modelId === stream.modelId)
+          stream.pct = current?.pct ?? (stream.modelId === '' && currentStreams.length > 0
+            ? currentStreams.reduce((sum, s) => sum + s.pct, 0) : stream.pct)
+          stream.ms = current?.ms ??
             (stream.modelId === '' && currentStreams.length > 0 ? Math.min(...currentStreams.map(s => s.ms)) : stream.ms)
           if (battle.ended) break
           if (stream.nextPulseAtMs === undefined || stream.nextPulseAtMs > battle.lastTickGameMs) continue
@@ -5498,7 +5501,7 @@ function stepBattle(
 
   // ── P0：护盾战中被动回充（EVE 式；损失不跨场，只回盾层）。
   // 甲/结构已打穿时停止回充——避免"只剩一层盾皮"的无限僵持（P2 可再调）
-  // 2026-10-13：同剩余比例的恢复点数保持加血前水平；破盾仍不被动恢复。
+  // 2026-10-13：当前盾1.2%/秒，下限满盾0.6%/秒；破盾仍不被动恢复。
   if (bal.shieldRegenPerSec > 0) {
     for (const unit of myUnits) {
       const urt = b.units[unit.tag]
@@ -5506,10 +5509,8 @@ function stepBattle(
       // ⚠ 满盾优先取战斗单位的 `hpMax.s`；老档/异常缺省时回退到该单位的 `spec.hp.s`（= 满盾口径）
       const sMax = urt.hpMax?.s ?? unit.hp.s
       if (urt.hp.s >= sMax || (urt.hp.a <= 0 && urt.hp.h <= 0)) continue
-      // 下限按恢复基准的1%/秒，而不是提高后的满盾。
-      const recoveryCapS = unit.recoveryHp?.s ?? sMax
-      const floor = recoveryCapS * SHIELD_REGEN_FLOOR_PCT
-      const rate = urt.hp.s > 0 ? Math.max(urt.hp.s / Math.max(1e-9, sMax) * recoveryCapS * bal.shieldRegenPerSec, floor) : 0
+      const floor = sMax * SHIELD_REGEN_FLOOR_PCT
+      const rate = urt.hp.s > 0 ? Math.max(urt.hp.s * bal.shieldRegenPerSec, floor) : 0
       const regen = rate * dtSec
       if (regen > 0) urt.hp.s = Math.min(sMax, urt.hp.s + regen)
     }
@@ -5966,24 +5967,22 @@ function steadyPreview(
   //   · 装了「护盾充能装置」时：把 15 秒脉冲折成**恒定附加回充** `c = 满盾 × 每跳比例 ÷ 15 秒`，
   //     **只在破盾后计入**（盾没破时被动回充远大于它）——这样估算不会对带装置的人过分悲观。
   // ⚠ **2026-09-20 船长加「恢复速度下限」后本模型必须同改**（原话见 `SHIELD_REGEN_FLOOR_PCT`）：
-  //   引擎的回充已是 `max(当前盾 × k, 满盾 × 1%)` ⇒ **盾低于 50% 后回充不再随盾量缩水**
-  //   （速率恒定 = 满盾的 1%/秒）。本模型若还用纯指数式，会**低估**玩家的盾抗 ⇒ AI 派单误判。
-  //   新的分段动力学（`sMax` = 满盾、`sCap = sMax × 1%` = 恒速下限、`sX = sCap / k` = 两段交点）：
+  //   现行回充为 `max(当前盾 × k, 满盾 × 0.6%)` ⇒ 盾低于50%后回充不再随盾量缩水。
+  //   恒速下限 = 满盾0.6%/秒，交点sX = sCap / k；预估与实战读取相同参数。
   //     · `s > sX`：指数段（同旧口径）
   //     · `sX ≥ s > 0`：**恒速段**（净掉率 = D − sCap；`D ≤ sCap` ⇒ 恒速回充，永远打不穿）
   //     · `s = 0`：破盾，回充归 0（不变）
   const foeDpsNet = foeDps * foeMul
-  const recoveryCapS = me.recoveryHp?.s ?? me.hp.s
-  const k = bal.shieldRegenPerSec * recoveryCapS / Math.max(1e-9, me.hp.s)
+  const k = bal.shieldRegenPerSec
   const s0 = Math.max(0, me.hp.s)
-  const sCap = recoveryCapS * SHIELD_REGEN_FLOOR_PCT
+  const sCap = s0 * SHIELD_REGEN_FLOOR_PCT
   const sX = k > 0 ? sCap / k : Number.POSITIVE_INFINITY
   /**
    * **每秒回盾量 = Σ 逐路「本路比例 × 满盾 ÷ 本路间隔」**（**2026-09-21 逐型号独立回转**后：
    * 各路各按各的节奏跳，所以必须逐路换算再相加，不能拿"合计比例 ÷ 某个间隔"）。
    */
   const chargePerSec =
-    shieldChargeStreamsOf(state, ctx, shipId).reduce((n, s) => n + (s.pct * recoveryCapS) / Math.max(1, s.ms) / 1000, 0)
+    shieldChargeStreamsOf(state, ctx, shipId).reduce((n, s) => n + (s.pct * s0) / Math.max(1, s.ms) / 1000, 0)
   let ttrMe: number
   if (foeDpsNet <= 0) {
     ttrMe = Number.POSITIVE_INFINITY // 敌方打不动我

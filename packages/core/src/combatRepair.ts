@@ -21,8 +21,8 @@ import { takeWormholeSupply, wormholeSupplyForBattle } from './wormholeSupplies'
 /** 船体维修装置脉冲间隔（毫秒；2026-09-09 三档统一 5 秒一跳，见 data/modules.ts mod-hullrep-*） */
 export const REPAIR_PULSE_MS = 5_000
 
-/** 2026-10-07 船长确认：每路有效力场脉冲消耗施放者最大护盾的比例。 */
-export const SHIELD_FIELD_COST_PCT = 0.1
+/** 2026-10-13 船长确认：每路有效力场脉冲消耗施放者最大护盾6.7%。 */
+export const SHIELD_FIELD_COST_PCT = 0.067
 
 /* 以下为 2026-10-02 批次 4h 从 combat.ts 切接过来的整簇（layerAmpOf ~ pulseRepairsFor）。 */
 
@@ -39,7 +39,6 @@ function layerAmpOf(state: GameState, ctx: SimContext, shipId: string): { a: num
   const spec = createPlayerSpec(state, ctx, shipId)
   const def = fleetDefOf(state, ctx, shipId)
   if (!spec || !def) return { a: 1, h: 1 }
-  if (spec.repairCapacityAmp) return spec.repairCapacityAmp
   const baseA = def.armorHp ?? 0
   const baseH = def.hullHp ?? 0
   return {
@@ -275,23 +274,15 @@ export function repairUsageText(
 }
 
 /**
- * **护盾充能装置的脉冲间隔**（2026-09-14 船长：「护盾充能装置，和船体修理装置类似。
- *  **每 30 秒**恢复自身护盾最大值一定比例的护盾量。CPU消耗较多」）。
- *
- * 与 `REPAIR_PULSE_MS`（维修装置 5 秒）是**两套独立计时**：两者可以同装、各按各的节奏跳。
- * ⚠ 界面/说明里的「每 30 秒」与它同源（`content:check` 的「产物说明契约」按语境常量核）。
+ * 护盾充能装置每15秒按本舰最大护盾恢复；与维修装置的5秒周期独立。
  */
 export const SHIELD_PULSE_MS = 15_000
 
 /**
- * **护盾被动回充的速率下限**（2026-09-20 船长：「**舰船护盾的恢复速度下限改为1%。但是当护盾被击穿时，依旧是0%**」；
- * 追问口径后补：「**满盾依旧是2%，当盾量接近0的时候是1%**」）。
- *
- * 2026-10-13：容量提高但实际恢复点数保持，满盾基准改读`recoveryHp.s`。
- * 每秒 = `max(当前盾/容量×恢复基准×shieldRegenPerSec, 恢复基准×本值)`；
- * 盾为0不恢复，下限仍在半盾交点以下接管。真实点数由专项验证。
+ * 2026-10-13船长确认：按当前盾1.2%/秒恢复，下限为最大护盾0.6%/秒。
+ * 半盾以下由下限接管，盾为0仍不被动恢复。
  */
-export const SHIELD_REGEN_FLOOR_PCT = 0.01
+export const SHIELD_REGEN_FLOOR_PCT = 0.006
 
 /**
  * **装配单点：三类"按周期脉冲"装置的原始件序**（**未折减**；每个型号一路，装配序 = 第 n 件）。
@@ -329,7 +320,7 @@ function fittedPulseParts(
         hullHp: 0,
       })
     } else if (kind === 'shield-charge') {
-      // 本族暂无"逐型号间隔"的件 ⇒ 三档一律 30 秒（日后某档要错开，加个字段即可，本层与调度都不用动）
+      // 三档共享15秒基础周期，不同型号仍独立计时。
       out.push({ modelId: d.id, pct: d.shieldPulsePct ?? 0, ms: equipmentCycleMsOf(state, ctx, shipId, SHIELD_PULSE_MS), armorHp: 0, hullHp: 0 })
     } else {
       // 维修：间隔由本族常量定（`REPAIR_PULSE_MS` 5 秒），逐台独立计时在 `BattleRepairUnit.nextPulseAtMs`
@@ -479,7 +470,7 @@ export function preloadShieldFieldFor(
 }
 
 /**
- * 每路恢复量 = 施放者恢复基准 × 本路比例，受益舰各自按新容量封顶。
+ * 每路恢复量 = 施放者最大护盾 × 本路比例，受益舰各自按容量封顶。
  * 2026-10-07 改判：排除自身；有缺盾存活队友且足够支付时，直接扣一次满盾代价再恢复。
  * 不足或无目标不发动，原周期排程仍由调用方推进；费用不按目标数或叠加权重放大。
  */
@@ -495,9 +486,8 @@ export function pulseShieldFieldFor(
   // 施放者满盾：容量优先、缺 `hpMax` 才回落规格（与全仓「满血/上限」读法同一把尺）
   const casterRt = b.units[caster.tag]
   const casterCapS = Math.max(0, casterRt?.hpMax?.s ?? caster.hp.s)
-  const recoveryCapS = caster.recoveryHp?.s ?? casterCapS
-  const amount = recoveryCapS * gain
-  const cost = recoveryCapS * SHIELD_FIELD_COST_PCT
+  const amount = casterCapS * gain
+  const cost = casterCapS * SHIELD_FIELD_COST_PCT
   if (!casterRt || !Number.isFinite(amount) || amount <= 0 || casterRt.hp.s < cost) return
   const targets: Array<{ rt: (typeof b.units)[string]; capS: number }> = []
   for (const u of myUnits) {
@@ -521,8 +511,7 @@ export function pulseShieldFieldFor(
  * 2026-09-16 船长裁定「甲：逐舰维修」——护盾充能装置与维修装置**同批逐舰化**
  * （此前只有主控那一份，僚舰装了也白装，与"船体维修装置在洞里无效"同一根因）。
  *
- * 它是**破盾后唯一的回头路**：被动回充按当前盾比例（盾 0 = 回充 0），只有这里能从 0 把盾点起来；
- * 点着之后被动回充立刻接管（指数增长）。
+ * 本舰破盾后仍能充能；重新起盾后被动回充继续生效，队友力场也能恢复0盾。
  */
 export function pulseShieldChargeFor(
   b: import('./state').BattleState,
@@ -537,7 +526,7 @@ export function pulseShieldChargeFor(
   const capS = Math.max(0, rt.hpMax?.s ?? spec.hp.s)
   if (capS <= 0) return
   const pct = stream ? stream.pct : sc.streams.reduce((n, s) => n + s.pct, 0)
-  const gain = (spec.recoveryHp?.s ?? capS) * Math.max(0, pct)
+  const gain = capS * Math.max(0, pct)
   if (gain > 0) rt.hp.s = Math.min(capS, rt.hp.s + gain)
 }
 

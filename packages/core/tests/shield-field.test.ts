@@ -33,7 +33,7 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { anomaly, makeTestCtx, moduleDef } from './helpers'
 import type { SimContext } from '../src/types'
 
-/** 合成力场件（本文件不依赖真数据；数值与真件同档：10% / 10 秒或 8 秒） */
+/** 合成力场件：保留10%任意比例，确认直接读取比例；真实装备参数由直接调参专项验证。 */
 const field = (id: string, sec: number, pct = 0.1): ReturnType<typeof moduleDef> =>
   moduleDef(id, 'shield-field', 0, { shieldFieldPct: pct, shieldFieldMs: sec * 1000, cpuUse: 55 })
 
@@ -265,7 +265,6 @@ describe('护盾充能力场装置：战斗行为', () => {
       const ta = tagOf(b, ally)
       const specs = [main, ally].map((id) => {
         const s = createPlayerSpec(state, ctx, id)!
-        delete s.recoveryHp // 此处测试原规格兼容回退；新恢复基准由本批专项守护。
         s.tag = tagOf(b, id)
         return s
       })
@@ -274,7 +273,7 @@ describe('护盾充能力场装置：战斗行为', () => {
       pulseShieldFieldFor(b, specs, { pct: 0.1 }, specs[0]!)
       const why = `（施放者满盾 ${c.main} · 僚舰满盾 ${c.ally}）`
       expect(b.units[ta]!.hp.s, `僚舰${why}`).toBeCloseTo(c.want, 6)
-      expect(b.units[tm]!.hp.s, `施放者支付${why}`).toBeCloseTo(c.main * .9, 6)
+      expect(b.units[tm]!.hp.s, `施放者支付${why}`).toBeCloseTo(c.main * .933, 6)
     }
   })
 
@@ -304,6 +303,7 @@ describe('护盾充能力场装置：战斗行为', () => {
       ally: ['f3'],
     })
     const b = startFleetBattleFor(state, ctx, [main, ally], 'ano-field', 0)!
+    for (const unit of Object.values(b.units)) unit.weapons.fill(1e9)
     const tm = tagOf(b, main)
     const ta = tagOf(b, ally)
     // ⚠ 先把两舰的盾**打到很低**再看恢复：满盾时补盾会被 `Math.min(满盾, …)` 夹住 ⇒ 看不出"可叠加"
@@ -320,11 +320,9 @@ describe('护盾充能力场装置：战斗行为', () => {
     // 僚舰那条 8 秒一跳 ⇒ 12 秒内至少 1 跳；主控 10 秒一跳 ⇒ 也至少 1 跳
     expect(b.shieldFieldBy![ta]!.pulses).toBeGreaterThanOrEqual(1)
     expect(b.shieldFieldBy![tm]!.pulses).toBeGreaterThanOrEqual(1)
-    // 两舰互补，各自支付一次，不再从自身力场获得免费增长。
-    expect(b.units[tm]!.hp.s).toBeGreaterThan(400)
-    expect(b.units[tm]!.hp.s).toBeLessThanOrEqual(500 + 1e-9)
-    expect(b.units[ta]!.hp.s).toBeGreaterThan(400)
-    expect(b.units[ta]!.hp.s).toBeLessThanOrEqual(500 + 1e-9)
+    // 合成件恢复10%，支付按现行6.7%；各收队友100点、自付67点。
+    expect(b.units[tm]!.hp.s).toBeCloseTo(533, 9)
+    expect(b.units[ta]!.hp.s).toBeCloseTo(533, 9)
   })
 
   it('**施放者阵亡 ⇒ 该力场停跳**（人没了装置就停，与另两套同款）', () => {
