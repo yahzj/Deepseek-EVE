@@ -1,6 +1,6 @@
 # 护盾恢复直接调参
 
-状态：已实现，专项自测完成，待本地合入和船长验收；未推送。工作树：二号`Deepseek-EVE-d2`，基线`4b31d1a5`。
+状态：已实现，专项自测完成，已本地合入main，待船长验收；未推送。工作树：二号`Deepseek-EVE-d2`，基线`4b31d1a5`，实现提交`e24fa9a8`。
 
 ## 船长原话与确认
 
@@ -44,6 +44,8 @@
 - 二号最新Electron构建完成；`station-action-native-check.cjs --case=classic`隐藏原生外壳加载、真实IPC保存、停靠副船维修等冒烟通过。二号缺Electron二进制，父侧临时使用主树现有运行时解析，无安装、业务文件修改或个人档读取；PID27296及其自建服务/临时profile已收尾。这是结构启动及既有操作读数，不是护盾视觉验收。
 - 工作台另导出到`tools/_ui-artifacts/shield-recovery-direct-workbench-20261013`，既有CSV/xlsx不覆盖；导出沿现有列契约，护盾充能/力场比例仍以JSON和装备属性行为权威，不扩充工作台列。
 - 验收可复用既有`ship-hp-blind`合成档及生成器；`make-test-save.ts`头注改为直接恢复参数，不新增门槛或改个人档。
+- 主树快进合入后同组22文件800项复跑通过，证据`tools/_ui-artifacts/shield-recovery-direct-main-20261013.json`；四包类型与主树构建通过。两树23个改动文件规范化行尾后逐字一致，既有BOM不变。
+- 主树原有8个未跟踪文件未暂存/写入；7份导出与存档SHA256保持，`human-revival-station-20261011.md`被并行外部工作更新，不属于本批且未处理。二号干净、两树基线一致，不推送。
 
 ## 待发布公告改稿
 
