@@ -12,16 +12,16 @@
 
 ## 统计
 
-- 文档总数 **468** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7802** KB · **59990** 行
-- 状态分布：**未标注** 250 · **已确认/已实现** 156 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
-- 孤儿文档（0 引用）**86** 份 · 状态未标注 **250** 份
+- 文档总数 **470** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7818** KB · **60141** 行
+- 状态分布：**未标注** 251 · **已确认/已实现** 157 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
+- 孤儿文档（0 引用）**86** 份 · 状态未标注 **251** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
 - 三、现行设计稿（design）：**298** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
-- 八、测试档说明（test-saves）：**15** 份
+- 八、测试档说明（test-saves）：**17** 份
 - 六、专题：舰船美术（design/ship-battle-art）：**7** 份
 - 四、已归档设计稿（design/archive）：**83** 份
 
@@ -35,8 +35,8 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 9 KB / 125 行 | 2 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 303 KB / 315 行 | 18 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 94 KB / 926 行 | 96 / 5 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 519 KB / 1094 行 | 226 / 22 |
-| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 77 KB / 460 行 | 380 / 28 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 520 KB / 1102 行 | 226 / 22 |
+| `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 78 KB / 462 行 | 380 / 28 |
 
 ## 七、评审与体检（review） —— 13 份
 
@@ -111,7 +111,7 @@
 | `docs/design/starmap-zoom-20261002.md` | 星图放大 ＋ 扩大星系判定范围（工作文档） | 进行中（进行中） | 2026-10-02 | 5 KB / 67 行 | 0 / 1 |
 | `docs/design/weekend-family-rotation-20261002.md` | 入侵族的选择：本期设为 R ＋ 下周起循环敌对势力（2026-10-02 · 二号 · 待验收） | 未标注 | 2026-10-02 | 4 KB / 59 行 | 0 / 0 |
 | `docs/design/weekend-open-gate-and-rotation-anchor-20261002.md` | 开局侧硬闸 ＋ 族循环锚点归位 | 未标注 | 2026-10-02 | 5 KB / 67 行 | 0 / 1 |
-| `docs/design/activity-gate-registry-20261001.md` | 主控活动登记表（实验室漏登记）· 2026-10-01 | 未标注 | 2026-10-01 | 18 KB / 209 行 | 4 / 1 |
+| `docs/design/activity-gate-registry-20261001.md` | 主控活动登记表（实验室漏登记）· 2026-10-01 | 未标注 | 2026-10-01 | 21 KB / 228 行 | 6 / 1 |
 | `docs/design/blackbox-copy-fix-20261001.md` | 首发黑匣通讯「谜质 → 装备」用词修正（工作文档） | 进行中（进行中） | 2026-10-01 | 5 KB / 61 行 | 0 / 0 |
 | `docs/design/boost-autorenew-20261001.md` | 技能加速「自动续用」开关 ＋ 工业页标签顺序（工作文档） | 进行中（进行中） | 2026-10-01 | 6 KB / 84 行 | 0 / 0 |
 | `docs/design/comms-export-20261001.md` | 通讯文案工作台（导出工具）· 2026-10-01 | 进行中（进行中） | 2026-10-01 | 5 KB / 67 行 | 1 / 0 |
@@ -166,7 +166,7 @@
 | `docs/design/ecm-stacking-copy-20260926.md` | 报障修正：墨潮电子舱卡面「全额叠加」＋ 缺最短射程 3,000 m（2026-09-26 · 二号 · d2） | 待裁定（已实现 · 待船长验收） | 2026-09-26 | 4 KB / 48 行 | 2 / 0 |
 | `docs/design/industry-ui-opt-20260926.md` | 工业界面优化批 ＋ 组装机/造船厂筛选合并（2026-09-26 · 二号 · d2） | 已确认/已实现（已实现并合入的界面规则保留为现行入口） | 2026-09-26 | 9 KB / 95 行 | 2 / 0 |
 | `docs/design/plug-cargo-and-fit-slot-20260926.md` | 报障两条：插件装货仓再卸货「不见了」＋ 所有船的插件显示成同一套（2026-09-26 · 二号 · d2） | 待裁定（已实现 · 待船长验收） | 2026-09-26 | 5 KB / 65 行 | 2 / 0 |
-| `docs/design/ship-plug-20260926.md` | 舰船插件（2026-09-26） | 已确认/已实现（已实现并合入） | 2026-09-26 | 10 KB / 116 行 | 5 / 11 |
+| `docs/design/ship-plug-20260926.md` | 舰船插件（2026-09-26） | 已确认/已实现（已实现并合入） | 2026-09-26 | 10 KB / 117 行 | 6 / 11 |
 | `docs/design/ship-wreck-20260926.md` | 玩家舰船残骸（含加固结构插件回收接口）（2026-09-26） | 已确认/已实现（已实现并合入） | 2026-09-26 | 11 KB / 138 行 | 4 / 4 |
 | `docs/design/standing-clawback-blackbox-20260926.md` | 声望账本回正 ＋ 入侵黑匣补发（2026-09-26 晚 · 二号 · d2） | 待裁定（已实现 · 待船长验收） | 2026-09-26 | 9 KB / 121 行 | 2 / 0 |
 | `docs/design/spore-allfoes-gate-20260925.md` | 孢子导弹巢「全体攻击」：主目标未命中不再阻断副目标（2026-09-25） | 进行中（进行中 —— 改动已落码、六道闸门待） | 2026-09-25 | 4 KB / 67 行 | 0 / 0 |
@@ -341,7 +341,7 @@
 | `docs/design/v10-content.md` | V10 设计：深空市场大扩容（占位导入） | 已确认/已实现（已确认） | — | 15 KB / 223 行 | 5 / 0 |
 | `docs/design/v10b-combat-data.md` | V10.5 设计：舰船与装备「战斗数值契约」（远行星号伤害体系版） | 已确认/已实现（已确认） | — | 10 KB / 156 行 | 7 / 1 |
 | `docs/design/v11-random-events.md` | V11 设计：随机事件系统（已实现） | 未标注（用户 2026-09-04 逐条拍板） | — | 4 KB / 55 行 | 2 / 0 |
-| `docs/design/v12-combat.md` | V12 设计：实时战斗引擎（统一状态机 · 编队单位模型） | 未标注 | — | 18 KB / 178 行 | 11 / 1 |
+| `docs/design/v12-combat.md` | V12 设计：实时战斗引擎（统一状态机 · 编队单位模型） | 未标注 | — | 20 KB / 192 行 | 15 / 1 |
 | `docs/design/v12a-starmap.md` | V12a 设计：星图 v2 定稿（20 星系 × 27 航线 + 布局编辑器） | 已确认/已实现（已确认） | — | 3 KB / 41 行 | 2 / 0 |
 | `docs/design/v12b-travel-warp.md` | V12b 设计：星图航行跃迁（warp × 航行加速技能族） | 已确认/已实现（已确认） | — | 6 KB / 87 行 | 6 / 0 |
 | `docs/design/v13-exploration.md` | V13 设计：星图探索系统（迷雾 · 点亮 · 扫描探索） | 已确认/已实现（已确认） | — | 7 KB / 97 行 | 6 / 1 |
@@ -356,7 +356,7 @@
 | `docs/design/v7-design.md` | V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版 | 未标注 | — | 7 KB / 117 行 | 0 / 0 |
 | `docs/design/v9-market.md` | V9 设计：市场系统（已实现） | 未标注 | — | 21 KB / 192 行 | 17 / 0 |
 | `docs/design/weapon-skill-batch.md` | 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四） | 未标注 | — | 8 KB / 100 行 | 4 / 0 |
-| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 58 KB / 406 行 | 30 / 14 |
+| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 59 KB / 407 行 | 33 / 14 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 5 KB / 56 行 | 5 / 0 |
 
 ## 九、封存卷（archive · 冻结件，只读不改） —— 37 份
@@ -409,8 +409,8 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 26 / 18 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 15 KB / 233 行 | 11 / 11 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 24 KB / 146 行 | 22 / 7 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 17 KB / 264 行 | 11 / 11 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 27 KB / 166 行 | 22 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -418,10 +418,12 @@
 |---|---|---|---|---|---|
 | `docs/design/battle-data/p41-drone-readings-20260912.md` | P-41 机群批标定轮 · 读数（2026-09-12 · 二号 d2） | 未标注 | 2026-09-12 | 7 KB / 88 行 | 3 / 0 |
 
-## 八、测试档说明（test-saves） —— 15 份
+## 八、测试档说明（test-saves） —— 17 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/test-saves/ship-hp-blind-20261013.md` | 舰船血量与近盲开火验收 | 已确认/已实现（规则及威胁标尺已确认） | 2026-10-13 | 1 KB / 18 行 | 2 / 0 |
+| `docs/test-saves/station-action-20261013.md` | 停靠与远程管理验收档 | 未标注 | 2026-10-13 | 2 KB / 27 行 | 2 / 0 |
 | `docs/test-saves/alien-loot-20261009.md` | 异形入侵装备验收档 | 未标注 | 2026-10-09 | 1 KB / 15 行 | 0 / 0 |
 | `docs/test-saves/fitting-range-20261009.md` | 装配靶场验收 | 未标注 | 2026-10-09 | 1 KB / 14 行 | 1 / 0 |
 | `docs/test-saves/stellar-ready-20261008.md` | 新星系即用档 | 未标注 | 2026-10-08 | 2 KB / 33 行 | 1 / 0 |
@@ -436,7 +438,7 @@
 | `docs/test-saves/black-market-20261004.md` | 黑市页面验收档 | 待裁定（随功能待船长验收） | 2026-10-04 | 1 KB / 15 行 | 1 / 0 |
 | `docs/test-saves/hauler-20261004.md` | 纯货舰修订验收档 | 未标注（已验收） | 2026-10-04 | 2 KB / 25 行 | 3 / 0 |
 | `docs/test-saves/whexpedition-20261004.md` | 虫洞第一批合成测试档 | 未标注（未来虫洞整备/事件/警戒的隔离验收材） | 2026-10-04 | 10 KB / 78 行 | 2 / 0 |
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 76 KB / 762 行 | 63 / 14 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 76 KB / 772 行 | 63 / 14 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -629,8 +631,9 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（250 份，待补一行 `状态：…`）
+## 附：状态未标注（251 份，待补一行 `状态：…`）
 
+- `docs/test-saves/station-action-20261013.md`（2026-10-13）—— 停靠与远程管理验收档
 - `docs/design/workspace-release-20261011.md`（2026-10-11）—— 多工作区合并与推送
 - `docs/design/drone-hull-start-fix-20261009.md`（2026-10-09）—— 无人机舰固有启动时间补齐
 - `docs/design/pressure-chamber-cycle-fix-20261009.md`（2026-10-09）—— 增压加速腔误接推进周期
