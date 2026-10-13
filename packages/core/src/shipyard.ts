@@ -125,10 +125,7 @@ export function changeShipBlockReason(state: GameState, shipId: string, ctx: Sim
   if (state.standby.active) {
     return { error: '舰船正前往掩护巡逻星系途中——到港后再换船。', errorId: 'core.shipyard.006' }
   }
-  if (state.shipReturns[state.shipId] && !state.mining.active && !state.salvaging.active && !state.hauling.active &&
-    !(state.expedition.active && state.expedition.phase === 'back')) {
-    return { error: '返航卸货中', errorId: 'core.busy.020' }
-  }
+  const returning = state.shipReturns[state.shipId] !== undefined
   /**
    * **长途运输：换驾驶 = 立即终止**（2026-09-09 船长定：虚拟货无残留、无惩罚）。
    * 位置见上面那条顺序纪律：只有"真能换"的调用才会走到这里。
@@ -136,8 +133,8 @@ export function changeShipBlockReason(state: GameState, shipId: string, ctx: Sim
    */
   const projected = state.hauling.active
     ? { ...state, awayGalaxy: null, dockedSite: state.hauling.fromSiteId }
-    : state
-  // T8：驾驶船不在站内（野外停留/返航途中）时不可切换
+    : returning ? { ...state, awayGalaxy: null, dockedSite: null } : state
+  // 野外停留仍不可切换；已安排独立返航时只投影新驾驶船的港内位置。
   if (projected.awayGalaxy !== null) {
     const where = state.transit.active
       ? state.transit.delivery
@@ -173,11 +170,14 @@ export function changeShipBlockReason(state: GameState, shipId: string, ctx: Sim
   // 只释放已确认的换驾驶善后，不释放快递、探索、遭遇战或星球运输。
   const handover = {
     ...projected,
+    shipReturns: { ...projected.shipReturns },
     mining: { ...state.mining, active: false },
     salvaging: { ...state.salvaging, active: false },
     hauling: { ...state.hauling, active: false },
     expedition: { ...state.expedition, active: false },
   }
+  // 换驾驶只释放旧船的返航限制，真实航程仍留在原账本，目标舰限制不变。
+  if (returning) delete handover.shipReturns[state.shipId]
   return shipOperationBlockReason(handover, ctx, state.shipId, 'cargo')
 }
 
@@ -185,6 +185,16 @@ export function changeShipBlockReason(state: GameState, shipId: string, ctx: Sim
 export function changeShip(state: GameState, shipId: string, ctx: SimContext): CommandResult {
   const blocked = changeShipBlockReason(state, shipId, ctx)
   if (blocked) return { ok: false, ...blocked }
+  if (state.shipReturns[state.shipId]) {
+    // 首拍前的占位返航要在旧船归属下兑现，不能交给下一拍的新驾驶船处理。
+    const pending = state.pendingActivityReturn
+    if (pending?.kind === 'mining') retireMiningShip(state, ctx, { beltId: pending.id, preserveExisting: true })
+    else if (pending?.kind === 'salvaging') retireSalvageShip(state, ctx, { galaxyId: pending.id, preserveExisting: true })
+    state.pendingActivityReturn = null
+    state.haltedBySwitch = null
+    state.awayGalaxy = null
+    state.dockedSite = null
+  }
   delete state.pendingStationActivity
   if (state.hauling.active) cancelHaulingOnSwitch(state, ctx)
   if (state.expedition.active && state.expedition.phase === 'back') {

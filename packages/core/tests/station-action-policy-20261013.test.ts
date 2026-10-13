@@ -110,12 +110,11 @@ describe('目标舰真实状态与实体命令', () => {
     expect(shipActuallyDocked(state, ctx, other)).toBe(false)
     expect(shipOperationBlockReason(state, ctx, other, 'configure')).not.toBeNull()
   })
-  it.each(['field', 'construction', 'return', 'battle'] as const)('%s中换驾驶预检与命令一致，拒绝不改变状态', mode => {
+  it.each(['field', 'construction', 'battle'] as const)('%s中换驾驶预检与命令一致，拒绝不改变状态', mode => {
     const { state, uid } = world()
     const other = addShipToFleet(state, 'sh-mako')
     if (mode === 'field') state.awayGalaxy = 'galaxy-redring'
     if (mode === 'construction') state.dockedSite = [...ctx.stations.keys()][0]!
-    if (mode === 'return') occupy(state, uid, 'return')
     if (mode === 'battle') Object.assign(state.encounter, { active: true, shipId: other, battle: { myFleet: [{ shipId: other }] } })
     const before = structuredClone(state)
     const block = changeShipBlockReason(state, other, ctx)
