@@ -31,6 +31,7 @@ export function battleWeaponCyclesOf(battle: BattleState,
     const groups = new Map<string, BattleWeaponCycleView>()
     const dronePriority = new Map<string, number>()
     spec.weapons.forEach((weapon, index) => {
+      if (weapon.disabled) return
       const key = `${spec.tag}#${index}`
       const remainingMs = Math.max(0, battle.units[spec.tag]?.weapons[index] ?? 0)
       const burst = battle.meBurstFired?.[key]

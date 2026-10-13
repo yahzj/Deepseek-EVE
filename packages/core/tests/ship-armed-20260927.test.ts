@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '@whale/data'
 import { createInitialState } from '../src/state'
+import { addShipToFleet } from '../src/fleetBook'
 import type { GameState } from '../src/state'
 import { shipHasWeapon } from '../src/equipment'
 import { startExpedition } from '../src/expedition'
@@ -53,7 +54,9 @@ describe('装了武器吗：单点判据 ＋ 抵达日志', () => {
   it('**装激光/无人机的船，抵达日志不再说「未装配武器」**（报障回归）', () => {
     for (const slot of ['turret', 'missile', 'laser', 'drone-rack']) {
       const state = fresh()
+      state.shipId = addShipToFleet(state, 'sh-megalodon')
       fitHigh(state, firstOf(slot))
+      if (slot === 'drone-rack') state.fleet[state.shipId]!.droneLoad = { 'drone-scout': 1 }
       expect(startExpedition(state, ANO.id, ctx).ok, `出发(${slot})`).toBe(true)
       advanceGame(state, 1_000, ctx)
       expect(arrivedLog(state).includes('未装配武器'), `${slot} 不该被判「未装配武器」`).toBe(false)

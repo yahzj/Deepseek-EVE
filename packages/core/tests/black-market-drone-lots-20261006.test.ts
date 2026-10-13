@@ -103,10 +103,9 @@ describe('黑市无人机组货', () => {
     const huge = { ...overflow.good, basePrice: Math.floor(Number.MAX_SAFE_INTEGER / 100) }
     expect(blackMarketCandidateGoods({ ...overflow.ctx, marketGoods: new Map([[huge.key, huge]]) })).toEqual([])
   })
-  it.each(['money', 'location', 'sold', 'quote', 'day'])('%s失败不扣款或交付半组', reason => {
+  it.each(['money', 'sold', 'quote', 'day'])('%s失败不扣款或交付半组', reason => {
     const { state, ctx, offer, good } = world()
     if (reason === 'money') state.wallet.isk = offer.price - 1
-    if (reason === 'location') state.awayGalaxy = 'galaxy-redring'
     if (reason === 'sold') offer.sold = true
     const before = JSON.stringify(state)
     expect(blackMarketBuy(state, ctx, good.key, state.blackMarket!.dayWallMs + (reason === 'day' ? 1 : 0), offer.price + (reason === 'quote' ? 1 : 0), now).ok).toBe(false)

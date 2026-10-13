@@ -9,7 +9,8 @@ import type { UnitSpec } from '../src/combat'
 const ctx = buildSimContext()
 
 function world(high = ['mod-shieldfield-2'], count = 3) {
-  const local = { ...ctx, balance: { ...ctx.balance, battle: { ...ctx.balance.battle, shieldRegenPerSec: 0 } } }
+  // 独立测试容量1000、恢复基准1000；真实建档同样采用该基准。
+  const local = { ...ctx, ships: new Map([...ctx.ships].map(([id, def]) => [id, id === 'sh-megalodon' ? { ...def, shieldHp: 1500 } : def])), balance: { ...ctx.balance, battle: { ...ctx.balance.battle, shieldRegenPerSec: 0 } } }
   const state = createInitialState({ nowWallMs: 0, seed: 21 })
   const fleet = Array.from({ length: count }, () => addShipToFleet(state, 'sh-megalodon'))
   state.shipId = fleet[0]!
@@ -18,7 +19,7 @@ function world(high = ['mod-shieldfield-2'], count = 3) {
   const battle = startFleetBattleFor(state, local, fleet, 'ano-training', 0, 5000)!
   for (const unit of Object.values(battle.units)) unit.weapons = unit.weapons.map(() => 100_000)
   const specs: UnitSpec[] = fleet.map(id => {
-    const spec = createPlayerSpec(state, ctx, id)!
+    const spec = createPlayerSpec(state, local, id)!
     spec.tag = battle.myFleet!.find(entry => entry.shipId === id)!.tag
     battle.units[spec.tag]!.hpMax!.s = 1000
     return spec
@@ -76,6 +77,7 @@ describe('护盾力场转移与支付', () => {
     w.pulse(.05)
     expect([0, 1, 2].map(i => w.hp(i).s)).toEqual([500, 50, 50])
     delete w.battle.units[w.specs[0]!.tag]!.hpMax
+    delete w.specs[0]!.recoveryHp
     w.specs[0]!.hp.s = 2000
     w.pulse()
     expect([0, 1, 2].map(i => w.hp(i).s)).toEqual([300, 250, 250])

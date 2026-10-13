@@ -32,6 +32,7 @@ import {
   cleanShipDamage,
   /** 2026-09-27 船长报障：装入入口（空槽可点，弹层选装，二次确认，installPlug） */
   installPlug,
+  shipOperationBlockReason,
   plugSlotExpansionBlockedOf,
   /** 2026-09-27 船长令：拆船回收（预览 ＋ 执行；界面两次警告都用预览那一份算术） */
   shipScrapPreviewOf,
@@ -370,6 +371,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
   const [targetId] = useState<string>(fitShipId && state.fleet[fitShipId] ? fitShipId : piloted)
   const effectiveTarget = state.fleet[targetId] ? targetId : piloted
   const isPiloted = effectiveTarget === piloted
+  const configurationBlock = shipOperationBlockReason(state, engine.ctx, effectiveTarget, 'configure')
   const shipDef = fleetDefOf(state, engine.ctx, effectiveTarget)
   const shipName = shipDisplayName(state, engine.ctx, effectiveTarget)
   const fitted = state.fleet[effectiveTarget]?.fitted
@@ -596,6 +598,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
     }
   }
   function openPick(rack: RackSlot, index: number): void {
+    if (configurationBlock) { onToast(cmdText(configurationBlock), true); return }
     // 每次打开都从「全部」看起（与市场页切换类型时子分类归零同哲学）
     setPickKw('')
     setPickSlot('all')
@@ -930,6 +933,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                       <button
                         key={`${rack}-${i}`}
                         className="app-fit-slot-icon is-empty"
+                        disabled={configurationBlock !== null}
                         onClick={() => openPick(rack, i)}
                         title={tr("ui.FitPage.149", { p1: i + 1 })}
                       >
@@ -943,6 +947,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                     <button
                       key={`${rack}-${i}`}
                       className="app-fit-slot-icon is-filled"
+                      disabled={configurationBlock !== null}
                       onClick={() => openPick(rack, i)}
                       /* 2026-09-16 船长：「装配界面，鼠标悬停槽位上的装备时，显示出的装备详细过于简陋，
                          参考仓库界面的物品详细」⇒ 改挂**仓库同款富卡**（`moduleHoverContent` =
@@ -1085,7 +1090,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                         >
                           {presetDetailAt === i ? tr("ui.FitPage.062") : tr("ui.FitPage.063")}
                         </button>
-                        <button className="app-btn is-small is-primary" onClick={() => handleApplyPreset(i)}>
+                        <button className="app-btn is-small is-primary" disabled={configurationBlock !== null} title={configurationBlock ? cmdText(configurationBlock) : undefined} onClick={() => handleApplyPreset(i)}>
                           {tr("ui.FitPage.064")}
                         </button>
                         <button
@@ -1166,6 +1171,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
               <button
                 className="app-btn is-small is-warn"
                 onClick={handleUnfitAll}
+                disabled={configurationBlock !== null}
                 title={tr("ui.FitPage.075")}
               >
                 {tr("ui.FitPage.076")}
@@ -1237,7 +1243,7 @@ export function FitPage({ engine, onToast, fitShipId = null }: PageProps & { fit
                        ⚠ 不再写 `title`（同一元素禁 `title` + 富提示并存）。 */
                     {...hoverTipProps(moduleHoverContent(m, fitOptionLabel(m), engine, effectiveTarget))}
                     onClick={() => pickModule(m)}
-                    disabled={sameAsOld}
+                    disabled={sameAsOld || configurationBlock !== null}
                   >
                     {/* 图标与名称同行（船长 2026-09-05：图标不再单独占一行） */}
                     <span className="app-fit-pick-head">
@@ -1457,6 +1463,7 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   const scrap = shipScrapPreviewOf(state, ctx, target)
+  const configurationBlock = shipOperationBlockReason(state, ctx, target, 'configure')
   if (slots <= 0 && !damage) return null
   const full = slots > 0 && installed.length >= slots
   /** 普通同型仍可重复；扩槽插件候选与核心按同类型限一件。 */
@@ -1506,6 +1513,7 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
+                  if (configurationBlock) return
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     setErr(null)
@@ -1514,11 +1522,13 @@ function PluginSlotsSection({ engine, target }: { engine: PageProps['engine']; t
                   }
                 }}
                 onClick={() => {
+                  if (configurationBlock) { setErr(cmdText(configurationBlock)); return }
                   setErr(null)
                   setConfirmId(null)
                   setPicking(true)
                 }}
-                title={tr('ui.FitPage.178')}
+                aria-disabled={configurationBlock !== null}
+                title={configurationBlock ? cmdText(configurationBlock) : tr('ui.FitPage.178')}
               >
                 <span className="app-fit-slot-icon-glyph">＋</span>
                 <span className="app-fit-slot-icon-name">{tr('ui.FitPage.178')}</span>
@@ -1670,6 +1680,7 @@ function DroneBaySection({
   const shipDef = entry?.defId ? fleetDefOf(state, ctx, target) : undefined
   const fitted = entry?.fitted
   const load = entry?.droneLoad ?? {}
+  const configurationBlock = shipOperationBlockReason(state, ctx, target, 'configure')
   // 舱上限 = 船体 droneBayM3 + 已装甲板扩展（rack 高槽件）
   const cap = droneBayTotalM3(shipDef, fitted, ctx)
   if (cap <= 0 && Object.keys(load).length === 0) return null // 无舱不显示（与机舱平衡表一致）
@@ -1729,7 +1740,7 @@ function DroneBaySection({
           ) : null}
         </span>
         {cells.length > 0 ? (
-          <button className="app-btn is-small is-warn" onClick={clearAll} title={tr("ui.FitPage.097")}>
+          <button className="app-btn is-small is-warn" disabled={configurationBlock !== null} onClick={clearAll} title={configurationBlock ? cmdText(configurationBlock) : tr("ui.FitPage.097")}>
             {tr("ui.FitPage.098")}
           </button>
         ) : null}
@@ -1776,16 +1787,17 @@ function DroneBaySection({
               </span>
             ) : null}
             <span className="app-fit-drone-cell-name">{def?.name ?? id} ×{n}</span>
-            <button className="app-fit-drone-step" title={tr("ui.FitPage.101")} onClick={() => adj(id, -1)}>
+            <button className="app-fit-drone-step" disabled={configurationBlock !== null} title={configurationBlock ? cmdText(configurationBlock) : tr("ui.FitPage.101")} onClick={() => adj(id, -1)}>
               −
             </button>
-            <button className="app-fit-drone-step" title={tr("ui.FitPage.102")} onClick={() => adj(id, 1)}>
+            <button className="app-fit-drone-step" disabled={configurationBlock !== null} title={configurationBlock ? cmdText(configurationBlock) : tr("ui.FitPage.102")} onClick={() => adj(id, 1)}>
               +
             </button>
           </div>
         ))}
         <button
           className="app-fit-drone-add"
+          disabled={configurationBlock !== null}
           onClick={() => {
             setSelId(droneTypes.find((d) => maxOf(d.id) > 0)?.id ?? null)
             setSelN(1)
@@ -1848,7 +1860,7 @@ function DroneBaySection({
                 </button>
                 <button
                   className="app-btn is-small is-primary"
-                  disabled={maxOf(selId) <= 0}
+                  disabled={maxOf(selId) <= 0 || configurationBlock !== null}
                   onClick={() => {
                     const want = Math.min(selN, maxOf(selId))
                     adj(selId, want)

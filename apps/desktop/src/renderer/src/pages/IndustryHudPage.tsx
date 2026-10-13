@@ -42,7 +42,8 @@ import {
   manufacturingRunViews,
   missingMaterials,
   manualSlotOf,
-  oreAvailable,
+  industryAvailable,
+  stationActivityStartBlockReason,
   ownsBlueprint,
   plugCraftUnlockedOf,
   recycleBatchM3Of,
@@ -446,7 +447,8 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
    * （船长 2026-09-21 令「统一为能够直接切换」）——本判据不参与那件事。
    * ⚠ **AI 核心驱动的开工不受此限**（`manualSlotOf` 只认 `worker === 'pilot'`）。
    */
-  const manualNote = manualSlotOf(state) !== null ? tr('ui.hud.212') : null
+  const manualBlock = stationActivityStartBlockReason(state, ctx, tab === 'lab' ? 'lab' : tab === 'craft' || tab === 'shipyard' ? 'manufacturing' : 'refine')
+  const manualNote = manualSlotOf(state) !== null ? tr('ui.hud.212') : manualBlock ? cmdText(manualBlock) : null
   /**
    * **组装机书架**（模块 ＋ 物品蓝图；舰船归造船厂页签）——
    * 排序沿用 core 单点 `sortManuRows`（类型 → 书价升序 → 同产物的一次性图纸紧随原图纸），
@@ -635,7 +637,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
   ]
   /** 精炼炉投料：三族（可精炼资源 / 残骸回收 / 货柜拆解）＋ 两级筛选 ＋ 搜索 —— 与现有工业页同一套口径 */  const feedDefs = visibleItemDefs(ctx)
     .filter((d) => (d.refine?.length ?? 0) > 0 || d.kind === 'wreck' || d.kind === 'container')
-    .map((def) => ({ def, have: oreAvailable(state, def.id) }))
+    .map((def) => ({ def, have: industryAvailable(state, ctx, def.id, 'pilot'), aiHave: industryAvailable(state, ctx, def.id) }))
   const feedFamilyOf = (kind: string): FeedTab => (kind === 'wreck' ? 'wreck' : kind === 'container' ? 'box' : 'ore')
   const feedShown = feedDefs
     .filter(({ def }) => feedTab === 'all' || feedFamilyOf(def.kind) === feedTab)
@@ -667,7 +669,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
   const stationTip = (v: (typeof runs)[number]): ReactNode => {
     const def = v.itemId !== null ? ctx.items.get(v.itemId) : undefined
     const outs = def !== undefined ? refineBatchOutputOf(state, ctx, def, v.batchUnits) : []
-    const have = v.itemId !== null ? oreAvailable(state, v.itemId) : 0
+    const have = v.itemId !== null ? industryAvailable(state, ctx, v.itemId) : 0
     return (
       <HudHoverCard
         title={`${tr('ui.hud.143', { p1: String(v.id).padStart(2, '0') })} · ${v.itemName} · ${
@@ -1053,7 +1055,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                 ) : (
                   <table className="hud-table">
                     <tbody>
-                      {feedShown.map(({ def, have }) => (
+                      {feedShown.map(({ def, have, aiHave }) => (
                         <tr key={def.id} className={have <= 0 ? 'is-dim' : ''} {...hoverTipProps(feedTip(def, have))}>
                           <td>
                             <span className="hud-row" style={{ gap: 6 }}>
@@ -1085,7 +1087,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                             <IconBtn
                               glyph="ai-core"
                               title={tr('ui.hud.058', { p1: def.name })}
-                              disabled={have <= 0 || core === null}
+                              disabled={aiHave <= 0 || core === null}
                               onClick={() => core !== null && startFeed(def, core)}
                             />
                           </td>

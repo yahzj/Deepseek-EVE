@@ -430,8 +430,12 @@ function skipOf(v: GateVerdict): ActivityGateSkip {
  */
 export function applyActivityGate(state: GameState, next: MainActivityKind, ctx?: SimContext): ActivityGateSkip | null {
   const v = gateMainActivity(state, next)
-  if (v.action === 'ok') return null
+  if (v.action === 'ok') {
+    delete state.pendingStationActivity
+    return null
+  }
   if (v.action === 'halt') {
+    delete state.pendingStationActivity
     if (v.current !== undefined) haltAndLog(state, ctx, v.current)
     return null
   }
@@ -445,8 +449,12 @@ export function applyActivityGate(state: GameState, next: MainActivityKind, ctx?
  */
 export function applyActivityHandoff(state: GameState, ctx: SimContext | undefined, warnConfirmed = true): ActivityGateSkip | null {
   const v = gateMainActivityHandoff(state, warnConfirmed)
-  if (v.action === 'ok') return null
+  if (v.action === 'ok') {
+    delete state.pendingStationActivity
+    return null
+  }
   if (v.action === 'halt') {
+    delete state.pendingStationActivity
     if (v.current !== undefined) haltAndLog(state, ctx, v.current)
     return null
   }

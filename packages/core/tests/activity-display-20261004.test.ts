@@ -64,6 +64,7 @@ describe('主控活动显示与交战优先级', () => {
 })
 
 const STOP_METHODS: Record<ActivityStopKind, { method: string; args: unknown[] }> = {
+  'cancel-station-pending': { method: 'cancelPendingStationActivityNow', args: [] },
   'remove-training': { method: 'dequeueAt', args: [0] },
   'stop-mining': { method: 'stopMiningNow', args: [] },
   'stop-scan': { method: 'stopScanNow', args: [] },

@@ -15,6 +15,7 @@ import { shipDamageEffects } from './shipDamage'
 import type { ItemDef, SimContext } from './types'
 import { fleetDefOf } from './instances'
 import { shipLockedReason } from './state'
+import { shipOperationBlockReason } from './shipActionPolicy'
 import { familyModules } from './fitted'
 // ⚠ 依赖方向：`blackbox.ts` 只依赖 `state` / `plugs`，**不引 inventory** ⇒ 这边引它不成环
 import { isBlackboxItem, noteBlackboxObtained } from './blackbox'
@@ -254,7 +255,13 @@ export function unloadCargoOfShipToWarehouse(state: GameState, ctx: SimContext, 
 
 /** 货仓 → 仓库（卸货分流：装备回 moduleBay、其余回 warehouse.items）；返回搬入仓库的单位数 */
 export function unloadCargoToWarehouse(state: GameState, ctx: SimContext, itemId?: string): number {
-  const cargo = cargoItemsOf(state)
+  return unloadShipCargo(state, ctx, state.shipId, itemId)
+}
+
+/** 手动卸货单点，与自动到港卸货的内部入口分离。 */
+export function unloadShipCargo(state: GameState, ctx: SimContext, shipId: string, itemId?: string): number {
+  if (shipOperationBlockReason(state, ctx, shipId, 'cargo')) return 0
+  const cargo = cargoOfShip(state, shipId)
   const targetIds = itemId ? [itemId] : Object.keys(cargo)
   let moved = 0
   for (const id of targetIds) {
@@ -314,7 +321,8 @@ export function repairHoldForbiddenCargo(state: GameState, ctx: SimContext): num
   return moved
 }
 
-/** 仓库 → 货仓（装船，可指定数量上限防超舱由调用方校验）；返回实际装船单位数 */export function loadWarehouseToCargo(state: GameState, itemId: string, units: number): number {
+/** 仓库 → 货仓手动装船；返回实际装船单位数。 */export function loadWarehouseToCargo(state: GameState, itemId: string, units: number, ctx: SimContext): number {
+  if (shipOperationBlockReason(state, ctx, state.shipId, 'cargo')) return 0
   // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
   const lock = shipLockedReason(state, state.shipId, '往它货仓装货')
   if (lock) return 0
@@ -334,6 +342,7 @@ export function repairHoldForbiddenCargo(state: GameState, ctx: SimContext): num
  * 从 moduleBay（装备库）扣取。2026-09-09 船长口径 A：仓库可携带物（除舰船）都可装船。
  */
 export function loadWarehouseToCargoFit(state: GameState, itemId: string, ctx: SimContext): number {
+  if (shipOperationBlockReason(state, ctx, state.shipId, 'cargo')) return 0
   // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
   const lock = shipLockedReason(state, state.shipId, '往它货仓装货')
   if (lock) return 0

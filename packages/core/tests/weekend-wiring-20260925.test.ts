@@ -1092,8 +1092,8 @@ describe('周末入侵 · 引擎接线端到端（2026-09-25）', () => {
     const now = Date.now()
     weekendNoteContribution(s.weekendEvent!, GID, 1)
     weekendNoteContribution(s.weekendEvent!, core, 1)
-    s.weekendEvent!.flagshipHpMax = WEEKEND_FLAGSHIP_POOL_HP
-    s.weekendEvent!.flagshipHpDone = 75_000 // 正好打掉一半
+    s.weekendEvent!.flagshipHpMax = 150_000 // 验证已锁定旧池按快照保持。
+    s.weekendEvent!.flagshipHpDone = 75_000
     expect(weekendFlagshipHpRemaining(s.weekendEvent)).toBe(75_000)
     const battle = weekendStartFlagshipBattle(s, ctx, now, [s.shipId])!
     expect(battle.foeOverride?.bossHp).toBe(75_000)

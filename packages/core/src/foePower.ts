@@ -8,10 +8,16 @@
  * 仍要用而转公开（不进 combat 公开面）。
  */
 import type { AnomalyDef, BattleBalance, FoeFamily, FoeTactic } from './types'
+import { SHIP_HP_UPLIFT_MUL } from './combatMath'
 
 /** 族格加血只在最终建档消费，不改变裸血预算或信号半径。 */
 export function foeFamilyHpMulOf(family: FoeFamily | undefined): number {
   return family === 'C' ? 1.3 : 1
+}
+
+/** 最终舰体容量放大；裸预算不变，机群仍只读族格倍率。 */
+export function foeShipHpMulOf(family: FoeFamily | undefined): number {
+  return SHIP_HP_UPLIFT_MUL * foeFamilyHpMulOf(family)
 }
 
 /** 敌方战术 → 武器射程带（贴合作战风格）：
@@ -83,7 +89,8 @@ export function foeHpOfThreat(threat: number, bal: BattleBalance): number {
  * **由属性反推敌卡威胁**（船长 2026-09-25 定价式的反解 · 规则的一部分）。
  *
  * 口径：`X = √(全波总血 × 全波总火力DPS) = 2 × foeHpOfThreat(威胁) ÷ 10 × 系数`
- * ⇒ `威胁 = foeHpOfThreat⁻¹( 5X ÷ 系数 )`，其中**系数 = 这张卡预设给谁打**
+ * 2026-10-13船长确认纳入标尺：统一容量提升只放大HP，实测X先除以√SHIP_HP_UPLIFT_MUL。
+ * ⇒ `威胁 = foeHpOfThreat⁻¹( 5X ÷ (系数 × √SHIP_HP_UPLIFT_MUL) )`，其中**系数 = 这张卡预设给谁打**
  * （`FOE_DESIGN_STRENGTH_MUL`：单舰 3 · 4 舰小队 10），与玩家实带舰数、敌人编成数都无关。
  *
  * 实现 = 在 `foeHpOfThreat` 上取"最小的使曲线值 ≥ 需求"的整数威胁（曲线带取整台阶，
@@ -91,7 +98,7 @@ export function foeHpOfThreat(threat: number, bal: BattleBalance): number {
  * 返回上界 1024（远高于现表最大威胁 115，只为防死循环；真触顶说明属性严重越界）。
  */
 export function foeThreatRatingOf(x: number, designMul: number, bal: BattleBalance): number {
-  const need = (5 * Math.max(0, x)) / Math.max(1e-6, designMul)
+  const need = (5 * Math.max(0, x)) / (Math.max(1e-6, designMul) * Math.sqrt(SHIP_HP_UPLIFT_MUL))
   return foeThreatAtHpBudgetOf(need, bal)
 }
 

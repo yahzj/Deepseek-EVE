@@ -33,8 +33,6 @@ import {
   bountyRewardFactor,
   bountyWinPercentGuarded,
   calcPower,
-  cargoCapacityM3Of,
-  cargoUsedM3Of,
   factionAnomalyOf,
   factionBaseRewardIsk,
   factionRareDropChanceOf,
@@ -46,7 +44,8 @@ import {
   lairAnomalyOf,
   lairBaseRewardIsk,
   lairLevelOf,
-  mainActivityOf,
+  stationActivityStartBlockReason,
+  siteDeliverFreeCargoM3,
   nearestStationGalaxyId,
   playerAtSite,
   shipDisplayName,
@@ -1299,14 +1298,10 @@ export function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; 
          * ② `transit` 槽被占着（换港返航 / 另外一条在建的交付航线）⇒ 同一个槽，等它跑完。
          * 其余一律交给 core 判（`mainActivityOf` 与 activityGate 同源）。
          */
-        const tripAway = state.awayGalaxy !== null
-        const tripReadyDock = !tripAway || mainActivityOf(state) !== null
+        const tripReadyDock = stationActivityStartBlockReason(state, engine.ctx, 'siteDeliver') === null
         const tripBusy = state.transit.active && !tripOn
         const wareStock = billRows.reduce((s, r) => s + (state.warehouse.items[r.itemId] ?? 0), 0)
-        const tripFreeM3 = Math.max(
-          0,
-          Math.floor(cargoCapacityM3Of(state, engine.ctx, state.shipId) - cargoUsedM3Of(state, engine.ctx, state.shipId)),
-        )
+        const tripFreeM3 = siteDeliverFreeCargoM3(state, engine.ctx)
         const tripBlocked = tripOn || !tripReadyDock || tripBusy || wareStock <= 0 || tripFreeM3 <= 0
         const want = Math.min(Math.max(0, Math.floor(qty)), selRow ? selRow.remaining : 0, avail)
         const intro = site.introDialogueId ? engine.dialogues.find((d) => d.id === site.introDialogueId) : undefined
@@ -1449,6 +1444,7 @@ export function StationCard({ engine, onToast, siteIds }: { engine: GameEngine; 
                       onClick={() => {
                         const r = engine.deliverTripAt(site.id)
                         if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.389'), true)
+                        else if (r.queued) onToast(tr('core.busy.020'))
                         else onToast(tr("ui.Expedition.093", { p1: site.name }))
                       }}
                     >

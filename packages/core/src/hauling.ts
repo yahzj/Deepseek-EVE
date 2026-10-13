@@ -29,6 +29,8 @@
  */
 import { addLog, HOME_GALAXY_ID, haulingHalt } from './state'
 import { applyActivityGate } from './activityGate'
+import { stationActivityStartBlockReason, stationActivityStartState } from './location'
+import { queueStationActivity } from './stationActivityPending'
 import type { CommandResult } from './engine'
 import type { GameState, HaulingState } from './state'
 import type { SimContext } from './types'
@@ -263,20 +265,9 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
   if (cap <= 0) {
     return { ok: false, error: '当前舰船没有可用货仓，无法承运。', errorId: 'core.hauling.015' }
   }
-  const gateSkip = applyActivityGate(state, 'hauling', ctx)
-  if (gateSkip) return gateSkip
-  /**
-   * **位置门槛：停靠在空间站（母港或已建成副站）才能接单**——放在判据**之后**：
-   * 掩护巡逻（野外留守）属"可自动停"那一档，停下时 `haltActivityForSwitch` 会把人即时召回母港
-   * ⇒ 位置门槛正是被这次停机满足的（与 `industry.startRefineRun` 同款处置）。
-   * 船在野外**且没有可停的活动**（纯野外留守）时，仍旧是这一条拒。
-   */
-  if (state.awayGalaxy !== null) {
-    return { ok: false, error: '舰船在野外：先返航到空间站再安排长途运输。', errorId: 'core.hauling.002' }
-  }
-  // 自动清仓：真实货物卸入仓库（虚拟货物占满货仓，语义干净）
-  const unloaded = unloadCargoOfShipToWarehouse(state, ctx, state.shipId)
-  const dockHere = dockedHaulEndpoint(state) // 接单时的停靠端点（可能是航线端点，也可能不是）
+  const dockBlock = stationActivityStartBlockReason(state, ctx, 'hauling')
+  if (dockBlock) return { ok: false, ...dockBlock }
+  const dockHere = dockedHaulEndpoint(stationActivityStartState(state, 'hauling', ctx))
   // 第一段目标：停靠即端点 → 直接对开；否则飞往较近的端点（就位段）
   let firstTo: string | null
   if (dockHere === a.siteId || dockHere === b.siteId) {
@@ -293,6 +284,11 @@ export function startHauling(state: GameState, aSiteId: string | null, bSiteId: 
     }
     firstTo = toB > 0 && (toA <= 0 || toB < toA) ? b.siteId : a.siteId
   }
+  const queued = queueStationActivity(state, ctx, { kind: 'hauling', aSiteId, bSiteId })
+  if (queued) return queued
+  const gateSkip = applyActivityGate(state, 'hauling', ctx)
+  if (gateSkip) return gateSkip
+  const unloaded = unloadCargoOfShipToWarehouse(state, ctx, state.shipId)
   const shipName = shipDisplayName(state, ctx, state.shipId)
   const h = state.hauling
   h.active = true

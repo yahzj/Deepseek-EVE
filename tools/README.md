@@ -1,5 +1,10 @@
 # 工具区台账（tools/）
 
+## 停靠统一专项（2026-10-13 · v0.1.0 / 档v31）
+
+- `npx tsx tools/make-test-save.ts station-action`：调用`station-action-fixture.ts`生成全新合成档，真实采矿主控、带伤空闲副船与仓库研究材料；不读取个人档。
+- `node tools/station-action-native-check.cjs [--case=classic|modern]`：先构建；隐藏自建Electron、回环服务和隔离userData，实际点击黑市购买/副船卸货/维修与真实IPC存盘核对。加`--pending`检查安排手动炉、待办保存重载、取消不取消返航、真实到港启动及一批收益；时间步进复用既有本机测试桥。输出`tools/_ui-artifacts/station-action/`，不作观感结论。
+
 ## 星系天体样片（2026-10-09 · Godot3.5 / v0.1.0 / 档v31）
 
 - `node tools/pixel-planets-samples.cjs [本机EXE绝对路径] [不存在的独立输出目录绝对路径]`：核验程序SHA256，用原生PixelPlanets场景/shader渲染三类透明PNG；末尾`--scene-set`导出七类星球/四色恒星/黑洞共12张，默认样片不变。默认输出`docs/design/assets/stellar-samples-20261009`，拒绝覆盖，游戏运行不依赖此工具。

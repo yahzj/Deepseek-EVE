@@ -19,6 +19,7 @@ import {
   usableAiCoresOf,
   /** 2026-10-02 模块化：手动位置灰判据走 core 单点（原为本页手工枚举各家族） */
   manualSlotOf,
+  stationActivityStartBlockReason,
   // 2026-09-22 第 3 步：收藏星标进"实时指纹"（星标子组件自己也读 state，漏了会停在旧值）
   isMarked,
   recipeCapability,
@@ -472,7 +473,7 @@ function isWormholeBlueprint(bpId: string): boolean {
  * 远征由 core 的统一判据直接拒，返航途中是锁定态里的一条（但在 core 侧判）。界面只保留"同一个手动
  * 工作位"那两条：它们**不算切换活动**，停掉会丢掉手上那一批 ⇒ 照旧硬拒、由玩家自己决定。
  * 真正的把关单点在 core（`activityGate`）。 */
-function manualBuildNote(state: GameState): string | null {
+function manualBuildNote(state: GameState, engine: GameEngine): string | null {
   /** 2026-10-02 模块化：判据改走 core 单点 `manualSlotOf`（返回值即"被哪一族的线占着"），
    *  不再各写一份 `.some(active && pilot)`；行为与旧实现等价（名册条目都是 active、停线即删，无 inactive 残留）。
    *  ⚠ 新增 `lab` 分支 = 行为口径对齐（经典页三张卡 + HUD 一致：主控开实验室时组装机手动键也置灰；
@@ -481,7 +482,8 @@ function manualBuildNote(state: GameState): string | null {
   if (slot === 'manufacturing') return tr("ui.Industry.025")
   if (slot === 'refine') return tr("ui.Industry.026")
   if (slot === 'lab') return tr('ui.hud.212')
-  if (state.awayGalaxy !== null) return tr("ui.IndustryPage.010")
+  const blocked = stationActivityStartBlockReason(state, engine.ctx, 'manufacturing')
+  if (blocked) return cmdText(blocked)
   return null
 }
 
@@ -690,7 +692,7 @@ export const BlueprintCard = memo(function BlueprintCard({
   const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   const usableCores = usableAiCoresOf(state)
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
-  const manualNote = manualBuildNote(state)
+  const manualNote = manualBuildNote(state, engine)
 
   /** 求购 = **只跳转、不下单**（2026-09-14 船长：「组装机求购蓝图应该跳转到市场对应的订单详细。
    *  而不是直接市场价下订单」）——到市场页会自动搜到该蓝图并展开它的行情详情（与舰船页/物品页
@@ -737,6 +739,7 @@ export const BlueprintCard = memo(function BlueprintCard({
       onToast(cmdText(r) || tr('ui.Industry.131'), true)
       return
     }
+    if (r.queued) { onToast(tr('core.busy.020')); return }
     onToast(
       worker === 'pilot'
         ? tr("ui.Industry.031")

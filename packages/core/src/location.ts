@@ -12,7 +12,10 @@
  *   行程随时可取消（无惩罚，取消即立即返航停靠最近已建成站）。
  */
 import { addLog, HOME_GALAXY_ID } from './state'
-import { applyActivityGate } from './activityGate'
+import { applyActivityGate, gateMainActivity, type MainActivityKind } from './activityGate'
+import type { CoreBlockReason } from './engine'
+import { shipActuallyDocked } from './shipActionPolicy'
+import { queueStationActivity, stationActivityWaitsForReturn } from './stationActivityPending'
 import { pilotUnavailableReason } from './activityGate'
 import type { GameState } from './state'
 import type { CommandResult } from './engine'
@@ -101,10 +104,57 @@ export function isAtHome(state: GameState): boolean {
  * 市场/精炼炉/残骸回收/组装机等站内功能在母港与已建成副站同样可用（设施与仓库全局共享，
  * 空间站只是入口）；野外/航行中/修建中工地不视为基地。 */
 export function isAtHomeLike(state: GameState, ctx: SimContext): boolean {
-  if (state.awayGalaxy !== null) return false
-  if (state.dockedSite === null) return true
-  const site = ctx.stations.get(state.dockedSite)
-  return !!site && siteProgress(state, site.id).stage >= site.tiers.length
+  return shipActuallyDocked(state, ctx)
+}
+
+/** 按原航程判据解析接续基地，打捞全程以母港为基准。 */
+export function stationActivityReturnSite(state: GameState, ctx: SimContext): string | null {
+  const ret = state.shipReturns[state.shipId]
+  const salvage = state.salvaging.active || ret?.reason === 'salvageStop' || state.pendingActivityReturn?.kind === 'salvaging'
+  if (salvage) return null
+  const beltId = state.mining.beltId ?? ret?.beltId ?? (state.pendingActivityReturn?.kind === 'mining' ? state.pendingActivityReturn.id : null)
+  const galaxyId = beltId ? ctx.belts.get(beltId)?.galaxyId : undefined
+  if (galaxyId) {
+    const galaxy = nearestStationGalaxyId(state, ctx, galaxyId)
+    return galaxy === HOME_GALAXY_ID ? null : builtSiteAtGalaxy(state, ctx, galaxy)
+  }
+  const site = state.dockedSite ? ctx.stations.get(state.dockedSite) : undefined
+  return site && (state.stationSites[site.id]?.stage ?? 0) >= site.tiers.length ? site.id : null
+}
+
+/** 只读投影启动时位置；不修改真实返航账本或提前停靠。 */
+export function stationActivityStartState(state: GameState, next: MainActivityKind, ctx: SimContext): GameState {
+  const verdict = gateMainActivity(state, next)
+  let projected = state
+  if ((verdict.action === 'halt' || verdict.action === 'confirm') && verdict.current) {
+    // 只投影影响停靠的字段，不复制整份存档或执行停机退款。
+    if (verdict.current === 'hauling') projected = { ...state, awayGalaxy: null, dockedSite: state.hauling.fromSiteId,
+      hauling: { ...state.hauling, active: false } }
+    if (verdict.current === 'standby') projected = { ...state, awayGalaxy: null, standby: { ...state.standby, active: false } }
+    if (verdict.current === 'siteDeliver') projected = { ...state, awayGalaxy: null, dockedSite: null, transit: { ...state.transit, active: false } }
+  }
+  if (verdict.action !== 'reject' && stationActivityWaitsForReturn(state)) {
+    const returns = { ...state.shipReturns }
+    delete returns[state.shipId]
+    projected = { ...state, awayGalaxy: null, dockedSite: stationActivityReturnSite(state, ctx),
+      mining: { ...state.mining, active: false }, salvaging: { ...state.salvaging, active: false },
+      shipReturns: returns, pendingActivityReturn: null }
+  }
+  return projected
+}
+
+/** 页面和命令同源的只读预检；确认取消仍由原activityGate处理。 */
+export function stationActivityStartBlockReason(state: GameState, ctx: SimContext, next: MainActivityKind): CoreBlockReason | null {
+  const verdict = gateMainActivity(state, next)
+  if (verdict.action === 'reject') return { error: verdict.message ?? '', errorId: verdict.messageId, errorParams: verdict.messageParams }
+  if (!shipActuallyDocked(stationActivityStartState(state, next, ctx), ctx)) {
+    if (next === 'manufacturing') return { error: '组装机随协会基地网络运转：需停靠空间站（母港或已建成副站）才能开工制造（AI 核心驱动不受此限）。', errorId: 'core.manufacturing.001' }
+    if (next === 'lab') return { error: '实验室随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。', errorId: 'core.lab.013' }
+    if (next === 'hauling') return { error: '舰船在野外：先返航到空间站再安排长途运输。', errorId: 'core.hauling.002' }
+    if (next === 'siteDeliver') return { error: '舰船在野外：请先「返航空间站」（母港或已建成副站），再从空间站下达「前往工地交付」。', errorId: 'core.location.012' }
+    return { error: '精炼炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。', errorId: 'core.industry.084' }
+  }
+  return null
 }
 /**
  * **站内工业的位置门槛**（2026-09-14 船长报障后收口）：**只有"玩家亲自"这一路**要求人在基地网络内
@@ -121,6 +171,12 @@ export function isAtHomeLike(state: GameState, ctx: SimContext): boolean {
  */
 export function stationIndustryBlocked(worker: 'pilot' | AiCoreType, state: GameState, ctx: SimContext): boolean {
   return worker === 'pilot' && !isAtHomeLike(state, ctx)
+}
+
+/** 安排到港交付时按自动卸货后的空间预检，不移动任何货物。 */
+export function siteDeliverFreeCargoM3(state: GameState, ctx: SimContext): number {
+  const used = stationActivityWaitsForReturn(state) ? 0 : cargoUsedM3Of(state, ctx, state.shipId)
+  return Math.max(0, Math.floor(cargoCapacityM3Of(state, ctx, state.shipId) - used))
 }
 
 /** 出发地星系：野外停留点，否则当前停靠站所在星系 */
@@ -354,7 +410,7 @@ function hasLoadableDeliverWare(state: GameState, ctx: SimContext, site: Station
 export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: string): CommandResult {
   const site = ctx.stations.get(siteId)
   if (!site) return { ok: false, error: `未知建站点：${siteId}。`, errorId: 'core.location.010', errorParams: { p1: siteId } }
-  const prog = siteProgress(state, siteId)
+  const prog = state.stationSites[siteId] ?? { stage: 0, delivered: {} }
   if (prog.stage >= site.tiers.length) return { ok: false, error: `「${site.name}」已建成并网，无需再交付建材。`, errorId: 'core.location.011', errorParams: { p1: site.name } }
   /**
    * **本入口自己的两道"点了也白点"的前置**——放在统一判据**之前**（顺序纪律：绝不"先停了玩家的活、
@@ -364,12 +420,14 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
    */
   const capV = cargoCapacityM3Of(state, ctx, state.shipId)
   const usedV = cargoUsedM3Of(state, ctx, state.shipId)
-  const freeV = Math.max(0, Math.floor(capV - usedV))
+  const freeV = siteDeliverFreeCargoM3(state, ctx)
   if (freeV <= 0) {
     return { ok: false, error: '货仓没有空闲空间：先卸货入仓库腾出位置（物品页「全部卸入仓库」），再安排交付循环。', errorId: 'core.location.020' }
   }
-  const billNow = stationBillText(state, ctx, site)
-  if (!hasLoadableDeliverWare(state, ctx, site)) {
+  // 旧材料视图会补空进度账；预检隔离该写入，失败不改原档。
+  const preflight = { ...state, stationSites: { ...state.stationSites } }
+  const billNow = stationBillText(preflight, ctx, site)
+  if (!hasLoadableDeliverWare(preflight, ctx, site)) {
     return {
       ok: false,
       error: `仓库没有可装载的建材（当前档需要：${billNow}）——备料后再一键出发。`,
@@ -386,20 +444,21 @@ export function startSiteDeliverTrip(state: GameState, ctx: SimContext, siteId: 
    * （`miningHalt` / `salvageHalt` / 掩护巡逻召回 / 建站交付停机全是即时归位）⇒ 下面那条
    * `awayGalaxy !== null`（"舰船在野外"）正是被这次停机**满足**的（与站内工业、长途运输同款处置）。
    */
-  const gateSkip = applyActivityGate(state, 'siteDeliver', ctx)
-  if (gateSkip) return gateSkip
-  if (state.awayGalaxy !== null) {
-    return { ok: false, error: '舰船在野外：请先「返航空间站」（母港或已建成副站），再从空间站下达「前往工地交付」。', errorId: 'core.location.012' }
-  }
+  const dockBlock = stationActivityStartBlockReason(state, ctx, 'siteDeliver')
+  if (dockBlock) return { ok: false, ...dockBlock }
   /** 已有进行中的行程（换港返航/旧档在途）：不是"别的活动"，是同一个槽被占着 ⇒ 照旧拒 */
   if (state.transit.active) return { ok: false, error: '已有进行中的行程（返航/交付航线）。', errorId: 'core.location.014' }
   if (!state.exploredGalaxies.includes(site.galaxyId)) {
     const g = ctx.galaxies.get(site.galaxyId)?.name ?? site.galaxyId
     return { ok: false, error: `「${g}」尚未探明——先对其执行扫描探索，才能规划交付航线。`, errorId: 'core.location.018', errorParams: { p1: g } }
   }
-  const from = originGalaxyOf(state, ctx)
+  const from = originGalaxyOf(stationActivityStartState(state, 'siteDeliver', ctx), ctx)
   const mins = shortestTravelMinutes(ctx, from, site.galaxyId)
   if (!Number.isFinite(mins)) return { ok: false, error: `「${site.galaxyId}」不在已知航路内，无法规划航线。`, errorId: 'core.location.019', errorParams: { p1: site.galaxyId } }
+  const queued = queueStationActivity(state, ctx, { kind: 'siteDeliver', siteId })
+  if (queued) return queued
+  const gateSkip = applyActivityGate(state, 'siteDeliver', ctx)
+  if (gateSkip) return gateSkip
   // 出发装载（物理载货模型）：这里真装一次（上面已确认"货仓有位、仓库有料"）
   const loaded = loadDeliverCargo(state, ctx, site)
   const loadedTotal = Object.values(loaded).reduce((s, n) => s + n, 0)

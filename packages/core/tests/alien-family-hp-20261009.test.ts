@@ -37,15 +37,15 @@ describe('C族最终血量与机型独立判定', () => {
     expect(after.resists).toEqual(before.resists)
     expect(after.weapons).toEqual(before.weapons)
     expect(createFoeSpecs(card, bal)[0]).toEqual(after)
-    expect(ship.hp).toBe(hpOf(before) / 2.5)
+    expect(ship.hp).toBeCloseTo(hpOf(before) / 2.5 / 1.5)
   })
 
   it('混编按单位family加血，不给非C舰体加血；旧威胁路径C也生效', () => {
     const c = ctx.foeShips!.get('foe-alien-starcore-adult')!
     const a = ctx.foeShips!.get('foe-pirate-skiff')!
     const specs = createFoeSpecs({ ...shell, ships: [{ ship: c }, { ship: a }] }, bal)
-    expect(hpOf(specs[0]!)).toBeCloseTo(c.hp * 1.3)
-    expect(hpOf(specs[1]!)).toBeCloseTo(a.hp)
+    expect(hpOf(specs[0]!)).toBeCloseTo(c.hp * 1.3 * 1.5)
+    expect(hpOf(specs[1]!)).toBeCloseTo(a.hp * 1.5)
     const legacy: AnomalyDef = { ...shell, ships: undefined, waves: undefined }
     const base = createFoeSpecs({ ...legacy, foeFamily: 'A' }, bal)[0]!
     const alien = createFoeSpecs(legacy, bal)[0]!
@@ -134,7 +134,7 @@ describe('C族最终血量与机型独立判定', () => {
     expect(hpOf(mother)).toBeCloseTo(bossHp, 8)
     for (const layer of ['s', 'a', 'h'] as const) expect(mother.hp[layer]).toBeCloseTo(layers[layer], 8)
     const escort = foes.find(unit => unit.foeShipId === 'foe-alien-hiveback')!
-    expect(hpOf(escort)).toBeCloseTo(2080 * 1.739 * 1.3, 8)
+    expect(hpOf(escort)).toBeCloseTo(2080 * 1.739 * 1.3 * 1.5, 8)
     const { state } = alienFixture(ctx)
     const battle = createBattleState(createPlayerSpec(state, ctx, state.shipId)!, foes, 0, 10000)
     battle.distanceM = 10000

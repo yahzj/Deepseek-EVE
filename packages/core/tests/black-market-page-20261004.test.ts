@@ -102,15 +102,15 @@ describe('独立黑市日板候选与报价', () => {
 })
 
 describe('黑市购买守恒与渠道隔离', () => {
-  it.each(['mining', 'salvaging', 'hauling', 'expedition', 'standby', 'transit'] as const)('%s旧位置字段仍为空时也不能在途购买', (activity) => {
+  it.each(['mining', 'salvaging', 'hauling', 'expedition', 'standby', 'transit'] as const)('%s中可远程购买，不中断主控活动', (activity) => {
     const state = world()
     state[activity].active = true
     const offer = state.blackMarket!.offers[0]!
-    const before = JSON.stringify(state)
-    expect(blackMarketBuy(state, ctx, offer.goodKey, state.blackMarket!.dayWallMs, offer.price, now).errorId).toBe('core.blackMarket.005')
-    expect(JSON.stringify(state)).toBe(before)
+    const before = structuredClone(state[activity])
+    expect(blackMarketBuy(state, ctx, offer.goodKey, state.blackMarket!.dayWallMs, offer.price, now).ok).toBe(true)
+    expect(state[activity]).toEqual(before)
   })
-  it('已建成副站能买，未建成工地不能买；后台AI不占购买地点', () => {
+  it('副站及未建成工地均可远程购买', () => {
     const state = world(), site = [...ctx.stations.values()][0]!
     state.dockedSite = site.id
     state.stationSites[site.id] = { stage: site.tiers.length, delivered: {} }
@@ -118,7 +118,7 @@ describe('黑市购买守恒与渠道隔离', () => {
     expect(blackMarketBuy(state, ctx, offer.goodKey, state.blackMarket!.dayWallMs, offer.price, now).ok).toBe(true)
     state.stationSites[site.id]!.stage = 0
     const next = state.blackMarket!.offers[1]!
-    expect(blackMarketBuy(state, ctx, next.goodKey, state.blackMarket!.dayWallMs, next.price, now).errorId).toBe('core.blackMarket.005')
+    expect(blackMarketBuy(state, ctx, next.goodKey, state.blackMarket!.dayWallMs, next.price, now).ok).toBe(true)
   })
   it.each(['item','module','blueprint','ship','aicore'] as const)('%s正确入账、扣全款、不入普通簿，重复买失败', (kind) => {
     const state = world()
@@ -145,12 +145,11 @@ describe('黑市购买守恒与渠道隔离', () => {
     const good = blackMarketCandidateGoods(ctx).find((g) => g.playerBuyable === false)!
     expect(buyAtMarket(state, ctx, good.key, 1).blocked).toBe('not-buyable')
   })
-  it.each(['money','location','lock','quote','invalid','sold'] as const)('%s失败不扣款或库存', (reason) => {
+  it.each(['money','lock','quote','invalid','sold'] as const)('%s失败不扣款或库存', (reason) => {
     const state = world()
     const offer = state.blackMarket!.offers[0]!
     const day = state.blackMarket!.dayWallMs
     if (reason === 'money') state.wallet.isk = 0
-    if (reason === 'location') state.awayGalaxy = 'galaxy-redring'
     if (reason === 'lock') state.standingsEarned!.dsi = 99
     if (reason === 'invalid') offer.multiplier = 2
     if (reason === 'sold') offer.sold = true

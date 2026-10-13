@@ -4,8 +4,6 @@ import type { MarketGoodDef, SimContext } from './types'
 import { DSI_FACTION_ID, standingOf } from './standing'
 import { BLACK_MARKET_STANDING_REQ } from './events'
 import { hashSeed, nextInt } from './rng'
-import { isAtHomeLike } from './location'
-import { mainActivityOf } from './activityGate'
 import { depositGood, goodName, marketLockNote } from './market'
 import { addLog } from './state'
 
@@ -127,9 +125,6 @@ export function blackMarketBuy(state: GameState, ctx: SimContext, goodKey: strin
   const quantity = blackMarketOfferQuantity(offer)
   if (!good || !normalizeBlackMarket({ dayWallMs: board.dayWallMs, offers: [offer] })?.offers.length ||
     (quantity !== 1 && quantity !== blackMarketLotQuantity(ctx, good))) return fail('core.blackMarket.004', '这件商品当前无法出售。')
-  const activity = mainActivityOf(state)
-  if (!isAtHomeLike(state, ctx) || state.transit.active || state.wormhole.run != null ||
-    (activity !== null && !['refine', 'manufacturing', 'lab', 'wormholeScan'].includes(activity))) return fail('core.blackMarket.005', '购买黑市商品需要停靠母港或已建成的副空间站。')
   const lock = marketLockNote(state, good)
   if (lock) return { ok: false, error: lock.text, errorId: lock.textId, errorParams: lock.params }
   if (!Number.isFinite(state.wallet.isk) || state.wallet.isk < offer.price) return fail('core.blackMarket.006', '信用点不足，未扣款。')

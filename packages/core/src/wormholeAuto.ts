@@ -48,7 +48,7 @@ import { WORMHOLE_ARCHETYPE_IDS, WORMHOLE_ARCHETYPE_LABELS, wormholeArchetypeOf 
 import { wormholeStockOf, wormholeStockTake } from './wormholeScan'
 import { aiCoreCap, aiCoreIndustryUsed, aiCoreName, aiCoreShipUsed, gainAiCore, industryAiBonus } from './ai'
 import { logParams } from './logParts'
-import { changeShip, loseShip } from './shipyard'
+import { changeShip, changeShipBlockReason, loseShip } from './shipyard'
 import { wormholePreparationPlan, wormholeEnterPrepared } from './wormholePreparation'
 import type { WormholePreparationPlan } from './wormholePreparation'
 import { wormholeExtractionPlan, wormholeConfirmExtraction } from './wormholeExtraction'
@@ -666,6 +666,11 @@ export function wormholeAutoMainHandover(
       reason: '舰队里没有别的空闲船可以接任主控：先收工或添一条船，再把它编进来。',
       reasonId: 'core.wormholeAuto.018',
     }
+  const changeBlock = changeShipBlockReason(state, toId, ctx)
+  if (changeBlock) return {
+    needed: true, reason: changeBlock.error, reasonId: changeBlock.errorId,
+    reasonParams: changeBlock.errorParams ? { ...changeBlock.errorParams } : undefined,
+  }
   return { needed: true, toId, toName: shipNameOf(state, ctx, toId) }
 }
 

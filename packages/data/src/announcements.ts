@@ -37,6 +37,23 @@ const MECHANICS_BRIEF_IDS = [
 /** 全量公告（新的放最上方） */
 export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
   {
+    // 2026-10-13船长确认五条中文正文，英文仅登记待译，历史公告保持。
+    id: 'ann-ship-hp-station-20261013',
+    title: L10N['ano.hpStation.001']!.zh,
+    titleId: 'ano.hpStation.001',
+    date: '2026-10-13',
+    tag: L10N['ano.hpStation.002']!.zh,
+    tagId: 'ano.hpStation.002',
+    bullets: [
+      L10N['ano.hpStation.003']!.zh,
+      L10N['ano.hpStation.004']!.zh,
+      L10N['ano.hpStation.005']!.zh,
+      L10N['ano.hpStation.006']!.zh,
+      L10N['ano.hpStation.007']!.zh,
+    ],
+    bulletIds: ['ano.hpStation.003', 'ano.hpStation.004', 'ano.hpStation.005', 'ano.hpStation.006', 'ano.hpStation.007'],
+  },
+  {
     // ⟪文案调整 2026-10-09⟫ 船长确认敌人介绍只留概述，酸液爆虫介绍使用船长原文；英文只登记待译。
     id: 'ann-alien-invasion-20261007',
     title: L10N['ano.incursionRelease.001']!.zh,

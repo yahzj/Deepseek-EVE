@@ -20,7 +20,7 @@ import { applyActivityGate, pilotUnavailableReason } from './activityGate'
 import type { CommandResult } from './engine'
 import type { GameState } from './state'
 import type { SimContext } from './types'
-import { addItem, addWare, freeCargoM3, unloadCargoToWarehouse } from './inventory'
+import { addItem, addWare, freeCargoM3, unloadCargoOfShipToWarehouse } from './inventory'
 import { shortestTravelMinutes, travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
 import { bumpFirst } from './firstTasks'
@@ -360,8 +360,12 @@ export function startSalvageOp(
    * 那一档先警告；远征/快递/战斗中/洞里/返航途中一律拒）——原先这里散着 8 条硬拒，现已收进
    * `activityGate.applyActivityGate`。⚠ 放在**本入口自己的前置校验之后**（打捞器/探索/航路/残骸池）。
    */
+  const oldReturn = state.shipReturns[state.shipId]
+  const restartingReturn = !state.mining.active && !state.salvaging.active &&
+    (oldReturn?.reason === 'miningStop' || oldReturn?.reason === 'salvageStop')
   const gateSkip = applyActivityGate(state, 'salvaging', ctx)
   if (gateSkip) return gateSkip
+  if (restartingReturn) { state.pendingActivityReturn = null; state.haltedBySwitch = null }
   /**
    * **新指令取消"停止返航"**（**船长 2026-10-02** 报障的连带，与 `mining.startMining` 同款）——
    * 上一拍刚「停止打捞」留下了返航账本（船正飞回港卸货）；玩家又下新打捞指令 ⇒ **就地开工**。
@@ -967,7 +971,7 @@ export function advanceSalvageOp(state: GameState, deltaMs: number, ctx: SimCont
       remaining -= need
       s.phaseAccMs = 0
       if (s.phase === 'returning') {
-        const moved = unloadCargoToWarehouse(state, ctx)
+        const moved = unloadCargoOfShipToWarehouse(state, ctx, state.shipId)
         const galaxyName = ctx.galaxies.get(galaxyId)?.name ?? galaxyId
         addLog(
           state,

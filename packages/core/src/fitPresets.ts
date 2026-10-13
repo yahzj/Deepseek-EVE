@@ -24,6 +24,7 @@
  * **下架或未知的装备 id 不在这里丢**——套用时计入"未装"清单逐条报出（规范化层拿不到内容表）。
  */
 import { addLog, shipLockedReason } from './state'
+import { shipOperationBlockReason } from './shipActionPolicy'
 import type { CommandResult } from './engine'
 import type { GameState, ShipFitPreset, WreckLogEntry } from './state'
 import type { RackSlot, SimContext } from './types'
@@ -378,6 +379,8 @@ export interface UnfitAllResult {
  * 按钮直接调本函数（船长 2026-09-13：进洞船只所有行为都锁定，包括维修）。
  */
 export function unfitAllModules(state: GameState, ctx: SimContext, shipId: string, quiet = false): UnfitAllResult {
+  const blocked = shipOperationBlockReason(state, ctx, shipId, 'configure')
+  if (blocked) return { ok: false, ...blocked, removed: 0 }
   const lock = shipLockedReason(state, shipId, '卸下它的装备')
   if (lock) return { ok: false, error: lock, removed: 0 }
   const fleet = state.fleet[shipId]
@@ -412,6 +415,7 @@ export function unfitAllModules(state: GameState, ctx: SimContext, shipId: strin
 
 /** 玩家指令：把目标船无人机舱里的无人机全部退回仓库；返回退回的架数 */
 export function clearDroneLoad(state: GameState, ctx: SimContext, shipId: string): number {
+  if (shipOperationBlockReason(state, ctx, shipId, 'configure')) return 0
   const fleet = state.fleet[shipId]
   const load = fleet?.droneLoad ?? {}
   let out = 0
@@ -441,6 +445,8 @@ export interface FitPresetApplyResult {
  * 方案超出的位丢弃、方案不足的位留空）。
  */
 export function applyFitPreset(state: GameState, ctx: SimContext, shipId: string, index: number): FitPresetApplyResult {
+  const operationBlock = shipOperationBlockReason(state, ctx, shipId, 'configure')
+  if (operationBlock) return { ok: false, ...operationBlock, summary: '' }
   const lock = shipLockedReason(state, shipId, '换装')
   if (lock) return { ok: false, error: lock, summary: '' }
   const shipDef = fleetDefOf(state, ctx, shipId)

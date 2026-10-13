@@ -212,7 +212,7 @@ describe('V10：市场声望门槛', () => {
     expect(sell.sold).toBe(50)
   })
 
-  it('buyShip 对门槛船给出明确报错；声望达标且有现货时购入登舰', () => {
+  it('buyShip 对门槛船给出明确报错；声望达标且有现货时只入机库', () => {
     const r1 = buyShip(state, 'warship', ctx)
     expect(r1.ok).toBe(false)
     expect(r1.error).toContain('声望')
@@ -225,7 +225,8 @@ describe('V10：市场声望门槛', () => {
     })
     const r2 = buyShip(state, 'warship', ctx)
     expect(r2.ok).toBe(true)
-    expect(state.shipId).toBe('warship')
+    expect(state.shipId).toBe('sandcat')
+    expect(state.fleet.warship).toBeDefined()
   })
 })
 
@@ -249,6 +250,9 @@ describe('V10：占位槽位（shield/armor/propulsion）装配', () => {
     // 采矿参数不受护盾模块影响
     expect(startMining(state, 'belt-a', ctx).ok).toBe(true)
     stopMining(state, ctx)
+    const returnLeg = state.shipReturns[state.shipId]!.legMs
+    advanceGame(state, returnLeg, ctx)
+    expect(state.shipReturns[state.shipId]).toBeUndefined()
     // 装着模块的船不能挂卖（先切到另一艘船，避免"驾驶中"拦截）
     state.fleet['sandcat2'] = { durability: 1, cargo: {}, fitted: fittedOf({ turret: null, miner: null, shield: null, propulsion: null, armor: null, cargo: null }) }
     expect(changeShip(state, 'sandcat2', ctx).ok).toBe(true)

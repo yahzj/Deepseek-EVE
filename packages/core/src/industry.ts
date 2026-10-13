@@ -32,11 +32,12 @@ import { wormholeDeliverRelics, wormholeRareBoxThemeGroupsOf, wormholeRareBoxThe
 import type { AiCoreType, ItemDef, SimContext } from './types'
 import {  addWare, countItem, countWare, removeItem, removeWare } from './inventory'
 import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, gainAiCore, occupyAiCore, releaseAiCore } from './ai'
-import { isAtHomeLike, stationIndustryBlocked } from './location'
+import { stationIndustryBlocked, stationActivityStartBlockReason, stationActivityStartState } from './location'
+import { queueStationActivity } from './stationActivityPending'
+import { shipActuallyDocked, shipOperationBlockReason } from './shipActionPolicy'
 import { composeLog, logParamsOf, type LogSeg } from './logParts'
 import { DSI_FACTION_ID, standingOf } from './expedition'
 import { buyAtMarket, goodLockedReason, marketGoodOf, marketQuote, placeBuyOrder, sellAtMarket } from './market'
-import { shipDisplayName } from './instances'
 import {
   RECYCLE_BATCH_M3,
   RECYCLE_CYCLE_MS,
@@ -134,6 +135,12 @@ export function refineBatchOutputOf(
 /** 矿石在"货仓+仓库"的合计数量 */
 export function oreAvailable(state: GameState, oreId: string): number {
   return countItem(state, oreId) + countWare(state, oreId)
+}
+
+/** 公共原料仅取安全仓库和实际停靠的驾驶船货仓。 */
+export function industryAvailable(state: GameState, ctx: SimContext, itemId: string, worker?: 'pilot'): number {
+  const readable = worker === 'pilot' ? stationActivityStartState(state, 'refine', ctx) : state
+  return countWare(state, itemId) + (shipActuallyDocked(readable, ctx) ? countItem(state, itemId) : 0)
 }
 
 /** 兜底运转参数（资源数据未给显式单批参数时；测试用小批量快周期） */
@@ -283,7 +290,7 @@ export function startRefineRun(
   if (!def.refine || def.refine.length === 0) {
     return { ok: false, error: `「${def.name}」没有精炼配方（只支持原矿/气体/冰矿）。`, errorId: 'core.industry.003', errorParams: { p1: def.name } }
   }
-  const available = oreAvailable(state, itemId)
+  const available = industryAvailable(state, ctx, itemId, worker === 'pilot' ? worker : undefined)
   if (available <= 0) {
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。`, errorId: 'core.industry.004', errorParams: { p1: def.name } }
   }
@@ -301,32 +308,14 @@ export function startRefineRun(
    * 「需停靠空间站」，而其实一键就能回来。
    */
   if (worker === 'pilot') {
-    const gateSkip = applyActivityGate(state, 'refine', ctx)
-    if (gateSkip) return gateSkip
-    /**
-     * **同一档再开一台 = 换炉**（**2026-09-21 船长答 1「允许切换」**）：判据见到"同一项"一律放行
-     * （`current === next`），所以这一档要自己收口——停掉手上那台（当前那批进度丢弃）＋统一日志，
-     * 保证 **pilot 至多 1 台**这条不变量。
-     */
-    if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
-      haltActivityForSwitch(state, 'refine')
-      logAutoHalt(state, 'refine')
-    }
+    const dockBlock = stationActivityStartBlockReason(state, ctx, 'refine')
+    if (dockBlock) return { ok: false, ...dockBlock }
   } else {
     const capBlock = aiCoreCapBlock(state, ctx, 'industry')
     if (capBlock) return { ok: false, error: capBlock.error, errorId: capBlock.errorId, errorParams: capBlock.errorParams }
     if (countAiCore(state, worker) <= 0) {
       return { ok: false, error: `${aiCoreName(worker)} 库存不足，无法接入精炼炉。`, errorId: 'core.industry.005', errorParams: { p1: aiCoreName(worker) } }
     }
-  }
-  // AI 核心驱动不看位置（判据单点 = `stationIndustryBlocked`）：出海时照常开工，亲自运转仍要求在基地网络内。
-  // ⚠ 这一道放在**统一判据之后**：停机已把舰船即时带回空间站（见上面的顺序说明）。
-  if (stationIndustryBlocked(worker, state, ctx)) {
-    return {
-        ok: false,
-        error: '精炼炉随协会基地网络运转：需停靠空间站（母港或已建成副站）才能启动（AI 核心驱动不受此限）。',
-        errorId: 'core.industry.084',
-      }
   }
   const { batchUnits, cycleMs } = refineBaseParamsOf(def)
   const eff = worker === 'pilot' ? 1 : aiEfficiency(state, ctx, worker)
@@ -407,16 +396,23 @@ export function startRefineRun(
    * ⚠ 只影响**新起的炉/线**：在跑的那台周期在起炉那一刻已锁定（与制造线同款，不重算）。
    */
   if (state.debugQuick) cycleEff = 1000
-  /**
-   * ⚠ 这里的 batch 门槛（够不够一批）与上面那个 gate 谁先谁后都行：**停机不改余量**
-   * （采矿/打捞停下来的货留在船上，`oreAvailable` 读的就是"货仓 + 仓库"）⇒ 不构成"先停活再报开不了"。
-   */
+  // 原料和位置前置全部通过后才停旧作业，失败不丢掉手动产线进度。
   if (available < batchEff) {
     return {
       ok: false,
       error: `可炼量不足一批（每批 ${batchEff} 单位，现有 ${available} 单位）——先集齐再开工。`,
       errorId: 'core.industry.006',
       errorParams: { p1: batchEff, p2: available },
+    }
+  }
+  if (worker === 'pilot') {
+    const queued = queueStationActivity(state, ctx, { kind: 'refine', itemId })
+    if (queued) return queued
+    const gateSkip = applyActivityGate(state, 'refine', ctx)
+    if (gateSkip) return gateSkip
+    if (state.refineRuns.some((r) => r.active && r.worker === 'pilot')) {
+      haltActivityForSwitch(state, 'refine')
+      logAutoHalt(state, 'refine')
     }
   }
   if (worker !== 'pilot' && !occupyAiCore(state, worker)) {
@@ -467,10 +463,14 @@ export function startUnboxRun(
   if (def.kind !== 'container') {
     return { ok: false, error: `「${def.name}」不是货柜——「货柜拆解」只拆虫洞带回来的货柜（安全货柜 / 图纸货柜）。`, errorId: 'core.industry.008', errorParams: { p1: def.name } }
   }
-  if (oreAvailable(state, boxItemId) <= 0) {
+  if (industryAvailable(state, ctx, boxItemId, worker === 'pilot' ? worker : undefined) <= 0) {
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。`, errorId: 'core.industry.004', errorParams: { p1: def.name } }
   }
   if (worker === 'pilot') {
+    const dockBlock = stationActivityStartBlockReason(state, ctx, 'refine')
+    if (dockBlock) return { ok: false, ...dockBlock }
+    const queued = queueStationActivity(state, ctx, { kind: 'unbox', itemId: boxItemId })
+    if (queued) return queued
     /** 顺序同 `startRefineRun`：判据 → **同档换机器收口（停手上那台 + 统一日志）** → 位置门槛 */
     const gateSkip = applyActivityGate(state, 'refine', ctx)
     if (gateSkip) return gateSkip
@@ -541,7 +541,7 @@ export function startRecycleRun(
    * 等势力装备出来再说」；2026-09-26 三件势力装备定稿 ⇒ 理由消失，闸门与拒因 `core.industry.084`
    * 一并删除）。`salvage.wreckRecycleClosedOf` 保留为"日后要关某族"的落点、**现在恒 false**。
    */
-  const available = oreAvailable(state, wreckItemId)
+  const available = industryAvailable(state, ctx, wreckItemId, worker === 'pilot' ? worker : undefined)
   if (available <= 0) {
     return { ok: false, error: `货仓与仓库里都没有 ${def.name}。`, errorId: 'core.industry.004', errorParams: { p1: def.name } }
   }
@@ -565,6 +565,10 @@ export function startRecycleRun(
    * （`oreAvailable` = 货仓 + 仓库，停下来的货留在船上）⇒ 谁先谁后都行。
    */
   if (worker === 'pilot') {
+    const dockBlock = stationActivityStartBlockReason(state, ctx, 'refine')
+    if (dockBlock) return { ok: false, ...dockBlock }
+    const queued = queueStationActivity(state, ctx, { kind: 'recycle', itemId: wreckItemId })
+    if (queued) return queued
     const gateSkip = applyActivityGate(state, 'refine', ctx)
     if (gateSkip) return gateSkip
     /** 同档换机器（见 `startRefineRun`）：停掉手上那台 + 统一日志 */
@@ -862,7 +866,7 @@ export function advanceRefining(
      */
     {
       const nowUsesClaim = r.claimedUnits !== undefined
-      const nowStock = nowUsesClaim ? Math.max(0, r.claimedUnits ?? 0) : oreAvailable(state, r.itemId)
+      const nowStock = nowUsesClaim ? Math.max(0, r.claimedUnits ?? 0) : industryAvailable(state, ctx, r.itemId)
       const nowAvail = r.lockUnits !== undefined ? Math.min(nowStock, r.lockUnits) : nowStock
       if (nowAvail < r.batchUnits && r.finishAtGameMs > state.gameMs) r.finishAtGameMs = state.gameMs
     }
@@ -871,7 +875,7 @@ export function advanceRefining(
       // v20 实时扣料：仓库/货仓余量决定本批能炼多少；
       // **私有料账**（稀有残骸 2026-09-11「起炉即预占」）优先：料 = 本炉预占的存量，不再看公共库存
       const usesClaim = r.claimedUnits !== undefined
-      const stock = usesClaim ? Math.max(0, r.claimedUnits ?? 0) : oreAvailable(state, r.itemId)
+      const stock = usesClaim ? Math.max(0, r.claimedUnits ?? 0) : industryAvailable(state, ctx, r.itemId)
       const avail = r.lockUnits !== undefined ? Math.min(stock, r.lockUnits) : stock
       if (avail <= 0) {
         // 原料耗尽 / 本轮定额完成：自动停炉（含被卖光/被并行台抢先的情况）
@@ -976,7 +980,7 @@ export function advanceRefining(
         r.claimedUnits = Math.max(0, (r.claimedUnits ?? 0) - qty)
       } else {
         // 从货仓优先扣料，余下取仓库
-        const fromCargo = Math.min(countItem(state, r.itemId), qty)
+        const fromCargo = shipActuallyDocked(state, ctx) ? Math.min(countItem(state, r.itemId), qty) : 0
         if (fromCargo > 0) removeItem(state, r.itemId, fromCargo)
         const fromWare = qty - fromCargo
         if (fromWare > 0) removeWare(state, r.itemId, fromWare)
@@ -1208,7 +1212,7 @@ export function advanceRefining(
        * 口径依据：2026-09-06 船长拍板「余量不足即停工、余料保留，凑够一批再开」。
        */
       const nextUsesClaim = r.claimedUnits !== undefined
-      const nextStock = nextUsesClaim ? Math.max(0, r.claimedUnits ?? 0) : oreAvailable(state, r.itemId)
+      const nextStock = nextUsesClaim ? Math.max(0, r.claimedUnits ?? 0) : industryAvailable(state, ctx, r.itemId)
       const nextAvail = r.lockUnits !== undefined ? Math.min(nextStock, r.lockUnits) : nextStock
       if (nextAvail < r.batchUnits) {
         r.finishAtGameMs = state.gameMs
@@ -1230,6 +1234,8 @@ export interface SellResult {
 
 /** 从当前船货仓按市价卖出（矿石主要在此；吃穿簿的剩余自动转限价卖单） */
 export function sellCargoItem(state: GameState, itemId: string, ctx: SimContext): SellResult {
+  const blocked = shipOperationBlockReason(state, ctx, state.shipId, 'cargo')
+  if (blocked) return { ok: false, ...blocked, soldUnits: 0, gainedIsk: 0 }
   return sellItemFrom(state, itemId, countItem(state, itemId), (units) => removeItem(state, itemId, units), ctx, '货仓', 'ui.CargoPage.004')
 }
 
@@ -1268,6 +1274,8 @@ export function discardWareQty(
 
 /** 从当前船货仓按市价**卖出指定数量**（船长 2026-09-05：出售支持只卖一部分；其余语义同 sellCargoItem） */
 export function sellCargoItemQty(state: GameState, itemId: string, qty: number, ctx: SimContext): SellResult {
+  const blocked = shipOperationBlockReason(state, ctx, state.shipId, 'cargo')
+  if (blocked) return { ok: false, ...blocked, soldUnits: 0, gainedIsk: 0 }
   // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
   const lock = shipLockedReason(state, state.shipId, '卖它货仓里的东西')
   if (lock) return { ok: false, error: lock, soldUnits: 0, gainedIsk: 0 }
@@ -1377,22 +1385,7 @@ export function buyShip(state: GameState, shipId: string, ctx: SimContext): Comm
     const res = buyAtMarket(state, ctx, good.key, 1)
     const uid = res.bought > 0 ? res.shipUid : null
     if (uid) {
-      // v17：登舰前检查驾驶船是否空闲（忙时先入机库，改舰船页切换，避免打断作业）
-      // ⚠ 2026-09-17 去掉 `!state.scanning.active`：星系扫描自 2026-09-15 起是**无人扫描艇**
-      //   （船长：「玩家扫描星系将不再占用玩家的主控活动」）⇒ 扫描在跑时驾驶船其实是空闲的，
-      //   买船应当**当场登舰**（本条是那批无人化改造漏掉的旧闸之一）。
-      const pilotFree =
-        state.awayGalaxy === null &&
-        !state.transit.active &&
-        !state.expedition.active &&
-        !state.mining.active &&
-        !state.salvaging.active
-      if (pilotFree) {
-        state.shipId = uid
-        addLog(state, 'trade', `已购入 ${shipDisplayName(state, ctx, uid)}（市场价 ${res.total.toLocaleString('zh-CN')} 信用点）并登舰。`, 'core.industry.039', { p1: shipDisplayName(state, ctx, uid), p2: res.total.toLocaleString('zh-CN') })
-      } else {
-        addLog(state, 'trade', `已购入 ${shipDisplayName(state, ctx, uid)}（市场价 ${res.total.toLocaleString('zh-CN')} 信用点）——驾驶船正在作业，新船已入机库待命（可稍后在舰船页切换驾驶）。`, 'core.industry.040', { p1: shipDisplayName(state, ctx, uid), p2: res.total.toLocaleString('zh-CN') })
-      }
+      // 远程购船只入机库；buyAtMarket已记交易日志，不自动换驾驶。
       return { ok: true }
     }
   }
@@ -1441,9 +1434,6 @@ export function sellAll(state: GameState, itemId: string, ctx: SimContext): Sell
 export function redeemFragments(state: GameState, ctx: SimContext, moduleId: string): CommandResult {
   const recipe = FRAGMENT_RECIPES[moduleId]
   if (!recipe) return { ok: false, error: `「${moduleId}」没有对应的逆向研究蓝图。` }
-  if (!isAtHomeLike(state, ctx)) {
-    return { ok: false, error: '逆向研究随协会基地网络进行：需停靠空间站（母港或已建成副站）。', errorId: 'core.industry.030' }
-  }
   if (state.learnedRecipes.includes(recipe.blueprintId)) {
     return { ok: false, error: '该蓝图已掌握（learnedRecipes 永久生效），无需重复逆向。', errorId: 'core.industry.031' }
   }
@@ -1451,7 +1441,7 @@ export function redeemFragments(state: GameState, ctx: SimContext, moduleId: str
   const bpDef = ctx.blueprints.get(recipe.blueprintId)
   const fragId = fragmentItemIdOf(moduleId)
   const fragDef = ctx.items.get(fragId)
-  const have = countItem(state, fragId) + countWare(state, fragId)
+  const have = industryAvailable(state, ctx, fragId)
   if (have < recipe.need) {
     return {
       ok: false,
@@ -1459,7 +1449,7 @@ export function redeemFragments(state: GameState, ctx: SimContext, moduleId: str
     }
   }
   let need = recipe.need
-  const fromCargo = Math.min(countItem(state, fragId), need)
+  const fromCargo = shipActuallyDocked(state, ctx) ? Math.min(countItem(state, fragId), need) : 0
   if (fromCargo > 0) {
     removeItem(state, fragId, fromCargo)
     need -= fromCargo
@@ -1512,11 +1502,10 @@ export interface FragmentRedeemRow {
  * 排序 = 配方表现有顺序（`FRAGMENT_RECIPES` 的键序：MK2 三张在前、MK3 三张在后）。
  */
 export function fragmentRedeemRowsOf(state: GameState, ctx: SimContext): FragmentRedeemRow[] {
-  const atStation = isAtHomeLike(state, ctx)
   const rows: FragmentRedeemRow[] = []
   for (const [moduleId, recipe] of Object.entries(FRAGMENT_RECIPES)) {
     const fragmentItemId = fragmentItemIdOf(moduleId)
-    const have = countItem(state, fragmentItemId) + countWare(state, fragmentItemId)
+    const have = industryAvailable(state, ctx, fragmentItemId)
     const learned = state.learnedRecipes.includes(recipe.blueprintId)
     rows.push({
       moduleId,
@@ -1528,7 +1517,7 @@ export function fragmentRedeemRowsOf(state: GameState, ctx: SimContext): Fragmen
       have,
       need: recipe.need,
       learned,
-      ready: !learned && have >= recipe.need && atStation,
+      ready: !learned && have >= recipe.need,
     })
   }
   return rows

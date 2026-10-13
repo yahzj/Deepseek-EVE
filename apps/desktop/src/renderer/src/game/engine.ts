@@ -76,6 +76,8 @@ import {
   listSellHolding,
   loadSaveFile,
   loadWarehouseToCargoFit,
+  shipOperationBlockReason,
+  cancelPendingStationActivity,
   lockShip,
   marketQuote,
   goodName,
@@ -199,7 +201,7 @@ import {
   overwriteFitPreset,
   unfitAllModules,
   unloadCargoToWarehouse,
-  unloadCargoOfShipToWarehouse,
+  unloadShipCargo,
   // 「第一次」任务系列的链奖金（面板上的领奖按钮）
   claimChainReward as claimChainRewardCore,
   beginAfterAwaken,
@@ -667,7 +669,7 @@ export class GameEngine {
       command: async (action: string, args: unknown[]) => { const result = this.planetaryCommand(action, args); await this.persist(); return result },
       step: async (duration: number) => {
         if (!planetaryEnabled() || !Number.isSafeInteger(duration) || duration < 0 || duration > 8 * 3600000 || !this.ctx.planetary) return false
-        advanceGame(this.state, duration, this.ctx, { offline: true, onUnboxResult: this.onUnboxResult })
+        advanceGame(this.state, duration, this.ctx, { offline: true, onUnboxResult: this.onUnboxResult, onStationActivityStarted: this.onStationActivityStarted })
         this.notify(); await this.persist(); return true
       },
       persist: () => this.persist(),
@@ -936,6 +938,10 @@ export class GameEngine {
     this.unboxLedger.record(this.state, result)
   }
 
+  private onStationActivityStarted = (action: import('@whale/core').StationAction): void => {
+    if (action.kind === 'unbox') this.unboxLedger.begin(this.state, action.itemId)
+  }
+
   /**
    * **切语言**（2026-09-19 船长令「希望对游戏进行英语本地化处理」）：
    * 用当前语言**重建**运行上下文与全部目录表（`buildSimContext(locale)` + 覆盖层），
@@ -1010,6 +1016,7 @@ export class GameEngine {
       // 洞内倍速：**只有前台心跳传**（离线结算走 simulateOffline，不经这里 ⇒ 恒 1×）
       battleSpeedX: this.requestedWormholeSpeed(),
       onUnboxResult: this.onUnboxResult,
+      onStationActivityStarted: this.onStationActivityStarted,
     })
     this.drainSystemNotice()
     if (rec) perfHub.recordAdvance(bucket, performance.now() - t0)
@@ -1194,7 +1201,7 @@ export class GameEngine {
       const before = snapshotBasics(this.state)
       const stats = newSettleStats()
       const { overflowMs } = offlineSplit(now - lastSavedWall, offlineCapMsOf(this.state))
-      simulateOffline(this.state, lastSavedWall, now, this.ctx, undefined, { stats, onUnboxResult: this.onUnboxResult })
+      simulateOffline(this.state, lastSavedWall, now, this.ctx, undefined, { stats, onUnboxResult: this.onUnboxResult, onStationActivityStarted: this.onStationActivityStarted })
       this.drainSystemNotice()
       this.offlineReport = buildOfflineReport(before, this.state, this.ctx, now - lastSavedWall, overflowMs, stats)
       // 2026-09-08 船长定：日志会话级（写盘剥离 logs）；启动不做强制清空——
@@ -2332,7 +2339,7 @@ export class GameEngine {
     return this.withActivitySwitch('refine', () => {
       const result = startUnboxRun(this.state, this.ctx, boxItemId, worker)
       if (result.ok) {
-        this.unboxLedger.begin(this.state, boxItemId)
+        if (!result.queued) this.unboxLedger.begin(this.state, boxItemId)
         void this.persist()
         this.notify()
       }
@@ -2749,6 +2756,8 @@ export class GameEngine {
    *  （返回值由 boolean 改 CommandResult，让装配页能把「为什么卸不掉」直接弹给玩家）。 */
   unfitAtAt(rack: RackSlot, index: number, shipId?: string): CommandResult {
     const uid = shipId ?? this.state.shipId
+    const blocked = shipOperationBlockReason(this.state, this.ctx, uid, 'configure')
+    if (blocked) return { ok: false, ...blocked }
     const why = cpuOverloadText(this.state, this.ctx, uid, { remove: { rack, index } })
     if (why !== null) return { ok: false, error: why.error, errorId: why.errorId, errorParams: why.errorParams }
     const ok = unfitAt(this.state, rack, index, shipId, this.ctx)
@@ -3916,7 +3925,7 @@ export class GameEngine {
     const { overflowMs } = offlineSplit(ms, offlineCapMsOf(this.state))
     // 调试快进：冻结进行中的战斗（低安遭遇战 + 主控远征），不随快进时间跳变而瞬结（船长 2026-09-05）
     const stats = newSettleStats()
-    simulateOffline(this.state, wallBase, wallBase + ms, this.ctx, undefined, { freezeBattle: true, stats, onUnboxResult: this.onUnboxResult })
+    simulateOffline(this.state, wallBase, wallBase + ms, this.ctx, undefined, { freezeBattle: true, stats, onUnboxResult: this.onUnboxResult, onStationActivityStarted: this.onStationActivityStarted })
     this.state.savedAtWallMs = wallBase + ms
     /**
      * **把入侵一并推到快进后的时刻**（2026-09-25 修船长报障「打开调试模式，快进后不会刷新入侵」）：
@@ -3987,6 +3996,12 @@ export class GameEngine {
       void this.persist()
       this.notify()
     }
+    return result
+  }
+
+  cancelPendingStationActivityNow(): boolean {
+    const result = cancelPendingStationActivity(this.state)
+    if (result) { void this.persist(); this.notify() }
     return result
   }
 
@@ -4392,9 +4407,10 @@ export class GameEngine {
   /** 2026-09-08（船长定）：把指定（非驾驶、空闲停靠）舰船货仓全部卸入物品仓库；返回卸入数量 */
   unloadShipAllToWarehouse(shipId: string): number {
     if (!this.state.fleet[shipId]) return -1 // 船不存在
+    if (shipOperationBlockReason(this.state, this.ctx, shipId, 'cargo')) return -2
     if (shipId in this.state.aiAssignments) return -2 // AI 作业中
     if (shipId in this.state.shipReturns) return -3 // 善后返航中
-    const moved = unloadCargoOfShipToWarehouse(this.state, this.ctx, shipId)
+    const moved = unloadShipCargo(this.state, this.ctx, shipId)
     if (moved > 0) {
       void this.persist()
       this.notify()

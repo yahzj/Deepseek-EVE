@@ -69,6 +69,9 @@ function doStop(v: ActivityView, engine: GameEngine, onToast: ToastFn): void {
     else onToast(okText)
   }
   switch (v.stop) {
+    case 'cancel-station-pending':
+      run(engine.cancelPendingStationActivityNow(), tr('ui.ActivityBar.004'))
+      break
     case 'remove-training':
       run(engine.dequeueAt(0), tr("ui.ActivityBar.038"))
       break

@@ -73,7 +73,7 @@ describe('旗舰 BOSS 池 · 累计伤害', () => {
     expect(weekendBossPoolView(s, evA)).toBeNull()
   })
 
-  it('**池子 = 固定 150,000**（船长 2026-09-25）：首次接战即立起，与"首战打多少"无关', () => {
+  it('池子固定300,000，首次接战即立起，与首战伤害无关', () => {
     const s = fresh()
     const ev = bossEvent(s)
     expect(weekendNoteFlagshipDamage(ev, 100, 1)).toBe(false) // 首场（runId 1）
@@ -89,7 +89,7 @@ describe('旗舰 BOSS 池 · 累计伤害', () => {
     // 之后每场 50,000 ⇒ 第 3 场把池子打空 ⇒ 判定击沉
     expect(weekendNoteFlagshipDamage(ev, 50_000, 3)).toBe(false)
     expect(weekendNoteFlagshipDamage(ev, 50_000, 4)).toBe(false)
-    expect(weekendNoteFlagshipDamage(ev, 49_750, 5)).toBe(true)
+    expect(weekendNoteFlagshipDamage(ev, WEEKEND_FLAGSHIP_POOL_HP - 100_250, 5)).toBe(true)
     expect(weekendFlagshipDefeated(ev)).toBe(true)
   })
 
@@ -109,12 +109,17 @@ describe('旗舰 BOSS 池 · 累计伤害', () => {
     expect(weekendFlagshipHpRemaining(ev), '未接战 ⇒ 满池').toBe(WEEKEND_FLAGSHIP_POOL_HP)
     weekendNoteFlagshipDamage(ev, 60_000, 1)
     expect(weekendFlagshipHpRemaining(ev)).toBe(WEEKEND_FLAGSHIP_POOL_HP - 60_000)
-    weekendNoteFlagshipDamage(ev, 90_000, 2)
+    weekendNoteFlagshipDamage(ev, WEEKEND_FLAGSHIP_POOL_HP - 60_000, 2)
     expect(weekendFlagshipHpRemaining(ev), '打空后夹到 1（开战入口另判"已击沉"）').toBe(1)
   })
 
-  it('池子常量：`WEEKEND_FLAGSHIP_POOL_HP` = 150,000（≈2.5 个母舰）· 旧的 ×5 下限常量已删', () => {
-    expect(WEEKEND_FLAGSHIP_POOL_HP).toBe(150_000)
+  it('池子常量300,000，已锁定旧池不改变', () => {
+    expect(WEEKEND_FLAGSHIP_POOL_HP).toBe(300_000)
+    const s = fresh()
+    const ev = bossEvent(s)
+    ev.flagshipHpMax = 150_000
+    weekendNoteFlagshipDamage(ev, 1_000, 1)
+    expect(ev.flagshipHpMax).toBe(150_000)
   })
 })
 
@@ -166,7 +171,7 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
     expect(ev.octopusHpDone ?? 0).toBe(0)
     // 第二拍起按增量推进：1 秒 ×（池子总量 ÷ 窗口）= 150000 ÷ 600 秒 = 250 点
     expect(weekendTickBoss(s, 2_000, false)).toEqual({})
-    expect(ev.octopusHpDone).toBe(250)
+    expect(ev.octopusHpDone).toBe(WEEKEND_FLAGSHIP_POOL_HP / 600)
   })
 
   it('**大步长只按一拍算**（后台标签页 / 离线补算后的第一次心跳不会整段削掉）', () => {
@@ -175,7 +180,7 @@ describe('旗舰 BOSS 池 · 章鱼人削血', () => {
     weekendNoteFlagshipDamage(ev, 1_000)
     weekendTickBoss(s, 0, false) // 立基线
     weekendTickBoss(s, 10 * H_MS, false) // 一次跳 10 小时
-    expect(ev.octopusHpDone, '只按一拍上限 5 秒削：5000ms × 0.25 = 1250 点').toBe(1_250)
+    expect(ev.octopusHpDone).toBe(WEEKEND_FLAGSHIP_POOL_HP * WEEKEND_BOSS_TICK_MAX_MS / weekendFlagshipWindowMs(s))
     expect(WEEKEND_BOSS_TICK_MAX_MS).toBe(5_000)
   })
 

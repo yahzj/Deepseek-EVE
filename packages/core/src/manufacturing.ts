@@ -35,7 +35,8 @@ import { addModule } from './equipment'
 import { shipStoredCount } from './fleetBook'
 import { formatDurationMs } from './time'
 import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
-import { stationIndustryBlocked } from './location'
+import { stationIndustryBlocked, stationActivityStartBlockReason } from './location'
+import { queueStationActivity } from './stationActivityPending'
 import { addAiIncome, addAiMakeDone, addAiShipDone, type SettleStats } from './settleStats'
 import { DEEP_SPACE_PROBE_BLUEPRINT_ID, probeManufacturingUnlocked, probeMaterialFactor } from './probeManufacturing'
 
@@ -461,6 +462,10 @@ export function startManufacturing(
    * 「采矿时无法直接切换…手动运转」的同一处坑）。
    */
   if (worker === 'pilot') {
+    const dockBlock = stationActivityStartBlockReason(state, ctx, 'manufacturing')
+    if (dockBlock) return { ok: false, ...dockBlock }
+    const queued = queueStationActivity(state, ctx, { kind: 'manufacturing', blueprintId })
+    if (queued) return queued
     const gateSkip = applyActivityGate(state, 'manufacturing', ctx)
     if (gateSkip) return gateSkip
     /**

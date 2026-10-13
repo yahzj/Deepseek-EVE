@@ -3017,6 +3017,8 @@ export interface BlackMarketState {
 }
 
 export type GameState = GameStateV31 & {
+  /** 船长2026-10-13批准：单条到港接续待办；老档缺省无待办，不预扣材料。 */
+  pendingStationActivity?: import('./stationActivityPending').PendingStationActivity
   /** 星球规则原型，缺省不生成星球；首次显式发现才写入，老档零迁移。 */
   planetary?: PlanetaryState
   /** 黑市货架，缺失的旧档在解锁后首次正常推进初始化。 */

@@ -65,7 +65,7 @@ import {
   wormholeDerivedAnomaly,
 } from './combat'
 import { actionBlockReason, markExplored } from './explore'
-import { familyModules, shipHasWeapon } from './equipment'
+import { familyModules } from './equipment'
 import {
   FACTION_RARE_DROP_COUNT,
   FACTION_RARE_DROP_PITY_ROLLS,
@@ -703,22 +703,19 @@ export function beginBattleAt(state: GameState, ctx: SimContext, anomalyId: stri
   const actualGalaxy = exp.foeGalaxyId ?? anomaly?.galaxyId
   if (actualGalaxy) markExplored(state, actualGalaxy)
   const loaded = battle.ammo.kin + battle.ammo.exp + battle.ammo.pla
-  /**
-   * **这艘船装了武器吗**（**2026-09-27 玩家报障修复**）：改用全仓单点 `shipHasWeapon` ——
-   * 原先这里只认 `turret` / `missile`（注释自陈"V18B-1：炮台与导弹架都算"），
-   * 漏了 **V18B-2 归位的 `laser`（能量系）** 与**无人机线** ⇒ 装激光/无人机的船打悬赏时，
-   * 抵达目标那条日志会判「未装配武器：仅基础舰炮还击。」（与装配页所见相反）。
-   */
-  const armed = shipHasWeapon(state, ctx, shipId)
+  // ⟪文案调整 2026-10-13⟫ 与实际建档同源；没有攻击武器不单独触发基础炮禁用。
+  const spec = createPlayerSpec(state, ctx, shipId, battle.ammoIds)
+  const armed = spec?.weapons.some(w => w.src !== 'base' && !w.disabled) === true
+  const baseEnabled = spec?.weapons.some(w => w.src === 'base' && !w.disabled) === true
   const targetName = anomaly ? (exp.lairTier ? lairNameOf(anomaly, exp.lairTier) : anomaly.name) : ''
   /** 窝点尾注（可选槽；有则挂 `p3Id` 走槽译文） */
   const lairTail = exp.lairTier ? '（赏金任务目标：窝点守备强于常驻悬赏，注意弹药与修理件。）' : ''
   addLog(
     state,
     'combat',
-    `⚔ 抵达目标（${targetName}）：进入交火。${armed ? (loaded > 0 ? `预载弹药 ${loaded} 发。` : '警告：未携带弹药，武器无法开火（基础舰炮可还击）。') : '未装配武器：仅基础舰炮还击。'}` +
+    `⚔ 抵达目标（${targetName}）：进入交火。${armed ? (loaded > 0 ? `预载弹药 ${loaded} 发。` : '警告：未携带弹药，武器无法开火（基础舰炮可还击）。') : baseEnabled ? '未装配武器：仅基础舰炮还击。' : '高槽已装配装备，基础舰炮已禁用；未装配攻击武器。'}` +
       (exp.lairTier ? '（赏金任务目标：窝点守备强于常驻悬赏，注意弹药与修理件。）' : ''),
-    !armed ? 'core.expedition.045' : loaded > 0 ? 'core.expedition.043' : 'core.expedition.044',
+    !armed ? baseEnabled ? 'core.expedition.045' : 'core.expedition.062' : loaded > 0 ? 'core.expedition.043' : 'core.expedition.044',
     {
       p1: targetName,
       ...(armed && loaded > 0 ? { p2: loaded } : {}),

@@ -1,5 +1,15 @@
 # 测试门槛存档（Test Saves）
 
+## 停靠与远程管理
+
+- `station-action`：`npx tsx tools/make-test-save.ts station-action`，全新合成档，不读取或覆盖个人档。
+- 文件`test-save-station-action-20261013.json`；门槛与检查路径见`station-action-20261013.md`。真实返航接续已实现；原生接续专项加`--pending`，独立合成场景不读取个人档。
+
+## 舰船血量与近盲开火
+
+- `ship-hp-blind`：`npx tsx tools/make-test-save.ts ship-hp-blind`，独立合成档，不读取个人档。
+- 文件`test-save-ship-hp-blind-20261013.json`；加载与对照路径见`ship-hp-blind-20261013.md`。
+
 ## 整船回收与战损插件
 
 - `ship-recovery`：`npx tsx tools/make-test-save.ts ship-recovery`，生成全新合成档，绝不读取个人存档。

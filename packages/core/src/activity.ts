@@ -15,7 +15,7 @@ import { wormholeScanWindowMs, wormholeStockFull, wormholeStockMaxOf, wormholeSt
 import { matterTechScanCut } from './matterTech'
 import { wormholeAutoRunsOf } from './state'
 import { manufacturingRunViews } from './manufacturing'
-import { oreAvailable } from './industry'
+import { industryAvailable } from './industry'
 import { refineRunViews } from './industry'
 import { labRunViews } from './lab'
 import { expeditionStatus, bountyCooldownRemainingMs, bountyCooldownMsFor, autoLoopWaitLabel, autoLoopInvasionPlanOf, autoLoopInvasionGalaxy } from './expedition'
@@ -26,6 +26,7 @@ import { legMsFor, outboundLegMsFor, salvagerCyclesOf } from './salvaging'
 import { haulEndpointName } from './hauling'
 import { travelMinutesEff } from './travel'
 import { weekendFoePoolOf } from './weekendEvent'
+import { pendingStationActivityView } from './stationActivityPending'
 
 /** 活动种类（UI 据此渲染图标；新增耗时作业在此扩展） */
 export type ActivityKind =
@@ -80,6 +81,7 @@ export type ActivityStopKind =
   | 'stop-hauling'
   /** 停一条实验线（2026-10-01 接入活动栏；`stopParam` = 线号 `LabRunView.id`） */
   | 'stop-lab'
+  | 'cancel-station-pending'
 
 /** 一条活动（只读视图；引擎/指令仍是唯一修改入口） */
 export interface ActivityView {
@@ -304,7 +306,7 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
   for (const rv of refineRunViews(state, ctx)) {
     const aiProd = rv.worker !== 'pilot'
     const isWreck = rv.itemId ? ctx.items.get(rv.itemId)?.kind === 'wreck' : false
-    const remainUnits = rv.itemId ? oreAvailable(state, rv.itemId) : 0
+    const remainUnits = rv.itemId ? industryAvailable(state, ctx, rv.itemId) : 0
     // 2026-09-11（玩家反馈「稀有残骸空了精炼炉还在运转」）：稀有残骸炉的料在**本炉私有料账**里，
     // 玩家在货仓/仓库看到的永远是 0 —— 活动栏改读料账，免得看着像"炉子在烧空气"。
     const stockNote = rv.claimedUnits !== undefined ? `本炉料余 ×${rv.claimedUnits}` : `仓库余 ×${remainUnits}`
@@ -583,6 +585,10 @@ export function activityOverview(state: GameState, ctx: SimContext): ActivityVie
 
   // ── T4 换船善后：自动返航卸货中的旧船（独立倒计时，不可终止）──
   for (const [shipId, ret] of Object.entries(state.shipReturns)) {
+    if (state.pendingStationActivity?.shipId === shipId) {
+      const pending = pendingStationActivityView(state, ctx)
+      if (pending) { out.push(pending); continue }
+    }
     const shipName = shipDisplayName(state, ctx, shipId)
     const beltName = ret.beltId ? ctx.belts.get(ret.beltId)?.name ?? ret.beltId : ''
     const remainingMs = Math.max(0, ret.legMs - ret.phaseAccMs)

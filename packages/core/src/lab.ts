@@ -23,7 +23,8 @@ import { addLog, haltActivityForSwitch, refundMaterialsToWarehouse, MAX_SKILL_LE
 import { addWare, countWare, removeWare } from './inventory'
 import { aiCoreCapBlock, aiCoreName, aiEfficiency, countAiCore, occupyAiCore, releaseAiCore } from './ai'
 import { addAiIncome, addAiLabBatch, type SettleStats } from './settleStats'
-import { stationIndustryBlocked } from './location'
+import { stationIndustryBlocked, stationActivityStartBlockReason } from './location'
+import { queueStationActivity } from './stationActivityPending'
 import { applyActivityGate, logAutoHalt } from './activityGate'
 /** 燃料产物的封顶判据（`LAB_OUTPUT_CAP` 登记表用；**单向依赖**：实验室 → 燃料，反向没有） */
 import { jumpFuelCapOf, jumpFuelWareOf } from './jumpFuel'
@@ -439,6 +440,10 @@ export function startLabRun(
     }
   }
   if (worker === 'pilot') {
+    const dockBlock = stationActivityStartBlockReason(state, ctx, 'lab')
+    if (dockBlock) return { ok: false, ...dockBlock }
+    const queued = queueStationActivity(state, ctx, { kind: 'lab', recipeId })
+    if (queued) return queued
     /** 主控 = 手动工作位：与精炼炉/回收炉/拆解台/制造线共用**同一个名额**（统一判据 + 统一日志）
      *  ⚠ **2026-10-01**：门禁的档改成 `'lab'`（原先借 `'refine'`）——实验室自己也进了主控登记表，
      *  起线时按"实验室"这一项去判（两档同为"先警告再切"，行为不变；占位与文案从此对得上）。 */

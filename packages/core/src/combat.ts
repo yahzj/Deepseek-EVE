@@ -51,7 +51,7 @@ import { applyFirstBountyBuff, isFirstBountyBattle } from './firstTasks'
 // **无人机储备甲板**（2026-09-27 船长令）：战中复位状态机（建档 / 入队 / 每拍推进 / 复活计数）
 import { droneRevivedCount, droneRevivedOf, initDroneRevive, initDroneReviveStock, resolveDroneRevive } from './droneRevive'
 // 命中与伤害数学（2026-10-02 批次 4a 拆到 combatMath.ts）；本文件借回使用并再导出，既有引用零改动
-import { applyDamage, battleClockNowMs, clamp, distFactor, droneHitChance, hitChance, inRange, isAlive, typeLayerMult } from './combatMath'
+import { applyDamage, battleClockNowMs, clamp, distFactor, droneHitChance, hitChance, inRange, isAlive, typeLayerMult, playerWeaponInRange, playerBlindDamageMul, SHIP_HP_UPLIFT_MUL } from './combatMath'
 import { triggerAcidBurst, applyAlienCorrosion, advanceFoeHatcheries, advanceFoeAbilityClocks, foeFleetSpeedMulOf } from './alienCombat'
 import { acidResistsOf, addFoeAcidLayer, expireFoeAcidLayers, battleSpeedBonusOf } from './alienEquipment'
 import type { Hp3 } from './combatMath'
@@ -176,9 +176,10 @@ export interface WeaponSpec {
   /** V18.1 索敌阵列（命中件）：炮台命中整体乘子（EVE 曲线合成；仅 gun 携带，缺省 1；
    * beam 必中不携带——命中件对激光无效） */
   eqHitMul?: number
-  /** V18B 敌方近盲带伤害比例（2026-09-05）：敌在近盲带内（dist < minRange）仍开火，
-   * 伤害 × 本值；玩家武器不受影响（近盲带内不开火） */
+  /** 敌方近盲带伤害比例；玩家舰载武器统一走playerBlindDamageMul。 */
   blindDmgMul?: number;
+  /** 旧战斗基础炮的禁用占位，不开火、不展示，保留后续武器下标。 */
+  disabled?: boolean
   /**
    * **防空**（属性 · 引擎侧标记）——**装备带「防空」属性**（`ModuleDef.antiDrone`）时写入本字段。
    * 只有带本标记的武器能筛到敌方无人机；不带 = 按构造看不到机群
@@ -311,6 +312,9 @@ export interface UnitSpec {
   repairPct?: number
   side: 'me' | 'foe'
   hp: Hp3
+  /** 2026-10-13：容量提高前的常规恢复基准，不进存档。 */
+  recoveryHp?: Hp3
+  repairCapacityAmp?: { a: number; h: number }
   resists: { shield?: DamageResists; armor?: DamageResists; hull?: DamageResists }
   /**
    * **本舰无人机结构层加成**（2026-09-13 船长：G 族「鱿蜂结构层」＝残兵结构层改名 ——
@@ -1791,7 +1795,7 @@ function buildMyUnitSpecs(
    * **加法口径**（`1 + bonus − 净削减`）反解施加系数。缺省不传时该函数退化为"相对当前射程直接乘
    * `1 − 净`"（= 只对不带任何射程加成的武器正确）⇒ 所以这两条路径**必须传**。
    */
-  const jammerRefs: { weaponRanges?: Array<{ baseM: number; bonusMul: number }> } = { weaponRanges: [] }
+  const jammerRefs = { weaponRanges: [] as Array<{ baseM: number; bonusMul: number }>, legacyWeaponCount: battle.units.player?.weapons.length }
   if (!fleet || fleet.length === 0) {
     const me = createPlayerSpec(state, ctx, shipId, battleAmmoIdsFor(battle, 'player'), jammerRefs)
     if (!me) return []
@@ -1811,7 +1815,7 @@ function buildMyUnitSpecs(
   }
   const out: UnitSpec[] = []
   for (const entry of fleet) {
-    const shipRefs: { weaponRanges?: Array<{ baseM: number; bonusMul: number }> } = { weaponRanges: [] }
+    const shipRefs = { weaponRanges: [] as Array<{ baseM: number; bonusMul: number }>, legacyWeaponCount: battle.units[entry.tag]?.weapons.length }
     const spec = createPlayerSpec(state, ctx, entry.shipId, battleAmmoIdsFor(battle, entry.tag), shipRefs)
     if (!spec) continue
     if (matterBuffs) applyMatterPlayerBuffs(spec, matterBuffs, matterFoeMain)
@@ -2741,7 +2745,7 @@ export function battleZonesFor(state: GameState, ctx: SimContext): {
   }
   return {
     openM: battleOpenM(me, foes, bal),
-    me: { minM: main.minRangeM, maxM: main.maxRangeM, name: main.label },
+    me: { minM: main?.minRangeM ?? 0, maxM: main?.maxRangeM ?? 0, name: main?.label ?? '' },
     foe: { minM: foeMin, maxM: foeMax },
   }
 }
@@ -2889,8 +2893,8 @@ export function battleArcsFor(
   const bal = ctx.balance.battle
   const leaderShipId = override?.leaderShipId ?? state.shipId
   /** 干扰压制的基准账（见 `applyMeJammerDebuff`）——视图锚舰同样要吃这份基准 */
-  const meRefs: { weaponRanges?: Array<{ baseM: number; bonusMul: number }> } = { weaponRanges: [] }
   const leaderTag = battle.myFleet?.find((e) => e.shipId === leaderShipId)?.tag ?? 'player'
+  const meRefs = { weaponRanges: [] as Array<{ baseM: number; bonusMul: number }>, legacyWeaponCount: battle.units[leaderTag]?.weapons.length }
   const me = createPlayerSpec(state, ctx, leaderShipId, battleAmmoIdsFor(battle, leaderTag), meRefs)
   if (!me) return null
   applyAlienCorrosion(me, battle.alienCorrosion ?? 0)
@@ -2932,6 +2936,7 @@ export function battleArcsFor(
   // 主武器（战术距离口径）：与三按钮/射程带/预估同源——弧上米数刻度照它出
   const mainW = mainWeaponOf(me)
   me.weapons.forEach((w, i) => {
+    if (w.disabled) return
     // 2026-09-10 船长「无人机可被击落」：被点防打掉的架次不出现在射程弧/机群计数里
     if (w.src === 'drone' && battle.dronePools?.[i]?.alive === false) return
     let type: DamageType | null = null
@@ -4753,6 +4758,7 @@ function stepBattle(
     const meAtk = meAtkOf(unit)
     for (let wi = 0; wi < unit.weapons.length; wi++) {
       const w = unit.weapons[wi]!
+      if (w.disabled) continue
       /**
        * **逐舰放飞**（船长 2026-09-14「逐舰机群」；此前只有主控的机群参战、僚舰条目被跳过）：
        * 本舰的无人机条目查**本舰自己的池**（键 = `舰tag:武器下标`）。
@@ -4798,7 +4804,7 @@ function stepBattle(
       let droneHit = w.canHitDrones
         ? pickFoeDroneTarget(state, b, foes, b.distanceM, w, wi, unit.tag)
         : null
-      if (!droneHit && !(w.acidOnHit ? b.distanceM <= w.maxRangeM : inRange(b.distanceM, w))) continue;
+      if (!droneHit && !playerWeaponInRange(b.distanceM, w)) continue;
       if (w.src === 'drone' && (!foes.some(f => isFoeEngageable(b, f.tag)) || !releaseDroneLaunch(b, unit, wi))) continue
       // V18B 随机目标（船长 2026-09-05）：每发武器在开火瞬间从存活敌人中独立抽取
       // （确定性 rng 种子，可复现；齐射可分散到不同目标）。目标死亡即时换人。
@@ -4861,7 +4867,7 @@ function stepBattle(
         if (gun > 0 && droneHit && !droneHit.pool.alive) {
           droneHit = pickFoeDroneTarget(state, b, foes, b.distanceM, w, wi, unit.tag, true)
           if (!droneHit) {
-            if (!(w.acidOnHit ? b.distanceM <= w.maxRangeM : inRange(b.distanceM, w))) break
+            if (!playerWeaponInRange(b.distanceM, w)) break
             foeTarget = unit.lockedDmgBonus ? firstAliveFoe(foes, b) : randomAliveFoe(state, b, foes)
             if (!foeTarget) break
           }
@@ -4874,7 +4880,7 @@ function stepBattle(
           ? Math.round(Math.max(1, Math.round(rawBeam * beamPowerVsTargetOf(b.distanceM, w, droneHit !== null))) * (droneHit ? w.antiDroneMul ?? 1 : 1))
           : droneHit ? volleyDmg : (w.kind === 'gun' ? w.shotsByType?.[type] ?? 0 : w.shotDmg ?? 0)
         dmg = volleyDamageShareOf(targetVolleyDmg, gunCount, gun)
-        const blindMul = !droneHit && w.acidOnHit && b.distanceM < w.minRangeM ? w.blindDmgMul ?? 0.3 : 1
+        const blindMul = playerBlindDamageMul(b.distanceM, w, droneHit !== null)
         dmg = Math.round(dmg * blindMul)
         b.stats.meShots += 1;
         // **隐秘行动：开火即现形**（2026-09-15 船长 Q1 甲）——本舰任一门武器打出第一发时窗口清空；
@@ -4987,7 +4993,7 @@ function stepBattle(
             const secPct = w.secondaryDamagePct ?? 0
             if (secPct > 0 && rt.hp.s + rt.hp.a + rt.hp.h > 0) {
               const secType = w.secondaryDamageType ?? 'kinetic'
-              const secDmg = volleyDamageShareOf(Math.max(1, Math.round(volleyLocked * secPct)), gunCount, gun)
+              const secDmg = Math.round(volleyDamageShareOf(Math.max(1, Math.round(volleyLocked * secPct)), gunCount, gun) * blindMul)
               /** 附伤段：同走唯一收口（它也可能就是打沉那一发） */
               const r2 = applyFoeUnitDamage(b, foeTarget!, secDmg, secType, b.lastTickGameMs + dtMs)
               b.stats.meDmg += r2.dealt
@@ -5079,7 +5085,7 @@ function stepBattle(
               const secPctAll = w.secondaryDamagePct ?? 0
               if (secPctAll > 0 && ort.hp.s + ort.hp.a + ort.hp.h > 0) {
                 const secTypeAll = w.secondaryDamageType ?? 'kinetic'
-              const secDmgAll = volleyDamageShareOf(Math.max(1, Math.round(targetVolleyDmg * secPctAll)), gunCount, gun)
+                const secDmgAll = Math.round(volleyDamageShareOf(Math.max(1, Math.round(targetVolleyDmg * secPctAll)), gunCount, gun) * blindMul)
                 /** 全体攻击附伤段：同走唯一收口 */
                 const rAll2 = applyFoeUnitDamage(b, other, secDmgAll, secTypeAll, b.lastTickGameMs + dtMs)
                 b.stats.meDmg += rAll2.dealt
@@ -5492,18 +5498,7 @@ function stepBattle(
 
   // ── P0：护盾战中被动回充（EVE 式；损失不跨场，只回盾层）。
   // 甲/结构已打穿时停止回充——避免"只剩一层盾皮"的无限僵持（P2 可再调）
-  // ⚠ **2026-09-14 船长改判**：回充量由"**满盾** × 费率"改为"**当前盾** × 费率"
-  //   （原话：「改成按当前盾比例，这样护盾被击穿后应该是 0 回复对吧？」＋「不留，破盾后 0 回复」）
-  //   ⇒ 回充变成**指数式**（回满时间 = ln(满盾/当前盾) ÷ 费率），且**盾归零后回充恒为 0**：
-  //   盾被打穿 = 本场的分水岭，此后全程由甲/结构承伤。想重新把盾点起来只有一条路 =
-  //   中槽「**护盾充能装置**」（`shieldPulsePct`，每 `SHIELD_PULSE_MS` 脉冲回满盾的一个比例）。──
-  // ⚠ **2026-09-20 船长追加「恢复速度下限」**（原话：「舰船护盾的恢复速度下限改为1%。
-  //   **但是当护盾被击穿时，依旧是0%**」→ 追问口径后补：「**满盾依旧是2%，当盾量接近0的时候是1%**」）：
-  //   指数式的副作用是**盾越少回得越慢**（剩 2% 时每秒只回 0.04% ⇒ 回到半盾要 19.6 分钟）
-  //   ⇒ 加一条**下限 = 满盾 × 1% / 秒**：
-  //     盾 > 0 ⇒ `max(当前盾 × k, 满盾 × 1%)`；盾 = 0 ⇒ **仍为 0**（破盾那条裁定不变）。
-  //   效果：满盾时 `100%×2% = 2%`（仍是 2%，下限不介入）；盾降到 50% 以下后由下限接管，
-  //   **回充量不再随盾量继续缩水**（从 2% 回到半盾：19.6 分钟 → 44 秒）。
+  // 2026-10-13：同剩余比例的恢复点数保持加血前水平；破盾仍不被动恢复。
   if (bal.shieldRegenPerSec > 0) {
     for (const unit of myUnits) {
       const urt = b.units[unit.tag]
@@ -5511,9 +5506,10 @@ function stepBattle(
       // ⚠ 满盾优先取战斗单位的 `hpMax.s`；老档/异常缺省时回退到该单位的 `spec.hp.s`（= 满盾口径）
       const sMax = urt.hpMax?.s ?? unit.hp.s
       if (urt.hp.s >= sMax || (urt.hp.a <= 0 && urt.hp.h <= 0)) continue
-      // 下限 = 该舰**满盾**的 1%/秒；`urt.hp.s > 0` 是"破盾后 0 回复"那条裁定的落点
-      const floor = sMax * SHIELD_REGEN_FLOOR_PCT
-      const rate = urt.hp.s > 0 ? Math.max(urt.hp.s * bal.shieldRegenPerSec, floor) : 0
+      // 下限按恢复基准的1%/秒，而不是提高后的满盾。
+      const recoveryCapS = unit.recoveryHp?.s ?? sMax
+      const floor = recoveryCapS * SHIELD_REGEN_FLOOR_PCT
+      const rate = urt.hp.s > 0 ? Math.max(urt.hp.s / Math.max(1e-9, sMax) * recoveryCapS * bal.shieldRegenPerSec, floor) : 0
       const regen = rate * dtSec
       if (regen > 0) urt.hp.s = Math.min(sMax, urt.hp.s + regen)
     }
@@ -5871,7 +5867,7 @@ function steadyPreview(
           })
         })()
       : null
-  const curveHp = anomaly.foeHpOverride ?? foeHpOfThreat(anomaly.threat, bal)
+  const curveHp = (anomaly.foeHpOverride ?? foeHpOfThreat(anomaly.threat, bal)) * SHIP_HP_UPLIFT_MUL
   /** 敌血总预算（多波 = 全波）：舰级路径 = 逐波三层血之和；旧路径 = 曲线（建档出 0 血时同兜底曲线） */
   const foeHpTotal = shipWaveBuilds ? shipWaveBuilds.reduce((n, b) => n + b.hp, 0) || curveHp : curveHp
   /** 火力侧编制：舰级路径 = 各波中 DPS 最大的一波；旧路径 = `foes`（`units` 口径本就是峰值波） */
@@ -5892,6 +5888,7 @@ function steadyPreview(
   // V18B-2 激光 beam = 命中恒 1（必中）且按稳态距离折算威力衰减）
   let meDps = 0
   for (const w of me.weapons) {
+    if (w.disabled || !playerWeaponInRange(steady, w)) continue
     let shot = 0
     let ammoType: DamageType | null = null
     let hit = 0
@@ -5918,6 +5915,7 @@ function steadyPreview(
     // **全体攻击**（2026-09-13 船长：C 孢子导弹巢「对所有敌方同时攻击」）——
     // 预估必须同步：一轮齐射的实收 = 单目标 × **当前在场敌舰数**（多波卡按峰值波小队数，与 `foes` 同源）。
     const allFoesMul = w.allFoes === true ? Math.max(1, foes.length) : 1
+    power *= playerBlindDamageMul(steady, w)
     meDps += (shot * power * mult * hit * allFoesMul * 1000) / w.reloadMs
     // 附加伤害段同步（掠袭破片炮）：预估不许"卡面混伤、按纯系算"——副段走它自己那系的克制倍率
     const secPctEst = w.secondaryDamagePct ?? 0
@@ -5975,17 +5973,17 @@ function steadyPreview(
   //     · `sX ≥ s > 0`：**恒速段**（净掉率 = D − sCap；`D ≤ sCap` ⇒ 恒速回充，永远打不穿）
   //     · `s = 0`：破盾，回充归 0（不变）
   const foeDpsNet = foeDps * foeMul
-  const k = bal.shieldRegenPerSec
-  const sMax = Math.max(0, me.hp.s) // ⚠ `UnitSpec` 上**没有** `hpMax`；`steadyPreview` 取的是满盾规格，故这里就是满盾
+  const recoveryCapS = me.recoveryHp?.s ?? me.hp.s
+  const k = bal.shieldRegenPerSec * recoveryCapS / Math.max(1e-9, me.hp.s)
   const s0 = Math.max(0, me.hp.s)
-  const sCap = sMax * SHIELD_REGEN_FLOOR_PCT
+  const sCap = recoveryCapS * SHIELD_REGEN_FLOOR_PCT
   const sX = k > 0 ? sCap / k : Number.POSITIVE_INFINITY
   /**
    * **每秒回盾量 = Σ 逐路「本路比例 × 满盾 ÷ 本路间隔」**（**2026-09-21 逐型号独立回转**后：
    * 各路各按各的节奏跳，所以必须逐路换算再相加，不能拿"合计比例 ÷ 某个间隔"）。
    */
   const chargePerSec =
-    shieldChargeStreamsOf(state, ctx, shipId).reduce((n, s) => n + (s.pct * sMax) / Math.max(1, s.ms) / 1000, 0)
+    shieldChargeStreamsOf(state, ctx, shipId).reduce((n, s) => n + (s.pct * recoveryCapS) / Math.max(1, s.ms) / 1000, 0)
   let ttrMe: number
   if (foeDpsNet <= 0) {
     ttrMe = Number.POSITIVE_INFINITY // 敌方打不动我

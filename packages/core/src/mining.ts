@@ -27,7 +27,7 @@ import type { BeltDef, ItemDef, ShipDef, SimContext } from './types'
 import { nextRandom, pickWeighted } from './rng'
 import { isMineableItem } from './labels'
 import { lairNameOf } from './lairs'
-import { addItem, cargoUnitM3, freeCargoM3, unloadCargoOfShipToWarehouse, unloadCargoToWarehouse } from './inventory'
+import { addItem, cargoUnitM3, freeCargoM3, unloadCargoOfShipToWarehouse } from './inventory'
 import { DSI_FACTION_ID, standingOf } from './standing'
 import { shortestTravelMinutes, travelLegMs } from './travel'
 import { actionBlockReason, markExplored } from './explore'
@@ -319,6 +319,9 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
   const pre = miningPreflight(state, beltId, ctx)
   if (!pre.ok) return pre
   const belt = ctx.belts.get(beltId)!
+  const oldReturn = state.shipReturns[state.shipId]
+  const restartingReturn = !state.mining.active && !state.salvaging.active &&
+    (oldReturn?.reason === 'miningStop' || oldReturn?.reason === 'salvageStop')
   /**
    * **换矿带 = 允许直接切**（**2026-09-21 船长答 2**：「**允许切换**」）。
    *
@@ -346,6 +349,7 @@ export function startMining(state: GameState, beltId: string, ctx: SimContext): 
    */
   const gateSkip = applyActivityGate(state, 'mining', ctx)
   if (gateSkip) return gateSkip
+  if (restartingReturn) { state.pendingActivityReturn = null; state.haltedBySwitch = null }
   /**
    * **新指令取消"停止返航"**（**船长 2026-10-02** 报障的连带）——
    * 上一拍刚「停止开采」留下了返航账本（船正飞回港卸货）；玩家又下新开采指令 ⇒ **就地开工**
@@ -600,7 +604,7 @@ export function advanceMining(state: GameState, deltaMs: number, ctx: SimContext
         const ore = belt ? ctx.items.get(belt.oreId) : undefined
         const oreName = ore ? ore.name : '货物'
         const trip = m.tripUnits
-        const moved = unloadCargoToWarehouse(state, ctx)
+        const moved = unloadCargoOfShipToWarehouse(state, ctx, state.shipId)
         addLog(
           state,
           'industry',

@@ -60,19 +60,21 @@ describe('船长获批两篇公告发布', () => {
     expect(announcement.tag).toBe(L10N[announcement.tagId!]!.zh)
     expect(announcement.bullets).toEqual(announcement.bulletIds!.map(id => L10N[id]!.zh))
   })
-  it('只在顶部新增两篇，历史正文与顺序逐项相同，编号唯一', () => {
+  it('两篇历史发布相邻且正文与后续顺序保持，新公告可在前方新增', () => {
     const source = historical('packages/data/src/announcements.ts')
     const scope = { exports: {} as { ANNOUNCEMENTS: typeof ANNOUNCEMENTS }, require: () => ({ L10N }) }
     runInNewContext(ts.transpileModule(source, {
       compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
     }).outputText, scope)
-    expect(ANNOUNCEMENTS.slice(0, 2).map(row => row.id)).toEqual(releases.map(row => row.id))
-    expect(JSON.parse(JSON.stringify(ANNOUNCEMENTS.slice(2)))).toEqual(JSON.parse(JSON.stringify(scope.exports.ANNOUNCEMENTS)))
+    const first = ANNOUNCEMENTS.findIndex(row => row.id === releases[0]!.id)
+    expect(first).toBeGreaterThanOrEqual(0)
+    expect(ANNOUNCEMENTS.slice(first, first + 2).map(row => row.id)).toEqual(releases.map(row => row.id))
+    expect(JSON.parse(JSON.stringify(ANNOUNCEMENTS.slice(first + 2)))).toEqual(JSON.parse(JSON.stringify(scope.exports.ANNOUNCEMENTS)))
     expect(new Set(ANNOUNCEMENTS.map(row => row.id)).size).toBe(ANNOUNCEMENTS.length)
   })
   it('公告排期对应10月9日20点异形期，未开放内容与UI不混入正文', () => {
     expect(weekendFamilyForWindow(new Date(2026, 9, 9, 20).getTime())).toBe('C')
-    const text = ANNOUNCEMENTS.slice(0, 2).flatMap(row => row.bullets).join('\n')
+    const text = releases.flatMap(release => ANNOUNCEMENTS.find(row => row.id === release.id)!.bullets).join('\n')
     expect(text).not.toMatch(/数据编辑器|测试档|待审|待验收|主树|Worker|深空探测机|星球建设|动态星图|CPU插件.*120/)
     expect(text).toContain(INCURSION_APPROVED_BRIEF[0])
     expect(INCURSION_APPROVED_BRIEF.join('')).not.toMatch(/\d|百分|百分点|双倍/)
@@ -98,7 +100,8 @@ describe('船长获批两篇公告发布', () => {
     first.find(node => node.type === 'button' && node.props.title === tr('ui.Announcements.001'))!.props.onClick()
     const items = render().filter(node => String(node.props.className ?? '').split(' ').includes('app-ann-item'))
     expect(items).toHaveLength(ANNOUNCEMENTS.length)
-    for (const [index, release] of releases.entries()) {
+    for (const release of releases) {
+      const index = ANNOUNCEMENTS.findIndex(row => row.id === release.id)
       const item = items[index]!
       expect(text(item)).toContain(release.title[language])
       expect(text(item)).toContain('2026-10-09')

@@ -7,7 +7,7 @@
  */
 import type { GameState } from './state'
 import type { DamageResists, DamageType, ModuleDef, SimContext } from './types'
-import { clamp, RESIST_FLOOR } from './combatMath'
+import { clamp, RESIST_FLOOR, SHIP_HP_UPLIFT_MUL } from './combatMath'
 import type { Hp3 } from './combatMath'
 import { allFittedModules, cpuBudgetOf, curveMult, familyModules, fittedCpuUsed, gapCombine, weightedSum, equipmentPenaltiesOf, laserFalloffOf } from './equipment'
 import { moduleAllowedOnShip } from './shipFitting'
@@ -119,7 +119,7 @@ export function createPlayerSpec(
   /** **干扰压制的基准账**（2026-09-24 加；缺省不传 ⇒ 逐字走老路径）：逐件记下
    *  「该武器基准射程」与「该系射程加成倍率 (1+bonus)」——`applyMeJammerDebuff` 按船长**加法口径**
    *  反解施加系数要用（见 `meRangeMulOf`）。⚠ 只记不改，不参与本函数的任何算式。 */
-  refs?: { weaponRanges?: Array<{ baseM: number; bonusMul: number }> },
+  refs?: { weaponRanges?: Array<{ baseM: number; bonusMul: number }>; legacyWeaponCount?: number },
 ): UnitSpec | null {
   const ship = fleetDefOf(state, ctx, shipId)
   const fleet = state.fleet[shipId]
@@ -256,6 +256,17 @@ export function createPlayerSpec(
     s: baseHp.s * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv) * (1 + 0.03 * battleshipOpsLv) * damage.shield,
     a: baseHp.a * Math.max(1, armorHpMult) * hullSkillMult * damage.armor,
     h: baseHp.h * Math.max(1, hullHpMult) * hullSkillMult * damage.hull,
+  }
+  // 整数容量先反解旧裸值，避免四舍五入让维修点数漂移。
+  const oldBase = {
+    s: Math.round((ship.shieldHp ?? 0) / SHIP_HP_UPLIFT_MUL),
+    a: Math.round((ship.armorHp ?? 0) / SHIP_HP_UPLIFT_MUL),
+    h: Math.round((ship.hullHp ?? 0) / SHIP_HP_UPLIFT_MUL),
+  }
+  const recoveryHp: Hp3 = {
+    s: (oldBase.s + plugHpAdd.s / SHIP_HP_UPLIFT_MUL) * Math.max(1, shieldHpMult) * (1 + 0.04 * shOpLv) * (1 + 0.03 * battleshipOpsLv) * damage.shield,
+    a: (oldBase.a + plugHpAdd.a / SHIP_HP_UPLIFT_MUL) * Math.max(1, armorHpMult) * hullSkillMult * damage.armor,
+    h: (oldBase.h + plugHpAdd.h / SHIP_HP_UPLIFT_MUL) * Math.max(1, hullHpMult) * hullSkillMult * damage.hull,
   }
   const shieldRes = mergeResist(ship.shieldResist, undefined)
   for (const m of shieldDefs) applyAdds(shieldRes, m.shieldResistAdd)
@@ -443,23 +454,25 @@ export function createPlayerSpec(
     (1 + 0.03 * cruiserOpsLv) *
     dmgUpgradeMult
 
-  // 兜底武器：基础舰炮恒在（弱；无炮/无弹仍可还击）
+  // 任一有效高槽装备禁用基础炮，不按弹药或装置当前状态回退。
   // **基准账**（`refs.weaponRanges`）：与武器条目**逐条一一对齐**（第 i 条 = 第 i 门武器的
   // `{基准射程, 该件射程加成倍率}`）——基础舰炮无射程加成 ⇒ `bonusMul = 1`。
   // ⚠ 少入一条账，后面所有武器的"逐件加成反解"就整体错位（2026-09-26 修）。
-  refs?.weaponRanges?.push({ baseM: 2500, bonusMul: 1 })
-  weapons.push({
-    label: '基础舰炮',
-    kind: 'fixed',
-    src: 'base',
-    fixedType: 'kinetic',
-    shotDmg: Math.round(8 * dmgScale),
-    maxRangeM: 2500,
-    minRangeM: 0,
-    hitRate: 0.5,
-    falloff: 0.3,
-    reloadMs: Math.round(3500 * penalties.reload),
-  })
+  if (!fitted.high.some(id => id && ctx.modules.has(id))) {
+    refs?.weaponRanges?.push({ baseM: 2500, bonusMul: 1 })
+    weapons.push({
+      label: '基础舰炮',
+      kind: 'fixed',
+      src: 'base',
+      fixedType: 'kinetic',
+      shotDmg: Math.round(8 * dmgScale),
+      maxRangeM: 2500,
+      minRangeM: 0,
+      hitRate: 0.5,
+      falloff: 0.3,
+      reloadMs: Math.round(3500 * penalties.reload),
+    })
+  }
   // 同型仍合并展示/装填/弹药账，伤害字段为该组总量；开火时逐门独立命中。
   const gunGroups = new Map<string, ModuleDef[]>()
   for (const t of turretDefs) {
@@ -699,6 +712,12 @@ export function createPlayerSpec(
     for (const weapon of weapons) weapon.maxRangeM = Math.round(weapon.maxRangeM * damage.range)
     for (const range of refs?.weaponRanges ?? []) range.baseM *= damage.range
   }
+  // 旧战斗多出的首项是基础炮，禁用占位保留所有按下标保存的账本。
+  if (!weapons.some(w => w.src === 'base') && refs?.legacyWeaponCount === weapons.length + 1) {
+    weapons.unshift({ label: '', src: 'base', kind: 'fixed', disabled: true,
+      shotDmg: 0, minRangeM: 0, maxRangeM: 0, hitRate: 0, falloff: 1, reloadMs: 1 })
+    refs.weaponRanges?.unshift({ baseM: 0, bonusMul: 1 })
+  }
   return {
     tag: 'player',
     name: ship.name,
@@ -725,6 +744,8 @@ export function createPlayerSpec(
     shipId: ship.id,
     ...(dcKit !== undefined ? { hullSaveKit: dcKit } : {}),
     hp,
+    recoveryHp,
+    repairCapacityAmp: { a: oldBase.a > 0 ? recoveryHp.a / oldBase.a : 1, h: oldBase.h > 0 ? recoveryHp.h / oldBase.h : 1 },
     resists,
     // 本舰无人机结构层加成（模块求和；2026-09-13 船长：鱿蜂结构层「提高无人机 80% 的结构」）
     droneHullBonusPct: allDefs.reduce((s, m) => s + (m.droneHullHpBonusPct ?? 0), 0),

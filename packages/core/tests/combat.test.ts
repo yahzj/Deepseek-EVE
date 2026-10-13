@@ -188,7 +188,7 @@ describe('敌方换算与距离战术', () => {
     expect(foes).toHaveLength(3)
     const totalHp = foes.reduce((s, f) => s + f.hp.s + f.hp.a + f.hp.h, 0)
     // C4 血量曲线：总血 = foeHpOfThreat(threat)（时长预期反推），与僚机数量无关
-    expect(totalHp).toBeCloseTo(foeHpOfThreat(90, bal), 0)
+    expect(totalHp).toBeCloseTo(foeHpOfThreat(90, bal) * 1.5, 0)
   })
 
   it('悬赏级 foeHpOverride 优先于威胁曲线（P1 战斗引入单；无覆写时回落曲线值）', () => {
@@ -196,9 +196,9 @@ describe('敌方换算与距离战术', () => {
     const base = anomaly('ano-x', 'galaxy-hub', { threat: 10 })
     const totalOf = (a: Parameters<typeof createFoeSpecs>[0]): number =>
       createFoeSpecs(a, bal).reduce((s, f) => s + f.hp.s + f.hp.a + f.hp.h, 0)
-    expect(totalOf(base)).toBeCloseTo(foeHpOfThreat(10, bal), 0) // 无覆写 = 曲线值
+    expect(totalOf(base)).toBeCloseTo(foeHpOfThreat(10, bal) * 1.5, 0)
     const overridden: Parameters<typeof createFoeSpecs>[0] = { ...base, foeHpOverride: 110 }
-    expect(totalOf(overridden)).toBeCloseTo(110, 0) // 有覆写 = 单卡总值（含僚机切分规则不变）
+    expect(totalOf(overridden)).toBeCloseTo(110 * 1.5, 0)
   })
 
   it('开战距离在最远射程之外；中距/风筝/贴脸期望单调', () => {

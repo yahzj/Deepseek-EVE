@@ -8,14 +8,14 @@
         "id": "plug-shield-plate",
         "slot": "plug",
         "rack": "low",
-        "shieldHpAdd": 80,
+        "shieldHpAdd": 120,
         "cpuUse": 0
       },
       {
         "id": "plug-armor-plate",
         "slot": "plug",
         "rack": "low",
-        "armorHpAdd": 140,
+        "armorHpAdd": 210,
         "speedPenaltyMps": 20,
         "cpuUse": 0
       },
@@ -23,7 +23,7 @@
         "id": "plug-hull-plate",
         "slot": "plug",
         "rack": "low",
-        "hullHpAdd": 80,
+        "hullHpAdd": 120,
         "cpuUse": 0
       },
       {

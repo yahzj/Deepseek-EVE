@@ -2,7 +2,7 @@ import type { AnomalyDef, BattleBalance, FoeShipDef, FoeShipSlot, FoeSupportBran
 import type { WormholeFamily } from './state'
 import type { UnitSpec } from './combat'
 import { createFoeSpecs } from './foeSpecs'
-import { foeFamilyHpMulOf, foeHpOfThreat, foeMultiShipCompMul, foeThreatRatingOf } from './foePower'
+import { foeFamilyHpMulOf, foeShipHpMulOf, foeHpOfThreat, foeMultiShipCompMul, foeThreatRatingOf } from './foePower'
 import { FOE_MOUNT_IDS, resolveFoeMounts } from './foeMounts'
 import {
   WORMHOLE_FAMILY_CARDS,
@@ -138,8 +138,8 @@ function representativeTemplate(ctx: WormholeExpeditionFoeContext, family: Wormh
   return card
 }
 
-function rawSpecs(card: AnomalyDef, bal: BattleBalance): UnitSpec[] {
-  return createFoeSpecs(card, bal)
+function rawSpecs(card: AnomalyDef, bal: BattleBalance, beforeHpUplift = false): UnitSpec[] {
+  return createFoeSpecs(card, bal, { beforeHpUplift })
 }
 
 function sumStrength(specs: readonly UnitSpec[], branch?: FoeSupportBranch, skip?: FoeSupportBranch | null, beforeFamilyHp = false): WormholeExpeditionFoeStrength {
@@ -196,7 +196,7 @@ function equalizeSupport(card: AnomalyDef, bal: BattleBalance): void {
   const skip = wormholeSkippedBranch(card)
   if (skip === null) return
   const kept: FoeSupportBranch = skip === 'inside' ? 'outside' : 'inside'
-  const specs = rawSpecs(card, bal)
+  const specs = rawSpecs(card, bal, true)
   const target = sumStrength(specs, kept)
   const other = sumStrength(specs, skip)
   for (const slot of card.ships!.filter((slot) => slot.enterBranch === skip)) {
@@ -245,7 +245,7 @@ export function wormholeExpeditionCard(
   const d = Math.max(1, Math.floor(depth))
   const ordinary = ordinaryTemplate(ctx, family)
   // 预算按族格前的血/火力比划分，最终加血不被反算抵消。
-  const natural = sumStrength(rawSpecs(ordinary, ctx.balance.battle), undefined, wormholeSkippedBranch(ordinary), true)
+  const natural = sumStrength(rawSpecs(ordinary, ctx.balance.battle, true), undefined, wormholeSkippedBranch(ordinary), true)
   const ratio = natural.hp / natural.dps
   const baseline = foeHpOfThreat(WORMHOLE_THREAT_BASE, ctx.balance.battle) * WORMHOLE_FOE_BASE_STRENGTH_MUL
   const scale = (1 + 0.04 * (d - 1)) * ROLE_SCALE[role]
@@ -273,7 +273,7 @@ export function wormholeExpeditionCard(
     delete slot.foeMountNamePairs
   }
   equalizeSupport(card, ctx.balance.battle)
-  const hpNow = sumStrength(rawSpecs(card, ctx.balance.battle), undefined, wormholeSkippedBranch(card), true).hp
+  const hpNow = sumStrength(rawSpecs(card, ctx.balance.battle, true), undefined, wormholeSkippedBranch(card), true).hp
   for (const slot of card.ships!) slot.hpMul = (slot.hpMul ?? 1) * budgetHp / hpNow
   fitDps(card, ctx.balance.battle, budgetDps)
   equalizeSupport(card, ctx.balance.battle)
@@ -301,8 +301,8 @@ export function wormholeExpeditionCard(
       templateId,
       scale,
       budget: {
-        hp: budgetHp * foeFamilyHpMulOf(family), dps: budgetDps,
-        x: Math.sqrt(budgetHp * foeFamilyHpMulOf(family) * budgetDps),
+        hp: budgetHp * foeShipHpMulOf(family), dps: budgetDps,
+        x: Math.sqrt(budgetHp * foeShipHpMulOf(family) * budgetDps),
       },
       strength,
       pointDefense: { threatJudged, unitTags: pdTags },

@@ -27,7 +27,7 @@ import { nextInt } from './rng'
 import { resolveFoeMounts } from './foeMounts'
 import { baseFoeTag, enumerateShipUnits, FOE_SUPPORT_TAG_RE, foeUnitNameOf, shipWaveIndexOf, supportFoeModelTagOf } from './foeCard'
 import { syncCoronaFleetFocus } from './coronaFocus'
-import { foeFamilyHpMulOf, foeHpOfThreat, foeJudgedThreatOf, foeMultiShipCompMul, foeRefSpeedMps, foeSpeedBase, foeThreatRatingOf, TACTIC_RANGE } from './foePower'
+import { foeFamilyHpMulOf, foeShipHpMulOf, foeHpOfThreat, foeJudgedThreatOf, foeMultiShipCompMul, foeRefSpeedMps, foeSpeedBase, foeThreatRatingOf, TACTIC_RANGE } from './foePower'
 import { compositionOfMix, foeDamageComposition, pickTopType, PROFILE_SPLIT, WORMHOLE_THREAT_BASE } from './wormholeFoes'
 import { foeDroneRangeOf, foeGunMaxRangeOf, foeRangeWithDebuff } from './foeRange'
 import { BATTLE_ARRIVAL_FLY_MS, BATTLE_ARRIVAL_STAGGER_MS, pushBattleNotice, WORMHOLE_FOE_VOLLEY_STAGGER_MS } from './combatFx'
@@ -79,6 +79,8 @@ export interface FoeSpecOpts {
   hpShare?: number
   /** tag 前缀（第 2 波起用，避免与首波/旧档 tag 冲突；首波 = '' 保持 foe-0/foe-1 旧命名） */
   tagPrefix?: string
+  /** 虫洞内部预算取加血前规格，避免最终容量影响火力分配。 */
+  beforeHpUplift?: boolean
 }
 
 /**
@@ -266,7 +268,7 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     // 血型（三层比例）：**有效 split = 条目覆写 ?? 舰级**（2026-09-11 船长裁决①「头目血型随卡片走」）——
     // 同一条舰级在不同卡上可按卡面 `defProfile` 建档（A 族鱼龙混杂 ⇒ 什么血型都有，无族级约束）。
     const split = u.slot.split ?? ship.split
-    const hpMul = foeFamilyHpMulOf(ship.family)
+    const hpMul = opts.beforeHpUplift ? foeFamilyHpMulOf(ship.family) : foeShipHpMulOf(ship.family)
     const hp: Hp3 = u.slot.hpOverride ? { ...u.slot.hpOverride } : {
       s: totalHp * split.s * hpMul, a: totalHp * split.a * hpMul, h: totalHp * split.h * hpMul,
     }
@@ -1083,7 +1085,7 @@ export function createFoeSpecs(anomaly: AnomalyDef, bal: BattleBalance, opts: Fo
     const baseHp = (anomaly.foeHpOverride ?? foeHpOfThreat(anomaly.threat, bal)) * hpShare
     const unitHp = (baseHp * uThreat) / Math.max(1, anomaly.threat)
     const totalHp = unitHp
-    const hpMul = foeFamilyHpMulOf(anomaly.foeFamily)
+    const hpMul = opts.beforeHpUplift ? foeFamilyHpMulOf(anomaly.foeFamily) : foeShipHpMulOf(anomaly.foeFamily)
     const hp: Hp3 = { s: totalHp * split.s * hpMul, a: totalHp * split.a * hpMul, h: totalHp * split.h * hpMul }
     const dps = uThreat * bal.foeDpsPerThreat
     // 2026-09-08（船长定：能量=光束必中；动能/爆炸普遍高命中 0.85 + 逐卡低命中特例）：
@@ -1290,6 +1292,7 @@ export function rFamilyDesireOf(
   let meTop = 0
   let meBlindM = 0
   for (const w of me.weapons) {
+    if (w.disabled) continue
     meTop = Math.max(meTop, w.maxRangeM)
     meBlindM = Math.max(meBlindM, w.minRangeM ?? 0)
   }
@@ -1383,6 +1386,7 @@ export function mainWeaponOf(me: UnitSpec): WeaponSpec | undefined {
   let best: WeaponSpec | undefined
   let bestDps = -1
   for (const w of me.weapons) {
+    if (w.disabled) continue
     if (best === undefined || w.maxRangeM > best.maxRangeM) {
       best = w
       bestDps = nominalWeaponDps(w)

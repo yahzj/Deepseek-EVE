@@ -303,8 +303,8 @@ describe('T9 建成副站 = 母港镜像（2026-09-08 船长定：母港功能�
     expect(startRecycleRun(state, wreckItemIdOf('ano-a'), 'pilot', ctx).error).toContain(GATE_HINT)
     expect(startManufacturing(state, 'bp-a', 'pilot', ctx).error).toContain(GATE_HINT)
     expect(startUnboxRun(state, ctx, 'box-a', 'pilot').error).toContain(GATE_HINT)
-    // ③ 无 worker 参数的玩家动作（逆向研究）：照旧要求在基地网络内
-    expect(redeemFragments(state, ctx, Object.keys(FRAGMENT_RECIPES)[0]).error).toContain(GATE_HINT)
+    // ③ 逆向研究现在是远程管理，只保留库存与配方校验。
+    expect(redeemFragments(state, ctx, Object.keys(FRAGMENT_RECIPES)[0]).error).toContain('碎片不足')
     // ④ 修建中工地同理：AI 放行、亲自仍拦（"未建成不视为任何站点"只约束玩家自己那一档）
     state.awayGalaxy = null
     state.dockedSite = 'site-test'
@@ -466,15 +466,19 @@ describe('建站交付航线 v2（2026-09-08 船长定稿：物理载货 + 自�
    * ⇒ 两个方向都走统一判据（`activityGate`）：① 建站交付能打断别的活动；② 反过来别的活动也能直接
    * 切掉它（停机 = 返港、**本趟建材留在船上**，与开采/打捞同款、无损）。
    */
-  it('建站交付 = 可打断其他活动（开采中直接发车，停采 + 统一日志）', () => {
+  it('建站交付可停采排队，真实到港后才自动发车', () => {
     const { state, ctx } = tripWorld(200)
     state.mining.active = true
     state.mining.beltId = [...ctx.belts.keys()][0]!
     state.mining.phase = 'mining'
     state.mining.tripUnits = 7
-    expect(startSiteDeliverTrip(state, ctx, 'site-test').ok, '开采中应当能直接发车').toBe(true)
+    expect(startSiteDeliverTrip(state, ctx, 'site-test')).toMatchObject({ ok: true, queued: true })
     expect(state.mining.active).toBe(false)
     expect(state.logs.some((l) => l.textId === 'core.activityGate.001' && l.text.includes('开采'))).toBe(true)
+    expect(state.transit.delivery).toBeNull()
+    expect(state.pendingStationActivity?.action).toEqual({ kind: 'siteDeliver', siteId: 'site-test' })
+    advanceGame(state, 1, ctx)
+    expect(state.pendingStationActivity).toBeUndefined()
     expect(state.transit.delivery?.siteId).toBe('site-test')
   })
 

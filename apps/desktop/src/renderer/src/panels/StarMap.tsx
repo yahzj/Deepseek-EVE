@@ -40,8 +40,6 @@ import {
   bestAiCoreOf,
   bountyCooldownRemainingMs,
   bountyRewardFactor,
-  cargoCapacityM3Of,
-  cargoUsedM3Of,
   consumableStockOf,
   expeditionStatus,
   factionGalaxyId,
@@ -58,6 +56,8 @@ import {
   wreckEquipmentRecoveryChanceOf,
   standingOf,
   stationBillView,
+  stationActivityStartBlockReason,
+  siteDeliverFreeCargoM3,
   travelMinutesEff,
   usableAiCoresOf,
   weekendBossPoolView,
@@ -2448,10 +2448,10 @@ export function GalaxyActions({
         // 交付循环只装仓库建材（当前档材料单；2026-09-09 逐档材料单口径）
         const billRowsHere = stationBillView(state, engine.ctx, site)
         const mat = billRowsHere.reduce((s0, r) => s0 + (state.warehouse.items[r.itemId] ?? 0), 0)
-        const freeM3 = Math.max(0, Math.floor(cargoCapacityM3Of(state, engine.ctx, state.shipId) - cargoUsedM3Of(state, engine.ctx, state.shipId)))
+        const freeM3 = siteDeliverFreeCargoM3(state, engine.ctx)
         const matNames = billRowsHere.map((r) => `${r.itemName}×${r.remaining.toLocaleString('zh-CN')}`).join(tr("ui.MatterTechTab.017"))
         const canSend =
-          !tripOn && !state.transit.active && !state.standby.active && state.awayGalaxy === null && !pilotBusy && mat > 0 && freeM3 > 0
+          !tripOn && stationActivityStartBlockReason(state, engine.ctx, 'siteDeliver') === null && mat > 0 && freeM3 > 0
         const title = tripOn
           ? tr("ui.Expedition.029")
           : state.awayGalaxy !== null
@@ -2479,6 +2479,7 @@ export function GalaxyActions({
               onClick={() => {
                 const r = engine.deliverTripAt(site.id)
                 if (!r.ok) onToast(cmdText(r) || tr('ui.Expedition.389'), true)
+                else if (r.queued) onToast(tr('core.busy.020'))
                 else onToast(tr("ui.Expedition.093", { p1: site.name }))
               }}
             >

@@ -4,7 +4,7 @@ import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { buildSimContext, FOE_SHIPS, L10N, l10nEntryText } from '@whale/data'
 import { activeFoeSpecsOf, createBattleState, foesWithSupport, resolveFoeRevive, seedUnit } from '../src/foeSpecs'
-import { advanceBattleFor, applyFoeOverride, battleArcsFor, createPlayerSpec } from '../src/combat'
+import { advanceBattleFor, applyFoeOverride, battleArcsFor, createPlayerSpec, loadAmmo } from '../src/combat'
 import { foeShipIdOfTag, foeShipTierOf, foeUnitNameOf } from '../src/foeCard'
 import { isAlive } from '../src/combatMath'
 import { foeFamilyHpMulOf } from '../src/foePower'
@@ -101,7 +101,7 @@ describe('巢母主动召唤星髓成虫', () => {
     const fresh = foesWithSupport(w.battle, w.foes).filter(f => f.tag.startsWith('sup'))
     for (const spec of fresh) {
       expect(spec.hp).toEqual(original.hp)
-      expect(spec.hp.s + spec.hp.a + spec.hp.h).toBeCloseTo(1410.6768 * strength)
+      expect(spec.hp.s + spec.hp.a + spec.hp.h).toBeCloseTo(2116.0152 * strength)
       expect(spec.weapons).toEqual(original.weapons)
       expect(spec.speedMps).toBe(398)
       expect(spec.foeChargeMul).toBe(2)
@@ -158,6 +158,10 @@ describe('巢母主动召唤星髓成虫', () => {
     w.state.fleet[w.state.shipId]!.fitted = { high: ['mod-turret-kin-2'], mid: [], low: [] }
     const def = ctx.ships.get('sh-megalodon')!
     const local = { ...ctx, ships: new Map(ctx.ships).set(def.id, { ...def, shieldHp: 900000, armorHp: 900000, hullHp: 900000 }) }
+    w.battle = createBattleState(createPlayerSpec(w.state, local, w.state.shipId)!, w.foes, 0, 200)
+    w.battle.waveIdx = 3
+    w.battle.ammo = loadAmmo(w.state, local, 'kinetic', 1000)
+    w.battle.ammoLoaded = { ...w.battle.ammo }
     for (const f of w.foes.slice(1)) down(w.battle, f.tag)
     summon(w)
     down(w.battle, w.mother.tag)

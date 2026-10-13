@@ -12,7 +12,8 @@ import { loadSaveFile, serializeSaveFile } from '../src/save'
 import { simulateOffline } from '../src/simulation'
 import { UnboxSessionLedger } from '../../../apps/desktop/src/renderer/src/game/unboxLedger'
 import { gameSaveMethods } from './helpers/save-shell'
-import { oreAvailable, refineRate } from '../src/industry'
+import { industryAvailable, refineRate } from '../src/industry'
+import { stationActivityStartBlockReason } from '../src/location'
 import { manualSlotOf } from '../src/activityGate'
 
 const ctx = buildSimContext()
@@ -131,6 +132,12 @@ describe('货柜拆解会话账本与实际结算', () => {
     expect(engine.startUnboxRunAt('box-military', 'pilot').ok).toBe(true)
     expect(engine.unboxLedgerOf('box-military')).toEqual({ boxes: 0, outputs: [] })
     expect(engine.unboxLedgerOf('box-military')).toEqual({ boxes: 0, outputs: [] })
+    state.refineRuns = []
+    ledger.record(state, { boxItemId: 'box-military', grants: [{ itemId: 'mod-laser-3', units: 2 }] })
+    const previous = ledger.get(state, 'box-military')
+    state.shipReturns[state.shipId] = { beltId: null, legMs: 10000, phaseAccMs: 0, reason: 'miningStop' }
+    expect(engine.startUnboxRunAt('box-military', 'pilot')).toMatchObject({ ok: true, queued: true })
+    expect(ledger.get(state, 'box-military')).toEqual(previous)
   })
 
   it('会话实现不调用浏览器存储；日志裁剪和语言切换不依赖中文字符串', () => {
@@ -186,7 +193,7 @@ describe('精炼货柜卡真实组件', () => {
     const engine = { state, ctx, belts: [], refineRunViews: () => [], unboxLedgerOf: () => ({ boxes: 1, outputs: [] }), startUnboxRunAt: () => { starts++; return { ok: true } } }
     const card = component('FurnaceCard', {
       useState: (initial: unknown) => { const at = cursor++; if (!(at in values)) values[at] = typeof initial === 'function' ? (initial as () => unknown)() : initial; return [values[at], (next: any) => values[at] = typeof next === 'function' ? next(values[at]) : next] },
-      useId: () => ':ledger:', refineRate, oreAvailable, manualSlotOf, manualBusyNote: () => null,
+      useId: () => ':ledger:', refineRate, industryAvailable, stationActivityStartBlockReason, manualSlotOf,
       bestAiCoreOf: () => null, usableAiCoresOf: () => [],
       countWare, UNBOX_CYCLE_MS, RowGlyph: 'RowGlyph', MarkStar: 'MarkStar', itemGlyphName: () => 'container',
       NetIncomeLine: 'NetIncomeLine', AiCoreSelect: 'AiCoreSelect', UnboxLedgerRows: 'UnboxLedgerRows',

@@ -16,6 +16,25 @@ export interface Hp3 {
   h: number
 }
 
+/** 2026-10-13船长确认：舰船容量提高，恢复基准与无人机不随之提高。 */
+export const SHIP_HP_UPLIFT_MUL = 1.5
+
+/** 把恢复基准的比例换算为当前护盾容量的比例；未装配读数不含舰体取整。 */
+export function shieldRecoveryRatio(spec?: { hp: Hp3; recoveryHp?: Hp3 } | null): number {
+  if (!spec) return 1 / SHIP_HP_UPLIFT_MUL
+  return spec.hp.s > 0 ? (spec.recoveryHp?.s ?? spec.hp.s) / spec.hp.s : 0
+}
+
+/** 舰载武器近盲仍开火；无人机沿用原射程判定。 */
+export function playerWeaponInRange(dist: number, w: { src?: string; minRangeM: number; maxRangeM: number }): boolean {
+  return w.src === 'drone' ? inRange(dist, w) : dist >= 0 && dist <= w.maxRangeM
+}
+
+/** 只惩罚舰载武器对舰攻击，不影响无人机或近防打机群。 */
+export function playerBlindDamageMul(dist: number, w: { src?: string; minRangeM: number }, vsDrone = false): number {
+  return !vsDrone && w.src !== 'drone' && dist < w.minRangeM ? 0.3 : 1
+}
+
 export function clamp(min: number, max: number, v: number): number {
   return Math.min(max, Math.max(min, v))
 }

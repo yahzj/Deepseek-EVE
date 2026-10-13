@@ -265,6 +265,7 @@ describe('护盾充能力场装置：战斗行为', () => {
       const ta = tagOf(b, ally)
       const specs = [main, ally].map((id) => {
         const s = createPlayerSpec(state, ctx, id)!
+        delete s.recoveryHp // 此处测试原规格兼容回退；新恢复基准由本批专项守护。
         s.tag = tagOf(b, id)
         return s
       })
@@ -321,9 +322,9 @@ describe('护盾充能力场装置：战斗行为', () => {
     expect(b.shieldFieldBy![tm]!.pulses).toBeGreaterThanOrEqual(1)
     // 两舰互补，各自支付一次，不再从自身力场获得免费增长。
     expect(b.units[tm]!.hp.s).toBeGreaterThan(400)
-    expect(b.units[tm]!.hp.s).toBeLessThanOrEqual(500)
+    expect(b.units[tm]!.hp.s).toBeLessThanOrEqual(500 + 1e-9)
     expect(b.units[ta]!.hp.s).toBeGreaterThan(400)
-    expect(b.units[ta]!.hp.s).toBeLessThanOrEqual(500)
+    expect(b.units[ta]!.hp.s).toBeLessThanOrEqual(500 + 1e-9)
   })
 
   it('**施放者阵亡 ⇒ 该力场停跳**（人没了装置就停，与另两套同款）', () => {

@@ -347,14 +347,11 @@ export const WEEKEND_FLAGSHIP_DEADLINE_MS = 24 * 3_600_000
  */
 export const WEEKEND_BOSS_FAMILIES: readonly string[] = ['H', 'R', 'C']
 /**
- * **BOSS 池子总量 = 固定 150,000**（船长 2026-09-25：「**BOSS 血条 15 万（约 2.5 个母舰）来算**」）。
- *
- * 取代原先两条自适应公式（上限 = 5 × 首战最高原始伤害 · 下限 = 母舰卡面满血 × 5）：
- * 母舰舰级血改成 39,200（当前卡面 69,592）后，"×5 下限"会飙到约 35 万（单场打 1 万要磨 35 场），
- * 与"约 5 场"彻底脱节 ⇒ 改常量：**单场打约 3 万 ⇒ 5 场**。
- * 战斗里的母舰血条 = **池子剩余**（船长同日选「甲」）= `weekendFlagshipHpRemaining`。
+ * BOSS池采用固定容量（2026-09-25起，取代首战伤害反解）。
+ * 战斗母舰血条 = `weekendFlagshipHpRemaining`；新池读取本常量，旧池按事件快照。
  */
-export const WEEKEND_FLAGSHIP_POOL_HP = 150_000
+/** 2026-10-13船长确认：新池采用本常量，已锁定旧池仍读取事件快照。 */
+export const WEEKEND_FLAGSHIP_POOL_HP = 300_000
 /**
  * ⚠ **H 族旗舰的舰级 id**（**遗留常量**：只作"认不出 T5 时"的兜底）。
  *

@@ -7,7 +7,8 @@
 import { bumpFirst } from './firstTasks'
 import { addLog, DEFAULT_START_SHIP_ID, shipLockedReason } from './state'
 import { cannotInterruptReason } from './activityGate'
-import type { CommandResult } from './engine'
+import { shipOperationBlockReason } from './shipActionPolicy'
+import type { CommandResult, CoreBlockReason } from './engine'
 import type { GameState, WreckLogCause } from './state'
 import { noteWreckLog } from './shipWrecks'
 import type { SimContext } from './types'
@@ -67,26 +68,31 @@ export function ownsShip(state: GameState, shipId: string): boolean {
   return shipId in state.fleet
 }
 
-/** 玩家指令：切换到拥有的另一艘船驾驶（采矿/打捞作业中可直接切换——旧船自动返航卸货善后，作业随之结束） */
-export function changeShip(state: GameState, shipId: string, ctx: SimContext): CommandResult {
+/** 换驾驶只读预检；善后与召回只在全部校验通过后执行。 */
+export function changeShipBlockReason(state: GameState, shipId: string, ctx: SimContext): CoreBlockReason | null {
   // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
   const lock = shipLockedReason(state, shipId, '换驾驶到它')
-  if (lock) return { ok: false, error: lock }
+  if (lock) return { error: lock }
   if (shipId === state.shipId) {
     const alreadyName = shipDisplayName(state, ctx, shipId)
-    return { ok: false, error: `正在驾驶的就是 ${alreadyName}。`, errorId: 'core.shipyard.034', errorParams: { p1: alreadyName } }
+    return { error: `正在驾驶的就是 ${alreadyName}。`, errorId: 'core.shipyard.034', errorParams: { p1: alreadyName } }
   }
   if (!ownsShip(state, shipId)) {
     const defName = ctx.ships.get(uidDefId(shipId))?.name ?? shipId
     return {
-      ok: false,
       error: `机库里没有 ${defName}——先到商店购买，或用舰船蓝图制造一艘。`,
       errorId: 'core.shipyard.035',
       errorParams: { p1: defName },
     }
   }
   const def = fleetDefOf(state, ctx, shipId)
-  if (!def) return { ok: false, error: `未知舰船：${shipId}。`, errorId: 'core.shipyard.036', errorParams: { p1: shipId } }
+  if (!def) return { error: `未知舰船：${shipId}。`, errorId: 'core.shipyard.036', errorParams: { p1: shipId } }
+  // 既有换驾驶允许召回目标AI船，但不允许接管它的战斗或真实返航。
+  const assignments = { ...state.aiAssignments }
+  const targetTask = assignments[shipId]?.task
+  if (targetTask?.kind !== 'expedition' || targetTask.phase !== 'battle' && targetTask.battle === null) delete assignments[shipId]
+  const targetBlock = shipOperationBlockReason({ ...state, aiAssignments: assignments }, ctx, shipId, 'configure')
+  if (targetBlock) return targetBlock
   /**
    * **锁定态统一判据**（**2026-09-21 船长令**：「**处在战斗中的时候也设置为不可取消**」＋「3 纳入」
    * ＝ 换驾驶与进洞并入同一条单点）：**战斗中 / 人在洞里 / 换港返航途中** ⇒ 一律拒，措辞与各
@@ -101,7 +107,7 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
       : lockReason.includes('虫洞')
         ? 'core.activityGate.005'
         : 'core.activityGate.006'
-    return { ok: false, error: lockReason, errorId: id }
+    return { error: lockReason, errorId: id }
   }
   /**
    * **顺序纪律（2026-09-20 修）**：能**拒绝**这次换船的校验一律排在"终止长途运输"之前——
@@ -111,55 +117,76 @@ export function changeShip(state: GameState, shipId: string, ctx: SimContext): C
    */
   if (state.expedition.active && state.expedition.phase !== 'back') {
     return {
-      ok: false,
       error:
         '远征出击/交火中：切换驾驶会中断本次远征（无战果）。请先在顶部活动栏召回远征（交火中可撤退），或等战报返回后再换船。',
       errorId: 'core.shipyard.005',
     }
   }
   if (state.standby.active) {
-    return { ok: false, error: '舰船正前往掩护巡逻星系途中——到港后再换船。', errorId: 'core.shipyard.006' }
+    return { error: '舰船正前往掩护巡逻星系途中——到港后再换船。', errorId: 'core.shipyard.006' }
+  }
+  if (state.shipReturns[state.shipId] && !state.mining.active && !state.salvaging.active && !state.hauling.active &&
+    !(state.expedition.active && state.expedition.phase === 'back')) {
+    return { error: '返航卸货中', errorId: 'core.busy.020' }
   }
   /**
    * **长途运输：换驾驶 = 立即终止**（2026-09-09 船长定：虚拟货无残留、无惩罚）。
    * 位置见上面那条顺序纪律：只有"真能换"的调用才会走到这里。
    * 界面侧另配了同款两讨伐确认（`ui.Hauling.033~035`）：先警告"中断拿不到本趟报酬"，再点一次才换。
    */
-  if (state.hauling.active) cancelHaulingOnSwitch(state, ctx)
+  const projected = state.hauling.active
+    ? { ...state, awayGalaxy: null, dockedSite: state.hauling.fromSiteId }
+    : state
   // T8：驾驶船不在站内（野外停留/返航途中）时不可切换
-  if (state.awayGalaxy !== null) {
+  if (projected.awayGalaxy !== null) {
     const where = state.transit.active
       ? state.transit.delivery
         ? '正在交付航线途中'
         : '正在返航空间站途中'
-      : `停留在「${ctx.galaxies.get(state.awayGalaxy)?.name ?? state.awayGalaxy}」星系（野外）`
+      : `停留在「${ctx.galaxies.get(projected.awayGalaxy)?.name ?? projected.awayGalaxy}」星系（野外）`
     /**
      * **⟪文案调整 2026-10-02⟫ 拒因结构化（批① 舰船域）**：三种"在哪"各给一个 id ——
      * 原先整句里夹着 `where` 这个**中文短语参数**，英文界面会中英混排；拆成三条模板后
      * 中文输出**逐字不变**（模板渲染结果与原来的 `${where}` 拼接完全一致）。
      */
-    const awayName = state.awayGalaxy === null ? '' : (ctx.galaxies.get(state.awayGalaxy)?.name ?? state.awayGalaxy)
+    const awayName = ctx.galaxies.get(projected.awayGalaxy)?.name ?? projected.awayGalaxy
     const whereId = state.transit.active ? (state.transit.delivery ? 'core.shipyard.037' : 'core.shipyard.038') : 'core.shipyard.039'
     return {
-      ok: false,
       error: `驾驶船${where}——请先「返航空间站」再换船。`,
       errorId: whereId,
       errorParams: state.transit.active ? {} : { p1: awayName },
     }
   }
   // 2026-09-08（船长定）：未建成建站点不视为站点——建成（并入基地网络）后才开放换驾驶
-  if (state.dockedSite !== null) {
-    const dockSite = ctx.stations.get(state.dockedSite)
+  if (projected.dockedSite !== null) {
+    const dockSite = ctx.stations.get(projected.dockedSite)
     const prog = dockSite ? state.stationSites[dockSite.id] : null
-    if (dockSite && (!prog || prog.stage < dockSite.tiers.length)) {
+    if (!dockSite || !prog || prog.stage < dockSite.tiers.length) {
+      const name = dockSite?.name ?? projected.dockedSite
       return {
-        ok: false,
-        error: `「${dockSite.name}」尚未建成：工地不提供停靠与服务，换驾驶需在母港或已建成的副站进行。`,
+        error: `「${name}」尚未建成：工地不提供停靠与服务，换驾驶需在母港或已建成的副站进行。`,
         errorId: 'core.shipyard.040',
-        errorParams: { p1: dockSite.name },
+        errorParams: { p1: name },
       }
     }
   }
+  // 只释放已确认的换驾驶善后，不释放快递、探索、遭遇战或星球运输。
+  const handover = {
+    ...projected,
+    mining: { ...state.mining, active: false },
+    salvaging: { ...state.salvaging, active: false },
+    hauling: { ...state.hauling, active: false },
+    expedition: { ...state.expedition, active: false },
+  }
+  return shipOperationBlockReason(handover, ctx, state.shipId, 'cargo')
+}
+
+/** 玩家指令：换驾驶，旧船采矿/打捞/远征返航沿用原善后账本。 */
+export function changeShip(state: GameState, shipId: string, ctx: SimContext): CommandResult {
+  const blocked = changeShipBlockReason(state, shipId, ctx)
+  if (blocked) return { ok: false, ...blocked }
+  delete state.pendingStationActivity
+  if (state.hauling.active) cancelHaulingOnSwitch(state, ctx)
   if (state.expedition.active && state.expedition.phase === 'back') {
     // 2026-09-08（船长定）：返航中允许换船——本次返航转为旧船"远征善后"账本（剩余航程照走、
     // 到港自动卸货入仓库），并立即停止重复清剿
@@ -439,8 +466,9 @@ function kitHealFor(
   caps: { capA: number; capH: number; baseA: number; baseH: number } | null,
 ): { a: number; h: number } {
   const skill = quickRepairFactor(state, ctx)
-  const aMult = caps && caps.baseA > 0 ? caps.capA / caps.baseA : 1
-  const hMult = caps && caps.baseH > 0 ? caps.capH / caps.baseH : 1
+  const amp = createPlayerSpec(state, ctx, shipId)?.repairCapacityAmp
+  const aMult = amp?.a ?? (caps && caps.baseA > 0 ? caps.capA / caps.baseA : 1)
+  const hMult = amp?.h ?? (caps && caps.baseH > 0 ? caps.capH / caps.baseH : 1)
   return { a: Math.max(1, Math.round(baseHp * aMult * skill)), h: Math.max(1, Math.round(baseHp * hMult * skill)) }
 }
 
@@ -464,35 +492,12 @@ export function repairCostIsk(state: GameState, shipId: string, ctx: SimContext)
 
 /** 玩家指令：维修某艘拥有船（回满耐久与装甲；钱不够时按比例修复可用部分） */
 export function repairShip(state: GameState, shipId: string, ctx: SimContext): CommandResult {
-  // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
-  const lock = shipLockedReason(state, shipId, '在站里修它')
-  if (lock) return { ok: false, error: lock }
+  const blocked = shipOperationBlockReason(state, ctx, shipId, 'repair')
+  if (blocked) return { ok: false, ...blocked }
   const fleetShip = state.fleet[shipId]
   const def = fleetDefOf(state, ctx, shipId)
   const name = shipDisplayName(state, ctx, shipId)
   if (!fleetShip || !def) return { ok: false, error: `机库里没有 ${name}。`, errorId: 'core.shipyard.041', errorParams: { p1: name } }
-  // T8：驾驶船在野外/返航途中时不能维修（维修服务在空间站）
-  if (shipId === state.shipId && (state.awayGalaxy !== null || state.standby.active)) {
-    return {
-      ok: false,
-      error: `${name} 不在空间站（野外/掩护巡逻途中）——返航后才能维修。`,
-      errorId: 'core.shipyard.042',
-      errorParams: { p1: name },
-    }
-  }
-  // 2026-09-08（船长定）：未建成建站点不视为站点——维修服务在副站建成（并入基地网络）后开放
-  if (state.dockedSite !== null) {
-    const dockSite = ctx.stations.get(state.dockedSite)
-    const prog = dockSite ? state.stationSites[dockSite.id] : null
-    if (dockSite && (!prog || prog.stage < dockSite.tiers.length)) {
-      return {
-        ok: false,
-        error: `「${dockSite.name}」尚未建成：工地不提供停靠与服务，维修需在母港或已建成的副站进行。`,
-        errorId: 'core.shipyard.043',
-        errorParams: { p1: dockSite.name },
-      }
-    }
-  }
   if (fleetShip.durability >= 1 && (fleetShip.armorPct ?? 1) >= 1) {
     return { ok: false, error: `${name} 状态完好，无需维修。`, errorId: 'core.shipyard.044', errorParams: { p1: name } }
   }

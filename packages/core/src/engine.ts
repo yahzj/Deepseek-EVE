@@ -17,11 +17,14 @@ import { addLog } from './state'
 import type { GameState } from './state'
 import type { SimContext } from './types'
 import { advanceMining, advanceShipReturns, retireMiningShip } from './mining'
-import { advanceStandby, advanceTransit, reconcileDockSanity } from './location'
+import { advanceStandby, advanceTransit, reconcileDockSanity, startSiteDeliverTrip, stationActivityReturnSite } from './location'
+import { shipActuallyDocked } from './shipActionPolicy'
+import { mainActivityOf, manualSlotOf } from './activityGate'
+import type { StationAction } from './stationActivityPending'
 import { reconcilePilotShip } from './shipyard'
-import { advanceManufacturing } from './manufacturing'
-import { advanceRefining, type UnboxResultRow } from './industry'
-import { advanceLab } from './lab'
+import { advanceManufacturing, startManufacturing } from './manufacturing'
+import { advanceRefining, startRefineRun, startRecycleRun, startUnboxRun, type UnboxResultRow } from './industry'
+import { advanceLab, startLabRun } from './lab'
 import { advancePlanetary, reconcilePlanetHome } from './planetRuntime'
 import { advanceExpedition } from './expedition'
 import { advanceWormhole } from './wormholeBattle'
@@ -34,7 +37,7 @@ import { advanceEncounterWatch } from './encounters'
 import { advanceScanning, ensureTransitExplored } from './explore'
 import { advanceWormholeScan, reconcileWormholePromoGift, reconcileWormholeScanWelcome } from './wormholeScan'
 import { advanceWormholeAuto } from './wormholeAuto'
-import { advanceHauling } from './hauling'
+import { advanceHauling, startHauling } from './hauling'
 import { advanceWreckDrift } from './salvage'
 import type { SettleStats } from './settleStats'
 import { advanceSalvageOp, retireSalvageShip } from './salvaging'
@@ -84,6 +87,8 @@ export interface CoreBlockReason {
 /** 指令执行结果：界面按钮点完拿这个决定是提示错误还是无事发生 */
 export interface CommandResult {
   ok: boolean
+  /** 已接受但需等待真实返航，到港后重验启动；不是已经开工。 */
+  queued?: boolean
   /**
    * 失败原因（**中文原串**，永远照写）。甲案（船长 2026-09-20）改造后**另带** `errorId` /
    * `errorParams`：界面用 `i18n/locale.tsx` 的 `cmdText(r)` 取值 —— 有 id 按当前语言渲染，
@@ -178,13 +183,20 @@ export function advanceGame(
     offline?: boolean
     /** 当前渲染会话接收货柜拆解结果；不写入 GameState。 */
     onUnboxResult?: (result: UnboxResultRow) => void
+    /** 渲染会话仅在到港后实际开工时更新产物记录，不保存回调。 */
+    onStationActivityStarted?: (action: StationAction) => void
   },
 ): void {
   let left = Math.floor(deltaMs)
   if (!Number.isFinite(left) || left <= 0) return
   // 深空连续搜索与探测机交付在同一时间轴上结算；无搜索时保留既有整段推进。
   while (left > 0) {
+    resolveActivityReturn(state, ctx)
+    advancePendingStationActivity(state, ctx, opts?.onStationActivityStarted)
     let step = left
+    const pending = state.pendingStationActivity
+    const returning = pending ? state.shipReturns[pending.shipId] : undefined
+    if (returning) step = Math.min(step, Math.max(1, Math.ceil(returning.legMs - returning.phaseAccMs)))
     const search = state.planetary?.stellar?.search
     if (ctx.planetary && state.planetary?.runtimeVersion === 1 && search && !search.paused) {
       step = Math.min(step, Math.max(1, Math.ceil(search.durationMs - search.progressMs)))
@@ -195,8 +207,45 @@ export function advanceGame(
     const segmented = step !== left || left !== Math.floor(deltaMs)
     const stepOpts = segmented && opts?.nowWallMs !== undefined ? { ...opts, nowWallMs: opts.nowWallMs - left + step } : opts
     advanceGameStep(state, step, ctx, stepOpts)
+    advancePendingStationActivity(state, ctx, opts?.onStationActivityStarted)
     left -= step
   }
+}
+
+/** 在切分时间轴前修正旧停工占位账本，不把估算时间当真实到港时刻。 */
+function resolveActivityReturn(state: GameState, ctx: SimContext): void {
+  const pending = state.pendingActivityReturn
+  if (!pending) return
+  state.pendingActivityReturn = null
+  if (pending.kind === 'mining') retireMiningShip(state, ctx, { beltId: pending.id, preserveExisting: true })
+  else retireSalvageShip(state, ctx, { galaxyId: pending.id, preserveExisting: true })
+}
+
+/** 清待办后只尝试一次，复用真实命令重新验证，不无限重试或停止后来安排的作业。 */
+function advancePendingStationActivity(state: GameState, ctx: SimContext, onStarted?: (action: StationAction) => void): void {
+  const pending = state.pendingStationActivity
+  if (!pending) return
+  if (!state.fleet[pending.shipId] || pending.shipId !== state.shipId || mainActivityOf(state) !== null || manualSlotOf(state) !== null) {
+    delete state.pendingStationActivity
+    return
+  }
+  if (state.shipReturns[pending.shipId]) return
+  delete state.pendingStationActivity
+  if (!shipActuallyDocked(state, ctx)) return
+  state.haltedBySwitch = null
+  let result: CommandResult
+  const action = pending.action
+  switch (action.kind) {
+    case 'refine': result = startRefineRun(state, action.itemId, 'pilot', ctx); break
+    case 'recycle': result = startRecycleRun(state, action.itemId, 'pilot', ctx); break
+    case 'unbox': result = startUnboxRun(state, ctx, action.itemId, 'pilot'); break
+    case 'manufacturing': result = startManufacturing(state, action.blueprintId, 'pilot', ctx); break
+    case 'lab': result = startLabRun(state, ctx, action.recipeId, 'pilot'); break
+    case 'hauling': result = startHauling(state, action.aSiteId, action.bSiteId, ctx); break
+    case 'siteDeliver': result = startSiteDeliverTrip(state, ctx, action.siteId); break
+  }
+  if (!result.ok && result.error) addLog(state, 'warn', result.error, result.errorId, result.errorParams)
+  if (result.ok && !result.queued) onStarted?.(action)
 }
 
 function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opts?: Parameters<typeof advanceGame>[3]): void {
@@ -223,18 +272,18 @@ function advanceGameStep(state: GameState, deltaMs: number, ctx: SimContext, opt
    * ⚠ 必须在 `advanceMining` / `advanceSalvageOp` **之前**：那两支读 `active`，而本段只动 `shipReturns`。
    * ⚠ 标记处理完即清（`pendingActivityReturn`）——它是瞬态信号。
    */
-  if (state.pendingActivityReturn) {
-    const pending = state.pendingActivityReturn
-    state.pendingActivityReturn = null
-    if (pending.kind === 'mining') retireMiningShip(state, ctx, { beltId: pending.id, preserveExisting: true })
-    else retireSalvageShip(state, ctx, { galaxyId: pending.id, preserveExisting: true })
-  }
+  resolveActivityReturn(state, ctx)
   advanceMining(state, d, ctx)
   advanceSalvageOp(state, d, ctx)
   // B3 星系残骸密度：闲置漂移（正在打捞的星系挂起——打捞作业期不结算漂移）
   advanceWreckDrift(state, ctx, d, state.salvaging.active ? state.salvaging.galaxyId : null)
   // T4 换船善后：自动返航中的旧船独立于新作业推进（到港自动卸货）
+  const waiting = state.pendingStationActivity
+  const completing = waiting?.shipId === state.shipId && state.shipReturns[state.shipId] &&
+    state.shipReturns[state.shipId]!.phaseAccMs + d >= state.shipReturns[state.shipId]!.legMs
+  const returnSite = completing ? stationActivityReturnSite(state, ctx) : null
   advanceShipReturns(state, d, ctx)
+  if (completing && !state.shipReturns[state.shipId]) { state.awayGalaxy = null; state.dockedSite = returnSite }
   // 2026-09-08（船长定）：未建成建站点不视为任何站点——停靠残留纠正为工地现场停留（幂等）
   reconcileDockSanity(state, ctx)
   // 2026-09-09（船长定）：驾驶船可用性自愈——缺失或被 AI 执勤占用时改派空闲船/补发保底磷虾（幂等）

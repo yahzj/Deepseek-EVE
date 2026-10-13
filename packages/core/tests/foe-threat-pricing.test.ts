@@ -24,6 +24,7 @@ import { describe, expect, it } from 'vitest'
 import { ANOMALIES, buildSimContext } from '@whale/data'
 import type { AnomalyDef } from '../src/types'
 import { createFoeSpecs, foeHpOfThreat, foeThreatRatingOf, wormholeDerivedAnomaly } from '../src/combat'
+import { SHIP_HP_UPLIFT_MUL } from '../src/combatMath'
 import {
   FOE_DESIGN_STRENGTH_MUL,
   WORMHOLE_FOE_BASE_STRENGTH_MUL,
@@ -53,15 +54,15 @@ describe('敌卡威胁定价式（船长 2026-09-24「单舰 ×3 / 小队 ×10�
     expect(WORMHOLE_FOE_BASE_STRENGTH_MUL).toBe(FOE_DESIGN_STRENGTH_MUL.squad)
   })
 
-  it('② 洞内一支（4 舰小队）：真派生卡 X = 2 × F(引擎威胁)', () => {
+  it('② 洞内一支（4 舰小队）：真实X含加血倍率，威胁标尺归一后不变', () => {
     const base = ctx.anomalies.get(WORMHOLE_FAMILY_CARDS.A.shallow!)!
     const card = wormholeDerivedAnomaly(ctx, base, { depth: 1, kind: 'node', waves: 1 })
     const x = xOf(card)
     expect(card.threat).toBe(45)
-    // F(45) = 12.8 × (5 + 85×((45−6)/90)^1.6) = 349 ⇒ X 应为 698（取整与逐条分摊带来 ±1）
+    // 实测X包含最终加血；取整边界按加血前标尺比较。
     expect(foeHpOfThreat(45, bal)).toBe(349)
-    expect(x).toBeGreaterThan(690)
-    expect(x).toBeLessThan(705)
+    expect(x / Math.sqrt(SHIP_HP_UPLIFT_MUL)).toBeGreaterThan(690)
+    expect(x / Math.sqrt(SHIP_HP_UPLIFT_MUL)).toBeLessThan(705)
     expect(foeThreatRatingOf(x, FOE_DESIGN_STRENGTH_MUL.squad, bal)).toBe(45)
   })
 

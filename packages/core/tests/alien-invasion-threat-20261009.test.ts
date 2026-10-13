@@ -3,6 +3,7 @@ import { buildSimContext } from '@whale/data'
 import { applyFoeOverride } from '../src/combat'
 import { createFoeSpecs, foeStrengthOf, foeThreatOfAnomaly } from '../src/foeSpecs'
 import { foeHpOfThreat } from '../src/foePower'
+import { SHIP_HP_UPLIFT_MUL } from '../src/combatMath'
 import { WRECK_GROUP_BY_KEY } from '../src/wreckGroups'
 import type { AnomalyDef } from '../src/types'
 
@@ -54,7 +55,7 @@ describe('C族入侵平均威胁提高5%', () => {
     expect(card.threat).toBe(currentThreats[id])
     expect(foeThreatOfAnomaly(card, design, bal)).toBe(card.threat)
     expect(foeThreatOfAnomaly(old, design, bal)).toBeLessThan(card.threat)
-    const budget = 5 * foeStrengthOf(card, bal).x / design
+    const budget = 5 * foeStrengthOf(card, bal).x / (design * Math.sqrt(SHIP_HP_UPLIFT_MUL))
     expect(budget).toBeLessThanOrEqual(foeHpOfThreat(card.threat, bal))
     expect(budget).toBeGreaterThan(foeHpOfThreat(card.threat - 1, bal))
     expect(card.wreckThreat).toBe(oldThreat)

@@ -16,6 +16,23 @@
 
 ## 一、core 引擎层（`packages/core/src`）
 
+目标舰操作：`shipActuallyDocked` / `shipOperationBlockReason`（`shipActionPolicy.ts`）纯状态派生真实停靠与配置许可；远程管理不读主控忙态，船上物资只在目标舰停靠时可取。`stationActivityStartBlockReason`（`location.ts`）只读预检现有切换再检查基地；页面不自算野外置灰。工业原料由`industryAvailable`（`industry.ts`）提供同源可取量。护栏：停靠统一专项、失败资源守恒与页面同源检查，F2/F3/F9。
+
+玩家手动卸货：`unloadShipCargo`（`inventory.ts`）检查目标舰货仓许可后逐项分流入库；`unloadCargoToWarehouse`只转发当前舰。`unloadCargoOfShipToWarehouse`保留为自动到港和其他已校验内部结算，界面不直接调用。
+
+换驾驶：`changeShipBlockReason`（`shipyard.ts`）只读当前舰与目标舰状态，保留采矿、打捞、远征返航和AI召回例外；舰船页、自动探索主控交接与`changeShip`共用，拒绝时不先停运或清仓。
+
+停工位置预检：`stationActivityStartState`（`location.ts`）浅投影现有运输、巡逻、交付的即时停工落点及采矿/打捞真实返航后的基地；站内活动门禁和航路前置共用，不退款、不改原档、不缩短返航。
+
+站内活动返航接续：`queueStationActivity` / `stationActivityWaitsForReturn` / `cleanPendingStationActivity`（`stationActivityPending.ts`）登记单条主控待办、等待与白名单；到港执行由`engine.advanceGame`复用真实启动命令，时间推进按待办舰真实返航边界切分，显式取消不取消返航。新主控指令经`activityGate`清待办，远程操作不清。
+
+待启动活动显示：`pendingStationActivityView`（`stationActivityPending.ts`）读取同一待办和实际返航账本，目标/进度/剩余时长/取消动作供两套活动栏共用；不把排队当作已经开工。
+
+交付安排空间：`siteDeliverFreeCargoM3`（`location.ts`）只读当前可用空间，采矿/打捞待返航时按到港自动卸货后的容量预检；页面和实际安排同源，不提前卸货。
+
+接续返航落点：`stationActivityReturnSite`（`location.ts`）沿用采矿最近基地/打捞母港航程判据，仅用于接续预检及待办舰真实到港后位置更新，不提前停靠。
+
+
 | 关注点 | 唯一实现 | 护栏 |
 | 货柜拆解本次启动批次产物记录 | `UnboxSessionLedger` · `apps/desktop/src/renderer/src/game/unboxLedger.ts`；结算结果取`advanceRefining`实际入库回调 | 仅渲染进程内存、成功开工清旧批、切页与库存归零保留、换档隔离、关闭重启不恢复；结果与实得数量守恒专项 |
 | 装配靶场 | `createFittingRange` / `advanceFittingRange` / `fittingRangeStats` · `fittingRange.ts` | 独立state/资源，真实战斗固定距离与层，原状态逐键守恒及实际伤害统计专项 |
@@ -27,6 +44,9 @@
 | 酸蚀有效抗性与渐增速度 | `acidResistsOf()` / `battleSpeedBonusOf()` / `foeAcidRowsOf()` · `alienEquipment.ts` | 逐层到期、触底恢复、跨波/读档、常驻渐增与当前周期收益混装排序、捕获网专项；F2/F3 |
 | 激光校准远端威力保留 | `laserFalloffOf` · `equipment.ts`，只在玩家激光建档消费 | 混装折权加算、上限1、其他武器不变专项；`arch:guard` F2/F3 |
 | 敌方族格最终血量倍率 | `foeFamilyHpMulOf()` · `foePower.ts` | C族三层最终+30%、非C不变、舰体/机型独立判定、共享旗舰绝对血覆盖与预算不抵消专项 |
+| 全舰容量提升及敌舰最终倍率 | `SHIP_HP_UPLIFT_MUL` · `combatMath.ts`；`foeShipHpMulOf()` · `foePower.ts` | 玩家舰体/插件1.5、敌舰最终1.5且保留族格、预算和火力不变、无人机排除、共享池绝对覆盖专项 |
+| 玩家舰载近盲开火与伤害 | `playerWeaponInRange()` / `playerBlindDamageMul()` · `combatMath.ts` | 最大射程内放行、近盲0.3、无人机原规则、近防打机群豁免、连发/逐炮/副段与预估专项 |
+| 护盾恢复比例与扣盾比例展示 | `shieldRecoveryRatio()` · `combatMath.ts` | 运行规格旧恢复基准/新容量；未装配按全局倍率折算；力场/充能详情、有效值和周期视图同源 |
 | 悬赏后台预热任务与缓存代次 | `BountyWinCache` · `game/bountyWinCache.ts`；真实评估仍为core `estimateBountyWinOn` | 单worker/每卡30局、失效取消/战斗让路、结果等价与双端真实worker响应专项 |
 | 敌舰/机群/挂载/编队源数字参数读取 | `enemyParameterOf()` · `packages/core/src/enemyParameters.ts` | 六表字段契约、迁移前完整目录逐值相等及真实引擎预览专项；公式与引用留TS |
 | 战斗演出跨场与读档续播 | `battleFxArrivals()` · `apps/desktop/src/renderer/src/ui/battleFxCursor.ts` | 绑定战斗对象、序号回退、陈旧事件与连续战斗专项 |

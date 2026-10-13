@@ -14,7 +14,7 @@
  * - 无人机生存包等未落地内容仍标注"契约"。
  */
 import type { ElementType, ReactNode } from 'react'
-import { battleSpeedBonusOf } from '@whale/core'
+import { battleSpeedBonusOf, createPlayerSpec, shieldRecoveryRatio } from '@whale/core'
 import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
 import { DEFAULT_BALANCE, DC_LOCK_MS, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, beamPowerFactor, thrusterCycleNote, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules, fittedEffectParamsOf, WEB_BREAK_DIST_M, equipmentCycleMsOf } from '@whale/core'
 import { HIGH_SEC_PENALTY, JUMP_FUEL_SPEED_MUL, SHIELD_FIELD_COST_PCT, SYNAPTIC_ACCELERANT_MS, SYNAPTIC_ACCELERANT_MUL, wormholeIsShapedItem, wormholeShapeOf } from '@whale/core'
@@ -260,6 +260,7 @@ export interface InfoLine {
 
 const fmt = (n: number | undefined): string => (n === undefined || !Number.isFinite(n) ? '—' : n.toLocaleString('zh-CN'))
 const pct = (n: number): string => `${Math.round(n * 100)}%`
+const recoveryPct = (n: number): string => `${Number((n * 100).toFixed(2))}%`
 const pctOpt = (n: number | undefined): string => (n === undefined || !Number.isFinite(n) ? '—' : pct(n))
 
 /** 射程带紧凑文本（如 "250 m ~ 4.2 km"；min 为 0 时省略近端） */
@@ -528,7 +529,7 @@ export function moduleShortEffect(mod: ModuleDef): string {
       const ms = mod.shieldFieldMs ?? 0
       if ((mod.shieldFieldPct ?? 0) > 0 && ms > 0) {
         // ⟪文案调整 2026-10-07⟫ 力场扣盾代价与结算同源。
-        parts.push(tr("ui.shipInfo.181", { p1: Math.round(ms / 1000), p2: pct(mod.shieldFieldPct ?? 0), p3: pct(SHIELD_FIELD_COST_PCT) }))
+        parts.push(tr("ui.shipInfo.181", { p1: Math.round(ms / 1000), p2: recoveryPct((mod.shieldFieldPct ?? 0) * shieldRecoveryRatio()), p3: recoveryPct(SHIELD_FIELD_COST_PCT * shieldRecoveryRatio()) }))
       }
       body = parts.join(' · ')
       break
@@ -542,7 +543,7 @@ export function moduleShortEffect(mod: ModuleDef): string {
       // ⚠ 它只有 `shieldPulsePct` 一个效果字段，原先短行**拼出空串**（船长报障「装配时候的卡片上没有说明」）
       // —— 秒数取 core 单点 `SHIELD_PULSE_MS`，不写死 30。
       if ((mod.shieldPulsePct ?? 0) > 0) {
-        parts.push(tr("ui.shipInfo.103", { p1: SHIELD_PULSE_MS / 1000, p2: pct(mod.shieldPulsePct ?? 0) }))
+        parts.push(tr("ui.shipInfo.103", { p1: SHIELD_PULSE_MS / 1000, p2: recoveryPct((mod.shieldPulsePct ?? 0) * shieldRecoveryRatio()) }))
       }
       body = parts.join(' · ')
       break
@@ -1082,6 +1083,8 @@ function crossFamilyShort(mod: ModuleDef): string {
  * （如修理件的「装到船上：各 19（10）点」）。不传 = 与改动前逐字一致（仓库/市场/手册那些"还没上船"的卡）。
  */
 export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: string, ordinal = 1): InfoLine[] {
+  const recoveryRatio = mod.shieldPulsePct || mod.shieldFieldPct
+    ? shieldRecoveryRatio(engine && shipId ? createPlayerSpec(engine.state, engine.ctx, shipId) : undefined) : 1
   /**
    * 「槽位 / 类型」那一行的**类型**：默认 = 槽位名（`SLOT_LABELS`）。
    *
@@ -1467,11 +1470,11 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
     lines.push({ k: tr('ui.moduleSpecs.001'), v: tr('ui.shipInfo.185', { p1: pct(mod.foeRangeDebuffPct ?? 0), p2: String(FOE_RANGE_DEBUFF_FLOOR_M) }) })
   }
   if ((mod.shieldPulsePct ?? 0) > 0) {
-    lines.push({ k: tr('ui.moduleSpecs.002'), v: tr('ui.shipInfo.103', { p1: SHIELD_PULSE_MS / 1000, p2: pct(mod.shieldPulsePct ?? 0) }) })
+    lines.push({ k: tr('ui.moduleSpecs.002'), v: tr('ui.shipInfo.103', { p1: SHIELD_PULSE_MS / 1000, p2: recoveryPct((mod.shieldPulsePct ?? 0) * recoveryRatio) }) })
   }
   if ((mod.shieldFieldPct ?? 0) > 0 && (mod.shieldFieldMs ?? 0) > 0) {
     // ⟪文案调整 2026-10-07⟫ 详情与装配短行共用同一机制模板及代价常量。
-    lines.push({ k: tr('ui.moduleSpecs.003'), v: tr('ui.shipInfo.181', { p1: (mod.shieldFieldMs ?? 0) / 1000, p2: pct(mod.shieldFieldPct ?? 0), p3: pct(SHIELD_FIELD_COST_PCT) }) })
+    lines.push({ k: tr('ui.moduleSpecs.003'), v: tr('ui.shipInfo.181', { p1: (mod.shieldFieldMs ?? 0) / 1000, p2: recoveryPct((mod.shieldFieldPct ?? 0) * recoveryRatio), p3: recoveryPct(SHIELD_FIELD_COST_PCT * recoveryRatio) }) })
   }
   if (mod.overlayDrive) {
     lines.push({ k: tr('ui.moduleSpecs.004'), v: tr('ui.shipInfo.246', { p1: ((mod.reloadMs ?? 0) / 1000).toFixed(1), p2: (mod.overlayDrive.stepMs / 1000).toFixed(1), p3: (mod.overlayDrive.floorMs / 1000).toFixed(1) }) })

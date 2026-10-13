@@ -128,7 +128,7 @@ describe('主武器口径（贴脸/中距/风筝的距离从哪来）', () => {
     const { state, ctx, uid } = world()
     fitAll(state, ctx, uid, ['laser-x'])
     const me = createPlayerSpec(state, ctx, uid)!
-    expect(me.weapons[0]!.label).toBe('基础舰炮') // 兜底武器恒在且排第一（旧口径出错的前提）
+    expect(me.weapons.some(w => w.src === 'base')).toBe(false)
     const main = mainWeaponOf(me)!
     expect(main.kind).toBe('beam')
     expect(main.maxRangeM).toBe(4600)

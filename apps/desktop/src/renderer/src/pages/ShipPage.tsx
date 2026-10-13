@@ -21,7 +21,9 @@ import {
   marketQuote,
   shipCategoryKeyOf,
   missingMaterials,
-  oreAvailable,
+  industryAvailable,
+  shipOperationBlockReason,
+  changeShipBlockReason,
   ownsBlueprint,
   manufacturingRunViews,
   // 2026-09-13：站内工业目标只列玩家可见的资源（未上线资源不进 AI 精炼炉下拉）
@@ -803,6 +805,8 @@ export function ShipPage({
             const kitCount = (['repairkit-civ', 'repairkit-mil'] as const).reduce((n, id) => n + (shipState.cargo[id] ?? 0), 0)
             const isCurrent = uid === state.shipId
             const repairCost = repairCostIsk(state, uid, engine.ctx)
+            const repairBlock = shipOperationBlockReason(state, engine.ctx, uid, 'repair')
+            const switchBlock = isCurrent ? null : changeShipBlockReason(state, uid, engine.ctx)
             const isWorking = uid in state.aiAssignments
             const isLockedShip = state.shipLocks[uid] === true
             const displayName = shipDisplayName(state, engine.ctx, uid)
@@ -928,8 +932,8 @@ export function ShipPage({
                     <button
                       className="app-btn is-small is-warn"
                       onClick={() => handleRepair(uid)}
-                      disabled={state.wallet.isk < repairCost}
-                      title={tr("ui.ShipPage.165", { p1: repairCost.toLocaleString('zh-CN') })}
+                      disabled={state.wallet.isk < repairCost || repairBlock !== null}
+                      title={repairBlock ? cmdText(repairBlock) : tr("ui.ShipPage.165", { p1: repairCost.toLocaleString('zh-CN') })}
                     >
                       {tr("ui.ShipPage.024")} {repairCost.toLocaleString('zh-CN')}
                     </button>
@@ -998,7 +1002,8 @@ export function ShipPage({
                       </button>
                       <button
                         className="app-btn is-small is-primary"
-                        title={switchAskId === uid ? tr('ui.Hauling.035') : undefined}
+                        disabled={switchBlock !== null}
+                        title={switchBlock ? cmdText(switchBlock) : switchAskId === uid ? tr('ui.Hauling.035') : undefined}
                         onClick={() => handleSwitch(uid)}
                       >
                         {switchAskId === uid ? tr('ui.Hauling.034') : tr("ui.ShipPage.035")}
@@ -1283,7 +1288,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
    *  回收炉 = 当前有料（货仓或仓库）的残骸；制造线 = 已学会的蓝图。 */
   const allItemDefs = visibleItemDefs(engine.ctx)
   const refineOres = allItemDefs.filter((d) => d.kind !== 'wreck' && (d.refine?.length ?? 0) > 0)
-  const refineWrecks = allItemDefs.filter((d) => d.kind === 'wreck' && oreAvailable(state, d.id) > 0)
+  const refineWrecks = allItemDefs.filter((d) => d.kind === 'wreck' && industryAvailable(state, engine.ctx, d.id) > 0)
   const refineAll = [...refineOres, ...refineWrecks]
   const effRefineId = refineAll.some((d) => d.id === refineItemId) ? refineItemId : (refineAll[0]?.id ?? '')
   const craftAll: CraftOption[] = []
@@ -1333,7 +1338,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
           buildCostIsk: 0,
         })
       : []
-  const refineHave = effMode === 'refine' && effRefineId ? oreAvailable(state, effRefineId) : 0
+  const refineHave = effMode === 'refine' && effRefineId ? industryAvailable(state, engine.ctx, effRefineId) : 0
   /** 指派按钮置灰原因（null = 可指派；文案与下方各下拉一一对应）
    *  ⚠ **站内工业不看玩家位置**（2026-09-14 船长报障修复）：本页指派的都是 **AI 核心**驱动
    *  （没有"亲自"这一路），而 AI 核心是留在站内替你干活的分身 ⇒ 原来的
@@ -1570,7 +1575,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                 <optgroup label={tr("ui.ShipPage.083")}>
                   {refineOres.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.name}{tr("ui.ShipPage.084")}{oreAvailable(state, d.id).toLocaleString('zh-CN')}）
+                      {d.name}{tr("ui.ShipPage.084")}{industryAvailable(state, engine.ctx, d.id).toLocaleString('zh-CN')}）
                     </option>
                   ))}
                 </optgroup>
@@ -1579,7 +1584,7 @@ function AiCommandPanel({ engine, onToast }: PageProps) {
                 <optgroup label={tr("ui.ShipPage.085")}>
                   {refineWrecks.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.name}{tr("ui.ShipPage.086")} {Math.round(oreAvailable(state, d.id) * 10) / 10} m³）
+                      {d.name}{tr("ui.ShipPage.086")} {Math.round(industryAvailable(state, engine.ctx, d.id) * 10) / 10} m³）
                     </option>
                   ))}
                 </optgroup>

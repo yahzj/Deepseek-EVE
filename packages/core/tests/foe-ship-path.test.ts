@@ -103,9 +103,9 @@ describe('舰级路径：绝对值口径', () => {
     const boss = specs[0]!
     const skiff = specs[1]!
     const escort = specs[4]!
-    expect(hpOf(boss)).toBeCloseTo(400, 6)
-    expect(hpOf(skiff)).toBeCloseTo(100, 6)
-    expect(hpOf(escort)).toBeCloseTo(60, 6) // 100 × 0.6
+    expect(hpOf(boss)).toBeCloseTo(400 * 1.5, 6)
+    expect(hpOf(skiff)).toBeCloseTo(100 * 1.5, 6)
+    expect(hpOf(escort)).toBeCloseTo(60 * 1.5, 6)
     // 单发：本卡编成 5 单位 → 多舰补偿 2×5/6 = 5/3（2026-09-11 船长确认）
     // 头目 round(60 × 5/3) = 100；杂鱼 round(10 × 5/3) = 17；僚机 round(10 × 0.6 × 5/3) = 10
     expect(boss.weapons[0]!.shotDmg).toBe(100)
@@ -368,7 +368,7 @@ describe('旧路径不受影响（未写 ships 的卡）', () => {
     expect(specs).toHaveLength(1)
     expect(specs[0]!.tag).toBe('foe-0')
     expect(specs[0]!.name).toBe('攻坚重甲舰')
-    expect(hpOf(specs[0]!)).toBeCloseTo(300, 6)
+    expect(hpOf(specs[0]!)).toBeCloseTo(300 * 1.5, 6)
   })
 })
 
@@ -617,7 +617,7 @@ describe('多舰船补偿：舰级路径按 N 缩放单发，旧路径不动', (
 
   it('混编卡：头目与杂鱼同吃补偿；多舰补偿不改变血量/速度/射程口径', () => {
     const specs = createFoeSpecs(mixedCard(40), bal)
-    expect(specs.map(hpOf)).toEqual([400, 100, 100, 100, 60])
+    expect(specs.map(hpOf)).toEqual([400, 100, 100, 100, 60].map(n => n * 1.5))
     expect(specs.map((u) => u.speedMps)).toEqual([380, 350, 350, 350, 350])
     expect(specs.map((u) => u.weapons[0]!.maxRangeM)).toEqual([2600, 2200, 2200, 2200, 2200])
   })
@@ -920,7 +920,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
     want: readonly number[],
   ): void => {
     expect(got).toHaveLength(want.length)
-    got.forEach((v, i) => expect(v).toBeCloseTo(want[i]!, 6))
+    got.forEach((v, i) => expect(v).toBeCloseTo(want[i]! * 1.5, 6))
   };
   /** 取某张卡**全部波次**的单位（首波前缀 `''`；第 n 波 `w{n}-`），展平成一队 */
   const allWaves = (def: AnomalyDef): ReturnType<typeof createFoeSpecs> =>
@@ -995,7 +995,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
       u.map(hpOf),
       Array.from({ length: 6 }, () => 3128.3 / 6 * 1.3),
     ); // 2026-09-25 重定价 ×3.1283（原总血 1,000）
-    expect(sum(u.map(hpOf))).toBeCloseTo(3128.3 * 1.3, 6)
+    expect(sum(u.map(hpOf))).toBeCloseTo(3128.3 * 1.3 * 1.5, 6)
     expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(
       Array.from({ length: 6 }, () => 59),
     ); // 354/6 = 59（重定价后）
@@ -1024,7 +1024,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
       u.map(hpOf),
       Array.from({ length: 8 }, () => 3790.2645 / 8 * 1.3),
     ); // = 473.7831（2026-09-25 重定价 ×2.0883，原 226.875）
-    expect(sum(u.map(hpOf))).toBeCloseTo(3790.2645 * 1.3, 6)
+    expect(sum(u.map(hpOf))).toBeCloseTo(3790.2645 * 1.3 * 1.5, 6)
     expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(
       Array.from({ length: 8 }, () => 31),
     ); // 248/8 = 31（重定价后）
@@ -1050,7 +1050,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
       377.8430625,
       377.8430625,
     ].map(value => value * 1.3))
-    expect(sum(u.map(hpOf))).toBeCloseTo(2015.163 * 1.3, 6)
+    expect(sum(u.map(hpOf))).toBeCloseTo(2015.163 * 1.3 * 1.5, 6)
     expect(u.map((x) => x.weapons[0]!.shotDmg)).toEqual(
       Array.from({ length: 10 }, () => 30),
     ); // 300/10 = 30（重定价后）
@@ -1081,7 +1081,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
       minions.map(hpOf),
       Array.from({ length: 10 }, () => 3994.104 * 0.035 * 1.3),
     ); // 每只小虫 139.7936（3.5%）
-    expect(sum(u.map(hpOf))).toBeCloseTo(3994.104 * 1.3, 6); // 裸血锚不改，最终族格增加30%。
+    expect(sum(u.map(hpOf))).toBeCloseTo(3994.104 * 1.3 * 1.5, 6);
     expect(boss.weapons[0]!.shotDmg).toBe(470); // 首领 65%（原 80% ⇒ 577；重定价后逐项取整）
     expect(minions.map((x) => x.weapons[0]!.shotDmg)).toEqual(
       Array.from({ length: 10 }, () => 25),
@@ -1276,7 +1276,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
       const u = allWaves(def)
       expect(u, id).toHaveLength(want.n)
       expectHpClose(u.map(hpOf), want.unit); // **逐单位血逐字**
-      expect(sum(u.map(hpOf)), id).toBeCloseTo(want.hp, 6)
+      expect(sum(u.map(hpOf)), id).toBeCloseTo(want.hp * 1.5, 6)
       expect(sum(u.map((x) => x.weapons[0]!.shotDmg ?? 0)), id).toBe(want.shot)
       for (const x of u) {
         expect(x.weapons[0]!.kind, id).toBe('beam'); // D 族**保留必中**（不走 C 族那套掷命中）

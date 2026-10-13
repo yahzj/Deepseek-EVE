@@ -109,11 +109,11 @@ describe('隔离装配靶场', () => {
     advanceFittingRange(range, 100)
     expect(range.battle.distanceM).toBe(0)
   })
-  it('墙钟不整步长仍能结束，纯货舰无虚构武器；正常炮台近盲停火', () => {
+  it('墙钟不整步长仍能结束，纯货舰无虚构武器；正常炮台近盲仍开火', () => {
     const { range } = fixture(['mod-turret-kin-3'])
     range.distanceM = 0
     run(range, 20000)
-    expect(fittingRangeStats(range).weapons.some(row => row.moduleId === 'mod-turret-kin-3')).toBe(false)
+    expect(fittingRangeStats(range).weapons.some(row => row.moduleId === 'mod-turret-kin-3')).toBe(true)
     for (let i = 0; i < 1500 && !range.paused; i++) advanceFittingRange(range, 50.37)
     expect(range.paused).toBe(true)
     expect(range.battle.lastTickGameMs).toBe(60000)

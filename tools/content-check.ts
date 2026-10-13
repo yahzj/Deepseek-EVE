@@ -2304,7 +2304,7 @@ const OFFICIAL_HIGH_SLOT_EXEMPT = new Set([
  * 参考中位：T1 228 · T2 384 · T3 675 · T4 1273 · T5 2355 ⇒ 目标见下表。
  * ⚠ 官方战斗舰的血量若被调整，本表要跟着重算（`npm run ship:hp` 会打出当前中位与推荐值）。
  */
-const CIVILIAN_HP_TARGET: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 182, 2: 307, 3: 540, 4: 1018, 5: 1884 }
+const CIVILIAN_HP_TARGET: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 273, 2: 461, 3: 810, 4: 1527, 5: 2826 }
 const shipIds = new Set<string>()
 const tierTotalAvg: Record<number, { industrial: number[]; others: number[] }> = {}
 for (const s of SHIPS) {
@@ -2323,7 +2323,7 @@ for (const s of SHIPS) {
     const total = s.shieldHp + s.armorHp + s.hullHp
     const want = CIVILIAN_HP_TARGET[s.tier as 1 | 2 | 3 | 4 | 5]
     check(
-      total === want,
+      Math.abs(total - want) <= 1,
       `非战斗舰血量契约：${s.id}（T${s.tier} ${s.role}）三层共 ${total} ≠ 目标 ${want}（= 同档官方战斗舰总血中位×0.8；改数请同步本表与 ships.ts 头注）`,
     )
   }

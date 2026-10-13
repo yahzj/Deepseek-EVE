@@ -1781,7 +1781,7 @@ export interface ModuleDef {
   /* ═══ V11 武器（炮台家族）：射程带 / 命中 / 装填 / 伤害倍率 ═══ */
   /** 最大射程 m（距离 > maxRange 不开火） */
   maxRangeM?: number
-  /** 最小射程 m（距离 < minRange 不开火：过近盲区） */
+  /** 近盲边界m；玩家舰载武器在边界内仍开火，伤害倍率0.3。 */
   minRangeM?: number
   /** 基础命中率 0~1（命中 = (hitRate + 攻方命中加成×锁定修正) × 距离衰减 − 守方有效回避） */
   hitRate?: number
@@ -2768,7 +2768,7 @@ export interface AnomalyDef {
   foeHpOverride?: number
   /**
    * V18B 近盲带伤害比例（2026-09-05 船长拍板）：玩家进入敌近盲带（dist < minRange）时
-   * 敌**不停火**，伤害 × 本值——与玩家（近盲带内完全打不了）区分。0~1，缺省 0.3
+   * 敌不停火，伤害×本值。玩家舰载武器统一近盲倍率0.3。0~1，缺省0.3
    * （现有怪物全部按 0.3；未来单卡可覆盖，如更怕贴脸的给 0.1）。
    */
   blindDmgMul?: number

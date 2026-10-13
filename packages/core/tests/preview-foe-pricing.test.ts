@@ -53,6 +53,7 @@ function world(): GameState {
   const s = createInitialState({ nowWallMs: 0, seed: 3 })
   const u = addShipToFleet(s, SHIP)
   s.shipId = u
+  s.expedition.desirePrefByGalaxy = { 'galaxy-hub': 1000 }
   s.fleet[u]!.fitted = { high: ['mod-turret-kin-3'], mid: [], low: [] }
   addWare(s, 'ammo-kinetic-l', 5_000)
   return s
@@ -65,8 +66,8 @@ const lossSum = (card: AnomalyDef): number => {
 
 describe('预估口径：敌血按属性建档 · 火力取各波最大（船长 2026-09-25）', () => {
   it('① 敌血：同一张舰级路径卡，只改 `hpMul` ⇒ 预计损耗随真实总血变', () => {
-    // 参数由探针扫出（两侧都落在不饱和区间：×3 ⇒ 0.37 · ×4 ⇒ 1.12）
-    const ship = probeShip('t-pv-hp', 300, 6)
+    // 固定有效交距，避免无输出或承伤饱和让两版读数相同。
+    const ship = probeShip('t-pv-hp', 300, 10)
     const mk = (hpMul: number): AnomalyDef => ({
       ...anomaly(`ano-pv-hp-${hpMul}`, 'galaxy-hub', { threat: 40 }),
       ships: [{ ship, count: 1, hpMul }],

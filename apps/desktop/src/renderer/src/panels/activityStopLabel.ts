@@ -16,6 +16,8 @@ import { tr } from '../i18n/locale'
 /** 活动行右侧「停止 / 取消 / 召回 / 撤退」按钮的文案（按 `ActivityView.stop` 分派） */
 export function stopLabel(v: ActivityView): string {
   switch (v.stop) {
+    case 'cancel-station-pending':
+      return tr('ui.ActivityBar.004')
     case 'remove-training':
       return tr('ui.ActivityBar.007')
     case 'stop-mining':

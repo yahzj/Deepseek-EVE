@@ -21,6 +21,8 @@ import {
   shortestTravelMinutes,
   travelMinutesEff,
   shipDisplayName,
+  stationActivityStartBlockReason,
+  shipActuallyDocked,
 } from '@whale/core'
 import { Panel, ProgressBar } from '@whale/ui'
 import { useState } from 'react'
@@ -62,7 +64,6 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
    * 远征直接拒）。界面只保留**位置**：
    * ① `awayGalaxy === null`（停在空间站才能接单）；② 已在运输中（要先停本趟）。
    */
-  const busy = state.transit.active
   const haulingActive = state.hauling.active
   const h = state.hauling
   /**
@@ -70,7 +71,8 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
    * 第一下只警告（**本趟报酬到站才结，中断就拿不到**），第二下才真停。
    */
   const [stopAsk, setStopAsk] = useState(false)
-  const dockedOk = state.awayGalaxy === null // 停在任意空间站（母港或已建成副站）即可接单
+  const startBlock = stationActivityStartBlockReason(state, ctx, 'hauling')
+  const dockedOk = shipActuallyDocked(state, ctx)
   const docked = dockedHaulEndpoint(state)
 
   const cap = cargoCapacityM3Of(state, ctx, state.shipId)
@@ -106,6 +108,7 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
   function startTo(aId: string | null, bId: string | null): void {
     const r = engine.startHaulingAt(aId, bId)
     if (!r.ok) onToast(cmdText(r) || tr('ui.Hauling.030'), true)
+    else if (r.queued) onToast(tr('core.busy.020'))
     else if (dockedOk && (docked === aId || docked === bId))
       onToast(tr("ui.Hauling.004"))
     else onToast(tr("ui.Hauling.005"))
@@ -163,7 +166,7 @@ export function HaulingPanel({ engine, onToast }: { engine: GameEngine; onToast:
                 haulExposureAt(ctx, rt.aGalaxyId) ||
                 haulExposureAt(ctx, rt.bGalaxyId) ||
                 (positional && dockGalaxyId !== undefined && haulExposureAt(ctx, dockGalaxyId))
-              const canStart = dockedOk && !busy && !haulingActive
+              const canStart = startBlock === null && !haulingActive
               return (
                 <div
                   key={rt.key}

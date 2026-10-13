@@ -53,6 +53,7 @@ import { isBlackboxItem } from './blackbox'
 import { normalizeWeekendWreckRecord } from './weekendWreckLedger'
 import { cleanPlanetaryState } from './planetSave'
 import { normalizeTrainingProgress } from './training'
+import { cleanPendingStationActivity } from './stationActivityPending'
 
 /** 存档文件格式标识（防止拿别的游戏的 JSON 硬读） */
 export const SAVE_FORMAT = 'whale-idle-save'
@@ -3379,7 +3380,9 @@ for (const [key, value] of Object.entries(licensesRaw)) {
     try { return cleanPlanetaryState(src.planetary) }
     catch { throw new SaveError('VERSION', '存档中的星球运行规则高于当前支持范围，请升级游戏。') }
   })()
+  const pendingStationActivity = cleanPendingStationActivity(src.pendingStationActivity)
   const normalized: GameState = {
+    ...(pendingStationActivity && fleet[pendingStationActivity.shipId] ? { pendingStationActivity } : {}),
     ...(planetary ? { planetary } : {}),
     version: CURRENT_STATE_VERSION,
     gameMs:

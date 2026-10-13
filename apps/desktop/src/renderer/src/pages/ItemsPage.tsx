@@ -6,7 +6,7 @@
  * - 货仓 tab：原货仓页（T3 船选择条 / 驾驶船可装卸出售，副船只读）整体并入。
  */
 import { useEffect, useState } from 'react'
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, marketGoodOf, SYNAPTIC_ACCELERANT_ITEM_ID, INVASION_BEACON_ITEM_ID, shipLockedReason, freeCargoM3, cargoUnitM3, MODULE_CARGO_UNIT_M3 } from '@whale/core'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, marketGoodOf, SYNAPTIC_ACCELERANT_ITEM_ID, INVASION_BEACON_ITEM_ID, shipOperationBlockReason, freeCargoM3, cargoUnitM3, MODULE_CARGO_UNIT_M3 } from '@whale/core'
 import { itemRarityTierOf } from '@whale/data'
 import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemHoverContent, itemInfoLines, moduleHoverContent, ModuleHover, moduleInfoLines } from '../ui/shipInfo'
@@ -48,6 +48,7 @@ export interface ItemNavProps {
 /** 仓库主视图（含装备库分组） */
 function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavProps) {
   const state = engine.state
+  const cargoBlock = shipOperationBlockReason(state, engine.ctx, state.shipId, 'cargo')
   /** 语言（2026-09-19 船长令「英语本地化」）：界面串走 `t(中文源串)`；缺词条回退中文 */
   const { t } = useL10n()
   // 仓库搜索（2026-09-09 船长：标题内搜索栏，按名称/分类/说明过滤仓库物品与装备库）
@@ -196,8 +197,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
       return
     }
     // ⟪文案调整 2026-10-04⟫ 失败按既有锁定和空间判据提示，不把返回零一律说成满舱。
-    const lock = shipLockedReason(state, state.shipId)
-    if (lock) { onToast(tr('ui.hintAudit.012'), true); return }
+    const lock = shipOperationBlockReason(state, engine.ctx, state.shipId, 'cargo')
+    if (lock) { onToast(cmdText(lock), true); return }
     const loaded = engine.loadWareToCargoFit(id)
     if (loaded === 0) onToast(t((state.warehouse.items[id] ?? 0) > 0 && freeCargoM3(state, engine.ctx) < cargoUnitM3(state, def)
       ? 'ui.hintAudit.010' : 'ui.ItemsPage.012'), true)
@@ -216,8 +217,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
   /** 2026-09-09（船长口径 A）：装备装船 = 携带（按 1 m³/件 计入货舱，从装备库扣）；装配台取料仍只认装备库 */
   function handleLoadMod(id: string): void {
     const def = engine.ctx.modules.get(id)
-    const lock = shipLockedReason(state, state.shipId)
-    if (lock) { onToast(tr('ui.hintAudit.012'), true); return }
+    const lock = shipOperationBlockReason(state, engine.ctx, state.shipId, 'cargo')
+    if (lock) { onToast(cmdText(lock), true); return }
     const loaded = engine.loadWareToCargoFit(id)
     if (loaded === 0) onToast(tr((state.moduleBay[id] ?? 0) > 0 && freeCargoM3(state, engine.ctx) < MODULE_CARGO_UNIT_M3
       ? 'ui.hintAudit.011' : 'ui.ItemsPage.040'), true)
@@ -504,9 +505,10 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                           return (
                             <button
                               className="app-btn is-small"
+                              disabled={cargoBlock !== null}
                               aria-disabled={blocked ? 'true' : undefined}
                               onClick={() => handleLoad(id)}
-                              title={blocked ? tr('ui.ItemsPage.053', { p1: def.name }) : tr('ui.ItemsPage.024')}
+                              title={cargoBlock ? cmdText(cargoBlock) : blocked ? tr('ui.ItemsPage.053', { p1: def.name }) : tr('ui.ItemsPage.024')}
                             >
                               {tr('ui.ItemsPage.025')}
                             </button>
@@ -589,8 +591,9 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                   <div className="app-inv-btns">
                     <button
                       className="app-btn is-small"
+                      disabled={cargoBlock !== null}
                       onClick={() => handleLoadMod(id)}
-                      title={tr("ui.ItemsPage.036")}
+                      title={cargoBlock ? cmdText(cargoBlock) : tr("ui.ItemsPage.036")}
                     >
                       {tr("ui.ItemsPage.025")}
                     </button>
@@ -742,9 +745,10 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                   return (
                     <button
                       className="app-btn is-small"
+                      disabled={cargoBlock !== null}
                       aria-disabled={blocked ? 'true' : undefined}
                       onClick={() => handleLoad(pickItem)}
-                      title={blocked ? tr('ui.ItemsPage.053', { p1: pickItemDef.name }) : tr('ui.ItemsPage.035')}
+                      title={cargoBlock ? cmdText(cargoBlock) : blocked ? tr('ui.ItemsPage.053', { p1: pickItemDef.name }) : tr('ui.ItemsPage.035')}
                     >
                       {tr('ui.ItemsPage.025')}
                     </button>
@@ -801,8 +805,9 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
               <div className="app-itempick-actions">
                 <button
                   className="app-btn is-small"
+                  disabled={cargoBlock !== null}
                   onClick={() => handleLoadMod(pickMod)}
-                  title={tr("ui.ItemsPage.036")}
+                  title={cargoBlock ? cmdText(cargoBlock) : tr("ui.ItemsPage.036")}
                 >
                   {tr("ui.ItemsPage.025")}
                 </button>

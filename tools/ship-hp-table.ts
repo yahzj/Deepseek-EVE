@@ -17,7 +17,7 @@ import { DEFAULT_BALANCE } from '@whale/core'
 import { SHIPS } from '@whale/data'
 
 /** 非战斗舰目标总血（与 content-check 的 `CIVILIAN_HP_TARGET` 同源；改一处必改另一处） */
-const CIVILIAN_HP_TARGET: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 182, 2: 307, 3: 540, 4: 1018, 5: 1884 }
+const CIVILIAN_HP_TARGET: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 273, 2: 461, 3: 810, 4: 1527, 5: 2826 }
 /** 低安遇袭读数的参考威胁（入门低安卡「烬火围攻战」） */
 const AMBUSH_THREAT = 42
 

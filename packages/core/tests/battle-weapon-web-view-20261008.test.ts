@@ -31,11 +31,11 @@ describe('全编队装填视图与捕获网', () => {
     })
     battle.ammo.pla = 100
     const before = structuredClone(battle), rows = battleWeaponCyclesOf(battle, units)
-    expect(rows).toHaveLength(8)
-    expect(new Set(rows.map(r => r.id)).size).toBe(8)
+    expect(rows).toHaveLength(4)
+    expect(new Set(rows.map(r => r.id)).size).toBe(4)
     expect(rows.filter(r => r.src === 'laser')).toHaveLength(4)
     expect(rows.filter(r => r.src === 'laser').every(r => r.count === 2)).toBe(true)
-    expect(rows.reduce((sum, r) => sum + r.count, 0)).toBe(12)
+    expect(rows.reduce((sum, r) => sum + r.count, 0)).toBe(8)
     expect(rows.every(r => r.percent === 50)).toBe(true)
     for (const unit of units) {
       const gun = unit.spec.weapons.find(w => w.src === 'laser')!
@@ -45,6 +45,7 @@ describe('全编队装填视图与捕获网', () => {
     expect(battle).toEqual(before)
     const drone = { ...units[0]!.spec.weapons[0]!, src: 'drone' as const, artId: 'drone-scout', label: 'Drone', kind: 'fixed' as const, count: undefined }
     units[0]!.spec.weapons = [drone, { ...drone }]
+    battle.units.player!.weapons = [100, 100]
     battle.dronePools = { 'player:0': { alive: false, s: 0, a: 0, h: 0, evasion: 0 }, 'player:1': { alive: true, s: 1, a: 1, h: 1, evasion: 0 } }
     const wing = battleWeaponCyclesOf(battle, units.slice(0, 1))[0]!
     expect(wing.count).toBe(2); expect(wing.aliveCount).toBe(1); expect(wing.state).toBe('reload')

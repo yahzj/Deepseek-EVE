@@ -21,7 +21,8 @@ import {
   recycleRefiningMultiplier,
   
   countWare,
-  oreAvailable,
+  industryAvailable,
+  stationActivityStartBlockReason,
   /** 2026-09-25 船长令：H 族残骸暂不开放回收 ⇒ 卡片也摘掉（与起炉那一层同一判据） */
   RARE_WRECK_VOLUME_M3,
   recycleMineralPoolOf,
@@ -51,7 +52,7 @@ import {
 import type { LabRecipeDef, LabRunView } from '@whale/core'
 // 2026-09-23 船长令：使用 AI 核心时默认选「当前拥有的最高级核心」
 import { bestAiCoreOf } from '@whale/core'
-import type { AiCoreType, GameState, ItemDef } from '@whale/core'
+import type { AiCoreType, ItemDef } from '@whale/core'
 import { Panel } from '@whale/ui'
 import { wreckGroupText } from '@whale/data'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
@@ -123,12 +124,6 @@ const ORE_KIND_LABEL: Record<string, string> = { ore: tr("ui.IndustryPage.005"),
  * 野外/航行途中点不了炉子（`awayGalaxy` 非空），换港返航途中是统一判据里的锁定态。
  * 真正的把关单点在 core（`activityGate`）⇒ 这里置灰与否不再决定能否开工，只是少给玩家一次无效点击。
  */
-function manualBusyNote(state: GameState): string | null {
-  if (state.awayGalaxy !== null) return tr("ui.IndustryPage.010")
-  if (state.transit.active) return tr("ui.IndustryPage.015")
-  return null
-}
-
 /**
  * 一张精炼炉卡片（矿石/气体/冰/残骸统一；矿带卡结构 + 每台炉=一个劳动者单位）。
  * v20 语义（船长 2026-09-05）：同资源可多单位同时运转（主控 1 台 + 每枚 AI 核心 1 台）；
@@ -177,7 +172,9 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
   const wreckProfile = isWreck ? recycleProfileOf(engine.ctx, def.id) : null
   const isRareBox = wreckProfile?.rare === true
   const rate = refineRate(state, engine.ctx)
-  const total = oreAvailable(state, def.id)
+  const availableNow = industryAvailable(state, engine.ctx, def.id)
+  const manualTotal = industryAvailable(state, engine.ctx, def.id, 'pilot')
+  const total = manualTotal
   // 2026-09-09 船长定：「去矿带/去打捞」跳转目标——矿石/气体/冰 → 出产该原料的全部主矿带；
   // 残骸 → **该组覆盖的来源星系**（2026-09-19 合并后一组对应多张卡 ⇒ 可能多个星系；打捞星系须已探索）
   const gotoTarget: { tab: 'mine' | 'salvage'; ids: string[] } | null = isWreck
@@ -214,7 +211,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         ? tr("ui.IndustryPage.019")
         : slot === 'lab'
           ? tr("ui.hud.212")
-          : manualBusyNote(state)
+          : (() => { const block = stationActivityStartBlockReason(state, engine.ctx, 'refine'); return block ? cmdText(block) : null })()
 
   function runWith(worker: AiCoreType | 'pilot'): void {
     const r = isBox
@@ -226,6 +223,7 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
       onToast(cmdText(r) || tr('ui.IndustryPage.112'), true)
       return
     }
+    if (r.queued) { onToast(tr('core.busy.020')); return }
     const who = worker === 'pilot' ? tr("ui.IndustryPage.020") : tr("ui.IndustryPage.068", { p1: aiCoreText(worker) })
     onToast(
       isBox
@@ -500,10 +498,10 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
         ) : null}
         <button
           className="app-btn is-small is-primary"
-          disabled={manualNote !== null || total <= 0}
+          disabled={manualNote !== null || manualTotal <= 0}
           title={
             manualNote ??
-            (total <= 0
+            (manualTotal <= 0
               ? noStockNote
               : running
                 ? tr("ui.IndustryPage.094", { p1: isBox ? tr("ui.IndustryPage.045") : tr("ui.IndustryPage.042") })
@@ -532,10 +530,10 @@ function FurnaceCard({ def, engine, onToast, highlight = false, onGotoMap }: { d
           />
           <button
             className="app-btn is-small"
-            disabled={!core || total <= 0}
+            disabled={!core || availableNow <= 0}
             title={
               core
-                ? total <= 0
+                ? availableNow <= 0
                   ? noStockNote
                   : running
                     ? tr("ui.IndustryPage.053")
@@ -706,7 +704,8 @@ function LabCard({
   const usableCores = usableAiCoresOf(state)
   const [coreSel, setCoreSel] = useState<AiCoreType>(() => bestAiCoreOf(state) ?? 'basic')
   const core = usableCores.includes(coreSel) ? coreSel : (usableCores[0] ?? null)
-  const manualBusy = manualSlotOf(state) !== null ? tr('ui.hud.212') : manualBusyNote(state)
+  const labBlock = stationActivityStartBlockReason(state, engine.ctx, 'lab')
+  const manualBusy = manualSlotOf(state) !== null ? tr('ui.hud.212') : labBlock ? cmdText(labBlock) : null
   /**
    * **谜质科技门槛**（**2026-09-30 船长令**：T5「解锁新的燃料配方」）——判据与起线拒绝**同一把尺**
    * （`labRecipeUnlocked`）；锁着时卡片照列（玩家要看得见"有这么张配方、缺哪棵树"），
@@ -739,6 +738,7 @@ function LabCard({
       onToast(cmdText(r) || tr('ui.lab.013'), true)
       return
     }
+    if (r.queued) { onToast(tr('core.busy.020')); return }
     const who = worker === 'pilot' ? tr('ui.IndustryPage.020') : tr('ui.IndustryPage.068', { p1: aiCoreText(worker) })
     onToast(tr('ui.lab.019', { p1: recipe.name, p2: recipe.outputUnits, who }))
   }
@@ -1153,7 +1153,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
   const wreckDefs = allItemDefs.filter(
     (def) =>
       def.kind === 'wreck' &&
-      (oreAvailable(state, def.id) > 0 || runViews.some((v) => v.itemId === def.id)),
+      (industryAvailable(state, engine.ctx, def.id, 'pilot') > 0 || industryAvailable(state, engine.ctx, def.id) > 0 || runViews.some((v) => v.itemId === def.id)),
   )
 
   /**
@@ -1167,7 +1167,7 @@ export function IndustryPage({ engine, onToast, onGotoMarket, onGotoMap, onGotoW
   const boxDefs = [...engine.ctx.items.values()].filter(
     (def) =>
       def.kind === 'container' &&
-      (oreAvailable(state, def.id) > 0 || runViews.some((v) => v.itemId === def.id) || engine.unboxLedgerOf(def.id) !== undefined),
+      (industryAvailable(state, engine.ctx, def.id, 'pilot') > 0 || industryAvailable(state, engine.ctx, def.id) > 0 || runViews.some((v) => v.itemId === def.id) || engine.unboxLedgerOf(def.id) !== undefined),
   )
   const runningCount = runViews.length
 

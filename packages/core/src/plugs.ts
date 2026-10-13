@@ -23,6 +23,7 @@
 import type { GameState } from './state'
 import type { ModuleDef, ShipSlots, SimContext } from './types'
 import { addLog, shipLockedReason } from './state'
+import { shipOperationBlockReason } from './shipActionPolicy'
 import { addWare } from './inventory'
 import { shipSlotsOf } from './labels'
 import { fleetDefOf } from './instances'
@@ -183,6 +184,8 @@ export function installPlug(
   }
   const ship = state.fleet[shipId]
   if (!ship) return { ok: false, error: '舰队里找不到这艘舰船。', errorId: 'core.plug.003' }
+  const blocked = shipOperationBlockReason(state, ctx, shipId, 'configure')
+  if (blocked) return { ok: false, ...blocked }
   const lock = shipLockedReason(state, shipId, '安装舰船插件')
   if (lock) return { ok: false, error: lock }
   if (!moduleAllowedOnShip(fleetDefOf(state, ctx, shipId), def)) {

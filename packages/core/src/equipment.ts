@@ -19,6 +19,7 @@
  * - 加成查询 = 按家族求和（复数矿枪/货舱扩展线性叠加；AI/采矿/货舱同源单点）。
  */
 import { addLog, shipLockedReason } from './state'
+import { shipOperationBlockReason } from './shipActionPolicy'
 import type { CommandResult, CoreBlockReason } from './engine'
 import type { GameState } from './state'
 import type { FittedModules, ModuleDef, ModuleSlot, RackSlot, SimContext, DamageResists, DamageType } from './types'
@@ -655,6 +656,8 @@ export function fitModule(
   opts?: { rack?: RackSlot; index?: number; shipId?: string },
 ): CommandResult {
   // **进洞船只所有行为锁定**（船长 2026-09-13：「锁，进洞船只所有行为都锁定。包括维修。」）
+  const blocked = shipOperationBlockReason(state, ctx, opts?.shipId ?? state.shipId, 'configure')
+  if (blocked) return { ok: false, ...blocked }
   const lock = shipLockedReason(state, opts?.shipId ?? state.shipId, '改装它')
   if (lock) return { ok: false, error: lock }
   const def = ctx.modules.get(moduleId)
@@ -764,6 +767,8 @@ export function unfitAt(
   ctx?: SimContext,
 ): boolean {
   // **进洞船只所有行为锁定**（船长 2026-09-13：锁，进洞船只所有行为都锁定。包括维修。）
+  const blocked = shipOperationBlockReason(state, ctx, shipId, 'configure')
+  if (blocked) return false
   const lock = shipLockedReason(state, shipId, '卸下它的装备')
   if (lock) return false
   const fitted = state.fleet[shipId]?.fitted
@@ -827,6 +832,8 @@ export function swapModuleAt(
   opts: { rack: RackSlot; index: number; shipId?: string },
 ): CommandResult {
   // **进洞船只所有行为锁定**（船长 2026-09-13：「锁，进洞船只所有行为都锁定。包括维修。」）
+  const blocked = shipOperationBlockReason(state, ctx, opts.shipId ?? state.shipId, 'configure')
+  if (blocked) return { ok: false, ...blocked }
   const lock = shipLockedReason(state, opts.shipId ?? state.shipId, '改装它')
   if (lock) return { ok: false, error: lock }
   const def = ctx.modules.get(moduleId)
@@ -961,6 +968,8 @@ export function adjustDroneLoad(
   delta: number,
   shipId: string = state.shipId,
 ): CommandResult {
+  const blocked = shipOperationBlockReason(state, ctx, shipId, 'configure')
+  if (blocked) return { ok: false, ...blocked }
   const def = ctx.items.get(droneId)
   if (!def || def.kind !== 'drone') return { ok: false, error: '只能装载无人机物品。', errorId: 'core.equipment.011' }
   const fleet = state.fleet[shipId]
@@ -1203,6 +1212,7 @@ export function setAmmoTier(
  * （船长「给作业开」），**2026-09-14 船长「改回高槽」后作废** ⇒ 本表 miner→high1 与现行归槽一致，
  * 本函数仍只服务"老档里插在高槽的那一件"，新档请用 `unfitAt`。 */
 export function unfitSlot(state: GameState, family: ModuleSlot): boolean {
+  if (shipOperationBlockReason(state, undefined, state.shipId, 'configure')) return false
   const fitted = fittedOf(state)
   if (!fitted) return false
   const legacy = V17_FAMILY_BAYS[family]

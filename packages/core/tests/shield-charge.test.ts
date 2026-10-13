@@ -112,7 +112,7 @@ describe('护盾被动回充：按当前盾比例（船长 2026-09-14 改判）'
     advanceBattleFor(state, ctx, b, uid, 'ano-chg')
     const after = me.hp.s
     // 100ms内逐10ms以当前盾递增，按同一回充率复算。
-    expect(after).toBeCloseTo(500 * (1 + k * 0.01) ** 10, 9)
+    expect(after).toBeCloseTo(500 * (1 + k * 667 / 1000 * 0.01) ** 10, 9)
     // 且**永远不超过满盾**
     expect(after).toBeLessThanOrEqual(1000)
   })
@@ -138,9 +138,9 @@ describe('护盾回充的**速度下限**（2026-09-20 船长追加）', () => {
     state.gameMs += 100
     advanceBattleFor(state, ctx, b, uid, 'ano-chg')
     expect(SHIELD_REGEN_FLOOR_PCT).toBe(0.01)
-    expect(me.hp.s).toBeCloseTo(100 + 1_000 * SHIELD_REGEN_FLOOR_PCT * 0.1, 3)
+    expect(me.hp.s).toBeCloseTo(100 + 667 * SHIELD_REGEN_FLOOR_PCT * 0.1, 3)
     // 且**明显大于**旧口径（证明下限真的在起作用，不是恰好相等）
-    expect(me.hp.s).toBeGreaterThan(100 + 100 * k * 0.1 + 0.5)
+    expect(me.hp.s).toBeGreaterThan(100 + 100 * k * 667 / 1000 * 0.1)
   })
 
   it('**半盾是两段的交点**：50% 处两条线相等（此处仍是"按当前盾"）', () => {
@@ -153,7 +153,7 @@ describe('护盾回充的**速度下限**（2026-09-20 船长追加）', () => {
     advanceBattleFor(state, ctx, b, uid, 'ano-chg')
     // 交点：当前盾 × k === 满盾 × 下限 ⇒ 两套算法同值
     expect(500 * k).toBeCloseTo(1_000 * SHIELD_REGEN_FLOOR_PCT, 10)
-    expect(me.hp.s).toBeCloseTo(500 * (1 + k * 0.01) ** 10, 9)
+    expect(me.hp.s).toBeCloseTo(500 * (1 + k * 667 / 1000 * 0.01) ** 10, 9)
   })
 
   it('**盾被击穿 ⇒ 依旧是 0%**（下限**不**把破盾救回来）', () => {

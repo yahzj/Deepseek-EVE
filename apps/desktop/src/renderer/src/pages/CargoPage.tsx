@@ -15,7 +15,7 @@ import {
   fleetDefOf,
   haulingOccupiedM3,
   courierOccupiedM3,
-  isAtHomeLike,
+  shipOperationBlockReason,
   marketGoodOf,
   shipBusyLabel,
   shipDisplayName,
@@ -86,6 +86,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
   const isPiloted = targetId === piloted
   const targetName = shipDisplayName(state, engine.ctx, targetId)
   const busy = shipBusyLabel(state, engine.ctx, targetId)
+  const cargoBlock = shipOperationBlockReason(state, engine.ctx, targetId, 'cargo')
 
   const cargo = cargoOfShip(state, targetId)
   const used = cargoUsedM3Of(state, engine.ctx, targetId)
@@ -115,10 +116,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
 
   function handleSell(id: string, qty: number): void {
     // 2026-09-08（船长定）：市场随"协会基地网络"——母港与已建成副站皆可出售（副站不设独立市场，共用全局市场）
-    if (!isAtHomeLike(state, engine.ctx)) {
-      onToast(t('ui.CargoPage.020'), true)
-      return
-    }
+    const blocked = shipOperationBlockReason(state, engine.ctx, targetId, 'cargo')
+    if (blocked) { onToast(cmdText(blocked), true); return }
     const r = engine.sellCargo(id, qty)
     if (!r.ok) onToast(cmdText(r) || t('ui.CargoPage.019'), true)
     else
@@ -153,6 +152,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
 
   /** 2026-09-09（船长口径 A）：单行卸货——物品 → 物品仓库；模块 → 装备库（引擎分流） */
   function handleUnloadOne(id: string): void {
+    const blocked = shipOperationBlockReason(state, engine.ctx, targetId, 'cargo')
+    if (blocked) { onToast(cmdText(blocked), true); return }
     const moved = engine.unloadCargoItem(id)
     if (moved === 0) onToast(t('ui.CargoPage.022'), true)
     else {
@@ -180,10 +181,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
 
   function handleUnloadAll(): void {
     // T9：卸货入仓库在任何空间站可用（母港与副站）
-    if (state.awayGalaxy !== null) {
-      onToast(t('ui.CargoPage.025'), true)
-      return
-    }
+    const blocked = shipOperationBlockReason(state, engine.ctx, targetId, 'cargo')
+    if (blocked) { onToast(cmdText(blocked), true); return }
     const moved = engine.unloadAllToWarehouse()
     if (moved === 0) onToast(t('ui.CargoPage.026'), true)
     else onToast(t('ui.CargoPage.027', { n: moved.toLocaleString('zh-CN') }))
@@ -191,6 +190,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
 
   /** 2026-09-08（船长定）：非驾驶空闲舰船卸货入仓库 */
   function handleUnloadShip(id: string): void {
+    const blocked = shipOperationBlockReason(state, engine.ctx, id, 'cargo')
+    if (blocked) { onToast(cmdText(blocked), true); return }
     const moved = engine.unloadShipAllToWarehouse(id)
     if (moved === -1) onToast(t('ui.CargoPage.028'), true)
     else if (moved === -2) onToast(t('ui.CargoPage.029'), true)
@@ -261,7 +262,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
             </div>
           ) : null}
           {isPiloted ? (
-            <button className="app-btn is-primary is-small" onClick={handleUnloadAll} disabled={allRows.length === 0}>
+            <button className="app-btn is-primary is-small" onClick={handleUnloadAll} disabled={allRows.length === 0 || cargoBlock !== null} title={cargoBlock ? cmdText(cargoBlock) : undefined}>
               {tr("ui.CargoPage.037")}
             </button>
           ) : busy === null ? (
@@ -269,8 +270,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
             <button
               className="app-btn is-small"
               onClick={() => handleUnloadShip(targetId)}
-              disabled={allRows.length === 0}
-              title={t('ui.CargoPage.018')}
+              disabled={allRows.length === 0 || cargoBlock !== null}
+              title={cargoBlock ? cmdText(cargoBlock) : t('ui.CargoPage.018')}
             >
               {t('ui.CargoPage.037')}
             </button>
@@ -386,7 +387,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                         ) : null}
                         {isPiloted && sellable ? (
                           <>
-                            <button className="app-btn is-small is-primary" onClick={() => setSellId(id)}>
+                            <button className="app-btn is-small is-primary" onClick={() => setSellId(id)} disabled={cargoBlock !== null} title={cargoBlock ? cmdText(cargoBlock) : undefined}>
                               {tr("ui.CargoPage.038")}
                             </button>
                             <button
@@ -450,7 +451,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                   </div>
                   <div className="app-inv-btns">
                     {isPiloted ? (
-                      <button className="app-btn is-small is-primary" onClick={() => handleUnloadOne(id)}>
+                      <button className="app-btn is-small is-primary" onClick={() => handleUnloadOne(id)} disabled={cargoBlock !== null} title={cargoBlock ? cmdText(cargoBlock) : undefined}>
                         {tr("ui.CargoPage.048")}
                       </button>
                     ) : (
@@ -556,6 +557,8 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 ) : pickSellable ? (
                   <button
                     className="app-btn is-primary is-small"
+                    disabled={cargoBlock !== null}
+                    title={cargoBlock ? cmdText(cargoBlock) : undefined}
                     onClick={() => {
                       setPickId(null)
                       setSellId(pickId)
@@ -610,7 +613,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                 {!isPiloted ? (
                   <div className="app-dim">{tr("ui.CargoPage.050")}{targetName}{tr("ui.CargoPage.053")}</div>
                 ) : (
-                  <button className="app-btn is-primary is-small" onClick={() => handleUnloadOne(pickMod)}>
+                  <button className="app-btn is-primary is-small" onClick={() => handleUnloadOne(pickMod)} disabled={cargoBlock !== null} title={cargoBlock ? cmdText(cargoBlock) : undefined}>
                     {tr("ui.CargoPage.048")}
                   </button>
                 )}

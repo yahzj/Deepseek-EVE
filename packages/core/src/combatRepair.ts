@@ -39,6 +39,7 @@ function layerAmpOf(state: GameState, ctx: SimContext, shipId: string): { a: num
   const spec = createPlayerSpec(state, ctx, shipId)
   const def = fleetDefOf(state, ctx, shipId)
   if (!spec || !def) return { a: 1, h: 1 }
+  if (spec.repairCapacityAmp) return spec.repairCapacityAmp
   const baseA = def.armorHp ?? 0
   const baseH = def.hullHp ?? 0
   return {
@@ -286,15 +287,9 @@ export const SHIELD_PULSE_MS = 15_000
  * **护盾被动回充的速率下限**（2026-09-20 船长：「**舰船护盾的恢复速度下限改为1%。但是当护盾被击穿时，依旧是0%**」；
  * 追问口径后补：「**满盾依旧是2%，当盾量接近0的时候是1%**」）。
  *
- * 口径：**下限 = 该舰满盾的 1% / 秒**（`0.01`）——被动回充取
- * `max(当前盾 × shieldRegenPerSec, 满盾 × 本值)`：
- * - 满盾时 `100% × 2% = 2%`（与船长原话的"满盾依旧 2%"一致，下限不介入）；
- * - 盾降到 **50%** 时两条线相交（`50%×2% = 1% = 下限`），**再低就由下限接管**；
- * - 盾 = **0** ⇒ 仍是 **0**（"破盾后 0 回复"那条裁定不变，`stepBattle` 里先 `continue` 掉了）。
- *
- * 为什么要有它：指数式回充的副作用是**盾越少回得越慢**（剩 2% 时每秒只回 0.04%
- * ⇒ 从 2% 回到半盾要 **19.6 分钟**）——等于"被打残后这场的盾就废了"。加下限后低盾段
- * 回充量不再继续缩水（同样这条路变成 **44 秒**）。
+ * 2026-10-13：容量提高但实际恢复点数保持，满盾基准改读`recoveryHp.s`。
+ * 每秒 = `max(当前盾/容量×恢复基准×shieldRegenPerSec, 恢复基准×本值)`；
+ * 盾为0不恢复，下限仍在半盾交点以下接管。真实点数由专项验证。
  */
 export const SHIELD_REGEN_FLOOR_PCT = 0.01
 
@@ -484,7 +479,7 @@ export function preloadShieldFieldFor(
 }
 
 /**
- * 每路恢复量 = 施放者满盾 × 本路比例（2026-09-25 船长确认），受益舰各自封顶。
+ * 每路恢复量 = 施放者恢复基准 × 本路比例，受益舰各自按新容量封顶。
  * 2026-10-07 改判：排除自身；有缺盾存活队友且足够支付时，直接扣一次满盾代价再恢复。
  * 不足或无目标不发动，原周期排程仍由调用方推进；费用不按目标数或叠加权重放大。
  */
@@ -500,8 +495,9 @@ export function pulseShieldFieldFor(
   // 施放者满盾：容量优先、缺 `hpMax` 才回落规格（与全仓「满血/上限」读法同一把尺）
   const casterRt = b.units[caster.tag]
   const casterCapS = Math.max(0, casterRt?.hpMax?.s ?? caster.hp.s)
-  const amount = casterCapS * gain
-  const cost = casterCapS * SHIELD_FIELD_COST_PCT
+  const recoveryCapS = caster.recoveryHp?.s ?? casterCapS
+  const amount = recoveryCapS * gain
+  const cost = recoveryCapS * SHIELD_FIELD_COST_PCT
   if (!casterRt || !Number.isFinite(amount) || amount <= 0 || casterRt.hp.s < cost) return
   const targets: Array<{ rt: (typeof b.units)[string]; capS: number }> = []
   for (const u of myUnits) {
@@ -538,10 +534,10 @@ export function pulseShieldChargeFor(
   const rt = b.units[spec.tag]
   if (!rt) return
   if (!isAlive(b, spec.tag)) return
-  const capS = Math.max(0, spec.hp.s)
+  const capS = Math.max(0, rt.hpMax?.s ?? spec.hp.s)
   if (capS <= 0) return
   const pct = stream ? stream.pct : sc.streams.reduce((n, s) => n + s.pct, 0)
-  const gain = capS * Math.max(0, pct)
+  const gain = (spec.recoveryHp?.s ?? capS) * Math.max(0, pct)
   if (gain > 0) rt.hp.s = Math.min(capS, rt.hp.s + gain)
 }
 
