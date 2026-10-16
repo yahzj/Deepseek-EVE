@@ -240,11 +240,11 @@ describe('周末入侵 · 时间轴', () => {
    * **族的选择**（沿革：2026-09-25 船长令「**目前只做了H族，所以先锁定H族**」⇒
    * 🔴 **2026-10-01 船长令**「**先让本地调试模式必定出新的R族入侵，我进行本地测试**」⇒
    * 🔴 **2026-10-02 船长令**「**一会8点开启入侵，设置为R族，下周如果没有特意设置，就采用循环敌对势力。**」）：
-   * **玩家线 = 循环**（锚点 2026-10-02 20:00 那期起，新增异形后R → C → H，硬锁平时为null）；
-   * 2026-10-07船长令：调试档判C，且调试档下手上的历史场就地改判，
+   * **玩家线 = 循环**（锚点与次序读取循环常量，硬锁平时为null）；
+   * 2026-10-16船长令：调试档判D，且调试档下手上的历史场就地改判，
    * 进度台账与场次号都留着（只换族）。
    */
-  it('族的选择：玩家线走三族循环、调试档判C；历史调试场改族保留进度台账', () => {
+  it('族的选择：玩家线走循环、调试档判D；历史调试场改族保留进度台账', () => {
     expect(WEEKEND_LOCKED_FAMILY, '全线硬锁平时不启用（改由循环决定）').toBeNull()
     const s0 = fresh(true)
     expect(weekendFamilyForWindow(WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS), '锚点那期 = 循环第 0 位').toBe(
@@ -256,19 +256,19 @@ describe('周末入侵 · 时间轴', () => {
     ).toBe(WEEKEND_FAMILY_ROTATION[1])
     expect(
       weekendFamilyForWindow(WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS + 14 * 24 * 3_600_000),
-      '三族轮换再下一期到墨潮',
+      '再下一期顺延到第 2 位',
     ).toBe(WEEKEND_FAMILY_ROTATION[2])
     expect(s0.weekendEvent, '（该档只是拿来占位，未开局）').toBeUndefined()
     const t = 1_700_000_000_000
     const s = fresh(true)
     s.exploredGalaxies = [...ctx.galaxies.keys()]
     expect(ensureWeekendEvent(s, ctx, t), '调试模式首调即开').toBe(true)
-    expect(s.weekendEvent?.family, '调试档开出异形').toBe('C')
-    /** 历史场下一次调试判定改为C，其余字段不动。 */
+    expect(s.weekendEvent?.family, '调试档开出守墓者').toBe('D')
+    /** 历史场下一次调试判定改为D，其余字段不动。 */
     const seq = s.weekendEvent!.seq
     s.weekendEvent = { ...s.weekendEvent!, family: 'A', contributed: { 'galaxy-kor': 0.7 } }
     expect(ensureWeekendEvent(s, ctx, t + 1000), '已有一场活着的 ⇒ 不新开').toBe(false)
-    expect(s.weekendEvent?.family, '就地改判为C').toBe('C')
+    expect(s.weekendEvent?.family, '就地改判为D').toBe('D')
     expect(s.weekendEvent?.seq, '场次号没换').toBe(seq)
     expect(s.weekendEvent?.contributed['galaxy-kor'], '进度台账留着').toBeCloseTo(0.7, 6)
   })
@@ -376,10 +376,10 @@ describe('周末入侵 · 族名（通讯正文只印正式称呼）', () => {
   it.each([
     ['C', '异形生物', 'core.weekend.021'],
     ['R', '光环', 'core.weekend.024'],
-  ])('%s预警信印正式名；异形调试切换不破坏光环历史文案', (family, name, nameId) => {
+  ])('%s预警信印正式名；守墓调试切换不破坏历史文案', (family, name, nameId) => {
     const s = fresh(true)
     const rolled = weekendRollOccupation(s, ctx, 1)!
-    expect(rolled.family, '调试档抽到C族').toBe('C')
+    expect(rolled.family, '调试档抽到D族').toBe('D')
     const ev: WeekendEventState = {
       seq: 1,
       startedAtWallMs: 0,

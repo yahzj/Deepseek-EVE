@@ -55,6 +55,7 @@ import { applyDamage, battleClockNowMs, clamp, distFactor, droneHitChance, hitCh
 import { triggerAcidBurst, applyAlienCorrosion, advanceFoeHatcheries, advanceFoeAbilityClocks, foeFleetSpeedMulOf } from './alienCombat'
 import { acidResistsOf, addFoeAcidLayer, expireFoeAcidLayers, battleSpeedBonusOf } from './alienEquipment'
 import { activateFoeCapacitor, advanceFoeRebirthRepair, foeCapacitorMultiplierOf, gravekeeperResistsOf, gravekeeperStatusesOf, noteFoeCapacitorAttack, syncFoeCapacitors } from './gravekeeperCombat'
+import { advancePlayerRebirth, noteRailAttack, playerGravekeeperSpecOf, syncPlayerCrisis } from './gravekeeperGear'
 import type { Hp3 } from './combatMath'
 export { applyDamage, battleClockNowMs, battleShowWindowMs, battleSpeedOf, distFactor, droneHitChance, hitChance, inRange, typeLayerMult, waveGapTotalMs } from './combatMath'
 export type { Hp3 } from './combatMath'
@@ -146,6 +147,7 @@ export interface WeaponSpec {
    * （`mod-lair-laser-r` 的 `ModuleDef.overlayDrive`）在建档时带来；缺省不写 ⇒ 既有各武器零行为变化。
    */
   overlayDrive?: { stepMs: number; floorMs: number }
+  railCharge?: import('./types').ModuleDef['railCharge']
   /**
    * **【敌方】连发**（**船长 2026-10-02 令**：「**每次开火是三次间隔100ms的射击，目标选择随机**」）——
    * 由舰级字段 `FoeShipDef.burst` 原样带来（目前只有 R 族 T5「光环中枢」写）。
@@ -250,6 +252,8 @@ export function beamPowerVsTargetOf(
 
 /** 静态单位卡（构建后不进存档） */
 export interface UnitSpec {
+  rebirthRepair?: import('./types').ModuleDef['rebirthRepair']
+  crisisOverload?: { rangeMul: number; damageMul: number; speedMul: number; droneInitialMul: number; droneCycleMul: number }
   speedBonusModules?: Array<Pick<import('./types').ModuleDef, 'speedBonusPct' | 'speedRamp'>>
   /** 玩家无人机首次出击间隔；缺省为500ms。 */
   droneLaunchGapMs?: number
@@ -1091,6 +1095,11 @@ export function applyDcGuard(
   }
   b.dcKitsUsed = Math.max(0, Math.floor(b.dcKitsUsed ?? 0)) + 1
   b.dc = { ...(b.dc ?? {}), [tag]: { lockUntilMs: b.lastTickGameMs + DC_LOCK_MS, used: true } }
+  if (spec.rebirthRepair) {
+    const book = b.meRebirths ??= {}
+    book[tag] = { repairUntilMs: b.lastTickGameMs + spec.rebirthRepair.repairMs,
+      lastRepairAtMs: b.lastTickGameMs, armorHealed: 0, hullHealed: 0 }
+  }
   addLog(state, 'combat', '✦ 损伤管制装置启动：结构锁定在 1 点、持续 1 秒（消耗损管修理组件 ×1）。', 'core.combat.002')
   pushBattleNotice(b, '损伤管制装置启动：结构锁定 1')
   return clampRawLeavingHull(apply, raw)
@@ -2950,6 +2959,7 @@ export function battleArcsFor(
   const meRefs = { weaponRanges: [] as Array<{ baseM: number; bonusMul: number }>, legacyWeaponCount: battle.units[leaderTag]?.weapons.length }
   const me = createPlayerSpec(state, ctx, leaderShipId, battleAmmoIdsFor(battle, leaderTag), meRefs)
   if (!me) return null
+  me.tag = leaderTag
   applyAlienCorrosion(me, battle.alienCorrosion ?? 0)
   // **捕获网**（船长 2026-09-16）：视图锚舰被钉时同样施加四层效果 ⇒ 面板速度/射程带与引擎同尺
   {
@@ -2965,6 +2975,7 @@ export function battleArcsFor(
   const foes = foesWithSupport(battle, activeFoeSpecsOf(anomaly, bal, battle.waveIdx))
   syncCoronaFleetFocus(battle, foes)
   applyMeJammerDebuff(me, meJammerNetOf(battle, foes), meRefs.weaponRanges)
+  Object.assign(me, playerGravekeeperSpecOf(battle, me, true))
   /** 我方各武器当前装填剩余（与 units['player'].weapons 同序；单位缺失 = 空） */
   const meRt = battle.units['player']?.weapons ?? []
   /**
@@ -3216,7 +3227,7 @@ export function battleArcsFor(
    * **我方编队逐舰读数**（2026-09-13 F 批「4 条舰影 + 血条」的数据源）：
    * 单船路径 = 只有主控一条（`tag='player'`）；多单位路径 = 主控 + 僚舰（各自三层血）。
    */
-  const mySpecs = new Map(buildMyUnitSpecs(state, ctx, battle, leaderShipId, anomaly.id, foes).map(spec => [spec.tag, spec]))
+  const mySpecs = new Map(buildMyUnitSpecs(state, ctx, battle, leaderShipId, anomaly.id, foes).map(spec => [spec.tag, playerGravekeeperSpecOf(battle, spec, true)]))
   const myUnits = (battle.myFleet && battle.myFleet.length > 0
     ? battle.myFleet
     : [{ tag: 'player', shipId: leaderShipId }]
@@ -4656,7 +4667,7 @@ function settleFoeBlinkExtras(
 function stepBattle(
   state: GameState,
   b: import('./state').BattleState,
-  myUnits: readonly UnitSpec[],
+  baseMyUnits: readonly UnitSpec[],
   foes: UnitSpec[],
   foeDesire: number,
   /**
@@ -4677,6 +4688,9 @@ function stepBattle(
   foeTargetingChance = 1,
   simulation?: BattleSimulationOptions,
 ): void {
+  syncPlayerCrisis(b, baseMyUnits)
+  for (const spec of baseMyUnits) advancePlayerRebirth(b, spec, b.lastTickGameMs)
+  const myUnits = baseMyUnits.map(spec => playerGravekeeperSpecOf(b, spec))
   if (simulation) {
     b.distanceM = simulation.distanceM
     for (const foe of foes) {
@@ -4903,7 +4917,7 @@ function stepBattle(
         // 「叠光同款 · 装填自加速」的门走 `meBurstReloadOf`；两者都不挂 ⇒ 逐字回到老路径（零行为变化）
         // ⚠ 传 **`unit`**（正在开火那一艘）而不是主控 `me`：登记表的键按设计是 `舰tag#炮位`
         //   （2026-10-03 修——此前传 `me`，僚舰的这门会跟主控共用同一个键/读主控的件）。
-        meRt.weapons[wi] = meBurstReloadOf(unit, unit.tag, wi, b, dtMs, w.reloadMs)
+        meRt.weapons[wi] = noteRailAttack(b, unit, wi, meBurstReloadOf(unit, unit.tag, wi, b, dtMs, w.reloadMs))
       } else if (w.kind === 'beam') {
         // V18B-2 激光：必中光束——逐发扣能量弹药（按门数）；威力随距离衰减（beamPowerFactor）
         // ⚠ **打机群不吃这个衰减**（船长 2026-10-02 令「对无人机无衰减」）⇒ 距离系数走单一取数口
@@ -5581,6 +5595,8 @@ function stepBattle(
   // ── P0：护盾战中被动回充（EVE 式；损失不跨场，只回盾层）。
   // 甲/结构已打穿时停止回充——避免"只剩一层盾皮"的无限僵持（P2 可再调）
   // 2026-10-13：当前盾1.2%/秒，下限满盾0.6%/秒；破盾仍不被动恢复。
+  syncPlayerCrisis(b, baseMyUnits)
+  for (const spec of baseMyUnits) advancePlayerRebirth(b, spec, b.lastTickGameMs + dtMs)
   if (bal.shieldRegenPerSec > 0) {
     for (const unit of myUnits) {
       const urt = b.units[unit.tag]

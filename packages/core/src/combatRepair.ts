@@ -17,6 +17,7 @@ import { quickRepairFactor } from './repair'
 import { createPlayerSpec } from './playerSpec'
 import type { UnitSpec } from './combat'
 import { takeWormholeSupply, wormholeSupplyForBattle } from './wormholeSupplies'
+import { syncPlayerCrisis } from './gravekeeperGear'
 
 /** 船体维修装置脉冲间隔（毫秒；2026-09-09 三档统一 5 秒一跳，见 data/modules.ts mod-hullrep-*） */
 export const REPAIR_PULSE_MS = 5_000
@@ -500,6 +501,7 @@ export function pulseShieldFieldFor(
   }
   if (targets.length === 0) return
   casterRt.hp.s = Math.max(0, casterRt.hp.s - cost)
+  syncPlayerCrisis(b, [caster])
   for (const { rt, capS } of targets) {
     rt.hp.s = Math.min(capS, rt.hp.s + amount)
   }

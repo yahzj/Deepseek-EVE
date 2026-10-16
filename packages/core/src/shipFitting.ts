@@ -7,6 +7,7 @@ const COMBAT_FIELDS: readonly (keyof ModuleDef)[] = [
   'captureWebCycleMs', 'captureWebRangeM', 'foeRangeDebuffPct', 'lockDmgBonus',
   'shieldFieldPct', 'shieldFieldMs', 'secondaryDamagePct', 'hitsAllFoes', 'overlayDrive', 'burst',
   'droneLaunchCutPct', 'laserFalloffBonus',
+  'crisisOverload', 'railCharge',
 ]
 
 /** 按完整能力判定，混合效果件不能借防御/作业槽绕过纯货舰限制。 */

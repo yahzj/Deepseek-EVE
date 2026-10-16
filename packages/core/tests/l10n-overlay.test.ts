@@ -18,6 +18,9 @@ const deferredDroneBooks: Readonly<Record<string, number>> = {
   'bp-faction-drone-ink': 4, 'bp-faction-drone-jawclaw': 5,
 }
 const deferredCalibration: Readonly<Record<string, { name: string; description: string }>> = {
+  'mod-gravekeeper-rebirth': { name: 'mod.gravekeeperGear.001', description: 'mod.gravekeeperGear.002' },
+  'mod-gravekeeper-crisis': { name: 'mod.gravekeeperGear.003', description: 'mod.gravekeeperGear.004' },
+  'mod-gravekeeper-rail': { name: 'mod.gravekeeperGear.005', description: 'mod.gravekeeperGear.006' },
   'mod-alien-acid-launcher': { name: 'mod.alienLoot.001', description: 'mod.alienLoot.002' },
   'mod-alien-pressure-chamber': { name: 'mod.alienLoot.003', description: 'mod.alienLoot.004' },
   'mod-drone-launch-1': { name: 'mod.launchCalibration.001', description: 'mod.launchCalibration.006' },

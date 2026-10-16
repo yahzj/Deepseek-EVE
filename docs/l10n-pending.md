@@ -1,5 +1,27 @@
 # 待英文本地化记录
 
+## 守墓入侵掉落装备（2026-10-16）
+
+船长逐条裁定三件效果并要求「开始实现」，未授权准备英文。工作稿`docs/design/gravekeeper-invasion-gear-20261016.md`；`mod.gravekeeperGear.001`至`.006`为三件名称/定性说明，`ui.gravekeeperGear.001`至`.009`为苏生、危机炮台/无人机分支与磁轨叠层规格/当前层数，均登记待本地化、唯一表使用`enDeferred`，英文覆盖走中文回退，不修改旧英文。
+
+| ID | 中文依据 | 状态 |
+|---|---|---|
+| `mod.gravekeeperGear.001` | 苏生损管装置 | 待本地化 |
+| `mod.gravekeeperGear.002` | 苏生定性说明 | 待本地化 |
+| `mod.gravekeeperGear.003` | 危机超载协议 | 待本地化 |
+| `mod.gravekeeperGear.004` | 危机定性说明 | 待本地化 |
+| `mod.gravekeeperGear.005` | 磁轨蓄能炮 | 待本地化 |
+| `mod.gravekeeperGear.006` | 磁轨定性说明 | 待本地化 |
+| `ui.gravekeeperGear.001` | 苏生维修标签 | 待本地化 |
+| `ui.gravekeeperGear.002` | 苏生维修规格 | 待本地化 |
+| `ui.gravekeeperGear.003` | 危机超载标签 | 待本地化 |
+| `ui.gravekeeperGear.004` | 空盾/炮台/速度规格 | 待本地化 |
+| `ui.gravekeeperGear.005` | 无人机超载标签 | 待本地化 |
+| `ui.gravekeeperGear.006` | 无人机时间规格 | 待本地化 |
+| `ui.gravekeeperGear.007` | 磁轨蓄能标签 | 待本地化 |
+| `ui.gravekeeperGear.008` | 附伤与装填叠层规格 | 待本地化 |
+| `ui.gravekeeperGear.009` | 当前蓄能层与附伤比例 | 待本地化 |
+
 ## 守墓者入侵（2026-10-16实施）
 
 来源：船长确认守墓者入侵方案并要求「开始实现」，2026-10-16批准本地合入复验。现行结论见`docs/design/weekend-invasion.md`§十二；原工作稿由实现提交历史保留。未授权准备英文，以下新增条目仅登记待译；内容覆盖调用共享中文回退，不写新英文。

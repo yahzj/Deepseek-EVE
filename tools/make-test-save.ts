@@ -8,6 +8,7 @@
  *
  * 功能 case 注册制（扩展在此追加）：
  *  - gravekeeper 守墓者入侵：独立合成档、四艘合法MK3动能巨齿鲨，核心满，不读取个人档。
+ *  - gravekeeper-gear 守墓入侵装备：合法炮台/机群双舰、三件新装备与组件，独立合成档。
  *  - station-action 停靠与远程管理：全新合成档，采矿主控/停靠副船，不读取个人档。
  *  - ship-hp-blind 全舰血量/直接恢复参数/基础炮门禁/近盲开火：独立合成档，无个人档输入。
  *  - fitting-range 装配靶场、启动加速器与增压腔验收：全新合成档，不读取个人档。
@@ -134,6 +135,7 @@ import { fittingRangeFixture } from './fitting-range-fixture'
 import { injectShipHpBlindFixture } from './ship-hp-blind-fixture'
 import { injectStationActionFixture } from './station-action-fixture'
 import { injectGravekeeperFixture } from './gravekeeper-invasion-check'
+import { injectGravekeeperGearFixture } from './gravekeeper-gear-fixture'
 // 满池常量（旗舰 BOSS 血池；`@whale/core` 未转出 ⇒ 走深路径，与本文件既有做法一致）
 import { WEEKEND_FLAGSHIP_POOL_HP } from '../packages/core/src/weekendEvent'
 import { FACTION_CODEX_ORDER, FOE_SHIPS, GALAXIES, ITEMS, MODULES, SHIPS, SHIP_BLUEPRINTS, buildSimContext } from '@whale/data'
@@ -3604,6 +3606,7 @@ function injectShipWreck(state: GameState): string[] {
 }
 
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
+  'gravekeeper-gear': injectGravekeeperGearFixture,
   gravekeeper: injectGravekeeperFixture,
   'station-action': injectStationActionFixture,
   'ship-hp-blind': injectShipHpBlindFixture,
@@ -3815,11 +3818,11 @@ function main(): void {
     console.log(`用法：npx tsx tools/make-test-save.ts <feature> [--keep-ironman]\n已注册功能：${Object.keys(INJECTORS).join(' / ')}`)
     process.exit(feature ? 1 : 0)
   }
-  if (feature === 'fitting-range' || feature === 'ship-hp-blind' || feature === 'station-action' || feature === 'gravekeeper') {
+  if (feature === 'fitting-range' || feature === 'ship-hp-blind' || feature === 'station-action' || feature === 'gravekeeper' || feature === 'gravekeeper-gear') {
     const state = createInitialState({ nowWallMs: Date.now() })
     const notes = INJECTORS[feature]!(state)
     mkdirSync(OUT_DIR, { recursive: true })
-    const target = join(OUT_DIR, feature === 'gravekeeper' ? 'test-save-gravekeeper-20261016.json' : feature === 'station-action' ? 'test-save-station-action-20261013.json' : feature === 'ship-hp-blind' ? 'test-save-ship-hp-blind-20261013.json' : 'test-save-fitting-range-20261009.json')
+    const target = join(OUT_DIR, feature === 'gravekeeper-gear' ? 'test-save-gravekeeper-gear-20261016.json' : feature === 'gravekeeper' ? 'test-save-gravekeeper-20261016.json' : feature === 'station-action' ? 'test-save-station-action-20261013.json' : feature === 'ship-hp-blind' ? 'test-save-ship-hp-blind-20261013.json' : 'test-save-fitting-range-20261009.json')
     writeFileSync(target, serializeSaveFile(state), { encoding: 'utf8', flag: 'wx' })
     console.log(`已生成独立合成档：${target}；未读取或覆盖个人档。`)
     for (const note of notes) console.log(note)

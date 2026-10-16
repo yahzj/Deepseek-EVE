@@ -79,7 +79,7 @@ export const FACTION_CODEX: Record<string, FactionCodexEntry> = {
     family: 'D',
     nameId: 'ui.Handbook.344', // 守墓古舰
     glyph: 'fam-d',
-    modules: ['mod-wh-d-laser', 'mod-wh-d-loader', 'mod-wh-d-lock', 'mod-wh-d-shield', 'mod-wh-d-steady', 'mod-wh-d-turret'],
+    modules: ['mod-wh-d-laser', 'mod-wh-d-loader', 'mod-wh-d-lock', 'mod-wh-d-shield', 'mod-wh-d-steady', 'mod-wh-d-turret', 'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail'],
     ships: ['sh-wh-d-frigate', 'sh-wh-d-destroyer', 'sh-wh-d-cruiser'],
     blueprints: ['bp-wh-d-laser', 'bp-wh-d-loader', 'bp-wh-d-lock', 'bp-wh-d-shield', 'bp-wh-d-steady', 'bp-wh-d-turret',
       'sbp-wh-d-frigate', 'sbp-wh-d-destroyer', 'sbp-wh-d-cruiser'],

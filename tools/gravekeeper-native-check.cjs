@@ -6,20 +6,25 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const {spawnSync}=require('node:child_process')
 const sleep=ms=>new Promise(r=>setTimeout(r,ms))
 const output=path.resolve('tools/_ui-artifacts/gravekeeper-invasion')
+const gear=process.argv.includes('--gear')
 if(!process.argv.includes('--smoke-child')) {
   const profile=fs.mkdtempSync(path.join(os.tmpdir(),'whale-gravekeeper-'))
   try {
-    const fixture=spawnSync(process.execPath,['--import','tsx','tools/gravekeeper-invasion-check.ts','--smoke-save'],{encoding:'utf8',windowsHide:true})
+    const fixture=spawnSync(process.execPath,['--import','tsx',gear?'tools/gravekeeper-gear-fixture.ts':'tools/gravekeeper-invasion-check.ts','--smoke-save'],{encoding:'utf8',windowsHide:true})
     assert.equal(fixture.status,0,fixture.stderr)
-    fs.copyFileSync(path.join(output,'smoke-save.json'),path.join(profile,'save.json'))
+    fs.copyFileSync(path.join(output,gear?'gear-smoke-save.json':'smoke-save.json'),path.join(profile,'save.json'))
     const env={...process.env,WHALE_PERF_USERDATA:profile};delete env.ELECTRON_RUN_AS_NODE
     const electron=process.argv.find(arg=>arg.startsWith('--electron='))?.slice(11)??require('electron')
-    const run=spawnSync(electron,[__filename,'--smoke-child'],{encoding:'utf8',windowsHide:true,timeout:75000,env})
+    const run=spawnSync(electron,[__filename,'--smoke-child',...(gear?['--gear']:[])],{encoding:'utf8',windowsHide:true,timeout:75000,env})
     console.log(run.stdout)
     assert.equal(run.status,0,run.stderr)
     const after=JSON.parse(fs.readFileSync(path.join(profile,'save.json'),'utf8')).state
     assert.equal(after.weekendEvent.family,'D')
     assert.equal(after.encounter.battle.foeOverride.bossHpMax,300000)
+    if(gear) {
+      assert.equal(after.encounter.battle.meCrisisActive.player,true)
+      assert(after.encounter.battle.meRailStacks['player#0']>=3)
+    }
     console.log(JSON.stringify({ok:true,target:path.resolve('apps/desktop/out'),isolatedSave:true,IPCSaved:true}))
   } finally {
     const target=path.resolve(profile)
@@ -45,6 +50,10 @@ if(!process.argv.includes('--smoke-child')) {
     await until('!!document.querySelector(".app-battle-screen:not(.is-report)")')
     const names=await js('document.querySelector(".app-battle-screen").textContent')
     assert(names.includes('永陵'))
+    if(gear) {
+      assert(names.includes('危机超载协议'))
+      assert(await js('!!document.querySelector("[data-battle-weapon-cycle][aria-label*=磁轨蓄能炮]")'))
+    }
     await js('window.dispatchEvent(new Event("pagehide"));true')
     await sleep(500)
     const before=JSON.parse(fs.readFileSync(path.join(process.env.WHALE_PERF_USERDATA,'save.json'),'utf8')).state.encounter.battle

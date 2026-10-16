@@ -17,6 +17,7 @@ import { plugModulesOf } from './plugs'
 import { shipDamageEffects } from './shipDamage'
 import type { UnitSpec, WeaponSpec } from './combat'
 import { droneLaunchGapMsOf } from './droneLaunch'
+import { crisisEffectsOf } from './gravekeeperGear'
 
 /**
  * **捕获网的断开距离（敌我通用）**（**船长 2026-09-26**：「**将断开距离提高到4500米，
@@ -294,7 +295,8 @@ export function createPlayerSpec(
    * **损伤管制装置**（2026-09-25 船长令）：本舰是否装了带 `hullSaveKit` 的件；装了就取它的组件 id。
    * 同舰唯一（`unique`）由装配层保证 ⇒ 这里取第一件即可。
    */
-  const dcKit = allFittedModules(fitted, ctx).find((m) => m.hullSaveKit !== undefined)?.hullSaveKit
+  const dcDevice = allFittedModules(fitted, ctx).find((m) => m.hullSaveKit !== undefined)
+  const dcKit = dcDevice?.hullSaveKit
 
   // V18.1 支援件合成：
   // - 伤害稳定器（按系加算）+ 射速计算机（装填缩短加算）只进炮台条目；
@@ -327,6 +329,7 @@ export function createPlayerSpec(
   /* ═══ 2026-09-13 虫洞专属装备引出的新旋钮（船长逐条给定；设计稿 §3.6/§3.8）═══
    * 全部走"全件扫描"口径；四项缺省 0 ⇒ 既有装备零行为变化。 */
   const allDefs = allFittedModules(fitted, ctx)
+  const crisisOverload = crisisEffectsOf(allDefs)
   /**
    * ═══ **舰船插件**（**2026-09-26 船长令**，设计稿 `docs/design/ship-plug-20260926.md`）═══
    *
@@ -569,6 +572,7 @@ export function createPlayerSpec(
       label: count > 1 ? `${turret.name}×${count}` : turret.name,
       moduleId: turret.id,
       kind: 'gun',
+      ...(turret.railCharge ? { railCharge: turret.railCharge } : {}),
       src: turret.slot === 'missile' ? 'missile' : 'turret',
       shotsByType,
       count,
@@ -730,8 +734,10 @@ export function createPlayerSpec(
      */
     ...(ship.interceptorImmuneToWeb === true ? { interceptorImmuneToWeb: true } : {}),
     /** 损伤管制装置（2026-09-25 船长令）：本舰装没装、启动时吃哪种组件；`shipId` 供"从本舰货仓取组件"用 */
-    shipId: ship.id,
+    shipId,
     ...(dcKit !== undefined ? { hullSaveKit: dcKit } : {}),
+    ...(dcDevice?.rebirthRepair ? { rebirthRepair: dcDevice.rebirthRepair } : {}),
+    ...(crisisOverload ? { crisisOverload } : {}),
     hp,
     resists,
     // 本舰无人机结构层加成（模块求和；2026-09-13 船长：鱿蜂结构层「提高无人机 80% 的结构」）

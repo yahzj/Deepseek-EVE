@@ -1,5 +1,11 @@
 # 测试门槛存档（Test Saves）
 
+## 守墓入侵三件装备
+
+- `npx tsx tools/make-test-save.ts gravekeeper-gear`生成`test-save-gravekeeper-gear-20261016.json`，全新合成，不读取或覆盖个人档。
+- 炮台巨齿鲨装4门磁轨炮、危机与苏生，机库船装双危机与苏生并载无人机；三件备件、弹药、组件和守墓稀有残骸齐全，核心满但未代开战。
+- 游戏内先备份现有档，再导入本档。装配页核对三件详情、损管数量限制；旗舰可分多场挑战，空盾后观察危机状态和炮台射程，武器列表悬停读磁轨层数；读取中途档核对状态续算，回收稀有残骸检查新三件掉落。测完恢复备份。
+
 ## 守墓者入侵
 
 - `gravekeeper`：`npx tsx tools/make-test-save.ts gravekeeper`，全新合成档，不读取或覆盖个人档。

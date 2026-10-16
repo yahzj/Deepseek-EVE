@@ -234,6 +234,7 @@ export type StackGroup = 'gap' | 'curve' | 'weighted' | 'max' | 'fleetDecay' | '
  * 却按**型号**各走各的冷却。
  */
 export function stackingOf(def: ModuleDef): { group: StackGroup; kind: string } {
+  if (def.crisisOverload) return { group: 'curve', kind: 'crisis-overload' }
   if (def.droneLaunchCutPct !== undefined) return { group: 'fleetDecay', kind: 'drone-launch' }
   if (def.laserFalloffBonus !== undefined) return { group: 'weighted', kind: 'laser-calibration' }
   const resistKey = (add: DamageResists | undefined): string | null => {
@@ -389,6 +390,7 @@ export function fittedPenaltyPartsOf(state: GameState, ctx: SimContext, shipId: 
     if (kind === 'lock') return d.lockDmgBonus ?? 0
     if (kind === 'drone-relay') return d.droneRangeBonusPct ?? 0
     if (kind === 'drone-launch') return d.droneLaunchCutPct ?? 0
+    if (kind === 'crisis-overload') return d.crisisOverload?.damageBonusPct ?? 0
     if (kind === 'laser-calibration') return d.laserFalloffBonus ?? 0
     if (kind === 'drone-hit') return d.droneHitGapPct ?? 0
     if (kind === 'ecm') return d.foeRangeDebuffPct ?? 0

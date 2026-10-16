@@ -263,6 +263,7 @@ export const MODULE_SUBS: SubOption[] = [
 export const SUPPORT_MODULE_KEYS: Record<string, readonly string[]> = {
   /** 战斗支援件：直接提升开火侧或生存侧的战斗表现（伤害/射速/命中/回避/干扰） */
   'support-combat': [
+    'mod-gravekeeper-crisis',
     'mod-laser-calibration-2', 'mod-laser-calibration-3',
     'mod-stab-kin-1', 'mod-stab-kin-2', 'mod-stab-kin-3',
     'mod-stab-exp-1', 'mod-stab-exp-2', 'mod-stab-exp-3',
@@ -287,6 +288,7 @@ export const SUPPORT_MODULE_KEYS: Record<string, readonly string[]> = {
   ],
   /** 修理装置：交火中回复装甲/结构（吃或不吃组件两种） */
   'support-repair': [
+    'mod-gravekeeper-rebirth',
     'mod-hullrep-civ', 'mod-hullrep-1', 'mod-hullrep-2', // 船体维修装置三档（吃修理组件）
     'mod-lair-dc-c', // 生体损管腔（结构自修 + 三系壳抗，不吃组件）
     // 损伤管制装置三档（2026-09-26 船长令：「**损管装置和修理装置是同一类型装备分类，不是装甲**」

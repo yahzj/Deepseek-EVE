@@ -263,17 +263,17 @@ export function weekendFamilyForWindow(windowT0WallMs: number): string | null {
 }
 
 /**
- * **调试模式下锁定的入侵族**（2026-10-07船长令：新异形入侵替换现有调试入侵）。
+ * **调试模式下锁定的入侵族**（2026-10-16船长令：新守墓入侵替换现有调试入侵）。
  *
  * 口径：
- * - **`debugQuick` 打开时**（本机调试档）⇒ 开局面一律判为 **C 族（异形）**，
+ * - **`debugQuick` 打开时**（本机调试档）⇒ 开局面一律判为 **D 族（守墓者）**，
  *   与 `WEEKEND_DEBUG_WIN_GAIN`（两场夺回）· `WEEKEND_DEBUG_TIME_DIVISOR`（时间 ÷60）·
  *   `WEEKEND_DEBUG_RESTART_MS`（1 小时后可重开）同属"调试便利"，只为让本机能反复实测新族；
  * - 非调试档仍按普通周排期/循环，已开的历史场及光环补场不因调试常量而追改。
  *
  * ⚠ 想换调试族只改这一个常量（`null` = 调试档也走 `WEEKEND_LOCKED_FAMILY`）。
  */
-export const WEEKEND_DEBUG_FAMILY: string | null = 'C'
+export const WEEKEND_DEBUG_FAMILY: string | null = 'D'
 
 /**
  * **本次开局面实际锁定的族**（单点）——调试档优先于玩家线锁定：
@@ -1646,9 +1646,9 @@ export function ensureWeekendEvent(state: GameState, ctx: SimContext, nowWallMs:
   if (WEEKEND_DEBUG_ONLY && !weekendDebugOn(state)) return false
   if (weekendDebugOn(state)) {
     /**
-     * **锁定族的自愈**（2026-09-25 船长令「先锁定 H 族」）：手上那一场若是**锁定前开的历史场**
-     * （例如抽到 A/C/G 的旧场），就地**改判族**——进度台账、场次号、旗舰池全留着，只换族
-     * （板面卡与旗舰卡随之换成 H 族那一套）。⚠ 只在调试模式做：正常模式的老场不追改。
+     * **锁定族的自愈**（沿用2026-09-25船长令）：手上那一场若是**锁定前开的历史场**，
+     * 就地**改判族**——进度台账、场次号、旗舰池全留着，只换成`weekendLockedFamilyOf`指定的族。
+     * ⚠ 只在调试模式做：正常模式的老场不追改。
      */
     if (
       ev !== undefined &&

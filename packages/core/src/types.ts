@@ -1746,6 +1746,12 @@ export interface ModuleDef {
    * 当前间隔记在 `BattleState.meOverlayReload[tag + '#' + 炮位]`（`kind: 'runtime'`，与敌方同口径）。
    */
   overlayDrive?: { stepMs: number; floorMs: number }
+  /** 磁轨炮开火后按层加法增加能量附伤与装填，每场各武器组独立。 */
+  railCharge?: { damageStepPct: number; reloadStepPct: number; maxStacks: number }
+  /** 空盾后本场启用，同舰多件正负效果使用相同衰减权重。 */
+  crisisOverload?: { rangeBonusPct: number; damageBonusPct: number; speedPenaltyPct: number; droneInitialCutPct: number; droneCycleCutPct: number }
+  /** 损管触发后的限额持续维修，不增加结构抗性。 */
+  rebirthRepair?: { repairMs: number; armorTotalPct: number; hullTotalPct: number }
   /**
    * **【我方】三连射**（**船长 2026-10-03 令**：「**添加一个旗舰同款的势力能量武器（三连射），DPS比MK3要高一些，
    * 射速为3000MS，CPU占用根据DPS的比例同等提高。**」＋定名「**三叉戟光束炮**」＋「**单发伤害再上调20%**」）——

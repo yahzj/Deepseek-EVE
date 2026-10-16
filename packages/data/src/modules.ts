@@ -51,6 +51,9 @@ import type { DataDocument } from '../../../tools/data-editor-contract'
 import { staticDataGroup } from './staticData'
 
 const MODULES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  'mod-gravekeeper-rebirth': { name: L10N['mod.gravekeeperGear.001']!.zh, description: L10N['mod.gravekeeperGear.002']!.zh },
+  'mod-gravekeeper-crisis': { name: L10N['mod.gravekeeperGear.003']!.zh, description: L10N['mod.gravekeeperGear.004']!.zh },
+  'mod-gravekeeper-rail': { name: L10N['mod.gravekeeperGear.005']!.zh, description: L10N['mod.gravekeeperGear.006']!.zh },
   'mod-alien-acid-launcher': { name: L10N['mod.alienLoot.001']!.zh, description: L10N['mod.alienLoot.002']!.zh },
   'mod-alien-pressure-chamber': { name: L10N['mod.alienLoot.003']!.zh, description: L10N['mod.alienLoot.004']!.zh },
   'mod-drone-launch-1': { name: L10N['mod.launchCalibration.001']!.zh, description: L10N['mod.launchCalibration.006']!.zh },

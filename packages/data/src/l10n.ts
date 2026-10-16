@@ -238,6 +238,9 @@ export const EN_SHIPS: EnTable = {
  * 多装递减 = `stacks with diminishing returns` · 窝点/族专属 = `Lair-exclusive` / family-exclusive。
  */
 export const EN_MODULES: EnTable = {
+  'mod-gravekeeper-rebirth': { name: l10nEntryText(L10N['mod.gravekeeperGear.001']!, 'en'), description: l10nEntryText(L10N['mod.gravekeeperGear.002']!, 'en') },
+  'mod-gravekeeper-crisis': { name: l10nEntryText(L10N['mod.gravekeeperGear.003']!, 'en'), description: l10nEntryText(L10N['mod.gravekeeperGear.004']!, 'en') },
+  'mod-gravekeeper-rail': { name: l10nEntryText(L10N['mod.gravekeeperGear.005']!, 'en'), description: l10nEntryText(L10N['mod.gravekeeperGear.006']!, 'en') },
   'mod-drone-launch-1': { name: l10nEntryText(L10N['mod.launchCalibration.001']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },
   'mod-drone-launch-2': { name: l10nEntryText(L10N['mod.launchCalibration.002']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },
   'mod-drone-launch-3': { name: l10nEntryText(L10N['mod.launchCalibration.003']!, 'en'), description: l10nEntryText(L10N['mod.launchCalibration.006']!, 'en') },

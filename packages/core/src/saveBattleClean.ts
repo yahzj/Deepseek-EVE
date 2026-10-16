@@ -32,6 +32,9 @@ type BattleFieldSpec = { kind: 'persist' } | { kind: 'runtime'; why: string }
 const BATTLE_FIELDS = {
   foeAcidLayers: { kind: 'persist' },
   foeRebirths: { kind: 'persist' },
+  meRebirths: { kind: 'persist' },
+  meCrisisActive: { kind: 'persist' },
+  meRailStacks: { kind: 'persist' },
   foeCoatingLayers: { kind: 'runtime', why: '永陵级守墓镀层装甲的五秒逐层状态，重载后按当前战斗状态重新开始' },
   foeShieldCapacitorActive: { kind: 'runtime', why: '永陵级护盾蓄能模式只存在于当前战斗，战斗重载按本场重建' },
   foeShieldCapacitorAttacks: { kind: 'runtime', why: '永陵级各武器蓄能攻击层数只存在于当前战斗' },
@@ -650,6 +653,18 @@ export function cleanBattle(raw: unknown): BattleState | null {
     ...(foeDroneRangeBuff !== undefined ? { foeDroneRangeBuff } : {}),
     ...(foeGunRangeBuff !== undefined ? { foeGunRangeBuff } : {}),
     ...(foeRebirths !== undefined ? { foeRebirths } : {}),
+    ...(() => {
+      const meRebirths = cleanLedgerMap(b.meRebirths, raw => {
+        const r = asRaw(raw)
+        const keys = ['repairUntilMs', 'lastRepairAtMs', 'armorHealed', 'hullHealed'] as const
+        if (keys.some(key => cleanPosNum(r[key]) === undefined)) return undefined
+        return Object.fromEntries(keys.map(key => [key, r[key]])) as NonNullable<BattleState['meRebirths']>[string]
+      })
+      const meCrisisActive = cleanLedgerMap(b.meCrisisActive, value => value === true ? true as const : undefined)
+      const meRailStacks = cleanLedgerMap(b.meRailStacks, value => typeof value === 'number' && Number.isFinite(value) && value >= 0
+        ? Math.min(5, Math.floor(value)) : undefined)
+      return { ...(meRebirths ? { meRebirths } : {}), ...(meCrisisActive ? { meCrisisActive } : {}), ...(meRailStacks ? { meRailStacks } : {}) }
+    })(),
     // 2026-09-27 本场 BOSS 阵亡时刻（丢了 ⇒ "玩家亲手打沉"的事实消失，旗舰留档只能靠池子算术反推）
     ...(bossDownAtMs !== undefined ? { bossDownAtMs: Math.round(bossDownAtMs) } : {}),
   }

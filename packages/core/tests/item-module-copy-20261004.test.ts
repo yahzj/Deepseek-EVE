@@ -41,11 +41,11 @@ describe('物品装备说明双语与数据守恒', () => {
       return item.id === 'mat-wh-essence' ? { ...item, name: '信号谜质' } : item
     })
     const strip = (entries: typeof ITEMS) => entries.map(({ description: _description, ...rest }) => rest)
-    const added = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'deep-space-probe', 'drone-jawclaw'])
+    const added = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'blackbox-d', 'deep-space-probe', 'drone-jawclaw'])
     expect(ITEMS.filter(item => added.has(item.id)).map(item => item.id).sort()).toEqual([...added].sort())
     expect(strip(ITEMS.filter(item => !added.has(item.id)))).toEqual(strip(adjusted))
   })
-  it('旧装备字段仅按已确认值调整，新增七件另由装备专项约束', () => {
+  it('旧装备字段仅按已确认值调整，新增十件另由装备专项约束', () => {
     const plugs = historical<typeof MODULES>('packages/data/src/plugs.ts', 'SHIP_PLUGS')
     const before = historical<typeof MODULES>('packages/data/src/modules.ts', 'MODULES', { SHIP_PLUGS: plugs })
     const strip = (entries: typeof MODULES) => entries.map(({ description: _description, ...rest }) => rest)
@@ -69,8 +69,9 @@ describe('物品装备说明双语与数据守恒', () => {
       if (mod.id === 'mod-lair-laser-r') return { ...mod, dmgMult: 2.1, maxRangeM: 6000 }
       return mod.id === 'mod-wh-a-hangar' ? { ...mod, droneCycleCutPct: .2 } : mod
     })
-    const newIds = new Set(['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3', 'mod-laser-calibration-2', 'mod-laser-calibration-3', 'mod-alien-acid-launcher', 'mod-alien-pressure-chamber'])
-    expect(MODULES.filter(mod => newIds.has(mod.id))).toHaveLength(7)
+    const newIds = new Set(['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3', 'mod-laser-calibration-2', 'mod-laser-calibration-3', 'mod-alien-acid-launcher', 'mod-alien-pressure-chamber',
+      'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail'])
+    expect(MODULES.filter(mod => newIds.has(mod.id))).toHaveLength(10)
     expect(strip(MODULES.filter(mod => !newIds.has(mod.id)))).toEqual(strip(adjusted))
   })
   it.each(ITEMS)('$id 物品说明中英唯一表接线一致，名称不变', (item) => {

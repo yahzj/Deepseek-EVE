@@ -391,6 +391,7 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
   },
   {
     key: 'd-inv',
+    lairGear: ['mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail'],
     family: 'D',
     region: 'inv',
     name: '守墓者残骸（入侵）',

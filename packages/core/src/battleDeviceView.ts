@@ -19,7 +19,7 @@ export interface BattleDeviceCycleView {
   shipId: string
   ownerName: string
   label: string
-  kind: 'thruster' | 'repair' | 'shield-charge' | 'shield-field' | 'web' | 'drone-deck' | 'blink' | 'stealth' | 'damage-control'
+  kind: 'thruster' | 'repair' | 'shield-charge' | 'shield-field' | 'web' | 'drone-deck' | 'blink' | 'stealth' | 'damage-control' | 'crisis-overload'
   count: number
   cycleMs: number
   remainingMs: number
@@ -236,11 +236,16 @@ export function battleDeviceCyclesOf(
     if (damageControl.length > 0 || spec.hullSaveKit !== undefined) {
       const picked = damageControl.find(d => d.hullSaveKit === spec.hullSaveKit) ?? damageControl[0]
       const dc = battle.dc?.[spec.tag]
-      const at = dc?.lockUntilMs
-      add('damage-control', '0', picked?.id, damageControl.length, 0, at,
+      const repair = battle.meRebirths?.[spec.tag]
+      const repairing = !!spec.rebirthRepair && repair !== undefined && repair.repairUntilMs > now
+      const at = repairing ? repair.repairUntilMs : dc?.lockUntilMs
+      add('damage-control', '0', picked?.id, damageControl.length, repairing ? spec.rebirthRepair!.repairMs : 0, at,
         finite(at) && at > now ? 'active' : dc?.used ? 'used'
           : spec.hullSaveKit === undefined ? 'stopped' : kitAvailable(spec.hullSaveKit, true) >= 1 ? 'ready' : 'no-stock')
     }
+    const crisis = defs.filter(d => d.crisisOverload !== undefined)
+    if (crisis.length) add('crisis-overload', '0', crisis[0]!.id, crisis.length, 0, undefined,
+      battle.meCrisisActive?.[spec.tag] ? 'active' : 'waiting')
   }
   return out
 }

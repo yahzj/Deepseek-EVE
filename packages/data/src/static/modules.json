@@ -1521,6 +1521,21 @@
         "rack": "mid",
         "speedBonusPct": 0.85,
         "cpuUse": 36
+      },
+      {
+        "id": "mod-gravekeeper-rebirth", "slot": "support", "rack": "low", "cpuUse": 46,
+        "hullSaveKit": "repairkit-dc", "unique": true,
+        "rebirthRepair": { "repairMs": 5000, "armorTotalPct": 0.5, "hullTotalPct": 0.5 }
+      },
+      {
+        "id": "mod-gravekeeper-crisis", "slot": "support", "rack": "mid", "cpuUse": 40,
+        "crisisOverload": { "rangeBonusPct": 0.4, "damageBonusPct": 0.3, "speedPenaltyPct": 0.6, "droneInitialCutPct": 0.5, "droneCycleCutPct": 0.4 }
+      },
+      {
+        "id": "mod-gravekeeper-rail", "slot": "turret", "rack": "high", "cpuUse": 62,
+        "damageType": "kinetic", "ammoPerEngagement": 12, "ammoPerShot": 1,
+        "reloadMs": 5800, "maxRangeM": 11500, "minRangeM": 700, "hitRate": 0.78, "falloff": 0.3, "dmgMult": 9.1084,
+        "railCharge": { "damageStepPct": 0.3, "reloadStepPct": 0.1, "maxStacks": 5 }
       }
     ]
   }

@@ -620,7 +620,13 @@ export function moduleShortEffect(mod: ModuleDef): string {
     case 'support': {
       // V18.1 支援件：效果字段判别（稳定器按系可多件 → 逐系列出）
       const dmg = mod.damageTypeBonusPct
-      if (mod.laserFalloffBonus !== undefined) {
+      if (mod.rebirthRepair) {
+        const d = mod.rebirthRepair
+        body = tr('ui.gravekeeperGear.002', { p1: d.repairMs / 1000, p2: d.armorTotalPct * 100, p3: d.hullTotalPct * 100 })
+      } else if (mod.crisisOverload) {
+        const d = mod.crisisOverload
+        body = tr('ui.gravekeeperGear.004', { p1: d.rangeBonusPct * 100, p2: d.damageBonusPct * 100, p3: d.speedPenaltyPct * 100 })
+      } else if (mod.laserFalloffBonus !== undefined) {
         body = tr('ui.launchCalibration.002', { p1: mod.laserFalloffBonus })
       } else if (dmg && Object.keys(dmg).length > 0) {
         body = Object.entries(dmg)
@@ -1478,6 +1484,17 @@ export function moduleInfoLines(mod: ModuleDef, engine?: GameEngine, shipId?: st
   if (mod.overlayDrive) {
     lines.push({ k: tr('ui.moduleSpecs.004'), v: tr('ui.shipInfo.246', { p1: ((mod.reloadMs ?? 0) / 1000).toFixed(1), p2: (mod.overlayDrive.stepMs / 1000).toFixed(1), p3: (mod.overlayDrive.floorMs / 1000).toFixed(1) }) })
   }
+  if (mod.rebirthRepair) lines.push({ k: tr('ui.gravekeeperGear.001'), v: tr('ui.gravekeeperGear.002', {
+    p1: mod.rebirthRepair.repairMs / 1000, p2: mod.rebirthRepair.armorTotalPct * 100, p3: mod.rebirthRepair.hullTotalPct * 100,
+  }) })
+  if (mod.crisisOverload) {
+    const d = mod.crisisOverload
+    lines.push({ k: tr('ui.gravekeeperGear.003'), v: tr('ui.gravekeeperGear.004', { p1: d.rangeBonusPct * 100, p2: d.damageBonusPct * 100, p3: d.speedPenaltyPct * 100 }) })
+    lines.push({ k: tr('ui.gravekeeperGear.005'), v: tr('ui.gravekeeperGear.006', { p1: (1 - d.droneInitialCutPct) * 100, p2: (1 - d.droneCycleCutPct) * 100 }) })
+  }
+  if (mod.railCharge) lines.push({ k: tr('ui.gravekeeperGear.007'), v: tr('ui.gravekeeperGear.008', {
+    p1: mod.railCharge.damageStepPct * 100, p2: mod.railCharge.reloadStepPct * 100, p3: mod.railCharge.maxStacks,
+  }) })
   if (mod.blink) {
     lines.push({ k: tr('ui.moduleSpecs.005'), v: tr('ui.moduleSpecs.006', { p1: mod.blink.distanceM, p2: mod.blink.cooldownMs / 1000 }) })
   }

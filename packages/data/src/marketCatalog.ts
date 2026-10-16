@@ -1291,6 +1291,7 @@ const MARKET_GOODS_RAW_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> 
 }
 
 const MARKET_GOODS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
+  'mod-gravekeeper-rebirth': {}, 'mod-gravekeeper-crisis': {}, 'mod-gravekeeper-rail': {},
   'mod-alien-acid-launcher': {}, 'mod-alien-pressure-chamber': {},
   "sbp-wh-a-frigate": {
 

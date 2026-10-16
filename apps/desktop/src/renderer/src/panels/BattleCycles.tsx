@@ -57,10 +57,11 @@ function CycleLine({ row, ownerMark, weapon = false }: { row: CycleRow; ownerMar
   const count = alive || (row.count > 1 ? `×${row.count}` : '')
   const meters = (value: number): string => Number.isFinite(value) && value >= 0 ? value.toLocaleString() : '-'
   const range = weapon ? `${meters(w.minM)}~${meters(w.maxM)}m` : ''
+  const rail = weapon && w.railStacks !== undefined ? tr('ui.gravekeeperGear.009', { p1: w.railStacks, p2: w.railEnergyPct ?? 0 }) : ''
   const detail = [`${ownerMark} ${row.ownerName}`, `${label}${count ? ` ${count}` : ''}`, range,
     `${tr('ui.battleCycles.003')}: ${cycle ? seconds(row.cycleMs) : '-'}`,
     `${tr('ui.battleCycles.004')}: ${timed ? seconds(row.remainingMs) : '-'}`,
-    `${tr('ui.battleCycles.005')}: ${state}`, target, slow].filter(Boolean).join('\n')
+    `${tr('ui.battleCycles.005')}: ${state}`, target, slow, rail].filter(Boolean).join('\n')
   const tone = { '--bc-tone': weapon && w.damageType ? DMG_COLOR[w.damageType] : 'rgb(var(--wui-accent))' } as CSSProperties
 
   return <div className={`app-bts-reload app-bc-row is-${row.state}`} title={detail} aria-label={detail}

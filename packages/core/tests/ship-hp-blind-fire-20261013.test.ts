@@ -10,6 +10,7 @@ import { advanceBattleFor, startBattleFor, battleZonesFor, battleArcsFor, applyF
 import { createFoeSpecs } from '../src/foeSpecs'
 import { SHIP_HP_UPLIFT_MUL, playerWeaponInRange, playerBlindDamageMul } from '../src/combatMath'
 import { foeFamilyHpMulOf, foeShipHpMulOf } from '../src/foePower'
+import { resolveFoeMounts } from '../src/foeMounts'
 import { pulseShieldChargeFor, pulseShieldFieldFor, repairStatsFor, SHIELD_FIELD_COST_PCT, SHIELD_REGEN_FLOOR_PCT } from '../src/combatRepair'
 import { wormholeExpeditionCard } from '../src/wormholeExpeditionFoes'
 import { WEEKEND_FLAGSHIP_POOL_HP } from '../src/weekendEvent'
@@ -127,7 +128,10 @@ describe('全舰容量与直接恢复参数', () => {
       const card: AnomalyDef = { ...ctx.anomalies.get('ano-training')!, ships: [{ ship }], waves: undefined }
       const spec = createFoeSpecs(card, ctx.balance.battle)[0]!
       const old = createFoeSpecs(card, ctx.balance.battle, { beforeHpUplift: true })[0]!
-      expect(spec.hp.s + spec.hp.a + spec.hp.h).toBeCloseTo(ship.hp * foeFamilyHpMulOf(ship.family) * 1.5)
+      const armorMul = resolveFoeMounts(ship.mounts).foeMausoleumArmor?.hpMul ?? 1
+      expect(spec.hp.s).toBeCloseTo(ship.hp * ship.split.s * foeFamilyHpMulOf(ship.family) * 1.5)
+      expect(spec.hp.a).toBeCloseTo(ship.hp * ship.split.a * armorMul * foeFamilyHpMulOf(ship.family) * 1.5)
+      expect(spec.hp.h).toBeCloseTo(ship.hp * ship.split.h * armorMul * foeFamilyHpMulOf(ship.family) * 1.5)
       expect(spec.weapons).toEqual(old.weapons)
       expect(spec.foeRepairPulse).toEqual(old.foeRepairPulse)
       expect(spec.repairPct).toBe(old.repairPct)

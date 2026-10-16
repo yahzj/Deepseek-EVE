@@ -24,6 +24,21 @@ export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  'mod.gravekeeperGear.001': { zh: '苏生损管装置', en: '', enDeferred: true },
+  'mod.gravekeeperGear.002': { zh: '在致命攻击后维持结构底线，并持续修复装甲与结构。每场战斗仅触发一次。', en: '', enDeferred: true },
+  'mod.gravekeeperGear.003': { zh: '危机超载协议', en: '', enDeferred: true },
+  'mod.gravekeeperGear.004': { zh: '护盾耗尽后提高本舰炮台射程与伤害，缩短无人机出击等待与攻击周期，同时降低战斗移动速度；多件安装效果递减。', en: '', enDeferred: true },
+  'mod.gravekeeperGear.005': { zh: '磁轨蓄能炮', en: '', enDeferred: true },
+  'mod.gravekeeperGear.006': { zh: '发射动能弹药，并在连续开火后逐步增加额外能量伤害、延长装填间隔，最多累积五层。', en: '', enDeferred: true },
+  'ui.gravekeeperGear.001': { zh: '苏生维修', en: '', enDeferred: true },
+  'ui.gravekeeperGear.002': { zh: '损管触发后{p1}秒内恢复最大装甲{p2}%、最大结构{p3}%；不恢复护盾。', en: '', enDeferred: true },
+  'ui.gravekeeperGear.003': { zh: '危机超载', en: '', enDeferred: true },
+  'ui.gravekeeperGear.004': { zh: '本舰空盾后本场持续；炮台射程+{p1}%、伤害+{p2}%，战斗移动速度−{p3}%。', en: '', enDeferred: true },
+  'ui.gravekeeperGear.005': { zh: '无人机超载', en: '', enDeferred: true },
+  'ui.gravekeeperGear.006': { zh: '首次出击时间×{p1}%，攻击周期×{p2}%；不增加机群射程或单发伤害。', en: '', enDeferred: true },
+  'ui.gravekeeperGear.007': { zh: '磁轨蓄能', en: '', enDeferred: true },
+  'ui.gravekeeperGear.008': { zh: '每次开火后能量附伤+{p1}个百分点、装填间隔+{p2}%；最多{p3}层，加法累计；跨波保留。', en: '', enDeferred: true },
+  'ui.gravekeeperGear.009': { zh: '蓄能{p1}层；额外能量伤害{p2}%', en: '', enDeferred: true },
   'ship.gravekeeper.001': { zh: '巡陵级', en: '', enDeferred: true },
   'ship.gravekeeper.002': { zh: '碑卫级', en: '', enDeferred: true },
   'ship.gravekeeper.003': { zh: '守誓级', en: '', enDeferred: true },

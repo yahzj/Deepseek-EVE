@@ -1353,6 +1353,10 @@ export interface BattleState {
    * 导致"战中重载 ⇒ 保险凭空失效"的先例。
    */
   dc?: Record<string, { lockUntilMs?: number; used?: boolean }>;
+  /** 玩家苏生维修、危机启用与磁轨叠层必须随档，不因重载刷新。 */
+  meRebirths?: Record<string, { repairUntilMs: number; lastRepairAtMs: number; armorHealed: number; hullHealed: number }>
+  meCrisisActive?: Record<string, true>
+  meRailStacks?: Record<string, number>
   /** 本场损伤管制装置的启动次数（＝消耗的损管修理组件枚数；战报那一行读它） */
   dcKitsUsed?: number;
   /** ⚠ **已停用**（2026-09-11 改判：结束条件改'到达目标距离'，不再需要'进射程时刻 + 维持时长'）。

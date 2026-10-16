@@ -5,6 +5,7 @@
 
 export { battleWeaponCyclesOf } from './battleWeaponView'
 export type { GravekeeperStatus } from './gravekeeperCombat'
+export { crisisEffectsOf, playerGravekeeperSpecOf } from './gravekeeperGear'
 export { foeFamilyHpMulOf } from './foePower'
 export { shipActuallyDocked, shipOperationBlockReason } from './shipActionPolicy'
 export { changeShipBlockReason } from './shipyard'

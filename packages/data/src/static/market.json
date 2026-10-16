@@ -4778,6 +4778,18 @@
       {
         "key": "mod-alien-pressure-chamber", "kind": "module", "refId": "mod-alien-pressure-chamber",
         "rarity": "exotic", "basePrice": 2800000, "demandMultiplier": 0.25, "playerBuyable": false, "blackMarketBuyable": false
+      },
+      {
+        "key": "mod-gravekeeper-rebirth", "kind": "module", "refId": "mod-gravekeeper-rebirth",
+        "rarity": "exotic", "basePrice": 10000000, "demandMultiplier": 0.25, "playerBuyable": false, "blackMarketBuyable": false
+      },
+      {
+        "key": "mod-gravekeeper-crisis", "kind": "module", "refId": "mod-gravekeeper-crisis",
+        "rarity": "exotic", "basePrice": 10000000, "demandMultiplier": 0.25, "playerBuyable": false, "blackMarketBuyable": false
+      },
+      {
+        "key": "mod-gravekeeper-rail", "kind": "module", "refId": "mod-gravekeeper-rail",
+        "rarity": "exotic", "basePrice": 10000000, "demandMultiplier": 0.25, "playerBuyable": false, "blackMarketBuyable": false
       }
     ]
   }

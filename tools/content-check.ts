@@ -2832,7 +2832,7 @@ for (const m of MODULES) {
      */
     const hasDc = m.hullSaveKit !== undefined
     const kinds =
-      (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0) + (hasStealth ? 1 : 0) + (hasEcm ? 1 : 0) + (hasWeb ? 1 : 0) + (hasDc ? 1 : 0) + (hasCalibration ? 1 : 0) + (hasSpeedRamp ? 1 : 0)
+      (stabKeys > 0 ? 1 : 0) + (hasRof ? 1 : 0) + (hasHit ? 1 : 0) + (hasEva ? 1 : 0) + (hasRepair ? 1 : 0) + (hasWarp ? 1 : 0) + (hasStealth ? 1 : 0) + (hasEcm ? 1 : 0) + (hasWeb ? 1 : 0) + (hasDc ? 1 : 0) + (hasCalibration ? 1 : 0) + (hasSpeedRamp ? 1 : 0) + (m.crisisOverload ? 1 : 0)
     check(kinds === 1, `支援件 ${m.id} 必须且只能给一类效果（伤害系/射速/命中/闪避/修复/跃迁/隐身/射程压制/捕获网/损管）`)
     if (hasRepair) {
       // 修复系：装甲/结构修复值 ∈ [1, 100]、周期缺省 5 秒（2000~60_000 毫秒）、必须指明消耗的修理组件

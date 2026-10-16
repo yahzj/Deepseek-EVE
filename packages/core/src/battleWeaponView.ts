@@ -21,6 +21,8 @@ export interface BattleWeaponCycleView {
   percent: number
   state: 'ready' | 'reload' | 'no-ammo' | 'lost' | 'down' | 'waiting'
   damageType?: DamageType
+  railStacks?: number
+  railEnergyPct?: number
 }
 
 /** 同舰同型共享冷却的武器合并展示；射程直接读当前规格，不改变攻击节拍。 */
@@ -50,7 +52,8 @@ export function battleWeaponCyclesOf(battle: BattleState,
         src: weapon.src, count: drone ? 1 : Math.max(1, Math.floor(weapon.count ?? 1)),
         minM: weapon.minRangeM, maxM: weapon.maxRangeM, cycleMs, remainingMs,
         percent: state === 'ready' ? 100 : state === 'reload' ? Math.max(0, Math.min(100, (1 - remainingMs / cycleMs) * 100)) : 0,
-        state, ...(damageType ? { damageType } : {}), ...(drone ? { aliveCount } : {}) }
+        state, ...(damageType ? { damageType } : {}), ...(drone ? { aliveCount } : {}),
+        ...(weapon.railCharge ? { railStacks: battle.meRailStacks?.[key] ?? 0, railEnergyPct: (battle.meRailStacks?.[key] ?? 0) * weapon.railCharge.damageStepPct * 100 } : {}) }
       if (drone) {
         const model = JSON.stringify(['drone', weapon.artId ?? weapon.label, damageType, row.minM, row.maxM, cycleMs])
         const priority = aliveCount === 0 ? 3 : queued ? 2 : state === 'ready' ? 0 : 1
