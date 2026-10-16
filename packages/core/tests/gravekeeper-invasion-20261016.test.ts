@@ -6,7 +6,7 @@ import { advanceFoeRebirthRepair, gravekeeperResistsOf, syncFoeCapacitors, foeCa
 import { cleanBattle } from '../src/saveBattleClean'
 import { foeGunMaxRangeOf, foeGunPowerFactorOf } from '../src/foeRange'
 import { FOE_MOUNT_IDS } from '../src/foeMounts'
-import { weekendFoePoolOf, weekendFoeCardOf, WEEKEND_FLAGSHIP_POOL_HP, weekendFamilyForWindow, WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS, weekendFlagshipHpRemaining, weekendNoteFlagshipDamage, weekendFlagshipDefeated } from '../src/weekendEvent'
+import { weekendFoePoolOf, weekendFoeCardOf, WEEKEND_FLAGSHIP_POOL_HP, weekendFamilyForWindow, WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS, weekendFlagshipHpRemaining, weekendFlagshipDefeated } from '../src/weekendEvent'
 import type { AnomalyDef, SimContext } from '../src/types'
 import { weekendStartFlagshipBattle } from '../src/weekendLaunch'
 import { weekendApplyBattleOutcome, weekendFlagshipSpecOf } from '../src/weekendBattle'
@@ -259,18 +259,61 @@ describe('永陵挂载', () => {
     expect(state.weekendEvent?.family).toBe('D')
   })
   it('旗舰允许多场累计：第二场读取第一场剩余池，不要求单场击沉', () => {
-    const state = createInitialState({ nowWallMs: 0, seed: 11 })
+    const now = new Date(2026, 9, 16, 20).getTime()
+    let state = createInitialState({ nowWallMs: now, seed: 11 })
+    state.exploredGalaxies = [...ctx.galaxies.keys()]
+    state.standings.dsi = 100
+    state.standingsEarned = { dsi: 100 }
     state.weekendEvent = {
-      seq: 902, family: 'D', coreId: 'galaxy-maw', peripheryIds: [], startedAtWallMs: 0,
+      seq: 902, family: 'D', coreId: 'galaxy-maw', peripheryIds: [], startedAtWallMs: now,
       contributed: { 'galaxy-maw': 1 }, flagshipHpMax: WEEKEND_FLAGSHIP_POOL_HP,
     }
-    expect(weekendNoteFlagshipDamage(state.weekendEvent, 80_000, 1)).toBe(false)
+    const cardId = 'gravekeeper-flagship'
+    const hint = { galaxyId: 'galaxy-maw', kind: 'flagship' as const }
+    const first = weekendStartFlagshipBattle(state, ctx, now, [state.shipId])!
+    expect(first.foeOverride!.bossHp).toBe(300_000)
+    first.waveIdx = 3
+    state.gameMs = 10
+    advanceBattleFor(state, ctx, first, state.shipId, cardId)
+    const boss = Object.values(first.units).find(u => u.foeShipId === ship('eternal-tomb').id)!
+    boss.hp.s -= 80_000
+    expect(flagshipBattleLedger(first, [ship('eternal-tomb').id]).rawDmg).toBe(80_000)
+    weekendApplyBattleOutcome(state, ctx, cardId, false, now, first, hint)
     expect(weekendFlagshipDefeated(state.weekendEvent)).toBe(false)
     expect(weekendFlagshipHpRemaining(state.weekendEvent)).toBe(220_000)
-    expect(weekendNoteFlagshipDamage(state.weekendEvent, 70_000, 2)).toBe(false)
+    weekendApplyBattleOutcome(state, ctx, cardId, false, now, first, hint)
+    expect(state.weekendEvent!.flagshipHpDone).toBe(80_000)
+    expect(countWare(state, 'blackbox-d')).toBe(0)
+    state = loadSaveFile(serializeSaveFile(state)).state
+    state.gameMs = 20
+    const second = weekendStartFlagshipBattle(state, ctx, now, [state.shipId])!
+    expect(second.foeOverride!.bossHp).toBe(220_000)
+    expect(second.foeOverride!.bossHpLayers).toEqual({ s: 55_000, a: 90_000, h: 75_000 })
+    expect(second.foeOverride!.bossMaxLayers).toEqual({ s: 135_000, a: 90_000, h: 75_000 })
+    second.waveIdx = 3
+    state.gameMs = 30
+    advanceBattleFor(state, ctx, second, state.shipId, cardId)
+    const secondBoss = Object.values(second.units).find(u => u.foeShipId === ship('eternal-tomb').id)!
+    secondBoss.hp = { s: 0, a: 75_000, h: 75_000 }
+    expect(flagshipBattleLedger(second, [ship('eternal-tomb').id]).rawDmg).toBe(70_000)
+    weekendApplyBattleOutcome(state, ctx, cardId, false, now, second, hint)
     expect(weekendFlagshipHpRemaining(state.weekendEvent)).toBe(150_000)
-    expect(weekendNoteFlagshipDamage(state.weekendEvent, 150_000, 3)).toBe(true)
-    expect(weekendFlagshipDefeated(state.weekendEvent)).toBe(true)
+    expect(countWare(state, 'blackbox-d')).toBe(0)
+    state.gameMs = 40
+    const third = weekendStartFlagshipBattle(state, ctx, now, [state.shipId])!
+    expect(third.foeOverride!.bossHpLayers).toEqual({ s: 0, a: 75_000, h: 75_000 })
+    third.waveIdx = 3
+    state.gameMs = 50
+    advanceBattleFor(state, ctx, third, state.shipId, cardId)
+    const thirdSpecs = activeFoeSpecsOf(applyFoeOverride(ctx.anomalies.get(cardId)!, third.foeOverride!), bal, 3)
+    const thirdBoss = thirdSpecs.find(f => f.foeShipId === ship('eternal-tomb').id)!
+    applyFoeUnitDamage(third, thirdBoss, 1e9, 'plasma')
+    expect(flagshipBattleLedger(third, [ship('eternal-tomb').id]).rawDmg).toBe(150_000)
+    weekendApplyBattleOutcome(state, ctx, cardId, false, now, third, hint)
+    expect(state.weekendEvent!.flagshipHpDone).toBe(300_000)
+    expect(state.weekendEvent!.flagshipDown).toBe('player')
+    expect(third.bossDownAtMs).toBeDefined()
+    expect(countWare(state, 'blackbox-d')).toBe(1)
   })
   it('未命中的武器不增加蓄能次数，也不误更新其他武器计数', () => {
     const state=createInitialState({nowWallMs:0,seed:11})
