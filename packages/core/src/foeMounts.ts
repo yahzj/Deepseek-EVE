@@ -104,6 +104,7 @@ export const FOE_MOUNT_IDS = {
   dMausoleumArmor: 'foe-mount-d-mausoleum-armor',
   dCoatingArmor: 'foe-mount-d-coating-armor',
   dShieldCapacitor: 'foe-mount-d-shield-capacitor',
+  dReconstruction: 'foe-mount-d-reconstruction',
 } as const
 
 /** 全部挂载件（键 = id；`FoeMountId` 联合类型保证穷尽） */
@@ -384,7 +385,13 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     id: FOE_MOUNT_IDS.dShieldCapacitor,
     name: '护盾蓄能装置',
     shieldCapacitor: { rangeMul: enemyParameterOf(foeMountsParameters, 'foe-mount-d-shield-capacitor', 'shieldCapacitor_rangeMul'), reloadMul: enemyParameterOf(foeMountsParameters, 'foe-mount-d-shield-capacitor', 'shieldCapacitor_reloadMul'), damageMul: enemyParameterOf(foeMountsParameters, 'foe-mount-d-shield-capacitor', 'shieldCapacitor_damageMul') },
-    note: '本场护盾首次归零后永久启动；全部武器射程提高50%，每次成功攻击后攻击间隔乘1.1、伤害乘1.15，无上限。',
+    note: '船长2026-10-16确认：空盾蓄能的伤害增幅仍按乘法叠层，伤害和间隔倍率读取本件静态参数；不改射程与启动规则。',
+  },
+  [FOE_MOUNT_IDS.dReconstruction]: {
+    id: FOE_MOUNT_IDS.dReconstruction,
+    name: '陵寝重构协议',
+    reviveEscort: { everyMs: enemyParameterOf(foeMountsParameters, 'foe-mount-d-reconstruction', 'reviveEscort_everyMs'), all: true },
+    note: '船长2026-10-16确认：定期重构本波全部已阵亡友舰，复用现有满血支援入场；不跨波、不复制存活舰，永陵被毁后停止。',
   },
 }
 

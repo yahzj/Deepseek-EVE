@@ -174,7 +174,7 @@ describe('永陵挂载', () => {
     syncFoeCapacitors(b,[foe])
     expect(b.foeShieldCapacitorActive![foe.tag]).toBe(true)
     for(let i=0;i<40;i++) noteFoeCapacitorAttack(b,foe,0)
-    expect(foeCapacitorMultiplierOf(b,foe,0,'damageMul')).toBeCloseTo(1.15**40,4)
+    expect(foeCapacitorMultiplierOf(b,foe,0,'damageMul')).toBeCloseTo(1.3**40,4)
     expect(foeCapacitorMultiplierOf(b,foe,'pd','damageMul')).toBe(1)
   })
   it('真引擎八炮齐射只叠一次，下一轮间隔立即乘1.1，同齐射不偷吃新增伤害', () => {

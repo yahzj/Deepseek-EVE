@@ -368,13 +368,13 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       hp,
       /**
        * **层位抗性**（2026-09-15 船长：「我现暂时只打给 **C 族**添加**全血条 25% 爆炸抗性**」）：
-       * 从**舰级**读（`FoeShipDef.shieldResist / armorResist / hullResist`；三条都缺省 ⇒ `{}`，
+       * 从**舰级**读，护盾允许编成条目按伤害类型覆写；三条都缺省 ⇒ `{}`，
        * 既有舰级零行为变化）。与敌机群那条装配口径一致（同 `FoeDroneDef.defense` 的展开写法）。
        * ⚠ 抗性**可为负**（2026-09-27 船长令）：`applyDamage` 夹 `RESIST_FLOOR(−0.9) ~ 0.9`，
        * 所以这里传负数**会**变成"易伤"（该层受额外伤害，最多 ×1.9）。
        */
       resists: {
-        ...(ship.shieldResist ? { shield: ship.shieldResist } : {}),
+        ...(ship.shieldResist || u.slot.shieldResist ? { shield: { ...(ship.shieldResist ?? {}), ...(u.slot.shieldResist ?? {}) } } : {}),
         ...(ship.armorResist || mount.foeMausoleumArmor ? { armor: { ...(ship.armorResist ?? {}), ...(mount.foeMausoleumArmor ? { kinetic: mount.foeMausoleumArmor.resistPct, explosive: mount.foeMausoleumArmor.resistPct, plasma: mount.foeMausoleumArmor.resistPct } : {}) } } : {}),
         ...(ship.hullResist || mount.foeMausoleumArmor ? { hull: { ...(ship.hullResist ?? {}), ...(mount.foeMausoleumArmor ? { kinetic: mount.foeMausoleumArmor.resistPct, explosive: mount.foeMausoleumArmor.resistPct, plasma: mount.foeMausoleumArmor.resistPct } : {}) } } : {}),
       },
@@ -727,11 +727,13 @@ export function resolveFoeRevive(
   const config = summon ?? summoner.foeReviveEscort
   if (!config || summon && !summoner.foeSummonTemplate) return
   if (summon && b.ended !== null) return
+  if (summoner.foeReviveEscort?.all && b.ended !== null) return
   const rt = b.units[summoner.tag]
   if (!rt || (rt.hp.s <= 0 && rt.hp.a <= 0 && rt.hp.h <= 0)) return
   const everyMs = Math.max(1_000, Math.round(config.everyMs))
   const activeClock = config.activeClock === true
-  const clock = activeClock ? b.foeAbilityClocks?.[summoner.tag] ?? 0 : nowMs
+  const clock = activeClock ? b.foeAbilityClocks?.[summoner.tag] ?? 0
+    : summoner.foeReviveEscort?.all ? b.lastTickGameMs : nowMs
   if (b.foeReviveAtMs === undefined) b.foeReviveAtMs = activeClock ? everyMs : (rt.enteredAtMs ?? b.startedAtGameMs) + everyMs
   if (clock < b.foeReviveAtMs) return
   /** 到点 ⇒ 推进一格（大步长/离线补算一格一格来，不在一次推进里连刷） */
@@ -795,7 +797,7 @@ export function resolveFoeRevive(
    *   （= 阵亡且槽位空着）就**优先占一个名额**（按名单顺序取）；取完再在**剩下的池子**里随机补足；
    *   它活着 / 已补进场（不在池子里）⇒ 名额回落到随机（与"死一个补一个"的上限口径一致）。
    */
-  const want = Math.max(1, Math.round(revive.count ?? 1))
+  const want = revive.all === true ? dead.length : Math.max(1, Math.round(revive.count ?? 1))
   const room = curFoes.length - aliveSlots.size
   const quota = Math.min(want, room, dead.length)
   if (quota <= 0) return
@@ -820,8 +822,8 @@ export function resolveFoeRevive(
     const spec: UnitSpec = { ...pick, tag: `sup${n}-${pick.tag}` }
     seedUnit(b, spec, {
       enterReload: true,
-      // 旧H维持全局入场时刻；C有效时钟按实际推进拍入场，离线不会推迟到整个预算末尾。
-      arrivedAtMs: activeClock ? b.lastTickGameMs : state.gameMs,
+      // 旧H维持全局入场时刻；有效时钟或全部重构按实际推进拍入场，不推迟到预算末尾。
+      arrivedAtMs: activeClock || revive.all ? b.lastTickGameMs : state.gameMs,
       ...(b.wormhole ? { foePhaseMs: WORMHOLE_FOE_VOLLEY_STAGGER_MS } : {}),
     })
     // 随新单位补建机群池与修理账本（与波次转场同款；没挂那两件的单位一个键都不建）

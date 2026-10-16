@@ -83,6 +83,8 @@ export function mountEffectText(id: string): string | null {
     return tr('ui.foeIntro.103', { p1: String(def.supportCall.delaySec) })
   }
   if (def.reviveEscort) {
+    // ⟪文案调整 2026-10-16⟫ 永陵重构全体与墨潮定额复活分开，间隔读取同一参数。
+    if (def.reviveEscort.all) return tr('ui.gravekeeperRetune.001', { p1: Math.round(def.reviveEscort.everyMs / 1000) })
     // ⟪文案调整 2026-10-08⟫ 墨潮手册同步现有两艘与干扰舰优先规则。
     return tr('ui.foeIntro.104', { p1: String(Math.round(def.reviveEscort.everyMs / 1000)), p2: def.reviveEscort.count ?? 1 })
   }
@@ -252,8 +254,9 @@ export function briefShipsOf(anomaly: AnomalyDef | null | undefined): FoeBriefLi
   const slots = anomaly?.ships ?? []
   const seen = new Map<string, { ship: FoeShipDef; count: number; main: boolean }>()
   for (const s of slots) {
-    const ship = s?.ship
-    if (!ship) continue
+    const base = s?.ship
+    if (!base) continue
+    const ship = s.mounts === undefined ? base : { ...base, mounts: s.mounts }
     const hit = seen.get(ship.id)
     if (hit) {
       hit.count += s.count ?? 1

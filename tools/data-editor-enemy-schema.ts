@@ -45,7 +45,8 @@ export function enemyFieldOf(field: EnemySourceField): NumericField {
   const unit = percent ? '%' : /Ms$/.test(last) ? 'ms' : /Seconds$|Sec$|^sec$/.test(last) ? 's' : /RangeM$|MinM$|MaxM$|distanceM|rangeDownM/.test(last) ? 'm' : /Mul$|Ratio$|^mul$/.test(last) ? 'x' : /Isk$/.test(last) ? '信用点' : ''
   const section = /^ships\.(\d+)\./.exec(path) ?? /^drones\.(\d+)\./.exec(path)
   const group = section ? `${path.startsWith('ships') ? '编队' : '机群'}条目 ${Number(section[1]) + 1}` : path.includes('.') ? GROUPS[path.split('.')[0]!] ?? path.split('.')[0]! : '基础参数'
-  const label = `${path.includes('Resist') ? `${GROUPS[path.split('.')[0]!] ?? path.split('.')[0]} · ` : ''}${LABELS[last] ?? last}${operand ? ` · 公式输入${Number(operand[1]) + 1}` : ''}`
+  const resistGroup = path.split('.').find(part => part.endsWith('Resist'))
+  const label = `${resistGroup ? `${GROUPS[resistGroup] ?? resistGroup} · ` : ''}${LABELS[last] ?? last}${operand ? ` · 公式输入${Number(operand[1]) + 1}` : ''}`
   return { path: field.key, label, group, unit, percent, integer, min: /Resist/.test(path) ? -0.9 : zeroAllowed ? 0 : 0.000001, max,
     writable: !['hullClassTier', 'lairLevel'].includes(last), readonlyReason: `来源：${field.source}\n${path} = ${field.expression}${operand ? '\n原公式保留；编辑的是该数字输入，不是最终倍率' : ''}` }
 }

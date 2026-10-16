@@ -4417,7 +4417,7 @@ for (const m of MODULES) {
         /**
          * ⑦ **支援舰船召唤装置归属**（2026-09-25 船长令「给入侵母舰添加类似D族挂载件的独立挂载件，
          *    只不过改为复活被摧毁的友军……」）：这件是**通用件**，但**只允许**挂在
-         *    `ink-flagship`（H 族入侵旗舰卡）的那条**母舰条目**上——
+         *    已确认的入侵旗舰条目上，旧墨潮定额与永陵全部复活各自校验——
          *    ① 舰级一概不许挂（写舰级会波及同舰级的其它卡）；
          *    ② 其余任何卡的条目也不许挂（免得普通悬赏莫名其妙开始复活）。
          */
@@ -4443,11 +4443,14 @@ for (const m of MODULES) {
               }
             }
             if (eff.foeReviveEscort === undefined) continue
-            const validInk = a.id === 'ink-flagship' && sl.ship.id === 'foe-h-ink-flagship'
-            if (!validInk) {
+            const validInk = a.id === 'ink-flagship' && sl.ship.id === 'foe-h-ink-flagship' && eff.foeReviveEscort.all === undefined
+            const validEternal = a.id === 'gravekeeper-flagship' && sl.ship.id === 'foe-d-invasion-eternal-tomb' &&
+              eff.foeReviveEscort.all === true && eff.foeReviveEscort.everyMs === 60000 && eff.foeReviveEscort.count === undefined &&
+              (sl.mounts ?? []).includes(FOE_MOUNT_IDS.dReconstruction)
+            if (!validInk && !validEternal) {
               bad.push(
                 `卡 ${a.id} 的条目 ${sl.ship.name}（${sl.ship.id}）挂了支援舰船召唤装置——` +
-                  `复活仅允许墨潮入侵母舰`,
+                  `复活仅允许已确认的墨潮入侵母舰或永陵旗舰配置`,
               )
             }
           }

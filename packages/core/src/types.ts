@@ -356,6 +356,7 @@ export type FoeMountId =
   | 'foe-mount-d-mausoleum-armor'
   | 'foe-mount-d-coating-armor'
   | 'foe-mount-d-shield-capacitor'
+  | 'foe-mount-d-reconstruction'
   | 'foe-mount-c-acid-charge'
   | 'foe-mount-c-acid-shield'
   | 'foe-mount-c-hiveback-charge'
@@ -600,6 +601,8 @@ export interface FoeMountDef {
    */
   reviveEscort?: {
     everyMs: number
+    /** 全部复活本波空槽中的阵亡友舰；缺省沿用count名额。 */
+    all?: true
     /** 每次到点补几艘（缺省 1；2026-09-26 H 族入侵母舰 = 2） */
     count?: number
     /** 优先复活名单（舰 id；名单内且处于阵亡状态者必定占名额——2026-09-26 加：墨潮干扰舰） */
@@ -2523,6 +2526,8 @@ export interface FoeDroneSlot {
 export interface FoeShipSlot {
   /** 引用的舰级（直接引用配置表里的对象，保证"改一艘船只有一处"） */
   ship: FoeShipDef;
+  /** 本卡护盾抗性按伤害类型覆写，不修改共享舰级或其他血层。 */
+  shieldResist?: DamageResists;
   /** 派生战斗卡的绝对三层血量；共享旗舰池覆盖最终族格加成，不写静态参数或个人存档。 */
   hpOverride?: { s: number; a: number; h: number };
   /** **期望作战距离覆写**（米；条目级优先于舰级，见 `FoeShipDef.desireRangeM`） */

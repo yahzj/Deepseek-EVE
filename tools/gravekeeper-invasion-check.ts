@@ -8,6 +8,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { buildSimContext } from '@whale/data'
 import { addShipToFleet, createInitialState, serializeSaveFile, fitModule, fleetDefOf, fittedCpuUsed, cpuBudgetOf } from '@whale/core'
+import { FOE_MOUNTS, FOE_MOUNT_IDS } from '@whale/core'
 import { advanceBattleFor, createFoeSpecs, foeStrengthOf, foeThreatOfAnomaly, startFleetBattleFor, applyFoeOverride } from '../packages/core/src/combat'
 import type { AnomalyDef, SimContext } from '../packages/core/src/types'
 import { weekendStartFlagshipBattle } from '../packages/core/src/weekendLaunch'
@@ -124,7 +125,9 @@ if (process.argv.includes('--audit')) {
     '- 碑卫陵墓装甲：装甲和结构容量各乘0.5，两层全抗75%；护盾不变。',
     '- 守誓同时挂载苏生与陵墓装甲。',
     '- 永陵镀层：实际装甲损失后每层装甲全抗增加5个百分点，各层5秒，最高90%；护盾、结构无该加成。',
-    '- 永陵蓄能：空盾后本场永久启用，射程加50%；每次成功攻击后，该武器伤害乘1.15、间隔乘1.1，无上限。',
+    `- 永陵蓄能：空盾后本场永久启用，射程加${(FOE_MOUNTS[FOE_MOUNT_IDS.dShieldCapacitor].shieldCapacitor!.rangeMul - 1) * 100}%；每次成功攻击后，该武器伤害乘${FOE_MOUNTS[FOE_MOUNT_IDS.dShieldCapacitor].shieldCapacitor!.damageMul}、间隔乘${FOE_MOUNTS[FOE_MOUNT_IDS.dShieldCapacitor].shieldCapacitor!.reloadMul}，无上限。`,
+    `- 永陵陵寝重构协议：本波入场后每${FOE_MOUNTS[FOE_MOUNT_IDS.dReconstruction].reviveEscort!.everyMs / 1000}秒满血复活本波全部阵亡友舰，永陵被毁后停止；不跨波、不超编。`,
+    '- 入侵护盾动能抗性与速度修正从各编成条目读取；不影响普通守墓卡，复活舰继承本场配置。',
     '- 其他单位无额外基础层抗；静滞卫舰保留受击远距观瞄，王座舰保留支援挂载。', '',
     '## 通用武器与战术', '',
     '- 全部为能量主系必中光束；巡哨与守备为能量80%/动能20%，主力与旗舰为能量60%/动能40%。混伤只拆伤害，不额外掷动能命中。',

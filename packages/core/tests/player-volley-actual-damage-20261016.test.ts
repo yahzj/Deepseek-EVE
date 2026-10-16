@@ -231,7 +231,7 @@ describe('实际承伤的真引擎路径', () => {
     const card: AnomalyDef = { ...base, id: 'eternal-actual-cap', waves: undefined, ships: [{ ...slot, wave: 0 }] }
     const hull = { ...ctx.ships.get('sh-thresher')!, shieldHp: 0, armorHp: 0, hullHp: 10000, hullResist: { plasma: .9, kinetic: .9 } }
     const context: SimContext = { ...ctx, anomalies: new Map(ctx.anomalies).set(card.id, card), ships: new Map(ctx.ships).set(hull.id, hull) }
-    const rows = [20, 25, 30, 40].map(n => {
+    const rows = [10, 12, 15, 20].map(n => {
       const state = createInitialState({ nowWallMs: 0, seed: 11 })
       state.shipId = addShipToFleet(state, hull.id)
       const b = startBattleFor(state, context, state.shipId, card.id, 0, 5000)!
@@ -247,9 +247,9 @@ describe('实际承伤的真引擎路径', () => {
       expect(b.stats.foeShots).toBe(8)
       return b.meVolleyDmg!.player!
     })
-    expect(rows[0]).toBeCloseTo(1268.3, 6)
-    expect(rows[1]).toBeCloseTo(2551.1, 6)
-    expect(rows[2]).toBeCloseTo(5131.1, 6)
+    expect(rows[0]).toBeCloseTo(1068.3, 6)
+    expect(rows[1]).toBeCloseTo(1805.5, 6)
+    expect(rows[2]).toBeCloseTo(3966.7, 6)
     expect(rows[3]).toBeCloseTo(8000, 6)
   })
 })

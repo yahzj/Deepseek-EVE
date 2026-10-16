@@ -24,6 +24,7 @@ export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  'ui.gravekeeperRetune.001': { zh: '定期重构本波已阵亡的友方舰船。间隔{p1}秒，满血复活全部已阵亡友舰；永陵被击毁后停止。', en: '', enDeferred: true },
   'mod.gravekeeperGear.001': { zh: '苏生损管装置', en: '', enDeferred: true },
   'mod.gravekeeperGear.002': { zh: '在致命攻击后维持结构底线，并持续修复装甲与结构。每场战斗仅触发一次。', en: '', enDeferred: true },
   'mod.gravekeeperGear.003': { zh: '危机超载协议', en: '', enDeferred: true },

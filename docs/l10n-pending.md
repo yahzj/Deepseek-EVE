@@ -1,5 +1,14 @@
 # 待英文本地化记录
 
+## 守墓入侵调参（2026-10-16确认）
+
+船长确认`docs/design/gravekeeper-invasion-retune-20261016.md`，未授权开始英文。`ui.gravekeeperRetune.001`为陵寝重构的已确认定性说明与读取参数的复活间隔/范围，`FOE_MOUNTS.foe-mount-d-reconstruction`为新挂载名「陵寝重构协议」；两处均待本地化，英文回退中文，不修改旧英文。
+
+| ID / 范围 | 中文依据 | 状态 |
+|---|---|---|
+| `ui.gravekeeperRetune.001` | 陵寝重构协议说明与复活间隔/范围 | 待本地化 |
+| 挂载目录名称 foe-mount-d-reconstruction | 陵寝重构协议 | 待本地化 |
+
 ## 守墓入侵掉落装备（2026-10-16）
 
 船长逐条裁定三件效果并要求「开始实现」，未授权准备英文。工作稿`docs/design/gravekeeper-invasion-gear-20261016.md`；`mod.gravekeeperGear.001`至`.006`为三件名称/定性说明，`ui.gravekeeperGear.001`至`.009`为苏生、危机炮台/无人机分支与磁轨叠层规格/当前层数，均登记待本地化、唯一表使用`enDeferred`，英文覆盖走中文回退，不修改旧英文。

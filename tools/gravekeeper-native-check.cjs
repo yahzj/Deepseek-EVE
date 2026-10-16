@@ -50,6 +50,8 @@ if(!process.argv.includes('--smoke-child')) {
     await until('!!document.querySelector(".app-battle-screen:not(.is-report)")')
     const names=await js('document.querySelector(".app-battle-screen").textContent')
     assert(names.includes('永陵'))
+    await js(`(()=>{const el=[...document.querySelectorAll('.app-bts-chip.is-foe[data-tip-hover]')].find(el=>el.textContent.includes('敌挂载'));if(!el)throw new Error('缺少敌方挂载入口');const r=el.getBoundingClientRect();el.dispatchEvent(new MouseEvent('mouseover',{bubbles:true,clientX:r.x+r.width/2,clientY:r.y+r.height/2}));return true})()`)
+    await until(`!![...document.querySelectorAll('.app-tip [data-battle-mount]')].find(el=>el.textContent.includes('陵寝重构协议'))`)
     if(gear) {
       assert(names.includes('危机超载协议'))
       assert(await js('!!document.querySelector("[data-battle-weapon-cycle][aria-label*=磁轨蓄能炮]")'))
@@ -58,6 +60,7 @@ if(!process.argv.includes('--smoke-child')) {
     await sleep(500)
     const before=JSON.parse(fs.readFileSync(path.join(process.env.WHALE_PERF_USERDATA,'save.json'),'utf8')).state.encounter.battle
     assert(before&&before.foeOverride.bossHpMax===300000)
+    assert(Number.isFinite(before.foeReviveAtMs))
     await win.webContents.reload()
     await until('!!document.querySelector(".app-root")')
     await sleep(500)
@@ -65,6 +68,7 @@ if(!process.argv.includes('--smoke-child')) {
     await sleep(500)
     const after=JSON.parse(fs.readFileSync(path.join(process.env.WHALE_PERF_USERDATA,'save.json'),'utf8')).state.encounter.battle
     assert(after&&after.lastTickGameMs>=before.lastTickGameMs)
+    assert.equal(after.foeReviveAtMs,before.foeReviveAtMs)
     assert.equal(errors.length,0,errors.join('\n'))
     console.log(JSON.stringify({ok:true,pid:process.pid,flagshipVisible:true,reloadContinues:true,runtimeErrors:0}))
     app.exit(0)

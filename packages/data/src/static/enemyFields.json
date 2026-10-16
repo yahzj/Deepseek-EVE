@@ -14097,6 +14097,10 @@
       "category": "D",
       "source": "packages/data/src/wormholeFoes.ts",
       "fields": [
+        { "key": "ships_0_speedMul", "sourcePath": "ships.0.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_0_shieldResist_kinetic", "sourcePath": "ships.0.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_1_speedMul", "sourcePath": "ships.1.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_1_shieldResist_kinetic", "sourcePath": "ships.1.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
         {
           "key": "threat",
           "sourcePath": "threat",
@@ -14242,6 +14246,12 @@
       "category": "D",
       "source": "packages/data/src/wormholeFoes.ts",
       "fields": [
+        { "key": "ships_0_speedMul", "sourcePath": "ships.0.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_0_shieldResist_kinetic", "sourcePath": "ships.0.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_1_speedMul", "sourcePath": "ships.1.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_1_shieldResist_kinetic", "sourcePath": "ships.1.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_2_speedMul", "sourcePath": "ships.2.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_2_shieldResist_kinetic", "sourcePath": "ships.2.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
         {
           "key": "threat",
           "sourcePath": "threat",
@@ -14418,6 +14428,16 @@
       "category": "D",
       "source": "packages/data/src/wormholeFoes.ts",
       "fields": [
+        { "key": "ships_0_speedMul", "sourcePath": "ships.0.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_0_shieldResist_kinetic", "sourcePath": "ships.0.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_1_speedMul", "sourcePath": "ships.1.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_1_shieldResist_kinetic", "sourcePath": "ships.1.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_2_speedMul", "sourcePath": "ships.2.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_2_shieldResist_kinetic", "sourcePath": "ships.2.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_3_speedMul", "sourcePath": "ships.3.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_3_shieldResist_kinetic", "sourcePath": "ships.3.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_4_speedMul", "sourcePath": "ships.4.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_4_shieldResist_kinetic", "sourcePath": "ships.4.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
         {
           "key": "threat",
           "sourcePath": "threat",
@@ -14668,6 +14688,22 @@
       "category": "D",
       "source": "packages/data/src/wormholeFoes.ts",
       "fields": [
+        { "key": "ships_0_speedMul", "sourcePath": "ships.0.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_0_shieldResist_kinetic", "sourcePath": "ships.0.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_1_speedMul", "sourcePath": "ships.1.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_1_shieldResist_kinetic", "sourcePath": "ships.1.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_2_speedMul", "sourcePath": "ships.2.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_2_shieldResist_kinetic", "sourcePath": "ships.2.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_3_speedMul", "sourcePath": "ships.3.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_3_shieldResist_kinetic", "sourcePath": "ships.3.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_4_speedMul", "sourcePath": "ships.4.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_4_shieldResist_kinetic", "sourcePath": "ships.4.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_5_speedMul", "sourcePath": "ships.5.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_5_shieldResist_kinetic", "sourcePath": "ships.5.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_6_speedMul", "sourcePath": "ships.6.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_6_shieldResist_kinetic", "sourcePath": "ships.6.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_7_speedMul", "sourcePath": "ships.7.speedMul", "expression": "1.2", "source": "packages/data/src/wormholeFoes.ts" },
+        { "key": "ships_7_shieldResist_kinetic", "sourcePath": "ships.7.shieldResist.kinetic", "expression": "0.3", "source": "packages/data/src/wormholeFoes.ts" },
         {
           "key": "threat",
           "sourcePath": "threat",
@@ -14998,7 +15034,7 @@
           "name": "永陵级",
           "id": "foe-d-invasion-eternal-tomb",
           "type": "ships",
-          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+          "note": "挂载条目替换，保留镀层/蓄能并加装陵寝重构；血量与火力来源为本条目倍率。"
         },
         {
           "index": 6,
@@ -16214,7 +16250,7 @@
         {
           "key": "shieldCapacitor_damageMul",
           "sourcePath": "shieldCapacitor.damageMul",
-          "expression": "1.15",
+          "expression": "1.3",
           "source": "packages/core/src/foeMounts.ts"
         }
       ],
@@ -16225,6 +16261,19 @@
           "id": "gravekeeper-flagship",
           "name": "守墓者永陵舰队"
         }
+      ]
+    },
+    {
+      "id": "foe-mount-d-reconstruction",
+      "name": "陵寝重构协议",
+      "category": "D",
+      "source": "packages/core/src/foeMounts.ts",
+      "fields": [
+        { "key": "reviveEscort_everyMs", "sourcePath": "reviveEscort.everyMs", "expression": "60000", "source": "packages/core/src/foeMounts.ts" }
+      ],
+      "entries": [],
+      "references": [
+        { "table": "invasionFleets", "id": "gravekeeper-flagship", "name": "守墓者永陵舰队" }
       ]
     }
   ]

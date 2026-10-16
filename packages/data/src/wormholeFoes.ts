@@ -967,6 +967,8 @@ function gravekeeperInvasionCard(id: string, nameId: string, roster: readonly Fo
   const dmgMix = { plasma: read('dmgMix_plasma'), kinetic: read('dmgMix_kinetic') }
   const ships = roster.map((ship, i) => ({
     ship, count: read(`ships_${i}_count`), wave: read(`ships_${i}_wave`),
+    speedMul: read(`ships_${i}_speedMul`), shieldResist: { kinetic: read(`ships_${i}_shieldResist_kinetic`) },
+    ...(ship.id === FOE_D_INVASION_ETERNAL_TOMB.id ? { mounts: [...(ship.mounts ?? []), FOE_MOUNT_IDS.dReconstruction] } : {}),
     hpMul: read(`ships_${i}_hpMul`), dmgMul: read(`ships_${i}_dmgMul`), dmgMix,
   }))
   const waveCount = 1 + Math.max(...ships.map(slot => slot.wave))
