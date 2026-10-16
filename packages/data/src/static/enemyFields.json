@@ -5342,7 +5342,7 @@
         {
           "key": "rangeMinM",
           "sourcePath": "rangeMinM",
-          "expression": "500",
+          "expression": "100",
           "source": "packages/data/src/foe-ships.ts"
         },
         {
@@ -5475,7 +5475,7 @@
         {
           "key": "rangeMinM",
           "sourcePath": "rangeMinM",
-          "expression": "1000",
+          "expression": "100",
           "source": "packages/data/src/foe-ships.ts"
         },
         {
@@ -5520,6 +5520,11 @@
           "table": "invasionFleets",
           "id": "gravekeeper-main",
           "name": "守墓者守誓舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-flagship",
+          "name": "守墓者永陵舰队"
         }
       ]
     },
@@ -5598,7 +5603,7 @@
         {
           "key": "rangeMinM",
           "sourcePath": "rangeMinM",
-          "expression": "1800",
+          "expression": "100",
           "source": "packages/data/src/foe-ships.ts"
         },
         {
@@ -5721,7 +5726,7 @@
         {
           "key": "rangeMinM",
           "sourcePath": "rangeMinM",
-          "expression": "2000",
+          "expression": "100",
           "source": "packages/data/src/foe-ships.ts"
         },
         {
@@ -14707,7 +14712,7 @@
         {
           "key": "threat",
           "sourcePath": "threat",
-          "expression": "196",
+          "expression": "191",
           "source": "packages/data/src/wormholeFoes.ts"
         },
         {
@@ -15038,15 +15043,15 @@
         },
         {
           "index": 6,
-          "name": "守墓王座舰",
-          "id": "foe-d-throne",
+          "name": "守誓级",
+          "id": "foe-d-invasion-oathkeeper",
           "type": "ships",
           "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
         },
         {
           "index": 7,
-          "name": "静滞卫舰",
-          "id": "foe-d-stasis",
+          "name": "碑卫级",
+          "id": "foe-d-invasion-bastion",
           "type": "ships",
           "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
         }

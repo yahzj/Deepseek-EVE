@@ -62,7 +62,7 @@ describe('守墓入侵内容', () => {
       ['gravekeeper-drift',91,[['巡陵级','巡陵级','巡陵级'],['守墓长舰','守墓长舰']]],
       ['gravekeeper-line',99,[['巡陵级','巡陵级'],['碑卫级','碑卫级','静滞卫舰']]],
       ['gravekeeper-main',153,[['碑卫级','巡陵级','巡陵级'],['守墓长舰','守墓长舰'],['守誓级','静滞卫舰','静滞卫舰']]],
-      ['gravekeeper-flagship',196,[['巡陵级','巡陵级','巡陵级'],['守墓王座舰','静滞卫舰','静滞卫舰'],['守誓级','守墓王座舰'],['永陵级','守墓王座舰','静滞卫舰','静滞卫舰']]],
+      ['gravekeeper-flagship',191,[['巡陵级','巡陵级','巡陵级'],['守墓王座舰','静滞卫舰','静滞卫舰'],['守誓级','守墓王座舰'],['永陵级','守誓级','碑卫级','碑卫级']]],
     ] as const
     for (const [id, threat, formation] of cases) {
       const card = ctx.anomalies.get(id)!
@@ -73,16 +73,17 @@ describe('守墓入侵内容', () => {
       expect(card.ships!.every(slot=>JSON.stringify(slot.dmgMix)===JSON.stringify(card.dmgMix))).toBe(true)
     }
   })
-  it('永陵参照墨潮厚血比例，196由真实预算反算；满池/残池不再吃卡倍率', () => {
+  it('永陵参照墨潮厚血比例，末波换编后191由真实预算反算；满池/残池不再吃卡倍率', () => {
     const card=ctx.anomalies.get('gravekeeper-flagship')!
     expect(ship('eternal-tomb').hp).toBe(FOE_SHIPS.find(s=>s.id==='foe-h-ink-flagship')!.hp)
     const natural=foeStrengthOf(card,bal)
     const budget=5*natural.x/(10*Math.sqrt(1.5))
-    expect(budget).toBeGreaterThan(foeHpOfThreat(195,bal))
-    expect(budget).toBeLessThanOrEqual(foeHpOfThreat(196,bal))
-    expect(natural.hp).toBeCloseTo(137661.099,3)
-    const throneSpecs=[1,2,3].map(i=>activeFoeSpecsOf(card,bal,i).find(s=>s.foeShipId==='foe-d-throne')!)
+    expect(budget).toBeGreaterThan(foeHpOfThreat(190,bal))
+    expect(budget).toBeLessThanOrEqual(foeHpOfThreat(191,bal))
+    expect(natural.hp).toBeCloseTo(134283.819,3)
+    const throneSpecs=[1,2].map(i=>activeFoeSpecsOf(card,bal,i).find(s=>s.foeShipId==='foe-d-throne')!)
     expect(throneSpecs.every(s=>s.foeSupportCall?.delaySec===20)).toBe(true)
+    expect(activeFoeSpecsOf(card,bal,3).some(s=>s.foeShipId==='foe-d-throne')).toBe(false)
     const full=applyFoeOverride(card,{strengthMul:2,bossShipId:ship('eternal-tomb').id,bossHp:300000,bossHpLayers:{s:135000,a:90000,h:75000}})
     const boss=activeFoeSpecsOf(full,bal,3).find(s=>s.foeShipId===ship('eternal-tomb').id)!
     expect(boss.hp).toEqual({s:135000,a:90000,h:75000})

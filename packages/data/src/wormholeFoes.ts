@@ -991,7 +991,7 @@ export const WEEKEND_GRAVEKEEPER_MAIN_CARD = gravekeeperInvasionCard('gravekeepe
 ])
 export const WEEKEND_GRAVEKEEPER_FLAGSHIP_CARD = gravekeeperInvasionCard('gravekeeper-flagship', 'ano.gravekeeper.004', [
   FOE_D_INVASION_CRUISER, FOE_D_THRONE, FOE_D_STASIS, FOE_D_INVASION_OATHKEEPER,
-  FOE_D_THRONE, FOE_D_INVASION_ETERNAL_TOMB, FOE_D_THRONE, FOE_D_STASIS,
+  FOE_D_THRONE, FOE_D_INVASION_ETERNAL_TOMB, FOE_D_INVASION_OATHKEEPER, FOE_D_INVASION_BASTION,
 ])
 
 /** 周末入侵·独立卡的 id（core 的 `weekendFoeCardOf` 按族路由到它们；**本表是唯一登记处**） */

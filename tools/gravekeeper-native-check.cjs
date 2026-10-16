@@ -21,6 +21,9 @@ if(!process.argv.includes('--smoke-child')) {
     const after=JSON.parse(fs.readFileSync(path.join(profile,'save.json'),'utf8')).state
     assert.equal(after.weekendEvent.family,'D')
     assert.equal(after.encounter.battle.foeOverride.bossHpMax,300000)
+    assert.equal(after.encounter.battle.foeOverride.threat,191)
+    assert.deepEqual(Object.values(after.encounter.battle.units).filter(unit=>unit.side==='foe'&&unit.tag.startsWith('w3-')).map(unit=>unit.foeShipId).sort(),
+      ['foe-d-invasion-eternal-tomb','foe-d-invasion-oathkeeper','foe-d-invasion-bastion','foe-d-invasion-bastion'].sort())
     if(gear) {
       assert.equal(after.encounter.battle.meCrisisActive.player,true)
       assert(after.encounter.battle.meRailStacks['player#0']>=3)

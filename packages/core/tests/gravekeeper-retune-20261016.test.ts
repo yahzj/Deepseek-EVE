@@ -51,16 +51,18 @@ function fixture() {
 }
 
 describe('守墓入侵隔离调参', () => {
-  it('静态表只增加入侵逐条目的速度和盾动抗，其他卡、裸舰与旧字段不变', () => {
+  it('静态表只增加入侵速度和盾动抗，后续确认的末波标签/四型近界精确单列', () => {
     const previous = JSON.parse(execFileSync('git', ['show', 'f8470a57:packages/data/src/static/invasionFleets.json'], { encoding: 'utf8' })) as typeof fleetParameters
+    previous.groups.parameters.find(row => row.id === 'gravekeeper-flagship')!.threat = 191
     const current = structuredClone(fleetParameters)
     for (const row of current.groups.parameters) {
       if (!ids.includes(row.id as typeof ids[number])) continue
       for (const key of Object.keys(row)) if (/^ships_\d+_(speedMul|shieldResist_kinetic)$/.test(key)) delete (row as Record<string, unknown>)[key]
     }
     expect(current).toEqual(previous)
-    expect(JSON.parse(readFileSync(new URL('../../data/src/static/foeShips.json', import.meta.url), 'utf8'))).toEqual(
-      JSON.parse(execFileSync('git', ['show', 'f8470a57:packages/data/src/static/foeShips.json'], { encoding: 'utf8' })))
+    const originalShips = JSON.parse(execFileSync('git', ['show', 'f8470a57:packages/data/src/static/foeShips.json'], { encoding: 'utf8' }))
+    for (const row of originalShips.groups.parameters) if (['foe-d-invasion-cruiser', 'foe-d-invasion-bastion', 'foe-d-invasion-oathkeeper', 'foe-d-invasion-eternal-tomb'].includes(row.id)) row.rangeMinM = 100
+    expect(JSON.parse(readFileSync(new URL('../../data/src/static/foeShips.json', import.meta.url), 'utf8'))).toEqual(originalShips)
   })
 
   it.each(ids)('%s每艘基础速度乘1.2，盾动抗30%，血量火力射程及期望不变', id => {
@@ -129,7 +131,9 @@ describe('陵寝重构协议', () => {
     expect(w.boss.foeReviveEscort).toEqual({ everyMs: 60000, all: true })
     expect(w.boss.foeCoatingArmor).toBeDefined()
     expect(w.boss.foeShieldCapacitor).toBeDefined()
-    expect(w.escorts.find(f => f.foeShipId === 'foe-d-throne')!.foeSupportCall).toBeDefined()
+    expect(activeFoeSpecsOf(w.card, bal, 1).find(f => f.foeShipId === 'foe-d-throne')!.foeSupportCall).toBeDefined()
+    expect(w.escorts.find(f => f.foeShipId === 'foe-d-invasion-oathkeeper')!.foeRebirthProtocol).toBeDefined()
+    expect(w.escorts.filter(f => f.foeShipId === 'foe-d-invasion-bastion')).toHaveLength(2)
     expect(FOE_MOUNTS[FOE_MOUNT_IDS.reviveEscort].reviveEscort).toEqual({ everyMs: 60000, count: 2, priorityShipIds: ['foe-h-ink-jammer'] })
   })
 
@@ -143,7 +147,7 @@ describe('陵寝重构协议', () => {
     expect(w.b.foeReviveCount).toBe(3)
     const supports = foesWithSupport(w.b, w.specs).filter(f => f.tag.startsWith('sup'))
     expect(supports).toHaveLength(3)
-    expect(supports.map(f => f.name).sort()).toEqual(['守墓王座舰', '静滞卫舰', '静滞卫舰'])
+    expect(supports.map(f => f.name).sort()).toEqual(['守誓级', '碑卫级', '碑卫级'].sort())
     for (const f of supports) {
       expect(w.b.units[f.tag]!.hp).toEqual(f.hp)
       expect(w.b.units[f.tag]!.enteredAtMs).toBe(160000)
@@ -275,7 +279,16 @@ describe('陵寝重构协议', () => {
     expect(b.ended).toBeNull()
     const supports = foesWithSupport(b, current).filter(f => f.tag.startsWith('sup'))
     for (const f of supports) applyFoeUnitDamage(b, f, 1e10, 'plasma')
+    const guarded = supports.find(f => f.foeRebirthProtocol)!
+    expect(b.foeRebirths?.[guarded.tag]).toBeDefined()
+    expect(b.units[guarded.tag]!.hp.h).toBeGreaterThanOrEqual(1)
     state.gameMs = 70020
+    advanceBattleFor(state, context, b, state.shipId, card.id)
+    expect(b.ended).toBeNull()
+    state.gameMs = 72000
+    advanceBattleFor(state, context, b, state.shipId, card.id)
+    for (const f of supports) applyFoeUnitDamage(b, f, 1e10, 'plasma')
+    state.gameMs = 72010
     advanceBattleFor(state, context, b, state.shipId, card.id)
     expect(b.ended).toBe('me')
     expect(specs.filter(f => f.foeReviveEscort)).toHaveLength(1)

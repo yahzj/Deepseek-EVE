@@ -61,7 +61,7 @@ if (process.argv.includes('--smoke-save') && /gravekeeper-gear-fixture\.(ts|js)$
   syncPlayerCrisis(b, [spec])
   for (let i = 0; i < 3; i++) noteRailAttack(b, spec, 0, spec.weapons[0]!.reloadMs)
   state.encounter = { ...state.encounter, active: true, shipId: state.shipId, galaxyId: 'galaxy-maw',
-    name: ctx.anomalies.get('gravekeeper-flagship')!.name, threat: 196, anomalyId: 'gravekeeper-flagship',
+    name: ctx.anomalies.get('gravekeeper-flagship')!.name, threat: ctx.anomalies.get('gravekeeper-flagship')!.threat, anomalyId: 'gravekeeper-flagship',
     origin: '入侵', invitedAtGameMs: 0, deadlineGameMs: 999999, battle: b }
   const output = resolve('tools/_ui-artifacts/gravekeeper-invasion')
   mkdirSync(output, { recursive: true })

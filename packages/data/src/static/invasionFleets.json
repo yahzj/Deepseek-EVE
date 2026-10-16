@@ -435,7 +435,7 @@
         "ships_6_shieldResist_kinetic": 0.3,
         "ships_7_speedMul": 1.2,
         "ships_7_shieldResist_kinetic": 0.3,
-        "threat": 196,
+        "threat": 191,
         "wreckThreat": 170,
         "dmgMix_plasma": 6,
         "dmgMix_kinetic": 4,
