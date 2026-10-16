@@ -61,7 +61,7 @@ describe('族循环锚点：按本地墙钟算（2026-10-02 修）', () => {
 
   it('④ 连续四期的族 = R / H / R / H（10-09 = 墨潮帮，不再连着出光环）', () => {
     const fams = [0, 1, 2, 3].map((n) => weekendFamilyForWindow(t0Of(n)))
-    expect(fams, '本批确认异形加入轮换').toEqual(['R', 'C', 'H', 'R'])
+    expect(fams, '守墓者追加到轮换末位，前三期保持').toEqual(['R', 'C', 'H', 'D'])
     expect(fams[0]).toBe(WEEKEND_FAMILY_ROTATION[0])
     expect(fams[1]).toBe(WEEKEND_FAMILY_ROTATION[1])
     console.log(`  [读数] 10-02 / 10-09 / 10-16 / 10-23 四期族 = ${fams.join(' / ')}`)

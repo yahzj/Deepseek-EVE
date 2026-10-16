@@ -1,5 +1,11 @@
 # 测试门槛存档（Test Saves）
 
+## 守墓者入侵
+
+- `gravekeeper`：`npx tsx tools/make-test-save.ts gravekeeper`，全新合成档，不读取或覆盖个人档。
+- 文件`test-save-gravekeeper-20261016.json`；四艘合法MK3动能巨齿鲨、战斗技能3级、核心满，未代开战。先通过游戏内存档管理备份现有档，再导入此测试档；在入侵核心打开旗舰挑战，选择四舰出击。测试完恢复备份。
+- `npx tsx tools/gravekeeper-invasion-check.ts --sim`复跑基础标尺和合法配装读数；`node tools/gravekeeper-native-check.cjs --electron=本机Electron绝对路径`验证隔离隐藏窗口与IPC保存，不作观感结论。
+
 ## 停靠与远程管理
 
 - `station-action`：`npx tsx tools/make-test-save.ts station-action`，全新合成档，不读取或覆盖个人档。

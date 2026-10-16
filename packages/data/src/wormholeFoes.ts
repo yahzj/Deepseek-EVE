@@ -50,6 +50,10 @@ import {
   FOE_D_LONGSHIP,
   FOE_D_STASIS,
   FOE_D_THRONE,
+  FOE_D_INVASION_CRUISER,
+  FOE_D_INVASION_BASTION,
+  FOE_D_INVASION_OATHKEEPER,
+  FOE_D_INVASION_ETERNAL_TOMB,
   FOE_G_SWARM_SKIFF,
   FOE_G_ECHO_REMNANT,
   FOE_G_EXILE_BATTLESHIP,
@@ -957,6 +961,37 @@ export const WEEKEND_CORONA_NEXUS_CARD: AnomalyDef = {
   description: '周末入侵：光环的中枢卫队（隐藏卡，只由入侵活动生成）。',
 }
 
+/** D族编成沿用C族的建卡方式，数值仅从静态参数表读取。 */
+function gravekeeperInvasionCard(id: string, nameId: string, roster: readonly FoeShipDef[]): AnomalyDef {
+  const read = (key: string) => enemyParameterOf(invasionFleetsParameters, id, key)
+  const dmgMix = { plasma: read('dmgMix_plasma'), kinetic: read('dmgMix_kinetic') }
+  const ships = roster.map((ship, i) => ({
+    ship, count: read(`ships_${i}_count`), wave: read(`ships_${i}_wave`),
+    hpMul: read(`ships_${i}_hpMul`), dmgMul: read(`ships_${i}_dmgMul`), dmgMix,
+  }))
+  const waveCount = 1 + Math.max(...ships.map(slot => slot.wave))
+  return {
+    id, foeFamily: 'D', name: L10N[nameId]!.zh, galaxyId: 'galaxy-hub', region: 'inv', wreckTier: 'dire',
+    wreckThreat: read('wreckThreat'), threat: read('threat'), foeTargeting: 'random', dmgMix, ships,
+    waves: Array.from({ length: waveCount }, (_, i) => ({ units: read(`waves_${i}_units`), hpShare: read(`waves_${i}_hpShare`) })),
+    standingReq: read('standingReq'), standingGain: read('standingGain'), rewardIsk: read('rewardIsk'),
+    loot: [], combatSeconds: read('combatSeconds'), hidden: true, description: L10N['ano.gravekeeper.005']!.zh,
+  }
+}
+export const WEEKEND_GRAVEKEEPER_DRIFT_CARD = gravekeeperInvasionCard('gravekeeper-drift', 'ano.gravekeeper.001', [
+  FOE_D_INVASION_CRUISER, FOE_D_LONGSHIP,
+])
+export const WEEKEND_GRAVEKEEPER_LINE_CARD = gravekeeperInvasionCard('gravekeeper-line', 'ano.gravekeeper.002', [
+  FOE_D_INVASION_CRUISER, FOE_D_INVASION_BASTION, FOE_D_STASIS,
+])
+export const WEEKEND_GRAVEKEEPER_MAIN_CARD = gravekeeperInvasionCard('gravekeeper-main', 'ano.gravekeeper.003', [
+  FOE_D_INVASION_BASTION, FOE_D_INVASION_CRUISER, FOE_D_LONGSHIP, FOE_D_INVASION_OATHKEEPER, FOE_D_STASIS,
+])
+export const WEEKEND_GRAVEKEEPER_FLAGSHIP_CARD = gravekeeperInvasionCard('gravekeeper-flagship', 'ano.gravekeeper.004', [
+  FOE_D_INVASION_CRUISER, FOE_D_THRONE, FOE_D_STASIS, FOE_D_INVASION_OATHKEEPER,
+  FOE_D_THRONE, FOE_D_INVASION_ETERNAL_TOMB, FOE_D_THRONE, FOE_D_STASIS,
+])
+
 /** 周末入侵·独立卡的 id（core 的 `weekendFoeCardOf` 按族路由到它们；**本表是唯一登记处**） */
 export const WEEKEND_FOE_CARD_IDS = {
   C_vanguard: 'alien-vanguard', C_escort: 'alien-escort', C_main: 'alien-main', C_flagship: 'alien-broodmother', C_assault: 'alien-vanguard',
@@ -980,6 +1015,11 @@ export const WEEKEND_FOE_CARD_IDS = {
   R_nexus: WEEKEND_CORONA_NEXUS_CARD.id,
   /** 兼容旧引用：旗舰 = 中枢卫队 · 普通 = 游弋集群 */
   R_assault: WEEKEND_CORONA_DRIFT_CARD.id,
+  D_drift: WEEKEND_GRAVEKEEPER_DRIFT_CARD.id,
+  D_line: WEEKEND_GRAVEKEEPER_LINE_CARD.id,
+  D_main: WEEKEND_GRAVEKEEPER_MAIN_CARD.id,
+  D_flagship: WEEKEND_GRAVEKEEPER_FLAGSHIP_CARD.id,
+  D_assault: WEEKEND_GRAVEKEEPER_DRIFT_CARD.id,
 } as const
 
 /** 周末入侵·独立卡清单（`data/context.ts` 把它们并进 `ANOMALIES_FLAVORED` ⇒ 引擎 `ctx.anomalies` 能取到） */
@@ -1034,4 +1074,8 @@ export const WEEKEND_FOE_CARDS: readonly AnomalyDef[] = [
   WEEKEND_CORONA_SPLIT_CARD,
   WEEKEND_CORONA_CONVERGE_CARD,
   WEEKEND_CORONA_NEXUS_CARD,
+  WEEKEND_GRAVEKEEPER_DRIFT_CARD,
+  WEEKEND_GRAVEKEEPER_LINE_CARD,
+  WEEKEND_GRAVEKEEPER_MAIN_CARD,
+  WEEKEND_GRAVEKEEPER_FLAGSHIP_CARD,
 ]

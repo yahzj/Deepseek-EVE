@@ -54,6 +54,7 @@ import { droneRevivedCount, droneRevivedOf, initDroneRevive, initDroneReviveStoc
 import { applyDamage, battleClockNowMs, clamp, distFactor, droneHitChance, hitChance, inRange, isAlive, typeLayerMult, playerWeaponInRange, playerBlindDamageMul, SHIP_HP_UPLIFT_MUL } from './combatMath'
 import { triggerAcidBurst, applyAlienCorrosion, advanceFoeHatcheries, advanceFoeAbilityClocks, foeFleetSpeedMulOf } from './alienCombat'
 import { acidResistsOf, addFoeAcidLayer, expireFoeAcidLayers, battleSpeedBonusOf } from './alienEquipment'
+import { activateFoeCapacitor, advanceFoeRebirthRepair, foeCapacitorMultiplierOf, gravekeeperResistsOf, gravekeeperStatusesOf, noteFoeCapacitorAttack, syncFoeCapacitors } from './gravekeeperCombat'
 import type { Hp3 } from './combatMath'
 export { applyDamage, battleClockNowMs, battleShowWindowMs, battleSpeedOf, distFactor, droneHitChance, hitChance, inRange, typeLayerMult, waveGapTotalMs } from './combatMath'
 export type { Hp3 } from './combatMath'
@@ -424,6 +425,14 @@ export interface UnitSpec {
    * 衰减与近防只影响自己，射程通过全队聚焦来源传播。缺省不写 ⇒ 零行为变化。
    */
   foeFocusArray?: { rampMs: number; rangeBonusPct?: number; antiDroneBonusPct?: number };
+  /** 守墓族「苏生协议」：一次性致命保底与五秒总量维修。 */
+  foeRebirthProtocol?: import('./types').FoeMountDef['rebirthProtocol'];
+  /** 守墓族「陵墓装甲」：装甲/结构容量与全抗性修正。 */
+  foeMausoleumArmor?: import('./types').FoeMountDef['mausoleumArmor'];
+  /** 永陵级「守墓镀层装甲」：装甲受伤叠加的全抗性。 */
+  foeCoatingArmor?: import('./types').FoeMountDef['coatingArmor'];
+  /** 永陵级「护盾蓄能装置」：空盾后永久启用的武器修正。 */
+  foeShieldCapacitor?: import('./types').FoeMountDef['shieldCapacitor'];
   /**
    * **本条冲锋不吃网子的「关推进器」**（**2026-09-30 船长令**「给C族添加族设定，他们的冲锋不会被网子
    * 解除」；见 `FoeMountDef.charge.webImmune`）——C 族四件「虫群冲锋器」解析出来的旗标。
@@ -630,10 +639,12 @@ function foeResistsNow(
     foeAcidLayers?: import('./state').BattleState['foeAcidLayers']
     foeBlinks?: Record<string, number>
     foeStandbyTick?: Record<string, { atMs: number; ready: boolean }>
+    foeCoatingLayers?: import('./state').BattleState['foeCoatingLayers']
   },
   foe: {
     tag: string
     resists?: UnitSpec['resists']
+    foeCoatingArmor?: UnitSpec['foeCoatingArmor']
     foeStandbyShield?: UnitSpec['foeStandbyShield']
     foeBlink?: UnitSpec['foeBlink']
   },
@@ -641,7 +652,8 @@ function foeResistsNow(
   const base = foe.foeStandbyShield !== undefined && foeStandbyReadyOf(b, foe)
     ? withStandbyShield(foe.resists ?? {}, foe.foeStandbyShield.resistPct)
     : (foe.resists ?? {})
-  return b.foeAcidLayers ? acidResistsOf(b, foe.tag, base) : base
+  const coated = gravekeeperResistsOf(b, foe, base, b.lastTickGameMs ?? 0)
+  return b.foeAcidLayers ? acidResistsOf(b, foe.tag, coated) : coated
 }
 
 /**
@@ -671,13 +683,13 @@ function snapshotFoeStandby(b: import('./state').BattleState, foes: readonly Uni
  *
  * @returns `dealt` = 本发实收；`killedNow` = **这一发刚刚把它打沉**（此前还活着）
  */
-function applyFoeUnitDamage(
+export function applyFoeUnitDamage(
   b: {
     distanceM?: number
     alienCorrosion?: number
     acidBursts?: import('./state').BattleState['acidBursts']
     foeAcidLayers?: import('./state').BattleState['foeAcidLayers']
-    units: Record<string, { hp: Hp3; foeShipId?: string; downAtMs?: number }>
+    units: Record<string, { hp: Hp3; hpMax?: Hp3; foeShipId?: string; downAtMs?: number }>
     foeOverride?: { bossShipId?: string }
     lastTickGameMs?: number
     bossDownAtMs?: number
@@ -685,43 +697,83 @@ function applyFoeUnitDamage(
     foeBlinks?: Record<string, number>
     /** **「待机护盾阵列」的本拍就绪快照**（船长 2026-10-03「同一拍整次齐射都算」） */
     foeStandbyTick?: Record<string, { atMs: number; ready: boolean }>
+    foeCoatingLayers?: import('./state').BattleState['foeCoatingLayers']
+    foeRebirths?: import('./state').BattleState['foeRebirths']
+    foeShieldCapacitorActive?: import('./state').BattleState['foeShieldCapacitorActive']
   },
   /** 目标单位（认 tag；`resists` 取它自己的层抗，「待机护盾阵列」也取它自己的那份） */
   foe: {
     tag: string
+    hp?: Hp3
     acidBurst?: UnitSpec['acidBurst']
     resists?: UnitSpec['resists']
     /** **待机护盾阵列参数**（带该件的单位才有；判据见 `standbyShieldActiveOf`） */
     foeStandbyShield?: UnitSpec['foeStandbyShield']
     foeBlink?: UnitSpec['foeBlink']
+    foeRebirthProtocol?: UnitSpec['foeRebirthProtocol']
+    foeCoatingArmor?: UnitSpec['foeCoatingArmor']
+    foeShieldCapacitor?: UnitSpec['foeShieldCapacitor']
   },
   dmg: number,
   type: DamageType,
   /** 这一发的时刻（缺省 = 本拍起点）；诊断用，不参与结算 */
   atMsOverride?: number,
-): { dealt: number; killedNow: boolean } {
+): { dealt: number; killedNow: boolean; resistsUsed?: UnitSpec['resists'] } {
   const rt = b.units[foe.tag]
-  if (!rt) return { dealt: 0, killedNow: false }
+  if (!rt || rt.hp.s + rt.hp.a + rt.hp.h <= 0) return { dealt: 0, killedNow: false }
+  const atMs = b.lastTickGameMs ?? atMsOverride ?? 0
+  if (foe.foeRebirthProtocol && foe.hp) advanceFoeRebirthRepair(b, { ...foe, hp: foe.hp }, atMs)
   const wasAlive = rt.hp.s + rt.hp.a + rt.hp.h > 0
+  const beforeHp = { ...rt.hp }
   /**
    * 待机护盾阵列只在本次冷却满延迟后至结束前保护护盾层。
    * ⚠ 放在**唯一收口**里 ⇒ 主段 / 附加段 / 全体攻击 / 齐射溢火**四条伤害路径同源**吃到它。
    * 没带该件的单位 ⇒ `foeResistsNow` 直接返回原引用 ⇒ **既有各族逐字不变**。
    */
-  const r = applyDamage(rt.hp, foeResistsNow(b, foe), dmg, type)
+  const resists = foeResistsNow(b, foe)
+  const apply = (raw: number): Hp3 => applyDamage(rt.hp, resists, raw, type).hp
+  const state = b.foeRebirths?.[foe.tag]
+  const inRebirthLock = state?.lockUntilMs !== undefined && state.lockUntilMs > atMs
+  const lethal = foe.foeRebirthProtocol !== undefined && dmg > 0 && apply(dmg).h <= 0
+  let appliedDmg = dmg
+  if (foe.foeRebirthProtocol !== undefined && inRebirthLock) {
+    appliedDmg = clampRawLeavingHull(apply, dmg)
+  } else if (foe.foeRebirthProtocol !== undefined && lethal && state === undefined) {
+    const protocol = foe.foeRebirthProtocol
+    const rebirths = b.foeRebirths ?? (b.foeRebirths = {})
+    rebirths[foe.tag] = {
+      lockUntilMs: atMs + DC_LOCK_MS,
+      startedAtMs: atMs,
+      repairUntilMs: atMs + protocol.repairMs,
+      lastRepairAtMs: atMs,
+      armorHealed: 0,
+      hullHealed: 0,
+    }
+    appliedDmg = clampRawLeavingHull(apply, dmg)
+  }
+  const r = applyDamage(rt.hp, resists, appliedDmg, type)
   rt.hp = r.hp
+  if (foe.foeShieldCapacitor !== undefined && beforeHp.s > 0 && rt.hp.s <= 0) {
+    activateFoeCapacitor(b, foe.tag)
+  }
+  if (foe.foeCoatingArmor !== undefined && beforeHp.a > r.hp.a) {
+    const layers = b.foeCoatingLayers ?? (b.foeCoatingLayers = {})
+    const active = (layers[foe.tag] ?? []).filter((x) => x.untilMs > atMs)
+    active.push({ untilMs: atMs + foe.foeCoatingArmor.durationMs })
+    layers[foe.tag] = active
+  }
   let killedNow = false
   if (rt.hp.s + rt.hp.a + rt.hp.h <= 0) {
-    const atMs = atMsOverride ?? b.lastTickGameMs ?? 0
-    if (rt.downAtMs === undefined) rt.downAtMs = atMs
+    const downAtMs = atMsOverride ?? atMs
+    if (rt.downAtMs === undefined) rt.downAtMs = downAtMs
     killedNow = wasAlive
-    if (killedNow) triggerAcidBurst(b, foe, 'killed', atMs)
+    if (killedNow) triggerAcidBurst(b, foe, 'killed', downAtMs)
     const bossId = b.foeOverride?.bossShipId
     if (killedNow && bossId !== undefined && rt.foeShipId === bossId) {
-      b.bossDownAtMs ??= atMs
+      b.bossDownAtMs ??= downAtMs
     }
   }
-  return { dealt: r.dealt, killedNow }
+  return { dealt: r.dealt, killedNow, resistsUsed: resists }
 }
 
 /**
@@ -778,6 +830,7 @@ export function carryVolleyOverflow(
   rawDamage: number,
   hpBefore: Hp3,
   maxChain = 3,
+  resistsBefore?: UnitSpec['resists'],
 ): { total: number; hits: number; lastTag: string | null } {
   let raw = rawDamage
   let prevHp = hpBefore
@@ -785,11 +838,12 @@ export function carryVolleyOverflow(
   let total = 0
   let hits = 0
   let lastTag: string | null = null
+  let previousResists = resistsBefore
   for (let n = 0; n < maxChain; n++) {
     // ⚠ 2026-09-15 修：转移伤害与"打空它需要多少"都要按**目标自己的层抗**算（此前传 `{}` ⇒ 敌抗性不生效）
     // 🔴 2026-10-02：层抗改走 `foeResistsNow` ⇒ **「待机护盾阵列」也吃进"打空它要多少"这把尺**（口径同源）
     const prevFoe = foes.find((f) => f.tag === prevTag)
-    const prevRes = prevFoe ? foeResistsNow(b, prevFoe) : {}
+    const prevRes = previousResists ?? (prevFoe ? foeResistsNow(b, prevFoe) : {})
     const excess = raw - rawDamageToKill(prevHp, prevRes, type)
     if (excess <= 0.5) break
     const next = foes.find((f) => {
@@ -802,6 +856,7 @@ export function carryVolleyOverflow(
     const before = { ...rt.hp }
     /** 走**敌舰伤害唯一收口**（血写回 ＋ 死亡观测；算术与随机数消费一字不变） */
     const r = applyFoeUnitDamage(b, next, excess, type)
+    previousResists = r.resistsUsed
     b.stats.meDmg += r.dealt
     total += r.dealt
     hits += 1
@@ -2858,6 +2913,7 @@ export function battleArcsFor(
    * （去重展示名，如「劫掠冲锋推进器」）；**缺省 = 本场敌人没挂件**（既有战斗零变化）。
    */
   foeMounts?: string[]
+  gravekeeperStatuses?: import('./gravekeeperCombat').GravekeeperStatus[]
   /**
    * **同序的「双语名对」**（2026-09-24 加；与 `foeMounts` 下标对齐）——界面按当前语言挑一列
    * （`BattleScreen.mountNamesTextOf`）；**缺省**（老档在途战斗）⇒ 回退中文名数组。
@@ -3025,7 +3081,7 @@ export function battleArcsFor(
       const wMin = w.minRangeM
       const wMax =
         w.src === 'drone'
-          ? foeDroneRangeOf(battle, w)
+          ? foeDroneRangeOf(battle, w, f)
           : foeGunMaxRangeOf(battle, f, w)
       foeMin = Math.min(foeMin, wMin)
       foeMax = Math.max(foeMax, wMax)
@@ -3228,6 +3284,7 @@ export function battleArcsFor(
     myUnits,
     foe: { minM: foeMin, maxM: foeMax, type: foeType },
     foeBands,
+    gravekeeperStatuses: gravekeeperStatusesOf(battle, foes),
     maxHp: { me: { s: me.hp.s, a: me.hp.a, h: me.hp.h }, foe: foeMaxHp },
     // 机群战损（2026-09-10）：本场已击落架数（UI 战报/提示用；缺省 = 无损失）
     ...(battle.droneLost && Object.keys(battle.droneLost).length > 0 ? { droneLost: battle.droneLost } : {}),
@@ -3997,6 +4054,14 @@ export function advanceBattleFor(
         }
       }
     }
+    if (!battle.ended && battle.foeRebirths) {
+      for (const f of foes) {
+        if (battle.ended || f.foeRebirthProtocol === undefined) continue
+        const record = battle.foeRebirths[f.tag]
+        if (!record || record.startedAtMs === undefined) continue
+        advanceFoeRebirthRepair(battle, f, battle.lastTickGameMs)
+      }
+    }
     /**
      * 护盾充能装置脉冲（逐舰 · **逐型号** · 2026-09-16 逐舰化 ＋ **2026-09-21 逐型号独立回转**）：
      * 与维修装置各按各的计时（15秒与5秒），同样在受伤结算之后补跳。
@@ -4620,6 +4685,8 @@ function stepBattle(
     }
   }
   const dtSec = dtMs / 1000
+  syncFoeCapacitors(b, foes)
+  for (const foe of foes) if (foe.foeRebirthProtocol) advanceFoeRebirthRepair(b, foe, b.lastTickGameMs)
   syncCoronaFleetFocus(b, foes)
   advanceFoeHatcheries(b, foes, b.lastTickGameMs)
   expireFoeAcidLayers(b)
@@ -4984,7 +5051,7 @@ function stepBattle(
              * 只在本场带了该装置时生效（`battle.wormhole.volleyOverflow`）。
              */
             if (b.wormhole?.volleyOverflow === true && rt.hp.s + rt.hp.a + rt.hp.h <= 0) {
-              const carry = carryVolleyOverflow(b, foes, foeTarget!.tag, type, dmgLocked, hpBefore)
+              const carry = carryVolleyOverflow(b, foes, foeTarget!.tag, type, dmgLocked, hpBefore, 3, r.resistsUsed)
               if (carry.hits > 0) {
                 pushBattleNotice(b, `齐射协调：溢火结转 ${Math.round(carry.total)} 点伤害到下一艘敌舰`)
               }
@@ -5251,9 +5318,9 @@ function stepBattle(
           rt.weapons[k] = Math.max(0, dcd - dtMs)
           continue
         }
-        rt.weapons[k] = aloftReload(dw.reloadMs)
+        rt.weapons[k] = Math.min(Number.MAX_SAFE_INTEGER, Math.round(aloftReload(dw.reloadMs) * foeCapacitorMultiplierOf(b, f, k, 'reloadMul')))
         // 射程门：**受击增程**生效时读 `foeDroneRangeOf`（机型射程 × 倍率），否则就是机型射程
-        if (b.distanceM > foeDroneRangeOf(b, dw)) continue // 机群够不着（我方在它射程外）
+        if (b.distanceM > foeDroneRangeOf(b, dw, f)) continue // 机群够不着（我方在它射程外）
         // 选靶（多单位）：**每架敌机独立选靶**——与我方"每发独立抽敌人"同款粒度
         const dtgt = pickTarget()
         if (!dtgt) break // 我方已全灭（正常由结束判定收场）
@@ -5286,12 +5353,16 @@ function stepBattle(
             dtgt.spec.tag,
             dtgt.spec,
             dtgt.rt.hp,
-            cappedFoeDamage(b, dtgt.spec.tag, dtgt.spec, dw.shotDmg ?? 0),
+            cappedFoeDamage(b, dtgt.spec.tag, dtgt.spec, (dw.shotDmg ?? 0) * foeCapacitorMultiplierOf(b, f, k, 'damageMul')),
             dType,
             (r) => applyFoeShot(dtgt.rt.hp, dtgt.spec.resists, dw, r, dType),
           )
           dtgt.rt.hp = applyFoeShot(dtgt.rt.hp, dtgt.spec.resists, dw, dRaw, dType)
           dDealt = Math.max(0, dBefore - (dtgt.rt.hp.s + dtgt.rt.hp.a + dtgt.rt.hp.h))
+          if (f.foeShieldCapacitor) {
+            noteFoeCapacitorAttack(b, f, k)
+            rt.weapons[k] = Math.min(Number.MAX_SAFE_INTEGER, Math.round(aloftReload(dw.reloadMs) * foeCapacitorMultiplierOf(b, f, k, 'reloadMul')))
+          }
         }
         pushBattleFx(b, {
           atMs: b.lastTickGameMs + dtMs,
@@ -5351,7 +5422,7 @@ function stepBattle(
      */
     rt.weapons[0] = burstMore
       ? Math.max(0, Math.round(burst!.gapMs) - dtMs)
-      : foeOverlayReloadOf(f, f.tag, b, w.reloadMs)
+      : foeOverlayReloadOf(f, f.tag, b, Math.min(Number.MAX_SAFE_INTEGER, Math.round(w.reloadMs * foeCapacitorMultiplierOf(b, f, 0, 'reloadMul'))))
     if (burst !== undefined) {
       const reg = b.foeBurstFired ?? (b.foeBurstFired = {})
       // 打完这一发：本轮还有剩余 ⇒ 记已发数；本轮打完 ⇒ 删键（下一发重新从第 1 发起算）
@@ -5384,6 +5455,8 @@ function stepBattle(
     // 射程门：**炮台受击增程**生效时读 `foeGunMaxRangeOf`（原射程 × 倍率；仅带该字段的舰）
     if (b.distanceM > foeGunMaxRangeOf(b, f, w)) continue
     const gunCount = volleyGunCountOf(w)
+    const capacitorDamageMul = foeCapacitorMultiplierOf(b, f, 0, 'damageMul')
+    let capacitorHit = false
     // 敌主武器仍保存整组总伤；各门共享本轮装填、独立命中。
     let volleyTarget: ReturnType<typeof pickTarget> = null
     for (let gun = 0; gun < gunCount; gun++) {
@@ -5405,10 +5478,11 @@ function stepBattle(
       if (w.kind === 'beam') {
         // **炮台受击增程感知的折减**（船长选乙：原射程内读数一字不变，延长段同斜率外推）
         const pow = b.distanceM < w.minRangeM ? w.blindDmgMul ?? 0.3 : foeGunPowerFactorOf(b, f, wShot, b.distanceM)
-        const dmg = volleyDamageShareOf(foeRepairDiscountedShot(f, Math.max(1, Math.round((w.shotDmg ?? 0) * pow))), gunCount, gun)
+        const dmg = volleyDamageShareOf(foeRepairDiscountedShot(f, Math.max(1, Math.round((w.shotDmg ?? 0) * pow * capacitorDamageMul))), gunCount, gun)
         // 冲锋解除（船长 2026-09-14）：光束必中 ⇒ 本发即"自身炮台命中我方"
         releaseFoeChargeOnHit(b, f.tag, bal, f.foeChargeCooldownMs)
         b.stats.foeHits += 1
+        capacitorHit = true
         // 混伤（2026-09-10 船长）：按逐系单发各自结算（各系吃自己的层位克制与层抗）
         const beamBefore = gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h
         gtgt.rt.hp = applyFoeShot(
@@ -5448,7 +5522,7 @@ function stepBattle(
       }
       const blindMul = b.distanceM < w.minRangeM ? (w.blindDmgMul ?? 0.3) : 1
       const shotDmgRaw = blindMul < 1 ? Math.max(1, Math.round((w.shotDmg ?? 0) * blindMul)) : (w.shotDmg ?? 0)
-      const shotDmg = volleyDamageShareOf(foeRepairDiscountedShot(f, shotDmgRaw), gunCount, gun)
+      const shotDmg = volleyDamageShareOf(foeRepairDiscountedShot(f, Math.round(shotDmgRaw * capacitorDamageMul)), gunCount, gun)
       // AI favor：敌方命中被优势压制，且始终保留 97% 命中上限（3% miss 底线不变）
       // ⚠ 距离折减传**增程感知**的 `foeGunPowerFactorOf`（原射程内与原公式逐字一致；延长段同斜率外推）
       const foeHit = hitChance(w, f, gtgt.spec, b.distanceM, bal, foeGunPowerFactorOf(b, f, wShot, b.distanceM))
@@ -5458,6 +5532,7 @@ function stepBattle(
       let gunDealt = 0
       if (fHit) {
         b.stats.foeHits += 1
+        capacitorHit = true
         const gunBefore = gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h
         gtgt.rt.hp = applyFoeShot(
           gtgt.rt.hp,
@@ -5491,6 +5566,10 @@ function stepBattle(
           /** ⚠ 同上：演出事件由 `markMeBlink` 内部推（带 `atMs`/`speedX`），这里只留画面提示。 */
           pushBattleNotice(b, '跃迁规避：本舰瞬时换位')
         }
+    }
+    if (capacitorHit && f.foeShieldCapacitor) {
+      noteFoeCapacitorAttack(b, f, 0)
+      rt.weapons[0] = Math.min(Number.MAX_SAFE_INTEGER, Math.round(w.reloadMs * foeCapacitorMultiplierOf(b, f, 0, 'reloadMul')))
     }
   }
 

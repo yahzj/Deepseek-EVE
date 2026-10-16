@@ -13,6 +13,7 @@ import { nextInt, nextRandom, pickOne } from './rng'
 import { BATTLE_ARRIVAL_FLY_MS, pushBattleFx } from './combatFx'
 import { droneReviveNoteLoss } from './droneRevive'
 import { coronaFocusBonusOf } from './coronaFocus'
+import { foeCapacitorMultiplierOf, noteFoeCapacitorAttack } from './gravekeeperCombat'
 
 /* 以下为 2026-10-02 批次 4j 从 combat.ts 切接过来的整簇（aliveDroneKeys ~ pickFoeDroneTarget）。 */
 
@@ -254,7 +255,7 @@ export function resolvePointDefense(
     let guard = 0
     while (cd <= 0 && guard < 64) {
       guard++
-      cd += period;
+      cd += Math.min(Number.MAX_SAFE_INTEGER, period * foeCapacitorMultiplierOf(b, foes[fi]!, 'pd', 'reloadMul'));
       if (!canFire) break // 闸门关：**冷却照推、判定不做**（2026-09-27 修）
       // 候选 = 存活放飞条目（哨戒机**只在射程内**可选）
       const candsAll = aliveDroneKeys(b, SENTRY_DRONE_IDS, sentryOk)
@@ -303,12 +304,17 @@ export function resolvePointDefense(
       const res = applyDamage(
         { s: pool.s, a: pool.a, h: pool.h },
         pool.resists ?? {},
-        shot.dmg,
+        shot.dmg * foeCapacitorMultiplierOf(b, defender, 'pd', 'damageMul'),
         shot.dmgType,
       )
       pool.s = res.hp.s
       pool.a = res.hp.a
       pool.h = res.hp.h
+      if (defender.foeShieldCapacitor) {
+        const previous = Math.min(Number.MAX_SAFE_INTEGER, period * foeCapacitorMultiplierOf(b, defender, 'pd', 'reloadMul'))
+        noteFoeCapacitorAttack(b, defender, 'pd')
+        cd += Math.min(Number.MAX_SAFE_INTEGER, period * foeCapacitorMultiplierOf(b, defender, 'pd', 'reloadMul')) - previous
+      }
       if (pool.s + pool.a + pool.h <= 0) {
         pool.alive = false
         focus[fi] = undefined // 目标已灭 ⇒ 本舰下一拍重选

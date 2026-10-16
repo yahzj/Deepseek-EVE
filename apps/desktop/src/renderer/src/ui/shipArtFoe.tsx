@@ -389,6 +389,37 @@ const D_THRONE = (
   </>
 )
 
+/** 守墓入侵四舰：叉形巡哨、碑板防线、并列重梁与多层陵殿。 */
+const D_PATROL = <>
+  <path d={poly([42,52],[80,43],[155,44],[198,34],[228,40],[190,56],[228,72],[198,80],[155,66],[80,69],[42,62])} />
+  <path className="shipart-panel" d={s(line([70,55],[174,55]),line([96,44],[96,68]),line([135,44],[135,66]))} />
+  <path d={s(box(34,51,12,13),poly([82,44],[102,27],[133,30],[123,44]))} />
+  <path className="shipart-acc" d={s(line([181,49],[220,40]),line([181,62],[220,72]))} />
+  <path className="shipart-accf" d={box(114,50,24,8)} />
+</>
+const D_BASTION = <>
+  <path d={poly([38,48],[78,36],[168,38],[218,50],[230,61],[212,83],[76,85],[38,70])} />
+  <path d={s(poly([72,42],[84,22],[110,22],[119,43],[112,80],[76,80]),poly([120,41],[132,16],[156,16],[166,43],[158,82],[124,82]),poly([170,44],[184,26],[202,30],[214,49],[202,78],[174,80]))} />
+  <path className="shipart-panel" d={s(line([81,50],[107,50]),line([131,51],[154,51]),line([181,53],[204,53]))} />
+  <path className="shipart-acc" d={line([144,24],[144,74])} />
+  <path d={s(box(28,49,12,19),line([214,61],[232,61]))} />
+</>
+const D_OATHKEEPER = <>
+  <path d={poly([34,38],[180,34],[214,42],[232,50],[214,58],[56,57],[34,50])} />
+  <path d={poly([34,75],[56,67],[214,67],[232,76],[214,86],[180,94],[34,89])} />
+  <path d={s(box(75,51,22,23),box(132,51,22,23),box(181,52,19,20),box(24,39,12,12),box(24,77,12,12))} />
+  <path className="shipart-panel" d={s(line([62,45],[197,45]),line([62,82],[197,82]),line([104,35],[104,56]),line([160,68],[160,93]))} />
+  <path className="shipart-acc" d={s(line([211,50],[233,50]),line([211,76],[233,76]),line([97,63],[180,63]))} />
+</>
+const D_ETERNAL_TOMB = <>
+  <path d={poly([25,53],[58,40],[86,20],[169,20],[196,40],[222,48],[234,62],[222,80],[196,86],[168,103],[86,103],[58,85],[25,74])} />
+  <path d={s(box(57,43,141,40),box(83,31,87,61),box(105,21,43,80),poly([112,21],[117,9],[139,9],[144,21]))} />
+  <path className="shipart-panel" d={s(line([68,52],[188,52]),line([68,74],[188,74]),line([89,41],[163,41]),line([89,85],[163,85]))} />
+  <path className="shipart-acc" d={s(line([127,28],[127,92]),line([198,54],[232,62]),line([198,72],[232,62]))} />
+  <path className="shipart-accf" d={pod(127,62,9,14)} />
+  <path d={s(box(18,49,11,12),box(18,68,11,12))} />
+</>
+
 // ───────────────────────── E 族 · 泰坦巨构（4 条）─────────────────────────
 // 语言：巨构舱段（圆柱 + 横向肋环）、**断口/空心剖面**、暴露内构、炮座稀少而巨大；无舰桥。
 
@@ -787,6 +818,10 @@ export const FOE_SHIP_ART: Record<string, ReactNode> = {
   'foe-d-longship': D_LONGSHIP,
   'foe-d-stasis': D_STASIS,
   'foe-d-throne': D_THRONE,
+  'foe-d-invasion-cruiser': D_PATROL,
+  'foe-d-invasion-bastion': D_BASTION,
+  'foe-d-invasion-oathkeeper': D_OATHKEEPER,
+  'foe-d-invasion-eternal-tomb': D_ETERNAL_TOMB,
   // E 族 · 泰坦巨构
   'foe-missile-hulk': E_MISSILE,
   'foe-auro-hulk': E_AURO,

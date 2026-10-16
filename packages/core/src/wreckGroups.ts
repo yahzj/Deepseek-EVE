@@ -389,6 +389,20 @@ export const WRECK_GROUPS: readonly WreckGroupDef[] = [
     members: ['corona-drift', 'corona-split', 'corona-converge', 'corona-nexus'],
     rareTheme: ['mod-shield-pla-2', 'mod-shield-ext-2', 'mod-shieldchg-2', 'mod-track-2'],
   },
+  {
+    key: 'd-inv',
+    family: 'D',
+    region: 'inv',
+    name: '守墓者残骸（入侵）',
+    rareName: '守墓者稀有残骸（入侵）',
+    tier: 'dire',
+    pool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
+    note: '守墓者残骸（入侵）：星髓晶与重钨合金为主，夹结构料',
+    threat: 124,
+    theme: { modules: ['mod-shield-pla-2'] },
+    members: ['gravekeeper-drift', 'gravekeeper-line', 'gravekeeper-main', 'gravekeeper-flagship'],
+    rareTheme: ['mod-shield-pla-2', 'mod-shield-ext-2', 'mod-armor-plate-2', 'mod-rof-2'],
+  },
 ]
 
 /** 卡 id → 组 key（由 `WRECK_GROUPS.members` 现算；旧档迁移与新产出共用一张索引） */

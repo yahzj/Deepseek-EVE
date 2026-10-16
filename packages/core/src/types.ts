@@ -352,6 +352,10 @@ export type FoeMountId =
    */
   | 'foe-mount-corona-focus-array'
   | 'foe-mount-corona-overlay-beacon'
+  | 'foe-mount-d-rebirth-protocol'
+  | 'foe-mount-d-mausoleum-armor'
+  | 'foe-mount-d-coating-armor'
+  | 'foe-mount-d-shield-capacitor'
   | 'foe-mount-c-acid-charge'
   | 'foe-mount-c-acid-shield'
   | 'foe-mount-c-hiveback-charge'
@@ -522,6 +526,14 @@ export interface FoeMountDef {
    */
   /** 射程与对无人机近防伤害修正率线性增长，和负修正率加算抵消。 */
   focusArray?: { rampMs: number; rangeBonusPct?: number; antiDroneBonusPct?: number }
+  /** 首次致命攻击后的结构锁定与五秒分配维修。 */
+  rebirthProtocol?: { repairMs: number; armorTotalPct: number; hullTotalPct: number }
+  /** 装甲/结构容量与全抗性修正。 */
+  mausoleumArmor?: { hpMul: number; resistPct: number }
+  /** 永陵级装甲受伤叠层。 */
+  coatingArmor?: { resistAdd: number; cap: number; durationMs: number }
+  /** 永陵级空盾后的永久蓄能。 */
+  shieldCapacitor?: { rangeMul: number; reloadMul: number; damageMul: number }
   /**
    * **支援呼叫装置**（船长 2026-09-19：「**战斗开始20秒后，增援2艘幽灵舰。如果对方在自己最远射程
    * 之外时，增援2艘静滞卫舰。**」＋「因为延迟到场，所以需要一定补偿。**卡计算的实际威胁要*1.1**」）。

@@ -270,7 +270,9 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
     const split = u.slot.split ?? ship.split
     const hpMul = opts.beforeHpUplift ? foeFamilyHpMulOf(ship.family) : foeShipHpMulOf(ship.family)
     const hp: Hp3 = u.slot.hpOverride ? { ...u.slot.hpOverride } : {
-      s: totalHp * split.s * hpMul, a: totalHp * split.a * hpMul, h: totalHp * split.h * hpMul,
+      s: totalHp * split.s * hpMul,
+      a: totalHp * split.a * hpMul * (mount.foeMausoleumArmor?.hpMul ?? 1),
+      h: totalHp * split.h * hpMul * (mount.foeMausoleumArmor?.hpMul ?? 1),
     }
     // 炮台单发：写了比例 ⇒ 取拆分后的 G 摊分结果（Σ 与旧口径守恒），否则逐字沿用旧算法；
     // 之后再乘**舰体火力越线折扣**（越线才 <1；`fireSplit` 非空的条目缩放 = 1，见 `foeDpsCapScaleOf`）
@@ -373,8 +375,8 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
        */
       resists: {
         ...(ship.shieldResist ? { shield: ship.shieldResist } : {}),
-        ...(ship.armorResist ? { armor: ship.armorResist } : {}),
-        ...(ship.hullResist ? { hull: ship.hullResist } : {}),
+        ...(ship.armorResist || mount.foeMausoleumArmor ? { armor: { ...(ship.armorResist ?? {}), ...(mount.foeMausoleumArmor ? { kinetic: mount.foeMausoleumArmor.resistPct, explosive: mount.foeMausoleumArmor.resistPct, plasma: mount.foeMausoleumArmor.resistPct } : {}) } } : {}),
+        ...(ship.hullResist || mount.foeMausoleumArmor ? { hull: { ...(ship.hullResist ?? {}), ...(mount.foeMausoleumArmor ? { kinetic: mount.foeMausoleumArmor.resistPct, explosive: mount.foeMausoleumArmor.resistPct, plasma: mount.foeMausoleumArmor.resistPct } : {}) } } : {}),
       },
       /**
        * 舰级闪避（船长 2026-09-16 新舰「劫掠电子舰」：闪避提高）：缺省 0.12 = 既有全部敌舰原值。
@@ -449,6 +451,10 @@ function createFoeSpecsFromShips(anomaly: AnomalyDef, bal: BattleBalance, opts: 
       // **聚焦阵列**（**船长 2026-10-02 令**：「武器的远端衰减，随时间提高到1（就是无衰减）。」
       // ＋改判「旗舰挂载件的会随波重置」）—— 挂了件才写；消费单点 = 敌方开火段（按本波起点现算）。
       ...(mount.foeFocusArray !== undefined ? { foeFocusArray: mount.foeFocusArray } : {}),
+      ...(mount.foeRebirthProtocol !== undefined ? { foeRebirthProtocol: mount.foeRebirthProtocol } : {}),
+      ...(mount.foeMausoleumArmor !== undefined ? { foeMausoleumArmor: mount.foeMausoleumArmor } : {}),
+      ...(mount.foeCoatingArmor !== undefined ? { foeCoatingArmor: mount.foeCoatingArmor } : {}),
+      ...(mount.foeShieldCapacitor !== undefined ? { foeShieldCapacitor: mount.foeShieldCapacitor } : {}),
       // 单波次内增援（2026-09-11 船长裁决：机制实现、不启用）——带本字段的单位**不进开战编队**
       ...(reinforceAt ? { foeReinforceAt: reinforceAt } : {}),
       // **支援呼叫分支**（2026-09-19）：纯标签、一律带上（派生侧的"互斥分支记账"要用它）
@@ -1363,7 +1369,7 @@ export function battleMaxDistanceM(
   for (const f of foes) {
     // 机群武器也在这张表里（`src === 'drone'`）⇒ 按**各自的增程/削减口径**取有效射程，别混用炮台那条
     for (const w of f.weapons) {
-      top = Math.max(top, w.src === 'drone' ? foeDroneRangeOf(b, w) : foeGunMaxRangeOf(b, f, w))
+      top = Math.max(top, w.src === 'drone' ? foeDroneRangeOf(b, w, f) : foeGunMaxRangeOf(b, f, w))
     }
   }
   const pad = Math.max(bal.openRangePadM, Math.round(top * (bal.openRangePadShare ?? 0.1)))

@@ -522,6 +522,10 @@ const WEEKEND_TROPHIES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> 
     description:
       L10N['item.copy.107']!.zh,
   },
+  "blackbox-d": {
+    name: L10N['item.gravekeeper.001']!.zh,
+    description: L10N['item.gravekeeper.002']!.zh,
+  },
   "blackbox-universal": {
     name: '通用黑匣',
     description: L10N['item.copy.108']!.zh,

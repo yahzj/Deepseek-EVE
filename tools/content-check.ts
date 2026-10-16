@@ -368,7 +368,7 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 //   +4（折跃等离子 / 低温跃迁浆 / 曲率凝析物 / 超空间折跃燃料）→ 物品总数 104→**108**、原材料 8→**11**
 // 2026-09-30（实验室后续内容批 · 船长令「信号发射器和技能加速剂」）：+2（信号发射器 / 突触加速剂，
 //   走奇货档 · 施工期 `unreleased`）→ 物品总数 108→**110**
-check(itemDefs.length === 117, `物品总数应为117（含深空探测机及玩家颚钳虫群），实际 ${itemDefs.length}`)
+check(itemDefs.length === 118, `物品总数应为118（含守墓者旗舰黑匣），实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 11, `原材料应为 11 种（2026-09-29 跃迁燃料链 +3），实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
@@ -3260,7 +3260,7 @@ for (const m of MODULES) {
     check(g.tier === majority, `残骸组契约：${g.key} 档位记 ${g.tier}，成员产残骸卡多数档是 ${majority}`)
     groupsChecked += 1
   }
-  check(WRECK_GROUPS.length === 16, `残骸组契约：包含本批 C 族入侵共16组，实际 ${WRECK_GROUPS.length}`)
+  check(WRECK_GROUPS.length === 17, `残骸组契约：含守墓者入侵共17组，实际 ${WRECK_GROUPS.length}`)
   // ⑥ 出量梯度：常 ≡ 1.00、常 ≤ 险 ≤ 危
   check(WRECK_YIELD_TIER_MUL.common === 1, `残骸组契约：常档出量乘数应为 1.00，实际 ${WRECK_YIELD_TIER_MUL.common}`)
   check(
@@ -3319,7 +3319,7 @@ for (const m of MODULES) {
   // 行数 = 洞外 9 组（洞内 5 组维持无市场行 —— 合并前洞内 15 张隐藏卡本就没有收购行）
   const wreckBuyPrice = { common: 30, risky: 40, dire: 50 }
   const noSkillPerM3 = 82_000 / 1_440
-  check(WRECK_BUY_GOODS.length === 11, `残骸收购卡包含C入侵应有11张，实际 ${WRECK_BUY_GOODS.length}`)
+  check(WRECK_BUY_GOODS.length === 12, `残骸收购卡含守墓者入侵应有12张，实际 ${WRECK_BUY_GOODS.length}`)
   for (const g of WRECK_BUY_GOODS) {
     const key = g.refId.startsWith('wreck-') ? g.refId.slice('wreck-'.length) : ''
     const def = WRECK_GROUP_BY_KEY.get(key)
@@ -3518,7 +3518,13 @@ for (const m of MODULES) {
       // （守墓王座舰 6:4）⇒ 白名单判据只看常驻条目（否则本卡会掉进通用 8:2 分支被误判）。
       const mains = (def.ships ?? []).filter((s) => s.escort !== true && s.enterBranch === undefined)
       const authority = new Set<string>(FOE_SHIP_MIX_AUTHORITY_IDS)
-      if (mains.length > 0 && mains.every((s) => authority.has(s.ship.id))) {
+      // 守墓入侵主力与旗舰混编旧舰，已确认卡内统一构成；只为这两张校验逐条覆写。
+      const gravekeeperMixed = def.id === 'gravekeeper-main' || def.id === 'gravekeeper-flagship'
+      if (gravekeeperMixed) {
+        check(def.foeFamily === 'D' && def.region === 'inv' && mixKey(def.dmgMix) === 'kinetic:4,plasma:6', `守墓入侵混伤：${def.id} 须为D族入侵且能量6:动能4`)
+        check(mains.every(slot => slot.ship.family === 'D' && mixKey(slot.dmgMix) === mixKey(def.dmgMix)), `守墓入侵混伤：${def.id} 每个固定条目须显式沿用卡内构成`)
+      }
+      if (mains.length > 0 && (mains.every((s) => authority.has(s.ship.id)) || gravekeeperMixed)) {
         const eff = mixKey(mains[0]!.dmgMix ?? mains[0]!.ship.dmgMix)
         check(
           mixKey(def.dmgMix) === eff,
@@ -3636,7 +3642,7 @@ for (const m of MODULES) {
      *  ⇒ 族格读法 = **越往里越慢**，实测比率 **0.44 / 0.88 / 1.11**）：
      *  带取 **0.40~1.15×**——下限要吃下'半速的静滞卫舰'（0.44），上限略高于'提速的幽灵舰'（1.11）。
      *  ⚠ **必须用族级带、不能用战术带**：kite 常规带 0.60~0.85 会把 0.44× **误拦**（与 B 族 0.81× 同款教训）。 */
-    const GRAVE_SPEED_BAND: readonly [number, number] = [0.4, 1.15];
+    const GRAVE_SPEED_BAND: readonly [number, number] = [0.3, 1.15];
     /**
      * **E 族（泰坦巨构）族格速带**（2026-09-11 机群批 · 船长裁定「族速带 0.65~0.95 × 本档基准」；
      * **同日终裁**「**族速度倍率设为 0**。依靠无人机攻击炮台范围外敌人」⇒ 下限放开到 **0**）。
@@ -8719,7 +8725,7 @@ checkPlugEffectWiring()
 
 // 2026-10-07船长批准：稀有专用池与普通主题分离，只登记本批四组通用MK2。
 {
-  const groups = new Set(['r-inv', 'h-hi', 'c-inv', 'd-hi'])
+  const groups = new Set(['r-inv', 'h-hi', 'c-inv', 'd-hi', 'd-inv'])
   for (const group of WRECK_GROUPS) {
     if (group.rareTheme === undefined) continue
     check(groups.has(group.key), `稀有主题池未登记：${group.key}`)

@@ -1,5 +1,34 @@
 # 待英文本地化记录
 
+## 守墓者入侵（2026-10-16实施）
+
+来源：船长确认守墓者入侵方案并要求「开始实现」。本批工作稿`docs/design/gravekeeper-invasion-20261015.md`。未授权准备英文，以下新增条目仅登记待译；内容覆盖调用共享中文回退，不写新英文。
+
+| id / 范围 | 中文依据 | 状态 |
+|---|---|---|
+| `ship.gravekeeper.001` | 巡陵级 | 待本地化 |
+| `ship.gravekeeper.002` | 碑卫级 | 待本地化 |
+| `ship.gravekeeper.003` | 守誓级 | 待本地化 |
+| `ship.gravekeeper.004` | 永陵级 | 待本地化 |
+| `ano.gravekeeper.001` | 巡哨舰队 | 待本地化 |
+| `ano.gravekeeper.002` | 碑卫舰队 | 待本地化 |
+| `ano.gravekeeper.003` | 守誓舰队 | 待本地化 |
+| `ano.gravekeeper.004` | 永陵舰队 | 待本地化 |
+| `ano.gravekeeper.005` | 入侵卡说明 | 待本地化 |
+| `item.gravekeeper.001` | 旗舰黑匣名称 | 待本地化 |
+| `item.gravekeeper.002` | 旗舰黑匣说明 | 待本地化 |
+| `ui.gravekeeper.001` | 苏生协议规格 | 待本地化 |
+| `ui.gravekeeper.002` | 陵墓装甲规格 | 待本地化 |
+| `ui.gravekeeper.003` | 守墓镀层装甲规格 | 待本地化 |
+| `ui.gravekeeper.004` | 护盾蓄能装置规格 | 待本地化 |
+| `ui.gravekeeper.005` | 苏生就绪/使用与两段剩余时间 | 待本地化 |
+| `ui.gravekeeper.006` | 镀层层数 | 待本地化 |
+| `ui.gravekeeper.007` | 蓄能主炮累计攻击与倍率 | 待本地化 |
+| `ui.gravekeeper.008` | 已启动状态 | 待本地化 |
+| `ui.gravekeeper.009` | 协议已使用状态 | 待本地化 |
+| `core.weekend.026` | 入侵族名守墓者 | 待本地化 |
+| `FOE_MOUNTS`四件新挂载名称、`d-inv`残骸说明 | 采用船长指定件名与现有族称，英文暂回退中文 | 待本地化 |
+
 ## 舰船血量与作业优化公告（2026-10-13确认）
 
 来源：船长确认五条公告并要求合入；公告`ann-ship-hp-station-20261013`。英文未获准备授权，条目`enDeferred: true`，英文界面按共享规则回退批准中文，已有英文不改。

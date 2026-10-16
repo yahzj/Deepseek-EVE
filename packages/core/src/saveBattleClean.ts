@@ -31,6 +31,10 @@ type BattleFieldSpec = { kind: 'persist' } | { kind: 'runtime'; why: string }
 
 const BATTLE_FIELDS = {
   foeAcidLayers: { kind: 'persist' },
+  foeRebirths: { kind: 'persist' },
+  foeCoatingLayers: { kind: 'runtime', why: '永陵级守墓镀层装甲的五秒逐层状态，重载后按当前战斗状态重新开始' },
+  foeShieldCapacitorActive: { kind: 'runtime', why: '永陵级护盾蓄能模式只存在于当前战斗，战斗重载按本场重建' },
+  foeShieldCapacitorAttacks: { kind: 'runtime', why: '永陵级各武器蓄能攻击层数只存在于当前战斗' },
   alienCorrosion: { kind: 'persist' },
   acidBursts: { kind: 'persist' },
   foeAbilityClocks: { kind: 'persist' },
@@ -498,6 +502,13 @@ export function cleanBattle(raw: unknown): BattleState | null {
     return Object.keys(out).length > 0 ? out : undefined
   })()
   const dcKitsUsed = cleanPosNum(b.dcKitsUsed)
+  /** 苏生协议账本：必须保留 used/维修进度，否则战中读档会再次触发一次性协议或重复维修。 */
+  const foeRebirths = cleanLedgerMap(b.foeRebirths, (raw) => {
+    const r = asRaw(raw)
+    const keys = ['lockUntilMs', 'startedAtMs', 'repairUntilMs', 'lastRepairAtMs', 'armorHealed', 'hullHealed'] as const
+    if (keys.some(key => cleanPosNum(r[key]) === undefined)) return undefined
+    return Object.fromEntries(keys.map(key => [key, r[key]])) as NonNullable<BattleState['foeRebirths']>[string]
+  })
   /** **本场 BOSS 阵亡时刻**（2026-09-27 船长令）：只收非负有限数；坏值/缺省 ⇒ 不写（零迁移） */
   const bossDownAtMs = cleanPosNum(b.bossDownAtMs)
   const cleaned: Partial<Record<keyof BattleState, unknown>> = {
@@ -638,6 +649,7 @@ export function cleanBattle(raw: unknown): BattleState | null {
     ...(foeHatcheries !== undefined ? { foeHatcheries } : {}),
     ...(foeDroneRangeBuff !== undefined ? { foeDroneRangeBuff } : {}),
     ...(foeGunRangeBuff !== undefined ? { foeGunRangeBuff } : {}),
+    ...(foeRebirths !== undefined ? { foeRebirths } : {}),
     // 2026-09-27 本场 BOSS 阵亡时刻（丢了 ⇒ "玩家亲手打沉"的事实消失，旗舰留档只能靠池子算术反推）
     ...(bossDownAtMs !== undefined ? { bossDownAtMs: Math.round(bossDownAtMs) } : {}),
   }

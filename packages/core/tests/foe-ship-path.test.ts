@@ -426,6 +426,10 @@ describe('舰种档与速度倍率（A 族提速 / B 族偏慢 / C 族更快）'
       // 2026-09-15 批 3：D 族 T4 战列「**守墓王座舰**」——倍率 0.60 ⇒ 4 战列 205 × 0.60 = **123**
       // （⚠ 取 0.40 会算出 82、比率 0.28 **掉出 D 族速带 0.40~1.15**，体检会红）⇒ 它才是"全族最慢"
       { id: 'foe-d-throne', tier: 4, speed: 123 },
+      { id: 'foe-d-invasion-cruiser', tier: 2, speed: 266 },
+      { id: 'foe-d-invasion-bastion', tier: 3, speed: 194 },
+      { id: 'foe-d-invasion-oathkeeper', tier: 4, speed: 123 },
+      { id: 'foe-d-invasion-eternal-tomb', tier: 5, speed: 93 },
       // E 族（泰坦巨构）· 2026-09-11 机群批 S3 落第一条舰级，2026-09-12 数据批补足三条。
       // 族格「**巨构不讲机动，只讲撑到最后**」的**终裁**＝船长「族速度倍率设为 0」⇒ 三条实速全 **0**
       // （静物残骸；火力由警戒机群投送）——本批之前的 195/0.95 口径已作废。
@@ -889,7 +893,7 @@ describe('期望交距（舰级路径取自身射程带 · 2026-09-11 船长裁�
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeGreaterThanOrEqual(band.min)
       expect(desire, `${def.id} 的期望交距 ${desire}m 落在自身射程带 ${band.min}~${band.max}m 之外`).toBeLessThanOrEqual(band.max)
     }
-    expect(checked).toBe(54);
+    expect(checked).toBe(58);
     // A 族 6 + **A 族旧遭遇模板 4** + B 族 3 + C 族 4 + D 族 4 + E 族 3 + **G 族 3** + **虫洞洞内 5**（2026-09-13 补 E 族「巨构残响」）+ **洞内扩充批 1 的 A 族中/深 2 张 + 批 2 的 C 族中/深 2 张**（2026-09-15）
     // ⚠ 2026-09-12（P-43 舰级补完）起**全表 27 张敌军卡都在舰级路径**：G 族三卡迁入 +「废弃 F 族」
     //   的四张隐藏遭遇模板（`enc-pirate-1..4`）也迁入 A 族舰级 ⇒ **旧威胁推导路径再无真实卡**。
@@ -1180,7 +1184,7 @@ describe('C 族（异形生物）：虫群编成 + 稀有头目 + 总盘守恒',
   })
 
   it('D 族四条舰级：全远程（不许 brawl）+ 全 `beam` 必中 + 族格"越往里越慢"', () => {
-    const graves = FOE_SHIPS.filter((x) => x.family === 'D')
+    const graves = FOE_SHIPS.filter((x) => x.family === 'D' && !x.id.startsWith('foe-d-invasion-'))
     expect(graves.map((s) => s.id)).toEqual([
       'foe-d-ghost',
       'foe-d-longship',

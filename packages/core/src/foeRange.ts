@@ -17,6 +17,7 @@ import { coronaFleetRangeBonusOf } from './coronaFocus'
 import { moduleAllowedOnShip } from './shipFitting'
 import { fleetDefOf } from './instances'
 import { pushBattleNotice } from './combatFx'
+import { foeCapacitorRangeBonusOf } from './gravekeeperCombat'
 
 /** **敌机有效射程**（单一真相源）＝机型绝对射程 × **全敌队的受击增程倍率**（未触发 = ×1）－ **我方电子舰削减**。
  *
@@ -30,8 +31,9 @@ import { pushBattleNotice } from './combatFx'
 export function foeDroneRangeOf(
   b: import('./state').BattleState,
   w: WeaponSpec,
+  unit?: Pick<UnitSpec, 'tag' | 'foeShieldCapacitor'>,
 ): number {
-  const buffMul = (b.foeDroneRangeBuff && b.foeDroneRangeBuff > 1 ? b.foeDroneRangeBuff : 1) + (w.foeDroneRangeBonusPct ?? 0) + coronaFleetRangeBonusOf(b)
+  const buffMul = (b.foeDroneRangeBuff && b.foeDroneRangeBuff > 1 ? b.foeDroneRangeBuff : 1) + (w.foeDroneRangeBonusPct ?? 0) + coronaFleetRangeBonusOf(b) + (unit ? foeCapacitorRangeBonusOf(b, unit.tag, unit.foeShieldCapacitor) : 0)
   return effectiveFoeRangeM(b, w.maxRangeM, buffMul)
 }
 
@@ -394,21 +396,22 @@ export function foeGunRangeMulOf(
  *  净倍率 = **增程倍率 − 削减率**（做加法，见 `foeRangeDebuffOf`）；**基础 <3000m 不削**、削后**下限 3000m**。 */
 export function foeGunMaxRangeOf(
   b: import('./state').BattleState,
-  unit: Pick<UnitSpec, 'foeGunRangeMulOnHit' | 'foeFocusArray'>,
+  unit: Pick<UnitSpec, 'foeGunRangeMulOnHit' | 'foeFocusArray'> & Partial<Pick<UnitSpec, 'tag' | 'foeShieldCapacitor'>>,
   w: { maxRangeM: number },
 ): number {
   const bonus = coronaFleetRangeBonusOf(b, unit.foeFocusArray)
-  return effectiveFoeRangeM(b, w.maxRangeM, foeGunRangeMulOf(b, unit) + bonus)
+  const capacitor = unit.tag ? foeCapacitorRangeBonusOf(b, unit.tag, unit.foeShieldCapacitor) : 0
+  return effectiveFoeRangeM(b, w.maxRangeM, foeGunRangeMulOf(b, unit) + bonus + capacitor)
 }
 
 /** 聚焦按当前有效射程计算衰减；既有受击增程仍沿原斜率外推。 */
 export function foeGunPowerFactorOf(
   b: import('./state').BattleState,
-  unit: Pick<UnitSpec, 'foeGunRangeMulOnHit' | 'foeFocusArray'>,
+  unit: Pick<UnitSpec, 'foeGunRangeMulOnHit' | 'foeFocusArray'> & Partial<Pick<UnitSpec, 'tag' | 'foeShieldCapacitor'>>,
   w: { minRangeM: number; maxRangeM: number; falloff: number },
   dist: number,
 ): number {
-  if (unit.foeFocusArray !== undefined || coronaFleetRangeBonusOf(b) > 0) {
+  if (unit.foeFocusArray !== undefined || coronaFleetRangeBonusOf(b) > 0 || unit.tag && foeCapacitorRangeBonusOf(b, unit.tag, unit.foeShieldCapacitor) > 0) {
     return distFactor(dist, { ...w, maxRangeM: foeGunMaxRangeOf(b, unit, w) })
   }
   const base = distFactor(dist, w) // 原区间内 = 原读数（一字不变）

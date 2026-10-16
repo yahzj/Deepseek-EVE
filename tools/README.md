@@ -1,5 +1,11 @@
 # 工具区台账（tools/）
 
+## 守墓者入侵专项（2026-10-16 · v0.1.0 / 档v31）
+
+- `npx tsx tools/gravekeeper-invasion-check.ts --sim`：正常装配入口校验的MK2/MK3、动能/激光×四张入侵卡×三种子读数；基础标尺不含动态抗性与苏生。`--save`只写忽略目录，正式测试档走`make-test-save.ts gravekeeper`；无个人档输入。
+- `npx tsx tools/gravekeeper-invasion-check.ts --audit`：导出四卡逐波三层血、齐射、装填、射程、机动、回避和挂载；基础定价与30万满池实战分列。专项模拟可加`--sim --card=gravekeeper-flagship --tier=4 --seeds=11,29,47`，不读取个人档；支援挂载保留但未配置条件援军条目，表内只记固定编队。
+- `node tools/gravekeeper-native-check.cjs [--electron=本机Electron绝对路径]`：先构建；自建合成旗舰战、隔离userData、隐藏Electron、真实IPC保存/重载，输出`tools/_ui-artifacts/gravekeeper-invasion/`，不作观感验收。只删除自己创建且校验过路径的临时profile。
+
 ## 停靠统一专项（2026-10-13 · v0.1.0 / 档v31）
 
 - `npx tsx tools/make-test-save.ts station-action`：调用`station-action-fixture.ts`生成全新合成档，真实采矿主控、带伤空闲副船与仓库研究材料；不读取个人档。

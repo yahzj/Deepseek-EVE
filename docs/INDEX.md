@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **470** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7828** KB · **60155** 行
-- 状态分布：**未标注** 251 · **已确认/已实现** 157 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
-- 孤儿文档（0 引用）**86** 份 · 状态未标注 **251** 份
+- 文档总数 **471** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7860** KB · **60442** 行
+- 状态分布：**未标注** 252 · **已确认/已实现** 157 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
+- 孤儿文档（0 引用）**86** 份 · 状态未标注 **252** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
-- 三、现行设计稿（design）：**298** 份
+- 三、现行设计稿（design）：**299** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -56,10 +56,11 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 298 份
+## 三、现行设计稿（design） —— 299 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
+| `docs/design/gravekeeper-invasion-20261015.md` | 守墓族入侵舰船方案 | 未标注（守墓新编成与旗舰196数值已更新） | 2026-10-15 | 30 KB / 252 行 | 1 / 0 |
 | `docs/design/black-market-bulk-resource-fix-20261013.md` | 黑市单个矿石上架修复 | 已确认/已实现（已实现） | 2026-10-13 | 4 KB / 41 行 | 0 / 0 |
 | `docs/design/unbox-result-ledger-20261013.md` | 货柜拆解上一批产物记录 | 已确认/已实现（已实现） | 2026-10-13 | 5 KB / 48 行 | 1 / 0 |
 | `docs/design/planetary-wheel-traits-20261011.md` | 地表建筑配色与轮盘交互、特性标签 | 已确认/已实现（已实现并自检） | 2026-10-11 | 6 KB / 38 行 | 0 / 0 |
@@ -409,7 +410,7 @@
 | `docs/data-map.md` | 数据速查页（改数值时该动哪几处） | 未标注 | — | 6 KB / 85 行 | 8 / 0 |
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 26 / 18 |
-| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 17 KB / 264 行 | 11 / 11 |
+| `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 18 KB / 293 行 | 12 / 11 |
 | `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 27 KB / 166 行 | 22 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
@@ -438,7 +439,7 @@
 | `docs/test-saves/black-market-20261004.md` | 黑市页面验收档 | 待裁定（随功能待船长验收） | 2026-10-04 | 1 KB / 15 行 | 1 / 0 |
 | `docs/test-saves/hauler-20261004.md` | 纯货舰修订验收档 | 未标注（已验收） | 2026-10-04 | 2 KB / 25 行 | 3 / 0 |
 | `docs/test-saves/whexpedition-20261004.md` | 虫洞第一批合成测试档 | 未标注（未来虫洞整备/事件/警戒的隔离验收材） | 2026-10-04 | 10 KB / 78 行 | 2 / 0 |
-| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 76 KB / 772 行 | 63 / 14 |
+| `docs/test-saves/README.md` | 测试门槛存档（Test Saves） | 未标注 | — | 77 KB / 778 行 | 63 / 14 |
 
 ## 六、专题：舰船美术（design/ship-battle-art） —— 7 份
 
@@ -631,8 +632,9 @@
 - `docs/design/playthrough-validation.md`（无日期 · 15 KB）—— 全流程模拟验证（playthrough-sim）
 - `docs/design/v7-design.md`（无日期 · 7 KB）—— V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版
 
-## 附：状态未标注（251 份，待补一行 `状态：…`）
+## 附：状态未标注（252 份，待补一行 `状态：…`）
 
+- `docs/design/gravekeeper-invasion-20261015.md`（2026-10-15）—— 守墓族入侵舰船方案
 - `docs/test-saves/station-action-20261013.md`（2026-10-13）—— 停靠与远程管理验收档
 - `docs/design/workspace-release-20261011.md`（2026-10-11）—— 多工作区合并与推送
 - `docs/design/drone-hull-start-fix-20261009.md`（2026-10-09）—— 无人机舰固有启动时间补齐

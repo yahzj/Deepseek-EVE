@@ -138,6 +138,29 @@
         "id": "foe-mount-corona-overlay-beacon",
         "summonEscort_everyMs": 60000,
         "summonEscort_count": 1
+      },
+      {
+        "id": "foe-mount-d-rebirth-protocol",
+        "rebirthProtocol_repairMs": 5000,
+        "rebirthProtocol_armorTotalPct": 1,
+        "rebirthProtocol_hullTotalPct": 1
+      },
+      {
+        "id": "foe-mount-d-mausoleum-armor",
+        "mausoleumArmor_hpMul": 0.5,
+        "mausoleumArmor_resistPct": 0.75
+      },
+      {
+        "id": "foe-mount-d-coating-armor",
+        "coatingArmor_resistAdd": 0.05,
+        "coatingArmor_cap": 0.9,
+        "coatingArmor_durationMs": 5000
+      },
+      {
+        "id": "foe-mount-d-shield-capacitor",
+        "shieldCapacitor_rangeMul": 1.5,
+        "shieldCapacitor_reloadMul": 1.1,
+        "shieldCapacitor_damageMul": 1.15
       }
     ]
   }

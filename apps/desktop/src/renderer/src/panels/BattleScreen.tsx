@@ -2481,7 +2481,7 @@ const meSpeedRef = useRef(200)
                 {...hoverTipProps(
                   <>
                     <span className="app-ship-hover-title">{tr("ui.BattleScreen.061")}</span>
-                    <BattleMountLines names={arcs.foeMounts} pairs={arcs.foeMountNamePairs} />
+                    <BattleMountLines names={arcs.foeMounts} pairs={arcs.foeMountNamePairs} statuses={arcs.gravekeeperStatuses} />
                   </>,
                 )}
               >

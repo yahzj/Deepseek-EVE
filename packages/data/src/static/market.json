@@ -561,6 +561,15 @@
         "playerBuyable": false
       },
       {
+        "key": "blackbox-d",
+        "kind": "item",
+        "refId": "blackbox-d",
+        "rarity": "exotic",
+        "basePrice": 10000000,
+        "demandMultiplier": 1,
+        "playerBuyable": false
+      },
+      {
         "key": "blackbox-c",
         "kind": "item",
         "refId": "blackbox-c",

@@ -2381,6 +2381,16 @@
           "table": "bounties",
           "id": "ano-voidedge-warden",
           "name": "虚海守望者"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-drift",
+          "name": "守墓者巡哨舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-main",
+          "name": "守墓者守誓舰队"
         }
       ],
       "notes": [
@@ -2506,6 +2516,21 @@
           "table": "bounties",
           "id": "ano-vault-sentinel",
           "name": "穹顶守卫"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-line",
+          "name": "守墓者碑卫舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-main",
+          "name": "守墓者守誓舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-flagship",
+          "name": "守墓者永陵舰队"
         }
       ],
       "notes": [
@@ -2621,6 +2646,11 @@
           "table": "wormholeFleets",
           "id": "wh-grave-throne",
           "name": "陵墓王庭"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-flagship",
+          "name": "守墓者永陵舰队"
         }
       ],
       "notes": [
@@ -5235,6 +5265,503 @@
       ],
       "notes": [
         "能量光束不消费命中参数，其他弹系仍按引擎取值。"
+      ]
+    },
+    {
+      "id": "foe-d-invasion-cruiser",
+      "name": "巡陵级",
+      "category": "D",
+      "source": "packages/data/src/foe-ships.ts",
+      "fields": [
+        {
+          "key": "evasion",
+          "sourcePath": "evasion",
+          "expression": "0.25",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "hullClassTier",
+          "sourcePath": "hullClassTier",
+          "expression": "2",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "speedRatio",
+          "sourcePath": "speedRatio",
+          "expression": "0.9",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "hp",
+          "sourcePath": "hp",
+          "expression": "480",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "split_s",
+          "sourcePath": "split.s",
+          "expression": "0.45",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "split_a",
+          "sourcePath": "split.a",
+          "expression": "0.3",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "split_h",
+          "sourcePath": "split.h",
+          "expression": "0.25",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "shotDmg",
+          "sourcePath": "shotDmg",
+          "expression": "65",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "gunCount",
+          "sourcePath": "gunCount",
+          "expression": "3",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "hitRate",
+          "sourcePath": "hitRate",
+          "expression": "1",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "reloadMs",
+          "sourcePath": "reloadMs",
+          "expression": "3000",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "rangeMinM",
+          "sourcePath": "rangeMinM",
+          "expression": "500",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "rangeMaxM",
+          "sourcePath": "rangeMaxM",
+          "expression": "6000",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "falloff",
+          "sourcePath": "falloff",
+          "expression": "0.2",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "blindDmgMul",
+          "sourcePath": "blindDmgMul",
+          "expression": "0.3",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "dmgMix_plasma",
+          "sourcePath": "dmgMix.plasma",
+          "expression": "8",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "dmgMix_kinetic",
+          "sourcePath": "dmgMix.kinetic",
+          "expression": "2",
+          "source": "packages/data/src/foe-ships.ts"
+        }
+      ],
+      "entries": [],
+      "references": [
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-drift",
+          "name": "守墓者巡哨舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-line",
+          "name": "守墓者碑卫舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-main",
+          "name": "守墓者守誓舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-flagship",
+          "name": "守墓者永陵舰队"
+        }
+      ]
+    },
+    {
+      "id": "foe-d-invasion-bastion",
+      "name": "碑卫级",
+      "category": "D",
+      "source": "packages/data/src/foe-ships.ts",
+      "fields": [
+        {
+          "key": "evasion",
+          "sourcePath": "evasion",
+          "expression": "0.15",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "hullClassTier",
+          "sourcePath": "hullClassTier",
+          "expression": "3",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "speedRatio",
+          "sourcePath": "speedRatio",
+          "expression": "0.75",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "hp",
+          "sourcePath": "hp",
+          "expression": "1080",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "split_s",
+          "sourcePath": "split.s",
+          "expression": "0.45",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "split_a",
+          "sourcePath": "split.a",
+          "expression": "0.3",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "split_h",
+          "sourcePath": "split.h",
+          "expression": "0.25",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "shotDmg",
+          "sourcePath": "shotDmg",
+          "expression": "124",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "gunCount",
+          "sourcePath": "gunCount",
+          "expression": "4",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "hitRate",
+          "sourcePath": "hitRate",
+          "expression": "1",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "reloadMs",
+          "sourcePath": "reloadMs",
+          "expression": "4400",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "rangeMinM",
+          "sourcePath": "rangeMinM",
+          "expression": "1000",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "rangeMaxM",
+          "sourcePath": "rangeMaxM",
+          "expression": "8500",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "falloff",
+          "sourcePath": "falloff",
+          "expression": "0.2",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "blindDmgMul",
+          "sourcePath": "blindDmgMul",
+          "expression": "0.3",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "dmgMix_plasma",
+          "sourcePath": "dmgMix.plasma",
+          "expression": "8",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "dmgMix_kinetic",
+          "sourcePath": "dmgMix.kinetic",
+          "expression": "2",
+          "source": "packages/data/src/foe-ships.ts"
+        }
+      ],
+      "entries": [],
+      "references": [
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-line",
+          "name": "守墓者碑卫舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-main",
+          "name": "守墓者守誓舰队"
+        }
+      ]
+    },
+    {
+      "id": "foe-d-invasion-oathkeeper",
+      "name": "守誓级",
+      "category": "D",
+      "source": "packages/data/src/foe-ships.ts",
+      "fields": [
+        {
+          "key": "evasion",
+          "sourcePath": "evasion",
+          "expression": "0.08",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "hullClassTier",
+          "sourcePath": "hullClassTier",
+          "expression": "4",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "speedRatio",
+          "sourcePath": "speedRatio",
+          "expression": "0.6",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "hp",
+          "sourcePath": "hp",
+          "expression": "1840",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "split_s",
+          "sourcePath": "split.s",
+          "expression": "0.45",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "split_a",
+          "sourcePath": "split.a",
+          "expression": "0.3",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "split_h",
+          "sourcePath": "split.h",
+          "expression": "0.25",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "shotDmg",
+          "sourcePath": "shotDmg",
+          "expression": "264",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "gunCount",
+          "sourcePath": "gunCount",
+          "expression": "6",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "hitRate",
+          "sourcePath": "hitRate",
+          "expression": "1",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "reloadMs",
+          "sourcePath": "reloadMs",
+          "expression": "5500",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "rangeMinM",
+          "sourcePath": "rangeMinM",
+          "expression": "1800",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "rangeMaxM",
+          "sourcePath": "rangeMaxM",
+          "expression": "12000",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "falloff",
+          "sourcePath": "falloff",
+          "expression": "0.2",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "blindDmgMul",
+          "sourcePath": "blindDmgMul",
+          "expression": "0.3",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "dmgMix_plasma",
+          "sourcePath": "dmgMix.plasma",
+          "expression": "6",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "dmgMix_kinetic",
+          "sourcePath": "dmgMix.kinetic",
+          "expression": "4",
+          "source": "packages/data/src/foe-ships.ts"
+        }
+      ],
+      "entries": [],
+      "references": [
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-main",
+          "name": "守墓者守誓舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-flagship",
+          "name": "守墓者永陵舰队"
+        }
+      ]
+    },
+    {
+      "id": "foe-d-invasion-eternal-tomb",
+      "name": "永陵级",
+      "category": "D",
+      "source": "packages/data/src/foe-ships.ts",
+      "fields": [
+        {
+          "key": "evasion",
+          "sourcePath": "evasion",
+          "expression": "0.05",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "hullClassTier",
+          "sourcePath": "hullClassTier",
+          "expression": "5",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "speedRatio",
+          "sourcePath": "speedRatio",
+          "expression": "0.6",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "hp",
+          "sourcePath": "hp",
+          "expression": "39200",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "split_s",
+          "sourcePath": "split.s",
+          "expression": "0.45",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "split_a",
+          "sourcePath": "split.a",
+          "expression": "0.3",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "split_h",
+          "sourcePath": "split.h",
+          "expression": "0.25",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "shotDmg",
+          "sourcePath": "shotDmg",
+          "expression": "504",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "gunCount",
+          "sourcePath": "gunCount",
+          "expression": "8",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "hitRate",
+          "sourcePath": "hitRate",
+          "expression": "1",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "reloadMs",
+          "sourcePath": "reloadMs",
+          "expression": "6000",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "rangeMinM",
+          "sourcePath": "rangeMinM",
+          "expression": "2000",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "rangeMaxM",
+          "sourcePath": "rangeMaxM",
+          "expression": "14000",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "falloff",
+          "sourcePath": "falloff",
+          "expression": "0.2",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "blindDmgMul",
+          "sourcePath": "blindDmgMul",
+          "expression": "0.3",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "dmgMix_plasma",
+          "sourcePath": "dmgMix.plasma",
+          "expression": "6",
+          "source": "packages/data/src/foe-ships.ts"
+        },
+        {
+          "key": "dmgMix_kinetic",
+          "sourcePath": "dmgMix.kinetic",
+          "expression": "4",
+          "source": "packages/data/src/foe-ships.ts"
+        }
+      ],
+      "entries": [],
+      "references": [
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-flagship",
+          "name": "守墓者永陵舰队"
+        }
       ]
     }
   ],
@@ -13563,6 +14090,932 @@
       "entries": [],
       "references": [],
       "notes": []
+    },
+    {
+      "id": "gravekeeper-drift",
+      "name": "守墓者巡哨舰队",
+      "category": "D",
+      "source": "packages/data/src/wormholeFoes.ts",
+      "fields": [
+        {
+          "key": "threat",
+          "sourcePath": "threat",
+          "expression": "91",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "wreckThreat",
+          "sourcePath": "wreckThreat",
+          "expression": "90",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "dmgMix_plasma",
+          "sourcePath": "dmgMix.plasma",
+          "expression": "8",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "dmgMix_kinetic",
+          "sourcePath": "dmgMix.kinetic",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_0_units",
+          "sourcePath": "waves.0.units",
+          "expression": "3",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_0_hpShare",
+          "sourcePath": "waves.0.hpShare",
+          "expression": "0.5",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_1_units",
+          "sourcePath": "waves.1.units",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_1_hpShare",
+          "sourcePath": "waves.1.hpShare",
+          "expression": "0.5",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_0_count",
+          "sourcePath": "ships.0.count",
+          "expression": "3",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_0_wave",
+          "sourcePath": "ships.0.wave",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_0_hpMul",
+          "sourcePath": "ships.0.hpMul",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_0_dmgMul",
+          "sourcePath": "ships.0.dmgMul",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_1_count",
+          "sourcePath": "ships.1.count",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_1_wave",
+          "sourcePath": "ships.1.wave",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_1_hpMul",
+          "sourcePath": "ships.1.hpMul",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_1_dmgMul",
+          "sourcePath": "ships.1.dmgMul",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "standingReq",
+          "sourcePath": "standingReq",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "standingGain",
+          "sourcePath": "standingGain",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "rewardIsk",
+          "sourcePath": "rewardIsk",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "combatSeconds",
+          "sourcePath": "combatSeconds",
+          "expression": "50",
+          "source": "packages/data/src/wormholeFoes.ts"
+        }
+      ],
+      "entries": [
+        {
+          "index": 0,
+          "name": "巡陵级",
+          "id": "foe-d-invasion-cruiser",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        },
+        {
+          "index": 1,
+          "name": "守墓长舰",
+          "id": "foe-d-longship",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        }
+      ],
+      "references": []
+    },
+    {
+      "id": "gravekeeper-line",
+      "name": "守墓者碑卫舰队",
+      "category": "D",
+      "source": "packages/data/src/wormholeFoes.ts",
+      "fields": [
+        {
+          "key": "threat",
+          "sourcePath": "threat",
+          "expression": "99",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "wreckThreat",
+          "sourcePath": "wreckThreat",
+          "expression": "108",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "dmgMix_plasma",
+          "sourcePath": "dmgMix.plasma",
+          "expression": "8",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "dmgMix_kinetic",
+          "sourcePath": "dmgMix.kinetic",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_0_units",
+          "sourcePath": "waves.0.units",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_0_hpShare",
+          "sourcePath": "waves.0.hpShare",
+          "expression": "0.5",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_1_units",
+          "sourcePath": "waves.1.units",
+          "expression": "3",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_1_hpShare",
+          "sourcePath": "waves.1.hpShare",
+          "expression": "0.5",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_0_count",
+          "sourcePath": "ships.0.count",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_0_wave",
+          "sourcePath": "ships.0.wave",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_0_hpMul",
+          "sourcePath": "ships.0.hpMul",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_0_dmgMul",
+          "sourcePath": "ships.0.dmgMul",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_1_count",
+          "sourcePath": "ships.1.count",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_1_wave",
+          "sourcePath": "ships.1.wave",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_1_hpMul",
+          "sourcePath": "ships.1.hpMul",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_1_dmgMul",
+          "sourcePath": "ships.1.dmgMul",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_2_count",
+          "sourcePath": "ships.2.count",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_2_wave",
+          "sourcePath": "ships.2.wave",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_2_hpMul",
+          "sourcePath": "ships.2.hpMul",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_2_dmgMul",
+          "sourcePath": "ships.2.dmgMul",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "standingReq",
+          "sourcePath": "standingReq",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "standingGain",
+          "sourcePath": "standingGain",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "rewardIsk",
+          "sourcePath": "rewardIsk",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "combatSeconds",
+          "sourcePath": "combatSeconds",
+          "expression": "60",
+          "source": "packages/data/src/wormholeFoes.ts"
+        }
+      ],
+      "entries": [
+        {
+          "index": 0,
+          "name": "巡陵级",
+          "id": "foe-d-invasion-cruiser",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        },
+        {
+          "index": 1,
+          "name": "碑卫级",
+          "id": "foe-d-invasion-bastion",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        },
+        {
+          "index": 2,
+          "name": "静滞卫舰",
+          "id": "foe-d-stasis",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        }
+      ],
+      "references": []
+    },
+    {
+      "id": "gravekeeper-main",
+      "name": "守墓者守誓舰队",
+      "category": "D",
+      "source": "packages/data/src/wormholeFoes.ts",
+      "fields": [
+        {
+          "key": "threat",
+          "sourcePath": "threat",
+          "expression": "153",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "wreckThreat",
+          "sourcePath": "wreckThreat",
+          "expression": "129",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "dmgMix_plasma",
+          "sourcePath": "dmgMix.plasma",
+          "expression": "6",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "dmgMix_kinetic",
+          "sourcePath": "dmgMix.kinetic",
+          "expression": "4",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_0_units",
+          "sourcePath": "waves.0.units",
+          "expression": "3",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_0_hpShare",
+          "sourcePath": "waves.0.hpShare",
+          "expression": "0.3333333333333333",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_1_units",
+          "sourcePath": "waves.1.units",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_1_hpShare",
+          "sourcePath": "waves.1.hpShare",
+          "expression": "0.3333333333333333",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_2_units",
+          "sourcePath": "waves.2.units",
+          "expression": "3",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_2_hpShare",
+          "sourcePath": "waves.2.hpShare",
+          "expression": "0.3333333333333333",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_0_count",
+          "sourcePath": "ships.0.count",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_0_wave",
+          "sourcePath": "ships.0.wave",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_0_hpMul",
+          "sourcePath": "ships.0.hpMul",
+          "expression": "1.2679",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_0_dmgMul",
+          "sourcePath": "ships.0.dmgMul",
+          "expression": "1.2679",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_1_count",
+          "sourcePath": "ships.1.count",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_1_wave",
+          "sourcePath": "ships.1.wave",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_1_hpMul",
+          "sourcePath": "ships.1.hpMul",
+          "expression": "1.2679",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_1_dmgMul",
+          "sourcePath": "ships.1.dmgMul",
+          "expression": "1.2679",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_2_count",
+          "sourcePath": "ships.2.count",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_2_wave",
+          "sourcePath": "ships.2.wave",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_2_hpMul",
+          "sourcePath": "ships.2.hpMul",
+          "expression": "1.2679",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_2_dmgMul",
+          "sourcePath": "ships.2.dmgMul",
+          "expression": "1.2679",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_3_count",
+          "sourcePath": "ships.3.count",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_3_wave",
+          "sourcePath": "ships.3.wave",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_3_hpMul",
+          "sourcePath": "ships.3.hpMul",
+          "expression": "1.2679",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_3_dmgMul",
+          "sourcePath": "ships.3.dmgMul",
+          "expression": "1.2679",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_4_count",
+          "sourcePath": "ships.4.count",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_4_wave",
+          "sourcePath": "ships.4.wave",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_4_hpMul",
+          "sourcePath": "ships.4.hpMul",
+          "expression": "1.2679",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_4_dmgMul",
+          "sourcePath": "ships.4.dmgMul",
+          "expression": "1.2679",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "standingReq",
+          "sourcePath": "standingReq",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "standingGain",
+          "sourcePath": "standingGain",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "rewardIsk",
+          "sourcePath": "rewardIsk",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "combatSeconds",
+          "sourcePath": "combatSeconds",
+          "expression": "70",
+          "source": "packages/data/src/wormholeFoes.ts"
+        }
+      ],
+      "entries": [
+        {
+          "index": 0,
+          "name": "碑卫级",
+          "id": "foe-d-invasion-bastion",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        },
+        {
+          "index": 1,
+          "name": "巡陵级",
+          "id": "foe-d-invasion-cruiser",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        },
+        {
+          "index": 2,
+          "name": "守墓长舰",
+          "id": "foe-d-longship",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        },
+        {
+          "index": 3,
+          "name": "守誓级",
+          "id": "foe-d-invasion-oathkeeper",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        },
+        {
+          "index": 4,
+          "name": "静滞卫舰",
+          "id": "foe-d-stasis",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        }
+      ],
+      "references": []
+    },
+    {
+      "id": "gravekeeper-flagship",
+      "name": "守墓者永陵舰队",
+      "category": "D",
+      "source": "packages/data/src/wormholeFoes.ts",
+      "fields": [
+        {
+          "key": "threat",
+          "sourcePath": "threat",
+          "expression": "196",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "wreckThreat",
+          "sourcePath": "wreckThreat",
+          "expression": "170",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "dmgMix_plasma",
+          "sourcePath": "dmgMix.plasma",
+          "expression": "6",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "dmgMix_kinetic",
+          "sourcePath": "dmgMix.kinetic",
+          "expression": "4",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_0_units",
+          "sourcePath": "waves.0.units",
+          "expression": "3",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_0_hpShare",
+          "sourcePath": "waves.0.hpShare",
+          "expression": "0.2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_1_units",
+          "sourcePath": "waves.1.units",
+          "expression": "3",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_1_hpShare",
+          "sourcePath": "waves.1.hpShare",
+          "expression": "0.25",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_2_units",
+          "sourcePath": "waves.2.units",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_2_hpShare",
+          "sourcePath": "waves.2.hpShare",
+          "expression": "0.25",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_3_units",
+          "sourcePath": "waves.3.units",
+          "expression": "4",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "waves_3_hpShare",
+          "sourcePath": "waves.3.hpShare",
+          "expression": "0.3",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_0_count",
+          "sourcePath": "ships.0.count",
+          "expression": "3",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_0_wave",
+          "sourcePath": "ships.0.wave",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_0_hpMul",
+          "sourcePath": "ships.0.hpMul",
+          "expression": "1.759",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_0_dmgMul",
+          "sourcePath": "ships.0.dmgMul",
+          "expression": "1.759",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_1_count",
+          "sourcePath": "ships.1.count",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_1_wave",
+          "sourcePath": "ships.1.wave",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_1_hpMul",
+          "sourcePath": "ships.1.hpMul",
+          "expression": "1.759",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_1_dmgMul",
+          "sourcePath": "ships.1.dmgMul",
+          "expression": "1.759",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_2_count",
+          "sourcePath": "ships.2.count",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_2_wave",
+          "sourcePath": "ships.2.wave",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_2_hpMul",
+          "sourcePath": "ships.2.hpMul",
+          "expression": "1.759",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_2_dmgMul",
+          "sourcePath": "ships.2.dmgMul",
+          "expression": "1.759",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_3_count",
+          "sourcePath": "ships.3.count",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_3_wave",
+          "sourcePath": "ships.3.wave",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_3_hpMul",
+          "sourcePath": "ships.3.hpMul",
+          "expression": "1.759",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_3_dmgMul",
+          "sourcePath": "ships.3.dmgMul",
+          "expression": "1.759",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_4_count",
+          "sourcePath": "ships.4.count",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_4_wave",
+          "sourcePath": "ships.4.wave",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_4_hpMul",
+          "sourcePath": "ships.4.hpMul",
+          "expression": "1.759",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_4_dmgMul",
+          "sourcePath": "ships.4.dmgMul",
+          "expression": "1.759",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_5_count",
+          "sourcePath": "ships.5.count",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_5_wave",
+          "sourcePath": "ships.5.wave",
+          "expression": "3",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_5_hpMul",
+          "sourcePath": "ships.5.hpMul",
+          "expression": "1.759",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_5_dmgMul",
+          "sourcePath": "ships.5.dmgMul",
+          "expression": "1.759",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_6_count",
+          "sourcePath": "ships.6.count",
+          "expression": "1",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_6_wave",
+          "sourcePath": "ships.6.wave",
+          "expression": "3",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_6_hpMul",
+          "sourcePath": "ships.6.hpMul",
+          "expression": "1.759",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_6_dmgMul",
+          "sourcePath": "ships.6.dmgMul",
+          "expression": "1.759",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_7_count",
+          "sourcePath": "ships.7.count",
+          "expression": "2",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_7_wave",
+          "sourcePath": "ships.7.wave",
+          "expression": "3",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_7_hpMul",
+          "sourcePath": "ships.7.hpMul",
+          "expression": "1.759",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "ships_7_dmgMul",
+          "sourcePath": "ships.7.dmgMul",
+          "expression": "1.759",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "standingReq",
+          "sourcePath": "standingReq",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "standingGain",
+          "sourcePath": "standingGain",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "rewardIsk",
+          "sourcePath": "rewardIsk",
+          "expression": "0",
+          "source": "packages/data/src/wormholeFoes.ts"
+        },
+        {
+          "key": "combatSeconds",
+          "sourcePath": "combatSeconds",
+          "expression": "90",
+          "source": "packages/data/src/wormholeFoes.ts"
+        }
+      ],
+      "entries": [
+        {
+          "index": 0,
+          "name": "巡陵级",
+          "id": "foe-d-invasion-cruiser",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        },
+        {
+          "index": 1,
+          "name": "守墓王座舰",
+          "id": "foe-d-throne",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        },
+        {
+          "index": 2,
+          "name": "静滞卫舰",
+          "id": "foe-d-stasis",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        },
+        {
+          "index": 3,
+          "name": "守誓级",
+          "id": "foe-d-invasion-oathkeeper",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        },
+        {
+          "index": 4,
+          "name": "守墓王座舰",
+          "id": "foe-d-throne",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        },
+        {
+          "index": 5,
+          "name": "永陵级",
+          "id": "foe-d-invasion-eternal-tomb",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        },
+        {
+          "index": 6,
+          "name": "守墓王座舰",
+          "id": "foe-d-throne",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        },
+        {
+          "index": 7,
+          "name": "静滞卫舰",
+          "id": "foe-d-stasis",
+          "type": "ships",
+          "note": "挂载继承舰级；血量与火力来源为本条目倍率。"
+        }
+      ],
+      "references": []
     }
   ],
   "foeMounts": [
@@ -13581,10 +15034,26 @@
       ],
       "entries": [],
       "references": [
-        { "table": "invasionFleets", "id": "alien-vanguard", "name": "虫群前锋" },
-        { "table": "invasionFleets", "id": "alien-escort", "name": "育群护卫" },
-        { "table": "invasionFleets", "id": "alien-main", "name": "背巢虫群" },
-        { "table": "invasionFleets", "id": "alien-broodmother", "name": "巢母卫群" }
+        {
+          "table": "invasionFleets",
+          "id": "alien-vanguard",
+          "name": "虫群前锋"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "alien-escort",
+          "name": "育群护卫"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "alien-main",
+          "name": "背巢虫群"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "alien-broodmother",
+          "name": "巢母卫群"
+        }
       ],
       "notes": []
     },
@@ -14177,6 +15646,21 @@
           "table": "bounties",
           "id": "ano-vault-sentinel",
           "name": "穹顶守卫"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-line",
+          "name": "守墓者碑卫舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-main",
+          "name": "守墓者守誓舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-flagship",
+          "name": "守墓者永陵舰队"
         }
       ],
       "notes": []
@@ -14229,6 +15713,11 @@
           "table": "wormholeFleets",
           "id": "wh-grave-throne",
           "name": "陵墓王庭"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-flagship",
+          "name": "守墓者永陵舰队"
         }
       ],
       "notes": []
@@ -14582,6 +16071,161 @@
         }
       ],
       "notes": []
+    },
+    {
+      "id": "foe-mount-d-rebirth-protocol",
+      "name": "苏生协议",
+      "category": "D",
+      "source": "packages/core/src/foeMounts.ts",
+      "fields": [
+        {
+          "key": "rebirthProtocol_repairMs",
+          "sourcePath": "rebirthProtocol.repairMs",
+          "expression": "5000",
+          "source": "packages/core/src/foeMounts.ts"
+        },
+        {
+          "key": "rebirthProtocol_armorTotalPct",
+          "sourcePath": "rebirthProtocol.armorTotalPct",
+          "expression": "1",
+          "source": "packages/core/src/foeMounts.ts"
+        },
+        {
+          "key": "rebirthProtocol_hullTotalPct",
+          "sourcePath": "rebirthProtocol.hullTotalPct",
+          "expression": "1",
+          "source": "packages/core/src/foeMounts.ts"
+        }
+      ],
+      "entries": [],
+      "references": [
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-drift",
+          "name": "守墓者巡哨舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-line",
+          "name": "守墓者碑卫舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-main",
+          "name": "守墓者守誓舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-flagship",
+          "name": "守墓者永陵舰队"
+        }
+      ]
+    },
+    {
+      "id": "foe-mount-d-mausoleum-armor",
+      "name": "陵墓装甲",
+      "category": "D",
+      "source": "packages/core/src/foeMounts.ts",
+      "fields": [
+        {
+          "key": "mausoleumArmor_hpMul",
+          "sourcePath": "mausoleumArmor.hpMul",
+          "expression": "0.5",
+          "source": "packages/core/src/foeMounts.ts"
+        },
+        {
+          "key": "mausoleumArmor_resistPct",
+          "sourcePath": "mausoleumArmor.resistPct",
+          "expression": "0.75",
+          "source": "packages/core/src/foeMounts.ts"
+        }
+      ],
+      "entries": [],
+      "references": [
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-line",
+          "name": "守墓者碑卫舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-main",
+          "name": "守墓者守誓舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-flagship",
+          "name": "守墓者永陵舰队"
+        }
+      ]
+    },
+    {
+      "id": "foe-mount-d-coating-armor",
+      "name": "守墓镀层装甲",
+      "category": "D",
+      "source": "packages/core/src/foeMounts.ts",
+      "fields": [
+        {
+          "key": "coatingArmor_resistAdd",
+          "sourcePath": "coatingArmor.resistAdd",
+          "expression": "0.05",
+          "source": "packages/core/src/foeMounts.ts"
+        },
+        {
+          "key": "coatingArmor_cap",
+          "sourcePath": "coatingArmor.cap",
+          "expression": "0.9",
+          "source": "packages/core/src/foeMounts.ts"
+        },
+        {
+          "key": "coatingArmor_durationMs",
+          "sourcePath": "coatingArmor.durationMs",
+          "expression": "5000",
+          "source": "packages/core/src/foeMounts.ts"
+        }
+      ],
+      "entries": [],
+      "references": [
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-flagship",
+          "name": "守墓者永陵舰队"
+        }
+      ]
+    },
+    {
+      "id": "foe-mount-d-shield-capacitor",
+      "name": "护盾蓄能装置",
+      "category": "D",
+      "source": "packages/core/src/foeMounts.ts",
+      "fields": [
+        {
+          "key": "shieldCapacitor_rangeMul",
+          "sourcePath": "shieldCapacitor.rangeMul",
+          "expression": "1.5",
+          "source": "packages/core/src/foeMounts.ts"
+        },
+        {
+          "key": "shieldCapacitor_reloadMul",
+          "sourcePath": "shieldCapacitor.reloadMul",
+          "expression": "1.1",
+          "source": "packages/core/src/foeMounts.ts"
+        },
+        {
+          "key": "shieldCapacitor_damageMul",
+          "sourcePath": "shieldCapacitor.damageMul",
+          "expression": "1.15",
+          "source": "packages/core/src/foeMounts.ts"
+        }
+      ],
+      "entries": [],
+      "references": [
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-flagship",
+          "name": "守墓者永陵舰队"
+        }
+      ]
     }
   ]
 }

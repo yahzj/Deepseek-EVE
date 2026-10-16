@@ -557,6 +557,7 @@ export const EN_ITEMS: EnTable = {
   'blackbox-h': { name: 'Ink Tide Flagship Black Box', description: L10N['item.copy.106']!.en },
   // 光环旗舰黑匣（2026-10-02 船长令「甲」：一件族一件匣）——与墨潮那件同构，只换族名与外壳
   'blackbox-r': { name: 'Corona Flagship Black Box', description: L10N['item.copy.107']!.en },
+  'blackbox-d': { name: l10nEntryText(L10N['item.gravekeeper.001']!, 'en'), description: l10nEntryText(L10N['item.gravekeeper.002']!, 'en') },
   'blackbox-c': { name: L10N['item.alien.002']!.en, description: L10N['item.alien.003']!.en },
   // 货柜
   'box-relic-a': { name: 'Ruins Safe Container (Pirate)', description: L10N['item.copy.058']!.en },
@@ -809,6 +810,8 @@ const WRECK_IDS = [
   // （与 H 族同构：一次到位、无历史包袱 ⇒ 组 key 就叫 `r-inv`，不像 H 那样保留旧的 `h-hi`）
   'wreck-r-inv',
   'wreck-rare-r-inv',
+  'wreck-d-inv',
+  'wreck-rare-d-inv',
 ] as const
 
 export const EN_WRECKS: EnTable = Object.fromEntries(WRECK_IDS.map((id) => [id, wreckEnText(id)]))
@@ -921,6 +924,10 @@ export const EN_ANOMALIES: EnTable = {
   'alien-escort': { name: L10N['ano.alien.002']!.en, description: L10N['ano.alien.005']!.en },
   'alien-main': { name: L10N['ano.alien.003']!.en, description: L10N['ano.alien.005']!.en },
   'alien-broodmother': { name: L10N['ano.alien.004']!.en, description: L10N['ano.alien.005']!.en },
+  'gravekeeper-drift': { name: l10nEntryText(L10N['ano.gravekeeper.001']!, 'en'), description: l10nEntryText(L10N['ano.gravekeeper.005']!, 'en') },
+  'gravekeeper-line': { name: l10nEntryText(L10N['ano.gravekeeper.002']!, 'en'), description: l10nEntryText(L10N['ano.gravekeeper.005']!, 'en') },
+  'gravekeeper-main': { name: l10nEntryText(L10N['ano.gravekeeper.003']!, 'en'), description: l10nEntryText(L10N['ano.gravekeeper.005']!, 'en') },
+  'gravekeeper-flagship': { name: l10nEntryText(L10N['ano.gravekeeper.004']!, 'en'), description: l10nEntryText(L10N['ano.gravekeeper.005']!, 'en') },
   'ano-training': {
     name: 'Proving Grounds Eviction',
     description: "The Deep Space Industry Association's routine clearance order: scavengers have picked over exercise wrecks at the proving grounds for years, and the Association pays per eviction. A standing bounty that can be taken again and again — a new pilot's first long-term contract.",
@@ -1512,6 +1519,10 @@ export const EN_FOE_SHIPS: EnTable = {
   'foe-d-longship': { name: 'Gravekeeper Longship' },
   'foe-d-stasis': { name: 'Stasis Guard Ship' },
   'foe-d-throne': { name: 'Gravekeeper Throne Ship' },
+  'foe-d-invasion-cruiser': { name: l10nEntryText(L10N['ship.gravekeeper.001']!, 'en') },
+  'foe-d-invasion-bastion': { name: l10nEntryText(L10N['ship.gravekeeper.002']!, 'en') },
+  'foe-d-invasion-oathkeeper': { name: l10nEntryText(L10N['ship.gravekeeper.003']!, 'en') },
+  'foe-d-invasion-eternal-tomb': { name: l10nEntryText(L10N['ship.gravekeeper.004']!, 'en') },
   'foe-missile-hulk': { name: 'Missile Hulk' },
   'foe-titan-hulk': { name: 'Titan Hulk' },
   'foe-auro-hulk': { name: 'Auro Hulk' },

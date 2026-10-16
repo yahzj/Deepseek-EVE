@@ -952,6 +952,13 @@ export interface BlinkSeg {
 /** V12 实时战斗持久状态（确定性事件步进；只存动态量） */
 export interface BattleState {
   foeAcidLayers?: Record<string, Array<{ cutPct: number; untilMs: number }>>
+  /** 守墓族苏生协议：一次性触发与已分配维修量，跨战中读档保留。 */
+  foeRebirths?: Record<string, { lockUntilMs: number; startedAtMs: number; repairUntilMs: number; lastRepairAtMs: number; armorHealed: number; hullHealed: number }>
+  /** 永陵级守墓镀层装甲：每层独立到期，运行态不入档。 */
+  foeCoatingLayers?: Record<string, Array<{ untilMs: number }>>
+  /** 永陵级护盾蓄能：首次空盾后的运行态与各武器成功攻击次数。 */
+  foeShieldCapacitorActive?: Record<string, true>
+  foeShieldCapacitorAttacks?: Record<string, number>
   /** 本场逐次累计腐蚀与爆虫触发去重，跨波保留、战后随战斗销毁。 */
   alienCorrosion?: number
   acidBursts?: Record<string, { cause: 'attack' | 'killed'; atMs: number; resolved?: boolean }>

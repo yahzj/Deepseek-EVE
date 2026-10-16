@@ -67,6 +67,10 @@ export const RECYCLE_LOOT_PILOT: Record<string, RecycleFlavor['recycleLoot']> = 
   'corona-split': { modules: ['mod-shield-pla-2'] },
   'corona-converge': { modules: ['mod-shield-pla-2'] },
   'corona-nexus': { modules: ['mod-shield-pla-2'] },
+  'gravekeeper-drift': { modules: ['mod-shield-pla-2'] },
+  'gravekeeper-line': { modules: ['mod-shield-pla-2'] },
+  'gravekeeper-main': { modules: ['mod-shield-pla-2'] },
+  'gravekeeper-flagship': { modules: ['mod-shield-pla-2'] },
   'alien-vanguard': { modules: ['mod-armor-plate-2'] },
   'alien-escort': { modules: ['mod-armor-plate-2'] },
   'alien-main': { modules: ['mod-armor-plate-2'] },
@@ -246,6 +250,22 @@ export const RECYCLE_FLAVOR: Record<string, RecycleFlavor> = {
   'corona-nexus': {
     recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
     recycleNote: '光环中枢卫队残骸：星髓晶与重钨合金为主',
+  },
+  'gravekeeper-drift': {
+    recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
+    recycleNote: '守墓者巡哨舰队残骸：星髓晶与重钨合金为主',
+  },
+  'gravekeeper-line': {
+    recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
+    recycleNote: '守墓者碑卫舰队残骸：星髓晶与重钨合金为主',
+  },
+  'gravekeeper-main': {
+    recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
+    recycleNote: '守墓者守誓舰队残骸：星髓晶与重钨合金为主',
+  },
+  'gravekeeper-flagship': {
+    recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]],
+    recycleNote: '守墓者永陵舰队残骸：星髓晶与重钨合金为主',
   },
   'alien-vanguard': { recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]], recycleNote: '异形生物残骸：星髓晶与重钨合金为主' },
   'alien-escort': { recyclePool: [['min-tritanium', 40], ['min-starcore', 34], ['min-nocxium', 26]], recycleNote: '异形生物残骸：星髓晶与重钨合金为主' },

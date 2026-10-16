@@ -69,6 +69,7 @@ export const BLACKBOX_ITEM_IDS: readonly string[] = [
   PLUG_BLACKBOX_ITEM_ID,
   blackBoxItemIdOfFamily('R'),
   blackBoxItemIdOfFamily('C'),
+  blackBoxItemIdOfFamily('D'),
   'blackbox-universal',
 ]
 

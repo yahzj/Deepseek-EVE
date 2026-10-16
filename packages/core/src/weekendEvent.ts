@@ -194,7 +194,7 @@ export const WEEKEND_LOCKED_FAMILY: string | null = null
  * - **族循环**（`weekendFamilyForWindow`：无特意设置时按期顺延）；
  * - **随机抽族**（`weekendRandomFamilyOf`：信号发射器召唤用；`weekendRollOccupation` 的随机兜底同池）。
  */
-export const WEEKEND_FINISHED_FAMILIES: readonly string[] = ['R', 'C', 'H']
+export const WEEKEND_FINISHED_FAMILIES: readonly string[] = ['R', 'C', 'H', 'D']
 
 /**
  * **循环敌对势力**（**船长 2026-10-02 令**：「**一会8点开启入侵，设置为R族，下周如果没有特意设置，
@@ -345,7 +345,7 @@ export const WEEKEND_FLAGSHIP_DEADLINE_MS = 24 * 3_600_000
  * 2026-10-01：**加 R 族（光环）**——船长令「新势力：光环」，与新族同批进本表
  * （不进则光环没有旗舰战，与 H 族体感不对等）。
  */
-export const WEEKEND_BOSS_FAMILIES: readonly string[] = ['H', 'R', 'C']
+export const WEEKEND_BOSS_FAMILIES: readonly string[] = ['H', 'R', 'C', 'D']
 /**
  * BOSS池采用固定容量（2026-09-25起，取代首战伤害反解）。
  * 战斗母舰血条 = `weekendFlagshipHpRemaining`；新池读取本常量，旧池按事件快照。
@@ -783,7 +783,7 @@ export const WEEKEND_WINDOW_END_HOLD_MS = 60_000
  * ⚠ 本期（到 2026-10-09 那期为止）**实际跑哪一族由 `weekendLockedFamilyOf(state)` 决定**，
  * 本行只声明"允许进池的族"。
  */
-export const WEEKEND_FAMILIES: readonly string[] = ['A', 'C', 'G', 'H', 'R']
+export const WEEKEND_FAMILIES: readonly string[] = ['A', 'C', 'G', 'H', 'R', 'D']
 
 /* ─────────────── 族名（正式称呼 · 玩家可见；**唯一登记处**） ─────────────── */
 
@@ -809,6 +809,7 @@ const WEEKEND_FAMILY_NAME_ZH: Readonly<Record<string, string>> = {
   G: '鱿鱼亡军',
   H: '墨潮帮',
   R: '光环',
+  D: '守墓者',
 }
 const WEEKEND_FAMILY_NAME_ID: Readonly<Record<string, string>> = {
   A: 'core.weekend.020',
@@ -816,6 +817,7 @@ const WEEKEND_FAMILY_NAME_ID: Readonly<Record<string, string>> = {
   G: 'core.weekend.022',
   H: 'core.weekend.023',
   R: 'core.weekend.024',
+  D: 'core.weekend.026',
 }
 /** 未知族的中性称呼（中文原文；同一句的英文由 `core.weekend.025` 给） */
 const UNKNOWN_FAMILY_ZH = '未知势力'
@@ -866,7 +868,7 @@ export function weekendFoeFleetNameOf(family: string, cardName: string): string 
  * 78/120，属 M1 占位口径，等各自旗舰卡设计好再迁）。
  */
 export function weekendFoeCardsSelfPriced(family: string): boolean {
-  return family === 'H' || family === 'R' || family === 'C'
+  return family === 'H' || family === 'R' || family === 'C' || family === 'D'
 }
 
 /**
@@ -883,6 +885,8 @@ const H_FOE_POOL_CORE: readonly string[] = ['ink-raid', 'ink-main']
  */
 const R_FOE_POOL_PERIPHERY: readonly string[] = ['corona-drift', 'corona-split']
 const R_FOE_POOL_CORE: readonly string[] = ['corona-split', 'corona-converge']
+const D_FOE_POOL_PERIPHERY: readonly string[] = ['gravekeeper-drift', 'gravekeeper-line']
+const D_FOE_POOL_CORE: readonly string[] = ['gravekeeper-line', 'gravekeeper-main']
 
 /**
  * **某族某区域的入侵敌卡池**：
@@ -895,6 +899,7 @@ export function weekendFoePoolOf(family: string, isCore: boolean): readonly stri
   if (family === 'C') return isCore ? ['alien-escort', 'alien-main'] : ['alien-vanguard', 'alien-escort']
   if (family === 'H') return isCore ? H_FOE_POOL_CORE : H_FOE_POOL_PERIPHERY
   if (family === 'R') return isCore ? R_FOE_POOL_CORE : R_FOE_POOL_PERIPHERY
+  if (family === 'D') return isCore ? D_FOE_POOL_CORE : D_FOE_POOL_PERIPHERY
   const fam = (WEEKEND_FAMILIES.includes(family) ? family : WEEKEND_FAMILIES[0]!) as WormholeFamily
   return [wormholeCardPoolAt(fam, isCore ? 9 : 5)[0]!.id]
 }
@@ -980,6 +985,7 @@ export function weekendFoeCardOf(family: string, kind: 'assault' | 'flagship'): 
   if (family === 'C') return kind === 'flagship' ? 'alien-broodmother' : 'alien-vanguard'
   if (family === 'H') return kind === 'flagship' ? 'ink-flagship' : H_FOE_POOL_PERIPHERY[0]!
   if (family === 'R') return kind === 'flagship' ? 'corona-nexus' : R_FOE_POOL_PERIPHERY[0]!
+  if (family === 'D') return kind === 'flagship' ? 'gravekeeper-flagship' : D_FOE_POOL_PERIPHERY[0]!
   const fam = (WEEKEND_FAMILIES.includes(family) ? family : WEEKEND_FAMILIES[0]!) as WormholeFamily
   const pool = wormholeCardPoolAt(fam, kind === 'flagship' ? 9 : 5)
   return pool[0]!.id

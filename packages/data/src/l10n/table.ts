@@ -24,6 +24,26 @@ export function l10nEntryText(entry: L10nEntry, locale: 'zh' | 'en'): string {
 }
 
 export const L10N: Readonly<Record<string, L10nEntry>> = {
+  'ship.gravekeeper.001': { zh: '巡陵级', en: '', enDeferred: true },
+  'ship.gravekeeper.002': { zh: '碑卫级', en: '', enDeferred: true },
+  'ship.gravekeeper.003': { zh: '守誓级', en: '', enDeferred: true },
+  'ship.gravekeeper.004': { zh: '永陵级', en: '', enDeferred: true },
+  'ano.gravekeeper.001': { zh: '守墓者巡哨舰队', en: '', enDeferred: true },
+  'ano.gravekeeper.002': { zh: '守墓者碑卫舰队', en: '', enDeferred: true },
+  'ano.gravekeeper.003': { zh: '守墓者守誓舰队', en: '', enDeferred: true },
+  'ano.gravekeeper.004': { zh: '守墓者永陵舰队', en: '', enDeferred: true },
+  'ano.gravekeeper.005': { zh: '守墓者入侵舰队。', en: '', enDeferred: true },
+  'item.gravekeeper.001': { zh: '守墓者旗舰黑匣', en: '', enDeferred: true },
+  'item.gravekeeper.002': { zh: '守墓者入侵旗舰的记录匣，封存古舰协议与航迹；可用于舰船插件制造或出售。', en: '', enDeferred: true },
+  'ui.gravekeeper.001': { zh: '首次受到致命攻击时，结构最低保留1点，并在1秒内维持结构底线；同时在{p1}秒内持续恢复最大装甲与最大结构各{p2}，不恢复护盾。每场每舰一次。', en: '', enDeferred: true },
+  'ui.gravekeeper.002': { zh: '装甲与结构获得{p1}全抗性，最大装甲与最大结构各乘{p2}；护盾不变。', en: '', enDeferred: true },
+  'ui.gravekeeper.003': { zh: '每次实际装甲损失后，装甲全抗性提高{p1}个百分点；每层独立持续{p2}秒，最终装甲抗性最高{p3}。', en: '', enDeferred: true },
+  'ui.gravekeeper.004': { zh: '本场首次空盾后永久蓄能，全部武器射程提高{p1}；每次成功攻击后，该武器攻击间隔乘{p2}、伤害乘{p3}，无叠加上限。', en: '', enDeferred: true },
+  'ui.gravekeeper.005': { zh: '{p1} · 苏生协议{p2} · 结构保底剩余{p3}秒 · 维修剩余{p4}秒', en: '', enDeferred: true },
+  'ui.gravekeeper.006': { zh: '{p1} · 守墓镀层装甲{p2}层', en: '', enDeferred: true },
+  'ui.gravekeeper.007': { zh: '{p1} · 蓄能{p2} · 主炮成功攻击{p3}次 · 伤害×{p4} · 攻击间隔×{p5}', en: '', enDeferred: true },
+  'ui.gravekeeper.008': { zh: '已启动', en: '', enDeferred: true },
+  'ui.gravekeeper.009': { zh: '已使用', en: '', enDeferred: true },
   // ⟪文案调整 2026-10-13⟫ 高槽占用且没有攻击武器时的抵达日志，英文仅登记待译。
   'core.expedition.062': { zh: '⚔ 抵达目标（{p1}）：进入交火。高槽已装配装备，基础舰炮已禁用；未装配攻击武器。{p3}', en: '', enDeferred: true },
   // ⟪文案调整 2026-10-12⟫ 船长确认黑市开放通讯，英文仅登记待译。
@@ -1640,6 +1660,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   /* 未知族的**中性兜底**（2026-10-01 实障：R 族进池而族名表漏登记 ⇒ 通讯标题印出内部代号「R 族」）。
      加族时若忘了登记族名，界面上读到的是这一句，而不是开发字眼。 */
   "core.weekend.025": { zh: "未知势力", en: "Unknown faction" },
+  "core.weekend.026": { zh: "守墓者", en: '', enDeferred: true },
   "core.station.001": { zh: "未知建站点：{p1}。", en: "Unknown construction site: {p1}." },
   "core.station.002": { zh: "「{p1}」已建成，无需再提交。", en: "“{p1}” is already complete; there is nothing left to hand in." },
   "core.station.003": { zh: "「{p1}」当前档不收这种材料或已收齐——本档材料单：{p2}。", en: "“{p1}” does not take that material at this tier, or has already collected enough — this tier's bill: {p2}." },

@@ -51,6 +51,10 @@ export function mountEffectText(id: string): string | null {
   if (!def) return null
   if (def.acidShieldDamageMul !== undefined) return tr('ui.acidShield.001')
   const pct = (v: number) => String(Math.round(v * 100))
+  if (def.rebirthProtocol) return tr('ui.gravekeeper.001', { p1: def.rebirthProtocol.repairMs / 1000, p2: `${pct(def.rebirthProtocol.armorTotalPct)}%` })
+  if (def.mausoleumArmor) return tr('ui.gravekeeper.002', { p1: `${pct(def.mausoleumArmor.resistPct)}%`, p2: def.mausoleumArmor.hpMul })
+  if (def.coatingArmor) return tr('ui.gravekeeper.003', { p1: pct(def.coatingArmor.resistAdd), p2: def.coatingArmor.durationMs / 1000, p3: `${pct(def.coatingArmor.cap)}%` })
+  if (def.shieldCapacitor) return tr('ui.gravekeeper.004', { p1: `${pct(def.shieldCapacitor.rangeMul - 1)}%`, p2: def.shieldCapacitor.reloadMul, p3: def.shieldCapacitor.damageMul })
   // ⟪文案调整 2026-10-09⟫ 取消炮台惩罚，旧英文条目留档，新说明只登记待译。
   if (def.broodControl) return tr('ui.alien.008', { p1: pct(def.broodControl.droneDmgMul - 1), p2: pct(def.broodControl.droneRangeBonusPct) })
   // ⟪文案调整 2026-10-09⟫ 孵化等待读取新参数，召唤与加速说明同源。

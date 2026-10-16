@@ -100,6 +100,10 @@ export const FOE_MOUNT_IDS = {
    */
   coronaFocusArray: 'foe-mount-corona-focus-array',
   coronaOverlayBeacon: 'foe-mount-corona-overlay-beacon',
+  dRebirthProtocol: 'foe-mount-d-rebirth-protocol',
+  dMausoleumArmor: 'foe-mount-d-mausoleum-armor',
+  dCoatingArmor: 'foe-mount-d-coating-armor',
+  dShieldCapacitor: 'foe-mount-d-shield-capacitor',
 } as const
 
 /** 全部挂载件（键 = id；`FoeMountId` 联合类型保证穷尽） */
@@ -358,6 +362,30 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
     summonEscort: { everyMs: enemyParameterOf(foeMountsParameters, "foe-mount-corona-overlay-beacon", "summonEscort_everyMs"), count: enemyParameterOf(foeMountsParameters, "foe-mount-corona-overlay-beacon", "summonEscort_count"), shipId: 'foe-r-corona-overlay', formationSlots: true },
     note: '船长2026-10-08确认：每60秒检查当前波空位，满血召唤一艘叠光级；不超原编成，满员跳过不累计，中枢被毁后停止。',
   },
+  [FOE_MOUNT_IDS.dRebirthProtocol]: {
+    id: FOE_MOUNT_IDS.dRebirthProtocol,
+    name: '苏生协议',
+    rebirthProtocol: { repairMs: enemyParameterOf(foeMountsParameters, 'foe-mount-d-rebirth-protocol', 'rebirthProtocol_repairMs'), armorTotalPct: enemyParameterOf(foeMountsParameters, 'foe-mount-d-rebirth-protocol', 'rebirthProtocol_armorTotalPct'), hullTotalPct: enemyParameterOf(foeMountsParameters, 'foe-mount-d-rebirth-protocol', 'rebirthProtocol_hullTotalPct') },
+    note: '首次受到致命攻击时结构保留1点；随后5秒按总量恢复最大装甲与最大结构各100%，不恢复护盾。每场每舰一次。',
+  },
+  [FOE_MOUNT_IDS.dMausoleumArmor]: {
+    id: FOE_MOUNT_IDS.dMausoleumArmor,
+    name: '陵墓装甲',
+    mausoleumArmor: { hpMul: enemyParameterOf(foeMountsParameters, 'foe-mount-d-mausoleum-armor', 'mausoleumArmor_hpMul'), resistPct: enemyParameterOf(foeMountsParameters, 'foe-mount-d-mausoleum-armor', 'mausoleumArmor_resistPct') },
+    note: '最大装甲与最大结构各乘0.5；装甲与结构获得75%全抗性。',
+  },
+  [FOE_MOUNT_IDS.dCoatingArmor]: {
+    id: FOE_MOUNT_IDS.dCoatingArmor,
+    name: '守墓镀层装甲',
+    coatingArmor: { resistAdd: enemyParameterOf(foeMountsParameters, 'foe-mount-d-coating-armor', 'coatingArmor_resistAdd'), cap: enemyParameterOf(foeMountsParameters, 'foe-mount-d-coating-armor', 'coatingArmor_cap'), durationMs: enemyParameterOf(foeMountsParameters, 'foe-mount-d-coating-armor', 'coatingArmor_durationMs') },
+    note: '实际伤害落入装甲层并造成装甲损失时，装甲全抗性提高5个百分点；每层独立计时，最高90%。',
+  },
+  [FOE_MOUNT_IDS.dShieldCapacitor]: {
+    id: FOE_MOUNT_IDS.dShieldCapacitor,
+    name: '护盾蓄能装置',
+    shieldCapacitor: { rangeMul: enemyParameterOf(foeMountsParameters, 'foe-mount-d-shield-capacitor', 'shieldCapacitor_rangeMul'), reloadMul: enemyParameterOf(foeMountsParameters, 'foe-mount-d-shield-capacitor', 'shieldCapacitor_reloadMul'), damageMul: enemyParameterOf(foeMountsParameters, 'foe-mount-d-shield-capacitor', 'shieldCapacitor_damageMul') },
+    note: '本场护盾首次归零后永久启动；全部武器射程提高50%，每次成功攻击后攻击间隔乘1.1、伤害乘1.15，无上限。',
+  },
 }
 
 /** 按 id 取件（未知 id ⇒ `undefined`；体检会把它判红） */
@@ -428,6 +456,10 @@ export interface ResolvedFoeMounts {
    * 消费单点 = `combat` 敌方开火段（按**本波起点**现算当拍的远端衰减系数）。
    */
   foeFocusArray?: FoeMountDef['focusArray']
+  foeRebirthProtocol?: FoeMountDef['rebirthProtocol']
+  foeMausoleumArmor?: FoeMountDef['mausoleumArmor']
+  foeCoatingArmor?: FoeMountDef['coatingArmor']
+  foeShieldCapacitor?: FoeMountDef['shieldCapacitor']
   /** 展示名（保持挂载顺序；`foeMountNames` 直接用它） */
   names: string[]
   /**
@@ -488,6 +520,10 @@ export function resolveFoeMounts(ids: readonly string[] | undefined): ResolvedFo
     // 待机护盾阵列 / 聚焦阵列（2026-10-02）：同款"后写覆盖先写"
     if (def.standbyShield) out.foeStandbyShield = { ...def.standbyShield }
     if (def.focusArray) out.foeFocusArray = { ...def.focusArray }
+    if (def.rebirthProtocol) out.foeRebirthProtocol = { ...def.rebirthProtocol }
+    if (def.mausoleumArmor) out.foeMausoleumArmor = { ...def.mausoleumArmor }
+    if (def.coatingArmor) out.foeCoatingArmor = { ...def.coatingArmor }
+    if (def.shieldCapacitor) out.foeShieldCapacitor = { ...def.shieldCapacitor }
   }
   return out
 }

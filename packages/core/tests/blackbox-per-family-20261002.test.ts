@@ -139,6 +139,7 @@ describe('① 内容侧：每族登记一件黑匣（R 族「光环旗舰黑匣�
       PLUG_BLACKBOX_ITEM_ID,
       'blackbox-r',
       'blackbox-c',
+      'blackbox-d',
       'blackbox-universal',
     ])
   })

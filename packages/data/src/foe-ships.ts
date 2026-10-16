@@ -866,6 +866,63 @@ export const FOE_D_THRONE: FoeShipDef = {
   mounts: [FOE_MOUNT_IDS.supportCall],
 }
 
+/* ═══════════ D 族入侵专用舰级（2026-10-16）═══════════
+ * 与旧 D 族虫洞/悬赏舰级分开：入侵舰使用高盾、45/30/25 血型，挂载件负责后半段防线。
+ */
+export const FOE_D_INVASION_CRUISER: FoeShipDef = {
+  id: 'foe-d-invasion-cruiser', name: L10N['ship.gravekeeper.001']!.zh, family: 'D',
+  evasion: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'evasion'),
+  hullClassTier: (enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'hullClassTier') as 1 | 2 | 3 | 4 | 5), speedRatio: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'speedRatio'),
+  hp: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'hp'),
+  split: { s: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'split_s'), a: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'split_a'), h: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'split_h') },
+  shotDmg: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'shotDmg'), gunCount: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'gunCount'),
+  hitRate: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'hitRate'), reloadMs: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'reloadMs'),
+  rangeMinM: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'rangeMinM'), rangeMaxM: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'rangeMaxM'),
+  falloff: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'falloff'), blindDmgMul: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'blindDmgMul'),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'dmgMix_plasma'), kinetic: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-cruiser', 'dmgMix_kinetic') }, energyForm: 'beam', tactic: 'orbit',
+  mounts: [FOE_MOUNT_IDS.dRebirthProtocol],
+}
+export const FOE_D_INVASION_BASTION: FoeShipDef = {
+  id: 'foe-d-invasion-bastion', name: L10N['ship.gravekeeper.002']!.zh, family: 'D',
+  evasion: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'evasion'),
+  hullClassTier: (enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'hullClassTier') as 1 | 2 | 3 | 4 | 5), speedRatio: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'speedRatio'),
+  hp: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'hp'),
+  split: { s: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'split_s'), a: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'split_a'), h: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'split_h') },
+  shotDmg: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'shotDmg'), gunCount: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'gunCount'),
+  hitRate: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'hitRate'), reloadMs: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'reloadMs'),
+  rangeMinM: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'rangeMinM'), rangeMaxM: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'rangeMaxM'),
+  falloff: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'falloff'), blindDmgMul: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'blindDmgMul'),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'dmgMix_plasma'), kinetic: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'dmgMix_kinetic') }, energyForm: 'beam', tactic: 'orbit',
+  mounts: [FOE_MOUNT_IDS.dMausoleumArmor],
+}
+export const FOE_D_INVASION_OATHKEEPER: FoeShipDef = {
+  id: 'foe-d-invasion-oathkeeper', name: L10N['ship.gravekeeper.003']!.zh, family: 'D',
+  evasion: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'evasion'),
+  hullClassTier: (enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'hullClassTier') as 1 | 2 | 3 | 4 | 5), speedRatio: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'speedRatio'),
+  hp: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'hp'),
+  split: { s: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'split_s'), a: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'split_a'), h: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'split_h') },
+  shotDmg: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'shotDmg'), gunCount: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'gunCount'),
+  hitRate: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'hitRate'), reloadMs: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'reloadMs'),
+  rangeMinM: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'rangeMinM'), rangeMaxM: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'rangeMaxM'),
+  falloff: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'falloff'), blindDmgMul: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'blindDmgMul'),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'dmgMix_plasma'), kinetic: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-oathkeeper', 'dmgMix_kinetic') }, energyForm: 'beam', tactic: 'kite',
+  mounts: [FOE_MOUNT_IDS.dMausoleumArmor, FOE_MOUNT_IDS.dRebirthProtocol],
+}
+export const FOE_D_INVASION_ETERNAL_TOMB: FoeShipDef = {
+  id: 'foe-d-invasion-eternal-tomb', name: L10N['ship.gravekeeper.004']!.zh, family: 'D',
+  evasion: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'evasion'),
+  hullClassTier: (enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'hullClassTier') as 1 | 2 | 3 | 4 | 5), speedRatio: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'speedRatio'),
+  // 船长2026-10-16改判：基础厚血参照既有入侵旗舰，共享池仍最后绝对覆写。
+  hp: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'hp'),
+  split: { s: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'split_s'), a: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'split_a'), h: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'split_h') },
+  shotDmg: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'shotDmg'), gunCount: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'gunCount'),
+  hitRate: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'hitRate'), reloadMs: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'reloadMs'),
+  rangeMinM: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'rangeMinM'), rangeMaxM: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'rangeMaxM'),
+  falloff: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'falloff'), blindDmgMul: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'blindDmgMul'),
+  dmgMix: { plasma: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'dmgMix_plasma'), kinetic: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-eternal-tomb', 'dmgMix_kinetic') }, energyForm: 'beam', tactic: 'orbit',
+  mounts: [FOE_MOUNT_IDS.dCoatingArmor, FOE_MOUNT_IDS.dShieldCapacitor],
+}
+
 /** E 族 · 四档「**导弹残段**」——**长臂导弹平台**（2026-09-15 船长：「**E族添加巡洋级导弹残骸段，
  *  使用导弹。**」＋「**导弹残段射程提高到 1W5**」＋「**伤害为100%纯爆炸**」＋「**导弹沿用现在的风格**」）。
  *
@@ -936,6 +993,10 @@ export const FOE_MISSILE_HULK: FoeShipDef = {
  */
 export const FOE_SHIP_MIX_AUTHORITY_IDS: readonly string[] = [
   'foe-d-throne', // 等离子 6 : 动能 4（船长 2026-09-15「按乙调整为 6:4」）
+  'foe-d-invasion-cruiser',
+  'foe-d-invasion-bastion',
+  'foe-d-invasion-oathkeeper',
+  'foe-d-invasion-eternal-tomb',
   'foe-missile-hulk', // 纯爆炸（船长 2026-09-15「伤害为100%纯爆炸」）
   // E 族三条：爆炸 6 : 动能 4（船长 2026-09-19「所有E族的默认伤害比改为爆炸60%，动能40%」）
   'foe-titan-hulk',
@@ -1761,6 +1822,10 @@ export const FOE_R_CORONA_NEXUS: FoeShipDef = {
   FOE_D_LONGSHIP,
   FOE_D_STASIS,
   FOE_D_THRONE, // 2026-09-15：D 族第 4 档「守墓王座舰」（船长「D族添加一艘战列舰」）
+  FOE_D_INVASION_CRUISER,
+  FOE_D_INVASION_BASTION,
+  FOE_D_INVASION_OATHKEEPER,
+  FOE_D_INVASION_ETERNAL_TOMB,
   FOE_SHIP_TITAN_HULK,
   FOE_SHIP_AURO_HULK,
   FOE_SHIP_CORE_SECTION,

@@ -1165,6 +1165,12 @@
         "baseSellPriceIsk": 10000000
       },
       {
+        "id": "blackbox-d",
+        "kind": "blackbox",
+        "unitM3": 5,
+        "baseSellPriceIsk": 10000000
+      },
+      {
         "id": "blackbox-universal",
         "kind": "blackbox",
         "unitM3": 5,

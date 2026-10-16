@@ -432,6 +432,11 @@ export const FOE_SHIP_MOUNTS: Record<string, ShipMounts> = {
   },
   // 守墓王座舰：艉部方块(box 64,52,12,18) 左缘中点；艏部重炮楔壳最右尖(226,55)
   'foe-d-throne': { engines: [{ x: 64, y: 61 }], muzzles: [{ x: 226, y: 55 }] },
+  // 新入侵舰挂点与shipArtFoe对应路径端点一致。
+  'foe-d-invasion-cruiser': { engines: [{ x: 34, y: 57.5 }], muzzles: [{ x: 228, y: 40 }, { x: 228, y: 72 }] },
+  'foe-d-invasion-bastion': { engines: [{ x: 28, y: 58.5 }], muzzles: [{ x: 232, y: 61 }] },
+  'foe-d-invasion-oathkeeper': { engines: [{ x: 24, y: 45 }, { x: 24, y: 83 }], muzzles: [{ x: 233, y: 50 }, { x: 233, y: 76 }] },
+  'foe-d-invasion-eternal-tomb': { engines: [{ x: 18, y: 55 }, { x: 18, y: 74 }], muzzles: [{ x: 232, y: 62 }] },
   // ── E 族 · 泰坦巨构 ──
   // 导弹残段：艉部方块(box 34,52,12,22) 左缘中点；断口内最外一枚导弹巢口(151,49)
   'foe-missile-hulk': { engines: [{ x: 34, y: 63 }], muzzles: [{ x: 151, y: 49 }] },
