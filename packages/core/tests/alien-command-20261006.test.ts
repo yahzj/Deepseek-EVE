@@ -296,7 +296,7 @@ describe('爆虫一次性动能伤害与保存', () => {
     expect(hits).toBeGreaterThan(0)
     expect(misses).toBeGreaterThan(0)
   })
-  it('同拍多爆虫共享原伤额度，近距死亡爆发也受损管免死保护', () => {
+  it('同拍多爆虫共享实际承伤额度，近距死亡爆发也受损管免死保护', () => {
     const source = ctx.foeShips!.get('foe-alien-acid-burster')!
     const entry = { ...ctx.anomalies.get('alien-vanguard')!, id: 'acid-guard', waves: undefined, ships: [{ ship: source, count: 5, dmgMul: 20 }] }
     const local = { ...ctx, anomalies: new Map([...ctx.anomalies, [entry.id, entry]]), balance: { ...ctx.balance, battle: { ...ctx.balance.battle, shieldRegenPerSec: 0 } } }

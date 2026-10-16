@@ -46,6 +46,7 @@
 | 敌方族格最终血量倍率 | `foeFamilyHpMulOf()` · `foePower.ts` | C族三层最终+30%、非C不变、舰体/机型独立判定、共享旗舰绝对血覆盖与预算不抵消专项 |
 | 全舰容量提升及敌舰最终倍率 | `SHIP_HP_UPLIFT_MUL` · `combatMath.ts`；`foeShipHpMulOf()` · `foePower.ts` | 玩家舰体/插件1.5、敌舰最终1.5且保留族格、预算和火力不变、无人机排除、共享池绝对覆盖专项 |
 | 守墓装备危机倍率、动态规格与磁轨射后叠层 | `crisisEffectsOf()` / `playerGravekeeperSpecOf()` / `noteRailAttack()` · `gravekeeperGear.ts` | 同件正负同权重、炮台/机群隔离、战斗/视图同源、同型齐射一次叠层与读档续算专项；F2/F3 |
+| 玩家实际承伤与齐射保护 | `applyPlayerUnitDamage()` · `combat.ts` | 层位/抗性/混伤/破盾后按实际掉血限制80%，损管保底后记账，100ms窗口及逐舰隔离专项；F2/F3 |
 | 玩家舰载近盲开火与伤害 | `playerWeaponInRange()` / `playerBlindDamageMul()` · `combatMath.ts` | 最大射程内放行、近盲0.3、无人机原规则、近防打机群豁免、连发/逐炮/副段与预估专项 |
 | 护盾恢复比例与扣盾比例展示 | `shieldRecoveryRatio()` · `combatMath.ts` | 运行规格旧恢复基准/新容量；未装配按全局倍率折算；力场/充能详情、有效值和周期视图同源 |
 | 悬赏后台预热任务与缓存代次 | `BountyWinCache` · `game/bountyWinCache.ts`；真实评估仍为core `estimateBountyWinOn` | 单worker/每卡30局、失效取消/战斗让路、结果等价与双端真实worker响应专项 |

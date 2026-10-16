@@ -32,7 +32,7 @@ function world(kind: 'shield-charge' | 'shield-field') {
 }
 
 describe('护盾直接调参的数据与公式契约', () => {
-  it('固定基线全表只调整批准的五个比例，其余装备字段不变', () => {
+  it('固定基线只调整批准的五个比例，后续守墓三件单列，其余装备字段不变', () => {
     const expected = JSON.parse(execFileSync('git', ['show', '4b31d1a5:packages/data/src/static/modules.json'], { encoding: 'utf8' })) as typeof modules
     for (const row of Object.values(expected.groups).flat()) {
       if (row.id === 'mod-shieldchg-1') Object.assign(row, { shieldPulsePct: .08 })
@@ -40,6 +40,13 @@ describe('护盾直接调参的数据与公式契约', () => {
       if (row.id === 'mod-shieldchg-3') Object.assign(row, { shieldPulsePct: .213 })
       if (['mod-shieldfield-2', 'mod-shieldfield-3'].includes(row.id)) Object.assign(row, { shieldFieldPct: .067 })
     }
+    const approved = JSON.parse(execFileSync('git', ['show', 'e3db904e:packages/data/src/static/modules.json'], { encoding: 'utf8' })) as typeof modules
+    const additions = ['mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail']
+    for (const key of Object.keys(expected.groups) as Array<keyof typeof expected.groups>) {
+      const rows = approved.groups[key].filter(row => additions.includes(row.id))
+      expected.groups[key].push(...rows)
+    }
+    expect(Object.values(expected.groups).flat().filter(row => additions.includes(row.id)).map(row => row.id)).toEqual(additions)
     expect(modules).toEqual(expected)
     expect(SHIELD_FIELD_COST_PCT).toBe(.067)
     expect(ctx.balance.battle.shieldRegenPerSec).toBe(.012)

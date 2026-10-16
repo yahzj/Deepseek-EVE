@@ -1012,17 +1012,23 @@ export function pulseFoeMountRepair(
  * **我方"不被一击带走"保险**（船长 2026-09-16：「**血量 100%，单次齐射伤害最多只能造成总血量 80% 的伤害
  * （只对我方生效）**」）。
  *
- * 口径：**同一拍内落在同一艘我方舰上的敌方伤害合计 ≤ 该舰满血（三层合计）× 本比例（0.8）**
+ * 2026-10-16船长裁定：**同一窗口内同一艘我方舰的实际掉血合计 ≤ 满血三层总量×本比例**。
  * —— `battle.meVolleyDmg[tag]`按独立100ms窗口归组，不随内部子步缩小。
- * - **只削我方承伤**：本函数只在"敌方 → 我方"的三处结算点调用（敌机群 / 敌光束 / 敌炮台），
+ * - **只削我方承伤**：敌方酸液爆发、机群、光束与实弹统一走`applyPlayerUnitDamage`，
  *   我方打敌人**一字不动**；
  * - **洞内洞外都生效**：挂在共用的 `stepBattle` 上 ⇒ 悬赏 / 低安遭遇 / AI 副船 / 虫洞一律吃保险；
- * - 夹的是**入伤**（已含近盲折扣与受击增程折减之后），所以实际掉血 ≤ 上面那条上限。
+ * - 额度在层位克制、抗性、混伤及额外破盾之后计算；损管保护后的真实掉血才入账。
  * - "一次齐射"按原100ms归组窗口计，窗口标记为 `meVolleyWindow`。
  */
 export const PLAYER_VOLLEY_DMG_CAP_SHARE = 0.8
 
-/** 把一发"敌方 → 我方"的伤害夹进本拍保险额度内，并记账（返回实际可造成的伤害） */
+function playerVolleyDamageRoomOf(b: import('./state').BattleState, tag: string, spec: UnitSpec): number {
+  const max = b.units[tag]?.hpMax ?? spec.hp
+  const full = max.s + max.a + max.h
+  return full > 0 ? Math.max(0, full * PLAYER_VOLLEY_DMG_CAP_SHARE - (b.meVolleyDmg?.[tag] ?? 0)) : Infinity
+}
+
+/** 输入已结算的实际掉血，按窗口剩余额度记账，不再接收原始伤害。 */
 export function cappedFoeDamage(
   b: import('./state').BattleState,
   tag: string,
@@ -1030,16 +1036,43 @@ export function cappedFoeDamage(
   dmg: number,
 ): number {
   if (dmg <= 0) return dmg
-  const max = b.units[tag]?.hpMax
-  const full = max ? max.s + max.a + max.h : spec.hp.s + spec.hp.a + spec.hp.h
-  if (full <= 0) return dmg
-  const cap = full * PLAYER_VOLLEY_DMG_CAP_SHARE
   const used = b.meVolleyDmg?.[tag] ?? 0
-  const room = Math.max(0, cap - used)
-  const out = Math.min(dmg, room)
+  const out = Math.min(dmg, playerVolleyDamageRoomOf(b, tag, spec))
   // ⚠ **必须无条件记账**（哪怕这一发全额放行）：额度是"本拍累计"口径，漏记就等于给下一发多开口子
   b.meVolleyDmg = { ...(b.meVolleyDmg ?? {}), [tag]: used + out }
   return out
+}
+
+/** 敌方对玩家的唯一入伤口：先结算分层实伤，再限额和损管，最后只记真实掉血。 */
+export function applyPlayerUnitDamage(
+  state: GameState,
+  b: import('./state').BattleState,
+  tag: string,
+  spec: UnitSpec,
+  raw: number,
+  type: DamageType,
+  applyRaw?: (r: number) => Hp3,
+): number {
+  const rt = b.units[tag]
+  if (!rt || raw <= 0) return 0
+  const before = rt.hp
+  const after = applyRaw ? applyRaw(raw) : applyDamage(before, spec.resists, raw, type).hp
+  const loss = { s: Math.max(0, before.s - after.s), a: Math.max(0, before.a - after.a), h: Math.max(0, before.h - after.h) }
+  const total = loss.s + loss.a + loss.h
+  const amount = Math.min(total, playerVolleyDamageRoomOf(b, tag, spec))
+  // 在已结算的掉血上按层截取，不重新计算原伤落点，避免限额反过来改变克制系数。
+  const apply = (damage: number): Hp3 => {
+    const hp = { ...before }
+    for (const key of ['s', 'a', 'h'] as const) {
+      const take = Math.min(loss[key], damage)
+      hp[key] -= take
+      damage -= take
+    }
+    return hp
+  }
+  const guarded = applyDcGuard(state, b, tag, spec, before, amount, type, apply)
+  rt.hp = guarded === total ? after : apply(guarded)
+  return cappedFoeDamage(b, tag, spec, (before.s - rt.hp.s) + (before.a - rt.hp.a) + (before.h - rt.hp.h))
 }
 
 /* ═══════════ 损伤管制装置 · 免死（2026-09-25 船长令） ═══════════ */
@@ -1050,8 +1083,7 @@ export const DC_LOCK_MS = 1_000
 /**
  * **损伤管制装置 · 免死判定**（船长口径：**1 秒内结构锁定 1** · **每场一次** · **启动消耗 1 枚损管修理组件**）。
  *
- * 位置 = **敌方 → 我方的唯一入伤口**（三处结算点：敌机群 / 敌光束 / 敌炮台，都先过 `cappedFoeDamage`
- * 那道 80% 齐射保险，再过本函数）——这是"逐段夹伤"能成立的关键：
+ * 实战由`applyPlayerUnitDamage`先限制实际承伤，再调用本函数判定保底；最终掉血才计入齐射账本。
  * - **窗口内**（`lockUntilMs > 本拍时刻`）：把本发原始伤害夹到"结算后结构 ≥ 1"⇒ **同拍/同秒多段都破不了**；
  * - **窗口外且未用过**：若本发会导致结构 ≤ 0 ⇒ ①扣 1 枚组件（没组件 ⇒ 不启动，仅记一条日志）
  *   ②开窗 1 秒 ③本场标记已用 ④把本发夹到结构 = 1 ⑤日志 ＋ 战斗提示；
@@ -5249,10 +5281,7 @@ function stepBattle(
       if (hit) {
         b.stats.foeHits += 1
         const apply = (raw: number) => applyDamage(rt.hp, target.resists, raw, 'kinetic', acid.shieldDamageMul)
-        const raw = applyDcGuard(state, b, target.tag, target, rt.hp, cappedFoeDamage(b, target.tag, target, acid.damage ?? 0), 'kinetic', raw => apply(raw).hp)
-        const result = apply(raw)
-        rt.hp = result.hp
-        dealt = result.dealt
+        dealt = applyPlayerUnitDamage(state, b, target.tag, target, acid.damage ?? 0, 'kinetic', raw => apply(raw).hp)
       }
     }
     pushBattleFx(b, { atMs: event.atMs, side: 'foe', tag: f.tag, ...(target ? { to: target.tag } : {}),
@@ -5359,20 +5388,9 @@ function stepBattle(
         let dDealt = 0
         if (dHit) {
           b.stats.foeHits += 1
-          const dBefore = dtgt.rt.hp.s + dtgt.rt.hp.a + dtgt.rt.hp.h
-          /** 损伤管制装置：先过 80% 齐射保险，再过免死夹伤（窗口内逐段夹 ⇒ 同拍多段破不了） */
-          const dRaw = applyDcGuard(
-            state,
-            b,
-            dtgt.spec.tag,
-            dtgt.spec,
-            dtgt.rt.hp,
-            cappedFoeDamage(b, dtgt.spec.tag, dtgt.spec, (dw.shotDmg ?? 0) * foeCapacitorMultiplierOf(b, f, k, 'damageMul')),
-            dType,
-            (r) => applyFoeShot(dtgt.rt.hp, dtgt.spec.resists, dw, r, dType),
-          )
-          dtgt.rt.hp = applyFoeShot(dtgt.rt.hp, dtgt.spec.resists, dw, dRaw, dType)
-          dDealt = Math.max(0, dBefore - (dtgt.rt.hp.s + dtgt.rt.hp.a + dtgt.rt.hp.h))
+          dDealt = applyPlayerUnitDamage(state, b, dtgt.spec.tag, dtgt.spec,
+            (dw.shotDmg ?? 0) * foeCapacitorMultiplierOf(b, f, k, 'damageMul'), dType,
+            r => applyFoeShot(dtgt.rt.hp, dtgt.spec.resists, dw, r, dType))
           if (f.foeShieldCapacitor) {
             noteFoeCapacitorAttack(b, f, k)
             rt.weapons[k] = Math.min(Number.MAX_SAFE_INTEGER, Math.round(aloftReload(dw.reloadMs) * foeCapacitorMultiplierOf(b, f, k, 'reloadMul')))
@@ -5498,26 +5516,8 @@ function stepBattle(
         b.stats.foeHits += 1
         capacitorHit = true
         // 混伤（2026-09-10 船长）：按逐系单发各自结算（各系吃自己的层位克制与层抗）
-        const beamBefore = gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h
-        gtgt.rt.hp = applyFoeShot(
-          gtgt.rt.hp,
-          gtgt.spec.resists,
-          w,
-          /* 损伤管制装置：光束这一路同样过免死夹伤（窗口内逐段夹 ⇒ 同拍多段破不了） */
-          applyDcGuard(
-            state,
-            b,
-            gtgt.spec.tag,
-            gtgt.spec,
-            gtgt.rt.hp,
-            cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, dmg),
-            fType,
-            (r) => applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, r, fType),
-          ),
-          fType,
-        )
-        // 本发实收（2026-09-24 船长令：飘字读数；光束必中 ⇒ 恒有值）
-        const beamDealt = Math.max(0, beamBefore - (gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h))
+        const beamDealt = applyPlayerUnitDamage(state, b, gtgt.spec.tag, gtgt.spec, dmg, fType,
+          r => applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, r, fType))
         pushBattleFx(b, { atMs: b.lastTickGameMs + dtMs, side: 'foe', tag: f.tag, to: gtgt.spec.tag, type: fType, hit: true, ...(beamDealt > 0 ? { dmg: beamDealt } : {}) })
         /**
          * **我方「跃迁规避装置」触发点**，沿用受击触发规则。**敌方舰炮命中我方舰船本体**这一支（打我方无人机不算、
@@ -5547,25 +5547,8 @@ function stepBattle(
       if (fHit) {
         b.stats.foeHits += 1
         capacitorHit = true
-        const gunBefore = gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h
-        gtgt.rt.hp = applyFoeShot(
-          gtgt.rt.hp,
-          gtgt.spec.resists,
-          w,
-          /* 损伤管制装置：炮台这一路同样过免死夹伤（窗口内逐段夹 ⇒ 同拍多段破不了） */
-          applyDcGuard(
-            state,
-            b,
-            gtgt.spec.tag,
-            gtgt.spec,
-            gtgt.rt.hp,
-            cappedFoeDamage(b, gtgt.spec.tag, gtgt.spec, shotDmg),
-            fType,
-            (r) => applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, r, fType),
-          ),
-          fType,
-        )
-        gunDealt = Math.max(0, gunBefore - (gtgt.rt.hp.s + gtgt.rt.hp.a + gtgt.rt.hp.h))
+        gunDealt = applyPlayerUnitDamage(state, b, gtgt.spec.tag, gtgt.spec, shotDmg, fType,
+          r => applyFoeShot(gtgt.rt.hp, gtgt.spec.resists, w, r, fType))
         // 冲锋解除（船长 2026-09-14）：**自身炮台命中我方** ⇒ 立刻解除冲锋并进入冷却（掷命中，只有真命中才算）
         releaseFoeChargeOnHit(b, f.tag, bal, f.foeChargeCooldownMs)
       }

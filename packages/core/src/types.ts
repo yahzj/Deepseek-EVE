@@ -1944,7 +1944,7 @@ export interface ModuleDef {
    *
    * 语义：本件**提供免死**，且**启动时消耗哪种组件**（值 = 组件物品 id，如 `'repairkit-dc'`）。
    * - **每场战斗一次**（`BattleState.dcUsed`）；触发即开窗 **1 秒**（`BattleState.dcLockUntilMs`），
-   *   窗口内**逐段夹伤**：每发原始伤害夹到"结算后结构 ≥ 1"（`combat.cappedFoeDamage` 的唯一入伤口）；
+   *   窗口内**逐段夹伤**：每发结算后结构≥1；实战入伤统一走`combat.applyPlayerUnitDamage`，只记实际掉血。
    * - 窗口到点后恢复正常（不强制撤退）；没组件 ⇒ **不触发**（照常判负）；
    * - 谁装谁有（主控与装了它的 AI 副船各自判定）。
    */
