@@ -31,6 +31,16 @@ const deferredCalibration: Readonly<Record<string, { name: string; description: 
   'bp-laser-calibration-2': { name: 'bp.launchCalibration.004', description: 'mod.launchCalibration.007' },
   'bp-laser-calibration-3': { name: 'bp.launchCalibration.005', description: 'mod.launchCalibration.007' },
 }
+const deferredGravekeeperShips: Readonly<Record<string, string>> = {
+  'foe-d-invasion-cruiser': 'ship.gravekeeper.001',
+  'foe-d-invasion-bastion': 'ship.gravekeeper.002',
+  'foe-d-invasion-oathkeeper': 'ship.gravekeeper.003',
+  'foe-d-invasion-eternal-tomb': 'ship.gravekeeper.004',
+}
+const deferredGravekeeperCards: Readonly<Record<string, string>> = {
+  'gravekeeper-drift': 'ano.gravekeeper.001', 'gravekeeper-line': 'ano.gravekeeper.002',
+  'gravekeeper-main': 'ano.gravekeeper.003', 'gravekeeper-flagship': 'ano.gravekeeper.004',
+}
 
 describe('英文覆盖层（P2）', () => {
   it('zh 缺省 = 显式 zh：名称逐字相同（工具/测试/模拟读数不受影响）', () => {
@@ -149,11 +159,16 @@ describe('英文覆盖层（P2）', () => {
   })
 
   it('异常点覆盖：42 张全覆盖（23 悬赏 + 4 遭遇模板 + 15 虫洞敌卡）+ 英文名生效', () => {
-    expect(zh.anomalies.size, '包含4张新增异形入侵卡').toBe(54)
+    expect(zh.anomalies.size, '包含4张新增守墓入侵卡').toBe(58)
     const missing = [...zh.anomalies.keys()].filter((id) => !(id in EN_ANOMALIES))
     expect(missing, `这些异常点还没有英文名：${missing.slice(0, 8).join(', ')}`).toEqual([])
     expect(en.anomalies.get('ano-maw-hunt')?.name).toBe('Maw Hunt Order')
     expect(en.anomalies.get('enc-pirate-4')?.name).toBe('Deepspace Butcher Fleet')
+    for (const [id, nameId] of Object.entries(deferredGravekeeperCards)) {
+      expect(L10N[nameId]!.enDeferred, id).toBe(true)
+      expect(L10N[nameId]!.en, id).toBe('')
+      expect(en.anomalies.get(id)!.name, id).toBe(l10nEntryText(L10N[nameId]!, 'en'))
+    }
     // 深比时**排除 ships**——卡片内嵌敌舰名本就该换（由上面那条"嵌套覆盖"用例单独逐字段核对）
     const strip = (d: object): string => {
       const rest: Record<string, unknown> = { ...(d as Record<string, unknown>) }
@@ -232,7 +247,12 @@ describe('英文覆盖层（P2）', () => {
         expect(b.hpMul, `${id} 第 ${i} 位血量倍率`).toBe(a.hpMul)
         expect(b.dmgMul, `${id} 第 ${i} 位伤害倍率`).toBe(a.dmgMul)
         expect(b.wave, `${id} 第 ${i} 位波次`).toBe(a.wave)
-        expect(b.ship.name, `${id} 第 ${i} 位敌舰名`).not.toBe(a.ship.name)
+        const pending = deferredGravekeeperShips[a.ship.id]
+        if (pending) {
+          expect(L10N[pending]!.enDeferred, a.ship.id).toBe(true)
+          expect(L10N[pending]!.en, a.ship.id).toBe('')
+          expect(b.ship.name).toBe(l10nEntryText(L10N[pending]!, 'en'))
+        } else expect(b.ship.name, `${id} 第 ${i} 位敌舰名`).not.toBe(a.ship.name)
       }
     }
   })
@@ -363,6 +383,10 @@ describe('英文覆盖层（P2）', () => {
       } else if (it.id === 'drone-jawclaw') {
         expect(L10N['item.jawclaw.002']!.enDeferred).toBe(true)
         expect(other.description).toBe(l10nEntryText(L10N['item.jawclaw.002']!, 'en'))
+      } else if (it.id === 'blackbox-d') {
+        expect(L10N['item.gravekeeper.002']!.enDeferred).toBe(true)
+        expect(L10N['item.gravekeeper.002']!.en).toBe('')
+        expect(other.description).toBe(l10nEntryText(L10N['item.gravekeeper.002']!, 'en'))
       } else {
         expect(cjk.test(other.description), `${it.id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)
       }
@@ -419,6 +443,12 @@ describe('英文覆盖层（P2）', () => {
       const other = en.anomalies.get(id)!
       if (!other.description) {
         noDesc.push(id)
+        continue
+      }
+      if (deferredGravekeeperCards[id]) {
+        expect(L10N['ano.gravekeeper.005']!.enDeferred, id).toBe(true)
+        expect(L10N['ano.gravekeeper.005']!.en, id).toBe('')
+        expect(other.description).toBe(l10nEntryText(L10N['ano.gravekeeper.005']!, 'en'))
         continue
       }
       expect(cjk.test(other.description), `${id} 的英文说明残留中日韩字符：${other.description}`).toBe(false)

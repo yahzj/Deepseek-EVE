@@ -30,11 +30,11 @@ import { anomaly, galaxy, makeTestCtx } from './helpers'
 
 const ctx = buildSimContext()
 
-describe('残骸组表（14 组 · 族 × 地区）', () => {
-  it('成员覆盖全表 42 张卡，一张不漏、一张不重；族/地区与卡的数据一致', () => {
-    expect(WRECK_GROUPS.length).toBe(16)
+describe('残骸组表（17组 · 族 × 地区）', () => {
+  it('成员覆盖全表58张卡，一张不漏、一张不重；族/地区与卡的数据一致', () => {
+    expect(WRECK_GROUPS.length).toBe(17)
     expect(WRECK_GROUP_OF_MEMBER.size).toBe(ctx.anomalies.size)
-    expect(ctx.anomalies.size).toBe(54)
+    expect(ctx.anomalies.size).toBe(58)
     let wh = 0
     let hi = 0
     let lo = 0
@@ -55,7 +55,7 @@ describe('残骸组表（14 组 · 族 × 地区）', () => {
         expect(region, `${m} 的地区判定`).toBe(g.region)
       }
     }
-    expect([hi, lo, wh, inv]).toEqual([3, 5, 5, 3])
+    expect([hi, lo, wh, inv]).toEqual([3, 5, 5, 4])
     expect(Object.keys(WRECK_REGION_LABELS)).toEqual(['hi', 'lo', 'wh', 'inv'])
   })
 
