@@ -12,12 +12,12 @@
 
 ## 统计
 
-- 文档总数 **474** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7876** KB · **60543** 行
-- 状态分布：**未标注** 251 · **已确认/已实现** 161 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
-- 孤儿文档（0 引用）**88** 份 · 状态未标注 **251** 份
+- 文档总数 **470** 份（本表收录 `docs/**/*.md` + 根 `AGENTS.md`）· 合计 **7845** KB · **60294** 行
+- 状态分布：**未标注** 251 · **已确认/已实现** 157 · **进行中** 43 · **待裁定** 18 · **历史留档** 1
+- 孤儿文档（0 引用）**86** 份 · 状态未标注 **251** 份
 - 一、权威文档（开工必读）：**8** 份
 - 七、评审与体检（review）：**13** 份
-- 三、现行设计稿（design）：**302** 份
+- 三、现行设计稿（design）：**298** 份
 - 九、封存卷（archive · 冻结件，只读不改）：**37** 份
 - 二、其它（docs 根目录）：**6** 份
 - 五、专题：战斗数据（design/battle-data）：**1** 份
@@ -35,7 +35,7 @@
 | `docs/content-workbench.md` | 内容工作台（CSV 双向编辑内容数据） | 未标注 | — | 9 KB / 125 行 | 2 / 2 |
 | `docs/development-conventions-changelog.md` | 开发约定 · 变更记录（development-conventions.md 的历次变更） | 未标注 | — | 304 KB / 316 行 | 18 / 3 |
 | `docs/development-conventions.md` | 开发约定（Development Conventions） | 未标注 | — | 95 KB / 927 行 | 96 / 5 |
-| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 522 KB / 1112 行 | 226 / 22 |
+| `docs/glossary.md` | 术语词典（Glossary） | 未标注 | — | 522 KB / 1108 行 | 226 / 22 |
 | `docs/roadmap.md` | 后续工作流备忘（Roadmap / Backlog） | 未标注 | — | 81 KB / 468 行 | 380 / 28 |
 
 ## 七、评审与体检（review） —— 13 份
@@ -56,14 +56,10 @@
 | `docs/review/A2-density-review.md` | A2 · 界面信息密度走查（第 1 轮，待船长批注） | 未标注 | — | 3 KB / 30 行 | 1 / 0 |
 | `docs/review/guoqing-audit-followup.md` | 国庆节审查当前跟进 | 未标注（跟进入口） | — | 2 KB / 21 行 | 3 / 0 |
 
-## 三、现行设计稿（design） —— 302 份
+## 三、现行设计稿（design） —— 298 份
 
 | 文档 | 标题 | 状态 | 日期 | 体量 | 被引（文档/代码） |
 |---|---|---|---|---|---|
-| `docs/design/gravekeeper-final-wave-range-20261016.md` | 守墓旗舰末波与新舰最小射程调整 | 已确认/已实现（已实现并本地合入主树） | 2026-10-16 | 6 KB / 49 行 | 0 / 0 |
-| `docs/design/gravekeeper-invasion-gear-20261016.md` | 守墓入侵三件装备方案 | 已确认/已实现（已实现并合入主树） | 2026-10-16 | 15 KB / 104 行 | 1 / 0 |
-| `docs/design/gravekeeper-invasion-retune-20261016.md` | 守墓入侵蓄能、复活与基础属性调整 | 已确认/已实现（已实现并本地合入主树） | 2026-10-16 | 8 KB / 68 行 | 2 / 0 |
-| `docs/design/player-volley-actual-damage-20261016.md` | 玩家齐射保护按实际承伤结算 | 已确认/已实现（已实现并合入主树） | 2026-10-16 | 4 KB / 36 行 | 0 / 0 |
 | `docs/design/black-market-bulk-resource-fix-20261013.md` | 黑市单个矿石上架修复 | 已确认/已实现（已实现） | 2026-10-13 | 4 KB / 41 行 | 0 / 0 |
 | `docs/design/unbox-result-ledger-20261013.md` | 货柜拆解上一批产物记录 | 已确认/已实现（已实现） | 2026-10-13 | 5 KB / 48 行 | 1 / 0 |
 | `docs/design/planetary-wheel-traits-20261011.md` | 地表建筑配色与轮盘交互、特性标签 | 已确认/已实现（已实现并自检） | 2026-10-11 | 6 KB / 38 行 | 0 / 0 |
@@ -345,7 +341,7 @@
 | `docs/design/v10-content.md` | V10 设计：深空市场大扩容（占位导入） | 已确认/已实现（已确认） | — | 15 KB / 223 行 | 5 / 0 |
 | `docs/design/v10b-combat-data.md` | V10.5 设计：舰船与装备「战斗数值契约」（远行星号伤害体系版） | 已确认/已实现（已确认） | — | 10 KB / 156 行 | 7 / 1 |
 | `docs/design/v11-random-events.md` | V11 设计：随机事件系统（已实现） | 未标注（用户 2026-09-04 逐条拍板） | — | 4 KB / 55 行 | 2 / 0 |
-| `docs/design/v12-combat.md` | V12 设计：实时战斗引擎（统一状态机 · 编队单位模型） | 未标注 | — | 22 KB / 193 行 | 17 / 1 |
+| `docs/design/v12-combat.md` | V12 设计：实时战斗引擎（统一状态机 · 编队单位模型） | 未标注 | — | 22 KB / 197 行 | 17 / 1 |
 | `docs/design/v12a-starmap.md` | V12a 设计：星图 v2 定稿（20 星系 × 27 航线 + 布局编辑器） | 已确认/已实现（已确认） | — | 3 KB / 41 行 | 2 / 0 |
 | `docs/design/v12b-travel-warp.md` | V12b 设计：星图航行跃迁（warp × 航行加速技能族） | 已确认/已实现（已确认） | — | 6 KB / 87 行 | 6 / 0 |
 | `docs/design/v13-exploration.md` | V13 设计：星图探索系统（迷雾 · 点亮 · 扫描探索） | 已确认/已实现（已确认） | — | 7 KB / 97 行 | 6 / 1 |
@@ -360,7 +356,7 @@
 | `docs/design/v7-design.md` | V7 设计文档：舰队重构 / 自动采矿循环 / UI 总菜单改版 | 未标注 | — | 7 KB / 117 行 | 0 / 0 |
 | `docs/design/v9-market.md` | V9 设计：市场系统（已实现） | 未标注 | — | 21 KB / 192 行 | 17 / 0 |
 | `docs/design/weapon-skill-batch.md` | 战斗线技能填充提案（一号域：技能数据/文案；触点接续见 §四） | 未标注 | — | 8 KB / 100 行 | 4 / 0 |
-| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 66 KB / 454 行 | 36 / 14 |
+| `docs/design/weekend-invasion.md` | 周末入侵活动（常设设计） | 未标注 | — | 68 KB / 462 行 | 37 / 14 |
 | `docs/design/win-estimate-mc.md` | 悬赏胜率预估改蒙特卡洛推演(设计定稿,2026-09-09 船长拍板) | 已确认/已实现（已确认） | — | 5 KB / 56 行 | 5 / 0 |
 
 ## 九、封存卷（archive · 冻结件，只读不改） —— 37 份
@@ -414,7 +410,7 @@
 | `docs/git-gate-approval.md` | Git提交审批放行 | 未标注 | — | 2 KB / 28 行 | 2 / 0 |
 | `docs/glossary-en.md` | 英文术语与专名译名表（English Glossary & Naming Table） | 未标注（P0 已冻结） | — | 47 KB / 814 行 | 26 / 18 |
 | `docs/l10n-pending.md` | 待英文本地化记录 | 未标注 | — | 21 KB / 324 行 | 11 / 12 |
-| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 27 KB / 168 行 | 23 / 7 |
+| `docs/single-source.md` | 单点索引（谁有权算、谁只能读）· 2026-09-27 建 | 未标注 | — | 27 KB / 168 行 | 22 / 7 |
 
 ## 五、专题：战斗数据（design/battle-data） —— 1 份
 
@@ -544,12 +540,10 @@
 | `docs/design/archive/handoff-weapon-skills.md` | 交接：V18B 武器体系 → 战斗线技能填充（一号） | 未标注 | — | 6 KB / 71 行 | 3 / 0 |
 | `docs/design/archive/README.md` | 归档区说明（docs/design/archive/） | 未标注 | — | 17 KB / 195 行 | 63 / 14 |
 
-## 附：孤儿文档（0 引用，88 份）
+## 附：孤儿文档（0 引用，86 份）
 
 > 谁都没引用 = 要么是**历史快照**（可以进 `archive/`），要么是**该被引用却没接上**（该补链接）。归档时逐份过一遍。
 
-- `docs/design/gravekeeper-final-wave-range-20261016.md`（2026-10-16 · 6 KB）—— 守墓旗舰末波与新舰最小射程调整
-- `docs/design/player-volley-actual-damage-20261016.md`（2026-10-16 · 4 KB）—— 玩家齐射保护按实际承伤结算
 - `docs/design/black-market-bulk-resource-fix-20261013.md`（2026-10-13 · 4 KB）—— 黑市单个矿石上架修复
 - `docs/design/planetary-wheel-traits-20261011.md`（2026-10-11 · 6 KB）—— 地表建筑配色与轮盘交互、特性标签
 - `docs/design/signal-auto-weight-20261011.md`（2026-10-11 · 1 KB）—— 信号空间自动探索超重编队修复
