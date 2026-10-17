@@ -40,6 +40,7 @@ import {
   WORMHOLE_NEBULA_MIN_DEPTH,
   WORMHOLE_TURN_PER_MOVE,
   WORMHOLE_TURN_PER_SCAN,
+  WORMHOLE_SCAN_RADIUS_BASE,
   disperseNebulae,
   gridCellAt,
   hasLiveFoe,
@@ -1187,21 +1188,20 @@ function gridActionBlocked(run: WormholeRunState): CoreBlockReason | null {
  * 第一次扫描**只发现"这儿有星云"**（`revealOf` 给 `{ kind: 'nebula' }`），
  * 第二次扫描（同圈内）才驱散、信号才可读。这就是这条机制的**回合税**：深层每层多花 N 个回合。
  */
-export function wormholeGridScan(state: GameState): WormholeGridActionResult {
+export function wormholeGridScan(state: GameState, ctx?: SimContext): WormholeGridActionResult {
   const hit = gridRun(state)
   if (!hit) return { ok: false, error: '本层没有网格：无法扫描。', errorId: 'core.wormhole.010' }
   const { run, grid } = hit
   if (run.expeditionRules !== undefined && run.expeditionRules !== 2) return { ok: false, code: 'unsupported-rules' }
   const blocked = gridActionBlocked(run)
   if (blocked) return { ok: false, error: blocked.error, errorId: blocked.errorId, errorParams: blocked.errorParams }
+  if (ctx) grid.scanRadius = WORMHOLE_SCAN_RADIUS_BASE + wormholeScanBonusOf(ctx, run.fleet)
   /**
    * **谜质增益**（F3c · 船长 2026-09-13）：扫描半径 +圈、每次额外驱散若干格星云。
    * 一律**现算**（装置躺在货仓里就生效，不必再同步状态）。
-   * ⚠ **有意只吃装置**（2026-09-19）：本处读的是「扫描半径 / 星云驱散」，科技树里没有对应
-   * `effect`（科技那条叫 `whScanCut` = **扫描间隔**，是另一回事，走 `wormholeScan.ts`）⇒
-   * 若日后真给科技加"扫描半径"，**这里必须补 `matterTechWhBuffs(state, ctx)`**，否则静默无效。
+   * 科技半径与装置在同一增益袋现算，地图只保存舰船加成，避免重复计算科技。
    */
-  const buffs = wormholeMatterBuffs(run.hold)
+  const buffs = wormholeMatterBuffs(run.hold, ctx ? matterTechWhBuffs(state, ctx) : undefined)
   const targets = gridScanTargets(grid, buffs.scanRadius)
   // 圈里"已扫描但还被星云罩着"的格 ⇒ 这一扫把它们驱散；装置再额外补几格圈外的云
   const nebulaTargets = gridNebulaDisperseTargets(grid, buffs.scanRadius, buffs.nebulaDisperse)
@@ -1873,19 +1873,22 @@ export function wormholeEntryBlockReason(
 }
 
 /**
- * **编队的虫洞扫描半径加成（圈）**（2026-09-13 船长：侦察舰/电子舰「让虫洞扫码范围 +1 圈」——
- * 「**编入队伍就有效。且可以叠加**」）⇒ 对编队内每艘船的 `wormholeScanRadiusBonus` **求和**。
+ * 编队扫描半径加成：侦察舰、电子舰各取最高，再将两类相加（2026-10-17船长确认）。
  * 用途：① `wormholeEnter` 建档时喂给 `wormholeMakeGrid`；② 界面在**深入下一层**时把它传给
  * `wormholeDescend(run, seed, scanBonus)`（该入参默认 0 ⇒ 不传 = 维持旧行为）。
  */
 export function wormholeScanBonusOf(ctx: SimContext, shipIds: readonly string[]): number {
-  let sum = 0
+  let scout = 0
+  let electronic = 0
   for (const id of shipIds) {
     const def = ctx.ships.get(uidDefId(id))
     const v = def?.wormholeScanRadiusBonus
-    if (typeof v === 'number' && Number.isFinite(v)) sum += Math.max(0, Math.floor(v))
+    if (typeof v !== 'number' || !Number.isFinite(v)) continue
+    const bonus = Math.max(0, Math.floor(v))
+    if (def?.subClass === '侦察舰') scout = Math.max(scout, bonus)
+    else if (def?.subClass === '电子舰') electronic = Math.max(electronic, bonus)
   }
-  return sum
+  return scout + electronic
 }
 
 /**
@@ -2027,7 +2030,8 @@ export function wormholeEnter(
   for (const a of wormholeEntryAutoStops(state)) {
     logAutoHalt(state, a.mainKind, haltEntryActivityOf(state, ctx, a.mainKind))
   }
-  const r = wormholeStartRun(ctx, shipIds, seed, blankShareFactorOf(state), matterTechWhBuffs(state, ctx).turnBonus, origin?.expeditionRules)
+  const tech = matterTechWhBuffs(state, ctx)
+  const r = wormholeStartRun(ctx, shipIds, seed, blankShareFactorOf(state), tech.turnBonus, origin?.expeditionRules)
   if (!r.ok || !r.run) return r
   r.run.haulerFittingVersion = 1
   r.run.attending = true // 进洞即人在洞里：占着主控，直到临时离开或本趟收场

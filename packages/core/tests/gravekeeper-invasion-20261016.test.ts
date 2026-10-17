@@ -39,7 +39,8 @@ describe('守墓入侵内容', () => {
     expect(['cruiser','bastion','oathkeeper','eternal-tomb'].map(s => ship(s).hp)).toEqual([480,1080,1840,39200])
     const specs = ['cruiser','bastion','oathkeeper','eternal-tomb'].map(unit)
     expect(specs.map(s => s.evasion)).toEqual([.25,.15,.08,.05])
-    expect(specs.map(s => s.hp)).toEqual([{s:324,a:216,h:180},{s:729,a:243,h:202.5},{s:1242,a:414,h:345},{s:26460,a:17640,h:14700}])
+    expect(specs.map(s => s.hp)).toEqual([{s:324,a:216,h:180},{s:729,a:243,h:202.5},{s:1242,a:414,h:345},{s:17640,a:23520,h:17640}])
+    expect(ship('bastion').mounts).toEqual([FOE_MOUNT_IDS.dMausoleumArmor, FOE_MOUNT_IDS.dRangeDebuff])
     expect(ship('eternal-tomb').mounts).toEqual([FOE_MOUNT_IDS.dCoatingArmor, FOE_MOUNT_IDS.dShieldCapacitor])
     expect(specs[1]!.resists.armor).toEqual({kinetic:.75,explosive:.75,plasma:.75})
     expect(specs[1]!.resists.hull).toEqual({kinetic:.75,explosive:.75,plasma:.75})
@@ -53,9 +54,9 @@ describe('守墓入侵内容', () => {
     expect([0,1,2,3].map(n => weekendFamilyForWindow(WEEKEND_FAMILY_ROTATION_ANCHOR_WALL_MS+n*7*86400000))).toEqual(['R','C','H','D'])
     const base = ctx.anomalies.get('gravekeeper-flagship')!
     expect(base.waves!.map(w => w.units)).toEqual([3,3,2,4])
-    const derived = applyFoeOverride(base, {bossShipId:ship('eternal-tomb').id,bossHp:WEEKEND_FLAGSHIP_POOL_HP,bossHpMax:WEEKEND_FLAGSHIP_POOL_HP,bossHpLayers:{s:135000,a:90000,h:75000}})
+    const derived = applyFoeOverride(base, {bossShipId:ship('eternal-tomb').id,bossHp:WEEKEND_FLAGSHIP_POOL_HP,bossHpMax:WEEKEND_FLAGSHIP_POOL_HP,bossHpLayers:{s:90000,a:120000,h:90000}})
     const boss = activeFoeSpecsOf(derived, bal, 3).find(f => f.foeShipId === ship('eternal-tomb').id)!
-    expect(boss.hp).toEqual({s:135000,a:90000,h:75000})
+    expect(boss.hp).toEqual({s:90000,a:120000,h:90000})
   })
   it('四张新编成与真实威胁一致，普通单舰与旗舰小队各走原标尺', () => {
     const cases = [
@@ -84,9 +85,9 @@ describe('守墓入侵内容', () => {
     const throneSpecs=[1,2].map(i=>activeFoeSpecsOf(card,bal,i).find(s=>s.foeShipId==='foe-d-throne')!)
     expect(throneSpecs.every(s=>s.foeSupportCall?.delaySec===20)).toBe(true)
     expect(activeFoeSpecsOf(card,bal,3).some(s=>s.foeShipId==='foe-d-throne')).toBe(false)
-    const full=applyFoeOverride(card,{strengthMul:2,bossShipId:ship('eternal-tomb').id,bossHp:300000,bossHpLayers:{s:135000,a:90000,h:75000}})
+    const full=applyFoeOverride(card,{strengthMul:2,bossShipId:ship('eternal-tomb').id,bossHp:300000,bossHpLayers:{s:90000,a:120000,h:90000}})
     const boss=activeFoeSpecsOf(full,bal,3).find(s=>s.foeShipId===ship('eternal-tomb').id)!
-    expect(boss.hp).toEqual({s:135000,a:90000,h:75000})
+    expect(boss.hp).toEqual({s:90000,a:120000,h:90000})
     const remaining=applyFoeOverride(card,{bossShipId:ship('eternal-tomb').id,bossHp:100,bossHpLayers:{s:0,a:0,h:100}})
     expect(activeFoeSpecsOf(remaining,bal,3).find(s=>s.foeShipId===ship('eternal-tomb').id)!.hp).toEqual({s:0,a:0,h:100})
   })
@@ -245,7 +246,7 @@ describe('永陵挂载', () => {
     state.weekendEvent={seq:901,family:'D',coreId:'galaxy-maw',peripheryIds:[],startedAtWallMs:now,contributed:{'galaxy-maw':1},flagshipHpMax:300000,flagshipHpDone:299900}
     const spec=weekendFlagshipSpecOf(state,ctx,now)!
     const b=weekendStartFlagshipBattle(state,ctx,now,[state.shipId])!
-    expect(b.foeOverride!.bossMaxLayers).toEqual({s:135000,a:90000,h:75000})
+    expect(b.foeOverride!.bossMaxLayers).toEqual({s:90000,a:120000,h:90000})
     b.waveIdx=3
     state.gameMs=10
     advanceBattleFor(state,ctx,b,state.shipId,spec.cardId)
@@ -289,20 +290,20 @@ describe('永陵挂载', () => {
     state.gameMs = 20
     const second = weekendStartFlagshipBattle(state, ctx, now, [state.shipId])!
     expect(second.foeOverride!.bossHp).toBe(220_000)
-    expect(second.foeOverride!.bossHpLayers).toEqual({ s: 55_000, a: 90_000, h: 75_000 })
-    expect(second.foeOverride!.bossMaxLayers).toEqual({ s: 135_000, a: 90_000, h: 75_000 })
+    expect(second.foeOverride!.bossHpLayers).toEqual({ s: 10_000, a: 120_000, h: 90_000 })
+    expect(second.foeOverride!.bossMaxLayers).toEqual({ s: 90_000, a: 120_000, h: 90_000 })
     second.waveIdx = 3
     state.gameMs = 30
     advanceBattleFor(state, ctx, second, state.shipId, cardId)
     const secondBoss = Object.values(second.units).find(u => u.foeShipId === ship('eternal-tomb').id)!
-    secondBoss.hp = { s: 0, a: 75_000, h: 75_000 }
+    secondBoss.hp = { s: 0, a: 60_000, h: 90_000 }
     expect(flagshipBattleLedger(second, [ship('eternal-tomb').id]).rawDmg).toBe(70_000)
     weekendApplyBattleOutcome(state, ctx, cardId, false, now, second, hint)
     expect(weekendFlagshipHpRemaining(state.weekendEvent)).toBe(150_000)
     expect(countWare(state, 'blackbox-d')).toBe(0)
     state.gameMs = 40
     const third = weekendStartFlagshipBattle(state, ctx, now, [state.shipId])!
-    expect(third.foeOverride!.bossHpLayers).toEqual({ s: 0, a: 75_000, h: 75_000 })
+    expect(third.foeOverride!.bossHpLayers).toEqual({ s: 0, a: 60_000, h: 90_000 })
     third.waveIdx = 3
     state.gameMs = 50
     advanceBattleFor(state, ctx, third, state.shipId, cardId)

@@ -8,6 +8,7 @@ import { createInitialState } from '../src/state'
 import { useSynapticAccelerant } from '../src/consumables'
 import { SYNAPTIC_ACCELERANT_MS } from '../src/training'
 import { deferredL10nIssues } from '../../../tools/l10n-deferred-check'
+import { approvedMk1CopyDelta } from './helpers/approved-mk1-copy-delta'
 
 const root = new URL('../../../', import.meta.url)
 const copy = 'item.synaptic.001'
@@ -29,7 +30,7 @@ describe('突触加速剂已批准中文与延期英文', () => {
       expect(source).toContain("tr('ui.boost.013')")
     }
     expect(L10N['ui.boost.012']!.zh).toBe('使用：技能加速有效时间增加24小时，倍率不叠加')
-    expect(l10nEntryText(L10N['ui.boost.013']!, 'en')).toBe('突触加速剂已使用：有效时间增加24小时。')
+    expect(l10nEntryText(L10N['ui.boost.013']!, 'en')).toBe('突触加速剂 MK1已使用：有效时间增加24小时。')
     const s = createInitialState({ nowWallMs: 0, seed: 9 })
     s.warehouse.items['synaptic-accelerant'] = 2
     useSynapticAccelerant(s)
@@ -51,7 +52,7 @@ describe('突触加速剂已批准中文与延期英文', () => {
       'ui.shipInfo.167': '无人机启动时间 −{p1}',
     }
     for (const [id, row] of Object.entries(scope.exports.L10N)) {
-      expect(L10N[id], id).toEqual({ ...row, zh: renamed[id] ?? row.zh })
+      expect(L10N[id], id).toEqual(approvedMk1CopyDelta(id, { ...row, zh: renamed[id] ?? row.zh }))
     }
     const backlog = readFileSync(new URL('docs/l10n-pending.md', root), 'utf8')
     expect(deferredL10nIssues(L10N, backlog)).toEqual([])

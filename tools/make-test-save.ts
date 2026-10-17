@@ -7,6 +7,7 @@
  *  - 产物落 docs/test-saves/test-save-<feature>-<stamp>.json，加载方法见 docs/test-saves/README.md。
  *
  * 功能 case 注册制（扩展在此追加）：
+ *  - faction-beacons 专属信号发射器与实验室筛选：独立合成档，五种库存与配方材料，不读取个人档。
  *  - gravekeeper 守墓者入侵：独立合成档、四艘合法MK3动能巨齿鲨，核心满，不读取个人档。
  *  - gravekeeper-gear 守墓入侵装备：合法炮台/机群双舰、三件新装备与组件，独立合成档。
  *  - station-action 停靠与远程管理：全新合成档，采矿主控/停靠副船，不读取个人档。
@@ -122,6 +123,10 @@ import {
   weekendRollOccupation,
   // 2026-09-26 `shipwreck`（玩家舰船残骸验收档）：注入残骸的唯一入口
   noteShipWreck,
+  FIRST_TASKS,
+  INVASION_BEACON_TYPES,
+  ensureWeekendEvent,
+  useInvasionBeacon,
 } from '@whale/core'
 import type { GameState } from '@whale/core'
 import { injectHaulerTestState } from './hauler-test-fixture'
@@ -3606,6 +3611,27 @@ function injectShipWreck(state: GameState): string[] {
 }
 
 const INJECTORS: Record<string, (state: GameState) => string[]> = {
+  'faction-beacons': state => {
+    const ctx = buildSimContext()
+    state.modeChosen = true
+    state.onboarding.step = 99
+    state.debugQuick = false
+    for (const task of FIRST_TASKS) state.importantTasks[task.id] = { done: true }
+    state.exploredGalaxies = [...ctx.galaxies.keys()]
+    bumpStanding(state, 100)
+    // 不自动触发周排期入侵，保留可支配声望供高安发射测试使用。
+    state.standingsEarned = { dsi: 0 }
+    state.isk = Math.max(state.isk, 1_000_000_000)
+    for (const site of ctx.stations.values()) state.stationSites[site.id] = { stage: site.tiers.length, delivered: {} }
+    for (const row of INVASION_BEACON_TYPES) state.warehouse.items[row.itemId] = 3
+    state.warehouse.items['synaptic-accelerant'] = 3
+    for (const recipe of ctx.labRecipes.values()) for (const material of recipe.materials) {
+      state.warehouse.items[material.itemId] = (state.warehouse.items[material.itemId] ?? 0) + material.units * 2
+    }
+    return ['全新合成档；五种发射器和MK1各3枚、全部配方各两批材料，未代点火或开工。',
+      '调试关闭、累计声望为0，避免周排期自动入侵抢先阻挡发射器；可支配声望100，生产保持正常工期。',
+      '工业→实验室检查四类筛选；星图→穹顶墓园→星系详细选择发射器。每种入侵需在独立重载本档后分别触发。']
+  },
   'gravekeeper-gear': injectGravekeeperGearFixture,
   gravekeeper: injectGravekeeperFixture,
   'station-action': injectStationActionFixture,
@@ -3817,6 +3843,27 @@ function main(): void {
   if (!feature || feature === 'help' || !(feature in INJECTORS)) {
     console.log(`用法：npx tsx tools/make-test-save.ts <feature> [--keep-ironman]\n已注册功能：${Object.keys(INJECTORS).join(' / ')}`)
     process.exit(feature ? 1 : 0)
+  }
+  if (feature === 'faction-beacons') {
+    const state = createInitialState({ nowWallMs: Date.now(), seed: 73 })
+    const notes = INJECTORS[feature]!(state)
+    const text = serializeSaveFile(state)
+    const back = loadSaveFile(text).state
+    if (!INVASION_BEACON_TYPES.every(row => back.warehouse.items[row.itemId] === 3)
+      || back.weekendEvent !== undefined || back.labRuns?.length) throw new Error('发射器验收档往返不一致')
+    const ctx = buildSimContext()
+    if (ensureWeekendEvent(back, ctx, Date.now())) throw new Error('验收档不应自动触发入侵')
+    for (const row of INVASION_BEACON_TYPES) {
+      const attempt = loadSaveFile(text).state
+      if (!useInvasionBeacon(attempt, ctx, { itemId: row.itemId, galaxyId: 'galaxy-vault' }).ok
+        || row.familyId && attempt.weekendEvent?.family !== row.familyId) throw new Error(`验收档发射器不可用：${row.itemId}`)
+    }
+    mkdirSync(OUT_DIR, { recursive: true })
+    const target = join(OUT_DIR, `test-save-${feature}-${stamp()}.json`)
+    writeFileSync(target, text, { encoding: 'utf8', flag: 'wx' })
+    console.log(`已生成独立合成档：${target}；未读取或覆盖个人档。`)
+    for (const note of notes) console.log(note)
+    return
   }
   if (feature === 'fitting-range' || feature === 'ship-hp-blind' || feature === 'station-action' || feature === 'gravekeeper' || feature === 'gravekeeper-gear') {
     const state = createInitialState({ nowWallMs: Date.now() })

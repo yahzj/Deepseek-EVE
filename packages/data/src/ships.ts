@@ -151,7 +151,8 @@ const SHIPS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
   },
   "sh-nautilus": {
     name: '鹦鹉螺级测绘巡洋舰',
-    description: '协会测绘巡洋舰：编入探索队伍即扩大空间内扫描范围一圈（多艘可叠加）。',
+    // ⟪文案调整 2026-10-17⟫ 数值与叠加方式由船体特性参数行显示。
+    description: '协会测绘巡洋舰：编入探索队伍即可扩大空间内扫描范围。',
   },
   "sh-tortoise": {
     name: '陆龟级重装艇',
@@ -195,7 +196,8 @@ const SHIPS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
   },
   "sh-wh-a-frigate": {
     name: '掠袭电子舰',
-    description: '海盗的电子战艇：长项在火控与回避——先锁上、先打中，也更难被咬住；编入探索队伍即扩大空间内扫描范围一圈（多艘可叠加）。',
+    // ⟪文案调整 2026-10-17⟫ 同类扫描加成不再叠加。
+    description: '海盗的电子战艇：长项在火控与回避——先锁上、先打中，也更难被咬住；编入探索队伍即可扩大空间内扫描范围。',
   },
   "sh-wh-a-destroyer": {
     name: '掠袭炮舰',
@@ -219,7 +221,8 @@ const SHIPS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
   },
   "sh-wh-d-frigate": {
     name: '哨戒电子舰',
-    description: '陵墓的电子哨戒舰：盾厚甲薄、火控与回避一并拉高，替全队先敌开火；编入探索队伍即扩大空间内扫描范围一圈（多艘可叠加）。',
+    // ⟪文案调整 2026-10-17⟫ 同类扫描加成不再叠加。
+    description: '陵墓的电子哨戒舰：盾厚甲薄、火控与回避一并拉高，替全队先敌开火；编入探索队伍即可扩大空间内扫描范围。',
   },
   "sh-wh-d-destroyer": {
     name: '陵卫指挥舰',
@@ -243,7 +246,8 @@ const SHIPS_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
   },
   "sh-wh-g-frigate": {
     name: '幽影侦察舰',
-    description: '亡军的侦察舰：回避极高、火控不弱——编入探索队伍即扩大空间内扫描范围一圈（多艘可叠加），它负责先看见别人。',
+    // ⟪文案调整 2026-10-17⟫ 数值与叠加方式由船体特性参数行显示。
+    description: '亡军的侦察舰：回避极高、火控不弱——编入探索队伍即可扩大空间内扫描范围，它负责先看见别人。',
   },
   "sh-wh-g-destroyer": {
     name: '亡军后勤舰',

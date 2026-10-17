@@ -393,7 +393,7 @@ export function SignalSpacePanel({
    */
   const pickedSalvagers = wormholeSalvagersInFleet(state, ctx, picked)
   const pickedMiners = wormholeMinersInFleet(state, ctx, picked)
-  const pickedScanRadius = WORMHOLE_SCAN_RADIUS_BASE + wormholeScanBonusOf(ctx, picked)
+  const pickedScanRadius = WORMHOLE_SCAN_RADIUS_BASE + wormholeScanBonusOf(ctx, picked) + matterTechWhBuffs(state, ctx).scanRadius
   /**
    * **打捞 / 采集效率读数**（2026-09-19 补 · 船长「检查是否有其他丢掉科技的情况」四处之一）。
    *
@@ -922,7 +922,7 @@ export function SignalSpacePanel({
     }
     const after = grid?.scanned ?? []
     const fresh = after.filter((k) => !before.has(k))
-    setScanFx({ keys: fresh, rings: Math.max(1, Math.floor(grid?.scanRadius ?? 1)), nonce: scanFxSeq() })
+    setScanFx({ keys: fresh, rings: Math.max(1, Math.floor((grid?.scanRadius ?? 1) + matterBuffs.scanRadius)), nonce: scanFxSeq() })
     /**
      * **星云消散动画**（船长 2026-09-13）：这一扫驱散了哪几格，就给它们播一段"云散开"。
      * 时机与"逐格点亮"一致（都在数据落地之后补播），故两者能叠在同一帧里不打架。

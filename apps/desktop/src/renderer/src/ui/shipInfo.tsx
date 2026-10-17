@@ -17,7 +17,7 @@ import type { ElementType, ReactNode } from 'react'
 import { battleSpeedBonusOf } from '@whale/core'
 import type { AnomalyDef, BattleBalance, DamageResists, ItemDef, ModuleDef, ModuleSlot, ShipDef, DamageType, UnitSpec } from '@whale/core'
 import { DEFAULT_BALANCE, DC_LOCK_MS, FOE_RANGE_DEBUFF_FLOOR_M, foeDamageComposition, MODULE_SLOTS, MY_WEB_RANGE_M, rackOf, shipSlotsOf, shipCategoryKeyOf, stackingOf, beamPowerFactor, thrusterCycleNote, thrusterCycleOfModule, thrusterCycleSeconds, SHIELD_PULSE_MS, repairStatsFor, fittedRepairModules, fittedEffectParamsOf, WEB_BREAK_DIST_M, equipmentCycleMsOf } from '@whale/core'
-import { HIGH_SEC_PENALTY, JUMP_FUEL_SPEED_MUL, SHIELD_FIELD_COST_PCT, SYNAPTIC_ACCELERANT_MS, SYNAPTIC_ACCELERANT_MUL, wormholeIsShapedItem, wormholeShapeOf } from '@whale/core'
+import { HIGH_SEC_PENALTY, JUMP_FUEL_SPEED_MUL, SHIELD_FIELD_COST_PCT, SYNAPTIC_ACCELERANT_MS, SYNAPTIC_ACCELERANT_MUL, wormholeIsShapedItem, wormholeShapeOf, invasionBeaconTypeOf } from '@whale/core'
 /** 引擎类型（"装上船之后的实修值"那一行要现算 —— 2026-09-29 船长令） */
 import type { GameEngine } from '../game/engine'
 import { hoverTipProps } from './Tooltip'
@@ -1849,7 +1849,7 @@ export function itemInfoLines(item: ItemDef, nameOf?: (id: string) => string | u
   } else if (item.id === 'jump-fuel') {
     lines.push({ k: tr('ui.itemSpecs.006'), v: `×${JUMP_FUEL_SPEED_MUL}` })
     lines.push({ k: tr('ui.itemSpecs.007'), v: tr('ui.itemSpecs.008') })
-  } else if (item.id === 'invasion-beacon') {
+  } else if (invasionBeaconTypeOf(item.id)) {
     lines.push({ k: tr('ui.itemSpecs.009'), v: tr('ui.itemSpecs.010', { p1: HIGH_SEC_PENALTY }) })
   } else if (item.id === 'repairkit-dc') {
     lines.push({ k: tr('ui.itemSpecs.013'), v: tr('ui.shipInfo.207', { p1: DC_LOCK_MS / 1000 }) })

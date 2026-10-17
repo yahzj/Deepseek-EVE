@@ -32,7 +32,7 @@ function fixture() {
   const me = createPlayerSpec(state, ctx, state.shipId)!
   const card = applyFoeOverride(ctx.anomalies.get('gravekeeper-flagship')!, {
     bossShipId: 'foe-d-invasion-eternal-tomb', bossHp: 300000, bossHpMax: 300000,
-    bossHpLayers: { s: 135000, a: 90000, h: 75000 },
+    bossHpLayers: { s: 90000, a: 120000, h: 90000 },
   })
   const specs = activeFoeSpecsOf(card, bal, 3)
   const boss = specs.find(f => f.foeReviveEscort)!
@@ -62,6 +62,7 @@ describe('守墓入侵隔离调参', () => {
     expect(current).toEqual(previous)
     const originalShips = JSON.parse(execFileSync('git', ['show', 'f8470a57:packages/data/src/static/foeShips.json'], { encoding: 'utf8' }))
     for (const row of originalShips.groups.parameters) if (['foe-d-invasion-cruiser', 'foe-d-invasion-bastion', 'foe-d-invasion-oathkeeper', 'foe-d-invasion-eternal-tomb'].includes(row.id)) row.rangeMinM = 100
+    Object.assign(originalShips.groups.parameters.find((row: { id: string }) => row.id === 'foe-d-invasion-eternal-tomb'), { split_s: .3, split_a: .4, split_h: .3 })
     expect(JSON.parse(readFileSync(new URL('../../data/src/static/foeShips.json', import.meta.url), 'utf8'))).toEqual(originalShips)
   })
 
@@ -110,7 +111,7 @@ describe('守墓入侵隔离调参', () => {
     expect(hit(true, true)).toBeCloseTo(hit(true, false) * .7, 8)
     expect(hit(false, true)).toBe(hit(false, false))
     expect(hpSum(w.boss.hp)).toBe(300000)
-    expect(w.boss.hp).toEqual({ s: 135000, a: 90000, h: 75000 })
+    expect(w.boss.hp).toEqual({ s: 90000, a: 120000, h: 90000 })
   })
 
   it('蓄能按1.3乘算，非加法；装填仍1.1，武器分账不改', () => {

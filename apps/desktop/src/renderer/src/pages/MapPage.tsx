@@ -941,7 +941,6 @@ function SalvageTab({
                   aiWorkers={opts.showAi ? workers : []}
                   isActive={me.active && me.galaxyId === g.id}
                   focus={focusIds.includes(g.id)}
-                  activeAnywhere={me.active}
                   idleShips={idleShips}
                   engine={engine}
                   onStart={() => startAt(g.id)}
@@ -1025,7 +1024,6 @@ function WreckCard({
   aiWorkers,
   isActive,
   focus = false,
-  activeAnywhere,
   idleShips,
   engine,
   onStart,
@@ -1054,7 +1052,6 @@ function WreckCard({
   aiWorkers: Array<{ sid: string; coreType: AiCoreType }>
   isActive: boolean
   focus?: boolean
-  activeAnywhere: boolean
   idleShips: string[]
   engine: GameEngine
   onStart: () => void
@@ -1279,8 +1276,8 @@ function WreckCard({
           </select>
           <button
             className="app-btn is-small"
-            disabled={activeAnywhere || !aiShipId || usableCores.length === 0}
-            title={activeAnywhere ? tr("ui.MapPage.074") : usableCores.length === 0 ? tr("ui.MapPage.045") : aiShipId ? tr("ui.MapPage.075") : tr("ui.MapPage.047")}
+            disabled={!aiShipId || usableCores.length === 0}
+            title={usableCores.length === 0 ? tr("ui.MapPage.045") : aiShipId ? tr("ui.MapPage.075") : tr("ui.MapPage.047")}
             onClick={() => onAiAssign(g.id, aiShipId, effCore)}
           >
             {tr("ui.MapPage.076")}

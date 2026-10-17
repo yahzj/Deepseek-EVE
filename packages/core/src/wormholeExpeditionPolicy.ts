@@ -207,7 +207,7 @@ export function wormholeRunExpeditionPolicy(
         }
       }
       if (!target) {
-        if (wormholeGridScan(state).ok) continue
+        if (wormholeGridScan(state, ctx).ok) continue
         target = views.filter(row => row.cell.key !== here.key && row.info.kind === 'unknown').sort((a, b) => hexDistance(a.cell, here) - hexDistance(b.cell, here) || a.cell.key.localeCompare(b.cell.key))[0]?.cell
       }
       if (!target || target.key === here.key) { out.failure = 'deadlock'; out.extracted = extract(state, ctx); break }

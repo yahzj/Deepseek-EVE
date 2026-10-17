@@ -24,7 +24,7 @@ function readingsOf(card: AnomalyDef) {
   const flagship = card.id.endsWith('flagship')
   const built = flagship ? applyFoeOverride(card, {
     bossShipId: 'foe-d-invasion-eternal-tomb', bossHp: 300000, bossHpMax: 300000,
-    bossHpLayers: { s: 135000, a: 90000, h: 75000 },
+    bossHpLayers: { s: 90000, a: 120000, h: 90000 },
   }) : card
   const full = foeStrengthOf(built, ctx.balance.battle)
   return {
@@ -179,7 +179,7 @@ if (process.argv.includes('--sim')) {
       const { s, ships } = world(seed, tier, squad, laser)
       const card = ctx.anomalies.get(cardId)!
       const patched: AnomalyDef = cardId.endsWith('flagship')
-        ? applyFoeOverride(card, { bossShipId: 'foe-d-invasion-eternal-tomb', bossHp: 300000, bossHpMax: 300000, bossHpLayers: { s: 135000, a: 90000, h: 75000 } }) : card
+        ? applyFoeOverride(card, { bossShipId: 'foe-d-invasion-eternal-tomb', bossHp: 300000, bossHpMax: 300000, bossHpLayers: { s: 90000, a: 120000, h: 90000 } }) : card
       const anomalies = new Map(ctx.anomalies); anomalies.set(cardId, patched)
       const useCtx: SimContext = { ...ctx, anomalies }
       const b = startFleetBattleFor(s, useCtx, ships, cardId, 0, null)!

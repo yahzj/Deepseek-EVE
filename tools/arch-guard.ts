@@ -110,6 +110,8 @@ const DATA_TABLES: readonly string[] = [
  * 其余文件出现同名定义照样按 F2 报红。
  */
 const SINGLE_SOURCE: readonly { concept: string; symbol: string; file: string; exported: boolean }[] = [
+  { concept: '信号发射器物品与势力映射', symbol: 'invasionBeaconTypeOf', file: 'packages/core/src/consumables.ts', exported: true },
+  { concept: '有库存的信号发射器选项', symbol: 'availableInvasionBeacons', file: 'packages/core/src/consumables.ts', exported: true },
   { concept: '黑市排除大宗原料的类型判据', symbol: 'isBlackMarketBulkResource', file: 'packages/core/src/blackMarket.ts', exported: true },
   { concept: '货柜拆解本次启动批次产物账本', symbol: 'UnboxSessionLedger', file: 'apps/desktop/src/renderer/src/game/unboxLedger.ts', exported: true },
   { concept: '共享悬浮窗逻辑尺寸和边缘定位', symbol: 'tooltipLayout', file: 'apps/desktop/src/renderer/src/ui/tooltipGeometry.ts', exported: true },

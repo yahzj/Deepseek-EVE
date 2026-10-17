@@ -16,6 +16,8 @@
 
 ## 一、core 引擎层（`packages/core/src`）
 
+信号发射器：`invasionBeaconTypeOf`（`consumables.ts`）认物品与固定势力；`availableInvasionBeacons`从同表筛选有库存选项。使用命令、物品按钮与星图下拉共用，不在页面另造势力映射；护栏为专属发射器专项与F2/F3。
+
 目标舰操作：`shipActuallyDocked` / `shipOperationBlockReason`（`shipActionPolicy.ts`）纯状态派生真实停靠与配置许可；远程管理不读主控忙态，船上物资只在目标舰停靠时可取。`stationActivityStartBlockReason`（`location.ts`）只读预检现有切换再检查基地；页面不自算野外置灰。工业原料由`industryAvailable`（`industry.ts`）提供同源可取量。护栏：停靠统一专项、失败资源守恒与页面同源检查，F2/F3/F9。
 
 玩家手动卸货：`unloadShipCargo`（`inventory.ts`）检查目标舰货仓许可后逐项分流入库；`unloadCargoToWarehouse`只转发当前舰。`unloadCargoOfShipToWarehouse`保留为自动到港和其他已校验内部结算，界面不直接调用。

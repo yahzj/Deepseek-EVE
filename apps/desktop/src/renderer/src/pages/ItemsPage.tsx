@@ -6,7 +6,7 @@
  * - 货仓 tab：原货仓页（T3 船选择条 / 驾驶船可装卸出售，副船只读）整体并入。
  */
 import { useEffect, useState } from 'react'
-import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, marketGoodOf, SYNAPTIC_ACCELERANT_ITEM_ID, INVASION_BEACON_ITEM_ID, shipOperationBlockReason, freeCargoM3, cargoUnitM3, MODULE_CARGO_UNIT_M3 } from '@whale/core'
+import { ITEM_KIND_LABELS, ITEM_KIND_ORDER, marketGoodOf, SYNAPTIC_ACCELERANT_ITEM_ID, invasionBeaconTypeOf, shipOperationBlockReason, freeCargoM3, cargoUnitM3, MODULE_CARGO_UNIT_M3 } from '@whale/core'
 import { itemRarityTierOf } from '@whale/data'
 import { Panel } from '@whale/ui'
 import { ItemHover, InfoTable, itemHoverContent, itemInfoLines, moduleHoverContent, ModuleHover, moduleInfoLines } from '../ui/shipInfo'
@@ -268,8 +268,8 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
    * 而这条路根本没有可选的目标 ⇒ 判据恒 false（原先那道"看玩家所在地"的门已按船长口径删掉，
    * 起因 = 玩家报障「在穹顶墓园使用却弹高安警告、警告里写大鲸鱼Ⅳ」）。
    */
-  const fireBeacon = (): void => {
-    const r = engine.useInvasionBeaconNow()
+  const fireBeacon = (itemId: string): void => {
+    const r = engine.useInvasionBeaconNow({ itemId })
     if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.057'), true)
     else onToast(tr('ui.ItemsPage.058'))
   }
@@ -485,14 +485,12 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                             {tr('ui.ItemsPage.056')}
                           </button>
                         ) : null}
-                        {/* 信号发射器（2026-09-30 船长令）：同一颗「使用」——**势力取列表第一支**
-                            （Q2 的"列表"由 core 的 `INVASION_BEACON_FAMILIES` 单点驱动，今天只有 H 族；
-                            将来多族时在这里按同一张表渲染成选择器即可，引擎那边已经吃 `familyId`）。 */}
-                        {id === INVASION_BEACON_ITEM_ID ? (
+                        {/* 根据本行物品类型使用；专属发射器固定势力，旧发射器继续随机。 */}
+                        {invasionBeaconTypeOf(id) ? (
                           <button
                             className="app-btn is-small is-warn"
                             title={tr('ui.ItemsPage.057')}
-                            onClick={fireBeacon}
+                            onClick={() => fireBeacon(id)}
                           >
                             {tr('ui.ItemsPage.056')}
                           </button>
@@ -724,13 +722,13 @@ function WarehouseView({ engine, onToast, onGotoMarket }: PageProps & ItemNavPro
                     {tr('ui.ItemsPage.056')}
                   </button>
                 ) : null}
-                {pickItem === INVASION_BEACON_ITEM_ID ? (
+                {invasionBeaconTypeOf(pickItem) ? (
                   <button
                     className="app-btn is-small is-warn"
                     title={tr('ui.ItemsPage.057')}
                     onClick={() => {
                       setPickItem(null)
-                      fireBeacon()
+                      fireBeacon(pickItem)
                     }}
                   >
                     {tr('ui.ItemsPage.056')}

@@ -32,6 +32,7 @@ import {
   DSI_FACTION_ID,
   HIGH_SEC_PENALTY,
   INVASION_BEACON_ITEM_ID,
+  availableInvasionBeacons,
   RARE_WRECK_VOLUME_M3,
   SHIP_WRECK_DECAY_MS,
   autoLoopReopenBlockReason,
@@ -40,7 +41,6 @@ import {
   bestAiCoreOf,
   bountyCooldownRemainingMs,
   bountyRewardFactor,
-  consumableStockOf,
   expeditionStatus,
   factionGalaxyId,
   fleetDefOf,
@@ -1812,7 +1812,10 @@ export function GalaxyActions({
   /** 信号发射器的**二次确认**（哪个星系正处于"再点一下"的状态；null = 没有）——与 `goAskAno` 同款内联警示 */
   const [beaconAsk, setBeaconAsk] = useState<string | null>(null)
   /** 持有几枚信号发射器（**货仓优先 + 仓库**，core 单点）—— 0 枚时整个容器不渲染 */
-  const beaconStock = consumableStockOf(state, INVASION_BEACON_ITEM_ID)
+  const beacons = availableInvasionBeacons(state)
+  const [beaconPick, setBeaconPick] = useState(INVASION_BEACON_ITEM_ID)
+  const beaconItemId = beacons.some(row => row.itemId === beaconPick) ? beaconPick : (beacons[0]?.itemId ?? '')
+  const beaconStock = beacons.reduce((sum, row) => sum + row.units, 0)
   /** **指定星系那条路的唯一禁令**（船长 2026-09-30 令）：「该星系有空间站」⇒ 不能点火（信号被压制）。
    *  ⚠ 不判"已探索/非高安/无副站"（那是**随机那条路**的候选集口径），也不判玩家在哪。 */
   const beaconBlocked = beaconTargetBlocked(state, ctx, galaxy.id)
@@ -1822,9 +1825,13 @@ export function GalaxyActions({
    *  不再看玩家所在地）——判据单点在 core（`beaconLaunchHighSecOf(ctx, 目标 id)`） */
   const beaconHighSec = beaconLaunchHighSecOf(ctx, galaxy.id)
   const [beaconWarn, setBeaconWarn] = useState(false)
+  useEffect(() => {
+    setBeaconAsk(null)
+    setBeaconWarn(false)
+  }, [beaconItemId, galaxy.id])
   /** 统一的"点火"动作（指定星系那条；成功/失败都给回执） */
   const launchBeaconHere = (): void => {
-    const r = engine.useInvasionBeaconNow({ galaxyId: galaxy.id })
+    const r = engine.useInvasionBeaconNow({ galaxyId: galaxy.id, itemId: beaconItemId })
     if (!r.ok) onToast(cmdText(r) || tr('ui.beacon.001'), true)
     else onToast(tr('ui.ItemsPage.058'))
   }
@@ -1931,6 +1938,12 @@ export function GalaxyActions({
             {tr('ui.beacon.001')}
             <span className="app-dim app-ga-desc">{tr('ui.beacon.002', { p1: galaxy.name })}</span>
           </span>
+          <select data-beacon-select className="app-select" value={beaconItemId} aria-label={tr('ui.factionBeacon.001')}
+            title={tr('ui.factionBeacon.001')} onChange={e => { setBeaconPick(e.target.value); setBeaconAsk(null); setBeaconWarn(false) }}>
+            {beacons.map(row => <option key={row.itemId} value={row.itemId}>
+              {tr('ui.factionBeacon.002', { p1: ctx.items.get(row.itemId)?.name ?? row.itemId, p2: row.units })}
+            </option>)}
+          </select>
           {beaconAsk === galaxy.id ? (
             <>
               <span className="app-dim">{tr('ui.beacon.003', { p1: galaxy.name })}</span>

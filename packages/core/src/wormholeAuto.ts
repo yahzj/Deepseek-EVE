@@ -996,13 +996,8 @@ function settleRun(state: GameState, ctx: SimContext, run: WormholeAutoRun): voi
     miners: countFittedBySlot(state, ctx, run.shipIds, 'miner'),
     salvagers: countFittedBySlot(state, ctx, run.shipIds, 'salvager'),
     power: fleetPowerOf(state, ctx, run.shipIds),
-    /**
-     * **扫描半径 = 基础 1 + Σ 编队各船的 `wormholeScanRadiusBonus`**
-     * （鹦鹉螺 `sh-nautilus` / 鲸盟护卫 `sh-wh-{a,d,g}-frigate`，每条 +1 且**可叠加** ——
-     * 船长 2026-09-13「编入队伍就有效、且可以叠加」）。与手动进洞同一个求和口径
-     * （`wormholeScanBonusOf`）：一次扫描揭开的格数按半径**平方**放大 ⇒ 4×鹦鹉螺 半径 5、一次 91 格。
-     */
-    scanRadius: 1 + wormholeScanBonusOf(ctx, run.shipIds),
+    // 舰船同类取最高，科技另行相加；与手动扫描同源。
+    scanRadius: 1 + wormholeScanBonusOf(ctx, run.shipIds) + matterTechWhBuffs(state, ctx).scanRadius,
     /**
      * **事件玄学的空白占比系数**（2026-09-27 补）：与手动建盘同一把尺（`wormholeMakeGrid` 第 4 参）——
      * 漏了它，自动线在高等级事件玄学下会比手动多出两成空白格。

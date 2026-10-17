@@ -37,7 +37,7 @@ import { ItemGlyphGrid, ItemViewBar, RowGlyph, kindExtraNote, useItemView, type 
 import { ITEM_DOMAIN_SUBS, ITEM_CARGO_SUBS, SUBS_OF_KIND, SUB_ALL, itemBucketPasses, itemSubPasses, itemCategoryOf, subText, presentSubs } from '../ui/itemSubs'
 import { tr } from '../i18n/locale'
 /* 「使用」按钮的判据 = core 的 id 常量（**单点**，不在页面里写死字面量） */
-import { INVASION_BEACON_ITEM_ID, SYNAPTIC_ACCELERANT_ITEM_ID } from '@whale/core'
+import { invasionBeaconTypeOf, SYNAPTIC_ACCELERANT_ITEM_ID } from '@whale/core'
 
 const KIND_EMPTY: Record<string, string> = {
   ore: 'ui.CargoPage.010',
@@ -368,7 +368,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                             {tr('ui.ItemsPage.056')}
                           </button>
                         ) : null}
-                        {id === INVASION_BEACON_ITEM_ID ? (
+                        {invasionBeaconTypeOf(id) ? (
                           <button
                             className="app-btn is-small is-warn"
                             title={tr('ui.ItemsPage.057')}
@@ -377,7 +377,7 @@ export function CargoPage({ engine, onToast, onGotoMarket }: PageProps & ItemNav
                                  目标星系**属高安」，而货仓页这条是**默认那条路**（不指定星系、候选集随机、
                                  候选集本身排除高安）⇒ 判据恒 false（原先那道"看玩家所在地"的门已按船长
                                  口径删掉，起因 = 玩家报障「在穹顶墓园使用却弹高安警告、警告里写大鲸鱼Ⅳ」） */
-                              const r = engine.useInvasionBeaconNow()
+                              const r = engine.useInvasionBeaconNow({ itemId: id })
                               if (!r.ok) onToast(cmdText(r) || tr('ui.ItemsPage.057'), true)
                               else onToast(tr('ui.ItemsPage.058'))
                             }}

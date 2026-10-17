@@ -46,6 +46,10 @@ describe('玩家动能武器远端命中倍率调整', () => {
       if (row.id === 'mod-shieldchg-3') Object.assign(row, { shieldPulsePct: .213 })
       if (['mod-shieldfield-2', 'mod-shieldfield-3'].includes(row.id)) Object.assign(row, { shieldFieldPct: .067 })
     }
+    // 守墓三件已独立完成验收，固定提交提供基线，不读取待测数据回填期望。
+    const gravekeeper = JSON.parse(execFileSync('git', ['show', '0b17e83e:packages/data/src/static/modules.json'], { cwd: root, encoding: 'utf8' })) as typeof modules
+    expected.groups.MODULES_0.push(...gravekeeper.groups.MODULES_0.filter(row =>
+      ['mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail'].includes(row.id)))
     expect(modules).toEqual(expected)
     expect([...ctx.modules.values()].filter(mod => mod.damageType === 'kinetic' && mod.falloff === .5)).toEqual([])
   })
@@ -88,7 +92,14 @@ describe('玩家动能武器远端命中倍率调整', () => {
     'packages/core/src/static/foeMounts.json',
     'packages/data/src/static/items.json',
   ])('%s敌人、挂载与玩家无人机参数全表不变', path => {
-    expect(JSON.parse(readFileSync(new URL(path, root), 'utf8'))).toEqual(JSON.parse(historicalText(path)))
+    const expected = JSON.parse(execFileSync('git', ['show', `0b17e83e:${path}`], { cwd: root, encoding: 'utf8' }))
+    if (path.endsWith('/foeShips.json')) Object.assign(expected.groups.parameters.find((row: { id: string }) => row.id === 'foe-d-invasion-eternal-tomb'), { split_s: .3, split_a: .4, split_h: .3 })
+    if (path.endsWith('/foeMounts.json')) expected.groups.parameters.splice(
+      expected.groups.parameters.findIndex((row: { id: string }) => row.id === 'foe-mount-ink-range-debuff') + 1, 0,
+      { id: 'foe-mount-d-range-debuff', rangeDebuff_pct: .15 })
+    if (path.endsWith('/items.json')) for (const family of ['r', 'c', 'h', 'd']) expected.groups.CONSUMABLES_0.push({
+      id: `invasion-beacon-${family}`, kind: 'consumable', unitM3: .01, baseSellPriceIsk: 480000000 })
+    expect(JSON.parse(readFileSync(new URL(path, root), 'utf8'))).toEqual(expected)
   })
 
   it('亡军、隐藏遇袭与默认敌人远端倍率保持0.5；其他玩家动能与非动能保持原值', () => {

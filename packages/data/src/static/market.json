@@ -534,6 +534,22 @@
         "playerBuyable": false
       },
       {
+        "key": "invasion-beacon-r", "kind": "item", "refId": "invasion-beacon-r",
+        "rarity": "exotic", "basePrice": 480000000, "demandMultiplier": 1, "playerBuyable": false
+      },
+      {
+        "key": "invasion-beacon-c", "kind": "item", "refId": "invasion-beacon-c",
+        "rarity": "exotic", "basePrice": 480000000, "demandMultiplier": 1, "playerBuyable": false
+      },
+      {
+        "key": "invasion-beacon-h", "kind": "item", "refId": "invasion-beacon-h",
+        "rarity": "exotic", "basePrice": 480000000, "demandMultiplier": 1, "playerBuyable": false
+      },
+      {
+        "key": "invasion-beacon-d", "kind": "item", "refId": "invasion-beacon-d",
+        "rarity": "exotic", "basePrice": 480000000, "demandMultiplier": 1, "playerBuyable": false
+      },
+      {
         "key": "mat-wh-essence",
         "kind": "item",
         "refId": "mat-wh-essence",

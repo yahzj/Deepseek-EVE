@@ -67,6 +67,8 @@ export const FOE_MOUNT_IDS = {
    * 把墨潮干扰舰的**舰级字段** `foeRangeDebuffPct = 0.5` 迁成**具名挂载件**，数值一字不变）。
    */
   inkRangeDebuff: 'foe-mount-ink-range-debuff',
+  /** D 族碑卫级：压制玩家武器射程 15%，沿墨潮干扰阵列同一消费链。 */
+  dRangeDebuff: 'foe-mount-d-range-debuff',
   /**
    * **叠光装置**（**船长 2026-10-01 令**：「**添加叠光装置：效果是每次攻击或者闪现后，攻击间隔缩短，
    * 最多缩短至0.5秒攻击间隔。伤害给予一个0.3的倍率。**」）—— R 族 T3 **叠光级**专属。
@@ -282,6 +284,13 @@ export const FOE_MOUNTS: Readonly<Record<FoeMountId, FoeMountDef>> = {
       '迁移后它有了名字、进敌舰悬停/战报的挂载件清单、也进 `foe:export` 的「H 族 · 挂载件」表；' +
       '与我方那件「墨潮电子舱」（`mod-lair-ecm-h`）是敌我同源的一对。' +
       '口径 = 削减我方武器最远射程 50%，与我方电子舰的削减做加法抵消（见 `meJammerNetOf`）。',
+  },
+  [FOE_MOUNT_IDS.dRangeDebuff]: {
+    id: FOE_MOUNT_IDS.dRangeDebuff,
+    name: '碑卫压制阵列',
+    en: 'Bastion Suppression Array',
+    rangeDebuff: { pct: enemyParameterOf(foeMountsParameters, 'foe-mount-d-range-debuff', 'rangeDebuff_pct') },
+    note: '压制玩家武器最远射程 15%；多艘按现有射程压制合成规则叠加。',
   },
   [FOE_MOUNT_IDS.coronaBlink]: {
     id: FOE_MOUNT_IDS.coronaBlink,

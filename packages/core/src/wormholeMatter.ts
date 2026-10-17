@@ -471,6 +471,8 @@ export function wormholeMatterThreatMul(buffs: WormholeMatterBuffs, kind: 'node'
  * 产出点 = `core/matterTech.ts` 的 `matterTechWhBuffs`（按 `effect` 关键字汇总）。
  */
 export interface WormholeTechBuffs {
+  /** 信号空间扫描半径加成（圈）。 */
+  scanRadius: number
   /** 洞内**最大回合数**（永久加成；与本趟装置分开相加） */
   turnBonus: number
   /** 洞内货仓有效格 */
@@ -495,6 +497,7 @@ export interface WormholeTechBuffs {
 
 /** 无科技时的零值 */
 export const WORMHOLE_TECH_BUFFS_NONE: WormholeTechBuffs = {
+  scanRadius: 0,
   turnBonus: 0,
   holdCells: 0,
   resistShield: 0,
@@ -528,6 +531,7 @@ export function wormholeMatterBuffs(
   let threatBoss = 0
   let threatExtract = 0
   if (tech !== undefined) {
+    out.scanRadius += tech.scanRadius
     out.turnBonus += tech.turnBonus
     out.holdCells += tech.holdCells
     out.resistShield += tech.resistShield

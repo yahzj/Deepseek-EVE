@@ -1292,6 +1292,10 @@ export { ICO_TONES, NAV_TONES, TONES }
 export const ITEM_GLYPH_OVERRIDES: Readonly<Record<string, string>> = {
   'jump-fuel': 'ico-fuel',
   'invasion-beacon': 'ico-beacon',
+  'invasion-beacon-r': 'ico-beacon',
+  'invasion-beacon-c': 'ico-beacon',
+  'invasion-beacon-h': 'ico-beacon',
+  'invasion-beacon-d': 'ico-beacon',
   'synaptic-accelerant': 'ico-boost',
 }
 

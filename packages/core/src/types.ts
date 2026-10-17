@@ -320,6 +320,8 @@ export type FoeMountId =
    * 与我方那件「墨潮电子舱」（`mod-lair-ecm-h`）是**敌我同源的一对**。见 `FoeMountDef.rangeDebuff`。
    */
   | 'foe-mount-ink-range-debuff'
+  /** 守墓碑卫级：压制玩家武器射程 15%。 */
+  | 'foe-mount-d-range-debuff'
   /**
    * **瞬光跃迁仪**（**船长 2026-10-01 令**：「**激光武器+闪现效果的挂载件**」）——
    * R 族「光环科技 / Corona Systems」的族级件，**五档壳体逐档常挂**（船长选「乙：五档全带」）。
@@ -756,8 +758,7 @@ export interface ShipDef {
    */
   fleetDamageBonusPct?: number
   /**
-   * **虫洞扫描半径加成（圈）**（如侦察舰/电子舰「虫洞扫码范围 +1 圈」）——进洞建档时
-   * `scanRadius = WORMHOLE_SCAN_RADIUS_BASE + Σ(本值 over 编队)`；**编入队伍即生效、可叠加**（船长 2026-09-13）。
+   * 编队扫描半径加成（圈）：侦察舰与电子舰各取最高值、两类相加（2026-10-17船长确认）。
    */
   wormholeScanRadiusBonus?: number
   /**
@@ -2956,6 +2957,8 @@ export type MatterTechEffect =
   | 'whHoldCells'
   /** 扫描虫洞间隔 −v/级（v = 0.05） */
   | 'whScanCut'
+  /** 信号空间扫描半径 +v 圈/级。 */
+  | 'whScanRadius'
   /** **洞内战斗倍速**：v = 每级**倍率底数**（2 ⇒ 1 级 ×2、2 级 ×4）——⚠ 全表**唯一按乘法**算的效果，
    *  取 `v^级`，**不走** `Σ 等级 × v`（见 `matterTechBattleSpeed` 与 `combat` 的倍速时间轴） */
   | 'whBattleSpeed'
@@ -3111,6 +3114,8 @@ export interface StationSiteDef {
  * 可连续跑到料尽），第一版只有「超空间折跃燃料」这一张（`packages/data/src/labRecipes.ts`）。
  */
 export interface LabRecipeDef {
+  /** 实验室筛选领域；缺省兼容旧配方。 */
+  category?: 'fuel' | 'beacon' | 'accelerant'
   id: string
   /** 配方名（工业页实验线卡片标题） */
   name: string

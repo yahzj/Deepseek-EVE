@@ -109,6 +109,10 @@
         "rangeDebuff_pct": 0.5
       },
       {
+        "id": "foe-mount-d-range-debuff",
+        "rangeDebuff_pct": 0.15
+      },
+      {
         "id": "foe-mount-corona-blink",
         "blink_distanceM": 2000,
         "blink_cooldownMs": 12000

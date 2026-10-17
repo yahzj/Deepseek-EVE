@@ -11,6 +11,7 @@
  */
 // 2026-09-14 虫洞上线后：① 精炼炉的**货柜拆解那一档**常显（本文件已不用调试开关）；
 // ② 星图「扫描虫洞」选项卡常显（见 `pages/MapPage.tsx`）；③ 星图行动区的虫洞入口行同批解闸（见 `panels/Expedition.tsx`）。
+import { LabRecipeFilters, type LabFilter } from '../ui/LabRecipeFilters'
 import {
   RARE_BOX_DRONE_UNITS,
   RECYCLE_BATCH_M3,
@@ -607,7 +608,8 @@ function LabPanel({
   onGotoPlugExchange?: () => void
 }): ReactNode {
   const state = engine.state
-  const recipes = [...engine.ctx.labRecipes.values()]
+  const [filter, setFilter] = useState<LabFilter>('all')
+  const recipes = [...engine.ctx.labRecipes.values()].filter(r => filter === 'all' || r.category === filter)
   const runs = engine.labRunViews()
   return (
     <Panel
@@ -622,6 +624,7 @@ function LabPanel({
       }
     >
       <div className="app-win-body">
+        <LabRecipeFilters value={filter} onPick={setFilter} />
         {recipes.length === 0 ? <div className="app-dim app-inv-empty">{tr('ui.lab.018')}</div> : null}
         <div className="app-belt-grid">
           {recipes.map((r) => (

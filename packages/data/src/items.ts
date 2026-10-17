@@ -548,11 +548,16 @@ const CONSUMABLES_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> = {
       L10N['item.copy.110']!.zh,
   },
   "synaptic-accelerant": {
-    name: '突触加速剂',
+    // ⟪文案调整 2026-10-17⟫ 保留库存ID，加速效果不变。
+    name: L10N['item.factionBeacon.009']!.zh,
     description:
       // ⟪文案调整 2026-10-09⟫ 允许手动重复续时，不叠加倍率。
       L10N['item.synaptic.001']!.zh,
   },
+  'invasion-beacon-r': { name: L10N['item.factionBeacon.001']!.zh, description: L10N['item.factionBeacon.002']!.zh },
+  'invasion-beacon-c': { name: L10N['item.factionBeacon.003']!.zh, description: L10N['item.factionBeacon.004']!.zh },
+  'invasion-beacon-h': { name: L10N['item.factionBeacon.005']!.zh, description: L10N['item.factionBeacon.006']!.zh },
+  'invasion-beacon-d': { name: L10N['item.factionBeacon.007']!.zh, description: L10N['item.factionBeacon.008']!.zh },
 }
 
 import type { ItemDef } from '@whale/core'

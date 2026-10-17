@@ -368,7 +368,7 @@ const DMG_TYPES = new Set(['kinetic', 'explosive', 'plasma'])
 //   +4（折跃等离子 / 低温跃迁浆 / 曲率凝析物 / 超空间折跃燃料）→ 物品总数 104→**108**、原材料 8→**11**
 // 2026-09-30（实验室后续内容批 · 船长令「信号发射器和技能加速剂」）：+2（信号发射器 / 突触加速剂，
 //   走奇货档 · 施工期 `unreleased`）→ 物品总数 108→**110**
-check(itemDefs.length === 118, `物品总数应为118（含守墓者旗舰黑匣），实际 ${itemDefs.length}`)
+check(itemDefs.length === 122, `物品总数应为122（含四族专属发射器），实际 ${itemDefs.length}`)
 check(ores.length === 8, `原矿应为 8 种（含虫洞线的虚空母矿），实际 ${ores.length}`)
 check(minerals.length === 11, `原材料应为 11 种（2026-09-29 跃迁燃料链 +3），实际 ${minerals.length}`)
 check(gases.length === 4, `气体应为 4 种，实际 ${gases.length}`)
@@ -5128,13 +5128,22 @@ for (const m of MODULES) {
         }
       }
     }
+    // 船长2026-10-17确认：这两项单级扫描科技按指定跨级费用定价。
+    const fixedScanCosts = new Map([
+      ['mt-explore-signal-radius-t1', [1, 20, 3_000_000]],
+      ['mt-explore-signal-radius-t4', [4, 160, 700_000_000]],
+    ])
+    for (const [id, expected] of fixedScanCosts) {
+      const n = byId.get(id)
+      check(n !== undefined && n.branch === 'explore' && n.effect === 'whScanRadius' && n.per === 1 && n.tier === expected[0] && n.maxLevel === 1 && n.essence[0] === expected[1] && n.isk[0] === expected[2], `${id} 须保持船长确认的单级费用与效果`)
+    }
     // ④ 同支内逐层上升（比的是"首级费用"，层内多节点取最小/最大值夹逼）
     for (const br of ['explore', 'battle', 'industry'] as const) {
       const tiers = [...new Set(MATTER_TECH_NODES.filter((n) => n.branch === br).map((n) => n.tier))].sort(
         (a, b) => a - b,
       )
       for (let i = 1; i < tiers.length; i++) {
-        const lo = MATTER_TECH_NODES.filter((n) => n.branch === br && n.tier === tiers[i - 1])
+        const lo = MATTER_TECH_NODES.filter((n) => n.branch === br && n.tier === tiers[i - 1] && !fixedScanCosts.has(n.id))
         const hi = MATTER_TECH_NODES.filter((n) => n.branch === br && n.tier === tiers[i])
         const pairs: Array<[string, (n: (typeof MATTER_TECH_NODES)[number]) => number]> = [
           ['谜质', (n) => n.essence[0] ?? 0],

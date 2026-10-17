@@ -111,7 +111,7 @@ describe('信号发射器 · 使用与拒绝', () => {
       /** 收场 ⇒ 下一枚才能用（Q3b：只能在没有入侵时使用） */
       s.weekendEvent!.endedAtWallMs = (s.weekendEvent!.startedAtWallMs ?? 0) + 1
     }
-    expect([...seen].sort(), '三种完整入侵都能随机出现').toEqual(['C', 'H', 'R'])
+    expect([...seen].sort(), '已完成的入侵族都能随机出现').toEqual([...WEEKEND_FINISHED_FAMILIES].sort())
     /** 纯函数：同一个 (种子, 场次) 恒得同一族 */
     const probe = readyState()
     expect(weekendRandomFamilyOf(probe, 7)).toBe(weekendRandomFamilyOf(probe, 7))

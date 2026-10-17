@@ -20,10 +20,12 @@
  * 自己的 id 灌料的 ⇒ 幽灵 id 在测试里也能"备齐"。现在契约与用例都补上了（见该批工作文档）。
  */
 import type { LabRecipeDef } from '@whale/core'
+import { L10N } from './l10n/table'
 
 export const LAB_RECIPES: readonly LabRecipeDef[] = [
   {
     id: 'jump-fuel',
+    category: 'fuel',
     name: '超空间折跃燃料',
     outputItemId: 'jump-fuel',
     outputUnits: 600,
@@ -39,27 +41,28 @@ export const LAB_RECIPES: readonly LabRecipeDef[] = [
   },
   /* ═══ 实验室后续内容（**2026-09-30 船长令**「你先继续制作后续实验室内容」＋「信号发射器和技能加速剂」）═══
    * 口径（见工作文档 `docs/design/lab-consumables-20260930.md` 与 `docs/design/beacon-parts-20260930.md`）：
-   * - **造价**（船长 2026-09-29 定）：突触加速剂 **2,000 虚空晶** · 信号发射器 **10,000 虚空晶**；
+   * - 原始虚空晶用量由船长2026-09-29确认；MK1追加耗料与四族专属配方按2026-10-17确认执行。
    * - **信号发射器的其余材料**（船长 2026-09-30 令「**将一部分非虚空晶材料换成量子协处理器芯和电路基板**」，
    *   同日「按你推荐来」定**甲案**）：非虚空晶那三条矿物**整条换成两种零件** —— 量子协处理器芯 **2,000**
-   *   ＋ 电路基板 **18,000**（两件都是常驻市场件、可买可造）⇒ 一批料价 39,140,000 → **39,110,000**，
-   *   与行价 96,000,000 的料/价 40.8% → **40.7%**（等值替换、锚不动）；
+   *   ＋ 电路基板 **18,000**（两件都是常驻市场件、可买可造）；成本读数由专项按当前材料表计算。
    * - **突触加速剂的其余材料**＝我按"料价 ×2.4 ⇒ 奇货行价"的口径提的（待船长核，见文档"待确认"节）；
    * - 两张都已在 **2026-09-30 上线**（施工期 `unreleased` 已摘，见 `items.ts` 的同批标记）。 */
   {
     id: 'synaptic-accelerant',
-    name: '突触加速剂',
+    category: 'accelerant',
+    name: L10N['item.factionBeacon.009']!.zh,
     outputItemId: 'synaptic-accelerant',
     outputUnits: 1,
     cycleMs: 30 * 60 * 1000,
     materials: [
-      { itemId: 'min-voidcrystal', units: 2_000 },
+      { itemId: 'min-voidcrystal', units: 2_100 },
       { itemId: 'min-curvature', units: 400 },
       { itemId: 'min-isotope', units: 4_000 },
     ],
   },
   {
     id: 'invasion-beacon',
+    category: 'beacon',
     name: '信号发射器',
     outputItemId: 'invasion-beacon',
     outputUnits: 1,
@@ -73,6 +76,7 @@ export const LAB_RECIPES: readonly LabRecipeDef[] = [
   },
   {
     id: 'jump-fuel-dense',
+    category: 'fuel',
     /**
      * **浓缩折跃燃料**（**2026-09-30 船长令**：「再添加一个 T5 是解锁新的燃料配方。新配方比旧配方更贵，
      * 但是消耗虚空晶更少」＋「新配方将同位聚晶换成冷却导管」）。
@@ -95,6 +99,21 @@ export const LAB_RECIPES: readonly LabRecipeDef[] = [
     ],
     requiresTech: 'fuelRecipeAdvanced',
   },
+  ...([
+    ['invasion-beacon-r', 'item.factionBeacon.001'],
+    ['invasion-beacon-c', 'item.factionBeacon.003'],
+    ['invasion-beacon-h', 'item.factionBeacon.005'],
+    ['invasion-beacon-d', 'item.factionBeacon.007'],
+  ] as const).map(([id, nameId]): LabRecipeDef => ({
+    id, category: 'beacon', name: L10N[nameId]!.zh, outputItemId: id, outputUnits: 1,
+    cycleMs: 2 * 60 * 60 * 1000,
+    materials: [
+      { itemId: 'min-voidcrystal', units: 40_000 },
+      { itemId: 'part-qchip', units: 2_000 },
+      { itemId: 'part-circuit', units: 18_000 },
+      { itemId: 'part-grav-comp', units: 8_859 },
+    ],
+  })),
 ]
 
 /** 玩家可见的配方（施工期 `unreleased` 的不列；界面与开工校验都读它） */

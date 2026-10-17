@@ -47,13 +47,23 @@ describe('颚钳战斗机确认值与范围守恒', () => {
       droneClass: 'combat', unitM3: 10, cpuUse: 8, dmg: 10, hitRate: .85, maxRangeM: 5000,
       defense: { shieldHp: 12, armorHp: 30, hullHp: 48, evasion: .25 },
     })
-    expect(itemData).toEqual(items)
+    items.groups.WEEKEND_TROPHIES_0.splice(items.groups.WEEKEND_TROPHIES_0.findIndex((row: { id: string }) => row.id === 'blackbox-universal'), 0,
+      { id: 'blackbox-d', kind: 'blackbox', unitM3: 5, baseSellPriceIsk: 10000000 })
+    const beaconIds = ['invasion-beacon-r', 'invasion-beacon-c', 'invasion-beacon-h', 'invasion-beacon-d']
+    const withoutNewBeacons = (data: typeof itemData) => ({ ...data, groups: { ...data.groups,
+      CONSUMABLES_0: data.groups.CONSUMABLES_0.filter(row => !beaconIds.includes(row.id)) } })
+    expect(withoutNewBeacons(itemData)).toEqual(items)
     const foes = baseline('packages/data/src/static/foeDrones.json')
     Object.assign(foes.groups.parameters.find((row: { id: string }) => row.id === 'foe-drone-c-jawclaw'), {
       defense_shieldHp: 12, defense_armorHp: 30, defense_hullHp: 48, defense_evasion: .25, dmg: 10, hitRate: .85, maxRangeM: 5000,
     })
     expect(foeData).toEqual(foes)
-    expect(marketData).toEqual(baseline('packages/data/src/static/market.json'))
+    const withoutBeaconMarket = structuredClone(marketData)
+    for (const rows of Object.values(withoutBeaconMarket.groups)) {
+      const newIds = [...beaconIds, 'blackbox-d', 'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail']
+      for (let i = rows.length - 1; i >= 0; i--) if (newIds.includes(rows[i]!.key)) rows.splice(i, 1)
+    }
+    expect(withoutBeaconMarket).toEqual(baseline('packages/data/src/static/market.json'))
     expect(ctx.marketGoods.get(id)!.basePrice).toBe(24000)
     expect(ctx.marketGoods.get('bp-faction-drone-jawclaw')!.basePrice).toBe(2400000)
     const book = ctx.blueprints.get('bp-faction-drone-jawclaw')!

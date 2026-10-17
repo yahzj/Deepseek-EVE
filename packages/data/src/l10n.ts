@@ -134,7 +134,7 @@ export const EN_SHIPS: EnTable = {
   'sh-nautilus': {
     name: 'Nautilus-class Survey Cruiser',
     // ⟪文案调整2026-10-06⟫ 扫描半径为新旧探索共享效果。
-    description: 'An Association survey cruiser: joining an exploration fleet widens scan range inside the space by one ring (multiple ships stack).',
+    description: 'An Association survey cruiser: joining an exploration fleet widens scan range inside the space.',
   },
   // ── 重装 / 旗舰
   'sh-tortoise': {
@@ -170,7 +170,7 @@ export const EN_SHIPS: EnTable = {
   'sh-wh-a-frigate': {
     name: 'Raider EW Frigate',
     // ⟪文案调整2026-10-06⟫ 扫描半径为新旧探索共享效果。
-    description: 'A pirate electronic-warfare boat: strong in fire control and evasion — it locks first, hits first, and is harder to pin. Joining an exploration fleet widens scan range inside the space by one ring (multiple ships stack).',
+    description: 'A pirate electronic-warfare boat: strong in fire control and evasion — it locks first, hits first, and is harder to pin. Joining an exploration fleet widens scan range inside the space.',
   },
   'sh-wh-a-destroyer': {
     name: 'Raider Gunboat',
@@ -195,7 +195,7 @@ export const EN_SHIPS: EnTable = {
   'sh-wh-d-frigate': {
     name: 'Sentry EW Frigate',
     // ⟪文案调整2026-10-06⟫ 扫描半径为新旧探索共享效果。
-    description: 'A mausoleum electronic sentry: thick shields over thin armor, with fire control and evasion both raised to open fire before the fleet. Joining an exploration fleet widens scan range inside the space by one ring (multiple ships stack).',
+    description: 'A mausoleum electronic sentry: thick shields over thin armor, with fire control and evasion both raised to open fire before the fleet. Joining an exploration fleet widens scan range inside the space.',
   },
   'sh-wh-d-destroyer': {
     name: 'Tombwarden Command Ship',
@@ -220,7 +220,7 @@ export const EN_SHIPS: EnTable = {
   'sh-wh-g-frigate': {
     name: 'Wraith Scout Frigate',
     // ⟪文案调整2026-10-06⟫ 扫描半径为新旧探索共享效果。
-    description: 'A deadarmy scout: very high evasion with solid fire control. Joining an exploration fleet widens scan range inside the space by one ring (multiple ships stack) — it is the one that sees the others first.',
+    description: 'A deadarmy scout: very high evasion with solid fire control. Joining an exploration fleet widens scan range inside the space — it is the one that sees the others first.',
   },
   'sh-wh-g-destroyer': {
     name: 'Deadarmy Logistics Ship',
@@ -507,7 +507,11 @@ export const EN_ITEMS: EnTable = {
   'invasion-beacon': { name: 'Signal Beacon', description: L10N['item.copy.110']!.en },
   // ⟪文案调整 2026-10-02⟫ 与中文同批：使用去处补上技能页「技能加速」（三处同源；`Skill Boost` 取 `ui.boost.001` 的冻结译名）
   // ⟪文案调整 2026-10-09⟫ 新说明待译时走共享回退，不继续显示旧英文禁用规则。
-  'synaptic-accelerant': { name: 'Synaptic Accelerant', description: l10nEntryText(L10N['item.synaptic.001']!, 'en') },
+  'synaptic-accelerant': { name: L10N['item.factionBeacon.009']!.en, description: l10nEntryText(L10N['item.synaptic.001']!, 'en') },
+  'invasion-beacon-r': { name: L10N['item.factionBeacon.001']!.en, description: L10N['item.factionBeacon.002']!.en },
+  'invasion-beacon-c': { name: L10N['item.factionBeacon.003']!.en, description: L10N['item.factionBeacon.004']!.en },
+  'invasion-beacon-h': { name: L10N['item.factionBeacon.005']!.en, description: L10N['item.factionBeacon.006']!.en },
+  'invasion-beacon-d': { name: L10N['item.factionBeacon.007']!.en, description: L10N['item.factionBeacon.008']!.en },
   'deep-space-probe': { name: L10N['ui.stellar.001']!.en, description: L10N['ui.stellar.002']!.en },
   // 零件（2026-09-20 零件体系：基础 7 直接可造 / 高级 7 需蓝图）
   'part-circuit': { name: 'Circuit Board', description: L10N['item.copy.020']!.en },
@@ -1832,6 +1836,8 @@ export const EN_MATTER_TECH: EnTable = {
   'mt-explore-hold': { name: 'Folding Hold' },
   'mt-explore-scan': { name: 'Resonant Signal Filter Array' },
   'mt-explore-speed': { name: 'Time Compression Matrix' },
+  'mt-explore-signal-radius-t1': { name: 'Signal Space Exploration' },
+  'mt-explore-signal-radius-t4': { name: 'Signal Space Exploration' },
   'mt-battle-shield': { name: 'Resonant Shield Array' },
   'mt-battle-armor': { name: 'Armor Realignment' },
   'mt-battle-hull': { name: 'Frame Reinforcement' },
@@ -1878,6 +1884,8 @@ export const EN_MATTER_TECH_NOTES: Readonly<Record<string, string>> = {
   'mt-explore-hold': 'Each level adds 4 effective slots to the hold inside the space.',
   'mt-explore-scan': 'Each level shortens the scan interval of “Scan for Signal Spaces” by 5% (multiplied with the skill chain).',
   'mt-explore-speed': 'Unlocks battle speed multiplier inside the space: level 1 ×2, level 2 ×4 (switch back to ×1 at any time during a fight).',
+  'mt-explore-signal-radius-t1': 'Increases Signal Space scan range by 1 ring.',
+  'mt-explore-signal-radius-t4': 'Increases Signal Space scan range by 1 ring.',
   'mt-battle-shield': 'Each level cuts the shield layer’s resistance gap against the enemy’s main damage type by 5% (battles inside the space only).',
   'mt-battle-armor': 'Each level cuts the armor layer’s resistance gap against the enemy’s main damage type by 5% (battles inside the space only).',
   'mt-battle-hull': 'Each level cuts the hull layer’s resistance gap against the enemy’s main damage type by 5% (battles inside the space only; requires Resonant Shield Array and Armor Realignment at level 1 each).',
@@ -1972,6 +1980,10 @@ export function localizeCtx(ctx: SimContext, locale: Locale): SimContext {
     ships: overlayMap(ctx.ships, EN_SHIPS, locale),
     modules: overlayMap(ctx.modules, EN_MODULES, locale),
     items: overlayMap(ctx.items, EN_ITEMS_ALL, locale),
+    labRecipes: new Map([...ctx.labRecipes].map(([id, recipe]) => {
+      const name = recipe.category === 'beacon' || recipe.category === 'accelerant' ? EN_ITEMS_ALL[recipe.outputItemId]?.name : undefined
+      return [id, name ? { ...recipe, name } : recipe]
+    })),
     skills: overlayMap(ctx.skills, EN_SKILLS, locale),
     anomalies: overlayCardFoes(overlayMap(ctx.anomalies, EN_ANOMALIES, locale), EN_FOE_SHIPS, locale),
     ...(ctx.foeShips ? { foeShips: overlayMap(ctx.foeShips, EN_FOE_SHIPS, locale) } : {}),

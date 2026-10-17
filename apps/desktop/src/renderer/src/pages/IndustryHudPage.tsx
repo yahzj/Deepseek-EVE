@@ -20,6 +20,7 @@
  * 暂时**内嵌既有面板**（功能完整、观感仍是旧卡片）——它们的 HUD 化按船长"一批一批来"的节奏排后续。
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { LabRecipeFilters, type LabFilter } from '../ui/LabRecipeFilters'
 import {
   aiCoreCap,
   aiEfficiency,
@@ -405,8 +406,11 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
   const runningBlueprintIds = new Set(
     manuRuns.map((v) => v.blueprintId).filter((id): id is string => id !== null),
   )
-  const recipes = [...ctx.labRecipes.values()]
-  const recipe = recipes.find((r) => r.id === recipeId) ?? recipes[0] ?? null
+  const [labFilter, setLabFilter] = useState<LabFilter>('all')
+  const allRecipes = [...ctx.labRecipes.values()]
+  const recipes = allRecipes.filter(r => labFilter === 'all' || r.category === labFilter)
+  // 分类只筛目录，不切换已选配方及其循环目标。
+  const recipe = allRecipes.find((r) => r.id === recipeId) ?? allRecipes[0] ?? null
   /**
    * **谜质科技门槛**（**2026-09-30 船长令**：T5「解锁新的燃料配方」）——判据与起线拒绝同一把尺
    * （`labRecipeUnlocked`）：锁着的配方**照列**（要看得见缺哪棵树），但两个开工键一起置灰。
@@ -559,7 +563,7 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
     const perMinute = (r: { outputUnits: number; cycleMs: number }): number =>
       r.outputUnits / Math.max(0.001, r.cycleMs / 60_000)
     const groups = new Map<string, number[]>()
-    for (const r of recipes) {
+    for (const r of allRecipes) {
       const arr = groups.get(r.outputItemId) ?? []
       arr.push(perMinute(r))
       groups.set(r.outputItemId, arr)
@@ -1481,13 +1485,14 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
           </div>
         ) : null}
 
-        {/* ═══ 实验室：配方目录（不预设分类；新东西加一行即出现）＋ 投料 ＋ 运行 ═══ */}
+        {/* ═══ 实验室：分类配方目录 ＋ 投料 ＋ 运行 ═══ */}
         {tab === 'lab' && engine.labUnlocked() ? (
           <div className="hud-grid two">
             <div className="hud-panel">
               <h3>
                 <Glyph name="ico-lab" size={13} color="currentColor" /> {tr('ui.hud.061')}
               </h3>
+              <LabRecipeFilters value={labFilter} onPick={setLabFilter} />
               {recipes.map((r) => {
                 const out = ctx.items.get(r.outputItemId)
                 const affordable = labAffordableBatches(state, r)
@@ -1700,10 +1705,10 @@ export function IndustryHudPage({ engine, onToast, onGotoMarket }: PageProps & {
                       />
                     </div>
                     <div className="hud-kv" style={{ marginTop: 8 }}>
-                      <span>{tr('ui.hud.079')}</span>
+                      <span>{tr('ui.IndustryPage.143')}</span>
                       <b>
                         <Glyph name="consumable" size={12} color="currentColor" />{' '}
-                        {engine.jumpFuelStock().toLocaleString('zh-CN')}
+                        {labMaterialAvailable(state, recipe.outputItemId).toLocaleString('zh-CN')}
                       </b>
                     </div>
                   </>

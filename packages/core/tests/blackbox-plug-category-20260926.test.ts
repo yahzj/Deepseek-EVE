@@ -35,6 +35,7 @@ describe('黑匣独立成类（船长报障：入侵获得的黑匣在仓库内�
     // 2026-10-02 每族一件黑匣批（船长令「甲」）：再加 R 族那件 ⇒ 三件
     expect(ITEMS.filter((i) => i.kind === 'blackbox').map((i) => i.id).sort()).toEqual([
       'blackbox-c',
+      'blackbox-d',
       'blackbox-h',
       'blackbox-r',
       'blackbox-universal',

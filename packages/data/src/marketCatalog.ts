@@ -195,6 +195,10 @@ const MARKET_GOODS_RAW_0_TEXT_BINDINGS: Record<string, Record<string, unknown>> 
   "synaptic-accelerant": {
 
   },
+  'invasion-beacon-r': {},
+  'invasion-beacon-c': {},
+  'invasion-beacon-h': {},
+  'invasion-beacon-d': {},
   "mat-wh-essence": {
 
   },

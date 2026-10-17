@@ -18,7 +18,7 @@ import type { ReactNode } from 'react'
 /** 一条正弦波路径（宽度 = 波长 × `periods`，便于横移整数个波长无缝循环） */
 function wavePath(width: number, height: number, amplitude: number, periods: number): string {
   const seg = width / periods
-  const mid = height / 2
+  const mid = 0
   let d = `M0 ${mid}`
   for (let i = 0; i < periods; i++) {
     const x0 = i * seg
@@ -32,7 +32,7 @@ function wavePath(width: number, height: number, amplitude: number, periods: num
 export interface FuelTankProps {
   /** 当前库存（单位） */
   units: number
-  /** 满格（单位）——刻度尺；缺省按"一趟长途"的 5 倍由调用方给 */
+  /** 当前技能生效后的库存上限（单位）。 */
   capacity: number
   /** 罐身高度（px）——调用方量出可用高度后传进来（缺省 148） */
   height?: number
@@ -46,7 +46,7 @@ export interface FuelTankProps {
    * 现在改成**由调用方量出宽高、组件按 1:1（`viewBox` = 实际像素）作画** ⇒ 想多高就多高、不变形。
    */
   width?: number
-  /** 刻度提示：这些单位处画一条长刻度（例：一趟长途 ≈1,200 单位） */
+  /** 刻度提示：这些单位处画一条长刻度。 */
   tickUnits?: number
   /** 无障碍名（读屏/悬停） */
   label: string
@@ -62,14 +62,11 @@ export function FuelTank({ units, capacity, height = 148, width, tickUnits, labe
   const innerW = W - padX * 2
   const innerH = H - padTop - padBottom
   const ratio = capacity > 0 ? Math.max(0, Math.min(1, units / capacity)) : 0
-  const filled = units > 0
+  const filled = ratio > 0
   /** 液面 y（罐内坐标）：满 = 顶部 0 */
   const surfaceY = innerH * (1 - ratio)
-  /**
-   * 波层要"高出液面一截"再被内腔裁掉 ⇒ 把波层整体画在 `surfaceY - amp*2`，
-   * 让波峰波谷都落在裁区里（否则波动会在液面处露出直边）。
-   */
-  const amp = 2.8
+  // 波形以液面为零点，向下封闭到底；满罐关闭起伏以免顶部露出空隙。
+  const amp = ratio === 1 ? 0 : 2.8
   /**
    * **波长 = `innerW / 2`**（一个"上-下"为一个周期）；**横移量 = `innerW` = 正好 2 个波长** ⇒ 无缝。
    *
@@ -134,14 +131,14 @@ export function FuelTank({ units, capacity, height = 148, width, tickUnits, labe
 
       {/* 液体（被内腔裁剪）：两层错速波 ＋ 主体 */}
       <g clipPath={`url(#${uid}-clip)`}>
-        <g transform={`translate(0 ${padTop + surfaceY - amp * 2})`}>
+        {filled ? <g transform={`translate(0 ${padTop + surfaceY})`}>
           <g className="wave-b">
             <path d={d} fill="rgb(var(--wui-accent))" opacity="0.30" />
           </g>
           <g className="wave-a">
             <path d={d} fill={`url(#${uid}-fuel)`} />
           </g>
-        </g>
+        </g> : null}
         {/* 液下微光（呼吸；空罐不亮） */}
         {filled ? (
           <ellipse

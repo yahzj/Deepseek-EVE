@@ -19,6 +19,7 @@ import { startManufacturing, advanceManufacturing } from '../src/manufacturing'
 import { deferredL10nIssues } from '../../../tools/l10n-deferred-check'
 import ships from '../../data/src/static/ships.json'
 import modules from '../../data/src/static/modules.json'
+import { applyApprovedScanShipDelta } from './helpers/approved-scan-ship-delta'
 
 const ctx = buildSimContext(), root = new URL('../../../', import.meta.url)
 const droneHulls = ['sh-swarm', 'sh-sentinel', 'sh-wh-e-destroyer', 'sh-wh-e-carrier']
@@ -207,6 +208,7 @@ describe('出击加速、激光校准与协处理器5%', () => {
     for (const hull of Object.values(expectedShips.groups).flat() as Array<Record<string, number>>) {
       for (const field of ['shieldHp', 'armorHp', 'hullHp']) hull[field] = Math.round(hull[field]! * 1.5)
     }
+    applyApprovedScanShipDelta(expectedShips)
     expect(ships).toEqual(expectedShips)
     const expectedModules = old('packages/data/src/static/modules.json')
     ;(Object.values(expectedModules.groups).flat().find((mod: any) => mod.id === 'mod-wh-e-cpu') as any).reloadPenaltyPct = .05

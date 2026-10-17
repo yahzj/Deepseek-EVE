@@ -14,7 +14,7 @@ const approved = [
 
 describe('船长批准的血量与作业公告', () => {
   it('首条公告和五条正文逐字采用批准稿，ID唯一', () => {
-    const row = ANNOUNCEMENTS[0]!
+    const row = ANNOUNCEMENTS.find(row => row.id === 'ann-ship-hp-station-20261013')!
     expect(row).toMatchObject({ id: 'ann-ship-hp-station-20261013', title: '舰船血量提升与作业优化', date: '2026-10-13', tag: '数值' })
     expect(row.bullets).toEqual(approved)
     expect(row.bulletIds).toEqual(['ano.hpStation.003', 'ano.hpStation.004', 'ano.hpStation.005', 'ano.hpStation.006', 'ano.hpStation.007'])
@@ -22,7 +22,7 @@ describe('船长批准的血量与作业公告', () => {
   })
 
   it('唯一表接线，未授权英文只登记并回退中文', () => {
-    const row = ANNOUNCEMENTS[0]!
+    const row = ANNOUNCEMENTS.find(row => row.id === 'ann-ship-hp-station-20261013')!
     const ids = [row.titleId!, row.tagId!, ...row.bulletIds!]
     expect(ids.map(id => L10N[id]!.zh)).toEqual([row.title, row.tag, ...approved])
     for (const id of ids) {
@@ -37,6 +37,7 @@ describe('船长批准的血量与作业公告', () => {
     })
     const scope = { exports: {} as { ANNOUNCEMENTS: typeof ANNOUNCEMENTS }, require: () => ({ L10N }) }
     runInNewContext(ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, scope)
-    expect(JSON.parse(JSON.stringify(ANNOUNCEMENTS.slice(1)))).toEqual(JSON.parse(JSON.stringify(scope.exports.ANNOUNCEMENTS)))
+    const index = ANNOUNCEMENTS.findIndex(row => row.id === 'ann-ship-hp-station-20261013')
+    expect(JSON.parse(JSON.stringify(ANNOUNCEMENTS.slice(index + 1)))).toEqual(JSON.parse(JSON.stringify(scope.exports.ANNOUNCEMENTS)))
   })
 })

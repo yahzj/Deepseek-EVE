@@ -3485,7 +3485,7 @@ export class GameEngine {
   }
   /** 虫洞：**扫描**（1 回合，揭开当前格周围一圈；顺带**驱散圈内的星云**——船长 2026-09-13 星云机制） */
   wormholeScan(): CommandResult {
-    const r = wormholeGridScan(this.state)
+    const r = wormholeGridScan(this.state, this.ctx)
     if (r.ok) {
       this.wormholeTickNow()
       void this.persist()
@@ -4559,7 +4559,7 @@ export class GameEngine {
    * **传 `galaxyId`**（星图 · 星系详细那颗「启动信号发射器」）＝**就用玩家选的那个星系**
    * （资格判据在 core：目标存在且没有空间站，高安目标支付声望）。
    */
-  useInvasionBeaconNow(opts: { familyId?: string; galaxyId?: string } = {}): CommandResult {
+  useInvasionBeaconNow(opts: { familyId?: string; galaxyId?: string; itemId?: string } = {}): CommandResult {
     const result = useInvasionBeacon(this.state, this.ctx, opts)
     if (result.ok) {
       void this.persist()

@@ -126,8 +126,9 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   // ⟪文案调整 2026-10-09⟫ 船长批准更新续时说明；保留旧ID英文，新ID仅中文、登记待译。
   'item.synaptic.001': { zh: '技能训练加速消耗品，每枚增加24小时有效时间；可重复使用，训练速度倍率不叠加。可在物品、货仓或技能加速窗口使用，自动续用需另行开启。', en: '', enDeferred: true },
   'ui.boost.012': { zh: '使用：技能加速有效时间增加24小时，倍率不叠加', en: '', enDeferred: true },
-  'ui.boost.013': { zh: '突触加速剂已使用：有效时间增加24小时。', en: '', enDeferred: true },
-  'core.consumable.017': { zh: '✦ 突触加速剂已使用：技能加速有效时间增加{p1}小时。', en: '', enDeferred: true },
+  // ⟪文案调整 2026-10-17⟫ 旧药剂升为MK1名称，效果及延期翻译状态保持。
+  'ui.boost.013': { zh: '突触加速剂 MK1已使用：有效时间增加24小时。', en: '', enDeferred: true },
+  'core.consumable.017': { zh: '✦ 突触加速剂 MK1已使用：技能加速有效时间增加{p1}小时。', en: '', enDeferred: true },
   'ui.battleAmmo.001': { zh: '弹药预载不足（取用：{source}）：\n{details}\n再次点击同一开战按钮仍可出战。', en: '', enDeferred: true },
   'ui.battleAmmo.002': { zh: '{ship} · {ammo}：可装 {can} / 需 {need}，缺 {missing} 发', en: '', enDeferred: true },
   'ui.battleAmmo.003': { zh: '物品仓库', en: '', enDeferred: true },
@@ -1801,7 +1802,7 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.jumpFuel.025": { zh: "燃料只存于物品仓库（普通舰船货仓无法装入）", en: "Fuel is stored in the item warehouse only (ordinary holds cannot take it)" },
   "ui.jumpFuel.026": { zh: "在产速率 = 当前在跑的实验线合计产出（单位/时）；仓库放不下下一批时实验室停线。", en: "Production rate is the combined output of the laboratory lines running now (units/h); a line halts when the store cannot fit another batch." },
   /* 实验室后续内容（**2026-09-30 船长令**「信号发射器和技能加速剂」）：道具「使用」动作的文案 */
-  "core.consumable.001": { zh: "仓库里没有突触加速剂。", en: "There is no Synaptic Accelerant in store." },
+  "core.consumable.001": { zh: "仓库里没有突触加速剂 MK1。", en: "There is no Synaptic Accelerant MK1 in store." },
   "core.consumable.002": { zh: "突触加速剂正在生效中（还剩 {p1} 分钟）：同一时间内只能生效一剂。", en: "A Synaptic Accelerant is already active ({p1} minutes left): only one dose can be active at a time." },
   "core.consumable.003": { zh: "✦ 突触加速剂生效：未来 {p1} 小时内技能训练时长减半。", en: "✦ Synaptic Accelerant active: skill training time is halved for the next {p1} hours." },
   /* 信号发射器（第 2 批）：可选入侵势力列表 ＋ 使用/拒绝文案 */
@@ -1838,22 +1839,22 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
      013 = 在线逐枚补用的日志 · 015 = 没料时自动关掉开关的提示 · 016 = 没料时想打开开关的当场拒绝
      ⚠ **离线汇总那一槽不在这里** —— 它是 `core.simulation.003`（与离线那句同域，见该处注释）。 */
   "core.consumable.013": {
-    zh: "✦ 突触加速剂自动续用：接下来 {p1} 小时训练时长继续减半。",
-    en: "✦ Synaptic Accelerant auto-renewed: skill training time stays halved for another {p1} hours.",
+    zh: "✦ 突触加速剂 MK1自动续用：接下来 {p1} 小时训练时长继续减半。",
+    en: "✦ Synaptic Accelerant MK1 auto-renewed: skill training time stays halved for another {p1} hours.",
   },
   "core.consumable.015": {
-    zh: "⚠ 技能加速自动续用已关闭：突触加速剂用光了。",
-    en: "⚠ Skill-boost auto-renew switched off: no Synaptic Accelerant left.",
+    zh: "⚠ 技能加速自动续用已关闭：突触加速剂 MK1用光了。",
+    en: "⚠ Skill-boost auto-renew switched off: no Synaptic Accelerant MK1 left.",
   },
   "core.consumable.016": {
-    zh: "仓库里没有突触加速剂：自动续用无从补起。",
-    en: "No Synaptic Accelerant in store, so auto-renew has nothing to draw on.",
+    zh: "仓库里没有突触加速剂 MK1：自动续用无从补起。",
+    en: "No Synaptic Accelerant MK1 in store, so auto-renew has nothing to draw on.",
   },
   "ui.ItemsPage.057": { zh: "使用：主动诱发一次入侵（目标按入侵默认规则抽取 · 只能在没有入侵时使用 · 消耗 1 枚）", en: "Use: provoke an invasion (the target is drawn by the regular invasion trigger; only while no invasion is running; consumes one)" },
   "ui.ItemsPage.058": { zh: "信号发射器已启动：入侵舰队正在逼近。", en: "Signal Beacon lit: an invasion fleet is closing in." },
   /* 活动窗口的突触加速剂读数（2026-09-30 船长令：放进活动窗口 · 图标带倍率） */
   "ui.ActivityBar.066": { zh: "技能加速 ×{p1}", en: "Skill boost ×{p1}" },
-  "ui.ActivityBar.067": { zh: "突触加速剂生效中：技能训练时长减半（剩 {p1}）", en: "Synaptic Accelerant active: skill training time halved ({p1} left)" },
+  "ui.ActivityBar.067": { zh: "突触加速剂 MK1生效中：技能训练时长减半（剩 {p1}）", en: "Synaptic Accelerant MK1 active: skill training time halved ({p1} left)" },
   /* ═══ 工业 HUD 页（调试专用 · 2026-09-30 船长令）：**少字多图标** ——
      页面上的文字只做"2~4 字标签/单位"，解释性长句一律进 `title`（悬停）。═══════════════ */
   "ui.hud.001": { zh: "精炼炉", en: "Refinery" },
@@ -6322,7 +6323,8 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ui.shipInfo.122": { zh: "{p1} {p2} / {p3} {p4} / {p5} {p6}（复数安装）", en: "{p1} {p2} / {p3} {p4} / {p5} {p6} (multiple fittings allowed)" },
   "ui.shipInfo.123": { zh: "{p1}武器射程 +{p2}%", en: "{p1} weapon range +{p2}%" },
   "ui.shipInfo.124": { zh: "全舰单发伤害 +{p1}%（编队光环，多艘取最高）", en: "Ship-wide damage per shot +{p1}% (formation aura; the highest of several applies)" },
-  "ui.shipInfo.125": { zh: "虫洞扫描范围 +{p1} 圈（编入队伍即生效、可叠加）", en: "Wormhole scan range +{p1} rings (applies as soon as it joins the fleet, and stacks)" },
+  // ⟪文案调整 2026-10-17⟫ 侦察舰、电子舰各取最高，两类相加。
+  "ui.shipInfo.125": { zh: "空间内扫描范围 +{p1} 圈；同类舰船取最高，侦察舰与电子舰可相加", en: "Scan range inside the space +{p1} rings; only the highest bonus in each ship class applies, and scout and EW bonuses add together" },
   "ui.shipInfo.126": { zh: "装了维修装置时，维修脉冲改修编队中最缺血的舰船（含自己）", en: "With a repair unit fitted, repair pulses go to whichever ship in the formation is lowest on HP (itself included)" },
   "ui.shipInfo.127": { zh: "隐秘行动装置 CPU ×{p1}（向上取整）", en: "Covert ops module CPU ×{p1} (rounded up)" },
   "ui.shipInfo.128": { zh: "装推进器也能保持隐身（不受推进器失效限制）", en: "Stays cloaked with a thruster fitted (not limited by the thruster restriction)" },
@@ -7508,5 +7510,30 @@ export const L10N: Readonly<Record<string, L10nEntry>> = {
   "ano.hpStation.005": { zh: "玩家舰船装配任意有效高槽装备后禁用基础舰炮，拆空高槽后恢复；舰载武器在近盲区内仍可开火，对舰伤害降为正常的30%，无人机与近防对机群的规则不变。", en: '', enDeferred: true },
   "ano.hpStation.006": { zh: "玩家出勤期间可进行仓库交易与逆向研究；装卸货物、出售船上货物和站内维修按目标舰停靠状态检查，空闲副船不受主控位置影响，母港与已建成副站适用相同规则。", en: '', enDeferred: true },
   "ano.hpStation.007": { zh: "玩家从采矿或打捞切换至站内作业、长途运输或建站交付时，舰船按原航程返港，到港后自动检查条件并启动；待办随存档保留，活动栏可取消待办，取消后舰船仍继续返港。", en: '', enDeferred: true },
+  // ⟪文案调整 2026-10-18⟫ 船长批准合并发布，英文未授权准备，按既有流程登记待译。
+  'ano.signalRelease.001': { zh: '信号发射器、探索与舰船调整', en: '', enDeferred: true },
+  'ano.signalRelease.002': { zh: '内容、数值与修复', en: '', enDeferred: true },
+  'ano.signalRelease.003': { zh: '专属信号发射器：新增光环科技、异形生物、墨潮帮、守墓者四种专属信号发射器，玩家可触发对应势力入侵；原信号发射器继续随机选择入侵势力。专属发射器每批消耗40000虚空晶、2000量子协处理器芯、18000电路基板和8859引力补偿器，基础工期2小时、产出1枚。星系详细新增发射器下拉选择，只显示玩家持有的类型；切换类型后需重新确认，取消不消耗物品。', en: '', enDeferred: true },
+  'ano.signalRelease.004': { zh: '实验室与加速剂：实验室新增全部、燃料、信号发射器、加速剂筛选，不改变正在生产的批次。突触加速剂更名为突触加速剂MK1，每批虚空晶消耗由2000提高至2100；玩家已有物品和药效保持不变，已开工批次取消时仍按开工时的实际消耗退料。', en: '', enDeferred: true },
+  'ano.signalRelease.005': { zh: '信号空间探索：侦察舰的空间内扫描范围加成统一提高至+2圈，包括鹦鹉螺级与幽影侦察舰；电子舰保持+1圈。同类舰船只取最高加成，侦察舰与电子舰可相加，手动与自动探索均适用。新增T1与T4两项「信号空间探索」谜质科技，各限1级、各增加1圈扫描范围，并与舰船加成相加。T1消耗20枚谜质与300万信用点；T4消耗160枚谜质与7亿信用点，需先研究T1。', en: '', enDeferred: true },
+  'ano.signalRelease.006': { zh: '舰船回避率：马鲛级护卫舰、虎鲨级武装护卫舰与哨戒电子舰的基础回避率各提高0.1。', en: '', enDeferred: true },
+  'ano.signalRelease.007': { zh: '燃料罐显示修复：跃迁燃料达到上限时正确显示满罐，其他液位按实际仓库燃料比例显示。燃料库存上限与生产规则不变。', en: '', enDeferred: true },
+  'item.factionBeacon.001': { zh: '光环科技信号发射器', en: 'Corona Systems Signal Beacon' },
+  'item.factionBeacon.002': { zh: '诱发光环科技入侵。直接使用时随机选择目标星系，也可在星系详细中指定目标。', en: 'Triggers a Corona Systems incursion. Direct use chooses a random target system; a target can also be chosen in system details.' },
+  'item.factionBeacon.003': { zh: '异形生物信号发射器', en: 'Alien Lifeforms Signal Beacon' },
+  'item.factionBeacon.004': { zh: '诱发异形生物入侵。直接使用时随机选择目标星系，也可在星系详细中指定目标。', en: 'Triggers an Alien Lifeforms incursion. Direct use chooses a random target system; a target can also be chosen in system details.' },
+  'item.factionBeacon.005': { zh: '墨潮帮信号发射器', en: 'Ink Tide Gang Signal Beacon' },
+  'item.factionBeacon.006': { zh: '诱发墨潮帮入侵。直接使用时随机选择目标星系，也可在星系详细中指定目标。', en: 'Triggers an Ink Tide Gang incursion. Direct use chooses a random target system; a target can also be chosen in system details.' },
+  'item.factionBeacon.007': { zh: '守墓者信号发射器', en: 'Gravekeeper Signal Beacon' },
+  'item.factionBeacon.008': { zh: '诱发守墓者入侵。直接使用时随机选择目标星系，也可在星系详细中指定目标。', en: 'Triggers a Gravekeeper incursion. Direct use chooses a random target system; a target can also be chosen in system details.' },
+  'item.factionBeacon.009': { zh: '突触加速剂 MK1', en: 'Synaptic Accelerant MK1' },
+  'core.factionBeacon.001': { zh: '发射器类型或指定势力不匹配。', en: 'The beacon type and specified faction do not match.' },
+  'ui.factionBeacon.001': { zh: '选择信号发射器', en: 'Select a signal beacon' },
+  'ui.factionBeacon.002': { zh: '{p1} ×{p2}', en: '{p1} ×{p2}' },
+  'ui.labFilter.001': { zh: '全部', en: 'All' },
+  'ui.labFilter.002': { zh: '燃料', en: 'Fuel' },
+  'ui.labFilter.003': { zh: '信号发射器', en: 'Signal beacons' },
+  'ui.labFilter.004': { zh: '加速剂', en: 'Accelerants' },
+  'ui.labFilter.005': { zh: '实验室配方筛选', en: 'Laboratory recipe filter' },
 }
 

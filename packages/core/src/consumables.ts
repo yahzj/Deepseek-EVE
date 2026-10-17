@@ -5,8 +5,7 @@
  * ——它们是"从仓库里点一下就用掉"的道具，与精炼/生产链解耦 ⇒ 复用既有 `useOneRepairKit` 的成法：
  * 校验 → 扣 1 枚（货仓优先、再扣物品仓库）→ 落效果 → 返回 `CommandResult`（界面只弹提示）。
  *
- * 本文件目前只有**突触加速剂**（第 3 批）；**信号发射器**（第 2 批）等入侵侧的"主动起事件"入口接好后再补进来，
- * 在那之前它的物品/市场/配方三处都带 `unreleased` ⇒ 玩家看不到也拿不到。
+ * 突触加速剂MK1与随机/专属信号发射器共用库存扣料入口，势力由发射器物品类型决定。
  */
 import type { GameState } from './state'
 import type { CommandResult } from './engine'
@@ -95,7 +94,7 @@ function takeOne(state: GameState, itemId: string): void {
  */
 export function useSynapticAccelerant(state: GameState): CommandResult {
   if (consumableStockOf(state, SYNAPTIC_ACCELERANT_ITEM_ID) <= 0) {
-    return { ok: false, error: '仓库里没有突触加速剂。', errorId: 'core.consumable.001' }
+    return { ok: false, error: '仓库里没有突触加速剂 MK1。', errorId: 'core.consumable.001' }
   }
   normalizeTrainingProgress(state)
   takeOne(state, SYNAPTIC_ACCELERANT_ITEM_ID)
@@ -104,7 +103,7 @@ export function useSynapticAccelerant(state: GameState): CommandResult {
     state,
     'industry',
     // ⟪文案调整 2026-10-09⟫ 每次增加有效时间，不将累计药效表述为重置24小时。
-    `✦ 突触加速剂已使用：技能加速有效时间增加${Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000)}小时。`,
+    `✦ 突触加速剂 MK1已使用：技能加速有效时间增加${Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000)}小时。`,
     'core.consumable.017',
     { p1: Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000) },
   )
@@ -150,7 +149,7 @@ export function syncBoostRenew(state: GameState, ctx: SimContext): void {
     // 料尽先关闭；警告只写一次，不等待最后一剂到期。
     if (consumableStockOf(state, SYNAPTIC_ACCELERANT_ITEM_ID) <= 0) {
       state.boostAutoRenew = false
-      addLog(state, 'warn', '⚠ 技能加速自动续用已关闭：突触加速剂用光了。', 'core.consumable.015')
+      addLog(state, 'warn', '⚠ 技能加速自动续用已关闭：突触加速剂 MK1用光了。', 'core.consumable.015')
       return
     }
     const head = state.skills.queue[0]
@@ -172,7 +171,7 @@ export function syncBoostRenew(state: GameState, ctx: SimContext): void {
     addLog(
       state,
       'industry',
-      `✦ 突触加速剂自动续用：接下来 ${Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000)} 小时训练时长继续减半。`,
+      `✦ 突触加速剂 MK1自动续用：接下来 ${Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000)} 小时训练时长继续减半。`,
       'core.consumable.013',
       { p1: Math.round(SYNAPTIC_ACCELERANT_MS / 3_600_000) },
     )
@@ -211,7 +210,7 @@ export function setBoostAutoRenew(state: GameState, on: boolean): CommandResult 
     return { ok: true }
   }
   if (consumableStockOf(state, SYNAPTIC_ACCELERANT_ITEM_ID) <= 0) {
-    return { ok: false, error: '仓库里没有突触加速剂：自动续用无从补起。', errorId: 'core.consumable.016' }
+    return { ok: false, error: '仓库里没有突触加速剂 MK1：自动续用无从补起。', errorId: 'core.consumable.016' }
   }
   state.boostAutoRenew = true
   return { ok: true }
@@ -221,6 +220,27 @@ export function setBoostAutoRenew(state: GameState, on: boolean): CommandResult 
 
 /** 信号发射器物品 id */
 export const INVASION_BEACON_ITEM_ID = 'invasion-beacon'
+
+export const INVASION_BEACON_TYPES: readonly { itemId: string; familyId?: string }[] = [
+  { itemId: INVASION_BEACON_ITEM_ID },
+  { itemId: 'invasion-beacon-r', familyId: 'R' },
+  { itemId: 'invasion-beacon-c', familyId: 'C' },
+  { itemId: 'invasion-beacon-h', familyId: 'H' },
+  { itemId: 'invasion-beacon-d', familyId: 'D' },
+]
+
+/** 认物品决定固定势力；原发射器未指定势力，继续随机。 */
+export function invasionBeaconTypeOf(itemId: string) {
+  return INVASION_BEACON_TYPES.find(row => row.itemId === itemId)
+}
+
+/** 星图下拉只列有库存的类型，库存口径与实际扣料相同。 */
+export function availableInvasionBeacons(state: GameState) {
+  return INVASION_BEACON_TYPES.flatMap(row => {
+    const units = consumableStockOf(state, row.itemId)
+    return units > 0 ? [{ ...row, units }] : []
+  })
+}
 
 /**
  * **可指定的入侵势力清单**（**船长 2026-09-29 Q2**：「**做个列表之类的，之后有新增入侵就添加选项**」）
@@ -250,10 +270,16 @@ export const INVASION_BEACON_FAMILIES: readonly { readonly id: string; readonly 
 export function useInvasionBeacon(
   state: GameState,
   ctx: SimContext,
-  opts: { familyId?: string; galaxyId?: string } = {},
+  opts: { familyId?: string; galaxyId?: string; itemId?: string } = {},
 ): CommandResult {
-  const { familyId, galaxyId } = opts
-  if (consumableStockOf(state, INVASION_BEACON_ITEM_ID) <= 0) {
+  const { galaxyId } = opts
+  const itemId = opts.itemId ?? INVASION_BEACON_ITEM_ID
+  const type = invasionBeaconTypeOf(itemId)
+  if (!type || type.familyId !== undefined && opts.familyId !== undefined && opts.familyId !== type.familyId) {
+    return { ok: false, error: '发射器类型或指定势力不匹配。', errorId: 'core.factionBeacon.001' }
+  }
+  const familyId = type.familyId ?? opts.familyId
+  if (consumableStockOf(state, itemId) <= 0) {
     return { ok: false, error: '仓库里没有信号发射器。', errorId: 'core.consumable.004' }
   }
   const ev = state.weekendEvent
@@ -333,7 +359,7 @@ export function useInvasionBeacon(
   }
   // 旧场未结算时先兑现台账，再替换事件；失败的点火不能改变旧账。
   weekendSettleAndGrant(state, ctx, state.wallMs ?? Date.now())
-  takeOne(state, INVASION_BEACON_ITEM_ID)
+  takeOne(state, itemId)
   /* 目标属高安：扣可支配声望（**在扣料之后**，与"发射器确实用掉了"同一笔成交；不足时上面已拒）
      ⚠ 文案里的星系 = **玩家选定的目标星系**（2026-10-03 改判后不再是"玩家所在地"） */
   if (highSec) {

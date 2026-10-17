@@ -10,8 +10,7 @@
  *    （**2026-09-14 船长：「鹦鹉螺+1槽位」**，对齐 T3 默认线 11；上面原话照抄不动）·
  *    机舱 ~~80~~ ⇒ **160**（**2026-09-20 船长：「鹦鹉螺的无人机舱扩大到 160」**，同级 50、母舰 320 未动）·
  *    货舱 **5,600 m³**（原案 ×3 = 6,600；2026-09-26 船长令「鹦鹉螺货仓减少1000」）· 循环 14 秒产 **39** 单位 · 行价 9,000,000（贴长尾鲨级）；
- * ② **主效果实测生效**：`wormholeScanRadiusBonus: 1` ⇒ 对编队**求和**；入洞（`wormholeStartRun`）
- *    与深入下层（`wormholeDescend`）都真的把 `grid.scanRadius` 抬 1 圈，两艘可叠加；
+ * ② 主效果：侦察舰扫描范围+2圈，同类取最高；入洞与深入均采用编队单点。
  * ③ **价格同源**：蓝图书价 = 行价 × 4；材料货值 = 行价 × 45%；工期落 T3 带（3~5 时）；
  * ④ **上线放开**（2026-09-14，原「施工期闸门：四处 `unreleased` 同步、玩家买不到」已随虫洞上线翻面）：
  *    舰体 / 两张图纸 / 三张市场卡的 `unreleased` **全删** ⇒ 图鉴可见、`ctx.marketGoods` 里也有。
@@ -53,7 +52,7 @@ describe('鹦鹉螺级测绘巡洋舰（2026-09-13 船长新增）', () => {
     expect(s.cycleSeconds).toBe(14)
     expect(s.oreUnitsPerCycle).toBe(39) // 「采矿提高到39单位」
     expect(s.priceIsk).toBe(9_000_000)
-    expect(s.wormholeScanRadiusBonus).toBe(1) // 主效果
+    expect(s.wormholeScanRadiusBonus).toBe(2) // 2026-10-17侦察舰统一两圈。
     expect(s.powerBonus, '2026-09-17 武装舰按档位：T3 = +25%').toBe(0.25)
     expect(s.droneDmgBonus).toBe(0.1)
     expect((s.shieldHp ?? 0) + (s.armorHp ?? 0) + (s.hullHp ?? 0)).toBe(916)
@@ -88,7 +87,7 @@ describe('鹦鹉螺级测绘巡洋舰（2026-09-13 船长新增）', () => {
     expect(Math.floor(160 / 10)).toBe(16)
   })
 
-  it('主效果实测生效：编队求和；入洞与深入下层都把扫描半径抬 1 圈（两艘可叠加）', () => {
+  it('主效果实测生效：侦察舰同类取最高；入洞与深入均提高两圈', () => {
     // 基线：全 T1 编队 ⇒ 无加成
     const base = wormholeStartRun(ctx, [T1, T1], 42)
     expect(base.ok).toBe(true)
@@ -97,8 +96,8 @@ describe('鹦鹉螺级测绘巡洋舰（2026-09-13 船长新增）', () => {
     // 带 1 艘鹦鹉螺 ⇒ +1 圈
     const one = wormholeStartRun(ctx, [T1, SCOUT], 42)
     expect(one.ok).toBe(true)
-    expect(wormholeScanBonusOf(ctx, one.run!.fleet)).toBe(1)
-    expect(one.run!.grid!.scanRadius).toBe(baseScan + 1)
+    expect(wormholeScanBonusOf(ctx, one.run!.fleet)).toBe(2)
+    expect(one.run!.grid!.scanRadius).toBe(baseScan + 2)
     // 两艘 ⇒ +2 圈（船长口径：编队即生效、可叠加）
     const two = wormholeStartRun(ctx, [SCOUT, SCOUT], 42)
     expect(two.ok).toBe(true)
@@ -114,7 +113,7 @@ describe('鹦鹉螺级测绘巡洋舰（2026-09-13 船长新增）', () => {
     // 2026-09-18 新口径：深入必须在「下一层入口」格（这里直接落位，省掉走格铺垫）
     run.grid!.pos = { q: run.grid!.exit.q, r: run.grid!.exit.r }
     expect(wormholeDescend(state, 42, wormholeScanBonusOf(ctx, run.fleet)).ok).toBe(true)
-    expect(run.grid!.scanRadius).toBe(baseScan + 1)
+    expect(run.grid!.scanRadius).toBe(baseScan + 2)
   })
 
   it('价格同源：蓝图 = 行价 × 4；材料货值 = 行价 × 45%；工期落 T3 带', () => {

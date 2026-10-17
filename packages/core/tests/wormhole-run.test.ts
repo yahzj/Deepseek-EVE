@@ -623,12 +623,12 @@ describe('虫洞 · 起程与副本推进', () => {
     // **编队里真有船带这个加成**（数据侧 `wormholeScanRadiusBonus`；三族电子/侦察舰各 1）
     const scout = 'sh-wh-g-frigate' // G 族侦察舰（`wormholeScanRadiusBonus: 1`；专属舰，施工期对玩家不可见）
     const { state: withScoutState, run: withScout } = enterForActions([T1, scout], 42)
-    expect(wormholeScanBonusOf(ctx, withScout.fleet)).toBe(1)
+    expect(wormholeScanBonusOf(ctx, withScout.fleet)).toBe(2)
     expect(wormholeScanBonusOf(ctx, [T1, T1])).toBe(0)
     withScout.bossCleared = withScout.depth
     goToExit(withScout) // 2026-09-18 新口径：深入必须在下一层入口
     expect(wormholeDescend(withScoutState, 42, wormholeScanBonusOf(ctx, withScout.fleet)).ok).toBe(true)
-    expect(withScout.grid!.scanRadius).toBe(baseScan + 1)
+    expect(withScout.grid!.scanRadius).toBe(baseScan + 2)
   })
 
   it('节点生成是确定性的（同 seed/depth/index ⇒ 同结果）——老档线性口径仍可用', () => {

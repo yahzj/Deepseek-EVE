@@ -1256,10 +1256,10 @@ describe('虫洞 · 准备页读数（2026-09-19 船长追加）', () => {
     expect(wormholeSalvagersInFleet(state, ctx, [a])).toBe(2)
     expect(wormholeMinersInFleet(state, ctx, [a])).toBe(1)
     expect(wormholeSalvagersInFleet(state, ctx, [a, b])).toBe(3)
-    // ② 扫描范围 = 基础 1 圈 ＋ 编队加成（鹦鹉螺 +1 ⇒ 2 圈；不带它则 1 圈）
+    // 船长2026-10-17确认侦察舰特性统一增加2圈。
     expect(WORMHOLE_SCAN_RADIUS_BASE).toBe(1)
     expect(WORMHOLE_SCAN_RADIUS_BASE + wormholeScanBonusOf(ctx, [a, b])).toBe(1)
-    expect(WORMHOLE_SCAN_RADIUS_BASE + wormholeScanBonusOf(ctx, [a, b, scan])).toBe(2)
+    expect(WORMHOLE_SCAN_RADIUS_BASE + wormholeScanBonusOf(ctx, [a, b, scan])).toBe(3)
     // ③ 入洞后：本趟口径与编队口径必须完全相同（同一把尺，不是两套算法）
     state.shipId = a
     expect(wormholeEnter(state, ctx, [a, b, scan], 99).ok).toBe(true)

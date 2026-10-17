@@ -1,5 +1,19 @@
 # 待英文本地化记录
 
+## 信号发射器、探索与舰船合并公告（2026-10-18）
+
+船长批准合并扫描、回避率与燃料修复公告，并要求不提敌方入侵数值；完成实机复测后明确“进行推送”。`ano.signalRelease.001`至`.007`为标题、分类和五条已审中文正文，随`ann-signal-beacons-exploration-20261018`发布。英文未获明确准备指令，登记待译、使用`enDeferred`与共享中文回退，不以推送许可代替翻译许可。
+
+| ID | 中文依据 | 状态 |
+|---|---|---|
+| `ano.signalRelease.001` | 信号发射器、探索与舰船调整 | 待本地化 |
+| `ano.signalRelease.002` | 内容、数值与修复 | 待本地化 |
+| `ano.signalRelease.003` | 专属发射器与星系选择 | 待本地化 |
+| `ano.signalRelease.004` | 实验室筛选与突触加速剂MK1 | 待本地化 |
+| `ano.signalRelease.005` | 扫描舰船特性与两项科技 | 待本地化 |
+| `ano.signalRelease.006` | 玩家三舰回避率 | 待本地化 |
+| `ano.signalRelease.007` | 燃料罐显示修复 | 待本地化 |
+
 ## 守墓入侵调参与装备（2026-10-17归档）
 
 现行中文结论见`docs/design/weekend-invasion.md`§十二；船长未授权开始英文。`ui.gravekeeperRetune.001`为陵寝重构的已确认定性说明与读取参数的复活间隔/范围，`FOE_MOUNTS.foe-mount-d-reconstruction`为新挂载名「陵寝重构协议」；两处均待本地化，英文回退中文，不修改旧英文。

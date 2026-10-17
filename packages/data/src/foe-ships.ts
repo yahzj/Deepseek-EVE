@@ -893,7 +893,7 @@ export const FOE_D_INVASION_BASTION: FoeShipDef = {
   rangeMinM: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'rangeMinM'), rangeMaxM: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'rangeMaxM'),
   falloff: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'falloff'), blindDmgMul: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'blindDmgMul'),
   dmgMix: { plasma: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'dmgMix_plasma'), kinetic: enemyParameterOf(foeShipsParameters, 'foe-d-invasion-bastion', 'dmgMix_kinetic') }, energyForm: 'beam', tactic: 'orbit',
-  mounts: [FOE_MOUNT_IDS.dMausoleumArmor],
+  mounts: [FOE_MOUNT_IDS.dMausoleumArmor, FOE_MOUNT_IDS.dRangeDebuff],
 }
 export const FOE_D_INVASION_OATHKEEPER: FoeShipDef = {
   id: 'foe-d-invasion-oathkeeper', name: L10N['ship.gravekeeper.003']!.zh, family: 'D',

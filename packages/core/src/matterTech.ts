@@ -327,6 +327,7 @@ export function matterTechWhBuffs(state: GameState, ctx: SimContext): WormholeTe
   return {
     ...WORMHOLE_TECH_BUFFS_NONE,
     turnBonus: sum('whTurnMax'),
+    scanRadius: sum('whScanRadius'),
     holdCells: sum('whHoldCells'),
     resistShield: sum('whResistShield'),
     resistArmor: sum('whResistArmor'),

@@ -121,7 +121,11 @@ describe('信号空间 · 旧面板来源与隔离', () => {
       'tempDiscardAndContinue', 'tempStowAndContinue', 'renderHereNode',
       'WhHold', 'WhGridMap', 'SettleView',
     ]
-    for (const name of unchanged) expect(normalized(ast, name), name).toBe(normalized(originalAst, name))
+    for (const name of unchanged) {
+      // 本轮扫描科技同时进入实际扫描与演出圈数，其余旧流程逐字保护。
+      const current = normalized(ast, name).replace('(grid?.scanRadius ?? 1) + matterBuffs.scanRadius', 'grid?.scanRadius ?? 1')
+      expect(current, name).toBe(normalized(originalAst, name))
+    }
     expect(normalized(ast, 'WhHold')).toContain('run.tempGrid')
     expect(normalized(ast, 'WhHold')).toContain('WORMHOLE_TEMP_CELLS')
   })

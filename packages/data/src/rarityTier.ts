@@ -688,6 +688,10 @@ export const RARITY_TIER: Readonly<Record<string, number>> = {
   'blackbox-universal': 4,
   // 实验室后续内容（2026-09-30 船长令）：信号发射器 / 突触加速剂 —— 奇货档（与 `blackbox-*` / 谜质同档 4）
   'invasion-beacon': 4,
+  'invasion-beacon-r': 4,
+  'invasion-beacon-c': 4,
+  'invasion-beacon-h': 4,
+  'invasion-beacon-d': 4,
   'synaptic-accelerant': 4,
   'wreck-rare-a-lo': 3,
   'wreck-rare-c-lo': 3,

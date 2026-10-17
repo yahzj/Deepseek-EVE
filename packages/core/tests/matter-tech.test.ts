@@ -45,14 +45,14 @@ function world(): ReturnType<typeof createInitialState> {
 }
 
 describe('谜质科技树 · 节点表与货币', () => {
-  it('28 个节点、id 唯一、效果关键字非空；研究货币 = 虫洞谜质', () => {
+  it('30 个节点、id 唯一、效果关键字非空；研究货币 = 虫洞谜质', () => {
     const nodes = matterTechNodes(ctx)
-    expect(nodes.length).toBe(28)
-    expect(new Set(nodes.map((n) => n.id)).size).toBe(28)
+    expect(nodes.length).toBe(30)
+    expect(new Set(nodes.map((n) => n.id)).size).toBe(30)
     expect(nodes.every((n) => n.effect.length > 0 && n.maxLevel >= 1)).toBe(true)
     // 三条线的节点数：探索 6 / 战斗 14 / 工业 8（2026-09-30 船长令追加工业两支精炼提速 ＋ T5 两条）
     const byBranch = (b: string): number => nodes.filter((n) => n.branch === b).length
-    expect([byBranch('explore'), byBranch('battle'), byBranch('industry')]).toEqual([6, 14, 8])
+    expect([byBranch('explore'), byBranch('battle'), byBranch('industry')]).toEqual([8, 14, 8])
     // 货币常量与产出侧同源（本模块写的是字面量，防漂）
     expect(MATTER_TECH_ESSENCE_ITEM_ID).toBe(WORMHOLE_ESSENCE_ITEM_ID)
     // 虚空母矿 id 同源（涓流按它入库；同样是字面量防漂）
@@ -73,8 +73,8 @@ describe('谜质科技树 · 节点表与货币', () => {
     // 信用点 2 亿（船长令）：仍高过 T4 首级最高（1.2 亿）⇒ 体检的"费用随层上升"契约照旧成立
     expect([fuel.essence, fuel.isk]).toEqual([[200], [200_000_000]])
     // T5 是本表第一次出现的层：首级费用必须高过 T4 最高（体检契约④同款口径）
-    const t4MaxEss = Math.max(...nodes.filter((n) => n.tier === 4).map((n) => n.essence[0] ?? 0))
-    const t4MaxIsk = Math.max(...nodes.filter((n) => n.tier === 4).map((n) => n.isk[0] ?? 0))
+    const t4MaxEss = Math.max(...nodes.filter((n) => n.tier === 4 && n.branch === 'industry').map((n) => n.essence[0] ?? 0))
+    const t4MaxIsk = Math.max(...nodes.filter((n) => n.tier === 4 && n.branch === 'industry').map((n) => n.isk[0] ?? 0))
     for (const n of nodes.filter((x) => x.tier === 5)) {
       expect(n.essence[0]!).toBeGreaterThan(t4MaxEss)
       expect(n.isk[0]!).toBeGreaterThan(t4MaxIsk)

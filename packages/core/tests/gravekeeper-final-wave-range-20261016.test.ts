@@ -21,6 +21,7 @@ describe('守墓旗舰末波与新舰100米近界', () => {
   it('静态参数只改四型近界和旗舰标签，不调血量、火力、经济档或其他卡', () => {
     const originalShips = JSON.parse(execFileSync('git', ['show', 'c2d777a8:packages/data/src/static/foeShips.json'], { encoding: 'utf8' })) as typeof shipParameters
     for (const row of originalShips.groups.parameters) if (newIds.includes(row.id)) row.rangeMinM = 100
+    Object.assign(originalShips.groups.parameters.find(row => row.id === 'foe-d-invasion-eternal-tomb')!, { split_s: .3, split_a: .4, split_h: .3 })
     expect(shipParameters).toEqual(originalShips)
     const originalFleets = JSON.parse(execFileSync('git', ['show', 'c2d777a8:packages/data/src/static/invasionFleets.json'], { encoding: 'utf8' })) as typeof fleetParameters
     originalFleets.groups.parameters.find(row => row.id === 'gravekeeper-flagship')!.threat = 191
@@ -100,11 +101,11 @@ describe('守墓旗舰末波与新舰100米近界', () => {
     const battle = weekendStartFlagshipBattle(state, ctx, now, [state.shipId])!
     expect(battle.foeOverride!.threat).toBe(191)
     expect(battle.foeOverride!.bossHp).toBe(220000)
-    expect(battle.foeOverride!.bossMaxLayers).toEqual({ s: 135000, a: 90000, h: 75000 })
+    expect(battle.foeOverride!.bossMaxLayers).toEqual({ s: 90000, a: 120000, h: 90000 })
     const card = applyFoeOverride(ctx.anomalies.get('gravekeeper-flagship')!, battle.foeOverride)
     const specs = activeFoeSpecsOf(card, bal, 3)
     expect(specs.map(f => f.name)).toEqual(['永陵级', '守誓级', '碑卫级', '碑卫级'])
-    expect(specs[0]!.hp).toEqual({ s: 55000, a: 90000, h: 75000 })
+    expect(specs[0]!.hp).toEqual({ s: 10000, a: 120000, h: 90000 })
     expect(specs[0]!.foeReviveEscort).toEqual({ everyMs: 60000, all: true })
     expect(specs[1]!.foeRebirthProtocol).toBeDefined()
     expect(specs.slice(1).every(f => f.resists.armor!.kinetic === .75 && f.resists.hull!.kinetic === .75)).toBe(true)

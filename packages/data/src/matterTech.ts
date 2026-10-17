@@ -94,6 +94,18 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     note: '每级缩短「扫描信号空间」的扫描间隔 5%（与技能链相乘）。',
   },
   {
+    id: 'mt-explore-signal-radius-t1',
+    name: '信号空间探索',
+    branch: 'explore',
+    tier: 1,
+    effect: 'whScanRadius',
+    per: 1,
+    maxLevel: 1,
+    essence: [20],
+    isk: [3_000_000],
+    note: '提高信号空间扫描范围 1 圈。',
+  },
+  {
     id: 'mt-explore-speed',
     name: '时间压缩矩阵',
     branch: 'explore',
@@ -106,6 +118,19 @@ export const MATTER_TECH_NODES: readonly MatterTechNodeDef[] = [
     prereq: { 'mt-explore-scan': 1 },
     // ⟪文案调整2026-10-06⟫ 战斗倍速为新旧探索共享效果。
     note: '解锁空间内战斗的倍速：1 级 ×2、2 级 ×4（战斗中可随时切回 ×1）。',
+  },
+  {
+    id: 'mt-explore-signal-radius-t4',
+    name: '信号空间探索',
+    branch: 'explore',
+    tier: 4,
+    effect: 'whScanRadius',
+    per: 1,
+    maxLevel: 1,
+    essence: [160],
+    isk: [700_000_000],
+    prereq: { 'mt-explore-signal-radius-t1': 1 },
+    note: '提高信号空间扫描范围 1 圈。',
   },
 
   /* ══════════════ B 虫洞战斗线（14） ══════════════

@@ -27,7 +27,8 @@ describe('物品装备说明双语与数据守恒', () => {
         if (!ts.isPropertyAssignment(field) || !ts.isStringLiteral(field.name) || !ts.isObjectLiteralExpression(field.initializer)) continue
         const name = field.initializer.properties.find((p): p is ts.PropertyAssignment => ts.isPropertyAssignment(p) && p.name.getText(ast) === 'name')?.initializer
         if (name && ts.isStringLiteral(name)) {
-          const expected = symbol === 'EN_ITEMS' && field.name.text === 'mat-wh-essence' ? 'Signal Enigma' : name.text
+          const renamed: Record<string, string> = { 'mat-wh-essence': 'Signal Enigma', 'synaptic-accelerant': 'Synaptic Accelerant MK1' }
+          const expected = symbol === 'EN_ITEMS' ? renamed[field.name.text] ?? name.text : name.text
           expect(live[field.name.text]?.name, field.name.text).toBe(expected)
         }
       }
@@ -37,11 +38,13 @@ describe('物品装备说明双语与数据守恒', () => {
     const before = historical<typeof ITEMS>('packages/data/src/items.ts', 'ITEMS')
     // 2026-10-06船长确认：两种旗舰黑匣基础价值下调，§21仅改信号谜质显示名。
     const adjusted = before.map(item => {
+      if (item.id === 'synaptic-accelerant') return { ...item, name: '突触加速剂 MK1' }
       if (['blackbox-h', 'blackbox-r'].includes(item.id)) return { ...item, baseSellPriceIsk: 10_000_000 }
       return item.id === 'mat-wh-essence' ? { ...item, name: '信号谜质' } : item
     })
     const strip = (entries: typeof ITEMS) => entries.map(({ description: _description, ...rest }) => rest)
-    const added = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'blackbox-d', 'deep-space-probe', 'drone-jawclaw'])
+    const added = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'blackbox-d', 'deep-space-probe', 'drone-jawclaw',
+      'invasion-beacon-r', 'invasion-beacon-c', 'invasion-beacon-h', 'invasion-beacon-d'])
     expect(ITEMS.filter(item => added.has(item.id)).map(item => item.id).sort()).toEqual([...added].sort())
     expect(strip(ITEMS.filter(item => !added.has(item.id)))).toEqual(strip(adjusted))
   })

@@ -132,7 +132,11 @@ export const CONSUMABLE_ITEM_SUBS: SubOption[] = [
   { key: `${CONSUMABLE_SUB_PREFIX}deep-space-probe`, itemId: 'deep-space-probe', label: tr('ui.stellar.001') },
   { key: `${CONSUMABLE_SUB_PREFIX}jump-fuel`, itemId: 'jump-fuel', label: '超空间折跃燃料' },
   { key: `${CONSUMABLE_SUB_PREFIX}invasion-beacon`, itemId: 'invasion-beacon', label: '信号发射器' },
-  { key: `${CONSUMABLE_SUB_PREFIX}synaptic-accelerant`, itemId: 'synaptic-accelerant', label: '突触加速剂' },
+  { key: `${CONSUMABLE_SUB_PREFIX}synaptic-accelerant`, itemId: 'synaptic-accelerant', label: tr('item.factionBeacon.009') },
+  { key: `${CONSUMABLE_SUB_PREFIX}invasion-beacon-r`, itemId: 'invasion-beacon-r', label: tr('item.factionBeacon.001') },
+  { key: `${CONSUMABLE_SUB_PREFIX}invasion-beacon-c`, itemId: 'invasion-beacon-c', label: tr('item.factionBeacon.003') },
+  { key: `${CONSUMABLE_SUB_PREFIX}invasion-beacon-h`, itemId: 'invasion-beacon-h', label: tr('item.factionBeacon.005') },
+  { key: `${CONSUMABLE_SUB_PREFIX}invasion-beacon-d`, itemId: 'invasion-beacon-d', label: tr('item.factionBeacon.007') },
 ]
 
 /** **「消耗品」桶的全部二级档** = 三个消耗品大类 ＋ 逐件道具档（市场/仓库/货仓/手册四处读它） */

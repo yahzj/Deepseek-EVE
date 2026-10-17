@@ -1,5 +1,12 @@
 # 工具区台账（tools/）
 
+## 信号发射器与扫描调整验收（2026-10-18）
+
+- `node tools/faction-beacons-ui-check.cjs [--layout=classic|modern]`：先构建；隐藏隔离Electron加载真实App，经典/现代×桌面/手机仿真分别验证R/C/H/D专属发射器生产、退料、交付、选择、点火和IPC重载，另验MK1、两套实验室筛选和T1/T4扫描科技研究。真实引擎推进工期，不改产线秒数；只用合成档，输出`tools/_ui-artifacts/faction-beacons-20261017/`。
+- `node tools/fuel-tank-fill-check.cjs`：真FuelTank组件72组像素填充检查，不加载个人档；输出`tools/_ui-artifacts/fuel-tank-fill-20261017/`，不作完整燃料页手操或实体手机观感结论。
+- `node tools/gravekeeper-battle-check.cjs [--native]`：四卡三种子完整战斗及十一波距离/运动诊断；`--native`先构建，验证真实App舰影、步进、宿主结算和IPC。独立检查点与自然通关分别记录，不清敌、不强制胜利；输出`tools/_ui-artifacts/gravekeeper-battle-20261017/`。
+- `npx tsx tools/make-test-save.ts faction-beacons`：生成独立合成验收档，五种发射器与MK1库存、生产材料及实验室门槛齐备，不读取或覆盖个人档；说明见`docs/test-saves/README.md`。
+
 ## 守墓者入侵专项（2026-10-16 · v0.1.0 / 档v31）
 
 - `gravekeeper-gear-fixture.ts`：由`make-test-save.ts gravekeeper-gear`调用，合法炮台/无人机双舰和新三件的独立合成门槛，不读取个人档；实际机制与保存续算见`gravekeeper-gear-20261016.test.ts`。

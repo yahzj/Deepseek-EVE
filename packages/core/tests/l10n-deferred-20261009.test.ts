@@ -6,6 +6,7 @@ import ts from 'typescript'
 import { ANNOUNCEMENTS, L10N, l10nEntryText, type L10nEntry } from '@whale/data'
 import { deferredL10nIssues } from '../../../tools/l10n-deferred-check'
 import { MECHANICS_APPROVED_ZH } from './fixtures/announcement-mechanics-brief-20261009'
+import { approvedMk1CopyDelta } from './helpers/approved-mk1-copy-delta'
 
 const root = new URL('../../../', import.meta.url)
 const backlog = readFileSync(new URL('docs/l10n-pending.md', root), 'utf8')
@@ -39,7 +40,7 @@ describe('综合公告短句与英文显式延期', () => {
       'ui.shipInfo.167': '无人机启动时间 −{p1}',
     }
     for (const [id, entry] of Object.entries(scope.exports.L10N)) {
-      expect(L10N[id], id).toEqual({ ...entry, zh: renamed[id] ?? entry.zh })
+      expect(L10N[id], id).toEqual(approvedMk1CopyDelta(id, { ...entry, zh: renamed[id] ?? entry.zh }))
     }
   })
   it('登记和标记必须成对，未登记、伪填、过期或不存在记录拒绝', () => {

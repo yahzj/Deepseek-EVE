@@ -1202,6 +1202,30 @@
         "kind": "consumable",
         "unitM3": 0.01,
         "baseSellPriceIsk": 18000000
+      },
+      {
+        "id": "invasion-beacon-r",
+        "kind": "consumable",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 480000000
+      },
+      {
+        "id": "invasion-beacon-c",
+        "kind": "consumable",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 480000000
+      },
+      {
+        "id": "invasion-beacon-h",
+        "kind": "consumable",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 480000000
+      },
+      {
+        "id": "invasion-beacon-d",
+        "kind": "consumable",
+        "unitM3": 0.01,
+        "baseSellPriceIsk": 480000000
       }
     ]
   }

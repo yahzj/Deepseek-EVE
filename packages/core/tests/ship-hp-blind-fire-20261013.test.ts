@@ -18,6 +18,7 @@ import { cleanBattle } from '../src/saveBattleClean'
 import { volleyDamageShareOf } from '../src/combatVolley'
 import { beginBattleAt } from '../src/expedition'
 import type { AnomalyDef, ModuleDef } from '../src/types'
+import { applyApprovedScanShipDelta } from './helpers/approved-scan-ship-delta'
 
 const ctx = buildSimContext()
 const oldShips = JSON.parse(execFileSync('git', ['show', '70ccd2bb:packages/data/src/static/ships.json'], { encoding: 'utf8' })) as typeof ships
@@ -38,6 +39,7 @@ describe('全舰容量与直接恢复参数', () => {
     for (const row of Object.values(expected.groups).flat()) {
       for (const field of ['shieldHp', 'armorHp', 'hullHp'] as const) row[field] = Math.round(row[field] * SHIP_HP_UPLIFT_MUL)
     }
+    applyApprovedScanShipDelta(expected)
     expect(ships).toEqual(expected)
     const expectedPlugs = structuredClone(oldPlugs)
     const rows = Object.values(expectedPlugs.groups).flat()

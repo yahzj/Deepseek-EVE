@@ -5684,19 +5684,19 @@
         {
           "key": "split_s",
           "sourcePath": "split.s",
-          "expression": "0.45",
+          "expression": "0.3",
           "source": "packages/data/src/foe-ships.ts"
         },
         {
           "key": "split_a",
           "sourcePath": "split.a",
-          "expression": "0.3",
+          "expression": "0.4",
           "source": "packages/data/src/foe-ships.ts"
         },
         {
           "key": "split_h",
           "sourcePath": "split.h",
-          "expression": "0.25",
+          "expression": "0.3",
           "source": "packages/data/src/foe-ships.ts"
         },
         {
@@ -15894,6 +15894,39 @@
           "table": "invasionFleets",
           "id": "ink-flagship",
           "name": "墨潮旗舰部队"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "foe-mount-d-range-debuff",
+      "name": "碑卫压制阵列",
+      "category": "挂载件",
+      "source": "packages/core/src/foeMounts.ts",
+      "fields": [
+        {
+          "key": "rangeDebuff_pct",
+          "sourcePath": "rangeDebuff.pct",
+          "expression": "0.15",
+          "source": "packages/core/src/foeMounts.ts"
+        }
+      ],
+      "entries": [],
+      "references": [
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-line",
+          "name": "守墓者碑卫舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-main",
+          "name": "守墓者守誓舰队"
+        },
+        {
+          "table": "invasionFleets",
+          "id": "gravekeeper-flagship",
+          "name": "守墓者永陵舰队"
         }
       ],
       "notes": []

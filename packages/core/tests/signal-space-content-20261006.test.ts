@@ -122,7 +122,7 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
     }
   })
 
-  it('四艘扫描舰只改说明：全部舰船数据与来源一致，半径仍按编队相加', () => {
+  it('四艘扫描舰说明与后续批准的扫描、回避参数一致，其余字段保持', () => {
     // 后续船长确认四舰CPU与四艘无人机主力舰启动特性；其余字段按固定来源逐项比较。
     const approvedCpu: Record<string, number> = { pioneer: 240, 'sh-humpback': 260, 'sh-wh-c-cruiser': 360, 'sh-wh-d-cruiser': 350 }
     const expectedShips = baseShips.map(row => ({ ...row,
@@ -131,22 +131,25 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
       hullHp: Math.round((row.hullHp ?? 0) * 1.5),
       ...(approvedCpu[row.id] !== undefined ? { cpu: approvedCpu[row.id] } : {}),
       ...(['sh-swarm', 'sh-sentinel', 'sh-wh-e-destroyer', 'sh-wh-e-carrier'].includes(row.id) ? { droneLaunchCutPct: .3 } : {}),
+      ...(['sh-nautilus', 'sh-wh-g-frigate'].includes(row.id) ? { wormholeScanRadiusBonus: 2 } : {}),
+      ...(['sh-shrike', 'sh-tigershark', 'sh-wh-d-frigate'].includes(row.id) ? { evasion: Number(((row.evasion ?? 0) + .1).toFixed(3)) } : {}),
     }))
     sameData(SHIPS, expectedShips, ['description'])
     expect(SHIPS.filter((row, i) => row.description !== baseShips[i]!.description).map((row) => row.id)).toEqual(shipIds)
     for (const id of shipIds) {
-      expect(zh.ships.get(id)!.wormholeScanRadiusBonus).toBe(1)
-      expect(zh.ships.get(id)!.description).toContain('空间内扫描范围一圈')
-      expect(en.ships.get(id)!.description).toContain('scan range inside the space by one ring')
+      expect(zh.ships.get(id)!.wormholeScanRadiusBonus).toBe(['sh-nautilus', 'sh-wh-g-frigate'].includes(id) ? 2 : 1)
+      expect(zh.ships.get(id)!.description).toContain('空间内扫描范围')
+      expect(en.ships.get(id)!.description).toContain('scan range inside the space')
       expect(EN_SHIPS[id]!.name).toBe(baseEn.EN_SHIPS[id]!.name)
     }
-    expect(wormholeScanBonusOf(zh, shipIds)).toBe(4)
-    expect(wormholeScanBonusOf(en, shipIds)).toBe(4)
+    expect(wormholeScanBonusOf(zh, shipIds)).toBe(3)
+    expect(wormholeScanBonusOf(en, shipIds)).toBe(3)
   })
 
   it('谜质科技全部标识、效果、费用与前置不变，共享说明不伪限定为旧玩法', () => {
-    sameData(MATTER_TECH_NODES, baseTech, ['note'])
-    for (const node of MATTER_TECH_NODES) {
+    const existing = MATTER_TECH_NODES.filter(node => !node.id.startsWith('mt-explore-signal-radius-'))
+    sameData(existing, baseTech, ['note'])
+    for (const node of existing) {
       const before = baseTech.find((row) => row.id === node.id)!
       expect(numbers(node.note), node.id).toEqual(numbers(before.note))
       expect(numbers(EN_MATTER_TECH_NOTES[node.id]!), node.id).toEqual(numbers(baseEn.EN_MATTER_TECH_NOTES[node.id]!))
@@ -163,14 +166,14 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
   })
 
   it('五族残骸只改地区显示：组标识、枚举、成员、池、档位、威胁和数量乘数不变', () => {
-    expect(WRECK_GROUPS.filter(row => row.key !== 'c-inv').map((row) => without(row, ['name', 'rareName', 'note', 'rareTheme'])))
+    expect(WRECK_GROUPS.filter(row => !['c-inv', 'd-inv'].includes(row.key)).map((row) => without(row, ['name', 'rareName', 'note', 'rareTheme'])))
       .toEqual(baseWrecks.map((row) => without(row, ['name', 'rareName', 'note', 'rareTheme'])))
     const baseWreckModule = baselineModule('packages/core/src/wreckGroups.ts')
     expect(WRECK_FAMILY_NAMES).toEqual(baseWreckModule.WRECK_FAMILY_NAMES)
     expect(WRECK_YIELD_TIER_MUL).toEqual(baseWreckModule.WRECK_YIELD_TIER_MUL)
     expect(WRECK_REGION_LABELS).toEqual({ ...(baseWreckModule.WRECK_REGION_LABELS as object), wh: '信号空间' })
     expect(WRECK_GROUPS.filter((row) => row.region === 'wh')).toHaveLength(5)
-    for (const row of WRECK_GROUPS.filter(row => row.key !== 'c-inv')) {
+    for (const row of WRECK_GROUPS.filter(row => !['c-inv', 'd-inv'].includes(row.key))) {
       const before = baseWrecks.find((group) => group.key === row.key)!
       for (const field of ['name', 'rareName', 'note'] as const) {
         expect(row[field], `${row.key}/${field}`).toBe(row.region === 'wh' ? before[field].replace('虫洞', '信号空间') : before[field])
@@ -190,15 +193,15 @@ describe('信号空间内容 · 固定来源与纯文案边界', () => {
   })
 
   it('旧资产数值与配方不变；模块及谜质装置说明取新ID，历史正文仍可读取', () => {
-    const addedItems = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'deep-space-probe', 'drone-jawclaw'])
+    const addedItems = new Set(['ammo-kinetic-3', 'ammo-explosive-3', 'ammo-plasma-3', 'blackbox-c', 'blackbox-d', 'deep-space-probe', 'drone-jawclaw', 'invasion-beacon-r', 'invasion-beacon-c', 'invasion-beacon-h', 'invasion-beacon-d'])
     expect(ITEMS.filter(item => addedItems.has(item.id)).map(item => item.id).sort()).toEqual([...addedItems].sort())
     sameData(ITEMS.filter(item => !addedItems.has(item.id)), baseItems, ['name', 'description'])
     expect(EN_ITEMS['mat-wh-essence']!.name).toBe('Signal Enigma')
     for (const [id, text] of Object.entries(EN_ITEMS)) {
       if (addedItems.has(id)) continue
-      expect(text.name, id).toBe(id === 'mat-wh-essence' ? 'Signal Enigma' : baseEn.EN_ITEMS[id]!.name)
+      expect(text.name, id).toBe(id === 'mat-wh-essence' ? 'Signal Enigma' : id === 'synaptic-accelerant' ? 'Synaptic Accelerant MK1' : baseEn.EN_ITEMS[id]!.name)
     }
-    const approvedNewModules = new Set(['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3', 'mod-laser-calibration-2', 'mod-laser-calibration-3'])
+    const approvedNewModules = new Set(['mod-drone-launch-1', 'mod-drone-launch-2', 'mod-drone-launch-3', 'mod-laser-calibration-2', 'mod-laser-calibration-3', 'mod-gravekeeper-rebirth', 'mod-gravekeeper-crisis', 'mod-gravekeeper-rail'])
     for (const [id, text] of Object.entries(EN_MODULES)) {
       if (approvedNewModules.has(id)) continue
       expect(text.name, id).toBe(baseEn.EN_MODULES[id]!.name)

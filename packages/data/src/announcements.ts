@@ -37,6 +37,23 @@ const MECHANICS_BRIEF_IDS = [
 /** 全量公告（新的放最上方） */
 export const ANNOUNCEMENTS: readonly AnnouncementDef[] = [
   {
+    // ⟪文案调整 2026-10-18⟫ 船长批准合并公告并推送，敌方入侵数值不进入公告。
+    id: 'ann-signal-beacons-exploration-20261018',
+    title: L10N['ano.signalRelease.001']!.zh,
+    titleId: 'ano.signalRelease.001',
+    date: '2026-10-18',
+    tag: L10N['ano.signalRelease.002']!.zh,
+    tagId: 'ano.signalRelease.002',
+    bullets: [
+      L10N['ano.signalRelease.003']!.zh,
+      L10N['ano.signalRelease.004']!.zh,
+      L10N['ano.signalRelease.005']!.zh,
+      L10N['ano.signalRelease.006']!.zh,
+      L10N['ano.signalRelease.007']!.zh,
+    ],
+    bulletIds: ['ano.signalRelease.003', 'ano.signalRelease.004', 'ano.signalRelease.005', 'ano.signalRelease.006', 'ano.signalRelease.007'],
+  },
+  {
     // 2026-10-13船长确认五条中文正文，英文仅登记待译，历史公告保持。
     id: 'ann-ship-hp-station-20261013',
     title: L10N['ano.hpStation.001']!.zh,
